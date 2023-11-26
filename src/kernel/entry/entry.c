@@ -34,14 +34,20 @@ void _start(BootInfo* bootInfo)
 
     tty_print("Test 1");
 
-    FILE* file = fopen("/fonts/zap-vga16.psf", "r");
+    FileContent* file = fopen("/fonts/zap-vga16.psf", "r");
 
-    char buffer[64];
-    fread(buffer, 1, 64, file);
+    //tty_print("FILE");
+    //tty_printi(file);
+    
+    tty_print("Test 2");
 
-    fclose(file);
+    //char buffer[64];
+    //fread(buffer, 1, 64, file);*/
 
-    uint16_t magic = *((uint16_t*)((void*)buffer));
+    //fclose(file);
+
+    tty_print("Magic should be 1078");
+    uint16_t magic = *((uint16_t*)((void*)file->Data));
     char string[64];
     itoa(magic, string);
     tty_print(string);

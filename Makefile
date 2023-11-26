@@ -1,4 +1,4 @@
-OSNAME = Electric_OS
+OSNAME = PatchworkOS
 
 LDS = src/kernel/linker.ld
 LD = ld
