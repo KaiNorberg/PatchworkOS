@@ -1,4 +1,4 @@
-#include "include/string.h"
+#include "libc/include/string.h"
 
 int memcmp(const void* lhs, const void* rhs, size_t count)
 {

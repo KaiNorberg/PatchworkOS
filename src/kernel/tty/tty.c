@@ -1,6 +1,7 @@
 #include "tty.h"
 
-#include "../libc/include/string.h"
+#include "libc/include/string.h"
+#include "kernel/utils/utils.h"
 
 Framebuffer* frontbuffer;
 PSFFont* font;
@@ -77,4 +78,11 @@ void tty_print(const char* string)
 
     cursorPos.X = 0;
     cursorPos.Y += 16;
+}
+
+void tty_printi(uint64_t integer)
+{
+    char string[64];
+    itoa(integer, string);
+    tty_print(string);
 }

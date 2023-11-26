@@ -3,7 +3,7 @@ OUTPUTNAME = libc
 CC = gcc
 ASMC = nasm
 
-CFLAGS = -Wall -ffreestanding -fno-stack-protector -fno-exceptions -I./ -Os
+CFLAGS = -Wall -ffreestanding -fno-stack-protector -fno-exceptions -I../ -Os
 ASMFLAGS =
 
 SRCDIR = ./

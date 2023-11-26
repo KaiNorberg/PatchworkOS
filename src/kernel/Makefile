@@ -3,7 +3,7 @@ OUTPUTNAME = kernel
 CC = gcc
 ASMC = nasm
 
-CFLAGS = -Wall -ffreestanding -fno-stack-protector -fno-exceptions -I./ -Os
+CFLAGS = -Wall -ffreestanding -fno-stack-protector -fno-exceptions -I../ -Os
 ASMFLAGS =
 
 SRCDIR = ./
@@ -19,6 +19,11 @@ OBJS += $(patsubst $(SRCDIR)/%.asm, $(OBJDIR)/%_ASM.o, $(ASMSRC))
 DIRS = $(wildcard $(SRCDIR)/*)
 
 kernel: $(OBJS)
+
+$(OBJDIR)/idt/interrupts/interrupts.o: $(SRCDIR)idt//interrupts/interrupts.c
+	@echo !==== COMPILING $^
+	@mkdir -p $(@D)
+	$(CC) $(CFLAGS) -mno-red-zone -mgeneral-regs-only -c $^ -o $@ 
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	@echo !==== COMPILING $^

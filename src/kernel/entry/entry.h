@@ -2,24 +2,9 @@
 
 #include <stdint.h>
 
-#include "gop/gop.h"
-#include "psf/psf.h"
-
-typedef struct
-{
-	const char* Name;
-	uint8_t* Data;
-	uint64_t Size;
-} File;
-
-typedef struct Directory
-{
-	const char* Name;
-	File* Files;
-	uint64_t FileAmount;
-	struct Directory* Directories;
-	uint64_t DirectoryAmount;
-} Directory;
+#include "kernel/gop/gop.h"
+#include "kernel/psf/psf.h"
+#include "kernel/file_system/file_system.h"
 
 typedef struct
 {
@@ -29,5 +14,5 @@ typedef struct
 	void* MemoryMap;
 	void* RSDP;
 	void* RT;
-	Directory* RootDirectory;
+	RawDirectory* RootDirectory;
 } BootInfo;

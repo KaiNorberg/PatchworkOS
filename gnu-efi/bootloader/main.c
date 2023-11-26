@@ -359,7 +359,7 @@ EFI_STATUS efi_main(EFI_HANDLE In_ImageHandle, EFI_SYSTEM_TABLE* In_SystemTable)
 	SystemTable = In_SystemTable;
 
 	InitializeLib(ImageHandle, SystemTable);
-	Print(L"Bootloader loaded!\n\r");
+	Print(L"BootLoader loaded!\n\r");
 
 	EFI_FILE* KernelDir = LoadFile(NULL, L"KERNEL");
 	EFI_FILE* RootDir = LoadFile(NULL, L"ROOT");
