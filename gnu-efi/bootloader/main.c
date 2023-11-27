@@ -359,6 +359,7 @@ EFI_STATUS efi_main(EFI_HANDLE In_ImageHandle, EFI_SYSTEM_TABLE* In_SystemTable)
 	SystemTable = In_SystemTable;
 
 	InitializeLib(ImageHandle, SystemTable);
+
 	Print(L"BootLoader loaded!\n\r");
 
 	EFI_FILE* KernelDir = LoadFile(NULL, L"KERNEL");
@@ -371,13 +372,6 @@ EFI_STATUS efi_main(EFI_HANDLE In_ImageHandle, EFI_SYSTEM_TABLE* In_SystemTable)
 	PSF_FONT FontLight = LoadPSFFont(FontsDir, L"zap-light16.psf");
 	PSF_FONT* Fonts[] = {&FontVGA, &FontLight};
 
-	Framebuffer newBuffer = GetFramebuffer();
-	EFI_MEMORY_MAP newMap = GetMemoryMap();
-	void* RSDP = GetRSDP();
-
-	Print(L"Exiting boot services...\n\r");
-	SystemTable->BootServices->ExitBootServices(ImageHandle, newMap.Key);
-	
 	Directory rootDirectory = CreateDirectory("root", 0, 1);
 	Directory fontDirectory = CreateDirectory("fonts", 2, 0);
 	rootDirectory.Directories[0] = fontDirectory;
@@ -385,11 +379,18 @@ EFI_STATUS efi_main(EFI_HANDLE In_ImageHandle, EFI_SYSTEM_TABLE* In_SystemTable)
 	fontDirectory.Files[0] = ReadFile(FontsDir, L"zap-vga16.psf", "zap-vga16.psf");
 	fontDirectory.Files[1] = ReadFile(FontsDir, L"zap-light16.psf", "zap-light16.psf");
 
+	Framebuffer screenbuffer = GetFramebuffer();
+	EFI_MEMORY_MAP memoryMap = GetMemoryMap();
+	void* RSDP = GetRSDP();
+
+	Print(L"Exiting boot services...\n\r");
+	SystemTable->BootServices->ExitBootServices(ImageHandle, memoryMap.Key);
+
 	BootInfo bootInfo;
-	bootInfo.Screenbuffer = &newBuffer;
+	bootInfo.Screenbuffer = &screenbuffer;
 	bootInfo.PSFFonts = Fonts;
 	bootInfo.FontAmount = sizeof(Fonts)/sizeof(Fonts[0]);	
-	bootInfo.MemoryMap = &newMap;
+	bootInfo.MemoryMap = &memoryMap;
 	bootInfo.RSDP = RSDP;
 	bootInfo.RT = SystemTable->RuntimeServices;
 	bootInfo.RootDirectory = &rootDirectory;

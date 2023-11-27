@@ -5,6 +5,8 @@ SECTIONS
 {
 	. = 1M;
 
+	_kernelStart = .;
+
 	.text BLOCK(4K) : ALIGN(4K)
 	{
 		*(.multiboot)
@@ -26,4 +28,6 @@ SECTIONS
 		*(COMMON)
 		*(.bss)
 	}
+
+	_kernelEnd = .;
 }

@@ -18,6 +18,16 @@ uint64_t syscall_handler()
 
     switch (rax)
     {
+    case SYS_ALLOCATE:
+    {
+        return 0;  
+    }
+    break;
+    case SYS_FREE:
+    {
+        return 0;  
+    }
+    break;
     case SYS_OPEN:
     {
         return (uint64_t)file_system_get((const char*)rdi);  
