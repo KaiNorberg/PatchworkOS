@@ -45,6 +45,10 @@ void tty_put(uint8_t chr)
         cursorPos.X = 0;
         cursorPos.Y += 16 * scale;
     }
+    else if (chr == '\r')
+    {
+        cursorPos.X = 0;
+    }
     else
     {
         for (uint64_t y = 0; y < 16 * scale; y++)
@@ -84,15 +88,12 @@ void tty_put(uint8_t chr)
 
 void tty_print(const char* string)
 {
-    char* chr = string;
+    char* chr = (char*)string;
     while (*chr != '\0')
     {
         tty_put(*chr);
         chr++;
     }
-
-    cursorPos.X = 0;
-    cursorPos.Y += 16 * scale;
 }
 
 void tty_printi(uint64_t integer)
@@ -117,4 +118,55 @@ void tty_set_foreground(Pixel color)
 void tty_set_background(Pixel color)
 {
     background = color;
+}
+
+void tty_start_message(const char* message)
+{
+    tty_print("[..] ");
+    tty_print(message);
+    tty_print("...");
+}
+
+void tty_end_message(uint64_t status)
+{
+    uint64_t oldCursorX = cursorPos.X;   
+    cursorPos.X = 8;
+
+    if (status == TTY_MESSAGE_OK)
+    {
+        foreground.A = 255;
+        foreground.R = 0;
+        foreground.G = 255;
+        foreground.B = 0;
+        tty_print("OK");
+    }
+    else if (status == TTY_MESSAGE_ER)
+    {
+        foreground.A = 255;
+        foreground.R = 255;
+        foreground.G = 0;
+        foreground.B = 0;
+        tty_print("ER");
+    }
+    else
+    {
+        //Undefined behaviour
+    }
+
+    foreground.A = 255;
+    foreground.R = 255;
+    foreground.G = 255;
+    foreground.B = 255;
+    
+    if (status != TTY_MESSAGE_ER)
+    {
+        foreground.A = 255;
+        foreground.R = 255;
+        foreground.G = 255;
+        foreground.B = 255;
+        cursorPos.X = oldCursorX;
+        tty_print(" done!");
+    }
+
+    tty_print("\n\r");
 }

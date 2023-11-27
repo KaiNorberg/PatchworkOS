@@ -6,6 +6,7 @@
 #include "kernel/utils/utils.h"
 #include "kernel/file_system/file_system.h"
 #include "kernel/page_allocator/page_allocator.h"
+#include "kernel/page_table/page_table.h"
 
 #include "libc/include/stdio.h"
 
@@ -21,102 +22,85 @@ GDT gdt =
 };
 
 void _start(BootInfo* bootInfo)
-{
+{   
+    tty_init(bootInfo->Screenbuffer, bootInfo->PSFFonts[0]);
+
+    tty_print("Hello from the kernel!\n\r");
+
+    tty_start_message("Page allocator initializing");
+    page_allocator_init(bootInfo->MemoryMap, bootInfo->Screenbuffer);
+    tty_end_message(TTY_MESSAGE_OK);
+
+    tty_start_message("Page table initializing");
+    page_table_init(bootInfo->Screenbuffer);
+    tty_end_message(TTY_MESSAGE_OK);
+
+    tty_clear();
+
+    tty_print("Paging has been initialized\n\r");
+
+    tty_start_message("GDT loading");
     static GDTDesc gdtDesc;
 	gdtDesc.Size = sizeof(GDT) - 1;
 	gdtDesc.Offset = (uint64_t)&gdt;
 	gdt_load(&gdtDesc);
+    tty_end_message(TTY_MESSAGE_OK);
 
-    tty_init(bootInfo->Screenbuffer, bootInfo->PSFFonts[0]);
-
-    page_allocator_init(bootInfo->MemoryMap, bootInfo->Screenbuffer);
-
+    tty_start_message("IDT initializing");
     idt_init();
+    tty_end_message(TTY_MESSAGE_OK);
+
+    tty_start_message("File system initializing");
     file_system_init(bootInfo->RootDirectory);
+    tty_end_message(TTY_MESSAGE_OK);
 
-    Pixel green;
-    green.A = 255;
-    green.R = 0;
-    green.G = 255;
-    green.B = 0;
+    tty_print("\n\r");
 
-    Pixel red;
-    red.A = 255;
-    red.R = 255;
-    red.G = 0;
-    red.B = 0;
-
-    Pixel black;
-    black.A = 255;
-    black.R = 0;
-    black.G = 0;
-    black.B = 0;
-
-    Pixel white;
-    white.A = 255;
-    white.R = 255;
-    white.G = 255;
-    white.B = 255;  
-
-    for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
-    {
-        if (page_allocator_get_status(i * 4096))
-        {
-            tty_set_foreground(red);
-            tty_put('1');
-        }
-        else
-        {
-            tty_set_foreground(green);           
-            tty_put('0');
-        }
-    }
-
-    tty_set_foreground(white);
-
-    int x = 0;
-    for (uint64_t i = 0; i < 1000; i++)
-    {
-        x = x % i;
-    }
-
-    tty_clear();
-
-    tty_print("Total Page Amount");
+    tty_print("Total Page Amount\n\r");
     tty_printi(page_allocator_get_total_amount());
-    tty_print("Total Memory Size (MB)");
+    tty_print("\n\r");
+    tty_print("Total Memory Size (MB)\n\r");
     tty_printi((page_allocator_get_total_amount() * 4096) / 1048576);
-    tty_print("Total Memory Size (GB)");
+    tty_print("\n\r");
+    tty_print("Total Memory Size (GB)\n\r");
     tty_printi((page_allocator_get_total_amount() * 4096) / 1073741824);
+    tty_print("\n\r");
 
-    tty_put('\n');
+    tty_print("\n\r");
 
-    tty_print("Locked Page Amount");
+    tty_print("Locked Page Amount\n\r");
     tty_printi(page_allocator_get_locked_amount());
-    tty_print("Locked Memory Size (MB)");
+    tty_print("\n\r");
+    tty_print("Locked Memory Size (MB)\n\r");
     tty_printi((page_allocator_get_locked_amount() * 4096) / 1048576);
-    tty_print("Locked Memory Size (GB)");
+    tty_print("\n\r");
+    tty_print("Locked Memory Size (GB)\n\r");
     tty_printi((page_allocator_get_locked_amount() * 4096) / 1073741824);
+    tty_print("\n\r");
 
-    tty_put('\n');
+    tty_print("\n\r");
 
-    tty_print("Unlocked Page Amount");
+    tty_print("Unlocked Page Amount\n\r");
     tty_printi(page_allocator_get_unlocked_amount());
-    tty_print("Unlocked Memory Size (MB)");
+    tty_print("\n\r");
+    tty_print("Unlocked Memory Size (MB)\n\r");
     tty_printi((page_allocator_get_unlocked_amount() * 4096) / 1048576);
-    tty_print("Unlocked Memory Size (GB)");
+    tty_print("\n\r");
+    tty_print("Unlocked Memory Size (GB)\n\r");
     tty_printi((page_allocator_get_unlocked_amount() * 4096) / 1073741824);
+    tty_print("\n\r");
 
-    tty_put('\n');
+    tty_print("\n\r");
 
     for (int i = 0; i < 2; i++)
     {
         uint64_t* newPage = page_allocator_request();
 
-        tty_print("New Page");
-        tty_printi(newPage);  
+        tty_print("New Page\n\r");
+        tty_printi((uint64_t)newPage);
+        tty_print("\n\r");  
 
-        tty_print("Array");
+        tty_print("Array\n\r");
         newPage[0] = 0;
         newPage[1] = 5;
         newPage[2] = 10;
@@ -127,11 +111,12 @@ void _start(BootInfo* bootInfo)
         for (int j = 0; j < 6; j++)
         {
             tty_printi(newPage[j]);
+            tty_print("\n\r");
         }
 
-        tty_put('\n');
+        tty_print("\n\r");
 
-        //page_allocator_unlock_page(newPage);
+        page_allocator_unlock_page(newPage);
     }
 
     //tty_print("Test 1");

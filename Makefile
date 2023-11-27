@@ -4,6 +4,9 @@ LDS = src/kernel/linker.ld
 LD = ld
 LDFLAGS = -T $(LDS) -Bsymbolic -nostdlib
 
+KERNEL_OBJDIR := build/kernel
+LIBK_OBJDIR := build/libk
+
 SRCDIR := src
 OBJDIR := build
 BINDIR := bin
@@ -13,10 +16,8 @@ OVMFDIR := OVMFbin
 
 rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
 
-SRC = $(call rwildcard,$(SRCDIR),*.c)
-ASMSRC = $(call rwildcard,$(SRCDIR),*.asm)
-OBJS = $(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(SRC))
-OBJS += $(patsubst $(SRCDIR)/%.asm, $(OBJDIR)/%_ASM.o, $(ASMSRC))
+KERNEL_OBJS = $(call rwildcard,$(KERNEL_OBJDIR),*.o)
+LIBK_OBJS = $(call rwildcard,$(LIBK_OBJDIR),*.o)
 
 setup:
 	@mkdir -p $(BINDIR)
@@ -39,7 +40,7 @@ buildimg:
 	mcopy -i $(BINDIR)/$(OSNAME).img $(FONTSDIR)/zap-light16.psf ::/ROOT/FONTS
 
 linkkernel:
-	$(LD) $(LDFLAGS) -o $(BINDIR)/kernel.elf $(OBJS)
+	$(LD) $(LDFLAGS) -o $(BINDIR)/kernel.elf $(KERNEL_OBJS) $(LIBK_OBJS)
 
 all:
 	make setup

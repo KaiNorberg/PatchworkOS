@@ -5,6 +5,12 @@
 #include "kernel/gop/gop.h"
 #include "kernel/psf/psf.h"
 
+typedef enum
+{
+    TTY_MESSAGE_OK,
+    TTY_MESSAGE_ER
+} TTY_MESSAGE;
+
 void tty_init(Framebuffer* screenbuffer, PSFFont* screenFont);
 void tty_put(uint8_t chr);
 void tty_print(const char* string);  
@@ -15,3 +21,6 @@ void tty_clear();
 void tty_set_scale(uint8_t scale);
 void tty_set_foreground(Pixel color);
 void tty_set_background(Pixel color);
+
+void tty_start_message(const char* message);
+void tty_end_message(uint64_t status);

@@ -8,7 +8,6 @@ ASMFLAGS =
 
 SRCDIR = ./
 OBJDIR = ../../build/$(OUTPUTNAME)
-BINDIR = ../../bin/$(OUTPUTNAME)
 
 rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
 
@@ -20,7 +19,7 @@ DIRS = $(wildcard $(SRCDIR)/*)
 
 kernel: $(OBJS)
 
-$(OBJDIR)/idt/interrupts/interrupts.o: $(SRCDIR)idt//interrupts/interrupts.c
+$(OBJDIR)/idt/interrupts/interrupts.o: $(SRCDIR)/idt/interrupts/interrupts.c
 	@echo !==== COMPILING $^
 	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -mno-red-zone -mgeneral-regs-only -c $^ -o $@ 
@@ -36,7 +35,6 @@ $(OBJDIR)/%_ASM.o: $(SRCDIR)/%.asm
 	$(ASMC) $(ASMFLAGS) $^ -f elf64 -o $@
 
 setup:
-	@mkdir -p $(BINDIR)
 	@mkdir -p $(SRCDIR)
 	@mkdir -p $(OBJDIR)
 
