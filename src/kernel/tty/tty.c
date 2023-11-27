@@ -11,6 +11,8 @@ Point cursorPos;
 Pixel background;
 Pixel foreground;
 
+uint8_t scale;
+
 void tty_init(Framebuffer* screenbuffer, PSFFont* screenFont)
 {
     frontbuffer = screenbuffer;
@@ -29,7 +31,9 @@ void tty_init(Framebuffer* screenbuffer, PSFFont* screenFont)
     foreground.G = 255;
     foreground.B = 255;
 
-    memset(frontbuffer->Base, 0, frontbuffer->Size);
+    scale = 1;
+
+    tty_clear();
 }
 
 void tty_put(uint8_t chr)
@@ -39,17 +43,17 @@ void tty_put(uint8_t chr)
     if (chr == '\n')
     {
         cursorPos.X = 0;
-        cursorPos.Y += 16;
+        cursorPos.Y += 16 * scale;
     }
     else
     {
-        for (uint64_t y = 0; y < 16; y++)
+        for (uint64_t y = 0; y < 16 * scale; y++)
         {
-            for (uint64_t x = 0; x < 8; x++)
+            for (uint64_t x = 0; x < 8 * scale; x++)
             {
                 Pixel pixel;
 
-                if ((*glyph & (0b10000000 >> x)) > 0)
+                if ((*glyph & (0b10000000 >> x / scale)) > 0)
                 {
                     pixel = foreground;
                 }
@@ -62,7 +66,10 @@ void tty_put(uint8_t chr)
 
                 gop_put(frontbuffer, position, pixel);
             }
-            glyph++;
+            if (y % scale == 0)
+            {
+                glyph++;
+            }
         }
 
         cursorPos.X += 8;
@@ -70,7 +77,7 @@ void tty_put(uint8_t chr)
         if (cursorPos.X >= frontbuffer->Width)
         {
             cursorPos.X = 0;
-            cursorPos.Y += 16;
+            cursorPos.Y += 16 * scale;
         }
     }
 }
@@ -85,7 +92,7 @@ void tty_print(const char* string)
     }
 
     cursorPos.X = 0;
-    cursorPos.Y += 16;
+    cursorPos.Y += 16 * scale;
 }
 
 void tty_printi(uint64_t integer)
@@ -93,4 +100,21 @@ void tty_printi(uint64_t integer)
     char string[64];
     itoa(integer, string);
     tty_print(string);
+}
+
+void tty_clear()
+{
+    memset(frontbuffer->Base, 0, frontbuffer->Size);
+    cursorPos.X = 0;
+    cursorPos.Y = 0;
+}
+
+void tty_set_foreground(Pixel color)
+{
+    foreground = color;
+}
+
+void tty_set_background(Pixel color)
+{
+    background = color;
 }

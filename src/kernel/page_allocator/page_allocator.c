@@ -2,6 +2,8 @@
 
 #include "kernel/tty/tty.h"
 
+#include "libc/include/string.h"
+
 extern uint64_t _kernelStart;
 extern uint64_t _kernelEnd;
 
@@ -33,12 +35,7 @@ void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer)
     }
     pageMap = largestFreeSegment;
 
-    for (uint64_t i = 0; i < pageAmount / 64; i++)
-    {
-        pageMap[i] = 0;
-    }
-
-    page_allocator_lock_pages(pageMap, (pageAmount / 4096) / 8 + 1);
+    memset(pageMap, 0, pageAmount / 8);
 
     for (uint64_t i = 0; i < memoryMap->Size / memoryMap->DescriptorSize; i++)
     {
@@ -50,8 +47,18 @@ void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer)
         }
     }
 
+    page_allocator_lock_pages(pageMap, (pageAmount / 8) / 4096 + 1);
     page_allocator_lock_pages(&_kernelStart, ((uint64_t)&_kernelEnd - (uint64_t)&_kernelStart) / 4096 + 1);    
     page_allocator_lock_pages(screenBuffer->Base, screenBuffer->Size / 4096 + 1);
+}
+
+uint8_t page_allocator_get_status(void* address)
+{
+    uint64_t index = (uint64_t)address / 4096;
+    uint64_t qwordIndex = index / 64;
+    uint64_t bitIndex = index % 64;
+
+    return pageMap[qwordIndex] & ((uint64_t)1 << bitIndex);
 }
 
 void* page_allocator_request()
@@ -82,14 +89,14 @@ void* page_allocator_request()
 void page_allocator_lock_page(void* address)
 {
     uint64_t index = (uint64_t)address / 4096;
-    pageMap[index / 64] = pageMap[index / 64] | 1 << (index % 64);
+    pageMap[index / 64] = pageMap[index / 64] | (uint64_t)1 << (index % 64);
     lockedAmount++;
 }
 
 void page_allocator_unlock_page(void* address)
 {
     uint64_t index = (uint64_t)address / 4096;
-    pageMap[index / 64] = pageMap[index / 64] & ~(1 << (index % 64));
+    pageMap[index / 64] = pageMap[index / 64] & ~((uint64_t)1 << (index % 64));
     lockedAmount--;    
 }
 

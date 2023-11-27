@@ -27,10 +27,60 @@ void _start(BootInfo* bootInfo)
 	gdtDesc.Offset = (uint64_t)&gdt;
 	gdt_load(&gdtDesc);
 
-    page_allocator_init(bootInfo->MemoryMap, bootInfo->Screenbuffer);
-    idt_init();
     tty_init(bootInfo->Screenbuffer, bootInfo->PSFFonts[0]);
+
+    page_allocator_init(bootInfo->MemoryMap, bootInfo->Screenbuffer);
+
+    idt_init();
     file_system_init(bootInfo->RootDirectory);
+
+    Pixel green;
+    green.A = 255;
+    green.R = 0;
+    green.G = 255;
+    green.B = 0;
+
+    Pixel red;
+    red.A = 255;
+    red.R = 255;
+    red.G = 0;
+    red.B = 0;
+
+    Pixel black;
+    black.A = 255;
+    black.R = 0;
+    black.G = 0;
+    black.B = 0;
+
+    Pixel white;
+    white.A = 255;
+    white.R = 255;
+    white.G = 255;
+    white.B = 255;  
+
+    for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
+    {
+        if (page_allocator_get_status(i * 4096))
+        {
+            tty_set_foreground(red);
+            tty_put('1');
+        }
+        else
+        {
+            tty_set_foreground(green);           
+            tty_put('0');
+        }
+    }
+
+    tty_set_foreground(white);
+
+    int x = 0;
+    for (uint64_t i = 0; i < 1000; i++)
+    {
+        x = x % i;
+    }
+
+    tty_clear();
 
     tty_print("Total Page Amount");
     tty_printi(page_allocator_get_total_amount());

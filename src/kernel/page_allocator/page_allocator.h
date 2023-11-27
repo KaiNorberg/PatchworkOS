@@ -10,6 +10,8 @@ void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer);
 
 void* page_allocator_request();
 
+uint8_t page_allocator_get_status(void* address);
+
 void page_allocator_lock_page(void* address);
 
 void page_allocator_unlock_page(void* address);
