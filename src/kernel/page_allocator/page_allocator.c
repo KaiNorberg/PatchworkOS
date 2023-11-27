@@ -60,10 +60,27 @@ void* page_allocator_request()
     {
         if (pageMap[qwordIndex] != 0xFFFFFFFFFFFFFFFF) //If any bit is zero
         {
+            tty_print("QWord");
             for (uint64_t bitIndex = 0; bitIndex < 64; bitIndex++)
             {
-                if (pageMap[qwordIndex] & (1 << bitIndex)) //If bit is set
+                if (pageMap[qwordIndex] & ((uint64_t)1 << bitIndex)) //If bit is set
                 {
+                    tty_put('1');
+                }
+                else
+                {
+                    tty_put('0');
+                }
+            }
+            tty_put('\n');
+
+            for (uint64_t bitIndex = 0; bitIndex < 64; bitIndex++)
+            {
+                if ((pageMap[qwordIndex] & ((uint64_t)1 << bitIndex)) == 0) //If bit is not set
+                {
+                    tty_print("Bit Index");
+                    tty_printi(bitIndex);
+
                     void* address = (void*)((qwordIndex * 64 + bitIndex) * 4096);
                     page_allocator_lock_page(address);
                     return address;

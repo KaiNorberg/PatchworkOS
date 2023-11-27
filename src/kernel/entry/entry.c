@@ -42,7 +42,7 @@ void _start(BootInfo* bootInfo)
     tty_print("Total Memory Size (GB)");
     tty_printi((page_allocator_get_total_amount() * 4096) / 1073741824);
 
-    tty_print("");
+    tty_put('\n');
 
     tty_print("Locked Page Amount");
     tty_printi(page_allocator_get_locked_amount());
@@ -52,7 +52,7 @@ void _start(BootInfo* bootInfo)
     tty_printi((page_allocator_get_locked_amount() * 4096) / 1073741824);
 
 
-    tty_print("");
+    tty_put('\n');
 
     tty_print("Unlocked Page Amount");
     tty_printi(page_allocator_get_unlocked_amount());
@@ -61,7 +61,17 @@ void _start(BootInfo* bootInfo)
     tty_print("Unlocked Memory Size (GB)");
     tty_printi((page_allocator_get_unlocked_amount() * 4096) / 1073741824);
 
-    tty_print("");
+    tty_put('\n');
+
+    for (int i = 0; i < 5; i++)
+    {
+        void* newPage = page_allocator_request();
+
+        tty_print("New Page");
+        tty_printi(newPage);  
+
+        tty_put('\n');
+    }
 
     //tty_print("Test 1");
 
