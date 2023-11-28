@@ -35,8 +35,9 @@ typedef enum
 	EFI_MEMORY_MAPPED_IO,
 	EFI_MEMORY_MAPPED_IO_PORT_SPACE,
 	EFI_PAL_CODE,
-	EFI_PERSISTENT_MEMORY,
 	EFI_MAX_MEMORY_TYPE
 } EFIMemoryType;
 
 extern const char* EFI_MEMORY_TYPE_STRINGS[];
+
+uint8_t is_memory_type_reserved(uint64_t memoryType);

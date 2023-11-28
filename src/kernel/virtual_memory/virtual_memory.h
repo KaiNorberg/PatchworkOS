@@ -24,6 +24,10 @@ typedef struct __attribute__((aligned(0x1000)))
     PageDirEntry Entries[512];
 } PageTable;
 
-void page_table_init(Framebuffer* screenbuffer);
+typedef PageTable VirtualAddressSpace;
 
-void page_table_map_page(void* virtualAddress, void* physicalAddress);
+VirtualAddressSpace* virtual_memory_create();
+
+void virtual_memory_load_space(VirtualAddressSpace* addressSpace);
+
+void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress);

@@ -30,14 +30,13 @@ buildimg:
 	mmd -i $(BINDIR)/$(OSNAME).img ::/EFI
 	mmd -i $(BINDIR)/$(OSNAME).img ::/EFI/BOOT
 	mmd -i $(BINDIR)/$(OSNAME).img ::/KERNEL
-	mmd -i $(BINDIR)/$(OSNAME).img ::/ROOT
-	mmd -i $(BINDIR)/$(OSNAME).img ::/ROOT/FONTS
+	mmd -i $(BINDIR)/$(OSNAME).img ::/FONTS
 	cp $(BOOTDIR)/main.efi $(BOOTDIR)/bootx64.efi
 	mcopy -i $(BINDIR)/$(OSNAME).img $(SRCDIR)/startup.nsh ::
 	mcopy -i $(BINDIR)/$(OSNAME).img $(BOOTDIR)/bootx64.efi ::/EFI/BOOT
 	mcopy -i $(BINDIR)/$(OSNAME).img $(BINDIR)/kernel.elf ::/KERNEL
-	mcopy -i $(BINDIR)/$(OSNAME).img $(FONTSDIR)/zap-vga16.psf ::/ROOT/FONTS
-	mcopy -i $(BINDIR)/$(OSNAME).img $(FONTSDIR)/zap-light16.psf ::/ROOT/FONTS
+	mcopy -i $(BINDIR)/$(OSNAME).img $(FONTSDIR)/zap-vga16.psf ::/FONTS
+	mcopy -i $(BINDIR)/$(OSNAME).img $(FONTSDIR)/zap-light16.psf ::/FONTS
 
 linkkernel:
 	$(LD) $(LDFLAGS) -o $(BINDIR)/kernel.elf $(KERNEL_OBJS) $(LIBK_OBJS)
@@ -57,6 +56,10 @@ all:
 
 	@echo !==== BUILDIMG
 	make buildimg
+
+clean:
+	@rm -rf $(OBJDIR)
+	@rm -rf $(BINDIR)
 
 run:
 	qemu-system-x86_64 -drive file=$(BINDIR)/$(OSNAME).img -m 4G -cpu qemu64 -drive if=pflash,format=raw,unit=0,file="$(OVMFDIR)/OVMF_CODE-pure-efi.fd",readonly=on -drive if=pflash,format=raw,unit=1,file="$(OVMFDIR)/OVMF_VARS-pure-efi.fd" -net none

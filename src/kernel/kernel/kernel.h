@@ -10,10 +10,11 @@
 typedef struct
 {
 	Framebuffer* Screenbuffer;
-	PSFFont** PSFFonts;
-	uint8_t FontAmount;
+	BootFont* TTYFont;
 	EFIMemoryMap* MemoryMap;
 	void* RSDP;
 	void* RT;
 	RawDirectory* RootDirectory;
 } BootInfo;
+
+void kernel_init(BootInfo* bootInfo);

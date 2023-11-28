@@ -6,6 +6,31 @@
 
 RawDirectory* rootDir;
 
+void print_directory(RawDirectory* directory, uint64_t indentation)
+{
+    for (int j = 0; j < indentation * 4; j++)
+    {
+        tty_put(' ');
+    }
+    tty_print(directory->Name);
+    tty_put('\n');
+
+    for (int i = 0; i < directory->DirectoryAmount; i++)
+    {
+        print_directory(&directory->Directories[i], indentation + 1);
+    }
+
+    for (int i = 0; i < directory->FileAmount; i++)
+    {
+        for (int j = 0; j < (indentation + 1) * 4; j++)
+        {
+            tty_put(' ');
+        }
+        tty_print(directory->Files[i].Name);
+        tty_put('\n');
+    }
+}
+
 void file_system_init(RawDirectory* rootDirectory)
 {
     rootDir = rootDirectory;

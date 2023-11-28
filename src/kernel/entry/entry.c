@@ -1,60 +1,15 @@
-#include "entry.h"
-
 #include "kernel/gdt/gdt.h"
 #include "kernel/tty/tty.h"
 #include "kernel/idt/idt.h"
 #include "kernel/utils/utils.h"
 #include "kernel/file_system/file_system.h"
 #include "kernel/page_allocator/page_allocator.h"
-#include "kernel/page_table/page_table.h"
 
-#include "libc/include/stdio.h"
-
-__attribute__((aligned(0x1000)))
-GDT gdt = 
-{
-    {0, 0, 0, 0x00, 0x00, 0}, //NULL
-    {0, 0, 0, 0x9A, 0xA0, 0}, //KernelCode
-    {0, 0, 0, 0x92, 0xA0, 0}, //KernelData
-    {0, 0, 0, 0x00, 0x00, 0}, //UserNull
-    {0, 0, 0, 0x9A, 0xA0, 0}, //UserCode
-    {0, 0, 0, 0x92, 0xA0, 0}, //UserData
-};
+#include "kernel/kernel/kernel.h"
 
 void _start(BootInfo* bootInfo)
 {   
-    tty_init(bootInfo->Screenbuffer, bootInfo->PSFFonts[0]);
-
-    tty_print("Hello from the kernel!\n\r");
-
-    tty_start_message("Page allocator initializing");
-    page_allocator_init(bootInfo->MemoryMap, bootInfo->Screenbuffer);
-    tty_end_message(TTY_MESSAGE_OK);
-
-    tty_start_message("Page table initializing");
-    page_table_init(bootInfo->Screenbuffer);
-    tty_end_message(TTY_MESSAGE_OK);
-
-    tty_clear();
-
-    tty_print("Paging has been initialized\n\r");
-
-    tty_start_message("GDT loading");
-    static GDTDesc gdtDesc;
-	gdtDesc.Size = sizeof(GDT) - 1;
-	gdtDesc.Offset = (uint64_t)&gdt;
-	gdt_load(&gdtDesc);
-    tty_end_message(TTY_MESSAGE_OK);
-
-    tty_start_message("IDT initializing");
-    idt_init();
-    tty_end_message(TTY_MESSAGE_OK);
-
-    tty_start_message("File system initializing");
-    file_system_init(bootInfo->RootDirectory);
-    tty_end_message(TTY_MESSAGE_OK);
-
-    tty_print("\n\r");
+    kernel_init(bootInfo);
 
     tty_print("Total Page Amount\n\r");
     tty_printi(page_allocator_get_total_amount());

@@ -1,30 +1,28 @@
-#include "page_table.h"
+#include "virtual_memory.h"
 
 #include "kernel/page_allocator/page_allocator.h"
 
 #include "libc/include/string.h"
 
-PageTable* PML4;
-
-void page_table_init(Framebuffer* screenbuffer)
+VirtualAddressSpace* virtual_memory_create()
 {
-    PML4 = (PageTable*)page_allocator_request();
-    memset(PML4, 0, 4096);
+    VirtualAddressSpace* addressSpace = (VirtualAddressSpace*)page_allocator_request();
+    memset(addressSpace, 0, 4096);
 
     for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
     {
-        page_table_map_page((void*)(i * 4096), (void*)(i * 4096));
+        virtual_memory_remap(addressSpace, (void*)(i * 4096), (void*)(i * 4096));
     }
 
-    for (uint64_t i = 0; i < screenbuffer->Size + 4096; i += 4096)
-    {
-        page_table_map_page((void*)((uint64_t)screenbuffer->Base + i), (void*)((uint64_t)screenbuffer->Base + i));
-    }
-
-    asm volatile ("mov %0, %%cr3" : : "r" (PML4));
+    return addressSpace;
 }
 
-void page_table_map_page(void* virtualAddress, void* physicalAddress)
+void virtual_memory_load_space(VirtualAddressSpace* addressSpace)
+{
+    asm volatile ("mov %0, %%cr3" : : "r" (addressSpace));
+}
+
+void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress)
 {
     uint64_t indexer = (uint64_t)virtualAddress;
     indexer >>= 12;
@@ -41,7 +39,7 @@ void page_table_map_page(void* virtualAddress, void* physicalAddress)
 
     PageDirEntry pde;
 
-    pde = PML4->Entries[pdpIndex];
+    pde = addressSpace->Entries[pdpIndex];
     PageTable* pdp;
     if (!pde.Present)
     {
@@ -50,7 +48,7 @@ void page_table_map_page(void* virtualAddress, void* physicalAddress)
         pde.Address = (uint64_t)pdp >> 12;
         pde.Present = 1;
         pde.ReadWrite = 1;
-        PML4->Entries[pdpIndex] = pde;
+        addressSpace->Entries[pdpIndex] = pde;
     }
     else
     {
