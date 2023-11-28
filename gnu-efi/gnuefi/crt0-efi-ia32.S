@@ -56,13 +56,13 @@ _start:
 	call _relocate
 	popl %ebx
 	popl %ebx
- 	testl %eax,%eax
- 	jne .exit
+	testl %eax,%eax
+	jne .exit
   
-  	call efi_main			# call app with "image" and "systab" argument
+	call _entry			# call app with "image" and "systab" argument
 
 .exit:	leave
-  	ret
+	ret
  
  	// hand-craft a dummy .reloc section so EFI knows it's a relocatable executable:
  
@@ -72,5 +72,10 @@ dummy:	.long	0
 #define IMAGE_REL_ABSOLUTE	0
  	.section .reloc
  	.long	dummy					// Page RVA
- 	.long	10					// Block Size (2*4+2)
- 	.word	(IMAGE_REL_ABSOLUTE<<12) +  0		// reloc for dummy
+	.long	12					// Block Size (2*4+2*2), must be aligned by 32 Bits
+	.word	(IMAGE_REL_ABSOLUTE<<12) +  0		// reloc for dummy
+	.word	(IMAGE_REL_ABSOLUTE<<12) +  0		// reloc for dummy
+
+#if defined(__ELF__) && defined(__linux__)
+	.section .note.GNU-stack,"",%progbits
+#endif

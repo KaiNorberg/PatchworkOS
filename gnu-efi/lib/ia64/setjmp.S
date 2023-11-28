@@ -197,3 +197,7 @@ _skip_flushrs:
 	invala
 	mov		ar.rsc = r16
 	br.ret.sptk	b0
+
+#if defined(__ELF__) && defined(__linux__)
+	.section .note.GNU-stack,"",%progbits
+#endif

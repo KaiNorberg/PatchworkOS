@@ -41,3 +41,7 @@ _start:
 hello:	.byte 'h',0,'e',0,'l',0,'l',0,'o',0,'\n',0,'\r',0,0,0
 
 #endif
+
+#if defined(__ELF__) && defined(__linux__)
+	.section .note.GNU-stack,"",%progbits
+#endif

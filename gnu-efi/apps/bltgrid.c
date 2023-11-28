@@ -46,7 +46,7 @@ draw_boxes(EFI_GRAPHICS_OUTPUT_PROTOCOL *gop)
 		UINTN SizeOfInfo;
 		rc = uefi_call_wrapper(gop->QueryMode, 4, gop, i, &SizeOfInfo,
 					&info);
-		if (EFI_ERROR(rc) && rc == EFI_NOT_STARTED) {
+		if (rc == EFI_NOT_STARTED) {
 			Print(L"gop->QueryMode() returned %r\n", rc);
 			Print(L"Trying to start GOP with SetMode().\n");
 			rc = uefi_call_wrapper(gop->SetMode, 2, gop,
@@ -64,7 +64,8 @@ draw_boxes(EFI_GRAPHICS_OUTPUT_PROTOCOL *gop)
 		if (CompareMem(info, gop->Mode->Info, sizeof (*info)))
 			continue;
 
-		NumPixels = info->VerticalResolution * info->HorizontalResolution;
+		NumPixels = (UINTN)info->VerticalResolution
+                            * (UINTN)info->HorizontalResolution;
 		BufferSize = NumPixels * sizeof(UINT32);
 
 		PixelBuffer = AllocatePool(BufferSize);
@@ -84,6 +85,7 @@ draw_boxes(EFI_GRAPHICS_OUTPUT_PROTOCOL *gop)
 				  info->HorizontalResolution,
 				  info->VerticalResolution,
 				  0);
+		FreePool(PixelBuffer);
 		return;
 	}
 	Print(L"Never found the active video mode?\n");

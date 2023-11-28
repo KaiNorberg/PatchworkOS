@@ -13,4 +13,4 @@ typedef struct
 {
 	PSFHeader* Header;
 	void* Glyphs;
-} BootFont;
+} PSFFont;

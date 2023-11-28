@@ -274,7 +274,7 @@ xtoi (
     CHAR16      c;
 
     // skip preceeding white space
-    while (*str && *str == ' ') {
+    while (*str == ' ') {
         str += 1;
     }
 
@@ -286,7 +286,7 @@ xtoi (
         }
 
         if ((c >= '0'  &&  c <= '9')  ||  (c >= 'A'  &&  c <= 'F')) {
-            u = (u << 4)  |  (c - (c >= 'A' ? 'A'-10 : '0'));
+            u = (u << 4)  |  ((UINTN)c - (c >= 'A' ? 'A'-10 : '0'));
         } else {
             break;
         }
@@ -305,7 +305,7 @@ Atoi (
     CHAR16      c;
 
     // skip preceeding white space
-    while (*str && *str == ' ') {
+    while (*str == ' ') {
         str += 1;
     }
 

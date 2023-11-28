@@ -22,7 +22,9 @@ Revision History
 #pragma pack()
 #endif
 
-#if defined(GNU_EFI_USE_MS_ABI)
+#if defined(_MSC_VER)
+    #define HAVE_USE_MS_ABI 1
+#elif defined(GNU_EFI_USE_MS_ABI)
     #if (defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 7)))||(defined(__clang__) && (__clang_major__ > 3 || (__clang_major__ == 3 && __clang_minor__ >= 2)))
         #define HAVE_USE_MS_ABI 1
     #else
@@ -94,9 +96,10 @@ Revision History
 // Basic EFI types of various widths
 //
 
-#ifndef __WCHAR_TYPE__
-# define __WCHAR_TYPE__ short
-#endif
+#include <stddef.h>
+
+typedef wchar_t CHAR16;
+#define WCHAR CHAR16
 
 typedef uint64_t   UINT64;
 typedef int64_t    INT64;
@@ -108,12 +111,13 @@ typedef int64_t    INT64;
 
 typedef uint16_t   UINT16;
 typedef int16_t    INT16;
+
 typedef uint8_t    UINT8;
+typedef char       CHAR8;
 typedef int8_t     INT8;
-typedef __WCHAR_TYPE__ WCHAR;
 
 #undef VOID
-#define VOID    void
+typedef void       VOID;
 
 
 typedef int64_t    INTN;

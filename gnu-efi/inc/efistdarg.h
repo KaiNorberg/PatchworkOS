@@ -19,7 +19,7 @@ Revision History
 
 --*/
 
-#ifndef GNU_EFI_USE_EXTERNAL_STDARG
+#if !defined(GNU_EFI_USE_EXTERNAL_STDARG) && !defined(_MSC_VER)
 typedef __builtin_va_list va_list;
 
 # define va_start(v,l)	__builtin_va_start(v,l)

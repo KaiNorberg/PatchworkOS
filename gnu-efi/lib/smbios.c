@@ -44,7 +44,7 @@ LibGetSmbiosSystemGuidAndSerialNumber (
     }
 
     Smbios.Hdr = (SMBIOS_HEADER *)SmbiosTable->TableAddress;
-    SmbiosEnd.Raw = (UINT8 *)(SmbiosTable->TableAddress + SmbiosTable->TableLength);
+    SmbiosEnd.Raw = (UINT8 *)((UINTN)SmbiosTable->TableAddress + SmbiosTable->TableLength);
     for (Index = 0; Index < SmbiosTable->TableLength ; Index++) {
         if (Smbios.Hdr->Type == 1) {
             if (Smbios.Hdr->Length < 0x19) {

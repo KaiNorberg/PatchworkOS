@@ -28,7 +28,7 @@ Revision History
 typedef struct _LIST_ENTRY {
     struct _LIST_ENTRY  *Flink;
     struct _LIST_ENTRY  *Blink;
-} LIST_ENTRY;
+} LIST_ENTRY, EFI_LIST_ENTRY;
 
 #endif 
 
@@ -151,6 +151,11 @@ typedef struct _LIST_ENTRY {
 
 #define _CR(Record, TYPE, Field)  \
     ((TYPE *) ( (CHAR8 *)(Record) - (CHAR8 *) &(((TYPE *) 0)->Field)))
+
+//
+// EDK2 uses BASE_CR for the above
+//
+#define BASE_CR _CR
 
 #if EFI_DEBUG
     #define CR(Record, TYPE, Field, Sig)     \

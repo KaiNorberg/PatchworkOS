@@ -10,7 +10,7 @@
 typedef struct
 {
 	Framebuffer* Screenbuffer;
-	BootFont* TTYFont;
+	PSFFont* TTYFont;
 	EFIMemoryMap* MemoryMap;
 	void* RSDP;
 	void* RT;

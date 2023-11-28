@@ -14,7 +14,7 @@ typedef struct
 typedef struct
 {
 	EFIMemoryDescriptor* Base;
-	uint64_t Size;
+	uint64_t DescriptorAmount;
 	uint64_t DescriptorSize;
 	uint64_t Key;
 } EFIMemoryMap;

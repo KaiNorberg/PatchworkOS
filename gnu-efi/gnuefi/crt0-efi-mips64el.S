@@ -35,7 +35,7 @@ coff_header:
 	.short	2				// nr_sections
 	.long	0 				// TimeDateStamp
 	.long	0				// PointerToSymbolTable
-	.long	1				// NumberOfSymbols
+	.long	0				// NumberOfSymbols
 	.short	section_table - optional_header	// SizeOfOptionalHeader
 	.short	0x206				// Characteristics.
 						// IMAGE_FILE_DEBUG_STRIPPED |
@@ -172,8 +172,8 @@ _pc:
 
 	// a0: ImageHandle
 	ld		$a0, 16($sp)
-	// call efi_main
-	dla		$t9, efi_main
+	// call _start
+	dla		$t9, _entry
 	jalr		$t9
 	// a1: SystemTable
 	ld		$a1, 24($sp)
@@ -186,3 +186,7 @@ _pc:
 	.end		_start
 
 	.set		pop
+
+#if defined(__ELF__) && defined(__linux__)
+	.section .note.GNU-stack,"",%progbits
+#endif

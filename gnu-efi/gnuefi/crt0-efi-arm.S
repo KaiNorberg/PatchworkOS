@@ -34,7 +34,7 @@ coff_header:
 	.short	2				// nr_sections
 	.long	0 				// TimeDateStamp
 	.long	0				// PointerToSymbolTable
-	.long	1				// NumberOfSymbols
+	.long	0				// NumberOfSymbols
 	.short	section_table - optional_header	// SizeOfOptionalHeader
 	.short	0x306				// Characteristics.
 						// IMAGE_FILE_32BIT_MACHINE |
@@ -136,10 +136,14 @@ _start:
 	bne		0f
 
 	ldmfd		sp, {r0-r1}
-	bl		efi_main
+	bl		_entry
 
 0:	add		sp, sp, #12
 	ldr		pc, [sp], #4
 
 .L_DYNAMIC:
 	.word		_DYNAMIC - .
+
+#if defined(__ELF__) && defined(__linux__)
+	.section .note.GNU-stack,"",%progbits
+#endif

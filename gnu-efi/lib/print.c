@@ -315,7 +315,7 @@ _SPrint (
     IN VOID     *Context,
     IN CHAR16   *Buffer
     )
-// Append string worker for SPrint, PoolPrint and CatPrint
+// Append string worker for UnicodeSPrint, PoolPrint and CatPrint
 {
     UINTN           len;
     POOL_PRINT      *spc;
@@ -405,7 +405,7 @@ _PoolCatPrint (
     IN OUT POOL_PRINT   *spc,
     IN INTN             (EFIAPI *Output)(VOID *context, CHAR16 *str)
     )
-// Dispath function for SPrint, PoolPrint, and CatPrint
+// Dispatch function for UnicodeSPrint, PoolPrint, and CatPrint
 {
     PRINT_STATE         ps;
 
@@ -421,7 +421,7 @@ _PoolCatPrint (
 
 
 UINTN
-VSPrint (
+UnicodeVSPrint (
     OUT CHAR16        *Str,
     IN UINTN          StrSize,
     IN CONST CHAR16   *fmt,
@@ -463,7 +463,7 @@ Returns:
 }
 
 UINTN
-SPrint (
+UnicodeSPrint (
     OUT CHAR16        *Str,
     IN UINTN          StrSize,
     IN CONST CHAR16   *fmt,
@@ -494,7 +494,7 @@ Returns:
     UINTN            len;
 
     va_start (args, fmt);
-    len = VSPrint(Str, StrSize, fmt, args);
+    len = UnicodeVSPrint(Str, StrSize, fmt, args);
     va_end (args);
 
     return len;
@@ -810,7 +810,7 @@ _IPrint (
 
 
 UINTN
-APrint (
+AsciiPrint (
     IN CONST CHAR8    *fmt,
     ...
     )
@@ -839,6 +839,64 @@ Returns:
     back = _IPrint ((UINTN) -1, (UINTN) -1, ST->ConOut, NULL, fmt, args);
     va_end (args);
     return back;
+}
+
+
+UINTN
+AsciiVSPrint (
+    OUT CHAR8         *Str,
+    IN UINTN          StrSize,
+    IN CONST CHAR8    *fmt,
+    va_list           args
+)
+/*++
+
+Routine Description:
+
+    Prints a formatted ascii string to a buffer using a va_list
+
+Arguments:
+
+    Str         - Output buffer to print the formatted string into
+
+    StrSize     - Size of Str.  String is truncated to this size.
+                  A size of 0 means there is no limit
+
+    fmt         - The format string
+
+    args        - va_list
+
+
+Returns:
+
+    String length returned in buffer
+
+--*/
+// Use UnicodeVSPrint() and convert back to ASCII
+{
+    CHAR16 *UnicodeStr, *UnicodeFmt;
+    UINTN i, Len;
+
+    UnicodeStr = AllocatePool(StrSize * sizeof(CHAR16));
+    if (!UnicodeStr)
+        return 0;
+
+    UnicodeFmt = PoolPrint(L"%a", fmt);
+    if (!UnicodeFmt) {
+        FreePool(UnicodeStr);
+        return 0;
+    }
+
+    Len = UnicodeVSPrint(UnicodeStr, StrSize, UnicodeFmt, args);
+    FreePool(UnicodeFmt);
+
+    // The strings are ASCII so just do a plain Unicode conversion
+    for (i = 0; i < Len; i++)
+        Str[i] = (CHAR8)UnicodeStr[i];
+    Str[Len] = 0;
+    FreePool(UnicodeStr);
+
+    return Len;
 }
 
 
@@ -1067,24 +1125,24 @@ Returns:
                 Item.Item.pw = Item.Scratch;
                 break;
 
-            case '0':
-                Item.Pad = '0';
+            case ',':
+                Item.Comma = TRUE;
                 break;
 
             case '-':
                 Item.PadBefore = FALSE;
                 break;
 
-            case ',':
-                Item.Comma = TRUE;
+            case '*':
+                *Item.WidthParse = va_arg(ps->args, UINTN);
                 break;
 
             case '.':
                 Item.WidthParse = &Item.FieldWidth;
                 break;
 
-            case '*':
-                *Item.WidthParse = va_arg(ps->args, UINTN);
+            case '0':
+                Item.Pad = '0';
                 break;
 
             case '1':
@@ -1112,59 +1170,9 @@ Returns:
                 }
                 break;
 
-            case 's':
-                Item.Item.pw = va_arg(ps->args, CHAR16 *);
-                if (!Item.Item.pw) {
-                    Item.Item.pw = L"(null)";
-                }
-                break;
-
             case 'c':
                 Item.Scratch[0] = (CHAR16) va_arg(ps->args, UINTN);
                 Item.Scratch[1] = 0;
-                Item.Item.pw = Item.Scratch;
-                break;
-
-            case 'l':
-                Item.Long = TRUE;
-                break;
-
-            case 'X':
-                Item.Width = Item.Long ? 16 : 8;
-                Item.Pad = '0';
-#if __GNUC__ >= 7
-		__attribute__ ((fallthrough));
-#endif
-            case 'x':
-                ValueToHex (
-                    Item.Scratch,
-                    Item.Long ? va_arg(ps->args, UINT64) : va_arg(ps->args, UINT32)
-                    );
-                Item.Item.pw = Item.Scratch;
-
-                break;
-
-
-            case 'g':
-                GuidToString (Item.Scratch, va_arg(ps->args, EFI_GUID *));
-                Item.Item.pw = Item.Scratch;
-                break;
-
-            case 'u':
-                ValueToString (
-                    Item.Scratch,
-                    Item.Comma,
-                    Item.Long ? va_arg(ps->args, UINT64) : va_arg(ps->args, UINT32)
-                    );
-                Item.Item.pw = Item.Scratch;
-                break;
-
-            case 'd':
-                ValueToString (
-                    Item.Scratch,
-                    Item.Comma,
-                    Item.Long ? va_arg(ps->args, INT64) : va_arg(ps->args, INT32)
-                    );
                 Item.Item.pw = Item.Scratch;
                 break;
 
@@ -1180,6 +1188,23 @@ Returns:
                 break;
             }
 
+            case 'd':
+                ValueToString (
+                    Item.Scratch,
+                    Item.Comma,
+                    Item.Long ? va_arg(ps->args, INT64) : va_arg(ps->args, INT32)
+                    );
+                Item.Item.pw = Item.Scratch;
+                break;
+
+            case 'E':
+                Attr = ps->AttrError;
+                break;
+
+            case 'e':
+                PSETATTR(ps, ps->AttrError);
+                break;
+
             case 'f':
                 FloatToString (
                     Item.Scratch,
@@ -1189,8 +1214,42 @@ Returns:
                 Item.Item.pw = Item.Scratch;
                 break;
 
-            case 't':
-                TimeToString (Item.Scratch, va_arg(ps->args, EFI_TIME *));
+            case 'g':
+                GuidToString (Item.Scratch, va_arg(ps->args, EFI_GUID *));
+                Item.Item.pw = Item.Scratch;
+                break;
+
+            case 'H':
+                Attr = ps->AttrHighlight;
+                break;
+
+            case 'h':
+                PSETATTR(ps, ps->AttrHighlight);
+                break;
+
+            case 'l':
+                Item.Long = TRUE;
+                break;
+
+            case 'N':
+                Attr = ps->AttrNorm;
+                break;
+
+            case 'n':
+                PSETATTR(ps, ps->AttrNorm);
+                break;
+
+            case 'p':
+                Item.Width = sizeof(void *) == (8 ? 16 : 8) + 2;
+                Item.Pad = '0';
+                Item.Scratch[0] = ' ';
+                Item.Scratch[1] = ' ';
+                ValueToHex (
+                    Item.Scratch+2,
+                    Item.Long ? va_arg(ps->args, UINT64) : va_arg(ps->args, UINT32)
+                    );
+                Item.Scratch[0] = '0';
+                Item.Scratch[1] = 'x';
                 Item.Item.pw = Item.Scratch;
                 break;
 
@@ -1199,28 +1258,39 @@ Returns:
                 Item.Item.pw = Item.Scratch;
                 break;
 
-            case 'n':
-                PSETATTR(ps, ps->AttrNorm);
+            case 's':
+                Item.Item.pw = va_arg(ps->args, CHAR16 *);
+                if (!Item.Item.pw) {
+                    Item.Item.pw = L"(null)";
+                }
                 break;
 
-            case 'h':
-                PSETATTR(ps, ps->AttrHighlight);
+            case 't':
+                TimeToString (Item.Scratch, va_arg(ps->args, EFI_TIME *));
+                Item.Item.pw = Item.Scratch;
                 break;
 
-            case 'e':
-                PSETATTR(ps, ps->AttrError);
+            case 'u':
+                ValueToString (
+                    Item.Scratch,
+                    Item.Comma,
+                    Item.Long ? va_arg(ps->args, UINT64) : va_arg(ps->args, UINT32)
+                    );
+                Item.Item.pw = Item.Scratch;
                 break;
 
-            case 'N':
-                Attr = ps->AttrNorm;
-                break;
-
-            case 'H':
-                Attr = ps->AttrHighlight;
-                break;
-
-            case 'E':
-                Attr = ps->AttrError;
+            case 'X':
+                Item.Width = Item.Long ? 16 : 8;
+                Item.Pad = '0';
+#if __GNUC__ >= 7
+		__attribute__ ((fallthrough));
+#endif
+            case 'x':
+                ValueToHex (
+                    Item.Scratch,
+                    Item.Long ? va_arg(ps->args, UINT64) : va_arg(ps->args, UINT32)
+                    );
+                Item.Item.pw = Item.Scratch;
                 break;
 
             default:
@@ -1319,7 +1389,7 @@ ValueToString (
         *(p1++) = (CHAR8)r + '0';
     }
 
-    c = (Comma ? ca[(p1 - str) % 3] : 999) + 1;
+    c = (UINTN) (Comma ? ca[(p1 - str) % 3] : 999) + 1;
     while (p1 != str) {
 
         c -= 1;
@@ -1409,7 +1479,7 @@ TimeToString (
     Year = Time->Year % 100;
 
     // bugbug: for now just print it any old way
-    SPrint (Buffer, 0, L"%02d/%02d/%02d  %02d:%02d%c",
+    UnicodeSPrint (Buffer, 0, L"%02d/%02d/%02d  %02d:%02d%c",
         Time->Month,
         Time->Day,
         Year,

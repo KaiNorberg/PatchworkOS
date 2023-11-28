@@ -14,7 +14,7 @@ To clone (download) this repository, you can use the ```Code``` button at the to
 
 <ins>**2. Building Patchwork**</ins>
 
-In order to build Patchwork you will need to use Linux however, using WSL is also an alternative. After you have made sure you have Make installed on your preferred system all you need to do is run the ```make all``` command. You will then find a .img file in the bin directory.
+In order to build Patchwork you will need to use Linux however, using WSL is also an alternative. After you have made sure you have Make installed on your preferred system all you need to do is run the ```make setup``` and ```make all``` commands. You will then find a .img file in the bin directory.
 
 <ins>**3. Running Patchwork**</ins>
 

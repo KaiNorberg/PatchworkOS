@@ -21,7 +21,23 @@ Revision History
 
 #include "efidebug.h"
 #include "efipart.h"
-#include "efilibplat.h"
+#if defined(_M_X64) || defined(__x86_64__) || defined(__amd64__)
+#include "x86_64/efilibplat.h"
+#elif defined(_M_IX86) || defined(__i386__)
+#include "ia32/efilibplat.h"
+#elif defined(_M_IA64) || defined(__ia64__)
+#include "ia64/efilibplat.h"
+#elif defined (_M_ARM64) || defined(__aarch64__)
+#include "aarch64/efilibplat.h"
+#elif defined (_M_ARM) || defined(__arm__)
+#include "arm/efilibplat.h"
+#elif defined (_M_MIPS64) || defined(__mips64__) || defined(__mips64)
+#include "mips64el/efilibplat.h"
+#elif defined (__riscv) && __riscv_xlen == 64
+#include "riscv64/efilibplat.h"
+#elif defined (__loongarch64)
+#include "loongarch64/efilibplat.h"
+#endif
 #include "efilink.h"
 #include "efirtlib.h"
 #include "efistdarg.h"
@@ -45,6 +61,8 @@ extern EFI_GUID gEfiDevicePathToTextProtocolGuid;
 #define DevicePathToTextProtocol gEfiDevicePathToTextProtocolGuid
 extern EFI_GUID gEfiDevicePathFromTextProtocolGuid;
 #define DevicePathFromTextProtocol gEfiDevicePathFromTextProtocolGuid
+extern EFI_GUID gEfiDevicePathUtilitiesProtocolGuid;
+#define DevicePathUtilitiesProtocol gEfiDevicePathUtilitiesProtocolGuid
 extern EFI_GUID gEfiLoadedImageProtocolGuid;
 #define LoadedImageProtocol gEfiLoadedImageProtocolGuid
 extern EFI_GUID gEfiSimpleTextInProtocolGuid;
@@ -139,12 +157,19 @@ extern EFI_GUID AcpiTableGuid;
 extern EFI_GUID SMBIOSTableGuid;
 extern EFI_GUID SMBIOS3TableGuid;
 extern EFI_GUID SalSystemTableGuid;
+extern EFI_GUID EfiDtbTableGuid;
 
 extern EFI_GUID SimplePointerProtocol;
 extern EFI_GUID AbsolutePointerProtocol;
 
 extern EFI_GUID gEfiDebugImageInfoTableGuid;
 extern EFI_GUID gEfiDebugSupportProtocolGuid;
+
+extern EFI_GUID SimpleTextInputExProtocol;
+
+extern EFI_GUID ShellProtocolGuid;
+extern EFI_GUID ShellParametersProtocolGuid;
+extern EFI_GUID ShellDynamicCommandProtocolGuid;
 
 //
 // EFI Variable strings
@@ -513,7 +538,7 @@ VPrint (
     );
 
 UINTN
-SPrint (
+UnicodeSPrint (
     OUT CHAR16        *Str,
     IN UINTN          StrSize,
     IN CONST CHAR16   *fmt,
@@ -521,7 +546,7 @@ SPrint (
     );
 
 UINTN
-VSPrint (
+UnicodeVSPrint (
     OUT CHAR16        *Str,
     IN UINTN          StrSize,
     IN CONST CHAR16   *fmt,
@@ -578,10 +603,25 @@ IPrintAt (
     );
 
 UINTN
-APrint (
+AsciiPrint (
     IN CONST CHAR8    *fmt,
     ...
     );
+
+UINTN
+AsciiVSPrint(
+    OUT CHAR8         *Str,
+    IN  UINTN         StrSize,
+    IN  CONST CHAR8   *fmt,
+    va_list           args
+);
+
+//
+// For compatibility with previous gnu-efi versions
+//
+#define SPrint      UnicodeSPrint
+#define VSPrint     UnicodeVSPrint
+#define APrint      AsciiPrint
 
 VOID
 ValueToHex (
@@ -1015,6 +1055,11 @@ WritePciConfig (
         IN  UINTN                       Data
         );
 
+VOID
+Pause (
+    VOID
+);
+
 extern EFI_DEVICE_IO_INTERFACE  *GlobalIoFncs;
 
 #define outp(_Port, _DataByte)  (UINT8)WritePort(GlobalIoFncs,  IO_UINT8,  (UINTN)_Port, (UINTN)_DataByte)
@@ -1031,7 +1076,6 @@ extern EFI_DEVICE_IO_INTERFACE  *GlobalIoFncs;
 #define writepci32(_Addr, _DataByte) (UINT32)WritePciConfig(GlobalIoFncs, IO_UINT32, (UINTN)_Addr, (UINTN)_DataByte)
 #define readpci32(_Addr)             (UINT32)ReadPciConfig(GlobalIoFncs,  IO_UINT32, (UINTN)_Addr)
 
-#define Pause()             WaitForSingleEvent (ST->ConIn->WaitForKey, 0)
 #define Port80(_PostCode)   GlobalIoFncs->Io.Write (GlobalIoFncs, IO_UINT16, (UINT64)0x80, 1, &(_PostCode))
 
 #endif

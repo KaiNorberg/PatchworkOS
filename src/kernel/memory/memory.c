@@ -30,8 +30,6 @@ uint8_t is_memory_type_reserved(uint64_t memoryType)
 	case EFI_BOOT_SERVICES_DATA:
 	case EFI_LOADER_CODE:
 	case EFI_LOADER_DATA:
-	case EFI_RUNTIME_SERVICES_CODE:
-	case EFI_RUNTIME_SERVICES_DATA:
 	{
 		return 0;
 	}

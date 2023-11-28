@@ -15,7 +15,7 @@ uint64_t lockedAmount;
 void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer)
 {
     pageAmount = 0;
-    for (uint64_t i = 0; i < memoryMap->Size / memoryMap->DescriptorSize; i++)
+    for (uint64_t i = 0; i < memoryMap->DescriptorAmount; i++)
     {
         EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->Base + (i * memoryMap->DescriptorSize));
         pageAmount += desc->AmountOfPages;
@@ -23,7 +23,7 @@ void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer)
 
     void* largestFreeSegment = 0;
     uint64_t largestFreeSegmentSize = 0;
-    for (uint64_t i = 0; i < memoryMap->Size / memoryMap->DescriptorSize; i++)
+    for (uint64_t i = 0; i < memoryMap->DescriptorAmount; i++)
     {
         EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->Base + (i * memoryMap->DescriptorSize));
         
@@ -37,7 +37,7 @@ void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer)
 
     memset(pageMap, 0, pageAmount / 8);
 
-    for (uint64_t i = 0; i < memoryMap->Size / memoryMap->DescriptorSize; i++)
+    for (uint64_t i = 0; i < memoryMap->DescriptorAmount; i++)
     {
         EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->Base + (i * memoryMap->DescriptorSize));
 

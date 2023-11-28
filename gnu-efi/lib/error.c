@@ -79,5 +79,5 @@ StatusToString (
         }
     }
 
-    SPrint (Buffer, 0, L"%X", Status);
+    UnicodeSPrint (Buffer, 0, L"%X", Status);
 }

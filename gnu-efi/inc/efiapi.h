@@ -342,6 +342,26 @@ EFI_STATUS
 #define EFI_IMAGE_MACHINE_AARCH64   0xAA64
 #endif
 
+#if !defined(EFI_IMAGE_MACHINE_RISCV32)
+#define EFI_IMAGE_MACHINE_RISCV32   0x5032
+#endif
+
+#if !defined(EFI_IMAGE_MACHINE_RISCV64)
+#define EFI_IMAGE_MACHINE_RISCV64   0x5064
+#endif
+
+#if !defined(EFI_IMAGE_MACHINE_RISCV128)
+#define EFI_IMAGE_MACHINE_RISCV128  0x5128
+#endif
+
+#if !defined(EFI_IMAGE_MACHINE_LOONGARCH32)
+#define EFI_IMAGE_MACHINE_LOONGARCH32   0x6232
+#endif
+
+#if !defined(EFI_IMAGE_MACHINE_LOONGARCH64)
+#define EFI_IMAGE_MACHINE_LOONGARCH64   0x6264
+#endif
+
 // Image Entry prototype
 
 typedef 
@@ -923,6 +943,8 @@ typedef struct _EFI_BOOT_SERVICES {
 #define SAL_SYSTEM_TABLE_GUID    \
     { 0xeb9d2d32, 0x2d88, 0x11d3, {0x9a, 0x16, 0x0, 0x90, 0x27, 0x3f, 0xc1, 0x4d} }
 
+#define EFI_DTB_TABLE_GUID \
+    { 0xb1b621d5, 0xf19c, 0x41a5, {0x83, 0x0b, 0xd9, 0x15, 0x2c, 0x69, 0xaa, 0xe0} }
 
 typedef struct _EFI_CONFIGURATION_TABLE {
     EFI_GUID                VendorGuid;

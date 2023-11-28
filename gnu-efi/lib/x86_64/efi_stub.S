@@ -187,3 +187,7 @@ ENTRY(efi_call10)
 	ret
 
 #endif
+
+#if defined(__ELF__) && defined(__linux__)
+	.section .note.GNU-stack,"",%progbits
+#endif
