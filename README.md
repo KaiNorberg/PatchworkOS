@@ -1,6 +1,6 @@
 # PatchworkOS [![License](https://img.shields.io/badge/licence-MIT-green)](https://github.com/Kaj9296/PatchworkOS/blob/main/LICENSE)
 
-Patchwork is a hobbyist operating system written primarily in c.
+Patchwork is a hobbyist operating system written primarily in C.
 
 ***
 
