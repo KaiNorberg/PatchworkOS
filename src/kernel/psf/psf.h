@@ -6,7 +6,7 @@ typedef struct
 {
 	uint16_t Magic;
 	uint8_t Mode;
-	uint8_t charSize;
+	uint8_t CharSize;
 } PSFHeader;
 
 typedef struct

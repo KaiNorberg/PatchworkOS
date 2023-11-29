@@ -3,6 +3,7 @@
 #include "kernel/gdt/gdt.h"
 #include "kernel/tty/tty.h"
 #include "kernel/idt/idt.h"
+#include "kernel/heap/heap.h"
 #include "kernel/utils/utils.h"
 #include "kernel/file_system/file_system.h"
 #include "kernel/page_allocator/page_allocator.h"
@@ -26,12 +27,9 @@ VirtualAddressSpace* kernelAddressSpace;
 void kernel_init(BootInfo* bootInfo)
 {    
     tty_init(bootInfo->Screenbuffer, bootInfo->TTYFont);
-
     tty_print("Hello from the kernel!\n\r");
 
-    tty_start_message("Page allocator initializing");
     page_allocator_init(bootInfo->MemoryMap, bootInfo->Screenbuffer);
-    tty_end_message(TTY_MESSAGE_OK);
 
     tty_start_message("Initializing kernel address space");
     kernelAddressSpace = virtual_memory_create();
@@ -43,8 +41,7 @@ void kernel_init(BootInfo* bootInfo)
     tty_end_message(TTY_MESSAGE_OK);
 
     tty_clear();
-
-    tty_print("Paging and virtual memory has been initialized\n\r");
+    tty_print("Paging and virtual memory have been initialized\n\r");
 
     tty_start_message("GDT loading");
     static GDTDesc gdtDesc;
@@ -53,13 +50,9 @@ void kernel_init(BootInfo* bootInfo)
 	gdt_load(&gdtDesc);
     tty_end_message(TTY_MESSAGE_OK);
 
-    tty_start_message("IDT initializing");
     idt_init();
-    tty_end_message(TTY_MESSAGE_OK);
-
-    tty_start_message("File system initializing");
+    heap_init(0x100000000000, 0x10 * 4096);
     file_system_init(bootInfo->RootDirectory);
-    tty_end_message(TTY_MESSAGE_OK);
 
     tty_print("\n\r");
 }

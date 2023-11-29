@@ -7,7 +7,7 @@
 #include "kernel/file_system/file_system.h"
 #include "kernel/memory/memory.h"
 
-typedef struct
+typedef struct 
 {
 	Framebuffer* Screenbuffer;
 	PSFFont* TTYFont;

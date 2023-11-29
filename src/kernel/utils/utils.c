@@ -2,7 +2,7 @@
 
 #include "libc/include/string.h"
 
-char* itoa(int i, char b[])
+char* itoa(uint64_t i, char b[])
 {
     char const digit[] = "0123456789";
     char* p = b;
@@ -13,7 +13,7 @@ char* itoa(int i, char b[])
         i *= -1;
     }
 
-    int shifter = i;
+    uint64_t shifter = i;
     do
     { //Move to where representation ends
         ++p;
@@ -32,10 +32,10 @@ char* itoa(int i, char b[])
     return b;
 }
 
-int stoi(const char* string) 
+uint64_t stoi(const char* string) 
 {
-    int multiplier = 1, result = 0;
-    for (int i = strlen(string) - 1; i >= 0; i--) 
+    uint64_t multiplier = 1, result = 0;
+    for (uint64_t i = strlen(string) - 1; i >= 0; i--) 
     {
         result += multiplier * (string[i] - '0');
         multiplier *= 10;

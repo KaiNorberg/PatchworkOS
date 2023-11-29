@@ -1,5 +1,7 @@
 #pragma once
 
-char* itoa(int i, char b[]);
+#include <stdint.h>
 
-int stoi(const char* string);
+char* itoa(uint64_t i, char b[]);
+
+uint64_t stoi(const char* string);

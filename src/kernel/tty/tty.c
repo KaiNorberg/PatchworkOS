@@ -38,7 +38,7 @@ void tty_init(Framebuffer* screenbuffer, PSFFont* screenFont)
 
 void tty_put(uint8_t chr)
 {
-    char* glyph = font->Glyphs + (chr * font->Header->charSize);
+    char* glyph = font->Glyphs + chr * 16;
 
     if (chr == '\n')
     {
@@ -147,6 +147,11 @@ void tty_end_message(uint64_t status)
         foreground.G = 0;
         foreground.B = 0;
         tty_print("ER");
+
+        while (1)
+        {
+            asm volatile ("HLT");
+        }
     }
     else
     {
@@ -158,15 +163,11 @@ void tty_end_message(uint64_t status)
     foreground.G = 255;
     foreground.B = 255;
     
-    if (status != TTY_MESSAGE_ER)
-    {
-        foreground.A = 255;
-        foreground.R = 255;
-        foreground.G = 255;
-        foreground.B = 255;
-        cursorPos.X = oldCursorX;
-        tty_print(" done!");
-    }
+    foreground.A = 255;
+    foreground.R = 255;
+    foreground.G = 255;
+    foreground.B = 255;
+    cursorPos.X = oldCursorX;
 
-    tty_print("\n\r");
+    tty_print(" done!\n\r");
 }

@@ -7,7 +7,9 @@
 RawDirectory* rootDir;
 
 void print_directory(RawDirectory* directory, uint64_t indentation)
-{
+{    
+    tty_start_message("File system initializing");
+
     for (int j = 0; j < indentation * 4; j++)
     {
         tty_put(' ');
@@ -29,6 +31,8 @@ void print_directory(RawDirectory* directory, uint64_t indentation)
         tty_print(directory->Files[i].Name);
         tty_put('\n');
     }
+
+    tty_end_message(TTY_MESSAGE_OK);
 }
 
 void file_system_init(RawDirectory* rootDirectory)

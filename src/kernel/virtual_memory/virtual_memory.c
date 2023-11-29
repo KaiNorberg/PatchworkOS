@@ -4,6 +4,8 @@
 
 #include "libc/include/string.h"
 
+VirtualAddressSpace* currentAddressSpace;
+
 VirtualAddressSpace* virtual_memory_create()
 {
     VirtualAddressSpace* addressSpace = (VirtualAddressSpace*)page_allocator_request();
@@ -19,11 +21,17 @@ VirtualAddressSpace* virtual_memory_create()
 
 void virtual_memory_load_space(VirtualAddressSpace* addressSpace)
 {
+    currentAddressSpace = addressSpace;
     asm volatile ("mov %0, %%cr3" : : "r" (addressSpace));
 }
 
-void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress)
+void virtual_memory_remap_current(void* virtualAddress, void* physicalAddress)
 {
+    virtual_memory_remap(currentAddressSpace, virtualAddress, physicalAddress);
+}
+
+void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress)
+{    
     uint64_t indexer = (uint64_t)virtualAddress;
     indexer >>= 12;
     uint64_t pIndex = indexer & 0x1ff;

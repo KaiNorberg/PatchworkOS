@@ -30,4 +30,6 @@ VirtualAddressSpace* virtual_memory_create();
 
 void virtual_memory_load_space(VirtualAddressSpace* addressSpace);
 
+void virtual_memory_remap_current(void* virtualAddress, void* physicalAddress);
+
 void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress);

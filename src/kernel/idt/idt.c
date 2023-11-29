@@ -1,6 +1,7 @@
 #include "idt.h"
 
 #include "kernel/io/io.h"
+#include "kernel/tty/tty.h"
 
 #include "interrupts/interrupts.h"
 
@@ -15,7 +16,9 @@ extern void* isr_stub_table[];
 extern uint64_t syscall_interrupt;
 
 void idt_init() 
-{
+{    
+    tty_start_message("IDT initializing");
+
     idtr.Base = (uint64_t)idt;
     idtr.Limit = 0x0FFF;
  
@@ -34,6 +37,8 @@ void idt_init()
     io_outb(PIC1_DATA, 0b11111101);
     io_outb(PIC2_DATA, 0b11111111);
     asm volatile ("sti");
+
+    tty_end_message(TTY_MESSAGE_OK);
 }
 
 void remap_pic()

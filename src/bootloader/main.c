@@ -2,23 +2,22 @@
 #include <efilib.h>
 #include <elf.h>
 
-#define PSF_MAGIC0 0x36
-#define PSF_MAGIC1 0x04
+#define PSF_MAGIC 1078
 
 typedef struct
 {
-	unsigned int* Base;
-	size_t Size;
-	unsigned int Width;
-	unsigned int Height;
-	unsigned int PixelsPerScanline;
+	uint32_t* Base;
+	uint64_t Size;
+	uint32_t Width;
+	uint32_t Height;
+	uint32_t PixelsPerScanline;
 } Framebuffer;
 
 typedef struct
 {
-	unsigned char magic[2];
-	unsigned char mode;
-	unsigned char charsize;
+	uint16_t magic;
+	uint8_t mode;
+	uint8_t charsize;
 } PSF_HEADER;
 
 typedef struct
@@ -68,10 +67,10 @@ int strcmp(const char* Str1, const char* Str2)
 	return (i != 0);
 }
 
-int memcmp(const void* aptr, const void* bptr, size_t n)
+int memcmp(const void* aptr, const void* bptr, uint64_t n)
 {
-	const unsigned char* a = aptr, *b = bptr;
-	for (size_t i = 0; i < n; i++)
+	const uint8_t* a = aptr, *b = bptr;
+	for (uint64_t i = 0; i < n; i++)
 	{
 		if (a[i] < b[i]) return -1;
 		else if (a[i] > b[i]) return 1;
@@ -98,8 +97,6 @@ EFI_FILE* get_root_volume(EFI_HANDLE image)
 
 EFI_FILE* open_file(EFI_FILE* volume, CHAR16* path)
 {
-	Print(L"Loading File (%s)...\n\r", path);
-
 	EFI_FILE* fileHandle;
 	
 	/* open the file */
@@ -132,9 +129,11 @@ void close_file(EFI_FILE* file)
   	uefi_call_wrapper(file->Close, 1, file);
 }
 
-PSF_FONT load_psf_font(EFI_FILE* Directory, CHAR16* Path)
-{
-	EFI_FILE* efiFile = open_file(Directory, Path);
+PSF_FONT load_psf_font(EFI_FILE* volume, CHAR16* path)
+{		
+	Print(L"Loading Font (%s)...\n\r", path);
+
+	EFI_FILE* efiFile = open_file(volume, path);
 
 	if (efiFile == NULL)
 	{
@@ -148,15 +147,10 @@ PSF_FONT load_psf_font(EFI_FILE* Directory, CHAR16* Path)
 
 	PSF_HEADER* fontHeader = read_file(efiFile, sizeof(PSF_HEADER));
 
-	/*if (fontHeader->magic[0] != PSF_MAGIC0 || fontHeader->magic[1] != PSF_MAGIC1)
+	if (fontHeader->magic != PSF_MAGIC)
 	{
-		Print(L"ERROR: Invalid font loaded!\n\r");
-		
-		while (1)
-		{
-			__asm__("HLT");
-		}
-	}*/
+		Print(L"ERROR: Invalid font magic found (%d)!\n\r", fontHeader->magic);
+	}
 
 	UINTN glyphBufferSize = fontHeader->charsize * 256;
 	if (fontHeader->mode == 1)
@@ -165,12 +159,13 @@ PSF_FONT load_psf_font(EFI_FILE* Directory, CHAR16* Path)
 	}
 
 	seek(efiFile, sizeof(PSF_HEADER));
-	void* glyphBuffer = read_file(efiFile, glyphBufferSize);
+	void* glyphBuffer = AllocatePool(glyphBufferSize);
+	read_file_to_buffer(efiFile, &glyphBufferSize, glyphBuffer);
 
 	PSF_FONT newFont;
 
 	newFont.PSF_Header = fontHeader;
-	newFont.GlyphBuffer = (char*)glyphBuffer;
+	newFont.GlyphBuffer = glyphBuffer;
 
 	Print(L"FONT INFO\n\r");
 	Print(L"Char Size: %d\n\r", newFont.PSF_Header->charsize);
@@ -182,20 +177,20 @@ PSF_FONT load_psf_font(EFI_FILE* Directory, CHAR16* Path)
 	return newFont;
 }
 
-Elf64_Ehdr load_elf_file(EFI_FILE* Directory, CHAR16* Path)
-{
-	EFI_FILE* efiFile = open_file(Directory, Path);
+Elf64_Ehdr load_elf_file(EFI_FILE* volume, CHAR16* path)
+{	
+	Print(L"Loading ELF (%s)...\n\r", path);
+
+	EFI_FILE* efiFile = open_file(volume, path);
 	if (efiFile == NULL)
 	{
-		Print(L"ERROR: Failed to load %s\n\r", Path);
+		Print(L"ERROR: Failed to load %s\n\r", path);
 				
 		while (1)
 		{
 			__asm__("HLT");
 		}
 	}
-
-	Print(L"Reading ELF File...\n\r");
 
 	Elf64_Ehdr header;	
 	uint64_t headerSize = sizeof(Elf64_Ehdr);
@@ -207,7 +202,7 @@ Elf64_Ehdr load_elf_file(EFI_FILE* Directory, CHAR16* Path)
 		header.e_machine != EM_X86_64 ||
 		header.e_version != EV_CURRENT)
 	{
-		Print(L"ERROR: %s is corrupted!", Path);
+		Print(L"ERROR: %s is corrupted!", path);
 	}
 
 	seek(efiFile, header.e_phoff);
@@ -238,12 +233,13 @@ Elf64_Ehdr load_elf_file(EFI_FILE* Directory, CHAR16* Path)
 }
 
 Framebuffer get_gop_framebuffer()
-{
+{	
+	Print(L"Initializing GOP..\n\r");
+
 	EFI_GUID GOP_GUID = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
 	EFI_GRAPHICS_OUTPUT_PROTOCOL* GOP;
 	EFI_STATUS status = uefi_call_wrapper(BS->LocateProtocol, 3, &GOP_GUID, NULL, (void**)&GOP);
 
-	Print(L"Initializing GOP..\n\r");
 	if (EFI_ERROR(status))
 	{
 		Print(L"ERROR: GOP Failed!\n\r");
@@ -256,7 +252,7 @@ Framebuffer get_gop_framebuffer()
 
 	Framebuffer NewBuffer;
 
-	NewBuffer.Base = (unsigned int*)GOP->Mode->FrameBufferBase;
+	NewBuffer.Base = (uint32_t*)GOP->Mode->FrameBufferBase;
 	NewBuffer.Size = GOP->Mode->FrameBufferSize;
 	NewBuffer.Width = GOP->Mode->Info->HorizontalResolution;
 	NewBuffer.Height = GOP->Mode->Info->VerticalResolution;
@@ -358,7 +354,7 @@ File create_file_struct(EFI_FILE* volume, CHAR16* path)
 }
 
 Directory create_directory_struct(EFI_FILE* volume, const char* name)
-{	
+{		
 	Directory out;
 	out.Name = name;
 	out.Files = 0;
@@ -451,6 +447,12 @@ EFI_STATUS efi_main(EFI_HANDLE In_ImageHandle, EFI_SYSTEM_TABLE* In_SystemTable)
 
 	EFI_FILE* rootVolume = get_root_volume(In_ImageHandle);
 
+	Print(L"Caching file system..\n\r");
+	Directory rootDirectory = create_directory_struct(rootVolume, "ROOT");
+	
+	void* rsdp = get_rsdp();
+	Framebuffer screenbuffer = get_gop_framebuffer();
+
 	EFI_FILE* kernelVolume = open_file(rootVolume, L"KERNEL");
 	EFI_FILE* fontsVolume = open_file(rootVolume, L"FONTS");
 
@@ -461,10 +463,6 @@ EFI_STATUS efi_main(EFI_HANDLE In_ImageHandle, EFI_SYSTEM_TABLE* In_SystemTable)
 	close_file(kernelVolume);
 	close_file(fontsVolume);
 
-	Directory rootDirectory = create_directory_struct(rootVolume, "ROOT");
-	
-	void* rsdp = get_rsdp();
-	Framebuffer screenbuffer = get_gop_framebuffer();
 	EFI_MEMORY_MAP memoryMap = get_memory_map();
 
 	BootInfo bootInfo;

@@ -13,7 +13,9 @@ uint64_t pageAmount;
 uint64_t lockedAmount;
 
 void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer)
-{
+{    
+    tty_start_message("Page allocator initializing");
+
     pageAmount = 0;
     for (uint64_t i = 0; i < memoryMap->DescriptorAmount; i++)
     {
@@ -50,6 +52,8 @@ void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer)
     page_allocator_lock_pages(pageMap, (pageAmount / 8) / 4096 + 1);
     page_allocator_lock_pages(&_kernelStart, ((uint64_t)&_kernelEnd - (uint64_t)&_kernelStart) / 4096 + 1);    
     page_allocator_lock_pages(screenBuffer->Base, screenBuffer->Size / 4096 + 1);
+
+    tty_end_message(TTY_MESSAGE_OK);
 }
 
 uint8_t page_allocator_get_status(void* address)
