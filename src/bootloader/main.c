@@ -122,9 +122,9 @@ void* read_file(EFI_FILE* file, uint64_t readSize)
 	return buffer;
 }
 
-EFI_STATUS read_file_to_buffer(EFI_FILE* file, uint64_t readSize, void* buffer)
+EFI_STATUS read_file_to_buffer(EFI_FILE* file, uint64_t* readSize, void* buffer)
 {	
-	return uefi_call_wrapper(file->Read, 3, file, &readSize, buffer);
+	return uefi_call_wrapper(file->Read, 3, file, readSize, buffer);
 }
 
 void close_file(EFI_FILE* file)
@@ -198,7 +198,8 @@ Elf64_Ehdr load_elf_file(EFI_FILE* Directory, CHAR16* Path)
 	Print(L"Reading ELF File...\n\r");
 
 	Elf64_Ehdr header;	
-	read_file_to_buffer(efiFile, sizeof(Elf64_Ehdr), &header);
+	uint64_t headerSize = sizeof(Elf64_Ehdr);
+	read_file_to_buffer(efiFile, &headerSize, &header);
 
 	if (memcmp(&header.e_ident[EI_MAG0], ELFMAG, SELFMAG) != 0 ||
 		header.e_ident[EI_CLASS] != ELFCLASS64 ||
@@ -224,8 +225,8 @@ Elf64_Ehdr load_elf_file(EFI_FILE* Directory, CHAR16* Path)
 			SystemTable->BootServices->AllocatePages(AllocateAddress, EfiLoaderData, pages, &segment);
 
 			seek(efiFile, phdr->p_offset);
-			UINTN size = phdr->p_filesz;
-			read_file_to_buffer(efiFile, size, (void*)segment);
+			uint64_t size = phdr->p_filesz;
+			read_file_to_buffer(efiFile, &size, (void*)segment);
 		}
 		break;
 		}
@@ -328,48 +329,12 @@ typedef struct Directory
 	uint64_t DirectoryAmount;
 } Directory;
 
-EFI_FILE_INFO* get_file_info(EFI_FILE* file) 
-{
-    EFI_STATUS status;
-    EFI_FILE_INFO* fileInfo;
-    UINTN bufferSize;
-
-    bufferSize = 0;
-    status = file->GetInfo(file, &gEfiFileInfoGuid, &bufferSize, NULL);
-
-    if (status == EFI_BUFFER_TOO_SMALL) 
-	{
-        status = SystemTable->BootServices->AllocatePool(EfiLoaderData, bufferSize, (void**)&fileInfo);
-        if (EFI_ERROR(status)) 
-		{
-            Print(L"Error allocating memory for file info\n");
-            return 0;
-        }
-
-        status = file->GetInfo(file, &gEfiFileInfoGuid, &bufferSize, fileInfo);
-
-        if (EFI_ERROR(status)) 
-		{
-            Print(L"Error getting file info\n");
-            SystemTable->BootServices->FreePool(fileInfo);
-            return 0;
-        }
-
-		return fileInfo;
-    } 
-	else 
-	{
-        Print(L"Error getting file info buffer size\n");
-		return 0;
-	}
-}
-
 UINT64 file_size(EFI_FILE* FileHandle)
 {
 	UINT64 ret;
 	EFI_FILE_INFO *FileInfo;
 
-	FileInfo = get_file_info(FileHandle);
+	FileInfo = LibFileInfo(FileHandle);
 	ret = FileInfo->FileSize;
 	FreePool(FileInfo);
 	return ret;
@@ -392,10 +357,10 @@ File create_file_struct(EFI_FILE* volume, CHAR16* path)
 	return output;
 }
 
-Directory create_directory_struct(EFI_FILE* volume)
+Directory create_directory_struct(EFI_FILE* volume, const char* name)
 {	
 	Directory out;
-	out.Name = "ROOT";
+	out.Name = name;
 	out.Files = 0;
 	out.FileAmount = 0;
 	out.Directories = 0;
@@ -406,7 +371,7 @@ Directory create_directory_struct(EFI_FILE* volume)
 		EFI_FILE_INFO* fileInfo;
 		UINTN fileInfoSize = 0;
 
-		EFI_STATUS status = read_file_to_buffer(volume, fileInfoSize, NULL);
+		EFI_STATUS status = read_file_to_buffer(volume, &fileInfoSize, NULL);
         if (status != EFI_BUFFER_TOO_SMALL) 
 		{
             break;
@@ -414,7 +379,7 @@ Directory create_directory_struct(EFI_FILE* volume)
 
 		fileInfo = AllocatePool(fileInfoSize);
 
-		read_file_to_buffer(volume, fileInfoSize, fileInfo);
+		status = read_file_to_buffer(volume, &fileInfoSize, fileInfo);
 		if (EFI_ERROR(status)) 
 		{
 			Print(L"Error reading file info\n");
@@ -428,7 +393,7 @@ Directory create_directory_struct(EFI_FILE* volume)
 			{
 				EFI_FILE_PROTOCOL* subVolume = open_file(volume, fileInfo->FileName);
 
-				Directory newDirectory = create_directory_struct(subVolume);
+				Directory newDirectory = create_directory_struct(subVolume, char16_to_char(fileInfo->FileName));
 				
 				Directory* newDirectoryArray = AllocatePool(sizeof(Directory) * (out.DirectoryAmount + 1));
 				if (out.DirectoryAmount != 0)
@@ -456,6 +421,7 @@ Directory create_directory_struct(EFI_FILE* volume)
 			out.Files = newFileArray;
 			out.Files[out.FileAmount] = newFile;
 			out.FileAmount++;
+			
 		}
 
 		FreePool(fileInfo);
@@ -495,7 +461,7 @@ EFI_STATUS efi_main(EFI_HANDLE In_ImageHandle, EFI_SYSTEM_TABLE* In_SystemTable)
 	close_file(kernelVolume);
 	close_file(fontsVolume);
 
-	Directory rootDirectory = create_directory_struct(open_file(rootVolume, L"."));
+	Directory rootDirectory = create_directory_struct(rootVolume, "ROOT");
 	
 	void* rsdp = get_rsdp();
 	Framebuffer screenbuffer = get_gop_framebuffer();
