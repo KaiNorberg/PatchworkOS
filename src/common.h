@@ -1,3 +1,10 @@
 #define SYS_ALLOCATE 0
 #define SYS_FREE 1
 #define SYS_OPEN 2
+
+#define TASK_STATE_RUNNING 0
+#define TASK_STATE_READY 1
+#define TASK_STATE_WAITING 2
+
+#define EXIT_FAILURE 1
+#define EXIT_SUCCESS 0

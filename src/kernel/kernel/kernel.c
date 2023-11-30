@@ -7,7 +7,7 @@
 #include "kernel/utils/utils.h"
 #include "kernel/file_system/file_system.h"
 #include "kernel/page_allocator/page_allocator.h"
-#include "kernel/virtual_memory/virtual_memory.h"
+#include "kernel/multitasking/multitasking.h"
 
 #include "libc/include/stdio.h"
 
@@ -51,8 +51,12 @@ void kernel_init(BootInfo* bootInfo)
     tty_end_message(TTY_MESSAGE_OK);
 
     idt_init();
+    
     heap_init(0x100000000000, 0x10 * 4096);
+    
     file_system_init(bootInfo->RootDirectory);
+    
+    multitasking_init();
 
     tty_print("\n\r");
 }

@@ -6,6 +6,7 @@
 #include "kernel/psf/psf.h"
 #include "kernel/file_system/file_system.h"
 #include "kernel/memory/memory.h"
+#include "kernel/virtual_memory/virtual_memory.h"
 
 typedef struct 
 {
