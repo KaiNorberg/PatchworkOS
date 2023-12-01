@@ -99,8 +99,15 @@ void tty_print(const char* string)
 void tty_printi(uint64_t integer)
 {
     char string[64];
-    itoa(integer, string);
+    itoa(integer, string, 10);
     tty_print(string);
+}
+
+void tty_printx(uint64_t hex)
+{
+    char string[64];
+    itoa(hex, string, 16);
+    tty_print("0x"); tty_print(string);
 }
 
 void tty_clear()

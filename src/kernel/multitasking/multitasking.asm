@@ -3,7 +3,6 @@ section .text
 extern currentTask
 
 global switch_registers
-global load_registers
 
 switch_registers:
     cli ;Disable interupts
@@ -24,7 +23,7 @@ switch_registers:
     mov rax, cr3
     mov [rdi + 64], rax ;cr3
 
-    ;Save registers to "to" in rsi
+    ;Load values from "to" in rsi
     mov [rsi + 8], rbx
     mov [rsi + 16], rcx
     mov [rsi + 24], rdx

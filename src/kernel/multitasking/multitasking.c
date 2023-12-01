@@ -8,6 +8,8 @@
 #include "kernel/tty/tty.h"
 #include "kernel/page_allocator/page_allocator.h"
 
+Task* dummyTask;
+
 Task* mainTask;
 
 Task* runningTask;
@@ -41,7 +43,7 @@ void multitasking_visualize()
     blue.G = 175;
     blue.B = 239;
 
-    tty_print("\n\rTask visualization (blue = running, green = ready, red = waiting):\n\r");
+    tty_print("Task visualization (blue = running, green = ready, red = waiting):\n\r");
     int i = 0;
     Task* currentTask = firstTask;
     while (currentTask != 0)
@@ -82,6 +84,7 @@ void multitasking_init()
     lastTask = 0;
 
     mainTask = kmalloc(sizeof(Task));
+    dummyTask = kmalloc(sizeof(Task));
 
     asm volatile("mov %%cr3, %%rax; mov %%rax, %0;":"=m"(mainTask->Registers.CR3)::"%rax");
 
@@ -95,8 +98,34 @@ void multitasking_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-void create_task(void (*main)(), VirtualAddressSpace* addressSpace)
+Task* get_next_ready_task(Task* task)
+{
+    Task* prev = task;
+        
+    while (1)
+    {
+        task = task->Next;
+
+        if (task->State == TASK_STATE_READY)
+        {
+            return task;
+        }
+        else if (task->Next == prev)
+        {
+            return mainTask;
+        }
+    }
+}
+
+void create_task(void (*main)())
 { 
+    VirtualAddressSpace* addressSpace = virtual_memory_create();
+
+    for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
+    {
+        virtual_memory_remap(addressSpace, (void*)(i * 0x1000), (void*)(i * 0x1000));
+    }
+§
     Task* newTask = kmalloc(sizeof(Task));
 
     newTask->Registers.RAX = 0;
@@ -106,7 +135,7 @@ void create_task(void (*main)(), VirtualAddressSpace* addressSpace)
     newTask->Registers.Rflags = 0;
     newTask->Registers.RIP = (uint64_t)main;
     newTask->Registers.CR3 = (uint64_t)addressSpace;
-    newTask->Registers.RSP = (uint64_t)page_allocator_request() + 4096;
+    newTask->Registers.RSP = (uint64_t)page_allocator_request() + 0x1000;
     newTask->Next = 0;
     newTask->State = TASK_STATE_READY;
 
@@ -131,40 +160,52 @@ void append_task(Task* task)
     }
 }
 
-void return_to_kernel()
-{
-    mainTask->State = TASK_STATE_READY;
-    append_task(mainTask);
-}
-
 void yield() 
 {    
+    asm volatile ("cli");
+
     Task* prev = runningTask;
-    prev->State = TASK_STATE_WAITING;
-    
-    while (1)
-    {
-        runningTask = runningTask->Next;
+    prev->State = TASK_STATE_WAITING;       
 
-        if (runningTask->State != TASK_STATE_WAITING)
-        {
-            break;
-        }
-        else if (runningTask->Next == prev)
-        {
-            runningTask = mainTask;
-            break;
-        }
-    }
+    Task* nextTask = get_next_ready_task(runningTask);
+    runningTask = nextTask;
 
-    runningTask->State = TASK_STATE_RUNNING;
-    switch_registers(&prev->Registers, &runningTask->Registers);
+    nextTask->State = TASK_STATE_RUNNING;    
+    switch_registers(&prev->Registers, &nextTask->Registers);
 }
 
 void exit(uint64_t status)
-{
-    //Temporary
+{    
+    asm volatile ("cli");
 
+    Task* prevTask = lastTask;
+    Task* currentTask = firstTask;
+    while (1)
+    {
+        if (currentTask == runningTask)
+        {           
+            Task* prevRunningTask = runningTask;
+            prevRunningTask->State = TASK_STATE_WAITING;   
 
-    yield();
+            Task* nextTask = get_next_ready_task(runningTask);
+            prevTask->Next = runningTask->Next;
+
+            page_allocator_unlock_page((void*)(currentTask->Registers.RSP - 0x1000));
+            page_allocator_unlock_page((void*)(currentTask->Registers.CR3));
+            kfree(currentTask);
+
+            runningTask = nextTask;
+            nextTask->State = TASK_STATE_RUNNING;    
+            switch_registers(&dummyTask->Registers, &nextTask->Registers);
+        }
+        
+        prevTask = currentTask;
+        currentTask = currentTask->Next;
+    
+        if (currentTask == firstTask)
+        {
+            tty_print("ERROR: Unable to find task!");
+            break;
+        }
+    }
 }

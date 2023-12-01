@@ -19,7 +19,7 @@ void heap_init(uint64_t heapStart, uint64_t startSize)
 {    
     tty_start_message("Heap initializing");
 
-    if (startSize % 4096 != 0)
+    if (startSize % 0x1000 != 0)
     {
         tty_end_message(TTY_MESSAGE_ER);
         return;
@@ -28,8 +28,8 @@ void heap_init(uint64_t heapStart, uint64_t startSize)
     firstBlock = (BlockHeader*)heapStart;    
     lastBlock = firstBlock;
 
-    uint64_t startPageAmount = (startSize + sizeof(BlockHeader)) / 4096 + 1;
-    for (uint64_t address = (uint64_t)firstBlock; address < (uint64_t)firstBlock + startPageAmount * 4096; address += 4096)
+    uint64_t startPageAmount = (startSize + sizeof(BlockHeader)) / 0x1000 + 1;
+    for (uint64_t address = (uint64_t)firstBlock; address < (uint64_t)firstBlock + startPageAmount * 0x1000; address += 0x1000)
     {
         virtual_memory_remap_current((void*)address, page_allocator_request());
     }
@@ -61,6 +61,8 @@ void heap_visualize()
     red.G = 108;
     red.B = 117;
 
+    tty_print("Heap Visualization:\n\r");
+
     BlockHeader* currentBlock = firstBlock;
     while (1)
     {   
@@ -86,7 +88,7 @@ void heap_visualize()
     }
     
     tty_set_background(black);
-    tty_print("\n\r");
+    tty_print("\n\n\r");
 }
 
 uint64_t heap_total_size()
@@ -185,12 +187,12 @@ uint64_t heap_block_count()
 
 void heap_reserve(uint64_t size)
 {    
-    size += sizeof(BlockHeader) + 4096;
-    size = size + (4096 - (size % 4096));
+    size += sizeof(BlockHeader) + 0x1000;
+    size = size + (0x1000 - (size % 0x1000));
 
     BlockHeader* newBlock = (BlockHeader*)HEAP_HEADER_GET_END(lastBlock);
 
-    for (uint64_t address = (uint64_t)newBlock; address < (uint64_t)newBlock + size; address += 4096)
+    for (uint64_t address = (uint64_t)newBlock; address < (uint64_t)newBlock + size; address += 0x1000)
     {
         virtual_memory_remap_current((void*)address, page_allocator_request());
     }
@@ -229,7 +231,7 @@ void* kmalloc(uint64_t size)
             {
                 uint64_t newSize = currentBlock->Size - alignedSize - sizeof(BlockHeader);
 
-                if (currentBlock->Size >= 64 && newSize >= 4096)
+                if (currentBlock->Size >= 64 && newSize >= 0x1000)
                 {
                     BlockHeader* newBlock = (BlockHeader*)((uint64_t)HEAP_HEADER_GET_START(currentBlock) + alignedSize);
                     newBlock->Next = currentBlock->Next;
@@ -263,7 +265,7 @@ void* kmalloc(uint64_t size)
     {
         BlockHeader* newBlock = (BlockHeader*)HEAP_HEADER_GET_END(lastBlock);
 
-        for (uint64_t address = (uint64_t)newBlock; address < (uint64_t)newBlock + alignedSize + sizeof(BlockHeader); address += 4096)
+        for (uint64_t address = (uint64_t)newBlock; address < (uint64_t)newBlock + alignedSize + sizeof(BlockHeader); address += 0x1000)
         {
             virtual_memory_remap_current((void*)address, page_allocator_request());
         }
@@ -283,7 +285,7 @@ void* kmalloc(uint64_t size)
         uint64_t sizeDelta = alignedSize - lastBlock->Size;
 
         void* lastBlockEnd = HEAP_HEADER_GET_END(lastBlock);
-        for (uint64_t address = (uint64_t)lastBlockEnd; address < (uint64_t)lastBlockEnd + sizeDelta; address += 4096)
+        for (uint64_t address = (uint64_t)lastBlockEnd; address < (uint64_t)lastBlockEnd + sizeDelta; address += 0x1000)
         {
             virtual_memory_remap_current((void*)address, page_allocator_request());
         }

@@ -10,18 +10,20 @@
 
 #include "kernel/kernel/kernel.h"
 
+#include "common.h"
+
 void task1()
 {
-    tty_print("Hello from task1!\n\r");
+    tty_print("Hello from task1!\n\n\r");
     multitasking_visualize();
     yield();
 }
 
 void task2()
 {
-    tty_print("Hello from task2!\n\r");
+    tty_print("Hello from task2, this task will exit!\n\n\r");
     multitasking_visualize();
-    yield();
+    exit(EXIT_SUCCESS);
 }
 
 void _start(BootInfo* bootInfo)
@@ -30,44 +32,38 @@ void _start(BootInfo* bootInfo)
 
     void* addresses[10];
 
-    tty_print("Heap Visualization:\n\r");
-    heap_visualize();
     tty_print("\n\r");
+    heap_visualize();
 
     for (int i = 0; i < 10; i++)
     {
         addresses[i] = kmalloc(10000);
     }
 
-    tty_print("Allocating memory...\n\r");
+    tty_print("Allocating memory...\n\n\r");
 
-    tty_print("\n\rHeap Visualization:\n\r");
     heap_visualize();
-    tty_print("\n\r");
 
     for (int i = 0; i < 10; i++)
     {
         kfree(addresses[i]);
     }
 
-    tty_print("Freeing memory...\n\r");
+    tty_print("Freeing memory...\n\n\r");
 
-    tty_print("\n\rHeap Visualization:\n\r");
     heap_visualize();
-    //tty_print("\n\r");
 
-    uint64_t cr3 = 0;
-    asm volatile("mov %%cr3, %%rax; mov %%rax, %0;":"=m"(cr3)::"%rax");
+    page_allocator_visualize();
 
     multitasking_visualize();
 
-    tty_print("Creating task1...\n\r");
-    create_task(task1, (VirtualAddressSpace*)cr3);
+    tty_print("Creating task1...\n\n\r");
+    create_task(task1);
 
     multitasking_visualize();
 
-    tty_print("Creating task2...\n\r");
-    create_task(task2, (VirtualAddressSpace*)cr3);
+    tty_print("Creating task2...\n\n\r");
+    create_task(task2);
 
     multitasking_visualize();
 
@@ -75,9 +71,11 @@ void _start(BootInfo* bootInfo)
 
     yield();
 
-    tty_print("Back in the main task!\n\r");
+    tty_print("Back in the main task!\n\n\r");
 
     multitasking_visualize();
+    tty_print("\n\r");
+    heap_visualize();
 
     while (1)
     {

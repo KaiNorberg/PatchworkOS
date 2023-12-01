@@ -15,6 +15,7 @@ void tty_init(Framebuffer* screenbuffer, PSFFont* screenFont);
 void tty_put(uint8_t chr);
 void tty_print(const char* string);  
 void tty_printi(uint64_t integer);
+void tty_printx(uint64_t hex);
 
 void tty_clear();
 

@@ -6,6 +6,8 @@
 
 #include <stdint.h>
 
+void page_allocator_visualize();
+
 void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer);
 
 void* page_allocator_request();

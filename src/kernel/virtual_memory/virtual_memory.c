@@ -9,12 +9,7 @@ VirtualAddressSpace* currentAddressSpace;
 VirtualAddressSpace* virtual_memory_create()
 {
     VirtualAddressSpace* addressSpace = (VirtualAddressSpace*)page_allocator_request();
-    memset(addressSpace, 0, 4096);
-
-    for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
-    {
-        virtual_memory_remap(addressSpace, (void*)(i * 4096), (void*)(i * 4096));
-    }
+    memset(addressSpace, 0, 0x1000);
 
     return addressSpace;
 }

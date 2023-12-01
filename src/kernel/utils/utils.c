@@ -2,9 +2,9 @@
 
 #include "libc/include/string.h"
 
-char* itoa(uint64_t i, char b[])
+char* itoa(uint64_t i, char b[], uint8_t base)
 {
-    char const digit[] = "0123456789";
+    char const digit[] = "0123456789ABCDEF";
     char* p = b;
 
     if (i<0)
@@ -17,15 +17,15 @@ char* itoa(uint64_t i, char b[])
     do
     { //Move to where representation ends
         ++p;
-        shifter = shifter/10;
+        shifter = shifter/base;
     }
     while(shifter);
 
     *p = '\0';
     do
     { //Move back, inserting digits as u go
-        *--p = digit[i%10];
-        i = i/10;
+        *--p = digit[i%base];
+        i = i/base;
     }
     while(i);
 

@@ -23,11 +23,11 @@ void multitasking_visualize();
 
 void multitasking_init();
 
-void create_task(void (*main)(), VirtualAddressSpace* addressSpace);
+Task* get_next_ready_task(Task* task);
+
+void create_task(void (*main)());
 
 void append_task(Task* task);
-
-void return_to_kernel();
 
 void yield();
 
