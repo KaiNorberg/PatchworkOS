@@ -20,12 +20,13 @@ After you have chosen your preferred system and installed Make all you need to d
 
 <ins>**3. Running Patchwork**</ins>
 
-There are three ways to run Patchwork.
+There are four ways to run Patchwork.
 
 1. Use a tool like [Rufus](https://rufus.ie/en/) to create a bootable USB using the created .img file.
 2. Download [QEMU](https://www.qemu.org/) on your Windows machine and then use the [run.bat](https://github.com/Kaj9296/PatchworkOS/blob/main/run.bat) file.
-2. Download [QEMU](https://www.qemu.org/) on your Linux machine and then use the  ```make run``` command.
-
+3. Download [QEMU](https://www.qemu.org/) on your Linux machine and then use the  ```make run``` command.
+4. Run the created .img file in a virtual machine of your choice.
+  
 ## Contributing
 
 Patchwork is open to contributions. There are currently no strict guidelines for contributing. If the project grows significantly in the future, a more standardized process for contributions may be implemented.
