@@ -1,0 +1,10 @@
+prefix=/usr/local
+exec_prefix=/usr/local
+includedir=/usr/local/include
+libdir=/usr/local/lib
+
+Name: gnu-efi
+Description: EFI development toolkit
+Version: 3.0.17
+Cflags: -I${includedir}/efi
+Libs: -lefi

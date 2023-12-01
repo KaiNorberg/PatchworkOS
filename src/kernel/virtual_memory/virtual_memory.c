@@ -2,7 +2,7 @@
 
 #include "kernel/page_allocator/page_allocator.h"
 
-#include "libc/include/string.h"
+#include "kernel/string/string.h"
 
 VirtualAddressSpace* currentAddressSpace;
 

@@ -74,33 +74,30 @@ void _start(BootInfo* bootInfo)
     tty_print("Back in the main task!\n\n\r");
 
     multitasking_visualize();
-    tty_print("\n\r");
-    heap_visualize();
 
-    while (1)
+    tty_print("Loading file...\n\r");
+
+    FILE* fontFile = kfopen("/FONTS/zap-vga16.psf", "r");
+    
+    if (fontFile != 0)
     {
-        asm volatile("HLT");
+        PSFHeader* header = kmalloc(sizeof(PSFHeader));
+        kfread(header, sizeof(PSFHeader), fontFile);
+
+        kfclose(fontFile);
+
+        tty_print("Magic should be 1078\n\r");
+        tty_printi(header->Magic);
+        tty_print("\n\n\r");
+
+        kfree(header);
+    }
+    else
+    {
+        tty_print("ERROR: File failed to load!\n\r");
     }
 
-    //tty_print("Test 1");
-
-    //FileContent* file = fopen("/fonts/zap-vga16.psf", "r");
-
-    //tty_print("FILE");
-    //tty_printi(file);
-    
-    //tty_print("Test 2");
-
-    //char buffer[64];
-    //fread(buffer, 1, 64, file);*/
-
-    //fclose(file);
-
-    /*tty_print("Magic should be 1078");
-    uint16_t magic = *((uint16_t*)((void*)file->Data));
-    char string[64];
-    itoa(magic, string);
-    tty_print(string);*/
+    heap_visualize();
 
     while (1)
     {

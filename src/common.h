@@ -1,6 +1,4 @@
-#define SYS_ALLOCATE 0
-#define SYS_FREE 1
-#define SYS_OPEN 2
+#define SYS_TEST 0
 
 #define TASK_STATE_RUNNING 0
 #define TASK_STATE_READY 1

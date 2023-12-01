@@ -125,7 +125,7 @@ void create_task(void (*main)())
     {
         virtual_memory_remap(addressSpace, (void*)(i * 0x1000), (void*)(i * 0x1000));
     }
-§
+
     Task* newTask = kmalloc(sizeof(Task));
 
     newTask->Registers.RAX = 0;

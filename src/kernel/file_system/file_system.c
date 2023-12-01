@@ -1,7 +1,7 @@
 #include "file_system.h"
 
-#include "libc/include/string.h"
-
+#include "kernel/string/string.h"
+#include "kernel/heap/heap.h"
 #include "kernel/tty/tty.h"
 
 RawDirectory* rootDir;
@@ -60,7 +60,7 @@ uint8_t file_system_compare_names(const char* nameStart, const char* nameEnd, co
     }
 }
 
-FileContent* file_system_get(const char* path)
+RawFile* file_system_get(const char* path)
 {
     uint64_t index = 1;
     uint64_t prevIndex = 1;
@@ -105,6 +105,49 @@ FileContent* file_system_get(const char* path)
             }
         }
     }
+
+    return 0;
+}
+
+FILE* kfopen(const char* filename, const char* mode)
+{   
+    RawFile* rawFile = file_system_get(filename);
+
+    if (rawFile)
+    {
+        FILE* newFile = kmalloc(sizeof(FILE));
+
+        newFile->SeekOffset = 0;
+        newFile->FileHandle = rawFile;
+
+        return newFile;        
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+int kfgetc(FILE* stream)
+{
+    uint8_t out = stream->FileHandle->Data[stream->SeekOffset];
+    stream->SeekOffset++;
+    return out;
+}
+
+uint64_t kfread(void* buffer, uint64_t size, FILE* stream)
+{
+    for (uint64_t i = 0; i < size; i++)
+    {
+        ((uint8_t*)buffer)[i] = kfgetc(stream);
+    }
+
+    return size;
+}
+
+int kfclose(FILE* stream)
+{
+    kfree(stream);
 
     return 0;
 }

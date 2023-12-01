@@ -9,8 +9,6 @@
 #include "kernel/page_allocator/page_allocator.h"
 #include "kernel/multitasking/multitasking.h"
 
-#include "libc/include/stdio.h"
-
 __attribute__((aligned(0x1000)))
 GDT gdt = 
 {

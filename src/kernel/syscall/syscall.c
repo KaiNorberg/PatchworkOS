@@ -18,19 +18,10 @@ uint64_t syscall_handler()
 
     switch (rax)
     {
-    case SYS_ALLOCATE:
+    case SYS_TEST:
     {
+        tty_print("Syscall test!\n\r");
         return 0;  
-    }
-    break;
-    case SYS_FREE:
-    {
-        return 0;  
-    }
-    break;
-    case SYS_OPEN:
-    {
-        return (uint64_t)file_system_get((const char*)rdi);  
     }
     break;
     }

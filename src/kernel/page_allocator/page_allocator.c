@@ -2,7 +2,7 @@
 
 #include "kernel/tty/tty.h"
 
-#include "libc/include/string.h"
+#include "kernel/string/string.h"
 
 extern uint64_t _kernelStart;
 extern uint64_t _kernelEnd;

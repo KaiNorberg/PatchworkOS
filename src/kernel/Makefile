@@ -1,5 +1,9 @@
 OUTPUTNAME = kernel
 
+LDS = linker.ld
+LD = ld
+LDFLAGS = -T $(LDS) -Bsymbolic -nostdlib
+
 CC = gcc
 ASMC = nasm
 
@@ -8,6 +12,7 @@ ASMFLAGS =
 
 SRCDIR = ./
 OBJDIR = ../../build/$(OUTPUTNAME)
+BINDIR = ../../bin/$(OUTPUTNAME)
 
 rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
 
@@ -34,10 +39,15 @@ $(OBJDIR)/%_ASM.o: $(SRCDIR)/%.asm
 	@mkdir -p $(@D)
 	$(ASMC) $(ASMFLAGS) $^ -f elf64 -o $@
 
+link:
+	$(LD) $(LDFLAGS) -o $(BINDIR)/kernel.elf $(OBJS)
+
 setup:
 	@mkdir -p $(SRCDIR)
 	@mkdir -p $(OBJDIR)
+	@mkdir -p $(BINDIR)
 
 all:
 	make setup
 	make kernel
+	make link

@@ -12,19 +12,33 @@ typedef struct
 	const char* Name;
 	uint8_t* Data;
 	uint64_t Size;
-} FileContent;
+} RawFile;
 
 typedef struct RawDirectory
 {
 	const char* Name;
-	FileContent* Files;
+	RawFile* Files;
 	uint64_t FileAmount;
 	struct RawDirectory* Directories;
 	uint64_t DirectoryAmount;
 } RawDirectory;
 
+typedef struct
+{
+	RawFile* FileHandle;
+	uint64_t SeekOffset;
+} FILE;
+
 void file_system_init(RawDirectory* rootDirectory);
 
 uint8_t file_system_compare_names(const char* nameStart, const char* nameEnd, const char* otherName);
 
-FileContent* file_system_get(const char* path);
+RawFile* file_system_get(const char* path);
+
+FILE* kfopen(const char* filename, const char* mode);
+
+int kfgetc(FILE* stream);
+
+uint64_t kfread(void* buffer, uint64_t size, FILE* stream);
+
+int kfclose(FILE* stream);

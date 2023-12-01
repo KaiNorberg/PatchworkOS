@@ -3,12 +3,12 @@ OUTPUTNAME = bootx64
 CC = gcc
 LD = ld
 
-CFLAGS = -Os -fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -I../../gnu-efi/inc -Wall -Werror
+CFLAGS = -Os -fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -I$(GNU_EFI)/inc -Wall -Werror
 
 SRCDIR = ./
 BINDIR = ../../bin/$(OUTPUTNAME)
 OBJDIR = ../../build/$(OUTPUTNAME)
-GNU_EFI = ../../gnu-efi
+GNU_EFI = ../../vendor/gnu-efi
 
 rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
 

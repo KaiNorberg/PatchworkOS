@@ -1,6 +1,6 @@
 #include "tty.h"
 
-#include "libc/include/string.h"
+#include "kernel/string/string.h"
 #include "kernel/utils/utils.h"
 
 Framebuffer* frontbuffer;
