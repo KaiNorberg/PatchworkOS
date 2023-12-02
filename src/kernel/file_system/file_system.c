@@ -109,8 +109,8 @@ RawFile* file_system_get(const char* path)
     return 0;
 }
 
-FILE* kfopen(const char* filename, const char* mode)
-{   
+FILE* file_system_open(const char* filename, const char* mode)
+{
     RawFile* rawFile = file_system_get(filename);
 
     if (rawFile)
@@ -128,24 +128,53 @@ FILE* kfopen(const char* filename, const char* mode)
     }
 }
 
-int kfgetc(FILE* stream)
+uint32_t file_system_seek(FILE *stream, int64_t offset, uint32_t origin)
+{
+    switch (origin)
+    {
+    case SEEK_SET:
+    {
+        stream->SeekOffset = offset;
+    }
+    break;
+    case SEEK_CUR:
+    {
+        stream->SeekOffset += offset;
+    }
+    break;
+    case SEEK_END:
+    {
+        stream->SeekOffset = stream->FileHandle->Size + offset;
+    }
+    break;
+    }
+
+    return 0;
+}
+
+uint64_t file_system_tell(FILE *stream)
+{
+    return stream->SeekOffset;
+}
+
+uint32_t file_system_get_c(FILE* stream)
 {
     uint8_t out = stream->FileHandle->Data[stream->SeekOffset];
     stream->SeekOffset++;
     return out;
 }
 
-uint64_t kfread(void* buffer, uint64_t size, FILE* stream)
+uint64_t file_system_read(void* buffer, uint64_t size, FILE* stream)
 {
     for (uint64_t i = 0; i < size; i++)
     {
-        ((uint8_t*)buffer)[i] = kfgetc(stream);
+        ((uint8_t*)buffer)[i] = file_system_get_c(stream);
     }
 
     return size;
 }
 
-int kfclose(FILE* stream)
+uint32_t file_system_close(FILE* stream)
 {
     kfree(stream);
 

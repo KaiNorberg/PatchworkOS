@@ -140,6 +140,28 @@ void* page_allocator_request()
     return 0;
 }
 
+void* page_allocator_request_amount(uint64_t amount)
+{
+    uint64_t startAddress = 0;
+    uint64_t freePagesFound = 0;
+    for (uint64_t address = 0; address < pageAmount * 0x1000; address += 0x1000)
+    {
+        if (page_allocator_get_status((void*)address)) //Reserved
+        {
+            startAddress = address;
+            freePagesFound = 0;
+        }
+        else
+        {
+            freePagesFound++;
+            page_allocator_lock_pages((void*)startAddress, freePagesFound);
+            return (void*)startAddress;
+        }
+    }
+
+    return 0;
+}
+
 void page_allocator_lock_page(void* address)
 {
     uint64_t index = (uint64_t)address / 0x1000;

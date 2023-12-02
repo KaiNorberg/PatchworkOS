@@ -6,7 +6,7 @@
 #include "common.h"
 
 uint64_t syscall_handler()
-{    
+{   
     uint64_t rax;
     asm volatile("movq %%rax, %0" : "=r" (rax));
     uint64_t rdi;
@@ -25,6 +25,8 @@ uint64_t syscall_handler()
     }
     break;
     }
+
+
 
     return -1;
 }

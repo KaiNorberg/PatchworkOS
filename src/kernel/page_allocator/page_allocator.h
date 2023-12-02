@@ -12,6 +12,8 @@ void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer);
 
 void* page_allocator_request();
 
+void* page_allocator_request_amount(uint64_t amount);
+
 uint8_t page_allocator_get_status(void* address);
 
 void page_allocator_lock_page(void* address);

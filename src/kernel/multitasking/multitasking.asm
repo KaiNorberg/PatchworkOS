@@ -1,46 +1,50 @@
 section .text
 
-extern currentTask
+global switch_task
 
-global switch_registers
+switch_task:
 
-switch_registers:
-    cli ;Disable interupts
+    cli
 
-    ;Save registers to "from" in rdi
-    mov [rdi + 0], rax
-    mov [rdi + 8], rbx
-    mov [rdi + 16], rcx
-    mov [rdi + 24], rdx
-    mov [rdi + 32], rsp
-    mov [rdi + 40], rbp
-
-    pop qword [rdi + 48] ;rip
-
+    ;Instuction pointer is at top of stack
+    push qword rax
+    push qword rbx
+    push qword rcx
+    push qword rdx
+    push qword rbp
     pushfq
-    pop qword [rdi + 56] ;rflags
+    push qword r8
+    push qword r9
+    push qword r10
+    push qword r11
+    push qword r12
+    push qword r13
+    push qword r14
+    push qword r15
 
-    mov rax, cr3
-    mov [rdi + 64], rax ;cr3
+    mov qword [rdi + 0], qword rsp
+    mov qword rax, cr3
+    mov qword [rdi + 8], qword rax
 
-    ;Load values from "to" in rsi
-    mov [rsi + 8], rbx
-    mov [rsi + 16], rcx
-    mov [rsi + 24], rdx
+    mov qword rsp, qword [rsi + 0]
+    mov qword rdi, qword [rsi + 8]
+    mov cr3, rdi
+    
+    pop qword rax
+    pop qword rbx
+    pop qword rcx
+    pop qword rdx
+    pop qword rbp
+    popfq
+    pop qword r8
+    pop qword r9
+    pop qword r10
+    pop qword r11
+    pop qword r12
+    pop qword r13
+    pop qword r14
+    pop qword r15
+    
+    sti
 
-    push qword [rsi + 56]
-    popfq ;flags
-
-    mov [rsi + 32], rsp ;Stack pointer
-    mov [rsi + 40], rbp ;Stack base pointer
-
-    mov [rsi + 64], rax ;address space
-    mov rax, cr3
-
-    mov [rsi + 0], rax
-
-    sti ;Enable interrupts
-
-    jmp [rsi + 48] ;Instruction pointer
-
-    ret
+    ret ;Will pop the last item on stack (RIP)

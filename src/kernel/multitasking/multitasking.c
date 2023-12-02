@@ -7,6 +7,7 @@
 #include "kernel/idt/idt.h"
 #include "kernel/tty/tty.h"
 #include "kernel/page_allocator/page_allocator.h"
+#include "kernel/string/string.h"
 
 Task* dummyTask;
 
@@ -16,6 +17,14 @@ Task* runningTask;
 
 Task* firstTask;
 Task* lastTask;
+
+#define PUSH_REGISTER(RSP, register) uint64_t register; asm volatile("movq %%"#register", %0" : "=r" (register)); push_value_to_stack(RSP, register)
+
+void push_value_to_stack(uint64_t* RSP, uint64_t value)
+{
+    *RSP -= 8; 
+    *((uint64_t*)*RSP) = value;
+}
 
 void multitasking_visualize()
 {    
@@ -76,19 +85,19 @@ void multitasking_visualize()
     tty_print("\n\n\r");
 }
 
-void multitasking_init()
+void multitasking_init(VirtualAddressSpace* kernelAddressSpace)
 {
     tty_start_message("Multitasking initializing");
     
     firstTask = 0;
     lastTask = 0;
 
-    mainTask = kmalloc(sizeof(Task));
     dummyTask = kmalloc(sizeof(Task));
+    dummyTask->RSP = (uint64_t)page_allocator_request() + 0x1000;
 
-    asm volatile("mov %%cr3, %%rax; mov %%rax, %0;":"=m"(mainTask->Registers.CR3)::"%rax");
-
+    mainTask = kmalloc(sizeof(Task));
     mainTask->Next = 0;
+    mainTask->CR3 = (uint64_t)kernelAddressSpace;
     mainTask->State = TASK_STATE_RUNNING;
 
     runningTask = mainTask;
@@ -117,25 +126,36 @@ Task* get_next_ready_task(Task* task)
     }
 }
 
-void create_task(void (*main)())
+void create_task(void (*entry)(), VirtualAddressSpace* addressSpace)
 { 
-    VirtualAddressSpace* addressSpace = virtual_memory_create();
-
-    for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
-    {
-        virtual_memory_remap(addressSpace, (void*)(i * 0x1000), (void*)(i * 0x1000));
-    }
-
     Task* newTask = kmalloc(sizeof(Task));
 
-    newTask->Registers.RAX = 0;
-    newTask->Registers.RBX = 0;
-    newTask->Registers.RCX = 0;
-    newTask->Registers.RDX = 0;
-    newTask->Registers.Rflags = 0;
-    newTask->Registers.RIP = (uint64_t)main;
-    newTask->Registers.CR3 = (uint64_t)addressSpace;
-    newTask->Registers.RSP = (uint64_t)page_allocator_request() + 0x1000;
+    uint64_t stackBottom = (uint64_t)page_allocator_request();
+    uint64_t stackTop = stackBottom + 0x1000;
+
+    newTask->StackTop = stackTop;
+    newTask->StackBottom = stackBottom;
+    newTask->RSP = newTask->StackTop;
+    newTask->CR3 = (uint64_t)addressSpace;
+    memset((void*)stackBottom, 0, 0x1000);
+
+    push_value_to_stack(&newTask->RSP, (uint64_t)entry); //RIP
+    push_value_to_stack(&newTask->RSP, 0); //RAX
+    push_value_to_stack(&newTask->RSP, 0); //RBX
+    push_value_to_stack(&newTask->RSP, 0); //RCX
+    push_value_to_stack(&newTask->RSP, 0); //RDX
+    push_value_to_stack(&newTask->RSP, 0); //RBP
+    push_value_to_stack(&newTask->RSP, 0); //RFLAGS
+
+    push_value_to_stack(&newTask->RSP, 0); //R8
+    push_value_to_stack(&newTask->RSP, 0); //R9
+    push_value_to_stack(&newTask->RSP, 0); //R10
+    push_value_to_stack(&newTask->RSP, 0); //R11
+    push_value_to_stack(&newTask->RSP, 0); //R12
+    push_value_to_stack(&newTask->RSP, 0); //R13
+    push_value_to_stack(&newTask->RSP, 0); //R14
+    push_value_to_stack(&newTask->RSP, 0); //R15
+    
     newTask->Next = 0;
     newTask->State = TASK_STATE_READY;
 
@@ -162,8 +182,6 @@ void append_task(Task* task)
 
 void yield() 
 {    
-    asm volatile ("cli");
-
     Task* prev = runningTask;
     prev->State = TASK_STATE_WAITING;       
 
@@ -171,13 +189,11 @@ void yield()
     runningTask = nextTask;
 
     nextTask->State = TASK_STATE_RUNNING;    
-    switch_registers(&prev->Registers, &nextTask->Registers);
+    switch_task(prev, nextTask);
 }
 
 void exit(uint64_t status)
 {    
-    asm volatile ("cli");
-
     Task* prevTask = lastTask;
     Task* currentTask = firstTask;
     while (1)
@@ -190,13 +206,12 @@ void exit(uint64_t status)
             Task* nextTask = get_next_ready_task(runningTask);
             prevTask->Next = runningTask->Next;
 
-            page_allocator_unlock_page((void*)(currentTask->Registers.RSP - 0x1000));
-            page_allocator_unlock_page((void*)(currentTask->Registers.CR3));
+            page_allocator_unlock_page((void*)(currentTask->StackTop - 0x1000));
             kfree(currentTask);
 
             runningTask = nextTask;
             nextTask->State = TASK_STATE_RUNNING;    
-            switch_registers(&dummyTask->Registers, &nextTask->Registers);
+            switch_task(dummyTask, nextTask);
         }
         
         prevTask = currentTask;

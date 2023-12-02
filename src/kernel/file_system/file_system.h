@@ -7,6 +7,10 @@
 // This is terrible for many reasons but it allows me limit the scope of this project and to move on to things i find more interesting.
 // In the future i might implement a real file system. 
 
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
+
 typedef struct
 {
 	const char* Name;
@@ -35,10 +39,14 @@ uint8_t file_system_compare_names(const char* nameStart, const char* nameEnd, co
 
 RawFile* file_system_get(const char* path);
 
-FILE* kfopen(const char* filename, const char* mode);
+FILE* file_system_open(const char* filename, const char* mode);
 
-int kfgetc(FILE* stream);
+uint32_t file_system_seek(FILE *stream, int64_t offset, uint32_t origin);
 
-uint64_t kfread(void* buffer, uint64_t size, FILE* stream);
+uint64_t file_system_tell(FILE *stream);
 
-int kfclose(FILE* stream);
+uint32_t file_system_get_c(FILE* stream);
+
+uint64_t file_system_read(void* buffer, uint64_t size, FILE* stream);
+
+uint32_t file_system_close(FILE* stream);

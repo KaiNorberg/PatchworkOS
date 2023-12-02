@@ -1,5 +1,7 @@
 [bits 64]
 
+extern kernelAddressSpace
+
 extern syscall_handler
 global syscall_interrupt
 syscall_interrupt:

@@ -473,7 +473,7 @@ EFI_STATUS efi_main(EFI_HANDLE In_ImageHandle, EFI_SYSTEM_TABLE* In_SystemTable)
 	bootInfo.RT = SystemTable->RuntimeServices;
 	bootInfo.RootDirectory = &rootDirectory;
 
-	void (*KernelMain)(BootInfo*) = ((__attribute__((sysv_abi)) void (*)(BootInfo*)) kernelFile.e_entry);
+	void (*KernelMain)(BootInfo*) = ((__attribute__((sysv_abi)) void (*)(BootInfo*))kernelFile.e_entry);
 
 	Print(L"Exiting boot services...\n\r");
 	SystemTable->BootServices->ExitBootServices(ImageHandle, memoryMap.Key);

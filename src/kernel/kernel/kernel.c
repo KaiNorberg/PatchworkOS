@@ -58,5 +58,5 @@ void kernel_init(BootInfo* bootInfo)
     
     file_system_init(bootInfo->RootDirectory);
     
-    multitasking_init();
+    multitasking_init(kernelAddressSpace);
 }

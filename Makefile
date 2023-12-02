@@ -35,11 +35,13 @@ buildimg:
 	mmd -i $(BINDIR)/$(OSNAME).img ::/EFI/BOOT
 	mmd -i $(BINDIR)/$(OSNAME).img ::/KERNEL
 	mmd -i $(BINDIR)/$(OSNAME).img ::/FONTS
+	mmd -i $(BINDIR)/$(OSNAME).img ::/PROGRAMS
 	mcopy -i $(BINDIR)/$(OSNAME).img $(BINDIR)/bootx64/bootx64.efi ::/EFI/BOOT
 	mcopy -i $(BINDIR)/$(OSNAME).img $(BINDIR)/kernel/kernel.elf ::/KERNEL
 	mcopy -i $(BINDIR)/$(OSNAME).img $(OSROOTDIR)/startup.nsh ::
 	mcopy -i $(BINDIR)/$(OSNAME).img $(OSROOTDIR)/FONTS/zap-vga16.psf ::/FONTS
 	mcopy -i $(BINDIR)/$(OSNAME).img $(OSROOTDIR)/FONTS/zap-light16.psf ::/FONTS
+	mcopy -i $(BINDIR)/$(OSNAME).img $(BINDIR)/programs/test.elf ::/PROGRAMS
 
 all:
 	@echo !==== BOOTLOADER
