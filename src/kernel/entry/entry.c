@@ -15,18 +15,27 @@
 void task1()
 {
     tty_print("Hello from task1!\n\r");
-    
-    uint64_t rax = 0;
-    asm volatile("movq %0, %%rax" : : "r"(rax));
+
+    //uint64_t rax = 0;
+    //asm volatile("movq %0, %%rax" : : "r"(rax));
     asm volatile("int $0x80");
 
-    tty_print("\n\r");
-    yield();
+    tty_print("Test\n\r");
+
+    //rax = 1;
+    //asm volatile("movq %0, %%rax" : : "r"(rax));
+    asm volatile("int $0x80");
+
+    while (1)
+    {
+        asm volatile("HLT");
+    }
 }
 
 void task2()
 {
     tty_print("Hello from task2, this task will exit!\n\n\r");
+    multitasking_visualize();
     exit(EXIT_SUCCESS);
 }
 
@@ -38,12 +47,30 @@ void _start(BootInfo* bootInfo)
     asm volatile("movq %%cr3, %0" : "=r" (cr3));
 
     tty_print("\n\rCreating task1...\n\n\r");
-    create_task(task1, (VirtualAddressSpace*)cr3);
+    VirtualAddressSpace* task1AddressSpace = virtual_memory_create();
+    for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
+    {
+        virtual_memory_remap(task1AddressSpace, (void*)(i * 0x1000), (void*)(i * 0x1000));
+    }
+    for (uint64_t i = 0; i < bootInfo->Screenbuffer->Size + 0x1000; i += 0x1000)
+    {
+        virtual_memory_remap(task1AddressSpace, (void*)((uint64_t)bootInfo->Screenbuffer->Base + i), (void*)((uint64_t)bootInfo->Screenbuffer->Base + i));
+    }
+    create_task(task1, cr3);
 
     multitasking_visualize();
 
     tty_print("Creating task2...\n\n\r");
-    create_task(task2, (VirtualAddressSpace*)cr3);
+    VirtualAddressSpace* task2AddressSpace = virtual_memory_create();
+    for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
+    {
+        virtual_memory_remap(task2AddressSpace, (void*)(i * 0x1000), (void*)(i * 0x1000));
+    }
+    for (uint64_t i = 0; i < bootInfo->Screenbuffer->Size + 0x1000; i += 0x1000)
+    {
+        virtual_memory_remap(task2AddressSpace, (void*)((uint64_t)bootInfo->Screenbuffer->Base + i), (void*)((uint64_t)bootInfo->Screenbuffer->Base + i));
+    }
+    create_task(task2, cr3);
 
     multitasking_visualize();
 

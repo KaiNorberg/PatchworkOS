@@ -5,6 +5,7 @@
 #include "kernel/idt/idt.h"
 #include "kernel/heap/heap.h"
 #include "kernel/utils/utils.h"
+#include "kernel/syscall/syscall.h"
 #include "kernel/file_system/file_system.h"
 #include "kernel/page_allocator/page_allocator.h"
 #include "kernel/multitasking/multitasking.h"
@@ -58,5 +59,7 @@ void kernel_init(BootInfo* bootInfo)
     
     file_system_init(bootInfo->RootDirectory);
     
+    syscall_init(kernelAddressSpace, (uint64_t*)page_allocator_request());
+
     multitasking_init(kernelAddressSpace);
 }

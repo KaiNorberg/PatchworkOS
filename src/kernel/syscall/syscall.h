@@ -2,4 +2,6 @@
 
 #include <stdint.h>
 
-uint64_t syscall_handler();
+#include "kernel/virtual_memory/virtual_memory.h"
+
+void syscall_init(VirtualAddressSpace* addressSpace, uint64_t* stack);

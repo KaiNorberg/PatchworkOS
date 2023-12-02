@@ -1,4 +1,5 @@
 #define SYS_TEST 0
+#define SYS_YIELD 1
 
 #define TASK_STATE_RUNNING 0
 #define TASK_STATE_READY 1

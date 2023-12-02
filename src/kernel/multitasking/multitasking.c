@@ -140,13 +140,12 @@ void create_task(void (*entry)(), VirtualAddressSpace* addressSpace)
     memset((void*)stackBottom, 0, 0x1000);
 
     push_value_to_stack(&newTask->RSP, (uint64_t)entry); //RIP
+    push_value_to_stack(&newTask->RSP, 0); //RFLAGS
     push_value_to_stack(&newTask->RSP, 0); //RAX
     push_value_to_stack(&newTask->RSP, 0); //RBX
     push_value_to_stack(&newTask->RSP, 0); //RCX
     push_value_to_stack(&newTask->RSP, 0); //RDX
     push_value_to_stack(&newTask->RSP, 0); //RBP
-    push_value_to_stack(&newTask->RSP, 0); //RFLAGS
-
     push_value_to_stack(&newTask->RSP, 0); //R8
     push_value_to_stack(&newTask->RSP, 0); //R9
     push_value_to_stack(&newTask->RSP, 0); //R10

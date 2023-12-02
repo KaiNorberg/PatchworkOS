@@ -49,6 +49,9 @@ all:
 	@echo !==== KERNEL
 	@cd src/kernel && make all
 
+	@echo !==== TEST PROGRAM
+	@cd programs/test && make all
+
 	@echo !==== BUILDIMG
 	make buildimg
 

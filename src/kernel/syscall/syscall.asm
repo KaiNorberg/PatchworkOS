@@ -1,13 +1,11 @@
-section .text
+[bits 64]
 
-global switch_task
+extern syscallAddressSpace
+extern syscallStack
 
-switch_task:
-
-    cli
-
-    ;Instuction pointer is at top of stack
-    pushfq
+extern syscall_handler
+global syscall_interrupt
+syscall_interrupt:
     push qword rax
     push qword rbx
     push qword rcx
@@ -22,14 +20,24 @@ switch_task:
     push qword r14
     push qword r15
 
-    mov qword [rdi + 0], qword rsp
-    mov qword rax, cr3
-    mov qword [rdi + 8], qword rax
+    mov r15, rsp
+    mov r14, cr3
 
-    mov qword rsp, qword [rsi + 0]
-    mov qword rdi, qword [rsi + 8]
-    mov cr3, rdi
+    mov rsp, [syscallStack] ;Load kernel stack
+    mov r13, [syscallAddressSpace] ;Load address space
+    mov cr3, r13
     
+    push r15
+    push r14
+
+    call syscall_handler
+
+    pop r14
+    pop r15
+
+    mov rsp, r15
+    mov cr3, r14
+
     pop qword r15
     pop qword r14
     pop qword r13
@@ -43,8 +51,5 @@ switch_task:
     pop qword rcx
     pop qword rbx
     pop qword rax
-    popfq   
-     
-    sti
-
-    ret ;Will pop the last item on stack (RIP)
+    
+	iretq
