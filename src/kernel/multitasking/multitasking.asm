@@ -30,20 +30,20 @@ switch_task:
     mov qword rdi, qword [rsi + 8]
     mov cr3, rdi
     
-    pop qword rax
-    pop qword rbx
-    pop qword rcx
-    pop qword rdx
-    pop qword rbp
-    popfq
-    pop qword r8
-    pop qword r9
-    pop qword r10
-    pop qword r11
-    pop qword r12
-    pop qword r13
-    pop qword r14
     pop qword r15
+    pop qword r14
+    pop qword r13
+    pop qword r12
+    pop qword r11
+    pop qword r10
+    pop qword r9
+    pop qword r8
+    popfq
+    pop qword rbp
+    pop qword rdx
+    pop qword rcx
+    pop qword rbx
+    pop qword rax
     
     sti
 

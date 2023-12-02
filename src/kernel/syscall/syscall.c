@@ -24,10 +24,11 @@ uint64_t syscall_handler()
         return 0;  
     }
     break;
+    default:
+    {
+        return -1;
     }
-
-
-
-    return -1;
+    break;
+    }
 }
 

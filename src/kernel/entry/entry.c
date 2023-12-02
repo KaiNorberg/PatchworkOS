@@ -14,7 +14,13 @@
 
 void task1()
 {
-    tty_print("Hello from task1!\n\n\r");
+    tty_print("Hello from task1!\n\r");
+    
+    uint64_t rax = 0;
+    asm volatile("movq %0, %%rax" : : "r"(rax));
+    asm volatile("int $0x80");
+
+    tty_print("\n\r");
     yield();
 }
 
