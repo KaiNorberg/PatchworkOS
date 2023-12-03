@@ -6,6 +6,9 @@
 #include "kernel/utils/utils.h"
 
 #include "kernel/syscall/syscall.h"
+#include "kernel/multitasking/multitasking.h"
+
+#include "kernel/string/string.h"
 
 #define ENTER 0x1C
 #define BACKSPACE 0x0E
@@ -99,7 +102,7 @@ const char SHIFTED_SCAN_CODE_TABLE[] =
     0,	/* All other keys are undefined */
 };
 
-__attribute__((interrupt)) void keyboard_interrupt(void* frame)
+__attribute__((interrupt)) void keyboard_interrupt(InterruptStackFrame* frame)
 {        
     uint8_t scanCode = io_inb(0x60);
 
@@ -110,20 +113,38 @@ __attribute__((interrupt)) void keyboard_interrupt(void* frame)
 
     io_outb(PIC1_COMMAND, PIC_EOI);
 }
-/*
-__attribute__((interrupt)) void syscall_interrupt(void* frame)
-{       
-    uint64_t rax;
-    asm volatile("movq %%rax, %0" : "=r" (rax));
-    uint64_t rdi;
-    asm volatile("movq %%rdi, %0" : "=r" (rdi));
-    uint64_t rsi;
-    asm volatile("movq %%rsi, %0" : "=r" (rsi));
-    uint64_t rdx;
-    asm volatile("movq %%rdx, %0" : "=r" (rdx));
 
-    rax = syscall(rax, rdi, rsi, rdx);
-    asm volatile("movq %0, %%rax" : : "r"(rax));
+__attribute__((interrupt)) void syscall_interrupt(InterruptStackFrame* frame)
+{   
+    //This is only sys_yield for now
+    //TODO: implement address space changes
+    RegisterBuffer* registerBuffer;
+
+    asm volatile("mov %%rsp, %0" : "=r" (registerBuffer));
     
-    io_outb(PIC1_COMMAND, PIC_EOI);
-}*/
+    registerBuffer = (RegisterBuffer*)((uint64_t)registerBuffer + 8);
+
+    Task* oldTask = get_running_task();
+
+    memcpy(&(oldTask->Registers), registerBuffer, sizeof(RegisterBuffer));
+    oldTask->InstructionPointer = frame->InstructionPointer;
+    oldTask->StackPointer = frame->StackPointer;
+
+    Task* newTask = load_next_task(); 
+    
+    registerBuffer->R12 = newTask->Registers.R12; 
+    registerBuffer->R11 = newTask->Registers.R11; 
+    registerBuffer->R10 = newTask->Registers.R10; 
+    registerBuffer->R9 = newTask->Registers.R9; 
+    registerBuffer->R8 = newTask->Registers.R8; 
+    registerBuffer->RBP = newTask->Registers.RBP;
+    registerBuffer->RDI = newTask->Registers.RDI;
+    registerBuffer->RSI = newTask->Registers.RSI;
+    registerBuffer->RBX = newTask->Registers.RBX;
+    registerBuffer->RCX = newTask->Registers.RCX;
+    registerBuffer->RDX = newTask->Registers.RDX;
+    registerBuffer->RAX = newTask->Registers.RAX;
+
+    frame->InstructionPointer = newTask->InstructionPointer;
+    frame->StackPointer = newTask->StackPointer;
+}

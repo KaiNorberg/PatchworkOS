@@ -12,6 +12,8 @@ switch_task:
     push qword rbx
     push qword rcx
     push qword rdx
+    push qword rdi
+    push qword rsi
     push qword rbp
     push qword r8
     push qword r9
@@ -39,6 +41,8 @@ switch_task:
     pop qword r9
     pop qword r8
     pop qword rbp
+    pop qword rsi
+    pop qword rdi
     pop qword rdx
     pop qword rcx
     pop qword rbx

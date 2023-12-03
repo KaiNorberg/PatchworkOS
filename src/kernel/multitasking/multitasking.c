@@ -93,11 +93,11 @@ void multitasking_init(VirtualAddressSpace* kernelAddressSpace)
     lastTask = 0;
 
     dummyTask = kmalloc(sizeof(Task));
-    dummyTask->RSP = (uint64_t)page_allocator_request() + 0x1000;
+    dummyTask->StackPointer = (uint64_t)page_allocator_request() + 0x1000;
 
     mainTask = kmalloc(sizeof(Task));
+    mainTask->AddressSpace = (uint64_t)kernelAddressSpace;
     mainTask->Next = 0;
-    mainTask->CR3 = (uint64_t)kernelAddressSpace;
     mainTask->State = TASK_STATE_RUNNING;
 
     runningTask = mainTask;
@@ -105,6 +105,24 @@ void multitasking_init(VirtualAddressSpace* kernelAddressSpace)
     append_task(mainTask);
 
     tty_end_message(TTY_MESSAGE_OK);
+}
+
+Task* load_next_task()
+{
+    Task* prev = runningTask;
+    prev->State = TASK_STATE_WAITING;       
+
+    Task* nextTask = get_next_ready_task(runningTask);
+    runningTask = nextTask;  
+
+    nextTask->State = TASK_STATE_RUNNING;     
+
+    return nextTask;
+}
+
+Task* get_running_task()
+{
+    return runningTask;
 }
 
 Task* get_next_ready_task(Task* task)
@@ -129,32 +147,19 @@ Task* get_next_ready_task(Task* task)
 void create_task(void (*entry)(), VirtualAddressSpace* addressSpace)
 { 
     Task* newTask = kmalloc(sizeof(Task));
+    memset(newTask, 0, sizeof(Task));
 
     uint64_t stackBottom = (uint64_t)page_allocator_request();
     uint64_t stackTop = stackBottom + 0x1000;
 
     newTask->StackTop = stackTop;
     newTask->StackBottom = stackBottom;
-    newTask->RSP = newTask->StackTop;
-    newTask->CR3 = (uint64_t)addressSpace;
     memset((void*)stackBottom, 0, 0x1000);
 
-    push_value_to_stack(&newTask->RSP, (uint64_t)entry); //RIP
-    push_value_to_stack(&newTask->RSP, 0); //RFLAGS
-    push_value_to_stack(&newTask->RSP, 0); //RAX
-    push_value_to_stack(&newTask->RSP, 0); //RBX
-    push_value_to_stack(&newTask->RSP, 0); //RCX
-    push_value_to_stack(&newTask->RSP, 0); //RDX
-    push_value_to_stack(&newTask->RSP, 0); //RBP
-    push_value_to_stack(&newTask->RSP, 0); //R8
-    push_value_to_stack(&newTask->RSP, 0); //R9
-    push_value_to_stack(&newTask->RSP, 0); //R10
-    push_value_to_stack(&newTask->RSP, 0); //R11
-    push_value_to_stack(&newTask->RSP, 0); //R12
-    push_value_to_stack(&newTask->RSP, 0); //R13
-    push_value_to_stack(&newTask->RSP, 0); //R14
-    push_value_to_stack(&newTask->RSP, 0); //R15
-    
+    newTask->StackPointer = newTask->StackTop;
+    newTask->AddressSpace = (uint64_t)addressSpace;
+    newTask->InstructionPointer = (uint64_t)entry;
+
     newTask->Next = 0;
     newTask->State = TASK_STATE_READY;
 

@@ -16,27 +16,19 @@ void task1()
 {
     tty_print("Hello from task1!\n\r");
 
-    //uint64_t rax = 0;
-    //asm volatile("movq %0, %%rax" : : "r"(rax));
+    uint64_t rax = SYS_YIELD;
+    asm volatile("movq %0, %%rax" : : "r"(rax));
     asm volatile("int $0x80");
-
-    tty_print("Test\n\r");
-
-    //rax = 1;
-    //asm volatile("movq %0, %%rax" : : "r"(rax));
-    asm volatile("int $0x80");
-
-    while (1)
-    {
-        asm volatile("HLT");
-    }
 }
 
 void task2()
 {
     tty_print("Hello from task2, this task will exit!\n\n\r");
     multitasking_visualize();
-    exit(EXIT_SUCCESS);
+    
+    uint64_t rax = SYS_YIELD;
+    asm volatile("movq %0, %%rax" : : "r"(rax));
+    asm volatile("int $0x80");
 }
 
 void _start(BootInfo* bootInfo)
@@ -76,7 +68,11 @@ void _start(BootInfo* bootInfo)
 
     tty_print("Yielding...\n\n\r");
 
-    yield();
+    //yield();
+
+    uint64_t rax = SYS_YIELD;
+    asm volatile("movq %0, %%rax" : : "r"(rax));
+    asm volatile("int $0x80");
 
     tty_print("Back in the main task!\n\n\r");
 
