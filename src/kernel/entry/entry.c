@@ -12,6 +12,8 @@
 
 #include "common.h"
 
+#include "kernel/debug/debug.h"
+
 void task1()
 {
     tty_print("Hello from task1!\n\r");
@@ -78,6 +80,9 @@ void _start(BootInfo* bootInfo)
     tty_print("Back in the main task!\n\n\r");
 
     multitasking_visualize();
+
+    uint64_t test = 1234;
+    asm volatile("jmp %0" : : "r" (test));
 
     while (1)
     {

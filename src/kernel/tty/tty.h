@@ -23,5 +23,7 @@ void tty_set_scale(uint8_t scale);
 void tty_set_foreground(Pixel color);
 void tty_set_background(Pixel color);
 
+void tty_set_cursor_pos(uint64_t x, uint64_t y);
+
 void tty_start_message(const char* message);
 void tty_end_message(uint64_t status);

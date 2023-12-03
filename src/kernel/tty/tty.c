@@ -11,7 +11,7 @@ Point cursorPos;
 Pixel background;
 Pixel foreground;
 
-uint8_t scale;
+uint8_t textScale;
 
 void tty_init(Framebuffer* screenbuffer, PSFFont* screenFont)
 {
@@ -31,7 +31,7 @@ void tty_init(Framebuffer* screenbuffer, PSFFont* screenFont)
     foreground.G = 255;
     foreground.B = 255;
 
-    scale = 1;
+    textScale = 1;
 
     tty_clear();
 }
@@ -43,7 +43,7 @@ void tty_put(uint8_t chr)
     if (chr == '\n')
     {
         cursorPos.X = 0;
-        cursorPos.Y += 16 * scale;
+        cursorPos.Y += 16 * textScale;
     }
     else if (chr == '\r')
     {
@@ -51,13 +51,13 @@ void tty_put(uint8_t chr)
     }
     else
     {
-        for (uint64_t y = 0; y < 16 * scale; y++)
+        for (uint64_t y = 0; y < 16 * textScale; y++)
         {
-            for (uint64_t x = 0; x < 8 * scale; x++)
+            for (uint64_t x = 0; x < 8 * textScale; x++)
             {
                 Pixel pixel;
 
-                if ((*glyph & (0b10000000 >> x / scale)) > 0)
+                if ((*glyph & (0b10000000 >> x / textScale)) > 0)
                 {
                     pixel = foreground;
                 }
@@ -70,18 +70,18 @@ void tty_put(uint8_t chr)
 
                 gop_put(frontbuffer, position, pixel);
             }
-            if (y % scale == 0)
+            if (y % textScale == 0)
             {
                 glyph++;
             }
         }
 
-        cursorPos.X += 8;
+        cursorPos.X += 8 * textScale;
 
         if (cursorPos.X >= frontbuffer->Width)
         {
             cursorPos.X = 0;
-            cursorPos.Y += 16 * scale;
+            cursorPos.Y += 16 * textScale;
         }
     }
 }
@@ -117,6 +117,11 @@ void tty_clear()
     cursorPos.Y = 0;
 }
 
+void tty_set_scale(uint8_t scale)
+{
+    textScale = scale;
+}
+
 void tty_set_foreground(Pixel color)
 {
     foreground = color;
@@ -125,6 +130,12 @@ void tty_set_foreground(Pixel color)
 void tty_set_background(Pixel color)
 {
     background = color;
+}
+
+void tty_set_cursor_pos(uint64_t x, uint64_t y)
+{
+    cursorPos.X = x;
+    cursorPos.Y = y;
 }
 
 void tty_start_message(const char* message)
@@ -137,7 +148,7 @@ void tty_start_message(const char* message)
 void tty_end_message(uint64_t status)
 {
     uint64_t oldCursorX = cursorPos.X;   
-    cursorPos.X = 8;
+    cursorPos.X = 8 * textScale;
 
     if (status == TTY_MESSAGE_OK)
     {

@@ -10,6 +10,8 @@
 #include "kernel/syscall/syscall.h"
 #include "kernel/multitasking/multitasking.h"
 
+#include "kernel/debug/debug.h"
+
 #define ENTER 0x1C
 #define BACKSPACE 0x0E
 #define CONTROL 0x1D
@@ -101,6 +103,84 @@ const char SHIFTED_SCAN_CODE_TABLE[] =
     0,	/* F12 Key */
     0,	/* All other keys are undefined */
 };
+
+/////////////////////////////////
+// Exception interrupt handlers.
+/////////////////////////////////
+
+__attribute__((interrupt)) void device_by_zero_exception(InterruptStackFrame* frame)
+{
+    debug_error("Division By Zero Detected");
+}
+
+__attribute__((interrupt)) void none_maskable_interrupt_exception(InterruptStackFrame* frame)
+{
+    debug_error("None Maskable Interrupt");
+}
+
+__attribute__((interrupt)) void breakpoint_exception(InterruptStackFrame* frame)
+{
+    debug_error("Breakpoint reached");
+}
+
+__attribute__((interrupt)) void overflow_exception(InterruptStackFrame* frame)
+{
+    debug_error("Overflow detected");
+}
+
+__attribute__((interrupt)) void boundRange_exception(InterruptStackFrame* frame)
+{
+    debug_error("Bound Range Exceeded");
+}
+
+__attribute__((interrupt)) void invalid_opcode_exception(InterruptStackFrame* frame)
+{
+    debug_error("Invalid OP Code Detected");
+}
+
+__attribute__((interrupt)) void device_not_detected_exception(InterruptStackFrame* frame)
+{
+    debug_error("Device Not Detected");
+}
+
+__attribute__((interrupt)) void double_fault_exception(InterruptStackFrame* frame)
+{
+    debug_error("Double Fault");
+}
+
+__attribute__((interrupt)) void invalid_tts_exception(InterruptStackFrame* frame)
+{
+    debug_error("Invalid TSS");
+}
+
+__attribute__((interrupt)) void segment_not_present_exception(InterruptStackFrame* frame)
+{
+    debug_error("Segment Not Present");
+}
+
+__attribute__((interrupt)) void stack_segment_exception(InterruptStackFrame* frame)
+{
+    debug_error("Stack Segment Fault");
+}
+
+__attribute__((interrupt)) void general_protection_exception(InterruptStackFrame* frame)
+{
+    debug_error("General Protection Fault");
+}
+
+__attribute__((interrupt)) void page_fault_exception(InterruptStackFrame* frame)
+{
+    debug_error("Page Fault");
+}
+
+__attribute__((interrupt)) void floating_point_exception(InterruptStackFrame* frame)
+{
+    debug_error("Floating Point Exception");
+}
+
+/////////////////////////////////
+// IRQ interrupt handlers.
+/////////////////////////////////
 
 __attribute__((interrupt)) void keyboard_interrupt(InterruptStackFrame* frame)
 {        
