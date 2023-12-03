@@ -13,6 +13,7 @@ IDTEntry idt[256];
 IDTR idtr;
 
 extern void* isr_stub_table[];
+extern uint64_t syscall_interrupt;
 
 void idt_init() 
 {    
@@ -27,7 +28,7 @@ void idt_init()
     }
 
     idt_set_descriptor(0x21, keyboard_interrupt, 0x8E);
-    idt_set_descriptor(0x80, syscall_interrupt, 0x8E);
+    idt_set_descriptor(0x80, &syscall_interrupt, 0x8E);
 
     asm volatile ("lidt %0" : : "m"(idtr));
 

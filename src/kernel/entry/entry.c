@@ -26,10 +26,29 @@ void task2()
     tty_print("Hello from task2, this task will exit!\n\n\r");
     multitasking_visualize();
     
-    uint64_t rax = SYS_YIELD;
+    uint64_t rax = SYS_EXIT;
     asm volatile("movq %0, %%rax" : : "r"(rax));
     asm volatile("int $0x80");
 }
+
+/*
+    tty_print("\n\rLoading program..\n\n\r");
+
+    Program* program = load_program("/PROGRAMS/test.elf", bootInfo);
+
+    void* stackBottom = page_allocator_request();
+    uint64_t stackSize = 0x1000;
+
+    create_task(program->Header.Entry, program->AddressSpace, program->StackBottom, program->StackSize);
+
+    tty_print("Yielding...\n\n\r");
+
+    //yield();
+
+    uint64_t rax = 5555555555555555555;
+    asm volatile("movq %0, %%rax" : : "r"(rax));
+    asm volatile("int $0x80");
+*/
 
 void _start(BootInfo* bootInfo)
 {   
@@ -39,41 +58,23 @@ void _start(BootInfo* bootInfo)
     asm volatile("movq %%cr3, %0" : "=r" (cr3));
 
     tty_print("\n\rCreating task1...\n\n\r");
-    VirtualAddressSpace* task1AddressSpace = virtual_memory_create();
-    for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
-    {
-        virtual_memory_remap(task1AddressSpace, (void*)(i * 0x1000), (void*)(i * 0x1000));
-    }
-    for (uint64_t i = 0; i < bootInfo->Screenbuffer->Size + 0x1000; i += 0x1000)
-    {
-        virtual_memory_remap(task1AddressSpace, (void*)((uint64_t)bootInfo->Screenbuffer->Base + i), (void*)((uint64_t)bootInfo->Screenbuffer->Base + i));
-    }
-    create_task(task1, cr3);
+    void* stackBottom = page_allocator_request();
+    uint64_t stackSize = 0x1000;
+    create_task(task1, (VirtualAddressSpace*)cr3, stackBottom, stackSize);
 
     multitasking_visualize();
 
     tty_print("Creating task2...\n\n\r");
-    VirtualAddressSpace* task2AddressSpace = virtual_memory_create();
-    for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
-    {
-        virtual_memory_remap(task2AddressSpace, (void*)(i * 0x1000), (void*)(i * 0x1000));
-    }
-    for (uint64_t i = 0; i < bootInfo->Screenbuffer->Size + 0x1000; i += 0x1000)
-    {
-        virtual_memory_remap(task2AddressSpace, (void*)((uint64_t)bootInfo->Screenbuffer->Base + i), (void*)((uint64_t)bootInfo->Screenbuffer->Base + i));
-    }
-    create_task(task2, cr3);
+    create_task(task2, (VirtualAddressSpace*)cr3, stackBottom, stackSize);
 
     multitasking_visualize();
 
     tty_print("Yielding...\n\n\r");
 
-    //yield();
-
     uint64_t rax = SYS_YIELD;
     asm volatile("movq %0, %%rax" : : "r"(rax));
     asm volatile("int $0x80");
-
+    
     tty_print("Back in the main task!\n\n\r");
 
     multitasking_visualize();

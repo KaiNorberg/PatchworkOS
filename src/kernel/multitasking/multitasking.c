@@ -96,9 +96,10 @@ void multitasking_init(VirtualAddressSpace* kernelAddressSpace)
     dummyTask->StackPointer = (uint64_t)page_allocator_request() + 0x1000;
 
     mainTask = kmalloc(sizeof(Task));
-    mainTask->AddressSpace = (uint64_t)kernelAddressSpace;
-    mainTask->Next = 0;
+    mainTask->AddressSpace = kernelAddressSpace;
     mainTask->State = TASK_STATE_RUNNING;
+    mainTask->Next = 0;
+    mainTask->Prev = 0;
 
     runningTask = mainTask;
 
@@ -144,23 +145,21 @@ Task* get_next_ready_task(Task* task)
     }
 }
 
-void create_task(void (*entry)(), VirtualAddressSpace* addressSpace)
+void create_task(void (*entry)(), VirtualAddressSpace* addressSpace, void* stackBottom, uint64_t stackSize)
 { 
     Task* newTask = kmalloc(sizeof(Task));
     memset(newTask, 0, sizeof(Task));
 
-    uint64_t stackBottom = (uint64_t)page_allocator_request();
-    uint64_t stackTop = stackBottom + 0x1000;
-
-    newTask->StackTop = stackTop;
-    newTask->StackBottom = stackBottom;
-    memset((void*)stackBottom, 0, 0x1000);
+    newTask->StackTop = (uint64_t)stackBottom + stackSize;
+    newTask->StackBottom = (uint64_t)stackBottom;
+    memset((void*)stackBottom, 0, stackSize);
 
     newTask->StackPointer = newTask->StackTop;
-    newTask->AddressSpace = (uint64_t)addressSpace;
+    newTask->AddressSpace = addressSpace;
     newTask->InstructionPointer = (uint64_t)entry;
 
     newTask->Next = 0;
+    newTask->Prev = 0;
     newTask->State = TASK_STATE_READY;
 
     append_task(newTask);
@@ -172,18 +171,24 @@ void append_task(Task* task)
     {
         firstTask = task;
         lastTask = task;
+
         firstTask->Next = task;
+        firstTask->Prev = task;
+
         lastTask->Next = task;
+        lastTask->Prev = task;
     }
     else
     {            
         lastTask->Next = task;
+        firstTask->Prev = task;
 
-        lastTask = task;
+        task->Prev = lastTask;
         task->Next = firstTask;
+        lastTask = task;
     }
 }
-
+/*
 void yield() 
 {    
     Task* prev = runningTask;
@@ -228,3 +233,4 @@ void exit(uint64_t status)
         }
     }
 }
+*/

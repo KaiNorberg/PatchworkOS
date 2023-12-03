@@ -13,4 +13,4 @@ typedef struct
 
 __attribute__((interrupt)) void keyboard_interrupt(InterruptStackFrame* frame);
 
-__attribute__((interrupt)) void syscall_interrupt(InterruptStackFrame* frame);
+/*__attribute__((interrupt)) void syscall_interrupt(InterruptStackFrame* frame);*/

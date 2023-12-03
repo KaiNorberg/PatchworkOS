@@ -18,4 +18,6 @@ typedef struct
 	RawDirectory* RootDirectory;
 } BootInfo;
 
+extern VirtualAddressSpace* kernelAddressSpace;
+
 void kernel_init(BootInfo* bootInfo);

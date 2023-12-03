@@ -7,7 +7,7 @@
 
 #include "kernel/tty/tty.h"
 
-Program* load_program(const char* path)
+Program* load_program(const char* path, BootInfo* bootInfo)
 {
     Program* newProgram = kmalloc(sizeof(Program));
 
@@ -46,7 +46,15 @@ Program* load_program(const char* path)
     
     newProgram->AddressSpace = virtual_memory_create();
 
-    uint64_t lastMappedAddress = 0;
+    for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
+    {
+        virtual_memory_remap(newProgram->AddressSpace, (void*)(i * 0x1000), (void*)(i * 0x1000));
+    }
+    for (uint64_t i = 0; i < bootInfo->Screenbuffer->Size + 0x1000; i += 0x1000)
+    {
+        virtual_memory_remap(newProgram->AddressSpace, (void*)((uint64_t)bootInfo->Screenbuffer->Base + i), (void*)((uint64_t)bootInfo->Screenbuffer->Base + i));
+    }
+
 	for (uint64_t i = 0; i < newProgram->Header.ProgramHeaderAmount; i++)
 	{		
         switch (programHeaders[i].Type)
@@ -59,18 +67,29 @@ Program* load_program(const char* path)
             file_system_seek(file, programHeaders[i].Offset, SEEK_SET);
             file_system_read(newProgram->Segments[i].Segment, programHeaders[i].MemorySize, file);
 
+            uint64_t entryOffset = programHeaders[i].VirtualAddress - newProgram->Header.Entry;
+            tty_printi(entryOffset); tty_print("\n\r");
+
+            for (uint64_t j = 0; j < programHeaders[i].MemorySize; j++)
+            {
+                tty_printx(((uint8_t*)newProgram->Segments[i].Segment)[j]); tty_put(' ');
+            }
+            tty_print("\n\r");
+
             for (uint64_t page = 0; page < newProgram->Segments[i].PageAmount; page++)
             {
                 virtual_memory_remap(newProgram->AddressSpace, (void*)(programHeaders[i].VirtualAddress + page * 0x1000), (void*)(newProgram->Segments[i].Segment + page * 0x1000));
-                lastMappedAddress = programHeaders[i].VirtualAddress + page * 0x1000;
             }
 		}
 		break;
 		}
 	}
 
-    newProgram->StackTop = page_allocator_request();
-    virtual_memory_remap(newProgram->AddressSpace, newProgram->StackTop, (void*)((lastMappedAddress + 0x1000) / 0x1000));
+    newProgram->StackBottom = page_allocator_request();
+    newProgram->StackSize = 0x1000;
+    //virtual_memory_remap(newProgram->AddressSpace, newProgram->StackTop, (void*)((lastMappedAddress + 0x1000) / 0x1000));
+
+    asm volatile("jmp %0" : : "r"(newProgram->Segments[0].Segment));
 
     kfree(programHeaders);
     file_system_close(file);

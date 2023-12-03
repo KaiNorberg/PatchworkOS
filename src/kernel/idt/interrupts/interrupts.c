@@ -1,5 +1,7 @@
 #include "interrupts.h"
 
+#include "kernel/kernel/kernel.h"
+
 #include "kernel/io/io.h"
 
 #include "kernel/tty/tty.h"
@@ -7,8 +9,6 @@
 
 #include "kernel/syscall/syscall.h"
 #include "kernel/multitasking/multitasking.h"
-
-#include "kernel/string/string.h"
 
 #define ENTER 0x1C
 #define BACKSPACE 0x0E
@@ -114,37 +114,7 @@ __attribute__((interrupt)) void keyboard_interrupt(InterruptStackFrame* frame)
     io_outb(PIC1_COMMAND, PIC_EOI);
 }
 
-__attribute__((interrupt)) void syscall_interrupt(InterruptStackFrame* frame)
+/*__attribute__((interrupt)) void syscall_interrupt(InterruptStackFrame* frame)
 {   
-    //This is only sys_yield for now
-    //TODO: implement address space changes
-    RegisterBuffer* registerBuffer;
-
-    asm volatile("mov %%rsp, %0" : "=r" (registerBuffer));
-    
-    registerBuffer = (RegisterBuffer*)((uint64_t)registerBuffer + 8);
-
-    Task* oldTask = get_running_task();
-
-    memcpy(&(oldTask->Registers), registerBuffer, sizeof(RegisterBuffer));
-    oldTask->InstructionPointer = frame->InstructionPointer;
-    oldTask->StackPointer = frame->StackPointer;
-
-    Task* newTask = load_next_task(); 
-    
-    registerBuffer->R12 = newTask->Registers.R12; 
-    registerBuffer->R11 = newTask->Registers.R11; 
-    registerBuffer->R10 = newTask->Registers.R10; 
-    registerBuffer->R9 = newTask->Registers.R9; 
-    registerBuffer->R8 = newTask->Registers.R8; 
-    registerBuffer->RBP = newTask->Registers.RBP;
-    registerBuffer->RDI = newTask->Registers.RDI;
-    registerBuffer->RSI = newTask->Registers.RSI;
-    registerBuffer->RBX = newTask->Registers.RBX;
-    registerBuffer->RCX = newTask->Registers.RCX;
-    registerBuffer->RDX = newTask->Registers.RDX;
-    registerBuffer->RAX = newTask->Registers.RAX;
-
-    frame->InstructionPointer = newTask->InstructionPointer;
-    frame->StackPointer = newTask->StackPointer;
-}
+    tty_printi((uint64_t)frame);
+}*/
