@@ -7,6 +7,8 @@
 
 #include "common.h"
 
+//Jokes provided by skift-os https://github.com/skift-org/skift/tree/main :)
+
 const char* errorJokes[] = 
 {
     "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA!!!",
