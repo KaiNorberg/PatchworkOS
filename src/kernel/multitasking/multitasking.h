@@ -28,6 +28,8 @@ typedef struct Task
 {
     RegisterBuffer Registers;
 
+    uint64_t* PageMap;
+
     uint64_t StackPointer;
     uint64_t InstructionPointer;
     VirtualAddressSpace* AddressSpace;
@@ -37,14 +39,14 @@ typedef struct Task
 
     struct Task* Next;
     struct Task* Prev;
-    uint8_t State;
+    uint64_t State;
 } Task;
-
-extern void switch_task(Task* from, Task* to);
 
 void multitasking_visualize();
 
 void multitasking_init(VirtualAddressSpace* kernelAddressSpace);
+
+void* task_allocate_memory(Task* task, void* virtualAddress, uint64_t size);
 
 Task* load_next_task();
 
@@ -52,9 +54,11 @@ Task* get_running_task();
 
 Task* get_next_ready_task(Task* task);
 
-void create_task(void* entry, VirtualAddressSpace* addressSpace, void* stackBottom, uint64_t stackSize);
+Task* create_task(void* entry, VirtualAddressSpace* addressSpace);
 
 void append_task(Task* task);
+
+void erase_task(Task* task);
 
 /*
 void yield();

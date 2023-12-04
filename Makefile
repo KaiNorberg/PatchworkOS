@@ -50,7 +50,7 @@ all:
 	@cd src/kernel && make all
 
 	@echo !==== TEST PROGRAM
-	@cd programs/test && make all
+	@cd src/programs/test && make all
 
 	@echo !==== BUILDIMG
 	make buildimg

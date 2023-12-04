@@ -56,7 +56,7 @@ void page_allocator_visualize()
             startOfSection = address;
             sectionStatus = addressStatus;
         }
-    }                
+    }
     
     tty_set_background(black);
     tty_print("\n\n\r");
@@ -117,7 +117,7 @@ uint8_t page_allocator_get_status(void* address)
 
 void* page_allocator_request()
 {
-    for (uint64_t qwordIndex = 0; qwordIndex < pageAmount; qwordIndex++)
+    for (uint64_t qwordIndex = 0; qwordIndex < pageAmount / 64; qwordIndex++)
     {
         if (pageMap[qwordIndex] != 0xFFFFFFFFFFFFFFFF) //If any bit is zero
         {            
@@ -164,16 +164,22 @@ void* page_allocator_request_amount(uint64_t amount)
 
 void page_allocator_lock_page(void* address)
 {
-    uint64_t index = (uint64_t)address / 0x1000;
-    pageMap[index / 64] = pageMap[index / 64] | (uint64_t)1 << (index % 64);
-    lockedAmount++;
+    if (!page_allocator_get_status(address))
+    {
+        uint64_t index = (uint64_t)address / 0x1000;
+        pageMap[index / 64] = pageMap[index / 64] | (uint64_t)1 << (index % 64);
+        lockedAmount++;           
+    }
 }
 
 void page_allocator_unlock_page(void* address)
 {
-    uint64_t index = (uint64_t)address / 0x1000;
-    pageMap[index / 64] = pageMap[index / 64] & ~((uint64_t)1 << (index % 64));
-    lockedAmount--;    
+    if (page_allocator_get_status(address))
+    {
+        uint64_t index = (uint64_t)address / 0x1000;
+        pageMap[index / 64] = pageMap[index / 64] & ~((uint64_t)1 << (index % 64));
+        lockedAmount--;            
+    }
 }
 
 void page_allocator_lock_pages(void* address, uint64_t count)

@@ -2,6 +2,8 @@
 
 #include "kernel/gop/gop.h"
 
+#define VIRTUAL_MEMORY_LOAD_SPACE(addressSpace) asm volatile ("mov %0, %%cr3" : : "r" ((uint64_t)addressSpace))
+
 typedef struct
 {
     uint8_t Present : 1;
@@ -28,8 +30,8 @@ typedef PageTable VirtualAddressSpace;
 
 VirtualAddressSpace* virtual_memory_create();
 
-void virtual_memory_load_space(VirtualAddressSpace* addressSpace);
-
-void virtual_memory_remap_current(void* virtualAddress, void* physicalAddress);
+void virtual_memory_remap_range(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress, uint64_t size);
 
 void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress);
+
+void virtual_memory_erase(VirtualAddressSpace* addressSpace);

@@ -61,22 +61,25 @@ void _start(BootInfo* bootInfo)
 
     tty_print("\n\rLoading program...\n\n\r");
 
-    Program* program = load_program("/PROGRAMS/test.elf", bootInfo);
+    if (!load_program("/PROGRAMS/test.elf"))
+    {
+        tty_print("Failed to load program!\n\r");
+    }
     
-    create_task((void*)program->Header.Entry, program->AddressSpace, program->StackBottom, program->StackSize);
+    multitasking_visualize();
 
     tty_print("Yielding to program...\n\n\r");
 
     uint64_t rax = SYS_YIELD;
     asm volatile("movq %0, %%rax" : : "r"(rax));
     asm volatile("int $0x80");
-    
+
     tty_print("\nBack in the main task!\n\n\r");
 
     multitasking_visualize();
 
     while (1)
     {
-        asm("hlt");
+        asm volatile("hlt");
     }
 }

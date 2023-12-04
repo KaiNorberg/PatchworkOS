@@ -109,72 +109,86 @@ const char SHIFTED_SCAN_CODE_TABLE[] =
 /////////////////////////////////
 
 __attribute__((interrupt)) void device_by_zero_exception(InterruptStackFrame* frame)
-{
+{    
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
     debug_error("Division By Zero Detected");
 }
 
 __attribute__((interrupt)) void none_maskable_interrupt_exception(InterruptStackFrame* frame)
-{
+{    
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
     debug_error("None Maskable Interrupt");
 }
 
 __attribute__((interrupt)) void breakpoint_exception(InterruptStackFrame* frame)
-{
+{    
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
     debug_error("Breakpoint reached");
 }
 
 __attribute__((interrupt)) void overflow_exception(InterruptStackFrame* frame)
-{
+{    
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
     debug_error("Overflow detected");
 }
 
 __attribute__((interrupt)) void boundRange_exception(InterruptStackFrame* frame)
-{
+{    
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
     debug_error("Bound Range Exceeded");
 }
 
 __attribute__((interrupt)) void invalid_opcode_exception(InterruptStackFrame* frame)
-{
-    debug_error("Invalid OP Code Detected");
+{    
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
 }
 
 __attribute__((interrupt)) void device_not_detected_exception(InterruptStackFrame* frame)
-{
+{    
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
     debug_error("Device Not Detected");
 }
 
 __attribute__((interrupt)) void double_fault_exception(InterruptStackFrame* frame)
-{
+{    
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
     debug_error("Double Fault");
 }
 
 __attribute__((interrupt)) void invalid_tts_exception(InterruptStackFrame* frame)
-{
+{    
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
     debug_error("Invalid TSS");
 }
 
 __attribute__((interrupt)) void segment_not_present_exception(InterruptStackFrame* frame)
-{
+{    
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
     debug_error("Segment Not Present");
 }
 
 __attribute__((interrupt)) void stack_segment_exception(InterruptStackFrame* frame)
-{
+{    
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
     debug_error("Stack Segment Fault");
 }
 
 __attribute__((interrupt)) void general_protection_exception(InterruptStackFrame* frame)
-{
+{    
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
     debug_error("General Protection Fault");
 }
 
 __attribute__((interrupt)) void page_fault_exception(InterruptStackFrame* frame)
-{
+{    
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
     debug_error("Page Fault");
 }
 
 __attribute__((interrupt)) void floating_point_exception(InterruptStackFrame* frame)
-{
+{    
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
+
     debug_error("Floating Point Exception");
 }
 
@@ -183,7 +197,9 @@ __attribute__((interrupt)) void floating_point_exception(InterruptStackFrame* fr
 /////////////////////////////////
 
 __attribute__((interrupt)) void keyboard_interrupt(InterruptStackFrame* frame)
-{        
+{    
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
+
     uint8_t scanCode = io_inb(0x60);
 
     if (!(scanCode & (0b10000000))) //If key was pressed down

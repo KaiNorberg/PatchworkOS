@@ -18,13 +18,7 @@ Task* runningTask;
 Task* firstTask;
 Task* lastTask;
 
-#define PUSH_REGISTER(RSP, register) uint64_t register; asm volatile("movq %%"#register", %0" : "=r" (register)); push_value_to_stack(RSP, register)
-
-void push_value_to_stack(uint64_t* RSP, uint64_t value)
-{
-    *RSP -= 8; 
-    *((uint64_t*)*RSP) = value;
-}
+uint64_t pageMapPageAmount;
 
 void multitasking_visualize()
 {    
@@ -92,6 +86,8 @@ void multitasking_init(VirtualAddressSpace* kernelAddressSpace)
     firstTask = 0;
     lastTask = 0;
 
+    pageMapPageAmount = (page_allocator_get_total_amount() / 8) / 0x1000 + 1;
+
     dummyTask = kmalloc(sizeof(Task));
     dummyTask->StackPointer = (uint64_t)page_allocator_request() + 0x1000;
 
@@ -106,6 +102,22 @@ void multitasking_init(VirtualAddressSpace* kernelAddressSpace)
     append_task(mainTask);
 
     tty_end_message(TTY_MESSAGE_OK);
+}
+
+void* task_allocate_memory(Task* task, void* virtualAddress, uint64_t size)
+{
+    uint64_t pageAmount = size / 0x1000 + 1;
+    void* physicalAddress = page_allocator_request_amount(pageAmount);
+
+    for (uint64_t i = 0; i < pageAmount; i++)
+    {
+        uint64_t index = (uint64_t)(physicalAddress + i * 0x1000) / 0x1000;
+        task->PageMap[index] = task->PageMap[index / 64] | (uint64_t)1 << (index % 64);
+
+        virtual_memory_remap(task->AddressSpace, virtualAddress + i * 0x1000, physicalAddress + i * 0x1000);
+    }
+
+    return physicalAddress;
 }
 
 Task* load_next_task()
@@ -145,24 +157,30 @@ Task* get_next_ready_task(Task* task)
     }
 }
 
-void create_task(void* entry, VirtualAddressSpace* addressSpace, void* stackBottom, uint64_t stackSize)
+Task* create_task(void* entry, VirtualAddressSpace* addressSpace)
 { 
     Task* newTask = kmalloc(sizeof(Task));
     memset(newTask, 0, sizeof(Task));
 
-    newTask->StackTop = (uint64_t)stackBottom + stackSize;
-    newTask->StackBottom = (uint64_t)stackBottom;
-    memset((void*)stackBottom, 0, stackSize);
+    newTask->StackBottom = (uint64_t)page_allocator_request();
+    newTask->StackTop = (uint64_t)newTask->StackBottom + 0x1000;
+    memset((void*)newTask->StackBottom, 0, 0x1000);
+    virtual_memory_remap(addressSpace, (void*)newTask->StackBottom, (void*)newTask->StackBottom);
 
     newTask->StackPointer = newTask->StackTop;
     newTask->AddressSpace = addressSpace;
     newTask->InstructionPointer = (uint64_t)entry;
+
+    newTask->PageMap = page_allocator_request_amount(pageMapPageAmount);
+    memset(newTask->PageMap, 0, page_allocator_get_total_amount() / 8);
 
     newTask->Next = 0;
     newTask->Prev = 0;
     newTask->State = TASK_STATE_READY;
 
     append_task(newTask);
+
+    return newTask;
 }
 
 void append_task(Task* task)
@@ -187,6 +205,42 @@ void append_task(Task* task)
         task->Next = firstTask;
         lastTask = task;
     }
+}
+
+void erase_task(Task* task)
+{
+    virtual_memory_erase(task->AddressSpace);
+    
+    for (uint64_t qwordIndex = 0; qwordIndex < page_allocator_get_total_amount() / 64; qwordIndex++)
+    {
+        if (task->PageMap[qwordIndex] != 0) //If any bit is not zero
+        {            
+            for (uint64_t bitIndex = 0; bitIndex < 64; bitIndex++)
+            {
+                if ((task->PageMap[qwordIndex] & ((uint64_t)1 << bitIndex)) != 0) //If bit is set
+                {                    
+                    void* address = (void*)((qwordIndex * 64 + bitIndex) * 0x1000);
+                    page_allocator_unlock_page(address);
+                }
+            }
+        }
+    }
+
+    if (task == firstTask)
+    {
+        firstTask = task->Next;
+    }
+    if (task == lastTask)
+    {
+        lastTask = task->Prev;
+    }
+
+    task->Next->Prev = task->Prev;
+    task->Prev->Next = task->Next;
+
+    page_allocator_unlock_page((void*)task->StackBottom);
+    page_allocator_unlock_pages(task->PageMap, pageMapPageAmount);
+    kfree(task);
 }
 
 /*

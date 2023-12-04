@@ -121,13 +121,13 @@ void debug_error(const char* message)
 
     tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 12 * scale);
     tty_print("Used Heap = ");
-    tty_printi(heap_reserved_size() / 0x1000);
-    tty_print(" KB");
+    tty_printi(heap_reserved_size());
+    tty_print(" B");
 
     tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 13 * scale);
     tty_print("Free Heap = ");
-    tty_printi(heap_free_size() / 0x1000);
-    tty_print(" KB");
+    tty_printi(heap_free_size());
+    tty_print(" B");
 
     tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 14 * scale);
     tty_print("Locked Pages = ");

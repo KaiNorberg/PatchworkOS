@@ -4,8 +4,6 @@
 
 #include "kernel/string/string.h"
 
-VirtualAddressSpace* currentAddressSpace;
-
 VirtualAddressSpace* virtual_memory_create()
 {
     VirtualAddressSpace* addressSpace = (VirtualAddressSpace*)page_allocator_request();
@@ -14,15 +12,12 @@ VirtualAddressSpace* virtual_memory_create()
     return addressSpace;
 }
 
-void virtual_memory_load_space(VirtualAddressSpace* addressSpace)
+void virtual_memory_remap_range(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress, uint64_t size)
 {
-    currentAddressSpace = addressSpace;
-    asm volatile ("mov %0, %%cr3" : : "r" (addressSpace));
-}
-
-void virtual_memory_remap_current(void* virtualAddress, void* physicalAddress)
-{
-    virtual_memory_remap(currentAddressSpace, virtualAddress, physicalAddress);
+    for (uint64_t offset = 0; offset < size + 0x1000; offset += 0x1000)
+    {
+        virtual_memory_remap(addressSpace, (void*)((uint64_t)virtualAddress + offset), (void*)((uint64_t)physicalAddress + offset));
+    }
 }
 
 void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress)
@@ -96,4 +91,43 @@ void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddres
     pde.Present = 1;
     pde.ReadWrite = 1;
     pt->Entries[pIndex] = pde;
+}
+
+void virtual_memory_erase(VirtualAddressSpace* addressSpace)
+{    
+    PageDirEntry pde;
+
+    for (uint64_t pdpIndex = 0; pdpIndex < 512; pdpIndex++)
+    {
+        pde = addressSpace->Entries[pdpIndex];
+        PageTable* pdp;
+        if (pde.Present)
+        {
+            pdp = (PageTable*)((uint64_t)pde.Address << 12);
+            page_allocator_unlock_page(pdp);
+        
+            for (uint64_t pdIndex = 0; pdIndex < 512; pdIndex++)
+            {
+                pde = pdp->Entries[pdIndex]; 
+                PageTable* pd;
+                if (pde.Present)
+                {
+                    pd = (PageTable*)((uint64_t)pde.Address << 12);
+                    page_allocator_unlock_page(pd);
+                    for (uint64_t ptIndex = 0; ptIndex < 512; ptIndex++)
+                    {
+                        pde = pd->Entries[ptIndex];
+                        PageTable* pt;
+                        if (pde.Present)
+                        {
+                            pt = (PageTable*)((uint64_t)pde.Address << 12);
+                            page_allocator_unlock_page(pt);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    page_allocator_unlock_page(addressSpace);
 }

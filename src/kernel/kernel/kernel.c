@@ -40,7 +40,7 @@ void kernel_init(BootInfo* bootInfo)
     {
         virtual_memory_remap(kernelAddressSpace, (void*)((uint64_t)bootInfo->Screenbuffer->Base + i), (void*)((uint64_t)bootInfo->Screenbuffer->Base + i));
     }
-    virtual_memory_load_space(kernelAddressSpace);
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
     tty_end_message(TTY_MESSAGE_OK);
 
     tty_clear();
@@ -55,7 +55,7 @@ void kernel_init(BootInfo* bootInfo)
 
     idt_init();
     
-    heap_init(0x100000000000, 0x10 * 0x1000);
+    heap_init(kernelAddressSpace, 0x100000000000, 0x10 * 0x1000);
     
     file_system_init(bootInfo->RootDirectory);
     

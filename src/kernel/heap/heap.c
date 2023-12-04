@@ -15,9 +15,13 @@ typedef struct BlockHeader
 BlockHeader* firstBlock;
 BlockHeader* lastBlock;
 
-void heap_init(uint64_t heapStart, uint64_t startSize)
+VirtualAddressSpace* heapAddressSpace;
+
+void heap_init(VirtualAddressSpace* addressSpace, uint64_t heapStart, uint64_t startSize)
 {    
     tty_start_message("Heap initializing");
+
+    heapAddressSpace = addressSpace;
 
     if (startSize % 0x1000 != 0)
     {
@@ -31,7 +35,7 @@ void heap_init(uint64_t heapStart, uint64_t startSize)
     uint64_t startPageAmount = (startSize + sizeof(BlockHeader)) / 0x1000 + 1;
     for (uint64_t address = (uint64_t)firstBlock; address < (uint64_t)firstBlock + startPageAmount * 0x1000; address += 0x1000)
     {
-        virtual_memory_remap_current((void*)address, page_allocator_request());
+        virtual_memory_remap(heapAddressSpace, (void*)address, page_allocator_request());
     }
 
     firstBlock->Size = startSize;
@@ -194,7 +198,7 @@ void heap_reserve(uint64_t size)
 
     for (uint64_t address = (uint64_t)newBlock; address < (uint64_t)newBlock + size; address += 0x1000)
     {
-        virtual_memory_remap_current((void*)address, page_allocator_request());
+        virtual_memory_remap(heapAddressSpace, (void*)address, page_allocator_request());
     }
 
     newBlock->Size = size;
@@ -267,7 +271,7 @@ void* kmalloc(uint64_t size)
 
         for (uint64_t address = (uint64_t)newBlock; address < (uint64_t)newBlock + alignedSize + sizeof(BlockHeader); address += 0x1000)
         {
-            virtual_memory_remap_current((void*)address, page_allocator_request());
+            virtual_memory_remap(heapAddressSpace, (void*)address, page_allocator_request());
         }
 
         newBlock->Size = alignedSize;
@@ -287,7 +291,7 @@ void* kmalloc(uint64_t size)
         void* lastBlockEnd = HEAP_HEADER_GET_END(lastBlock);
         for (uint64_t address = (uint64_t)lastBlockEnd; address < (uint64_t)lastBlockEnd + sizeDelta; address += 0x1000)
         {
-            virtual_memory_remap_current((void*)address, page_allocator_request());
+            virtual_memory_remap(heapAddressSpace, (void*)address, page_allocator_request());
         }
 
         lastBlock->Size = alignedSize; 

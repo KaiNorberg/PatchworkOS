@@ -74,4 +74,4 @@ typedef struct
     VirtualAddressSpace* AddressSpace;
 } Program;
 
-Program* load_program(const char* path, BootInfo* bootInfo);
+uint8_t load_program(const char* path);
