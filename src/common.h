@@ -1,5 +1,6 @@
-#define SYS_YIELD 0
-#define SYS_EXIT 1
+#define SYS_TEST 0
+#define SYS_YIELD 1
+#define SYS_EXIT 2
 #define SYS_AMOUNT 2
 
 #define TASK_STATE_RUNNING 0

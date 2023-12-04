@@ -52,7 +52,7 @@ Task* get_running_task();
 
 Task* get_next_ready_task(Task* task);
 
-void create_task(void (*main)(), VirtualAddressSpace* addressSpace, void* stackBottom, uint64_t stackSize);
+void create_task(void* entry, VirtualAddressSpace* addressSpace, void* stackBottom, uint64_t stackSize);
 
 void append_task(Task* task);
 

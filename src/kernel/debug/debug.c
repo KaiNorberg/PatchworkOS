@@ -50,11 +50,11 @@ void debug_error(const char* message)
     white.G = 255;
     white.B = 255;
 
-    Pixel green;
+    /*Pixel green;
     green.A = 255;
     green.R = 152;
     green.G = 195;
-    green.B = 121;
+    green.B = 121;*/
 
     Pixel red;
     red.A = 255;

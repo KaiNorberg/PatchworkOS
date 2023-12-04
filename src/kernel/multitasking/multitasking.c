@@ -145,7 +145,7 @@ Task* get_next_ready_task(Task* task)
     }
 }
 
-void create_task(void (*entry)(), VirtualAddressSpace* addressSpace, void* stackBottom, uint64_t stackSize)
+void create_task(void* entry, VirtualAddressSpace* addressSpace, void* stackBottom, uint64_t stackSize)
 { 
     Task* newTask = kmalloc(sizeof(Task));
     memset(newTask, 0, sizeof(Task));
@@ -188,6 +188,7 @@ void append_task(Task* task)
         lastTask = task;
     }
 }
+
 /*
 void yield() 
 {    

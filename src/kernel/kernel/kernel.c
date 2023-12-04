@@ -59,7 +59,7 @@ void kernel_init(BootInfo* bootInfo)
     
     file_system_init(bootInfo->RootDirectory);
     
-    syscall_init(kernelAddressSpace, (uint64_t*)page_allocator_request());
+    syscall_init(kernelAddressSpace);
 
     multitasking_init(kernelAddressSpace);
 }

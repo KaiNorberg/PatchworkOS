@@ -59,25 +59,19 @@ void _start(BootInfo* bootInfo)
     uint64_t cr3;
     asm volatile("movq %%cr3, %0" : "=r" (cr3));
 
-    tty_print("\n\rCreating task1...\n\n\r");
-    void* stackBottom = page_allocator_request();
-    uint64_t stackSize = 0x1000;
-    create_task(task1, (VirtualAddressSpace*)cr3, stackBottom, stackSize);
+    tty_print("\n\rLoading program...\n\n\r");
 
-    multitasking_visualize();
+    Program* program = load_program("/PROGRAMS/test.elf", bootInfo);
+    
+    create_task((void*)program->Header.Entry, program->AddressSpace, program->StackBottom, program->StackSize);
 
-    tty_print("Creating task2...\n\n\r");
-    create_task(task2, (VirtualAddressSpace*)cr3, stackBottom, stackSize);
-
-    multitasking_visualize();
-
-    tty_print("Yielding...\n\n\r");
+    tty_print("Yielding to program...\n\n\r");
 
     uint64_t rax = SYS_YIELD;
     asm volatile("movq %0, %%rax" : : "r"(rax));
     asm volatile("int $0x80");
     
-    tty_print("Back in the main task!\n\n\r");
+    tty_print("\nBack in the main task!\n\n\r");
 
     multitasking_visualize();
 

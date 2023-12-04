@@ -7,7 +7,7 @@ void gop_put(Framebuffer* framebuffer, const Point point, const Pixel pixel)
         return;
     }
 
-    Pixel* pixelPtr = ((uint64_t)framebuffer->Base + point.X * sizeof(Pixel) + point.Y * framebuffer->PixelsPerScanline * 4);
+    Pixel* pixelPtr = (Pixel*)((uint64_t)framebuffer->Base + point.X * sizeof(Pixel) + point.Y * framebuffer->PixelsPerScanline * 4);
 
     *pixelPtr = pixel;
 }

@@ -1,9 +1,10 @@
 global _start
 _start:
-    mov rax, 1234
+    mov rax, 0 ;Syscall test!
     int 0x80
-    mov rax, 5678
+
+    mov rax, 0 ;Syscall test!
     int 0x80
-.loop:
-    hlt
-    jmp .loop
+
+    mov rax, 1 ;Yield
+    int 0x80
