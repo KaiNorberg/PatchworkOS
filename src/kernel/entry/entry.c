@@ -81,9 +81,6 @@ void _start(BootInfo* bootInfo)
 
     multitasking_visualize();
 
-    uint64_t test = 1234;
-    asm volatile("jmp %0" : : "r" (test));
-
     while (1)
     {
         asm("hlt");
