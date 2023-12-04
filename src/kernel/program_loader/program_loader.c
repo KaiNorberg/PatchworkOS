@@ -35,10 +35,7 @@ uint8_t load_program(const char* path)
     file_system_read(programHeaders, programHeaderTableSize, file);
     
     VirtualAddressSpace* addressSpace = virtual_memory_create();
-    for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
-    {
-        virtual_memory_remap(addressSpace, (void*)(i * 0x1000), (void*)(i * 0x1000));
-    }
+    virtual_memory_remap_range(addressSpace, 0, 0, page_allocator_get_total_amount() * 0x1000);
 
     Task* task = create_task((void*)header.Entry, addressSpace);
 
