@@ -49,6 +49,9 @@ all:
 	@echo !==== KERNEL
 	@cd src/kernel && make all
 
+	@echo !==== LIBC
+	@cd src/libc && make all
+
 	@echo !==== TEST PROGRAM
 	@cd src/programs/test && make all
 

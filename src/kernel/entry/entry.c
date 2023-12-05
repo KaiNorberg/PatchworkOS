@@ -14,44 +14,6 @@
 
 #include "kernel/debug/debug.h"
 
-void task1()
-{
-    tty_print("Hello from task1!\n\r");
-
-    uint64_t rax = SYS_YIELD;
-    asm volatile("movq %0, %%rax" : : "r"(rax));
-    asm volatile("int $0x80");
-}
-
-void task2()
-{
-    tty_print("Hello from task2, this task will exit!\n\n\r");
-    multitasking_visualize();
-    
-    uint64_t rax = SYS_EXIT;
-    asm volatile("movq %0, %%rax" : : "r"(rax));
-    asm volatile("int $0x80");
-}
-
-/*
-    tty_print("\n\rLoading program..\n\n\r");
-
-    Program* program = load_program("/PROGRAMS/test.elf", bootInfo);
-
-    void* stackBottom = page_allocator_request();
-    uint64_t stackSize = 0x1000;
-
-    create_task(program->Header.Entry, program->AddressSpace, program->StackBottom, program->StackSize);
-
-    tty_print("Yielding...\n\n\r");
-
-    //yield();
-
-    uint64_t rax = 5555555555555555555;
-    asm volatile("movq %0, %%rax" : : "r"(rax));
-    asm volatile("int $0x80");
-*/
-
 void _start(BootInfo* bootInfo)
 {   
     kernel_init(bootInfo);
