@@ -2,8 +2,8 @@
 
 #include <stdint.h>
 
-#include "kernel/page_allocator/page_allocator.h"
-#include "kernel/virtual_memory/virtual_memory.h"
+#include "page_allocator/page_allocator.h"
+#include "virtual_memory/virtual_memory.h"
 
 void heap_init(VirtualAddressSpace* addressSpace, uint64_t heapStart, uint64_t startSize);
 

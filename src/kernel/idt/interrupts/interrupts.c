@@ -1,16 +1,16 @@
 #include "interrupts.h"
 
-#include "kernel/kernel/kernel.h"
+#include "kernel/kernel.h"
 
-#include "kernel/io/io.h"
+#include "io/io.h"
 
-#include "kernel/tty/tty.h"
-#include "kernel/utils/utils.h"
+#include "tty/tty.h"
+#include "utils/utils.h"
 
-#include "kernel/syscall/syscall.h"
-#include "kernel/multitasking/multitasking.h"
+#include "syscall/syscall.h"
+#include "multitasking/multitasking.h"
 
-#include "kernel/debug/debug.h"
+#include "debug/debug.h"
 
 #define ENTER 0x1C
 #define BACKSPACE 0x0E

@@ -1,6 +1,6 @@
 #include "heap.h"
 
-#include "kernel/tty/tty.h"
+#include "tty/tty.h"
 
 #define HEAP_HEADER_GET_START(block) ((void*)((uint64_t)block + sizeof(BlockHeader)))
 #define HEAP_HEADER_GET_END(block) ((void*)((uint64_t)block + sizeof(BlockHeader) + block->Size))

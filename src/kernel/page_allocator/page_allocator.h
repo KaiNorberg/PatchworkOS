@@ -1,8 +1,8 @@
 #pragma once
 
-#include "kernel/memory/memory.h"
+#include "memory/memory.h"
 
-#include "kernel/gop/gop.h"
+#include "gop/gop.h"
 
 #include <stdint.h>
 

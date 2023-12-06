@@ -448,13 +448,13 @@ EFI_STATUS efi_main(EFI_HANDLE In_ImageHandle, EFI_SYSTEM_TABLE* In_SystemTable)
 	EFI_FILE* rootVolume = get_root_volume(In_ImageHandle);
 
 	Print(L"Caching file system..\n\r");
-	Directory rootDirectory = create_directory_struct(rootVolume, "ROOT");
+	Directory rootDirectory = create_directory_struct(rootVolume, "root");
 	
 	void* rsdp = get_rsdp();
 	Framebuffer screenbuffer = get_gop_framebuffer();
 
-	EFI_FILE* kernelVolume = open_file(rootVolume, L"KERNEL");
-	EFI_FILE* fontsVolume = open_file(rootVolume, L"FONTS");
+	EFI_FILE* kernelVolume = open_file(rootVolume, L"kernel");
+	EFI_FILE* fontsVolume = open_file(rootVolume, L"fonts");
 
 	Elf64_Ehdr kernelFile = load_elf_file(kernelVolume, L"Kernel.elf");
 

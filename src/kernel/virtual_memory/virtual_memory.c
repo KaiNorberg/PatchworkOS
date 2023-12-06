@@ -1,8 +1,8 @@
 #include "virtual_memory.h"
 
-#include "kernel/page_allocator/page_allocator.h"
+#include "page_allocator/page_allocator.h"
 
-#include "kernel/string/string.h"
+#include "string/string.h"
 
 VirtualAddressSpace* virtual_memory_create()
 {

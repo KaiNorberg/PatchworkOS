@@ -1,7 +1,7 @@
 #pragma once
 
-#include "kernel/virtual_memory/virtual_memory.h"
-#include "kernel/kernel/kernel.h"
+#include "virtual_memory/virtual_memory.h"
+#include "kernel/kernel.h"
 
 #define ET_NONE 0x00
 #define ET_REL 0x01

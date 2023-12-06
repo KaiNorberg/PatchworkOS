@@ -1,12 +1,12 @@
 #include "program_loader.h"
 
-#include "kernel/string/string.h"
-#include "kernel/file_system/file_system.h"
-#include "kernel/heap/heap.h"
-#include "kernel/page_allocator/page_allocator.h"
-#include "kernel/multitasking/multitasking.h"
+#include "string/string.h"
+#include "file_system/file_system.h"
+#include "heap/heap.h"
+#include "page_allocator/page_allocator.h"
+#include "multitasking/multitasking.h"
 
-#include "kernel/tty/tty.h"
+#include "tty/tty.h"
 
 uint8_t load_program(const char* path)
 {
@@ -14,7 +14,7 @@ uint8_t load_program(const char* path)
 
     if (file == 0)
     {
-        tty_print("ERROR: Failed to open file!\n\r");
+        tty_print("ERROR: Failed to open file ("); tty_print(path); tty_print(")!\n\r");
         return 0;
     }
 

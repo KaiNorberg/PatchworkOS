@@ -1,18 +1,18 @@
-#include "kernel/gdt/gdt.h"
-#include "kernel/tty/tty.h"
-#include "kernel/idt/idt.h"
-#include "kernel/utils/utils.h"
-#include "kernel/file_system/file_system.h"
-#include "kernel/page_allocator/page_allocator.h"
-#include "kernel/multitasking/multitasking.h"
-#include "kernel/program_loader/program_loader.h"
-#include "kernel/heap/heap.h"
+#include "gdt/gdt.h"
+#include "tty/tty.h"
+#include "idt/idt.h"
+#include "utils/utils.h"
+#include "file_system/file_system.h"
+#include "page_allocator/page_allocator.h"
+#include "multitasking/multitasking.h"
+#include "program_loader/program_loader.h"
+#include "heap/heap.h"
 
-#include "kernel/kernel/kernel.h"
+#include "kernel/kernel.h"
 
-#include "common.h"
+#include "../common.h"
 
-#include "kernel/debug/debug.h"
+#include "debug/debug.h"
 
 void _start(BootInfo* bootInfo)
 {   
@@ -23,7 +23,7 @@ void _start(BootInfo* bootInfo)
 
     tty_print("\n\rLoading program...\n\n\r");
 
-    if (!load_program("/PROGRAMS/test.elf"))
+    if (!load_program("/programs/test/test.elf"))
     {
         tty_print("Failed to load program!\n\r");
     }

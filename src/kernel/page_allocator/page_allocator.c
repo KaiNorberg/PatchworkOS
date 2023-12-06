@@ -1,8 +1,8 @@
 #include "page_allocator.h"
 
-#include "kernel/tty/tty.h"
+#include "tty/tty.h"
 
-#include "kernel/string/string.h"
+#include "string/string.h"
 
 extern uint64_t _kernelStart;
 extern uint64_t _kernelEnd;

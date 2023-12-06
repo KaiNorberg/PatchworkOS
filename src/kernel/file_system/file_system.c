@@ -1,8 +1,8 @@
 #include "file_system.h"
 
-#include "kernel/string/string.h"
-#include "kernel/heap/heap.h"
-#include "kernel/tty/tty.h"
+#include "string/string.h"
+#include "heap/heap.h"
+#include "tty/tty.h"
 
 RawDirectory* rootDir;
 

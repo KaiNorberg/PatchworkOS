@@ -1,6 +1,6 @@
 #pragma once
 
-#include "kernel/gop/gop.h"
+#include "gop/gop.h"
 
 #define VIRTUAL_MEMORY_LOAD_SPACE(addressSpace) asm volatile ("mov %0, %%cr3" : : "r" ((uint64_t)addressSpace))
 

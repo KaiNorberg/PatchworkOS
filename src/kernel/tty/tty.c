@@ -1,7 +1,7 @@
 #include "tty.h"
 
-#include "kernel/string/string.h"
-#include "kernel/utils/utils.h"
+#include "string/string.h"
+#include "utils/utils.h"
 
 Framebuffer* frontbuffer;
 PSFFont* font;

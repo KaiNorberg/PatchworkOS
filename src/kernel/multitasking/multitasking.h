@@ -1,9 +1,9 @@
 #pragma once
 
-#include "kernel/kernel/kernel.h"
-#include "kernel/virtual_memory/virtual_memory.h"
-#include "kernel/heap/heap.h"
-#include "kernel/idt/idt.h"
+#include "kernel/kernel.h"
+#include "virtual_memory/virtual_memory.h"
+#include "heap/heap.h"
+#include "idt/idt.h"
 
 typedef struct
 {
