@@ -1,11 +1,11 @@
 #include "debug.h"
 
-#include "kernel/tty/tty.h"
+#include "tty/tty.h"
 
-#include "kernel/heap/heap.h"
-#include "kernel/page_allocator/page_allocator.h"
+#include "heap/heap.h"
+#include "page_allocator/page_allocator.h"
 
-#include "common.h"
+#include "../common.h"
 
 //Jokes provided by skift-os https://github.com/skift-org/skift/tree/main :)
 

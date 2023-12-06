@@ -1,7 +1,7 @@
 #include "idt.h"
 
-#include "kernel/io/io.h"
-#include "kernel/tty/tty.h"
+#include "io/io.h"
+#include "tty/tty.h"
 
 #include "interrupts/interrupts.h"
 

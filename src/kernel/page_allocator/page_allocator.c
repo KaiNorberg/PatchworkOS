@@ -1,8 +1,8 @@
 #include "page_allocator.h"
 
-#include "kernel/tty/tty.h"
+#include "tty/tty.h"
 
-#include "kernel/string/string.h"
+#include "string/string.h"
 
 extern uint64_t _kernelStart;
 extern uint64_t _kernelEnd;
@@ -144,7 +144,7 @@ void* page_allocator_request_amount(uint64_t amount)
 {
     uint64_t startAddress = 0;
     uint64_t freePagesFound = 0;
-    for (uint64_t address = 0; address < pageAmount * 0x1000; address += 0x1000)
+    for (uint64_t address = 0; address < amount * 0x1000; address += 0x1000)
     {
         if (page_allocator_get_status((void*)address)) //Reserved
         {

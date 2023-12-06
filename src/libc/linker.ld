@@ -5,11 +5,8 @@ SECTIONS
 {
 	. = 0x8000;
 
-	_programStart = .;
-
 	.text BLOCK(4K) : ALIGN(4K)
 	{
-		*(.multiboot)
 		*(.text)
 	}
 
@@ -28,6 +25,4 @@ SECTIONS
 		*(COMMON)
 		*(.bss)
 	}
-
-	_programEnd = .;
 }
