@@ -11,7 +11,7 @@ OBJECTS += $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/%.asm.o, $(ASM_SOURCE))
 OUTPUT = $(BIN_DIR)/$(OUTPUTNAME)
 
 CC = gcc
-C_FLAGS = -Wall -ffreestanding -fno-stack-protector -fno-exceptions -I $(SRC_DIR)
+C_FLAGS = -Os -Wall -ffreestanding -fno-stack-protector -fno-exceptions -I $(SRC_DIR)
 
 LD = ld
 LINKER_SCRIPT = linker.ld
