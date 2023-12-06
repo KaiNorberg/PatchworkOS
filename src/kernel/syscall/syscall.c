@@ -1,11 +1,11 @@
 #include "syscall.h"
 
-#include "tty/tty.h"
-#include "file_system/file_system.h"
-#include "multitasking/multitasking.h"
-#include "string/string.h"
+#include "kernel/tty/tty.h"
+#include "kernel/file_system/file_system.h"
+#include "kernel/multitasking/multitasking.h"
+#include "kernel/string/string.h"
 
-#include "../common.h"
+#include "common.h"
 
 VirtualAddressSpace* syscallAddressSpace;
 
@@ -82,5 +82,5 @@ uint64_t syscall_handler(RegisterBuffer* registerBuffer, InterruptStackFrame* fr
 
     VIRTUAL_MEMORY_LOAD_SPACE(taskAddressSpace);
 
-    return out;
+    return 0;
 }

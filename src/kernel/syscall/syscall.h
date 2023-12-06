@@ -2,9 +2,9 @@
 
 #include <stdint.h>
 
-#include "virtual_memory/virtual_memory.h"
-#include "idt/interrupts/interrupts.h"
-#include "multitasking/multitasking.h"
+#include "kernel/virtual_memory/virtual_memory.h"
+#include "kernel/idt/interrupts/interrupts.h"
+#include "kernel/multitasking/multitasking.h"
 
 void syscall_init(VirtualAddressSpace* addressSpace);
 

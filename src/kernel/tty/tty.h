@@ -2,8 +2,8 @@
 
 #include <stdint.h>
 
-#include "gop/gop.h"
-#include "psf/psf.h"
+#include "kernel/gop/gop.h"
+#include "kernel/psf/psf.h"
 
 typedef enum
 {

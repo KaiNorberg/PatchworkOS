@@ -1,35 +1,43 @@
-PATCHWORK_DIR := ../..
-OUTPUTNAME := libc.o
-PARENT_DIR := libc
+OUTPUTNAME = libc
 
-include $(PATCHWORK_DIR)/Make.defaults
-include $(PATCHWORK_DIR)/Make.rules
+LDS = linker.ld
+LD = ld
+LDFLAGS = -Bstatic -nostdlib
 
-LD_FLAGS = -T $(LINKER_SCRIPT) -Bstatic -nostdlib -r
+CC = gcc
+ASMC = nasm
 
-build: $(OBJECTS)
+CFLAGS = -Wall -ffreestanding -fno-stack-protector -fno-exceptions -I../ -O3
+ASMFLAGS =
 
-$(BUILD_DIR)/%.asm.o: $(SRC_DIR)/%.asm
+SRCDIR = ./
+OBJDIR = ../../build/$(OUTPUTNAME)
+BINDIR = ../../bin/$(OUTPUTNAME)
+
+rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
+
+SRC = $(call rwildcard,$(SRCDIR),*.c)
+ASMSRC = $(call rwildcard,$(SRCDIR),*.asm)
+OBJS = $(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(SRC))
+OBJS += $(patsubst $(SRCDIR)/%.asm, $(OBJDIR)/%_ASM.o, $(ASMSRC))
+DIRS = $(wildcard $(SRCDIR)/*)
+
+libc: $(OBJS)
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.c
+	@echo !==== COMPILING $^
 	@mkdir -p $(@D)
-	@$(call run_and_test, $(ASM) $(ASM_FLAGS) $^ -o $@, "Compiling")
+	$(CC) $(CFLAGS) -c $^ -o $@
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
+$(OBJDIR)/%_ASM.o: $(SRCDIR)/%.asm
+	@echo !==== COMPILING $^
 	@mkdir -p $(@D)
-	@$(call run_and_test, $(CC) $(C_FLAGS) -c -o $@ $<, "Compiling")
-
-link: $(OUTPUT)
-
-$(OUTPUT): $(OBJECTS)
-	@$(call run_and_test, $(LD) $(LD_FLAGS) -o $@ $^, "Linking")
-
-all: 
-	@make -s build
-	@make -s link
-
+	$(ASMC) $(ASMFLAGS) $^ -f elf64 -o $@
+	
 setup:
-	$(call run_and_test, mkdir -p $(SRC_DIR) $(BUILD_DIR) $(BIN_DIR), "Running")
+	@mkdir -p $(SRCDIR)
+	@mkdir -p $(OBJDIR)
 
-clean:		
-	$(call run_and_test, rm -rf $(BUILD_DIR) $(BIN_DIR), "Running")
-
-.PHONY: build link all setup clean
+all:
+	make setup
+	make libc

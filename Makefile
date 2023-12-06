@@ -1,5 +1,9 @@
 OSNAME = PatchworkOS
 
+LDS = src/kernel/linker.ld
+LD = ld
+LDFLAGS = -T $(LDS) -Bsymbolic -nostdlib
+
 OBJDIR := build/kernel
 
 SRCDIR := src/kernel
@@ -17,20 +21,12 @@ setup:
 	@mkdir -p $(SRCDIR)
 	@mkdir -p $(OBJDIR)
 	
+	@echo !==== BOOTLOADER
+	@cd src/bootloader && make setup
+	@echo !==== KERNEL
+	@cd src/kernel && make setup	
 	@echo !==== GNU-EFI
 	@cd vendor/gnu-efi && make all
-
-	@echo !==== BOOTLOADER ====!
-	@cd src/bootloader && make -s setup
-	
-	@echo !==== KERNEL ====!
-	@cd src/kernel && make -s setup
-
-	@echo !==== LIBC ====!
-	@cd src/libc && make -s setup
-
-	@echo !==== TEST PROGRAM ====!
-	@cd src/programs/test && make -s setup
 
 buildimg:
 	dd if=/dev/zero of=$(BINDIR)/$(OSNAME).img bs=512 count=9375
@@ -45,42 +41,27 @@ buildimg:
 	mcopy -i $(BINDIR)/$(OSNAME).img $(OSROOTDIR)/startup.nsh ::
 	mcopy -i $(BINDIR)/$(OSNAME).img $(OSROOTDIR)/FONTS/zap-vga16.psf ::/FONTS
 	mcopy -i $(BINDIR)/$(OSNAME).img $(OSROOTDIR)/FONTS/zap-light16.psf ::/FONTS
-	mcopy -i $(BINDIR)/$(OSNAME).img $(BINDIR)/programs/test/test.elf ::/PROGRAMS
+	mcopy -i $(BINDIR)/$(OSNAME).img $(BINDIR)/programs/test.elf ::/PROGRAMS
 
 all:
-	@echo !==== BOOTLOADER ====!
-	@cd src/bootloader && make -s all
+	@echo !==== BOOTLOADER
+	@cd src/bootloader && make all
+	@echo !==== KERNEL
+	@cd src/kernel && make all
 
-	@echo !==== KERNEL ====!
-	@cd src/kernel && make -s all
+	@echo !==== LIBC
+	@cd src/libc && make all
 
-	@echo !==== LIBC ====!
-	@cd src/libc && make -s all
+	@echo !==== TEST PROGRAM
+	@cd src/programs/test && make all
 
-	@echo !==== TEST PROGRAM ====!
-	@cd src/programs/test && make -s all
+	@echo !==== BUILDIMG
+	make buildimg
 
-	@echo !==== BUILDIMG ====!
-	make -s buildimg
-
-clean:	
+clean:
 	@rm -rf $(OBJDIR)
 	@rm -rf $(BINDIR)
-	
-	@echo !==== GNU-EFI
 	@cd vendor/gnu-efi && make clean
-
-	@echo !==== BOOTLOADER ====!
-	@cd src/bootloader && make -s clean
-
-	@echo !==== KERNEL ====!
-	@cd src/kernel && make -s clean
-
-	@echo !==== LIBC ====!
-	@cd src/libc && make -s clean
-
-	@echo !==== TEST PROGRAM ====!
-	@cd src/programs/test && make -s clean
 
 run:
 	qemu-system-x86_64 -drive file=$(BINDIR)/$(OSNAME).img -m 1G -cpu qemu64 -drive if=pflash,format=raw,unit=0,file="$(OVMFDIR)/OVMF_CODE-pure-efi.fd",readonly=on -drive if=pflash,format=raw,unit=1,file="$(OVMFDIR)/OVMF_VARS-pure-efi.fd" -net none

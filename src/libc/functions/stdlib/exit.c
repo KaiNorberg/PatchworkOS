@@ -1,4 +1,4 @@
-#include "auxiliary/system/system.h"
+#include "libc/auxiliary/system/system.h"
 
 void exit(int code)
 {

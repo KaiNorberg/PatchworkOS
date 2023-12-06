@@ -2,11 +2,11 @@
 
 #include <stdint.h>
 
-#include "gop/gop.h"
-#include "psf/psf.h"
-#include "file_system/file_system.h"
-#include "memory/memory.h"
-#include "virtual_memory/virtual_memory.h"
+#include "kernel/gop/gop.h"
+#include "kernel/psf/psf.h"
+#include "kernel/file_system/file_system.h"
+#include "kernel/memory/memory.h"
+#include "kernel/virtual_memory/virtual_memory.h"
 
 typedef struct 
 {

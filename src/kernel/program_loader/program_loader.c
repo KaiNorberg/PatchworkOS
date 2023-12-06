@@ -1,12 +1,12 @@
 #include "program_loader.h"
 
-#include "string/string.h"
-#include "file_system/file_system.h"
-#include "heap/heap.h"
-#include "page_allocator/page_allocator.h"
-#include "multitasking/multitasking.h"
+#include "kernel/string/string.h"
+#include "kernel/file_system/file_system.h"
+#include "kernel/heap/heap.h"
+#include "kernel/page_allocator/page_allocator.h"
+#include "kernel/multitasking/multitasking.h"
 
-#include "tty/tty.h"
+#include "kernel/tty/tty.h"
 
 uint8_t load_program(const char* path)
 {
@@ -32,11 +32,10 @@ uint8_t load_program(const char* path)
 
     uint64_t programHeaderTableSize = header.ProgramHeaderAmount * header.ProgramHeaderSize;
     ElfProgramHeader* programHeaders = kmalloc(programHeaderTableSize);
-    file_system_seek(file, header.ProgramHeaderOffset, SEEK_SET);
     file_system_read(programHeaders, programHeaderTableSize, file);
     
     VirtualAddressSpace* addressSpace = virtual_memory_create();
-    virtual_memory_remap_range(addressSpace, 0, 0, page_allocator_get_total_amount());
+    virtual_memory_remap_range(addressSpace, 0, 0, page_allocator_get_total_amount() * 0x1000);
 
     Task* task = create_task((void*)header.Entry, addressSpace);
 
@@ -50,10 +49,10 @@ uint8_t load_program(const char* path)
 
             file_system_seek(file, programHeaders[i].Offset, SEEK_SET);
             file_system_read(segment, programHeaders[i].MemorySize, file);
-        }
+		}
 		break;
 		}
-	}    
+	}
 
     kfree(programHeaders);
     file_system_close(file);

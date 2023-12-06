@@ -1,8 +1,8 @@
 #include "utils.h"
 
-#include "string/string.h"
+#include "kernel/string/string.h"
 
-char* itoa(int64_t i, char b[], uint8_t base)
+char* itoa(uint64_t i, char b[], uint8_t base)
 {
     char const digit[] = "0123456789ABCDEF";
     char* p = b;
@@ -13,7 +13,7 @@ char* itoa(int64_t i, char b[], uint8_t base)
         i *= -1;
     }
 
-    int64_t shifter = i;
+    uint64_t shifter = i;
     do
     { //Move to where representation ends
         ++p;
@@ -35,7 +35,7 @@ char* itoa(int64_t i, char b[], uint8_t base)
 uint64_t stoi(const char* string) 
 {
     uint64_t multiplier = 1, result = 0;
-    for (int64_t i = strlen(string) - 1; i >= 0; i--) 
+    for (uint64_t i = strlen(string) - 1; i >= 0; i--) 
     {
         result += multiplier * (string[i] - '0');
         multiplier *= 10;

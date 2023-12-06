@@ -1,6 +1,6 @@
 #pragma once
 
-#include "gop/gop.h"
+#include "kernel/gop/gop.h"
 
 #define VIRTUAL_MEMORY_LOAD_SPACE(addressSpace) asm volatile ("mov %0, %%cr3" : : "r" ((uint64_t)addressSpace))
 
@@ -30,7 +30,7 @@ typedef PageTable VirtualAddressSpace;
 
 VirtualAddressSpace* virtual_memory_create();
 
-void virtual_memory_remap_range(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress, uint64_t pageAmount);
+void virtual_memory_remap_range(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress, uint64_t size);
 
 void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress);
 

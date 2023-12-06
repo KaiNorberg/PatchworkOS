@@ -1,13 +1,13 @@
 #include "multitasking.h"
 
-#include "../common.h"
+#include "common.h"
 
-#include "kernel/kernel.h"
-#include "heap/heap.h"
-#include "idt/idt.h"
-#include "tty/tty.h"
-#include "page_allocator/page_allocator.h"
-#include "string/string.h"
+#include "kernel/kernel/kernel.h"
+#include "kernel/heap/heap.h"
+#include "kernel/idt/idt.h"
+#include "kernel/tty/tty.h"
+#include "kernel/page_allocator/page_allocator.h"
+#include "kernel/string/string.h"
 
 Task* dummyTask;
 

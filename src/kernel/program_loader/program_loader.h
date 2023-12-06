@@ -1,7 +1,7 @@
 #pragma once
 
-#include "virtual_memory/virtual_memory.h"
-#include "kernel/kernel.h"
+#include "kernel/virtual_memory/virtual_memory.h"
+#include "kernel/kernel/kernel.h"
 
 #define ET_NONE 0x00
 #define ET_REL 0x01
@@ -63,5 +63,15 @@ typedef struct
     void* Segment;
     uint64_t PageAmount;
 } ProgramSegment;
+
+typedef struct
+{
+    ElfHeader Header;
+    ProgramSegment* Segments;
+    uint64_t SegmentAmount;
+    void* StackBottom;
+    uint64_t StackSize;
+    VirtualAddressSpace* AddressSpace;
+} Program;
 
 uint8_t load_program(const char* path);

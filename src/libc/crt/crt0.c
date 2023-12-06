@@ -1,6 +1,6 @@
-#include "include/stdlib.h"
+#include "libc/include/stdlib.h"
 
-extern int main(int argc, char* argv[]);
+int main(int argc, char* argv[]);
 
 void _start()
 {

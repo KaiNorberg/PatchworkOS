@@ -1,8 +1,8 @@
 #include "virtual_memory.h"
 
-#include "page_allocator/page_allocator.h"
+#include "kernel/page_allocator/page_allocator.h"
 
-#include "string/string.h"
+#include "kernel/string/string.h"
 
 VirtualAddressSpace* virtual_memory_create()
 {
@@ -12,11 +12,11 @@ VirtualAddressSpace* virtual_memory_create()
     return addressSpace;
 }
 
-void virtual_memory_remap_range(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress, uint64_t pageAmount)
+void virtual_memory_remap_range(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress, uint64_t size)
 {
-    for (uint64_t page = 0; page < pageAmount; page++)
+    for (uint64_t offset = 0; offset < size + 0x1000; offset += 0x1000)
     {
-        virtual_memory_remap(addressSpace, (void*)((uint64_t)virtualAddress + page * 0x1000), (void*)((uint64_t)physicalAddress + page * 0x1000));
+        virtual_memory_remap(addressSpace, (void*)((uint64_t)virtualAddress + offset), (void*)((uint64_t)physicalAddress + offset));
     }
 }
 

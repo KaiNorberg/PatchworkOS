@@ -1,41 +1,58 @@
-PATCHWORK_DIR := ../..
-OUTPUTNAME := kernel.elf
-PARENT_DIR := kernel
+OUTPUTNAME = kernel
 
-include $(PATCHWORK_DIR)/Make.defaults
-include $(PATCHWORK_DIR)/Make.rules
+LDS = linker.ld
+LD = ld
+LDFLAGS = -T $(LDS) -Bsymbolic -nostdlib
 
-build: $(OBJECTS)
+CC = gcc
+ASMC = nasm
 
-$(BUILD_DIR)/idt/interrupts/interrupts.o: $(SRC_DIR)/idt/interrupts/interrupts.c
+CFLAGS = -Wall -ffreestanding -fno-stack-protector -fno-exceptions -I../ -O3
+ASMFLAGS =
+
+SRCDIR = ./
+OBJDIR = ../../build/$(OUTPUTNAME)
+BINDIR = ../../bin/$(OUTPUTNAME)
+
+rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
+
+SRC = $(call rwildcard,$(SRCDIR),*.c)
+ASMSRC = $(call rwildcard,$(SRCDIR),*.asm)
+OBJS = $(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(SRC))
+OBJS += $(patsubst $(SRCDIR)/%.asm, $(OBJDIR)/%_ASM.o, $(ASMSRC))
+DIRS = $(wildcard $(SRCDIR)/*)
+
+kernel: $(OBJS)
+
+$(OBJDIR)/idt/interrupts/interrupts.o: $(SRCDIR)/idt/interrupts/interrupts.c
+	@echo !==== COMPILING $^
 	@mkdir -p $(@D)
-	@$(call run_and_test, $(CC) $(C_FLAGS) -mno-red-zone -mgeneral-regs-only -c -o $@ $<, "Compiling")
-
-$(BUILD_DIR)/syscall/syscall.o: $(SRC_DIR)/syscall/syscall.c
+	$(CC) $(CFLAGS) -mno-red-zone -mgeneral-regs-only -c $^ -o $@ 
+	
+$(OBJDIR)/syscall/syscall.o: $(SRCDIR)/syscall/syscall.c
+	@echo !==== COMPILING $^
 	@mkdir -p $(@D)
-	@$(call run_and_test, $(CC) $(C_FLAGS) -mno-red-zone -mgeneral-regs-only -c -o $@ $<, "Compiling")
+	$(CC) $(CFLAGS) -mno-red-zone -mgeneral-regs-only -c $^ -o $@ 
 
-$(BUILD_DIR)/%.asm.o: $(SRC_DIR)/%.asm
+$(OBJDIR)/%.o: $(SRCDIR)/%.c
+	@echo !==== COMPILING $^
 	@mkdir -p $(@D)
-	@$(call run_and_test, $(ASM) $(ASM_FLAGS) $^ -o $@, "Compiling")
+	$(CC) $(CFLAGS) -c $^ -o $@
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
+$(OBJDIR)/%_ASM.o: $(SRCDIR)/%.asm
+	@echo !==== COMPILING $^
 	@mkdir -p $(@D)
-	@$(call run_and_test, $(CC) $(C_FLAGS) -c -o $@ $<, "Compiling")
+	$(ASMC) $(ASMFLAGS) $^ -f elf64 -o $@
 
-link: $(OUTPUT)
-
-$(OUTPUT): $(OBJECTS)
-	@$(call run_and_test, $(LD) $(LD_FLAGS) -o $@ $^, "Linking")
-
-all: 
-	@make -s build
-	@make -s link
+link:
+	$(LD) $(LDFLAGS) -o $(BINDIR)/kernel.elf $(OBJS)
 
 setup:
-	$(call run_and_test, mkdir -p $(SRC_DIR) $(BUILD_DIR) $(BIN_DIR), "Running")
+	@mkdir -p $(SRCDIR)
+	@mkdir -p $(OBJDIR)
+	@mkdir -p $(BINDIR)
 
-clean:		
-	$(call run_and_test, rm -rf $(BUILD_DIR) $(BIN_DIR), "Running")
-
-.PHONY: build link all setup clean
+all:
+	make setup
+	make kernel
+	make link
