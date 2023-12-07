@@ -14,10 +14,8 @@ void syscall_init(VirtualAddressSpace* addressSpace)
     syscallAddressSpace = addressSpace;
 }
 
-uint64_t syscall_handler(RegisterBuffer* registerBuffer, InterruptStackFrame* frame)
+void syscall_handler(RegisterBuffer* registerBuffer, InterruptStackFrame* frame)
 {   
-    //TODO: Finish return system 
-
     uint64_t taskAddressSpace;
     asm volatile("movq %%cr3, %0" : "=r" (taskAddressSpace));
 
@@ -29,7 +27,7 @@ uint64_t syscall_handler(RegisterBuffer* registerBuffer, InterruptStackFrame* fr
     {
     case SYS_TEST:
     {
-        tty_print("Syscall test!\n\r");
+        tty_print("Syscall test, rdi = "); tty_printi(registerBuffer->RDI); tty_print("!\n\r");
 
         out = 0;
     }
@@ -43,13 +41,11 @@ uint64_t syscall_handler(RegisterBuffer* registerBuffer, InterruptStackFrame* fr
         oldTask->StackPointer = frame->StackPointer;
         oldTask->AddressSpace = (VirtualAddressSpace*)taskAddressSpace;
 
-        Task* newTask = load_next_task(); 
+        Task* newTask = load_next_task();
         
         memcpy(registerBuffer, &(newTask->Registers), sizeof(RegisterBuffer));
-        
         frame->InstructionPointer = newTask->InstructionPointer;
         frame->StackPointer = newTask->StackPointer;
-
         taskAddressSpace = (uint64_t)newTask->AddressSpace;
 
         out = 0;
@@ -61,7 +57,7 @@ uint64_t syscall_handler(RegisterBuffer* registerBuffer, InterruptStackFrame* fr
 
         Task* newTask = load_next_task(); 
 
-        erase_task(oldTask);   
+        multitasking_free(oldTask);   
 
         memcpy(registerBuffer, &(newTask->Registers), sizeof(RegisterBuffer));
 
@@ -82,5 +78,5 @@ uint64_t syscall_handler(RegisterBuffer* registerBuffer, InterruptStackFrame* fr
 
     VIRTUAL_MEMORY_LOAD_SPACE(taskAddressSpace);
 
-    return out;
+    registerBuffer->RAX = out;
 }

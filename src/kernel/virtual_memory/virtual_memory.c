@@ -12,11 +12,11 @@ VirtualAddressSpace* virtual_memory_create()
     return addressSpace;
 }
 
-void virtual_memory_remap_range(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress, uint64_t size)
+void virtual_memory_remap_pages(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress, uint64_t pageAmount)
 {
-    for (uint64_t offset = 0; offset < size + 0x1000; offset += 0x1000)
+    for (uint64_t page = 0; page < pageAmount; page++)
     {
-        virtual_memory_remap(addressSpace, (void*)((uint64_t)virtualAddress + offset), (void*)((uint64_t)physicalAddress + offset));
+        virtual_memory_remap(addressSpace, (void*)((uint64_t)virtualAddress + page * 0x1000), (void*)((uint64_t)physicalAddress + page * 0x1000));
     }
 }
 
@@ -103,9 +103,7 @@ void virtual_memory_erase(VirtualAddressSpace* addressSpace)
         PageTable* pdp;
         if (pde.Present)
         {
-            pdp = (PageTable*)((uint64_t)pde.Address << 12);
-            page_allocator_unlock_page(pdp);
-        
+            pdp = (PageTable*)((uint64_t)pde.Address << 12);        
             for (uint64_t pdIndex = 0; pdIndex < 512; pdIndex++)
             {
                 pde = pdp->Entries[pdIndex]; 
@@ -113,7 +111,6 @@ void virtual_memory_erase(VirtualAddressSpace* addressSpace)
                 if (pde.Present)
                 {
                     pd = (PageTable*)((uint64_t)pde.Address << 12);
-                    page_allocator_unlock_page(pd);
                     for (uint64_t ptIndex = 0; ptIndex < 512; ptIndex++)
                     {
                         pde = pd->Entries[ptIndex];
@@ -124,8 +121,10 @@ void virtual_memory_erase(VirtualAddressSpace* addressSpace)
                             page_allocator_unlock_page(pt);
                         }
                     }
+                    page_allocator_unlock_page(pd);
                 }
             }
+            page_allocator_unlock_page(pdp);
         }
     }
 

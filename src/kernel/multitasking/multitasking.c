@@ -9,8 +9,6 @@
 #include "page_allocator/page_allocator.h"
 #include "string/string.h"
 
-Task* dummyTask;
-
 Task* mainTask;
 
 Task* runningTask;
@@ -18,7 +16,10 @@ Task* runningTask;
 Task* firstTask;
 Task* lastTask;
 
-uint64_t pageMapPageAmount;
+uint64_t pageMapSize;
+
+extern uint64_t _kernelStart;
+extern uint64_t _kernelEnd;
 
 void multitasking_visualize()
 {    
@@ -79,29 +80,114 @@ void multitasking_visualize()
     tty_print("\n\n\r");
 }
 
-void multitasking_init(VirtualAddressSpace* kernelAddressSpace)
+void multitasking_init()
 {
     tty_start_message("Multitasking initializing");
     
     firstTask = 0;
     lastTask = 0;
 
-    pageMapPageAmount = (page_allocator_get_total_amount() / 8) / 0x1000 + 1;
-
-    dummyTask = kmalloc(sizeof(Task));
-    dummyTask->StackPointer = (uint64_t)page_allocator_request() + 0x1000;
+    pageMapSize = (page_allocator_get_total_amount() / 8) / 0x1000 + 1;
 
     mainTask = kmalloc(sizeof(Task));
-    mainTask->AddressSpace = kernelAddressSpace;
+    mainTask->AddressSpace = 0;
     mainTask->State = TASK_STATE_RUNNING;
     mainTask->Next = 0;
     mainTask->Prev = 0;
 
     runningTask = mainTask;
 
-    append_task(mainTask);
+    multitasking_append(mainTask);
 
     tty_end_message(TTY_MESSAGE_OK);
+}
+
+Task* multitasking_new(void* entry)
+{ 
+    Task* newTask = kmalloc(sizeof(Task));
+    memset(newTask, 0, sizeof(Task));
+
+    newTask->StackBottom = (uint64_t)page_allocator_request();
+    newTask->StackTop = (uint64_t)newTask->StackBottom + 0x1000;
+    memset((void*)newTask->StackBottom, 0, 0x1000);
+
+    newTask->StackPointer = newTask->StackTop;
+    newTask->AddressSpace = virtual_memory_create();
+    newTask->InstructionPointer = (uint64_t)entry;
+
+    virtual_memory_remap_pages(newTask->AddressSpace, 0, 0, page_allocator_get_total_amount());
+    virtual_memory_remap_pages(newTask->AddressSpace, &_kernelStart, &_kernelStart, ((uint64_t)&_kernelEnd - (uint64_t)&_kernelStart) / 0x1000 + 1);    
+
+    newTask->PageMap = page_allocator_request_amount(pageMapSize);
+    memset(newTask->PageMap, 0, page_allocator_get_total_amount() / 8);
+
+    newTask->Next = 0;
+    newTask->Prev = 0;
+    newTask->State = TASK_STATE_READY;
+
+    multitasking_append(newTask);
+
+    return newTask;
+}
+
+void multitasking_free(Task* task)
+{
+    virtual_memory_erase(task->AddressSpace);
+    
+    for (uint64_t qwordIndex = 0; qwordIndex < page_allocator_get_total_amount() / 64; qwordIndex++)
+    {
+        if (task->PageMap[qwordIndex] != 0) //If any bit is not zero
+        {            
+            for (uint64_t bitIndex = 0; bitIndex < 64; bitIndex++)
+            {
+                if ((task->PageMap[qwordIndex] & ((uint64_t)1 << bitIndex)) != 0) //If bit is set
+                {                    
+                    void* address = (void*)((qwordIndex * 64 + bitIndex) * 0x1000);
+                    page_allocator_unlock_page(address);
+                }
+            }
+        }
+    }
+
+    if (task == firstTask)
+    {
+        firstTask = task->Next;
+    }
+    if (task == lastTask)
+    {
+        lastTask = task->Prev;
+    }
+
+    task->Next->Prev = task->Prev;
+    task->Prev->Next = task->Next;
+
+    page_allocator_unlock_page((void*)task->StackBottom);
+    page_allocator_unlock_pages(task->PageMap, pageMapSize);
+    kfree(task);
+}
+
+void multitasking_append(Task* task)
+{
+    if (firstTask == 0)
+    {
+        firstTask = task;
+        lastTask = task;
+
+        firstTask->Next = task;
+        firstTask->Prev = task;
+
+        lastTask->Next = task;
+        lastTask->Prev = task;
+    }
+    else
+    {            
+        lastTask->Next = task;
+        firstTask->Prev = task;
+
+        task->Prev = lastTask;
+        task->Next = firstTask;
+        lastTask = task;
+    }
 }
 
 void* task_allocate_memory(Task* task, void* virtualAddress, uint64_t size)
@@ -156,136 +242,3 @@ Task* get_next_ready_task(Task* task)
         }
     }
 }
-
-Task* create_task(void* entry, VirtualAddressSpace* addressSpace)
-{ 
-    Task* newTask = kmalloc(sizeof(Task));
-    memset(newTask, 0, sizeof(Task));
-
-    newTask->StackBottom = (uint64_t)page_allocator_request();
-    newTask->StackTop = (uint64_t)newTask->StackBottom + 0x1000;
-    memset((void*)newTask->StackBottom, 0, 0x1000);
-    virtual_memory_remap(addressSpace, (void*)newTask->StackBottom, (void*)newTask->StackBottom);
-
-    newTask->StackPointer = newTask->StackTop;
-    newTask->AddressSpace = addressSpace;
-    newTask->InstructionPointer = (uint64_t)entry;
-
-    newTask->PageMap = page_allocator_request_amount(pageMapPageAmount);
-    memset(newTask->PageMap, 0, page_allocator_get_total_amount() / 8);
-
-    newTask->Next = 0;
-    newTask->Prev = 0;
-    newTask->State = TASK_STATE_READY;
-
-    append_task(newTask);
-
-    return newTask;
-}
-
-void append_task(Task* task)
-{
-    if (firstTask == 0)
-    {
-        firstTask = task;
-        lastTask = task;
-
-        firstTask->Next = task;
-        firstTask->Prev = task;
-
-        lastTask->Next = task;
-        lastTask->Prev = task;
-    }
-    else
-    {            
-        lastTask->Next = task;
-        firstTask->Prev = task;
-
-        task->Prev = lastTask;
-        task->Next = firstTask;
-        lastTask = task;
-    }
-}
-
-void erase_task(Task* task)
-{
-    virtual_memory_erase(task->AddressSpace);
-    
-    for (uint64_t qwordIndex = 0; qwordIndex < page_allocator_get_total_amount() / 64; qwordIndex++)
-    {
-        if (task->PageMap[qwordIndex] != 0) //If any bit is not zero
-        {            
-            for (uint64_t bitIndex = 0; bitIndex < 64; bitIndex++)
-            {
-                if ((task->PageMap[qwordIndex] & ((uint64_t)1 << bitIndex)) != 0) //If bit is set
-                {                    
-                    void* address = (void*)((qwordIndex * 64 + bitIndex) * 0x1000);
-                    page_allocator_unlock_page(address);
-                }
-            }
-        }
-    }
-
-    if (task == firstTask)
-    {
-        firstTask = task->Next;
-    }
-    if (task == lastTask)
-    {
-        lastTask = task->Prev;
-    }
-
-    task->Next->Prev = task->Prev;
-    task->Prev->Next = task->Next;
-
-    page_allocator_unlock_page((void*)task->StackBottom);
-    page_allocator_unlock_pages(task->PageMap, pageMapPageAmount);
-    kfree(task);
-}
-
-/*
-void yield() 
-{    
-    Task* prev = runningTask;
-    prev->State = TASK_STATE_WAITING;       
-
-    Task* nextTask = get_next_ready_task(runningTask);
-    runningTask = nextTask;
-
-    nextTask->State = TASK_STATE_RUNNING;    
-    switch_task(prev, nextTask);
-}
-
-void exit(uint64_t status)
-{    
-    Task* prevTask = lastTask;
-    Task* currentTask = firstTask;
-    while (1)
-    {
-        if (currentTask == runningTask)
-        {           
-            Task* prevRunningTask = runningTask;
-            prevRunningTask->State = TASK_STATE_WAITING;   
-
-            Task* nextTask = get_next_ready_task(runningTask);
-            prevTask->Next = runningTask->Next;
-
-            page_allocator_unlock_page((void*)(currentTask->StackTop - 0x1000));
-            kfree(currentTask);
-
-            runningTask = nextTask;
-            nextTask->State = TASK_STATE_RUNNING;    
-            switch_task(dummyTask, nextTask);
-        }
-        
-        prevTask = currentTask;
-        currentTask = currentTask->Next;
-    
-        if (currentTask == firstTask)
-        {
-            tty_print("ERROR: Unable to find task!");
-            break;
-        }
-    }
-}
-*/

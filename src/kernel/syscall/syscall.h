@@ -8,4 +8,4 @@
 
 void syscall_init(VirtualAddressSpace* addressSpace);
 
-uint64_t syscall_handler(RegisterBuffer* registerBuffer, InterruptStackFrame* frame);
+void syscall_handler(RegisterBuffer* registerBuffer, InterruptStackFrame* frame);

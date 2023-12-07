@@ -40,16 +40,20 @@ void tty_put(uint8_t chr)
 {
     char* glyph = font->Glyphs + chr * 16;
 
-    if (chr == '\n')
+    switch (chr)
+    {
+    case '\n':
     {
         cursorPos.X = 0;
         cursorPos.Y += 16 * textScale;
     }
-    else if (chr == '\r')
+    break;
+    case '\r':
     {
         cursorPos.X = 0;
     }
-    else
+    break;
+    default:
     {
         for (uint64_t y = 0; y < 16 * textScale; y++)
         {
@@ -83,6 +87,8 @@ void tty_put(uint8_t chr)
             cursorPos.X = 0;
             cursorPos.Y += 16 * textScale;
         }
+    }
+    break;
     }
 }
 

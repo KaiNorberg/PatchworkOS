@@ -44,7 +44,13 @@ typedef struct Task
 
 void multitasking_visualize();
 
-void multitasking_init(VirtualAddressSpace* kernelAddressSpace);
+void multitasking_init();
+
+Task* multitasking_new(void* entry);
+
+void multitasking_free(Task* task);
+
+void multitasking_append(Task* task);
 
 void* task_allocate_memory(Task* task, void* virtualAddress, uint64_t size);
 
@@ -53,15 +59,3 @@ Task* load_next_task();
 Task* get_running_task();
 
 Task* get_next_ready_task(Task* task);
-
-Task* create_task(void* entry, VirtualAddressSpace* addressSpace);
-
-void append_task(Task* task);
-
-void erase_task(Task* task);
-
-/*
-void yield();
-
-void exit(uint64_t status);
-*/

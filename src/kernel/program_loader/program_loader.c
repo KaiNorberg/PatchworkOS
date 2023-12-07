@@ -34,10 +34,7 @@ uint8_t load_program(const char* path)
     ElfProgramHeader* programHeaders = kmalloc(programHeaderTableSize);
     file_system_read(programHeaders, programHeaderTableSize, file);
     
-    VirtualAddressSpace* addressSpace = virtual_memory_create();
-    virtual_memory_remap_range(addressSpace, 0, 0, page_allocator_get_total_amount() * 0x1000);
-
-    Task* task = create_task((void*)header.Entry, addressSpace);
+    Task* task = multitasking_new((void*)header.Entry);
 
 	for (uint64_t i = 0; i < header.ProgramHeaderAmount; i++)
 	{		

@@ -61,5 +61,5 @@ void kernel_init(BootInfo* bootInfo)
     
     syscall_init(kernelAddressSpace);
 
-    multitasking_init(kernelAddressSpace);
+    multitasking_init();
 }

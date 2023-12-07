@@ -18,23 +18,22 @@ void _start(BootInfo* bootInfo)
 {   
     kernel_init(bootInfo);
 
-    uint64_t cr3;
-    asm volatile("movq %%cr3, %0" : "=r" (cr3));
+    tty_print("\n\rLoading programs...\n\n\r");
 
-    tty_print("\n\rLoading program...\n\n\r");
-
-    if (!load_program("/programs/test/test.elf"))
+    for (int i = 0; i < 5; i++)
     {
-        tty_print("Failed to load program!\n\r");
+        if (!load_program("/programs/test/test.elf"))
+        {
+            tty_print("Failed to load program!\n\r");
+        }
     }
-    
+
     multitasking_visualize();
 
-    tty_print("Yielding to program...\n\n\r");
+    tty_print("Yielding...\n\n\r");
 
     uint64_t rax = SYS_YIELD;
-    asm volatile("movq %0, %%rax" : : "r"(rax));
-    asm volatile("int $0x80");
+    asm volatile("movq %0, %%rax;" "int $0x80" : : "r"(rax));
 
     tty_print("\nBack in the main task!\n\n\r");
 

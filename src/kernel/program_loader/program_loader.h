@@ -64,14 +64,4 @@ typedef struct
     uint64_t PageAmount;
 } ProgramSegment;
 
-typedef struct
-{
-    ElfHeader Header;
-    ProgramSegment* Segments;
-    uint64_t SegmentAmount;
-    void* StackBottom;
-    uint64_t StackSize;
-    VirtualAddressSpace* AddressSpace;
-} Program;
-
 uint8_t load_program(const char* path);
