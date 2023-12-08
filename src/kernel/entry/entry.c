@@ -20,7 +20,7 @@ void _start(BootInfo* bootInfo)
 
     tty_print("\n\rLoading programs...\n\n\r");
 
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 1; i++)
     {
         if (!load_program("/programs/test/test.elf"))
         {
