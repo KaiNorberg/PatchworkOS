@@ -21,8 +21,6 @@ GDT gdt =
     {0, 0, 0, 0x92, 0xA0, 0}, //UserData
 };
 
-VirtualAddressSpace* kernelAddressSpace;
-
 void kernel_init(BootInfo* bootInfo)
 {    
     tty_init(bootInfo->Screenbuffer, bootInfo->TTYFont);
@@ -30,9 +28,7 @@ void kernel_init(BootInfo* bootInfo)
 
     page_allocator_init(bootInfo->MemoryMap, bootInfo->Screenbuffer);
 
-    tty_start_message("Initializing kernel address space");
-    asm volatile("movq %%cr3, %0" : "=r"(kernelAddressSpace));
-    tty_end_message(TTY_MESSAGE_OK);
+    virtual_memory_init(bootInfo->MemoryMap);
 
     tty_clear();
     tty_print("Paging and virtual memory have been initialized\n\r");

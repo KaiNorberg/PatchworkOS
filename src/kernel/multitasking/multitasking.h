@@ -60,7 +60,8 @@ void multitasking_free(Task* task);
 
 void multitasking_append(Task* task);
 
-void* task_allocate_memory(Task* task, void* virtualAddress, uint64_t size);
+void* task_request_page(Task* task);
+void* task_allocate_pages(Task* task, void* virtualAddress, uint64_t pageAmount);
 
 Task* load_next_task();
 

@@ -16,9 +16,6 @@ Task* runningTask;
 Task* firstTask;
 Task* lastTask;
 
-extern uint64_t _kernelStart;
-extern uint64_t _kernelEnd;
-
 void multitasking_visualize()
 {    
     Pixel black;
@@ -102,13 +99,16 @@ Task* multitasking_new(void* entry)
 { 
     Task* newTask = kmalloc(sizeof(Task));
     memset(newTask, 0, sizeof(Task));
+    
+    newTask->FirstMemoryBlock = 0;
+    newTask->LastMemoryBlock = 0;
 
     newTask->StackBottom = (uint64_t)page_allocator_request();
     newTask->StackTop = (uint64_t)newTask->StackBottom + 0x1000;
     memset((void*)newTask->StackBottom, 0, 0x1000);
 
     newTask->StackPointer = newTask->StackTop;
-    newTask->AddressSpace = virtual_memory_create();
+    newTask->AddressSpace = virtual_memory_create(newTask);
     newTask->InstructionPointer = (uint64_t)entry;
 
     for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
@@ -116,8 +116,8 @@ Task* multitasking_new(void* entry)
         virtual_memory_remap(newTask->AddressSpace, (void*)(i * 0x1000), (void*)(i * 0x1000));
     }
 
-    newTask->FirstMemoryBlock = 0;
-    newTask->LastMemoryBlock = 0;
+    //virtual_memory_remap(newTask->AddressSpace, (void*)newTask->StackBottom, (void*)newTask->StackBottom);
+    //virtual_memory_remap(newTask->AddressSpace, newTask->AddressSpace, newTask->AddressSpace);
 
     newTask->Next = 0;
     newTask->Prev = 0;
@@ -194,11 +194,36 @@ void multitasking_append(Task* task)
     }
 }
 
-void* task_allocate_memory(Task* task, void* virtualAddress, uint64_t size)
+void* task_request_page(Task* task)
 {
     TaskMemoryBlock* newMemoryBlock = kmalloc(sizeof(TaskMemoryBlock));
 
-    uint64_t pageAmount = size / 0x1000 + 1;
+    void* physicalAddress = page_allocator_request();
+
+    newMemoryBlock->Address = physicalAddress;
+    newMemoryBlock->PageAmount = 1;
+    newMemoryBlock->Next = 0;
+
+    if (task->FirstMemoryBlock == 0)
+    {
+        task->FirstMemoryBlock = newMemoryBlock;
+        task->LastMemoryBlock = newMemoryBlock;
+    }
+    else
+    {
+        task->LastMemoryBlock->Next = newMemoryBlock;
+        task->LastMemoryBlock = newMemoryBlock;
+    }
+
+    virtual_memory_remap(task->AddressSpace, physicalAddress, physicalAddress);
+
+    return physicalAddress;
+}
+
+void* task_allocate_pages(Task* task, void* virtualAddress, uint64_t pageAmount)
+{
+    TaskMemoryBlock* newMemoryBlock = kmalloc(sizeof(TaskMemoryBlock));
+
     void* physicalAddress = page_allocator_request_amount(pageAmount);
 
     newMemoryBlock->Address = physicalAddress;

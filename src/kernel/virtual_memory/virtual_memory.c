@@ -4,11 +4,54 @@
 
 #include "string/string.h"
 #include "debug/debug.h"
+#include "tty/tty.h"
+
+EFIMemoryMap* efiMemoryMap;
+
+extern uint64_t _kernelStart;
+extern uint64_t _kernelEnd;
+
+VirtualAddressSpace* kernelAddressSpace;
+
+void virtual_memory_init(EFIMemoryMap* memoryMap)
+{    
+    tty_start_message("Virtual memory initializing");   
+
+    efiMemoryMap = memoryMap;
+    asm volatile("movq %%cr3, %0" : "=r"(kernelAddressSpace));
+
+    tty_end_message(TTY_MESSAGE_OK);
+}
 
 VirtualAddressSpace* virtual_memory_create()
 {
     VirtualAddressSpace* addressSpace = (VirtualAddressSpace*)page_allocator_request();
     memset(addressSpace, 0, 0x1000);
+
+    //A task currently needs the stack of the previous task to be mapped, adding user space and the TSS will fix this
+    /*for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
+    {
+        void* address = (void*)(i * 0x1000);
+        if (page_allocator_get_status(address))
+        {
+            virtual_memory_remap(addressSpace, address, address);
+        }
+    }*/
+
+    /*for (uint64_t i = 0; i < efiMemoryMap->DescriptorAmount; i++)
+    {
+        EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)efiMemoryMap->Base + (i * efiMemoryMap->DescriptorSize));
+
+        if ((uint64_t)desc->PhysicalStart + desc->AmountOfPages * 0x1000 < page_allocator_get_total_amount() * 0x1000)
+        {
+            if (is_memory_type_reserved(desc->Type))
+            {
+                virtual_memory_remap_pages(addressSpace, desc->PhysicalStart, desc->PhysicalStart, desc->AmountOfPages);
+            }
+        }
+    }
+
+    virtual_memory_remap_pages(addressSpace, &_kernelStart, &_kernelStart, ((uint64_t)&_kernelEnd - (uint64_t)&_kernelStart) / 0x1000 + 1);*/
 
     return addressSpace;
 }

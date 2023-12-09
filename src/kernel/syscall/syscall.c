@@ -52,7 +52,7 @@ void syscall_handler(RegisterBuffer* registerBuffer, InterruptStackFrame* frame)
     }
     break;
     case SYS_EXIT:
-    {    
+    {                   
         Task* oldTask = get_running_task();
 
         Task* newTask = load_next_task(); 

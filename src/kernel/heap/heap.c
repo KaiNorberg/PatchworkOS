@@ -257,6 +257,7 @@ void kfree(void* ptr)
     
     uint8_t blockFound = 0;
 
+    //Find and free block
     BlockHeader* currentBlock = firstBlock;
     while (1)
     {
@@ -281,6 +282,7 @@ void kfree(void* ptr)
         debug_error("Failed to free block!\n\r");
     }
 
+    //Merge contiguous free blocks
     while (1)
     {
         uint8_t mergedBlocks = 0;

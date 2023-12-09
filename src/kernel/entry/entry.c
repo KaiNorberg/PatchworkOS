@@ -27,11 +27,11 @@ void _start(BootInfo* bootInfo)
 
     tty_print("\n\rLoading programs (This is really slow for now)...\n\n\r");
 
-    for (int i = 0; i < 25; i++)
+    for (int i = 0; i < 5; i++)
     {    
         load_program("/programs/test/test.elf"); //This is really slow
     }
-    
+
     multitasking_visualize();
 
     tty_print("Yielding...\n\n\r");

@@ -43,7 +43,7 @@ uint8_t load_program(const char* path)
 		{
 		case PT_LOAD:
 		{
-            void* segment = task_allocate_memory(task, (void*)programHeaders[i].VirtualAddress, programHeaders[i].MemorySize);
+            void* segment = task_allocate_pages(task, (void*)programHeaders[i].VirtualAddress, programHeaders[i].MemorySize / 0x1000 + 1);
 
             file_system_seek(file, programHeaders[i].Offset, SEEK_SET);
             file_system_read(segment, programHeaders[i].MemorySize, file);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gop/gop.h"
+#include "memory/memory.h"
 
 #define VIRTUAL_MEMORY_LOAD_SPACE(addressSpace) asm volatile ("mov %0, %%cr3" : : "r" ((uint64_t)addressSpace))
 
@@ -34,6 +35,10 @@ typedef struct __attribute__((aligned(0x1000)))
 } PageDirectory;
 
 typedef PageDirectory VirtualAddressSpace;
+
+extern VirtualAddressSpace* kernelAddressSpace;
+
+void virtual_memory_init(EFIMemoryMap* memoryMap);
 
 VirtualAddressSpace* virtual_memory_create();
 
