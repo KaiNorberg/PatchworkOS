@@ -31,16 +31,7 @@ void kernel_init(BootInfo* bootInfo)
     page_allocator_init(bootInfo->MemoryMap, bootInfo->Screenbuffer);
 
     tty_start_message("Initializing kernel address space");
-    kernelAddressSpace = virtual_memory_create();
-    for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
-    {
-        virtual_memory_remap(kernelAddressSpace, (void*)(i * 0x1000), (void*)(i * 0x1000));
-    }
-    for (uint64_t i = 0; i < bootInfo->Screenbuffer->Size + 0x1000; i += 0x1000)
-    {
-        virtual_memory_remap(kernelAddressSpace, (void*)((uint64_t)bootInfo->Screenbuffer->Base + i), (void*)((uint64_t)bootInfo->Screenbuffer->Base + i));
-    }
-    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
+    asm volatile("movq %%cr3, %0" : "=r"(kernelAddressSpace));
     tty_end_message(TTY_MESSAGE_OK);
 
     tty_clear();
@@ -55,7 +46,7 @@ void kernel_init(BootInfo* bootInfo)
 
     idt_init();
     
-    heap_init(kernelAddressSpace, 0x100000000000, 0x10 * 0x1000);
+    heap_init();
     
     file_system_init(bootInfo->RootDirectory);
     

@@ -39,7 +39,7 @@ __attribute__((interrupt)) void stack_segment_exception(InterruptStackFrame* fra
 
 __attribute__((interrupt)) void general_protection_exception(InterruptStackFrame* frame);
 
-__attribute__((interrupt)) void page_fault_exception(InterruptStackFrame* frame);
+__attribute__((interrupt)) void page_fault_exception(InterruptStackFrame* frame, uint64_t errorCode);
 
 __attribute__((interrupt)) void floating_point_exception(InterruptStackFrame* frame);
 

@@ -3,6 +3,7 @@
 #include "page_allocator/page_allocator.h"
 
 #include "string/string.h"
+#include "debug/debug.h"
 
 VirtualAddressSpace* virtual_memory_create()
 {
@@ -22,74 +23,77 @@ void virtual_memory_remap_pages(VirtualAddressSpace* addressSpace, void* virtual
 
 void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress)
 {    
+    if ((uint64_t)virtualAddress % 0x1000 != 0)
+    {
+        debug_error("Attempt to map invalid virtual address!");
+    }    
+    else if ((uint64_t)physicalAddress % 0x1000 != 0)
+    {
+        debug_error("Attempt to map invalid physical address!");
+    }
+
     uint64_t indexer = (uint64_t)virtualAddress;
     indexer >>= 12;
     uint64_t pIndex = indexer & 0x1ff;
-
     indexer >>= 9;
     uint64_t ptIndex = indexer & 0x1ff;
-
     indexer >>= 9;
     uint64_t pdIndex = indexer & 0x1ff;
-
     indexer >>= 9;
     uint64_t pdpIndex = indexer & 0x1ff;
 
-    PageDirEntry pde;
-
-    pde = addressSpace->Entries[pdpIndex];
-    PageTable* pdp;
-    if (!pde.Present)
+    PageDirEntry pde = addressSpace->Entries[pdpIndex];
+    PageDirectory* pdp;
+    if (!PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
     {
-        pdp = (PageTable*)page_allocator_request();
+        pdp = (PageDirectory*)page_allocator_request();
         memset(pdp, 0, 0x1000);
-        pde.Address = (uint64_t)pdp >> 12;
-        pde.Present = 1;
-        pde.ReadWrite = 1;
+        PAGE_DIR_SET_ADDRESS(pde, (uint64_t)pdp >> 12);
+        PAGE_DIR_SET_FLAG(pde, PAGE_DIR_PRESENT);
+        PAGE_DIR_SET_FLAG(pde, PAGE_DIR_READ_WRITE);
         addressSpace->Entries[pdpIndex] = pde;
     }
     else
     {
-        pdp = (PageTable*)((uint64_t)pde.Address << 12);
+        pdp = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde) << 12);
     }
     
-    
     pde = pdp->Entries[pdIndex];
-    PageTable* pd;
-    if (!pde.Present)
+    PageDirectory* pd;
+    if (!PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
     {
-        pd = (PageTable*)page_allocator_request();
+        pd = (PageDirectory*)page_allocator_request();
         memset(pd, 0, 0x1000);
-        pde.Address = (uint64_t)pd >> 12;
-        pde.Present = 1;
-        pde.ReadWrite = 1;
+        PAGE_DIR_SET_ADDRESS(pde, (uint64_t)pd >> 12);
+        PAGE_DIR_SET_FLAG(pde, PAGE_DIR_PRESENT);
+        PAGE_DIR_SET_FLAG(pde, PAGE_DIR_READ_WRITE);
         pdp->Entries[pdIndex] = pde;
     }
     else
     {
-        pd = (PageTable*)((uint64_t)pde.Address << 12);
+        pd = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde) << 12);
     }
 
     pde = pd->Entries[ptIndex];
-    PageTable* pt;
-    if (!pde.Present)
+    PageDirectory* pt;
+    if (!PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
     {
-        pt = (PageTable*)page_allocator_request();
+        pt = (PageDirectory*)page_allocator_request();
         memset(pt, 0, 0x1000);
-        pde.Address = (uint64_t)pt >> 12;
-        pde.Present = 1;
-        pde.ReadWrite = 1;
+        PAGE_DIR_SET_ADDRESS(pde, (uint64_t)pt >> 12);
+        PAGE_DIR_SET_FLAG(pde, PAGE_DIR_PRESENT);
+        PAGE_DIR_SET_FLAG(pde, PAGE_DIR_READ_WRITE);
         pd->Entries[ptIndex] = pde;
     }
     else
     {
-        pt = (PageTable*)((uint64_t)pde.Address << 12);
+        pt = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde) << 12);
     }
 
     pde = pt->Entries[pIndex];
-    pde.Address = (uint64_t)physicalAddress >> 12;
-    pde.Present = 1;
-    pde.ReadWrite = 1;
+    PAGE_DIR_SET_ADDRESS(pde, (uint64_t)physicalAddress >> 12);
+    PAGE_DIR_SET_FLAG(pde, PAGE_DIR_PRESENT);
+    PAGE_DIR_SET_FLAG(pde, PAGE_DIR_READ_WRITE);
     pt->Entries[pIndex] = pde;
 }
 
@@ -100,24 +104,24 @@ void virtual_memory_erase(VirtualAddressSpace* addressSpace)
     for (uint64_t pdpIndex = 0; pdpIndex < 512; pdpIndex++)
     {
         pde = addressSpace->Entries[pdpIndex];
-        PageTable* pdp;
-        if (pde.Present)
+        PageDirectory* pdp;
+        if (PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
         {
-            pdp = (PageTable*)((uint64_t)pde.Address << 12);        
+            pdp = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde) << 12);        
             for (uint64_t pdIndex = 0; pdIndex < 512; pdIndex++)
             {
                 pde = pdp->Entries[pdIndex]; 
-                PageTable* pd;
-                if (pde.Present)
+                PageDirectory* pd;
+                if (PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
                 {
-                    pd = (PageTable*)((uint64_t)pde.Address << 12);
+                    pd = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde) << 12);
                     for (uint64_t ptIndex = 0; ptIndex < 512; ptIndex++)
                     {
                         pde = pd->Entries[ptIndex];
-                        PageTable* pt;
-                        if (pde.Present)
+                        PageDirectory* pt;
+                        if (PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
                         {
-                            pt = (PageTable*)((uint64_t)pde.Address << 12);
+                            pt = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde) << 12);
                             page_allocator_unlock_page(pt);
                         }
                     }
@@ -129,4 +133,9 @@ void virtual_memory_erase(VirtualAddressSpace* addressSpace)
     }
 
     page_allocator_unlock_page(addressSpace);
+}
+
+void virtual_memory_invalidate_page(void* address) 
+{
+   asm volatile("invlpg (%0)" :: "r" ((void*)address) : "memory");
 }

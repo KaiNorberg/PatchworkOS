@@ -4,29 +4,36 @@
 
 #define VIRTUAL_MEMORY_LOAD_SPACE(addressSpace) asm volatile ("mov %0, %%cr3" : : "r" ((uint64_t)addressSpace))
 
-typedef struct
+#define PAGE_DIR_SET_FLAG(entry, flag) ((entry) |= (1UL << (flag)))
+#define PAGE_DIR_CLEAR_FLAG(entry, flag) ((entry) &= ~(1UL << (flag)))
+#define PAGE_DIR_GET_FLAG(entry, flag) (((entry) >> (flag)) & 1)
+
+#define PAGE_DIR_GET_ADDRESS(entry) (((entry) & 0x000ffffffffff000) >> 12)
+#define PAGE_DIR_SET_ADDRESS(entry, address) (entry = ((entry) & 0xfff0000000000fff) | (((address) & 0x000000ffffffffff) << 12))
+
+enum PAGE_DIR_FLAGS 
 {
-    uint8_t Present : 1;
-    uint8_t ReadWrite : 1;
-    uint8_t UserSuper : 1;
-    uint8_t WriteThrough : 1;
-    uint8_t CacheDisabled : 1;
-    uint8_t Accessed : 1;
-    uint8_t Ignore0 : 1; 
-    uint8_t LargerPages : 1;
-    uint8_t Ignore1 : 1;
+    PAGE_DIR_PRESENT = 0,
+    PAGE_DIR_READ_WRITE = 1,
+    PAGE_DIR_USER_SUPERVISOR = 2,
+    PAGE_DIR_WRITE_TROUGH = 3,
+    PAGE_DIR_CACHE_DISABLED = 4,
+    PAGE_DIR_ACCESSED = 5,
+    PAGE_DIR_PAGE_SIZE = 7,
+    PAGE_DIR_CUSTOM_0 = 9,
+    PAGE_DIR_CUSTOM_1 = 10,
+    PAGE_DIR_CUSTOM_2 = 11,
+    PAGE_DIR_NX = 63
+};
 
-    uint8_t Available : 3;
-
-    uint64_t Address : 52;
-} PageDirEntry;
+typedef uint64_t PageDirEntry;
 
 typedef struct __attribute__((aligned(0x1000)))
 { 
     PageDirEntry Entries[512];
-} PageTable;
+} PageDirectory;
 
-typedef PageTable VirtualAddressSpace;
+typedef PageDirectory VirtualAddressSpace;
 
 VirtualAddressSpace* virtual_memory_create();
 
@@ -35,3 +42,5 @@ void virtual_memory_remap_pages(VirtualAddressSpace* addressSpace, void* virtual
 void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress);
 
 void virtual_memory_erase(VirtualAddressSpace* addressSpace);
+
+void virtual_memory_invalidate_page(void* address);

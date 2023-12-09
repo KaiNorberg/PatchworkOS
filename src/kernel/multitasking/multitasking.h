@@ -24,11 +24,19 @@ typedef struct
     uint64_t RBP;
 } RegisterBuffer;
 
+typedef struct TaskMemoryBlock
+{
+    void* Address;
+    uint64_t PageAmount;
+    struct TaskMemoryBlock* Next;
+} TaskMemoryBlock;
+
 typedef struct Task
 {
     RegisterBuffer Registers;
 
-    uint64_t* PageMap;
+    TaskMemoryBlock* FirstMemoryBlock;
+    TaskMemoryBlock* LastMemoryBlock;
 
     uint64_t StackPointer;
     uint64_t InstructionPointer;

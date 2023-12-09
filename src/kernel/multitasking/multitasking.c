@@ -16,8 +16,6 @@ Task* runningTask;
 Task* firstTask;
 Task* lastTask;
 
-uint64_t pageMapSize;
-
 extern uint64_t _kernelStart;
 extern uint64_t _kernelEnd;
 
@@ -87,9 +85,7 @@ void multitasking_init()
     firstTask = 0;
     lastTask = 0;
 
-    pageMapSize = (page_allocator_get_total_amount() / 8) / 0x1000 + 1;
-
-    mainTask = kmalloc(sizeof(Task));
+    mainTask = page_allocator_request();
     mainTask->AddressSpace = 0;
     mainTask->State = TASK_STATE_RUNNING;
     mainTask->Next = 0;
@@ -115,11 +111,13 @@ Task* multitasking_new(void* entry)
     newTask->AddressSpace = virtual_memory_create();
     newTask->InstructionPointer = (uint64_t)entry;
 
-    virtual_memory_remap_pages(newTask->AddressSpace, 0, 0, page_allocator_get_total_amount());
-    virtual_memory_remap_pages(newTask->AddressSpace, &_kernelStart, &_kernelStart, ((uint64_t)&_kernelEnd - (uint64_t)&_kernelStart) / 0x1000 + 1);    
+    for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
+    {
+        virtual_memory_remap(newTask->AddressSpace, (void*)(i * 0x1000), (void*)(i * 0x1000));
+    }
 
-    newTask->PageMap = page_allocator_request_amount(pageMapSize);
-    memset(newTask->PageMap, 0, page_allocator_get_total_amount() / 8);
+    newTask->FirstMemoryBlock = 0;
+    newTask->LastMemoryBlock = 0;
 
     newTask->Next = 0;
     newTask->Prev = 0;
@@ -133,18 +131,25 @@ Task* multitasking_new(void* entry)
 void multitasking_free(Task* task)
 {
     virtual_memory_erase(task->AddressSpace);
-    
-    for (uint64_t qwordIndex = 0; qwordIndex < page_allocator_get_total_amount() / 64; qwordIndex++)
+
+    if (task->FirstMemoryBlock != 0)
     {
-        if (task->PageMap[qwordIndex] != 0) //If any bit is not zero
-        {            
-            for (uint64_t bitIndex = 0; bitIndex < 64; bitIndex++)
+        TaskMemoryBlock* currentBlock = task->FirstMemoryBlock;
+        while (1)
+        {
+            TaskMemoryBlock* nextBlock = task->FirstMemoryBlock->Next;
+
+            page_allocator_unlock_pages(currentBlock->Address, currentBlock->PageAmount);
+
+            kfree(currentBlock);           
+
+            if (nextBlock != 0)
             {
-                if ((task->PageMap[qwordIndex] & ((uint64_t)1 << bitIndex)) != 0) //If bit is set
-                {                    
-                    void* address = (void*)((qwordIndex * 64 + bitIndex) * 0x1000);
-                    page_allocator_unlock_page(address);
-                }
+                currentBlock = nextBlock;
+            }
+            else
+            {
+                break;
             }
         }
     }
@@ -162,7 +167,6 @@ void multitasking_free(Task* task)
     task->Prev->Next = task->Next;
 
     page_allocator_unlock_page((void*)task->StackBottom);
-    page_allocator_unlock_pages(task->PageMap, pageMapSize);
     kfree(task);
 }
 
@@ -192,14 +196,28 @@ void multitasking_append(Task* task)
 
 void* task_allocate_memory(Task* task, void* virtualAddress, uint64_t size)
 {
+    TaskMemoryBlock* newMemoryBlock = kmalloc(sizeof(TaskMemoryBlock));
+
     uint64_t pageAmount = size / 0x1000 + 1;
     void* physicalAddress = page_allocator_request_amount(pageAmount);
 
+    newMemoryBlock->Address = physicalAddress;
+    newMemoryBlock->PageAmount = pageAmount;
+    newMemoryBlock->Next = 0;
+
+    if (task->FirstMemoryBlock == 0)
+    {
+        task->FirstMemoryBlock = newMemoryBlock;
+        task->LastMemoryBlock = newMemoryBlock;
+    }
+    else
+    {
+        task->LastMemoryBlock->Next = newMemoryBlock;
+        task->LastMemoryBlock = newMemoryBlock;
+    }
+
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        uint64_t index = (uint64_t)(physicalAddress + i * 0x1000) / 0x1000;
-        task->PageMap[index] = task->PageMap[index / 64] | (uint64_t)1 << (index % 64);
-
         virtual_memory_remap(task->AddressSpace, virtualAddress + i * 0x1000, physicalAddress + i * 0x1000);
     }
 

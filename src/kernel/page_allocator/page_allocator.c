@@ -4,6 +4,8 @@
 
 #include "string/string.h"
 
+#include "debug/debug.h"
+
 extern uint64_t _kernelStart;
 extern uint64_t _kernelEnd;
 
@@ -101,7 +103,7 @@ void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer)
 
     page_allocator_lock_pages(pageMap, (pageAmount / 8) / 0x1000 + 1);
     page_allocator_lock_pages(&_kernelStart, ((uint64_t)&_kernelEnd - (uint64_t)&_kernelStart) / 0x1000 + 1);    
-    page_allocator_lock_pages(screenBuffer->Base, screenBuffer->Size / 0x1000 + 1);
+    //page_allocator_lock_pages(screenBuffer->Base, screenBuffer->Size / 0x1000 + 1);
 
     tty_end_message(TTY_MESSAGE_OK);
 }
@@ -123,7 +125,7 @@ void* page_allocator_request()
         {            
             for (uint64_t bitIndex = 0; bitIndex < 64; bitIndex++)
             {
-                if ((pageMap[qwordIndex] & ((uint64_t)1 << bitIndex)) == 0) //If bit is not set
+                if ((((pageMap[qwordIndex]) >> (bitIndex)) & 1) == 0) //If bit is not set
                 {
                     void* address = (void*)((qwordIndex * 64 + bitIndex) * 0x1000);
                     page_allocator_lock_page(address);
@@ -131,17 +133,22 @@ void* page_allocator_request()
                 }
             }
 
-            tty_print("ERROR: Page allocator confused!");
+            debug_error("Page allocator confused!");
         }
     }
 
-    tty_print("ERROR: Page allocator full!");
+    debug_error("Page allocator full!");
 
     return 0;
 }
 
 void* page_allocator_request_amount(uint64_t amount)
 {
+    if (amount <= 1)
+    {
+        return page_allocator_request();
+    }
+
     uint64_t startAddress = 0;
     uint64_t freePagesFound = 0;
     for (uint64_t address = 0; address < pageAmount * 0x1000; address += 0x1000)
@@ -154,10 +161,15 @@ void* page_allocator_request_amount(uint64_t amount)
         else
         {
             freePagesFound++;
-            page_allocator_lock_pages((void*)startAddress, freePagesFound);
-            return (void*)startAddress;
+            if (freePagesFound == amount)
+            {
+                page_allocator_lock_pages((void*)startAddress, freePagesFound);
+                return (void*)startAddress;                
+            }
         }
     }
+    
+    debug_error("Page allocator full!");
 
     return 0;
 }

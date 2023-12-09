@@ -12,6 +12,8 @@
 
 #include "debug/debug.h"
 
+#include "string/string.h"
+
 #define ENTER 0x1C
 #define BACKSPACE 0x0E
 #define CONTROL 0x1D
@@ -179,16 +181,25 @@ __attribute__((interrupt)) void general_protection_exception(InterruptStackFrame
     debug_error("General Protection Fault");
 }
 
-__attribute__((interrupt)) void page_fault_exception(InterruptStackFrame* frame)
-{    
+__attribute__((interrupt)) void page_fault_exception(InterruptStackFrame* frame, uint64_t errorCode)
+{   
     VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_error("Page Fault");
+
+    char buffer[64];
+    memset(buffer, 0, 64);
+
+    strcpy(buffer, "Page Fault: ");
+    for (int i = 0; i < 32; i++)
+    {
+        buffer[i + 12] = '0' + ((errorCode >> (i)) & 1);
+    }
+    
+    debug_error(buffer);
 }
 
 __attribute__((interrupt)) void floating_point_exception(InterruptStackFrame* frame)
 {    
     VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-
     debug_error("Floating Point Exception");
 }
 

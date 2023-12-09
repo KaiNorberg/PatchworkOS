@@ -7,6 +7,7 @@
 #include "multitasking/multitasking.h"
 
 #include "tty/tty.h"
+#include "debug/debug.h"
 
 uint8_t load_program(const char* path)
 {
@@ -14,7 +15,7 @@ uint8_t load_program(const char* path)
 
     if (file == 0)
     {
-        tty_print("ERROR: Failed to open file ("); tty_print(path); tty_print(")!\n\r");
+        debug_error("Failed to open file ("); tty_print(path); tty_print(")!\n\r");
         return 0;
     }
 
@@ -26,7 +27,7 @@ uint8_t load_program(const char* path)
        header.Ident[2] != 'L' ||
        header.Ident[3] != 'F')
     {
-        tty_print("ERROR: Corrupt program file!\n\r");
+        debug_error("Corrupt program file!\n\r");
         return 0;
     }
 
