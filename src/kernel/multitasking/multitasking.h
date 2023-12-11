@@ -50,9 +50,13 @@ typedef struct Task
     uint64_t State;
 } Task;
 
+extern void jump_to_user_space(void* userSpaceFunction);
+
 void multitasking_visualize();
 
 void multitasking_init();
+
+void multitasking_yield_to_user_space();
 
 Task* multitasking_new(void* entry);
 

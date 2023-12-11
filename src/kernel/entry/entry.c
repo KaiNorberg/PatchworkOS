@@ -16,11 +16,21 @@
 
 #include "string/string.h"
 
+void user_space_entry()
+{
+    tty_print("Hello from user space!\n\r");
+    
+    while (1)
+    {
+
+    }
+}
+
 void _start(BootInfo* bootInfo)
 {   
     kernel_init(bootInfo);
 
-    tty_print("\n\r");
+    /*tty_print("\n\r");
 
     heap_visualize();
     tty_print("Locked pages: "); tty_printi(page_allocator_get_locked_amount()); tty_print("\n\r");
@@ -32,19 +42,20 @@ void _start(BootInfo* bootInfo)
         load_program("/programs/test/test.elf"); //This is really slow
     }
 
-    multitasking_visualize();
+    multitasking_visualize();*/
 
-    tty_print("Yielding...\n\n\r");
+    load_program("/programs/test/test.elf"); //This is really slow
+
+    tty_print("\n\rJumping to user space...\n\n\r");
     
-    uint64_t rax = SYS_YIELD;
-    asm volatile("movq %0, %%rax;" "int $0x80" : : "r"(rax));
+    //multitasking_yield_to_user_space();
 
-    tty_print("\nBack in the main task!\n\n\r");
+    tty_print("\nBack in the main task, if you see this something has gone very wrong!\n\n\r");
 
-    multitasking_visualize();
+    /*multitasking_visualize();
 
     heap_visualize();
-    tty_print("Locked pages: "); tty_printi(page_allocator_get_locked_amount()); tty_print("\n\n\r");
+    tty_print("Locked pages: "); tty_printi(page_allocator_get_locked_amount()); tty_print("\n\n\r");*/
 
     while (1)
     {

@@ -95,6 +95,22 @@ void multitasking_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
+void multitasking_yield_to_user_space()
+{
+    //This is a work in progress, dont worry about all the problems
+
+    Task* newTask = load_next_task();
+    
+    /*memcpy(registerBuffer, &(newTask->Registers), sizeof(RegisterBuffer));
+    frame->InstructionPointer = newTask->InstructionPointer;
+    frame->StackPointer = newTask->StackPointer;
+    taskAddressSpace = (uint64_t)newTask->AddressSpace;*/
+
+    VIRTUAL_MEMORY_LOAD_SPACE(newTask->AddressSpace);
+
+    jump_to_user_space((void*)newTask->InstructionPointer);
+}
+
 Task* multitasking_new(void* entry)
 { 
     Task* newTask = kmalloc(sizeof(Task));

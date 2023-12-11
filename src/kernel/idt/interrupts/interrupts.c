@@ -208,7 +208,10 @@ __attribute__((interrupt)) void floating_point_exception(InterruptStackFrame* fr
 /////////////////////////////////
 
 __attribute__((interrupt)) void keyboard_interrupt(InterruptStackFrame* frame)
-{    
+{        
+    uint64_t taskAddressSpace;
+    asm volatile("movq %%cr3, %0" : "=r" (taskAddressSpace));
+
     VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
 
     uint8_t scanCode = io_inb(0x60);
@@ -219,6 +222,8 @@ __attribute__((interrupt)) void keyboard_interrupt(InterruptStackFrame* frame)
     }
 
     io_outb(PIC1_COMMAND, PIC_EOI);
+
+    VIRTUAL_MEMORY_LOAD_SPACE(taskAddressSpace);
 }
 
 /*__attribute__((interrupt)) void syscall_interrupt(InterruptStackFrame* frame)

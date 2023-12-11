@@ -94,6 +94,7 @@ void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddres
         PAGE_DIR_SET_ADDRESS(pde, (uint64_t)pdp >> 12);
         PAGE_DIR_SET_FLAG(pde, PAGE_DIR_PRESENT);
         PAGE_DIR_SET_FLAG(pde, PAGE_DIR_READ_WRITE);
+        PAGE_DIR_SET_FLAG(pde, PAGE_DIR_USER_SUPERVISOR);
         addressSpace->Entries[pdpIndex] = pde;
     }
     else
@@ -110,6 +111,7 @@ void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddres
         PAGE_DIR_SET_ADDRESS(pde, (uint64_t)pd >> 12);
         PAGE_DIR_SET_FLAG(pde, PAGE_DIR_PRESENT);
         PAGE_DIR_SET_FLAG(pde, PAGE_DIR_READ_WRITE);
+        PAGE_DIR_SET_FLAG(pde, PAGE_DIR_USER_SUPERVISOR);
         pdp->Entries[pdIndex] = pde;
     }
     else
@@ -126,6 +128,7 @@ void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddres
         PAGE_DIR_SET_ADDRESS(pde, (uint64_t)pt >> 12);
         PAGE_DIR_SET_FLAG(pde, PAGE_DIR_PRESENT);
         PAGE_DIR_SET_FLAG(pde, PAGE_DIR_READ_WRITE);
+        PAGE_DIR_SET_FLAG(pde, PAGE_DIR_USER_SUPERVISOR);
         pd->Entries[ptIndex] = pde;
     }
     else
@@ -137,6 +140,7 @@ void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddres
     PAGE_DIR_SET_ADDRESS(pde, (uint64_t)physicalAddress >> 12);
     PAGE_DIR_SET_FLAG(pde, PAGE_DIR_PRESENT);
     PAGE_DIR_SET_FLAG(pde, PAGE_DIR_READ_WRITE);
+    PAGE_DIR_SET_FLAG(pde, PAGE_DIR_USER_SUPERVISOR);
     pt->Entries[pIndex] = pde;
 }
 

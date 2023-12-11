@@ -10,17 +10,6 @@
 #include "page_allocator/page_allocator.h"
 #include "multitasking/multitasking.h"
 
-__attribute__((aligned(0x1000)))
-GDT gdt = 
-{
-    {0, 0, 0, 0x00, 0x00, 0}, //NULL
-    {0, 0, 0, 0x9A, 0xA0, 0}, //KernelCode
-    {0, 0, 0, 0x92, 0xA0, 0}, //KernelData
-    {0, 0, 0, 0x00, 0x00, 0}, //UserNull
-    {0, 0, 0, 0x9A, 0xA0, 0}, //UserCode
-    {0, 0, 0, 0x92, 0xA0, 0}, //UserData
-};
-
 void kernel_init(BootInfo* bootInfo)
 {    
     tty_init(bootInfo->Screenbuffer, bootInfo->TTYFont);
@@ -33,12 +22,12 @@ void kernel_init(BootInfo* bootInfo)
     tty_clear();
     tty_print("Paging and virtual memory have been initialized\n\r");
 
-    tty_start_message("GDT loading");
-    static GDTDesc gdtDesc;
-	gdtDesc.Size = sizeof(GDT) - 1;
-	gdtDesc.Offset = (uint64_t)&gdt;
-	gdt_load(&gdtDesc);
-    tty_end_message(TTY_MESSAGE_OK);
+    //Task State Segment Value
+    void* RSP0 = page_allocator_request();
+    void* RSP1 = page_allocator_request();
+    void* RSP2 = page_allocator_request();
+
+    gdt_init(RSP0, RSP1, RSP2);
 
     idt_init();
     
