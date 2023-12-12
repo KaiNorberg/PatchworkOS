@@ -7,7 +7,7 @@
 
 #define GDT_OFFSET_KERNEL_CODE 0x08
 
-__attribute__((aligned(0x10))) 
+__attribute__((aligned(0x1000))) 
 IDTEntry idt[256];
 
 IDTR idtr;
@@ -27,23 +27,23 @@ void idt_init()
         idt_set_descriptor(vector, isr_stub_table[vector], 0x8E);
     }
 
-    idt_set_descriptor(0x0, device_by_zero_exception, 0x8E);
-    idt_set_descriptor(0x2, none_maskable_interrupt_exception, 0x8E);
-    idt_set_descriptor(0x3, breakpoint_exception, 0x8E);
-    idt_set_descriptor(0x4, overflow_exception, 0x8E);
-    idt_set_descriptor(0x5, boundRange_exception, 0x8E);
-    idt_set_descriptor(0x6, invalid_opcode_exception, 0x8E);
-    idt_set_descriptor(0x7, device_not_detected_exception, 0x8E);
-    idt_set_descriptor(0x8, double_fault_exception, 0x8E);
-    idt_set_descriptor(0xA, invalid_tts_exception, 0x8E);
-    idt_set_descriptor(0xB, segment_not_present_exception, 0x8E);
-    idt_set_descriptor(0xC, stack_segment_exception, 0x8E);
-    idt_set_descriptor(0xD, general_protection_exception, 0x8E);
-    idt_set_descriptor(0xE, page_fault_exception, 0x8E);
-    idt_set_descriptor(0x10, floating_point_exception, 0x8E);
+    idt_set_descriptor(0x0, device_by_zero_exception, 0xEE);
+    idt_set_descriptor(0x2, none_maskable_interrupt_exception, 0xEE);
+    idt_set_descriptor(0x3, breakpoint_exception, 0xEE);
+    idt_set_descriptor(0x4, overflow_exception, 0xEE);
+    idt_set_descriptor(0x5, boundRange_exception, 0xEE);
+    idt_set_descriptor(0x6, invalid_opcode_exception, 0xEE);
+    idt_set_descriptor(0x7, device_not_detected_exception, 0xEE);
+    idt_set_descriptor(0x8, double_fault_exception, 0xEE);
+    idt_set_descriptor(0xA, invalid_tts_exception, 0xEE);
+    idt_set_descriptor(0xB, segment_not_present_exception, 0xEE);
+    idt_set_descriptor(0xC, stack_segment_exception, 0xEE);
+    idt_set_descriptor(0xD, general_protection_exception, 0xEE);
+    idt_set_descriptor(0xE, page_fault_exception, 0xEE);
+    idt_set_descriptor(0x10, floating_point_exception, 0xEE);
 
-    idt_set_descriptor(0x21, keyboard_interrupt, 0x8E);
-    idt_set_descriptor(0x80, &syscall_interrupt, 0x8E);
+    idt_set_descriptor(0x21, keyboard_interrupt, 0xEE);
+    idt_set_descriptor(0x80, &syscall_interrupt, 0xEE);
 
     asm volatile ("lidt %0" : : "m"(idtr));
 

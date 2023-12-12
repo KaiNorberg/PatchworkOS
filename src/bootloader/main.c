@@ -293,17 +293,17 @@ void* get_rsdp()
 {	
 	Print(L"Getting RSDP...\n\r");
 
-	EFI_CONFIGURATION_TABLE* ConfigTable = SystemTable->ConfigurationTable;
+	EFI_CONFIGURATION_TABLE* configTable = SystemTable->ConfigurationTable;
 	void* RSDP = 0;
-	EFI_GUID Acpi2TableGuid = ACPI_20_TABLE_GUID;
+	EFI_GUID acpi2TableGuid = ACPI_20_TABLE_GUID;
 
 	for (UINTN i = 0; i < SystemTable->NumberOfTableEntries; i++)
 	{
-		if (CompareGuid(&ConfigTable[i].VendorGuid, &Acpi2TableGuid) && strcmp("RSD PTR ", ConfigTable->VendorTable))
+		if (CompareGuid(&configTable[i].VendorGuid, &acpi2TableGuid) && strcmp("RSD PTR ", configTable->VendorTable))
 		{
-			RSDP = ConfigTable->VendorTable;
+			RSDP = configTable->VendorTable;
 		}
-		ConfigTable++;
+		configTable++;
 	}
 
 	return RSDP;

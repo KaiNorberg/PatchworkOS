@@ -17,6 +17,8 @@ typedef struct {
 	uint32_t Base;
 } __attribute__((packed)) IDTR;
 
+extern IDTEntry idt[];
+
 void idt_init();
 
 void remap_pic();

@@ -1,7 +1,10 @@
 extern syscall_handler
 
+extern kernelAddressSpace
+
 global syscall_interrupt
 syscall_interrupt:
+
 	push qword rbp
 	mov rbp, rsp
     push qword r15

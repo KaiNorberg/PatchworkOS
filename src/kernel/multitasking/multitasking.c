@@ -95,6 +95,22 @@ void multitasking_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
+void multitasking_yield_to_user_space()
+{
+    //This is a work in progress, dont worry about all the problems
+
+    Task* newTask = load_next_task();
+    
+    /*memcpy(registerBuffer, &(newTask->Registers), sizeof(RegisterBuffer));
+    frame->InstructionPointer = newTask->InstructionPointer;
+    frame->StackPointer = newTask->StackPointer;
+    taskAddressSpace = (uint64_t)newTask->AddressSpace;*/
+
+    VIRTUAL_MEMORY_LOAD_SPACE(newTask->AddressSpace);
+
+    jump_to_user_space((void*)newTask->InstructionPointer, (void*)newTask->StackTop);
+}
+
 Task* multitasking_new(void* entry)
 { 
     Task* newTask = kmalloc(sizeof(Task));
@@ -111,13 +127,8 @@ Task* multitasking_new(void* entry)
     newTask->AddressSpace = virtual_memory_create(newTask);
     newTask->InstructionPointer = (uint64_t)entry;
 
-    for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
-    {
-        virtual_memory_remap(newTask->AddressSpace, (void*)(i * 0x1000), (void*)(i * 0x1000));
-    }
-
-    //virtual_memory_remap(newTask->AddressSpace, (void*)newTask->StackBottom, (void*)newTask->StackBottom);
-    //virtual_memory_remap(newTask->AddressSpace, newTask->AddressSpace, newTask->AddressSpace);
+    virtual_memory_remap(newTask->AddressSpace, (void*)newTask->StackBottom, (void*)newTask->StackBottom);
+    virtual_memory_remap(newTask->AddressSpace, newTask->AddressSpace, newTask->AddressSpace);
 
     newTask->Next = 0;
     newTask->Prev = 0;
@@ -240,11 +251,8 @@ void* task_allocate_pages(Task* task, void* virtualAddress, uint64_t pageAmount)
         task->LastMemoryBlock->Next = newMemoryBlock;
         task->LastMemoryBlock = newMemoryBlock;
     }
-
-    for (uint64_t i = 0; i < pageAmount; i++)
-    {
-        virtual_memory_remap(task->AddressSpace, virtualAddress + i * 0x1000, physicalAddress + i * 0x1000);
-    }
+    
+    virtual_memory_remap_pages(task->AddressSpace, virtualAddress, physicalAddress, pageAmount);
 
     return physicalAddress;
 }
