@@ -9,6 +9,7 @@
 #include "file_system/file_system.h"
 #include "page_allocator/page_allocator.h"
 #include "multitasking/multitasking.h"
+#include "acpi/acpi.h"
 
 void kernel_init(BootInfo* bootInfo)
 {    
@@ -19,15 +20,14 @@ void kernel_init(BootInfo* bootInfo)
 
     virtual_memory_init(bootInfo->MemoryMap);
 
-    tty_clear();
-    tty_print("Paging and virtual memory have been initialized\n\r");
-
     //Task State Segment Value
     void* RSP0 = page_allocator_request() + 0x1000;
     void* RSP1 = page_allocator_request() + 0x1000;
     void* RSP2 = page_allocator_request() + 0x1000;
 
     gdt_init(RSP0, RSP1, RSP2);
+
+    acpi_init(bootInfo->Xsdp);
 
     idt_init();
     

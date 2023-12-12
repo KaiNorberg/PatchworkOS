@@ -30,33 +30,18 @@ void _start(BootInfo* bootInfo)
 {   
     kernel_init(bootInfo);
 
-    /*tty_print("\n\r");
-
-    heap_visualize();
-    tty_print("Locked pages: "); tty_printi(page_allocator_get_locked_amount()); tty_print("\n\r");
-
-    tty_print("\n\rLoading programs (This is really slow for now)...\n\n\r");
-
-    for (int i = 0; i < 5; i++)
-    {    
-        load_program("/programs/test/test.elf"); //This is really slow
-    }
-
-    multitasking_visualize();*/
+    tty_print("\n\rLoading program...\n\r");
 
     load_program("/programs/test/test.elf"); //This is really slow
 
-    tty_print("\n\rJumping to user space...\n\n\r");
+    tty_print("Jumping to user space...\n\n\r");
     
+    enable_interrupts();
+
     multitasking_yield_to_user_space();
 
     tty_print("\nBack in the main task, if you see this something has gone very wrong!\n\n\r");
-
-    /*multitasking_visualize();
-
-    heap_visualize();
-    tty_print("Locked pages: "); tty_printi(page_allocator_get_locked_amount()); tty_print("\n\n\r");*/
-
+    
     while (1)
     {
         asm volatile("hlt");

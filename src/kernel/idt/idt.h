@@ -27,6 +27,6 @@ void exception_handler();
 
 void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags);
 
-void enable_irq();
+void enable_interrupts();
 
-void disable_irq();
+void disable_interrupts();

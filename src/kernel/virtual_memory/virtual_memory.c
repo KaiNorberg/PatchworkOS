@@ -30,7 +30,7 @@ VirtualAddressSpace* virtual_memory_create()
     VirtualAddressSpace* addressSpace = (VirtualAddressSpace*)page_allocator_request();
     memset(addressSpace, 0, 0x1000);
 
-    for (uint64_t i = 0; i < efiMemoryMap->DescriptorAmount; i++)
+    /*for (uint64_t i = 0; i < efiMemoryMap->DescriptorAmount; i++)
     {
         EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)efiMemoryMap->Base + (i * efiMemoryMap->DescriptorSize));
 
@@ -59,7 +59,7 @@ VirtualAddressSpace* virtual_memory_create()
         {
             virtual_memory_remap(addressSpace, address, address);
         }
-    }
+    }*/
 
     return addressSpace;
 }
@@ -74,6 +74,8 @@ void virtual_memory_remap_pages(VirtualAddressSpace* addressSpace, void* virtual
 
 void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress)
 {    
+    //Im pretty confident something here is wrong
+    
     if ((uint64_t)virtualAddress % 0x1000 != 0)
     {
         debug_error("Attempt to map invalid virtual address!");

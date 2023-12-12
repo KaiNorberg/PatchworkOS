@@ -49,8 +49,6 @@ void idt_init()
 
     remap_pic();
 
-    enable_irq();
-
     tty_end_message(TTY_MESSAGE_OK);
 }
 
@@ -106,14 +104,14 @@ void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags)
     descriptor->Reserved = 0;
 }
 
-void enable_irq()
+void enable_interrupts()
 {
     io_outb(PIC1_DATA, 0b11111101);
     io_outb(PIC2_DATA, 0b11111111);
     asm volatile ("sti");
 }
 
-void disable_irq()
+void disable_interrupts()
 {
     io_outb(PIC1_DATA, 0b11111111);
     io_outb(PIC2_DATA, 0b11111111);

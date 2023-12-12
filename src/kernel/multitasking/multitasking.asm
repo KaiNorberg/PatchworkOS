@@ -14,7 +14,7 @@ jump_to_user_space:
  
 	push qword dataSegment
 	push qword rsi
-	pushfq
+	push qword 0x202
 	push qword codeSegment
 	push qword rdi
 	iretq
