@@ -127,10 +127,10 @@ Task* multitasking_new(void* entry)
     newTask->AddressSpace = virtual_memory_create(newTask);
     newTask->InstructionPointer = (uint64_t)entry;
     
-    for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
+    /*for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
     {
         virtual_memory_remap(newTask->AddressSpace, (void*)(i * 0x1000), (void*)(i * 0x1000));
-    }
+    }*/
 
     //virtual_memory_remap(newTask->AddressSpace, (void*)newTask->StackBottom, (void*)newTask->StackBottom);
     //virtual_memory_remap(newTask->AddressSpace, newTask->AddressSpace, newTask->AddressSpace);
@@ -231,7 +231,7 @@ void* task_request_page(Task* task)
         task->LastMemoryBlock = newMemoryBlock;
     }
 
-    virtual_memory_remap(task->AddressSpace, physicalAddress, physicalAddress);
+    virtual_memory_remap(task->AddressSpace, physicalAddress, physicalAddress, 1);
 
     return physicalAddress;
 }
@@ -257,7 +257,7 @@ void* task_allocate_pages(Task* task, void* virtualAddress, uint64_t pageAmount)
         task->LastMemoryBlock = newMemoryBlock;
     }
     
-    virtual_memory_remap_pages(task->AddressSpace, virtualAddress, physicalAddress, pageAmount);
+    virtual_memory_remap_pages(task->AddressSpace, virtualAddress, physicalAddress, pageAmount, 1);
 
     return physicalAddress;
 }

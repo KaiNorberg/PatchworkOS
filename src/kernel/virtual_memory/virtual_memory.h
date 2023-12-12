@@ -38,13 +38,13 @@ typedef PageDirectory VirtualAddressSpace;
 
 extern VirtualAddressSpace* kernelAddressSpace;
 
-void virtual_memory_init(EFIMemoryMap* memoryMap);
+void virtual_memory_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer);
 
 VirtualAddressSpace* virtual_memory_create();
 
-void virtual_memory_remap_pages(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress, uint64_t pageAmount);
+void virtual_memory_remap_pages(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint8_t userAccessible);
 
-void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress);
+void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress, uint8_t userAccessible);
 
 void virtual_memory_erase(VirtualAddressSpace* addressSpace);
 

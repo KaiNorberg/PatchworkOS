@@ -18,7 +18,7 @@ void kernel_init(BootInfo* bootInfo)
 
     page_allocator_init(bootInfo->MemoryMap, bootInfo->Screenbuffer);
 
-    virtual_memory_init(bootInfo->MemoryMap);
+    virtual_memory_init(bootInfo->MemoryMap, bootInfo->Screenbuffer);
 
     //Task State Segment Value
     void* RSP0 = page_allocator_request() + 0x1000;
