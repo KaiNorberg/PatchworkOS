@@ -23,9 +23,9 @@ void kernel_init(BootInfo* bootInfo)
     tty_print("Paging and virtual memory have been initialized\n\r");
 
     //Task State Segment Value
-    void* RSP0 = page_allocator_request();
-    void* RSP1 = page_allocator_request();
-    void* RSP2 = page_allocator_request();
+    void* RSP0 = page_allocator_request() + 0x1000;
+    void* RSP1 = page_allocator_request() + 0x1000;
+    void* RSP2 = page_allocator_request() + 0x1000;
 
     gdt_init(RSP0, RSP1, RSP2);
 
@@ -35,7 +35,7 @@ void kernel_init(BootInfo* bootInfo)
     
     file_system_init(bootInfo->RootDirectory);
     
-    syscall_init(kernelAddressSpace);
+    syscall_init();
 
     multitasking_init();
 }

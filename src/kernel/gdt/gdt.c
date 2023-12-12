@@ -54,7 +54,6 @@ void gdt_init(void* RSP0, void* RSP1, void* RSP2)
     tss.RSP2 = (uint64_t)RSP2;
     tss.IOPB = sizeof(TaskStateSegment);
 
-    //Task State Segment
     gdt.TSS.LimitLow = sizeof(TaskStateSegment);
     gdt.TSS.BaseLow = (uint16_t)((uint64_t)&tss);
     gdt.TSS.BaseLowerMiddle = (uint8_t)((uint64_t)&tss >> 16);

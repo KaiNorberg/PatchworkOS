@@ -6,6 +6,6 @@
 #include "idt/interrupts/interrupts.h"
 #include "multitasking/multitasking.h"
 
-void syscall_init(VirtualAddressSpace* addressSpace);
+void syscall_init();
 
 void syscall_handler(RegisterBuffer* registerBuffer, InterruptStackFrame* frame);

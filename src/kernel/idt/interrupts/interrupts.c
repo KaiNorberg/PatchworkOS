@@ -143,6 +143,7 @@ __attribute__((interrupt)) void boundRange_exception(InterruptStackFrame* frame)
 __attribute__((interrupt)) void invalid_opcode_exception(InterruptStackFrame* frame)
 {    
     VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
+    debug_error("Invalid opcode");
 }
 
 __attribute__((interrupt)) void device_not_detected_exception(InterruptStackFrame* frame)
@@ -225,8 +226,3 @@ __attribute__((interrupt)) void keyboard_interrupt(InterruptStackFrame* frame)
 
     VIRTUAL_MEMORY_LOAD_SPACE(taskAddressSpace);
 }
-
-/*__attribute__((interrupt)) void syscall_interrupt(InterruptStackFrame* frame)
-{   
-    tty_printi((uint64_t)frame);
-}*/

@@ -1,21 +1,20 @@
 global jump_to_user_space
 
-codeSegment equ 0x08
-dataSegment equ 0x10
+codeSegment equ 0x18 | 3
+dataSegment equ 0x20 | 3
 
+; rdi = address to jump to
+; rsi = address of task stack top
 jump_to_user_space:
-	mov rcx, 0xc0000082
-	wrmsr
-	mov rcx, 0xc0000080
-	rdmsr
-	or eax, 1
-	wrmsr
-	mov rcx, 0xc0000081
-	rdmsr
-	mov edx, 0x00180008
-	wrmsr
-
-    mov rcx, rdi ; to be loaded into RIP
-	mov r11, 0x202 ; to be loaded into EFLAGS
-	o64 sysret ;use "o64 sysret" if you assemble with NASM
-    ret
+	mov ax, dataSegment
+	mov ds, ax
+	mov es, ax 
+	mov fs, ax 
+	mov gs, ax
+ 
+	push qword dataSegment
+	push qword rsi
+	pushfq
+	push qword codeSegment
+	push qword rdi
+	iretq

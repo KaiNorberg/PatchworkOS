@@ -5,13 +5,13 @@
 #include "multitasking/multitasking.h"
 #include "string/string.h"
 
+#include "kernel/kernel.h"
+
 #include "../common.h"
 
-VirtualAddressSpace* syscallAddressSpace;
-
-void syscall_init(VirtualAddressSpace* addressSpace)
+void syscall_init()
 {
-    syscallAddressSpace = addressSpace;
+
 }
 
 void syscall_handler(RegisterBuffer* registerBuffer, InterruptStackFrame* frame)
@@ -19,7 +19,7 @@ void syscall_handler(RegisterBuffer* registerBuffer, InterruptStackFrame* frame)
     uint64_t taskAddressSpace;
     asm volatile("movq %%cr3, %0" : "=r" (taskAddressSpace));
 
-    VIRTUAL_MEMORY_LOAD_SPACE(syscallAddressSpace);
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
     
     uint64_t out;
 
@@ -42,7 +42,7 @@ void syscall_handler(RegisterBuffer* registerBuffer, InterruptStackFrame* frame)
         oldTask->AddressSpace = (VirtualAddressSpace*)taskAddressSpace;
 
         Task* newTask = load_next_task();
-        
+
         memcpy(registerBuffer, &(newTask->Registers), sizeof(RegisterBuffer));
         frame->InstructionPointer = newTask->InstructionPointer;
         frame->StackPointer = newTask->StackPointer;
@@ -55,7 +55,7 @@ void syscall_handler(RegisterBuffer* registerBuffer, InterruptStackFrame* frame)
     {                   
         Task* oldTask = get_running_task();
 
-        Task* newTask = load_next_task(); 
+        Task* newTask = load_next_task();
 
         multitasking_free(oldTask);   
 
@@ -76,7 +76,7 @@ void syscall_handler(RegisterBuffer* registerBuffer, InterruptStackFrame* frame)
     break;
     }
 
-    VIRTUAL_MEMORY_LOAD_SPACE(taskAddressSpace);
-
     registerBuffer->RAX = out;
+
+    VIRTUAL_MEMORY_LOAD_SPACE(taskAddressSpace);
 }

@@ -50,7 +50,7 @@ typedef struct Task
     uint64_t State;
 } Task;
 
-extern void jump_to_user_space(void* userSpaceFunction);
+extern void jump_to_user_space(void* userSpaceFunction, void* stackTop);
 
 void multitasking_visualize();
 

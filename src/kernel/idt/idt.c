@@ -7,7 +7,7 @@
 
 #define GDT_OFFSET_KERNEL_CODE 0x08
 
-__attribute__((aligned(0x10))) 
+__attribute__((aligned(0x1000))) 
 IDTEntry idt[256];
 
 IDTR idtr;

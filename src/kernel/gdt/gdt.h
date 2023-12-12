@@ -53,6 +53,10 @@ typedef struct __attribute__((packed))
     LongSegmentDescriptor TSS;
 } GDT;
 
+extern GDT gdt;
+
+extern TaskStateSegment tss;
+
 extern void gdt_load(GDTDesc* descriptor);
 extern void tss_load();
 

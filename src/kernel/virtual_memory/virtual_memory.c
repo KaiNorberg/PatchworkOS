@@ -5,6 +5,8 @@
 #include "string/string.h"
 #include "debug/debug.h"
 #include "tty/tty.h"
+#include "gdt/gdt.h"
+#include "idt/idt.h"
 
 EFIMemoryMap* efiMemoryMap;
 
@@ -28,17 +30,7 @@ VirtualAddressSpace* virtual_memory_create()
     VirtualAddressSpace* addressSpace = (VirtualAddressSpace*)page_allocator_request();
     memset(addressSpace, 0, 0x1000);
 
-    //A task currently needs the stack of the previous task to be mapped, adding user space and the TSS will fix this
-    /*for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
-    {
-        void* address = (void*)(i * 0x1000);
-        if (page_allocator_get_status(address))
-        {
-            virtual_memory_remap(addressSpace, address, address);
-        }
-    }*/
-
-    /*for (uint64_t i = 0; i < efiMemoryMap->DescriptorAmount; i++)
+    for (uint64_t i = 0; i < efiMemoryMap->DescriptorAmount; i++)
     {
         EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)efiMemoryMap->Base + (i * efiMemoryMap->DescriptorSize));
 
@@ -51,7 +43,23 @@ VirtualAddressSpace* virtual_memory_create()
         }
     }
 
-    virtual_memory_remap_pages(addressSpace, &_kernelStart, &_kernelStart, ((uint64_t)&_kernelEnd - (uint64_t)&_kernelStart) / 0x1000 + 1);*/
+    virtual_memory_remap_pages(addressSpace, &_kernelStart, &_kernelStart, ((uint64_t)&_kernelEnd - (uint64_t)&_kernelStart) / 0x1000 + 1);
+
+    virtual_memory_remap(addressSpace, &idt, &idt);
+    virtual_memory_remap(addressSpace, &gdt, &gdt);
+
+    virtual_memory_remap(addressSpace, (void*)tss.RSP0, (void*)tss.RSP0);
+    virtual_memory_remap(addressSpace, (void*)tss.RSP1, (void*)tss.RSP1);
+    virtual_memory_remap(addressSpace, (void*)tss.RSP2, (void*)tss.RSP2);
+
+    for (uint64_t i = 0; i < page_allocator_get_total_amount(); i++)
+    {
+        void* address = (void*)(i * 0x1000);
+        if (page_allocator_get_status(address))
+        {
+            virtual_memory_remap(addressSpace, address, address);
+        }
+    }
 
     return addressSpace;
 }

@@ -48,7 +48,7 @@ void _start(BootInfo* bootInfo)
 
     tty_print("\n\rJumping to user space...\n\n\r");
     
-    //multitasking_yield_to_user_space();
+    multitasking_yield_to_user_space();
 
     tty_print("\nBack in the main task, if you see this something has gone very wrong!\n\n\r");
 
