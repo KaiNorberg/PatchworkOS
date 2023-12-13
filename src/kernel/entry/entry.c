@@ -22,7 +22,8 @@ void _start(BootInfo* bootInfo)
 
     tty_print("\n\rLoading program...\n\r");
 
-    load_program("/programs/test/test.elf"); //This is really slow
+    load_program("/programs/test1/test1.elf");
+    load_program("/programs/test2/test2.elf");
 
     tty_print("Jumping to user space...\n\n\r");
     

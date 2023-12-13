@@ -126,7 +126,6 @@ Task* multitasking_new(void* entry)
     newTask->InstructionPointer = (uint64_t)entry;
 
     virtual_memory_remap(newTask->AddressSpace, (void*)newTask->StackBottom, (void*)newTask->StackBottom, 1);
-    //virtual_memory_remap(newTask->AddressSpace, newTask->AddressSpace, newTask->AddressSpace);
 
     newTask->Next = 0;
     newTask->Prev = 0;
@@ -287,7 +286,7 @@ Task* get_next_ready_task(Task* task)
         }
         else if (task->Next == prev)
         {
-            return mainTask;
+            return 0;
         }
     }
 }

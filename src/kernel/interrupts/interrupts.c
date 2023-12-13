@@ -144,7 +144,12 @@ const char* exception_strings[32] =
 };
 
 void interrupt_handler(InterruptStackFrame* stackFrame)
-{
+{       
+    uint64_t taskAddressSpace;
+    asm volatile("movq %%cr3, %0" : "=r" (taskAddressSpace));
+
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
+
     if (stackFrame->Vector < 32) //Exception
     {
         exception_handler(stackFrame);
@@ -155,8 +160,10 @@ void interrupt_handler(InterruptStackFrame* stackFrame)
     }
     else if (stackFrame->Vector == 0x80) //Syscall
     {
-        syscall_handler(stackFrame);
-    }
+        syscall_handler(stackFrame, (VirtualAddressSpace**)&taskAddressSpace);
+    }  
+    
+    VIRTUAL_MEMORY_LOAD_SPACE(taskAddressSpace);
 }
 
 void irq_handler(InterruptStackFrame* stackFrame)
