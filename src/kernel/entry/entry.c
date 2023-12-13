@@ -16,16 +16,6 @@
 
 #include "string/string.h"
 
-void user_space_entry()
-{
-    tty_print("Hello from user space!\n\r");
-    
-    while (1)
-    {
-
-    }
-}
-
 void _start(BootInfo* bootInfo)
 {   
     kernel_init(bootInfo);

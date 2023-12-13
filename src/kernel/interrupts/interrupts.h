@@ -2,8 +2,15 @@
 
 #include <stdint.h>
 
-typedef struct 
+#include "multitasking/multitasking.h"
+
+typedef struct __attribute__((packed))
 {
+    RegisterBuffer Registers;
+
+    uint64_t Vector;
+    uint64_t ErrorCode;
+
     uint64_t InstructionPointer;
     uint64_t CodeSegment;
     uint64_t Flags;
@@ -11,9 +18,15 @@ typedef struct
     uint64_t StackSegment;
 } InterruptStackFrame;
 
+void interrupt_handler(InterruptStackFrame* stackFrame);
+
+void exception_handler(InterruptStackFrame* stackFrame);
+
 /////////////////////////////////
 // Exception interrupt handlers.
 /////////////////////////////////
+/*
+__attribute__((interrupt)) void generic_exception(InterruptStackFrame* frame);
 
 __attribute__((interrupt)) void device_by_zero_exception(InterruptStackFrame* frame);
 
@@ -47,6 +60,4 @@ __attribute__((interrupt)) void floating_point_exception(InterruptStackFrame* fr
 // IRQ interrupt handlers.
 /////////////////////////////////
 
-__attribute__((interrupt)) void keyboard_interrupt(InterruptStackFrame* frame);
-
-/*__attribute__((interrupt)) void syscall_interrupt(InterruptStackFrame* frame);*/
+__attribute__((interrupt)) void keyboard_interrupt(InterruptStackFrame* frame);*/

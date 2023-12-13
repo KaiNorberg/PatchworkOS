@@ -34,7 +34,7 @@ const char* errorJokes[] =
     "PEBCAK detected."        
 };
 
-void debug_error(const char* message)
+void debug_panic(const char* message)
 {
     uint64_t randomNumber = 0;
 
@@ -138,9 +138,6 @@ void debug_error(const char* message)
     tty_printi(page_allocator_get_unlocked_amount());
 
     tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 17 * scale);
-    tty_print("System Halted!");
-
-    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 18 * scale);
     tty_print("Please manually reboot your machine.");
 
     while (1)

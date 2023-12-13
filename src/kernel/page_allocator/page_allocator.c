@@ -133,11 +133,11 @@ void* page_allocator_request()
                 }
             }
 
-            debug_error("Page allocator confused!");
+            debug_panic("Page allocator confused!");
         }
     }
 
-    debug_error("Page allocator full!");
+    debug_panic("Page allocator full!");
 
     return 0;
 }
@@ -169,7 +169,7 @@ void* page_allocator_request_amount(uint64_t amount)
         }
     }
     
-    debug_error("Page allocator full!");
+    debug_panic("Page allocator full!");
 
     return 0;
 }

@@ -14,6 +14,8 @@
 
 #include "string/string.h"
 
+#include "../common.h"
+
 #define ENTER 0x1C
 #define BACKSPACE 0x0E
 #define CONTROL 0x1D
@@ -106,80 +108,265 @@ const char SHIFTED_SCAN_CODE_TABLE[] =
     0,	/* All other keys are undefined */
 };
 
+const char* exception_strings[32] = 
+{
+    "Division Fault",
+    "Debug",
+    "Non-Maskable Interrupt",
+    "Breakpoint",
+    "Overflow",
+    "Bound Range Exceeded",
+    "Invalid Opcode",
+    "Device Not Available",
+    "Double Fault",
+    "Coprocessor Segment Overrun",
+    "Invalid TSS",
+    "Segment Not Present",
+    "Stack-Segment Fault",
+    "General Protection Fault",
+    "Page Fault",
+    "Reserved",
+    "Floating Point Exception",
+    "Alignment Check",
+    "Machine Check",
+    "SIMD Floating-Point Exception",
+    "Virtualization Exception",
+    "Control Protection Exception",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Hypervisor Injection Exception",
+    "VMM Communication Exception",
+    "Security Exception"
+};
+
+void interrupt_handler(InterruptStackFrame* stackFrame)
+{
+    if (stackFrame->Vector < 32) //Exception
+    {
+        exception_handler(stackFrame);
+    }
+    else if (stackFrame->Vector >= 32 && stackFrame->Vector <= 48) //IRQ
+    {
+        //uint64_t taskAddressSpace;
+        //asm volatile("movq %%cr3, %0" : "=r" (taskAddressSpace));
+
+        //VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
+
+        uint8_t scanCode = io_inb(0x60);
+
+        if (!(scanCode & (0b10000000))) //If key was pressed down
+        {
+            tty_put(SCAN_CODE_TABLE[scanCode]);
+        }
+
+        io_outb(PIC1_COMMAND, PIC_EOI);
+
+        //VIRTUAL_MEMORY_LOAD_SPACE(taskAddressSpace);        
+    }
+    else if (stackFrame->Vector == 0x80) //Syscall
+    {
+        syscall_handler(stackFrame);
+    }
+}
+
+void exception_handler(InterruptStackFrame* stackFrame)
+{
+    uint64_t randomNumber = 0;
+
+    Pixel black;
+    black.A = 255;
+    black.R = 0;
+    black.G = 0;
+    black.B = 0;
+
+    Pixel white;
+    white.A = 255;
+    white.R = 255;
+    white.G = 255;
+    white.B = 255;
+
+    Pixel red;
+    red.A = 255;
+    red.R = 224;
+    red.G = 108;
+    red.B = 117;
+
+    uint64_t scale = 3;
+
+    Point startPoint;
+    startPoint.X = 100;
+    startPoint.Y = 50;
+
+    tty_set_scale(scale);
+
+    tty_clear();
+
+    tty_set_background(black);
+    tty_set_foreground(white);
+
+    tty_set_cursor_pos(startPoint.X, startPoint.Y);
+    tty_print("KERNEL PANIC!\n\r");
+
+    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 1 * scale);
+    tty_print("// ");
+    tty_print(errorJokes[randomNumber]);
+
+    tty_set_background(black);
+    tty_set_foreground(red);
+
+    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 3 * scale);
+    tty_print("\"");
+    tty_print(exception_strings[stackFrame->Vector]);
+    tty_print("\": ");
+    for (int i = 0; i < 32; i++)
+    {
+        tty_put('0' + ((stackFrame->ErrorCode >> (i)) & 1));
+    }
+
+    tty_set_background(black);
+    tty_set_foreground(white);
+
+    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 5 * scale);
+    tty_print("OS_VERSION = ");
+    tty_print(OS_VERSION);
+
+    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 7 * scale);
+    tty_print("Interrupt Stack Frame: ");
+
+    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 8 * scale);
+    tty_print("Instruction pointer = ");
+    tty_printx(stackFrame->InstructionPointer);
+
+    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 9 * scale);
+    tty_print("Code segment = ");
+    tty_printx(stackFrame->CodeSegment);
+
+    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 10 * scale);
+    tty_print("Rflags = ");
+    tty_printx(stackFrame->Flags);
+
+    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 11 * scale);
+    tty_print("Stack pointer = ");
+    tty_printx(stackFrame->StackPointer);
+
+    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 12 * scale);
+    tty_print("Stack segment = ");
+    tty_printx(stackFrame->StackSegment);
+
+    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 14 * scale);
+    tty_print("Memory: ");
+
+    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 15 * scale);
+    tty_print("Used Heap = ");
+    tty_printi(heap_reserved_size());
+    tty_print(" B");
+
+    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 16 * scale);
+    tty_print("Free Heap = ");
+    tty_printi(heap_free_size());
+    tty_print(" B");
+
+    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 17 * scale);
+    tty_print("Locked Pages = ");
+    tty_printi(page_allocator_get_locked_amount());
+
+    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 18 * scale);
+    tty_print("Unlocked Pages = ");
+    tty_printi(page_allocator_get_unlocked_amount());
+
+    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 20 * scale);
+    tty_print("Please manually reboot your machine.");
+
+    while (1)
+    {
+        asm volatile("HLT");
+    }
+}
+
 /////////////////////////////////
 // Exception interrupt handlers.
 /////////////////////////////////
+/*
+__attribute__((interrupt)) void generic_exception(InterruptStackFrame* frame)
+{    
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
+    debug_int_panic("Unknown exception", frame);
+}
 
 __attribute__((interrupt)) void device_by_zero_exception(InterruptStackFrame* frame)
 {    
     VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_error("Division By Zero Detected");
+    debug_int_panic("Division By Zero Detected", frame);
 }
 
 __attribute__((interrupt)) void none_maskable_interrupt_exception(InterruptStackFrame* frame)
 {    
     VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_error("None Maskable Interrupt");
+    debug_int_panic("None Maskable Interrupt", frame);
 }
 
 __attribute__((interrupt)) void breakpoint_exception(InterruptStackFrame* frame)
 {    
     VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_error("Breakpoint reached");
+    debug_int_panic("Breakpoint reached", frame);
 }
 
 __attribute__((interrupt)) void overflow_exception(InterruptStackFrame* frame)
 {    
     VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_error("Overflow detected");
+    debug_int_panic("Overflow detected", frame);
 }
 
 __attribute__((interrupt)) void boundRange_exception(InterruptStackFrame* frame)
 {    
     VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_error("Bound Range Exceeded");
+    debug_int_panic("Bound Range Exceeded", frame);
 }
 
 __attribute__((interrupt)) void invalid_opcode_exception(InterruptStackFrame* frame)
 {    
     VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_error("Invalid opcode");
+    debug_int_panic("Invalid opcode", frame);
 }
 
 __attribute__((interrupt)) void device_not_detected_exception(InterruptStackFrame* frame)
 {    
     VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_error("Device Not Detected");
+    debug_int_panic("Device Not Detected", frame);
 }
 
 __attribute__((interrupt)) void double_fault_exception(InterruptStackFrame* frame)
 {    
     VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_error("Double Fault");
+    debug_int_panic("Double Fault", frame);
 }
 
 __attribute__((interrupt)) void invalid_tts_exception(InterruptStackFrame* frame)
 {    
     VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_error("Invalid TSS");
+    debug_int_panic("Invalid TSS", frame);
 }
 
 __attribute__((interrupt)) void segment_not_present_exception(InterruptStackFrame* frame)
 {    
     VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_error("Segment Not Present");
+    debug_int_panic("Segment Not Present", frame);
 }
 
 __attribute__((interrupt)) void stack_segment_exception(InterruptStackFrame* frame)
 {    
     VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_error("Stack Segment Fault");
+    debug_int_panic("Stack Segment Fault", frame);
 }
 
 __attribute__((interrupt)) void general_protection_exception(InterruptStackFrame* frame)
 {    
     VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_error("General Protection Fault");
+    debug_int_panic("General Protection Fault", frame);
 }
 
 __attribute__((interrupt)) void page_fault_exception(InterruptStackFrame* frame, uint64_t errorCode)
@@ -194,14 +381,14 @@ __attribute__((interrupt)) void page_fault_exception(InterruptStackFrame* frame,
     {
         buffer[i + 12] = '0' + ((errorCode >> (i)) & 1);
     }
-    
-    debug_error(buffer);
+    tty_printx(frame->InstructionPointer);
+    debug_int_panic(buffer, frame);
 }
 
 __attribute__((interrupt)) void floating_point_exception(InterruptStackFrame* frame)
 {    
     VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_error("Floating Point Exception");
+    debug_int_panic("Floating Point Exception", frame);
 }
 
 /////////////////////////////////
@@ -225,4 +412,4 @@ __attribute__((interrupt)) void keyboard_interrupt(InterruptStackFrame* frame)
     io_outb(PIC1_COMMAND, PIC_EOI);
 
     VIRTUAL_MEMORY_LOAD_SPACE(taskAddressSpace);
-}
+}*/

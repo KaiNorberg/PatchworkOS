@@ -66,6 +66,11 @@ def deploy():
     copy_dir_to_img("bin/PatchworkOS.img", "bin/efi", "efi")
     copy_dir_to_img("bin/PatchworkOS.img", "bin/kernel", "kernel")
     copy_dir_to_img("bin/PatchworkOS.img", "bin/programs/", "programs")
+
+def all():
+    build()
+    link()
+    deploy()
             
 def run():
     subprocess.run([
@@ -76,11 +81,6 @@ def run():
     '-drive', 'if=pflash,format=raw,unit=0,file=vendor/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on',
     '-drive', 'if=pflash,format=raw,unit=1,file=vendor/OVMFbin/OVMF_VARS-pure-efi.fd',
     '-net', 'none'], cwd=".", check=True)   
-
-def all():
-    build()
-    link()
-    deploy()
     
 functionMap = {
     "clean": clean,
@@ -88,8 +88,8 @@ functionMap = {
     "build": build,
     "link": link,
     "deploy": deploy,
-    "run": run,
-    "all": all
+    "all": all,
+    "run": run
 }
 
 parser = argparse.ArgumentParser(description="Patchwork build tools")

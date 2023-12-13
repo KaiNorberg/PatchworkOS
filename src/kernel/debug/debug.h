@@ -1,3 +1,7 @@
 #pragma once
 
-void debug_error(const char* message);
+#include "interrupts/interrupts.h"
+
+extern const char* errorJokes[];
+
+void debug_panic(const char* message);

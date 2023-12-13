@@ -15,7 +15,7 @@ uint8_t load_program(const char* path)
 
     if (file == 0)
     {
-        debug_error("Failed to open file ("); tty_print(path); tty_print(")!\n\r");
+        debug_panic("Failed to open file ("); tty_print(path); tty_print(")!\n\r");
         return 0;
     }
 
@@ -27,7 +27,7 @@ uint8_t load_program(const char* path)
        header.Ident[2] != 'L' ||
        header.Ident[3] != 'F')
     {
-        debug_error("Corrupt program file!\n\r");
+        debug_panic("Corrupt program file!\n\r");
         return 0;
     }
 

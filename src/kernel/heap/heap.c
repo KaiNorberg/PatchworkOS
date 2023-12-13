@@ -279,7 +279,7 @@ void kfree(void* ptr)
 
     if (!blockFound)
     {    
-        debug_error("Failed to free block!\n\r");
+        debug_panic("Failed to free block!\n\r");
     }
 
     //Merge contiguous free blocks

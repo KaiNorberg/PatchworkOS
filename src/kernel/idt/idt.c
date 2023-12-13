@@ -7,47 +7,30 @@
 
 #define GDT_OFFSET_KERNEL_CODE 0x08
 
+extern void* interrupt_vectors[256];
+
 __attribute__((aligned(0x1000))) 
 IDTEntry idt[256];
 
 IDTR idtr;
 
-extern void* isr_stub_table[];
 extern uint64_t syscall_interrupt;
 
 void idt_init() 
 {    
     tty_start_message("IDT initializing");
 
-    idtr.Base = (uint64_t)idt;
-    idtr.Limit = 0x0FFF;
- 
-    for (uint8_t vector = 0; vector < 32; vector++) 
-    {
-        idt_set_descriptor(vector, isr_stub_table[vector], 0x8E);
+    idtr.Size = sizeof(idt) - 1;
+    idtr.Offset = (uint64_t)&idt;
+
+    for (uint16_t vector = 0; vector < 256; vector++) 
+    {        
+        idt_set_descriptor(vector, interrupt_vectors[vector], 0xEE);
     }
 
-    idt_set_descriptor(0x0, device_by_zero_exception, 0xEE);
-    idt_set_descriptor(0x2, none_maskable_interrupt_exception, 0xEE);
-    idt_set_descriptor(0x3, breakpoint_exception, 0xEE);
-    idt_set_descriptor(0x4, overflow_exception, 0xEE);
-    idt_set_descriptor(0x5, boundRange_exception, 0xEE);
-    idt_set_descriptor(0x6, invalid_opcode_exception, 0xEE);
-    idt_set_descriptor(0x7, device_not_detected_exception, 0xEE);
-    idt_set_descriptor(0x8, double_fault_exception, 0xEE);
-    idt_set_descriptor(0xA, invalid_tts_exception, 0xEE);
-    idt_set_descriptor(0xB, segment_not_present_exception, 0xEE);
-    idt_set_descriptor(0xC, stack_segment_exception, 0xEE);
-    idt_set_descriptor(0xD, general_protection_exception, 0xEE);
-    idt_set_descriptor(0xE, page_fault_exception, 0xEE);
-    idt_set_descriptor(0x10, floating_point_exception, 0xEE);
-
-    idt_set_descriptor(0x21, keyboard_interrupt, 0xEE);
-    idt_set_descriptor(0x80, &syscall_interrupt, 0xEE);
+    remap_pic();
 
     asm volatile ("lidt %0" : : "m"(idtr));
-
-    remap_pic();
 
     tty_end_message(TTY_MESSAGE_OK);
 }
@@ -84,11 +67,6 @@ void remap_pic()
     io_wait();
     io_outb(PIC2_DATA, a2);
     io_wait();  
-}
-
-void exception_handler() 
-{
-    __asm__ volatile ("cli; hlt");
 }
 
 void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags) 
