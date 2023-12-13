@@ -18,46 +18,28 @@ typedef struct __attribute__((packed))
     uint64_t StackSegment;
 } InterruptStackFrame;
 
+typedef enum 
+{
+    IRQ_PIT = 0,
+    IRQ_KEYBOARD = 1,
+    IRQ_CASCADE = 2,
+    IRQ_COM2 = 3,
+    IRQ_COM1 = 4,
+    IRQ_LPT2 = 5,
+    IRQ_FLOPPY = 6,
+    IRQ_LPT1 = 7,
+    IRQ_CMOS = 8,
+    IRQ_FREE1 = 9,
+    IRQ_FREE2 = 10,
+    IRQ_FREE3 = 11,
+    IRQ_PS2_MOUSE = 12,
+    IRQ_FPU = 13,
+    IRQ_PRIMARY_ATA_HARD_DISK = 14,
+    IRQ_SECONDARY_ATA_HARD_DISK = 15
+};
+
 void interrupt_handler(InterruptStackFrame* stackFrame);
 
+void irq_handler(InterruptStackFrame* stackFrame);
+
 void exception_handler(InterruptStackFrame* stackFrame);
-
-/////////////////////////////////
-// Exception interrupt handlers.
-/////////////////////////////////
-/*
-__attribute__((interrupt)) void generic_exception(InterruptStackFrame* frame);
-
-__attribute__((interrupt)) void device_by_zero_exception(InterruptStackFrame* frame);
-
-__attribute__((interrupt)) void none_maskable_interrupt_exception(InterruptStackFrame* frame);
-
-__attribute__((interrupt)) void breakpoint_exception(InterruptStackFrame* frame);
-
-__attribute__((interrupt)) void overflow_exception(InterruptStackFrame* frame);
-
-__attribute__((interrupt)) void boundRange_exception(InterruptStackFrame* frame);
-
-__attribute__((interrupt)) void invalid_opcode_exception(InterruptStackFrame* frame);
-
-__attribute__((interrupt)) void device_not_detected_exception(InterruptStackFrame* frame);
-
-__attribute__((interrupt)) void double_fault_exception(InterruptStackFrame* frame);
-
-__attribute__((interrupt)) void invalid_tts_exception(InterruptStackFrame* frame);
-
-__attribute__((interrupt)) void segment_not_present_exception(InterruptStackFrame* frame);
-
-__attribute__((interrupt)) void stack_segment_exception(InterruptStackFrame* frame);
-
-__attribute__((interrupt)) void general_protection_exception(InterruptStackFrame* frame);
-
-__attribute__((interrupt)) void page_fault_exception(InterruptStackFrame* frame, uint64_t errorCode);
-
-__attribute__((interrupt)) void floating_point_exception(InterruptStackFrame* frame);
-
-/////////////////////////////////
-// IRQ interrupt handlers.
-/////////////////////////////////
-
-__attribute__((interrupt)) void keyboard_interrupt(InterruptStackFrame* frame);*/

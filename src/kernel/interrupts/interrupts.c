@@ -151,11 +151,23 @@ void interrupt_handler(InterruptStackFrame* stackFrame)
     }
     else if (stackFrame->Vector >= 32 && stackFrame->Vector <= 48) //IRQ
     {
-        //uint64_t taskAddressSpace;
-        //asm volatile("movq %%cr3, %0" : "=r" (taskAddressSpace));
+        irq_handler(stackFrame);
+    }
+    else if (stackFrame->Vector == 0x80) //Syscall
+    {
+        syscall_handler(stackFrame);
+    }
+}
 
-        //VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
+void irq_handler(InterruptStackFrame* stackFrame)
+{
+    uint64_t irq = stackFrame->Vector - 32;
 
+    switch (irq)
+    {
+    case IRQ_KEYBOARD:
+    {
+        //Temporay code for testing
         uint8_t scanCode = io_inb(0x60);
 
         if (!(scanCode & (0b10000000))) //If key was pressed down
@@ -163,13 +175,14 @@ void interrupt_handler(InterruptStackFrame* stackFrame)
             tty_put(SCAN_CODE_TABLE[scanCode]);
         }
 
-        io_outb(PIC1_COMMAND, PIC_EOI);
-
-        //VIRTUAL_MEMORY_LOAD_SPACE(taskAddressSpace);        
+        io_outb(PIC1_COMMAND, PIC_EOI);        
     }
-    else if (stackFrame->Vector == 0x80) //Syscall
+    break;
+    default:
     {
-        syscall_handler(stackFrame);
+        //Not implemented
+    }
+    break;
     }
 }
 
@@ -286,130 +299,3 @@ void exception_handler(InterruptStackFrame* stackFrame)
         asm volatile("HLT");
     }
 }
-
-/////////////////////////////////
-// Exception interrupt handlers.
-/////////////////////////////////
-/*
-__attribute__((interrupt)) void generic_exception(InterruptStackFrame* frame)
-{    
-    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_int_panic("Unknown exception", frame);
-}
-
-__attribute__((interrupt)) void device_by_zero_exception(InterruptStackFrame* frame)
-{    
-    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_int_panic("Division By Zero Detected", frame);
-}
-
-__attribute__((interrupt)) void none_maskable_interrupt_exception(InterruptStackFrame* frame)
-{    
-    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_int_panic("None Maskable Interrupt", frame);
-}
-
-__attribute__((interrupt)) void breakpoint_exception(InterruptStackFrame* frame)
-{    
-    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_int_panic("Breakpoint reached", frame);
-}
-
-__attribute__((interrupt)) void overflow_exception(InterruptStackFrame* frame)
-{    
-    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_int_panic("Overflow detected", frame);
-}
-
-__attribute__((interrupt)) void boundRange_exception(InterruptStackFrame* frame)
-{    
-    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_int_panic("Bound Range Exceeded", frame);
-}
-
-__attribute__((interrupt)) void invalid_opcode_exception(InterruptStackFrame* frame)
-{    
-    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_int_panic("Invalid opcode", frame);
-}
-
-__attribute__((interrupt)) void device_not_detected_exception(InterruptStackFrame* frame)
-{    
-    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_int_panic("Device Not Detected", frame);
-}
-
-__attribute__((interrupt)) void double_fault_exception(InterruptStackFrame* frame)
-{    
-    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_int_panic("Double Fault", frame);
-}
-
-__attribute__((interrupt)) void invalid_tts_exception(InterruptStackFrame* frame)
-{    
-    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_int_panic("Invalid TSS", frame);
-}
-
-__attribute__((interrupt)) void segment_not_present_exception(InterruptStackFrame* frame)
-{    
-    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_int_panic("Segment Not Present", frame);
-}
-
-__attribute__((interrupt)) void stack_segment_exception(InterruptStackFrame* frame)
-{    
-    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_int_panic("Stack Segment Fault", frame);
-}
-
-__attribute__((interrupt)) void general_protection_exception(InterruptStackFrame* frame)
-{    
-    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_int_panic("General Protection Fault", frame);
-}
-
-__attribute__((interrupt)) void page_fault_exception(InterruptStackFrame* frame, uint64_t errorCode)
-{   
-    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-
-    char buffer[64];
-    memset(buffer, 0, 64);
-
-    strcpy(buffer, "Page Fault: ");
-    for (int i = 0; i < 32; i++)
-    {
-        buffer[i + 12] = '0' + ((errorCode >> (i)) & 1);
-    }
-    tty_printx(frame->InstructionPointer);
-    debug_int_panic(buffer, frame);
-}
-
-__attribute__((interrupt)) void floating_point_exception(InterruptStackFrame* frame)
-{    
-    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-    debug_int_panic("Floating Point Exception", frame);
-}
-
-/////////////////////////////////
-// IRQ interrupt handlers.
-/////////////////////////////////
-
-__attribute__((interrupt)) void keyboard_interrupt(InterruptStackFrame* frame)
-{        
-    uint64_t taskAddressSpace;
-    asm volatile("movq %%cr3, %0" : "=r" (taskAddressSpace));
-
-    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-
-    uint8_t scanCode = io_inb(0x60);
-
-    if (!(scanCode & (0b10000000))) //If key was pressed down
-    {
-        tty_put(SCAN_CODE_TABLE[scanCode]);
-    }
-
-    io_outb(PIC1_COMMAND, PIC_EOI);
-
-    VIRTUAL_MEMORY_LOAD_SPACE(taskAddressSpace);
-}*/
