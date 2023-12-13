@@ -3,6 +3,7 @@
 #include <elf.h>
 
 #define PSF_MAGIC 1078
+#define MEMORY_TYPE_KERNEL 0x80000000
 
 typedef struct
 {
@@ -31,6 +32,7 @@ typedef struct
 	EFI_MEMORY_DESCRIPTOR* Base;
 	uint64_t DescriptorAmount;
 	uint64_t DescriptorSize;
+	uint32_t DescriptorVersion;
 	uint64_t Key;
 } EFI_MEMORY_MAP;
 
@@ -284,6 +286,7 @@ EFI_MEMORY_MAP get_memory_map()
 	newMap.Base = memoryMap;
 	newMap.DescriptorAmount = descriptorAmount;
 	newMap.DescriptorSize = descriptorSize;
+	newMap.DescriptorVersion = descriptorVersion;
 	newMap.Key = mapKey;
 
 	return newMap;
@@ -465,6 +468,12 @@ EFI_STATUS efi_main(EFI_HANDLE In_ImageHandle, EFI_SYSTEM_TABLE* In_SystemTable)
 
 	EFI_MEMORY_MAP memoryMap = get_memory_map();
 
+	Print(L"Exiting boot services...\n\r");
+	SystemTable->BootServices->ExitBootServices(ImageHandle, memoryMap.Key);
+
+	//Load higher half kernel
+	SystemTable->RuntimeServices->SetVirtualAddressMap(memoryMap.DescriptorSize * memoryMap.DescriptorAmount, memoryMap.DescriptorSize, memoryMap.DescriptorVersion, memoryMap.Base);
+
 	BootInfo bootInfo;
 	bootInfo.Screenbuffer = &screenbuffer;
 	bootInfo.Font = &ttyFont;
@@ -474,9 +483,6 @@ EFI_STATUS efi_main(EFI_HANDLE In_ImageHandle, EFI_SYSTEM_TABLE* In_SystemTable)
 	bootInfo.RootDirectory = &rootDirectory;
 
 	void (*KernelMain)(BootInfo*) = ((__attribute__((sysv_abi)) void (*)(BootInfo*))kernelFile.e_entry);
-
-	Print(L"Exiting boot services...\n\r");
-	SystemTable->BootServices->ExitBootServices(ImageHandle, memoryMap.Key);
 
 	Print(L"Entering Kernel...\n\r");
 	KernelMain(&bootInfo);

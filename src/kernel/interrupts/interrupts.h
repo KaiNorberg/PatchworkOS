@@ -18,7 +18,7 @@ typedef struct __attribute__((packed))
     uint64_t StackSegment;
 } InterruptStackFrame;
 
-typedef enum 
+enum 
 {
     IRQ_PIT = 0,
     IRQ_KEYBOARD = 1,

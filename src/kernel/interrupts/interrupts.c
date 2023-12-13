@@ -216,7 +216,7 @@ void exception_handler(InterruptStackFrame* stackFrame)
 
     tty_set_scale(scale);
 
-    tty_clear();
+    //tty_clear();
 
     tty_set_background(black);
     tty_set_foreground(white);

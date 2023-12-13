@@ -25,7 +25,6 @@ uint8_t is_memory_type_reserved(uint64_t memoryType)
 	switch (memoryType)
 	{
 	case EFI_CONVENTIONAL_MEMORY:
-	case EFI_ACPI_RECLAIM_MEMORY:
 	{
 		return 0;
 	}
