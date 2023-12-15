@@ -10,6 +10,8 @@ extern uint64_t _kernelStart;
 extern uint64_t _kernelEnd;
 
 uint64_t* pageMap;
+uint64_t pageMapByteSize;
+void* firstFreeAddress;
 
 uint64_t pageAmount;
 uint64_t lockedAmount;
@@ -59,7 +61,17 @@ void page_allocator_visualize()
             sectionStatus = addressStatus;
         }
     }
-    
+
+    if (sectionStatus) //Reserved
+    {
+        tty_set_background(red);
+    }
+    else
+    {
+        tty_set_background(green);
+    }
+    tty_put(' '); tty_printx(startOfSection); tty_put('-'); tty_printx(pageAmount * 0x1000); tty_put(' '); 
+
     tty_set_background(black);
     tty_print("\n\n\r");
 }
@@ -68,28 +80,36 @@ void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer)
 {    
     tty_start_message("Page allocator initializing");
 
+    firstFreeAddress = 0;
+
     pageAmount = 0;
     for (uint64_t i = 0; i < memoryMap->DescriptorAmount; i++)
     {
         EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->Base + (i * memoryMap->DescriptorSize));
-        pageAmount += desc->AmountOfPages;
+        if (desc->Type != EFI_MEMORY_MAPPED_IO && desc->Type != EFI_MEMORY_MAPPED_IO_PORT_SPACE)
+        {
+            pageAmount += desc->AmountOfPages;
+        }
     }
+    pageMapByteSize = pageAmount / 8;
 
-    void* largestFreeSegment = 0;
-    uint64_t largestFreeSegmentSize = 0;
+    pageMap = 0;
     for (uint64_t i = 0; i < memoryMap->DescriptorAmount; i++)
     {
         EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->Base + (i * memoryMap->DescriptorSize));
         
-        if (desc->Type == EFI_CONVENTIONAL_MEMORY && largestFreeSegmentSize < desc->AmountOfPages * 0x1000)
+        if (desc->Type == EFI_CONVENTIONAL_MEMORY && pageMapByteSize < desc->AmountOfPages * 0x1000)
         {
-            largestFreeSegment = desc->PhysicalStart;
-            largestFreeSegmentSize = desc->AmountOfPages * 0x1000;
+            pageMap = desc->PhysicalStart;
+            memset(pageMap, 0, pageMapByteSize);
+            break;
         }
+    } 
+    if (pageMap == 0)
+    {
+        debug_panic("Unable to find suitable location for the page map!");    
+        tty_end_message(TTY_MESSAGE_ER);
     }
-    pageMap = largestFreeSegment;
-
-    memset(pageMap, 0, pageAmount / 8);
 
     for (uint64_t i = 0; i < memoryMap->DescriptorAmount; i++)
     {
@@ -101,31 +121,23 @@ void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer)
         }
     }
 
-    page_allocator_lock_pages(pageMap, (pageAmount / 8) / 0x1000 + 1);
+    page_allocator_lock_pages(pageMap, pageMapByteSize / 0x1000 + 1);
     page_allocator_lock_pages(&_kernelStart, ((uint64_t)&_kernelEnd - (uint64_t)&_kernelStart) / 0x1000 + 1);    
-    //page_allocator_lock_pages(screenBuffer->Base, screenBuffer->Size / 0x1000 + 1);
+    page_allocator_lock_pages(screenBuffer->Base, screenBuffer->Size / 0x1000 + 1);
 
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-uint8_t page_allocator_get_status(void* address)
-{
-    uint64_t index = (uint64_t)address / (uint64_t)0x1000;
-    uint64_t qwordIndex = index / 64;
-    uint64_t bitIndex = index % 64;
-
-    return (pageMap[qwordIndex] & ((uint64_t)1 << bitIndex)) != 0;
-}
-
 void* page_allocator_request()
-{
-    for (uint64_t qwordIndex = 0; qwordIndex < pageAmount / 64; qwordIndex++)
-    {
-        if (pageMap[qwordIndex] != 0xFFFFFFFFFFFFFFFF) //If any bit is zero
+{   
+    uint64_t firstFreeQwordIndex = ((uint64_t)firstFreeAddress / 0x1000) / 64;
+    for (uint64_t qwordIndex = firstFreeQwordIndex; qwordIndex < pageAmount / 64; qwordIndex++)
+    {        
+        if (pageMap[qwordIndex] != -1) //If any bit is zero
         {            
             for (uint64_t bitIndex = 0; bitIndex < 64; bitIndex++)
             {
-                if ((((pageMap[qwordIndex]) >> (bitIndex)) & 1) == 0) //If bit is not set
+                if (((pageMap[qwordIndex] >> bitIndex) & 1) == 0) //If bit is not set
                 {
                     void* address = (void*)((qwordIndex * 64 + bitIndex) * 0x1000);
                     page_allocator_lock_page(address);
@@ -174,13 +186,26 @@ void* page_allocator_request_amount(uint64_t amount)
     return 0;
 }
 
+uint8_t page_allocator_get_status(void* address)
+{            
+    uint64_t index = (uint64_t)address / (uint64_t)0x1000;
+    return (pageMap[index / 64] >> (index % 64)) & 1;
+}
+
 void page_allocator_lock_page(void* address)
-{
+{        
     if (!page_allocator_get_status(address))
     {
-        uint64_t index = (uint64_t)address / 0x1000;
-        pageMap[index / 64] = pageMap[index / 64] | (uint64_t)1 << (index % 64);
-        lockedAmount++;           
+        uint64_t index = (uint64_t)address / (uint64_t)0x1000;
+
+        pageMap[index / 64] |= 1 << (index % 64);
+
+        lockedAmount++;
+
+        if (firstFreeAddress == address)
+        {
+            firstFreeAddress = (void*)((uint64_t)firstFreeAddress + 0x1000);
+        }
     }
 }
 
@@ -188,9 +213,16 @@ void page_allocator_unlock_page(void* address)
 {
     if (page_allocator_get_status(address))
     {
-        uint64_t index = (uint64_t)address / 0x1000;
-        pageMap[index / 64] = pageMap[index / 64] & ~((uint64_t)1 << (index % 64));
-        lockedAmount--;            
+        uint64_t index = (uint64_t)address / (uint64_t)0x1000;
+
+        pageMap[index / 64] &= ~(1 << (index % 64));
+
+        lockedAmount--;
+
+        if (firstFreeAddress > address)
+        {
+            firstFreeAddress = address;
+        }
     }
 }
 

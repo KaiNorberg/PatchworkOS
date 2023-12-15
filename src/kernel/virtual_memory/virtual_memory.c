@@ -39,7 +39,7 @@ VirtualAddressSpace* virtual_memory_create()
         if ((uint64_t)desc->PhysicalStart + desc->AmountOfPages * 0x1000 < page_allocator_get_total_amount() * 0x1000)
         {
             if (is_memory_type_reserved(desc->Type))
-            {
+            {    
                 virtual_memory_remap_pages(addressSpace, desc->PhysicalStart, desc->PhysicalStart, desc->AmountOfPages, 1);
             }
         }
@@ -47,7 +47,6 @@ VirtualAddressSpace* virtual_memory_create()
 
     virtual_memory_remap(addressSpace, (void*)tss.RSP0 - 0x1000, (void*)tss.RSP0 - 0x1000, 0);
     virtual_memory_remap_pages(addressSpace, &_kernelStart, &_kernelStart, ((uint64_t)&_kernelEnd - (uint64_t)&_kernelStart) / 0x1000 + 1, 0);
-    virtual_memory_remap_pages(addressSpace, frontBuffer->Base, frontBuffer->Base, frontBuffer->Size / 0x1000 + 1, 0);
 
     return addressSpace;
 }

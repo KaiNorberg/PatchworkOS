@@ -16,7 +16,6 @@ typedef struct
 	EFIMemoryDescriptor* Base;
 	uint64_t DescriptorAmount;
 	uint64_t DescriptorSize;
-	uint32_t DescriptorVersion;
 	uint64_t Key;
 } EFIMemoryMap;
 

@@ -20,9 +20,42 @@ void _start(BootInfo* bootInfo)
 {   
     kernel_init(bootInfo);
 
-    tty_print("\n\rLoading program...\n\r");
+    /*void* addresses[20];
 
+    page_allocator_visualize();
+    heap_visualize();
+
+    tty_print("Allocating small memory...\n\r");
+    for (int i = 0; i < 10; i++)
+    {
+        addresses[i] = kmalloc(16);
+    }
+
+    page_allocator_visualize();
+    heap_visualize();
+
+    tty_print("Allocating large memory...\n\r");
+    for (int i = 10; i < 20; i++)
+    {
+        addresses[i] = kmalloc(0x2000);     
+    }
+
+    page_allocator_visualize();
+    heap_visualize();
+
+    tty_print("Freeing memory...\n\r");
+    for (int i = 0; i < 20; i++)
+    {
+        kfree(addresses[i]);   
+    }
+
+    page_allocator_visualize();
+    heap_visualize();*/
+    
+    tty_print("\n\rLoading program1...\n\r");
     load_program("/programs/test1/test1.elf");
+
+    tty_print("Loading program2...\n\r");
     load_program("/programs/test2/test2.elf");
 
     tty_print("Jumping to user space...\n\n\r");

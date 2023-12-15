@@ -122,6 +122,7 @@ Task* multitasking_new(void* entry)
     memset((void*)newTask->StackBottom, 0, 0x1000);
 
     newTask->StackPointer = newTask->StackTop;
+    
     newTask->AddressSpace = virtual_memory_create(newTask);
     newTask->InstructionPointer = (uint64_t)entry;
 

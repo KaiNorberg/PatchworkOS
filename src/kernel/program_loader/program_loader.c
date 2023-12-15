@@ -34,7 +34,7 @@ uint8_t load_program(const char* path)
     uint64_t programHeaderTableSize = header.ProgramHeaderAmount * header.ProgramHeaderSize;
     ElfProgramHeader* programHeaders = kmalloc(programHeaderTableSize);
     file_system_read(programHeaders, programHeaderTableSize, file);
-    
+
     Task* task = multitasking_new((void*)header.Entry);
 
 	for (uint64_t i = 0; i < header.ProgramHeaderAmount; i++)
