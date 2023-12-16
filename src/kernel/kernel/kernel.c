@@ -10,6 +10,8 @@
 #include "page_allocator/page_allocator.h"
 #include "multitasking/multitasking.h"
 #include "acpi/acpi.h"
+#include "io/io.h"
+#include "rtc/rtc.h"
 
 void kernel_init(BootInfo* bootInfo)
 {    
@@ -34,4 +36,8 @@ void kernel_init(BootInfo* bootInfo)
     syscall_init();
 
     multitasking_init();
+
+    rtc_init(6); // 1024 HZ
+
+    io_pic_clear_mask(IRQ_KEYBOARD);
 }

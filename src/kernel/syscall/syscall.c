@@ -3,7 +3,9 @@
 #include "tty/tty.h"
 #include "file_system/file_system.h"
 #include "multitasking/multitasking.h"
+#include "context/context.h"
 #include "string/string.h"
+#include "debug/debug.h"
 
 #include "kernel/kernel.h"
 
@@ -14,62 +16,37 @@ void syscall_init()
 
 }
 
-void syscall_handler(InterruptStackFrame* frame, VirtualAddressSpace** addressSpace)
+void syscall_handler(InterruptStackFrame* frame)
 {    
     uint64_t out;
-    
-    switch(frame->Registers.RAX)
+
+    switch(frame->RAX)
     {
     case SYS_TEST:
     {
-        tty_print("Syscall test, rdi = "); tty_printi(frame->Registers.RDI); tty_print("!\n\r");
+        tty_print("Syscall test, rdi = "); tty_printi(frame->RDI); tty_print("!\r");
 
         out = 0;
     }
     break;
     case SYS_YIELD:
     {
-        Task* oldTask = get_running_task();
-
-        memcpy(&(oldTask->Registers), &(frame->Registers), sizeof(frame->Registers));
-        oldTask->InstructionPointer = frame->InstructionPointer;
-        oldTask->StackPointer = frame->StackPointer;
-        oldTask->AddressSpace = *addressSpace;
-
-        Task* newTask = load_next_task();
-
-        memcpy(&(frame->Registers), &(newTask->Registers), sizeof(frame->Registers));
-        frame->InstructionPointer = newTask->InstructionPointer;
-        frame->StackPointer = newTask->StackPointer;
-
-        *addressSpace = newTask->AddressSpace;
+        context_save(multitasking_get_running_task()->Context, frame);
+        multitasking_schedule();    
+        context_load(multitasking_get_running_task()->Context, frame);
 
         out = 0;
     }
     break;
     case SYS_EXIT:
     {
-        Task* oldTask = get_running_task();
+        Task* oldTask = multitasking_get_running_task();
 
-        Task* newTask = load_next_task();
+        multitasking_schedule();
 
-        //Temporary code for testing purposes
-        if (newTask == 0)
-        {
-            while (1)
-            {
-                asm volatile ("HLT");
-            }
-        }
+        multitasking_free(oldTask);
 
-        multitasking_free(oldTask);   
-
-        memcpy(&(frame->Registers), &(newTask->Registers), sizeof(frame->Registers));
-
-        frame->InstructionPointer = newTask->InstructionPointer;
-        frame->StackPointer = newTask->StackPointer;
-
-        *addressSpace = newTask->AddressSpace;
+        context_load(multitasking_get_running_task()->Context, frame);
 
         out = 0;
     }
@@ -81,5 +58,5 @@ void syscall_handler(InterruptStackFrame* frame, VirtualAddressSpace** addressSp
     break;
     }
 
-    frame->Registers.RAX = out;
+    frame->RAX = out;
 }

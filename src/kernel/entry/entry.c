@@ -19,38 +19,6 @@
 void _start(BootInfo* bootInfo)
 {   
     kernel_init(bootInfo);
-
-    /*void* addresses[20];
-
-    page_allocator_visualize();
-    heap_visualize();
-
-    tty_print("Allocating small memory...\n\r");
-    for (int i = 0; i < 10; i++)
-    {
-        addresses[i] = kmalloc(16);
-    }
-
-    page_allocator_visualize();
-    heap_visualize();
-
-    tty_print("Allocating large memory...\n\r");
-    for (int i = 10; i < 20; i++)
-    {
-        addresses[i] = kmalloc(0x2000);     
-    }
-
-    page_allocator_visualize();
-    heap_visualize();
-
-    tty_print("Freeing memory...\n\r");
-    for (int i = 0; i < 20; i++)
-    {
-        kfree(addresses[i]);   
-    }
-
-    page_allocator_visualize();
-    heap_visualize();*/
     
     tty_print("\n\rLoading program1...\n\r");
     load_program("/programs/test1/test1.elf");
@@ -58,8 +26,11 @@ void _start(BootInfo* bootInfo)
     tty_print("Loading program2...\n\r");
     load_program("/programs/test2/test2.elf");
 
+    tty_print("\n\rrdi = 1 means program 1 is running.\n\r");
+    tty_print("rdi = 2 means program 2 is running.\n\n\r");
+
     tty_print("Jumping to user space...\n\n\r");
-    
+
     enable_interrupts();
 
     multitasking_yield_to_user_space();

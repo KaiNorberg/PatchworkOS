@@ -79,67 +79,44 @@ void multitasking_init()
 {
     tty_start_message("Multitasking initializing");
     
-    firstTask = 0;
-    lastTask = 0;
-
-    mainTask = page_allocator_request();
-    mainTask->AddressSpace = 0;
-    mainTask->State = TASK_STATE_RUNNING;
-    mainTask->Next = 0;
-    mainTask->Prev = 0;
+    mainTask = kmalloc(sizeof(Task));
+    memset(mainTask, 0, sizeof(Task));
 
     runningTask = mainTask;
 
-    multitasking_append(mainTask);
+    firstTask = mainTask;
+    lastTask = mainTask;
+    mainTask->Next = mainTask;
+    mainTask->Prev = mainTask;
 
     tty_end_message(TTY_MESSAGE_OK);
-}
-
-void multitasking_yield_to_user_space()
-{
-    //This is a work in progress, dont worry about all the problems
-
-    Task* newTask = load_next_task();
-    
-    /*memcpy(registerBuffer, &(newTask->Registers), sizeof(RegisterBuffer));
-    frame->InstructionPointer = newTask->InstructionPointer;
-    frame->StackPointer = newTask->StackPointer;
-    taskAddressSpace = (uint64_t)newTask->AddressSpace;*/
-    
-    jump_to_user_space((void*)newTask->InstructionPointer, (void*)newTask->StackTop, (void*)newTask->AddressSpace);
 }
 
 Task* multitasking_new(void* entry)
 { 
     Task* newTask = kmalloc(sizeof(Task));
     memset(newTask, 0, sizeof(Task));
-    
+
     newTask->FirstMemoryBlock = 0;
     newTask->LastMemoryBlock = 0;
 
-    newTask->StackBottom = (uint64_t)page_allocator_request();
-    newTask->StackTop = (uint64_t)newTask->StackBottom + 0x1000;
-    memset((void*)newTask->StackBottom, 0, 0x1000);
+    newTask->Context = context_new(entry, 0x18 | 3, 0x20 | 3, 0x202);
 
-    newTask->StackPointer = newTask->StackTop;
-    
-    newTask->AddressSpace = virtual_memory_create(newTask);
-    newTask->InstructionPointer = (uint64_t)entry;
-
-    virtual_memory_remap(newTask->AddressSpace, (void*)newTask->StackBottom, (void*)newTask->StackBottom, 1);
-
-    newTask->Next = 0;
-    newTask->Prev = 0;
     newTask->State = TASK_STATE_READY;
 
-    multitasking_append(newTask);
-
+    //Add to linked list
+    lastTask->Next = newTask;
+    newTask->Prev = lastTask;
+    lastTask = newTask;
+    newTask->Next = firstTask;
+    firstTask->Prev = newTask;
+    
     return newTask;
 }
 
 void multitasking_free(Task* task)
 {
-    virtual_memory_erase(task->AddressSpace);
+    context_free(task->Context);
 
     if (task->FirstMemoryBlock != 0)
     {
@@ -171,36 +148,56 @@ void multitasking_free(Task* task)
     {
         lastTask = task->Prev;
     }
-
     task->Next->Prev = task->Prev;
     task->Prev->Next = task->Next;
 
-    page_allocator_unlock_page((void*)task->StackBottom);
     kfree(task);
 }
 
-void multitasking_append(Task* task)
+void multitasking_schedule()
 {
-    if (firstTask == 0)
+    Task* prev = runningTask;
+    prev->State = TASK_STATE_READY;
+    
+    Task* nextTask = runningTask;
+    while (1)
     {
-        firstTask = task;
-        lastTask = task;
+        nextTask = nextTask->Next;
 
-        firstTask->Next = task;
-        firstTask->Prev = task;
+        if (nextTask->State == TASK_STATE_READY)
+        {
+            break;
+        }
+        else if (nextTask->Next == prev)
+        {
+            nextTask = runningTask;
+            break;
+        }
+    }
 
-        lastTask->Next = task;
-        lastTask->Prev = task;
+    runningTask = nextTask;  
+    nextTask->State = TASK_STATE_RUNNING;   
+}
+
+Task* multitasking_get_running_task()
+{
+    if (runningTask == mainTask)
+    {        
+        debug_panic("Failed to retrieve scheduled task!");
     }
     else
-    {            
-        lastTask->Next = task;
-        firstTask->Prev = task;
-
-        task->Prev = lastTask;
-        task->Next = firstTask;
-        lastTask = task;
+    {
+        return runningTask;
     }
+}
+
+void multitasking_yield_to_user_space()
+{
+    multitasking_schedule();
+    Task* newTask = multitasking_get_running_task();
+    mainTask->State = TASK_STATE_WAITING;
+    
+    jump_to_user_space((void*)newTask->Context->State.InstructionPointer, (void*)newTask->Context->StackTop, (void*)newTask->Context->State.CR3);
 }
 
 void* task_request_page(Task* task)
@@ -224,7 +221,7 @@ void* task_request_page(Task* task)
         task->LastMemoryBlock = newMemoryBlock;
     }
 
-    virtual_memory_remap(task->AddressSpace, physicalAddress, physicalAddress, 1);
+    virtual_memory_remap((VirtualAddressSpace*)task->Context->State.CR3, physicalAddress, physicalAddress, 1);
 
     return physicalAddress;
 }
@@ -250,44 +247,7 @@ void* task_allocate_pages(Task* task, void* virtualAddress, uint64_t pageAmount)
         task->LastMemoryBlock = newMemoryBlock;
     }
     
-    virtual_memory_remap_pages(task->AddressSpace, virtualAddress, physicalAddress, pageAmount, 1);
+    virtual_memory_remap_pages((VirtualAddressSpace*)task->Context->State.CR3, virtualAddress, physicalAddress, pageAmount, 1);
 
     return physicalAddress;
-}
-
-Task* load_next_task()
-{
-    Task* prev = runningTask;
-    prev->State = TASK_STATE_WAITING;       
-
-    Task* nextTask = get_next_ready_task(runningTask);
-    runningTask = nextTask;  
-
-    nextTask->State = TASK_STATE_RUNNING;     
-
-    return nextTask;
-}
-
-Task* get_running_task()
-{
-    return runningTask;
-}
-
-Task* get_next_ready_task(Task* task)
-{
-    Task* prev = task;
-        
-    while (1)
-    {
-        task = task->Next;
-
-        if (task->State == TASK_STATE_READY)
-        {
-            return task;
-        }
-        else if (task->Next == prev)
-        {
-            return 0;
-        }
-    }
 }

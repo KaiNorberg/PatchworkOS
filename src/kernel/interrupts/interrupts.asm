@@ -14,9 +14,13 @@
     push r13
     push r14
     push r15
+    mov rax, cr3
+    push rax
 %endmacro
 
 %macro POP_ALL 0
+    pop rax
+    mov cr3, rax
     pop r15
     pop r14
     pop r13
@@ -62,17 +66,8 @@ common_interrupt:
     PUSH_ALL
 	mov rbp, rsp
 
-	;mov rax, cr3
-	;push rax ;Save task address space
-
-	;mov rax, kernelAddressSpace
-	;mov cr3, rax ;Load kernel address space
-
     mov rdi, rbp
     call interrupt_handler
-
-	;pop rax
-	;mov cr3, rax ;Load task address space
 
     POP_ALL
     add rsp, 16

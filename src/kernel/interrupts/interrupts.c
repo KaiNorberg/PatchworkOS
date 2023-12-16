@@ -1,18 +1,14 @@
 #include "interrupts.h"
 
 #include "kernel/kernel.h"
-
 #include "io/io.h"
-
 #include "tty/tty.h"
 #include "utils/utils.h"
-
 #include "syscall/syscall.h"
 #include "multitasking/multitasking.h"
-
 #include "debug/debug.h"
-
 #include "string/string.h"
+#include "rtc/rtc.h"
 
 #include "../common.h"
 
@@ -145,9 +141,6 @@ const char* exception_strings[32] =
 
 void interrupt_handler(InterruptStackFrame* stackFrame)
 {       
-    uint64_t taskAddressSpace;
-    asm volatile("movq %%cr3, %0" : "=r" (taskAddressSpace));
-
     VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
 
     if (stackFrame->Vector < 32) //Exception
@@ -160,10 +153,8 @@ void interrupt_handler(InterruptStackFrame* stackFrame)
     }
     else if (stackFrame->Vector == 0x80) //Syscall
     {
-        syscall_handler(stackFrame, (VirtualAddressSpace**)&taskAddressSpace);
+        syscall_handler(stackFrame);
     }  
-    
-    VIRTUAL_MEMORY_LOAD_SPACE(taskAddressSpace);
 }
 
 void irq_handler(InterruptStackFrame* stackFrame)
@@ -181,8 +172,18 @@ void irq_handler(InterruptStackFrame* stackFrame)
         {
             tty_put(SCAN_CODE_TABLE[scanCode]);
         }
-
-        io_outb(PIC1_COMMAND, PIC_EOI);        
+    }
+    break;
+    case IRQ_CMOS:
+    {
+        rtc_tick();
+    
+        if (rtc_get_tick() % 1024 == 0) //For testing
+        {
+            context_save(multitasking_get_running_task()->Context, stackFrame);
+            multitasking_schedule();    
+            context_load(multitasking_get_running_task()->Context, stackFrame);
+        }
     }
     break;
     default:
@@ -190,7 +191,9 @@ void irq_handler(InterruptStackFrame* stackFrame)
         //Not implemented
     }
     break;
-    }
+    }        
+
+    io_pic_eoi(irq); 
 }
 
 void exception_handler(InterruptStackFrame* stackFrame)

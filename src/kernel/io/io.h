@@ -24,5 +24,13 @@
 #define ICW4_SFNM 0x10		    /* Special fully nested (not) */
 
 void io_outb(uint16_t port, uint8_t val);
+
 uint8_t io_inb(uint16_t port);
+
 void io_wait();
+
+void io_pic_eoi(uint8_t irq);
+
+void io_pic_set_mask(uint8_t irq);
+
+void io_pic_clear_mask(uint8_t irq);

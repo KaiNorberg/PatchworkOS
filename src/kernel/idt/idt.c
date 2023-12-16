@@ -37,7 +37,6 @@ void idt_init()
 
 void remap_pic()
 {
-    //Remap pic
     uint8_t a1 = io_inb(PIC1_DATA);
     io_wait();
     uint8_t a2 = io_inb(PIC2_DATA);
@@ -66,7 +65,7 @@ void remap_pic()
     io_outb(PIC1_DATA, a1);
     io_wait();
     io_outb(PIC2_DATA, a2);
-    io_wait();  
+    io_wait();
 }
 
 void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags) 
@@ -82,16 +81,15 @@ void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags)
     descriptor->Reserved = 0;
 }
 
+//TODO: Implement better system for clearing bits
 void enable_interrupts()
-{
-    io_outb(PIC1_DATA, 0b11111101);
-    io_outb(PIC2_DATA, 0b11111111);
+{    
+    io_outb(PIC1_DATA, 0);
+    io_outb(PIC2_DATA, 0);
     asm volatile ("sti");
 }
 
 void disable_interrupts()
 {
-    io_outb(PIC1_DATA, 0b11111111);
-    io_outb(PIC2_DATA, 0b11111111);
     asm volatile ("cli");
 }
