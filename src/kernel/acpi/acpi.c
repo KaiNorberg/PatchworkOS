@@ -8,14 +8,14 @@ void acpi_init(XSDP* xsdp)
 {
     tty_start_message("ACPI initializing");
 
-    xsdt = (SDTHeader*)xsdp->XsdtAddress;
+    xsdt = (SDTHeader*)xsdp->xsdtAddress;
 
     tty_end_message(TTY_MESSAGE_OK);
 }
 
 SDTHeader* acpi_find(const char* signature)
 {
-    uint64_t entryAmount = (xsdt->Length - sizeof(SDTHeader)) / 8;
+    uint64_t entryAmount = (xsdt->length - sizeof(SDTHeader)) / 8;
 
     for (uint64_t i = 0; i < entryAmount; i++)
     {
@@ -23,7 +23,7 @@ SDTHeader* acpi_find(const char* signature)
 
         for (int j = 0; j < 4; j++)
         {
-            if (header->Signature[j] != signature[j])
+            if (header->signature[j] != signature[j])
             {
                 break;
             }

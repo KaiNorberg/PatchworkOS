@@ -4,19 +4,19 @@
 
 typedef struct
 {
-	uint32_t Type;
-	void* PhysicalStart;
-	void* VirtualStart;
-	uint64_t AmountOfPages;
-	uint64_t Attribute;
+	uint32_t type;
+	void* physicalStart;
+	void* virtualStart;
+	uint64_t amountOfPages;
+	uint64_t attribute;
 } EFIMemoryDescriptor;
 
 typedef struct
 {
-	EFIMemoryDescriptor* Base;
-	uint64_t DescriptorAmount;
-	uint64_t DescriptorSize;
-	uint64_t Key;
+	EFIMemoryDescriptor* base;
+	uint64_t descriptorAmount;
+	uint64_t descriptorSize;
+	uint64_t key;
 } EFIMemoryMap;
 
 typedef enum

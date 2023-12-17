@@ -6,15 +6,15 @@
 
 typedef struct __attribute__((packed))
 {
-    uint8_t Signature[4];
-    uint32_t Length;
-    uint8_t Revision;
-    uint8_t CheckSum;
-    uint8_t OEMID[6];
-    uint8_t OEMTableID[8];
-    uint32_t OEMRevision;
-    uint32_t CreatorID;
-    uint32_t CreatorRevision; 
+    uint8_t signature[4];
+    uint32_t length;
+    uint8_t revision;
+    uint8_t checkSum;
+    uint8_t oemId[6];
+    uint8_t oemTableId[8];
+    uint32_t oemRevision;
+    uint32_t creatorID;
+    uint32_t creatorRevision; 
 } SDTHeader;
 
 void acpi_init(XSDP* xsdp);

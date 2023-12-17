@@ -138,7 +138,7 @@ DivU64x32 (
     OUT UINTN   *Remainder OPTIONAL
     )
 // divide 64bit by 32bit and get a 64bit result
-// N.B. only works for 31bit divisors!!
+// N.b. only works for 31bit divisors!!
 {
 #if defined(__GNUC__) || defined(_MSC_EXTENSIONS)
     if (Remainder)

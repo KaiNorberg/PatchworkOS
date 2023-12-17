@@ -6,11 +6,11 @@
 
 typedef struct
 {
-	uint32_t* Base;
-	uint64_t Size;
-	uint32_t Width;
-	uint32_t Height;
-	uint32_t PixelsPerScanline;
+	uint32_t* base;
+	uint64_t size;
+	uint32_t width;
+	uint32_t height;
+	uint32_t pixelsPerScanline;
 } Framebuffer;
 
 typedef struct
@@ -18,21 +18,21 @@ typedef struct
 	uint16_t magic;
 	uint8_t mode;
 	uint8_t charsize;
-} PSF_HEADER;
+} PsfHeader;
 
 typedef struct
 {
-	PSF_HEADER* PSF_Header;
-	void* GlyphBuffer;
-} PSF_FONT;
+	PsfHeader* header;
+	void* glyphs;
+} PsfFont;
 
 typedef struct
 {
-	EFI_MEMORY_DESCRIPTOR* Base;
-	uint64_t DescriptorAmount;
-	uint64_t DescriptorSize;
-	uint64_t Key;
-} EFI_MEMORY_MAP;
+	EFI_MEMORY_DESCRIPTOR* base;
+	uint64_t descriptorAmount;
+	uint64_t descriptorSize;
+	uint64_t key;
+} EfiMemoryMap;
 
 EFI_HANDLE ImageHandle;
 EFI_SYSTEM_TABLE* SystemTable;
@@ -129,7 +129,7 @@ void close_file(EFI_FILE* file)
   	uefi_call_wrapper(file->Close, 1, file);
 }
 
-PSF_FONT load_psf_font(EFI_FILE* volume, CHAR16* path)
+PsfFont load_psf_font(EFI_FILE* volume, CHAR16* path)
 {		
 	Print(L"Loading Font (%s)...\n\r", path);
 
@@ -145,7 +145,7 @@ PSF_FONT load_psf_font(EFI_FILE* volume, CHAR16* path)
 		}
 	}
 
-	PSF_HEADER* fontHeader = read_file(efiFile, sizeof(PSF_HEADER));
+	PsfHeader* fontHeader = read_file(efiFile, sizeof(PsfHeader));
 
 	if (fontHeader->magic != PSF_MAGIC)
 	{
@@ -158,18 +158,18 @@ PSF_FONT load_psf_font(EFI_FILE* volume, CHAR16* path)
 		glyphBufferSize = fontHeader->charsize * 512;
 	}
 
-	seek(efiFile, sizeof(PSF_HEADER));
+	seek(efiFile, sizeof(PsfHeader));
 	void* glyphBuffer = AllocatePool(glyphBufferSize);
 	read_file_to_buffer(efiFile, &glyphBufferSize, glyphBuffer);
 
-	PSF_FONT newFont;
+	PsfFont newFont;
 
-	newFont.PSF_Header = fontHeader;
-	newFont.GlyphBuffer = glyphBuffer;
+	newFont.header = fontHeader;
+	newFont.glyphs = glyphBuffer;
 
 	Print(L"FONT INFO\n\r");
-	Print(L"Char Size: %d\n\r", newFont.PSF_Header->charsize);
-	Print(L"Mode: 0x%x\n\r", newFont.PSF_Header->mode);
+	Print(L"Char Size: %d\n\r", newFont.header->charsize);
+	Print(L"Mode: 0x%x\n\r", newFont.header->mode);
 	Print(L"FONT INFO END\n\r");
 
 	close_file(efiFile);
@@ -250,26 +250,26 @@ Framebuffer get_gop_framebuffer()
 		}
 	}
 
-	Framebuffer NewBuffer;
+	Framebuffer newBuffer;
 
-	NewBuffer.Base = (uint32_t*)GOP->Mode->FrameBufferBase;
-	NewBuffer.Size = GOP->Mode->FrameBufferSize;
-	NewBuffer.Width = GOP->Mode->Info->HorizontalResolution;
-	NewBuffer.Height = GOP->Mode->Info->VerticalResolution;
-	NewBuffer.PixelsPerScanline = GOP->Mode->Info->PixelsPerScanLine;
+	newBuffer.base = (uint32_t*)GOP->Mode->FrameBufferBase;
+	newBuffer.size = GOP->Mode->FrameBufferSize;
+	newBuffer.width = GOP->Mode->Info->HorizontalResolution;
+	newBuffer.height = GOP->Mode->Info->VerticalResolution;
+	newBuffer.pixelsPerScanline = GOP->Mode->Info->PixelsPerScanLine;
 
 	Print(L"GOP BUFFER INFO\n\r");
-	Print(L"Base: 0x%x\n\r", NewBuffer.Base);
-	Print(L"Size: 0x%x\n\r", NewBuffer.Size);
-	Print(L"Width: %d\n\r", NewBuffer.Width);
-	Print(L"Height: %d\n\r", NewBuffer.Height);
-	Print(L"PixelsPerScanline: %d\n\r", NewBuffer.PixelsPerScanline);
+	Print(L"Base: 0x%x\n\r", newBuffer.base);
+	Print(L"Size: 0x%x\n\r", newBuffer.size);
+	Print(L"Width: %d\n\r", newBuffer.width);
+	Print(L"Height: %d\n\r", newBuffer.height);
+	Print(L"PixelsPerScanline: %d\n\r", newBuffer.pixelsPerScanline);
 	Print(L"GOP BUFFER INFO END\n\r");
 
-	return NewBuffer;
+	return newBuffer;
 }
 
-EFI_MEMORY_MAP get_memory_map()
+EfiMemoryMap get_memory_map()
 { 
 	Print(L"Retrieving EFI Memory Map...\n\r");
 
@@ -280,11 +280,11 @@ EFI_MEMORY_MAP get_memory_map()
 	
 	EFI_MEMORY_DESCRIPTOR* memoryMap = LibMemoryMap(&descriptorAmount, &mapKey, &descriptorSize, &descriptorVersion);
 	
-	EFI_MEMORY_MAP newMap;
-	newMap.Base = memoryMap;
-	newMap.DescriptorAmount = descriptorAmount;
-	newMap.DescriptorSize = descriptorSize;
-	newMap.Key = mapKey;
+	EfiMemoryMap newMap;
+	newMap.base = memoryMap;
+	newMap.descriptorAmount = descriptorAmount;
+	newMap.descriptorSize = descriptorSize;
+	newMap.key = mapKey;
 
 	return newMap;
 }
@@ -294,35 +294,35 @@ void* get_rsdp()
 	Print(L"Getting RSDP...\n\r");
 
 	EFI_CONFIGURATION_TABLE* configTable = SystemTable->ConfigurationTable;
-	void* RSDP = 0;
+	void* rsdp = 0;
 	EFI_GUID acpi2TableGuid = ACPI_20_TABLE_GUID;
 
 	for (UINTN i = 0; i < SystemTable->NumberOfTableEntries; i++)
 	{
 		if (CompareGuid(&configTable[i].VendorGuid, &acpi2TableGuid) && strcmp("RSD PTR ", configTable->VendorTable))
 		{
-			RSDP = configTable->VendorTable;
+			rsdp = configTable->VendorTable;
 		}
 		configTable++;
 	}
 
-	return RSDP;
+	return rsdp;
 }
 
 typedef struct
 {
-	const char* Name;
-	uint8_t* Data;
-	uint64_t Size;
+	const char* name;
+	uint8_t* data;
+	uint64_t size;
 } File;
 
 typedef struct Directory
 {
-	const char* Name;
-	File* Files;
-	uint64_t FileAmount;
-	struct Directory* Directories;
-	uint64_t DirectoryAmount;
+	const char* name;
+	File* files;
+	uint64_t fileAmount;
+	struct Directory* directories;
+	uint64_t directoryAmount;
 } Directory;
 
 UINT64 file_size(EFI_FILE* FileHandle)
@@ -344,9 +344,9 @@ File create_file_struct(EFI_FILE* volume, CHAR16* path)
 	uint8_t* data = read_file(fileHandle, size);
 
 	File output;
-	output.Name = char16_to_char(path);
-	output.Data = data;
-	output.Size = size;
+	output.name = char16_to_char(path);
+	output.data = data;
+	output.size = size;
 
   	close_file(fileHandle);
 
@@ -356,11 +356,11 @@ File create_file_struct(EFI_FILE* volume, CHAR16* path)
 Directory create_directory_struct(EFI_FILE* volume, const char* name)
 {		
 	Directory out;
-	out.Name = name;
-	out.Files = 0;
-	out.FileAmount = 0;
-	out.Directories = 0;
-	out.DirectoryAmount = 0;
+	out.name = name;
+	out.files = 0;
+	out.fileAmount = 0;
+	out.directories = 0;
+	out.directoryAmount = 0;
 
 	while (1) 
 	{
@@ -391,15 +391,15 @@ Directory create_directory_struct(EFI_FILE* volume, const char* name)
 
 				Directory newDirectory = create_directory_struct(subVolume, char16_to_char(fileInfo->FileName));
 				
-				Directory* newDirectoryArray = AllocatePool(sizeof(Directory) * (out.DirectoryAmount + 1));
-				if (out.DirectoryAmount != 0)
+				Directory* newDirectoryArray = AllocatePool(sizeof(Directory) * (out.directoryAmount + 1));
+				if (out.directoryAmount != 0)
 				{
-					CopyMem(newDirectoryArray, out.Directories, sizeof(Directory) * out.DirectoryAmount);
-					FreePool(out.Directories);
+					CopyMem(newDirectoryArray, out.directories, sizeof(Directory) * out.directoryAmount);
+					FreePool(out.directories);
 				}
-				out.Directories = newDirectoryArray;
-				out.Directories[out.DirectoryAmount] = newDirectory;
-				out.DirectoryAmount++;
+				out.directories = newDirectoryArray;
+				out.directories[out.directoryAmount] = newDirectory;
+				out.directoryAmount++;
 
 				close_file(subVolume);
 			}
@@ -408,15 +408,15 @@ Directory create_directory_struct(EFI_FILE* volume, const char* name)
 		{
 			File newFile = create_file_struct(volume, fileInfo->FileName);
 			
-			File* newFileArray = AllocatePool(sizeof(File) * (out.FileAmount + 1));
-			if (out.FileAmount != 0)
+			File* newFileArray = AllocatePool(sizeof(File) * (out.fileAmount + 1));
+			if (out.fileAmount != 0)
 			{
-				CopyMem(newFileArray, out.Files, sizeof(File) * out.FileAmount);
-				FreePool(out.Files);
+				CopyMem(newFileArray, out.files, sizeof(File) * out.fileAmount);
+				FreePool(out.files);
 			}
-			out.Files = newFileArray;
-			out.Files[out.FileAmount] = newFile;
-			out.FileAmount++;
+			out.files = newFileArray;
+			out.files[out.fileAmount] = newFile;
+			out.fileAmount++;
 			
 		}
 
@@ -428,12 +428,12 @@ Directory create_directory_struct(EFI_FILE* volume, const char* name)
 
 typedef struct
 {
-	Framebuffer* Screenbuffer;
-	PSF_FONT* Font;	
-	EFI_MEMORY_MAP* MemoryMap;
-	void* RSDP;
-	EFI_RUNTIME_SERVICES *RT;
-	Directory* RootDirectory;
+	Framebuffer* screenbuffer;
+	PsfFont* font;	
+	EfiMemoryMap* memoryMap;
+	void* rsdp;
+	EFI_RUNTIME_SERVICES* rt;
+	Directory* rootDirectory;
 } BootInfo;
 
 EFI_STATUS efi_main(EFI_HANDLE In_ImageHandle, EFI_SYSTEM_TABLE* In_SystemTable)
@@ -458,25 +458,25 @@ EFI_STATUS efi_main(EFI_HANDLE In_ImageHandle, EFI_SYSTEM_TABLE* In_SystemTable)
 
 	Elf64_Ehdr kernelFile = load_elf_file(kernelVolume, L"Kernel.elf");
 
-	PSF_FONT ttyFont = load_psf_font(fontsVolume, L"zap-vga16.psf");
+	PsfFont ttyFont = load_psf_font(fontsVolume, L"zap-vga16.psf");
 
 	close_file(kernelVolume);
 	close_file(fontsVolume);
 
-	EFI_MEMORY_MAP memoryMap = get_memory_map();
+	EfiMemoryMap memoryMap = get_memory_map();
 
 	BootInfo bootInfo;
-	bootInfo.Screenbuffer = &screenbuffer;
-	bootInfo.Font = &ttyFont;
-	bootInfo.MemoryMap = &memoryMap;
-	bootInfo.RSDP = rsdp;
-	bootInfo.RT = SystemTable->RuntimeServices;
-	bootInfo.RootDirectory = &rootDirectory;
+	bootInfo.screenbuffer = &screenbuffer;
+	bootInfo.font = &ttyFont;
+	bootInfo.memoryMap = &memoryMap;
+	bootInfo.rsdp = rsdp;
+	bootInfo.rt = SystemTable->RuntimeServices;
+	bootInfo.rootDirectory = &rootDirectory;
 
 	void (*KernelMain)(BootInfo*) = ((__attribute__((sysv_abi)) void (*)(BootInfo*))kernelFile.e_entry);
 
 	Print(L"Exiting boot services...\n\r");
-	SystemTable->BootServices->ExitBootServices(ImageHandle, memoryMap.Key);
+	SystemTable->BootServices->ExitBootServices(ImageHandle, memoryMap.key);
 
 	Print(L"Entering Kernel...\n\r");
 	KernelMain(&bootInfo);

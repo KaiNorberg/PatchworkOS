@@ -22,7 +22,7 @@ Revision History
 //
 // These globals are runtime globals
 //
-// N.B. The Microsoft C compiler will only put the data in the
+// N.b. The Microsoft C compiler will only put the data in the
 // right data section if it is explicitly initialized..
 //
 
@@ -38,7 +38,7 @@ EFI_RUNTIME_SERVICES    *RT;
 
 //
 // LibStandalone - TRUE if lib is linked in as part of the firmware.
-// N.B. The EFI fw sets this value directly
+// N.b. The EFI fw sets this value directly
 //
 
 BOOLEAN  LibFwInstance;

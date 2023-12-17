@@ -20,8 +20,8 @@ void idt_init()
 {    
     tty_start_message("IDT initializing");
 
-    idtr.Size = sizeof(idt) - 1;
-    idtr.Offset = (uint64_t)&idt;
+    idtr.size = sizeof(idt) - 1;
+    idtr.offset = (uint64_t)&idt;
 
     for (uint16_t vector = 0; vector < 256; vector++) 
     {        
@@ -72,13 +72,13 @@ void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags)
 {
     IDTEntry* descriptor = &idt[vector];
  
-    descriptor->IsrLow = (uint64_t)isr & 0xFFFF;
-    descriptor->KernelCS = GDT_OFFSET_KERNEL_CODE;
-    descriptor->Ist = 0;
-    descriptor->Attributes = flags;
-    descriptor->IsrMid = ((uint64_t)isr >> 16) & 0xFFFF;
-    descriptor->IsrHigh = ((uint64_t)isr >> 32) & 0xFFFFFFFF;
-    descriptor->Reserved = 0;
+    descriptor->isrLow = (uint64_t)isr & 0xFFFF;
+    descriptor->codeSegment = GDT_OFFSET_KERNEL_CODE;
+    descriptor->ist = 0;
+    descriptor->attributes = flags;
+    descriptor->isrMid = ((uint64_t)isr >> 16) & 0xFFFF;
+    descriptor->isrHigh = ((uint64_t)isr >> 32) & 0xFFFFFFFF;
+    descriptor->reserved = 0;
 }
 
 //TODO: Implement better system for clearing bits

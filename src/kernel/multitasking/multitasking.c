@@ -8,6 +8,7 @@
 #include "tty/tty.h"
 #include "page_allocator/page_allocator.h"
 #include "string/string.h"
+#include "debug/debug.h"
 
 Task* mainTask;
 
@@ -19,43 +20,43 @@ Task* lastTask;
 void multitasking_visualize()
 {    
     Pixel black;
-    black.A = 255;
-    black.R = 0;
-    black.G = 0;
-    black.B = 0;
+    black.a = 255;
+    black.r = 0;
+    black.g = 0;
+    black.b = 0;
 
     Pixel green;
-    green.A = 255;
-    green.R = 152;
-    green.G = 195;
-    green.B = 121;
+    green.a = 255;
+    green.r = 152;
+    green.g = 195;
+    green.b = 121;
 
     Pixel red;
-    red.A = 255;
-    red.R = 224;
-    red.G = 108;
-    red.B = 117;
+    red.a = 255;
+    red.r = 224;
+    red.g = 108;
+    red.b = 117;
 
     Pixel blue;
-    blue.A = 255;
-    blue.R = 97;
-    blue.G = 175;
-    blue.B = 239;
+    blue.a = 255;
+    blue.r = 97;
+    blue.g = 175;
+    blue.b = 239;
 
     tty_print("Task visualization (blue = running, green = ready, red = waiting):\n\r");
     int i = 0;
     Task* currentTask = firstTask;
     while (currentTask != 0)
     {
-        if (currentTask->State == TASK_STATE_RUNNING)
+        if (currentTask->state == TASK_STATE_RUNNING)
         {
             tty_set_background(blue);
         }
-        else if (currentTask->State == TASK_STATE_WAITING)
+        else if (currentTask->state == TASK_STATE_WAITING)
         {
             tty_set_background(red);
         }
-        else if (currentTask->State == TASK_STATE_READY)
+        else if (currentTask->state == TASK_STATE_READY)
         {
             tty_set_background(green);
         }
@@ -63,7 +64,7 @@ void multitasking_visualize()
         tty_put(' '); tty_printi(i); tty_put(' ');
     
         i++;
-        currentTask = currentTask->Next;
+        currentTask = currentTask->next;
 
         if (currentTask == firstTask)
         {
@@ -86,8 +87,8 @@ void multitasking_init()
 
     firstTask = mainTask;
     lastTask = mainTask;
-    mainTask->Next = mainTask;
-    mainTask->Prev = mainTask;
+    mainTask->next = mainTask;
+    mainTask->prev = mainTask;
 
     tty_end_message(TTY_MESSAGE_OK);
 }
@@ -97,35 +98,33 @@ Task* multitasking_new(void* entry)
     Task* newTask = kmalloc(sizeof(Task));
     memset(newTask, 0, sizeof(Task));
 
-    newTask->FirstMemoryBlock = 0;
-    newTask->LastMemoryBlock = 0;
-
-    newTask->Context = context_new(entry, 0x18 | 3, 0x20 | 3, 0x202);
-
-    newTask->State = TASK_STATE_READY;
+    newTask->firstMemoryBlock = 0;
+    newTask->lastMemoryBlock = 0;
+    newTask->context = context_new(entry, 0x18 | 3, 0x20 | 3, 0x202);
+    newTask->state = TASK_STATE_READY;
 
     //Add to linked list
-    lastTask->Next = newTask;
-    newTask->Prev = lastTask;
+    lastTask->next = newTask;
+    newTask->prev = lastTask;
     lastTask = newTask;
-    newTask->Next = firstTask;
-    firstTask->Prev = newTask;
+    newTask->next = firstTask;
+    firstTask->prev = newTask;
     
     return newTask;
 }
 
 void multitasking_free(Task* task)
 {
-    context_free(task->Context);
+    context_free(task->context);
 
-    if (task->FirstMemoryBlock != 0)
+    if (task->firstMemoryBlock != 0)
     {
-        TaskMemoryBlock* currentBlock = task->FirstMemoryBlock;
+        MemoryBlock* currentBlock = task->firstMemoryBlock;
         while (1)
         {
-            TaskMemoryBlock* nextBlock = task->FirstMemoryBlock->Next;
+            MemoryBlock* nextBlock = task->firstMemoryBlock->next;
 
-            page_allocator_unlock_pages(currentBlock->Address, currentBlock->PageAmount);
+            page_allocator_unlock_pages(currentBlock->address, currentBlock->pageAmount);
 
             kfree(currentBlock);           
 
@@ -142,14 +141,14 @@ void multitasking_free(Task* task)
 
     if (task == firstTask)
     {
-        firstTask = task->Next;
+        firstTask = task->next;
     }
     if (task == lastTask)
     {
-        lastTask = task->Prev;
+        lastTask = task->prev;
     }
-    task->Next->Prev = task->Prev;
-    task->Prev->Next = task->Next;
+    task->next->prev = task->prev;
+    task->prev->next = task->next;
 
     kfree(task);
 }
@@ -157,18 +156,18 @@ void multitasking_free(Task* task)
 void multitasking_schedule()
 {
     Task* prev = runningTask;
-    prev->State = TASK_STATE_READY;
+    prev->state = TASK_STATE_READY;
     
     Task* nextTask = runningTask;
     while (1)
     {
-        nextTask = nextTask->Next;
+        nextTask = nextTask->next;
 
-        if (nextTask->State == TASK_STATE_READY)
+        if (nextTask->state == TASK_STATE_READY)
         {
             break;
         }
-        else if (nextTask->Next == prev)
+        else if (nextTask->next == prev)
         {
             nextTask = runningTask;
             break;
@@ -176,7 +175,7 @@ void multitasking_schedule()
     }
 
     runningTask = nextTask;  
-    nextTask->State = TASK_STATE_RUNNING;   
+    nextTask->state = TASK_STATE_RUNNING;   
 }
 
 Task* multitasking_get_running_task()
@@ -184,6 +183,7 @@ Task* multitasking_get_running_task()
     if (runningTask == mainTask)
     {        
         debug_panic("Failed to retrieve scheduled task!");
+        return 0;
     }
     else
     {
@@ -195,59 +195,59 @@ void multitasking_yield_to_user_space()
 {
     multitasking_schedule();
     Task* newTask = multitasking_get_running_task();
-    mainTask->State = TASK_STATE_WAITING;
+    mainTask->state = TASK_STATE_WAITING;
     
-    jump_to_user_space((void*)newTask->Context->State.InstructionPointer, (void*)newTask->Context->StackTop, (void*)newTask->Context->State.CR3);
+    jump_to_user_space((void*)newTask->context->state.instructionPointer, (void*)newTask->context->stackTop, (void*)newTask->context->state.cr3);
 }
 
 void* task_request_page(Task* task)
 {
-    TaskMemoryBlock* newMemoryBlock = kmalloc(sizeof(TaskMemoryBlock));
+    MemoryBlock* newMemoryBlock = kmalloc(sizeof(MemoryBlock));
 
     void* physicalAddress = page_allocator_request();
 
-    newMemoryBlock->Address = physicalAddress;
-    newMemoryBlock->PageAmount = 1;
-    newMemoryBlock->Next = 0;
+    newMemoryBlock->address = physicalAddress;
+    newMemoryBlock->pageAmount = 1;
+    newMemoryBlock->next = 0;
 
-    if (task->FirstMemoryBlock == 0)
+    if (task->firstMemoryBlock == 0)
     {
-        task->FirstMemoryBlock = newMemoryBlock;
-        task->LastMemoryBlock = newMemoryBlock;
+        task->firstMemoryBlock = newMemoryBlock;
+        task->lastMemoryBlock = newMemoryBlock;
     }
     else
     {
-        task->LastMemoryBlock->Next = newMemoryBlock;
-        task->LastMemoryBlock = newMemoryBlock;
+        task->lastMemoryBlock->next = newMemoryBlock;
+        task->lastMemoryBlock = newMemoryBlock;
     }
 
-    virtual_memory_remap((VirtualAddressSpace*)task->Context->State.CR3, physicalAddress, physicalAddress, 1);
+    virtual_memory_remap((VirtualAddressSpace*)task->context->state.cr3, physicalAddress, physicalAddress, 1);
 
     return physicalAddress;
 }
 
 void* task_allocate_pages(Task* task, void* virtualAddress, uint64_t pageAmount)
 {
-    TaskMemoryBlock* newMemoryBlock = kmalloc(sizeof(TaskMemoryBlock));
+    MemoryBlock* newMemoryBlock = kmalloc(sizeof(MemoryBlock));
 
     void* physicalAddress = page_allocator_request_amount(pageAmount);
 
-    newMemoryBlock->Address = physicalAddress;
-    newMemoryBlock->PageAmount = pageAmount;
-    newMemoryBlock->Next = 0;
+    newMemoryBlock->address = physicalAddress;
+    newMemoryBlock->pageAmount = pageAmount;
+    newMemoryBlock->next = 0;
 
-    if (task->FirstMemoryBlock == 0)
+    if (task->firstMemoryBlock == 0)
     {
-        task->FirstMemoryBlock = newMemoryBlock;
-        task->LastMemoryBlock = newMemoryBlock;
+        task->firstMemoryBlock = newMemoryBlock;
+        task->lastMemoryBlock = newMemoryBlock;
     }
     else
     {
-        task->LastMemoryBlock->Next = newMemoryBlock;
-        task->LastMemoryBlock = newMemoryBlock;
+        task->lastMemoryBlock->next = newMemoryBlock;
+        task->lastMemoryBlock = newMemoryBlock;
     }
     
-    virtual_memory_remap_pages((VirtualAddressSpace*)task->Context->State.CR3, virtualAddress, physicalAddress, pageAmount, 1);
+    virtual_memory_remap_pages((VirtualAddressSpace*)task->context->state.cr3, virtualAddress, physicalAddress, pageAmount, 1);
 
     return physicalAddress;
 }

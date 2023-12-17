@@ -143,15 +143,15 @@ void interrupt_handler(InterruptStackFrame* stackFrame)
 {       
     VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
 
-    if (stackFrame->Vector < 32) //Exception
+    if (stackFrame->vector < 32) //Exception
     {
         exception_handler(stackFrame);
     }
-    else if (stackFrame->Vector >= 32 && stackFrame->Vector <= 48) //IRQ
+    else if (stackFrame->vector >= 32 && stackFrame->vector <= 48) //IRQ
     {
         irq_handler(stackFrame);
     }
-    else if (stackFrame->Vector == 0x80) //Syscall
+    else if (stackFrame->vector == 0x80) //Syscall
     {
         syscall_handler(stackFrame);
     }  
@@ -159,7 +159,7 @@ void interrupt_handler(InterruptStackFrame* stackFrame)
 
 void irq_handler(InterruptStackFrame* stackFrame)
 {
-    uint64_t irq = stackFrame->Vector - 32;
+    uint64_t irq = stackFrame->vector - 32;
 
     switch (irq)
     {
@@ -178,11 +178,11 @@ void irq_handler(InterruptStackFrame* stackFrame)
     {
         rtc_tick();
     
-        if (rtc_get_tick() % 1024 == 0) //For testing
+        if (rtc_get_tick() % (1024 / 2) == 0) //For testing
         {
-            context_save(multitasking_get_running_task()->Context, stackFrame);
+            context_save(multitasking_get_running_task()->context, stackFrame);
             multitasking_schedule();    
-            context_load(multitasking_get_running_task()->Context, stackFrame);
+            context_load(multitasking_get_running_task()->context, stackFrame);
         }
     }
     break;
@@ -201,28 +201,28 @@ void exception_handler(InterruptStackFrame* stackFrame)
     uint64_t randomNumber = 0;
 
     Pixel black;
-    black.A = 255;
-    black.R = 0;
-    black.G = 0;
-    black.B = 0;
+    black.a = 255;
+    black.r = 0;
+    black.g = 0;
+    black.b = 0;
 
     Pixel white;
-    white.A = 255;
-    white.R = 255;
-    white.G = 255;
-    white.B = 255;
+    white.a = 255;
+    white.r = 255;
+    white.g = 255;
+    white.b = 255;
 
     Pixel red;
-    red.A = 255;
-    red.R = 224;
-    red.G = 108;
-    red.B = 117;
+    red.a = 255;
+    red.r = 224;
+    red.g = 108;
+    red.b = 117;
 
     uint64_t scale = 3;
 
     Point startPoint;
-    startPoint.X = 100;
-    startPoint.Y = 50;
+    startPoint.x = 100;
+    startPoint.y = 50;
 
     tty_set_scale(scale);
 
@@ -231,77 +231,77 @@ void exception_handler(InterruptStackFrame* stackFrame)
     tty_set_background(black);
     tty_set_foreground(white);
 
-    tty_set_cursor_pos(startPoint.X, startPoint.Y);
+    tty_set_cursor_pos(startPoint.x, startPoint.y);
     tty_print("KERNEL PANIC!\n\r");
 
-    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 1 * scale);
+    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 1 * scale);
     tty_print("// ");
     tty_print(errorJokes[randomNumber]);
 
     tty_set_background(black);
     tty_set_foreground(red);
 
-    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 3 * scale);
+    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 3 * scale);
     tty_print("\"");
-    tty_print(exception_strings[stackFrame->Vector]);
+    tty_print(exception_strings[stackFrame->vector]);
     tty_print("\": ");
     for (int i = 0; i < 32; i++)
     {
-        tty_put('0' + ((stackFrame->ErrorCode >> (i)) & 1));
+        tty_put('0' + ((stackFrame->errorCode >> (i)) & 1));
     }
 
     tty_set_background(black);
     tty_set_foreground(white);
 
-    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 5 * scale);
+    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 5 * scale);
     tty_print("OS_VERSION = ");
     tty_print(OS_VERSION);
 
-    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 7 * scale);
+    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 7 * scale);
     tty_print("Interrupt Stack Frame: ");
 
-    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 8 * scale);
+    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 8 * scale);
     tty_print("Instruction pointer = ");
-    tty_printx(stackFrame->InstructionPointer);
+    tty_printx(stackFrame->instructionPointer);
 
-    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 9 * scale);
+    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 9 * scale);
     tty_print("Code segment = ");
-    tty_printx(stackFrame->CodeSegment);
+    tty_printx(stackFrame->codeSegment);
 
-    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 10 * scale);
+    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 10 * scale);
     tty_print("Rflags = ");
-    tty_printx(stackFrame->Flags);
+    tty_printx(stackFrame->flags);
 
-    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 11 * scale);
+    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 11 * scale);
     tty_print("Stack pointer = ");
-    tty_printx(stackFrame->StackPointer);
+    tty_printx(stackFrame->stackPointer);
 
-    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 12 * scale);
+    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 12 * scale);
     tty_print("Stack segment = ");
-    tty_printx(stackFrame->StackSegment);
+    tty_printx(stackFrame->stackSegment);
 
-    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 14 * scale);
+    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 14 * scale);
     tty_print("Memory: ");
 
-    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 15 * scale);
+    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 15 * scale);
     tty_print("Used Heap = ");
     tty_printi(heap_reserved_size());
     tty_print(" B");
 
-    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 16 * scale);
+    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 16 * scale);
     tty_print("Free Heap = ");
     tty_printi(heap_free_size());
     tty_print(" B");
 
-    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 17 * scale);
+    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 17 * scale);
     tty_print("Locked Pages = ");
     tty_printi(page_allocator_get_locked_amount());
 
-    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 18 * scale);
+    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 18 * scale);
     tty_print("Unlocked Pages = ");
     tty_printi(page_allocator_get_unlocked_amount());
 
-    tty_set_cursor_pos(startPoint.X, startPoint.Y + 16 * 20 * scale);
+    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 20 * scale);
     tty_print("Please manually reboot your machine.");
 
     while (1)

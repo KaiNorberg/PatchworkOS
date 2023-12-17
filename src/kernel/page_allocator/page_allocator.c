@@ -19,22 +19,22 @@ uint64_t lockedAmount;
 void page_allocator_visualize()
 {
     Pixel black;
-    black.A = 255;
-    black.R = 0;
-    black.G = 0;
-    black.B = 0;
+    black.a = 255;
+    black.r = 0;
+    black.g = 0;
+    black.b = 0;
 
     Pixel green;
-    green.A = 255;
-    green.R = 152;
-    green.G = 195;
-    green.B = 121;
+    green.a = 255;
+    green.r = 152;
+    green.g = 195;
+    green.b = 121;
 
     Pixel red;
-    red.A = 255;
-    red.R = 224;
-    red.G = 108;
-    red.B = 117;
+    red.a = 255;
+    red.r = 224;
+    red.g = 108;
+    red.b = 117;
 
     tty_print("Page allocator visualization:\n\r");
 
@@ -83,24 +83,24 @@ void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer)
     firstFreeAddress = 0;
 
     pageAmount = 0;
-    for (uint64_t i = 0; i < memoryMap->DescriptorAmount; i++)
+    for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->Base + (i * memoryMap->DescriptorSize));
-        if (desc->Type != EFI_MEMORY_MAPPED_IO && desc->Type != EFI_MEMORY_MAPPED_IO_PORT_SPACE)
+        EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
+        if (desc->type != EFI_MEMORY_MAPPED_IO && desc->type != EFI_MEMORY_MAPPED_IO_PORT_SPACE)
         {
-            pageAmount += desc->AmountOfPages;
+            pageAmount += desc->amountOfPages;
         }
     }
     pageMapByteSize = pageAmount / 8;
 
     pageMap = 0;
-    for (uint64_t i = 0; i < memoryMap->DescriptorAmount; i++)
+    for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->Base + (i * memoryMap->DescriptorSize));
+        EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
         
-        if (desc->Type == EFI_CONVENTIONAL_MEMORY && pageMapByteSize < desc->AmountOfPages * 0x1000)
+        if (desc->type == EFI_CONVENTIONAL_MEMORY && pageMapByteSize < desc->amountOfPages * 0x1000)
         {
-            pageMap = desc->PhysicalStart;
+            pageMap = desc->physicalStart;
             memset(pageMap, 0, pageMapByteSize);
             break;
         }
@@ -111,19 +111,19 @@ void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer)
         tty_end_message(TTY_MESSAGE_ER);
     }
 
-    for (uint64_t i = 0; i < memoryMap->DescriptorAmount; i++)
+    for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->Base + (i * memoryMap->DescriptorSize));
+        EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
 
-        if (is_memory_type_reserved(desc->Type))
+        if (is_memory_type_reserved(desc->type))
         {
-            page_allocator_lock_pages(desc->PhysicalStart, desc->AmountOfPages);
+            page_allocator_lock_pages(desc->physicalStart, desc->amountOfPages);
         }
     }
 
     page_allocator_lock_pages(pageMap, pageMapByteSize / 0x1000 + 1);
     page_allocator_lock_pages(&_kernelStart, ((uint64_t)&_kernelEnd - (uint64_t)&_kernelStart) / 0x1000 + 1);    
-    page_allocator_lock_pages(screenBuffer->Base, screenBuffer->Size / 0x1000 + 1);
+    page_allocator_lock_pages(screenBuffer->base, screenBuffer->size / 0x1000 + 1);
 
     tty_end_message(TTY_MESSAGE_OK);
 }

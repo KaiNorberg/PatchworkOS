@@ -22,31 +22,31 @@ uint8_t load_program(const char* path)
     ElfHeader header;
     file_system_read(&header, sizeof(ElfHeader), file);
 
-    if(header.Ident[0] != 0x7F ||
-       header.Ident[1] != 'E' ||
-       header.Ident[2] != 'L' ||
-       header.Ident[3] != 'F')
+    if(header.ident[0] != 0x7F ||
+       header.ident[1] != 'E' ||
+       header.ident[2] != 'L' ||
+       header.ident[3] != 'F')
     {
         debug_panic("Corrupt program file!\n\r");
         return 0;
     }
 
-    uint64_t programHeaderTableSize = header.ProgramHeaderAmount * header.ProgramHeaderSize;
+    uint64_t programHeaderTableSize = header.programHeaderAmount * header.programHeaderSize;
     ElfProgramHeader* programHeaders = kmalloc(programHeaderTableSize);
     file_system_read(programHeaders, programHeaderTableSize, file);
 
-    Task* task = multitasking_new((void*)header.Entry);
+    Task* task = multitasking_new((void*)header.entry);
 
-	for (uint64_t i = 0; i < header.ProgramHeaderAmount; i++)
+	for (uint64_t i = 0; i < header.programHeaderAmount; i++)
 	{		
-        switch (programHeaders[i].Type)
+        switch (programHeaders[i].type)
 		{
 		case PT_LOAD:
 		{
-            void* segment = task_allocate_pages(task, (void*)programHeaders[i].VirtualAddress, programHeaders[i].MemorySize / 0x1000 + 1);
+            void* segment = task_allocate_pages(task, (void*)programHeaders[i].virtualAddress, programHeaders[i].memorySize / 0x1000 + 1);
 
-            file_system_seek(file, programHeaders[i].Offset, SEEK_SET);
-            file_system_read(segment, programHeaders[i].MemorySize, file);
+            file_system_seek(file, programHeaders[i].offset, SEEK_SET);
+            file_system_read(segment, programHeaders[i].memorySize, file);
 		}
 		break;
 		}

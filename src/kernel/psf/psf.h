@@ -4,13 +4,13 @@
 
 typedef struct
 {
-	uint16_t Magic;
-	uint8_t Mode;
-	uint8_t CharSize;
+	uint16_t magic;
+	uint8_t mode;
+	uint8_t charSize;
 } PSFHeader;
 
 typedef struct
 {
-	PSFHeader* Header;
-	void* Glyphs;
+	PSFHeader* header;
+	void* glyphs;
 } PSFFont;

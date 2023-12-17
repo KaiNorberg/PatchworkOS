@@ -14,21 +14,21 @@ void print_directory(RawDirectory* directory, uint64_t indentation)
     {
         tty_put(' ');
     }
-    tty_print(directory->Name);
+    tty_print(directory->name);
     tty_put('\n');
 
-    for (int i = 0; i < directory->DirectoryAmount; i++)
+    for (int i = 0; i < directory->directoryAmount; i++)
     {
-        print_directory(&directory->Directories[i], indentation + 1);
+        print_directory(&directory->directories[i], indentation + 1);
     }
 
-    for (int i = 0; i < directory->FileAmount; i++)
+    for (int i = 0; i < directory->fileAmount; i++)
     {
         for (int j = 0; j < (indentation + 1) * 4; j++)
         {
             tty_put(' ');
         }
-        tty_print(directory->Files[i].Name);
+        tty_print(directory->files[i].name);
         tty_put('\n');
     }
 
@@ -80,11 +80,11 @@ RawFile* file_system_get(const char* path)
         
             if (path[index] == '/')
             {
-                for (int i = 0; i < currentDir->DirectoryAmount; i++)
+                for (int i = 0; i < currentDir->directoryAmount; i++)
                 {
-                    if (file_system_compare_names(path + prevIndex, path + index, currentDir->Directories[i].Name))
+                    if (file_system_compare_names(path + prevIndex, path + index, currentDir->directories[i].name))
                     {
-                        currentDir = &currentDir->Directories[i];
+                        currentDir = &currentDir->directories[i];
                         break;
                     }
                 }
@@ -93,11 +93,11 @@ RawFile* file_system_get(const char* path)
             }
             else if (path[index] == '\0')
             {                
-                for (int i = 0; i < currentDir->FileAmount; i++)
+                for (int i = 0; i < currentDir->fileAmount; i++)
                 {
-                    if (file_system_compare_names(path + prevIndex, path + index, currentDir->Files[i].Name))
+                    if (file_system_compare_names(path + prevIndex, path + index, currentDir->files[i].name))
                     {
-                        return &currentDir->Files[i];
+                        return &currentDir->files[i];
                     }
                 }
 
@@ -117,8 +117,8 @@ FILE* file_system_open(const char* filename, const char* mode)
     {
         FILE* newFile = kmalloc(sizeof(FILE));
 
-        newFile->SeekOffset = 0;
-        newFile->FileHandle = rawFile;
+        newFile->seekOffset = 0;
+        newFile->fileHandle = rawFile;
 
         return newFile;        
     }
@@ -134,17 +134,17 @@ uint32_t file_system_seek(FILE *stream, int64_t offset, uint32_t origin)
     {
     case SEEK_SET:
     {
-        stream->SeekOffset = offset;
+        stream->seekOffset = offset;
     }
     break;
     case SEEK_CUR:
     {
-        stream->SeekOffset += offset;
+        stream->seekOffset += offset;
     }
     break;
     case SEEK_END:
     {
-        stream->SeekOffset = stream->FileHandle->Size + offset;
+        stream->seekOffset = stream->fileHandle->size + offset;
     }
     break;
     }
@@ -154,13 +154,13 @@ uint32_t file_system_seek(FILE *stream, int64_t offset, uint32_t origin)
 
 uint64_t file_system_tell(FILE *stream)
 {
-    return stream->SeekOffset;
+    return stream->seekOffset;
 }
 
 uint32_t file_system_get_c(FILE* stream)
 {
-    uint8_t out = stream->FileHandle->Data[stream->SeekOffset];
-    stream->SeekOffset++;
+    uint8_t out = stream->fileHandle->data[stream->seekOffset];
+    stream->seekOffset++;
     return out;
 }
 

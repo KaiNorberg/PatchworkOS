@@ -9,19 +9,17 @@
 #include "idt/idt.h"
 
 EFIMemoryMap* efiMemoryMap;
-Framebuffer* frontBuffer;
 
 extern uint64_t _kernelStart;
 extern uint64_t _kernelEnd;
 
 VirtualAddressSpace* kernelAddressSpace;
 
-void virtual_memory_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer)
+void virtual_memory_init(EFIMemoryMap* memoryMap)
 {    
     tty_start_message("Virtual memory initializing");   
 
     efiMemoryMap = memoryMap;
-    frontBuffer = screenBuffer;
     asm volatile("movq %%cr3, %0" : "=r"(kernelAddressSpace));
 
     tty_end_message(TTY_MESSAGE_OK);
@@ -32,20 +30,20 @@ VirtualAddressSpace* virtual_memory_create()
     VirtualAddressSpace* addressSpace = (VirtualAddressSpace*)page_allocator_request();
     memset(addressSpace, 0, 0x1000);
 
-    for (uint64_t i = 0; i < efiMemoryMap->DescriptorAmount; i++)
+    for (uint64_t i = 0; i < efiMemoryMap->descriptorAmount; i++)
     {
-        EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)efiMemoryMap->Base + (i * efiMemoryMap->DescriptorSize));
+        EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)efiMemoryMap->base + (i * efiMemoryMap->descriptorSize));
 
-        if ((uint64_t)desc->PhysicalStart + desc->AmountOfPages * 0x1000 < page_allocator_get_total_amount() * 0x1000)
+        if ((uint64_t)desc->physicalStart + desc->amountOfPages * 0x1000 < page_allocator_get_total_amount() * 0x1000)
         {
-            if (is_memory_type_reserved(desc->Type))
+            if (is_memory_type_reserved(desc->type))
             {    
-                virtual_memory_remap_pages(addressSpace, desc->PhysicalStart, desc->PhysicalStart, desc->AmountOfPages, 1);
+                virtual_memory_remap_pages(addressSpace, desc->physicalStart, desc->physicalStart, desc->amountOfPages, 1);
             }
         }
     }
 
-    virtual_memory_remap(addressSpace, (void*)tss.RSP0 - 0x1000, (void*)tss.RSP0 - 0x1000, 0);
+    virtual_memory_remap(addressSpace, (void*)tss.rsp0 - 0x1000, (void*)tss.rsp0 - 0x1000, 0);
     virtual_memory_remap_pages(addressSpace, &_kernelStart, &_kernelStart, ((uint64_t)&_kernelEnd - (uint64_t)&_kernelStart) / 0x1000 + 1, 0);
 
     return addressSpace;
@@ -82,7 +80,7 @@ void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddres
     indexer >>= 9;
     uint64_t pdpIndex = indexer & 0x1ff;
 
-    PageDirEntry pde = addressSpace->Entries[pdpIndex];
+    PageDirEntry pde = addressSpace->entries[pdpIndex];
     PageDirectory* pdp;
     if (!PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
     {
@@ -101,7 +99,7 @@ void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddres
             PAGE_DIR_CLEAR_FLAG(pde, PAGE_DIR_USER_SUPERVISOR);
         }
 
-        addressSpace->Entries[pdpIndex] = pde;
+        addressSpace->entries[pdpIndex] = pde;
     }
     else
     {        
@@ -117,7 +115,7 @@ void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddres
         pdp = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde) << 12);
     }
     
-    pde = pdp->Entries[pdIndex];
+    pde = pdp->entries[pdIndex];
     PageDirectory* pd;
     if (!PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
     {
@@ -136,7 +134,7 @@ void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddres
             PAGE_DIR_CLEAR_FLAG(pde, PAGE_DIR_USER_SUPERVISOR);
         }
 
-        pdp->Entries[pdIndex] = pde;
+        pdp->entries[pdIndex] = pde;
     }
     else
     {          
@@ -152,7 +150,7 @@ void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddres
         pd = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde) << 12);
     }
 
-    pde = pd->Entries[ptIndex];
+    pde = pd->entries[ptIndex];
     PageDirectory* pt;
     if (!PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
     {
@@ -171,7 +169,7 @@ void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddres
             PAGE_DIR_CLEAR_FLAG(pde, PAGE_DIR_USER_SUPERVISOR);
         }
 
-        pd->Entries[ptIndex] = pde;
+        pd->entries[ptIndex] = pde;
     }
     else
     {   
@@ -187,7 +185,7 @@ void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddres
         pt = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde) << 12);
     }
 
-    pde = pt->Entries[pIndex];
+    pde = pt->entries[pIndex];
     PAGE_DIR_SET_ADDRESS(pde, (uint64_t)physicalAddress >> 12);
     PAGE_DIR_SET_FLAG(pde, PAGE_DIR_PRESENT);
     PAGE_DIR_SET_FLAG(pde, PAGE_DIR_READ_WRITE);
@@ -201,7 +199,7 @@ void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddres
         PAGE_DIR_CLEAR_FLAG(pde, PAGE_DIR_USER_SUPERVISOR);
     }
 
-    pt->Entries[pIndex] = pde;
+    pt->entries[pIndex] = pde;
 }
 
 void virtual_memory_erase(VirtualAddressSpace* addressSpace)
@@ -210,21 +208,21 @@ void virtual_memory_erase(VirtualAddressSpace* addressSpace)
 
     for (uint64_t pdpIndex = 0; pdpIndex < 512; pdpIndex++)
     {
-        pde = addressSpace->Entries[pdpIndex];
+        pde = addressSpace->entries[pdpIndex];
         PageDirectory* pdp;
         if (PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
         {
             pdp = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde) << 12);        
             for (uint64_t pdIndex = 0; pdIndex < 512; pdIndex++)
             {
-                pde = pdp->Entries[pdIndex]; 
+                pde = pdp->entries[pdIndex]; 
                 PageDirectory* pd;
                 if (PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
                 {
                     pd = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde) << 12);
                     for (uint64_t ptIndex = 0; ptIndex < 512; ptIndex++)
                     {
-                        pde = pd->Entries[ptIndex];
+                        pde = pd->entries[ptIndex];
                         PageDirectory* pt;
                         if (PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
                         {

@@ -4,42 +4,42 @@
 #include "page_allocator/page_allocator.h"
 #include "heap/heap.h"
 
-TaskContext* context_new(void* instructionPointer, uint64_t codeSegment, uint64_t stackSegment, uint64_t rFlags)
+Context* context_new(void* instructionPointer, uint64_t codeSegment, uint64_t stackSegment, uint64_t rFlags)
 {
-    TaskContext* context = kmalloc(sizeof(TaskContext));
-    memset(context, 0, sizeof(TaskContext));
+    Context* context = kmalloc(sizeof(Context));
+    memset(context, 0, sizeof(Context));
 
-    context->StackBottom = (uint64_t)page_allocator_request();
-    context->StackTop = context->StackBottom + 0x1000;
-    memset((void*)context->StackBottom, 0, 0x1000);
+    context->stackBottom = (uint64_t)page_allocator_request();
+    context->stackTop = context->stackBottom + 0x1000;
+    memset((void*)context->stackBottom, 0, 0x1000);
 
-    context->State.StackPointer = context->StackTop;
-    context->State.CR3 = (uint64_t)virtual_memory_create();
+    context->state.stackPointer = context->stackTop;
+    context->state.cr3 = (uint64_t)virtual_memory_create();
 
-    context->State.InstructionPointer = (uint64_t)instructionPointer;
-    context->State.CodeSegment = codeSegment;
-    context->State.StackSegment = stackSegment;
-    context->State.Flags = rFlags;
+    context->state.instructionPointer = (uint64_t)instructionPointer;
+    context->state.codeSegment = codeSegment;
+    context->state.stackSegment = stackSegment;
+    context->state.flags = rFlags;
 
-    virtual_memory_remap((VirtualAddressSpace*)context->State.CR3, (void*)context->StackBottom, (void*)context->StackBottom, 1);
+    virtual_memory_remap((VirtualAddressSpace*)context->state.cr3, (void*)context->stackBottom, (void*)context->stackBottom, 1);
 
     return context;
 }
 
-void context_free(TaskContext* context)
+void context_free(Context* context)
 {
-    virtual_memory_erase((VirtualAddressSpace*)context->State.CR3);
+    virtual_memory_erase((VirtualAddressSpace*)context->state.cr3);
 
-    page_allocator_unlock_page((void*)context->StackBottom);
+    page_allocator_unlock_page((void*)context->stackBottom);
     kfree(context);
 }
 
-void context_save(TaskContext* context, const InterruptStackFrame* state)
+void context_save(Context* context, const InterruptStackFrame* state)
 {
-    memcpy(&(context->State), state, sizeof(InterruptStackFrame));
+    memcpy(&(context->state), state, sizeof(InterruptStackFrame));
 }
 
-void context_load(const TaskContext* context, InterruptStackFrame* state)
+void context_load(const Context* context, InterruptStackFrame* state)
 {
-    memcpy(state, &(context->State), sizeof(InterruptStackFrame));
+    memcpy(state, &(context->state), sizeof(InterruptStackFrame));
 }

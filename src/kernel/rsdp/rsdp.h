@@ -4,13 +4,13 @@
 
 typedef struct __attribute__((packed))
 {
-    char Signature[8];
-    uint8_t Checksum;
-    char OemId[6];
-    uint8_t Revision;
-    uint32_t RsdtAddress; 
-    uint32_t Length;
-    uint64_t XsdtAddress;
-    uint8_t ExtendedChecksum;
+    char signature[8];
+    uint8_t checksum;
+    char oemId[6];
+    uint8_t revision;
+    uint32_t rsdtAddress; 
+    uint32_t length;
+    uint64_t xsdtAddress;
+    uint8_t extendedChecksum;
     uint8_t reserved[3];
 } XSDP;

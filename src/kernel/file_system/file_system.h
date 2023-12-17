@@ -13,24 +13,24 @@
 
 typedef struct
 {
-	const char* Name;
-	uint8_t* Data;
-	uint64_t Size;
+	const char* name;
+	uint8_t* data;
+	uint64_t size;
 } RawFile;
 
 typedef struct RawDirectory
 {
-	const char* Name;
-	RawFile* Files;
-	uint64_t FileAmount;
-	struct RawDirectory* Directories;
-	uint64_t DirectoryAmount;
+	const char* name;
+	RawFile* files;
+	uint64_t fileAmount;
+	struct RawDirectory* directories;
+	uint64_t directoryAmount;
 } RawDirectory;
 
 typedef struct
 {
-	RawFile* FileHandle;
-	uint64_t SeekOffset;
+	RawFile* fileHandle;
+	uint64_t seekOffset;
 } FILE;
 
 void file_system_init(RawDirectory* rootDirectory);

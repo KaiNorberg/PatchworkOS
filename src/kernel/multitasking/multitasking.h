@@ -6,23 +6,23 @@
 #include "idt/idt.h"
 #include "context/context.h"
 
-typedef struct TaskMemoryBlock
+typedef struct MemoryBlock
 {
-    void* Address;
-    uint64_t PageAmount;
-    struct TaskMemoryBlock* Next;
-} TaskMemoryBlock;
+    void* address;
+    uint64_t pageAmount;
+    struct MemoryBlock* next;
+} MemoryBlock;
 
 typedef struct Task
 {
-    TaskContext* Context;
+    Context* context;
 
-    TaskMemoryBlock* FirstMemoryBlock;
-    TaskMemoryBlock* LastMemoryBlock;
+    MemoryBlock* firstMemoryBlock;
+    MemoryBlock* lastMemoryBlock;
 
-    struct Task* Next;
-    struct Task* Prev;
-    uint64_t State;
+    struct Task* next;
+    struct Task* prev;
+    uint64_t state;
 } Task;
 
 extern void jump_to_user_space(void* userSpaceFunction, void* stackTop, void* addressSpace);

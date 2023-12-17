@@ -4,19 +4,19 @@
 
 typedef struct __attribute__((packed))
 {
-	uint16_t IsrLow;      // The lower 16 bits of the ISR's address
-	uint16_t KernelCS;    // The GDT segment selector that the CPU will load into CS before calling the ISR
-	uint8_t	Ist;          // The IST in the TSS that the CPU will load into RSP; set to zero for now
-	uint8_t Attributes;   // Type and attributes; see the IDT page
-	uint16_t IsrMid;      // The higher 16 bits of the lower 32 bits of the ISR's address
-	uint32_t IsrHigh;     // The higher 32 bits of the ISR's address
-	uint32_t Reserved;    // Set to zero
+	uint16_t isrLow;      
+	uint16_t codeSegment;
+	uint8_t	ist;
+	uint8_t attributes;
+	uint16_t isrMid;
+	uint32_t isrHigh;
+	uint32_t reserved;
 } IDTEntry;
 
 typedef struct __attribute__((packed))
 {
-	uint16_t Size;
-	uint64_t Offset;
+	uint16_t size;
+	uint64_t offset;
 } IDTR;
 
 extern IDTEntry idt[];

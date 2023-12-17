@@ -20,20 +20,20 @@ void syscall_handler(InterruptStackFrame* frame)
 {    
     uint64_t out;
 
-    switch(frame->RAX)
+    switch(frame->rax)
     {
     case SYS_TEST:
     {
-        tty_print("Syscall test, rdi = "); tty_printi(frame->RDI); tty_print("!\r");
+        tty_print("Syscall test, rdi = "); tty_printi(frame->rdi); tty_print("!\r");
 
         out = 0;
     }
     break;
     case SYS_YIELD:
     {
-        context_save(multitasking_get_running_task()->Context, frame);
+        context_save(multitasking_get_running_task()->context, frame);
         multitasking_schedule();    
-        context_load(multitasking_get_running_task()->Context, frame);
+        context_load(multitasking_get_running_task()->context, frame);
 
         out = 0;
     }
@@ -46,7 +46,7 @@ void syscall_handler(InterruptStackFrame* frame)
 
         multitasking_free(oldTask);
 
-        context_load(multitasking_get_running_task()->Context, frame);
+        context_load(multitasking_get_running_task()->context, frame);
 
         out = 0;
     }
@@ -58,5 +58,5 @@ void syscall_handler(InterruptStackFrame* frame)
     break;
     }
 
-    frame->RAX = out;
+    frame->rax = out;
 }

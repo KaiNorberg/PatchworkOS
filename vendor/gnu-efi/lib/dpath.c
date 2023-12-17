@@ -237,7 +237,7 @@ FileDevicePath (
     )
 /*++
 
-    N.B. Results are allocated from pool.  The caller must FreePool
+    N.b. Results are allocated from pool.  The caller must FreePool
     the resulting device path structure
 
 --*/

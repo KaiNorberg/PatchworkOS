@@ -15,23 +15,23 @@
 
 void kernel_init(BootInfo* bootInfo)
 {    
-    tty_init(bootInfo->Screenbuffer, bootInfo->TTYFont);
+    tty_init(bootInfo->framebuffer, bootInfo->font);
     tty_print("Hello from the kernel!\n\r");
 
-    page_allocator_init(bootInfo->MemoryMap, bootInfo->Screenbuffer);
+    page_allocator_init(bootInfo->memoryMap, bootInfo->framebuffer);
 
-    virtual_memory_init(bootInfo->MemoryMap, bootInfo->Screenbuffer);
+    virtual_memory_init(bootInfo->memoryMap);
 
     void* RSP0 = page_allocator_request() + 0x1000;
     gdt_init(RSP0, RSP0, RSP0);
 
-    acpi_init(bootInfo->Xsdp);
+    acpi_init(bootInfo->xsdp);
 
     idt_init();
     
     heap_init();
     
-    file_system_init(bootInfo->RootDirectory);
+    file_system_init(bootInfo->rootDirectory);
     
     syscall_init();
 

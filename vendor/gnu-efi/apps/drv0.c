@@ -51,11 +51,11 @@
  *    Handle dump
  *      1: Image(DxeCore)
  *    [...]
- *     79: Image(\/drv0.efi) ImageDevPath (..A,0x800,0x17F7DF)/\/drv0.efi)
- *     7A: Image(\/drv0.efi) ImageDevPath (..A,0x800,0x17F7DF)/\/drv0.efi)
+ *     79: Image(\/drv0.efi) ImageDevPath (..a,0x800,0x17F7DF)/\/drv0.efi)
+ *     7A: Image(\/drv0.efi) ImageDevPath (..a,0x800,0x17F7DF)/\/drv0.efi)
  *
  *    fs0:\> unload 79
- *     79: Image(\/drv0.efi) ImageDevPath (..A,0x800,0x17F7DF)/\/drv0.efi)
+ *     79: Image(\/drv0.efi) ImageDevPath (..a,0x800,0x17F7DF)/\/drv0.efi)
  *    Unload driver image (y/n)? y
  *    Driver instance unloaded.
  *    unload: Success
@@ -73,10 +73,10 @@
  *    Handle dump
  *      1: Image(DxeCore)
  *    [...]
- *     79: Image(\/drv0.efi) ImageDevPath (..A,0x800,0x17F7DF)/\/drv0.efi)
+ *     79: Image(\/drv0.efi) ImageDevPath (..a,0x800,0x17F7DF)/\/drv0.efi)
  *
  *    fs0:\> unload 79
- *     79: Image(\/drv0.efi) ImageDevPath (..A,0x800,0x17F7DF)/\/drv0.efi)
+ *     79: Image(\/drv0.efi) ImageDevPath (..a,0x800,0x17F7DF)/\/drv0.efi)
  *    Unload driver image (y/n)? y
  *    Driver instance unloaded.
  *    unload: Success

@@ -31,14 +31,14 @@ typedef uint64_t PageDirEntry;
 
 typedef struct __attribute__((aligned(0x1000)))
 { 
-    PageDirEntry Entries[512];
+    PageDirEntry entries[512];
 } PageDirectory;
 
 typedef PageDirectory VirtualAddressSpace;
 
 extern VirtualAddressSpace* kernelAddressSpace;
 
-void virtual_memory_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer);
+void virtual_memory_init(EFIMemoryMap* memoryMap);
 
 VirtualAddressSpace* virtual_memory_create();
 

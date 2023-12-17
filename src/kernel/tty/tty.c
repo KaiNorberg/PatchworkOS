@@ -18,18 +18,18 @@ void tty_init(Framebuffer* screenbuffer, PSFFont* screenFont)
     frontbuffer = screenbuffer;
     font = screenFont;
 
-    cursorPos.X = 0;
-    cursorPos.Y = 0;
+    cursorPos.x = 0;
+    cursorPos.y = 0;
 
-    background.A = 0;
-    background.R = 0;
-    background.G = 0;
-    background.B = 0;
+    background.a = 0;
+    background.r = 0;
+    background.g = 0;
+    background.b = 0;
     
-    foreground.A = 255;
-    foreground.R = 255;
-    foreground.G = 255;
-    foreground.B = 255;
+    foreground.a = 255;
+    foreground.r = 255;
+    foreground.g = 255;
+    foreground.b = 255;
 
     textScale = 1;
 
@@ -38,19 +38,19 @@ void tty_init(Framebuffer* screenbuffer, PSFFont* screenFont)
 
 void tty_put(uint8_t chr)
 {
-    char* glyph = font->Glyphs + chr * 16;
+    char* glyph = font->glyphs + chr * 16;
 
     switch (chr)
     {
     case '\n':
     {
-        cursorPos.X = 0;
-        cursorPos.Y += 16 * textScale;
+        cursorPos.x = 0;
+        cursorPos.y += 16 * textScale;
     }
     break;
     case '\r':
     {
-        cursorPos.X = 0;
+        cursorPos.x = 0;
     }
     break;
     default:
@@ -70,7 +70,7 @@ void tty_put(uint8_t chr)
                     pixel = background;
                 }
 
-                Point position = {cursorPos.X + x, cursorPos.Y + y};
+                Point position = {cursorPos.x + x, cursorPos.y + y};
 
                 gop_put(frontbuffer, position, pixel);
             }
@@ -80,12 +80,12 @@ void tty_put(uint8_t chr)
             }
         }
 
-        cursorPos.X += 8 * textScale;
+        cursorPos.x += 8 * textScale;
 
-        if (cursorPos.X >= frontbuffer->Width)
+        if (cursorPos.x >= frontbuffer->width)
         {
-            cursorPos.X = 0;
-            cursorPos.Y += 16 * textScale;
+            cursorPos.x = 0;
+            cursorPos.y += 16 * textScale;
         }
     }
     break;
@@ -118,9 +118,9 @@ void tty_printx(uint64_t hex)
 
 void tty_clear()
 {
-    memset(frontbuffer->Base, 0, frontbuffer->Size);
-    cursorPos.X = 0;
-    cursorPos.Y = 0;
+    memset(frontbuffer->base, 0, frontbuffer->size);
+    cursorPos.x = 0;
+    cursorPos.y = 0;
 }
 
 void tty_set_scale(uint8_t scale)
@@ -140,8 +140,8 @@ void tty_set_background(Pixel color)
 
 void tty_set_cursor_pos(uint64_t x, uint64_t y)
 {
-    cursorPos.X = x;
-    cursorPos.Y = y;
+    cursorPos.x = x;
+    cursorPos.y = y;
 }
 
 void tty_start_message(const char* message)
@@ -153,23 +153,23 @@ void tty_start_message(const char* message)
 
 void tty_end_message(uint64_t status)
 {
-    uint64_t oldCursorX = cursorPos.X;   
-    cursorPos.X = 8 * textScale;
+    uint64_t oldCursorX = cursorPos.x;   
+    cursorPos.x = 8 * textScale;
 
     if (status == TTY_MESSAGE_OK)
     {
-        foreground.A = 255;
-        foreground.R = 0;
-        foreground.G = 255;
-        foreground.B = 0;
+        foreground.a = 255;
+        foreground.r = 0;
+        foreground.g = 255;
+        foreground.b = 0;
         tty_print("OK");
     }
     else if (status == TTY_MESSAGE_ER)
     {
-        foreground.A = 255;
-        foreground.R = 255;
-        foreground.G = 0;
-        foreground.B = 0;
+        foreground.a = 255;
+        foreground.r = 255;
+        foreground.g = 0;
+        foreground.b = 0;
         tty_print("ER");
 
         while (1)
@@ -182,16 +182,16 @@ void tty_end_message(uint64_t status)
         //Undefined behaviour
     }
 
-    foreground.A = 255;
-    foreground.R = 255;
-    foreground.G = 255;
-    foreground.B = 255;
+    foreground.a = 255;
+    foreground.r = 255;
+    foreground.g = 255;
+    foreground.b = 255;
     
-    foreground.A = 255;
-    foreground.R = 255;
-    foreground.G = 255;
-    foreground.B = 255;
-    cursorPos.X = oldCursorX;
+    foreground.a = 255;
+    foreground.r = 255;
+    foreground.g = 255;
+    foreground.b = 255;
+    cursorPos.x = oldCursorX;
 
     tty_print(" done!\n\r");
 }
