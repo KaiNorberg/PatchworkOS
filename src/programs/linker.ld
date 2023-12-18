@@ -3,7 +3,7 @@ ENTRY(_start)
 
 SECTIONS
 {
-	. = 0x8000;
+	. = 0x0;
 
 	_programStart = .;
 

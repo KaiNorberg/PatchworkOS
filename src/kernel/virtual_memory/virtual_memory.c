@@ -10,9 +10,6 @@
 
 EFIMemoryMap* efiMemoryMap;
 
-extern uint64_t _kernelStart;
-extern uint64_t _kernelEnd;
-
 VirtualAddressSpace* kernelAddressSpace;
 
 void virtual_memory_init(EFIMemoryMap* memoryMap)
@@ -36,15 +33,12 @@ VirtualAddressSpace* virtual_memory_create()
 
         if ((uint64_t)desc->physicalStart + desc->amountOfPages * 0x1000 < page_allocator_get_total_amount() * 0x1000)
         {
-            if (is_memory_type_reserved(desc->type))
+            if (desc->type == EFI_BOOT_SERVICES_CODE || desc->type == EFI_BOOT_SERVICES_DATA) //No idea why this is necessary, it really shouldnt be
             {    
                 virtual_memory_remap_pages(addressSpace, desc->physicalStart, desc->physicalStart, desc->amountOfPages, 1);
             }
         }
     }
-
-    virtual_memory_remap(addressSpace, (void*)tss.rsp0 - 0x1000, (void*)tss.rsp0 - 0x1000, 0);
-    virtual_memory_remap_pages(addressSpace, &_kernelStart, &_kernelStart, ((uint64_t)&_kernelEnd - (uint64_t)&_kernelStart) / 0x1000 + 1, 0);
 
     return addressSpace;
 }

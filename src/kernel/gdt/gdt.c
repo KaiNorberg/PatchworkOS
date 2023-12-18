@@ -2,6 +2,7 @@
 
 #include "tty/tty.h"
 #include "string/string.h"
+#include "interrupt_stack/interrupt_stack.h"
 
 __attribute__((aligned(0x1000)))
 GDT gdt;
@@ -9,7 +10,7 @@ GDT gdt;
 __attribute__((aligned(0x1000)))
 TaskStateSegment tss;
 
-void gdt_init(void* rsp0, void* rsp1, void* rsp2)
+void gdt_init()
 {
     tty_start_message("GDT loading");
 
@@ -49,9 +50,9 @@ void gdt_init(void* rsp0, void* rsp1, void* rsp2)
     gdt.userData.baseHigh = 0;
 
     memset(&tss, 0, sizeof(TaskStateSegment));
-    tss.rsp0 = (uint64_t)rsp0;
-    tss.rsp1 = (uint64_t)rsp1;
-    tss.rsp2 = (uint64_t)rsp2;
+    tss.rsp0 = (uint64_t)interrupt_stack_get();
+    tss.rsp1 = tss.rsp0;
+    tss.rsp2 = tss.rsp0;
     tss.iopb = sizeof(TaskStateSegment);
 
     gdt.tss.limitLow = sizeof(TaskStateSegment);

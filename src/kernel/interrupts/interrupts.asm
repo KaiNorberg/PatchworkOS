@@ -66,6 +66,9 @@ common_interrupt:
     PUSH_ALL
 	mov rbp, rsp
 
+    mov rax, [kernelAddressSpace]
+    mov cr3, rax
+
     mov rdi, rbp
     call interrupt_handler
 

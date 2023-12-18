@@ -141,8 +141,6 @@ const char* exception_strings[32] =
 
 void interrupt_handler(InterruptStackFrame* stackFrame)
 {       
-    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
-
     if (stackFrame->vector < 32) //Exception
     {
         exception_handler(stackFrame);

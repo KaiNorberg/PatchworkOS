@@ -12,6 +12,7 @@
 #include "acpi/acpi.h"
 #include "io/io.h"
 #include "rtc/rtc.h"
+#include "interrupt_stack/interrupt_stack.h"
 
 void kernel_init(BootInfo* bootInfo)
 {    
@@ -22,8 +23,7 @@ void kernel_init(BootInfo* bootInfo)
 
     virtual_memory_init(bootInfo->memoryMap);
 
-    void* RSP0 = page_allocator_request() + 0x1000;
-    gdt_init(RSP0, RSP0, RSP0);
+    gdt_init();
 
     acpi_init(bootInfo->xsdp);
 

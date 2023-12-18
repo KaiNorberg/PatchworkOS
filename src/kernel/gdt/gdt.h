@@ -60,4 +60,4 @@ extern TaskStateSegment tss;
 extern void gdt_load(GDTDesc* descriptor);
 extern void tss_load();
 
-void gdt_init(void* rsp0, void* rsp1, void* rsp2);
+void gdt_init();
