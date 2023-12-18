@@ -30,6 +30,9 @@ void idt_init()
 
     remap_pic();
 
+    io_outb(PIC1_DATA, 0b11111111);
+    io_outb(PIC2_DATA, 0b11111111);
+    
     asm volatile ("lidt %0" : : "m"(idtr));
 
     tty_end_message(TTY_MESSAGE_OK);

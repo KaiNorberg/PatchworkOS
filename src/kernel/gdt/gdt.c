@@ -50,7 +50,7 @@ void gdt_init()
     gdt.userData.baseHigh = 0;
 
     memset(&tss, 0, sizeof(TaskStateSegment));
-    tss.rsp0 = (uint64_t)interrupt_stack_get();
+    tss.rsp0 = (uint64_t)interrupt_stack_get_top();
     tss.rsp1 = tss.rsp0;
     tss.rsp2 = tss.rsp0;
     tss.iopb = sizeof(TaskStateSegment);
