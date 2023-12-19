@@ -8,7 +8,7 @@ include $(PATCHWORK_DIR)/Make.defaults
 GNU_EFI = $(PATCHWORK_DIR)/vendor/gnu-efi
 
 LD_FLAGS = -Bsymbolic -nostdlib
-C_FLAGS = -Os -fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -I$(GNU_EFI)/inc -Wall -Werror
+C_FLAGS = -Os -fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -I./ -I$(GNU_EFI)/inc -Wall -Werror
 
 build: $(OBJECTS)
 

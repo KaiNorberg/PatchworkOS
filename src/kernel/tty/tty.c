@@ -38,8 +38,6 @@ void tty_init(Framebuffer* screenbuffer, PSFFont* screenFont)
 
 void tty_put(uint8_t chr)
 {
-    char* glyph = font->glyphs + chr * 16;
-
     switch (chr)
     {
     case '\n':
@@ -54,30 +52,25 @@ void tty_put(uint8_t chr)
     }
     break;
     default:
-    {
-        for (uint64_t y = 0; y < 16 * textScale; y++)
-        {
-            for (uint64_t x = 0; x < 8 * textScale; x++)
-            {
-                Pixel pixel;
+    {               
+        char* glyph = font->glyphs + chr * 16;
 
-                if ((*glyph & (0b10000000 >> x / textScale)) > 0)
+        for (uint64_t y = 0; y < 16; y++)
+        {
+            for (uint64_t x = 0; x < 8; x++)
+            {
+                Point position = {cursorPos.x + x, cursorPos.y + y};
+
+                if ((*glyph & (0b10000000 >> x)) > 0)
                 {
-                    pixel = foreground;
+                    gop_put(frontbuffer, position, foreground);
                 }
                 else
                 {
-                    pixel = background;
+                    gop_put(frontbuffer, position, background);
                 }
-
-                Point position = {cursorPos.x + x, cursorPos.y + y};
-
-                gop_put(frontbuffer, position, pixel);
             }
-            if (y % textScale == 0)
-            {
-                glyph++;
-            }
+            glyph++;
         }
 
         cursorPos.x += 8 * textScale;
