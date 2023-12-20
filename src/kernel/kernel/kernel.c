@@ -23,7 +23,7 @@ void kernel_init(BootInfo* bootInfo)
 
     page_allocator_init(bootInfo->memoryMap, bootInfo->framebuffer);
 
-    virtual_memory_init(bootInfo->memoryMap);
+    virtual_memory_init(bootInfo->memoryMap, bootInfo->framebuffer);
     
     gdt_init();
 

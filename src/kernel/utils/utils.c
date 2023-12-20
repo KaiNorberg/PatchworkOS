@@ -15,7 +15,7 @@ char* itoa(uint64_t i, char b[], uint8_t base)
 
     uint64_t shifter = i;
     do
-    { //Move to where representation ends
+    {
         ++p;
         shifter = shifter/base;
     }
@@ -23,7 +23,7 @@ char* itoa(uint64_t i, char b[], uint8_t base)
 
     *p = '\0';
     do
-    { //Move back, inserting digits as u go
+    {
         *--p = digit[i%base];
         i = i/base;
     }

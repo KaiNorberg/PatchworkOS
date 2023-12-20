@@ -6,6 +6,8 @@
 
 #include <stdint.h>
 
+#define GET_SIZE_IN_PAGES(size) ((size / 0x1000) + 1)
+
 void page_allocator_visualize();
 
 void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer);

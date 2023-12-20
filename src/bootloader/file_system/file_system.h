@@ -11,9 +11,7 @@ EFI_FILE* file_system_open(EFI_HANDLE imageHandle, CHAR16* path);
 
 void file_system_seek(EFI_FILE* file, uint64_t offset);
 
-void* file_system_read(EFI_FILE* file, uint64_t readSize);
-
-EFI_STATUS file_system_read_to_buffer(EFI_FILE* file, uint64_t* readSize, void* buffer);
+EFI_STATUS file_system_read(EFI_FILE* file, uint64_t readSize, void* buffer);
 
 void file_system_close(EFI_FILE* file);
 

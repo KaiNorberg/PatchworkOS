@@ -14,13 +14,38 @@ EFIMemoryMap* efiMemoryMap;
 
 VirtualAddressSpace* kernelAddressSpace;
 
-void virtual_memory_init(EFIMemoryMap* memoryMap)
+void virtual_memory_init(EFIMemoryMap* memoryMap, Framebuffer* screenbuffer)
 {    
-    tty_start_message("Virtual memory initializing");   
-
+    tty_start_message("Virtual memory initializing");    
+    
     efiMemoryMap = memoryMap;
-    asm volatile("movq %%cr3, %0" : "=r"(kernelAddressSpace));
+  
+    kernelAddressSpace = (VirtualAddressSpace*)page_allocator_request();
+    memset(kernelAddressSpace, 0, 0x1000);
 
+    virtual_memory_remap_pages(kernelAddressSpace, 0, 0, page_allocator_get_total_amount(), 0);
+    virtual_memory_remap_pages(kernelAddressSpace, screenbuffer->base, screenbuffer->base, GET_SIZE_IN_PAGES(screenbuffer->size), 0);
+    for (uint64_t i = 0; i < efiMemoryMap->descriptorAmount; i++)
+    {
+        EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)efiMemoryMap->base + (i * efiMemoryMap->descriptorSize));
+
+		if (desc->type == EFI_KERNEL_MEMORY_TYPE)
+		{
+            virtual_memory_remap_pages(kernelAddressSpace, desc->virtualStart, desc->physicalStart, desc->amountOfPages, 0);
+			break;
+		}
+	}
+
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
+    for (uint64_t i = 0; i < efiMemoryMap->descriptorAmount; i++)
+    {
+        EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)efiMemoryMap->base + (i * efiMemoryMap->descriptorSize));
+
+		if (desc->type == EFI_PAGE_TABLE_MEMORY_TYPE)
+		{
+            page_allocator_unlock_pages(desc->physicalStart, desc->amountOfPages);
+		}
+	}    
     tty_end_message(TTY_MESSAGE_OK);
 }
 

@@ -1,6 +1,9 @@
 #include "psf.h"
 
 #include "file_system/file_system.h"
+#include "memory/memory.h"
+
+#include "../common.h"
 
 void pst_font_load(EFI_HANDLE imageHandle, PSFFont* font, CHAR16* path)
 {
@@ -18,7 +21,8 @@ void pst_font_load(EFI_HANDLE imageHandle, PSFFont* font, CHAR16* path)
 		}
 	}
 
-	PSFHeader* fontHeader = file_system_read(file, sizeof(PSFHeader));
+	PSFHeader* fontHeader = memory_allocate_pool(sizeof(PSFHeader), EFI_SCREEN_FONT_MEMORY_TYPE);
+	file_system_read(file, sizeof(PSFHeader), fontHeader);
 
 	if (fontHeader->magic != PSF_MAGIC)
 	{
@@ -36,31 +40,14 @@ void pst_font_load(EFI_HANDLE imageHandle, PSFFont* font, CHAR16* path)
 		glyphBufferSize = fontHeader->charSize * 512;
 	}
 
+	void* glyphBuffer = memory_allocate_pool(glyphBufferSize, EFI_SCREEN_FONT_MEMORY_TYPE);
 	file_system_seek(file, sizeof(PSFHeader));
-	void* glyphBuffer = file_system_read(file, glyphBufferSize);
+	file_system_read(file, glyphBufferSize, glyphBuffer);
 
 	font->header = fontHeader;
 	font->glyphs = glyphBuffer;
 
 	file_system_close(file);
-    /*char* glyph = font->glyphs + 'M' * 16;
-
-	for (uint64_t y = 0; y < 64; y++)
-	{
-		for (uint64_t x = 0; x < 8; x++)
-		{
-			if ((*glyph & (0b10000000 >> x)) > 0)
-			{
-				Print(L"1");
-			}
-			else
-			{
-				Print(L"0");
-			}
-		}
-		Print(L"\n\r");
-		glyph++;
-	}*/
 
 	Print(L"Done!\n\r");
 

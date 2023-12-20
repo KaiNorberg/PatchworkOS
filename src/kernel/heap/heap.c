@@ -237,7 +237,7 @@ void* kmalloc(uint64_t size)
         }
     }
 
-    uint64_t pageAmount = (size + sizeof(BlockHeader)) / 0x1000 + 1;
+    uint64_t pageAmount = GET_SIZE_IN_PAGES(size + sizeof(BlockHeader));
     BlockHeader* newBlock = (BlockHeader*)page_allocator_request_amount(pageAmount);
 
     newBlock->size = pageAmount * 0x1000 - sizeof(BlockHeader);

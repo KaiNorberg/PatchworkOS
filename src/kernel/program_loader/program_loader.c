@@ -15,12 +15,12 @@ uint8_t load_program(const char* path)
 
     if (file == 0)
     {
-        debug_panic("Failed to open file ("); tty_print(path); tty_print(")!\n\r");
+        debug_panic(path);
         return 0;
     }
 
     ElfHeader header;
-    file_system_read(&header, sizeof(ElfHeader), file);
+    file_system_readadawd(&header, sizeof(ElfHeader), file);
 
     if(header.ident[0] != 0x7F ||
        header.ident[1] != 'E' ||
@@ -33,7 +33,7 @@ uint8_t load_program(const char* path)
 
     uint64_t programHeaderTableSize = header.programHeaderAmount * header.programHeaderSize;
     ElfProgramHeader* programHeaders = kmalloc(programHeaderTableSize);
-    file_system_read(programHeaders, programHeaderTableSize, file);
+    file_system_readadawd(programHeaders, programHeaderTableSize, file);
 
     Task* task = multitasking_new((void*)header.entry);
 
@@ -43,10 +43,10 @@ uint8_t load_program(const char* path)
 		{
 		case PT_LOAD:
 		{
-            void* segment = task_allocate_pages(task, (void*)programHeaders[i].virtualAddress, programHeaders[i].memorySize / 0x1000 + 1);
+            void* segment = task_allocate_pages(task, (void*)programHeaders[i].virtualAddress, GET_SIZE_IN_PAGES(programHeaders[i].memorySize));
 
             file_system_seek(file, programHeaders[i].offset, SEEK_SET);
-            file_system_read(segment, programHeaders[i].memorySize, file);
+            file_system_readadawd(segment, programHeaders[i].memorySize, file);
 		}
 		break;
 		}

@@ -19,8 +19,15 @@
 void _start(BootInfo* bootInfo)
 {   
     kernel_init(bootInfo);
-    
-    tty_print("\n\rLoading program1...\n\r");
+
+    tty_print("\n\r");
+    tty_print("Locked pages: "); tty_printi(page_allocator_get_locked_amount()); tty_print("\n\r");
+    tty_print("Locked pages: "); tty_printi((page_allocator_get_locked_amount() * 0x1000) / 0xFFFFF); tty_print(" MB\n\r");
+    tty_print("\n\r");
+
+    page_allocator_visualize();
+
+    tty_print("Loading program1...\n\r");
     load_program("/programs/test1/test1.elf");
 
     tty_print("Loading program2...\n\r");

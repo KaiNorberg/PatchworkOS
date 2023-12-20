@@ -38,7 +38,7 @@ typedef PageDirectory VirtualAddressSpace;
 
 extern VirtualAddressSpace* kernelAddressSpace;
 
-void virtual_memory_init(EFIMemoryMap* memoryMap);
+void virtual_memory_init(EFIMemoryMap* memoryMap, Framebuffer* screenbuffer);
 
 VirtualAddressSpace* virtual_memory_create();
 

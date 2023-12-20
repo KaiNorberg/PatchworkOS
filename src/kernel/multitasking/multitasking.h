@@ -6,6 +6,10 @@
 #include "idt/idt.h"
 #include "context/context.h"
 
+#define TASK_STATE_RUNNING 0
+#define TASK_STATE_READY 1
+#define TASK_STATE_WAITING 2
+
 typedef struct MemoryBlock
 {
     void* address;

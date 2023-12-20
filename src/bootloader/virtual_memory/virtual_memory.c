@@ -3,9 +3,11 @@
 #include "string/string.h"
 #include "memory/memory.h"
 
+#include "../common.h"
+
 VirtualAddressSpace* virtual_memory_create()
 {
-    VirtualAddressSpace* addressSpace = (VirtualAddressSpace*)memory_allocate_pages(1);
+    VirtualAddressSpace* addressSpace = (VirtualAddressSpace*)memory_allocate_pages(1, EFI_PAGE_TABLE_MEMORY_TYPE);
     memset(addressSpace, 0, 0x1000);
 
     return addressSpace;
@@ -27,7 +29,7 @@ void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddres
     PageDirectory* pdp;
     if (!PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
     {
-        pdp = (PageDirectory*)memory_allocate_pages(1);
+        pdp = (PageDirectory*)memory_allocate_pages(1, EFI_PAGE_TABLE_MEMORY_TYPE);
         memset(pdp, 0, 0x1000);
         PAGE_DIR_SET_ADDRESS(pde, (uint64_t)pdp >> 12);
         PAGE_DIR_SET_FLAG(pde, PAGE_DIR_PRESENT);
@@ -44,7 +46,7 @@ void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddres
     PageDirectory* pd;
     if (!PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
     {
-        pd = (PageDirectory*)memory_allocate_pages(1);
+        pd = (PageDirectory*)memory_allocate_pages(1, EFI_PAGE_TABLE_MEMORY_TYPE);
         memset(pd, 0, 0x1000);
         PAGE_DIR_SET_ADDRESS(pde, (uint64_t)pd >> 12);
         PAGE_DIR_SET_FLAG(pde, PAGE_DIR_PRESENT);
@@ -61,7 +63,7 @@ void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddres
     PageDirectory* pt;
     if (!PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
     {
-        pt = (PageDirectory*)memory_allocate_pages(1);
+        pt = (PageDirectory*)memory_allocate_pages(1, EFI_PAGE_TABLE_MEMORY_TYPE);
         memset(pt, 0, 0x1000);
         PAGE_DIR_SET_ADDRESS(pde, (uint64_t)pt >> 12);
         PAGE_DIR_SET_FLAG(pde, PAGE_DIR_PRESENT);

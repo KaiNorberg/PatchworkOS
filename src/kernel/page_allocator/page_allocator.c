@@ -120,7 +120,7 @@ void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer)
         }
     }
 
-    page_allocator_lock_pages(pageMap, pageMapByteSize / 0x1000 + 1);
+    page_allocator_lock_pages(pageMap, GET_SIZE_IN_PAGES(pageMapByteSize));
 
     tty_end_message(TTY_MESSAGE_OK);
 }
