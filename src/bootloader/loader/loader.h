@@ -65,6 +65,13 @@ typedef struct
 
 typedef struct
 {
+    void* physicalAddress;
+    void* virtualAddress;
+    uint64_t pageAmount;
+} SegmentAddressData;
+
+typedef struct
+{
 	Framebuffer* screenbuffer;
 	PSFFont* font;	
 	EfiMemoryMap* memoryMap;

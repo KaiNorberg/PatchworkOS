@@ -24,7 +24,6 @@ EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
 	BootInfo bootInfo;
 	bootInfo.screenbuffer = &screenbuffer;
 	bootInfo.font = &font;
-	bootInfo.memoryMap = 0; //This will be set by the "loader_load_kernel" function.
 	bootInfo.rsdp = rsdp_get(systemTable);
 	bootInfo.runtimeServices = systemTable->RuntimeServices;
 	bootInfo.ramDiskRoot = &ramDiskRoot;

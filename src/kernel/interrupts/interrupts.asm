@@ -1,3 +1,5 @@
+[bits 64]
+
 %macro PUSH_ALL 0
     push rax
     push rbx
@@ -66,7 +68,8 @@ common_interrupt:
     PUSH_ALL
 	mov rbp, rsp
 
-    mov rax, [kernelAddressSpace]
+    mov rbx, kernelAddressSpace
+    mov rax, [rbx]
     mov cr3, rax
 
     mov rdi, rbp

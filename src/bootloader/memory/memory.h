@@ -11,4 +11,6 @@ typedef struct
 	uint64_t key;
 } EfiMemoryMap;
 
+void* memory_allocate_pages(uint64_t pageAmount);
+
 EfiMemoryMap memory_get_map();

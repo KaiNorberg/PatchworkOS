@@ -1,5 +1,22 @@
 #include "memory.h"
 
+void* memory_allocate_pages(uint64_t pageAmount)
+{
+	EFI_PHYSICAL_ADDRESS address = 0;
+	EFI_STATUS status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, pageAmount, &address);
+    if (EFI_ERROR(status))
+	{
+		Print(L"ERROR: Unable to allocate pages!");
+
+		while (1)
+		{
+			__asm__("HLT");
+		}
+	}
+
+	return (void*)address;
+}
+
 EfiMemoryMap memory_get_map()
 { 
 	Print(L"Retrieving EFI Memory Map... ");

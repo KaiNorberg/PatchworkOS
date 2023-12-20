@@ -6,8 +6,8 @@
 
 #include "debug/debug.h"
 
-extern uint64_t _kernelStart;
-extern uint64_t _kernelEnd;
+//extern uint64_t _kernelStart;
+//extern uint64_t _kernelEnd;
 
 uint64_t* pageMap;
 uint64_t pageMapByteSize;
@@ -80,16 +80,15 @@ void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer)
 {    
     tty_start_message("Page allocator initializing");
 
+    lockedAmount = 0;
+
     firstFreeAddress = 0;
 
     pageAmount = 0;
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
         EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
-        if (desc->type != EFI_MEMORY_MAPPED_IO && desc->type != EFI_MEMORY_MAPPED_IO_PORT_SPACE)
-        {
-            pageAmount += desc->amountOfPages;
-        }
+        pageAmount += desc->amountOfPages;
     }
     pageMapByteSize = pageAmount / 8;
 
@@ -122,8 +121,6 @@ void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer)
     }
 
     page_allocator_lock_pages(pageMap, pageMapByteSize / 0x1000 + 1);
-    page_allocator_lock_pages(&_kernelStart, ((uint64_t)&_kernelEnd - (uint64_t)&_kernelStart) / 0x1000 + 1);    
-    page_allocator_lock_pages(screenBuffer->base, screenBuffer->size / 0x1000 + 1);
 
     tty_end_message(TTY_MESSAGE_OK);
 }

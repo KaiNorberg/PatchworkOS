@@ -14,6 +14,8 @@
 #include "rtc/rtc.h"
 #include "interrupt_stack/interrupt_stack.h"
 
+#include "../common.h"
+
 void kernel_init(BootInfo* bootInfo)
 {    
     tty_init(bootInfo->framebuffer, bootInfo->font);
@@ -22,13 +24,13 @@ void kernel_init(BootInfo* bootInfo)
     page_allocator_init(bootInfo->memoryMap, bootInfo->framebuffer);
 
     virtual_memory_init(bootInfo->memoryMap);
-
+    
     gdt_init();
 
     acpi_init(bootInfo->xsdp);
 
-    idt_init();
-    
+    idt_init(); 
+
     heap_init();
     
     file_system_init(bootInfo->rootDirectory);

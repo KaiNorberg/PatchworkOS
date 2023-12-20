@@ -3,7 +3,7 @@ ENTRY(_start)
 
 SECTIONS
 {
-	. = 1M;
+	. = 0xFFFFFFFF80000000;
 
 	_kernelStart = .;
 

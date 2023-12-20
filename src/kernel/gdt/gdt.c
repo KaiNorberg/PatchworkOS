@@ -14,6 +14,9 @@ void gdt_init()
 {
     tty_start_message("GDT loading");
 
+    memset(&gdt, 0, sizeof(GDT));
+    memset(&tss, 0, sizeof(TaskStateSegment));
+
     gdt.null.limitLow = 0;
     gdt.null.baseLow = 0;
     gdt.null.baseMiddle = 0;

@@ -8,6 +8,8 @@
 #include "gdt/gdt.h"
 #include "idt/idt.h"
 
+#include "../common.h"
+
 EFIMemoryMap* efiMemoryMap;
 
 VirtualAddressSpace* kernelAddressSpace;
@@ -31,12 +33,10 @@ VirtualAddressSpace* virtual_memory_create()
     {
         EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)efiMemoryMap->base + (i * efiMemoryMap->descriptorSize));
 
-        if ((uint64_t)desc->physicalStart + desc->amountOfPages * 0x1000 < page_allocator_get_total_amount() * 0x1000)
+        if (desc->type == EFI_KERNEL_MEMORY_TYPE)
         {
-            if (desc->type == EFI_BOOT_SERVICES_CODE || desc->type == EFI_BOOT_SERVICES_DATA) //No idea why this is necessary, it really shouldnt be
-            {    
-                virtual_memory_remap_pages(addressSpace, desc->physicalStart, desc->physicalStart, desc->amountOfPages, 1);
-            }
+            virtual_memory_remap_pages(addressSpace, desc->virtualStart, desc->physicalStart, desc->amountOfPages, 0);
+            break;
         }
     }
 

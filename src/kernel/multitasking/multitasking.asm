@@ -1,3 +1,4 @@
+[bits 64]
 global jump_to_user_space
 
 codeSegment equ 0x18 | 3

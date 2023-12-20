@@ -55,13 +55,13 @@ void tty_put(uint8_t chr)
     {               
         char* glyph = font->glyphs + chr * 16;
 
-        for (uint64_t y = 0; y < 16; y++)
+        for (uint64_t y = 0; y < 16 * textScale; y++)
         {
-            for (uint64_t x = 0; x < 8; x++)
+            for (uint64_t x = 0; x < 8 * textScale; x++)
             {
                 Point position = {cursorPos.x + x, cursorPos.y + y};
 
-                if ((*glyph & (0b10000000 >> x)) > 0)
+                if ((*glyph & (0b10000000 >> x / textScale)) > 0)
                 {
                     gop_put(frontbuffer, position, foreground);
                 }
@@ -70,7 +70,10 @@ void tty_put(uint8_t chr)
                     gop_put(frontbuffer, position, background);
                 }
             }
-            glyph++;
+            if (y % textScale == 0)
+            {
+                glyph++;
+            }
         }
 
         cursorPos.x += 8 * textScale;

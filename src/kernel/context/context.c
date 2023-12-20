@@ -4,9 +4,7 @@
 #include "page_allocator/page_allocator.h"
 #include "heap/heap.h"
 #include "gdt/gdt.h"
-
-extern uint64_t _kernelStart;
-extern uint64_t _kernelEnd;
+#include "idt/idt.h"
 
 Context* context_new(void* instructionPointer, uint64_t codeSegment, uint64_t stackSegment, uint64_t rFlags)
 {
@@ -16,8 +14,8 @@ Context* context_new(void* instructionPointer, uint64_t codeSegment, uint64_t st
     context->stackBottom = (uint64_t)page_allocator_request();
     context->stackTop = context->stackBottom + 0x1000;
     memset((void*)context->stackBottom, 0, 0x1000);
-    context->state.stackPointer = context->stackTop;
 
+    context->state.stackPointer = context->stackTop;
     context->state.instructionPointer = (uint64_t)instructionPointer;
     context->state.codeSegment = codeSegment;
     context->state.stackSegment = stackSegment;
@@ -25,9 +23,8 @@ Context* context_new(void* instructionPointer, uint64_t codeSegment, uint64_t st
 
     VirtualAddressSpace* addressSpace = virtual_memory_create();
 
+    //Temporary, the stack will have a designated place in the address space later.
     virtual_memory_remap(addressSpace, (void*)context->stackBottom, (void*)context->stackBottom, 1);
-
-    virtual_memory_remap_pages(addressSpace, &_kernelStart, &_kernelStart, ((uint64_t)&_kernelEnd - (uint64_t)&_kernelStart) / 0x1000 + 1, 0);
 
     context->state.cr3 = (uint64_t)addressSpace;
 

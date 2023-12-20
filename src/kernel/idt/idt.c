@@ -4,12 +4,12 @@
 #include "tty/tty.h"
 
 #include "interrupts/interrupts.h"
+#include "page_allocator/page_allocator.h"
 
 #define GDT_OFFSET_KERNEL_CODE 0x08
 
 extern void* interrupt_vectors[256];
 
-__attribute__((aligned(0x1000))) 
 IDTEntry idt[256];
 
 IDTR idtr;
@@ -20,7 +20,7 @@ void idt_init()
 {    
     tty_start_message("IDT initializing");
 
-    idtr.size = sizeof(idt) - 1;
+    idtr.size = (sizeof(IDTEntry) * 256) - 1;
     idtr.offset = (uint64_t)&idt;
 
     for (uint16_t vector = 0; vector < 256; vector++) 

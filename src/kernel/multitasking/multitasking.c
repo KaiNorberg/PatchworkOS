@@ -181,7 +181,7 @@ void multitasking_schedule()
 Task* multitasking_get_running_task()
 {
     if (runningTask == mainTask)
-    {        
+    {
         debug_panic("Failed to retrieve scheduled task!");
         return 0;
     }
@@ -197,7 +197,7 @@ void multitasking_yield_to_user_space()
     Task* newTask = multitasking_get_running_task();
     mainTask->state = TASK_STATE_WAITING;
     
-    jump_to_user_space((void*)newTask->context->state.instructionPointer, (void*)newTask->context->stackTop, (void*)newTask->context->state.cr3);
+    jump_to_user_space((void*)newTask->context->state.instructionPointer, (void*)newTask->context->state.stackPointer, (void*)newTask->context->state.cr3);
 }
 
 void* task_request_page(Task* task)

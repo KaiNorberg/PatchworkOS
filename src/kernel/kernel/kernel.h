@@ -10,7 +10,7 @@
 #include "rsdp/rsdp.h"
 
 typedef struct 
-{
+{    
 	Framebuffer* framebuffer;
 	PSFFont* font;
 	EFIMemoryMap* memoryMap;

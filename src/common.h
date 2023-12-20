@@ -1,3 +1,5 @@
+#define EFI_KERNEL_MEMORY_TYPE 0x80000000
+
 #define SYS_TEST 0
 #define SYS_YIELD 1
 #define SYS_EXIT 2

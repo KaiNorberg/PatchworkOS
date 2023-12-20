@@ -4,6 +4,8 @@ PARENT_DIR := kernel
 
 include $(PATCHWORK_DIR)/Make.defaults
 
+C_FLAGS += -mcmodel=large
+
 build: $(OBJECTS)
 
 $(BUILD_DIR)/idt/interrupts/interrupts.o: $(SRC_DIR)/idt/interrupts/interrupts.c
