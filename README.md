@@ -14,7 +14,7 @@ To clone (download) this repository, you can use the ```Code``` button at the to
 
 <ins>**2. Building Patchwork**</ins>
 
-In order to build Patchwork you will need to use either Linux or WSL. You will also need to have Make and python installed.
+In order to build Patchwork you will need to use either Linux or WSL. You will also need to have Make, Python, mtools, Nasm and gcc installed.
 
 After you have chosen your preferred system run the ```python build.py --setup --all``` command. You will then find a .img file in the bin directory.
 

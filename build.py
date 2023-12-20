@@ -4,13 +4,11 @@ import os
 import shutil      
 from sys import platform
 
-from termcolor import colored
-
 def run_make_files(target):
     for foldername, subfolders, filenames in os.walk("./src/"):
         for filename in filenames:
             if filename.lower() == "makefile":
-                print(colored("Making", "white"), colored(f"{foldername} {target}...", "white"))
+                print(f"Making {foldername} {target}...")
                 try:
                     subprocess.run(["make", "-s", target], cwd=foldername, check=True)
                 except:
@@ -29,7 +27,7 @@ def copy_dir_to_img(imgPath, dirPath, dirImg):
             
                 
 def setup():
-    print(colored("!====== RUNNING SETUP  ======!", "white"))
+    print("!====== RUNNING SETUP  ======!")
     if not os.path.exists("bin"):
         os.makedirs("bin")
     if not os.path.exists("build"):
@@ -40,7 +38,7 @@ def setup():
     run_make_files("setup")
 
 def clean():
-    print(colored("!====== RUNNING CLEAN ======!", "white"))
+    print("!====== RUNNING CLEAN ======!")
     if os.path.exists("bin"):
         shutil.rmtree("bin")
     if os.path.exists("build"):
@@ -49,15 +47,15 @@ def clean():
     run_make_files("clean")
 
 def build():
-    print(colored("!====== RUNNING BUILD ======!", "white"))
+    print("!====== RUNNING BUILD ======!")
     run_make_files("build")
 
 def link():
-    print(colored("!====== RUNNING LINK ======!", "white"))
+    print("!====== RUNNING LINK ======!")
     run_make_files("link")
 
 def deploy():
-    print(colored("!====== RUNNING DEPLOY ======!", "white"))
+    print("!====== RUNNING DEPLOY ======!")
     subprocess.run(["dd", "if=/dev/zero", "of=bin/PatchworkOS.img", "bs=4096", "count=1024"], cwd=".", check=True)
     
     subprocess.run(["mkfs", "-t", "vfat", "bin/PatchworkOS.img"], cwd=".", check=True)
