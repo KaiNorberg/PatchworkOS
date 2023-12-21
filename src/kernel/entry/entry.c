@@ -25,15 +25,18 @@ void _start(BootInfo* bootInfo)
     tty_print("Locked pages: "); tty_printi((page_allocator_get_locked_amount() * 0x1000) / 0xFFFFF); tty_print(" MB\n\r");
     tty_print("\n\r");
 
-    page_allocator_visualize();
-
     tty_print("Loading program1...\n\r");
     load_program("/programs/test1/test1.elf");
 
     tty_print("Loading program2...\n\r");
     load_program("/programs/test2/test2.elf");
 
-    tty_print("\n\rrdi = 1 means program 1 is running.\n\r");
+    tty_print("\n\r");
+    tty_print("Locked pages: "); tty_printi(page_allocator_get_locked_amount()); tty_print("\n\r");
+    tty_print("Locked pages: "); tty_printi((page_allocator_get_locked_amount() * 0x1000) / 0xFFFFF); tty_print(" MB\n\r");
+    tty_print("\n\r");
+
+    tty_print("rdi = 1 means program 1 is running.\n\r");
     tty_print("rdi = 2 means program 2 is running.\n\n\r");
 
     tty_print("Jumping to user space...\n\n\r");

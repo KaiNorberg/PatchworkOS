@@ -15,7 +15,7 @@ Context* context_new(void* instructionPointer, uint64_t codeSegment, uint64_t st
     context->stackTop = context->stackBottom + 0x1000;
     memset((void*)context->stackBottom, 0, 0x1000);
 
-    context->state.stackPointer = context->stackTop;
+    context->state.stackPointer = (uint64_t)USER_ADDRESS_SPACE_STACK_TOP_PAGE + 0x1000;
     context->state.instructionPointer = (uint64_t)instructionPointer;
     context->state.codeSegment = codeSegment;
     context->state.stackSegment = stackSegment;
@@ -23,8 +23,7 @@ Context* context_new(void* instructionPointer, uint64_t codeSegment, uint64_t st
 
     VirtualAddressSpace* addressSpace = virtual_memory_create();
 
-    //Temporary, the stack will have a designated place in the address space later.
-    virtual_memory_remap(addressSpace, (void*)context->stackBottom, (void*)context->stackBottom, 1);
+    virtual_memory_remap(addressSpace, USER_ADDRESS_SPACE_STACK_TOP_PAGE, (void*)context->stackBottom, 1);
 
     context->state.cr3 = (uint64_t)addressSpace;
 

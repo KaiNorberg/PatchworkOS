@@ -3,6 +3,10 @@
 #include "gop/gop.h"
 #include "memory/memory.h"
 
+#define USER_ADDRESS_SPACE_TOP 0x80000000
+#define USER_ADDRESS_SPACE_BOTTOM 0
+#define USER_ADDRESS_SPACE_STACK_TOP_PAGE ((void*)(USER_ADDRESS_SPACE_TOP - 0x1000))
+
 #define VIRTUAL_MEMORY_LOAD_SPACE(addressSpace) asm volatile ("mov %0, %%cr3" : : "r" ((uint64_t)addressSpace))
 
 #define PAGE_DIR_SET_FLAG(entry, flag) ((entry) |= (1UL << (flag)))
