@@ -32,6 +32,8 @@ void idt_init()
 
     io_outb(PIC1_DATA, 0b11111111);
     io_outb(PIC2_DATA, 0b11111111);
+
+    io_pic_clear_mask(IRQ_CASCADE);
     
     asm volatile ("lidt %0" : : "m"(idtr));
 
@@ -87,8 +89,6 @@ void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags)
 //TODO: Implement better system for clearing bits
 void enable_interrupts()
 {    
-    io_outb(PIC1_DATA, 0);
-    io_outb(PIC2_DATA, 0);
     asm volatile ("sti");
 }
 

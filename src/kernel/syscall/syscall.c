@@ -24,7 +24,9 @@ void syscall_handler(InterruptStackFrame* frame)
     {
     case SYS_TEST:
     {
-        tty_print("Syscall test, rdi = "); tty_printi(frame->rdi); tty_print("!\r");
+        const char* string = page_directory_get_physical_address(SYSCALL_GET_PAGE_DIRECTORY(frame), SYSCALL_GET_ARG1(frame));
+
+        tty_print(string);
 
         out = 0;
     }
