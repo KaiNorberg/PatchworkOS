@@ -47,3 +47,8 @@ uint64_t round_up(uint64_t number, uint64_t multiple)
 {
     return ((number + multiple - 1) / multiple) * multiple;
 }
+
+uint64_t round_down(uint64_t number, uint64_t multiple)
+{
+    return (number / multiple) * multiple;
+}

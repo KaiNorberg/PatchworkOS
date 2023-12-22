@@ -221,7 +221,7 @@ void* task_request_page(Task* task)
         task->lastMemoryBlock = newMemoryBlock;
     }
 
-    page_directory_remap((PageDirectory*)task->context->state.cr3, physicalAddress, physicalAddress, 1);
+    page_directory_remap((PageDirectory*)task->context->state.cr3, physicalAddress, physicalAddress, PAGE_DIR_READ_WRITE | PAGE_DIR_USER_SUPERVISOR);
 
     return physicalAddress;
 }
@@ -247,7 +247,7 @@ void* task_allocate_pages(Task* task, void* virtualAddress, uint64_t pageAmount)
         task->lastMemoryBlock = newMemoryBlock;
     }
     
-    page_directory_remap_pages((PageDirectory*)task->context->state.cr3, virtualAddress, physicalAddress, pageAmount, 1);
+    page_directory_remap_pages((PageDirectory*)task->context->state.cr3, virtualAddress, physicalAddress, pageAmount, PAGE_DIR_READ_WRITE | PAGE_DIR_USER_SUPERVISOR);
 
     return physicalAddress;
 }

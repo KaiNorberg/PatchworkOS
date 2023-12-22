@@ -23,7 +23,7 @@ Context* context_new(void* instructionPointer, uint64_t codeSegment, uint64_t st
 
     PageDirectory* pageDirectory = page_directory_create();
 
-    page_directory_remap(pageDirectory, USER_ADDRESS_SPACE_STACK_TOP_PAGE, (void*)context->stackBottom, 1);
+    page_directory_remap(pageDirectory, USER_ADDRESS_SPACE_STACK_TOP_PAGE, (void*)context->stackBottom, PAGE_DIR_READ_WRITE | PAGE_DIR_USER_SUPERVISOR);
 
     context->state.cr3 = (uint64_t)pageDirectory;
 
