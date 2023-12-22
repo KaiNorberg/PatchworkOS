@@ -221,7 +221,7 @@ void* task_request_page(Task* task)
         task->lastMemoryBlock = newMemoryBlock;
     }
 
-    virtual_memory_remap((VirtualAddressSpace*)task->context->state.cr3, physicalAddress, physicalAddress, 1);
+    page_directory_remap((PageDirectory*)task->context->state.cr3, physicalAddress, physicalAddress, 1);
 
     return physicalAddress;
 }
@@ -247,7 +247,7 @@ void* task_allocate_pages(Task* task, void* virtualAddress, uint64_t pageAmount)
         task->lastMemoryBlock = newMemoryBlock;
     }
     
-    virtual_memory_remap_pages((VirtualAddressSpace*)task->context->state.cr3, virtualAddress, physicalAddress, pageAmount, 1);
+    page_directory_remap_pages((PageDirectory*)task->context->state.cr3, virtualAddress, physicalAddress, pageAmount, 1);
 
     return physicalAddress;
 }

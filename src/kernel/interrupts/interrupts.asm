@@ -60,7 +60,7 @@ interrupt%1:
 section .text
 
 extern interrupt_handler
-extern kernelAddressSpace
+extern kernelPageDirectory
 
 common_interrupt:
     cld
@@ -68,7 +68,7 @@ common_interrupt:
     PUSH_ALL
 	mov rbp, rsp
 
-    mov rbx, kernelAddressSpace
+    mov rbx, kernelPageDirectory
     mov rax, [rbx]
     mov cr3, rax
 

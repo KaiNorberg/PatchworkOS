@@ -16,6 +16,9 @@
 
 #include "../common.h"
 
+extern uint64_t _kernelStart;
+extern uint64_t _kernelEnd;
+
 void kernel_init(BootInfo* bootInfo)
 {    
     tty_init(bootInfo->framebuffer, bootInfo->font);
@@ -23,15 +26,15 @@ void kernel_init(BootInfo* bootInfo)
 
     page_allocator_init(bootInfo->memoryMap, bootInfo->framebuffer);
 
-    virtual_memory_init(bootInfo->memoryMap, bootInfo->framebuffer);
-    
+    page_directory_init(bootInfo->memoryMap, bootInfo->framebuffer);
+
+    heap_init();
+
     gdt_init();
 
     acpi_init(bootInfo->xsdp);
 
     idt_init(); 
-
-    heap_init();
     
     file_system_init(bootInfo->rootDirectory);
     

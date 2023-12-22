@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include "virtual_memory/virtual_memory.h"
+#include "page_directory/page_directory.h"
 #include "interrupts/interrupts.h"
 #include "multitasking/multitasking.h"
 

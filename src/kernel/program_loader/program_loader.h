@@ -1,6 +1,6 @@
 #pragma once
 
-#include "virtual_memory/virtual_memory.h"
+#include "page_directory/page_directory.h"
 #include "kernel/kernel.h"
 
 #define ET_NONE 0x00

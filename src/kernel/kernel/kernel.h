@@ -6,7 +6,7 @@
 #include "psf/psf.h"
 #include "file_system/file_system.h"
 #include "memory/memory.h"
-#include "virtual_memory/virtual_memory.h"
+#include "page_directory/page_directory.h"
 #include "rsdp/rsdp.h"
 
 typedef struct 

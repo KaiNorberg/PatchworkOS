@@ -21,18 +21,18 @@ Context* context_new(void* instructionPointer, uint64_t codeSegment, uint64_t st
     context->state.stackSegment = stackSegment;
     context->state.flags = rFlags;
 
-    VirtualAddressSpace* addressSpace = virtual_memory_create();
+    PageDirectory* pageDirectory = page_directory_create();
 
-    virtual_memory_remap(addressSpace, USER_ADDRESS_SPACE_STACK_TOP_PAGE, (void*)context->stackBottom, 1);
+    page_directory_remap(pageDirectory, USER_ADDRESS_SPACE_STACK_TOP_PAGE, (void*)context->stackBottom, 1);
 
-    context->state.cr3 = (uint64_t)addressSpace;
+    context->state.cr3 = (uint64_t)pageDirectory;
 
     return context;
 }
 
 void context_free(Context* context)
 {
-    virtual_memory_erase((VirtualAddressSpace*)context->state.cr3);
+    page_directory_erase((PageDirectory*)context->state.cr3);
 
     page_allocator_unlock_page((void*)context->stackBottom);
     kfree(context);

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "kernel/kernel.h"
-#include "virtual_memory/virtual_memory.h"
+#include "page_directory/page_directory.h"
 #include "heap/heap.h"
 #include "idt/idt.h"
 #include "context/context.h"
@@ -29,7 +29,7 @@ typedef struct Task
     uint64_t state;
 } Task;
 
-extern void jump_to_user_space(void* userSpaceFunction, void* stackTop, void* addressSpace);
+extern void jump_to_user_space(void* userSpaceFunction, void* stackTop, void* pageDirectory);
 
 void multitasking_visualize();
 

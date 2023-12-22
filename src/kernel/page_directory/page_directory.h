@@ -7,7 +7,7 @@
 #define USER_ADDRESS_SPACE_BOTTOM 0
 #define USER_ADDRESS_SPACE_STACK_TOP_PAGE ((void*)(USER_ADDRESS_SPACE_TOP - 0x1000))
 
-#define VIRTUAL_MEMORY_LOAD_SPACE(addressSpace) asm volatile ("mov %0, %%cr3" : : "r" ((uint64_t)addressSpace))
+#define VIRTUAL_MEMORY_LOAD_SPACE(pageDirectory) asm volatile ("mov %0, %%cr3" : : "r" ((uint64_t)pageDirectory))
 
 #define PAGE_DIR_SET_FLAG(entry, flag) ((entry) |= (1UL << (flag)))
 #define PAGE_DIR_CLEAR_FLAG(entry, flag) ((entry) &= ~(1UL << (flag)))
@@ -31,25 +31,23 @@ enum PAGE_DIR_FLAGS
     PAGE_DIR_NX = 63
 };
 
-typedef uint64_t PageDirEntry;
+typedef uint64_t PageDirectoryEntry;
 
 typedef struct __attribute__((aligned(0x1000)))
 { 
-    PageDirEntry entries[512];
+    PageDirectoryEntry entries[512];
 } PageDirectory;
 
-typedef PageDirectory VirtualAddressSpace;
+extern PageDirectory* kernelPageDirectory;
 
-extern VirtualAddressSpace* kernelAddressSpace;
+void page_directory_init(EFIMemoryMap* memoryMap, Framebuffer* screenbuffer);
 
-void virtual_memory_init(EFIMemoryMap* memoryMap, Framebuffer* screenbuffer);
+PageDirectory* page_directory_create();
 
-VirtualAddressSpace* virtual_memory_create();
+void page_directory_remap_pages(PageDirectory* pageDirectory, void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint8_t userAccessible);
 
-void virtual_memory_remap_pages(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint8_t userAccessible);
+void page_directory_remap(PageDirectory* pageDirectory, void* virtualAddress, void* physicalAddress, uint8_t userAccessible);
 
-void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress, uint8_t userAccessible);
+void page_directory_erase(PageDirectory* pageDirectory);
 
-void virtual_memory_erase(VirtualAddressSpace* addressSpace);
-
-void virtual_memory_invalidate_page(void* address);
+void page_directory_invalidate_page(void* address);

@@ -1,4 +1,4 @@
-#include "virtual_memory.h"
+#include "page_directory.h"
 
 #include "page_allocator/page_allocator.h"
 
@@ -12,31 +12,31 @@
 
 EFIMemoryMap* efiMemoryMap;
 
-VirtualAddressSpace* kernelAddressSpace;
+PageDirectory* kernelPageDirectory;
 
-void virtual_memory_init(EFIMemoryMap* memoryMap, Framebuffer* screenbuffer)
+void page_directory_init(EFIMemoryMap* memoryMap, Framebuffer* screenbuffer)
 {    
     tty_start_message("Virtual memory initializing");    
     
     efiMemoryMap = memoryMap;
   
-    kernelAddressSpace = (VirtualAddressSpace*)page_allocator_request();
-    memset(kernelAddressSpace, 0, 0x1000);
+    kernelPageDirectory = (PageDirectory*)page_allocator_request();
+    memset(kernelPageDirectory, 0, 0x1000);
 
-    virtual_memory_remap_pages(kernelAddressSpace, 0, 0, page_allocator_get_total_amount(), 0);
-    virtual_memory_remap_pages(kernelAddressSpace, screenbuffer->base, screenbuffer->base, GET_SIZE_IN_PAGES(screenbuffer->size), 0);
+    page_directory_remap_pages(kernelPageDirectory, 0, 0, page_allocator_get_total_amount(), 0);
+    page_directory_remap_pages(kernelPageDirectory, screenbuffer->base, screenbuffer->base, GET_SIZE_IN_PAGES(screenbuffer->size), 0);
     for (uint64_t i = 0; i < efiMemoryMap->descriptorAmount; i++)
     {
         EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)efiMemoryMap->base + (i * efiMemoryMap->descriptorSize));
 
 		if (desc->type == EFI_KERNEL_MEMORY_TYPE)
 		{
-            virtual_memory_remap_pages(kernelAddressSpace, desc->virtualStart, desc->physicalStart, desc->amountOfPages, 0);
+            page_directory_remap_pages(kernelPageDirectory, desc->virtualStart, desc->physicalStart, desc->amountOfPages, 0);
 			break;
 		}
 	}
 
-    VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
+    VIRTUAL_MEMORY_LOAD_SPACE(kernelPageDirectory);
     for (uint64_t i = 0; i < efiMemoryMap->descriptorAmount; i++)
     {
         EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)efiMemoryMap->base + (i * efiMemoryMap->descriptorSize));
@@ -49,10 +49,10 @@ void virtual_memory_init(EFIMemoryMap* memoryMap, Framebuffer* screenbuffer)
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-VirtualAddressSpace* virtual_memory_create()
+PageDirectory* page_directory_create()
 {
-    VirtualAddressSpace* addressSpace = (VirtualAddressSpace*)page_allocator_request();
-    memset(addressSpace, 0, 0x1000);
+    PageDirectory* pageDirectory = (PageDirectory*)page_allocator_request();
+    memset(pageDirectory, 0, 0x1000);
 
     for (uint64_t i = 0; i < efiMemoryMap->descriptorAmount; i++)
     {
@@ -60,23 +60,23 @@ VirtualAddressSpace* virtual_memory_create()
 
         if (desc->type == EFI_KERNEL_MEMORY_TYPE)
         {
-            virtual_memory_remap_pages(addressSpace, desc->virtualStart, desc->physicalStart, desc->amountOfPages, 0);
+            page_directory_remap_pages(pageDirectory, desc->virtualStart, desc->physicalStart, desc->amountOfPages, 0);
             break;
         }
     }
 
-    return addressSpace;
+    return pageDirectory;
 }
 
-void virtual_memory_remap_pages(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint8_t userAccessible)
+void page_directory_remap_pages(PageDirectory* pageDirectory, void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint8_t userAccessible)
 {
     for (uint64_t page = 0; page < pageAmount; page++)
     {
-        virtual_memory_remap(addressSpace, (void*)((uint64_t)virtualAddress + page * 0x1000), (void*)((uint64_t)physicalAddress + page * 0x1000), userAccessible);
+        page_directory_remap(pageDirectory, (void*)((uint64_t)virtualAddress + page * 0x1000), (void*)((uint64_t)physicalAddress + page * 0x1000), userAccessible);
     }
 }
 
-void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddress, void* physicalAddress, uint8_t userAccessible)
+void page_directory_remap(PageDirectory* pageDirectory, void* virtualAddress, void* physicalAddress, uint8_t userAccessible)
 {    
     //Im pretty confident something here is wrong
     
@@ -99,7 +99,7 @@ void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddres
     indexer >>= 9;
     uint64_t pdpIndex = indexer & 0x1ff;
 
-    PageDirEntry pde = addressSpace->entries[pdpIndex];
+    PageDirectoryEntry pde = pageDirectory->entries[pdpIndex];
     PageDirectory* pdp;
     if (!PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
     {
@@ -118,7 +118,7 @@ void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddres
             PAGE_DIR_CLEAR_FLAG(pde, PAGE_DIR_USER_SUPERVISOR);
         }
 
-        addressSpace->entries[pdpIndex] = pde;
+        pageDirectory->entries[pdpIndex] = pde;
     }
     else
     {        
@@ -221,13 +221,13 @@ void virtual_memory_remap(VirtualAddressSpace* addressSpace, void* virtualAddres
     pt->entries[pIndex] = pde;
 }
 
-void virtual_memory_erase(VirtualAddressSpace* addressSpace)
+void page_directory_erase(PageDirectory* pageDirectory)
 {    
-    PageDirEntry pde;
+    PageDirectoryEntry pde;
 
     for (uint64_t pdpIndex = 0; pdpIndex < 512; pdpIndex++)
     {
-        pde = addressSpace->entries[pdpIndex];
+        pde = pageDirectory->entries[pdpIndex];
         PageDirectory* pdp;
         if (PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
         {
@@ -256,10 +256,10 @@ void virtual_memory_erase(VirtualAddressSpace* addressSpace)
         }
     }
 
-    page_allocator_unlock_page(addressSpace);
+    page_allocator_unlock_page(pageDirectory);
 }
 
-void virtual_memory_invalidate_page(void* address) 
+void page_directory_invalidate_page(void* address) 
 {
    asm volatile("invlpg (%0)" :: "r" ((void*)address) : "memory");
 }
