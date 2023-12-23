@@ -6,24 +6,16 @@
 #include "gdt/gdt.h"
 #include "idt/idt.h"
 
-Context* context_new(void* instructionPointer, uint64_t codeSegment, uint64_t stackSegment, uint64_t rFlags)
+Context* context_new(void* instructionPointer, void* stackPointer, uint64_t codeSegment, uint64_t stackSegment, uint64_t rFlags, PageDirectory* pageDirectory)
 {
     Context* context = kmalloc(sizeof(Context));
     memset(context, 0, sizeof(Context));
 
-    context->stackBottom = (uint64_t)page_allocator_request();
-    context->stackTop = context->stackBottom + 0x1000;
-    memset((void*)context->stackBottom, 0, 0x1000);
-
-    context->state.stackPointer = (uint64_t)USER_ADDRESS_SPACE_STACK_TOP_PAGE + 0x1000;
+    context->state.stackPointer = (uint64_t)stackPointer;
     context->state.instructionPointer = (uint64_t)instructionPointer;
     context->state.codeSegment = codeSegment;
     context->state.stackSegment = stackSegment;
     context->state.flags = rFlags;
-
-    PageDirectory* pageDirectory = page_directory_create();
-
-    page_directory_remap(pageDirectory, USER_ADDRESS_SPACE_STACK_TOP_PAGE, (void*)context->stackBottom, PAGE_DIR_READ_WRITE | PAGE_DIR_USER_SUPERVISOR);
 
     context->state.cr3 = (uint64_t)pageDirectory;
 
@@ -32,9 +24,6 @@ Context* context_new(void* instructionPointer, uint64_t codeSegment, uint64_t st
 
 void context_free(Context* context)
 {
-    page_directory_erase((PageDirectory*)context->state.cr3);
-
-    page_allocator_unlock_page((void*)context->stackBottom);
     kfree(context);
 }
 

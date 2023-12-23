@@ -1,6 +1,6 @@
 PATCHWORK_DIR := ../../..
-OUTPUTNAME := test1.elf
-PARENT_DIR := programs/test1
+OUTPUTNAME := test.elf
+PARENT_DIR := programs/test
 
 include $(PATCHWORK_DIR)/Make.defaults
 

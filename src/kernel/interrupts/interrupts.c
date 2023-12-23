@@ -181,7 +181,7 @@ void irq_handler(InterruptStackFrame* stackFrame)
     {
         rtc_tick();
     
-        if (rtc_get_tick() % 1024 == 0) //For testing
+        if (rtc_get_tick() % (1024 / 2) == 0) //For testing
         {
             context_save(multitasking_get_running_task()->context, stackFrame);
             multitasking_schedule();    
@@ -309,6 +309,6 @@ void exception_handler(InterruptStackFrame* stackFrame)
 
     while (1)
     {
-        asm volatile("HLT");
+        asm volatile("hlt");
     }
 }

@@ -6,12 +6,9 @@
 typedef struct 
 {
     InterruptStackFrame state;
-
-    uint64_t stackBottom;
-    uint64_t stackTop;
 } Context;
 
-Context* context_new(void* instructionPointer, uint64_t codeSegment, uint64_t stackSegment, uint64_t rFlags);
+Context* context_new(void* instructionPointer, void* stackPointer, uint64_t codeSegment, uint64_t stackSegment, uint64_t rFlags, PageDirectory* pageDirectory);
 
 void context_free(Context* context);
 

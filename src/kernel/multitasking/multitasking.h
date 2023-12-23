@@ -12,7 +12,8 @@
 
 typedef struct MemoryBlock
 {
-    void* address;
+    void* physicalAddress;
+    void* virtualAddress;
     uint64_t pageAmount;
     struct MemoryBlock* next;
 } MemoryBlock;
@@ -20,6 +21,8 @@ typedef struct MemoryBlock
 typedef struct Task
 {
     Context* context;
+
+    PageDirectory* pageDirectory;
 
     MemoryBlock* firstMemoryBlock;
     MemoryBlock* lastMemoryBlock;
@@ -45,6 +48,6 @@ Task* multitasking_get_running_task();
 
 void multitasking_yield_to_user_space();
 
-void* task_request_page(Task* task);
+void* task_request_page(Task* task, void* virtualAddress);
 
 void* task_allocate_pages(Task* task, void* virtualAddress, uint64_t pageAmount);

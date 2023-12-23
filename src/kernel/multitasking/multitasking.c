@@ -100,7 +100,12 @@ Task* multitasking_new(void* entry)
 
     newTask->firstMemoryBlock = 0;
     newTask->lastMemoryBlock = 0;
-    newTask->context = context_new(entry, 0x18 | 3, 0x20 | 3, 0x202);
+
+    newTask->pageDirectory = page_directory_create();
+
+    task_request_page(newTask, USER_ADDRESS_SPACE_STACK_TOP_PAGE);
+
+    newTask->context = context_new(entry, USER_ADDRESS_SPACE_STACK_TOP_PAGE + 0x1000, 0x18 | 3, 0x20 | 3, 0x202, newTask->pageDirectory);
     newTask->state = TASK_STATE_READY;
 
     //Add to linked list
@@ -115,16 +120,22 @@ Task* multitasking_new(void* entry)
 
 void multitasking_free(Task* task)
 {
+    if (task == runningTask)
+    {
+        multitasking_schedule();
+    }
+
     context_free(task->context);
+    page_directory_erase(task->pageDirectory);
 
     if (task->firstMemoryBlock != 0)
     {
         MemoryBlock* currentBlock = task->firstMemoryBlock;
         while (1)
         {
-            MemoryBlock* nextBlock = task->firstMemoryBlock->next;
+            MemoryBlock* nextBlock = currentBlock->next;
 
-            page_allocator_unlock_pages(currentBlock->address, currentBlock->pageAmount);
+            page_allocator_unlock_pages(currentBlock->physicalAddress, currentBlock->pageAmount);
 
             kfree(currentBlock);           
 
@@ -200,13 +211,14 @@ void multitasking_yield_to_user_space()
     jump_to_user_space((void*)newTask->context->state.instructionPointer, (void*)newTask->context->state.stackPointer, (void*)newTask->context->state.cr3);
 }
 
-void* task_request_page(Task* task)
+void* task_request_page(Task* task, void* virtualAddress)
 {
     MemoryBlock* newMemoryBlock = kmalloc(sizeof(MemoryBlock));
 
     void* physicalAddress = page_allocator_request();
 
-    newMemoryBlock->address = physicalAddress;
+    newMemoryBlock->physicalAddress = physicalAddress;
+    newMemoryBlock->virtualAddress = virtualAddress;
     newMemoryBlock->pageAmount = 1;
     newMemoryBlock->next = 0;
 
@@ -221,7 +233,7 @@ void* task_request_page(Task* task)
         task->lastMemoryBlock = newMemoryBlock;
     }
 
-    page_directory_remap((PageDirectory*)task->context->state.cr3, physicalAddress, physicalAddress, PAGE_DIR_READ_WRITE | PAGE_DIR_USER_SUPERVISOR);
+    page_directory_remap(task->pageDirectory, virtualAddress, physicalAddress, PAGE_DIR_READ_WRITE | PAGE_DIR_USER_SUPERVISOR);
 
     return physicalAddress;
 }
@@ -232,7 +244,8 @@ void* task_allocate_pages(Task* task, void* virtualAddress, uint64_t pageAmount)
 
     void* physicalAddress = page_allocator_request_amount(pageAmount);
 
-    newMemoryBlock->address = physicalAddress;
+    newMemoryBlock->physicalAddress = physicalAddress;
+    newMemoryBlock->virtualAddress = virtualAddress;
     newMemoryBlock->pageAmount = pageAmount;
     newMemoryBlock->next = 0;
 
@@ -247,7 +260,7 @@ void* task_allocate_pages(Task* task, void* virtualAddress, uint64_t pageAmount)
         task->lastMemoryBlock = newMemoryBlock;
     }
     
-    page_directory_remap_pages((PageDirectory*)task->context->state.cr3, virtualAddress, physicalAddress, pageAmount, PAGE_DIR_READ_WRITE | PAGE_DIR_USER_SUPERVISOR);
+    page_directory_remap_pages(task->pageDirectory, virtualAddress, physicalAddress, pageAmount, PAGE_DIR_READ_WRITE | PAGE_DIR_USER_SUPERVISOR);
 
     return physicalAddress;
 }

@@ -32,7 +32,7 @@ void tty_init(Framebuffer* screenbuffer, PSFFont* screenFont)
     foreground.b = 255;
 
     textScale = 1;
-
+        
     tty_clear();
 }
 
@@ -114,7 +114,7 @@ void tty_printx(uint64_t hex)
 
 void tty_clear()
 {
-    memset(frontbuffer->base, 0, frontbuffer->size);
+    memclr(frontbuffer->base, frontbuffer->size);
     cursorPos.x = 0;
     cursorPos.y = 0;
 }

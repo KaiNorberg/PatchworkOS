@@ -3,10 +3,11 @@
 #define EFI_SCREEN_FONT_MEMORY_TYPE 0x80000002
 #define EFI_RAM_DISK_MEMORY_TYPE 0x80000003
 
-#define SYS_TEST 0
-#define SYS_YIELD 1
-#define SYS_EXIT 2
-#define SYS_AMOUNT 2
+#define SYS_READ 0
+#define SYS_WRITE 1
+#define SYS_FORK 57
+#define SYS_EXIT 60
+#define SYS_TEST 1000
 
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0

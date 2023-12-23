@@ -240,8 +240,3 @@ void page_directory_erase(PageDirectory* pageDirectory)
 
     page_allocator_unlock_page(pageDirectory);
 }
-
-void page_directory_invalidate_page(void* address) 
-{
-   asm volatile("invlpg (%0)" :: "r" ((void*)address) : "memory");
-}

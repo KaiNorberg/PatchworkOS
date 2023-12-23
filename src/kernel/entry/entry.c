@@ -21,12 +21,12 @@ void _start(BootInfo* bootInfo)
     kernel_init(bootInfo);
 
     tty_print("\n\r");
-    
-    tty_print("Loading program1...\n\r");
-    load_program("/programs/test1/test1.elf");
 
-    tty_print("Loading program2...\n\r");
-    load_program("/programs/test2/test2.elf");
+    tty_print("Loading fork_test...\n\r");
+    load_program("/programs/fork_test/fork_test.elf");
+
+    //tty_print("Loading test...\n\r");
+    //load_program("/programs/test/test.elf");
 
     tty_print("\n\r");
 

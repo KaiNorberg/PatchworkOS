@@ -45,5 +45,3 @@ void page_directory_remap(PageDirectory* pageDirectory, void* virtualAddress, vo
 void* page_directory_get_physical_address(PageDirectory* pageDirectory, void* virtualAddress);
 
 void page_directory_erase(PageDirectory* pageDirectory);
-
-void page_directory_invalidate_page(void* address);
