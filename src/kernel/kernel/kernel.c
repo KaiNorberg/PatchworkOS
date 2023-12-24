@@ -11,8 +11,10 @@
 #include "multitasking/multitasking.h"
 #include "acpi/acpi.h"
 #include "io/io.h"
-#include "rtc/rtc.h"
 #include "interrupt_stack/interrupt_stack.h"
+#include "hpet/hpet.h"
+#include "interrupts/interrupts.h"
+#include "time/time.h"
 
 #include "../common.h"
 
@@ -40,9 +42,11 @@ void kernel_init(BootInfo* bootInfo)
     
     syscall_init();
 
-    multitasking_init();
+    hpet_init(TICKS_PER_SECOND);
 
-    rtc_init(6); // 1024 HZ
+    time_init();
+
+    multitasking_init();
 
     io_pic_clear_mask(IRQ_KEYBOARD);
 }

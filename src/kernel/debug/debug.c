@@ -4,6 +4,7 @@
 
 #include "heap/heap.h"
 #include "page_allocator/page_allocator.h"
+#include "time/time.h"
 
 #include "../common.h"
 
@@ -106,7 +107,7 @@ void debug_panic(const char* message)
 
     tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 8 * scale);
     tty_print("Ticks = ");
-    //tty_print(STL::ToString(PIT::Ticks));
+    tty_printi(time_get_tick());
 
     tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 9 * scale);
     tty_print("Current Time = ");

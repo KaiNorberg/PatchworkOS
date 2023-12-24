@@ -86,7 +86,6 @@ void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags)
     descriptor->reserved = 0;
 }
 
-//TODO: Implement better system for clearing bits
 void enable_interrupts()
 {    
     asm volatile ("sti");

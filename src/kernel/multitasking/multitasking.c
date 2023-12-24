@@ -9,6 +9,8 @@
 #include "page_allocator/page_allocator.h"
 #include "string/string.h"
 #include "debug/debug.h"
+#include "time/time.h"
+#include "io/io.h"
 
 Task* mainTask;
 
@@ -81,6 +83,7 @@ void multitasking_init()
     tty_start_message("Multitasking initializing");
     
     mainTask = kmalloc(sizeof(Task));
+    mainTask->context = context_new(0, 0, 0, 0, 0, 0);
     memset(mainTask, 0, sizeof(Task));
 
     runningTask = mainTask;
@@ -206,8 +209,10 @@ void multitasking_yield_to_user_space()
 {
     multitasking_schedule();
     Task* newTask = multitasking_get_running_task();
-    mainTask->state = TASK_STATE_WAITING;
+    mainTask->state = TASK_STATE_WAITING; 
     
+    io_pic_clear_mask(IRQ_PIT);
+
     jump_to_user_space((void*)newTask->context->state.instructionPointer, (void*)newTask->context->state.stackPointer, (void*)newTask->context->state.cr3);
 }
 

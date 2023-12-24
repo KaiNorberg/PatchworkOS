@@ -24,18 +24,13 @@ void page_directory_init(EFIMemoryMap* memoryMap, Framebuffer* screenbuffer)
     kernelPageDirectory = (PageDirectory*)page_allocator_request();
     memset(kernelPageDirectory, 0, 0x1000);
 
-    page_directory_remap_pages(kernelPageDirectory, 0, 0, page_allocator_get_total_amount(), PAGE_DIR_READ_WRITE);
-    page_directory_remap_pages(kernelPageDirectory, screenbuffer->base, screenbuffer->base, GET_SIZE_IN_PAGES(screenbuffer->size), PAGE_DIR_READ_WRITE);
     for (uint64_t i = 0; i < efiMemoryMap->descriptorAmount; i++)
     {
         EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)efiMemoryMap->base + (i * efiMemoryMap->descriptorSize));
-
-		if (desc->type == EFI_KERNEL_MEMORY_TYPE)
-		{
-            page_directory_remap_pages(kernelPageDirectory, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_DIR_READ_WRITE);
-			break;
-		}
+        
+        page_directory_remap_pages(kernelPageDirectory, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_DIR_READ_WRITE);
 	}
+    page_directory_remap_pages(kernelPageDirectory, screenbuffer->base, screenbuffer->base, GET_SIZE_IN_PAGES(screenbuffer->size), PAGE_DIR_READ_WRITE);
 
     VIRTUAL_MEMORY_LOAD_SPACE(kernelPageDirectory);
     for (uint64_t i = 0; i < efiMemoryMap->descriptorAmount; i++)

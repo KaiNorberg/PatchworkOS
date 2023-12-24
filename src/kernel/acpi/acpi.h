@@ -15,8 +15,8 @@ typedef struct __attribute__((packed))
     uint32_t oemRevision;
     uint32_t creatorID;
     uint32_t creatorRevision; 
-} SDTHeader;
+} DescriptionHeader;
 
 void acpi_init(XSDP* xsdp);
 
-SDTHeader* acpi_find(const char* signature);
+DescriptionHeader* acpi_find(const char* signature);

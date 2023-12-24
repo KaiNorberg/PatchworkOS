@@ -5,6 +5,7 @@
 #include "heap/heap.h"
 #include "idt/idt.h"
 #include "context/context.h"
+#include "interrupts/interrupts.h"
 
 #define TASK_STATE_RUNNING 0
 #define TASK_STATE_READY 1
@@ -26,7 +27,7 @@ typedef struct Task
 
     MemoryBlock* firstMemoryBlock;
     MemoryBlock* lastMemoryBlock;
-
+    
     struct Task* next;
     struct Task* prev;
     uint64_t state;

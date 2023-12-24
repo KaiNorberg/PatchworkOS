@@ -108,7 +108,10 @@ void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, B
 		if (desc->Type == EFI_KERNEL_MEMORY_TYPE)
 		{
 			desc->VirtualStart = kernelStart;
-			break;
+		}
+		else
+		{
+			desc->VirtualStart = desc->PhysicalStart;
 		}
 	}
 

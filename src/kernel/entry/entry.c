@@ -7,6 +7,7 @@
 #include "multitasking/multitasking.h"
 #include "program_loader/program_loader.h"
 #include "heap/heap.h"
+#include "hpet/hpet.h"
 
 #include "kernel/kernel.h"
 
@@ -39,9 +40,9 @@ void _start(BootInfo* bootInfo)
     multitasking_yield_to_user_space();
 
     tty_print("\nBack in the main task, if you see this something has gone very wrong!\n\n\r");
-    
+
     while (1)
     {
-        asm volatile("hlt");
+        asm volatile("hlt");       
     }
 }

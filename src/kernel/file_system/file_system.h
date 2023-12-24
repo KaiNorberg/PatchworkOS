@@ -2,10 +2,7 @@
 
 #include <stdint.h>
 
-// Disclaimer: This "file system" is not really a file system. 
-// The way it works is that the boot loader caches all files in the boot media and then sends it to the kernel.
-// This is terrible for many reasons but it allows me limit the scope of this project and to move on to things i find more interesting.
-// In the future i might implement a real file system. 
+// This is just a basic ram disk for now
 
 #define SEEK_SET 0
 #define SEEK_CUR 1
