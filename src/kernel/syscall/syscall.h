@@ -4,7 +4,7 @@
 
 #include "page_directory/page_directory.h"
 #include "interrupts/interrupts.h"
-#include "multitasking/multitasking.h"
+#include "scheduler/scheduler.h"
 
 #define SYSCALL_GET_ARG1(frame) (frame->rdi)
 #define SYSCALL_GET_ARG2(frame) (frame->rsi)

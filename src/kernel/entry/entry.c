@@ -4,7 +4,7 @@
 #include "utils/utils.h"
 #include "file_system/file_system.h"
 #include "page_allocator/page_allocator.h"
-#include "multitasking/multitasking.h"
+#include "scheduler/scheduler.h"
 #include "program_loader/program_loader.h"
 #include "heap/heap.h"
 #include "hpet/hpet.h"
@@ -37,7 +37,7 @@ void _start(BootInfo* bootInfo)
 
     enable_interrupts();
 
-    multitasking_yield_to_user_space();
+    scheduler_yield_to_user_space();
 
     tty_print("\nBack in the main task, if you see this something has gone very wrong!\n\n\r");
 

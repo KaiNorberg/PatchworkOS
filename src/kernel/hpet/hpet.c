@@ -27,15 +27,15 @@ void hpet_init(uint64_t hertz)
 
     hpetPeriod = hpet_read(HPET_GENERAL_CAPABILITIES) >> HPET_COUNTER_CLOCK_OFFSET;
 
+    uint64_t ticks = (1000000000000000 / hertz) / hpetPeriod;
+
     hpet_write(HPET_GENERAL_CONFIG, 0);
     hpet_write(HPET_MAIN_COUNTER_VALUE, 0);
     hpet_write(HPET_GENERAL_CONFIG, 3);
 
-    uint64_t pitTicks = (1000000000000000 / hertz) / hpetPeriod;
-
     hpet_write(HPET_TIMER_CONFIG_CAPABILITY(0), hpet_read(HPET_TIMER_CONFIG_CAPABILITY(0)) | (1 << 2) | (1 << 3) | (1 << 6));
-    hpet_write(HPET_TIMER_COMPARATOR(0), hpet_read(HPET_MAIN_COUNTER_VALUE) + pitTicks);
-    hpet_write(HPET_TIMER_COMPARATOR(0), pitTicks);
+    hpet_write(HPET_TIMER_COMPARATOR(0), hpet_read(HPET_MAIN_COUNTER_VALUE) + ticks);
+    hpet_write(HPET_TIMER_COMPARATOR(0), ticks);
     
     tty_end_message(TTY_MESSAGE_OK);
 }

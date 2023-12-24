@@ -8,7 +8,7 @@
 #include "syscall/syscall.h"
 #include "file_system/file_system.h"
 #include "page_allocator/page_allocator.h"
-#include "multitasking/multitasking.h"
+#include "scheduler/scheduler.h"
 #include "acpi/acpi.h"
 #include "io/io.h"
 #include "interrupt_stack/interrupt_stack.h"
@@ -46,7 +46,7 @@ void kernel_init(BootInfo* bootInfo)
 
     time_init();
 
-    multitasking_init();
+    scheduler_init();
 
     io_pic_clear_mask(IRQ_KEYBOARD);
 }

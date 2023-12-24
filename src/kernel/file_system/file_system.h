@@ -44,6 +44,6 @@ uint64_t file_system_tell(FILE *stream);
 
 uint32_t file_system_get_c(FILE* stream);
 
-uint64_t file_system_readadawd(void* buffer, uint64_t size, FILE* stream);
+uint64_t file_system_read(void* buffer, uint64_t size, FILE* stream);
 
 uint32_t file_system_close(FILE* stream);

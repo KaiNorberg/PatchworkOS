@@ -164,7 +164,7 @@ uint32_t file_system_get_c(FILE* stream)
     return out;
 }
 
-uint64_t file_system_readadawd(void* buffer, uint64_t size, FILE* stream)
+uint64_t file_system_read(void* buffer, uint64_t size, FILE* stream)
 {
     for (uint64_t i = 0; i < size; i++)
     {

@@ -4,7 +4,7 @@
 #include "file_system/file_system.h"
 #include "heap/heap.h"
 #include "page_allocator/page_allocator.h"
-#include "multitasking/multitasking.h"
+#include "scheduler/scheduler.h"
 
 #include "tty/tty.h"
 #include "debug/debug.h"
@@ -20,7 +20,7 @@ uint8_t load_program(const char* path)
     }
 
     ElfHeader header;
-    file_system_readadawd(&header, sizeof(ElfHeader), file);
+    file_system_read(&header, sizeof(ElfHeader), file);
 
     if(header.ident[0] != 0x7F ||
        header.ident[1] != 'E' ||
@@ -33,9 +33,9 @@ uint8_t load_program(const char* path)
 
     uint64_t programHeaderTableSize = header.programHeaderAmount * header.programHeaderSize;
     ElfProgramHeader* programHeaders = kmalloc(programHeaderTableSize);
-    file_system_readadawd(programHeaders, programHeaderTableSize, file);
+    file_system_read(programHeaders, programHeaderTableSize, file);
 
-    Task* task = multitasking_new((void*)header.entry);
+    Process* process = process_new((void*)header.entry);
 
 	for (uint64_t i = 0; i < header.programHeaderAmount; i++)
 	{		
@@ -43,14 +43,16 @@ uint8_t load_program(const char* path)
 		{
 		case PT_LOAD:
 		{
-            void* segment = task_allocate_pages(task, (void*)programHeaders[i].virtualAddress, GET_SIZE_IN_PAGES(programHeaders[i].memorySize));
+            void* segment = process_allocate_pages(process, (void*)programHeaders[i].virtualAddress, GET_SIZE_IN_PAGES(programHeaders[i].memorySize));
 
             file_system_seek(file, programHeaders[i].offset, SEEK_SET);
-            file_system_readadawd(segment, programHeaders[i].memorySize, file);
+            file_system_read(segment, programHeaders[i].memorySize, file);
 		}
 		break;
 		}
 	}
+
+    scheduler_append(process);
 
     kfree(programHeaders);
     file_system_close(file);

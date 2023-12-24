@@ -5,10 +5,11 @@
 #include "tty/tty.h"
 #include "utils/utils.h"
 #include "syscall/syscall.h"
-#include "multitasking/multitasking.h"
+#include "scheduler/scheduler.h"
 #include "debug/debug.h"
 #include "string/string.h"
 #include "time/time.h"
+#include "heap/heap.h"
 
 #include "../common.h"
 
@@ -82,9 +83,9 @@ void irq_handler(InterruptStackFrame* stackFrame)
 
         if (time_get_tick() % (TICKS_PER_SECOND / 2) == 0) //For testing
         {
-            context_save(multitasking_get_running_task()->context, stackFrame);
-            multitasking_schedule();    
-            context_load(multitasking_get_running_task()->context, stackFrame);
+            context_save(scheduler_get_running_process()->context, stackFrame);
+            scheduler_schedule();    
+            context_load(scheduler_get_running_process()->context, stackFrame);
         }
     }
     break;

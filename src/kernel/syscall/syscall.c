@@ -2,7 +2,7 @@
 
 #include "tty/tty.h"
 #include "file_system/file_system.h"
-#include "multitasking/multitasking.h"
+#include "scheduler/scheduler.h"
 #include "context/context.h"
 #include "string/string.h"
 #include "debug/debug.h"
@@ -34,12 +34,12 @@ void syscall_handler(InterruptStackFrame* frame)
     break;
     case SYS_FORK:
     {        
-        Task* child = multitasking_new((void*)frame->instructionPointer);
+        Process* child = process_new((void*)frame->instructionPointer);
         context_save(child->context, frame);
         child->context->state.rax = 0;
         child->context->state.cr3 = (uint64_t)child->pageDirectory;
 
-        Task* parent = multitasking_get_running_task();
+        Process* parent = scheduler_get_running_process();
 
         MemoryBlock* currentBlock = parent->firstMemoryBlock;
         while (1)
@@ -49,21 +49,26 @@ void syscall_handler(InterruptStackFrame* frame)
                 break;
             }
 
-            void* physicalAddress = task_allocate_pages(child, currentBlock->virtualAddress, currentBlock->pageAmount);
+            void* physicalAddress = process_allocate_pages(child, currentBlock->virtualAddress, currentBlock->pageAmount);
 
             memcpy(physicalAddress, currentBlock->physicalAddress, currentBlock->pageAmount * 0x1000);
 
             currentBlock = currentBlock->next;
         }
 
+        scheduler_append(child);
+
         out = 1234; //TODO: Replace with child pid, when pid is implemented
     }
     break;
     case SYS_EXIT:
     {
-        multitasking_free(multitasking_get_running_task());
+        Process* process = scheduler_get_running_process();
 
-        context_load(multitasking_get_running_task()->context, frame);
+        scheduler_remove(process);
+        process_free(process);
+
+        context_load(scheduler_get_running_process()->context, frame);
     }
     break;
     case SYS_TEST:
