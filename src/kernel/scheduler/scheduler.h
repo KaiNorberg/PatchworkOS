@@ -8,6 +8,8 @@ void scheduler_visualize();
 
 void scheduler_init();
 
+void scheduler_sleep(Process* process);
+
 void scheduler_append(Process* process);
 
 void scheduler_remove(Process* process);

@@ -17,6 +17,8 @@
 
 #include "string/string.h"
 
+#include "queue/queue.h"
+
 void _start(BootInfo* bootInfo)
 {   
     kernel_init(bootInfo);
@@ -29,7 +31,7 @@ void _start(BootInfo* bootInfo)
     //tty_print("Loading test...\n\r");
     //load_program("/programs/test/test.elf");
 
-    tty_print("\n\r");
+    tty_print("\n\r");                                                                                      
 
     tty_print("Jumping to user space...\n\r");
     

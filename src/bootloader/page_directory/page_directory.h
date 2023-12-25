@@ -1,11 +1,7 @@
 #pragma once
 
-#include "gop/gop.h"
-#include "memory/memory.h"
-
-#define USER_ADDRESS_SPACE_TOP 0x80000000
-#define USER_ADDRESS_SPACE_BOTTOM 0
-#define USER_ADDRESS_SPACE_STACK_TOP_PAGE ((void*)(USER_ADDRESS_SPACE_TOP - 0x1000))
+#include <efi.h>
+#include <efilib.h>
 
 #define PAGE_DIRECTORY_LOAD_SPACE(pageDirectory) asm volatile ("mov %0, %%cr3" : : "r" ((uint64_t)pageDirectory))
 
@@ -32,16 +28,8 @@ typedef struct __attribute__((aligned(0x1000)))
     PageDirectoryEntry entries[512];
 } PageDirectory;
 
-extern PageDirectory* kernelPageDirectory;
-
-void page_directory_init(EFIMemoryMap* memoryMap, Framebuffer* screenbuffer);
-
 PageDirectory* page_directory_create();
 
 void page_directory_remap_pages(PageDirectory* pageDirectory, void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint16_t flags);
 
 void page_directory_remap(PageDirectory* pageDirectory, void* virtualAddress, void* physicalAddress, uint16_t flags);
-
-void* page_directory_get_physical_address(PageDirectory* pageDirectory, void* virtualAddress);
-
-void page_directory_erase(PageDirectory* pageDirectory);

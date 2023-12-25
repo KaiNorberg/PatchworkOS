@@ -5,7 +5,8 @@
 
 #define PROCESS_STATE_RUNNING 0
 #define PROCESS_STATE_READY 1
-#define PROCESS_STATE_WAITING 2
+#define PROCESS_STATE_SLEEPING 2
+#define PROCESS_STATE_BLOCKED 3
 
 typedef struct MemoryBlock
 {
@@ -23,10 +24,10 @@ typedef struct Process
 
     MemoryBlock* firstMemoryBlock;
     MemoryBlock* lastMemoryBlock;
-    
+
     struct Process* next;
     struct Process* prev;
-    uint64_t state;
+    uint8_t state;
 } Process;
 
 Process* process_new(void* entry);

@@ -56,7 +56,7 @@ void syscall_handler(InterruptStackFrame* frame)
             currentBlock = currentBlock->next;
         }
 
-        scheduler_append(child);
+        scheduler_append(child);    
 
         out = 1234; //TODO: Replace with child pid, when pid is implemented
     }

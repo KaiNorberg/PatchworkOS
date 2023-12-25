@@ -4,6 +4,12 @@
 
 #define TICKS_PER_SECOND 1024
 
+typedef struct
+{
+    uint64_t seconds;
+    uint64_t nanoSeconds;
+} TimeSpec;
+
 void time_init();
 
 uint64_t time_get_seconds();

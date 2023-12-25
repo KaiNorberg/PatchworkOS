@@ -5,17 +5,15 @@
 #include "debug/debug.h"
 #include "string/string.h"
 #include "io/io.h"
-
-Process* mainProcess;
+#include "queue/queue.h"
 
 Process* runningProcess;
 
-Process* firstProcess;
-Process* lastProcess;
+Queue* readyProcessQueue;
 
 void scheduler_visualize()
 {
-    Pixel black;
+    /*Pixel black;
     black.a = 255;
     black.r = 0;
     black.g = 0;
@@ -48,15 +46,15 @@ void scheduler_visualize()
         {
             tty_set_background(blue);
         }
-        else if (currentProcess->state == PROCESS_STATE_WAITING)
-        {
-            tty_set_background(red);
-        }
         else if (currentProcess->state == PROCESS_STATE_READY)
         {
             tty_set_background(green);
         }
-        
+        else
+        {
+            tty_set_background(red);
+        }
+
         tty_put(' '); tty_printi(i); tty_put(' ');
     
         i++;
@@ -69,39 +67,33 @@ void scheduler_visualize()
     }
 
     tty_set_background(black);
-    tty_print("\n\n\r");
+    tty_print("\n\n\r");*/
 }
 
 void scheduler_init()
 {
     tty_start_message("Scheduler initializing");
     
-    mainProcess = kmalloc(sizeof(Process));
-    mainProcess->context = context_new(0, 0, 0, 0, 0, 0);
-    memset(mainProcess, 0, sizeof(Process));
+    readyProcessQueue = queue_new();
 
-    runningProcess = mainProcess;
-
-    firstProcess = mainProcess;
-    lastProcess = mainProcess;
-    mainProcess->next = mainProcess;
-    mainProcess->prev = mainProcess;
+    runningProcess = 0;
 
     tty_end_message(TTY_MESSAGE_OK);
 }
 
+void scheduler_sleep(Process* process)
+{
+    
+}
+
 void scheduler_append(Process* process)
 {
-    lastProcess->next = process;
-    process->prev = lastProcess;
-    lastProcess = process;
-    process->next = firstProcess;
-    firstProcess->prev = process;
+    queue_push(readyProcessQueue, process);
 }
 
 void scheduler_remove(Process* process)
 {
-    if (process == runningProcess)
+    /*if (process == runningProcess)
     {
         scheduler_schedule();
     }
@@ -115,37 +107,25 @@ void scheduler_remove(Process* process)
         lastProcess = process->prev;
     }
     process->next->prev = process->prev;
-    process->prev->next = process->next;
+    process->prev->next = process->next;*/
 }
 
 void scheduler_schedule()
 {
-    Process* prev = runningProcess;
-    prev->state = PROCESS_STATE_READY;
-    
-    Process* nextProcess = runningProcess;
-    while (1)
+    Process* nextProcess = queue_pop(readyProcessQueue);    
+    if (nextProcess != 0)
     {
-        nextProcess = nextProcess->next;
+        runningProcess->state = PROCESS_STATE_READY;
+        queue_push(readyProcessQueue, runningProcess);
 
-        if (nextProcess->state == PROCESS_STATE_READY)
-        {
-            break;
-        }
-        else if (nextProcess->next == prev)
-        {
-            nextProcess = runningProcess;
-            break;
-        }
+        runningProcess = nextProcess;
+        runningProcess->state = PROCESS_STATE_RUNNING;       
     }
-
-    runningProcess = nextProcess;  
-    nextProcess->state = PROCESS_STATE_RUNNING;   
 }
 
 Process* scheduler_get_running_process()
 {
-    if (runningProcess == mainProcess)
+    if (runningProcess == 0)
     {
         debug_panic("Failed to retrieve scheduled process!");
         return 0;
@@ -156,14 +136,12 @@ Process* scheduler_get_running_process()
     }
 }
 
-
 void scheduler_yield_to_user_space()
 {
-    scheduler_schedule();
-    Process* newProcess = scheduler_get_running_process();
-    mainProcess->state = PROCESS_STATE_WAITING; 
+    runningProcess = queue_pop(readyProcessQueue);
+    runningProcess->state = PROCESS_STATE_RUNNING; 
     
     io_pic_clear_mask(IRQ_PIT);
 
-    jump_to_user_space((void*)newProcess->context->state.instructionPointer, (void*)newProcess->context->state.stackPointer, (void*)newProcess->context->state.cr3);
+    jump_to_user_space((void*)runningProcess->context->state.instructionPointer, (void*)runningProcess->context->state.stackPointer, (void*)runningProcess->context->state.cr3);
 }

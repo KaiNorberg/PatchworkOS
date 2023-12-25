@@ -253,6 +253,11 @@ void* kmalloc(uint64_t size)
 
 void kfree(void* ptr)
 {
+    if (ptr == 0)
+    {
+        debug_panic("Attempted to free null ptr!");
+    }
+    
     BlockHeader* block = (BlockHeader*)((uint64_t)ptr - sizeof(BlockHeader));
     
     uint8_t blockFound = 0;
@@ -279,7 +284,7 @@ void kfree(void* ptr)
 
     if (!blockFound)
     {    
-        debug_panic("Failed to free block!\n\r");
+        debug_panic("Failed to free block!");
     }
 
     //Merge contiguous free blocks

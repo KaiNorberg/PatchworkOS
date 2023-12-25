@@ -2,7 +2,7 @@
 
 #include "memory/memory.h"
 #include "file_system/file_system.h"
-#include "virtual_memory/virtual_memory.h"
+#include "page_directory/page_directory.h"
 #include "string/string.h"
 
 #include "../common.h"
@@ -11,7 +11,7 @@ void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, B
 {
     Print(L"Loading kernel... ");
 	
-	VirtualAddressSpace* kernelAddressSpace = virtual_memory_create();
+	PageDirectory* kernelPageDirectory = page_directory_create();
 
 	EFI_FILE* file = file_system_open(imageHandle, L"/kernel/kernel.elf");
 	if (file == NULL)
@@ -65,7 +65,6 @@ void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, B
 	uint64_t kernelPageAmount = (kernelEnd - kernelStart) / 0x1000 + 1;
 
 	void* kernelBuffer = memory_allocate_pages(kernelPageAmount, EFI_KERNEL_MEMORY_TYPE);
-	virtual_memory_remap_pages(kernelAddressSpace, (void*)kernelStart, kernelBuffer, kernelPageAmount);
 
 	for (ElfProgramHeader* programHeader = programHeaders; (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize; programHeader = (ElfProgramHeader*)((uint64_t)programHeader + header.programHeaderSize))
 	{
@@ -95,8 +94,9 @@ void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, B
 		totalPageAmount += desc->NumberOfPages;
     }    
 	
-	virtual_memory_remap_pages(kernelAddressSpace, 0, 0, totalPageAmount);
-    virtual_memory_remap_pages(kernelAddressSpace, bootInfo->screenbuffer->base, bootInfo->screenbuffer->base, bootInfo->screenbuffer->size / 0x1000 + 1);
+	page_directory_remap_pages(kernelPageDirectory, 0, 0, totalPageAmount, PAGE_DIR_READ_WRITE);
+    page_directory_remap_pages(kernelPageDirectory, bootInfo->screenbuffer->base, bootInfo->screenbuffer->base, bootInfo->screenbuffer->size / 0x1000 + 1, PAGE_DIR_READ_WRITE);
+	page_directory_remap_pages(kernelPageDirectory, (void*)kernelStart, kernelBuffer, kernelPageAmount, PAGE_DIR_READ_WRITE);
 
 	memoryMap = memory_get_map();
 	bootInfo->memoryMap = &memoryMap;
@@ -117,9 +117,12 @@ void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, B
 
 	Print(L"Exiting boot services... ");
 	systemTable->BootServices->ExitBootServices(imageHandle, bootInfo->memoryMap->key);
-	Print(L"Done\n\r");
+	Print(L"Done!\n\r");
+
+	Print(L"Loading kernel address space... ");
+	PAGE_DIRECTORY_LOAD_SPACE(kernelPageDirectory);
+	Print(L"Done!\n\r");
 
 	Print(L"Jumping to kernel...\n\r");
-	VIRTUAL_MEMORY_LOAD_SPACE(kernelAddressSpace);
 	kernelMain(bootInfo);
 }
