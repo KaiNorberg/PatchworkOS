@@ -7,6 +7,7 @@
 #define PROCESS_STATE_READY 1
 #define PROCESS_STATE_SLEEPING 2
 #define PROCESS_STATE_BLOCKED 3
+#define PROCESS_STATE_KILLED 4
 
 typedef struct MemoryBlock
 {

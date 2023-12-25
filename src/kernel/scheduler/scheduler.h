@@ -4,8 +4,6 @@
 
 extern void jump_to_user_space(void* userSpaceFunction, void* stackTop, void* pageDirectory);
 
-void scheduler_visualize();
-
 void scheduler_init();
 
 void scheduler_sleep(Process* process);

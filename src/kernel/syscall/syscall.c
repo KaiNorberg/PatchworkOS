@@ -68,6 +68,8 @@ void syscall_handler(InterruptStackFrame* frame)
         scheduler_remove(process);
         process_free(process);
 
+        scheduler_schedule();
+
         context_load(scheduler_get_running_process()->context, frame);
     }
     break;

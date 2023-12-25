@@ -11,65 +11,6 @@ Process* runningProcess;
 
 Queue* readyProcessQueue;
 
-void scheduler_visualize()
-{
-    /*Pixel black;
-    black.a = 255;
-    black.r = 0;
-    black.g = 0;
-    black.b = 0;
-
-    Pixel green;
-    green.a = 255;
-    green.r = 152;
-    green.g = 195;
-    green.b = 121;
-
-    Pixel red;
-    red.a = 255;
-    red.r = 224;
-    red.g = 108;
-    red.b = 117;
-
-    Pixel blue;
-    blue.a = 255;
-    blue.r = 97;
-    blue.g = 175;
-    blue.b = 239;
-
-    tty_print("Scheduler visualization (blue = running, green = ready, red = waiting):\n\r");
-    int i = 0;
-    Process* currentProcess = firstProcess;
-    while (currentProcess != 0)
-    {
-        if (currentProcess->state == PROCESS_STATE_RUNNING)
-        {
-            tty_set_background(blue);
-        }
-        else if (currentProcess->state == PROCESS_STATE_READY)
-        {
-            tty_set_background(green);
-        }
-        else
-        {
-            tty_set_background(red);
-        }
-
-        tty_put(' '); tty_printi(i); tty_put(' ');
-    
-        i++;
-        currentProcess = currentProcess->next;
-
-        if (currentProcess == firstProcess)
-        {
-            break;
-        }
-    }
-
-    tty_set_background(black);
-    tty_print("\n\n\r");*/
-}
-
 void scheduler_init()
 {
     tty_start_message("Scheduler initializing");
@@ -93,30 +34,35 @@ void scheduler_append(Process* process)
 
 void scheduler_remove(Process* process)
 {
-    /*if (process == runningProcess)
+    if (process == runningProcess)
     {
-        scheduler_schedule();
+        runningProcess = 0;
+        return;
     }
 
-    if (process == firstProcess)
+    for (int i = 0; i < queue_length(readyProcessQueue); i++)
     {
-        firstProcess = process->next;
+        Process* poppedProcess = queue_pop(readyProcessQueue);    
+        if (poppedProcess == process)
+        {
+            return;
+        }       
+        queue_push(readyProcessQueue, poppedProcess);
     }
-    if (process == lastProcess)
-    {
-        lastProcess = process->prev;
-    }
-    process->next->prev = process->prev;
-    process->prev->next = process->next;*/
+
+    debug_panic("Failed to remove process from queue!");
 }
 
 void scheduler_schedule()
 {
     Process* nextProcess = queue_pop(readyProcessQueue);    
     if (nextProcess != 0)
-    {
-        runningProcess->state = PROCESS_STATE_READY;
-        queue_push(readyProcessQueue, runningProcess);
+    {        
+        if (runningProcess != 0)
+        {
+            runningProcess->state = PROCESS_STATE_READY;
+            queue_push(readyProcessQueue, runningProcess);            
+        }
 
         runningProcess = nextProcess;
         runningProcess->state = PROCESS_STATE_RUNNING;       
@@ -138,8 +84,7 @@ Process* scheduler_get_running_process()
 
 void scheduler_yield_to_user_space()
 {
-    runningProcess = queue_pop(readyProcessQueue);
-    runningProcess->state = PROCESS_STATE_RUNNING; 
+    scheduler_schedule();
     
     io_pic_clear_mask(IRQ_PIT);
 
