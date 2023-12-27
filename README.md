@@ -29,4 +29,4 @@ There are four ways to run Patchwork.
   
 ## Contributing
 
-Patchwork is open to contributions. There are currently no strict guidelines for contributing. If the project grows significantly in the future, a more standardized process for contributions may be implemented.
+Patchwork is intended to by my project, thus contributing major features or similar is not what I'm looking for. However, if you have the patience, you are welcome to try to fix any bugs or other issues you find. There are no strict guidelines beyond what's previously stated due to the small scale of the project.
