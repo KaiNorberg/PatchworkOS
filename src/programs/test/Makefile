@@ -7,7 +7,6 @@ include $(PATCHWORK_DIR)/Make.defaults
 LINKER_SCRIPT = ../linker.ld
 
 LD_FLAGS = -T $(LINKER_SCRIPT) -Bstatic -nostdlib ../../../bin/libc/libc.o
-C_FLAGS = -Os
 
 build: $(OBJECTS)
 

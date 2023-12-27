@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
         while (1)
         {
             sys_test("Hello from child program!     \r");
-        }            
+        }         
     }
     else
     {
@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
         {
             sys_test("Hello from parent program!    \r");
         }       
-    }       
+    }
 
     return 0;
 }

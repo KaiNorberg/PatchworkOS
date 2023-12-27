@@ -37,16 +37,16 @@ uint8_t load_program(const char* path)
 
     Process* process = process_new((void*)header.entry);
 
-	for (uint64_t i = 0; i < header.programHeaderAmount; i++)
+	for (ElfProgramHeader* programHeader = programHeaders; (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize; programHeader = (ElfProgramHeader*)((uint64_t)programHeader + header.programHeaderSize))
 	{		
-        switch (programHeaders[i].type)
+        switch (programHeader->type)
 		{
 		case PT_LOAD:
 		{
-            void* segment = process_allocate_pages(process, (void*)programHeaders[i].virtualAddress, GET_SIZE_IN_PAGES(programHeaders[i].memorySize));
+            void* segment = process_allocate_pages(process, (void*)programHeader->virtualAddress, GET_SIZE_IN_PAGES(programHeader->memorySize));
 
-            file_system_seek(file, programHeaders[i].offset, SEEK_SET);
-            file_system_read(segment, programHeaders[i].memorySize, file);
+            file_system_seek(file, programHeader->offset, SEEK_SET);
+            file_system_read(segment, programHeader->memorySize, file);
 		}
 		break;
 		}
