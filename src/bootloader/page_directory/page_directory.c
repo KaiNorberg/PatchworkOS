@@ -5,7 +5,7 @@
 
 #include "../common.h"
 
-PageDirectory* page_directory_create()
+PageDirectory* page_directory_new()
 {
     PageDirectory* pageDirectory = (PageDirectory*)memory_allocate_pages(1, EFI_PAGE_TABLE_MEMORY_TYPE);
     memset(pageDirectory, 0, 0x1000);

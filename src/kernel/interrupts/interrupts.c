@@ -48,32 +48,25 @@ const char* exception_strings[32] =
     "Security Exception"
 };
 
-void interrupts_init()
-{
-    tty_start_message("Interrupts initializing");
-
-    tty_end_message(TTY_MESSAGE_OK);
-}
-
-void interrupt_handler(InterruptStackFrame* stackFrame)
+void interrupt_handler(InterruptFrame* interruptFrame)
 {       
-    if (stackFrame->vector < 32) //Exception
+    if (interruptFrame->vector < 32) //Exception
     {
-        exception_handler(stackFrame);
+        exception_handler(interruptFrame);
     }
-    else if (stackFrame->vector >= 32 && stackFrame->vector <= 48) //IRQ
+    else if (interruptFrame->vector >= 32 && interruptFrame->vector <= 48) //IRQ
     {    
-        irq_handler(stackFrame);
+        irq_handler(interruptFrame);
     }
-    else if (stackFrame->vector == 0x80) //Syscall
+    else if (interruptFrame->vector == 0x80) //Syscall
     {
-        syscall_handler(stackFrame);
+        syscall_handler(interruptFrame);
     }  
 }
 
-void irq_handler(InterruptStackFrame* stackFrame)
+void irq_handler(InterruptFrame* interruptFrame)
 {
-    uint64_t irq = stackFrame->vector - 32;
+    uint64_t irq = interruptFrame->vector - 32;
 
     switch (irq)
     {
@@ -83,9 +76,9 @@ void irq_handler(InterruptStackFrame* stackFrame)
 
         if (time_get_tick() % (TICKS_PER_SECOND / 2) == 0) //For testing
         {
-            context_save(scheduler_get_running_process()->context, stackFrame);
+            interrupt_frame_copy(scheduler_get_running_process()->interruptFrame, interruptFrame);
             scheduler_schedule();    
-            context_load(scheduler_get_running_process()->context, stackFrame);
+            interrupt_frame_copy(interruptFrame, scheduler_get_running_process()->interruptFrame);
         }
     }
     break;
@@ -99,7 +92,7 @@ void irq_handler(InterruptStackFrame* stackFrame)
     io_pic_eoi(irq); 
 }
 
-void exception_handler(InterruptStackFrame* stackFrame)
+void exception_handler(InterruptFrame* interruptFrame)
 {
     uint64_t randomNumber = 0;
 
@@ -146,11 +139,11 @@ void exception_handler(InterruptStackFrame* stackFrame)
 
     tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 3 * scale);
     tty_print("\"");
-    tty_print(exception_strings[stackFrame->vector]);
+    tty_print(exception_strings[interruptFrame->vector]);
     tty_print("\": ");
     for (int i = 0; i < 32; i++)
     {
-        tty_put('0' + ((stackFrame->errorCode >> (i)) & 1));
+        tty_put('0' + ((interruptFrame->errorCode >> (i)) & 1));
     }
 
     tty_set_background(black);
@@ -165,23 +158,23 @@ void exception_handler(InterruptStackFrame* stackFrame)
 
     tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 8 * scale);
     tty_print("Instruction pointer = ");
-    tty_printx(stackFrame->instructionPointer);
+    tty_printx(interruptFrame->instructionPointer);
 
     tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 9 * scale);
     tty_print("Code segment = ");
-    tty_printx(stackFrame->codeSegment);
+    tty_printx(interruptFrame->codeSegment);
 
     tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 10 * scale);
     tty_print("Rflags = ");
-    tty_printx(stackFrame->flags);
+    tty_printx(interruptFrame->flags);
 
     tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 11 * scale);
     tty_print("Stack pointer = ");
-    tty_printx(stackFrame->stackPointer);
+    tty_printx(interruptFrame->stackPointer);
 
     tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 12 * scale);
     tty_print("Stack segment = ");
-    tty_printx(stackFrame->stackSegment);
+    tty_printx(interruptFrame->stackSegment);
 
     tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 14 * scale);
     tty_print("Memory: ");

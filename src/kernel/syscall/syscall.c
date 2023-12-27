@@ -3,7 +3,7 @@
 #include "tty/tty.h"
 #include "file_system/file_system.h"
 #include "scheduler/scheduler.h"
-#include "context/context.h"
+#include "interrupt_frame/interrupt_frame.h"
 #include "string/string.h"
 #include "debug/debug.h"
 
@@ -16,11 +16,11 @@ void syscall_init()
 
 }
 
-void syscall_handler(InterruptStackFrame* frame)
+void syscall_handler(InterruptFrame* interruptFrame)
 {    
     uint64_t out = 0;
 
-    switch(frame->rax)
+    switch(interruptFrame->rax)
     {    
     case SYS_READ:  
     {
@@ -34,10 +34,10 @@ void syscall_handler(InterruptStackFrame* frame)
     break;
     case SYS_FORK:
     {        
-        Process* child = process_new((void*)frame->instructionPointer);
-        context_save(child->context, frame);
-        child->context->state.rax = 0;
-        child->context->state.cr3 = (uint64_t)child->pageDirectory;
+        Process* child = process_new((void*)interruptFrame->instructionPointer);
+        interrupt_frame_copy(child->interruptFrame, interruptFrame);
+        child->interruptFrame->rax = 0;
+        child->interruptFrame->cr3 = (uint64_t)child->pageDirectory;
 
         Process* parent = scheduler_get_running_process();
 
@@ -70,12 +70,12 @@ void syscall_handler(InterruptStackFrame* frame)
 
         scheduler_schedule();
 
-        context_load(scheduler_get_running_process()->context, frame);
+        interrupt_frame_copy(interruptFrame, scheduler_get_running_process()->interruptFrame);
     }
     break;
     case SYS_TEST:
     {
-        const char* string = page_directory_get_physical_address(SYSCALL_GET_PAGE_DIRECTORY(frame), (void*)SYSCALL_GET_ARG1(frame));
+        const char* string = page_directory_get_physical_address(SYSCALL_GET_PAGE_DIRECTORY(interruptFrame), (void*)SYSCALL_GET_ARG1(interruptFrame));
 
         tty_print(string);
     }
@@ -87,5 +87,5 @@ void syscall_handler(InterruptStackFrame* frame)
     break;
     }
 
-    frame->rax = out;
+    interruptFrame->rax = out;
 }

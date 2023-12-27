@@ -11,7 +11,7 @@ void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, B
 {
     Print(L"Loading kernel... ");
 	
-	PageDirectory* kernelPageDirectory = page_directory_create();
+	PageDirectory* kernelPageDirectory = page_directory_new();
 
 	EFI_FILE* file = file_system_open(imageHandle, L"/kernel/kernel.elf");
 	if (file == NULL)

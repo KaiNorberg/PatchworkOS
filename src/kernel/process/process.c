@@ -11,11 +11,11 @@ Process* process_new(void* entry)
     newProcess->firstMemoryBlock = 0;
     newProcess->lastMemoryBlock = 0;
 
-    newProcess->pageDirectory = page_directory_create();
+    newProcess->pageDirectory = page_directory_new();
 
     process_allocate_pages(newProcess, USER_ADDRESS_SPACE_STACK_TOP_PAGE, 1);
 
-    newProcess->context = context_new(entry, USER_ADDRESS_SPACE_STACK_TOP_PAGE + 0x1000, 0x18 | 3, 0x20 | 3, 0x202, newProcess->pageDirectory);
+    newProcess->interruptFrame = interrupt_frame_new(entry, USER_ADDRESS_SPACE_STACK_TOP_PAGE + 0x1000, 0x18 | 3, 0x20 | 3, 0x202, newProcess->pageDirectory);
     newProcess->state = PROCESS_STATE_READY;
 
     return newProcess;
@@ -23,8 +23,8 @@ Process* process_new(void* entry)
 
 void process_free(Process* process)
 {
-    context_free(process->context);
-    page_directory_erase(process->pageDirectory);
+    interrupt_frame_free(process->interruptFrame);
+    page_directory_free(process->pageDirectory);
 
     if (process->firstMemoryBlock != 0)
     {

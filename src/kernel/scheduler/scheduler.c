@@ -88,5 +88,5 @@ void scheduler_yield_to_user_space()
     
     io_pic_clear_mask(IRQ_PIT);
 
-    jump_to_user_space((void*)runningProcess->context->state.instructionPointer, (void*)runningProcess->context->state.stackPointer, (void*)runningProcess->context->state.cr3);
+    jump_to_user_space((void*)runningProcess->interruptFrame->instructionPointer, (void*)runningProcess->interruptFrame->stackPointer, (void*)runningProcess->interruptFrame->cr3);
 }

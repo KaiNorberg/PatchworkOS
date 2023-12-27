@@ -36,7 +36,7 @@ extern PageDirectory* kernelPageDirectory;
 
 void page_directory_init(EFIMemoryMap* memoryMap, Framebuffer* screenbuffer);
 
-PageDirectory* page_directory_create();
+PageDirectory* page_directory_new();
 
 void page_directory_remap_pages(PageDirectory* pageDirectory, void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint16_t flags);
 
@@ -44,4 +44,4 @@ void page_directory_remap(PageDirectory* pageDirectory, void* virtualAddress, vo
 
 void* page_directory_get_physical_address(PageDirectory* pageDirectory, void* virtualAddress);
 
-void page_directory_erase(PageDirectory* pageDirectory);
+void page_directory_free(PageDirectory* pageDirectory);

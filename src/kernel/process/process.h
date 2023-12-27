@@ -1,6 +1,6 @@
 #pragma once
 
-#include "context/context.h"
+#include "interrupt_frame/interrupt_frame.h"
 #include "page_directory/page_directory.h"
 
 #define PROCESS_STATE_RUNNING 0
@@ -19,7 +19,7 @@ typedef struct MemoryBlock
 
 typedef struct Process
 {
-    Context* context;
+    InterruptFrame* interruptFrame;
 
     PageDirectory* pageDirectory;
 

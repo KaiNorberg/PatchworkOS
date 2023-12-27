@@ -45,7 +45,7 @@ void page_directory_init(EFIMemoryMap* memoryMap, Framebuffer* screenbuffer)
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-PageDirectory* page_directory_create()
+PageDirectory* page_directory_new()
 {
     PageDirectory* pageDirectory = (PageDirectory*)page_allocator_request();
     memset(pageDirectory, 0, 0x1000);
@@ -198,7 +198,7 @@ void* page_directory_get_physical_address(PageDirectory* pageDirectory, void* vi
     return (void*)(physicalAddress + offset);
 }
 
-void page_directory_erase(PageDirectory* pageDirectory)
+void page_directory_free(PageDirectory* pageDirectory)
 {    
     PageDirectoryEntry pde;
 

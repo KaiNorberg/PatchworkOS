@@ -28,7 +28,7 @@ typedef struct __attribute__((aligned(0x1000)))
     PageDirectoryEntry entries[512];
 } PageDirectory;
 
-PageDirectory* page_directory_create();
+PageDirectory* page_directory_new();
 
 void page_directory_remap_pages(PageDirectory* pageDirectory, void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint16_t flags);
 
