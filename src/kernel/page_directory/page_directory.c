@@ -95,51 +95,32 @@ void page_directory_remap(PageDirectory* pageDirectory, void* virtualAddress, vo
     indexer >>= 9;
     uint64_t pdpIndex = indexer & 0x1ff;
 
-    PageDirectoryEntry pde = pageDirectory->entries[pdpIndex];
-    PageDirectory* pdp;
-    if (!PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
+    if (!PAGE_DIR_GET_FLAG(pageDirectory->entries[pdpIndex], PAGE_DIR_PRESENT))
     {
-        pdp = (PageDirectory*)page_allocator_request();
-        memset(pdp, 0, 0x1000);
+        void* page = (PageDirectory*)page_allocator_request();
+        memset(page, 0, 0x1000);
 
-        pde = PAGE_DIR_ENTRY_CREATE(pdp, flags);
-        pageDirectory->entries[pdpIndex] = pde;
+        pageDirectory->entries[pdpIndex] = PAGE_DIR_ENTRY_CREATE(page, flags);
     }
-    else
-    {        
-        pdp = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde));
-    }
-    
-    pde = pdp->entries[pdIndex];
-    PageDirectory* pd;
-    if (!PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
+    PageDirectory* pdp = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pageDirectory->entries[pdpIndex]);
+
+    if (!PAGE_DIR_GET_FLAG(pdp->entries[pdIndex], PAGE_DIR_PRESENT))
     {
-        pd = (PageDirectory*)page_allocator_request();
-        memset(pd, 0, 0x1000);
+        void* page = (PageDirectory*)page_allocator_request();
+        memset(page, 0, 0x1000);
 
-        pde = PAGE_DIR_ENTRY_CREATE(pd, flags);
-        pdp->entries[pdIndex] = pde;
+        pdp->entries[pdIndex] = PAGE_DIR_ENTRY_CREATE(page, flags);
     }
-    else
-    {          
-        pd = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde));
-    }
+    PageDirectory* pd = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pdp->entries[pdIndex]);
 
-    pde = pd->entries[ptIndex];
-    PageDirectory* pt;
-    if (!PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
+    if (!PAGE_DIR_GET_FLAG(pd->entries[ptIndex], PAGE_DIR_PRESENT))
     {
-        pt = (PageDirectory*)page_allocator_request();
-        memset(pt, 0, 0x1000);
+        void* page = (PageDirectory*)page_allocator_request();
+        memset(page, 0, 0x1000);
 
-        pde = PAGE_DIR_ENTRY_CREATE(pt, flags);
-        pd->entries[ptIndex] = pde;
+        pd->entries[ptIndex] = PAGE_DIR_ENTRY_CREATE(page, flags);
     }
-    else
-    {   
-
-        pt = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde));
-    }
+    PageDirectory* pt = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pd->entries[ptIndex]);
 
     if (PAGE_DIR_GET_FLAG(pt->entries[pIndex], PAGE_DIR_PRESENT))
     {
@@ -161,42 +142,25 @@ void* page_directory_get_physical_address(PageDirectory* pageDirectory, void* vi
     indexer >>= 9;
     uint64_t pdpIndex = indexer & 0x1ff;
 
-    PageDirectoryEntry pde = pageDirectory->entries[pdpIndex];
-    PageDirectory* pdp;
-    if (!PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
+    if (!PAGE_DIR_GET_FLAG(pageDirectory->entries[pdpIndex], PAGE_DIR_PRESENT))
     {
         return 0;
     }
-    else
-    {
-        pdp = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde));
-    }
-    
-    pde = pdp->entries[pdIndex];
-    PageDirectory* pd;
-    if (!PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
+    PageDirectory* pdp = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pageDirectory->entries[pdpIndex]);
+
+    if (!PAGE_DIR_GET_FLAG(pdp->entries[pdIndex], PAGE_DIR_PRESENT))
     {
         return 0;
     }
-    else
-    {          
-        pd = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde));
-    }
+    PageDirectory* pd = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pdp->entries[pdIndex]);
 
-    pde = pd->entries[ptIndex];
-    PageDirectory* pt;
-    if (!PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
+    if (!PAGE_DIR_GET_FLAG(pd->entries[ptIndex], PAGE_DIR_PRESENT))
     {
         return 0;
     }
-    else
-    {   
-        pt = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde));
-    }
+    PageDirectory* pt = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pd->entries[ptIndex]);
 
-    pde = pt->entries[pIndex];
-
-    uint64_t physicalAddress = PAGE_DIR_GET_ADDRESS(pde);
+    uint64_t physicalAddress = PAGE_DIR_GET_ADDRESS(pt->entries[pIndex]);
     return (void*)(physicalAddress + offset);
 }
 

@@ -6,12 +6,7 @@
 
 extern uint64_t sys_fork();
 
-void sys_test(const char* string)
-{
-    uint64_t rax = SYS_TEST; //SYS_TEST
-    uint64_t rdi = (uint64_t)string;
-    asm volatile("movq %0, %%rax;" "movq %1, %%rdi;" "int $0x80": : "r"(rax), "r"(rdi));    
-}
+extern uint64_t sys_test(const char* string);
 
 int main(int argc, char* argv[])
 {   
