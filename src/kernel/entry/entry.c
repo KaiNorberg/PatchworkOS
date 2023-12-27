@@ -28,8 +28,8 @@ void _start(BootInfo* bootInfo)
     tty_print("Loading fork_test...\n\r");
     load_program("/programs/fork_test/fork_test.elf");
 
-    //tty_print("Loading test...\n\r");
-    //load_program("/programs/test/test.elf");
+    tty_print("Loading test...\n\r");
+    load_program("/programs/test/test.elf");
 
     tty_print("\n\r");                                                                                      
 

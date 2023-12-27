@@ -15,6 +15,7 @@
 #include "hpet/hpet.h"
 #include "interrupts/interrupts.h"
 #include "time/time.h"
+#include "tss/tss.h"
 
 #include "../common.h"
 
@@ -33,6 +34,8 @@ void kernel_init(BootInfo* bootInfo)
     heap_init();
 
     gdt_init();
+
+    tss_init();
 
     acpi_init(bootInfo->xsdp);
 

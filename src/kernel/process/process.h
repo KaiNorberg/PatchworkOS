@@ -9,6 +9,10 @@
 #define PROCESS_STATE_BLOCKED 3
 #define PROCESS_STATE_KILLED 4
 
+#define USER_ADDRESS_SPACE_TOP 0x100000000
+#define USER_ADDRESS_SPACE_BOTTOM 0
+#define PROCESS_ADDRESS_SPACE_USER_STACK ((void*)(USER_ADDRESS_SPACE_TOP - 0x1000))
+
 typedef struct MemoryBlock
 {
     void* physicalAddress;
@@ -25,6 +29,8 @@ typedef struct Process
 
     MemoryBlock* firstMemoryBlock;
     MemoryBlock* lastMemoryBlock;
+
+    void* kernelStack;
 
     struct Process* next;
     struct Process* prev;

@@ -1,21 +1,18 @@
 #include "gdt.h"
 
 #include "tty/tty.h"
+#include "tss/tss.h"
 #include "string/string.h"
 #include "interrupt_stack/interrupt_stack.h"
 
 __attribute__((aligned(0x1000)))
 GDT gdt;
 
-__attribute__((aligned(0x1000)))
-TaskStateSegment tss;
-
 void gdt_init()
 {
     tty_start_message("GDT loading");
 
     memset(&gdt, 0, sizeof(GDT));
-    memset(&tss, 0, sizeof(TaskStateSegment));
 
     gdt.null.limitLow = 0;
     gdt.null.baseLow = 0;
@@ -52,12 +49,6 @@ void gdt_init()
     gdt.userData.flagsAndLimitHigh = 0xC0; //Flags = 0xC, LimitHigh = 0x0
     gdt.userData.baseHigh = 0;
 
-    memset(&tss, 0, sizeof(TaskStateSegment));
-    tss.rsp0 = (uint64_t)interrupt_stack_get_top();
-    tss.rsp1 = tss.rsp0;
-    tss.rsp2 = tss.rsp0;
-    tss.iopb = sizeof(TaskStateSegment);
-
     gdt.tss.limitLow = sizeof(TaskStateSegment);
     gdt.tss.baseLow = (uint16_t)((uint64_t)&tss);
     gdt.tss.baseLowerMiddle = (uint8_t)((uint64_t)&tss >> 16);
@@ -70,8 +61,6 @@ void gdt_init()
 	gdtDesc.size = sizeof(gdt) - 1;
 	gdtDesc.offset = (uint64_t)&gdt;
 	gdt_load(&gdtDesc);
-
-    tss_load();
 
     tty_end_message(TTY_MESSAGE_OK);
 }

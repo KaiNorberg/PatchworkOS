@@ -1,45 +1,5 @@
 [bits 64]
 
-%macro PUSH_ALL 0
-    push rax
-    push rbx
-    push rcx
-    push rdx
-    push rsi
-    push rdi
-    push rbp
-    push r8
-    push r9
-    push r10
-    push r11
-    push r12
-    push r13
-    push r14
-    push r15
-    mov rax, cr3
-    push rax
-%endmacro
-
-%macro POP_ALL 0
-    pop rax
-    mov cr3, rax
-    pop r15
-    pop r14
-    pop r13
-    pop r12
-    pop r11
-    pop r10
-    pop r9
-    pop r8
-    pop rbp
-    pop rdi
-    pop rsi
-    pop rdx
-    pop rcx
-    pop rbx
-    pop rax
-%endmacro
-
 %macro INT_NAME 1
     dq interrupt%1
 %endmacro
@@ -65,17 +25,48 @@ extern kernelPageDirectory
 common_interrupt:
     cld
 
-    PUSH_ALL
+    push rax
+    push rbx
+    push rcx
+    push rdx
+    push rsi
+    push rdi
+    push rbp
+    push r8
+    push r9
+    push r10
+    push r11
+    push r12
+    push r13
+    push r14
+    push r15
+    mov rax, cr3
+    push rax
 	mov rbp, rsp
 
-    mov rbx, kernelPageDirectory
-    mov rax, [rbx]
+    mov rax, [kernelPageDirectory]
     mov cr3, rax
 
     mov rdi, rbp
     call interrupt_handler
 
-    POP_ALL
+    pop rax
+    mov cr3, rax
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop r11
+    pop r10
+    pop r9
+    pop r8
+    pop rbp
+    pop rdi
+    pop rsi
+    pop rdx
+    pop rcx
+    pop rbx
+    pop rax
     add rsp, 16
 
     iretq

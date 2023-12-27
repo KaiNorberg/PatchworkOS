@@ -6,6 +6,7 @@
 #include "string/string.h"
 #include "io/io.h"
 #include "queue/queue.h"
+#include "tss/tss.h"
 
 Process* runningProcess;
 
@@ -64,9 +65,14 @@ void scheduler_schedule()
             queue_push(readyProcessQueue, runningProcess);            
         }
 
-        runningProcess = nextProcess;
-        runningProcess->state = PROCESS_STATE_RUNNING;       
+        scheduler_switch(nextProcess);
     }
+}
+
+void scheduler_switch(Process* process)
+{
+    runningProcess = process;
+    runningProcess->state = PROCESS_STATE_RUNNING;
 }
 
 Process* scheduler_get_running_process()

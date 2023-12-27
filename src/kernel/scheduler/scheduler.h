@@ -12,6 +12,8 @@ void scheduler_append(Process* process);
 
 void scheduler_remove(Process* process);
 
+void scheduler_switch(Process* process);
+
 void scheduler_schedule();
 
 Process* scheduler_get_running_process();

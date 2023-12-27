@@ -13,11 +13,11 @@ Process* process_new(void* entry)
 
     newProcess->pageDirectory = page_directory_new();
 
-    process_allocate_pages(newProcess, USER_ADDRESS_SPACE_STACK_TOP_PAGE, 1);
+    process_allocate_pages(newProcess, PROCESS_ADDRESS_SPACE_USER_STACK, 1);
 
-    newProcess->interruptFrame = interrupt_frame_new(entry, USER_ADDRESS_SPACE_STACK_TOP_PAGE + 0x1000, 0x18 | 3, 0x20 | 3, 0x202, newProcess->pageDirectory);
+    newProcess->interruptFrame = interrupt_frame_new(entry, PROCESS_ADDRESS_SPACE_USER_STACK + 0x1000, 0x18 | 3, 0x20 | 3, 0x202, newProcess->pageDirectory);
     newProcess->state = PROCESS_STATE_READY;
-
+    
     return newProcess;
 }
 

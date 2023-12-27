@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#include "tss/tss.h"
+
 typedef struct __attribute__((packed))
 {
     uint16_t size;
@@ -32,19 +34,6 @@ typedef struct __attribute__((packed))
 
 typedef struct __attribute__((packed))
 {
-    uint32_t reserved1;
-    uint64_t rsp0;
-    uint64_t rsp1;
-    uint64_t rsp2;
-    uint64_t reserved2;
-    uint64_t ist[7];
-    uint64_t reserved3;
-    uint16_t reserved4;
-    uint16_t iopb;
-} TaskStateSegment;
-
-typedef struct __attribute__((packed))
-{
     SegmentDescriptor null;
     SegmentDescriptor kernelCode;
     SegmentDescriptor kernelData;
@@ -55,9 +44,6 @@ typedef struct __attribute__((packed))
 
 extern GDT gdt;
 
-extern TaskStateSegment tss;
-
 extern void gdt_load(GDTDesc* descriptor);
-extern void tss_load();
 
 void gdt_init();

@@ -1,6 +1,6 @@
 [bits 64]
+
 global gdt_load
-global tss_load
 
 section .text
 
@@ -17,9 +17,4 @@ gdt_load:
     mov fs, ax
     mov gs, ax
     mov ss, ax
-    ret
-
-tss_load:
-    mov ax, 0x28
-    ltr ax
     ret

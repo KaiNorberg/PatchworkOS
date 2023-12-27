@@ -141,9 +141,11 @@ void page_directory_remap(PageDirectory* pageDirectory, void* virtualAddress, vo
         pt = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde));
     }
 
-    pde = pt->entries[pIndex];
-    pde = PAGE_DIR_ENTRY_CREATE(physicalAddress, flags);
-    pt->entries[pIndex] = pde;
+    if (PAGE_DIR_GET_FLAG(pt->entries[pIndex], PAGE_DIR_PRESENT))
+    {
+        page_directory_invalidate_page(virtualAddress);
+    }
+    pt->entries[pIndex] = PAGE_DIR_ENTRY_CREATE(physicalAddress, flags);
 }
 
 void* page_directory_get_physical_address(PageDirectory* pageDirectory, void* virtualAddress)
