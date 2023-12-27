@@ -1,12 +1,12 @@
 # PatchworkOS [![License](https://img.shields.io/badge/licence-MIT-green)](https://github.com/Kaj9296/PatchworkOS/blob/main/LICENSE)
 
-Patchwork is a hobbyist operating system written primarily in C.
+Patchwork is a hobbyist Unix-like OS written primarily in C with a hybrid kernel.
 
 ***
 
 **Keep in mind that Patchwork is currently in a very early stage of development and that these instructions may be incomplete.**
 
-## Getting Started
+## Setup
 
 <ins>**1. Cloning (downloading) this repository**</ins>
 
@@ -26,7 +26,11 @@ There are four ways to run Patchwork.
 2. Download [QEMU](https://www.qemu.org/) on your Windows machine and then use the [run.bat](https://github.com/Kaj9296/PatchworkOS/blob/main/run.bat) file.
 3. Download [QEMU](https://www.qemu.org/) on your Linux machine and then use the  ```python build.py --run``` command.
 4. Run the created .img file in a virtual machine of your choice.
-  
+
+## Roadmap
+
+The current long term goal is to create a desktop environment and to play DOOM.
+
 ## Contributing
 
-Patchwork is intended to by my project, thus contributing major features or similar is not what I'm looking for. However, if you have the patience, you are welcome to try to fix any bugs or other issues you find. There are no strict guidelines beyond what's previously stated due to the small scale of the project.
+Patchwork is intended as a personal project, therefor contributions to add features are unwanted, however contributions to fix bugs or address issues are welcome. There are no strict guidelines due to the small scale of the project.
