@@ -30,8 +30,6 @@ typedef struct Process
     MemoryBlock* firstMemoryBlock;
     MemoryBlock* lastMemoryBlock;
 
-    void* kernelStack;
-
     struct Process* next;
     struct Process* prev;
     uint8_t state;
