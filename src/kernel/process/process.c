@@ -21,6 +21,24 @@ Process* process_new(void* entry)
     return newProcess;
 }
 
+Process* process_kernel_new(void* entry)
+{
+    Process* newProcess = kmalloc(sizeof(Process));
+    memset(newProcess, 0, sizeof(Process));
+
+    newProcess->firstMemoryBlock = 0;
+    newProcess->lastMemoryBlock = 0;
+
+    newProcess->pageDirectory = kernelPageDirectory;
+
+    void* stackBottom = page_allocator_request();
+
+    newProcess->interruptFrame = interrupt_frame_new(entry, stackBottom + 0x1000, 0x8, 0x10, 0x202, kernelPageDirectory);
+    newProcess->state = PROCESS_STATE_READY;
+    
+    return newProcess;
+}
+
 void process_free(Process* process)
 {
     interrupt_frame_free(process->interruptFrame);

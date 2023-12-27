@@ -25,7 +25,7 @@ void idt_init()
 
     for (uint16_t vector = 0; vector < 256; vector++) 
     {        
-        idt_set_descriptor(vector, interrupt_vectors[vector], 0xEE);
+        idt_set_descriptor(vector, interrupt_vectors[vector], IDT_INTERRUPT);
     }
 
     remap_pic();

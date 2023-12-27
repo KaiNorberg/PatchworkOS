@@ -2,6 +2,9 @@
 
 #include <stdint.h>
 
+#define IDT_INTERRUPT 0xEE //Disables interrupts
+#define IDT_TRAP 0xEF //Does not disable interrupts
+
 typedef struct __attribute__((packed))
 {
 	uint16_t isrLow;      

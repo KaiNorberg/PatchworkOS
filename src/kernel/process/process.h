@@ -35,7 +35,9 @@ typedef struct Process
     uint8_t state;
 } Process;
 
-Process* process_new(void* entry);
+Process* process_new(void* entry); //Creates a process that runs in user space
+
+Process* process_kernel_new(void* entry); //Creates a process that runs in kernel space
 
 void process_free(Process* process);
 

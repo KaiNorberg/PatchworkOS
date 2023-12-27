@@ -33,7 +33,7 @@ void _start(BootInfo* bootInfo)
 
     tty_print("\n\r");                                                                                      
 
-    tty_print("Jumping to user space...\n\r");
+    tty_print("Yielding to user space...\n\r");
     
     tty_print("\n\r");
 

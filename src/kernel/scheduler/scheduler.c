@@ -9,6 +9,7 @@
 #include "tss/tss.h"
 
 Process* runningProcess;
+Process* idleProcess;
 
 Queue* readyProcessQueue;
 
@@ -18,7 +19,8 @@ void scheduler_init()
     
     readyProcessQueue = queue_new();
 
-    runningProcess = 0;
+    idleProcess = process_kernel_new(scheduler_idle_process);
+    runningProcess = idleProcess;
 
     tty_end_message(TTY_MESSAGE_OK);
 }
@@ -37,7 +39,7 @@ void scheduler_remove(Process* process)
 {
     if (process == runningProcess)
     {
-        runningProcess = 0;
+        runningProcess = idleProcess;
         return;
     }
 
@@ -56,13 +58,19 @@ void scheduler_remove(Process* process)
 
 void scheduler_schedule()
 {
-    Process* nextProcess = queue_pop(readyProcessQueue);    
-    if (nextProcess != 0)
-    {        
-        if (runningProcess != 0)
+    if (queue_length(readyProcessQueue) == 0)
+    {
+        scheduler_switch(idleProcess);
+        return;
+    }
+    else
+    {
+        Process* nextProcess = queue_pop(readyProcessQueue);    
+
+        if (runningProcess != idleProcess)
         {
             runningProcess->state = PROCESS_STATE_READY;
-            queue_push(readyProcessQueue, runningProcess);            
+            queue_push(readyProcessQueue, runningProcess);
         }
 
         scheduler_switch(nextProcess);
@@ -86,13 +94,4 @@ Process* scheduler_get_running_process()
     {
         return runningProcess;
     }
-}
-
-void scheduler_yield_to_user_space()
-{
-    scheduler_schedule();
-    
-    io_pic_clear_mask(IRQ_PIT);
-
-    jump_to_user_space((void*)runningProcess->interruptFrame->instructionPointer, (void*)runningProcess->interruptFrame->stackPointer, (void*)runningProcess->interruptFrame->cr3);
 }

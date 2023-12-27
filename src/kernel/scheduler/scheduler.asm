@@ -1,25 +1,18 @@
 [bits 64]
-global jump_to_user_space
+global scheduler_yield_to_user_space
+global scheduler_idle_process
 
-codeSegment equ 0x18 | 3
-dataSegment equ 0x20 | 3
+extern io_pic_clear_mask
+extern interrupt_stack_get_top
 
-; rdi = address to jump to
-; rsi = address of task stack top
-; rdx = address space
-jump_to_user_space:
-	mov ax, dataSegment
-	mov ds, ax
-	mov es, ax 
-	mov fs, ax 
-	mov gs, ax
+section .text
 
-	mov rsp, rsi
-	mov cr3, rdx
-
-	push qword dataSegment
-	push qword rsi
-	push qword 0x202
-	push qword codeSegment
-	push qword rdi
-	iretq
+scheduler_yield_to_user_space:
+	call interrupt_stack_get_top
+	mov rsp, rax
+	
+	mov rdi, 0
+	call io_pic_clear_mask
+scheduler_idle_process:
+	hlt
+	jmp scheduler_idle_process
