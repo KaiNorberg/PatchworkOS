@@ -16,11 +16,21 @@
 #include "time/time.h"
 #include "tss/tss.h"
 #include "apic/apic.h"
+#include "multiprocessing/multiprocessing.h"
 
 #include "../common.h"
 
 extern uint64_t _kernelStart;
 extern uint64_t _kernelEnd;
+
+void kernel_core_entry()
+{  
+    tty_print("Hello from other core!\n\r");
+    while(1)
+    {
+        asm volatile("hlt");
+    }
+}
 
 void kernel_init(BootInfo* bootInfo)
 {    
@@ -50,4 +60,6 @@ void kernel_init(BootInfo* bootInfo)
     time_init();
 
     scheduler_init();
+
+    multiprocessing_init(kernel_core_entry);
 }

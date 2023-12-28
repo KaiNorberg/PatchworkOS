@@ -23,7 +23,7 @@ void _start(BootInfo* bootInfo)
 {   
     kernel_init(bootInfo);
 
-    tty_print("\n\r");
+    /*tty_print("\n\r");
 
     tty_print("Loading fork_test...\n\r");
     load_program("/programs/fork_test/fork_test.elf");
@@ -41,7 +41,8 @@ void _start(BootInfo* bootInfo)
 
     scheduler_yield_to_user_space();
 
-    tty_print("\nBack in the main task, if you see this something has gone very wrong!\n\n\r");
+    tty_print("\nBack in the main task, if you see this something has gone very wrong!\n\n\r");*/
+    tty_print("Hello from _start!\n\r");
 
     while (1)
     {
