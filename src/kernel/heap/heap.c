@@ -21,7 +21,7 @@ void heap_init()
 {    
     tty_start_message("Heap initializing");
 
-    firstBlock = (BlockHeader*)page_allocator_request(); 
+    firstBlock = (BlockHeader*)page_allocator_request();
     lastBlock = firstBlock;
 
     firstBlock->size = 0x1000 - sizeof(BlockHeader);

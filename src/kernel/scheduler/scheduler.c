@@ -7,6 +7,7 @@
 #include "io/io.h"
 #include "queue/queue.h"
 #include "tss/tss.h"
+#include "idt/idt.h"
 
 Process* runningProcess;
 Process* idleProcess;

@@ -10,6 +10,7 @@
 #include "string/string.h"
 #include "time/time.h"
 #include "heap/heap.h"
+#include "idt/idt.h"
 
 #include "../common.h"
 
@@ -75,7 +76,7 @@ void irq_handler(InterruptFrame* interruptFrame)
         time_tick();
 
         if (time_get_tick() % (TICKS_PER_SECOND / 2) == 0) //For testing
-        {
+        {   
             interrupt_frame_copy(scheduler_get_running_process()->interruptFrame, interruptFrame);
             scheduler_schedule();    
             interrupt_frame_copy(interruptFrame, scheduler_get_running_process()->interruptFrame);
@@ -122,7 +123,7 @@ void exception_handler(InterruptFrame* interruptFrame)
 
     tty_set_scale(scale);
 
-    //tty_clear();
+    tty_clear();
 
     tty_set_background(black);
     tty_set_foreground(white);

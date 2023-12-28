@@ -73,7 +73,7 @@ void debug_panic(const char* message)
 
     tty_set_scale(scale);
 
-    //tty_clear();
+    tty_clear();
 
     tty_set_background(black);
     tty_set_foreground(white);

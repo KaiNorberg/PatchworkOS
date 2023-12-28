@@ -2,6 +2,7 @@
 
 #include "interrupts/interrupts.h"
 #include "tty/tty.h"
+#include "hpet/hpet.h"
 
 uint64_t ticksSinceBoot;
 
@@ -16,12 +17,17 @@ void time_init()
 
 uint64_t time_get_seconds()
 {
-    return ticksSinceBoot / TICKS_PER_SECOND;
+    return time_get_nanoseconds() / NANOSECONDS_PER_SECOND;
 }
 
 uint64_t time_get_milliseconds()
 {
-    return (ticksSinceBoot * 1000) / (TICKS_PER_SECOND);
+    return time_get_nanoseconds() / (NANOSECONDS_PER_SECOND / 1000);
+}
+
+uint64_t time_get_nanoseconds()
+{
+    return ticksSinceBoot * (NANOSECONDS_PER_SECOND / TICKS_PER_SECOND);
 }
 
 uint64_t time_get_tick()

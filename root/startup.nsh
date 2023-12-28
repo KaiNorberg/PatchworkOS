@@ -14,7 +14,7 @@ if exist fs0:\efi\boot\bootx64.efi then
  goto END
 endif
 
-if exist fs1:\BOOT\bootx64.efi then
+if exist fs1:\efi\boot\bootx64.efi then
  fs1:
  echo Found bootloader on fs1:
  efi\boot\bootx64.efi

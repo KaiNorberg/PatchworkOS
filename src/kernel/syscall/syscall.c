@@ -11,11 +11,6 @@
 
 #include "../common.h"
 
-void syscall_init()
-{
-
-}
-
 void syscall_handler(InterruptFrame* interruptFrame)
 {    
     uint64_t out = 0;
@@ -33,7 +28,7 @@ void syscall_handler(InterruptFrame* interruptFrame)
     }
     break;
     case SYS_FORK:
-    {        
+    {
         Process* child = process_new((void*)interruptFrame->instructionPointer);
         interrupt_frame_copy(child->interruptFrame, interruptFrame);
         child->interruptFrame->rax = 0;

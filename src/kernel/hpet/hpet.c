@@ -15,10 +15,10 @@ void hpet_init(uint64_t hertz)
 {    
     tty_start_message("HPET initializing");
 
-    hpet = (HPET*)acpi_find("HPET");
+    hpet = (HPET*)rsdt_lookup("HPET");
     if (hpet == 0)
     {
-        debug_panic("Hardware is incompatible, unable to find HPET");
+        tty_print("Hardware is incompatible, unable to find HPET");
         tty_end_message(TTY_MESSAGE_ER);
     }
     
@@ -38,6 +38,11 @@ void hpet_init(uint64_t hertz)
     hpet_write(HPET_TIMER_COMPARATOR(0), ticks);
     
     tty_end_message(TTY_MESSAGE_OK);
+}
+
+uint64_t hpet_get_nanosecond_period()
+{
+    return hpetPeriod / 1000000;
 }
 
 void hpet_write(uintptr_t reg, uint64_t value)

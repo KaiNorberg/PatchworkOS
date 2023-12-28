@@ -3,7 +3,7 @@
 
 #include "gop/gop.h"
 #include "psf/psf.h"
-#include "rsdp/rsdp.h"
+#include "rsdt/rsdt.h"
 #include "loader/loader.h"
 #include "ram_disk/ram_disk.h"
 #include "file_system/file_system.h"
@@ -24,7 +24,7 @@ EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
 	BootInfo bootInfo;
 	bootInfo.screenbuffer = &screenbuffer;
 	bootInfo.font = &font;
-	bootInfo.rsdp = rsdp_get(systemTable);
+	bootInfo.rsdp = rsdt_get(systemTable);
 	bootInfo.runtimeServices = systemTable->RuntimeServices;
 	bootInfo.ramDiskRoot = &ramDiskRoot;
 

@@ -7,9 +7,7 @@
 RawDirectory* rootDir;
 
 void print_directory(RawDirectory* directory, uint64_t indentation)
-{    
-    tty_start_message("File system initializing");
-
+{
     for (int j = 0; j < indentation * 4; j++)
     {
         tty_put(' ');
@@ -31,13 +29,15 @@ void print_directory(RawDirectory* directory, uint64_t indentation)
         tty_print(directory->files[i].name);
         tty_put('\n');
     }
-
-    tty_end_message(TTY_MESSAGE_OK);
 }
 
 void file_system_init(RawDirectory* rootDirectory)
-{
+{    
+    tty_start_message("File system initializing");
+
     rootDir = rootDirectory;
+
+    tty_end_message(TTY_MESSAGE_OK);
 }
 
 uint8_t file_system_compare_names(const char* nameStart, const char* nameEnd, const char* otherName)

@@ -9,13 +9,13 @@
 #include "file_system/file_system.h"
 #include "page_allocator/page_allocator.h"
 #include "scheduler/scheduler.h"
-#include "acpi/acpi.h"
 #include "io/io.h"
 #include "interrupt_stack/interrupt_stack.h"
 #include "hpet/hpet.h"
 #include "interrupts/interrupts.h"
 #include "time/time.h"
 #include "tss/tss.h"
+#include "apic/apic.h"
 
 #include "../common.h"
 
@@ -31,25 +31,23 @@ void kernel_init(BootInfo* bootInfo)
 
     page_directory_init(bootInfo->memoryMap, bootInfo->framebuffer);
 
+    rsdt_init(bootInfo->xsdp);
+
+    apic_init();
+
     heap_init();
 
     gdt_init();
 
     tss_init();
 
-    acpi_init(bootInfo->xsdp);
-
     idt_init(); 
     
     file_system_init(bootInfo->rootDirectory);
     
-    syscall_init();
-
     hpet_init(TICKS_PER_SECOND);
 
     time_init();
 
     scheduler_init();
-
-    io_pic_clear_mask(IRQ_KEYBOARD);
 }

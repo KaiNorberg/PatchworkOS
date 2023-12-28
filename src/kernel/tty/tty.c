@@ -36,6 +36,15 @@ void tty_init(Framebuffer* screenbuffer, PSFFont* screenFont)
     tty_clear();
 }
 
+void tty_scroll(uint64_t distance)
+{
+    cursorPos.y -= distance;
+
+    uint64_t offset = frontbuffer->pixelsPerScanline * distance;
+    memcpy(frontbuffer->base, frontbuffer->base + offset, frontbuffer->size - offset * sizeof(Pixel));
+    memclr(frontbuffer->base + frontbuffer->pixelsPerScanline * (frontbuffer->height - distance), offset * sizeof(Pixel));
+}
+
 void tty_put(uint8_t chr)
 {
     switch (chr)
@@ -44,6 +53,10 @@ void tty_put(uint8_t chr)
     {
         cursorPos.x = 0;
         cursorPos.y += 16 * textScale;
+        if (cursorPos.y + 16 * textScale >= frontbuffer->height)
+        {
+            tty_scroll(16 * textScale);
+        }
     }
     break;
     case '\r':
@@ -144,7 +157,7 @@ void tty_start_message(const char* message)
 {
     tty_print("[..] ");
     tty_print(message);
-    tty_print("...");
+    tty_print("... ");
 }
 
 void tty_end_message(uint64_t status)
@@ -189,5 +202,5 @@ void tty_end_message(uint64_t status)
     foreground.b = 255;
     cursorPos.x = oldCursorX;
 
-    tty_print(" done!\n\r");
+    tty_print("done!\n\r");
 }

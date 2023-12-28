@@ -1,8 +1,8 @@
-#include "rsdp.h"
+#include "rsdt.h"
 
 #include "string/string.h"
 
-void* rsdp_get(EFI_SYSTEM_TABLE* systemTable)
+void* rsdt_get(EFI_SYSTEM_TABLE* systemTable)
 {
     Print(L"Retrieving RSDP... ");
 

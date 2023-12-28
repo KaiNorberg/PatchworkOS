@@ -106,7 +106,7 @@ void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer)
     } 
     if (pageMap == 0)
     {
-        debug_panic("Unable to find suitable location for the page map!");    
+        tty_print("Unable to find suitable location for the page map");    
         tty_end_message(TTY_MESSAGE_ER);
     }
 

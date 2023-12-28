@@ -1,6 +1,6 @@
 #pragma once
 
-#include "acpi/acpi.h"
+#include "rsdt/rsdt.h"
 
 #define HPET_COUNTER_CLOCK_OFFSET 0x20
 
@@ -22,7 +22,7 @@ typedef struct __attribute__((packed))
  
 typedef struct __attribute__((packed))
 {   
-    DescriptionHeader header;
+    SDTHeader header;
     uint8_t hardware_rev_id;
     uint8_t comparator_count : 5;
     uint8_t counter_size : 1;
@@ -36,6 +36,8 @@ typedef struct __attribute__((packed))
 } HPET;
 
 void hpet_init(uint64_t hertz);
+
+uint64_t hpet_get_nanosecond_period();
 
 void hpet_write(uintptr_t reg, uint64_t value);
 

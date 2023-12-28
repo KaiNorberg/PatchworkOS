@@ -45,6 +45,6 @@ void _start(BootInfo* bootInfo)
 
     while (1)
     {
-        asm volatile("hlt");       
+        asm volatile("hlt");
     }
 }
