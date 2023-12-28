@@ -1,6 +1,6 @@
 # PatchworkOS [![License](https://img.shields.io/badge/licence-MIT-green)](https://github.com/Kaj9296/PatchworkOS/blob/main/LICENSE)
 
-Patchwork is a hobbyist Unix-like OS written primarily in C with a hybrid kernel.
+Patchwork is a hobbyist Unix-like OS written primarily in C with a microkernel.
 
 ***
 
