@@ -5,6 +5,7 @@
 #include "page_directory/page_directory.h"
 #include "io/io.h"
 #include "interrupts/interrupts.h"
+#include "utils/utils.h"
 
 HPET* hpet;
 
@@ -45,19 +46,19 @@ uint64_t hpet_get_nanosecond_period()
     return hpetPeriod / 1000000;
 }
 
-void hpet_write(uintptr_t reg, uint64_t value)
+void hpet_write(uint64_t reg, uint64_t value)
 {
-    *((volatile uint64_t*)(hpetBase + reg)) = value;
+    WRITE_64(hpetBase + reg, value);
 }
 
-uint64_t hpet_read(uintptr_t reg)
+uint64_t hpet_read(uint64_t reg)
 {
-    return *((volatile uint64_t*)(hpetBase + reg));
+    return READ_64(hpetBase + reg);
 }
 
-void hpet_sleep(int ms)
+void hpet_sleep(uint64_t milliseconds)
 {
-    uint64_t target = hpet_read(HPET_MAIN_COUNTER_VALUE) + (ms * 1000000000000) / hpetPeriod;
+    uint64_t target = hpet_read(HPET_MAIN_COUNTER_VALUE) + (milliseconds * 1000000000000) / hpetPeriod;
     while (!(hpet_read(HPET_MAIN_COUNTER_VALUE) >= target))
     {
 

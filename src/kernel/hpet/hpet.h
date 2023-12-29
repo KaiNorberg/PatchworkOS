@@ -22,7 +22,7 @@ typedef struct __attribute__((packed))
  
 typedef struct __attribute__((packed))
 {   
-    SDTHeader header;
+    SdtHeader header;
     uint8_t hardware_rev_id;
     uint8_t comparator_count : 5;
     uint8_t counter_size : 1;
@@ -39,8 +39,8 @@ void hpet_init(uint64_t hertz);
 
 uint64_t hpet_get_nanosecond_period();
 
-void hpet_write(uintptr_t reg, uint64_t value);
+void hpet_write(uint64_t reg, uint64_t value);
 
-uint64_t hpet_read(uintptr_t reg);
+uint64_t hpet_read(uint64_t reg);
 
-void hpet_sleep(int ms);
+void hpet_sleep(uint64_t milliseconds);

@@ -31,8 +31,8 @@ void page_directory_init(EFIMemoryMap* memoryMap, Framebuffer* screenbuffer)
         page_directory_remap_pages(kernelPageDirectory, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_DIR_READ_WRITE);
 	}
     page_directory_remap_pages(kernelPageDirectory, screenbuffer->base, screenbuffer->base, GET_SIZE_IN_PAGES(screenbuffer->size), PAGE_DIR_READ_WRITE);
-
     PAGE_DIRECTORY_LOAD_SPACE(kernelPageDirectory);
+
     for (uint64_t i = 0; i < efiMemoryMap->descriptorAmount; i++)
     {
         EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)efiMemoryMap->base + (i * efiMemoryMap->descriptorSize));

@@ -4,6 +4,7 @@ global gdt_load
 
 section .text
 
+;rdi = gdt descriptor
 gdt_load:    
     lgdt  [rdi]
     push 0x08

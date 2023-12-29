@@ -16,7 +16,7 @@
 #include "time/time.h"
 #include "tss/tss.h"
 #include "apic/apic.h"
-#include "multiprocessing/multiprocessing.h"
+#include "smp/smp.h"
 
 #include "../common.h"
 
@@ -60,6 +60,10 @@ void kernel_init(BootInfo* bootInfo)
     time_init();
 
     scheduler_init();
+    
+    //Disable pic, temporary code
+    io_outb(PIC1_DATA, 0xFF);
+    io_outb(PIC2_DATA, 0xFF);
 
-    multiprocessing_init(kernel_core_entry);
+    smp_init(kernel_core_entry);
 }

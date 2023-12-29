@@ -10,18 +10,13 @@
 
 extern void* interrupt_vectors[256];
 
-IDTEntry idt[256];
-
-IDTR idtr;
+IdtEntry idt[256];
 
 extern uint64_t syscall_interrupt;
 
 void idt_init() 
 {    
     tty_start_message("IDT initializing");
-
-    idtr.size = (sizeof(IDTEntry) * 256) - 1;
-    idtr.offset = (uint64_t)&idt;
 
     for (uint16_t vector = 0; vector < 256; vector++) 
     {        
@@ -34,8 +29,12 @@ void idt_init()
     io_outb(PIC2_DATA, 0b11111111);
 
     io_pic_clear_mask(IRQ_CASCADE);
-    
-    asm volatile ("lidt %0" : : "m"(idtr));
+
+    IdtDesc idtDesc;
+    idtDesc.size = (sizeof(IdtEntry) * 256) - 1;
+    idtDesc.offset = (uint64_t)&idt;
+
+    asm volatile ("lidt %0" : : "m"(idtDesc));
 
     tty_end_message(TTY_MESSAGE_OK);
 }
@@ -75,7 +74,7 @@ void remap_pic()
 
 void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags) 
 {
-    IDTEntry* descriptor = &idt[vector];
+    IdtEntry* descriptor = &idt[vector];
  
     descriptor->isrLow = (uint64_t)isr & 0xFFFF;
     descriptor->codeSegment = GDT_OFFSET_KERNEL_CODE;

@@ -13,7 +13,7 @@ typedef struct __attribute__((packed))
     uint64_t xsdtAddress;
     uint8_t extendedChecksum;
     uint8_t reserved[3];
-} XSDT;
+} Xsdt;
 
 typedef struct __attribute__((packed))
 {
@@ -26,8 +26,8 @@ typedef struct __attribute__((packed))
     uint32_t oemRevision;
     uint32_t creatorID;
     uint32_t creatorRevision; 
-} SDTHeader;
+} SdtHeader;
 
-void rsdt_init(XSDT* xsdp);
+void rsdt_init(Xsdt* xsdp);
 
-SDTHeader* rsdt_lookup(const char* signature);
+SdtHeader* rsdt_lookup(const char* signature);

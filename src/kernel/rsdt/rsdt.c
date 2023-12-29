@@ -2,24 +2,24 @@
 
 #include "tty/tty.h"
 
-SDTHeader* xsdt; 
+SdtHeader* xsdt; 
 
-void rsdt_init(XSDT* xsdp)
+void rsdt_init(Xsdt* xsdp)
 {
     tty_start_message("RSDT initializing");
 
-    xsdt = (SDTHeader*)xsdp->xsdtAddress;
+    xsdt = (SdtHeader*)xsdp->xsdtAddress;
 
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-SDTHeader* rsdt_lookup(const char* signature)
+SdtHeader* rsdt_lookup(const char* signature)
 {
-    uint64_t entryAmount = (xsdt->length - sizeof(SDTHeader)) / 8;
+    uint64_t entryAmount = (xsdt->length - sizeof(SdtHeader)) / 8;
 
     for (uint64_t i = 0; i < entryAmount; i++)
     {
-        SDTHeader* header = (SDTHeader*)*(uint64_t*)((uint64_t)xsdt + sizeof(SDTHeader) + i * 8);
+        SdtHeader* header = (SdtHeader*)*(uint64_t*)((uint64_t)xsdt + sizeof(SdtHeader) + i * 8);
 
         for (int j = 0; j < 4; j++)
         {

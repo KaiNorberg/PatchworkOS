@@ -14,15 +14,15 @@ typedef struct __attribute__((packed))
 	uint16_t isrMid;
 	uint32_t isrHigh;
 	uint32_t reserved;
-} IDTEntry;
+} IdtEntry;
 
 typedef struct __attribute__((packed))
 {
 	uint16_t size;
 	uint64_t offset;
-} IDTR;
+} IdtDesc;
 
-extern IDTEntry idt[];
+extern IdtEntry idt[];
 
 void idt_init();
 

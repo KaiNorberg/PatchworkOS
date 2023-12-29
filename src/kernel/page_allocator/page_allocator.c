@@ -122,6 +122,8 @@ void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer)
 
     page_allocator_lock_pages(pageMap, GET_SIZE_IN_PAGES(pageMapByteSize));
 
+    page_allocator_lock_pages(0, 8);
+
     tty_end_message(TTY_MESSAGE_OK);
 }
 
@@ -184,7 +186,7 @@ void* page_allocator_request_amount(uint64_t amount)
 }
 
 uint8_t page_allocator_get_status(void* address)
-{            
+{   
     uint64_t index = (uint64_t)address / (uint64_t)0x1000;
     return (pageMap[index / 64] >> (index % 64)) & 1;
 }

@@ -6,13 +6,13 @@
 #include "interrupt_stack/interrupt_stack.h"
 
 __attribute__((aligned(0x1000)))
-GDT gdt;
+Gdt gdt;
 
 void gdt_init()
 {
-    tty_start_message("GDT loading");
+    tty_start_message("Gdt loading");
 
-    memset(&gdt, 0, sizeof(GDT));
+    memset(&gdt, 0, sizeof(Gdt));
 
     gdt.null.limitLow = 0;
     gdt.null.baseLow = 0;
@@ -57,7 +57,7 @@ void gdt_init()
     gdt.tss.baseUpperMiddle = (uint8_t)((uint64_t)&tss >> (16 + 8));
     gdt.tss.baseHigh = (uint32_t)((uint64_t)&tss >> (16 + 8 + 8));
 
-    static GDTDesc gdtDesc;
+    static GdtDesc gdtDesc;
 	gdtDesc.size = sizeof(gdt) - 1;
 	gdtDesc.offset = (uint64_t)&gdt;
 	gdt_load(&gdtDesc);
