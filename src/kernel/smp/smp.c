@@ -5,12 +5,52 @@
 #include "string/string.h"
 #include "hpet/hpet.h"
 #include "page_directory/page_directory.h"
+#include "page_allocator/page_allocator.h"
 #include "gdt/gdt.h"
 #include "idt/idt.h"
 #include "utils/utils.h"
 
+#include "atomic/atomic.h"
+
 uint8_t cpuAmount;
+atomic_uint8_t readyCpuAmount;
 Cpu cpus[255];
+
+uint8_t smp_enable_cpu(uint8_t cpuId, uint8_t lapicId)
+{
+    if (cpus[cpuId].present)
+    {
+        return 0;
+    }
+
+    cpuAmount++;
+
+    cpus[cpuId].present = 1;
+    cpus[cpuId].id = cpuId;
+    cpus[cpuId].lapicId = lapicId;
+
+    if (lapic_current_cpu() != cpuId)
+    {
+        WRITE_64(SMP_TRAMPOLINE_DATA_STACK_TOP, (uint64_t)page_allocator_request() + 0x1000);
+
+        lapic_send_init(lapicId);
+        hpet_sleep(10);
+        lapic_send_sipi(lapicId, ((uint64_t)SMP_TRAMPOLINE_LOADED_START) / 0x1000);
+
+        uint64_t timeout = 1000;
+        while (cpuAmount != readyCpuAmount) 
+        {
+            hpet_sleep(1);
+            timeout--;
+            if (timeout == 0)
+            {
+                return 0;
+            }
+        }
+    }
+
+    return 1;
+}
 
 void smp_init(void* entry)
 {    
@@ -18,7 +58,7 @@ void smp_init(void* entry)
 
     memset(cpus, 0, sizeof(cpus));
     cpuAmount = 0;
-    WRITE_8(0x100, 1);
+    readyCpuAmount = 1;
 
     Madt* madt = (Madt*)rsdt_lookup("APIC");
     if (madt == 0)
@@ -28,19 +68,16 @@ void smp_init(void* entry)
     }
 
     uint64_t trampolineLength = (uint64_t)smp_trampoline_end - (uint64_t)smp_trampoline_start;
-    memcpy(SMP_TRAMPOLINE_LOAD_START, smp_trampoline_start, trampolineLength);
 
-    static GdtDesc gdtDesc;
-	gdtDesc.size = sizeof(gdt) - 1;
-	gdtDesc.offset = (uint64_t)&gdt;
+    void* oldData = page_allocator_request();
+    memcpy(oldData, SMP_TRAMPOLINE_LOADED_START, trampolineLength);
 
-    static IdtDesc idtDesc;
-    idtDesc.size = (sizeof(IdtEntry) * 256) - 1;
-    idtDesc.offset = (uint64_t)&idt;
-
+    memcpy(SMP_TRAMPOLINE_LOADED_START, smp_trampoline_start, trampolineLength);
+    
     WRITE_32(SMP_TRAMPOLINE_DATA_PAGE_DIRECTORY, (uint64_t)kernelPageDirectory);
-    WRITE_64(SMP_TRAMPOLINE_DATA_GDT, &gdtDesc);
-    WRITE_64(SMP_TRAMPOLINE_DATA_IDT, &idtDesc);
+    WRITE_64(SMP_TRAMPOLINE_DATA_ENTRY, smp_ap_entry);
+
+    tty_end_message(TTY_MESSAGE_OK);
 
     for (MadtRecord* record = madt->records; (uint64_t)record < (uint64_t)madt + madt->header.length; record = (MadtRecord*)((uint64_t)record + record->length))
     {
@@ -48,31 +85,40 @@ void smp_init(void* entry)
         {
             MadtLapicRecord* lapicRecord = (MadtLapicRecord*)record;
 
-            if (!cpus[lapicRecord->cpuId].present)
+            if (MADT_LAPIC_RECORD_IS_ENABLEABLE(lapicRecord))
             {
-                cpuAmount++;
-
-                cpus[lapicRecord->cpuId].present = 1;
-                cpus[lapicRecord->cpuId].id = lapicRecord->cpuId;
-                cpus[lapicRecord->cpuId].lapicId = lapicRecord->lapicId;
-
-                if (lapic_current_cpu() != lapicRecord->cpuId)
+                if (!smp_enable_cpu(lapicRecord->cpuId, lapicRecord->lapicId))
                 {
-                    lapic_send_init(lapicRecord->lapicId);
-                    hpet_sleep(10);
-                    lapic_send_sipi(lapicRecord->lapicId, 1);
+                    tty_print("CPU "); tty_printi(lapicRecord->cpuId); tty_print(" failed to start!");
+                    tty_end_message(TTY_MESSAGE_ER);
                 }
             }
         }
     }
-    
-    tty_end_message(TTY_MESSAGE_OK);
+
+    memcpy(SMP_TRAMPOLINE_LOADED_START, oldData, trampolineLength);
+    page_allocator_unlock_page(oldData);
 
     tty_print("Cpu Amount: "); tty_printi(smp_get_cpu_amount()); tty_print("\n\r");
+    tty_print("Ready Cpu Amount: "); tty_printi(readyCpuAmount); tty_print("\r");
 
     while (1)
     {
-        tty_print("Ready Cpu Amount: "); tty_printi(READ_8(0x100)); tty_print("\r");
+        asm volatile("hlt");
+    }
+}
+
+void smp_ap_entry()
+{    
+    tty_print("Hello from cpu "); tty_printi(lapic_current_cpu()); tty_print("!\n\r");
+
+    readyCpuAmount++;
+    
+    hpet_sleep(1);
+
+    while (1)
+    {
+        asm volatile("hlt");
     }
 }
 

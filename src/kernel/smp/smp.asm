@@ -1,16 +1,14 @@
-%define GET_LOADED_ADDRESS(address) address - smp_trampoline_start + SMP_TRAMPOLINE_LOAD_START 
+%define GET_LOADED_ADDRESS(address) address - smp_trampoline_start + SMP_TRAMPOLINE_LOADED_START 
 
-SMP_TRAMPOLINE_LOAD_START equ 0x1000
-SMP_TRAMPOLINE_DATA_PAGE_DIRECTORY equ 0x500
-SMP_TRAMPOLINE_DATA_GDT equ 0x510
-SMP_TRAMPOLINE_DATA_IDT equ 0x520
-
-extern readyCpuAmount
-extern gdt_load
+SMP_TRAMPOLINE_LOADED_START equ 0x8000
+SMP_TRAMPOLINE_DATA_PAGE_DIRECTORY equ 0x8FF0
+SMP_TRAMPOLINE_DATA_STACK_TOP equ 0x8FE0
+SMP_TRAMPOLINE_DATA_ENTRY equ 0x8FD0
 
 global smp_trampoline_start
 global smp_trampoline_end
 
+section .smp_trampoline
 [bits 16]
 smp_trampoline_start:
     cli
@@ -66,7 +64,14 @@ smp_trampoline_long_mode_start:
     mov fs, ax
     mov gs, ax
 
-    inc byte [0x100]
+    mov rsp, [SMP_TRAMPOLINE_DATA_STACK_TOP]
+    mov rbp, 0x0
+
+    push 0x0
+    popfq
+
+    mov rax, [SMP_TRAMPOLINE_DATA_ENTRY]
+    call rax
     hlt
     
 align 16
@@ -90,5 +95,8 @@ long_mode_gdt_start:
     dq 0x00AF98000000FFFF
     dq 0x00CF92000000FFFF
 long_mode_gdt_end:
+
+test_variable:
+    db 0xFF
 
 smp_trampoline_end:

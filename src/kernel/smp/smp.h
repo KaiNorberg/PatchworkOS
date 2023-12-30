@@ -2,11 +2,11 @@
 
 #include <stdint.h>
 
-#define SMP_TRAMPOLINE_LOAD_START ((void*)0x1000)
+#define SMP_TRAMPOLINE_LOADED_START ((void*)0x8000)
 
-#define SMP_TRAMPOLINE_DATA_PAGE_DIRECTORY 0x500
-#define SMP_TRAMPOLINE_DATA_GDT 0x510
-#define SMP_TRAMPOLINE_DATA_IDT 0x520
+#define SMP_TRAMPOLINE_DATA_PAGE_DIRECTORY 0x8FF0
+#define SMP_TRAMPOLINE_DATA_STACK_TOP 0x8FE0
+#define SMP_TRAMPOLINE_DATA_ENTRY 0x8FD0
 
 typedef struct
 {
@@ -20,5 +20,7 @@ extern void smp_trampoline_start();
 extern void smp_trampoline_end();
 
 void smp_init(void* entry);
+
+void smp_ap_entry();
 
 uint8_t smp_get_cpu_amount();

@@ -4,6 +4,8 @@
 
 #define MADT_RECORD_TYPE_LAPIC 0
 
+#define MADT_LAPIC_RECORD_IS_ENABLEABLE(record) ((record->flags & 1) != 0) 
+
 #define LAPIC_REGISTER_ID 0x020
 #define LAPIC_REGISTER_ICR0 0x300
 #define LAPIC_REGISTER_ICR1 0x310
