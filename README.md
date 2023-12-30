@@ -31,6 +31,10 @@ There are four ways to run Patchwork.
 
 The current long term goal is to create a desktop environment and to play DOOM.
 
+## Documentation (WIP)
+
+Documentation can be found on the ![wiki](https://github.com/Kaj9296/PatchworkOS/wiki) page.
+
 ## Contributing
 
 Patchwork is intended as a personal project, therefor contributions to add features are unwanted, however contributions to fix bugs or address issues are welcome. There are no strict guidelines due to the small scale of the project.
