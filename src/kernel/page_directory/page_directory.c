@@ -8,6 +8,7 @@
 #include "gdt/gdt.h"
 #include "idt/idt.h"
 #include "utils/utils.h"
+#include "global_heap/global_heap.h"
 
 #include "../common.h"
 
@@ -49,6 +50,8 @@ PageDirectory* page_directory_new()
 {
     PageDirectory* pageDirectory = (PageDirectory*)page_allocator_request();
     memset(pageDirectory, 0, 0x1000);
+
+    global_heap_map(pageDirectory);
 
     for (uint64_t i = 0; i < efiMemoryMap->descriptorAmount; i++)
     {

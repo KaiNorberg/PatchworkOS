@@ -7,9 +7,9 @@ extern interrupt_stack_get_top
 
 section .text
 
+;rdi = stackTop
 scheduler_yield_to_user_space:
-	call interrupt_stack_get_top
-	mov rsp, rax
+	mov rsp, rdi
 	
 	mov rdi, 0
 	call io_pic_clear_mask

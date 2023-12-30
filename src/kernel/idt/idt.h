@@ -5,6 +5,8 @@
 #define IDT_INTERRUPT 0xEE //Disables interrupts
 #define IDT_TRAP 0xEF //Does not disable interrupts
 
+#define IDT_VECTOR_AMOUNT 256
+
 typedef struct __attribute__((packed))
 {
 	uint16_t isrLow;      
@@ -22,13 +24,18 @@ typedef struct __attribute__((packed))
 	uint64_t offset;
 } IdtDesc;
 
-extern IdtEntry idt[];
+typedef struct __attribute__((packed))
+{
+	IdtEntry entries[IDT_VECTOR_AMOUNT];
+} Idt;
+
+extern void idt_load(IdtDesc* descriptor);
 
 void idt_init();
 
-void remap_pic();
-
 void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags);
+
+void remap_pic();
 
 void enable_interrupts();
 

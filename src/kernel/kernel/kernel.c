@@ -10,13 +10,13 @@
 #include "page_allocator/page_allocator.h"
 #include "scheduler/scheduler.h"
 #include "io/io.h"
-#include "interrupt_stack/interrupt_stack.h"
 #include "hpet/hpet.h"
 #include "interrupts/interrupts.h"
 #include "time/time.h"
 #include "tss/tss.h"
 #include "apic/apic.h"
 #include "smp/smp.h"
+#include "global_heap/global_heap.h"
 
 #include "../common.h"
 
@@ -36,6 +36,7 @@ void kernel_init(BootInfo* bootInfo)
 
     page_allocator_init(bootInfo->memoryMap, bootInfo->framebuffer);
     page_directory_init(bootInfo->memoryMap, bootInfo->framebuffer);
+    global_heap_init(bootInfo->memoryMap);
 
     rsdt_init(bootInfo->xsdp);
 
@@ -55,8 +56,8 @@ void kernel_init(BootInfo* bootInfo)
     scheduler_init();
     
     //Disable pic, temporary code
-    io_outb(PIC1_DATA, 0xFF);
+    /*io_outb(PIC1_DATA, 0xFF);
     io_outb(PIC2_DATA, 0xFF);
 
-    smp_init(kernel_core_entry);
+    smp_init(kernel_core_entry);*/
 }

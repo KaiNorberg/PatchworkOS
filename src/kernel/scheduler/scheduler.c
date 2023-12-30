@@ -84,6 +84,11 @@ void scheduler_switch(Process* process)
     runningProcess->state = PROCESS_STATE_RUNNING;
 }
 
+Process* scheduler_get_idle_process()
+{
+    return idleProcess;
+}
+
 Process* scheduler_get_running_process()
 {
     if (runningProcess == 0)
