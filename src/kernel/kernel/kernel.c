@@ -20,9 +20,6 @@
 
 #include "../common.h"
 
-extern uint64_t _kernelStart;
-extern uint64_t _kernelEnd;
-
 void kernel_core_entry()
 {  
     tty_print("Hello from other core!\n\r");
@@ -38,7 +35,6 @@ void kernel_init(BootInfo* bootInfo)
     tty_print("Hello from the kernel!\n\r");
 
     page_allocator_init(bootInfo->memoryMap, bootInfo->framebuffer);
-
     page_directory_init(bootInfo->memoryMap, bootInfo->framebuffer);
 
     rsdt_init(bootInfo->xsdp);
@@ -48,15 +44,12 @@ void kernel_init(BootInfo* bootInfo)
     heap_init();
 
     gdt_init();
-
     tss_init();
-
     idt_init(); 
     
     file_system_init(bootInfo->rootDirectory);
     
     hpet_init(TICKS_PER_SECOND);
-
     time_init();
 
     scheduler_init();

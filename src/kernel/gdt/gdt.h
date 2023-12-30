@@ -42,8 +42,6 @@ typedef struct __attribute__((packed))
     LongSegmentDescriptor tss;
 } Gdt;
 
-extern Gdt gdt;
-
 extern void gdt_load(GdtDesc* descriptor);
 
 void gdt_init();

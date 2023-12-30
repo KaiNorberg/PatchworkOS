@@ -14,10 +14,15 @@
 
 uint8_t cpuAmount;
 atomic_uint8_t readyCpuAmount;
-Cpu cpus[255];
+Cpu cpus[SMP_MAX_CPU_AMOUNT];
 
 uint8_t smp_enable_cpu(uint8_t cpuId, uint8_t lapicId)
 {
+    if (cpuId >= SMP_MAX_CPU_AMOUNT)
+    {
+        return 0;
+    }
+
     if (cpus[cpuId].present)
     {
         return 0;
@@ -73,7 +78,7 @@ void smp_init(void* entry)
     memcpy(oldData, SMP_TRAMPOLINE_LOADED_START, trampolineLength);
 
     memcpy(SMP_TRAMPOLINE_LOADED_START, smp_trampoline_start, trampolineLength);
-    
+
     WRITE_32(SMP_TRAMPOLINE_DATA_PAGE_DIRECTORY, (uint64_t)kernelPageDirectory);
     WRITE_64(SMP_TRAMPOLINE_DATA_ENTRY, smp_ap_entry);
 

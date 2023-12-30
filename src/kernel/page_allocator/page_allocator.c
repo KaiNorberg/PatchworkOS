@@ -6,9 +6,6 @@
 
 #include "debug/debug.h"
 
-//extern uint64_t _kernelStart;
-//extern uint64_t _kernelEnd;
-
 uint64_t* pageMap;
 uint64_t pageMapByteSize;
 void* firstFreeAddress;
