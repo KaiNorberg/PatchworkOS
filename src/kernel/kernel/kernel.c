@@ -44,10 +44,12 @@ void kernel_init(BootInfo* bootInfo)
 
     heap_init();
 
-    gdt_init();
     tss_init();
+    gdt_init();
     idt_init(); 
-    
+
+    interrupts_init();
+
     file_system_init(bootInfo->rootDirectory);
     
     hpet_init(TICKS_PER_SECOND);

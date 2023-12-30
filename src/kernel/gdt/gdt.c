@@ -9,7 +9,7 @@ Gdt* gdt;
 
 void gdt_init()
 {
-    tty_start_message("Gdt loading");
+    tty_start_message("GDT loading");
 
     gdt = gmalloc(1, PAGE_DIR_READ_WRITE);
     memset(gdt, 0, 0x1000);
@@ -50,17 +50,19 @@ void gdt_init()
     gdt->userData.baseHigh = 0;
 
     gdt->tss.limitLow = sizeof(TaskStateSegment);
-    gdt->tss.baseLow = (uint16_t)((uint64_t)&tss);
-    gdt->tss.baseLowerMiddle = (uint8_t)((uint64_t)&tss >> 16);
+    gdt->tss.baseLow = (uint16_t)((uint64_t)tss);
+    gdt->tss.baseLowerMiddle = (uint8_t)((uint64_t)tss >> 16);
     gdt->tss.access = 0x89;
     gdt->tss.flagsAndLimitHigh = 0x00; //Flags = 0x0, LimitHigh = 0x0
-    gdt->tss.baseUpperMiddle = (uint8_t)((uint64_t)&tss >> (16 + 8));
-    gdt->tss.baseHigh = (uint32_t)((uint64_t)&tss >> (16 + 8 + 8));
+    gdt->tss.baseUpperMiddle = (uint8_t)((uint64_t)tss >> (16 + 8));
+    gdt->tss.baseHigh = (uint32_t)((uint64_t)tss >> (16 + 8 + 8));
 
     static GdtDesc gdtDesc;
 	gdtDesc.size = sizeof(Gdt) - 1;
 	gdtDesc.offset = (uint64_t)gdt;
 	gdt_load(&gdtDesc);
+    
+    tss_load();    
 
     tty_end_message(TTY_MESSAGE_OK);
 }

@@ -14,6 +14,11 @@
 
 #include "../common.h"
 
+extern uint64_t interruptVectorsStart;
+extern uint64_t interruptVectorsEnd;
+
+extern PageDirectory* interruptPageDirectory;
+
 const char* exception_strings[32] = 
 {
     "Division Fault",
@@ -48,6 +53,24 @@ const char* exception_strings[32] =
     "VMM Communication Exception",
     "Security Exception"
 };
+
+void interrupts_init()
+{
+    tty_start_message("Interrupt vectors initializing");    
+
+    interruptPageDirectory = kernelPageDirectory;
+
+    tty_end_message(TTY_MESSAGE_OK);
+}
+
+void interrupt_vectors_map(PageDirectory* pageDirectory)
+{
+    void* virtualAddress = (void*)round_down((uint64_t)&interruptVectorsStart, 0x1000);
+    void* physicalAddress = page_directory_get_physical_address(kernelPageDirectory, virtualAddress);
+    uint64_t pageAmount = GET_SIZE_IN_PAGES((uint64_t)&interruptVectorsEnd - (uint64_t)&interruptVectorsStart);
+
+    page_directory_remap_pages(pageDirectory, virtualAddress, physicalAddress, pageAmount, PAGE_DIR_READ_WRITE);
+}
 
 void interrupt_handler(InterruptFrame* interruptFrame)
 {       
@@ -123,7 +146,7 @@ void exception_handler(InterruptFrame* interruptFrame)
 
     tty_set_scale(scale);
 
-    tty_clear();
+    //tty_clear();
 
     tty_set_background(black);
     tty_set_foreground(white);

@@ -1,4 +1,5 @@
 [bits 64]
+
 global scheduler_yield_to_user_space
 global scheduler_idle_process
 

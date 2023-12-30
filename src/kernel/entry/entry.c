@@ -39,7 +39,7 @@ void _start(BootInfo* bootInfo)
 
     enable_interrupts();
 
-    scheduler_yield_to_user_space((void*)(tss.rsp0));
+    scheduler_yield_to_user_space((void*)(tss->rsp0));
 
     tty_print("\nBack in the main task, if you see this something has gone very wrong!\n\n\r");
 

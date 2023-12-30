@@ -9,7 +9,7 @@
 
 #define GDT_OFFSET_KERNEL_CODE 0x08
 
-extern void* interrupt_vectors[256];
+extern void* interruptVectorTable[IDT_VECTOR_AMOUNT];
 
 Idt* idt;
 
@@ -21,7 +21,7 @@ void idt_init()
 
     for (uint16_t vector = 0; vector < IDT_VECTOR_AMOUNT; vector++) 
     {        
-        idt_set_descriptor(vector, interrupt_vectors[vector], IDT_INTERRUPT);
+        idt_set_descriptor(vector, interruptVectorTable[vector], IDT_INTERRUPT);
     }
 
     remap_pic();

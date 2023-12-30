@@ -9,6 +9,7 @@
 #include "idt/idt.h"
 #include "utils/utils.h"
 #include "global_heap/global_heap.h"
+#include "interrupts/interrupts.h"
 
 #include "../common.h"
 
@@ -52,18 +53,8 @@ PageDirectory* page_directory_new()
     memset(pageDirectory, 0, 0x1000);
 
     global_heap_map(pageDirectory);
-
-    for (uint64_t i = 0; i < efiMemoryMap->descriptorAmount; i++)
-    {
-        EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)efiMemoryMap->base + (i * efiMemoryMap->descriptorSize));
-
-        if (desc->type == EFI_KERNEL_MEMORY_TYPE)
-        {
-            page_directory_remap_pages(pageDirectory, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_DIR_READ_WRITE);
-            break;
-        }
-    }
-
+    interrupt_vectors_map(pageDirectory);
+    
     return pageDirectory;
 }
 

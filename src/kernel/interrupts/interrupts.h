@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "interrupt_frame/interrupt_frame.h"
+#include "page_directory/page_directory.h"
 
 enum 
 {
@@ -23,6 +24,10 @@ enum
     IRQ_PRIMARY_ATA_HARD_DISK = 14,
     IRQ_SECONDARY_ATA_HARD_DISK = 15
 };
+
+void interrupts_init();
+
+void interrupt_vectors_map(PageDirectory* pageDirectory);
 
 void interrupt_handler(InterruptFrame* interruptFrame);
 
