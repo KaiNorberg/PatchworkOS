@@ -2,6 +2,7 @@
 
 #include "heap/heap.h"
 #include "string/string.h"
+#include "page_allocator/page_allocator.h"
 
 Process* process_new(void* entry)
 {

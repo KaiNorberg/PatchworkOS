@@ -2,29 +2,26 @@
 
 #include "tty/tty.h"
 #include "debug/debug.h"
+#include "utils/utils.h"
+#include "page_allocator/page_allocator.h"
+#include "page_directory/page_directory.h"
 
-#define HEAP_HEADER_GET_START(block) ((void*)((uint64_t)block + sizeof(BlockHeader)))
-#define HEAP_HEADER_GET_END(block) ((void*)((uint64_t)block + sizeof(BlockHeader) + block->size))
+HeapHeader* firstBlock;
+HeapHeader* lastBlock;
 
-typedef struct BlockHeader
-{
-    struct BlockHeader* next;
-    uint64_t size;
-    uint8_t reserved;
-    uint8_t atPageStart;
-} BlockHeader;
-
-BlockHeader* firstBlock;
-BlockHeader* lastBlock;
+extern uint64_t _kernelEnd;
 
 void heap_init()
 {    
     tty_start_message("Heap initializing");
 
-    firstBlock = (BlockHeader*)page_allocator_request();
-    lastBlock = firstBlock;
+    void* heapStart = (void*)round_up((uint64_t)&_kernelEnd, 0x1000);
 
-    firstBlock->size = 0x1000 - sizeof(BlockHeader);
+    firstBlock = heapStart;
+    lastBlock = firstBlock;
+    page_directory_remap(kernelPageDirectory, heapStart, page_allocator_request(), PAGE_DIR_READ_WRITE);
+
+    firstBlock->size = 0x1000 - sizeof(HeapHeader);
     firstBlock->next = 0;
     firstBlock->reserved = 0;
     firstBlock->atPageStart = 1;
@@ -54,7 +51,7 @@ void heap_visualize()
 
     tty_print("Heap Visualization:\n\r");
 
-    BlockHeader* currentBlock = firstBlock;
+    HeapHeader* currentBlock = firstBlock;
     while (1)
     {   
         if (currentBlock->atPageStart && currentBlock != firstBlock)
@@ -92,10 +89,10 @@ uint64_t heap_total_size()
 {
     uint64_t size = 0;
 
-    BlockHeader* currentBlock = firstBlock;
+    HeapHeader* currentBlock = firstBlock;
     while (1)
     {   
-        size += currentBlock->size + sizeof(BlockHeader);
+        size += currentBlock->size + sizeof(HeapHeader);
 
         if (currentBlock->next == 0)
         {
@@ -114,12 +111,12 @@ uint64_t heap_reserved_size()
 {
     uint64_t size = 0;
 
-    BlockHeader* currentBlock = firstBlock;
+    HeapHeader* currentBlock = firstBlock;
     while (1)
     {   
         if (currentBlock->reserved)
         {
-            size += currentBlock->size + sizeof(BlockHeader);
+            size += currentBlock->size + sizeof(HeapHeader);
         }
 
         if (currentBlock->next == 0)
@@ -139,12 +136,12 @@ uint64_t heap_free_size()
 {
     uint64_t size = 0;
 
-    BlockHeader* currentBlock = firstBlock;
+    HeapHeader* currentBlock = firstBlock;
     while (1)
     {   
         if (!currentBlock->reserved)
         {
-            size += currentBlock->size + sizeof(BlockHeader);
+            size += currentBlock->size + sizeof(HeapHeader);
         }
 
         if (currentBlock->next == 0)
@@ -164,7 +161,7 @@ uint64_t heap_block_count()
 {
     uint64_t count = 0;
 
-    BlockHeader* currentBlock = firstBlock;
+    HeapHeader* currentBlock = firstBlock;
     while (1)
     {       
         count++;
@@ -191,7 +188,7 @@ void* kmalloc(uint64_t size)
 
     uint64_t alignedSize = size + (64 - (size % 64));
 
-    BlockHeader* currentBlock = firstBlock;
+    HeapHeader* currentBlock = firstBlock;
     while (1)
     {
         if (!currentBlock->reserved)
@@ -203,11 +200,11 @@ void* kmalloc(uint64_t size)
             }
             else if (currentBlock->size > alignedSize)
             {
-                uint64_t newSize = currentBlock->size - alignedSize - sizeof(BlockHeader);
+                uint64_t newSize = currentBlock->size - alignedSize - sizeof(HeapHeader);
 
                 if (currentBlock->size - newSize >= 64 && newSize >= 64)
                 {
-                    BlockHeader* newBlock = (BlockHeader*)((uint64_t)HEAP_HEADER_GET_START(currentBlock) + alignedSize);
+                    HeapHeader* newBlock = (HeapHeader*)((uint64_t)HEAP_HEADER_GET_START(currentBlock) + alignedSize);
                     newBlock->next = currentBlock->next;
                     newBlock->size = newSize;
                     newBlock->reserved = 0;
@@ -237,10 +234,14 @@ void* kmalloc(uint64_t size)
         }
     }
 
-    uint64_t pageAmount = GET_SIZE_IN_PAGES(size + sizeof(BlockHeader));
-    BlockHeader* newBlock = (BlockHeader*)page_allocator_request_amount(pageAmount);
+    uint64_t pageAmount = GET_SIZE_IN_PAGES(size + sizeof(HeapHeader));
+    void* physicalAddress = page_allocator_request_amount(pageAmount);
+    void* virtualAddress = (void*)round_up((uint64_t)HEAP_HEADER_GET_END(lastBlock), 0x1000);
 
-    newBlock->size = pageAmount * 0x1000 - sizeof(BlockHeader);
+    page_directory_remap_pages(kernelPageDirectory, virtualAddress, physicalAddress, pageAmount, PAGE_DIR_READ_WRITE);
+
+    HeapHeader* newBlock = virtualAddress;
+    newBlock->size = pageAmount * 0x1000 - sizeof(HeapHeader);
     newBlock->next = 0;
     newBlock->reserved = 0;
     newBlock->atPageStart = 1;
@@ -258,12 +259,12 @@ void kfree(void* ptr)
         debug_panic("Attempted to free null ptr!");
     }
     
-    BlockHeader* block = (BlockHeader*)((uint64_t)ptr - sizeof(BlockHeader));
+    HeapHeader* block = (HeapHeader*)((uint64_t)ptr - sizeof(HeapHeader));
     
     uint8_t blockFound = 0;
 
     //Find and free block
-    BlockHeader* currentBlock = firstBlock;
+    HeapHeader* currentBlock = firstBlock;
     while (1)
     {
         if (block == currentBlock)
@@ -298,18 +299,18 @@ void kfree(void* ptr)
             if (!currentBlock->reserved)
             {
                 uint64_t contiguousSize = currentBlock->size;
-                BlockHeader* firstFreeContiguousBlock = currentBlock;
-                BlockHeader* lastFreeContiguousBlock = currentBlock;
+                HeapHeader* firstFreeContiguousBlock = currentBlock;
+                HeapHeader* lastFreeContiguousBlock = currentBlock;
                 while (1)
                 {
-                    BlockHeader* nextBlock = lastFreeContiguousBlock->next;
+                    HeapHeader* nextBlock = lastFreeContiguousBlock->next;
                     if (nextBlock == 0 || nextBlock->reserved || nextBlock->atPageStart)
                     {
                         break;
                     }
                     else
                     {
-                        contiguousSize += nextBlock->size + sizeof(BlockHeader);
+                        contiguousSize += nextBlock->size + sizeof(HeapHeader);
                         lastFreeContiguousBlock = nextBlock;
                     }
                 }

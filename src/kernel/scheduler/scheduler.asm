@@ -4,7 +4,6 @@ global scheduler_yield_to_user_space
 global scheduler_idle_process
 
 extern io_pic_clear_mask
-extern interrupt_stack_get_top
 
 section .text
 

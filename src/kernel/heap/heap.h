@@ -2,8 +2,16 @@
 
 #include <stdint.h>
 
-#include "page_allocator/page_allocator.h"
-#include "page_directory/page_directory.h"
+#define HEAP_HEADER_GET_START(block) ((void*)((uint64_t)block + sizeof(HeapHeader)))
+#define HEAP_HEADER_GET_END(block) ((void*)((uint64_t)block + sizeof(HeapHeader) + block->size))
+
+typedef struct HeapHeader
+{
+    struct HeapHeader* next;
+    uint64_t size;
+    uint8_t reserved;
+    uint8_t atPageStart;
+} HeapHeader;
 
 void heap_init();
 

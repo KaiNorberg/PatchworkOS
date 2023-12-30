@@ -11,6 +11,7 @@
 #include "time/time.h"
 #include "heap/heap.h"
 #include "idt/idt.h"
+#include "page_allocator/page_allocator.h"
 
 #include "../common.h"
 
