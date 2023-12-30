@@ -17,6 +17,6 @@ typedef struct __attribute__((packed))
     uint16_t iopb;
 } TaskStateSegment;
 
-extern TaskStateSegment tss;
+extern TaskStateSegment* tss;
 
 void tss_init();

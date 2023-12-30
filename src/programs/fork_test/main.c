@@ -12,16 +12,16 @@ int main(int argc, char* argv[])
 {   
     sys_test("Hello from parent, forking...\r\n\n");
     
-    uint64_t pid = sys_fork();
+    //uint64_t pid = sys_fork();
 
-    if (pid == 0)
+    //if (pid == 0)
     {
         while (1)
         {
             sys_test("Hello from child program!     \r");
         }         
     }
-    else
+    //else
     {
         while (1)
         {

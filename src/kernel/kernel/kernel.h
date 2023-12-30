@@ -14,7 +14,7 @@ typedef struct
 	Framebuffer* framebuffer;
 	PSFFont* font;
 	EFIMemoryMap* memoryMap;
-	XSDT* xsdp;
+	Xsdt* xsdp;
 	void* rt;
 	RawDirectory* rootDirectory;
 } BootInfo;

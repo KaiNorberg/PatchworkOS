@@ -4,7 +4,7 @@ PARENT_DIR := kernel
 
 include $(PATCHWORK_DIR)/Make.defaults
 
-C_FLAGS += -mcmodel=large
+C_FLAGS += -mcmodel=large -Wno-array-bounds
 
 build: $(OBJECTS)
 

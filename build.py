@@ -72,13 +72,17 @@ def all():
             
 def run():
     subprocess.run([
-    'qemu-system-x86_64',
-    '-drive', 'file=bin/PatchworkOS.img',
-    '-m', '1G',
-    '-cpu', 'qemu64',
-    '-drive', 'if=pflash,format=raw,unit=0,file=vendor/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on',
-    '-drive', 'if=pflash,format=raw,unit=1,file=vendor/OVMFbin/OVMF_VARS-pure-efi.fd',
-    '-net', 'none'], cwd=".", check=True)   
+    "qemu-system-x86_64",
+    "-drive", "file=bin/PatchworkOS.img",
+    "-m", "1G",
+    "-cpu", "qemu64",
+    "-smp", "4",
+    "-serial", "stdio",
+    "-d", "int",
+    "-no-shutdown", "-no-reboot",
+    "-drive", "if=pflash,format=raw,unit=0,file=vendor/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on",
+    "-drive", "if=pflash,format=raw,unit=1,file=vendor/OVMFbin/OVMF_VARS-pure-efi.fd",
+    "-net", "none"], cwd=".", check=True)   
     
 functionMap = {
     "clean": clean,

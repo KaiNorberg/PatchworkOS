@@ -1,30 +1,35 @@
 [bits 64]
 
 %macro INT_NAME 1
-    dq interrupt%1
+    dq interrupt_%1
 %endmacro
 
 %macro INT_ERR 1
-interrupt%1:
+interrupt_%1:
     push qword %1
     jmp common_interrupt
 %endmacro
 
 %macro INT_NOERR 1
-interrupt%1:
+interrupt_%1:
     push qword 0
     push qword %1
     jmp common_interrupt
 %endmacro
 
-section .text
+section .interrupts
 
 extern interrupt_handler
 extern kernelPageDirectory
 
+global interruptVectorsStart
+global interruptVectorsEnd
+global interruptPageDirectory
+
+interruptVectorsStart:
+
 common_interrupt:
     cld
-
     push rax
     push rbx
     push rcx
@@ -44,7 +49,7 @@ common_interrupt:
     push rax
 	mov rbp, rsp
 
-    mov rax, [kernelPageDirectory]
+    mov rax, [interruptPageDirectory]
     mov cr3, rax
 
     mov rdi, rbp
@@ -70,6 +75,9 @@ common_interrupt:
     add rsp, 16
 
     iretq
+    
+interruptPageDirectory:
+    dq 0
 
 INT_NOERR 0
 INT_NOERR 1
@@ -110,10 +118,12 @@ INT_NOERR 31
 %assign i i+1
 %endrep
 
-section .data
-global interrupt_vectors
+interruptVectorsEnd:
 
-interrupt_vectors:
+section .data
+
+global interruptVectorTable
+interruptVectorTable:
 %assign i 0
 %rep 256
     INT_NAME i

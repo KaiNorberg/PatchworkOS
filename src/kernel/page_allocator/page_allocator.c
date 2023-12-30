@@ -6,9 +6,6 @@
 
 #include "debug/debug.h"
 
-//extern uint64_t _kernelStart;
-//extern uint64_t _kernelEnd;
-
 uint64_t* pageMap;
 uint64_t pageMapByteSize;
 void* firstFreeAddress;
@@ -97,7 +94,7 @@ void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer)
     {
         EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
         
-        if (desc->type == EFI_CONVENTIONAL_MEMORY && pageMapByteSize < desc->amountOfPages * 0x1000)
+        if (desc->physicalStart >= (void*)0x9000 && desc->type == EFI_CONVENTIONAL_MEMORY && pageMapByteSize < desc->amountOfPages * 0x1000)
         {
             pageMap = desc->physicalStart;
             memset(pageMap, 0, pageMapByteSize);
@@ -184,7 +181,7 @@ void* page_allocator_request_amount(uint64_t amount)
 }
 
 uint8_t page_allocator_get_status(void* address)
-{            
+{   
     uint64_t index = (uint64_t)address / (uint64_t)0x1000;
     return (pageMap[index / 64] >> (index % 64)) & 1;
 }
