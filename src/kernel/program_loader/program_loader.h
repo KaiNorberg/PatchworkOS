@@ -58,10 +58,4 @@ typedef struct
     uint64_t entrySize;
 } ElfSectionHeader;
 
-typedef struct
-{
-    void* segment;
-    uint64_t pageAmount;
-} ProgramSegment;
-
 uint8_t load_program(const char* path);

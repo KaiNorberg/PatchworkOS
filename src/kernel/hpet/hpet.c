@@ -7,7 +7,7 @@
 #include "interrupts/interrupts.h"
 #include "utils/utils.h"
 
-HPET* hpet;
+Hpet* hpet;
 
 uint64_t hpetBase;
 uint64_t hpetPeriod;
@@ -16,14 +16,14 @@ void hpet_init(uint64_t hertz)
 {    
     tty_start_message("HPET initializing");
 
-    hpet = (HPET*)rsdt_lookup("HPET");
+    hpet = (Hpet*)rsdt_lookup("HPET");
     if (hpet == 0)
     {
         tty_print("Hardware is incompatible, unable to find HPET");
         tty_end_message(TTY_MESSAGE_ER);
     }
     
-    hpetBase = hpet->addressStruct.address;
+    hpetBase = hpet->address;
     page_directory_remap(kernelPageDirectory, (void*)hpetBase, (void*)hpetBase, PAGE_DIR_READ_WRITE);
 
     hpetPeriod = hpet_read(HPET_GENERAL_CAPABILITIES) >> HPET_COUNTER_CLOCK_OFFSET;

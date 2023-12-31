@@ -33,7 +33,7 @@ The current long term goal is to create a desktop environment and to play DOOM.
 
 ## Documentation (WIP)
 
-Documentation can be found on the ![wiki](https://github.com/Kaj9296/PatchworkOS/wiki) page.
+Documentation will eventually be found on the ![wiki](https://github.com/Kaj9296/PatchworkOS/wiki) page.
 
 ## Contributing
 
