@@ -6,7 +6,6 @@
 #include "string/string.h"
 #include "io/io.h"
 #include "queue/queue.h"
-#include "tss/tss.h"
 #include "idt/idt.h"
 
 Process* runningProcess;
@@ -89,7 +88,7 @@ Process* scheduler_get_idle_process()
     return idleProcess;
 }
 
-Process* scheduler_get_running_process()
+Process* scheduler_running_process()
 {
     if (runningProcess == 0)
     {

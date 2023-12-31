@@ -48,21 +48,26 @@ void gdt_init()
     gdt->userData.access = 0xF2;
     gdt->userData.flagsAndLimitHigh = 0xC0; //Flags = 0xC, LimitHigh = 0x0
     gdt->userData.baseHigh = 0;
+    
+    tty_end_message(TTY_MESSAGE_OK);
+}
 
-    gdt->tss.limitLow = sizeof(TaskStateSegment);
+void gdt_load()
+{
+    static GdtDesc gdtDesc;
+	gdtDesc.size = sizeof(Gdt) - 1;
+	gdtDesc.offset = (uint64_t)gdt;
+	gdt_load_descriptor(&gdtDesc);  
+}
+
+void gdt_load_tss(Tss* tss)
+{
+    gdt->tss.limitLow = sizeof(Tss);
     gdt->tss.baseLow = (uint16_t)((uint64_t)tss);
     gdt->tss.baseLowerMiddle = (uint8_t)((uint64_t)tss >> 16);
     gdt->tss.access = 0x89;
     gdt->tss.flagsAndLimitHigh = 0x00; //Flags = 0x0, LimitHigh = 0x0
     gdt->tss.baseUpperMiddle = (uint8_t)((uint64_t)tss >> (16 + 8));
     gdt->tss.baseHigh = (uint32_t)((uint64_t)tss >> (16 + 8 + 8));
-
-    static GdtDesc gdtDesc;
-	gdtDesc.size = sizeof(Gdt) - 1;
-	gdtDesc.offset = (uint64_t)gdt;
-	gdt_load(&gdtDesc);
-    
-    tss_load();    
-
-    tty_end_message(TTY_MESSAGE_OK);
+    tss_load();
 }

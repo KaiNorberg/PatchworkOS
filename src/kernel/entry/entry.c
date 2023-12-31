@@ -8,18 +8,16 @@
 #include "program_loader/program_loader.h"
 #include "heap/heap.h"
 #include "hpet/hpet.h"
-
 #include "kernel/kernel.h"
+#include "debug/debug.h"
+#include "string/string.h"
+#include "queue/queue.h"
+#include "smp/smp.h"
+#include "global_heap/global_heap.h"
 
 #include "../common.h"
 
-#include "debug/debug.h"
-
-#include "string/string.h"
-
-#include "queue/queue.h"
-
-void _start(BootInfo* bootInfo)
+void main(BootInfo* bootInfo)
 {   
     kernel_init(bootInfo);
 
@@ -39,7 +37,7 @@ void _start(BootInfo* bootInfo)
 
     enable_interrupts();
 
-    scheduler_yield_to_user_space((void*)(tss->rsp0));
+    scheduler_yield_to_user_space((void*)tss_get(smp_current_cpu()->id)->rsp0);
 
     tty_print("\nBack in the main task, if you see this something has gone very wrong!\n\n\r");
 

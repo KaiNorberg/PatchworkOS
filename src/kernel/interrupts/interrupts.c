@@ -101,9 +101,9 @@ void irq_handler(InterruptFrame* interruptFrame)
 
         if (time_get_tick() % (TICKS_PER_SECOND / 2) == 0) //For testing
         {   
-            interrupt_frame_copy(scheduler_get_running_process()->interruptFrame, interruptFrame);
+            interrupt_frame_copy(scheduler_running_process()->interruptFrame, interruptFrame);
             scheduler_schedule();    
-            interrupt_frame_copy(interruptFrame, scheduler_get_running_process()->interruptFrame);
+            interrupt_frame_copy(interruptFrame, scheduler_running_process()->interruptFrame);
         }
     }
     break;
@@ -216,11 +216,11 @@ void exception_handler(InterruptFrame* interruptFrame)
 
     tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 17 * scale);
     tty_print("Locked Pages = ");
-    tty_printi(page_allocator_get_locked_amount());
+    tty_printi(page_allocator_locked_amount());
 
     tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 18 * scale);
     tty_print("Unlocked Pages = ");
-    tty_printi(page_allocator_get_unlocked_amount());
+    tty_printi(page_allocator_unlocked_amount());
 
     tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 20 * scale);
     tty_print("Please manually reboot your machine.");

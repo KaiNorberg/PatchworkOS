@@ -34,7 +34,7 @@ void syscall_handler(InterruptFrame* interruptFrame)
         child->interruptFrame->rax = 0;
         child->interruptFrame->cr3 = (uint64_t)child->pageDirectory;
 
-        Process* parent = scheduler_get_running_process();
+        Process* parent = scheduler_running_process();
 
         MemoryBlock* currentBlock = parent->firstMemoryBlock;
         while (1)
@@ -58,14 +58,14 @@ void syscall_handler(InterruptFrame* interruptFrame)
     break;
     case SYS_EXIT:
     {
-        Process* process = scheduler_get_running_process();
+        Process* process = scheduler_running_process();
 
         scheduler_remove(process);
         process_free(process);
 
         scheduler_schedule();
 
-        interrupt_frame_copy(interruptFrame, scheduler_get_running_process()->interruptFrame);
+        interrupt_frame_copy(interruptFrame, scheduler_running_process()->interruptFrame);
     }
     break;
     case SYS_TEST:

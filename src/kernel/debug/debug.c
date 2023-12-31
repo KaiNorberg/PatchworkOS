@@ -132,11 +132,11 @@ void debug_panic(const char* message)
 
     tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 14 * scale);
     tty_print("Locked Pages = ");
-    tty_printi(page_allocator_get_locked_amount());
+    tty_printi(page_allocator_locked_amount());
 
     tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 15 * scale);
     tty_print("Unlocked Pages = ");
-    tty_printi(page_allocator_get_unlocked_amount());
+    tty_printi(page_allocator_unlocked_amount());
 
     tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 17 * scale);
     tty_print("Please manually reboot your machine.");

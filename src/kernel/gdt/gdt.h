@@ -8,7 +8,7 @@ typedef struct __attribute__((packed))
 {
     uint16_t size;
     uint64_t offset;
-} GdtDesc;
+} GdtDesc;  
 
 typedef struct __attribute__((packed))
 {
@@ -42,6 +42,10 @@ typedef struct __attribute__((packed))
     LongSegmentDescriptor tss;
 } Gdt;
 
-extern void gdt_load(GdtDesc* descriptor);
+extern void gdt_load_descriptor(GdtDesc* descriptor);
 
 void gdt_init();
+
+void gdt_load();
+
+void gdt_load_tss(Tss* tss);

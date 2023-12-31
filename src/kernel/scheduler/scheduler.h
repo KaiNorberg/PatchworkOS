@@ -20,4 +20,4 @@ void scheduler_schedule();
 
 Process* scheduler_get_idle_process();
 
-Process* scheduler_get_running_process();
+Process* scheduler_running_process();

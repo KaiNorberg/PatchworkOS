@@ -236,12 +236,12 @@ void page_allocator_unlock_pages(void* address, uint64_t count)
     }
 }
 
-uint64_t page_allocator_get_unlocked_amount()
+uint64_t page_allocator_unlocked_amount()
 {
     return pageAmount - lockedAmount;
 }
 
-uint64_t page_allocator_get_locked_amount()
+uint64_t page_allocator_locked_amount()
 {
     return lockedAmount;
 }

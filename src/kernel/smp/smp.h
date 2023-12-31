@@ -2,7 +2,9 @@
 
 #include <stdint.h>
 
-#define SMP_MAX_CPU_AMOUNT 0xFF
+#include "tss/tss.h"
+
+#define SMP_MAX_CPU_AMOUNT 32
 
 #define SMP_TRAMPOLINE_LOADED_START ((void*)0x8000)
 
@@ -21,8 +23,8 @@ typedef struct
 extern void smp_trampoline_start();
 extern void smp_trampoline_end();
 
-void smp_init(void* entry);
+void smp_init();
 
-void smp_ap_entry();
+Cpu* smp_current_cpu();
 
-uint8_t smp_get_cpu_amount();
+uint8_t smp_cpu_amount();

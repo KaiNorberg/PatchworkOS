@@ -26,7 +26,7 @@ void global_heap_map(PageDirectory* pageDirectory)
     {
         if (blocks[i].present)
         {
-            page_directory_remap_pages(pageDirectory, 
+            page_directory_remap_pages(pageDirectory,
             blocks[i].virtualStart, 
             blocks[i].physicalStart, 
             blocks[i].pageAmount, 

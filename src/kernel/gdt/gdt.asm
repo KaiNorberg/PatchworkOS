@@ -1,11 +1,11 @@
 [bits 64]
 
-global gdt_load
+global gdt_load_descriptor
 
 section .text
 
 ;rdi = gdt descriptor
-gdt_load:    
+gdt_load_descriptor:    
     lgdt  [rdi]
     push 0x08
     lea rax, [rel .reload_CS]

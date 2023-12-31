@@ -20,15 +20,6 @@
 
 #include "../common.h"
 
-void kernel_core_entry()
-{  
-    tty_print("Hello from other core!\n\r");
-    while(1)
-    {
-        asm volatile("hlt");
-    }
-}
-
 void kernel_init(BootInfo* bootInfo)
 {    
     tty_init(bootInfo->framebuffer, bootInfo->font);
@@ -36,17 +27,15 @@ void kernel_init(BootInfo* bootInfo)
 
     page_allocator_init(bootInfo->memoryMap, bootInfo->framebuffer);
     page_directory_init(bootInfo->memoryMap, bootInfo->framebuffer);
-    global_heap_init(bootInfo->memoryMap);
-
-    rsdt_init(bootInfo->xsdp);
-
-    apic_init();
-
     heap_init();
+    global_heap_init(bootInfo->memoryMap);
 
     tss_init();
     gdt_init();
-    idt_init(); 
+    idt_init();
+
+    rsdt_init(bootInfo->xsdp);
+    apic_init();
 
     interrupts_init();
 
@@ -56,10 +45,18 @@ void kernel_init(BootInfo* bootInfo)
     time_init();
 
     scheduler_init();
-    
+
     //Disable pic, temporary code
     /*io_outb(PIC1_DATA, 0xFF);
-    io_outb(PIC2_DATA, 0xFF);
+    io_outb(PIC2_DATA, 0xFF);*/
 
-    smp_init(kernel_core_entry);*/
+    smp_init();
+
+    kernel_cpu_init();
+}
+
+void kernel_cpu_init()
+{
+    gdt_load();
+    gdt_load_tss(tss_get(smp_current_cpu()->id));
 }
