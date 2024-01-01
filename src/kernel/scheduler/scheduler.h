@@ -4,9 +4,13 @@
 
 extern void scheduler_yield_to_user_space(void* stackTop);
 
-extern void scheduler_idle_process();
+extern void scheduler_idle_loop();
 
 void scheduler_init();
+
+void scheduler_acquire();
+
+void scehduler_release();
 
 void scheduler_sleep(Process* process);
 
@@ -18,6 +22,6 @@ void scheduler_switch(Process* process);
 
 void scheduler_schedule();
 
-Process* scheduler_get_idle_process();
+Process* scheduler_idle_process();
 
 Process* scheduler_running_process();

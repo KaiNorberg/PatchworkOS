@@ -1,7 +1,7 @@
 [bits 64]
 
 global scheduler_yield_to_user_space
-global scheduler_idle_process
+global scheduler_idle_loop
 
 extern io_pic_clear_mask
 
@@ -13,6 +13,6 @@ scheduler_yield_to_user_space:
 	
 	mov rdi, 0
 	call io_pic_clear_mask
-scheduler_idle_process:
+scheduler_idle_loop:
 	hlt
-	jmp scheduler_idle_process
+	jmp scheduler_idle_loop

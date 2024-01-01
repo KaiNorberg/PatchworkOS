@@ -1,5 +1,6 @@
 #include "smp.h"
 
+#include "atomic/atomic.h"
 #include "tty/tty.h"
 #include "apic/apic.h"
 #include "string/string.h"
@@ -12,8 +13,7 @@
 #include "tss/tss.h"
 #include "kernel/kernel.h"
 #include "madt/madt.h"
-
-#include "atomic/atomic.h"
+#include "scheduler/scheduler.h"
 
 uint8_t cpuAmount;
 atomic_uint8_t readyCpuAmount;
@@ -30,10 +30,7 @@ void smp_cpu_entry()
     
     hpet_sleep(1);
 
-    while (1)
-    {
-        asm volatile("hlt");
-    }
+    scheduler_idle_loop();
 }
 
 uint8_t smp_enable_cpu(uint8_t cpuId, uint8_t localApicId)
@@ -48,10 +45,11 @@ uint8_t smp_enable_cpu(uint8_t cpuId, uint8_t localApicId)
     cpus[cpuId].present = 1;
     cpus[cpuId].id = cpuId;
     cpus[cpuId].localApicId = localApicId;
+    cpus[cpuId].process = scheduler_idle_process();
 
     if (local_apic_current_cpu() != cpuId)
     {
-        WRITE_64(SMP_TRAMPOLINE_DATA_STACK_TOP, (uint64_t)page_allocator_request() + 0x1000);
+        WRITE_64(SMP_TRAMPOLINE_DATA_STACK_TOP, (void*)tss_get(cpuId)->rsp0);
 
         local_apic_send_init(localApicId);
         hpet_sleep(10);
@@ -90,7 +88,7 @@ void smp_init()
     WRITE_32(SMP_TRAMPOLINE_DATA_PAGE_DIRECTORY, (uint64_t)kernelPageDirectory);
     WRITE_64(SMP_TRAMPOLINE_DATA_ENTRY, smp_cpu_entry);
 
-    LocalApicRecord* record = (LocalApicRecord*)madt_first_record(MADT_RECORD_TYPE_LOCAL_APIC);
+    LocalApicRecord* record = madt_first_record(MADT_RECORD_TYPE_LOCAL_APIC);
     while (record != 0)
     {
         if (MADT_LOCAL_APIC_RECORD_IS_ENABLEABLE(record))
@@ -102,13 +100,18 @@ void smp_init()
             }
         }
 
-        record = (LocalApicRecord*)madt_next_record((MadtRecord*)record, MADT_RECORD_TYPE_LOCAL_APIC);
+        record = madt_next_record(record, MADT_RECORD_TYPE_LOCAL_APIC);
     }
 
     memcpy(SMP_TRAMPOLINE_LOADED_START, oldData, trampolineLength);
     page_allocator_unlock_page(oldData);
 
     tty_end_message(TTY_MESSAGE_OK);
+}
+
+Cpu* smp_cpu(uint8_t cpuId)
+{
+    return &cpus[cpuId];
 }
 
 Cpu* smp_current_cpu()
@@ -119,4 +122,26 @@ Cpu* smp_current_cpu()
 uint8_t smp_cpu_amount()
 {
     return cpuAmount;
+}
+
+void smp_send_ipi_to_all(uint8_t vector)
+{
+    for (uint64_t cpuId = 0; cpuId < SMP_MAX_CPU_AMOUNT; cpuId++)
+    {        
+        if (smp_cpu(cpuId)->present)
+        {
+            local_apic_send_ipi(smp_cpu(cpuId)->localApicId, vector);
+        }
+    }
+}
+
+void smp_send_ipi_to_others(uint8_t vector)
+{
+    for (uint64_t cpuId = 0; cpuId < SMP_MAX_CPU_AMOUNT; cpuId++)
+    {
+        if (smp_cpu(cpuId)->present && cpuId != smp_current_cpu()->localApicId)
+        {
+            local_apic_send_ipi(smp_cpu(cpuId)->localApicId, vector);
+        }
+    }
 }

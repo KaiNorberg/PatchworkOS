@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "tss/tss.h"
+#include "process/process.h"
 
 #define SMP_MAX_CPU_AMOUNT 32
 
@@ -18,6 +19,8 @@ typedef struct
     
     uint8_t id; 
     uint8_t localApicId;
+
+    Process* process;
 } Cpu;
 
 extern void smp_trampoline_start();
@@ -25,6 +28,12 @@ extern void smp_trampoline_end();
 
 void smp_init();
 
+Cpu* smp_cpu(uint8_t cpuId);
+
 Cpu* smp_current_cpu();
 
 uint8_t smp_cpu_amount();
+
+void smp_send_ipi_to_all(uint8_t vector);
+
+void smp_send_ipi_to_others(uint8_t vector);

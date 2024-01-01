@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#define MSR_REGISTER_LOCAL_APIC 0x1B
+
 #define WRITE_8(address, value) (*((volatile uint8_t*)(address)) = (uint8_t)value)
 #define READ_8(address) (*((volatile uint8_t*)(address)))
 
@@ -13,6 +15,9 @@
 
 #define WRITE_64(address, value) (*((volatile uint64_t*)(address)) = (uint64_t)value)
 #define READ_64(address) (*((volatile uint64_t*)(address)))
+
+void write_msr(uint64_t msr, uint64_t value);
+uint64_t read_msr(uint64_t msr);
 
 char* itoa(uint64_t i, char b[], uint8_t base);
 

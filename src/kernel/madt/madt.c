@@ -18,7 +18,7 @@ void madt_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-MadtRecord* madt_first_record(uint8_t type)
+void* madt_first_record(uint8_t type)
 {
     for (MadtRecord* record = madt->records; (uint64_t)record < (uint64_t)madt + madt->header.length; record = (MadtRecord*)((uint64_t)record + record->length))
     {
@@ -31,12 +31,12 @@ MadtRecord* madt_first_record(uint8_t type)
     return 0;
 }
 
-MadtRecord* madt_next_record(MadtRecord* record, uint8_t type)
-{        
-    record = (MadtRecord*)((uint64_t)record + record->length);
-    for (;(uint64_t)record < (uint64_t)madt + madt->header.length; record = (MadtRecord*)((uint64_t)record + record->length))
+void* madt_next_record(void* record, uint8_t type)
+{   
+    record = (MadtRecord*)((uint64_t)record + ((MadtRecord*)record)->length);
+    for (;(uint64_t)record < (uint64_t)madt + madt->header.length; record = (MadtRecord*)((uint64_t)record + ((MadtRecord*)record)->length))
     {
-        if (record->type == type)
+        if (((MadtRecord*)record)->type == type)
         {
             return record;
         }

@@ -12,6 +12,9 @@
 #include "heap/heap.h"
 #include "idt/idt.h"
 #include "page_allocator/page_allocator.h"
+#include "smp/smp.h"
+#include "apic/apic.h"
+#include "spin_lock/spin_lock.h"
 
 #include "../common.h"
 
@@ -84,24 +87,28 @@ void interrupt_vectors_map(PageDirectory* pageDirectory)
 }
 
 void interrupt_handler(InterruptFrame* interruptFrame)
-{       
+{           
     if (interruptFrame->vector < 32) //Exception
     {
         exception_handler(interruptFrame);
     }
-    else if (interruptFrame->vector >= 32 && interruptFrame->vector <= 48) //IRQ
+    else if (interruptFrame->vector >= 0x20 && interruptFrame->vector <= 0x30) //IRQ
     {    
         irq_handler(interruptFrame);
     }
     else if (interruptFrame->vector == 0x80) //Syscall
     {
         syscall_handler(interruptFrame);
-    }  
+    } 
+    else if (interruptFrame->vector >= 0x90) //Inter processor interrupt
+    {
+        ipi_handler(interruptFrame);
+    }
 }
 
 void irq_handler(InterruptFrame* interruptFrame)
 {
-    uint64_t irq = interruptFrame->vector - 32;
+    uint64_t irq = interruptFrame->vector - 0x20;
 
     switch (irq)
     {
@@ -111,9 +118,7 @@ void irq_handler(InterruptFrame* interruptFrame)
 
         if (time_get_tick() % (TICKS_PER_SECOND / 2) == 0) //For testing
         {   
-            interrupt_frame_copy(scheduler_running_process()->interruptFrame, interruptFrame);
-            scheduler_schedule();    
-            interrupt_frame_copy(interruptFrame, scheduler_running_process()->interruptFrame);
+            smp_send_ipi_to_others(IPI_SCHEDULE);
         }
     }
     break;
@@ -127,8 +132,43 @@ void irq_handler(InterruptFrame* interruptFrame)
     io_pic_eoi(irq); 
 }
 
+void ipi_handler(InterruptFrame* interruptFrame)
+{        
+    switch (interruptFrame->vector)
+    {
+    case IPI_HALT:
+    {
+        interrupts_disable();
+
+        while (1)
+        {
+            asm volatile("hlt");
+        }
+    }
+    break;
+    case IPI_SCHEDULE:
+    {
+        scheduler_acquire();
+
+        interrupt_frame_copy(scheduler_running_process()->interruptFrame, interruptFrame);
+        scheduler_schedule();    
+        interrupt_frame_copy(interruptFrame, scheduler_running_process()->interruptFrame);
+
+        scehduler_release();
+    }
+    break;
+    default:
+    {
+        //Not implemented
+    }
+    break;
+    }
+
+    local_apic_eoi();
+}
+
 void exception_handler(InterruptFrame* interruptFrame)
-{
+{    
     uint64_t randomNumber = 0;
 
     Pixel black;
@@ -234,6 +274,8 @@ void exception_handler(InterruptFrame* interruptFrame)
 
     tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 20 * scale);
     tty_print("Please manually reboot your machine.");
+
+    smp_send_ipi_to_others(IPI_HALT);
 
     while (1)
     {

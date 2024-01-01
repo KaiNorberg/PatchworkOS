@@ -25,6 +25,10 @@ typedef enum
 
 void tty_init(Framebuffer* screenbuffer, PsfFont* screenFont);
 
+void tty_acquire();
+
+void tty_release();
+
 void tty_scroll(uint64_t distance);
 
 void tty_put(uint8_t chr);

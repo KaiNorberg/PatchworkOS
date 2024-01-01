@@ -14,6 +14,7 @@
 #include "queue/queue.h"
 #include "smp/smp.h"
 #include "global_heap/global_heap.h"
+#include "io/io.h"
 
 #include "../common.h"
 
@@ -23,8 +24,11 @@ void main(BootInfo* bootInfo)
 
     tty_print("\n\r");
 
-    tty_print("Loading fork_test...\n\r");
-    load_program("/programs/fork_test/fork_test.elf");
+    for (uint64_t i = 0; i < 8; i++)
+    {
+        tty_print("Loading fork_test...\n\r");
+        load_program("/programs/fork_test/fork_test.elf");
+    }
 
     tty_print("Loading test...\n\r");
     load_program("/programs/test/test.elf");
@@ -37,9 +41,11 @@ void main(BootInfo* bootInfo)
 
     interrupts_enable();
 
-    scheduler_yield_to_user_space((void*)tss_get(smp_current_cpu()->id)->rsp0);
+    //scheduler_yield_to_user_space((void*)tss_get(smp_current_cpu()->id)->rsp0);
 
-    tty_print("\nBack in the main task, if you see this something has gone very wrong!\n\n\r");
+    //tty_print("\nBack in the main task, if you see this something has gone very wrong!\n\n\r");
+
+    io_pic_clear_mask(0);
 
     while (1)
     {
