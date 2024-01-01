@@ -4,7 +4,7 @@
 #include "utils/utils.h"
 
 Framebuffer* frontbuffer;
-PSFFont* font;
+PsfFont* font;
 
 Point cursorPos;
 
@@ -13,7 +13,7 @@ Pixel foreground;
 
 uint8_t textScale;
 
-void tty_init(Framebuffer* screenbuffer, PSFFont* screenFont)
+void tty_init(Framebuffer* screenbuffer, PsfFont* screenFont)
 {
     frontbuffer = screenbuffer;
     font = screenFont;

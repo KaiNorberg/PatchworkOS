@@ -3,7 +3,19 @@
 #include <stdint.h>
 
 #include "gop/gop.h"
-#include "psf/psf.h"
+
+typedef struct
+{
+	uint16_t magic;
+	uint8_t mode;
+	uint8_t charSize;
+} PsfHeader;
+
+typedef struct
+{
+	PsfHeader* header;
+	void* glyphs;
+} PsfFont;
 
 typedef enum
 {
@@ -11,7 +23,7 @@ typedef enum
     TTY_MESSAGE_ER
 } TTY_MESSAGE;
 
-void tty_init(Framebuffer* screenbuffer, PSFFont* screenFont);
+void tty_init(Framebuffer* screenbuffer, PsfFont* screenFont);
 
 void tty_scroll(uint64_t distance);
 

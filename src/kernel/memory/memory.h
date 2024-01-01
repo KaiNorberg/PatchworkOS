@@ -19,7 +19,7 @@ typedef struct
 	uint64_t descriptorAmount;
 	uint64_t descriptorSize;
 	uint64_t key;
-} EFIMemoryMap;
+} EfiMemoryMap;
 
 typedef enum
 {

@@ -16,7 +16,7 @@ typedef struct
     uint16_t pageFlags;
 } GlobalHeapBlock;
 
-void global_heap_init(EFIMemoryMap* memoryMap);
+void global_heap_init(EfiMemoryMap* memoryMap);
 
 void global_heap_map(PageDirectory* pageDirectory);
 

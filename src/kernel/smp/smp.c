@@ -11,6 +11,7 @@
 #include "utils/utils.h"
 #include "tss/tss.h"
 #include "kernel/kernel.h"
+#include "madt/madt.h"
 
 #include "atomic/atomic.h"
 
@@ -21,7 +22,7 @@ Cpu cpus[SMP_MAX_CPU_AMOUNT];
 
 void smp_cpu_entry()
 {    
-    tty_print("Hello from cpu "); tty_printi(lapic_current_cpu()); tty_print("! ");
+    tty_print("Hello from cpu "); tty_printi(local_apic_current_cpu()); tty_print("! ");
 
     kernel_cpu_init();
 
@@ -35,14 +36,9 @@ void smp_cpu_entry()
     }
 }
 
-uint8_t smp_enable_cpu(uint8_t cpuId, uint8_t lapicId)
+uint8_t smp_enable_cpu(uint8_t cpuId, uint8_t localApicId)
 {
-    if (cpuId >= SMP_MAX_CPU_AMOUNT)
-    {
-        return 0;
-    }
-
-    if (cpus[cpuId].present)
+    if (cpuId >= SMP_MAX_CPU_AMOUNT || cpus[cpuId].present)
     {
         return 0;
     }
@@ -51,15 +47,15 @@ uint8_t smp_enable_cpu(uint8_t cpuId, uint8_t lapicId)
 
     cpus[cpuId].present = 1;
     cpus[cpuId].id = cpuId;
-    cpus[cpuId].lapicId = lapicId;
+    cpus[cpuId].localApicId = localApicId;
 
-    if (lapic_current_cpu() != cpuId)
+    if (local_apic_current_cpu() != cpuId)
     {
         WRITE_64(SMP_TRAMPOLINE_DATA_STACK_TOP, (uint64_t)page_allocator_request() + 0x1000);
 
-        lapic_send_init(lapicId);
+        local_apic_send_init(localApicId);
         hpet_sleep(10);
-        lapic_send_sipi(lapicId, ((uint64_t)SMP_TRAMPOLINE_LOADED_START) / 0x1000);
+        local_apic_send_sipi(localApicId, ((uint64_t)SMP_TRAMPOLINE_LOADED_START) / 0x1000);
 
         uint64_t timeout = 1000;
         while (cpuAmount != readyCpuAmount) 
@@ -84,13 +80,6 @@ void smp_init()
     cpuAmount = 0;
     readyCpuAmount = 1;
 
-    Madt* madt = (Madt*)rsdt_lookup("APIC");
-    if (madt == 0)
-    {
-        tty_print("Hardware is incompatible, unable to find MADT");
-        tty_end_message(TTY_MESSAGE_ER);
-    }
-
     uint64_t trampolineLength = (uint64_t)smp_trampoline_end - (uint64_t)smp_trampoline_start;
 
     void* oldData = page_allocator_request();
@@ -101,21 +90,19 @@ void smp_init()
     WRITE_32(SMP_TRAMPOLINE_DATA_PAGE_DIRECTORY, (uint64_t)kernelPageDirectory);
     WRITE_64(SMP_TRAMPOLINE_DATA_ENTRY, smp_cpu_entry);
 
-    for (MadtRecord* record = madt->records; (uint64_t)record < (uint64_t)madt + madt->header.length; record = (MadtRecord*)((uint64_t)record + record->length))
+    LocalApicRecord* record = (LocalApicRecord*)madt_first_record(MADT_RECORD_TYPE_LOCAL_APIC);
+    while (record != 0)
     {
-        if (record->type == MADT_RECORD_TYPE_LAPIC)
+        if (MADT_LOCAL_APIC_RECORD_IS_ENABLEABLE(record))
         {
-            MadtLapicRecord* lapicRecord = (MadtLapicRecord*)record;
-
-            if (MADT_LAPIC_RECORD_IS_ENABLEABLE(lapicRecord))
+            if (!smp_enable_cpu(record->cpuId, record->localApicId))
             {
-                if (!smp_enable_cpu(lapicRecord->cpuId, lapicRecord->lapicId))
-                {
-                    tty_print("CPU "); tty_printi(lapicRecord->cpuId); tty_print(" failed to start!");
-                    tty_end_message(TTY_MESSAGE_ER);
-                }
+                tty_print("CPU "); tty_printi(record->cpuId); tty_print(" failed to start!");
+                tty_end_message(TTY_MESSAGE_ER);
             }
         }
+
+        record = (LocalApicRecord*)madt_next_record((MadtRecord*)record, MADT_RECORD_TYPE_LOCAL_APIC);
     }
 
     memcpy(SMP_TRAMPOLINE_LOADED_START, oldData, trampolineLength);
@@ -126,7 +113,7 @@ void smp_init()
 
 Cpu* smp_current_cpu()
 {
-    return &cpus[lapic_current_cpu()];
+    return &cpus[local_apic_current_cpu()];
 }
 
 uint8_t smp_cpu_amount()

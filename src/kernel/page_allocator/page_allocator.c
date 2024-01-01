@@ -73,7 +73,7 @@ void page_allocator_visualize()
     tty_print("\n\n\r");
 }
 
-void page_allocator_init(EFIMemoryMap* memoryMap, Framebuffer* screenBuffer)
+void page_allocator_init(EfiMemoryMap* memoryMap, Framebuffer* screenBuffer)
 {    
     tty_start_message("Page allocator initializing");
 

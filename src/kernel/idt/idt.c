@@ -26,15 +26,12 @@ void idt_init()
 
     remap_pic();
 
+    idt_load();
+
     io_outb(PIC1_DATA, 0b11111111);
     io_outb(PIC2_DATA, 0b11111111);
 
     io_pic_clear_mask(IRQ_CASCADE);
-
-    IdtDesc idtDesc;
-    idtDesc.size = (sizeof(Idt)) - 1;
-    idtDesc.offset = (uint64_t)idt;
-    idt_load(&idtDesc);
 
     tty_end_message(TTY_MESSAGE_OK);
 }
@@ -50,6 +47,14 @@ void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags)
     descriptor->isrMid = ((uint64_t)isr >> 16) & 0xFFFF;
     descriptor->isrHigh = ((uint64_t)isr >> 32) & 0xFFFFFFFF;
     descriptor->reserved = 0;
+}
+
+void idt_load()
+{
+    IdtDesc idtDesc;
+    idtDesc.size = (sizeof(Idt)) - 1;
+    idtDesc.offset = (uint64_t)idt;
+    idt_load_descriptor(&idtDesc);
 }
 
 void remap_pic()
@@ -83,14 +88,4 @@ void remap_pic()
     io_wait();
     io_outb(PIC2_DATA, a2);
     io_wait();
-}
-
-void enable_interrupts()
-{    
-    asm volatile ("sti");
-}
-
-void disable_interrupts()
-{
-    asm volatile ("cli");
 }

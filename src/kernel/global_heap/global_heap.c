@@ -11,7 +11,7 @@ extern uint64_t _kernelStart;
 
 GlobalHeapBlock blocks[GLOBAL_HEAP_BLOCK_MAX];
 
-void global_heap_init(EFIMemoryMap* memoryMap)
+void global_heap_init(EfiMemoryMap* memoryMap)
 {
     tty_start_message("Global heap initializing");    
 

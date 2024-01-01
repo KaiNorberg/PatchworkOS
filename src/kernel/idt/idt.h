@@ -29,14 +29,12 @@ typedef struct __attribute__((packed))
 	IdtEntry entries[IDT_VECTOR_AMOUNT];
 } Idt;
 
-extern void idt_load(IdtDesc* descriptor);
+extern void idt_load_descriptor(IdtDesc* descriptor);
 
 void idt_init();
+
+void idt_load();
 
 void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags);
 
 void remap_pic();
-
-void enable_interrupts();
-
-void disable_interrupts();

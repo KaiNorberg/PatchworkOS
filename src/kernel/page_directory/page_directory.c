@@ -15,7 +15,7 @@
 
 PageDirectory* kernelPageDirectory;
 
-void page_directory_init(EFIMemoryMap* memoryMap, Framebuffer* screenbuffer)
+void page_directory_init(EfiMemoryMap* memoryMap, Framebuffer* screenbuffer)
 {    
     tty_start_message("Page directory initializing");    
       

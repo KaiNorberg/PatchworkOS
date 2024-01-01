@@ -35,7 +35,7 @@ extern PageDirectory* kernelPageDirectory;
 
 extern void page_directory_invalidate_page(void* virtualAddress);
 
-void page_directory_init(EFIMemoryMap* memoryMap, Framebuffer* screenbuffer);
+void page_directory_init(EfiMemoryMap* memoryMap, Framebuffer* screenbuffer);
 
 PageDirectory* page_directory_new();
 

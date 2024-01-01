@@ -35,7 +35,7 @@ void main(BootInfo* bootInfo)
     
     tty_print("\n\r");
 
-    enable_interrupts();
+    interrupts_enable();
 
     scheduler_yield_to_user_space((void*)tss_get(smp_current_cpu()->id)->rsp0);
 

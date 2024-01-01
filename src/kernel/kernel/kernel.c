@@ -17,6 +17,7 @@
 #include "apic/apic.h"
 #include "smp/smp.h"
 #include "global_heap/global_heap.h"
+#include "madt/madt.h"
 
 #include "../common.h"
 
@@ -30,11 +31,12 @@ void kernel_init(BootInfo* bootInfo)
     heap_init();
     global_heap_init(bootInfo->memoryMap);
 
+    idt_init();
     tss_init();
     gdt_init();
-    idt_init();
 
     rsdt_init(bootInfo->xsdp);
+    madt_init();
     apic_init();
 
     interrupts_init();
@@ -57,6 +59,7 @@ void kernel_init(BootInfo* bootInfo)
 
 void kernel_cpu_init()
 {
+    idt_load();
     gdt_load();
     gdt_load_tss(tss_get(smp_current_cpu()->id));
 }

@@ -64,6 +64,16 @@ void interrupts_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
+void interrupts_enable()
+{    
+    asm volatile ("sti");
+}
+
+void interrupts_disable()
+{
+    asm volatile ("cli");
+}
+
 void interrupt_vectors_map(PageDirectory* pageDirectory)
 {
     void* virtualAddress = (void*)round_down((uint64_t)&interruptVectorsStart, 0x1000);

@@ -27,6 +27,10 @@ enum
 
 void interrupts_init();
 
+void interrupts_enable();
+
+void interrupts_disable();
+
 void interrupt_vectors_map(PageDirectory* pageDirectory);
 
 void interrupt_handler(InterruptFrame* interruptFrame);

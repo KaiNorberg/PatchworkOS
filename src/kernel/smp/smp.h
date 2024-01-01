@@ -17,7 +17,7 @@ typedef struct
     uint8_t present;
     
     uint8_t id; 
-    uint8_t lapicId;
+    uint8_t localApicId;
 } Cpu;
 
 extern void smp_trampoline_start();

@@ -54,7 +54,7 @@ void gdt_init()
 
 void gdt_load()
 {
-    static GdtDesc gdtDesc;
+    GdtDesc gdtDesc;
 	gdtDesc.size = sizeof(Gdt) - 1;
 	gdtDesc.offset = (uint64_t)gdt;
 	gdt_load_descriptor(&gdtDesc);  
