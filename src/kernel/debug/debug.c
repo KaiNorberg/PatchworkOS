@@ -5,45 +5,52 @@
 #include "heap/heap.h"
 #include "page_allocator/page_allocator.h"
 #include "time/time.h"
+#include "utils/utils.h"
 
 #include "../common.h"
 
-//Jokes provided by skift-os https://github.com/skift-org/skift/tree/main :)
-
-const char* errorJokes[] = 
+const char* exceptionStrings[32] = 
 {
-    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA!!!",
-    "Witty comment unavailable :(",
-    "Surprise! Haha. Well, this is awkward.",
-    "Oh - I know what I did wrong!",
-    "Uh... Did I do that?",
-    "Oops.",
-    "DON'T PANIC!",
-    "Greenpeace free'd the mallocs \\o/",
-    "Typo in the code.",
-    "System consumed all the paper for paging!",
-    "I'm tired of this ;_;",
-    "PC LOAD LETTER",
-    "Abort, Retry, Fail?",
-    "Everything's going to plan. No, really, that was supposed to happen.",
-    "My bad.",
-    "Quite honestly, I wouldn't worry myself about that.",
-    "This doesn't make any sense!",
-    "It's not a good surprise...",
-    "Don't do that.",
-    "Layer 8 problem detected.",
-    "PEBCAK detected."        
+    "Division Fault",
+    "Debug",
+    "Non-Maskable Interrupt",
+    "Breakpoint",
+    "Overflow",
+    "Bound Range Exceeded",
+    "Invalid Opcode",
+    "Device Not Available",
+    "Double Fault",
+    "Coprocessor Segment Overrun",
+    "Invalid TSS",
+    "Segment Not Present",
+    "Stack-Segment Fault",
+    "General Protection Fault",
+    "Page Fault",
+    "Reserved",
+    "Floating Point",
+    "Alignment Check",
+    "Machine Check",
+    "SIMD Floating-Point",
+    "Virtualization",
+    "Control Protection",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Hypervisor Injection",
+    "VMM Communication",
+    "Security"
 };
+
+uint32_t debugCurrentRow;
+uint32_t debugCurrentColumn;
+Pixel debugCurrentColor;
 
 void debug_panic(const char* message)
 {
-    uint64_t randomNumber = 0;
-
-    Pixel black;
-    black.a = 255;
-    black.r = 0;
-    black.g = 0;
-    black.b = 0;
+    tty_clear();
 
     Pixel white;
     white.a = 255;
@@ -51,11 +58,48 @@ void debug_panic(const char* message)
     white.g = 255;
     white.b = 255;
 
-    /*Pixel green;
-    green.a = 255;
-    green.r = 152;
-    green.g = 195;
-    green.b = 121;*/
+    Pixel red;
+    red.a = 255;
+    red.r = 224;
+    red.g = 108;
+    red.b = 117;
+
+    debug_move_to_grid(0, 0, red);
+    tty_print("KERNEL PANIC! - "); tty_print(message);
+
+    debug_move_to_grid(2, 0, white);
+    tty_print("[Time]"); 
+    debug_next_row();
+    tty_print("Tick = "); tty_printx(time_get_tick());
+    debug_next_row();
+    tty_print("Current Time = "); tty_printx(time_get_tick());
+
+    debug_move_to_grid(2, 2, white);
+    tty_print("[Memory]"); 
+    debug_next_row();
+    tty_print("Free Heap = "); tty_printx(heap_free_size());
+    debug_next_row();
+    tty_print("Reserved Heap = "); tty_printx(heap_reserved_size());
+    debug_next_row();
+    tty_print("Locked Pages = "); tty_printx(page_allocator_locked_amount());
+    debug_next_row();
+    tty_print("Unlocked Pages = "); tty_printx(page_allocator_unlocked_amount());
+
+    while (1)
+    {
+        asm volatile("hlt");
+    }
+}
+
+void debug_exception(InterruptFrame* interruptFrame, const char* message)
+{    
+    tty_clear();
+
+    Pixel white;
+    white.a = 255;
+    white.r = 255;
+    white.g = 255;
+    white.b = 255;
 
     Pixel red;
     red.a = 255;
@@ -63,86 +107,99 @@ void debug_panic(const char* message)
     red.g = 108;
     red.b = 117;
 
-    asm volatile("cli");
+    debug_move_to_grid(0, 0, red);
+    tty_print("KERNEL PANIC! - "); tty_print(message);
 
-    uint64_t scale = 3;
+    debug_move_to_grid(2, 0, white);
+    tty_print("[Interrupt Frame]"); 
+    debug_next_row();
+    tty_print("Exception = "); tty_print(exceptionStrings[interruptFrame->vector]);
+    debug_next_row();
+    tty_print("ErrorCode = "); tty_printx(interruptFrame->errorCode);
+    debug_next_row();
+    tty_print("Instruction Pointer = "); tty_printx(interruptFrame->instructionPointer);
+    debug_next_row();
+    tty_print("Stack Pointer = "); tty_printx(interruptFrame->stackPointer);
+    debug_next_row();
+    tty_print("RFLAGS = "); tty_printx(interruptFrame->flags);
+    debug_next_row();
+    tty_print("Code Segment = "); tty_printx(interruptFrame->codeSegment);
+    debug_next_row();
+    tty_print("Stack Segment = "); tty_printx(interruptFrame->stackSegment);
 
-    Point startPoint;
-    startPoint.x = 100;
-    startPoint.y = 50;
+    debug_move_to_grid(2, 2, white);
+    tty_print("[Registers]"); 
+    debug_next_row();
+    tty_print("CR3 = "); tty_printx(interruptFrame->cr3);
+    debug_next_row();
+    tty_print("R15 = "); tty_printx(interruptFrame->r15);
+    debug_next_row();
+    tty_print("R14 = "); tty_printx(interruptFrame->r14);
+    debug_next_row();
+    tty_print("R13 = "); tty_printx(interruptFrame->r13);
+    debug_next_row();
+    tty_print("R12 = "); tty_printx(interruptFrame->r12);
+    debug_next_row();
+    tty_print("R11 = "); tty_printx(interruptFrame->r11);
+    debug_next_row();
+    tty_print("R10 = "); tty_printx(interruptFrame->r10);
+    debug_next_row();
+    tty_print("R9 = "); tty_printx(interruptFrame->r9);
 
-    tty_set_scale(scale);
+    debug_move_to_grid(3, 3, white);
+    tty_print("R8 = "); tty_printx(interruptFrame->r8);
+    debug_next_row();
+    tty_print("RBP = "); tty_printx(interruptFrame->rbp);
+    debug_next_row();
+    tty_print("RDI = "); tty_printx(interruptFrame->rdi);
+    debug_next_row();
+    tty_print("RSI = "); tty_printx(interruptFrame->rsi);
+    debug_next_row();
+    tty_print("RDX = "); tty_printx(interruptFrame->rdx);
+    debug_next_row();
+    tty_print("RCX = "); tty_printx(interruptFrame->rcx);
+    debug_next_row();
+    tty_print("RBX = "); tty_printx(interruptFrame->rbx);
+    debug_next_row();
+    tty_print("RAX = "); tty_printx(interruptFrame->rax);
 
-    tty_clear();
+    debug_move_to_grid(12, 0, white);
+    tty_print("[Time]"); 
+    debug_next_row();
+    tty_print("Tick = "); tty_printx(time_get_tick());
+    debug_next_row();
+    tty_print("Current Time = "); tty_printx(time_get_tick());
 
-    tty_set_background(black);
-    tty_set_foreground(white);
+    debug_move_to_grid(12, 2, white);
+    tty_print("[Memory]"); 
+    debug_next_row();
+    tty_print("Free Heap = "); tty_printx(heap_free_size());
+    debug_next_row();
+    tty_print("Reserved Heap = "); tty_printx(heap_reserved_size());
+    debug_next_row();
+    tty_print("Locked Pages = "); tty_printx(page_allocator_locked_amount());
+    debug_next_row();
+    tty_print("Unlocked Pages = "); tty_printx(page_allocator_unlocked_amount());
+}
 
-    tty_set_cursor_pos(startPoint.x, startPoint.y);
+void debug_move_to_grid(uint8_t row, uint8_t column, Pixel color)
+{
+    debugCurrentRow = row;
+    debugCurrentColumn = column;
+    debugCurrentColor = color;
 
-    tty_print("KERNEL PANIC!\n\r");
+    uint32_t leftPadding = (tty_get_screen_width() - DEBUG_COLUMN_AMOUNT * DEBUG_COLUMN_WIDTH * TTY_CHAR_WIDTH * DEBUG_TEXT_SCALE) / 2;
+    uint32_t topPadding = (tty_get_screen_height() - DEBUG_ROW_AMOUNT * TTY_CHAR_HEIGHT * DEBUG_TEXT_SCALE) / 2;
 
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 1 * scale);
-    tty_print("// ");
-    tty_print(errorJokes[randomNumber]);
+    uint32_t xPos = leftPadding + column * DEBUG_COLUMN_WIDTH * TTY_CHAR_WIDTH * DEBUG_TEXT_SCALE;
+    uint32_t yPos = topPadding + row * TTY_CHAR_HEIGHT * DEBUG_TEXT_SCALE;
 
-    tty_set_background(black);
-    tty_set_foreground(red);
+    tty_set_cursor_pos(xPos, yPos);
+    tty_set_scale(DEBUG_TEXT_SCALE);
+    tty_set_foreground(color);
+}
 
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 3 * scale);
-    tty_print("ERROR: ");
-    tty_print("\"");
-    tty_print(message);
-    tty_print("\"");
-
-    tty_set_background(black);
-    tty_set_foreground(white);
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 5 * scale);
-    tty_print("OS_VERSION = ");
-    tty_print(OS_VERSION);
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 7 * scale);
-    tty_print("Time: ");
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 8 * scale);
-    tty_print("Ticks = ");
-    tty_printi(time_get_tick());
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 9 * scale);
-    tty_print("Current Time = ");
-    //tty_print(STL::ToString(RTC::GetHour()));
-    tty_print(":");
-    //tty_print(STL::ToString(RTC::GetMinute()));
-    tty_print(":");
-    //tty_print(STL::ToString(RTC::GetSecond()));
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 11 * scale);
-    tty_print("Memory: ");
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 12 * scale);
-    tty_print("Used Heap = ");
-    tty_printi(heap_reserved_size());
-    tty_print(" B");
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 13 * scale);
-    tty_print("Free Heap = ");
-    tty_printi(heap_free_size());
-    tty_print(" B");
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 14 * scale);
-    tty_print("Locked Pages = ");
-    tty_printi(page_allocator_locked_amount());
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 15 * scale);
-    tty_print("Unlocked Pages = ");
-    tty_printi(page_allocator_unlocked_amount());
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 17 * scale);
-    tty_print("Please manually reboot your machine.");
-
-    while (1)
-    {
-        asm volatile("hlt");
-    }
+void debug_next_row()
+{
+    debug_move_to_grid(debugCurrentRow + 1, debugCurrentColumn, debugCurrentColor);
 }

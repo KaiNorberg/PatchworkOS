@@ -12,8 +12,6 @@ void scheduler_acquire();
 
 void scehduler_release();
 
-void scheduler_sleep(Process* process);
-
 void scheduler_append(Process* process);
 
 void scheduler_remove(Process* process);

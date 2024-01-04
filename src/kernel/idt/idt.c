@@ -24,14 +24,12 @@ void idt_init()
         idt_set_descriptor(vector, interruptVectorTable[vector], IDT_INTERRUPT);
     }
 
-    remap_pic();
+    //remap_pic();
 
-    idt_load();
+    io_outb(PIC1_DATA, 0xFF);
+    io_outb(PIC2_DATA, 0xFF);
 
-    io_outb(PIC1_DATA, 0b11111111);
-    io_outb(PIC2_DATA, 0b11111111);
-
-    io_pic_clear_mask(IRQ_CASCADE);
+    //io_pic_clear_mask(IRQ_CASCADE);
 
     tty_end_message(TTY_MESSAGE_OK);
 }

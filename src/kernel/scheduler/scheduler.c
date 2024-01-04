@@ -39,11 +39,6 @@ void scehduler_release()
     spin_lock_release(&schedulerLock);
 }
 
-void scheduler_sleep(Process* process)
-{
-    
-}
-
 void scheduler_append(Process* process)
 {
     queue_push(readyProcessQueue, process);

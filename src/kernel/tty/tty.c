@@ -67,10 +67,10 @@ void tty_put(uint8_t chr)
     case '\n':
     {
         cursorPos.x = 0;
-        cursorPos.y += 16 * textScale;
-        if (cursorPos.y + 16 * textScale >= frontbuffer->height)
+        cursorPos.y += TTY_CHAR_HEIGHT * textScale;
+        if (cursorPos.y + TTY_CHAR_HEIGHT * textScale >= frontbuffer->height)
         {
-            tty_scroll(16 * textScale);
+            tty_scroll(TTY_CHAR_HEIGHT * textScale);
         }
     }
     break;
@@ -81,11 +81,11 @@ void tty_put(uint8_t chr)
     break;
     default:
     {               
-        char* glyph = font->glyphs + chr * 16;
+        char* glyph = font->glyphs + chr * TTY_CHAR_HEIGHT;
 
-        for (uint64_t y = 0; y < 16 * textScale; y++)
+        for (uint64_t y = 0; y < TTY_CHAR_HEIGHT * textScale; y++)
         {
-            for (uint64_t x = 0; x < 8 * textScale; x++)
+            for (uint64_t x = 0; x < TTY_CHAR_WIDTH * textScale; x++)
             {
                 Point position = {cursorPos.x + x, cursorPos.y + y};
 
@@ -104,12 +104,12 @@ void tty_put(uint8_t chr)
             }
         }
 
-        cursorPos.x += 8 * textScale;
+        cursorPos.x += TTY_CHAR_WIDTH * textScale;
 
         if (cursorPos.x >= frontbuffer->width)
         {
             cursorPos.x = 0;
-            cursorPos.y += 16 * textScale;
+            cursorPos.y += TTY_CHAR_HEIGHT * textScale;
         }
     }
     break;
@@ -136,7 +136,7 @@ void tty_printi(uint64_t integer)
 void tty_printx(uint64_t hex)
 {
     char string[64];
-    itoa(hex, string, 16);
+    itoa(hex, string, TTY_CHAR_HEIGHT);
     tty_print("0x"); tty_print(string);
 }
 
@@ -168,6 +168,16 @@ void tty_set_cursor_pos(uint64_t x, uint64_t y)
     cursorPos.y = y;
 }
 
+uint32_t tty_get_screen_width()
+{
+    return frontbuffer->width;
+}
+
+uint32_t tty_get_screen_height()
+{
+    return frontbuffer->height;
+}
+
 void tty_start_message(const char* message)
 {
     tty_print("[..] ");
@@ -175,10 +185,19 @@ void tty_start_message(const char* message)
     tty_print("... ");
 }
 
+void tty_assert(uint8_t expression, const char* message)
+{
+    if (!expression)
+    {
+        tty_print(message);
+        tty_end_message(TTY_MESSAGE_ER);
+    }
+}
+
 void tty_end_message(uint64_t status)
 {
     uint64_t oldCursorX = cursorPos.x;   
-    cursorPos.x = 8 * textScale;
+    cursorPos.x = TTY_CHAR_WIDTH * textScale;
 
     if (status == TTY_MESSAGE_OK)
     {

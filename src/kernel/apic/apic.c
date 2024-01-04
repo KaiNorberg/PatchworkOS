@@ -4,6 +4,7 @@
 #include "page_directory/page_directory.h"
 #include "utils/utils.h"
 #include "madt/madt.h"
+#include "hpet/hpet.h"
 
 uint64_t localApicBase;
 
@@ -17,16 +18,32 @@ void apic_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
+void apic_timer_init()
+{
+    local_apic_write(APIC_REGISTER_TIMER_DIVIDER, 0x3);
+    local_apic_write(APIC_REGISTER_TIMER_INITIAL_COUNT, 0xFFFFFFFF);
+
+    hpet_sleep(10);
+
+    local_apic_write(APIC_REGISTER_LVT_TIMER, APIC_TIMER_MASKED);
+
+    uint32_t ticksPer10ms = 0xFFFFFFFF - local_apic_read(APIC_REGISTER_TIMER_CURRENT_COUNT);
+
+    local_apic_write(APIC_REGISTER_LVT_TIMER, 0x20 | APIC_TIMER_PERIODIC);
+    local_apic_write(APIC_REGISTER_TIMER_DIVIDER, 0x3);    
+    local_apic_write(APIC_REGISTER_TIMER_INITIAL_COUNT, ticksPer10ms);
+}
+
 void local_apic_init()
 {
     write_msr(MSR_REGISTER_LOCAL_APIC, (read_msr(MSR_REGISTER_LOCAL_APIC) | 0x800) & ~(1 << 10));
 
-    local_apic_write(LOCAL_APIC_REGISTER_SPURIOUS, local_apic_read(LOCAL_APIC_REGISTER_SPURIOUS) | 0x100);
+    local_apic_write(APIC_REGISTER_SPURIOUS, local_apic_read(APIC_REGISTER_SPURIOUS) | 0x100);
 }
 
 uint32_t local_apic_current_cpu()
 {
-    return local_apic_read(LOCAL_APIC_REGISTER_ID) >> LOCAL_APIC_ID_OFFSET;
+    return local_apic_read(APIC_REGISTER_ID) >> LOCAL_APIC_ID_OFFSET;
 }
 
 void local_apic_write(uint32_t reg, uint32_t value)
@@ -41,23 +58,23 @@ uint32_t local_apic_read(uint32_t reg)
 
 void local_apic_send_init(uint32_t localApicId)
 {
-    local_apic_write(LOCAL_APIC_REGISTER_ICR1, (uint64_t)localApicId << LOCAL_APIC_ID_OFFSET);
-    local_apic_write(LOCAL_APIC_REGISTER_ICR0, (5 << 8));
+    local_apic_write(APIC_REGISTER_ICR1, (uint64_t)localApicId << LOCAL_APIC_ID_OFFSET);
+    local_apic_write(APIC_REGISTER_ICR0, (5 << 8));
 }
 
 void local_apic_send_sipi(uint32_t localApicId, uint32_t page)
 {
-    local_apic_write(LOCAL_APIC_REGISTER_ICR1, (uint64_t)localApicId << LOCAL_APIC_ID_OFFSET);
-    local_apic_write(LOCAL_APIC_REGISTER_ICR0, page | (6 << 8));
+    local_apic_write(APIC_REGISTER_ICR1, (uint64_t)localApicId << LOCAL_APIC_ID_OFFSET);
+    local_apic_write(APIC_REGISTER_ICR0, page | (6 << 8));
 }
 
 void local_apic_send_ipi(uint32_t localApicId, uint64_t vector)
 {
-    local_apic_write(LOCAL_APIC_REGISTER_ICR1, (uint64_t)localApicId << LOCAL_APIC_ID_OFFSET);
-    local_apic_write(LOCAL_APIC_REGISTER_ICR0, vector | (1 << 14));
+    local_apic_write(APIC_REGISTER_ICR1, (uint64_t)localApicId << LOCAL_APIC_ID_OFFSET);
+    local_apic_write(APIC_REGISTER_ICR0, vector | (1 << 14));
 }
 
 void local_apic_eoi()
 {
-    local_apic_write(LOCAL_APIC_REGISTER_EOI, 0);
+    local_apic_write(APIC_REGISTER_EOI, 0);
 }

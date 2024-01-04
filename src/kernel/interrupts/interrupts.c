@@ -118,7 +118,34 @@ void irq_handler(InterruptFrame* interruptFrame)
 
         if (time_get_tick() % (TICKS_PER_SECOND / 2) == 0) //For testing
         {   
-            smp_send_ipi_to_others(IPI_SCHEDULE);
+            if (local_apic_current_cpu() == 2)
+            {
+                tty_print("Test");
+
+                scheduler_acquire();
+
+                interrupt_frame_copy(scheduler_running_process()->interruptFrame, interruptFrame);
+                scheduler_schedule();    
+                interrupt_frame_copy(interruptFrame, scheduler_running_process()->interruptFrame);
+
+                scehduler_release();
+            }
+
+            /*scheduler_acquire();
+
+            tty_print("Idle Process: "); tty_printx(scheduler_idle_process()); tty_print("\n\r");
+            tty_print("Prev Process: "); tty_printx(scheduler_running_process()); tty_print("\n\r");
+
+            interrupt_frame_copy(scheduler_running_process()->interruptFrame, interruptFrame);
+            scheduler_schedule();    
+
+            tty_print("Next Process: "); tty_printx(scheduler_running_process()); tty_print("\n\r");
+
+            interrupt_frame_copy(interruptFrame, scheduler_running_process()->interruptFrame);
+
+            scehduler_release();*/
+
+            //smp_send_ipi_to_others(IPI_SCHEDULE);
         }
     }
     break;
@@ -129,12 +156,13 @@ void irq_handler(InterruptFrame* interruptFrame)
     break;
     }        
 
-    io_pic_eoi(irq); 
+    local_apic_eoi();
+    //io_pic_eoi(irq); 
 }
 
 void ipi_handler(InterruptFrame* interruptFrame)
 {        
-    switch (interruptFrame->vector)
+    /*switch (interruptFrame->vector)
     {
     case IPI_HALT:
     {
@@ -162,119 +190,18 @@ void ipi_handler(InterruptFrame* interruptFrame)
         //Not implemented
     }
     break;
-    }
+    }*/
 
     local_apic_eoi();
 }
 
 void exception_handler(InterruptFrame* interruptFrame)
-{    
-    uint64_t randomNumber = 0;
+{   
+    tty_acquire(); 
 
-    Pixel black;
-    black.a = 255;
-    black.r = 0;
-    black.g = 0;
-    black.b = 0;
+    debug_exception(interruptFrame, "Exception");
 
-    Pixel white;
-    white.a = 255;
-    white.r = 255;
-    white.g = 255;
-    white.b = 255;
-
-    Pixel red;
-    red.a = 255;
-    red.r = 224;
-    red.g = 108;
-    red.b = 117;
-
-    uint64_t scale = 3;
-
-    Point startPoint;
-    startPoint.x = 100;
-    startPoint.y = 50;
-
-    tty_set_scale(scale);
-
-    //tty_clear();
-
-    tty_set_background(black);
-    tty_set_foreground(white);
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y);
-    tty_print("KERNEL PANIC!\n\r");
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 1 * scale);
-    tty_print("// ");
-    tty_print(errorJokes[randomNumber]);
-
-    tty_set_background(black);
-    tty_set_foreground(red);
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 3 * scale);
-    tty_print("\"");
-    tty_print(exception_strings[interruptFrame->vector]);
-    tty_print("\": ");
-    for (int i = 0; i < 32; i++)
-    {
-        tty_put('0' + ((interruptFrame->errorCode >> (i)) & 1));
-    }
-
-    tty_set_background(black);
-    tty_set_foreground(white);
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 5 * scale);
-    tty_print("OS_VERSION = ");
-    tty_print(OS_VERSION);
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 7 * scale);
-    tty_print("Interrupt Stack Frame: ");
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 8 * scale);
-    tty_print("Instruction pointer = ");
-    tty_printx(interruptFrame->instructionPointer);
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 9 * scale);
-    tty_print("Code segment = ");
-    tty_printx(interruptFrame->codeSegment);
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 10 * scale);
-    tty_print("Rflags = ");
-    tty_printx(interruptFrame->flags);
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 11 * scale);
-    tty_print("Stack pointer = ");
-    tty_printx(interruptFrame->stackPointer);
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 12 * scale);
-    tty_print("Stack segment = ");
-    tty_printx(interruptFrame->stackSegment);
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 14 * scale);
-    tty_print("Memory: ");
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 15 * scale);
-    tty_print("Used Heap = ");
-    tty_printi(heap_reserved_size());
-    tty_print(" B");
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 16 * scale);
-    tty_print("Free Heap = ");
-    tty_printi(heap_free_size());
-    tty_print(" B");
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 17 * scale);
-    tty_print("Locked Pages = ");
-    tty_printi(page_allocator_locked_amount());
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 18 * scale);
-    tty_print("Unlocked Pages = ");
-    tty_printi(page_allocator_unlocked_amount());
-
-    tty_set_cursor_pos(startPoint.x, startPoint.y + 16 * 20 * scale);
-    tty_print("Please manually reboot your machine.");
-
+    //Ipi ipi = IPI_CREATE(IPI_TYPE_HALT);
     smp_send_ipi_to_others(IPI_HALT);
 
     while (1)

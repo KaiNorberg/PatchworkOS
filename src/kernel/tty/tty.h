@@ -4,6 +4,9 @@
 
 #include "gop/gop.h"
 
+#define TTY_CHAR_HEIGHT 16
+#define TTY_CHAR_WIDTH 8
+
 typedef struct
 {
 	uint16_t magic;
@@ -44,5 +47,9 @@ void tty_set_background(Pixel color);
 
 void tty_set_cursor_pos(uint64_t x, uint64_t y);
 
+uint32_t tty_get_screen_width();
+uint32_t tty_get_screen_height();
+
 void tty_start_message(const char* message);
+void tty_assert(uint8_t expression, const char* message);
 void tty_end_message(uint64_t status);

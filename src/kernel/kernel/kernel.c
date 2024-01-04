@@ -43,7 +43,7 @@ void kernel_init(BootInfo* bootInfo)
 
     file_system_init(bootInfo->rootDirectory);
     
-    hpet_init(TICKS_PER_SECOND);
+    hpet_init();
     time_init();
 
     scheduler_init();
@@ -60,6 +60,7 @@ void kernel_cpu_init()
     gdt_load_tss(tss_get(smp_current_cpu()->id));
 
     local_apic_init();
+    apic_timer_init();
 
     interrupts_enable();
 }

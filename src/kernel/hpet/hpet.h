@@ -27,7 +27,7 @@ typedef struct __attribute__((packed))
     uint8_t pageProtection;
 } Hpet;
 
-void hpet_init(uint64_t hertz);
+void hpet_init();
 
 uint64_t hpet_get_nanosecond_period();
 

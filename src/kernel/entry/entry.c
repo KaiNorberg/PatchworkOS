@@ -15,6 +15,7 @@
 #include "smp/smp.h"
 #include "global_heap/global_heap.h"
 #include "io/io.h"
+#include "apic/apic.h"
 
 #include "../common.h"
 
@@ -33,22 +34,7 @@ void main(BootInfo* bootInfo)
     tty_print("Loading test...\n\r");
     load_program("/programs/test/test.elf");
 
-    tty_print("\n\r");                                                                                      
-
-    tty_print("Yielding to user space...\n\r");
+    tty_print("\n\rKernel Initialized!\n\n\r");
     
-    tty_print("\n\r");
-
-    interrupts_enable();
-
-    //scheduler_yield_to_user_space((void*)tss_get(smp_current_cpu()->id)->rsp0);
-
-    //tty_print("\nBack in the main task, if you see this something has gone very wrong!\n\n\r");
-
-    io_pic_clear_mask(0);
-
-    while (1)
-    {
-        asm volatile("hlt");
-    }
+    scheduler_idle_loop();
 }

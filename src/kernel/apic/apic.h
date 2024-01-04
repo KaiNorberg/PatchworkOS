@@ -2,19 +2,29 @@
 
 #include "rsdt/rsdt.h"
 
-#define LOCAL_APIC_REGISTER_ID 0x020
-#define LOCAL_APIC_REGISTER_EOI 0x0B0
-#define LOCAL_APIC_REGISTER_SPURIOUS 0x0F0
-#define LOCAL_APIC_REGISTER_ICR0 0x300
-#define LOCAL_APIC_REGISTER_ICR1 0x310
+#define APIC_REGISTER_ID 0x020
+#define APIC_REGISTER_EOI 0x0B0
+#define APIC_REGISTER_SPURIOUS 0x0F0
+#define APIC_REGISTER_ICR0 0x300
+#define APIC_REGISTER_ICR1 0x310
+
+#define APIC_REGISTER_LVT_TIMER 0x320
+#define APIC_REGISTER_TIMER_INITIAL_COUNT 0x380
+#define APIC_REGISTER_TIMER_CURRENT_COUNT 0x390
+#define APIC_REGISTER_TIMER_DIVIDER 0x3E0
+
+#define APIC_TIMER_MASKED 0x10000
+#define APIC_TIMER_PERIODIC 0x20000
 
 #define LOCAL_APIC_ID_OFFSET 24
 
 void apic_init();
 
-uint32_t local_apic_current_cpu();
+void apic_timer_init();
 
 void local_apic_init();
+
+uint32_t local_apic_current_cpu();
 
 void local_apic_write(uint32_t reg, uint32_t value);
 

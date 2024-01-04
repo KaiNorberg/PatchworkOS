@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#define TICKS_PER_SECOND 1024
+#define TICKS_PER_SECOND 100
 #define NANOSECONDS_PER_SECOND 1000000000
 
 typedef struct
