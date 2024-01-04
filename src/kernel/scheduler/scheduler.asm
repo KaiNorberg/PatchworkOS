@@ -3,16 +3,15 @@
 global scheduler_yield_to_user_space
 global scheduler_idle_loop
 
-extern io_pic_clear_mask
+extern apic_timer_init
 
 section .text
 
 ;rdi = stackTop
 scheduler_yield_to_user_space:
 	mov rsp, rdi
-	
-	mov rdi, 0
-	call io_pic_clear_mask
+
+	call apic_timer_init
 scheduler_idle_loop:
 	hlt
 	jmp scheduler_idle_loop

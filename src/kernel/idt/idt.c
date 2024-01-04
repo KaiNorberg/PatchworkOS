@@ -7,8 +7,6 @@
 #include "page_allocator/page_allocator.h"
 #include "global_heap/global_heap.h"
 
-#define GDT_OFFSET_KERNEL_CODE 0x08
-
 extern void* interruptVectorTable[IDT_VECTOR_AMOUNT];
 
 Idt* idt;
@@ -39,7 +37,7 @@ void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags)
     IdtEntry* descriptor = &(idt->entries[vector]);
  
     descriptor->isrLow = (uint64_t)isr & 0xFFFF;
-    descriptor->codeSegment = GDT_OFFSET_KERNEL_CODE;
+    descriptor->codeSegment = 0x08;
     descriptor->ist = 0;
     descriptor->attributes = flags;
     descriptor->isrMid = ((uint64_t)isr >> 16) & 0xFFFF;

@@ -22,14 +22,10 @@ Cpu cpus[SMP_MAX_CPU_AMOUNT];
 
 void smp_cpu_entry()
 {    
-    tty_print("Hello from cpu "); tty_printi(local_apic_current_cpu()); tty_print("! ");
-
     kernel_cpu_init();
 
     readyCpuAmount++;
     
-    hpet_sleep(1);
-
     scheduler_idle_loop();
 }
 
@@ -45,7 +41,7 @@ uint8_t smp_enable_cpu(uint8_t cpuId, uint8_t localApicId)
     cpus[cpuId].present = 1;
     cpus[cpuId].id = cpuId;
     cpus[cpuId].localApicId = localApicId;
-    cpus[cpuId].process = scheduler_idle_process();
+    cpus[cpuId].runningProcess = scheduler_idle_process();
 
     if (local_apic_current_cpu() != cpuId)
     {

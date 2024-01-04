@@ -56,7 +56,7 @@ void syscall_handler(InterruptFrame* interruptFrame)
 
         scheduler_append(child);
 
-        scehduler_release();
+        scheduler_release();
 
         out = 1234; //TODO: Replace with child pid, when pid is implemented
     }
@@ -74,17 +74,19 @@ void syscall_handler(InterruptFrame* interruptFrame)
 
         interrupt_frame_copy(interruptFrame, scheduler_running_process()->interruptFrame);
 
-        scehduler_release();
+        scheduler_release();
     }
     break;
     case SYS_TEST:
     {
         tty_acquire();
 
+        Cpu* cpu = smp_current_cpu();
+
         const char* string = page_directory_get_physical_address(SYSCALL_GET_PAGE_DIRECTORY(interruptFrame), (void*)SYSCALL_GET_ARG1(interruptFrame));
 
-        tty_set_cursor_pos(0, 16 * 35 + 16 * smp_current_cpu()->id);
-        tty_print("CPU "); tty_printx(smp_current_cpu()->id); tty_print(": "); tty_printx((uint64_t)smp_current_cpu()->process); tty_print(" | "); tty_print(string);
+        tty_set_cursor_pos(0, 16 * 35 + 16 * cpu->id);
+        tty_print("CPU "); tty_printx(cpu->id); tty_print(": "); tty_printx((uint64_t)cpu->runningProcess); tty_print(" | "); tty_print(string);
 
         tty_release();
     }

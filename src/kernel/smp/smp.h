@@ -13,6 +13,10 @@
 #define SMP_TRAMPOLINE_DATA_STACK_TOP 0x8FE0
 #define SMP_TRAMPOLINE_DATA_ENTRY 0x8FD0
 
+#define IPI_BASE 0x90
+#define IPI_HALT 0x90
+#define IPI_SCHEDULE 0x91
+
 typedef struct
 {
     uint8_t present;
@@ -20,7 +24,7 @@ typedef struct
     uint8_t id; 
     uint8_t localApicId;
 
-    Process* process;
+    Process* runningProcess;
 } Cpu;
 
 extern void smp_trampoline_start();

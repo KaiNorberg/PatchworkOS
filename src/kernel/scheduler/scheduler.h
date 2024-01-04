@@ -10,16 +10,16 @@ void scheduler_init();
 
 void scheduler_acquire();
 
-void scehduler_release();
+void scheduler_release();
 
 void scheduler_append(Process* process);
 
 void scheduler_remove(Process* process);
-
-void scheduler_switch(Process* process);
 
 void scheduler_schedule();
 
 Process* scheduler_idle_process();
 
 Process* scheduler_running_process();
+
+void scheduler_switch(Process* process);

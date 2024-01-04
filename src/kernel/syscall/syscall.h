@@ -15,4 +15,6 @@
 
 #define SYSCALL_GET_PAGE_DIRECTORY(interruptFrame) ((PageDirectory*)interruptFrame->cr3)
 
+#define SYSCALL_VECTOR 0x80
+
 void syscall_handler(InterruptFrame* interruptFrame);

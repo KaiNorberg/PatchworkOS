@@ -60,7 +60,6 @@ void kernel_cpu_init()
     gdt_load_tss(tss_get(smp_current_cpu()->id));
 
     local_apic_init();
-    apic_timer_init();
 
     interrupts_enable();
 }

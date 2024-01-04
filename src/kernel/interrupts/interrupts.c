@@ -88,19 +88,19 @@ void interrupt_vectors_map(PageDirectory* pageDirectory)
 
 void interrupt_handler(InterruptFrame* interruptFrame)
 {           
-    if (interruptFrame->vector < 32) //Exception
+    if (interruptFrame->vector < IRQ_BASE)
     {
         exception_handler(interruptFrame);
     }
-    else if (interruptFrame->vector >= 0x20 && interruptFrame->vector <= 0x30) //IRQ
+    else if (interruptFrame->vector >= IRQ_BASE && interruptFrame->vector <= IRQ_BASE + IRQ_AMOUNT)
     {    
         irq_handler(interruptFrame);
     }
-    else if (interruptFrame->vector == 0x80) //Syscall
+    else if (interruptFrame->vector == SYSCALL_VECTOR)
     {
         syscall_handler(interruptFrame);
     } 
-    else if (interruptFrame->vector >= 0x90) //Inter processor interrupt
+    else if (interruptFrame->vector >= IPI_BASE)
     {
         ipi_handler(interruptFrame);
     }
@@ -108,7 +108,7 @@ void interrupt_handler(InterruptFrame* interruptFrame)
 
 void irq_handler(InterruptFrame* interruptFrame)
 {
-    uint64_t irq = interruptFrame->vector - 0x20;
+    uint64_t irq = interruptFrame->vector - IRQ_BASE;
 
     switch (irq)
     {
@@ -118,34 +118,7 @@ void irq_handler(InterruptFrame* interruptFrame)
 
         if (time_get_tick() % (TICKS_PER_SECOND / 2) == 0) //For testing
         {   
-            if (local_apic_current_cpu() == 2)
-            {
-                tty_print("Test");
-
-                scheduler_acquire();
-
-                interrupt_frame_copy(scheduler_running_process()->interruptFrame, interruptFrame);
-                scheduler_schedule();    
-                interrupt_frame_copy(interruptFrame, scheduler_running_process()->interruptFrame);
-
-                scehduler_release();
-            }
-
-            /*scheduler_acquire();
-
-            tty_print("Idle Process: "); tty_printx(scheduler_idle_process()); tty_print("\n\r");
-            tty_print("Prev Process: "); tty_printx(scheduler_running_process()); tty_print("\n\r");
-
-            interrupt_frame_copy(scheduler_running_process()->interruptFrame, interruptFrame);
-            scheduler_schedule();    
-
-            tty_print("Next Process: "); tty_printx(scheduler_running_process()); tty_print("\n\r");
-
-            interrupt_frame_copy(interruptFrame, scheduler_running_process()->interruptFrame);
-
-            scehduler_release();*/
-
-            //smp_send_ipi_to_others(IPI_SCHEDULE);
+            smp_send_ipi_to_all(IPI_SCHEDULE);
         }
     }
     break;
@@ -157,12 +130,11 @@ void irq_handler(InterruptFrame* interruptFrame)
     }        
 
     local_apic_eoi();
-    //io_pic_eoi(irq); 
 }
 
 void ipi_handler(InterruptFrame* interruptFrame)
 {        
-    /*switch (interruptFrame->vector)
+    switch (interruptFrame->vector)
     {
     case IPI_HALT:
     {
@@ -182,7 +154,7 @@ void ipi_handler(InterruptFrame* interruptFrame)
         scheduler_schedule();    
         interrupt_frame_copy(interruptFrame, scheduler_running_process()->interruptFrame);
 
-        scehduler_release();
+        scheduler_release();
     }
     break;
     default:
@@ -190,14 +162,14 @@ void ipi_handler(InterruptFrame* interruptFrame)
         //Not implemented
     }
     break;
-    }*/
+    }
 
     local_apic_eoi();
 }
 
 void exception_handler(InterruptFrame* interruptFrame)
 {   
-    tty_acquire(); 
+    smp_send_ipi_to_others(IPI_HALT);
 
     debug_exception(interruptFrame, "Exception");
 

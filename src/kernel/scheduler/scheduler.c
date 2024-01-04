@@ -7,8 +7,8 @@
 #include "io/io.h"
 #include "queue/queue.h"
 #include "idt/idt.h"
-#include "spin_lock/spin_lock.h"
 #include "smp/smp.h"
+#include "spin_lock/spin_lock.h"
 
 Process* idleProcess;
 
@@ -34,7 +34,7 @@ void scheduler_acquire()
     spin_lock_acquire(&schedulerLock);
 }
 
-void scehduler_release()
+void scheduler_release()
 {
     spin_lock_release(&schedulerLock);
 }
@@ -45,8 +45,10 @@ void scheduler_append(Process* process)
 }
 
 void scheduler_remove(Process* process)
-{
-    if (process == scheduler_running_process())
+{        
+    Process* runningProcess = scheduler_running_process();
+
+    if (process == runningProcess)
     {
         scheduler_switch(idleProcess);
         return;
@@ -69,12 +71,13 @@ void scheduler_schedule()
 {
     if (queue_length(readyProcessQueue) == 0)
     {
+        scheduler_switch(idleProcess);
         return;
     }
     else
     {
         Process* nextProcess = queue_pop(readyProcessQueue);    
-        
+
         Process* runningProcess = scheduler_running_process();
 
         if (runningProcess != idleProcess)
@@ -87,12 +90,6 @@ void scheduler_schedule()
     }
 }
 
-void scheduler_switch(Process* process)
-{
-    smp_current_cpu()->process = process;
-    process->state = PROCESS_STATE_RUNNING;
-}
-
 Process* scheduler_idle_process()
 {
     return idleProcess;
@@ -100,13 +97,11 @@ Process* scheduler_idle_process()
 
 Process* scheduler_running_process()
 {
-    if (smp_current_cpu()->process == 0)
-    {
-        debug_panic("Failed to retrieve scheduled process!");
-        return 0;
-    }
-    else
-    {
-        return smp_current_cpu()->process;
-    }
+    return smp_current_cpu()->runningProcess;
+}
+
+void scheduler_switch(Process* process)
+{
+    smp_current_cpu()->runningProcess = process;
+    process->state = PROCESS_STATE_RUNNING;
 }

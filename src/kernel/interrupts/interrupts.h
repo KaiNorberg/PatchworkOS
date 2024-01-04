@@ -5,9 +5,7 @@
 #include "interrupt_frame/interrupt_frame.h"
 #include "page_directory/page_directory.h"
 
-#define IPI_HALT 0x90
-#define IPI_SCHEDULE 0x91
-
+#define IRQ_BASE 0x20
 #define IRQ_PIT 0x0
 #define IRQ_KEYBOARD 0x1
 #define IRQ_CASCADE 0x2
@@ -24,6 +22,8 @@
 #define IRQ_FPU 0xD
 #define IRQ_PRIMARY_ATA_HARD_DISK 0xE
 #define IRQ_SECONDARY_ATA_HARD_DISK 0xF
+
+#define IRQ_AMOUNT 0x10
 
 void interrupts_init();
 
