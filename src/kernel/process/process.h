@@ -28,6 +28,9 @@ typedef struct Process
     MemoryBlock* firstMemoryBlock;
     MemoryBlock* lastMemoryBlock;
 
+    uint64_t timeStart;
+    uint64_t timeEnd;
+
     struct Process* next;
     struct Process* prev;
     uint8_t state;

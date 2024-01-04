@@ -112,13 +112,16 @@ void irq_handler(InterruptFrame* interruptFrame)
 
     switch (irq)
     {
-    case IRQ_PIT:
+    case IRQ_TIMER:
     {
-        time_tick();
+        for (uint64_t cpuId = 0; cpuId < smp_cpu_amount(); cpuId++)
+        {
+            Cpu* cpu = smp_cpu(cpuId);
 
-        if (time_get_tick() % (TICKS_PER_SECOND / 2) == 0) //For testing
-        {   
-            smp_send_ipi_to_all(IPI_SCHEDULE);
+            if (cpu->runningProcess->timeEnd <= time_nanoseconds()) //For testing
+            {   
+                smp_send_ipi(cpu, IPI_SCHEDULE);
+            }
         }
     }
     break;

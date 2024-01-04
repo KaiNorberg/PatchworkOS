@@ -6,6 +6,7 @@
 #include "page_allocator/page_allocator.h"
 #include "time/time.h"
 #include "utils/utils.h"
+#include "hpet/hpet.h"
 
 #include "../common.h"
 
@@ -70,9 +71,9 @@ void debug_panic(const char* message)
     debug_move_to_grid(2, 0, white);
     tty_print("[Time]"); 
     debug_next_row();
-    tty_print("Tick = "); tty_printx(time_get_tick());
+    tty_print("Tick = "); tty_printx(hpet_read_counter());
     debug_next_row();
-    tty_print("Current Time = "); tty_printx(time_get_tick());
+    tty_print("Current Time = "); tty_printx(time_nanoseconds());
 
     debug_move_to_grid(2, 2, white);
     tty_print("[Memory]"); 
@@ -166,9 +167,9 @@ void debug_exception(InterruptFrame* interruptFrame, const char* message)
     debug_move_to_grid(12, 0, white);
     tty_print("[Time]"); 
     debug_next_row();
-    tty_print("Tick = "); tty_printx(time_get_tick());
+    tty_print("Tick = "); tty_printx(hpet_read_counter());
     debug_next_row();
-    tty_print("Current Time = "); tty_printx(time_get_tick());
+    tty_print("Current Time = "); tty_printx(time_nanoseconds());
 
     debug_move_to_grid(12, 2, white);
     tty_print("[Memory]"); 

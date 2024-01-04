@@ -9,6 +9,7 @@
 #include "idt/idt.h"
 #include "smp/smp.h"
 #include "spin_lock/spin_lock.h"
+#include "time/time.h"
 
 Process* idleProcess;
 
@@ -103,5 +104,7 @@ Process* scheduler_running_process()
 void scheduler_switch(Process* process)
 {
     smp_current_cpu()->runningProcess = process;
+    process->timeStart = time_nanoseconds();
+    process->timeEnd = process->timeStart + NANOSECONDS_PER_SECOND / 2;
     process->state = PROCESS_STATE_RUNNING;
 }

@@ -19,6 +19,9 @@ Process* process_new(void* entry)
     newProcess->interruptFrame = interrupt_frame_new(entry, PROCESS_ADDRESS_SPACE_USER_STACK + 0x1000, 0x18 | 3, 0x20 | 3, 0x202, newProcess->pageDirectory);
     newProcess->state = PROCESS_STATE_READY;
     
+    newProcess->timeStart = 0;
+    newProcess->timeEnd = 0;
+
     return newProcess;
 }
 

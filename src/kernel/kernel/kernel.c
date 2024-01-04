@@ -44,7 +44,6 @@ void kernel_init(BootInfo* bootInfo)
     file_system_init(bootInfo->rootDirectory);
     
     hpet_init();
-    time_init();
 
     scheduler_init();
 

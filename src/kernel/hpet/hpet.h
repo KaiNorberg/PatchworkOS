@@ -29,7 +29,9 @@ typedef struct __attribute__((packed))
 
 void hpet_init();
 
-uint64_t hpet_get_nanosecond_period();
+uint64_t hpet_nanoseconds_per_tick();
+
+uint64_t hpet_read_counter();
 
 void hpet_write(uint64_t reg, uint64_t value);
 

@@ -38,6 +38,8 @@ Cpu* smp_current_cpu();
 
 uint8_t smp_cpu_amount();
 
+void smp_send_ipi(Cpu* cpu, uint8_t vector);
+
 void smp_send_ipi_to_all(uint8_t vector);
 
 void smp_send_ipi_to_others(uint8_t vector);

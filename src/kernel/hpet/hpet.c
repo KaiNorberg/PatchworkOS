@@ -35,7 +35,12 @@ void hpet_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-uint64_t hpet_get_nanosecond_period()
+uint64_t hpet_read_counter()
+{
+    return hpet_read(HPET_MAIN_COUNTER_VALUE);
+}
+
+uint64_t hpet_nanoseconds_per_tick()
 {
     return hpetPeriod / 1000000;
 }

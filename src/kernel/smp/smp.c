@@ -120,6 +120,14 @@ uint8_t smp_cpu_amount()
     return cpuAmount;
 }
 
+void smp_send_ipi(Cpu* cpu, uint8_t vector)
+{  
+    if (cpu->present)
+    {
+        local_apic_send_ipi(cpu->localApicId, vector);
+    }
+}
+
 void smp_send_ipi_to_all(uint8_t vector)
 {
     for (uint64_t cpuId = 0; cpuId < SMP_MAX_CPU_AMOUNT; cpuId++)
