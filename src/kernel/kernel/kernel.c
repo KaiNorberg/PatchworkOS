@@ -6,7 +6,7 @@
 #include "heap/heap.h"
 #include "utils/utils.h"
 #include "syscall/syscall.h"
-#include "file_system/file_system.h"
+#include "ram_disk/ram_disk.h"
 #include "page_allocator/page_allocator.h"
 #include "scheduler/scheduler.h"
 #include "io/io.h"
@@ -41,7 +41,7 @@ void kernel_init(BootInfo* bootInfo)
 
     interrupts_init();
 
-    file_system_init(bootInfo->rootDirectory);
+    ram_disk_init(bootInfo->rootDirectory);
     
     hpet_init();
 

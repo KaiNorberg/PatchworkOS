@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 #include "gop/gop.h"
-#include "file_system/file_system.h"
+#include "ram_disk/ram_disk.h"
 #include "memory/memory.h"
 #include "page_directory/page_directory.h"
 #include "rsdt/rsdt.h"
@@ -16,7 +16,7 @@ typedef struct
 	EfiMemoryMap* memoryMap;
 	Xsdt* xsdp;
 	void* rt;
-	RawDirectory* rootDirectory;
+	RamDirectory* rootDirectory;
 } BootInfo;
 
 void kernel_init(BootInfo* bootInfo);

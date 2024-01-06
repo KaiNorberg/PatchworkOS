@@ -1,12 +1,12 @@
-#include "file_system.h"
+#include "ram_disk.h"
 
 #include "string/string.h"
 #include "heap/heap.h"
 #include "tty/tty.h"
 
-RawDirectory* rootDir;
+RamDirectory* rootDir;
 
-void print_directory(RawDirectory* directory, uint64_t indentation)
+void print_directory(RamDirectory* directory, uint64_t indentation)
 {
     for (int j = 0; j < indentation * 4; j++)
     {
@@ -31,7 +31,7 @@ void print_directory(RawDirectory* directory, uint64_t indentation)
     }
 }
 
-void file_system_init(RawDirectory* rootDirectory)
+void ram_disk_init(RamDirectory* rootDirectory)
 {    
     tty_start_message("File system initializing");
 
@@ -40,7 +40,7 @@ void file_system_init(RawDirectory* rootDirectory)
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-uint8_t file_system_compare_names(const char* nameStart, const char* nameEnd, const char* otherName)
+uint8_t ram_disk_compare_names(const char* nameStart, const char* nameEnd, const char* otherName)
 {
     uint64_t otherNameLength = strlen(otherName);
     if (otherNameLength != nameEnd - nameStart)
@@ -60,12 +60,12 @@ uint8_t file_system_compare_names(const char* nameStart, const char* nameEnd, co
     }
 }
 
-RawFile* file_system_get(const char* path)
+RamFile* ram_disk_get(const char* path)
 {
     uint64_t index = 1;
     uint64_t prevIndex = 1;
 
-    RawDirectory* currentDir = rootDir;
+    RamDirectory* currentDir = rootDir;
 
     if (strlen(path) < 3)
     {
@@ -82,7 +82,7 @@ RawFile* file_system_get(const char* path)
             {
                 for (int i = 0; i < currentDir->directoryAmount; i++)
                 {
-                    if (file_system_compare_names(path + prevIndex, path + index, currentDir->directories[i].name))
+                    if (ram_disk_compare_names(path + prevIndex, path + index, currentDir->directories[i].name))
                     {
                         currentDir = &currentDir->directories[i];
                         break;
@@ -95,7 +95,7 @@ RawFile* file_system_get(const char* path)
             {                
                 for (int i = 0; i < currentDir->fileAmount; i++)
                 {
-                    if (file_system_compare_names(path + prevIndex, path + index, currentDir->files[i].name))
+                    if (ram_disk_compare_names(path + prevIndex, path + index, currentDir->files[i].name))
                     {
                         return &currentDir->files[i];
                     }
@@ -109,9 +109,9 @@ RawFile* file_system_get(const char* path)
     return 0;
 }
 
-FILE* file_system_open(const char* filename, const char* mode)
+FILE* ram_disk_open(const char* filename, const char* mode)
 {
-    RawFile* rawFile = file_system_get(filename);
+    RamFile* rawFile = ram_disk_get(filename);
 
     if (rawFile)
     {
@@ -128,7 +128,7 @@ FILE* file_system_open(const char* filename, const char* mode)
     }
 }
 
-uint32_t file_system_seek(FILE *stream, int64_t offset, uint32_t origin)
+uint32_t ram_disk_seek(FILE *stream, int64_t offset, uint32_t origin)
 {
     switch (origin)
     {
@@ -152,29 +152,29 @@ uint32_t file_system_seek(FILE *stream, int64_t offset, uint32_t origin)
     return 0;
 }
 
-uint64_t file_system_tell(FILE *stream)
+uint64_t ram_disk_tell(FILE *stream)
 {
     return stream->seekOffset;
 }
 
-uint32_t file_system_get_c(FILE* stream)
+uint32_t ram_disk_get_c(FILE* stream)
 {
     uint8_t out = stream->fileHandle->data[stream->seekOffset];
     stream->seekOffset++;
     return out;
 }
 
-uint64_t file_system_read(void* buffer, uint64_t size, FILE* stream)
+uint64_t ram_disk_read(void* buffer, uint64_t size, FILE* stream)
 {
     for (uint64_t i = 0; i < size; i++)
     {
-        ((uint8_t*)buffer)[i] = file_system_get_c(stream);
+        ((uint8_t*)buffer)[i] = ram_disk_get_c(stream);
     }
 
     return size;
 }
 
-uint32_t file_system_close(FILE* stream)
+uint32_t ram_disk_close(FILE* stream)
 {
     kfree(stream);
 

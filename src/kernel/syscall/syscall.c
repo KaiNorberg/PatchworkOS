@@ -1,7 +1,7 @@
 #include "syscall.h"
 
 #include "tty/tty.h"
-#include "file_system/file_system.h"
+#include "ram_disk/ram_disk.h"
 #include "scheduler/scheduler.h"
 #include "interrupt_frame/interrupt_frame.h"
 #include "string/string.h"
