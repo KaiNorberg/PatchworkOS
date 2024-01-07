@@ -11,7 +11,7 @@
 
 uint8_t load_program(const char* path)
 {
-    FILE* file = ram_disk_open(path, "r");
+    FILE* file = ram_disk_open(path);
 
     if (file == 0)
     {

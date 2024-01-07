@@ -12,6 +12,10 @@
 
 #include "../common.h"
 
+#define WAIT_TYPE_SLEEP 0
+#define WAIT_TYPE_IRQ 1
+#define WAIT_TYPE_FILE 2
+
 void syscall_handler(InterruptFrame* interruptFrame)
 {    
     uint64_t out = 0;
@@ -28,6 +32,19 @@ void syscall_handler(InterruptFrame* interruptFrame)
 
     }
     break;
+    /*case SYS_WAIT:
+    {
+        uint64_t type = SYSCALL_GET_ARG1(interruptFrame);
+        uint64_t data = SYSCALL_GET_ARG1(interruptFrame);
+            
+        scheduler_acquire();
+
+        scheduler_wait(type, data);
+        scheduler_yield(interruptFrame);
+
+        scheduler_release();
+    }
+    break;*/
     case SYS_FORK:
     {        
         scheduler_acquire();
@@ -65,14 +82,8 @@ void syscall_handler(InterruptFrame* interruptFrame)
     {        
         scheduler_acquire();
 
-        Process* process = scheduler_running_process();
-
-        scheduler_remove(process);
-        process_free(process);
-
-        scheduler_schedule();
-
-        interrupt_frame_copy(interruptFrame, scheduler_running_process()->interruptFrame);
+        scheduler_exit();
+        scheduler_yield(interruptFrame);
 
         scheduler_release();
     }
@@ -86,7 +97,7 @@ void syscall_handler(InterruptFrame* interruptFrame)
         const char* string = page_directory_get_physical_address(SYSCALL_GET_PAGE_DIRECTORY(interruptFrame), (void*)SYSCALL_GET_ARG1(interruptFrame));
 
         tty_set_cursor_pos(0, 16 * 35 + 16 * cpu->id);
-        tty_print("CPU "); tty_printx(cpu->id); tty_print(": "); tty_printx((uint64_t)cpu->runningProcess); tty_print(" | "); tty_print(string);
+        tty_print("CPU "); tty_printx(cpu->id); tty_print(": "); tty_printx((uint64_t)scheduler_running_process()); tty_print(" | "); tty_print(string);
 
         tty_release();
     }

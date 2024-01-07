@@ -114,15 +114,7 @@ void irq_handler(InterruptFrame* interruptFrame)
     {
     case IRQ_TIMER:
     {
-        for (uint64_t cpuId = 0; cpuId < smp_cpu_amount(); cpuId++)
-        {
-            Cpu* cpu = smp_cpu(cpuId);
-
-            if (cpu->runningProcess->timeEnd <= time_nanoseconds()) //For testing
-            {   
-                smp_send_ipi(cpu, IPI_SCHEDULE);
-            }
-        }
+        scheduler_tick(interruptFrame);
     }
     break;
     default:
@@ -149,13 +141,11 @@ void ipi_handler(InterruptFrame* interruptFrame)
         }
     }
     break;
-    case IPI_SCHEDULE:
+    case IPI_YIELD:
     {
         scheduler_acquire();
 
-        interrupt_frame_copy(scheduler_running_process()->interruptFrame, interruptFrame);
-        scheduler_schedule();    
-        interrupt_frame_copy(interruptFrame, scheduler_running_process()->interruptFrame);
+        scheduler_yield(interruptFrame);
 
         scheduler_release();
     }

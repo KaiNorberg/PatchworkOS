@@ -15,7 +15,7 @@
 
 #define IPI_BASE 0x90
 #define IPI_HALT 0x90
-#define IPI_SCHEDULE 0x91
+#define IPI_YIELD 0x91
 
 typedef struct
 {
@@ -23,8 +23,6 @@ typedef struct
     
     uint8_t id; 
     uint8_t localApicId;
-
-    Process* runningProcess;
 } Cpu;
 
 extern void smp_trampoline_start();

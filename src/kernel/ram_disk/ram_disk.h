@@ -34,7 +34,7 @@ uint8_t ram_disk_compare_names(const char* nameStart, const char* nameEnd, const
 
 RamFile* ram_disk_get(const char* path);
 
-FILE* ram_disk_open(const char* filename, const char* mode);
+FILE* ram_disk_open(const char* filename);
 
 uint32_t ram_disk_seek(FILE *stream, int64_t offset, uint32_t origin);
 

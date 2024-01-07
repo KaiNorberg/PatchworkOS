@@ -12,3 +12,8 @@ sys_fork:
     mov rax, 57
     int 0x80
     ret
+
+sys_wait:
+    mov rax, 35
+    int 0x80
+    ret

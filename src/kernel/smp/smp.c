@@ -41,7 +41,6 @@ uint8_t smp_enable_cpu(uint8_t cpuId, uint8_t localApicId)
     cpus[cpuId].present = 1;
     cpus[cpuId].id = cpuId;
     cpus[cpuId].localApicId = localApicId;
-    cpus[cpuId].runningProcess = scheduler_idle_process();
 
     if (local_apic_current_cpu() != cpuId)
     {

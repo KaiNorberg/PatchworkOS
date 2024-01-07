@@ -109,7 +109,7 @@ RamFile* ram_disk_get(const char* path)
     return 0;
 }
 
-FILE* ram_disk_open(const char* filename, const char* mode)
+FILE* ram_disk_open(const char* filename)
 {
     RamFile* rawFile = ram_disk_get(filename);
 
