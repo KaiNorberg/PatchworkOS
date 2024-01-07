@@ -46,7 +46,7 @@ uint8_t load_program(const char* path)
             void* segment = process_allocate_pages(process, (void*)programHeader->virtualAddress, GET_SIZE_IN_PAGES(programHeader->memorySize));
 
             ram_disk_seek(file, programHeader->offset, SEEK_SET);
-            ram_disk_read(segment, programHeader->memorySize, file);
+            ram_disk_read(segment, programHeader->fileSize, file);
 		}
 		break;
 		}

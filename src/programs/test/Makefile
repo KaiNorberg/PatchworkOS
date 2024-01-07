@@ -4,9 +4,7 @@ PARENT_DIR := programs/test
 
 include $(PATCHWORK_DIR)/Make.defaults
 
-LINKER_SCRIPT = ../linker.ld
-
-LD_FLAGS = -T $(LINKER_SCRIPT) -Bstatic -nostdlib ../../../bin/libc/libc.o
+LD_FLAGS = $(PATCHWORK_DIR)/bin/libc/libc.o
 
 build: $(OBJECTS)
 

@@ -4,7 +4,7 @@ PARENT_DIR := libc
 
 include $(PATCHWORK_DIR)/Make.defaults
 
-LD_FLAGS = -T $(LINKER_SCRIPT) -Bstatic -nostdlib -r
+LD_FLAGS = -Bstatic -nostdlib -r
 
 build: $(OBJECTS)
 
