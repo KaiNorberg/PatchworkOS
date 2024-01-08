@@ -22,7 +22,7 @@ After you have chosen your preferred system run the ```make setup all``` command
 
 There are three ways to run Patchwork.
 
-1. Use a tool like [Rufus](https://rufus.ie/en/) to create a bootable USB using the created .img file.
+1. Use a tool like [balenaEtcher](https://etcher.balena.io/) to create a bootable USB using the created .img file.
 2. Download [QEMU](https://www.qemu.org/) on your Linux machine and then use the  ```make run``` command.
 3. Run the created .img file in a virtual machine of your choice.
 
