@@ -33,6 +33,10 @@ uint8_t load_program(const char* path)
 
     uint64_t programHeaderTableSize = header.programHeaderAmount * header.programHeaderSize;
     ElfProgramHeader* programHeaders = kmalloc(programHeaderTableSize);
+    if (programHeaders == 0)
+    {
+        debug_panic("Failed to allocate memory for program headers!");
+    }
     ram_disk_read(programHeaders, programHeaderTableSize, file);
 
     Process* process = process_new((void*)header.entry);

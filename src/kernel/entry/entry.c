@@ -28,13 +28,13 @@ void main(BootInfo* bootInfo)
     for (uint64_t i = 0; i < 8; i++)
     {
         tty_print("Loading fork_test...\n\r");
-        load_program("/programs/fork_test/fork_test.elf");
+        load_program("/bin/fork_test.elf");
     }
 
     tty_print("Loading test...\n\r");
-    load_program("/programs/test/test.elf");
+    load_program("/bin/test.elf");
 
     tty_print("\n\rKernel Initialized!\n\n\r");
-    
+
     scheduler_yield_to_user_space(tss_get(smp_current_cpu()->id));
 }

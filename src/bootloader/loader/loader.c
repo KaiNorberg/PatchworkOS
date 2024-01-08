@@ -13,7 +13,7 @@ void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, B
 	
 	PageDirectory* kernelPageDirectory = page_directory_new();
 
-	EFI_FILE* file = file_system_open(imageHandle, L"/kernel/kernel.elf");
+	EFI_FILE* file = file_system_open(imageHandle, L"/boot/kernel.elf");
 	if (file == NULL)
 	{
 		Print(L"ERROR: Failed to load");
