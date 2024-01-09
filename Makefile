@@ -22,16 +22,15 @@ BUILD_DIR = build
 ROOT_DIR = root
 
 CC = gcc
-C_FLAGS = -Os -Wall -ffreestanding -fno-stack-protector -fno-exceptions
-
 LD = ld
-LD_FLAGS = -Bsymbolic -nostdlib
-
 ASM = nasm
+
+C_FLAGS = -Os -Wall -ffreestanding -fno-stack-protector -fno-exceptions
+LD_FLAGS = -Bsymbolic -nostdlib
 ASM_FLAGS = -f elf64
 
-PROGRAM_C_FLAGS = -Os -Wall -ffreestanding -fno-stack-protector -fno-exceptions
-PROGRAM_LD_FLAGS = -Bsymbolic -nostdlib bin/libc/libc.o
+PROGRAM_C_FLAGS = $(C_FLAGS)
+PROGRAM_LD_FLAGS = $(LD_FLAGS) bin/libc/libc.o
 
 BUILD = 
 
