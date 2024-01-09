@@ -51,7 +51,7 @@ Pixel debugCurrentColor;
 
 void debug_panic(const char* message)
 {
-    tty_clear();
+    //tty_clear();
 
     Pixel white;
     white.a = 255;
@@ -94,7 +94,7 @@ void debug_panic(const char* message)
 
 void debug_exception(InterruptFrame* interruptFrame, const char* message)
 {    
-    tty_clear();
+    //tty_clear();
 
     Pixel white;
     white.a = 255;

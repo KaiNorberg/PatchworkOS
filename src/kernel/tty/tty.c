@@ -136,7 +136,8 @@ void tty_printi(uint64_t integer)
 void tty_printx(uint64_t hex)
 {
     char string[64];
-    itoa(hex, string, TTY_CHAR_HEIGHT);
+    memclr(string, 64);
+    itoa(hex, string, 16);
     tty_print("0x"); tty_print(string);
 }
 

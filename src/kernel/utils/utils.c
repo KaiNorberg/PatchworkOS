@@ -18,7 +18,6 @@ uint64_t read_msr(uint64_t msr)
 
 char* itoa(uint64_t i, char b[], uint8_t base)
 {
-    char const digit[] = "0123456789ABCDEF";
     char* p = b;
 
     if (i<0)
@@ -38,7 +37,9 @@ char* itoa(uint64_t i, char b[], uint8_t base)
     *p = '\0';
     do
     {
-        *--p = digit[i%base];
+        uint8_t digit = i % base;
+
+        *--p = digit < 10 ? '0' + digit : 'A' + digit - 10;
         i = i/base;
     }
     while(i);
