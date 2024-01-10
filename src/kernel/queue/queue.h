@@ -2,22 +2,18 @@
 
 #include <stdint.h>
 
-typedef struct QueueEntry
-{
-    void* data;
-    struct QueueEntry* next;
-    struct QueueEntry* prev;
-} QueueEntry;
+#define QUEUE_INITIAL_SIZE 4
 
 typedef struct
 {
-    uint64_t entryAmount;
+    uint64_t reservedLength;
+    uint64_t length;
 
-    QueueEntry* firstEntry;
-    QueueEntry* lastEntry;
+    void** data;
+
+    uint64_t firstIndex;
+    uint64_t lastIndex;
 } Queue;
-
-//TODO: Optimize queue, dont immediately free popped entires
 
 void queue_visualize(Queue* queue);
 

@@ -6,7 +6,11 @@
 
 void queue_visualize(Queue* queue)
 {
-    tty_print("Queue visualization: \n\r");
+    tty_print("Queue visualization: ");
+    tty_print("Length: "); tty_printx(queue->length); 
+    tty_print(" First Index: "); tty_printx(queue->firstIndex); 
+    tty_print(" Last Index: "); tty_printx(queue->lastIndex); 
+    tty_print("\n\r");
 
     Pixel black;
     black.a = 255;
@@ -20,38 +24,43 @@ void queue_visualize(Queue* queue)
     green.g = 195;
     green.b = 121;
 
-    tty_print("Traversed forword: ");
-    tty_set_background(green);
+    Pixel red;
+    red.a = 255;
+    red.r = 224;
+    red.g = 108;
+    red.b = 117;
 
-    QueueEntry* currentEntry = queue->firstEntry;
-    while (1)
+    Pixel blue;
+    blue.a = 255;
+    blue.r = 0;
+    blue.g = 0;
+    blue.b = 255;
+
+    for (uint64_t i = 0; i < queue->reservedLength; i++)
     {
-        if (currentEntry == 0)
+        if (i == queue->firstIndex && i == queue->lastIndex)
         {
-            break;
+            tty_set_background(blue);
         }
-
-        tty_put(' '); tty_printx((uint64_t)currentEntry->data);
-        currentEntry = currentEntry->next;
+        else if (i == queue->firstIndex)
+        {
+            tty_set_background(black);
+        }
+        else if (i == queue->lastIndex)
+        {
+            tty_set_background(red);
+        }
+        else
+        {
+            tty_set_background(green);
+        }
+        
+        tty_put(' ');
+        tty_printx((uint64_t)queue->data[i]);
+        tty_put(' ');
     }
-    tty_print(" \n\r");
-    tty_set_background(black);
-    tty_print("Traversed backword: ");
-    tty_set_background(green);
 
-    currentEntry = queue->lastEntry;
-    while (1)
-    {
-        if (currentEntry == 0)
-        {
-            break;
-        }
-
-        tty_put(' '); tty_printx((uint64_t)currentEntry->data);
-        currentEntry = currentEntry->prev;
-    }    
-    tty_print(" \n\n\r");
-
+    tty_print("\n\r");
     tty_set_background(black);
 }
 
@@ -59,95 +68,83 @@ Queue* queue_new()
 {
     Queue* newQueue = kmalloc(sizeof(Queue));
     
-    newQueue->firstEntry = 0;
-    newQueue->lastEntry = 0;
-    newQueue->entryAmount = 0;
+    newQueue->reservedLength = QUEUE_INITIAL_SIZE;
+    newQueue->length = 0;
+
+    newQueue->data = kmalloc(QUEUE_INITIAL_SIZE * sizeof(void*));
+
+    newQueue->firstIndex = QUEUE_INITIAL_SIZE - 1;
+    newQueue->lastIndex = QUEUE_INITIAL_SIZE - 1;
 
     return newQueue;
 }
 
 void queue_push(Queue* queue, void* item)
 {        
-    QueueEntry* newEntry = kmalloc(sizeof(QueueEntry));
-    newEntry->data = item;
-    newEntry->next = 0;
-
-    if (queue->entryAmount == 0)
+    if (queue->reservedLength == queue->length)
     {
-        newEntry->prev = 0;
+        uint64_t newReservedLength = queue->reservedLength * 2;
+        void** newData = kmalloc(newReservedLength * sizeof(void*));
 
-        queue->firstEntry = newEntry;
-        queue->lastEntry = newEntry;
+        uint64_t length = queue_length(queue);
+        uint64_t i = 0;
+        while (queue_length(queue) != 0)
+        {
+            newData[newReservedLength - 1 - i] = queue_pop(queue);
+            i++;
+        }
 
-        queue->entryAmount = 1;        
+        kfree(queue->data);
+
+        queue->length = length;
+        queue->reservedLength = newReservedLength;
+        queue->data = newData;
+        queue->firstIndex = newReservedLength - 1;
+        queue->lastIndex = queue->firstIndex - i;
+    }
+
+    queue->data[queue->lastIndex] = item;
+    queue->length++;
+
+    if (queue->lastIndex == 0)
+    {
+        queue->lastIndex = queue->reservedLength - 1;
     }
     else
     {
-        newEntry->prev = queue->lastEntry;
-
-        queue->lastEntry->next = newEntry;
-        queue->lastEntry = newEntry;
-
-        queue->entryAmount++;     
+        queue->lastIndex--;
     }
 }
 
 void* queue_pop(Queue* queue)
 {   
-    if (queue->entryAmount == 0)
+    if (queue->length == 0)
     {
-        return 0;
+        return -1;
     }
-    else if (queue->entryAmount == 1)
+
+    void* temp = queue->data[queue->firstIndex];
+    queue->length--;
+
+    if (queue->firstIndex == 0)
     {
-        void* data = queue->firstEntry->data;
-        QueueEntry* firstEntry = queue->firstEntry;
-
-        queue->entryAmount = 0;
-        queue->firstEntry = 0;
-        queue->lastEntry = 0;
-        
-        kfree(firstEntry);
-
-        return data;
+        queue->firstIndex = queue->reservedLength - 1;
     }
     else
     {
-        void* data = queue->firstEntry->data;
-        QueueEntry* firstEntry = queue->firstEntry;
-
-        queue->firstEntry->next->prev = 0;
-        queue->firstEntry = queue->firstEntry->next;
-
-        kfree(firstEntry);
-
-        queue->entryAmount--;
-
-        return data;
+        queue->firstIndex--;
     }
+
+    return temp;
 }
 
 uint64_t queue_length(Queue* queue)
 {
-    return queue->entryAmount;
+    return queue->length;
 }
 
 void queue_free(Queue* queue)
 {
-    QueueEntry* currentEntry = queue->firstEntry;
-    while (1)
-    {
-        if (currentEntry == 0)
-        {
-            break;
-        }
-
-        QueueEntry* nextEntry = currentEntry->next;
-
-        kfree(currentEntry);
-
-        currentEntry = nextEntry;
-    }
-
+    kfree(queue->data);
     kfree(queue);
 }

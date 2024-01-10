@@ -37,4 +37,9 @@ void main(BootInfo* bootInfo)
     tty_print("\n\rKernel Initialized!\n\n\r");
 
     scheduler_yield_to_user_space(tss_get(smp_current_cpu()->id));
+
+    while (1)
+    {
+        asm volatile("hlt");
+    }
 }
