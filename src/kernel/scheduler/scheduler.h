@@ -16,8 +16,6 @@ void scheduler_acquire();
 
 void scheduler_release();
 
-void scheduler_wait(uint64_t type, uint64_t data);
-
 void scheduler_yield(InterruptFrame* interruptFrame);
 
 void scheduler_append(Process* process);

@@ -119,32 +119,51 @@ uint8_t smp_cpu_amount()
     return cpuAmount;
 }
 
-void smp_send_ipi(Cpu* cpu, uint8_t vector)
-{  
-    if (cpu->present)
+Ipi smp_receive_ipi()
+{        
+    Cpu* cpu = smp_current_cpu();     
+
+    if (cpu->ipi.type != IPI_TYPE_NONE)
+    {            
+        return cpu->ipi;
+    }
+    else
     {
-        local_apic_send_ipi(cpu->localApicId, vector);
+        return (Ipi){.type = IPI_TYPE_NONE};
     }
 }
 
-void smp_send_ipi_to_all(uint8_t vector)
+void smp_send_ipi(Cpu* cpu, Ipi ipi)
+{  
+    if (cpu->present)
+    {
+        cpu->ipi = ipi;
+        local_apic_send_ipi(cpu->localApicId, IPI_VECTOR);        
+    }
+}
+
+void smp_send_ipi_to_all(Ipi ipi)
 {
     for (uint64_t cpuId = 0; cpuId < SMP_MAX_CPU_AMOUNT; cpuId++)
-    {        
-        if (smp_cpu(cpuId)->present)
+    {   
+        Cpu* cpu = smp_cpu(cpuId);     
+
+        if (cpu->present)
         {
-            local_apic_send_ipi(smp_cpu(cpuId)->localApicId, vector);
+            smp_send_ipi(cpu, ipi);
         }
     }
 }
 
-void smp_send_ipi_to_others(uint8_t vector)
+void smp_send_ipi_to_others(Ipi ipi)
 {
     for (uint64_t cpuId = 0; cpuId < SMP_MAX_CPU_AMOUNT; cpuId++)
-    {
-        if (smp_cpu(cpuId)->present && cpuId != smp_current_cpu()->localApicId)
+    {        
+        Cpu* cpu = smp_cpu(cpuId);     
+
+        if (cpu->present && cpu != smp_current_cpu())
         {
-            local_apic_send_ipi(smp_cpu(cpuId)->localApicId, vector);
+            smp_send_ipi(cpu, ipi);
         }
     }
 }

@@ -50,7 +50,8 @@ void scheduler_tick(InterruptFrame* interruptFrame)
             }
             else
             {
-                smp_send_ipi(cpu, IPI_YIELD);
+                Ipi ipi = IPI_CREATE(IPI_TYPE_YIELD);
+                smp_send_ipi(cpu, ipi);
             }
         }
     }
@@ -75,11 +76,6 @@ void scheduler_acquire()
 void scheduler_release()
 {
     spin_lock_release(&schedulerLock);
-}
-
-void scheduler_wait(uint64_t type, uint64_t data)
-{
-
 }
 
 void scheduler_yield(InterruptFrame* interruptFrame)

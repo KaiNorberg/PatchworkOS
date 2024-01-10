@@ -100,7 +100,7 @@ void interrupt_handler(InterruptFrame* interruptFrame)
     {
         syscall_handler(interruptFrame);
     } 
-    else if (interruptFrame->vector >= IPI_BASE)
+    else if (interruptFrame->vector == IPI_VECTOR)
     {
         ipi_handler(interruptFrame);
     }
@@ -128,10 +128,12 @@ void irq_handler(InterruptFrame* interruptFrame)
 }
 
 void ipi_handler(InterruptFrame* interruptFrame)
-{        
-    switch (interruptFrame->vector)
+{   
+    Ipi ipi = smp_receive_ipi();     
+
+    switch (ipi.type)
     {
-    case IPI_HALT:
+    case IPI_TYPE_HALT:
     {
         interrupts_disable();
 
@@ -141,7 +143,7 @@ void ipi_handler(InterruptFrame* interruptFrame)
         }
     }
     break;
-    case IPI_YIELD:
+    case IPI_TYPE_YIELD:
     {
         scheduler_acquire();
 
@@ -162,12 +164,14 @@ void ipi_handler(InterruptFrame* interruptFrame)
 
 void exception_handler(InterruptFrame* interruptFrame)
 {   
-    smp_send_ipi_to_others(IPI_HALT);
+    Ipi ipi = IPI_CREATE(IPI_TYPE_HALT);
+    smp_send_ipi_to_others(ipi);
+
+    tty_acquire();
 
     debug_exception(interruptFrame, "Exception");
 
-    //Ipi ipi = IPI_CREATE(IPI_TYPE_HALT);
-    smp_send_ipi_to_others(IPI_HALT);
+    tty_release();
 
     while (1)
     {

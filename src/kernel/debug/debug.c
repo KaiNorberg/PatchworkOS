@@ -116,7 +116,7 @@ void debug_exception(InterruptFrame* interruptFrame, const char* message)
     debug_next_row();
     tty_print("Exception = "); tty_print(exceptionStrings[interruptFrame->vector]);
     debug_next_row();
-    tty_print("ErrorCode = "); tty_printx(interruptFrame->errorCode);
+    tty_print("Error Code = "); tty_printx(interruptFrame->errorCode);
     debug_next_row();
     tty_print("Instruction Pointer = "); tty_printx(interruptFrame->instructionPointer);
     debug_next_row();
