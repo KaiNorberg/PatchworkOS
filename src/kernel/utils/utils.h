@@ -19,7 +19,7 @@
 void write_msr(uint64_t msr, uint64_t value);
 uint64_t read_msr(uint64_t msr);
 
-char* itoa(uint64_t number, char* buffer, uint8_t base);
+char* itoa(uint64_t i, char b[], uint8_t base);
 
 uint64_t stoi(const char* string);
 

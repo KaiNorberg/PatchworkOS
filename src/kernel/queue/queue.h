@@ -15,8 +15,6 @@ typedef struct
     uint64_t lastIndex;
 } Queue;
 
-void queue_visualize(Queue* queue);
-
 Queue* queue_new();
 
 void queue_push(Queue* queue, void* item);
