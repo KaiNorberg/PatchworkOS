@@ -113,8 +113,23 @@ void irq_handler(InterruptFrame* interruptFrame)
     switch (irq)
     {
     case IRQ_TIMER:
-    {
-        scheduler_tick(interruptFrame);
+    {   
+        for (uint64_t cpuId = 0; cpuId < smp_cpu_amount(); cpuId++)
+        {
+            Cpu* cpu = smp_cpu(cpuId);
+
+            if (cpu == smp_current_cpu())
+            {
+                scheduler_acquire();
+                scheduler_schedule(interruptFrame);
+                scheduler_release();
+            }
+            else
+            {
+                Ipi ipi = IPI_CREATE(IPI_TYPE_SCHEDULE);
+                smp_send_ipi(cpu, ipi);
+            }
+        }
     }
     break;
     default:
@@ -143,12 +158,10 @@ void ipi_handler(InterruptFrame* interruptFrame)
         }
     }
     break;
-    case IPI_TYPE_YIELD:
+    case IPI_TYPE_SCHEDULE:
     {
         scheduler_acquire();
-
-        scheduler_yield(interruptFrame);
-
+        scheduler_schedule(interruptFrame);
         scheduler_release();
     }
     break;

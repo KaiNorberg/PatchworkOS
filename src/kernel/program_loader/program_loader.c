@@ -56,7 +56,7 @@ uint8_t load_program(const char* path)
 		}
 	}
 
-    scheduler_append(process);
+    scheduler_push(process);
 
     kfree(programHeaders);
     ram_disk_close(file);

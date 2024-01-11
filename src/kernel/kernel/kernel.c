@@ -45,9 +45,9 @@ void kernel_init(BootInfo* bootInfo)
     
     hpet_init();
 
-    scheduler_init();
-
     smp_init();
+
+    scheduler_init();
 
     kernel_cpu_init();
 }
