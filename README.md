@@ -1,6 +1,6 @@
 # PatchworkOS [![License](https://img.shields.io/badge/licence-MIT-green)](https://github.com/Kaj9296/PatchworkOS/blob/main/LICENSE)
 
-Patchwork is a hobbyist OS built in C for the x86_64 architecture.
+Patchwork is a hobbyist OS built in C for the x86_64 architecture with a monolithic unix-like kernel.
 
 ***
 
