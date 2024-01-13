@@ -60,6 +60,6 @@ void hpet_sleep(uint64_t milliseconds)
     uint64_t target = hpet_read(HPET_MAIN_COUNTER_VALUE) + (milliseconds * 1000000000000) / hpetPeriod;
     while (!(hpet_read(HPET_MAIN_COUNTER_VALUE) >= target))
     {
-
+        __builtin_ia32_pause();
     }
 }

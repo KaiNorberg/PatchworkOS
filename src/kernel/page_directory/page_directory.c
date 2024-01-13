@@ -46,7 +46,7 @@ void page_directory_init(EfiMemoryMap* memoryMap, Framebuffer* screenbuffer)
 PageDirectory* page_directory_new()
 {
     PageDirectory* pageDirectory = (PageDirectory*)page_allocator_request();
-    memset(pageDirectory, 0, 0x1000);
+    memclr(pageDirectory, 0x1000);
 
     global_heap_map(pageDirectory);
     interrupt_vectors_map(pageDirectory);

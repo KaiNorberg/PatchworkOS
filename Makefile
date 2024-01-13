@@ -68,7 +68,7 @@ run:
     -drive if=pflash,format=raw,unit=0,file=vendor/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
     -drive if=pflash,format=raw,unit=1,file=vendor/OVMFbin/OVMF_VARS-pure-efi.fd \
     -net none
-
+	
 clean:		
 	@cd vendor/gnu-efi && make clean && cd ../..
 	@$(call run_and_test,rm -rf $(BUILD_DIR))

@@ -8,21 +8,21 @@ RamDirectory* rootDir;
 
 void print_directory(RamDirectory* directory, uint64_t indentation)
 {
-    for (int j = 0; j < indentation * 4; j++)
+    for (uint64_t j = 0; j < indentation * 4; j++)
     {
         tty_put(' ');
     }
     tty_print(directory->name);
     tty_put('\n');
 
-    for (int i = 0; i < directory->directoryAmount; i++)
+    for (uint64_t i = 0; i < directory->directoryAmount; i++)
     {
         print_directory(&directory->directories[i], indentation + 1);
     }
 
-    for (int i = 0; i < directory->fileAmount; i++)
+    for (uint64_t i = 0; i < directory->fileAmount; i++)
     {
-        for (int j = 0; j < (indentation + 1) * 4; j++)
+        for (uint64_t j = 0; j < (indentation + 1) * 4; j++)
         {
             tty_put(' ');
         }
@@ -80,7 +80,7 @@ RamFile* ram_disk_get(const char* path)
         
             if (path[index] == '/')
             {
-                for (int i = 0; i < currentDir->directoryAmount; i++)
+                for (uint64_t i = 0; i < currentDir->directoryAmount; i++)
                 {
                     if (ram_disk_compare_names(path + prevIndex, path + index, currentDir->directories[i].name))
                     {
@@ -93,7 +93,7 @@ RamFile* ram_disk_get(const char* path)
             }
             else if (path[index] == '\0')
             {                
-                for (int i = 0; i < currentDir->fileAmount; i++)
+                for (uint64_t i = 0; i < currentDir->fileAmount; i++)
                 {
                     if (ram_disk_compare_names(path + prevIndex, path + index, currentDir->files[i].name))
                     {

@@ -11,7 +11,7 @@ extern uint64_t _kernelStart;
 
 GlobalHeapBlock blocks[GLOBAL_HEAP_BLOCK_MAX];
 
-void global_heap_init(EfiMemoryMap* memoryMap)
+void global_heap_init()
 {
     tty_start_message("Global heap initializing");    
 
@@ -62,11 +62,5 @@ void* gmalloc(uint64_t pageAmount, uint16_t flags)
     }
 
     debug_panic("No more global memory can be allocated!");
-    return 0;
-}
-
-void* gfree(uint64_t pageAmount, uint16_t flags)
-{
-    debug_panic("gfree is unimplemented!");
     return 0;
 }

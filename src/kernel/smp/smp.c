@@ -26,7 +26,10 @@ void smp_cpu_entry()
 
     readyCpuAmount++;
     
-    scheduler_idle_loop();
+    while (1)
+    {
+        asm volatile("hlt");
+    }
 }
 
 uint8_t smp_enable_cpu(uint8_t cpuId, uint8_t localApicId)
@@ -144,15 +147,8 @@ void smp_send_ipi(Cpu* cpu, Ipi ipi)
 
 void smp_send_ipi_to_all(Ipi ipi)
 {
-    for (uint64_t cpuId = 0; cpuId < SMP_MAX_CPU_AMOUNT; cpuId++)
-    {   
-        Cpu* cpu = smp_cpu(cpuId);     
-
-        if (cpu->present)
-        {
-            smp_send_ipi(cpu, ipi);
-        }
-    }
+    smp_send_ipi_to_others(ipi);
+    smp_send_ipi(smp_current_cpu(), ipi);
 }
 
 void smp_send_ipi_to_others(Ipi ipi)

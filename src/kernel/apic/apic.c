@@ -5,8 +5,11 @@
 #include "utils/utils.h"
 #include "madt/madt.h"
 #include "hpet/hpet.h"
+#include "time/time.h"
+#include "smp/smp.h"
 
 uint64_t localApicBase;
+uint64_t ticksPer10ms[SMP_MAX_CPU_AMOUNT];
 
 void apic_init()
 {
@@ -27,11 +30,17 @@ void apic_timer_init()
 
     local_apic_write(APIC_REGISTER_LVT_TIMER, APIC_TIMER_MASKED);
 
-    uint32_t ticksPer10ms = 0xFFFFFFFF - local_apic_read(APIC_REGISTER_TIMER_CURRENT_COUNT);
+    ticksPer10ms[local_apic_current_cpu()] = 0xFFFFFFFF - local_apic_read(APIC_REGISTER_TIMER_CURRENT_COUNT);
 
-    local_apic_write(APIC_REGISTER_LVT_TIMER, 0x20 | APIC_TIMER_PERIODIC);
+    local_apic_write(APIC_REGISTER_LVT_TIMER, 0x20);
     local_apic_write(APIC_REGISTER_TIMER_DIVIDER, 0x3);    
-    local_apic_write(APIC_REGISTER_TIMER_INITIAL_COUNT, ticksPer10ms);
+    local_apic_write(APIC_REGISTER_TIMER_INITIAL_COUNT, ticksPer10ms[local_apic_current_cpu()]);
+}
+
+void apic_timer_set_deadline(uint64_t deadline)
+{
+    uint64_t ticks = (ticksPer10ms[local_apic_current_cpu()] * (deadline - time_nanoseconds())) / (NANOSECONDS_PER_MILLISECOND * 10);
+    local_apic_write(APIC_REGISTER_TIMER_INITIAL_COUNT, ticks);
 }
 
 void local_apic_init()

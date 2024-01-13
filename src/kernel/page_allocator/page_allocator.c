@@ -73,7 +73,7 @@ void page_allocator_visualize()
     tty_print("\n\n\r");
 }
 
-void page_allocator_init(EfiMemoryMap* memoryMap, Framebuffer* screenBuffer)
+void page_allocator_init(EfiMemoryMap* memoryMap)
 {    
     tty_start_message("Page allocator initializing");
 
@@ -127,7 +127,7 @@ void* page_allocator_request()
     uint64_t firstFreeQwordIndex = ((uint64_t)firstFreeAddress / 0x1000) / 64;
     for (uint64_t qwordIndex = firstFreeQwordIndex; qwordIndex < pageAmount / 64; qwordIndex++)
     {        
-        if (pageMap[qwordIndex] != -1) //If any bit is zero
+        if (pageMap[qwordIndex] != (uint64_t)-1) //If any bit is zero
         {            
             for (uint64_t bitIndex = 0; bitIndex < 64; bitIndex++)
             {

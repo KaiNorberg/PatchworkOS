@@ -15,6 +15,7 @@
 #include "smp/smp.h"
 #include "apic/apic.h"
 #include "spin_lock/spin_lock.h"
+#include "gdt/gdt.h"
 
 #include "../common.h"
 
@@ -69,12 +70,12 @@ void interrupts_init()
 
 void interrupts_enable()
 {    
-    asm volatile ("sti");
+    asm volatile("sti");
 }
 
 void interrupts_disable()
 {
-    asm volatile ("cli");
+    asm volatile("cli");
 }
 
 void interrupt_vectors_map(PageDirectory* pageDirectory)
@@ -114,22 +115,8 @@ void irq_handler(InterruptFrame* interruptFrame)
     {
     case IRQ_TIMER:
     {   
-        for (uint64_t cpuId = 0; cpuId < smp_cpu_amount(); cpuId++)
-        {
-            Cpu* cpu = smp_cpu(cpuId);
-
-            if (cpu == smp_current_cpu())
-            {
-                scheduler_acquire();
-                scheduler_schedule(interruptFrame);
-                scheduler_release();
-            }
-            else
-            {
-                Ipi ipi = IPI_CREATE(IPI_TYPE_SCHEDULE);
-                smp_send_ipi(cpu, ipi);
-            }
-        }
+        scheduler_schedule(interruptFrame);
+        apic_timer_set_deadline(scheduler_deadline());
     }
     break;
     default:
@@ -145,7 +132,7 @@ void irq_handler(InterruptFrame* interruptFrame)
 void ipi_handler(InterruptFrame* interruptFrame)
 {   
     Ipi ipi = smp_receive_ipi();     
-
+    
     switch (ipi.type)
     {
     case IPI_TYPE_HALT:
@@ -158,11 +145,15 @@ void ipi_handler(InterruptFrame* interruptFrame)
         }
     }
     break;
-    case IPI_TYPE_SCHEDULE:
+    case IPI_TYPE_START:
     {
-        scheduler_acquire();
-        scheduler_schedule(interruptFrame);
-        scheduler_release();
+        apic_timer_init();
+
+        interruptFrame->instructionPointer = (uint64_t)scheduler_idle_loop;
+        interruptFrame->cr3 = (uint64_t)kernelPageDirectory;
+        interruptFrame->codeSegment = GDT_KERNEL_CODE;
+        interruptFrame->stackSegment = GDT_KERNEL_DATA;
+        interruptFrame->stackPointer = tss_get(smp_current_cpu()->id)->rsp0;
     }
     break;
     default:

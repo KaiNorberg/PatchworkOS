@@ -36,7 +36,8 @@ void main(BootInfo* bootInfo)
 
     tty_print("\n\rKernel Initialized!\n\n\r");
 
-    scheduler_yield_to_user_space(tss_get(smp_current_cpu()->id));
+    Ipi ipi = IPI_CREATE(IPI_TYPE_START);
+    smp_send_ipi_to_all(ipi);
 
     while (1)
     {

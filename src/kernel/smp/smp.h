@@ -5,13 +5,12 @@
 
 #include "tss/tss.h"
 #include "process/process.h"
-#include "spin_lock/spin_lock.h"
 
 #define IPI_VECTOR 0x90
 
 #define IPI_TYPE_NONE 0x0
 #define IPI_TYPE_HALT 0x1
-#define IPI_TYPE_SCHEDULE 0x2
+#define IPI_TYPE_START 0x2
 
 #define IPI_CREATE(ipiType) ((Ipi){.type = ipiType})
 

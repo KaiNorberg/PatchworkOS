@@ -16,10 +16,8 @@ typedef struct
     uint16_t pageFlags;
 } GlobalHeapBlock;
 
-void global_heap_init(EfiMemoryMap* memoryMap);
+void global_heap_init();
 
 void global_heap_map(PageDirectory* pageDirectory);
 
 void* gmalloc(uint64_t pageAmount, uint16_t flags);
-
-void* gfree(uint64_t pageAmount, uint16_t flags);
