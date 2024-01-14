@@ -4,63 +4,48 @@
 #include "string/string.h"
 #include "tty/tty.h"
 #include "debug/debug.h"
+#include "utils/utils.h"
 
 #include "../common.h"
 
 extern uint64_t _kernelStart;
 
-GlobalHeapBlock blocks[GLOBAL_HEAP_BLOCK_MAX];
+uintptr_t globalHeapTop;
+uintptr_t globalHeapBottom;
 
 void global_heap_init()
 {
     tty_start_message("Global heap initializing");    
 
-    memset(blocks, 0, sizeof(GlobalHeapBlock) * GLOBAL_HEAP_BLOCK_MAX);
-    
+    globalHeapTop = round_down((uint64_t)&_kernelStart, 0x1000);
+    globalHeapBottom = globalHeapTop;
+
     tty_end_message(TTY_MESSAGE_OK);
 }
 
 void global_heap_map(PageDirectory* pageDirectory)
 {
-    for (uint64_t i = 0; i < GLOBAL_HEAP_BLOCK_MAX; i++)
+    uint64_t pageAmount = (globalHeapTop - globalHeapBottom) / 0x1000;
+
+    for (uint64_t i = 0; i < pageAmount; i++)
     {
-        if (blocks[i].present)
-        {
-            page_directory_remap_pages(pageDirectory,
-            blocks[i].virtualStart, 
-            blocks[i].physicalStart, 
-            blocks[i].pageAmount, 
-            blocks[i].pageFlags);
-        }
+        void* virtualAddress = (void*)(globalHeapBottom + i * 0x1000);
+        void* physicalAddress = page_directory_get_physical_address(kernelPageDirectory, virtualAddress);
+
+        page_directory_remap(pageDirectory, virtualAddress, physicalAddress, PAGE_DIR_READ_WRITE);
     }
 }
 
-void* gmalloc(uint64_t pageAmount, uint16_t flags)
+void* gmalloc(uint64_t pageAmount)
 {    
-    void* physicalStart = page_allocator_request_amount(pageAmount);
-
-    void* virtualStart = (void*)((uint64_t)&_kernelStart - pageAmount * 0x1000);
-
-    for (uint64_t i = 0; i < GLOBAL_HEAP_BLOCK_MAX; i++)
+    for (uint64_t i = 0; i < pageAmount; i++)
     {
-        if (!blocks[i].present)
-        {
-            blocks[i].present = 1;
-            blocks[i].virtualStart = virtualStart;
-            blocks[i].physicalStart = physicalStart;
-            blocks[i].pageAmount = pageAmount;
-            blocks[i].pageFlags = flags;
+        globalHeapBottom -= 0x1000;
 
-            page_directory_remap_pages(kernelPageDirectory, virtualStart, physicalStart, pageAmount, flags);
+        void* physicalAddress = page_allocator_request();
 
-            return virtualStart;
-        }
-        else
-        {
-            virtualStart = (void*)((uint64_t)virtualStart - blocks[i].pageAmount * 0x1000);
-        }
+        page_directory_remap(kernelPageDirectory, (void*)globalHeapBottom, physicalAddress, PAGE_DIR_READ_WRITE);
     }
 
-    debug_panic("No more global memory can be allocated!");
-    return 0;
+    return (void*)globalHeapBottom;
 }

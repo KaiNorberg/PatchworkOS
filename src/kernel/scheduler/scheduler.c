@@ -55,11 +55,28 @@ void scheduler_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-void scheduler_schedule(InterruptFrame* interruptFrame)
+void scheduler_push(Process* process, InterruptFrame* interruptFrame)
 {
-    Scheduler* scheduler = scheduler_get();
+    Task* newTask = kmalloc(sizeof(Task));
+    newTask->process = process;
+    newTask->interruptFrame = interruptFrame;
+    newTask->state = TASK_STATE_READY;
+
+    Scheduler* scheduler = least_loaded_scheduler();
 
     spin_lock_acquire(&scheduler->lock);
+    queue_push(scheduler->readyQueue, newTask); 
+    spin_lock_release(&scheduler->lock);   
+}
+
+Scheduler* scheduler_get_local()
+{
+    return schedulers[smp_current_cpu()->id];
+}
+
+void local_scheduler_schedule(InterruptFrame* interruptFrame)
+{
+    Scheduler* scheduler = scheduler_get_local();
 
     if (scheduler->runningTask != 0)
     {
@@ -91,27 +108,11 @@ void scheduler_schedule(InterruptFrame* interruptFrame)
 
         scheduler->nextPreemption = time_nanoseconds() + NANOSECONDS_PER_MILLISECOND;
     }
-
-    spin_lock_release(&scheduler->lock);
 }
 
-void scheduler_push(Process* process, InterruptFrame* interruptFrame)
+void local_scheduler_exit()
 {
-    Task* newTask = kmalloc(sizeof(Task));
-    newTask->process = process;
-    newTask->interruptFrame = interruptFrame;
-    newTask->state = TASK_STATE_READY;
-
-    Scheduler* scheduler = least_loaded_scheduler();
-
-    spin_lock_acquire(&scheduler->lock);
-    queue_push(scheduler->readyQueue, newTask);    
-    spin_lock_release(&scheduler->lock);
-}
-
-void scheduler_exit()
-{
-    Scheduler* scheduler = scheduler_get();
+    Scheduler* scheduler = scheduler_get_local();
 
     spin_lock_acquire(&scheduler->lock);
 
@@ -124,29 +125,22 @@ void scheduler_exit()
     spin_lock_release(&scheduler->lock);
 }
 
-uint64_t scheduler_deadline()
+void local_scheduler_acquire()
 {
-    Scheduler* scheduler = scheduler_get();
-
-    spin_lock_acquire(&scheduler->lock);
-    uint64_t deadline = scheduler->nextPreemption;
-    spin_lock_release(&scheduler->lock);
-
-    return deadline;
+    spin_lock_acquire(&scheduler_get_local()->lock);
 }
 
-Task* scheduler_running_task()
+void local_scheduler_release()
 {
-    Scheduler* scheduler = scheduler_get();
-
-    spin_lock_acquire(&scheduler->lock);
-    Task* runningTask = schedulers[smp_current_cpu()->id]->runningTask;    
-    spin_lock_release(&scheduler->lock);
-
-    return runningTask;
+    spin_lock_release(&scheduler_get_local()->lock);
 }
 
-Scheduler* scheduler_get()
+uint64_t local_scheduler_deadline()
 {
-    return schedulers[smp_current_cpu()->id];
+    return scheduler_get_local()->nextPreemption;
+}
+
+Task* local_scheduler_running_task()
+{
+    return scheduler_get_local()->runningTask;
 }

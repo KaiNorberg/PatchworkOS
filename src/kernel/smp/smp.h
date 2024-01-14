@@ -14,7 +14,7 @@
 
 #define IPI_CREATE(ipiType) ((Ipi){.type = ipiType})
 
-#define SMP_MAX_CPU_AMOUNT 32
+#define SMP_MAX_CPU_AMOUNT 256
 
 #define SMP_TRAMPOLINE_LOADED_START ((void*)0x8000)
 

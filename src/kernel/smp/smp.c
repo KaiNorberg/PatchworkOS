@@ -1,6 +1,5 @@
 #include "smp.h"
 
-#include "atomic/atomic.h"
 #include "tty/tty.h"
 #include "apic/apic.h"
 #include "string/string.h"
@@ -16,7 +15,7 @@
 #include "scheduler/scheduler.h"
 
 uint8_t cpuAmount;
-atomic_uint8_t readyCpuAmount;
+atomic_int readyCpuAmount;
 
 Cpu cpus[SMP_MAX_CPU_AMOUNT];
 
@@ -34,7 +33,7 @@ void smp_cpu_entry()
 
 uint8_t smp_enable_cpu(uint8_t cpuId, uint8_t localApicId)
 {
-    if (cpuId >= SMP_MAX_CPU_AMOUNT || cpus[cpuId].present)
+    if (cpus[cpuId].present)
     {
         return 0;
     }

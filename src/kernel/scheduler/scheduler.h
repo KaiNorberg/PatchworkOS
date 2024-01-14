@@ -29,14 +29,18 @@ extern void scheduler_idle_loop();
 
 void scheduler_init();
 
-void scheduler_schedule(InterruptFrame* interruptFrame);
-
 void scheduler_push(Process* process, InterruptFrame* interruptFrame);
 
-void scheduler_exit();
+Scheduler* scheduler_get_local();
 
-uint64_t scheduler_deadline();
+void local_scheduler_schedule(InterruptFrame* interruptFrame);
 
-Task* scheduler_running_task();
+void local_scheduler_exit();
 
-Scheduler* scheduler_get();
+void local_scheduler_acquire();
+
+void local_scheduler_release();
+
+uint64_t local_scheduler_deadline();
+
+Task* local_scheduler_running_task();

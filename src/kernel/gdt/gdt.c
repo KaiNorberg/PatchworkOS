@@ -11,7 +11,7 @@ void gdt_init()
 {
     tty_start_message("GDT loading");
 
-    gdt = gmalloc(1, PAGE_DIR_READ_WRITE);
+    gdt = gmalloc(1);
     memset(gdt, 0, 0x1000);
 
     gdt->null.limitLow = 0;

@@ -115,14 +115,18 @@ void irq_handler(InterruptFrame* interruptFrame)
     {
     case IRQ_TIMER:
     {   
-        scheduler_schedule(interruptFrame);
-        apic_timer_set_deadline(scheduler_deadline());
+        local_scheduler_acquire();
+
+        local_scheduler_schedule(interruptFrame);
+        apic_timer_set_deadline(local_scheduler_deadline());
+
+        local_scheduler_release();
     }
     break;
     default:
     {
         //Not implemented
-    }
+    } 
     break;
     }        
 
@@ -167,16 +171,14 @@ void ipi_handler(InterruptFrame* interruptFrame)
 }
 
 void exception_handler(InterruptFrame* interruptFrame)
-{   
+{       
     Ipi ipi = IPI_CREATE(IPI_TYPE_HALT);
     smp_send_ipi_to_others(ipi);
 
     tty_acquire();
 
     debug_exception(interruptFrame, "Exception");
-
-    tty_release();
-
+    
     while (1)
     {
         asm volatile("hlt");

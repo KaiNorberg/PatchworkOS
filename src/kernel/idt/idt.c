@@ -15,14 +15,14 @@ void idt_init()
 {    
     tty_start_message("IDT initializing");
 
-    idt = gmalloc(1, PAGE_DIR_READ_WRITE);
+    idt = gmalloc(1);
 
     for (uint16_t vector = 0; vector < IDT_VECTOR_AMOUNT; vector++) 
     {        
         idt_set_descriptor(vector, interruptVectorTable[vector], IDT_INTERRUPT);
     }
 
-    //remap_pic();
+    remap_pic();
 
     io_outb(PIC1_DATA, 0xFF);
     io_outb(PIC2_DATA, 0xFF);

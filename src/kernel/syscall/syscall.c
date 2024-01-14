@@ -19,14 +19,15 @@ void syscall_handler(InterruptFrame* interruptFrame)
     switch(interruptFrame->rax)
     {    
     case SYS_FORK:
-    {                
+    {   
+        local_scheduler_acquire();             
 
         Process* child = process_new();
         InterruptFrame* childFrame = interrupt_frame_duplicate(interruptFrame);
         childFrame->rax = 0; 
         childFrame->cr3 = (uint64_t)child->pageDirectory;
 
-        Process* parent = scheduler_running_task()->process;
+        Process* parent = local_scheduler_running_task()->process;
 
         MemoryBlock* currentBlock = parent->firstMemoryBlock;
         while (1)
@@ -43,15 +44,21 @@ void syscall_handler(InterruptFrame* interruptFrame)
             currentBlock = currentBlock->next;
         }
 
+        local_scheduler_release();
+
         scheduler_push(child, childFrame);
 
         out = 1234; //TODO: Replace with child pid, when pid is implemented
     }
     break;
     case SYS_EXIT:
-    {
-        scheduler_exit();
-        scheduler_schedule(interruptFrame);
+    {        
+        local_scheduler_acquire();             
+
+        local_scheduler_exit();
+        local_scheduler_schedule(interruptFrame);
+
+        local_scheduler_release();
     }
     break;
     case SYS_TEST:
@@ -63,7 +70,7 @@ void syscall_handler(InterruptFrame* interruptFrame)
         const char* string = page_directory_get_physical_address(SYSCALL_GET_PAGE_DIRECTORY(interruptFrame), (void*)SYSCALL_GET_ARG1(interruptFrame));
 
         tty_set_cursor_pos(0, 16 * 35 + 16 * cpu->id);
-        tty_print("CPU "); tty_printx(cpu->id); tty_print(": "); tty_printx((uint64_t)scheduler_running_task()); tty_print(" | "); tty_print(string);
+        tty_print("CPU "); tty_printx(cpu->id); tty_print(": "); tty_printx((uint64_t)local_scheduler_running_task()); tty_print(" | "); tty_print(string);
 
         tty_release();
     }

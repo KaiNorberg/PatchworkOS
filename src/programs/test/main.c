@@ -14,8 +14,6 @@ int main(int argc, char* argv[])
 {   
     while (1)
     {
-        //sys_wait(WAIT_TYPE_IRQ, 1);
-
         sys_test("Hello from test program!      \r");
     }            
 
