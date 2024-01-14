@@ -43,7 +43,7 @@ void ram_disk_init(RamDirectory* rootDirectory)
 uint8_t ram_disk_compare_names(const char* nameStart, const char* nameEnd, const char* otherName)
 {
     uint64_t otherNameLength = strlen(otherName);
-    if (otherNameLength != nameEnd - nameStart)
+    if (otherNameLength != (uint64_t)nameEnd - (uint64_t)nameStart)
     {
         return 0;
     }

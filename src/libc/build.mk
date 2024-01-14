@@ -11,7 +11,7 @@ LIBC_OBJECTS = $(patsubst $(LIBC_SRC_DIR)/%, $(LIBC_BUILD_DIR)/%.o, $(LIBC_SOURC
 
 $(LIBC_BUILD_DIR)/%.c.o: $(LIBC_SRC_DIR)/%.c
 	@mkdir -p $(@D)
-	@$(call run_and_test,$(CC) $(C_FLAGS) -I $(LIBC_SRC_DIR) -c -o $@ $<)
+	@$(call run_and_test,$(CC) $(LIB_C_FLAGS) -I $(LIBC_SRC_DIR) -c -o $@ $<)
 
 $(LIBC_BUILD_DIR)/%.asm.o: $(LIBC_SRC_DIR)/%.asm
 	@mkdir -p $(@D)

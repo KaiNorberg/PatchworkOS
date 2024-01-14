@@ -22,9 +22,7 @@ void page_directory_remap_pages(PageDirectory* pageDirectory, void* virtualAddre
 }
 
 void page_directory_remap(PageDirectory* pageDirectory, void* virtualAddress, void* physicalAddress, uint16_t flags)
-{    
-    //Im pretty confident something here is wrong
-    
+{        
     if ((uint64_t)virtualAddress % 0x1000 != 0)
     {
         Print(L"ERROR: Attempt to map invalid virtual address!");

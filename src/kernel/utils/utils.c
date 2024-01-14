@@ -20,12 +20,6 @@ char* itoa(uint64_t i, char b[], uint8_t base)
 {
     char* p = b;
 
-    if (i<0)
-    {
-        *p++ = '-';
-        i *= -1;
-    }
-
     uint64_t shifter = i;
     do
     {
@@ -50,7 +44,7 @@ char* itoa(uint64_t i, char b[], uint8_t base)
 uint64_t stoi(const char* string) 
 {
     uint64_t multiplier = 1, result = 0;
-    for (uint64_t i = strlen(string) - 1; i >= 0; i--) 
+    for (int64_t i = strlen(string) - 1; i >= 0; i--) 
     {
         result += multiplier * (string[i] - '0');
         multiplier *= 10;

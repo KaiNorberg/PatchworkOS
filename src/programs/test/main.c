@@ -10,7 +10,7 @@ extern uint64_t sys_test(const char* string);
 
 extern uint64_t sys_wait(uint64_t type, uint64_t data);
 
-int main(int argc, char* argv[])
+int main()
 {   
     while (1)
     {

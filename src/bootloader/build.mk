@@ -10,13 +10,11 @@ BOOT_SOURCE += $(call recursive_wildcard, $(BOOT_SRC_DIR), *.asm)
 
 BOOT_OBJECTS = $(patsubst $(BOOT_SRC_DIR)/%, $(BOOT_BUILD_DIR)/%.o, $(BOOT_SOURCE))
 
-BOOT_C_FLAGS = -fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -I$(BOOT_SRC_DIR) -I$(GNU_EFI)/inc -Wall -Werror
-
 GNU_EFI = vendor/gnu-efi
 
 $(BOOT_BUILD_DIR)/%.c.o: $(BOOT_SRC_DIR)/%.c
 	@mkdir -p $(@D)
-	@$(call run_and_test,$(CC) $(BOOT_C_FLAGS) -c -o $@ $<)
+	@$(call run_and_test,$(CC) $(BOOT_C_FLAGS) -I$(BOOT_SRC_DIR) -I$(GNU_EFI)/inc -c -o $@ $<)
 
 $(BOOT_BUILD_DIR)/%.asm.o: $(BOOT_SRC_DIR)/%.asm
 	@mkdir -p $(@D)
