@@ -3,11 +3,11 @@
 #include "heap/heap.h"
 #include "string/string.h"
 #include "page_allocator/page_allocator.h"
+#include "tty/tty.h"
 
-Process* process_new(void* entry)
+Process* process_new()
 {
     Process* newProcess = kmalloc(sizeof(Process));
-    memset(newProcess, 0, sizeof(Process));
 
     newProcess->firstMemoryBlock = 0;
     newProcess->lastMemoryBlock = 0;
@@ -15,37 +15,12 @@ Process* process_new(void* entry)
     newProcess->pageDirectory = page_directory_new();
 
     process_allocate_pages(newProcess, PROCESS_ADDRESS_SPACE_USER_STACK, 1);
-
-    newProcess->interruptFrame = interrupt_frame_new(entry, PROCESS_ADDRESS_SPACE_USER_STACK + 0x1000, 0x18 | 3, 0x20 | 3, 0x202, newProcess->pageDirectory);
-    newProcess->state = PROCESS_STATE_READY;
-    
-    newProcess->timeStart = 0;
-    newProcess->timeEnd = 0;
-
-    return newProcess;
-}
-
-Process* process_kernel_new(void* entry)
-{
-    Process* newProcess = kmalloc(sizeof(Process));
-    memset(newProcess, 0, sizeof(Process));
-
-    newProcess->firstMemoryBlock = 0;
-    newProcess->lastMemoryBlock = 0;
-
-    newProcess->pageDirectory = kernelPageDirectory;
-
-    void* stackBottom = page_allocator_request();
-
-    newProcess->interruptFrame = interrupt_frame_new(entry, stackBottom + 0x1000, 0x8, 0x10, 0x202, kernelPageDirectory);
-    newProcess->state = PROCESS_STATE_READY;
     
     return newProcess;
 }
 
 void process_free(Process* process)
 {
-    interrupt_frame_free(process->interruptFrame);
     page_directory_free(process->pageDirectory);
 
     if (process->firstMemoryBlock != 0)

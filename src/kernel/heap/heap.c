@@ -1,15 +1,14 @@
 #include "heap.h"
 
 #include "tty/tty.h"
-#include "debug/debug.h"
-#include "utils/utils.h"
-#include "page_allocator/page_allocator.h"
 #include "page_directory/page_directory.h"
-
-HeapHeader* firstBlock;
-HeapHeader* lastBlock;
+#include "page_allocator/page_allocator.h"
+#include "utils/utils.h"
 
 extern uint64_t _kernelEnd;
+
+HeapHeader* firstBlock;
+//HeapHeader* lastBlock;
 
 void heap_init()
 {    
@@ -18,13 +17,11 @@ void heap_init()
     void* heapStart = (void*)round_up((uint64_t)&_kernelEnd, 0x1000);
 
     firstBlock = heapStart;
-    lastBlock = firstBlock;
     page_directory_remap(kernelPageDirectory, heapStart, page_allocator_request(), PAGE_DIR_READ_WRITE);
 
     firstBlock->size = 0x1000 - sizeof(HeapHeader);
     firstBlock->next = 0;
     firstBlock->reserved = 0;
-    firstBlock->atPageStart = 1;
 
     tty_end_message(TTY_MESSAGE_OK);
 }
@@ -54,12 +51,6 @@ void heap_visualize()
     HeapHeader* currentBlock = firstBlock;
     while (1)
     {   
-        if (currentBlock->atPageStart && currentBlock != firstBlock)
-        {
-            tty_set_background(black);
-            tty_put(' ');
-        }
-
         if (currentBlock->reserved)
         {
             tty_set_background(red);
@@ -179,6 +170,21 @@ uint64_t heap_block_count()
     return count;    
 }
 
+HeapHeader* heap_split(HeapHeader* block, uint64_t size)
+{   
+    uint64_t newSize = block->size - sizeof(HeapHeader) - size;
+
+    HeapHeader* newBlock = (HeapHeader*)((uint64_t)HEAP_HEADER_GET_START(block) + newSize);
+    newBlock->next = block->next;
+    newBlock->size = size;
+    newBlock->reserved = 0;
+
+    block->next = newBlock;
+    block->size = newSize;
+
+    return newBlock;
+}
+
 void* kmalloc(uint64_t size)
 {
     if (size == 0)
@@ -186,7 +192,7 @@ void* kmalloc(uint64_t size)
         return 0;
     }
 
-    uint64_t alignedSize = size + (64 - (size % 64));
+    uint64_t alignedSize = round_up(size, 64);
 
     HeapHeader* currentBlock = firstBlock;
     while (1)
@@ -198,29 +204,11 @@ void* kmalloc(uint64_t size)
                 currentBlock->reserved = 1;
                 return HEAP_HEADER_GET_START(currentBlock);
             }
-            else if (currentBlock->size > alignedSize)
+            else if (currentBlock->size > alignedSize + sizeof(HeapHeader) + 64)
             {
-                uint64_t newSize = currentBlock->size - alignedSize - sizeof(HeapHeader);
-
-                if (currentBlock->size - newSize >= 64 && newSize >= 64)
-                {
-                    HeapHeader* newBlock = (HeapHeader*)((uint64_t)HEAP_HEADER_GET_START(currentBlock) + alignedSize);
-                    newBlock->next = currentBlock->next;
-                    newBlock->size = newSize;
-                    newBlock->reserved = 0;
-                    newBlock->atPageStart = 0;
-
-                    currentBlock->next = newBlock;
-                    currentBlock->size = alignedSize;
-                    currentBlock->reserved = 1;
-
-                    if (currentBlock == lastBlock)
-                    {
-                        lastBlock = newBlock;
-                    }
-
-                    return HEAP_HEADER_GET_START(currentBlock);
-                }
+                HeapHeader* newBlock = heap_split(currentBlock, alignedSize);
+                newBlock->reserved = 1;
+                return HEAP_HEADER_GET_START(newBlock);
             }
         }
 
@@ -233,37 +221,33 @@ void* kmalloc(uint64_t size)
             currentBlock = currentBlock->next;       
         }
     }
+    
+    HeapHeader* newBlock = (HeapHeader*)HEAP_HEADER_GET_END(currentBlock);
 
-    uint64_t pageAmount = GET_SIZE_IN_PAGES(size + sizeof(HeapHeader));
-    void* physicalAddress = page_allocator_request_amount(pageAmount);
-    void* virtualAddress = (void*)round_up((uint64_t)HEAP_HEADER_GET_END(lastBlock), 0x1000);
+    uint64_t pageAmount = GET_SIZE_IN_PAGES(alignedSize + sizeof(HeapHeader)) + 1;
+    for (uint64_t address = (uint64_t)newBlock; address < (uint64_t)newBlock + pageAmount * 0x1000; address += 0x1000)
+    {   
+        page_directory_remap(kernelPageDirectory, (void*)address, page_allocator_request(), PAGE_DIR_READ_WRITE);
+    }
 
-    page_directory_remap_pages(kernelPageDirectory, virtualAddress, physicalAddress, pageAmount, PAGE_DIR_READ_WRITE);
-
-    HeapHeader* newBlock = virtualAddress;
     newBlock->size = pageAmount * 0x1000 - sizeof(HeapHeader);
     newBlock->next = 0;
     newBlock->reserved = 0;
-    newBlock->atPageStart = 1;
-    
-    lastBlock->next = newBlock;
-    lastBlock = newBlock;
 
-    return kmalloc(size);
+    currentBlock->next = newBlock;
+
+    HeapHeader* splitBlock = heap_split(newBlock, alignedSize);
+    splitBlock->reserved = 1;
+
+    return HEAP_HEADER_GET_START(splitBlock);
 }
 
 void kfree(void* ptr)
 {
-    if (ptr == 0)
-    {
-        debug_panic("Attempted to free null ptr!");
-    }
-    
     HeapHeader* block = (HeapHeader*)((uint64_t)ptr - sizeof(HeapHeader));
     
     uint8_t blockFound = 0;
 
-    //Find and free block
     HeapHeader* currentBlock = firstBlock;
     while (1)
     {
@@ -271,6 +255,7 @@ void kfree(void* ptr)
         {
             blockFound = 1;
             currentBlock->reserved = 0;
+            break;
         }
 
         if (currentBlock->next == 0)
@@ -284,46 +269,23 @@ void kfree(void* ptr)
     }
 
     if (!blockFound)
-    {    
-        debug_panic("Failed to free block!");
+    {
+        tty_print("Failed to free block!\n\r");
     }
 
-    //Merge contiguous free blocks
     while (1)
     {
-        uint8_t mergedBlocks = 0;
+        uint8_t blocksMerged = 0;
 
         currentBlock = firstBlock;
         while (1)
-        {   
-            if (!currentBlock->reserved)
+        {               
+            if (currentBlock->next != 0 && !currentBlock->reserved && !currentBlock->next->reserved)
             {
-                uint64_t contiguousSize = currentBlock->size;
-                HeapHeader* firstFreeContiguousBlock = currentBlock;
-                HeapHeader* lastFreeContiguousBlock = currentBlock;
-                while (1)
-                {
-                    HeapHeader* nextBlock = lastFreeContiguousBlock->next;
-                    if (nextBlock == 0 || nextBlock->reserved || nextBlock->atPageStart)
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        contiguousSize += nextBlock->size + sizeof(HeapHeader);
-                        lastFreeContiguousBlock = nextBlock;
-                    }
-                }
-
-                if (firstFreeContiguousBlock != lastFreeContiguousBlock)
-                {
-                    firstFreeContiguousBlock->next = lastFreeContiguousBlock->next;
-                    firstFreeContiguousBlock->size = contiguousSize;
-                    mergedBlocks = 1;
-                }
-
-                currentBlock = lastFreeContiguousBlock;
-            }            
+                currentBlock->size += currentBlock->next->size + sizeof(HeapHeader);
+                currentBlock->next = currentBlock->next->next;
+                blocksMerged = 1;
+            }
 
             if (currentBlock->next == 0)
             {
@@ -335,7 +297,7 @@ void kfree(void* ptr)
             }    
         }
 
-        if (!mergedBlocks)
+        if (!blocksMerged)
         {
             break;
         }       

@@ -15,6 +15,7 @@
 #include "smp/smp.h"
 #include "apic/apic.h"
 #include "spin_lock/spin_lock.h"
+#include "gdt/gdt.h"
 
 #include "../common.h"
 
@@ -69,12 +70,12 @@ void interrupts_init()
 
 void interrupts_enable()
 {    
-    asm volatile ("sti");
+    asm volatile("sti");
 }
 
 void interrupts_disable()
 {
-    asm volatile ("cli");
+    asm volatile("cli");
 }
 
 void interrupt_vectors_map(PageDirectory* pageDirectory)
@@ -113,14 +114,19 @@ void irq_handler(InterruptFrame* interruptFrame)
     switch (irq)
     {
     case IRQ_TIMER:
-    {
-        scheduler_tick(interruptFrame);
+    {   
+        local_scheduler_acquire();
+
+        local_scheduler_schedule(interruptFrame);
+        apic_timer_set_deadline(local_scheduler_deadline());
+
+        local_scheduler_release();
     }
     break;
     default:
     {
         //Not implemented
-    }
+    } 
     break;
     }        
 
@@ -130,7 +136,7 @@ void irq_handler(InterruptFrame* interruptFrame)
 void ipi_handler(InterruptFrame* interruptFrame)
 {   
     Ipi ipi = smp_receive_ipi();     
-
+    
     switch (ipi.type)
     {
     case IPI_TYPE_HALT:
@@ -143,13 +149,15 @@ void ipi_handler(InterruptFrame* interruptFrame)
         }
     }
     break;
-    case IPI_TYPE_YIELD:
+    case IPI_TYPE_START:
     {
-        scheduler_acquire();
+        apic_timer_init();
 
-        scheduler_yield(interruptFrame);
-
-        scheduler_release();
+        interruptFrame->instructionPointer = (uint64_t)scheduler_idle_loop;
+        interruptFrame->cr3 = (uint64_t)kernelPageDirectory;
+        interruptFrame->codeSegment = GDT_KERNEL_CODE;
+        interruptFrame->stackSegment = GDT_KERNEL_DATA;
+        interruptFrame->stackPointer = tss_get(smp_current_cpu()->id)->rsp0;
     }
     break;
     default:
@@ -163,16 +171,14 @@ void ipi_handler(InterruptFrame* interruptFrame)
 }
 
 void exception_handler(InterruptFrame* interruptFrame)
-{   
+{       
     Ipi ipi = IPI_CREATE(IPI_TYPE_HALT);
     smp_send_ipi_to_others(ipi);
 
     tty_acquire();
 
     debug_exception(interruptFrame, "Exception");
-
-    tty_release();
-
+    
     while (1)
     {
         asm volatile("hlt");

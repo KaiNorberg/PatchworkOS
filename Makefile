@@ -14,7 +14,8 @@ rm -f $@.log; \
 exit $$RESULT
 endef
 
-recursive_wildcard = $(foreach d,$(wildcard $(1:=/*)),$(call recursive_wildcard,$d,$2) $(filter $(subst *,%,$2),$d))
+recursive_wildcard = \
+	$(foreach d,$(wildcard $(1:=/*)),$(call recursive_wildcard,$d,$2) $(filter $(subst *,%,$2),$d))
 
 SRC_DIR = src
 BIN_DIR = bin
@@ -25,14 +26,38 @@ CC = gcc
 LD = ld
 ASM = nasm
 
-C_FLAGS = -Os -Wall -ffreestanding -fno-stack-protector -fno-exceptions
-LD_FLAGS = -Bsymbolic -nostdlib
 ASM_FLAGS = -f elf64
 
-PROGRAM_C_FLAGS = $(C_FLAGS)
-PROGRAM_LD_FLAGS = $(LD_FLAGS) bin/libc/libc.o
+BASE_C_FLAGS = -Wall \
+	-Wextra \
+	-Werror \
+	-Wshadow \
+	-Wno-ignored-qualifiers
 
-BUILD = 
+KERNEL_C_FLAGS = $(BASE_C_FLAGS) \
+	-Os -ffreestanding \
+	-fno-stack-protector -fno-exceptions \
+	-fno-pie -mcmodel=kernel -mno-80387 \
+	-mno-mmx -mno-3dnow -mno-sse \
+	-mno-sse2 -mno-red-zone -Wno-array-bounds
+
+BOOT_C_FLAGS = $(BASE_C_FLAGS) \
+	-O1 -fpic -ffreestanding -mno-sse2 \
+	-fno-stack-protector -fno-stack-check \
+	-fshort-wchar -mno-red-zone \
+	-mno-80387 -Wno-array-bounds \
+	-mno-mmx -mno-3dnow -mno-sse \
+	-I$(BOOT_SRC_DIR) -I$(GNU_EFI)/inc
+
+LIB_C_FLAGS = $(BASE_C_FLAGS) \
+	-Os -ffreestanding \
+
+PROGRAM_C_FLAGS = $(BASE_C_FLAGS) \
+	-Os -ffreestanding
+
+LD_FLAGS = -Bsymbolic -nostdlib
+
+PROGRAM_LD_FLAGS = -Bsymbolic -nostdlib bin/libc/libc.o
 
 include $(call recursive_wildcard, $(SRC_DIR), *.mk)
 
@@ -68,7 +93,7 @@ run:
     -drive if=pflash,format=raw,unit=0,file=vendor/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
     -drive if=pflash,format=raw,unit=1,file=vendor/OVMFbin/OVMF_VARS-pure-efi.fd \
     -net none
-
+	
 clean:		
 	@cd vendor/gnu-efi && make clean && cd ../..
 	@$(call run_and_test,rm -rf $(BUILD_DIR))

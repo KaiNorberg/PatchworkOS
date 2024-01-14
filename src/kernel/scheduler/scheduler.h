@@ -1,29 +1,46 @@
 #pragma once
 
 #include "process/process.h"
+#include "queue/queue.h"
+#include "spin_lock/spin_lock.h"
 
-extern void scheduler_yield_to_user_space(void* stackTop);
+#define TASK_STATE_RUNNING 0
+#define TASK_STATE_READY 1
+
+typedef struct
+{
+    Process* process;
+    InterruptFrame* interruptFrame;
+
+    uint8_t state;
+} Task;
+
+typedef struct
+{
+    Queue* readyQueue;
+    Task* runningTask;
+
+    uint64_t nextPreemption;
+
+    SpinLock lock;
+} Scheduler;
 
 extern void scheduler_idle_loop();
 
 void scheduler_init();
 
-void scheduler_tick(InterruptFrame* interruptFrame);
+void scheduler_push(Process* process, InterruptFrame* interruptFrame);
 
-void scheduler_exit();
+Scheduler* scheduler_get_local();
 
-void scheduler_acquire();
+void local_scheduler_schedule(InterruptFrame* interruptFrame);
 
-void scheduler_release();
+void local_scheduler_exit();
 
-void scheduler_yield(InterruptFrame* interruptFrame);
+void local_scheduler_acquire();
 
-void scheduler_append(Process* process);
+void local_scheduler_release();
 
-void scheduler_remove(Process* process);
+uint64_t local_scheduler_deadline();
 
-void scheduler_schedule();
-
-Process* scheduler_running_process();
-
-void scheduler_switch(Process* process);
+Task* local_scheduler_running_task();

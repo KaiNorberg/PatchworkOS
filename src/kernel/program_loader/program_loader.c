@@ -5,7 +5,7 @@
 #include "heap/heap.h"
 #include "page_allocator/page_allocator.h"
 #include "scheduler/scheduler.h"
-
+#include "gdt/gdt.h"
 #include "tty/tty.h"
 #include "debug/debug.h"
 
@@ -22,10 +22,7 @@ uint8_t load_program(const char* path)
     ElfHeader header;
     ram_disk_read(&header, sizeof(ElfHeader), file);
 
-    if(header.ident[0] != 0x7F ||
-       header.ident[1] != 'E' ||
-       header.ident[2] != 'L' ||
-       header.ident[3] != 'F')
+    if (header.ident[0] != 0x7F || header.ident[1] != 'E' || header.ident[2] != 'L' || header.ident[3] != 'F')
     {
         debug_panic("Corrupt program file!\n\r");
         return 0;
@@ -36,12 +33,15 @@ uint8_t load_program(const char* path)
     if (programHeaders == 0)
     {
         debug_panic("Failed to allocate memory for program headers!");
+        return 0;
     }
     ram_disk_read(programHeaders, programHeaderTableSize, file);
 
-    Process* process = process_new((void*)header.entry);
+    Process* process = process_new();
 
-	for (ElfProgramHeader* programHeader = programHeaders; (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize; programHeader = (ElfProgramHeader*)((uint64_t)programHeader + header.programHeaderSize))
+	for (ElfProgramHeader* programHeader = programHeaders; 
+        (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize; 
+        programHeader = (ElfProgramHeader*)((uint64_t)programHeader + header.programHeaderSize))
 	{		
         switch (programHeader->type)
 		{
@@ -56,7 +56,10 @@ uint8_t load_program(const char* path)
 		}
 	}
 
-    scheduler_append(process);
+    InterruptFrame* interruptFrame = interrupt_frame_new((void*)header.entry, PROCESS_ADDRESS_SPACE_USER_STACK + 0x1000, 
+        GDT_USER_CODE | 3, GDT_USER_DATA | 3, 0x202, process->pageDirectory);
+        
+    scheduler_push(process, interruptFrame);
 
     kfree(programHeaders);
     ram_disk_close(file);

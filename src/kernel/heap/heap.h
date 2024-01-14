@@ -10,7 +10,6 @@ typedef struct HeapHeader
     struct HeapHeader* next;
     uint64_t size;
     uint8_t reserved;
-    uint8_t atPageStart;
 } HeapHeader;
 
 void heap_init();
@@ -24,6 +23,8 @@ uint64_t heap_reserved_size();
 uint64_t heap_free_size();
 
 uint64_t heap_block_count();
+
+HeapHeader* heap_split(HeapHeader* block, uint64_t size);
 
 void* kmalloc(uint64_t size);
 

@@ -22,6 +22,8 @@ void apic_init();
 
 void apic_timer_init();
 
+void apic_timer_set_deadline(uint64_t deadline);
+
 void local_apic_init();
 
 uint32_t local_apic_current_cpu();

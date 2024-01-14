@@ -38,7 +38,7 @@ void* memcpy(void* dest, const void* src, const uint64_t count)
 
 void* memmove(void* dest, const void* src, uint64_t count)
 {
-    for (int i = 0; i < count / 16; i++)
+    for (uint64_t i = 0; i < count / 16; i++)
     {
         asm volatile ("movups (%0), %%xmm0\n" "movntdq %%xmm0, (%1)\n" : : "r" (src), "r" (dest) : "memory");
 
@@ -98,7 +98,7 @@ uint64_t strlen(const char* str)
 char* strcpy(char* dest, const char* src)
 {
     uint64_t len = strlen(src);
-    for (int i = 0; i < len; i++)
+    for (uint64_t i = 0; i < len; i++)
     {
         dest[i] = src[i];
     }

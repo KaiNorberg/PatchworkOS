@@ -53,7 +53,7 @@ size_t strlen(const char* str)
 char* strcpy(char* dest, const char* src)
 {
     uint64_t len = strlen(src);
-    for (int i = 0; i < len; i++)
+    for (uint64_t i = 0; i < len; i++)
     {
         dest[i] = src[i];
     }
@@ -89,7 +89,7 @@ size_t strlen16(const CHAR16* str)
 CHAR16* strcpy16(CHAR16* dest, const CHAR16* src)
 {
     uint64_t len = strlen16(src);
-    for (int i = 0; i < len; i++)
+    for (uint64_t i = 0; i < len; i++)
     {
         dest[i] = src[i];
     }

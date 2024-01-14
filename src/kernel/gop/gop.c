@@ -2,7 +2,7 @@
 
 void gop_put(Framebuffer* framebuffer, const Point point, const Pixel pixel)
 {
-    if (point.x > (int32_t)framebuffer->width || point.x < 0 || point.y > (int32_t)framebuffer->height || point.y < 0)
+    if (point.x > framebuffer->width || point.y > framebuffer->height)
     {
         return;
     }

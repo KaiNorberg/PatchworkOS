@@ -8,7 +8,7 @@ extern uint64_t sys_fork();
 
 extern uint64_t sys_test(const char* string);
 
-int main(int argc, char* argv[])
+int main()
 {   
     sys_test("Hello from parent, forking...\r\n\n");
     

@@ -26,10 +26,10 @@ void kernel_init(BootInfo* bootInfo)
     tty_init(bootInfo->framebuffer, bootInfo->font);
     tty_print("Hello from the kernel!\n\r");
 
-    page_allocator_init(bootInfo->memoryMap, bootInfo->framebuffer);
+    page_allocator_init(bootInfo->memoryMap);
     page_directory_init(bootInfo->memoryMap, bootInfo->framebuffer);
     heap_init();
-    global_heap_init(bootInfo->memoryMap);
+    global_heap_init();
 
     idt_init();
     tss_init();
@@ -45,9 +45,9 @@ void kernel_init(BootInfo* bootInfo)
     
     hpet_init();
 
-    scheduler_init();
-
     smp_init();
+
+    scheduler_init();
 
     kernel_cpu_init();
 }

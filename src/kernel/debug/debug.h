@@ -2,7 +2,7 @@
 
 #include "interrupt_frame/interrupt_frame.h"
 
-#define DEBUG_ROW_AMOUNT 19
+#define DEBUG_ROW_AMOUNT 20
 #define DEBUG_COLUMN_AMOUNT 4
 
 #define DEBUG_COLUMN_WIDTH 25

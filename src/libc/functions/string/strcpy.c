@@ -6,7 +6,7 @@
 char* strcpy(char* dest, const char* src)
 {
     uint64_t len = strlen(src);
-    for (int i = 0; i < len; i++)
+    for (uint64_t i = 0; i < len; i++)
     {
         dest[i] = src[i];
     }

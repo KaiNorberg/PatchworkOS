@@ -128,10 +128,19 @@ void debug_exception(InterruptFrame* interruptFrame, const char* message)
     debug_next_row();
     tty_print("Stack Segment = "); tty_printx(interruptFrame->stackSegment);
 
+    uint64_t cr2;
+    uint64_t cr4;
+    READ_REGISTER("cr2", cr2);
+    READ_REGISTER("cr4", cr4);
+
     debug_move_to_grid(2, 2, white);
     tty_print("[Registers]"); 
     debug_next_row();
+    tty_print("CR2 = "); tty_printx(cr2);
+    debug_next_row();
     tty_print("CR3 = "); tty_printx(interruptFrame->cr3);
+    debug_next_row();
+    tty_print("CR4 = "); tty_printx(cr4);
     debug_next_row();
     tty_print("R15 = "); tty_printx(interruptFrame->r15);
     debug_next_row();
@@ -144,10 +153,10 @@ void debug_exception(InterruptFrame* interruptFrame, const char* message)
     tty_print("R11 = "); tty_printx(interruptFrame->r11);
     debug_next_row();
     tty_print("R10 = "); tty_printx(interruptFrame->r10);
-    debug_next_row();
-    tty_print("R9 = "); tty_printx(interruptFrame->r9);
 
     debug_move_to_grid(3, 3, white);
+    tty_print("R9 = "); tty_printx(interruptFrame->r9);
+    debug_next_row();
     tty_print("R8 = "); tty_printx(interruptFrame->r8);
     debug_next_row();
     tty_print("RBP = "); tty_printx(interruptFrame->rbp);
@@ -164,14 +173,14 @@ void debug_exception(InterruptFrame* interruptFrame, const char* message)
     debug_next_row();
     tty_print("RAX = "); tty_printx(interruptFrame->rax);
 
-    debug_move_to_grid(12, 0, white);
+    debug_move_to_grid(13, 0, white);
     tty_print("[Time]"); 
     debug_next_row();
     tty_print("Tick = "); tty_printx(hpet_read_counter());
     debug_next_row();
     tty_print("Current Time = "); tty_printx(time_nanoseconds());
 
-    debug_move_to_grid(12, 2, white);
+    debug_move_to_grid(13, 2, white);
     tty_print("[Memory]"); 
     debug_next_row();
     tty_print("Free Heap = "); tty_printx(heap_free_size());

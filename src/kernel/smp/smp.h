@@ -5,17 +5,16 @@
 
 #include "tss/tss.h"
 #include "process/process.h"
-#include "spin_lock/spin_lock.h"
 
 #define IPI_VECTOR 0x90
 
 #define IPI_TYPE_NONE 0x0
 #define IPI_TYPE_HALT 0x1
-#define IPI_TYPE_YIELD 0x2
+#define IPI_TYPE_START 0x2
 
 #define IPI_CREATE(ipiType) ((Ipi){.type = ipiType})
 
-#define SMP_MAX_CPU_AMOUNT 32
+#define SMP_MAX_CPU_AMOUNT 256
 
 #define SMP_TRAMPOLINE_LOADED_START ((void*)0x8000)
 

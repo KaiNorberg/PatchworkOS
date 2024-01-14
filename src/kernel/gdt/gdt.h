@@ -4,6 +4,12 @@
 
 #include "tss/tss.h"
 
+#define GDT_NULL 0x00
+#define GDT_KERNEL_CODE 0x08
+#define GDT_KERNEL_DATA 0x10
+#define GDT_USER_CODE 0x18
+#define GDT_USER_DATA 0x20
+
 typedef struct __attribute__((packed))
 {
     uint16_t size;
