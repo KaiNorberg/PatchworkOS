@@ -19,28 +19,32 @@ Queue* queue_new()
     return newQueue;
 }
 
+void queue_resize(Queue* queue, uint64_t newSize)
+{
+    void** newData = kmalloc(newSize * sizeof(void*));
+
+    uint64_t length = queue_length(queue);
+    uint64_t i = 0;
+    while (queue_length(queue) != 0)
+    {
+        newData[i] = queue_pop(queue);
+        i++;
+    }
+
+    kfree(queue->data);
+
+    queue->length = length;
+    queue->reservedLength = newSize;
+    queue->data = newData;
+    queue->firstIndex = 0;
+    queue->lastIndex = i;
+}
+
 void queue_push(Queue* queue, void* item)
 {        
     if (queue->reservedLength == queue->length)
     {
-        uint64_t newReservedLength = queue->reservedLength * 2;
-        void** newData = kmalloc(newReservedLength * sizeof(void*));
-
-        uint64_t length = queue_length(queue);
-        uint64_t i = 0;
-        while (queue_length(queue) != 0)
-        {
-            newData[i] = queue_pop(queue);
-            i++;
-        }
-
-        kfree(queue->data);
-
-        queue->length = length;
-        queue->reservedLength = newReservedLength;
-        queue->data = newData;
-        queue->firstIndex = 0;
-        queue->lastIndex = i;
+        queue_resize(queue, queue->reservedLength * 2);
     }
 
     queue->data[queue->lastIndex] = item;
@@ -56,7 +60,7 @@ void* queue_pop(Queue* queue)
     {
         return 0;
     }
-
+    
     void* temp = queue->data[queue->firstIndex];
     queue->length--;
 

@@ -118,7 +118,6 @@ void irq_handler(InterruptFrame* interruptFrame)
         local_scheduler_acquire();
 
         local_scheduler_schedule(interruptFrame);
-        apic_timer_set_deadline(local_scheduler_deadline());
 
         local_scheduler_release();
     }

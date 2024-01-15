@@ -38,33 +38,24 @@ void* memcpy(void* dest, const void* src, const uint64_t count)
 
 void* memmove(void* dest, const void* src, uint64_t count)
 {
-    for (uint64_t i = 0; i < count / 16; i++)
+    unsigned char* dstPtr = (unsigned char*)dest;
+	const unsigned char* srcPtr = (const unsigned char*)src;
+	if (dstPtr < srcPtr) 
     {
-        asm volatile ("movups (%0), %%xmm0\n" "movntdq %%xmm0, (%1)\n" : : "r" (src), "r" (dest) : "memory");
+		for (size_t i = 0; i < count; i++)
+        {
+            dstPtr[i] = srcPtr[i];
+        }
 
-        src += 16;
-        dest += 16;
-    }
-
-    if (count & 7)
-    {
-        count = count & 7;
-
-        int d0, d1, d2;
-        asm volatile(
-        "rep ; movsl\n\t"
-        "testb $2,%b4\n\t"
-        "je 1f\n\t"
-        "movsw\n"
-        "1:\ttestb $1,%b4\n\t"
-        "je 2f\n\t"
-        "movsb\n"
-        "2:"
-        : "=&c" (d0), "=&D" (d1), "=&S" (d2)
-        :"0" (count/4), "q" (count),"1" ((long) dest),"2" ((long) src)
-        : "memory");
-    }
-    return (dest);
+	} 
+    else 
+    {		
+		for (size_t i = count; i != 0; i--)
+        {
+            dstPtr[i-1] = srcPtr[i-1];
+        }
+	}
+	return dstPtr;
 }
 
 void* memset(void *dest, int ch, uint64_t count)

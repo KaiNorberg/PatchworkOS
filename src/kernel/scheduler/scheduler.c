@@ -9,6 +9,7 @@
 #include "smp/smp.h"
 #include "time/time.h"
 #include "gdt/gdt.h"
+#include "apic/apic.h"
 
 Scheduler* schedulers[SMP_MAX_CPU_AMOUNT];
 
@@ -108,21 +109,19 @@ void local_scheduler_schedule(InterruptFrame* interruptFrame)
 
         scheduler->nextPreemption = time_nanoseconds() + NANOSECONDS_PER_MILLISECOND;
     }
+
+    apic_timer_set_deadline(local_scheduler_deadline());
 }
 
 void local_scheduler_exit()
 {
     Scheduler* scheduler = scheduler_get_local();
 
-    spin_lock_acquire(&scheduler->lock);
-
     process_free(scheduler->runningTask->process);
     interrupt_frame_free(scheduler->runningTask->interruptFrame);
     kfree(scheduler->runningTask);
 
     scheduler->runningTask = 0;
-
-    spin_lock_release(&scheduler->lock);
 }
 
 void local_scheduler_acquire()

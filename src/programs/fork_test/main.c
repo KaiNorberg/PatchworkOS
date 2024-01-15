@@ -18,14 +18,14 @@ int main()
     {
         while (1)
         {
-            sys_test("Hello from child program!     \r");
+            sys_test("Hello from child program!             ");
         }         
     }
     else
     {
         while (1)
         {
-            sys_test("Hello from parent program!    \r");
+            sys_test("Hello from parent program!            ");
         }       
     }
 

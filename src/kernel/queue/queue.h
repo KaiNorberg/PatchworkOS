@@ -17,6 +17,8 @@ typedef struct
 
 Queue* queue_new();
 
+void queue_resize(Queue* queue, uint64_t newSize);
+
 void queue_push(Queue* queue, void* item);
 
 void* queue_pop(Queue* queue);

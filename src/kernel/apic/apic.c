@@ -40,6 +40,7 @@ void apic_timer_init()
 void apic_timer_set_deadline(uint64_t deadline)
 {
     uint64_t ticks = (ticksPer10ms[local_apic_current_cpu()] * (deadline - time_nanoseconds())) / (NANOSECONDS_PER_MILLISECOND * 10);
+    local_apic_write(APIC_REGISTER_TIMER_CURRENT_COUNT, ticks);
     local_apic_write(APIC_REGISTER_TIMER_INITIAL_COUNT, ticks);
 }
 
