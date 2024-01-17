@@ -169,6 +169,11 @@ void tty_set_cursor_pos(uint64_t x, uint64_t y)
     cursorPos.y = y;
 }
 
+Point tty_get_cursor_pos()
+{
+    return cursorPos;
+}
+
 uint32_t tty_get_screen_width()
 {
     return frontbuffer->width;

@@ -14,12 +14,27 @@ rm -f $@.log; \
 exit $$RESULT
 endef
 
+# arg1 = dir
+# arg2 = extension
 recursive_wildcard = \
 	$(foreach d,$(wildcard $(1:=/*)),$(call recursive_wildcard,$d,$2) $(filter $(subst *,%,$2),$d))
+
+# arg1 = src dir
+# arg2 = build dir
+# arg3 = extension
+objects_pathsubst = \
+	$(patsubst $(1)/%$(3), $(2)/%$(3).o, $(call recursive_wildcard, $(1), *$(3)))
 
 SRC_DIR = src
 BIN_DIR = bin
 BUILD_DIR = build
+
+LIB_SRC_DIR = src/libs
+LIB_BIN_DIR = bin/libs
+LIB_BUILD_DIR = build/libs
+
+PROGRAMS_BIN_DIR = bin/programs
+
 ROOT_DIR = root
 
 CC = gcc
@@ -32,7 +47,9 @@ BASE_C_FLAGS = -Wall \
 	-Wextra \
 	-Werror \
 	-Wshadow \
-	-Wno-ignored-qualifiers
+	-Wno-ignored-qualifiers \
+	-I$(LIB_SRC_DIR)/include \
+	-I$(LIB_SRC_DIR)/libc/include
 
 KERNEL_C_FLAGS = $(BASE_C_FLAGS) \
 	-Os -ffreestanding \
@@ -50,14 +67,15 @@ BOOT_C_FLAGS = $(BASE_C_FLAGS) \
 	-I$(BOOT_SRC_DIR) -I$(GNU_EFI)/inc
 
 LIB_C_FLAGS = $(BASE_C_FLAGS) \
-	-Os -ffreestanding \
+	-Os -ffreestanding
 
 PROGRAM_C_FLAGS = $(BASE_C_FLAGS) \
 	-Os -ffreestanding
 
-LD_FLAGS = -Bsymbolic -nostdlib
+LD_FLAGS = -nostdlib
 
-PROGRAM_LD_FLAGS = -Bsymbolic -nostdlib bin/libc/libc.o
+PROGRAM_LD_FLAGS = $(LD_FLAGS) \
+	-L$(LIB_BIN_DIR) -lcrt
 
 include $(call recursive_wildcard, $(SRC_DIR), *.mk)
 

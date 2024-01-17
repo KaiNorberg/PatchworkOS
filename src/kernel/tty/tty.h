@@ -46,6 +46,7 @@ void tty_set_foreground(Pixel color);
 void tty_set_background(Pixel color);
 
 void tty_set_cursor_pos(uint64_t x, uint64_t y);
+Point tty_get_cursor_pos();
 
 uint32_t tty_get_screen_width();
 uint32_t tty_get_screen_height();

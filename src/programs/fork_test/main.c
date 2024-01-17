@@ -1,18 +1,11 @@
 #include <stdint.h>
-
-#include "stdlib.h"
-
-#include "../../common.h"
-
-extern uint64_t sys_fork();
-
-extern uint64_t sys_test(const char* string);
+#include <patch-process.h>
 
 int main()
 {   
-    sys_test("Hello from parent, forking...\r\n\n");
+    sys_test("Hello from parent, forking...     ");
     
-    uint64_t pid = sys_fork();
+    uint64_t pid = fork();
 
     if (pid == 0)
     {

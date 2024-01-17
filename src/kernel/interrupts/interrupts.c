@@ -16,6 +16,7 @@
 #include "apic/apic.h"
 #include "spin_lock/spin_lock.h"
 #include "gdt/gdt.h"
+#include "hpet/hpet.h"
 
 #include "../common.h"
 
@@ -170,16 +171,17 @@ void ipi_handler(InterruptFrame* interruptFrame)
 }
 
 void exception_handler(InterruptFrame* interruptFrame)
-{       
-    Ipi ipi = IPI_CREATE(IPI_TYPE_HALT);
-    smp_send_ipi_to_others(ipi);
-
+{
     tty_acquire();
 
-    debug_exception(interruptFrame, "Exception");
-    
-    while (1)
-    {
-        asm volatile("hlt");
-    }
+    tty_print("EXCEPTION - "); tty_print(exceptionStrings[interruptFrame->vector]); tty_print("\n\r");
+
+    tty_release();
+
+    local_scheduler_acquire();             
+
+    local_scheduler_exit();
+    local_scheduler_schedule(interruptFrame);
+
+    local_scheduler_release();
 }

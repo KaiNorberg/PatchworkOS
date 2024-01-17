@@ -4,10 +4,8 @@ KERNEL_BUILD_DIR = $(BUILD_DIR)/kernel
 
 KERNEL_OUTPUT = $(KERNEL_BIN_DIR)/kernel.elf
 
-KERNEL_SOURCE = $(call recursive_wildcard, $(KERNEL_SRC_DIR), *.c)
-KERNEL_SOURCE += $(call recursive_wildcard, $(KERNEL_SRC_DIR), *.asm)
-
-KERNEL_OBJECTS = $(patsubst $(KERNEL_SRC_DIR)/%, $(KERNEL_BUILD_DIR)/%.o, $(KERNEL_SOURCE))
+KERNEL_OBJECTS = $(call objects_pathsubst,$(KERNEL_SRC_DIR),$(KERNEL_BUILD_DIR),.c)
+KERNEL_OBJECTS += $(call objects_pathsubst,$(KERNEL_SRC_DIR),$(KERNEL_BUILD_DIR),.asm)
 
 $(KERNEL_BUILD_DIR)/%.c.o: $(KERNEL_SRC_DIR)/%.c
 	@mkdir -p $(@D)

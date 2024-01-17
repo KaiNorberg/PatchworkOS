@@ -190,6 +190,9 @@ void debug_exception(InterruptFrame* interruptFrame, const char* message)
     tty_print("Locked Pages = "); tty_printx(page_allocator_locked_amount());
     debug_next_row();
     tty_print("Unlocked Pages = "); tty_printx(page_allocator_unlocked_amount());
+
+    tty_set_foreground(white);
+    tty_set_scale(1);
 }
 
 void debug_move_to_grid(uint8_t row, uint8_t column, Pixel color)

@@ -5,10 +5,8 @@ BOOT_BUILD_DIR = $(BUILD_DIR)/bootloader
 BOOT_OUTPUT_SO = $(BOOT_BIN_DIR)/bootloader.so
 BOOT_OUTPUT_EFI = $(BOOT_BIN_DIR)/bootx64.efi
 
-BOOT_SOURCE = $(call recursive_wildcard, $(BOOT_SRC_DIR), *.c)
-BOOT_SOURCE += $(call recursive_wildcard, $(BOOT_SRC_DIR), *.asm)
-
-BOOT_OBJECTS = $(patsubst $(BOOT_SRC_DIR)/%, $(BOOT_BUILD_DIR)/%.o, $(BOOT_SOURCE))
+BOOT_OBJECTS = $(call objects_pathsubst,$(BOOT_SRC_DIR),$(BOOT_BUILD_DIR),.c)
+BOOT_OBJECTS += $(call objects_pathsubst,$(BOOT_SRC_DIR),$(BOOT_BUILD_DIR),.asm)
 
 GNU_EFI = vendor/gnu-efi
 

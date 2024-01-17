@@ -47,7 +47,10 @@ uint8_t load_program(const char* path)
 		{
 		case PT_LOAD:
 		{
-            void* segment = process_allocate_pages(process, (void*)programHeader->virtualAddress, GET_SIZE_IN_PAGES(programHeader->memorySize));
+            uint64_t pageAmount = GET_SIZE_IN_PAGES(programHeader->memorySize);
+            void* segment = process_allocate_pages(process, (void*)programHeader->virtualAddress, pageAmount);
+            
+            memclr(segment, pageAmount * 0x1000);
 
             ram_disk_seek(file, programHeader->offset, SEEK_SET);
             ram_disk_read(segment, programHeader->fileSize, file);

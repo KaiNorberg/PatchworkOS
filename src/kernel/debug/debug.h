@@ -9,6 +9,8 @@
 
 #define DEBUG_TEXT_SCALE 2
 
+extern const char* exceptionStrings[32];
+
 void debug_panic(const char* message);
 
 void debug_exception(InterruptFrame* interruptFrame, const char* message);
