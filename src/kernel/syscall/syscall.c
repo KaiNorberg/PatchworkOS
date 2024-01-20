@@ -7,75 +7,109 @@
 #include "string/string.h"
 #include "debug/debug.h"
 #include "smp/smp.h"
+#include "time/time.h"
+#include "hpet/hpet.h"
 
 #include "kernel/kernel.h"
 
-#include "../common.h"
+#include <lib-syscall.h>
 
-void syscall_handler(InterruptFrame* interruptFrame)
-{    
-    uint64_t out = 0;
+void (*syscallTable[SYSCALL_TABLE_LENGTH])(InterruptFrame* interruptFrame);
 
-    switch(interruptFrame->rax)
-    {    
-    case SYS_FORK:
-    {   
-        local_scheduler_acquire();             
+void syscall_stub(InterruptFrame* interruptFrame)
+{
+    SYSCALL_SET_RESULT(interruptFrame, -1);
+}
 
-        Process* child = process_new();
+void syscall_exit(InterruptFrame* interruptFrame)
+{
+    //Temporary for testing
+    tty_acquire();
+    Cpu* cpu = smp_current_cpu();
+    Point cursorPos = tty_get_cursor_pos();
+    tty_set_cursor_pos(0, 16 * cpu->id);
+    tty_print("CPU "); tty_printx(cpu->id); tty_print(": "); tty_printx(0); tty_print("                                                 ");
+    tty_set_cursor_pos(cursorPos.x, cursorPos.y);
+    tty_release();
 
-        Process* parent = local_scheduler_running_task()->process;
-        MemoryBlock* currentBlock = parent->firstMemoryBlock;
-        while (1)
+    local_scheduler_acquire();
+
+    local_scheduler_exit();
+    local_scheduler_schedule(interruptFrame);
+
+    local_scheduler_release();
+}
+
+void syscall_fork(InterruptFrame* interruptFrame)
+{
+    local_scheduler_acquire();             
+
+    Process* child = process_new();
+
+    Process* parent = local_scheduler_running_task()->process;
+    MemoryBlock* currentBlock = parent->firstMemoryBlock;
+    while (1)
+    {
+        if (currentBlock == 0)
         {
-            if (currentBlock == 0)
-            {
-                break;
-            }
-
-            void* physicalAddress = process_allocate_pages(child, currentBlock->virtualAddress, currentBlock->pageAmount);
-
-            memcpy(physicalAddress, currentBlock->physicalAddress, currentBlock->pageAmount * 0x1000);
-
-            currentBlock = currentBlock->next;
+            break;
         }
 
-        InterruptFrame* childFrame = interrupt_frame_duplicate(interruptFrame);
-        childFrame->rax = 0; 
-        childFrame->cr3 = (uint64_t)child->pageDirectory;
+        void* physicalAddress = process_allocate_pages(child, currentBlock->virtualAddress, currentBlock->pageAmount);
 
-        local_scheduler_release();
+        memcpy(physicalAddress, currentBlock->physicalAddress, currentBlock->pageAmount * 0x1000);
 
-        scheduler_push(child, childFrame);
-
-        out = 1234; //TODO: Replace with child pid, when pid is implemented
+        currentBlock = currentBlock->next;
     }
-    break;
-    case SYS_EXIT:
-    {    
-        //Temporary for testing
-        tty_acquire();
 
-        Cpu* cpu = smp_current_cpu();
+    InterruptFrame* childFrame = interrupt_frame_duplicate(interruptFrame);
+    childFrame->cr3 = (uint64_t)child->pageDirectory;
 
-        Point cursorPos = tty_get_cursor_pos();
+    childFrame->rax = 0; // Child result
+    interruptFrame->rax = 1234; // Parent result
 
-        tty_set_cursor_pos(0, 16 * cpu->id);
-        tty_print("CPU "); tty_printx(cpu->id); tty_print(": "); tty_printx(0); tty_print("                                                 ");
+    local_scheduler_release();
 
-        tty_set_cursor_pos(cursorPos.x, cursorPos.y);
+    scheduler_push(child, childFrame);
+}
 
-        tty_release();
+void syscall_sleep(InterruptFrame* interruptFrame)
+{
+    local_scheduler_acquire();             
 
-        local_scheduler_acquire();
+    /*Blocker blocker = 
+    {
+        .timeout = time_nanoseconds() + SYSCALL_GET_ARG1(interruptFrame)
+    };
 
-        local_scheduler_exit();
-        local_scheduler_schedule(interruptFrame);
+    local_scheduler_block(blocker);
+    local_scheduler_schedule(interruptFrame);*/
 
-        local_scheduler_release();
+    local_scheduler_release();
+}
+
+void syscall_table_init()
+{
+    tty_start_message("Syscall Table initializing");
+
+    for (uint64_t i = 0; i < SYSCALL_TABLE_LENGTH; i++)
+    {
+        syscallTable[i] = syscall_stub;
     }
-    break;
-    case SYS_TEST: //Temporary for testing
+
+    syscallTable[SYS_EXIT] = syscall_exit;
+    syscallTable[SYS_FORK] = syscall_fork;
+    syscallTable[SYS_SLEEP] = syscall_sleep;
+
+    tty_end_message(TTY_MESSAGE_OK);
+}
+
+void syscall_handler(InterruptFrame* interruptFrame)
+{   
+    uint64_t selector = interruptFrame->rax;
+
+    //Temporary for testing
+    if (selector == SYS_TEST)
     {
         tty_acquire();
 
@@ -91,14 +125,15 @@ void syscall_handler(InterruptFrame* interruptFrame)
         tty_set_cursor_pos(cursorPos.x, cursorPos.y);
 
         tty_release();
-    }
-    break;
-    default:
-    {
-        out = -1;
-    }
-    break;
+        return;
     }
 
-    interruptFrame->rax = out;
+    if (selector < SYSCALL_TABLE_LENGTH)
+    {
+        syscallTable[selector](interruptFrame);
+    }
+    else
+    {
+        SYSCALL_SET_RESULT(interruptFrame, -1);
+    }
 }

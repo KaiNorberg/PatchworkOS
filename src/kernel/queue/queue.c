@@ -8,10 +8,10 @@ Queue* queue_new()
 {
     Queue* newQueue = kmalloc(sizeof(Queue));
     
-    newQueue->reservedLength = QUEUE_INITIAL_SIZE;
+    newQueue->reservedLength = QUEUE_INITIAL_LENGTH;
     newQueue->length = 0;
 
-    newQueue->data = kmalloc(QUEUE_INITIAL_SIZE * sizeof(void*));
+    newQueue->data = kmalloc(QUEUE_INITIAL_LENGTH * sizeof(void*));
 
     newQueue->firstIndex = 0;
     newQueue->lastIndex = 0;
@@ -19,9 +19,9 @@ Queue* queue_new()
     return newQueue;
 }
 
-void queue_resize(Queue* queue, uint64_t newSize)
+void queue_resize(Queue* queue, uint64_t newLength)
 {
-    void** newData = kmalloc(newSize * sizeof(void*));
+    void** newData = kmalloc(newLength * sizeof(void*));
 
     uint64_t length = queue_length(queue);
     uint64_t i = 0;
@@ -34,7 +34,7 @@ void queue_resize(Queue* queue, uint64_t newSize)
     kfree(queue->data);
 
     queue->length = length;
-    queue->reservedLength = newSize;
+    queue->reservedLength = newLength;
     queue->data = newData;
     queue->firstIndex = 0;
     queue->lastIndex = i;

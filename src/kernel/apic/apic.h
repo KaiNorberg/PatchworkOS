@@ -2,6 +2,8 @@
 
 #include "rsdt/rsdt.h"
 
+#define APIC_TIMER_HZ 1000
+
 #define APIC_REGISTER_ID 0x020
 #define APIC_REGISTER_EOI 0x0B0
 #define APIC_REGISTER_SPURIOUS 0x0F0
@@ -21,8 +23,6 @@
 void apic_init();
 
 void apic_timer_init();
-
-void apic_timer_set_deadline(uint64_t deadline);
 
 void local_apic_init();
 

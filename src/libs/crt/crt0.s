@@ -10,7 +10,7 @@ _start:
     call main
     
     mov rdi, rax
-    mov rax, 60
+    mov rax, 0
     int 0x80
     ud2
 .end:

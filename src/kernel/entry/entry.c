@@ -16,6 +16,7 @@
 #include "global_heap/global_heap.h"
 #include "io/io.h"
 #include "apic/apic.h"
+#include "vector/vector.h"
 
 #include "../common.h"
 
@@ -25,7 +26,7 @@ void main(BootInfo* bootInfo)
 
     tty_print("\n\r");
 
-    for (uint64_t i = 0; i < 9; i++)
+    for (uint64_t i = 0; i < 8; i++)
     {
         tty_print("Loading fork_test...\n\r");
         load_program("/bin/fork_test.elf");

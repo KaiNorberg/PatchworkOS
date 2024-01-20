@@ -25,41 +25,6 @@ extern uint64_t interruptVectorsEnd;
 
 extern PageDirectory* interruptPageDirectory;
 
-const char* exception_strings[32] = 
-{
-    "Division Fault",
-    "Debug",
-    "Non-Maskable Interrupt",
-    "Breakpoint",
-    "Overflow",
-    "Bound Range Exceeded",
-    "Invalid Opcode",
-    "Device Not Available",
-    "Double Fault",
-    "Coprocessor Segment Overrun",
-    "Invalid TSS",
-    "Segment Not Present",
-    "Stack-Segment Fault",
-    "General Protection Fault",
-    "Page Fault",
-    "Reserved",
-    "Floating Point Exception",
-    "Alignment Check",
-    "Machine Check",
-    "SIMD Floating-Point Exception",
-    "Virtualization Exception",
-    "Control Protection Exception",
-    "Reserved",
-    "Reserved",
-    "Reserved",
-    "Reserved",
-    "Reserved",
-    "Reserved",
-    "Hypervisor Injection Exception",
-    "VMM Communication Exception",
-    "Security Exception"
-};
-
 void interrupts_init()
 {
     tty_start_message("Interrupt vectors initializing");    
@@ -117,9 +82,7 @@ void irq_handler(InterruptFrame* interruptFrame)
     case IRQ_TIMER:
     {   
         local_scheduler_acquire();
-
-        local_scheduler_schedule(interruptFrame);
-
+        local_scheduler_tick(interruptFrame);
         local_scheduler_release();
     }
     break;
@@ -162,7 +125,7 @@ void ipi_handler(InterruptFrame* interruptFrame)
     break;
     default:
     {
-        //Not implemented
+        debug_panic("Invalid IPI");
     }
     break;
     }
@@ -171,11 +134,9 @@ void ipi_handler(InterruptFrame* interruptFrame)
 }
 
 void exception_handler(InterruptFrame* interruptFrame)
-{
+{        
     tty_acquire();
-
     tty_print("EXCEPTION - "); tty_print(exceptionStrings[interruptFrame->vector]); tty_print("\n\r");
-
     tty_release();
 
     local_scheduler_acquire();             

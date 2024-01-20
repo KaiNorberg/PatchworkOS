@@ -17,6 +17,6 @@ $(FORK_TEST_BUILD_DIR)/%.asm.o: $(FORK_TEST_SRC_DIR)/%.asm
 $(FORK_TEST_OUTPUT): $(FORK_TEST_OBJECTS)	
 	@echo "!====== BUILDING FORK_TEST ======!"
 	@mkdir -p $(@D)
-	@$(call run_and_test,$(LD) $(PROGRAM_LD_FLAGS) -lpatch-process -o $@ $^)
+	@$(call run_and_test,$(LD) $(PROGRAM_LD_FLAGS) -lprocess -o $@ $^)
 
 BUILD += $(FORK_TEST_OUTPUT)

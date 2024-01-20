@@ -6,7 +6,6 @@
 #include "string/string.h"
 #include "io/io.h"
 #include "idt/idt.h"
-#include "smp/smp.h"
 #include "time/time.h"
 #include "gdt/gdt.h"
 #include "apic/apic.h"
@@ -21,9 +20,11 @@ Scheduler* least_loaded_scheduler()
     {
         if (schedulers[i] != 0)
         {    
-            spin_lock_acquire(&schedulers[i]->lock);
-            uint64_t length = queue_length(schedulers[i]->readyQueue);
-            spin_lock_release(&schedulers[i]->lock);
+            uint64_t length = queue_length(schedulers[i]->readyQueue) + queue_length(schedulers[i]->expressQueue);
+            if (schedulers[i]->runningTask != 0)
+            {
+                length += 1;
+            }
 
             if (shortestLength > length)
             {
@@ -47,9 +48,16 @@ void scheduler_init()
         {
             schedulers[i] = kmalloc(sizeof(Scheduler));
 
+            schedulers[i]->cpu = smp_cpu(i);
+
+            schedulers[i]->expressQueue = queue_new();
             schedulers[i]->readyQueue = queue_new();
+            schedulers[i]->blockedTasks = vector_new(sizeof(BlockedTask));
+
             schedulers[i]->runningTask = 0;
             schedulers[i]->lock = spin_lock_new();
+
+            schedulers[i]->nextPreemption = 0;
         }
     }
 
@@ -61,13 +69,36 @@ void scheduler_push(Process* process, InterruptFrame* interruptFrame)
     Task* newTask = kmalloc(sizeof(Task));
     newTask->process = process;
     newTask->interruptFrame = interruptFrame;
-    newTask->state = TASK_STATE_READY;
+    newTask->state = TASK_STATE_EXPRESS;
+
+    scheduler_acquire_all();
 
     Scheduler* scheduler = least_loaded_scheduler();
+    queue_push(scheduler->expressQueue, newTask);
 
-    spin_lock_acquire(&scheduler->lock);
-    queue_push(scheduler->readyQueue, newTask); 
-    spin_lock_release(&scheduler->lock);   
+    scheduler_release_all();
+}
+
+void scheduler_acquire_all()
+{
+    for (int i = 0; i < SMP_MAX_CPU_AMOUNT; i++)
+    {
+        if (schedulers[i] != 0)
+        {    
+            spin_lock_acquire(&schedulers[i]->lock);
+        }
+    }
+}
+
+void scheduler_release_all()
+{
+    for (int i = 0; i < SMP_MAX_CPU_AMOUNT; i++)
+    {
+        if (schedulers[i] != 0)
+        {    
+            spin_lock_release(&schedulers[i]->lock);
+        }
+    }
 }
 
 Scheduler* scheduler_get_local()
@@ -75,30 +106,51 @@ Scheduler* scheduler_get_local()
     return schedulers[smp_current_cpu()->id];
 }
 
+void local_scheduler_tick(InterruptFrame* interruptFrame)
+{
+    Scheduler* scheduler = scheduler_get_local();
+
+    //TODO: Implement priority system and priority preemption
+
+    if (scheduler->nextPreemption < time_nanoseconds())
+    {
+        local_scheduler_schedule(interruptFrame);
+    }
+}
+
 void local_scheduler_schedule(InterruptFrame* interruptFrame)
 {
     Scheduler* scheduler = scheduler_get_local();
 
-    if (scheduler->runningTask != 0)
+    Task* newTask = 0;
+    if (queue_length(scheduler->expressQueue) != 0)
     {
-        Task* oldTask = scheduler->runningTask;
-        oldTask->state = TASK_STATE_READY;
-        interrupt_frame_copy(oldTask->interruptFrame, interruptFrame);
-
-        queue_push(scheduler->readyQueue, oldTask);
+        newTask = queue_pop(scheduler->expressQueue);
+    }
+    else if (queue_length(scheduler->readyQueue) != 0)
+    {
+        newTask = queue_pop(scheduler->readyQueue);
     }
 
-    if (queue_length(scheduler->readyQueue) != 0)
+    if (newTask != 0)
     {
-        Task* runningTask = queue_pop(scheduler->readyQueue);
-        runningTask->state = TASK_STATE_RUNNING;
-        scheduler->runningTask = runningTask;
+        if (scheduler->runningTask != 0)
+        {
+            Task* oldTask = scheduler->runningTask;
+            interrupt_frame_copy(oldTask->interruptFrame, interruptFrame);
 
-        interrupt_frame_copy(interruptFrame, runningTask->interruptFrame);
+            oldTask->state = TASK_STATE_READY;
+            queue_push(scheduler->readyQueue, oldTask);                
+        }
+
+        newTask->state = TASK_STATE_RUNNING;
+        scheduler->runningTask = newTask;
+
+        interrupt_frame_copy(interruptFrame, newTask->interruptFrame);
 
         scheduler->nextPreemption = time_nanoseconds() + NANOSECONDS_PER_SECOND / 2;
     }
-    else
+    else if (scheduler->runningTask == 0)
     {
         scheduler->runningTask = 0;
         interruptFrame->instructionPointer = (uint64_t)scheduler_idle_loop;
@@ -109,8 +161,16 @@ void local_scheduler_schedule(InterruptFrame* interruptFrame)
 
         scheduler->nextPreemption = time_nanoseconds() + NANOSECONDS_PER_MILLISECOND;
     }
+    else
+    {
+        // Keep running same task
+        scheduler->nextPreemption = time_nanoseconds() + NANOSECONDS_PER_SECOND / 2;
+    }
+}
 
-    apic_timer_set_deadline(local_scheduler_deadline());
+void local_scheduler_block(InterruptFrame* interruptFrame, Blocker blocker)
+{
+
 }
 
 void local_scheduler_exit()

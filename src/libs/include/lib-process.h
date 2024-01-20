@@ -1,5 +1,4 @@
-#ifndef _PATCH_PROCESS_H
-#define _PATCH_PROCESS_H 1
+#pragma once
 
 #if defined(__cplusplus)
 extern "C" {
@@ -9,10 +8,10 @@ extern "C" {
 
 uint64_t fork();
 
-void sys_test(const char* string);
+uint64_t sleep(uint64_t milliseconds);
+
+uint64_t sys_test(const char* string);
  
 #if defined(__cplusplus)
 } /* extern "C" */
-#endif
- 
 #endif

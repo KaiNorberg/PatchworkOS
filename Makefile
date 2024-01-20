@@ -48,6 +48,7 @@ BASE_C_FLAGS = -Wall \
 	-Werror \
 	-Wshadow \
 	-Wno-ignored-qualifiers \
+	-Wno-unused-parameter \
 	-I$(LIB_SRC_DIR)/include \
 	-I$(LIB_SRC_DIR)/libc/include
 

@@ -40,6 +40,7 @@ void kernel_init(BootInfo* bootInfo)
     apic_init();
 
     interrupts_init();
+    syscall_table_init();
 
     ram_disk_init(bootInfo->rootDirectory);
     

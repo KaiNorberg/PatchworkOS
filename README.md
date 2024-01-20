@@ -14,16 +14,16 @@ To clone (download) this repository, you can use the ```Code``` button at the to
 
 <ins>**2. Building Patchwork**</ins>
 
-In order to build Patchwork you will need to use either Linux or WSL. You will also need to have Make, mtools, NASM and GCC installed.
+In order to build Patchwork you will need to use either Linux or WSL. You will also need to have Make, mtools, NASM and GCC installed, it is also possible to use clang by just editing the Makefile.
 
-After you have chosen your preferred system run the ```make setup all``` command. You will then find a .img file in the bin directory.
+After everything is installed simply run ```make setup all```. You should then find a .img file in the bin directory.
 
 <ins>**3. Running Patchwork**</ins>
 
 There are three ways to run Patchwork.
 
 1. Use a tool like [balenaEtcher](https://etcher.balena.io/) to create a bootable USB using the created .img file.
-2. Download [QEMU](https://www.qemu.org/) on your Linux machine and then use the  ```make run``` command.
+2. Download [QEMU](https://www.qemu.org/) on your Linux machine and use ```make run```.
 3. Run the created .img file in a virtual machine of your choice.
 
 ## Roadmap

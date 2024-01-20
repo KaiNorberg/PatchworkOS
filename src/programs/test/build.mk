@@ -17,6 +17,6 @@ $(TEST_BUILD_DIR)/%.asm.o: $(TEST_SRC_DIR)/%.asm
 $(TEST_OUTPUT): $(TEST_OBJECTS)
 	@echo "!====== BUILDING TEST ======!"
 	@mkdir -p $(@D)
-	@$(call run_and_test,$(LD) $(PROGRAM_LD_FLAGS) -lpatch-process -o $@ $^)
+	@$(call run_and_test,$(LD) $(PROGRAM_LD_FLAGS) -lprocess -o $@ $^)
 
 BUILD += $(TEST_OUTPUT)

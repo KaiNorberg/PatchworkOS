@@ -1,10 +1,12 @@
 #include <stdint.h>
-#include <patch-process.h>
+#include <lib-process.h>
 
 int main()
 {   
     sys_test("Hello from parent, forking...     ");
     
+    //nanosleep(NANOSECONDS_PER_SECOND);
+
     uint64_t pid = fork();
 
     if (pid == 0)

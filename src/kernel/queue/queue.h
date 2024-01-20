@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#define QUEUE_INITIAL_SIZE 4
+#define QUEUE_INITIAL_LENGTH 4
 
 typedef struct
 {
@@ -17,7 +17,7 @@ typedef struct
 
 Queue* queue_new();
 
-void queue_resize(Queue* queue, uint64_t newSize);
+void queue_resize(Queue* queue, uint64_t newLength);
 
 void queue_push(Queue* queue, void* item);
 
