@@ -5,6 +5,7 @@
 ## Features
 
   - Multicore 64bit monolithic kernel
+  - Custom UEFI bootloader
   - More to be added...
 
 ## Limitations
