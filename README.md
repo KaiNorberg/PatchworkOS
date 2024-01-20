@@ -1,10 +1,15 @@
 # PatchworkOS [![License](https://img.shields.io/badge/licence-MIT-green)](https://github.com/Kaj9296/PatchworkOS/blob/main/LICENSE)
 
-Patchwork is a hobbyist OS built in C for the x86_64 architecture with a monolithic kernel.
-
-***
-
 **Keep in mind that Patchwork is currently in a very early stage of development and that these instructions may be incomplete.**
+
+## Features
+
+  - Multicore 64bit monolithic kernel
+  - More to be added...
+
+## Limitations
+
+  - Only supports x86_64
 
 ## Setup
 
