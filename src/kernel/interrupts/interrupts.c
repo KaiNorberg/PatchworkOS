@@ -129,7 +129,7 @@ void ipi_handler(InterruptFrame* interruptFrame)
         interruptFrame->stackPointer = tss_get(smp_current_cpu()->id)->rsp0;
 
         if (smp_current_cpu() == ipi.bootstrapCpu)
-        {
+        {            
             apic_timer_init();
         }
     }
@@ -143,7 +143,7 @@ void ipi_handler(InterruptFrame* interruptFrame)
     break;
     default:
     {
-        debug_panic("Invalid IPI");
+        //debug_panic("Unknown IPI");
     }
     break;
     }

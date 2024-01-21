@@ -26,7 +26,7 @@ void apic_timer_init();
 
 void local_apic_init();
 
-uint32_t local_apic_current_cpu();
+uint32_t local_apic_id();
 
 void local_apic_write(uint32_t reg, uint32_t value);
 

@@ -10,7 +10,7 @@
 #include "gdt/gdt.h"
 #include "apic/apic.h"
 
-Scheduler* schedulers[SMP_MAX_CPU_AMOUNT];
+Scheduler* schedulers;
 
 uint64_t nextBalancing;
 
@@ -18,25 +18,22 @@ Scheduler* least_loaded_scheduler()
 {
     uint64_t shortestLength = -1;
     Scheduler* leastLoadedScheduler = 0;
-    for (uint64_t i = 0; i < SMP_MAX_CPU_AMOUNT; i++)
+    for (uint64_t i = 0; i < smp_cpu_amount(); i++)
     {
-        if (schedulers[i] != 0)
-        {    
-            uint64_t length = 0;
-            for (int64_t p = TASK_PRIORITY_LEVELS - 1; p >= 0; p--) 
-            {
-                length += queue_length(schedulers[i]->queues[p]);
-            }
-            if (schedulers[i]->runningTask != 0)
-            {
-                length += 1;
-            }
+        uint64_t length = 0;
+        for (int64_t p = TASK_PRIORITY_LEVELS - 1; p >= 0; p--) 
+        {
+            length += queue_length(schedulers[i].queues[p]);
+        }
+        if (schedulers[i].runningTask != 0)
+        {
+            length += 1;
+        }
 
-            if (shortestLength > length)
-            {
-                shortestLength = length;
-                leastLoadedScheduler = schedulers[i];
-            }
+        if (shortestLength > length)
+        {
+            shortestLength = length;
+            leastLoadedScheduler = &schedulers[i];
         }
     }
 
@@ -46,27 +43,22 @@ Scheduler* least_loaded_scheduler()
 void scheduler_init()
 {
     tty_start_message("Scheduler initializing");
-    memclr(schedulers, sizeof(Scheduler*) * SMP_MAX_CPU_AMOUNT);
+    schedulers = kmalloc(sizeof(Scheduler) * smp_cpu_amount());
 
     nextBalancing = 0;
 
-    for (uint64_t i = 0; i < SMP_MAX_CPU_AMOUNT; i++)
+    for (uint64_t i = 0; i < smp_cpu_amount(); i++)
     {
-        if (smp_cpu(i)->present)
+        schedulers[i].cpu = smp_cpu(i);
+
+        for (uint64_t p = 0; p < TASK_PRIORITY_LEVELS; p++)    
         {
-            schedulers[i] = kmalloc(sizeof(Scheduler));
-
-            schedulers[i]->cpu = smp_cpu(i);
-
-            for (uint64_t p = 0; p < TASK_PRIORITY_LEVELS; p++)    
-            {
-                schedulers[i]->queues[p] = queue_new();
-            }
-            schedulers[i]->runningTask = 0;
-
-            schedulers[i]->nextPreemption = 0;
-            schedulers[i]->lock = spin_lock_new();
+            schedulers[i].queues[p] = queue_new();
         }
+        schedulers[i].runningTask = 0;
+
+        schedulers[i].nextPreemption = 0;
+        schedulers[i].lock = spin_lock_new();
     }
 
     tty_end_message(TTY_MESSAGE_OK);
@@ -87,15 +79,12 @@ void scheduler_balance()
     scheduler_acquire_all();
     
     uint64_t totalTasks = 0;
-    for (int i = 0; i < SMP_MAX_CPU_AMOUNT; i++)
+    for (int i = 0; i < smp_cpu_amount(); i++)
     {
-        if (schedulers[i] != 0)
-        {    
-            totalTasks += queue_length(schedulers[i]->queues[TASK_PRIORITY_NORMAL]);
-            if (schedulers[i]->runningTask != 0)
-            {
-                totalTasks++;
-            }
+        totalTasks += queue_length(schedulers[i].queues[TASK_PRIORITY_NORMAL]);
+        if (schedulers[i].runningTask != 0)
+        {
+            totalTasks++;
         }
     }
 
@@ -104,40 +93,34 @@ void scheduler_balance()
     for (int j = 0; j < SCHEDULER_BALANCING_ITERATIONS; j++)
     {
         Task* poppedTask = 0;
-        for (int i = 0; i < SMP_MAX_CPU_AMOUNT; i++)
+        for (int i = 0; i < smp_cpu_amount(); i++)
         {
-            if (schedulers[i] != 0)
-            {   
-                Queue* queue = schedulers[i]->queues[TASK_PRIORITY_NORMAL];
-                uint64_t queueLength = queue_length(queue);
+            Queue* queue = schedulers[i].queues[TASK_PRIORITY_NORMAL];
+            uint64_t queueLength = queue_length(queue);
 
-                uint64_t taskAmount = queueLength;
-                if (schedulers[i]->runningTask != 0)
-                {
-                    taskAmount += 1;
-                }
+            uint64_t taskAmount = queueLength;
+            if (schedulers[i].runningTask != 0)
+            {
+                taskAmount += 1;
+            }
 
-                if (queueLength != 0 && taskAmount > averageTasks && poppedTask == 0)
-                {
-                    poppedTask = queue_pop(queue);
-                }
-                else if (taskAmount < averageTasks && poppedTask != 0)
-                {
-                    queue_push(queue, poppedTask);
-                    poppedTask = 0;
-                }
+            if (queueLength != 0 && taskAmount > averageTasks && poppedTask == 0)
+            {
+                poppedTask = queue_pop(queue);
+            }
+            else if (taskAmount < averageTasks && poppedTask != 0)
+            {
+                queue_push(queue, poppedTask);
+                poppedTask = 0;
             }
         }
     
         if (poppedTask != 0)
         {
-            for (int i = 0; i < SMP_MAX_CPU_AMOUNT; i++)
+            for (int i = 0; i < smp_cpu_amount(); i++)
             {
-                if (schedulers[i] != 0)
-                {   
-                    queue_push(schedulers[i]->queues[TASK_PRIORITY_NORMAL], poppedTask);
-                    break;
-                }
+                queue_push(schedulers[i].queues[TASK_PRIORITY_NORMAL], poppedTask);
+                break;
             }
         }
     }
@@ -147,23 +130,17 @@ void scheduler_balance()
 
 void scheduler_acquire_all()
 {
-    for (int i = 0; i < SMP_MAX_CPU_AMOUNT; i++)
-    {
-        if (schedulers[i] != 0)
-        {    
-            spin_lock_acquire(&schedulers[i]->lock);
-        }
+    for (int i = 0; i < smp_cpu_amount(); i++)
+    {  
+        spin_lock_acquire(&schedulers[i].lock);
     }
 }
 
 void scheduler_release_all()
 {
-    for (int i = 0; i < SMP_MAX_CPU_AMOUNT; i++)
+    for (int i = 0; i < smp_cpu_amount(); i++)
     {
-        if (schedulers[i] != 0)
-        {    
-            spin_lock_release(&schedulers[i]->lock);
-        }
+        spin_lock_release(&schedulers[i].lock);
     }
 }
 
@@ -171,7 +148,7 @@ void scheduler_push(Process* process, InterruptFrame* interruptFrame, uint8_t pr
 {
     if (priority >= TASK_PRIORITY_LEVELS)
     {
-        debug_panic("Invalid priority level");
+        debug_panic("Priority level out of bounds");
     }
 
     Task* newTask = kmalloc(sizeof(Task));
@@ -190,14 +167,14 @@ void scheduler_push(Process* process, InterruptFrame* interruptFrame, uint8_t pr
 
 Scheduler* scheduler_get_local()
 {
-    return schedulers[smp_current_cpu()->id];
+    return &schedulers[smp_current_cpu()->id];
 }
 
 void local_scheduler_push(Process* process, InterruptFrame* interruptFrame, uint8_t priority)
 {
     if (priority >= TASK_PRIORITY_LEVELS)
     {
-        debug_panic("Invalid priority level");
+        debug_panic("Priority level out of bounds");
     }
 
     Task* newTask = kmalloc(sizeof(Task));

@@ -52,6 +52,8 @@ Pixel debugCurrentColor;
 void debug_panic(const char* message)
 {
     //tty_clear();
+    
+    tty_acquire();
 
     Pixel white;
     white.a = 255;

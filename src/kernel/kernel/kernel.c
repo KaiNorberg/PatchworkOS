@@ -50,16 +50,5 @@ void kernel_init(BootInfo* bootInfo)
 
     scheduler_init();
 
-    kernel_cpu_init();
-}
-
-void kernel_cpu_init()
-{
-    idt_load();
-    gdt_load();
-    gdt_load_tss(tss_get(smp_current_cpu()->id));
-
-    local_apic_init();
-
-    interrupts_enable();
+    smp_cpu_init();
 }

@@ -48,9 +48,13 @@ extern void smp_trampoline_end();
 
 void smp_init();
 
+void smp_cpu_init();
+
 Cpu* smp_cpu(uint8_t cpuId);
 
 Cpu* smp_current_cpu();
+
+Cpu* smp_current_cpu_brute();
 
 uint8_t smp_cpu_amount();
 

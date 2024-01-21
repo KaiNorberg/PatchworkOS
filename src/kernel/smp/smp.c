@@ -13,6 +13,8 @@
 #include "kernel/kernel.h"
 #include "madt/madt.h"
 #include "scheduler/scheduler.h"
+#include "interrupts/interrupts.h"
+#include "debug/debug.h"
 
 uint8_t cpuAmount;
 atomic_int readyCpuAmount;
@@ -21,8 +23,8 @@ Cpu cpus[SMP_MAX_CPU_AMOUNT];
 
 void smp_cpu_entry()
 {    
-    kernel_cpu_init();
-
+    smp_cpu_init();
+    
     readyCpuAmount++;
     
     while (1)
@@ -44,7 +46,7 @@ uint8_t smp_enable_cpu(uint8_t cpuId, uint8_t localApicId)
     cpus[cpuId].id = cpuId;
     cpus[cpuId].localApicId = localApicId;
 
-    if (local_apic_current_cpu() != cpuId)
+    if (local_apic_id() != localApicId)
     {
         WRITE_64(SMP_TRAMPOLINE_DATA_STACK_TOP, (void*)tss_get(cpuId)->rsp0);
 
@@ -89,9 +91,9 @@ void smp_init()
     while (record != 0)
     {
         if (MADT_LOCAL_APIC_RECORD_IS_ENABLEABLE(record))
-        {
+        {                
             if (!smp_enable_cpu(record->cpuId, record->localApicId))
-            {
+            {    
                 tty_print("CPU "); tty_printi(record->cpuId); tty_print(" failed to start!");
                 tty_end_message(TTY_MESSAGE_ER);
             }
@@ -106,6 +108,21 @@ void smp_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
+void smp_cpu_init()
+{
+    Cpu* cpu = smp_current_cpu_brute();
+
+    write_msr(MSR_CPU_ID, cpu->id);
+
+    idt_load();
+    gdt_load();
+    gdt_load_tss(tss_get(cpu->id));
+
+    local_apic_init();
+
+    interrupts_enable();
+}
+
 Cpu* smp_cpu(uint8_t cpuId)
 {
     return &cpus[cpuId];
@@ -113,7 +130,24 @@ Cpu* smp_cpu(uint8_t cpuId)
 
 Cpu* smp_current_cpu()
 {
-    return &cpus[local_apic_current_cpu()];
+    return &cpus[read_msr(MSR_CPU_ID)];
+}
+
+Cpu* smp_current_cpu_brute()
+{
+    uint64_t localApicId = local_apic_id();
+    for (uint64_t i = 0; i < SMP_MAX_CPU_AMOUNT; i++)
+    {
+        Cpu* cpu = smp_cpu(i);
+
+        if (cpu->present && cpu->localApicId == localApicId)
+        {
+            return cpu;
+        }
+    }    
+
+    debug_panic("Unable to find cpu");
+    return 0;
 }
 
 uint8_t smp_cpu_amount()
@@ -152,11 +186,11 @@ void smp_send_ipi_to_all(Ipi ipi)
 
 void smp_send_ipi_to_others(Ipi ipi)
 {
-    for (uint64_t cpuId = 0; cpuId < SMP_MAX_CPU_AMOUNT; cpuId++)
+    for (uint64_t cpuId = 0; cpuId < smp_cpu_amount(); cpuId++)
     {        
         Cpu* cpu = smp_cpu(cpuId);     
 
-        if (cpu->present && cpu != smp_current_cpu())
+        if (cpu != smp_current_cpu())
         {
             smp_send_ipi(cpu, ipi);
         }

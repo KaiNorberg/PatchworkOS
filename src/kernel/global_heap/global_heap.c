@@ -5,6 +5,7 @@
 #include "tty/tty.h"
 #include "debug/debug.h"
 #include "utils/utils.h"
+#include "spin_lock/spin_lock.h"
 
 #include "../common.h"
 
@@ -13,12 +14,16 @@ extern uint64_t _kernelStart;
 uintptr_t globalHeapTop;
 uintptr_t globalHeapBottom;
 
+SpinLock globalHeapLock;
+
 void global_heap_init()
 {
     tty_start_message("Global heap initializing");    
 
     globalHeapTop = round_down((uint64_t)&_kernelStart, 0x1000);
     globalHeapBottom = globalHeapTop;
+
+    globalHeapLock = spin_lock_new();
 
     tty_end_message(TTY_MESSAGE_OK);
 }
@@ -37,7 +42,9 @@ void global_heap_map(PageDirectory* pageDirectory)
 }
 
 void* gmalloc(uint64_t pageAmount)
-{    
+{   
+    spin_lock_acquire(&globalHeapLock); 
+
     for (uint64_t i = 0; i < pageAmount; i++)
     {
         globalHeapBottom -= 0x1000;
@@ -46,6 +53,8 @@ void* gmalloc(uint64_t pageAmount)
 
         page_directory_remap(kernelPageDirectory, (void*)globalHeapBottom, physicalAddress, PAGE_DIR_READ_WRITE);
     }
+
+    spin_lock_release(&globalHeapLock); 
 
     return (void*)globalHeapBottom;
 }

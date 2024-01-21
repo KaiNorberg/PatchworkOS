@@ -38,12 +38,12 @@ void apic_timer_init()
 
 void local_apic_init()
 {
-    write_msr(MSR_REGISTER_LOCAL_APIC, (read_msr(MSR_REGISTER_LOCAL_APIC) | 0x800) & ~(1 << 10));
+    write_msr(MSR_LOCAL_APIC, (read_msr(MSR_LOCAL_APIC) | 0x800) & ~(1 << 10));
 
     local_apic_write(APIC_REGISTER_SPURIOUS, local_apic_read(APIC_REGISTER_SPURIOUS) | 0x100);
 }
 
-uint32_t local_apic_current_cpu()
+uint32_t local_apic_id()
 {
     return local_apic_read(APIC_REGISTER_ID) >> LOCAL_APIC_ID_OFFSET;
 }
