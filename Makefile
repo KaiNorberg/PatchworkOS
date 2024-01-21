@@ -60,7 +60,7 @@ KERNEL_C_FLAGS = $(BASE_C_FLAGS) \
 	-mno-sse2 -mno-red-zone -Wno-array-bounds
 
 BOOT_C_FLAGS = $(BASE_C_FLAGS) \
-	-O1 -fpic -ffreestanding -mno-sse2 \
+	-fpic -ffreestanding -mno-sse2 \
 	-fno-stack-protector -fno-stack-check \
 	-fshort-wchar -mno-red-zone \
 	-mno-80387 -Wno-array-bounds \

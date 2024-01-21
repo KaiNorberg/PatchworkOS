@@ -41,7 +41,11 @@ void main(BootInfo* bootInfo)
     tty_clear();
     tty_set_cursor_pos(0, 16 * (smp_cpu_amount() + 1));
 
-    Ipi ipi = IPI_CREATE(IPI_TYPE_START);
+    Ipi ipi = 
+    {
+        .type = IPI_TYPE_START,
+        .bootstrapCpu = smp_current_cpu()
+    };
     smp_send_ipi_to_all(ipi);
 
     while (1)

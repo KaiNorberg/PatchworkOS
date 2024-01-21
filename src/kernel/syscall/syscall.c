@@ -9,6 +9,8 @@
 #include "smp/smp.h"
 #include "time/time.h"
 #include "hpet/hpet.h"
+#include "heap/heap.h"
+#include "page_allocator/page_allocator.h"
 
 #include "kernel/kernel.h"
 
@@ -68,24 +70,22 @@ void syscall_fork(InterruptFrame* interruptFrame)
     childFrame->rax = 0; // Child result
     interruptFrame->rax = 1234; // Parent result
 
-    local_scheduler_release();
+    local_scheduler_push(child, childFrame, TASK_PRIORITY_EXPRESS);
 
-    scheduler_push(child, childFrame);
+    local_scheduler_release();
 }
 
 void syscall_sleep(InterruptFrame* interruptFrame)
 {
-    local_scheduler_acquire();             
+    /*local_scheduler_acquire();             
 
-    /*Blocker blocker = 
-    {
-        .timeout = time_nanoseconds() + SYSCALL_GET_ARG1(interruptFrame)
-    };
+    Blocker* blocker = kmalloc(sizeof(Blocker));
+    blocker->timeout = time_nanoseconds() + SYSCALL_GET_ARG1(interruptFrame);
 
     local_scheduler_block(blocker);
-    local_scheduler_schedule(interruptFrame);*/
+    local_scheduler_schedule(interruptFrame);
 
-    local_scheduler_release();
+    local_scheduler_release();*/
 }
 
 void syscall_table_init()
@@ -120,7 +120,14 @@ void syscall_handler(InterruptFrame* interruptFrame)
         Point cursorPos = tty_get_cursor_pos();
 
         tty_set_cursor_pos(0, 16 * cpu->id);
-        tty_print("CPU "); tty_printx(cpu->id); tty_print(": "); tty_printx((uint64_t)local_scheduler_running_task()); tty_print(" | "); tty_print(string);
+        tty_print("CPU "); 
+        tty_printx(cpu->id); 
+        tty_print(": "); 
+        tty_printx((uint64_t)local_scheduler_running_task());
+        tty_print(" - "); 
+        tty_printx((uint64_t)local_scheduler_task_amount());
+        tty_print(" | "); 
+        tty_print(string);
 
         tty_set_cursor_pos(cursorPos.x, cursorPos.y);
 

@@ -38,6 +38,16 @@ void vector_push(Vector* vec, void* entry)
     vec->length++;
 }
 
+void* vector_insert(Vector* vec, uint64_t index)
+{
+    return (void*)((uint64_t)vec->data + vec->entrySize * index);
+}
+
+void* vector_array(Vector* vec)
+{
+    return vec->data;
+}
+
 void* vector_get(Vector* vec, uint64_t index)
 {
     return (void*)((uint64_t)vec->data + vec->entrySize * index);

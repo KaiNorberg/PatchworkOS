@@ -81,6 +81,14 @@ void irq_handler(InterruptFrame* interruptFrame)
     {
     case IRQ_TIMER:
     {   
+        scheduler_tick(interruptFrame);
+
+        Ipi ipi = 
+        {
+            .type = IPI_TYPE_TICK
+        };
+        smp_send_ipi_to_others(ipi);
+    
         local_scheduler_acquire();
         local_scheduler_tick(interruptFrame);
         local_scheduler_release();
@@ -114,13 +122,23 @@ void ipi_handler(InterruptFrame* interruptFrame)
     break;
     case IPI_TYPE_START:
     {
-        apic_timer_init();
-
         interruptFrame->instructionPointer = (uint64_t)scheduler_idle_loop;
         interruptFrame->cr3 = (uint64_t)kernelPageDirectory;
         interruptFrame->codeSegment = GDT_KERNEL_CODE;
         interruptFrame->stackSegment = GDT_KERNEL_DATA;
         interruptFrame->stackPointer = tss_get(smp_current_cpu()->id)->rsp0;
+
+        if (smp_current_cpu() == ipi.bootstrapCpu)
+        {
+            apic_timer_init();
+        }
+    }
+    break;
+    case IPI_TYPE_TICK:
+    {
+        local_scheduler_acquire();
+        local_scheduler_tick(interruptFrame);
+        local_scheduler_release();
     }
     break;
     default:

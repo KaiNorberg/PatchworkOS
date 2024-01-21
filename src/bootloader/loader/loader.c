@@ -7,7 +7,7 @@
 
 #include "../common.h"
 
-void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, BootInfo* bootInfo)
+__attribute__((noreturn)) void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, BootInfo* bootInfo)
 {
     Print(L"Loading kernel... ");
 	
@@ -83,8 +83,6 @@ void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, B
 	file_system_close(file);
 	Print(L"Done!\n\r");
 
-	void (*kernelMain)(BootInfo*) = ((__attribute__((sysv_abi)) void (*)(BootInfo*))header.entry);
-
 	EfiMemoryMap memoryMap = memory_get_map();
 
 	uint64_t totalPageAmount = 0;
@@ -119,10 +117,20 @@ void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, B
 	systemTable->BootServices->ExitBootServices(imageHandle, bootInfo->memoryMap->key);
 	Print(L"Done!\n\r");
 
+	//When compiled with optimization flags it will crash on real hardware somewhere beyond this point, no idea why.
+
 	Print(L"Loading kernel address space... ");
 	PAGE_DIRECTORY_LOAD_SPACE(kernelPageDirectory);
 	Print(L"Done!\n\r");
 
 	Print(L"Jumping to kernel...\n\r");
+	void (*kernelMain)(BootInfo*) = ((void (*)(BootInfo*))header.entry);
 	kernelMain(bootInfo);
+
+	Print(L"If you are seeing this something has gone very wrong!\n\r");
+
+	while (1)
+	{
+		asm volatile("HLT");
+	}
 }

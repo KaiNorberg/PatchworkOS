@@ -19,5 +19,6 @@ uint64_t vector_length(Vector* vec);
 
 void vector_push(Vector* vec, void* entry);
 
-void* vector_get(Vector* vec, uint64_t index);
+void* vector_array(Vector* vec);
 
+void* vector_get(Vector* vec, uint64_t index);

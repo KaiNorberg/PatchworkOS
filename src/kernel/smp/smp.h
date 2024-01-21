@@ -11,8 +11,7 @@
 #define IPI_TYPE_NONE 0x0
 #define IPI_TYPE_HALT 0x1
 #define IPI_TYPE_START 0x2
-
-#define IPI_CREATE(ipiType) ((Ipi){.type = ipiType})
+#define IPI_TYPE_TICK 0x3
 
 #define SMP_MAX_CPU_AMOUNT 256
 
@@ -22,12 +21,19 @@
 #define SMP_TRAMPOLINE_DATA_STACK_TOP 0x8FE0
 #define SMP_TRAMPOLINE_DATA_ENTRY 0x8FD0
 
+struct Cpu;
+typedef struct Cpu Cpu;
+
 typedef struct
 {
     uint8_t type;
+    union 
+    {
+        Cpu* bootstrapCpu;
+    };
 } Ipi;
 
-typedef struct
+typedef struct Cpu
 {
     uint8_t present;
     

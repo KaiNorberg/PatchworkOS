@@ -34,7 +34,7 @@ There are three ways to run Patchwork.
 
 ## Roadmap
 
-The current long term goal is to create a desktop environment and to play DOOM.
+The short term goal is to create a basic terminal/sheel, however the current long term goal is to play DOOM.
 
 ## Documentation (WIP)
 

@@ -62,7 +62,7 @@ uint8_t load_program(const char* path)
     InterruptFrame* interruptFrame = interrupt_frame_new((void*)header.entry, PROCESS_ADDRESS_SPACE_USER_STACK + 0x1000, 
         GDT_USER_CODE | 3, GDT_USER_DATA | 3, 0x202, process->pageDirectory);
         
-    scheduler_push(process, interruptFrame);
+    scheduler_push(process, interruptFrame, TASK_PRIORITY_NORMAL);
 
     kfree(programHeaders);
     ram_disk_close(file);
