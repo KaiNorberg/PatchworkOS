@@ -50,6 +50,8 @@ typedef struct
     uint64_t nextPreemption;
 
     SpinLock lock;
+
+    uint64_t ticks;
 } Scheduler;
 
 extern void scheduler_idle_loop();

@@ -18,8 +18,6 @@
 
 #define SYSCALL_VECTOR 0x80
 
-#define SYSCALL_TABLE_LENGTH 32
-
-void syscall_table_init();
+typedef void(*Syscall)(InterruptFrame* interruptFrame);
 
 void syscall_handler(InterruptFrame* interruptFrame);

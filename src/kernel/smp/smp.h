@@ -21,6 +21,8 @@
 #define SMP_TRAMPOLINE_DATA_STACK_TOP 0x8FE0
 #define SMP_TRAMPOLINE_DATA_ENTRY 0x8FD0
 
+#define SMP_TRAMPOLINE_SIZE ((uint64_t)smp_trampoline_end - (uint64_t)smp_trampoline_start)
+
 struct Cpu;
 typedef struct Cpu Cpu;
 

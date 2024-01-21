@@ -16,13 +16,6 @@
 
 #include <lib-syscall.h>
 
-void (*syscallTable[SYSCALL_TABLE_LENGTH])(InterruptFrame* interruptFrame);
-
-void syscall_stub(InterruptFrame* interruptFrame)
-{
-    SYSCALL_SET_RESULT(interruptFrame, -1);
-}
-
 void syscall_exit(InterruptFrame* interruptFrame)
 {
     //Temporary for testing
@@ -50,13 +43,8 @@ void syscall_fork(InterruptFrame* interruptFrame)
 
     Process* parent = local_scheduler_running_task()->process;
     MemoryBlock* currentBlock = parent->firstMemoryBlock;
-    while (1)
+    while (currentBlock != 0)
     {
-        if (currentBlock == 0)
-        {
-            break;
-        }
-
         void* physicalAddress = process_allocate_pages(child, currentBlock->virtualAddress, currentBlock->pageAmount);
 
         memcpy(physicalAddress, currentBlock->physicalAddress, currentBlock->pageAmount * 0x1000);
@@ -88,21 +76,12 @@ void syscall_sleep(InterruptFrame* interruptFrame)
     local_scheduler_release();*/
 }
 
-void syscall_table_init()
+Syscall syscallTable[] =
 {
-    tty_start_message("Syscall Table initializing");
-
-    for (uint64_t i = 0; i < SYSCALL_TABLE_LENGTH; i++)
-    {
-        syscallTable[i] = syscall_stub;
-    }
-
-    syscallTable[SYS_EXIT] = syscall_exit;
-    syscallTable[SYS_FORK] = syscall_fork;
-    syscallTable[SYS_SLEEP] = syscall_sleep;
-
-    tty_end_message(TTY_MESSAGE_OK);
-}
+    [SYS_EXIT] = (Syscall)syscall_exit,
+    [SYS_FORK] = (Syscall)syscall_fork,
+    [SYS_SLEEP] = (Syscall)syscall_sleep
+};
 
 void syscall_handler(InterruptFrame* interruptFrame)
 {   
@@ -135,7 +114,7 @@ void syscall_handler(InterruptFrame* interruptFrame)
         return;
     }
 
-    if (selector < SYSCALL_TABLE_LENGTH)
+    if (selector < sizeof(syscallTable) / sizeof(Syscall))
     {
         syscallTable[selector](interruptFrame);
     }

@@ -80,7 +80,7 @@ void irq_handler(InterruptFrame* interruptFrame)
     switch (irq)
     {
     case IRQ_TIMER:
-    {   
+    {
         scheduler_tick(interruptFrame);
 
         Ipi ipi = 
@@ -158,9 +158,7 @@ void exception_handler(InterruptFrame* interruptFrame)
     tty_release();
 
     local_scheduler_acquire();             
-
     local_scheduler_exit();
     local_scheduler_schedule(interruptFrame);
-
     local_scheduler_release();
 }

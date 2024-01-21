@@ -33,18 +33,15 @@ void smp_cpu_entry()
     }
 }
 
-uint8_t smp_enable_cpu(uint8_t cpuId, uint8_t localApicId)
+uint8_t smp_enable_cpu(uint8_t localApicId)
 {
-    if (cpus[cpuId].present)
-    {
-        return 0;
-    }
-
-    cpuAmount++;
+    uint8_t cpuId = cpuAmount;
 
     cpus[cpuId].present = 1;
     cpus[cpuId].id = cpuId;
     cpus[cpuId].localApicId = localApicId;
+
+    cpuAmount++;
 
     if (local_apic_id() != localApicId)
     {
@@ -69,6 +66,25 @@ uint8_t smp_enable_cpu(uint8_t cpuId, uint8_t localApicId)
     return 1;
 }
 
+void* smp_trampoline_setup()
+{
+    void* oldData = page_allocator_request();
+    memcpy(oldData, SMP_TRAMPOLINE_LOADED_START, SMP_TRAMPOLINE_SIZE);
+
+    memcpy(SMP_TRAMPOLINE_LOADED_START, smp_trampoline_start, SMP_TRAMPOLINE_SIZE);
+
+    WRITE_32(SMP_TRAMPOLINE_DATA_PAGE_DIRECTORY, (uint64_t)kernelPageDirectory);
+    WRITE_64(SMP_TRAMPOLINE_DATA_ENTRY, smp_cpu_entry);
+
+    return oldData;
+}
+
+void smp_trampoline_cleanup(void* oldData)
+{    
+    memcpy(SMP_TRAMPOLINE_LOADED_START, oldData, SMP_TRAMPOLINE_SIZE);
+    page_allocator_unlock_page(oldData);
+}
+
 void smp_init()
 {    
     tty_start_message("SMP initializing");
@@ -77,22 +93,14 @@ void smp_init()
     cpuAmount = 0;
     readyCpuAmount = 1;
 
-    uint64_t trampolineLength = (uint64_t)smp_trampoline_end - (uint64_t)smp_trampoline_start;
-
-    void* oldData = page_allocator_request();
-    memcpy(oldData, SMP_TRAMPOLINE_LOADED_START, trampolineLength);
-
-    memcpy(SMP_TRAMPOLINE_LOADED_START, smp_trampoline_start, trampolineLength);
-
-    WRITE_32(SMP_TRAMPOLINE_DATA_PAGE_DIRECTORY, (uint64_t)kernelPageDirectory);
-    WRITE_64(SMP_TRAMPOLINE_DATA_ENTRY, smp_cpu_entry);
+    void* oldData = smp_trampoline_setup();
 
     LocalApicRecord* record = madt_first_record(MADT_RECORD_TYPE_LOCAL_APIC);
     while (record != 0)
     {
         if (MADT_LOCAL_APIC_RECORD_IS_ENABLEABLE(record))
         {                
-            if (!smp_enable_cpu(record->cpuId, record->localApicId))
+            if (!smp_enable_cpu(record->localApicId))
             {    
                 tty_print("CPU "); tty_printi(record->cpuId); tty_print(" failed to start!");
                 tty_end_message(TTY_MESSAGE_ER);
@@ -102,8 +110,7 @@ void smp_init()
         record = madt_next_record(record, MADT_RECORD_TYPE_LOCAL_APIC);
     }
 
-    memcpy(SMP_TRAMPOLINE_LOADED_START, oldData, trampolineLength);
-    page_allocator_unlock_page(oldData);
+    smp_trampoline_cleanup(oldData);
 
     tty_end_message(TTY_MESSAGE_OK);
 }

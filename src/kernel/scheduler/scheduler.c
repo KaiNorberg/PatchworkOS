@@ -59,6 +59,7 @@ void scheduler_init()
 
         schedulers[i].nextPreemption = 0;
         schedulers[i].lock = spin_lock_new();
+        schedulers[i].ticks = 0;
     }
 
     tty_end_message(TTY_MESSAGE_OK);
@@ -190,6 +191,8 @@ void local_scheduler_push(Process* process, InterruptFrame* interruptFrame, uint
 void local_scheduler_tick(InterruptFrame* interruptFrame)
 {
     Scheduler* scheduler = scheduler_get_local();
+
+    scheduler->ticks++;
 
     if (scheduler->nextPreemption < time_nanoseconds())
     {

@@ -114,7 +114,7 @@ void page_allocator_init(EfiMemoryMap* memoryMap)
     {
         EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
 
-        if (is_memory_type_reserved(desc->type))
+        if (is_memory_type_reserved(desc->type) && ((uint64_t)desc->physicalStart) < pageAmount * 0x1000)
         {
             page_allocator_lock_pages(desc->physicalStart, desc->amountOfPages);
         }
