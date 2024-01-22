@@ -2,12 +2,6 @@
 
 **Keep in mind that Patchwork is currently in a very early stage of development.**
 
-## What is Patchwork?
-
-Patchwork is an attempt to make an operating system single-handed in a reasonable amount of time. This requires a rather simple and improvised OS design, which is why Patchwork uses a simplified UNIX inspired design, however it is not UNIX-like. Note that in this case, simple means "containing few parts" or "easily understood" not merely "low quality".
-
-The simple design means that Patchwork may be useful for those wishing to learn about how operating systems function, or for simply playing around with an existing code base. 
-
 ## Features
 
   - Multicore 64bit monolithic kernel
