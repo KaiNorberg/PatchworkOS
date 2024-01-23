@@ -11,9 +11,9 @@
 #define TASK_STATE_READY 2
 #define TASK_STATE_BLOCKED 3
 
-#define TASK_PRIORITY_NORMAL 0
-#define TASK_PRIORITY_EXPRESS 1
 #define TASK_PRIORITY_LEVELS 2
+#define TASK_PRIORITY_MIN 0
+#define TASK_PRIORITY_MAX (TASK_PRIORITY_LEVELS - 1)
 
 #define SCHEDULER_TIME_SLICE (NANOSECONDS_PER_SECOND / 2)
 
@@ -60,13 +60,15 @@ void scheduler_init();
 
 void scheduler_tick(InterruptFrame* interruptFrame);
 
-void scheduler_balance();
+void scheduler_balance(uint8_t priority);
 
 void scheduler_acquire_all();
 
 void scheduler_release_all();
 
-void scheduler_push(Process* process, InterruptFrame* interruptFrame, uint8_t priority);
+void scheduler_emplace(Process* process, InterruptFrame* interruptFrame, uint8_t priority);
+
+void scheduler_push(Task* task);
 
 Scheduler* scheduler_get_local();
 
@@ -83,7 +85,5 @@ void local_scheduler_exit();
 void local_scheduler_acquire();
 
 void local_scheduler_release();
-
-uint64_t local_scheduler_task_amount();
 
 Task* local_scheduler_running_task();

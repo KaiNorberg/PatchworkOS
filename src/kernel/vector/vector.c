@@ -5,50 +5,79 @@
 
 Vector* vector_new(uint64_t entrySize)
 {
-    Vector* vec = kmalloc(sizeof(Vector));
+    Vector* vector = kmalloc(sizeof(Vector));
 
-    vec->data = kmalloc(entrySize * VECTOR_INITIAL_LENGTH);
-    vec->entrySize = entrySize;
+    vector->data = kmalloc(VECTOR_INITIAL_LENGTH * entrySize);
+    vector->entrySize = entrySize;
 
-    vec->length = 0;
-    vec->reservedLength = VECTOR_INITIAL_LENGTH;
+    vector->length = 0;
+    vector->reservedLength = VECTOR_INITIAL_LENGTH;
 
-    return vec;
+    return vector;
 }
 
-uint64_t vector_length(Vector* vec)
+void vector_free(Vector* vector)
 {
-    return vec->length;
+    kfree(vector->data);
+    kfree(vector);
 }
 
-void vector_push(Vector* vec, void* entry)
+void vector_resize(Vector* vector, uint64_t length)
 {
-    if (vec->length == vec->reservedLength)
+    void* newData = kmalloc(length * vector->entrySize);
+    memcpy(newData, vector->data, vector->length * vector->entrySize);
+    kfree(vector->data);
+
+    vector->data = newData;
+    vector->reservedLength = length;
+}
+
+void vector_push(Vector* vector, void* entry)
+{
+    if (vector->length == vector->reservedLength)
     {
-        uint64_t newLength = vec->length * 2;
-        void* newData = kmalloc(newLength * vec->entrySize);
-        memcpy(newData, vec->data, vec->length * vec->entrySize);
-        kfree(vec->data);
-
-        vec->data = newData;
-        vec->reservedLength = newLength;
+        vector_resize(vector, vector->reservedLength * 2);
     }
 
-    memcpy(vector_get(vec, vec->length), entry, vec->entrySize);
-    vec->length++;
+    vector_set(vector, vector->length, entry);
+    vector->length++;
 }
 
-void* vector_insert(Vector* vec, uint64_t index)
+void* vector_array(Vector* vector)
 {
-    return (void*)((uint64_t)vec->data + vec->entrySize * index);
+    return vector->data;
 }
 
-void* vector_array(Vector* vec)
+void vector_set(Vector* vector, uint64_t index, void* entry)
 {
-    return vec->data;
+    memcpy(vector_get(vector, index), entry, vector->entrySize);
 }
 
-void* vector_get(Vector* vec, uint64_t index)
+void* vector_get(Vector* vector, uint64_t index)
 {
-    return (void*)((uint64_t)vec->data + vec->entrySize * index);
+    return (void*)((uint64_t)vector->data + vector->entrySize * index);
+}
+
+void vector_insert(Vector* vector, uint64_t index, void* entry)
+{
+    if (vector->length == vector->reservedLength)
+    {
+        vector_resize(vector, vector->reservedLength * 2);
+    }
+
+    memmove(vector_get(vector, index + 1), vector_get(vector, index), (vector->length - (index + 1)) * vector->entrySize);
+    vector->length++;
+
+    vector_set(vector, index, entry);
+}
+
+void vector_erase(Vector* vector, uint64_t index)
+{
+    memcpy(vector_get(vector, index), vector_get(vector, index + 1), (vector->length - (index + 1)) * vector->entrySize);
+    vector->length--;
+}
+
+uint64_t vector_length(Vector* vector)
+{
+    return vector->length;
 }

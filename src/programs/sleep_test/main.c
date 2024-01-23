@@ -5,7 +5,9 @@ int main()
 {   
     while (1)
     {
-        sys_test("Hello from test program!              ");
+        sys_test("Hello from sleep_test, sleeping...");
+        
+        sleep(1000);        
     }
 
     return 0;

@@ -3,24 +3,22 @@
 
 int main()
 {   
-    sys_test("Hello from parent, forking...     ");
+    sys_test("Hello from parent, forking...");
     
-    //nanosleep(NANOSECONDS_PER_SECOND);
-
     uint64_t pid = fork();
 
     if (pid == 0)
     {
         while (1)
         {
-            sys_test("Hello from child program!             ");
+            sys_test("Hello from child!");
         }         
     }
     else
     {
         while (1)
         {
-            sys_test("Hello from parent program!            ");
+            sys_test("Hello from parent!");
         }       
     }
 

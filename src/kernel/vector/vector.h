@@ -15,10 +15,20 @@ typedef struct
 
 Vector* vector_new(uint64_t entrySize);
 
-uint64_t vector_length(Vector* vec);
+void vector_free(Vector* vector);
 
-void vector_push(Vector* vec, void* entry);
+void vector_resize(Vector* vector, uint64_t length);
 
-void* vector_array(Vector* vec);
+void vector_push(Vector* vector, void* entry);
 
-void* vector_get(Vector* vec, uint64_t index);
+void* vector_array(Vector* vector);
+
+void vector_set(Vector* vector, uint64_t index, void* entry);
+
+void* vector_get(Vector* vector, uint64_t index);
+
+void vector_insert(Vector* vector, uint64_t index, void* entry);
+
+void vector_erase(Vector* vector, uint64_t index);
+
+uint64_t vector_length(Vector* vector);

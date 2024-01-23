@@ -19,7 +19,13 @@ typedef struct Process
 
     MemoryBlock* firstMemoryBlock;
     MemoryBlock* lastMemoryBlock;
+
+    uint64_t id;
 } Process;
+
+void pid_init();
+
+uint64_t pid_new();
 
 Process* process_new();
 

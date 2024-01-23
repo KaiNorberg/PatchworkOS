@@ -4,15 +4,32 @@
 #include "string/string.h"
 #include "page_allocator/page_allocator.h"
 #include "tty/tty.h"
+#include "spin_lock/spin_lock.h"
+
+#include <stdatomic.h>
+
+atomic_ullong pid;
+
+void pid_init()
+{
+    pid = 1;
+}
+
+uint64_t pid_new()
+{
+    return __atomic_fetch_add(&pid, 1, __ATOMIC_SEQ_CST);
+}
 
 Process* process_new()
 {
     Process* newProcess = kmalloc(sizeof(Process));
 
+    newProcess->pageDirectory = page_directory_new();
+
     newProcess->firstMemoryBlock = 0;
     newProcess->lastMemoryBlock = 0;
 
-    newProcess->pageDirectory = page_directory_new();
+    newProcess->id = pid_new();
 
     process_allocate_pages(newProcess, PROCESS_ADDRESS_SPACE_USER_STACK, 1);
     

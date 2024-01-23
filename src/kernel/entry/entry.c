@@ -26,20 +26,22 @@ void main(BootInfo* bootInfo)
 
     tty_print("\n\r");
 
+#if 0
     for (uint64_t i = 0; i < 8; i++)
     {
         tty_print("Loading fork_test...\n\r");
         load_program("/bin/fork_test.elf");
     }
-
-    tty_print("Loading test...\n\r");
-    load_program("/bin/test.elf");
+#else
+    for (uint64_t i = 0; i < 2; i++)
+    {
+        tty_print("Loading sleep_test...\n\r");
+        load_program("/bin/sleep_test.elf");
+    }
+#endif
 
     tty_print("\n\rKernel Initialized!\n\n\r");
-
-    //Temporary for testing
     tty_clear();
-    tty_set_cursor_pos(0, 16 * (smp_cpu_amount() + 1));
 
     Ipi ipi = 
     {

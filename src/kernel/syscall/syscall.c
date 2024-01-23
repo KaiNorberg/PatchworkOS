@@ -18,15 +18,6 @@
 
 void syscall_exit(InterruptFrame* interruptFrame)
 {
-    //Temporary for testing
-    tty_acquire();
-    Cpu* cpu = smp_current_cpu();
-    Point cursorPos = tty_get_cursor_pos();
-    tty_set_cursor_pos(0, 16 * cpu->id);
-    tty_print("CPU "); tty_printx(cpu->id); tty_print(": "); tty_printx(0); tty_print("                                                 ");
-    tty_set_cursor_pos(cursorPos.x, cursorPos.y);
-    tty_release();
-
     local_scheduler_acquire();
 
     local_scheduler_exit();
@@ -56,24 +47,26 @@ void syscall_fork(InterruptFrame* interruptFrame)
     childFrame->cr3 = (uint64_t)child->pageDirectory;
 
     childFrame->rax = 0; // Child result
-    interruptFrame->rax = 1234; // Parent result
+    interruptFrame->rax = child->id; // Parent result
 
-    local_scheduler_push(child, childFrame, TASK_PRIORITY_EXPRESS);
+    local_scheduler_push(child, childFrame, TASK_PRIORITY_MIN);
 
     local_scheduler_release();
 }
 
 void syscall_sleep(InterruptFrame* interruptFrame)
 {
-    /*local_scheduler_acquire();             
+    local_scheduler_acquire();             
 
-    Blocker* blocker = kmalloc(sizeof(Blocker));
-    blocker->timeout = time_nanoseconds() + SYSCALL_GET_ARG1(interruptFrame);
+    Blocker blocker =
+    {
+        .timeout = time_nanoseconds() + SYSCALL_GET_ARG1(interruptFrame) * NANOSECONDS_PER_MILLISECOND
+    };
 
-    local_scheduler_block(blocker);
+    local_scheduler_block(interruptFrame, blocker);
     local_scheduler_schedule(interruptFrame);
 
-    local_scheduler_release();*/
+    local_scheduler_release();
 }
 
 Syscall syscallTable[] =
@@ -96,19 +89,13 @@ void syscall_handler(InterruptFrame* interruptFrame)
 
         const char* string = page_directory_get_physical_address(SYSCALL_GET_PAGE_DIRECTORY(interruptFrame), (void*)SYSCALL_GET_ARG1(interruptFrame));
 
-        Point cursorPos = tty_get_cursor_pos();
-
-        tty_set_cursor_pos(0, 16 * cpu->id);
-        tty_print("CPU "); 
+        tty_print("CPU: "); 
         tty_printx(cpu->id); 
-        tty_print(": "); 
-        tty_printx((uint64_t)local_scheduler_running_task());
+        tty_print(" | PID: "); 
+        tty_printx((uint64_t)local_scheduler_running_task()->process->id);
         tty_print(" - "); 
-        tty_printx((uint64_t)local_scheduler_task_amount());
-        tty_print(" | "); 
         tty_print(string);
-
-        tty_set_cursor_pos(cursorPos.x, cursorPos.y);
+        tty_print("\n\r");
 
         tty_release();
         return;

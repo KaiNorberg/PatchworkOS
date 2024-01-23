@@ -48,6 +48,7 @@ void kernel_init(BootInfo* bootInfo)
     smp_init();
 
     scheduler_init();
+    pid_init();
 
     smp_cpu_init();
 }

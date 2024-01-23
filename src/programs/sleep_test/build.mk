@@ -1,0 +1,22 @@
+SLEEP_TEST_SRC_DIR = $(SRC_DIR)/programs/sleep_test
+SLEEP_TEST_BUILD_DIR = $(BUILD_DIR)/programs/sleep_test
+
+SLEEP_TEST_OUTPUT = $(PROGRAMS_BIN_DIR)/sleep_test.elf
+
+SLEEP_TEST_OBJECTS = $(call objects_pathsubst,$(SLEEP_TEST_SRC_DIR),$(SLEEP_TEST_BUILD_DIR),.c)
+SLEEP_TEST_OBJECTS += $(call objects_pathsubst,$(SLEEP_TEST_SRC_DIR),$(SLEEP_TEST_BUILD_DIR),.asm)
+
+$(SLEEP_TEST_BUILD_DIR)/%.c.o: $(SLEEP_TEST_SRC_DIR)/%.c
+	@mkdir -p $(@D)
+	@$(call run_and_test,$(CC) $(PROGRAM_C_FLAGS) -I $(SLEEP_TEST_SRC_DIR) -c -o $@ $<)
+
+$(SLEEP_TEST_BUILD_DIR)/%.asm.o: $(SLEEP_TEST_SRC_DIR)/%.asm
+	@mkdir -p $(@D)
+	@$(call run_and_test,$(ASM) $(ASM_FLAGS) $^ -o $@)
+
+$(SLEEP_TEST_OUTPUT): $(SLEEP_TEST_OBJECTS)
+	@echo "!====== BUILDING SLEEP_TEST ======!"
+	@mkdir -p $(@D)
+	@$(call run_and_test,$(LD) $(PROGRAM_LD_FLAGS) -lprocess -o $@ $^)
+
+BUILD += $(SLEEP_TEST_OUTPUT)

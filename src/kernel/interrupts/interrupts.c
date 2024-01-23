@@ -82,16 +82,6 @@ void irq_handler(InterruptFrame* interruptFrame)
     case IRQ_TIMER:
     {
         scheduler_tick(interruptFrame);
-
-        Ipi ipi = 
-        {
-            .type = IPI_TYPE_TICK
-        };
-        smp_send_ipi_to_others(ipi);
-    
-        local_scheduler_acquire();
-        local_scheduler_tick(interruptFrame);
-        local_scheduler_release();
     }
     break;
     default:
