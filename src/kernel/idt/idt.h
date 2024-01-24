@@ -2,8 +2,8 @@
 
 #include <stdint.h>
 
-#define IDT_INTERRUPT 0xEE //Disables interrupts
-#define IDT_TRAP 0xEF //Does not disable interrupts
+#define IDT_INTERRUPT 0b10001110
+#define IDT_SYSCALL 0b11101110
 
 #define IDT_VECTOR_AMOUNT 256
 

@@ -6,6 +6,7 @@
 #include "interrupts/interrupts.h"
 #include "page_allocator/page_allocator.h"
 #include "global_heap/global_heap.h"
+#include "syscall/syscall.h"
 
 extern void* interruptVectorTable[IDT_VECTOR_AMOUNT];
 
@@ -21,6 +22,8 @@ void idt_init()
     {        
         idt_set_descriptor(vector, interruptVectorTable[vector], IDT_INTERRUPT);
     }
+    
+    idt_set_descriptor(SYSCALL_VECTOR, interruptVectorTable[SYSCALL_VECTOR], IDT_SYSCALL);
 
     remap_pic();
 

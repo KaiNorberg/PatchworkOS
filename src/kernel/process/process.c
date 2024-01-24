@@ -10,16 +10,16 @@
 
 #include <stdatomic.h>
 
-atomic_ullong pid;
+atomic_size_t pid;
 
 void pid_init()
 {
-    pid = 1;
+    atomic_init(&pid, 1);
 }
 
 uint64_t pid_new()
 {
-    return __atomic_fetch_add(&pid, 1, __ATOMIC_SEQ_CST);
+    return atomic_fetch_add_explicit(&pid, 1, memory_order_seq_cst);
 }
 
 Process* process_new()
