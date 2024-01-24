@@ -25,7 +25,7 @@ void gdt_init()
     gdt->kernelCode.baseLow = 0;
     gdt->kernelCode.baseMiddle = 0;
     gdt->kernelCode.access = 0x9A;
-    gdt->kernelCode.flagsAndLimitHigh = 0xAF; //Flags = 0xA, LimitHigh = 0x0
+    gdt->kernelCode.flagsAndLimitHigh = 0xA0; //Flags = 0xA, LimitHigh = 0x0
     gdt->kernelCode.baseHigh = 0;
 
     gdt->kernelData.limitLow = 0;
@@ -34,7 +34,7 @@ void gdt_init()
     gdt->kernelData.access = 0x92;
     gdt->kernelData.flagsAndLimitHigh = 0xC0; //Flags = 0xC, LimitHigh = 0x0
     gdt->kernelData.baseHigh = 0;
-
+    
     gdt->userCode.limitLow = 0;
     gdt->userCode.baseLow = 0;
     gdt->userCode.baseMiddle = 0;

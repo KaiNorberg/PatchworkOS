@@ -14,7 +14,7 @@ void tss_init()
 {    
     tty_start_message("TSS loading");
 
-    uint64_t tssArrayPageAmount = 2;
+    uint64_t tssArrayPageAmount = GET_SIZE_IN_PAGES(SMP_MAX_CPU_AMOUNT * sizeof(Tss));
 
     tssArray = gmalloc(tssArrayPageAmount);
     memclr(tssArray, tssArrayPageAmount * 0x1000);
@@ -35,4 +35,9 @@ Tss* tss_get(uint8_t cpuId)
     }
 
     return tss;
+}
+
+void* tss_kernel_stack()
+{
+    return (void*)(tss_get(smp_current_cpu()->id)->rsp0);
 }

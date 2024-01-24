@@ -47,12 +47,11 @@ common_interrupt:
     push r15
     mov rax, cr3
     push rax
-	mov rbp, rsp
 
     mov rax, [interruptPageDirectory]
     mov cr3, rax
 
-    mov rdi, rbp
+    mov rdi, rsp
     call interrupt_handler
 
     pop rax
@@ -75,7 +74,7 @@ common_interrupt:
     add rsp, 16
 
     iretq
-    
+
 interruptPageDirectory:
     dq 0
 

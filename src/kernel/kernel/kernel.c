@@ -18,6 +18,8 @@
 #include "smp/smp.h"
 #include "global_heap/global_heap.h"
 #include "madt/madt.h"
+#include "task_balancer/task_balancer.h"
+#include "kernel_process/kernel_process.h"
 
 #include "../common.h"
 
@@ -49,6 +51,9 @@ void kernel_init(BootInfo* bootInfo)
 
     scheduler_init();
     pid_init();
+    kernel_process_init();
+
+    task_balancer_init();
 
     smp_cpu_init();
 }

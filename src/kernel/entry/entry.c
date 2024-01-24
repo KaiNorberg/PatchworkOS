@@ -26,8 +26,8 @@ void main(BootInfo* bootInfo)
 
     tty_print("\n\r");
 
-#if 0
-    for (uint64_t i = 0; i < 8; i++)
+#if 1
+    for (uint64_t i = 0; i < 3; i++)
     {
         tty_print("Loading fork_test...\n\r");
         load_program("/bin/fork_test.elf");
@@ -41,12 +41,14 @@ void main(BootInfo* bootInfo)
 #endif
 
     tty_print("\n\rKernel Initialized!\n\n\r");
+
+    //Temporary for testing
     tty_clear();
+    tty_set_cursor_pos(0, 16 * (smp_cpu_amount() + 1));
 
     Ipi ipi = 
     {
-        .type = IPI_TYPE_START,
-        .bootstrapCpu = smp_current_cpu()
+        .type = IPI_TYPE_START
     };
     smp_send_ipi_to_all(ipi);
 

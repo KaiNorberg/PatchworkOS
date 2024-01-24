@@ -19,10 +19,8 @@
 void syscall_exit(InterruptFrame* interruptFrame)
 {
     local_scheduler_acquire();
-
     local_scheduler_exit();
     local_scheduler_schedule(interruptFrame);
-
     local_scheduler_release();
 }
 
@@ -49,7 +47,7 @@ void syscall_fork(InterruptFrame* interruptFrame)
     childFrame->rax = 0; // Child result
     interruptFrame->rax = child->id; // Parent result
 
-    local_scheduler_push(child, childFrame, TASK_PRIORITY_MIN);
+    local_scheduler_push(task_new(child, childFrame, TASK_PRIORITY_MIN));
 
     local_scheduler_release();
 }
@@ -89,13 +87,19 @@ void syscall_handler(InterruptFrame* interruptFrame)
 
         const char* string = page_directory_get_physical_address(SYSCALL_GET_PAGE_DIRECTORY(interruptFrame), (void*)SYSCALL_GET_ARG1(interruptFrame));
 
+        Point cursorPos = tty_get_cursor_pos();
+
+        tty_set_cursor_pos(0, 16 * cpu->id);
         tty_print("CPU: "); 
         tty_printx(cpu->id); 
-        tty_print(" | PID: "); 
-        tty_printx((uint64_t)local_scheduler_running_task()->process->id);
-        tty_print(" - "); 
+        tty_print(" TASK AMOUNT: "); 
+        tty_printx(local_scheduler_task_amount());
+        tty_print(" PID: "); 
+        tty_printx(local_scheduler_running_task()->process->id);
+        tty_print(" | "); 
         tty_print(string);
-        tty_print("\n\r");
+
+        tty_set_cursor_pos(cursorPos.x, cursorPos.y);
 
         tty_release();
         return;

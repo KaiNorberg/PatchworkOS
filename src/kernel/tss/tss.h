@@ -22,3 +22,5 @@ extern void tss_load();
 void tss_init();
 
 Tss* tss_get(uint8_t cpuId);
+
+void* tss_kernel_stack();

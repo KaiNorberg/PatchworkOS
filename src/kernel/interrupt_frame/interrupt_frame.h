@@ -35,7 +35,7 @@ typedef struct __attribute__((packed))
 
 InterruptFrame* interrupt_frame_new(void* instructionPointer, void* stackPointer, uint64_t codeSegment, uint64_t stackSegment, uint64_t rFlags, PageDirectory* pageDirectory);
 
-void interrupt_frame_free(InterruptFrame* context);
+void interrupt_frame_free(InterruptFrame* interruptFrame);
 
 InterruptFrame* interrupt_frame_duplicate(InterruptFrame* src);
 

@@ -23,16 +23,9 @@
 
 #define SMP_TRAMPOLINE_SIZE ((uint64_t)smp_trampoline_end - (uint64_t)smp_trampoline_start)
 
-struct Cpu;
-typedef struct Cpu Cpu;
-
 typedef struct
 {
     uint8_t type;
-    union 
-    {
-        Cpu* bootstrapCpu;
-    };
 } Ipi;
 
 typedef struct Cpu

@@ -17,6 +17,7 @@
 #include "spin_lock/spin_lock.h"
 #include "gdt/gdt.h"
 #include "hpet/hpet.h"
+#include "kernel_process/kernel_process.h"
 
 #include "../common.h"
 
@@ -63,6 +64,10 @@ void interrupt_handler(InterruptFrame* interruptFrame)
     {    
         irq_handler(interruptFrame);
     }
+    else if (interruptFrame->vector == KERNEL_TASK_BLOCK_VECTOR)
+    {
+        kernel_task_block_handler(interruptFrame);
+    }
     else if (interruptFrame->vector == SYSCALL_VECTOR)
     {
         syscall_handler(interruptFrame);
@@ -81,7 +86,9 @@ void irq_handler(InterruptFrame* interruptFrame)
     {
     case IRQ_TIMER:
     {
-        scheduler_tick(interruptFrame);
+        local_scheduler_acquire();
+        local_scheduler_tick(interruptFrame);
+        local_scheduler_release();
     }
     break;
     default:
@@ -92,6 +99,7 @@ void irq_handler(InterruptFrame* interruptFrame)
     }        
 
     local_apic_eoi();
+    io_pic_eoi(irq);
 }
 
 void ipi_handler(InterruptFrame* interruptFrame)
@@ -116,24 +124,14 @@ void ipi_handler(InterruptFrame* interruptFrame)
         interruptFrame->cr3 = (uint64_t)kernelPageDirectory;
         interruptFrame->codeSegment = GDT_KERNEL_CODE;
         interruptFrame->stackSegment = GDT_KERNEL_DATA;
-        interruptFrame->stackPointer = tss_get(smp_current_cpu()->id)->rsp0;
-
-        if (smp_current_cpu() == ipi.bootstrapCpu)
-        {            
-            apic_timer_init();
-        }
-    }
-    break;
-    case IPI_TYPE_TICK:
-    {
-        local_scheduler_acquire();
-        local_scheduler_tick(interruptFrame);
-        local_scheduler_release();
+        interruptFrame->stackPointer = (uint64_t)tss_kernel_stack();
+          
+        apic_timer_init();
     }
     break;
     default:
     {
-        //debug_panic("Unknown IPI");
+        debug_panic("Unknown IPI");
     }
     break;
     }

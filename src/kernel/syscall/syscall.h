@@ -20,4 +20,10 @@
 
 typedef void(*Syscall)(InterruptFrame* interruptFrame);
 
+void syscall_exit(InterruptFrame* interruptFrame);
+
+void syscall_fork(InterruptFrame* interruptFrame);
+
+void syscall_sleep(InterruptFrame* interruptFrame);
+
 void syscall_handler(InterruptFrame* interruptFrame);
