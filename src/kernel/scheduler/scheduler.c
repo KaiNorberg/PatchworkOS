@@ -120,7 +120,7 @@ void local_scheduler_push(Task* task)
 void local_scheduler_tick(InterruptFrame* interruptFrame)
 {
     Scheduler* scheduler = scheduler_get_local();
-
+    
     if (vector_length(scheduler->blockedTasks) != 0)
     {
         BlockedTask* blockedTask = vector_get(scheduler->blockedTasks, 0);

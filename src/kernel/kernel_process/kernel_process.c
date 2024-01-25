@@ -40,7 +40,7 @@ Task* kernel_task_new(void* entry)
 }
 
 void kernel_task_block_handler(InterruptFrame* interruptFrame)
-{
+{         
     local_scheduler_acquire();
 
     Blocker blocker =

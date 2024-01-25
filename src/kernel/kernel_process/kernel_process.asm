@@ -1,14 +1,11 @@
 [bits 64]
 
+KERNEL_TASK_BLOCK_VECTOR equ 0x70
+
 global kernel_task_entry
 global kernel_task_block
 
 extern tss_kernel_stack
-
-extern interrupt_common_return
-extern local_scheduler_acquire
-extern local_scheduler_schedule
-extern local_scheduler_release
 
 section .text
 
@@ -24,10 +21,11 @@ kernel_task_block:
     push rdi
     call tss_kernel_stack
     pop rdi
+    pop r11
     mov rbp, rsp
     mov rsp, rax
     sti
-    int 0x70
+    int KERNEL_TASK_BLOCK_VECTOR
     cli
     mov rsp, rbp
-    ret
+    jmp r11

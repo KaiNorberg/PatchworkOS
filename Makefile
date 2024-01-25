@@ -105,7 +105,7 @@ run:
     -drive file=bin/Patchwork.img \
     -m 1G \
     -cpu qemu64 \
-    -smp 4 \
+    -smp 12 \
     -serial stdio \
     -d int \
     -no-shutdown -no-reboot \

@@ -51,9 +51,9 @@ void kernel_init(BootInfo* bootInfo)
 
     scheduler_init();
     pid_init();
-    kernel_process_init();
-
-    task_balancer_init();
 
     smp_cpu_init();
+    
+    kernel_process_init();
+    task_balancer_init();
 }

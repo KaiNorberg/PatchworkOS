@@ -85,7 +85,15 @@ void irq_handler(InterruptFrame* interruptFrame)
     switch (irq)
     {
     case IRQ_TIMER:
-    {
+    {    
+        Scheduler* scheduler = scheduler_get_local();
+
+        if (scheduler->runningTask != 0 && 
+            scheduler->runningTask->interruptFrame->codeSegment == GDT_KERNEL_CODE)
+        {
+            break;
+        }
+
         local_scheduler_acquire();
         local_scheduler_tick(interruptFrame);
         local_scheduler_release();
@@ -140,13 +148,19 @@ void ipi_handler(InterruptFrame* interruptFrame)
 }
 
 void exception_handler(InterruptFrame* interruptFrame)
-{        
+{   
+    Ipi ipi = 
+    {
+        .type = IPI_TYPE_HALT   
+    };
+    smp_send_ipi_to_others(ipi);
+
     tty_acquire();
-    tty_print("EXCEPTION - "); tty_print(exceptionStrings[interruptFrame->vector]); tty_print("\n\r");
+    debug_exception(interruptFrame, "Exception");
     tty_release();
 
-    local_scheduler_acquire();             
-    local_scheduler_exit();
-    local_scheduler_schedule(interruptFrame);
-    local_scheduler_release();
+    while (1)
+    {
+        asm volatile("hlt");
+    }
 }

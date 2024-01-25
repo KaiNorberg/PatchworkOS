@@ -18,9 +18,9 @@ void task_balancer_init()
 void task_balancer_entry()
 {
     while (1)
-    {
+    {        
         scheduler_acquire_all();
-        
+
         for (uint8_t priority = TASK_PRIORITY_MIN; priority <= TASK_PRIORITY_MAX; priority++)
         {
             uint64_t totalTasks = 0;
@@ -30,8 +30,12 @@ void task_balancer_entry()
             }
 
             uint64_t averageLoad = totalTasks / smp_cpu_amount();
+            if (averageLoad == 0)
+            {
+                averageLoad = 1;
+            }
 
-            for (int j = 0; j < SCHEDULER_BALANCING_ITERATIONS; j++)
+            for (int j = 0; j < TIME_BALANCER_ITERATIONS; j++)
             {
                 Task* poppedTask = 0;
                 for (int i = 0; i < smp_cpu_amount(); i++)
@@ -61,6 +65,6 @@ void task_balancer_entry()
 
         scheduler_release_all();
 
-        kernel_task_block(time_nanoseconds() + NANOSECONDS_PER_SECOND);
+        kernel_task_block(time_nanoseconds() + TIME_BALANCER_PERIOD);
     }
 }
