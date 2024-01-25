@@ -3,7 +3,7 @@
 #include "tty/tty.h"
 #include "string/string.h"
 #include "debug/debug.h"
-#include "spin_lock/spin_lock.h"
+#include "lock/lock.h"
 
 uint64_t* pageMap;
 uint64_t pageMapByteSize;
@@ -12,7 +12,7 @@ void* firstFreeAddress;
 uint64_t pageAmount;
 uint64_t lockedAmount;
 
-SpinLock pageAllocatorLock;
+Lock pageAllocatorLock;
 
 void page_allocator_visualize()
 {
@@ -78,7 +78,7 @@ void page_allocator_init(EfiMemoryMap* memoryMap)
 {    
     tty_start_message("Page allocator initializing");
 
-    pageAllocatorLock = spin_lock_new();
+    pageAllocatorLock = lock_new();
 
     lockedAmount = 0;
 
@@ -127,7 +127,7 @@ void page_allocator_init(EfiMemoryMap* memoryMap)
 
 void* page_allocator_request()
 {   
-    spin_lock_acquire(&pageAllocatorLock);
+    lock_acquire(&pageAllocatorLock);
 
     uint64_t firstFreeQwordIndex = ((uint64_t)firstFreeAddress / 0x1000) / 64;
     for (uint64_t qwordIndex = firstFreeQwordIndex; qwordIndex < pageAmount / 64; qwordIndex++)
@@ -141,7 +141,7 @@ void* page_allocator_request()
                     void* address = (void*)((qwordIndex * 64 + bitIndex) * 0x1000);
                     page_allocator_lock_page(address);
 
-                    spin_lock_release(&pageAllocatorLock);
+                    lock_release(&pageAllocatorLock);
                     return address;
                 }
             }
@@ -152,7 +152,7 @@ void* page_allocator_request()
 
     debug_panic("Page allocator full!");
 
-    spin_lock_release(&pageAllocatorLock);
+    lock_release(&pageAllocatorLock);
     return 0;
 }
 
@@ -162,7 +162,7 @@ void* page_allocator_request_amount(uint64_t amount)
     {
         return page_allocator_request();
     } 
-    spin_lock_acquire(&pageAllocatorLock);
+    lock_acquire(&pageAllocatorLock);
 
     uint64_t startAddress = 0;
     uint64_t freePagesFound = 0;
@@ -180,7 +180,7 @@ void* page_allocator_request_amount(uint64_t amount)
             {
                 page_allocator_lock_pages((void*)startAddress, freePagesFound);       
 
-                spin_lock_release(&pageAllocatorLock);
+                lock_release(&pageAllocatorLock);
                 return (void*)startAddress;                
             }
         }
@@ -188,7 +188,7 @@ void* page_allocator_request_amount(uint64_t amount)
     
     debug_panic("Page allocator full!");
 
-    spin_lock_release(&pageAllocatorLock);
+    lock_release(&pageAllocatorLock);
     return 0;
 }
 

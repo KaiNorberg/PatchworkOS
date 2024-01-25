@@ -4,7 +4,7 @@
 #include "string/string.h"
 #include "page_allocator/page_allocator.h"
 #include "tty/tty.h"
-#include "spin_lock/spin_lock.h"
+#include "lock/lock.h"
 #include "gdt/gdt.h"
 #include "debug/debug.h"
 

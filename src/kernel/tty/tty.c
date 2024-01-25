@@ -2,7 +2,7 @@
 
 #include "string/string.h"
 #include "utils/utils.h"
-#include "spin_lock/spin_lock.h"
+#include "lock/lock.h"
 
 Framebuffer* frontbuffer;
 PsfFont* font;
@@ -14,7 +14,7 @@ Pixel foreground;
 
 uint8_t textScale;
 
-SpinLock ttyLock;
+Lock ttyLock;
 
 void tty_init(Framebuffer* screenbuffer, PsfFont* screenFont)
 {
@@ -36,19 +36,19 @@ void tty_init(Framebuffer* screenbuffer, PsfFont* screenFont)
 
     textScale = 1;
         
-    ttyLock = spin_lock_new();
+    ttyLock = lock_new();
 
     tty_clear();
 }
 
 void tty_acquire()
 {
-    spin_lock_acquire(&ttyLock);
+    lock_acquire(&ttyLock);
 }
 
 void tty_release()
 {
-    spin_lock_release(&ttyLock);
+    lock_release(&ttyLock);
 }
 
 void tty_scroll(uint64_t distance)

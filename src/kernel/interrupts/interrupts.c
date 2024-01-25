@@ -14,7 +14,7 @@
 #include "page_allocator/page_allocator.h"
 #include "smp/smp.h"
 #include "apic/apic.h"
-#include "spin_lock/spin_lock.h"
+#include "lock/lock.h"
 #include "gdt/gdt.h"
 #include "hpet/hpet.h"
 #include "kernel_process/kernel_process.h"

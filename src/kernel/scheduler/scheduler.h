@@ -2,7 +2,7 @@
 
 #include "process/process.h"
 #include "queue/queue.h"
-#include "spin_lock/spin_lock.h"
+#include "lock/lock.h"
 #include "smp/smp.h"
 #include "vector/vector.h"
 
@@ -30,7 +30,7 @@ typedef struct
 
     uint64_t nextPreemption;
 
-    SpinLock lock;
+    Lock lock;
 } Scheduler;
 
 extern void scheduler_idle_loop();

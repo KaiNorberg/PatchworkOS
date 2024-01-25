@@ -53,7 +53,7 @@ void scheduler_init()
         schedulers[i].blockedTasks = vector_new(sizeof(BlockedTask));
 
         schedulers[i].nextPreemption = 0;
-        schedulers[i].lock = spin_lock_new();
+        schedulers[i].lock = lock_new();
     }
 
     tty_end_message(TTY_MESSAGE_OK);
@@ -63,7 +63,7 @@ void scheduler_acquire_all()
 {
     for (int i = 0; i < smp_cpu_amount(); i++)
     {  
-        spin_lock_acquire(&schedulers[i].lock);
+        lock_acquire(&schedulers[i].lock);
     }
 }
 
@@ -71,7 +71,7 @@ void scheduler_release_all()
 {
     for (int i = 0; i < smp_cpu_amount(); i++)
     {
-        spin_lock_release(&schedulers[i].lock);
+        lock_release(&schedulers[i].lock);
     }
 }
 
@@ -240,12 +240,12 @@ void local_scheduler_exit()
 
 void local_scheduler_acquire()
 {
-    spin_lock_acquire(&scheduler_get_local()->lock);
+    lock_acquire(&scheduler_get_local()->lock);
 }
 
 void local_scheduler_release()
 {
-    spin_lock_release(&scheduler_get_local()->lock);
+    lock_release(&scheduler_get_local()->lock);
 }
 
 uint64_t local_scheduler_task_amount()

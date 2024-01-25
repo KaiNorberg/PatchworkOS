@@ -28,6 +28,8 @@ void kernel_init(BootInfo* bootInfo)
     tty_init(bootInfo->framebuffer, bootInfo->font);
     tty_print("Hello from the kernel!\n\r");
 
+    lock_init();
+
     page_allocator_init(bootInfo->memoryMap);
     page_directory_init(bootInfo->memoryMap, bootInfo->framebuffer);
     heap_init();

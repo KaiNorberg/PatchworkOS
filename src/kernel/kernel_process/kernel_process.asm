@@ -11,8 +11,6 @@ section .text
 
 ;rdi = entry
 kernel_task_entry:
-    cli
-
     call rdi
     ud2
 
@@ -24,8 +22,6 @@ kernel_task_block:
     pop r11
     mov rbp, rsp
     mov rsp, rax
-    sti
     int KERNEL_TASK_BLOCK_VECTOR
-    cli
     mov rsp, rbp
     jmp r11

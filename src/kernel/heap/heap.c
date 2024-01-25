@@ -4,19 +4,19 @@
 #include "page_directory/page_directory.h"
 #include "page_allocator/page_allocator.h"
 #include "utils/utils.h"
-#include "spin_lock/spin_lock.h"
+#include "lock/lock.h"
 
 extern uint64_t _kernelEnd;
 
 HeapHeader* firstBlock;
 
-SpinLock heapLock;
+Lock heapLock;
 
 void heap_init()
 {    
     tty_start_message("Heap initializing");
 
-    heapLock = spin_lock_new();
+    heapLock = lock_new();
 
     void* heapStart = (void*)round_up((uint64_t)&_kernelEnd, 0x1000);
 
@@ -195,7 +195,7 @@ void* kmalloc(uint64_t size)
     {
         return 0;
     }
-    spin_lock_acquire(&heapLock);
+    lock_acquire(&heapLock);
 
     uint64_t alignedSize = round_up(size, 64);
 
@@ -208,7 +208,7 @@ void* kmalloc(uint64_t size)
             {
                 currentBlock->reserved = 1;
 
-                spin_lock_release(&heapLock);
+                lock_release(&heapLock);
                 return HEAP_HEADER_GET_START(currentBlock);
             }
             else if (currentBlock->size > alignedSize + sizeof(HeapHeader) + 64)
@@ -216,7 +216,7 @@ void* kmalloc(uint64_t size)
                 HeapHeader* newBlock = heap_split(currentBlock, alignedSize);
                 newBlock->reserved = 1;   
 
-                spin_lock_release(&heapLock);
+                lock_release(&heapLock);
                 return HEAP_HEADER_GET_START(newBlock);
             }
         }
@@ -248,13 +248,13 @@ void* kmalloc(uint64_t size)
     HeapHeader* splitBlock = heap_split(newBlock, alignedSize);
     splitBlock->reserved = 1;
 
-    spin_lock_release(&heapLock);
+    lock_release(&heapLock);
     return HEAP_HEADER_GET_START(splitBlock);
 }
 
 void kfree(void* ptr)
 {    
-    spin_lock_acquire(&heapLock);
+    lock_acquire(&heapLock);
 
     HeapHeader* block = (HeapHeader*)((uint64_t)ptr - sizeof(HeapHeader));
     
@@ -315,5 +315,5 @@ void kfree(void* ptr)
         }       
     }    
     
-    spin_lock_release(&heapLock);
+    lock_release(&heapLock);
 }
