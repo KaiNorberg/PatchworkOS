@@ -5,13 +5,13 @@ KERNEL_BUILD_DIR = $(BUILD_DIR)/kernel
 KERNEL_OUTPUT = $(KERNEL_BIN_DIR)/kernel.elf
 
 KERNEL_OBJECTS = $(call objects_pathsubst,$(KERNEL_SRC_DIR),$(KERNEL_BUILD_DIR),.c)
-KERNEL_OBJECTS += $(call objects_pathsubst,$(KERNEL_SRC_DIR),$(KERNEL_BUILD_DIR),.asm)
+KERNEL_OBJECTS += $(call objects_pathsubst,$(KERNEL_SRC_DIR),$(KERNEL_BUILD_DIR),.s)
 
 $(KERNEL_BUILD_DIR)/%.c.o: $(KERNEL_SRC_DIR)/%.c
 	@mkdir -p $(@D)
 	@$(call run_and_test,$(CC) $(KERNEL_C_FLAGS) -I $(KERNEL_SRC_DIR) -c -o $@ $<)
 
-$(KERNEL_BUILD_DIR)/%.asm.o: $(KERNEL_SRC_DIR)/%.asm
+$(KERNEL_BUILD_DIR)/%.s.o: $(KERNEL_SRC_DIR)/%.s
 	@mkdir -p $(@D)
 	@$(call run_and_test,$(ASM) $(ASM_FLAGS) $^ -o $@)
 

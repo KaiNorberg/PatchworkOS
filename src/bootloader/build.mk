@@ -6,7 +6,7 @@ BOOT_OUTPUT_SO = $(BOOT_BIN_DIR)/bootloader.so
 BOOT_OUTPUT_EFI = $(BOOT_BIN_DIR)/bootx64.efi
 
 BOOT_OBJECTS = $(call objects_pathsubst,$(BOOT_SRC_DIR),$(BOOT_BUILD_DIR),.c)
-BOOT_OBJECTS += $(call objects_pathsubst,$(BOOT_SRC_DIR),$(BOOT_BUILD_DIR),.asm)
+BOOT_OBJECTS += $(call objects_pathsubst,$(BOOT_SRC_DIR),$(BOOT_BUILD_DIR),.s)
 
 GNU_EFI = vendor/gnu-efi
 
@@ -14,7 +14,7 @@ $(BOOT_BUILD_DIR)/%.c.o: $(BOOT_SRC_DIR)/%.c
 	@mkdir -p $(@D)
 	@$(call run_and_test,$(CC) $(BOOT_C_FLAGS) -I$(BOOT_SRC_DIR) -I$(GNU_EFI)/inc -c -o $@ $<)
 
-$(BOOT_BUILD_DIR)/%.asm.o: $(BOOT_SRC_DIR)/%.asm
+$(BOOT_BUILD_DIR)/%.s.o: $(BOOT_SRC_DIR)/%.s
 	@mkdir -p $(@D)
 	@$(call run_and_test,$(ASM) $(ASM_FLAGS) $^ -o $@)
 
