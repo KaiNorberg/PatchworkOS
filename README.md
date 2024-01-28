@@ -2,6 +2,8 @@
 
 **Keep in mind that Patchwork is currently in a very early stage of development.**
 
+**Broken as code is being overhauled**
+
 ## Features
 
   - Multicore 64bit monolithic kernel
