@@ -2,8 +2,6 @@
 
 #include <stdint.h>
 
-extern void tss_load();
-
 typedef struct __attribute__((packed))
 {
     uint32_t reserved1;

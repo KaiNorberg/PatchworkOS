@@ -8,18 +8,16 @@
 #include "syscall/syscall.h"
 #include "ram_disk/ram_disk.h"
 #include "page_allocator/page_allocator.h"
-#include "scheduler/scheduler.h"
 #include "io/io.h"
 #include "hpet/hpet.h"
 #include "interrupts/interrupts.h"
 #include "time/time.h"
 #include "tss/tss.h"
 #include "apic/apic.h"
-#include "smp/smp.h"
 #include "global_heap/global_heap.h"
 #include "madt/madt.h"
-#include "task_balancer/task_balancer.h"
-#include "kernel_process/kernel_process.h"
+#include "workers/workers.h"
+#include "master/master.h"
 
 #include "../common.h"
 
@@ -27,8 +25,6 @@ void kernel_init(BootInfo* bootInfo)
 {    
     tty_init(bootInfo->framebuffer, bootInfo->font);
     tty_print("Hello from the kernel!\n\r");
-
-    lock_init();
 
     page_allocator_init(bootInfo->memoryMap);
     page_directory_init(bootInfo->memoryMap, bootInfo->framebuffer);
@@ -49,13 +45,17 @@ void kernel_init(BootInfo* bootInfo)
     
     hpet_init();
 
-    smp_init();
-
-    scheduler_init();
-    pid_init();
-
-    smp_cpu_init();
+    //scheduler_init();
+    //pid_init();
     
-    kernel_process_init();
-    task_balancer_init();
+    master_init();
+    workers_init();
+
+    while (1)
+    {
+        asm volatile("hlt");
+    }
+
+    //kernel_process_init();
+    //task_balancer_init();
 }

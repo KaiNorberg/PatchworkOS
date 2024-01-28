@@ -41,7 +41,7 @@ void tty_printx(uint64_t hex);
 
 void tty_clear();
 
-void tty_set_scale(uint8_t scale);
+void tty_set_scale(uint8_t newScale);
 void tty_set_foreground(Pixel color);
 void tty_set_background(Pixel color);
 

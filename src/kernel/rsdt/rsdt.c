@@ -2,7 +2,7 @@
 
 #include "tty/tty.h"
 
-SdtHeader* xsdt; 
+static SdtHeader* xsdt; 
 
 void rsdt_init(Xsdt* xsdp)
 {

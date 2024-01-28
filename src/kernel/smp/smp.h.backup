@@ -43,8 +43,6 @@ extern void smp_trampoline_end();
 
 void smp_init();
 
-void smp_cpu_init();
-
 Cpu* smp_cpu(uint8_t cpuId);
 
 Cpu* smp_current_cpu();
@@ -58,5 +56,7 @@ Ipi smp_receive_ipi();
 void smp_send_ipi(Cpu* cpu, Ipi ipi);
 
 void smp_send_ipi_to_all(Ipi ipi);
+
+void smp_send_ipi_to_self(Ipi ipi);
 
 void smp_send_ipi_to_others(Ipi ipi);

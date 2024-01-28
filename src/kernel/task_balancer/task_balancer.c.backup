@@ -9,8 +9,8 @@ void task_balancer_init()
 {
     tty_start_message("Task Balancer Initilizing");
 
-    Task* taskBalancer = kernel_task_new(task_balancer_entry);
-    scheduler_push(taskBalancer);
+    /*Task* taskBalancer = kernel_task_new(task_balancer_entry);
+    scheduler_push(taskBalancer);*/
 
     tty_end_message(TTY_MESSAGE_OK);
 }
@@ -19,7 +19,7 @@ void task_balancer_entry()
 {
     while (1)
     {        
-        scheduler_acquire_all();
+        /*scheduler_acquire_all();
 
         for (uint8_t priority = TASK_PRIORITY_MIN; priority <= TASK_PRIORITY_MAX; priority++)
         {
@@ -63,8 +63,8 @@ void task_balancer_entry()
             }
         }
 
-        scheduler_release_all();
+        scheduler_release_all();*/
 
-        kernel_task_block(time_nanoseconds() + TIME_BALANCER_PERIOD);
+        //kernel_task_block(time_nanoseconds() + TIME_BALANCER_PERIOD);
     }
 }

@@ -33,7 +33,7 @@ void print_directory(RamDirectory* directory, uint64_t indentation)
 
 void ram_disk_init(RamDirectory* rootDirectory)
 {    
-    tty_start_message("File system initializing");
+    tty_start_message("Ram disk initializing");
 
     rootDir = rootDirectory;
 

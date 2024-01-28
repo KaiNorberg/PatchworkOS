@@ -5,19 +5,16 @@
 #include "tty/tty.h"
 #include "utils/utils.h"
 #include "syscall/syscall.h"
-#include "scheduler/scheduler.h"
 #include "debug/debug.h"
 #include "string/string.h"
 #include "time/time.h"
 #include "heap/heap.h"
 #include "idt/idt.h"
 #include "page_allocator/page_allocator.h"
-#include "smp/smp.h"
 #include "apic/apic.h"
 #include "lock/lock.h"
 #include "gdt/gdt.h"
 #include "hpet/hpet.h"
-#include "kernel_process/kernel_process.h"
 
 #include "../common.h"
 
@@ -64,18 +61,14 @@ void interrupt_handler(InterruptFrame* interruptFrame)
     {    
         irq_handler(interruptFrame);
     }
-    else if (interruptFrame->vector == KERNEL_TASK_BLOCK_VECTOR)
-    {
-        kernel_task_block_handler(interruptFrame);
-    }
     else if (interruptFrame->vector == SYSCALL_VECTOR)
     {
         syscall_handler(interruptFrame);
     } 
-    else if (interruptFrame->vector == IPI_VECTOR)
+    /*else if (interruptFrame->vector == IPI_VECTOR)
     {
         ipi_handler(interruptFrame);
-    }
+    }*/
 }
 
 void irq_handler(InterruptFrame* interruptFrame)
@@ -86,7 +79,7 @@ void irq_handler(InterruptFrame* interruptFrame)
     {
     case IRQ_TIMER:
     {    
-        Scheduler* scheduler = scheduler_get_local();
+        /*Scheduler* scheduler = scheduler_get_local();
 
         if (scheduler->runningTask != 0 && 
             scheduler->runningTask->interruptFrame->codeSegment == GDT_KERNEL_CODE)
@@ -96,7 +89,7 @@ void irq_handler(InterruptFrame* interruptFrame)
 
         local_scheduler_acquire();
         local_scheduler_tick(interruptFrame);
-        local_scheduler_release();
+        local_scheduler_release();*/
     }
     break;
     default:
@@ -112,7 +105,7 @@ void irq_handler(InterruptFrame* interruptFrame)
 
 void ipi_handler(InterruptFrame* interruptFrame)
 {   
-    Ipi ipi = smp_receive_ipi();     
+    /*Ipi ipi = smp_receive_ipi();     
     
     switch (ipi.type)
     {
@@ -144,16 +137,16 @@ void ipi_handler(InterruptFrame* interruptFrame)
     break;
     }
 
-    local_apic_eoi();
+    local_apic_eoi();*/
 }
 
 void exception_handler(InterruptFrame* interruptFrame)
 {   
-    Ipi ipi = 
+    /*Ipi ipi = 
     {
         .type = IPI_TYPE_HALT   
     };
-    smp_send_ipi_to_others(ipi);
+    smp_send_ipi_to_others(ipi);*/
 
     tty_acquire();
     debug_exception(interruptFrame, "Exception");

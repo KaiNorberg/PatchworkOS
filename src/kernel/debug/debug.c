@@ -45,9 +45,9 @@ const char* exceptionStrings[32] =
     "Security"
 };
 
-uint32_t debugCurrentRow;
-uint32_t debugCurrentColumn;
-Pixel debugCurrentColor;
+static uint32_t currentRow;
+static uint32_t currentColumn;
+static Pixel currentColor;
 
 void debug_panic(const char* message)
 {
@@ -199,9 +199,9 @@ void debug_exception(InterruptFrame* interruptFrame, const char* message)
 
 void debug_move_to_grid(uint8_t row, uint8_t column, Pixel color)
 {
-    debugCurrentRow = row;
-    debugCurrentColumn = column;
-    debugCurrentColor = color;
+    currentRow = row;
+    currentColumn = column;
+    currentColor = color;
 
     uint32_t leftPadding = (tty_get_screen_width() - DEBUG_COLUMN_AMOUNT * DEBUG_COLUMN_WIDTH * TTY_CHAR_WIDTH * DEBUG_TEXT_SCALE) / 2;
     uint32_t topPadding = (tty_get_screen_height() - DEBUG_ROW_AMOUNT * TTY_CHAR_HEIGHT * DEBUG_TEXT_SCALE) / 2;
@@ -216,5 +216,5 @@ void debug_move_to_grid(uint8_t row, uint8_t column, Pixel color)
 
 void debug_next_row()
 {
-    debug_move_to_grid(debugCurrentRow + 1, debugCurrentColumn, debugCurrentColor);
+    debug_move_to_grid(currentRow + 1, currentColumn, currentColor);
 }

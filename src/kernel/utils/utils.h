@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 #define MSR_LOCAL_APIC 0x1B
-#define MSR_CPU_ID 0xC0000103 //IA32_TSC_AUX
+#define MSR_WORKER_ID 0xC0000103 //IA32_TSC_AUX
 
 #define READ_8(address) (*((volatile uint8_t*)(address)))
 #define WRITE_8(address, value) (*((volatile uint8_t*)(address)) = (uint8_t)value)

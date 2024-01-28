@@ -5,7 +5,7 @@
 #include "string/string.h"
 #include "global_heap/global_heap.h"
 
-Gdt* gdt;
+static Gdt* gdt;
 
 void gdt_init()
 {

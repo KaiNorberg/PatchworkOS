@@ -12,9 +12,9 @@
 #include "tss/tss.h"
 #include "kernel/kernel.h"
 #include "madt/madt.h"
-#include "scheduler/scheduler.h"
 #include "interrupts/interrupts.h"
 #include "debug/debug.h"
+#include "workers/workers.h"
 
 uint8_t cpuAmount;
 atomic_int readyCpuAmount;
@@ -22,11 +22,15 @@ atomic_int readyCpuAmount;
 Cpu cpus[SMP_MAX_CPU_AMOUNT];
 
 void smp_cpu_entry()
-{    
-    smp_cpu_init();
+{        
+    Cpu* cpu = smp_current_cpu_brute();
+
+    write_msr(MSR_WORKER_ID, cpu->id);
     
     readyCpuAmount++;
-    
+
+    worker_entry();
+
     while (1)
     {
         asm volatile("hlt");
@@ -115,21 +119,6 @@ void smp_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-void smp_cpu_init()
-{
-    Cpu* cpu = smp_current_cpu_brute();
-
-    write_msr(MSR_CPU_ID, cpu->id);
-
-    idt_load();
-    gdt_load();
-    gdt_load_tss(tss_get(cpu->id));
-
-    local_apic_init();
-
-    interrupts_enable();
-}
-
 Cpu* smp_cpu(uint8_t cpuId)
 {
     return &cpus[cpuId];
@@ -188,6 +177,11 @@ void smp_send_ipi(Cpu* cpu, Ipi ipi)
 void smp_send_ipi_to_all(Ipi ipi)
 {
     smp_send_ipi_to_others(ipi);
+    smp_send_ipi_to_self(ipi);
+}
+
+void smp_send_ipi_to_self(Ipi ipi)
+{
     smp_send_ipi(smp_current_cpu(), ipi);
 }
 

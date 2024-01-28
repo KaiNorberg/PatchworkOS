@@ -1,10 +1,11 @@
 # PatchworkOS [![License](https://img.shields.io/badge/licence-MIT-green)](https://github.com/Kaj9296/PatchworkOS/blob/main/LICENSE)
 
-**Keep in mind that Patchwork is currently in a very early stage of development.**
+**Keep in mind that Asym is currently in a very early stage of development.**
 
 ## Features
 
   - Multicore 64bit monolithic kernel
+  - Asymmetric multiprocessing
   - Custom UEFI bootloader
   - More to be added...
 

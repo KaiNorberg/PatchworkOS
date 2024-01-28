@@ -4,7 +4,6 @@
 
 #include "page_directory/page_directory.h"
 #include "interrupts/interrupts.h"
-#include "scheduler/scheduler.h"
 
 #define SYSCALL_GET_ARG1(interruptFrame) (interruptFrame->rdi)
 #define SYSCALL_GET_ARG2(interruptFrame) (interruptFrame->rsi)

@@ -34,10 +34,10 @@ void local_apic_write(uint32_t reg, uint32_t value);
 
 uint32_t local_apic_read(uint32_t reg);
 
-void local_apic_send_init(uint32_t localApicId);
+void local_apic_send_init(uint32_t apicId);
 
-void local_apic_send_sipi(uint32_t localApicId, uint32_t page);
+void local_apic_send_sipi(uint32_t apicId, uint32_t page);
 
-void local_apic_send_ipi(uint32_t localApicId, uint64_t vector);
+void local_apic_send_ipi(uint32_t apicId, uint64_t vector);
 
 void local_apic_eoi();

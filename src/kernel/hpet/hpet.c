@@ -7,10 +7,9 @@
 #include "interrupts/interrupts.h"
 #include "utils/utils.h"
 
-Hpet* hpet;
+static Hpet* hpet;
 
-uint64_t hpetBase;
-uint64_t hpetPeriod;
+static uint64_t hpetPeriod;
 
 void hpet_init()
 {    
@@ -23,8 +22,7 @@ void hpet_init()
         tty_end_message(TTY_MESSAGE_ER);
     }
     
-    hpetBase = hpet->address;
-    page_directory_remap(kernelPageDirectory, (void*)hpetBase, (void*)hpetBase, PAGE_DIR_READ_WRITE);
+    page_directory_remap(kernelPageDirectory, (void*)hpet->address, (void*)hpet->address, PAGE_DIR_READ_WRITE);
 
     hpetPeriod = hpet_read(HPET_GENERAL_CAPABILITIES) >> HPET_COUNTER_CLOCK_OFFSET;
 
@@ -47,12 +45,12 @@ uint64_t hpet_nanoseconds_per_tick()
 
 void hpet_write(uint64_t reg, uint64_t value)
 {
-    WRITE_64(hpetBase + reg, value);
+    WRITE_64(hpet->address + reg, value);
 }
 
 uint64_t hpet_read(uint64_t reg)
 {
-    return READ_64(hpetBase + reg);
+    return READ_64(hpet->address + reg);
 }
 
 void hpet_sleep(uint64_t milliseconds)

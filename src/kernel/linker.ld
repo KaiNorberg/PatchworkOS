@@ -34,9 +34,9 @@ SECTIONS
 		*(.bss)
 	}
 
-	.smp_trampoline BLOCK(4K) : ALIGN(4K)
+	.worker_trampoline BLOCK(4K) : ALIGN(4K)
 	{
-		*(.smp_trampoline)
+		*(.worker_trampoline)
 	}
 
 	_kernelEnd = .;

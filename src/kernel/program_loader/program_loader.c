@@ -4,10 +4,10 @@
 #include "ram_disk/ram_disk.h"
 #include "heap/heap.h"
 #include "page_allocator/page_allocator.h"
-#include "scheduler/scheduler.h"
 #include "gdt/gdt.h"
 #include "tty/tty.h"
 #include "debug/debug.h"
+#include "process/process.h"
 
 uint8_t load_program(const char* path)
 {
@@ -59,10 +59,10 @@ uint8_t load_program(const char* path)
 		}
 	}
 
-    InterruptFrame* interruptFrame = interrupt_frame_new((void*)header.entry, PROCESS_ADDRESS_SPACE_USER_STACK + 0x1000, 
+    /*InterruptFrame* interruptFrame = interrupt_frame_new((void*)header.entry, PROCESS_ADDRESS_SPACE_USER_STACK + 0x1000, 
         GDT_USER_CODE | 3, GDT_USER_DATA | 3, 0x202, process->pageDirectory);
         
-    scheduler_push(task_new(process, interruptFrame, TASK_PRIORITY_MIN));
+    scheduler_push(task_new(process, interruptFrame, TASK_PRIORITY_MIN));*/
 
     kfree(programHeaders);
     ram_disk_close(file);

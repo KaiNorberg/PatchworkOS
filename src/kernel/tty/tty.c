@@ -4,17 +4,17 @@
 #include "utils/utils.h"
 #include "lock/lock.h"
 
-Framebuffer* frontbuffer;
-PsfFont* font;
+static Framebuffer* frontbuffer;
+static PsfFont* font;
 
-Point cursorPos;
+static Point cursorPos;
 
-Pixel background;
-Pixel foreground;
+static Pixel background;
+static Pixel foreground;
 
-uint8_t textScale;
+static uint8_t scale;
 
-Lock ttyLock;
+static Lock lock;
 
 void tty_init(Framebuffer* screenbuffer, PsfFont* screenFont)
 {
@@ -34,21 +34,21 @@ void tty_init(Framebuffer* screenbuffer, PsfFont* screenFont)
     foreground.g = 255;
     foreground.b = 255;
 
-    textScale = 1;
+    scale = 1;
         
-    ttyLock = lock_new();
+    lock = lock_new();
 
     tty_clear();
 }
 
 void tty_acquire()
 {
-    lock_acquire(&ttyLock);
+    lock_acquire(&lock);
 }
 
 void tty_release()
 {
-    lock_release(&ttyLock);
+    lock_release(&lock);
 }
 
 void tty_scroll(uint64_t distance)
@@ -67,10 +67,10 @@ void tty_put(uint8_t chr)
     case '\n':
     {
         cursorPos.x = 0;
-        cursorPos.y += TTY_CHAR_HEIGHT * textScale;
-        if (cursorPos.y + TTY_CHAR_HEIGHT * textScale >= frontbuffer->height)
+        cursorPos.y += TTY_CHAR_HEIGHT * scale;
+        if (cursorPos.y + TTY_CHAR_HEIGHT * scale >= frontbuffer->height)
         {
-            tty_scroll(TTY_CHAR_HEIGHT * textScale);
+            tty_scroll(TTY_CHAR_HEIGHT * scale);
         }
     }
     break;
@@ -83,13 +83,13 @@ void tty_put(uint8_t chr)
     {               
         char* glyph = font->glyphs + chr * TTY_CHAR_HEIGHT;
 
-        for (uint64_t y = 0; y < TTY_CHAR_HEIGHT * textScale; y++)
+        for (uint64_t y = 0; y < TTY_CHAR_HEIGHT * scale; y++)
         {
-            for (uint64_t x = 0; x < TTY_CHAR_WIDTH * textScale; x++)
+            for (uint64_t x = 0; x < TTY_CHAR_WIDTH * scale; x++)
             {
                 Point position = {cursorPos.x + x, cursorPos.y + y};
 
-                if ((*glyph & (0b10000000 >> x / textScale)) > 0)
+                if ((*glyph & (0b10000000 >> x / scale)) > 0)
                 {
                     gop_put(frontbuffer, position, foreground);
                 }
@@ -98,18 +98,18 @@ void tty_put(uint8_t chr)
                     gop_put(frontbuffer, position, background);
                 }
             }
-            if (y % textScale == 0)
+            if (y % scale == 0)
             {
                 glyph++;
             }
         }
 
-        cursorPos.x += TTY_CHAR_WIDTH * textScale;
+        cursorPos.x += TTY_CHAR_WIDTH * scale;
 
         if (cursorPos.x >= frontbuffer->width)
         {
             cursorPos.x = 0;
-            cursorPos.y += TTY_CHAR_HEIGHT * textScale;
+            cursorPos.y += TTY_CHAR_HEIGHT * scale;
         }
     }
     break;
@@ -148,9 +148,9 @@ void tty_clear()
     cursorPos.y = 0;
 }
 
-void tty_set_scale(uint8_t scale)
+void tty_set_scale(uint8_t newScale)
 {
-    textScale = scale;
+    scale = newScale;
 }
 
 void tty_set_foreground(Pixel color)
@@ -203,7 +203,7 @@ void tty_assert(uint8_t expression, const char* message)
 void tty_end_message(uint64_t status)
 {
     uint64_t oldCursorX = cursorPos.x;   
-    cursorPos.x = TTY_CHAR_WIDTH * textScale;
+    cursorPos.x = TTY_CHAR_WIDTH * scale;
 
     if (status == TTY_MESSAGE_OK)
     {

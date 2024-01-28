@@ -10,7 +10,7 @@
 
 extern void* interruptVectorTable[IDT_VECTOR_AMOUNT];
 
-Idt* idt;
+static Idt* idt;
 
 void idt_init() 
 {    

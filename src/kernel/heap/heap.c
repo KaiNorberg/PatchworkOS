@@ -8,15 +8,13 @@
 
 extern uint64_t _kernelEnd;
 
-HeapHeader* firstBlock;
+static HeapHeader* firstBlock;
 
-Lock heapLock;
+static Lock lock;
 
 void heap_init()
 {    
     tty_start_message("Heap initializing");
-
-    heapLock = lock_new();
 
     void* heapStart = (void*)round_up((uint64_t)&_kernelEnd, 0x1000);
 
@@ -26,6 +24,8 @@ void heap_init()
     firstBlock->size = 0x1000 - sizeof(HeapHeader);
     firstBlock->next = 0;
     firstBlock->reserved = 0;
+
+    lock = lock_new();
 
     tty_end_message(TTY_MESSAGE_OK);
 }
@@ -181,7 +181,7 @@ HeapHeader* heap_split(HeapHeader* block, uint64_t size)
     HeapHeader* newBlock = (HeapHeader*)((uint64_t)HEAP_HEADER_GET_START(block) + newSize);
     newBlock->next = block->next;
     newBlock->size = size;
-    newBlock->reserved = 0;
+    newBlock->reserved = 1;
 
     block->next = newBlock;
     block->size = newSize;
@@ -195,7 +195,7 @@ void* kmalloc(uint64_t size)
     {
         return 0;
     }
-    lock_acquire(&heapLock);
+    lock_acquire(&lock);
 
     uint64_t alignedSize = round_up(size, 64);
 
@@ -206,9 +206,9 @@ void* kmalloc(uint64_t size)
         {
             if (currentBlock->size == alignedSize)
             {
-                currentBlock->reserved = 1;
+                currentBlock->reserved = 0;
 
-                lock_release(&heapLock);
+                lock_release(&lock);
                 return HEAP_HEADER_GET_START(currentBlock);
             }
             else if (currentBlock->size > alignedSize + sizeof(HeapHeader) + 64)
@@ -216,7 +216,7 @@ void* kmalloc(uint64_t size)
                 HeapHeader* newBlock = heap_split(currentBlock, alignedSize);
                 newBlock->reserved = 1;   
 
-                lock_release(&heapLock);
+                lock_release(&lock);
                 return HEAP_HEADER_GET_START(newBlock);
             }
         }
@@ -248,13 +248,13 @@ void* kmalloc(uint64_t size)
     HeapHeader* splitBlock = heap_split(newBlock, alignedSize);
     splitBlock->reserved = 1;
 
-    lock_release(&heapLock);
+    lock_release(&lock);
     return HEAP_HEADER_GET_START(splitBlock);
 }
 
 void kfree(void* ptr)
 {    
-    lock_acquire(&heapLock);
+    lock_acquire(&lock);
 
     HeapHeader* block = (HeapHeader*)((uint64_t)ptr - sizeof(HeapHeader));
     
@@ -315,5 +315,5 @@ void kfree(void* ptr)
         }       
     }    
     
-    lock_release(&heapLock);
+    lock_release(&lock);
 }
