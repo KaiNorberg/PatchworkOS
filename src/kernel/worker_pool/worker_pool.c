@@ -1,4 +1,4 @@
-#include "workers.h"
+#include "worker_pool.h"
 
 #include "idt/idt.h"
 #include "gdt/gdt.h"
@@ -13,15 +13,15 @@
 #include "debug/debug.h"
 #include "global_heap/global_heap.h"
 
-#include "workers/interrupts/interrupts.h"
-#include "workers/startup/startup.h"
+#include "worker/interrupts/interrupts.h"
+#include "worker/startup/startup.h"
 
 static Worker workers[MAX_WORKER_AMOUNT];
 static uint8_t workerAmount;
 
 static Idt* idt;
 
-void workers_init()
+void worker_pool_init()
 {
     tty_start_message("Workers initializing");
 

@@ -16,7 +16,7 @@
 #include "madt/madt.h"
 
 #include "master/master.h"
-#include "workers/workers.h"
+#include "worker_pool/worker_pool.h"
 
 #include "../common.h"
 
@@ -47,7 +47,7 @@ void kernel_init(BootInfo* bootInfo)
     //pid_init();
     
     master_init();
-    workers_init();
+    worker_pool_init();
     
     //kernel_process_init();
     //task_balancer_init();

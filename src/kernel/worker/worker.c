@@ -12,7 +12,7 @@
 #include "gdt/gdt.h"
 #include "idt/idt.h"
 
-#include "workers/workers.h"
+#include "worker_pool/worker_pool.h"
 
 void worker_entry()
 {

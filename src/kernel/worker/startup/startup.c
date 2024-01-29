@@ -68,7 +68,7 @@ void workers_startup(Worker workers[], uint8_t* workerAmount)
     while (record != 0)
     {
         if (LOCAL_APIC_RECORD_IS_ENABLEABLE(record) && 
-            record->localApicId != master_get()->apicId)
+            record->localApicId != master_apic_id())
         {                
             if (!worker_push(workers, *workerAmount, record))
             {    

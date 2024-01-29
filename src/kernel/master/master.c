@@ -10,7 +10,8 @@
 #include "master/pic/pic.h"
 #include "master/interrupts/interrupts.h"
 
-static Master master;
+static uint8_t apicId;
+static Idt idt;
 
 extern void master_loop();
 
@@ -20,9 +21,8 @@ void master_init()
 
     write_msr(MSR_WORKER_ID, -1);
 
-    memset(&master, 0, sizeof(Master));
-    master.apicId = local_apic_id();
-    master_idt_populate(&master.idt);
+    apicId = local_apic_id();
+    master_idt_populate(&idt);
 
     tty_end_message(TTY_MESSAGE_OK);
 }
@@ -44,7 +44,7 @@ void master_entry()
     sent_ipi_to_workers(ipi);*/
 
     gdt_load();
-    idt_load(&master.idt);
+    idt_load(&idt);
     
     pic_remap();
 
@@ -54,12 +54,12 @@ void master_entry()
     master_loop();
 }
 
+uint8_t master_apic_id()
+{
+    return apicId;
+}
+
 uint8_t is_master()
 {
     return ((uint32_t)read_msr(MSR_WORKER_ID) == (uint32_t)-1);
-}
-
-Master* master_get()
-{
-    return &master;
 }

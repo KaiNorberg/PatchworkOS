@@ -6,7 +6,7 @@
 
 #include "worker/worker.h"
 
-void workers_init();
+void worker_pool_init();
 
 Idt* worker_idt_get();
 

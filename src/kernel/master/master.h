@@ -4,16 +4,10 @@
 
 #include <stdint.h>
 
-typedef struct
-{
-    uint8_t apicId;
-    Idt idt;
-} Master;
-
 void master_init();
 
 void master_entry();
 
-uint8_t is_master();
+uint8_t master_apic_id();
 
-Master* master_get();
+uint8_t is_master();

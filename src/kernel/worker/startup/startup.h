@@ -1,6 +1,6 @@
 #pragma once
 
-#include "workers/worker/worker.h"
+#include "worker/worker.h"
 
 #define WORKER_TRAMPOLINE_LOADED_START ((void*)0x8000)
 #define WORKER_TRAMPOLINE_PAGE_DIRECTORY_ADDRESS 0x8FF0
