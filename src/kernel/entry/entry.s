@@ -1,6 +1,8 @@
 [bits 64]
 
 global _start
+global kernel_stack_bottom
+global kernel_stack_top
 
 extern main
 
@@ -8,7 +10,7 @@ section .text
 _start:
     cld
 
-    mov rsp, stack_top
+    mov rsp, kernel_stack_top
     mov rbp, 0
 
     call main
@@ -17,6 +19,6 @@ _start:
     jmp .halt
 
 section .bss
-stack_bottom:
-resb 0x1000
-stack_top:
+kernel_stack_bottom:
+resb 0x4000
+kernel_stack_top:

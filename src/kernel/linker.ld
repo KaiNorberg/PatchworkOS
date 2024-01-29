@@ -7,11 +7,6 @@ SECTIONS
 
 	_kernelStart = .;
 
-	.interrupts BLOCK(4K) : ALIGN(4K)
-	{
-		*(.interrupts)
-	}
-
 	.text BLOCK(4K) : ALIGN(4K)
 	{
 		*(.multiboot)
@@ -32,6 +27,11 @@ SECTIONS
 	{
 		*(COMMON)
 		*(.bss)
+	}
+
+	.worker_interrupts BLOCK(4K) : ALIGN(4K)
+	{
+		*(.interrupts)
 	}
 
 	.worker_trampoline BLOCK(4K) : ALIGN(4K)

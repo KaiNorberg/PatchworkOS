@@ -1,6 +1,5 @@
 #include "time.h"
 
-#include "interrupts/interrupts.h"
 #include "tty/tty.h"
 #include "hpet/hpet.h"
 

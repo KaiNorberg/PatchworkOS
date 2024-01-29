@@ -11,7 +11,7 @@ Tss* tssArray;
 
 void tss_init()
 {    
-    tty_start_message("TSS loading");
+    tty_start_message("TSS initializing");
 
     /*uint64_t tssArrayPageAmount = GET_SIZE_IN_PAGES(SMP_MAX_CPU_AMOUNT * sizeof(Tss));
 

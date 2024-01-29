@@ -9,7 +9,7 @@ static Gdt* gdt;
 
 void gdt_init()
 {
-    tty_start_message("GDT loading");
+    tty_start_message("GDT initializing");
 
     gdt = gmalloc(1);
     memset(gdt, 0, 0x1000);

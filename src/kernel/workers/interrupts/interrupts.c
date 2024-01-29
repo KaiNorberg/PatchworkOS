@@ -1,57 +1,68 @@
 #include "interrupts.h"
 
-#include "kernel/kernel.h"
-#include "io/io.h"
 #include "tty/tty.h"
-#include "utils/utils.h"
-#include "syscall/syscall.h"
-#include "debug/debug.h"
-#include "string/string.h"
-#include "time/time.h"
-#include "heap/heap.h"
-#include "idt/idt.h"
-#include "page_allocator/page_allocator.h"
 #include "apic/apic.h"
-#include "lock/lock.h"
-#include "gdt/gdt.h"
-#include "hpet/hpet.h"
+#include "debug/debug.h"
+#include "utils/utils.h"
+#include "page_allocator/page_allocator.h"
 
-#include "../common.h"
+#define IRQ_BASE 0x20
 
-extern uint64_t interruptVectorsStart;
-extern uint64_t interruptVectorsEnd;
+extern uint64_t workerInterruptsStart;
+extern uint64_t workerInterruptsEnd;
+extern PageDirectory* workerPageDirectory;
 
-extern PageDirectory* interruptPageDirectory;
+extern void* workerVectorTable[IDT_VECTOR_AMOUNT];
 
-void interrupts_init()
+void worker_idt_populate(Idt* idt)
 {
-    tty_start_message("Interrupt vectors initializing");    
+    workerPageDirectory = kernelPageDirectory;
 
-    interruptPageDirectory = kernelPageDirectory;
-
-    tty_end_message(TTY_MESSAGE_OK);
+    for (uint16_t vector = 0; vector < IDT_VECTOR_AMOUNT; vector++) 
+    {        
+        idt_set_vector(idt, vector, workerVectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
+    }
 }
 
-void interrupts_enable()
-{    
-    asm volatile("sti");
-}
-
-void interrupts_disable()
+void worker_interrupts_map(PageDirectory* pageDirectory)
 {
-    asm volatile("cli");
-}
-
-void interrupt_vectors_map(PageDirectory* pageDirectory)
-{
-    void* virtualAddress = (void*)round_down((uint64_t)&interruptVectorsStart, 0x1000);
+    void* virtualAddress = (void*)round_down((uint64_t)&workerInterruptsStart, 0x1000);
     void* physicalAddress = page_directory_get_physical_address(kernelPageDirectory, virtualAddress);
-    uint64_t pageAmount = GET_SIZE_IN_PAGES((uint64_t)&interruptVectorsEnd - (uint64_t)&interruptVectorsStart);
+    uint64_t pageAmount = GET_SIZE_IN_PAGES((uint64_t)&workerInterruptsEnd - (uint64_t)&workerInterruptsStart);
 
     page_directory_remap_pages(pageDirectory, virtualAddress, physicalAddress, pageAmount, PAGE_DIR_READ_WRITE);
 }
 
-void interrupt_handler(InterruptFrame* interruptFrame)
+void worker_interrupt_handler(InterruptFrame* interruptFrame)
+{    
+    if (interruptFrame->vector < IRQ_BASE)
+    {
+        worker_exception_handler(interruptFrame);
+    }
+    else
+    {
+        tty_acquire();
+        tty_printx(interruptFrame->vector);
+        tty_print("\n\r");
+        tty_release();
+
+        local_apic_eoi();
+    }
+}
+
+void worker_exception_handler(InterruptFrame* interruptFrame)
+{
+    tty_acquire();
+    debug_exception(interruptFrame, "Worker Exception");
+    tty_release();
+
+    while (1)
+    {
+        asm volatile("hlt");
+    }
+}
+
+/*void interrupt_handler(InterruptFrame* interruptFrame)
 {           
     if (interruptFrame->vector < IRQ_BASE)
     {
@@ -65,10 +76,10 @@ void interrupt_handler(InterruptFrame* interruptFrame)
     {
         syscall_handler(interruptFrame);
     } 
-    /*else if (interruptFrame->vector == IPI_VECTOR)
+    else if (interruptFrame->vector == IPI_VECTOR)
     {
         ipi_handler(interruptFrame);
-    }*/
+    }
 }
 
 void irq_handler(InterruptFrame* interruptFrame)
@@ -79,7 +90,7 @@ void irq_handler(InterruptFrame* interruptFrame)
     {
     case IRQ_TIMER:
     {    
-        /*Scheduler* scheduler = scheduler_get_local();
+        Scheduler* scheduler = scheduler_get_local();
 
         if (scheduler->runningTask != 0 && 
             scheduler->runningTask->interruptFrame->codeSegment == GDT_KERNEL_CODE)
@@ -89,7 +100,7 @@ void irq_handler(InterruptFrame* interruptFrame)
 
         local_scheduler_acquire();
         local_scheduler_tick(interruptFrame);
-        local_scheduler_release();*/
+        local_scheduler_release();
     }
     break;
     default:
@@ -105,7 +116,7 @@ void irq_handler(InterruptFrame* interruptFrame)
 
 void ipi_handler(InterruptFrame* interruptFrame)
 {   
-    /*Ipi ipi = smp_receive_ipi();     
+    Ipi ipi = smp_receive_ipi();     
     
     switch (ipi.type)
     {
@@ -137,16 +148,16 @@ void ipi_handler(InterruptFrame* interruptFrame)
     break;
     }
 
-    local_apic_eoi();*/
+    local_apic_eoi();
 }
 
 void exception_handler(InterruptFrame* interruptFrame)
 {   
-    /*Ipi ipi = 
+    Ipi ipi = 
     {
         .type = IPI_TYPE_HALT   
     };
-    smp_send_ipi_to_others(ipi);*/
+    smp_send_ipi_to_others(ipi);
 
     tty_acquire();
     debug_exception(interruptFrame, "Exception");
@@ -156,4 +167,4 @@ void exception_handler(InterruptFrame* interruptFrame)
     {
         asm volatile("hlt");
     }
-}
+}*/

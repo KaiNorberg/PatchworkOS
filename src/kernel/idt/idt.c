@@ -3,16 +3,10 @@
 #include "io/io.h"
 #include "tty/tty.h"
 
-#include "interrupts/interrupts.h"
 #include "page_allocator/page_allocator.h"
 #include "global_heap/global_heap.h"
-#include "syscall/syscall.h"
 
-extern void* interruptVectorTable[IDT_VECTOR_AMOUNT];
-
-static Idt* idt;
-
-void idt_init() 
+/*void idt_init() 
 {    
     tty_start_message("IDT initializing");
 
@@ -33,22 +27,9 @@ void idt_init()
     //io_pic_clear_mask(IRQ_CASCADE);
 
     tty_end_message(TTY_MESSAGE_OK);
-}
+}*/
 
-void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags) 
-{
-    IdtEntry* descriptor = &(idt->entries[vector]);
- 
-    descriptor->isrLow = (uint64_t)isr & 0xFFFF;
-    descriptor->codeSegment = 0x08;
-    descriptor->ist = 0;
-    descriptor->attributes = flags;
-    descriptor->isrMid = ((uint64_t)isr >> 16) & 0xFFFF;
-    descriptor->isrHigh = ((uint64_t)isr >> 32) & 0xFFFFFFFF;
-    descriptor->reserved = 0;
-}
-
-void idt_load()
+void idt_load(Idt* idt)
 {
     IdtDesc idtDesc;
     idtDesc.size = (sizeof(Idt)) - 1;
@@ -56,35 +37,15 @@ void idt_load()
     idt_load_descriptor(&idtDesc);
 }
 
-void remap_pic()
+void idt_set_vector(Idt* idt, uint8_t vector, void* isr, uint8_t privilageLevel, uint8_t gateType)
 {
-    uint8_t a1 = io_inb(PIC1_DATA);
-    io_wait();
-    uint8_t a2 = io_inb(PIC2_DATA);
-    io_wait();
-
-    io_outb(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4);
-    io_wait();
-    io_outb(PIC2_COMMAND, ICW1_INIT | ICW1_ICW4);
-    io_wait();
-
-    io_outb(PIC1_DATA, 0x20);
-    io_wait();
-    io_outb(PIC2_DATA, 0x28);
-    io_wait();
-
-    io_outb(PIC1_DATA, 4);
-    io_wait();
-    io_outb(PIC2_DATA, 2);
-    io_wait();
-
-    io_outb(PIC1_DATA, ICW4_8086);
-    io_wait();
-    io_outb(PIC2_DATA, ICW4_8086);
-    io_wait();
-
-    io_outb(PIC1_DATA, a1);
-    io_wait();
-    io_outb(PIC2_DATA, a2);
-    io_wait();
+    IdtEntry* descriptor = &(idt->entries[vector]);
+ 
+    descriptor->isrLow = (uint64_t)isr & 0xFFFF;
+    descriptor->codeSegment = 0x08;
+    descriptor->ist = 0;
+    descriptor->attributes = 0b10000000 | (privilageLevel << 5) | gateType;
+    descriptor->isrMid = ((uint64_t)isr >> 16) & 0xFFFF;
+    descriptor->isrHigh = ((uint64_t)isr >> 32) & 0xFFFFFFFF;
+    descriptor->reserved = 0;
 }

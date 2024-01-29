@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#define MAX_WORKER_AMOUNT 256
+#define MAX_WORKER_AMOUNT 255
 
 typedef struct
 {

@@ -4,7 +4,6 @@
 #include "debug/debug.h"
 #include "page_directory/page_directory.h"
 #include "io/io.h"
-#include "interrupts/interrupts.h"
 #include "utils/utils.h"
 
 static Hpet* hpet;

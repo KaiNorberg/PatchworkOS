@@ -24,7 +24,7 @@
 
 void apic_init();
 
-void apic_timer_init();
+void apic_timer_init(uint64_t hz);
 
 void local_apic_init();
 

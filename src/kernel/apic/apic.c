@@ -19,12 +19,12 @@ void apic_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-void apic_timer_init()
+void apic_timer_init(uint64_t hz)
 {
     local_apic_write(LOCAL_APIC_REG_TIMER_DIVIDER, 0x3);
     local_apic_write(LOCAL_APIC_REG_TIMER_INITIAL_COUNT, 0xFFFFFFFF);
 
-    hpet_sleep(1000 / APIC_TIMER_HZ);
+    hpet_sleep(1000 / hz);
 
     local_apic_write(LOCAL_APIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
 

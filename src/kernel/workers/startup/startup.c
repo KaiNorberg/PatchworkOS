@@ -8,8 +8,8 @@
 #include "string/string.h"
 #include "apic/apic.h"
 #include "hpet/hpet.h"
+
 #include "master/master.h"
-#include "workers/workers.h"
 
 void* worker_trampoline_setup()
 {
@@ -68,7 +68,7 @@ void workers_startup(Worker workers[], uint8_t* workerAmount)
     while (record != 0)
     {
         if (LOCAL_APIC_RECORD_IS_ENABLEABLE(record) && 
-            record->localApicId != master_apic_id())
+            record->localApicId != master_get()->apicId)
         {                
             if (!worker_push(workers, *workerAmount, record))
             {    
