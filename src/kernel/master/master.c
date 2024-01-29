@@ -29,20 +29,6 @@ void master_init()
 
 void master_entry()
 {
-    //idt_load();
-    //gdt_load();
-    //gdt_load_tss(tss_get(smp_current_cpu()->id));
-
-    //local_apic_init();
-
-    //interrupts_enable();
-
-    /*Ipi ipi = 
-    {
-        .type = IPI_TYPE_START
-    };
-    sent_ipi_to_workers(ipi);*/
-
     gdt_load();
     idt_load(&idt);
     

@@ -37,18 +37,10 @@ void kernel_init(BootInfo* bootInfo)
     madt_init();
     apic_init();
 
-    //interrupts_init();
-
     ram_disk_init(bootInfo->rootDirectory);
     
     hpet_init();
-
-    //scheduler_init();
-    //pid_init();
     
     master_init();
     worker_pool_init();
-    
-    //kernel_process_init();
-    //task_balancer_init();
 }
