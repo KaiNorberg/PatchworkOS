@@ -5,8 +5,11 @@
 #include "debug/debug.h"
 #include "utils/utils.h"
 #include "page_allocator/page_allocator.h"
+#include "ipi/ipi.h"
+#include "worker_pool/worker_pool.h"
+#include "tty/tty.h"
 
-#define IRQ_BASE 0x20
+#include "worker/syscall/syscall.h"
 
 extern uint64_t workerInterruptsStart;
 extern uint64_t workerInterruptsEnd;
@@ -21,7 +24,9 @@ void worker_idt_populate(Idt* idt)
     for (uint16_t vector = 0; vector < IDT_VECTOR_AMOUNT; vector++) 
     {        
         idt_set_vector(idt, vector, workerVectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
-    }
+    }        
+    
+    idt_set_vector(idt, SYSCALL_VECTOR, workerVectorTable[SYSCALL_VECTOR], IDT_RING3, IDT_INTERRUPT_GATE);
 }
 
 void worker_interrupts_map(PageDirectory* pageDirectory)
@@ -34,20 +39,48 @@ void worker_interrupts_map(PageDirectory* pageDirectory)
 }
 
 void worker_interrupt_handler(InterruptFrame* interruptFrame)
-{    
-    if (interruptFrame->vector < IRQ_BASE)
+{            
+    if (interruptFrame->vector < IDT_EXCEPTION_AMOUNT)
     {
         worker_exception_handler(interruptFrame);
     }
-    else
+    else if (interruptFrame->vector == SYSCALL_VECTOR)
     {
-        tty_acquire();
-        tty_printx(interruptFrame->vector);
-        tty_print("\n\r");
-        tty_release();
-
-        local_apic_eoi();
+        syscall_handler(interruptFrame);
     }
+    else if (interruptFrame->vector == IPI_VECTOR)
+    {
+        worker_ipi_handler(interruptFrame);
+    }
+}
+
+void worker_ipi_handler(InterruptFrame* interruptFrame)
+{
+    Ipi ipi = worker_receive_ipi();
+
+    switch (ipi.type)
+    {
+    case IPI_WORKER_HALT:
+    {
+        asm volatile("cli");
+        while (1)
+        {
+            asm volatile("hlt");
+        }
+    }
+    break;
+    case IPI_WORKER_SCHEDULE:
+    {
+        Worker* worker = worker_self();
+
+        scheduler_acquire(worker->scheduler);
+        scheduler_schedule(worker->scheduler, interruptFrame);
+        scheduler_release(worker->scheduler);
+    }
+    break;
+    }        
+    
+    local_apic_eoi();
 }
 
 void worker_exception_handler(InterruptFrame* interruptFrame)
@@ -56,6 +89,7 @@ void worker_exception_handler(InterruptFrame* interruptFrame)
     debug_exception(interruptFrame, "Worker Exception");
     tty_release();
 
+    asm volatile("cli");
     while (1)
     {
         asm volatile("hlt");

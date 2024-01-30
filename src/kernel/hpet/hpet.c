@@ -37,6 +37,13 @@ uint64_t hpet_read_counter()
     return hpet_read(HPET_MAIN_COUNTER_VALUE);
 }
 
+void hpet_reset_counter()
+{
+    hpet_write(HPET_GENERAL_CONFIG, 0);
+    hpet_write(HPET_MAIN_COUNTER_VALUE, 0);
+    hpet_write(HPET_GENERAL_CONFIG, 1);
+}
+
 uint64_t hpet_nanoseconds_per_tick()
 {
     return hpetPeriod / 1000000;

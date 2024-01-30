@@ -22,10 +22,6 @@ uint64_t heap_reserved_size();
 
 uint64_t heap_free_size();
 
-uint64_t heap_block_count();
-
-HeapHeader* heap_split(HeapHeader* block, uint64_t size);
-
 void* kmalloc(uint64_t size);
 
 void kfree(void* ptr);

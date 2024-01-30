@@ -35,7 +35,7 @@ void master_entry()
     pic_remap();
 
     local_apic_init();
-    apic_timer_init(2);
+    apic_timer_init(1000);
 
     master_loop();
 }

@@ -27,8 +27,8 @@ Process* process_new()
     Process* newProcess = kmalloc(sizeof(Process));
 
     newProcess->pageDirectory = page_directory_new();
-    newProcess->firstMemoryBlock = 0;
-    newProcess->lastMemoryBlock = 0;
+    newProcess->firstBlock = 0;
+    newProcess->lastBlock = 0;
     newProcess->id = pid_new();
     newProcess->taskAmount = 0;
 
@@ -39,24 +39,24 @@ Process* process_new()
 
 void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t pageAmount)
 {
-    MemoryBlock* newMemoryBlock = kmalloc(sizeof(MemoryBlock));
+    ProcessBlock* newBlock = kmalloc(sizeof(ProcessBlock));
 
     void* physicalAddress = page_allocator_request_amount(pageAmount);
 
-    newMemoryBlock->physicalAddress = physicalAddress;
-    newMemoryBlock->virtualAddress = virtualAddress;
-    newMemoryBlock->pageAmount = pageAmount;
-    newMemoryBlock->next = 0;
+    newBlock->physicalAddress = physicalAddress;
+    newBlock->virtualAddress = virtualAddress;
+    newBlock->pageAmount = pageAmount;
+    newBlock->next = 0;
 
-    if (process->firstMemoryBlock == 0)
+    if (process->firstBlock == 0)
     {
-        process->firstMemoryBlock = newMemoryBlock;
-        process->lastMemoryBlock = newMemoryBlock;
+        process->firstBlock = newBlock;
+        process->lastBlock = newBlock;
     }
     else
     {
-        process->lastMemoryBlock->next = newMemoryBlock;
-        process->lastMemoryBlock = newMemoryBlock;
+        process->lastBlock->next = newBlock;
+        process->lastBlock = newBlock;
     }
     
     page_directory_remap_pages(process->pageDirectory, virtualAddress, physicalAddress, pageAmount, PAGE_DIR_READ_WRITE | PAGE_DIR_USER_SUPERVISOR);
@@ -91,12 +91,12 @@ void task_free(Task* task)
     {
         page_directory_free(process->pageDirectory);
 
-        if (process->firstMemoryBlock != 0)
+        if (process->firstBlock != 0)
         {
-            MemoryBlock* currentBlock = process->firstMemoryBlock;
+            ProcessBlock* currentBlock = process->firstBlock;
             while (1)
             {
-                MemoryBlock* nextBlock = currentBlock->next;
+                ProcessBlock* nextBlock = currentBlock->next;
 
                 page_allocator_unlock_pages(currentBlock->physicalAddress, currentBlock->pageAmount);
 

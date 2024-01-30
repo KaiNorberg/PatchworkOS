@@ -8,6 +8,12 @@
 
 void worker_pool_init();
 
+void worker_pool_send_ipi(Ipi ipi);
+
+void worker_pool_push(Task* task);
+
+uint8_t worker_amount();
+
 Idt* worker_idt_get();
 
 Worker* worker_get(uint8_t id);

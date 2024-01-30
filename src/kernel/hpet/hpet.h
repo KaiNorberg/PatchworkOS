@@ -33,6 +33,8 @@ uint64_t hpet_nanoseconds_per_tick();
 
 uint64_t hpet_read_counter();
 
+void hpet_reset_counter();
+
 void hpet_write(uint64_t reg, uint64_t value);
 
 uint64_t hpet_read(uint64_t reg);

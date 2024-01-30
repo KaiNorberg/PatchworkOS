@@ -21,7 +21,9 @@
 #include "../common.h"
 
 void kernel_init(BootInfo* bootInfo)
-{    
+{   
+    asm volatile("cli"); 
+
     tty_init(bootInfo->framebuffer, bootInfo->font);
     tty_print("Hello from the kernel!\n\r");
 
@@ -30,7 +32,6 @@ void kernel_init(BootInfo* bootInfo)
     heap_init();
     global_heap_init();
 
-    tss_init();
     gdt_init();
 
     rsdt_init(bootInfo->xsdp);
@@ -40,6 +41,9 @@ void kernel_init(BootInfo* bootInfo)
     ram_disk_init(bootInfo->rootDirectory);
     
     hpet_init();
+    time_init();
+
+    pid_init();
     
     master_init();
     worker_pool_init();

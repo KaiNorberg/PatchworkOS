@@ -14,20 +14,20 @@
 
 #define PROCESS_ADDRESS_SPACE_USER_STACK ((void*)(USER_ADDRESS_SPACE_TOP - 0x1000))
 
-typedef struct MemoryBlock
+typedef struct ProcessBlock
 {
     void* physicalAddress;
     void* virtualAddress;
     uint64_t pageAmount;
-    struct MemoryBlock* next;
-} MemoryBlock;
+    struct ProcessBlock* next;
+} ProcessBlock;
 
 typedef struct Process
 {
     PageDirectory* pageDirectory;
 
-    MemoryBlock* firstMemoryBlock;
-    MemoryBlock* lastMemoryBlock;
+    ProcessBlock* firstBlock;
+    ProcessBlock* lastBlock;
 
     uint64_t id;
 

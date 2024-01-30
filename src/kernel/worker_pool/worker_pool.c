@@ -14,6 +14,7 @@
 #include "global_heap/global_heap.h"
 
 #include "worker/interrupts/interrupts.h"
+#include "worker/scheduler/scheduler.h"
 #include "worker/startup/startup.h"
 
 static Worker workers[MAX_WORKER_AMOUNT];
@@ -31,6 +32,52 @@ void worker_pool_init()
     workers_startup(workers, &workerAmount);
 
     tty_end_message(TTY_MESSAGE_OK);
+}
+
+void worker_pool_send_ipi(Ipi ipi)
+{
+    for (uint16_t i = 0; i < workerAmount; i++)
+    {
+        worker_send_ipi(worker_get(i), ipi);
+    }
+}
+
+void worker_pool_push(Task* task)
+{
+    for (uint16_t i = 0; i < workerAmount; i++)
+    {
+        scheduler_acquire(worker_get(i)->scheduler);
+    }
+
+    uint64_t bestLength = -1;
+    Scheduler* bestScheduler = 0;
+    for (uint16_t i = 0; i < workerAmount; i++)
+    {
+        Scheduler* scheduler = worker_get(i)->scheduler;
+        uint64_t length = (scheduler->runningTask != 0);
+        for (int64_t priority = TASK_PRIORITY_MAX; priority >= TASK_PRIORITY_MIN; priority--) 
+        {
+            length += queue_length(scheduler->queues[priority]);
+        }
+
+        if (bestLength > length)
+        {
+            bestLength = length;
+            bestScheduler = scheduler;
+        }
+    }
+
+    scheduler_push(bestScheduler, task);
+
+    for (uint16_t i = 0; i < workerAmount; i++)
+    {
+        scheduler_release(worker_get(i)->scheduler);
+    }
+}
+
+uint8_t worker_amount()
+{
+    return workerAmount;
 }
 
 Idt* worker_idt_get()

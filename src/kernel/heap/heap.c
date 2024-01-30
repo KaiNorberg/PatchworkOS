@@ -5,12 +5,33 @@
 #include "page_allocator/page_allocator.h"
 #include "utils/utils.h"
 #include "lock/lock.h"
+#include "debug/debug.h"
 
 extern uint64_t _kernelEnd;
 
 static HeapHeader* firstBlock;
 
 static Lock lock;
+
+HeapHeader* heap_split(HeapHeader* block, uint64_t size)
+{   
+    uint64_t newSize = block->size - sizeof(HeapHeader) - size;
+
+    if (size < 64 || newSize < 64)
+    {
+        debug_panic("Invalid heap split");
+    }
+
+    HeapHeader* newBlock = (HeapHeader*)((uint64_t)HEAP_HEADER_GET_START(block) + newSize);
+    newBlock->next = block->next;
+    newBlock->size = size;
+    newBlock->reserved = 0;
+
+    block->next = newBlock;
+    block->size = newSize;
+
+    return newBlock;
+}
 
 void heap_init()
 {    
@@ -152,43 +173,6 @@ uint64_t heap_free_size()
     return size;
 }
 
-uint64_t heap_block_count()
-{
-    uint64_t count = 0;
-
-    HeapHeader* currentBlock = firstBlock;
-    while (1)
-    {       
-        count++;
-
-        if (currentBlock->next == 0)
-        {
-            break;
-        }
-        else
-        {
-            currentBlock = currentBlock->next;       
-        }
-    }
-
-    return count;    
-}
-
-HeapHeader* heap_split(HeapHeader* block, uint64_t size)
-{   
-    uint64_t newSize = block->size - sizeof(HeapHeader) - size;
-
-    HeapHeader* newBlock = (HeapHeader*)((uint64_t)HEAP_HEADER_GET_START(block) + newSize);
-    newBlock->next = block->next;
-    newBlock->size = size;
-    newBlock->reserved = 1;
-
-    block->next = newBlock;
-    block->size = newSize;
-
-    return newBlock;
-}
-
 void* kmalloc(uint64_t size)
 {
     if (size == 0)
@@ -206,7 +190,7 @@ void* kmalloc(uint64_t size)
         {
             if (currentBlock->size == alignedSize)
             {
-                currentBlock->reserved = 0;
+                currentBlock->reserved = 1;
 
                 lock_release(&lock);
                 return HEAP_HEADER_GET_START(currentBlock);
@@ -245,11 +229,21 @@ void* kmalloc(uint64_t size)
 
     currentBlock->next = newBlock;
 
-    HeapHeader* splitBlock = heap_split(newBlock, alignedSize);
-    splitBlock->reserved = 1;
+    if (newBlock->size > alignedSize + sizeof(HeapHeader) + 64)
+    {
+        HeapHeader* splitBlock = heap_split(newBlock, alignedSize);
+        splitBlock->reserved = 1;
 
-    lock_release(&lock);
-    return HEAP_HEADER_GET_START(splitBlock);
+        lock_release(&lock);
+        return HEAP_HEADER_GET_START(splitBlock);
+    }
+    else
+    {
+        newBlock->reserved = 1;
+        
+        lock_release(&lock);
+        return HEAP_HEADER_GET_START(newBlock);
+    }
 }
 
 void kfree(void* ptr)
@@ -313,7 +307,7 @@ void kfree(void* ptr)
         {
             break;
         }       
-    }    
+    }
     
     lock_release(&lock);
 }

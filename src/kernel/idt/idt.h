@@ -12,6 +12,8 @@
 
 #define IDT_VECTOR_AMOUNT 256
 
+#define IDT_EXCEPTION_AMOUNT 0x20
+
 typedef struct __attribute__((packed))
 {
 	uint16_t isrLow;      

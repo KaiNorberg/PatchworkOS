@@ -1,35 +1,34 @@
 #include "syscall.h"
 
 #include "tty/tty.h"
-#include "ram_disk/ram_disk.h"
-#include "interrupt_frame/interrupt_frame.h"
 #include "string/string.h"
-#include "debug/debug.h"
-#include "time/time.h"
-#include "hpet/hpet.h"
-#include "heap/heap.h"
-#include "page_allocator/page_allocator.h"
 
-#include "kernel/kernel.h"
+#include "worker_pool/worker_pool.h"
 
 #include <lib-syscall.h>
 
 void syscall_exit(InterruptFrame* interruptFrame)
-{
-    /*local_scheduler_acquire();
-    local_scheduler_exit();
-    local_scheduler_schedule(interruptFrame);
-    local_scheduler_release();*/
+{    
+    Worker* worker = worker_self();
+
+    scheduler_acquire(worker->scheduler);             
+
+    scheduler_exit(worker->scheduler);
+    scheduler_schedule(worker->scheduler, interruptFrame);
+
+    scheduler_release(worker->scheduler);             
 }
 
 void syscall_fork(InterruptFrame* interruptFrame)
 {
-    /*local_scheduler_acquire();             
+    Worker* worker = worker_self();
+
+    scheduler_acquire(worker->scheduler);             
 
     Process* child = process_new();
 
-    Process* parent = local_scheduler_running_task()->process;
-    MemoryBlock* currentBlock = parent->firstMemoryBlock;
+    Process* parent = worker->scheduler->runningTask->process;
+    ProcessBlock* currentBlock = parent->firstBlock;
     while (currentBlock != 0)
     {
         void* physicalAddress = process_allocate_pages(child, currentBlock->virtualAddress, currentBlock->pageAmount);
@@ -45,24 +44,26 @@ void syscall_fork(InterruptFrame* interruptFrame)
     childFrame->rax = 0; // Child result
     interruptFrame->rax = child->id; // Parent result
 
-    local_scheduler_push(task_new(child, childFrame, TASK_PRIORITY_MIN));
+    scheduler_push(worker->scheduler, task_new(child, childFrame, TASK_PRIORITY_MIN));
 
-    local_scheduler_release();*/
+    scheduler_release(worker->scheduler);             
 }
 
 void syscall_sleep(InterruptFrame* interruptFrame)
 {
-    /*local_scheduler_acquire();             
+    Worker* worker = worker_self();
+
+    scheduler_acquire(worker->scheduler);             
 
     Blocker blocker =
     {
         .timeout = time_nanoseconds() + SYSCALL_GET_ARG1(interruptFrame) * NANOSECONDS_PER_MILLISECOND
     };
 
-    local_scheduler_block(interruptFrame, blocker);
-    local_scheduler_schedule(interruptFrame);
+    scheduler_block(worker->scheduler, interruptFrame, blocker);
+    scheduler_schedule(worker->scheduler, interruptFrame);
 
-    local_scheduler_release();*/
+    scheduler_release(worker->scheduler);             
 }
 
 Syscall syscallTable[] =
@@ -81,23 +82,26 @@ void syscall_handler(InterruptFrame* interruptFrame)
     {
         tty_acquire();
 
-        //Cpu* cpu = smp_current_cpu();
+        Worker* worker = worker_self();
 
         const char* string = page_directory_get_physical_address(SYSCALL_GET_PAGE_DIRECTORY(interruptFrame), (void*)SYSCALL_GET_ARG1(interruptFrame));
 
-        //Point cursorPos = tty_get_cursor_pos();
+        Point cursorPos = tty_get_cursor_pos();
+        tty_set_cursor_pos(0, 16 * (worker->id + 1));
 
-        //tty_set_cursor_pos(0, 16 * cpu->id);
-        /*tty_print("CPU: "); 
-        tty_printx(cpu->id); 
-        tty_print(" TASK AMOUNT: "); 
-        tty_printx(local_scheduler_task_amount());
-        tty_print(" PID: "); 
-        tty_printx(local_scheduler_running_task()->process->id);
-        tty_print(" | ");*/
+        tty_print("WORKER: "); 
+        tty_printx(worker->id); 
+        /*tty_print(" TASK AMOUNT: "); 
+        tty_printx(local_scheduler_task_amount());*/
+        if (worker->scheduler->runningTask != 0)
+        {
+            tty_print(" PID: "); 
+            tty_printx(worker->scheduler->runningTask->process->id);
+        }
+        tty_print(" | ");
         tty_print(string);
 
-        //tty_set_cursor_pos(cursorPos.x, cursorPos.y);
+        tty_set_cursor_pos(cursorPos.x, cursorPos.y);
 
         tty_release();
         return;

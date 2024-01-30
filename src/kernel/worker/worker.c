@@ -20,19 +20,32 @@ void worker_entry()
     write_msr(MSR_WORKER_ID, worker->id);
     
     gdt_load();
+    gdt_load_tss(worker->tss);
     idt_load(worker_idt_get());
-
-    tty_print("Hello from worker "); tty_printx(worker->id); tty_print("! ");
 
     local_apic_init();
 
     worker->running = 1;
-
-    apic_timer_init(2);
 
     while (1)
     {
         asm volatile("sti");
         asm volatile("hlt");
     }
+}
+
+Ipi worker_receive_ipi()
+{
+    Worker* self = worker_self();
+
+    Ipi temp = self->ipi;
+    self->ipi = (Ipi){.type = IPI_WORKER_NONE};
+
+    return temp;
+}
+
+void worker_send_ipi(Worker* worker, Ipi ipi)
+{
+    worker->ipi = ipi;
+    local_apic_send_ipi(worker->apicId, IPI_VECTOR);
 }

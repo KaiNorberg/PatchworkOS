@@ -33,11 +33,15 @@ void worker_trampoline_cleanup(void* oldData)
 uint8_t worker_push(Worker workers[], uint8_t id, LocalApicRecord* record)
 {
     workers[id].present = 1;
+    workers[id].running = 0;
     workers[id].id = id;
     workers[id].apicId = record->localApicId;
-    workers[id].running = 0;
 
-    WRITE_64(WORKER_TRAMPOLINE_STACK_TOP_ADDRESS, (void*)page_allocator_request());
+    workers[id].tss = tss_new();
+    workers[id].ipi = (Ipi){.type = IPI_WORKER_NONE};
+    workers[id].scheduler = scheduler_new();
+
+    WRITE_64(WORKER_TRAMPOLINE_STACK_TOP_ADDRESS, (void*)workers[id].tss->rsp0);
 
     local_apic_send_init(record->localApicId);
     hpet_sleep(10);

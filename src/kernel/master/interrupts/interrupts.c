@@ -3,7 +3,10 @@
 #include "tty/tty.h"
 #include "apic/apic.h"
 #include "debug/debug.h"
+#include "worker_pool/worker_pool.h"
+#include "hpet/hpet.h"
 
+#include "worker/worker.h"
 #include "master/pic/pic.h"
 
 extern void* masterVectorTable[IDT_VECTOR_AMOUNT];
@@ -30,12 +33,17 @@ void master_interrupt_handler(InterruptFrame* interruptFrame)
 
 void master_exception_handler(InterruptFrame* interruptFrame)
 {
-    //TODO: Halt workers
+    Ipi ipi = 
+    {
+        .type = IPI_WORKER_HALT
+    };
+    worker_pool_send_ipi(ipi);
 
     tty_acquire();
     debug_exception(interruptFrame, "Master Exception");
     tty_release();
 
+    asm volatile("cli");
     while (1)
     {
         asm volatile("hlt");
@@ -49,10 +57,37 @@ void master_irq_handler(InterruptFrame* interruptFrame)
     switch (irq)
     {
     case IRQ_TIMER:
-    {
+    {             
+        time_tick();
+   
+        //Temporary for testing
         tty_acquire();
-        tty_print("Timer\n\r");
+        Point cursorPos = tty_get_cursor_pos();
+        tty_set_cursor_pos(0, 0);
+        tty_print("MASTER | TIME: "); 
+        tty_printx(time_nanoseconds()); 
+        tty_set_cursor_pos(cursorPos.x, cursorPos.y);
         tty_release();
+
+        for (uint16_t i = 0; i < worker_amount(); i++)
+        {
+            Worker* worker = worker_get(i);
+
+            scheduler_acquire(worker->scheduler);
+
+            scheduler_unblock(worker->scheduler);
+
+            if (scheduler_wants_to_schedule(worker->scheduler))
+            {
+                Ipi ipi = 
+                {
+                    .type = IPI_WORKER_SCHEDULE
+                };
+                worker_send_ipi(worker, ipi);
+            }
+
+            scheduler_release(worker->scheduler);
+        }
 
         local_apic_eoi();
     }
