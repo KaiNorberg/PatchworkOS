@@ -16,7 +16,7 @@ void* page_allocator_request();
 
 void* page_allocator_request_amount(uint64_t amount);
 
-uint8_t page_allocator_get_status(void* address);
+uint8_t page_allocator_is_reserved(void* address);
 
 void page_allocator_lock_page(void* address);
 

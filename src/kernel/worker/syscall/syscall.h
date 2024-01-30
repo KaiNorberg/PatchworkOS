@@ -1,10 +1,7 @@
 #pragma once
 
-#include <stdint.h>
-
 #include "page_directory/page_directory.h"
-#include "interrupts/interrupts.h"
-#include "scheduler/scheduler.h"
+#include "interrupt_frame/interrupt_frame.h"
 
 #define SYSCALL_GET_ARG1(interruptFrame) (interruptFrame->rdi)
 #define SYSCALL_GET_ARG2(interruptFrame) (interruptFrame->rsi)
@@ -19,11 +16,5 @@
 #define SYSCALL_VECTOR 0x80
 
 typedef void(*Syscall)(InterruptFrame* interruptFrame);
-
-void syscall_exit(InterruptFrame* interruptFrame);
-
-void syscall_fork(InterruptFrame* interruptFrame);
-
-void syscall_sleep(InterruptFrame* interruptFrame);
 
 void syscall_handler(InterruptFrame* interruptFrame);

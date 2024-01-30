@@ -5,57 +5,46 @@
 #include "idt/idt.h"
 #include "heap/heap.h"
 #include "utils/utils.h"
-#include "syscall/syscall.h"
 #include "ram_disk/ram_disk.h"
 #include "page_allocator/page_allocator.h"
-#include "scheduler/scheduler.h"
 #include "io/io.h"
 #include "hpet/hpet.h"
-#include "interrupts/interrupts.h"
 #include "time/time.h"
 #include "tss/tss.h"
 #include "apic/apic.h"
-#include "smp/smp.h"
 #include "global_heap/global_heap.h"
 #include "madt/madt.h"
-#include "task_balancer/task_balancer.h"
-#include "kernel_process/kernel_process.h"
+
+#include "master/master.h"
+#include "worker_pool/worker_pool.h"
 
 #include "../common.h"
 
 void kernel_init(BootInfo* bootInfo)
-{    
+{   
+    asm volatile("cli"); 
+
     tty_init(bootInfo->framebuffer, bootInfo->font);
     tty_print("Hello from the kernel!\n\r");
-
-    lock_init();
 
     page_allocator_init(bootInfo->memoryMap);
     page_directory_init(bootInfo->memoryMap, bootInfo->framebuffer);
     heap_init();
     global_heap_init();
 
-    idt_init();
-    tss_init();
     gdt_init();
 
     rsdt_init(bootInfo->xsdp);
     madt_init();
     apic_init();
 
-    interrupts_init();
-
     ram_disk_init(bootInfo->rootDirectory);
     
     hpet_init();
+    time_init();
 
-    smp_init();
-
-    scheduler_init();
     pid_init();
-
-    smp_cpu_init();
     
-    kernel_process_init();
-    task_balancer_init();
+    master_init();
+    worker_pool_init();
 }

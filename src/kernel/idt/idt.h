@@ -2,10 +2,17 @@
 
 #include <stdint.h>
 
-#define IDT_INTERRUPT 0b10001110
-#define IDT_SYSCALL 0b11101110
+#define IDT_INTERRUPT_GATE 0b1110
+#define IDT_TRAP_GATE 0b1111
+
+#define IDT_RING0 0b00
+#define IDT_RING1 0b01
+#define IDT_RING2 0b10
+#define IDT_RING3 0b11
 
 #define IDT_VECTOR_AMOUNT 256
+
+#define IDT_EXCEPTION_AMOUNT 0x20
 
 typedef struct __attribute__((packed))
 {
@@ -31,10 +38,6 @@ typedef struct __attribute__((packed))
 
 extern void idt_load_descriptor(IdtDesc* descriptor);
 
-void idt_init();
+void idt_load(Idt* idt);
 
-void idt_load();
-
-void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags);
-
-void remap_pic();
+void idt_set_vector(Idt* idt, uint8_t vector, void* isr, uint8_t privilageLevel, uint8_t gateType);

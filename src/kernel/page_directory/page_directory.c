@@ -9,7 +9,8 @@
 #include "idt/idt.h"
 #include "utils/utils.h"
 #include "global_heap/global_heap.h"
-#include "interrupts/interrupts.h"
+
+#include "worker/interrupts/interrupts.h"
 
 #include "../common.h"
 
@@ -49,7 +50,7 @@ PageDirectory* page_directory_new()
     memclr(pageDirectory, 0x1000);
 
     global_heap_map(pageDirectory);
-    interrupt_vectors_map(pageDirectory);
+    worker_interrupts_map(pageDirectory);
     
     return pageDirectory;
 }

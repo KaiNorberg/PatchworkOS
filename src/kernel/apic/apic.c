@@ -6,9 +6,8 @@
 #include "madt/madt.h"
 #include "hpet/hpet.h"
 #include "time/time.h"
-#include "smp/smp.h"
 
-uint64_t localApicBase;
+static uint64_t localApicBase;
 
 void apic_init()
 {
@@ -20,12 +19,12 @@ void apic_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-void apic_timer_init()
+void apic_timer_init(uint64_t hz)
 {
     local_apic_write(LOCAL_APIC_REG_TIMER_DIVIDER, 0x3);
     local_apic_write(LOCAL_APIC_REG_TIMER_INITIAL_COUNT, 0xFFFFFFFF);
 
-    hpet_sleep(1000 / APIC_TIMER_HZ);
+    hpet_sleep(1000 / hz);
 
     local_apic_write(LOCAL_APIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
 
@@ -58,21 +57,21 @@ uint32_t local_apic_read(uint32_t reg)
     return READ_32(localApicBase + reg);
 }
 
-void local_apic_send_init(uint32_t localApicId)
+void local_apic_send_init(uint32_t apicId)
 {
-    local_apic_write(LOCAL_APIC_REG_ICR1, (uint64_t)localApicId << LOCAL_APIC_ID_OFFSET);
+    local_apic_write(LOCAL_APIC_REG_ICR1, (uint64_t)apicId << LOCAL_APIC_ID_OFFSET);
     local_apic_write(LOCAL_APIC_REG_ICR0, (5 << 8));
 }
 
-void local_apic_send_sipi(uint32_t localApicId, uint32_t page)
+void local_apic_send_sipi(uint32_t apicId, uint32_t page)
 {
-    local_apic_write(LOCAL_APIC_REG_ICR1, (uint64_t)localApicId << LOCAL_APIC_ID_OFFSET);
+    local_apic_write(LOCAL_APIC_REG_ICR1, (uint64_t)apicId << LOCAL_APIC_ID_OFFSET);
     local_apic_write(LOCAL_APIC_REG_ICR0, page | (6 << 8));
 }
 
-void local_apic_send_ipi(uint32_t localApicId, uint64_t vector)
+void local_apic_send_ipi(uint32_t apicId, uint64_t vector)
 {
-    local_apic_write(LOCAL_APIC_REG_ICR1, (uint64_t)localApicId << LOCAL_APIC_ID_OFFSET);
+    local_apic_write(LOCAL_APIC_REG_ICR1, (uint64_t)apicId << LOCAL_APIC_ID_OFFSET);
     local_apic_write(LOCAL_APIC_REG_ICR0, vector | (1 << 14));
 }
 

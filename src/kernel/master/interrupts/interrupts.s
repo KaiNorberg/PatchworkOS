@@ -17,16 +17,9 @@ interrupt_%1:
     jmp common_interrupt
 %endmacro
 
-section .interrupts
+section .code
 
-extern interrupt_handler
-extern kernelPageDirectory
-
-global interruptVectorsStart
-global interruptVectorsEnd
-global interruptPageDirectory
-
-interruptVectorsStart:
+extern master_interrupt_handler
 
 common_interrupt:
     cld
@@ -45,17 +38,12 @@ common_interrupt:
     push r13
     push r14
     push r15
-    mov rax, cr3
-    push rax
-
-    mov rax, [interruptPageDirectory]
-    mov cr3, rax
+    push 0
 
     mov rdi, rsp
-    call interrupt_handler
+    call master_interrupt_handler
 
-    pop rax
-    mov cr3, rax
+    add rsp, 8
     pop r15
     pop r14
     pop r13
@@ -74,9 +62,6 @@ common_interrupt:
     add rsp, 16
 
     iretq
-
-interruptPageDirectory:
-    dq 0
 
 INT_NOERR 0
 INT_NOERR 1
@@ -117,12 +102,10 @@ INT_NOERR 31
 %assign i i+1
 %endrep
 
-interruptVectorsEnd:
-
 section .data
 
-global interruptVectorTable
-interruptVectorTable:
+global masterVectorTable
+masterVectorTable:
 %assign i 0
 %rep 256
     INT_NAME i

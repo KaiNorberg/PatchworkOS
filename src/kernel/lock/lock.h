@@ -4,8 +4,6 @@
 
 typedef atomic_flag Lock;
 
-void lock_init();
-
 Lock lock_new();
 
 void lock_acquire(Lock* lock);

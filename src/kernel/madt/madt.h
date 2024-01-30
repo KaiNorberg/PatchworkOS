@@ -6,7 +6,7 @@
 
 #define MADT_RECORD_TYPE_LOCAL_APIC 0
 
-#define MADT_LOCAL_APIC_RECORD_IS_ENABLEABLE(record) ((record->flags & 1) != 0) 
+#define LOCAL_APIC_RECORD_IS_ENABLEABLE(record) ((record->flags & 1) != 0) 
 
 typedef struct __attribute__((packed))
 {
