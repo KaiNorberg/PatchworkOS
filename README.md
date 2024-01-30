@@ -2,9 +2,7 @@
 
 **Keep in mind that Asym is currently in a very early stage of development.**
 
-**Previously known as Asym OS**
-
-**Broken as code is being overhauled**
+**Previously known as Patchwork OS**
 
 ## Features
 
