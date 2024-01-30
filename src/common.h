@@ -3,4 +3,4 @@
 #define EFI_SCREEN_FONT_MEMORY_TYPE 0x80000002
 #define EFI_RAM_DISK_MEMORY_TYPE 0x80000003
 
-#define OS_VERSION "Patchwork OS"
+#define OS_VERSION "Asym OS - Prototype"

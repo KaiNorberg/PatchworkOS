@@ -88,21 +88,21 @@ build: $(BUILD)
 
 deploy:
 	@echo "!====== RUNNING DEPLOY ======!"
-	@dd if=/dev/zero of=bin/Patchwork.img bs=4096 count=1024
-	@$(call run_and_test,mkfs -t vfat bin/Patchwork.img)                           
-	@$(call run_and_test,mmd -i bin/Patchwork.img ::/boot)                        
-	@$(call run_and_test,mmd -i bin/Patchwork.img ::/efi)                    
-	@$(call run_and_test,mmd -i bin/Patchwork.img ::/efi/boot)
-	@$(call run_and_test,mcopy -i bin/Patchwork.img -s $(BOOT_OUTPUT_EFI) ::efi/boot)
-	@$(call run_and_test,mcopy -i bin/Patchwork.img -s $(KERNEL_OUTPUT) ::boot)
-	@$(call run_and_test,mcopy -i bin/Patchwork.img -s $(ROOT_DIR)/* ::)
-	@$(call run_and_test,mcopy -i bin/Patchwork.img -s $(BIN_DIR)/programs ::/bin)
+	@dd if=/dev/zero of=bin/Asym.img bs=4096 count=1024
+	@$(call run_and_test,mkfs -t vfat bin/Asym.img)                           
+	@$(call run_and_test,mmd -i bin/Asym.img ::/boot)                        
+	@$(call run_and_test,mmd -i bin/Asym.img ::/efi)                    
+	@$(call run_and_test,mmd -i bin/Asym.img ::/efi/boot)
+	@$(call run_and_test,mcopy -i bin/Asym.img -s $(BOOT_OUTPUT_EFI) ::efi/boot)
+	@$(call run_and_test,mcopy -i bin/Asym.img -s $(KERNEL_OUTPUT) ::boot)
+	@$(call run_and_test,mcopy -i bin/Asym.img -s $(ROOT_DIR)/* ::)
+	@$(call run_and_test,mcopy -i bin/Asym.img -s $(BIN_DIR)/programs ::/bin)
 
 all: build deploy
 
 run:
 	@qemu-system-x86_64 \
-    -drive file=bin/Patchwork.img \
+    -drive file=bin/Asym.img \
     -m 1G \
     -cpu qemu64 \
     -smp 6 \
