@@ -82,7 +82,7 @@ void syscall_handler(InterruptFrame* interruptFrame)
     {
         tty_acquire();
 
-        Worker* worker = worker_self();
+        Worker const* worker = worker_self();
 
         const char* string = page_directory_get_physical_address(SYSCALL_GET_PAGE_DIRECTORY(interruptFrame), (void*)SYSCALL_GET_ARG1(interruptFrame));
 
@@ -91,8 +91,8 @@ void syscall_handler(InterruptFrame* interruptFrame)
 
         tty_print("WORKER: "); 
         tty_printx(worker->id); 
-        /*tty_print(" TASK AMOUNT: "); 
-        tty_printx(local_scheduler_task_amount());*/
+        tty_print(" TASK AMOUNT: "); 
+        tty_printx(scheduler_task_amount(worker->scheduler));
         if (worker->scheduler->runningTask != 0)
         {
             tty_print(" PID: "); 

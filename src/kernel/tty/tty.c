@@ -81,11 +81,11 @@ void tty_put(uint8_t chr)
     break;
     default:
     {               
-        char* glyph = font->glyphs + chr * TTY_CHAR_HEIGHT;
+        char const* glyph = font->glyphs + chr * TTY_CHAR_HEIGHT;
 
-        for (uint64_t y = 0; y < TTY_CHAR_HEIGHT * scale; y++)
+        for (uint32_t y = 0; y < TTY_CHAR_HEIGHT * scale; y++)
         {
-            for (uint64_t x = 0; x < TTY_CHAR_WIDTH * scale; x++)
+            for (uint32_t x = 0; x < TTY_CHAR_WIDTH * scale; x++)
             {
                 Point position = {cursorPos.x + x, cursorPos.y + y};
 
@@ -202,7 +202,7 @@ void tty_assert(uint8_t expression, const char* message)
 
 void tty_end_message(uint64_t status)
 {
-    uint64_t oldCursorX = cursorPos.x;   
+    uint32_t oldCursorX = cursorPos.x;   
     cursorPos.x = TTY_CHAR_WIDTH * scale;
 
     if (status == TTY_MESSAGE_OK)

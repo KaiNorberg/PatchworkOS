@@ -43,6 +43,6 @@ void page_directory_remap_pages(PageDirectory* pageDirectory, void* virtualAddre
 
 void page_directory_remap(PageDirectory* pageDirectory, void* virtualAddress, void* physicalAddress, uint16_t flags);
 
-void* page_directory_get_physical_address(PageDirectory* pageDirectory, void* virtualAddress);
+void* page_directory_get_physical_address(PageDirectory const* pageDirectory, void* virtualAddress);
 
 void page_directory_free(PageDirectory* pageDirectory);

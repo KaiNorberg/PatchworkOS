@@ -24,7 +24,7 @@ void interrupt_frame_free(InterruptFrame* interruptFrame)
     kfree(interruptFrame);
 }
 
-InterruptFrame* interrupt_frame_duplicate(InterruptFrame* src)
+InterruptFrame* interrupt_frame_duplicate(InterruptFrame const* src)
 {    
     InterruptFrame* interruptFrame = kmalloc(sizeof(InterruptFrame));
     interrupt_frame_copy(interruptFrame, src);
@@ -32,7 +32,7 @@ InterruptFrame* interrupt_frame_duplicate(InterruptFrame* src)
     return interruptFrame;
 }
 
-void interrupt_frame_copy(InterruptFrame* dest, InterruptFrame* src)
+void interrupt_frame_copy(InterruptFrame* dest, InterruptFrame const* src)
 {
     memcpy(dest, src, sizeof(InterruptFrame));
 }

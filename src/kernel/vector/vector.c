@@ -32,7 +32,7 @@ void vector_resize(Vector* vector, uint64_t length)
     vector->reservedLength = length;
 }
 
-void vector_push(Vector* vector, void* entry)
+void vector_push(Vector* vector, void const* entry)
 {
     if (vector->length == vector->reservedLength)
     {
@@ -48,7 +48,7 @@ void* vector_array(Vector* vector)
     return vector->data;
 }
 
-void vector_set(Vector* vector, uint64_t index, void* entry)
+void vector_set(Vector* vector, uint64_t index, void const* entry)
 {
     memcpy(vector_get(vector, index), entry, vector->entrySize);
 }

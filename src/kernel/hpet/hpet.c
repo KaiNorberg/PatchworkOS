@@ -67,3 +67,12 @@ void hpet_sleep(uint64_t milliseconds)
         asm volatile("pause");
     }
 }
+
+void hpet_nanosleep(uint64_t nanoseconds)
+{
+    uint64_t target = hpet_read(HPET_MAIN_COUNTER_VALUE) + (nanoseconds * 1000000) / hpetPeriod;
+    while (!(hpet_read(HPET_MAIN_COUNTER_VALUE) >= target))
+    {
+        asm volatile("pause");
+    }
+}

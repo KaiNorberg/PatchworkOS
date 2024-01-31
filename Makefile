@@ -43,7 +43,8 @@ ASM = nasm
 
 ASM_FLAGS = -f elf64
 
-BASE_C_FLAGS = -Wall \
+BASE_C_FLAGS = -O3 \
+	-Wall \
 	-Wextra \
 	-Werror \
 	-Wshadow \
@@ -53,7 +54,7 @@ BASE_C_FLAGS = -Wall \
 	-I$(LIB_SRC_DIR)/libc/include
 
 KERNEL_C_FLAGS = $(BASE_C_FLAGS) \
-	-Os -ffreestanding \
+	-ffreestanding \
 	-fno-stack-protector -fno-exceptions \
 	-fno-pie -mcmodel=kernel -mno-80387 \
 	-mno-mmx -mno-3dnow -mno-sse \
@@ -68,10 +69,10 @@ BOOT_C_FLAGS = $(BASE_C_FLAGS) \
 	-I$(BOOT_SRC_DIR) -I$(GNU_EFI)/inc
 
 LIB_C_FLAGS = $(BASE_C_FLAGS) \
-	-Os -ffreestanding
+	-ffreestanding
 
 PROGRAM_C_FLAGS = $(BASE_C_FLAGS) \
-	-Os -ffreestanding
+	-ffreestanding
 
 LD_FLAGS = -nostdlib
 

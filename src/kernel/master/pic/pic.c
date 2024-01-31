@@ -61,7 +61,7 @@ void pic_set_mask(uint8_t irq)
         port = PIC2_DATA;
         irq -= 8;
     }
-    uint8_t value = io_inb(port) | (1 << irq);
+    uint8_t value = io_inb(port) | (uint8_t)(1 << irq);
     io_wait();
     io_outb(port, value);        
 }

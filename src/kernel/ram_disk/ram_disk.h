@@ -36,11 +36,11 @@ RamFile* ram_disk_get(const char* path);
 
 FILE* ram_disk_open(const char* filename);
 
-uint32_t ram_disk_seek(FILE *stream, int64_t offset, uint32_t origin);
+uint32_t ram_disk_seek(FILE* stream, int64_t offset, uint32_t origin);
 
-uint64_t ram_disk_tell(FILE *stream);
+uint64_t ram_disk_tell(FILE const* stream);
 
-uint32_t ram_disk_get_c(FILE* stream);
+uint8_t ram_disk_get_c(FILE* stream);
 
 uint64_t ram_disk_read(void* buffer, uint64_t size, FILE* stream);
 

@@ -106,18 +106,11 @@ uint64_t heap_total_size()
     uint64_t size = 0;
 
     HeapHeader* currentBlock = firstBlock;
-    while (1)
+    while (currentBlock != 0)
     {   
         size += currentBlock->size + sizeof(HeapHeader);
 
-        if (currentBlock->next == 0)
-        {
-            break;
-        }
-        else
-        {
-            currentBlock = currentBlock->next;       
-        }
+        currentBlock = currentBlock->next;       
     }
 
     return size;
@@ -128,21 +121,14 @@ uint64_t heap_reserved_size()
     uint64_t size = 0;
 
     HeapHeader* currentBlock = firstBlock;
-    while (1)
+    while (currentBlock != 0)
     {   
         if (currentBlock->reserved)
         {
             size += currentBlock->size + sizeof(HeapHeader);
         }
 
-        if (currentBlock->next == 0)
-        {
-            break;
-        }
-        else
-        {
-            currentBlock = currentBlock->next;       
-        }
+        currentBlock = currentBlock->next;       
     }
 
     return size;
@@ -153,21 +139,14 @@ uint64_t heap_free_size()
     uint64_t size = 0;
 
     HeapHeader* currentBlock = firstBlock;
-    while (1)
+    while (currentBlock != 0)
     {   
         if (!currentBlock->reserved)
         {
             size += currentBlock->size + sizeof(HeapHeader);
         }
 
-        if (currentBlock->next == 0)
-        {
-            break;
-        }
-        else
-        {
-            currentBlock = currentBlock->next;       
-        }
+        currentBlock = currentBlock->next;       
     }
 
     return size;
@@ -250,12 +229,12 @@ void kfree(void* ptr)
 {    
     lock_acquire(&lock);
 
-    HeapHeader* block = (HeapHeader*)((uint64_t)ptr - sizeof(HeapHeader));
+    HeapHeader const* block = (HeapHeader*)((uint64_t)ptr - sizeof(HeapHeader));
     
     uint8_t blockFound = 0;
 
     HeapHeader* currentBlock = firstBlock;
-    while (1)
+    while (currentBlock != 0)
     {
         if (block == currentBlock)
         {
@@ -264,14 +243,7 @@ void kfree(void* ptr)
             break;
         }
 
-        if (currentBlock->next == 0)
-        {
-            break;
-        }
-        else
-        {
-            currentBlock = currentBlock->next;       
-        }    
+        currentBlock = currentBlock->next;
     }
 
     if (!blockFound)
@@ -284,7 +256,7 @@ void kfree(void* ptr)
         uint8_t blocksMerged = 0;
 
         currentBlock = firstBlock;
-        while (1)
+        while (currentBlock != 0)
         {               
             if (currentBlock->next != 0 && !currentBlock->reserved && !currentBlock->next->reserved)
             {
@@ -293,14 +265,7 @@ void kfree(void* ptr)
                 blocksMerged = 1;
             }
 
-            if (currentBlock->next == 0)
-            {
-                break;
-            }
-            else
-            {
-                currentBlock = currentBlock->next;       
-            }    
+            currentBlock = currentBlock->next;       
         }
 
         if (!blocksMerged)

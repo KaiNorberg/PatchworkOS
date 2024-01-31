@@ -45,14 +45,12 @@ const char* exceptionStrings[32] =
     "Security"
 };
 
-static uint32_t currentRow;
-static uint32_t currentColumn;
+static uint8_t currentRow;
+static uint8_t currentColumn;
 static Pixel currentColor;
 
 void debug_panic(const char* message)
-{
-    //tty_clear();
-    
+{    
     tty_acquire();
 
     Pixel white;
@@ -94,10 +92,8 @@ void debug_panic(const char* message)
     }
 }
 
-void debug_exception(InterruptFrame* interruptFrame, const char* message)
-{    
-    //tty_clear();
-
+void debug_exception(InterruptFrame const* interruptFrame, const char* message)
+{
     Pixel white;
     white.a = 255;
     white.r = 255;

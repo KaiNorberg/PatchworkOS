@@ -120,7 +120,7 @@ void page_directory_remap(PageDirectory* pageDirectory, void* virtualAddress, vo
     pt->entries[pIndex] = PAGE_DIR_ENTRY_CREATE(physicalAddress, flags);
 }
 
-void* page_directory_get_physical_address(PageDirectory* pageDirectory, void* virtualAddress)
+void* page_directory_get_physical_address(PageDirectory const* pageDirectory, void* virtualAddress)
 {
     uint64_t indexer = round_down((uint64_t)virtualAddress, 0x1000);
     uint64_t offset = (uint64_t)virtualAddress - indexer;
@@ -137,19 +137,19 @@ void* page_directory_get_physical_address(PageDirectory* pageDirectory, void* vi
     {
         return 0;
     }
-    PageDirectory* pdp = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pageDirectory->entries[pdpIndex]);
+    PageDirectory const* pdp = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pageDirectory->entries[pdpIndex]);
 
     if (!PAGE_DIR_GET_FLAG(pdp->entries[pdIndex], PAGE_DIR_PRESENT))
     {
         return 0;
     }
-    PageDirectory* pd = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pdp->entries[pdIndex]);
+    PageDirectory const* pd = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pdp->entries[pdIndex]);
 
     if (!PAGE_DIR_GET_FLAG(pd->entries[ptIndex], PAGE_DIR_PRESENT))
     {
         return 0;
     }
-    PageDirectory* pt = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pd->entries[ptIndex]);
+    PageDirectory const* pt = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pd->entries[ptIndex]);
 
     uint64_t physicalAddress = PAGE_DIR_GET_ADDRESS(pt->entries[pIndex]);
     return (void*)(physicalAddress + offset);
@@ -165,21 +165,21 @@ void page_directory_free(PageDirectory* pageDirectory)
         PageDirectory* pdp;
         if (PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
         {
-            pdp = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde));        
+            pdp = (PageDirectory*)(PAGE_DIR_GET_ADDRESS(pde));        
             for (uint64_t pdIndex = 0; pdIndex < 512; pdIndex++)
             {
                 pde = pdp->entries[pdIndex]; 
                 PageDirectory* pd;
                 if (PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
                 {
-                    pd = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde));
+                    pd = (PageDirectory*)(PAGE_DIR_GET_ADDRESS(pde));
                     for (uint64_t ptIndex = 0; ptIndex < 512; ptIndex++)
                     {
                         pde = pd->entries[ptIndex];
                         PageDirectory* pt;
                         if (PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
                         {
-                            pt = (PageDirectory*)((uint64_t)PAGE_DIR_GET_ADDRESS(pde));
+                            pt = (PageDirectory*)(PAGE_DIR_GET_ADDRESS(pde));
                             page_allocator_unlock_page(pt);
                         }
                     }

@@ -135,7 +135,7 @@ void scheduler_unblock(Scheduler* scheduler)
     }
 }
 
-uint8_t scheduler_wants_to_schedule(Scheduler* scheduler)
+uint8_t scheduler_wants_to_schedule(Scheduler const* scheduler)
 {
     //If time slice is over and task is available
     if (scheduler->nextPreemption < time_nanoseconds())
@@ -163,4 +163,16 @@ uint8_t scheduler_wants_to_schedule(Scheduler* scheduler)
     }
 
     return 0;
+}
+
+uint64_t scheduler_task_amount(Scheduler const* scheduler)
+{
+    uint64_t taskAmount = 0;
+    for (uint64_t priority = TASK_PRIORITY_MIN; priority <= TASK_PRIORITY_MAX; priority++)
+    {
+        taskAmount += queue_length(scheduler->queues[priority]);
+    }
+    taskAmount += scheduler->runningTask != 0;
+
+    return taskAmount;
 }

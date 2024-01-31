@@ -47,10 +47,8 @@ uint8_t ram_disk_compare_names(const char* nameStart, const char* nameEnd, const
     {
         return 0;
     }
-
-    uint8_t memoryCompare = memcmp(nameStart, otherName, otherNameLength);
     
-    if (memoryCompare == 0)
+    if (memcmp(nameStart, otherName, otherNameLength) == 0)
     {
         return 1;
     }
@@ -128,7 +126,7 @@ FILE* ram_disk_open(const char* filename)
     }
 }
 
-uint32_t ram_disk_seek(FILE *stream, int64_t offset, uint32_t origin)
+uint32_t ram_disk_seek(FILE* stream, int64_t offset, uint32_t origin)
 {
     switch (origin)
     {
@@ -152,12 +150,12 @@ uint32_t ram_disk_seek(FILE *stream, int64_t offset, uint32_t origin)
     return 0;
 }
 
-uint64_t ram_disk_tell(FILE *stream)
+uint64_t ram_disk_tell(FILE const* stream)
 {
     return stream->seekOffset;
 }
 
-uint32_t ram_disk_get_c(FILE* stream)
+uint8_t ram_disk_get_c(FILE* stream)
 {
     uint8_t out = stream->fileHandle->data[stream->seekOffset];
     stream->seekOffset++;

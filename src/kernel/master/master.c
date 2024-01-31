@@ -35,7 +35,7 @@ void master_entry()
     pic_remap();
 
     local_apic_init();
-    apic_timer_init(1000);
+    apic_timer_init(MASTER_TIMER_HZ);
 
     master_loop();
 }

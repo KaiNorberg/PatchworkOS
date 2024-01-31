@@ -80,4 +80,4 @@ typedef struct
 	RamDiskDirectory* ramDiskRoot;
 } BootInfo;
 
-__attribute__((noreturn)) void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, BootInfo* bootInfo);
+void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, BootInfo* bootInfo);

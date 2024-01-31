@@ -30,7 +30,7 @@ void worker_trampoline_cleanup(void* oldData)
     page_allocator_unlock_page(oldData);
 }
 
-uint8_t worker_push(Worker workers[], uint8_t id, LocalApicRecord* record)
+uint8_t worker_push(Worker workers[], uint8_t id, LocalApicRecord const* record)
 {
     workers[id].present = 1;
     workers[id].running = 0;

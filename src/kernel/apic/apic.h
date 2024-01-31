@@ -28,7 +28,7 @@ void apic_timer_init(uint64_t hz);
 
 void local_apic_init();
 
-uint32_t local_apic_id();
+uint8_t local_apic_id();
 
 void local_apic_write(uint32_t reg, uint32_t value);
 
@@ -38,6 +38,6 @@ void local_apic_send_init(uint32_t apicId);
 
 void local_apic_send_sipi(uint32_t apicId, uint32_t page);
 
-void local_apic_send_ipi(uint32_t apicId, uint64_t vector);
+void local_apic_send_ipi(uint32_t apicId, uint8_t vector);
 
 void local_apic_eoi();

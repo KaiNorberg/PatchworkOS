@@ -70,7 +70,7 @@ void* queue_pop(Queue* queue)
     return temp;
 }
 
-uint64_t queue_length(Queue* queue)
+uint64_t queue_length(Queue const* queue)
 {
     return queue->length;
 }

@@ -15,11 +15,11 @@ void master_idt_populate(Idt* idt)
 {
     for (uint16_t vector = 0; vector < IDT_VECTOR_AMOUNT; vector++) 
     {        
-        idt_set_vector(idt, vector, masterVectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
+        idt_set_vector(idt, (uint8_t)vector, masterVectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
     }
 }
 
-void master_interrupt_handler(InterruptFrame* interruptFrame)
+void master_interrupt_handler(InterruptFrame const* interruptFrame)
 {
     if (interruptFrame->vector < IRQ_BASE)
     {
@@ -31,7 +31,7 @@ void master_interrupt_handler(InterruptFrame* interruptFrame)
     }
 }
 
-void master_exception_handler(InterruptFrame* interruptFrame)
+void master_exception_handler(InterruptFrame const* interruptFrame)
 {
     Ipi ipi = 
     {
@@ -50,7 +50,7 @@ void master_exception_handler(InterruptFrame* interruptFrame)
     }
 }
 
-void master_irq_handler(InterruptFrame* interruptFrame)
+void master_irq_handler(InterruptFrame const* interruptFrame)
 {    
     uint64_t irq = interruptFrame->vector - IRQ_BASE;
 
@@ -90,6 +90,11 @@ void master_irq_handler(InterruptFrame* interruptFrame)
         }
 
         local_apic_eoi();
+    }
+    break;
+    default:
+    {
+        debug_exception(interruptFrame, "Unknown IRQ");
     }
     break;
     }

@@ -13,7 +13,7 @@ extern const char* exceptionStrings[32];
 
 void debug_panic(const char* message);
 
-void debug_exception(InterruptFrame* interruptFrame, const char* message);
+void debug_exception(InterruptFrame const* interruptFrame, const char* message);
 
 void debug_move_to_grid(uint8_t row, uint8_t column, Pixel color);
 

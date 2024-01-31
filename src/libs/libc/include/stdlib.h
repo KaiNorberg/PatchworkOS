@@ -7,7 +7,7 @@ extern "C" {
  
 #include "internal.h"
 
-void exit(int code)
+void exit(int code);
  
 #if defined(__cplusplus)
 } /* extern "C" */

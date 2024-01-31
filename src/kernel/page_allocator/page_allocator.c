@@ -86,7 +86,7 @@ void page_allocator_init(EfiMemoryMap* memoryMap)
     pageAmount = 0;
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
+        const EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
         pageAmount += desc->amountOfPages;
     }
     uint64_t pageMapSize = pageAmount / 8;
@@ -94,7 +94,7 @@ void page_allocator_init(EfiMemoryMap* memoryMap)
     pageMap = 0;
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
+        const EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
         
         if (desc->physicalStart >= (void*)0x9000 && desc->type == EFI_CONVENTIONAL_MEMORY && pageMapSize < desc->amountOfPages * 0x1000)
         {
@@ -111,7 +111,7 @@ void page_allocator_init(EfiMemoryMap* memoryMap)
 
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
+        const EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
 
         if (is_memory_type_reserved(desc->type) && ((uint64_t)desc->physicalStart) < pageAmount * 0x1000)
         {

@@ -13,11 +13,9 @@ uint8_t is_memory_type_reserved(uint64_t memoryType)
 	{
 		return 0;
 	}
-	break;
 	default:
 	{
 		return 1;
 	}
-	break;
 	}
 }

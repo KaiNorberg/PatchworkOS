@@ -4,6 +4,8 @@
 
 #include <stdint.h>
 
+#define MASTER_TIMER_HZ 1024
+
 void master_init();
 
 void master_entry();

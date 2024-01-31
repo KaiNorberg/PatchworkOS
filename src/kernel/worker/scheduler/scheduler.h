@@ -50,4 +50,6 @@ void scheduler_block(Scheduler* scheduler, InterruptFrame* interruptFrame, Block
 
 void scheduler_unblock(Scheduler* scheduler);
 
-uint8_t scheduler_wants_to_schedule(Scheduler* scheduler);
+uint8_t scheduler_wants_to_schedule(Scheduler const* scheduler);
+
+uint64_t scheduler_task_amount(Scheduler const* scheduler);

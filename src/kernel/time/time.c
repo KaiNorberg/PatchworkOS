@@ -3,13 +3,13 @@
 #include "tty/tty.h"
 #include "hpet/hpet.h"
 
-static uint64_t nanoseconds;
+static uint64_t accumulator;
 
 void time_init()
 {
     tty_start_message("Time initializing");
 
-    nanoseconds = 0;
+    accumulator = 0;
     time_tick();
 
     tty_end_message(TTY_MESSAGE_OK);
@@ -17,7 +17,8 @@ void time_init()
 
 void time_tick()
 {
-    nanoseconds += hpet_read_counter() * hpet_nanoseconds_per_tick();
+    //Avoids overflow on the hpet counter if counter is 32bit.
+    accumulator += hpet_read_counter();
     hpet_reset_counter();
 }
 
@@ -33,5 +34,5 @@ uint64_t time_milliseconds()
 
 uint64_t time_nanoseconds()
 {
-    return nanoseconds + hpet_read_counter() * hpet_nanoseconds_per_tick();
+    return (accumulator + hpet_read_counter()) * hpet_nanoseconds_per_tick();
 }

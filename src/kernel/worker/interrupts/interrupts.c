@@ -23,7 +23,7 @@ void worker_idt_populate(Idt* idt)
 
     for (uint16_t vector = 0; vector < IDT_VECTOR_AMOUNT; vector++) 
     {        
-        idt_set_vector(idt, vector, workerVectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
+        idt_set_vector(idt, (uint8_t)vector, workerVectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
     }        
     
     idt_set_vector(idt, SYSCALL_VECTOR, workerVectorTable[SYSCALL_VECTOR], IDT_RING3, IDT_INTERRUPT_GATE);
@@ -95,110 +95,3 @@ void worker_exception_handler(InterruptFrame* interruptFrame)
         asm volatile("hlt");
     }
 }
-
-/*void interrupt_handler(InterruptFrame* interruptFrame)
-{           
-    if (interruptFrame->vector < IRQ_BASE)
-    {
-        exception_handler(interruptFrame);
-    }
-    else if (interruptFrame->vector >= IRQ_BASE && interruptFrame->vector <= IRQ_BASE + IRQ_AMOUNT)
-    {    
-        irq_handler(interruptFrame);
-    }
-    else if (interruptFrame->vector == SYSCALL_VECTOR)
-    {
-        syscall_handler(interruptFrame);
-    } 
-    else if (interruptFrame->vector == IPI_VECTOR)
-    {
-        ipi_handler(interruptFrame);
-    }
-}
-
-void irq_handler(InterruptFrame* interruptFrame)
-{
-    uint64_t irq = interruptFrame->vector - IRQ_BASE;
-
-    switch (irq)
-    {
-    case IRQ_TIMER:
-    {    
-        Scheduler* scheduler = scheduler_get_local();
-
-        if (scheduler->runningTask != 0 && 
-            scheduler->runningTask->interruptFrame->codeSegment == GDT_KERNEL_CODE)
-        {
-            break;
-        }
-
-        local_scheduler_acquire();
-        local_scheduler_tick(interruptFrame);
-        local_scheduler_release();
-    }
-    break;
-    default:
-    {
-        //Not implemented
-    } 
-    break;
-    }        
-
-    local_apic_eoi();
-    io_pic_eoi(irq);
-}
-
-void ipi_handler(InterruptFrame* interruptFrame)
-{   
-    Ipi ipi = smp_receive_ipi();     
-    
-    switch (ipi.type)
-    {
-    case IPI_TYPE_HALT:
-    {
-        interrupts_disable();
-
-        while (1)
-        {
-            asm volatile("hlt");
-        }
-    }
-    break;
-    case IPI_TYPE_START:
-    {
-        interruptFrame->instructionPointer = (uint64_t)scheduler_idle_loop;
-        interruptFrame->cr3 = (uint64_t)kernelPageDirectory;
-        interruptFrame->codeSegment = GDT_KERNEL_CODE;
-        interruptFrame->stackSegment = GDT_KERNEL_DATA;
-        interruptFrame->stackPointer = (uint64_t)tss_kernel_stack();
-          
-        apic_timer_init();
-    }
-    break;
-    default:
-    {
-        debug_panic("Unknown IPI");
-    }
-    break;
-    }
-
-    local_apic_eoi();
-}
-
-void exception_handler(InterruptFrame* interruptFrame)
-{   
-    Ipi ipi = 
-    {
-        .type = IPI_TYPE_HALT   
-    };
-    smp_send_ipi_to_others(ipi);
-
-    tty_acquire();
-    debug_exception(interruptFrame, "Exception");
-    tty_release();
-
-    while (1)
-    {
-        asm volatile("hlt");
-    }
-}*/

@@ -94,7 +94,7 @@ void task_free(Task* task)
         if (process->firstBlock != 0)
         {
             ProcessBlock* currentBlock = process->firstBlock;
-            while (1)
+            while (currentBlock != 0)
             {
                 ProcessBlock* nextBlock = currentBlock->next;
 
@@ -102,14 +102,7 @@ void task_free(Task* task)
 
                 kfree(currentBlock);           
 
-                if (nextBlock != 0)
-                {
-                    currentBlock = nextBlock;
-                }
-                else
-                {
-                    break;
-                }
+                currentBlock = nextBlock;
             }
         }
 

@@ -36,7 +36,7 @@ void worker_pool_init()
 
 void worker_pool_send_ipi(Ipi ipi)
 {
-    for (uint16_t i = 0; i < workerAmount; i++)
+    for (uint8_t i = 0; i < workerAmount; i++)
     {
         worker_send_ipi(worker_get(i), ipi);
     }
@@ -44,7 +44,7 @@ void worker_pool_send_ipi(Ipi ipi)
 
 void worker_pool_push(Task* task)
 {
-    for (uint16_t i = 0; i < workerAmount; i++)
+    for (uint8_t i = 0; i < workerAmount; i++)
     {
         scheduler_acquire(worker_get(i)->scheduler);
     }
@@ -69,7 +69,7 @@ void worker_pool_push(Task* task)
 
     scheduler_push(bestScheduler, task);
 
-    for (uint16_t i = 0; i < workerAmount; i++)
+    for (uint8_t i = 0; i < workerAmount; i++)
     {
         scheduler_release(worker_get(i)->scheduler);
     }

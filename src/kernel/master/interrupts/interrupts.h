@@ -5,8 +5,8 @@
 
 void master_idt_populate(Idt* idt);
 
-void master_interrupt_handler(InterruptFrame* interruptFrame);
+void master_interrupt_handler(InterruptFrame const* interruptFrame);
 
-void master_exception_handler(InterruptFrame* interruptFrame);
+void master_exception_handler(InterruptFrame const* interruptFrame);
 
-void master_irq_handler(InterruptFrame* interruptFrame);
+void master_irq_handler(InterruptFrame const* interruptFrame);
