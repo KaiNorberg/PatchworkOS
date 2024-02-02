@@ -32,7 +32,7 @@ Process* process_new()
     newProcess->id = pid_new();
     newProcess->taskAmount = 0;
 
-    process_allocate_page(newProcess, PROCESS_ADDRESS_SPACE_USER_STACK);
+    process_allocate_page(newProcess, (void*)(USER_ADDRESS_SPACE_TOP - 0x1000));
     
     return newProcess;
 }

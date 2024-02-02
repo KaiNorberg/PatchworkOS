@@ -6,6 +6,8 @@ extern "C" {
  
 #include <stdint.h>
 
+uint64_t exit(uint64_t status);
+
 uint64_t spawn(const char* path);
 
 uint64_t sleep(uint64_t milliseconds);

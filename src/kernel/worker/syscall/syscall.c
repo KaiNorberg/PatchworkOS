@@ -22,6 +22,7 @@ void syscall_exit(InterruptFrame* interruptFrame)
 
 void syscall_spawn(InterruptFrame* interruptFrame)
 {
+    //TODO: Implement safe string length check
     const char* path = page_directory_get_physical_address(SYSCALL_GET_PAGE_DIRECTORY(interruptFrame), (void*)SYSCALL_GET_ARG1(interruptFrame));
     if ((uint64_t)path > USER_ADDRESS_SPACE_TOP)
     {
@@ -30,7 +31,7 @@ void syscall_spawn(InterruptFrame* interruptFrame)
     }
 
     Worker* worker = worker_self();
-    scheduler_acquire(worker->scheduler);             
+    scheduler_acquire(worker->scheduler);
 
     Process* process = process_new();
     Task* task = task_new(process, TASK_PRIORITY_MIN);
