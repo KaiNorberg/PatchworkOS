@@ -19,7 +19,11 @@ void vector_free(Vector* vector);
 
 void vector_resize(Vector* vector, uint64_t length);
 
-void vector_push(Vector* vector, void const* entry);
+void* vector_back(Vector* vector);
+
+void vector_push_back(Vector* vector, void const* entry);
+
+void vector_pop_back(Vector* vector, void* dest);
 
 void* vector_array(Vector* vector);
 

@@ -2,7 +2,9 @@
 
 #include "io/io.h"
 
-void pic_remap()
+#include "master/interrupts/interrupts.h"
+
+void pic_init()
 {
     uint8_t a1 = io_inb(PIC1_DATA);
     io_wait();
@@ -34,7 +36,6 @@ void pic_remap()
     io_outb(PIC2_DATA, a2);
     io_wait();
     
-    asm volatile("cli");
     io_outb(PIC1_DATA, 0xFF);
     io_outb(PIC2_DATA, 0xFF);
 }
@@ -62,7 +63,6 @@ void pic_set_mask(uint8_t irq)
         irq -= 8;
     }
     uint8_t value = io_inb(port) | (uint8_t)(1 << irq);
-    io_wait();
     io_outb(port, value);        
 }
  
@@ -79,6 +79,5 @@ void pic_clear_mask(uint8_t irq)
         irq -= 8;
     }
     uint8_t value = io_inb(port) & ~(1 << irq);
-    io_wait();
     io_outb(port, value);        
 }

@@ -7,7 +7,7 @@
 
 void time_init();
 
-void time_tick();
+void time_accumulate();
 
 uint64_t time_seconds();
 

@@ -4,11 +4,9 @@
 
 #include <stdint.h>
 
-#define MASTER_TIMER_HZ 1024
+extern void master_entry();
 
 void master_init();
-
-void master_entry();
 
 uint8_t master_apic_id();
 

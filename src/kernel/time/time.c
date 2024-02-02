@@ -10,12 +10,12 @@ void time_init()
     tty_start_message("Time initializing");
 
     accumulator = 0;
-    time_tick();
+    time_accumulate();
 
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-void time_tick()
+void time_accumulate()
 {
     //Avoids overflow on the hpet counter if counter is 32bit.
     accumulator += hpet_read_counter();

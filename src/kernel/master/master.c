@@ -4,11 +4,16 @@
 #include "gdt/gdt.h"
 #include "apic/apic.h"
 #include "tty/tty.h"
+#include "time/time.h"
 #include "utils/utils.h"
 #include "string/string.h"
 
-#include "master/pic/pic.h"
+#include "master/dispatcher/dispatcher.h"
+#include "master/fast_timer/fast_timer.h"
 #include "master/interrupts/interrupts.h"
+#include "master/pic/pic.h"
+#include "master/slow_timer/slow_timer.h"
+#include "master/jobs/jobs.h"
 
 static uint8_t apicId;
 static Idt idt;
@@ -19,25 +24,28 @@ void master_init()
 {
     tty_start_message("Master initializing");
 
+    asm volatile("cli");
+
     write_msr(MSR_WORKER_ID, -1);
+
+    local_apic_init();
 
     apicId = local_apic_id();
     master_idt_populate(&idt);
 
-    tty_end_message(TTY_MESSAGE_OK);
-}
-
-void master_entry()
-{
     gdt_load();
     idt_load(&idt);
     
-    pic_remap();
+    pic_init();
+    pic_clear_mask(IRQ_CASCADE);
 
-    local_apic_init();
-    apic_timer_init(MASTER_TIMER_HZ);
+    dispatcher_init();
+    jobs_init();
 
-    master_loop();
+    fast_timer_init();
+    slow_timer_init();
+
+    tty_end_message(TTY_MESSAGE_OK);
 }
 
 uint8_t master_apic_id()

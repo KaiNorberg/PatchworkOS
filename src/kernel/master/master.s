@@ -2,12 +2,20 @@
 
 extern kernel_stack_top
 
-global master_loop
+extern dispatcher_fetch
 
-master_loop:
+global master_entry
+
+master_entry:
     mov rsp, kernel_stack_top
-    mov rbp, 0
+    xor rbp, rbp
+.loop_start:
+    cli
+    call dispatcher_fetch
     sti
-.l1:
+    test rax, rax
+    jz .not_available
+    call rax
+.not_available:
     hlt
-    jmp .l1
+    jmp .loop_start

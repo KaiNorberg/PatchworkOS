@@ -11,7 +11,7 @@ _start:
     cld
 
     mov rsp, kernel_stack_top
-    mov rbp, 0
+    xor rbp, rbp
 
     call main
 .halt:

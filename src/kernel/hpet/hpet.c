@@ -20,14 +20,13 @@ void hpet_init()
         tty_print("Hardware is incompatible, unable to find HPET");
         tty_end_message(TTY_MESSAGE_ER);
     }
-    
     page_directory_remap(kernelPageDirectory, (void*)hpet->address, (void*)hpet->address, PAGE_DIR_READ_WRITE);
 
     hpetPeriod = hpet_read(HPET_GENERAL_CAPABILITIES) >> HPET_COUNTER_CLOCK_OFFSET;
 
-    hpet_write(HPET_GENERAL_CONFIG, 0);
+    hpet_write(HPET_GENERAL_CONFIG, HPET_CONFIG_DISABLE);
     hpet_write(HPET_MAIN_COUNTER_VALUE, 0);
-    hpet_write(HPET_GENERAL_CONFIG, 1);
+    hpet_write(HPET_GENERAL_CONFIG, HPET_CONFIG_ENABLE);
 
     tty_end_message(TTY_MESSAGE_OK);
 }
@@ -39,9 +38,9 @@ uint64_t hpet_read_counter()
 
 void hpet_reset_counter()
 {
-    hpet_write(HPET_GENERAL_CONFIG, 0);
+    hpet_write(HPET_GENERAL_CONFIG, HPET_CONFIG_DISABLE);
     hpet_write(HPET_MAIN_COUNTER_VALUE, 0);
-    hpet_write(HPET_GENERAL_CONFIG, 1);
+    hpet_write(HPET_GENERAL_CONFIG, HPET_CONFIG_ENABLE);
 }
 
 uint64_t hpet_nanoseconds_per_tick()

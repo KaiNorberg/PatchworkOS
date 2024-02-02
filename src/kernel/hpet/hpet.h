@@ -8,8 +8,12 @@
 #define HPET_GENERAL_CONFIG 0x010
 #define HPET_MAIN_COUNTER_VALUE 0x0F0
 
-#define HPET_TIMER_COMPARATOR(n) (0x108 + 0x20 * n)
+#define HPET_CONFIG_ENABLE 0b1
+#define HPET_CONFIG_DISABLE 0b0
+#define HPET_CONFIG_LEGACY_MODE 0b10
+
 #define HPET_TIMER_CONFIG_CAPABILITY(n) (0x100 + 0x20 * n)
+#define HPET_TIMER_COMPARATOR(n) (0x108 + 0x20 * n)
 
 typedef struct __attribute__((packed))
 {   

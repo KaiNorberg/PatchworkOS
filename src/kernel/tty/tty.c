@@ -91,11 +91,11 @@ void tty_put(uint8_t chr)
 
                 if ((*glyph & (0b10000000 >> x / scale)) > 0)
                 {
-                    gop_put(frontbuffer, position, foreground);
+                    GOP_PUT(frontbuffer, position, foreground);
                 }
                 else
                 {
-                    gop_put(frontbuffer, position, background);
+                    GOP_PUT(frontbuffer, position, background);
                 }
             }
             if (y % scale == 0)

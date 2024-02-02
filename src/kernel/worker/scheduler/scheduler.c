@@ -103,22 +103,17 @@ void scheduler_block(Scheduler* scheduler, InterruptFrame* interruptFrame, Block
     interrupt_frame_copy(scheduler->runningTask->interruptFrame, interruptFrame);
     scheduler->runningTask = 0;
 
-    uint8_t taskInserted = 0;
     for (uint64_t i = 0; i < vector_length(scheduler->blockedTasks); i++)
     {
-        BlockedTask* blockedTask = vector_get(scheduler->blockedTasks, i);
+        BlockedTask const* blockedTask = vector_get(scheduler->blockedTasks, i);
+
         if (blockedTask->blocker.timeout > newBlockedTask.blocker.timeout)
         {
             vector_insert(scheduler->blockedTasks, i, &newBlockedTask);
-            taskInserted = 1;
-            break;
+            return;
         }
     }
-
-    if (!taskInserted)
-    {
-        vector_push(scheduler->blockedTasks, &newBlockedTask);
-    }
+    vector_push_back(scheduler->blockedTasks, &newBlockedTask);
 }
 
 void scheduler_unblock(Scheduler* scheduler)

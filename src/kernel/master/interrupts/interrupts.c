@@ -7,7 +7,10 @@
 #include "hpet/hpet.h"
 
 #include "worker/worker.h"
+#include "master/dispatcher/dispatcher.h"
+#include "master/fast_timer/fast_timer.h"
 #include "master/pic/pic.h"
+#include "master/slow_timer/slow_timer.h"
 
 extern void* masterVectorTable[IDT_VECTOR_AMOUNT];
 
@@ -52,49 +55,25 @@ void master_exception_handler(InterruptFrame const* interruptFrame)
 
 void master_irq_handler(InterruptFrame const* interruptFrame)
 {    
-    uint64_t irq = interruptFrame->vector - IRQ_BASE;
+    uint8_t irq = (uint8_t)interruptFrame->vector - IRQ_BASE;
+
+    dispatcher_dispatch(irq);
 
     switch (irq)
     {
-    case IRQ_TIMER:
-    {             
-        time_tick();
-   
-        //Temporary for testing
-        tty_acquire();
-        Point cursorPos = tty_get_cursor_pos();
-        tty_set_cursor_pos(0, 0);
-        tty_print("MASTER | TIME: "); 
-        tty_printx(time_nanoseconds()); 
-        tty_set_cursor_pos(cursorPos.x, cursorPos.y);
-        tty_release();
-
-        for (uint16_t i = 0; i < worker_amount(); i++)
-        {
-            Worker* worker = worker_get(i);
-
-            scheduler_acquire(worker->scheduler);
-
-            scheduler_unblock(worker->scheduler);
-
-            if (scheduler_wants_to_schedule(worker->scheduler))
-            {
-                Ipi ipi = 
-                {
-                    .type = IPI_WORKER_SCHEDULE
-                };
-                worker_send_ipi(worker, ipi);
-            }
-
-            scheduler_release(worker->scheduler);
-        }
-
-        local_apic_eoi();
+    case IRQ_FAST_TIMER:
+    {
+        fast_timer_eoi();
+    }
+    break;
+    case IRQ_SLOW_TIMER:
+    {        
+        slow_timer_eoi();
     }
     break;
     default:
     {
-        debug_exception(interruptFrame, "Unknown IRQ");
+        pic_eoi(irq);
     }
     break;
     }

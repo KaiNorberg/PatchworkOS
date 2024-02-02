@@ -19,7 +19,7 @@ void apic_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-void apic_timer_init(uint64_t hz)
+void apic_timer_init(uint8_t vector, uint64_t hz)
 {
     local_apic_write(LOCAL_APIC_REG_TIMER_DIVIDER, 0x3);
     local_apic_write(LOCAL_APIC_REG_TIMER_INITIAL_COUNT, 0xFFFFFFFF);
@@ -30,7 +30,7 @@ void apic_timer_init(uint64_t hz)
 
     uint32_t ticks = 0xFFFFFFFF - local_apic_read(LOCAL_APIC_REG_TIMER_CURRENT_COUNT);
 
-    local_apic_write(LOCAL_APIC_REG_LVT_TIMER, 0x20 | APIC_TIMER_PERIODIC);
+    local_apic_write(LOCAL_APIC_REG_LVT_TIMER, ((uint32_t)vector) | APIC_TIMER_PERIODIC);
     local_apic_write(LOCAL_APIC_REG_TIMER_DIVIDER, 0x3);    
     local_apic_write(LOCAL_APIC_REG_TIMER_INITIAL_COUNT, ticks);
 }

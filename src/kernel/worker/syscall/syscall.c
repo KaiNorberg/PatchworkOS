@@ -87,7 +87,7 @@ void syscall_handler(InterruptFrame* interruptFrame)
         const char* string = page_directory_get_physical_address(SYSCALL_GET_PAGE_DIRECTORY(interruptFrame), (void*)SYSCALL_GET_ARG1(interruptFrame));
 
         Point cursorPos = tty_get_cursor_pos();
-        tty_set_cursor_pos(0, 16 * (worker->id + 1));
+        tty_set_cursor_pos(0, 16 * (worker->id + 2));
 
         tty_print("WORKER: "); 
         tty_printx(worker->id); 

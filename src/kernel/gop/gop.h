@@ -2,6 +2,9 @@
 
 #include <stdint.h>
 
+#define GOP_PUT(framebuffer, point, pixel) \
+    *((Pixel*)((uint64_t)framebuffer->base + point.x * sizeof(Pixel) + point.y * framebuffer->pixelsPerScanline * 4)) = pixel
+
 typedef struct __attribute__((packed))
 {
     uint8_t b;
@@ -24,5 +27,3 @@ typedef struct __attribute__((packed))
 	uint32_t height;
 	uint32_t pixelsPerScanline;
 } Framebuffer;
-
-void gop_put(Framebuffer* framebuffer, const Point point, const Pixel pixel);
