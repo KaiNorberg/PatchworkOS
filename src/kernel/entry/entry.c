@@ -4,7 +4,6 @@
 #include "utils/utils.h"
 #include "ram_disk/ram_disk.h"
 #include "page_allocator/page_allocator.h"
-#include "program_loader/program_loader.h"
 #include "heap/heap.h"
 #include "hpet/hpet.h"
 #include "kernel/kernel.h"
@@ -28,24 +27,18 @@ void main(BootInfo* bootInfo)
     tty_print("\n\r");
 
 #if 1
-    for (uint64_t i = 0; i < 10; i++)
+    for (uint64_t i = 0; i < 6; i++)
     {
         tty_print("Loading fork_test...\n\r");    
         
-        Process* process = process_new();
-        Task* task = task_new(process, TASK_PRIORITY_MIN);
-        load_program(task, "/bin/parent.elf");
-        worker_pool_push(task);
+        worker_pool_spawn("/bin/parent.elf");
     }
 #else
     for (uint64_t i = 0; i < 4; i++)
     {
         tty_print("Loading sleep_test...\n\r");
         
-        Process* process = process_new();
-        Task* task = task_new(process, TASK_PRIORITY_MIN);
-        load_program(task, "/bin/sleep_test.elf");
-        worker_pool_push(task);
+        worker_pool_spawn("/bin/sleep_test.elf");
     }
 #endif
 

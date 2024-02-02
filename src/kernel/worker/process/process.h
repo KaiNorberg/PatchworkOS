@@ -18,7 +18,6 @@ typedef struct ProcessBlock
 {
     void* physicalAddress;
     void* virtualAddress;
-    uint64_t pageAmount;
     struct ProcessBlock* next;
 } ProcessBlock;
 
@@ -49,7 +48,7 @@ uint64_t pid_new();
 
 Process* process_new();
 
-void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t pageAmount);
+void* process_allocate_page(Process* process, void* virtualAddress);
 
 Task* task_new(Process* process, uint8_t priority);
 

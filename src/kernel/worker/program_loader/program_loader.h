@@ -1,8 +1,6 @@
 #pragma once
 
-#include "page_directory/page_directory.h"
-#include "kernel/kernel.h"
-#include "process/process.h"
+#include "worker/process/process.h"
 
 #define ET_NONE 0x00
 #define ET_REL 0x01

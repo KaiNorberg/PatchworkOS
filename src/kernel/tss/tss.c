@@ -1,11 +1,6 @@
 #include "tss.h"
 
-#include "string/string.h"
-#include "process/process.h"
 #include "global_heap/global_heap.h"
-#include "tty/tty.h"
-#include "page_allocator/page_allocator.h"
-#include "debug/debug.h"
 
 Tss* tss_new()
 {

@@ -10,7 +10,7 @@ void worker_pool_init();
 
 void worker_pool_send_ipi(Ipi ipi);
 
-void worker_pool_push(Task* task);
+void worker_pool_spawn(const char* path);
 
 uint8_t worker_amount();
 

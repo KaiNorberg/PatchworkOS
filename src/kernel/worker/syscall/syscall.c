@@ -2,9 +2,9 @@
 
 #include "tty/tty.h"
 #include "string/string.h"
-#include "program_loader/program_loader.h"
-
 #include "worker_pool/worker_pool.h"
+
+#include "worker/program_loader/program_loader.h"
 
 #include <lib-syscall.h>
 
@@ -22,11 +22,14 @@ void syscall_exit(InterruptFrame* interruptFrame)
 
 void syscall_spawn(InterruptFrame* interruptFrame)
 {
-    //TODO: Implement pointer testing
     const char* path = page_directory_get_physical_address(SYSCALL_GET_PAGE_DIRECTORY(interruptFrame), (void*)SYSCALL_GET_ARG1(interruptFrame));
+    if ((uint64_t)path > USER_ADDRESS_SPACE_TOP)
+    {
+        SYSCALL_SET_RESULT(interruptFrame, -1);
+        return;
+    }
 
     Worker* worker = worker_self();
-
     scheduler_acquire(worker->scheduler);             
 
     Process* process = process_new();
@@ -34,7 +37,6 @@ void syscall_spawn(InterruptFrame* interruptFrame)
     load_program(task, path);
 
     scheduler_push(worker->scheduler, task);
-
     scheduler_release(worker->scheduler);
 
     SYSCALL_SET_RESULT(interruptFrame, process->id);

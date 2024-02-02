@@ -106,7 +106,7 @@ run:
     -drive file=bin/Asym.img \
     -m 1G \
     -cpu qemu64 \
-    -smp 6 \
+    -smp 8 \
     -serial stdio \
     -d int \
     -no-shutdown -no-reboot \

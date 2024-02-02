@@ -11,6 +11,8 @@
 
 uint8_t load_program(Task* task, const char* path)
 {
+    //This sucks, dont worry about it
+
     FILE* file = ram_disk_open(path);
 
     if (file == 0)
@@ -46,12 +48,21 @@ uint8_t load_program(Task* task, const char* path)
 		case PT_LOAD:
         {
             uint64_t pageAmount = GET_SIZE_IN_PAGES(programHeader->memorySize);
-            void* segment = process_allocate_pages(task->process, (void*)programHeader->virtualAddress, pageAmount);
-            
-            memclr(segment, pageAmount * 0x1000);
+            for (uint64_t i = 0; i < pageAmount; i++)
+            {
+                void* segment = process_allocate_page(task->process, (void*)programHeader->virtualAddress + i * 0x1000);
+                memclr(segment, 0x1000);
 
-            ram_disk_seek(file, programHeader->offset, SEEK_SET);
-            ram_disk_read(segment, programHeader->fileSize, file);
+                ram_disk_seek(file, programHeader->offset + i * 0x1000, SEEK_SET);
+                if (i == pageAmount - 1)
+                {
+                    ram_disk_read(segment, programHeader->fileSize % 0x1000, file);
+                }
+                else
+                {
+                    ram_disk_read(segment, 0x1000, file);
+                }
+            }
 		}
 		break;
 		}

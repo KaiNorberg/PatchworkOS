@@ -1,11 +1,12 @@
 #pragma once
 
 #include "queue/queue.h"
-#include "process/process.h"
 #include "vector/vector.h"
 #include "lock/lock.h"
 #include "interrupt_frame/interrupt_frame.h"
 #include "time/time.h"
+
+#include "worker/process/process.h"
 
 #define SCHEDULER_TIME_SLICE (NANOSECONDS_PER_SECOND / 2)
 

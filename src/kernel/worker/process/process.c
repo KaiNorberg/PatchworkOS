@@ -32,20 +32,19 @@ Process* process_new()
     newProcess->id = pid_new();
     newProcess->taskAmount = 0;
 
-    process_allocate_pages(newProcess, PROCESS_ADDRESS_SPACE_USER_STACK, 1);
+    process_allocate_page(newProcess, PROCESS_ADDRESS_SPACE_USER_STACK);
     
     return newProcess;
 }
 
-void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t pageAmount)
+void* process_allocate_page(Process* process, void* virtualAddress)
 {
     ProcessBlock* newBlock = kmalloc(sizeof(ProcessBlock));
 
-    void* physicalAddress = page_allocator_request_amount(pageAmount);
+    void* physicalAddress = page_allocator_request();
 
     newBlock->physicalAddress = physicalAddress;
     newBlock->virtualAddress = virtualAddress;
-    newBlock->pageAmount = pageAmount;
     newBlock->next = 0;
 
     if (process->firstBlock == 0)
@@ -59,7 +58,7 @@ void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t pa
         process->lastBlock = newBlock;
     }
     
-    page_directory_remap_pages(process->pageDirectory, virtualAddress, physicalAddress, pageAmount, PAGE_DIR_READ_WRITE | PAGE_DIR_USER_SUPERVISOR);
+    page_directory_remap(process->pageDirectory, virtualAddress, physicalAddress, PAGE_DIR_READ_WRITE | PAGE_DIR_USER_SUPERVISOR);
 
     return physicalAddress;
 }
@@ -98,8 +97,7 @@ void task_free(Task* task)
             {
                 ProcessBlock* nextBlock = currentBlock->next;
 
-                page_allocator_unlock_pages(currentBlock->physicalAddress, currentBlock->pageAmount);
-
+                page_allocator_unlock_page(currentBlock->physicalAddress);
                 kfree(currentBlock);           
 
                 currentBlock = nextBlock;

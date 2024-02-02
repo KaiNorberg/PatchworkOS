@@ -15,6 +15,7 @@
 
 #include "worker/interrupts/interrupts.h"
 #include "worker/scheduler/scheduler.h"
+#include "worker/program_loader/program_loader.h"
 #include "worker/startup/startup.h"
 
 static Worker workers[MAX_WORKER_AMOUNT];
@@ -42,8 +43,12 @@ void worker_pool_send_ipi(Ipi ipi)
     }
 }
 
-void worker_pool_push(Task* task)
-{
+void worker_pool_spawn(const char* path)
+{        
+    Process* process = process_new();
+    Task* task = task_new(process, TASK_PRIORITY_MIN);
+    load_program(task, path);
+
     for (uint8_t i = 0; i < workerAmount; i++)
     {
         scheduler_acquire(worker_get(i)->scheduler);
