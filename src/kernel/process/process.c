@@ -64,7 +64,7 @@ void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t pa
     return physicalAddress;
 }
 
-Task* task_new(Process* process, InterruptFrame* interruptFrame, uint8_t priority)
+Task* task_new(Process* process, uint8_t priority)
 {
     if (priority > TASK_PRIORITY_MAX)
     {
@@ -75,7 +75,7 @@ Task* task_new(Process* process, InterruptFrame* interruptFrame, uint8_t priorit
 
     Task* newTask = kmalloc(sizeof(Task));
     newTask->process = process;
-    newTask->interruptFrame = interruptFrame;
+    newTask->interruptFrame = interrupt_frame_new(0, (void*)USER_ADDRESS_SPACE_TOP, GDT_USER_CODE | 3, GDT_USER_DATA | 3, process->pageDirectory);
     newTask->state = TASK_STATE_READY;
     newTask->priority = priority;
 

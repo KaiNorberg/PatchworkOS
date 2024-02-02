@@ -115,7 +115,7 @@ run:
     -net none
 	
 clean:		
-	@cd vendor/gnu-efi && make clean && cd ../..
+#@cd vendor/gnu-efi && make clean && cd ../..
 	@$(call run_and_test,rm -rf $(BUILD_DIR))
 	@$(call run_and_test,rm -rf $(BIN_DIR))
 

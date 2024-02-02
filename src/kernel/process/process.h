@@ -51,6 +51,6 @@ Process* process_new();
 
 void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t pageAmount);
 
-Task* task_new(Process* process, InterruptFrame* interruptFrame, uint8_t priority);
+Task* task_new(Process* process, uint8_t priority);
 
 void task_free(Task* task);

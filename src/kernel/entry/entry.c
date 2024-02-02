@@ -17,6 +17,8 @@
 #include "vector/vector.h"
 #include "master/master.h"
 
+#include "worker_pool/worker_pool.h"
+
 #include "../common.h"
 
 void main(BootInfo* bootInfo)
@@ -25,17 +27,25 @@ void main(BootInfo* bootInfo)
 
     tty_print("\n\r");
 
-#if 0
+#if 1
     for (uint64_t i = 0; i < 10; i++)
     {
-        tty_print("Loading fork_test...\n\r");
-        load_program("/bin/fork_test.elf");
+        tty_print("Loading fork_test...\n\r");    
+        
+        Process* process = process_new();
+        Task* task = task_new(process, TASK_PRIORITY_MIN);
+        load_program(task, "/bin/parent.elf");
+        worker_pool_push(task);
     }
 #else
     for (uint64_t i = 0; i < 4; i++)
     {
         tty_print("Loading sleep_test...\n\r");
-        load_program("/bin/sleep_test.elf");
+        
+        Process* process = process_new();
+        Task* task = task_new(process, TASK_PRIORITY_MIN);
+        load_program(task, "/bin/sleep_test.elf");
+        worker_pool_push(task);
     }
 #endif
 

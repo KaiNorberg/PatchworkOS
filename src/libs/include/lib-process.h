@@ -6,7 +6,7 @@ extern "C" {
  
 #include <stdint.h>
 
-uint64_t fork();
+uint64_t spawn(const char* path);
 
 uint64_t sleep(uint64_t milliseconds);
 

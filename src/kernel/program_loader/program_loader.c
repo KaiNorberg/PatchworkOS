@@ -7,10 +7,9 @@
 #include "gdt/gdt.h"
 #include "tty/tty.h"
 #include "debug/debug.h"
-#include "process/process.h"
 #include "worker_pool/worker_pool.h"
 
-uint8_t load_program(const char* path)
+uint8_t load_program(Task* task, const char* path)
 {
     FILE* file = ram_disk_open(path);
 
@@ -38,18 +37,16 @@ uint8_t load_program(const char* path)
     }
     ram_disk_read(programHeaders, programHeaderTableSize, file);
 
-    Process* process = process_new();
-
 	for (ElfProgramHeader* programHeader = programHeaders; 
         (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize; 
         programHeader = (ElfProgramHeader*)((uint64_t)programHeader + header.programHeaderSize))
 	{		
         switch (programHeader->type)
-		{
+        {
 		case PT_LOAD:
-		{
+        {
             uint64_t pageAmount = GET_SIZE_IN_PAGES(programHeader->memorySize);
-            void* segment = process_allocate_pages(process, (void*)programHeader->virtualAddress, pageAmount);
+            void* segment = process_allocate_pages(task->process, (void*)programHeader->virtualAddress, pageAmount);
             
             memclr(segment, pageAmount * 0x1000);
 
@@ -60,10 +57,7 @@ uint8_t load_program(const char* path)
 		}
 	}
 
-    InterruptFrame* interruptFrame = interrupt_frame_new((void*)header.entry, PROCESS_ADDRESS_SPACE_USER_STACK + 0x1000, 
-        GDT_USER_CODE | 3, GDT_USER_DATA | 3, 0x202, process->pageDirectory);
-        
-    worker_pool_push(task_new(process, interruptFrame, TASK_PRIORITY_MIN));
+    task->interruptFrame->instructionPointer = header.entry;
 
     kfree(programHeaders);
     ram_disk_close(file);

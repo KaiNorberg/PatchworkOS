@@ -2,6 +2,7 @@
 
 #include "page_directory/page_directory.h"
 #include "kernel/kernel.h"
+#include "process/process.h"
 
 #define ET_NONE 0x00
 #define ET_REL 0x01
@@ -58,4 +59,4 @@ typedef struct
     uint64_t entrySize;
 } ElfSectionHeader;
 
-uint8_t load_program(const char* path);
+uint8_t load_program(Task* task, const char* path);

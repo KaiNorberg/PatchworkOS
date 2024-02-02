@@ -2,8 +2,8 @@
 
 section .text
 
-global fork
-fork:
-    mov rax, 6
+global spawn
+spawn:
+    mov rax, 5
     int 0x80
     ret

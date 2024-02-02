@@ -1,10 +1,9 @@
 [bits 64]
 
-section .text
-
 extern main
 extern exit
 
+section .text
 global _start:function (_start.end - _start)
 _start:
     call main

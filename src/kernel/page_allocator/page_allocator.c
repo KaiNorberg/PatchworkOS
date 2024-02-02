@@ -160,7 +160,7 @@ void* page_allocator_request_amount(uint64_t amount)
     if (amount <= 1)
     {
         return page_allocator_request();
-    } 
+    }
     lock_acquire(&lock);
 
     uint64_t startAddress = 0;

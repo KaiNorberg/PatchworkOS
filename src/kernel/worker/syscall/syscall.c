@@ -2,6 +2,7 @@
 
 #include "tty/tty.h"
 #include "string/string.h"
+#include "program_loader/program_loader.h"
 
 #include "worker_pool/worker_pool.h"
 
@@ -19,34 +20,24 @@ void syscall_exit(InterruptFrame* interruptFrame)
     scheduler_release(worker->scheduler);             
 }
 
-void syscall_fork(InterruptFrame* interruptFrame)
+void syscall_spawn(InterruptFrame* interruptFrame)
 {
+    //TODO: Implement pointer testing
+    const char* path = page_directory_get_physical_address(SYSCALL_GET_PAGE_DIRECTORY(interruptFrame), (void*)SYSCALL_GET_ARG1(interruptFrame));
+
     Worker* worker = worker_self();
 
     scheduler_acquire(worker->scheduler);             
 
-    Process* child = process_new();
+    Process* process = process_new();
+    Task* task = task_new(process, TASK_PRIORITY_MIN);
+    load_program(task, path);
 
-    Process* parent = worker->scheduler->runningTask->process;
-    ProcessBlock* currentBlock = parent->firstBlock;
-    while (currentBlock != 0)
-    {
-        void* physicalAddress = process_allocate_pages(child, currentBlock->virtualAddress, currentBlock->pageAmount);
+    scheduler_push(worker->scheduler, task);
 
-        memcpy(physicalAddress, currentBlock->physicalAddress, currentBlock->pageAmount * 0x1000);
+    scheduler_release(worker->scheduler);
 
-        currentBlock = currentBlock->next;
-    }
-
-    InterruptFrame* childFrame = interrupt_frame_duplicate(interruptFrame);
-    childFrame->cr3 = (uint64_t)child->pageDirectory;
-
-    childFrame->rax = 0; // Child result
-    interruptFrame->rax = child->id; // Parent result
-
-    scheduler_push(worker->scheduler, task_new(child, childFrame, TASK_PRIORITY_MIN));
-
-    scheduler_release(worker->scheduler);             
+    SYSCALL_SET_RESULT(interruptFrame, process->id);
 }
 
 void syscall_sleep(InterruptFrame* interruptFrame)
@@ -69,7 +60,7 @@ void syscall_sleep(InterruptFrame* interruptFrame)
 Syscall syscallTable[] =
 {
     [SYS_EXIT] = (Syscall)syscall_exit,
-    [SYS_FORK] = (Syscall)syscall_fork,
+    [SYS_SPAWN] = (Syscall)syscall_spawn,
     [SYS_SLEEP] = (Syscall)syscall_sleep
 };
 

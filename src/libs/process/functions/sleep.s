@@ -4,6 +4,6 @@ section .text
 
 global sleep
 sleep:
-    mov rax, 7
+    mov rax, 6
     int 0x80
     ret
