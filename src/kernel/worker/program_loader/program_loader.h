@@ -57,4 +57,4 @@ typedef struct
     uint64_t entrySize;
 } ElfSectionHeader;
 
-uint8_t load_program(Task* task, const char* path);
+uint8_t load_program(Process* process, const char* path);

@@ -17,16 +17,16 @@ typedef struct
 
 typedef struct
 {
-    Task* task;
+    Process* process;
     Blocker blocker;
-} BlockedTask;
+} BlockedProcess;
 
 typedef struct
 {
-    Queue* queues[TASK_PRIORITY_LEVELS];
-    Task* runningTask;
+    Queue* queues[PROCESS_PRIORITY_LEVELS];
+    Process* runningProcess;
 
-    Vector* blockedTasks;
+    Vector* blockedProcesss;
 
     uint64_t nextPreemption;
 
@@ -41,7 +41,7 @@ void scheduler_acquire(Scheduler* scheduler);
 
 void scheduler_release(Scheduler* scheduler);
 
-void scheduler_push(Scheduler* scheduler, Task* task);
+void scheduler_push(Scheduler* scheduler, Process* process);
 
 void scheduler_exit(Scheduler* scheduler);
 
@@ -53,4 +53,4 @@ void scheduler_unblock(Scheduler* scheduler);
 
 uint8_t scheduler_wants_to_schedule(Scheduler const* scheduler);
 
-uint64_t scheduler_task_amount(Scheduler const* scheduler);
+uint64_t scheduler_process_amount(Scheduler const* scheduler);

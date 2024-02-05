@@ -10,13 +10,13 @@ Scheduler* scheduler_new()
 {
     Scheduler* scheduler = kmalloc(sizeof(Scheduler));
 
-    for (uint64_t priority = TASK_PRIORITY_MIN; priority <= TASK_PRIORITY_MAX; priority++)
+    for (uint64_t priority = PROCESS_PRIORITY_MIN; priority <= PROCESS_PRIORITY_MAX; priority++)
     {
         scheduler->queues[priority] = queue_new();
     }
-    scheduler->runningTask = 0;
+    scheduler->runningProcess = 0;
 
-    scheduler->blockedTasks = vector_new(sizeof(BlockedTask));
+    scheduler->blockedProcesss = vector_new(sizeof(BlockedProcess));
 
     scheduler->nextPreemption = 0;
     scheduler->lock = lock_new();
@@ -34,55 +34,55 @@ void scheduler_release(Scheduler* scheduler)
     lock_release(&scheduler->lock);
 }
 
-void scheduler_push(Scheduler* scheduler, Task* task)
+void scheduler_push(Scheduler* scheduler, Process* process)
 {
-    if (task->priority < TASK_PRIORITY_MAX)
+    if (process->priority < PROCESS_PRIORITY_MAX)
     {
-        queue_push(scheduler->queues[task->priority + 1], task);
+        queue_push(scheduler->queues[process->priority + 1], process);
     }
     else
     {
-        queue_push(scheduler->queues[task->priority], task);
+        queue_push(scheduler->queues[process->priority], process);
     }
 }
 
 void scheduler_exit(Scheduler* scheduler)
 {
-    task_free(scheduler->runningTask);
-    scheduler->runningTask = 0;
+    process_free(scheduler->runningProcess);
+    scheduler->runningProcess = 0;
 }
 
 void scheduler_schedule(Scheduler* scheduler, InterruptFrame* interruptFrame)
 {        
-    Task* newTask = 0;
-    for (int64_t i = TASK_PRIORITY_MAX; i >= 0; i--) 
+    Process* newProcess = 0;
+    for (int64_t i = PROCESS_PRIORITY_MAX; i >= 0; i--) 
     {
         if (queue_length(scheduler->queues[i]) != 0)
         {
-            newTask = queue_pop(scheduler->queues[i]);
+            newProcess = queue_pop(scheduler->queues[i]);
             break;
         }
     }        
 
-    if (newTask != 0)
+    if (newProcess != 0)
     {
-        if (scheduler->runningTask != 0)
+        if (scheduler->runningProcess != 0)
         {
-            Task* oldTask = scheduler->runningTask;
-            interrupt_frame_copy(oldTask->interruptFrame, interruptFrame);
+            Process* oldProcess = scheduler->runningProcess;
+            interrupt_frame_copy(oldProcess->interruptFrame, interruptFrame);
 
-            oldTask->state = TASK_STATE_READY;
-            queue_push(scheduler->queues[oldTask->priority], oldTask);                
+            oldProcess->state = PROCESS_STATE_READY;
+            queue_push(scheduler->queues[oldProcess->priority], oldProcess);                
         }
 
-        newTask->state = TASK_STATE_RUNNING;
-        scheduler->runningTask = newTask;
+        newProcess->state = PROCESS_STATE_RUNNING;
+        scheduler->runningProcess = newProcess;
 
-        interrupt_frame_copy(interruptFrame, newTask->interruptFrame);
+        interrupt_frame_copy(interruptFrame, newProcess->interruptFrame);
 
         scheduler->nextPreemption = time_nanoseconds() + SCHEDULER_TIME_SLICE;
     }
-    else if (scheduler->runningTask == 0)
+    else if (scheduler->runningProcess == 0)
     {
         interruptFrame->instructionPointer = (uint64_t)scheduler_idle_loop;
         interruptFrame->cr3 = (uint64_t)kernelPageDirectory;
@@ -94,48 +94,48 @@ void scheduler_schedule(Scheduler* scheduler, InterruptFrame* interruptFrame)
 
 void scheduler_block(Scheduler* scheduler, InterruptFrame* interruptFrame, Blocker blocker)
 {
-    BlockedTask newBlockedTask = 
+    BlockedProcess newBlockedProcess = 
     {
         .blocker = blocker,
-        .task = scheduler->runningTask
+        .process = scheduler->runningProcess
     };
 
-    interrupt_frame_copy(scheduler->runningTask->interruptFrame, interruptFrame);
-    scheduler->runningTask = 0;
+    interrupt_frame_copy(scheduler->runningProcess->interruptFrame, interruptFrame);
+    scheduler->runningProcess = 0;
 
-    for (uint64_t i = 0; i < vector_length(scheduler->blockedTasks); i++)
+    for (uint64_t i = 0; i < vector_length(scheduler->blockedProcesss); i++)
     {
-        BlockedTask const* blockedTask = vector_get(scheduler->blockedTasks, i);
+        BlockedProcess const* blockedProcess = vector_get(scheduler->blockedProcesss, i);
 
-        if (blockedTask->blocker.timeout > newBlockedTask.blocker.timeout)
+        if (blockedProcess->blocker.timeout > newBlockedProcess.blocker.timeout)
         {
-            vector_insert(scheduler->blockedTasks, i, &newBlockedTask);
+            vector_insert(scheduler->blockedProcesss, i, &newBlockedProcess);
             return;
         }
     }
-    vector_push_back(scheduler->blockedTasks, &newBlockedTask);
+    vector_push_back(scheduler->blockedProcesss, &newBlockedProcess);
 }
 
 void scheduler_unblock(Scheduler* scheduler)
 {
-    if (vector_length(scheduler->blockedTasks) != 0)
+    if (vector_length(scheduler->blockedProcesss) != 0)
     {
-        BlockedTask* blockedTask = vector_get(scheduler->blockedTasks, 0);
+        BlockedProcess* blockedProcess = vector_get(scheduler->blockedProcesss, 0);
 
-        if (blockedTask->blocker.timeout <= time_nanoseconds())
+        if (blockedProcess->blocker.timeout <= time_nanoseconds())
         {
-            scheduler_push(scheduler, blockedTask->task);
-            vector_erase(scheduler->blockedTasks, 0);
+            scheduler_push(scheduler, blockedProcess->process);
+            vector_erase(scheduler->blockedProcesss, 0);
         }
     }
 }
 
 uint8_t scheduler_wants_to_schedule(Scheduler const* scheduler)
 {
-    //If time slice is over and task is available
+    //If time slice is over and process is available
     if (scheduler->nextPreemption < time_nanoseconds())
     {
-        for (int64_t i = TASK_PRIORITY_MAX; i >= 0; i--) 
+        for (int64_t i = PROCESS_PRIORITY_MAX; i >= 0; i--) 
         {
             if (queue_length(scheduler->queues[i]) != 0)
             {
@@ -144,11 +144,11 @@ uint8_t scheduler_wants_to_schedule(Scheduler const* scheduler)
         }
     }
     
-    //If higher priority task is available
-    if (scheduler->runningTask != 0)
+    //If higher priority process is available
+    if (scheduler->runningProcess != 0)
     {
-        uint8_t runningPriority = scheduler->runningTask->priority;
-        for (int64_t i = TASK_PRIORITY_MAX; i > runningPriority; i--) 
+        uint8_t runningPriority = scheduler->runningProcess->priority;
+        for (int64_t i = PROCESS_PRIORITY_MAX; i > runningPriority; i--) 
         {
             if (queue_length(scheduler->queues[i]) != 0)
             {
@@ -160,14 +160,14 @@ uint8_t scheduler_wants_to_schedule(Scheduler const* scheduler)
     return 0;
 }
 
-uint64_t scheduler_task_amount(Scheduler const* scheduler)
+uint64_t scheduler_process_amount(Scheduler const* scheduler)
 {
-    uint64_t taskAmount = 0;
-    for (uint64_t priority = TASK_PRIORITY_MIN; priority <= TASK_PRIORITY_MAX; priority++)
+    uint64_t processAmount = 0;
+    for (uint64_t priority = PROCESS_PRIORITY_MIN; priority <= PROCESS_PRIORITY_MAX; priority++)
     {
-        taskAmount += queue_length(scheduler->queues[priority]);
+        processAmount += queue_length(scheduler->queues[priority]);
     }
-    taskAmount += scheduler->runningTask != 0;
+    processAmount += scheduler->runningProcess != 0;
 
-    return taskAmount;
+    return processAmount;
 }

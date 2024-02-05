@@ -32,18 +32,17 @@ void syscall_spawn(InterruptFrame* interruptFrame)
     Worker* worker = worker_self();
     scheduler_acquire(worker->scheduler);
 
-    Process* process = process_new();
-    Task* task = task_new(process, TASK_PRIORITY_MIN);
-    if (load_program(task, path))
+    Process* process = process_new(PROCESS_PRIORITY_MIN);
+    if (load_program(process, path))
     {
-        scheduler_push(worker->scheduler, task);
+        scheduler_push(worker->scheduler, process);
         scheduler_release(worker->scheduler);
 
         SYSCALL_SET_RESULT(interruptFrame, process->id);
     }
     else
     {
-        task_free(task); //Will also free process
+        process_free(process);
         SYSCALL_SET_RESULT(interruptFrame, -1);
     }
 }
@@ -90,12 +89,12 @@ void syscall_handler(InterruptFrame* interruptFrame)
 
         tty_print("WORKER: "); 
         tty_printx(worker->id); 
-        tty_print(" TASK AMOUNT: "); 
-        tty_printx(scheduler_task_amount(worker->scheduler));
-        if (worker->scheduler->runningTask != 0)
+        tty_print(" PROCESS AMOUNT: "); 
+        tty_printx(scheduler_process_amount(worker->scheduler));
+        if (worker->scheduler->runningProcess != 0)
         {
             tty_print(" PID: "); 
-            tty_printx(worker->scheduler->runningTask->process->id);
+            tty_printx(worker->scheduler->runningProcess->id);
         }
         tty_print(" | ");
         tty_print(string);

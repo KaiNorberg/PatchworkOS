@@ -44,11 +44,10 @@ void worker_pool_send_ipi(Ipi ipi)
 
 void worker_pool_spawn(const char* path)
 {        
-    Process* process = process_new();
-    Task* task = task_new(process, TASK_PRIORITY_MIN);
-    if (!load_program(task, path))
+    Process* process = process_new(PROCESS_PRIORITY_MIN);
+    if (!load_program(process, path))
     {
-        task_free(task);
+        process_free(process);
         return;
     }
 
@@ -62,8 +61,8 @@ void worker_pool_spawn(const char* path)
     for (uint8_t i = 0; i < workerAmount; i++)
     {
         Scheduler* scheduler = worker_get(i)->scheduler;
-        uint64_t length = (scheduler->runningTask != 0);
-        for (int64_t priority = TASK_PRIORITY_MAX; priority >= TASK_PRIORITY_MIN; priority--) 
+        uint64_t length = (scheduler->runningProcess != 0);
+        for (int64_t priority = PROCESS_PRIORITY_MAX; priority >= PROCESS_PRIORITY_MIN; priority--) 
         {
             length += queue_length(scheduler->queues[priority]);
         }
@@ -75,7 +74,7 @@ void worker_pool_spawn(const char* path)
         }
     }
 
-    scheduler_push(bestScheduler, task);
+    scheduler_push(bestScheduler, process);
 
     for (uint8_t i = 0; i < workerAmount; i++)
     {

@@ -12,7 +12,7 @@
 
 #include <libc/string.h>
 
-uint8_t load_program(Task* task, const char* path)
+uint8_t load_program(Process* process, const char* path)
 {
     //This sucks, dont worry about it
     File* file;
@@ -57,7 +57,7 @@ uint8_t load_program(Task* task, const char* path)
             uint64_t pageAmount = GET_SIZE_IN_PAGES(programHeader->memorySize);
             for (uint64_t i = 0; i < pageAmount; i++)
             {
-                void* segment = process_allocate_page(task->process, (void*)programHeader->virtualAddress + i * 0x1000);
+                void* segment = process_allocate_page(process, (void*)programHeader->virtualAddress + i * 0x1000);
                 memset(segment, 0, 0x1000);
 
                 vfs_seek(file, programHeader->offset + i * 0x1000);
@@ -75,7 +75,7 @@ uint8_t load_program(Task* task, const char* path)
 		}
 	}
 
-    task->interruptFrame->instructionPointer = header.entry;
+    process->interruptFrame->instructionPointer = header.entry;
 
     kfree(programHeaders);
     vfs_close(file);

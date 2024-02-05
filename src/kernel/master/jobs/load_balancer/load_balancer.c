@@ -1,4 +1,4 @@
-#include "task_balancer.h"
+#include "load_balancer.h"
 
 #include "tty/tty.h"
 #include "worker_pool/worker_pool.h"
@@ -6,12 +6,12 @@
 #include "master/interrupts/interrupts.h"
 #include "master/dispatcher/dispatcher.h"
 
-void task_balancer_init()
+void load_balancer_init()
 {
-    dispatcher_push(task_balancer, IRQ_SLOW_TIMER);
+    dispatcher_push(load_balancer, IRQ_SLOW_TIMER);
 }
 
-void task_balancer_iteration(uint64_t average, uint64_t remainder, uint8_t priority)
+void load_balancer_iteration(uint64_t average, uint64_t remainder, uint8_t priority)
 {        
     if (average == 0)
     {
@@ -19,7 +19,7 @@ void task_balancer_iteration(uint64_t average, uint64_t remainder, uint8_t prior
         remainder = 0;
     }
 
-    Task* task = 0;
+    Process* process = 0;
     for (uint8_t i = 0; i < worker_amount(); i++)
     {
         Worker* worker = worker_get(i);
@@ -27,50 +27,50 @@ void task_balancer_iteration(uint64_t average, uint64_t remainder, uint8_t prior
 
         uint64_t queueLength = queue_length(queue);
 
-        uint64_t amount = queueLength + (worker->scheduler->runningTask != 0);
+        uint64_t amount = queueLength + (worker->scheduler->runningProcess != 0);
 
         if (remainder != 0 && amount == average + 1)
         {
             remainder--;
         }
-        else if (queueLength != 0 && amount > average && task == 0)
+        else if (queueLength != 0 && amount > average && process == 0)
         {
-            task = queue_pop(queue);
+            process = queue_pop(queue);
         }
-        else if (amount < average && task != 0)
+        else if (amount < average && process != 0)
         {
-            queue_push(queue, task);
-            task = 0;
+            queue_push(queue, process);
+            process = 0;
         }
     }
 
-    if (task != 0)
+    if (process != 0)
     {
-        queue_push(worker_get(0)->scheduler->queues[priority], task);
+        queue_push(worker_get(0)->scheduler->queues[priority], process);
     }
 }
 
-void task_balancer()
+void load_balancer()
 {     
     for (uint8_t i = 0; i < worker_amount(); i++)
     {
         scheduler_acquire(worker_get(i)->scheduler);
     }
 
-    for (uint8_t priority = TASK_PRIORITY_MIN; priority <= TASK_PRIORITY_MAX; priority++)
+    for (uint8_t priority = PROCESS_PRIORITY_MIN; priority <= PROCESS_PRIORITY_MAX; priority++)
     {
         uint64_t total = 0;
         for (uint8_t i = 0; i < worker_amount(); i++)
         {
             Scheduler const* scheduler = worker_get(i)->scheduler;
-            total += queue_length(scheduler->queues[priority]) + (scheduler->runningTask != 0);
+            total += queue_length(scheduler->queues[priority]) + (scheduler->runningProcess != 0);
         }
         uint64_t average = total / worker_amount();
         uint64_t remainder = total % worker_amount();
 
-        for (int j = 0; j < TASK_BALANCER_ITERATIONS; j++)
+        for (int j = 0; j < LOAD_BALANCER_ITERATIONS; j++)
         {
-            task_balancer_iteration(average, remainder, priority);
+            load_balancer_iteration(average, remainder, priority);
         }
     }
 
@@ -79,5 +79,5 @@ void task_balancer()
         scheduler_release(worker_get(i)->scheduler);
     }
 
-    dispatcher_push(task_balancer, IRQ_SLOW_TIMER);
+    dispatcher_push(load_balancer, IRQ_SLOW_TIMER);
 }
