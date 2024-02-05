@@ -41,7 +41,7 @@ The short term goal is to create a basic terminal/shell, however the current lon
 
 ## Documentation (WIP)
 
-Documentation will eventually be found on the ![wiki](https://github.com/Kaj9296/Asym/wiki) page.
+Documentation can be found on the ![wiki](https://github.com/Kaj9296/Asym/wiki) page.
 
 ## Contributing
 
