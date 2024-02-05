@@ -1,7 +1,6 @@
 #include "syscall.h"
 
 #include "tty/tty.h"
-#include "string/string.h"
 #include "worker_pool/worker_pool.h"
 
 #include "worker/program_loader/program_loader.h"
@@ -35,12 +34,18 @@ void syscall_spawn(InterruptFrame* interruptFrame)
 
     Process* process = process_new();
     Task* task = task_new(process, TASK_PRIORITY_MIN);
-    load_program(task, path);
+    if (load_program(task, path))
+    {
+        scheduler_push(worker->scheduler, task);
+        scheduler_release(worker->scheduler);
 
-    scheduler_push(worker->scheduler, task);
-    scheduler_release(worker->scheduler);
-
-    SYSCALL_SET_RESULT(interruptFrame, process->id);
+        SYSCALL_SET_RESULT(interruptFrame, process->id);
+    }
+    else
+    {
+        task_free(task); //Will also free process
+        SYSCALL_SET_RESULT(interruptFrame, -1);
+    }
 }
 
 void syscall_sleep(InterruptFrame* interruptFrame)

@@ -6,7 +6,6 @@
 #include "tty/tty.h"
 #include "time/time.h"
 #include "utils/utils.h"
-#include "string/string.h"
 
 #include "master/dispatcher/dispatcher.h"
 #include "master/fast_timer/fast_timer.h"

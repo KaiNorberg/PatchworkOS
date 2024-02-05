@@ -5,7 +5,7 @@ int main()
 {               
     sys_test("Spawning child...    \r");
 
-    spawn("/bin/child.elf");
+    spawn("ram:/bin/child.elf");
 
     while (1)
     {

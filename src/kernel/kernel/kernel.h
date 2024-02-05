@@ -3,11 +3,11 @@
 #include <stdint.h>
 
 #include "gop/gop.h"
-#include "ram_disk/ram_disk.h"
 #include "memory/memory.h"
 #include "page_directory/page_directory.h"
 #include "rsdt/rsdt.h"
 #include "tty/tty.h"
+#include "ram_disk/ram_disk.h"
 
 typedef struct 
 {    

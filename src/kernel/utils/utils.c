@@ -1,6 +1,6 @@
 #include "utils.h"
 
-#include "string/string.h"
+#include <libc/string.h>
 
 uint64_t read_msr(uint64_t msr)
 {

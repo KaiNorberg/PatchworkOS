@@ -5,7 +5,6 @@
 #include "idt/idt.h"
 #include "heap/heap.h"
 #include "utils/utils.h"
-#include "ram_disk/ram_disk.h"
 #include "page_allocator/page_allocator.h"
 #include "io/io.h"
 #include "hpet/hpet.h"
@@ -14,6 +13,9 @@
 #include "apic/apic.h"
 #include "global_heap/global_heap.h"
 #include "madt/madt.h"
+#include "ram_disk/ram_disk.h"
+
+#include "vfs/vfs.h"
 
 #include "master/master.h"
 #include "worker_pool/worker_pool.h"
@@ -37,11 +39,12 @@ void kernel_init(BootInfo* bootInfo)
     rsdt_init(bootInfo->xsdp);
     madt_init();
     apic_init();
-
-    ram_disk_init(bootInfo->rootDirectory);
     
     hpet_init();
     time_init();
+
+    vfs_init();
+    ram_disk_init(bootInfo->rootDirectory);
 
     pid_init();
     

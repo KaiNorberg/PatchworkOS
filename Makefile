@@ -48,17 +48,19 @@ BASE_C_FLAGS = -O3 \
 	-Wextra \
 	-Werror \
 	-Wshadow \
+	-Wno-unused-variable \
 	-Wno-ignored-qualifiers \
 	-Wno-unused-parameter \
 	-I$(LIB_SRC_DIR)/include \
-	-I$(LIB_SRC_DIR)/libc/include
-
+	-mno-80387 \
+	-mno-mmx -mno-3dnow -mno-sse \
+	-mno-sse2 
+	
 KERNEL_C_FLAGS = $(BASE_C_FLAGS) \
 	-ffreestanding \
 	-fno-stack-protector -fno-exceptions \
-	-fno-pie -mcmodel=kernel -mno-80387 \
-	-mno-mmx -mno-3dnow -mno-sse \
-	-mno-sse2 -mno-red-zone -Wno-array-bounds
+	-fno-pie -mcmodel=kernel \
+	-mno-red-zone -Wno-array-bounds
 
 BOOT_C_FLAGS = $(BASE_C_FLAGS) \
 	-fpic -ffreestanding -mno-sse2 \

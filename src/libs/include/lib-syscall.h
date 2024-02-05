@@ -1,8 +1,4 @@
 #pragma once
-
-#if defined(__cplusplus)
-extern "C" {
-#endif
  
 #define SYS_EXIT 0
 #define SYS_OPEN 1
@@ -13,7 +9,3 @@ extern "C" {
 #define SYS_SLEEP 6
 
 #define SYS_TEST 1000
- 
-#if defined(__cplusplus)
-} /* extern "C" */
-#endif

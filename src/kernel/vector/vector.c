@@ -1,7 +1,8 @@
 #include "vector.h"
 
 #include "heap/heap.h"
-#include "string/string.h"
+
+#include <libc/string.h>
 
 Vector* vector_new(uint64_t entrySize)
 {

@@ -2,23 +2,26 @@
 #include "tty/tty.h"
 #include "idt/idt.h"
 #include "utils/utils.h"
-#include "ram_disk/ram_disk.h"
 #include "page_allocator/page_allocator.h"
 #include "heap/heap.h"
 #include "hpet/hpet.h"
 #include "kernel/kernel.h"
 #include "debug/debug.h"
-#include "string/string.h"
 #include "queue/queue.h"
 #include "global_heap/global_heap.h"
 #include "io/io.h"
 #include "apic/apic.h"
 #include "vector/vector.h"
+#include "list/list.h"
+#include "vfs/vfs.h"
+
 #include "master/master.h"
 
 #include "worker_pool/worker_pool.h"
 
 #include "../common.h"
+
+#include <libc/string.h>
 
 void main(BootInfo* bootInfo)
 {   
@@ -31,7 +34,7 @@ void main(BootInfo* bootInfo)
     {
         tty_print("Loading fork_test...\n\r");    
         
-        worker_pool_spawn("/bin/parent.elf");
+        worker_pool_spawn("ram:/bin/parent.elf");
     }
 #else
     for (uint64_t i = 0; i < 4; i++)

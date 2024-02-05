@@ -1,7 +1,6 @@
 #include "global_heap.h"
 
 #include "page_allocator/page_allocator.h"
-#include "string/string.h"
 #include "tty/tty.h"
 #include "debug/debug.h"
 #include "utils/utils.h"

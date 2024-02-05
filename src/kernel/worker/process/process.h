@@ -1,5 +1,6 @@
 #pragma once
 
+#include "vector/vector.h"
 #include "interrupt_frame/interrupt_frame.h"
 #include "page_directory/page_directory.h"
 
@@ -12,19 +13,17 @@
 #define TASK_PRIORITY_MIN 0
 #define TASK_PRIORITY_MAX (TASK_PRIORITY_LEVELS - 1)
 
-typedef struct ProcessBlock
+typedef struct
 {
     void* physicalAddress;
     void* virtualAddress;
-    struct ProcessBlock* next;
-} ProcessBlock;
+} MemoryBlock;
 
-typedef struct Process
+typedef struct
 {
     PageDirectory* pageDirectory;
 
-    ProcessBlock* firstBlock;
-    ProcessBlock* lastBlock;
+    Vector* memoryBlocks;
 
     uint64_t id;
 

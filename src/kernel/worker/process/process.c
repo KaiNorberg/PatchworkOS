@@ -1,7 +1,6 @@
 #include "process.h"
 
 #include "heap/heap.h"
-#include "string/string.h"
 #include "page_allocator/page_allocator.h"
 #include "tty/tty.h"
 #include "lock/lock.h"
@@ -27,8 +26,7 @@ Process* process_new()
     Process* newProcess = kmalloc(sizeof(Process));
 
     newProcess->pageDirectory = page_directory_new();
-    newProcess->firstBlock = 0;
-    newProcess->lastBlock = 0;
+    newProcess->memoryBlocks = vector_new(sizeof(MemoryBlock));
     newProcess->id = pid_new();
     newProcess->taskAmount = 0;
 
@@ -39,25 +37,14 @@ Process* process_new()
 
 void* process_allocate_page(Process* process, void* virtualAddress)
 {
-    ProcessBlock* newBlock = kmalloc(sizeof(ProcessBlock));
-
     void* physicalAddress = page_allocator_request();
 
-    newBlock->physicalAddress = physicalAddress;
-    newBlock->virtualAddress = virtualAddress;
-    newBlock->next = 0;
+    MemoryBlock newBlock;
+    newBlock.physicalAddress = physicalAddress;
+    newBlock.virtualAddress = virtualAddress;
 
-    if (process->firstBlock == 0)
-    {
-        process->firstBlock = newBlock;
-        process->lastBlock = newBlock;
-    }
-    else
-    {
-        process->lastBlock->next = newBlock;
-        process->lastBlock = newBlock;
-    }
-    
+    vector_push_back(process->memoryBlocks, &newBlock);
+
     page_directory_remap(process->pageDirectory, virtualAddress, physicalAddress, PAGE_DIR_READ_WRITE | PAGE_DIR_USER_SUPERVISOR);
 
     return physicalAddress;
@@ -85,28 +72,22 @@ void task_free(Task* task)
 {        
     Process* process = task->process;
 
+    interrupt_frame_free(task->interruptFrame);
+    kfree(task);
+
     process->taskAmount--;
     if (process->taskAmount == 0)
     {
         page_directory_free(process->pageDirectory);
 
-        if (process->firstBlock != 0)
+        for (uint64_t i = 0; i < process->memoryBlocks->length; i++)
         {
-            ProcessBlock* currentBlock = process->firstBlock;
-            while (currentBlock != 0)
-            {
-                ProcessBlock* nextBlock = currentBlock->next;
+            MemoryBlock* memoryBlock = vector_get(process->memoryBlocks, i);
 
-                page_allocator_unlock_page(currentBlock->physicalAddress);
-                kfree(currentBlock);           
-
-                currentBlock = nextBlock;
-            }
+            page_allocator_unlock_page(memoryBlock->physicalAddress);
         }
+        vector_free(process->memoryBlocks);
 
         kfree(process);
     }
-
-    interrupt_frame_free(task->interruptFrame);
-    kfree(task);
 }

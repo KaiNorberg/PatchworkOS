@@ -1,8 +1,9 @@
 #include "tty.h"
 
-#include "string/string.h"
 #include "utils/utils.h"
 #include "lock/lock.h"
+
+#include <libc/string.h>
 
 static Framebuffer* frontbuffer;
 static PsfFont* font;
@@ -57,7 +58,7 @@ void tty_scroll(uint64_t distance)
 
     uint64_t offset = frontbuffer->pixelsPerScanline * distance;
     memcpy(frontbuffer->base, frontbuffer->base + offset, frontbuffer->size - offset * sizeof(Pixel));
-    memclr(frontbuffer->base + frontbuffer->pixelsPerScanline * (frontbuffer->height - distance), offset * sizeof(Pixel));
+    memset(frontbuffer->base + frontbuffer->pixelsPerScanline * (frontbuffer->height - distance), 0, offset * sizeof(Pixel));
 }
 
 void tty_put(uint8_t chr)
@@ -136,14 +137,14 @@ void tty_printi(uint64_t integer)
 void tty_printx(uint64_t hex)
 {
     char string[64];
-    memclr(string, 64);
+    memset(string, 0, 64);
     itoa(hex, string, 16);
     tty_print("0x"); tty_print(string);
 }
 
 void tty_clear()
 {
-    memclr(frontbuffer->base, frontbuffer->size);
+    memset(frontbuffer->base, 0, frontbuffer->size);
     cursorPos.x = 0;
     cursorPos.y = 0;
 }

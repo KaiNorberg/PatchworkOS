@@ -1,7 +1,8 @@
 #include "interrupt_frame.h"
 
 #include "heap/heap.h"
-#include "string/string.h"
+
+#include <libc/string.h>
 
 InterruptFrame* interrupt_frame_new(void* instructionPointer, void* stackPointer, uint64_t codeSegment, uint64_t stackSegment, PageDirectory* pageDirectory)
 {

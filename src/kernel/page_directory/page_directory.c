@@ -1,8 +1,6 @@
 #include "page_directory.h"
 
 #include "page_allocator/page_allocator.h"
-
-#include "string/string.h"
 #include "debug/debug.h"
 #include "tty/tty.h"
 #include "gdt/gdt.h"
@@ -13,6 +11,8 @@
 #include "worker/interrupts/interrupts.h"
 
 #include "../common.h"
+
+#include <libc/string.h>
 
 PageDirectory* kernelPageDirectory;
 
@@ -47,7 +47,7 @@ void page_directory_init(EfiMemoryMap* memoryMap, Framebuffer* screenbuffer)
 PageDirectory* page_directory_new()
 {
     PageDirectory* pageDirectory = (PageDirectory*)page_allocator_request();
-    memclr(pageDirectory, 0x1000);
+    memset(pageDirectory, 0, 0x1000);
 
     global_heap_map(pageDirectory);
     worker_interrupts_map(pageDirectory);

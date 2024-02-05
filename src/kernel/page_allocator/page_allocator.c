@@ -1,9 +1,10 @@
 #include "page_allocator.h"
 
 #include "tty/tty.h"
-#include "string/string.h"
 #include "debug/debug.h"
 #include "lock/lock.h"
+
+#include <libc/string.h>
 
 static uint64_t* pageMap;
 static void* firstFreePage;

@@ -4,7 +4,6 @@
 #include "gdt/gdt.h"
 #include "apic/apic.h"
 #include "page_allocator/page_allocator.h"
-#include "string/string.h"
 #include "utils/utils.h"
 #include "tty/tty.h"
 #include "madt/madt.h"
@@ -47,7 +46,11 @@ void worker_pool_spawn(const char* path)
 {        
     Process* process = process_new();
     Task* task = task_new(process, TASK_PRIORITY_MIN);
-    load_program(task, path);
+    if (!load_program(task, path))
+    {
+        task_free(task);
+        return;
+    }
 
     for (uint8_t i = 0; i < workerAmount; i++)
     {
@@ -56,7 +59,7 @@ void worker_pool_spawn(const char* path)
 
     uint64_t bestLength = -1;
     Scheduler* bestScheduler = 0;
-    for (uint16_t i = 0; i < workerAmount; i++)
+    for (uint8_t i = 0; i < workerAmount; i++)
     {
         Scheduler* scheduler = worker_get(i)->scheduler;
         uint64_t length = (scheduler->runningTask != 0);
@@ -112,7 +115,7 @@ Worker* worker_self_brute()
     uint8_t apicId = local_apic_id();
     for (uint16_t i = 0; i < MAX_WORKER_AMOUNT; i++)
     {
-        Worker* worker = worker_get(i);
+        Worker* worker = worker_get((uint8_t)i);
 
         if (worker->present && worker->apicId == apicId)
         {

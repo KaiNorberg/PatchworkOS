@@ -2,8 +2,9 @@
 
 #include "tty/tty.h"
 #include "tss/tss.h"
-#include "string/string.h"
 #include "global_heap/global_heap.h"
+
+#include <libc/string.h>
 
 static Gdt* gdt;
 

@@ -1,14 +1,16 @@
-#include <string.h>
+#include <libc/string.h>
 
-void* memcpy(void* LIBC_RESTRICT src, const void* LIBC_RESTRICT dest, size_t count)
-{
-    char* p1 = (char *)src;
-    char* p2 = (char *)dest;
-
-    while (count--)
+void* memcpy(void* dest, const void* src, const uint64_t count)
+{	
+    for (uint64_t i = 0; i < count / sizeof(uint64_t); i++)
     {
-        *p2++ = *p1++;
+        ((uint64_t*)dest)[i] = ((const uint64_t*)src)[i];
     }
 
-    return src;
+    for (uint64_t i = 0; i < count % sizeof(uint64_t); i++)
+    {
+        ((uint8_t*)dest)[count / sizeof(uint64_t) + i] = ((const uint8_t*)src)[count / sizeof(uint64_t) + i];
+    }
+
+    return dest;
 }

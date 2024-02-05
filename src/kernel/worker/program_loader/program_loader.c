@@ -1,6 +1,5 @@
 #include "program_loader.h"
 
-#include "string/string.h"
 #include "ram_disk/ram_disk.h"
 #include "heap/heap.h"
 #include "page_allocator/page_allocator.h"
@@ -9,11 +8,19 @@
 #include "debug/debug.h"
 #include "worker_pool/worker_pool.h"
 
+#include "vfs/vfs.h"
+
+#include <libc/string.h>
+
 uint8_t load_program(Task* task, const char* path)
 {
     //This sucks, dont worry about it
-
-    FILE* file = ram_disk_open(path);
+    File* file;
+    Status status = vfs_open(&file, path, VFS_FLAG_READ);
+    if (status != STATUS_SUCCESS)
+    {
+        return 0;
+    }
 
     if (file == 0)
     {
@@ -22,7 +29,7 @@ uint8_t load_program(Task* task, const char* path)
     }
 
     ElfHeader header;
-    ram_disk_read(&header, sizeof(ElfHeader), file);
+    vfs_read(file, &header, sizeof(ElfHeader));
 
     if (header.ident[0] != 0x7F || header.ident[1] != 'E' || header.ident[2] != 'L' || header.ident[3] != 'F')
     {
@@ -37,7 +44,7 @@ uint8_t load_program(Task* task, const char* path)
         debug_panic("Failed to allocate memory for program headers!");
         return 0;
     }
-    ram_disk_read(programHeaders, programHeaderTableSize, file);
+    vfs_read(file, programHeaders, programHeaderTableSize);
 
 	for (ElfProgramHeader* programHeader = programHeaders; 
         (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize; 
@@ -51,16 +58,16 @@ uint8_t load_program(Task* task, const char* path)
             for (uint64_t i = 0; i < pageAmount; i++)
             {
                 void* segment = process_allocate_page(task->process, (void*)programHeader->virtualAddress + i * 0x1000);
-                memclr(segment, 0x1000);
+                memset(segment, 0, 0x1000);
 
-                ram_disk_seek(file, programHeader->offset + i * 0x1000, SEEK_SET);
+                vfs_seek(file, programHeader->offset + i * 0x1000);
                 if (i == pageAmount - 1)
                 {
-                    ram_disk_read(segment, programHeader->fileSize % 0x1000, file);
+                    vfs_read(file, segment, programHeader->fileSize % 0x1000);
                 }
                 else
                 {
-                    ram_disk_read(segment, 0x1000, file);
+                    vfs_read(file, segment, 0x1000);
                 }
             }
 		}
@@ -71,7 +78,7 @@ uint8_t load_program(Task* task, const char* path)
     task->interruptFrame->instructionPointer = header.entry;
 
     kfree(programHeaders);
-    ram_disk_close(file);
+    vfs_close(file);
 
     return 1;
 }

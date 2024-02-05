@@ -5,11 +5,12 @@
 #include "tty/tty.h"
 #include "utils/utils.h"
 #include "page_allocator/page_allocator.h"
-#include "string/string.h"
 #include "apic/apic.h"
 #include "hpet/hpet.h"
 
 #include "master/master.h"
+
+#include <libc/string.h>
 
 void* worker_trampoline_setup()
 {
