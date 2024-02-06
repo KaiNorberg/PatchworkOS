@@ -28,6 +28,7 @@ objects_pathsubst = \
 SRC_DIR = src
 BIN_DIR = bin
 BUILD_DIR = build
+MAKE_DIR = make
 
 LIB_SRC_DIR = src/libs
 LIB_BIN_DIR = bin/libs
@@ -81,7 +82,7 @@ LD_FLAGS = -nostdlib -z norelro
 PROGRAM_LD_FLAGS = $(LD_FLAGS) \
 	-L$(LIB_BIN_DIR) -lcrt
 
-include $(call recursive_wildcard, $(SRC_DIR), *.mk)
+include $(call recursive_wildcard, $(MAKE_DIR), *.mk)
 
 setup:
 	@echo "!====== RUNNING SETUP  ======!"
