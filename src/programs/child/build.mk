@@ -15,7 +15,6 @@ $(CHILD_BUILD_DIR)/%.s.o: $(CHILD_SRC_DIR)/%.s
 	@$(call run_and_test,$(ASM) $(ASM_FLAGS) $^ -o $@)
 
 $(CHILD_OUTPUT): $(CHILD_OBJECTS)	
-	@echo "!====== BUILDING CHILD ======!"
 	@mkdir -p $(@D)
 	@$(call run_and_test,$(LD) $(PROGRAM_LD_FLAGS) -lprocess -o $@ $^)
 

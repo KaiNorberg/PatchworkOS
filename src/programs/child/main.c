@@ -5,7 +5,7 @@ int main()
 {       
     while (1)
     {
-        sys_test("Hello from child!     \r");
+        sys_test("Hello from child!");
     } 
 
     return 0;

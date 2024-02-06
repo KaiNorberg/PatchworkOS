@@ -8,11 +8,11 @@ int main()
     {
         if (tick == 0)
         {
-            sys_test("Hello from sleep_test, tick = 0\n\r");
+            sys_test("Hello from sleep_test, tick = 0");
         }
         else
         {
-            sys_test("Hello from sleep_test, tick = 1\n\r");
+            sys_test("Hello from sleep_test, tick = 1");
         }
 
         tick = !tick;

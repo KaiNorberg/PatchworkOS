@@ -9,7 +9,6 @@
 #define SYSCALL_GET_ARG4(interruptFrame) (interruptFrame->rcx)
 #define SYSCALL_GET_ARG5(interruptFrame) (interruptFrame->r8)
 #define SYSCALL_GET_ARG6(interruptFrame) (interruptFrame->r9)
-#define SYSCALL_SET_RESULT(InterruptFrame, value) InterruptFrame->rax = value
 
 #define SYSCALL_GET_PAGE_DIRECTORY(interruptFrame) ((PageDirectory*)interruptFrame->cr3)
 

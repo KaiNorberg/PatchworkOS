@@ -14,6 +14,7 @@
 #include "global_heap/global_heap.h"
 #include "madt/madt.h"
 #include "ram_disk/ram_disk.h"
+#include "device_disk/device_disk.h"
 
 #include "vfs/vfs.h"
 
@@ -44,6 +45,7 @@ void kernel_init(BootInfo* bootInfo)
     time_init();
 
     vfs_init();
+    device_disk_init();
     ram_disk_init(bootInfo->rootDirectory);
 
     pid_init();

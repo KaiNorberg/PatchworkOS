@@ -76,7 +76,7 @@ LIB_C_FLAGS = $(BASE_C_FLAGS) \
 PROGRAM_C_FLAGS = $(BASE_C_FLAGS) \
 	-ffreestanding
 
-LD_FLAGS = -nostdlib
+LD_FLAGS = -nostdlib -z norelro
 
 PROGRAM_LD_FLAGS = $(LD_FLAGS) \
 	-L$(LIB_BIN_DIR) -lcrt
@@ -110,7 +110,6 @@ run:
     -cpu qemu64 \
     -smp 8 \
     -serial stdio \
-    -d int \
     -no-shutdown -no-reboot \
     -drive if=pflash,format=raw,unit=0,file=vendor/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
     -drive if=pflash,format=raw,unit=1,file=vendor/OVMFbin/OVMF_VARS-pure-efi.fd \

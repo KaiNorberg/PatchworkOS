@@ -2,6 +2,8 @@
 
 #include "worker/process/process.h"
 
+#include <lib-status.h>
+
 #define ET_NONE 0x00
 #define ET_REL 0x01
 #define ET_EXEC 0x02
@@ -57,4 +59,4 @@ typedef struct
     uint64_t entrySize;
 } ElfSectionHeader;
 
-uint8_t load_program(Process* process, const char* path);
+Status load_program(Process* process, const char* path);

@@ -7,6 +7,11 @@
 #include <libc/string.h>
 #include <libc/ctype.h>
 
+uint8_t vfs_utils_validate_char(char ch)
+{
+    return isalnum(ch) || ch == '_' || ch == '.';
+}
+
 uint8_t vfs_utils_validate_name(const char* name)
 {
     for (uint64_t i = 0; i < VFS_MAX_NAME_LENGTH; i++)
@@ -15,7 +20,7 @@ uint8_t vfs_utils_validate_name(const char* name)
         {
             return 1;
         }
-        else if (!isalnum(name[i]) && name[i] != '.')
+        else if (!vfs_utils_validate_char(name[i]))
         {
             return 0;
         }   
@@ -38,7 +43,7 @@ uint8_t vfs_utils_validate_path(const char* path)
             i++;
             break;
         }
-        else if (!isalnum(path[i]) && path[i] != '.')
+        else if (!vfs_utils_validate_char(path[i]))
         {
             return 0;
         }   
@@ -56,7 +61,7 @@ uint8_t vfs_utils_validate_path(const char* path)
             nameLength = 0;
             continue;
         }
-        else if (!isalnum(path[i]) && path[i] != '.')
+        else if (!vfs_utils_validate_char(path[i]))
         {
             return 0;
         }

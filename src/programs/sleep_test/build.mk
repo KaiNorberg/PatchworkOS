@@ -15,7 +15,6 @@ $(SLEEP_TEST_BUILD_DIR)/%.s.o: $(SLEEP_TEST_SRC_DIR)/%.s
 	@$(call run_and_test,$(ASM) $(ASM_FLAGS) $^ -o $@)
 
 $(SLEEP_TEST_OUTPUT): $(SLEEP_TEST_OBJECTS)
-	@echo "!====== BUILDING SLEEP_TEST ======!"
 	@mkdir -p $(@D)
 	@$(call run_and_test,$(LD) $(PROGRAM_LD_FLAGS) -lprocess -o $@ $^)
 

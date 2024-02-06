@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+uint8_t vfs_utils_validate_char(char ch);
+
 uint8_t vfs_utils_validate_name(const char* name);
 
 uint8_t vfs_utils_validate_path(const char* path);

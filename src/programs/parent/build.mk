@@ -15,8 +15,7 @@ $(PARENT_BUILD_DIR)/%.s.o: $(PARENT_SRC_DIR)/%.s
 	@$(call run_and_test,$(ASM) $(ASM_FLAGS) $^ -o $@)
 
 $(PARENT_OUTPUT): $(PARENT_OBJECTS)	
-	@echo "!====== BUILDING PARENT ======!"
 	@mkdir -p $(@D)
-	@$(call run_and_test,$(LD) $(PROGRAM_LD_FLAGS) -lprocess -o $@ $^)
+	@$(call run_and_test,$(LD) $(PROGRAM_LD_FLAGS) -lprocess -lstatus -o $@ $^)
 
 BUILD += $(PARENT_OUTPUT)

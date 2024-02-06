@@ -4,7 +4,6 @@
 #include "list/list.h"
 #include "heap/heap.h"
 
-#include "vfs/device_disk/device_disk.h"
 #include "vfs/utils/utils.h"
 
 #include <libc/string.h>
@@ -43,8 +42,6 @@ void vfs_init()
     tty_start_message("Virtual File System initializing");
 
     diskDirectory = list_new();
-
-    device_disk_init();
 
     tty_end_message(TTY_MESSAGE_OK);
 }

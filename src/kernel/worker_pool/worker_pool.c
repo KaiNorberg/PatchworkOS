@@ -42,10 +42,11 @@ void worker_pool_send_ipi(Ipi ipi)
     }
 }
 
+//Temporary
 void worker_pool_spawn(const char* path)
 {        
     Process* process = process_new(PROCESS_PRIORITY_MIN);
-    if (!load_program(process, path))
+    if (load_program(process, path) != STATUS_SUCCESS)
     {
         process_free(process);
         return;

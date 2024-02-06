@@ -15,7 +15,6 @@ $(LIBC_BUILD_DIR)/%.s.o: $(LIBC_SRC_DIR)/%.s
 	@$(call run_and_test,$(ASM) $(ASM_FLAGS) $^ -o $@)
 
 $(LIBC_OUTPUT): $(LIBC_OBJECTS)	
-	@echo "!====== BUILDING LIBC ======!"
 	@mkdir -p $(@D)
 	@$(call run_and_test,$(LD) $(LD_FLAGS) -r -o $@ $^)
 

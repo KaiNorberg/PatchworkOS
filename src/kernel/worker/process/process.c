@@ -6,6 +6,7 @@
 #include "lock/lock.h"
 #include "gdt/gdt.h"
 #include "debug/debug.h"
+#include "utils/utils.h"
 
 #include <stdatomic.h>
 
@@ -35,25 +36,27 @@ Process* process_new(uint8_t priority)
     process->pageDirectory = page_directory_new();
     process->memoryBlocks = vector_new(sizeof(MemoryBlock));
     process->interruptFrame = interrupt_frame_new(0, (void*)USER_ADDRESS_SPACE_TOP, GDT_USER_CODE | 3, GDT_USER_DATA | 3, process->pageDirectory);
+    process->status = STATUS_SUCCESS;
     process->state = PROCESS_STATE_READY;
     process->priority = priority;
 
-    process_allocate_page(process, (void*)(USER_ADDRESS_SPACE_TOP - 0x1000));
+    process_allocate_pages(process, (void*)(USER_ADDRESS_SPACE_TOP - 0x1000), 1);
     
     return process;
 }
 
-void* process_allocate_page(Process* process, void* virtualAddress)
+void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t amount)
 {
-    void* physicalAddress = page_allocator_request();
+    void* physicalAddress = page_allocator_request_amount(amount);
 
     MemoryBlock newBlock;
     newBlock.physicalAddress = physicalAddress;
     newBlock.virtualAddress = virtualAddress;
+    newBlock.pageAmount = amount;
 
     vector_push_back(process->memoryBlocks, &newBlock);
 
-    page_directory_remap(process->pageDirectory, virtualAddress, physicalAddress, PAGE_DIR_READ_WRITE | PAGE_DIR_USER_SUPERVISOR);
+    page_directory_remap_pages(process->pageDirectory, virtualAddress, physicalAddress, amount, PAGE_DIR_READ_WRITE | PAGE_DIR_USER_SUPERVISOR);
 
     return physicalAddress;
 }
@@ -68,7 +71,7 @@ void process_free(Process* process)
     {
         MemoryBlock* memoryBlock = vector_get(process->memoryBlocks, i);
 
-        page_allocator_unlock_page(memoryBlock->physicalAddress);
+        page_allocator_unlock_pages(memoryBlock->physicalAddress, memoryBlock->pageAmount);
     }
     vector_free(process->memoryBlocks);
 

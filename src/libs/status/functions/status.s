@@ -2,8 +2,8 @@
 
 section .text
 
-global spawn
-spawn:
-    mov rax, 1
+global status
+status:
+    mov rax, 3
     int 0x80
     ret

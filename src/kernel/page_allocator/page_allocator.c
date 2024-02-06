@@ -164,17 +164,22 @@ void* page_allocator_request_amount(uint64_t amount)
     }
     lock_acquire(&lock);
 
-    uint64_t startAddress = 0;
+    uint64_t startAddress = (uint64_t)-1;
     uint64_t freePagesFound = 0;
     for (uint64_t address = 0; address < pageAmount * 0x1000; address += 0x1000)
     {
-        if (page_allocator_is_reserved((void*)address)) //Reserved
+        if (page_allocator_is_reserved((void*)address))
         {
-            startAddress = address;
-            freePagesFound = 0;
+            startAddress = (uint64_t)-1;
         }
         else
         {
+            if (startAddress == (uint64_t)-1)
+            {
+                startAddress = address;
+                freePagesFound = 0;
+            }
+
             freePagesFound++;
             if (freePagesFound == amount)
             {

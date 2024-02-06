@@ -11,25 +11,25 @@ Status ram_disk_read(File* file, void* buffer, uint64_t length)
     FileNode const* fileNode = file->internal;
     RamFile const* ramFile = fileNode->internal;
 
-    uint8_t* b = buffer;
-    while (1)
+    uint64_t i = 0;
+    for (; i < length; i++)
     {
-        if (file->position >= ramFile->size)
+        if (file->position + i >= ramFile->size)
         {
-            return STATUS_END_OF_FILE;
+            break;
         }
-        else if (length == 0)
-        {
-            return STATUS_SUCCESS;
-        }
-        else
-        {
-            *b = ramFile->data[file->position];
 
-            b++;
-            file->position++;
-            length--;   
-        }
+        ((uint8_t*)buffer)[i] = ramFile->data[file->position + i];
+    }
+
+    if (i == 0)
+    {
+        return STATUS_END_OF_FILE;
+    }
+    else
+    {
+        file->position += i;
+        return STATUS_SUCCESS;
     }
 }
 

@@ -15,7 +15,6 @@ $(PROCESS_BUILD_DIR)/%.s.o: $(PROCESS_SRC_DIR)/%.s
 	@$(call run_and_test,$(ASM) $(ASM_FLAGS) $^ -o $@)
 
 $(PROCESS_OUTPUT): $(PROCESS_OBJECTS)	
-	@echo "!====== BUILDING LIB-PROCESS ======!"
 	@mkdir -p $(@D)
 	@$(call run_and_test,$(LD) $(LD_FLAGS) -r -o $@ $^)
 

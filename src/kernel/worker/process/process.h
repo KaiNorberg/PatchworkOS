@@ -4,6 +4,8 @@
 #include "interrupt_frame/interrupt_frame.h"
 #include "page_directory/page_directory.h"
 
+#include <lib-status.h>
+
 #define PROCESS_STATE_NONE 0
 #define PROCESS_STATE_RUNNING 1
 #define PROCESS_STATE_READY 2
@@ -17,6 +19,7 @@ typedef struct
 {
     void* physicalAddress;
     void* virtualAddress;
+    uint64_t pageAmount;
 } MemoryBlock;
 
 typedef struct
@@ -28,6 +31,8 @@ typedef struct
 
     InterruptFrame* interruptFrame;
 
+    Status status;
+
     uint8_t state;
     uint8_t priority;
 } Process;
@@ -38,6 +43,6 @@ uint64_t pid_new();
 
 Process* process_new(uint8_t priority);
 
-void* process_allocate_page(Process* process, void* virtualAddress);
+void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t amount);
 
 void process_free(Process* process);

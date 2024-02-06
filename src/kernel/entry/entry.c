@@ -30,9 +30,9 @@ void main(BootInfo* bootInfo)
     tty_print("\n\r");
 
 #if 1
-    for (uint64_t i = 0; i < 6; i++)
+    for (uint64_t i = 0; i < 2; i++)
     {
-        tty_print("Loading fork_test...\n\r");    
+        tty_print("Loading parent...\n\r");    
         
         worker_pool_spawn("ram:/bin/parent.elf");
     }
@@ -41,7 +41,7 @@ void main(BootInfo* bootInfo)
     {
         tty_print("Loading sleep_test...\n\r");
         
-        worker_pool_spawn("/bin/sleep_test.elf");
+        worker_pool_spawn("ram:/bin/sleep_test.elf");
     }
 #endif
 
