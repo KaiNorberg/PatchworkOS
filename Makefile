@@ -15,7 +15,7 @@ exit $$RESULT
 endef
 
 # arg1 = dir
-# arg2 = extension
+# arg2 = pattern
 recursive_wildcard = \
 	$(foreach d,$(wildcard $(1:=/*)),$(call recursive_wildcard,$d,$2) $(filter $(subst *,%,$2),$d))
 
@@ -33,6 +33,7 @@ MAKE_DIR = make
 LIB_SRC_DIR = src/libs
 LIB_BIN_DIR = bin/libs
 LIB_BUILD_DIR = build/libs
+LIBC_FUNCTIONS = $(LIB_SRC_DIR)/libc/functions
 
 PROGRAMS_BIN_DIR = bin/programs
 
@@ -77,7 +78,7 @@ LIB_C_FLAGS = $(BASE_C_FLAGS) \
 PROGRAM_C_FLAGS = $(BASE_C_FLAGS) \
 	-ffreestanding
 
-LD_FLAGS = -nostdlib -z norelro
+LD_FLAGS = -nostdlib
 
 PROGRAM_LD_FLAGS = $(LD_FLAGS) \
 	-L$(LIB_BIN_DIR) -lcrt

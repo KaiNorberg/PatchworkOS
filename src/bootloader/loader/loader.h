@@ -72,12 +72,12 @@ typedef struct
 
 typedef struct
 {
-	Framebuffer* screenbuffer;
-	PSFFont* font;	
-	EfiMemoryMap* memoryMap;
+	Framebuffer screenbuffer;
+	PSFFont font;	
+	EfiMemoryMap memoryMap;
+    RamDirectory ramRoot;
 	void* rsdp;
 	EFI_RUNTIME_SERVICES* runtimeServices;
-	RamDiskDirectory* ramDiskRoot;
-} BootInfo;
+} BootPage;
 
-void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, BootInfo* bootInfo);
+void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, BootPage* bootPage);

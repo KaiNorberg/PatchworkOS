@@ -7,8 +7,6 @@
 
 void pst_font_load(EFI_HANDLE imageHandle, PSFFont* font, CHAR16* path)
 {
-	Print(L"Loading Font... ");
-
 	EFI_FILE* file = file_system_open(imageHandle, path);
 
 	if (file == NULL)
@@ -21,7 +19,7 @@ void pst_font_load(EFI_HANDLE imageHandle, PSFFont* font, CHAR16* path)
 		}
 	}
 
-	PSFHeader* fontHeader = memory_allocate_pool(sizeof(PSFHeader), EFI_SCREEN_FONT_MEMORY_TYPE);
+	PSFHeader* fontHeader = memory_allocate_pool(sizeof(PSFHeader), EFI_MEMORY_TYPE_SCREEN_FONT);
 	file_system_read(file, sizeof(PSFHeader), fontHeader);
 
 	if (fontHeader->magic != PSF_MAGIC)
@@ -40,7 +38,7 @@ void pst_font_load(EFI_HANDLE imageHandle, PSFFont* font, CHAR16* path)
 		glyphBufferSize = fontHeader->charSize * 512;
 	}
 
-	void* glyphBuffer = memory_allocate_pool(glyphBufferSize, EFI_SCREEN_FONT_MEMORY_TYPE);
+	void* glyphBuffer = memory_allocate_pool(glyphBufferSize, EFI_MEMORY_TYPE_SCREEN_FONT);
 	file_system_seek(file, sizeof(PSFHeader));
 	file_system_read(file, glyphBufferSize, glyphBuffer);
 
@@ -48,8 +46,6 @@ void pst_font_load(EFI_HANDLE imageHandle, PSFFont* font, CHAR16* path)
 	font->glyphs = glyphBuffer;
 
 	file_system_close(file);
-
-	Print(L"Done!\n\r");
 
 	Print(L"FONT INFO\n\r");
 	Print(L"Char Size: %d\n\r", font->header->charSize);

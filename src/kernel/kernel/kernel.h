@@ -11,12 +11,12 @@
 
 typedef struct 
 {    
-	Framebuffer* framebuffer;
-	PsfFont* font;
-	EfiMemoryMap* memoryMap;
+	Framebuffer framebuffer;
+	PsfFont font;
+	EfiMemoryMap memoryMap;
+	RamDirectory ramRoot;
 	Xsdt* xsdp;
 	void* rt;
-	RamDirectory* rootDirectory;
-} BootInfo;
+} BootPage;
 
-void kernel_init(BootInfo* bootInfo);
+void kernel_init(BootPage* bootPage);

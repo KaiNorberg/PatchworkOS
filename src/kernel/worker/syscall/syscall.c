@@ -54,11 +54,8 @@ inline void syscall_return_success(InterruptFrame* interruptFrame, uint64_t resu
 inline void syscall_return_error(InterruptFrame* interruptFrame, Status status)
 {    
     Worker* worker = worker_self();
-    if (worker->scheduler->runningProcess != 0)
-    {
-        worker->scheduler->runningProcess->status = status;    
-        interruptFrame->rax = -1;
-    }
+    worker->scheduler->runningProcess->status = status;    
+    interruptFrame->rax = -1;
 }
 
 void sys_exit(InterruptFrame* interruptFrame)

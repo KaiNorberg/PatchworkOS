@@ -8,27 +8,24 @@
 #include "ram_disk/ram_disk.h"
 #include "file_system/file_system.h"
 
+#include "../common.h"
+
 EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
 {
 	InitializeLib(imageHandle, imageHandle);
-	Print(L"BootLoader loaded!\n\r");
+	Print(L"Hello from the bootloader!\n\r");
 
-	Framebuffer screenbuffer;
-	gop_get_framebuffer(&screenbuffer);
+	BootPage* bootPage = memory_allocate_pages(1, EFI_MEMORY_TYPE_BOOTPAGE);
 
-	PSFFont font;
-	pst_font_load(imageHandle, &font, L"/fonts/zap-vga16.psf");
+	gop_get_framebuffer(&bootPage->screenbuffer);
+	pst_font_load(imageHandle, &bootPage->font, L"/fonts/zap-vga16.psf");
 
-	RamDiskDirectory ramDiskRoot = ram_disk_load_directory(file_system_open_root_volume(imageHandle), "root");
+	ram_disk_load_directory(&bootPage->ramRoot, file_system_open_root_volume(imageHandle), "root");
 
-	BootInfo bootInfo;
-	bootInfo.screenbuffer = &screenbuffer;
-	bootInfo.font = &font;
-	bootInfo.rsdp = rsdt_get(systemTable);
-	bootInfo.runtimeServices = systemTable->RuntimeServices;
-	bootInfo.ramDiskRoot = &ramDiskRoot;
+	bootPage->rsdp = rsdt_get(systemTable);
+	bootPage->runtimeServices = systemTable->RuntimeServices;
 
-	loader_load_kernel(imageHandle, systemTable, &bootInfo);
+	loader_load_kernel(imageHandle, systemTable, bootPage);
 
 	return EFI_SUCCESS;
 }

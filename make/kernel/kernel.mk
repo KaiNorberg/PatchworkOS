@@ -4,21 +4,21 @@ KERNEL_BUILD_DIR = $(BUILD_DIR)/kernel
 
 KERNEL_OUTPUT = $(KERNEL_BIN_DIR)/kernel.elf
 
-KERNEL_OBJECTS = $(call objects_pathsubst,$(KERNEL_SRC_DIR),$(KERNEL_BUILD_DIR),.c)
-KERNEL_OBJECTS += $(call objects_pathsubst,$(KERNEL_SRC_DIR),$(KERNEL_BUILD_DIR),.s)
+KERNEL_SRC = \
+	$(call recursive_wildcard, $(KERNEL_SRC_DIR), *.c) \
+	$(call recursive_wildcard, $(KERNEL_SRC_DIR), *.s) \
+	$(LIBC_FUNCTIONS)/string/memcpy.c \
+	$(LIBC_FUNCTIONS)/string/memset.c \
+	$(LIBC_FUNCTIONS)/string/memcmp.c \
+	$(LIBC_FUNCTIONS)/string/memmove.c \
+	$(LIBC_FUNCTIONS)/string/strlen.c \
+	$(LIBC_FUNCTIONS)/string/strcmp.c \
+	$(LIBC_FUNCTIONS)/string/strcpy.c \
+	$(LIBC_FUNCTIONS)/ctype/isalnum.c \
+	$(LIBC_FUNCTIONS)/ctype/isdigit.c \
+	$(LIBC_FUNCTIONS)/ctype/isalpha.c \
 
-LIBC_FUNCTIONS = $(LIB_BUILD_DIR)/libc/functions
-KERNEL_OBJECTS += \
-	$(LIBC_FUNCTIONS)/string/memcpy.c.o \
-	$(LIBC_FUNCTIONS)/string/memset.c.o \
-	$(LIBC_FUNCTIONS)/string/memcmp.c.o \
-	$(LIBC_FUNCTIONS)/string/memmove.c.o \
-	$(LIBC_FUNCTIONS)/string/strlen.c.o \
-	$(LIBC_FUNCTIONS)/string/strcmp.c.o \
-	$(LIBC_FUNCTIONS)/string/strcpy.c.o \
-	$(LIBC_FUNCTIONS)/ctype/isalnum.c.o \
-	$(LIBC_FUNCTIONS)/ctype/isdigit.c.o \
-	$(LIBC_FUNCTIONS)/ctype/isalpha.c.o \
+KERNEL_OBJECTS = $(patsubst $(SRC_DIR)/%, $(BUILD_DIR)/%.o, $(KERNEL_SRC))
 
 $(KERNEL_BUILD_DIR)/%.c.o: $(KERNEL_SRC_DIR)/%.c
 	@mkdir -p $(@D)
@@ -29,6 +29,7 @@ $(KERNEL_BUILD_DIR)/%.s.o: $(KERNEL_SRC_DIR)/%.s
 	@$(call run_and_test,$(ASM) $(ASM_FLAGS) $^ -o $@)
 
 $(KERNEL_OUTPUT): $(KERNEL_OBJECTS)	
+	@echo $(KERNEL_SRC)
 	@mkdir -p $(@D)
 	@$(call run_and_test,$(LD) $(LD_FLAGS) -T $(KERNEL_SRC_DIR)/linker.ld -o $@ $^)
 

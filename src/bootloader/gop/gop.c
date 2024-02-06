@@ -2,8 +2,6 @@
 
 void gop_get_framebuffer(Framebuffer* framebuffer)
 {	
-	Print(L"Initializing GOP... ");
-
 	EFI_GUID GOP_GUID = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
 	EFI_GRAPHICS_OUTPUT_PROTOCOL* GOP;
 	EFI_STATUS status = uefi_call_wrapper(BS->LocateProtocol, 3, &GOP_GUID, NULL, (void**)&GOP);
@@ -23,8 +21,6 @@ void gop_get_framebuffer(Framebuffer* framebuffer)
 	framebuffer->width = GOP->Mode->Info->HorizontalResolution;
 	framebuffer->height = GOP->Mode->Info->VerticalResolution;
 	framebuffer->pixelsPerScanline = GOP->Mode->Info->PixelsPerScanLine;
-
-	Print(L" Done!\n\r");
 
 	Print(L"GOP BUFFER INFO\n\r");
 	Print(L"Base: 0x%x\n\r", framebuffer->base);

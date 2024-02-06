@@ -23,21 +23,21 @@
 
 #include "../common.h"
 
-void kernel_init(BootInfo* bootInfo)
+void kernel_init(BootPage* bootPage)
 {   
     asm volatile("cli"); 
 
-    tty_init(bootInfo->framebuffer, bootInfo->font);
+    tty_init(&bootPage->framebuffer, &bootPage->font);
     tty_print("Hello from the kernel!\n\r");
 
-    page_allocator_init(bootInfo->memoryMap);
-    page_directory_init(bootInfo->memoryMap, bootInfo->framebuffer);
+    page_allocator_init(&bootPage->memoryMap);
+    page_directory_init(&bootPage->memoryMap, &bootPage->framebuffer);
     heap_init();
     global_heap_init();
 
     gdt_init();
 
-    rsdt_init(bootInfo->xsdp);
+    rsdt_init(bootPage->xsdp);
     madt_init();
     apic_init();
     
@@ -46,7 +46,7 @@ void kernel_init(BootInfo* bootInfo)
 
     vfs_init();
     device_disk_init();
-    ram_disk_init(bootInfo->rootDirectory);
+    ram_disk_init(&bootPage->ramRoot);
 
     pid_init();
     

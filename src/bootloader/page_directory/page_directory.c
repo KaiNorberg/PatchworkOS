@@ -7,7 +7,7 @@
 
 PageDirectory* page_directory_new()
 {
-    PageDirectory* pageDirectory = (PageDirectory*)memory_allocate_pages(1, EFI_PAGE_TABLE_MEMORY_TYPE);
+    PageDirectory* pageDirectory = (PageDirectory*)memory_allocate_pages(1, EFI_MEMORY_TYPE_PAGE_TABLE);
     memset(pageDirectory, 0, 0x1000);
 
     return pageDirectory;
@@ -46,7 +46,7 @@ void page_directory_remap(PageDirectory* pageDirectory, void* virtualAddress, vo
     PageDirectory* pdp;
     if (!PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
     {
-        pdp = (PageDirectory*)memory_allocate_pages(1, EFI_PAGE_TABLE_MEMORY_TYPE);
+        pdp = (PageDirectory*)memory_allocate_pages(1, EFI_MEMORY_TYPE_PAGE_TABLE);
         memset(pdp, 0, 0x1000);
 
         pde = PAGE_DIR_ENTRY_CREATE(pdp, flags);
@@ -61,7 +61,7 @@ void page_directory_remap(PageDirectory* pageDirectory, void* virtualAddress, vo
     PageDirectory* pd;
     if (!PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
     {
-        pd = (PageDirectory*)memory_allocate_pages(1, EFI_PAGE_TABLE_MEMORY_TYPE);
+        pd = (PageDirectory*)memory_allocate_pages(1, EFI_MEMORY_TYPE_PAGE_TABLE);
         memset(pd, 0, 0x1000);
 
         pde = PAGE_DIR_ENTRY_CREATE(pd, flags);
@@ -76,7 +76,7 @@ void page_directory_remap(PageDirectory* pageDirectory, void* virtualAddress, vo
     PageDirectory* pt;
     if (!PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
     {
-        pt = (PageDirectory*)memory_allocate_pages(1, EFI_PAGE_TABLE_MEMORY_TYPE);
+        pt = (PageDirectory*)memory_allocate_pages(1, EFI_MEMORY_TYPE_PAGE_TABLE);
         memset(pt, 0, 0x1000);
 
         pde = PAGE_DIR_ENTRY_CREATE(pt, flags);

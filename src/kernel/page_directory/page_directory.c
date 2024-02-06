@@ -36,7 +36,7 @@ void page_directory_init(EfiMemoryMap* memoryMap, Framebuffer* screenbuffer)
     {
         EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
 
-		if (desc->type == EFI_PAGE_TABLE_MEMORY_TYPE)
+		if (desc->type == EFI_MEMORY_TYPE_PAGE_TABLE)
 		{
             page_allocator_unlock_pages(desc->physicalStart, desc->amountOfPages);
 		}

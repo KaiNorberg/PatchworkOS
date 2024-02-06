@@ -17,8 +17,9 @@ typedef struct
 {
 	EFIMemoryDescriptor* base;
 	uint64_t descriptorAmount;
-	uint64_t descriptorSize;
 	uint64_t key;
+	uint64_t descriptorSize;
+	uint32_t descriptorVersion;
 } EfiMemoryMap;
 
 typedef enum
