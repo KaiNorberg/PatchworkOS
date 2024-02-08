@@ -3,8 +3,6 @@
 #include "vfs/vfs.h"
 #include "list/list.h"
 
-#include "vfs/generic_disk/generic_disk.h"
-
 typedef struct
 {
     
@@ -12,7 +10,7 @@ typedef struct
 
 typedef struct
 {
-    DirectoryNode* dirNode;
+
 } DeviceBus;
 
 void device_disk_init();

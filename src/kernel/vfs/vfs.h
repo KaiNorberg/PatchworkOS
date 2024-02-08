@@ -1,8 +1,8 @@
 #pragma once
 
 #include <stdint.h>
-#include <lib-status.h>
-#include <lib-filesystem.h>
+
+#include <lib-asym.h>
 
 #define VFS_DISK_DELIMITER ':'
 #define VFS_NAME_DELIMITER '/'

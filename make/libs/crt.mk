@@ -15,7 +15,6 @@ $(CRT_BUILD_DIR)/%.s.o: $(CRT_SRC_DIR)/%.s
 	@$(call run_and_test,$(ASM) $(ASM_FLAGS) $^ -o $@)
 
 $(CRT_OUTPUT): $(CRT_OBJECTS)	
-	@echo "!====== BUILDING CRT ======!"
 	@mkdir -p $(@D)
 	@$(call run_and_test,$(LD) $(LD_FLAGS) -r -o $@ $^)
 

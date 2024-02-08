@@ -7,7 +7,7 @@
 #include "vfs/vfs.h"
 #include "vfs/utils/utils.h"
 
-Status ram_disk_open(Disk* disk, File** out, const char* path, uint64_t flags)
+RamDirectory* ram_disk_traverse(Disk* disk, const char* path)
 {
     RamDirectory* directory = disk->internal;
     const char* directoryName = vfs_utils_first_dir(path);
@@ -18,7 +18,7 @@ Status ram_disk_open(Disk* disk, File** out, const char* path, uint64_t flags)
         {
             if (child == 0)
             {
-                return STATUS_INVALID_PATH;
+                return 0;
             }
 
             if (vfs_utils_compare_names(child->name, directoryName))
@@ -35,21 +35,15 @@ Status ram_disk_open(Disk* disk, File** out, const char* path, uint64_t flags)
         directoryName = vfs_utils_next_dir(directoryName);
     }
 
-    const char* fileName = vfs_utils_basename(path);
-    if (fileName == 0)
-    {
-        return STATUS_INVALID_PATH;
-    }
+    return directory;
+}
 
+RamFile* ram_directory_find_file(RamDirectory* directory, const char* filename)
+{
     RamFile* file = directory->firstFile;
-    while (1)
+    while (file != 0)
     {
-        if (file == 0)
-        {
-            return STATUS_INVALID_NAME;
-        }
-
-        if (vfs_utils_compare_names(file->name, fileName))
+        if (vfs_utils_compare_names(file->name, filename))
         {
             break;
         }
@@ -59,10 +53,34 @@ Status ram_disk_open(Disk* disk, File** out, const char* path, uint64_t flags)
         }
     }
 
+    return file;
+}
+
+Status ram_disk_open(Disk* disk, File** out, const char* path, uint64_t flags)
+{    
     if (((flags & FILE_FLAG_READ) && disk->read == 0) ||
         ((flags & FILE_FLAG_WRITE) && disk->write == 0))
     {
         return STATUS_NOT_ALLOWED;
+    }
+
+    RamDirectory* directory = ram_disk_traverse(disk, path);
+    if (directory == 0)
+    {
+        return STATUS_INVALID_PATH;
+    }
+
+    const char* filename = vfs_utils_basename(path);
+    if (filename == 0)
+    {
+        return STATUS_INVALID_PATH;
+    }
+
+    RamFile* file = ram_directory_find_file(directory, filename);
+    if (file == 0)
+    {
+        //TODO: Implement file creation
+        return STATUS_INVALID_NAME;
     }
 
     (*out) = file_new(disk, file, flags);

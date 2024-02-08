@@ -64,7 +64,8 @@ KERNEL_C_FLAGS = $(BASE_C_FLAGS) \
 	-ffreestanding \
 	-fno-stack-protector -fno-exceptions \
 	-fno-pie -mcmodel=kernel \
-	-mno-red-zone -Wno-array-bounds
+	-mno-red-zone -Wno-array-bounds \
+	-D__KERNEL__
 
 BOOT_C_FLAGS = $(BASE_C_FLAGS) \
 	-fpic -ffreestanding -mno-sse2 \
@@ -72,7 +73,8 @@ BOOT_C_FLAGS = $(BASE_C_FLAGS) \
 	-fshort-wchar -mno-red-zone \
 	-mno-80387 -Wno-array-bounds \
 	-mno-mmx -mno-3dnow -mno-sse \
-	-I$(BOOT_SRC_DIR) -I$(GNU_EFI)/inc
+	-I$(BOOT_SRC_DIR) -I$(GNU_EFI)/inc \
+	-D__BOOTLOADER__
 
 LIB_C_FLAGS = $(BASE_C_FLAGS) \
 	-ffreestanding

@@ -3,7 +3,7 @@
 #include "worker/process/process.h"
 #include "vfs/vfs.h"
 
-#include <lib-status.h>
+#include <lib-asym.h>
 
 #define ET_NONE 0x00
 #define ET_REL 0x01

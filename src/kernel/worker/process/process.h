@@ -7,8 +7,6 @@
 
 #include "worker/file_table/file_table.h"
 
-#include <lib-status.h>
-
 #define PROCESS_STATE_NONE 0
 #define PROCESS_STATE_RUNNING 1
 #define PROCESS_STATE_READY 2

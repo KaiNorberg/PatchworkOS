@@ -2,7 +2,7 @@
 
 #include "vfs/vfs.h"
 
-#include <lib-status.h>
+#include <lib-asym.h>
 
 #define FILE_TABLE_LENGTH 1024
 

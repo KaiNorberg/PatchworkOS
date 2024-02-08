@@ -16,6 +16,6 @@ $(CHILD_BUILD_DIR)/%.s.o: $(CHILD_SRC_DIR)/%.s
 
 $(CHILD_OUTPUT): $(CHILD_OBJECTS)	
 	@mkdir -p $(@D)
-	@$(call run_and_test,$(LD) $(PROGRAM_LD_FLAGS) -lc -lprocess -lstatus -lfilesystem -o $@ $^)
+	@$(call run_and_test,$(LD) $(PROGRAM_LD_FLAGS) -lstdlib -lasym -o $@ $^)
 
 BUILD += $(CHILD_OUTPUT)

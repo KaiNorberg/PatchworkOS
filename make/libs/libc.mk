@@ -1,7 +1,7 @@
 LIBC_SRC_DIR = $(LIB_SRC_DIR)/libc
 LIBC_BUILD_DIR = $(LIB_BUILD_DIR)/libc
 
-LIBC_OUTPUT = $(LIB_BIN_DIR)/libc.a
+LIBC_OUTPUT = $(LIB_BIN_DIR)/libstdlib.a
 
 LIBC_OBJECTS = $(call objects_pathsubst,$(LIBC_SRC_DIR),$(LIBC_BUILD_DIR),.c)
 LIBC_OBJECTS += $(call objects_pathsubst,$(LIBC_SRC_DIR),$(LIBC_BUILD_DIR),.s)
