@@ -10,9 +10,6 @@ typedef struct
 {
     char name[VFS_MAX_NAME_LENGTH];
     void* internal;
-
-    Status (*read)(File* file, void* buffer, uint64_t length);
-    Status (*write)(File* file, const void* buffer, uint64_t length);
 } FileNode;
 
 typedef struct

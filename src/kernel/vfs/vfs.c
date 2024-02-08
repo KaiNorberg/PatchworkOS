@@ -77,6 +77,11 @@ Status vfs_mount(Disk* disk, const char* name)
 
 Status vfs_open(File** out, const char* path, uint64_t flags)
 {
+    if ((flags & ~FILE_FLAG_ALL) != 0)
+    {
+        return STATUS_INVALID_FLAG;
+    }
+
     if (!vfs_utils_validate_path(path))
     {
         return STATUS_INVALID_PATH;
@@ -130,9 +135,9 @@ Status vfs_open(File** out, const char* path, uint64_t flags)
 
 Status vfs_read(File* file, void* buffer, uint64_t length)
 {
-    if (file->read != 0)
+    if (file->disk->read != 0 && (file->flags & FILE_FLAG_READ))
     {
-        return file->read(file, buffer, length);
+        return file->disk->read(file, buffer, length);
     }
     else
     {
@@ -142,9 +147,9 @@ Status vfs_read(File* file, void* buffer, uint64_t length)
 
 Status vfs_write(File* file, const void* buffer, uint64_t length)
 {
-    if (file->write != 0)
+    if (file->disk->write != 0 && (file->flags & FILE_FLAG_WRITE))
     {
-        return file->write(file, buffer, length);
+        return file->disk->write(file, buffer, length);
     }
     else
     {
@@ -164,8 +169,14 @@ Status vfs_close(File* file)
     }
 }
 
-//Temporary
-void vfs_seek(File* file, uint64_t position)
+Status vfs_seek(File* file, int64_t offset, uint64_t origin)
 {
-    file->position = position;
+    if (file->disk->seek != 0)
+    {
+        return file->disk->seek(file, offset, origin);
+    }
+    else
+    {
+        return STATUS_NOT_ALLOWED;
+    }
 }

@@ -2,20 +2,25 @@
 
 #include <stdint.h>
 
-typedef struct
+typedef struct RamFile
 {
-	const char* name;
-	uint8_t* data;
+	char name[32];
+	void* data;
 	uint64_t size;
+	uint64_t pageAmount;
+	struct RamFile* next;
+	struct RamFile* prev;
 } RamFile;
 
 typedef struct RamDirectory
 {
-	const char* name;
-	RamFile* files;
-	uint64_t fileAmount;
-	struct RamDirectory* directories;
-	uint64_t directoryAmount;
+	char name[32];
+	RamFile* firstFile;
+	RamFile* lastFile;
+	struct RamDirectory* firstChild;
+	struct RamDirectory* lastChild;
+	struct RamDirectory* next;
+	struct RamDirectory* prev;
 } RamDirectory;
 
 void ram_disk_init(RamDirectory* root);

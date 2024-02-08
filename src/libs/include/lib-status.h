@@ -11,6 +11,8 @@ typedef enum Status
     STATUS_END_OF_FILE,
     STATUS_CORRUPT,
     STATUS_INVALID_POINTER,
+    STATUS_INVALID_FLAG,
+    STATUS_DOES_NOT_EXIST,
 } Status;
 
 static const char* statusToString[] =
@@ -23,7 +25,9 @@ static const char* statusToString[] =
     [STATUS_NOT_ALLOWED] = "NOT_ALLOWED",
     [STATUS_END_OF_FILE] = "END_OF_FILE",
     [STATUS_CORRUPT] = "CORRUPT",
-    [STATUS_INVALID_POINTER] = "INVALID_POINTER"
+    [STATUS_INVALID_POINTER] = "INVALID_POINTER",
+    [STATUS_INVALID_FLAG] = "INVALID_FLAG",
+    [STATUS_DOES_NOT_EXIST] = "DOES_NOT_EXIST"
 };
 
 #if defined(__cplusplus)

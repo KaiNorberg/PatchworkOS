@@ -10,6 +10,8 @@
 
 #include <stdatomic.h>
 
+#include <libc/string.h>
+
 atomic_size_t pid;
 
 void pid_init()
@@ -30,11 +32,12 @@ Process* process_new(uint8_t priority)
     }
 
     Process* process = kmalloc(sizeof(Process));
+    memset(process, 0, sizeof(Process));
 
     process->id = pid_new();
-
     process->pageDirectory = page_directory_new();
     process->memoryBlocks = vector_new(sizeof(MemoryBlock));
+    process->fileTable = file_table_new();
     process->interruptFrame = interrupt_frame_new(0, (void*)USER_ADDRESS_SPACE_TOP, GDT_USER_CODE | 3, GDT_USER_DATA | 3, process->pageDirectory);
     process->status = STATUS_SUCCESS;
     process->state = PROCESS_STATE_READY;
@@ -63,10 +66,7 @@ void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t am
 
 void process_free(Process* process)
 {
-    interrupt_frame_free(process->interruptFrame);
-
     page_directory_free(process->pageDirectory);
-
     for (uint64_t i = 0; i < process->memoryBlocks->length; i++)
     {
         MemoryBlock* memoryBlock = vector_get(process->memoryBlocks, i);
@@ -74,6 +74,9 @@ void process_free(Process* process)
         page_allocator_unlock_pages(memoryBlock->physicalAddress, memoryBlock->pageAmount);
     }
     vector_free(process->memoryBlocks);
+
+    file_table_free(process->fileTable);
+    interrupt_frame_free(process->interruptFrame);
 
     kfree(process);
 }

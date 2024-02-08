@@ -4,8 +4,8 @@
 
 section .text
 
-global status
-status:
-    mov rax, SYS_STATUS
+global seek
+seek:
+    mov rax, SYS_SEEK
     int 0x80
     ret

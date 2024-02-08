@@ -1,6 +1,7 @@
 #pragma once
 
 #include "worker/process/process.h"
+#include "vfs/vfs.h"
 
 #include <lib-status.h>
 
@@ -59,4 +60,4 @@ typedef struct
     uint64_t entrySize;
 } ElfSectionHeader;
 
-Status load_program(Process* process, const char* path);
+Status load_program(Process* process, File* file);

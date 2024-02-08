@@ -8,7 +8,7 @@ extern "C" {
  
 #include <stdint.h>
 
-int64_t spawn(const char* path);
+int64_t spawn(uint64_t fd);
 
 void exit(uint64_t status);
 

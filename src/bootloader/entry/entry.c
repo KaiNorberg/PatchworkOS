@@ -15,17 +15,19 @@ EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
 	InitializeLib(imageHandle, imageHandle);
 	Print(L"Hello from the bootloader!\n\r");
 
-	BootPage* bootPage = memory_allocate_pages(1, EFI_MEMORY_TYPE_BOOTPAGE);
+	BootInfo* bootInfo = memory_allocate_pages(1, EFI_MEMORY_TYPE_BOOTPAGE);
 
-	gop_get_framebuffer(&bootPage->screenbuffer);
-	pst_font_load(imageHandle, &bootPage->font, L"/fonts/zap-vga16.psf");
+	gop_get_framebuffer(&bootInfo->screenbuffer);
+	pst_font_load(imageHandle, &bootInfo->font, L"/fonts/zap-vga16.psf");
 
-	ram_disk_load_directory(&bootPage->ramRoot, file_system_open_root_volume(imageHandle), "root");
+	EFI_FILE* rootHandle = file_system_open_root_volume(imageHandle);
+	bootInfo->ramRoot = ram_disk_load_directory(rootHandle, "root");
+	file_system_close(rootHandle);
 
-	bootPage->rsdp = rsdt_get(systemTable);
-	bootPage->runtimeServices = systemTable->RuntimeServices;
+	bootInfo->rsdp = rsdt_get(systemTable);
+	bootInfo->runtimeServices = systemTable->RuntimeServices;
 
-	loader_load_kernel(imageHandle, systemTable, bootPage);
+	loader_load_kernel(imageHandle, systemTable, bootInfo);
 
 	return EFI_SUCCESS;
 }

@@ -46,11 +46,18 @@ void worker_pool_send_ipi(Ipi ipi)
 void worker_pool_spawn(const char* path)
 {        
     Process* process = process_new(PROCESS_PRIORITY_MIN);
-    if (load_program(process, path) != STATUS_SUCCESS)
+    File* file;
+    Status status = vfs_open(&file, path, FILE_FLAG_READ);
+    if (status != STATUS_SUCCESS)
+    {
+        return;
+    }
+    if (load_program(process, file) != STATUS_SUCCESS)
     {
         process_free(process);
         return;
     }
+    vfs_close(file);
 
     for (uint8_t i = 0; i < workerAmount; i++)
     {

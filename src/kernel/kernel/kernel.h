@@ -14,9 +14,9 @@ typedef struct
 	Framebuffer framebuffer;
 	PsfFont font;
 	EfiMemoryMap memoryMap;
-	RamDirectory ramRoot;
+	RamDirectory* ramRoot;
 	Xsdt* xsdp;
 	void* rt;
-} BootPage;
+} BootInfo;
 
-void kernel_init(BootPage* bootPage);
+void kernel_init(BootInfo* bootInfo);

@@ -1,5 +1,7 @@
 [bits 64]
 
+%include "lib-syscall.inc"
+
 ;This is temporary and only for testing
 
 section .text
@@ -10,6 +12,6 @@ sys_test:
 .L1:
     pause
     loop .L1
-    mov rax, 1000
+    mov rax, SYS_TEST
     int 0x80
     ret

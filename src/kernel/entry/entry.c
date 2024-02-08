@@ -23,9 +23,9 @@
 
 #include <libc/string.h>
 
-void main(BootPage* bootPage)
+void main(BootInfo* bootInfo)
 {   
-    kernel_init(bootPage);
+    kernel_init(bootInfo);
 
     tty_print("\n\r");
 

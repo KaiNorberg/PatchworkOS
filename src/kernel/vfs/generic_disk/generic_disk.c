@@ -61,23 +61,13 @@ Status generic_disk_open(Disk* disk, File** out, const char* path, uint64_t flag
         entry = entry->next;
     }
 
-    if (((flags & VFS_FLAG_READ) && fileNode->read == 0) ||
-        ((flags & VFS_FLAG_WRITE) && fileNode->write == 0))
+    if (((flags & FILE_FLAG_READ) && disk->read == 0) ||
+        ((flags & FILE_FLAG_WRITE) && disk->write == 0))
     {
         return STATUS_NOT_ALLOWED;
     }
 
-    File* file = file_new(disk, fileNode, flags);
-    if (flags & VFS_FLAG_READ)
-    {
-        file->read = fileNode->read;
-    }
-    if (flags & VFS_FLAG_WRITE)
-    {
-        file->write = fileNode->write;
-    }
-
-    (*out) = file;
+    (*out) = file_new(disk, fileNode, flags);
 
     return STATUS_SUCCESS;
 }

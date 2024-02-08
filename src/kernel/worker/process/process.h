@@ -3,6 +3,9 @@
 #include "vector/vector.h"
 #include "interrupt_frame/interrupt_frame.h"
 #include "page_directory/page_directory.h"
+#include "vfs/vfs.h"
+
+#include "worker/file_table/file_table.h"
 
 #include <lib-status.h>
 
@@ -28,11 +31,10 @@ typedef struct
 
     PageDirectory* pageDirectory;
     Vector* memoryBlocks;
+    FileTable* fileTable;
 
-    InterruptFrame* interruptFrame;
-
+    InterruptFrame* interruptFrame;    
     Status status;
-
     uint8_t state;
     uint8_t priority;
 } Process;

@@ -4,8 +4,8 @@
 
 section .text
 
-global status
-status:
-    mov rax, SYS_STATUS
+global read
+read:
+    mov rax, SYS_READ
     int 0x80
     ret

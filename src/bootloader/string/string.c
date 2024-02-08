@@ -97,17 +97,13 @@ CHAR16* strcpy16(CHAR16* dest, const CHAR16* src)
     return dest;
 }
 
-const char* char16_to_char(CHAR16* string)
+void char16_to_char(CHAR16* string, char* out)
 {
 	uint64_t stringLength = StrLen(string);
-
-	char* out = AllocatePool(stringLength + 1);
 
 	for (uint64_t i = 0; i < stringLength; i++)
 	{
 		out[i] = string[i];
 	}
 	out[stringLength] = 0;
-
-	return out;
 }

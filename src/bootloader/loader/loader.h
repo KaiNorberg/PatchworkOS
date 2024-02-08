@@ -75,9 +75,9 @@ typedef struct
 	Framebuffer screenbuffer;
 	PSFFont font;	
 	EfiMemoryMap memoryMap;
-    RamDirectory ramRoot;
+    RamDirectory* ramRoot;
 	void* rsdp;
 	EFI_RUNTIME_SERVICES* runtimeServices;
-} BootPage;
+} BootInfo;
 
-void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, BootPage* bootPage);
+void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, BootInfo* bootInfo);

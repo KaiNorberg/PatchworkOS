@@ -6,31 +6,37 @@
 
 #include "../common.h"
 
-RamFile ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
+RamFile* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
 {
 	EFI_FILE* fileHandle = file_system_open_raw(volume, path);
 
-	UINT64 size = file_system_get_size(fileHandle);
-	uint8_t* data = memory_allocate_pool(size, EFI_MEMORY_TYPE_RAM_DISK);
-	file_system_read(fileHandle, size, data);
+	RamFile* file = memory_allocate_pool(sizeof(RamFile), EFI_MEMORY_TYPE_RAM_DISK);
 
-	RamFile output;
-	output.name = char16_to_char(path);
-	output.data = data;
-	output.size = size;
+	file->size = file_system_get_size(fileHandle);
+	file->pageAmount = file->size / 0x1000 + 1;
+	file->data = memory_allocate_pages(file->pageAmount, EFI_MEMORY_TYPE_RAM_DISK);
+	file_system_read(fileHandle, file->size, file->data);
+
+	memset(file->name, 0, 32);
+	char16_to_char(path, file->name);
 
   	file_system_close(fileHandle);
 
-	return output;
+	return file;
 }
 
-void ram_disk_load_directory(RamDirectory* out, EFI_FILE* volume, const char* name)
-{			
-	out->name = name;
-	out->files = 0;
-	out->fileAmount = 0;
-	out->directories = 0;
-	out->directoryAmount = 0;
+RamDirectory* ram_disk_load_directory(EFI_FILE* volume, const char* name)
+{
+	RamDirectory* dir = memory_allocate_pool(sizeof(RamDirectory), EFI_MEMORY_TYPE_RAM_DISK);
+
+	memset(dir->name, 0, 32);
+	strcpy(dir->name, name);
+	dir->firstFile = 0;
+	dir->lastFile = 0;
+	dir->firstChild = 0;
+	dir->lastChild = 0;
+	dir->next = 0;
+	dir->prev = 0;
 
 	while (1) 
 	{
@@ -57,39 +63,56 @@ void ram_disk_load_directory(RamDirectory* out, EFI_FILE* volume, const char* na
 		{
 			if (StrCmp(fileInfo->FileName, L".") != 0 && StrCmp(fileInfo->FileName, L"..") != 0) 
 			{
-				EFI_FILE_PROTOCOL* subVolume = file_system_open_raw(volume, fileInfo->FileName);
+				EFI_FILE_PROTOCOL* childVolume = file_system_open_raw(volume, fileInfo->FileName);
 
-				RamDirectory newDirectory;
-				ram_disk_load_directory(&newDirectory, subVolume, char16_to_char(fileInfo->FileName));
-				
-				RamDirectory* newDirectoryArray = memory_allocate_pool(sizeof(RamDirectory) * (out->directoryAmount + 1), EFI_MEMORY_TYPE_RAM_DISK);
-				if (out->directoryAmount != 0)
+				char childName[32];
+				char16_to_char(fileInfo->FileName, childName);
+				RamDirectory* child = ram_disk_load_directory(childVolume, childName);
+
+				if (dir->firstChild == 0)
 				{
-					CopyMem(newDirectoryArray, out->directories, sizeof(RamDirectory) * out->directoryAmount);
-					FreePool(out->directories);
-				}
-				out->directories = newDirectoryArray;
-				out->directories[out->directoryAmount] = newDirectory;
-				out->directoryAmount++;
+					child->next = 0;
+					child->prev = 0;
 
-				file_system_close(subVolume);
+					dir->firstChild = child;
+					dir->lastChild = child;
+				}
+				else
+				{
+					child->next = 0;
+					child->prev = dir->lastChild;
+
+					dir->lastChild->next = child;
+					dir->lastChild = child;
+				}
+
+				file_system_close(childVolume);
 			}
 		}
 		else
 		{
-			RamFile newFile = ram_disk_load_file(volume, fileInfo->FileName);
-			
-			RamFile* newFileArray = memory_allocate_pool(sizeof(RamFile) * (out->fileAmount + 1), EFI_MEMORY_TYPE_RAM_DISK);
-			if (out->fileAmount != 0)
+			RamFile* file = ram_disk_load_file(volume, fileInfo->FileName);
+				
+			if (dir->firstFile == 0)
 			{
-				CopyMem(newFileArray, out->files, sizeof(RamFile) * out->fileAmount);
-				FreePool(out->files);
+				file->next = 0;
+				file->prev = 0;
+
+				dir->firstFile = file;
+				dir->lastFile = file;
 			}
-			out->files = newFileArray;
-			out->files[out->fileAmount] = newFile;
-			out->fileAmount++;
+			else
+			{
+				file->next = 0;
+				file->prev = dir->lastFile;
+
+				dir->lastFile->next = file;
+				dir->lastFile = file;
+			}	
 		}
 
 		FreePool(fileInfo);
 	}
+
+	return dir;
 }

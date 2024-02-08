@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <lib-status.h>
+#include <lib-filesystem.h>
 
 #define VFS_DISK_DELIMITER ':'
 #define VFS_NAME_DELIMITER '/'
@@ -9,12 +10,7 @@
 #define VFS_MAX_NAME_LENGTH 32
 #define VFS_MAX_PATH_LENGTH 256
 
-#define VFS_FLAG_CREATE (1 << 0)
-#define VFS_FLAG_READ (1 << 1)
-#define VFS_FLAG_WRITE (1 << 2)
-
 typedef struct File File;
-typedef struct Directory Directory;
 
 typedef struct Disk
 {
@@ -22,6 +18,9 @@ typedef struct Disk
 
     Status (*open)(struct Disk* disk, File** out, const char* path, uint64_t flags);
     Status (*close)(File* file);
+    Status (*read)(File* file, void* buffer, uint64_t length);
+    Status (*write)(File* file, const void* buffer, uint64_t length);
+    Status (*seek)(File* file, int64_t offset, uint64_t origin);
 } Disk;
 
 typedef struct File
@@ -31,9 +30,6 @@ typedef struct File
 
     uint64_t position;
     uint64_t flags;
-
-    Status (*read)(File* file, void* buffer, uint64_t length);
-    Status (*write)(File* file, const void* buffer, uint64_t length);
 } File;
 
 typedef struct
@@ -60,4 +56,4 @@ Status vfs_write(File* file, const void* buffer, uint64_t length);
 
 Status vfs_close(File* file);
 
-void vfs_seek(File* file, uint64_t position);
+Status vfs_seek(File* file, int64_t offset, uint64_t origin);

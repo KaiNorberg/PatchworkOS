@@ -16,22 +16,19 @@
 #include "io/io.h"
 #include "hpet/hpet.h"
 
-Status load_program(Process* process, const char* path)
+Status load_program(Process* process, File* file)
 {
-    //This sucks, dont worry about it
-    File* file;
-    Status status = vfs_open(&file, path, VFS_FLAG_READ);
+    //This still sucks, il fix it one day.
+
+    ElfHeader header;
+    Status status = vfs_read(file, &header, sizeof(ElfHeader));
     if (status != STATUS_SUCCESS)
     {
         return status;
     }
 
-    ElfHeader header;
-    vfs_read(file, &header, sizeof(ElfHeader));
-
     if (header.ident[0] != 0x7F || header.ident[1] != 'E' || header.ident[2] != 'L' || header.ident[3] != 'F')
     {
-        vfs_close(file);
         return STATUS_CORRUPT;
     }
 
@@ -41,7 +38,12 @@ Status load_program(Process* process, const char* path)
     {
         return STATUS_FAILURE;
     }
-    vfs_read(file, programHeaders, programHeaderTableSize);
+    status = vfs_read(file, programHeaders, programHeaderTableSize);
+    if (status != STATUS_SUCCESS)
+    {    
+        kfree(programHeaders);
+        return status;
+    }
 
 	uint64_t start = -1;
 	uint64_t end = 0;
@@ -74,8 +76,19 @@ Status load_program(Process* process, const char* path)
         {
             void* physicalAddress = (void*)((uint64_t)buffer + (programHeader->virtualAddress - start));
 
-            vfs_seek(file, programHeader->offset);
-            vfs_read(file, physicalAddress, programHeader->fileSize);
+            status = vfs_seek(file, programHeader->offset, FILE_SEEK_SET);    
+            if (status != STATUS_SUCCESS)
+            {    
+                kfree(programHeaders);
+                return status;
+            }
+            
+            status = vfs_read(file, physicalAddress, programHeader->fileSize);
+            if (status != STATUS_SUCCESS)
+            {    
+                kfree(programHeaders);
+                return status;
+            }
 		}
 		break;
 		}
@@ -84,7 +97,5 @@ Status load_program(Process* process, const char* path)
     process->interruptFrame->instructionPointer = header.entry;
 
     kfree(programHeaders);
-    vfs_close(file);
-
     return STATUS_SUCCESS;
 }

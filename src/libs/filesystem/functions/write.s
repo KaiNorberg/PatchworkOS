@@ -4,8 +4,8 @@
 
 section .text
 
-global status
-status:
-    mov rax, SYS_STATUS
+global write
+write:
+    mov rax, SYS_WRITE
     int 0x80
     ret
