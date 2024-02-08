@@ -10,8 +10,6 @@
 
 void device_disk_init()
 {
-    //GenericDisk* disk = generic_disk_new();
-
     /*DirectoryNode* ps2 = generic_disk_create_dir(disk->root, "ps2");
     generic_disk_create_file(ps2, "keyboard");*/
 

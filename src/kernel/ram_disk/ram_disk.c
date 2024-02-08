@@ -157,7 +157,12 @@ void ram_disk_init(RamDirectory* root)
     disk->read = ram_disk_read;
     disk->seek = ram_disk_seek;
 
-    vfs_mount(disk, "ram");
+    Status status = vfs_mount(disk, "ram");
+    if (status != STATUS_SUCCESS)
+    {
+        tty_print(statusToString[status]);
+        tty_end_message(TTY_MESSAGE_ER);
+    }
 
     tty_end_message(TTY_MESSAGE_OK);
 }
