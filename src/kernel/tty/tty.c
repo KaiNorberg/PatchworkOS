@@ -5,7 +5,7 @@
 
 #include <libc/string.h>
 
-static Framebuffer* frontbuffer;
+static GopBuffer* frontbuffer;
 static PsfFont* font;
 
 static Point cursorPos;
@@ -17,7 +17,7 @@ static uint8_t scale;
 
 static Lock lock;
 
-void tty_init(Framebuffer* screenbuffer, PsfFont* screenFont)
+void tty_init(GopBuffer* screenbuffer, PsfFont* screenFont)
 {
     frontbuffer = screenbuffer;
     font = screenFont;

@@ -3,26 +3,7 @@
 #include <efi.h>
 #include <efilib.h>
 
-typedef struct RamFile
-{
-	char name[32];
-	void* data;
-	uint64_t size;
-	uint64_t pageAmount;
-	struct RamFile* next;
-	struct RamFile* prev;
-} RamFile;
-
-typedef struct RamDirectory
-{
-	char name[32];
-	RamFile* firstFile;
-	RamFile* lastFile;
-	struct RamDirectory* firstChild;
-	struct RamDirectory* lastChild;
-	struct RamDirectory* next;
-	struct RamDirectory* prev;
-} RamDirectory;
+#include <common/boot_info/boot_info.h>
 
 RamFile* ram_disk_load_file(EFI_FILE* volume, CHAR16* path);
 

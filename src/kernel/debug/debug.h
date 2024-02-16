@@ -1,5 +1,6 @@
 #pragma once
 
+#include "tty/tty.h"
 #include "interrupt_frame/interrupt_frame.h"
 
 #define DEBUG_ROW_AMOUNT 20

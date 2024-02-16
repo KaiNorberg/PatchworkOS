@@ -8,16 +8,17 @@
 #include "ram_disk/ram_disk.h"
 #include "file_system/file_system.h"
 
-#include "../common.h"
+#include <common/common.h>
 
 EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
 {
 	InitializeLib(imageHandle, imageHandle);
 	Print(L"Hello from the bootloader!\n\r");
 
-	BootInfo* bootInfo = memory_allocate_pages(1, EFI_MEMORY_TYPE_BOOTINFO);
+	BootInfo* bootInfo = memory_allocate_pages(1, EFI_MEMORY_TYPE_BOOT_INFO);
+	bootInfo->physicalAddress = (void*)bootInfo;
 
-	gop_get_framebuffer(&bootInfo->screenbuffer);
+	gop_get_buffer(&bootInfo->gopBuffer);
 	pst_font_load(imageHandle, &bootInfo->font, L"/fonts/zap-vga16.psf");
 
 	EFI_FILE* rootHandle = file_system_open_root_volume(imageHandle);

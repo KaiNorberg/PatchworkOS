@@ -8,7 +8,7 @@
 #include "utils/utils.h"
 #include "hpet/hpet.h"
 
-#include "../common.h"
+#include <common/common.h>
 
 const char* exceptionStrings[32] = 
 {

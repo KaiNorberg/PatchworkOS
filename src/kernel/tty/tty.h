@@ -4,21 +4,18 @@
 
 #include "gop/gop.h"
 
+#include <common/boot_info/boot_info.h>
+
 #define TTY_CHAR_HEIGHT 16
 #define TTY_CHAR_WIDTH 8
 
-typedef struct
+typedef struct __attribute__((packed))
 {
-	uint16_t magic;
-	uint8_t mode;
-	uint8_t charSize;
-} PsfHeader;
-
-typedef struct
-{
-	PsfHeader* header;
-	void* glyphs;
-} PsfFont;
+    uint8_t b;
+    uint8_t g;
+    uint8_t r;
+    uint8_t a;
+} Pixel;
 
 typedef enum
 {
@@ -26,7 +23,7 @@ typedef enum
     TTY_MESSAGE_ER
 } TTY_MESSAGE;
 
-void tty_init(Framebuffer* screenbuffer, PsfFont* screenFont);
+void tty_init(GopBuffer* screenbuffer, PsfFont* screenFont);
 
 void tty_acquire();
 

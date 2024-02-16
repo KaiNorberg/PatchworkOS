@@ -19,12 +19,11 @@
 
 #include "worker_pool/worker_pool.h"
 
-#include "../common.h"
-
+#include <common/boot_info/boot_info.h>
 #include <libc/string.h>
 
 void main(BootInfo* bootInfo)
-{   
+{
     kernel_init(bootInfo);
 
     tty_print("\n\r");

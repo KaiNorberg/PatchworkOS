@@ -3,7 +3,7 @@
 #include "memory/memory.h"
 #include "string/string.h"
 
-#include "../common.h"
+#include <common/common.h>
 
 PageDirectory* page_directory_new()
 {

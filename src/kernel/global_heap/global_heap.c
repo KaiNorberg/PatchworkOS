@@ -6,7 +6,7 @@
 #include "utils/utils.h"
 #include "lock/lock.h"
 
-#include "../common.h"
+#include <common/common.h>
 
 extern uint64_t _kernelStart;
 

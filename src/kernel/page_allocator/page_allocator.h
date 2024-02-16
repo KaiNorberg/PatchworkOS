@@ -5,6 +5,7 @@
 #include "gop/gop.h"
 
 #include <stdint.h>
+#include <common/boot_info/boot_info.h>
 
 #define GET_SIZE_IN_PAGES(size) (((size) / 0x1000) + 1)
 

@@ -11,13 +11,12 @@
 #include "worker/interrupts/interrupts.h"
 #include "worker/program_loader/program_loader.h"
 
-#include "../common.h"
-
 #include <libc/string.h>
+#include <common/common.h>
 
 PageDirectory* kernelPageDirectory;
 
-void page_directory_init(EfiMemoryMap* memoryMap, Framebuffer* screenbuffer)
+void page_directory_init(EfiMemoryMap* memoryMap, GopBuffer* screenbuffer)
 {    
     tty_start_message("Page directory initializing");    
       
@@ -26,16 +25,18 @@ void page_directory_init(EfiMemoryMap* memoryMap, Framebuffer* screenbuffer)
 
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
+        EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
         
         page_directory_remap_pages(kernelPageDirectory, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_DIR_READ_WRITE);
 	}
+    
     page_directory_remap_pages(kernelPageDirectory, screenbuffer->base, screenbuffer->base, GET_SIZE_IN_PAGES(screenbuffer->size), PAGE_DIR_READ_WRITE);
-    PAGE_DIRECTORY_LOAD_SPACE(kernelPageDirectory);
+    
+    PAGE_DIRECTORY_LOAD(kernelPageDirectory);
 
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        EFIMemoryDescriptor* desc = (EFIMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
+        EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
 
 		if (desc->type == EFI_MEMORY_TYPE_PAGE_TABLE)
 		{

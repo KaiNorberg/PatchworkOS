@@ -4,7 +4,7 @@
 #include "string/string.h"
 #include "memory/memory.h"
 
-#include "../common.h"
+#include <common/common.h>
 
 RamFile* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
 {

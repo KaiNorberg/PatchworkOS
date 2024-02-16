@@ -3,7 +3,7 @@
 #include <efi.h>
 #include <efilib.h>
 
-#define PAGE_DIRECTORY_LOAD_SPACE(pageDirectory) asm volatile ("mov %0, %%cr3" : : "r" ((uint64_t)pageDirectory))
+#define PAGE_DIRECTORY_LOAD(pageDirectory) asm volatile ("mov %0, %%cr3" : : "r" ((uint64_t)pageDirectory))
 
 #define PAGE_DIR_ENTRY_CREATE(address, flags) ((((uint64_t)address >> 12) & 0x000000ffffffffff) << 12) | ((uint64_t)flags) | ((uint64_t)PAGE_DIR_PRESENT)
 

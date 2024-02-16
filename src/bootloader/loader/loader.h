@@ -8,6 +8,9 @@
 #include "memory/memory.h"
 #include "ram_disk/ram_disk.h"
 
+#include <common/common.h>
+#include <common/boot_info/boot_info.h>
+
 #define ET_NONE 0x00
 #define ET_REL 0x01
 #define ET_EXEC 0x02
@@ -69,15 +72,5 @@ typedef struct
     void* virtualAddress;
     uint64_t pageAmount;
 } SegmentAddressData;
-
-typedef struct
-{
-	Framebuffer screenbuffer;
-	PSFFont font;	
-	EfiMemoryMap memoryMap;
-    RamDirectory* ramRoot;
-	void* rsdp;
-	EFI_RUNTIME_SERVICES* runtimeServices;
-} BootInfo;
 
 void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, BootInfo* bootInfo);

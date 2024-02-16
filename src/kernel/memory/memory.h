@@ -2,25 +2,7 @@
 
 #include <stdint.h>
 
-#define EFI_GET_DESCRIPTOR(memoryMap, index) (EFIMemoryDescriptor*)((uint64_t)memoryMap->base + (index * memoryMap->descriptorSize))
-
-typedef struct
-{
-	uint32_t type;
-	void* physicalStart;
-	void* virtualStart;
-	uint64_t amountOfPages;
-	uint64_t attribute;
-} EFIMemoryDescriptor;
-
-typedef struct
-{
-	EFIMemoryDescriptor* base;
-	uint64_t descriptorAmount;
-	uint64_t key;
-	uint64_t descriptorSize;
-	uint32_t descriptorVersion;
-} EfiMemoryMap;
+#define EFI_GET_DESCRIPTOR(memoryMap, index) (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (index * memoryMap->descriptorSize))
 
 typedef enum
 {

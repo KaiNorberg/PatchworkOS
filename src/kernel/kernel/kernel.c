@@ -21,23 +21,23 @@
 #include "master/master.h"
 #include "worker_pool/worker_pool.h"
 
-#include "../common.h"
+#include <common/common.h>
 
 void kernel_init(BootInfo* bootInfo)
 {   
-    asm volatile("cli"); 
+    asm volatile("cli");
 
-    tty_init(&bootInfo->framebuffer, &bootInfo->font);
+    tty_init(&bootInfo->gopBuffer, &bootInfo->font);
     tty_print("Hello from the kernel!\n\r");
 
     page_allocator_init(&bootInfo->memoryMap);
-    page_directory_init(&bootInfo->memoryMap, &bootInfo->framebuffer);
+    page_directory_init(&bootInfo->memoryMap, &bootInfo->gopBuffer);
     heap_init();
     global_heap_init();
 
     gdt_init();
 
-    rsdt_init(bootInfo->xsdp);
+    rsdt_init(bootInfo->rsdp);
     madt_init();
     apic_init();
     

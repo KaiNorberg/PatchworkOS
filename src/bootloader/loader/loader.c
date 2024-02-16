@@ -5,7 +5,7 @@
 #include "page_directory/page_directory.h"
 #include "string/string.h"
 
-#include "../common.h"
+#include <common/common.h>
 
 void jump_to_kernel(BootInfo* bootInfo, void* entry)
 {
@@ -102,19 +102,19 @@ void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, B
 	uint64_t totalPageAmount = 0;
     for (uint64_t i = 0; i < bootInfo->memoryMap.descriptorAmount; i++)
     {
-        EFI_MEMORY_DESCRIPTOR* desc = (EFI_MEMORY_DESCRIPTOR*)((uint64_t)bootInfo->memoryMap.base + (i * bootInfo->memoryMap.descriptorSize));
+        EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)bootInfo->memoryMap.base + (i * bootInfo->memoryMap.descriptorSize));
 		totalPageAmount += desc->NumberOfPages;
     }    
 	
 	page_directory_remap_pages(kernelPageDirectory, 0, 0, totalPageAmount, PAGE_DIR_READ_WRITE);
-    page_directory_remap_pages(kernelPageDirectory, bootInfo->screenbuffer.base, bootInfo->screenbuffer.base, bootInfo->screenbuffer.size / 0x1000 + 1, PAGE_DIR_READ_WRITE);
+    page_directory_remap_pages(kernelPageDirectory, bootInfo->gopBuffer.base, bootInfo->gopBuffer.base, bootInfo->gopBuffer.size / 0x1000 + 1, PAGE_DIR_READ_WRITE);
 	page_directory_remap_pages(kernelPageDirectory, (void*)kernelStart, kernelBuffer, kernelPageAmount, PAGE_DIR_READ_WRITE);
 
 	memory_get_map(&bootInfo->memoryMap);
 
     for (uint64_t i = 0; i < bootInfo->memoryMap.descriptorAmount; i++)
     {
-        EFI_MEMORY_DESCRIPTOR* desc = (EFI_MEMORY_DESCRIPTOR*)((uint64_t)bootInfo->memoryMap.base + (i * bootInfo->memoryMap.descriptorSize));
+        EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)bootInfo->memoryMap.base + (i * bootInfo->memoryMap.descriptorSize));
 
 		if (desc->Type == EFI_MEMORY_TYPE_KERNEL)
 		{
@@ -131,7 +131,7 @@ void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, B
 	Print(L"Done!\n\r");
 
 	Print(L"Loading kernel address space... ");
-	PAGE_DIRECTORY_LOAD_SPACE(kernelPageDirectory);
+	PAGE_DIRECTORY_LOAD(kernelPageDirectory);
 	Print(L"Done!\n\r"); 
 	
 	jump_to_kernel(bootInfo, (void*)header.entry);
