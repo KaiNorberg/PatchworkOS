@@ -62,7 +62,7 @@ int64_t seek(uint64_t fd, int64_t offset, uint64_t origin);
 
 int64_t spawn(uint64_t fd);
 
-void exit(uint64_t status);
+void exit(Status status);
 
 void sleep(uint64_t milliseconds);
 

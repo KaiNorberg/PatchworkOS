@@ -5,6 +5,7 @@
 #include "lock/lock.h"
 #include "interrupt_frame/interrupt_frame.h"
 #include "time/time.h"
+#include "list/list.h"
 
 #include "worker/process/process.h"
 
@@ -12,26 +13,24 @@
 
 typedef struct
 {
-    uint64_t timeout;
-} Blocker;
-
-typedef struct
-{
-    Process* process;
-    Blocker blocker;
-} BlockedProcess;
-
-typedef struct
-{
     Queue* queues[PROCESS_PRIORITY_LEVELS];
     Process* runningProcess;
 
-    Vector* blockedProcesss;
+    List* blockedProcesses;
 
     uint64_t nextPreemption;
 
     Lock lock;
 } Scheduler;
+
+typedef struct
+{
+    Process* process;
+    Scheduler* scheduler;
+
+    uint64_t timeout;
+    uint8_t unblock;
+} BlockedProcess;
 
 extern void scheduler_idle_loop();
 
@@ -47,7 +46,7 @@ void scheduler_exit(Scheduler* scheduler);
 
 void scheduler_schedule(Scheduler* scheduler, InterruptFrame* interruptFrame);
 
-void scheduler_block(Scheduler* scheduler, InterruptFrame* interruptFrame, Blocker blocker);
+BlockedProcess* scheduler_block(Scheduler* scheduler, InterruptFrame* interruptFrame, uint64_t timeout);
 
 void scheduler_unblock(Scheduler* scheduler);
 

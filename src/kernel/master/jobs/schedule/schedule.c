@@ -1,6 +1,7 @@
 #include "schedule.h"
 
 #include "tty/tty.h"
+#include "heap/heap.h"
 #include "worker_pool/worker_pool.h"
 
 #include "master/interrupts/interrupts.h"
@@ -18,7 +19,7 @@ void schedule_job()
     Point cursorPos = tty_get_cursor_pos();
     tty_set_cursor_pos(0, 0);
     tty_print("MASTER | FAST: "); 
-    tty_printx(time_nanoseconds()); 
+    tty_printx(time_nanoseconds());
     tty_set_cursor_pos(cursorPos.x, cursorPos.y);
     tty_release();
 
@@ -41,5 +42,5 @@ void schedule_job()
         }
     }
     
-    dispatcher_wait(schedule_job, IRQ_FAST_TIMER);
+    dispatcher_push(schedule_job, IRQ_FAST_TIMER);
 }

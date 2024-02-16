@@ -44,12 +44,12 @@ void kernel_init(BootInfo* bootInfo)
     hpet_init();
     time_init();
 
-    vfs_init();
-    device_disk_init();
-    ram_disk_init(bootInfo->ramRoot);
-
     pid_init();
     
     master_init();
     worker_pool_init();
+
+    vfs_init();
+    device_disk_init();
+    ram_disk_init(bootInfo->ramRoot);
 }

@@ -11,8 +11,8 @@
 
 #include "worker/syscall/syscall.h"
 
-extern uint64_t workerInterruptsStart;
-extern uint64_t workerInterruptsEnd;
+extern uint64_t _workerInterruptsStart;
+extern uint64_t _workerInterruptsEnd;
 extern PageDirectory* workerPageDirectory;
 
 extern void* workerVectorTable[IDT_VECTOR_AMOUNT];
@@ -31,9 +31,9 @@ void worker_idt_populate(Idt* idt)
 
 void worker_interrupts_map(PageDirectory* pageDirectory)
 {
-    void* virtualAddress = (void*)round_down((uint64_t)&workerInterruptsStart, 0x1000);
+    void* virtualAddress = (void*)round_down((uint64_t)&_workerInterruptsStart, 0x1000);
     void* physicalAddress = page_directory_get_physical_address(kernelPageDirectory, virtualAddress);
-    uint64_t pageAmount = GET_SIZE_IN_PAGES((uint64_t)&workerInterruptsEnd - (uint64_t)&workerInterruptsStart);
+    uint64_t pageAmount = GET_SIZE_IN_PAGES((uint64_t)&_workerInterruptsEnd - (uint64_t)&_workerInterruptsStart);
 
     page_directory_remap_pages(pageDirectory, virtualAddress, physicalAddress, pageAmount, PAGE_DIR_READ_WRITE);
 }

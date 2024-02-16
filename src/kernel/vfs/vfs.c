@@ -10,11 +10,12 @@
 
 static List* diskDirectory;
 
-Disk* disk_new(void* internal)
+Disk* disk_new(const char* name, void* internal)
 {
     Disk* disk = kmalloc(sizeof(Disk));
     memset(disk, 0, sizeof(Disk));
 
+    strcpy(disk->name, name);
     disk->internal = internal;
 
     return disk;
@@ -46,9 +47,9 @@ void vfs_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-Status vfs_mount(Disk* disk, const char* name)
+Status vfs_mount(Disk* disk)
 {
-    if (!vfs_utils_validate_name(name))
+    if (!vfs_utils_validate_name(disk->name))
     {
         return STATUS_INVALID_NAME;
     }
@@ -56,9 +57,9 @@ Status vfs_mount(Disk* disk, const char* name)
     ListEntry* entry = diskDirectory->first;
     while (entry != 0)
     {
-        DiskFile const* diskFile = entry->data;
+        Disk* other = entry->data;
 
-        if (strcmp(diskFile->name, name) == 0)
+        if (strcmp(other->name, disk->name) == 0)
         {
             return STATUS_ALREADY_EXISTS;
         }
@@ -66,11 +67,7 @@ Status vfs_mount(Disk* disk, const char* name)
         entry = entry->next;
     }
 
-    DiskFile* newDiskFile = kmalloc(sizeof(DiskFile));
-    newDiskFile->disk = disk;
-    strcpy(newDiskFile->name, name);
-
-    list_push(diskDirectory, newDiskFile);
+    list_push(diskDirectory, disk);
 
     return STATUS_SUCCESS;
 }
@@ -113,11 +110,11 @@ Status vfs_open(File** out, const char* path, uint64_t flags)
         ListEntry* entry = diskDirectory->first;
         while (entry != 0)
         {
-            DiskFile const* diskFile = entry->data;
+            Disk* disk = entry->data;
 
-            if (strcmp(diskFile->name, name) == 0)
+            if (strcmp(disk->name, name) == 0)
             {
-                return diskFile->disk->open(diskFile->disk, out, p + 1, flags);
+                return disk->open(disk, out, p + 1, flags);
             }
 
             entry = entry->next;

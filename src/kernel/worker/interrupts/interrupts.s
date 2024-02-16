@@ -21,11 +21,7 @@ section .worker_interrupts
 
 extern worker_interrupt_handler
 
-global workerInterruptsStart
-global workerInterruptsEnd
 global workerPageDirectory
-
-workerInterruptsStart:
 
 common_interrupt:
     cld
@@ -115,8 +111,6 @@ INT_NOERR 31
     INT_NOERR i
 %assign i i+1
 %endrep
-
-workerInterruptsEnd:
 
 section .data
 

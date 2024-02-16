@@ -16,7 +16,7 @@ Scheduler* scheduler_new()
     }
     scheduler->runningProcess = 0;
 
-    scheduler->blockedProcesss = vector_new(sizeof(BlockedProcess));
+    scheduler->blockedProcesses = list_new();
 
     scheduler->nextPreemption = 0;
     scheduler->lock = lock_new();
@@ -92,41 +92,38 @@ void scheduler_schedule(Scheduler* scheduler, InterruptFrame* interruptFrame)
     }
 }
 
-void scheduler_block(Scheduler* scheduler, InterruptFrame* interruptFrame, Blocker blocker)
+BlockedProcess* scheduler_block(Scheduler* scheduler, InterruptFrame* interruptFrame, uint64_t timeout)
 {
-    BlockedProcess newBlockedProcess = 
-    {
-        .blocker = blocker,
-        .process = scheduler->runningProcess
-    };
+    BlockedProcess* blockedProcess = kmalloc(sizeof(BlockedProcess));
+    blockedProcess->process = scheduler->runningProcess;
+    blockedProcess->scheduler = scheduler;
+    blockedProcess->timeout = timeout;
+    blockedProcess->unblock = 0;
 
     interrupt_frame_copy(scheduler->runningProcess->interruptFrame, interruptFrame);
     scheduler->runningProcess = 0;
 
-    for (uint64_t i = 0; i < vector_length(scheduler->blockedProcesss); i++)
-    {
-        BlockedProcess const* blockedProcess = vector_get(scheduler->blockedProcesss, i);
+    list_push(scheduler->blockedProcesses, blockedProcess);
 
-        if (blockedProcess->blocker.timeout > newBlockedProcess.blocker.timeout)
-        {
-            vector_insert(scheduler->blockedProcesss, i, &newBlockedProcess);
-            return;
-        }
-    }
-    vector_push_back(scheduler->blockedProcesss, &newBlockedProcess);
+    return blockedProcess;
 }
 
 void scheduler_unblock(Scheduler* scheduler)
 {
-    if (vector_length(scheduler->blockedProcesss) != 0)
+    ListEntry* entry = scheduler->blockedProcesses->first;
+    while (entry != 0)
     {
-        BlockedProcess* blockedProcess = vector_get(scheduler->blockedProcesss, 0);
+        BlockedProcess* blockedProcess = entry->data;
 
-        if (blockedProcess->blocker.timeout <= time_nanoseconds())
+        if (blockedProcess->timeout <= time_nanoseconds() || blockedProcess->unblock)
         {
             scheduler_push(scheduler, blockedProcess->process);
-            vector_erase(scheduler->blockedProcesss, 0);
+            list_erase(scheduler->blockedProcesses, entry);
+            kfree(blockedProcess);
+            break;
         }
+
+        entry = entry->next;
     }
 }
 
@@ -149,6 +146,16 @@ uint8_t scheduler_wants_to_schedule(Scheduler const* scheduler)
     {
         uint8_t runningPriority = scheduler->runningProcess->priority;
         for (int64_t i = PROCESS_PRIORITY_MAX; i > runningPriority; i--) 
+        {
+            if (queue_length(scheduler->queues[i]) != 0)
+            {
+                return 1;
+            }
+        }
+    }
+    else //If any task is avilable
+    {
+        for (int64_t i = PROCESS_PRIORITY_MIN; i <= PROCESS_PRIORITY_MAX; i++) 
         {
             if (queue_length(scheduler->queues[i]) != 0)
             {

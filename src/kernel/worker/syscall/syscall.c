@@ -107,12 +107,8 @@ void sys_sleep(InterruptFrame* interruptFrame)
     Worker* worker = worker_self();
     scheduler_acquire(worker->scheduler);
 
-    Blocker blocker =
-    {
-        .timeout = time_nanoseconds() + milliseconds * NANOSECONDS_PER_MILLISECOND
-    };
-
-    scheduler_block(worker->scheduler, interruptFrame, blocker);
+    uint64_t timeout = time_nanoseconds() + milliseconds * NANOSECONDS_PER_MILLISECOND;
+    scheduler_block(worker->scheduler, interruptFrame, timeout);
     scheduler_schedule(worker->scheduler, interruptFrame);
 
     scheduler_release(worker->scheduler);

@@ -29,10 +29,14 @@ SECTIONS
 		*(.bss)
 	}
 
+	_workerInterruptsStart = .;
+
 	.worker_interrupts BLOCK(4K) : ALIGN(4K)
 	{
 		*(.interrupts)
 	}
+
+	_workerInterruptsEnd = .;
 
 	.worker_trampoline BLOCK(4K) : ALIGN(4K)
 	{

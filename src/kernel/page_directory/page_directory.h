@@ -3,6 +3,8 @@
 #include "gop/gop.h"
 #include "memory/memory.h"
 
+//TODO: Redo this, add better flag handling, add global pages etc.
+
 #define USER_ADDRESS_SPACE_TOP 0x100000000
 #define USER_ADDRESS_SPACE_BOTTOM 0
 

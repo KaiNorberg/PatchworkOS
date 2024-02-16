@@ -151,13 +151,13 @@ void ram_disk_init(RamDirectory* root)
 {
     tty_start_message("Ram Disk initializing");
 
-    Disk* disk = disk_new(root);
+    Disk* disk = disk_new("ram", root);
     disk->open = ram_disk_open;
     disk->close = ram_disk_close;
     disk->read = ram_disk_read;
     disk->seek = ram_disk_seek;
 
-    Status status = vfs_mount(disk, "ram");
+    Status status = vfs_mount(disk);
     if (status != STATUS_SUCCESS)
     {
         tty_print(statusToString[status]);

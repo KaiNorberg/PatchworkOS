@@ -9,6 +9,7 @@
 #include "global_heap/global_heap.h"
 
 #include "worker/interrupts/interrupts.h"
+#include "worker/program_loader/program_loader.h"
 
 #include "../common.h"
 
@@ -91,6 +92,10 @@ void page_directory_remap(PageDirectory* pageDirectory, void* virtualAddress, vo
 
         pageDirectory->entries[pdpIndex] = PAGE_DIR_ENTRY_CREATE(page, flags);
     }
+    else
+    {
+        pageDirectory->entries[pdpIndex] = PAGE_DIR_ENTRY_CREATE(PAGE_DIR_GET_ADDRESS(pageDirectory->entries[pdpIndex]), flags);
+    }
     PageDirectory* pdp = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pageDirectory->entries[pdpIndex]);
 
     if (!PAGE_DIR_GET_FLAG(pdp->entries[pdIndex], PAGE_DIR_PRESENT))
@@ -99,6 +104,10 @@ void page_directory_remap(PageDirectory* pageDirectory, void* virtualAddress, vo
         memset(page, 0, 0x1000);
 
         pdp->entries[pdIndex] = PAGE_DIR_ENTRY_CREATE(page, flags);
+    }
+    else
+    {
+        pdp->entries[pdIndex] = PAGE_DIR_ENTRY_CREATE(PAGE_DIR_GET_ADDRESS(pdp->entries[pdIndex]), flags);
     }
     PageDirectory* pd = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pdp->entries[pdIndex]);
 
@@ -109,12 +118,12 @@ void page_directory_remap(PageDirectory* pageDirectory, void* virtualAddress, vo
 
         pd->entries[ptIndex] = PAGE_DIR_ENTRY_CREATE(page, flags);
     }
+    else
+    {
+        pd->entries[ptIndex] = PAGE_DIR_ENTRY_CREATE(PAGE_DIR_GET_ADDRESS(pd->entries[ptIndex]), flags);
+    }
     PageDirectory* pt = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pd->entries[ptIndex]);
 
-    if (PAGE_DIR_GET_FLAG(pt->entries[pIndex], PAGE_DIR_PRESENT))
-    {
-        page_directory_invalidate_page(virtualAddress);
-    }
     pt->entries[pIndex] = PAGE_DIR_ENTRY_CREATE(physicalAddress, flags);
 }
 

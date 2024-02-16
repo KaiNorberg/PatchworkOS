@@ -2,9 +2,14 @@
 
 #include "tty/tty.h"
 #include "time/time.h"
+#include "heap/heap.h"
 
 #include "master/interrupts/interrupts.h"
 #include "master/dispatcher/dispatcher.h"
+
+#include "vfs/vfs.h"
+
+#include <libc/string.h>
 
 void time_job_init()
 {
@@ -19,10 +24,12 @@ void time_job()
     tty_set_cursor_pos(0, 16);
     tty_print("MASTER | SLOW: "); 
     tty_printx(time_nanoseconds()); 
+    tty_print(" USED HEAP: "); 
+    tty_printx(heap_reserved_size()); 
     tty_set_cursor_pos(cursorPos.x, cursorPos.y);
     tty_release();
 
     time_accumulate();
 
-    dispatcher_wait(time_job, IRQ_SLOW_TIMER);
+    dispatcher_push(time_job, IRQ_SLOW_TIMER);
 }
