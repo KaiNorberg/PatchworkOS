@@ -7,15 +7,17 @@
 
 #define SIZE_IN_PAGES(size) (((size) / 0x1000) + 1)
 
+#define PAGE_SIZE_OF(object) SIZE_IN_PAGES(sizeof(object))
+
 void pmm_init(EfiMemoryMap* memoryMap);
 
 void* pmm_physical_base();
 
 void pmm_move_to_higher_half();
 
-void* pmm_request();
+void* pmm_allocate();
 
-void* pmm_request_amount(uint64_t amount);
+void* pmm_allocate_amount(uint64_t amount);
 
 uint8_t pmm_is_reserved(void* address);
 

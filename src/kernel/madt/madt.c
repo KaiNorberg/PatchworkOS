@@ -45,9 +45,9 @@ void* madt_next_record(void* record, uint8_t type)
     return 0;
 }
 
-uint64_t madt_local_apic_address()
+void* madt_local_apic_address()
 {
-    return madt->localApicAddress;
+    return (void*)(uint64_t)madt->localApicAddress;
 }
 
 uint32_t madt_flags()

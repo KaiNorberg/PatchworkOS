@@ -13,10 +13,12 @@ void vmm_init(EfiMemoryMap* memoryMap);
 
 void* vmm_physical_to_virtual(void* address);
 
+void* vmm_virtual_to_physical(void* address);
+
 PageDirectory* vmm_kernel_directory();
 
-void* vmm_request_memory(uint64_t pageAmount, uint16_t flags);
+void* vmm_allocate(uint64_t pageAmount, uint16_t flags);
 
-void* vmm_request_address(void* physicalAddress, uint64_t pageAmount, uint16_t flags);
+void* vmm_map(void* physicalAddress, uint64_t pageAmount, uint16_t flags);
 
 void vmm_map_kernel(PageDirectory* pageDirectory);

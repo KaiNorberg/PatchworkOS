@@ -38,6 +38,6 @@ void* madt_first_record(uint8_t type);
 
 void* madt_next_record(void* record, uint8_t type);
 
-uint64_t madt_local_apic_address();
+void* madt_local_apic_address();
 
 uint32_t madt_flags();

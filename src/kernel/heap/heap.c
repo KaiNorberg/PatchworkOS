@@ -38,7 +38,7 @@ void heap_init()
 {    
     tty_start_message("Heap initializing");
 
-    firstBlock = vmm_request_memory(1, PAGE_FLAG_READ_WRITE);
+    firstBlock = vmm_allocate(1, PAGE_FLAG_WRITE);
     firstBlock->size = 0x1000 - sizeof(HeapHeader);
     firstBlock->next = 0;
     firstBlock->reserved = 0;
@@ -142,7 +142,7 @@ void* kmalloc(uint64_t size)
     }
     
     uint64_t pageAmount = SIZE_IN_PAGES(alignedSize + sizeof(HeapHeader)) + 1;
-    HeapHeader* newBlock = vmm_request_memory(pageAmount, PAGE_FLAG_READ_WRITE);
+    HeapHeader* newBlock = vmm_allocate(pageAmount, PAGE_FLAG_WRITE);
 
     newBlock->size = pageAmount * 0x1000 - sizeof(HeapHeader);
     newBlock->next = 0;

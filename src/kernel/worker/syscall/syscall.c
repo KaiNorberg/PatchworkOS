@@ -10,40 +10,12 @@
 
 inline void* syscall_verify_pointer(PageDirectory const* pageDirectory, void* pointer, uint64_t size)
 {
-    if ((uint64_t)pointer >= (uint64_t)USER_ADDRESS_SPACE_TOP)
-    {
-        return 0;
-    }
-
-    void* start = page_directory_get_physical_address(pageDirectory, pointer);
-    if (start == 0 || (uint64_t)start >= USER_ADDRESS_SPACE_TOP)
-    {
-        return 0;
-    }
-    void const* end = page_directory_get_physical_address(pageDirectory, (void*)((uint64_t)pointer + size));
-    if (end == 0 || (uint64_t)end >= (uint64_t)USER_ADDRESS_SPACE_TOP)
-    {
-        return 0;
-    }
-
-    if (end != start + size)
-    {
-        return 0;
-    }
-
-    return start;
+    return 0;
 }
 
 inline char* syscall_verify_string(PageDirectory const* pageDirectory, char* string)
 {
-    if (syscall_verify_pointer(pageDirectory, string, 0))
-    {
-        return (char*)syscall_verify_pointer(pageDirectory, string, strlen(string));
-    }
-    else
-    {
-        return 0;
-    }
+    return 0;
 }
 
 inline void syscall_return_success(InterruptFrame* interruptFrame, uint64_t result)
@@ -285,7 +257,7 @@ void syscall_handler(InterruptFrame* interruptFrame)
 
         Worker const* worker = worker_self();
 
-        const char* string = page_directory_get_physical_address(SYSCALL_GET_PAGE_DIRECTORY(interruptFrame), (void*)SYSCALL_GET_ARG1(interruptFrame));
+        //const char* string = page_directory_get_physical_address(SYSCALL_GET_PAGE_DIRECTORY(interruptFrame), (void*)SYSCALL_GET_ARG1(interruptFrame));
 
         tty_set_row(worker->id + 2);
 
@@ -299,7 +271,7 @@ void syscall_handler(InterruptFrame* interruptFrame)
             tty_printx(worker->scheduler->runningProcess->id);
         }
         tty_print(" | ");
-        tty_print(string);
+        //tty_print(string);
         tty_print(" ");
         tty_printx(time_nanoseconds());
 

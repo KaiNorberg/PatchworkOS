@@ -21,14 +21,14 @@ static Lock lock;
 
 void tty_init(GopBuffer* gopBuffer, PsfFont* screenFont)
 {
-    frontbuffer.base = vmm_request_address(gopBuffer->base, SIZE_IN_PAGES(gopBuffer->size), PAGE_FLAG_READ_WRITE);
+    frontbuffer.base = vmm_map(gopBuffer->base, SIZE_IN_PAGES(gopBuffer->size), PAGE_FLAG_WRITE);
     frontbuffer.size = gopBuffer->size;
     frontbuffer.width = gopBuffer->width;
     frontbuffer.height = gopBuffer->height;
     frontbuffer.pixelsPerScanline = gopBuffer->pixelsPerScanline;
 
     font.header = screenFont->header;   
-    font.glyphs = vmm_request_memory(SIZE_IN_PAGES(screenFont->glyphsSize), PAGE_FLAG_READ_WRITE);
+    font.glyphs = vmm_allocate(SIZE_IN_PAGES(screenFont->glyphsSize), PAGE_FLAG_WRITE);
     memcpy(font.glyphs, vmm_physical_to_virtual(screenFont->glyphs), screenFont->glyphsSize);
 
     scale = 1;
@@ -182,6 +182,14 @@ void tty_printx(uint64_t hex)
     tty_print("0x"); tty_print(string);
 }
 
+void tty_printm(const char* string, uint64_t length)
+{
+    for (uint64_t i = 0; i < length; i++)
+    {
+        tty_put(string[i]);
+    }
+}
+
 void tty_clear()
 {
     memset(frontbuffer.base, 0, frontbuffer.size);
@@ -228,6 +236,7 @@ void tty_end_message(uint64_t status)
         foreground.g = 0;
         foreground.b = 0;
         tty_print("ER");
+        asm volatile("hlt");
     }
     break;
     }

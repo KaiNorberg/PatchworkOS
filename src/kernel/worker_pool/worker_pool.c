@@ -23,7 +23,7 @@ static Idt idt;
 
 void worker_pool_init()
 {
-    tty_start_message("Workers initializing");
+    tty_start_message("Worker Pool initializing");
 
     worker_idt_populate(&idt);
 

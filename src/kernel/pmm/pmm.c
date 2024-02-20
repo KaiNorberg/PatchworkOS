@@ -69,7 +69,7 @@ void pmm_move_to_higher_half()
     bitmap = vmm_physical_to_virtual(bitmap);
 }
 
-void* pmm_request()
+void* pmm_allocate()
 {   
     lock_acquire(&lock);
 
@@ -100,11 +100,13 @@ void* pmm_request()
     return 0;
 }
 
-void* pmm_request_amount(uint64_t amount)
+void* pmm_allocate_amount(uint64_t amount)
 {
+    //TODO: Optmize this it sucks
+
     if (amount <= 1)
     {
-        return pmm_request();
+        return pmm_allocate();
     }
     lock_acquire(&lock);
 

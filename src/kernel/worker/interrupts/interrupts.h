@@ -6,8 +6,6 @@
 
 void worker_idt_populate(Idt* idt);
 
-void worker_interrupts_map(PageDirectory* pageDirectory);
-
 void worker_interrupt_handler(InterruptFrame* interruptFrame);
 
 void worker_ipi_handler(InterruptFrame* interruptFrame);

@@ -9,11 +9,8 @@
 
 void jump_to_kernel(BootInfo* bootInfo, void* entry)
 {
-	Print(L"Jumping to kernel...\n\r");
 	void (*kernelMain)(BootInfo*) = ((void (*)(BootInfo*))entry);
 	kernelMain(bootInfo);
-
-	Print(L"If you are seeing this something has gone very wrong!\n\r");
 
 	while (1)
 	{
@@ -106,9 +103,9 @@ void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, B
 		totalPageAmount += desc->NumberOfPages;
     }    
 	
-	page_directory_map_pages(kernelPageDirectory, 0, 0, totalPageAmount, PAGE_FLAG_READ_WRITE);
-    page_directory_map_pages(kernelPageDirectory, bootInfo->gopBuffer.base, bootInfo->gopBuffer.base, bootInfo->gopBuffer.size / 0x1000 + 1, PAGE_FLAG_READ_WRITE);
-	page_directory_map_pages(kernelPageDirectory, (void*)kernelStart, kernelBuffer, kernelPageAmount, PAGE_FLAG_READ_WRITE);
+	page_directory_map_pages(kernelPageDirectory, 0, 0, totalPageAmount, PAGE_FLAG_WRITE);
+    page_directory_map_pages(kernelPageDirectory, bootInfo->gopBuffer.base, bootInfo->gopBuffer.base, bootInfo->gopBuffer.size / 0x1000 + 1, PAGE_FLAG_WRITE);
+	page_directory_map_pages(kernelPageDirectory, (void*)kernelStart, kernelBuffer, kernelPageAmount, PAGE_FLAG_WRITE);
 
 	memory_get_map(&bootInfo->memoryMap);
 
@@ -130,9 +127,7 @@ void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, B
 	systemTable->BootServices->ExitBootServices(imageHandle, bootInfo->memoryMap.key);
 	Print(L"Done!\n\r");
 
-	Print(L"Loading kernel address space... ");
-	PAGE_DIRECTORY_LOAD(kernelPageDirectory);
-	Print(L"Done!\n\r"); 
-	
+	Print(L"Jumping to kernel... ");
+	PAGE_DIRECTORY_LOAD(kernelPageDirectory);	
 	jump_to_kernel(bootInfo, (void*)header.entry);
 }

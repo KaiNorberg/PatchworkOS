@@ -14,7 +14,7 @@ void apic_init()
 {
     tty_start_message("APIC initializing");
 
-    localApicBase = (uintptr_t)vmm_request_address((void*)madt_local_apic_address(), 1, PAGE_FLAG_READ_WRITE);
+    localApicBase = (uintptr_t)vmm_map(madt_local_apic_address(), 1, PAGE_FLAG_WRITE);
 
     tty_end_message(TTY_MESSAGE_OK);
 }

@@ -28,8 +28,8 @@ void master_init()
     write_msr(MSR_WORKER_ID, -1);
 
     local_apic_init();
-
     apicId = local_apic_id();
+    
     master_idt_populate(&idt);
 
     gdt_load();

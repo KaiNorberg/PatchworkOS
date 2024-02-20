@@ -26,14 +26,11 @@ static void deallocate_boot_info(BootInfo* bootInfo)
     EfiMemoryMap* memoryMap = &bootInfo->memoryMap;
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        const EfiMemoryDescriptor* descriptor = EFI_GET_DESCRIPTOR(memoryMap, i);
+        const EfiMemoryDescriptor* descriptor = vmm_physical_to_virtual(EFI_GET_DESCRIPTOR(memoryMap, i));
 
         if (descriptor->type == EFI_MEMORY_TYPE_BOOT_INFO)
         {
             pmm_unlock_pages(descriptor->physicalStart, descriptor->amountOfPages);
-            
-            //For testing
-            memset(descriptor->physicalStart, 0, descriptor->amountOfPages * 0x1000);
         }
     }
 }
@@ -51,21 +48,18 @@ void kernel_init(BootInfo* bootInfo)
     tty_init(&bootInfo->gopBuffer, &bootInfo->font);    
     tty_print("Hello from the kernel!\n");
 
-    while (1)
-    {
-        asm volatile("hlt");
-    }
-    
-    heap_init();
-
     gdt_init();
+
+    heap_init();
     
     rsdt_init(bootInfo->rsdp);
+    hpet_init();
     madt_init();
     apic_init();
-        
-    hpet_init();
+
     time_init();
+
+    pid_init();
 
     deallocate_boot_info(bootInfo);
 
@@ -74,11 +68,9 @@ void kernel_init(BootInfo* bootInfo)
         asm volatile("hlt");
     }
 
-    pid_init();
-    
     master_init();
     worker_pool_init();
-
+    
     vfs_init();
     device_disk_init();
     ram_disk_init(bootInfo->ramRoot);

@@ -26,11 +26,11 @@ void vmm_init(EfiMemoryMap* memoryMap)
         
         if (desc->type != EFI_MEMORY_TYPE_KERNEL)
         {
-            page_directory_map_pages(kernelPageDirectory, (void*)((uint64_t)desc->physicalStart + VMM_PHYSICAL_BASE), desc->physicalStart, desc->amountOfPages, PAGE_FLAG_READ_WRITE);
+            page_directory_map_pages(kernelPageDirectory, (void*)((uint64_t)desc->physicalStart + VMM_PHYSICAL_BASE), desc->physicalStart, desc->amountOfPages, PAGE_FLAG_WRITE);
         }
         else        
         {            
-            page_directory_map_pages(kernelPageDirectory, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_FLAG_READ_WRITE);
+            page_directory_map_pages(kernelPageDirectory, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_FLAG_WRITE);
         }
 	}
 
@@ -52,22 +52,27 @@ void* vmm_physical_to_virtual(void* address)
     return (void*)((uint64_t)address + (uint64_t)pmm_physical_base());
 }
 
+void* vmm_virtual_to_physical(void* address)
+{
+    return (void*)((uint64_t)address - (uint64_t)pmm_physical_base());
+}
+
 PageDirectory* vmm_kernel_directory()
 {
     return kernelPageDirectory;
 }
 
-void* vmm_request_memory(uint64_t pageAmount, uint16_t flags)
+void* vmm_allocate(uint64_t pageAmount, uint16_t flags)
 {
     void* address = (void*)nextFreeAddress;
     nextFreeAddress += pageAmount * 0x1000;
 
-    page_directory_map_pages(kernelPageDirectory, address, pmm_request_amount(pageAmount), pageAmount, flags);
+    page_directory_map_pages(kernelPageDirectory, address, pmm_allocate_amount(pageAmount), pageAmount, flags);
 
     return address;
 }
 
-void* vmm_request_address(void* physicalAddress, uint64_t pageAmount, uint16_t flags)
+void* vmm_map(void* physicalAddress, uint64_t pageAmount, uint16_t flags)
 {
     void* virtualAddress = vmm_physical_to_virtual(physicalAddress);
     page_directory_map_pages(kernelPageDirectory, virtualAddress, physicalAddress, pageAmount, flags);

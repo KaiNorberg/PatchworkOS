@@ -30,15 +30,6 @@ void worker_idt_populate(Idt* idt)
     idt_set_vector(idt, SYSCALL_VECTOR, workerVectorTable[SYSCALL_VECTOR], IDT_RING3, IDT_INTERRUPT_GATE);
 }
 
-void worker_interrupts_map(PageDirectory* pageDirectory)
-{
-    void* virtualAddress = (void*)round_down((uint64_t)&_workerInterruptsStart, 0x1000);
-    void* physicalAddress = page_directory_get_physical_address(vmm_kernel_directory(), virtualAddress);
-    uint64_t pageAmount = SIZE_IN_PAGES((uint64_t)&_workerInterruptsEnd - (uint64_t)&_workerInterruptsStart);
-
-    page_directory_map_pages(pageDirectory, virtualAddress, physicalAddress, pageAmount, PAGE_FLAG_READ_WRITE);
-}
-
 void worker_interrupt_handler(InterruptFrame* interruptFrame)
 {            
     if (interruptFrame->vector < IDT_EXCEPTION_AMOUNT)

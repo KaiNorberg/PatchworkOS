@@ -50,7 +50,7 @@ Process* process_new(uint8_t priority)
 
 void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t amount)
 {
-    void* physicalAddress = pmm_request_amount(amount);
+    void* physicalAddress = pmm_allocate_amount(amount);
 
     MemoryBlock newBlock;
     newBlock.physicalAddress = physicalAddress;
@@ -59,7 +59,7 @@ void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t am
 
     vector_push_back(process->memoryBlocks, &newBlock);
 
-    page_directory_map_pages(process->pageDirectory, virtualAddress, physicalAddress, amount, PAGE_FLAG_READ_WRITE | PAGE_FLAG_USER_SUPERVISOR);
+    page_directory_map_pages(process->pageDirectory, virtualAddress, physicalAddress, amount, PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR);
 
     return physicalAddress;
 }

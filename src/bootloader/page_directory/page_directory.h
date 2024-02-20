@@ -11,7 +11,7 @@
 #define PAGE_DIRECTORY_GET_ADDRESS(entry) ((entry) & 0x000ffffffffff000)
 
 #define PAGE_FLAG_PRESENT (1 << 0)
-#define PAGE_FLAG_READ_WRITE (1 << 1)
+#define PAGE_FLAG_WRITE (1 << 1)
 #define PAGE_FLAG_USER_SUPERVISOR (1 << 2)
 #define PAGE_FLAG_WRITE_TROUGH (1 << 3)
 #define PAGE_FLAG_CACHE_DISABLED (1 << 4)
