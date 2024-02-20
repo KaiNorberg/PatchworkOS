@@ -6,15 +6,15 @@
 #include "madt/madt.h"
 #include "hpet/hpet.h"
 #include "time/time.h"
+#include "vmm/vmm.h"
 
-static uint64_t localApicBase;
+static uintptr_t localApicBase;
 
 void apic_init()
 {
     tty_start_message("APIC initializing");
 
-    localApicBase = madt_local_apic_address();
-    page_directory_remap(kernelPageDirectory, (void*)localApicBase, (void*)localApicBase, PAGE_DIR_READ_WRITE);
+    localApicBase = (uintptr_t)vmm_request_address((void*)madt_local_apic_address(), 1, PAGE_FLAG_READ_WRITE);
 
     tty_end_message(TTY_MESSAGE_OK);
 }

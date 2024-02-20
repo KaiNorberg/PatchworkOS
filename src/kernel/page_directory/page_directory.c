@@ -1,12 +1,12 @@
 #include "page_directory.h"
 
-#include "page_allocator/page_allocator.h"
+#include "pmm/pmm.h"
 #include "debug/debug.h"
 #include "tty/tty.h"
 #include "gdt/gdt.h"
 #include "idt/idt.h"
 #include "utils/utils.h"
-#include "global_heap/global_heap.h"
+#include "vmm/vmm.h"
 
 #include "worker/interrupts/interrupts.h"
 #include "worker/program_loader/program_loader.h"
@@ -14,58 +14,51 @@
 #include <libc/string.h>
 #include <common/common.h>
 
-PageDirectory* kernelPageDirectory;
-
-void page_directory_init(EfiMemoryMap* memoryMap, GopBuffer* screenbuffer)
-{    
-    tty_start_message("Page directory initializing");    
-      
-    kernelPageDirectory = (PageDirectory*)page_allocator_request();
-    memset(kernelPageDirectory, 0, 0x1000);
-
-    for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
+/*static inline PageDirectoryEntry page_directory_get_entry(PageDirectory const* pageDirectory, uint64_t index)
+{
+    if (!PAGE_DIRECTORY_GET_FLAG(pageDirectory->entries[index], PAGE_FLAG_PRESENT))
     {
-        EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
-        
-        page_directory_remap_pages(kernelPageDirectory, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_DIR_READ_WRITE);
-	}
-    
-    page_directory_remap_pages(kernelPageDirectory, screenbuffer->base, screenbuffer->base, GET_SIZE_IN_PAGES(screenbuffer->size), PAGE_DIR_READ_WRITE);
-    
-    PAGE_DIRECTORY_LOAD(kernelPageDirectory);
+        debug_panic("Page Directory entry does not exist!");
+    }
+    return pageDirectory->entries[index];
+}*/
 
-    for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
+static inline PageDirectoryEntry page_directory_get_or_allocate_entry(PageDirectory* pageDirectory, uint64_t index, uint64_t flags)
+{
+    if (!PAGE_DIRECTORY_GET_FLAG(pageDirectory->entries[index], PAGE_FLAG_PRESENT))
     {
-        EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
+        void* page = pmm_request();
+        memset(vmm_physical_to_virtual(page), 0, 0x1000);
+        pageDirectory->entries[index] = PAGE_DIRECTORY_ENTRY_CREATE(page, flags);
+    }
 
-		if (desc->type == EFI_MEMORY_TYPE_PAGE_TABLE)
-		{
-            page_allocator_unlock_pages(desc->physicalStart, desc->amountOfPages);
-		}
-	}    
-    tty_end_message(TTY_MESSAGE_OK);
+    return pageDirectory->entries[index];
+}
+
+static inline PageDirectory* page_directory_get_or_allocate_directory(PageDirectory* pageDirectory, uint64_t index, uint64_t flags)
+{
+    PageDirectoryEntry entry = page_directory_get_or_allocate_entry(pageDirectory, index, flags);
+
+    return vmm_physical_to_virtual(PAGE_DIRECTORY_GET_ADDRESS(entry));
 }
 
 PageDirectory* page_directory_new()
 {
-    PageDirectory* pageDirectory = (PageDirectory*)page_allocator_request();
-    memset(pageDirectory, 0, 0x1000);
-
-    global_heap_map(pageDirectory);
-    worker_interrupts_map(pageDirectory);
+    PageDirectory* pageDirectory = (PageDirectory*)pmm_request();
+    memset(vmm_physical_to_virtual(pageDirectory), 0, 0x1000);
     
     return pageDirectory;
 }
 
-void page_directory_remap_pages(PageDirectory* pageDirectory, void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint16_t flags)
+void page_directory_map_pages(PageDirectory* pageDirectory, void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint16_t flags)
 {
     for (uint64_t page = 0; page < pageAmount; page++)
     {
-        page_directory_remap(pageDirectory, (void*)((uint64_t)virtualAddress + page * 0x1000), (void*)((uint64_t)physicalAddress + page * 0x1000), flags);
+        page_directory_map(pageDirectory, (void*)((uint64_t)virtualAddress + page * 0x1000), (void*)((uint64_t)physicalAddress + page * 0x1000), flags);
     }
 }
 
-void page_directory_remap(PageDirectory* pageDirectory, void* virtualAddress, void* physicalAddress, uint16_t flags)
+void page_directory_map(PageDirectory* pageDirectory, void* virtualAddress, void* physicalAddress, uint16_t flags)
 {        
     if ((uint64_t)virtualAddress % 0x1000 != 0)
     {
@@ -76,61 +69,22 @@ void page_directory_remap(PageDirectory* pageDirectory, void* virtualAddress, vo
         debug_panic("Attempt to map invalid physical address!");
     }
 
-    uint64_t indexer = (uint64_t)virtualAddress;
-    indexer >>= 12;
-    uint64_t pIndex = indexer & 0x1ff;
-    indexer >>= 9;
-    uint64_t ptIndex = indexer & 0x1ff;
-    indexer >>= 9;
-    uint64_t pdIndex = indexer & 0x1ff;
-    indexer >>= 9;
-    uint64_t pdpIndex = indexer & 0x1ff;
+    pageDirectory = vmm_physical_to_virtual(pageDirectory);
 
-    if (!PAGE_DIR_GET_FLAG(pageDirectory->entries[pdpIndex], PAGE_DIR_PRESENT))
-    {
-        void* page = (PageDirectory*)page_allocator_request();
-        memset(page, 0, 0x1000);
+    uint64_t level4Index = PAGE_DIRECTORY_GET_INDEX(virtualAddress, 4);
+    uint64_t level3Index = PAGE_DIRECTORY_GET_INDEX(virtualAddress, 3);
+    uint64_t level2Index = PAGE_DIRECTORY_GET_INDEX(virtualAddress, 2);
+    uint64_t level1Index = PAGE_DIRECTORY_GET_INDEX(virtualAddress, 1);
 
-        pageDirectory->entries[pdpIndex] = PAGE_DIR_ENTRY_CREATE(page, flags);
-    }
-    else
-    {
-        pageDirectory->entries[pdpIndex] = PAGE_DIR_ENTRY_CREATE(PAGE_DIR_GET_ADDRESS(pageDirectory->entries[pdpIndex]), flags);
-    }
-    PageDirectory* pdp = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pageDirectory->entries[pdpIndex]);
-
-    if (!PAGE_DIR_GET_FLAG(pdp->entries[pdIndex], PAGE_DIR_PRESENT))
-    {
-        void* page = (PageDirectory*)page_allocator_request();
-        memset(page, 0, 0x1000);
-
-        pdp->entries[pdIndex] = PAGE_DIR_ENTRY_CREATE(page, flags);
-    }
-    else
-    {
-        pdp->entries[pdIndex] = PAGE_DIR_ENTRY_CREATE(PAGE_DIR_GET_ADDRESS(pdp->entries[pdIndex]), flags);
-    }
-    PageDirectory* pd = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pdp->entries[pdIndex]);
-
-    if (!PAGE_DIR_GET_FLAG(pd->entries[ptIndex], PAGE_DIR_PRESENT))
-    {
-        void* page = (PageDirectory*)page_allocator_request();
-        memset(page, 0, 0x1000);
-
-        pd->entries[ptIndex] = PAGE_DIR_ENTRY_CREATE(page, flags);
-    }
-    else
-    {
-        pd->entries[ptIndex] = PAGE_DIR_ENTRY_CREATE(PAGE_DIR_GET_ADDRESS(pd->entries[ptIndex]), flags);
-    }
-    PageDirectory* pt = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pd->entries[ptIndex]);
-
-    pt->entries[pIndex] = PAGE_DIR_ENTRY_CREATE(physicalAddress, flags);
+    PageDirectory* level3 = page_directory_get_or_allocate_directory(pageDirectory, level4Index, PAGE_FLAG_READ_WRITE | PAGE_FLAG_USER_SUPERVISOR);
+    PageDirectory* level2 = page_directory_get_or_allocate_directory(level3, level3Index, PAGE_FLAG_READ_WRITE | PAGE_FLAG_USER_SUPERVISOR);
+    PageDirectory* level1 = page_directory_get_or_allocate_directory(level2, level2Index, PAGE_FLAG_READ_WRITE | PAGE_FLAG_USER_SUPERVISOR);
+    level1->entries[level1Index] = PAGE_DIRECTORY_ENTRY_CREATE(physicalAddress, flags);
 }
 
 void* page_directory_get_physical_address(PageDirectory const* pageDirectory, void* virtualAddress)
 {
-    uint64_t indexer = round_down((uint64_t)virtualAddress, 0x1000);
+    /*uint64_t indexer = round_down((uint64_t)virtualAddress, 0x1000);
     uint64_t offset = (uint64_t)virtualAddress - indexer;
     indexer >>= 12;
     uint64_t pIndex = indexer & 0x1ff;
@@ -141,62 +95,63 @@ void* page_directory_get_physical_address(PageDirectory const* pageDirectory, vo
     indexer >>= 9;
     uint64_t pdpIndex = indexer & 0x1ff;
 
-    if (!PAGE_DIR_GET_FLAG(pageDirectory->entries[pdpIndex], PAGE_DIR_PRESENT))
+    if (!PAGE_DIRECTORY_GET_FLAG(pageDirectory->entries[pdpIndex], PAGE_FLAG_PRESENT))
     {
         return 0;
     }
-    PageDirectory const* pdp = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pageDirectory->entries[pdpIndex]);
+    PageDirectory const* pdp = (PageDirectory*)PAGE_DIRECTORY_GET_ADDRESS(pageDirectory->entries[pdpIndex]);
 
-    if (!PAGE_DIR_GET_FLAG(pdp->entries[pdIndex], PAGE_DIR_PRESENT))
+    if (!PAGE_DIRECTORY_GET_FLAG(pdp->entries[pdIndex], PAGE_FLAG_PRESENT))
     {
         return 0;
     }
-    PageDirectory const* pd = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pdp->entries[pdIndex]);
+    PageDirectory const* pd = (PageDirectory*)PAGE_DIRECTORY_GET_ADDRESS(pdp->entries[pdIndex]);
 
-    if (!PAGE_DIR_GET_FLAG(pd->entries[ptIndex], PAGE_DIR_PRESENT))
+    if (!PAGE_DIRECTORY_GET_FLAG(pd->entries[ptIndex], PAGE_FLAG_PRESENT))
     {
         return 0;
     }
-    PageDirectory const* pt = (PageDirectory*)PAGE_DIR_GET_ADDRESS(pd->entries[ptIndex]);
+    PageDirectory const* pt = (PageDirectory*)PAGE_DIRECTORY_GET_ADDRESS(pd->entries[ptIndex]);
 
-    uint64_t physicalAddress = PAGE_DIR_GET_ADDRESS(pt->entries[pIndex]);
-    return (void*)(physicalAddress + offset);
+    return (void*)((uint64_t)PAGE_DIRECTORY_GET_ADDRESS(pt->entries[pIndex]) + offset);*/
+
+    return 0;
 }
 
 void page_directory_free(PageDirectory* pageDirectory)
 {    
-    PageDirectoryEntry pde;
+    /*PageDirectoryEntry entry;
 
     for (uint64_t pdpIndex = 0; pdpIndex < 512; pdpIndex++)
     {
-        pde = pageDirectory->entries[pdpIndex];
+        entry = pageDirectory->entries[pdpIndex];
         PageDirectory* pdp;
-        if (PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
+        if (PAGE_DIRECTORY_GET_FLAG(entry, PAGE_FLAG_PRESENT))
         {
-            pdp = (PageDirectory*)(PAGE_DIR_GET_ADDRESS(pde));        
+            pdp = (PageDirectory*)(PAGE_DIRECTORY_GET_ADDRESS(entry));        
             for (uint64_t pdIndex = 0; pdIndex < 512; pdIndex++)
             {
-                pde = pdp->entries[pdIndex]; 
+                entry = pdp->entries[pdIndex]; 
                 PageDirectory* pd;
-                if (PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
+                if (PAGE_DIRECTORY_GET_FLAG(entry, PAGE_FLAG_PRESENT))
                 {
-                    pd = (PageDirectory*)(PAGE_DIR_GET_ADDRESS(pde));
+                    pd = (PageDirectory*)(PAGE_DIRECTORY_GET_ADDRESS(entry));
                     for (uint64_t ptIndex = 0; ptIndex < 512; ptIndex++)
                     {
-                        pde = pd->entries[ptIndex];
+                        entry = pd->entries[ptIndex];
                         PageDirectory* pt;
-                        if (PAGE_DIR_GET_FLAG(pde, PAGE_DIR_PRESENT))
+                        if (PAGE_DIRECTORY_GET_FLAG(entry, PAGE_FLAG_PRESENT))
                         {
-                            pt = (PageDirectory*)(PAGE_DIR_GET_ADDRESS(pde));
-                            page_allocator_unlock_page(pt);
+                            pt = (PageDirectory*)(PAGE_DIRECTORY_GET_ADDRESS(entry));
+                            pmm_unlock_page(pt);
                         }
                     }
-                    page_allocator_unlock_page(pd);
+                    pmm_unlock_page(pd);
                 }
             }
-            page_allocator_unlock_page(pdp);
+            pmm_unlock_page(pdp);
         }
     }
 
-    page_allocator_unlock_page(pageDirectory);
+    pmm_unlock_page(pageDirectory);*/
 }

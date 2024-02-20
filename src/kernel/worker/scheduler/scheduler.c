@@ -5,6 +5,7 @@
 #include "gdt/gdt.h"
 #include "debug/debug.h"
 #include "worker_pool/worker_pool.h"
+#include "vmm/vmm.h"
 
 Scheduler* scheduler_new()
 {
@@ -85,7 +86,7 @@ void scheduler_schedule(Scheduler* scheduler, InterruptFrame* interruptFrame)
     else if (scheduler->runningProcess == 0)
     {
         interruptFrame->instructionPointer = (uint64_t)scheduler_idle_loop;
-        interruptFrame->cr3 = (uint64_t)kernelPageDirectory;
+        interruptFrame->cr3 = (uint64_t)vmm_kernel_directory();
         interruptFrame->codeSegment = GDT_KERNEL_CODE;
         interruptFrame->stackSegment = GDT_KERNEL_DATA;
         interruptFrame->stackPointer = worker_self()->tss->rsp0;

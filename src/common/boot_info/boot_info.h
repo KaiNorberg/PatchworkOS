@@ -45,6 +45,7 @@ typedef struct __attribute__((packed))
 typedef struct
 {
 	PsfHeader header;
+	uint64_t glyphsSize;
 	void* glyphs;
 } PsfFont;
 

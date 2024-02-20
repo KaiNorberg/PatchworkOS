@@ -16,11 +16,9 @@ void schedule_job()
 {        
     //Temporary for testing
     tty_acquire();
-    Point cursorPos = tty_get_cursor_pos();
-    tty_set_cursor_pos(0, 0);
+    tty_set_row(0);
     tty_print("MASTER | FAST: "); 
     tty_printx(time_nanoseconds());
-    tty_set_cursor_pos(cursorPos.x, cursorPos.y);
     tty_release();
 
     for (uint16_t i = 0; i < worker_amount(); i++)

@@ -4,7 +4,7 @@
 #include "madt/madt.h"
 #include "tty/tty.h"
 #include "utils/utils.h"
-#include "page_allocator/page_allocator.h"
+#include "pmm/pmm.h"
 #include "apic/apic.h"
 #include "hpet/hpet.h"
 #include "master/master.h"

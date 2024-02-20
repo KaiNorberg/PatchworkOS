@@ -4,10 +4,11 @@
 #include "apic/apic.h"
 #include "debug/debug.h"
 #include "utils/utils.h"
-#include "page_allocator/page_allocator.h"
+#include "pmm/pmm.h"
 #include "ipi/ipi.h"
 #include "worker_pool/worker_pool.h"
 #include "tty/tty.h"
+#include "vmm/vmm.h"
 
 #include "worker/syscall/syscall.h"
 
@@ -19,7 +20,7 @@ extern void* workerVectorTable[IDT_VECTOR_AMOUNT];
 
 void worker_idt_populate(Idt* idt)
 {
-    workerPageDirectory = kernelPageDirectory;
+    workerPageDirectory = vmm_kernel_directory();
 
     for (uint16_t vector = 0; vector < IDT_VECTOR_AMOUNT; vector++) 
     {        
@@ -32,10 +33,10 @@ void worker_idt_populate(Idt* idt)
 void worker_interrupts_map(PageDirectory* pageDirectory)
 {
     void* virtualAddress = (void*)round_down((uint64_t)&_workerInterruptsStart, 0x1000);
-    void* physicalAddress = page_directory_get_physical_address(kernelPageDirectory, virtualAddress);
-    uint64_t pageAmount = GET_SIZE_IN_PAGES((uint64_t)&_workerInterruptsEnd - (uint64_t)&_workerInterruptsStart);
+    void* physicalAddress = page_directory_get_physical_address(vmm_kernel_directory(), virtualAddress);
+    uint64_t pageAmount = SIZE_IN_PAGES((uint64_t)&_workerInterruptsEnd - (uint64_t)&_workerInterruptsStart);
 
-    page_directory_remap_pages(pageDirectory, virtualAddress, physicalAddress, pageAmount, PAGE_DIR_READ_WRITE);
+    page_directory_map_pages(pageDirectory, virtualAddress, physicalAddress, pageAmount, PAGE_FLAG_READ_WRITE);
 }
 
 void worker_interrupt_handler(InterruptFrame* interruptFrame)

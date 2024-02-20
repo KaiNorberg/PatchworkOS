@@ -1,7 +1,7 @@
 #include "process.h"
 
 #include "heap/heap.h"
-#include "page_allocator/page_allocator.h"
+#include "pmm/pmm.h"
 #include "tty/tty.h"
 #include "lock/lock.h"
 #include "gdt/gdt.h"
@@ -50,7 +50,7 @@ Process* process_new(uint8_t priority)
 
 void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t amount)
 {
-    void* physicalAddress = page_allocator_request_amount(amount);
+    void* physicalAddress = pmm_request_amount(amount);
 
     MemoryBlock newBlock;
     newBlock.physicalAddress = physicalAddress;
@@ -59,7 +59,7 @@ void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t am
 
     vector_push_back(process->memoryBlocks, &newBlock);
 
-    page_directory_remap_pages(process->pageDirectory, virtualAddress, physicalAddress, amount, PAGE_DIR_READ_WRITE | PAGE_DIR_USER_SUPERVISOR);
+    page_directory_map_pages(process->pageDirectory, virtualAddress, physicalAddress, amount, PAGE_FLAG_READ_WRITE | PAGE_FLAG_USER_SUPERVISOR);
 
     return physicalAddress;
 }
@@ -71,7 +71,7 @@ void process_free(Process* process)
     {
         MemoryBlock* memoryBlock = vector_get(process->memoryBlocks, i);
 
-        page_allocator_unlock_pages(memoryBlock->physicalAddress, memoryBlock->pageAmount);
+        pmm_unlock_pages(memoryBlock->physicalAddress, memoryBlock->pageAmount);
     }
     vector_free(process->memoryBlocks);
 

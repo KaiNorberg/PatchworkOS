@@ -106,9 +106,9 @@ void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, B
 		totalPageAmount += desc->NumberOfPages;
     }    
 	
-	page_directory_remap_pages(kernelPageDirectory, 0, 0, totalPageAmount, PAGE_DIR_READ_WRITE);
-    page_directory_remap_pages(kernelPageDirectory, bootInfo->gopBuffer.base, bootInfo->gopBuffer.base, bootInfo->gopBuffer.size / 0x1000 + 1, PAGE_DIR_READ_WRITE);
-	page_directory_remap_pages(kernelPageDirectory, (void*)kernelStart, kernelBuffer, kernelPageAmount, PAGE_DIR_READ_WRITE);
+	page_directory_map_pages(kernelPageDirectory, 0, 0, totalPageAmount, PAGE_FLAG_READ_WRITE);
+    page_directory_map_pages(kernelPageDirectory, bootInfo->gopBuffer.base, bootInfo->gopBuffer.base, bootInfo->gopBuffer.size / 0x1000 + 1, PAGE_FLAG_READ_WRITE);
+	page_directory_map_pages(kernelPageDirectory, (void*)kernelStart, kernelBuffer, kernelPageAmount, PAGE_FLAG_READ_WRITE);
 
 	memory_get_map(&bootInfo->memoryMap);
 

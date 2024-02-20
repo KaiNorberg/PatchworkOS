@@ -14,8 +14,6 @@ typedef struct HeapHeader
 
 void heap_init();
 
-void heap_visualize();
-
 uint64_t heap_total_size();
 
 uint64_t heap_reserved_size();

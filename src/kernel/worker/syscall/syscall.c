@@ -287,8 +287,7 @@ void syscall_handler(InterruptFrame* interruptFrame)
 
         const char* string = page_directory_get_physical_address(SYSCALL_GET_PAGE_DIRECTORY(interruptFrame), (void*)SYSCALL_GET_ARG1(interruptFrame));
 
-        Point cursorPos = tty_get_cursor_pos();
-        tty_set_cursor_pos(0, 16 * (worker->id + 2));
+        tty_set_row(worker->id + 2);
 
         tty_print("WORKER: ");
         tty_printx(worker->id); 
@@ -303,8 +302,6 @@ void syscall_handler(InterruptFrame* interruptFrame)
         tty_print(string);
         tty_print(" ");
         tty_printx(time_nanoseconds());
-
-        tty_set_cursor_pos(cursorPos.x, cursorPos.y);
 
         tty_release();
         return;

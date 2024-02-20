@@ -16,7 +16,7 @@ void madt_init()
     }
 
     tty_end_message(TTY_MESSAGE_OK);
-}
+} 
 
 void* madt_first_record(uint8_t type)
 {

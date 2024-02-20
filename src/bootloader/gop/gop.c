@@ -22,11 +22,11 @@ void gop_get_buffer(GopBuffer* buffer)
 	buffer->height = gop->Mode->Info->VerticalResolution;
 	buffer->pixelsPerScanline = gop->Mode->Info->PixelsPerScanLine;
 
-	Print(L"gop BUFFER INFO\n\r");
+	Print(L"GOP BUFFER INFO\n\r");
 	Print(L"Base: 0x%x\n\r", buffer->base);
 	Print(L"Size: 0x%x\n\r", buffer->size);
 	Print(L"Width: %d\n\r", buffer->width);
 	Print(L"Height: %d\n\r", buffer->height);
 	Print(L"PixelsPerScanline: %d\n\r", buffer->pixelsPerScanline);
-	Print(L"gop BUFFER INFO END\n\r");
+	Print(L"GOP BUFFER INFO END\n\r");
 }

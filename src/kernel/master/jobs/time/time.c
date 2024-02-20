@@ -20,13 +20,11 @@ void time_job()
 {        
     //Temporary for testing
     tty_acquire();
-    Point cursorPos = tty_get_cursor_pos();
-    tty_set_cursor_pos(0, 16);
+    tty_set_row(1);
     tty_print("MASTER | SLOW: "); 
     tty_printx(time_nanoseconds()); 
     tty_print(" USED HEAP: "); 
     tty_printx(heap_reserved_size()); 
-    tty_set_cursor_pos(cursorPos.x, cursorPos.y);
     tty_release();
 
     time_accumulate();

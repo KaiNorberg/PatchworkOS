@@ -3,7 +3,7 @@
 #include "tty/tty.h"
 
 #include "heap/heap.h"
-#include "page_allocator/page_allocator.h"
+#include "pmm/pmm.h"
 #include "time/time.h"
 #include "utils/utils.h"
 #include "hpet/hpet.h"
@@ -51,7 +51,7 @@ static Pixel currentColor;
 
 void debug_panic(const char* message)
 {    
-    tty_acquire();
+    /*tty_acquire();
 
     Pixel white;
     white.a = 255;
@@ -82,19 +82,19 @@ void debug_panic(const char* message)
     debug_next_row();
     tty_print("Reserved Heap = "); tty_printx(heap_reserved_size());
     debug_next_row();
-    tty_print("Locked Pages = "); tty_printx(page_allocator_locked_amount());
+    tty_print("Locked Pages = "); tty_printx(pmm_locked_amount());
     debug_next_row();
-    tty_print("Unlocked Pages = "); tty_printx(page_allocator_unlocked_amount());
+    tty_print("Unlocked Pages = "); tty_printx(pmm_unlocked_amount());
 
     while (1)
     {
         asm volatile("hlt");
-    }
+    }*/
 }
 
 void debug_exception(InterruptFrame const* interruptFrame, const char* message)
 {
-    Pixel white;
+    /*Pixel white;
     white.a = 255;
     white.r = 255;
     white.g = 255;
@@ -185,17 +185,17 @@ void debug_exception(InterruptFrame const* interruptFrame, const char* message)
     debug_next_row();
     tty_print("Reserved Heap = "); tty_printx(heap_reserved_size());
     debug_next_row();
-    tty_print("Locked Pages = "); tty_printx(page_allocator_locked_amount());
+    tty_print("Locked Pages = "); tty_printx(pmm_locked_amount());
     debug_next_row();
-    tty_print("Unlocked Pages = "); tty_printx(page_allocator_unlocked_amount());
+    tty_print("Unlocked Pages = "); tty_printx(pmm_unlocked_amount());
 
     tty_set_foreground(white);
-    tty_set_scale(1);
+    tty_set_scale(1);*/
 }
 
 void debug_move_to_grid(uint8_t row, uint8_t column, Pixel color)
 {
-    currentRow = row;
+    /*currentRow = row;
     currentColumn = column;
     currentColor = color;
 
@@ -207,10 +207,10 @@ void debug_move_to_grid(uint8_t row, uint8_t column, Pixel color)
 
     tty_set_cursor_pos(xPos, yPos);
     tty_set_scale(DEBUG_TEXT_SCALE);
-    tty_set_foreground(color);
+    tty_set_foreground(color);*/
 }
 
 void debug_next_row()
 {
-    debug_move_to_grid(currentRow + 1, currentColumn, currentColor);
+    /*debug_move_to_grid(currentRow + 1, currentColumn, currentColor);*/
 }

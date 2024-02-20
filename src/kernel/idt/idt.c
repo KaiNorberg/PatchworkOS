@@ -3,8 +3,7 @@
 #include "io/io.h"
 #include "tty/tty.h"
 
-#include "page_allocator/page_allocator.h"
-#include "global_heap/global_heap.h"
+#include "pmm/pmm.h"
 
 void idt_load(Idt* idt)
 {

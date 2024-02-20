@@ -2,7 +2,7 @@
 
 #include "ram_disk/ram_disk.h"
 #include "heap/heap.h"
-#include "page_allocator/page_allocator.h"
+#include "pmm/pmm.h"
 #include "gdt/gdt.h"
 #include "tty/tty.h"
 #include "debug/debug.h"
@@ -62,7 +62,7 @@ Status load_program(Process* process, File* file)
 		}
 	}
 
-    uint64_t pageAmount = GET_SIZE_IN_PAGES(end - start);
+    uint64_t pageAmount = SIZE_IN_PAGES(end - start);
     void* buffer = process_allocate_pages(process, (void*)start, pageAmount);
     memset(buffer, 0, pageAmount * 0x1000);
 

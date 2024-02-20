@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#define EFI_GET_DESCRIPTOR(memoryMap, index) (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (index * memoryMap->descriptorSize))
+#define EFI_GET_DESCRIPTOR(memoryMap, index) (EfiMemoryDescriptor*)((uint64_t)(memoryMap)->base + ((index) * (memoryMap)->descriptorSize))
 
 typedef enum
 {

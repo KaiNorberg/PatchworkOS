@@ -4,9 +4,10 @@
 #include "madt/madt.h"
 #include "tty/tty.h"
 #include "utils/utils.h"
-#include "page_allocator/page_allocator.h"
+#include "pmm/pmm.h"
 #include "apic/apic.h"
 #include "hpet/hpet.h"
+#include "vmm/vmm.h"
 
 #include "master/master.h"
 
@@ -14,12 +15,12 @@
 
 void* worker_trampoline_setup()
 {
-    void* oldData = page_allocator_request();
+    void* oldData = pmm_request();
     memcpy(oldData, WORKER_TRAMPOLINE_LOADED_START, WORKER_TRAMPOLINE_SIZE);
 
     memcpy(WORKER_TRAMPOLINE_LOADED_START, worker_trampoline_start, WORKER_TRAMPOLINE_SIZE);
 
-    WRITE_64(WORKER_TRAMPOLINE_PAGE_DIRECTORY_ADDRESS, (uint64_t)kernelPageDirectory);
+    WRITE_64(WORKER_TRAMPOLINE_PAGE_DIRECTORY_ADDRESS, (uint64_t)vmm_kernel_directory());
     WRITE_64(WORKER_TRAMPOLINE_ENTRY_ADDRESS, worker_entry);
 
     return oldData;
@@ -28,7 +29,7 @@ void* worker_trampoline_setup()
 void worker_trampoline_cleanup(void* oldData)
 {    
     memcpy(WORKER_TRAMPOLINE_LOADED_START, oldData, WORKER_TRAMPOLINE_SIZE);
-    page_allocator_unlock_page(oldData);
+    pmm_unlock_page(oldData);
 }
 
 uint8_t worker_push(Worker workers[], uint8_t id, LocalApicRecord const* record)
