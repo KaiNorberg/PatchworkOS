@@ -5,6 +5,11 @@
 
 #include <common/common.h>
 
+static inline PageDirectoryEntry page_directory_entry_create(void* address, uint64_t flags)
+{
+    return ((((uintptr_t)address >> 12) & 0x000000FFFFFFFFFF) << 12) | (flags | (uint64_t)PAGE_FLAG_PRESENT);
+}
+
 PageDirectory* page_directory_new()
 {
     PageDirectory* pageDirectory = (PageDirectory*)memory_allocate_pages(1, EFI_MEMORY_TYPE_PAGE_DIRECTORY);
@@ -49,7 +54,7 @@ void page_directory_map(PageDirectory* pageDirectory, void* virtualAddress, void
         pdp = (PageDirectory*)memory_allocate_pages(1, EFI_MEMORY_TYPE_PAGE_DIRECTORY);
         memset(pdp, 0, 0x1000);
 
-        pde = PAGE_DIRECTORY_ENTRY_CREATE(pdp, flags);
+        pde = page_directory_entry_create(pdp, flags);
         pageDirectory->entries[pdpIndex] = pde;
     }
     else
@@ -64,7 +69,7 @@ void page_directory_map(PageDirectory* pageDirectory, void* virtualAddress, void
         pd = (PageDirectory*)memory_allocate_pages(1, EFI_MEMORY_TYPE_PAGE_DIRECTORY);
         memset(pd, 0, 0x1000);
 
-        pde = PAGE_DIRECTORY_ENTRY_CREATE(pd, flags);
+        pde = page_directory_entry_create(pd, flags);
         pdp->entries[pdIndex] = pde;
     }
     else
@@ -79,7 +84,7 @@ void page_directory_map(PageDirectory* pageDirectory, void* virtualAddress, void
         pt = (PageDirectory*)memory_allocate_pages(1, EFI_MEMORY_TYPE_PAGE_DIRECTORY);
         memset(pt, 0, 0x1000);
 
-        pde = PAGE_DIRECTORY_ENTRY_CREATE(pt, flags);
+        pde = page_directory_entry_create(pt, flags);
         pd->entries[ptIndex] = pde;
     }
     else
@@ -89,6 +94,6 @@ void page_directory_map(PageDirectory* pageDirectory, void* virtualAddress, void
     }
 
     pde = pt->entries[pIndex];
-    pde = PAGE_DIRECTORY_ENTRY_CREATE(physicalAddress, flags);
+    pde = page_directory_entry_create(physicalAddress, flags);
     pt->entries[pIndex] = pde;
 }

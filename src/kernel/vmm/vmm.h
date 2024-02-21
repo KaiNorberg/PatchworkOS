@@ -9,6 +9,8 @@
 #define VMM_KERNEL_BASE 0xFFFFFFFF80000000
 #define VMM_PHYSICAL_BASE 0xFFFF800000000000
 
+#define VMM_KERNEL_PAGE_FLAGS (PAGE_FLAG_GLOBAL | PAGE_FLAG_DONT_FREE)
+
 void vmm_init(EfiMemoryMap* memoryMap);
 
 void* vmm_physical_to_virtual(void* address);

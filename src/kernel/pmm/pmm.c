@@ -10,21 +10,18 @@
 static uintptr_t physicalBase;
 
 static uint64_t* bitmap;
-static void* firstFreePage;
-
 static uint64_t totalAmount;
 static uint64_t lockedAmount;
+static void* firstFreePage;
 
 static Lock lock;
 
-void pmm_init(EfiMemoryMap* memoryMap)
-{    
-    physicalBase = 0;
-    firstFreePage = 0;
-    lockedAmount = 0;
-    lock = lock_new();
-
+static void pmm_bitmap_init(EfiMemoryMap* memoryMap)
+{
     totalAmount = 0;
+    lockedAmount = 0;
+    firstFreePage = 0;
+
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
         const EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
@@ -37,14 +34,19 @@ void pmm_init(EfiMemoryMap* memoryMap)
     {
         const EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
         
-        if (desc->physicalStart >= (void*)0x9000 && desc->type == EFI_CONVENTIONAL_MEMORY && bitmapSize < desc->amountOfPages * 0x1000)
+        if (desc->physicalStart > (void*)0x8000 && desc->type == EFI_CONVENTIONAL_MEMORY && bitmapSize < desc->amountOfPages * 0x1000)
         {
             bitmap = desc->physicalStart;
             memset(bitmap, 0, bitmapSize);
             break;
         }
-    }
+    }    
+    
+    pmm_lock_pages(bitmap, SIZE_IN_PAGES(bitmapSize));
+}
 
+static void pmm_load_memory_map(EfiMemoryMap* memoryMap)
+{
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
         const EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
@@ -54,8 +56,16 @@ void pmm_init(EfiMemoryMap* memoryMap)
             pmm_lock_pages(desc->physicalStart, desc->amountOfPages);
         }
     }
+}
 
-    pmm_lock_pages(bitmap, SIZE_IN_PAGES(bitmapSize));
+void pmm_init(EfiMemoryMap* memoryMap)
+{    
+    physicalBase = 0;
+    lock = lock_new();
+
+    pmm_bitmap_init(memoryMap);
+
+    pmm_load_memory_map(memoryMap);
 }
 
 void* pmm_physical_base()

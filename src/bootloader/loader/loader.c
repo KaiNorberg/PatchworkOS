@@ -74,7 +74,7 @@ void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, B
 	uint64_t kernelPageAmount = (kernelEnd - kernelStart) / 0x1000 + 1;
 
 	void* kernelBuffer = memory_allocate_pages(kernelPageAmount, EFI_MEMORY_TYPE_KERNEL);
-
+	
 	for (ElfProgramHeader* programHeader = programHeaders; (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize; programHeader = (ElfProgramHeader*)((uint64_t)programHeader + header.programHeaderSize))
 	{
 		switch (programHeader->type)

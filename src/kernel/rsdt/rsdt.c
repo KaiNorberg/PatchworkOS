@@ -27,7 +27,7 @@ void rsdt_init(Xsdp* xsdp)
 
     if (xsdp->revision != ACPI_REVISION_2_0)
     {
-        tty_print("Outdated rdsp revision");
+        tty_print("Incompatible rdsp revision");
         tty_end_message(TTY_MESSAGE_ER);
     }
 

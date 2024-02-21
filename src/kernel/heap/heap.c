@@ -8,13 +8,10 @@
 #include "debug/debug.h"
 #include "vmm/vmm.h"
 
-extern uint64_t _kernelEnd;
-
 static HeapHeader* firstBlock;
-
 static Lock lock;
 
-static HeapHeader* heap_split(HeapHeader* block, uint64_t size)
+static inline HeapHeader* heap_split(HeapHeader* block, uint64_t size)
 {   
     uint64_t newSize = block->size - sizeof(HeapHeader) - size;
 

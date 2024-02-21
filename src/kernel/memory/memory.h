@@ -6,7 +6,7 @@
 
 typedef enum
 {
-	EFI_RESERVED_MEMORY_TYPE,
+	EFI_RESERVED,
 	EFI_LOADER_CODE,
 	EFI_LOADER_DATA,
 	EFI_BOOT_SERVICES_CODE,
@@ -22,6 +22,6 @@ typedef enum
 	EFI_PAL_CODE,
 	EFI_PERSISTENT_MEMORY,
 	EFI_MAX_MEMORY_TYPE
-} EFIMemoryType;
+} EFI_MEMORY_TYPE;
 
 uint8_t is_memory_type_reserved(uint64_t memoryType);
