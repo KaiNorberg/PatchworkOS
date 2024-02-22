@@ -66,12 +66,16 @@ void kernel_init(BootInfo* bootInfo)
     pid_init();
 
     deallocate_boot_info(bootInfo);
-
+    
     tty_print("USABLE LOCKED: ");
-    tty_printi((pmm_locked_amount() * PAGE_SIZE) / 1048576);
+    tty_printi(((pmm_locked_amount() - pmm_unusable_amount()) * PAGE_SIZE) / 1048576);
     tty_print(" MB\n");
 
-    tty_print("USABLE UNLOCKED: ");
+    tty_print("LOCKED: ");
+    tty_printi(((pmm_locked_amount()) * PAGE_SIZE) / 1048576);
+    tty_print(" MB\n");
+
+    tty_print("UNLOCKED: ");
     tty_printi((pmm_unlocked_amount() * PAGE_SIZE) / 1048576);
     tty_print(" MB\n");
 

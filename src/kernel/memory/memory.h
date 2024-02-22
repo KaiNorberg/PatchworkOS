@@ -24,4 +24,6 @@ typedef enum
 	EFI_MAX_MEMORY_TYPE
 } EFI_MEMORY_TYPE;
 
+uint8_t is_memory_type_usable(uint64_t memoryType);
+
 uint8_t is_memory_type_reserved(uint64_t memoryType);

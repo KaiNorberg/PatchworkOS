@@ -15,6 +15,7 @@ static uint64_t bitmapSize;
 static void* firstFreePage;
 
 static uint64_t pageAmount;
+static uint64_t usablePageAmount;
 
 static Lock lock;
 
@@ -22,11 +23,17 @@ static void pmm_allocate_bitmap(EfiMemoryMap* memoryMap)
 {
     firstFreePage = 0;
 
+    usablePageAmount = 0;
     uintptr_t highestAddress = 0;
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
         const EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
-        highestAddress = MAX(highestAddress, (uintptr_t)desc->physicalStart + desc->amountOfPages * PAGE_SIZE);
+        highestAddress = MAX(highestAddress, (uintptr_t)desc->physicalStart + desc->amountOfPages * PAGE_SIZE);        
+        
+        if (is_memory_type_usable(desc->type))
+        {
+            usablePageAmount += desc->amountOfPages;
+        }
     }
     pageAmount = highestAddress / PAGE_SIZE;    
 
@@ -207,4 +214,14 @@ uint64_t pmm_locked_amount()
 uint64_t pmm_total_amount()
 {
     return pageAmount;
+}
+
+uint64_t pmm_usable_amount()
+{
+    return usablePageAmount;
+}
+
+uint64_t pmm_unusable_amount()
+{
+    return pageAmount - usablePageAmount;
 }

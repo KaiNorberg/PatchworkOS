@@ -39,3 +39,7 @@ uint64_t pmm_unlocked_amount();
 uint64_t pmm_locked_amount();
 
 uint64_t pmm_total_amount();
+
+uint64_t pmm_usable_amount();
+
+uint64_t pmm_unusable_amount();
