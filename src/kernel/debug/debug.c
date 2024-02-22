@@ -45,13 +45,9 @@ const char* exceptionStrings[32] =
     "Security"
 };
 
-static uint8_t currentRow;
-static uint8_t currentColumn;
-static Pixel currentColor;
-
 void debug_panic(const char* message)
 {    
-    /*tty_acquire();
+    tty_acquire();
 
     Pixel white;
     white.a = 255;
@@ -65,17 +61,17 @@ void debug_panic(const char* message)
     red.g = 108;
     red.b = 117;
 
-    debug_move_to_grid(0, 0, red);
+    //debug_move_to_grid(0, 0, red);
     tty_print("KERNEL PANIC! - "); tty_print(message);
 
-    debug_move_to_grid(2, 0, white);
+    //debug_move_to_grid(2, 0, white);
     tty_print("[Time]"); 
     debug_next_row();
     tty_print("Tick = "); tty_printx(hpet_read_counter());
     debug_next_row();
     tty_print("Current Time = "); tty_printx(time_nanoseconds());
 
-    debug_move_to_grid(2, 2, white);
+    //debug_move_to_grid(2, 2, white);
     tty_print("[Memory]"); 
     debug_next_row();
     tty_print("Free Heap = "); tty_printx(heap_free_size());
@@ -89,7 +85,7 @@ void debug_panic(const char* message)
     while (1)
     {
         asm volatile("hlt");
-    }*/
+    }
 }
 
 void debug_exception(InterruptFrame const* interruptFrame, const char* message)
@@ -195,22 +191,21 @@ void debug_exception(InterruptFrame const* interruptFrame, const char* message)
 
 void debug_move_to_grid(uint8_t row, uint8_t column, Pixel color)
 {
-    /*currentRow = row;
-    currentColumn = column;
-    currentColor = color;
-
-    uint32_t leftPadding = (tty_get_screen_width() - DEBUG_COLUMN_AMOUNT * DEBUG_COLUMN_WIDTH * TTY_CHAR_WIDTH * DEBUG_TEXT_SCALE) / 2;
-    uint32_t topPadding = (tty_get_screen_height() - DEBUG_ROW_AMOUNT * TTY_CHAR_HEIGHT * DEBUG_TEXT_SCALE) / 2;
+    /*uint32_t leftPadding = (tty_column_amount() - DEBUG_COLUMN_AMOUNT * DEBUG_COLUMN_WIDTH * TTY_CHAR_WIDTH * DEBUG_TEXT_SCALE) / 2;
+    uint32_t topPadding = (tty_row_amount() - DEBUG_ROW_AMOUNT * TTY_CHAR_HEIGHT * DEBUG_TEXT_SCALE) / 2;
 
     uint32_t xPos = leftPadding + column * DEBUG_COLUMN_WIDTH * TTY_CHAR_WIDTH * DEBUG_TEXT_SCALE;
     uint32_t yPos = topPadding + row * TTY_CHAR_HEIGHT * DEBUG_TEXT_SCALE;
 
-    tty_set_cursor_pos(xPos, yPos);
+    tty_set_column(xPos);
+    tty_set_row(yPos);
+
     tty_set_scale(DEBUG_TEXT_SCALE);
     tty_set_foreground(color);*/
 }
 
 void debug_next_row()
 {
+    tty_print("\n");
     /*debug_move_to_grid(currentRow + 1, currentColumn, currentColor);*/
 }

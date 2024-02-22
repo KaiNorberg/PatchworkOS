@@ -54,7 +54,6 @@ typedef struct RamFile
 	char name[32];
 	void* data;
 	uint64_t size;
-	uint64_t pageAmount;
 	struct RamFile* next;
 	struct RamFile* prev;
 } RamFile;

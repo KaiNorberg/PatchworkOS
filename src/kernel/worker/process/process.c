@@ -43,7 +43,7 @@ Process* process_new(uint8_t priority)
     process->state = PROCESS_STATE_READY;
     process->priority = priority;
 
-    process_allocate_pages(process, (void*)(USER_ADDRESS_SPACE_TOP - 0x1000), 1);
+    process_allocate_pages(process, (void*)(USER_ADDRESS_SPACE_TOP - PAGE_SIZE), 1);
     
     return process;
 }

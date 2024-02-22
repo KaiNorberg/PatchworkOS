@@ -47,7 +47,7 @@ uint8_t worker_push(Worker workers[], uint8_t id, LocalApicRecord const* record)
 
     /*local_apic_send_init(record->localApicId);
     hpet_sleep(10);
-    local_apic_send_sipi(record->localApicId, ((uint64_t)WORKER_TRAMPOLINE_LOADED_START) / 0x1000);
+    local_apic_send_sipi(record->localApicId, ((uint64_t)WORKER_TRAMPOLINE_LOADED_START) / PAGE_SIZE);
 
     uint64_t timeout = 1000;
     while (!workers[id].running) 

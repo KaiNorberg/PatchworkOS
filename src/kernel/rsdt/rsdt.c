@@ -25,17 +25,8 @@ void rsdt_init(Xsdp* xsdp)
 
     xsdp = vmm_physical_to_virtual(xsdp);
 
-    if (xsdp->revision != ACPI_REVISION_2_0)
-    {
-        tty_print("Incompatible rdsp revision");
-        tty_end_message(TTY_MESSAGE_ER);
-    }
-
-    if (!rsdt_validate_checksum(xsdp, xsdp->length))
-    {
-        tty_print("Invalid checksum");
-        tty_end_message(TTY_MESSAGE_ER);
-    }
+    tty_assert(xsdp->revision == ACPI_REVISION_2_0, "Incompatible rdsp revision");
+    tty_assert(rsdt_validate_checksum(xsdp, xsdp->length), "Invalid checksum");
 
     xsdt = vmm_physical_to_virtual((void*)xsdp->xsdtAddress);
     tableAmount = (xsdt->header.length - sizeof(SdtHeader)) / 8;

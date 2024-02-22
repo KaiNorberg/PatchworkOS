@@ -22,7 +22,9 @@
 #include <common/common.h>
 
 static void deallocate_boot_info(BootInfo* bootInfo)
-{
+{   
+    tty_start_message("Deallocating boot info");
+
     EfiMemoryMap* memoryMap = &bootInfo->memoryMap;
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
@@ -33,6 +35,8 @@ static void deallocate_boot_info(BootInfo* bootInfo)
             pmm_unlock_pages(descriptor->physicalStart, descriptor->amountOfPages);
         }
     }
+
+    tty_end_message(TTY_MESSAGE_OK);
 }
 
 void kernel_init(BootInfo* bootInfo)
@@ -62,6 +66,27 @@ void kernel_init(BootInfo* bootInfo)
     pid_init();
 
     deallocate_boot_info(bootInfo);
+
+    tty_print("USABLE LOCKED: ");
+    tty_printi((pmm_locked_amount() * PAGE_SIZE) / 1048576);
+    tty_print(" MB\n");
+
+    tty_print("USABLE UNLOCKED: ");
+    tty_printi((pmm_unlocked_amount() * PAGE_SIZE) / 1048576);
+    tty_print(" MB\n");
+
+    uint64_t time = time_milliseconds();
+
+    tty_print("\nStarting...\n");
+
+    for (uint64_t i = 0; i < 100000; i++)
+    {   
+        void* address = vmm_allocate(1, PAGE_FLAG_WRITE);
+    }
+
+    tty_print("\nTime: ");
+    tty_printi(time_milliseconds() - time);
+    tty_print(" MS\n");
 
     while (1)
     {

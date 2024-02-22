@@ -64,7 +64,7 @@ Status load_program(Process* process, File* file)
 
     uint64_t pageAmount = SIZE_IN_PAGES(end - start);
     void* buffer = process_allocate_pages(process, (void*)start, pageAmount);
-    memset(buffer, 0, pageAmount * 0x1000);
+    memset(buffer, 0, pageAmount * PAGE_SIZE);
 
 	for (ElfProgramHeader* programHeader = programHeaders; 
         (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize; 

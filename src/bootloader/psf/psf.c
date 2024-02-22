@@ -40,7 +40,7 @@ void pst_font_load(EFI_HANDLE imageHandle, PsfFont* font, CHAR16* path)
 		font->glyphsSize = font->header.charSize * 256;
 	}
 
-	void* glyphBuffer = memory_allocate_pages(font->glyphsSize / 0x1000 + 1, EFI_MEMORY_TYPE_BOOT_INFO);
+	void* glyphBuffer = memory_allocate_pool(font->glyphsSize, EFI_MEMORY_TYPE_BOOT_INFO);
 	file_system_seek(file, sizeof(PsfHeader));
 	file_system_read(file, font->glyphsSize, glyphBuffer);
 

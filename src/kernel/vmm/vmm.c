@@ -25,13 +25,11 @@ static void vmm_load_memory_map(EfiMemoryMap* memoryMap)
             void* address = (void*)((uint64_t)desc->physicalStart + VMM_PHYSICAL_BASE);
             page_directory_map_pages(kernelPageDirectory, address, desc->physicalStart, desc->amountOfPages, PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
         }
-        else        
+        else
         {            
             page_directory_map_pages(kernelPageDirectory, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
         }
 	}    
-    
-    page_directory_populate_range(kernelPageDirectory, PAGE_DIRECTORY_ENTRY_AMOUNT / 2, PAGE_DIRECTORY_ENTRY_AMOUNT, VMM_KERNEL_PAGE_FLAGS);
 }
 
 static void vmm_deallocate_boot_page_directory(EfiMemoryMap* memoryMap)
@@ -51,7 +49,7 @@ void vmm_init(EfiMemoryMap* memoryMap)
 {
     //TODO: Enable cr4 page global flag
 
-    topAddress = round_up((uint64_t)&_kernelEnd, 0x1000);
+    topAddress = round_up((uint64_t)&_kernelEnd, PAGE_SIZE);
 
     kernelPageDirectory = page_directory_new();
     
@@ -80,9 +78,12 @@ PageDirectory* vmm_kernel_directory()
 void* vmm_allocate(uint64_t pageAmount, uint16_t flags)
 {
     void* address = (void*)topAddress;
-    topAddress += pageAmount * 0x1000;
 
-    page_directory_map_pages(kernelPageDirectory, address, pmm_allocate_amount(pageAmount), pageAmount, flags | VMM_KERNEL_PAGE_FLAGS);
+    for (uint64_t i = 0; i < pageAmount; i++)
+    {
+        page_directory_map(kernelPageDirectory, (void*)topAddress, pmm_allocate(), flags | VMM_KERNEL_PAGE_FLAGS);
+        topAddress += pageAmount * PAGE_SIZE;
+    }
 
     return address;
 }

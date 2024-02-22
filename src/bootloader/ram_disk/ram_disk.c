@@ -13,8 +13,7 @@ RamFile* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
 	RamFile* file = memory_allocate_pool(sizeof(RamFile), EFI_MEMORY_TYPE_BOOT_INFO);
 
 	file->size = file_system_get_size(fileHandle);
-	file->pageAmount = file->size / 0x1000 + 1;
-	file->data = memory_allocate_pages(file->pageAmount, EFI_MEMORY_TYPE_BOOT_INFO);
+	file->data = memory_allocate_pool(file->size, EFI_MEMORY_TYPE_BOOT_INFO);
 	file_system_read(fileHandle, file->size, file->data);
 
 	memset(file->name, 0, 32);

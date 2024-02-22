@@ -4,45 +4,44 @@
 #include "debug/debug.h"
 #include "lock/lock.h"
 #include "vmm/vmm.h"
+#include "utils/utils.h"
 
 #include <libc/string.h>
 
 static uintptr_t physicalBase;
 
 static uint64_t* bitmap;
-static uint64_t totalAmount;
-static uint64_t lockedAmount;
+static uint64_t bitmapSize;
 static void* firstFreePage;
+
+static uint64_t pageAmount;
 
 static Lock lock;
 
-static void pmm_bitmap_init(EfiMemoryMap* memoryMap)
+static void pmm_allocate_bitmap(EfiMemoryMap* memoryMap)
 {
-    totalAmount = 0;
-    lockedAmount = 0;
     firstFreePage = 0;
 
+    uintptr_t highestAddress = 0;
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
         const EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
-        totalAmount += desc->amountOfPages;
+        highestAddress = MAX(highestAddress, (uintptr_t)desc->physicalStart + desc->amountOfPages * PAGE_SIZE);
     }
-    uint64_t bitmapSize = totalAmount / 8;
+    pageAmount = highestAddress / PAGE_SIZE;    
 
-    bitmap = 0;
+    bitmapSize = pageAmount / 8;
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
         const EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
         
-        if (desc->physicalStart > (void*)0x8000 && desc->type == EFI_CONVENTIONAL_MEMORY && bitmapSize < desc->amountOfPages * 0x1000)
+        if (!is_memory_type_reserved(desc->type) && bitmapSize < desc->amountOfPages * PAGE_SIZE)
         {
-            bitmap = desc->physicalStart;
-            memset(bitmap, 0, bitmapSize);
-            break;
+            bitmap = desc->physicalStart;    
+            memset(bitmap, -1, bitmapSize);
+            return;
         }
-    }    
-    
-    pmm_lock_pages(bitmap, SIZE_IN_PAGES(bitmapSize));
+    }
 }
 
 static void pmm_load_memory_map(EfiMemoryMap* memoryMap)
@@ -51,11 +50,13 @@ static void pmm_load_memory_map(EfiMemoryMap* memoryMap)
     {
         const EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
 
-        if (is_memory_type_reserved(desc->type) && ((uint64_t)desc->physicalStart) < totalAmount * 0x1000)
+        if (!is_memory_type_reserved(desc->type))
         {
-            pmm_lock_pages(desc->physicalStart, desc->amountOfPages);
+            pmm_unlock_pages(desc->physicalStart, desc->amountOfPages);
         }
     }
+
+    pmm_lock_pages(bitmap, SIZE_IN_PAGES(bitmapSize));
 }
 
 void pmm_init(EfiMemoryMap* memoryMap)
@@ -63,7 +64,7 @@ void pmm_init(EfiMemoryMap* memoryMap)
     physicalBase = 0;
     lock = lock_new();
 
-    pmm_bitmap_init(memoryMap);
+    pmm_allocate_bitmap(memoryMap);
 
     pmm_load_memory_map(memoryMap);
 }
@@ -80,51 +81,45 @@ void pmm_move_to_higher_half()
 }
 
 void* pmm_allocate()
-{   
+{
     lock_acquire(&lock);
 
-    uint64_t firstFreeQwordIndex = ((uint64_t)firstFreePage / 0x1000) / 64;
-    for (uint64_t qwordIndex = firstFreeQwordIndex; qwordIndex < totalAmount / 64; qwordIndex++)
-    {        
-        if (bitmap[qwordIndex] != (uint64_t)-1) //If any bit is zero
-        {            
-            for (uint64_t bitIndex = 0; bitIndex < 64; bitIndex++)
-            {
-                if (((bitmap[qwordIndex] >> bitIndex) & 1) == 0) //If bit is not set
-                {
-                    void* address = (void*)((qwordIndex * 64 + bitIndex) * 0x1000);
-                    pmm_lock_page(address);
+    for (uint64_t qwordIndex = QWORD_INDEX(firstFreePage); qwordIndex < pageAmount / 64; qwordIndex++)
+    {
+        if (bitmap[qwordIndex] != UINT64_MAX) 
+        {
+            uint64_t bitIndex = (bitmap[qwordIndex] == 0) ? 0 : __builtin_ctzll(~bitmap[qwordIndex]);
 
-                    lock_release(&lock);
-                    return (void*)address;
-                }
-            }
+            void* address = (void*)((qwordIndex * 64 + bitIndex) * PAGE_SIZE);
+            pmm_lock_page(address);
 
-            debug_panic("Physical Memory Manager confused!");
+            lock_release(&lock);
+            return address;
         }
     }
 
     debug_panic("Physical Memory Manager full!");
 
     lock_release(&lock);
-    return 0;
+    return NULL;
 }
 
 void* pmm_allocate_amount(uint64_t amount)
 {
-    //TODO: Optmize this it sucks
+    //TODO: Optimize this it sucks
 
     if (amount <= 1)
     {
         return pmm_allocate();
     }
+
     lock_acquire(&lock);
 
     uintptr_t startAddress = (uint64_t)-1;
     uint64_t freePagesFound = 0;
-    for (uintptr_t address = 0; address < totalAmount * 0x1000; address += 0x1000)
+    for (uintptr_t address = 0; address < pageAmount * PAGE_SIZE; address += PAGE_SIZE)
     {
-        if (pmm_is_reserved((void*)address))
+        if (pmm_is_locked((void*)address))
         {
             startAddress = (uint64_t)-1;
         }
@@ -153,43 +148,28 @@ void* pmm_allocate_amount(uint64_t amount)
     return 0;
 }
 
-uint8_t pmm_is_reserved(void* address)
+uint8_t pmm_is_locked(void* address)
 {   
-    uint64_t index = (uint64_t)address / (uint64_t)0x1000;
-    return (bitmap[index / 64] >> (index % 64)) & 1;
+    return (bitmap[QWORD_INDEX(address)] >> BIT_INDEX(address)) & 1;
 }
 
 void pmm_lock_page(void* address)
 {        
-    if (!pmm_is_reserved(address))
+    bitmap[QWORD_INDEX(address)] |= 1 << BIT_INDEX(address);
+
+    if (firstFreePage == address)
     {
-        uint64_t index = (uint64_t)address / (uint64_t)0x1000;
-
-        bitmap[index / 64] |= 1 << (index % 64);
-
-        lockedAmount++;
-
-        if (firstFreePage == address)
-        {
-            firstFreePage = (void*)((uint64_t)firstFreePage + 0x1000);
-        }
+        firstFreePage = (void*)((uint64_t)firstFreePage + PAGE_SIZE);
     }
 }
 
 void pmm_unlock_page(void* address)
 {
-    if (pmm_is_reserved(address))
+    bitmap[QWORD_INDEX(address)] &= ~(1 << BIT_INDEX(address));
+
+    if (firstFreePage > address)
     {
-        uint64_t index = (uint64_t)address / (uint64_t)0x1000;
-
-        bitmap[index / 64] &= ~(1 << (index % 64));
-
-        lockedAmount--;
-
-        if (firstFreePage > address)
-        {
-            firstFreePage = address;
-        }
+        firstFreePage = address;
     }
 }
 
@@ -197,7 +177,7 @@ void pmm_lock_pages(void* address, uint64_t count)
 {
     for (uint64_t i = 0; i < count; i++)
     {
-        pmm_lock_page((void*)((uint64_t)address + i * 0x1000));
+        pmm_lock_page((void*)((uint64_t)address + i * PAGE_SIZE));
     }
 }
 
@@ -205,21 +185,26 @@ void pmm_unlock_pages(void* address, uint64_t count)
 {
     for (uint64_t i = 0; i < count; i++)
     {
-        pmm_unlock_page((void*)((uint64_t)address + i * 0x1000));
+        pmm_unlock_page((void*)((uint64_t)address + i * PAGE_SIZE));
     }
 }
 
 uint64_t pmm_unlocked_amount()
 {
-    return totalAmount - lockedAmount;
+    return pageAmount - pmm_locked_amount();
 }
 
 uint64_t pmm_locked_amount()
 {
-    return lockedAmount;
+    uint64_t amount = 0;
+    for (uint64_t i = 0; i < pageAmount; ++i) 
+    {
+        amount += pmm_is_locked((void*)(i * PAGE_SIZE));
+    }
+    return amount;
 }
 
 uint64_t pmm_total_amount()
 {
-    return totalAmount;
+    return pageAmount;
 }

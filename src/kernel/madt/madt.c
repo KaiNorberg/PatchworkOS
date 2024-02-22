@@ -8,12 +8,8 @@ void madt_init()
 {    
     tty_start_message("MADT initializing");
 
-    madt = (Madt*)rsdt_lookup("APIC");
-    if (madt == 0)
-    {
-        tty_print("Hardware is incompatible, unable to find MADT");
-        tty_end_message(TTY_MESSAGE_ER);
-    }
+    madt = (Madt*)rsdt_lookup("APIC");    
+    tty_assert(madt != 0, "Hardware is incompatible, unable to find MADT");
 
     tty_end_message(TTY_MESSAGE_OK);
 } 

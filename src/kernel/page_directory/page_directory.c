@@ -34,7 +34,7 @@ static inline PageDirectoryEntry page_directory_get_or_create_entry(PageDirector
     if (!PAGE_DIRECTORY_GET_FLAG(pageDirectory->entries[index], PAGE_FLAG_PRESENT))
     {
         void* page = pmm_allocate();
-        memset(vmm_physical_to_virtual(page), 0, 0x1000);
+        memset(vmm_physical_to_virtual(page), 0, PAGE_SIZE);
         pageDirectory->entries[index] = page_directory_entry_create(page, flags);
     }
 
@@ -51,7 +51,7 @@ static inline PageDirectory* page_directory_get_or_create_directory(PageDirector
 PageDirectory* page_directory_new()
 {
     PageDirectory* pageDirectory = (PageDirectory*)pmm_allocate();
-    memset(vmm_physical_to_virtual(pageDirectory), 0, 0x1000);
+    memset(vmm_physical_to_virtual(pageDirectory), 0, PAGE_SIZE);
     
     return pageDirectory;
 }
@@ -81,17 +81,17 @@ void page_directory_map_pages(PageDirectory* pageDirectory, void* virtualAddress
 {
     for (uint64_t page = 0; page < pageAmount; page++)
     {
-        page_directory_map(pageDirectory, (void*)((uint64_t)virtualAddress + page * 0x1000), (void*)((uint64_t)physicalAddress + page * 0x1000), flags);
+        page_directory_map(pageDirectory, (void*)((uint64_t)virtualAddress + page * PAGE_SIZE), (void*)((uint64_t)physicalAddress + page * PAGE_SIZE), flags);
     }
 }
 
 void page_directory_map(PageDirectory* pageDirectory, void* virtualAddress, void* physicalAddress, uint16_t flags)
 {        
-    if ((uint64_t)virtualAddress % 0x1000 != 0)
+    if ((uint64_t)virtualAddress % PAGE_SIZE != 0)
     {
         debug_panic("Attempt to map invalid virtual address!");
     }    
-    else if ((uint64_t)physicalAddress % 0x1000 != 0)
+    else if ((uint64_t)physicalAddress % PAGE_SIZE != 0)
     {
         debug_panic("Attempt to map invalid physical address!");
     }
