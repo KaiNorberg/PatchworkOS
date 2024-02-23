@@ -71,7 +71,7 @@ void process_free(Process* process)
     {
         MemoryBlock* memoryBlock = vector_get(process->memoryBlocks, i);
 
-        pmm_unlock_pages(memoryBlock->physicalAddress, memoryBlock->pageAmount);
+        pmm_free_pages(memoryBlock->physicalAddress, memoryBlock->pageAmount);
     }
     vector_free(process->memoryBlocks);
 

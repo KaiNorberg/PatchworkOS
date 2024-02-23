@@ -29,7 +29,7 @@ void* worker_trampoline_setup()
 void worker_trampoline_cleanup(void* oldData)
 {    
     memcpy(WORKER_TRAMPOLINE_LOADED_START, oldData, WORKER_TRAMPOLINE_SIZE);
-    pmm_unlock_page(oldData);
+    pmm_free_page(oldData);
 }
 
 uint8_t worker_push(Worker workers[], uint8_t id, LocalApicRecord const* record)
@@ -45,7 +45,7 @@ uint8_t worker_push(Worker workers[], uint8_t id, LocalApicRecord const* record)
 
     WRITE_64(WORKER_TRAMPOLINE_STACK_TOP_ADDRESS, (void*)workers[id].tss->rsp0);
 
-    /*local_apic_send_init(record->localApicId);
+    local_apic_send_init(record->localApicId);
     hpet_sleep(10);
     local_apic_send_sipi(record->localApicId, ((uint64_t)WORKER_TRAMPOLINE_LOADED_START) / PAGE_SIZE);
 
@@ -58,7 +58,7 @@ uint8_t worker_push(Worker workers[], uint8_t id, LocalApicRecord const* record)
         {
             return 0;
         }
-    }*/
+    }
 
     return 1;
 }

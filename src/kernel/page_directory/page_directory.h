@@ -1,10 +1,6 @@
 #pragma once
 
-#include "memory/memory.h"
-
-#include <common/boot_info/boot_info.h>
-
-//TODO: Redo this, add better flag handling, add global pages etc.
+#include <stdint.h>
 
 #define USER_ADDRESS_SPACE_TOP 0x100000000
 #define USER_ADDRESS_SPACE_BOTTOM 0

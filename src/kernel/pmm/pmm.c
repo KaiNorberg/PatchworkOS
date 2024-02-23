@@ -59,11 +59,11 @@ static void pmm_load_memory_map(EfiMemoryMap* memoryMap)
 
         if (!is_memory_type_reserved(desc->type))
         {
-            pmm_unlock_pages(desc->physicalStart, desc->amountOfPages);
+            pmm_free_pages(desc->physicalStart, desc->amountOfPages);
         }
     }
 
-    pmm_lock_pages(bitmap, SIZE_IN_PAGES(bitmapSize));
+    pmm_reserve_pages(bitmap, SIZE_IN_PAGES(bitmapSize));
 }
 
 void pmm_init(EfiMemoryMap* memoryMap)
@@ -98,7 +98,7 @@ void* pmm_allocate()
             uint64_t bitIndex = (bitmap[qwordIndex] == 0) ? 0 : __builtin_ctzll(~bitmap[qwordIndex]);
 
             void* address = (void*)((qwordIndex * 64 + bitIndex) * PAGE_SIZE);
-            pmm_lock_page(address);
+            pmm_reserve_page(address);
 
             lock_release(&lock);
             return address;
@@ -126,7 +126,7 @@ void* pmm_allocate_amount(uint64_t amount)
     uint64_t freePagesFound = 0;
     for (uintptr_t address = 0; address < pageAmount * PAGE_SIZE; address += PAGE_SIZE)
     {
-        if (pmm_is_locked((void*)address))
+        if (pmm_is_reserved((void*)address))
         {
             startAddress = (uint64_t)-1;
         }
@@ -141,7 +141,7 @@ void* pmm_allocate_amount(uint64_t amount)
             freePagesFound++;
             if (freePagesFound == amount)
             {
-                pmm_lock_pages((void*)startAddress, freePagesFound);       
+                pmm_reserve_pages((void*)startAddress, freePagesFound);       
 
                 lock_release(&lock);
                 return (void*)startAddress;
@@ -155,12 +155,12 @@ void* pmm_allocate_amount(uint64_t amount)
     return 0;
 }
 
-uint8_t pmm_is_locked(void* address)
+uint8_t pmm_is_reserved(void* address)
 {   
     return (bitmap[QWORD_INDEX(address)] >> BIT_INDEX(address)) & 1;
 }
 
-void pmm_lock_page(void* address)
+void pmm_reserve_page(void* address)
 {        
     bitmap[QWORD_INDEX(address)] |= 1 << BIT_INDEX(address);
 
@@ -170,7 +170,7 @@ void pmm_lock_page(void* address)
     }
 }
 
-void pmm_unlock_page(void* address)
+void pmm_free_page(void* address)
 {
     bitmap[QWORD_INDEX(address)] &= ~(1 << BIT_INDEX(address));
 
@@ -180,40 +180,40 @@ void pmm_unlock_page(void* address)
     }
 }
 
-void pmm_lock_pages(void* address, uint64_t count)
+void pmm_reserve_pages(void* address, uint64_t count)
 {
     for (uint64_t i = 0; i < count; i++)
     {
-        pmm_lock_page((void*)((uint64_t)address + i * PAGE_SIZE));
+        pmm_reserve_page((void*)((uint64_t)address + i * PAGE_SIZE));
     }
 }
 
-void pmm_unlock_pages(void* address, uint64_t count)
+void pmm_free_pages(void* address, uint64_t count)
 {
     for (uint64_t i = 0; i < count; i++)
     {
-        pmm_unlock_page((void*)((uint64_t)address + i * PAGE_SIZE));
+        pmm_free_page((void*)((uint64_t)address + i * PAGE_SIZE));
     }
-}
-
-uint64_t pmm_unlocked_amount()
-{
-    return pageAmount - pmm_locked_amount();
-}
-
-uint64_t pmm_locked_amount()
-{
-    uint64_t amount = 0;
-    for (uint64_t i = 0; i < pageAmount; ++i) 
-    {
-        amount += pmm_is_locked((void*)(i * PAGE_SIZE));
-    }
-    return amount;
 }
 
 uint64_t pmm_total_amount()
 {
     return pageAmount;
+}
+
+uint64_t pmm_free_amount()
+{
+    return pageAmount - pmm_reserved_amount();
+}
+
+uint64_t pmm_reserved_amount()
+{
+    uint64_t amount = 0;
+    for (uint64_t i = 0; i < pageAmount; ++i) 
+    {
+        amount += pmm_is_reserved((void*)(i * PAGE_SIZE));
+    }
+    return amount;
 }
 
 uint64_t pmm_usable_amount()

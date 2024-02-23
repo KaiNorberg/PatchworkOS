@@ -78,9 +78,9 @@ void debug_panic(const char* message)
     debug_next_row();
     tty_print("Reserved Heap = "); tty_printx(heap_reserved_size());
     debug_next_row();
-    tty_print("Locked Pages = "); tty_printx(pmm_locked_amount());
+    tty_print("Locked Pages = "); tty_printx(pmm_reserved_amount());
     debug_next_row();
-    tty_print("Unlocked Pages = "); tty_printx(pmm_unlocked_amount());
+    tty_print("Unlocked Pages = "); tty_printx(pmm_free_amount());
 
     while (1)
     {
@@ -181,9 +181,9 @@ void debug_exception(InterruptFrame const* interruptFrame, const char* message)
     debug_next_row();
     tty_print("Reserved Heap = "); tty_printx(heap_reserved_size());
     debug_next_row();
-    tty_print("Locked Pages = "); tty_printx(pmm_locked_amount());
+    tty_print("Locked Pages = "); tty_printx(pmm_reserved_amount());
     debug_next_row();
-    tty_print("Unlocked Pages = "); tty_printx(pmm_unlocked_amount());
+    tty_print("Unlocked Pages = "); tty_printx(pmm_free_amount());
 
     tty_set_foreground(white);
     tty_set_scale(1);*/

@@ -145,18 +145,18 @@ void page_directory_free(PageDirectory* pageDirectory)
 
                 if (!PAGE_DIRECTORY_GET_FLAG(level2->entries[level2Index], PAGE_FLAG_DONT_FREE))
                 {
-                    pmm_unlock_page(vmm_virtual_to_physical(level1));
+                    pmm_free_page(vmm_virtual_to_physical(level1));
                 }
             }
             if (!PAGE_DIRECTORY_GET_FLAG(level3->entries[level3Index], PAGE_FLAG_DONT_FREE))
             {
-                pmm_unlock_page(vmm_virtual_to_physical(level2));
+                pmm_free_page(vmm_virtual_to_physical(level2));
             }
         }
         if (!PAGE_DIRECTORY_GET_FLAG(pageDirectory->entries[level4Index], PAGE_FLAG_DONT_FREE))
         {
-            pmm_unlock_page(vmm_virtual_to_physical(level3));
+            pmm_free_page(vmm_virtual_to_physical(level3));
         }
     }
-    pmm_unlock_page(vmm_virtual_to_physical(pageDirectory));            
+    pmm_free_page(vmm_virtual_to_physical(pageDirectory));            
 }

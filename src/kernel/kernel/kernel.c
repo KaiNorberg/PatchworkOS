@@ -32,7 +32,7 @@ static void deallocate_boot_info(BootInfo* bootInfo)
 
         if (descriptor->type == EFI_MEMORY_TYPE_BOOT_INFO)
         {
-            pmm_unlock_pages(descriptor->physicalStart, descriptor->amountOfPages);
+            pmm_free_pages(descriptor->physicalStart, descriptor->amountOfPages);
         }
     }
 
@@ -53,7 +53,6 @@ void kernel_init(BootInfo* bootInfo)
     tty_print("Hello from the kernel!\n");
 
     gdt_init();
-
     heap_init();
     
     rsdt_init(bootInfo->rsdp);
@@ -62,35 +61,9 @@ void kernel_init(BootInfo* bootInfo)
     apic_init();
 
     time_init();
-
     pid_init();
 
     deallocate_boot_info(bootInfo);
-    
-    tty_print("USABLE LOCKED: ");
-    tty_printi(((pmm_locked_amount() - pmm_unusable_amount()) * PAGE_SIZE) / 1048576);
-    tty_print(" MB\n");
-
-    tty_print("LOCKED: ");
-    tty_printi(((pmm_locked_amount()) * PAGE_SIZE) / 1048576);
-    tty_print(" MB\n");
-
-    tty_print("UNLOCKED: ");
-    tty_printi((pmm_unlocked_amount() * PAGE_SIZE) / 1048576);
-    tty_print(" MB\n");
-
-    uint64_t time = time_milliseconds();
-
-    tty_print("\nStarting...\n");
-
-    for (uint64_t i = 0; i < 100000; i++)
-    {   
-        void* address = vmm_allocate(1, PAGE_FLAG_WRITE);
-    }
-
-    tty_print("\nTime: ");
-    tty_printi(time_milliseconds() - time);
-    tty_print(" MS\n");
 
     while (1)
     {
@@ -99,7 +72,7 @@ void kernel_init(BootInfo* bootInfo)
 
     master_init();
     worker_pool_init();
-    
+
     vfs_init();
     device_disk_init();
     ram_disk_init(bootInfo->ramRoot);

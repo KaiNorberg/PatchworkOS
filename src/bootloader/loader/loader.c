@@ -6,6 +6,7 @@
 #include "string/string.h"
 
 #include <common/common.h>
+#include <common/elf/elf.h>
 
 void jump_to_kernel(BootInfo* bootInfo, void* entry)
 {
@@ -54,19 +55,24 @@ void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, B
 	file_system_seek(file, header.programHeaderOffset);
 	file_system_read(file, programHeaderTableSize, programHeaders);
 
-	uint64_t kernelStart = 0;
+	uint64_t kernelStart = UINT64_MAX;
 	uint64_t kernelEnd = 0;
-	for (ElfProgramHeader* programHeader = programHeaders; (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize; programHeader = (ElfProgramHeader*)((uint64_t)programHeader + header.programHeaderSize))
+	for (ElfProgramHeader* programHeader = programHeaders; 
+		(uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize; 
+		programHeader = (ElfProgramHeader*)((uint64_t)programHeader + header.programHeaderSize))
 	{
 		switch (programHeader->type)
 		{
 		case PT_LOAD:
 		{
-			if (kernelStart == 0)
+			if (kernelStart > programHeader->virtualAddress)
 			{
 				kernelStart = programHeader->virtualAddress;
 			}
-			kernelEnd = programHeader->virtualAddress + programHeader->memorySize;
+			if (kernelEnd < programHeader->virtualAddress + programHeader->memorySize)
+			{
+				kernelEnd = programHeader->virtualAddress + programHeader->memorySize;
+			}
 		}
 		break;
 		}
@@ -75,7 +81,9 @@ void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, B
 
 	void* kernelBuffer = memory_allocate_pages(kernelPageAmount, EFI_MEMORY_TYPE_KERNEL);
 	
-	for (ElfProgramHeader* programHeader = programHeaders; (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize; programHeader = (ElfProgramHeader*)((uint64_t)programHeader + header.programHeaderSize))
+	for (ElfProgramHeader* programHeader = programHeaders; 
+		(uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize; 
+		programHeader = (ElfProgramHeader*)((uint64_t)programHeader + header.programHeaderSize))
 	{
 		switch (programHeader->type)
 		{

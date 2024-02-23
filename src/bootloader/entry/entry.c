@@ -8,7 +8,7 @@
 #include "ram_disk/ram_disk.h"
 #include "file_system/file_system.h"
 
-#include <common/common.h>
+#include <common/boot_info/boot_info.h>
 
 EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
 {

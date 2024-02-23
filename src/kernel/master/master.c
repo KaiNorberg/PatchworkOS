@@ -23,18 +23,15 @@ void master_init()
 {
     tty_start_message("Master initializing");
 
-    asm volatile("cli");
-
     write_msr(MSR_WORKER_ID, -1);
 
     local_apic_init();
     apicId = local_apic_id();
-    
-    master_idt_populate(&idt);
 
     gdt_load();
+    master_idt_populate(&idt);
     idt_load(&idt);
-    
+
     pic_init();
     pic_clear_mask(IRQ_CASCADE);
 

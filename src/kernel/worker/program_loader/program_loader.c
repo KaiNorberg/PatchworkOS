@@ -13,8 +13,7 @@
 
 #include <libc/string.h>
 
-#include "io/io.h"
-#include "hpet/hpet.h"
+#include <common/elf/elf.h>
 
 Status load_program(Process* process, File* file)
 {

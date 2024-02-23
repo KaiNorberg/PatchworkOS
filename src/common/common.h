@@ -1,5 +1,3 @@
-#define OS_VERSION "Asym OS - Prototype"
+#pragma once
 
-#define EFI_MEMORY_TYPE_KERNEL 0x80000000
-#define EFI_MEMORY_TYPE_PAGE_DIRECTORY 0x80000001
-#define EFI_MEMORY_TYPE_BOOT_INFO 0x80000002
+#define OS_VERSION "Asym OS - Prototype"

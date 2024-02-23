@@ -2,7 +2,6 @@
 
 #include "utils/utils.h"
 #include "pmm/pmm.h"
-#include "memory/memory.h"
 #include "tty/tty.h"
 
 #include <stdint.h>
@@ -29,7 +28,9 @@ static void vmm_load_memory_map(EfiMemoryMap* memoryMap)
         {            
             page_directory_map_pages(kernelPageDirectory, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
         }
-	}    
+	}
+
+    page_directory_populate_range(kernelPageDirectory, PAGE_DIRECTORY_ENTRY_AMOUNT / 2, PAGE_DIRECTORY_ENTRY_AMOUNT, PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
 }
 
 static void vmm_deallocate_boot_page_directory(EfiMemoryMap* memoryMap)
@@ -40,7 +41,7 @@ static void vmm_deallocate_boot_page_directory(EfiMemoryMap* memoryMap)
 
 		if (desc->type == EFI_MEMORY_TYPE_PAGE_DIRECTORY)
 		{
-            pmm_unlock_pages(desc->physicalStart, desc->amountOfPages);
+            pmm_free_pages(desc->physicalStart, desc->amountOfPages);
 		}
 	}
 }
