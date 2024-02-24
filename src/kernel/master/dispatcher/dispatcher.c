@@ -2,8 +2,6 @@
 
 #include "queue/queue.h"
 #include "apic/apic.h"
-#include "lock/lock.h"
-
 #include "master/master.h"
 #include "master/interrupts/interrupts.h"
 

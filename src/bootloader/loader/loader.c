@@ -1,12 +1,15 @@
 #include "loader.h"
 
+#include <common/elf/elf.h>
+#include <stddef.h>
+#include <stdint.h>
+
 #include "memory/memory.h"
 #include "file_system/file_system.h"
 #include "page_directory/page_directory.h"
-#include "string/string.h"
-
-#include <common/common.h>
-#include <common/elf/elf.h>
+#include "common/boot_info/boot_info.h"
+#include "efilib.h"
+#include "efiprot.h"
 
 void jump_to_kernel(BootInfo* bootInfo, void* entry)
 {

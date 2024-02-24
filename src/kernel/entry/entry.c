@@ -1,10 +1,10 @@
+#include <common/boot_info/boot_info.h>
+#include <stdint.h>
+
 #include "tty/tty.h"
 #include "kernel/kernel.h"
 #include "master/master.h"
-
 #include "worker_pool/worker_pool.h"
-
-#include <common/boot_info/boot_info.h>
 
 void main(BootInfo* bootInfo)
 {

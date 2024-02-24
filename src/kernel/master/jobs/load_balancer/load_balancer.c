@@ -1,10 +1,12 @@
 #include "load_balancer.h"
 
-#include "tty/tty.h"
 #include "worker_pool/worker_pool.h"
-
 #include "master/interrupts/interrupts.h"
 #include "master/dispatcher/dispatcher.h"
+#include "queue/queue.h"
+#include "worker/process/process.h"
+#include "worker/scheduler/scheduler.h"
+#include "worker/worker.h"
 
 void load_balancer_init()
 {

@@ -2,6 +2,11 @@
 
 #include <efi.h>
 #include <efilib.h>
+#include <stdint.h>
+
+#include "efidef.h"
+#include "efiprot.h"
+#include "x86_64/efibind.h"
 
 EFI_FILE* file_system_open_root_volume(EFI_HANDLE imageHandle);
 

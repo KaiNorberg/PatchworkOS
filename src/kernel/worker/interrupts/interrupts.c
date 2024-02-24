@@ -1,16 +1,17 @@
 #include "interrupts.h"
 
+#include <stdint.h>
+
 #include "tty/tty.h"
 #include "apic/apic.h"
 #include "debug/debug.h"
-#include "utils/utils.h"
-#include "pmm/pmm.h"
 #include "ipi/ipi.h"
 #include "worker_pool/worker_pool.h"
-#include "tty/tty.h"
 #include "vmm/vmm.h"
-
 #include "worker/syscall/syscall.h"
+#include "page_directory/page_directory.h"
+#include "worker/scheduler/scheduler.h"
+#include "worker/worker.h"
 
 extern uint64_t _workerInterruptsStart;
 extern uint64_t _workerInterruptsEnd;

@@ -3,13 +3,8 @@
 #include "tty/tty.h"
 #include "time/time.h"
 #include "heap/heap.h"
-
 #include "master/interrupts/interrupts.h"
 #include "master/dispatcher/dispatcher.h"
-
-#include "vfs/vfs.h"
-
-#include <libc/string.h>
 
 void time_job_init()
 {

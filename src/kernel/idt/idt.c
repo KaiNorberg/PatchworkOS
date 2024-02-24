@@ -1,10 +1,5 @@
 #include "idt.h"
 
-#include "io/io.h"
-#include "tty/tty.h"
-
-#include "pmm/pmm.h"
-
 void idt_load(Idt* idt)
 {
     IdtDesc idtDesc;

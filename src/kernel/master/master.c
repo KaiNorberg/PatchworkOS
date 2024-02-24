@@ -4,9 +4,7 @@
 #include "gdt/gdt.h"
 #include "apic/apic.h"
 #include "tty/tty.h"
-#include "time/time.h"
 #include "utils/utils.h"
-
 #include "master/dispatcher/dispatcher.h"
 #include "master/fast_timer/fast_timer.h"
 #include "master/interrupts/interrupts.h"

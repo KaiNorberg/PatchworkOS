@@ -1,8 +1,8 @@
 #pragma once
 
-#include "idt/idt.h"
-
 #include <stdint.h>
+
+#include "idt/idt.h"
 
 extern void master_entry();
 

@@ -1,5 +1,15 @@
 #include "gop.h"
 
+#include <stddef.h>
+#include <stdint.h>
+
+#include "common/boot_info/boot_info.h"
+#include "efidef.h"
+#include "efierr.h"
+#include "efilib.h"
+#include "efiprot.h"
+#include "x86_64/efibind.h"
+
 void gop_get_buffer(GopBuffer* buffer)
 {	
 	EFI_GUID guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;

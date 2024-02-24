@@ -1,18 +1,10 @@
 #include "page_directory.h"
 
+#include <libc/string.h>
+
 #include "pmm/pmm.h"
 #include "debug/debug.h"
-#include "tty/tty.h"
-#include "gdt/gdt.h"
-#include "idt/idt.h"
-#include "utils/utils.h"
 #include "vmm/vmm.h"
-
-#include "worker/interrupts/interrupts.h"
-#include "worker/program_loader/program_loader.h"
-
-#include <libc/string.h>
-#include <common/common.h>
 
 static inline PageDirectoryEntry page_directory_entry_create(void* address, uint64_t flags)
 {

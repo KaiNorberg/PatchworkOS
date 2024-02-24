@@ -1,8 +1,9 @@
 #pragma once
 
-#include "vfs/vfs.h"
-
 #include <lib-asym.h>
+#include <stdint.h>
+
+#include "vfs/vfs.h"
 
 #define FILE_TABLE_LENGTH 1024
 

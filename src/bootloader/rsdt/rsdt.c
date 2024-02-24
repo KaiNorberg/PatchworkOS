@@ -1,6 +1,9 @@
 #include "rsdt.h"
 
 #include "string/string.h"
+#include "efidef.h"
+#include "efilib.h"
+#include "x86_64/efibind.h"
 
 void* rsdt_get(EFI_SYSTEM_TABLE* systemTable)
 {

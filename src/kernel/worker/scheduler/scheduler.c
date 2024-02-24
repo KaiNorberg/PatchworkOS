@@ -1,9 +1,7 @@
 #include "scheduler.h"
 
 #include "heap/heap.h"
-#include "tty/tty.h"
 #include "gdt/gdt.h"
-#include "debug/debug.h"
 #include "worker_pool/worker_pool.h"
 #include "vmm/vmm.h"
 

@@ -1,14 +1,10 @@
 #include "debug.h"
 
 #include "tty/tty.h"
-
 #include "heap/heap.h"
 #include "pmm/pmm.h"
 #include "time/time.h"
-#include "utils/utils.h"
 #include "hpet/hpet.h"
-
-#include <common/common.h>
 
 const char* exceptionStrings[32] = 
 {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 #define ET_NONE 0x00
 #define ET_REL 0x01
 #define ET_EXEC 0x02

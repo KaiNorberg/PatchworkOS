@@ -1,9 +1,6 @@
 #include "fast_timer.h"
 
-#include "io/io.h"
 #include "apic/apic.h"
-#include "tty/tty.h"
-
 #include "master/interrupts/interrupts.h"
 
 void fast_timer_init()

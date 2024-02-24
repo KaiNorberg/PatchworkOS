@@ -1,12 +1,10 @@
 #include "vmm.h"
 
+#include <stdint.h>
+#include <common/boot_info/boot_info.h>
+
 #include "utils/utils.h"
 #include "pmm/pmm.h"
-#include "tty/tty.h"
-
-#include <stdint.h>
-#include <libc/string.h>
-#include <common/boot_info/boot_info.h>
 
 extern uint64_t _kernelEnd;
 
@@ -51,7 +49,6 @@ void vmm_init(EfiMemoryMap* memoryMap)
     //TODO: Enable cr4 page global flag
 
     topAddress = round_up((uint64_t)&_kernelEnd, PAGE_SIZE);
-
     kernelPageDirectory = page_directory_new();
     
     vmm_load_memory_map(memoryMap);
@@ -83,7 +80,7 @@ void* vmm_allocate(uint64_t pageAmount, uint16_t flags)
     for (uint64_t i = 0; i < pageAmount; i++)
     {
         page_directory_map(kernelPageDirectory, (void*)topAddress, pmm_allocate(), flags | VMM_KERNEL_PAGE_FLAGS);
-        topAddress += pageAmount * PAGE_SIZE;
+        topAddress += PAGE_SIZE;
     }
 
     return address;

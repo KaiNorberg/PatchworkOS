@@ -1,11 +1,13 @@
 #include "ram_disk.h"
 
-#include "tty/tty.h"
-#include "utils/utils.h"
-#include "heap/heap.h"
+#include <stdint.h>
 
+#include "tty/tty.h"
+#include "heap/heap.h"
 #include "vfs/vfs.h"
 #include "vfs/utils/utils.h"
+#include "common/boot_info/boot_info.h"
+#include "lib-asym.h"
 
 RamDirectory* ram_disk_traverse(Disk* disk, const char* path)
 {

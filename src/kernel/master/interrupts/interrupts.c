@@ -1,16 +1,16 @@
 #include "interrupts.h"
 
+#include <stdint.h>
+
 #include "tty/tty.h"
-#include "apic/apic.h"
 #include "debug/debug.h"
 #include "worker_pool/worker_pool.h"
-#include "hpet/hpet.h"
-
 #include "worker/worker.h"
 #include "master/dispatcher/dispatcher.h"
 #include "master/fast_timer/fast_timer.h"
 #include "master/pic/pic.h"
 #include "master/slow_timer/slow_timer.h"
+#include "ipi/ipi.h"
 
 extern void* masterVectorTable[IDT_VECTOR_AMOUNT];
 

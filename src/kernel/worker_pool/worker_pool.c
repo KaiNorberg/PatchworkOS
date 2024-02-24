@@ -1,25 +1,56 @@
 #include "worker_pool.h"
 
+#include <libc/string.h>
+
 #include "idt/idt.h"
-#include "gdt/gdt.h"
 #include "apic/apic.h"
-#include "pmm/pmm.h"
 #include "utils/utils.h"
 #include "tty/tty.h"
 #include "madt/madt.h"
-#include "hpet/hpet.h"
 #include "master/master.h"
 #include "debug/debug.h"
-
 #include "worker/interrupts/interrupts.h"
 #include "worker/scheduler/scheduler.h"
 #include "worker/program_loader/program_loader.h"
-#include "worker/startup/startup.h"
+#include "worker/trampoline/trampoline.h"
+#include "lib-asym.h"
+#include "queue/queue.h"
+#include "vfs/vfs.h"
+#include "worker/process/process.h"
 
 static Worker workers[MAX_WORKER_AMOUNT];
 static uint8_t workerAmount;
 
 static Idt idt;
+
+static void worker_pool_startup()
+{
+    memset(workers, 0, sizeof(Worker) * MAX_WORKER_AMOUNT);
+    workerAmount = 0;
+
+    worker_trampoline_setup();
+
+    LocalApicRecord* record = madt_first_record(MADT_RECORD_TYPE_LOCAL_APIC);
+    while (record != 0)
+    {
+        if (LOCAL_APIC_RECORD_GET_FLAG(record, LOCAL_APIC_RECORD_FLAG_ENABLEABLE) && 
+            record->localApicId != master_apic_id())
+        {
+            if (!worker_init(workers, workerAmount, record->localApicId))
+            {    
+                tty_print("Worker "); 
+                tty_printi(record->cpuId); 
+                tty_print(" failed to start!");
+                tty_end_message(TTY_MESSAGE_ER);
+            }
+            workerAmount++;
+        }
+
+        record = madt_next_record(record, MADT_RECORD_TYPE_LOCAL_APIC);
+    }
+
+    worker_trampoline_cleanup();
+}
 
 void worker_pool_init()
 {
@@ -27,7 +58,7 @@ void worker_pool_init()
 
     worker_idt_populate(&idt);
 
-    workers_startup(workers, &workerAmount);
+    worker_pool_startup();
 
     tty_end_message(TTY_MESSAGE_OK);
 }
@@ -88,14 +119,14 @@ void worker_pool_spawn(const char* path)
     }
 }
 
-uint8_t worker_amount()
-{
-    return workerAmount;
-}
-
 Idt* worker_idt_get()
 {
     return &idt;
+}
+
+uint8_t worker_amount()
+{
+    return workerAmount;
 }
 
 Worker* worker_get(uint8_t id)

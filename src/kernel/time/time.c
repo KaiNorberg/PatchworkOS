@@ -1,6 +1,5 @@
 #include "time.h"
 
-#include "tty/tty.h"
 #include "hpet/hpet.h"
 
 static uint64_t accumulator;

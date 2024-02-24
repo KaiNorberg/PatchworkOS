@@ -1,8 +1,8 @@
 #pragma once
 
-#include "master/interrupts/interrupts.h"
-
 #include <stdint.h>
+
+#include "master/interrupts/interrupts.h"
 
 typedef void(*Callback)();
 

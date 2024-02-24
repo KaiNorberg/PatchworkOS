@@ -1,10 +1,12 @@
 #pragma once
 
+#include <common/common.h>
+#include <stdint.h>
+
 #include "kernel/kernel.h"
 #include "page_directory/page_directory.h"
 #include "pmm/pmm.h"
-
-#include <common/common.h>
+#include "common/boot_info/boot_info.h"
 
 //#define USER_ADDRESS_SPACE_TOP 0x7FFFFFFFFFFF
 //#define USER_ADDRESS_SPACE_BOTTOM 0

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 #include "tty/tty.h"
 #include "interrupt_frame/interrupt_frame.h"
 

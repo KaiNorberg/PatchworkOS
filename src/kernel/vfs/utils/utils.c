@@ -1,11 +1,9 @@
 #include "utils.h"
 
-#include "vfs/vfs.h"
-
-#include "tty/tty.h"
-
 #include <libc/string.h>
 #include <libc/ctype.h>
+
+#include "vfs/vfs.h"
 
 uint8_t vfs_utils_validate_char(char ch)
 {

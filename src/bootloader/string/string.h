@@ -2,9 +2,10 @@
 
 #include <stdint.h>
 #include <stddef.h>
-
 #include <efi.h>
 #include <efilib.h>
+
+#include "x86_64/efibind.h"
 
 void* memset(void *dest, int ch, size_t count);
 int memcmp(const void* lhs, const void* rhs, size_t count);

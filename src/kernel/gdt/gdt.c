@@ -11,6 +11,8 @@ void gdt_init()
 {
     tty_start_message("GDT initializing");
 
+    memset(&gdt, 0, sizeof(Gdt));
+
     gdt.null.limitLow = 0;
     gdt.null.baseLow = 0;
     gdt.null.baseMiddle = 0;

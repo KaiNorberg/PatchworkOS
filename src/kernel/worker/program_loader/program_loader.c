@@ -1,19 +1,14 @@
 #include "program_loader.h"
 
-#include "ram_disk/ram_disk.h"
+#include <libc/string.h>
+#include <common/elf/elf.h>
+#include <stdint.h>
+
 #include "heap/heap.h"
 #include "pmm/pmm.h"
-#include "gdt/gdt.h"
-#include "tty/tty.h"
-#include "debug/debug.h"
-#include "worker_pool/worker_pool.h"
 #include "utils/utils.h"
-
 #include "vfs/vfs.h"
-
-#include <libc/string.h>
-
-#include <common/elf/elf.h>
+#include "lib-asym.h"
 
 Status load_program(Process* process, File* file)
 {

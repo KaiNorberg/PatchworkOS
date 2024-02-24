@@ -137,7 +137,7 @@ void* kmalloc(uint64_t size)
             currentBlock = currentBlock->next;       
         }
     }
-    
+
     uint64_t pageAmount = SIZE_IN_PAGES(alignedSize + sizeof(HeapHeader)) + 1;
     HeapHeader* newBlock = vmm_allocate(pageAmount, PAGE_FLAG_WRITE);
 

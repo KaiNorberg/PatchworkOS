@@ -1,5 +1,9 @@
 #include "string.h"
 
+#include <stdint.h>
+
+#include "efilib.h"
+
 int memcmp(const void* lhs, const void* rhs, size_t count)
 {
 	const unsigned char* a = (const unsigned char*) lhs;

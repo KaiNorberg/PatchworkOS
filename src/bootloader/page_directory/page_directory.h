@@ -2,6 +2,7 @@
 
 #include <efi.h>
 #include <efilib.h>
+#include <stdint.h>
 
 #define PAGE_SIZE 0x1000
 

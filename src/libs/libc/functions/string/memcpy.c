@@ -1,4 +1,5 @@
 #include <libc/string.h>
+#include <stdint.h>
 
 void* memcpy(void* dest, const void* src, const uint64_t count)
 {	

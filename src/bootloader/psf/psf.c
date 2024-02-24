@@ -1,9 +1,12 @@
 #include "psf.h"
 
+#include <stddef.h>
+
 #include "file_system/file_system.h"
 #include "memory/memory.h"
-
-#include <common/common.h>
+#include "common/boot_info/boot_info.h"
+#include "efilib.h"
+#include "efiprot.h"
 
 void pst_font_load(EFI_HANDLE imageHandle, PsfFont* font, CHAR16* path)
 {

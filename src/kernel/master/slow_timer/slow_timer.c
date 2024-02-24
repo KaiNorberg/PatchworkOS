@@ -1,7 +1,8 @@
 #include "slow_timer.h"
 
-#include "io/io.h"
+#include <stdint.h>
 
+#include "io/io.h"
 #include "master/pic/pic.h"
 #include "master/interrupts/interrupts.h"
 

@@ -16,15 +16,17 @@ typedef struct
 {
     uint8_t present;
     uint8_t running;
+    
     uint8_t id; 
     uint8_t apicId;
-    
-    Tss* tss;
 
     Ipi ipi;
 
+    Tss* tss;
     Scheduler* scheduler;
 } Worker;
+
+uint8_t worker_init(Worker* worker, uint8_t id, uint8_t apicId);
 
 void worker_entry();
 

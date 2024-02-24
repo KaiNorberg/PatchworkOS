@@ -16,7 +16,7 @@ void madt_init()
 
 void* madt_first_record(uint8_t type)
 {
-    for (MadtRecord* record = madt->records; (uint64_t)record < (uint64_t)madt + madt->header.length; record = (MadtRecord*)((uint64_t)record + record->length))
+    for (RecordHeader* record = madt->records; (uint64_t)record < (uint64_t)madt + madt->header.length; record = (RecordHeader*)((uint64_t)record + record->length))
     {
         if (record->type == type)
         {
@@ -27,12 +27,12 @@ void* madt_first_record(uint8_t type)
     return 0;
 }
 
-void* madt_next_record(void* record, uint8_t type)
+void* madt_next_record(void* prev, uint8_t type)
 {   
-    record = (MadtRecord*)((uint64_t)record + ((MadtRecord*)record)->length);
-    for (;(uint64_t)record < (uint64_t)madt + madt->header.length; record = (MadtRecord*)((uint64_t)record + ((MadtRecord*)record)->length))
+    RecordHeader* record = (RecordHeader*)((uint64_t)prev + ((RecordHeader*)prev)->length);
+    for (;(uint64_t)record < (uint64_t)madt + madt->header.length; record = (RecordHeader*)((uint64_t)record + ((RecordHeader*)record)->length))
     {
-        if (((MadtRecord*)record)->type == type)
+        if (((RecordHeader*)record)->type == type)
         {
             return record;
         }
@@ -44,9 +44,4 @@ void* madt_next_record(void* record, uint8_t type)
 void* madt_local_apic_address()
 {
     return (void*)(uint64_t)madt->localApicAddress;
-}
-
-uint32_t madt_flags()
-{
-    return madt->flags;
 }

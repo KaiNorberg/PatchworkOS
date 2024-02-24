@@ -1,7 +1,10 @@
 #pragma once
 
+#include <stdint.h>
+
 #include "vfs/vfs.h"
 #include "list/list.h"
+#include "lib-asym.h"
 
 typedef struct
 {

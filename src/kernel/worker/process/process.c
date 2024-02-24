@@ -1,16 +1,12 @@
 #include "process.h"
 
+#include <stdatomic.h>
+#include <libc/string.h>
+
 #include "heap/heap.h"
 #include "pmm/pmm.h"
-#include "tty/tty.h"
-#include "lock/lock.h"
 #include "gdt/gdt.h"
 #include "debug/debug.h"
-#include "utils/utils.h"
-
-#include <stdatomic.h>
-
-#include <libc/string.h>
 
 atomic_size_t pid;
 

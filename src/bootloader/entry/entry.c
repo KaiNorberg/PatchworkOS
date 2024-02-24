@@ -1,5 +1,6 @@
 #include <efi.h>
 #include <efilib.h>
+#include <common/boot_info/boot_info.h>
 
 #include "gop/gop.h"
 #include "psf/psf.h"
@@ -7,8 +8,7 @@
 #include "loader/loader.h"
 #include "ram_disk/ram_disk.h"
 #include "file_system/file_system.h"
-
-#include <common/boot_info/boot_info.h>
+#include "memory/memory.h"
 
 EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
 {

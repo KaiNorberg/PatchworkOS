@@ -1,10 +1,13 @@
 #include "tty.h"
 
+#include <libc/string.h>
+
 #include "utils/utils.h"
 #include "lock/lock.h"
 #include "vmm/vmm.h"
-
-#include <libc/string.h>
+#include "common/boot_info/boot_info.h"
+#include "page_directory/page_directory.h"
+#include "pmm/pmm.h"
 
 static GopBuffer frontbuffer;
 static PsfFont font;

@@ -1,9 +1,10 @@
 #include "file_table.h"
 
+#include <libc/string.h>
+
 #include "heap/heap.h"
 #include "debug/debug.h"
-
-#include <libc/string.h>
+#include "lib-asym.h"
 
 FileTable* file_table_new()
 {

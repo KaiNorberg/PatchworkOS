@@ -1,12 +1,18 @@
 #include "syscall.h"
 
+#include <lib-syscall.h>
+#include <stdint.h>
+
 #include "tty/tty.h"
 #include "worker_pool/worker_pool.h"
-
 #include "worker/program_loader/program_loader.h"
-
-#include <lib-syscall.h>
-#include <libc/string.h>
+#include "lib-asym.h"
+#include "time/time.h"
+#include "vfs/vfs.h"
+#include "worker/file_table/file_table.h"
+#include "worker/process/process.h"
+#include "worker/scheduler/scheduler.h"
+#include "worker/worker.h"
 
 inline void* syscall_verify_pointer(PageDirectory const* pageDirectory, void* pointer, uint64_t size)
 {

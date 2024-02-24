@@ -1,11 +1,15 @@
 #include "schedule.h"
 
-#include "tty/tty.h"
-#include "heap/heap.h"
-#include "worker_pool/worker_pool.h"
+#include <stdint.h>
 
+#include "tty/tty.h"
+#include "worker_pool/worker_pool.h"
 #include "master/interrupts/interrupts.h"
 #include "master/dispatcher/dispatcher.h"
+#include "ipi/ipi.h"
+#include "time/time.h"
+#include "worker/scheduler/scheduler.h"
+#include "worker/worker.h"
 
 void schedule_job_init()
 {

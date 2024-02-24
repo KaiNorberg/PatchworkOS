@@ -1,6 +1,9 @@
 #include "file_system.h"
 
+#include <stddef.h>
+
 #include "string/string.h"
+#include "efilib.h"
 
 EFI_FILE* file_system_open_root_volume(EFI_HANDLE imageHandle)
 {

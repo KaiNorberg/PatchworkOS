@@ -1,9 +1,7 @@
 #include "hpet.h"
 
 #include "tty/tty.h"
-#include "debug/debug.h"
 #include "page_directory/page_directory.h"
-#include "io/io.h"
 #include "utils/utils.h"
 #include "vmm/vmm.h"
 

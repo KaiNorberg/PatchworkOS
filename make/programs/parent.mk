@@ -8,14 +8,14 @@ PARENT_OBJECTS += $(call objects_pathsubst,$(PARENT_SRC_DIR),$(PARENT_BUILD_DIR)
 
 $(PARENT_BUILD_DIR)/%.c.o: $(PARENT_SRC_DIR)/%.c
 	@mkdir -p $(@D)
-	@$(call run_and_test,$(CC) $(PROGRAM_C_FLAGS) -I $(PARENT_SRC_DIR) -c -o $@ $<)
+	$(CC) $(PROGRAM_C_FLAGS) -I $(PARENT_SRC_DIR) -c -o $@ $<
 
 $(PARENT_BUILD_DIR)/%.s.o: $(PARENT_SRC_DIR)/%.s
 	@mkdir -p $(@D)
-	@$(call run_and_test,$(ASM) $(ASM_FLAGS) $^ -o $@)
+	$(ASM) $(ASM_FLAGS) $^ -o $@
 
 $(PARENT_OUTPUT): $(PARENT_OBJECTS)	
 	@mkdir -p $(@D)
-	@$(call run_and_test,$(LD) $(PROGRAM_LD_FLAGS) -lasym -o $@ $^)
+	$(LD) $(PROGRAM_LD_FLAGS) -lasym -o $@ $^
 
 BUILD += $(PARENT_OUTPUT)

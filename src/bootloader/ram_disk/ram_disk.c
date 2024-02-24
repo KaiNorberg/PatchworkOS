@@ -1,10 +1,14 @@
 #include "ram_disk.h"
 
+#include <stddef.h>
+
 #include "file_system/file_system.h"
 #include "string/string.h"
 #include "memory/memory.h"
-
-#include <common/common.h>
+#include "common/boot_info/boot_info.h"
+#include "efidef.h"
+#include "efierr.h"
+#include "efilib.h"
 
 RamFile* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
 {

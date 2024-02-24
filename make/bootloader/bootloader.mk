@@ -12,11 +12,11 @@ GNU_EFI = vendor/gnu-efi
 
 $(BOOT_BUILD_DIR)/%.c.o: $(BOOT_SRC_DIR)/%.c
 	@mkdir -p $(@D)
-	@$(call run_and_test,$(CC) $(BOOT_C_FLAGS) -I$(BOOT_SRC_DIR) -c -o $@ $<)
+	$(CC) $(BOOT_C_FLAGS) -I$(BOOT_SRC_DIR) -c -o $@ $<
 
 $(BOOT_BUILD_DIR)/%.s.o: $(BOOT_SRC_DIR)/%.s
 	@mkdir -p $(@D)
-	@$(call run_and_test,$(ASM) $(ASM_FLAGS) $^ -o $@)
+	$(ASM) $(ASM_FLAGS) $^ -o $@
 
 $(BOOT_OUTPUT_EFI): $(BOOT_OBJECTS)
 	@mkdir -p $(@D)

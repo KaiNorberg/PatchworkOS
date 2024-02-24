@@ -2,6 +2,7 @@
 
 #include "vmm/vmm.h"
 #include "heap/heap.h"
+#include "page_directory/page_directory.h"
 
 Tss* tss_new()
 {

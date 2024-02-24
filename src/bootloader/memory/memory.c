@@ -1,5 +1,11 @@
 #include "memory.h"
 
+#include "common/boot_info/boot_info.h"
+#include "efidef.h"
+#include "efierr.h"
+#include "efilib.h"
+#include "x86_64/efibind.h"
+
 void* memory_allocate_pages(uint64_t pageAmount, uint64_t memoryType)
 {
 	EFI_PHYSICAL_ADDRESS address = 0;

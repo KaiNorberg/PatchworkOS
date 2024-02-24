@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+
 #include <common/boot_info/boot_info.h>
 
 #define PAGE_SIZE 0x1000

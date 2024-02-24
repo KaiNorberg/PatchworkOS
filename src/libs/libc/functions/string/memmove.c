@@ -1,4 +1,5 @@
 #include <libc/string.h>
+#include <stddef.h>
 
 void* memmove(void* dest, const void* src, size_t count)
 {

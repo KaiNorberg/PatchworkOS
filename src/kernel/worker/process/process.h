@@ -1,11 +1,13 @@
 #pragma once
 
+#include <stdint.h>
+
 #include "vector/vector.h"
 #include "interrupt_frame/interrupt_frame.h"
 #include "page_directory/page_directory.h"
 #include "vfs/vfs.h"
-
 #include "worker/file_table/file_table.h"
+#include "lib-asym.h"
 
 #define PROCESS_STATE_NONE 0
 #define PROCESS_STATE_RUNNING 1

@@ -2,8 +2,8 @@
 
 #include "memory/memory.h"
 #include "string/string.h"
-
-#include <common/common.h>
+#include "common/boot_info/boot_info.h"
+#include "efilib.h"
 
 static inline PageDirectoryEntry page_directory_entry_create(void* address, uint64_t flags)
 {
