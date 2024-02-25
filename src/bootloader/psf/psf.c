@@ -12,7 +12,7 @@ void pst_font_load(EFI_HANDLE imageHandle, PsfFont* font, CHAR16* path)
 {
 	EFI_FILE* file = file_system_open(imageHandle, path);
 
-	if (file == NULL)
+	if (file == 0)
 	{
 		Print(L"ERROR: Failed to load font!\n\r");
 		

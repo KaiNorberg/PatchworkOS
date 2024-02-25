@@ -27,7 +27,7 @@ void loader_load_kernel(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, B
     Print(L"Loading kernel... ");
 	
 	EFI_FILE* file = file_system_open(imageHandle, L"/boot/kernel.elf");
-	if (file == NULL)
+	if (file == 0)
 	{
 		Print(L"ERROR: Failed to load");
 				

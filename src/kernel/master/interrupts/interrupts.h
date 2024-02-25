@@ -22,7 +22,7 @@
 #define IRQ_SECONDARY_ATA_HARD_DISK 0xF
 #define IRQ_AMOUNT 0x10
 
-void master_idt_populate(Idt* idt);
+void master_idt_init();
 
 void master_interrupt_handler(InterruptFrame const* interruptFrame);
 

@@ -14,7 +14,7 @@ void gop_get_buffer(GopBuffer* buffer)
 {	
 	EFI_GUID guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
 	EFI_GRAPHICS_OUTPUT_PROTOCOL* gop;
-	EFI_STATUS status = uefi_call_wrapper(BS->LocateProtocol, 3, &guid, NULL, (void**)&gop);
+	EFI_STATUS status = uefi_call_wrapper(BS->LocateProtocol, 3, &guid, 0, (void**)&gop);
 
 	if (EFI_ERROR(status))
 	{

@@ -2,6 +2,8 @@
 
 #include <libc/string.h>
 
+#include <lib-asym.h>
+
 #include "idt/idt.h"
 #include "apic/apic.h"
 #include "utils/utils.h"
@@ -13,15 +15,12 @@
 #include "worker/scheduler/scheduler.h"
 #include "worker/program_loader/program_loader.h"
 #include "worker/trampoline/trampoline.h"
-#include "lib-asym.h"
 #include "queue/queue.h"
 #include "vfs/vfs.h"
 #include "worker/process/process.h"
 
 static Worker workers[MAX_WORKER_AMOUNT];
 static uint8_t workerAmount;
-
-static Idt idt;
 
 static void worker_pool_startup()
 {
@@ -34,12 +33,14 @@ static void worker_pool_startup()
     while (record != 0)
     {
         if (LOCAL_APIC_RECORD_GET_FLAG(record, LOCAL_APIC_RECORD_FLAG_ENABLEABLE) && 
-            record->localApicId != master_apic_id())
+            record->localApicId != master_local_apic_id())
         {
-            if (!worker_init(workers, workerAmount, record->localApicId))
+            uint8_t id = workerAmount;
+
+            if (!worker_init(workers, id, record->localApicId))
             {    
-                tty_print("Worker "); 
-                tty_printi(record->cpuId); 
+                tty_print("Worker ");
+                tty_printi(id);
                 tty_print(" failed to start!");
                 tty_end_message(TTY_MESSAGE_ER);
             }
@@ -56,7 +57,7 @@ void worker_pool_init()
 {
     tty_start_message("Worker Pool initializing");
 
-    worker_idt_populate(&idt);
+    worker_idt_init();
 
     worker_pool_startup();
 
@@ -119,11 +120,6 @@ void worker_pool_spawn(const char* path)
     }
 }
 
-Idt* worker_idt_get()
-{
-    return &idt;
-}
-
 uint8_t worker_amount()
 {
     return workerAmount;
@@ -148,12 +144,12 @@ Worker* worker_self()
 
 Worker* worker_self_brute()
 {
-    uint8_t apicId = local_apic_id();
+    uint8_t localApicId = local_apic_id();
     for (uint16_t i = 0; i < MAX_WORKER_AMOUNT; i++)
     {
         Worker* worker = worker_get((uint8_t)i);
 
-        if (worker->present && worker->apicId == apicId)
+        if (worker->present && worker->localApicId == localApicId)
         {
             return worker;
         }

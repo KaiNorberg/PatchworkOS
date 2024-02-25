@@ -9,25 +9,27 @@
 #include "gdt/gdt.h"
 #include "idt/idt.h"
 #include "worker_pool/worker_pool.h"
+
+#include "worker/interrupts/interrupts.h"
 #include "worker/trampoline/trampoline.h"
 #include "worker/scheduler/scheduler.h"
 
-uint8_t worker_init(Worker* worker, uint8_t id, uint8_t apicId)
+uint8_t worker_init(Worker* worker, uint8_t id, uint8_t localApicId)
 {
     worker->present = 1;
     worker->running = 0;
     worker->id = id;
-    worker->apicId = apicId;
+    worker->localApicId = localApicId;
 
     worker->tss = tss_new();
     worker->ipi = (Ipi){.type = IPI_WORKER_NONE};
     worker->scheduler = scheduler_new();
 
-    worker_trampoline_worker_setup(worker);
+    worker_trampoline_specific_setup(worker);
 
-    local_apic_send_init(apicId);
+    local_apic_send_init(localApicId);
     hpet_sleep(10);
-    local_apic_send_sipi(apicId, ((uint64_t)WORKER_TRAMPOLINE_PHYSICAL_START) / PAGE_SIZE);
+    local_apic_send_sipi(localApicId, ((uint64_t)WORKER_TRAMPOLINE_PHYSICAL_START) / PAGE_SIZE);
 
     uint64_t timeout = 1000;
     while (!worker->running) 
@@ -55,7 +57,7 @@ void worker_entry()
     gdt_load();
     gdt_load_tss(worker->tss);
 
-    idt_load(worker_idt_get());
+    idt_load(worker_idt());
 
     worker->running = 1;
 
@@ -79,5 +81,5 @@ Ipi worker_receive_ipi()
 void worker_send_ipi(Worker* worker, Ipi ipi)
 {
     worker->ipi = ipi;
-    local_apic_send_ipi(worker->apicId, IPI_VECTOR);
+    local_apic_send_ipi(worker->localApicId, IPI_VECTOR);
 }

@@ -46,7 +46,7 @@ RamDirectory* ram_disk_load_directory(EFI_FILE* volume, const char* name)
 		EFI_FILE_INFO* fileInfo;
 		UINTN fileInfoSize = 0;
 
-		EFI_STATUS status = uefi_call_wrapper(volume->Read, 3, volume, &fileInfoSize, NULL);
+		EFI_STATUS status = uefi_call_wrapper(volume->Read, 3, volume, &fileInfoSize, 0);
         if (status != EFI_BUFFER_TOO_SMALL) 
 		{
             break;

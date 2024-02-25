@@ -19,16 +19,23 @@ extern PageDirectory* workerPageDirectory;
 
 extern void* workerVectorTable[IDT_VECTOR_AMOUNT];
 
-void worker_idt_populate(Idt* idt)
+static Idt idt;
+
+void worker_idt_init()
 {
     workerPageDirectory = vmm_kernel_directory();
 
     for (uint16_t vector = 0; vector < IDT_VECTOR_AMOUNT; vector++) 
     {        
-        idt_set_vector(idt, (uint8_t)vector, workerVectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
+        idt_set_vector(&idt, (uint8_t)vector, workerVectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
     }        
     
-    idt_set_vector(idt, SYSCALL_VECTOR, workerVectorTable[SYSCALL_VECTOR], IDT_RING3, IDT_INTERRUPT_GATE);
+    idt_set_vector(&idt, SYSCALL_VECTOR, workerVectorTable[SYSCALL_VECTOR], IDT_RING3, IDT_INTERRUPT_GATE);
+}
+
+Idt* worker_idt()
+{
+    return &idt;
 }
 
 void worker_interrupt_handler(InterruptFrame* interruptFrame)

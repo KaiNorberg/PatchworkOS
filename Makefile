@@ -39,11 +39,11 @@ BASE_C_FLAGS = -O3 \
 	-Wno-ignored-qualifiers \
 	-Wno-unused-parameter \
 	-Wno-unused-but-set-variable \
-	-I$(SRC_DIR) \
-	-I$(LIB_SRC_DIR)/include \
 	-mno-80387 \
 	-mno-mmx -mno-3dnow -mno-sse \
-	-mno-sse2 
+	-mno-sse2 \
+	-I$(SRC_DIR) \
+	-I$(LIB_SRC_DIR)/include
 	
 KERNEL_C_FLAGS = $(BASE_C_FLAGS) \
 	-ffreestanding \

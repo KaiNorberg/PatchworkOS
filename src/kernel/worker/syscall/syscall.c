@@ -1,12 +1,14 @@
 #include "syscall.h"
 
-#include <lib-syscall.h>
 #include <stdint.h>
+
+#include <lib-syscall.h>
+
+#include <lib-asym.h>
 
 #include "tty/tty.h"
 #include "worker_pool/worker_pool.h"
 #include "worker/program_loader/program_loader.h"
-#include "lib-asym.h"
 #include "time/time.h"
 #include "vfs/vfs.h"
 #include "worker/file_table/file_table.h"

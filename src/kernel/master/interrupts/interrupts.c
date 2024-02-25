@@ -14,11 +14,13 @@
 
 extern void* masterVectorTable[IDT_VECTOR_AMOUNT];
 
-void master_idt_populate(Idt* idt)
+static Idt idt;
+
+void master_idt_init()
 {
     for (uint16_t vector = 0; vector < IDT_VECTOR_AMOUNT; vector++) 
     {        
-        idt_set_vector(idt, (uint8_t)vector, masterVectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
+        idt_set_vector(&idt, (uint8_t)vector, masterVectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
     }
 }
 

@@ -4,7 +4,9 @@
 #include "page_directory/page_directory.h"
 #include "interrupt_frame/interrupt_frame.h"
 
-void worker_idt_populate(Idt* idt);
+void worker_idt_init();
+
+Idt* worker_idt();
 
 void worker_interrupt_handler(InterruptFrame* interruptFrame);
 

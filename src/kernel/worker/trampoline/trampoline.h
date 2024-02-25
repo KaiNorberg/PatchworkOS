@@ -9,13 +9,10 @@
 #define WORKER_TRAMPOLINE_STACK_TOP_ADDRESS ((void*)0x8FE0)
 #define WORKER_TRAMPOLINE_ENTRY_ADDRESS ((void*)0x8FD0)
 
-#define WORKER_TRAMPOLINE_SIZE ((uint64_t)worker_trampoline_end - (uint64_t)worker_trampoline_start)
-
-extern void worker_trampoline_start();
-extern void worker_trampoline_end();
+extern void worker_trampoline_virtual_start();
 
 void worker_trampoline_setup();
 
-void worker_trampoline_worker_setup(Worker* worker);
+void worker_trampoline_specific_setup(Worker* worker);
 
 void worker_trampoline_cleanup();

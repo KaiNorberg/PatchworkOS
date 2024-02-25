@@ -57,21 +57,21 @@ uint32_t local_apic_read(uint32_t reg)
     return READ_32(localApicBase + reg);
 }
 
-void local_apic_send_init(uint32_t apicId)
+void local_apic_send_init(uint32_t id)
 {
-    local_apic_write(LOCAL_APIC_REG_ICR1, apicId << LOCAL_APIC_ID_OFFSET);
+    local_apic_write(LOCAL_APIC_REG_ICR1, id << LOCAL_APIC_ID_OFFSET);
     local_apic_write(LOCAL_APIC_REG_ICR0, (5 << 8));
 }
 
-void local_apic_send_sipi(uint32_t apicId, uint32_t page)
+void local_apic_send_sipi(uint32_t id, uint32_t page)
 {
-    local_apic_write(LOCAL_APIC_REG_ICR1, apicId << LOCAL_APIC_ID_OFFSET);
+    local_apic_write(LOCAL_APIC_REG_ICR1, id << LOCAL_APIC_ID_OFFSET);
     local_apic_write(LOCAL_APIC_REG_ICR0, page | (6 << 8));
 }
 
-void local_apic_send_ipi(uint32_t apicId, uint8_t vector)
+void local_apic_send_ipi(uint32_t id, uint8_t vector)
 {
-    local_apic_write(LOCAL_APIC_REG_ICR1, apicId << LOCAL_APIC_ID_OFFSET);
+    local_apic_write(LOCAL_APIC_REG_ICR1, id << LOCAL_APIC_ID_OFFSET);
     local_apic_write(LOCAL_APIC_REG_ICR0, (uint32_t)vector | (1 << 14));
 }
 

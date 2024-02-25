@@ -7,7 +7,7 @@
 
 EFI_FILE* file_system_open_root_volume(EFI_HANDLE imageHandle)
 {
-	EFI_LOADED_IMAGE *loaded_image = NULL;
+	EFI_LOADED_IMAGE *loaded_image = 0;
 	EFI_GUID lipGuid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
 	EFI_FILE_IO_INTERFACE *IOVolume;
 	EFI_GUID fsGuid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;

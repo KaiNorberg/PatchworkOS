@@ -1,14 +1,17 @@
 #include "program_loader.h"
 
-#include <libc/string.h>
-#include <common/elf/elf.h>
 #include <stdint.h>
+
+#include <libc/string.h>
+
+#include <lib-asym.h>
+
+#include <common/elf/elf.h>
 
 #include "heap/heap.h"
 #include "pmm/pmm.h"
 #include "utils/utils.h"
 #include "vfs/vfs.h"
-#include "lib-asym.h"
 
 Status load_program(Process* process, File* file)
 {

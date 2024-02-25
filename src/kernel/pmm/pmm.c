@@ -109,7 +109,7 @@ void* pmm_allocate()
     debug_panic("Physical Memory Manager full!");
 
     lock_release(&lock);
-    return NULL;
+    return 0;
 }
 
 void* pmm_allocate_amount(uint64_t amount)

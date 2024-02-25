@@ -38,6 +38,8 @@ static void deallocate_boot_info(BootInfo* bootInfo)
     tty_end_message(TTY_MESSAGE_OK);
 }
 
+char buffer[32];
+
 void kernel_init(BootInfo* bootInfo)
 {   
     asm volatile("cli");
@@ -65,14 +67,33 @@ void kernel_init(BootInfo* bootInfo)
     master_init();
     worker_pool_init();
 
-    deallocate_boot_info(bootInfo);
+    /*vfs_init();
+    //device_disk_init();
+    ram_disk_init(bootInfo->ramRoot);
 
+    File* file = 0;
+    Status status = vfs_open(&file, "ram:/test/test.txt", FILE_FLAG_READ);
+    tty_print("OPEN: ");
+    tty_print(statusToString[status]);
+    tty_print("\n");
+
+    status = vfs_read(file, buffer, 32);
+    tty_print("READ: ");
+    tty_print(statusToString[status]);
+    tty_print("\n");
+
+    tty_print(buffer);
+    tty_print("\n");
+
+    status = vfs_close(file);
+    tty_print("CLOSE: ");
+    tty_print(statusToString[status]);
+    tty_print("\n");*/
+
+    deallocate_boot_info(bootInfo);
+    
     while (1)
     {
         asm volatile("hlt");
     }
-
-    vfs_init();
-    device_disk_init();
-    ram_disk_init(bootInfo->ramRoot);
 }

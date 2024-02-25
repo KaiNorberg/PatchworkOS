@@ -2,14 +2,49 @@
 
 #include <stdint.h>
 
+#include <libc/string.h>
+
+#include <lib-asym.h>
+
 #include "tty/tty.h"
+#include "vmm/vmm.h"
 #include "heap/heap.h"
 #include "vfs/vfs.h"
 #include "vfs/utils/utils.h"
 #include "common/boot_info/boot_info.h"
-#include "lib-asym.h"
 
-RamDirectory* ram_disk_traverse(Disk* disk, const char* path)
+/*static inline RamFile* ram_disk_load_file(RamFile* file)
+{
+
+}*/
+
+static inline RamDirectory* ram_disk_load_directory(RamDirectory* directory)
+{    
+    directory = vmm_physical_to_virtual(directory);
+
+    RamDirectory* out = kmalloc(sizeof(RamDirectory));
+    memset(out, 0, sizeof(RamDirectory));
+
+    RamFile* currentFile = vmm_physical_to_virtual(directory->firstFile);
+    while (1)
+    {
+        
+
+
+        if (currentFile->next == 0)
+        {
+            break;
+        }
+        else
+        {
+            currentFile = vmm_physical_to_virtual(currentFile->next);
+        }
+    }   
+
+    return out;
+}
+
+static inline RamDirectory* ram_disk_traverse(Disk* disk, const char* path)
 {
     RamDirectory* directory = disk->internal;
     const char* directoryName = vfs_utils_first_dir(path);
@@ -40,7 +75,7 @@ RamDirectory* ram_disk_traverse(Disk* disk, const char* path)
     return directory;
 }
 
-RamFile* ram_directory_find_file(RamDirectory* directory, const char* filename)
+static inline RamFile* ram_directory_find_file(RamDirectory* directory, const char* filename)
 {
     RamFile* file = directory->firstFile;
     while (file != 0)
@@ -151,9 +186,9 @@ Status ram_disk_seek(File* file, int64_t offset, uint64_t origin)
 
 void ram_disk_init(RamDirectory* root)
 {
-    tty_start_message("Ram Disk initializing");
+    tty_start_message("Ram Disk initializing");    
 
-    Disk* disk = disk_new("ram", root);
+    Disk* disk = disk_new("ram", ram_disk_load_directory(root));
     disk->open = ram_disk_open;
     disk->close = ram_disk_close;
     disk->read = ram_disk_read;
