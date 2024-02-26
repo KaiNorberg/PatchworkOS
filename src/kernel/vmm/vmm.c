@@ -15,19 +15,10 @@ static void vmm_load_memory_map(EfiMemoryMap* memoryMap)
 {
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
+        EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize)); 
         
-        if (desc->type != EFI_MEMORY_TYPE_KERNEL)
-        {
-            void* address = (void*)((uint64_t)desc->physicalStart + VMM_PHYSICAL_BASE);
-            page_directory_map_pages(kernelPageDirectory, address, desc->physicalStart, desc->amountOfPages, PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
-        }
-        else
-        {            
-            page_directory_map_pages(kernelPageDirectory, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
-        }
+        page_directory_map_pages(kernelPageDirectory, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
 	}
-
     page_directory_populate_range(kernelPageDirectory, PAGE_DIRECTORY_ENTRY_AMOUNT / 2, PAGE_DIRECTORY_ENTRY_AMOUNT, PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
 }
 
@@ -60,12 +51,12 @@ void vmm_init(EfiMemoryMap* memoryMap)
 
 void* vmm_physical_to_virtual(void* address)
 {
-    return (void*)((uint64_t)address + (uint64_t)pmm_physical_base());
+    return (void*)((uint64_t)address + VMM_HIGHER_HALF_BASE);
 }
 
 void* vmm_virtual_to_physical(void* address)
 {
-    return (void*)((uint64_t)address - (uint64_t)pmm_physical_base());
+    return (void*)((uint64_t)address - VMM_HIGHER_HALF_BASE);
 }
 
 PageDirectory* vmm_kernel_directory()

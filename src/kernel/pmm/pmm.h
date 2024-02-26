@@ -14,10 +14,6 @@
 
 void pmm_init(EfiMemoryMap* memoryMap);
 
-void* pmm_physical_base();
-
-void pmm_move_to_higher_half();
-
 void* pmm_allocate();
 
 void* pmm_allocate_amount(uint64_t amount);

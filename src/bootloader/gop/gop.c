@@ -3,12 +3,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "common/boot_info/boot_info.h"
-#include "efidef.h"
-#include "efierr.h"
-#include "efilib.h"
-#include "efiprot.h"
-#include "x86_64/efibind.h"
+#include <common/boot_info/boot_info.h>
+
+#include "virtual_memory/virtual_memory.h"
 
 void gop_get_buffer(GopBuffer* buffer)
 {	
@@ -18,11 +15,11 @@ void gop_get_buffer(GopBuffer* buffer)
 
 	if (EFI_ERROR(status))
 	{
-		Print(L"ERROR: gop Failed!\n\r");
+		Print(L"ERROR: Failed to locate GOP!\n\r");
 		
 		while (1)
 		{
-			__asm__("hlt");
+			asm volatile("hlt");
 		}
 	}
 
@@ -33,8 +30,8 @@ void gop_get_buffer(GopBuffer* buffer)
 	buffer->pixelsPerScanline = gop->Mode->Info->PixelsPerScanLine;
 
 	Print(L"GOP BUFFER INFO\n\r");
-	Print(L"Base: 0x%x\n\r", buffer->base);
-	Print(L"Size: 0x%x\n\r", buffer->size);
+	Print(L"Base: 0x%lx\n\r", buffer->base);
+	Print(L"Size: 0x%lx\n\r", buffer->size);
 	Print(L"Width: %d\n\r", buffer->width);
 	Print(L"Height: %d\n\r", buffer->height);
 	Print(L"PixelsPerScanline: %d\n\r", buffer->pixelsPerScanline);

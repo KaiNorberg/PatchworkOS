@@ -33,7 +33,7 @@ static inline HeapHeader* heap_split(HeapHeader* block, uint64_t size)
 
 void heap_init()
 {    
-    tty_start_message("Heap initializing");
+    tty_start_message("Kernel Heap initializing");
 
     firstBlock = vmm_allocate(1, PAGE_FLAG_WRITE);
     firstBlock->size = PAGE_SIZE - sizeof(HeapHeader);

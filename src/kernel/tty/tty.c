@@ -6,7 +6,7 @@
 #include "utils/utils.h"
 #include "lock/lock.h"
 #include "vmm/vmm.h"
-#include "common/boot_info/boot_info.h"
+#include <common/boot_info/boot_info.h>
 #include "page_directory/page_directory.h"
 #include "pmm/pmm.h"
 
@@ -33,7 +33,7 @@ void tty_init(GopBuffer* gopBuffer, PsfFont* screenFont)
 
     font.header = screenFont->header;   
     font.glyphs = vmm_allocate(SIZE_IN_PAGES(screenFont->glyphsSize), PAGE_FLAG_WRITE);
-    memcpy(font.glyphs, vmm_physical_to_virtual(screenFont->glyphs), screenFont->glyphsSize);
+    memcpy(font.glyphs, screenFont->glyphs, screenFont->glyphsSize);
 
     scale = 1;
     column = 0;

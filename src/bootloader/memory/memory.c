@@ -1,11 +1,5 @@
 #include "memory.h"
 
-#include "common/boot_info/boot_info.h"
-#include "efidef.h"
-#include "efierr.h"
-#include "efilib.h"
-#include "x86_64/efibind.h"
-
 void* memory_allocate_pages(uint64_t pageAmount, uint64_t memoryType)
 {
 	EFI_PHYSICAL_ADDRESS address = 0;
@@ -16,7 +10,7 @@ void* memory_allocate_pages(uint64_t pageAmount, uint64_t memoryType)
 
 		while (1)
 		{
-			__asm__("HLT");
+			asm volatile("hlt");
 		}
 	}
 
@@ -33,18 +27,19 @@ void* memory_allocate_pool(uint64_t size, uint64_t memoryType)
 
 		while (1)
 		{
-			__asm__("HLT");
+			asm volatile("hlt");
 		}
 	}
 
 	return (void*)address;
 }
 
-void memory_get_map(EfiMemoryMap* memoryMap)
+void memory_free_pool(void* pool)
+{
+	uefi_call_wrapper(BS->FreePool, 1, pool);
+}
+
+void memory_map_populate(EfiMemoryMap* memoryMap)
 { 
-	Print(L"Retrieving EFI Memory Map... ");
-
 	memoryMap->base = LibMemoryMap(&memoryMap->descriptorAmount, &memoryMap->key, &memoryMap->descriptorSize, &memoryMap->descriptorVersion);
-
-    Print(L"Done!\n\r");
 }

@@ -31,7 +31,7 @@ EFI_FILE* file_system_open_raw(EFI_FILE* volume, CHAR16* path)
 	return fileHandle;
 }
 
-EFI_FILE* file_system_open(EFI_HANDLE imageHandle, CHAR16* path)
+EFI_FILE* file_system_open(CHAR16* path, EFI_HANDLE imageHandle)
 {
     if (strlen16(path) < 3)
     {

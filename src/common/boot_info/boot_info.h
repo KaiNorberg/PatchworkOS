@@ -13,7 +13,7 @@ typedef struct
 	uint64_t attribute;
 } EfiMemoryDescriptor;
 
-#define EFI_GET_DESCRIPTOR(memoryMap, index) (EfiMemoryDescriptor*)((uint64_t)(memoryMap)->base + ((index) * (memoryMap)->descriptorSize))
+#define EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, index) (EfiMemoryDescriptor*)((uint64_t)(memoryMap)->base + ((index) * (memoryMap)->descriptorSize))
 
 #define EFI_RESERVED 0
 #define EFI_LOADER_CODE 1 
@@ -72,6 +72,7 @@ static inline uint8_t is_memory_type_reserved(uint64_t memoryType)
 	}
 }
 #else
+#include <efi.h>
 #include <efilib.h>
 typedef EFI_MEMORY_DESCRIPTOR EfiMemoryDescriptor;
 #endif
@@ -79,6 +80,7 @@ typedef EFI_MEMORY_DESCRIPTOR EfiMemoryDescriptor;
 #define EFI_MEMORY_TYPE_KERNEL 0x80000000
 #define EFI_MEMORY_TYPE_PAGE_DIRECTORY 0x80000001
 #define EFI_MEMORY_TYPE_BOOT_INFO 0x80000002
+#define EFI_MEMORY_TYPE_RAM_DISK 0x80000003
 
 typedef struct
 {
@@ -134,7 +136,6 @@ typedef struct RamDirectory
 
 typedef struct 
 {    
-    void* physicalAddress;
 	EfiMemoryMap memoryMap;
 	GopBuffer gopBuffer;
 	PsfFont font;

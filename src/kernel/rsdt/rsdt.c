@@ -21,15 +21,16 @@ static inline uint8_t rsdt_validate_checksum(void* table, uint64_t length)
 
 void rsdt_init(Xsdp* xsdp)
 {
-    tty_start_message("RSDT initializing");
+    tty_start_message("Parsing RSDT");
 
     xsdp = vmm_physical_to_virtual(xsdp);
 
-    tty_assert(xsdp->revision == ACPI_REVISION_2_0, "Incompatible rdsp revision");
-    tty_assert(rsdt_validate_checksum(xsdp, xsdp->length), "Invalid checksum");
+    tty_assert(xsdp->revision == ACPI_REVISION_2_0, "Incompatible ACPI revision");
+    tty_assert(rsdt_validate_checksum(xsdp, xsdp->length), "Invalid XSDP checksum");
 
     xsdt = vmm_physical_to_virtual((void*)xsdp->xsdtAddress);
     tableAmount = (xsdt->header.length - sizeof(SdtHeader)) / 8;
+
     for (uint64_t i = 0; i < tableAmount; i++)
     {
         SdtHeader* table = vmm_physical_to_virtual(xsdt->tables[i]);

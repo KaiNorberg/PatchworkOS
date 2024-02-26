@@ -2,15 +2,14 @@
 
 #include <stddef.h>
 
-#include "file_system/file_system.h"
-#include "memory/memory.h"
-#include "common/boot_info/boot_info.h"
-#include "efilib.h"
-#include "efiprot.h"
+#include <common/boot_info/boot_info.h>
 
-void pst_font_load(EFI_HANDLE imageHandle, PsfFont* font, CHAR16* path)
+#include "file_system/file_system.h"
+#include "virtual_memory/virtual_memory.h"
+
+void psf_font_load(PsfFont* font, CHAR16* path, EFI_HANDLE imageHandle)
 {
-	EFI_FILE* file = file_system_open(imageHandle, path);
+	EFI_FILE* file = file_system_open(path, imageHandle);
 
 	if (file == 0)
 	{
@@ -18,7 +17,7 @@ void pst_font_load(EFI_HANDLE imageHandle, PsfFont* font, CHAR16* path)
 		
 		while (1)
 		{
-			__asm__("HLT");
+			asm volatile("hlt");
 		}
 	}
 
@@ -30,7 +29,7 @@ void pst_font_load(EFI_HANDLE imageHandle, PsfFont* font, CHAR16* path)
 		
 		while (1)
 		{
-			__asm__("HLT");
+			asm volatile("hlt");
 		}
 	}
 
@@ -43,7 +42,7 @@ void pst_font_load(EFI_HANDLE imageHandle, PsfFont* font, CHAR16* path)
 		font->glyphsSize = font->header.charSize * 256;
 	}
 
-	void* glyphBuffer = memory_allocate_pool(font->glyphsSize, EFI_MEMORY_TYPE_BOOT_INFO);
+	void* glyphBuffer = virtual_memory_allocate_pool(font->glyphsSize, EFI_MEMORY_TYPE_BOOT_INFO);
 	file_system_seek(file, sizeof(PsfHeader));
 	file_system_read(file, font->glyphsSize, glyphBuffer);
 
@@ -54,6 +53,6 @@ void pst_font_load(EFI_HANDLE imageHandle, PsfFont* font, CHAR16* path)
 	Print(L"FONT INFO\n\r");
 	Print(L"Char Size: %d\n\r", font->header.charSize);
 	Print(L"Mode: %d\n\r", font->header.mode);
-	Print(L"GlyphBuffer: 0x%x\n\r", glyphBuffer);
+	Print(L"GlyphBuffer: 0x%lx\n\r", glyphBuffer);
 	Print(L"FONT INFO END\n\r");
 }

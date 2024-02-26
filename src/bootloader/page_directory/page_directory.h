@@ -1,10 +1,6 @@
 #pragma once
 
-#include <efi.h>
-#include <efilib.h>
 #include <stdint.h>
-
-#define PAGE_SIZE 0x1000
 
 #define PAGE_DIRECTORY_LOAD(pageDirectory) asm volatile ("mov %0, %%cr3" : : "r" ((uint64_t)pageDirectory))
 
@@ -24,7 +20,7 @@
 
 typedef uint64_t PageDirectoryEntry;
 
-typedef struct __attribute__((aligned(PAGE_SIZE)))
+typedef struct
 { 
     PageDirectoryEntry entries[512];
 } PageDirectory;

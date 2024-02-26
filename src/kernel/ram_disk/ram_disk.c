@@ -11,7 +11,7 @@
 #include "heap/heap.h"
 #include "vfs/vfs.h"
 #include "vfs/utils/utils.h"
-#include "common/boot_info/boot_info.h"
+#include <common/boot_info/boot_info.h>
 
 /*static inline RamFile* ram_disk_load_file(RamFile* file)
 {

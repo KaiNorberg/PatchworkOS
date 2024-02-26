@@ -2,22 +2,31 @@
 
 #include <stddef.h>
 
+#include <common/boot_info/boot_info.h>
+
 #include "file_system/file_system.h"
 #include "string/string.h"
-#include "memory/memory.h"
-#include "common/boot_info/boot_info.h"
-#include "efidef.h"
-#include "efierr.h"
-#include "efilib.h"
+#include "virtual_memory/virtual_memory.h"
+
+RamDirectory* ram_disk_load(EFI_HANDLE imageHandle)
+{
+	EFI_FILE* rootHandle = file_system_open_root_volume(imageHandle);
+
+	RamDirectory* root = ram_disk_load_directory(rootHandle, "root");
+
+	file_system_close(rootHandle);
+
+	return root;
+}
 
 RamFile* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
 {
 	EFI_FILE* fileHandle = file_system_open_raw(volume, path);
 
-	RamFile* file = memory_allocate_pool(sizeof(RamFile), EFI_MEMORY_TYPE_BOOT_INFO);
+	RamFile* file = virtual_memory_allocate_pool(sizeof(RamFile), EFI_MEMORY_TYPE_RAM_DISK);
 
 	file->size = file_system_get_size(fileHandle);
-	file->data = memory_allocate_pool(file->size, EFI_MEMORY_TYPE_BOOT_INFO);
+	file->data = virtual_memory_allocate_pool(file->size, EFI_MEMORY_TYPE_RAM_DISK);
 	file_system_read(fileHandle, file->size, file->data);
 
 	memset(file->name, 0, 32);
@@ -30,7 +39,7 @@ RamFile* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
 
 RamDirectory* ram_disk_load_directory(EFI_FILE* volume, const char* name)
 {
-	RamDirectory* dir = memory_allocate_pool(sizeof(RamDirectory), EFI_MEMORY_TYPE_BOOT_INFO);
+	RamDirectory* dir = virtual_memory_allocate_pool(sizeof(RamDirectory), EFI_MEMORY_TYPE_RAM_DISK);
 
 	memset(dir->name, 0, 32);
 	strcpy(dir->name, name);

@@ -7,9 +7,7 @@
 #include "lock/lock.h"
 #include "vmm/vmm.h"
 #include "utils/utils.h"
-#include "common/boot_info/boot_info.h"
-
-static uintptr_t physicalBase;
+#include <common/boot_info/boot_info.h>
 
 static uint64_t* bitmap;
 static uint64_t bitmapSize;
@@ -45,7 +43,7 @@ static void pmm_allocate_bitmap(EfiMemoryMap* memoryMap)
         
         if (!is_memory_type_reserved(desc->type) && bitmapSize < desc->amountOfPages * PAGE_SIZE)
         {
-            bitmap = desc->physicalStart;    
+            bitmap = desc->virtualStart;    
             memset(bitmap, -1, bitmapSize);
             return;
         }
@@ -64,28 +62,16 @@ static void pmm_load_memory_map(EfiMemoryMap* memoryMap)
         }
     }
 
-    pmm_reserve_pages(bitmap, SIZE_IN_PAGES(bitmapSize));
+    pmm_reserve_pages(vmm_virtual_to_physical(bitmap), SIZE_IN_PAGES(bitmapSize));
 }
 
 void pmm_init(EfiMemoryMap* memoryMap)
 {    
-    physicalBase = 0;
     lock = lock_new();
 
     pmm_allocate_bitmap(memoryMap);
 
     pmm_load_memory_map(memoryMap);
-}
-
-void* pmm_physical_base()
-{
-    return (void*)physicalBase;
-}
-
-void pmm_move_to_higher_half()
-{
-    physicalBase = VMM_PHYSICAL_BASE;
-    bitmap = vmm_physical_to_virtual(bitmap);
 }
 
 void* pmm_allocate()

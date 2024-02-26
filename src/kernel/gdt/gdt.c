@@ -9,8 +9,6 @@ static Gdt gdt;
 
 void gdt_init()
 {
-    tty_start_message("GDT initializing");
-
     memset(&gdt, 0, sizeof(Gdt));
 
     gdt.null.limitLow = 0;
@@ -47,8 +45,6 @@ void gdt_init()
     gdt.userData.access = 0xF2;
     gdt.userData.flagsAndLimitHigh = 0xC0; //Flags = 0xC, LimitHigh = 0x0
     gdt.userData.baseHigh = 0;
-
-    tty_end_message(TTY_MESSAGE_OK);
 }
 
 void gdt_load()

@@ -2,7 +2,7 @@
 
 #include "memory/memory.h"
 #include "string/string.h"
-#include "common/boot_info/boot_info.h"
+#include <common/boot_info/boot_info.h>
 #include "efilib.h"
 
 static inline PageDirectoryEntry page_directory_entry_create(void* address, uint64_t flags)
@@ -13,7 +13,7 @@ static inline PageDirectoryEntry page_directory_entry_create(void* address, uint
 PageDirectory* page_directory_new()
 {
     PageDirectory* pageDirectory = (PageDirectory*)memory_allocate_pages(1, EFI_MEMORY_TYPE_PAGE_DIRECTORY);
-    memset(pageDirectory, 0, PAGE_SIZE);
+    memset(pageDirectory, 0, EFI_PAGE_SIZE);
 
     return pageDirectory;
 }
@@ -22,17 +22,17 @@ void page_directory_map_pages(PageDirectory* pageDirectory, void* virtualAddress
 {
     for (uint64_t page = 0; page < pageAmount; page++)
     {
-        page_directory_map(pageDirectory, (void*)((uint64_t)virtualAddress + page * PAGE_SIZE), (void*)((uint64_t)physicalAddress + page * PAGE_SIZE), flags);
+        page_directory_map(pageDirectory, (void*)((uint64_t)virtualAddress + page * EFI_PAGE_SIZE), (void*)((uint64_t)physicalAddress + page * EFI_PAGE_SIZE), flags);
     }
 }
 
 void page_directory_map(PageDirectory* pageDirectory, void* virtualAddress, void* physicalAddress, uint16_t flags)
 {        
-    if ((uint64_t)virtualAddress % PAGE_SIZE != 0)
+    if ((uint64_t)virtualAddress % EFI_PAGE_SIZE != 0)
     {
         Print(L"ERROR: Attempt to map invalid virtual address!");
     }    
-    else if ((uint64_t)physicalAddress % PAGE_SIZE != 0)
+    else if ((uint64_t)physicalAddress % EFI_PAGE_SIZE != 0)
     {
         Print(L"ERROR: Attempt to map invalid physical address!");
     }
@@ -52,7 +52,7 @@ void page_directory_map(PageDirectory* pageDirectory, void* virtualAddress, void
     if (!PAGE_DIRECTORY_GET_FLAG(pde, PAGE_FLAG_PRESENT))
     {
         pdp = (PageDirectory*)memory_allocate_pages(1, EFI_MEMORY_TYPE_PAGE_DIRECTORY);
-        memset(pdp, 0, PAGE_SIZE);
+        memset(pdp, 0, EFI_PAGE_SIZE);
 
         pde = page_directory_entry_create(pdp, flags);
         pageDirectory->entries[pdpIndex] = pde;
@@ -67,7 +67,7 @@ void page_directory_map(PageDirectory* pageDirectory, void* virtualAddress, void
     if (!PAGE_DIRECTORY_GET_FLAG(pde, PAGE_FLAG_PRESENT))
     {
         pd = (PageDirectory*)memory_allocate_pages(1, EFI_MEMORY_TYPE_PAGE_DIRECTORY);
-        memset(pd, 0, PAGE_SIZE);
+        memset(pd, 0, EFI_PAGE_SIZE);
 
         pde = page_directory_entry_create(pd, flags);
         pdp->entries[pdIndex] = pde;
@@ -82,7 +82,7 @@ void page_directory_map(PageDirectory* pageDirectory, void* virtualAddress, void
     if (!PAGE_DIRECTORY_GET_FLAG(pde, PAGE_FLAG_PRESENT))
     {
         pt = (PageDirectory*)memory_allocate_pages(1, EFI_MEMORY_TYPE_PAGE_DIRECTORY);
-        memset(pt, 0, PAGE_SIZE);
+        memset(pt, 0, EFI_PAGE_SIZE);
 
         pde = page_directory_entry_create(pt, flags);
         pd->entries[ptIndex] = pde;
@@ -93,7 +93,6 @@ void page_directory_map(PageDirectory* pageDirectory, void* virtualAddress, void
         pt = (PageDirectory*)(PAGE_DIRECTORY_GET_ADDRESS(pde));
     }
 
-    pde = pt->entries[pIndex];
     pde = page_directory_entry_create(physicalAddress, flags);
     pt->entries[pIndex] = pde;
 }

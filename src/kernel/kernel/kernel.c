@@ -16,7 +16,7 @@
 #include "vmm/vmm.h"
 #include "master/master.h"
 #include "worker_pool/worker_pool.h"
-#include "common/boot_info/boot_info.h"
+#include <common/boot_info/boot_info.h>
 #include "rsdt/rsdt.h"
 #include "worker/process/process.h"
 
@@ -27,7 +27,7 @@ static void deallocate_boot_info(BootInfo* bootInfo)
     EfiMemoryMap* memoryMap = &bootInfo->memoryMap;
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        const EfiMemoryDescriptor* descriptor = vmm_physical_to_virtual(EFI_GET_DESCRIPTOR(memoryMap, i));
+        const EfiMemoryDescriptor* descriptor = vmm_physical_to_virtual(EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i));
 
         if (descriptor->type == EFI_MEMORY_TYPE_BOOT_INFO)
         {
@@ -47,9 +47,6 @@ void kernel_init(BootInfo* bootInfo)
     pmm_init(&bootInfo->memoryMap);
     vmm_init(&bootInfo->memoryMap);
 
-    pmm_move_to_higher_half();
-    bootInfo = vmm_physical_to_virtual(bootInfo);
-
     tty_init(&bootInfo->gopBuffer, &bootInfo->font);    
     tty_print("Hello from the kernel!\n");
 
@@ -57,6 +54,10 @@ void kernel_init(BootInfo* bootInfo)
     gdt_init();
     
     rsdt_init(bootInfo->rsdp);
+    while (1)
+    {
+        asm volatile("hlt");
+    }
     hpet_init();
     madt_init();
     apic_init();

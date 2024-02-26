@@ -4,8 +4,7 @@
 #include <efilib.h>
 #include <common/boot_info/boot_info.h>
 
-#include "efiprot.h"
-#include "x86_64/efibind.h"
+RamDirectory* ram_disk_load(EFI_HANDLE imageHandle);
 
 RamFile* ram_disk_load_file(EFI_FILE* volume, CHAR16* path);
 
