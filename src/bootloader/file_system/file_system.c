@@ -33,7 +33,7 @@ EFI_FILE* file_system_open_raw(EFI_FILE* volume, CHAR16* path)
 
 EFI_FILE* file_system_open(CHAR16* path, EFI_HANDLE imageHandle)
 {
-    if (strlen16(path) < 3)
+    if (StrLen(path) < 3)
     {
         return 0;
     }
@@ -55,7 +55,7 @@ EFI_FILE* file_system_open(CHAR16* path, EFI_HANDLE imageHandle)
                 uint64_t nameLength = ((uint64_t)nameEnd - (uint64_t)nameStart) / 2;
 
                 CHAR16* name = AllocatePool((nameLength + 1) * sizeof(CHAR16));
-                memcpy(name, nameStart, nameLength * sizeof(CHAR16));
+                CopyMem(name, nameStart, nameLength * sizeof(CHAR16));
                 name[nameLength] = 0;
 
                 EFI_FILE* oldVolume = currentVolume;
@@ -78,7 +78,7 @@ EFI_FILE* file_system_open(CHAR16* path, EFI_HANDLE imageHandle)
                 uint64_t nameLength = ((uint64_t)nameEnd - (uint64_t)nameStart) / 2;
 
                 CHAR16* name = AllocatePool((nameLength + 1) * sizeof(CHAR16));
-                memcpy(name, nameStart, nameLength * sizeof(CHAR16));
+                CopyMem(name, nameStart, nameLength * sizeof(CHAR16));
                 name[nameLength] = 0;
 
                 EFI_FILE* file = file_system_open_raw(currentVolume, name);

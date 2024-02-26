@@ -54,13 +54,14 @@ void kernel_init(BootInfo* bootInfo)
     gdt_init();
     
     rsdt_init(bootInfo->rsdp);
+    hpet_init();
+    madt_init();
+    apic_init();
+    
     while (1)
     {
         asm volatile("hlt");
     }
-    hpet_init();
-    madt_init();
-    apic_init();
 
     time_init();
     pid_init();

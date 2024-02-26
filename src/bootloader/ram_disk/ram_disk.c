@@ -29,7 +29,7 @@ RamFile* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
 	file->data = virtual_memory_allocate_pool(file->size, EFI_MEMORY_TYPE_RAM_DISK);
 	file_system_read(fileHandle, file->size, file->data);
 
-	memset(file->name, 0, 32);
+	SetMem(file->name, 32, 0);
 	char16_to_char(path, file->name);
 
   	file_system_close(fileHandle);
@@ -41,7 +41,7 @@ RamDirectory* ram_disk_load_directory(EFI_FILE* volume, const char* name)
 {
 	RamDirectory* dir = virtual_memory_allocate_pool(sizeof(RamDirectory), EFI_MEMORY_TYPE_RAM_DISK);
 
-	memset(dir->name, 0, 32);
+	SetMem(dir->name, 32, 0);
 	strcpy(dir->name, name);
 	dir->firstFile = 0;
 	dir->lastFile = 0;
