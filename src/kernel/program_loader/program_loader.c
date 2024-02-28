@@ -39,11 +39,7 @@ void program_loader_entry(const char* executable)
     }
 
     uint64_t programHeaderTableSize = header.programHeaderAmount * header.programHeaderSize;    
-    ElfProgramHeader programHeaders[32];
-    if (header.programHeaderAmount > 32)
-    {
-        exit(STATUS_INSUFFICIENT_SPACE);
-    }
+    ElfProgramHeader programHeaders[header.programHeaderAmount];
     if (read(fd, &programHeaders, programHeaderTableSize) == -1)
     {
         exit(status());
