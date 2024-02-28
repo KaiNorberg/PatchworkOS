@@ -1,18 +1,19 @@
 #include "interrupt_frame.h"
 
-#include "heap/heap.h"
-
 #include <libc/string.h>
 
-InterruptFrame* interrupt_frame_new(void* instructionPointer, void* stackPointer, uint64_t codeSegment, uint64_t stackSegment, PageDirectory* pageDirectory)
+#include "gdt/gdt.h"
+#include "heap/heap.h"
+
+InterruptFrame* interrupt_frame_new(void* instructionPointer, void* stackPointer, PageDirectory* pageDirectory)
 {
     InterruptFrame* interruptFrame = kmalloc(sizeof(InterruptFrame));
     memset(interruptFrame, 0, sizeof(InterruptFrame));
 
     interruptFrame->instructionPointer = (uint64_t)instructionPointer;
     interruptFrame->stackPointer = (uint64_t)stackPointer;
-    interruptFrame->codeSegment = codeSegment;
-    interruptFrame->stackSegment = stackSegment;
+    interruptFrame->codeSegment = GDT_USER_CODE | 3;
+    interruptFrame->stackSegment = GDT_USER_DATA | 3;
     interruptFrame->cr3 = (uint64_t)pageDirectory;
 
     interruptFrame->flags = 0x202;

@@ -38,10 +38,9 @@ Process* process_new(const char* path, uint8_t priority)
     process->pageDirectory = page_directory_new();
     vmm_map_kernel(process->pageDirectory);
 
-    process->memoryBlocks = vector_new(sizeof(MemoryBlock));
     process->fileTable = file_table_new();
     process->interruptFrame = 
-        interrupt_frame_new(program_loader_entry, (void*)(VMM_LOWER_HALF_MAX - 1), GDT_USER_CODE | 3, GDT_USER_DATA | 3, process->pageDirectory);
+        interrupt_frame_new(program_loader_entry, (void*)(VMM_LOWER_HALF_MAX - 1), process->pageDirectory);
     process->status = STATUS_SUCCESS;
     process->state = PROCESS_STATE_READY;
     process->priority = priority;
@@ -64,13 +63,6 @@ Process* process_new(const char* path, uint8_t priority)
 void process_free(Process* process)
 {
     page_directory_free(process->pageDirectory);
-    for (uint64_t i = 0; i < process->memoryBlocks->length; i++)
-    {
-        MemoryBlock* memoryBlock = vector_get(process->memoryBlocks, i);
-
-        pmm_free_pages(memoryBlock->physicalAddress, memoryBlock->pageAmount);
-    }
-    vector_free(process->memoryBlocks);
 
     file_table_free(process->fileTable);
     interrupt_frame_free(process->interruptFrame);
@@ -81,13 +73,6 @@ void process_free(Process* process)
 void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t amount)
 {
     void* physicalAddress = pmm_allocate_amount(amount);
-
-    MemoryBlock newBlock;
-    newBlock.physicalAddress = physicalAddress;
-    newBlock.virtualAddress = virtualAddress;
-    newBlock.pageAmount = amount;
-
-    vector_push_back(process->memoryBlocks, &newBlock);
 
     page_directory_map_pages(process->pageDirectory, virtualAddress, physicalAddress, amount, PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR);
 

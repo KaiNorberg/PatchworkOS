@@ -38,15 +38,20 @@ common_interrupt:
     push r13
     push r14
     push r15
+
     mov rax, cr3
     push rax
 
     mov rdi, rsp
     call worker_interrupt_handler
 
-    ;Todo add cr3 checking
     pop rax
+    mov rbx, cr3
+    cmp rbx, rax
+    je .dont_flush_tlb
     mov cr3, rax
+.dont_flush_tlb:
+
     pop r15
     pop r14
     pop r13
@@ -62,8 +67,8 @@ common_interrupt:
     pop rcx
     pop rbx
     pop rax
-    add rsp, 16
 
+    add rsp, 16
     iretq
 
 workerPageDirectory:

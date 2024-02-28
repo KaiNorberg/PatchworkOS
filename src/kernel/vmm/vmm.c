@@ -36,8 +36,6 @@ static void vmm_deallocate_boot_page_directory(EfiMemoryMap* memoryMap)
 
 void vmm_init(EfiMemoryMap* memoryMap)
 {
-    //TODO: Enable cr4 page global flag
-
     kernelPageDirectory = page_directory_new();
     
     vmm_load_memory_map(memoryMap);

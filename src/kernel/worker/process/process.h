@@ -20,18 +20,10 @@
 #define PROCESS_PRIORITY_MAX (PROCESS_PRIORITY_LEVELS - 1)
 
 typedef struct
-{
-    void* physicalAddress;
-    void* virtualAddress;
-    uint64_t pageAmount;
-} MemoryBlock;
-
-typedef struct
 {    
     uint64_t id;
 
     PageDirectory* pageDirectory;
-    Vector* memoryBlocks;
     FileTable* fileTable;
 
     InterruptFrame* interruptFrame;    

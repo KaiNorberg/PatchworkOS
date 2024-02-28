@@ -35,6 +35,7 @@ worker_trampoline_protected_mode_entry:
 
     mov eax, cr4
     or  eax, (1 << 5)
+    or  eax, (1 << 7)
     mov cr4, eax
 
     mov ecx, 0xC0000080
