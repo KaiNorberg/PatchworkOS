@@ -7,17 +7,19 @@
 #include <lib-asym.h>
 
 #include "tty/tty.h"
-#include "worker_pool/worker_pool.h"
-#include "program_loader/program_loader.h"
 #include "vmm/vmm.h"
 #include "time/time.h"
 #include "vfs/vfs.h"
+#include "utils/utils.h"
+#include "worker_pool/worker_pool.h"
+#include "program_loader/program_loader.h"
+
 #include "worker/file_table/file_table.h"
 #include "worker/process/process.h"
 #include "worker/scheduler/scheduler.h"
 #include "worker/worker.h"
 
-static inline uint8_t syscall_verify_pointer(void* pointer, uint64_t size)
+static inline uint8_t syscall_verify_pointer(const void* pointer, uint64_t size)
 {
     if ((uint64_t)pointer > VMM_LOWER_HALF_MAX || (uint64_t)pointer + size > VMM_LOWER_HALF_MAX)
     {
@@ -27,7 +29,7 @@ static inline uint8_t syscall_verify_pointer(void* pointer, uint64_t size)
     return 1;
 }
 
-static inline uint8_t syscall_verify_string(char* string)
+static inline uint8_t syscall_verify_string(const char* string)
 {
     return syscall_verify_pointer(string, 0);
 }
@@ -58,32 +60,22 @@ void sys_exit(InterruptFrame* interruptFrame)
 
 void sys_spawn(InterruptFrame* interruptFrame)
 {    
-    /*uint64_t fd = SYSCALL_GET_ARG1(interruptFrame);
+    const char* path = (const char*)SYSCALL_GET_ARG1(interruptFrame);
 
-    Worker* worker = worker_self();
-    FileTable* fileTable = worker->scheduler->runningProcess->fileTable;
-
-    File* file = file_table_get(fileTable, fd);
-    if (file == 0)
+    if (!syscall_verify_string(path))
     {
-        syscall_return_error(interruptFrame, STATUS_DOES_NOT_EXIST);
+        syscall_return_error(interruptFrame, STATUS_INVALID_POINTER);
         return;
     }
 
-    Process* process = process_new(PROCESS_PRIORITY_MIN);
-    Status status = load_program(process, file);
-    if (status != STATUS_SUCCESS)
+    int64_t pid = worker_pool_spawn(path);
+    if (pid == -1)
     {
-        process_free(process);
-        syscall_return_error(interruptFrame, status);
+        syscall_return_error(interruptFrame, STATUS_FAILURE);
         return;
     }
 
-    scheduler_acquire(worker->scheduler);
-    scheduler_push(worker->scheduler, process);
-    scheduler_release(worker->scheduler);
-
-    syscall_return_success(interruptFrame, process->id);*/
+    syscall_return_success(interruptFrame, pid);
 }
 
 void sys_sleep(InterruptFrame* interruptFrame)
@@ -104,18 +96,31 @@ void sys_sleep(InterruptFrame* interruptFrame)
 void sys_status(InterruptFrame* interruptFrame)
 {
     Worker* worker = worker_self();
-    scheduler_acquire(worker->scheduler);
 
+    scheduler_acquire(worker->scheduler);
     Status status = worker->scheduler->runningProcess->status;
     worker->scheduler->runningProcess->status = STATUS_SUCCESS;
-
     scheduler_release(worker->scheduler);
+
     syscall_return_success(interruptFrame, status);
+}
+
+void sys_map(InterruptFrame* interruptFrame)
+{
+    uint64_t lower = round_down(SYSCALL_GET_ARG1(interruptFrame), 0x1000);
+    uint64_t upper = round_down(SYSCALL_GET_ARG2(interruptFrame), 0x1000);
+
+    Worker* worker = worker_self();
+    Process* process = worker->scheduler->runningProcess;
+
+    process_allocate_pages(process, (void*)lower, SIZE_IN_PAGES(upper - lower));
+
+    syscall_return_success(interruptFrame, 0);
 }
 
 void sys_open(InterruptFrame* interruptFrame)
 {   
-    char* path = (char*)SYSCALL_GET_ARG1(interruptFrame); 
+    const char* path = (const char*)SYSCALL_GET_ARG1(interruptFrame); 
     uint64_t flags = SYSCALL_GET_ARG2(interruptFrame);
 
     FileTable* fileTable = worker_self()->scheduler->runningProcess->fileTable;
@@ -246,6 +251,7 @@ Syscall syscallTable[] =
     [SYS_SPAWN] = (Syscall)sys_spawn,
     [SYS_SLEEP] = (Syscall)sys_sleep,
     [SYS_STATUS] = (Syscall)sys_status,
+    [SYS_MAP] = (Syscall)sys_map,
     [SYS_OPEN] = (Syscall)sys_open,
     [SYS_CLOSE] = (Syscall)sys_close,
     [SYS_READ] = (Syscall)sys_read,
@@ -284,6 +290,7 @@ void syscall_handler(InterruptFrame* interruptFrame)
         }
         tty_print(" ");
         tty_printx(time_nanoseconds());
+        tty_print("                                 ");
 
         tty_release();
         return;

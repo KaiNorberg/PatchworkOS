@@ -20,7 +20,7 @@ void program_loader_init()
     vmm_change_flags(&_programLoaderStart, pageAmount, PAGE_FLAG_USER_SUPERVISOR);
 }
 
-void program_loader_entry(const char* executable)
+void* program_loader_load(const char* executable)
 {
     int64_t fd = open(executable, FILE_FLAG_READ);
     if (fd == -1)
@@ -58,7 +58,10 @@ void program_loader_entry(const char* executable)
                 exit(status());
             }
 
-            //TODO: Implement map/allocate syscall.
+            if (map((void*)programHeader->virtualAddress, (void*)(programHeader->virtualAddress + programHeader->memorySize)) == -1)
+            {
+                exit(status());
+            }
 
             if (read(fd, (void*)programHeader->virtualAddress, programHeader->fileSize) == -1)
             {
@@ -74,63 +77,5 @@ void program_loader_entry(const char* executable)
         exit(status());
     }
 
-	/*uint64_t start = -1;
-	uint64_t end = 0;
-	for (ElfProgramHeader* programHeader = programHeaders; 
-        (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize; 
-        programHeader = (ElfProgramHeader*)((uint64_t)programHeader + header.programHeaderSize))
-	{
-		switch (programHeader->type)
-		{
-		case PT_LOAD:
-		{
-            start = MIN(start, programHeader->virtualAddress);
-            end = MAX(end, programHeader->virtualAddress + programHeader->memorySize);
-		}
-		break;
-		}
-	}
-
-    uint64_t pageAmount = SIZE_IN_PAGES(end - start);
-    void* buffer = process_allocate_pages(process, (void*)start, pageAmount);
-    memset(buffer, 0, pageAmount * PAGE_SIZE);
-
-	for (ElfProgramHeader* programHeader = programHeaders; 
-        (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize; 
-        programHeader = (ElfProgramHeader*)((uint64_t)programHeader + header.programHeaderSize))
-	{
-        switch (programHeader->type)
-        {
-		case PT_LOAD:
-        {
-            void* physicalAddress = (void*)((uint64_t)buffer + (programHeader->virtualAddress - start));
-
-            status = vfs_seek(file, programHeader->offset, FILE_SEEK_SET);    
-            if (status != STATUS_SUCCESS)
-            {    
-                kfree(programHeaders);
-                return status;
-            }
-            
-            status = vfs_read(file, physicalAddress, programHeader->fileSize);
-            if (status != STATUS_SUCCESS)
-            {    
-                kfree(programHeaders);
-                return status;
-            }
-		}
-		break;
-		}
-	}
-
-    process->interruptFrame->instructionPointer = header.entry;
-
-    kfree(programHeaders);
-
-    return STATUS_SUCCESS;*/
-
-    while (1)
-    {
-        sys_test(executable);
-    }
+    return (void*)header.entry;
 }

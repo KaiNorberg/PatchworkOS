@@ -8,7 +8,7 @@ Tss* tss_new()
 {
     Tss* tss = kmalloc(sizeof(Tss));
 
-    tss->rsp0 = (uint64_t)vmm_allocate(1, PAGE_FLAG_WRITE) + 0xFFF;
+    tss->rsp0 = (uint64_t)vmm_allocate(1) + 0xFFF;
     tss->rsp1 = tss->rsp0;
     tss->rsp2 = tss->rsp0;
     tss->iopb = sizeof(Tss);

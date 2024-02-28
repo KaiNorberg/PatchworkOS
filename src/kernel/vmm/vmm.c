@@ -9,7 +9,6 @@
 extern uint64_t _kernelEnd;
 
 static PageDirectory* kernelPageDirectory;
-static uintptr_t topAddress;
 
 static void vmm_load_memory_map(EfiMemoryMap* memoryMap)
 {
@@ -39,7 +38,6 @@ void vmm_init(EfiMemoryMap* memoryMap)
 {
     //TODO: Enable cr4 page global flag
 
-    topAddress = round_up((uint64_t)&_kernelEnd, PAGE_SIZE);
     kernelPageDirectory = page_directory_new();
     
     vmm_load_memory_map(memoryMap);
@@ -64,17 +62,14 @@ void* vmm_virtual_to_physical(void* address)
     return (void*)((uint64_t)address - VMM_HIGHER_HALF_BASE);
 }
 
-void* vmm_allocate(uint64_t pageAmount, uint16_t flags)
+void* vmm_allocate(uint64_t pageAmount)
 {
-    void* address = (void*)topAddress;
+    return vmm_physical_to_virtual(pmm_allocate_amount(pageAmount));
+}
 
-    for (uint64_t i = 0; i < pageAmount; i++)
-    {
-        page_directory_map(kernelPageDirectory, (void*)topAddress, pmm_allocate(), flags | VMM_KERNEL_PAGE_FLAGS);
-        topAddress += PAGE_SIZE;
-    }
-
-    return address;
+void vmm_free(void* address, uint64_t pageAmount)
+{
+    pmm_free_pages(vmm_virtual_to_physical(address), pageAmount);
 }
 
 void* vmm_map(void* physicalAddress, uint64_t pageAmount, uint16_t flags)

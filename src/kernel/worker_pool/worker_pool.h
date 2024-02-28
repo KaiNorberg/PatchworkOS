@@ -12,8 +12,7 @@ void worker_pool_init();
 
 void worker_pool_send_ipi(Ipi ipi);
 
-//Temporary
-void worker_pool_spawn(const char* path);
+int64_t worker_pool_spawn(const char* path);
 
 uint8_t worker_amount();
 

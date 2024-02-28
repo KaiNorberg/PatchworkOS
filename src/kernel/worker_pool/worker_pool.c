@@ -71,21 +71,21 @@ void worker_pool_send_ipi(Ipi ipi)
     }
 }
 
-//Temporary
-void worker_pool_spawn(const char* path)
+int64_t worker_pool_spawn(const char* path)
 {        
     Process* process = process_new(path, PROCESS_PRIORITY_MIN);
-
-    for (uint8_t i = 0; i < workerAmount; i++)
+    if (process == 0)
     {
-        scheduler_acquire(worker_get(i)->scheduler);
+        return -1;
     }
 
     uint64_t bestLength = -1;
     Scheduler* bestScheduler = 0;
     for (uint8_t i = 0; i < workerAmount; i++)
-    {
+    {        
         Scheduler* scheduler = worker_get(i)->scheduler;
+        scheduler_acquire(scheduler);
+
         uint64_t length = (scheduler->runningProcess != 0);
         for (int64_t priority = PROCESS_PRIORITY_MAX; priority >= PROCESS_PRIORITY_MIN; priority--) 
         {
@@ -96,15 +96,16 @@ void worker_pool_spawn(const char* path)
         {
             bestLength = length;
             bestScheduler = scheduler;
-        }
+        }    
+
+        scheduler_release(scheduler);
     }
 
+    scheduler_acquire(bestScheduler);
     scheduler_push(bestScheduler, process);
+    scheduler_release(bestScheduler);
 
-    for (uint8_t i = 0; i < workerAmount; i++)
-    {
-        scheduler_release(worker_get(i)->scheduler);
-    }
+    return process->id;
 }
 
 uint8_t worker_amount()

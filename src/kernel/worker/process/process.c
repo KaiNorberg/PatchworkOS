@@ -37,7 +37,7 @@ Process* process_new(const char* path, uint8_t priority)
 
     process->pageDirectory = page_directory_new();
     vmm_map_kernel(process->pageDirectory);
-    
+
     process->memoryBlocks = vector_new(sizeof(MemoryBlock));
     process->fileTable = file_table_new();
     process->interruptFrame = 
@@ -61,22 +61,6 @@ Process* process_new(const char* path, uint8_t priority)
     return process;
 }
 
-void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t amount)
-{
-    void* physicalAddress = pmm_allocate_amount(amount);
-
-    MemoryBlock newBlock;
-    newBlock.physicalAddress = physicalAddress;
-    newBlock.virtualAddress = virtualAddress;
-    newBlock.pageAmount = amount;
-
-    vector_push_back(process->memoryBlocks, &newBlock);
-
-    page_directory_map_pages(process->pageDirectory, virtualAddress, physicalAddress, amount, PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR);
-
-    return vmm_physical_to_virtual(physicalAddress);
-}
-
 void process_free(Process* process)
 {
     page_directory_free(process->pageDirectory);
@@ -92,4 +76,20 @@ void process_free(Process* process)
     interrupt_frame_free(process->interruptFrame);
 
     kfree(process);
+}
+
+void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t amount)
+{
+    void* physicalAddress = pmm_allocate_amount(amount);
+
+    MemoryBlock newBlock;
+    newBlock.physicalAddress = physicalAddress;
+    newBlock.virtualAddress = virtualAddress;
+    newBlock.pageAmount = amount;
+
+    vector_push_back(process->memoryBlocks, &newBlock);
+
+    page_directory_map_pages(process->pageDirectory, virtualAddress, physicalAddress, amount, PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR);
+
+    return vmm_physical_to_virtual(physicalAddress);
 }

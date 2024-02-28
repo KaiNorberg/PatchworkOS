@@ -115,7 +115,14 @@ Status vfs_open(File** out, const char* path, uint64_t flags)
 
             if (strcmp(disk->name, name) == 0)
             {
-                return disk->open(disk, out, p + 1, flags);
+                if (disk->open != 0)
+                {
+                    return disk->open(disk, out, p + 1, flags);
+                }
+                else
+                {
+                    return STATUS_NOT_ALLOWED;
+                }
             }
 
             entry = entry->next;

@@ -62,9 +62,11 @@ int64_t seek(uint64_t fd, int64_t offset, uint64_t origin);
 
 void exit(Status status);
 
-int64_t spawn(uint64_t fd);
+int64_t spawn(const char* path);
 
 int64_t sleep(uint64_t milliseconds);
+
+int64_t map(void* lower, void* upper);
 
 void sys_test(const char* string);
 

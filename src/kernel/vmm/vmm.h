@@ -22,7 +22,9 @@ void* vmm_physical_to_virtual(void* address);
 
 void* vmm_virtual_to_physical(void* address);
 
-void* vmm_allocate(uint64_t pageAmount, uint16_t flags);
+void* vmm_allocate(uint64_t pageAmount);
+
+void vmm_free(void* address, uint64_t pageAmount);
 
 void* vmm_map(void* physicalAddress, uint64_t pageAmount, uint16_t flags);
 
