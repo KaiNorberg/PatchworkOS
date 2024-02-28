@@ -48,6 +48,52 @@ PageDirectory* page_directory_new()
     return pageDirectory;
 }
 
+void page_directory_free(PageDirectory* pageDirectory)
+{    
+    pageDirectory = vmm_physical_to_virtual(pageDirectory);
+
+    for (uint64_t level4Index = 0; level4Index < PAGE_DIRECTORY_ENTRY_AMOUNT; level4Index++)
+    {    
+        PageDirectory* level3 = page_directory_get_directory(pageDirectory, level4Index);
+        if (level3 == 0)
+        {   
+            continue;
+        }
+        
+        for (uint64_t level3Index = 0; level3Index < PAGE_DIRECTORY_ENTRY_AMOUNT; level3Index++)
+        {                
+            PageDirectory* level2 = page_directory_get_directory(level3, level3Index);
+            if (level2 == 0)
+            {
+                continue;
+            }
+
+            for (uint64_t level2Index = 0; level2Index < PAGE_DIRECTORY_ENTRY_AMOUNT; level2Index++)
+            {
+                PageDirectory* level1 = page_directory_get_directory(level2, level2Index);
+                if (level1 == 0)
+                {
+                    continue;
+                }
+
+                if (!PAGE_DIRECTORY_GET_FLAG(level2->entries[level2Index], PAGE_FLAG_DONT_FREE))
+                {
+                    pmm_free_page(vmm_virtual_to_physical(level1));
+                }
+            }
+            if (!PAGE_DIRECTORY_GET_FLAG(level3->entries[level3Index], PAGE_FLAG_DONT_FREE))
+            {
+                pmm_free_page(vmm_virtual_to_physical(level2));
+            }
+        }
+        if (!PAGE_DIRECTORY_GET_FLAG(pageDirectory->entries[level4Index], PAGE_FLAG_DONT_FREE))
+        {
+            pmm_free_page(vmm_virtual_to_physical(level3));
+        }
+    }
+    pmm_free_page(vmm_virtual_to_physical(pageDirectory));            
+}
+
 void page_directory_copy_range(PageDirectory* dest, PageDirectory* src, uint64_t lowerIndex, uint64_t upperIndex)
 {    
     dest = vmm_physical_to_virtual(dest);
@@ -107,48 +153,38 @@ void page_directory_map(PageDirectory* pageDirectory, void* virtualAddress, void
     level1->entries[level1Index] = page_directory_entry_create(physicalAddress, flags);
 }
 
-void page_directory_free(PageDirectory* pageDirectory)
-{    
+void page_directory_change_flags(PageDirectory* pageDirectory, void* virtualAddress, uint16_t flags)
+{
+    if ((uint64_t)virtualAddress % PAGE_SIZE != 0)
+    {
+        debug_panic("Attempt to map invalid virtual address!");
+    }
+
     pageDirectory = vmm_physical_to_virtual(pageDirectory);
 
-    for (uint64_t level4Index = 0; level4Index < PAGE_DIRECTORY_ENTRY_AMOUNT; level4Index++)
-    {    
-        PageDirectory* level3 = page_directory_get_directory(pageDirectory, level4Index);
-        if (level3 == 0)
-        {   
-            continue;
-        }
-        
-        for (uint64_t level3Index = 0; level3Index < PAGE_DIRECTORY_ENTRY_AMOUNT; level3Index++)
-        {                
-            PageDirectory* level2 = page_directory_get_directory(level3, level3Index);
-            if (level2 == 0)
-            {
-                continue;
-            }
+    uint64_t level4Index = PAGE_DIRECTORY_GET_INDEX(virtualAddress, 4);
+    uint64_t level3Index = PAGE_DIRECTORY_GET_INDEX(virtualAddress, 3);
+    uint64_t level2Index = PAGE_DIRECTORY_GET_INDEX(virtualAddress, 2);
+    uint64_t level1Index = PAGE_DIRECTORY_GET_INDEX(virtualAddress, 1);
 
-            for (uint64_t level2Index = 0; level2Index < PAGE_DIRECTORY_ENTRY_AMOUNT; level2Index++)
-            {
-                PageDirectory* level1 = page_directory_get_directory(level2, level2Index);
-                if (level1 == 0)
-                {
-                    continue;
-                }
-
-                if (!PAGE_DIRECTORY_GET_FLAG(level2->entries[level2Index], PAGE_FLAG_DONT_FREE))
-                {
-                    pmm_free_page(vmm_virtual_to_physical(level1));
-                }
-            }
-            if (!PAGE_DIRECTORY_GET_FLAG(level3->entries[level3Index], PAGE_FLAG_DONT_FREE))
-            {
-                pmm_free_page(vmm_virtual_to_physical(level2));
-            }
-        }
-        if (!PAGE_DIRECTORY_GET_FLAG(pageDirectory->entries[level4Index], PAGE_FLAG_DONT_FREE))
-        {
-            pmm_free_page(vmm_virtual_to_physical(level3));
-        }
+    PageDirectory* level3 = page_directory_get_directory(pageDirectory, level4Index);
+    if (level3 == 0)
+    {
+        debug_panic("Failed to change page flags");
     }
-    pmm_free_page(vmm_virtual_to_physical(pageDirectory));            
+
+    PageDirectory* level2 = page_directory_get_directory(level3, level3Index);
+    if (level2 == 0)
+    {
+        debug_panic("Failed to change page flags");
+    }
+
+    PageDirectory* level1 = page_directory_get_directory(level2, level2Index);
+    if (level1 == 0)
+    {
+        debug_panic("Failed to change page flags");
+    }
+
+    level1->entries[level1Index] = 
+        page_directory_entry_create(PAGE_DIRECTORY_GET_ADDRESS(level1->entries[level1Index]), flags);
 }

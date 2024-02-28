@@ -69,6 +69,12 @@ void tty_set_background(Pixel value)
     background = value;
 }
 
+void tty_set_pos(uint32_t x, uint32_t y)
+{
+    column = x;   
+    row = y;
+}
+
 void tty_set_row(uint32_t value)
 {
     row = value;

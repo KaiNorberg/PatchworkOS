@@ -8,7 +8,8 @@
 
 #include "tty/tty.h"
 #include "worker_pool/worker_pool.h"
-#include "worker/program_loader/program_loader.h"
+#include "program_loader/program_loader.h"
+#include "vmm/vmm.h"
 #include "time/time.h"
 #include "vfs/vfs.h"
 #include "worker/file_table/file_table.h"
@@ -16,22 +17,27 @@
 #include "worker/scheduler/scheduler.h"
 #include "worker/worker.h"
 
-inline void* syscall_verify_pointer(PageDirectory const* pageDirectory, void* pointer, uint64_t size)
+static inline uint8_t syscall_verify_pointer(void* pointer, uint64_t size)
 {
-    return 0;
+    if ((uint64_t)pointer > VMM_LOWER_HALF_MAX || (uint64_t)pointer + size > VMM_LOWER_HALF_MAX)
+    {
+        return 0;
+    }
+
+    return 1;
 }
 
-inline char* syscall_verify_string(PageDirectory const* pageDirectory, char* string)
+static inline uint8_t syscall_verify_string(char* string)
 {
-    return 0;
+    return syscall_verify_pointer(string, 0);
 }
 
-inline void syscall_return_success(InterruptFrame* interruptFrame, uint64_t result)
+static inline void syscall_return_success(InterruptFrame* interruptFrame, uint64_t result)
 {    
     interruptFrame->rax = result;
 }
 
-inline void syscall_return_error(InterruptFrame* interruptFrame, Status status)
+static inline void syscall_return_error(InterruptFrame* interruptFrame, Status status)
 {    
     Worker* worker = worker_self();
     worker->scheduler->runningProcess->status = status;    
@@ -52,7 +58,7 @@ void sys_exit(InterruptFrame* interruptFrame)
 
 void sys_spawn(InterruptFrame* interruptFrame)
 {    
-    uint64_t fd = SYSCALL_GET_ARG1(interruptFrame);
+    /*uint64_t fd = SYSCALL_GET_ARG1(interruptFrame);
 
     Worker* worker = worker_self();
     FileTable* fileTable = worker->scheduler->runningProcess->fileTable;
@@ -77,7 +83,7 @@ void sys_spawn(InterruptFrame* interruptFrame)
     scheduler_push(worker->scheduler, process);
     scheduler_release(worker->scheduler);
 
-    syscall_return_success(interruptFrame, process->id);
+    syscall_return_success(interruptFrame, process->id);*/
 }
 
 void sys_sleep(InterruptFrame* interruptFrame)
@@ -100,8 +106,7 @@ void sys_status(InterruptFrame* interruptFrame)
     Worker* worker = worker_self();
     scheduler_acquire(worker->scheduler);
 
-    Status status;
-    status = worker->scheduler->runningProcess->status;
+    Status status = worker->scheduler->runningProcess->status;
     worker->scheduler->runningProcess->status = STATUS_SUCCESS;
 
     scheduler_release(worker->scheduler);
@@ -113,15 +118,13 @@ void sys_open(InterruptFrame* interruptFrame)
     char* path = (char*)SYSCALL_GET_ARG1(interruptFrame); 
     uint64_t flags = SYSCALL_GET_ARG2(interruptFrame);
 
-    PageDirectory const* pageDirectory = SYSCALL_GET_PAGE_DIRECTORY(interruptFrame);
     FileTable* fileTable = worker_self()->scheduler->runningProcess->fileTable;
 
-    path = syscall_verify_string(pageDirectory, path);
-    if (path == 0)
+    if (!syscall_verify_string(path))
     {              
         syscall_return_error(interruptFrame, STATUS_INVALID_POINTER);
         return;
-    } 
+    }
 
     uint64_t fd;
     Status status = file_table_open(fileTable, &fd, path, flags);
@@ -156,7 +159,6 @@ void sys_read(InterruptFrame* interruptFrame)
     void* buffer = (void*)SYSCALL_GET_ARG2(interruptFrame);
     uint64_t length = SYSCALL_GET_ARG3(interruptFrame); 
 
-    PageDirectory const* pageDirectory = SYSCALL_GET_PAGE_DIRECTORY(interruptFrame);
     FileTable* fileTable = worker_self()->scheduler->runningProcess->fileTable;
 
     File* file = file_table_get(fileTable, fd);
@@ -166,8 +168,7 @@ void sys_read(InterruptFrame* interruptFrame)
         return;
     }
 
-    buffer = syscall_verify_pointer(pageDirectory, buffer, length);
-    if (buffer == 0)
+    if (!syscall_verify_pointer(buffer, length))
     {              
         syscall_return_error(interruptFrame, STATUS_INVALID_POINTER);
         return;
@@ -189,7 +190,6 @@ void sys_write(InterruptFrame* interruptFrame)
     void* buffer = (void*)SYSCALL_GET_ARG2(interruptFrame);
     uint64_t length = SYSCALL_GET_ARG3(interruptFrame); 
 
-    PageDirectory const* pageDirectory = SYSCALL_GET_PAGE_DIRECTORY(interruptFrame);
     FileTable* fileTable = worker_self()->scheduler->runningProcess->fileTable;
 
     File* file = file_table_get(fileTable, fd);
@@ -199,8 +199,7 @@ void sys_write(InterruptFrame* interruptFrame)
         return;
     }
 
-    buffer = syscall_verify_pointer(pageDirectory, buffer, length);
-    if (buffer == 0)
+    if (!syscall_verify_pointer(buffer, length))
     {              
         syscall_return_error(interruptFrame, STATUS_INVALID_POINTER);
         return;
@@ -265,8 +264,7 @@ void syscall_handler(InterruptFrame* interruptFrame)
 
         Worker const* worker = worker_self();
 
-        //const char* string = page_directory_get_physical_address(SYSCALL_GET_PAGE_DIRECTORY(interruptFrame), (void*)SYSCALL_GET_ARG1(interruptFrame));
-
+        tty_set_column(0);
         tty_set_row(worker->id + 2);
 
         tty_print("WORKER: ");
@@ -278,8 +276,12 @@ void syscall_handler(InterruptFrame* interruptFrame)
             tty_print(" PID: "); 
             tty_printx(worker->scheduler->runningProcess->id);
         }
-        tty_print(" | ");
-        //tty_print(string);
+        const char* string = (const char*)SYSCALL_GET_ARG1(interruptFrame);
+        if (string != 0)
+        {
+            tty_print(" | ");
+            tty_print(string);
+        }
         tty_print(" ");
         tty_printx(time_nanoseconds());
 

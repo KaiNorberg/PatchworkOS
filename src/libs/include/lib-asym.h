@@ -22,6 +22,7 @@ typedef enum Status
     STATUS_INVALID_POINTER,
     STATUS_INVALID_FLAG,
     STATUS_DOES_NOT_EXIST,
+    STATUS_INSUFFICIENT_SPACE,
 } Status;
 
 static const char* statusToString[] =
@@ -39,7 +40,6 @@ static const char* statusToString[] =
     [STATUS_DOES_NOT_EXIST] = "DOES_NOT_EXIST"
 };
 
-#if !defined(__KERNEL__) && !defined(__BOOTLOADER__)
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -60,11 +60,11 @@ int64_t seek(uint64_t fd, int64_t offset, uint64_t origin);
 
 //========= PROCESS =========
 
-int64_t spawn(uint64_t fd);
-
 void exit(Status status);
 
-void sleep(uint64_t milliseconds);
+int64_t spawn(uint64_t fd);
+
+int64_t sleep(uint64_t milliseconds);
 
 void sys_test(const char* string);
 
@@ -76,5 +76,4 @@ const char* status_string();
 
 #if defined(__cplusplus)
 } /* extern "C" */
-#endif
 #endif

@@ -17,11 +17,9 @@ interrupt_%1:
     jmp common_interrupt
 %endmacro
 
-section .worker_interrupts
+section .text
 
 extern worker_interrupt_handler
-
-global workerPageDirectory
 
 common_interrupt:
     cld
@@ -43,12 +41,10 @@ common_interrupt:
     mov rax, cr3
     push rax
 
-    mov rax, [workerPageDirectory]
-    mov cr3, rax
-
     mov rdi, rsp
     call worker_interrupt_handler
 
+    ;Todo add cr3 checking
     pop rax
     mov cr3, rax
     pop r15

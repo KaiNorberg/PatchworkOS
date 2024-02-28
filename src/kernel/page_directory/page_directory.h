@@ -2,9 +2,6 @@
 
 #include <stdint.h>
 
-#define USER_ADDRESS_SPACE_TOP 0x100000000
-#define USER_ADDRESS_SPACE_BOTTOM 0
-
 #define PAGE_DIRECTORY_ENTRY_AMOUNT 512
 
 #define PAGE_FLAG_PRESENT (1 << 0)
@@ -36,6 +33,8 @@ extern void page_directory_invalidate_page(void* virtualAddress);
 
 PageDirectory* page_directory_new();
 
+void page_directory_free(PageDirectory* pageDirectory);
+
 void page_directory_copy_range(PageDirectory* dest, PageDirectory* src, uint64_t lowerIndex, uint64_t upperIndex);
 
 void page_directory_populate_range(PageDirectory* pageDirectory, uint64_t lowerIndex, uint64_t upperIndex, uint64_t flags);
@@ -44,4 +43,4 @@ void page_directory_map_pages(PageDirectory* pageDirectory, void* virtualAddress
 
 void page_directory_map(PageDirectory* pageDirectory, void* virtualAddress, void* physicalAddress, uint16_t flags);
 
-void page_directory_free(PageDirectory* pageDirectory);
+void page_directory_change_flags(PageDirectory* pageDirectory, void* virtualAddress, uint16_t flags);

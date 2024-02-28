@@ -5,6 +5,8 @@
 #include "worker_pool/worker_pool.h"
 #include "vmm/vmm.h"
 
+#include "tty/tty.h"
+
 Scheduler* scheduler_new()
 {
     Scheduler* scheduler = kmalloc(sizeof(Scheduler));
@@ -68,7 +70,7 @@ void scheduler_schedule(Scheduler* scheduler, InterruptFrame* interruptFrame)
         if (scheduler->runningProcess != 0)
         {
             Process* oldProcess = scheduler->runningProcess;
-            interrupt_frame_copy(oldProcess->interruptFrame, interruptFrame);
+            interrupt_frame_copy(scheduler->runningProcess->interruptFrame, interruptFrame);
 
             oldProcess->state = PROCESS_STATE_READY;
             queue_push(scheduler->queues[oldProcess->priority], oldProcess);                

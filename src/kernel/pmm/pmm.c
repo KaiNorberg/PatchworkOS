@@ -26,7 +26,7 @@ static void pmm_allocate_bitmap(EfiMemoryMap* memoryMap)
     uintptr_t highestAddress = 0;
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        const EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
+        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
         highestAddress = MAX(highestAddress, (uintptr_t)desc->physicalStart + desc->amountOfPages * PAGE_SIZE);        
         
         if (is_memory_type_usable(desc->type))
@@ -39,7 +39,7 @@ static void pmm_allocate_bitmap(EfiMemoryMap* memoryMap)
     bitmapSize = pageAmount / 8;
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        const EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
+        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
         
         if (!is_memory_type_reserved(desc->type) && bitmapSize < desc->amountOfPages * PAGE_SIZE)
         {
@@ -54,7 +54,7 @@ static void pmm_load_memory_map(EfiMemoryMap* memoryMap)
 {
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        const EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
+        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
 
         if (!is_memory_type_reserved(desc->type))
         {

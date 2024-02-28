@@ -22,6 +22,7 @@ void master_idt_init()
     {        
         idt_set_vector(&idt, (uint8_t)vector, masterVectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
     }
+    idt_load(&idt);
 }
 
 void master_interrupt_handler(InterruptFrame const* interruptFrame)

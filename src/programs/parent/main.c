@@ -4,7 +4,7 @@
 
 int main()
 {               
-    int64_t fd = open("ram:/bin/child.elf", FILE_FLAG_READ);
+    /*int64_t fd = open("ram:/bin/child.elf", FILE_FLAG_READ);
     if (fd == -1)
     {
         sys_test(status_string());
@@ -22,7 +22,7 @@ int main()
     {
         sys_test(status_string());
         exit(1);
-    }
+    }*/
     
     while (1)
     {

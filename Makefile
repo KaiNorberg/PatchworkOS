@@ -28,6 +28,7 @@ LD = ld
 ASM = nasm
 
 ASM_FLAGS = -f elf64 \
+	-I$(LIB_SRC_DIR) \
 	-I$(LIB_SRC_DIR)/include \
 
 BASE_C_FLAGS = -O3 \
@@ -39,6 +40,7 @@ BASE_C_FLAGS = -O3 \
 	-Wno-ignored-qualifiers \
 	-Wno-unused-parameter \
 	-Wno-unused-but-set-variable \
+	-Wno-implicit-fallthrough \
 	-mno-80387 \
 	-mno-mmx -mno-3dnow -mno-sse \
 	-mno-sse2 \

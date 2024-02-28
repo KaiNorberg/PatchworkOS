@@ -44,7 +44,7 @@ void pid_init();
 
 uint64_t pid_new();
 
-Process* process_new(uint8_t priority);
+Process* process_new(const char* path, uint8_t priority);
 
 void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t amount);
 

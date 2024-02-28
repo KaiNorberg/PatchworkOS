@@ -15,8 +15,6 @@
 
 static uint8_t localApicId;
 
-extern void master_loop();
-
 void master_init()
 {
     tty_start_message("Master initializing");

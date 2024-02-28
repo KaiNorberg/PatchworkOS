@@ -20,7 +20,7 @@ void schedule_job()
 {        
     //Temporary for testing
     tty_acquire();
-    tty_set_row(0);
+    tty_set_pos(0, 0);
     tty_print("MASTER | FAST: "); 
     tty_printx(time_nanoseconds());
     tty_release();

@@ -12,10 +12,7 @@
 #include "page_directory/page_directory.h"
 #include "worker/scheduler/scheduler.h"
 #include "worker/worker.h"
-
-extern uint64_t _workerInterruptsStart;
-extern uint64_t _workerInterruptsEnd;
-extern PageDirectory* workerPageDirectory;
+#include "utils/utils.h"
 
 extern void* workerVectorTable[IDT_VECTOR_AMOUNT];
 
@@ -23,8 +20,6 @@ static Idt idt;
 
 void worker_idt_init()
 {
-    workerPageDirectory = vmm_kernel_directory();
-
     for (uint16_t vector = 0; vector < IDT_VECTOR_AMOUNT; vector++) 
     {        
         idt_set_vector(&idt, (uint8_t)vector, workerVectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
@@ -84,14 +79,21 @@ void worker_ipi_handler(InterruptFrame* interruptFrame)
 }
 
 void worker_exception_handler(InterruptFrame* interruptFrame)
-{
-    tty_acquire();
-    debug_exception(interruptFrame, "Worker Exception");
-    tty_release();
-
-    asm volatile("cli");
-    while (1)
+{   
+    switch (interruptFrame->errorCode)
     {
-        asm volatile("hlt");
+    default:
+    {
+        tty_acquire();
+        debug_exception(interruptFrame, "Worker Exception");
+        tty_release();
+
+        asm volatile("cli");
+        while (1)
+        {
+            asm volatile("hlt");
+        }
+    }
+    break;
     }
 }

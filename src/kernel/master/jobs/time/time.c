@@ -15,7 +15,7 @@ void time_job()
 {        
     //Temporary for testing
     tty_acquire();
-    tty_set_row(1);
+    tty_set_pos(0, 1);
     tty_print("MASTER | SLOW: "); 
     tty_printx(time_nanoseconds()); 
     tty_print(" USED HEAP: "); 

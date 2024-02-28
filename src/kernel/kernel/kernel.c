@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#include <common/boot_info/boot_info.h>
+
 #include "gdt/gdt.h"
 #include "tty/tty.h"
 #include "heap/heap.h"
@@ -16,8 +18,9 @@
 #include "vmm/vmm.h"
 #include "master/master.h"
 #include "worker_pool/worker_pool.h"
-#include <common/boot_info/boot_info.h>
 #include "rsdt/rsdt.h"
+#include "program_loader/program_loader.h"
+
 #include "worker/process/process.h"
 
 static void deallocate_boot_info(BootInfo* bootInfo)
@@ -27,7 +30,7 @@ static void deallocate_boot_info(BootInfo* bootInfo)
     EfiMemoryMap* memoryMap = &bootInfo->memoryMap;
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        const EfiMemoryDescriptor* descriptor = vmm_physical_to_virtual(EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i));
+        const EfiMemoryDescriptor* descriptor = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
 
         if (descriptor->type == EFI_MEMORY_TYPE_BOOT_INFO)
         {
@@ -37,8 +40,6 @@ static void deallocate_boot_info(BootInfo* bootInfo)
 
     tty_end_message(TTY_MESSAGE_OK);
 }
-
-char buffer[32];
 
 void kernel_init(BootInfo* bootInfo)
 {   
@@ -57,45 +58,18 @@ void kernel_init(BootInfo* bootInfo)
     hpet_init();
     madt_init();
     apic_init();
-    
-    while (1)
-    {
-        asm volatile("hlt");
-    }
 
     time_init();
     pid_init();
 
-    master_init();
-    worker_pool_init();
+    program_loader_init();
 
-    /*vfs_init();
+    vfs_init();
     //device_disk_init();
     ram_disk_init(bootInfo->ramRoot);
 
-    File* file = 0;
-    Status status = vfs_open(&file, "ram:/test/test.txt", FILE_FLAG_READ);
-    tty_print("OPEN: ");
-    tty_print(statusToString[status]);
-    tty_print("\n");
-
-    status = vfs_read(file, buffer, 32);
-    tty_print("READ: ");
-    tty_print(statusToString[status]);
-    tty_print("\n");
-
-    tty_print(buffer);
-    tty_print("\n");
-
-    status = vfs_close(file);
-    tty_print("CLOSE: ");
-    tty_print(statusToString[status]);
-    tty_print("\n");*/
+    master_init();
+    worker_pool_init();
 
     deallocate_boot_info(bootInfo);
-    
-    while (1)
-    {
-        asm volatile("hlt");
-    }
 }

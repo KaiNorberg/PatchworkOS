@@ -27,6 +27,7 @@ void tty_set_scale(uint8_t value);
 void tty_set_foreground(Pixel value);
 void tty_set_background(Pixel value);
 
+void tty_set_pos(uint32_t x, uint32_t y);
 void tty_set_row(uint32_t value);
 uint32_t tty_get_row();
 

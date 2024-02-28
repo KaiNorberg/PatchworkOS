@@ -28,19 +28,17 @@ SECTIONS
 		*(COMMON)
 		*(.bss)
 	}
-
-	_workerInterruptsStart = .;
-
-	.worker_interrupts BLOCK(4K) : ALIGN(4K)
-	{
-		*(.interrupts)
-	}
-
-	_workerInterruptsEnd = .;
-
+	
 	.worker_trampoline BLOCK(4K) : ALIGN(4K)
 	{
 		*(.worker_trampoline)
+	}
+
+	.program_loader BLOCK(4K) : ALIGN(4K)
+	{	
+		_programLoaderStart = .;
+		*(.program_loader)
+		_programLoaderEnd = .;
 	}
 
 	_kernelEnd = .;

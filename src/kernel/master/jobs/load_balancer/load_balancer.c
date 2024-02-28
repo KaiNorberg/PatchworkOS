@@ -54,7 +54,7 @@ void load_balancer_init()
 
 void load_balancer()
 {     
-    for (uint8_t i = 0; i < worker_amount(); i++)
+    /*for (uint8_t i = 0; i < worker_amount(); i++)
     {
         scheduler_acquire(worker_get(i)->scheduler);
     }
@@ -79,7 +79,7 @@ void load_balancer()
     for (uint8_t i = 0; i < worker_amount(); i++)
     {
         scheduler_release(worker_get(i)->scheduler);
-    }
+    }*/
 
     dispatcher_push(load_balancer, IRQ_SLOW_TIMER);
 }

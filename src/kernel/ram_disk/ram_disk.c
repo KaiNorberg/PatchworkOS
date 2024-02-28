@@ -6,43 +6,13 @@
 
 #include <lib-asym.h>
 
+#include <common/boot_info/boot_info.h>
+
 #include "tty/tty.h"
 #include "vmm/vmm.h"
 #include "heap/heap.h"
 #include "vfs/vfs.h"
 #include "vfs/utils/utils.h"
-#include <common/boot_info/boot_info.h>
-
-/*static inline RamFile* ram_disk_load_file(RamFile* file)
-{
-
-}*/
-
-static inline RamDirectory* ram_disk_load_directory(RamDirectory* directory)
-{    
-    directory = vmm_physical_to_virtual(directory);
-
-    RamDirectory* out = kmalloc(sizeof(RamDirectory));
-    memset(out, 0, sizeof(RamDirectory));
-
-    RamFile* currentFile = vmm_physical_to_virtual(directory->firstFile);
-    while (1)
-    {
-        
-
-
-        if (currentFile->next == 0)
-        {
-            break;
-        }
-        else
-        {
-            currentFile = vmm_physical_to_virtual(currentFile->next);
-        }
-    }   
-
-    return out;
-}
 
 static inline RamDirectory* ram_disk_traverse(Disk* disk, const char* path)
 {
@@ -188,7 +158,7 @@ void ram_disk_init(RamDirectory* root)
 {
     tty_start_message("Ram Disk initializing");    
 
-    Disk* disk = disk_new("ram", ram_disk_load_directory(root));
+    Disk* disk = disk_new("ram", root);
     disk->open = ram_disk_open;
     disk->close = ram_disk_close;
     disk->read = ram_disk_read;

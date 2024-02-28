@@ -15,7 +15,7 @@ static void vmm_load_memory_map(EfiMemoryMap* memoryMap)
 {
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize)); 
+        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
         
         page_directory_map_pages(kernelPageDirectory, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
 	}
@@ -26,7 +26,7 @@ static void vmm_deallocate_boot_page_directory(EfiMemoryMap* memoryMap)
 {
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
+        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
 
 		if (desc->type == EFI_MEMORY_TYPE_PAGE_DIRECTORY)
 		{
@@ -49,6 +49,11 @@ void vmm_init(EfiMemoryMap* memoryMap)
     PAGE_DIRECTORY_LOAD(kernelPageDirectory);
 }
 
+PageDirectory* vmm_kernel_directory()
+{
+    return kernelPageDirectory;
+}
+
 void* vmm_physical_to_virtual(void* address)
 {
     return (void*)((uint64_t)address + VMM_HIGHER_HALF_BASE);
@@ -57,11 +62,6 @@ void* vmm_physical_to_virtual(void* address)
 void* vmm_virtual_to_physical(void* address)
 {
     return (void*)((uint64_t)address - VMM_HIGHER_HALF_BASE);
-}
-
-PageDirectory* vmm_kernel_directory()
-{
-    return kernelPageDirectory;
 }
 
 void* vmm_allocate(uint64_t pageAmount, uint16_t flags)
@@ -83,6 +83,14 @@ void* vmm_map(void* physicalAddress, uint64_t pageAmount, uint16_t flags)
     page_directory_map_pages(kernelPageDirectory, virtualAddress, physicalAddress, pageAmount, flags | VMM_KERNEL_PAGE_FLAGS);
 
     return virtualAddress;
+}
+
+void vmm_change_flags(void* address, uint64_t pageAmount, uint16_t flags)
+{
+    for (uint64_t i = 0; i < pageAmount; i++)
+    {
+        page_directory_change_flags(kernelPageDirectory, (void*)((uint64_t)address + i * PAGE_SIZE), flags | VMM_KERNEL_PAGE_FLAGS);
+    }
 }
 
 void vmm_map_kernel(PageDirectory* pageDirectory)

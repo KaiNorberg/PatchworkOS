@@ -13,7 +13,7 @@ void main(BootInfo* bootInfo)
     tty_print("\n");
 
 #if 1
-    for (uint64_t i = 0; i < 2; i++)
+    for (uint64_t i = 0; i < 4; i++)
     {
         tty_print("Loading parent...\n");
 

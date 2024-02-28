@@ -10,39 +10,75 @@
 
 #include "heap/heap.h"
 #include "pmm/pmm.h"
+#include "vmm/vmm.h"
 #include "utils/utils.h"
 #include "vfs/vfs.h"
 
-Status load_program(Process* process, File* file)
+void program_loader_init()
 {
-    //This still sucks, il fix it one day.
+    uint64_t pageAmount = SIZE_IN_PAGES((uint64_t)&_programLoaderEnd - (uint64_t)&_programLoaderStart);
+    vmm_change_flags(&_programLoaderStart, pageAmount, PAGE_FLAG_USER_SUPERVISOR);
+}
+
+void program_loader_entry(const char* executable)
+{
+    int64_t fd = open(executable, FILE_FLAG_READ);
+    if (fd == -1)
+    {
+        exit(status());
+    }
 
     ElfHeader header;
-    Status status = vfs_read(file, &header, sizeof(ElfHeader));
-    if (status != STATUS_SUCCESS)
+    if (read(fd, &header, sizeof(ElfHeader)) == -1)
     {
-        return status;
+        exit(status());
     }
-
     if (header.ident[0] != 0x7F || header.ident[1] != 'E' || header.ident[2] != 'L' || header.ident[3] != 'F')
     {
-        return STATUS_CORRUPT;
+        exit(STATUS_CORRUPT);
     }
 
-    uint64_t programHeaderTableSize = header.programHeaderAmount * header.programHeaderSize;
-    ElfProgramHeader* programHeaders = kmalloc(programHeaderTableSize);
-    if (programHeaders == 0)
+    uint64_t programHeaderTableSize = header.programHeaderAmount * header.programHeaderSize;    
+    ElfProgramHeader programHeaders[32];
+    if (header.programHeaderAmount > 32)
     {
-        return STATUS_FAILURE;
+        exit(STATUS_INSUFFICIENT_SPACE);
     }
-    status = vfs_read(file, programHeaders, programHeaderTableSize);
-    if (status != STATUS_SUCCESS)
-    {    
-        kfree(programHeaders);
-        return status;
+    if (read(fd, &programHeaders, programHeaderTableSize) == -1)
+    {
+        exit(status());
     }
 
-	uint64_t start = -1;
+	for (ElfProgramHeader* programHeader = programHeaders; 
+        (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize; 
+        programHeader = (ElfProgramHeader*)((uint64_t)programHeader + header.programHeaderSize))
+	{
+        switch (programHeader->type)
+        {
+		case PT_LOAD:
+        {
+            if (seek(fd, programHeader->offset, FILE_SEEK_SET) == -1)
+            {
+                exit(status());
+            }
+
+            //TODO: Implement map/allocate syscall.
+
+            if (read(fd, (void*)programHeader->virtualAddress, programHeader->fileSize) == -1)
+            {
+                exit(status());
+            }
+		}
+		break;
+		}
+	}
+
+    if (close(fd) == -1)
+    {
+        exit(status());
+    }
+
+	/*uint64_t start = -1;
 	uint64_t end = 0;
 	for (ElfProgramHeader* programHeader = programHeaders; 
         (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize; 
@@ -94,5 +130,11 @@ Status load_program(Process* process, File* file)
     process->interruptFrame->instructionPointer = header.entry;
 
     kfree(programHeaders);
-    return STATUS_SUCCESS;
+
+    return STATUS_SUCCESS;*/
+
+    while (1)
+    {
+        sys_test(executable);
+    }
 }

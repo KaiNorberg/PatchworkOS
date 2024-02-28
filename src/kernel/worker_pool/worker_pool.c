@@ -13,7 +13,6 @@
 #include "debug/debug.h"
 #include "worker/interrupts/interrupts.h"
 #include "worker/scheduler/scheduler.h"
-#include "worker/program_loader/program_loader.h"
 #include "worker/trampoline/trampoline.h"
 #include "queue/queue.h"
 #include "vfs/vfs.h"
@@ -37,7 +36,7 @@ static void worker_pool_startup()
         {
             uint8_t id = workerAmount;
 
-            if (!worker_init(workers, id, record->localApicId))
+            if (!worker_init(&workers[id], id, record->localApicId))
             {    
                 tty_print("Worker ");
                 tty_printi(id);
@@ -75,19 +74,7 @@ void worker_pool_send_ipi(Ipi ipi)
 //Temporary
 void worker_pool_spawn(const char* path)
 {        
-    Process* process = process_new(PROCESS_PRIORITY_MIN);
-    File* file;
-    Status status = vfs_open(&file, path, FILE_FLAG_READ);
-    if (status != STATUS_SUCCESS)
-    {
-        return;
-    }
-    if (load_program(process, file) != STATUS_SUCCESS)
-    {
-        process_free(process);
-        return;
-    }
-    vfs_close(file);
+    Process* process = process_new(path, PROCESS_PRIORITY_MIN);
 
     for (uint8_t i = 0; i < workerAmount; i++)
     {
