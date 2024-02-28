@@ -1,14 +1,15 @@
 #include "vfs.h"
 
+#include <libc/string.h>
+
+#include <lib-asym.h>
+
 #include "tty/tty.h"
 #include "list/list.h"
 #include "heap/heap.h"
-
 #include "vfs/utils/utils.h"
 
-#include <libc/string.h>
-
-static List* diskDirectory;
+static List* disks;
 
 Disk* disk_new(const char* name, void* internal)
 {
@@ -42,7 +43,7 @@ void vfs_init()
 {
     tty_start_message("Virtual File System initializing");
 
-    diskDirectory = list_new();
+    disks = list_new();
 
     tty_end_message(TTY_MESSAGE_OK);
 }
@@ -54,7 +55,7 @@ Status vfs_mount(Disk* disk)
         return STATUS_INVALID_NAME;
     }
 
-    ListEntry* entry = diskDirectory->first;
+    ListEntry* entry = disks->first;
     while (entry != 0)
     {
         Disk* other = entry->data;
@@ -67,7 +68,7 @@ Status vfs_mount(Disk* disk)
         entry = entry->next;
     }
 
-    list_push(diskDirectory, disk);
+    list_push(disks, disk);
 
     return STATUS_SUCCESS;
 }
@@ -107,14 +108,21 @@ Status vfs_open(File** out, const char* path, uint64_t flags)
 
     if (*p == VFS_NAME_DELIMITER)
     {
-        ListEntry* entry = diskDirectory->first;
+        ListEntry* entry = disks->first;
         while (entry != 0)
         {
             Disk* disk = entry->data;
 
             if (strcmp(disk->name, name) == 0)
             {
-                return disk->open(disk, out, p + 1, flags);
+                if (disk->open != 0)
+                {
+                    return disk->open(disk, out, p + 1, flags);
+                }
+                else
+                {
+                    return STATUS_NOT_ALLOWED;
+                }
             }
 
             entry = entry->next;
@@ -124,7 +132,7 @@ Status vfs_open(File** out, const char* path, uint64_t flags)
     }
     else
     {
-        //Todo: Implement disk directory accesing
+        //Todo: Implement disk directory accessing
     }
 
     return STATUS_FAILURE;
@@ -132,6 +140,11 @@ Status vfs_open(File** out, const char* path, uint64_t flags)
 
 Status vfs_read(File* file, void* buffer, uint64_t length)
 {
+    if (file == 0)
+    {
+        return STATUS_DOES_NOT_EXIST;
+    }
+
     if (file->disk->read != 0 && (file->flags & FILE_FLAG_READ))
     {
         return file->disk->read(file, buffer, length);
@@ -144,6 +157,11 @@ Status vfs_read(File* file, void* buffer, uint64_t length)
 
 Status vfs_write(File* file, const void* buffer, uint64_t length)
 {
+    if (file == 0)
+    {
+        return STATUS_DOES_NOT_EXIST;
+    }
+
     if (file->disk->write != 0 && (file->flags & FILE_FLAG_WRITE))
     {
         return file->disk->write(file, buffer, length);
@@ -156,6 +174,11 @@ Status vfs_write(File* file, const void* buffer, uint64_t length)
 
 Status vfs_close(File* file)
 {
+    if (file == 0)
+    {
+        return STATUS_DOES_NOT_EXIST;
+    }
+
     if (file->disk->close != 0)
     {
         return file->disk->close(file);
@@ -168,6 +191,11 @@ Status vfs_close(File* file)
 
 Status vfs_seek(File* file, int64_t offset, uint64_t origin)
 {
+    if (file == 0)
+    {
+        return STATUS_DOES_NOT_EXIST;
+    }
+
     if (file->disk->seek != 0)
     {
         return file->disk->seek(file, offset, origin);

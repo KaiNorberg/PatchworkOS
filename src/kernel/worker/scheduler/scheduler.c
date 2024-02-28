@@ -1,10 +1,11 @@
 #include "scheduler.h"
 
 #include "heap/heap.h"
-#include "tty/tty.h"
 #include "gdt/gdt.h"
-#include "debug/debug.h"
 #include "worker_pool/worker_pool.h"
+#include "vmm/vmm.h"
+
+#include "tty/tty.h"
 
 Scheduler* scheduler_new()
 {
@@ -69,7 +70,7 @@ void scheduler_schedule(Scheduler* scheduler, InterruptFrame* interruptFrame)
         if (scheduler->runningProcess != 0)
         {
             Process* oldProcess = scheduler->runningProcess;
-            interrupt_frame_copy(oldProcess->interruptFrame, interruptFrame);
+            interrupt_frame_copy(scheduler->runningProcess->interruptFrame, interruptFrame);
 
             oldProcess->state = PROCESS_STATE_READY;
             queue_push(scheduler->queues[oldProcess->priority], oldProcess);                
@@ -85,7 +86,7 @@ void scheduler_schedule(Scheduler* scheduler, InterruptFrame* interruptFrame)
     else if (scheduler->runningProcess == 0)
     {
         interruptFrame->instructionPointer = (uint64_t)scheduler_idle_loop;
-        interruptFrame->cr3 = (uint64_t)kernelPageDirectory;
+        interruptFrame->cr3 = (uint64_t)vmm_kernel_directory();
         interruptFrame->codeSegment = GDT_KERNEL_CODE;
         interruptFrame->stackSegment = GDT_KERNEL_DATA;
         interruptFrame->stackPointer = worker_self()->tss->rsp0;

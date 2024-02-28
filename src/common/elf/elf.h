@@ -1,9 +1,6 @@
 #pragma once
 
-#include "worker/process/process.h"
-#include "vfs/vfs.h"
-
-#include <lib-asym.h>
+#include <stdint.h>
 
 #define ET_NONE 0x00
 #define ET_REL 0x01
@@ -59,5 +56,3 @@ typedef struct
     uint64_t addressAlign;
     uint64_t entrySize;
 } ElfSectionHeader;
-
-Status load_program(Process* process, File* file);

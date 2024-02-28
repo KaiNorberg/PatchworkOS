@@ -2,6 +2,9 @@
 
 #include <stdint.h>
 
+#define ACPI_REVISION_1_0 0
+#define ACPI_REVISION_2_0 2
+
 typedef struct __attribute__((packed))
 {
     char signature[8];
@@ -13,7 +16,7 @@ typedef struct __attribute__((packed))
     uint64_t xsdtAddress;
     uint8_t extendedChecksum;
     uint8_t reserved[3];
-} Xsdt;
+} Xsdp;
 
 typedef struct __attribute__((packed))
 {
@@ -28,6 +31,12 @@ typedef struct __attribute__((packed))
     uint32_t creatorRevision; 
 } SdtHeader;
 
-void rsdt_init(Xsdt* xsdp);
+typedef struct __attribute__((packed))
+{
+    SdtHeader header;
+    SdtHeader* tables[];
+} Xsdt;
+
+void rsdt_init(Xsdp* xsdp);
 
 SdtHeader* rsdt_lookup(const char* signature);

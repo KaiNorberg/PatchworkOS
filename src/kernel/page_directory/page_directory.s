@@ -1,7 +1,6 @@
 [bits 64]
 
 global page_directory_invalidate_page
-global test_func
 
 section .text
 

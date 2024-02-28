@@ -6,8 +6,6 @@
 
 #include <stdint.h>
 
-#define MAX_WORKER_AMOUNT 255
-
 #define IPI_WORKER_NONE 0
 #define IPI_WORKER_HALT 1
 #define IPI_WORKER_SCHEDULE 2
@@ -16,15 +14,17 @@ typedef struct
 {
     uint8_t present;
     uint8_t running;
-    uint8_t id; 
-    uint8_t apicId;
     
-    Tss* tss;
+    uint8_t id; 
+    uint8_t localApicId;
 
     Ipi ipi;
 
+    Tss* tss;
     Scheduler* scheduler;
 } Worker;
+
+uint8_t worker_init(Worker* worker, uint8_t id, uint8_t localApicId);
 
 void worker_entry();
 

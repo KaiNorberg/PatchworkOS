@@ -17,7 +17,7 @@ interrupt_%1:
     jmp common_interrupt
 %endmacro
 
-section .code
+section .text
 
 extern master_interrupt_handler
 

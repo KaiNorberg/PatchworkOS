@@ -1,11 +1,15 @@
 #include "schedule.h"
 
-#include "tty/tty.h"
-#include "heap/heap.h"
-#include "worker_pool/worker_pool.h"
+#include <stdint.h>
 
+#include "tty/tty.h"
+#include "worker_pool/worker_pool.h"
 #include "master/interrupts/interrupts.h"
 #include "master/dispatcher/dispatcher.h"
+#include "ipi/ipi.h"
+#include "time/time.h"
+#include "worker/scheduler/scheduler.h"
+#include "worker/worker.h"
 
 void schedule_job_init()
 {
@@ -16,11 +20,9 @@ void schedule_job()
 {        
     //Temporary for testing
     tty_acquire();
-    Point cursorPos = tty_get_cursor_pos();
-    tty_set_cursor_pos(0, 0);
+    tty_set_pos(0, 0);
     tty_print("MASTER | FAST: "); 
     tty_printx(time_nanoseconds());
-    tty_set_cursor_pos(cursorPos.x, cursorPos.y);
     tty_release();
 
     for (uint16_t i = 0; i < worker_amount(); i++)

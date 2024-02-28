@@ -1,41 +1,36 @@
 #include "interrupts.h"
 
+#include <stdint.h>
+
 #include "tty/tty.h"
 #include "apic/apic.h"
 #include "debug/debug.h"
-#include "utils/utils.h"
-#include "page_allocator/page_allocator.h"
 #include "ipi/ipi.h"
 #include "worker_pool/worker_pool.h"
-#include "tty/tty.h"
-
+#include "vmm/vmm.h"
 #include "worker/syscall/syscall.h"
-
-extern uint64_t _workerInterruptsStart;
-extern uint64_t _workerInterruptsEnd;
-extern PageDirectory* workerPageDirectory;
+#include "page_directory/page_directory.h"
+#include "worker/scheduler/scheduler.h"
+#include "worker/worker.h"
+#include "utils/utils.h"
 
 extern void* workerVectorTable[IDT_VECTOR_AMOUNT];
 
-void worker_idt_populate(Idt* idt)
-{
-    workerPageDirectory = kernelPageDirectory;
+static Idt idt;
 
+void worker_idt_init()
+{
     for (uint16_t vector = 0; vector < IDT_VECTOR_AMOUNT; vector++) 
     {        
-        idt_set_vector(idt, (uint8_t)vector, workerVectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
+        idt_set_vector(&idt, (uint8_t)vector, workerVectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
     }        
     
-    idt_set_vector(idt, SYSCALL_VECTOR, workerVectorTable[SYSCALL_VECTOR], IDT_RING3, IDT_INTERRUPT_GATE);
+    idt_set_vector(&idt, SYSCALL_VECTOR, workerVectorTable[SYSCALL_VECTOR], IDT_RING3, IDT_INTERRUPT_GATE);
 }
 
-void worker_interrupts_map(PageDirectory* pageDirectory)
+Idt* worker_idt()
 {
-    void* virtualAddress = (void*)round_down((uint64_t)&_workerInterruptsStart, 0x1000);
-    void* physicalAddress = page_directory_get_physical_address(kernelPageDirectory, virtualAddress);
-    uint64_t pageAmount = GET_SIZE_IN_PAGES((uint64_t)&_workerInterruptsEnd - (uint64_t)&_workerInterruptsStart);
-
-    page_directory_remap_pages(pageDirectory, virtualAddress, physicalAddress, pageAmount, PAGE_DIR_READ_WRITE);
+    return &idt;
 }
 
 void worker_interrupt_handler(InterruptFrame* interruptFrame)
@@ -84,14 +79,21 @@ void worker_ipi_handler(InterruptFrame* interruptFrame)
 }
 
 void worker_exception_handler(InterruptFrame* interruptFrame)
-{
-    tty_acquire();
-    debug_exception(interruptFrame, "Worker Exception");
-    tty_release();
-
-    asm volatile("cli");
-    while (1)
+{   
+    switch (interruptFrame->errorCode)
     {
-        asm volatile("hlt");
+    default:
+    {
+        tty_acquire();
+        debug_exception(interruptFrame, "Worker Exception");
+        tty_release();
+
+        asm volatile("cli");
+        while (1)
+        {
+            asm volatile("hlt");
+        }
+    }
+    break;
     }
 }

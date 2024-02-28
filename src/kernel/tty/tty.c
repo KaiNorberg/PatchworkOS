@@ -1,14 +1,20 @@
 #include "tty.h"
 
+#include <libc/string.h>
+#include <libc/stdarg.h>
+
 #include "utils/utils.h"
 #include "lock/lock.h"
+#include "vmm/vmm.h"
+#include <common/boot_info/boot_info.h>
+#include "page_directory/page_directory.h"
+#include "pmm/pmm.h"
 
-#include <libc/string.h>
+static GopBuffer frontbuffer;
+static PsfFont font;
 
-static GopBuffer* frontbuffer;
-static PsfFont* font;
-
-static Point cursorPos;
+static uint32_t column;
+static uint32_t row;
 
 static Pixel background;
 static Pixel foreground;
@@ -17,13 +23,21 @@ static uint8_t scale;
 
 static Lock lock;
 
-void tty_init(GopBuffer* screenbuffer, PsfFont* screenFont)
+void tty_init(GopBuffer* gopBuffer, PsfFont* screenFont)
 {
-    frontbuffer = screenbuffer;
-    font = screenFont;
+    frontbuffer.base = vmm_map(gopBuffer->base, SIZE_IN_PAGES(gopBuffer->size), PAGE_FLAG_WRITE);
+    frontbuffer.size = gopBuffer->size;
+    frontbuffer.width = gopBuffer->width;
+    frontbuffer.height = gopBuffer->height;
+    frontbuffer.pixelsPerScanline = gopBuffer->pixelsPerScanline;
 
-    cursorPos.x = 0;
-    cursorPos.y = 0;
+    font.header = screenFont->header;   
+    font.glyphs = vmm_allocate(SIZE_IN_PAGES(screenFont->glyphsSize));
+    memcpy(font.glyphs, screenFont->glyphs, screenFont->glyphsSize);
+
+    scale = 1;
+    column = 0;
+    row = 0;
 
     background.a = 0;
     background.r = 0;
@@ -34,12 +48,61 @@ void tty_init(GopBuffer* screenbuffer, PsfFont* screenFont)
     foreground.r = 255;
     foreground.g = 255;
     foreground.b = 255;
-
-    scale = 1;
         
     lock = lock_new();
 
     tty_clear();
+}
+
+void tty_set_scale(uint8_t value)
+{
+    scale = value;
+}
+
+void tty_set_foreground(Pixel value)
+{
+    foreground = value;
+}
+
+void tty_set_background(Pixel value)
+{
+    background = value;
+}
+
+void tty_set_pos(uint32_t x, uint32_t y)
+{
+    column = x;   
+    row = y;
+}
+
+void tty_set_row(uint32_t value)
+{
+    row = value;
+}
+
+uint32_t tty_get_row()
+{
+    return row;
+}
+
+void tty_set_column(uint32_t value)
+{
+    column = value;
+}
+
+uint32_t tty_get_column()
+{
+    return column;
+}
+
+uint32_t tty_row_amount()
+{
+    return frontbuffer.height / (TTY_CHAR_HEIGHT * scale);
+}
+
+uint32_t tty_column_amount()
+{
+    return frontbuffer.width / (TTY_CHAR_WIDTH * scale);
 }
 
 void tty_acquire()
@@ -52,66 +115,53 @@ void tty_release()
     lock_release(&lock);
 }
 
-void tty_scroll(uint64_t distance)
-{
-    cursorPos.y -= distance;
-
-    uint64_t offset = frontbuffer->pixelsPerScanline * distance;
-    memcpy(frontbuffer->base, frontbuffer->base + offset, frontbuffer->size - offset * sizeof(Pixel));
-    memset(frontbuffer->base + frontbuffer->pixelsPerScanline * (frontbuffer->height - distance), 0, offset * sizeof(Pixel));
-}
-
 void tty_put(uint8_t chr)
 {
     switch (chr)
     {
     case '\n':
     {
-        cursorPos.x = 0;
-        cursorPos.y += TTY_CHAR_HEIGHT * scale;
-        if (cursorPos.y + TTY_CHAR_HEIGHT * scale >= frontbuffer->height)
-        {
-            tty_scroll(TTY_CHAR_HEIGHT * scale);
-        }
+        column = 0;
+        row++;
     }
     break;
     case '\r':
     {
-        cursorPos.x = 0;
+        column = 0;
     }
     break;
     default:
     {               
-        char const* glyph = font->glyphs + chr * TTY_CHAR_HEIGHT;
+        char const* glyph = font.glyphs + chr * TTY_CHAR_HEIGHT;
+        
+        uint32_t x = column * TTY_CHAR_WIDTH * scale;
+        uint32_t y = row * TTY_CHAR_HEIGHT * scale;
 
-        for (uint32_t y = 0; y < TTY_CHAR_HEIGHT * scale; y++)
+        for (uint32_t yOffset = 0; yOffset < TTY_CHAR_HEIGHT * scale; yOffset++)
         {
-            for (uint32_t x = 0; x < TTY_CHAR_WIDTH * scale; x++)
-            {
-                Point position = {cursorPos.x + x, cursorPos.y + y};
-
-                if ((*glyph & (0b10000000 >> x / scale)) > 0)
+            for (uint32_t xOffset = 0; xOffset < TTY_CHAR_WIDTH * scale; xOffset++)
+            {                
+                Pixel pixel;
+                if ((*glyph & (0b10000000 >> xOffset / scale)) > 0)
                 {
-                    GOP_PUT(frontbuffer, position, foreground);
+                    pixel = foreground;
                 }
                 else
                 {
-                    GOP_PUT(frontbuffer, position, background);
-                }
+                    pixel = background;
+                }    
+                
+                *((Pixel*)((uint64_t)frontbuffer.base + 
+                (x + xOffset) * sizeof(Pixel) + 
+                (y + yOffset) * frontbuffer.pixelsPerScanline * sizeof(Pixel))) = pixel;
             }
-            if (y % scale == 0)
+            if (yOffset % scale == 0)
             {
                 glyph++;
             }
         }
 
-        cursorPos.x += TTY_CHAR_WIDTH * scale;
-
-        if (cursorPos.x >= frontbuffer->width)
-        {
-            cursorPos.x = 0;
-            cursorPos.y += TTY_CHAR_HEIGHT * scale;
-        }
+        column++;
     }
     break;
     }
@@ -142,47 +192,19 @@ void tty_printx(uint64_t hex)
     tty_print("0x"); tty_print(string);
 }
 
+void tty_printm(const char* string, uint64_t length)
+{
+    for (uint64_t i = 0; i < length; i++)
+    {
+        tty_put(string[i]);
+    }
+}
+
 void tty_clear()
 {
-    memset(frontbuffer->base, 0, frontbuffer->size);
-    cursorPos.x = 0;
-    cursorPos.y = 0;
-}
-
-void tty_set_scale(uint8_t newScale)
-{
-    scale = newScale;
-}
-
-void tty_set_foreground(Pixel color)
-{
-    foreground = color;
-}
-
-void tty_set_background(Pixel color)
-{
-    background = color;
-}
-
-void tty_set_cursor_pos(uint64_t x, uint64_t y)
-{
-    cursorPos.x = x;
-    cursorPos.y = y;
-}
-
-Point tty_get_cursor_pos()
-{
-    return cursorPos;
-}
-
-uint32_t tty_get_screen_width()
-{
-    return frontbuffer->width;
-}
-
-uint32_t tty_get_screen_height()
-{
-    return frontbuffer->height;
+    memset(frontbuffer.base, 0, frontbuffer.size);
+    column = 0;
+    row = 0;
 }
 
 void tty_start_message(const char* message)
@@ -203,10 +225,12 @@ void tty_assert(uint8_t expression, const char* message)
 
 void tty_end_message(uint64_t status)
 {
-    uint32_t oldCursorX = cursorPos.x;   
-    cursorPos.x = TTY_CHAR_WIDTH * scale;
+    uint32_t oldColumn = tty_get_column();
+    tty_set_column(1);
 
-    if (status == TTY_MESSAGE_OK)
+    switch (status)
+    {
+    case TTY_MESSAGE_OK:
     {
         foreground.a = 255;
         foreground.r = 0;
@@ -214,34 +238,24 @@ void tty_end_message(uint64_t status)
         foreground.b = 0;
         tty_print("OK");
     }
-    else if (status == TTY_MESSAGE_ER)
+    break;
+    case TTY_MESSAGE_ER:
     {
         foreground.a = 255;
         foreground.r = 255;
         foreground.g = 0;
         foreground.b = 0;
         tty_print("ER");
-
-        while (1)
-        {
-            asm volatile ("HLT");
-        }
+        asm volatile("hlt");
     }
-    else
-    {
-        //Undefined behaviour
+    break;
     }
 
     foreground.a = 255;
     foreground.r = 255;
     foreground.g = 255;
     foreground.b = 255;
-    
-    foreground.a = 255;
-    foreground.r = 255;
-    foreground.g = 255;
-    foreground.b = 255;
-    cursorPos.x = oldCursorX;
 
-    tty_print("done!\n\r");
+    tty_set_column(oldColumn);
+    tty_print("done!\n");
 }

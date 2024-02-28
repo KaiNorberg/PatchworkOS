@@ -1,16 +1,35 @@
 #include "file_table.h"
 
-#include "heap/heap.h"
-#include "debug/debug.h"
-
 #include <libc/string.h>
+
+#include <lib-asym.h>
+
+#include "vmm/vmm.h"
+#include "debug/debug.h"
 
 FileTable* file_table_new()
 {
-    FileTable* fileTable = kmalloc(sizeof(FileTable));
+    FileTable* fileTable = vmm_allocate(PAGE_SIZE_OF(FileTable));
     memset(fileTable, 0, sizeof(FileTable));
 
     return fileTable;
+}
+
+void file_table_free(FileTable* fileTable)
+{
+    for (uint64_t i = 0; i < FILE_TABLE_LENGTH; i++)
+    {
+        if (fileTable->files[i] != 0)
+        {
+            Status status = vfs_close(fileTable->files[i]);
+            if (status != STATUS_SUCCESS)
+            {
+                debug_panic("Failed to close file in table");
+            }
+        }
+    }
+
+    vmm_free(fileTable, PAGE_SIZE_OF(FileTable));
 }
 
 Status file_table_open(FileTable* fileTable, uint64_t* out, const char* path, uint64_t flags)
@@ -68,21 +87,4 @@ Status file_table_close(FileTable* fileTable, uint64_t fd)
     fileTable->files[fd] = 0;
 
     return STATUS_SUCCESS;
-}
-
-void file_table_free(FileTable* fileTable)
-{
-    for (uint64_t i = 0; i < FILE_TABLE_LENGTH; i++)
-    {
-        if (fileTable->files[i] != 0)
-        {
-            Status status = vfs_close(fileTable->files[i]);
-            if (status != STATUS_SUCCESS)
-            {
-                debug_panic("Failed to close file in table");
-            }
-        }
-    }
-
-    kfree(fileTable);
 }

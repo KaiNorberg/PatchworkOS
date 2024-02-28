@@ -1,10 +1,13 @@
 #include "file_system.h"
 
+#include <stddef.h>
+
 #include "string/string.h"
+#include "efilib.h"
 
 EFI_FILE* file_system_open_root_volume(EFI_HANDLE imageHandle)
 {
-	EFI_LOADED_IMAGE *loaded_image = NULL;
+	EFI_LOADED_IMAGE *loaded_image = 0;
 	EFI_GUID lipGuid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
 	EFI_FILE_IO_INTERFACE *IOVolume;
 	EFI_GUID fsGuid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
@@ -28,9 +31,9 @@ EFI_FILE* file_system_open_raw(EFI_FILE* volume, CHAR16* path)
 	return fileHandle;
 }
 
-EFI_FILE* file_system_open(EFI_HANDLE imageHandle, CHAR16* path)
+EFI_FILE* file_system_open(CHAR16* path, EFI_HANDLE imageHandle)
 {
-    if (strlen16(path) < 3)
+    if (StrLen(path) < 3)
     {
         return 0;
     }
@@ -52,7 +55,7 @@ EFI_FILE* file_system_open(EFI_HANDLE imageHandle, CHAR16* path)
                 uint64_t nameLength = ((uint64_t)nameEnd - (uint64_t)nameStart) / 2;
 
                 CHAR16* name = AllocatePool((nameLength + 1) * sizeof(CHAR16));
-                memcpy(name, nameStart, nameLength * sizeof(CHAR16));
+                CopyMem(name, nameStart, nameLength * sizeof(CHAR16));
                 name[nameLength] = 0;
 
                 EFI_FILE* oldVolume = currentVolume;
@@ -75,7 +78,7 @@ EFI_FILE* file_system_open(EFI_HANDLE imageHandle, CHAR16* path)
                 uint64_t nameLength = ((uint64_t)nameEnd - (uint64_t)nameStart) / 2;
 
                 CHAR16* name = AllocatePool((nameLength + 1) * sizeof(CHAR16));
-                memcpy(name, nameStart, nameLength * sizeof(CHAR16));
+                CopyMem(name, nameStart, nameLength * sizeof(CHAR16));
                 name[nameLength] = 0;
 
                 EFI_FILE* file = file_system_open_raw(currentVolume, name);

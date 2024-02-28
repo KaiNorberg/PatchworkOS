@@ -1,26 +1,14 @@
 #include <stdint.h>
+
 #include <lib-asym.h>
 
 int main()
-{               
-    int64_t fd = open("ram:/bin/child.elf", FILE_FLAG_READ);
-    if (fd == -1)
-    {
-        sys_test(status_string());
-        exit(1);
-    }
-
-    int64_t pid = spawn(fd);
+{
+    int64_t pid = spawn("ram:/bin/child.elf");
     if (pid == -1)
     {
         sys_test(status_string());
-        exit(1);
-    }
-
-    if (close(fd) == -1)
-    {
-        sys_test(status_string());
-        exit(1);
+        exit(STATUS_FAILURE);
     }
     
     while (1)

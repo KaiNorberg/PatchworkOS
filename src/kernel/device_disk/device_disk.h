@@ -1,5 +1,9 @@
 #pragma once
 
+#include <stdint.h>
+
+#include <lib-asym.h>
+
 #include "vfs/vfs.h"
 #include "list/list.h"
 

@@ -1,10 +1,13 @@
 #pragma once
 
+#include <stdint.h>
+
+#include <lib-asym.h>
+
 #include "vector/vector.h"
 #include "interrupt_frame/interrupt_frame.h"
 #include "page_directory/page_directory.h"
 #include "vfs/vfs.h"
-
 #include "worker/file_table/file_table.h"
 
 #define PROCESS_STATE_NONE 0
@@ -41,8 +44,8 @@ void pid_init();
 
 uint64_t pid_new();
 
-Process* process_new(uint8_t priority);
-
-void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t amount);
+Process* process_new(const char* path, uint8_t priority);
 
 void process_free(Process* process);
+
+void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t amount);

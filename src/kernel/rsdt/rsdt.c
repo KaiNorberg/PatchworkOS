@@ -1,36 +1,61 @@
 #include "rsdt/rsdt.h"
 
 #include "tty/tty.h"
+#include "vmm/vmm.h"
 
-static SdtHeader* xsdt; 
+#include <libc/string.h>
 
-void rsdt_init(Xsdt* xsdp)
+static uint64_t tableAmount;
+static Xsdt* xsdt;
+
+static inline uint8_t rsdt_validate_checksum(void* table, uint64_t length)
 {
-    tty_start_message("RSDT initializing");
+    int8_t sum = 0;
+    for (uint64_t i = 0; i < length; i++)
+    {
+        sum += ((int8_t*)table)[i];
+    }
 
-    xsdt = (SdtHeader*)xsdp->xsdtAddress;
+    return sum == 0;
+}
+
+void rsdt_init(Xsdp* xsdp)
+{
+    tty_start_message("Parsing RSDT");
+
+    xsdp = vmm_physical_to_virtual(xsdp);
+
+    tty_assert(xsdp->revision == ACPI_REVISION_2_0, "Incompatible ACPI revision");
+    tty_assert(rsdt_validate_checksum(xsdp, xsdp->length), "Invalid XSDP checksum");
+
+    xsdt = vmm_physical_to_virtual((void*)xsdp->xsdtAddress);
+    tableAmount = (xsdt->header.length - sizeof(SdtHeader)) / 8;
+
+    for (uint64_t i = 0; i < tableAmount; i++)
+    {
+        SdtHeader* table = vmm_physical_to_virtual(xsdt->tables[i]);
+
+        if (!rsdt_validate_checksum(table, table->length))
+        {
+            tty_print("Invalid ");
+            tty_printm((const char*)table->signature, 4);
+            tty_print(" checksum");
+            tty_end_message(TTY_MESSAGE_ER);
+        }
+    }
 
     tty_end_message(TTY_MESSAGE_OK);
 }
 
 SdtHeader* rsdt_lookup(const char* signature)
-{
-    uint64_t entryAmount = (xsdt->length - sizeof(SdtHeader)) / 8;
-
-    for (uint64_t i = 0; i < entryAmount; i++)
+{   
+    for (uint64_t i = 0; i < tableAmount; i++)
     {
-        SdtHeader* header = (SdtHeader*)*(uint64_t*)((uint64_t)xsdt + sizeof(SdtHeader) + i * 8);
+        SdtHeader* table = vmm_physical_to_virtual(xsdt->tables[i]);
 
-        for (int j = 0; j < 4; j++)
+        if (memcmp(table->signature, signature, 4) == 0)
         {
-            if (header->signature[j] != signature[j])
-            {
-                break;
-            }
-            else if (j == 3)
-            {
-                return header;
-            }
+            return table;
         }
     }
 

@@ -2,8 +2,6 @@
 
 #include "heap/heap.h"
 
-#include "tty/tty.h"
-
 Queue* queue_new()
 {
     Queue* newQueue = kmalloc(sizeof(Queue));

@@ -7,14 +7,12 @@
 
 typedef struct HeapHeader
 {
-    struct HeapHeader* next;
     uint64_t size;
     uint8_t reserved;
+    struct HeapHeader* next;
 } HeapHeader;
 
 void heap_init();
-
-void heap_visualize();
 
 uint64_t heap_total_size();
 

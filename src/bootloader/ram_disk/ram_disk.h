@@ -2,8 +2,9 @@
 
 #include <efi.h>
 #include <efilib.h>
-
 #include <common/boot_info/boot_info.h>
+
+RamDirectory* ram_disk_load(EFI_HANDLE imageHandle);
 
 RamFile* ram_disk_load_file(EFI_FILE* volume, CHAR16* path);
 

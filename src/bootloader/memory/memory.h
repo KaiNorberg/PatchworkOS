@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 #include <efi.h>
 #include <efilib.h>
 
@@ -9,4 +11,6 @@ void* memory_allocate_pages(uint64_t pageAmount, uint64_t memoryType);
 
 void* memory_allocate_pool(uint64_t size, uint64_t memoryType);
 
-void memory_get_map(EfiMemoryMap* memoryMap);
+void memory_free_pool(void* pool);
+
+void memory_map_populate(EfiMemoryMap* memoryMap);

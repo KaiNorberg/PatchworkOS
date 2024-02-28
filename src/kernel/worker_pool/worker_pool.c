@@ -1,35 +1,64 @@
 #include "worker_pool.h"
 
+#include <libc/string.h>
+
+#include <lib-asym.h>
+
 #include "idt/idt.h"
-#include "gdt/gdt.h"
 #include "apic/apic.h"
-#include "page_allocator/page_allocator.h"
 #include "utils/utils.h"
 #include "tty/tty.h"
 #include "madt/madt.h"
-#include "hpet/hpet.h"
 #include "master/master.h"
 #include "debug/debug.h"
-#include "global_heap/global_heap.h"
-
 #include "worker/interrupts/interrupts.h"
 #include "worker/scheduler/scheduler.h"
-#include "worker/program_loader/program_loader.h"
-#include "worker/startup/startup.h"
+#include "worker/trampoline/trampoline.h"
+#include "queue/queue.h"
+#include "vfs/vfs.h"
+#include "worker/process/process.h"
 
 static Worker workers[MAX_WORKER_AMOUNT];
 static uint8_t workerAmount;
 
-static Idt* idt;
+static void worker_pool_startup()
+{
+    memset(workers, 0, sizeof(Worker) * MAX_WORKER_AMOUNT);
+    workerAmount = 0;
+
+    worker_trampoline_setup();
+
+    LocalApicRecord* record = madt_first_record(MADT_RECORD_TYPE_LOCAL_APIC);
+    while (record != 0)
+    {
+        if (LOCAL_APIC_RECORD_GET_FLAG(record, LOCAL_APIC_RECORD_FLAG_ENABLEABLE) && 
+            record->localApicId != master_local_apic_id())
+        {
+            uint8_t id = workerAmount;
+
+            if (!worker_init(&workers[id], id, record->localApicId))
+            {    
+                tty_print("Worker ");
+                tty_printi(id);
+                tty_print(" failed to start!");
+                tty_end_message(TTY_MESSAGE_ER);
+            }
+            workerAmount++;
+        }
+
+        record = madt_next_record(record, MADT_RECORD_TYPE_LOCAL_APIC);
+    }
+
+    worker_trampoline_cleanup();
+}
 
 void worker_pool_init()
 {
-    tty_start_message("Workers initializing");
+    tty_start_message("Worker Pool initializing");
 
-    idt = gmalloc(1);
-    worker_idt_populate(idt);
+    worker_idt_init();
 
-    workers_startup(workers, &workerAmount);
+    worker_pool_startup();
 
     tty_end_message(TTY_MESSAGE_OK);
 }
@@ -42,33 +71,21 @@ void worker_pool_send_ipi(Ipi ipi)
     }
 }
 
-//Temporary
-void worker_pool_spawn(const char* path)
+int64_t worker_pool_spawn(const char* path)
 {        
-    Process* process = process_new(PROCESS_PRIORITY_MIN);
-    File* file;
-    Status status = vfs_open(&file, path, FILE_FLAG_READ);
-    if (status != STATUS_SUCCESS)
+    Process* process = process_new(path, PROCESS_PRIORITY_MIN);
+    if (process == 0)
     {
-        return;
-    }
-    if (load_program(process, file) != STATUS_SUCCESS)
-    {
-        process_free(process);
-        return;
-    }
-    vfs_close(file);
-
-    for (uint8_t i = 0; i < workerAmount; i++)
-    {
-        scheduler_acquire(worker_get(i)->scheduler);
+        return -1;
     }
 
     uint64_t bestLength = -1;
     Scheduler* bestScheduler = 0;
     for (uint8_t i = 0; i < workerAmount; i++)
-    {
+    {        
         Scheduler* scheduler = worker_get(i)->scheduler;
+        scheduler_acquire(scheduler);
+
         uint64_t length = (scheduler->runningProcess != 0);
         for (int64_t priority = PROCESS_PRIORITY_MAX; priority >= PROCESS_PRIORITY_MIN; priority--) 
         {
@@ -79,25 +96,21 @@ void worker_pool_spawn(const char* path)
         {
             bestLength = length;
             bestScheduler = scheduler;
-        }
+        }    
+
+        scheduler_release(scheduler);
     }
 
+    scheduler_acquire(bestScheduler);
     scheduler_push(bestScheduler, process);
+    scheduler_release(bestScheduler);
 
-    for (uint8_t i = 0; i < workerAmount; i++)
-    {
-        scheduler_release(worker_get(i)->scheduler);
-    }
+    return process->id;
 }
 
 uint8_t worker_amount()
 {
     return workerAmount;
-}
-
-Idt* worker_idt_get()
-{
-    return idt;
 }
 
 Worker* worker_get(uint8_t id)
@@ -119,12 +132,12 @@ Worker* worker_self()
 
 Worker* worker_self_brute()
 {
-    uint8_t apicId = local_apic_id();
+    uint8_t localApicId = local_apic_id();
     for (uint16_t i = 0; i < MAX_WORKER_AMOUNT; i++)
     {
         Worker* worker = worker_get((uint8_t)i);
 
-        if (worker->present && worker->apicId == apicId)
+        if (worker->present && worker->localApicId == localApicId)
         {
             return worker;
         }

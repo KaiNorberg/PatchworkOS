@@ -1,12 +1,10 @@
 #include "device_disk.h"
 
+#include <libc/string.h>
+
 #include "tty/tty.h"
 #include "heap/heap.h"
-
 #include "vfs/vfs.h"
-#include "vfs/utils/utils.h"
-
-#include <libc/string.h>
 
 static List* buses;
 

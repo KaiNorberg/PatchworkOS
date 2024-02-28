@@ -2,18 +2,16 @@
 
 #include "tty/tty.h"
 #include "page_directory/page_directory.h"
-#include "page_allocator/page_allocator.h"
+#include "pmm/pmm.h"
 #include "utils/utils.h"
 #include "lock/lock.h"
 #include "debug/debug.h"
-
-extern uint64_t _kernelEnd;
+#include "vmm/vmm.h"
 
 static HeapHeader* firstBlock;
-
 static Lock lock;
 
-HeapHeader* heap_split(HeapHeader* block, uint64_t size)
+static inline HeapHeader* heap_split(HeapHeader* block, uint64_t size)
 {   
     uint64_t newSize = block->size - sizeof(HeapHeader) - size;
 
@@ -35,70 +33,16 @@ HeapHeader* heap_split(HeapHeader* block, uint64_t size)
 
 void heap_init()
 {    
-    tty_start_message("Heap initializing");
+    tty_start_message("Kernel Heap initializing");
 
-    void* heapStart = (void*)round_up((uint64_t)&_kernelEnd, 0x1000);
-
-    firstBlock = heapStart;
-    page_directory_remap(kernelPageDirectory, heapStart, page_allocator_request(), PAGE_DIR_READ_WRITE);
-
-    firstBlock->size = 0x1000 - sizeof(HeapHeader);
+    firstBlock = vmm_allocate(1);
+    firstBlock->size = PAGE_SIZE - sizeof(HeapHeader);
     firstBlock->next = 0;
     firstBlock->reserved = 0;
 
     lock = lock_new();
 
     tty_end_message(TTY_MESSAGE_OK);
-}
-
-void heap_visualize()
-{
-    Pixel black;
-    black.a = 255;
-    black.r = 0;
-    black.g = 0;
-    black.b = 0;
-
-    Pixel green;
-    green.a = 255;
-    green.r = 152;
-    green.g = 195;
-    green.b = 121;
-
-    Pixel red;
-    red.a = 255;
-    red.r = 224;
-    red.g = 108;
-    red.b = 117;
-
-    tty_print("Heap Visualization:\n\r");
-
-    HeapHeader* currentBlock = firstBlock;
-    while (1)
-    {   
-        if (currentBlock->reserved)
-        {
-            tty_set_background(red);
-        }
-        else
-        {
-            tty_set_background(green);
-        }
-
-        tty_put(' '); tty_printi(currentBlock->size); tty_print(" B "); 
-
-        if (currentBlock->next == 0)
-        {
-            break;
-        }
-        else
-        {
-            currentBlock = currentBlock->next;       
-        }
-    }
-    
-    tty_set_background(black);
-    tty_print("\n\n\r");
 }
 
 uint64_t heap_total_size()
@@ -193,16 +137,11 @@ void* kmalloc(uint64_t size)
             currentBlock = currentBlock->next;       
         }
     }
-    
-    HeapHeader* newBlock = (HeapHeader*)HEAP_HEADER_GET_END(currentBlock);
 
-    uint64_t pageAmount = GET_SIZE_IN_PAGES(alignedSize + sizeof(HeapHeader)) + 1;
-    for (uint64_t address = (uint64_t)newBlock; address < (uint64_t)newBlock + pageAmount * 0x1000; address += 0x1000)
-    {   
-        page_directory_remap(kernelPageDirectory, (void*)address, page_allocator_request(), PAGE_DIR_READ_WRITE);
-    }
+    uint64_t pageAmount = SIZE_IN_PAGES(alignedSize + sizeof(HeapHeader)) + 1;
+    HeapHeader* newBlock = vmm_allocate(pageAmount);
 
-    newBlock->size = pageAmount * 0x1000 - sizeof(HeapHeader);
+    newBlock->size = pageAmount * PAGE_SIZE - sizeof(HeapHeader);
     newBlock->next = 0;
     newBlock->reserved = 0;
 
@@ -227,6 +166,8 @@ void* kmalloc(uint64_t size)
 
 void kfree(void* ptr)
 {    
+    //TODO: Optimize this!
+
     lock_acquire(&lock);
 
     HeapHeader const* block = (HeapHeader*)((uint64_t)ptr - sizeof(HeapHeader));
@@ -248,7 +189,7 @@ void kfree(void* ptr)
 
     if (!blockFound)
     {
-        tty_print("Failed to free block!\n\r");
+        tty_print("Failed to free block!\n");
     }
 
     while (1)

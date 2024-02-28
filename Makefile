@@ -1,19 +1,3 @@
-define run_and_test
-printf "\033[m$(1)... "; \
-$(1) 2> $@.log; \
-RESULT=$$?; \
-if [ $$RESULT -ne 0 ]; then \
-	printf "\033[0;31mERROR\033[m\n"   ; \
-elif [ -s $@.log ]; then \
-	printf "\033[0;33mWARNING\033[m\n"   ; \
-else  \
-	printf "\033[0;32mDONE\033[m\n"   ; \
-fi; \
-cat $@.log; \
-rm -f $@.log; \
-exit $$RESULT
-endef
-
 # arg1 = dir
 # arg2 = pattern
 recursive_wildcard = \
@@ -44,6 +28,7 @@ LD = ld
 ASM = nasm
 
 ASM_FLAGS = -f elf64 \
+	-I$(LIB_SRC_DIR) \
 	-I$(LIB_SRC_DIR)/include \
 
 BASE_C_FLAGS = -O3 \
@@ -55,11 +40,12 @@ BASE_C_FLAGS = -O3 \
 	-Wno-ignored-qualifiers \
 	-Wno-unused-parameter \
 	-Wno-unused-but-set-variable \
-	-I$(SRC_DIR) \
-	-I$(LIB_SRC_DIR)/include \
+	-Wno-implicit-fallthrough \
 	-mno-80387 \
 	-mno-mmx -mno-3dnow -mno-sse \
-	-mno-sse2 
+	-mno-sse2 \
+	-I$(SRC_DIR) \
+	-I$(LIB_SRC_DIR)/include
 	
 KERNEL_C_FLAGS = $(BASE_C_FLAGS) \
 	-ffreestanding \
@@ -98,15 +84,15 @@ build: $(BUILD)
 
 deploy:
 	@echo "!====== RUNNING DEPLOY ======!"
-	@dd if=/dev/zero of=bin/Asym.img bs=4096 count=1024
-	@$(call run_and_test,mkfs -t vfat bin/Asym.img)                           
-	@$(call run_and_test,mmd -i bin/Asym.img ::/boot)                        
-	@$(call run_and_test,mmd -i bin/Asym.img ::/efi)                    
-	@$(call run_and_test,mmd -i bin/Asym.img ::/efi/boot)
-	@$(call run_and_test,mcopy -i bin/Asym.img -s $(BOOT_OUTPUT_EFI) ::efi/boot)
-	@$(call run_and_test,mcopy -i bin/Asym.img -s $(KERNEL_OUTPUT) ::boot)
-	@$(call run_and_test,mcopy -i bin/Asym.img -s $(ROOT_DIR)/* ::)
-	@$(call run_and_test,mcopy -i bin/Asym.img -s $(BIN_DIR)/programs ::/bin)
+	dd if=/dev/zero of=bin/Asym.img bs=4096 count=1024
+	mkfs -t vfat bin/Asym.img                          
+	mmd -i bin/Asym.img ::/boot
+	mmd -i bin/Asym.img ::/efi
+	mmd -i bin/Asym.img ::/efi/boot
+	mcopy -i bin/Asym.img -s $(BOOT_OUTPUT_EFI) ::efi/boot
+	mcopy -i bin/Asym.img -s $(KERNEL_OUTPUT) ::boot
+	mcopy -i bin/Asym.img -s $(ROOT_DIR)/* ::
+	mcopy -i bin/Asym.img -s $(BIN_DIR)/programs ::/bin
 
 all: build deploy
 
@@ -125,7 +111,7 @@ run:
 	
 clean:		
 #@cd vendor/gnu-efi && make clean && cd ../..
-	@$(call run_and_test,rm -rf $(BUILD_DIR))
-	@$(call run_and_test,rm -rf $(BIN_DIR))
+	rm -rf $(BUILD_DIR)
+	rm -rf $(BIN_DIR)
 
 .PHONY: build clean

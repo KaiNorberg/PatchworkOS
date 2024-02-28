@@ -1,11 +1,5 @@
 #include "idt.h"
 
-#include "io/io.h"
-#include "tty/tty.h"
-
-#include "page_allocator/page_allocator.h"
-#include "global_heap/global_heap.h"
-
 void idt_load(Idt* idt)
 {
     IdtDesc idtDesc;

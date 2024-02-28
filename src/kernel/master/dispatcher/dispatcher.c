@@ -2,8 +2,6 @@
 
 #include "queue/queue.h"
 #include "apic/apic.h"
-#include "lock/lock.h"
-
 #include "master/master.h"
 #include "master/interrupts/interrupts.h"
 
@@ -40,7 +38,7 @@ void dispatcher_dispatch(uint8_t irq)
 
 void dispatcher_send(uint8_t irq)
 {
-    local_apic_send_ipi(master_apic_id(), IRQ_BASE + irq);
+    local_apic_send_ipi(master_local_apic_id(), IRQ_BASE + irq);
 }
 
 void dispatcher_push(Callback callback, uint8_t irq)

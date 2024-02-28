@@ -1,11 +1,9 @@
-#include "rsdt.h"
+#include "rsdp.h"
 
 #include "string/string.h"
 
-void* rsdt_get(EFI_SYSTEM_TABLE* systemTable)
+void* rsdp_get(EFI_SYSTEM_TABLE* systemTable)
 {
-    Print(L"Retrieving RSDP... ");
-
 	EFI_CONFIGURATION_TABLE* configTable = systemTable->ConfigurationTable;
 	void* rsdp = 0;
 	EFI_GUID acpi2TableGuid = ACPI_20_TABLE_GUID;
@@ -19,7 +17,14 @@ void* rsdt_get(EFI_SYSTEM_TABLE* systemTable)
 		configTable++;
 	}
 
-    Print(L"Done!\n\r");
+	if (rsdp == 0)
+	{
+		Print(L"ERROR: Failed to locate rsdp!");
+		while (1)
+		{
+			asm volatile("hlt");
+		}
+	}
 
 	return rsdp;
 }

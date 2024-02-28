@@ -1,13 +1,20 @@
 #include "ram_disk.h"
 
-#include "tty/tty.h"
-#include "utils/utils.h"
-#include "heap/heap.h"
+#include <stdint.h>
 
+#include <libc/string.h>
+
+#include <lib-asym.h>
+
+#include <common/boot_info/boot_info.h>
+
+#include "tty/tty.h"
+#include "vmm/vmm.h"
+#include "heap/heap.h"
 #include "vfs/vfs.h"
 #include "vfs/utils/utils.h"
 
-RamDirectory* ram_disk_traverse(Disk* disk, const char* path)
+static inline RamDirectory* ram_disk_traverse(Disk* disk, const char* path)
 {
     RamDirectory* directory = disk->internal;
     const char* directoryName = vfs_utils_first_dir(path);
@@ -38,7 +45,7 @@ RamDirectory* ram_disk_traverse(Disk* disk, const char* path)
     return directory;
 }
 
-RamFile* ram_directory_find_file(RamDirectory* directory, const char* filename)
+static inline RamFile* ram_directory_find_file(RamDirectory* directory, const char* filename)
 {
     RamFile* file = directory->firstFile;
     while (file != 0)
@@ -149,7 +156,7 @@ Status ram_disk_seek(File* file, int64_t offset, uint64_t origin)
 
 void ram_disk_init(RamDirectory* root)
 {
-    tty_start_message("Ram Disk initializing");
+    tty_start_message("Ram Disk initializing");    
 
     Disk* disk = disk_new("ram", root);
     disk->open = ram_disk_open;

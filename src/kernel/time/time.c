@@ -1,18 +1,13 @@
 #include "time.h"
 
-#include "tty/tty.h"
 #include "hpet/hpet.h"
 
 static uint64_t accumulator;
 
 void time_init()
 {
-    tty_start_message("Time initializing");
-
     accumulator = 0;
     time_accumulate();
-
-    tty_end_message(TTY_MESSAGE_OK);
 }
 
 void time_accumulate()

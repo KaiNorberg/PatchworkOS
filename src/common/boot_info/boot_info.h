@@ -12,10 +12,75 @@ typedef struct
 	uint64_t amountOfPages;
 	uint64_t attribute;
 } EfiMemoryDescriptor;
+
+#define EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, index) (EfiMemoryDescriptor*)((uint64_t)(memoryMap)->base + ((index) * (memoryMap)->descriptorSize))
+
+#define EFI_RESERVED 0
+#define EFI_LOADER_CODE 1 
+#define EFI_LOADER_DATA 2
+#define EFI_BOOT_SERVICES_CODE 3
+#define EFI_BOOT_SERVICES_DATA 4
+#define EFI_RUNTIME_SERVICES_CODE 5
+#define EFI_RUNTIME_SERVICES_DATA 6
+#define EFI_CONVENTIONAL_MEMORY 7
+#define EFI_UNUSABLE_MEMORY 8
+#define EFI_ACPI_RECLAIM_MEMORY 9
+#define EFI_ACPI_MEMORY_NVS 10
+#define EFI_MEMORY_MAPPED_IO 11
+#define EFI_MEMORY_MAPPED_IO_PORT_SPACE 12
+#define EFI_PAL_CODE 13
+#define EFI_PERSISTENT_MEMORY 14 
+
+static inline uint8_t is_memory_type_usable(uint64_t memoryType)
+{
+	switch (memoryType)
+	{
+	case EFI_UNUSABLE_MEMORY:
+	case EFI_ACPI_RECLAIM_MEMORY:
+	case EFI_ACPI_MEMORY_NVS:
+	case EFI_MEMORY_MAPPED_IO:
+	case EFI_MEMORY_MAPPED_IO_PORT_SPACE:
+	case EFI_PAL_CODE:
+	case EFI_RESERVED:
+	{
+		return 0;
+	}
+	default:
+	{
+		return 1;
+	}
+	}
+}
+
+static inline uint8_t is_memory_type_reserved(uint64_t memoryType)
+{
+	switch (memoryType)
+	{
+	case EFI_CONVENTIONAL_MEMORY:
+	case EFI_LOADER_CODE:
+	case EFI_LOADER_DATA:
+	case EFI_BOOT_SERVICES_CODE:
+	case EFI_BOOT_SERVICES_DATA:
+	case EFI_PERSISTENT_MEMORY:
+	{
+		return 0;
+	}
+	default:
+	{
+		return 1;
+	}
+	}
+}
 #else
+#include <efi.h>
 #include <efilib.h>
 typedef EFI_MEMORY_DESCRIPTOR EfiMemoryDescriptor;
 #endif
+
+#define EFI_MEMORY_TYPE_KERNEL 0x80000000
+#define EFI_MEMORY_TYPE_PAGE_DIRECTORY 0x80000001
+#define EFI_MEMORY_TYPE_BOOT_INFO 0x80000002
+#define EFI_MEMORY_TYPE_RAM_DISK 0x80000003
 
 typedef struct
 {
@@ -45,6 +110,7 @@ typedef struct __attribute__((packed))
 typedef struct
 {
 	PsfHeader header;
+	uint64_t glyphsSize;
 	void* glyphs;
 } PsfFont;
 
@@ -53,7 +119,6 @@ typedef struct RamFile
 	char name[32];
 	void* data;
 	uint64_t size;
-	uint64_t pageAmount;
 	struct RamFile* next;
 	struct RamFile* prev;
 } RamFile;
@@ -71,7 +136,6 @@ typedef struct RamDirectory
 
 typedef struct 
 {    
-    void* physicalAddress;
 	EfiMemoryMap memoryMap;
 	GopBuffer gopBuffer;
 	PsfFont font;

@@ -1,25 +1,28 @@
 #include "interrupts.h"
 
+#include <stdint.h>
+
 #include "tty/tty.h"
-#include "apic/apic.h"
 #include "debug/debug.h"
 #include "worker_pool/worker_pool.h"
-#include "hpet/hpet.h"
-
 #include "worker/worker.h"
 #include "master/dispatcher/dispatcher.h"
 #include "master/fast_timer/fast_timer.h"
 #include "master/pic/pic.h"
 #include "master/slow_timer/slow_timer.h"
+#include "ipi/ipi.h"
 
 extern void* masterVectorTable[IDT_VECTOR_AMOUNT];
 
-void master_idt_populate(Idt* idt)
+static Idt idt;
+
+void master_idt_init()
 {
     for (uint16_t vector = 0; vector < IDT_VECTOR_AMOUNT; vector++) 
     {        
-        idt_set_vector(idt, (uint8_t)vector, masterVectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
+        idt_set_vector(&idt, (uint8_t)vector, masterVectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
     }
+    idt_load(&idt);
 }
 
 void master_interrupt_handler(InterruptFrame const* interruptFrame)

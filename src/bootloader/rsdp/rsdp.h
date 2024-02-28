@@ -3,4 +3,4 @@
 #include <efi.h>
 #include <efilib.h>
 
-void* rsdt_get(EFI_SYSTEM_TABLE* systemTable);
+void* rsdp_get(EFI_SYSTEM_TABLE* systemTable);

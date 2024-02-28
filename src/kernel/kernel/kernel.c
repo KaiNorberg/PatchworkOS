@@ -1,55 +1,75 @@
 #include "kernel.h"
 
+#include <stdint.h>
+
+#include <common/boot_info/boot_info.h>
+
 #include "gdt/gdt.h"
 #include "tty/tty.h"
-#include "idt/idt.h"
 #include "heap/heap.h"
-#include "utils/utils.h"
-#include "page_allocator/page_allocator.h"
-#include "io/io.h"
+#include "pmm/pmm.h"
 #include "hpet/hpet.h"
 #include "time/time.h"
-#include "tss/tss.h"
 #include "apic/apic.h"
-#include "global_heap/global_heap.h"
 #include "madt/madt.h"
 #include "ram_disk/ram_disk.h"
 #include "device_disk/device_disk.h"
-
 #include "vfs/vfs.h"
-
+#include "vmm/vmm.h"
 #include "master/master.h"
 #include "worker_pool/worker_pool.h"
+#include "rsdt/rsdt.h"
+#include "program_loader/program_loader.h"
 
-#include <common/common.h>
+#include "worker/process/process.h"
+
+static void deallocate_boot_info(BootInfo* bootInfo)
+{   
+    tty_start_message("Deallocating boot info");
+
+    EfiMemoryMap* memoryMap = &bootInfo->memoryMap;
+    for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
+    {
+        const EfiMemoryDescriptor* descriptor = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
+
+        if (descriptor->type == EFI_MEMORY_TYPE_BOOT_INFO)
+        {
+            pmm_free_pages(descriptor->physicalStart, descriptor->amountOfPages);
+        }
+    }
+
+    tty_end_message(TTY_MESSAGE_OK);
+}
 
 void kernel_init(BootInfo* bootInfo)
 {   
     asm volatile("cli");
 
-    tty_init(&bootInfo->gopBuffer, &bootInfo->font);
-    tty_print("Hello from the kernel!\n\r");
+    pmm_init(&bootInfo->memoryMap);
+    vmm_init(&bootInfo->memoryMap);
 
-    page_allocator_init(&bootInfo->memoryMap);
-    page_directory_init(&bootInfo->memoryMap, &bootInfo->gopBuffer);
+    tty_init(&bootInfo->gopBuffer, &bootInfo->font);    
+    tty_print("Hello from the kernel!\n");
+
     heap_init();
-    global_heap_init();
-
     gdt_init();
-
+    
     rsdt_init(bootInfo->rsdp);
+    hpet_init();
     madt_init();
     apic_init();
-    
-    hpet_init();
-    time_init();
 
+    time_init();
     pid_init();
-    
+
+    program_loader_init();
+
+    vfs_init();
+    //device_disk_init();
+    ram_disk_init(bootInfo->ramRoot);
+
     master_init();
     worker_pool_init();
 
-    vfs_init();
-    device_disk_init();
-    ram_disk_init(bootInfo->ramRoot);
+    deallocate_boot_info(bootInfo);
 }
