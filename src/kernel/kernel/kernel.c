@@ -70,6 +70,6 @@ void kernel_init(BootInfo* bootInfo)
 
     master_init();
     worker_pool_init();
-
+    
     deallocate_boot_info(bootInfo);
 }

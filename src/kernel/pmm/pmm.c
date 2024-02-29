@@ -36,7 +36,7 @@ static void pmm_allocate_bitmap(EfiMemoryMap* memoryMap)
     }
     pageAmount = highestAddress / PAGE_SIZE;    
 
-    bitmapSize = pageAmount / 8;
+    bitmapSize = pageAmount;
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
         const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
@@ -66,7 +66,7 @@ static void pmm_load_memory_map(EfiMemoryMap* memoryMap)
 }
 
 void pmm_init(EfiMemoryMap* memoryMap)
-{    
+{   
     lock = lock_new();
 
     pmm_allocate_bitmap(memoryMap);
@@ -142,29 +142,24 @@ void* pmm_allocate_amount(uint64_t amount)
     return 0;
 }
 
+#define PAGE_SIZE 0x1000
+
+#define QWORD_INDEX(address) (((uint64_t)address / PAGE_SIZE) / 64)
+#define BIT_INDEX(address) (((uint64_t)address / PAGE_SIZE) % 64)
+
 uint8_t pmm_is_reserved(void* address)
 {   
-    return (bitmap[QWORD_INDEX(address)] >> BIT_INDEX(address)) & 1;
+    return (bitmap[QWORD_INDEX(address)] >> BIT_INDEX(address)) & 1ULL;
 }
 
 void pmm_reserve_page(void* address)
-{        
-    bitmap[QWORD_INDEX(address)] |= 1 << BIT_INDEX(address);
-
-    if (firstFreePage == address)
-    {
-        firstFreePage = (void*)((uint64_t)firstFreePage + PAGE_SIZE);
-    }
+{
+    bitmap[QWORD_INDEX(address)] |= 1ULL << BIT_INDEX(address);
 }
 
 void pmm_free_page(void* address)
 {
-    bitmap[QWORD_INDEX(address)] &= ~(1 << BIT_INDEX(address));
-
-    if (firstFreePage > address)
-    {
-        firstFreePage = address;
-    }
+    bitmap[QWORD_INDEX(address)] &= ~(1ULL << BIT_INDEX(address));
 }
 
 void pmm_reserve_pages(void* address, uint64_t count)
@@ -198,7 +193,10 @@ uint64_t pmm_reserved_amount()
     uint64_t amount = 0;
     for (uint64_t i = 0; i < pageAmount; ++i) 
     {
-        amount += pmm_is_reserved((void*)(i * PAGE_SIZE));
+        if (pmm_is_reserved((void*)(i * PAGE_SIZE)))
+        {
+            amount++;
+        }
     }
     return amount;
 }

@@ -12,7 +12,7 @@
 #define PAGE_FLAG_ACCESSED (1 << 5)
 #define PAGE_FLAG_GLOBAL (1 << 6)
 #define PAGE_FLAG_PAGE_SIZE (1 << 7)
-#define PAGE_FLAG_DONT_FREE (1 << 9)
+#define PAGE_FLAG_DONT_OWN (1 << 9)
 
 #define PAGE_DIRECTORY_GET_FLAG(entry, flag) (((entry) & (flag)) != 0)
 #define PAGE_DIRECTORY_GET_ADDRESS(entry) ((void*)((entry) & 0x000FFFFFFFFFF000))

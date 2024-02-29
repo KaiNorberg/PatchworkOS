@@ -74,6 +74,7 @@ void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t am
 {
     void* physicalAddress = pmm_allocate_amount(amount);
 
+    //Page Directory takes ownership of memory.
     page_directory_map_pages(process->pageDirectory, virtualAddress, physicalAddress, amount, PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR);
 
     return vmm_physical_to_virtual(physicalAddress);
