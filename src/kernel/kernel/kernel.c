@@ -5,6 +5,7 @@
 #include <common/boot_info/boot_info.h>
 
 #include "gdt/gdt.h"
+#include "idt/idt.h"
 #include "tty/tty.h"
 #include "heap/heap.h"
 #include "pmm/pmm.h"
@@ -16,12 +17,11 @@
 #include "device_disk/device_disk.h"
 #include "vfs/vfs.h"
 #include "vmm/vmm.h"
-#include "master/master.h"
-#include "worker_pool/worker_pool.h"
 #include "rsdt/rsdt.h"
+#include "smp/smp.h"
+#include "utils/utils.h"
+#include "process/process.h"
 #include "program_loader/program_loader.h"
-
-#include "worker/process/process.h"
 
 static void deallocate_boot_info(BootInfo* bootInfo)
 {   
@@ -47,17 +47,21 @@ void kernel_init(BootInfo* bootInfo)
 
     pmm_init(&bootInfo->memoryMap);
     vmm_init(&bootInfo->memoryMap);
+    heap_init();
 
     tty_init(&bootInfo->gopBuffer, &bootInfo->font);    
     tty_print("Hello from the kernel!\n");
 
-    heap_init();
     gdt_init();
+    idt_init();
     
     rsdt_init(bootInfo->rsdp);
     hpet_init();
     madt_init();
     apic_init();
+
+    smp_init();
+    kernel_cpu_init();
 
     time_init();
     pid_init();
@@ -67,9 +71,22 @@ void kernel_init(BootInfo* bootInfo)
     vfs_init();
     //device_disk_init();
     ram_disk_init(bootInfo->ramRoot);
-
-    master_init();
-    worker_pool_init();
     
     deallocate_boot_info(bootInfo);
+}
+
+//Cpu specific init
+void kernel_cpu_init()
+{
+    local_apic_init();
+
+    Cpu* cpu = smp_self_brute();
+    write_msr(MSR_CPU_ID, cpu->id);
+    
+    gdt_load();
+    gdt_load_tss(cpu->tss);
+
+    idt_load();
+
+    *((uint64_t*)0x100000) = 1;
 }

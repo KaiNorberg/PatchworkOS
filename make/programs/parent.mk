@@ -16,6 +16,6 @@ $(PARENT_BUILD_DIR)/%.s.o: $(PARENT_SRC_DIR)/%.s
 
 $(PARENT_OUTPUT): $(PARENT_OBJECTS)	
 	@mkdir -p $(@D)
-	$(LD) $(PROGRAM_LD_FLAGS) -lasym -o $@ $^
+	$(LD) $(PROGRAM_LD_FLAGS) -lsystem -o $@ $^
 
 BUILD += $(PARENT_OUTPUT)

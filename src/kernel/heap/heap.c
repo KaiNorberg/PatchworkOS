@@ -33,16 +33,12 @@ static inline HeapHeader* heap_split(HeapHeader* block, uint64_t size)
 
 void heap_init()
 {    
-    tty_start_message("Kernel Heap initializing");
-
     firstBlock = vmm_allocate(1);
     firstBlock->size = PAGE_SIZE - sizeof(HeapHeader);
     firstBlock->next = 0;
     firstBlock->reserved = 0;
 
     lock = lock_new();
-
-    tty_end_message(TTY_MESSAGE_OK);
 }
 
 uint64_t heap_total_size()

@@ -12,8 +12,6 @@
 
 #define IDT_VECTOR_AMOUNT 256
 
-#define IDT_EXCEPTION_AMOUNT 0x20
-
 typedef struct __attribute__((packed))
 {
 	uint16_t isrLow;      
@@ -36,8 +34,6 @@ typedef struct __attribute__((packed))
 	IdtEntry entries[IDT_VECTOR_AMOUNT];
 } Idt;
 
-extern void idt_load_descriptor(IdtDesc* descriptor);
+void idt_init();
 
-void idt_load(Idt* idt);
-
-void idt_set_vector(Idt* idt, uint8_t vector, void* isr, uint8_t privilageLevel, uint8_t gateType);
+void idt_load();

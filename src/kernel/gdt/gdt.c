@@ -5,6 +5,7 @@
 
 #include <libc/string.h>
 
+__attribute__((aligned(0x1000)))
 static Gdt gdt;
 
 void gdt_init()

@@ -148,6 +148,9 @@ void debug_panic(const char* message)
 
 void debug_exception(InterruptFrame const* interruptFrame, const char* message)
 {
+    uint64_t oldRow = tty_get_row();
+    uint64_t oldColumn = tty_get_column();
+
     debug_start(message);
 
     debug_move("Interrupt Frame", 0, 0);
@@ -197,4 +200,6 @@ void debug_exception(InterruptFrame const* interruptFrame, const char* message)
     debug_print("Unlocked Pages = ", pmm_free_amount());
 
     tty_set_scale(1);
+    tty_set_row(oldRow);
+    tty_set_column(oldColumn);
 }

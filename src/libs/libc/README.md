@@ -1,1 +1,0 @@
-This libc implementation is based on PDCLIB https://github.com/DevSolar/pdclib/tree/master.
