@@ -16,6 +16,6 @@ $(SLEEP_TEST_BUILD_DIR)/%.s.o: $(SLEEP_TEST_SRC_DIR)/%.s
 
 $(SLEEP_TEST_OUTPUT): $(SLEEP_TEST_OBJECTS)
 	@mkdir -p $(@D)
-	$(LD) $(PROGRAM_LD_FLAGS) -lasym -o $@ $^
+	$(LD) $(PROGRAM_LD_FLAGS) -lsystem -o $@ $^
 
 BUILD += $(SLEEP_TEST_OUTPUT)

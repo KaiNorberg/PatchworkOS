@@ -14,6 +14,8 @@ BIN_DIR = bin
 BUILD_DIR = build
 MAKE_DIR = make
 
+OUTPUT_IMAGE = bin/PatchworkOS.img
+
 LIB_SRC_DIR = src/libs
 LIB_BIN_DIR = bin/libs
 LIB_BUILD_DIR = build/libs
@@ -84,21 +86,22 @@ build: $(BUILD)
 
 deploy:
 	@echo "!====== RUNNING DEPLOY ======!"
-	dd if=/dev/zero of=bin/Asym.img bs=4096 count=1024
-	mkfs -t vfat bin/Asym.img                          
-	mmd -i bin/Asym.img ::/boot
-	mmd -i bin/Asym.img ::/efi
-	mmd -i bin/Asym.img ::/efi/boot
-	mcopy -i bin/Asym.img -s $(BOOT_OUTPUT_EFI) ::efi/boot
-	mcopy -i bin/Asym.img -s $(KERNEL_OUTPUT) ::boot
-	mcopy -i bin/Asym.img -s $(ROOT_DIR)/* ::
-	mcopy -i bin/Asym.img -s $(BIN_DIR)/programs ::/bin
+	dd status=progress if=/dev/zero of=$(OUTPUT_IMAGE) bs=4096 count=1024
+	mkfs -t vfat $(OUTPUT_IMAGE)
+	mlabel -i $(OUTPUT_IMAGE) -s ::PatchworkOS
+	mmd -i $(OUTPUT_IMAGE) ::/boot
+	mmd -i $(OUTPUT_IMAGE) ::/efi
+	mmd -i $(OUTPUT_IMAGE) ::/efi/boot
+	mcopy -i $(OUTPUT_IMAGE) -s $(BOOT_OUTPUT_EFI) ::efi/boot
+	mcopy -i $(OUTPUT_IMAGE) -s $(KERNEL_OUTPUT) ::boot
+	mcopy -i $(OUTPUT_IMAGE) -s $(ROOT_DIR)/* ::
+	mcopy -i $(OUTPUT_IMAGE) -s $(BIN_DIR)/programs ::/bin
 
 all: build deploy
 
 run:
 	@qemu-system-x86_64 \
-    -drive file=bin/Asym.img \
+    -drive file=$(OUTPUT_IMAGE) \
     -m 1G \
     -cpu qemu64 \
     -smp 8 \

@@ -1,13 +1,10 @@
-# Asym OS [![License](https://img.shields.io/badge/licence-MIT-green)](https://github.com/Kaj9296/Asym/blob/main/LICENSE)
+# Patchwork OS [![License](https://img.shields.io/badge/licence-MIT-green)](https://github.com/Kaj9296/PatchworkOS/blob/main/LICENSE)
 
-**Keep in mind that Asym is currently in a very early stage of development.**
-
-*Note: Previously known as Patchwork OS.*
+**Keep in mind that PatchworkOS is currently in a very early stage of development.**
 
 ## Features
 
   - Multicore 64bit monolithic kernel
-  - Asymmetric multiprocessing
   - Custom UEFI bootloader
   - More to be added...
 
@@ -19,17 +16,17 @@
 
 <ins>**1. Cloning (downloading) this repository**</ins>
 
-To clone (download) this repository, you can use the ```Code``` button at the top left of the screen, or if you have git installed use the following command ```git clone --recursive https://github.com/Kaj9296/Asym```.
+To clone (download) this repository, you can use the ```Code``` button at the top left of the screen, or if you have git installed use the following command ```git clone --recursive https://github.com/Kaj9296/PatchworkOS```.
 
-<ins>**2. Building Asym**</ins>
+<ins>**2. Building Patchwork**</ins>
 
-In order to build Asym you will need to use either Linux or WSL. You will also need to have Make, mtools, NASM and GCC installed, it is also possible to use clang by just editing the Makefile.
+In order to build Patchwork you will need to use either Linux or if you insist WSL. You will also need to have Make, NASM and GCC installed, it is also possible to use clang by just editing the Makefile.
 
 After everything is installed simply run ```make setup all```. You should then find a .img file in the bin directory.
 
-<ins>**3. Running Asym**</ins>
+<ins>**3. Running Patchwork**</ins>
 
-There are three ways to run Asym.
+There are three ways to run Patchwork.
 
 1. Use a tool like [balenaEtcher](https://etcher.balena.io/) to create a bootable USB using the created .img file.
 2. Download [QEMU](https://www.qemu.org/) on your Linux machine and use ```make run```.
@@ -41,8 +38,8 @@ The short term goal is to create a basic terminal/shell, however the current lon
 
 ## Documentation (WIP)
 
-Documentation can be found on the ![wiki](https://github.com/Kaj9296/Asym/wiki) page.
+Documentation can be found on the ![wiki](https://github.com/Kaj9296/PatchworkOS/wiki) page.
 
 ## Contributing
 
-Asym is intended as a personal project, therefor contributions to add features are unwanted. However if you find any bugs, issues or just have a suggestion for something i could do better, then feel free to open an issue.
+Patchwork is intended as a personal project, therefor contributions to add features are unwanted. However if you find any bugs, issues or just have a suggestion for something i could do better, then feel free to open an issue.

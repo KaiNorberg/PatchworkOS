@@ -29,9 +29,9 @@ SECTIONS
 		*(.bss)
 	}
 	
-	.worker_trampoline BLOCK(4K) : ALIGN(4K)
+	.smp_trampoline BLOCK(4K) : ALIGN(4K)
 	{
-		*(.worker_trampoline)
+		*(.smp_trampoline)
 	}
 
 	.program_loader BLOCK(4K) : ALIGN(4K)

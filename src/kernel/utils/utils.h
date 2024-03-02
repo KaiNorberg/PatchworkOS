@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 #define MSR_LOCAL_APIC 0x1B
-#define MSR_WORKER_ID 0xC0000103 //IA32_TSC_AUX
+#define MSR_CPU_ID 0xC0000103 //IA32_TSC_AUX
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))

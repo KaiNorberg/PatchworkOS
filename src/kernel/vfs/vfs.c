@@ -41,7 +41,7 @@ void file_free(File* file)
 
 void vfs_init()
 {
-    tty_start_message("Virtual File System initializing");
+    tty_start_message("VFS initializing");
 
     disks = list_new();
 
