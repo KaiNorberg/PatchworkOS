@@ -14,4 +14,4 @@
 
 typedef void(*Syscall)();
 
-void syscall_handler();
+extern void syscall_handler();

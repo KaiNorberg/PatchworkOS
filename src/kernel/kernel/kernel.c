@@ -19,6 +19,7 @@
 #include "vmm/vmm.h"
 #include "rsdt/rsdt.h"
 #include "smp/smp.h"
+#include "scheduler/scheduler.h"
 #include "utils/utils.h"
 #include "process/process.h"
 #include "program_loader/program_loader.h"
@@ -66,6 +67,7 @@ void kernel_init(BootInfo* bootInfo)
     time_init();
     pid_init();
 
+    scheduler_init();
     program_loader_init();
 
     vfs_init();

@@ -5,7 +5,6 @@
 #include "tty/tty.h"
 #include "apic/apic.h"
 #include "debug/debug.h"
-#include "ipi/ipi.h"
 #include "vmm/vmm.h"
 #include "page_directory/page_directory.h"
 #include "utils/utils.h"
@@ -63,13 +62,13 @@ void interrupt_handler(InterruptFrame* interruptFrame)
     {
         exception_handler();
     }
-    else if (interruptFrame->vector == SYSCALL_VECTOR)
-    {    
-        syscall_handler();
-    }
     else if (interruptFrame->vector == IPI_VECTOR)
     {
         ipi_handler();
+    }
+    else
+    {
+        debug_panic("Unknown interrupt vector");
     }
 
     smp_end_interrupt();
