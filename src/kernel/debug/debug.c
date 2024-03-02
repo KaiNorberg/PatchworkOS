@@ -6,6 +6,7 @@
 #include "time/time.h"
 #include "hpet/hpet.h"
 #include "utils/utils.h"
+#include "smp/smp.h"
 
 /*const char* exceptionStrings[32] = 
 {
@@ -110,84 +111,66 @@ static inline void debug_print(const char* string, uint64_t value)
 }
 
 void debug_panic(const char* message)
-{    
-    /*tty_acquire();
-
-    Pixel white;
-    white.a = 255;
-    white.r = 255;
-    white.g = 255;
-    white.b = 255;
-
-    Pixel red;
-    red.a = 255;
-    red.r = 224;
-    red.g = 108;
-    red.b = 117;
-
-    //debug_move(0, 0, red);
-    tty_print("KERNEL PANIC! - "); tty_print(message);
-
-    //debug_move(2, 0);
-    tty_print("[Time]"); 
-    tty_print("Tick = "); tty_printx(hpet_read_counter());
-    tty_print("Current Time = "); tty_printx(time_nanoseconds());
-
-    //debug_move(2, 2);
-    tty_print("[Memory]"); 
-    tty_print("Free Heap = "); tty_printx(heap_free_size());
-    tty_print("Reserved Heap = "); tty_printx(heap_reserved_size());
-    tty_print("Locked Pages = "); tty_printx(pmm_reserved_amount());
-    tty_print("Unlocked Pages = "); tty_printx(pmm_free_amount());
-
-    while (1)
-    {
-        asm volatile("hlt");
-    }*/
-}
-
-void debug_exception(InterruptFrame const* interruptFrame, const char* message)
 {
-    uint64_t oldRow = tty_get_row();
-    uint64_t oldColumn = tty_get_column();
+    Cpu const* self = smp_self();
+
+    Ipi ipi = 
+    {
+        .type = IPI_TYPE_HALT
+    };
+    smp_send_ipi_to_others(ipi);
+
+    tty_acquire();
+
+    uint32_t oldRow = tty_get_row();
+    uint32_t oldColumn = tty_get_column();
 
     debug_start(message);
 
+    InterruptFrame const* interruptFrame = self->interruptFrame;
+
     debug_move("Interrupt Frame", 0, 0);
-    debug_print("Exception = ", interruptFrame->vector);
-    debug_print("Error Code = ", interruptFrame->errorCode);
-    debug_print("Instruction Pointer = ", interruptFrame->instructionPointer);
-    debug_print("Stack Pointer = ", interruptFrame->stackPointer);
-    debug_print("RFLAGS = ", interruptFrame->flags);
-    debug_print("Code Segment = ", interruptFrame->codeSegment);
-    debug_print("Stack Segment = ", interruptFrame->stackSegment);
+    if (interruptFrame != 0)
+    {
+        debug_print("Vector = ", interruptFrame->vector);
+        debug_print("Error Code = ", interruptFrame->errorCode);
+        debug_print("Instruction Pointer = ", interruptFrame->instructionPointer);
+        debug_print("Stack Pointer = ", interruptFrame->stackPointer);
+        debug_print("RFLAGS = ", interruptFrame->flags);
+        debug_print("Code Segment = ", interruptFrame->codeSegment);
+        debug_print("Stack Segment = ", interruptFrame->stackSegment);
 
-    uint64_t cr2;
-    uint64_t cr4;
-    READ_REGISTER("cr2", cr2);
-    READ_REGISTER("cr4", cr4);
+        uint64_t cr2;
+        uint64_t cr4;
+        READ_REGISTER("cr2", cr2);
+        READ_REGISTER("cr4", cr4);
 
-    debug_move("Registers", 2, 0);
-    debug_print("R9 = ", interruptFrame->r9);
-    debug_print("R8 = ", interruptFrame->r8);
-    debug_print("RBP = ", interruptFrame->rbp);
-    debug_print("RDI = ", interruptFrame->rdi);
-    debug_print("RSI = ", interruptFrame->rsi);
-    debug_print("RDX = ", interruptFrame->rdx);
-    debug_print("RCX = ", interruptFrame->rcx);
-    debug_print("RBX = ", interruptFrame->rbx);
-    debug_print("RAX = ", interruptFrame->rax);
+        debug_move("Registers", 2, 0);
+        debug_print("R9 = ", interruptFrame->r9);
+        debug_print("R8 = ", interruptFrame->r8);
+        debug_print("RBP = ", interruptFrame->rbp);
+        debug_print("RDI = ", interruptFrame->rdi);
+        debug_print("RSI = ", interruptFrame->rsi);
+        debug_print("RDX = ", interruptFrame->rdx);
+        debug_print("RCX = ", interruptFrame->rcx);
+        debug_print("RBX = ", interruptFrame->rbx);
+        debug_print("RAX = ", interruptFrame->rax);
 
-    debug_move(0, 3, 0);
-    debug_print("CR2 = ", cr2);
-    debug_print("CR3 = ", interruptFrame->cr3);
-    debug_print("CR4 = ", cr4);
-    debug_print("R15 = ", interruptFrame->r15);
-    debug_print("R14 = ", interruptFrame->r14);
-    debug_print("R13 = ", interruptFrame->r13);
-    debug_print("R12 = ", interruptFrame->r12);
-    debug_print("R11 = ", interruptFrame->r11);
-    debug_print("R10 = ", interruptFrame->r10);
+        debug_move(0, 3, 0);
+        debug_print("CR2 = ", cr2);
+        debug_print("CR3 = ", interruptFrame->cr3);
+        debug_print("CR4 = ", cr4);
+        debug_print("R15 = ", interruptFrame->r15);
+        debug_print("R14 = ", interruptFrame->r14);
+        debug_print("R13 = ", interruptFrame->r13);
+        debug_print("R12 = ", interruptFrame->r12);
+        debug_print("R11 = ", interruptFrame->r11);
+        debug_print("R10 = ", interruptFrame->r10);
+    }
+    else
+    {
+        tty_print("Panic occurred outside of interrupt");
+    }
     
     debug_move("Time", 0, 13);
     debug_print("Tick = ", hpet_read_counter());
@@ -201,5 +184,13 @@ void debug_exception(InterruptFrame const* interruptFrame, const char* message)
 
     tty_set_scale(1);
     tty_set_row(oldRow);
-    tty_set_column(oldColumn);
+    tty_set_column(oldColumn);        
+    
+    tty_release();
+
+    asm volatile("cli");
+    while (1)
+    {
+        asm volatile("hlt");
+    }
 }

@@ -20,7 +20,7 @@ To clone (download) this repository, you can use the ```Code``` button at the to
 
 <ins>**2. Building Patchwork**</ins>
 
-In order to build Patchwork you will need to use either Linux or WSL. You will also need to have Make, mtools, NASM and GCC installed, it is also possible to use clang by just editing the Makefile.
+In order to build Patchwork you will need to use either Linux or if you insist WSL. You will also need to have Make, NASM and GCC installed, it is also possible to use clang by just editing the Makefile.
 
 After everything is installed simply run ```make setup all```. You should then find a .img file in the bin directory.
 

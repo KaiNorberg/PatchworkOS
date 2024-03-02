@@ -2,14 +2,48 @@
 
 #include <stdint.h>
 
-#include "cpu/cpu.h"
-#include "ipi/ipi.h"
+#include "tss/tss.h"
+#include "interrupt_frame/interrupt_frame.h"
 
 #define MAX_CPU_AMOUNT 256
 
+#define IPI_VECTOR 0x90
+
+#define IPI_TYPE_NONE 0
+#define IPI_TYPE_HALT 1
+#define IPI_TYPE_SCHEDULE 2
+
+typedef struct
+{
+    uint8_t type;
+} Ipi;
+
+typedef struct
+{
+    uint8_t present;
+    
+    uint8_t id; 
+    uint8_t localApicId;    
+    
+    Ipi ipi;
+
+    Tss* tss;
+    InterruptFrame* interruptFrame;
+} Cpu;
+
+void smp_entry();
+
 void smp_init();
 
+void smp_begin_interrupt(InterruptFrame* interruptFrame);
+
+void smp_end_interrupt();
+
 void smp_send_ipi(Cpu* cpu, Ipi ipi);
+
+void smp_send_ipi_to_others(Ipi ipi);
+
+void smp_send_ipi_to_all(Ipi ipi);
 
 Ipi smp_receive_ipi();
 

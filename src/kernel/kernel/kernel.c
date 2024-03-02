@@ -87,6 +87,4 @@ void kernel_cpu_init()
     gdt_load_tss(cpu->tss);
 
     idt_load();
-
-    *((uint64_t*)0x100000) = 1;
 }

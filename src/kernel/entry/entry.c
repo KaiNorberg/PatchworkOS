@@ -8,9 +8,9 @@ void main(BootInfo* bootInfo)
 {
     kernel_init(bootInfo);
 
-    tty_print("\n");
+    /*tty_print("\n");
 
-/*#if 1
+#if 1
     for (uint64_t i = 0; i < 16; i++)
     {
         tty_print("Loading parent...\n");

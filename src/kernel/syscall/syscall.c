@@ -254,16 +254,16 @@ Syscall syscallTable[] =
     [SYS_SEEK] = (Syscall)sys_seek
 };*/
 
-void syscall_handler(InterruptFrame* interruptFrame)
+void syscall_handler()
 {   
-    uint64_t selector = interruptFrame->rax;
+    Cpu* self = smp_self();
+
+    uint64_t selector = self->interruptFrame->rax;
 
     //Temporary for testing
     if (selector == SYS_TEST)
     {
         tty_acquire();
-
-        Cpu const* self = smp_self();
 
         tty_set_column(0);
         tty_set_row(self->id);
@@ -277,7 +277,7 @@ void syscall_handler(InterruptFrame* interruptFrame)
             tty_print(" PID: "); 
             tty_printx(worker->scheduler->runningProcess->id);
         }*/
-        const char* string = (const char*)SYSCALL_GET_ARG1(interruptFrame);
+        const char* string = (const char*)SYSCALL_GET_ARG1(self);
         if (string != 0)
         {
             tty_print(" | ");

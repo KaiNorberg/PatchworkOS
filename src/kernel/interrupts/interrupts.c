@@ -12,23 +12,21 @@
 #include "syscall/syscall.h"
 #include "smp/smp.h"
 
-void interrupt_handler(InterruptFrame* interruptFrame)
-{            
-    if (interruptFrame->vector < IRQ_BASE)
+static inline void exception_handler()
+{   
+    Cpu* self = smp_self();
+
+    switch (self->interruptFrame->vector)
     {
-        exception_handler(interruptFrame);
+    default:
+    {
+        debug_panic("Exception");
     }
-    else if (interruptFrame->vector == SYSCALL_VECTOR)
-    {
-        syscall_handler(interruptFrame);
-    }
-    else if (interruptFrame->vector == IPI_VECTOR)
-    {
-        ipi_handler(interruptFrame);
+    break;
     }
 }
 
-void ipi_handler(InterruptFrame* interruptFrame)
+static inline void ipi_handler()
 {
     Ipi ipi = smp_receive_ipi();
 
@@ -57,22 +55,22 @@ void ipi_handler(InterruptFrame* interruptFrame)
     local_apic_eoi();
 }
 
-void exception_handler(InterruptFrame* interruptFrame)
-{   
-    switch (interruptFrame->errorCode)
-    {
-    default:
-    {
-        tty_acquire();
-        debug_exception(interruptFrame, "Exception");
-        tty_release();
+void interrupt_handler(InterruptFrame* interruptFrame)
+{
+    smp_begin_interrupt(interruptFrame);
 
-        asm volatile("cli");
-        while (1)
-        {
-            asm volatile("hlt");
-        }
+    if (interruptFrame->vector < IRQ_BASE)
+    {
+        exception_handler();
     }
-    break;
+    else if (interruptFrame->vector == SYSCALL_VECTOR)
+    {    
+        syscall_handler();
     }
+    else if (interruptFrame->vector == IPI_VECTOR)
+    {
+        ipi_handler();
+    }
+
+    smp_end_interrupt();
 }

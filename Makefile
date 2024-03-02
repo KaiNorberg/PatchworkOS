@@ -86,8 +86,9 @@ build: $(BUILD)
 
 deploy:
 	@echo "!====== RUNNING DEPLOY ======!"
-	dd if=/dev/zero of=$(OUTPUT_IMAGE) bs=4096 count=1024
-	mkfs -t vfat $(OUTPUT_IMAGE)                          
+	dd status=progress if=/dev/zero of=$(OUTPUT_IMAGE) bs=4096 count=1024
+	mkfs -t vfat $(OUTPUT_IMAGE)
+	mlabel -i $(OUTPUT_IMAGE) -s ::PatchworkOS
 	mmd -i $(OUTPUT_IMAGE) ::/boot
 	mmd -i $(OUTPUT_IMAGE) ::/efi
 	mmd -i $(OUTPUT_IMAGE) ::/efi/boot

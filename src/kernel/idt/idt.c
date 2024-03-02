@@ -1,5 +1,6 @@
 #include "idt.h"
 
+#include "syscall/syscall.h"
 #include "interrupts/interrupts.h"
 
 __attribute__((aligned(0x1000)))
@@ -29,7 +30,7 @@ void idt_init()
         idt_set_vector((uint8_t)vector, vectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
     }        
     
-    //idt_set_vector(&idt, SYSCALL_VECTOR, vectorTable[SYSCALL_VECTOR], IDT_RING3, IDT_INTERRUPT_GATE);
+    idt_set_vector(SYSCALL_VECTOR, vectorTable[SYSCALL_VECTOR], IDT_RING3, IDT_INTERRUPT_GATE);
 }
 
 void idt_load()

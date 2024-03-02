@@ -2,19 +2,16 @@
 
 #include <libc/string.h>
 
-#include "smp/trampoline/trampoline.h"
-#include "madt/madt.h"
 #include "tty/tty.h"
-#include "pmm/pmm.h"
-#include "vmm/vmm.h"
 #include "apic/apic.h"
-#include "hpet/hpet.h"
-#include "utils/utils.h"
 #include "debug/debug.h"
+#include "utils/utils.h"
+#include "smp/trampoline/trampoline.h"
+#include "smp/startup/startup.h"
 
 static Cpu cpus[MAX_CPU_AMOUNT];
 static uint8_t cpuAmount;
- 
+
 void smp_init()
 {
     tty_start_message("SMP initializing");
@@ -23,36 +20,49 @@ void smp_init()
     cpuAmount = 0;
 
     smp_trampoline_setup();
-
-    LocalApicRecord* record = madt_first_record(MADT_RECORD_TYPE_LOCAL_APIC);
-    while (record != 0)
-    {
-        if (LOCAL_APIC_RECORD_GET_FLAG(record, LOCAL_APIC_RECORD_FLAG_ENABLEABLE))
-        {
-            uint8_t id = cpuAmount;
-            cpuAmount++;
-
-            if (!cpu_init(&cpus[id], id, record->localApicId))
-            {    
-                tty_print("CPU ");
-                tty_printi(id);
-                tty_print(" failed to start!");
-                tty_end_message(TTY_MESSAGE_ER);
-            }
-        }
-
-        record = madt_next_record(record, MADT_RECORD_TYPE_LOCAL_APIC);
-    }
-
+    smp_startup(cpus, &cpuAmount);
     smp_trampoline_cleanup();
 
     tty_end_message(TTY_MESSAGE_OK);
+}
+
+void smp_begin_interrupt(InterruptFrame* interruptFrame)
+{
+    Cpu* self = smp_self();
+
+    self->interruptFrame = interruptFrame;
+}
+
+void smp_end_interrupt()
+{
+    Cpu* self = smp_self();
+
+    self->interruptFrame = 0;
 }
 
 void smp_send_ipi(Cpu* cpu, Ipi ipi)
 {
     cpu->ipi = ipi;
     local_apic_send_ipi(cpu->localApicId, IPI_VECTOR);
+}
+
+void smp_send_ipi_to_others(Ipi ipi)
+{
+    for (uint8_t id = 0; id < cpuAmount; id++)
+    {
+        Cpu* cpu = smp_cpu(id);
+
+        if (cpu->localApicId != local_apic_id())
+        {
+            smp_send_ipi(cpu, ipi);
+        }
+    }
+}
+
+void smp_send_ipi_to_all(Ipi ipi)
+{
+    smp_send_ipi_to_others(ipi);
+    smp_send_ipi(smp_self(), ipi);
 }
 
 Ipi smp_receive_ipi()

@@ -23,7 +23,3 @@
 #define IRQ_AMOUNT 0x10
 
 void interrupt_handler(InterruptFrame* interruptFrame);
-
-void ipi_handler(InterruptFrame* interruptFrame);
-
-void exception_handler(InterruptFrame* interruptFrame);

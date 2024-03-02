@@ -6,7 +6,6 @@
 #include "utils/utils.h"
 #include "heap/heap.h"
 #include "vmm/vmm.h"
-#include "cpu/cpu.h"
 
 static PageDirectory* pageDirectory;
 static void* backupBuffer;
@@ -23,7 +22,7 @@ void smp_trampoline_setup()
     memcpy(vmm_physical_to_virtual(SMP_TRAMPOLINE_PHYSICAL_START), smp_trampoline_virtual_start, PAGE_SIZE);
 
     WRITE_64(vmm_physical_to_virtual(SMP_TRAMPOLINE_PAGE_DIRECTORY_ADDRESS), (uint64_t)pageDirectory);
-    WRITE_64(vmm_physical_to_virtual(SMP_TRAMPOLINE_ENTRY_ADDRESS), cpu_entry);
+    WRITE_64(vmm_physical_to_virtual(SMP_TRAMPOLINE_ENTRY_ADDRESS), smp_entry);
 }
 
 void smp_trampoline_cpu_setup(Cpu* cpu)
