@@ -4,12 +4,10 @@
 #include <libc/string.h>
 
 #include "heap/heap.h"
-#include "pmm/pmm.h"
 #include "vmm/vmm.h"
+#include "pmm/pmm.h"
 #include "gdt/gdt.h"
 #include "debug/debug.h"
-
-#include "program_loader/program_loader.h"
 
 atomic_size_t pid;
 
@@ -23,12 +21,12 @@ uint64_t pid_new()
     return atomic_fetch_add_explicit(&pid, 1, memory_order_seq_cst);
 }
 
-Process* process_new(const char* path, uint8_t priority)
+Process* process_new()
 {
-    if (priority > PROCESS_PRIORITY_MAX)
+    /*if (priority > PROCESS_PRIORITY_MAX)
     {
         debug_panic("Priority level out of bounds");
-    }
+    }*/
 
     Process* process = kmalloc(sizeof(Process));
     memset(process, 0, sizeof(Process));
@@ -39,7 +37,7 @@ Process* process_new(const char* path, uint8_t priority)
     vmm_map_kernel(process->pageDirectory);
 
     process->fileTable = file_table_new();
-    process->interruptFrame = 
+    /*process->interruptFrame = 
         interrupt_frame_new(program_loader_entry, (void*)(VMM_LOWER_HALF_MAX - 1), process->pageDirectory);
     process->status = STATUS_SUCCESS;
     process->state = PROCESS_STATE_READY;
@@ -55,7 +53,7 @@ Process* process_new(const char* path, uint8_t priority)
     memcpy(dest, path, length + 1);
 
     process->interruptFrame->stackPointer -= length + 1;
-    process->interruptFrame->rdi = VMM_LOWER_HALF_MAX - 1 - length - 1;
+    process->interruptFrame->rdi = VMM_LOWER_HALF_MAX - 1 - length - 1;*/
 
     return process;
 }
@@ -65,7 +63,7 @@ void process_free(Process* process)
     page_directory_free(process->pageDirectory);
 
     file_table_free(process->fileTable);
-    interrupt_frame_free(process->interruptFrame);
+    //interrupt_frame_free(process->interruptFrame);
 
     kfree(process);
 }

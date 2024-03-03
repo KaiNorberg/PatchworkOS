@@ -26,18 +26,42 @@ void smp_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-void smp_begin_interrupt(InterruptFrame* interruptFrame)
+void smp_begin_interrupt()
 {
     Cpu* self = smp_self();
-
-    self->interruptFrame = interruptFrame;
+    self->interruptDepth++;
 }
 
 void smp_end_interrupt()
 {
     Cpu* self = smp_self();
+    self->interruptDepth--;
+}
 
-    self->interruptFrame = 0;
+Cpu* smp_acquire()
+{
+    asm volatile("cli");    
+    
+    Cpu* self = smp_self();
+    if (self->interruptDepth == 0)
+    {
+        self->cliDepth++;
+    }
+
+    return self;
+}
+
+void smp_release()
+{
+    Cpu* self = smp_self();
+    if (self->interruptDepth == 0)
+    {
+        self->cliDepth--;
+        if (self->cliDepth == 0)
+        {    
+            asm volatile("sti");
+        }
+    }
 }
 
 void smp_send_ipi(Cpu* cpu, Ipi ipi)
@@ -59,10 +83,16 @@ void smp_send_ipi_to_others(Ipi ipi)
     }
 }
 
+void smp_send_ipi_to_self(Ipi ipi)
+{
+    smp_self()->ipi = ipi;
+    asm volatile("int $0x90");
+}
+
 void smp_send_ipi_to_all(Ipi ipi)
 {
     smp_send_ipi_to_others(ipi);
-    smp_send_ipi(smp_self(), ipi);
+    smp_send_ipi_to_self(ipi);
 }
 
 Ipi smp_receive_ipi()
@@ -104,6 +134,6 @@ Cpu* smp_self_brute()
         }
     }    
 
-    debug_panic("Unable to find worker");
+    debug_panic("Unable to find cpu");
     return 0;
 }

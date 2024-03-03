@@ -2,20 +2,25 @@
 #include <stdint.h>
 
 #include "tty/tty.h"
+#include "smp/smp.h"
+#include "time/time.h"
 #include "kernel/kernel.h"
+#include "scheduler/scheduler.h"
+
+#include "interrupts/interrupts.h"
 
 void main(BootInfo* bootInfo)
 {
     kernel_init(bootInfo);
 
-    /*tty_print("\n");
+    tty_print("\n");
 
 #if 1
-    for (uint64_t i = 0; i < 16; i++)
+    for (uint64_t i = 0; i < 8; i++)
     {
         tty_print("Loading parent...\n");
 
-        worker_pool_spawn("ram:/bin/parent.elf");
+        scheduler_spawn("ram:/bin/parent.elf");
     }
 #else
     for (uint64_t i = 0; i < 4; i++)
@@ -24,15 +29,19 @@ void main(BootInfo* bootInfo)
 
         worker_pool_spawn("ram:/bin/sleep_test.elf");
     }
-#endif*/
+#endif
 
     tty_print("\n\rKernel Initialized!\n\n");
 
     //Temporary for testing
-    /*tty_clear();
+    tty_clear();
     tty_set_row(20);
 
-    master_entry();*/
+    Ipi ipi = 
+    {
+        .type = IPI_TYPE_SCHEDULE
+    };
+    smp_send_ipi_to_all(ipi);
 
     while (1)
     {

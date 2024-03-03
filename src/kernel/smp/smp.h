@@ -27,21 +27,31 @@ typedef struct
     
     Ipi ipi;
 
-    Tss* tss;
-    InterruptFrame* interruptFrame;
+    Tss* tss;    
+    void* idleStackTop;
+    void* idleStackBottom;
+
+    uint64_t interruptDepth;
+    uint64_t cliDepth;
 } Cpu;
 
 void smp_entry();
 
 void smp_init();
 
-void smp_begin_interrupt(InterruptFrame* interruptFrame);
+void smp_begin_interrupt();
 
 void smp_end_interrupt();
+
+Cpu* smp_acquire();
+
+void smp_release();
 
 void smp_send_ipi(Cpu* cpu, Ipi ipi);
 
 void smp_send_ipi_to_others(Ipi ipi);
+
+void smp_send_ipi_to_self(Ipi ipi);
 
 void smp_send_ipi_to_all(Ipi ipi);
 

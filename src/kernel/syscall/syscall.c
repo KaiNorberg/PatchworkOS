@@ -254,49 +254,33 @@ Syscall syscallTable[] =
     [SYS_SEEK] = (Syscall)sys_seek
 };*/
 
-void syscall_handler()
+void syscall_handler_c()
 {   
-    Cpu* self = smp_self();
+    Cpu* self = smp_acquire();
+    tty_acquire();
 
-    uint64_t selector = self->interruptFrame->rax;
+    tty_set_column(0);
+    tty_set_row(self->id);
 
-    //Temporary for testing
-    if (selector == SYS_TEST)
+    tty_print("CPU: ");
+    tty_printx(self->id); 
+    /*tty_print(" PROCESS AMOUNT: "); 
+    tty_printx(scheduler_process_amount(worker->scheduler));
+    if (worker->scheduler->runningProcess != 0)
     {
-        tty_acquire();
-
-        tty_set_column(0);
-        tty_set_row(self->id);
-
-        tty_print("CPU: ");
-        tty_printx(self->id); 
-        tty_print(" PROCESS AMOUNT: "); 
-        /*tty_printx(scheduler_process_amount(worker->scheduler));
-        if (worker->scheduler->runningProcess != 0)
-        {
-            tty_print(" PID: "); 
-            tty_printx(worker->scheduler->runningProcess->id);
-        }*/
-        const char* string = (const char*)SYSCALL_GET_ARG1(self);
-        if (string != 0)
-        {
-            tty_print(" | ");
-            tty_print(string);
-        }
-        tty_print(" ");
-        tty_printx(time_nanoseconds());
-        tty_print("                                 ");
-
-        tty_release();
-        return;
+        tty_print(" PID: "); 
+        tty_printx(worker->scheduler->runningProcess->id);
     }
-
-    /*if (selector < sizeof(syscallTable) / sizeof(Syscall))
+    const char* string = (const char*)SYSCALL_GET_ARG1(self);
+    if (string != 0)
     {
-        syscallTable[selector](interruptFrame);
-    }
-    else
-    {
-        syscall_return_error(interruptFrame, STATUS_NOT_ALLOWED);
+        tty_print(" | ");
+        tty_print(string);
     }*/
+    tty_print(" ");
+    tty_printx(time_nanoseconds());
+    tty_print("                                 ");
+
+    tty_release();
+    smp_release();
 }

@@ -10,12 +10,16 @@
 #include "utils/utils.h"
 #include "syscall/syscall.h"
 #include "smp/smp.h"
+#include "scheduler/scheduler.h"
 
-static inline void exception_handler()
+#include <libc/string.h>
+
+static uint8_t inInterrupt[MAX_CPU_AMOUNT];
+static uint16_t cliDepth[MAX_CPU_AMOUNT];
+
+static inline void exception_handler(InterruptFrame* interruptFrame)
 {   
-    Cpu* self = smp_self();
-
-    switch (self->interruptFrame->vector)
+    switch (interruptFrame->vector)
     {
     default:
     {
@@ -25,7 +29,7 @@ static inline void exception_handler()
     }
 }
 
-static inline void ipi_handler()
+static inline void ipi_handler(InterruptFrame* interruptFrame)
 {
     Ipi ipi = smp_receive_ipi();
 
@@ -42,11 +46,7 @@ static inline void ipi_handler()
     break;
     case IPI_TYPE_SCHEDULE:
     {
-        /*Worker* worker = worker_self();
-
-        scheduler_acquire(worker->scheduler);
-        scheduler_schedule(worker->scheduler, interruptFrame);
-        scheduler_release(worker->scheduler);*/
+        scheduler_schedule(interruptFrame);
     }
     break;
     }        
@@ -55,21 +55,21 @@ static inline void ipi_handler()
 }
 
 void interrupt_handler(InterruptFrame* interruptFrame)
-{
-    smp_begin_interrupt(interruptFrame);
+{   
+    smp_begin_interrupt();
 
     if (interruptFrame->vector < IRQ_BASE)
     {
-        exception_handler();
+        exception_handler(interruptFrame);
     }
     else if (interruptFrame->vector == IPI_VECTOR)
     {
-        ipi_handler();
+        ipi_handler(interruptFrame);
     }
     else
     {
         debug_panic("Unknown interrupt vector");
-    }
+    } 
 
     smp_end_interrupt();
 }
