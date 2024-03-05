@@ -31,6 +31,7 @@ typedef struct
     void* idleStackTop;
     void* idleStackBottom;
 
+    uint64_t interruptsEnabled;
     uint64_t interruptDepth;
     uint64_t cliDepth;
 } Cpu;
@@ -43,9 +44,9 @@ void smp_begin_interrupt();
 
 void smp_end_interrupt();
 
-Cpu* smp_acquire();
+void smp_push_cli();
 
-void smp_release();
+void smp_pop_cli();
 
 void smp_send_ipi(Cpu* cpu, Ipi ipi);
 
@@ -59,7 +60,7 @@ Ipi smp_receive_ipi();
 
 uint8_t smp_cpu_amount();
 
-Cpu* smp_cpu(uint8_t id);
+Cpu const* smp_cpu(uint8_t id);
 
 Cpu* smp_self();
 

@@ -23,6 +23,7 @@
 #include "utils/utils.h"
 #include "process/process.h"
 #include "lock/lock.h"
+#include "irq/irq.h"
 #include "interrupts/interrupts.h"
 #include "program_loader/program_loader.h"
 
@@ -65,6 +66,8 @@ void kernel_init(BootInfo* bootInfo)
 
     smp_init();
     kernel_cpu_init();
+
+    irq_init();
 
     time_init();
     pid_init();

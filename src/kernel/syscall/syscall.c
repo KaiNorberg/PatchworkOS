@@ -12,6 +12,7 @@
 #include "vfs/vfs.h"
 #include "utils/utils.h"
 #include "smp/smp.h"
+#include "scheduler/scheduler.h"
 #include "program_loader/program_loader.h"
 
 /*static inline uint8_t syscall_verify_pointer(const void* pointer, uint64_t size)
@@ -254,33 +255,30 @@ Syscall syscallTable[] =
     [SYS_SEEK] = (Syscall)sys_seek
 };*/
 
-void syscall_handler_c()
+int64_t syscall_handler_c(const char* string)
 {   
-    Cpu* self = smp_acquire();
+    Cpu* self = smp_self();
     tty_acquire();
-
+    
     tty_set_column(0);
     tty_set_row(self->id);
 
     tty_print("CPU: ");
     tty_printx(self->id); 
-    /*tty_print(" PROCESS AMOUNT: "); 
-    tty_printx(scheduler_process_amount(worker->scheduler));
-    if (worker->scheduler->runningProcess != 0)
-    {
-        tty_print(" PID: "); 
-        tty_printx(worker->scheduler->runningProcess->id);
-    }
-    const char* string = (const char*)SYSCALL_GET_ARG1(self);
+    tty_print(" THREAD AMOUNT: "); 
+    tty_printx(scheduler_local_thread_amount());
+    tty_print(" PID: "); 
+    tty_printx(scheduler_self()->process->id);
     if (string != 0)
     {
         tty_print(" | ");
         tty_print(string);
-    }*/
+    }
     tty_print(" ");
     tty_printx(time_nanoseconds());
     tty_print("                                 ");
 
     tty_release();
-    smp_release();
+
+    return 0;
 }

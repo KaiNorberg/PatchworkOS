@@ -30,7 +30,7 @@ void idt_init()
         idt_set_vector((uint8_t)vector, vectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
     }        
     
-    //TODO: Replace syscall interrupt with syscall instruction.
+    //TODO: Replace syscall trap with syscall instruction.
     idt_set_vector(SYSCALL_VECTOR, syscall_handler, IDT_RING3, IDT_TRAP_GATE);
 }
 

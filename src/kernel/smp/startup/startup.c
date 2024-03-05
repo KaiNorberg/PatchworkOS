@@ -18,14 +18,16 @@ static inline uint8_t cpu_init(Cpu* cpu, uint8_t id, uint8_t localApicId)
     cpu->present = 1;
     cpu->id = id;
     cpu->localApicId = localApicId;
+    cpu->ipi = (Ipi){.type = IPI_TYPE_NONE};
 
     cpu->tss = tss_new();
     cpu->idleStackBottom = vmm_allocate(1);
     cpu->idleStackTop = (void*)((uint64_t)cpu->idleStackBottom + 0xFFF);
     cpu->tss->rsp0 = (uint64_t)cpu->idleStackTop;
 
-    cpu->ipi = (Ipi){.type = IPI_TYPE_NONE};
+    cpu->interruptsEnabled = 0;
     cpu->interruptDepth = 0;
+    cpu->cliDepth = 0;
 
     if (localApicId == local_apic_id())
     {

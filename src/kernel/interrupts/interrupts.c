@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 
+#include "irq/irq.h"
 #include "tty/tty.h"
 #include "apic/apic.h"
 #include "debug/debug.h"
@@ -13,9 +14,6 @@
 #include "scheduler/scheduler.h"
 
 #include <libc/string.h>
-
-static uint8_t inInterrupt[MAX_CPU_AMOUNT];
-static uint16_t cliDepth[MAX_CPU_AMOUNT];
 
 static inline void exception_handler(InterruptFrame* interruptFrame)
 {   
@@ -46,7 +44,7 @@ static inline void ipi_handler(InterruptFrame* interruptFrame)
     break;
     case IPI_TYPE_SCHEDULE:
     {
-        scheduler_schedule(interruptFrame);
+        //Does nothing, scheduler is invoked in interrupt_handler
     }
     break;
     }        
@@ -55,12 +53,16 @@ static inline void ipi_handler(InterruptFrame* interruptFrame)
 }
 
 void interrupt_handler(InterruptFrame* interruptFrame)
-{   
+{
     smp_begin_interrupt();
 
     if (interruptFrame->vector < IRQ_BASE)
     {
         exception_handler(interruptFrame);
+    }
+    else if (interruptFrame->vector >= IRQ_BASE && interruptFrame->vector < IRQ_BASE + IRQ_AMOUNT)
+    {
+        irq_dispatch(interruptFrame);
     }
     else if (interruptFrame->vector == IPI_VECTOR)
     {
@@ -69,7 +71,12 @@ void interrupt_handler(InterruptFrame* interruptFrame)
     else
     {
         debug_panic("Unknown interrupt vector");
-    } 
+    }
+
+    if (scheduler_wants_to_schedule())
+    {
+        scheduler_schedule(interruptFrame);
+    }
 
     smp_end_interrupt();
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "time/time.h"
 #include "lock/lock.h"
 #include "queue/queue.h"
 #include "process/process.h"
@@ -13,6 +14,8 @@
 #define THREAD_PRIORITY_LEVELS 2
 #define THREAD_PRIORITY_MIN 0
 #define THREAD_PRIORITY_MAX (THREAD_PRIORITY_LEVELS - 1)
+
+#define SCHEDULER_TIME_SLICE (NANOSECONDS_PER_SECOND / 2)
 
 typedef struct
 {
@@ -40,7 +43,7 @@ typedef struct
 {
     Queue* queues[THREAD_PRIORITY_LEVELS];
     Thread* runningThread;
-
+    
     Lock lock;
 } Scheduler;
 
@@ -52,4 +55,9 @@ Thread* scheduler_self();
 
 int64_t scheduler_spawn(const char* path);
 
+uint8_t scheduler_wants_to_schedule();
+
 void scheduler_schedule(InterruptFrame* interruptFrame);
+
+//Temporary
+uint64_t scheduler_local_thread_amount();

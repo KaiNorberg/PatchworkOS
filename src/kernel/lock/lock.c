@@ -9,7 +9,7 @@ Lock lock_new()
 
 void lock_acquire(Lock* lock)
 {    
-    smp_acquire();
+    smp_push_cli();
 
     while (atomic_flag_test_and_set_explicit(lock, memory_order_acquire))
     {
@@ -21,5 +21,5 @@ void lock_release(Lock* lock)
 {
     atomic_flag_clear_explicit(lock, memory_order_release);
 
-    smp_release();
+    smp_pop_cli();
 }

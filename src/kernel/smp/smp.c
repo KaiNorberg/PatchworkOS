@@ -3,6 +3,7 @@
 #include <libc/string.h>
 
 #include "tty/tty.h"
+#include "registers/registers.h"
 #include "apic/apic.h"
 #include "debug/debug.h"
 #include "utils/utils.h"
@@ -38,29 +39,29 @@ void smp_end_interrupt()
     self->interruptDepth--;
 }
 
-Cpu* smp_acquire()
+void smp_push_cli()
 {
+    //Race condition does not matter
+    uint64_t rflags = rflags_read();
+
     asm volatile("cli");    
     
     Cpu* self = smp_self();
-    if (self->interruptDepth == 0)
+    if (self->cliDepth == 0)
     {
-        self->cliDepth++;
+        self->interruptsEnabled = rflags & RFLAGS_INTERRUPT_ENABLE;
     }
-
-    return self;
+    self->cliDepth++;
 }
 
-void smp_release()
+void smp_pop_cli()
 {
     Cpu* self = smp_self();
-    if (self->interruptDepth == 0)
+
+    self->cliDepth--;
+    if (self->cliDepth == 0 && self->interruptsEnabled)
     {
-        self->cliDepth--;
-        if (self->cliDepth == 0)
-        {    
-            asm volatile("sti");
-        }
+        asm volatile("sti");
     }
 }
 
@@ -74,7 +75,7 @@ void smp_send_ipi_to_others(Ipi ipi)
 {
     for (uint8_t id = 0; id < cpuAmount; id++)
     {
-        Cpu* cpu = smp_cpu(id);
+        Cpu* cpu = &cpus[id];
 
         if (cpu->localApicId != local_apic_id())
         {
@@ -110,7 +111,7 @@ uint8_t smp_cpu_amount()
     return cpuAmount;
 }
 
-Cpu* smp_cpu(uint8_t id)
+Cpu const* smp_cpu(uint8_t id)
 {
     return &cpus[id];
 }
@@ -124,9 +125,9 @@ Cpu* smp_self()
 Cpu* smp_self_brute()
 {
     uint8_t localApicId = local_apic_id();
-    for (uint16_t i = 0; i < cpuAmount; i++)
+    for (uint16_t id = 0; id < cpuAmount; id++)
     {
-        Cpu* cpu = smp_cpu((uint8_t)i);
+        Cpu* cpu = &cpus[id];
 
         if (cpu->present && cpu->localApicId == localApicId)
         {
