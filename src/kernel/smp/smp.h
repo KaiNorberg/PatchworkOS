@@ -27,26 +27,14 @@ typedef struct
     
     Ipi ipi;
 
-    Tss* tss;    
+    Tss* tss;
     void* idleStackTop;
     void* idleStackBottom;
-
-    uint64_t interruptsEnabled;
-    uint64_t interruptDepth;
-    uint64_t cliDepth;
 } Cpu;
 
 void smp_entry();
 
 void smp_init();
-
-void smp_begin_interrupt();
-
-void smp_end_interrupt();
-
-void smp_push_cli();
-
-void smp_pop_cli();
 
 void smp_send_ipi(Cpu* cpu, Ipi ipi);
 

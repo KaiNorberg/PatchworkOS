@@ -5,15 +5,19 @@
 #include "heap/heap.h"
 #include "gdt/gdt.h"
 #include "time/time.h"
+#include "interrupts/interrupts.h"
 
 #include "program_loader/program_loader.h"
 
 #include <libc/string.h>
 
-static Scheduler* schedulers[MAX_CPU_AMOUNT];
+static Scheduler** schedulers;
 
 void scheduler_init()
 {
+    schedulers = kmalloc(sizeof(Scheduler*) * smp_cpu_amount());
+    memset(schedulers, 0, sizeof(Scheduler*) * smp_cpu_amount());
+
     for (uint64_t i = 0; i < smp_cpu_amount(); i++)
     {
         Cpu const* cpu = smp_cpu(i);
@@ -32,9 +36,9 @@ void scheduler_init()
 
 Thread* scheduler_self()
 {
-    smp_push_cli();
+    interrupts_disable();
     Thread* thread = schedulers[smp_self()->id]->runningThread;
-    smp_pop_cli();
+    interrupts_enable();
 
     return thread;
 }
@@ -108,7 +112,7 @@ int64_t scheduler_spawn(const char* path)
 
 uint8_t scheduler_wants_to_schedule()
 {   
-    smp_push_cli(); 
+    interrupts_disable(); 
 
     Cpu const* self = smp_self();
     Scheduler* scheduler = schedulers[self->id];
@@ -116,7 +120,7 @@ uint8_t scheduler_wants_to_schedule()
     lock_acquire(&scheduler->lock);
 
     uint8_t wantsToSchedule = 0;
-    if (self->interruptDepth > 1)
+    if (interrupt_depth() > 1)
     {
         //Cant schedule
         wantsToSchedule = 0;
@@ -157,7 +161,7 @@ uint8_t scheduler_wants_to_schedule()
     }
     
     lock_release(&scheduler->lock);
-    smp_pop_cli();
+    interrupts_enable();
     return wantsToSchedule;
 }
 
@@ -165,7 +169,7 @@ void scheduler_schedule(InterruptFrame* interruptFrame)
 {
     //This sure is messy...
 
-    smp_push_cli();
+    interrupts_disable();
 
     Cpu* self = smp_self();
     Scheduler* scheduler = schedulers[self->id];
@@ -214,13 +218,13 @@ void scheduler_schedule(InterruptFrame* interruptFrame)
     }
     lock_release(&scheduler->lock);
 
-    smp_pop_cli();
+    interrupts_enable();
 }
 
 //Temporary
 uint64_t scheduler_local_thread_amount()
 {
-    smp_push_cli();
+    interrupts_disable();
 
     Cpu* self = smp_self();
     Scheduler* scheduler = schedulers[self->id];
@@ -233,7 +237,7 @@ uint64_t scheduler_local_thread_amount()
     }
     lock_release(&scheduler->lock);
 
-    smp_pop_cli();
+    interrupts_enable();
 
     return length;
 }

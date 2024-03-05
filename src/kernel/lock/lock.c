@@ -1,6 +1,6 @@
 #include "lock.h"
 
-#include "smp/smp.h"
+#include "interrupts/interrupts.h"
 
 Lock lock_new()
 {
@@ -8,8 +8,8 @@ Lock lock_new()
 }
 
 void lock_acquire(Lock* lock)
-{    
-    smp_push_cli();
+{
+    interrupts_disable();
 
     while (atomic_flag_test_and_set_explicit(lock, memory_order_acquire))
     {
@@ -21,5 +21,5 @@ void lock_release(Lock* lock)
 {
     atomic_flag_clear_explicit(lock, memory_order_release);
 
-    smp_pop_cli();
+    interrupts_enable();
 }

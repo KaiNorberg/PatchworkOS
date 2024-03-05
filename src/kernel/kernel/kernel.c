@@ -47,8 +47,6 @@ static void deallocate_boot_info(BootInfo* bootInfo)
 
 void kernel_init(BootInfo* bootInfo)
 {
-    asm volatile("sti");
-
     pmm_init(&bootInfo->memoryMap);
     vmm_init(&bootInfo->memoryMap);
     heap_init();

@@ -7,6 +7,8 @@
 #include "apic/apic.h"
 #include "debug/debug.h"
 #include "vmm/vmm.h"
+#include "heap/heap.h"
+#include "registers/registers.h"
 #include "page_directory/page_directory.h"
 #include "utils/utils.h"
 #include "syscall/syscall.h"
@@ -15,7 +17,9 @@
 
 #include <libc/string.h>
 
-static inline void exception_handler(InterruptFrame* interruptFrame)
+static InterruptState states[MAX_CPU_AMOUNT];
+
+static inline void exception_handler(InterruptFrame const* interruptFrame)
 {   
     switch (interruptFrame->vector)
     {
@@ -27,7 +31,7 @@ static inline void exception_handler(InterruptFrame* interruptFrame)
     }
 }
 
-static inline void ipi_handler(InterruptFrame* interruptFrame)
+static inline void ipi_handler(InterruptFrame const* interruptFrame)
 {
     Ipi ipi = smp_receive_ipi();
 
@@ -44,7 +48,7 @@ static inline void ipi_handler(InterruptFrame* interruptFrame)
     break;
     case IPI_TYPE_SCHEDULE:
     {
-        //Does nothing, scheduler is invoked in interrupt_handler
+        //Does nothing, scheduling is performed in interrupt_handler
     }
     break;
     }        
@@ -52,9 +56,50 @@ static inline void ipi_handler(InterruptFrame* interruptFrame)
     local_apic_eoi();
 }
 
+static void interrupt_begin()
+{
+    states[smp_self()->id].depth++;
+}
+
+static void interrupt_end()
+{
+    states[smp_self()->id].depth--;
+}
+
+void interrupts_disable()
+{
+    //Race condition does not matter
+    uint64_t rflags = rflags_read();
+
+    asm volatile("cli");    
+    
+    InterruptState* state = &states[smp_self()->id];
+    if (state->cliAmount == 0)
+    {
+        state->enabled = rflags & RFLAGS_INTERRUPT_ENABLE;
+    }
+    state->cliAmount++;
+}
+
+void interrupts_enable()
+{
+    InterruptState* state = &states[smp_self()->id];
+
+    state->cliAmount--;
+    if (state->cliAmount == 0 && state->enabled)
+    {
+        asm volatile("sti");
+    }
+}
+
+uint64_t interrupt_depth()
+{
+    return states[smp_self()->id].depth;
+}
+
 void interrupt_handler(InterruptFrame* interruptFrame)
 {
-    smp_begin_interrupt();
+    interrupt_begin();
 
     if (interruptFrame->vector < IRQ_BASE)
     {
@@ -78,5 +123,5 @@ void interrupt_handler(InterruptFrame* interruptFrame)
         scheduler_schedule(interruptFrame);
     }
 
-    smp_end_interrupt();
+    interrupt_end();
 }

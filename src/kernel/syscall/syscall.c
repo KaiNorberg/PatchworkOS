@@ -12,6 +12,7 @@
 #include "vfs/vfs.h"
 #include "utils/utils.h"
 #include "smp/smp.h"
+#include "interrupts/interrupts.h"
 #include "scheduler/scheduler.h"
 #include "program_loader/program_loader.h"
 
@@ -257,6 +258,8 @@ Syscall syscallTable[] =
 
 int64_t syscall_handler_c(const char* string)
 {   
+    interrupts_disable();
+
     Cpu* self = smp_self();
     tty_acquire();
     
@@ -279,6 +282,8 @@ int64_t syscall_handler_c(const char* string)
     tty_print("                                 ");
 
     tty_release();
+
+    interrupts_enable();
 
     return 0;
 }

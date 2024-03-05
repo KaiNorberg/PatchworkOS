@@ -4,7 +4,6 @@
 
 #include <lib-asym.h>
 
-#include "vector/vector.h"
 #include "page_directory/page_directory.h"
 #include "vfs/vfs.h"
 #include "file_table/file_table.h"

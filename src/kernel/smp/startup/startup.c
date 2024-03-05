@@ -25,10 +25,6 @@ static inline uint8_t cpu_init(Cpu* cpu, uint8_t id, uint8_t localApicId)
     cpu->idleStackTop = (void*)((uint64_t)cpu->idleStackBottom + 0xFFF);
     cpu->tss->rsp0 = (uint64_t)cpu->idleStackTop;
 
-    cpu->interruptsEnabled = 0;
-    cpu->interruptDepth = 0;
-    cpu->cliDepth = 0;
-
     if (localApicId == local_apic_id())
     {
         return 1;

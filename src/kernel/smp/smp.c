@@ -9,6 +9,7 @@
 #include "utils/utils.h"
 #include "smp/trampoline/trampoline.h"
 #include "smp/startup/startup.h"
+#include "interrupts/interrupts.h"
 
 static Cpu cpus[MAX_CPU_AMOUNT];
 static uint8_t cpuAmount;
@@ -25,44 +26,6 @@ void smp_init()
     smp_trampoline_cleanup();
 
     tty_end_message(TTY_MESSAGE_OK);
-}
-
-void smp_begin_interrupt()
-{
-    Cpu* self = smp_self();
-    self->interruptDepth++;
-}
-
-void smp_end_interrupt()
-{
-    Cpu* self = smp_self();
-    self->interruptDepth--;
-}
-
-void smp_push_cli()
-{
-    //Race condition does not matter
-    uint64_t rflags = rflags_read();
-
-    asm volatile("cli");    
-    
-    Cpu* self = smp_self();
-    if (self->cliDepth == 0)
-    {
-        self->interruptsEnabled = rflags & RFLAGS_INTERRUPT_ENABLE;
-    }
-    self->cliDepth++;
-}
-
-void smp_pop_cli()
-{
-    Cpu* self = smp_self();
-
-    self->cliDepth--;
-    if (self->cliDepth == 0 && self->interruptsEnabled)
-    {
-        asm volatile("sti");
-    }
 }
 
 void smp_send_ipi(Cpu* cpu, Ipi ipi)
@@ -86,7 +49,9 @@ void smp_send_ipi_to_others(Ipi ipi)
 
 void smp_send_ipi_to_self(Ipi ipi)
 {
+    interrupts_disable();
     smp_self()->ipi = ipi;
+    interrupts_enable();
     asm volatile("int $0x90");
 }
 
@@ -118,6 +83,11 @@ Cpu const* smp_cpu(uint8_t id)
 
 Cpu* smp_self()
 {
+    if (rflags_read() & RFLAGS_INTERRUPT_ENABLE)
+    {
+        debug_panic("smp_self called with interrupts");
+    }
+
     uint64_t id = read_msr(MSR_CPU_ID);
     return &cpus[id];
 }
