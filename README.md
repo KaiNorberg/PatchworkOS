@@ -36,7 +36,7 @@ There are three ways to run Patchwork.
 
 ## Roadmap
 
-The short term goal is to create a basic user-space shell, however the current long term goal is to play DOOM.
+The short term goal is to create a basic user-space shell, however the long term goal is to play DOOM.
 
 ## Documentation (WIP)
 

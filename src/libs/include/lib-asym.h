@@ -68,7 +68,7 @@ int64_t sleep(uint64_t milliseconds);
 
 int64_t map(void* lower, void* upper);
 
-void sys_test(const char* string);
+int64_t sys_test(const char* string);
 
 //========= STATUS =========
 

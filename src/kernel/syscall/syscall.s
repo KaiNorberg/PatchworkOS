@@ -12,7 +12,7 @@ syscall_handler:
     cmp rax, SYS_TOTAL_AMOUNT
     jge .not_available
     call [syscallTable + rax * 8]
-    iretq
+    ret
 .not_available:
     mov rax, -1
-    iretq
+    ret

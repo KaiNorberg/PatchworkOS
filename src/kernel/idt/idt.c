@@ -1,12 +1,9 @@
 #include "idt.h"
 
 #include "syscall/syscall.h"
-#include "interrupts/interrupts.h"
 
 __attribute__((aligned(0x1000)))
 static Idt idt;
-
-extern void* vectorTable[IDT_VECTOR_AMOUNT];
 
 extern void idt_load_descriptor(IdtDesc* descriptor);
 
@@ -25,13 +22,12 @@ static inline void idt_set_vector(uint8_t vector, void* isr, uint8_t privilegeLe
 
 void idt_init()
 {
-    for (uint16_t vector = 0; vector < IDT_VECTOR_AMOUNT; vector++) 
+    for (uint16_t vector = 0; vector < VECTOR_AMOUNT; vector++) 
     {        
         idt_set_vector((uint8_t)vector, vectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
     }        
     
-    //TODO: Replace syscall trap with syscall instruction.
-    idt_set_vector(SYSCALL_VECTOR, syscall_handler, IDT_RING3, IDT_TRAP_GATE);
+    idt_set_vector(SYSCALL_VECTOR, vectorTable[SYSCALL_VECTOR], IDT_RING3, IDT_TRAP_GATE);
 }
 
 void idt_load()

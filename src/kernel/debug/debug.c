@@ -127,8 +127,43 @@ void debug_panic(const char* message)
 
     debug_start(message);
 
-    //TODO: Fix this
-    /*InterruptFrame const* interruptFrame = self->interruptFrame;
+    debug_move("Time", 0, 0);
+    debug_print("Tick = ", hpet_read_counter());
+    debug_print("Current Time = ", time_nanoseconds());
+
+    debug_move("Memory", 2, 0);
+    debug_print("Free Heap = ", heap_free_size());
+    debug_print("Reserved Heap = ", heap_reserved_size());
+    debug_print("Locked Pages = ", pmm_reserved_amount());
+    debug_print("Unlocked Pages = ", pmm_free_amount());
+
+    tty_set_scale(1);
+    tty_set_row(oldRow);
+    tty_set_column(oldColumn);        
+    
+    tty_release();
+
+    asm volatile("cli");
+    while (1)
+    {
+        asm volatile("hlt");
+    }
+}
+
+void debug_exception(InterruptFrame const* interruptFrame, const char* message)
+{
+    tty_acquire();
+
+    Ipi ipi = 
+    {
+        .type = IPI_TYPE_HALT
+    };
+    smp_send_ipi_to_others(ipi);
+
+    uint32_t oldRow = tty_get_row();
+    uint32_t oldColumn = tty_get_column();
+
+    debug_start(message);
 
     debug_move("Interrupt Frame", 0, 0);
     if (interruptFrame != 0)
@@ -142,8 +177,10 @@ void debug_panic(const char* message)
         debug_print("Stack Segment = ", interruptFrame->stackSegment);
 
         uint64_t cr2;
+        uint64_t cr3;
         uint64_t cr4;
         READ_REGISTER("cr2", cr2);
+        READ_REGISTER("cr3", cr3);
         READ_REGISTER("cr4", cr4);
 
         debug_move("Registers", 2, 0);
@@ -159,7 +196,7 @@ void debug_panic(const char* message)
 
         debug_move(0, 3, 0);
         debug_print("CR2 = ", cr2);
-        debug_print("CR3 = ", interruptFrame->cr3);
+        debug_print("CR3 = ", cr3);
         debug_print("CR4 = ", cr4);
         debug_print("R15 = ", interruptFrame->r15);
         debug_print("R14 = ", interruptFrame->r14);
@@ -171,7 +208,7 @@ void debug_panic(const char* message)
     else
     {
         tty_print("Panic occurred outside of interrupt");
-    }*/
+    }
     
     debug_move("Time", 0, 13);
     debug_print("Tick = ", hpet_read_counter());

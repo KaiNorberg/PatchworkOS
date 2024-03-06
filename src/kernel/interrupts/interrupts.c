@@ -25,7 +25,7 @@ static inline void exception_handler(InterruptFrame const* interruptFrame)
     {
     default:
     {
-        debug_panic("Exception");
+        debug_exception(interruptFrame, "Exception");
     }
     break;
     }
@@ -48,7 +48,7 @@ static inline void ipi_handler(InterruptFrame const* interruptFrame)
     break;
     case IPI_TYPE_SCHEDULE:
     {
-        //Does nothing, scheduling is performed in interrupt_handler
+        //Does nothing, scheduling is performed in common_interrupt
     }
     break;
     }        
@@ -116,11 +116,6 @@ void interrupt_handler(InterruptFrame* interruptFrame)
     else
     {
         debug_panic("Unknown interrupt vector");
-    }
-
-    if (scheduler_wants_to_schedule())
-    {
-        scheduler_schedule(interruptFrame);
     }
 
     interrupt_end();

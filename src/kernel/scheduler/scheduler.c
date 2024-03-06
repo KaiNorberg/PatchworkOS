@@ -59,13 +59,22 @@ void scheduler_init()
     }
 }
 
-Thread* scheduler_self()
+Thread* scheduler_thread()
 {
     interrupts_disable();
     Thread* thread = schedulers[smp_self()->id]->runningThread;
     interrupts_enable();
 
     return thread;
+}
+
+Process* scheduler_process()
+{
+    interrupts_disable();
+    Process* process = schedulers[smp_self()->id]->runningThread->common->process;
+    interrupts_enable();
+
+    return process;
 }
 
 int64_t scheduler_spawn(const char* path)
@@ -77,9 +86,9 @@ int64_t scheduler_spawn(const char* path)
     }
 
     Thread* thread = kmalloc(sizeof(Thread));
-    thread->process = process;
-    thread->data = kmalloc(sizeof(ThreadData));
-    thread->data->threadCount = 1;
+    thread->common = kmalloc(sizeof(ThreadCommon));
+    thread->common->process = process;
+    thread->common->threadCount = 1;
     thread->timeStart = 0;
     thread->timeEnd = 0;
     thread->kernelStackBottom = vmm_allocate(1);
@@ -145,7 +154,7 @@ uint8_t scheduler_wants_to_schedule()
     lock_acquire(&scheduler->lock);
 
     uint8_t wantsToSchedule = 0;
-    if (interrupt_depth() > 1)
+    if (interrupt_depth() != 0)
     {
         //Cant schedule
         wantsToSchedule = 0;
@@ -228,7 +237,7 @@ void scheduler_schedule(InterruptFrame* interruptFrame)
 
         interrupt_frame_copy(interruptFrame, thread->interruptFrame);
 
-        PAGE_DIRECTORY_LOAD(thread->process->pageDirectory);
+        PAGE_DIRECTORY_LOAD(thread->common->process->pageDirectory);
         self->tss->rsp0 = (uint64_t)thread->kernelStackTop;
     }
     else if (scheduler->runningThread == 0)

@@ -260,7 +260,7 @@ int64_t syscall_test(const char* string)
     tty_print(" THREAD AMOUNT: "); 
     tty_printx(scheduler_local_thread_amount());
     tty_print(" PID: "); 
-    tty_printx(scheduler_self()->process->id);
+    tty_printx(scheduler_process()->id);
     if (string != 0)
     {
         tty_print(" | ");
@@ -277,8 +277,8 @@ int64_t syscall_test(const char* string)
 
     interrupts_enable();
 
-    scheduler_self()->status = STATUS_SUCCESS;
-    return 0;
+    scheduler_thread()->status = STATUS_SUCCESS;
+    return 0x1234;
 }
 
 void* syscallTable[] =

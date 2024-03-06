@@ -19,13 +19,13 @@
 
 typedef struct
 {
+    Process* process;
     uint64_t threadCount;
-} ThreadData;
+} ThreadCommon;
 
 typedef struct
 {
-    Process* process;
-    ThreadData* data;
+    ThreadCommon* common;
 
     uint64_t timeStart;
     uint64_t timeEnd;
@@ -51,7 +51,9 @@ extern void scheduler_idle_loop();
 
 void scheduler_init();
 
-Thread* scheduler_self();
+Thread* scheduler_thread();
+
+Process* scheduler_process();
 
 int64_t scheduler_spawn(const char* path);
 

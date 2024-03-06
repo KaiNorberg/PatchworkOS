@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#include "vectors/vectors.h"
+
 #define IDT_INTERRUPT_GATE 0b1110
 #define IDT_TRAP_GATE 0b1111
 
@@ -9,8 +11,6 @@
 #define IDT_RING1 0b01
 #define IDT_RING2 0b10
 #define IDT_RING3 0b11
-
-#define IDT_VECTOR_AMOUNT 256
 
 typedef struct __attribute__((packed))
 {
@@ -31,7 +31,7 @@ typedef struct __attribute__((packed))
 
 typedef struct __attribute__((packed))
 {
-	IdtEntry entries[IDT_VECTOR_AMOUNT];
+	IdtEntry entries[VECTOR_AMOUNT];
 } Idt;
 
 void idt_init();
