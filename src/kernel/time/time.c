@@ -1,11 +1,15 @@
 #include "time.h"
 
+#include "irq/irq.h"
+#include "apic/apic.h"
 #include "hpet/hpet.h"
 
 static uint64_t accumulator;
 
 void time_init()
 {
+    apic_timer_init(IRQ_BASE + IRQ_TIMER, TIMER_HZ);
+
     accumulator = 0;
     time_accumulate();
 }

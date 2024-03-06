@@ -8,6 +8,8 @@
 #include "debug/debug.h"
 #include "vmm/vmm.h"
 
+//TODO: Replace all of this with a better heap, its way to slow.
+
 static HeapHeader* firstBlock;
 static Lock lock;
 

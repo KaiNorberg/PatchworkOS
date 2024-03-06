@@ -82,8 +82,8 @@ void* pmm_allocate()
     {
         if (bitmap[qwordIndex] != UINT64_MAX) 
         {
-            uint64_t bitIndex = (bitmap[qwordIndex] == 0) ? 0 : __builtin_ctzll(~bitmap[qwordIndex]);
-
+            uint64_t bitIndex = bitmap[qwordIndex] != 0 ? __builtin_ctzll(~bitmap[qwordIndex]) : 0;
+            
             void* address = (void*)((qwordIndex * 64 + bitIndex) * PAGE_SIZE);
             pmm_reserve_page(address);
 

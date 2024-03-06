@@ -22,6 +22,9 @@
 #include "scheduler/scheduler.h"
 #include "utils/utils.h"
 #include "process/process.h"
+#include "lock/lock.h"
+#include "irq/irq.h"
+#include "interrupts/interrupts.h"
 #include "program_loader/program_loader.h"
 
 static void deallocate_boot_info(BootInfo* bootInfo)
@@ -43,7 +46,7 @@ static void deallocate_boot_info(BootInfo* bootInfo)
 }
 
 void kernel_init(BootInfo* bootInfo)
-{   
+{
     asm volatile("cli");
 
     pmm_init(&bootInfo->memoryMap);
@@ -89,4 +92,6 @@ void kernel_cpu_init()
     gdt_load_tss(cpu->tss);
 
     idt_load();
+
+    //TODO: Set cr4 global page flag
 }

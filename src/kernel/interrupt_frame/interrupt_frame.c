@@ -5,7 +5,7 @@
 #include "gdt/gdt.h"
 #include "heap/heap.h"
 
-InterruptFrame* interrupt_frame_new(void* instructionPointer, void* stackPointer, PageDirectory* pageDirectory)
+InterruptFrame* interrupt_frame_new(void* instructionPointer, void* stackPointer)
 {
     InterruptFrame* interruptFrame = kmalloc(sizeof(InterruptFrame));
     memset(interruptFrame, 0, sizeof(InterruptFrame));
@@ -14,7 +14,6 @@ InterruptFrame* interrupt_frame_new(void* instructionPointer, void* stackPointer
     interruptFrame->stackPointer = (uint64_t)stackPointer;
     interruptFrame->codeSegment = GDT_USER_CODE | 3;
     interruptFrame->stackSegment = GDT_USER_DATA | 3;
-    interruptFrame->cr3 = (uint64_t)pageDirectory;
 
     interruptFrame->flags = 0x202;
 

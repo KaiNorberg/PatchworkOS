@@ -2,20 +2,26 @@
 
 #include <stdint.h>
 
+#include "irq/irq.h"
 #include "tty/tty.h"
 #include "apic/apic.h"
 #include "debug/debug.h"
 #include "vmm/vmm.h"
+#include "heap/heap.h"
+#include "registers/registers.h"
 #include "page_directory/page_directory.h"
 #include "utils/utils.h"
 #include "syscall/syscall.h"
 #include "smp/smp.h"
+#include "scheduler/scheduler.h"
 
-static inline void exception_handler()
+#include <libc/string.h>
+
+static InterruptState states[MAX_CPU_AMOUNT];
+
+static inline void exception_handler(InterruptFrame const* interruptFrame)
 {   
-    Cpu* self = smp_self();
-
-    switch (self->interruptFrame->vector)
+    switch (interruptFrame->vector)
     {
     default:
     {
@@ -25,7 +31,7 @@ static inline void exception_handler()
     }
 }
 
-static inline void ipi_handler()
+static inline void ipi_handler(InterruptFrame const* interruptFrame)
 {
     Ipi ipi = smp_receive_ipi();
 
@@ -42,11 +48,7 @@ static inline void ipi_handler()
     break;
     case IPI_TYPE_SCHEDULE:
     {
-        /*Worker* worker = worker_self();
-
-        scheduler_acquire(worker->scheduler);
-        scheduler_schedule(worker->scheduler, interruptFrame);
-        scheduler_release(worker->scheduler);*/
+        //Does nothing, scheduling is performed in interrupt_handler
     }
     break;
     }        
@@ -54,22 +56,72 @@ static inline void ipi_handler()
     local_apic_eoi();
 }
 
+static void interrupt_begin()
+{
+    states[smp_self()->id].depth++;
+}
+
+static void interrupt_end()
+{
+    states[smp_self()->id].depth--;
+}
+
+void interrupts_disable()
+{
+    //Race condition does not matter
+    uint64_t rflags = rflags_read();
+
+    asm volatile("cli");    
+    
+    InterruptState* state = &states[smp_self()->id];
+    if (state->cliAmount == 0)
+    {
+        state->enabled = rflags & RFLAGS_INTERRUPT_ENABLE;
+    }
+    state->cliAmount++;
+}
+
+void interrupts_enable()
+{
+    InterruptState* state = &states[smp_self()->id];
+
+    state->cliAmount--;
+    if (state->cliAmount == 0 && state->enabled)
+    {
+        asm volatile("sti");
+    }
+}
+
+uint64_t interrupt_depth()
+{
+    return states[smp_self()->id].depth;
+}
+
 void interrupt_handler(InterruptFrame* interruptFrame)
 {
-    smp_begin_interrupt(interruptFrame);
+    interrupt_begin();
 
     if (interruptFrame->vector < IRQ_BASE)
     {
-        exception_handler();
+        exception_handler(interruptFrame);
+    }
+    else if (interruptFrame->vector >= IRQ_BASE && interruptFrame->vector < IRQ_BASE + IRQ_AMOUNT)
+    {
+        irq_dispatch(interruptFrame);
     }
     else if (interruptFrame->vector == IPI_VECTOR)
     {
-        ipi_handler();
+        ipi_handler(interruptFrame);
     }
     else
     {
         debug_panic("Unknown interrupt vector");
     }
 
-    smp_end_interrupt();
+    if (scheduler_wants_to_schedule())
+    {
+        scheduler_schedule(interruptFrame);
+    }
+
+    interrupt_end();
 }

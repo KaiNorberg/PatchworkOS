@@ -112,6 +112,8 @@ static inline void debug_print(const char* string, uint64_t value)
 
 void debug_panic(const char* message)
 {
+    tty_acquire();
+
     Cpu const* self = smp_self();
 
     Ipi ipi = 
@@ -120,14 +122,13 @@ void debug_panic(const char* message)
     };
     smp_send_ipi_to_others(ipi);
 
-    tty_acquire();
-
     uint32_t oldRow = tty_get_row();
     uint32_t oldColumn = tty_get_column();
 
     debug_start(message);
 
-    InterruptFrame const* interruptFrame = self->interruptFrame;
+    //TODO: Fix this
+    /*InterruptFrame const* interruptFrame = self->interruptFrame;
 
     debug_move("Interrupt Frame", 0, 0);
     if (interruptFrame != 0)
@@ -170,7 +171,7 @@ void debug_panic(const char* message)
     else
     {
         tty_print("Panic occurred outside of interrupt");
-    }
+    }*/
     
     debug_move("Time", 0, 13);
     debug_print("Tick = ", hpet_read_counter());

@@ -12,6 +12,8 @@
 #include "vfs/vfs.h"
 #include "utils/utils.h"
 #include "smp/smp.h"
+#include "interrupts/interrupts.h"
+#include "scheduler/scheduler.h"
 #include "program_loader/program_loader.h"
 
 /*static inline uint8_t syscall_verify_pointer(const void* pointer, uint64_t size)
@@ -238,65 +240,58 @@ void sys_seek(InterruptFrame* interruptFrame)
     }
 
     syscall_return_success(interruptFrame, 0);
-}
+}*/
 
-Syscall syscallTable[] =
+int64_t syscall_test(const char* string)
 {
-    [SYS_EXIT] = (Syscall)sys_exit,
-    [SYS_SPAWN] = (Syscall)sys_spawn,
-    [SYS_SLEEP] = (Syscall)sys_sleep,
-    [SYS_STATUS] = (Syscall)sys_status,
-    [SYS_MAP] = (Syscall)sys_map,
-    [SYS_OPEN] = (Syscall)sys_open,
-    [SYS_CLOSE] = (Syscall)sys_close,
-    [SYS_READ] = (Syscall)sys_read,
-    [SYS_WRITE] = (Syscall)sys_write,
-    [SYS_SEEK] = (Syscall)sys_seek
-};*/
+    interrupts_disable();
 
-void syscall_handler()
-{   
     Cpu* self = smp_self();
+    tty_acquire();
+    
+    uint8_t oldRow = tty_get_row();
+    uint8_t oldColumn = tty_get_column();
 
-    uint64_t selector = self->interruptFrame->rax;
+    tty_set_column(0);
+    tty_set_row(self->id);
 
-    //Temporary for testing
-    if (selector == SYS_TEST)
+    tty_print("CPU: ");
+    tty_printx(self->id); 
+    tty_print(" THREAD AMOUNT: "); 
+    tty_printx(scheduler_local_thread_amount());
+    tty_print(" PID: "); 
+    tty_printx(scheduler_self()->process->id);
+    if (string != 0)
     {
-        tty_acquire();
-
-        tty_set_column(0);
-        tty_set_row(self->id);
-
-        tty_print("CPU: ");
-        tty_printx(self->id); 
-        tty_print(" PROCESS AMOUNT: "); 
-        /*tty_printx(scheduler_process_amount(worker->scheduler));
-        if (worker->scheduler->runningProcess != 0)
-        {
-            tty_print(" PID: "); 
-            tty_printx(worker->scheduler->runningProcess->id);
-        }*/
-        const char* string = (const char*)SYSCALL_GET_ARG1(self);
-        if (string != 0)
-        {
-            tty_print(" | ");
-            tty_print(string);
-        }
-        tty_print(" ");
-        tty_printx(time_nanoseconds());
-        tty_print("                                 ");
-
-        tty_release();
-        return;
+        tty_print(" | ");
+        tty_print(string);
     }
+    tty_print(" ");
+    tty_printx(time_nanoseconds());
+    tty_print("                                 ");
 
-    /*if (selector < sizeof(syscallTable) / sizeof(Syscall))
-    {
-        syscallTable[selector](interruptFrame);
-    }
-    else
-    {
-        syscall_return_error(interruptFrame, STATUS_NOT_ALLOWED);
-    }*/
+    tty_set_row(oldRow);
+    tty_set_column(oldColumn);
+
+    tty_release();
+
+    interrupts_enable();
+
+    scheduler_self()->status = STATUS_SUCCESS;
+    return 0;
 }
+
+void* syscallTable[] =
+{
+    [SYS_EXIT] = (void*)syscall_test,
+    [SYS_SPAWN] =  (void*)syscall_test,
+    [SYS_SLEEP] = (void*)syscall_test,
+    [SYS_STATUS] = (void*)syscall_test,
+    [SYS_MAP] = (void*)syscall_test,
+    [SYS_OPEN] = (void*)syscall_test,
+    [SYS_CLOSE] = (void*)syscall_test,
+    [SYS_READ] = (void*)syscall_test,
+    [SYS_WRITE] = (void*)syscall_test,
+    [SYS_SEEK] = (void*)syscall_test,
+    [SYS_TEST] = (void*)syscall_test
+};

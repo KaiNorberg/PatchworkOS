@@ -4,13 +4,13 @@
     dq interrupt_%1
 %endmacro
 
-%macro INT_ERR 1
+%macro INT_ERROR_CODE 1
 interrupt_%1:
     push qword %1
     jmp common_interrupt
 %endmacro
 
-%macro INT_NOERR 1
+%macro INT_NO_ERROR_CODE 1
 interrupt_%1:
     push qword 0
     push qword %1
@@ -39,19 +39,9 @@ common_interrupt:
     push r14
     push r15
 
-    mov rax, cr3
-    push rax
-
     mov rdi, rsp
     call interrupt_handler
-
-    pop rax
-    mov rbx, cr3
-    cmp rbx, rax
-    je .dont_flush_tlb
-    mov cr3, rax
-.dont_flush_tlb:
-
+    
     pop r15
     pop r14
     pop r13
@@ -71,45 +61,42 @@ common_interrupt:
     add rsp, 16
     iretq
 
-workerPageDirectory:
-    dq 0
-
-INT_NOERR 0
-INT_NOERR 1
-INT_NOERR 2
-INT_NOERR 3
-INT_NOERR 4
-INT_NOERR 5
-INT_NOERR 6
-INT_NOERR 7
-INT_ERR   8
-INT_NOERR 9
-INT_ERR   10
-INT_ERR   11
-INT_ERR   12
-INT_ERR   13
-INT_ERR   14
-INT_NOERR 15
-INT_NOERR 16
-INT_ERR   17
-INT_NOERR 18
-INT_NOERR 19
-INT_NOERR 20
-INT_NOERR 21
-INT_NOERR 22
-INT_NOERR 23
-INT_NOERR 24
-INT_NOERR 25
-INT_NOERR 26
-INT_NOERR 27
-INT_NOERR 28
-INT_NOERR 29
-INT_ERR   30
-INT_NOERR 31
+INT_NO_ERROR_CODE 0
+INT_NO_ERROR_CODE 1
+INT_NO_ERROR_CODE 2
+INT_NO_ERROR_CODE 3
+INT_NO_ERROR_CODE 4
+INT_NO_ERROR_CODE 5
+INT_NO_ERROR_CODE 6
+INT_NO_ERROR_CODE 7
+INT_ERROR_CODE 8
+INT_NO_ERROR_CODE 9
+INT_ERROR_CODE 10
+INT_ERROR_CODE 11
+INT_ERROR_CODE 12
+INT_ERROR_CODE 13
+INT_ERROR_CODE 14
+INT_NO_ERROR_CODE 15
+INT_NO_ERROR_CODE 16
+INT_ERROR_CODE 17
+INT_NO_ERROR_CODE 18
+INT_NO_ERROR_CODE 19
+INT_NO_ERROR_CODE 20
+INT_NO_ERROR_CODE 21
+INT_NO_ERROR_CODE 22
+INT_NO_ERROR_CODE 23
+INT_NO_ERROR_CODE 24
+INT_NO_ERROR_CODE 25
+INT_NO_ERROR_CODE 26
+INT_NO_ERROR_CODE 27
+INT_NO_ERROR_CODE 28
+INT_NO_ERROR_CODE 29
+INT_ERROR_CODE 30
+INT_NO_ERROR_CODE 31
 
 %assign i 32
 %rep 224
-    INT_NOERR i
+    INT_NO_ERROR_CODE i
 %assign i i+1
 %endrep
 

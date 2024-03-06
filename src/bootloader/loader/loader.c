@@ -81,6 +81,8 @@ void* load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
 		case PT_LOAD:
 		{
 			file_system_seek(file, programHeader->offset);
+			
+			SetMem((void*)programHeader->virtualAddress, programHeader->memorySize, 0);
 			file_system_read(file, programHeader->fileSize, (void*)programHeader->virtualAddress);
 		}
 		break;

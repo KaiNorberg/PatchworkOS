@@ -6,7 +6,6 @@
 
 typedef struct __attribute__((packed))
 {
-    uint64_t cr3;
     uint64_t r15;
     uint64_t r14;
     uint64_t r13;
@@ -33,7 +32,7 @@ typedef struct __attribute__((packed))
     uint64_t stackSegment;
 } InterruptFrame;
 
-InterruptFrame* interrupt_frame_new(void* instructionPointer, void* stackPointer, PageDirectory* pageDirectory);
+InterruptFrame* interrupt_frame_new(void* instructionPointer, void* stackPointer);
 
 void interrupt_frame_free(InterruptFrame* interruptFrame);
 
