@@ -4,7 +4,9 @@
 
 ## Features
 
-  - Multicore 64bit monolithic kernel
+  - Monolithic Preemptive kernel
+  - 64-bit
+  - SMP (Symmetric Multiprocessing)
   - Custom UEFI bootloader
   - More to be added...
 
@@ -38,7 +40,7 @@ The short term goal is to create a basic terminal/shell, however the current lon
 
 ## Documentation (WIP)
 
-Documentation can be found on the ![wiki](https://github.com/Kaj9296/PatchworkOS/wiki) page.
+Documentation will eventually be found on the ![wiki](https://github.com/Kaj9296/PatchworkOS/wiki) page.
 
 ## Contributing
 
