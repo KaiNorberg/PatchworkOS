@@ -15,14 +15,14 @@ void main(BootInfo* bootInfo)
 
     tty_print("\n");
     
-    for (uint64_t i = 0; i < 8; i++)
+    for (uint64_t i = 0; i < 16; i++)
     {
         tty_print("Loading parent...\n");
 
         scheduler_spawn("ram:/bin/parent.elf");
     }
 
-    tty_print("\n\rKernel Initialized!\n\n");
+    tty_print("\nKernel Initialized!\n\n");
 
     //Temporary for testing
     tty_clear();
@@ -35,7 +35,8 @@ void main(BootInfo* bootInfo)
     smp_send_ipi_to_all(ipi);
 
     while (1)
-    {
+    {   
+        asm volatile("sti");
         asm volatile("hlt");
     }
 }

@@ -50,9 +50,12 @@ void smp_send_ipi_to_others(Ipi ipi)
 void smp_send_ipi_to_self(Ipi ipi)
 {
     interrupts_disable();
-    smp_self()->ipi = ipi;
+    Cpu* self = smp_self();
+    self->ipi = ipi;
+    uint64_t localApicId = self->localApicId;
     interrupts_enable();
-    asm volatile("int $0x90");
+    
+    local_apic_send_ipi(localApicId, IPI_VECTOR);
 }
 
 void smp_send_ipi_to_all(Ipi ipi)

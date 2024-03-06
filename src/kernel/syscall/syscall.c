@@ -240,29 +240,18 @@ void sys_seek(InterruptFrame* interruptFrame)
     }
 
     syscall_return_success(interruptFrame, 0);
-}
+}*/
 
-Syscall syscallTable[] =
+int64_t syscall_test(const char* string)
 {
-    [SYS_EXIT] = (Syscall)sys_exit,
-    [SYS_SPAWN] = (Syscall)sys_spawn,
-    [SYS_SLEEP] = (Syscall)sys_sleep,
-    [SYS_STATUS] = (Syscall)sys_status,
-    [SYS_MAP] = (Syscall)sys_map,
-    [SYS_OPEN] = (Syscall)sys_open,
-    [SYS_CLOSE] = (Syscall)sys_close,
-    [SYS_READ] = (Syscall)sys_read,
-    [SYS_WRITE] = (Syscall)sys_write,
-    [SYS_SEEK] = (Syscall)sys_seek
-};*/
-
-int64_t syscall_handler_c(const char* string)
-{   
     interrupts_disable();
 
     Cpu* self = smp_self();
     tty_acquire();
     
+    uint8_t oldRow = tty_get_row();
+    uint8_t oldColumn = tty_get_column();
+
     tty_set_column(0);
     tty_set_row(self->id);
 
@@ -281,9 +270,28 @@ int64_t syscall_handler_c(const char* string)
     tty_printx(time_nanoseconds());
     tty_print("                                 ");
 
+    tty_set_row(oldRow);
+    tty_set_column(oldColumn);
+
     tty_release();
 
     interrupts_enable();
 
+    scheduler_self()->status = STATUS_SUCCESS;
     return 0;
 }
+
+void* syscallTable[] =
+{
+    [SYS_EXIT] = (void*)syscall_test,
+    [SYS_SPAWN] =  (void*)syscall_test,
+    [SYS_SLEEP] = (void*)syscall_test,
+    [SYS_STATUS] = (void*)syscall_test,
+    [SYS_MAP] = (void*)syscall_test,
+    [SYS_OPEN] = (void*)syscall_test,
+    [SYS_CLOSE] = (void*)syscall_test,
+    [SYS_READ] = (void*)syscall_test,
+    [SYS_WRITE] = (void*)syscall_test,
+    [SYS_SEEK] = (void*)syscall_test,
+    [SYS_TEST] = (void*)syscall_test
+};

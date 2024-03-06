@@ -1,11 +1,18 @@
 [bits 64]
 
+%include "lib-syscall.inc"
+
 section .text
 
-extern syscall_handler_c
+extern syscallTable
 
 global syscall_handler
 syscall_handler:
-    ;TODO: All of this
-    call syscall_handler_c
+    cld
+    cmp rax, SYS_TOTAL_AMOUNT
+    jge .not_available
+    call [syscallTable + rax * 8]
+    iretq
+.not_available:
+    mov rax, -1
     iretq

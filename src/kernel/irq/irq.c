@@ -1,16 +1,39 @@
 #include "irq.h"
 
-void irq_init()
-{
+#include "apic/apic.h"
+#include "debug/debug.h"
 
-}
+static IrqHandler handlers[IRQ_AMOUNT][IRQ_MAX_HANDLER_AMOUNT];
 
 void irq_dispatch(InterruptFrame* interruptFrame)
 {
+    uint64_t irq = interruptFrame->vector - IRQ_BASE;
 
+    for (uint64_t i = 0; i < IRQ_MAX_HANDLER_AMOUNT; i++)
+    {
+        if (handlers[irq][i] != 0)
+        {
+            handlers[irq][i](irq);
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    local_apic_eoi();
 }
 
-void irq_install_handler(IrqHandler handler)
+void irq_install_handler(IrqHandler handler, uint8_t irq)
 {
-    
+    for (uint64_t i = 0; i < IRQ_MAX_HANDLER_AMOUNT; i++)
+    {
+        if (handlers[irq][i] == 0)
+        {
+            handlers[irq][i] = handler;
+            return;
+        }
+    }
+
+    debug_panic("IRQ handler limit exceeded");
 }

@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#define TIMER_HZ 1024
+
 #define NANOSECONDS_PER_SECOND 1000000000
 #define NANOSECONDS_PER_MILLISECOND 1000000
 

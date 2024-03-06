@@ -5,7 +5,9 @@
 #include "heap/heap.h"
 #include "gdt/gdt.h"
 #include "time/time.h"
+#include "debug/debug.h"
 #include "interrupts/interrupts.h"
+#include "irq/irq.h"
 
 #include "program_loader/program_loader.h"
 
@@ -13,8 +15,31 @@
 
 static Scheduler** schedulers;
 
+static void scheduler_irq_handler(uint8_t irq)
+{
+    switch (irq)
+    {
+    case IRQ_TIMER:
+    {
+        Ipi ipi =
+        {
+            .type = IPI_TYPE_SCHEDULE
+        };
+        smp_send_ipi_to_others(ipi);
+    }
+    break;
+    default:
+    {
+        debug_panic("Scheduler invalid IRQ");
+    }
+    break;
+    }
+}
+
 void scheduler_init()
 {
+    irq_install_handler(scheduler_irq_handler, IRQ_TIMER);
+
     schedulers = kmalloc(sizeof(Scheduler*) * smp_cpu_amount());
     memset(schedulers, 0, sizeof(Scheduler*) * smp_cpu_amount());
 
@@ -45,7 +70,7 @@ Thread* scheduler_self()
 
 int64_t scheduler_spawn(const char* path)
 {
-    Process* process = process_new(path);
+    Process* process = process_new();
     if (process == 0)
     {
         return -1;

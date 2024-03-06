@@ -23,10 +23,10 @@
 #define IRQ_SECONDARY_ATA_HARD_DISK 0xF
 #define IRQ_AMOUNT 0x10
 
-typedef void(*IrqHandler)(uint8_t irq);
+#define IRQ_MAX_HANDLER_AMOUNT 16
 
-void irq_init();
+typedef void(*IrqHandler)(uint8_t irq);
 
 void irq_dispatch(InterruptFrame* interruptFrame);
 
-void irq_install_handler(IrqHandler handler);
+void irq_install_handler(IrqHandler handler, uint8_t irq);

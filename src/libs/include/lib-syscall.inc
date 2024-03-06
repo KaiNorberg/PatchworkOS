@@ -10,5 +10,6 @@
 %define SYS_READ 7
 %define SYS_WRITE 8
 %define SYS_SEEK 9
+%define SYS_TEST 10
 
-%define SYS_TEST 1000
+%define SYS_TOTAL_AMOUNT 11

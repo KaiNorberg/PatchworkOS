@@ -47,6 +47,8 @@ static void deallocate_boot_info(BootInfo* bootInfo)
 
 void kernel_init(BootInfo* bootInfo)
 {
+    asm volatile("cli");
+
     pmm_init(&bootInfo->memoryMap);
     vmm_init(&bootInfo->memoryMap);
     heap_init();
@@ -64,8 +66,6 @@ void kernel_init(BootInfo* bootInfo)
 
     smp_init();
     kernel_cpu_init();
-
-    irq_init();
 
     time_init();
     pid_init();
