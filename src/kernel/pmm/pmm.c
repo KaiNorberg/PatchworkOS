@@ -142,11 +142,6 @@ void* pmm_allocate_amount(uint64_t amount)
     return 0;
 }
 
-#define PAGE_SIZE 0x1000
-
-#define QWORD_INDEX(address) (((uint64_t)address / PAGE_SIZE) / 64)
-#define BIT_INDEX(address) (((uint64_t)address / PAGE_SIZE) % 64)
-
 uint8_t pmm_is_reserved(void* address)
 {   
     return (bitmap[QWORD_INDEX(address)] >> BIT_INDEX(address)) & 1ULL;

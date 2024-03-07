@@ -21,11 +21,15 @@ typedef struct
 {
     Process* process;
     uint64_t threadCount;
+
+    Lock lock;
 } ThreadCommon;
 
 typedef struct
 {
     ThreadCommon* common;
+
+    uint64_t id;
 
     uint64_t timeStart;
     uint64_t timeEnd;
@@ -55,9 +59,11 @@ Thread* scheduler_thread();
 
 Process* scheduler_process();
 
-int64_t scheduler_spawn(const char* path);
+void scheduler_invoke();
 
-uint8_t scheduler_wants_to_schedule();
+void scheduler_exit(Status status);
+
+int64_t scheduler_spawn(const char* path);
 
 void scheduler_schedule(InterruptFrame* interruptFrame);
 

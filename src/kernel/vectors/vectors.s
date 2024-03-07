@@ -19,7 +19,6 @@ vector_%1:
     jmp common_vector
 %endmacro
 
-extern scheduler_wants_to_schedule
 extern scheduler_schedule
 
 extern syscall_handler
@@ -53,22 +52,17 @@ common_vector:
     ;Is not a system call
     mov rdi, rsp
     call interrupt_handler
-    jmp .check_scheduler
+    jmp .schedule
     
 .syscall_handler:
     ;Is a system call
     call syscall_handler
     mov qword [rsp + 14 * 8], rax ;interruptFrame->rax = rax
 
-.check_scheduler:
-    call scheduler_wants_to_schedule
-    test rax, rax
-    jz .dont_schedule
+.schedule:
     mov rdi, rsp
     call scheduler_schedule
     
-.dont_schedule:
-
     pop r15
     pop r14
     pop r13

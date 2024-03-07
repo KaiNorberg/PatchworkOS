@@ -28,12 +28,7 @@ void main(BootInfo* bootInfo)
     tty_clear();
     tty_set_row(20);
 
-    Ipi ipi = 
-    {
-        .type = IPI_TYPE_SCHEDULE
-    };
-    smp_send_ipi_to_all(ipi);
-
+    //Enabling interrupts will cause the scheduler to be invoked.
     while (1)
     {   
         asm volatile("sti");

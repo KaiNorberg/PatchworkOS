@@ -16,10 +16,6 @@ typedef struct
     FileTable* fileTable;
 } Process;
 
-void pid_init();
-
-uint64_t pid_new();
-
 Process* process_new();
 
 void process_free(Process* process);

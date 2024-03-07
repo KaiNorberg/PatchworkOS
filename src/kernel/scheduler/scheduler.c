@@ -13,6 +13,8 @@
 
 #include <libc/string.h>
 
+static atomic_size_t tid = 0;
+
 static Scheduler** schedulers;
 
 static void scheduler_irq_handler(uint8_t irq)
@@ -34,6 +36,48 @@ static void scheduler_irq_handler(uint8_t irq)
     }
     break;
     }
+}
+
+static uint8_t scheduler_wants_to_schedule(Scheduler* scheduler)
+{   
+    if (interrupt_depth() != 0)
+    {        
+        //Cant schedule
+        return 0;
+    }
+    else if (scheduler->runningThread == 0)
+    {
+        for (int64_t i = THREAD_PRIORITY_MIN; i <= THREAD_PRIORITY_MAX; i++) 
+        {
+            if (queue_length(scheduler->queues[i]) != 0)
+            {
+                return 1;
+            }
+        }
+    }
+    else if (scheduler->runningThread->timeEnd < time_nanoseconds())
+    {
+        for (int64_t i = THREAD_PRIORITY_MAX; i >= 0; i--) 
+        {
+            if (queue_length(scheduler->queues[i]) != 0)
+            {
+                return 1;
+            }
+        }
+    }
+    else
+    {
+        uint8_t runningPriority = scheduler->runningThread->priority;
+        for (int64_t i = THREAD_PRIORITY_MAX; i > runningPriority; i--) 
+        {
+            if (queue_length(scheduler->queues[i]) != 0)
+            {
+                return 1;
+            }
+        }
+    }
+
+    return 0;
 }
 
 void scheduler_init()
@@ -77,8 +121,48 @@ Process* scheduler_process()
     return process;
 }
 
-int64_t scheduler_spawn(const char* path)
+void scheduler_invoke()
 {
+    Ipi ipi = 
+    {
+        .type = IPI_TYPE_SCHEDULE
+    };
+    smp_send_ipi_to_self(ipi);
+}
+
+void scheduler_exit(Status status)
+{
+    interrupts_disable();
+
+    Cpu* self = smp_self();
+    Scheduler* scheduler = schedulers[self->id];
+    lock_acquire(&scheduler->lock);
+
+    Thread* thread = scheduler_thread();
+
+    lock_acquire(&thread->common->lock);
+    thread->common->threadCount--;
+    if (thread->common->threadCount == 0)
+    {
+        process_free(thread->common->process);
+        kfree(thread->common);
+    }
+    lock_release(&thread->common->lock);
+
+    interrupt_frame_free(thread->interruptFrame);
+    kfree(thread);
+    scheduler->runningThread = 0;
+
+    lock_release(&scheduler->lock);
+    interrupts_enable();
+
+    scheduler_invoke();
+}
+
+int64_t scheduler_spawn(const char* path)
+{    
+    //This sure is messy...
+
     Process* process = process_new();
     if (process == 0)
     {
@@ -89,6 +173,8 @@ int64_t scheduler_spawn(const char* path)
     thread->common = kmalloc(sizeof(ThreadCommon));
     thread->common->process = process;
     thread->common->threadCount = 1;
+    thread->common->lock = lock_new();
+    thread->id = atomic_fetch_add_explicit(&tid, 1, memory_order_seq_cst);
     thread->timeStart = 0;
     thread->timeEnd = 0;
     thread->kernelStackBottom = vmm_allocate(1);
@@ -144,71 +230,21 @@ int64_t scheduler_spawn(const char* path)
     return process->id;
 }
 
-uint8_t scheduler_wants_to_schedule()
-{   
-    interrupts_disable(); 
-
-    Cpu const* self = smp_self();
-    Scheduler* scheduler = schedulers[self->id];
-
-    lock_acquire(&scheduler->lock);
-
-    uint8_t wantsToSchedule = 0;
-    if (interrupt_depth() != 0)
-    {
-        //Cant schedule
-        wantsToSchedule = 0;
-    }
-    else if (scheduler->runningThread == 0)
-    {
-        for (int64_t i = THREAD_PRIORITY_MIN; i <= THREAD_PRIORITY_MAX; i++) 
-        {
-            if (queue_length(scheduler->queues[i]) != 0)
-            {
-                wantsToSchedule = 1;
-                break;
-            }
-        }
-    }
-    else if (scheduler->runningThread->timeEnd < time_nanoseconds())
-    {
-        for (int64_t i = THREAD_PRIORITY_MAX; i >= 0; i--) 
-        {
-            if (queue_length(scheduler->queues[i]) != 0)
-            {
-                wantsToSchedule = 1;
-                break;
-            }
-        }
-    }
-    else
-    {
-        uint8_t runningPriority = scheduler->runningThread->priority;
-        for (int64_t i = THREAD_PRIORITY_MAX; i > runningPriority; i--) 
-        {
-            if (queue_length(scheduler->queues[i]) != 0)
-            {
-                wantsToSchedule = 1;
-                break;
-            }
-        }
-    }
-    
-    lock_release(&scheduler->lock);
-    interrupts_enable();
-    return wantsToSchedule;
-}
-
 void scheduler_schedule(InterruptFrame* interruptFrame)
 {
-    //This sure is messy...
-
     interrupts_disable();
 
     Cpu* self = smp_self();
     Scheduler* scheduler = schedulers[self->id];
 
     lock_acquire(&scheduler->lock);
+
+    if (!scheduler_wants_to_schedule(scheduler))
+    {    
+        lock_release(&scheduler->lock);
+        interrupts_enable();
+        return;
+    }
 
     Thread* thread = 0;
     for (int64_t i = THREAD_PRIORITY_MAX; i >= THREAD_PRIORITY_MIN; i--) 
@@ -260,7 +296,7 @@ uint64_t scheduler_local_thread_amount()
 {
     interrupts_disable();
 
-    Cpu* self = smp_self();
+    Cpu const* self = smp_self();
     Scheduler* scheduler = schedulers[self->id];
     
     lock_acquire(&scheduler->lock);

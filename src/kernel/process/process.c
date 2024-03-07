@@ -9,17 +9,7 @@
 #include "gdt/gdt.h"
 #include "debug/debug.h"
 
-atomic_size_t pid;
-
-void pid_init()
-{
-    atomic_init(&pid, 1);
-}
-
-uint64_t pid_new()
-{
-    return atomic_fetch_add_explicit(&pid, 1, memory_order_seq_cst);
-}
+atomic_size_t pid = 0;
 
 Process* process_new()
 {
@@ -31,7 +21,7 @@ Process* process_new()
     Process* process = kmalloc(sizeof(Process));
     memset(process, 0, sizeof(Process));
 
-    process->id = pid_new();
+    process->id = atomic_fetch_add_explicit(&pid, 1, memory_order_seq_cst);
 
     process->pageDirectory = page_directory_new();
     vmm_map_kernel(process->pageDirectory);

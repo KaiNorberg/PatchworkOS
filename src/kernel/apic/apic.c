@@ -2,6 +2,7 @@
 
 #include "tty/tty.h"
 #include "page_directory/page_directory.h"
+#include "registers/registers.h"
 #include "utils/utils.h"
 #include "madt/madt.h"
 #include "hpet/hpet.h"
@@ -12,11 +13,7 @@ static uintptr_t localApicBase;
 
 void apic_init()
 {
-    tty_start_message("APIC initializing");
-
     localApicBase = (uintptr_t)vmm_map(madt_local_apic_address(), 1, PAGE_FLAG_WRITE);
-
-    tty_end_message(TTY_MESSAGE_OK);
 }
 
 void apic_timer_init(uint8_t vector, uint64_t hz)
@@ -37,7 +34,7 @@ void apic_timer_init(uint8_t vector, uint64_t hz)
 
 void local_apic_init()
 {
-    write_msr(MSR_LOCAL_APIC, (read_msr(MSR_LOCAL_APIC) | LOCAL_APIC_MSR_ENABLE) & ~(1 << 10));
+    msr_write(MSR_LOCAL_APIC, (msr_read(MSR_LOCAL_APIC) | LOCAL_APIC_MSR_ENABLE) & ~(1 << 10));
 
     local_apic_write(LOCAL_APIC_REG_SPURIOUS, local_apic_read(LOCAL_APIC_REG_SPURIOUS) | 0x100);
 }

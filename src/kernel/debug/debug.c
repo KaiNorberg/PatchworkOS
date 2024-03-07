@@ -5,7 +5,7 @@
 #include "pmm/pmm.h"
 #include "time/time.h"
 #include "hpet/hpet.h"
-#include "utils/utils.h"
+#include "registers/registers.h"
 #include "smp/smp.h"
 
 /*const char* exceptionStrings[32] = 
@@ -112,6 +112,8 @@ static inline void debug_print(const char* string, uint64_t value)
 
 void debug_panic(const char* message)
 {
+    asm volatile("cli");
+
     tty_acquire();
 
     Cpu const* self = smp_self();
@@ -143,7 +145,6 @@ void debug_panic(const char* message)
     
     tty_release();
 
-    asm volatile("cli");
     while (1)
     {
         asm volatile("hlt");
@@ -176,12 +177,9 @@ void debug_exception(InterruptFrame const* interruptFrame, const char* message)
         debug_print("Code Segment = ", interruptFrame->codeSegment);
         debug_print("Stack Segment = ", interruptFrame->stackSegment);
 
-        uint64_t cr2;
-        uint64_t cr3;
-        uint64_t cr4;
-        READ_REGISTER("cr2", cr2);
-        READ_REGISTER("cr3", cr3);
-        READ_REGISTER("cr4", cr4);
+        uint64_t cr2 = cr2_read();
+        uint64_t cr3 = cr3_read();
+        uint64_t cr4 = cr4_read();
 
         debug_move("Registers", 2, 0);
         debug_print("R9 = ", interruptFrame->r9);

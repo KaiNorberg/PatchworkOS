@@ -7,16 +7,18 @@
 #include <lib-asym.h>
 
 #include "tty/tty.h"
+#include "heap/heap.h"
 #include "vmm/vmm.h"
 #include "time/time.h"
 #include "vfs/vfs.h"
 #include "utils/utils.h"
 #include "smp/smp.h"
+#include "debug/debug.h"
 #include "interrupts/interrupts.h"
 #include "scheduler/scheduler.h"
 #include "program_loader/program_loader.h"
 
-/*static inline uint8_t syscall_verify_pointer(const void* pointer, uint64_t size)
+static inline uint8_t verify_pointer(const void* pointer, uint64_t size)
 {
     if ((uint64_t)pointer > VMM_LOWER_HALF_MAX || (uint64_t)pointer + size > VMM_LOWER_HALF_MAX)
     {
@@ -26,24 +28,12 @@
     return 1;
 }
 
-static inline uint8_t syscall_verify_string(const char* string)
+static inline uint8_t verify_string(const char* string)
 {
-    return syscall_verify_pointer(string, 0);
+    return verify_pointer(string, 0);
 }
 
-static inline void syscall_return_success(InterruptFrame* interruptFrame, uint64_t result)
-{    
-    interruptFrame->rax = result;
-}
-
-static inline void syscall_return_error(InterruptFrame* interruptFrame, Status status)
-{    
-    Worker* worker = worker_self();
-    worker->scheduler->runningProcess->status = status;    
-    interruptFrame->rax = -1;
-}
-
-void sys_exit(InterruptFrame* interruptFrame)
+/*void sys_exit(InterruptFrame* interruptFrame)
 {    
     Worker* worker = worker_self();
 
@@ -242,6 +232,40 @@ void sys_seek(InterruptFrame* interruptFrame)
     syscall_return_success(interruptFrame, 0);
 }*/
 
+int64_t syscall_exit(Status status)
+{
+    scheduler_exit(status);
+
+    debug_panic("Returned from exit");
+    return 0;
+}
+
+int64_t syscall_spawn(const char* path)
+{
+    if (!verify_string(path))
+    {
+        scheduler_thread()->status = STATUS_INVALID_POINTER;
+        return -1;
+    }
+
+    int64_t pid = scheduler_spawn(path);
+    if (pid == -1)
+    {
+        scheduler_thread()->status = STATUS_FAILURE;
+        return -1;
+    }
+
+    return pid;
+}
+
+Status syscall_status()
+{
+    Thread* thread = scheduler_thread();
+    Status temp = thread->status;
+    thread->status = STATUS_FAILURE;
+    return temp;
+}
+
 int64_t syscall_test(const char* string)
 {
     interrupts_disable();
@@ -261,6 +285,8 @@ int64_t syscall_test(const char* string)
     tty_printx(scheduler_local_thread_amount());
     tty_print(" PID: "); 
     tty_printx(scheduler_process()->id);
+    tty_print(" TID: "); 
+    tty_printx(scheduler_thread()->id);
     if (string != 0)
     {
         tty_print(" | ");
@@ -278,15 +304,15 @@ int64_t syscall_test(const char* string)
     interrupts_enable();
 
     scheduler_thread()->status = STATUS_SUCCESS;
-    return 0x1234;
+    return 0;
 }
 
 void* syscallTable[] =
 {
-    [SYS_EXIT] = (void*)syscall_test,
-    [SYS_SPAWN] =  (void*)syscall_test,
+    [SYS_EXIT] = (void*)syscall_exit,
+    [SYS_SPAWN] =  (void*)syscall_spawn,
     [SYS_SLEEP] = (void*)syscall_test,
-    [SYS_STATUS] = (void*)syscall_test,
+    [SYS_STATUS] = (void*)syscall_status,
     [SYS_MAP] = (void*)syscall_test,
     [SYS_OPEN] = (void*)syscall_test,
     [SYS_CLOSE] = (void*)syscall_test,

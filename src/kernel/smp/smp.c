@@ -91,7 +91,7 @@ Cpu* smp_self()
         debug_panic("smp_self called with interrupts");
     }
 
-    uint64_t id = read_msr(MSR_CPU_ID);
+    uint64_t id = msr_read(MSR_CPU_ID);
     return &cpus[id];
 }
 

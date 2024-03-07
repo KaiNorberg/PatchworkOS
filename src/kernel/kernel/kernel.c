@@ -24,6 +24,7 @@
 #include "process/process.h"
 #include "lock/lock.h"
 #include "irq/irq.h"
+#include "registers/registers.h"
 #include "interrupts/interrupts.h"
 #include "program_loader/program_loader.h"
 
@@ -68,7 +69,6 @@ void kernel_init(BootInfo* bootInfo)
     kernel_cpu_init();
 
     time_init();
-    pid_init();
 
     scheduler_init();
     program_loader_init();
@@ -86,12 +86,12 @@ void kernel_cpu_init()
     local_apic_init();
 
     Cpu* cpu = smp_self_brute();
-    write_msr(MSR_CPU_ID, cpu->id);
+    msr_write(MSR_CPU_ID, cpu->id);
     
     gdt_load();
     gdt_load_tss(cpu->tss);
 
     idt_load();
 
-    //TODO: Set cr4 global page flag
+    cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);
 }

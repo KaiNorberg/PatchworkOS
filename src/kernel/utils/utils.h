@@ -2,9 +2,6 @@
 
 #include <stdint.h>
 
-#define MSR_LOCAL_APIC 0x1B
-#define MSR_CPU_ID 0xC0000103 //IA32_TSC_AUX
-
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
@@ -19,12 +16,6 @@
 
 #define READ_64(address) (*((volatile uint64_t*)(address)))
 #define WRITE_64(address, value) (*((volatile uint64_t*)(address)) = (uint64_t)value)
-
-#define READ_REGISTER(reg, value) asm volatile("mov %%" reg ", %0" : "=r" (value))
-#define WRITE_REGISTER(reg, value) asm volatile("mov %0, %%" reg :: "r" (value))
-
-uint64_t read_msr(uint64_t msr);
-void write_msr(uint64_t msr, uint64_t value);
 
 char* itoa(uint64_t i, char b[], uint8_t base);
 
