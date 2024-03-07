@@ -28,9 +28,9 @@ void smp_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-void smp_send_ipi(Cpu* cpu, Ipi ipi)
+void smp_send_ipi(Cpu const* cpu, Ipi ipi)
 {
-    cpu->ipi = ipi;
+    ((Cpu*)cpu)->ipi = ipi;
     local_apic_send_ipi(cpu->localApicId, IPI_VECTOR);
 }
 

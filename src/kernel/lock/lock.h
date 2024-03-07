@@ -2,7 +2,11 @@
 
 #include <stdatomic.h>
 
-typedef atomic_flag Lock;
+typedef struct
+{
+    atomic_int nextTicket;
+    atomic_int servingTicket;
+} Lock;
 
 Lock lock_new();
 

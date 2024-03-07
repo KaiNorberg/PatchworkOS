@@ -4,14 +4,20 @@
 
 Lock lock_new()
 {
-    return (Lock)ATOMIC_FLAG_INIT;
+    return (Lock)
+    {
+        .servingTicket = 0,
+        .nextTicket = 0
+    };
 }
 
 void lock_acquire(Lock* lock)
 {
     interrupts_disable();
 
-    while (atomic_flag_test_and_set_explicit(lock, memory_order_acquire))
+    //Overflow does not matter
+    int32_t ticket = atomic_fetch_add_explicit(&lock->nextTicket, 1, memory_order_seq_cst);
+    while (atomic_load(&lock->servingTicket) != ticket)
     {
         asm volatile("pause");
     }
@@ -19,7 +25,7 @@ void lock_acquire(Lock* lock)
 
 void lock_release(Lock* lock)
 {
-    atomic_flag_clear_explicit(lock, memory_order_release);
+    atomic_fetch_add_explicit(&lock->servingTicket, 1, memory_order_seq_cst);
 
     interrupts_enable();
 }

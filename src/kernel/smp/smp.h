@@ -36,7 +36,7 @@ void smp_entry();
 
 void smp_init();
 
-void smp_send_ipi(Cpu* cpu, Ipi ipi);
+void smp_send_ipi(Cpu const* cpu, Ipi ipi);
 
 void smp_send_ipi_to_others(Ipi ipi);
 

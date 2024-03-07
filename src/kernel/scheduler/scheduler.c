@@ -17,35 +17,9 @@ static atomic_size_t tid = 0;
 
 static Scheduler** schedulers;
 
-static void scheduler_irq_handler(uint8_t irq)
-{
-    switch (irq)
-    {
-    case IRQ_TIMER:
-    {
-        Ipi ipi =
-        {
-            .type = IPI_TYPE_SCHEDULE
-        };
-        smp_send_ipi_to_others(ipi);
-    }
-    break;
-    default:
-    {
-        debug_panic("Scheduler invalid IRQ");
-    }
-    break;
-    }
-}
-
 static uint8_t scheduler_wants_to_schedule(Scheduler* scheduler)
 {   
-    if (interrupt_depth() != 0)
-    {        
-        //Cant schedule
-        return 0;
-    }
-    else if (scheduler->runningThread == 0)
+    if (scheduler->runningThread == 0)
     {
         for (int64_t i = THREAD_PRIORITY_MIN; i <= THREAD_PRIORITY_MAX; i++) 
         {
@@ -78,6 +52,47 @@ static uint8_t scheduler_wants_to_schedule(Scheduler* scheduler)
     }
 
     return 0;
+}
+
+static void scheduler_irq_handler(uint8_t irq)
+{
+    switch (irq)
+    {
+    case IRQ_TIMER:
+    {
+        Cpu const* self = smp_self();
+        for (uint8_t i = 0; i < smp_cpu_amount(); i++)
+        {
+            Cpu const* other = smp_cpu(i);
+            if (other == self)
+            {
+                continue;
+            }
+
+            Scheduler* scheduler = schedulers[i];
+
+            lock_acquire(&scheduler->lock);
+            uint8_t wantsToSchedule = scheduler_wants_to_schedule(scheduler);
+            lock_release(&scheduler->lock);
+
+            if (wantsToSchedule)
+            {
+                Ipi ipi =
+                {
+                    .type = IPI_TYPE_SCHEDULE
+                };
+                smp_send_ipi(other, ipi);
+            }
+        }
+        smp_put();
+    }
+    break;
+    default:
+    {
+        debug_panic("Scheduler invalid IRQ");
+    }
+    break;
+    }
 }
 
 void scheduler_init()
@@ -232,10 +247,10 @@ void scheduler_schedule(InterruptFrame* interruptFrame)
 
     lock_acquire(&scheduler->lock);
 
-    if (!scheduler_wants_to_schedule(scheduler))
+    if (interrupt_depth() != 0 || !scheduler_wants_to_schedule(scheduler))
     {    
         lock_release(&scheduler->lock);
-        interrupts_enable();
+        smp_put();
         return;
     }
 
@@ -279,8 +294,8 @@ void scheduler_schedule(InterruptFrame* interruptFrame)
         PAGE_DIRECTORY_LOAD(vmm_kernel_directory());
         self->tss->rsp0 = (uint64_t)self->idleStackTop;
     }
-    lock_release(&scheduler->lock);
 
+    lock_release(&scheduler->lock);
     smp_put();
 }
 
