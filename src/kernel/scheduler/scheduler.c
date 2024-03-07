@@ -105,18 +105,16 @@ void scheduler_init()
 
 Thread* scheduler_thread()
 {
-    interrupts_disable();
     Thread* thread = schedulers[smp_self()->id]->runningThread;
-    interrupts_enable();
+    smp_put();
 
     return thread;
 }
 
 Process* scheduler_process()
 {
-    interrupts_disable();
     Process* process = schedulers[smp_self()->id]->runningThread->common->process;
-    interrupts_enable();
+    smp_put();
 
     return process;
 }
@@ -132,10 +130,7 @@ void scheduler_invoke()
 
 void scheduler_exit(Status status)
 {
-    interrupts_disable();
-
-    Cpu* self = smp_self();
-    Scheduler* scheduler = schedulers[self->id];
+    Scheduler* scheduler = schedulers[smp_self()->id];
     lock_acquire(&scheduler->lock);
 
     Thread* thread = scheduler_thread();
@@ -154,7 +149,7 @@ void scheduler_exit(Status status)
     scheduler->runningThread = 0;
 
     lock_release(&scheduler->lock);
-    interrupts_enable();
+    smp_put();
 
     scheduler_invoke();
 }
@@ -232,8 +227,6 @@ int64_t scheduler_spawn(const char* path)
 
 void scheduler_schedule(InterruptFrame* interruptFrame)
 {
-    interrupts_disable();
-
     Cpu* self = smp_self();
     Scheduler* scheduler = schedulers[self->id];
 
@@ -288,14 +281,12 @@ void scheduler_schedule(InterruptFrame* interruptFrame)
     }
     lock_release(&scheduler->lock);
 
-    interrupts_enable();
+    smp_put();
 }
 
 //Temporary
 uint64_t scheduler_local_thread_amount()
 {
-    interrupts_disable();
-
     Cpu const* self = smp_self();
     Scheduler* scheduler = schedulers[self->id];
     
@@ -307,7 +298,7 @@ uint64_t scheduler_local_thread_amount()
     }
     lock_release(&scheduler->lock);
 
-    interrupts_enable();
+    smp_put();
 
     return length;
 }

@@ -58,12 +58,12 @@ static inline void ipi_handler(InterruptFrame const* interruptFrame)
 
 static void interrupt_begin()
 {
-    states[smp_self()->id].depth++;
+    states[smp_self_unsafe()->id].depth++;
 }
 
 static void interrupt_end()
 {
-    states[smp_self()->id].depth--;
+    states[smp_self_unsafe()->id].depth--;
 }
 
 void interrupts_disable()
@@ -73,7 +73,7 @@ void interrupts_disable()
 
     asm volatile("cli");    
     
-    InterruptState* state = &states[smp_self()->id];
+    InterruptState* state = &states[smp_self_unsafe()->id];
     if (state->cliAmount == 0)
     {
         state->enabled = rflags & RFLAGS_INTERRUPT_ENABLE;
@@ -83,7 +83,7 @@ void interrupts_disable()
 
 void interrupts_enable()
 {
-    InterruptState* state = &states[smp_self()->id];
+    InterruptState* state = &states[smp_self_unsafe()->id];
 
     state->cliAmount--;
     if (state->cliAmount == 0 && state->enabled)
@@ -94,7 +94,7 @@ void interrupts_enable()
 
 uint64_t interrupt_depth()
 {
-    return states[smp_self()->id].depth;
+    return states[smp_self_unsafe()->id].depth;
 }
 
 void interrupt_handler(InterruptFrame* interruptFrame)

@@ -49,11 +49,10 @@ void smp_send_ipi_to_others(Ipi ipi)
 
 void smp_send_ipi_to_self(Ipi ipi)
 {
-    interrupts_disable();
     Cpu* self = smp_self();
     self->ipi = ipi;
     uint64_t localApicId = self->localApicId;
-    interrupts_enable();
+    smp_put();
     
     local_apic_send_ipi(localApicId, IPI_VECTOR);
 }
@@ -86,9 +85,17 @@ Cpu const* smp_cpu(uint8_t id)
 
 Cpu* smp_self()
 {
+    interrupts_disable();
+
+    uint64_t id = msr_read(MSR_CPU_ID);
+    return &cpus[id];
+}
+
+Cpu* smp_self_unsafe()
+{
     if (rflags_read() & RFLAGS_INTERRUPT_ENABLE)
     {
-        debug_panic("smp_self called with interrupts");
+        debug_panic("smp_self_unsafe called with interrupts enabled");
     }
 
     uint64_t id = msr_read(MSR_CPU_ID);
@@ -110,4 +117,9 @@ Cpu* smp_self_brute()
 
     debug_panic("Unable to find cpu");
     return 0;
+}
+
+void smp_put()
+{
+    interrupts_enable();
 }

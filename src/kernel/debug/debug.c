@@ -116,8 +116,6 @@ void debug_panic(const char* message)
 
     tty_acquire();
 
-    Cpu const* self = smp_self();
-
     Ipi ipi = 
     {
         .type = IPI_TYPE_HALT
@@ -142,7 +140,7 @@ void debug_panic(const char* message)
     tty_set_scale(1);
     tty_set_row(oldRow);
     tty_set_column(oldColumn);        
-    
+
     tty_release();
 
     while (1)

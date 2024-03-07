@@ -268,9 +268,7 @@ Status syscall_status()
 
 int64_t syscall_test(const char* string)
 {
-    interrupts_disable();
-
-    Cpu* self = smp_self();
+    Cpu const* self = smp_self();
     tty_acquire();
     
     uint8_t oldRow = tty_get_row();
@@ -300,8 +298,7 @@ int64_t syscall_test(const char* string)
     tty_set_column(oldColumn);
 
     tty_release();
-
-    interrupts_enable();
+    smp_put();
 
     scheduler_thread()->status = STATUS_SUCCESS;
     return 0;

@@ -50,6 +50,11 @@ uint8_t smp_cpu_amount();
 
 Cpu const* smp_cpu(uint8_t id);
 
+//Must have a corresponding call to smp_put()
 Cpu* smp_self();
 
+Cpu* smp_self_unsafe();
+
 Cpu* smp_self_brute();
+
+void smp_put();

@@ -43,9 +43,8 @@ BASE_C_FLAGS = -O3 \
 	-Wno-unused-parameter \
 	-Wno-unused-but-set-variable \
 	-Wno-implicit-fallthrough \
-	-mno-80387 \
-	-mno-mmx -mno-3dnow -mno-sse \
-	-mno-sse2 \
+	-mno-80387 -mno-mmx -mno-3dnow \
+	-mno-sse -mno-sse2 \
 	-I$(SRC_DIR) \
 	-I$(LIB_SRC_DIR)/include
 	
@@ -57,11 +56,11 @@ KERNEL_C_FLAGS = $(BASE_C_FLAGS) \
 	-D__KERNEL__
 
 BOOT_C_FLAGS = $(BASE_C_FLAGS) \
-	-fpic -ffreestanding -mno-sse2 \
+	-fpic -ffreestanding \
 	-fno-stack-protector -fno-stack-check \
-	-fshort-wchar -mno-red-zone \
-	-mno-80387 -Wno-array-bounds \
-	-mno-mmx -mno-3dnow -mno-sse \
+	-fshort-wchar -mno-red-zone -Wno-array-bounds \
+	-mno-80387 -mno-mmx -mno-3dnow \
+	-mno-sse -mno-sse2 \
 	-I$(GNU_EFI)/inc \
 	-D__BOOTLOADER__
 
