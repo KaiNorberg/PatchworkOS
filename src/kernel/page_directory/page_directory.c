@@ -5,71 +5,71 @@
 #include "pmm/pmm.h"
 #include "debug/debug.h"
 #include "vmm/vmm.h"
+#include "registers/registers.h"
 
-static inline PageDirectoryEntry page_directory_entry_create(void* address, uint64_t flags)
+static inline Pde pde_create(void* address, uint64_t flags)
 {
     return ((((uintptr_t)address >> 12) & 0x000000FFFFFFFFFF) << 12) | (flags | (uint64_t)PAGE_FLAG_PRESENT);
 }
 
-static inline PageDirectory* page_directory_get_directory(PageDirectory* pageDirectory, uint64_t index)
+static inline PageDirectory* page_directory_get(PageDirectory* pageDirectory, uint64_t index)
 {
-    if (!PAGE_DIRECTORY_GET_FLAG(pageDirectory->entries[index], PAGE_FLAG_PRESENT))
+    Pde entry = pageDirectory->entries[index];
+
+    if (!PDE_GET_FLAG(entry, PAGE_FLAG_PRESENT))
     {
         return 0;
     }
 
-    return vmm_physical_to_virtual(PAGE_DIRECTORY_GET_ADDRESS(pageDirectory->entries[index]));
+    return vmm_physical_to_virtual(PDE_GET_ADDRESS(entry));
 }
 
-static inline PageDirectoryEntry page_directory_get_or_create_entry(PageDirectory* pageDirectory, uint64_t index, uint64_t flags)
+static inline PageDirectory* page_directory_get_or_alloc(PageDirectory* pageDirectory, uint64_t index, uint64_t flags)
 {
-    if (!PAGE_DIRECTORY_GET_FLAG(pageDirectory->entries[index], PAGE_FLAG_PRESENT))
+    Pde entry = pageDirectory->entries[index];
+
+    if (PDE_GET_FLAG(entry, PAGE_FLAG_PRESENT))
     {
-        void* page = pmm_allocate();
-        memset(vmm_physical_to_virtual(page), 0, PAGE_SIZE);
-        pageDirectory->entries[index] = page_directory_entry_create(page, flags);
+        return vmm_physical_to_virtual(PDE_GET_ADDRESS(entry));
     }
+    else
+    {
+        PageDirectory* address = vmm_physical_to_virtual(pmm_allocate());
+        memset(address, 0, PAGE_SIZE);
 
-    return pageDirectory->entries[index];
+        pageDirectory->entries[index] = pde_create(vmm_virtual_to_physical(address), flags);
+
+        return address;
+    }
 }
 
-static inline PageDirectory* page_directory_get_or_create_directory(PageDirectory* pageDirectory, uint64_t index, uint64_t flags)
+static inline void page_directory_free_level(PageDirectory* pageDirectory, int64_t level)
 {
-    PageDirectoryEntry entry = page_directory_get_or_create_entry(pageDirectory, index, flags);
-
-    return vmm_physical_to_virtual(PAGE_DIRECTORY_GET_ADDRESS(entry));
-}
-
-static inline void page_directory_free_level(PageDirectory* pageDirectory, uint64_t level)
-{
-    if (level == 0)
+    if (level < 0)
     {
         return;
     }
 
-    pageDirectory = vmm_physical_to_virtual(pageDirectory);
-
-    for (uint64_t i = 0; i < PAGE_DIRECTORY_ENTRY_AMOUNT; i++)
+    for (uint64_t i = 0; i < PDE_AMOUNT; i++)
     {   
-        void* address = PAGE_DIRECTORY_GET_ADDRESS(pageDirectory->entries[i]);
-        if (address == 0)
-        {   
+        Pde entry = pageDirectory->entries[i];
+        if (!PDE_GET_FLAG(entry, PAGE_FLAG_PRESENT))
+        {
             continue;
         }
 
-        page_directory_free_level(address, level - 1);
-        
-        if (!PAGE_DIRECTORY_GET_FLAG(pageDirectory->entries[i], PAGE_FLAG_DONT_OWN))
+        if (!PDE_GET_FLAG(entry, PAGE_FLAG_KERNEL))
         {
-            pmm_free_page(address);
+            page_directory_free_level(vmm_physical_to_virtual(PDE_GET_ADDRESS(entry)), level - 1);
         }
     }
+    pmm_free_page(vmm_virtual_to_physical(pageDirectory));
 }
 
 PageDirectory* page_directory_new()
 {
-    PageDirectory* pageDirectory = (PageDirectory*)pmm_allocate();
-    memset(vmm_physical_to_virtual(pageDirectory), 0, PAGE_SIZE);
+    PageDirectory* pageDirectory = vmm_physical_to_virtual(pmm_allocate());
+    memset(pageDirectory, 0, PAGE_SIZE);
     
     return pageDirectory;
 }
@@ -77,29 +77,11 @@ PageDirectory* page_directory_new()
 void page_directory_free(PageDirectory* pageDirectory)
 {    
     page_directory_free_level(pageDirectory, 4);
-
-    pmm_free_page(pageDirectory);            
 }
 
-void page_directory_copy_range(PageDirectory* dest, PageDirectory* src, uint64_t lowerIndex, uint64_t upperIndex)
-{    
-    dest = vmm_physical_to_virtual(dest);
-    src = vmm_physical_to_virtual(src);
-
-    for (uint64_t i = lowerIndex; i < upperIndex; i++)
-    {
-        dest->entries[i] = src->entries[i];
-    }
-}
-
-void page_directory_populate_range(PageDirectory* pageDirectory, uint64_t lowerIndex, uint64_t upperIndex, uint64_t flags)
-{    
-    pageDirectory = vmm_physical_to_virtual(pageDirectory);
-
-    for (uint64_t i = lowerIndex; i < upperIndex; i++)
-    {
-        page_directory_get_or_create_entry(pageDirectory, i, (flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR) & ~PAGE_FLAG_GLOBAL);
-    }
+void page_directory_load(PageDirectory* pageDirectory)
+{
+    cr3_write((uint64_t)vmm_virtual_to_physical(pageDirectory));
 }
 
 void page_directory_map_pages(PageDirectory* pageDirectory, void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint16_t flags)
@@ -121,23 +103,23 @@ void page_directory_map(PageDirectory* pageDirectory, void* virtualAddress, void
         debug_panic("Attempt to map invalid physical address!");
     }
 
-    pageDirectory = vmm_physical_to_virtual(pageDirectory);
-
-    uint64_t level4Index = PAGE_DIRECTORY_GET_INDEX(virtualAddress, 4);
-    uint64_t level3Index = PAGE_DIRECTORY_GET_INDEX(virtualAddress, 3);
-    uint64_t level2Index = PAGE_DIRECTORY_GET_INDEX(virtualAddress, 2);
-    uint64_t level1Index = PAGE_DIRECTORY_GET_INDEX(virtualAddress, 1);
-
-    PageDirectory* level3 = page_directory_get_or_create_directory(pageDirectory, level4Index, 
+    PageDirectory* level3 = page_directory_get_or_alloc(pageDirectory, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 4), 
         (flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR) & ~PAGE_FLAG_GLOBAL);
 
-    PageDirectory* level2 = page_directory_get_or_create_directory(level3, level3Index, 
+    PageDirectory* level2 = page_directory_get_or_alloc(level3, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 3), 
         flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR);
 
-    PageDirectory* level1 = page_directory_get_or_create_directory(level2, level2Index, 
+    PageDirectory* level1 = page_directory_get_or_alloc(level2, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 2), 
         flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR);
 
-    level1->entries[level1Index] = page_directory_entry_create(physicalAddress, flags);
+    Pde* entry = &level1->entries[PAGE_DIRECTORY_GET_INDEX(virtualAddress, 1)];
+
+    if (PDE_GET_FLAG(*entry, PAGE_FLAG_PRESENT))
+    {
+        debug_panic("Attempted to map already mapped page");
+    }
+
+    *entry = pde_create(physicalAddress, flags);
 }
 
 void page_directory_change_flags(PageDirectory* pageDirectory, void* virtualAddress, uint16_t flags)
@@ -147,31 +129,30 @@ void page_directory_change_flags(PageDirectory* pageDirectory, void* virtualAddr
         debug_panic("Attempt to map invalid virtual address!");
     }
 
-    pageDirectory = vmm_physical_to_virtual(pageDirectory);
-
-    uint64_t level4Index = PAGE_DIRECTORY_GET_INDEX(virtualAddress, 4);
-    uint64_t level3Index = PAGE_DIRECTORY_GET_INDEX(virtualAddress, 3);
-    uint64_t level2Index = PAGE_DIRECTORY_GET_INDEX(virtualAddress, 2);
-    uint64_t level1Index = PAGE_DIRECTORY_GET_INDEX(virtualAddress, 1);
-
-    PageDirectory* level3 = page_directory_get_directory(pageDirectory, level4Index);
+    PageDirectory* level3 = page_directory_get(pageDirectory, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 4));
     if (level3 == 0)
     {
         debug_panic("Failed to change page flags");
     }
 
-    PageDirectory* level2 = page_directory_get_directory(level3, level3Index);
+    PageDirectory* level2 = page_directory_get(level3, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 3));
     if (level2 == 0)
     {
         debug_panic("Failed to change page flags");
     }
 
-    PageDirectory* level1 = page_directory_get_directory(level2, level2Index);
+    PageDirectory* level1 = page_directory_get(level2, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 2));
     if (level1 == 0)
     {
         debug_panic("Failed to change page flags");
     }
 
-    level1->entries[level1Index] = 
-        page_directory_entry_create(PAGE_DIRECTORY_GET_ADDRESS(level1->entries[level1Index]), flags);
+    Pde* entry = &level1->entries[PAGE_DIRECTORY_GET_INDEX(virtualAddress, 1)];
+
+    if (!PDE_GET_FLAG(*entry, PAGE_FLAG_PRESENT))
+    {
+        debug_panic("Failed to change page flags");
+    }
+
+    *entry = pde_create(PDE_GET_ADDRESS(*entry), flags);
 }

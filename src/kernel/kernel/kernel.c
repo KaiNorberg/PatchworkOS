@@ -76,7 +76,7 @@ void kernel_init(BootInfo* bootInfo)
     vfs_init();
     //device_disk_init();
     ram_disk_init(bootInfo->ramRoot);
-    
+
     deallocate_boot_info(bootInfo);
 }
 

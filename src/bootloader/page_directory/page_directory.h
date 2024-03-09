@@ -18,11 +18,11 @@
 #define PAGE_DIR_CUSTOM_1 (1 << 10)
 #define PAGE_DIR_CUSTOM_2 (1 << 11)
 
-typedef uint64_t PageDirectoryEntry;
+typedef uint64_t Pde;
 
 typedef struct
 { 
-    PageDirectoryEntry entries[512];
+    Pde entries[512];
 } PageDirectory;
 
 PageDirectory* page_directory_new();

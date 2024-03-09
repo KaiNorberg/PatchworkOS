@@ -30,7 +30,7 @@ void tty_init(GopBuffer* gopBuffer, PsfFont* screenFont)
     frontbuffer.width = gopBuffer->width;
     frontbuffer.height = gopBuffer->height;
     frontbuffer.pixelsPerScanline = gopBuffer->pixelsPerScanline;
-
+    
     font.header = screenFont->header;   
     font.glyphs = vmm_allocate(SIZE_IN_PAGES(screenFont->glyphsSize));
     memcpy(font.glyphs, screenFont->glyphs, screenFont->glyphsSize);

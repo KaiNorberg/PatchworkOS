@@ -5,7 +5,7 @@
 #include <common/boot_info/boot_info.h>
 #include "efilib.h"
 
-static inline PageDirectoryEntry page_directory_entry_create(void* address, uint64_t flags)
+static inline Pde page_directory_entry_create(void* address, uint64_t flags)
 {
     return ((((uintptr_t)address >> 12) & 0x000000FFFFFFFFFF) << 12) | (flags | (uint64_t)PAGE_FLAG_PRESENT);
 }
@@ -47,7 +47,7 @@ void page_directory_map(PageDirectory* pageDirectory, void* virtualAddress, void
     indexer >>= 9;
     uint64_t pdpIndex = indexer & 0x1ff;
 
-    PageDirectoryEntry pde = pageDirectory->entries[pdpIndex];
+    Pde pde = pageDirectory->entries[pdpIndex];
     PageDirectory* pdp;
     if (!PAGE_DIRECTORY_GET_FLAG(pde, PAGE_FLAG_PRESENT))
     {

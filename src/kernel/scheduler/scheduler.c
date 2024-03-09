@@ -156,12 +156,17 @@ void scheduler_exit(Status status)
     Scheduler* scheduler = scheduler_self();
 
     Thread* thread = scheduler_thread();
-    
-    process_unref(thread->process);
-    interrupt_frame_free(thread->interruptFrame);
-    kfree(thread);
+    Cpu* self = smp_self_unsafe();
 
     scheduler->runningThread = 0;
+    
+    page_directory_load(vmm_kernel_directory());
+    self->tss->rsp0 = (uint64_t)self->idleStackTop;
+
+    process_unref(thread->process);
+    interrupt_frame_free(thread->interruptFrame);
+    //vmm_free(thread->kernelStackBottom, 1); //TODO: This
+    kfree(thread);
 
     scheduler_put();
     scheduler_invoke();
@@ -183,7 +188,7 @@ int64_t scheduler_spawn(const char* path)
     thread->kernelStackTop = (void*)((uint64_t)thread->kernelStackBottom + PAGE_SIZE);
     thread->timeStart = 0;
     thread->timeEnd = 0;
-    thread->interruptFrame = interrupt_frame_new(program_loader_entry, (void*)(VMM_LOWER_HALF_MAX - 1));
+    thread->interruptFrame = interrupt_frame_new(program_loader_entry, (void*)(VMM_LOWER_HALF_MAX));
     thread->status = STATUS_SUCCESS;
     thread->state = THREAD_STATE_READY;
     thread->priority = THREAD_PRIORITY_MIN;
@@ -191,12 +196,12 @@ int64_t scheduler_spawn(const char* path)
     //Temporary: For now the executable is passed via the user stack to the program loader.
     //Eventually it will be passed via a system similar to "/proc/self/exec".
     void* stackBottom = process_allocate_pages(process, (void*)(VMM_LOWER_HALF_MAX - PAGE_SIZE), 1);
-    void* stackTop = (void*)((uint64_t)stackBottom + 0xFFF);
+    void* stackTop = (void*)((uint64_t)stackBottom + PAGE_SIZE);
     uint64_t pathLength = strlen(path);
     void* dest = (void*)((uint64_t)stackTop - pathLength - 1);
     memcpy(dest, path, pathLength + 1);
     thread->interruptFrame->stackPointer -= pathLength + 1;
-    thread->interruptFrame->rdi = VMM_LOWER_HALF_MAX - 1 - pathLength - 1;
+    thread->interruptFrame->rdi = VMM_LOWER_HALF_MAX - pathLength - 1;
 
     scheduler_enqueue(thread);
 
@@ -254,24 +259,26 @@ void scheduler_schedule(InterruptFrame* interruptFrame)
         thread->timeEnd = thread->timeStart + SCHEDULER_TIME_SLICE;
         interrupt_frame_copy(interruptFrame, thread->interruptFrame);
 
-        PAGE_DIRECTORY_LOAD(thread->process->pageDirectory);
+        page_directory_load(thread->process->pageDirectory);
         self->tss->rsp0 = (uint64_t)thread->kernelStackTop;
 
         scheduler->runningThread = thread;
     }
     else if (scheduler->runningThread == 0)
     {
+        memset(interruptFrame, 0, sizeof(InterruptFrame));
         interruptFrame->instructionPointer = (uint64_t)scheduler_idle_loop;
         interruptFrame->codeSegment = GDT_KERNEL_CODE;
         interruptFrame->stackSegment = GDT_KERNEL_DATA;
+        interruptFrame->flags = 0x202;
         interruptFrame->stackPointer = (uint64_t)self->idleStackTop;
 
-        PAGE_DIRECTORY_LOAD(vmm_kernel_directory());
+        page_directory_load(vmm_kernel_directory());
         self->tss->rsp0 = (uint64_t)self->idleStackTop;
     }
     else
     {
-        //Keep running same thread
+        //Keep running the same thread
     }
 
     scheduler_put();

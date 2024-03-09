@@ -22,7 +22,7 @@ void smp_trampoline_setup()
 
     memcpy(vmm_physical_to_virtual(SMP_TRAMPOLINE_PHYSICAL_START), smp_trampoline_virtual_start, PAGE_SIZE);
 
-    WRITE_64(vmm_physical_to_virtual(SMP_TRAMPOLINE_PAGE_DIRECTORY_ADDRESS), (uint64_t)pageDirectory);
+    WRITE_64(vmm_physical_to_virtual(SMP_TRAMPOLINE_PAGE_DIRECTORY_ADDRESS), (uint64_t)vmm_virtual_to_physical(pageDirectory));
     WRITE_64(vmm_physical_to_virtual(SMP_TRAMPOLINE_ENTRY_ADDRESS), smp_entry);
 }
 

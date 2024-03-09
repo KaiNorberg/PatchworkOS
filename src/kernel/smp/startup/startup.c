@@ -54,7 +54,7 @@ static inline uint8_t cpu_init(Cpu* cpu, uint8_t id, uint8_t localApicId)
 
 void smp_entry()
 {    
-    PAGE_DIRECTORY_LOAD(vmm_kernel_directory());
+    page_directory_load(vmm_kernel_directory());
 
     kernel_cpu_init();
 

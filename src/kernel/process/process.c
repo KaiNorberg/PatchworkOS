@@ -10,7 +10,7 @@
 #include "gdt/gdt.h"
 #include "debug/debug.h"
 
-_Atomic uint64_t newPid = 0;
+static _Atomic uint64_t newPid = 0;
 
 Process* process_new()
 {

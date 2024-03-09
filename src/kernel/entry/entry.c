@@ -15,10 +15,8 @@ void main(BootInfo* bootInfo)
 
     tty_print("\n");
     
-    for (uint64_t i = 0; i < 16; i++)
+    for (uint64_t i = 0; i < 1000; i++)
     {
-        tty_print("Loading parent...\n");
-
         scheduler_spawn("ram:/bin/parent.elf");
     }
 

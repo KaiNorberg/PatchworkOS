@@ -8,4 +8,4 @@ global exit
 exit:
     mov rax, SYS_EXIT
     int 0x80
-    ret
+    ud2

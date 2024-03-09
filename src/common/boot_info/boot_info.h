@@ -42,6 +42,7 @@ static inline uint8_t is_memory_type_usable(uint64_t memoryType)
 	case EFI_MEMORY_MAPPED_IO_PORT_SPACE:
 	case EFI_PAL_CODE:
 	case EFI_RESERVED:
+	case EFI_PERSISTENT_MEMORY:
 	{
 		return 0;
 	}

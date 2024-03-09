@@ -170,48 +170,20 @@ void kfree(void* ptr)
 
     HeapHeader const* block = (HeapHeader*)((uint64_t)ptr - sizeof(HeapHeader));
     
-    uint8_t blockFound = 0;
-
     HeapHeader* currentBlock = firstBlock;
     while (currentBlock != 0)
     {
-        if (block == currentBlock)
+        if (block == currentBlock && currentBlock->reserved)
         {
-            blockFound = 1;
             currentBlock->reserved = 0;
-            break;
+            lock_release(&lock);
+            return;
         }
 
         currentBlock = currentBlock->next;
     }
 
-    if (!blockFound)
-    {
-        tty_print("Failed to free block!\n");
-    }
+    debug_panic("Failed to free block!\n");
 
-    while (1)
-    {
-        uint8_t blocksMerged = 0;
-
-        currentBlock = firstBlock;
-        while (currentBlock != 0)
-        {               
-            if (currentBlock->next != 0 && !currentBlock->reserved && !currentBlock->next->reserved)
-            {
-                currentBlock->size += currentBlock->next->size + sizeof(HeapHeader);
-                currentBlock->next = currentBlock->next->next;
-                blocksMerged = 1;
-            }
-
-            currentBlock = currentBlock->next;       
-        }
-
-        if (!blocksMerged)
-        {
-            break;
-        }       
-    }
-    
     lock_release(&lock);
 }

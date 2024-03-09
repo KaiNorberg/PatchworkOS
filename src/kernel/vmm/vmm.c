@@ -18,7 +18,6 @@ static void vmm_load_memory_map(EfiMemoryMap* memoryMap)
         
         page_directory_map_pages(kernelPageDirectory, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
 	}
-    page_directory_populate_range(kernelPageDirectory, PAGE_DIRECTORY_ENTRY_AMOUNT / 2, PAGE_DIRECTORY_ENTRY_AMOUNT, PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
 }
 
 static void vmm_deallocate_boot_page_directory(EfiMemoryMap* memoryMap)
@@ -42,7 +41,7 @@ void vmm_init(EfiMemoryMap* memoryMap)
 
     vmm_deallocate_boot_page_directory(memoryMap);
 
-    PAGE_DIRECTORY_LOAD(kernelPageDirectory);
+    page_directory_load(kernelPageDirectory);
 }
 
 PageDirectory* vmm_kernel_directory()
@@ -88,5 +87,8 @@ void vmm_change_flags(void* address, uint64_t pageAmount, uint16_t flags)
 
 void vmm_map_kernel(PageDirectory* pageDirectory)
 {
-    page_directory_copy_range(pageDirectory, kernelPageDirectory, PAGE_DIRECTORY_ENTRY_AMOUNT / 2, PAGE_DIRECTORY_ENTRY_AMOUNT);
+    for (uint64_t i = PDE_AMOUNT / 2; i < PDE_AMOUNT; i++)
+    {
+        pageDirectory->entries[i] = kernelPageDirectory->entries[i];
+    }
 }
