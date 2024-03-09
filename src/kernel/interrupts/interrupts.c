@@ -48,7 +48,7 @@ static inline void ipi_handler(InterruptFrame const* interruptFrame)
     break;
     case IPI_TYPE_SCHEDULE:
     {
-        //Does nothing, scheduling is performed in common_interrupt
+        //Does nothing, scheduling is performed in common_vector
     }
     break;
     }        
@@ -71,7 +71,7 @@ void interrupts_disable()
     //Race condition does not matter
     uint64_t rflags = rflags_read();
 
-    asm volatile("cli");    
+    asm volatile("cli");
     
     InterruptState* state = &states[smp_self_unsafe()->id];
     if (state->cliAmount == 0)
@@ -87,7 +87,7 @@ void interrupts_enable()
 
     state->cliAmount--;
     if (state->cliAmount == 0 && state->enabled)
-    {
+    {    
         asm volatile("sti");
     }
 }

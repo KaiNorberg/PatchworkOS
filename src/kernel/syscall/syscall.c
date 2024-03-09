@@ -55,14 +55,14 @@ void sys_spawn(InterruptFrame* interruptFrame)
         return;
     }
 
-    int64_t pid = worker_pool_spawn(path);
-    if (pid == -1)
+    int64_t newPid = worker_pool_spawn(path);
+    if (newPid == -1)
     {
         syscall_return_error(interruptFrame, STATUS_FAILURE);
         return;
     }
 
-    syscall_return_success(interruptFrame, pid);
+    syscall_return_success(interruptFrame, newPid);
 }
 
 void sys_sleep(InterruptFrame* interruptFrame)
@@ -266,41 +266,50 @@ Status syscall_status()
     return temp;
 }
 
+int64_t syscall_map(void* lower, void* upper)
+{
+    lower = (void*)round_down((uint64_t)lower, 0x1000);
+    upper = (void*)round_down((uint64_t)upper, 0x1000);
+
+    process_allocate_pages(scheduler_process(), lower, SIZE_IN_PAGES((uint64_t)upper - (uint64_t)lower));
+
+    return 0;
+}
+
 int64_t syscall_test(const char* string)
 {
-    Cpu const* self = smp_self();
     tty_acquire();
     
+    uint8_t cpuId = smp_self_unsafe()->id;
+
     uint8_t oldRow = tty_get_row();
     uint8_t oldColumn = tty_get_column();
 
     tty_set_column(0);
-    tty_set_row(self->id);
+    tty_set_row(cpuId);
 
     tty_print("CPU: ");
-    tty_printx(self->id); 
+    tty_printi(cpuId); 
     tty_print(" THREAD AMOUNT: "); 
-    tty_printx(scheduler_local_thread_amount());
+    tty_printi(scheduler_local_thread_amount());
     tty_print(" PID: "); 
-    tty_printx(scheduler_process()->id);
+    tty_printi(scheduler_process()->id);
     tty_print(" TID: "); 
-    tty_printx(scheduler_thread()->id);
+    tty_printi(scheduler_thread()->id);
     if (string != 0)
     {
-        tty_print(" | ");
+        tty_print(" STRING: ");
         tty_print(string);
     }
-    tty_print(" ");
-    tty_printx(time_nanoseconds());
-    tty_print("                                 ");
+    tty_print(" TIME: ");
+    tty_printi(time_milliseconds());
+    tty_print(" MS                                ");
 
     tty_set_row(oldRow);
     tty_set_column(oldColumn);
 
     tty_release();
-    smp_put();
 
-    scheduler_thread()->status = STATUS_SUCCESS;
     return 0;
 }
 
@@ -310,7 +319,7 @@ void* syscallTable[] =
     [SYS_SPAWN] =  (void*)syscall_spawn,
     [SYS_SLEEP] = (void*)syscall_test,
     [SYS_STATUS] = (void*)syscall_status,
-    [SYS_MAP] = (void*)syscall_test,
+    [SYS_MAP] = (void*)syscall_map,
     [SYS_OPEN] = (void*)syscall_test,
     [SYS_CLOSE] = (void*)syscall_test,
     [SYS_READ] = (void*)syscall_test,

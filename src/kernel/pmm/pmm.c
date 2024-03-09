@@ -18,6 +18,24 @@ static uint64_t usablePageAmount;
 
 static Lock lock;
 
+static inline uint8_t pmm_is_reserved(void* address)
+{   
+    return (bitmap[QWORD_INDEX(address)] >> BIT_INDEX(address)) & 1ULL;
+}
+
+static inline void pmm_reserve_page(void* address)
+{
+    bitmap[QWORD_INDEX(address)] |= 1ULL << BIT_INDEX(address);
+}
+
+static inline void pmm_reserve_pages(void* address, uint64_t count)
+{
+    for (uint64_t i = 0; i < count; i++)
+    {
+        pmm_reserve_page((void*)((uint64_t)address + i * PAGE_SIZE));
+    }
+}
+
 static void pmm_allocate_bitmap(EfiMemoryMap* memoryMap)
 {
     firstFreePage = 0;
@@ -36,7 +54,7 @@ static void pmm_allocate_bitmap(EfiMemoryMap* memoryMap)
     }
     pageAmount = highestAddress / PAGE_SIZE;    
 
-    bitmapSize = pageAmount;
+    bitmapSize = pageAmount / 8;
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
         const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
@@ -44,7 +62,7 @@ static void pmm_allocate_bitmap(EfiMemoryMap* memoryMap)
         if (!is_memory_type_reserved(desc->type) && bitmapSize < desc->amountOfPages * PAGE_SIZE)
         {
             bitmap = desc->virtualStart;    
-            memset(bitmap, -1, bitmapSize);
+            memset(bitmap, INT32_MAX, bitmapSize);
             return;
         }
     }
@@ -142,27 +160,11 @@ void* pmm_allocate_amount(uint64_t amount)
     return 0;
 }
 
-uint8_t pmm_is_reserved(void* address)
-{   
-    return (bitmap[QWORD_INDEX(address)] >> BIT_INDEX(address)) & 1ULL;
-}
-
-void pmm_reserve_page(void* address)
-{
-    bitmap[QWORD_INDEX(address)] |= 1ULL << BIT_INDEX(address);
-}
-
 void pmm_free_page(void* address)
-{
+{    
+    lock_acquire(&lock);
     bitmap[QWORD_INDEX(address)] &= ~(1ULL << BIT_INDEX(address));
-}
-
-void pmm_reserve_pages(void* address, uint64_t count)
-{
-    for (uint64_t i = 0; i < count; i++)
-    {
-        pmm_reserve_page((void*)((uint64_t)address + i * PAGE_SIZE));
-    }
+    lock_release(&lock);
 }
 
 void pmm_free_pages(void* address, uint64_t count)

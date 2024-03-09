@@ -18,13 +18,7 @@ void* pmm_allocate();
 
 void* pmm_allocate_amount(uint64_t amount);
 
-uint8_t pmm_is_reserved(void* address);
-
-void pmm_reserve_page(void* address);
-
 void pmm_free_page(void* address);
-
-void pmm_reserve_pages(void* address, uint64_t count);
 
 void pmm_free_pages(void* address, uint64_t count);
 

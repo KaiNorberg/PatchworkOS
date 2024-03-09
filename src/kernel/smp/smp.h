@@ -32,8 +32,6 @@ typedef struct
     void* idleStackBottom;
 } Cpu;
 
-void smp_entry();
-
 void smp_init();
 
 void smp_send_ipi(Cpu const* cpu, Ipi ipi);

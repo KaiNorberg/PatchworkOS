@@ -6,6 +6,7 @@
 #include "utils/utils.h"
 #include "heap/heap.h"
 #include "vmm/vmm.h"
+#include "smp/startup/startup.h"
 
 static PageDirectory* pageDirectory;
 static void* backupBuffer;

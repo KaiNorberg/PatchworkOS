@@ -1,11 +1,12 @@
 #pragma once
 
+#include <stdint.h>
 #include <stdatomic.h>
 
 typedef struct
 {
-    atomic_int nextTicket;
-    atomic_int servingTicket;
+    _Atomic uint32_t nextTicket;
+    _Atomic uint32_t servingTicket;
 } Lock;
 
 Lock lock_new();

@@ -1,7 +1,10 @@
 #pragma once
 
+#include <stdint.h>
+
 #include "time/time.h"
 #include "lock/lock.h"
+#include "list/list.h"
 #include "queue/queue.h"
 #include "process/process.h"
 #include "interrupt_frame/interrupt_frame.h"
@@ -20,22 +23,14 @@
 typedef struct
 {
     Process* process;
-    uint64_t threadCount;
-
-    Lock lock;
-} ThreadCommon;
-
-typedef struct
-{
-    ThreadCommon* common;
 
     uint64_t id;
 
-    uint64_t timeStart;
-    uint64_t timeEnd;
-
     void* kernelStackTop;
     void* kernelStackBottom;
+
+    uint64_t timeEnd;
+    uint64_t timeStart;
 
     InterruptFrame* interruptFrame;
     Status status;
@@ -58,8 +53,6 @@ void scheduler_init();
 Thread* scheduler_thread();
 
 Process* scheduler_process();
-
-void scheduler_invoke();
 
 void scheduler_exit(Status status);
 
