@@ -1,7 +1,5 @@
 [bits 64]
 
-%define SYSCALL_VECTOR 0x80
-
 %macro VECTOR_NAME 1
     dq vector_%1
 %endmacro
@@ -45,24 +43,9 @@ common_vector:
     push r14
     push r15
 
-    ;Check if interruptFrame->vector == SYSCALL_VECTOR
-    cmp qword [rsp + 15 * 8], SYSCALL_VECTOR
-    je .syscall_handler 
-
-    ;Is not a system call
     mov rdi, rsp
     call interrupt_handler
-    jmp .schedule
-    
-.syscall_handler:
-    ;Is a system call
-    call syscall_handler
-    mov qword [rsp + 14 * 8], rax ;interruptFrame->rax = rax
 
-.schedule:
-    mov rdi, rsp
-    call scheduler_schedule
-    
     pop r15
     pop r14
     pop r13

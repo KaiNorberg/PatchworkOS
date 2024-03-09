@@ -1,12 +1,10 @@
 [bits 64]
 
-global _start
-global kernel_stack_bottom
-global kernel_stack_top
-
 extern main
 
 section .text
+
+global _start
 _start:
     cld
 
@@ -19,6 +17,9 @@ _start:
     jmp .halt
 
 section .bss
+
+global kernel_stack_bottom
 kernel_stack_bottom:
 resb 0x4000
+global kernel_stack_top
 kernel_stack_top:

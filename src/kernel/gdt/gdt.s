@@ -1,10 +1,9 @@
 [bits 64]
 
-global gdt_load_descriptor
-
 section .text
 
 ;rdi = gdt descriptor
+global gdt_load_descriptor
 gdt_load_descriptor:    
     lgdt  [rdi]
     push 0x08

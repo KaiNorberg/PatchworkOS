@@ -81,29 +81,13 @@ static void scheduler_enqueue(Thread* thread)
     scheduler_release(scheduler);
 }
 
-static void scheduler_invoke()
-{
-    Scheduler* scheduler = scheduler_self();
-
-    Ipi ipi = 
-    {
-        .type = IPI_TYPE_SCHEDULE
-    };
-    smp_send_ipi_to_self(ipi);    
-    scheduler_put();
-}
-
 static void scheduler_irq_handler(uint8_t irq)
 {
     switch (irq)
     {
     case IRQ_TIMER:
     {
-        Ipi ipi = 
-        {
-            .type = IPI_TYPE_SCHEDULE
-        };
-        smp_send_ipi_to_others(ipi);
+        smp_send_ipi_to_others(IPI_SCHEDULE);
     }
     break;
     default:
@@ -151,6 +135,11 @@ Process* scheduler_process()
     return process;
 }
 
+void scheduler_yield()
+{
+    SMP_SEND_IPI_TO_SELF(IPI_SCHEDULE);
+}
+
 void scheduler_exit(Status status)
 {
     Scheduler* scheduler = scheduler_self();
@@ -169,7 +158,7 @@ void scheduler_exit(Status status)
     kfree(thread);
 
     scheduler_put();
-    scheduler_invoke();
+    scheduler_yield();
 }
 
 int64_t scheduler_spawn(const char* path)

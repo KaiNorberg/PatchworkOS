@@ -28,13 +28,12 @@ void smp_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-void smp_send_ipi(Cpu const* cpu, Ipi ipi)
+void smp_send_ipi(Cpu const* cpu, uint8_t ipi)
 {
-    ((Cpu*)cpu)->ipi = ipi;
-    local_apic_send_ipi(cpu->localApicId, IPI_VECTOR);
+    local_apic_send_ipi(cpu->localApicId, IPI_BASE + ipi);
 }
 
-void smp_send_ipi_to_others(Ipi ipi)
+void smp_send_ipi_to_others(uint8_t ipi)
 {
     Cpu const* self = smp_self_unsafe();
     for (uint8_t id = 0; id < cpuAmount; id++)
@@ -44,30 +43,6 @@ void smp_send_ipi_to_others(Ipi ipi)
             smp_send_ipi(&cpus[id], ipi);
         }
     }
-}
-
-void smp_send_ipi_to_self(Ipi ipi)
-{
-    Cpu* self = smp_self_unsafe();
-
-    self->ipi = ipi;    
-    local_apic_send_ipi(self->localApicId, IPI_VECTOR);
-}
-
-void smp_send_ipi_to_all(Ipi ipi)
-{
-    smp_send_ipi_to_others(ipi);
-    smp_send_ipi_to_self(ipi);
-}
-
-Ipi smp_receive_ipi()
-{
-    Cpu* self = smp_self_unsafe();
-
-    Ipi temp = self->ipi;
-    self->ipi = (Ipi){.type = IPI_TYPE_NONE};
-
-    return temp;
 }
 
 uint8_t smp_cpu_amount()
@@ -84,8 +59,7 @@ Cpu* smp_self()
 {
     interrupts_disable();
 
-    uint64_t id = msr_read(MSR_CPU_ID);
-    return &cpus[id];
+    return &cpus[msr_read(MSR_CPU_ID)];
 }
 
 Cpu* smp_self_unsafe()
@@ -95,8 +69,7 @@ Cpu* smp_self_unsafe()
         debug_panic("smp_self_unsafe called with interrupts enabled");
     }
 
-    uint64_t id = msr_read(MSR_CPU_ID);
-    return &cpus[id];
+    return &cpus[msr_read(MSR_CPU_ID)];
 }
 
 Cpu* smp_self_brute()

@@ -54,6 +54,8 @@ Thread* scheduler_thread();
 
 Process* scheduler_process();
 
+void scheduler_yield();
+
 void scheduler_exit(Status status);
 
 int64_t scheduler_spawn(const char* path);

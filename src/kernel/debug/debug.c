@@ -116,11 +116,7 @@ void debug_panic(const char* message)
 
     tty_acquire();
 
-    Ipi ipi = 
-    {
-        .type = IPI_TYPE_HALT
-    };
-    smp_send_ipi_to_others(ipi);
+    smp_send_ipi_to_others(IPI_SCHEDULE);
 
     uint32_t oldRow = tty_get_row();
     uint32_t oldColumn = tty_get_column();
@@ -153,11 +149,7 @@ void debug_exception(InterruptFrame const* interruptFrame, const char* message)
 {
     tty_acquire();
 
-    Ipi ipi = 
-    {
-        .type = IPI_TYPE_HALT
-    };
-    smp_send_ipi_to_others(ipi);
+    smp_send_ipi_to_others(IPI_SCHEDULE);
 
     uint32_t oldRow = tty_get_row();
     uint32_t oldColumn = tty_get_column();

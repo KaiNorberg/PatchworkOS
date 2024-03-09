@@ -33,11 +33,11 @@ static inline void exception_handler(InterruptFrame const* interruptFrame)
 
 static inline void ipi_handler(InterruptFrame const* interruptFrame)
 {
-    Ipi ipi = smp_receive_ipi();
+    uint8_t ipi = interruptFrame->vector - IPI_BASE;
 
-    switch (ipi.type)
+    switch (ipi)
     {
-    case IPI_TYPE_HALT:
+    case IPI_HALT:
     {
         asm volatile("cli");
         while (1)
@@ -46,12 +46,12 @@ static inline void ipi_handler(InterruptFrame const* interruptFrame)
         }
     }
     break;
-    case IPI_TYPE_SCHEDULE:
+    case IPI_SCHEDULE:
     {
         //Does nothing, scheduling is performed in common_vector
     }
     break;
-    }        
+    }
     
     local_apic_eoi();
 }
@@ -109,7 +109,7 @@ void interrupt_handler(InterruptFrame* interruptFrame)
     {
         irq_dispatch(interruptFrame);
     }
-    else if (interruptFrame->vector == IPI_VECTOR)
+    else if (interruptFrame->vector >= IPI_BASE && interruptFrame->vector < IPI_BASE + IPI_AMOUNT)
     {
         ipi_handler(interruptFrame);
     }
@@ -119,4 +119,6 @@ void interrupt_handler(InterruptFrame* interruptFrame)
     }
 
     interrupt_end();
+
+    scheduler_schedule(interruptFrame);
 }

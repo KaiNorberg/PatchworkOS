@@ -24,7 +24,7 @@ static inline PageDirectory* page_directory_get(PageDirectory* pageDirectory, ui
     return vmm_physical_to_virtual(PDE_GET_ADDRESS(entry));
 }
 
-static inline PageDirectory* page_directory_get_or_alloc(PageDirectory* pageDirectory, uint64_t index, uint64_t flags)
+static inline PageDirectory* page_directory_get_or_allocate(PageDirectory* pageDirectory, uint64_t index, uint64_t flags)
 {
     Pde entry = pageDirectory->entries[index];
 
@@ -103,13 +103,13 @@ void page_directory_map(PageDirectory* pageDirectory, void* virtualAddress, void
         debug_panic("Attempt to map invalid physical address!");
     }
 
-    PageDirectory* level3 = page_directory_get_or_alloc(pageDirectory, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 4), 
+    PageDirectory* level3 = page_directory_get_or_allocate(pageDirectory, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 4), 
         (flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR) & ~PAGE_FLAG_GLOBAL);
 
-    PageDirectory* level2 = page_directory_get_or_alloc(level3, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 3), 
+    PageDirectory* level2 = page_directory_get_or_allocate(level3, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 3), 
         flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR);
 
-    PageDirectory* level1 = page_directory_get_or_alloc(level2, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 2), 
+    PageDirectory* level1 = page_directory_get_or_allocate(level2, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 2), 
         flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR);
 
     Pde* entry = &level1->entries[PAGE_DIRECTORY_GET_INDEX(virtualAddress, 1)];

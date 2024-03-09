@@ -18,7 +18,6 @@ static inline uint8_t cpu_init(Cpu* cpu, uint8_t id, uint8_t localApicId)
     cpu->present = 1;
     cpu->id = id;
     cpu->localApicId = localApicId;
-    cpu->ipi = (Ipi){.type = IPI_TYPE_NONE};
 
     cpu->tss = tss_new();
     cpu->idleStackBottom = vmm_allocate(1);
