@@ -169,10 +169,13 @@ void pmm_free_page(void* address)
 
 void pmm_free_pages(void* address, uint64_t count)
 {
+    lock_acquire(&lock);
     for (uint64_t i = 0; i < count; i++)
     {
-        pmm_free_page((void*)((uint64_t)address + i * PAGE_SIZE));
-    }
+        void* a = (void*)((uint64_t)address + i * PAGE_SIZE);
+        bitmap[QWORD_INDEX(a)] &= ~(1ULL << BIT_INDEX(a));
+    }    
+    lock_release(&lock);
 }
 
 uint64_t pmm_total_amount()

@@ -48,13 +48,13 @@ typedef struct
 
 extern void scheduler_idle_loop();
 
+extern void scheduler_yield();
+
 void scheduler_init();
 
 Thread* scheduler_thread();
 
 Process* scheduler_process();
-
-void scheduler_yield();
 
 void scheduler_exit(Status status);
 

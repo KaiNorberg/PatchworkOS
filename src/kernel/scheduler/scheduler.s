@@ -1,6 +1,7 @@
 [bits 64]
 
 extern scheduler_schedule
+extern debug_panic
 
 section .text
 
@@ -9,9 +10,19 @@ scheduler_idle_loop:
 	hlt
 	jmp scheduler_idle_loop
 
-%if 0
 global scheduler_yield
-scheduler_yield:
+scheduler_yield:    
+    ;Check if interrupts are enabled
+    pushfq
+    pop rax
+    test rax, 0x200
+    jnz .interrupts_enabled
+
+    mov rdi, error_string
+    call debug_panic
+
+.interrupts_enabled:
+    cli
 	;Has to push the stack pointer without modifiying it
 	mov qword [rsp - 8], 0x10
 	mov qword [rsp - 16], rsp
@@ -58,7 +69,11 @@ scheduler_yield:
     pop rax
 
     add rsp, 16
+    sti
 	iretq
 .return:
 	ret
-%endif
+
+section .data
+error_string:
+db "scheduler_yield called with interrupts disabled", 0

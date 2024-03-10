@@ -5,10 +5,9 @@ SMP_TRAMPOLINE_PAGE_DIRECTORY_ADDRESS equ 0x8FF0
 SMP_TRAMPOLINE_STACK_ADDRESS equ 0x8FE0
 SMP_TRAMPOLINE_ENTRY_ADDRESS equ 0x8FD0
 
-global smp_trampoline_virtual_start
-
 section .smp_trampoline
 [bits 16]
+global smp_trampoline_virtual_start
 smp_trampoline_virtual_start:
     cli
     mov ax, 0x0

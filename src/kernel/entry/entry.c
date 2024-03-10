@@ -7,15 +7,13 @@
 #include "kernel/kernel.h"
 #include "scheduler/scheduler.h"
 
-#include "interrupts/interrupts.h"
-
 void main(BootInfo* bootInfo)
 {
     kernel_init(bootInfo);
 
     tty_print("\n");
     
-    for (uint64_t i = 0; i < 1000; i++)
+    for (uint64_t i = 0; i < 16; i++)
     {
         scheduler_spawn("ram:/bin/parent.elf");
     }

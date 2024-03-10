@@ -135,11 +135,6 @@ Process* scheduler_process()
     return process;
 }
 
-void scheduler_yield()
-{
-    SMP_SEND_IPI_TO_SELF(IPI_SCHEDULE);
-}
-
 void scheduler_exit(Status status)
 {
     Scheduler* scheduler = scheduler_self();
