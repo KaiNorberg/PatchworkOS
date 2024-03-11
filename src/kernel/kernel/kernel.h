@@ -6,3 +6,5 @@
 void kernel_init(BootInfo* bootInfo);
 
 void kernel_cpu_init();
+
+void kernel_start();

@@ -1,6 +1,7 @@
 #include "irq.h"
 
 #include "apic/apic.h"
+#include "pic/pic.h"
 #include "debug/debug.h"
 
 static IrqHandler handlers[IRQ_AMOUNT][IRQ_MAX_HANDLER_AMOUNT];
@@ -21,7 +22,8 @@ void irq_dispatch(InterruptFrame* interruptFrame)
         }
     }
 
-    local_apic_eoi();
+    //TODO: Replace with io apic
+    pic_eoi(irq);
 }
 
 void irq_install_handler(IrqHandler handler, uint8_t irq)

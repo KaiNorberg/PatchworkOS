@@ -39,16 +39,21 @@ static inline void ipi_handler(InterruptFrame const* interruptFrame)
     {
     case IPI_HALT:
     {
-        asm volatile("cli");
+        /*asm volatile("cli");
         while (1)
         {
             asm volatile("hlt");
-        }
+        }*/
+    }
+    break;
+    case IPI_START:
+    {
+        scheduler_cpu_start();
     }
     break;
     case IPI_SCHEDULE:
     {
-        //Does nothing, scheduling is performed in common_vector
+        //Does nothing, scheduling is performed in interrupt_handler
     }
     break;
     }

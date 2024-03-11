@@ -116,22 +116,22 @@ void debug_panic(const char* message)
 
     tty_acquire();
 
-    smp_send_ipi_to_others(IPI_SCHEDULE);
+    smp_send_ipi_to_others(IPI_HALT);
 
     uint32_t oldRow = tty_get_row();
     uint32_t oldColumn = tty_get_column();
 
     debug_start(message);
 
-    debug_move("Time", 0, 0);
-    debug_print("Tick = ", hpet_read_counter());
-    debug_print("Current Time = ", time_nanoseconds());
-
-    debug_move("Memory", 2, 0);
+    debug_move("Memory", 0, 0);
     debug_print("Free Heap = ", heap_free_size());
     debug_print("Reserved Heap = ", heap_reserved_size());
     debug_print("Locked Pages = ", pmm_reserved_amount());
     debug_print("Unlocked Pages = ", pmm_free_amount());
+
+    debug_move("Other", 2, 0);
+    debug_print("Current Time = ", time_nanoseconds());
+    debug_print("Cpu id = ", smp_self()->id);
 
     tty_set_scale(1);
     tty_set_row(oldRow);
@@ -149,7 +149,7 @@ void debug_exception(InterruptFrame const* interruptFrame, const char* message)
 {
     tty_acquire();
 
-    smp_send_ipi_to_others(IPI_SCHEDULE);
+    smp_send_ipi_to_others(IPI_HALT);
 
     uint32_t oldRow = tty_get_row();
     uint32_t oldColumn = tty_get_column();
@@ -197,16 +197,16 @@ void debug_exception(InterruptFrame const* interruptFrame, const char* message)
     {
         tty_print("Panic occurred outside of interrupt");
     }
-    
-    debug_move("Time", 0, 13);
-    debug_print("Tick = ", hpet_read_counter());
-    debug_print("Current Time = ", time_nanoseconds());
 
-    debug_move("Memory", 2, 13);
+    debug_move("Memory", 0, 13);
     debug_print("Free Heap = ", heap_free_size());
     debug_print("Reserved Heap = ", heap_reserved_size());
     debug_print("Locked Pages = ", pmm_reserved_amount());
     debug_print("Unlocked Pages = ", pmm_free_amount());
+
+    debug_move("Other", 2, 13);
+    debug_print("Current Time = ", time_nanoseconds());
+    debug_print("Cpu Id = ", smp_self()->id);
 
     tty_set_scale(1);
     tty_set_row(oldRow);

@@ -9,16 +9,15 @@
 #include "process/process.h"
 #include "interrupt_frame/interrupt_frame.h"
 
-#define THREAD_STATE_NONE 0
-#define THREAD_STATE_RUNNING 1
-#define THREAD_STATE_READY 2    
-#define THREAD_STATE_BLOCKED 3
+#define THREAD_STATE_ACTIVE 0
+#define THREAD_STATE_KILLED 1
 
 #define THREAD_PRIORITY_LEVELS 2
 #define THREAD_PRIORITY_MIN 0
 #define THREAD_PRIORITY_MAX (THREAD_PRIORITY_LEVELS - 1)
 
 #define SCHEDULER_TIME_SLICE (NANOSECONDS_PER_SECOND / 2)
+#define SCHEDULER_TIMER_HZ 1024
 
 typedef struct
 {
@@ -40,10 +39,10 @@ typedef struct
 
 typedef struct
 {
+    uint64_t id;
+
     Queue* queues[THREAD_PRIORITY_LEVELS];
     Thread* runningThread;
-    
-    Lock lock;
 } Scheduler;
 
 extern void scheduler_idle_loop();
@@ -51,6 +50,8 @@ extern void scheduler_idle_loop();
 extern void scheduler_yield();
 
 void scheduler_init();
+
+void scheduler_cpu_start();
 
 Thread* scheduler_thread();
 

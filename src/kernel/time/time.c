@@ -3,6 +3,9 @@
 #include <stdatomic.h>
 
 #include "irq/irq.h"
+#include "io/io.h"
+#include "pic/pic.h"
+#include "tty/tty.h"
 #include "apic/apic.h"
 #include "hpet/hpet.h"
 
@@ -10,16 +13,37 @@ static _Atomic uint64_t accumulator;
 
 static void time_irq_handler(uint8_t irq)
 {
-    time_accumulate();
+    time_accumulate();    
+    
+    io_outb(CMOS_ADDRESS, 0x0C);
+    io_inb(CMOS_DATA);
+}
+
+static void time_rtc_init()
+{
+    irq_install_handler(time_irq_handler, IRQ_CMOS);
+
+    /*io_outb(CMOS_ADDRESS, 0x8B);
+    uint8_t temp = io_inb(CMOS_DATA);
+    io_outb(CMOS_ADDRESS, 0x8B);
+    io_outb(CMOS_DATA, temp | 0x40);    
+    
+    io_outb(CMOS_ADDRESS, 0x8A);
+    temp = io_inb(CMOS_DATA);
+    io_outb(CMOS_ADDRESS, 0x8A);
+    io_outb(CMOS_DATA, (temp & 0xF0) | 15);
+
+    //TODO: Implement io apic
+    pic_clear_mask(IRQ_CASCADE);
+    pic_clear_mask(IRQ_CMOS);*/
 }
 
 void time_init()
 {
-    apic_timer_init(IRQ_BASE + IRQ_TIMER, TIMER_HZ);
-    irq_install_handler(time_irq_handler, IRQ_TIMER);
-
     accumulator = 0;
     time_accumulate();
+
+    time_rtc_init();
 }
 
 void time_accumulate()

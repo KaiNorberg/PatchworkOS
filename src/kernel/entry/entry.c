@@ -13,7 +13,7 @@ void main(BootInfo* bootInfo)
 
     tty_print("\n");
     
-    for (uint64_t i = 0; i < 16; i++)
+    for (uint64_t i = 0; i < 10000; i++)
     {
         scheduler_spawn("ram:/bin/parent.elf");
     }
@@ -23,11 +23,11 @@ void main(BootInfo* bootInfo)
     //Temporary for testing
     tty_clear();
     tty_set_row(20);
-
-    //Enabling interrupts will cause the scheduler to be invoked.
+ 
+    kernel_start();
+    
     while (1)
-    {   
-        asm volatile("sti");
+    {       
         asm volatile("hlt");
     }
 }

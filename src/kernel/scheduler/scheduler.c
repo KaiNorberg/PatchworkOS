@@ -9,6 +9,7 @@
 #include "registers/registers.h"
 #include "interrupts/interrupts.h"
 #include "irq/irq.h"
+#include "apic/apic.h"
 
 #include "program_loader/program_loader.h"
 
@@ -18,46 +19,32 @@ static _Atomic uint64_t newTid = 0;
 
 static Scheduler** schedulers;
 
-//Must have a corresponding call to scheduler_release()
-static inline Scheduler* scheduler_acquire(uint64_t id)
-{
-    Scheduler* scheduler = schedulers[id];
-    lock_acquire(&scheduler->lock);
-    return scheduler;
-}
-
-static inline void scheduler_release(Scheduler* scheduler)
-{
-    lock_release(&scheduler->lock);
-}
-
 //Must have a corresponding call to scheduler_put()
 static inline Scheduler* scheduler_self()
 {
-    Scheduler* scheduler = schedulers[smp_self()->id];
-    lock_acquire(&scheduler->lock);
-    return scheduler;
+    return schedulers[smp_self()->id];
 }
 
 static inline void scheduler_put()
 {
-    lock_release(&schedulers[smp_self_unsafe()->id]->lock);
     smp_put();
 }
 
-static void scheduler_enqueue(Thread* thread)
+static void scheduler_enqueue(Thread* thread, uint8_t express, uint16_t preferred)
 {
-    uint64_t bestLength = UINT64_MAX;
+    int64_t bestLength = INT64_MAX;
     uint64_t best = 0;
-    //for (int8_t i =  smp_cpu_amount() - 1; i >= 0; i--)
-    for (uint8_t i = 0; i < smp_cpu_amount(); i++)
+    for (int8_t i = smp_cpu_amount() - 1; i >= 0; i--)
     {   
-        Scheduler* scheduler = scheduler_acquire(i);
-
-        uint64_t length = (scheduler->runningThread != 0);
+        int64_t length = (int64_t)(schedulers[i]->runningThread != 0);
         for (int64_t priority = THREAD_PRIORITY_MAX; priority >= THREAD_PRIORITY_MIN; priority--) 
         {
-            length += queue_length(scheduler->queues[priority]);
+            length += queue_length(schedulers[i]->queues[priority]);
+        }
+        
+        if (i == preferred)
+        {
+            length--;
         }
 
         if (bestLength > length)
@@ -65,72 +52,54 @@ static void scheduler_enqueue(Thread* thread)
             bestLength = length;
             best = i;
         }    
-
-        scheduler_release(scheduler);
     }
-
-    Scheduler* scheduler = scheduler_acquire(best);
-    if (thread->priority < THREAD_PRIORITY_MAX)
+    
+    if (thread->priority + express <= THREAD_PRIORITY_MAX)
     {
-        queue_push(scheduler->queues[thread->priority + 1], thread);
+        queue_push(schedulers[best]->queues[thread->priority], thread);
     }
     else
     {
-        queue_push(scheduler->queues[thread->priority], thread);
-    }
-    scheduler_release(scheduler);
-}
-
-static void scheduler_irq_handler(uint8_t irq)
-{
-    switch (irq)
-    {
-    case IRQ_TIMER:
-    {
-        smp_send_ipi_to_others(IPI_SCHEDULE);
-    }
-    break;
-    default:
-    {
-        debug_panic("Scheduler invalid IRQ");
-    }
-    break;
+        queue_push(schedulers[best]->queues[thread->priority], thread);
     }
 }
 
 void scheduler_init()
 {
-    irq_install_handler(scheduler_irq_handler, IRQ_TIMER);
-
     schedulers = kmalloc(sizeof(Scheduler*) * smp_cpu_amount());
     memset(schedulers, 0, sizeof(Scheduler*) * smp_cpu_amount());
 
     for (uint64_t i = 0; i < smp_cpu_amount(); i++)
     {
         Scheduler* scheduler = kmalloc(sizeof(Scheduler));
+        scheduler->id = i;
         for (uint64_t priority = THREAD_PRIORITY_MIN; priority <= THREAD_PRIORITY_MAX; priority++)
         {
             scheduler->queues[priority] = queue_new();
         }
         scheduler->runningThread = 0;
-        scheduler->lock = lock_new();
 
         schedulers[i] = scheduler;
     }
 }
 
+void scheduler_cpu_start()
+{
+    apic_timer_init(IPI_BASE + IPI_SCHEDULE, SCHEDULER_TIMER_HZ);
+}
+
 Thread* scheduler_thread()
 {
-    Thread* thread = schedulers[smp_self()->id]->runningThread;
-    smp_put();
+    Thread* thread = scheduler_self()->runningThread;
+    scheduler_put();
 
     return thread;
 }
 
 Process* scheduler_process()
 {
-    Process* process = schedulers[smp_self()->id]->runningThread->process;
-    smp_put();
+    Process* process = scheduler_self()->runningThread->process;
+    scheduler_put();
 
     return process;
 }
@@ -138,19 +107,13 @@ Process* scheduler_process()
 void scheduler_exit(Status status)
 {
     Scheduler* scheduler = scheduler_self();
+    scheduler->runningThread->state = THREAD_STATE_KILLED;
 
-    Thread* thread = scheduler_thread();
-    Cpu* self = smp_self_unsafe();
-
-    scheduler->runningThread = 0;
-    
-    page_directory_load(vmm_kernel_directory());
-    self->tss->rsp0 = (uint64_t)self->idleStackTop;
-
-    process_unref(thread->process);
+    //TODO: Deallocate thread, stack?
+    /*process_unref(thread->process);
     interrupt_frame_free(thread->interruptFrame);
-    //vmm_free(thread->kernelStackBottom, 1); //TODO: This
-    kfree(thread);
+    //vmm_free(thread->kernelStackBottom, 1);
+    kfree(thread);*/
 
     scheduler_put();
     scheduler_yield();
@@ -174,7 +137,7 @@ int64_t scheduler_spawn(const char* path)
     thread->timeEnd = 0;
     thread->interruptFrame = interrupt_frame_new(program_loader_entry, (void*)(VMM_LOWER_HALF_MAX));
     thread->status = STATUS_SUCCESS;
-    thread->state = THREAD_STATE_READY;
+    thread->state = THREAD_STATE_ACTIVE;
     thread->priority = THREAD_PRIORITY_MIN;
 
     //Temporary: For now the executable is passed via the user stack to the program loader.
@@ -187,31 +150,48 @@ int64_t scheduler_spawn(const char* path)
     thread->interruptFrame->stackPointer -= pathLength + 1;
     thread->interruptFrame->rdi = VMM_LOWER_HALF_MAX - pathLength - 1;
 
-    scheduler_enqueue(thread);
+    scheduler_enqueue(thread, 1, -1);
 
     return process->id;
 }
 
 void scheduler_schedule(InterruptFrame* interruptFrame)
 {
+    //This sure is messy...
+
     Scheduler* scheduler = scheduler_self();
 
     if (interrupt_depth() != 0)
     {    
         scheduler_put();
-        return;
+        return; 
     }
 
-    Cpu* self = smp_self_unsafe();
+    if (scheduler->runningThread != 0)
+    {
+        switch (scheduler->runningThread->state)
+        {
+        case THREAD_STATE_ACTIVE:
+        {
+
+        }
+        break;
+        case THREAD_STATE_KILLED:
+        {
+            scheduler->runningThread = 0;
+        }
+        break;
+        }
+    }
 
     Thread* thread = 0;  
     if (scheduler->runningThread != 0 && scheduler->runningThread->timeEnd > time_nanoseconds())
     {
         for (int64_t i = THREAD_PRIORITY_MAX; i > scheduler->runningThread->priority; i--) 
         {
-            if (queue_length(scheduler->queues[i]) != 0)
+            thread = queue_pop(scheduler->queues[i]);
+            if (thread != 0)
             {
-                thread = queue_pop(scheduler->queues[i]);
                 break;
             }
         }
@@ -220,35 +200,36 @@ void scheduler_schedule(InterruptFrame* interruptFrame)
     {
         for (int64_t i = THREAD_PRIORITY_MAX; i >= THREAD_PRIORITY_MIN; i--) 
         {
-            if (queue_length(scheduler->queues[i]) != 0)
+            thread = queue_pop(scheduler->queues[i]);
+            if (thread != 0)
             {
-                thread = queue_pop(scheduler->queues[i]);
                 break;
             }
         }
     }
 
+    Cpu* self = smp_self_unsafe();
     if (thread != 0)
     {
         if (scheduler->runningThread != 0)
         {
             interrupt_frame_copy(scheduler->runningThread->interruptFrame, interruptFrame);
 
-            scheduler->runningThread->state = THREAD_STATE_READY;
-            queue_push(scheduler->queues[scheduler->runningThread->priority], scheduler->runningThread);                
+            //scheduler_enqueue(scheduler->runningThread, 0, scheduler->id);
+            queue_push(scheduler->queues[scheduler->runningThread->priority], scheduler->runningThread);
+            scheduler->runningThread = 0;
         }
 
-        thread->state = THREAD_STATE_RUNNING;
         thread->timeStart = time_nanoseconds();
         thread->timeEnd = thread->timeStart + SCHEDULER_TIME_SLICE;
         interrupt_frame_copy(interruptFrame, thread->interruptFrame);
-
+        
         page_directory_load(thread->process->pageDirectory);
         self->tss->rsp0 = (uint64_t)thread->kernelStackTop;
 
         scheduler->runningThread = thread;
     }
-    else if (scheduler->runningThread == 0)
+    else if (scheduler->runningThread == 0) //Idle
     {
         memset(interruptFrame, 0, sizeof(InterruptFrame));
         interruptFrame->instructionPointer = (uint64_t)scheduler_idle_loop;

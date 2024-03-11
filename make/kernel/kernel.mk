@@ -22,15 +22,15 @@ KERNEL_OBJECTS = $(patsubst $(SRC_DIR)/%, $(BUILD_DIR)/%.o, $(KERNEL_SRC))
 
 $(KERNEL_BUILD_DIR)/%.c.o: $(KERNEL_SRC_DIR)/%.c
 	@mkdir -p $(@D)
-	$(CC) $(KERNEL_C_FLAGS) -I $(KERNEL_SRC_DIR) -c -o $@ $<
+	$(CC) $(KERNEL_C_FLAGS) -I$(KERNEL_SRC_DIR) -c -o $@ $<
 
 $(KERNEL_BUILD_DIR)/%.s.o: $(KERNEL_SRC_DIR)/%.s
 	@mkdir -p $(@D)
-	$(ASM) $(ASM_FLAGS) $^ -o $@
+	$(ASM) $(ASM_FLAGS) -I$(KERNEL_SRC_DIR) $^ -o $@
 
 $(KERNEL_OUTPUT): $(KERNEL_OBJECTS)	
 	@echo $(KERNEL_SRC)
 	@mkdir -p $(@D)
-	@$(LD) $(LD_FLAGS) -T $(KERNEL_SRC_DIR)/linker.ld -o $@ $^
+	@$(LD) $(LD_FLAGS) -T$(KERNEL_SRC_DIR)/linker.ld -o $@ $^
 
 BUILD += $(KERNEL_OUTPUT)

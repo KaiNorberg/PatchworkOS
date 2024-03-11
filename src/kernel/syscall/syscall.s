@@ -1,9 +1,9 @@
 [bits 64]
 
-
 %include "lib-syscall.inc"
 
 extern scheduler_yield
+extern debug_panic
 extern syscallTable
 
 section .text

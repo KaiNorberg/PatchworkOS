@@ -61,7 +61,6 @@ BOOT_C_FLAGS = $(BASE_C_FLAGS) \
 	-fshort-wchar -mno-red-zone -Wno-array-bounds \
 	-mno-80387 -mno-mmx -mno-3dnow \
 	-mno-sse -mno-sse2 \
-	-I$(GNU_EFI)/inc \
 	-D__BOOTLOADER__
 
 LIB_C_FLAGS = $(BASE_C_FLAGS) \

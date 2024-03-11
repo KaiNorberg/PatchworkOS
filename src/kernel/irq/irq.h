@@ -5,7 +5,7 @@
 #include "interrupt_frame/interrupt_frame.h"
 
 #define IRQ_BASE 0x20
-#define IRQ_TIMER 0x0
+#define IRQ_PIT 0x0
 #define IRQ_KEYBOARD 0x1
 #define IRQ_CASCADE 0x2
 #define IRQ_COM2 0x3

@@ -9,8 +9,9 @@
 
 #define IPI_BASE 0x90
 #define IPI_HALT 0
-#define IPI_SCHEDULE 1
-#define IPI_AMOUNT 2
+#define IPI_START 1
+#define IPI_SCHEDULE 2
+#define IPI_AMOUNT 3
 
 #define SMP_SEND_IPI_TO_SELF(ipi) asm volatile("int %0" : : "i" (IPI_BASE + ipi))
 

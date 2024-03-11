@@ -24,6 +24,7 @@
 #include "process/process.h"
 #include "lock/lock.h"
 #include "irq/irq.h"
+#include "pic/pic.h"
 #include "registers/registers.h"
 #include "interrupts/interrupts.h"
 #include "program_loader/program_loader.h"
@@ -59,7 +60,7 @@ void kernel_init(BootInfo* bootInfo)
 
     gdt_init();
     idt_init();
-    
+
     rsdt_init(bootInfo->rsdp);
     hpet_init();
     madt_init();
@@ -68,6 +69,7 @@ void kernel_init(BootInfo* bootInfo)
     smp_init();
     kernel_cpu_init();
 
+    pic_init();
     time_init();
 
     scheduler_init();
@@ -93,5 +95,12 @@ void kernel_cpu_init()
 
     idt_load();
 
-    cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);
+    cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);    
+}
+
+void kernel_start()
+{
+    smp_send_ipi_to_others(IPI_START);
+    asm volatile("sti");
+    SMP_SEND_IPI_TO_SELF(IPI_START);
 }
