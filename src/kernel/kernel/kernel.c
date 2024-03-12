@@ -101,6 +101,5 @@ void kernel_cpu_init()
 void kernel_start()
 {
     smp_send_ipi_to_others(IPI_START);
-    asm volatile("sti");
     SMP_SEND_IPI_TO_SELF(IPI_START);
 }

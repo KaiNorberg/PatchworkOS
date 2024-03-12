@@ -33,8 +33,10 @@ typedef struct
 
     InterruptFrame* interruptFrame;
     Status status;
+    
     uint8_t state;
     uint8_t priority;
+    uint8_t boost;
 } Thread;
 
 typedef struct

@@ -30,7 +30,7 @@ static inline void scheduler_put()
     smp_put();
 }
 
-static void scheduler_enqueue(Thread* thread, uint8_t express, uint16_t preferred)
+static void scheduler_enqueue(Thread* thread, uint8_t boost, uint16_t preferred)
 {
     int64_t bestLength = INT64_MAX;
     uint64_t best = 0;
@@ -54,14 +54,8 @@ static void scheduler_enqueue(Thread* thread, uint8_t express, uint16_t preferre
         }    
     }
     
-    if (thread->priority + express <= THREAD_PRIORITY_MAX)
-    {
-        queue_push(schedulers[best]->queues[thread->priority], thread);
-    }
-    else
-    {
-        queue_push(schedulers[best]->queues[thread->priority], thread);
-    }
+    thread->boost = thread->priority + boost <= THREAD_PRIORITY_MAX ? boost : 0;
+    queue_push(schedulers[best]->queues[thread->priority + thread->boost], thread);
 }
 
 void scheduler_init()
@@ -150,7 +144,7 @@ int64_t scheduler_spawn(const char* path)
     thread->interruptFrame->stackPointer -= pathLength + 1;
     thread->interruptFrame->rdi = VMM_LOWER_HALF_MAX - pathLength - 1;
 
-    scheduler_enqueue(thread, 1, -1);
+    scheduler_enqueue(thread, 5, -1);
 
     return process->id;
 }
@@ -187,7 +181,7 @@ void scheduler_schedule(InterruptFrame* interruptFrame)
     Thread* thread = 0;  
     if (scheduler->runningThread != 0 && scheduler->runningThread->timeEnd > time_nanoseconds())
     {
-        for (int64_t i = THREAD_PRIORITY_MAX; i > scheduler->runningThread->priority; i--) 
+        for (int64_t i = THREAD_PRIORITY_MAX; i > scheduler->runningThread->priority + scheduler->runningThread->boost; i--) 
         {
             thread = queue_pop(scheduler->queues[i]);
             if (thread != 0)
@@ -215,8 +209,7 @@ void scheduler_schedule(InterruptFrame* interruptFrame)
         {
             interrupt_frame_copy(scheduler->runningThread->interruptFrame, interruptFrame);
 
-            //scheduler_enqueue(scheduler->runningThread, 0, scheduler->id);
-            queue_push(scheduler->queues[scheduler->runningThread->priority], scheduler->runningThread);
+            scheduler_enqueue(scheduler->runningThread, 0, scheduler->id);
             scheduler->runningThread = 0;
         }
 

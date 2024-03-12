@@ -14,9 +14,6 @@ scheduler_idle_loop:
 
 global scheduler_yield
 scheduler_yield:
-    int 0x92
-    ret
-    
 	mov qword [rsp - 8], 0x10
 	mov qword [rsp - 16], rsp
 	sub rsp, 16

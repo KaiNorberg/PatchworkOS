@@ -13,7 +13,7 @@ void main(BootInfo* bootInfo)
 
     tty_print("\n");
     
-    for (uint64_t i = 0; i < 10000; i++)
+    for (uint64_t i = 0; i < 16; i++)
     {
         scheduler_spawn("ram:/bin/parent.elf");
     }
