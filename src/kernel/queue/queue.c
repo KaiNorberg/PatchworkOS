@@ -12,8 +12,7 @@ static inline void* queue_pop_unlocked(Queue* queue)
     void* temp = queue->buffer[queue->readIndex];
     atomic_fetch_sub(&queue->length, 1);
 
-    queue->readIndex++;
-    queue->readIndex %= queue->bufferLength;
+    queue->readIndex = (queue->readIndex + 1) % queue->bufferLength;
 
     return temp;
 }
@@ -22,19 +21,19 @@ static inline void queue_resize_unlocked(Queue* queue, uint64_t bufferLength)
 {
     void** newBuffer = kmalloc(bufferLength * sizeof(void*));
 
-    uint64_t i = 0;
-    while (i != atomic_load(&queue->length))
+    uint64_t oldLength = atomic_load(&queue->length);
+    for (uint64_t i = 0; i < oldLength; i++) 
     {
         newBuffer[i] = queue_pop_unlocked(queue);
-        i++;
     }
 
     kfree(queue->buffer);
 
+    atomic_store(&queue->length, oldLength);
     queue->buffer = newBuffer;
     queue->bufferLength = bufferLength;
     queue->readIndex = 0;
-    queue->writeIndex = i;
+    queue->writeIndex = oldLength;
 }
 
 static inline void queue_push_unlocked(Queue* queue, void* item)
@@ -47,8 +46,7 @@ static inline void queue_push_unlocked(Queue* queue, void* item)
     queue->buffer[queue->writeIndex] = item;
     atomic_fetch_add(&queue->length, 1);
 
-    queue->writeIndex++;
-    queue->writeIndex %= queue->bufferLength;
+    queue->writeIndex = (queue->writeIndex + 1) % queue->bufferLength;
 }
 
 Queue* queue_new()
@@ -70,7 +68,7 @@ Queue* queue_new()
 
 void queue_free(Queue* queue)
 {
-    //Wait until its done being used
+    //Wait until the queue done being used, dont release lock
     lock_acquire(&queue->lock);
 
     kfree(queue->buffer);

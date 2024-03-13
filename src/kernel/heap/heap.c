@@ -13,7 +13,7 @@
 static HeapHeader* firstBlock;
 static Lock lock;
 
-static inline HeapHeader* heap_split(HeapHeader* block, uint64_t size)
+HeapHeader* heap_split(HeapHeader* block, uint64_t size)
 {   
     uint64_t newSize = block->size - sizeof(HeapHeader) - size;
 

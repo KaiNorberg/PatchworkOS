@@ -21,6 +21,8 @@ vector_%1:
 
 extern interrupt_handler
 
+extern scheduler_schedule
+
 section .text
 
 common_vector:
@@ -29,6 +31,9 @@ common_vector:
 
     mov rdi, rsp
     call interrupt_handler
+
+    mov rdi, rsp
+    call scheduler_schedule
 
     POP_ALL_REGS
     add rsp, 16

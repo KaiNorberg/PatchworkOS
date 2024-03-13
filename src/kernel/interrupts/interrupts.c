@@ -53,7 +53,7 @@ static inline void ipi_handler(InterruptFrame const* interruptFrame)
     break;
     case IPI_SCHEDULE:
     {
-        //Does nothing, scheduling is performed in interrupt_handler
+        //Does nothing, scheduling is performed in common_vector
     }
     break;
     }
@@ -105,7 +105,6 @@ uint64_t interrupt_depth()
 void interrupt_handler(InterruptFrame* interruptFrame)
 {
     interrupt_begin();
-
     if (interruptFrame->vector < IRQ_BASE)
     {
         exception_handler(interruptFrame);
@@ -122,8 +121,5 @@ void interrupt_handler(InterruptFrame* interruptFrame)
     {
         debug_panic("Unknown interrupt vector");
     }
-
     interrupt_end();
-
-    scheduler_schedule(interruptFrame);
 }

@@ -97,9 +97,3 @@ void kernel_cpu_init()
 
     cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);    
 }
-
-void kernel_start()
-{
-    smp_send_ipi_to_others(IPI_START);
-    SMP_SEND_IPI_TO_SELF(IPI_START);
-}

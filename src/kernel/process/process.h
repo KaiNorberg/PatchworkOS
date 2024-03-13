@@ -5,24 +5,41 @@
 #include <lib-asym.h>
 
 #include "lock/lock.h"
-#include "page_directory/page_directory.h"
 #include "vfs/vfs.h"
 #include "file_table/file_table.h"
+#include "interrupt_frame/interrupt_frame.h"
+#include "page_directory/page_directory.h"
+
+#define PROCESS_STATE_ACTIVE 0
+#define PROCESS_STATE_KILLED 1
+
+#define PROCESS_PRIORITY_LEVELS 4
+#define PROCESS_PRIORITY_MIN 0
+#define PROCESS_PRIORITY_MAX (PROCESS_PRIORITY_LEVELS - 1)
 
 typedef struct
 {        
+    uint64_t id;
+
     PageDirectory* pageDirectory;
     FileTable* fileTable;
-    Lock lock;
 
-    uint64_t id;
-    _Atomic uint64_t refCount;
+    void* kernelStackTop;
+    void* kernelStackBottom;
+
+    uint64_t timeEnd;
+    uint64_t timeStart;
+
+    InterruptFrame* interruptFrame;
+    Status status;
+    
+    uint8_t state;
+    uint8_t priority;
+    uint8_t boost;
 } Process;
 
-Process* process_new();
+Process* process_new(void* entry);
 
-Process* process_ref(Process* process);
-
-void process_unref(Process* process);
+void process_free(Process* process);
 
 void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t amount);

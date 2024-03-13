@@ -26,7 +26,7 @@ void* program_loader_load(const char* executable)
     {
         sys_test(executable);
         //spawn(executable);
-        //exit(STATUS_FAILURE);
+        exit(STATUS_FAILURE);
     }
 
     int64_t fd = open(executable, FILE_FLAG_READ);

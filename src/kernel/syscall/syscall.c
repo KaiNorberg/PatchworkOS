@@ -244,14 +244,14 @@ int64_t syscall_spawn(const char* path)
 {
     if (!verify_string(path))
     {
-        scheduler_thread()->status = STATUS_INVALID_POINTER;
+        scheduler_process()->status = STATUS_INVALID_POINTER;
         return -1;
     }
 
     int64_t pid = scheduler_spawn(path);
     if (pid == -1)
     {
-        scheduler_thread()->status = STATUS_FAILURE;
+        scheduler_process()->status = STATUS_FAILURE;
         return -1;
     }
 
@@ -260,9 +260,9 @@ int64_t syscall_spawn(const char* path)
 
 Status syscall_status()
 {
-    Thread* thread = scheduler_thread();
-    Status temp = thread->status;
-    thread->status = STATUS_FAILURE;
+    Process* process = scheduler_process();
+    Status temp = process->status;
+    process->status = STATUS_FAILURE;
     return temp;
 }
 
@@ -290,12 +290,10 @@ int64_t syscall_test(const char* string)
 
     tty_print("CPU: ");
     tty_printi(cpuId); 
-    tty_print(" THREAD AMOUNT: "); 
-    tty_printi(scheduler_local_thread_amount());
+    tty_print(" PROCESS AMOUNT: "); 
+    tty_printi(scheduler_local_process_amount());
     tty_print(" PID: "); 
     tty_printi(scheduler_process()->id);
-    tty_print(" TID: "); 
-    tty_printi(scheduler_thread()->id);
     if (string != 0)
     {
         tty_print(" STRING: ");

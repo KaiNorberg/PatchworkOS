@@ -4,30 +4,25 @@
 #include "tty/tty.h"
 #include "smp/smp.h"
 #include "time/time.h"
+#include "debug/debug.h"
 #include "kernel/kernel.h"
 #include "scheduler/scheduler.h"
 
 void main(BootInfo* bootInfo)
 {
     kernel_init(bootInfo);
-
-    tty_print("\n");
     
-    for (uint64_t i = 0; i < 16; i++)
+    for (uint64_t i = 0; i < 1000; i++)
     {
         scheduler_spawn("ram:/bin/parent.elf");
     }
 
-    tty_print("\nKernel Initialized!\n\n");
-
-    //Temporary for testing
+    tty_acquire();
     tty_clear();
     tty_set_row(20);
+    tty_release();  
  
-    kernel_start();
-    
-    while (1)
-    {       
-        asm volatile("hlt");
-    }
+    //Exit init process
+    scheduler_exit(STATUS_SUCCESS);
+    debug_panic("Init process returned");
 }

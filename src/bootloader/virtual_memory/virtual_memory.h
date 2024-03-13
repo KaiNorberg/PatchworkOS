@@ -8,6 +8,7 @@
 
 #define ALLOCATED_ADDRESS_MAX_AMOUNT 16
 
+//Janky, but helps populate memory map with the correct kernel address.
 typedef struct
 {
     void* physicalAddress;
