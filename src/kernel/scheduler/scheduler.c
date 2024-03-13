@@ -30,6 +30,7 @@ static void scheduler_allocate_schedulers(void)
         {
             scheduler->queues[p] = queue_new();
         }
+        scheduler->graveyard = queue_new();
         scheduler->runningProcess = 0;
 
         schedulers[i] = scheduler;

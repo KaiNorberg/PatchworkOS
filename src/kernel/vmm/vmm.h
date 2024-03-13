@@ -5,14 +5,14 @@
 #include <common/common.h>
 #include <common/boot_info/boot_info.h>
 
-#include "kernel/kernel.h"
-#include "page_directory/page_directory.h"
 #include "pmm/pmm.h"
+#include "kernel/kernel.h"
+#include "vmm/page_directory/page_directory.h"
 
 #define VMM_HIGHER_HALF_BASE 0xFFFF800000000000
 #define VMM_LOWER_HALF_MAX 0x7FFFFFFFF000
 
-#define VMM_KERNEL_PAGE_FLAGS (PAGE_FLAG_GLOBAL | PAGE_FLAG_KERNEL)
+#define VMM_KERNEL_PAGE_FLAGS (PAGE_FLAG_GLOBAL)
 
 typedef struct
 {

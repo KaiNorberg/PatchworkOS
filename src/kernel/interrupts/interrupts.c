@@ -9,7 +9,6 @@
 #include "vmm/vmm.h"
 #include "heap/heap.h"
 #include "registers/registers.h"
-#include "page_directory/page_directory.h"
 #include "utils/utils.h"
 #include "syscall/syscall.h"
 #include "smp/smp.h"

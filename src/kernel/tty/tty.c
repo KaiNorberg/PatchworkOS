@@ -8,7 +8,6 @@
 #include "vmm/vmm.h"
 #include "pmm/pmm.h"
 #include "heap/heap.h"
-#include "page_directory/page_directory.h"
 
 #include <common/boot_info/boot_info.h>
 

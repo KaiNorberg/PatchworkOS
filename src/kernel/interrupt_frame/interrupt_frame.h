@@ -2,8 +2,6 @@
 
 #include <stdint.h>
 
-#include "page_directory/page_directory.h"
-
 typedef struct __attribute__((packed))
 {
     uint64_t r15;

@@ -86,7 +86,18 @@ void scheduler_schedule(InterruptFrame* interruptFrame)
     if (interrupt_depth() != 0)
     {    
         scheduler_put();
-        return; 
+        return;
+    }
+
+    while (1)
+    {
+        Process* process = queue_pop(scheduler->graveyard);
+        if (process == 0)
+        {
+            break;
+        }
+
+        process_free(process);
     }
 
     if (scheduler->runningProcess != 0)
@@ -100,7 +111,7 @@ void scheduler_schedule(InterruptFrame* interruptFrame)
         break;
         case PROCESS_STATE_KILLED:
         {
-            //queue_push(scheduler->killedProcesss, scheduler->runningProcess);
+            queue_push(scheduler->graveyard, scheduler->runningProcess);
             scheduler->runningProcess = 0;
         }
         break;

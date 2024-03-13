@@ -1,7 +1,6 @@
 #include "heap.h"
 
 #include "tty/tty.h"
-#include "page_directory/page_directory.h"
 #include "pmm/pmm.h"
 #include "utils/utils.h"
 #include "lock/lock.h"

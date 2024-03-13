@@ -2,7 +2,6 @@
 
 #include <libc/string.h>
 
-#include "page_directory/page_directory.h"
 #include "utils/utils.h"
 #include "heap/heap.h"
 #include "vmm/vmm.h"
@@ -10,6 +9,8 @@
 
 static void* backupBuffer;
 static AddressSpace* addressSpace;
+
+//What a mess...
 
 void smp_trampoline_setup(void)
 {

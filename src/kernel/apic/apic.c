@@ -1,7 +1,6 @@
 #include "apic.h"
 
 #include "tty/tty.h"
-#include "page_directory/page_directory.h"
 #include "registers/registers.h"
 #include "utils/utils.h"
 #include "madt/madt.h"

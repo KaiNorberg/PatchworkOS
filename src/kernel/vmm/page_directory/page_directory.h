@@ -12,7 +12,6 @@
 #define PAGE_FLAG_ACCESSED (1 << 5)
 #define PAGE_FLAG_GLOBAL (1 << 6)
 #define PAGE_FLAG_PAGE_SIZE (1 << 7)
-#define PAGE_FLAG_KERNEL (1 << 9)
 
 #define PDE_GET_FLAG(entry, flag) (((entry) & (flag)) != 0)
 #define PDE_GET_ADDRESS(entry) ((void*)((entry) & 0x000FFFFFFFFFF000))

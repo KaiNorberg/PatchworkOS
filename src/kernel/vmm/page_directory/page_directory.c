@@ -58,11 +58,9 @@ static inline void page_directory_free_level(PageDirectory* pageDirectory, int64
             continue;
         }
 
-        if (!PDE_GET_FLAG(entry, PAGE_FLAG_KERNEL))
-        {
-            page_directory_free_level(vmm_physical_to_virtual(PDE_GET_ADDRESS(entry)), level - 1);
-        }
+        page_directory_free_level(vmm_physical_to_virtual(PDE_GET_ADDRESS(entry)), level - 1);
     }
+    
     pmm_free_page(vmm_virtual_to_physical(pageDirectory));
 }
 

@@ -10,13 +10,17 @@
 static PageDirectory* kernelPageDirectory;
 
 static void vmm_load_memory_map(EfiMemoryMap* memoryMap)
-{
+{    
+    kernelPageDirectory = page_directory_new();
+
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
         const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
         
         page_directory_map_pages(kernelPageDirectory, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
-	}
+	}   
+ 
+    page_directory_load(kernelPageDirectory);
 }
 
 static void vmm_deallocate_boot_page_directory(EfiMemoryMap* memoryMap)
@@ -33,14 +37,10 @@ static void vmm_deallocate_boot_page_directory(EfiMemoryMap* memoryMap)
 }
 
 void vmm_init(EfiMemoryMap* memoryMap)
-{
-    kernelPageDirectory = page_directory_new();
-    
+{    
     vmm_load_memory_map(memoryMap);
 
     vmm_deallocate_boot_page_directory(memoryMap);
-
-    page_directory_load(kernelPageDirectory);
 }
 
 void* vmm_physical_to_virtual(void* address)
@@ -73,6 +73,7 @@ AddressSpace* address_space_new(void)
 {
     AddressSpace* space = kmalloc(sizeof(AddressSpace));
     space->pageDirectory = page_directory_new();
+    
     for (uint64_t i = PDE_AMOUNT / 2; i < PDE_AMOUNT; i++)
     {
         space->pageDirectory->entries[i] = kernelPageDirectory->entries[i];

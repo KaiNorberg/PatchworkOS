@@ -17,6 +17,7 @@ typedef struct
     uint64_t id;
 
     Queue* queues[PROCESS_PRIORITY_LEVELS];
+    Queue* graveyard;
     Process* runningProcess;
 } Scheduler;
 
