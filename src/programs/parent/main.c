@@ -2,7 +2,7 @@
 
 #include <lib-asym.h>
 
-int main()
+int main(void)
 {
     int64_t pid = spawn("ram:/bin/child.elf");
     if (pid == -1)

@@ -8,7 +8,7 @@
 __attribute__((aligned(0x1000)))
 static Gdt gdt;
 
-void gdt_init()
+void gdt_init(void)
 {
     memset(&gdt, 0, sizeof(Gdt));
 
@@ -48,7 +48,7 @@ void gdt_init()
     gdt.userData.baseHigh = 0;
 }
 
-void gdt_load()
+void gdt_load(void)
 {
     GdtDesc gdtDesc;
 	gdtDesc.size = sizeof(Gdt) - 1;

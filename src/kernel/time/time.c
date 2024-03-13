@@ -19,7 +19,7 @@ static void time_irq_handler(uint8_t irq)
     io_inb(CMOS_DATA);
 }
 
-static void time_rtc_init()
+static void time_rtc_init(void)
 {
     irq_install_handler(time_irq_handler, IRQ_CMOS);
 
@@ -38,7 +38,7 @@ static void time_rtc_init()
     pic_clear_mask(IRQ_CMOS);
 }
 
-void time_init()
+void time_init(void)
 {
     accumulator = 0;
     time_accumulate();
@@ -46,24 +46,24 @@ void time_init()
     time_rtc_init();
 }
 
-void time_accumulate()
+void time_accumulate(void)
 {
     //Avoids overflow on the hpet counter if counter is 32bit.
     atomic_fetch_add(&accumulator, hpet_read_counter());
     hpet_reset_counter();
 }
 
-uint64_t time_seconds()
+uint64_t time_seconds(void)
 {
     return time_nanoseconds() / NANOSECONDS_PER_SECOND;
 }
 
-uint64_t time_milliseconds()
+uint64_t time_milliseconds(void)
 {
     return time_nanoseconds() / NANOSECONDS_PER_MILLISECOND;
 }
 
-uint64_t time_nanoseconds()
+uint64_t time_nanoseconds(void)
 {
     return (atomic_load(&accumulator) + hpet_read_counter()) * hpet_nanoseconds_per_tick();
 }

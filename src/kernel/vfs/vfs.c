@@ -39,7 +39,7 @@ void file_free(File* file)
     kfree(file);
 }
 
-void vfs_init()
+void vfs_init(void)
 {
     tty_start_message("VFS initializing");
 

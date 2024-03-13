@@ -51,8 +51,8 @@ typedef struct __attribute__((packed))
 
 extern void gdt_load_descriptor(GdtDesc* descriptor);
 
-void gdt_init();
+void gdt_init(void);
 
-void gdt_load();
+void gdt_load(void);
 
 void gdt_load_tss(Tss* tss);

@@ -83,7 +83,7 @@ void kernel_init(BootInfo* bootInfo)
 }
 
 //Cpu specific init
-void kernel_cpu_init()
+void kernel_cpu_init(void)
 {
     local_apic_init();
 

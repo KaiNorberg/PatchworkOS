@@ -20,7 +20,7 @@ static inline void idt_set_vector(uint8_t vector, void* isr, uint8_t privilegeLe
     descriptor->reserved = 0;
 }
 
-void idt_init()
+void idt_init(void)
 {
     for (uint16_t vector = 0; vector < VECTOR_AMOUNT; vector++) 
     {        
@@ -30,7 +30,7 @@ void idt_init()
     idt_set_vector(SYSCALL_VECTOR, syscall_handler, IDT_RING3, IDT_TRAP_GATE);
 }
 
-void idt_load()
+void idt_load(void)
 {
     IdtDesc idtDesc;
     idtDesc.size = (sizeof(Idt)) - 1;

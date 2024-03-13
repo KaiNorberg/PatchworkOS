@@ -61,17 +61,17 @@ static inline void ipi_handler(InterruptFrame const* interruptFrame)
     local_apic_eoi();
 }
 
-static void interrupt_begin()
+static void interrupt_begin(void)
 {
     states[smp_self_unsafe()->id].depth++;
 }
 
-static void interrupt_end()
+static void interrupt_end(void)
 {
     states[smp_self_unsafe()->id].depth--;
 }
 
-void interrupts_disable()
+void interrupts_disable(void)
 {
     //Race condition does not matter
     uint64_t rflags = rflags_read();
@@ -86,7 +86,7 @@ void interrupts_disable()
     state->cliAmount++;
 }
 
-void interrupts_enable()
+void interrupts_enable(void)
 {
     InterruptState* state = &states[smp_self_unsafe()->id];
 
@@ -97,7 +97,7 @@ void interrupts_enable()
     }
 }
 
-uint64_t interrupt_depth()
+uint64_t interrupt_depth(void)
 {
     return states[smp_self_unsafe()->id].depth;
 }

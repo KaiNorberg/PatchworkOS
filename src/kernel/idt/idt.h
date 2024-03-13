@@ -34,6 +34,6 @@ typedef struct __attribute__((packed))
 	IdtEntry entries[VECTOR_AMOUNT];
 } Idt;
 
-void idt_init();
+void idt_init(void);
 
-void idt_load();
+void idt_load(void);

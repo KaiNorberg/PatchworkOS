@@ -49,7 +49,7 @@ static inline void queue_push_unlocked(Queue* queue, void* item)
     queue->writeIndex = (queue->writeIndex + 1) % queue->bufferLength;
 }
 
-Queue* queue_new()
+Queue* queue_new(void)
 {
     Queue* newQueue = kmalloc(sizeof(Queue));
 

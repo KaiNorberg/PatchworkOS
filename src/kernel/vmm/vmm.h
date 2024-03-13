@@ -21,18 +21,18 @@ typedef struct
 
 void vmm_init(EfiMemoryMap* memoryMap);
 
-PageDirectory* vmm_kernel_directory();
-
 void* vmm_physical_to_virtual(void* address);
 
 void* vmm_virtual_to_physical(void* address);
-
-void* vmm_allocate(uint64_t pageAmount);
-
-void vmm_free(void* address, uint64_t pageAmount);
 
 void* vmm_map(void* physicalAddress, uint64_t pageAmount, uint16_t flags);
 
 void vmm_change_flags(void* address, uint64_t pageAmount, uint16_t flags);
 
-void vmm_map_kernel(PageDirectory* pageDirectory);
+AddressSpace* address_space_new(void);
+
+void address_space_free(AddressSpace* space);
+
+void address_space_load(AddressSpace* space);
+
+void* address_space_map(AddressSpace* space, void* address, uint64_t pageAmount);

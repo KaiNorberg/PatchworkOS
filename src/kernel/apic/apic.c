@@ -11,7 +11,7 @@
 
 static uintptr_t localApicBase;
 
-void apic_init()
+void apic_init(void)
 {
     localApicBase = (uintptr_t)vmm_map(madt_local_apic_address(), 1, PAGE_FLAG_WRITE);
 }
@@ -32,14 +32,14 @@ void apic_timer_init(uint8_t vector, uint64_t hz)
     local_apic_write(LOCAL_APIC_REG_TIMER_INITIAL_COUNT, ticks);
 }
 
-void local_apic_init()
+void local_apic_init(void)
 {
     msr_write(MSR_LOCAL_APIC, (msr_read(MSR_LOCAL_APIC) | LOCAL_APIC_MSR_ENABLE) & ~(1 << 10));
 
     local_apic_write(LOCAL_APIC_REG_SPURIOUS, local_apic_read(LOCAL_APIC_REG_SPURIOUS) | 0x100);
 }
 
-uint8_t local_apic_id()
+uint8_t local_apic_id(void)
 {
     return (uint8_t)(local_apic_read(LOCAL_APIC_REG_ID) >> LOCAL_APIC_ID_OFFSET);
 }
@@ -72,7 +72,7 @@ void local_apic_send_ipi(uint32_t id, uint8_t vector)
     local_apic_write(LOCAL_APIC_REG_ICR0, (uint32_t)vector | (1 << 14));
 }
 
-void local_apic_eoi()
+void local_apic_eoi(void)
 {
     local_apic_write(LOCAL_APIC_REG_EOI, 0);
 }

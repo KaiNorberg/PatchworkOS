@@ -54,7 +54,7 @@ static inline void scheduler_switch_process(InterruptFrame* interruptFrame, Sche
         next->timeEnd = next->timeStart + SCHEDULER_TIME_SLICE;
         interrupt_frame_copy(interruptFrame, next->interruptFrame);
 
-        page_directory_load(next->pageDirectory);
+        address_space_load(next->addressSpace);
         self->tss->rsp0 = (uint64_t)next->kernelStackTop;
 
         scheduler->runningProcess = next;
@@ -70,7 +70,7 @@ static inline void scheduler_switch_process(InterruptFrame* interruptFrame, Sche
         interruptFrame->flags = 0x202;
         interruptFrame->stackPointer = (uint64_t)self->idleStackTop;
 
-        page_directory_load(vmm_kernel_directory());
+        address_space_load(0);
         self->tss->rsp0 = (uint64_t)self->idleStackTop;
     }
     else

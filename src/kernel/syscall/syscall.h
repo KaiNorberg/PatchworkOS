@@ -4,4 +4,4 @@
 
 extern void* syscallTable[];
 
-extern void syscall_handler();
+extern void syscall_handler(void);

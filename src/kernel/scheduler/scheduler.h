@@ -20,25 +20,25 @@ typedef struct
     Process* runningProcess;
 } Scheduler;
 
-extern void scheduler_idle_loop();
+extern void scheduler_idle_loop(void);
 
-extern void scheduler_yield();
+extern void scheduler_yield(void);
 
-void scheduler_init();
+void scheduler_init(void);
 
-void scheduler_cpu_start();
+void scheduler_cpu_start(void);
 
 Scheduler* scheduler_get(uint64_t id);
 
-Scheduler* scheduler_local();
+Scheduler* scheduler_local(void);
 
-void scheduler_put();
+void scheduler_put(void);
 
-Process* scheduler_process();
+Process* scheduler_process(void);
 
 void scheduler_exit(Status status);
 
 int64_t scheduler_spawn(const char* path);
 
 //Temporary
-uint64_t scheduler_local_process_amount();
+uint64_t scheduler_local_process_amount(void);

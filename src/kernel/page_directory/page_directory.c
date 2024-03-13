@@ -66,7 +66,7 @@ static inline void page_directory_free_level(PageDirectory* pageDirectory, int64
     pmm_free_page(vmm_virtual_to_physical(pageDirectory));
 }
 
-PageDirectory* page_directory_new()
+PageDirectory* page_directory_new(void)
 {
     PageDirectory* pageDirectory = vmm_physical_to_virtual(pmm_allocate());
     memset(pageDirectory, 0, PAGE_SIZE);

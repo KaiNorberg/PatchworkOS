@@ -15,6 +15,6 @@ typedef struct __attribute__((packed))
     uint16_t iopb;
 } Tss;
 
-extern void tss_load();
+extern void tss_load(void);
 
-Tss* tss_new();
+Tss* tss_new(void);

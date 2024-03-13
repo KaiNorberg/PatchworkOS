@@ -258,7 +258,7 @@ int64_t syscall_spawn(const char* path)
     return pid;
 }
 
-Status syscall_status()
+Status syscall_status(void)
 {
     Process* process = scheduler_process();
     Status temp = process->status;
@@ -268,10 +268,10 @@ Status syscall_status()
 
 int64_t syscall_map(void* lower, void* upper)
 {
-    lower = (void*)round_down((uint64_t)lower, 0x1000);
+    /*lower = (void*)round_down((uint64_t)lower, 0x1000);
     upper = (void*)round_down((uint64_t)upper, 0x1000);
 
-    process_allocate_pages(scheduler_process(), lower, SIZE_IN_PAGES((uint64_t)upper - (uint64_t)lower));
+    process_allocate_pages(scheduler_process(), lower, SIZE_IN_PAGES((uint64_t)upper - (uint64_t)lower));*/
 
     return 0;
 }

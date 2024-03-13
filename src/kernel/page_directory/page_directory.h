@@ -29,7 +29,7 @@ typedef struct
 
 extern void page_directory_invalidate_page(void* virtualAddress);
 
-PageDirectory* page_directory_new();
+PageDirectory* page_directory_new(void);
 
 void page_directory_free(PageDirectory* pageDirectory);
 

@@ -92,7 +92,7 @@ void pmm_init(EfiMemoryMap* memoryMap)
     pmm_load_memory_map(memoryMap);
 }
 
-void* pmm_allocate()
+void* pmm_allocate(void)
 {
     lock_acquire(&lock);
 
@@ -178,17 +178,17 @@ void pmm_free_pages(void* address, uint64_t count)
     lock_release(&lock);
 }
 
-uint64_t pmm_total_amount()
+uint64_t pmm_total_amount(void)
 {
     return pageAmount;
 }
 
-uint64_t pmm_free_amount()
+uint64_t pmm_free_amount(void)
 {
     return pageAmount - pmm_reserved_amount();
 }
 
-uint64_t pmm_reserved_amount()
+uint64_t pmm_reserved_amount(void)
 {
     uint64_t amount = 0;
     for (uint64_t i = 0; i < pageAmount; ++i) 
@@ -201,12 +201,12 @@ uint64_t pmm_reserved_amount()
     return amount;
 }
 
-uint64_t pmm_usable_amount()
+uint64_t pmm_usable_amount(void)
 {
     return usablePageAmount;
 }
 
-uint64_t pmm_unusable_amount()
+uint64_t pmm_unusable_amount(void)
 {
     return pageAmount - usablePageAmount;
 }

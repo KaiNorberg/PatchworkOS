@@ -53,7 +53,7 @@ Status device_disk_seek(File* file, int64_t offset, uint64_t origin)
     return STATUS_SUCCESS;
 }
 
-void device_disk_init()
+void device_disk_init(void)
 {    
     tty_start_message("Device disk initializing");
 

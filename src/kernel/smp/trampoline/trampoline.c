@@ -8,21 +8,20 @@
 #include "vmm/vmm.h"
 #include "smp/startup/startup.h"
 
-static PageDirectory* pageDirectory;
 static void* backupBuffer;
+static AddressSpace* addressSpace;
 
-void smp_trampoline_setup()
+void smp_trampoline_setup(void)
 {
-    pageDirectory = page_directory_new();
-    vmm_map_kernel(pageDirectory);
-    page_directory_map(pageDirectory, SMP_TRAMPOLINE_PHYSICAL_START, SMP_TRAMPOLINE_PHYSICAL_START, PAGE_FLAG_WRITE);
-
     backupBuffer = kmalloc(PAGE_SIZE);
     memcpy(backupBuffer, vmm_physical_to_virtual(SMP_TRAMPOLINE_PHYSICAL_START), PAGE_SIZE);
 
+    addressSpace = address_space_new();
+    page_directory_map(addressSpace->pageDirectory, SMP_TRAMPOLINE_PHYSICAL_START, SMP_TRAMPOLINE_PHYSICAL_START, PAGE_FLAG_WRITE);
+
     memcpy(vmm_physical_to_virtual(SMP_TRAMPOLINE_PHYSICAL_START), smp_trampoline_virtual_start, PAGE_SIZE);
 
-    WRITE_64(vmm_physical_to_virtual(SMP_TRAMPOLINE_PAGE_DIRECTORY_ADDRESS), (uint64_t)vmm_virtual_to_physical(pageDirectory));
+    WRITE_64(vmm_physical_to_virtual(SMP_TRAMPOLINE_PAGE_DIRECTORY_ADDRESS), (uint64_t)vmm_virtual_to_physical(addressSpace->pageDirectory));
     WRITE_64(vmm_physical_to_virtual(SMP_TRAMPOLINE_ENTRY_ADDRESS), smp_entry);
 }
 
@@ -31,10 +30,10 @@ void smp_trampoline_cpu_setup(Cpu* cpu)
     WRITE_64(vmm_physical_to_virtual(SMP_TRAMPOLINE_STACK_TOP_ADDRESS), cpu->idleStackTop);
 }
 
-void smp_trampoline_cleanup()
+void smp_trampoline_cleanup(void)
 {   
     memcpy(vmm_physical_to_virtual(SMP_TRAMPOLINE_PHYSICAL_START), backupBuffer, PAGE_SIZE);
     kfree(backupBuffer);
 
-    page_directory_free(pageDirectory);
+    address_space_free(addressSpace);
 }

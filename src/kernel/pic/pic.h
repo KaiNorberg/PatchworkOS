@@ -13,7 +13,7 @@
 
 #define PIC_EOI 0x20
 
-void pic_init();
+void pic_init(void);
 
 void pic_eoi(uint8_t irq);
 

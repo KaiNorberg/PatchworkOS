@@ -24,13 +24,13 @@
 
 #define LOCAL_APIC_ID_OFFSET 24
 
-void apic_init();
+void apic_init(void);
 
 void apic_timer_init(uint8_t vector, uint64_t hz);
 
-void local_apic_init();
+void local_apic_init(void);
 
-uint8_t local_apic_id();
+uint8_t local_apic_id(void);
 
 void local_apic_write(uint32_t reg, uint32_t value);
 
@@ -42,4 +42,4 @@ void local_apic_send_sipi(uint32_t apicId, uint32_t page);
 
 void local_apic_send_ipi(uint32_t apicId, uint8_t vector);
 
-void local_apic_eoi();
+void local_apic_eoi(void);

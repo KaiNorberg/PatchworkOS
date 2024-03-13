@@ -3,7 +3,7 @@
 #include "io/io.h"
 #include "irq/irq.h"
 
-void pic_init()
+void pic_init(void)
 {
     uint8_t a1 = io_inb(PIC1_DATA);
     io_wait();

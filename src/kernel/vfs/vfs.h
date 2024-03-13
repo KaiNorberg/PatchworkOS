@@ -39,7 +39,7 @@ File* file_new(Disk* disk, void* internal, uint64_t flags);
 
 void file_free(File* file);
 
-void vfs_init();
+void vfs_init(void);
 
 Status vfs_mount(Disk* disk);
 

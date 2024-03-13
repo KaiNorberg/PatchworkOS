@@ -9,6 +9,7 @@
 #include "apic/apic.h"
 #include "hpet/hpet.h"
 #include "madt/madt.h"
+#include "heap/heap.h"
 #include "smp/trampoline/trampoline.h"
 
 static uint8_t ready;
@@ -20,7 +21,7 @@ static inline uint8_t cpu_init(Cpu* cpu, uint8_t id, uint8_t localApicId)
     cpu->localApicId = localApicId;
 
     cpu->tss = tss_new();
-    cpu->idleStackBottom = vmm_allocate(1);
+    cpu->idleStackBottom = kmalloc(PAGE_SIZE);
     cpu->idleStackTop = (void*)((uint64_t)cpu->idleStackBottom + PAGE_SIZE);
     cpu->tss->rsp0 = (uint64_t)cpu->idleStackTop;
 
@@ -51,9 +52,9 @@ static inline uint8_t cpu_init(Cpu* cpu, uint8_t id, uint8_t localApicId)
     return 1;
 }
 
-void smp_entry()
+void smp_entry(void)
 {    
-    page_directory_load(vmm_kernel_directory());
+    address_space_load(0);
 
     kernel_cpu_init();
 

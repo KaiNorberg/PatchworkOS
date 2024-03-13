@@ -6,18 +6,9 @@
 
 #define HIGHER_HALF_BASE 0xFFFF800000000000
 
-#define ALLOCATED_ADDRESS_MAX_AMOUNT 16
+void virtual_memory_init(void);
 
-//Janky, but helps populate memory map with the correct kernel address.
-typedef struct
-{
-    void* physicalAddress;
-    void* virtualAddress;
-} AllocatedAddress;
-
-void virtual_memory_init();
-
-void virtual_memory_allocate_address(void* virtualAddress, uint64_t pageAmount, uint64_t memoryType);
+void virtual_memory_allocate_kernel(void* virtualAddress, uint64_t pageAmount);
 
 void* virtual_memory_allocate_pages(uint64_t pageAmount, uint64_t memoryType);
 

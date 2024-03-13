@@ -8,7 +8,7 @@
 
 char buffer[BUFFER_SIZE];
 
-int main()
+int main(void)
 {       
     while (1)
     {

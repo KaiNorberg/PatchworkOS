@@ -33,13 +33,13 @@ typedef struct __attribute__((packed))
     uint8_t pageProtection;
 } Hpet;
 
-void hpet_init();
+void hpet_init(void);
 
-uint64_t hpet_nanoseconds_per_tick();
+uint64_t hpet_nanoseconds_per_tick(void);
 
-uint64_t hpet_read_counter();
+uint64_t hpet_read_counter(void);
 
-void hpet_reset_counter();
+void hpet_reset_counter(void);
 
 void hpet_write(uint64_t reg, uint64_t value);
 

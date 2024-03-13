@@ -12,7 +12,7 @@ uint8_t io_inb(uint16_t port)
     return ret;
 }
 
-void io_wait()
+void io_wait(void)
 {
     io_outb(0x80, 0);
 }

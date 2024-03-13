@@ -9,10 +9,10 @@
 #define SMP_TRAMPOLINE_STACK_TOP_ADDRESS ((void*)0x8FE0)
 #define SMP_TRAMPOLINE_ENTRY_ADDRESS ((void*)0x8FD0)
 
-extern void smp_trampoline_virtual_start();
+extern void smp_trampoline_virtual_start(void);
 
-void smp_trampoline_setup();
+void smp_trampoline_setup(void);
 
 void smp_trampoline_cpu_setup(Cpu* cpu);
 
-void smp_trampoline_cleanup();
+void smp_trampoline_cleanup(void);

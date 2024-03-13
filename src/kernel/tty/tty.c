@@ -6,9 +6,11 @@
 #include "utils/utils.h"
 #include "lock/lock.h"
 #include "vmm/vmm.h"
-#include <common/boot_info/boot_info.h>
-#include "page_directory/page_directory.h"
 #include "pmm/pmm.h"
+#include "heap/heap.h"
+#include "page_directory/page_directory.h"
+
+#include <common/boot_info/boot_info.h>
 
 static GopBuffer frontbuffer;
 static PsfFont font;
@@ -32,7 +34,7 @@ void tty_init(GopBuffer* gopBuffer, PsfFont* screenFont)
     frontbuffer.pixelsPerScanline = gopBuffer->pixelsPerScanline;
     
     font.header = screenFont->header;   
-    font.glyphs = vmm_allocate(SIZE_IN_PAGES(screenFont->glyphsSize));
+    font.glyphs = kmalloc(screenFont->glyphsSize);
     memcpy(font.glyphs, screenFont->glyphs, screenFont->glyphsSize);
 
     scale = 1;
@@ -80,7 +82,7 @@ void tty_set_row(uint32_t value)
     row = value;
 }
 
-uint32_t tty_get_row()
+uint32_t tty_get_row(void)
 {
     return row;
 }
@@ -90,27 +92,27 @@ void tty_set_column(uint32_t value)
     column = value;
 }
 
-uint32_t tty_get_column()
+uint32_t tty_get_column(void)
 {
     return column;
 }
 
-uint32_t tty_row_amount()
+uint32_t tty_row_amount(void)
 {
     return frontbuffer.height / (TTY_CHAR_HEIGHT * scale);
 }
 
-uint32_t tty_column_amount()
+uint32_t tty_column_amount(void)
 {
     return frontbuffer.width / (TTY_CHAR_WIDTH * scale);
 }
 
-void tty_acquire()
+void tty_acquire(void)
 {
     lock_acquire(&lock);
 }
 
-void tty_release()
+void tty_release(void)
 {
     lock_release(&lock);
 }
@@ -200,7 +202,7 @@ void tty_printm(const char* string, uint64_t length)
     }
 }
 
-void tty_clear()
+void tty_clear(void)
 {
     memset(frontbuffer.base, 0, frontbuffer.size);
     column = 0;

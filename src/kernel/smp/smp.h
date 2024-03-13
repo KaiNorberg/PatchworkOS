@@ -27,21 +27,21 @@ typedef struct
     void* idleStackBottom;
 } Cpu;
 
-void smp_init();
+void smp_init(void);
 
 void smp_send_ipi(Cpu const* cpu, uint8_t ipi);
 
 void smp_send_ipi_to_others(uint8_t ipi);
 
-uint8_t smp_cpu_amount();
+uint8_t smp_cpu_amount(void);
 
 Cpu const* smp_cpu(uint8_t id);
 
 //Must have a corresponding call to smp_put()
-Cpu* smp_self();
+Cpu* smp_self(void);
 
-Cpu* smp_self_unsafe();
+Cpu* smp_self_unsafe(void);
 
-Cpu* smp_self_brute();
+Cpu* smp_self_brute(void);
 
-void smp_put();
+void smp_put(void);

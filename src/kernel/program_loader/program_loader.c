@@ -14,7 +14,7 @@
 #include "utils/utils.h"
 #include "vfs/vfs.h"
 
-void program_loader_init()
+void program_loader_init(void)
 {
     uint64_t pageAmount = SIZE_IN_PAGES((uint64_t)&_programLoaderEnd - (uint64_t)&_programLoaderStart);
     vmm_change_flags(&_programLoaderStart, pageAmount, PAGE_FLAG_USER_SUPERVISOR);

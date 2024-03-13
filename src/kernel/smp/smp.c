@@ -14,7 +14,7 @@
 static Cpu cpus[MAX_CPU_AMOUNT];
 static uint8_t cpuAmount;
 
-void smp_init()
+void smp_init(void)
 {
     tty_start_message("SMP initializing");
 
@@ -45,7 +45,7 @@ void smp_send_ipi_to_others(uint8_t ipi)
     }
 }
 
-uint8_t smp_cpu_amount()
+uint8_t smp_cpu_amount(void)
 {
     return cpuAmount;
 }
@@ -55,14 +55,14 @@ Cpu const* smp_cpu(uint8_t id)
     return &cpus[id];
 }
 
-Cpu* smp_self()
+Cpu* smp_self(void)
 {
     interrupts_disable();
 
     return &cpus[msr_read(MSR_CPU_ID)];
 }
 
-Cpu* smp_self_unsafe()
+Cpu* smp_self_unsafe(void)
 {
     if (rflags_read() & RFLAGS_INTERRUPT_ENABLE)
     {
@@ -72,7 +72,7 @@ Cpu* smp_self_unsafe()
     return &cpus[msr_read(MSR_CPU_ID)];
 }
 
-Cpu* smp_self_brute()
+Cpu* smp_self_brute(void)
 {
     if (rflags_read() & RFLAGS_INTERRUPT_ENABLE)
     {
@@ -94,7 +94,7 @@ Cpu* smp_self_brute()
     return 0;
 }
 
-void smp_put()
+void smp_put(void)
 {
     interrupts_enable();
 }

@@ -2,7 +2,7 @@
 
 #include <lib-asym.h>
 
-int main()
+int main(void)
 {   
     uint8_t tick = 0;
     while (1)

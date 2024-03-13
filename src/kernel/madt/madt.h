@@ -34,10 +34,10 @@ typedef struct __attribute__((packed))
     RecordHeader records[];
 } Madt;
 
-void madt_init();
+void madt_init(void);
 
 void* madt_first_record(uint8_t type);
 
 void* madt_next_record(void* prev, uint8_t type);
 
-void* madt_local_apic_address();
+void* madt_local_apic_address(void);

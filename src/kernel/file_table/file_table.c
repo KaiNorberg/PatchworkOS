@@ -4,12 +4,12 @@
 
 #include <lib-asym.h>
 
-#include "vmm/vmm.h"
+#include "heap/heap.h"
 #include "debug/debug.h"
 
-FileTable* file_table_new()
+FileTable* file_table_new(void)
 {
-    FileTable* fileTable = vmm_allocate(PAGE_SIZE_OF(FileTable));
+    FileTable* fileTable = kmalloc(sizeof(FileTable));
     memset(fileTable, 0, sizeof(FileTable));
 
     return fileTable;
@@ -29,7 +29,7 @@ void file_table_free(FileTable* fileTable)
         }
     }
 
-    vmm_free(fileTable, PAGE_SIZE_OF(FileTable));
+    kfree(fileTable);
 }
 
 Status file_table_open(FileTable* fileTable, uint64_t* out, const char* path, uint64_t flags)

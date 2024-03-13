@@ -4,7 +4,7 @@
 #include "heap/heap.h"
 #include "page_directory/page_directory.h"
 
-Tss* tss_new()
+Tss* tss_new(void)
 {
     Tss* tss = kmalloc(sizeof(Tss));
 

@@ -2,7 +2,7 @@
 
 #include "heap/heap.h"
 
-List* list_new()
+List* list_new(void)
 {
     List* list = kmalloc(sizeof(List));
 

@@ -8,7 +8,7 @@
 #include "vfs/vfs.h"
 #include "file_table/file_table.h"
 #include "interrupt_frame/interrupt_frame.h"
-#include "page_directory/page_directory.h"
+#include "vmm/vmm.h"
 
 #define PROCESS_STATE_ACTIVE 0
 #define PROCESS_STATE_KILLED 1
@@ -21,7 +21,7 @@ typedef struct
 {        
     uint64_t id;
 
-    PageDirectory* pageDirectory;
+    AddressSpace* addressSpace;
     FileTable* fileTable;
 
     void* kernelStackTop;
@@ -41,5 +41,3 @@ typedef struct
 Process* process_new(void* entry);
 
 void process_free(Process* process);
-
-void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t amount);

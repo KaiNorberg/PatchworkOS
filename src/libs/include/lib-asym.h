@@ -72,9 +72,9 @@ int64_t sys_test(const char* string);
 
 //========= STATUS =========
 
-Status status();
+Status status(void);
 
-const char* status_string();
+const char* status_string(void);
 
 #if defined(__cplusplus)
 } /* extern "C" */

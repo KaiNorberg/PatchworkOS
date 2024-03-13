@@ -8,42 +8,41 @@
 #include "debug/debug.h"
 #include "vmm/vmm.h"
 
-//TODO: Replace all of this with a better heap, its way to slow.
-
 static HeapHeader* firstBlock;
 static Lock lock;
 
-HeapHeader* heap_split(HeapHeader* block, uint64_t size)
+static inline void heap_split(HeapHeader* block, uint64_t size)
 {   
-    uint64_t newSize = block->size - sizeof(HeapHeader) - size;
-
-    if (size < 64 || newSize < 64)
-    {
-        debug_panic("Invalid heap split");
-    }
-
-    HeapHeader* newBlock = (HeapHeader*)((uint64_t)HEAP_HEADER_GET_START(block) + newSize);
+    HeapHeader* newBlock = (HeapHeader*)((uint64_t)block + sizeof(HeapHeader) + size);
+    newBlock->size = block->size - sizeof(HeapHeader) - size;
     newBlock->next = block->next;
-    newBlock->size = size;
     newBlock->reserved = 0;
+    newBlock->magic = HEAP_HEADER_MAGIC;
 
+    block->size = size;
     block->next = newBlock;
-    block->size = newSize;
+}
+
+static inline HeapHeader* heap_new_block(uint64_t size)
+{
+    uint64_t pageAmount = PAGE_SIZE_OF(size + sizeof(HeapHeader)) + 1;
+    HeapHeader* newBlock = vmm_physical_to_virtual(pmm_allocate_amount(pageAmount));
+    newBlock->size = pageAmount * PAGE_SIZE - sizeof(HeapHeader);
+    newBlock->next = 0;
+    newBlock->reserved = 0;
+    newBlock->magic = HEAP_HEADER_MAGIC;
 
     return newBlock;
 }
 
-void heap_init()
+void heap_init(void)
 {    
-    firstBlock = vmm_allocate(1);
-    firstBlock->size = PAGE_SIZE - sizeof(HeapHeader);
-    firstBlock->next = 0;
-    firstBlock->reserved = 0;
+    firstBlock = heap_new_block(PAGE_SIZE * 64);
 
     lock = lock_new();
 }
 
-uint64_t heap_total_size()
+uint64_t heap_total_size(void)
 {
     uint64_t size = 0;
 
@@ -58,7 +57,7 @@ uint64_t heap_total_size()
     return size;
 }
 
-uint64_t heap_reserved_size()
+uint64_t heap_reserved_size(void)
 {
     uint64_t size = 0;
 
@@ -76,7 +75,7 @@ uint64_t heap_reserved_size()
     return size;
 }
 
-uint64_t heap_free_size()
+uint64_t heap_free_size(void)
 {
     uint64_t size = 0;
 
@@ -94,96 +93,75 @@ uint64_t heap_free_size()
     return size;
 }
 
-void* kmalloc(uint64_t size)
+void* kmalloc(uint64_t size) 
 {
-    if (size == 0)
+    if (size == 0) 
     {
         return 0;
     }
     lock_acquire(&lock);
 
-    uint64_t alignedSize = round_up(size, 64);
+    size = round_up(size, HEAP_ALIGNMENT);
 
     HeapHeader* currentBlock = firstBlock;
-    while (1)
+    while (1) 
     {
-        if (!currentBlock->reserved)
+        if (!currentBlock->reserved) 
         {
-            if (currentBlock->size == alignedSize)
+            if (currentBlock->size == size) 
             {
                 currentBlock->reserved = 1;
 
                 lock_release(&lock);
                 return HEAP_HEADER_GET_START(currentBlock);
             }
-            else if (currentBlock->size > alignedSize + sizeof(HeapHeader) + 64)
+            else if (currentBlock->size > size + sizeof(HeapHeader) + HEAP_ALIGNMENT) 
             {
-                HeapHeader* newBlock = heap_split(currentBlock, alignedSize);
-                newBlock->reserved = 1;   
+                heap_split(currentBlock, size);
+                currentBlock->reserved = 1;
 
                 lock_release(&lock);
-                return HEAP_HEADER_GET_START(newBlock);
+                return HEAP_HEADER_GET_START(currentBlock);
             }
         }
 
-        if (currentBlock->next == 0)
+        if (currentBlock->next != 0)
         {
-            break;
+            currentBlock = currentBlock->next;
         }
         else
         {
-            currentBlock = currentBlock->next;       
+            break;
         }
     }
 
-    uint64_t pageAmount = SIZE_IN_PAGES(alignedSize + sizeof(HeapHeader)) + 1;
-    HeapHeader* newBlock = vmm_allocate(pageAmount);
-
-    newBlock->size = pageAmount * PAGE_SIZE - sizeof(HeapHeader);
-    newBlock->next = 0;
-    newBlock->reserved = 0;
-
+    HeapHeader* newBlock = heap_new_block(size);
     currentBlock->next = newBlock;
 
-    if (newBlock->size > alignedSize + sizeof(HeapHeader) + 64)
+    if (newBlock->size > size + sizeof(HeapHeader) + HEAP_ALIGNMENT) 
     {
-        HeapHeader* splitBlock = heap_split(newBlock, alignedSize);
-        splitBlock->reserved = 1;
+        heap_split(newBlock, size);
+    }
+    newBlock->reserved = 1;
 
-        lock_release(&lock);
-        return HEAP_HEADER_GET_START(splitBlock);
-    }
-    else
-    {
-        newBlock->reserved = 1;
-        
-        lock_release(&lock);
-        return HEAP_HEADER_GET_START(newBlock);
-    }
+    lock_release(&lock);
+    return HEAP_HEADER_GET_START(newBlock);
 }
 
 void kfree(void* ptr)
-{    
-    //TODO: Optimize this!
-
+{
     lock_acquire(&lock);
 
-    HeapHeader const* block = (HeapHeader*)((uint64_t)ptr - sizeof(HeapHeader));
-    
-    HeapHeader* currentBlock = firstBlock;
-    while (currentBlock != 0)
+    HeapHeader* block = (HeapHeader*)((uint64_t)ptr - sizeof(HeapHeader));
+    if (block->magic != HEAP_HEADER_MAGIC)
     {
-        if (block == currentBlock && currentBlock->reserved)
-        {
-            currentBlock->reserved = 0;
-            lock_release(&lock);
-            return;
-        }
-
-        currentBlock = currentBlock->next;
+        debug_panic("Invalid heap magic\n");
     }
-
-    debug_panic("Failed to free block!\n");
+    else if (!block->reserved)
+    {
+        debug_panic("Attempt to free unreserved block");
+    }
+    block->reserved = 0;
 
     lock_release(&lock);
 }

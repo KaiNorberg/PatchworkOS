@@ -11,13 +11,14 @@
 void main(BootInfo* bootInfo)
 {
     kernel_init(bootInfo);
+
+    tty_acquire();
     
     for (uint64_t i = 0; i < 1000; i++)
     {
         scheduler_spawn("ram:/bin/parent.elf");
     }
 
-    tty_acquire();
     tty_clear();
     tty_set_row(20);
     tty_release();  

@@ -10,7 +10,7 @@ static uintptr_t hpetAddress;
 
 static uint64_t hpetPeriod;
 
-void hpet_init()
+void hpet_init(void)
 {    
     tty_start_message("HPET initializing");
 
@@ -27,19 +27,19 @@ void hpet_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-uint64_t hpet_read_counter()
+uint64_t hpet_read_counter(void)
 {
     return hpet_read(HPET_MAIN_COUNTER_VALUE);
 }
 
-void hpet_reset_counter()
+void hpet_reset_counter(void)
 {
     hpet_write(HPET_GENERAL_CONFIG, HPET_CONFIG_DISABLE);
     hpet_write(HPET_MAIN_COUNTER_VALUE, 0);
     hpet_write(HPET_GENERAL_CONFIG, HPET_CONFIG_ENABLE);
 }
 
-uint64_t hpet_nanoseconds_per_tick()
+uint64_t hpet_nanoseconds_per_tick(void)
 {
     return hpetPeriod / 1000000;
 }

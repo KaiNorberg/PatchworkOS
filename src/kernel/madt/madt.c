@@ -4,7 +4,7 @@
 
 Madt* madt;
 
-void madt_init()
+void madt_init(void)
 {    
     tty_start_message("MADT initializing");
 
@@ -44,7 +44,7 @@ void* madt_next_record(void* prev, uint8_t type)
     return 0;
 }
 
-void* madt_local_apic_address()
+void* madt_local_apic_address(void)
 {
     return (void*)(uint64_t)madt->localApicAddress;
 }

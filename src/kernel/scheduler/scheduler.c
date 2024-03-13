@@ -17,7 +17,7 @@
 
 static Scheduler** schedulers;
 
-static void scheduler_allocate_schedulers()
+static void scheduler_allocate_schedulers(void)
 {
     schedulers = kmalloc(sizeof(Scheduler*) * smp_cpu_amount());
     memset(schedulers, 0, sizeof(Scheduler*) * smp_cpu_amount());
@@ -36,7 +36,7 @@ static void scheduler_allocate_schedulers()
     }
 }
 
-static void scheduler_spawn_init_process()
+static void scheduler_spawn_init_process(void)
 {
     Process* process = process_new(0);
     process->timeEnd = UINT64_MAX;
@@ -46,7 +46,7 @@ static void scheduler_spawn_init_process()
     scheduler_put();
 }
 
-void scheduler_init()
+void scheduler_init(void)
 {
     tty_start_message("Scheduler initializing");
 
@@ -61,7 +61,7 @@ void scheduler_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-void scheduler_cpu_start()
+void scheduler_cpu_start(void)
 {
     apic_timer_init(IPI_BASE + IPI_SCHEDULE, SCHEDULER_TIMER_HZ);
 }
@@ -72,17 +72,17 @@ Scheduler* scheduler_get(uint64_t id)
 }
 
 //Must have a corresponding call to scheduler_put()
-Scheduler* scheduler_local()
+Scheduler* scheduler_local(void)
 {
     return schedulers[smp_self()->id];
 }
 
-void scheduler_put()
+void scheduler_put(void)
 {
     smp_put();
 }
 
-Process* scheduler_process()
+Process* scheduler_process(void)
 {
     Process* process = scheduler_local()->runningProcess;
     scheduler_put();
@@ -109,7 +109,7 @@ int64_t scheduler_spawn(const char* path)
 
     //Temporary: For now the executable is passed via the user stack to the program loader.
     //Eventually it will be passed via a system similar to "/proc/self/exec".
-    void* stackBottom = process_allocate_pages(process, (void*)(VMM_LOWER_HALF_MAX - PAGE_SIZE), 1);
+    void* stackBottom = address_space_map(process->addressSpace, (void*)(VMM_LOWER_HALF_MAX - PAGE_SIZE), 1);
     void* stackTop = (void*)((uint64_t)stackBottom + PAGE_SIZE);
     uint64_t pathLength = strlen(path);
     void* dest = (void*)((uint64_t)stackTop - pathLength - 1);
@@ -123,7 +123,7 @@ int64_t scheduler_spawn(const char* path)
 }
 
 //Temporary
-uint64_t scheduler_local_process_amount()
+uint64_t scheduler_local_process_amount(void)
 {
     Scheduler const* scheduler = scheduler_local();
     

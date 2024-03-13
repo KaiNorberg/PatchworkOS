@@ -20,7 +20,7 @@ typedef struct
     List* devices;
 } DeviceBus;
 
-void device_disk_init();
+void device_disk_init(void);
 
 DeviceBus* device_bus_new(const char* name);
 

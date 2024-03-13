@@ -5,14 +5,11 @@
 
 static PageDirectory* pageDirectory;
 
-static AllocatedAddress addresses[ALLOCATED_ADDRESS_MAX_AMOUNT];
-static uint64_t addressAmount;
+static void* kernelAddress;
 
-void virtual_memory_init()
-{    
-    SetMem(addresses, sizeof(AllocatedAddress) * ALLOCATED_ADDRESS_MAX_AMOUNT, 0);
-    addressAmount = 0;
-
+void virtual_memory_init(void)
+{
+    kernelAddress = 0;
     pageDirectory = page_directory_new();
 
     //Lower half must be mapped identically to maintain compatibility with all uefi implementations.
@@ -37,16 +34,10 @@ void virtual_memory_init()
     PAGE_DIRECTORY_LOAD(pageDirectory);
 }
 
-void virtual_memory_allocate_address(void* virtualAddress, uint64_t pageAmount, uint64_t memoryType)
+void virtual_memory_allocate_kernel(void* virtualAddress, uint64_t pageAmount)
 {
-    void* physicalAddress = memory_allocate_pages(pageAmount, memoryType);
-    
-    addresses[addressAmount] = (AllocatedAddress)
-    {
-        .physicalAddress = physicalAddress,
-        .virtualAddress = virtualAddress   
-    };
-    addressAmount++;
+    void* physicalAddress = memory_allocate_pages(pageAmount, EFI_MEMORY_TYPE_KERNEL);
+    kernelAddress = virtualAddress;
 
     page_directory_map_pages(pageDirectory, virtualAddress, physicalAddress, pageAmount, PAGE_FLAG_WRITE);
 }
@@ -70,17 +61,11 @@ void virtual_memory_map_populate(EfiMemoryMap* memoryMap)
     {
         EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
         
-        uint8_t found = 0;
-        for (uint64_t j = 0; j < addressAmount; j++)
+        if (desc->Type == EFI_MEMORY_TYPE_KERNEL)
         {
-            if (desc->PhysicalStart == (uint64_t)addresses[j].physicalAddress)
-            {
-                desc->VirtualStart = (uint64_t)addresses[j].virtualAddress;
-                found = 1;
-                break;
-            }
+            desc->VirtualStart = (uint64_t)kernelAddress;
         }
-        if (!found)
+        else
         {
             desc->VirtualStart = HIGHER_HALF_BASE + desc->PhysicalStart;
         }

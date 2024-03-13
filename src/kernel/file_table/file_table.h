@@ -6,14 +6,14 @@
 
 #include "vfs/vfs.h"
 
-#define FILE_TABLE_LENGTH 1024
+#define FILE_TABLE_LENGTH 64
 
 typedef struct
 {
     File* files[FILE_TABLE_LENGTH];
 } FileTable;
 
-FileTable* file_table_new();
+FileTable* file_table_new(void);
 
 void file_table_free(FileTable* fileTable);
 

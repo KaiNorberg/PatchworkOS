@@ -18,10 +18,9 @@ Process* process_new(void* entry)
     memset(process, 0, sizeof(Process));
     
     process->id = atomic_fetch_add(&newPid, 1);
-    process->pageDirectory = page_directory_new();
-    vmm_map_kernel(process->pageDirectory);
+    process->addressSpace = address_space_new();
     process->fileTable = file_table_new();
-    process->kernelStackBottom = vmm_allocate(1);
+    process->kernelStackBottom = kmalloc(PAGE_SIZE);
     process->kernelStackTop = (void*)((uint64_t)process->kernelStackBottom + PAGE_SIZE);
     process->timeStart = 0;
     process->timeEnd = 0;
@@ -36,18 +35,8 @@ Process* process_new(void* entry)
 void process_free(Process* process)
 {
     interrupt_frame_free(process->interruptFrame);
-    page_directory_free(process->pageDirectory);
+    address_space_free(process->addressSpace);
     file_table_free(process->fileTable);
-    vmm_free(process->kernelStackBottom, 1);
+    kfree(process->kernelStackBottom);
     kfree(process);
-}
-
-void* process_allocate_pages(Process* process, void* virtualAddress, uint64_t amount)
-{
-    void* physicalAddress = pmm_allocate_amount(amount);
-
-    //Page Directory takes ownership of memory.
-    page_directory_map_pages(process->pageDirectory, virtualAddress, physicalAddress, amount, PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR);
-
-    return vmm_physical_to_virtual(physicalAddress);
 }

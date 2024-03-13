@@ -70,7 +70,7 @@ void* load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
 	}
 
 	uint64_t kernelPageAmount = (kernelEnd - kernelStart) / EFI_PAGE_SIZE + 1;
-	virtual_memory_allocate_address((void*)kernelStart, kernelPageAmount, EFI_MEMORY_TYPE_KERNEL);
+	virtual_memory_allocate_kernel((void*)kernelStart, kernelPageAmount);
 	
 	for (ElfProgramHeader* programHeader = programHeaders; 
 		(uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize; 
