@@ -5,3 +5,5 @@
 extern void* syscallTable[];
 
 extern void syscall_handler(void);
+
+void syscall_handler_end(void);

@@ -1,6 +1,6 @@
 #include <stdint.h>
 
-#include <lib-asym.h>
+#include <lib-system.h>
 
 #include <libc/string.h>
 
@@ -10,7 +10,7 @@ char buffer[BUFFER_SIZE];
 
 int main(void)
 {       
-    while (1)
+    /*while (1)
     {
         int64_t fd = open("ram:/test/test.txt", FILE_FLAG_READ);
         if (fd == -1)
@@ -33,7 +33,7 @@ int main(void)
         }
 
         sys_test(buffer);
-    }
+    }*/
     
     return 0;
 }

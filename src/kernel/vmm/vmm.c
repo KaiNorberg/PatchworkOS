@@ -5,6 +5,7 @@
 
 #include "utils/utils.h"
 #include "heap/heap.h"
+#include "lock/lock.h"
 #include "pmm/pmm.h"
 
 static PageDirectory* kernelPageDirectory;
@@ -73,6 +74,7 @@ AddressSpace* address_space_new(void)
 {
     AddressSpace* space = kmalloc(sizeof(AddressSpace));
     space->pageDirectory = page_directory_new();
+    space->lock = lock_create();
     
     for (uint64_t i = PDE_AMOUNT / 2; i < PDE_AMOUNT; i++)
     {
@@ -111,10 +113,14 @@ void* address_space_map(AddressSpace* space, void* address, uint64_t pageAmount)
         return 0;
     }
 
+    //Todo: Map one page at a time, add check if page already mapped.
+
     void* physicalAddress = pmm_allocate_amount(pageAmount);
 
     //Page Directory takes ownership of memory.
+    lock_acquire(&space->lock);
     page_directory_map_pages(space->pageDirectory, address, physicalAddress, pageAmount, PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR);
+    lock_release(&space->lock);
 
     return vmm_physical_to_virtual(physicalAddress);
 }

@@ -16,14 +16,12 @@ typedef struct
 {
     uint64_t id;
 
-    Queue* queues[PROCESS_PRIORITY_LEVELS];
+    Queue* queues[THREAD_PRIORITY_LEVELS];
     Queue* graveyard;
-    Process* runningProcess;
+    Thread* runningThread;
 } Scheduler;
 
 extern void scheduler_idle_loop(void);
-
-extern void scheduler_yield(void);
 
 void scheduler_init(void);
 
@@ -31,15 +29,19 @@ void scheduler_cpu_start(void);
 
 Scheduler* scheduler_get(uint64_t id);
 
+//Must have a corresponding call to scheduler_put()
 Scheduler* scheduler_local(void);
 
 void scheduler_put(void);
 
+Thread* scheduler_thread(void);
+
 Process* scheduler_process(void);
+
+void scheduler_yield(void);
 
 void scheduler_exit(Status status);
 
 int64_t scheduler_spawn(const char* path);
 
-//Temporary
-uint64_t scheduler_local_process_amount(void);
+uint64_t scheduler_local_thread_amount(void);

@@ -79,7 +79,12 @@ void page_directory_free(PageDirectory* pageDirectory)
 
 void page_directory_load(PageDirectory* pageDirectory)
 {
-    cr3_write((uint64_t)vmm_virtual_to_physical(pageDirectory));
+    uint64_t cr3 = (uint64_t)vmm_virtual_to_physical(pageDirectory);
+
+    if (cr3_read() != cr3)
+    {
+        cr3_write(cr3);
+    }
 }
 
 void page_directory_map_pages(PageDirectory* pageDirectory, void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint16_t flags)

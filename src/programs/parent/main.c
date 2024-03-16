@@ -1,10 +1,10 @@
 #include <stdint.h>
 
-#include <lib-asym.h>
+#include <lib-system.h>
 
 int main(void)
 {
-    int64_t pid = spawn("ram:/bin/child.elf");
+    /*int64_t pid = spawn("ram:/bin/child.elf");
     if (pid == -1)
     {
         sys_test(status_string());
@@ -14,7 +14,7 @@ int main(void)
     while (1)
     {
         sys_test("Hello from parent!");
-    }
+    }*/
 
     return 0;
 }

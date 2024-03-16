@@ -59,7 +59,7 @@ Queue* queue_new(void)
     newQueue->readIndex = 0;
     newQueue->writeIndex = 0;
 
-    newQueue->lock = lock_new();
+    newQueue->lock = lock_create();
 
     newQueue->length = 0;
 

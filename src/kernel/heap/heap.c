@@ -38,7 +38,7 @@ void heap_init(void)
 {    
     firstBlock = heap_new_block(PAGE_SIZE * 64);
 
-    lock = lock_new();
+    lock = lock_create();
 }
 
 uint64_t heap_total_size(void)

@@ -4,6 +4,7 @@
 
 #include "gdt/gdt.h"
 #include "heap/heap.h"
+#include "registers/registers.h"
 
 InterruptFrame* interrupt_frame_new(void* instructionPointer, void* stackPointer)
 {
@@ -14,8 +15,7 @@ InterruptFrame* interrupt_frame_new(void* instructionPointer, void* stackPointer
     interruptFrame->stackPointer = (uint64_t)stackPointer;
     interruptFrame->codeSegment = GDT_USER_CODE | 3;
     interruptFrame->stackSegment = GDT_USER_DATA | 3;
-
-    interruptFrame->flags = 0x202;
+    interruptFrame->flags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
 
     return interruptFrame;
 }

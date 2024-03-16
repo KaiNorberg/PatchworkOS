@@ -85,7 +85,7 @@ static void pmm_load_memory_map(EfiMemoryMap* memoryMap)
 
 void pmm_init(EfiMemoryMap* memoryMap)
 {   
-    lock = lock_new();
+    lock = lock_create();
 
     pmm_allocate_bitmap(memoryMap);
 

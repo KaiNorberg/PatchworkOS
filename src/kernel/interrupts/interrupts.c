@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 
+#include "gdt/gdt.h"
 #include "irq/irq.h"
 #include "tty/tty.h"
 #include "apic/apic.h"
@@ -12,7 +13,7 @@
 #include "utils/utils.h"
 #include "syscall/syscall.h"
 #include "smp/smp.h"
-#include "scheduler/scheduler.h"
+#include "scheduler/schedule/schedule.h"
 
 #include <libc/string.h>
 
@@ -70,6 +71,11 @@ static void interrupt_end(void)
     states[smp_self_unsafe()->id].depth--;
 }
 
+uint64_t interrupt_depth(void)
+{
+    return states[smp_self_unsafe()->id].depth;
+}
+
 void interrupts_disable(void)
 {
     //Race condition does not matter
@@ -96,11 +102,6 @@ void interrupts_enable(void)
     }
 }
 
-uint64_t interrupt_depth(void)
-{
-    return states[smp_self_unsafe()->id].depth;
-}
-
 void interrupt_handler(InterruptFrame* interruptFrame)
 {
     interrupt_begin();
@@ -120,5 +121,12 @@ void interrupt_handler(InterruptFrame* interruptFrame)
     {
         debug_panic("Unknown interrupt vector");
     }
+
+    Thread* thread = scheduler_thread();
+    if (thread != 0 && thread->process->killed && interruptFrame->codeSegment != GDT_KERNEL_CODE)
+    {
+        thread->state = THREAD_STATE_KILLED;
+    }
+
     interrupt_end();
 }

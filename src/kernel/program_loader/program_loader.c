@@ -3,8 +3,7 @@
 #include <stdint.h>
 
 #include <libc/string.h>
-
-#include <lib-asym.h>
+#include <lib-system.h>
 
 #include <common/elf/elf.h>
 
@@ -26,10 +25,10 @@ void* program_loader_load(const char* executable)
     {
         sys_test(executable);
         //spawn(executable);
-        exit(STATUS_FAILURE);
+        //exit(STATUS_SUCCESS);
     }
 
-    int64_t fd = open(executable, FILE_FLAG_READ);
+    /*int64_t fd = open(executable, FILE_FLAG_READ);
     if (fd == -1)
     {
         exit(status());
@@ -84,5 +83,6 @@ void* program_loader_load(const char* executable)
         exit(status());
     }
 
-    return (void*)header.entry;
+    return (void*)header.entry;*/
+    return (void*)0x1234;
 }

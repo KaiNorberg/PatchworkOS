@@ -26,7 +26,6 @@ extern scheduler_schedule
 section .text
 
 common_vector:
-    cld
     PUSH_ALL_REGS
 
     mov rdi, rsp

@@ -1,6 +1,6 @@
 [bits 64]
 
-%include "lib-syscall.inc"
+%include "lib-system.inc"
 
 section .text
 

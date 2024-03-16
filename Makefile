@@ -101,8 +101,7 @@ run:
 	@qemu-system-x86_64 \
     -drive file=$(OUTPUT_IMAGE) \
     -m 1G \
-    -cpu qemu64 \
-    -smp 8 \
+	-smp 4 \
     -no-shutdown -no-reboot \
     -drive if=pflash,format=raw,unit=0,file=vendor/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
     -drive if=pflash,format=raw,unit=1,file=vendor/OVMFbin/OVMF_VARS-pure-efi.fd \
@@ -111,9 +110,8 @@ run:
 run-debug:
 	@qemu-system-x86_64 \
     -drive file=$(OUTPUT_IMAGE) \
-    -m 1G \
-    -cpu qemu64 \
-    -smp 8 \
+	-m 1G \
+	-smp 4 \
     -serial stdio \
 	-d int \
     -no-shutdown -no-reboot \

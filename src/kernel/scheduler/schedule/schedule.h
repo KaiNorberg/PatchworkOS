@@ -5,4 +5,4 @@
 
 void scheduler_schedule(InterruptFrame* interruptFrame);
 
-void scheduler_push(Process* process, uint8_t boost, uint16_t preferred);
+void scheduler_push(Thread* thread, uint8_t boost, uint16_t preferred);

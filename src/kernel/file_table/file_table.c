@@ -2,7 +2,7 @@
 
 #include <libc/string.h>
 
-#include <lib-asym.h>
+#include <lib-system.h>
 
 #include "heap/heap.h"
 #include "debug/debug.h"
@@ -21,11 +21,11 @@ void file_table_free(FileTable* fileTable)
     {
         if (fileTable->files[i] != 0)
         {
-            Status status = vfs_close(fileTable->files[i]);
+            /*Status status = vfs_close(fileTable->files[i]);
             if (status != STATUS_SUCCESS)
             {
                 debug_panic("Failed to close file in table");
-            }
+            }*/
         }
     }
 
@@ -34,7 +34,7 @@ void file_table_free(FileTable* fileTable)
 
 Status file_table_open(FileTable* fileTable, uint64_t* out, const char* path, uint64_t flags)
 {    
-    File* file;
+    /*File* file;
     Status status = vfs_open(&file, path, flags);
     if (status != STATUS_SUCCESS)
     {            
@@ -49,7 +49,7 @@ Status file_table_open(FileTable* fileTable, uint64_t* out, const char* path, ui
             (*out) = i;
             return STATUS_SUCCESS;
         }
-    }
+    }*/
 
     return STATUS_FAILURE;
 }
@@ -78,11 +78,11 @@ Status file_table_close(FileTable* fileTable, uint64_t fd)
         return STATUS_DOES_NOT_EXIST;
     }
 
-    Status status = vfs_close(file);
+    /*Status status = vfs_close(file);
     if (status != STATUS_SUCCESS)
     {            
         return status;
-    }
+    }*/
     
     fileTable->files[fd] = 0;
 

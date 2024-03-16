@@ -6,6 +6,7 @@
 #include "heap/heap.h"
 #include "vfs/vfs.h"
 
+/*
 static List* buses;
 
 Status device_disk_open(Disk* disk, File** out, const char* path, uint64_t flags)
@@ -93,4 +94,4 @@ Device* device_new(DeviceBus* bus, const char* name)
     strcpy(device->name, name);
 
     return device;
-}
+}*/

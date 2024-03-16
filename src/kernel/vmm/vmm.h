@@ -6,6 +6,7 @@
 #include <common/boot_info/boot_info.h>
 
 #include "pmm/pmm.h"
+#include "lock/lock.h"
 #include "kernel/kernel.h"
 #include "vmm/page_directory/page_directory.h"
 
@@ -17,6 +18,7 @@
 typedef struct
 {
     PageDirectory* pageDirectory;
+    Lock lock;
 } AddressSpace;
 
 void vmm_init(EfiMemoryMap* memoryMap);

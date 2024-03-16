@@ -6,10 +6,10 @@
 typedef struct
 {
     _Atomic uint32_t nextTicket;
-    _Atomic uint32_t servingTicket;
+    _Atomic uint32_t nowServing;
 } Lock;
 
-Lock lock_new();
+Lock lock_create();
 
 void lock_acquire(Lock* lock);
 

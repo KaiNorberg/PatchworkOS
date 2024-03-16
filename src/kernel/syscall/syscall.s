@@ -1,9 +1,10 @@
 [bits 64]
 
-%include "lib-syscall.inc"
+%include "lib-system.inc"
 
 extern scheduler_yield
-extern debug_panic
+
+extern syscall_handler_end
 extern syscallTable
 
 section .text
@@ -15,8 +16,7 @@ syscall_handler:
     jge .not_available
 
     call [syscallTable + rax * 8]
-
-    call scheduler_yield
+    call syscall_handler_end
 
     iretq
 .not_available:

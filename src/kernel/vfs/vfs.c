@@ -2,7 +2,7 @@
 
 #include <libc/string.h>
 
-#include <lib-asym.h>
+#include <lib-system.h>
 
 #include "tty/tty.h"
 #include "list/list.h"
@@ -138,7 +138,7 @@ Status vfs_open(File** out, const char* path, uint64_t flags)
     return STATUS_FAILURE;
 }
 
-Status vfs_read(File* file, void* buffer, uint64_t length)
+/*Status vfs_read(File* file, void* buffer, uint64_t length)
 {
     if (file == 0)
     {
@@ -204,4 +204,4 @@ Status vfs_seek(File* file, int64_t offset, uint64_t origin)
     {
         return STATUS_NOT_ALLOWED;
     }
-}
+}*/

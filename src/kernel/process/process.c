@@ -12,31 +12,49 @@
 
 static _Atomic uint64_t newPid = 0;
 
-Process* process_new(void* entry)
+Process* process_new(void)
 {
     Process* process = kmalloc(sizeof(Process));
-    memset(process, 0, sizeof(Process));
-    
     process->id = atomic_fetch_add(&newPid, 1);
     process->addressSpace = address_space_new();
     process->fileTable = file_table_new();
-    process->kernelStackBottom = kmalloc(PAGE_SIZE);
-    process->kernelStackTop = (void*)((uint64_t)process->kernelStackBottom + PAGE_SIZE);
-    process->timeStart = 0;
-    process->timeEnd = 0;
-    process->interruptFrame = interrupt_frame_new(entry, (void*)(VMM_LOWER_HALF_MAX));
-    process->status = STATUS_SUCCESS;
-    process->state = PROCESS_STATE_ACTIVE;
-    process->priority = PROCESS_PRIORITY_MIN;
+    process->killed = 0;
+    process->threadCount = 0;
+    process->newTid = 0;
 
     return process;
 }
 
-void process_free(Process* process)
+Thread* thread_new(Process* process, void* entry, uint8_t priority)
 {
-    interrupt_frame_free(process->interruptFrame);
-    address_space_free(process->addressSpace);
-    file_table_free(process->fileTable);
-    kfree(process->kernelStackBottom);
-    kfree(process);
+    atomic_fetch_add(&process->threadCount, 1);
+
+    Thread* thread = kmalloc(sizeof(Thread));
+    thread->process = process;
+    thread->id = atomic_fetch_add(&process->newTid, 1);
+    thread->kernelStackBottom = kmalloc(PAGE_SIZE);
+    thread->kernelStackTop = (void*)((uint64_t)thread->kernelStackBottom + PAGE_SIZE);
+    thread->timeStart = 0;
+    thread->timeEnd = 0;
+    thread->interruptFrame = interrupt_frame_new(entry, (void*)(VMM_LOWER_HALF_MAX));
+    thread->status = STATUS_SUCCESS;
+    thread->state = THREAD_STATE_ACTIVE;
+    thread->priority = priority;
+    thread->boost = 0;
+
+    return thread;
+}
+
+void thread_free(Thread* thread)
+{
+    if (atomic_fetch_sub(&thread->process->threadCount, 1) <= 1)
+    {
+        address_space_free(thread->process->addressSpace);
+        file_table_free(thread->process->fileTable);
+        kfree(thread->process);
+    }
+
+    interrupt_frame_free(thread->interruptFrame);
+    kfree(thread->kernelStackBottom);
+    kfree(thread);
 }

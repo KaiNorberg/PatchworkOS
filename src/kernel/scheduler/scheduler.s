@@ -12,6 +12,7 @@ scheduler_idle_loop:
 	hlt
 	jmp scheduler_idle_loop
 
+%if 0
 global scheduler_yield
 scheduler_yield:
 	mov qword [rsp - 8], 0x10
@@ -33,3 +34,4 @@ scheduler_yield:
 	iretq
 .return:
 	ret
+%endif

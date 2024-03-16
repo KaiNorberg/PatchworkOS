@@ -1,10 +1,10 @@
 #include <stdint.h>
 
-#include <lib-asym.h>
+#include <lib-system.h>
 
 int main(void)
 {   
-    uint8_t tick = 0;
+    /*uint8_t tick = 0;
     while (1)
     {
         if (tick == 0)
@@ -19,7 +19,7 @@ int main(void)
         tick = !tick;
         
         sleep(1000);        
-    }
+    }*/
 
     return 0;
 }

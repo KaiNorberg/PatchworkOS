@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include <lib-asym.h>
+#include <lib-system.h>
 
 #define VFS_DISK_DELIMITER ':'
 #define VFS_NAME_DELIMITER '/'
@@ -18,10 +18,10 @@ typedef struct Disk
     void* internal;
 
     Status (*open)(struct Disk* disk, File** out, const char* path, uint64_t flags);
-    Status (*close)(File* file);
+    /*Status (*close)(File* file);
     Status (*read)(File* file, void* buffer, uint64_t length);
     Status (*write)(File* file, const void* buffer, uint64_t length);
-    Status (*seek)(File* file, int64_t offset, uint64_t origin);
+    Status (*seek)(File* file, int64_t offset, uint64_t origin);*/
 } Disk;
 
 typedef struct File
@@ -45,10 +45,10 @@ Status vfs_mount(Disk* disk);
 
 Status vfs_open(File** out, const char* path, uint64_t flags);
 
-Status vfs_read(File* file, void* buffer, uint64_t length);
+/*Status vfs_read(File* file, void* buffer, uint64_t length);
 
 Status vfs_write(File* file, const void* buffer, uint64_t length);
 
 Status vfs_close(File* file);
 
-Status vfs_seek(File* file, int64_t offset, uint64_t origin);
+Status vfs_seek(File* file, int64_t offset, uint64_t origin);*/

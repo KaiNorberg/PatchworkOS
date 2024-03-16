@@ -3,8 +3,7 @@
 #include <stdint.h>
 
 #include <libc/string.h>
-
-#include <lib-asym.h>
+#include <lib-system.h>
 
 #include <common/boot_info/boot_info.h>
 
@@ -65,7 +64,7 @@ static inline RamFile* ram_directory_find_file(RamDirectory* directory, const ch
 
 Status ram_disk_open(Disk* disk, File** out, const char* path, uint64_t flags)
 {    
-    if (((flags & FILE_FLAG_READ) && disk->read == 0) ||
+    /*if (((flags & FILE_FLAG_READ) && disk->read == 0) ||
         ((flags & FILE_FLAG_WRITE) && disk->write == 0))
     {
         return STATUS_NOT_ALLOWED;
@@ -90,12 +89,12 @@ Status ram_disk_open(Disk* disk, File** out, const char* path, uint64_t flags)
         return STATUS_INVALID_NAME;
     }
 
-    (*out) = file_new(disk, file, flags);
+    (*out) = file_new(disk, file, flags);*/
 
     return STATUS_SUCCESS;
 }
 
-Status ram_disk_close(File* file)
+/*Status ram_disk_close(File* file)
 {
     kfree(file);
 
@@ -152,7 +151,7 @@ Status ram_disk_seek(File* file, int64_t offset, uint64_t origin)
     }
 
     return STATUS_SUCCESS;
-}
+}*/
 
 void ram_disk_init(RamDirectory* root)
 {
@@ -160,9 +159,9 @@ void ram_disk_init(RamDirectory* root)
 
     Disk* disk = disk_new("ram", root);
     disk->open = ram_disk_open;
-    disk->close = ram_disk_close;
+    /*disk->close = ram_disk_close;
     disk->read = ram_disk_read;
-    disk->seek = ram_disk_seek;
+    disk->seek = ram_disk_seek;*/
 
     Status status = vfs_mount(disk);
     if (status != STATUS_SUCCESS)

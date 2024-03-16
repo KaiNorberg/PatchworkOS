@@ -44,4 +44,4 @@ Documentation will eventually be found on the ![wiki](https://github.com/Kaj9296
 
 ## Contributing
 
-Patchwork is intended as a personal project, therefor contributions to add features are unwanted. However if you find any bugs, issues or just have a suggestion for something i could do better, then feel free to open an issue.
+Patchwork is intended as a personal project, therefor contributions to add features are unwanted. However if you find any bugs, issues or just have a suggestion for something i could do better, then feel free to open an issue. This might change in the future.

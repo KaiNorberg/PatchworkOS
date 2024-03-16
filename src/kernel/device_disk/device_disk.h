@@ -2,12 +2,12 @@
 
 #include <stdint.h>
 
-#include <lib-asym.h>
+#include <lib-system.h>
 
 #include "vfs/vfs.h"
 #include "list/list.h"
 
-typedef struct
+/*typedef struct
 {
     char name[VFS_MAX_NAME_LENGTH];
     Status (*read)(uint64_t position, void* buffer, uint64_t length);
@@ -24,4 +24,4 @@ void device_disk_init(void);
 
 DeviceBus* device_bus_new(const char* name);
 
-Device* device_new(DeviceBus* bus, const char* name);
+Device* device_new(DeviceBus* bus, const char* name);*/

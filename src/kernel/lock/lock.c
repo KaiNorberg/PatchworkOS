@@ -2,12 +2,12 @@
 
 #include "interrupts/interrupts.h"
 
-Lock lock_new() 
+Lock lock_create() 
 {
     return (Lock) 
     {
-        .servingTicket = 0,
-        .nextTicket = 0
+        .nextTicket = 0,
+        .nowServing = 0
     };
 }
 
@@ -17,7 +17,7 @@ void lock_acquire(Lock* lock)
 
     //Overflow does not matter
     uint32_t ticket = atomic_fetch_add(&lock->nextTicket, 1);
-    while (atomic_load(&lock->servingTicket) != ticket)
+    while (atomic_load(&lock->nowServing) != ticket)
     {
         asm volatile("pause");
     }
@@ -25,7 +25,7 @@ void lock_acquire(Lock* lock)
 
 void lock_release(Lock* lock)
 {
-    atomic_fetch_add(&lock->servingTicket, 1);
+    atomic_fetch_add(&lock->nowServing, 1);
 
     interrupts_enable();
 }

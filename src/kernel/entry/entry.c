@@ -14,16 +14,16 @@ void main(BootInfo* bootInfo)
 
     tty_acquire();
     
-    for (uint64_t i = 0; i < 1000; i++)
+    for (uint64_t i = 0; i < 16; i++)
     {
         scheduler_spawn("ram:/bin/parent.elf");
     }
 
     tty_clear();
-    tty_set_row(20);
+    tty_set_row(smp_cpu_amount() + 1);
     tty_release();  
  
-    //Exit init process
+    //Exit init thread
     scheduler_exit(STATUS_SUCCESS);
-    debug_panic("Init process returned");
+    debug_panic("Init thread returned from exit");
 }

@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include <lib-asym.h>
+#include <lib-system.h>
 
 #include "lock/lock.h"
 #include "vfs/vfs.h"
@@ -10,12 +10,14 @@
 #include "interrupt_frame/interrupt_frame.h"
 #include "vmm/vmm.h"
 
-#define PROCESS_STATE_ACTIVE 0
-#define PROCESS_STATE_KILLED 1
+#define THREAD_MASTER_ID 0
 
-#define PROCESS_PRIORITY_LEVELS 4
-#define PROCESS_PRIORITY_MIN 0
-#define PROCESS_PRIORITY_MAX (PROCESS_PRIORITY_LEVELS - 1)
+#define THREAD_STATE_ACTIVE 0
+#define THREAD_STATE_KILLED 1
+
+#define THREAD_PRIORITY_LEVELS 4
+#define THREAD_PRIORITY_MIN 0
+#define THREAD_PRIORITY_MAX (THREAD_PRIORITY_LEVELS - 1)
 
 typedef struct
 {        
@@ -23,6 +25,18 @@ typedef struct
 
     AddressSpace* addressSpace;
     FileTable* fileTable;
+
+    uint8_t killed;
+
+    _Atomic uint64_t threadCount;
+    _Atomic uint64_t newTid;
+} Process;
+
+typedef struct
+{
+    Process* process;
+
+    uint64_t id;
 
     void* kernelStackTop;
     void* kernelStackBottom;
@@ -36,8 +50,10 @@ typedef struct
     uint8_t state;
     uint8_t priority;
     uint8_t boost;
-} Process;
+} Thread;
 
-Process* process_new(void* entry);
+Process* process_new(void);
 
-void process_free(Process* process);
+Thread* thread_new(Process* process, void* entry, uint8_t priority);
+
+void thread_free(Thread* thread);
