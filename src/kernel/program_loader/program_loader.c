@@ -29,13 +29,13 @@ void* program_loader_load(const char* executable)
         //sys_exit(STATUS_SUCCESS);
     }
 
-    /*int64_t fd = open(executable, FILE_FLAG_READ);
+    /*int64_t fd = sys_open(executable, FILE_FLAG_READ);
     if (fd == -1)
     {
-        exit(status());
-    }
+        sys_exit(sys_status());
+    }*/
 
-    ElfHeader header;
+    /*ElfHeader header;
     if (read(fd, &header, sizeof(ElfHeader)) == -1)
     {
         exit(status());
