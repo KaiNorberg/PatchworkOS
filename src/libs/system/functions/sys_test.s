@@ -13,5 +13,5 @@ sys_test:
     pause
     loop .L1
     mov rax, SYS_TEST
-    int 0x80
+    int SYSCALL_VECTOR
     ret

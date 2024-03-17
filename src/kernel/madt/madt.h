@@ -29,8 +29,7 @@ typedef struct __attribute__((packed))
 {
     SdtHeader header;
     uint32_t localApicAddress;
-    uint32_t flags; 
-
+    uint32_t flags;
     RecordHeader records[];
 } Madt;
 

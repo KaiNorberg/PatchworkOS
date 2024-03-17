@@ -4,8 +4,8 @@
 
 section .text
 
-global sys_spawn
-sys_spawn:
-    mov rax, SYS_SPAWN
+global sys_allocate
+sys_map:
+    mov rax, SYS_ALLOCATE
     int SYSCALL_VECTOR
     ret

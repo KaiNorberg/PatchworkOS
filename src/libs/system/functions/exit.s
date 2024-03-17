@@ -4,9 +4,9 @@
 
 section .text
 
-global exit
-exit:
+global sys_exit
+sys_exit:
     mov rax, SYS_EXIT
-    int 0x80
+    int SYSCALL_VECTOR
     mov r9, 0x123456789 ;Magic number to identify that exit returned.
     ud2

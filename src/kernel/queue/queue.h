@@ -10,12 +10,9 @@ typedef struct
 {
     void** buffer;
     uint64_t bufferLength;
-
     uint64_t readIndex;
     uint64_t writeIndex;
-
     Lock lock;    
-    
     _Atomic uint64_t length;
 } Queue;
 

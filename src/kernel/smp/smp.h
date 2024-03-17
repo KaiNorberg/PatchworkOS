@@ -18,10 +18,8 @@
 typedef struct
 {
     uint8_t present;
-    
     uint8_t id; 
-    uint8_t localApicId;    
-
+    uint8_t localApicId;
     Tss* tss;
     void* idleStackTop;
     void* idleStackBottom;

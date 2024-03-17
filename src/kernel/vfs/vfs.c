@@ -48,7 +48,7 @@ void vfs_init(void)
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-Status vfs_mount(Disk* disk)
+/*Status vfs_mount(Disk* disk)
 {
     if (!vfs_utils_validate_name(disk->name))
     {
@@ -138,7 +138,7 @@ Status vfs_open(File** out, const char* path, uint64_t flags)
     return STATUS_FAILURE;
 }
 
-/*Status vfs_read(File* file, void* buffer, uint64_t length)
+Status vfs_read(File* file, void* buffer, uint64_t length)
 {
     if (file == 0)
     {

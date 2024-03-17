@@ -22,12 +22,9 @@
 typedef struct
 {        
     uint64_t id;
-
     AddressSpace* addressSpace;
     FileTable* fileTable;
-
     uint8_t killed;
-
     _Atomic uint64_t threadCount;
     _Atomic uint64_t newTid;
 } Process;
@@ -35,18 +32,13 @@ typedef struct
 typedef struct
 {
     Process* process;
-
     uint64_t id;
-
     void* kernelStackTop;
     void* kernelStackBottom;
-
     uint64_t timeEnd;
     uint64_t timeStart;
-
     InterruptFrame* interruptFrame;
-    Status status;
-    
+    uint64_t status;
     uint8_t state;
     uint8_t priority;
     uint8_t boost;

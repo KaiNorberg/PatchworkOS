@@ -1,5 +1,7 @@
 [bits 64]
 
+%include "lib-system.inc"
+
 extern main
 extern _init
 
@@ -11,7 +13,7 @@ _start:
     call main
     
     mov rdi, rax
-    mov rax, 0
-    int 0x80
+    mov rax, SYS_EXIT
+    int SYSCALL_VECTOR
     ud2
 .end:

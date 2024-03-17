@@ -16,8 +16,7 @@ typedef struct Disk
 {    
     char name[VFS_MAX_NAME_LENGTH];
     void* internal;
-
-    Status (*open)(struct Disk* disk, File** out, const char* path, uint64_t flags);
+    //Status (*open)(struct Disk* disk, File** out, const char* path, uint64_t flags);
     /*Status (*close)(File* file);
     Status (*read)(File* file, void* buffer, uint64_t length);
     Status (*write)(File* file, const void* buffer, uint64_t length);
@@ -28,7 +27,6 @@ typedef struct File
 {
     Disk* disk;
     void* internal;
-
     uint64_t position;
     uint64_t flags;
 } File;
@@ -41,9 +39,9 @@ void file_free(File* file);
 
 void vfs_init(void);
 
-Status vfs_mount(Disk* disk);
+/*Status vfs_mount(Disk* disk);
 
-Status vfs_open(File** out, const char* path, uint64_t flags);
+Status vfs_open(File** out, const char* path, uint64_t flags);*/
 
 /*Status vfs_read(File* file, void* buffer, uint64_t length);
 

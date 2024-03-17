@@ -2,8 +2,6 @@
 
 %include "lib-system.inc"
 
-extern scheduler_yield
-
 extern syscall_handler_end
 extern syscallTable
 
@@ -20,5 +18,5 @@ syscall_handler:
 
     iretq
 .not_available:
-    mov rax, -1
+    mov rax, SYSTEM_ERROR
     iretq

@@ -1,6 +1,22 @@
 #include <lib-system.h>
 
-const char* status_string(void)
+static const char* statusToString[] =
 {
-    return statusToString[status()];
+    "SUCCESS",
+    "FAILURE",
+    "INVALID_NAME",
+    "INVALID_PATH",
+    "ALREADY_EXISTS",
+    "NOT_ALLOWED",
+    "END_OF_FILE",
+    "CORRUPT",
+    "INVALID_POINTER",
+    "INVALID_FLAG",
+    "DOES_NOT_EXIST",
+    "INSUFFICIENT_SPACE"
+};
+
+const char* status_string(uint64_t status)
+{
+    return statusToString[status];
 }

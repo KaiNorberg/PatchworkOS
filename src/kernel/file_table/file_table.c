@@ -32,9 +32,9 @@ void file_table_free(FileTable* fileTable)
     kfree(fileTable);
 }
 
-Status file_table_open(FileTable* fileTable, uint64_t* out, const char* path, uint64_t flags)
+/*uint64_t file_table_open(FileTable* fileTable, uint64_t* out, const char* path, uint64_t flags)
 {    
-    /*File* file;
+    File* file;
     Status status = vfs_open(&file, path, flags);
     if (status != STATUS_SUCCESS)
     {            
@@ -49,7 +49,7 @@ Status file_table_open(FileTable* fileTable, uint64_t* out, const char* path, ui
             (*out) = i;
             return STATUS_SUCCESS;
         }
-    }*/
+    }
 
     return STATUS_FAILURE;
 }
@@ -70,7 +70,7 @@ File* file_table_get(FileTable* fileTable, uint64_t fd)
     }
 }
 
-Status file_table_close(FileTable* fileTable, uint64_t fd)
+uint64_t file_table_close(FileTable* fileTable, uint64_t fd)
 {
     File* file = file_table_get(fileTable, fd);
     if (file == 0)
@@ -78,13 +78,13 @@ Status file_table_close(FileTable* fileTable, uint64_t fd)
         return STATUS_DOES_NOT_EXIST;
     }
 
-    /*Status status = vfs_close(file);
+    Status status = vfs_close(file);
     if (status != STATUS_SUCCESS)
     {            
         return status;
-    }*/
+    }
     
     fileTable->files[fd] = 0;
 
     return STATUS_SUCCESS;
-}
+}*/

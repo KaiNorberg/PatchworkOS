@@ -81,6 +81,7 @@ static void pmm_load_memory_map(EfiMemoryMap* memoryMap)
     }
 
     pmm_reserve_pages(vmm_virtual_to_physical(bitmap), SIZE_IN_PAGES(bitmapSize));
+    pmm_reserve_page(0);
 }
 
 void pmm_init(EfiMemoryMap* memoryMap)
@@ -127,17 +128,17 @@ void* pmm_allocate_amount(uint64_t amount)
 
     lock_acquire(&lock);
 
-    uintptr_t startAddress = (uint64_t)-1;
+    uintptr_t startAddress = UINT64_MAX;
     uint64_t freePagesFound = 0;
     for (uintptr_t address = 0; address < pageAmount * PAGE_SIZE; address += PAGE_SIZE)
     {
         if (pmm_is_reserved((void*)address))
         {
-            startAddress = (uint64_t)-1;
+            startAddress = UINT64_MAX;
         }
         else
         {
-            if (startAddress == (uint64_t)-1)
+            if (startAddress == UINT64_MAX)
             {
                 startAddress = address;
                 freePagesFound = 0;

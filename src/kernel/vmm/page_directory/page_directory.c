@@ -5,6 +5,7 @@
 #include "pmm/pmm.h"
 #include "debug/debug.h"
 #include "vmm/vmm.h"
+#include "utils/utils.h"
 #include "registers/registers.h"
 
 static inline Pde pde_create(void* address, uint64_t flags)
@@ -125,11 +126,44 @@ void page_directory_map(PageDirectory* pageDirectory, void* virtualAddress, void
     *entry = pde_create(physicalAddress, flags);
 }
 
+void* page_directory_physical_address(PageDirectory* pageDirectory, void* virtualAddress)
+{
+    uint64_t offset = ((uint64_t)virtualAddress) % PAGE_SIZE;
+    virtualAddress = (void*)round_down((uint64_t)virtualAddress, PAGE_SIZE);
+
+    PageDirectory* level3 = page_directory_get(pageDirectory, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 4));
+    if (level3 == 0)
+    {
+        return 0;
+    }
+
+    PageDirectory* level2 = page_directory_get(level3, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 3));
+    if (level2 == 0)
+    {
+        return 0;
+    }
+
+    PageDirectory* level1 = page_directory_get(level2, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 2));
+    if (level1 == 0)
+    {
+        return 0;
+    }
+
+    Pde* entry = &level1->entries[PAGE_DIRECTORY_GET_INDEX(virtualAddress, 1)];
+
+    if (!PDE_GET_FLAG(*entry, PAGE_FLAG_PRESENT))
+    {
+        return 0;
+    }
+
+    return (void*)(((uint64_t)PDE_GET_ADDRESS(*entry)) + offset);
+}
+
 void page_directory_change_flags(PageDirectory* pageDirectory, void* virtualAddress, uint16_t flags)
 {
     if ((uint64_t)virtualAddress % PAGE_SIZE != 0)
     {
-        debug_panic("Attempt to map invalid virtual address!");
+        debug_panic("Attempt to change flags of invalid virtual address!");
     }
 
     PageDirectory* level3 = page_directory_get(pageDirectory, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 4));

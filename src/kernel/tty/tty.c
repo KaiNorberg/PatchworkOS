@@ -142,16 +142,8 @@ void tty_put(uint8_t chr)
         {
             for (uint32_t xOffset = 0; xOffset < TTY_CHAR_WIDTH * scale; xOffset++)
             {                
-                Pixel pixel;
-                if ((*glyph & (0b10000000 >> xOffset / scale)) > 0)
-                {
-                    pixel = foreground;
-                }
-                else
-                {
-                    pixel = background;
-                }    
-                
+                Pixel pixel = ((*glyph & (0b10000000 >> xOffset / scale)) > 0) ? foreground : background;
+  
                 *((Pixel*)((uint64_t)frontbuffer.base + 
                 (x + xOffset) * sizeof(Pixel) + 
                 (y + yOffset) * frontbuffer.pixelsPerScanline * sizeof(Pixel))) = pixel;

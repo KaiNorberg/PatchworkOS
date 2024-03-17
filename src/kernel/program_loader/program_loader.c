@@ -15,6 +15,7 @@
 
 void program_loader_init(void)
 {
+    //TODO: Program loader should run in kernel mode
     uint64_t pageAmount = SIZE_IN_PAGES((uint64_t)&_programLoaderEnd - (uint64_t)&_programLoaderStart);
     vmm_change_flags(&_programLoaderStart, pageAmount, PAGE_FLAG_USER_SUPERVISOR);
 }
@@ -25,7 +26,7 @@ void* program_loader_load(const char* executable)
     {
         sys_test(executable);
         //spawn(executable);
-        //exit(STATUS_SUCCESS);
+        //sys_exit(STATUS_SUCCESS);
     }
 
     /*int64_t fd = open(executable, FILE_FLAG_READ);
@@ -84,5 +85,5 @@ void* program_loader_load(const char* executable)
     }
 
     return (void*)header.entry;*/
-    return (void*)0x1234;
+    return (void*)SYSTEM_ERROR;
 }

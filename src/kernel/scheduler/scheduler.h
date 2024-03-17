@@ -15,7 +15,6 @@
 typedef struct
 {
     uint64_t id;
-
     Queue* queues[THREAD_PRIORITY_LEVELS];
     Queue* graveyard;
     Thread* runningThread;
@@ -40,8 +39,8 @@ Process* scheduler_process(void);
 
 void scheduler_yield(void);
 
-void scheduler_exit(Status status);
+void scheduler_exit(uint64_t status);
 
-int64_t scheduler_spawn(const char* path);
+uint64_t scheduler_spawn(const char* path);
 
 uint64_t scheduler_local_thread_amount(void);

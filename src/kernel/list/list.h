@@ -5,7 +5,6 @@
 typedef struct ListEntry
 {
     void* data;
-
     struct ListEntry* prev;
     struct ListEntry* next;
 } ListEntry;
@@ -13,7 +12,6 @@ typedef struct ListEntry
 typedef struct
 {
     uint64_t length;
-
     ListEntry* first;
     ListEntry* last;
 } List;

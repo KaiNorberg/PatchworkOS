@@ -110,25 +110,20 @@ void scheduler_yield(void)
     SMP_SEND_IPI_TO_SELF(IPI_SCHEDULE);
 }
 
-void scheduler_exit(Status status)
+void scheduler_exit(uint64_t status)
 {
     scheduler_thread()->state = THREAD_STATE_KILLED;
     scheduler_yield();
 }
 
-int64_t scheduler_spawn(const char* path)
+uint64_t scheduler_spawn(const char* path)
 {    
     Process* process = process_new();
-    if (process == 0)
-    {
-        return -1;
-    }
-
     Thread* thread = thread_new(process, program_loader_entry, THREAD_PRIORITY_MIN);
 
     //Temporary: For now the executable is passed via the user stack to the program loader.
     //Eventually it will be passed via a system similar to "/proc/self/exec".
-    void* stackBottom = address_space_map(process->addressSpace, (void*)(VMM_LOWER_HALF_MAX - PAGE_SIZE), 1);
+    void* stackBottom = address_space_allocate(process->addressSpace, (void*)(VMM_LOWER_HALF_MAX - PAGE_SIZE), 1);
     void* stackTop = (void*)((uint64_t)stackBottom + PAGE_SIZE);
     uint64_t pathLength = strlen(path);
     void* dest = (void*)((uint64_t)stackTop - pathLength - 1);

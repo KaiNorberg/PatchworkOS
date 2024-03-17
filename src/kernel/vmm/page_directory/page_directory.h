@@ -38,4 +38,6 @@ void page_directory_map_pages(PageDirectory* pageDirectory, void* virtualAddress
 
 void page_directory_map(PageDirectory* pageDirectory, void* virtualAddress, void* physicalAddress, uint16_t flags);
 
+void* page_directory_physical_address(PageDirectory* pageDirectory, void* virtualAddress);
+
 void page_directory_change_flags(PageDirectory* pageDirectory, void* virtualAddress, uint16_t flags);

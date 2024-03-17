@@ -16,6 +16,8 @@
 #include "scheduler/scheduler.h"
 #include "program_loader/program_loader.h"
 
+#include <libc/string.h>
+
 static inline uint8_t verify_pointer(const void* pointer, uint64_t size)
 {
     if ((uint64_t)pointer > VMM_LOWER_HALF_MAX || (uint64_t)pointer + size > VMM_LOWER_HALF_MAX)
@@ -28,50 +30,42 @@ static inline uint8_t verify_pointer(const void* pointer, uint64_t size)
 
 static inline uint8_t verify_string(const char* string)
 {
-    return verify_pointer(string, 0);
+    return verify_pointer(string, strlen(string));
 }
 
-int64_t syscall_exit(Status status)
+void syscall_exit(uint64_t status)
 {
     scheduler_exit(status);
     debug_panic("Returned from exit");
-    return 0;
 }
 
-int64_t syscall_spawn(const char* path)
+uint64_t syscall_spawn(const char* path)
 {
     if (!verify_string(path))
     {
         scheduler_thread()->status = STATUS_INVALID_POINTER;
-        return -1;
+        return SYSTEM_ERROR;
     }
 
-    int64_t pid = scheduler_spawn(path);
-    if (pid == -1)
-    {
-        scheduler_thread()->status = STATUS_FAILURE;
-        return -1;
-    }
-
-    return pid;
+    return scheduler_spawn(path);
 }
 
-int64_t syscall_map(void* address, uint64_t length)
+void* syscall_allocate(void* address, uint64_t length)  
 {
-    address_space_map(scheduler_process()->addressSpace, address, SIZE_IN_PAGES(length));
+    address_space_allocate(scheduler_process()->addressSpace, address, SIZE_IN_PAGES(length));
 
-    return 0;
+    return address;
 }
 
-Status syscall_status(void)
+uint64_t syscall_status(void)
 {
     Thread* thread = scheduler_thread();
-    Status temp = thread->status;
+    uint64_t temp = thread->status;
     thread->status = STATUS_SUCCESS;
     return temp;
 }
 
-int64_t syscall_test(const char* string)
+uint64_t syscall_test(const char* string)
 {
     tty_acquire();
     
@@ -112,20 +106,17 @@ void syscall_handler_end(void)
 {
     if (scheduler_process()->killed)
     {
-        scheduler_exit(STATUS_SUCCESS);
-        debug_panic("Returned from exit");
+        scheduler_thread()->state = THREAD_STATE_KILLED;
     }
-    else
-    {
-        scheduler_yield();
-    }
+    
+    scheduler_yield();
 }
 
 void* syscallTable[] =
 {
     syscall_exit,
     syscall_spawn,
-    syscall_map,
+    syscall_allocate,
     syscall_status,
     syscall_test
 };

@@ -62,9 +62,9 @@ static inline RamFile* ram_directory_find_file(RamDirectory* directory, const ch
     return file;
 }
 
-Status ram_disk_open(Disk* disk, File** out, const char* path, uint64_t flags)
+/*Status ram_disk_open(Disk* disk, File** out, const char* path, uint64_t flags)
 {    
-    /*if (((flags & FILE_FLAG_READ) && disk->read == 0) ||
+    if (((flags & FILE_FLAG_READ) && disk->read == 0) ||
         ((flags & FILE_FLAG_WRITE) && disk->write == 0))
     {
         return STATUS_NOT_ALLOWED;
@@ -89,10 +89,10 @@ Status ram_disk_open(Disk* disk, File** out, const char* path, uint64_t flags)
         return STATUS_INVALID_NAME;
     }
 
-    (*out) = file_new(disk, file, flags);*/
+    (*out) = file_new(disk, file, flags);
 
     return STATUS_SUCCESS;
-}
+}*/
 
 /*Status ram_disk_close(File* file)
 {
@@ -157,18 +157,18 @@ void ram_disk_init(RamDirectory* root)
 {
     tty_start_message("Ram Disk initializing");    
 
-    Disk* disk = disk_new("ram", root);
+    /*Disk* disk = disk_new("ram", root);
     disk->open = ram_disk_open;
-    /*disk->close = ram_disk_close;
+    disk->close = ram_disk_close;
     disk->read = ram_disk_read;
-    disk->seek = ram_disk_seek;*/
+    disk->seek = ram_disk_seek;
 
     Status status = vfs_mount(disk);
     if (status != STATUS_SUCCESS)
     {
         tty_print(statusToString[status]);
         tty_end_message(TTY_MESSAGE_ER);
-    }
+    }*/
 
     tty_end_message(TTY_MESSAGE_OK);
 }

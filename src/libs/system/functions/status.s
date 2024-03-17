@@ -4,8 +4,8 @@
 
 section .text
 
-global status
-status:
+global sys_status
+sys_status:
     mov rax, SYS_STATUS
-    int 0x80
+    int SYSCALL_VECTOR
     ret

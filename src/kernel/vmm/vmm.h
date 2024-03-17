@@ -37,4 +37,4 @@ void address_space_free(AddressSpace* space);
 
 void address_space_load(AddressSpace* space);
 
-void* address_space_map(AddressSpace* space, void* address, uint64_t pageAmount);
+void* address_space_allocate(AddressSpace* space, void* address, uint64_t pageAmount);
