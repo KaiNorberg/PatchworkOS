@@ -1,22 +1,19 @@
 #include "syscall.h"
 
 #include <stdint.h>
-
-#include <lib-system.h>
+#include <string.h>
+#include <sys/status.h>
 
 #include "tty/tty.h"
 #include "heap/heap.h"
 #include "vmm/vmm.h"
 #include "time/time.h"
-#include "vfs/vfs.h"
 #include "utils/utils.h"
 #include "smp/smp.h"
 #include "debug/debug.h"
 #include "interrupts/interrupts.h"
 #include "scheduler/scheduler.h"
 #include "program_loader/program_loader.h"
-
-#include <libc/string.h>
 
 static inline uint8_t verify_pointer(const void* pointer, uint64_t size)
 {
@@ -33,10 +30,10 @@ static inline uint8_t verify_string(const char* string)
     return verify_pointer(string, strlen(string));
 }
 
-void syscall_exit(uint64_t status)
+void syscall_exit_process(uint64_t status)
 {
-    scheduler_exit(status);
-    debug_panic("Returned from exit");
+    scheduler_process()->killed = 1;
+    scheduler_yield();
 }
 
 uint64_t syscall_spawn(const char* path)
@@ -114,7 +111,7 @@ void syscall_handler_end(void)
 
 void* syscallTable[] =
 {
-    syscall_exit,
+    syscall_exit_process,
     syscall_spawn,
     syscall_allocate,
     syscall_status,

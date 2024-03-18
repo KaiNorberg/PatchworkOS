@@ -15,8 +15,6 @@
 #include "smp/smp.h"
 #include "scheduler/schedule/schedule.h"
 
-#include <libc/string.h>
-
 static InterruptState states[MAX_CPU_AMOUNT];
 
 static inline void exception_handler(InterruptFrame const* interruptFrame)

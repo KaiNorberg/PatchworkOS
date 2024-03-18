@@ -2,11 +2,7 @@
 
 #include <stdint.h>
 
-#include <lib-system.h>
-
 #include "lock/lock.h"
-#include "vfs/vfs.h"
-#include "file_table/file_table.h"
 #include "interrupt_frame/interrupt_frame.h"
 #include "vmm/vmm.h"
 
@@ -23,7 +19,6 @@ typedef struct
 {        
     uint64_t id;
     AddressSpace* addressSpace;
-    FileTable* fileTable;
     uint8_t killed;
     _Atomic uint64_t threadCount;
     _Atomic uint64_t newTid;

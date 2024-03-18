@@ -1,6 +1,6 @@
 #include "utils.h"
 
-#include <libc/string.h>
+#include <string.h>
 
 char* itoa(uint64_t i, char b[], uint8_t base)
 {

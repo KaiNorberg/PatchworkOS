@@ -12,7 +12,4 @@ program_loader_entry:
 
 ;Janky but it avoids code duplication
 %define .text .program_loader
-%include "system/functions/exit.s"
-%include "system/functions/spawn.s"
-%include "system/functions/status.s"
-%include "system/functions/sys_test.s"
+%include "internal/syscalls/syscalls.s"

@@ -1,6 +1,6 @@
 #include "smp.h"
 
-#include <libc/string.h>
+#include <string.h>
 
 #include "tty/tty.h"
 #include "registers/registers.h"

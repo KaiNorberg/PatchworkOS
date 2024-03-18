@@ -1,21 +1,22 @@
 PARENT_SRC_DIR = $(SRC_DIR)/programs/parent
 PARENT_BUILD_DIR = $(BUILD_DIR)/programs/parent
 
-PARENT_OUTPUT = $(PROGRAMS_BIN_DIR)/parent.elf
+PARENT_OUT = $(PROGRAMS_BIN_DIR)/parent.elf
 
-PARENT_OBJECTS = $(call objects_pathsubst,$(PARENT_SRC_DIR),$(PARENT_BUILD_DIR),.c)
-PARENT_OBJECTS += $(call objects_pathsubst,$(PARENT_SRC_DIR),$(PARENT_BUILD_DIR),.s)
+PARENT_SRC = $(call recursive_wildcard, $(PARENT_SRC_DIR), *.c)
 
-$(PARENT_BUILD_DIR)/%.c.o: $(PARENT_SRC_DIR)/%.c
-	@mkdir -p $(@D)
-	$(CC) $(PROGRAM_C_FLAGS) -I $(PARENT_SRC_DIR) -c -o $@ $<
+PARENT_OBJ = $(patsubst $(SRC_DIR)/%, $(PARENT_BUILD_DIR)/%.o, $(PARENT_SRC))
 
-$(PARENT_BUILD_DIR)/%.s.o: $(PARENT_SRC_DIR)/%.s
-	@mkdir -p $(@D)
-	$(ASM) $(ASM_FLAGS) $^ -o $@
+$(PARENT_BUILD_DIR)/%.c.o: $(SRC_DIR)/%.c
+	$(MKCWD)
+	$(CC) $(USER_C_FLAGS) -I $(PARENT_SRC_DIR) -c -o $@ $<
 
-$(PARENT_OUTPUT): $(PARENT_OBJECTS)	
-	@mkdir -p $(@D)
-	$(LD) $(PROGRAM_LD_FLAGS) -lsystem -o $@ $^
+$(PARENT_BUILD_DIR)/%.s.o: $(SRC_DIR)/%.s
+	$(MKCWD)
+	$(ASM) $(USER_ASM_FLAGS) $^ -o $@
 
-BUILD += $(PARENT_OUTPUT)
+$(PARENT_OUT): $(PARENT_OBJ)	
+	$(MKCWD)
+	$(LD) $(USER_LD_FLAGS) -o $@ $^
+
+BUILD += $(PARENT_OUT)

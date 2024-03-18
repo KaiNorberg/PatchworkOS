@@ -1,6 +1,6 @@
 [bits 64]
 
-%include "lib-system.inc"
+%include "internal/syscalls/syscalls.inc"
 
 extern syscall_handler_end
 extern syscallTable
@@ -10,7 +10,7 @@ section .text
 global syscall_handler
 syscall_handler:
     cld
-    cmp rax, SYS_TOTAL_AMOUNT
+    cmp rax, SYSCALL_AMOUNT
     jge .not_available
 
     call [syscallTable + rax * 8]
@@ -18,5 +18,5 @@ syscall_handler:
 
     iretq
 .not_available:
-    mov rax, SYSTEM_ERROR
+    mov rax, -1
     iretq

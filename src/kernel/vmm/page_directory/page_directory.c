@@ -1,6 +1,6 @@
 #include "page_directory.h"
 
-#include <libc/string.h>
+#include <string.h>
 
 #include "pmm/pmm.h"
 #include "debug/debug.h"

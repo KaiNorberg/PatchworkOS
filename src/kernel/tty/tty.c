@@ -1,7 +1,6 @@
 #include "tty.h"
 
-#include <libc/string.h>
-#include <libc/stdarg.h>
+#include <string.h>
 
 #include "utils/utils.h"
 #include "lock/lock.h"

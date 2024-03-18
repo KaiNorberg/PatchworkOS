@@ -1,13 +1,14 @@
 #include "pmm.h"
 
-#include <libc/string.h>
 #include <stddef.h>
+#include <string.h>
+
+#include <common/boot_info/boot_info.h>
 
 #include "debug/debug.h"
 #include "lock/lock.h"
 #include "vmm/vmm.h"
 #include "utils/utils.h"
-#include <common/boot_info/boot_info.h>
 
 static uint64_t* bitmap;
 static uint64_t bitmapSize;

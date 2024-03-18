@@ -1,5 +1,7 @@
-#include <common/boot_info/boot_info.h>
 #include <stdint.h>
+#include <sys/status.h>
+
+#include <common/boot_info/boot_info.h>
 
 #include "tty/tty.h"
 #include "smp/smp.h"
@@ -24,6 +26,6 @@ void main(BootInfo* bootInfo)
     tty_release();  
  
     //Exit init thread
-    scheduler_exit(STATUS_SUCCESS);
-    debug_panic("Init thread returned from exit");
+    scheduler_thread()->state = THREAD_STATE_KILLED;
+    scheduler_yield();
 }

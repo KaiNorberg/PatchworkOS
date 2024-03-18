@@ -3,15 +3,11 @@
 #include "tty/tty.h"
 #include "tss/tss.h"
 
-#include <libc/string.h>
-
 __attribute__((aligned(0x1000)))
 static Gdt gdt;
 
 void gdt_init(void)
 {
-    memset(&gdt, 0, sizeof(Gdt));
-
     gdt.null.limitLow = 0;
     gdt.null.baseLow = 0;
     gdt.null.baseMiddle = 0;

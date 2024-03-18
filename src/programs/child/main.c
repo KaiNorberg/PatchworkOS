@@ -1,9 +1,5 @@
 #include <stdint.h>
 
-#include <lib-system.h>
-
-#include <libc/string.h>
-
 #define BUFFER_SIZE 32
 
 char buffer[BUFFER_SIZE];

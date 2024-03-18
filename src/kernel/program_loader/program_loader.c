@@ -1,9 +1,8 @@
 #include "program_loader.h"
 
 #include <stdint.h>
-
-#include <libc/string.h>
-#include <lib-system.h>
+#include <sys/status.h>
+#include <internal/syscalls/syscalls.h>
 
 #include <common/elf/elf.h>
 
@@ -11,7 +10,6 @@
 #include "pmm/pmm.h"
 #include "vmm/vmm.h"
 #include "utils/utils.h"
-#include "vfs/vfs.h"
 
 void program_loader_init(void)
 {
@@ -26,7 +24,7 @@ void* program_loader_load(const char* executable)
     {
         sys_test(executable);
         //spawn(executable);
-        //sys_exit(STATUS_SUCCESS);
+        //sys_exit_process(STATUS_SUCCESS);
     }
 
     /*int64_t fd = sys_open(executable, FILE_FLAG_READ);

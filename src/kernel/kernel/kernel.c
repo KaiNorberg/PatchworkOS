@@ -13,9 +13,6 @@
 #include "time/time.h"
 #include "apic/apic.h"
 #include "madt/madt.h"
-#include "ram_disk/ram_disk.h"
-#include "device_disk/device_disk.h"
-#include "vfs/vfs.h"
 #include "vmm/vmm.h"
 #include "rsdt/rsdt.h"
 #include "smp/smp.h"
@@ -74,10 +71,6 @@ void kernel_init(BootInfo* bootInfo)
 
     scheduler_init();
     program_loader_init();
-
-    vfs_init();
-    //device_disk_init();
-    ram_disk_init(bootInfo->ramRoot);
 
     deallocate_boot_info(bootInfo);
 }

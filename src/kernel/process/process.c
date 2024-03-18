@@ -1,7 +1,7 @@
 #include "process.h"
 
 #include <stdatomic.h>
-#include <libc/string.h>
+#include <sys/status.h>
 
 #include "heap/heap.h"
 #include "lock/lock.h"
@@ -17,7 +17,6 @@ Process* process_new(void)
     Process* process = kmalloc(sizeof(Process));
     process->id = atomic_fetch_add(&newPid, 1);
     process->addressSpace = address_space_new();
-    process->fileTable = file_table_new();
     process->killed = 0;
     process->threadCount = 0;
     process->newTid = 0;
@@ -50,7 +49,6 @@ void thread_free(Thread* thread)
     if (atomic_fetch_sub(&thread->process->threadCount, 1) <= 1)
     {
         address_space_free(thread->process->addressSpace);
-        file_table_free(thread->process->fileTable);
         kfree(thread->process);
     }
 

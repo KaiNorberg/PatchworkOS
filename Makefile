@@ -3,37 +3,33 @@
 recursive_wildcard = \
 	$(foreach d,$(wildcard $(1:=/*)),$(call recursive_wildcard,$d,$2) $(filter $(subst *,%,$2),$d))
 
-# arg1 = src dir
-# arg2 = build dir
-# arg3 = extension
-objects_pathsubst = \
-	$(patsubst $(1)/%$(3), $(2)/%$(3).o, $(call recursive_wildcard, $(1), *$(3)))
+MKCWD = mkdir -p $(@D)
 
 SRC_DIR = src
 BIN_DIR = bin
 BUILD_DIR = build
 MAKE_DIR = make
-
-OUTPUT_IMAGE = bin/PatchworkOS.img
-
-LIB_SRC_DIR = src/libs
-LIB_BIN_DIR = bin/libs
-LIB_BUILD_DIR = build/libs
-LIBC_FUNCTIONS = $(LIB_SRC_DIR)/libc/functions
-
-PROGRAMS_BIN_DIR = bin/programs
-
 ROOT_DIR = root
+
+LIBS_SRC_DIR = $(SRC_DIR)/libs
+LIBS_BIN_DIR = $(BIN_DIR)/libs
+LIBS_BUILD_DIR = $(BUILD_DIR)/libs
+STDLIB = $(LIBS_SRC_DIR)/std/functions
+
+PROGRAMS_BIN_DIR = $(BIN_DIR)/programs
+
+OUTPUT_IMAGE = $(BIN_DIR)/PatchworkOS.img
 
 CC = gcc
 LD = ld
 ASM = nasm
 
-ASM_FLAGS = -f elf64 \
-	-I$(LIB_SRC_DIR) \
-	-I$(LIB_SRC_DIR)/include \
+BASE_ASM_FLAGS = -f elf64 \
+	-I$(LIBS_SRC_DIR)/std \
+	-I$(LIBS_SRC_DIR)/std/include
 
 BASE_C_FLAGS = -O3 \
+	-nostdlib \
 	-Wall \
 	-Wextra \
 	-Werror \
@@ -45,34 +41,19 @@ BASE_C_FLAGS = -O3 \
 	-Wno-implicit-fallthrough \
 	-mno-80387 -mno-mmx -mno-3dnow \
 	-mno-sse -mno-sse2 \
-	-I$(SRC_DIR) \
-	-I$(LIB_SRC_DIR)/include
-	
-KERNEL_C_FLAGS = $(BASE_C_FLAGS) \
-	-ffreestanding \
-	-fno-stack-protector -fno-exceptions \
-	-fno-pie -mcmodel=kernel \
-	-mno-red-zone -Wno-array-bounds \
-	-D__KERNEL__
+	-I$(LIBS_SRC_DIR)/std \
+	-I$(LIBS_SRC_DIR)/std/include \
+	-I$(SRC_DIR)
 
-BOOT_C_FLAGS = $(BASE_C_FLAGS) \
-	-fpic -ffreestanding \
-	-fno-stack-protector -fno-stack-check \
-	-fshort-wchar -mno-red-zone -Wno-array-bounds \
-	-mno-80387 -mno-mmx -mno-3dnow \
-	-mno-sse -mno-sse2 \
-	-D__BOOTLOADER__
+BASE_LD_FLAGS = -nostdlib
 
-LIB_C_FLAGS = $(BASE_C_FLAGS) \
+USER_C_FLAGS = $(BASE_C_FLAGS) \
 	-ffreestanding
 
-PROGRAM_C_FLAGS = $(BASE_C_FLAGS) \
-	-ffreestanding
+USER_ASM_FLAGS = $(BASE_ASM_FLAGS)
 
-LD_FLAGS = -nostdlib
-
-PROGRAM_LD_FLAGS = $(LD_FLAGS) \
-	-L$(LIB_BIN_DIR) -lcrt
+USER_LD_FLAGS = $(LD_FLAGS) \
+	-L$(LIBS_BIN_DIR) -lstd
 
 include $(call recursive_wildcard, $(MAKE_DIR), *.mk)
 
@@ -90,8 +71,8 @@ deploy:
 	mmd -i $(OUTPUT_IMAGE) ::/boot
 	mmd -i $(OUTPUT_IMAGE) ::/efi
 	mmd -i $(OUTPUT_IMAGE) ::/efi/boot
-	mcopy -i $(OUTPUT_IMAGE) -s $(BOOT_OUTPUT_EFI) ::efi/boot
-	mcopy -i $(OUTPUT_IMAGE) -s $(KERNEL_OUTPUT) ::boot
+	mcopy -i $(OUTPUT_IMAGE) -s $(BOOT_OUT_EFI) ::efi/boot
+	mcopy -i $(OUTPUT_IMAGE) -s $(KERNEL_OUT) ::boot
 	mcopy -i $(OUTPUT_IMAGE) -s $(ROOT_DIR)/* ::
 	mcopy -i $(OUTPUT_IMAGE) -s $(BIN_DIR)/programs ::/bin
 
@@ -124,4 +105,4 @@ clean:
 	rm -rf $(BUILD_DIR)
 	rm -rf $(BIN_DIR)
 
-.PHONY: build clean
+.PHONY: setup build deploy all run run-debug clean

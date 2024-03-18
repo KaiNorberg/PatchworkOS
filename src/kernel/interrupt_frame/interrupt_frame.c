@@ -1,6 +1,6 @@
 #include "interrupt_frame.h"
 
-#include <libc/string.h>
+#include <string.h>
 
 #include "gdt/gdt.h"
 #include "heap/heap.h"

@@ -1,5 +1,7 @@
 #include "schedule.h"
 
+#include <string.h>
+
 #include "gdt/gdt.h"
 #include "smp/smp.h"
 #include "vmm/vmm.h"
@@ -8,8 +10,6 @@
 #include "scheduler/scheduler.h"
 #include "debug/debug.h"
 #include "registers/registers.h"
-
-#include <libc/string.h>
 
 static inline void scheduler_clean_graveyard(Scheduler* scheduler)
 {

@@ -1,6 +1,6 @@
 #include "trampoline.h"
 
-#include <libc/string.h>
+#include <string.h>
 
 #include "utils/utils.h"
 #include "heap/heap.h"

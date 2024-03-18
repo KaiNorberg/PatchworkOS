@@ -1,9 +1,9 @@
 #include "rsdt/rsdt.h"
 
+#include <string.h>
+
 #include "tty/tty.h"
 #include "vmm/vmm.h"
-
-#include <libc/string.h>
 
 static uint64_t tableAmount;
 static Xsdt* xsdt;

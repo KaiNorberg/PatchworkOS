@@ -1,7 +1,5 @@
 #include <stdint.h>
 
-#include <lib-system.h>
-
 int main(void)
 {
     /*int64_t pid = spawn("ram:/bin/child.elf");

@@ -1,21 +1,22 @@
 CHILD_SRC_DIR = $(SRC_DIR)/programs/child
 CHILD_BUILD_DIR = $(BUILD_DIR)/programs/child
 
-CHILD_OUTPUT = $(PROGRAMS_BIN_DIR)/child.elf
+CHILD_OUT = $(PROGRAMS_BIN_DIR)/child.elf
 
-CHILD_OBJECTS = $(call objects_pathsubst,$(CHILD_SRC_DIR),$(CHILD_BUILD_DIR),.c)
-CHILD_OBJECTS += $(call objects_pathsubst,$(CHILD_SRC_DIR),$(CHILD_BUILD_DIR),.s)
+CHILD_SRC = $(call recursive_wildcard, $(CHILD_SRC_DIR), *.c)
 
-$(CHILD_BUILD_DIR)/%.c.o: $(CHILD_SRC_DIR)/%.c
-	@mkdir -p $(@D)
-	$(CC) $(PROGRAM_C_FLAGS) -I $(CHILD_SRC_DIR) -c -o $@ $<
+CHILD_OBJ = $(patsubst $(SRC_DIR)/%, $(CHILD_BUILD_DIR)/%.o, $(CHILD_SRC))
 
-$(CHILD_BUILD_DIR)/%.s.o: $(CHILD_SRC_DIR)/%.s
-	@mkdir -p $(@D)
-	$(ASM) $(ASM_FLAGS) $^ -o $@
+$(CHILD_BUILD_DIR)/%.c.o: $(SRC_DIR)/%.c
+	$(MKCWD)
+	$(CC) $(USER_C_FLAGS) -I $(CHILD_SRC_DIR) -c -o $@ $<
 
-$(CHILD_OUTPUT): $(CHILD_OBJECTS)	
-	@mkdir -p $(@D)
-	$(LD) $(PROGRAM_LD_FLAGS) -lstdlib -lsystem -o $@ $^
+$(CHILD_BUILD_DIR)/%.s.o: $(SRC_DIR)/%.s
+	$(MKCWD)
+	$(ASM) $(USER_ASM_FLAGS) $^ -o $@
 
-BUILD += $(CHILD_OUTPUT)
+$(CHILD_OUT): $(CHILD_OBJ)	
+	$(MKCWD)
+	$(LD) $(USER_LD_FLAGS) -o $@ $^
+
+BUILD += $(CHILD_OUT)

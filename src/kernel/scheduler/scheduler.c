@@ -1,5 +1,7 @@
 #include "scheduler.h"
 
+#include <string.h>
+
 #include "vmm/vmm.h"
 #include "smp/smp.h"
 #include "heap/heap.h"
@@ -13,8 +15,6 @@
 #include "hpet/hpet.h"
 #include "program_loader/program_loader.h"
 #include "scheduler/schedule/schedule.h"
-
-#include <libc/string.h>
 
 static Scheduler** schedulers;
 
@@ -108,12 +108,6 @@ Process* scheduler_process(void)
 void scheduler_yield(void)
 {
     SMP_SEND_IPI_TO_SELF(IPI_SCHEDULE);
-}
-
-void scheduler_exit(uint64_t status)
-{
-    scheduler_thread()->state = THREAD_STATE_KILLED;
-    scheduler_yield();
 }
 
 uint64_t scheduler_spawn(const char* path)
