@@ -7,13 +7,14 @@
   - Monolithic Preemptive kernel
   - 64-bit
   - SMP (Symmetric Multiprocessing)
-  - Multithreading (kernel level threads)
-  - Custom UEFI bootloader
+  - Multithreading (Kernel Level Threads)
+  - Custom Standard Library
+  - Custom UEFI Bootloader
   - More to be added...
 
 ## Limitations
 
-  - Only supports x86_64
+  - Only x86_64
 
 ## Setup
 
