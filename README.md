@@ -7,6 +7,7 @@
   - Monolithic Preemptive kernel
   - 64-bit
   - SMP (Symmetric Multiprocessing)
+  - Multithreading (kernel level threads)
   - Custom UEFI bootloader
   - More to be added...
 
