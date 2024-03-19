@@ -38,11 +38,6 @@ static inline void scheduler_read_state(Scheduler* scheduler)
         break;
         case THREAD_STATE_KILLED:
         {
-            if (scheduler->runningThread->id == THREAD_MASTER_ID)
-            {
-                scheduler->runningThread->process->killed = 1;
-            }
-
             queue_push(scheduler->graveyard, scheduler->runningThread);
             scheduler->runningThread = 0;
         }
@@ -60,7 +55,7 @@ static inline Thread* scheduler_next_thread(Scheduler* scheduler)
 {
     if (scheduler->runningThread != 0 && scheduler->runningThread->timeEnd > time_nanoseconds())
     {
-        for (int64_t i = THREAD_PRIORITY_MAX; i > scheduler->runningThread->priority + scheduler->runningThread->boost; i--) 
+        for (int64_t i = THREAD_PRIORITY_MAX; i > scheduler->runningThread->priority + scheduler->runningThread->boost; i--)
         {
             Thread* thread = queue_pop(scheduler->queues[i]);
             if (thread != 0)
@@ -71,7 +66,7 @@ static inline Thread* scheduler_next_thread(Scheduler* scheduler)
     }
     else
     {
-        for (int64_t i = THREAD_PRIORITY_MAX; i >= THREAD_PRIORITY_MIN; i--) 
+        for (int64_t i = THREAD_PRIORITY_MAX; i >= THREAD_PRIORITY_MIN; i--)
         {
             Thread* thread = queue_pop(scheduler->queues[i]);
             if (thread != 0)
@@ -86,7 +81,7 @@ static inline Thread* scheduler_next_thread(Scheduler* scheduler)
 static inline void scheduler_switch_thread(InterruptFrame* interruptFrame, Scheduler* scheduler, Thread* next)
 {
     if (next != 0)
-    {    
+    {
         Cpu* self = smp_self_unsafe();
 
         if (scheduler->runningThread != 0)
@@ -165,15 +160,15 @@ void scheduler_push(Thread* thread, uint8_t boost, uint16_t preferred)
     int64_t bestLength = INT64_MAX;
     uint64_t best = preferred < smp_cpu_amount() ? preferred : 0;
     for (int64_t i = smp_cpu_amount() - 1; i >= 0; i--)
-    {   
+    {
         Scheduler const* scheduler = scheduler_get(i);
 
         int64_t length = (int64_t)(scheduler->runningThread != 0);
-        for (uint64_t p = THREAD_PRIORITY_MIN; p <= THREAD_PRIORITY_MAX; p++) 
+        for (uint64_t p = THREAD_PRIORITY_MIN; p <= THREAD_PRIORITY_MAX; p++)
         {
             length += queue_length(scheduler->queues[p]);
         }
-        
+
         if (i == preferred)
         {
             length--;
@@ -183,9 +178,9 @@ void scheduler_push(Thread* thread, uint8_t boost, uint16_t preferred)
         {
             bestLength = length;
             best = i;
-        }    
+        }
     }
-    
+
     thread->boost = thread->priority + boost <= THREAD_PRIORITY_MAX ? boost : 0;
     queue_push(scheduler_get(best)->queues[thread->priority + thread->boost], thread);
 }

@@ -1,7 +1,6 @@
 #include "program_loader.h"
 
 #include <stdint.h>
-#include <sys/status.h>
 #include <internal/syscalls/syscalls.h>
 
 #include <common/elf/elf.h>
@@ -43,15 +42,15 @@ void* program_loader_load(const char* executable)
         exit(STATUS_CORRUPT);
     }
 
-    uint64_t programHeaderTableSize = header.programHeaderAmount * header.programHeaderSize;    
+    uint64_t programHeaderTableSize = header.programHeaderAmount * header.programHeaderSize;
     ElfProgramHeader programHeaders[header.programHeaderAmount];
     if (read(fd, &programHeaders, programHeaderTableSize) == -1)
     {
         exit(status());
     }
 
-	for (ElfProgramHeader* programHeader = programHeaders; 
-        (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize; 
+	for (ElfProgramHeader* programHeader = programHeaders;
+        (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize;
         programHeader = (ElfProgramHeader*)((uint64_t)programHeader + header.programHeaderSize))
 	{
         switch (programHeader->type)
@@ -83,5 +82,5 @@ void* program_loader_load(const char* executable)
     }
 
     return (void*)header.entry;*/
-    return (void*)SYSTEM_ERROR;
+    return 0;
 }

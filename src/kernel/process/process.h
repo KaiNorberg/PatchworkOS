@@ -1,12 +1,11 @@
 #pragma once
 
 #include <stdint.h>
+#include <errno.h>
 
 #include "lock/lock.h"
 #include "interrupt_frame/interrupt_frame.h"
 #include "vmm/vmm.h"
-
-#define THREAD_MASTER_ID 0
 
 #define THREAD_STATE_ACTIVE 0
 #define THREAD_STATE_KILLED 1
@@ -16,7 +15,7 @@
 #define THREAD_PRIORITY_MAX (THREAD_PRIORITY_LEVELS - 1)
 
 typedef struct
-{        
+{
     uint64_t id;
     AddressSpace* addressSpace;
     uint8_t killed;
@@ -33,7 +32,7 @@ typedef struct
     uint64_t timeEnd;
     uint64_t timeStart;
     InterruptFrame* interruptFrame;
-    uint64_t status;
+    errno_t error;
     uint8_t state;
     uint8_t priority;
     uint8_t boost;

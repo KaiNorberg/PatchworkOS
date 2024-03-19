@@ -13,5 +13,5 @@ __attribute__((__noreturn__)) void exit(int status);
 #if defined(__cplusplus)
 }
 #endif
- 
+
 #endif

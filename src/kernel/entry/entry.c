@@ -1,5 +1,4 @@
 #include <stdint.h>
-#include <sys/status.h>
 
 #include <common/boot_info/boot_info.h>
 
@@ -15,7 +14,7 @@ void main(BootInfo* bootInfo)
     kernel_init(bootInfo);
 
     tty_acquire();
-    
+
     for (uint64_t i = 0; i < 16; i++)
     {
         scheduler_spawn("ram:/bin/parent.elf");
@@ -23,8 +22,8 @@ void main(BootInfo* bootInfo)
 
     tty_clear();
     tty_set_row(smp_cpu_amount() + 1);
-    tty_release();  
- 
+    tty_release();
+
     //Exit init thread
     scheduler_thread()->state = THREAD_STATE_KILLED;
     scheduler_yield();

@@ -1,7 +1,6 @@
 #include "process.h"
 
 #include <stdatomic.h>
-#include <sys/status.h>
 
 #include "heap/heap.h"
 #include "lock/lock.h"
@@ -36,7 +35,7 @@ Thread* thread_new(Process* process, void* entry, uint8_t priority)
     thread->timeStart = 0;
     thread->timeEnd = 0;
     thread->interruptFrame = interrupt_frame_new(entry, (void*)(VMM_LOWER_HALF_MAX));
-    thread->status = STATUS_SUCCESS;
+    thread->error = 0;
     thread->state = THREAD_STATE_ACTIVE;
     thread->priority = priority;
     thread->boost = 0;
