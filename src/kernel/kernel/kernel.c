@@ -27,7 +27,7 @@
 #include "program_loader/program_loader.h"
 
 static void deallocate_boot_info(BootInfo* bootInfo)
-{   
+{
     tty_start_message("Deallocating boot info");
 
     EfiMemoryMap* memoryMap = &bootInfo->memoryMap;
@@ -46,13 +46,11 @@ static void deallocate_boot_info(BootInfo* bootInfo)
 
 void kernel_init(BootInfo* bootInfo)
 {
-    asm volatile("cli");
-
     pmm_init(&bootInfo->memoryMap);
     vmm_init(&bootInfo->memoryMap);
     heap_init();
 
-    tty_init(&bootInfo->gopBuffer, &bootInfo->font);    
+    tty_init(&bootInfo->gopBuffer, &bootInfo->font);
     tty_print("Hello from the kernel!\n");
 
     gdt_init();
@@ -69,24 +67,23 @@ void kernel_init(BootInfo* bootInfo)
     pic_init();
     time_init();
 
-    scheduler_init();
+    scheduler_start();
     program_loader_init();
 
     deallocate_boot_info(bootInfo);
 }
 
-//Cpu specific init
 void kernel_cpu_init(void)
 {
-    local_apic_init();
-
     Cpu* cpu = smp_self_brute();
     msr_write(MSR_CPU_ID, cpu->id);
-    
+
+    local_apic_init();
+
     gdt_load();
-    gdt_load_tss(cpu->tss);
+    gdt_load_tss(&cpu->tss);
 
     idt_load();
 
-    cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);    
+    cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);
 }

@@ -28,7 +28,7 @@ void smp_trampoline_setup(void)
 
 void smp_trampoline_cpu_setup(Cpu* cpu)
 {
-    WRITE_64(vmm_physical_to_virtual(SMP_TRAMPOLINE_STACK_TOP_ADDRESS), cpu->idleStackTop);
+    WRITE_64(vmm_physical_to_virtual(SMP_TRAMPOLINE_STACK_TOP_ADDRESS), (uint64_t)cpu->idleStack + CPU_IDLE_STACK_SIZE);
 }
 
 void smp_trampoline_cleanup(void)

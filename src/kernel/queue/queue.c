@@ -4,14 +4,13 @@
 
 static inline void* queue_pop_unlocked(Queue* queue)
 {
-    if (atomic_load(&queue->length) == 0)
+    if (queue->length == 0)
     {
         return 0;
     }
-    
-    void* temp = queue->buffer[queue->readIndex];
-    atomic_fetch_sub(&queue->length, 1);
 
+    void* temp = queue->buffer[queue->readIndex];
+    queue->length--;
     queue->readIndex = (queue->readIndex + 1) % queue->bufferLength;
 
     return temp;
@@ -21,15 +20,15 @@ static inline void queue_resize_unlocked(Queue* queue, uint64_t bufferLength)
 {
     void** newBuffer = kmalloc(bufferLength * sizeof(void*));
 
-    uint64_t oldLength = atomic_load(&queue->length);
-    for (uint64_t i = 0; i < oldLength; i++) 
+    uint64_t oldLength = queue->length;
+    for (uint64_t i = 0; i < oldLength; i++)
     {
         newBuffer[i] = queue_pop_unlocked(queue);
     }
 
     kfree(queue->buffer);
 
-    atomic_store(&queue->length, oldLength);
+    queue->length = oldLength;
     queue->buffer = newBuffer;
     queue->bufferLength = bufferLength;
     queue->readIndex = 0;
@@ -38,39 +37,33 @@ static inline void queue_resize_unlocked(Queue* queue, uint64_t bufferLength)
 
 static inline void queue_push_unlocked(Queue* queue, void* item)
 {
-    if (queue->bufferLength == atomic_load(&queue->length))
+    if (queue->bufferLength == queue->length)
     {
         queue_resize_unlocked(queue, queue->bufferLength * 2);
     }
 
     queue->buffer[queue->writeIndex] = item;
-    atomic_fetch_add(&queue->length, 1);
-
+    queue->length++;
     queue->writeIndex = (queue->writeIndex + 1) % queue->bufferLength;
 }
 
-Queue* queue_new(void)
+
+Queue* queue_new()
 {
-    Queue* newQueue = kmalloc(sizeof(Queue));
+    Queue* queue = kmalloc(sizeof(Queue));
 
-    newQueue->buffer = kmalloc(QUEUE_INITIAL_LENGTH * sizeof(void*));
-    newQueue->bufferLength = QUEUE_INITIAL_LENGTH;
-    
-    newQueue->readIndex = 0;
-    newQueue->writeIndex = 0;
+    queue->buffer = kmalloc(QUEUE_INITIAL_LENGTH * sizeof(void*));
+    queue->bufferLength = QUEUE_INITIAL_LENGTH;
+    queue->readIndex = 0;
+    queue->writeIndex = 0;
+    queue->length = 0;
+    queue->lock = lock_create();
 
-    newQueue->lock = lock_create();
-
-    newQueue->length = 0;
-
-    return newQueue;
+    return queue;
 }
 
 void queue_free(Queue* queue)
 {
-    //Wait until the queue done being used, dont release lock
-    lock_acquire(&queue->lock);
-
     kfree(queue->buffer);
     kfree(queue);
 }
@@ -83,14 +76,17 @@ void queue_push(Queue* queue, void* item)
 }
 
 void* queue_pop(Queue* queue)
-{     
+{
     lock_acquire(&queue->lock);
     void* temp = queue_pop_unlocked(queue);
     lock_release(&queue->lock);
     return temp;
 }
 
-uint64_t queue_length(Queue* queue)
+uint64_t queue_length(Queue const* queue)
 {
-    return atomic_load(&queue->length);
+    lock_acquire((Lock*)(&queue->lock));
+    uint64_t temp = queue->length;
+    lock_release((Lock*)(&queue->lock));
+    return temp;
 }

@@ -1,15 +1,20 @@
 #include "tss.h"
 
 #include "heap/heap.h"
+#include "smp/smp.h"
+#include "gdt/gdt.h"
 
-Tss* tss_new(void)
+void tss_init(Tss* tss)
 {
-    Tss* tss = kmalloc(sizeof(Tss));
-
     tss->rsp0 = 0;
     tss->rsp1 = 0;
     tss->rsp2 = 0;
     tss->iopb = sizeof(Tss);
+}
 
-    return tss;
+void tss_stack_load(Tss* tss, void* stackTop)
+{
+    tss->rsp0 = (uint64_t)stackTop;
+    tss->rsp1 = (uint64_t)stackTop;
+    tss->rsp2 = (uint64_t)stackTop;
 }

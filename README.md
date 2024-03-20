@@ -4,10 +4,10 @@
 
 ## Features
 
-  - Monolithic Preemptive kernel
-  - 64-bit
+  - Monolithic preemptive 64-bit kernel
   - SMP (Symmetric Multiprocessing)
   - Multithreading (Kernel Level Threads)
+  - O(1) scheduler
   - Custom Standard Library
   - Custom UEFI Bootloader
   - More to be added...

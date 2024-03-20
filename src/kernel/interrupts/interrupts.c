@@ -15,8 +15,6 @@
 #include "smp/smp.h"
 #include "scheduler/schedule/schedule.h"
 
-static InterruptState states[MAX_CPU_AMOUNT];
-
 static inline void exception_handler(InterruptFrame const* interruptFrame)
 {   
     switch (interruptFrame->vector)
@@ -59,44 +57,45 @@ static inline void ipi_handler(InterruptFrame const* interruptFrame)
     local_apic_eoi();
 }
 
-static void interrupt_begin(void)
+static inline void interrupt_begin(void)
 {
-    states[smp_self_unsafe()->id].depth++;
+    smp_self_unsafe()->interruptDepth++;
 }
 
-static void interrupt_end(void)
+static inline void interrupt_end(void)
 {
-    states[smp_self_unsafe()->id].depth--;
-}
-
-uint64_t interrupt_depth(void)
-{
-    return states[smp_self_unsafe()->id].depth;
+    smp_self_unsafe()->interruptDepth--;
 }
 
 void interrupts_disable(void)
 {
-    //Race condition does not matter
-    uint64_t rflags = rflags_read();
-
-    asm volatile("cli");
-    
-    InterruptState* state = &states[smp_self_unsafe()->id];
-    if (state->cliAmount == 0)
+    if (smp_initialized())
     {
-        state->enabled = rflags & RFLAGS_INTERRUPT_ENABLE;
+        //Race condition does not matter
+        uint64_t rflags = rflags_read();
+
+        asm volatile("cli");
+        
+        Cpu* cpu = smp_self_unsafe();
+        if (cpu->cliAmount == 0)
+        {
+            cpu->interruptsEnabled = rflags & RFLAGS_INTERRUPT_ENABLE;
+        }
+        cpu->cliAmount++;
     }
-    state->cliAmount++;
 }
 
 void interrupts_enable(void)
 {
-    InterruptState* state = &states[smp_self_unsafe()->id];
+    if (smp_initialized())
+    {
+        Cpu* cpu = smp_self_unsafe();
 
-    state->cliAmount--;
-    if (state->cliAmount == 0 && state->enabled)
-    {    
-        asm volatile("sti");
+        cpu->cliAmount--;
+        if (cpu->cliAmount == 0 && cpu->interruptsEnabled)
+        {    
+            asm volatile("sti");
+        }
     }
 }
 

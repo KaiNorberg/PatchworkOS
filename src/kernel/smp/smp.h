@@ -3,9 +3,12 @@
 #include <stdint.h>
 
 #include "tss/tss.h"
+#include "pmm/pmm.h"
+#include "scheduler/scheduler.h"
 #include "interrupt_frame/interrupt_frame.h"
 
-#define MAX_CPU_AMOUNT 256
+#define CPU_MAX_AMOUNT 255
+#define CPU_IDLE_STACK_SIZE PAGE_SIZE
 
 #define IPI_BASE 0x90
 #define IPI_HALT 0
@@ -17,15 +20,19 @@
 
 typedef struct
 {
-    uint8_t present;
-    uint8_t id; 
+    uint8_t id;
     uint8_t localApicId;
-    Tss* tss;
-    void* idleStackTop;
-    void* idleStackBottom;
+    Tss tss;
+    Scheduler scheduler;
+    uint8_t interruptsEnabled;
+    uint64_t interruptDepth;
+    uint64_t cliAmount;
+    uint8_t idleStack[CPU_IDLE_STACK_SIZE];
 } Cpu;
 
 void smp_init(void);
+
+uint8_t smp_initialized();
 
 void smp_send_ipi(Cpu const* cpu, uint8_t ipi);
 

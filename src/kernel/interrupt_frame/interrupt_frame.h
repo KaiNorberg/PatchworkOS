@@ -30,10 +30,4 @@ typedef struct __attribute__((packed))
     uint64_t stackSegment;
 } InterruptFrame;
 
-InterruptFrame* interrupt_frame_new(void* instructionPointer, void* stackPointer);
-
-void interrupt_frame_free(InterruptFrame* interruptFrame);
-
-InterruptFrame* interrupt_frame_duplicate(InterruptFrame const* src);
-
 void interrupt_frame_copy(InterruptFrame* dest, InterruptFrame const* src);

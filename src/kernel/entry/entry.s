@@ -6,11 +6,9 @@ section .text
 
 global _start
 _start:
-    cld
-
+    cli
     mov rsp, kernel_stack_top
     xor rbp, rbp
-
     call main
 .halt:
     hlt

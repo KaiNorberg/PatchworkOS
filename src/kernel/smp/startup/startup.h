@@ -4,4 +4,4 @@
 
 void smp_entry(void);
 
-void smp_startup(Cpu cpus[], uint8_t* cpuAmount);
+void smp_startup(Cpu cpus[]);

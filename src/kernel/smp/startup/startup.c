@@ -16,14 +16,10 @@ static uint8_t ready;
 
 static inline uint8_t cpu_init(Cpu* cpu, uint8_t id, uint8_t localApicId)
 {
-    cpu->present = 1;
     cpu->id = id;
     cpu->localApicId = localApicId;
-
-    cpu->tss = tss_new();
-    cpu->idleStackBottom = kmalloc(PAGE_SIZE);
-    cpu->idleStackTop = (void*)((uint64_t)cpu->idleStackBottom + PAGE_SIZE);
-    cpu->tss->rsp0 = (uint64_t)cpu->idleStackTop;
+    tss_init(&cpu->tss);
+    scheduler_init(&cpu->scheduler);
 
     if (localApicId == local_apic_id())
     {
@@ -39,7 +35,7 @@ static inline uint8_t cpu_init(Cpu* cpu, uint8_t id, uint8_t localApicId)
     local_apic_send_sipi(localApicId, ((uint64_t)SMP_TRAMPOLINE_PHYSICAL_START) / PAGE_SIZE);
 
     uint64_t timeout = 1000;
-    while (!ready) 
+    while (!ready)
     {
         hpet_sleep(1);
         timeout--;
@@ -53,7 +49,7 @@ static inline uint8_t cpu_init(Cpu* cpu, uint8_t id, uint8_t localApicId)
 }
 
 void smp_entry(void)
-{    
+{
     address_space_load(0);
 
     kernel_cpu_init();
@@ -67,18 +63,20 @@ void smp_entry(void)
     }
 }
 
-void smp_startup(Cpu cpus[], uint8_t* cpuAmount)
+void smp_startup(Cpu cpus[])
 {
+    uint8_t newId = 0;
+
     LocalApicRecord* record = madt_first_record(MADT_RECORD_TYPE_LOCAL_APIC);
     while (record != 0)
     {
         if (LOCAL_APIC_RECORD_GET_FLAG(record, LOCAL_APIC_RECORD_FLAG_ENABLEABLE))
         {
-            uint8_t id = *cpuAmount;
-            (*cpuAmount)++;
+            uint8_t id = newId;
+            newId++;
 
             if (!cpu_init(&cpus[id], id, record->localApicId))
-            {    
+            {
                 tty_print("CPU ");
                 tty_printi(id);
                 tty_print(" failed to start!");

@@ -27,7 +27,7 @@ void apic_timer_init(uint8_t vector, uint64_t hz)
     uint32_t ticks = 0xFFFFFFFF - local_apic_read(LOCAL_APIC_REG_TIMER_CURRENT_COUNT);
 
     local_apic_write(LOCAL_APIC_REG_LVT_TIMER, ((uint32_t)vector) | APIC_TIMER_PERIODIC);
-    local_apic_write(LOCAL_APIC_REG_TIMER_DIVIDER, 0x3);    
+    local_apic_write(LOCAL_APIC_REG_TIMER_DIVIDER, 0x3);
     local_apic_write(LOCAL_APIC_REG_TIMER_INITIAL_COUNT, ticks);
 }
 

@@ -17,4 +17,6 @@ typedef struct __attribute__((packed))
 
 extern void tss_load(void);
 
-Tss* tss_new(void);
+void tss_init(Tss* tss);
+
+void tss_stack_load(Tss* tss, void* stackTop);

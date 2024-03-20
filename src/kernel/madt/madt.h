@@ -8,7 +8,7 @@
 
 #define LOCAL_APIC_RECORD_FLAG_ENABLEABLE (1 << 0)
 
-#define LOCAL_APIC_RECORD_GET_FLAG(record, flag) ((record->flags & flag) != 0) 
+#define LOCAL_APIC_RECORD_GET_FLAG(record, flag) ((record->flags & flag) != 0)
 
 typedef struct __attribute__((packed))
 {
@@ -25,7 +25,7 @@ typedef struct __attribute__((packed))
     uint32_t flags;
 } LocalApicRecord;
 
-typedef struct __attribute__((packed)) 
+typedef struct __attribute__((packed))
 {
     SdtHeader header;
     uint32_t localApicAddress;

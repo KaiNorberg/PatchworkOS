@@ -1,5 +1,7 @@
 #include "heap.h"
 
+#include <string.h>
+
 #include "tty/tty.h"
 #include "pmm/pmm.h"
 #include "utils/utils.h"
@@ -24,7 +26,7 @@ static inline void heap_split(HeapHeader* block, uint64_t size)
 
 static inline HeapHeader* heap_new_block(uint64_t size)
 {
-    uint64_t pageAmount = PAGE_SIZE_OF(size + sizeof(HeapHeader)) + 1;
+    uint64_t pageAmount = SIZE_IN_PAGES(size + sizeof(HeapHeader)) * 2;
     HeapHeader* newBlock = vmm_physical_to_virtual(pmm_allocate_amount(pageAmount));
     newBlock->size = pageAmount * PAGE_SIZE - sizeof(HeapHeader);
     newBlock->next = 0;
@@ -116,7 +118,6 @@ void* kmalloc(uint64_t size)
             }
             else if (currentBlock->size > size + sizeof(HeapHeader) + HEAP_ALIGNMENT) 
             {
-                heap_split(currentBlock, size);
                 currentBlock->reserved = 1;
 
                 lock_release(&lock);
@@ -135,16 +136,22 @@ void* kmalloc(uint64_t size)
     }
 
     HeapHeader* newBlock = heap_new_block(size);
-    currentBlock->next = newBlock;
-
     if (newBlock->size > size + sizeof(HeapHeader) + HEAP_ALIGNMENT) 
     {
         heap_split(newBlock, size);
     }
+    currentBlock->next = newBlock;
     newBlock->reserved = 1;
 
     lock_release(&lock);
     return HEAP_HEADER_GET_START(newBlock);
+}
+
+void* kcalloc(uint64_t count, uint64_t size)
+{
+    void* data = kmalloc(count * size);
+    memset(data, 0, count * size);
+    return data;
 }
 
 void kfree(void* ptr)

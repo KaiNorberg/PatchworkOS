@@ -12,8 +12,8 @@ typedef struct
     uint64_t bufferLength;
     uint64_t readIndex;
     uint64_t writeIndex;
-    Lock lock;    
-    _Atomic uint64_t length;
+    uint64_t length;
+    Lock lock;
 } Queue;
 
 Queue* queue_new();
@@ -24,4 +24,4 @@ void queue_push(Queue* queue, void* item);
 
 void* queue_pop(Queue* queue);
 
-uint64_t queue_length(Queue* queue);
+uint64_t queue_length(Queue const* queue);

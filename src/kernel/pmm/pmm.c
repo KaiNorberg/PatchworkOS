@@ -14,8 +14,8 @@ static uint64_t* bitmap;
 static uint64_t bitmapSize;
 static void* firstFreePage;
 
-static uint64_t pageAmount;
-static uint64_t usablePageAmount;
+static uint64_t pageAmount = 0;
+static uint64_t usablePageAmount = 0;
 
 static Lock lock;
 
@@ -39,9 +39,6 @@ static inline void pmm_reserve_pages(void* address, uint64_t count)
 
 static void pmm_allocate_bitmap(EfiMemoryMap* memoryMap)
 {
-    firstFreePage = 0;
-
-    usablePageAmount = 0;
     uintptr_t highestAddress = 0;
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
@@ -120,8 +117,6 @@ void* pmm_allocate(void)
 
 void* pmm_allocate_amount(uint64_t amount)
 {
-    //TODO: Optimize this it sucks
-
     if (amount <= 1)
     {
         return pmm_allocate();
@@ -136,6 +131,7 @@ void* pmm_allocate_amount(uint64_t amount)
         if (pmm_is_reserved((void*)address))
         {
             startAddress = UINT64_MAX;
+            freePagesFound = 0;
         }
         else
         {

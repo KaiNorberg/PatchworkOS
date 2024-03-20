@@ -9,6 +9,7 @@
 
 #define HEAP_HEADER_MAGIC 0xBC709F7DE48C8381
 
+//Should be exactly 64 bytes long
 typedef struct HeapHeader
 {
     uint64_t magic;
@@ -27,5 +28,7 @@ uint64_t heap_reserved_size(void);
 uint64_t heap_free_size(void);
 
 void* kmalloc(uint64_t size);
+
+void* kcalloc(uint64_t count, uint64_t size);
 
 void kfree(void* ptr);

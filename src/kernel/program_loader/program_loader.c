@@ -23,7 +23,7 @@ void* program_loader_load(const char* executable)
     {
         sys_test(executable);
         //spawn(executable);
-        //sys_exit_process(STATUS_SUCCESS);
+        //sys_exit_process(0);
     }
 
     /*int64_t fd = sys_open(executable, FILE_FLAG_READ);

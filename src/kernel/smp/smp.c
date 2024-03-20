@@ -4,28 +4,53 @@
 
 #include "tty/tty.h"
 #include "registers/registers.h"
+#include "heap/heap.h"
 #include "apic/apic.h"
+#include "madt/madt.h"
 #include "debug/debug.h"
 #include "utils/utils.h"
 #include "smp/trampoline/trampoline.h"
 #include "smp/startup/startup.h"
 #include "interrupts/interrupts.h"
 
-static Cpu cpus[MAX_CPU_AMOUNT];
-static uint8_t cpuAmount;
+static Cpu* cpus;
+static uint8_t cpuAmount = 0;
+
+static uint8_t initialized = 0;
+
+static inline void smp_detect_cpus()
+{
+    LocalApicRecord* record = madt_first_record(MADT_RECORD_TYPE_LOCAL_APIC);
+    while (record != 0)
+    {
+        if (LOCAL_APIC_RECORD_GET_FLAG(record, LOCAL_APIC_RECORD_FLAG_ENABLEABLE))
+        {
+            cpuAmount++;
+        }
+
+        record = madt_next_record(record, MADT_RECORD_TYPE_LOCAL_APIC);
+    }
+}
 
 void smp_init(void)
 {
     tty_start_message("SMP initializing");
 
-    memset(cpus, 0, sizeof(Cpu) * MAX_CPU_AMOUNT);
-    cpuAmount = 0;
+    smp_detect_cpus();
+    cpus = kcalloc(cpuAmount, sizeof(Cpu));
 
     smp_trampoline_setup();
-    smp_startup(cpus, &cpuAmount);
+    smp_startup(cpus);
     smp_trampoline_cleanup();
 
+    initialized = 1;
+
     tty_end_message(TTY_MESSAGE_OK);
+}
+
+uint8_t smp_initialized()
+{
+    return initialized;
 }
 
 void smp_send_ipi(Cpu const* cpu, uint8_t ipi)
@@ -82,13 +107,11 @@ Cpu* smp_self_brute(void)
     uint8_t localApicId = local_apic_id();
     for (uint16_t id = 0; id < cpuAmount; id++)
     {
-        Cpu* cpu = &cpus[id];
-
-        if (cpu->present && cpu->localApicId == localApicId)
+        if (cpus[id].localApicId == localApicId)
         {
-            return cpu;
+            return &cpus[id];
         }
-    }    
+    }
 
     debug_panic("Unable to find cpu");
     return 0;

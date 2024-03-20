@@ -9,8 +9,6 @@ typedef struct
     uint64_t cliAmount;
 } InterruptState;
 
-uint64_t interrupt_depth(void);
-
 void interrupts_disable(void);
 
 void interrupts_enable(void);

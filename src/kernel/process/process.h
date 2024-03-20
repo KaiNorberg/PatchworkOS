@@ -14,6 +14,8 @@
 #define THREAD_PRIORITY_MIN 0
 #define THREAD_PRIORITY_MAX (THREAD_PRIORITY_LEVELS - 1)
 
+#define THREAD_KERNEL_STACK_SIZE PAGE_SIZE
+
 typedef struct
 {
     uint64_t id;
@@ -27,15 +29,14 @@ typedef struct
 {
     Process* process;
     uint64_t id;
-    void* kernelStackTop;
-    void* kernelStackBottom;
     uint64_t timeEnd;
     uint64_t timeStart;
-    InterruptFrame* interruptFrame;
     errno_t error;
     uint8_t state;
     uint8_t priority;
-    uint8_t boost;
+    uint8_t boost;    
+    InterruptFrame interruptFrame;
+    uint8_t kernelStack[THREAD_KERNEL_STACK_SIZE];
 } Thread;
 
 Process* process_new(void);

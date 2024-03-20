@@ -14,7 +14,6 @@
 
 typedef struct
 {
-    uint64_t id;
     Queue* queues[THREAD_PRIORITY_LEVELS];
     Queue* graveyard;
     Thread* runningThread;
@@ -22,16 +21,11 @@ typedef struct
 
 extern void scheduler_idle_loop(void);
 
-void scheduler_init(void);
+void scheduler_init(Scheduler* scheduler);
+
+void scheduler_start(void);
 
 void scheduler_cpu_start(void);
-
-Scheduler* scheduler_get(uint64_t id);
-
-//Must have a corresponding call to scheduler_put()
-Scheduler* scheduler_local(void);
-
-void scheduler_put(void);
 
 Thread* scheduler_thread(void);
 
