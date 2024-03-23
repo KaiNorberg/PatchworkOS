@@ -11,14 +11,14 @@ static inline void* queue_pop_unlocked(Queue* queue)
 
     void* temp = queue->buffer[queue->readIndex];
     queue->length--;
-    queue->readIndex = (queue->readIndex + 1) % queue->bufferLength;
+    queue->readIndex = (queue->readIndex + 1) % queue->capacity;
 
     return temp;
 }
 
-static inline void queue_resize_unlocked(Queue* queue, uint64_t bufferLength)
+static inline void queue_resize_unlocked(Queue* queue, uint64_t capacity)
 {
-    void** newBuffer = kmalloc(bufferLength * sizeof(void*));
+    void** newBuffer = kmalloc(capacity * sizeof(void*));
 
     uint64_t oldLength = queue->length;
     for (uint64_t i = 0; i < oldLength; i++)
@@ -30,21 +30,21 @@ static inline void queue_resize_unlocked(Queue* queue, uint64_t bufferLength)
 
     queue->length = oldLength;
     queue->buffer = newBuffer;
-    queue->bufferLength = bufferLength;
+    queue->capacity = capacity;
     queue->readIndex = 0;
     queue->writeIndex = oldLength;
 }
 
 static inline void queue_push_unlocked(Queue* queue, void* item)
 {
-    if (queue->bufferLength == queue->length)
+    if (queue->capacity == queue->length)
     {
-        queue_resize_unlocked(queue, queue->bufferLength * 2);
+        queue_resize_unlocked(queue, queue->capacity * 2);
     }
 
     queue->buffer[queue->writeIndex] = item;
     queue->length++;
-    queue->writeIndex = (queue->writeIndex + 1) % queue->bufferLength;
+    queue->writeIndex = (queue->writeIndex + 1) % queue->capacity;
 }
 
 
@@ -53,7 +53,7 @@ Queue* queue_new()
     Queue* queue = kmalloc(sizeof(Queue));
 
     queue->buffer = kmalloc(QUEUE_INITIAL_LENGTH * sizeof(void*));
-    queue->bufferLength = QUEUE_INITIAL_LENGTH;
+    queue->capacity = QUEUE_INITIAL_LENGTH;
     queue->readIndex = 0;
     queue->writeIndex = 0;
     queue->length = 0;

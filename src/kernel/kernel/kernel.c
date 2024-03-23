@@ -22,6 +22,8 @@
 #include "lock/lock.h"
 #include "irq/irq.h"
 #include "pic/pic.h"
+#include "vfs/vfs.h"
+#include "ram_disk/ram_disk.h"
 #include "registers/registers.h"
 #include "interrupts/interrupts.h"
 #include "program_loader/program_loader.h"
@@ -69,6 +71,9 @@ void kernel_init(BootInfo* bootInfo)
 
     scheduler_start();
     program_loader_init();
+
+    vfs_init();
+    ram_disk_init(bootInfo->ramRoot);
 
     deallocate_boot_info(bootInfo);
 }

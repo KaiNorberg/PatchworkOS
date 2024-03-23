@@ -1,11 +1,12 @@
 #include "tty.h"
 
+#include <stdlib.h>
 #include <string.h>
 
-#include "utils/utils.h"
 #include "lock/lock.h"
 #include "vmm/vmm.h"
 #include "pmm/pmm.h"
+#include "smp/smp.h"
 #include "heap/heap.h"
 
 #include <common/boot_info/boot_info.h>
@@ -172,7 +173,7 @@ void tty_print(const char* string)
 void tty_printi(uint64_t integer)
 {
     char string[64];
-    itoa(integer, string, 10);
+    ulltoa(integer, string, 10);
     tty_print(string);
 }
 
@@ -180,7 +181,7 @@ void tty_printx(uint64_t hex)
 {
     char string[64];
     memset(string, 0, 64);
-    itoa(hex, string, 16);
+    ulltoa(hex, string, 16);
     tty_print("0x"); tty_print(string);
 }
 
@@ -238,6 +239,12 @@ void tty_end_message(uint64_t status)
         foreground.g = 0;
         foreground.b = 0;
         tty_print("ER");
+
+        if (smp_initialized())
+        {
+            smp_send_ipi_to_others(IPI_HALT);
+        }
+
         asm volatile("hlt");
     }
     break;

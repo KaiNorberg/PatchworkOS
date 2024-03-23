@@ -32,33 +32,37 @@ static inline uint8_t verify_string(const char* string)
 
 ///////////////////////////////////////////////////////
 
-void syscall_exit_process(uint64_t status)
+void syscall_process_exit(uint64_t status)
 {
-    scheduler_process()->killed = 1;
-    scheduler_yield();
+    scheduler_process_exit(status);
 }
 
 uint64_t syscall_spawn(const char* path)
 {
     if (!verify_string(path))
     {
-        scheduler_thread()->error = EFAULT;
-        return -1LL;
+        scheduler_thread()->errno = EFAULT;
+        return ERROR;
     }
 
     return scheduler_spawn(path);
 }
 
+uint64_t syscall_sleep(uint64_t nanoseconds)
+{
+    scheduler_sleep(nanoseconds);
+    return 0;
+}
+
 void* syscall_allocate(void* address, uint64_t length)
 {
     address_space_allocate(scheduler_process()->addressSpace, address, SIZE_IN_PAGES(length));
-
     return address;
 }
 
-errno_t syscall_error(void)
+errno_t syscall_kernel_errno(void)
 {
-    return scheduler_thread()->error;
+    return scheduler_thread()->errno;
 }
 
 uint64_t syscall_test(const char* string)
@@ -88,7 +92,7 @@ uint64_t syscall_test(const char* string)
     }
     tty_print(" TIME: ");
     tty_printi(time_milliseconds());
-    tty_print(" MS                                ");
+    tty_print(" MS");
 
     tty_set_row(oldRow);
     tty_set_column(oldColumn);
@@ -104,7 +108,7 @@ void syscall_handler_end(void)
 {
     if (scheduler_process()->killed)
     {
-        scheduler_thread()->state = THREAD_STATE_KILLED;
+        scheduler_thread_exit();
     }
 
     scheduler_yield();
@@ -112,9 +116,10 @@ void syscall_handler_end(void)
 
 void* syscallTable[] =
 {
-    syscall_exit_process,
+    syscall_process_exit,
     syscall_spawn,
+    syscall_sleep,
     syscall_allocate,
-    syscall_error,
+    syscall_kernel_errno,
     syscall_test
 };

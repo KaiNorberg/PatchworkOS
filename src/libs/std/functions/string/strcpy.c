@@ -1,6 +1,6 @@
 #include <string.h>
 
-char* strcpy(char* __RESTRICT dest, const char* __RESTRICT src)
+char* strcpy(char* _RESTRICT dest, const char* _RESTRICT src)
 {
     char* temp = dest;
 

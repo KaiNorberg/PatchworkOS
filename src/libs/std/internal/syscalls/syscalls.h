@@ -4,10 +4,12 @@
 #include <stdint.h>
 #include <errno.h>
 
-__attribute__((__noreturn__)) void sys_exit_process(uint64_t status);
+__attribute__((__noreturn__)) void _ProcessExit(uint64_t status);
 
-errno_t sys_error();
+uint64_t _Sleep(uint64_t nanoseconds);
 
-uint64_t sys_test(const char* string);
+errno_t _KernelErrno(void);
+
+uint64_t _Test(const char* string);
 
 #endif

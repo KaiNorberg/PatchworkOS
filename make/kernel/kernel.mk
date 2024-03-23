@@ -7,16 +7,15 @@ KERNEL_OUT = $(KERNEL_BIN_DIR)/kernel.elf
 KERNEL_SRC = \
 	$(call recursive_wildcard, $(KERNEL_SRC_DIR), *.c) \
 	$(call recursive_wildcard, $(KERNEL_SRC_DIR), *.s) \
+	$(STDLIB)/stdlib/lltoa.c \
+	$(STDLIB)/stdlib/ulltoa.c \
 	$(STDLIB)/string/memcpy.c \
 	$(STDLIB)/string/memmove.c \
 	$(STDLIB)/string/strcpy.c \
 	$(STDLIB)/string/memcmp.c \
 	$(STDLIB)/string/strcmp.c \
 	$(STDLIB)/string/memset.c \
-	$(STDLIB)/string/strlen.c \
-	$(STDLIB)/ctype/isalnum.c \
-	$(STDLIB)/ctype/isdigit.c \
-	$(STDLIB)/ctype/isalpha.c
+	$(STDLIB)/string/strlen.c
 
 KERNEL_OBJ = $(patsubst $(SRC_DIR)/%, $(KERNEL_BUILD_DIR)/%.o, $(KERNEL_SRC))
 

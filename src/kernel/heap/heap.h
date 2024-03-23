@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+//TODO: Implement page aligned allocation, change to bitmap heap?
+
 #define HEAP_HEADER_GET_START(block) ((void*)((uint64_t)block + sizeof(HeapHeader)))
 #define HEAP_HEADER_GET_END(block) ((void*)((uint64_t)block + sizeof(HeapHeader) + block->size))
 

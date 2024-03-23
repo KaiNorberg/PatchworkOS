@@ -16,6 +16,11 @@
 #include "program_loader/program_loader.h"
 #include "scheduler/schedule/schedule.h"
 
+static uint8_t scheduler_sleep_callback(uint64_t deadline)
+{
+    return deadline <= time_nanoseconds();
+}
+
 static void scheduler_spawn_init_thread(void)
 {
     Process* process = process_new();
@@ -32,7 +37,8 @@ void scheduler_init(Scheduler* scheduler)
     {
         scheduler->queues[p] = queue_new();
     }
-    scheduler->graveyard = queue_new();
+    scheduler->killedThreads = queue_new();
+    scheduler->blockedThreads = array_new();
     scheduler->runningThread = 0;
 }
 
@@ -69,6 +75,53 @@ Process* scheduler_process(void)
 void scheduler_yield(void)
 {
     SMP_SEND_IPI_TO_SELF(IPI_SCHEDULE);
+}
+
+void scheduler_sleep(uint64_t nanoseconds)
+{
+    Blocker blocker =
+    {
+        .context = time_nanoseconds() + nanoseconds,
+        .callback = scheduler_sleep_callback
+    };
+    scheduler_block(blocker);
+}
+
+void scheduler_block(Blocker blocker)
+{
+    if (blocker.callback(blocker.context))
+    {
+        return;
+    }
+
+    Scheduler* scheduler = &smp_self()->scheduler;
+    Thread* thread = scheduler->runningThread;
+    thread->blocker = blocker;
+    thread->state = THREAD_STATE_BLOCKED;
+    smp_put();
+
+    scheduler_yield();
+}
+
+void scheduler_process_exit(uint64_t status)
+{
+    //TODO: Add handling for status
+
+    Scheduler* scheduler = &smp_self()->scheduler;
+    scheduler->runningThread->state = THREAD_STATE_KILLED;
+    scheduler->runningThread->process->killed = 1;
+    smp_put();
+
+    scheduler_yield();
+}
+
+void scheduler_thread_exit(void)
+{
+    Scheduler* scheduler = &smp_self()->scheduler;
+    scheduler->runningThread->state = THREAD_STATE_KILLED;
+    smp_put();
+
+    scheduler_yield();
 }
 
 uint64_t scheduler_spawn(const char* path)

@@ -21,9 +21,10 @@ void* program_loader_load(const char* executable)
 {
     while (1)
     {
-        sys_test(executable);
+        _Test(executable);
+        _Sleep(1000000000);
         //spawn(executable);
-        //sys_exit_process(0);
+        //_Process_exit(0);
     }
 
     /*int64_t fd = sys_open(executable, FILE_FLAG_READ);

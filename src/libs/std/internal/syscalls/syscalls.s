@@ -4,21 +4,27 @@
 
 section .text
 
-global sys_exit_process
-sys_exit_process:
-    mov rax, SYS_EXIT_PROCESS
+global _ProcessExit
+_ProcessExit:
+    mov rax, SYS_PROCESS_EXIT
     int SYSCALL_VECTOR
     mov r9, 0x123456789 ;Magic number to check return from exit
     ud2
 
-global sys_error
-sys_error:
-    mov rax, SYS_ERROR
+global _Sleep
+_Sleep:
+    mov rax, SYS_SLEEP
     int SYSCALL_VECTOR
     ret
 
-global sys_test
-sys_test:
+global _KernelErrno
+_KernelErrno:
+    mov rax, SYS_KERNEL_ERRNO
+    int SYSCALL_VECTOR
+    ret
+
+global _Test
+_Test:
     mov rax, SYS_TEST
     int SYSCALL_VECTOR
     ret

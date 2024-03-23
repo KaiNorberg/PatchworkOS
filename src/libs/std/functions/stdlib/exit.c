@@ -2,7 +2,7 @@
 
 #include "internal/syscalls/syscalls.h"
 
-__attribute__((__noreturn__)) void exit(int status)
+_NORETURN void exit(int status)
 {
-    sys_exit_process(status);
+    _ProcessExit(status);
 }

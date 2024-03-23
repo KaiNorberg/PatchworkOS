@@ -1,7 +1,7 @@
 #include <string.h>
 #include <stdint.h>
 
-void* memcpy(void* __RESTRICT dest, const void* __RESTRICT src, size_t size)
+void* memcpy(void* _RESTRICT dest, const void* _RESTRICT src, size_t size)
 {	
     uint64_t qwordSize = size / 8;
     uint64_t* qwordDest = (uint64_t*)dest;

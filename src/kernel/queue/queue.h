@@ -9,7 +9,7 @@
 typedef struct
 {
     void** buffer;
-    uint64_t bufferLength;
+    uint64_t capacity;
     uint64_t readIndex;
     uint64_t writeIndex;
     uint64_t length;

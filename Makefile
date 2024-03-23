@@ -74,7 +74,7 @@ deploy:
 	mcopy -i $(OUTPUT_IMAGE) -s $(BOOT_OUT_EFI) ::efi/boot
 	mcopy -i $(OUTPUT_IMAGE) -s $(KERNEL_OUT) ::boot
 	mcopy -i $(OUTPUT_IMAGE) -s $(ROOT_DIR)/* ::
-	mcopy -i $(OUTPUT_IMAGE) -s $(BIN_DIR)/programs ::/bin
+	mcopy -i $(OUTPUT_IMAGE) -s $(BIN_DIR)/programs ::/programs
 
 all: build deploy
 
@@ -82,7 +82,7 @@ run:
 	@qemu-system-x86_64 \
     -drive file=$(OUTPUT_IMAGE) \
     -m 1G \
-	-smp 4 \
+	-smp 8 \
     -no-shutdown -no-reboot \
     -drive if=pflash,format=raw,unit=0,file=vendor/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
     -drive if=pflash,format=raw,unit=1,file=vendor/OVMFbin/OVMF_VARS-pure-efi.fd \
@@ -92,7 +92,7 @@ run-debug:
 	@qemu-system-x86_64 \
     -drive file=$(OUTPUT_IMAGE) \
 	-m 1G \
-	-smp 4 \
+	-smp 8 \
     -serial stdio \
 	-d int \
     -no-shutdown -no-reboot \

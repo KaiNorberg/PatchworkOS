@@ -17,8 +17,6 @@
 #define READ_64(address) (*((volatile uint64_t*)(address)))
 #define WRITE_64(address, value) (*((volatile uint64_t*)(address)) = (uint64_t)value)
 
-char* itoa(uint64_t i, char b[], uint8_t base);
-
 uint64_t stoi(const char* string);
 
 uint64_t round_up(uint64_t number, uint64_t multiple);

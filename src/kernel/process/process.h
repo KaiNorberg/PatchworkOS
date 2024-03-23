@@ -9,6 +9,7 @@
 
 #define THREAD_STATE_ACTIVE 0
 #define THREAD_STATE_KILLED 1
+#define THREAD_STATE_BLOCKED 2
 
 #define THREAD_PRIORITY_LEVELS 4
 #define THREAD_PRIORITY_MIN 0
@@ -25,16 +26,23 @@ typedef struct
     _Atomic uint64_t newTid;
 } Process;
 
+typedef struct Blocker
+{
+    uintptr_t context;
+    uint8_t (*callback)(uintptr_t context);
+} Blocker;
+
 typedef struct
 {
     Process* process;
     uint64_t id;
     uint64_t timeEnd;
     uint64_t timeStart;
-    errno_t error;
+    errno_t errno;
     uint8_t state;
     uint8_t priority;
-    uint8_t boost;    
+    uint8_t boost;
+    Blocker blocker;
     InterruptFrame interruptFrame;
     uint8_t kernelStack[THREAD_KERNEL_STACK_SIZE];
 } Thread;

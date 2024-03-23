@@ -1,6 +1,10 @@
 #ifndef _STDINT_H
 #define _STDINT_H 1
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 //========= TYPES =========
 
 typedef __INT8_TYPE__  int8_t;
@@ -13,7 +17,6 @@ typedef __UINT16_TYPE__ uint16_t;
 typedef __UINT32_TYPE__ uint32_t;
 typedef __UINT64_TYPE__ uint64_t;
 
-#if defined (__x86_64__)
 typedef int8_t int_least8_t;
 typedef int16_t int_least16_t;
 typedef int32_t int_least32_t;
@@ -33,9 +36,6 @@ typedef uint8_t uint_fast8_t;
 typedef uint64_t uint_fast16_t;
 typedef uint64_t uint_fast32_t;
 typedef uint64_t uint_fast64_t;
-#else
-#error "Only x86_64 supported"
-#endif
 
 typedef __INTMAX_TYPE__ intmax_t;
 typedef __INTPTR_TYPE__ intptr_t;
@@ -117,6 +117,23 @@ typedef __UINTPTR_TYPE__ uintptr_t;
 
 #define SIZE_MAX __SIZE_MAX__
 
-//TODO: Add constants
+//========= CONSTANTS =========
+
+#define INT8_C(c) __INT8_C(c)
+#define INT16_C(c) __INT16_C(c)
+#define INT32_C(c) __INT32_C(c)
+#define INT64_C(c) __INT64_C(c)
+
+#define UINT8_C(c) __UINT8_C(c)
+#define UINT16_C(c) __UINT16_C(c)
+#define UINT32_C(c) __UINT32_C(c)
+#define UINT64_C(c) __UINT64_C(c)
+
+#define INTMAX_C(c) __INTMAX_C(c)
+#define UINTMAX_C(c) __UINTMAX_C(c)
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif

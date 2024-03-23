@@ -5,7 +5,7 @@
 char buffer[BUFFER_SIZE];
 
 int main(void)
-{       
+{
     /*while (1)
     {
         int64_t fd = open("ram:/test/test.txt", FILE_FLAG_READ);

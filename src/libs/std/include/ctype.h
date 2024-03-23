@@ -5,11 +5,11 @@
 extern "C" {
 #endif
 
-int isalnum(int ch);
+#include "auxiliary/config.h"
 
-int isalpha(int ch);
-
-int isdigit(int ch);
+#define isalnum(ch) (isdigit((ch)) || isalpha((ch)))
+#define isalpha(ch) (((ch) >= 'A' && (ch) <= 'Z') || ((ch) >= 'a' && (ch) <= 'z'))
+#define isdigit(ch) (((ch) >= '0' && (ch) <= '9'))
 
 #if defined(__cplusplus)
 }

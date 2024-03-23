@@ -22,12 +22,12 @@ typedef struct
 {
     uint8_t id;
     uint8_t localApicId;
+    uint8_t* idleStack;
     Tss tss;
     Scheduler scheduler;
     uint8_t interruptsEnabled;
     uint64_t interruptDepth;
     uint64_t cliAmount;
-    uint8_t idleStack[CPU_IDLE_STACK_SIZE];
 } Cpu;
 
 void smp_init(void);

@@ -44,6 +44,7 @@ static inline void ipi_handler(InterruptFrame const* interruptFrame)
     break;
     case IPI_START:
     {
+
         scheduler_cpu_start();
     }
     break;

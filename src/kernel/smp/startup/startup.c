@@ -18,6 +18,7 @@ static inline uint8_t cpu_init(Cpu* cpu, uint8_t id, uint8_t localApicId)
 {
     cpu->id = id;
     cpu->localApicId = localApicId;
+    cpu->idleStack = kmalloc(CPU_IDLE_STACK_SIZE);
     tss_init(&cpu->tss);
     scheduler_init(&cpu->scheduler);
 
