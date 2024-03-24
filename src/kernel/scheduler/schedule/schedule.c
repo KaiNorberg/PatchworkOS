@@ -35,33 +35,42 @@ static uint64_t scheduler_unblock_iterate(void* element)
 
 static inline Thread* scheduler_next_thread(Scheduler* scheduler)
 {
-    //If thread has not expired look for higher priority thread else look for any thread.
-    uint8_t minPriority = scheduler->runningThread != 0 && scheduler->runningThread->timeEnd > time_nanoseconds() ? 
-        scheduler->runningThread->priority + scheduler->runningThread->boost : 0;
-
-    for (int64_t i = THREAD_PRIORITY_MAX; i >= minPriority; i--)
+    if (scheduler->runningThread != NULL && scheduler->runningThread->timeEnd > time_nanoseconds())
     {
-        Thread* thread = queue_pop(scheduler->queues[i]);
-        if (thread != 0)
+        for (int64_t i = THREAD_PRIORITY_MAX; i > scheduler->runningThread->priority + scheduler->runningThread->boost; i--)
         {
-            return thread;
+            Thread* thread = queue_pop(scheduler->queues[i]);
+            if (thread != NULL)
+            {
+                return thread;
+            }
         }
     }
-
-    return 0;
+    else
+    {
+        for (int64_t i = THREAD_PRIORITY_MAX; i >= THREAD_PRIORITY_MIN; i--)
+        {
+            Thread* thread = queue_pop(scheduler->queues[i]);
+            if (thread != NULL)
+            {
+                return thread;
+            }
+        }
+    }
+    
+    return NULL;
 }
 
 static inline void scheduler_switch_thread(InterruptFrame* interruptFrame, Scheduler* scheduler, Thread* next)
 {
     Cpu* self = smp_self_unsafe();
 
-    if (next != 0) //Switch to next thread
+    if (next != NULL) //Switch to next thread
     {
-        if (scheduler->runningThread != 0)
+        if (scheduler->runningThread != NULL)
         {
             interrupt_frame_copy(&scheduler->runningThread->interruptFrame, interruptFrame);
             scheduler_push(scheduler->runningThread, 0, self->id);
-            scheduler->runningThread = 0;
         }
 
         next->timeStart = time_nanoseconds();
@@ -74,7 +83,7 @@ static inline void scheduler_switch_thread(InterruptFrame* interruptFrame, Sched
 
         scheduler->runningThread = next;
     }
-    else if (scheduler->runningThread == 0) //Idle
+    else if (scheduler->runningThread == NULL) //Idle
     {
         memset(interruptFrame, 0, sizeof(InterruptFrame));
         interruptFrame->instructionPointer = (uint64_t)scheduler_idle_loop;
@@ -83,8 +92,8 @@ static inline void scheduler_switch_thread(InterruptFrame* interruptFrame, Sched
         interruptFrame->flags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
         interruptFrame->stackPointer = (uint64_t)smp_self_unsafe()->idleStack + CPU_IDLE_STACK_SIZE;
 
-        address_space_load(0);
-        tss_stack_load(&self->tss, 0);
+        address_space_load(NULL);
+        tss_stack_load(&self->tss, NULL);
     }
     else
     {
@@ -105,10 +114,10 @@ void scheduler_schedule(InterruptFrame* interruptFrame)
 
     array_iterate(scheduler->blockedThreads, scheduler_unblock_iterate);
 
-    while (1)
+    while (true)
     {
         Thread* thread = queue_pop(scheduler->killedThreads);
-        if (thread == 0)
+        if (thread == NULL)
         {
             break;
         }
@@ -116,7 +125,7 @@ void scheduler_schedule(InterruptFrame* interruptFrame)
         thread_free(thread);
     }
 
-    if (scheduler->runningThread != 0)
+    if (scheduler->runningThread != NULL)
     {
         switch (scheduler->runningThread->state)
         {
@@ -128,14 +137,14 @@ void scheduler_schedule(InterruptFrame* interruptFrame)
         case THREAD_STATE_KILLED:
         {
             queue_push(scheduler->killedThreads, scheduler->runningThread);
-            scheduler->runningThread = 0;
+            scheduler->runningThread = NULL;
         }
         break;
         case THREAD_STATE_BLOCKED:
         {            
             interrupt_frame_copy(&scheduler->runningThread->interruptFrame, interruptFrame);
             array_push(scheduler->blockedThreads, scheduler->runningThread);
-            scheduler->runningThread = 0;
+            scheduler->runningThread = NULL;
         }
         break;
         default:
@@ -147,15 +156,15 @@ void scheduler_schedule(InterruptFrame* interruptFrame)
     }
 
     Thread* next;
-    while (1)
+    while (true)
     {
         next = scheduler_next_thread(scheduler);
 
         //If next has been killed and is in userspace kill next.
-        if (next != 0 && next->process->killed && next->interruptFrame.codeSegment != GDT_KERNEL_CODE)
+        if (next != NULL && next->process->killed && next->interruptFrame.codeSegment != GDT_KERNEL_CODE)
         {
             queue_push(scheduler->killedThreads, next);
-            next = 0;
+            next = NULL;
         }
         else
         {
@@ -200,8 +209,8 @@ void scheduler_push(Thread* thread, uint8_t boost, uint16_t preferred)
     thread->boost = thread->priority + boost <= THREAD_PRIORITY_MAX ? boost : 0;
     queue_push(bestCpu->scheduler.queues[thread->priority + thread->boost], thread);
 
-    if (best != smp_self_unsafe()->id)
+    /*if (best != smp_self_unsafe()->id)
     {
         smp_send_ipi(bestCpu, IPI_SCHEDULE);
-    }
+    }*/
 }

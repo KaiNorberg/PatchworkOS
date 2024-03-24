@@ -1,13 +1,11 @@
 #pragma once
 
-#include <stdint.h>
-
 #include <common/common.h>
 #include <common/boot_info/boot_info.h>
 
 #include "pmm/pmm.h"
 #include "lock/lock.h"
-#include "kernel/kernel.h"
+#include "types/types.h"
 #include "vmm/page_directory/page_directory.h"
 
 #define VMM_HIGHER_HALF_BASE 0xFFFF800000000000

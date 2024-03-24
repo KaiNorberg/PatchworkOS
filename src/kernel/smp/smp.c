@@ -16,7 +16,7 @@
 static Cpu* cpus;
 static uint8_t cpuAmount = 0;
 
-static uint8_t initialized = 0;
+static bool initialized = false;
 
 static inline void smp_detect_cpus()
 {
@@ -43,12 +43,12 @@ void smp_init(void)
     smp_startup(cpus);
     smp_trampoline_cleanup();
 
-    initialized = 1;
+    initialized = true;
 
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-uint8_t smp_initialized()
+bool smp_initialized()
 {
     return initialized;
 }

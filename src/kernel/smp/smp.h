@@ -1,7 +1,6 @@
 #pragma once
 
-#include <stdint.h>
-
+#include "types/types.h"
 #include "tss/tss.h"
 #include "pmm/pmm.h"
 #include "scheduler/scheduler.h"
@@ -25,14 +24,14 @@ typedef struct
     uint8_t* idleStack;
     Tss tss;
     Scheduler scheduler;
-    uint8_t interruptsEnabled;
+    bool interruptsEnabled;
     uint64_t interruptDepth;
     uint64_t cliAmount;
 } Cpu;
 
 void smp_init(void);
 
-uint8_t smp_initialized();
+bool smp_initialized();
 
 void smp_send_ipi(Cpu const* cpu, uint8_t ipi);
 

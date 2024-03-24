@@ -1,7 +1,8 @@
 #pragma once
 
-#include <stdint.h>
 #include <stdatomic.h>
+
+#include "types/types.h"
 
 typedef struct
 {

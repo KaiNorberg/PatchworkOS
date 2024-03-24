@@ -8,7 +8,7 @@
 static uint64_t tableAmount;
 static Xsdt* xsdt;
 
-static inline uint8_t rsdt_validate_checksum(void* table, uint64_t length)
+static inline bool rsdt_valid_checksum(void* table, uint64_t length)
 {
     int8_t sum = 0;
     for (uint64_t i = 0; i < length; i++)
@@ -26,7 +26,7 @@ void rsdt_init(Xsdp* xsdp)
     xsdp = vmm_physical_to_virtual(xsdp);
 
     tty_assert(xsdp->revision == ACPI_REVISION_2_0, "Incompatible ACPI revision");
-    tty_assert(rsdt_validate_checksum(xsdp, xsdp->length), "Invalid XSDP checksum");
+    tty_assert(rsdt_valid_checksum(xsdp, xsdp->length), "Invalid XSDP checksum");
 
     xsdt = vmm_physical_to_virtual((void*)xsdp->xsdtAddress);
     tableAmount = (xsdt->header.length - sizeof(SdtHeader)) / 8;
@@ -35,7 +35,7 @@ void rsdt_init(Xsdp* xsdp)
     {
         SdtHeader* table = vmm_physical_to_virtual(xsdt->tables[i]);
 
-        if (!rsdt_validate_checksum(table, table->length))
+        if (!rsdt_valid_checksum(table, table->length))
         {
             tty_print("Invalid ");
             tty_printm((const char*)table->signature, 4);
@@ -59,5 +59,5 @@ SdtHeader* rsdt_lookup(const char* signature)
         }
     }
 
-    return 0;
+    return NULL;
 }

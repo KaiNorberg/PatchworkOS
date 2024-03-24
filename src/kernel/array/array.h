@@ -1,7 +1,6 @@
 #pragma once
 
-#include <stdint.h>
-
+#include "types/types.h"
 #include "lock/lock.h"
 
 //Note: Named array to avoid confusion with interrupt vectors
@@ -15,7 +14,6 @@
 #define ARRAY_ITERATE_BREAK 1
 #define ARRAY_ITERATE_ERASE 2
 
-//Note: Stores pointers, possible optimization?
 typedef struct
 {
     void** data;
@@ -32,4 +30,4 @@ void array_push(Array* array, void* element);
 
 void* array_find(Array* array, uint64_t(*callback)(void*, void*), void* context);
 
-uint8_t array_iterate(Array* array, uint64_t(*callback)(void*));
+bool array_iterate(Array* array, uint64_t(*callback)(void*));

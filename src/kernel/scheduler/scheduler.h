@@ -1,11 +1,10 @@
 #pragma once
 
-#include <stdint.h>
-
 #include "time/time.h"
 #include "lock/lock.h"
 #include "queue/queue.h"
 #include "array/array.h"
+#include "types/types.h"
 #include "process/process.h"
 #include "interrupt_frame/interrupt_frame.h"
 

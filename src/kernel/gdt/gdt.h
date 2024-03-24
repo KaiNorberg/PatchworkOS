@@ -1,8 +1,7 @@
 #pragma once
 
-#include <stdint.h>
-
 #include "tss/tss.h"
+#include "types/types.h"
 
 #define GDT_NULL 0x00
 #define GDT_KERNEL_CODE 0x08

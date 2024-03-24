@@ -1,12 +1,10 @@
 #include "vmm.h"
 
-#include <stdint.h>
-#include <common/boot_info/boot_info.h>
-
 #include "utils/utils.h"
 #include "heap/heap.h"
 #include "lock/lock.h"
 #include "pmm/pmm.h"
+#include "scheduler/scheduler.h"
 #include "registers/registers.h"
 
 static PageDirectory* kernelPageDirectory;
@@ -97,7 +95,7 @@ void address_space_free(AddressSpace* space)
 
 void address_space_load(AddressSpace* space)
 {
-    if (space == 0)
+    if (space == NULL)
     {
         page_directory_load(kernelPageDirectory);
     }
@@ -111,7 +109,8 @@ void* address_space_allocate(AddressSpace* space, void* address, uint64_t pageAm
 {
     if ((uint64_t)address >= VMM_LOWER_HALF_MAX)
     {
-        return 0;
+        scheduler_thread()->errno = EFAULT;
+        return NULL;
     }
 
     //Todo: Map one page at a time, add check if page already mapped.

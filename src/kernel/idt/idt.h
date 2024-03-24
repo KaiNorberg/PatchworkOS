@@ -1,7 +1,6 @@
 #pragma once
 
-#include <stdint.h>
-
+#include "types/types.h"
 #include "vectors/vectors.h"
 
 #define IDT_INTERRUPT_GATE 0b1110

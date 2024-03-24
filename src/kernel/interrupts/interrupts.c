@@ -1,7 +1,6 @@
 #include "interrupts.h"
 
-#include <stdint.h>
-
+#include "types/types.h"
 #include "gdt/gdt.h"
 #include "irq/irq.h"
 #include "tty/tty.h"
@@ -80,7 +79,7 @@ void interrupts_disable(void)
         Cpu* cpu = smp_self_unsafe();
         if (cpu->cliAmount == 0)
         {
-            cpu->interruptsEnabled = rflags & RFLAGS_INTERRUPT_ENABLE;
+            cpu->interruptsEnabled = (rflags & RFLAGS_INTERRUPT_ENABLE) != 0;
         }
         cpu->cliAmount++;
     }
@@ -121,7 +120,7 @@ void interrupt_handler(InterruptFrame* interruptFrame)
     }
 
     Thread* thread = scheduler_thread();
-    if (thread != 0 && thread->process->killed && interruptFrame->codeSegment != GDT_KERNEL_CODE)
+    if (thread != NULL && thread->process->killed && interruptFrame->codeSegment != GDT_KERNEL_CODE)
     {
         thread->state = THREAD_STATE_KILLED;
     }

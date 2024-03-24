@@ -17,7 +17,7 @@ static inline void heap_split(HeapHeader* block, uint64_t size)
     HeapHeader* newBlock = (HeapHeader*)((uint64_t)block + sizeof(HeapHeader) + size);
     newBlock->size = block->size - sizeof(HeapHeader) - size;
     newBlock->next = block->next;
-    newBlock->reserved = 0;
+    newBlock->reserved = false;
     newBlock->magic = HEAP_HEADER_MAGIC;
 
     block->size = size;
@@ -29,8 +29,8 @@ static inline HeapHeader* heap_new_block(uint64_t size)
     uint64_t pageAmount = SIZE_IN_PAGES(size + sizeof(HeapHeader)) * 2;
     HeapHeader* newBlock = vmm_physical_to_virtual(pmm_allocate_amount(pageAmount));
     newBlock->size = pageAmount * PAGE_SIZE - sizeof(HeapHeader);
-    newBlock->next = 0;
-    newBlock->reserved = 0;
+    newBlock->next = NULL;
+    newBlock->reserved = false;
     newBlock->magic = HEAP_HEADER_MAGIC;
 
     return newBlock;
@@ -48,7 +48,7 @@ uint64_t heap_total_size(void)
     uint64_t size = 0;
 
     HeapHeader* currentBlock = firstBlock;
-    while (currentBlock != 0)
+    while (currentBlock != NULL)
     {   
         size += currentBlock->size + sizeof(HeapHeader);
 
@@ -63,7 +63,7 @@ uint64_t heap_reserved_size(void)
     uint64_t size = 0;
 
     HeapHeader* currentBlock = firstBlock;
-    while (currentBlock != 0)
+    while (currentBlock != NULL)
     {   
         if (currentBlock->reserved)
         {
@@ -81,7 +81,7 @@ uint64_t heap_free_size(void)
     uint64_t size = 0;
 
     HeapHeader* currentBlock = firstBlock;
-    while (currentBlock != 0)
+    while (currentBlock != NULL)
     {   
         if (!currentBlock->reserved)
         {
@@ -98,34 +98,34 @@ void* kmalloc(uint64_t size)
 {
     if (size == 0) 
     {
-        return 0;
+        return NULL;
     }
     lock_acquire(&lock);
 
     size = round_up(size, HEAP_ALIGNMENT);
 
     HeapHeader* currentBlock = firstBlock;
-    while (1) 
+    while (true) 
     {
         if (!currentBlock->reserved) 
         {
             if (currentBlock->size == size) 
             {
-                currentBlock->reserved = 1;
+                currentBlock->reserved = true;
 
                 lock_release(&lock);
                 return HEAP_HEADER_GET_START(currentBlock);
             }
             else if (currentBlock->size > size + sizeof(HeapHeader) + HEAP_ALIGNMENT) 
             {
-                currentBlock->reserved = 1;
+                currentBlock->reserved = true;
 
                 lock_release(&lock);
                 return HEAP_HEADER_GET_START(currentBlock);
             }
         }
 
-        if (currentBlock->next != 0)
+        if (currentBlock->next != NULL)
         {
             currentBlock = currentBlock->next;
         }
@@ -141,7 +141,7 @@ void* kmalloc(uint64_t size)
         heap_split(newBlock, size);
     }
     currentBlock->next = newBlock;
-    newBlock->reserved = 1;
+    newBlock->reserved = true;
 
     lock_release(&lock);
     return HEAP_HEADER_GET_START(newBlock);
@@ -167,7 +167,7 @@ void kfree(void* ptr)
     {
         debug_panic("Attempt to free unreserved block");
     }
-    block->reserved = 0;
+    block->reserved = false;
 
     lock_release(&lock);
 }

@@ -1,34 +1,35 @@
 #pragma once
 
-#include <stdint.h>
 #include <sys/io.h>
+
+#include "types/types.h"
+#include "lock/lock.h"
 
 //Note: Only supports ram disks for now.
 
 #define VFS_MAX_NAME_LENGTH 32
 #define VFS_MAX_PATH_LENGTH 256
 
-typedef struct File File;
+#define VFS_NODE_TYPE_FILE 0
+#define VFS_NODE_TYPE_DIRECTORY 1
 
-typedef struct Disk
+typedef struct
 {
-    char name[VFS_MAX_NAME_LENGTH];
-    void* context;
-    uint64_t (*open)(struct Disk*, File*, const char*, uint64_t);
-} Disk;
 
-typedef struct File
+} FileSystem;
+
+typedef struct Inode
 {
-    Disk* disk;
-    void* context;
-    uint64_t position;
-    uint64_t flags;
-} File;
-
-Disk* disk_new(const char* name, void* context);
+    char name[VFS_MAX_NAME_LENGTH + 1];
+    uint8_t type;
+    struct Inode* parent;
+    struct Inode* next;
+    struct Inode* prev;
+    Lock lock;
+} Inode;
 
 void vfs_init();
 
-uint64_t vfs_mount(Disk* disk);
-
 uint64_t vfs_open(const char* path, uint64_t flags);
+
+uint64_t vfs_close(uint64_t fd);

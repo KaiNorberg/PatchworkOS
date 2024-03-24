@@ -90,7 +90,7 @@ static inline void debug_move(const char* name, uint8_t x, uint8_t y)
     debug_set_x(x);
     debug_set_y(y);
 
-    if (name != 0)
+    if (name != NULL)
     {
         tty_put('[');
         tty_print(name);
@@ -139,7 +139,7 @@ void debug_panic(const char* message)
 
     tty_release();
 
-    while (1)
+    while (true)
     {
         asm volatile("hlt");
     }
@@ -157,7 +157,7 @@ void debug_exception(InterruptFrame const* interruptFrame, const char* message)
     debug_start(message);
 
     debug_move("Interrupt Frame", 0, 0);
-    if (interruptFrame != 0)
+    if (interruptFrame != NULL)
     {
         debug_print("Vector = ", interruptFrame->vector);
         debug_print("Error Code = ", interruptFrame->errorCode);
@@ -182,7 +182,7 @@ void debug_exception(InterruptFrame const* interruptFrame, const char* message)
         debug_print("RBX = ", interruptFrame->rbx);
         debug_print("RAX = ", interruptFrame->rax);
 
-        debug_move(0, 3, 0);
+        debug_move(NULL, 3, 0);
         debug_print("CR2 = ", cr2);
         debug_print("CR3 = ", cr3);
         debug_print("CR4 = ", cr4);
@@ -215,7 +215,7 @@ void debug_exception(InterruptFrame const* interruptFrame, const char* message)
     tty_release();
 
     asm volatile("cli");
-    while (1)
+    while (true)
     {
         asm volatile("hlt");
     }

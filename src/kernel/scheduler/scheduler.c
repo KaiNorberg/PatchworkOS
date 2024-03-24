@@ -16,7 +16,7 @@
 #include "program_loader/program_loader.h"
 #include "scheduler/schedule/schedule.h"
 
-static uint8_t scheduler_sleep_callback(uint64_t deadline)
+static bool scheduler_sleep_callback(uint64_t deadline)
 {
     return deadline <= time_nanoseconds();
 }
@@ -39,7 +39,7 @@ void scheduler_init(Scheduler* scheduler)
     }
     scheduler->killedThreads = queue_new();
     scheduler->blockedThreads = array_new();
-    scheduler->runningThread = 0;
+    scheduler->runningThread = NULL;
 }
 
 void scheduler_start(void)
@@ -109,7 +109,7 @@ void scheduler_process_exit(uint64_t status)
 
     Scheduler* scheduler = &smp_self()->scheduler;
     scheduler->runningThread->state = THREAD_STATE_KILLED;
-    scheduler->runningThread->process->killed = 1;
+    scheduler->runningThread->process->killed = true;
     smp_put();
 
     scheduler_yield();
@@ -149,7 +149,7 @@ uint64_t scheduler_local_thread_amount(void)
 {
     Scheduler const* scheduler = &smp_self()->scheduler;
 
-    uint64_t length = (scheduler->runningThread != 0);
+    uint64_t length = (scheduler->runningThread != NULL);
     for (int64_t p = THREAD_PRIORITY_MIN; p <= THREAD_PRIORITY_MAX; p++)
     {
         length += queue_length(scheduler->queues[p]);

@@ -17,8 +17,9 @@ Process* process_new(void)
 {
     Process* process = kmalloc(sizeof(Process));
     process->id = atomic_fetch_add(&newPid, 1);
+    file_table_init(&process->fileTable);
     process->addressSpace = address_space_new();
-    process->killed = 0;
+    process->killed = false;
     process->threadCount = 0;
     process->newTid = 0;
 
@@ -53,6 +54,7 @@ void thread_free(Thread* thread)
 {
     if (atomic_fetch_sub(&thread->process->threadCount, 1) <= 1)
     {
+        file_table_cleanup(&thread->process->fileTable);
         address_space_free(thread->process->addressSpace);
         kfree(thread->process);
     }

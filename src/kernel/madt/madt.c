@@ -9,7 +9,7 @@ void madt_init(void)
     tty_start_message("MADT initializing");
 
     madt = (Madt*)rsdt_lookup("APIC");
-    tty_assert(madt != 0, "Hardware is incompatible, unable to find MADT");
+    tty_assert(madt != NULL, "Hardware is incompatible, unable to find MADT");
 
     tty_end_message(TTY_MESSAGE_OK);
 }
@@ -26,7 +26,7 @@ void* madt_first_record(uint8_t type)
         }
     }
 
-    return 0;
+    return NULL;
 }
 
 void* madt_next_record(void* prev, uint8_t type)
@@ -41,7 +41,7 @@ void* madt_next_record(void* prev, uint8_t type)
         }
     }
 
-    return 0;
+    return NULL;
 }
 
 void* madt_local_apic_address(void)

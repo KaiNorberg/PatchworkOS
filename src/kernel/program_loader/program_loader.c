@@ -1,6 +1,6 @@
 #include "program_loader.h"
 
-#include <stdint.h>
+#include "types/types.h"
 #include <internal/syscalls/syscalls.h>
 
 #include <common/elf/elf.h>
@@ -19,10 +19,10 @@ void program_loader_init(void)
 
 void* program_loader_load(const char* executable)
 {
-    while (1)
+    while (true)
     {
         _Test(executable);
-        _Sleep(1000000000);
+        //_Sleep(1000000000);
         //spawn(executable);
         //_Process_exit(0);
     }
@@ -83,5 +83,5 @@ void* program_loader_load(const char* executable)
     }
 
     return (void*)header.entry;*/
-    return 0;
+    return NULL;
 }

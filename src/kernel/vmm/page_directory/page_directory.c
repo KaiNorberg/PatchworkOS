@@ -19,7 +19,7 @@ static inline PageDirectory* page_directory_get(PageDirectory* pageDirectory, ui
 
     if (!PDE_GET_FLAG(entry, PAGE_FLAG_PRESENT))
     {
-        return 0;
+        return NULL;
     }
 
     return vmm_physical_to_virtual(PDE_GET_ADDRESS(entry));
@@ -132,28 +132,28 @@ void* page_directory_physical_address(PageDirectory* pageDirectory, void* virtua
     virtualAddress = (void*)round_down((uint64_t)virtualAddress, PAGE_SIZE);
 
     PageDirectory* level3 = page_directory_get(pageDirectory, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 4));
-    if (level3 == 0)
+    if (level3 == NULL)
     {
-        return 0;
+        return NULL;
     }
 
     PageDirectory* level2 = page_directory_get(level3, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 3));
-    if (level2 == 0)
+    if (level2 == NULL)
     {
-        return 0;
+        return NULL;
     }
 
     PageDirectory* level1 = page_directory_get(level2, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 2));
-    if (level1 == 0)
+    if (level1 == NULL)
     {
-        return 0;
+        return NULL;
     }
 
     Pde* entry = &level1->entries[PAGE_DIRECTORY_GET_INDEX(virtualAddress, 1)];
 
     if (!PDE_GET_FLAG(*entry, PAGE_FLAG_PRESENT))
     {
-        return 0;
+        return NULL;
     }
 
     return (void*)(((uint64_t)PDE_GET_ADDRESS(*entry)) + offset);
@@ -167,19 +167,19 @@ void page_directory_change_flags(PageDirectory* pageDirectory, void* virtualAddr
     }
 
     PageDirectory* level3 = page_directory_get(pageDirectory, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 4));
-    if (level3 == 0)
+    if (level3 == NULL)
     {
         debug_panic("Failed to change page flags");
     }
 
     PageDirectory* level2 = page_directory_get(level3, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 3));
-    if (level2 == 0)
+    if (level2 == NULL)
     {
         debug_panic("Failed to change page flags");
     }
 
     PageDirectory* level1 = page_directory_get(level2, PAGE_DIRECTORY_GET_INDEX(virtualAddress, 2));
-    if (level1 == 0)
+    if (level1 == NULL)
     {
         debug_panic("Failed to change page flags");
     }

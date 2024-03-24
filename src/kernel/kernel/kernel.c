@@ -1,9 +1,5 @@
 #include "kernel.h"
 
-#include <stdint.h>
-
-#include <common/boot_info/boot_info.h>
-
 #include "gdt/gdt.h"
 #include "idt/idt.h"
 #include "tty/tty.h"

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include "types/types.h"
 
 #define ACPI_REVISION_1_0 0
 #define ACPI_REVISION_2_0 2

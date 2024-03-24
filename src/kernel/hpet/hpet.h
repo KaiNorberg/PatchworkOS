@@ -1,7 +1,6 @@
 #pragma once
 
-#include <stdint.h>
-
+#include "types/types.h"
 #include "rsdt/rsdt.h"
 
 #define HPET_COUNTER_CLOCK_OFFSET 0x20

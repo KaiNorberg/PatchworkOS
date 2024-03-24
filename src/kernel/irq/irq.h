@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include "types/types.h"
 
 #include "interrupt_frame/interrupt_frame.h"
 

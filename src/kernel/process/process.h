@@ -1,11 +1,12 @@
 #pragma once
 
-#include <stdint.h>
 #include <errno.h>
 
+#include "types/types.h"
+#include "vmm/vmm.h"
 #include "lock/lock.h"
 #include "interrupt_frame/interrupt_frame.h"
-#include "vmm/vmm.h"
+#include "vfs/file_table/file_table.h"
 
 #define THREAD_STATE_ACTIVE 0
 #define THREAD_STATE_KILLED 1
@@ -20,8 +21,9 @@
 typedef struct
 {
     uint64_t id;
+    FileTable fileTable;
     AddressSpace* addressSpace;
-    uint8_t killed;
+    bool killed;
     _Atomic uint64_t threadCount;
     _Atomic uint64_t newTid;
 } Process;
@@ -29,7 +31,7 @@ typedef struct
 typedef struct Blocker
 {
     uintptr_t context;
-    uint8_t (*callback)(uintptr_t context);
+    bool (*callback)(uintptr_t context);
 } Blocker;
 
 typedef struct

@@ -14,6 +14,8 @@ KERNEL_SRC = \
 	$(STDLIB)/string/strcpy.c \
 	$(STDLIB)/string/memcmp.c \
 	$(STDLIB)/string/strcmp.c \
+	$(STDLIB)/string/strchr.c \
+	$(STDLIB)/string/strrchr.c \
 	$(STDLIB)/string/memset.c \
 	$(STDLIB)/string/strlen.c
 

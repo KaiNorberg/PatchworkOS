@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include "types/types.h"
 
 //TODO: Replace with io apic
 

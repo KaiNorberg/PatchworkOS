@@ -19,7 +19,7 @@ static uint64_t usablePageAmount = 0;
 
 static Lock lock;
 
-static inline uint8_t pmm_is_reserved(void* address)
+static inline bool pmm_is_reserved(void* address)
 {   
     return (bitmap[QWORD_INDEX(address)] >> BIT_INDEX(address)) & 1ULL;
 }
@@ -112,7 +112,7 @@ void* pmm_allocate(void)
     debug_panic("Physical Memory Manager full!");
 
     lock_release(&lock);
-    return 0;
+    return NULL;
 }
 
 void* pmm_allocate_amount(uint64_t amount)
@@ -155,7 +155,7 @@ void* pmm_allocate_amount(uint64_t amount)
     debug_panic("Page allocator full!");
 
     lock_release(&lock);
-    return 0;
+    return NULL;
 }
 
 void pmm_free_page(void* address)

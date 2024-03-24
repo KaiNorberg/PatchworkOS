@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include "types/types.h"
 
 #include <common/boot_info/boot_info.h>
 

@@ -6,7 +6,7 @@ static inline void* queue_pop_unlocked(Queue* queue)
 {
     if (queue->length == 0)
     {
-        return 0;
+        return NULL;
     }
 
     void* temp = queue->buffer[queue->readIndex];

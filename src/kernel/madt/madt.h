@@ -1,7 +1,6 @@
 #pragma once
 
-#include <stdint.h>
-
+#include "types/types.h"
 #include "rsdt/rsdt.h"
 
 #define MADT_RECORD_TYPE_LOCAL_APIC 0

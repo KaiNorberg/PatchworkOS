@@ -12,7 +12,7 @@ void irq_dispatch(InterruptFrame* interruptFrame)
 
     for (uint64_t i = 0; i < IRQ_MAX_HANDLER_AMOUNT; i++)
     {
-        if (handlers[irq][i] != 0)
+        if (handlers[irq][i] != NULL)
         {
             handlers[irq][i](irq);
         }
@@ -30,7 +30,7 @@ void irq_install_handler(IrqHandler handler, uint8_t irq)
 {
     for (uint64_t i = 0; i < IRQ_MAX_HANDLER_AMOUNT; i++)
     {
-        if (handlers[irq][i] == 0)
+        if (handlers[irq][i] == NULL)
         {
             handlers[irq][i] = handler;
             return;

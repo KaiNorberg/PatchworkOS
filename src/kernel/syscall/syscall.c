@@ -1,9 +1,9 @@
 #include "syscall.h"
 
-#include <stdint.h>
 #include <string.h>
 #include <errno.h>
 
+#include "types/types.h"
 #include "tty/tty.h"
 #include "heap/heap.h"
 #include "vmm/vmm.h"
@@ -15,17 +15,19 @@
 #include "scheduler/scheduler.h"
 #include "program_loader/program_loader.h"
 
-static inline uint8_t verify_pointer(const void* pointer, uint64_t size)
+//TODO: Improve verify funcs
+
+static inline bool verify_pointer(const void* pointer, uint64_t size)
 {
     if ((uint64_t)pointer > VMM_LOWER_HALF_MAX || (uint64_t)pointer + size > VMM_LOWER_HALF_MAX)
     {
-        return 0;
+        return false;
     }
 
-    return 1;
+    return true;
 }
 
-static inline uint8_t verify_string(const char* string)
+static inline bool verify_string(const char* string)
 {
     return verify_pointer(string, strlen(string));
 }

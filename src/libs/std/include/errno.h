@@ -11,7 +11,6 @@ extern "C" {
 
 //Not standard
 #define ERROR ((uint64_t)-1LL)
-#define ERROR_PTR ((void*)0)
 
 #define EDOM 1 // Math argument out of domain of func
 #define ERANGE 2 // Math result not representable
@@ -21,6 +20,9 @@ extern "C" {
 #define EPATH 6 // Invalid path
 #define ENAME 7 // Invalid name
 #define EEXIST 8 // Already exists
+#define EIMPL 9 // Not implemented
+#define EMFILE 10 // To many open files
+#define EBADF 11 // Bad file descriptor
 
 //Note: Values retrievd from linux
 /*

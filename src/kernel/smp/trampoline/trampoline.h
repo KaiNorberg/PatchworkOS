@@ -1,7 +1,6 @@
 #pragma once
 
-#include <stdint.h>
-
+#include "types/types.h"
 #include "smp/smp.h"
 
 #define SMP_TRAMPOLINE_PHYSICAL_START ((void*)0x8000)

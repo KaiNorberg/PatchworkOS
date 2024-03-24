@@ -1,7 +1,6 @@
 #pragma once
 
-#include <stdint.h>
-
+#include "types/types.h"
 #include "rsdt/rsdt.h"
 
 #define APIC_TIMER_HZ 1000

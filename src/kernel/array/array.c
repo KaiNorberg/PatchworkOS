@@ -60,17 +60,17 @@ void* array_find(Array* array, uint64_t(*callback)(void*, void*), void* context)
         uint64_t result = callback(array->data[i], context);
 
         if (result == ARRAY_FIND_FOUND)
-        {    
+        {
             lock_release(&array->lock);
             return array->data[i];
         }
     }
 
     lock_release(&array->lock);
-    return 0;
+    return NULL;
 }
 
-uint8_t array_iterate(Array* array, uint64_t(*callback)(void*))
+bool array_iterate(Array* array, uint64_t(*callback)(void*))
 {
     lock_acquire(&array->lock);
 
@@ -81,7 +81,7 @@ uint8_t array_iterate(Array* array, uint64_t(*callback)(void*))
         if (result == ARRAY_ITERATE_BREAK)
         {
             lock_release(&array->lock);
-            return 0;
+            return false;
         }
         else if (result == ARRAY_ITERATE_ERASE)
         {
@@ -91,5 +91,5 @@ uint8_t array_iterate(Array* array, uint64_t(*callback)(void*))
     }
 
     lock_release(&array->lock);
-    return 1;
+    return true;
 }
