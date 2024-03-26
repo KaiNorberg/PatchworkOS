@@ -9,9 +9,9 @@
 #include "madt/madt.h"
 #include "debug/debug.h"
 #include "utils/utils.h"
+#include "traps/traps.h"
 #include "smp/trampoline/trampoline.h"
 #include "smp/startup/startup.h"
-#include "interrupts/interrupts.h"
 
 static Cpu* cpus;
 static uint8_t cpuAmount = 0;
@@ -84,22 +84,22 @@ Cpu* smp_self(void)
 {
     interrupts_disable();
 
-    return &cpus[msr_read(MSR_CPU_ID)];
+    return &cpus[MSR_READ(MSR_CPU_ID)];
 }
 
 Cpu* smp_self_unsafe(void)
 {
-    if (rflags_read() & RFLAGS_INTERRUPT_ENABLE)
+    if (RFLAGS_READ() & RFLAGS_INTERRUPT_ENABLE)
     {
         debug_panic("smp_self_unsafe called with interrupts enabled");
     }
 
-    return &cpus[msr_read(MSR_CPU_ID)];
+    return &cpus[MSR_READ(MSR_CPU_ID)];
 }
 
 Cpu* smp_self_brute(void)
 {
-    if (rflags_read() & RFLAGS_INTERRUPT_ENABLE)
+    if (RFLAGS_READ() & RFLAGS_INTERRUPT_ENABLE)
     {
         debug_panic("smp_self_brute called with interrupts enabled");
     }
@@ -114,7 +114,6 @@ Cpu* smp_self_brute(void)
     }
 
     debug_panic("Unable to find cpu");
-    return 0;
 }
 
 void smp_put(void)

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "types/types.h"
+#include "defs/defs.h"
 #include "lock/lock.h"
 
 //Note: Named array to avoid confusion with interrupt vectors
@@ -31,3 +31,5 @@ void array_push(Array* array, void* element);
 void* array_find(Array* array, uint64_t(*callback)(void*, void*), void* context);
 
 bool array_iterate(Array* array, uint64_t(*callback)(void*));
+
+uint64_t array_length(Array* array);

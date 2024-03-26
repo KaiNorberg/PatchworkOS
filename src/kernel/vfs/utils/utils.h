@@ -2,7 +2,7 @@
 
 #include <ctype.h>
 
-#include "types/types.h"
+#include "defs/defs.h"
 
 #define VFS_DISK_DELIMITER ':'
 #define VFS_NAME_DELIMITER '/'

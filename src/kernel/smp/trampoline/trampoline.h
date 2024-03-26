@@ -1,10 +1,10 @@
 #pragma once
 
-#include "types/types.h"
+#include "defs/defs.h"
 #include "smp/smp.h"
 
 #define SMP_TRAMPOLINE_PHYSICAL_START ((void*)0x8000)
-#define SMP_TRAMPOLINE_PAGE_DIRECTORY_ADDRESS ((void*)0x8FF0)
+#define SMP_TRAMPOLINE_PAGE_TABLE_ADDRESS ((void*)0x8FF0)
 #define SMP_TRAMPOLINE_STACK_TOP_ADDRESS ((void*)0x8FE0)
 #define SMP_TRAMPOLINE_ENTRY_ADDRESS ((void*)0x8FD0)
 

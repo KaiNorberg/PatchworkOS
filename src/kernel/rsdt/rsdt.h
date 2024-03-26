@@ -1,11 +1,11 @@
 #pragma once
 
-#include "types/types.h"
+#include "defs/defs.h"
 
 #define ACPI_REVISION_1_0 0
 #define ACPI_REVISION_2_0 2
 
-typedef struct __attribute__((packed))
+typedef struct PACKED
 {
     char signature[8];
     uint8_t checksum;
@@ -18,7 +18,7 @@ typedef struct __attribute__((packed))
     uint8_t reserved[3];
 } Xsdp;
 
-typedef struct __attribute__((packed))
+typedef struct PACKED
 {
     uint8_t signature[4];
     uint32_t length;
@@ -31,7 +31,7 @@ typedef struct __attribute__((packed))
     uint32_t creatorRevision; 
 } SdtHeader;
 
-typedef struct __attribute__((packed))
+typedef struct PACKED
 {
     SdtHeader header;
     SdtHeader* tables[];

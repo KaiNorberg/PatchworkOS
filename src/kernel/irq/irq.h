@@ -1,8 +1,8 @@
 #pragma once
 
-#include "types/types.h"
+#include "defs/defs.h"
 
-#include "interrupt_frame/interrupt_frame.h"
+#include "trap_frame/trap_frame.h"
 
 #define IRQ_BASE 0x20
 #define IRQ_PIT 0x0
@@ -27,6 +27,6 @@
 
 typedef void(*IrqHandler)(uint8_t irq);
 
-void irq_dispatch(InterruptFrame* interruptFrame);
+void irq_dispatch(TrapFrame* trapFrame);
 
 void irq_install_handler(IrqHandler handler, uint8_t irq);

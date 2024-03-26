@@ -1,8 +1,8 @@
 #pragma once
 
-#include "types/types.h"
+#include "defs/defs.h"
 #include "tty/tty.h"
-#include "interrupt_frame/interrupt_frame.h"
+#include "trap_frame/trap_frame.h"
 
 #define DEBUG_ROW_AMOUNT 18
 #define DEBUG_COLUMN_AMOUNT 4
@@ -11,8 +11,6 @@
 
 #define DEBUG_TEXT_SCALE 2
 
-extern const char* exceptionStrings[32];
+NORETURN void debug_panic(const char* message);
 
-void debug_panic(const char* message);
-
-void debug_exception(InterruptFrame const* interruptFrame, const char* message);
+NORETURN void debug_exception(TrapFrame const* trapFrame, const char* message);

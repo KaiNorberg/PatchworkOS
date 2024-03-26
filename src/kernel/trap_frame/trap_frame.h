@@ -1,8 +1,8 @@
 #pragma once
 
-#include "types/types.h"
+#include "defs/defs.h"
 
-typedef struct __attribute__((packed))
+typedef struct PACKED
 {
     uint64_t r15;
     uint64_t r14;
@@ -23,11 +23,11 @@ typedef struct __attribute__((packed))
     uint64_t vector;
     uint64_t errorCode;
 
-    uint64_t instructionPointer;
-    uint64_t codeSegment;
-    uint64_t flags;
-    uint64_t stackPointer;
-    uint64_t stackSegment;
-} InterruptFrame;
+    uint64_t rip;
+    uint64_t cs;
+    uint64_t rflags;
+    uint64_t rsp;
+    uint64_t ss;
+} TrapFrame;
 
-void interrupt_frame_copy(InterruptFrame* dest, InterruptFrame const* src);
+void trap_frame_copy(TrapFrame* dest, TrapFrame const* src);

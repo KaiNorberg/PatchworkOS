@@ -2,7 +2,7 @@
 
 #include <stdatomic.h>
 
-#include "types/types.h"
+#include "defs/defs.h"
 
 typedef struct
 {

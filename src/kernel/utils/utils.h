@@ -1,6 +1,6 @@
 #pragma once
 
-#include "types/types.h"
+#include "defs/defs.h"
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))

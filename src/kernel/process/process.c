@@ -13,12 +13,20 @@
 
 static _Atomic uint64_t newPid = 0;
 
-Process* process_new(void)
+Process* process_new(const char* executable)
 {
     Process* process = kmalloc(sizeof(Process));
     process->id = atomic_fetch_add(&newPid, 1);
+    if (executable != 0)
+    {
+        strcpy(process->executable, executable);
+    }
+    else
+    {
+        memset(process->executable, 0, VFS_MAX_PATH_LENGTH);
+    }
     file_table_init(&process->fileTable);
-    process->addressSpace = address_space_new();
+    process->space = space_new();
     process->killed = false;
     process->threadCount = 0;
     process->newTid = 0;
@@ -40,12 +48,12 @@ Thread* thread_new(Process* process, void* entry, uint8_t priority)
     thread->priority = priority;
     thread->boost = 0;
 
-    memset(&thread->interruptFrame, 0, sizeof(InterruptFrame));
-    thread->interruptFrame.instructionPointer = (uint64_t)entry;
-    thread->interruptFrame.stackPointer = (uint64_t)VMM_LOWER_HALF_MAX;
-    thread->interruptFrame.codeSegment = GDT_USER_CODE | 3;
-    thread->interruptFrame.stackSegment = GDT_USER_DATA | 3;
-    thread->interruptFrame.flags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
+    memset(&thread->trapFrame, 0, sizeof(TrapFrame));
+    thread->trapFrame.rip = (uint64_t)entry;
+    thread->trapFrame.rsp = ((uint64_t)thread->kernelStack) + THREAD_KERNEL_STACK_SIZE;
+    thread->trapFrame.cs = GDT_KERNEL_CODE;
+    thread->trapFrame.ss = GDT_KERNEL_DATA;
+    thread->trapFrame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
 
     return thread;
 }
@@ -55,7 +63,7 @@ void thread_free(Thread* thread)
     if (atomic_fetch_sub(&thread->process->threadCount, 1) <= 1)
     {
         file_table_cleanup(&thread->process->fileTable);
-        address_space_free(thread->process->addressSpace);
+        space_free(thread->process->space);
         kfree(thread->process);
     }
 

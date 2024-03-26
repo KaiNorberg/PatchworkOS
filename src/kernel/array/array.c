@@ -93,3 +93,11 @@ bool array_iterate(Array* array, uint64_t(*callback)(void*))
     lock_release(&array->lock);
     return true;
 }
+
+uint64_t array_length(Array* array)
+{
+    lock_acquire(&array->lock);
+    uint64_t temp = array->length;
+    lock_release(&array->lock);
+    return temp;
+}

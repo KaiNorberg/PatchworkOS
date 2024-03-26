@@ -1,7 +1,7 @@
 #pragma once
 
 #include "tss/tss.h"
-#include "types/types.h"
+#include "defs/defs.h"
 
 #define GDT_NULL 0x00
 #define GDT_KERNEL_CODE 0x08
@@ -10,13 +10,13 @@
 #define GDT_USER_DATA 0x20
 #define GDT_TSS 0x28
 
-typedef struct __attribute__((packed))
+typedef struct PACKED
 {
     uint16_t size;
     uint64_t offset;
 } GdtDesc;  
 
-typedef struct __attribute__((packed))
+typedef struct PACKED
 {
     uint16_t limitLow;
     uint16_t baseLow;
@@ -24,9 +24,9 @@ typedef struct __attribute__((packed))
     uint8_t access;
     uint8_t flagsAndLimitHigh;
     uint8_t baseHigh;
-} SegmentDescriptor;
+} GdtEntry;
 
-typedef struct __attribute__((packed))
+typedef struct PACKED
 {
     uint16_t limitLow;
     uint16_t baseLow;
@@ -36,16 +36,16 @@ typedef struct __attribute__((packed))
     uint8_t baseUpperMiddle;
     uint32_t baseHigh;
     uint32_t reserved;
-} LongSegmentDescriptor;
+} LongGdtEntry;
 
-typedef struct __attribute__((packed))
+typedef struct PACKED
 {
-    SegmentDescriptor null;
-    SegmentDescriptor kernelCode;
-    SegmentDescriptor kernelData;
-    SegmentDescriptor userCode;
-    SegmentDescriptor userData;
-    LongSegmentDescriptor tss;
+    GdtEntry null;
+    GdtEntry kernelCode;
+    GdtEntry kernelData;
+    GdtEntry userCode;
+    GdtEntry userData;
+    LongGdtEntry tss;
 } Gdt;
 
 extern void gdt_load_descriptor(GdtDesc* descriptor);

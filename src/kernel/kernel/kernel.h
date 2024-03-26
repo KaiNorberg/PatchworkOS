@@ -2,7 +2,7 @@
 
 #include <common/boot_info/boot_info.h>
 
-#include "types/types.h"
+#include "defs/defs.h"
 
 void kernel_init(BootInfo* bootInfo);
 

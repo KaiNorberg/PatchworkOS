@@ -13,8 +13,6 @@ typedef struct
 	uint64_t attribute;
 } EfiMemoryDescriptor;
 
-#define EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, index) (EfiMemoryDescriptor*)((uint64_t)(memoryMap)->base + ((index) * (memoryMap)->descriptorSize))
-
 #define EFI_RESERVED 0
 #define EFI_LOADER_CODE 1 
 #define EFI_LOADER_DATA 2
@@ -30,55 +28,16 @@ typedef struct
 #define EFI_MEMORY_MAPPED_IO_PORT_SPACE 12
 #define EFI_PAL_CODE 13
 #define EFI_PERSISTENT_MEMORY 14 
-
-static inline uint8_t is_memory_type_usable(uint64_t memoryType)
-{
-	switch (memoryType)
-	{
-	case EFI_UNUSABLE_MEMORY:
-	case EFI_ACPI_RECLAIM_MEMORY:
-	case EFI_ACPI_MEMORY_NVS:
-	case EFI_MEMORY_MAPPED_IO:
-	case EFI_MEMORY_MAPPED_IO_PORT_SPACE:
-	case EFI_PAL_CODE:
-	case EFI_RESERVED:
-	case EFI_PERSISTENT_MEMORY:
-	{
-		return 0;
-	}
-	default:
-	{
-		return 1;
-	}
-	}
-}
-
-static inline uint8_t is_memory_type_reserved(uint64_t memoryType)
-{
-	switch (memoryType)
-	{
-	case EFI_CONVENTIONAL_MEMORY:
-	case EFI_LOADER_CODE:
-	case EFI_LOADER_DATA:
-	case EFI_BOOT_SERVICES_CODE:
-	case EFI_BOOT_SERVICES_DATA:
-	{
-		return 0;
-	}
-	default:
-	{
-		return 1;
-	}
-	}
-}
 #else
 #include <efi.h>
 #include <efilib.h>
 typedef EFI_MEMORY_DESCRIPTOR EfiMemoryDescriptor;
 #endif
 
+#define EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, index) (EfiMemoryDescriptor*)((uint64_t)(memoryMap)->base + ((index) * (memoryMap)->descriptorSize))
+
 #define EFI_MEMORY_TYPE_KERNEL 0x80000000
-#define EFI_MEMORY_TYPE_PAGE_DIRECTORY 0x80000001
+#define EFI_MEMORY_TYPE_PAGE_TABLE 0x80000001
 #define EFI_MEMORY_TYPE_BOOT_INFO 0x80000002
 #define EFI_MEMORY_TYPE_RAM_DISK 0x80000003
 
@@ -91,7 +50,7 @@ typedef struct
 	uint32_t descriptorVersion;
 } EfiMemoryMap;
 
-typedef struct __attribute__((packed))
+typedef struct
 {
     uint32_t* base;
 	uint64_t size;

@@ -1,10 +1,10 @@
 #pragma once
 
-#include "types/types.h"
+#include "defs/defs.h"
 #include "tss/tss.h"
 #include "pmm/pmm.h"
-#include "scheduler/scheduler.h"
-#include "interrupt_frame/interrupt_frame.h"
+#include "sched/sched.h"
+#include "trap_frame/trap_frame.h"
 
 #define CPU_MAX_AMOUNT 255
 #define CPU_IDLE_STACK_SIZE PAGE_SIZE
@@ -22,11 +22,11 @@ typedef struct
     uint8_t id;
     uint8_t localApicId;
     uint8_t* idleStack;
+    uint64_t trapDepth;
+    bool interruptsEnabled;
+    uint64_t cliAmount;
     Tss tss;
     Scheduler scheduler;
-    bool interruptsEnabled;
-    uint64_t interruptDepth;
-    uint64_t cliAmount;
 } Cpu;
 
 void smp_init(void);

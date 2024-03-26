@@ -1,8 +1,8 @@
 #pragma once
 
-#include "types/types.h"
+#include "defs/defs.h"
 
-typedef struct __attribute__((packed))
+typedef struct PACKED
 {
     uint32_t reserved1;
     uint64_t rsp0;

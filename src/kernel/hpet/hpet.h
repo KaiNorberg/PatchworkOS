@@ -1,6 +1,6 @@
 #pragma once
 
-#include "types/types.h"
+#include "defs/defs.h"
 #include "rsdt/rsdt.h"
 
 #define HPET_COUNTER_CLOCK_OFFSET 0x20
@@ -16,7 +16,7 @@
 #define HPET_TIMER_CONFIG_CAPABILITY(n) (0x100 + 0x20 * n)
 #define HPET_TIMER_COMPARATOR(n) (0x108 + 0x20 * n)
 
-typedef struct __attribute__((packed))
+typedef struct PACKED
 {   
     SdtHeader header;
     uint8_t hardwareRevId;

@@ -1,4 +1,4 @@
-#include "scheduler.h"
+#include "sched.h"
 
 #include <string.h>
 
@@ -9,22 +9,21 @@
 #include "time/time.h"
 #include "debug/debug.h"
 #include "registers/registers.h"
-#include "interrupts/interrupts.h"
+#include "traps/traps.h"
 #include "irq/irq.h"
 #include "apic/apic.h"
 #include "hpet/hpet.h"
-#include "program_loader/program_loader.h"
-#include "scheduler/schedule/schedule.h"
+#include "loader/loader.h"
+#include "sched/schedule/schedule.h"
 
-static bool scheduler_sleep_callback(uint64_t deadline)
+static bool sched_sleep_callback(uint64_t deadline)
 {
     return deadline <= time_nanoseconds();
 }
 
-static void scheduler_spawn_init_thread(void)
+static void sched_spawn_init_thread(void)
 {
-    Process* process = process_new();
-
+    Process* process = process_new(0);
     Thread* thread = thread_new(process, 0, THREAD_PRIORITY_MAX);
     thread->timeEnd = UINT64_MAX;
 
@@ -42,52 +41,54 @@ void scheduler_init(Scheduler* scheduler)
     scheduler->runningThread = NULL;
 }
 
-void scheduler_start(void)
+void sched_start(void)
 {
-    scheduler_spawn_init_thread();
+    tty_start_message("Scheduler starting");
+
+    sched_spawn_init_thread();
 
     smp_send_ipi_to_others(IPI_START);
     asm volatile("sti");
     SMP_SEND_IPI_TO_SELF(IPI_START);
+
+    tty_end_message(TTY_MESSAGE_OK);
 }
 
-void scheduler_cpu_start(void)
+void sched_cpu_start(void)
 {
-    apic_timer_init(IPI_BASE + IPI_SCHEDULE, SCHEDULER_TIMER_HZ);
+    apic_timer_init(IPI_BASE + IPI_SCHEDULE, SCHED_TIMER_HZ);
 }
 
-Thread* scheduler_thread(void)
+Thread* sched_thread(void)
 {
     Thread* thread = smp_self()->scheduler.runningThread;
     smp_put();
-
     return thread;
 }
 
-Process* scheduler_process(void)
+Process* sched_process(void)
 {
     Process* process = smp_self()->scheduler.runningThread->process;
     smp_put();
-
     return process;
 }
 
-void scheduler_yield(void)
+void sched_yield(void)
 {
     SMP_SEND_IPI_TO_SELF(IPI_SCHEDULE);
 }
 
-void scheduler_sleep(uint64_t nanoseconds)
+void sched_sleep(uint64_t nanoseconds)
 {
     Blocker blocker =
     {
         .context = time_nanoseconds() + nanoseconds,
-        .callback = scheduler_sleep_callback
+        .callback = sched_sleep_callback
     };
-    scheduler_block(blocker);
+    sched_block(blocker);
 }
 
-void scheduler_block(Blocker blocker)
+void sched_block(Blocker blocker)
 {
     if (blocker.callback(blocker.context))
     {
@@ -100,10 +101,10 @@ void scheduler_block(Blocker blocker)
     thread->state = THREAD_STATE_BLOCKED;
     smp_put();
 
-    scheduler_yield();
+    sched_yield();
 }
 
-void scheduler_process_exit(uint64_t status)
+void sched_process_exit(uint64_t status)
 {
     //TODO: Add handling for status
 
@@ -112,50 +113,41 @@ void scheduler_process_exit(uint64_t status)
     scheduler->runningThread->process->killed = true;
     smp_put();
 
-    scheduler_yield();
+    sched_yield();
+    debug_panic("Returned from process_exit");
 }
 
-void scheduler_thread_exit(void)
+void sched_thread_exit(void)
 {
     Scheduler* scheduler = &smp_self()->scheduler;
     scheduler->runningThread->state = THREAD_STATE_KILLED;
     smp_put();
 
-    scheduler_yield();
+    sched_yield();
+    debug_panic("Returned from thread_exit");
 }
 
-uint64_t scheduler_spawn(const char* path)
+uint64_t sched_spawn(const char* path)
 {
-    Process* process = process_new();
-    Thread* thread = thread_new(process, program_loader_entry, THREAD_PRIORITY_MIN);
-
-    //Temporary: For now the executable is passed via the user stack to the program loader.
-    //Eventually it will be passed via a system similar to "/proc/self/exec".
-    void* stackBottom = address_space_allocate(process->addressSpace, (void*)(VMM_LOWER_HALF_MAX - PAGE_SIZE), 1);
-    void* stackTop = (void*)((uint64_t)stackBottom + PAGE_SIZE);
-    uint64_t pathLength = strlen(path);
-    void* dest = (void*)((uint64_t)stackTop - pathLength - 1);
-    memcpy(dest, path, pathLength + 1);
-    thread->interruptFrame.stackPointer -= pathLength + 1;
-    thread->interruptFrame.rdi = VMM_LOWER_HALF_MAX - pathLength - 1;
-
-    scheduler_push(thread, 1, -1);
+    Process* process = process_new(path);
+    Thread* thread = thread_new(process, loader_entry, THREAD_PRIORITY_MIN);
+    sched_push(thread, 1, -1);
 
     return process->id;
 }
 
 //Temporary
-uint64_t scheduler_local_thread_amount(void)
+uint64_t sched_local_thread_amount(void)
 {
     Scheduler const* scheduler = &smp_self()->scheduler;
 
     uint64_t length = (scheduler->runningThread != NULL);
+    length += array_length(scheduler->blockedThreads);
     for (int64_t p = THREAD_PRIORITY_MIN; p <= THREAD_PRIORITY_MAX; p++)
     {
         length += queue_length(scheduler->queues[p]);
     }
 
     smp_put();
-
     return length;
 }

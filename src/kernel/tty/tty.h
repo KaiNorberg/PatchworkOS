@@ -1,13 +1,13 @@
 #pragma once
 
-#include "types/types.h"
+#include "defs/defs.h"
 
 #include <common/boot_info/boot_info.h>
 
 #define TTY_CHAR_HEIGHT 16
 #define TTY_CHAR_WIDTH 8
 
-typedef struct __attribute__((packed))
+typedef struct PACKED
 {
     uint8_t b;
     uint8_t g;

@@ -2,19 +2,19 @@
 
 %include "utils/utils.inc"
 
-extern scheduler_schedule
+extern sched_schedule
 extern debug_panic
 
 section .text
 
-global scheduler_idle_loop
-scheduler_idle_loop:
+global sched_idle_loop
+sched_idle_loop:
 	hlt
-	jmp scheduler_idle_loop
+	jmp sched_idle_loop
 
 %if 0
-global scheduler_yield
-scheduler_yield:
+global sched_yield
+sched_yield:
 	mov qword [rsp - 8], 0x10
 	mov qword [rsp - 16], rsp
 	sub rsp, 16
@@ -26,7 +26,7 @@ scheduler_yield:
     PUSH_ALL_REGS
 
     mov rdi, rsp
-    call scheduler_schedule
+    call sched_schedule
 
     POP_ALL_REGS
     add rsp, 16

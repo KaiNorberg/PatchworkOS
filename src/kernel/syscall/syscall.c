@@ -3,7 +3,7 @@
 #include <string.h>
 #include <errno.h>
 
-#include "types/types.h"
+#include "defs/defs.h"
 #include "tty/tty.h"
 #include "heap/heap.h"
 #include "vmm/vmm.h"
@@ -11,9 +11,9 @@
 #include "utils/utils.h"
 #include "smp/smp.h"
 #include "debug/debug.h"
-#include "interrupts/interrupts.h"
-#include "scheduler/scheduler.h"
-#include "program_loader/program_loader.h"
+#include "traps/traps.h"
+#include "sched/sched.h"
+#include "loader/loader.h"
 
 //TODO: Improve verify funcs
 
@@ -36,35 +36,34 @@ static inline bool verify_string(const char* string)
 
 void syscall_process_exit(uint64_t status)
 {
-    scheduler_process_exit(status);
+    sched_process_exit(status);
 }
 
 uint64_t syscall_spawn(const char* path)
 {
     if (!verify_string(path))
     {
-        scheduler_thread()->errno = EFAULT;
-        return ERROR;
+        return ERROR(EFAULT);
     }
 
-    return scheduler_spawn(path);
+    return sched_spawn(path);
 }
 
 uint64_t syscall_sleep(uint64_t nanoseconds)
 {
-    scheduler_sleep(nanoseconds);
+    sched_sleep(nanoseconds);
     return 0;
 }
 
 void* syscall_allocate(void* address, uint64_t length)
 {
-    address_space_allocate(scheduler_process()->addressSpace, address, SIZE_IN_PAGES(length));
+    space_allocate(sched_process()->space, address, SIZE_IN_PAGES(length));
     return address;
 }
 
 errno_t syscall_kernel_errno(void)
 {
-    return scheduler_thread()->errno;
+    return sched_thread()->errno;
 }
 
 uint64_t syscall_test(const char* string)
@@ -82,11 +81,11 @@ uint64_t syscall_test(const char* string)
     tty_print("CPU: ");
     tty_printi(cpuId);
     tty_print(" THREAD AMOUNT: ");
-    tty_printi(scheduler_local_thread_amount());
+    tty_printi(sched_local_thread_amount());
     tty_print(" PID: ");
-    tty_printi(scheduler_process()->id);
+    tty_printi(sched_process()->id);
     tty_print(" TID: ");
-    tty_printi(scheduler_thread()->id);
+    tty_printi(sched_thread()->id);
     if (string != 0)
     {
         tty_print(" STRING: ");
@@ -94,7 +93,7 @@ uint64_t syscall_test(const char* string)
     }
     tty_print(" TIME: ");
     tty_printi(time_milliseconds());
-    tty_print(" MS");
+    tty_print(" MS                  ");
 
     tty_set_row(oldRow);
     tty_set_column(oldColumn);
@@ -108,12 +107,12 @@ uint64_t syscall_test(const char* string)
 
 void syscall_handler_end(void)
 {
-    if (scheduler_process()->killed)
+    if (sched_process()->killed)
     {
-        scheduler_thread_exit();
+        sched_thread_exit();
     }
 
-    scheduler_yield();
+    sched_yield();
 }
 
 void* syscallTable[] =

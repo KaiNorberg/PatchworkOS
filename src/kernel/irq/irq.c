@@ -6,9 +6,9 @@
 
 static IrqHandler handlers[IRQ_AMOUNT][IRQ_MAX_HANDLER_AMOUNT];
 
-void irq_dispatch(InterruptFrame* interruptFrame)
+void irq_dispatch(TrapFrame* trapFrame)
 {
-    uint64_t irq = interruptFrame->vector - IRQ_BASE;
+    uint64_t irq = trapFrame->vector - IRQ_BASE;
 
     for (uint64_t i = 0; i < IRQ_MAX_HANDLER_AMOUNT; i++)
     {

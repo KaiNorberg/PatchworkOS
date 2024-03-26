@@ -1,6 +1,6 @@
 #pragma once
 
-#include "types/types.h"
+#include "defs/defs.h"
 #include "lock/lock.h"
 
 #define QUEUE_INITIAL_LENGTH 4

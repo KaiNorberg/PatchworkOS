@@ -1,23 +1,23 @@
 #include "virtual_memory.h"
 
-#include "page_directory/page_directory.h"
+#include "page_table/page_table.h"
 #include "memory/memory.h"
 
-static PageDirectory* pageDirectory;
+static PageTable* pageTable;
 
 static void* kernelAddress;
 
 void virtual_memory_init(void)
 {
     kernelAddress = 0;
-    pageDirectory = page_directory_new();
+    pageTable = page_table_new();
 
     //Lower half must be mapped identically to maintain compatibility with all uefi implementations.
-    PageDirectory* cr3;
+    PageTable* cr3;
     asm volatile("mov %%cr3, %0" : "=r"(cr3));
     for (uint64_t i = 0; i < 256; i++)
     {
-        pageDirectory->entries[i] = cr3->entries[i];
+        pageTable->entries[i] = cr3->entries[i];
     }
 
     EfiMemoryMap memoryMap;
@@ -28,10 +28,10 @@ void virtual_memory_init(void)
         EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap.base + (i * memoryMap.descriptorSize));
         
         void* virtualAddress = (void*)(HIGHER_HALF_BASE + desc->PhysicalStart);
-        page_directory_map_pages(pageDirectory, virtualAddress, (void*)desc->PhysicalStart, desc->NumberOfPages, PAGE_FLAG_WRITE);
+        page_table_map_pages(pageTable, virtualAddress, (void*)desc->PhysicalStart, desc->NumberOfPages, PAGE_FLAG_WRITE);
 	}
 
-    PAGE_DIRECTORY_LOAD(pageDirectory);
+    PAGE_TABLE_LOAD(pageTable);
 }
 
 void virtual_memory_allocate_kernel(void* virtualAddress, uint64_t pageAmount)
@@ -39,7 +39,7 @@ void virtual_memory_allocate_kernel(void* virtualAddress, uint64_t pageAmount)
     void* physicalAddress = memory_allocate_pages(pageAmount, EFI_MEMORY_TYPE_KERNEL);
     kernelAddress = virtualAddress;
 
-    page_directory_map_pages(pageDirectory, virtualAddress, physicalAddress, pageAmount, PAGE_FLAG_WRITE);
+    page_table_map_pages(pageTable, virtualAddress, physicalAddress, pageAmount, PAGE_FLAG_WRITE);
 }
 
 void* virtual_memory_allocate_pages(uint64_t pageAmount, uint64_t memoryType)

@@ -6,7 +6,7 @@
 #include "tty/tty.h"
 #include "heap/heap.h"
 #include "array/array.h"
-#include "scheduler/scheduler.h"
+#include "sched/sched.h"
 #include "vfs/utils/utils.h"
 
 static Inode* root;
@@ -22,10 +22,10 @@ void vfs_init()
 
 uint64_t vfs_open(const char* path, uint64_t flags)
 {
-    return ERROR;
+    return ERR;
 }
 
 uint64_t vfs_close(uint64_t fd)
 {
-    return ERROR;
+    return ERR;
 }

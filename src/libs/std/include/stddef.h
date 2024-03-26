@@ -7,6 +7,7 @@ extern "C" {
 
 #include "auxiliary/size_t.h"
 #include "auxiliary/NULL.h"
+#include "auxiliary/ERR.h"
 
 typedef size_t rsize_t;
 typedef __PTRDIFF_TYPE__ ptrdiff_t;

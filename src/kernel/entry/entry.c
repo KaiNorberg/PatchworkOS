@@ -5,8 +5,8 @@
 #include "time/time.h"
 #include "debug/debug.h"
 #include "kernel/kernel.h"
-#include "scheduler/scheduler.h"
-#include "types/types.h"
+#include "sched/sched.h"
+#include "defs/defs.h"
 
 #include "vfs/utils/utils.h"
 
@@ -15,9 +15,9 @@ void main(BootInfo* bootInfo)
     kernel_init(bootInfo);
 
     tty_acquire();
-    for (uint64_t i = 0; i < 16; i++)
+    for (uint64_t i = 0; i < 1; i++)
     {
-        scheduler_spawn("ram:/programs/parent.elf");
+        sched_spawn("/bin/parent.elf");
     }
     tty_clear();
     tty_set_row(smp_cpu_amount() * 2 + 2);
@@ -27,7 +27,7 @@ void main(BootInfo* bootInfo)
     tty_print("OPEN: ");
     if (fd == ERROR)
     {
-        tty_printi(scheduler_thread()->errno);
+        tty_printi(sched_thread()->errno);
     }
     else
     {
@@ -37,7 +37,7 @@ void main(BootInfo* bootInfo)
     tty_print("\nCLOSE: ");
     if (vfs_close(fd))
     {
-        tty_printi(scheduler_thread()->errno);
+        tty_printi(sched_thread()->errno);
     }
     else
     {
@@ -45,5 +45,5 @@ void main(BootInfo* bootInfo)
     }*/
 
     //Exit init thread
-    scheduler_thread_exit();
+    sched_thread_exit();
 }

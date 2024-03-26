@@ -4,32 +4,33 @@
 #include "heap/heap.h"
 #include "lock/lock.h"
 #include "pmm/pmm.h"
-#include "scheduler/scheduler.h"
+#include "sched/sched.h"
 #include "registers/registers.h"
 
-static PageDirectory* kernelPageDirectory;
+static PageTable* kernelPageTable;
 
 static void vmm_load_memory_map(EfiMemoryMap* memoryMap)
 {
-    kernelPageDirectory = page_directory_new();
+    kernelPageTable = page_table_new();
 
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
         const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
 
-        page_directory_map_pages(kernelPageDirectory, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
+        page_table_map_pages(kernelPageTable, desc->virtualStart, desc->physicalStart, desc->amountOfPages, 
+            PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
 	}
 
-    page_directory_load(kernelPageDirectory);
+    page_table_load(kernelPageTable);
 }
 
-static void vmm_deallocate_boot_page_directory(EfiMemoryMap* memoryMap)
+static void vmm_deallocate_boot_page_table(EfiMemoryMap* memoryMap)
 {
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
         const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
 
-		if (desc->type == EFI_MEMORY_TYPE_PAGE_DIRECTORY)
+		if (desc->type == EFI_MEMORY_TYPE_PAGE_TABLE)
 		{
             pmm_free_pages(desc->physicalStart, desc->amountOfPages);
 		}
@@ -40,23 +41,14 @@ void vmm_init(EfiMemoryMap* memoryMap)
 {
     vmm_load_memory_map(memoryMap);
 
-    vmm_deallocate_boot_page_directory(memoryMap);
-}
-
-void* vmm_physical_to_virtual(void* address)
-{
-    return (void*)((uint64_t)address + VMM_HIGHER_HALF_BASE);
-}
-
-void* vmm_virtual_to_physical(void* address)
-{
-    return (void*)((uint64_t)address - VMM_HIGHER_HALF_BASE);
+    vmm_deallocate_boot_page_table(memoryMap);
 }
 
 void* vmm_map(void* physicalAddress, uint64_t pageAmount, uint16_t flags)
 {
-    void* virtualAddress = vmm_physical_to_virtual(physicalAddress);
-    page_directory_map_pages(kernelPageDirectory, virtualAddress, physicalAddress, pageAmount, flags | VMM_KERNEL_PAGE_FLAGS);
+    void* virtualAddress = VMM_LOWER_TO_HIGHER(physicalAddress);
+    page_table_map_pages(kernelPageTable, virtualAddress, physicalAddress, pageAmount, 
+        flags | VMM_KERNEL_PAGE_FLAGS);
 
     return virtualAddress;
 }
@@ -65,62 +57,81 @@ void vmm_change_flags(void* address, uint64_t pageAmount, uint16_t flags)
 {
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        page_directory_change_flags(kernelPageDirectory, (void*)((uint64_t)address + i * PAGE_SIZE), flags | VMM_KERNEL_PAGE_FLAGS);
+        page_table_change_flags(kernelPageTable, (void*)((uint64_t)address + i * PAGE_SIZE), 
+            flags | VMM_KERNEL_PAGE_FLAGS);
     }
 }
 
-AddressSpace* address_space_new(void)
+Space* space_new(void)
 {
-    AddressSpace* space = kmalloc(sizeof(AddressSpace));
-    space->pageDirectory = page_directory_new();
+    Space* space = kmalloc(sizeof(Space));
+    space->pageTable = page_table_new();
     space->lock = lock_create();
 
-    for (uint64_t i = PDE_AMOUNT / 2; i < PDE_AMOUNT; i++)
+    for (uint64_t i = PAGE_ENTRY_AMOUNT / 2; i < PAGE_ENTRY_AMOUNT; i++)
     {
-        space->pageDirectory->entries[i] = kernelPageDirectory->entries[i];
+        space->pageTable->entries[i] = kernelPageTable->entries[i];
     }
     return space;
 }
 
-void address_space_free(AddressSpace* space)
+void space_free(Space* space)
 {
-    for (uint64_t i = PDE_AMOUNT / 2; i < PDE_AMOUNT; i++)
+    for (uint64_t i = PAGE_ENTRY_AMOUNT / 2; i < PAGE_ENTRY_AMOUNT; i++)
     {
-        space->pageDirectory->entries[i] = 0;
+        space->pageTable->entries[i] = 0;
     }
 
-    page_directory_free(space->pageDirectory);
+    page_table_free(space->pageTable);
     kfree(space);
 }
 
-void address_space_load(AddressSpace* space)
+void space_load(Space* space)
 {
     if (space == NULL)
     {
-        page_directory_load(kernelPageDirectory);
+        page_table_load(kernelPageTable);
     }
     else
     {
-        page_directory_load(space->pageDirectory);
+        page_table_load(space->pageTable);
     }
 }
 
-void* address_space_allocate(AddressSpace* space, void* address, uint64_t pageAmount)
+void* space_allocate(Space* space, void* address, uint64_t pageAmount)
 {
-    if ((uint64_t)address >= VMM_LOWER_HALF_MAX)
+    if ((uint64_t)address + pageAmount * PAGE_SIZE > VMM_LOWER_HALF_MAX)
     {
-        scheduler_thread()->errno = EFAULT;
-        return NULL;
+        return NULLPTR(EFAULT);
+    }
+    else if (address == NULL)
+    {
+        //TODO: Choose address
+        return NULLPTR(EFAULT);
     }
 
-    //Todo: Map one page at a time, add check if page already mapped.
+    for (uint64_t i = 0; i < pageAmount; i++)
+    {            
+        void* virtualAddress = (void*)((uint64_t)address + i * PAGE_SIZE);
 
-    void* physicalAddress = pmm_allocate_amount(pageAmount);
+        lock_acquire(&space->lock);
+        if (page_table_physical_address(space->pageTable, virtualAddress) == NULL)
+        {
+            void* physicalAddress = pmm_allocate();
 
-    //Page Directory takes ownership of memory.
+            page_table_map(space->pageTable, virtualAddress, physicalAddress, 
+                PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR);
+        }
+        lock_release(&space->lock);
+    }
+
+    return address;
+}
+
+void* space_physical_to_virtual(Space* space, void* address)
+{
     lock_acquire(&space->lock);
-    page_directory_map_pages(space->pageDirectory, address, physicalAddress, pageAmount, PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR);
+    void* temp = page_table_physical_address(space->pageTable, address);
     lock_release(&space->lock);
-
-    return vmm_physical_to_virtual(physicalAddress);
+    return temp;
 }

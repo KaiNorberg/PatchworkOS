@@ -8,7 +8,7 @@
 
 #include "virtual_memory/virtual_memory.h"
 #include "file_system/file_system.h"
-#include "page_directory/page_directory.h"
+#include "page_table/page_table.h"
 
 void* load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
 {

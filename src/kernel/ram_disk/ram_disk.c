@@ -3,7 +3,7 @@
 #include "vfs/vfs.h"
 #include "vfs/utils/utils.h"
 #include "tty/tty.h"
-#include "scheduler/scheduler.h"
+#include "sched/sched.h"
 
 /*static inline RamFile* ram_directory_find_file(RamDirectory* directory, const char* filename)
 {
@@ -63,21 +63,21 @@ uint64_t ram_disk_open(Disk* disk, const char* path, uint64_t flags)
     RamDirectory* directory = ram_disk_traverse(disk, path);
     if (directory == NULL)
     {
-        scheduler_thread()->errno = EPATH;
+        sched_thread()->errno = EPATH;
         return ERROR;
     }
 
     const char* filename = vfs_basename(path);
     if (filename == NULL)
     {
-        scheduler_thread()->errno = EPATH;
+        sched_thread()->errno = EPATH;
         return ERROR;
     }
 
     RamFile* file = ram_directory_find_file(directory, filename);
     if (file == NULL)
     {
-        scheduler_thread()->errno = ENAME;
+        sched_thread()->errno = ENAME;
         return ERROR;
     }
 

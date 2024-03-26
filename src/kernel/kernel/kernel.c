@@ -12,7 +12,7 @@
 #include "vmm/vmm.h"
 #include "rsdt/rsdt.h"
 #include "smp/smp.h"
-#include "scheduler/scheduler.h"
+#include "sched/sched.h"
 #include "utils/utils.h"
 #include "process/process.h"
 #include "lock/lock.h"
@@ -21,8 +21,8 @@
 #include "vfs/vfs.h"
 #include "ram_disk/ram_disk.h"
 #include "registers/registers.h"
-#include "interrupts/interrupts.h"
-#include "program_loader/program_loader.h"
+#include "traps/traps.h"
+#include "loader/loader.h"
 
 static void deallocate_boot_info(BootInfo* bootInfo)
 {
@@ -65,8 +65,8 @@ void kernel_init(BootInfo* bootInfo)
     pic_init();
     time_init();
 
-    scheduler_start();
-    program_loader_init();
+    sched_start();
+    loader_init();
 
     vfs_init();
     ram_disk_init(bootInfo->ramRoot);
@@ -77,7 +77,7 @@ void kernel_init(BootInfo* bootInfo)
 void kernel_cpu_init(void)
 {
     Cpu* cpu = smp_self_brute();
-    msr_write(MSR_CPU_ID, cpu->id);
+    MSR_WRITE(MSR_CPU_ID, cpu->id);
 
     local_apic_init();
 
@@ -86,5 +86,5 @@ void kernel_cpu_init(void)
 
     idt_load();
 
-    cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);
+    CR4_WRITE(CR4_READ() | CR4_PAGE_GLOBAL_ENABLE);
 }

@@ -33,7 +33,6 @@ BASE_C_FLAGS = -O3 \
 	-Wall \
 	-Wextra \
 	-Werror \
-	-Wshadow \
 	-Wno-unused-variable \
 	-Wno-ignored-qualifiers \
 	-Wno-unused-parameter \

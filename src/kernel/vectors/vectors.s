@@ -9,30 +9,29 @@
 %macro VECTOR_ERR 1
 vector_%1:
     push qword %1
-    jmp common_vector
+    jmp vector_common
 %endmacro
 
 %macro VECTOR_NO_ERR 1
 vector_%1:
     push qword 0
     push qword %1
-    jmp common_vector
+    jmp vector_common
 %endmacro
 
-extern interrupt_handler
-
-extern scheduler_schedule
+extern trap_handler
+extern sched_schedule
 
 section .text
 
-common_vector:
+vector_common:
     PUSH_ALL_REGS
 
     mov rdi, rsp
-    call interrupt_handler
+    call trap_handler
 
     mov rdi, rsp
-    call scheduler_schedule
+    call sched_schedule
 
     POP_ALL_REGS
     add rsp, 16

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "types/types.h"
+#include "defs/defs.h"
 #include "rsdt/rsdt.h"
 
 #define MADT_RECORD_TYPE_LOCAL_APIC 0
@@ -9,13 +9,13 @@
 
 #define LOCAL_APIC_RECORD_GET_FLAG(record, flag) ((record->flags & flag) != 0)
 
-typedef struct __attribute__((packed))
+typedef struct PACKED
 {
     uint8_t type;
     uint8_t length;
 } RecordHeader;
 
-typedef struct __attribute__((packed))
+typedef struct PACKED
 {
     RecordHeader header;
 
@@ -24,7 +24,7 @@ typedef struct __attribute__((packed))
     uint32_t flags;
 } LocalApicRecord;
 
-typedef struct __attribute__((packed))
+typedef struct PACKED
 {
     SdtHeader header;
     uint32_t localApicAddress;

@@ -1,28 +1,44 @@
-#include "program_loader.h"
+#include "loader.h"
 
-#include "types/types.h"
 #include <internal/syscalls/syscalls.h>
 
 #include <common/elf/elf.h>
 
 #include "heap/heap.h"
+#include "defs/defs.h"
 #include "pmm/pmm.h"
 #include "vmm/vmm.h"
+#include "sched/sched.h"
 #include "utils/utils.h"
+#include "debug/debug.h"
 
-void program_loader_init(void)
+void loader_init(void)
 {
     //TODO: Program loader should run in kernel mode
-    uint64_t pageAmount = SIZE_IN_PAGES((uint64_t)&_programLoaderEnd - (uint64_t)&_programLoaderStart);
-    vmm_change_flags(&_programLoaderStart, pageAmount, PAGE_FLAG_USER_SUPERVISOR);
+    uint64_t pageAmount = SIZE_IN_PAGES((uint64_t)&_loaderEnd - (uint64_t)&_loaderStart);
+    vmm_change_flags(&_loaderStart, pageAmount, PAGE_FLAG_USER_SUPERVISOR);
 }
 
-void* program_loader_load(const char* executable)
+void* loader_allocate_stack()
+{    
+    Thread* thread = sched_thread();
+    void* address = (void*)(VMM_LOWER_HALF_MAX - (THREAD_USER_STACK_SIZE * (thread->id + 1) + PAGE_SIZE * (thread->id)));
+    if (space_allocate(sched_process()->space, address, THREAD_USER_STACK_SIZE / PAGE_SIZE) == NULL)
+    {
+        debug_panic("Failed to allocate user stack!");
+    }
+    else
+    {
+        return address + THREAD_USER_STACK_SIZE;
+    }
+}
+
+void* loader_load()
 {
     while (true)
     {
-        _Test(executable);
-        //_Sleep(1000000000);
+        _Test(0);
+        _Sleep(1000000000);
         //spawn(executable);
         //_Process_exit(0);
     }

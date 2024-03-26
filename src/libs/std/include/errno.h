@@ -8,21 +8,12 @@ extern "C" {
 //TODO: Implement thread local storage for errno
 
 #include "auxiliary/errno_t.h"
-
-//Not standard
-#define ERROR ((uint64_t)-1LL)
+#include "auxiliary/ERR.h"
 
 #define EDOM 1 // Math argument out of domain of func
 #define ERANGE 2 // Math result not representable
 #define EILSEQ 3 // Illegal byte sequence
 #define EFAULT 4 // Bad address
-#define EACCES 5 // Not allowed
-#define EPATH 6 // Invalid path
-#define ENAME 7 // Invalid name
-#define EEXIST 8 // Already exists
-#define EIMPL 9 // Not implemented
-#define EMFILE 10 // To many open files
-#define EBADF 11 // Bad file descriptor
 
 //Note: Values retrievd from linux
 /*

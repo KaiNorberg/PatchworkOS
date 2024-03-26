@@ -42,7 +42,7 @@ static inline uint64_t cpu_init(Cpu* cpu, uint8_t id, uint8_t localApicId)
         timeout--;
         if (timeout == 0)
         {
-            return ERROR;
+            return ERR;
         }
     }
 
@@ -51,7 +51,7 @@ static inline uint64_t cpu_init(Cpu* cpu, uint8_t id, uint8_t localApicId)
 
 void smp_entry(void)
 {
-    address_space_load(0);
+    space_load(0);
 
     kernel_cpu_init();
 
@@ -75,7 +75,7 @@ void smp_startup(Cpu cpus[])
             uint8_t id = newId;
             newId++;
 
-            if (cpu_init(&cpus[id], id, record->localApicId) == ERROR)
+            if (cpu_init(&cpus[id], id, record->localApicId) == ERR)
             {
                 tty_print("CPU ");
                 tty_printi(id);

@@ -2,10 +2,10 @@
 
 #include <errno.h>
 
-#include "types/types.h"
+#include "defs/defs.h"
 #include "vmm/vmm.h"
 #include "lock/lock.h"
-#include "interrupt_frame/interrupt_frame.h"
+#include "trap_frame/trap_frame.h"
 #include "vfs/file_table/file_table.h"
 
 #define THREAD_STATE_ACTIVE 0
@@ -16,13 +16,15 @@
 #define THREAD_PRIORITY_MIN 0
 #define THREAD_PRIORITY_MAX (THREAD_PRIORITY_LEVELS - 1)
 
-#define THREAD_KERNEL_STACK_SIZE PAGE_SIZE
+#define THREAD_KERNEL_STACK_SIZE (PAGE_SIZE)
+#define THREAD_USER_STACK_SIZE (PAGE_SIZE * 4)
 
 typedef struct
 {
     uint64_t id;
+    char executable[VFS_MAX_PATH_LENGTH];
     FileTable fileTable;
-    AddressSpace* addressSpace;
+    Space* space;
     bool killed;
     _Atomic uint64_t threadCount;
     _Atomic uint64_t newTid;
@@ -45,11 +47,11 @@ typedef struct
     uint8_t priority;
     uint8_t boost;
     Blocker blocker;
-    InterruptFrame interruptFrame;
+    TrapFrame trapFrame;
     uint8_t kernelStack[THREAD_KERNEL_STACK_SIZE];
 } Thread;
 
-Process* process_new(void);
+Process* process_new(const char* executable);
 
 Thread* thread_new(Process* process, void* entry, uint8_t priority);
 

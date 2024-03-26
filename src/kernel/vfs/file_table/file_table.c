@@ -4,7 +4,7 @@
 #include <errno.h>
 
 #include "heap/heap.h"
-#include "scheduler/scheduler.h"
+#include "sched/sched.h"
 
 void file_table_init(FileTable* table)
 {
@@ -25,7 +25,7 @@ void file_table_cleanup(FileTable* table)
 
 /*uint64_t file_table_open(Disk* disk, uint64_t flags, void* context)
 {
-    FileTable* table = &scheduler_process()->fileTable;
+    FileTable* table = &sched_process()->fileTable;
     lock_acquire(&table->lock);
 
     for (uint64_t i = 0; i < FILE_TABLE_LENGTH; i++)
@@ -47,18 +47,18 @@ void file_table_cleanup(FileTable* table)
     }
 
     lock_release(&table->lock);
-    scheduler_thread()->errno = EMFILE;
+    sched_thread()->errno = EMFILE;
     return ERROR;
 }
 
 uint64_t file_table_close(uint64_t fd)
 {    
-    FileTable* table = &scheduler_process()->fileTable;
+    FileTable* table = &sched_process()->fileTable;
     lock_acquire(&table->lock);
 
     if (table->files[fd] == NULL)
     {
-        scheduler_thread()->errno = EBADF;
+        sched_thread()->errno = EBADF;
         lock_release(&table->lock);
         return NULL;
     }
@@ -74,17 +74,17 @@ File* file_table_get(uint64_t fd)
 {
     if (fd >= FILE_TABLE_LENGTH)
     {
-        scheduler_thread()->errno = EBADF;
+        sched_thread()->errno = EBADF;
         return NULL;
     }
 
-    FileTable* table = &scheduler_process()->fileTable;
+    FileTable* table = &sched_process()->fileTable;
     lock_acquire(&table->lock);
 
     File* file = table->files[fd];
     if (file->ref == 0)
     {
-        scheduler_thread()->errno = EBADF;
+        sched_thread()->errno = EBADF;
         lock_release(&table->lock);
         return NULL;
     }
@@ -96,7 +96,7 @@ File* file_table_get(uint64_t fd)
 
 void file_table_put(File* file)
 {    
-    FileTable* table = &scheduler_process()->fileTable;
+    FileTable* table = &sched_process()->fileTable;
     lock_acquire(&table->lock);
 
     file_table_deref(file);

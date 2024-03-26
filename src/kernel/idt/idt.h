@@ -1,6 +1,6 @@
 #pragma once
 
-#include "types/types.h"
+#include "defs/defs.h"
 #include "vectors/vectors.h"
 
 #define IDT_INTERRUPT_GATE 0b1110
@@ -11,7 +11,7 @@
 #define IDT_RING2 0b10
 #define IDT_RING3 0b11
 
-typedef struct __attribute__((packed))
+typedef struct PACKED
 {
 	uint16_t isrLow;      
 	uint16_t codeSegment;
@@ -22,13 +22,13 @@ typedef struct __attribute__((packed))
 	uint32_t reserved;
 } IdtEntry;
 
-typedef struct __attribute__((packed))
+typedef struct PACKED
 {
 	uint16_t size;
 	uint64_t offset;
 } IdtDesc;
 
-typedef struct __attribute__((packed))
+typedef struct PACKED
 {
 	IdtEntry entries[VECTOR_AMOUNT];
 } Idt;

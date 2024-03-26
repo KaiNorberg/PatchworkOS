@@ -6,25 +6,23 @@
 #include "smp/smp.h"
 #include "vmm/vmm.h"
 #include "heap/heap.h"
-#include "interrupts/interrupts.h"
-#include "scheduler/scheduler.h"
+#include "traps/traps.h"
+#include "sched/sched.h"
 #include "debug/debug.h"
 #include "registers/registers.h"
 
-static uint64_t scheduler_unblock_iterate(void* element)
+static uint64_t sched_unblock_iterate(void* element)
 {
     Thread* thread = element;
 
     if (thread->process->killed)
     {
         thread_free(thread);
-
         return ARRAY_ITERATE_ERASE;
     }
     else if (thread->blocker.callback(thread->blocker.context))
     {
-        scheduler_push(thread, 1, -1);
-
+        sched_push(thread, 1, -1);
         return ARRAY_ITERATE_ERASE;
     }
     else
@@ -33,7 +31,7 @@ static uint64_t scheduler_unblock_iterate(void* element)
     }
 }
 
-static inline Thread* scheduler_next_thread(Scheduler* scheduler)
+static inline Thread* sched_next_thread(Scheduler* scheduler)
 {
     if (scheduler->runningThread != NULL && scheduler->runningThread->timeEnd > time_nanoseconds())
     {
@@ -61,7 +59,7 @@ static inline Thread* scheduler_next_thread(Scheduler* scheduler)
     return NULL;
 }
 
-static inline void scheduler_switch_thread(InterruptFrame* interruptFrame, Scheduler* scheduler, Thread* next)
+static inline void sched_switch_thread(TrapFrame* trapFrame, Scheduler* scheduler, Thread* next)
 {
     Cpu* self = smp_self_unsafe();
 
@@ -69,30 +67,30 @@ static inline void scheduler_switch_thread(InterruptFrame* interruptFrame, Sched
     {
         if (scheduler->runningThread != NULL)
         {
-            interrupt_frame_copy(&scheduler->runningThread->interruptFrame, interruptFrame);
-            scheduler_push(scheduler->runningThread, 0, self->id);
+            trap_frame_copy(&scheduler->runningThread->trapFrame, trapFrame);
+            sched_push(scheduler->runningThread, 0, self->id);
         }
 
         next->timeStart = time_nanoseconds();
-        next->timeEnd = next->timeStart + SCHEDULER_TIME_SLICE;
+        next->timeEnd = next->timeStart + SCHED_TIME_SLICE;
 
-        interrupt_frame_copy(interruptFrame, &next->interruptFrame);
+        trap_frame_copy(trapFrame, &next->trapFrame);
 
-        address_space_load(next->process->addressSpace);
+        space_load(next->process->space);
         tss_stack_load(&self->tss, (void*)((uint64_t)next->kernelStack + THREAD_KERNEL_STACK_SIZE));
 
         scheduler->runningThread = next;
     }
     else if (scheduler->runningThread == NULL) //Idle
     {
-        memset(interruptFrame, 0, sizeof(InterruptFrame));
-        interruptFrame->instructionPointer = (uint64_t)scheduler_idle_loop;
-        interruptFrame->codeSegment = GDT_KERNEL_CODE;
-        interruptFrame->stackSegment = GDT_KERNEL_DATA;
-        interruptFrame->flags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
-        interruptFrame->stackPointer = (uint64_t)smp_self_unsafe()->idleStack + CPU_IDLE_STACK_SIZE;
+        memset(trapFrame, 0, sizeof(TrapFrame));
+        trapFrame->rip = (uint64_t)sched_idle_loop;
+        trapFrame->cs = GDT_KERNEL_CODE;
+        trapFrame->ss = GDT_KERNEL_DATA;
+        trapFrame->rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
+        trapFrame->rsp = (uint64_t)smp_self_unsafe()->idleStack + CPU_IDLE_STACK_SIZE;
 
-        address_space_load(NULL);
+        space_load(NULL);
         tss_stack_load(&self->tss, NULL);
     }
     else
@@ -101,18 +99,18 @@ static inline void scheduler_switch_thread(InterruptFrame* interruptFrame, Sched
     }
 }
 
-void scheduler_schedule(InterruptFrame* interruptFrame)
+void sched_schedule(TrapFrame* trapFrame)
 {
     Cpu* self = smp_self();
     Scheduler* scheduler = &self->scheduler;
 
-    if (self->interruptDepth != 0)
+    if (self->trapDepth != 0)
     {
         smp_put();
         return;
     }
 
-    array_iterate(scheduler->blockedThreads, scheduler_unblock_iterate);
+    array_iterate(scheduler->blockedThreads, sched_unblock_iterate);
 
     while (true)
     {
@@ -142,7 +140,7 @@ void scheduler_schedule(InterruptFrame* interruptFrame)
         break;
         case THREAD_STATE_BLOCKED:
         {            
-            interrupt_frame_copy(&scheduler->runningThread->interruptFrame, interruptFrame);
+            trap_frame_copy(&scheduler->runningThread->trapFrame, trapFrame);
             array_push(scheduler->blockedThreads, scheduler->runningThread);
             scheduler->runningThread = NULL;
         }
@@ -158,10 +156,10 @@ void scheduler_schedule(InterruptFrame* interruptFrame)
     Thread* next;
     while (true)
     {
-        next = scheduler_next_thread(scheduler);
+        next = sched_next_thread(scheduler);
 
         //If next has been killed and is in userspace kill next.
-        if (next != NULL && next->process->killed && next->interruptFrame.codeSegment != GDT_KERNEL_CODE)
+        if (next != NULL && next->process->killed && next->trapFrame.cs != GDT_KERNEL_CODE)
         {
             queue_push(scheduler->killedThreads, next);
             next = NULL;
@@ -172,12 +170,12 @@ void scheduler_schedule(InterruptFrame* interruptFrame)
         }
     }
 
-    scheduler_switch_thread(interruptFrame, scheduler, next);
+    sched_switch_thread(trapFrame, scheduler, next);
 
     smp_put();
 }
 
-void scheduler_push(Thread* thread, uint8_t boost, uint16_t preferred)
+void sched_push(Thread* thread, uint8_t boost, uint16_t preferred)
 {
     int64_t bestLength = INT64_MAX;
     uint64_t best = 0;

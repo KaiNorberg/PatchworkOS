@@ -1,17 +1,19 @@
 [bits 64]
 
+%include "gdt/gdt.inc"
+
 section .text
 
 ;rdi = gdt descriptor
 global gdt_load_descriptor
 gdt_load_descriptor:    
     lgdt  [rdi]
-    push 0x08
+    push GDT_KERNEL_CODE
     lea rax, [rel .reload_CS]
     push rax
     retfq
 .reload_CS:
-    mov ax, 0x10
+    mov ax, GDT_KERNEL_DATA
     mov ds, ax
     mov es, ax
     mov fs, ax

@@ -1,7 +1,7 @@
 %define PHYSICAL_ADDRESS(address) address - smp_trampoline_virtual_start + SMP_TRAMPOLINE_PHYSICAL_START 
 
 SMP_TRAMPOLINE_PHYSICAL_START equ 0x8000
-SMP_TRAMPOLINE_PAGE_DIRECTORY_ADDRESS equ 0x8FF0
+SMP_TRAMPOLINE_PAGE_TABLE_ADDRESS equ 0x8FF0
 SMP_TRAMPOLINE_STACK_ADDRESS equ 0x8FE0
 SMP_TRAMPOLINE_ENTRY_ADDRESS equ 0x8FD0
 
@@ -41,7 +41,7 @@ smp_trampoline_protected_mode_entry:
     or  eax, (1 << 8)
     wrmsr
 
-    mov eax, dword [SMP_TRAMPOLINE_PAGE_DIRECTORY_ADDRESS]
+    mov eax, dword [SMP_TRAMPOLINE_PAGE_TABLE_ADDRESS]
     mov cr3, eax
 
     mov edx, cr0

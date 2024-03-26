@@ -145,7 +145,7 @@ void debug_panic(const char* message)
     }
 }
 
-void debug_exception(InterruptFrame const* interruptFrame, const char* message)
+void debug_exception(TrapFrame const* trapFrame, const char* message)
 {
     tty_acquire();
 
@@ -157,41 +157,37 @@ void debug_exception(InterruptFrame const* interruptFrame, const char* message)
     debug_start(message);
 
     debug_move("Interrupt Frame", 0, 0);
-    if (interruptFrame != NULL)
+    if (trapFrame != NULL)
     {
-        debug_print("Vector = ", interruptFrame->vector);
-        debug_print("Error Code = ", interruptFrame->errorCode);
-        debug_print("Instruction Pointer = ", interruptFrame->instructionPointer);
-        debug_print("Stack Pointer = ", interruptFrame->stackPointer);
-        debug_print("RFLAGS = ", interruptFrame->flags);
-        debug_print("Code Segment = ", interruptFrame->codeSegment);
-        debug_print("Stack Segment = ", interruptFrame->stackSegment);
-
-        uint64_t cr2 = cr2_read();
-        uint64_t cr3 = cr3_read();
-        uint64_t cr4 = cr4_read();
-
+        debug_print("Vector = ", trapFrame->vector);
+        debug_print("Error Code = ", trapFrame->errorCode);
+        debug_print("RIP = ", trapFrame->rip);
+        debug_print("RSP = ", trapFrame->rsp);
+        debug_print("RFLAGS = ", trapFrame->rflags);
+        debug_print("CS = ", trapFrame->cs);
+        debug_print("SS = ", trapFrame->ss);
+        
         debug_move("Registers", 2, 0);
-        debug_print("R9 = ", interruptFrame->r9);
-        debug_print("R8 = ", interruptFrame->r8);
-        debug_print("RBP = ", interruptFrame->rbp);
-        debug_print("RDI = ", interruptFrame->rdi);
-        debug_print("RSI = ", interruptFrame->rsi);
-        debug_print("RDX = ", interruptFrame->rdx);
-        debug_print("RCX = ", interruptFrame->rcx);
-        debug_print("RBX = ", interruptFrame->rbx);
-        debug_print("RAX = ", interruptFrame->rax);
+        debug_print("R9 = ", trapFrame->r9);
+        debug_print("R8 = ", trapFrame->r8);
+        debug_print("RBP = ", trapFrame->rbp);
+        debug_print("RDI = ", trapFrame->rdi);
+        debug_print("RSI = ", trapFrame->rsi);
+        debug_print("RDX = ", trapFrame->rdx);
+        debug_print("RCX = ", trapFrame->rcx);
+        debug_print("RBX = ", trapFrame->rbx);
+        debug_print("RAX = ", trapFrame->rax);
 
         debug_move(NULL, 3, 0);
-        debug_print("CR2 = ", cr2);
-        debug_print("CR3 = ", cr3);
-        debug_print("CR4 = ", cr4);
-        debug_print("R15 = ", interruptFrame->r15);
-        debug_print("R14 = ", interruptFrame->r14);
-        debug_print("R13 = ", interruptFrame->r13);
-        debug_print("R12 = ", interruptFrame->r12);
-        debug_print("R11 = ", interruptFrame->r11);
-        debug_print("R10 = ", interruptFrame->r10);
+        debug_print("CR2 = ", CR2_READ());
+        debug_print("CR3 = ", CR3_READ());
+        debug_print("CR4 = ", CR4_READ());
+        debug_print("R15 = ", trapFrame->r15);
+        debug_print("R14 = ", trapFrame->r14);
+        debug_print("R13 = ", trapFrame->r13);
+        debug_print("R12 = ", trapFrame->r12);
+        debug_print("R11 = ", trapFrame->r11);
+        debug_print("R10 = ", trapFrame->r10);
     }
     else
     {

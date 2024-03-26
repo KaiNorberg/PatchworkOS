@@ -1,6 +1,6 @@
 #pragma once
 
-#include "types/types.h"
+#include "defs/defs.h"
 
 //TODO: Implement page aligned allocation, change to bitmap heap?
 

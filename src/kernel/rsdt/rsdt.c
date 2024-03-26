@@ -23,17 +23,17 @@ void rsdt_init(Xsdp* xsdp)
 {
     tty_start_message("Parsing RSDT");
 
-    xsdp = vmm_physical_to_virtual(xsdp);
+    xsdp = VMM_LOWER_TO_HIGHER(xsdp);
 
     tty_assert(xsdp->revision == ACPI_REVISION_2_0, "Incompatible ACPI revision");
     tty_assert(rsdt_valid_checksum(xsdp, xsdp->length), "Invalid XSDP checksum");
 
-    xsdt = vmm_physical_to_virtual((void*)xsdp->xsdtAddress);
+    xsdt = VMM_LOWER_TO_HIGHER((void*)xsdp->xsdtAddress);
     tableAmount = (xsdt->header.length - sizeof(SdtHeader)) / 8;
 
     for (uint64_t i = 0; i < tableAmount; i++)
     {
-        SdtHeader* table = vmm_physical_to_virtual(xsdt->tables[i]);
+        SdtHeader* table = VMM_LOWER_TO_HIGHER(xsdt->tables[i]);
 
         if (!rsdt_valid_checksum(table, table->length))
         {
@@ -51,7 +51,7 @@ SdtHeader* rsdt_lookup(const char* signature)
 {   
     for (uint64_t i = 0; i < tableAmount; i++)
     {
-        SdtHeader* table = vmm_physical_to_virtual(xsdt->tables[i]);
+        SdtHeader* table = VMM_LOWER_TO_HIGHER(xsdt->tables[i]);
 
         if (memcmp(table->signature, signature, 4) == 0)
         {

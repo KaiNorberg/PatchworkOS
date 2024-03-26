@@ -2,7 +2,7 @@
 
 #include <sys/io.h>
 
-#include "types/types.h"
+#include "defs/defs.h"
 #include "lock/lock.h"
 
 //Note: Only supports ram disks for now.

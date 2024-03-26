@@ -34,11 +34,11 @@ SECTIONS
 		*(.smp_trampoline)
 	}
 
-	.program_loader : ALIGN(4K)
+	.loader : ALIGN(4K)
 	{	
-		_programLoaderStart = .;
-		*(.program_loader)
-		_programLoaderEnd = .;
+		_loaderStart = .;
+		*(.loader)
+		_loaderEnd = .;
 	}
 
 	_kernelEnd = .;

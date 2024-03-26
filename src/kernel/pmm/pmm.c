@@ -19,6 +19,27 @@ static uint64_t usablePageAmount = 0;
 
 static Lock lock;
 
+static inline uint8_t is_type_usable(uint64_t memoryType)
+{
+	return !(memoryType == EFI_UNUSABLE_MEMORY ||
+		memoryType == EFI_ACPI_RECLAIM_MEMORY ||
+		memoryType == EFI_ACPI_MEMORY_NVS ||
+		memoryType == EFI_MEMORY_MAPPED_IO ||
+		memoryType == EFI_MEMORY_MAPPED_IO_PORT_SPACE ||
+		memoryType == EFI_PAL_CODE ||
+		memoryType == EFI_RESERVED ||
+		memoryType == EFI_PERSISTENT_MEMORY);
+}
+
+static inline uint8_t is_type_reserved(uint64_t memoryType)
+{
+	return !(memoryType == EFI_CONVENTIONAL_MEMORY ||
+		memoryType == EFI_LOADER_CODE ||
+		memoryType == EFI_LOADER_DATA ||
+		memoryType == EFI_BOOT_SERVICES_CODE ||
+		memoryType == EFI_BOOT_SERVICES_DATA);
+}
+
 static inline bool pmm_is_reserved(void* address)
 {   
     return (bitmap[QWORD_INDEX(address)] >> BIT_INDEX(address)) & 1ULL;
@@ -45,7 +66,7 @@ static void pmm_allocate_bitmap(EfiMemoryMap* memoryMap)
         const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
         highestAddress = MAX(highestAddress, (uintptr_t)desc->physicalStart + desc->amountOfPages * PAGE_SIZE);        
         
-        if (is_memory_type_usable(desc->type))
+        if (is_type_usable(desc->type))
         {
             usablePageAmount += desc->amountOfPages;
         }
@@ -57,7 +78,7 @@ static void pmm_allocate_bitmap(EfiMemoryMap* memoryMap)
     {
         const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
         
-        if (!is_memory_type_reserved(desc->type) && bitmapSize < desc->amountOfPages * PAGE_SIZE)
+        if (!is_type_reserved(desc->type) && bitmapSize < desc->amountOfPages * PAGE_SIZE)
         {
             bitmap = desc->virtualStart;    
             memset(bitmap, INT32_MAX, bitmapSize);
@@ -72,14 +93,14 @@ static void pmm_load_memory_map(EfiMemoryMap* memoryMap)
     {
         const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
 
-        if (!is_memory_type_reserved(desc->type))
+        if (!is_type_reserved(desc->type))
         {
             pmm_free_pages(desc->physicalStart, desc->amountOfPages);
         }
     }
 
-    pmm_reserve_pages(vmm_virtual_to_physical(bitmap), SIZE_IN_PAGES(bitmapSize));
-    pmm_reserve_page(0);
+    pmm_reserve_pages(VMM_HIGHER_TO_LOWER(bitmap), SIZE_IN_PAGES(bitmapSize));
+    pmm_reserve_page(0); //Unecessary
 }
 
 void pmm_init(EfiMemoryMap* memoryMap)
@@ -109,10 +130,8 @@ void* pmm_allocate(void)
         }
     }
 
-    debug_panic("Physical Memory Manager full!");
-
     lock_release(&lock);
-    return NULL;
+    debug_panic("Physical Memory Manager full!");
 }
 
 void* pmm_allocate_amount(uint64_t amount)
@@ -121,6 +140,8 @@ void* pmm_allocate_amount(uint64_t amount)
     {
         return pmm_allocate();
     }
+
+    //TODO: Optimize this, remove this?
 
     lock_acquire(&lock);
 
@@ -151,11 +172,9 @@ void* pmm_allocate_amount(uint64_t amount)
             }
         }
     }
-    
-    debug_panic("Page allocator full!");
 
     lock_release(&lock);
-    return NULL;
+    debug_panic("Page allocator full!");
 }
 
 void pmm_free_page(void* address)
