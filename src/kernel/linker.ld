@@ -34,12 +34,5 @@ SECTIONS
 		*(.smp_trampoline)
 	}
 
-	.loader : ALIGN(4K)
-	{	
-		_loaderStart = .;
-		*(.loader)
-		_loaderEnd = .;
-	}
-
 	_kernelEnd = .;
 }

@@ -12,14 +12,7 @@
 #include "utils/utils.h"
 #include "debug/debug.h"
 
-void loader_init(void)
-{
-    //TODO: Program loader should run in kernel mode
-    uint64_t pageAmount = SIZE_IN_PAGES((uint64_t)&_loaderEnd - (uint64_t)&_loaderStart);
-    vmm_change_flags(&_loaderStart, pageAmount, PAGE_FLAG_USER_SUPERVISOR);
-}
-
-void* loader_allocate_stack()
+static inline void* loader_allocate_stack()
 {    
     Thread* thread = sched_thread();
     void* address = (void*)(VMM_LOWER_HALF_MAX - (THREAD_USER_STACK_SIZE * (thread->id + 1) + PAGE_SIZE * (thread->id)));
@@ -33,71 +26,74 @@ void* loader_allocate_stack()
     }
 }
 
-void* loader_load()
+static inline void* loader_load_program()
 {
-    while (true)
+    Process* process = sched_process();
+
+    fd_t fd = vfs_open(process->executable, O_READ);
+    if (fd == ERR)
     {
-        _Test(0);
-        _Sleep(1000000000);
-        //spawn(executable);
-        //_Process_exit(0);
+        sched_process_exit(EEXEC);
     }
 
-    /*int64_t fd = sys_open(executable, FILE_FLAG_READ);
-    if (fd == -1)
+    ElfHeader header;
+    if (vfs_read(fd, &header, sizeof(ElfHeader)) != sizeof(ElfHeader))
     {
-        sys_exit(sys_status());
-    }*/
-
-    /*ElfHeader header;
-    if (read(fd, &header, sizeof(ElfHeader)) == -1)
-    {
-        exit(status());
+        sched_process_exit(EEXEC);
     }
     if (header.ident[0] != 0x7F || header.ident[1] != 'E' || header.ident[2] != 'L' || header.ident[3] != 'F')
     {
-        exit(STATUS_CORRUPT);
+        sched_process_exit(EEXEC);
     }
 
-    uint64_t programHeaderTableSize = header.programHeaderAmount * header.programHeaderSize;
-    ElfProgramHeader programHeaders[header.programHeaderAmount];
-    if (read(fd, &programHeaders, programHeaderTableSize) == -1)
+    uint64_t headerTableSize = header.programHeaderAmount * header.programHeaderSize;
+    ElfProgramHeader headerTable[header.programHeaderAmount];
+    if (vfs_read(fd, &headerTable, headerTableSize) != headerTableSize)
     {
-        exit(status());
+        sched_process_exit(EEXEC);
     }
 
-	for (ElfProgramHeader* programHeader = programHeaders;
-        (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize;
+	for (ElfProgramHeader* programHeader = headerTable;
+        (uint64_t)programHeader < (uint64_t)headerTable + headerTableSize;
         programHeader = (ElfProgramHeader*)((uint64_t)programHeader + header.programHeaderSize))
 	{
         switch (programHeader->type)
         {
 		case PT_LOAD:
         {
-            if (seek(fd, programHeader->offset, FILE_SEEK_SET) == -1)
+            if (vfs_seek(fd, programHeader->offset, SEEK_SET) == ERR)
             {
-                exit(status());
+                sched_process_exit(EEXEC);
             }
 
-            if (map((void*)programHeader->virtualAddress, (void*)(programHeader->virtualAddress + programHeader->memorySize)) == -1)
+            void* address = (void*)programHeader->virtualAddress;
+
+            if (space_allocate(process->space, address, SIZE_IN_PAGES(programHeader->memorySize)) == NULL)
             {
-                exit(status());
+                sched_process_exit(EEXEC);
             }
 
-            if (read(fd, (void*)programHeader->virtualAddress, programHeader->fileSize) == -1)
+            if (vfs_read(fd, address, programHeader->fileSize) == ERR)
             {
-                exit(status());
+                sched_process_exit(EEXEC);
             }
 		}
 		break;
 		}
 	}
 
-    if (close(fd) == -1)
+    if (vfs_close(fd) == ERR)
     {
-        exit(status());
+        sched_process_exit(EEXEC);
     }
 
-    return (void*)header.entry;*/
-    return NULL;
+    return (void*)header.entry;
+}
+
+void loader_entry()
+{
+    void* rsp = loader_allocate_stack();
+    void* rip = loader_load_program();
+
+    loader_jump_to_user_space(rsp, rip);
 }

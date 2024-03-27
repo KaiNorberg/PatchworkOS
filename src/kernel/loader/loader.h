@@ -2,15 +2,6 @@
 
 #include "defs/defs.h"
 
-//All of this is temporary for testing because we dont have a vfs to load programs
+extern NORETURN void loader_jump_to_user_space(void* rsp, void* rip);
 
-extern uint64_t _loaderStart;
-extern uint64_t _loaderEnd;
-
-extern void loader_entry();
-
-void loader_init();
-
-void* loader_allocate_stack();
-
-void* loader_load() __attribute__((section(".loader")));
+NORETURN void loader_entry();

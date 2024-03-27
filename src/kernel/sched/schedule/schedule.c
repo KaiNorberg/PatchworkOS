@@ -15,12 +15,7 @@ static uint64_t sched_unblock_iterate(void* element)
 {
     Thread* thread = element;
 
-    if (thread->process->killed)
-    {
-        thread_free(thread);
-        return ARRAY_ITERATE_ERASE;
-    }
-    else if (thread->blocker.callback(thread->blocker.context))
+    if (thread->blocker.callback(thread->blocker.context))
     {
         sched_push(thread, 1, -1);
         return ARRAY_ITERATE_ERASE;

@@ -75,6 +75,7 @@ PageTable* page_table_new(void)
 
 void page_table_free(PageTable* pageTable)
 {    
+    //Will also free any pages mapped in the page table
     page_table_free_level(pageTable, 4);
 }
 

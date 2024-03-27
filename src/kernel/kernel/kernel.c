@@ -66,7 +66,6 @@ void kernel_init(BootInfo* bootInfo)
     time_init();
 
     sched_start();
-    loader_init();
 
     vfs_init();
     ram_disk_init(bootInfo->ramRoot);

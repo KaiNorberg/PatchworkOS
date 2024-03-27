@@ -43,7 +43,7 @@ Thread* thread_new(Process* process, void* entry, uint8_t priority)
     thread->id = atomic_fetch_add(&process->newTid, 1);
     thread->timeStart = 0;
     thread->timeEnd = 0;
-    thread->errno = 0;
+    thread->error = 0;
     thread->state = THREAD_STATE_ACTIVE;
     thread->priority = priority;
     thread->boost = 0;

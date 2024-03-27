@@ -6,6 +6,7 @@
 #include "vmm/vmm.h"
 #include "lock/lock.h"
 #include "trap_frame/trap_frame.h"
+#include "vfs/vfs.h"
 #include "vfs/file_table/file_table.h"
 
 #define THREAD_STATE_ACTIVE 0
@@ -42,7 +43,7 @@ typedef struct
     uint64_t id;
     uint64_t timeEnd;
     uint64_t timeStart;
-    errno_t errno;
+    errno_t error;
     uint8_t state;
     uint8_t priority;
     uint8_t boost;

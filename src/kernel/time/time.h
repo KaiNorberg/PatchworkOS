@@ -10,6 +10,20 @@
 #define NANOSECONDS_PER_SECOND 1000000000
 #define NANOSECONDS_PER_MILLISECOND 1000000
 
+#define BENCHMARK(func) ({ \
+    tty_acquire(); \
+    tty_print("Starting benchmark... "); \
+    tty_release(); \
+    uint64_t start = time_milliseconds(); \
+    func(); \
+    uint64_t end = time_milliseconds(); \
+    tty_acquire(); \
+    tty_print("Time taken: "); \
+    tty_printi(end - start); \
+    tty_print(" MS\n"); \
+    tty_release(); \
+})
+
 void time_init(void);
 
 void time_accumulate(void);

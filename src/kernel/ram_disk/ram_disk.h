@@ -2,4 +2,4 @@
 
 #include <common/boot_info/boot_info.h>
 
-void ram_disk_init(RamDirectory* root);
+void ram_disk_init(RamDir* root);

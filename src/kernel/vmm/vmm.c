@@ -110,6 +110,8 @@ void* space_allocate(Space* space, void* address, uint64_t pageAmount)
         return NULLPTR(EFAULT);
     }
 
+    address = (void*)round_down((uint64_t)address, PAGE_SIZE);
+
     for (uint64_t i = 0; i < pageAmount; i++)
     {            
         void* virtualAddress = (void*)((uint64_t)address + i * PAGE_SIZE);
@@ -117,9 +119,8 @@ void* space_allocate(Space* space, void* address, uint64_t pageAmount)
         lock_acquire(&space->lock);
         if (page_table_physical_address(space->pageTable, virtualAddress) == NULL)
         {
-            void* physicalAddress = pmm_allocate();
-
-            page_table_map(space->pageTable, virtualAddress, physicalAddress, 
+            //Page table takes ownership of memory
+            page_table_map(space->pageTable, virtualAddress, pmm_allocate(), 
                 PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR);
         }
         lock_release(&space->lock);

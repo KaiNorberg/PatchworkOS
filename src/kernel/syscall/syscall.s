@@ -1,6 +1,6 @@
 [bits 64]
 
-%include "internal/syscalls/syscalls.inc"
+%define SYSCALL_AMOUNT 11
 
 extern syscall_handler_end
 extern syscallTable
@@ -14,7 +14,9 @@ syscall_handler:
     jge .not_available
 
     call [syscallTable + rax * 8]
+    push rax
     call syscall_handler_end
+    pop rax
 
     iretq
 .not_available:

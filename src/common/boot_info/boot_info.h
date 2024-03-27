@@ -82,23 +82,23 @@ typedef struct RamFile
 	struct RamFile* prev;
 } RamFile;
 
-typedef struct RamDirectory
+typedef struct RamDir
 {
 	char name[32];
 	RamFile* firstFile;
 	RamFile* lastFile;
-	struct RamDirectory* firstChild;
-	struct RamDirectory* lastChild;
-	struct RamDirectory* next;
-	struct RamDirectory* prev;
-} RamDirectory;
+	struct RamDir* firstChild;
+	struct RamDir* lastChild;
+	struct RamDir* next;
+	struct RamDir* prev;
+} RamDir;
 
 typedef struct 
 {    
 	EfiMemoryMap memoryMap;
 	GopBuffer gopBuffer;
 	PsfFont font;
-	RamDirectory* ramRoot;
+	RamDir* ramRoot;
 	void* rsdp;
 	void* runtimeServices;
 } BootInfo;

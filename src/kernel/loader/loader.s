@@ -3,22 +3,15 @@
 %include "gdt/gdt.inc"
 %include "registers/registers.inc"
 
-section .loader
+section .text
 
-extern loader_load
-extern loader_allocate_stack
-
-global loader_entry
-loader_entry:
-    call loader_allocate_stack
-
+;rdi = rsp
+;rsi = rip
+global loader_jump_to_user_space
+loader_jump_to_user_space:
     push GDT_USER_DATA | 3
-    push rax
+    push rdi
     push RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET
     push GDT_USER_CODE | 3
-    push loader_load
+    push rsi
     iretq
-    
-;Janky but it avoids code duplication
-%define .text .loader
-%include "internal/syscalls/syscalls.s"

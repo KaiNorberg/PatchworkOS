@@ -16,11 +16,6 @@
 #include "loader/loader.h"
 #include "sched/schedule/schedule.h"
 
-static bool sched_sleep_callback(uint64_t deadline)
-{
-    return deadline <= time_nanoseconds();
-}
-
 static void sched_spawn_init_thread(void)
 {
     Process* process = process_new(0);
@@ -76,6 +71,11 @@ Process* sched_process(void)
 void sched_yield(void)
 {
     SMP_SEND_IPI_TO_SELF(IPI_SCHEDULE);
+}
+
+static bool sched_sleep_callback(uint64_t deadline)
+{
+    return deadline <= time_nanoseconds();
 }
 
 void sched_sleep(uint64_t nanoseconds)

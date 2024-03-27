@@ -7,13 +7,27 @@ extern "C" {
 
 //TODO: Implement thread local storage for errno
 
+#include "auxiliary/config.h"
 #include "auxiliary/errno_t.h"
 #include "auxiliary/ERR.h"
+
+_EXPORT int* _ErrnoFunc();
+
+#define errno (*_ErrnoFunc())
 
 #define EDOM 1 // Math argument out of domain of func
 #define ERANGE 2 // Math result not representable
 #define EILSEQ 3 // Illegal byte sequence
-#define EFAULT 4 // Bad address
+#define EIMPL 4 // Not implemented
+#define EFAULT 5 // Bad address
+#define EEXIST 6 // Already exists
+#define EPATH 7 // Invalid path
+#define ENAME 8 // Invalid name
+#define EMFILE 9 // To many open files
+#define EBADF 10 // Bad file descriptor
+#define EACCES 11 // Permission denied
+#define EEXEC 12 // Bad executable
+#define ENOMEM 13 // Out of memory
 
 //Note: Values retrievd from linux
 /*

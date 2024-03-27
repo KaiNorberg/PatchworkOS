@@ -15,7 +15,7 @@
 #include "sched/sched.h"
 #include "loader/loader.h"
 
-//TODO: Improve verify funcs
+//TODO: Improve verify funcs, improve multithreading string safety
 
 static inline bool verify_pointer(const void* pointer, uint64_t size)
 {
@@ -63,7 +63,47 @@ void* syscall_allocate(void* address, uint64_t length)
 
 errno_t syscall_kernel_errno(void)
 {
-    return sched_thread()->errno;
+    return sched_thread()->error;
+}
+
+fd_t syscall_open(const char* path, uint8_t flags)
+{
+    if (!verify_string(path))
+    {
+        return ERROR(EFAULT);
+    }
+
+    return vfs_open(path, flags);
+}
+
+uint64_t syscall_close(fd_t fd)
+{
+    return vfs_close(fd);
+}
+
+uint64_t syscall_read(fd_t fd, void* buffer, uint64_t count)
+{
+    if (!verify_pointer(buffer, count))
+    {
+        return ERROR(EFAULT);
+    }
+
+    return vfs_read(fd, buffer, count);
+}
+
+uint64_t syscall_write(fd_t fd, const void* buffer, uint64_t count)
+{
+    if (!verify_pointer(buffer, count))
+    {
+        return ERROR(EFAULT);
+    }
+
+    return vfs_write(fd, buffer, count);
+}
+
+uint64_t syscall_seek(fd_t fd, int64_t offset, uint8_t origin)
+{
+    return vfs_seek(fd, offset, origin);
 }
 
 uint64_t syscall_test(const char* string)
@@ -122,5 +162,10 @@ void* syscallTable[] =
     syscall_sleep,
     syscall_allocate,
     syscall_kernel_errno,
+    syscall_open,
+    syscall_close,
+    syscall_read,
+    syscall_write,
+    syscall_seek,
     syscall_test
 };

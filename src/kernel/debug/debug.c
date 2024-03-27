@@ -156,7 +156,7 @@ void debug_exception(TrapFrame const* trapFrame, const char* message)
 
     debug_start(message);
 
-    debug_move("Interrupt Frame", 0, 0);
+    debug_move("Trap Frame", 0, 0);
     if (trapFrame != NULL)
     {
         debug_print("Vector = ", trapFrame->vector);

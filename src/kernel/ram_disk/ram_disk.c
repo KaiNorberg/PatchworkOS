@@ -1,18 +1,21 @@
 #include "ram_disk.h"
 
+#include <string.h>
+
 #include "vfs/vfs.h"
 #include "vfs/utils/utils.h"
 #include "tty/tty.h"
 #include "sched/sched.h"
+#include "utils/utils.h"
 
-/*static inline RamFile* ram_directory_find_file(RamDirectory* directory, const char* filename)
+static inline RamFile* ram_dir_find_file(RamDir* dir, const char* filename)
 {
-    RamFile* file = directory->firstFile;
+    RamFile* file = dir->firstFile;
     while (file != NULL)
     {
         if (vfs_compare_names(file->name, filename))
         {
-            break;
+            return file;
         }
         else
         {
@@ -20,17 +23,17 @@
         }
     }
 
-    return file;
+    return NULL;
 }
 
-static inline RamDirectory* ram_directory_find_directory(RamDirectory* directory, const char* dirname)
+static inline RamDir* ram_dir_find_dir(RamDir* dir, const char* dirname)
 {
-    RamDirectory* child = directory->firstChild;
+    RamDir* child = dir->firstChild;
     while (child != NULL)
     {
         if (vfs_compare_names(child->name, dirname))
         {
-            break;
+            return child;
         }
         else
         {
@@ -38,16 +41,16 @@ static inline RamDirectory* ram_directory_find_directory(RamDirectory* directory
         }
     }
 
-    return child;
+    return NULL;
 }
 
-static inline RamDirectory* ram_disk_traverse(Disk* disk, const char* path)
+static inline RamDir* ram_disk_traverse(Disk* disk, const char* path)
 {
-    RamDirectory* directory = disk->context;
+    RamDir* dir = disk->context;
     while (path != NULL)
     {
-        directory = ram_directory_find_directory(directory, path);
-        if (directory == NULL)
+        dir = ram_dir_find_dir(dir, path);
+        if (dir == NULL)
         {
             return NULL;
         }
@@ -55,43 +58,84 @@ static inline RamDirectory* ram_disk_traverse(Disk* disk, const char* path)
         path = vfs_next_dir(path);
     }
 
-    return directory;
+    return dir;
 }
 
-uint64_t ram_disk_open(Disk* disk, const char* path, uint64_t flags)
-{        
-    RamDirectory* directory = ram_disk_traverse(disk, path);
-    if (directory == NULL)
+fd_t ram_disk_open(Disk* disk, const char* path, uint8_t flags)
+{
+    RamDir* dir = ram_disk_traverse(disk, path);
+    if (dir == NULL)
     {
-        sched_thread()->errno = EPATH;
-        return ERROR;
+        return ERROR(EPATH);
     }
 
     const char* filename = vfs_basename(path);
     if (filename == NULL)
     {
-        sched_thread()->errno = EPATH;
-        return ERROR;
+        return ERROR(EPATH);
     }
 
-    RamFile* file = ram_directory_find_file(directory, filename);
+    RamFile* file = ram_dir_find_file(dir, filename);
     if (file == NULL)
     {
-        sched_thread()->errno = ENAME;
-        return ERROR;
+        return ERROR(ENAME);
     }
 
-    return file_table_open(disk, flags, file);
+    fd_t fd = file_table_open(disk, flags, file);
+    if (fd == ERR)
+    {
+        return ERROR(EMFILE);
+    }
+
+    return fd;
 }
 
-uint64_t ram_disk_close(Disk* disk, File* file)
+void ram_disk_cleanup(File* file)
 {
-    return 0;
-}*/
+    
+}
 
-void ram_disk_init(RamDirectory* root)
+uint64_t ram_disk_read(File* file, void* buffer, uint64_t count)
 {
-    /*tty_start_message("Ram Disk initializing");
+    RamFile const* ramFile = file->context;
+
+    size_t pos = file->position;
+    size_t readCount = pos <= ramFile->size ? MIN(count, ramFile->size - pos) : 0;
+    atomic_fetch_add(&file->position, readCount);
+
+    memcpy(buffer, ramFile->data + pos, readCount);
+    return readCount;
+}
+
+uint64_t ram_disk_seek(File* file, int64_t offset, uint8_t origin)
+{
+    RamFile const* ramFile = file->context;
+
+    switch (origin)
+    {
+    case SEEK_SET:
+    {
+        file->position = offset;
+    }
+    break;
+    case SEEK_CUR:
+    {
+        file->position += offset;
+    }
+    break;
+    case SEEK_END:
+    {
+        file->position = ramFile->size - offset;
+    }
+    break;
+    }
+
+    return 0;
+}
+
+void ram_disk_init(RamDir* root)
+{
+    tty_start_message("Ram Disk initializing");
 
     Disk* disk = disk_new("ram", root);
     if (disk == NULL)
@@ -101,13 +145,15 @@ void ram_disk_init(RamDirectory* root)
     }
 
     disk->open = ram_disk_open;
-    disk->close = ram_disk_close;
+    disk->cleanup = ram_disk_cleanup;
+    disk->read = ram_disk_read;
+    disk->seek = ram_disk_seek;
 
-    if (vfs_mount(disk) == ERROR)
+    if (vfs_mount(disk) == ERR)
     {
         tty_print("Failed to mount ram disk");
         tty_end_message(TTY_MESSAGE_ER);
     }
 
-    tty_end_message(TTY_MESSAGE_OK);*/
+    tty_end_message(TTY_MESSAGE_OK);
 }

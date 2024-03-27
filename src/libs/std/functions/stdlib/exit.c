@@ -4,5 +4,9 @@
 
 _NORETURN void exit(int status)
 {
-    _ProcessExit(status);
+    SYSCALL(SYS_PROCESS_EXIT, 1, status);
+    while (1)
+    {
+        asm volatile("ud2");
+    }
 }

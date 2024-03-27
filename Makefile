@@ -5,6 +5,10 @@ recursive_wildcard = \
 
 MKCWD = mkdir -p $(@D)
 
+CC = gcc
+LD = ld
+ASM = nasm
+
 SRC_DIR = src
 BIN_DIR = bin
 BUILD_DIR = build
@@ -19,10 +23,6 @@ STDLIB = $(LIBS_SRC_DIR)/std/functions
 PROGRAMS_BIN_DIR = $(BIN_DIR)/programs
 
 OUTPUT_IMAGE = $(BIN_DIR)/PatchworkOS.img
-
-CC = gcc
-LD = ld
-ASM = nasm
 
 BASE_ASM_FLAGS = -f elf64 \
 	-I$(LIBS_SRC_DIR)/std \
@@ -40,6 +40,7 @@ BASE_C_FLAGS = -O3 \
 	-Wno-implicit-fallthrough \
 	-mno-80387 -mno-mmx -mno-3dnow \
 	-mno-sse -mno-sse2 \
+	-fno-stack-protector \
 	-I$(LIBS_SRC_DIR)/std \
 	-I$(LIBS_SRC_DIR)/std/include \
 	-I$(SRC_DIR)

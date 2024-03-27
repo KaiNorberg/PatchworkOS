@@ -8,11 +8,11 @@
 #include "string/string.h"
 #include "virtual_memory/virtual_memory.h"
 
-RamDirectory* ram_disk_load(EFI_HANDLE imageHandle)
+RamDir* ram_disk_load(EFI_HANDLE imageHandle)
 {
 	EFI_FILE* rootHandle = file_system_open_root_volume(imageHandle);
 
-	RamDirectory* root = ram_disk_load_directory(rootHandle, "root");
+	RamDir* root = ram_disk_load_directory(rootHandle, "root");
 
 	file_system_close(rootHandle);
 
@@ -37,9 +37,9 @@ RamFile* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
 	return file;
 }
 
-RamDirectory* ram_disk_load_directory(EFI_FILE* volume, const char* name)
+RamDir* ram_disk_load_directory(EFI_FILE* volume, const char* name)
 {
-	RamDirectory* dir = virtual_memory_allocate_pool(sizeof(RamDirectory), EFI_MEMORY_TYPE_RAM_DISK);
+	RamDir* dir = virtual_memory_allocate_pool(sizeof(RamDir), EFI_MEMORY_TYPE_RAM_DISK);
 
 	SetMem(dir->name, 32, 0);
 	strcpy(dir->name, name);
@@ -79,7 +79,7 @@ RamDirectory* ram_disk_load_directory(EFI_FILE* volume, const char* name)
 
 				char childName[32];
 				char16_to_char(fileInfo->FileName, childName);
-				RamDirectory* child = ram_disk_load_directory(childVolume, childName);
+				RamDir* child = ram_disk_load_directory(childVolume, childName);
 
 				if (dir->firstChild == 0)
 				{
