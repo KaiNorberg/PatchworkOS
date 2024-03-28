@@ -98,7 +98,7 @@ void space_load(Space* space)
     }
 }
 
-void* space_allocate(Space* space, void* address, uint64_t pageAmount)
+void* space_allocate(Space* space, const void* address, uint64_t pageAmount)
 {
     if ((uint64_t)address + pageAmount * PAGE_SIZE > VMM_LOWER_HALF_MAX)
     {
@@ -110,11 +110,10 @@ void* space_allocate(Space* space, void* address, uint64_t pageAmount)
         return NULLPTR(EFAULT);
     }
 
-    address = (void*)round_down((uint64_t)address, PAGE_SIZE);
-
+    void* alignedAddress = (void*)round_down((uint64_t)address, PAGE_SIZE);
     for (uint64_t i = 0; i < pageAmount; i++)
     {            
-        void* virtualAddress = (void*)((uint64_t)address + i * PAGE_SIZE);
+        void* virtualAddress = (void*)((uint64_t)alignedAddress + i * PAGE_SIZE);
 
         lock_acquire(&space->lock);
         if (page_table_physical_address(space->pageTable, virtualAddress) == NULL)
@@ -126,10 +125,10 @@ void* space_allocate(Space* space, void* address, uint64_t pageAmount)
         lock_release(&space->lock);
     }
 
-    return address;
+    return alignedAddress;
 }
 
-void* space_physical_to_virtual(Space* space, void* address)
+void* space_physical_to_virtual(Space* space, const void* address)
 {
     lock_acquire(&space->lock);
     void* temp = page_table_physical_address(space->pageTable, address);

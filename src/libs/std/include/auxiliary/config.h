@@ -20,4 +20,8 @@
 #endif
 #endif
 
+#if defined(__GNUC__) || defined(__clang__)
+#define _BUILTIN_AVAIL
+#endif
+
 #endif

@@ -9,6 +9,7 @@
 #include "kernel/kernel.h"
 #include "sched/sched.h"
 #include "defs/defs.h"
+#include "utils/utils.h"
 #include "vfs/utils/utils.h"
 
 void main(BootInfo* bootInfo)
@@ -16,7 +17,7 @@ void main(BootInfo* bootInfo)
     kernel_init(bootInfo);
 
     tty_acquire();
-    for (uint64_t i = 0; i < 4; i++)
+    for (uint64_t i = 0; i < 2; i++)
     {
         sched_spawn("ram:/programs/parent.elf");
     }

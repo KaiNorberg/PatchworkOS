@@ -1,9 +1,9 @@
 #include <string.h>
 
-int memcmp(const void* lhs, const void* rhs, size_t count)
+int memcmp(const void* a, const void* b, size_t count)
 {
-    unsigned char* p1 = (unsigned char*)lhs;
-    unsigned char* p2 = (unsigned char*)rhs;
+    unsigned char* p1 = (unsigned char*)a;
+    unsigned char* p2 = (unsigned char*)b;
 
     while (count--)
     {

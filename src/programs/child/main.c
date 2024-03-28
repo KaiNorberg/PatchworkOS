@@ -1,35 +1,46 @@
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <threads.h>
+#include <sys/io.h>
+#include <sys/process.h>
+
+#include <libs/std/internal/syscalls/syscalls.h>
 
 #define BUFFER_SIZE 32
 
-char buffer[BUFFER_SIZE];
-
 int main(void)
 {
-    /*while (1)
-    {
-        int64_t fd = open("ram:/test/test.txt", FILE_FLAG_READ);
-        if (fd == -1)
-        {
-            sys_test(status_string());
-            exit(1);
-        }
-        
-        memset(buffer, 0, BUFFER_SIZE);
-        if (read(fd, buffer, BUFFER_SIZE - 1) == -1)
-        {
-            sys_test(status_string());
-            exit(1);
-        }
-
-        if (close(fd) == -1)
-        {
-            sys_test(status_string());
-            exit(1);
-        }
-
-        sys_test(buffer);
-    }*/
+    fd_t fd = open("ram:/test1/test2/test3/test.txt", O_READ);
+    if (fd == ERR)
+    {    
+        SYSCALL(SYS_TEST, 1, strerror(errno));
+        return EXIT_FAILURE;
+    }
     
-    return 0;
+    char buffer[BUFFER_SIZE];
+    memset(buffer, 0, BUFFER_SIZE);    
+    if (read(fd, buffer, BUFFER_SIZE - 1) == ERR)
+    {
+        SYSCALL(SYS_TEST, 1, strerror(errno));
+        return EXIT_FAILURE;
+    }
+    
+    if (close(fd) == ERR)
+    {
+        SYSCALL(SYS_TEST, 1, strerror(errno));
+        return EXIT_FAILURE;
+    }
+    
+    while (1)
+    {
+        SYSCALL(SYS_TEST, 1, buffer);
+    
+        /*struct timespec duration;
+        duration.tv_sec = 1;
+        duration.tv_nsec = 0;
+        thrd_sleep(&duration, NULL);*/
+    }
+
+    return EXIT_SUCCESS;
 }

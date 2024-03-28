@@ -1,34 +1,24 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <threads.h>
 #include <sys/io.h>
+#include <sys/process.h>
 
 #include <libs/std/internal/syscalls/syscalls.h>
 
 int main(void)
-{
-    fd_t fd = open("ram:/test1/test2/test3/test.txt", O_READ);
-    if (fd == ERR)
+{                
+    if (spawn("ram:/programs/child.elf") == ERR)
     {
-        exit(EXIT_FAILURE);
-    }
-    
-    char buffer[32];
-    memset(buffer, 0, 32);
-    if (read(fd, buffer, 31) == ERR)
-    {
-        exit(EXIT_FAILURE);
-    }
-    
-    if (close(fd) == ERR)
-    {
-        exit(EXIT_FAILURE);
-    }
-    
-    while (1)
-    {
-        SYSCALL(SYS_TEST, 1, buffer);
+        SYSCALL(SYS_TEST, 1, strerror(errno));
+        return EXIT_FAILURE;
     }
 
-    return 0;
+    while (1)
+    {
+        SYSCALL(SYS_TEST, 1, "Hello from parent!");
+    }
+
+    return EXIT_SUCCESS;
 }

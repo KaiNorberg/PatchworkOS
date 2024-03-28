@@ -1,10 +1,10 @@
-#include <sys/io.h>
+#include <sys/process.h>
 
 #include "internal/syscalls/syscalls.h"
 
-fd_t open(const char* path, uint8_t flags)
-{    
-    fd_t result = SYSCALL(SYS_OPEN, 2, path, flags);
+pid_t spawn(const char* path)
+{
+    pid_t result = SYSCALL(SYS_SPAWN, 1, path);
     if (result == ERR)
     {
         errno = SYSCALL(SYS_ERROR, 0);

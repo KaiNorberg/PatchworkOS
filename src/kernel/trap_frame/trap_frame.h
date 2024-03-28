@@ -29,5 +29,3 @@ typedef struct PACKED
     uint64_t rsp;
     uint64_t ss;
 } TrapFrame;
-
-void trap_frame_copy(TrapFrame* dest, TrapFrame const* src);

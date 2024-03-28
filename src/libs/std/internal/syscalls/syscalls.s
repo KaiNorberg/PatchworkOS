@@ -45,7 +45,7 @@ _Syscall3:
 ;r8 = selector
 global _Syscall4
 _Syscall4:
-    mov rax, r9
+    mov rax, r8
     int SYSCALL_VECTOR
     ret
 

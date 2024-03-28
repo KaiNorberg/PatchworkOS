@@ -127,7 +127,7 @@ void page_table_map(PageTable* pageTable, void* virtualAddress, void* physicalAd
     *entry = page_entry_create(physicalAddress, flags);
 }
 
-void* page_table_physical_address(PageTable* pageTable, void* virtualAddress)
+void* page_table_physical_address(PageTable* pageTable, const void* virtualAddress)
 {
     uint64_t offset = ((uint64_t)virtualAddress) % PAGE_SIZE;
     virtualAddress = (void*)round_down((uint64_t)virtualAddress, PAGE_SIZE);

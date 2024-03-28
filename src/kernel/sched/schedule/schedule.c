@@ -62,14 +62,13 @@ static inline void sched_switch_thread(TrapFrame* trapFrame, Scheduler* schedule
     {
         if (scheduler->runningThread != NULL)
         {
-            trap_frame_copy(&scheduler->runningThread->trapFrame, trapFrame);
+            scheduler->runningThread->trapFrame = *trapFrame;
             sched_push(scheduler->runningThread, 0, self->id);
         }
 
         next->timeStart = time_nanoseconds();
         next->timeEnd = next->timeStart + SCHED_TIME_SLICE;
-
-        trap_frame_copy(trapFrame, &next->trapFrame);
+        *trapFrame = next->trapFrame;
 
         space_load(next->process->space);
         tss_stack_load(&self->tss, (void*)((uint64_t)next->kernelStack + THREAD_KERNEL_STACK_SIZE));
@@ -134,8 +133,8 @@ void sched_schedule(TrapFrame* trapFrame)
         }
         break;
         case THREAD_STATE_BLOCKED:
-        {            
-            trap_frame_copy(&scheduler->runningThread->trapFrame, trapFrame);
+        {
+            scheduler->runningThread->trapFrame = *trapFrame;
             array_push(scheduler->blockedThreads, scheduler->runningThread);
             scheduler->runningThread = NULL;
         }
@@ -174,7 +173,7 @@ void sched_push(Thread* thread, uint8_t boost, uint16_t preferred)
 {
     int64_t bestLength = INT64_MAX;
     uint64_t best = 0;
-    for (int64_t i = smp_cpu_amount() - 1; i >= 0; i--)
+    for (uint64_t i = 0; i < smp_cpu_amount(); i++)
     {
         Scheduler const* scheduler = &smp_cpu(i)->scheduler;
 
@@ -184,7 +183,11 @@ void sched_push(Thread* thread, uint8_t boost, uint16_t preferred)
             length += queue_length(scheduler->queues[p]);
         }
 
-        if (i == preferred)
+        if (length == 0) //Bias towards idle cpus
+        {
+            length--;
+        }
+        if (i == preferred) //Bias towards preferred cpu
         {
             length--;
         }

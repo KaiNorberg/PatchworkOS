@@ -68,7 +68,7 @@ static inline void* loader_load_program()
 
             void* address = (void*)programHeader->virtualAddress;
 
-            if (space_allocate(process->space, address, SIZE_IN_PAGES(programHeader->memorySize)) == NULL)
+            if (space_allocate(process->space, address, SIZE_IN_PAGES(programHeader->memorySize) + 1) == NULL)
             {
                 sched_process_exit(EEXEC);
             }

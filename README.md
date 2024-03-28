@@ -2,19 +2,23 @@
 
 **Keep in mind that PatchworkOS is currently in a very early stage of development.**
 
+Patchwork is an attempt to clean up Unix architecture
+
 ## Features
 
-  - Monolithic preemptive 64-bit kernel
-  - SMP (Symmetric Multiprocessing)
-  - Multithreading (Kernel Level Threads)
-  - O(1) scheduler
-  - Custom Standard Library
-  - Custom UEFI Bootloader
-  - More to be added...
+- Unix inspired Non-Unix architecture
+- Monolithic preemptive 64-bit kernel
+- SMP (Symmetric Multiprocessing)
+- Multithreading (Kernel Level Threads)
+- O(1) scheduler
+- Custom Standard Library
+- Custom UEFI Bootloader
+- More to be added...
 
 ## Limitations
 
-  - Only x86_64
+- Ram disks only
+- Only x86_64
 
 ## Setup
 

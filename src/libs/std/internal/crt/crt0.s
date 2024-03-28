@@ -10,8 +10,8 @@ _start:
     call _init
 
     call main
-    
-    xor rdi, rdi
+
+    mov rdi, rax
     call exit
     ud2
 .end:

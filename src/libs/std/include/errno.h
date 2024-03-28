@@ -15,7 +15,7 @@ _EXPORT int* _ErrnoFunc();
 
 #define errno (*_ErrnoFunc())
 
-#define EDOM 1 // Math argument out of domain of func
+#define EDOM 1 // Math argument out of domain
 #define ERANGE 2 // Math result not representable
 #define EILSEQ 3 // Illegal byte sequence
 #define EIMPL 4 // Not implemented

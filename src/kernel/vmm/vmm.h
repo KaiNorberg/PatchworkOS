@@ -37,6 +37,6 @@ void space_free(Space* space);
 
 void space_load(Space* space);
 
-void* space_allocate(Space* space, void* address, uint64_t pageAmount);
+void* space_allocate(Space* space, const void* address, uint64_t pageAmount);
 
-void* space_physical_to_virtual(Space* space, void* address);
+void* space_physical_to_virtual(Space* space, const void* address);

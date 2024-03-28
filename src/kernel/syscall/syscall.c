@@ -24,12 +24,17 @@ static inline bool verify_pointer(const void* pointer, uint64_t size)
         return false;
     }
 
+    if (space_physical_to_virtual(sched_process()->space, pointer) == NULL)
+    {
+        return false;
+    }
+
     return true;
 }
 
 static inline bool verify_string(const char* string)
 {
-    return verify_pointer(string, strlen(string));
+    return verify_pointer(string, 0) && verify_pointer(string, strlen(string));
 }
 
 ///////////////////////////////////////////////////////
@@ -37,6 +42,11 @@ static inline bool verify_string(const char* string)
 void syscall_process_exit(uint64_t status)
 {
     sched_process_exit(status);
+}
+
+void syscall_thread_exit()
+{
+    sched_thread_exit();
 }
 
 uint64_t syscall_spawn(const char* path)
@@ -61,7 +71,7 @@ void* syscall_allocate(void* address, uint64_t length)
     return address;
 }
 
-errno_t syscall_kernel_errno(void)
+errno_t syscall_error(void)
 {
     return sched_thread()->error;
 }
@@ -158,10 +168,11 @@ void syscall_handler_end(void)
 void* syscallTable[] =
 {
     syscall_process_exit,
+    syscall_thread_exit,
     syscall_spawn,
     syscall_sleep,
     syscall_allocate,
-    syscall_kernel_errno,
+    syscall_error,
     syscall_open,
     syscall_close,
     syscall_read,

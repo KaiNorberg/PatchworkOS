@@ -1,6 +1,6 @@
 [bits 64]
 
-%define SYSCALL_AMOUNT 11
+%define SYSCALL_AMOUNT 12
 
 extern syscall_handler_end
 extern syscallTable
