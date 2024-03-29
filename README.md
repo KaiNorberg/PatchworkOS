@@ -2,8 +2,6 @@
 
 **Keep in mind that PatchworkOS is currently in a very early stage of development.**
 
-Patchwork is an attempt to clean up Unix architecture
-
 ## Features
 
 - Unix inspired Non-Unix architecture
