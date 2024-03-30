@@ -29,7 +29,7 @@ Currently untested on Intel hardware.
 
 <ins>**1. Cloning (downloading) this repository**</ins>
 
-To clone (download) this repository, you can use the ```Code``` button at the top left of the screen, or if you have git installed use the following command ```git clone --recursive https://github.com/Kaj9296/PatchworkOS```.
+To clone (download) this repository, you can use the ```Code``` button at the top left of the screen, or if you have git installed use the following command ```git clone --recursive https://github.com/KaiNorberg/PatchworkOS```.
 
 <ins>**2. Building Patchwork**</ins>
 
