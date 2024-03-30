@@ -1,6 +1,6 @@
 #include "lock.h"
 
-#include "traps/traps.h"
+#include "trap/trap.h"
 
 Lock lock_create() 
 {

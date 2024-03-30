@@ -8,8 +8,7 @@
 #include "gdt/gdt.h"
 #include "time/time.h"
 #include "debug/debug.h"
-#include "registers/registers.h"
-#include "traps/traps.h"
+#include "regs/regs.h"
 #include "irq/irq.h"
 #include "apic/apic.h"
 #include "hpet/hpet.h"
@@ -131,7 +130,7 @@ uint64_t sched_spawn(const char* path)
 {
     Process* process = process_new(path);
     Thread* thread = thread_new(process, loader_entry, THREAD_PRIORITY_MIN);
-    sched_push(thread, 1, -1);
+    sched_push(thread, 1);
 
     return process->id;
 }

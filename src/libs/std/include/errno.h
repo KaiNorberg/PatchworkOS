@@ -7,9 +7,9 @@ extern "C" {
 
 //TODO: Implement thread local storage for errno
 
-#include "auxiliary/config.h"
-#include "auxiliary/errno_t.h"
-#include "auxiliary/ERR.h"
+#include "_AUX/config.h"
+#include "_AUX/errno_t.h"
+#include "_AUX/ERR.h"
 
 _EXPORT int* _ErrnoFunc();
 

@@ -2,7 +2,7 @@
 
 #include "defs/defs.h"
 #include "tty/tty.h"
-#include "trap_frame/trap_frame.h"
+#include "trap/trap.h"
 
 #define DEBUG_ROW_AMOUNT 18
 #define DEBUG_COLUMN_AMOUNT 4

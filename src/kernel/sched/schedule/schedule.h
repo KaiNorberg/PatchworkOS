@@ -1,8 +1,8 @@
 #pragma once
 
-#include "trap_frame/trap_frame.h"
+#include "trap/trap.h"
 #include "sched/sched.h"
 
 void sched_schedule(TrapFrame* trapFrame);
 
-void sched_push(Thread* thread, uint8_t boost, uint16_t preferred);
+void sched_push(Thread* thread, uint8_t boost);

@@ -5,7 +5,7 @@
 #include "pmm/pmm.h"
 #include "time/time.h"
 #include "hpet/hpet.h"
-#include "registers/registers.h"
+#include "regs/regs.h"
 #include "smp/smp.h"
 
 /*const char* exceptionStrings[32] = 

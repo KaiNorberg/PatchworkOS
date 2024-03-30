@@ -4,10 +4,11 @@
 
 pid_t spawn(const char* path)
 {
-    pid_t result = SYSCALL(SYS_SPAWN, 1, path);
-    if (result == ERR)
+    uint64_t pid = SYSCALL(SYS_SPAWN, 1, path);
+    if (pid == ERR)
     {
         errno = SYSCALL(SYS_ERROR, 0);
+        return ERR;
     }
-    return result;
+    return pid;
 }

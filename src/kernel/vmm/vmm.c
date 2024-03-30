@@ -5,7 +5,7 @@
 #include "lock/lock.h"
 #include "pmm/pmm.h"
 #include "sched/sched.h"
-#include "registers/registers.h"
+#include "regs/regs.h"
 
 static PageTable* kernelPageTable;
 

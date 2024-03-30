@@ -5,9 +5,9 @@
 extern "C" {
 #endif
 
-#include "auxiliary/size_t.h"
-#include "auxiliary/NULL.h"
-#include "auxiliary/ERR.h"
+#include "_AUX/size_t.h"
+#include "_AUX/NULL.h"
+#include "_AUX/ERR.h"
 
 typedef size_t rsize_t;
 typedef __PTRDIFF_TYPE__ ptrdiff_t;

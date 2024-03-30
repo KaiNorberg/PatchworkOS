@@ -7,8 +7,8 @@
 extern "C" {
 #endif
 
-#include "../auxiliary/config.h"
-#include "../auxiliary/size_t.h"
+#include "../_AUX/config.h"
+#include "../_AUX/size_t.h"
 
 #define O_CREATE (1 << 0)
 #define O_READ (1 << 1)

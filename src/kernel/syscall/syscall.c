@@ -11,15 +11,15 @@
 #include "utils/utils.h"
 #include "smp/smp.h"
 #include "debug/debug.h"
-#include "traps/traps.h"
 #include "sched/sched.h"
 #include "loader/loader.h"
 
-//TODO: Improve verify funcs, improve multithreading string safety
+//Note: Syscalls should always return a 64 bit value to prevent garbage from remaining in the rax register.
 
+//TODO: Improve verify funcs, improve multithreading string safety.
 static inline bool verify_pointer(const void* pointer, uint64_t size)
 {
-    if ((uint64_t)pointer > VMM_LOWER_HALF_MAX || (uint64_t)pointer + size > VMM_LOWER_HALF_MAX)
+    if ((uint64_t)pointer + size > VMM_LOWER_HALF_MAX)
     {
         return false;
     }
@@ -39,12 +39,12 @@ static inline bool verify_string(const char* string)
 
 ///////////////////////////////////////////////////////
 
-void syscall_process_exit(uint64_t status)
+NORETURN void syscall_process_exit(uint64_t status)
 {
     sched_process_exit(status);
 }
 
-void syscall_thread_exit()
+NORETURN void syscall_thread_exit()
 {
     sched_thread_exit();
 }
@@ -71,12 +71,22 @@ void* syscall_allocate(void* address, uint64_t length)
     return address;
 }
 
-errno_t syscall_error(void)
+uint64_t syscall_error(void)
 {
     return sched_thread()->error;
 }
 
-fd_t syscall_open(const char* path, uint8_t flags)
+uint64_t syscall_pid(void)
+{
+    return sched_process()->id;
+}
+
+uint64_t syscall_tid(void)
+{
+    return sched_thread()->id;
+}
+
+uint64_t syscall_open(const char* path, uint8_t flags)
 {
     if (!verify_string(path))
     {
@@ -86,12 +96,12 @@ fd_t syscall_open(const char* path, uint8_t flags)
     return vfs_open(path, flags);
 }
 
-uint64_t syscall_close(fd_t fd)
+uint64_t syscall_close(uint64_t fd)
 {
     return vfs_close(fd);
 }
 
-uint64_t syscall_read(fd_t fd, void* buffer, uint64_t count)
+uint64_t syscall_read(uint64_t fd, void* buffer, uint64_t count)
 {
     if (!verify_pointer(buffer, count))
     {
@@ -101,7 +111,7 @@ uint64_t syscall_read(fd_t fd, void* buffer, uint64_t count)
     return vfs_read(fd, buffer, count);
 }
 
-uint64_t syscall_write(fd_t fd, const void* buffer, uint64_t count)
+uint64_t syscall_write(uint64_t fd, const void* buffer, uint64_t count)
 {
     if (!verify_pointer(buffer, count))
     {
@@ -111,7 +121,7 @@ uint64_t syscall_write(fd_t fd, const void* buffer, uint64_t count)
     return vfs_write(fd, buffer, count);
 }
 
-uint64_t syscall_seek(fd_t fd, int64_t offset, uint8_t origin)
+uint64_t syscall_seek(uint64_t fd, int64_t offset, uint8_t origin)
 {
     return vfs_seek(fd, offset, origin);
 }
@@ -173,6 +183,8 @@ void* syscallTable[] =
     syscall_sleep,
     syscall_allocate,
     syscall_error,
+    syscall_pid,
+    syscall_tid,
     syscall_open,
     syscall_close,
     syscall_read,

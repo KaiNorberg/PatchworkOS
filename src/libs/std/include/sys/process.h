@@ -7,11 +7,13 @@
 extern "C" {
 #endif
 
-#include "../auxiliary/config.h"
+#include "../_AUX/config.h"
 
 typedef uint64_t pid_t;
 
 _EXPORT pid_t spawn(const char* path);
+
+_EXPORT pid_t getpid(void);
 
 #if defined(__cplusplus)
 }

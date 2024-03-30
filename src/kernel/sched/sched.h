@@ -6,7 +6,6 @@
 #include "array/array.h"
 #include "defs/defs.h"
 #include "process/process.h"
-#include "trap_frame/trap_frame.h"
 
 #define SCHED_TIME_SLICE (NANOSECONDS_PER_SECOND / 2)
 #define SCHED_TIMER_HZ 1024

@@ -6,23 +6,22 @@
 #include "smp/smp.h"
 #include "vmm/vmm.h"
 #include "heap/heap.h"
-#include "traps/traps.h"
 #include "sched/sched.h"
 #include "debug/debug.h"
-#include "registers/registers.h"
+#include "regs/regs.h"
 
-static uint64_t sched_unblock_iterate(void* element)
+static IterResult sched_unblock_iterate(void* element)
 {
     Thread* thread = element;
 
     if (thread->blocker.callback(thread->blocker.context))
     {
-        sched_push(thread, 1, -1);
-        return ARRAY_ITERATE_ERASE;
+        sched_push(thread, 1);
+        return ITERATE_ERASE;
     }
     else
     {
-        return ARRAY_ITERATE_CONTINUE;
+        return ITERATE_CONTINUE;
     }
 }
 
@@ -62,8 +61,9 @@ static inline void sched_switch_thread(TrapFrame* trapFrame, Scheduler* schedule
     {
         if (scheduler->runningThread != NULL)
         {
-            scheduler->runningThread->trapFrame = *trapFrame;
-            sched_push(scheduler->runningThread, 0, self->id);
+            scheduler->runningThread->trapFrame = *trapFrame;    
+            queue_push(scheduler->queues[scheduler->runningThread->priority], scheduler->runningThread);
+            scheduler->runningThread = NULL;
         }
 
         next->timeStart = time_nanoseconds();
@@ -169,7 +169,7 @@ void sched_schedule(TrapFrame* trapFrame)
     smp_put();
 }
 
-void sched_push(Thread* thread, uint8_t boost, uint16_t preferred)
+void sched_push(Thread* thread, uint8_t boost)
 {
     int64_t bestLength = INT64_MAX;
     uint64_t best = 0;
@@ -184,10 +184,6 @@ void sched_push(Thread* thread, uint8_t boost, uint16_t preferred)
         }
 
         if (length == 0) //Bias towards idle cpus
-        {
-            length--;
-        }
-        if (i == preferred) //Bias towards preferred cpu
         {
             length--;
         }

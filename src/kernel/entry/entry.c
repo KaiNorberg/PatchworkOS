@@ -19,7 +19,7 @@ void main(BootInfo* bootInfo)
     tty_acquire();
     for (uint64_t i = 0; i < 2; i++)
     {
-        sched_spawn("ram:/programs/parent.elf");
+        sched_spawn("/ram/programs/parent.elf");
     }
     tty_clear();
     tty_set_row(smp_cpu_amount() + 2);

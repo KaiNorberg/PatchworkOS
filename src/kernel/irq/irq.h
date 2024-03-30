@@ -1,8 +1,7 @@
 #pragma once
 
 #include "defs/defs.h"
-
-#include "trap_frame/trap_frame.h"
+#include "trap/trap.h"
 
 #define IRQ_BASE 0x20
 #define IRQ_PIT 0x0

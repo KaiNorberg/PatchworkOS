@@ -29,3 +29,9 @@ typedef struct PACKED
     uint64_t rsp;
     uint64_t ss;
 } TrapFrame;
+
+void interrupts_disable(void);
+
+void interrupts_enable(void);
+
+void trap_handler(TrapFrame* trapFrame);

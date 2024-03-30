@@ -23,32 +23,14 @@ bool vfs_valid_name(const char* name)
 
 bool vfs_valid_path(const char* path)
 {
-    uint64_t i = 0;
-    for (; i < VFS_MAX_NAME_LENGTH; i++)
-    {
-        if (path[i] == '\0')
-        {
-            return true;
-        }
-        else if (path[i] == VFS_DISK_DELIMITER)
-        {
-            i++;
-            break;
-        }
-        else if (!VFS_VALID_CHAR(path[i]))
-        {
-            return false;
-        }
-    }
-
     uint64_t nameLength = 0;
-    for (; i < VFS_MAX_PATH_LENGTH; i++)
+    for (uint64_t i = 0; i < VFS_MAX_PATH_LENGTH; i++)
     {
         if (path[i] == '\0')
         {
             return true;
         }
-        else if (path[i] == VFS_NAME_DELIMITER)
+        else if (path[i] == VFS_DELIMITER)
         {
             nameLength = 0;
             continue;
@@ -85,9 +67,21 @@ bool vfs_compare_names(const char* a, const char* b)
     return false;
 }
 
+const char* vfs_first_dir(const char* path)
+{
+    if (strchr(path, VFS_DELIMITER) == NULL)
+    {
+        return NULL;
+    }
+    else
+    {
+        return path;
+    }
+}
+
 const char* vfs_next_dir(const char* path)
 {
-    const char* next = strchr(path, VFS_NAME_DELIMITER);
+    const char* next = strchr(path, VFS_DELIMITER);
     if (next == NULL)
     {
         return NULL;
@@ -95,7 +89,7 @@ const char* vfs_next_dir(const char* path)
     else
     {
         next += 1;
-        if (strchr(next, VFS_NAME_DELIMITER) != NULL)
+        if (strchr(next, VFS_DELIMITER) != NULL)
         {
             return next;
         }
@@ -106,15 +100,14 @@ const char* vfs_next_dir(const char* path)
     }
 }
 
+const char* vfs_next_name(const char* path)
+{
+    const char* base = strchr(path, VFS_DELIMITER);
+    return base != NULL ? base + 1 : NULL;
+}
+
 const char* vfs_basename(const char* path)
 {
-    const char* base = strrchr(path, VFS_NAME_DELIMITER);
-    if (base == NULL)
-    {
-        return path;
-    }
-    else
-    {
-        return base + 1;
-    }
+    const char* base = strrchr(path, VFS_DELIMITER);
+    return base != NULL ? base + 1 : path;
 }

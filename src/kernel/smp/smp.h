@@ -4,7 +4,6 @@
 #include "tss/tss.h"
 #include "pmm/pmm.h"
 #include "sched/sched.h"
-#include "trap_frame/trap_frame.h"
 
 #define CPU_MAX_AMOUNT 255
 #define CPU_IDLE_STACK_SIZE PAGE_SIZE

@@ -1,4 +1,4 @@
-#include "traps.h"
+#include "trap.h"
 
 #include "defs/defs.h"
 #include "gdt/gdt.h"
@@ -8,7 +8,7 @@
 #include "debug/debug.h"
 #include "vmm/vmm.h"
 #include "heap/heap.h"
-#include "registers/registers.h"
+#include "regs/regs.h"
 #include "utils/utils.h"
 #include "syscall/syscall.h"
 #include "smp/smp.h"

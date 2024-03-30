@@ -5,9 +5,9 @@
 extern "C" {
 #endif
 
-#include "auxiliary/config.h"
-#include "auxiliary/size_t.h"
-#include "auxiliary/NULL.h"
+#include "_AUX/config.h"
+#include "_AUX/size_t.h"
+#include "_AUX/NULL.h"
 
 _EXPORT void* memcpy(void* _RESTRICT dest, const void* _RESTRICT src, size_t count);
 _EXPORT void* memmove(void* dest, const void* src, size_t count);

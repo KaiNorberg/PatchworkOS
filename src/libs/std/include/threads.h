@@ -5,10 +5,10 @@
 extern "C" {
 #endif
 
-#include "auxiliary/config.h"
-#include "auxiliary/timespec.h"
+#include "_AUX/config.h"
+#include "_AUX/timespec.h"
 
-int thrd_sleep(const struct timespec* duration, struct timespec* remaining);
+_EXPORT int thrd_sleep(const struct timespec* duration, struct timespec* remaining);
 
 #if defined(__cplusplus)
 }

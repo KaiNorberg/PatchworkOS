@@ -8,7 +8,7 @@
 #include "vmm/vmm.h"
 #include "pmm/pmm.h"
 #include "gdt/gdt.h"
-#include "registers/registers.h"
+#include "regs/regs.h"
 #include "debug/debug.h"
 
 static _Atomic uint64_t newPid = 0;

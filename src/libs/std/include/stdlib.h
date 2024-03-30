@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include "auxiliary/config.h"
+#include "_AUX/config.h"
 
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0

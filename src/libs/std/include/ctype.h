@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include "auxiliary/config.h"
+#include "_AUX/config.h"
 
 #define isalnum(ch) (isdigit((ch)) || isalpha((ch)))
 #define isalpha(ch) (((ch) >= 'A' && (ch) <= 'Z') || ((ch) >= 'a' && (ch) <= 'z'))

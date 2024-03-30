@@ -1,7 +1,7 @@
 #include "apic.h"
 
 #include "tty/tty.h"
-#include "registers/registers.h"
+#include "regs/regs.h"
 #include "utils/utils.h"
 #include "madt/madt.h"
 #include "hpet/hpet.h"

@@ -6,7 +6,7 @@
 #include "debug/debug.h"
 #include "vmm/vmm.h"
 #include "utils/utils.h"
-#include "registers/registers.h"
+#include "regs/regs.h"
 
 static inline PageEntry page_entry_create(void* address, uint64_t flags)
 {

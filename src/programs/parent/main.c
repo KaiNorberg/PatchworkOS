@@ -9,7 +9,7 @@
 
 int main(void)
 {                
-    if (spawn("ram:/programs/child.elf") == ERR)
+    if (spawn("/ram/programs/child.elf") == ERR)
     {
         SYSCALL(SYS_TEST, 1, strerror(errno));
         return EXIT_FAILURE;

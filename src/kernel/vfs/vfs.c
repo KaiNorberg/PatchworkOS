@@ -11,40 +11,65 @@
 
 static Array* disks;
 
-static uint64_t vfs_find_disk_callback(void* element, void* context)
+static FindResult vfs_find_disk_callback(void* element, void* context)
 {
     Disk* disk = element;
     const char* name = context;
 
-    if (vfs_compare_names(disk->name, name))
-    {
-        return ARRAY_FIND_FOUND;
-    }
-    else
-    {
-        return ARRAY_FIND_NOT_FOUND;
-    }
+    return vfs_compare_names(disk->name, name) ? FIND_FOUND : FIND_NOT_FOUND;
 }
 
 static inline Disk* vfs_find_disk(const char* name)
 {
-    return array_find(disks, vfs_find_disk_callback, (void*)name);
+    return array_find(disks, vfs_find_disk_callback, (char*)name);
 }
 
-Disk* disk_new(const char* name, void* context)
+static inline File* file_get(uint64_t fd)
 {
-    if (!vfs_valid_name(name))
+    FileTable* table = &sched_process()->fileTable;
+    lock_acquire(&table->lock);
+
+    if (table->files[fd] == NULL)
     {
+        lock_release(&table->lock);
         return NULL;
     }
 
-    Disk* disk = kmalloc(sizeof(Disk));
-    memset(disk, 0, sizeof(Disk));
+    File* file = table->files[fd];
+    atomic_fetch_add(&file->ref, 1);
 
-    strcpy(disk->name, name);
-    disk->context = context;
+    lock_release(&table->lock);
+    return file;
+}
 
-    return disk;
+static inline void file_put(File* file)
+{
+    if (atomic_fetch_sub(&file->ref, 1) <= 1)
+    {
+        if (file->funcs->cleanup != NULL)
+        {
+            file->funcs->cleanup(file);
+        }
+        kfree(file);
+    }
+}
+
+void file_table_init(FileTable* table)
+{
+    memset(table, 0, sizeof(FileTable));
+    table->lock = lock_create();
+}
+
+void file_table_cleanup(FileTable* table)
+{
+    for (uint64_t i = 0; i < FILE_TABLE_LENGTH; i++)
+    {    
+        File* file = table->files[i];
+        if (file != NULL)
+        {
+            file_put(file);
+        }
+    }
 }
 
 void vfs_init()
@@ -56,22 +81,42 @@ void vfs_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-uint64_t vfs_mount(Disk* disk)
+uint64_t vfs_mount(const char* name, void* context, Filesystem* fs)
 {
-    if (vfs_find_disk(disk->name) != 0)
+    if (!vfs_valid_name(name))
+    {
+        return ERROR(ENAME);
+    }
+
+    if (vfs_find_disk(name) != 0)
     {
         return ERROR(EEXIST);
     }
+
+    Disk* disk = kmalloc(sizeof(Disk));
+    strcpy(disk->name, name);
+    disk->context = context;
+    disk->funcs = &fs->diskFuncs;
+    disk->fs = fs;
 
     array_push(disks, disk);
     return 0;
 }
 
-fd_t vfs_open(const char* path, uint8_t flags)
+uint64_t vfs_open(const char* path, uint8_t flags)
 {
     if (!vfs_valid_path(path))
     {
         return ERROR(EPATH);
+    }
+
+    if (path[0] == '/')
+    {
+        path++;
+    }
+    else
+    {
+        return ERROR(EIMPL);
     }
 
     Disk* disk = vfs_find_disk(path);
@@ -80,93 +125,124 @@ fd_t vfs_open(const char* path, uint8_t flags)
         return ERROR(ENAME);
     }
 
-    if ((disk->read == 0 && (flags & O_READ)) ||
-        (disk->write == 0 && (flags & O_WRITE)))
-    {
-        return ERROR(EACCES);
-    }
-
-    path = strchr(path, VFS_DISK_DELIMITER) + 1;
-    if (path[0] != VFS_NAME_DELIMITER)
+    path = vfs_next_name(path);
+    if (path == NULL)
     {
         return ERROR(EPATH);
     }
-    
-    return disk->open(disk, path + 1, flags);
+
+    File* file = kmalloc(sizeof(File));
+    file->funcs = &disk->fs->fileFuncs;
+    file->context = NULL;
+    file->flags = flags;
+    file->position = 0;
+    file->ref = 1;
+
+    if (disk->funcs->open(disk, file, path) == ERR)
+    {
+        kfree(file);
+        return ERR;
+    }
+
+    FileTable* table = &sched_process()->fileTable;
+    lock_acquire(&table->lock);
+
+    for (uint64_t fd = 0; fd < FILE_TABLE_LENGTH; fd++)
+    {
+        if (table->files[fd] == NULL)
+        {
+            table->files[fd] = file;
+
+            lock_release(&table->lock);
+            return fd;
+        }
+    }
+
+    lock_release(&table->lock);
+    return ERROR(EMFILE);
 }
 
-uint64_t vfs_close(fd_t fd)
-{
-    if (file_table_close(fd) == ERR)
+uint64_t vfs_close(uint64_t fd)
+{    
+    FileTable* table = &sched_process()->fileTable;
+    lock_acquire(&table->lock);
+
+    if (fd >= FILE_TABLE_LENGTH || table->files[fd] == NULL)
     {
+        lock_release(&table->lock);
         return ERROR(EBADF);
     }
 
+    File* file = table->files[fd];
+    table->files[fd] = NULL;
+    file_put(file);
+
+    lock_release(&table->lock);
     return 0;
 }
 
-uint64_t vfs_read(fd_t fd, void* buffer, uint64_t count)
+uint64_t vfs_read(uint64_t fd, void* buffer, uint64_t count)
 {    
-    File* file = file_table_get(fd);
+    File* file = file_get(fd);
     if (file == NULL)
     {
         return ERROR(EBADF);
     }
 
     uint64_t result;
-    if (file->flags & O_READ)
+    if (file->funcs->read != NULL && file->flags & O_READ)
     {
-        result = file->disk->read(file, buffer, count);
+        result = file->funcs->read(file, buffer, count);
     }
     else
     {
         result = ERROR(EACCES);
     }
 
-    file_table_put(file);
+    file_put(file);
     return result;
 }
 
-uint64_t vfs_write(fd_t fd, const void* buffer, uint64_t count)
+uint64_t vfs_write(uint64_t fd, const void* buffer, uint64_t count)
 {
-    File* file = file_table_get(fd);
+    File* file = file_get(fd);
     if (file == NULL)
     {
         return ERROR(EBADF);
     }
 
     uint64_t result;
-    if (file->flags & O_WRITE)
+    if (file->funcs->write != NULL && file->flags & O_WRITE)
     {
-        result = file->disk->write(file, buffer, count);
+        result = file->funcs->write(file, buffer, count);
     }
     else
     {
         result = ERROR(EACCES);
     }
 
-    file_table_put(file);
+    file_put(file);
     return result;
 }
 
-uint64_t vfs_seek(fd_t fd, int64_t offset, uint8_t origin)
+uint64_t vfs_seek(uint64_t fd, int64_t offset, uint8_t origin)
 {
-    File* file = file_table_get(fd);
+    File* file = file_get(fd);
     if (file == NULL)
     {
         return ERROR(EBADF);
     }
 
     uint64_t result;
-    if (file->disk->seek != NULL)
+    if (file->funcs->seek != NULL)
     {
-        result = file->disk->seek(file, offset, origin);
+        result = file->funcs->seek(file, offset, origin);
     }
     else
     {
         result = ERROR(EACCES);
     }
 
-    file_table_put(file);
+    file_put(file);
     return result;
 }

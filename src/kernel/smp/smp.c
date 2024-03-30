@@ -3,13 +3,12 @@
 #include <string.h>
 
 #include "tty/tty.h"
-#include "registers/registers.h"
+#include "regs/regs.h"
 #include "heap/heap.h"
 #include "apic/apic.h"
 #include "madt/madt.h"
 #include "debug/debug.h"
 #include "utils/utils.h"
-#include "traps/traps.h"
 #include "smp/trampoline/trampoline.h"
 #include "smp/startup/startup.h"
 

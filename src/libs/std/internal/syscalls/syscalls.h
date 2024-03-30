@@ -12,12 +12,14 @@
 #define SYS_SLEEP 3
 #define SYS_ALLOCATE 4
 #define SYS_ERROR 5
-#define SYS_OPEN 6
-#define SYS_CLOSE 7
-#define SYS_READ 8
-#define SYS_WRITE 9
-#define SYS_SEEK 10
-#define SYS_TEST 11
+#define SYS_PID 6
+#define SYS_TID 7
+#define SYS_OPEN 8
+#define SYS_CLOSE 9
+#define SYS_READ 10
+#define SYS_WRITE 11
+#define SYS_SEEK 12
+#define SYS_TEST 13
 
 extern uint64_t _Syscall0();
 extern uint64_t _Syscall1();

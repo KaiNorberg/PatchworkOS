@@ -20,8 +20,7 @@
 #include "pic/pic.h"
 #include "vfs/vfs.h"
 #include "ram_disk/ram_disk.h"
-#include "registers/registers.h"
-#include "traps/traps.h"
+#include "regs/regs.h"
 #include "loader/loader.h"
 
 static void deallocate_boot_info(BootInfo* bootInfo)

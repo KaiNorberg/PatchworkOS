@@ -30,7 +30,7 @@ static inline void* loader_load_program()
 {
     Process* process = sched_process();
 
-    fd_t fd = vfs_open(process->executable, O_READ);
+    uint64_t fd = vfs_open(process->executable, O_READ);
     if (fd == ERR)
     {
         sched_process_exit(EEXEC);

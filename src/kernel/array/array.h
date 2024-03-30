@@ -3,16 +3,22 @@
 #include "defs/defs.h"
 #include "lock/lock.h"
 
-//Note: Named array to avoid confusion with interrupt vectors
+//Note: Named array to avoid confusion with interrupt vectors.
 
 #define ARRAY_INIT_CAPACITY 4
 
-#define ARRAY_FIND_NOT_FOUND 0
-#define ARRAY_FIND_FOUND 1
+typedef enum
+{
+    FIND_NOT_FOUND,
+    FIND_FOUND
+} FindResult;
 
-#define ARRAY_ITERATE_CONTINUE 0
-#define ARRAY_ITERATE_BREAK 1
-#define ARRAY_ITERATE_ERASE 2
+typedef enum
+{
+    ITERATE_CONTINUE,
+    ITERATE_BREAK,
+    ITERATE_ERASE
+} IterResult;
 
 typedef struct
 {
@@ -28,8 +34,8 @@ void array_free(Array* array);
 
 void array_push(Array* array, void* element);
 
-void* array_find(Array* array, uint64_t(*callback)(void*, void*), void* context);
+void* array_find(Array* array, FindResult(*callback)(void*, void*), void* context);
 
-bool array_iterate(Array* array, uint64_t(*callback)(void*));
+bool array_iterate(Array* array, IterResult(*callback)(void*));
 
 uint64_t array_length(Array* array);
