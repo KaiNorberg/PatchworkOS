@@ -18,11 +18,18 @@
 - Ram disks only
 - Only x86_64
 
+## Tested Hardware Configurations
+
+- Lenovo Thinkpad E495
+- Ryzen 5 3600X | 32GB 3200MHZ Corsair Vengence RAM
+
+Currently untested on Intel hardware.
+
 ## Setup
 
 <ins>**1. Cloning (downloading) this repository**</ins>
 
-To clone (download) this repository, you can use the ```Code``` button at the top left of the screen, or if you have git installed use the following command ```git clone --recursive https://github.com/Kaj9296/PatchworkOS```.
+To clone (download) this repository, you can use the ```Code``` button at the top left of the screen, or if you have git installed use the following command ```git clone --recursive https://github.com/KaiNorberg/PatchworkOS```.
 
 <ins>**2. Building Patchwork**</ins>
 
@@ -48,4 +55,4 @@ Documentation will eventually be found on the ![wiki](https://github.com/Kaj9296
 
 ## Contributing
 
-Patchwork is intended as a personal project, therefor contributions to add features are unwanted. However if you find any bugs, issues or just have a suggestion for something i could do better, then feel free to open an issue. This might change in the future.
+Patchwork is intended as a personal project, therefor contributions are unwanted. However if you find any bugs, issues or just have a suggestion for something i could do better, then feel free to open an issue. This might change in the future.
