@@ -18,6 +18,13 @@
 - Ram disks only
 - Only x86_64
 
+## Tested Hardware Configurations
+
+- Lenovo Thinkpad E495
+- Ryzen 5 3600X | 32GB 3200MHZ Corsair Vengence RAM
+
+Currently untested on Intel hardware.
+
 ## Setup
 
 <ins>**1. Cloning (downloading) this repository**</ins>
