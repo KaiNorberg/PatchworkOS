@@ -26,6 +26,8 @@ void gdt_init(void)
     gdt.kernelData = gdt_entry_create(0x92, 0xC);
     gdt.userCode = gdt_entry_create(0xFA, 0xA);
     gdt.userData = gdt_entry_create(0xF2, 0xC);
+
+    gdt_load();
 }
 
 void gdt_load(void)

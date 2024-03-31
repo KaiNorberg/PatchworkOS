@@ -26,8 +26,9 @@ void idt_init(void)
     {        
         idt_set_vector((uint8_t)vector, vectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);
     }        
-    
     idt_set_vector(SYSCALL_VECTOR, syscall_handler, IDT_RING3, IDT_TRAP_GATE);
+
+    idt_load();
 }
 
 void idt_load(void)

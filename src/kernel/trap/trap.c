@@ -56,6 +56,16 @@ static inline void ipi_handler(TrapFrame const* trapFrame)
     local_apic_eoi();
 }
 
+static void trap_begin()
+{
+    smp_self_unsafe()->trapDepth++;
+}
+
+static void trap_end()
+{
+    smp_self_unsafe()->trapDepth--;
+}
+
 void interrupts_disable(void)
 {
     if (!smp_initialized())
@@ -94,14 +104,14 @@ void interrupts_enable(void)
 
 void trap_handler(TrapFrame* trapFrame)
 {
-    Cpu* self = smp_self_unsafe();
-    self->trapDepth++;
-
     if (trapFrame->vector < IRQ_BASE)
     {
         exception_handler(trapFrame);
     }
-    else if (trapFrame->vector >= IRQ_BASE && trapFrame->vector < IRQ_BASE + IRQ_AMOUNT)
+
+    trap_begin();
+
+    if (trapFrame->vector >= IRQ_BASE && trapFrame->vector < IRQ_BASE + IRQ_AMOUNT)
     {
         irq_dispatch(trapFrame);
     }
@@ -120,5 +130,5 @@ void trap_handler(TrapFrame* trapFrame)
         thread->state = THREAD_STATE_KILLED;
     }
 
-    self->trapDepth--;
+    trap_end();
 }

@@ -116,8 +116,6 @@ void debug_panic(const char* message)
 
     tty_acquire();
 
-    smp_send_ipi_to_others(IPI_HALT);
-
     uint32_t oldRow = tty_get_row();
     uint32_t oldColumn = tty_get_column();
 
@@ -139,6 +137,7 @@ void debug_panic(const char* message)
 
     tty_release();
 
+    smp_send_ipi_to_others(IPI_HALT);
     while (true)
     {
         asm volatile("hlt");
@@ -146,10 +145,10 @@ void debug_panic(const char* message)
 }
 
 void debug_exception(TrapFrame const* trapFrame, const char* message)
-{
-    tty_acquire();
+{    
+    asm volatile("cli");
 
-    smp_send_ipi_to_others(IPI_HALT);
+    tty_acquire();
 
     uint32_t oldRow = tty_get_row();
     uint32_t oldColumn = tty_get_column();
@@ -210,7 +209,7 @@ void debug_exception(TrapFrame const* trapFrame, const char* message)
     
     tty_release();
 
-    asm volatile("cli");
+    smp_send_ipi_to_others(IPI_HALT);
     while (true)
     {
         asm volatile("hlt");

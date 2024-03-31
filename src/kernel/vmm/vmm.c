@@ -47,8 +47,12 @@ void vmm_init(EfiMemoryMap* memoryMap)
 void* vmm_map(void* physicalAddress, uint64_t pageAmount, uint16_t flags)
 {
     void* virtualAddress = VMM_LOWER_TO_HIGHER(physicalAddress);
-    page_table_map_pages(kernelPageTable, virtualAddress, physicalAddress, pageAmount, 
+
+    if (page_table_physical_address(kernelPageTable, virtualAddress) == NULL)
+    {
+        page_table_map_pages(kernelPageTable, virtualAddress, physicalAddress, pageAmount, 
         flags | VMM_KERNEL_PAGE_FLAGS);
+    }
 
     return virtualAddress;
 }

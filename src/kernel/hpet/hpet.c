@@ -14,8 +14,8 @@ void hpet_init(void)
     tty_start_message("HPET initializing");
 
     hpet = (Hpet*)rsdt_lookup("HPET");
-    tty_assert(hpet != 0, "Hardware is incompatible, unable to find HPET");
-    
+    tty_assert(hpet != NULL, "Hardware is incompatible, unable to find HPET");
+
     hpetAddress = (uintptr_t)vmm_map((void*)hpet->address, 1, PAGE_FLAG_WRITE);
     hpetPeriod = hpet_read(HPET_GENERAL_CAPABILITIES) >> HPET_COUNTER_CLOCK_OFFSET;
 

@@ -80,9 +80,8 @@ void kernel_cpu_init(void)
     local_apic_init();
 
     gdt_load();
-    gdt_load_tss(&cpu->tss);
-
     idt_load();
+    gdt_load_tss(&cpu->tss);
 
     CR4_WRITE(CR4_READ() | CR4_PAGE_GLOBAL_ENABLE);
 }
