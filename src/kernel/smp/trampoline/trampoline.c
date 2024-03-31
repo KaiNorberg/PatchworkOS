@@ -36,5 +36,6 @@ void smp_trampoline_cleanup(void)
     memcpy(VMM_LOWER_TO_HIGHER(SMP_TRAMPOLINE_PHYSICAL_START), backupBuffer, PAGE_SIZE);
     kfree(backupBuffer);
 
+    page_table_unmap(space->pageTable, SMP_TRAMPOLINE_PHYSICAL_START);
     space_free(space);
 }

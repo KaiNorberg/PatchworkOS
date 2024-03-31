@@ -55,7 +55,7 @@ void* virtual_memory_allocate_pool(uint64_t size, uint64_t memoryType)
 void virtual_memory_map_populate(EfiMemoryMap* memoryMap)
 {
     memory_map_populate(memoryMap);
-    memoryMap->base = (void*)((uint64_t)memoryMap->base + HIGHER_HALF_BASE);
+    memoryMap->base = (void*)(HIGHER_HALF_BASE + (uint64_t)memoryMap->base);
 
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {

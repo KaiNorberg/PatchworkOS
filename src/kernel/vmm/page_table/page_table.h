@@ -43,6 +43,10 @@ void page_table_map_pages(PageTable* table, void* virtualAddress, void* physical
 
 void page_table_map(PageTable* table, void* virtualAddress, void* physicalAddress, uint16_t flags);
 
+void page_table_unmap_pages(PageTable* table, void* virtualAddress, uint64_t pageAmount);
+
+void page_table_unmap(PageTable* table, void* virtualAddress);
+
 void* page_table_physical_address(PageTable* table, const void* virtualAddress);
 
 void page_table_change_flags(PageTable* table, void* virtualAddress, uint16_t flags);

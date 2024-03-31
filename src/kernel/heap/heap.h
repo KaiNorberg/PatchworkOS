@@ -4,11 +4,10 @@
 
 //TODO: Implement page aligned allocation, change to bitmap heap?
 
-#define HEAP_HEADER_GET_START(block) ((void*)((uint64_t)block + sizeof(HeapHeader)))
-#define HEAP_HEADER_GET_END(block) ((void*)((uint64_t)block + sizeof(HeapHeader) + block->size))
-
 #define HEAP_ALIGNMENT 64
 
+#define HEAP_HEADER_GET_START(block) ((void*)((uint64_t)block + sizeof(HeapHeader)))
+#define HEAP_HEADER_GET_END(block) ((void*)((uint64_t)block + sizeof(HeapHeader) + block->size))
 #define HEAP_HEADER_MAGIC 0xBC709F7DE48C8381
 
 //Should be exactly 64 bytes long

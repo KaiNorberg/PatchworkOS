@@ -17,7 +17,7 @@ int main(void)
         SYSCALL(SYS_TEST, 1, strerror(errno));
         return EXIT_FAILURE;
     }
-    
+
     char buffer[BUFFER_SIZE];
     memset(buffer, 0, BUFFER_SIZE);    
     if (read(fd, buffer, BUFFER_SIZE - 1) == ERR)
@@ -25,13 +25,13 @@ int main(void)
         SYSCALL(SYS_TEST, 1, strerror(errno));
         return EXIT_FAILURE;
     }
-    
+
     if (close(fd) == ERR)
     {
         SYSCALL(SYS_TEST, 1, strerror(errno));
         return EXIT_FAILURE;
     }
-    
+
     while (1)
     {
         SYSCALL(SYS_TEST, 1, buffer);

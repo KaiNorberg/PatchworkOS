@@ -2,6 +2,8 @@
 
 #include "defs/defs.h"
 
+#define POW2(exponent) (1 << (exponent))
+
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
@@ -18,6 +20,10 @@
 #define WRITE_64(address, value) (*((volatile uint64_t*)(address)) = (uint64_t)value)
 
 uint64_t stoi(const char* string);
+
+uint64_t round_pow2(uint64_t number);
+
+uint64_t nearest_pow2_exponent(uint64_t number);
 
 uint64_t round_up(uint64_t number, uint64_t multiple);
 

@@ -27,6 +27,8 @@ typedef struct
 
 void vmm_init(EfiMemoryMap* memoryMap);
 
+void* vmm_allocate(uint64_t pageAmount);
+
 void* vmm_map(void* physicalAddress, uint64_t pageAmount, uint16_t flags);
 
 void vmm_change_flags(void* address, uint64_t pageAmount, uint16_t flags);

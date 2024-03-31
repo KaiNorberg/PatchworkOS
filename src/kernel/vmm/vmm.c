@@ -7,6 +7,9 @@
 #include "sched/sched.h"
 #include "regs/regs.h"
 
+extern uint64_t _kernelEnd;
+
+static uintptr_t lastAddress;
 static PageTable* kernelPageTable;
 
 static void vmm_load_memory_map(EfiMemoryMap* memoryMap)
@@ -39,9 +42,21 @@ static void vmm_deallocate_boot_page_table(EfiMemoryMap* memoryMap)
 
 void vmm_init(EfiMemoryMap* memoryMap)
 {
-    vmm_load_memory_map(memoryMap);
+    lastAddress = round_up((uint64_t)&_kernelEnd, PAGE_SIZE);
 
+    vmm_load_memory_map(memoryMap);
     vmm_deallocate_boot_page_table(memoryMap);
+}
+
+void* vmm_allocate(uint64_t pageAmount)
+{
+    void* address = (void*)lastAddress;
+    for (uint64_t i = 0; i < pageAmount; i++)
+    {
+        page_table_map(kernelPageTable, (void*)lastAddress, pmm_allocate(), PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
+        lastAddress += PAGE_SIZE;
+    }
+    return address;
 }
 
 void* vmm_map(void* physicalAddress, uint64_t pageAmount, uint16_t flags)
@@ -51,7 +66,7 @@ void* vmm_map(void* physicalAddress, uint64_t pageAmount, uint16_t flags)
     if (page_table_physical_address(kernelPageTable, virtualAddress) == NULL)
     {
         page_table_map_pages(kernelPageTable, virtualAddress, physicalAddress, pageAmount, 
-        flags | VMM_KERNEL_PAGE_FLAGS);
+            flags | VMM_KERNEL_PAGE_FLAGS);
     }
 
     return virtualAddress;

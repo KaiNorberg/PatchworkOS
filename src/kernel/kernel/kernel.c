@@ -30,11 +30,11 @@ static void deallocate_boot_info(BootInfo* bootInfo)
     EfiMemoryMap* memoryMap = &bootInfo->memoryMap;
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        const EfiMemoryDescriptor* descriptor = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
+        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
 
-        if (descriptor->type == EFI_MEMORY_TYPE_BOOT_INFO)
+        if (desc->type == EFI_MEMORY_TYPE_BOOT_INFO)
         {
-            pmm_free_pages(descriptor->physicalStart, descriptor->amountOfPages);
+            pmm_free_pages(desc->physicalStart, desc->amountOfPages);
         }
     }
 

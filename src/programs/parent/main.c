@@ -8,7 +8,7 @@
 #include <libs/std/internal/syscalls/syscalls.h>
 
 int main(void)
-{                
+{
     if (spawn("/ram/programs/child.elf") == ERR)
     {
         SYSCALL(SYS_TEST, 1, strerror(errno));
