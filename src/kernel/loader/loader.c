@@ -16,7 +16,7 @@ static inline void* loader_allocate_stack()
 {    
     Thread* thread = sched_thread();
     void* address = (void*)(VMM_LOWER_HALF_MAX - (THREAD_USER_STACK_SIZE * (thread->id + 1) + PAGE_SIZE * (thread->id)));
-    if (space_allocate(sched_process()->space, address, THREAD_USER_STACK_SIZE / PAGE_SIZE) == NULL)
+    if (vmm_allocate(address, THREAD_USER_STACK_SIZE / PAGE_SIZE) == NULL)
     {
         debug_panic("Failed to allocate user stack!");
     }
@@ -28,9 +28,7 @@ static inline void* loader_allocate_stack()
 
 static inline void* loader_load_program()
 {
-    Process* process = sched_process();
-
-    uint64_t fd = vfs_open(process->executable, O_READ);
+    uint64_t fd = vfs_open(sched_process()->executable, O_READ);
     if (fd == ERR)
     {
         sched_process_exit(EEXEC);
@@ -68,7 +66,7 @@ static inline void* loader_load_program()
 
             void* address = (void*)programHeader->virtualAddress;
 
-            if (space_allocate(process->space, address, SIZE_IN_PAGES(programHeader->memorySize) + 1) == NULL)
+            if (vmm_allocate(address, SIZE_IN_PAGES(programHeader->memorySize) + 1) == NULL)
             {
                 sched_process_exit(EEXEC);
             }

@@ -26,7 +26,7 @@ Process* process_new(const char* executable)
         memset(process->executable, 0, VFS_MAX_PATH_LENGTH);
     }
     file_table_init(&process->fileTable);
-    process->space = space_new();
+    space_init(&process->space);
     process->killed = false;
     process->threadCount = 0;
     process->newTid = 0;
@@ -63,7 +63,7 @@ void thread_free(Thread* thread)
     if (atomic_fetch_sub(&thread->process->threadCount, 1) <= 1)
     {
         file_table_cleanup(&thread->process->fileTable);
-        space_free(thread->process->space);
+        space_cleanup(&thread->process->space);
         kfree(thread->process);
     }
 

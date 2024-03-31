@@ -2,7 +2,7 @@
 
 #include "defs/defs.h"
 
-//TODO: Implement page aligned allocation, change to bitmap heap?
+//TODO: Implement slab allocator
 
 #define HEAP_ALIGNMENT 64
 

@@ -25,20 +25,20 @@ typedef struct
     Lock lock;
 } Space;
 
-void vmm_init(EfiMemoryMap* memoryMap);
+void space_init(Space* space);
 
-void* vmm_allocate(uint64_t pageAmount);
-
-void* vmm_map(void* physicalAddress, uint64_t pageAmount, uint16_t flags);
-
-void vmm_change_flags(void* address, uint64_t pageAmount, uint16_t flags);
-
-Space* space_new(void);
-
-void space_free(Space* space);
+void space_cleanup(Space* space);
 
 void space_load(Space* space);
 
-void* space_allocate(Space* space, const void* address, uint64_t pageAmount);
+void vmm_init(EfiMemoryMap* memoryMap);
 
-void* space_physical_to_virtual(Space* space, const void* address);
+void vmm_kernel_change_flags(void* address, uint64_t pageAmount, uint16_t flags);
+
+void* vmm_kernel_allocate(uint64_t pageAmount);
+
+void* vmm_kernel_map(void* physicalAddress, uint64_t pageAmount, uint16_t flags);
+
+void* vmm_allocate(const void* address, uint64_t pageAmount);
+
+void* vmm_physical_to_virtual(const void* address);

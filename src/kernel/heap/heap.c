@@ -27,7 +27,7 @@ static inline void heap_split(HeapHeader* block, uint64_t size)
 static inline HeapHeader* heap_new_block(uint64_t size)
 {
     uint64_t pageAmount = SIZE_IN_PAGES(size + sizeof(HeapHeader));
-    HeapHeader* newBlock = vmm_allocate(pageAmount);
+    HeapHeader* newBlock = vmm_kernel_allocate(pageAmount);
     newBlock->size = pageAmount * PAGE_SIZE - sizeof(HeapHeader);
     newBlock->next = NULL;
     newBlock->reserved = false;

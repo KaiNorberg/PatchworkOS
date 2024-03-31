@@ -24,7 +24,7 @@ static inline bool verify_pointer(const void* pointer, uint64_t size)
         return false;
     }
 
-    if (space_physical_to_virtual(sched_process()->space, pointer) == NULL)
+    if (vmm_physical_to_virtual(pointer) == NULL)
     {
         return false;
     }
@@ -67,8 +67,7 @@ uint64_t syscall_sleep(uint64_t nanoseconds)
 
 void* syscall_allocate(void* address, uint64_t length)
 {
-    space_allocate(sched_process()->space, address, SIZE_IN_PAGES(length));
-    return address;
+    return vmm_allocate(address, SIZE_IN_PAGES(length));
 }
 
 uint64_t syscall_error(void)

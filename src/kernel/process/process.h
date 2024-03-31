@@ -27,7 +27,7 @@ typedef struct
     uint64_t id;
     char executable[VFS_MAX_PATH_LENGTH];
     FileTable fileTable;
-    Space* space;
+    Space space;
     bool killed;
     _Atomic uint64_t threadCount;
     _Atomic uint64_t newTid;

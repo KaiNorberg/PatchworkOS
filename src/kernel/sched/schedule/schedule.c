@@ -70,7 +70,7 @@ static inline void sched_switch_thread(TrapFrame* trapFrame, Scheduler* schedule
         next->timeEnd = next->timeStart + SCHED_TIME_SLICE;
         *trapFrame = next->trapFrame;
 
-        space_load(next->process->space);
+        space_load(&next->process->space);
         tss_stack_load(&self->tss, (void*)((uint64_t)next->kernelStack + THREAD_KERNEL_STACK_SIZE));
 
         scheduler->runningThread = next;

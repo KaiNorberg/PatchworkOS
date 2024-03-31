@@ -40,50 +40,8 @@ static void vmm_deallocate_boot_page_table(EfiMemoryMap* memoryMap)
 	}
 }
 
-void vmm_init(EfiMemoryMap* memoryMap)
+void space_init(Space* space)
 {
-    lastAddress = round_up((uint64_t)&_kernelEnd, PAGE_SIZE);
-
-    vmm_load_memory_map(memoryMap);
-    vmm_deallocate_boot_page_table(memoryMap);
-}
-
-void* vmm_allocate(uint64_t pageAmount)
-{
-    void* address = (void*)lastAddress;
-    for (uint64_t i = 0; i < pageAmount; i++)
-    {
-        page_table_map(kernelPageTable, (void*)lastAddress, pmm_allocate(), PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
-        lastAddress += PAGE_SIZE;
-    }
-    return address;
-}
-
-void* vmm_map(void* physicalAddress, uint64_t pageAmount, uint16_t flags)
-{
-    void* virtualAddress = VMM_LOWER_TO_HIGHER(physicalAddress);
-
-    if (page_table_physical_address(kernelPageTable, virtualAddress) == NULL)
-    {
-        page_table_map_pages(kernelPageTable, virtualAddress, physicalAddress, pageAmount, 
-            flags | VMM_KERNEL_PAGE_FLAGS);
-    }
-
-    return virtualAddress;
-}
-
-void vmm_change_flags(void* address, uint64_t pageAmount, uint16_t flags)
-{
-    for (uint64_t i = 0; i < pageAmount; i++)
-    {
-        page_table_change_flags(kernelPageTable, (void*)((uint64_t)address + i * PAGE_SIZE), 
-            flags | VMM_KERNEL_PAGE_FLAGS);
-    }
-}
-
-Space* space_new(void)
-{
-    Space* space = kmalloc(sizeof(Space));
     space->pageTable = page_table_new();
     space->lock = lock_create();
 
@@ -91,10 +49,9 @@ Space* space_new(void)
     {
         space->pageTable->entries[i] = kernelPageTable->entries[i];
     }
-    return space;
 }
 
-void space_free(Space* space)
+void space_cleanup(Space* space)
 {
     for (uint64_t i = PAGE_ENTRY_AMOUNT / 2; i < PAGE_ENTRY_AMOUNT; i++)
     {
@@ -102,7 +59,6 @@ void space_free(Space* space)
     }
 
     page_table_free(space->pageTable);
-    kfree(space);
 }
 
 void space_load(Space* space)
@@ -117,7 +73,48 @@ void space_load(Space* space)
     }
 }
 
-void* space_allocate(Space* space, const void* address, uint64_t pageAmount)
+void vmm_init(EfiMemoryMap* memoryMap)
+{
+    lastAddress = round_up((uint64_t)&_kernelEnd, PAGE_SIZE);
+
+    vmm_load_memory_map(memoryMap);
+    vmm_deallocate_boot_page_table(memoryMap);
+}
+
+void vmm_kernel_change_flags(void* address, uint64_t pageAmount, uint16_t flags)
+{
+    for (uint64_t i = 0; i < pageAmount; i++)
+    {
+        page_table_change_flags(kernelPageTable, (void*)((uint64_t)address + i * PAGE_SIZE), 
+            flags | VMM_KERNEL_PAGE_FLAGS);
+    }
+}
+
+void* vmm_kernel_allocate(uint64_t pageAmount)
+{
+    void* address = (void*)lastAddress;
+    for (uint64_t i = 0; i < pageAmount; i++)
+    {
+        page_table_map(kernelPageTable, (void*)lastAddress, pmm_allocate(), PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
+        lastAddress += PAGE_SIZE;
+    }
+    return address;
+}
+
+void* vmm_kernel_map(void* physicalAddress, uint64_t pageAmount, uint16_t flags)
+{
+    void* virtualAddress = VMM_LOWER_TO_HIGHER(physicalAddress);
+
+    if (page_table_physical_address(kernelPageTable, virtualAddress) == NULL)
+    {
+        page_table_map_pages(kernelPageTable, virtualAddress, physicalAddress, pageAmount, 
+            flags | VMM_KERNEL_PAGE_FLAGS);
+    }
+
+    return virtualAddress;
+}
+
+void* vmm_allocate(const void* address, uint64_t pageAmount)
 {
     if ((uint64_t)address + pageAmount * PAGE_SIZE > VMM_LOWER_HALF_MAX)
     {
@@ -129,7 +126,9 @@ void* space_allocate(Space* space, const void* address, uint64_t pageAmount)
         return NULLPTR(EFAULT);
     }
 
+    Space* space = &sched_process()->space;
     void* alignedAddress = (void*)round_down((uint64_t)address, PAGE_SIZE);
+
     for (uint64_t i = 0; i < pageAmount; i++)
     {            
         void* virtualAddress = (void*)((uint64_t)alignedAddress + i * PAGE_SIZE);
@@ -147,8 +146,10 @@ void* space_allocate(Space* space, const void* address, uint64_t pageAmount)
     return alignedAddress;
 }
 
-void* space_physical_to_virtual(Space* space, const void* address)
+void* vmm_physical_to_virtual(const void* address)
 {
+    Space* space = &sched_process()->space;
+
     lock_acquire(&space->lock);
     void* temp = page_table_physical_address(space->pageTable, address);
     lock_release(&space->lock);
