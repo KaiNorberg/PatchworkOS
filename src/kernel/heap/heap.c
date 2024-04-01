@@ -9,6 +9,7 @@
 #include "debug/debug.h"
 #include "vmm/vmm.h"
 
+static uintptr_t newAddress;
 static HeapHeader* firstBlock;
 static Lock lock;
 
@@ -27,7 +28,14 @@ static inline void heap_split(HeapHeader* block, uint64_t size)
 static inline HeapHeader* heap_new_block(uint64_t size)
 {
     uint64_t pageAmount = SIZE_IN_PAGES(size + sizeof(HeapHeader));
-    HeapHeader* newBlock = vmm_kernel_allocate(pageAmount);
+    newAddress -= pageAmount * PAGE_SIZE;
+
+    HeapHeader* newBlock = (HeapHeader*)newAddress;
+    for (uint64_t i = 0; i < pageAmount; i++)
+    {
+        vmm_kernel_map((void*)(newAddress + i * PAGE_SIZE), pmm_allocate(), 1, PAGE_FLAG_WRITE);
+    }
+
     newBlock->size = pageAmount * PAGE_SIZE - sizeof(HeapHeader);
     newBlock->next = NULL;
     newBlock->reserved = false;
@@ -38,6 +46,7 @@ static inline HeapHeader* heap_new_block(uint64_t size)
 
 void heap_init(void)
 {    
+    newAddress = 0xFFFFFFFFFFFFF000; //Top of address space.
     firstBlock = heap_new_block(PAGE_SIZE);
 
     lock = lock_create();
@@ -102,7 +111,7 @@ void* kmalloc(uint64_t size)
     }
     lock_acquire(&lock);
 
-    size = round_up(size, HEAP_ALIGNMENT);
+    size = ROUND_UP(size, HEAP_ALIGNMENT);
 
     HeapHeader* currentBlock = firstBlock;
     while (true) 

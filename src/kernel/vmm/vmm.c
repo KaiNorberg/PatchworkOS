@@ -7,9 +7,6 @@
 #include "sched/sched.h"
 #include "regs/regs.h"
 
-extern uint64_t _kernelEnd;
-
-static uintptr_t lastAddress;
 static PageTable* kernelPageTable;
 
 static void vmm_load_memory_map(EfiMemoryMap* memoryMap)
@@ -75,35 +72,16 @@ void space_load(Space* space)
 
 void vmm_init(EfiMemoryMap* memoryMap)
 {
-    lastAddress = round_up((uint64_t)&_kernelEnd, PAGE_SIZE);
-
     vmm_load_memory_map(memoryMap);
     vmm_deallocate_boot_page_table(memoryMap);
 }
 
-void vmm_kernel_change_flags(void* address, uint64_t pageAmount, uint16_t flags)
+void* vmm_kernel_map(void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint16_t flags)
 {
-    for (uint64_t i = 0; i < pageAmount; i++)
+    if (virtualAddress == NULL)
     {
-        page_table_change_flags(kernelPageTable, (void*)((uint64_t)address + i * PAGE_SIZE), 
-            flags | VMM_KERNEL_PAGE_FLAGS);
+        virtualAddress = VMM_LOWER_TO_HIGHER(physicalAddress);
     }
-}
-
-void* vmm_kernel_allocate(uint64_t pageAmount)
-{
-    void* address = (void*)lastAddress;
-    for (uint64_t i = 0; i < pageAmount; i++)
-    {
-        page_table_map(kernelPageTable, (void*)lastAddress, pmm_allocate(), PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
-        lastAddress += PAGE_SIZE;
-    }
-    return address;
-}
-
-void* vmm_kernel_map(void* physicalAddress, uint64_t pageAmount, uint16_t flags)
-{
-    void* virtualAddress = VMM_LOWER_TO_HIGHER(physicalAddress);
 
     if (page_table_physical_address(kernelPageTable, virtualAddress) == NULL)
     {
@@ -127,7 +105,7 @@ void* vmm_allocate(const void* address, uint64_t pageAmount)
     }
 
     Space* space = &sched_process()->space;
-    void* alignedAddress = (void*)round_down((uint64_t)address, PAGE_SIZE);
+    void* alignedAddress = (void*)ROUND_DOWN((uint64_t)address, PAGE_SIZE);
 
     for (uint64_t i = 0; i < pageAmount; i++)
     {            

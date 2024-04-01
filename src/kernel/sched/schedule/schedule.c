@@ -173,7 +173,7 @@ void sched_push(Thread* thread, uint8_t boost)
 {
     int64_t bestLength = INT64_MAX;
     uint64_t best = 0;
-    for (uint64_t i = 0; i < smp_cpu_amount(); i++)
+    for (int64_t i = smp_cpu_amount() - 1; i >= 0; i--)
     {
         Scheduler const* scheduler = &smp_cpu(i)->scheduler;
 

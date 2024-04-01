@@ -140,8 +140,7 @@ uint64_t sched_local_thread_amount(void)
     Scheduler const* scheduler = &smp_self()->scheduler;
 
     uint64_t length = (scheduler->runningThread != NULL);
-    length += array_length(scheduler->blockedThreads);
-    for (int64_t p = THREAD_PRIORITY_MIN; p <= THREAD_PRIORITY_MAX; p++)
+    for (uint64_t p = THREAD_PRIORITY_MIN; p <= THREAD_PRIORITY_MAX; p++)
     {
         length += queue_length(scheduler->queues[p]);
     }

@@ -14,19 +14,28 @@
 
 #include "heap/heap.h"
 
-/*void heap()
+void pmm()
+{
+    for (uint64_t i = 0; i < 50000; i++)
+    {
+        pmm_allocate();
+    }
+}
+
+void heap()
 {
     for (uint64_t i = 0; i < 5000; i++)
     {
         kmalloc(1000);
     }
-}*/
+}
 
 void main(BootInfo* bootInfo)
 {
     kernel_init(bootInfo);
 
-    //BENCHMARK(heap);
+    /*BENCHMARK(pmm);
+    BENCHMARK(heap);*/
 
     /*tty_print("Total: ");
     tty_printi((pmm_total_amount() * PAGE_SIZE) / 1024);
@@ -41,7 +50,7 @@ void main(BootInfo* bootInfo)
     tty_print("KB\n");*/
 
     tty_acquire();
-    for (uint64_t i = 0; i < 2; i++)
+    for (uint64_t i = 0; i < 4; i++)
     {
         sched_spawn("/ram/programs/parent.elf");
     }

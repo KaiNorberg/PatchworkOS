@@ -56,7 +56,8 @@ static inline void pmm_free_pages_unlocked(void* address, uint64_t count)
     }    
 }
 
-static void pmm_lazy_load()
+#if PMM_LAZY
+static void pmm_lazy_load_memory()
 {
     static uint64_t i = 0;
     for (; i < memoryMap->descriptorAmount; i++)
@@ -76,6 +77,22 @@ static void pmm_lazy_load()
     lock_release(&lock);
     debug_panic("Physical Memory Manager full!");
 }
+#else
+static void pmm_load_memory()
+{    
+    for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
+    {
+        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
+        
+        if (is_type_usable(desc->type))
+        {
+            pmm_free_pages_unlocked(desc->physicalStart, desc->amountOfPages);
+
+            loadedPageAmount += desc->amountOfPages;
+        }
+    }
+}
+#endif
 
 static void pmm_detect_memory()
 {
@@ -96,6 +113,10 @@ void pmm_init(EfiMemoryMap* efiMemoryMap)
     lock = lock_create();
 
     pmm_detect_memory();
+
+#if !(PMM_LAZY)
+    pmm_load_memory();
+#endif
 }
 
 void* pmm_allocate(void)
@@ -104,7 +125,11 @@ void* pmm_allocate(void)
 
     if (firstPage == NULL)
     {
-        pmm_lazy_load();
+#if PMM_LAZY
+        pmm_lazy_load_memory();
+#else
+        debug_panic("Physical Memory Manager full!");
+#endif
     }
     
     void* address = firstPage;

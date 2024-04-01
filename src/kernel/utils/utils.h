@@ -19,12 +19,11 @@
 #define READ_64(address) (*((volatile uint64_t*)(address)))
 #define WRITE_64(address, value) (*((volatile uint64_t*)(address)) = (uint64_t)value)
 
+#define ROUND_UP(number, multiple) ((((uint64_t)(number) + (uint64_t)(multiple) - 1) / (uint64_t)(multiple)) * (uint64_t)(multiple))
+#define ROUND_DOWN(number, multiple) (((uint64_t)(number) / (uint64_t)(multiple)) * (uint64_t)(multiple))
+
 uint64_t stoi(const char* string);
 
 uint64_t round_pow2(uint64_t number);
 
 uint64_t nearest_pow2_exponent(uint64_t number);
-
-uint64_t round_up(uint64_t number, uint64_t multiple);
-
-uint64_t round_down(uint64_t number, uint64_t multiple);

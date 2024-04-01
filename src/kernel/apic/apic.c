@@ -12,7 +12,7 @@ static uintptr_t localApicBase;
 
 void apic_init(void)
 {
-    localApicBase = (uintptr_t)vmm_kernel_map(madt_local_apic_address(), 1, PAGE_FLAG_WRITE);
+    localApicBase = (uintptr_t)vmm_kernel_map(NULL, madt_local_apic_address(), 1, PAGE_FLAG_WRITE);
 }
 
 void apic_timer_init(uint8_t vector, uint64_t hz)

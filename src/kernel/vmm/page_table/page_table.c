@@ -101,11 +101,11 @@ void page_table_map(PageTable* table, void* virtualAddress, void* physicalAddres
 {        
     if ((uint64_t)virtualAddress % PAGE_SIZE != 0)
     {
-        debug_panic("Failed to map page");
+        debug_panic("Failed to map page, invalid virtual address");
     }    
     else if ((uint64_t)physicalAddress % PAGE_SIZE != 0)
     {
-        debug_panic("Failed to map page");
+        debug_panic("Failed to map page, invalid physical address");
     }
 
     PageTable* level3 = page_table_get_or_allocate(table, PAGE_TABLE_GET_INDEX(virtualAddress, 4), 
@@ -121,7 +121,7 @@ void page_table_map(PageTable* table, void* virtualAddress, void* physicalAddres
 
     if (PAGE_ENTRY_GET_FLAG(*entry, PAGE_FLAG_PRESENT))
     {
-        debug_panic("Failed to map page");
+        debug_panic("Failed to map page, already present");
     }
 
     *entry = page_entry_create(physicalAddress, flags);
@@ -167,7 +167,7 @@ void page_table_unmap(PageTable* table, void* virtualAddress)
 void* page_table_physical_address(PageTable* table, const void* virtualAddress)
 {
     uint64_t offset = ((uint64_t)virtualAddress) % PAGE_SIZE;
-    virtualAddress = (void*)round_down((uint64_t)virtualAddress, PAGE_SIZE);
+    virtualAddress = (void*)ROUND_DOWN(virtualAddress, PAGE_SIZE);
 
     PageTable* level3 = page_table_get(table, PAGE_TABLE_GET_INDEX(virtualAddress, 4));
     if (level3 == NULL)

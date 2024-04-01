@@ -4,15 +4,12 @@
 
 #include <common/boot_info/boot_info.h>
 
-//TODO: Implement lazy loading of the memory map?
-
 #define PAGE_SIZE 0x1000
 
-#define SIZE_IN_PAGES(size) \
-    (((size) / PAGE_SIZE) + 1)
+#define SIZE_IN_PAGES(size) (((size) / PAGE_SIZE) + 1)
+#define PAGE_SIZE_OF(object) SIZE_IN_PAGES(sizeof(object))
 
-#define PAGE_SIZE_OF(object) \
-    SIZE_IN_PAGES(sizeof(object))
+#define PMM_LAZY true
 
 typedef struct PageHeader
 {
