@@ -21,7 +21,7 @@ void virtual_memory_init(void)
     }
 
     EfiMemoryMap memoryMap;
-    memory_map_populate(&memoryMap);
+    memory_map_init(&memoryMap);
 
     for (uint64_t i = 0; i < memoryMap.descriptorAmount; i++)
     {
@@ -31,6 +31,7 @@ void virtual_memory_init(void)
         page_table_map_pages(pageTable, virtualAddress, (void*)desc->PhysicalStart, desc->NumberOfPages, PAGE_FLAG_WRITE);
 	}
 
+    memory_map_cleanup(&memoryMap);
     PAGE_TABLE_LOAD(pageTable);
 }
 
@@ -52,14 +53,19 @@ void* virtual_memory_allocate_pool(uint64_t size, uint64_t memoryType)
     return (void*)((uint64_t)memory_allocate_pool(size, memoryType) + HIGHER_HALF_BASE);
 }
 
-void virtual_memory_map_populate(EfiMemoryMap* memoryMap)
+void virtual_memory_map_init(EfiMemoryMap* memoryMap)
 {
-    memory_map_populate(memoryMap);
-    memoryMap->base = (void*)(HIGHER_HALF_BASE + (uint64_t)memoryMap->base);
+    memory_map_init(memoryMap);
+
+    void* newBuffer = virtual_memory_allocate_pool(memoryMap->descriptorAmount * memoryMap->descriptorSize, EFI_MEMORY_TYPE_MEMORY_MAP);
+    CopyMem(newBuffer, memoryMap->base, memoryMap->descriptorAmount * memoryMap->descriptorSize);
+
+    memory_map_cleanup(memoryMap);
+    memoryMap->base = newBuffer;
 
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap->base + (i * memoryMap->descriptorSize));
+        EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
         
         if (desc->Type == EFI_MEMORY_TYPE_KERNEL)
         {

@@ -14,4 +14,4 @@ void* virtual_memory_allocate_pages(uint64_t pageAmount, uint64_t memoryType);
 
 void* virtual_memory_allocate_pool(uint64_t size, uint64_t memoryType);
 
-void virtual_memory_map_populate(EfiMemoryMap* memoryMap);
+void virtual_memory_map_init(EfiMemoryMap* memoryMap);

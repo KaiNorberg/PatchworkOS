@@ -20,19 +20,13 @@
     {
         kmalloc(1000);
     }
-}
-
-void pmm()
-{
-    for (uint64_t i = 0; i < 50000; i++)
-    {
-        pmm_allocate();
-    }
 }*/
 
 void main(BootInfo* bootInfo)
 {
     kernel_init(bootInfo);
+
+    //BENCHMARK(heap);
 
     /*tty_print("Total: ");
     tty_printi((pmm_total_amount() * PAGE_SIZE) / 1024);

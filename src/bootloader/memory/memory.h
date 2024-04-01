@@ -13,4 +13,6 @@ void* memory_allocate_pool(uint64_t size, uint64_t memoryType);
 
 void memory_free_pool(void* pool);
 
-void memory_map_populate(EfiMemoryMap* memoryMap);
+void memory_map_init(EfiMemoryMap* memoryMap);
+
+void memory_map_cleanup(EfiMemoryMap* memoryMap);

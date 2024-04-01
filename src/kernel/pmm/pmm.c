@@ -13,7 +13,10 @@
 static PageHeader* firstPage = NULL;
 static PageHeader* lastPage = NULL;
 static uint64_t pageAmount = 0;
+static uint64_t loadedPageAmount = 0;
 static uint64_t freePageAmount = 0;
+
+static EfiMemoryMap* memoryMap;
 
 static Lock lock;
 
@@ -30,9 +33,18 @@ static inline void pmm_free_unlocked(void* address)
 {
     freePageAmount++;
 
-    lastPage->next = VMM_LOWER_TO_HIGHER(address);
-    lastPage->next->next = NULL;
-    lastPage = lastPage->next;
+    if (firstPage == NULL)
+    {
+        firstPage = VMM_LOWER_TO_HIGHER(address);
+        firstPage->next = NULL;
+        lastPage = firstPage;
+    }
+    else
+    {
+        lastPage->next = VMM_LOWER_TO_HIGHER(address);
+        lastPage->next->next = NULL;
+        lastPage = lastPage->next;
+    }
 }
 
 static inline void pmm_free_pages_unlocked(void* address, uint64_t count)
@@ -44,41 +56,28 @@ static inline void pmm_free_pages_unlocked(void* address, uint64_t count)
     }    
 }
 
-static void pmm_load_memory_map(EfiMemoryMap* memoryMap)
+static void pmm_lazy_load()
 {
-    uint64_t i = 0;
-    for (; i < memoryMap->descriptorAmount; i++)
-    {
-        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
-        
-        if (is_type_usable(desc->type))
-        {        
-            firstPage = VMM_LOWER_TO_HIGHER(desc->physicalStart);
-            firstPage->next = NULL;
-            lastPage = firstPage;
-
-            if (desc->amountOfPages != 0)
-            {
-                pmm_free_pages_unlocked((void*)((uint64_t)desc->physicalStart + PAGE_SIZE), desc->amountOfPages - 1);  
-            }
-
-            i++;
-            break;
-        }
-    }
-
+    static uint64_t i = 0;
     for (; i < memoryMap->descriptorAmount; i++)
     {
         const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
         
         if (is_type_usable(desc->type))
         {
-            pmm_free_pages_unlocked(desc->physicalStart, desc->amountOfPages);  
+            pmm_free_pages_unlocked(desc->physicalStart, desc->amountOfPages);
+
+            loadedPageAmount += desc->amountOfPages;
+            i++;
+            return;
         }
     }
+
+    lock_release(&lock);
+    debug_panic("Physical Memory Manager full!");
 }
 
-static void pmm_detect_memory(EfiMemoryMap* memoryMap)
+static void pmm_detect_memory()
 {
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
@@ -91,25 +90,24 @@ static void pmm_detect_memory(EfiMemoryMap* memoryMap)
     }
 }
 
-void pmm_init(EfiMemoryMap* memoryMap)
+void pmm_init(EfiMemoryMap* efiMemoryMap)
 {   
+    memoryMap = efiMemoryMap;
     lock = lock_create();
 
-    pmm_detect_memory(memoryMap);
-    pmm_load_memory_map(memoryMap);
+    pmm_detect_memory();
 }
 
 void* pmm_allocate(void)
 {
     lock_acquire(&lock);
 
-    void* address = firstPage;
-    if (address == NULL)
+    if (firstPage == NULL)
     {
-        lock_release(&lock);
-        debug_panic("Physical Memory Manager full!");
+        pmm_lazy_load();
     }
     
+    void* address = firstPage;
     firstPage = firstPage->next;
     freePageAmount--;
 
@@ -138,10 +136,10 @@ uint64_t pmm_total_amount(void)
 
 uint64_t pmm_free_amount(void)
 {
-    return freePageAmount;
+    return freePageAmount + pageAmount - loadedPageAmount;
 }
 
 uint64_t pmm_reserved_amount(void)
 {
-    return pageAmount - freePageAmount;
+    return pageAmount - pmm_free_amount();
 }

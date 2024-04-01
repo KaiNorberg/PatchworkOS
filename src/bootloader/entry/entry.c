@@ -28,7 +28,7 @@ EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
 
 	void* kernelEntry = load_kernel(L"/boot/kernel.elf", imageHandle);
 
-	virtual_memory_map_populate(&bootInfo->memoryMap);
+	virtual_memory_map_init(&bootInfo->memoryMap);
 
 	Print(L"Jumping to kernel...\n");
 	systemTable->BootServices->ExitBootServices(imageHandle, bootInfo->memoryMap.key);

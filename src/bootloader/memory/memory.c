@@ -39,7 +39,12 @@ void memory_free_pool(void* pool)
 	uefi_call_wrapper(BS->FreePool, 1, pool);
 }
 
-void memory_map_populate(EfiMemoryMap* memoryMap)
-{ 
+void memory_map_init(EfiMemoryMap* memoryMap)
+{
 	memoryMap->base = LibMemoryMap(&memoryMap->descriptorAmount, &memoryMap->key, &memoryMap->descriptorSize, &memoryMap->descriptorVersion);
+}
+
+void memory_map_cleanup(EfiMemoryMap* memoryMap)
+{
+	memory_free_pool(memoryMap->base);
 }

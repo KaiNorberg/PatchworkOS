@@ -81,7 +81,7 @@ all: build deploy
 run:
 	@qemu-system-x86_64 \
     -drive file=$(OUTPUT_IMAGE) \
-    -m 100M \
+    -m 1G \
 	-smp 8 \
     -no-shutdown -no-reboot \
     -drive if=pflash,format=raw,unit=0,file=vendor/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
@@ -91,7 +91,7 @@ run:
 run-debug:
 	@qemu-system-x86_64 \
     -drive file=$(OUTPUT_IMAGE) \
-	-m 100M \
+	-m 1G \
 	-smp 8 \
     -serial stdio \
 	-d int \

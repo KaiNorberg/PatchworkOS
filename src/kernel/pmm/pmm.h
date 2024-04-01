@@ -19,7 +19,7 @@ typedef struct PageHeader
     struct PageHeader* next;
 } PageHeader;
 
-void pmm_init(EfiMemoryMap* memoryMap);
+void pmm_init(EfiMemoryMap* efiMemoryMap);
 
 void* pmm_allocate(void);
 
