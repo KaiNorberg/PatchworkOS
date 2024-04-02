@@ -1,10 +1,10 @@
-# Patchwork OS [![License](https://img.shields.io/badge/licence-MIT-green)](https://github.com/Kaj9296/PatchworkOS/blob/main/LICENSE)
+# Patchwork OS [![License](https://img.shields.io/badge/licence-MIT-green)](https://github.com/KaiNorberg/PatchworkOS/blob/main/LICENSE)
 
 **Keep in mind that PatchworkOS is currently in a very early stage of development.**
 
 ## Features
 
-- Unix inspired Non-Unix architecture
+- Simple Unix inspired architecture (Not Unix-like)
 - Monolithic preemptive 64-bit kernel
 - SMP (Symmetric Multiprocessing)
 - Multithreading (Kernel Level Threads)
@@ -21,7 +21,7 @@
 ## Tested Hardware Configurations
 
 - Lenovo Thinkpad E495
-- Ryzen 5 3600X | 32GB 3200MHZ Corsair Vengence RAM
+- Ryzen 5 3600X | 32GB 3200MHZ Corsair Vengeance RAM
 
 Currently untested on Intel hardware.
 
