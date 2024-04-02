@@ -4,12 +4,22 @@
 #include <threads.h>
 #include <sys/io.h>
 #include <sys/process.h>
+#include <sys/ioctl.h>
 
 #include <libs/std/internal/syscalls/syscalls.h>
 
 int main(void)
 {
-    if (spawn("/ram/programs/child.elf") == ERR)
+/*
+    fd_t fb0 = open("/dev/fb/0", O_READ | O_WRITE);
+
+    struct ioctl_framebuffer_info info;
+    ioctl(fb0, IOCTL_GET_FB_INFO, &info);
+
+    close(fb0);
+*/
+
+    if (spawn("/ram/bin/child.elf") == ERR)
     {
         SYSCALL(SYS_TEST, 1, strerror(errno));
         return EXIT_FAILURE;

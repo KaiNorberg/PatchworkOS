@@ -11,7 +11,7 @@
 
 int main(void)
 {
-    fd_t fd = open("/ram/test1/test2/test3/test.txt", O_READ);
+    fd_t fd = open("/ram/test1/test2/test3/test.txt");
     if (fd == ERR)
     {    
         SYSCALL(SYS_TEST, 1, strerror(errno));

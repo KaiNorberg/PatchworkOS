@@ -61,17 +61,18 @@ static inline void sched_switch_thread(TrapFrame* trapFrame, Scheduler* schedule
     {
         if (scheduler->runningThread != NULL)
         {
-            scheduler->runningThread->trapFrame = *trapFrame;    
+            scheduler->runningThread->trapFrame = *trapFrame;
+            scheduler->runningThread->boost = 0;
             queue_push(scheduler->queues[scheduler->runningThread->priority], scheduler->runningThread);
             scheduler->runningThread = NULL;
         }
 
         next->timeStart = time_nanoseconds();
-        next->timeEnd = next->timeStart + SCHED_TIME_SLICE;
+        next->timeEnd = next->timeStart + CONFIG_TIME_SLICE;
         *trapFrame = next->trapFrame;
 
         space_load(&next->process->space);
-        tss_stack_load(&self->tss, (void*)((uint64_t)next->kernelStack + THREAD_KERNEL_STACK_SIZE));
+        tss_stack_load(&self->tss, (void*)((uint64_t)next->kernelStack + CONFIG_KERNEL_STACK));
 
         scheduler->runningThread = next;
     }
@@ -200,9 +201,4 @@ void sched_push(Thread* thread, uint8_t boost)
     thread->state = THREAD_STATE_ACTIVE;
     thread->boost = thread->priority + boost <= THREAD_PRIORITY_MAX ? boost : 0;
     queue_push(bestCpu->scheduler.queues[thread->priority + thread->boost], thread);
-
-    /*if (best != smp_self_unsafe()->id)
-    {
-        smp_send_ipi(bestCpu, IPI_SCHEDULE);
-    }*/
 }

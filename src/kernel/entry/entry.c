@@ -16,7 +16,7 @@
 
 void pmm()
 {
-    for (uint64_t i = 0; i < 50000; i++)
+    for (uint64_t i = 0; i < 500000; i++)
     {
         pmm_allocate();
     }
@@ -34,8 +34,8 @@ void main(BootInfo* bootInfo)
 {
     kernel_init(bootInfo);
 
-    /*BENCHMARK(pmm);
-    BENCHMARK(heap);*/
+    //BENCHMARK(pmm);
+    //BENCHMARK(heap);
 
     /*tty_print("Total: ");
     tty_printi((pmm_total_amount() * PAGE_SIZE) / 1024);
@@ -52,7 +52,7 @@ void main(BootInfo* bootInfo)
     tty_acquire();
     for (uint64_t i = 0; i < 4; i++)
     {
-        sched_spawn("/ram/programs/parent.elf");
+        sched_spawn("/ram/bin/parent.elf");
     }
     tty_clear();
     tty_set_row(smp_cpu_amount() + 2);

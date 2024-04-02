@@ -85,14 +85,14 @@ uint64_t syscall_tid(void)
     return sched_thread()->id;
 }
 
-uint64_t syscall_open(const char* path, uint8_t flags)
+uint64_t syscall_open(const char* path)
 {
     if (!verify_string(path))
     {
         return ERROR(EFAULT);
     }
 
-    return vfs_open(path, flags);
+    return vfs_open(path);
 }
 
 uint64_t syscall_close(uint64_t fd)

@@ -83,10 +83,10 @@ void* queue_pop(Queue* queue)
     return temp;
 }
 
-uint64_t queue_length(Queue const* queue)
+uint64_t queue_length(Queue* queue)
 {
-    lock_acquire((Lock*)(&queue->lock));
+    lock_acquire(&queue->lock);
     uint64_t temp = queue->length;
-    lock_release((Lock*)(&queue->lock));
+    lock_release(&queue->lock);
     return temp;
 }

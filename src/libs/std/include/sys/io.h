@@ -8,11 +8,6 @@ extern "C" {
 #endif
 
 #include "../_AUX/config.h"
-#include "../_AUX/size_t.h"
-
-#define O_CREATE (1 << 0)
-#define O_READ (1 << 1)
-#define O_WRITE (1 << 2)
 
 #define SEEK_SET 0
 #define SEEK_CUR 1
@@ -20,7 +15,7 @@ extern "C" {
 
 typedef uint64_t fd_t;
 
-_EXPORT fd_t open(const char* path, uint8_t flags);
+_EXPORT fd_t open(const char* path);
 
 _EXPORT uint64_t close(fd_t fd);
 

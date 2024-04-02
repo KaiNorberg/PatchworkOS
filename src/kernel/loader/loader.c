@@ -15,20 +15,20 @@
 static inline void* loader_allocate_stack()
 {    
     Thread* thread = sched_thread();
-    void* address = (void*)(VMM_LOWER_HALF_MAX - (THREAD_USER_STACK_SIZE * (thread->id + 1) + PAGE_SIZE * (thread->id)));
-    if (vmm_allocate(address, THREAD_USER_STACK_SIZE / PAGE_SIZE) == NULL)
+    void* address = (void*)(VMM_LOWER_HALF_MAX - (CONFIG_USER_STACK * (thread->id + 1) + PAGE_SIZE * (thread->id)));
+    if (vmm_allocate(address, CONFIG_USER_STACK / PAGE_SIZE) == NULL)
     {
         debug_panic("Failed to allocate user stack!");
     }
     else
     {
-        return address + THREAD_USER_STACK_SIZE;
+        return address + CONFIG_USER_STACK;
     }
 }
 
 static inline void* loader_load_program()
 {
-    uint64_t fd = vfs_open(sched_process()->executable, O_READ);
+    uint64_t fd = vfs_open(sched_process()->executable);
     if (fd == ERR)
     {
         sched_process_exit(EEXEC);

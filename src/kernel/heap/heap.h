@@ -2,9 +2,8 @@
 
 #include "defs/defs.h"
 
-//TODO: Implement slab allocator
-
 #define HEAP_ALIGNMENT 64
+#define HEAP_BUCKET_AMOUNT 10
 
 #define HEAP_HEADER_GET_START(block) ((void*)((uint64_t)block + sizeof(HeapHeader)))
 #define HEAP_HEADER_GET_END(block) ((void*)((uint64_t)block + sizeof(HeapHeader) + block->size))

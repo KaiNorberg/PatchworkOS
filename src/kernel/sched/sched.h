@@ -7,9 +7,6 @@
 #include "defs/defs.h"
 #include "process/process.h"
 
-#define SCHED_TIME_SLICE (NANOSECONDS_PER_SECOND / 2)
-#define SCHED_TIMER_HZ 1024
-
 typedef struct
 {
     Queue* queues[THREAD_PRIORITY_LEVELS];

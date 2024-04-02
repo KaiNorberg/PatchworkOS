@@ -19,7 +19,8 @@
 #include "irq/irq.h"
 #include "pic/pic.h"
 #include "vfs/vfs.h"
-#include "ram_disk/ram_disk.h"
+#include "devfs/devfs.h"
+#include "ramfs/ramfs.h"
 #include "regs/regs.h"
 #include "loader/loader.h"
 
@@ -67,7 +68,8 @@ void kernel_init(BootInfo* bootInfo)
     sched_start();
 
     vfs_init();
-    ram_disk_init(bootInfo->ramRoot);
+    devfs_init();
+    ramfs_init(bootInfo->ramRoot);
 
     deallocate_boot_info(bootInfo);
 }

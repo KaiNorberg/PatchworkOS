@@ -23,7 +23,7 @@ Process* process_new(const char* executable)
     }
     else
     {
-        memset(process->executable, 0, VFS_MAX_PATH_LENGTH);
+        memset(process->executable, 0, CONFIG_MAX_PATH);
     }
     file_table_init(&process->fileTable);
     space_init(&process->space);
@@ -50,7 +50,7 @@ Thread* thread_new(Process* process, void* entry, uint8_t priority)
 
     memset(&thread->trapFrame, 0, sizeof(TrapFrame));
     thread->trapFrame.rip = (uint64_t)entry;
-    thread->trapFrame.rsp = ((uint64_t)thread->kernelStack) + THREAD_KERNEL_STACK_SIZE;
+    thread->trapFrame.rsp = ((uint64_t)thread->kernelStack) + CONFIG_KERNEL_STACK;
     thread->trapFrame.cs = GDT_KERNEL_CODE;
     thread->trapFrame.ss = GDT_KERNEL_DATA;
     thread->trapFrame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;

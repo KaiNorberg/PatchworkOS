@@ -62,7 +62,7 @@ void file_table_init(FileTable* table)
 
 void file_table_cleanup(FileTable* table)
 {
-    for (uint64_t i = 0; i < FILE_TABLE_LENGTH; i++)
+    for (uint64_t i = 0; i < CONFIG_FILE_AMOUNT; i++)
     {    
         File* file = table->files[i];
         if (file != NULL)
@@ -103,7 +103,7 @@ uint64_t vfs_mount(const char* name, void* context, Filesystem* fs)
     return 0;
 }
 
-uint64_t vfs_open(const char* path, uint8_t flags)
+uint64_t vfs_open(const char* path)
 {
     if (!vfs_valid_path(path))
     {
@@ -134,7 +134,6 @@ uint64_t vfs_open(const char* path, uint8_t flags)
     File* file = kmalloc(sizeof(File));
     file->funcs = &disk->fs->fileFuncs;
     file->context = NULL;
-    file->flags = flags;
     file->position = 0;
     file->ref = 1;
 
@@ -147,7 +146,7 @@ uint64_t vfs_open(const char* path, uint8_t flags)
     FileTable* table = &sched_process()->fileTable;
     lock_acquire(&table->lock);
 
-    for (uint64_t fd = 0; fd < FILE_TABLE_LENGTH; fd++)
+    for (uint64_t fd = 0; fd < CONFIG_FILE_AMOUNT; fd++)
     {
         if (table->files[fd] == NULL)
         {
@@ -167,7 +166,7 @@ uint64_t vfs_close(uint64_t fd)
     FileTable* table = &sched_process()->fileTable;
     lock_acquire(&table->lock);
 
-    if (fd >= FILE_TABLE_LENGTH || table->files[fd] == NULL)
+    if (fd >= CONFIG_FILE_AMOUNT || table->files[fd] == NULL)
     {
         lock_release(&table->lock);
         return ERROR(EBADF);
@@ -190,7 +189,7 @@ uint64_t vfs_read(uint64_t fd, void* buffer, uint64_t count)
     }
 
     uint64_t result;
-    if (file->funcs->read != NULL && file->flags & O_READ)
+    if (file->funcs->read != NULL)
     {
         result = file->funcs->read(file, buffer, count);
     }
@@ -212,7 +211,7 @@ uint64_t vfs_write(uint64_t fd, const void* buffer, uint64_t count)
     }
 
     uint64_t result;
-    if (file->funcs->write != NULL && file->flags & O_WRITE)
+    if (file->funcs->write != NULL)
     {
         result = file->funcs->write(file, buffer, count);
     }

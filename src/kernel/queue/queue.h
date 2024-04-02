@@ -23,4 +23,4 @@ void queue_push(Queue* queue, void* item);
 
 void* queue_pop(Queue* queue);
 
-uint64_t queue_length(Queue const* queue);
+uint64_t queue_length(Queue* queue);

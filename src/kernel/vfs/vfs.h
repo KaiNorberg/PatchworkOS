@@ -7,11 +7,6 @@
 
 //Note: Only supports ram disks for now.
 
-#define VFS_MAX_NAME_LENGTH 32
-#define VFS_MAX_PATH_LENGTH 256
-
-#define FILE_TABLE_LENGTH 64
-
 typedef struct Disk Disk;
 typedef struct File File;
 
@@ -26,19 +21,19 @@ typedef struct FileFuncs
     uint64_t (*read)(File*, void*, uint64_t);
     uint64_t (*write)(File*, const void*, uint64_t);
     uint64_t (*seek)(File*, int64_t, uint8_t);
+    uint64_t (*ioctl)(File*, uint64_t, void*);
 } FileFuncs;
 
 typedef struct Filesystem
 {
-    char name[VFS_MAX_NAME_LENGTH];
-    void* context;
+    char name[CONFIG_MAX_NAME];
     DiskFuncs diskFuncs;
     FileFuncs fileFuncs;
 } Filesystem;
 
 typedef struct Disk
 {
-    char name[VFS_MAX_NAME_LENGTH];
+    char name[CONFIG_MAX_NAME];
     void* context;
     DiskFuncs* funcs;
     Filesystem* fs;
@@ -48,14 +43,13 @@ typedef struct File
 {
     void* context;
     FileFuncs* funcs;
-    uint8_t flags;
     _Atomic uint64_t position;
     _Atomic uint64_t ref;
 } File;
 
 typedef struct FileTable
 {
-    File* files[FILE_TABLE_LENGTH];
+    File* files[CONFIG_FILE_AMOUNT];
     Lock lock;
 } FileTable;
 
@@ -67,7 +61,7 @@ void vfs_init();
 
 uint64_t vfs_mount(const char* name, void* context, Filesystem* fs);
 
-uint64_t vfs_open(const char* path, uint8_t flags);
+uint64_t vfs_open(const char* path);
 
 uint64_t vfs_close(uint64_t fd);
 

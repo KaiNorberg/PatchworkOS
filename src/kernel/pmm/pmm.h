@@ -9,8 +9,6 @@
 #define SIZE_IN_PAGES(size) (((size) / PAGE_SIZE) + 1)
 #define PAGE_SIZE_OF(object) SIZE_IN_PAGES(sizeof(object))
 
-#define PMM_LAZY true
-
 typedef struct PageHeader
 {
     struct PageHeader* next;

@@ -12,9 +12,6 @@
 #define THREAD_PRIORITY_MIN 0
 #define THREAD_PRIORITY_MAX (THREAD_PRIORITY_LEVELS - 1)
 
-#define THREAD_KERNEL_STACK_SIZE (PAGE_SIZE)
-#define THREAD_USER_STACK_SIZE (PAGE_SIZE * 4)
-
 typedef enum
 {
     THREAD_STATE_ACTIVE,
@@ -25,7 +22,7 @@ typedef enum
 typedef struct
 {
     uint64_t id;
-    char executable[VFS_MAX_PATH_LENGTH];
+    char executable[CONFIG_MAX_PATH];
     FileTable fileTable;
     Space space;
     bool killed;
@@ -51,7 +48,7 @@ typedef struct
     ThreadState state;
     Blocker blocker;
     TrapFrame trapFrame;
-    uint8_t kernelStack[THREAD_KERNEL_STACK_SIZE];
+    uint8_t kernelStack[CONFIG_KERNEL_STACK];
 } Thread;
 
 Process* process_new(const char* executable);

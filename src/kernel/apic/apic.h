@@ -3,8 +3,6 @@
 #include "defs/defs.h"
 #include "rsdt/rsdt.h"
 
-#define APIC_TIMER_HZ 1000
-
 #define LOCAL_APIC_MSR_ENABLE 0x800
 
 #define LOCAL_APIC_REG_ID 0x020

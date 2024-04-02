@@ -6,7 +6,7 @@
 
 bool vfs_valid_name(const char* name)
 {
-    for (uint64_t i = 0; i < VFS_MAX_NAME_LENGTH; i++)
+    for (uint64_t i = 0; i < CONFIG_MAX_NAME; i++)
     {
         if (VFS_END_OF_NAME(name[i]))
         {
@@ -24,7 +24,7 @@ bool vfs_valid_name(const char* name)
 bool vfs_valid_path(const char* path)
 {
     uint64_t nameLength = 0;
-    for (uint64_t i = 0; i < VFS_MAX_PATH_LENGTH; i++)
+    for (uint64_t i = 0; i < CONFIG_MAX_PATH; i++)
     {
         if (path[i] == '\0')
         {
@@ -41,7 +41,7 @@ bool vfs_valid_path(const char* path)
         }
 
         nameLength++;
-        if (nameLength >= VFS_MAX_NAME_LENGTH)
+        if (nameLength >= CONFIG_MAX_NAME)
         {
             return false;
         }
@@ -52,7 +52,7 @@ bool vfs_valid_path(const char* path)
 
 bool vfs_compare_names(const char* a, const char* b)
 {
-    for (uint64_t i = 0; i < VFS_MAX_NAME_LENGTH; i++)
+    for (uint64_t i = 0; i < CONFIG_MAX_NAME; i++)
     {
         if (VFS_END_OF_NAME(a[i]))
         {

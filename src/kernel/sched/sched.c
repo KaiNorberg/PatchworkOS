@@ -49,7 +49,7 @@ void sched_start(void)
 
 void sched_cpu_start(void)
 {
-    apic_timer_init(IPI_BASE + IPI_SCHEDULE, SCHED_TIMER_HZ);
+    apic_timer_init(IPI_BASE + IPI_SCHEDULE, CONFIG_SCHED_HZ);
 }
 
 Thread* sched_thread(void)

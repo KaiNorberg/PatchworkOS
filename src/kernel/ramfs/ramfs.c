@@ -1,4 +1,4 @@
-#include "ram_disk.h"
+#include "ramfs.h"
 
 #include <string.h>
 
@@ -9,6 +9,7 @@
 #include "utils/utils.h"
 
 static Filesystem ramfs;
+static RamDir* root;
 
 static inline RamFile* ram_dir_find_file(RamDir* dir, const char* filename)
 {
@@ -46,9 +47,9 @@ static inline RamDir* ram_dir_find_dir(RamDir* dir, const char* dirname)
     return NULL;
 }
 
-static inline RamDir* ram_disk_traverse(Disk* disk, const char* path)
+static inline RamDir* ramfs_traverse(const char* path)
 {
-    RamDir* dir = disk->fs->context;
+    RamDir* dir = root;
     const char* dirname = vfs_first_dir(path);
     while (dirname != NULL)
     {
@@ -64,9 +65,9 @@ static inline RamDir* ram_disk_traverse(Disk* disk, const char* path)
     return dir;
 }
 
-uint64_t ram_disk_open(Disk* disk, File* file, const char* path)
+uint64_t ramfs_open(Disk* disk, File* file, const char* path)
 {
-    RamDir* ramDir = ram_disk_traverse(disk, path);
+    RamDir* ramDir = ramfs_traverse(path);
     if (ramDir == NULL)
     {
         return ERROR(EPATH);
@@ -89,7 +90,7 @@ uint64_t ram_disk_open(Disk* disk, File* file, const char* path)
     return 0;
 }
 
-uint64_t ram_disk_read(File* file, void* buffer, uint64_t count)
+uint64_t ramfs_read(File* file, void* buffer, uint64_t count)
 {
     RamFile const* ramFile = file->context;
 
@@ -101,47 +102,55 @@ uint64_t ram_disk_read(File* file, void* buffer, uint64_t count)
     return readCount;
 }
 
-uint64_t ram_disk_seek(File* file, int64_t offset, uint8_t origin)
+uint64_t ramfs_seek(File* file, int64_t offset, uint8_t origin)
 {
     RamFile const* ramFile = file->context;
 
+    uint64_t position;
     switch (origin)
     {
     case SEEK_SET:
     {
-        file->position = offset;
+        position = offset;
     }
     break;
     case SEEK_CUR:
     {
-        file->position += offset;
+        position = atomic_load(&file->position) + offset;
     }
     break;
     case SEEK_END:
     {
-        file->position = ramFile->size - offset;
+        position = ramFile->size - offset;
+    }
+    break;
+    default:
+    {
+        position = 0;
     }
     break;
     }
 
-    return file->position;
+    atomic_store(&file->position, position);
+
+    return position;
 }
 
-void ram_disk_init(RamDir* root)
+void ramfs_init(RamDir* ramRoot)
 {
-    tty_start_message("Ram Disk initializing");
+    tty_start_message("Ramfs initializing");
 
+    root = ramRoot;
+
+    memset(&ramfs, 0, sizeof(Filesystem));
     strcpy(ramfs.name, "ramfs");
-    ramfs.context = root;
-    ramfs.diskFuncs.open = ram_disk_open;
-    ramfs.fileFuncs.cleanup = NULL;
-    ramfs.fileFuncs.read = ram_disk_read;
-    ramfs.fileFuncs.write = NULL;
-    ramfs.fileFuncs.seek = ram_disk_seek;
+    ramfs.diskFuncs.open = ramfs_open;
+    ramfs.fileFuncs.read = ramfs_read;
+    ramfs.fileFuncs.seek = ramfs_seek;
 
     if (vfs_mount("ram", NULL, &ramfs) == ERR)
     {
-        tty_print("Failed to mount ram disk");
+        tty_print("Failed to mount ramfs");
         tty_end_message(TTY_MESSAGE_ER);
     }
 
