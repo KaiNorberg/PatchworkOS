@@ -10,6 +10,7 @@ static char* errorStrings[] =
     "Not implemented",
     "Bad address",
     "Already exists",
+    "Invalid letter",
     "Invalid path",
     "Invalid name",
     "To many open files",

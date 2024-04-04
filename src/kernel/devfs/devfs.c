@@ -16,7 +16,7 @@ static Array* buses;
     return vfs_compare_names(bus->name, name) ? FIND_FOUND : FIND_NOT_FOUND;
 }
 
-static inline Device* device_bus_find(const char* name)
+static Device* device_bus_find(const char* name)
 {    
     const char* busName = vfs_first_dir(path);
     if (busName == NULL)
@@ -33,7 +33,7 @@ static inline Device* device_bus_find(const char* name)
     
 }
 
-static inline Device* device_find(const char* path)
+static Device* device_find(const char* path)
 {    
     const char* busName = vfs_first_dir(path);
     if (busName == NULL)
@@ -50,7 +50,7 @@ static inline Device* device_find(const char* path)
 
 }
 
-uint64_t devfs_open(Disk* disk, File* file, const char* path)
+uint64_t devfs_open(Drive* drive, File* file, const char* path)
 {
     const char* busName = vfs_first_dir(path);
     if ()
@@ -66,7 +66,7 @@ void devfs_init()
 {
     tty_start_message("Devfs initializing");
 
-    buses = array_new();
+    /*buses = array_new();
 
     memset(&devfs, 0, sizeof(Filesystem));
     strcpy(devfs.name, "devfs");
@@ -75,7 +75,7 @@ void devfs_init()
     {
         tty_print("Failed to mount devfs");
         tty_end_message(TTY_MESSAGE_ER);
-    }
+    }*/
 
     tty_end_message(TTY_MESSAGE_OK);
 }

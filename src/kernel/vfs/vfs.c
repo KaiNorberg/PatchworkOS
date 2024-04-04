@@ -7,24 +7,70 @@
 #include "heap/heap.h"
 #include "array/array.h"
 #include "sched/sched.h"
+#include "debug/debug.h"
 #include "vfs/utils/utils.h"
 
-static Array* disks;
-
-static FindResult vfs_find_disk_callback(void* element, void* context)
+struct
 {
-    Disk* disk = element;
-    const char* name = context;
+    Drive* drives[VFS_LETTER_AMOUNT];
+    Lock lock;
+} driveTable;
 
-    return vfs_compare_names(disk->name, name) ? FIND_FOUND : FIND_NOT_FOUND;
+//This is temporary
+static bool vfs_valid_path(const char* path)
+{
+    if (!VFS_VALID_LETTER(path[0]) || path[1] != VFS_DRIVE_DELIMITER || path[2] != VFS_NAME_DELIMITER)
+    {
+        return false;
+    }
+
+    for (uint64_t i = 3; i < CONFIG_MAX_PATH; i++)
+    {
+        if (path[i] == '\0')
+        {
+            return true;
+        }
+        else if (path[i] == VFS_NAME_DELIMITER)
+        {
+            continue;
+        }
+        else if (!VFS_VALID_CHAR(path[i]))
+        {
+            return false;
+        }
+    }
+
+    return false;
 }
 
-static inline Disk* vfs_find_disk(const char* name)
+static Drive* drive_get(char letter)
 {
-    return array_find(disks, vfs_find_disk_callback, (char*)name);
+    if (!VFS_VALID_LETTER(letter))
+    {
+        return NULL;
+    }
+    LOCK_GUARD(driveTable.lock);
+
+    uint64_t index = letter - VFS_LETTER_BASE;
+    Drive* drive = driveTable.drives[index];
+    if (drive == NULL)
+    {
+        return NULL;
+    }
+
+    atomic_fetch_add(&drive->ref, 1);
+    return drive;
 }
 
-static inline File* file_get(uint64_t fd)
+static void drive_put(Drive* drive)
+{
+    if (atomic_fetch_sub(&drive->ref, 1) <= 1)
+    {
+        debug_panic("Drive unmounting not implemented");
+    }
+}
+
+static File* file_get(uint64_t fd)
 {
     FileTable* table = &sched_process()->fileTable;
     LOCK_GUARD(table->lock);
@@ -40,14 +86,15 @@ static inline File* file_get(uint64_t fd)
     return file;
 }
 
-static inline void file_put(File* file)
+static void file_put(File* file)
 {
     if (atomic_fetch_sub(&file->ref, 1) <= 1)
     {
-        if (file->funcs->cleanup != NULL)
+        if (file->drive->fs->cleanup != NULL)
         {
-            file->funcs->cleanup(file);
+            file->drive->fs->cleanup(file);
         }
+        drive_put(file->drive);
         kfree(file);
     }
 }
@@ -74,30 +121,32 @@ void vfs_init()
 {
     tty_start_message("VFS initializing");
 
-    disks = array_new();
+    memset(driveTable.drives, 0, sizeof(Drive*) * VFS_LETTER_AMOUNT);
+    driveTable.lock = lock_create();
 
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-uint64_t vfs_mount(const char* name, void* context, Filesystem* fs)
+uint64_t vfs_mount(char letter, Filesystem* fs, void* context)
 {
-    if (!vfs_valid_name(name))
+    if (!VFS_VALID_LETTER(letter))
     {
-        return ERROR(ENAME);
+        return ERROR(ELETTER);
     }
+    LOCK_GUARD(driveTable.lock);
 
-    if (vfs_find_disk(name) != 0)
+    uint64_t index = letter - VFS_LETTER_BASE;
+    if (driveTable.drives[index] != NULL)
     {
         return ERROR(EEXIST);
     }
 
-    Disk* disk = kmalloc(sizeof(Disk));
-    strcpy(disk->name, name);
-    disk->context = context;
-    disk->funcs = &fs->diskFuncs;
-    disk->fs = fs;
+    Drive* drive = kmalloc(sizeof(Drive));
+    drive->context = context;
+    drive->fs = fs;
+    drive->ref = 1;
+    driveTable.drives[index] = drive;
 
-    array_push(disks, disk);
     return 0;
 }
 
@@ -108,36 +157,22 @@ uint64_t vfs_open(const char* path)
         return ERROR(EPATH);
     }
 
-    if (path[0] == '/')
-    {
-        path++;
-    }
-    else
-    {
-        return ERROR(EIMPL);
-    }
-
-    Disk* disk = vfs_find_disk(path);
-    if (disk == NULL)
-    {
-        return ERROR(ENAME);
-    }
-
-    path = vfs_next_name(path);
-    if (path == NULL)
+    Drive* drive = drive_get(path[0]);
+    if (drive == NULL)
     {
         return ERROR(EPATH);
     }
 
-    File* file = kmalloc(sizeof(File));
-    file->funcs = &disk->fs->fileFuncs;
-    file->context = NULL;
-    file->position = 0;
-    file->ref = 1;
-
-    if (disk->funcs->open(disk, file, path) == ERR)
+    if (drive->fs->open == NULL)
     {
-        kfree(file);
+        drive_put(drive);
+        return ERROR(EACCES);
+    }
+
+    File* file = drive->fs->open(drive, path + 2);
+    if (file == NULL)
+    {
+        drive_put(drive);
         return ERR;
     }
 
@@ -149,7 +184,6 @@ uint64_t vfs_open(const char* path)
         if (table->files[fd] == NULL)
         {
             table->files[fd] = file;
-
             return fd;
         }
     }
@@ -182,38 +216,32 @@ uint64_t vfs_read(uint64_t fd, void* buffer, uint64_t count)
         return ERROR(EBADF);
     }
 
-    uint64_t result;
-    if (file->funcs->read != NULL)
+    if (file->drive->fs->read == NULL)
     {
-        result = file->funcs->read(file, buffer, count);
-    }
-    else
-    {
-        result = ERROR(EACCES);
+        file_put(file);
+        return ERROR(EACCES);
     }
 
+    uint64_t result = file->drive->fs->read(file, buffer, count);
     file_put(file);
     return result;
 }
 
 uint64_t vfs_write(uint64_t fd, const void* buffer, uint64_t count)
-{
+{    
     File* file = file_get(fd);
     if (file == NULL)
     {
         return ERROR(EBADF);
     }
 
-    uint64_t result;
-    if (file->funcs->write != NULL)
+    if (file->drive->fs->write == NULL)
     {
-        result = file->funcs->write(file, buffer, count);
-    }
-    else
-    {
-        result = ERROR(EACCES);
+        file_put(file);
+        return ERROR(EACCES);
     }
 
+    uint64_t result = file->drive->fs->write(file, buffer, count);
     file_put(file);
     return result;
 }
@@ -226,16 +254,13 @@ uint64_t vfs_seek(uint64_t fd, int64_t offset, uint8_t origin)
         return ERROR(EBADF);
     }
 
-    uint64_t result;
-    if (file->funcs->seek != NULL)
+    if (file->drive->fs->seek == NULL)
     {
-        result = file->funcs->seek(file, offset, origin);
-    }
-    else
-    {
-        result = ERROR(EACCES);
+        file_put(file);
+        return ERROR(EACCES);
     }
 
+    uint64_t result = file->drive->fs->seek(file, offset, origin);
     file_put(file);
     return result;
 }

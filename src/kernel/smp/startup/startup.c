@@ -14,7 +14,7 @@
 
 static uint8_t ready;
 
-static inline uint64_t cpu_init(Cpu* cpu, uint8_t id, uint8_t localApicId)
+static uint64_t cpu_init(Cpu* cpu, uint8_t id, uint8_t localApicId)
 {
     cpu->id = id;
     cpu->localApicId = localApicId;

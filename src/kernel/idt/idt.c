@@ -7,7 +7,7 @@ static Idt idt;
 
 extern void idt_load_descriptor(IdtDesc* descriptor);
 
-static inline void idt_set_vector(uint8_t vector, void* isr, uint8_t privilegeLevel, uint8_t gateType)
+static void idt_set_vector(uint8_t vector, void* isr, uint8_t privilegeLevel, uint8_t gateType)
 {
     IdtEntry* descriptor = &(idt.entries[vector]);
  

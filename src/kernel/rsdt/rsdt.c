@@ -8,7 +8,7 @@
 static uint64_t tableAmount;
 static Xsdt* xsdt;
 
-static inline bool rsdt_valid_checksum(void* table, uint64_t length)
+static bool rsdt_valid_checksum(void* table, uint64_t length)
 {
     int8_t sum = 0;
     for (uint64_t i = 0; i < length; i++)

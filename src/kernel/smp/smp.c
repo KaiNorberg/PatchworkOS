@@ -17,7 +17,7 @@ static uint8_t cpuAmount = 0;
 
 static bool initialized = false;
 
-static inline void smp_detect_cpus()
+static void smp_detect_cpus()
 {
     LocalApicRecord* record = madt_first_record(MADT_RECORD_TYPE_LOCAL_APIC);
     while (record != 0)

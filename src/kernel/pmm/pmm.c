@@ -20,7 +20,7 @@ static EfiMemoryMap* memoryMap;
 
 static Lock lock;
 
-static inline uint8_t is_type_usable(uint64_t memoryType)
+static uint8_t is_type_usable(uint64_t memoryType)
 {
 	return memoryType == EFI_CONVENTIONAL_MEMORY ||
 		memoryType == EFI_LOADER_CODE ||
@@ -29,7 +29,7 @@ static inline uint8_t is_type_usable(uint64_t memoryType)
 		memoryType == EFI_BOOT_SERVICES_DATA;
 }
 
-static inline void pmm_free_unlocked(void* address)
+static void pmm_free_unlocked(void* address)
 {
     freePageAmount++;
 
@@ -47,7 +47,7 @@ static inline void pmm_free_unlocked(void* address)
     }
 }
 
-static inline void pmm_free_pages_unlocked(void* address, uint64_t count)
+static void pmm_free_pages_unlocked(void* address, uint64_t count)
 {
     for (uint64_t i = 0; i < count; i++)
     {

@@ -6,7 +6,7 @@
 __attribute__((aligned(0x1000)))
 static Gdt gdt;
 
-static inline GdtEntry gdt_entry_create(uint8_t access, uint8_t flags)
+static GdtEntry gdt_entry_create(uint8_t access, uint8_t flags)
 {
     GdtEntry entry;
     entry.limitLow = 0;

@@ -12,7 +12,7 @@
 #include "utils/utils.h"
 #include "debug/debug.h"
 
-static inline void* loader_allocate_stack()
+static void* loader_allocate_stack()
 {    
     Thread* thread = sched_thread();
     void* address = (void*)(VMM_LOWER_HALF_MAX - (CONFIG_USER_STACK * (thread->id + 1) + PAGE_SIZE * (thread->id)));
@@ -26,7 +26,7 @@ static inline void* loader_allocate_stack()
     }
 }
 
-static inline void* loader_load_program()
+static void* loader_load_program()
 {
     uint64_t fd = vfs_open(sched_process()->executable);
     if (fd == ERR)

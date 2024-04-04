@@ -25,7 +25,7 @@ static IterResult sched_unblock_iterate(void* element)
     }
 }
 
-static inline Thread* sched_next_thread(Scheduler* scheduler)
+static Thread* sched_next_thread(Scheduler* scheduler)
 {
     if (scheduler->runningThread != NULL && scheduler->runningThread->timeEnd > time_nanoseconds())
     {
@@ -53,7 +53,7 @@ static inline Thread* sched_next_thread(Scheduler* scheduler)
     return NULL;
 }
 
-static inline void sched_switch_thread(TrapFrame* trapFrame, Scheduler* scheduler, Thread* next)
+static void sched_switch_thread(TrapFrame* trapFrame, Scheduler* scheduler, Thread* next)
 {
     Cpu* self = smp_self_unsafe();
 
@@ -133,7 +133,7 @@ void sched_schedule(TrapFrame* trapFrame)
             scheduler->runningThread = NULL;
         }
         break;
-        case THREAD_STATE_BLOCK_GUARDED:
+        case THREAD_STATE_BLOCKED:
         {
             scheduler->runningThread->trapFrame = *trapFrame;
             array_push(scheduler->blockedThreads, scheduler->runningThread);

@@ -19,7 +19,7 @@ int main(void)
     close(fb0);
 */
 
-    if (spawn("/ram/bin/child.elf") == ERR)
+    if (spawn("B:/programs/child.elf") == ERR)
     {
         SYSCALL(SYS_TEST, 1, strerror(errno));
         return EXIT_FAILURE;

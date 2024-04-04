@@ -74,7 +74,7 @@ deploy:
 	mcopy -i $(OUTPUT_IMAGE) -s $(BOOT_OUT_EFI) ::efi/boot
 	mcopy -i $(OUTPUT_IMAGE) -s $(KERNEL_OUT) ::boot
 	mcopy -i $(OUTPUT_IMAGE) -s $(ROOT_DIR)/* ::
-	mcopy -i $(OUTPUT_IMAGE) -s $(BIN_DIR)/programs ::/bin
+	mcopy -i $(OUTPUT_IMAGE) -s $(BIN_DIR)/programs ::/programs
 
 all: build deploy
 

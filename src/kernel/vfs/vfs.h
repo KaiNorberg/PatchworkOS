@@ -5,49 +5,41 @@
 #include "defs/defs.h"
 #include "lock/lock.h"
 
-//Note: Only supports ram disks for now.
+//Note: Only supports ram drives for now.
 
-typedef struct Disk Disk;
+#define VFS_LETTER_BASE ('A')
+#define VFS_LETTER_AMOUNT ('Z' - 'A' + 1)
+#define VFS_VALID_LETTER(letter) ((letter) < VFS_LETTER_BASE + VFS_LETTER_AMOUNT)
+
+typedef struct Drive Drive;
 typedef struct File File;
 
-typedef struct DiskFuncs
+typedef struct
 {
-    uint64_t (*open)(Disk*, File*, const char*);
-} DiskFuncs;
-
-typedef struct FileFuncs
-{
+    char* name;
+    File* (*open)(Drive*, const char*);
     void (*cleanup)(File*);
     uint64_t (*read)(File*, void*, uint64_t);
     uint64_t (*write)(File*, const void*, uint64_t);
     uint64_t (*seek)(File*, int64_t, uint8_t);
-    uint64_t (*ioctl)(File*, uint64_t, void*);
-} FileFuncs;
-
-typedef struct Filesystem
-{
-    char name[CONFIG_MAX_NAME];
-    DiskFuncs diskFuncs;
-    FileFuncs fileFuncs;
 } Filesystem;
 
-typedef struct Disk
+typedef struct Drive
 {
-    char name[CONFIG_MAX_NAME];
     void* context;
-    DiskFuncs* funcs;
     Filesystem* fs;
-} Disk;
+    _Atomic uint64_t ref;
+} Drive;
 
 typedef struct File
 {
     void* context;
-    FileFuncs* funcs;
+    Drive* drive;
     _Atomic uint64_t position;
     _Atomic uint64_t ref;
 } File;
 
-typedef struct FileTable
+typedef struct
 {
     File* files[CONFIG_FILE_AMOUNT];
     Lock lock;
@@ -59,7 +51,7 @@ void file_table_cleanup(FileTable* table);
 
 void vfs_init();
 
-uint64_t vfs_mount(const char* name, void* context, Filesystem* fs);
+uint64_t vfs_mount(char letter, Filesystem* fs, void* context);
 
 uint64_t vfs_open(const char* path);
 

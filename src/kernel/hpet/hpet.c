@@ -16,7 +16,7 @@ void hpet_init(void)
     tty_assert(hpet != NULL, "Hardware is incompatible, unable to find HPET");
 
     address = (uintptr_t)vmm_kernel_map(NULL, (void*)hpet->address, 1, PAGE_FLAG_WRITE);
-    period = hpet_read(HPET_GENERAL_CAPABILITIES) >> HPET_COUNTER_CLOCK_GUARD_OFFSET;
+    period = hpet_read(HPET_GENERAL_CAPABILITIES) >> HPET_COUNTER_CLOCK_OFFSET;
 
     hpet_write(HPET_GENERAL_CONFIG, HPET_CONFIG_DISABLE);
     hpet_write(HPET_MAIN_COUNTER_VALUE, 0);

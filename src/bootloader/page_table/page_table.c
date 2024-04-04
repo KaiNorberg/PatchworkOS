@@ -5,7 +5,7 @@
 #include <common/boot_info/boot_info.h>
 #include "efilib.h"
 
-static inline PageEntry page_table_entry_create(void* address, uint64_t flags)
+static PageEntry page_table_entry_create(void* address, uint64_t flags)
 {
     return ((((uintptr_t)address >> 12) & 0x000000FFFFFFFFFF) << 12) | (flags | (uint64_t)PAGE_FLAG_PRESENT);
 }

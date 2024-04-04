@@ -3,15 +3,15 @@
 #include <ctype.h>
 
 #include "defs/defs.h"
+#include "vfs/vfs.h"
 
-#define VFS_DELIMITER '/'
+#define VFS_NAME_DELIMITER '/'
+#define VFS_DRIVE_DELIMITER ':'
 
-#define VFS_END_OF_NAME(ch) ((ch) == VFS_DELIMITER || (ch) == '\0')
+#define VFS_END_OF_NAME(ch) ((ch) == VFS_NAME_DELIMITER || (ch) == '\0')
 #define VFS_VALID_CHAR(ch) (isalnum(ch) || (ch) == '_' || (ch) == '.')
 
-bool vfs_valid_name(const char* name);
-
-bool vfs_valid_path(const char* path);
+File* file_new(Drive* drive, void* context);
 
 bool vfs_compare_names(const char* a, const char* b);
 

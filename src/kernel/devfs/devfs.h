@@ -4,7 +4,7 @@
 #include "vfs/vfs.h"
 #include "array/array.h"
 
-typedef struct
+/*typedef struct
 {
     char name[CONFIG_MAX_NAME];
     Array* devices;
@@ -14,6 +14,6 @@ typedef struct
 {
     char name[CONFIG_MAX_NAME];
     void* context;
-} Device;
+} Device;*/
 
 void devfs_init();

@@ -4,7 +4,7 @@
 
 #include "heap/heap.h"
 
-static inline void array_erase_unlocked(Array* array, uint64_t index)
+static void array_erase_unlocked(Array* array, uint64_t index)
 {
     for (uint64_t i = index; i < array->length - 1; i++)
     {

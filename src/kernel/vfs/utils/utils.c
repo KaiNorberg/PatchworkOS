@@ -3,56 +3,22 @@
 #include <string.h>
 
 #include "vfs/vfs.h"
+#include "heap/heap.h"
 
-bool vfs_valid_name(const char* name)
+File* file_new(Drive* drive, void* context)
 {
-    for (uint64_t i = 0; i < CONFIG_MAX_NAME; i++)
-    {
-        if (VFS_END_OF_NAME(name[i]))
-        {
-            return true;
-        }
-        else if (!VFS_VALID_CHAR(name[i]))
-        {
-            return false;
-        }
-    }
+    File* file = kmalloc(sizeof(File));
+    file->context = context;
+    file->drive = drive;
+    file->position = 0;
+    file->ref = 1;
 
-    return false;
-}
-
-bool vfs_valid_path(const char* path)
-{
-    uint64_t nameLength = 0;
-    for (uint64_t i = 0; i < CONFIG_MAX_PATH; i++)
-    {
-        if (path[i] == '\0')
-        {
-            return true;
-        }
-        else if (path[i] == VFS_DELIMITER)
-        {
-            nameLength = 0;
-            continue;
-        }
-        else if (!VFS_VALID_CHAR(path[i]))
-        {
-            return false;
-        }
-
-        nameLength++;
-        if (nameLength >= CONFIG_MAX_NAME)
-        {
-            return false;
-        }
-    }
-
-    return false;
+    return file;
 }
 
 bool vfs_compare_names(const char* a, const char* b)
 {
-    for (uint64_t i = 0; i < CONFIG_MAX_NAME; i++)
+    for (uint64_t i = 0; i < CONFIG_MAX_PATH; i++)
     {
         if (VFS_END_OF_NAME(a[i]))
         {
@@ -69,7 +35,12 @@ bool vfs_compare_names(const char* a, const char* b)
 
 const char* vfs_first_dir(const char* path)
 {
-    if (strchr(path, VFS_DELIMITER) == NULL)
+    if (path[0] == VFS_NAME_DELIMITER)
+    {
+        path++;
+    }
+
+    if (strchr(path, VFS_NAME_DELIMITER) == NULL)
     {
         return NULL;
     }
@@ -81,7 +52,7 @@ const char* vfs_first_dir(const char* path)
 
 const char* vfs_next_dir(const char* path)
 {
-    const char* next = strchr(path, VFS_DELIMITER);
+    const char* next = strchr(path, VFS_NAME_DELIMITER);
     if (next == NULL)
     {
         return NULL;
@@ -89,7 +60,7 @@ const char* vfs_next_dir(const char* path)
     else
     {
         next += 1;
-        if (strchr(next, VFS_DELIMITER) != NULL)
+        if (strchr(next, VFS_NAME_DELIMITER) != NULL)
         {
             return next;
         }
@@ -102,12 +73,12 @@ const char* vfs_next_dir(const char* path)
 
 const char* vfs_next_name(const char* path)
 {
-    const char* base = strchr(path, VFS_DELIMITER);
+    const char* base = strchr(path, VFS_NAME_DELIMITER);
     return base != NULL ? base + 1 : NULL;
 }
 
 const char* vfs_basename(const char* path)
 {
-    const char* base = strrchr(path, VFS_DELIMITER);
+    const char* base = strrchr(path, VFS_NAME_DELIMITER);
     return base != NULL ? base + 1 : path;
 }

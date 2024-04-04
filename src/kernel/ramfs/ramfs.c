@@ -11,7 +11,7 @@
 static Filesystem ramfs;
 static RamDir* root;
 
-static inline RamFile* ram_dir_find_file(RamDir* dir, const char* filename)
+static RamFile* ram_dir_find_file(RamDir* dir, const char* filename)
 {
     RamFile* file = dir->firstFile;
     while (file != NULL)
@@ -29,7 +29,7 @@ static inline RamFile* ram_dir_find_file(RamDir* dir, const char* filename)
     return NULL;
 }
 
-static inline RamDir* ram_dir_find_dir(RamDir* dir, const char* dirname)
+static RamDir* ram_dir_find_dir(RamDir* dir, const char* dirname)
 {
     RamDir* child = dir->firstChild;
     while (child != NULL)
@@ -47,7 +47,7 @@ static inline RamDir* ram_dir_find_dir(RamDir* dir, const char* dirname)
     return NULL;
 }
 
-static inline RamDir* ramfs_traverse(const char* path)
+static RamDir* ramfs_traverse(const char* path)
 {
     RamDir* dir = root;
     const char* dirname = vfs_first_dir(path);
@@ -65,29 +65,27 @@ static inline RamDir* ramfs_traverse(const char* path)
     return dir;
 }
 
-uint64_t ramfs_open(Disk* disk, File* file, const char* path)
+File* ramfs_open(Drive* drive, const char* path)
 {
     RamDir* ramDir = ramfs_traverse(path);
     if (ramDir == NULL)
     {
-        return ERROR(EPATH);
+        return NULLPTR(EPATH);
     }
 
     const char* filename = vfs_basename(path);
     if (filename == NULL)
     {
-        return ERROR(EPATH);
+        return NULLPTR(EPATH);
     }
 
     RamFile* ramFile = ram_dir_find_file(ramDir, filename);
     if (ramFile == NULL)
     {
-        return ERROR(ENAME);
+        return NULLPTR(ENAME);
     }
 
-    file->context = ramFile;
-
-    return 0;
+    return file_new(drive, ramFile);
 }
 
 uint64_t ramfs_read(File* file, void* buffer, uint64_t count)
@@ -143,12 +141,12 @@ void ramfs_init(RamDir* ramRoot)
     root = ramRoot;
 
     memset(&ramfs, 0, sizeof(Filesystem));
-    strcpy(ramfs.name, "ramfs");
-    ramfs.diskFuncs.open = ramfs_open;
-    ramfs.fileFuncs.read = ramfs_read;
-    ramfs.fileFuncs.seek = ramfs_seek;
+    ramfs.name = "ramfs";
+    ramfs.open = ramfs_open;
+    ramfs.read = ramfs_read;
+    ramfs.seek = ramfs_seek;
 
-    if (vfs_mount("ram", NULL, &ramfs) == ERR)
+    if (vfs_mount('B', &ramfs, NULL) == ERR)
     {
         tty_print("Failed to mount ramfs");
         tty_end_message(TTY_MESSAGE_ER);

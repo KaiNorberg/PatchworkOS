@@ -16,7 +16,7 @@ typedef enum
 {
     THREAD_STATE_ACTIVE,
     THREAD_STATE_KILLED,
-    THREAD_STATE_BLOCK_GUARDED
+    THREAD_STATE_BLOCKED
 } ThreadState;
 
 typedef struct

@@ -2,7 +2,7 @@
 
 #include "heap/heap.h"
 
-static inline void* queue_pop_unlocked(Queue* queue)
+static void* queue_pop_unlocked(Queue* queue)
 {
     if (queue->length == 0)
     {
@@ -16,7 +16,7 @@ static inline void* queue_pop_unlocked(Queue* queue)
     return temp;
 }
 
-static inline void queue_resize_unlocked(Queue* queue, uint64_t capacity)
+static void queue_resize_unlocked(Queue* queue, uint64_t capacity)
 {
     void** newBuffer = kmalloc(capacity * sizeof(void*));
 
@@ -35,7 +35,7 @@ static inline void queue_resize_unlocked(Queue* queue, uint64_t capacity)
     queue->writeIndex = oldLength;
 }
 
-static inline void queue_push_unlocked(Queue* queue, void* item)
+static void queue_push_unlocked(Queue* queue, void* item)
 {
     if (queue->capacity == queue->length)
     {

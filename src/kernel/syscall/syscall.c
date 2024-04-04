@@ -17,7 +17,7 @@
 //Note: Syscalls should always return a 64 bit value to prevent garbage from remaining in the rax register.
 
 //TODO: Improve verify funcs, improve multithreading string safety.
-static inline bool verify_pointer(const void* pointer, uint64_t size)
+static bool verify_pointer(const void* pointer, uint64_t size)
 {
     if ((uint64_t)pointer + size > VMM_LOWER_HALF_MAX)
     {
@@ -32,7 +32,7 @@ static inline bool verify_pointer(const void* pointer, uint64_t size)
     return true;
 }
 
-static inline bool verify_string(const char* string)
+static bool verify_string(const char* string)
 {
     return verify_pointer(string, 0) && verify_pointer(string, strlen(string));
 }

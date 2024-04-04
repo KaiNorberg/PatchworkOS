@@ -14,7 +14,7 @@
 #include "smp/smp.h"
 #include "sched/schedule/schedule.h"
 
-static inline void exception_handler(TrapFrame const* trapFrame)
+static void exception_handler(TrapFrame const* trapFrame)
 {   
     switch (trapFrame->vector)
     {
@@ -26,7 +26,7 @@ static inline void exception_handler(TrapFrame const* trapFrame)
     }
 }
 
-static inline void ipi_handler(TrapFrame const* trapFrame)
+static void ipi_handler(TrapFrame const* trapFrame)
 {
     uint8_t ipi = trapFrame->vector - IPI_BASE;
 

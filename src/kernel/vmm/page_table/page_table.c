@@ -8,12 +8,12 @@
 #include "utils/utils.h"
 #include "regs/regs.h"
 
-static inline PageEntry page_entry_create(void* address, uint64_t flags)
+static PageEntry page_entry_create(void* address, uint64_t flags)
 {
     return ((((uintptr_t)address >> 12) & 0x000000FFFFFFFFFF) << 12) | (flags | (uint64_t)PAGE_FLAG_PRESENT);
 }
 
-static inline PageTable* page_table_get(PageTable* table, uint64_t index)
+static PageTable* page_table_get(PageTable* table, uint64_t index)
 {
     PageEntry entry = table->entries[index];
 
@@ -25,7 +25,7 @@ static inline PageTable* page_table_get(PageTable* table, uint64_t index)
     return VMM_LOWER_TO_HIGHER(PAGE_ENTRY_GET_ADDRESS(entry));
 }
 
-static inline PageTable* page_table_get_or_allocate(PageTable* table, uint64_t index, uint64_t flags)
+static PageTable* page_table_get_or_allocate(PageTable* table, uint64_t index, uint64_t flags)
 {
     PageEntry entry = table->entries[index];
 
@@ -44,7 +44,7 @@ static inline PageTable* page_table_get_or_allocate(PageTable* table, uint64_t i
     }
 }
 
-static inline void page_table_free_level(PageTable* table, int64_t level)
+static void page_table_free_level(PageTable* table, int64_t level)
 {
     if (level < 0)
     {

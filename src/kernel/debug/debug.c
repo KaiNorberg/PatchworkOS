@@ -46,19 +46,19 @@
 static int8_t xPos;
 static int8_t yPos;
 
-static inline void debug_set_x(int8_t x)
+static void debug_set_x(int8_t x)
 {    
     xPos = x;
     tty_set_column((tty_column_amount() - DEBUG_COLUMN_AMOUNT * DEBUG_COLUMN_WIDTH) / 2 + x * DEBUG_COLUMN_WIDTH);
 }
 
-static inline void debug_set_y(int8_t y)
+static void debug_set_y(int8_t y)
 {    
     yPos = y;
     tty_set_row((tty_row_amount() - DEBUG_ROW_AMOUNT) / 2 + y);
 }
 
-static inline void debug_start(const char* message)
+static void debug_start(const char* message)
 { 
     Pixel red;
     red.a = 255;
@@ -85,7 +85,7 @@ static inline void debug_start(const char* message)
     tty_set_foreground(white);
 }
 
-static inline void debug_move(const char* name, uint8_t x, uint8_t y)
+static void debug_move(const char* name, uint8_t x, uint8_t y)
 {
     debug_set_x(x);
     debug_set_y(y);
@@ -101,7 +101,7 @@ static inline void debug_move(const char* name, uint8_t x, uint8_t y)
     debug_set_y(y + 1);
 }
 
-static inline void debug_print(const char* string, uint64_t value)
+static void debug_print(const char* string, uint64_t value)
 {
     tty_print(string);
     tty_printx(value);

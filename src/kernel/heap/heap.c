@@ -13,7 +13,7 @@ static uintptr_t newAddress;
 static HeapHeader* firstBlock;
 static Lock lock;
 
-static inline void heap_split(HeapHeader* block, uint64_t size)
+static void heap_split(HeapHeader* block, uint64_t size)
 {   
     HeapHeader* newBlock = (HeapHeader*)((uint64_t)block + sizeof(HeapHeader) + size);
     newBlock->size = block->size - sizeof(HeapHeader) - size;
@@ -25,7 +25,7 @@ static inline void heap_split(HeapHeader* block, uint64_t size)
     block->next = newBlock;
 }
 
-static inline HeapHeader* heap_new_block(uint64_t size)
+static HeapHeader* heap_new_block(uint64_t size)
 {
     uint64_t pageAmount = SIZE_IN_PAGES(size + sizeof(HeapHeader));
     newAddress -= pageAmount * PAGE_SIZE;
