@@ -17,7 +17,8 @@ KERNEL_SRC = \
 	$(STDLIB)/string/strchr.c \
 	$(STDLIB)/string/strrchr.c \
 	$(STDLIB)/string/memset.c \
-	$(STDLIB)/string/strlen.c
+	$(STDLIB)/string/strlen.c \
+	$(STDLIB)/string/strerror.c
 
 KERNEL_OBJ = $(patsubst $(SRC_DIR)/%, $(KERNEL_BUILD_DIR)/%.o, $(KERNEL_SRC))
 

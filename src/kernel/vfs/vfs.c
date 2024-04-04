@@ -27,7 +27,7 @@ static inline Disk* vfs_find_disk(const char* name)
 static inline File* file_get(uint64_t fd)
 {
     FileTable* table = &sched_process()->fileTable;
-    lock_acquire(&table->lock);
+    LOCK_GUARD(table->lock);
 
     if (table->files[fd] == NULL)
     {
@@ -37,8 +37,6 @@ static inline File* file_get(uint64_t fd)
 
     File* file = table->files[fd];
     atomic_fetch_add(&file->ref, 1);
-
-    lock_release(&table->lock);
     return file;
 }
 
@@ -144,7 +142,7 @@ uint64_t vfs_open(const char* path)
     }
 
     FileTable* table = &sched_process()->fileTable;
-    lock_acquire(&table->lock);
+    LOCK_GUARD(table->lock);
 
     for (uint64_t fd = 0; fd < CONFIG_FILE_AMOUNT; fd++)
     {
@@ -152,23 +150,20 @@ uint64_t vfs_open(const char* path)
         {
             table->files[fd] = file;
 
-            lock_release(&table->lock);
             return fd;
         }
     }
 
-    lock_release(&table->lock);
     return ERROR(EMFILE);
 }
 
 uint64_t vfs_close(uint64_t fd)
 {    
     FileTable* table = &sched_process()->fileTable;
-    lock_acquire(&table->lock);
+    LOCK_GUARD(table->lock);
 
     if (fd >= CONFIG_FILE_AMOUNT || table->files[fd] == NULL)
     {
-        lock_release(&table->lock);
         return ERROR(EBADF);
     }
 
@@ -176,7 +171,6 @@ uint64_t vfs_close(uint64_t fd)
     table->files[fd] = NULL;
     file_put(file);
 
-    lock_release(&table->lock);
     return 0;
 }
 

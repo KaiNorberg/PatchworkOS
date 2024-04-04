@@ -105,12 +105,12 @@ uint64_t heap_free_size(void)
 
 void* kmalloc(uint64_t size) 
 {
+    LOCK_GUARD(lock);
+
     if (size == 0) 
     {
         return NULL;
     }
-    lock_acquire(&lock);
-
     size = ROUND_UP(size, HEAP_ALIGNMENT);
 
     HeapHeader* currentBlock = firstBlock;
@@ -121,15 +121,11 @@ void* kmalloc(uint64_t size)
             if (currentBlock->size == size) 
             {
                 currentBlock->reserved = true;
-
-                lock_release(&lock);
                 return HEAP_HEADER_GET_START(currentBlock);
             }
             else if (currentBlock->size > size + sizeof(HeapHeader) + HEAP_ALIGNMENT) 
             {
                 currentBlock->reserved = true;
-
-                lock_release(&lock);
                 return HEAP_HEADER_GET_START(currentBlock);
             }
         }
@@ -151,8 +147,6 @@ void* kmalloc(uint64_t size)
     }
     currentBlock->next = newBlock;
     newBlock->reserved = true;
-
-    lock_release(&lock);
     return HEAP_HEADER_GET_START(newBlock);
 }
 
@@ -165,7 +159,7 @@ void* kcalloc(uint64_t count, uint64_t size)
 
 void kfree(void* ptr)
 {
-    lock_acquire(&lock);
+    LOCK_GUARD(lock);
 
     HeapHeader* block = (HeapHeader*)((uint64_t)ptr - sizeof(HeapHeader));
     if (block->magic != HEAP_HEADER_MAGIC)
@@ -177,6 +171,4 @@ void kfree(void* ptr)
         debug_panic("Attempt to free unreserved block");
     }
     block->reserved = false;
-
-    lock_release(&lock);
 }

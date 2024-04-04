@@ -127,9 +127,7 @@ void* vmm_allocate(const void* address, uint64_t pageAmount)
 void* vmm_physical_to_virtual(const void* address)
 {
     Space* space = &sched_process()->space;
+    LOCK_GUARD(space->lock);
 
-    lock_acquire(&space->lock);
-    void* temp = page_table_physical_address(space->pageTable, address);
-    lock_release(&space->lock);
-    return temp;
+    return page_table_physical_address(space->pageTable, address);
 }

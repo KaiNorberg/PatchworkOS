@@ -30,6 +30,8 @@ void heap()
     }
 }
 
+#define BUFFER_SIZE 32
+
 void main(BootInfo* bootInfo)
 {
     kernel_init(bootInfo);
@@ -49,8 +51,44 @@ void main(BootInfo* bootInfo)
     tty_printi((pmm_reserved_amount() * PAGE_SIZE) / 1024);
     tty_print("KB\n");*/
 
+    /*uint64_t fd = vfs_open("/ram/test1/test2/test3/test.txt");
+    tty_print("OPEN: ");
+    if (fd == ERR)
+    {
+        tty_print(strerror(sched_thread()->error));
+    }
+    else
+    {
+        tty_print("SUCCESS");
+    }
+    tty_print("\n");
+
+    char buffer[BUFFER_SIZE];
+    memset(buffer, 0, BUFFER_SIZE);
+    tty_print("READ: ");
+    if (vfs_read(fd, buffer, BUFFER_SIZE - 1) == ERR)
+    {
+        tty_print(strerror(sched_thread()->error));
+    }
+    else
+    {
+        tty_print(buffer);
+    }
+    tty_print("\n");
+
+    tty_print("CLOSE: ");
+    if (vfs_close(fd) == ERR)
+    {
+        tty_print(strerror(sched_thread()->error));
+    }
+    else
+    {
+        tty_print("SUCCESS");
+    }
+    tty_print("\n");*/
+
     tty_acquire();
-    for (uint64_t i = 0; i < 4; i++)
+    for (uint64_t i = 0; i < 2; i++)
     {
         sched_spawn("/ram/bin/parent.elf");
     }

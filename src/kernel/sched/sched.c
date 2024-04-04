@@ -96,7 +96,7 @@ void sched_block(Blocker blocker)
     Scheduler* scheduler = &smp_self()->scheduler;
     Thread* thread = scheduler->runningThread;
     thread->blocker = blocker;
-    thread->state = THREAD_STATE_BLOCKED;
+    thread->state = THREAD_STATE_BLOCK_GUARDED;
     smp_put();
 
     sched_yield();

@@ -3,7 +3,7 @@
 #include "defs/defs.h"
 #include "rsdt/rsdt.h"
 
-#define HPET_COUNTER_CLOCK_OFFSET 0x20
+#define HPET_COUNTER_CLOCK_GUARD_OFFSET 0x20
 
 #define HPET_GENERAL_CAPABILITIES 0x000
 #define HPET_GENERAL_CONFIG 0x010

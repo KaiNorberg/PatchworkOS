@@ -133,7 +133,7 @@ void sched_schedule(TrapFrame* trapFrame)
             scheduler->runningThread = NULL;
         }
         break;
-        case THREAD_STATE_BLOCKED:
+        case THREAD_STATE_BLOCK_GUARDED:
         {
             scheduler->runningThread->trapFrame = *trapFrame;
             array_push(scheduler->blockedThreads, scheduler->runningThread);

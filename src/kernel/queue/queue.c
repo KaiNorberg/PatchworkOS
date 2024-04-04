@@ -47,7 +47,6 @@ static inline void queue_push_unlocked(Queue* queue, void* item)
     queue->writeIndex = (queue->writeIndex + 1) % queue->capacity;
 }
 
-
 Queue* queue_new()
 {
     Queue* queue = kmalloc(sizeof(Queue));
@@ -70,17 +69,14 @@ void queue_free(Queue* queue)
 
 void queue_push(Queue* queue, void* item)
 {
-    lock_acquire(&queue->lock);
+    LOCK_GUARD(queue->lock);
     queue_push_unlocked(queue, item);
-    lock_release(&queue->lock);
 }
 
 void* queue_pop(Queue* queue)
 {
-    lock_acquire(&queue->lock);
-    void* temp = queue_pop_unlocked(queue);
-    lock_release(&queue->lock);
-    return temp;
+    LOCK_GUARD(queue->lock);
+    return queue_pop_unlocked(queue);
 }
 
 uint64_t queue_length(Queue* queue)

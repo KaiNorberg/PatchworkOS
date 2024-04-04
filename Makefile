@@ -29,7 +29,6 @@ BASE_ASM_FLAGS = -f elf64 \
 	-I$(LIBS_SRC_DIR)/std/include
 
 BASE_C_FLAGS = -O3 \
-	-nostdlib \
 	-Wall \
 	-Wextra \
 	-Werror \
@@ -38,6 +37,7 @@ BASE_C_FLAGS = -O3 \
 	-Wno-unused-parameter \
 	-Wno-unused-but-set-variable \
 	-Wno-implicit-fallthrough \
+	-Wno-deprecated-non-prototype \
 	-mno-80387 -mno-mmx -mno-3dnow \
 	-mno-sse -mno-sse2 \
 	-fno-stack-protector \
