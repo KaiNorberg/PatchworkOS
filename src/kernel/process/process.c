@@ -17,15 +17,15 @@ Process* process_new(const char* executable)
 {
     Process* process = kmalloc(sizeof(Process));
     process->id = atomic_fetch_add(&newPid, 1);
-    if (executable != 0)
+    memset(process->executable, 0, CONFIG_MAX_PATH);
+    if (executable != NULL)
     {
-        strcpy(process->executable, executable);
+        if (vfs_realpath(process->executable, executable) == ERR)
+        {
+            memset(process->executable, 0, CONFIG_MAX_PATH);
+        }
     }
-    else
-    {
-        memset(process->executable, 0, CONFIG_MAX_PATH);
-    }
-    file_table_init(&process->fileTable);
+    vfs_context_init(&process->vfsContext);
     space_init(&process->space);
     process->killed = false;
     process->threadCount = 0;
@@ -62,7 +62,7 @@ void thread_free(Thread* thread)
 {
     if (atomic_fetch_sub(&thread->process->threadCount, 1) <= 1)
     {
-        file_table_cleanup(&thread->process->fileTable);
+        vfs_context_cleanup(&thread->process->vfsContext);
         space_cleanup(&thread->process->space);
         kfree(thread->process);
     }

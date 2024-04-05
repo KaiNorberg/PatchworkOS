@@ -7,10 +7,6 @@
 
 //Note: Only supports ram drives for now.
 
-#define VFS_LETTER_BASE ('A')
-#define VFS_LETTER_AMOUNT ('Z' - 'A' + 1)
-#define VFS_VALID_LETTER(letter) ((letter) < VFS_LETTER_BASE + VFS_LETTER_AMOUNT)
-
 typedef struct Drive Drive;
 typedef struct File File;
 
@@ -26,14 +22,14 @@ typedef struct
 
 typedef struct Drive
 {
-    void* context;
+    void* internal;
     Filesystem* fs;
     _Atomic uint64_t ref;
 } Drive;
 
 typedef struct File
 {
-    void* context;
+    void* internal;
     Drive* drive;
     _Atomic uint64_t position;
     _Atomic uint64_t ref;
@@ -41,17 +37,22 @@ typedef struct File
 
 typedef struct
 {
+    char workDir[CONFIG_MAX_PATH];
     File* files[CONFIG_FILE_AMOUNT];
     Lock lock;
-} FileTable;
+} VfsContext;
 
-void file_table_init(FileTable* table);
+void vfs_context_init(VfsContext* context);
 
-void file_table_cleanup(FileTable* table);
+void vfs_context_cleanup(VfsContext* context);
 
 void vfs_init();
 
-uint64_t vfs_mount(char letter, Filesystem* fs, void* context);
+uint64_t vfs_mount(char letter, Filesystem* fs, void* internal);
+
+uint64_t vfs_realpath(char* dest, const char* src);
+
+uint64_t vfs_chdir(const char* path);
 
 uint64_t vfs_open(const char* path);
 

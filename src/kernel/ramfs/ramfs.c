@@ -82,7 +82,7 @@ File* ramfs_open(Drive* drive, const char* path)
     RamFile* ramFile = ram_dir_find_file(ramDir, filename);
     if (ramFile == NULL)
     {
-        return NULLPTR(ENAME);
+        return NULLPTR(EPATH);
     }
 
     return file_new(drive, ramFile);
@@ -90,7 +90,7 @@ File* ramfs_open(Drive* drive, const char* path)
 
 uint64_t ramfs_read(File* file, void* buffer, uint64_t count)
 {
-    RamFile const* ramFile = file->context;
+    RamFile const* ramFile = file->internal;
 
     size_t pos = file->position;
     size_t readCount = pos <= ramFile->size ? MIN(count, ramFile->size - pos) : 0;
@@ -102,7 +102,7 @@ uint64_t ramfs_read(File* file, void* buffer, uint64_t count)
 
 uint64_t ramfs_seek(File* file, int64_t offset, uint8_t origin)
 {
-    RamFile const* ramFile = file->context;
+    RamFile const* ramFile = file->internal;
 
     uint64_t position;
     switch (origin)

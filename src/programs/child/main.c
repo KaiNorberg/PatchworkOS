@@ -11,29 +11,30 @@
 
 int main(void)
 {
+    fd_t fd = open("/test1/test2/test3/test.txt");
+    if (fd == ERR)
+    {    
+        SYSCALL(SYS_TEST, 1, strerror(errno));
+        return EXIT_FAILURE;
+    }
+
+    char buffer[BUFFER_SIZE];
+    memset(buffer, 0, BUFFER_SIZE);    
+    if (read(fd, buffer, BUFFER_SIZE - 1) == ERR)
+    {
+        SYSCALL(SYS_TEST, 1, strerror(errno));
+        return EXIT_FAILURE;
+    }
+
+    if (close(fd) == ERR)
+    {
+        SYSCALL(SYS_TEST, 1, strerror(errno));
+        return EXIT_FAILURE;
+    }
+
+
     while (1)
     {
-        fd_t fd = open("B:/test1/test2/test3/test.txt");
-        if (fd == ERR)
-        {    
-            SYSCALL(SYS_TEST, 1, strerror(errno));
-            return EXIT_FAILURE;
-        }
-
-        char buffer[BUFFER_SIZE];
-        memset(buffer, 0, BUFFER_SIZE);    
-        if (read(fd, buffer, BUFFER_SIZE - 1) == ERR)
-        {
-            SYSCALL(SYS_TEST, 1, strerror(errno));
-            return EXIT_FAILURE;
-        }
-
-        if (close(fd) == ERR)
-        {
-            SYSCALL(SYS_TEST, 1, strerror(errno));
-            return EXIT_FAILURE;
-        }
-
         SYSCALL(SYS_TEST, 1, buffer);
     
         /*struct timespec duration;

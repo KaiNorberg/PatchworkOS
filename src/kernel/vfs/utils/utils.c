@@ -8,12 +8,38 @@
 File* file_new(Drive* drive, void* context)
 {
     File* file = kmalloc(sizeof(File));
-    file->context = context;
+    file->internal = context;
     file->drive = drive;
     file->position = 0;
     file->ref = 1;
 
     return file;
+}
+
+bool vfs_valid_path(const char* path)
+{
+    if (!VFS_VALID_LETTER(path[0]) || path[1] != VFS_DRIVE_SEPARATOR || path[2] != VFS_NAME_SEPARATOR)
+    {
+        return false;
+    }
+
+    for (uint64_t i = 3; i < CONFIG_MAX_PATH - 1; i++)
+    {
+        if (path[i] == '\0')
+        {
+            return true;
+        }
+        else if (path[i] == VFS_NAME_SEPARATOR || VFS_VALID_CHAR(path[i]))
+        {
+            continue;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    return false;
 }
 
 bool vfs_compare_names(const char* a, const char* b)
@@ -35,12 +61,12 @@ bool vfs_compare_names(const char* a, const char* b)
 
 const char* vfs_first_dir(const char* path)
 {
-    if (path[0] == VFS_NAME_DELIMITER)
+    if (path[0] == VFS_NAME_SEPARATOR)
     {
         path++;
     }
 
-    if (strchr(path, VFS_NAME_DELIMITER) == NULL)
+    if (strchr(path, VFS_NAME_SEPARATOR) == NULL)
     {
         return NULL;
     }
@@ -52,7 +78,7 @@ const char* vfs_first_dir(const char* path)
 
 const char* vfs_next_dir(const char* path)
 {
-    const char* next = strchr(path, VFS_NAME_DELIMITER);
+    const char* next = strchr(path, VFS_NAME_SEPARATOR);
     if (next == NULL)
     {
         return NULL;
@@ -60,7 +86,7 @@ const char* vfs_next_dir(const char* path)
     else
     {
         next += 1;
-        if (strchr(next, VFS_NAME_DELIMITER) != NULL)
+        if (strchr(next, VFS_NAME_SEPARATOR) != NULL)
         {
             return next;
         }
@@ -73,12 +99,26 @@ const char* vfs_next_dir(const char* path)
 
 const char* vfs_next_name(const char* path)
 {
-    const char* base = strchr(path, VFS_NAME_DELIMITER);
+    const char* base = strchr(path, VFS_NAME_SEPARATOR);
     return base != NULL ? base + 1 : NULL;
 }
 
 const char* vfs_basename(const char* path)
 {
-    const char* base = strrchr(path, VFS_NAME_DELIMITER);
+    const char* base = strrchr(path, VFS_NAME_SEPARATOR);
     return base != NULL ? base + 1 : path;
+}
+
+uint64_t vfs_parent_dir(char* dest, const char* src)
+{
+    char* end = strrchr(src, VFS_NAME_SEPARATOR);
+    if (end == NULL)
+    {
+        return ERR;
+    }
+
+    strncpy(dest, src, end - src);
+    dest[end - src] = '\0';
+
+    return 0;
 }

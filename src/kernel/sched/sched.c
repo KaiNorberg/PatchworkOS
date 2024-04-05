@@ -17,8 +17,8 @@
 
 static void sched_spawn_init_thread(void)
 {
-    Process* process = process_new(0);
-    Thread* thread = thread_new(process, 0, THREAD_PRIORITY_MAX);
+    Process* process = process_new(NULL);
+    Thread* thread = thread_new(process, NULL, THREAD_PRIORITY_MAX);
     thread->timeEnd = UINT64_MAX;
 
     smp_self_unsafe()->scheduler.runningThread = thread;

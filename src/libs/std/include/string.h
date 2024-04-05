@@ -11,7 +11,9 @@ extern "C" {
 
 _EXPORT void* memcpy(void* _RESTRICT dest, const void* _RESTRICT src, size_t count);
 _EXPORT void* memmove(void* dest, const void* src, size_t count);
-_EXPORT char* strcpy(char* _RESTRICT dest, const char* src);
+_EXPORT char* strcpy(char* _RESTRICT dest, const char* _RESTRICT src);
+_EXPORT char* strncpy(char* _RESTRICT dest, const char* _RESTRICT src, size_t count);
+_EXPORT char* strcat(char* _RESTRICT dest, const char* _RESTRICT src);
 
 _EXPORT int memcmp(const void* a, const void* b, size_t count);
 _EXPORT int strcmp(const char* a, const char* b);

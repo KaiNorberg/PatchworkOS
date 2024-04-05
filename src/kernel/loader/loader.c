@@ -1,5 +1,7 @@
 #include "loader.h"
 
+#include <string.h>
+
 #include <internal/syscalls/syscalls.h>
 
 #include <common/elf/elf.h>
@@ -11,6 +13,7 @@
 #include "sched/sched.h"
 #include "utils/utils.h"
 #include "debug/debug.h"
+#include "vfs/utils/utils.h"
 
 static void* loader_allocate_stack()
 {    
@@ -27,9 +30,17 @@ static void* loader_allocate_stack()
 }
 
 static void* loader_load_program()
-{
-    uint64_t fd = vfs_open(sched_process()->executable);
+{   
+    const char* executable = sched_process()->executable;
+    uint64_t fd = vfs_open(executable);
     if (fd == ERR)
+    {
+        sched_process_exit(EEXEC);
+    }
+
+    char parentDir[CONFIG_MAX_PATH];
+    vfs_parent_dir(parentDir, executable);
+    if (vfs_chdir(parentDir) == ERR)
     {
         sched_process_exit(EEXEC);
     }

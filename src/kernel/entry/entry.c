@@ -51,7 +51,18 @@ void main(BootInfo* bootInfo)
     tty_printi((pmm_reserved_amount() * PAGE_SIZE) / 1024);
     tty_print("KB\n");*/
 
-    /*uint64_t fd = vfs_open("B:/test1/test2/test3/test.txt");
+    /*tty_print("CHDIR: ");
+    if (vfs_chdir("B:/programs") == ERR)
+    {
+        tty_print(strerror(sched_thread()->error));
+    }
+    else
+    {
+        tty_print("SUCCESS");
+    }
+    tty_print("\n");
+
+    uint64_t fd = vfs_open("/test1/test2/test3/test.txt");
     tty_print("OPEN: ");
     if (fd == ERR)
     {
@@ -86,15 +97,16 @@ void main(BootInfo* bootInfo)
         tty_print("SUCCESS");
     }
     tty_print("\n");*/
-
+    
     tty_acquire();
+    tty_clear();
+    tty_set_row(smp_cpu_amount() + 2);
+    tty_release();
+
     for (uint64_t i = 0; i < 2; i++)
     {
         sched_spawn("B:/programs/parent.elf");
     }
-    tty_clear();
-    tty_set_row(smp_cpu_amount() + 2);
-    tty_release();
 
     //Exit init thread
     sched_thread_exit();

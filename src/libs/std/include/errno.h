@@ -23,12 +23,11 @@ _EXPORT int* _ErrnoFunc();
 #define EEXIST 6 // Already exists
 #define ELETTER 7 // Invalid letter
 #define EPATH 8 // Invalid path
-#define ENAME 9 // Invalid name
-#define EMFILE 10 // To many open files
-#define EBADF 11 // Bad file descriptor
-#define EACCES 12 // Permission denied
-#define EEXEC 13 // Bad executable
-#define ENOMEM 14 // Out of memory
+#define EMFILE 9 // To many open files
+#define EBADF 10 // Bad file descriptor
+#define EACCES 11 // Permission denied
+#define EEXEC 12 // Bad executable
+#define ENOMEM 13 // Out of memory
 
 //Note: Values retrievd from linux
 /*

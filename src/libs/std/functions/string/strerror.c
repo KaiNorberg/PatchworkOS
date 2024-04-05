@@ -12,7 +12,6 @@ static char* errorStrings[] =
     "Already exists",
     "Invalid letter",
     "Invalid path",
-    "Invalid name",
     "To many open files",
     "Bad file descriptor",
     "Permission denied",

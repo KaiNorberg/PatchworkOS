@@ -16,31 +16,83 @@ struct
     Lock lock;
 } driveTable;
 
-//This is temporary
-static bool vfs_valid_path(const char* path)
+static uint64_t vfs_make_path_canonical(char* start, char* dest, const char* path, uint64_t count)
 {
-    if (!VFS_VALID_LETTER(path[0]) || path[1] != VFS_DRIVE_DELIMITER || path[2] != VFS_NAME_DELIMITER)
+    const char* name = path;
+    while (true)
     {
-        return false;
-    }
+        if (vfs_compare_names(name, "."))
+        {
+            //Do nothing
+        }
+        else if (vfs_compare_names(name, ".."))
+        {            
+            dest = strrchr(start, VFS_NAME_SEPARATOR);
+            if (dest == NULL)
+            {
+                return ERR;
+            }
+            *dest = '\0';
+        }
+        else
+        {
+            if ((uint64_t)(dest - start) >= count)
+            {
+                return ERR;
+            }
+            *dest++ = VFS_NAME_SEPARATOR;
 
-    for (uint64_t i = 3; i < CONFIG_MAX_PATH; i++)
+            for (const char* ptr = name; !VFS_END_OF_NAME(*ptr); ptr++)
+            {
+                if (!VFS_VALID_CHAR(*ptr) || (uint64_t)(dest - start) >= count)
+                {
+                    return ERR;
+                } 
+                *dest++ = *ptr;
+            }
+        }
+
+        const char* next = vfs_next_name(name);
+        if (next == NULL)
+        {
+            *dest = '\0';
+            return 0;
+        }
+
+        name = next;
+    }
+}
+
+static uint64_t vfs_parse_path(char* dest, const char* path)
+{    
+    VfsContext* context = &sched_process()->vfsContext;
+    LOCK_GUARD(context->lock);
+
+    if (path[0] != '\0' && path[1] == VFS_DRIVE_SEPARATOR) //absolute path
     {
-        if (path[i] == '\0')
+        if (!VFS_VALID_LETTER(path[0]) || path[2] != VFS_NAME_SEPARATOR)
         {
-            return true;
+            return ERR;
         }
-        else if (path[i] == VFS_NAME_DELIMITER)
-        {
-            continue;
-        }
-        else if (!VFS_VALID_CHAR(path[i]))
-        {
-            return false;
-        }
-    }
 
-    return false;
+        dest[0] = path[0];
+        dest[1] = VFS_DRIVE_SEPARATOR;
+
+        return vfs_make_path_canonical(dest, dest + 2, path + 3, CONFIG_MAX_PATH - 3);
+    }
+    else if (path[0] == VFS_NAME_SEPARATOR) //root path
+    {
+        dest[0] = context->workDir[0];
+        dest[1] = VFS_DRIVE_SEPARATOR;
+
+        return vfs_make_path_canonical(dest, dest + 2, path + 1, CONFIG_MAX_PATH - 3);
+    }
+    else //relative path
+    {
+        uint64_t workLength = strlen(context->workDir);
+        memcpy(dest, context->workDir, workLength);
+        return vfs_make_path_canonical(dest, dest + workLength, path, CONFIG_MAX_PATH - workLength);
+    }
 }
 
 static Drive* drive_get(char letter)
@@ -72,16 +124,15 @@ static void drive_put(Drive* drive)
 
 static File* file_get(uint64_t fd)
 {
-    FileTable* table = &sched_process()->fileTable;
-    LOCK_GUARD(table->lock);
+    VfsContext* context = &sched_process()->vfsContext;
+    LOCK_GUARD(context->lock);
 
-    if (table->files[fd] == NULL)
+    if (context->files[fd] == NULL)
     {
-        lock_release(&table->lock);
         return NULL;
     }
 
-    File* file = table->files[fd];
+    File* file = context->files[fd];
     atomic_fetch_add(&file->ref, 1);
     return file;
 }
@@ -99,17 +150,18 @@ static void file_put(File* file)
     }
 }
 
-void file_table_init(FileTable* table)
+void vfs_context_init(VfsContext* context)
 {
-    memset(table, 0, sizeof(FileTable));
-    table->lock = lock_create();
+    memset(context, 0, sizeof(VfsContext));
+    strcpy(context->workDir, "A:/");
+    context->lock = lock_create();
 }
 
-void file_table_cleanup(FileTable* table)
+void vfs_context_cleanup(VfsContext* context)
 {
     for (uint64_t i = 0; i < CONFIG_FILE_AMOUNT; i++)
     {    
-        File* file = table->files[i];
+        File* file = context->files[i];
         if (file != NULL)
         {
             file_put(file);
@@ -127,7 +179,7 @@ void vfs_init()
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-uint64_t vfs_mount(char letter, Filesystem* fs, void* context)
+uint64_t vfs_mount(char letter, Filesystem* fs, void* internal)
 {
     if (!VFS_VALID_LETTER(letter))
     {
@@ -142,7 +194,7 @@ uint64_t vfs_mount(char letter, Filesystem* fs, void* context)
     }
 
     Drive* drive = kmalloc(sizeof(Drive));
-    drive->context = context;
+    drive->internal = internal;
     drive->fs = fs;
     drive->ref = 1;
     driveTable.drives[index] = drive;
@@ -150,14 +202,42 @@ uint64_t vfs_mount(char letter, Filesystem* fs, void* context)
     return 0;
 }
 
-uint64_t vfs_open(const char* path)
+uint64_t vfs_realpath(char* dest, const char* src)
 {
-    if (!vfs_valid_path(path))
+    if (vfs_parse_path(dest, src) == ERR)
+    {
+        return ERROR(EPATH);
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+uint64_t vfs_chdir(const char* path)
+{    
+    char parsedPath[CONFIG_MAX_PATH];
+    if (vfs_parse_path(parsedPath, path) == ERR)
     {
         return ERROR(EPATH);
     }
 
-    Drive* drive = drive_get(path[0]);
+    VfsContext* context = &sched_process()->vfsContext;
+    LOCK_GUARD(context->lock);
+
+    strcpy(context->workDir, parsedPath);
+    return 0;
+}
+
+uint64_t vfs_open(const char* path)
+{
+    char parsedPath[CONFIG_MAX_PATH];
+    if (vfs_parse_path(parsedPath, path) == ERR)
+    {
+        return ERROR(EPATH);
+    }
+
+    Drive* drive = drive_get(parsedPath[0]);
     if (drive == NULL)
     {
         return ERROR(EPATH);
@@ -169,21 +249,22 @@ uint64_t vfs_open(const char* path)
         return ERROR(EACCES);
     }
 
-    File* file = drive->fs->open(drive, path + 2);
+    //Drive reference is passed to file.
+    File* file = drive->fs->open(drive, parsedPath + 2);
     if (file == NULL)
     {
         drive_put(drive);
         return ERR;
     }
 
-    FileTable* table = &sched_process()->fileTable;
-    LOCK_GUARD(table->lock);
+    VfsContext* context = &sched_process()->vfsContext;
+    LOCK_GUARD(context->lock);
 
     for (uint64_t fd = 0; fd < CONFIG_FILE_AMOUNT; fd++)
     {
-        if (table->files[fd] == NULL)
+        if (context->files[fd] == NULL)
         {
-            table->files[fd] = file;
+            context->files[fd] = file;
             return fd;
         }
     }
@@ -192,17 +273,17 @@ uint64_t vfs_open(const char* path)
 }
 
 uint64_t vfs_close(uint64_t fd)
-{    
-    FileTable* table = &sched_process()->fileTable;
-    LOCK_GUARD(table->lock);
+{
+    VfsContext* context = &sched_process()->vfsContext;
+    LOCK_GUARD(context->lock);
 
-    if (fd >= CONFIG_FILE_AMOUNT || table->files[fd] == NULL)
+    if (fd >= CONFIG_FILE_AMOUNT || context->files[fd] == NULL)
     {
         return ERROR(EBADF);
     }
 
-    File* file = table->files[fd];
-    table->files[fd] = NULL;
+    File* file = context->files[fd];
+    context->files[fd] = NULL;
     file_put(file);
 
     return 0;
