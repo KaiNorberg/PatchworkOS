@@ -19,12 +19,12 @@
 #include "irq/irq.h"
 #include "pic/pic.h"
 #include "vfs/vfs.h"
-#include "devfs/devfs.h"
+#include "sysfs/sysfs.h"
 #include "ramfs/ramfs.h"
 #include "regs/regs.h"
 #include "loader/loader.h"
 
-static void deallocate_boot_info(BootInfo* bootInfo)
+static void boot_info_deallocate(BootInfo* bootInfo)
 {
     tty_start_message("Deallocating boot info");
 
@@ -68,10 +68,10 @@ void kernel_init(BootInfo* bootInfo)
     sched_start();
 
     vfs_init();
-    devfs_init();
+    sysfs_init();
     ramfs_init(bootInfo->ramRoot);
 
-    deallocate_boot_info(bootInfo);
+    boot_info_deallocate(bootInfo);
 }
 
 void kernel_cpu_init(void)

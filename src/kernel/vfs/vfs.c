@@ -196,7 +196,7 @@ uint64_t vfs_mount(char letter, Filesystem* fs, void* internal)
     Drive* drive = kmalloc(sizeof(Drive));
     drive->internal = internal;
     drive->fs = fs;
-    drive->ref = 1;
+    atomic_init(&drive->ref, 1);
     driveTable.drives[index] = drive;
 
     return 0;

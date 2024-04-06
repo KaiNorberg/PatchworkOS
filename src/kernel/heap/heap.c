@@ -126,6 +126,7 @@ void* kmalloc(uint64_t size)
             else if (currentBlock->size > size + sizeof(HeapHeader) + HEAP_ALIGNMENT) 
             {
                 currentBlock->reserved = true;
+                heap_split(currentBlock, size);
                 return HEAP_HEADER_GET_START(currentBlock);
             }
         }

@@ -6,8 +6,8 @@ Lock lock_create()
 {
     return (Lock) 
     {
-        .nextTicket = 0,
-        .nowServing = 0
+        .nextTicket = ATOMIC_VAR_INIT(0),
+        .nowServing = ATOMIC_VAR_INIT(0)
     };
 }
 

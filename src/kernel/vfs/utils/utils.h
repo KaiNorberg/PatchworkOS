@@ -18,8 +18,6 @@
 
 File* file_new(Drive* drive, void* context);
 
-bool vfs_valid_path(const char* path);
-
 bool vfs_compare_names(const char* a, const char* b);
 
 const char* vfs_first_dir(const char* path);

@@ -10,36 +10,10 @@ File* file_new(Drive* drive, void* context)
     File* file = kmalloc(sizeof(File));
     file->internal = context;
     file->drive = drive;
-    file->position = 0;
-    file->ref = 1;
+    atomic_init(&file->position, 0);
+    atomic_init(&file->ref, 1);
 
     return file;
-}
-
-bool vfs_valid_path(const char* path)
-{
-    if (!VFS_VALID_LETTER(path[0]) || path[1] != VFS_DRIVE_SEPARATOR || path[2] != VFS_NAME_SEPARATOR)
-    {
-        return false;
-    }
-
-    for (uint64_t i = 3; i < CONFIG_MAX_PATH - 1; i++)
-    {
-        if (path[i] == '\0')
-        {
-            return true;
-        }
-        else if (path[i] == VFS_NAME_SEPARATOR || VFS_VALID_CHAR(path[i]))
-        {
-            continue;
-        }
-        else
-        {
-            return false;
-        }
-    }
-
-    return false;
 }
 
 bool vfs_compare_names(const char* a, const char* b)

@@ -9,7 +9,7 @@
 #include "apic/apic.h"
 #include "hpet/hpet.h"
 
-static _Atomic uint64_t accumulator;
+static _Atomic(uint64_t) accumulator = ATOMIC_VAR_INIT(0);
 
 static void time_irq_handler(uint8_t irq)
 {
@@ -40,7 +40,6 @@ static void time_rtc_init(void)
 
 void time_init(void)
 {
-    accumulator = 0;
     time_accumulate();
 
     time_rtc_init();

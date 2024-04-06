@@ -1,12 +1,12 @@
-#include "devfs.h"
+#include "sysfs.h"
 
 #include <string.h>
 
 #include "tty/tty.h"
 #include "vfs/utils/utils.h"
 
-static Filesystem devfs;
-static Array* buses;
+static Filesystem sysfs;
+static SysNode* root;
 
 /*static FindResult device_bus_find_callback(void* element, void* context)
 {
@@ -62,9 +62,9 @@ uint64_t devfs_open(Drive* drive, File* file, const char* path)
     return 0;
 }*/
 
-void devfs_init()
+void sysfs_init()
 {
-    tty_start_message("Devfs initializing");
+    tty_start_message("Sysfs initializing");
 
     /*buses = array_new();
 

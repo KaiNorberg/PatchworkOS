@@ -1,6 +1,5 @@
 #include "process.h"
 
-#include <stdatomic.h>
 #include <string.h>
 
 #include "heap/heap.h"
@@ -11,11 +10,12 @@
 #include "regs/regs.h"
 #include "debug/debug.h"
 
-static _Atomic uint64_t newPid = 0;
+static _Atomic(uint64_t) newPid = ATOMIC_VAR_INIT(0);
 
 Process* process_new(const char* executable)
 {
     Process* process = kmalloc(sizeof(Process));
+    process->killed = false;
     process->id = atomic_fetch_add(&newPid, 1);
     memset(process->executable, 0, CONFIG_MAX_PATH);
     if (executable != NULL)
@@ -27,9 +27,8 @@ Process* process_new(const char* executable)
     }
     vfs_context_init(&process->vfsContext);
     space_init(&process->space);
-    process->killed = false;
-    process->threadCount = 0;
-    process->newTid = 0;
+    atomic_init(&process->threadCount, 0);
+    atomic_init(&process->newTid, 0);
 
     return process;
 }

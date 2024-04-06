@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdatomic.h>
 #include <errno.h>
 
 #include "defs/defs.h"
@@ -22,12 +23,12 @@ typedef enum
 typedef struct
 {
     uint64_t id;
+    bool killed;
     char executable[CONFIG_MAX_PATH];
     VfsContext vfsContext;
     Space space;
-    bool killed;
-    _Atomic uint64_t threadCount;
-    _Atomic uint64_t newTid;
+    _Atomic(uint64_t) threadCount;
+    _Atomic(uint64_t) newTid;
 } Process;
 
 typedef struct Blocker

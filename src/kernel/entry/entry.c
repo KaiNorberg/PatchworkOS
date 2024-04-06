@@ -103,7 +103,7 @@ void main(BootInfo* bootInfo)
     tty_set_row(smp_cpu_amount() + 2);
     tty_release();
 
-    for (uint64_t i = 0; i < 2; i++)
+    for (uint64_t i = 0; i < 1; i++)
     {
         sched_spawn("B:/programs/parent.elf");
     }

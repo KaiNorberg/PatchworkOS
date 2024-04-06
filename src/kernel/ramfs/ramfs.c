@@ -92,11 +92,10 @@ uint64_t ramfs_read(File* file, void* buffer, uint64_t count)
 {
     RamFile const* ramFile = file->internal;
 
-    size_t pos = file->position;
-    size_t readCount = pos <= ramFile->size ? MIN(count, ramFile->size - pos) : 0;
-    atomic_fetch_add(&file->position, readCount);
-
+    uint64_t pos = atomic_fetch_add(&file->position, count);
+    uint64_t readCount = pos <= ramFile->size ? MIN(count, ramFile->size - pos) : 0;
     memcpy(buffer, ramFile->data + pos, readCount);
+
     return readCount;
 }
 

@@ -24,15 +24,15 @@ typedef struct Drive
 {
     void* internal;
     Filesystem* fs;
-    _Atomic uint64_t ref;
+    _Atomic(uint64_t) ref;
 } Drive;
 
 typedef struct File
 {
     void* internal;
     Drive* drive;
-    _Atomic uint64_t position;
-    _Atomic uint64_t ref;
+    _Atomic(uint64_t) position;
+    _Atomic(uint64_t) ref;
 } File;
 
 typedef struct
