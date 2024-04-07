@@ -65,21 +65,43 @@ static RamDir* ramfs_traverse(const char* path)
     return dir;
 }
 
-File* ramfs_open(Drive* drive, const char* path)
+static RamFile* ramfs_find_file(const char* path)
 {
-    RamDir* ramDir = ramfs_traverse(path);
-    if (ramDir == NULL)
+    RamDir* parent = ramfs_traverse(path);
+    if (parent == NULL)
     {
-        return NULLPTR(EPATH);
+        return NULL;
     }
 
     const char* filename = vfs_basename(path);
     if (filename == NULL)
     {
-        return NULLPTR(EPATH);
+        return NULL;
     }
 
-    RamFile* ramFile = ram_dir_find_file(ramDir, filename);
+    return ram_dir_find_file(parent, filename);
+}
+
+/*static RamFile* ramfs_find_dir(const char* path)
+{
+    RamDir* parent = ramfs_traverse(path);
+    if (parent == NULL)
+    {
+        return NULL;
+    }
+
+    const char* dirname = vfs_basename(path);
+    if (dirname == NULL)
+    {
+        return NULL;
+    }
+
+    return ram_dir_find_dir(parent, dirname);
+}*/
+
+File* ramfs_open(Drive* drive, const char* path)
+{
+    RamFile* ramFile = ramfs_find_file(path);
     if (ramFile == NULL)
     {
         return NULLPTR(EPATH);
@@ -92,8 +114,10 @@ uint64_t ramfs_read(File* file, void* buffer, uint64_t count)
 {
     RamFile const* ramFile = file->internal;
 
-    uint64_t pos = atomic_fetch_add(&file->position, count);
+    uint64_t pos = file->position;
     uint64_t readCount = pos <= ramFile->size ? MIN(count, ramFile->size - pos) : 0;
+    file->position += readCount;
+
     memcpy(buffer, ramFile->data + pos, readCount);
 
     return readCount;
@@ -113,7 +137,7 @@ uint64_t ramfs_seek(File* file, int64_t offset, uint8_t origin)
     break;
     case SEEK_CUR:
     {
-        position = atomic_load(&file->position) + offset;
+        position = file->position + offset;
     }
     break;
     case SEEK_END:
@@ -128,8 +152,7 @@ uint64_t ramfs_seek(File* file, int64_t offset, uint8_t origin)
     break;
     }
 
-    atomic_store(&file->position, position);
-
+    file->position = MIN(position, ramFile->size);
     return position;
 }
 

@@ -67,6 +67,11 @@ uint64_t syscall_sleep(uint64_t nanoseconds)
 
 void* syscall_allocate(void* address, uint64_t length)
 {
+    if (!verify_pointer(address, length))
+    {
+        return NULLPTR(EFAULT);
+    }
+
     return vmm_allocate(address, SIZE_IN_PAGES(length));
 }
 

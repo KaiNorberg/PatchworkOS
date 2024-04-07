@@ -16,12 +16,13 @@ static char* errorStrings[] =
     "Bad file descriptor",
     "Permission denied",
     "Bad executable",
-    "Out of memory"
+    "Out of memory",
+    "Bed request"
 };
 
-_EXPORT char* strerror(int error)
+_PUBLIC char* strerror(int error)
 {
-    if (error > ENOMEM || error < 0)
+    if (error > EREQ || error < 0)
     {
         return "Unknown error";
     }

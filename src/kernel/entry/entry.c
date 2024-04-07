@@ -36,20 +36,17 @@ void main(BootInfo* bootInfo)
 {
     kernel_init(bootInfo);
 
+    tty_acquire();
+    tty_clear();
+    tty_set_row(smp_cpu_amount() + 2);
+    tty_release();
+
+    tty_print("RESERVED: ");
+    tty_printi((pmm_reserved_amount() * PAGE_SIZE) / 1024);
+    tty_print(" KB\n");
+
     //BENCHMARK(pmm);
     //BENCHMARK(heap);
-
-    /*tty_print("Total: ");
-    tty_printi((pmm_total_amount() * PAGE_SIZE) / 1024);
-    tty_print("KB\n");
-
-    tty_print("Free: ");
-    tty_printi((pmm_free_amount() * PAGE_SIZE) / 1024);
-    tty_print("KB\n");
-
-    tty_print("Reserved: ");
-    tty_printi((pmm_reserved_amount() * PAGE_SIZE) / 1024);
-    tty_print("KB\n");*/
 
     /*tty_print("CHDIR: ");
     if (vfs_chdir("B:/programs") == ERR)
@@ -97,11 +94,6 @@ void main(BootInfo* bootInfo)
         tty_print("SUCCESS");
     }
     tty_print("\n");*/
-    
-    tty_acquire();
-    tty_clear();
-    tty_set_row(smp_cpu_amount() + 2);
-    tty_release();
 
     for (uint64_t i = 0; i < 1; i++)
     {

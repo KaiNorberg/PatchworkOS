@@ -94,11 +94,7 @@ void* vmm_kernel_map(void* virtualAddress, void* physicalAddress, uint64_t pageA
 
 void* vmm_allocate(const void* address, uint64_t pageAmount)
 {
-    if ((uint64_t)address + pageAmount * PAGE_SIZE > VMM_LOWER_HALF_MAX)
-    {
-        return NULLPTR(EFAULT);
-    }
-    else if (address == NULL)
+    if (address == NULL)
     {
         //TODO: Choose address
         return NULLPTR(EFAULT);

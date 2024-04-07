@@ -2,7 +2,7 @@
 #define _AUX_CONFIG_H 1
 
 //Currently does nothing, will be used for dll export
-#define _EXPORT
+#define _PUBLIC
 
 #if defined(__cplusplus) || !defined(__STDC_VERSION) || __STDC_VERSION__ < 199901L
 #define _RESTRICT
@@ -18,10 +18,6 @@
 #else
 #define _NORETURN
 #endif
-#endif
-
-#if defined(__GNUC__) || defined(__clang__)
-#define _BUILTIN_AVAIL
 #endif
 
 #endif
