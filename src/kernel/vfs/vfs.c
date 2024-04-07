@@ -16,7 +16,7 @@ struct
     Lock lock;
 } driveTable;
 
-static uint64_t vfs_make_path_canonical(char* start, char* dest, const char* path, uint64_t count)
+static uint64_t vfs_make_path_canonical(char* start, char* out, const char* path, uint64_t count)
 {
     const char* name = path;
     while (true)
@@ -27,35 +27,35 @@ static uint64_t vfs_make_path_canonical(char* start, char* dest, const char* pat
         }
         else if (vfs_compare_names(name, ".."))
         {            
-            dest = strrchr(start, VFS_NAME_SEPARATOR);
-            if (dest == NULL)
+            out = strrchr(start, VFS_NAME_SEPARATOR);
+            if (out == NULL)
             {
                 return ERR;
             }
-            *dest = '\0';
+            *out = '\0';
         }
         else
         {
-            if ((uint64_t)(dest - start) >= count)
+            if ((uint64_t)(out - start) >= count)
             {
                 return ERR;
             }
-            *dest++ = VFS_NAME_SEPARATOR;
+            *out++ = VFS_NAME_SEPARATOR;
 
             for (const char* ptr = name; !VFS_END_OF_NAME(*ptr); ptr++)
             {
-                if (!VFS_VALID_CHAR(*ptr) || (uint64_t)(dest - start) >= count)
+                if (!VFS_VALID_CHAR(*ptr) || (uint64_t)(out - start) >= count)
                 {
                     return ERR;
                 } 
-                *dest++ = *ptr;
+                *out++ = *ptr;
             }
         }
 
         const char* next = vfs_next_name(name);
         if (next == NULL)
         {
-            *dest = '\0';
+            *out = '\0';
             return 0;
         }
 
@@ -63,7 +63,7 @@ static uint64_t vfs_make_path_canonical(char* start, char* dest, const char* pat
     }
 }
 
-static uint64_t vfs_parse_path(char* dest, const char* path)
+static uint64_t vfs_parse_path(char* out, const char* path)
 {    
     VfsContext* context = &sched_process()->vfsContext;
     LOCK_GUARD(context->lock);
@@ -75,23 +75,23 @@ static uint64_t vfs_parse_path(char* dest, const char* path)
             return ERR;
         }
 
-        dest[0] = path[0];
-        dest[1] = VFS_DRIVE_SEPARATOR;
+        out[0] = path[0];
+        out[1] = VFS_DRIVE_SEPARATOR;
 
-        return vfs_make_path_canonical(dest, dest + 2, path + 3, CONFIG_MAX_PATH - 3);
+        return vfs_make_path_canonical(out, out + 2, path + 3, CONFIG_MAX_PATH - 3);
     }
     else if (path[0] == VFS_NAME_SEPARATOR) //root path
     {
-        dest[0] = context->workDir[0];
-        dest[1] = VFS_DRIVE_SEPARATOR;
+        out[0] = context->workDir[0];
+        out[1] = VFS_DRIVE_SEPARATOR;
 
-        return vfs_make_path_canonical(dest, dest + 2, path + 1, CONFIG_MAX_PATH - 3);
+        return vfs_make_path_canonical(out, out + 2, path + 1, CONFIG_MAX_PATH - 3);
     }
     else //relative path
     {
         uint64_t workLength = strlen(context->workDir);
-        memcpy(dest, context->workDir, workLength);
-        return vfs_make_path_canonical(dest, dest + workLength, path, CONFIG_MAX_PATH - workLength);
+        memcpy(out, context->workDir, workLength);
+        return vfs_make_path_canonical(out, out + workLength, path, CONFIG_MAX_PATH - workLength);
     }
 }
 
@@ -202,9 +202,9 @@ uint64_t vfs_mount(char letter, Filesystem* fs, void* internal)
     return 0;
 }
 
-uint64_t vfs_realpath(char* dest, const char* src)
+uint64_t vfs_realpath(char* out, const char* path)
 {
-    if (vfs_parse_path(dest, src) == ERR)
+    if (vfs_parse_path(out, path) == ERR)
     {
         return ERROR(EPATH);
     }

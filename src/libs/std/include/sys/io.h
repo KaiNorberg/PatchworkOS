@@ -15,15 +15,15 @@ extern "C" {
 
 typedef uint64_t fd_t;
 
-_EXPORT fd_t open(const char* path);
+_PUBLIC fd_t open(const char* path);
 
-_EXPORT uint64_t close(fd_t fd);
+_PUBLIC uint64_t close(fd_t fd);
 
-_EXPORT uint64_t read(fd_t fd, void* buffer, uint64_t count);
+_PUBLIC uint64_t read(fd_t fd, void* buffer, uint64_t count);
 
-_EXPORT uint64_t write(fd_t fd, const void* buffer, uint64_t count);
+_PUBLIC uint64_t write(fd_t fd, const void* buffer, uint64_t count);
 
-_EXPORT uint64_t seek(fd_t fd, int64_t offset, uint8_t origin);
+_PUBLIC uint64_t seek(fd_t fd, int64_t offset, uint8_t origin);
 
 #if defined(__cplusplus)
 }

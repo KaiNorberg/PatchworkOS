@@ -31,7 +31,7 @@ typedef struct File
 {
     void* internal;
     Drive* drive;
-    _Atomic(uint64_t) position;
+    uint64_t position;
     _Atomic(uint64_t) ref;
 } File;
 
@@ -50,7 +50,7 @@ void vfs_init();
 
 uint64_t vfs_mount(char letter, Filesystem* fs, void* internal);
 
-uint64_t vfs_realpath(char* dest, const char* src);
+uint64_t vfs_realpath(char* out, const char* path);
 
 uint64_t vfs_chdir(const char* path);
 

@@ -11,9 +11,9 @@ extern "C" {
 
 typedef uint64_t pid_t;
 
-_EXPORT pid_t spawn(const char* path);
+_PUBLIC pid_t spawn(const char* path);
 
-_EXPORT pid_t getpid(void);
+_PUBLIC pid_t getpid(void);
 
 #if defined(__cplusplus)
 }

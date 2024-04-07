@@ -11,7 +11,7 @@ extern "C" {
 #include "_AUX/errno_t.h"
 #include "_AUX/ERR.h"
 
-_EXPORT int* _ErrnoFunc();
+_PUBLIC int* _ErrnoFunc();
 
 #define errno (*_ErrnoFunc())
 
@@ -28,6 +28,7 @@ _EXPORT int* _ErrnoFunc();
 #define EACCES 11 // Permission denied
 #define EEXEC 12 // Bad executable
 #define ENOMEM 13 // Out of memory
+#define EREQ 14 // Bad request
 
 //Note: Values retrievd from linux
 /*

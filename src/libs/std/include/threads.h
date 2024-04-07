@@ -8,7 +8,7 @@ extern "C" {
 #include "_AUX/config.h"
 #include "_AUX/timespec.h"
 
-_EXPORT int thrd_sleep(const struct timespec* duration, struct timespec* remaining);
+_PUBLIC int thrd_sleep(const struct timespec* duration, struct timespec* remaining);
 
 #if defined(__cplusplus)
 }

@@ -9,21 +9,21 @@ extern "C" {
 #include "_AUX/size_t.h"
 #include "_AUX/NULL.h"
 
-_EXPORT void* memcpy(void* _RESTRICT dest, const void* _RESTRICT src, size_t count);
-_EXPORT void* memmove(void* dest, const void* src, size_t count);
-_EXPORT char* strcpy(char* _RESTRICT dest, const char* _RESTRICT src);
-_EXPORT char* strncpy(char* _RESTRICT dest, const char* _RESTRICT src, size_t count);
-_EXPORT char* strcat(char* _RESTRICT dest, const char* _RESTRICT src);
+_PUBLIC void* memcpy(void* _RESTRICT dest, const void* _RESTRICT src, size_t count);
+_PUBLIC void* memmove(void* dest, const void* src, size_t count);
+_PUBLIC char* strcpy(char* _RESTRICT dest, const char* _RESTRICT src);
+_PUBLIC char* strncpy(char* _RESTRICT dest, const char* _RESTRICT src, size_t count);
+_PUBLIC char* strcat(char* _RESTRICT dest, const char* _RESTRICT src);
 
-_EXPORT int memcmp(const void* a, const void* b, size_t count);
-_EXPORT int strcmp(const char* a, const char* b);
+_PUBLIC int memcmp(const void* a, const void* b, size_t count);
+_PUBLIC int strcmp(const char* a, const char* b);
 
-_EXPORT char* strchr(const char* str, int ch);
-_EXPORT char* strrchr(const char* str, int ch);
+_PUBLIC char* strchr(const char* str, int ch);
+_PUBLIC char* strrchr(const char* str, int ch);
 
-_EXPORT void* memset(void* dest, int ch, size_t count);
-_EXPORT size_t strlen(const char* str);
-_EXPORT char* strerror(int error);
+_PUBLIC void* memset(void* dest, int ch, size_t count);
+_PUBLIC size_t strlen(const char* str);
+_PUBLIC char* strerror(int error);
 
 #if defined(__cplusplus)
 }

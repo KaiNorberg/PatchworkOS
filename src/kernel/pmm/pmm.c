@@ -20,7 +20,7 @@ static EfiMemoryMap* memoryMap;
 
 static Lock lock;
 
-static uint8_t is_type_usable(uint64_t memoryType)
+static uint8_t is_type_free(uint64_t memoryType)
 {
 	return memoryType == EFI_CONVENTIONAL_MEMORY ||
 		memoryType == EFI_LOADER_CODE ||
@@ -65,7 +65,7 @@ static void pmm_lazy_load_memory()
         const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
         loadedPageAmount += desc->amountOfPages;
 
-        if (is_type_usable(desc->type))
+        if (is_type_free(desc->type))
         {
             pmm_free_pages_unlocked(desc->physicalStart, desc->amountOfPages);
 
@@ -83,13 +83,13 @@ static void pmm_load_memory()
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
         const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
-        loadedPageAmount += desc->amountOfPages;
 
-        if (is_type_usable(desc->type))
+        if (is_type_free(desc->type))
         {
             pmm_free_pages_unlocked(desc->physicalStart, desc->amountOfPages);
         }
     }
+    loadedPageAmount = pageAmount;
 }
 #endif
 
