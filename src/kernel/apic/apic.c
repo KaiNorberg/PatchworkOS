@@ -33,7 +33,7 @@ void apic_timer_init(uint8_t vector, uint64_t hz)
 
 void local_apic_init(void)
 {
-    MSR_WRITE(MSR_LOCAL_APIC, (MSR_READ(MSR_LOCAL_APIC) | LOCAL_APIC_MSR_ENABLE) & ~(1 << 10));
+    msr_write(MSR_LOCAL_APIC, (msr_read(MSR_LOCAL_APIC) | LOCAL_APIC_MSR_ENABLE) & ~(1 << 10));
 
     local_apic_write(LOCAL_APIC_REG_SPURIOUS, local_apic_read(LOCAL_APIC_REG_SPURIOUS) | 0x100);
 }

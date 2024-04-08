@@ -83,9 +83,9 @@ void page_table_load(PageTable* table)
 {
     table = VMM_HIGHER_TO_LOWER(table);
 
-    if (CR3_READ() != (uint64_t)table)
+    if (cr3_read() != (uint64_t)table)
     {
-        CR3_WRITE(table);
+        cr3_write((uint64_t)table);
     }
 }
 

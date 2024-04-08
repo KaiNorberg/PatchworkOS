@@ -42,6 +42,8 @@ typedef struct
     Lock lock;
 } VfsContext;
 
+File* file_new(Drive* drive, void* context);
+
 void vfs_context_init(VfsContext* context);
 
 void vfs_context_cleanup(VfsContext* context);

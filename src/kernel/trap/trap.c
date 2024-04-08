@@ -74,7 +74,7 @@ void interrupts_disable(void)
     }
 
     //Race condition does not matter
-    uint64_t rflags = RFLAGS_READ();
+    uint64_t rflags = rflags_read();
 
     asm volatile("cli");
     

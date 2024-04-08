@@ -178,9 +178,9 @@ void debug_exception(TrapFrame const* trapFrame, const char* message)
         debug_print("RAX = ", trapFrame->rax);
 
         debug_move(NULL, 3, 0);
-        debug_print("CR2 = ", CR2_READ());
-        debug_print("CR3 = ", CR3_READ());
-        debug_print("CR4 = ", CR4_READ());
+        debug_print("CR2 = ", cr2_read());
+        debug_print("CR3 = ", cr3_read());
+        debug_print("CR4 = ", cr4_read());
         debug_print("R15 = ", trapFrame->r15);
         debug_print("R14 = ", trapFrame->r14);
         debug_print("R13 = ", trapFrame->r13);

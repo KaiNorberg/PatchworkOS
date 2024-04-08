@@ -150,6 +150,17 @@ static void file_put(File* file)
     }
 }
 
+File* file_new(Drive* drive, void* context)
+{
+    File* file = kmalloc(sizeof(File));
+    file->internal = context;
+    file->drive = drive;
+    file->position = 0;
+    atomic_init(&file->ref, 1);
+
+    return file;
+}
+
 void vfs_context_init(VfsContext* context)
 {
     memset(context, 0, sizeof(VfsContext));

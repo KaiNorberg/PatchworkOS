@@ -19,4 +19,10 @@ typedef struct
     _Atomic(uint64_t) ref;
 } SysNode;
 
+/*typedef struct
+{
+    char* name;
+
+} SysDir;*/
+
 void sysfs_init();

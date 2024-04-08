@@ -83,22 +83,22 @@ Cpu* smp_self(void)
 {
     interrupts_disable();
 
-    return &cpus[MSR_READ(MSR_CPU_ID)];
+    return &cpus[msr_read(MSR_CPU_ID)];
 }
 
 Cpu* smp_self_unsafe(void)
 {
-    if (RFLAGS_READ() & RFLAGS_INTERRUPT_ENABLE)
+    if (rflags_read() & RFLAGS_INTERRUPT_ENABLE)
     {
         debug_panic("smp_self_unsafe called with interrupts enabled");
     }
 
-    return &cpus[MSR_READ(MSR_CPU_ID)];
+    return &cpus[msr_read(MSR_CPU_ID)];
 }
 
 Cpu* smp_self_brute(void)
 {
-    if (RFLAGS_READ() & RFLAGS_INTERRUPT_ENABLE)
+    if (rflags_read() & RFLAGS_INTERRUPT_ENABLE)
     {
         debug_panic("smp_self_brute called with interrupts enabled");
     }

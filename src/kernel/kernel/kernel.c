@@ -77,7 +77,7 @@ void kernel_init(BootInfo* bootInfo)
 void kernel_cpu_init(void)
 {
     Cpu* cpu = smp_self_brute();
-    MSR_WRITE(MSR_CPU_ID, cpu->id);
+    msr_write(MSR_CPU_ID, cpu->id);
 
     local_apic_init();
 
@@ -85,5 +85,5 @@ void kernel_cpu_init(void)
     idt_load();
     gdt_load_tss(&cpu->tss);
 
-    CR4_WRITE(CR4_READ() | CR4_PAGE_GLOBAL_ENABLE);
+    cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);
 }

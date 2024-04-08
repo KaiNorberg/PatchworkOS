@@ -10,64 +10,65 @@
 
 #define CR4_PAGE_GLOBAL_ENABLE (1 << 7)
 
-#define MSR_READ(msr) \
-({ \
-    uint32_t low, high; \
-    asm volatile("rdmsr" : "=a"(low), "=d"(high) : "c"(msr)); \
-    ((uint64_t)high << 32) | ((uint64_t)low); \
-})
+static inline uint64_t msr_read(uint32_t msr) 
+{
+    uint32_t low;
+    uint32_t high;
+    asm volatile("rdmsr" : "=a"(low), "=d"(high) : "c"(msr));
+    return ((uint64_t)high << 32) | (uint64_t)low;
+}
 
-#define MSR_WRITE(msr, value) \
-({ \
-    uint32_t low = (uint32_t)(((uint64_t)value) & 0xFFFFFFFF); \
-    uint32_t high = (uint32_t)(((uint64_t)value) >> 32); \
-    asm volatile("wrmsr" : : "c"(msr), "a"(low), "d"(high)); \
-})
+static inline void msr_write(uint32_t msr, uint64_t value) 
+{
+    uint32_t low = (uint32_t)(value & 0xFFFFFFFF);
+    uint32_t high = (uint32_t)(value >> 32);
+    asm volatile("wrmsr" : : "c"(msr), "a"(low), "d"(high));
+}
 
-#define RFLAGS_READ() \
-({ \
-    uint64_t rflags; \
-    asm volatile("pushfq; pop %0" : "=r"(rflags)); \
-    rflags; \
-})
+static inline uint64_t rflags_read() 
+{
+    uint64_t rflags;
+    asm volatile("pushfq; pop %0" : "=r"(rflags));
+    return rflags;
+}
 
-#define RFLAGS_WRITE(value) \
-({ \
-    asm volatile("push %0; popfq" : : "r"(value)); \
-})
+static inline void rflags_write(uint64_t value) 
+{
+    asm volatile("push %0; popfq" : : "r"(value));
+}
 
-#define CR4_READ() \
-({ \
-    uint64_t cr4; \
-    asm volatile("mov %%cr4, %0" : "=r"(cr4)); \
-    cr4; \
-})
+static inline uint64_t cr4_read() 
+{
+    uint64_t cr4;
+    asm volatile("mov %%cr4, %0" : "=r"(cr4));
+    return cr4;
+}
 
-#define CR4_WRITE(value) \
-({ \
-    asm volatile("mov %0, %%cr4" : : "r"(value)); \
-})
+static inline void cr4_write(uint64_t value) 
+{
+    asm volatile("mov %0, %%cr4" : : "r"(value));
+}
 
-#define CR3_READ() \
-({ \
-    uint64_t cr3; \
-    asm volatile("mov %%cr3, %0" : "=r"(cr3)); \
-    cr3; \
-})
+static inline uint64_t cr3_read() 
+{
+    uint64_t cr3;
+    asm volatile("mov %%cr3, %0" : "=r"(cr3));
+    return cr3;
+}
 
-#define CR3_WRITE(value) \
-({ \
-    asm volatile("mov %0, %%cr3" : : "r"(value)); \
-})
+static inline void cr3_write(uint64_t value) 
+{
+    asm volatile("mov %0, %%cr3" : : "r"(value));
+}
 
-#define CR2_READ() \
-({ \
-    uint64_t cr2; \
-    asm volatile("mov %%cr2, %0" : "=r"(cr2)); \
-    cr2; \
-})
+static inline uint64_t cr2_read() 
+{
+    uint64_t cr2;
+    asm volatile("mov %%cr2, %0" : "=r"(cr2));
+    return cr2;
+}
 
-#define CR2_WRITE(value) \
-({ \
-    asm volatile("mov %0, %%cr2" : : "r"(value)); \
-})
+static inline void cr2_write(uint64_t value) 
+{
+    asm volatile("mov %0, %%cr2" : : "r"(value));
+}

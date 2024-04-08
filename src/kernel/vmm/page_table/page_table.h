@@ -13,18 +13,12 @@
 #define PAGE_FLAG_PAGE_SIZE (1 << 7)
 
 #define PAGE_ENTRY_AMOUNT 512
+#define PAGE_ENTRY_GET_FLAG(entry, flag) (((entry) & (flag)) != 0)
+#define PAGE_ENTRY_GET_ADDRESS(entry) ((void*)((entry) & 0x000FFFFFFFFFF000))
 
-#define PAGE_ENTRY_GET_FLAG(entry, flag) \
-    (((entry) & (flag)) != 0)
-
-#define PAGE_ENTRY_GET_ADDRESS(entry) \
-    ((void*)((entry) & 0x000FFFFFFFFFF000))
-
-#define PAGE_TABLE_GET_INDEX(address, level) \
-    (((uint64_t)(address) & ((uint64_t)0x1FF << (((level) - 1) * 9 + 12))) >> (((level) - 1) * 9 + 12))
-    
-#define PAGE_TABLE_INVALIDATE_PAGE(address) \
-    asm volatile("invlpg %0" : : "m"(address))
+#define PAGE_TABLE_GET_INDEX(address, level) (((uint64_t)(address) >> (((level) - 1) * 9 + 12)) & 0x1FF)
+//#define PAGE_TABLE_GET_INDEX(address, level) (((uint64_t)(address) & ((uint64_t)0x1FF << (((level) - 1) * 9 + 12))) >> (((level) - 1) * 9 + 12))
+#define PAGE_TABLE_INVALIDATE_PAGE(address) asm volatile("invlpg %0" : : "m"(address))
 
 typedef uint64_t PageEntry;
 

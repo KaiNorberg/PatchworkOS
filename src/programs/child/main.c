@@ -15,7 +15,7 @@ int main(void)
     {
         fd_t fd = open("/test1/test2/test3/test.txt");
         if (fd == ERR)
-        {    
+        {
             SYSCALL(SYS_TEST, 1, strerror(errno));
             return EXIT_FAILURE;
         }
