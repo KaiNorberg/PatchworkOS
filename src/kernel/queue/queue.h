@@ -2,25 +2,43 @@
 
 #include "defs/defs.h"
 #include "lock/lock.h"
-
-#define QUEUE_INITIAL_LENGTH 4
+#include "list/list.h"
 
 typedef struct
 {
-    void** buffer;
-    uint64_t capacity;
-    uint64_t readIndex;
-    uint64_t writeIndex;
     uint64_t length;
+    List list;
     Lock lock;
 } Queue;
 
-Queue* queue_new();
+static inline void queue_init(Queue* queue)
+{
+    queue->length = 0;
+    list_init(&queue->list);
+    queue->lock = lock_create();
+}
 
-void queue_free(Queue* queue);
+static inline void queue_push(Queue* queue, void* element)
+{
+    LOCK_GUARD(queue->lock);
 
-void queue_push(Queue* queue, void* item);
+    queue->length++;
+    list_push(&queue->list, element);
+}
 
-void* queue_pop(Queue* queue);
+static inline void* queue_pop(Queue* queue)
+{
+    LOCK_GUARD(queue->lock);
+    if (queue->length == 0)
+    {
+        return NULL;
+    }
 
-uint64_t queue_length(Queue* queue);
+    queue->length--;
+    return list_pop(&queue->list);
+}
+
+static inline uint64_t queue_length(Queue const* queue)
+{
+    return queue->length;
+}

@@ -35,11 +35,6 @@ int main(void)
         }
 
         SYSCALL(SYS_TEST, 1, buffer);
-    
-        /*struct timespec duration;
-        duration.tv_sec = 1;
-        duration.tv_nsec = 0;
-        thrd_sleep(&duration, NULL);*/
     }
 
     return EXIT_SUCCESS;

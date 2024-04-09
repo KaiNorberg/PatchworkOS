@@ -5,6 +5,7 @@
 
 #include "defs/defs.h"
 #include "vmm/vmm.h"
+#include "list/list.h"
 #include "lock/lock.h"
 #include "trap/trap.h"
 #include "vfs/vfs.h"
@@ -39,6 +40,7 @@ typedef struct Blocker
 
 typedef struct
 {
+    ListHead head;
     Process* process;
     uint64_t id;
     uint64_t timeStart;

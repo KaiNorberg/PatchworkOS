@@ -26,12 +26,12 @@ static void sched_spawn_init_thread(void)
 
 void scheduler_init(Scheduler* scheduler)
 {
-    for (uint64_t p = THREAD_PRIORITY_MIN; p <= THREAD_PRIORITY_MAX; p++)
+    for (uint64_t i = THREAD_PRIORITY_MIN; i <= THREAD_PRIORITY_MAX; i++)
     {
-        scheduler->queues[p] = queue_new();
+        queue_init(&scheduler->queues[i]);
     }
-    scheduler->killedThreads = queue_new();
-    scheduler->blockedThreads = array_new();
+    list_init(&scheduler->killedThreads);
+    list_init(&scheduler->blockedThreads);
     scheduler->runningThread = NULL;
 }
 
@@ -137,12 +137,12 @@ uint64_t sched_spawn(const char* path)
 //Temporary
 uint64_t sched_local_thread_amount(void)
 {
-    Scheduler const* scheduler = &smp_self()->scheduler;
+    Scheduler* scheduler = &smp_self()->scheduler;
 
     uint64_t length = (scheduler->runningThread != NULL);
-    for (uint64_t p = THREAD_PRIORITY_MIN; p <= THREAD_PRIORITY_MAX; p++)
+    for (uint64_t i = THREAD_PRIORITY_MIN; i <= THREAD_PRIORITY_MAX; i++)
     {
-        length += queue_length(scheduler->queues[p]);
+        length += queue_length(&scheduler->queues[i]);
     }
 
     smp_put();

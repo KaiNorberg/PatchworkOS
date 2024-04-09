@@ -1,17 +1,16 @@
 #pragma once
 
 #include "time/time.h"
-#include "lock/lock.h"
+#include "list/list.h"
 #include "queue/queue.h"
-#include "array/array.h"
 #include "defs/defs.h"
 #include "process/process.h"
 
 typedef struct
 {
-    Queue* queues[THREAD_PRIORITY_LEVELS];
-    Queue* killedThreads;
-    Array* blockedThreads;
+    Queue queues[THREAD_PRIORITY_LEVELS];
+    List killedThreads;
+    List blockedThreads;
     Thread* runningThread;
 } Scheduler;
 

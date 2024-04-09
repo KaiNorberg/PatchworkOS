@@ -5,7 +5,6 @@
 
 #include "tty/tty.h"
 #include "heap/heap.h"
-#include "array/array.h"
 #include "sched/sched.h"
 #include "debug/debug.h"
 #include "vfs/utils/utils.h"

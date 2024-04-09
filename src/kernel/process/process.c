@@ -38,6 +38,7 @@ Thread* thread_new(Process* process, void* entry, uint8_t priority)
     atomic_fetch_add(&process->threadCount, 1);
 
     Thread* thread = kmalloc(sizeof(Thread));
+    list_head_init(&thread->head);
     thread->process = process;
     thread->id = atomic_fetch_add(&process->newTid, 1);
     thread->timeStart = 0;

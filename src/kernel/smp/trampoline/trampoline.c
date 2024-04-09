@@ -9,7 +9,6 @@
 
 static void* backupBuffer;
 static Space space;
-
 //What a mess...
 
 void smp_trampoline_setup(void)
@@ -17,12 +16,12 @@ void smp_trampoline_setup(void)
     backupBuffer = kmalloc(PAGE_SIZE);
     memcpy(backupBuffer, VMM_LOWER_TO_HIGHER(SMP_TRAMPOLINE_PHYSICAL_START), PAGE_SIZE);
 
-    space_init(&space);
-    page_table_map(space.pageTable, SMP_TRAMPOLINE_PHYSICAL_START, SMP_TRAMPOLINE_PHYSICAL_START, PAGE_FLAG_WRITE);
-
     memcpy(VMM_LOWER_TO_HIGHER(SMP_TRAMPOLINE_PHYSICAL_START), smp_trampoline_virtual_start, PAGE_SIZE);
 
-    WRITE_64(VMM_LOWER_TO_HIGHER(SMP_TRAMPOLINE_PAGE_TABLE_ADDRESS), (uint64_t)VMM_HIGHER_TO_LOWER(space.pageTable));
+    space_init(&space);
+    page_table_map(space.pageTable, SMP_TRAMPOLINE_PHYSICAL_START, SMP_TRAMPOLINE_PHYSICAL_START, PAGE_FLAG_WRITE);
+    WRITE_64(VMM_LOWER_TO_HIGHER(SMP_TRAMPOLINE_PAGE_TABLE_ADDRESS), VMM_HIGHER_TO_LOWER(space.pageTable));
+
     WRITE_64(VMM_LOWER_TO_HIGHER(SMP_TRAMPOLINE_ENTRY_ADDRESS), smp_entry);
 }
 

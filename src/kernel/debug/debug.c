@@ -124,8 +124,8 @@ void debug_panic(const char* message)
     debug_move("Memory", 0, 0);
     debug_print("Free Heap = ", heap_free_size());
     debug_print("Reserved Heap = ", heap_reserved_size());
-    debug_print("Locked Pages = ", pmm_reserved_amount());
-    debug_print("Unlocked Pages = ", pmm_free_amount());
+    debug_print("Free Pages = ", pmm_free_amount());
+    debug_print("Reserved Pages = ", pmm_reserved_amount());
 
     debug_move("Other", 2, 0);
     debug_print("Current Time = ", time_nanoseconds());

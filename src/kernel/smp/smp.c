@@ -74,7 +74,7 @@ uint8_t smp_cpu_amount(void)
     return cpuAmount;
 }
 
-Cpu const* smp_cpu(uint8_t id)
+Cpu* smp_cpu(uint8_t id)
 {
     return &cpus[id];
 }

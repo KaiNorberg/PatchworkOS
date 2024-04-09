@@ -38,7 +38,7 @@ void smp_send_ipi_to_others(uint8_t ipi);
 
 uint8_t smp_cpu_amount(void);
 
-Cpu const* smp_cpu(uint8_t id);
+Cpu* smp_cpu(uint8_t id);
 
 //Must have a corresponding call to smp_put()
 Cpu* smp_self(void);

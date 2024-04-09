@@ -2,9 +2,8 @@
 
 #include "defs/defs.h"
 #include "vfs/vfs.h"
-#include "array/array.h"
 
-typedef enum
+/*typedef enum
 {
     SYS_NODE_TYPE_FILE,
     SYS_NODE_TYPE_DIR
@@ -19,7 +18,7 @@ typedef struct
     _Atomic(uint64_t) ref;
 } SysNode;
 
-/*typedef struct
+typedef struct
 {
     char* name;
 

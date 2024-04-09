@@ -10,28 +10,13 @@
 #include "debug/debug.h"
 #include "regs/regs.h"
 
-static IterResult sched_unblock_iterate(void* element)
-{
-    Thread* thread = element;
-
-    if (thread->blocker.callback(thread->blocker.context))
-    {
-        sched_push(thread, 1);
-        return ITERATE_ERASE;
-    }
-    else
-    {
-        return ITERATE_CONTINUE;
-    }
-}
-
 static Thread* sched_next_thread(Scheduler* scheduler)
 {
     if (scheduler->runningThread != NULL && scheduler->runningThread->timeEnd > time_nanoseconds())
     {
         for (int64_t i = THREAD_PRIORITY_MAX; i > scheduler->runningThread->priority + scheduler->runningThread->boost; i--)
         {
-            Thread* thread = queue_pop(scheduler->queues[i]);
+            Thread* thread = queue_pop(&scheduler->queues[i]);
             if (thread != NULL)
             {
                 return thread;
@@ -42,7 +27,7 @@ static Thread* sched_next_thread(Scheduler* scheduler)
     {
         for (int64_t i = THREAD_PRIORITY_MAX; i >= THREAD_PRIORITY_MIN; i--)
         {
-            Thread* thread = queue_pop(scheduler->queues[i]);
+            Thread* thread = queue_pop(&scheduler->queues[i]);
             if (thread != NULL)
             {
                 return thread;
@@ -63,7 +48,7 @@ static void sched_switch_thread(TrapFrame* trapFrame, Scheduler* scheduler, Thre
         {
             scheduler->runningThread->trapFrame = *trapFrame;
             scheduler->runningThread->boost = 0;
-            queue_push(scheduler->queues[scheduler->runningThread->priority], scheduler->runningThread);
+            queue_push(&scheduler->queues[scheduler->runningThread->priority], scheduler->runningThread);
             scheduler->runningThread = NULL;
         }
 
@@ -105,16 +90,20 @@ void sched_schedule(TrapFrame* trapFrame)
         return;
     }
 
-    array_iterate(scheduler->blockedThreads, sched_unblock_iterate);
-
-    while (true)
+    Thread* thread;
+    Thread* temp;
+    LIST_FOR_EACH_SAFE(thread, temp, &scheduler->blockedThreads)
     {
-        Thread* thread = queue_pop(scheduler->killedThreads);
-        if (thread == NULL)
+        if (thread->blocker.callback(thread->blocker.context))
         {
-            break;
+            list_remove(thread);
+            sched_push(thread, 1);
         }
+    }
 
+    LIST_FOR_EACH_SAFE(thread, temp, &scheduler->killedThreads)
+    {
+        list_remove(thread);
         thread_free(thread);
     }
 
@@ -129,14 +118,14 @@ void sched_schedule(TrapFrame* trapFrame)
         break;
         case THREAD_STATE_KILLED:
         {
-            queue_push(scheduler->killedThreads, scheduler->runningThread);
+            list_push(&scheduler->killedThreads, scheduler->runningThread);
             scheduler->runningThread = NULL;
         }
         break;
         case THREAD_STATE_BLOCKED:
         {
             scheduler->runningThread->trapFrame = *trapFrame;
-            array_push(scheduler->blockedThreads, scheduler->runningThread);
+            list_push(&scheduler->blockedThreads, scheduler->runningThread);
             scheduler->runningThread = NULL;
         }
         break;
@@ -144,7 +133,6 @@ void sched_schedule(TrapFrame* trapFrame)
         {
             debug_panic("Invalid process state");
         }
-        break;
         }
     }
 
@@ -156,7 +144,7 @@ void sched_schedule(TrapFrame* trapFrame)
         //If next has been killed and is in userspace kill next.
         if (next != NULL && next->process->killed && next->trapFrame.cs != GDT_KERNEL_CODE)
         {
-            queue_push(scheduler->killedThreads, next);
+            list_push(&scheduler->killedThreads, next);
             next = NULL;
         }
         else
@@ -176,12 +164,12 @@ void sched_push(Thread* thread, uint8_t boost)
     uint64_t best = 0;
     for (int64_t i = smp_cpu_amount() - 1; i >= 0; i--)
     {
-        Scheduler const* scheduler = &smp_cpu(i)->scheduler;
+        Scheduler* scheduler = &smp_cpu(i)->scheduler;
 
         int64_t length = (int64_t)(scheduler->runningThread != 0);
         for (uint64_t p = THREAD_PRIORITY_MIN; p <= THREAD_PRIORITY_MAX; p++)
         {
-            length += queue_length(scheduler->queues[p]);
+            length += queue_length(&scheduler->queues[p]);
         }
 
         if (length == 0) //Bias towards idle cpus
@@ -196,9 +184,7 @@ void sched_push(Thread* thread, uint8_t boost)
         }
     }
 
-    Cpu const* bestCpu = smp_cpu(best);
-
     thread->state = THREAD_STATE_ACTIVE;
     thread->boost = thread->priority + boost <= THREAD_PRIORITY_MAX ? boost : 0;
-    queue_push(bestCpu->scheduler.queues[thread->priority + thread->boost], thread);
+    queue_push(&smp_cpu(best)->scheduler.queues[thread->priority + thread->boost], thread);
 }

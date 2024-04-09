@@ -130,6 +130,16 @@ uint64_t syscall_seek(uint64_t fd, int64_t offset, uint8_t origin)
     return vfs_seek(fd, offset, origin);
 }
 
+//All of this is temporary for testing.
+typedef struct 
+{
+    uint64_t iter;
+    uint64_t oldIter;
+    uint64_t oldTime;
+} TestData;
+
+static TestData testData[256];
+
 uint64_t syscall_test(const char* string)
 {
     tty_acquire();
@@ -155,6 +165,16 @@ uint64_t syscall_test(const char* string)
         tty_print(" STRING: ");
         tty_print(string);
     }
+    TestData* data = &testData[cpuId];
+    data->iter++;
+    if (data->oldTime + NANOSECONDS_PER_SECOND < time_nanoseconds())
+    {
+        data->oldIter = data->iter;
+        data->iter = 0;
+        data->oldTime = time_nanoseconds();
+    }
+    tty_print(" ITER PER SECOND: ");
+    tty_printi(data->oldIter);
     tty_print(" TIME: ");
     tty_printi(time_milliseconds());
     tty_print(" MS                  ");

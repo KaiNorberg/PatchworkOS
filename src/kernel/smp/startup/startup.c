@@ -51,7 +51,7 @@ static uint64_t cpu_init(Cpu* cpu, uint8_t id, uint8_t localApicId)
 
 void smp_entry(void)
 {
-    space_load(0);
+    space_load(NULL);
 
     kernel_cpu_init();
 
