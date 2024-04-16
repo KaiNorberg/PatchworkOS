@@ -14,7 +14,7 @@
 #include "sched/sched.h"
 #include "loader/loader.h"
 
-//Note: Syscalls should always return a 64 bit value to prevent garbage from remaining in the rax register.
+//NOTE: Syscalls should always return a 64 bit value to prevent garbage from remaining in rax.
 
 //TODO: Improve verify funcs, improve multithreading string safety.
 static bool verify_pointer(const void* pointer, uint64_t size)
@@ -97,12 +97,18 @@ uint64_t syscall_open(const char* path)
         return ERROR(EFAULT);
     }
 
-    return vfs_open(path);
+    File* file = vfs_open(path);
+    if (file == NULL)
+    {
+        return ERR;
+    }
+
+    return vfs_context_open(file);
 }
 
 uint64_t syscall_close(uint64_t fd)
 {
-    return vfs_close(fd);
+    return vfs_context_close(fd);
 }
 
 uint64_t syscall_read(uint64_t fd, void* buffer, uint64_t count)
@@ -112,7 +118,13 @@ uint64_t syscall_read(uint64_t fd, void* buffer, uint64_t count)
         return ERROR(EFAULT);
     }
 
-    return vfs_read(fd, buffer, count);
+    File* file = vfs_context_get(fd);
+    if (file == NULL)
+    {
+        return ERR;
+    }
+
+    return FILE_CALL_METHOD(file, read, buffer, count);
 }
 
 uint64_t syscall_write(uint64_t fd, const void* buffer, uint64_t count)
@@ -122,12 +134,24 @@ uint64_t syscall_write(uint64_t fd, const void* buffer, uint64_t count)
         return ERROR(EFAULT);
     }
 
-    return vfs_write(fd, buffer, count);
+    File* file = vfs_context_get(fd);
+    if (file == NULL)
+    {
+        return ERR;
+    }
+
+    return FILE_CALL_METHOD(file, write, buffer, count);
 }
 
 uint64_t syscall_seek(uint64_t fd, int64_t offset, uint8_t origin)
 {
-    return vfs_seek(fd, offset, origin);
+    File* file = vfs_context_get(fd);
+    if (file == NULL)
+    {
+        return ERR;
+    }
+
+    return FILE_CALL_METHOD(file, seek, offset, origin);
 }
 
 //All of this is temporary for testing.

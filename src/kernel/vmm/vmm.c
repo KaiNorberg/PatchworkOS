@@ -40,7 +40,7 @@ static void vmm_deallocate_boot_page_table(EfiMemoryMap* memoryMap)
 void space_init(Space* space)
 {
     space->pageTable = page_table_new();
-    space->lock = lock_create();
+    lock_init(&space->lock);
 
     for (uint64_t i = PAGE_ENTRY_AMOUNT / 2; i < PAGE_ENTRY_AMOUNT; i++)
     {

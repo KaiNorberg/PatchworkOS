@@ -50,7 +50,7 @@ void tty_init(GopBuffer* gopBuffer, PsfFont* screenFont)
     foreground.g = 255;
     foreground.b = 255;
         
-    lock = lock_create();
+    lock_init(&lock);
 
     tty_clear();
 }

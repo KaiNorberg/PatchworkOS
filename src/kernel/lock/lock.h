@@ -12,7 +12,7 @@ typedef struct
 
 #define LOCK_GUARD(lock) Lock* l##__COUNTER__ __attribute__((cleanup(lock_cleanup))) = (&lock); lock_acquire(&(lock))
 
-Lock lock_create();
+void lock_init(Lock* lock);
 
 void lock_acquire(Lock* lock);
 

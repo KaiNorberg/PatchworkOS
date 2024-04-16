@@ -2,13 +2,10 @@
 
 #include "trap/trap.h"
 
-Lock lock_create() 
+void lock_init(Lock* lock)
 {
-    return (Lock) 
-    {
-        .nextTicket = ATOMIC_VAR_INIT(0),
-        .nowServing = ATOMIC_VAR_INIT(0)
-    };
+    atomic_init(&lock->nextTicket, 0);
+    atomic_init(&lock->nowServing, 0);
 }
 
 void lock_acquire(Lock* lock)

@@ -32,8 +32,8 @@ static void* loader_allocate_stack()
 static void* loader_load_program()
 {   
     const char* executable = sched_process()->executable;
-    uint64_t fd = vfs_open(executable);
-    if (fd == ERR)
+    File* file = vfs_open(executable);
+    if (file == NULL)
     {
         sched_process_exit(EEXEC);
     }
@@ -46,7 +46,7 @@ static void* loader_load_program()
     }
 
     ElfHeader header;
-    if (vfs_read(fd, &header, sizeof(ElfHeader)) != sizeof(ElfHeader))
+    if (FILE_CALL_METHOD(file, read, &header, sizeof(ElfHeader)) != sizeof(ElfHeader))
     {
         sched_process_exit(EEXEC);
     }
@@ -57,7 +57,7 @@ static void* loader_load_program()
 
     uint64_t headerTableSize = header.programHeaderAmount * header.programHeaderSize;
     ElfProgramHeader headerTable[header.programHeaderAmount];
-    if (vfs_read(fd, &headerTable, headerTableSize) != headerTableSize)
+    if (FILE_CALL_METHOD(file, read, &headerTable, headerTableSize) != headerTableSize)
     {
         sched_process_exit(EEXEC);
     }
@@ -70,7 +70,7 @@ static void* loader_load_program()
         {
 		case PT_LOAD:
         {
-            if (vfs_seek(fd, programHeader->offset, SEEK_SET) == ERR)
+            if (FILE_CALL_METHOD(file, seek, programHeader->offset, SEEK_SET) == ERR)
             {
                 sched_process_exit(EEXEC);
             }
@@ -82,7 +82,7 @@ static void* loader_load_program()
                 sched_process_exit(EEXEC);
             }
 
-            if (vfs_read(fd, address, programHeader->fileSize) == ERR)
+            if (FILE_CALL_METHOD(file, read, address, programHeader->fileSize) == ERR)
             {
                 sched_process_exit(EEXEC);
             }
@@ -91,11 +91,7 @@ static void* loader_load_program()
 		}
 	}
 
-    if (vfs_close(fd) == ERR)
-    {
-        sched_process_exit(EEXEC);
-    }
-
+    file_deref(file);
     return (void*)header.entry;
 }
 

@@ -7,13 +7,16 @@
 #include "heap/heap.h"
 #include "sched/sched.h"
 #include "debug/debug.h"
+#include "vfs/context/context.h"
 #include "vfs/utils/utils.h"
 
 struct
 {
-    Drive* drives[VFS_LETTER_AMOUNT];
+    Volume* volumes[VFS_LETTER_AMOUNT];
     Lock lock;
-} driveTable;
+} volumeTable;
+
+//TODO: Clean up vfs filepath parsing
 
 static uint64_t vfs_make_path_canonical(char* start, char* out, const char* path, uint64_t count)
 {
@@ -94,122 +97,62 @@ static uint64_t vfs_parse_path(char* out, const char* path)
     }
 }
 
-static Drive* drive_get(char letter)
+static Volume* volume_table_get(char letter)
 {
     if (!VFS_VALID_LETTER(letter))
     {
         return NULL;
     }
-    LOCK_GUARD(driveTable.lock);
 
-    uint64_t index = letter - VFS_LETTER_BASE;
-    Drive* drive = driveTable.drives[index];
-    if (drive == NULL)
+    LOCK_GUARD(volumeTable.lock);
+    Volume* volume = volumeTable.volumes[letter - VFS_LETTER_BASE];
+    if (volume == NULL)
     {
         return NULL;
     }
 
-    atomic_fetch_add(&drive->ref, 1);
-    return drive;
-}
-
-static void drive_put(Drive* drive)
-{
-    if (atomic_fetch_sub(&drive->ref, 1) <= 1)
-    {
-        debug_panic("Drive unmounting not implemented");
-    }
-}
-
-static File* file_get(uint64_t fd)
-{
-    VfsContext* context = &sched_process()->vfsContext;
-    LOCK_GUARD(context->lock);
-
-    if (context->files[fd] == NULL)
-    {
-        return NULL;
-    }
-
-    File* file = context->files[fd];
-    atomic_fetch_add(&file->ref, 1);
-    return file;
-}
-
-static void file_put(File* file)
-{
-    if (atomic_fetch_sub(&file->ref, 1) <= 1)
-    {
-        if (file->drive->fs->cleanup != NULL)
-        {
-            file->drive->fs->cleanup(file);
-        }
-        drive_put(file->drive);
-        kfree(file);
-    }
-}
-
-File* file_new(Drive* drive, void* context)
-{
-    File* file = kmalloc(sizeof(File));
-    file->internal = context;
-    file->drive = drive;
-    file->position = 0;
-    atomic_init(&file->ref, 1);
-
-    return file;
-}
-
-void vfs_context_init(VfsContext* context)
-{
-    memset(context, 0, sizeof(VfsContext));
-    strcpy(context->workDir, "A:/");
-    context->lock = lock_create();
-}
-
-void vfs_context_cleanup(VfsContext* context)
-{
-    for (uint64_t i = 0; i < CONFIG_FILE_AMOUNT; i++)
-    {    
-        File* file = context->files[i];
-        if (file != NULL)
-        {
-            file_put(file);
-        }
-    }
+    return volume_ref(volume);
 }
 
 void vfs_init()
 {
     tty_start_message("VFS initializing");
 
-    memset(driveTable.drives, 0, sizeof(Drive*) * VFS_LETTER_AMOUNT);
-    driveTable.lock = lock_create();
+    memset(volumeTable.volumes, 0, sizeof(Volume*) * VFS_LETTER_AMOUNT);
+    lock_init(&volumeTable.lock);
 
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-uint64_t vfs_mount(char letter, Filesystem* fs, void* internal)
+File* vfs_open(const char* path)
 {
-    if (!VFS_VALID_LETTER(letter))
+    char parsedPath[CONFIG_MAX_PATH];
+    if (vfs_parse_path(parsedPath, path) == ERR)
     {
-        return ERROR(ELETTER);
-    }
-    LOCK_GUARD(driveTable.lock);
-
-    uint64_t index = letter - VFS_LETTER_BASE;
-    if (driveTable.drives[index] != NULL)
-    {
-        return ERROR(EEXIST);
+        return NULLPTR(EPATH);
     }
 
-    Drive* drive = kmalloc(sizeof(Drive));
-    drive->internal = internal;
-    drive->fs = fs;
-    atomic_init(&drive->ref, 1);
-    driveTable.drives[index] = drive;
+    Volume* volume = volume_table_get(parsedPath[0]);
+    if (volume == NULL)
+    {
+        return NULLPTR(EPATH);
+    }
 
-    return 0;
+    if (volume->open == NULL)
+    {
+        volume_deref(volume);
+        return NULLPTR(EACCES);
+    }
+
+    //Volume reference is passed to file.
+    File* file = volume->open(volume, parsedPath + 2);
+    if (file == NULL)
+    {
+        volume_deref(volume);
+        return NULL;
+    }
+
+    return file;
 }
 
 uint64_t vfs_realpath(char* out, const char* path)
@@ -222,6 +165,30 @@ uint64_t vfs_realpath(char* out, const char* path)
     {
         return 0;
     }
+}
+
+uint64_t vfs_mount(char letter, Filesystem* fs)
+{
+    if (!VFS_VALID_LETTER(letter))
+    {
+        return ERROR(ELETTER);
+    }
+    LOCK_GUARD(volumeTable.lock);
+
+    uint64_t index = letter - VFS_LETTER_BASE;
+    if (volumeTable.volumes[index] != NULL)
+    {
+        return ERROR(EEXIST);
+    }
+
+    Volume* volume = fs->mount(fs);
+    if (volume == NULL)
+    {
+        return ERR;
+    }
+
+    volumeTable.volumes[index] = volume;
+    return 0;
 }
 
 uint64_t vfs_chdir(const char* path)
@@ -237,121 +204,4 @@ uint64_t vfs_chdir(const char* path)
 
     strcpy(context->workDir, parsedPath);
     return 0;
-}
-
-uint64_t vfs_open(const char* path)
-{
-    char parsedPath[CONFIG_MAX_PATH];
-    if (vfs_parse_path(parsedPath, path) == ERR)
-    {
-        return ERROR(EPATH);
-    }
-
-    Drive* drive = drive_get(parsedPath[0]);
-    if (drive == NULL)
-    {
-        return ERROR(EPATH);
-    }
-
-    if (drive->fs->open == NULL)
-    {
-        drive_put(drive);
-        return ERROR(EACCES);
-    }
-
-    //Drive reference is passed to file.
-    File* file = drive->fs->open(drive, parsedPath + 2);
-    if (file == NULL)
-    {
-        drive_put(drive);
-        return ERR;
-    }
-
-    VfsContext* context = &sched_process()->vfsContext;
-    LOCK_GUARD(context->lock);
-
-    for (uint64_t fd = 0; fd < CONFIG_FILE_AMOUNT; fd++)
-    {
-        if (context->files[fd] == NULL)
-        {
-            context->files[fd] = file;
-            return fd;
-        }
-    }
-
-    return ERROR(EMFILE);
-}
-
-uint64_t vfs_close(uint64_t fd)
-{
-    VfsContext* context = &sched_process()->vfsContext;
-    LOCK_GUARD(context->lock);
-
-    if (fd >= CONFIG_FILE_AMOUNT || context->files[fd] == NULL)
-    {
-        return ERROR(EBADF);
-    }
-
-    File* file = context->files[fd];
-    context->files[fd] = NULL;
-    file_put(file);
-
-    return 0;
-}
-
-uint64_t vfs_read(uint64_t fd, void* buffer, uint64_t count)
-{    
-    File* file = file_get(fd);
-    if (file == NULL)
-    {
-        return ERROR(EBADF);
-    }
-
-    if (file->drive->fs->read == NULL)
-    {
-        file_put(file);
-        return ERROR(EACCES);
-    }
-
-    uint64_t result = file->drive->fs->read(file, buffer, count);
-    file_put(file);
-    return result;
-}
-
-uint64_t vfs_write(uint64_t fd, const void* buffer, uint64_t count)
-{    
-    File* file = file_get(fd);
-    if (file == NULL)
-    {
-        return ERROR(EBADF);
-    }
-
-    if (file->drive->fs->write == NULL)
-    {
-        file_put(file);
-        return ERROR(EACCES);
-    }
-
-    uint64_t result = file->drive->fs->write(file, buffer, count);
-    file_put(file);
-    return result;
-}
-
-uint64_t vfs_seek(uint64_t fd, int64_t offset, uint8_t origin)
-{
-    File* file = file_get(fd);
-    if (file == NULL)
-    {
-        return ERROR(EBADF);
-    }
-
-    if (file->drive->fs->seek == NULL)
-    {
-        file_put(file);
-        return ERROR(EACCES);
-    }
-
-    uint64_t result = file->drive->fs->seek(file, offset, origin);
-    file_put(file);
-    return result;
 }

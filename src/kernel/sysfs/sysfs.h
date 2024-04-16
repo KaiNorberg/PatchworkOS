@@ -1,27 +1,38 @@
 #pragma once
 
 #include "defs/defs.h"
+#include "list/list.h"
 #include "vfs/vfs.h"
 
-/*typedef enum
+/*typedef struct Object Object;
+
+typedef enum
 {
-    SYS_NODE_TYPE_FILE,
-    SYS_NODE_TYPE_DIR
-} SysNodeType;
+    NODE_TYPE_STORE,
+    NODE_TYPE_RESOURCE
+} NodeType;
+
+typedef struct Node
+{
+    ListEntry base;
+    char name[CONFIG_MAX_NAME];
+    NodeType type;
+} Node;
 
 typedef struct
 {
-    char* name;
-    void* internal;
-    SysNodeType type;
-    Array* children;
-    _Atomic(uint64_t) ref;
-} SysNode;
+    Node base;
+    List objects;
+    Lock lock;
+} Namespace;
 
 typedef struct
 {
-    char* name;
-
-} SysDir;*/
+    Node base;
+    void (*cleanup)(Object*);
+    uint64_t (*read)(Object*, void*, uint64_t);
+    uint64_t (*write)(Object*, const void*, uint64_t);
+    uint64_t (*seek)(Object*, int64_t, uint8_t);
+} Object;*/
 
 void sysfs_init();

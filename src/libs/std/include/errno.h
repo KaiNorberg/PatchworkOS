@@ -30,7 +30,7 @@ _PUBLIC int* _ErrnoFunc();
 #define ENOMEM 13 // Out of memory
 #define EREQ 14 // Bad request
 
-//Note: Values retrievd from linux
+//NOTE: Values retrievd from linux
 /*
 #define EPERM 1 //Operation not permitted
 #define ENOENT 2 //No such file or directory

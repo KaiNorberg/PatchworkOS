@@ -13,7 +13,7 @@ static uintptr_t newAddress;
 static HeapHeader* firstBlock;
 static Lock lock;
 
-static void heap_split(HeapHeader* block, uint64_t size)
+static void heap_block_split(HeapHeader* block, uint64_t size)
 {   
     HeapHeader* newBlock = (HeapHeader*)((uint64_t)block + sizeof(HeapHeader) + size);
     newBlock->size = block->size - sizeof(HeapHeader) - size;
@@ -25,7 +25,7 @@ static void heap_split(HeapHeader* block, uint64_t size)
     block->next = newBlock;
 }
 
-static HeapHeader* heap_new_block(uint64_t size)
+static HeapHeader* heap_block_new(uint64_t size)
 {
     uint64_t pageAmount = SIZE_IN_PAGES(size + sizeof(HeapHeader));
     newAddress -= pageAmount * PAGE_SIZE;
@@ -47,9 +47,9 @@ static HeapHeader* heap_new_block(uint64_t size)
 void heap_init(void)
 {    
     newAddress = 0xFFFFFFFFFFFFF000; //Top of address space.
-    firstBlock = heap_new_block(PAGE_SIZE);
+    firstBlock = heap_block_new(PAGE_SIZE);
 
-    lock = lock_create();
+    lock_init(&lock);
 }
 
 uint64_t heap_total_size(void)
@@ -126,7 +126,7 @@ void* kmalloc(uint64_t size)
             else if (currentBlock->size > size + sizeof(HeapHeader) + HEAP_ALIGNMENT) 
             {
                 currentBlock->reserved = true;
-                heap_split(currentBlock, size);
+                heap_block_split(currentBlock, size);
                 return HEAP_HEADER_GET_START(currentBlock);
             }
         }
@@ -141,10 +141,10 @@ void* kmalloc(uint64_t size)
         }
     }
 
-    HeapHeader* newBlock = heap_new_block(size);
+    HeapHeader* newBlock = heap_block_new(size);
     if (newBlock->size > size + sizeof(HeapHeader) + HEAP_ALIGNMENT) 
     {
-        heap_split(newBlock, size);
+        heap_block_split(newBlock, size);
     }
     currentBlock->next = newBlock;
     newBlock->reserved = true;

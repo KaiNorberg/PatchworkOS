@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defs/defs.h"
+#include "list/list.h"
 
 #include <common/boot_info/boot_info.h>
 

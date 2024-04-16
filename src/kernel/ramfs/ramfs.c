@@ -5,6 +5,7 @@
 #include "vfs/vfs.h"
 #include "vfs/utils/utils.h"
 #include "tty/tty.h"
+#include "heap/heap.h"
 #include "sched/sched.h"
 #include "utils/utils.h"
 
@@ -99,34 +100,19 @@ static RamFile* ramfs_find_file(const char* path)
     return ram_dir_find_dir(parent, dirname);
 }*/
 
-File* ramfs_open(Drive* drive, const char* path)
+uint64_t ramfs_read(RamfsFile* file, void* buffer, uint64_t count)
 {
-    RamFile* ramFile = ramfs_find_file(path);
-    if (ramFile == NULL)
-    {
-        return NULLPTR(EPATH);
-    }
+    uint64_t pos = file->base.position;
+    uint64_t readCount = pos <= file->ramFile->size ? MIN(count, file->ramFile->size - pos) : 0;
+    file->base.position += readCount;
 
-    return file_new(drive, ramFile);
-}
-
-uint64_t ramfs_read(File* file, void* buffer, uint64_t count)
-{
-    RamFile const* ramFile = file->internal;
-
-    uint64_t pos = file->position;
-    uint64_t readCount = pos <= ramFile->size ? MIN(count, ramFile->size - pos) : 0;
-    file->position += readCount;
-
-    memcpy(buffer, ramFile->data + pos, readCount);
+    memcpy(buffer, file->ramFile->data + pos, readCount);
 
     return readCount;
 }
 
-uint64_t ramfs_seek(File* file, int64_t offset, uint8_t origin)
-{
-    RamFile const* ramFile = file->internal;
-
+uint64_t ramfs_seek(RamfsFile* file, int64_t offset, uint8_t origin)
+{    
     uint64_t position;
     switch (origin)
     {
@@ -137,12 +123,12 @@ uint64_t ramfs_seek(File* file, int64_t offset, uint8_t origin)
     break;
     case SEEK_CUR:
     {
-        position = file->position + offset;
+        position = file->base.position + offset;
     }
     break;
     case SEEK_END:
     {
-        position = ramFile->size - offset;
+        position = file->ramFile->size - offset;
     }
     break;
     default:
@@ -152,8 +138,34 @@ uint64_t ramfs_seek(File* file, int64_t offset, uint8_t origin)
     break;
     }
 
-    file->position = MIN(position, ramFile->size);
+    file->base.position = MIN(position, file->ramFile->size);
     return position;
+}
+
+File* ramfs_open(RamfsVolume* volume, const char* path)
+{
+    RamFile* ramFile = ramfs_find_file(path);
+    if (ramFile == NULL)
+    {
+        return NULLPTR(EPATH);
+    }
+
+    RamfsFile* file = kmalloc(sizeof(RamfsFile));
+    file_init(&file->base, (Volume*)volume);
+    file->base.read = (void*)ramfs_read;
+    file->base.seek = (void*)ramfs_seek;
+    file->ramFile = ramFile;
+
+    return &file->base;
+}
+
+Volume* ramfs_mount(Filesystem* fs)
+{
+    RamfsVolume* volume = kmalloc(sizeof(RamfsVolume));
+    volume_init(&volume->base, fs);
+    volume->base.open = (void*)ramfs_open;
+
+    return &volume->base;
 }
 
 void ramfs_init(RamDir* ramRoot)
@@ -164,11 +176,9 @@ void ramfs_init(RamDir* ramRoot)
 
     memset(&ramfs, 0, sizeof(Filesystem));
     ramfs.name = "ramfs";
-    ramfs.open = ramfs_open;
-    ramfs.read = ramfs_read;
-    ramfs.seek = ramfs_seek;
+    ramfs.mount = ramfs_mount;
 
-    if (vfs_mount('B', &ramfs, NULL) == ERR)
+    if (vfs_mount('B', &ramfs) == ERR)
     {
         tty_print("Failed to mount ramfs");
         tty_end_message(TTY_MESSAGE_ER);

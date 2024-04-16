@@ -40,9 +40,9 @@ void sched_start(void)
     tty_start_message("Scheduler starting");
 
     sched_spawn_init_thread();
-
+    
     smp_send_ipi_to_others(IPI_START);
-    sched_cpu_start();
+    SMP_SEND_IPI_TO_SELF(IPI_START);
 
     tty_end_message(TTY_MESSAGE_OK);
 }

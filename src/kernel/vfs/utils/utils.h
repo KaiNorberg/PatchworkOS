@@ -17,6 +17,21 @@
 
 #define VFS_END_OF_NAME(ch) ((ch) == VFS_NAME_SEPARATOR || (ch) == '\0')
 
+static inline void vfs_copy_name(char* dest, const char* src)
+{
+    for (uint64_t i = 0; i < CONFIG_MAX_PATH; i++)
+    {
+        if (VFS_END_OF_NAME(src[i]))
+        {
+            dest[i] = '\0';
+        }
+        else
+        {
+            dest[i] = src[i];
+        }
+    }
+}
+
 static inline bool vfs_compare_names(const char* a, const char* b)
 {
     for (uint64_t i = 0; i < CONFIG_MAX_PATH; i++)

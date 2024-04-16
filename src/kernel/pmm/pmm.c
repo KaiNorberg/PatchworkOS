@@ -16,7 +16,7 @@ static uint64_t pageAmount = 0;
 static uint64_t loadedPageAmount = 0;
 static uint64_t freePageAmount = 0;
 
-static EfiMemoryMap* memoryMap;
+static EfiMemoryMap memoryMap;
 
 static Lock lock;
 
@@ -56,33 +56,62 @@ static void pmm_free_pages_unlocked(void* address, uint64_t count)
     }    
 }
 
+static void pmm_memory_map_deallocate()
+{
+    for (uint64_t i = 0; i < memoryMap.descriptorAmount; i++)
+    {
+        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(&memoryMap, i);
+
+        if (desc->type == EFI_MEMORY_TYPE_MEMORY_MAP)
+        {
+            pmm_free_pages_unlocked(desc->physicalStart, desc->amountOfPages);
+        }
+    }
+    memoryMap.base = NULL;
+}
+
 #if CONFIG_PMM_LAZY
 static void pmm_lazy_load_memory()
 {
-    static uint64_t i = 0;
-    for (; i < memoryMap->descriptorAmount; i++)
+    static uint64_t index = 0;
+    static bool full = false;
+
+    if (full)
     {
-        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
+        lock_release(&lock);
+        debug_panic("PMM full");
+    }
+
+    while (true)
+    {
+        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(&memoryMap, index);
         loadedPageAmount += desc->amountOfPages;
+        index++;        
+        
+        if (index >= memoryMap.descriptorAmount)
+        {
+            full = true;
+            pmm_memory_map_deallocate();
+            if (is_type_free(desc->type))
+            {
+                pmm_free_pages_unlocked(desc->physicalStart, desc->amountOfPages);
+            }
+            return;
+        }
 
         if (is_type_free(desc->type))
         {
             pmm_free_pages_unlocked(desc->physicalStart, desc->amountOfPages);
-
-            i++;
             return;
         }
     }
-
-    lock_release(&lock);
-    debug_panic("Physical Memory Manager full!");
 }
 #else
 static void pmm_load_memory()
 {    
-    for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
+    for (uint64_t i = 0; i < memoryMap.descriptorAmount; i++)
     {
-        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
+        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(&memoryMap, i);
 
         if (is_type_free(desc->type))
         {
@@ -90,14 +119,16 @@ static void pmm_load_memory()
         }
     }
     loadedPageAmount = pageAmount;
+
+    pmm_memory_map_deallocate();
 }
 #endif
 
 static void pmm_detect_memory()
 {
-    for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
+    for (uint64_t i = 0; i < memoryMap.descriptorAmount; i++)
     {
-        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
+        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(&memoryMap, i);
 
         pageAmount += desc->amountOfPages;
     }
@@ -105,8 +136,8 @@ static void pmm_detect_memory()
 
 void pmm_init(EfiMemoryMap* efiMemoryMap)
 {   
-    memoryMap = efiMemoryMap;
-    lock = lock_create();
+    memoryMap = *efiMemoryMap;
+    lock_init(&lock);
 
     pmm_detect_memory();
 

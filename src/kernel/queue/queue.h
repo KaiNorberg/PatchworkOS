@@ -15,7 +15,7 @@ static inline void queue_init(Queue* queue)
 {
     queue->length = 0;
     list_init(&queue->list);
-    queue->lock = lock_create();
+    lock_init(&queue->lock);
 }
 
 static inline void queue_push(Queue* queue, void* element)

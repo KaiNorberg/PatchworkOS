@@ -9,6 +9,7 @@
 #include "lock/lock.h"
 #include "trap/trap.h"
 #include "vfs/vfs.h"
+#include "vfs/context/context.h"
 
 #define THREAD_PRIORITY_LEVELS 4
 #define THREAD_PRIORITY_MIN 0
@@ -40,7 +41,7 @@ typedef struct Blocker
 
 typedef struct
 {
-    ListHead head;
+    ListEntry base;
     Process* process;
     uint64_t id;
     uint64_t timeStart;
