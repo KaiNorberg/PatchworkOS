@@ -2,49 +2,49 @@
 
 void* memory_allocate_pages(uint64_t pageAmount, uint64_t memoryType)
 {
-	EFI_PHYSICAL_ADDRESS address = 0;
-	EFI_STATUS status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, memoryType, pageAmount, &address);
+    EFI_PHYSICAL_ADDRESS address = 0;
+    EFI_STATUS status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, memoryType, pageAmount, &address);
     if (EFI_ERROR(status))
 	{
-		Print(L"ERROR: Unable to allocate pages!");
+	    Print(L"ERROR: Unable to allocate pages!");
 
-		while (1)
+	    while (1)
 		{
-			asm volatile("hlt");
+		    asm volatile("hlt");
 		}
 	}
 
-	return (void*)address;
+    return (void*)address;
 }
 
 void* memory_allocate_pool(uint64_t size, uint64_t memoryType)
 {
-	EFI_PHYSICAL_ADDRESS address = 0;
-	EFI_STATUS status = uefi_call_wrapper(BS->AllocatePool, 4, memoryType, size, &address);
+    EFI_PHYSICAL_ADDRESS address = 0;
+    EFI_STATUS status = uefi_call_wrapper(BS->AllocatePool, 4, memoryType, size, &address);
     if (EFI_ERROR(status))
 	{
-		Print(L"ERROR: Unable to allocate pages!");
+	    Print(L"ERROR: Unable to allocate pages!");
 
-		while (1)
+	    while (1)
 		{
-			asm volatile("hlt");
+		    asm volatile("hlt");
 		}
 	}
 
-	return (void*)address;
+    return (void*)address;
 }
 
 void memory_free_pool(void* pool)
 {
-	uefi_call_wrapper(BS->FreePool, 1, pool);
+    uefi_call_wrapper(BS->FreePool, 1, pool);
 }
 
 void memory_map_init(EfiMemoryMap* memoryMap)
 {
-	memoryMap->base = LibMemoryMap(&memoryMap->descriptorAmount, &memoryMap->key, &memoryMap->descriptorSize, &memoryMap->descriptorVersion);
+    memoryMap->base = LibMemoryMap(&memoryMap->descriptorAmount, &memoryMap->key, &memoryMap->descriptorSize, &memoryMap->descriptorVersion);
 }
 
 void memory_map_cleanup(EfiMemoryMap* memoryMap)
 {
-	memory_free_pool(memoryMap->base);
+    memory_free_pool(memoryMap->base);
 }

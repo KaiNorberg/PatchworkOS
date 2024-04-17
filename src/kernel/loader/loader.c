@@ -56,41 +56,44 @@ static void* loader_load_program()
     }
 
     uint64_t headerTableSize = header.programHeaderAmount * header.programHeaderSize;
-    ElfProgramHeader headerTable[header.programHeaderAmount];
-    if (FILE_CALL_METHOD(file, read, &headerTable, headerTableSize) != headerTableSize)
+    ElfProgramHeader* headerTable = kmalloc(headerTableSize);
+    if (FILE_CALL_METHOD(file, read, headerTable, headerTableSize) != headerTableSize)
     {
+        kfree(headerTable);
         sched_process_exit(EEXEC);
     }
 
-	for (ElfProgramHeader* programHeader = headerTable;
+    for (ElfProgramHeader* programHeader = headerTable;
         (uint64_t)programHeader < (uint64_t)headerTable + headerTableSize;
         programHeader = (ElfProgramHeader*)((uint64_t)programHeader + header.programHeaderSize))
 	{
         switch (programHeader->type)
         {
-		case PT_LOAD:
+	    case PT_LOAD:
         {
-            if (FILE_CALL_METHOD(file, seek, programHeader->offset, SEEK_SET) == ERR)
+            if (vmm_allocate((void*)programHeader->virtualAddress, SIZE_IN_PAGES(programHeader->memorySize) + 1) == NULL)
             {
+                kfree(headerTable);
                 sched_process_exit(EEXEC);
             }
 
-            void* address = (void*)programHeader->virtualAddress;
-
-            if (vmm_allocate(address, SIZE_IN_PAGES(programHeader->memorySize) + 1) == NULL)
+            if (FILE_CALL_METHOD(file, seek, programHeader->offset, SEEK_SET) != programHeader->offset)
             {
+                kfree(headerTable);
                 sched_process_exit(EEXEC);
             }
 
-            if (FILE_CALL_METHOD(file, read, address, programHeader->fileSize) == ERR)
+            if (FILE_CALL_METHOD(file, read, (void*)programHeader->virtualAddress, programHeader->fileSize) != programHeader->fileSize)
             {
+                kfree(headerTable);
                 sched_process_exit(EEXEC);
             }
 		}
-		break;
+	    break;
 		}
 	}
 
+    kfree(headerTable);
     file_deref(file);
     return (void*)header.entry;
 }

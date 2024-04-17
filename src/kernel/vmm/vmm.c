@@ -19,7 +19,7 @@ static void vmm_load_memory_map(EfiMemoryMap* memoryMap)
 
         page_table_map_pages(kernelPageTable, desc->virtualStart, desc->physicalStart, desc->amountOfPages, 
             PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
-	}
+    }
 
     page_table_load(kernelPageTable);
 }
@@ -30,11 +30,11 @@ static void vmm_deallocate_boot_page_table(EfiMemoryMap* memoryMap)
     {
         const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
 
-		if (desc->type == EFI_MEMORY_TYPE_PAGE_TABLE)
-		{
+        if (desc->type == EFI_MEMORY_TYPE_PAGE_TABLE)
+        {
             pmm_free_pages(desc->physicalStart, desc->amountOfPages);
-		}
-	}
+        }
+    }
 }
 
 void space_init(Space* space)

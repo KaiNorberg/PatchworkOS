@@ -97,6 +97,12 @@ uint64_t sysfs_create_node(const char* path, NodeContext context)
     return node;
 }*/
 
+void resource_init(Resource* resource)
+{
+    memset(resource, 0, sizeof(Resource));
+    list_entry_init(&resource->base);
+}
+
 void sysfs_init()
 {
     tty_start_message("Sysfs initializing");
@@ -113,4 +119,14 @@ void sysfs_init()
     }*/
 
     tty_end_message(TTY_MESSAGE_OK);
+}
+
+void sysfs_expose(Resource* resource, const char* path, const char* name)
+{
+    
+}
+
+void sysfs_hide(Resource* resource)
+{
+
 }

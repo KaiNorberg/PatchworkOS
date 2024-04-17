@@ -33,9 +33,9 @@ void gdt_init(void)
 void gdt_load(void)
 {
     GdtDesc gdtDesc;
-	gdtDesc.size = sizeof(Gdt) - 1;
-	gdtDesc.offset = (uint64_t)&gdt;
-	gdt_load_descriptor(&gdtDesc);  
+    gdtDesc.size = sizeof(Gdt) - 1;
+    gdtDesc.offset = (uint64_t)&gdt;
+    gdt_load_descriptor(&gdtDesc);  
 }
 
 void gdt_load_tss(Tss* tss)

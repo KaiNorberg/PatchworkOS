@@ -5,7 +5,7 @@ SECTIONS
 {
 	. = 0xFFFFFFFF80000000;
 
-	_kernelStart = .;
+    _kernelStart = .;
 
 	.text : ALIGN(4K)
 	{
@@ -23,7 +23,7 @@ SECTIONS
 		*(.data)
 	}
 
-	.bss : ALIGN(4K)
+    .bss : ALIGN(4K)
 	{
 		*(COMMON)
 		*(.bss)
@@ -34,5 +34,5 @@ SECTIONS
 		*(.smp_trampoline)
 	}
 
-	_kernelEnd = .;
+    _kernelEnd = .;
 }

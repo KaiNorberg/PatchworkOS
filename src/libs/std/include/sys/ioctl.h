@@ -10,11 +10,11 @@ extern "C" {
 #include "../_AUX/config.h"
 
 //Use different struct naming convention for stdlib?
-struct ioctl_framebuffer_info
+typedef struct ioctl_framebuffer_info
 {
     uint64_t width;
     uint64_t height;
-};
+} ioctl_framebuffer_info_t;
 
 #define IOCTL_FB_GET_INFO 0
 

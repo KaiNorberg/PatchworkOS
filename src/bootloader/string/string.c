@@ -27,26 +27,26 @@ char* strcpy(char* dest, const char* src)
 
 int strcmp(const char* str1, const char* str2)
 {
-	int i = 0;
-	while (str1[i] != 0 && str2[i] != 0)
+    int i = 0;
+    while (str1[i] != 0 && str2[i] != 0)
 	{
-		if (str1[i] != str2[i])
+	    if (str1[i] != str2[i])
 		{
-			return 0;
+		    return 0;
 		}
-		i++;
+	    i++;
 	}
 
-	return (i != 0);
+    return (i != 0);
 }
 
 void char16_to_char(CHAR16* string, char* out)
 {
-	uint64_t stringLength = StrLen(string);
+    uint64_t stringLength = StrLen(string);
 
-	for (uint64_t i = 0; i < stringLength; i++)
+    for (uint64_t i = 0; i < stringLength; i++)
 	{
-		out[i] = string[i];
+	    out[i] = string[i];
 	}
-	out[stringLength] = 0;
+    out[stringLength] = 0;
 }
