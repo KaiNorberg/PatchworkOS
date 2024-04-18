@@ -1,7 +1,8 @@
 #pragma once
 
 #include "defs/defs.h"
-#include "list/list.h"
+#include "tree/tree.h"
+#include "lock/lock.h"
 #include "vfs/vfs.h"
 
 typedef struct
@@ -9,6 +10,7 @@ typedef struct
     ListEntry base;
     char name[CONFIG_MAX_NAME];
     List resources;
+    List systems;
     Lock lock;
 } System;
 
@@ -18,9 +20,7 @@ typedef struct Resource
     System* system;
     char name[CONFIG_MAX_NAME];
     void (*cleanup)(struct Resource*);
-    uint64_t (*read)(File*, void*, uint64_t);
-    uint64_t (*write)(File*, const void*, uint64_t);
-    uint64_t (*seek)(File*, int64_t, uint8_t);
+    FileMethods methods;
 } Resource;
 
 void resource_init(Resource* resource);

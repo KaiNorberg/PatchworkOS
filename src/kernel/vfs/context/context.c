@@ -26,7 +26,7 @@ void vfs_context_cleanup(VfsContext* context)
 uint64_t vfs_context_open(File* file)
 {
     VfsContext* context = &sched_process()->vfsContext;
-    LOCK_GUARD(context->lock);
+    LOCK_GUARD(&context->lock);
 
     for (uint64_t fd = 0; fd < CONFIG_FILE_AMOUNT; fd++)
     {
@@ -43,7 +43,7 @@ uint64_t vfs_context_open(File* file)
 uint64_t vfs_context_close(uint64_t fd)
 {
     VfsContext* context = &sched_process()->vfsContext;
-    LOCK_GUARD(context->lock);
+    LOCK_GUARD(&context->lock);
 
     if (fd >= CONFIG_FILE_AMOUNT || context->files[fd] == NULL)
     {
@@ -59,7 +59,7 @@ uint64_t vfs_context_close(uint64_t fd)
 File* vfs_context_get(uint64_t fd)
 {
     VfsContext* context = &sched_process()->vfsContext;
-    LOCK_GUARD(context->lock);
+    LOCK_GUARD(&context->lock);
 
     if (context->files[fd] == NULL)
     {

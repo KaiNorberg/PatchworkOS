@@ -148,7 +148,7 @@ void pmm_init(EfiMemoryMap* efiMemoryMap)
 
 void* pmm_allocate(void)
 {
-    LOCK_GUARD(lock);
+    LOCK_GUARD(&lock);
 
     if (firstPage == NULL)
     {
@@ -168,13 +168,13 @@ void* pmm_allocate(void)
 
 void pmm_free(void* address)
 {
-    LOCK_GUARD(lock);
+    LOCK_GUARD(&lock);
     pmm_free_unlocked(address);
 }
 
 void pmm_free_pages(void* address, uint64_t count)
 {
-    LOCK_GUARD(lock);
+    LOCK_GUARD(&lock);
     pmm_free_pages_unlocked(address, count);
 }
 

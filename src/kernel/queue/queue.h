@@ -20,7 +20,7 @@ static inline void queue_init(Queue* queue)
 
 static inline void queue_push(Queue* queue, void* element)
 {
-    LOCK_GUARD(queue->lock);
+    LOCK_GUARD(&queue->lock);
 
     queue->length++;
     list_push(&queue->list, element);
@@ -28,7 +28,7 @@ static inline void queue_push(Queue* queue, void* element)
 
 static inline void* queue_pop(Queue* queue)
 {
-    LOCK_GUARD(queue->lock);
+    LOCK_GUARD(&queue->lock);
     if (queue->length == 0)
     {
         return NULL;

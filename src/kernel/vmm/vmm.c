@@ -123,7 +123,7 @@ void* vmm_allocate(const void* address, uint64_t pageAmount)
 void* vmm_physical_to_virtual(const void* address)
 {
     Space* space = &sched_process()->space;
-    LOCK_GUARD(space->lock);
+    LOCK_GUARD(&space->lock);
 
     return page_table_physical_address(space->pageTable, address);
 }

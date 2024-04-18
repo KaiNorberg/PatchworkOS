@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdatomic.h>
 #include <sys/io.h>
 
 #include "defs/defs.h"
@@ -7,7 +8,7 @@
 #include "heap/heap.h"
 #include "lock/lock.h"
 
-#define FILE_CALL_METHOD(file, method, ...) ((file)->method != NULL ? (file)->method(file __VA_OPT__(,) __VA_ARGS__) : ERROR(EACCES))
+#define FILE_CALL_METHOD(file, method, ...) ((file)->methods.method != NULL ? (file)->methods.method(file __VA_OPT__(,) __VA_ARGS__) : ERROR(EACCES))
 
 typedef struct Filesystem Filesystem;
 typedef struct Volume Volume;
@@ -22,21 +23,27 @@ typedef struct Filesystem
 typedef struct Volume
 {
     _Atomic(uint64_t) ref;
+    Lock lock;
     Filesystem* fs;
     uint64_t (*unmount)(Volume*);
     uint64_t (*open)(Volume*, File*, const char*);
 } Volume;
+
+typedef struct
+{
+    uint64_t (*read)(File*, void*, uint64_t);
+    uint64_t (*write)(File*, const void*, uint64_t);
+    uint64_t (*seek)(File*, int64_t, uint8_t);
+} FileMethods;
 
 typedef struct File
 {
     _Atomic(uint64_t) ref;
     Volume* volume;
     uint64_t position;
-    void (*cleanup)(File*);
-    uint64_t (*read)(File*, void*, uint64_t);
-    uint64_t (*write)(File*, const void*, uint64_t);
-    uint64_t (*seek)(File*, int64_t, uint8_t);
     void* internal;
+    void (*cleanup)(File*);
+    FileMethods methods;
 } File;
 
 File* file_ref(File* file);

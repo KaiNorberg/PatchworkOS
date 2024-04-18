@@ -5,12 +5,13 @@
 
 #include "tty/tty.h"
 #include "heap/heap.h"
+#include "lock/lock.h"
 #include "sched/sched.h"
 #include "debug/debug.h"
 #include "vfs/context/context.h"
 #include "vfs/utils/utils.h"
 
-Volume volumes[VFS_LETTER_AMOUNT];
+static Volume volumes[VFS_LETTER_AMOUNT];
 
 //TODO: Improve vfs filepath parsing
 
@@ -64,7 +65,7 @@ static uint64_t vfs_make_path_canonical(char* start, char* out, const char* path
 static uint64_t vfs_parse_path(char* out, const char* path)
 {    
     VfsContext* context = &sched_process()->vfsContext;
-    LOCK_GUARD(context->lock);
+    LOCK_GUARD(&context->lock);
 
     if (path[0] != '\0' && path[1] == VFS_DRIVE_SEPARATOR) //absolute path
     {
@@ -110,8 +111,10 @@ static Volume* volume_get(char letter)
     {
         return NULL;
     }
-
+    
     Volume* volume = &volumes[letter - VFS_LETTER_BASE];
+    LOCK_GUARD(&volume->lock);
+
     if (atomic_load(&volume->ref) == 0)
     {
         return NULL;
@@ -144,11 +147,10 @@ void vfs_init()
     tty_start_message("VFS initializing");
 
     memset(&volumes, 0, sizeof(Volume) * VFS_LETTER_AMOUNT);
-
-    //Not needed but good practice
     for (uint64_t i = 0; i < VFS_LETTER_AMOUNT; i++)
     {
-        atomic_init(&volumes[i].ref, 0);
+        atomic_init(&volumes[i].ref, 0); //Not needed but good practice
+        lock_init(&volumes[i].lock);
     }
 
     tty_end_message(TTY_MESSAGE_OK);
@@ -176,10 +178,12 @@ File* vfs_open(const char* path)
 
     //Volume reference is passed to file.
     File* file = kmalloc(sizeof(File));
-    memset(file, 0, sizeof(File));
+    atomic_init(&file->ref, 1);
     file->volume = volume;
     file->position = 0;
-    atomic_init(&file->ref, 1);
+    file->internal = NULL;
+    file->cleanup = NULL;
+    memset(&file->methods, 0, sizeof(FileMethods));
 
     if (volume->open(volume, file, parsedPath + 2) == ERR)
     {
@@ -197,14 +201,14 @@ uint64_t vfs_mount(char letter, Filesystem* fs)
         return ERROR(ELETTER);
     }
 
-    Volume* volume = &volumes[letter - VFS_LETTER_BASE];    
+    Volume* volume = &volumes[letter - VFS_LETTER_BASE];
+    LOCK_GUARD(&volume->lock);
 
     if (atomic_load(&volume->ref) != 0) 
     {
         return ERROR(EEXIST);
     }
 
-    memset(volume, 0, sizeof(Volume));
     atomic_init(&volume->ref, 1);
     volume->fs = fs;
 
@@ -224,6 +228,7 @@ uint64_t vfs_unmount(char letter)
     }
 
     Volume* volume = &volumes[letter - VFS_LETTER_BASE];
+    LOCK_GUARD(&volume->lock);
 
     if (atomic_load(&volume->ref) != 1)
     {
@@ -240,6 +245,7 @@ uint64_t vfs_unmount(char letter)
         return ERR;
     }
 
+    memset(volume, 0, sizeof(Volume));
     atomic_store(&volume->ref, 0);
     return 0;
 }
@@ -265,7 +271,7 @@ uint64_t vfs_chdir(const char* path)
     }
 
     VfsContext* context = &sched_process()->vfsContext;
-    LOCK_GUARD(context->lock);
+    LOCK_GUARD(&context->lock);
 
     strcpy(context->workDir, parsedPath);
     return 0;

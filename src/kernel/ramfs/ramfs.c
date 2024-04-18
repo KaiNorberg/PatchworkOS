@@ -154,21 +154,15 @@ uint64_t ramfs_open(Volume* volume, File* file, const char* path)
         return ERROR(EPATH);
     }
 
-    file->read = ramfs_read;
-    file->seek = ramfs_seek;
+    file->methods.read = ramfs_read;
+    file->methods.seek = ramfs_seek;
     file->internal = ramFile;
 
     return 0;
 }
 
-uint64_t ramfs_unmount(Volume* volume)
-{
-    return 0;
-}
-
 uint64_t ramfs_mount(Volume* volume)
 {
-    volume->unmount = ramfs_unmount;
     volume->open = ramfs_open;
 
     return 0;

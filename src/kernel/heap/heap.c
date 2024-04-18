@@ -105,7 +105,7 @@ uint64_t heap_free_size(void)
 
 void* kmalloc(uint64_t size) 
 {
-    LOCK_GUARD(lock);
+    LOCK_GUARD(&lock);
 
     if (size == 0) 
     {
@@ -160,7 +160,7 @@ void* kcalloc(uint64_t count, uint64_t size)
 
 void kfree(void* ptr)
 {
-    LOCK_GUARD(lock);
+    LOCK_GUARD(&lock);
 
     HeapHeader* block = (HeapHeader*)((uint64_t)ptr - sizeof(HeapHeader));
     if (block->magic != HEAP_HEADER_MAGIC)

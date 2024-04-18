@@ -23,7 +23,7 @@ static Node* node_new(Node* parent, const char* name, NodeType type, NodeContext
 
     if (parent != NULL)
     {
-        LOCK_GUARD(parent->lock);
+        LOCK_GUARD(&parent->lock);
         list_push(&parent->children, node);
     }
 
@@ -32,7 +32,7 @@ static Node* node_new(Node* parent, const char* name, NodeType type, NodeContext
 
 static Node* node_find_child(Node* parent, const char* name)
 {
-    LOCK_GUARD(parent->lock);
+    LOCK_GUARD(&parent->lock);
 
     Node* child;
     LIST_FOR_EACH(child, &parent->children)
