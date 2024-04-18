@@ -17,12 +17,13 @@ static char* errorStrings[] =
     "Permission denied",
     "Bad executable",
     "Out of memory",
-    "Bed request"
+    "Bed request",
+    "Busy"
 };
 
 _PUBLIC char* strerror(int error)
 {
-    if (error > EREQ || error < 0)
+    if (error > EBUSY || error < 0)
     {
         return "Unknown error";
     }

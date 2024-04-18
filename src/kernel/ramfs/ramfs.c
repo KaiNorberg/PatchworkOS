@@ -100,19 +100,23 @@ static RamFile* ramfs_find_file(const char* path)
     return ram_dir_find_dir(parent, dirname);
 }*/
 
-uint64_t ramfs_read(RamfsFile* file, void* buffer, uint64_t count)
+uint64_t ramfs_read(File* file, void* buffer, uint64_t count)
 {
-    uint64_t pos = file->base.position;
-    uint64_t readCount = pos <= file->ramFile->size ? MIN(count, file->ramFile->size - pos) : 0;
-    file->base.position += readCount;
+    RamFile* internal = file->internal; 
 
-    memcpy(buffer, file->ramFile->data + pos, readCount);
+    uint64_t pos = file->position;
+    uint64_t readCount = pos <= internal->size ? MIN(count, internal->size - pos) : 0;
+    file->position += readCount;
+
+    memcpy(buffer, internal->data + pos, readCount);
 
     return readCount;
 }
 
-uint64_t ramfs_seek(RamfsFile* file, int64_t offset, uint8_t origin)
-{    
+uint64_t ramfs_seek(File* file, int64_t offset, uint8_t origin)
+{
+    RamFile* internal = file->internal; 
+
     uint64_t position;
     switch (origin)
     {
@@ -123,12 +127,12 @@ uint64_t ramfs_seek(RamfsFile* file, int64_t offset, uint8_t origin)
     break;
     case SEEK_CUR:
     {
-        position = file->base.position + offset;
+        position = file->position + offset;
     }
     break;
     case SEEK_END:
     {
-        position = file->ramFile->size - offset;
+        position = internal->size - offset;
     }
     break;
     default:
@@ -138,34 +142,36 @@ uint64_t ramfs_seek(RamfsFile* file, int64_t offset, uint8_t origin)
     break;
     }
 
-    file->base.position = MIN(position, file->ramFile->size);
+    file->position = MIN(position, internal->size);
     return position;
 }
 
-File* ramfs_open(RamfsVolume* volume, const char* path)
+uint64_t ramfs_open(Volume* volume, File* file, const char* path)
 {
     RamFile* ramFile = ramfs_find_file(path);
     if (ramFile == NULL)
     {
-        return NULLPTR(EPATH);
+        return ERROR(EPATH);
     }
 
-    RamfsFile* file = kmalloc(sizeof(RamfsFile));
-    file_init(&file->base, (Volume*)volume);
-    file->base.read = (void*)ramfs_read;
-    file->base.seek = (void*)ramfs_seek;
-    file->ramFile = ramFile;
+    file->read = ramfs_read;
+    file->seek = ramfs_seek;
+    file->internal = ramFile;
 
-    return &file->base;
+    return 0;
 }
 
-Volume* ramfs_mount(Filesystem* fs)
+uint64_t ramfs_unmount(Volume* volume)
 {
-    RamfsVolume* volume = kmalloc(sizeof(RamfsVolume));
-    volume_init(&volume->base, fs);
-    volume->base.open = (void*)ramfs_open;
+    return 0;
+}
 
-    return &volume->base;
+uint64_t ramfs_mount(Volume* volume)
+{
+    volume->unmount = ramfs_unmount;
+    volume->open = ramfs_open;
+
+    return 0;
 }
 
 void ramfs_init(RamDir* ramRoot)

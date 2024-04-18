@@ -10,13 +10,9 @@
 #include "vfs/context/context.h"
 #include "vfs/utils/utils.h"
 
-struct
-{
-    Volume* volumes[VFS_LETTER_AMOUNT];
-    Lock lock;
-} volumeTable;
+Volume volumes[VFS_LETTER_AMOUNT];
 
-//TODO: Clean up vfs filepath parsing
+//TODO: Improve vfs filepath parsing
 
 static uint64_t vfs_make_path_canonical(char* start, char* out, const char* path, uint64_t count)
 {
@@ -97,16 +93,26 @@ static uint64_t vfs_parse_path(char* out, const char* path)
     }
 }
 
-static Volume* volume_table_get(char letter)
+static Volume* volume_ref(Volume* volume)
+{
+    atomic_fetch_add(&volume->ref, 1);
+    return volume;
+}
+
+static void volume_deref(Volume* volume)
+{
+    atomic_fetch_sub(&volume->ref, 1);
+}
+
+static Volume* volume_get(char letter)
 {
     if (!VFS_VALID_LETTER(letter))
     {
         return NULL;
     }
 
-    LOCK_GUARD(volumeTable.lock);
-    Volume* volume = volumeTable.volumes[letter - VFS_LETTER_BASE];
-    if (volume == NULL)
+    Volume* volume = &volumes[letter - VFS_LETTER_BASE];
+    if (atomic_load(&volume->ref) == 0)
     {
         return NULL;
     }
@@ -114,12 +120,36 @@ static Volume* volume_table_get(char letter)
     return volume_ref(volume);
 }
 
+File* file_ref(File* file)
+{
+    atomic_fetch_add(&file->ref, 1);
+    return file;
+}
+
+void file_deref(File* file)
+{
+    if (atomic_fetch_sub(&file->ref, 1) <= 1)
+    {        
+        if (file->cleanup != NULL)
+        {
+            file->cleanup(file);
+        }
+        volume_deref(file->volume);
+        kfree(file);
+    }
+}
+
 void vfs_init()
 {
     tty_start_message("VFS initializing");
 
-    memset(volumeTable.volumes, 0, sizeof(Volume*) * VFS_LETTER_AMOUNT);
-    lock_init(&volumeTable.lock);
+    memset(&volumes, 0, sizeof(Volume) * VFS_LETTER_AMOUNT);
+
+    //Not needed but good practice
+    for (uint64_t i = 0; i < VFS_LETTER_AMOUNT; i++)
+    {
+        atomic_init(&volumes[i].ref, 0);
+    }
 
     tty_end_message(TTY_MESSAGE_OK);
 }
@@ -132,7 +162,7 @@ File* vfs_open(const char* path)
         return NULLPTR(EPATH);
     }
 
-    Volume* volume = volume_table_get(parsedPath[0]);
+    Volume* volume = volume_get(parsedPath[0]);
     if (volume == NULL)
     {
         return NULLPTR(EPATH);
@@ -145,14 +175,73 @@ File* vfs_open(const char* path)
     }
 
     //Volume reference is passed to file.
-    File* file = volume->open(volume, parsedPath + 2);
-    if (file == NULL)
+    File* file = kmalloc(sizeof(File));
+    memset(file, 0, sizeof(File));
+    file->volume = volume;
+    file->position = 0;
+    atomic_init(&file->ref, 1);
+
+    if (volume->open(volume, file, parsedPath + 2) == ERR)
     {
-        volume_deref(volume);
+        file_deref(file);
         return NULL;
     }
 
     return file;
+}
+
+uint64_t vfs_mount(char letter, Filesystem* fs)
+{
+    if (!VFS_VALID_LETTER(letter))
+    {
+        return ERROR(ELETTER);
+    }
+
+    Volume* volume = &volumes[letter - VFS_LETTER_BASE];    
+
+    if (atomic_load(&volume->ref) != 0) 
+    {
+        return ERROR(EEXIST);
+    }
+
+    memset(volume, 0, sizeof(Volume));
+    atomic_init(&volume->ref, 1);
+    volume->fs = fs;
+
+    if (fs->mount(volume) == ERR)
+    {
+        return ERR;
+    }
+
+    return 0;
+}
+
+uint64_t vfs_unmount(char letter)
+{
+    if (!VFS_VALID_LETTER(letter))
+    {
+        return ERROR(ELETTER);
+    }
+
+    Volume* volume = &volumes[letter - VFS_LETTER_BASE];
+
+    if (atomic_load(&volume->ref) != 1)
+    {
+        return ERROR(EBUSY);
+    }
+
+    if (volume->unmount == NULL)
+    {
+        return ERROR(EACCES);
+    }
+
+    if (volume->unmount(volume) == ERR)
+    {
+        return ERR;
+    }
+
+    atomic_store(&volume->ref, 0);
+    return 0;
 }
 
 uint64_t vfs_realpath(char* out, const char* path)
@@ -165,30 +254,6 @@ uint64_t vfs_realpath(char* out, const char* path)
     {
         return 0;
     }
-}
-
-uint64_t vfs_mount(char letter, Filesystem* fs)
-{
-    if (!VFS_VALID_LETTER(letter))
-    {
-        return ERROR(ELETTER);
-    }
-    LOCK_GUARD(volumeTable.lock);
-
-    uint64_t index = letter - VFS_LETTER_BASE;
-    if (volumeTable.volumes[index] != NULL)
-    {
-        return ERROR(EEXIST);
-    }
-
-    Volume* volume = fs->mount(fs);
-    if (volume == NULL)
-    {
-        return ERR;
-    }
-
-    volumeTable.volumes[index] = volume;
-    return 0;
 }
 
 uint64_t vfs_chdir(const char* path)

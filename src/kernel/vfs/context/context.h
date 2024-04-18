@@ -1,7 +1,7 @@
 #pragma once
 
 #include "lock/lock.h"
-#include "vfs/file/file.h"
+#include "vfs/vfs.h"
 
 typedef struct
 {
@@ -14,6 +14,7 @@ void vfs_context_init(VfsContext* context);
 
 void vfs_context_cleanup(VfsContext* context);
 
+//Vfs context takes ownership of file reference.
 uint64_t vfs_context_open(File* file);
 
 uint64_t vfs_context_close(uint64_t fd);
