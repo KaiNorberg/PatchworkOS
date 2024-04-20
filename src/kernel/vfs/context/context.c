@@ -7,7 +7,7 @@
 void vfs_context_init(VfsContext* context)
 {
     memset(context, 0, sizeof(VfsContext));
-    strcpy(context->workDir, "A:/");
+    strcpy(context->cwd, "A:/");
     lock_init(&context->lock);
 }
 
@@ -63,7 +63,7 @@ File* vfs_context_get(uint64_t fd)
 
     if (context->files[fd] == NULL)
     {
-        return NULL;
+        return NULLPTR(EBADF);
     }
 
     return file_ref(context->files[fd]);

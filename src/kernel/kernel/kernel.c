@@ -22,6 +22,7 @@
 #include "sysfs/sysfs.h"
 #include "ramfs/ramfs.h"
 #include "regs/regs.h"
+#include "renderer/renderer.h"
 #include "loader/loader.h"
 
 static void boot_info_deallocate(BootInfo* bootInfo)
@@ -70,6 +71,8 @@ void kernel_init(BootInfo* bootInfo)
     vfs_init();
     sysfs_init();
     ramfs_init(bootInfo->ramRoot);
+
+    renderer_init(&bootInfo->gopBuffer);
 
     boot_info_deallocate(bootInfo);
 }

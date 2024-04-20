@@ -81,15 +81,15 @@ static uint64_t vfs_parse_path(char* out, const char* path)
     }
     else if (path[0] == VFS_NAME_SEPARATOR) //root path
     {
-        out[0] = context->workDir[0];
+        out[0] = context->cwd[0];
         out[1] = VFS_DRIVE_SEPARATOR;
 
         return vfs_make_path_canonical(out, out + 2, path + 1, CONFIG_MAX_PATH - 3);
     }
     else //relative path
     {
-        uint64_t workLength = strlen(context->workDir);
-        memcpy(out, context->workDir, workLength);
+        uint64_t workLength = strlen(context->cwd);
+        memcpy(out, context->cwd, workLength);
         return vfs_make_path_canonical(out, out + workLength, path, CONFIG_MAX_PATH - workLength);
     }
 }
@@ -273,6 +273,6 @@ uint64_t vfs_chdir(const char* path)
     VfsContext* context = &sched_process()->vfsContext;
     LOCK_GUARD(&context->lock);
 
-    strcpy(context->workDir, parsedPath);
+    strcpy(context->cwd, parsedPath);
     return 0;
 }

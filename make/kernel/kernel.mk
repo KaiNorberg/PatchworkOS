@@ -26,9 +26,8 @@ KERNEL_OBJ = $(patsubst $(SRC_DIR)/%, $(KERNEL_BUILD_DIR)/%.o, $(KERNEL_SRC))
 
 KERNEL_C_FLAGS = $(BASE_C_FLAGS) \
 	-ffreestanding \
-	-fno-stack-protector -fno-exceptions \
-	-fno-pie -mcmodel=kernel \
-	-mno-red-zone -Wno-array-bounds \
+	-fno-stack-protector \
+	-fno-pic -mcmodel=large \
 	-D__KERNEL__ \
 	-I$(KERNEL_SRC_DIR)
 

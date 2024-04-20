@@ -104,17 +104,16 @@ void* vmm_allocate(const void* address, uint64_t pageAmount)
     void* alignedAddress = (void*)ROUND_DOWN((uint64_t)address, PAGE_SIZE);
 
     for (uint64_t i = 0; i < pageAmount; i++)
-    {            
-        void* virtualAddress = (void*)((uint64_t)alignedAddress + i * PAGE_SIZE);
+    {                    
+        LOCK_GUARD(&space->lock);
 
-        lock_acquire(&space->lock);
+        void* virtualAddress = (void*)((uint64_t)alignedAddress + i * PAGE_SIZE);
         if (page_table_physical_address(space->pageTable, virtualAddress) == NULL)
         {
             //Page table takes ownership of memory
             page_table_map(space->pageTable, virtualAddress, pmm_allocate(), 
                 PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR);
         }
-        lock_release(&space->lock);
     }
 
     return alignedAddress;

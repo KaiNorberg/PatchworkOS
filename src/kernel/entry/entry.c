@@ -12,7 +12,7 @@
 #include "utils/utils.h"
 #include "vfs/utils/utils.h"
 
-/*void vfs_benchmark()
+void vfs_benchmark()
 {
     for (uint64_t i = 0; i < 1000000; i++)
     {
@@ -31,14 +31,14 @@
 
         file_deref(file);
     }
-}*/
+}
 
 void main(BootInfo* bootInfo)
 {
     kernel_init(bootInfo);
 
     /*tty_print("OPEN: ");
-    File* file = vfs_open("B:/test1/test2/test3/test.txt");
+    File* file = vfs_open("A:/framebuffer/0");
     if (file == NULL)
     {
         tty_print(strerror(sched_thread()->error));
@@ -62,31 +62,9 @@ void main(BootInfo* bootInfo)
     }
     tty_print("\n");
 
-    tty_print("UNMOUNT: ");
-    if (vfs_unmount('B') == ERR)
-    {
-        tty_print(strerror(sched_thread()->error));
-    }
-    else
-    {
-        tty_print("SUCCESS");
-    }
-    tty_print("\n");
-
     tty_print("CLOSE: ");
     file_deref(file);
-    tty_print("SUCCESS\n");
-
-    tty_print("UNMOUNT: ");
-    if (vfs_unmount('B') == ERR)
-    {
-        tty_print(strerror(sched_thread()->error));
-    }
-    else
-    {
-        tty_print("SUCCESS");
-    }
-    tty_print("\n");*/
+    tty_print("SUCCESS\n");*/
 
     //BENCHMARK(vfs_benchmark);
 

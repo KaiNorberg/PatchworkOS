@@ -5,128 +5,187 @@
 #include "heap/heap.h"
 #include "sched/sched.h"
 #include "tty/tty.h"
-#include "vfs/vfs.h"
+#include "lock/lock.h"
 #include "vfs/utils/utils.h"
 
 static Filesystem sysfs;
-/*static Node* root;
 
-static Node* node_new(Node* parent, const char* name, NodeType type, NodeContext context)
+static System* root;
+static Lock lock;
+
+static Resource* resource_ref(Resource* resource)
 {
-    Node* node = kmalloc(sizeof(Node));
-    list_head_init(&node->head);
-    vfs_copy_name(node->name, name);
-    node->type = type;
-    node->context = context;
-    list_init(&node->children);
-    lock_init(&node->lock);
-
-    if (parent != NULL)
-    {
-        LOCK_GUARD(&parent->lock);
-        list_push(&parent->children, node);
-    }
-
-    return node;
+    atomic_fetch_add(&resource->ref, 1);
+    return resource;
 }
 
-static Node* node_find_child(Node* parent, const char* name)
+static void resource_unref(Resource* resource)
 {
-    LOCK_GUARD(&parent->lock);
-
-    Node* child;
-    LIST_FOR_EACH(child, &parent->children)
+    if (atomic_fetch_sub(&resource->ref, 1) <= 1)
     {
-        if (vfs_compare_names(name, child->name))
+        if (resource->delete != NULL)
         {
-            return child; 
-        }   
+            resource->delete(resource);
+        }
+        else
+        {
+            debug_panic("Attempt to delete undeletable resource");
+        }
+    }
+}
+
+static System* system_new(const char* name)
+{
+    System* system = kmalloc(sizeof(System));
+    list_entry_init(&system->base);
+    vfs_copy_name(system->name, name);
+    list_init(&system->resources);
+    list_init(&system->systems);
+
+    return system;
+}
+
+static System* system_find_system(System* parent, const char* name)
+{
+    System* system;
+    LIST_FOR_EACH(system, &parent->systems)
+    {
+        if (vfs_compare_names(system->name, name))
+        {
+            return system;
+        }
     }
 
     return NULL;
 }
 
-static Node* sysfs_traverse(const char* path)
+static Resource* system_find_resource(System* parent, const char* name)
 {
-    Node* node = root;
+    Resource* resource;
+    LIST_FOR_EACH(resource, &parent->resources)
+    {
+        if (vfs_compare_names(resource->name, name))
+        {
+            return resource;
+        }
+    }
+
+    return NULL;
+}
+
+static System* sysfs_traverse(const char* path)
+{
+    System* system = root;
     const char* name = vfs_first_dir(path);
     while (name != NULL)
     {
-        node = node_find_child(node, name);
-        if (node == NULL)
+        system = system_find_system(system, name);
+        if (system == NULL)
         {
             return NULL;
-        }
-
-        name = vfs_next_name(name);
-    }
-
-    return node;
-}
-
-File* sysfs_open(Drive* volume, const char* path)
-{
-    Node* node = sysfs_traverse(path);
-    if (node == NULL)
-    {
-        return NULLPTR(EPATH);
-    }
-    if (node->type != NODE_TYPE_FILE)
-    {
-        return NULLPTR(EPATH);
-    }
-
-    return file_new(volume, node);
-}
-
-uint64_t sysfs_create_node(const char* path, NodeContext context)
-{
-    Node* node = root;
-    const char* name = vfs_first_dir(path);
-    while (name != NULL)
-    {
-        Node* child = node_find_child(node, name);
-        if (child == NULL)
-        {
-            child = node_new(node, name, NODE_TYPE_DIR, );
         }
 
         name = vfs_next_dir(name);
     }
 
-    return node;
-}*/
+    return system;
+}
 
-void resource_init(Resource* resource)
+static Resource* sysfs_find_resource(const char* path)
 {
-    memset(resource, 0, sizeof(Resource));
-    list_entry_init(&resource->base);
+    System* parent = sysfs_traverse(path);
+    if (parent == NULL)
+    {
+        return NULL;
+    }
+
+    const char* name = vfs_basename(path);
+    if (name == NULL)
+    {
+        return NULL;
+    }
+
+    return system_find_resource(parent, name);
+}
+
+static void sysfs_cleanup(File* file)
+{
+    Resource* resource = file->internal;
+    resource_unref(resource);
+}
+
+static uint64_t sysfs_open(Volume* volume, File* file, const char* path)
+{
+    LOCK_GUARD(&lock);
+
+    Resource* resource = sysfs_find_resource(path);
+    if (resource == NULL)
+    {
+        return ERROR(EPATH);
+    }
+
+    file->cleanup = sysfs_cleanup;
+    file->methods = resource->methods;
+    file->internal = resource_ref(resource);
+
+    return 0;
+}
+
+static uint64_t sysfs_mount(Volume* volume)
+{
+    volume->open = sysfs_open;
+
+    return 0;
 }
 
 void sysfs_init()
 {
     tty_start_message("Sysfs initializing");
 
-    //root = node_new(NULL, "root", NODE_TYPE_DIR, NULL);
+    root = system_new("root");
+    lock_init(&lock);
 
-    /*memset(&sysfs, 0, sizeof(Filesystem));
+    memset(&sysfs, 0, sizeof(Filesystem));
     sysfs.name = "sysfs";
+    sysfs.mount = sysfs_mount;
 
-    if (vfs_mount('A', &sysfs, NULL) == ERR)
+    if (vfs_mount('A', &sysfs) == ERR)
     {
         tty_print("Failed to mount sysfs");
         tty_end_message(TTY_MESSAGE_ER);
-    }*/
+    }
 
     tty_end_message(TTY_MESSAGE_OK);
 }
 
-void sysfs_expose(Resource* resource, const char* path, const char* name)
+void sysfs_expose(Resource* resource, const char* path)
 {
-    
+    LOCK_GUARD(&lock);
+
+    System* system = root;
+    const char* name = vfs_first_name(path);
+    while (name != NULL)
+    {
+        System* next = system_find_system(system, name);
+        if (next == NULL)
+        {
+            next = system_new(name);
+            list_push(&system->systems, next);
+        }
+
+        system = next;
+        name = vfs_next_name(name);
+    }
+
+    resource->system = system;
+    list_push(&system->resources, resource);    
 }
 
 void sysfs_hide(Resource* resource)
 {
+    LOCK_GUARD(&lock);
 
+    resource->system = NULL;
+    list_remove(resource);
+    resource_unref(resource);
 }

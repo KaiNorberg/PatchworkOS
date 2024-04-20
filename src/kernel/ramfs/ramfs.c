@@ -100,20 +100,20 @@ static RamFile* ramfs_find_file(const char* path)
     return ram_dir_find_dir(parent, dirname);
 }*/
 
-uint64_t ramfs_read(File* file, void* buffer, uint64_t count)
+static uint64_t ramfs_read(File* file, void* buffer, uint64_t count)
 {
     RamFile* internal = file->internal; 
 
     uint64_t pos = file->position;
-    uint64_t readCount = pos <= internal->size ? MIN(count, internal->size - pos) : 0;
+    uint64_t readCount = (pos <= internal->size) ? MIN(count, internal->size - pos) : 0;
+    
     file->position += readCount;
-
     memcpy(buffer, internal->data + pos, readCount);
 
     return readCount;
 }
 
-uint64_t ramfs_seek(File* file, int64_t offset, uint8_t origin)
+static uint64_t ramfs_seek(File* file, int64_t offset, uint8_t origin)
 {
     RamFile* internal = file->internal; 
 
@@ -146,7 +146,7 @@ uint64_t ramfs_seek(File* file, int64_t offset, uint8_t origin)
     return position;
 }
 
-uint64_t ramfs_open(Volume* volume, File* file, const char* path)
+static uint64_t ramfs_open(Volume* volume, File* file, const char* path)
 {
     RamFile* ramFile = ramfs_find_file(path);
     if (ramFile == NULL)
@@ -161,7 +161,7 @@ uint64_t ramfs_open(Volume* volume, File* file, const char* path)
     return 0;
 }
 
-uint64_t ramfs_mount(Volume* volume)
+static uint64_t ramfs_mount(Volume* volume)
 {
     volume->open = ramfs_open;
 

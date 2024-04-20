@@ -5,7 +5,7 @@
 
 typedef struct
 {
-    char workDir[CONFIG_MAX_PATH];
+    char cwd[CONFIG_MAX_PATH];
     File* files[CONFIG_FILE_AMOUNT];
     Lock lock;
 } VfsContext;

@@ -38,8 +38,10 @@ BASE_C_FLAGS = -O3 \
 	-Wno-unused-but-set-variable \
 	-Wno-implicit-fallthrough \
 	-Wno-deprecated-non-prototype \
-	-mno-80387 -mno-mmx -mno-3dnow \
-	-mno-sse -mno-sse2 \
+	-mno-mmx -mno-3dnow \
+	-mno-80387 -mno-sse \
+	-mno-sse2 -mno-sse3 \
+	-mno-ssse3 -mno-sse4 \
 	-fno-stack-protector \
 	-I$(LIBS_SRC_DIR)/std \
 	-I$(LIBS_SRC_DIR)/std/include \
@@ -81,8 +83,8 @@ all: build deploy
 run:
 	@qemu-system-x86_64 \
     -drive file=$(OUTPUT_IMAGE) \
-    -m 100M \
-	-smp 4 \
+    -m 1G \
+	-smp 6 \
     -no-shutdown -no-reboot \
     -drive if=pflash,format=raw,unit=0,file=vendor/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
     -drive if=pflash,format=raw,unit=1,file=vendor/OVMFbin/OVMF_VARS-pure-efi.fd \
@@ -91,8 +93,8 @@ run:
 run-debug:
 	@qemu-system-x86_64 \
     -drive file=$(OUTPUT_IMAGE) \
-	-m 100M \
-	-smp 4 \
+	-m 1G \
+	-smp 6 \
     -serial stdio \
 	-d int \
     -no-shutdown -no-reboot \

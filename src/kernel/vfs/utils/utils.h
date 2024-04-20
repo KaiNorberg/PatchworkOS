@@ -19,17 +19,19 @@
 
 static inline void vfs_copy_name(char* dest, const char* src)
 {
-    for (uint64_t i = 0; i < CONFIG_MAX_PATH; i++)
+    for (uint64_t i = 0; i < CONFIG_MAX_PATH - 1; i++)
     {
         if (VFS_END_OF_NAME(src[i]))
         {
             dest[i] = '\0';
+            return;
         }
         else
         {
             dest[i] = src[i];
         }
     }
+    dest[CONFIG_MAX_PATH - 1] = '\0';
 }
 
 static inline bool vfs_compare_names(const char* a, const char* b)
@@ -47,6 +49,16 @@ static inline bool vfs_compare_names(const char* a, const char* b)
     }
 
     return false;
+}
+
+static inline const char* vfs_first_name(const char* path)
+{
+    if (path[0] == VFS_NAME_SEPARATOR)
+    {
+        return path + 1;
+    }
+    
+    return path;
 }
 
 static inline const char* vfs_first_dir(const char* path)

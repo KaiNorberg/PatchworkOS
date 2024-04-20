@@ -65,14 +65,14 @@ uint64_t syscall_sleep(uint64_t nanoseconds)
     return 0;
 }
 
-void* syscall_allocate(void* address, uint64_t length)
+void* syscall_allocate(void* address, uint64_t size)
 {
-    if (!verify_pointer(address, length))
+    if (!verify_pointer(address, size))
     {
         return NULLPTR(EFAULT);
     }
 
-    return vmm_allocate(address, SIZE_IN_PAGES(length));
+    return vmm_allocate(address, SIZE_IN_PAGES(size));
 }
 
 uint64_t syscall_error(void)

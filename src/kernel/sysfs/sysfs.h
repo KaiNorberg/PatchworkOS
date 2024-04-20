@@ -1,32 +1,41 @@
 #pragma once
 
-#include "defs/defs.h"
-#include "tree/tree.h"
-#include "lock/lock.h"
-#include "vfs/vfs.h"
+#include <stdatomic.h>
 
-typedef struct
+#include "defs/defs.h"
+#include "list/list.h"
+#include "vfs/utils/utils.h"
+
+typedef struct System
 {
     ListEntry base;
     char name[CONFIG_MAX_NAME];
     List resources;
     List systems;
-    Lock lock;
 } System;
 
 typedef struct Resource
 {
     ListEntry base;
     System* system;
+    _Atomic(uint64_t) ref;
     char name[CONFIG_MAX_NAME];
-    void (*cleanup)(struct Resource*);
+    void (*delete)(struct Resource*);
     FileMethods methods;
 } Resource;
 
-void resource_init(Resource* resource);
+static inline void resource_init(Resource* resource, const char* name)
+{
+    list_entry_init(&resource->base);
+    resource->system = NULL;
+    atomic_init(&resource->ref, 1);
+    vfs_copy_name(resource->name, name);
+    resource->delete = NULL;
+    resource->methods = (FileMethods){};
+}
 
 void sysfs_init();
 
-void sysfs_expose(Resource* resource, const char* path, const char* name);
+void sysfs_expose(Resource* resource, const char* path);
 
 void sysfs_hide(Resource* resource);

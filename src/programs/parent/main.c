@@ -8,8 +8,18 @@
 
 #include <libs/std/internal/syscalls/syscalls.h>
 
+#define BUFFER_SIZE 0x10000
+char buffer[BUFFER_SIZE];
+
 int main(void)
 {
+    fd_t fd = open("A:/framebuffer/0");
+
+    memset(buffer, INT32_MAX, BUFFER_SIZE);
+    write(fd, buffer, BUFFER_SIZE);
+
+    close(fd);
+
     if (spawn("child.elf") == ERR)
     {
         SYSCALL(SYS_TEST, 1, strerror(errno));
