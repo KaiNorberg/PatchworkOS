@@ -54,8 +54,8 @@ static void sched_switch_thread(TrapFrame* trapFrame, Scheduler* scheduler, Thre
 
         next->timeStart = time_nanoseconds();
         next->timeEnd = next->timeStart + CONFIG_TIME_SLICE;
-        *trapFrame = next->trapFrame;
 
+        *trapFrame = next->trapFrame;
         space_load(&next->process->space);
         tss_stack_load(&self->tss, (void*)((uint64_t)next->kernelStack + CONFIG_KERNEL_STACK));
 
@@ -69,7 +69,6 @@ static void sched_switch_thread(TrapFrame* trapFrame, Scheduler* scheduler, Thre
         trapFrame->ss = GDT_KERNEL_DATA;
         trapFrame->rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
         trapFrame->rsp = (uint64_t)smp_self_unsafe()->idleStack + CPU_IDLE_STACK_SIZE;
-
         space_load(NULL);
         tss_stack_load(&self->tss, NULL);
     }

@@ -76,7 +76,7 @@ void vmm_init(EfiMemoryMap* memoryMap)
     vmm_deallocate_boot_page_table(memoryMap);
 }
 
-void* vmm_kernel_map(void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint16_t flags)
+void* vmm_kernel_map(void* virtualAddress, void* physicalAddress, uint64_t size, uint16_t flags)
 {
     if (virtualAddress == NULL)
     {
@@ -85,14 +85,14 @@ void* vmm_kernel_map(void* virtualAddress, void* physicalAddress, uint64_t pageA
 
     if (page_table_physical_address(kernelPageTable, virtualAddress) == NULL)
     {
-        page_table_map_pages(kernelPageTable, virtualAddress, physicalAddress, pageAmount, 
+        page_table_map_pages(kernelPageTable, virtualAddress, physicalAddress, SIZE_IN_PAGES(size), 
             flags | VMM_KERNEL_PAGE_FLAGS);
     }
 
     return virtualAddress;
 }
 
-void* vmm_allocate(const void* address, uint64_t pageAmount)
+void* vmm_allocate(const void* address, uint64_t size)
 {
     if (address == NULL)
     {
@@ -103,7 +103,7 @@ void* vmm_allocate(const void* address, uint64_t pageAmount)
     Space* space = &sched_process()->space;
     void* alignedAddress = (void*)ROUND_DOWN((uint64_t)address, PAGE_SIZE);
 
-    for (uint64_t i = 0; i < pageAmount; i++)
+    for (uint64_t i = 0; i < SIZE_IN_PAGES(size); i++)
     {                    
         LOCK_GUARD(&space->lock);
 

@@ -19,7 +19,7 @@ static void* loader_allocate_stack()
 {    
     Thread* thread = sched_thread();
     void* address = (void*)(VMM_LOWER_HALF_MAX - (CONFIG_USER_STACK * (thread->id + 1) + PAGE_SIZE * (thread->id)));
-    if (vmm_allocate(address, CONFIG_USER_STACK / PAGE_SIZE) == NULL)
+    if (vmm_allocate(address, CONFIG_USER_STACK) == NULL)
     {
         debug_panic("Failed to allocate user stack!");
     }
@@ -55,37 +55,36 @@ static void* loader_load_program()
         sched_process_exit(EEXEC);
     }
 
-    uint64_t headerTableSize = header.programHeaderAmount * header.programHeaderSize;
-    ElfProgramHeader* headerTable = kmalloc(headerTableSize);
-    if (FILE_CALL_METHOD(file, read, headerTable, headerTableSize) != headerTableSize)
-    {
-        kfree(headerTable);
-        sched_process_exit(EEXEC);
-    }
-
-    for (ElfProgramHeader* programHeader = headerTable;
-        (uint64_t)programHeader < (uint64_t)headerTable + headerTableSize;
-        programHeader = (ElfProgramHeader*)((uint64_t)programHeader + header.programHeaderSize))
+    for (uint64_t i = 0; i < header.programHeaderAmount; i++)
 	{
-        switch (programHeader->type)
+        uint64_t offset = sizeof(ElfHeader) + header.programHeaderSize * i;
+        if (FILE_CALL_METHOD(file, seek, offset, SEEK_SET) != offset)
+        {
+            sched_process_exit(EEXEC);
+        }
+
+        ElfProgramHeader programHeader;
+        if (FILE_CALL_METHOD(file, read, &programHeader, sizeof(ElfProgramHeader)) != sizeof(ElfProgramHeader))
+        {
+            sched_process_exit(EEXEC);
+        }
+
+        switch (programHeader.type)
         {
 	    case PT_LOAD:
         {
-            if (vmm_allocate((void*)programHeader->virtualAddress, SIZE_IN_PAGES(programHeader->memorySize) + 1) == NULL)
+            if (vmm_allocate((void*)programHeader.virtualAddress, programHeader.memorySize + PAGE_SIZE) == NULL)
             {
-                kfree(headerTable);
                 sched_process_exit(EEXEC);
             }
 
-            if (FILE_CALL_METHOD(file, seek, programHeader->offset, SEEK_SET) != programHeader->offset)
+            if (FILE_CALL_METHOD(file, seek, programHeader.offset, SEEK_SET) != programHeader.offset)
             {
-                kfree(headerTable);
                 sched_process_exit(EEXEC);
             }
 
-            if (FILE_CALL_METHOD(file, read, (void*)programHeader->virtualAddress, programHeader->fileSize) != programHeader->fileSize)
+            if (FILE_CALL_METHOD(file, read, (void*)programHeader.virtualAddress, programHeader.fileSize) != programHeader.fileSize)
             {
-                kfree(headerTable);
                 sched_process_exit(EEXEC);
             }
 		}
@@ -93,7 +92,6 @@ static void* loader_load_program()
 		}
 	}
 
-    kfree(headerTable);
     file_deref(file);
     return (void*)header.entry;
 }

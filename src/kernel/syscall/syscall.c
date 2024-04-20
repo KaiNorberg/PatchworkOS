@@ -19,6 +19,11 @@
 //TODO: Improve verify funcs, improve multithreading string safety.
 static bool verify_pointer(const void* pointer, uint64_t size)
 {
+    if (pointer == NULL)
+    {
+        return false;
+    }
+
     if ((uint64_t)pointer + size > VMM_LOWER_HALF_MAX)
     {
         return false;
@@ -72,7 +77,7 @@ void* syscall_allocate(void* address, uint64_t size)
         return NULLPTR(EFAULT);
     }
 
-    return vmm_allocate(address, SIZE_IN_PAGES(size));
+    return vmm_allocate(address, size);
 }
 
 uint64_t syscall_error(void)
