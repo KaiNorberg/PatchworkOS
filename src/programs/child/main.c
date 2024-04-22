@@ -5,7 +5,7 @@
 #include <sys/io.h>
 #include <sys/process.h>
 
-#include <libs/std/internal/syscalls/syscalls.h>
+#include <libs/std/internal/syscalls.h>
 
 #define BUFFER_SIZE 32
 

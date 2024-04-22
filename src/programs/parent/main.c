@@ -6,7 +6,7 @@
 #include <sys/process.h>
 #include <sys/ioctl.h>
 
-#include <libs/std/internal/syscalls/syscalls.h>
+#include <libs/std/internal/syscalls.h>
 
 #define BUFFER_SIZE 0x10000
 char buffer[BUFFER_SIZE];

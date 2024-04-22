@@ -3,7 +3,7 @@ PARENT_BUILD_DIR = $(BUILD_DIR)/programs/parent
 
 PARENT_OUT = $(PROGRAMS_BIN_DIR)/parent.elf
 
-PARENT_SRC = $(call recursive_wildcard, $(PARENT_SRC_DIR), *.c)
+PARENT_SRC = $(wildcard $(PARENT_SRC_DIR)/*.c)
 
 PARENT_OBJ = $(patsubst $(SRC_DIR)/%, $(PARENT_BUILD_DIR)/%.o, $(PARENT_SRC))
 

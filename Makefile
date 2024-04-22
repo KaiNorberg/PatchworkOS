@@ -1,8 +1,3 @@
-# arg1 = dir
-# arg2 = pattern
-recursive_wildcard = \
-	$(foreach d,$(wildcard $(1:=/*)),$(call recursive_wildcard,$d,$2) $(filter $(subst *,%,$2),$d))
-
 MKCWD = mkdir -p $(@D)
 
 CC = gcc
@@ -25,8 +20,8 @@ PROGRAMS_BIN_DIR = $(BIN_DIR)/programs
 OUTPUT_IMAGE = $(BIN_DIR)/PatchworkOS.img
 
 BASE_ASM_FLAGS = -f elf64 \
-	-I$(LIBS_SRC_DIR)/std \
-	-I$(LIBS_SRC_DIR)/std/include
+	-I$(LIBS_SRC_DIR)/std/include \
+	-I$(SRC_DIR)
 
 BASE_C_FLAGS = -O3 \
 	-Wall \
@@ -43,7 +38,6 @@ BASE_C_FLAGS = -O3 \
 	-mno-sse2 -mno-sse3 \
 	-mno-ssse3 -mno-sse4 \
 	-fno-stack-protector \
-	-I$(LIBS_SRC_DIR)/std \
 	-I$(LIBS_SRC_DIR)/std/include \
 	-I$(SRC_DIR)
 
@@ -57,7 +51,7 @@ USER_ASM_FLAGS = $(BASE_ASM_FLAGS)
 USER_LD_FLAGS = $(LD_FLAGS) \
 	-L$(LIBS_BIN_DIR) -lstd
 
-include $(call recursive_wildcard, $(MAKE_DIR), *.mk)
+include $(wildcard $(MAKE_DIR)/*/*.mk)
 
 setup:
 	@echo "!====== RUNNING SETUP  ======!"

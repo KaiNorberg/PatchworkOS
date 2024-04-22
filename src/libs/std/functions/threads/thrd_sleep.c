@@ -1,6 +1,6 @@
 #include <threads.h>
 
-#include "internal/syscalls/syscalls.h"
+#include "libs/std/internal/syscalls.h"
 
 int thrd_sleep(const struct timespec* duration, struct timespec* remaining)
 {

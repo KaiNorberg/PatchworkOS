@@ -3,7 +3,7 @@ CHILD_BUILD_DIR = $(BUILD_DIR)/programs/child
 
 CHILD_OUT = $(PROGRAMS_BIN_DIR)/child.elf
 
-CHILD_SRC = $(call recursive_wildcard, $(CHILD_SRC_DIR), *.c)
+CHILD_SRC = $(wildcard $(CHILD_SRC_DIR)/*.c)
 
 CHILD_OBJ = $(patsubst $(SRC_DIR)/%, $(CHILD_BUILD_DIR)/%.o, $(CHILD_SRC))
 

@@ -29,9 +29,9 @@ SECTIONS
 		*(.bss)
 	}
 	
-	.smp_trampoline : ALIGN(4K)
+	.trampoline : ALIGN(4K)
 	{
-		*(.smp_trampoline)
+		*(.trampoline)
 	}
 
     _kernelEnd = .;

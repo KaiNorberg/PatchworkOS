@@ -5,8 +5,9 @@ BOOT_BUILD_DIR = $(BUILD_DIR)/bootloader
 BOOT_OUT_SO = $(BOOT_BIN_DIR)/bootloader.so
 BOOT_OUT_EFI = $(BOOT_BIN_DIR)/bootx64.efi
 
-BOOT_SRC = $(call recursive_wildcard, $(BOOT_SRC_DIR), *.c) \
-	$(call recursive_wildcard, $(BOOT_SRC_DIR), *.s)
+BOOT_SRC = \
+	$(wildcard $(BOOT_SRC_DIR)/*.c) \
+	$(wildcard $(BOOT_SRC_DIR)/*.s) \
 
 BOOT_OBJ = $(patsubst $(SRC_DIR)/%, $(BOOT_BUILD_DIR)/%.o, $(BOOT_SRC))
 
@@ -19,8 +20,7 @@ BOOT_C_FLAGS = $(BASE_C_FLAGS) \
 	-mno-80387 -mno-mmx -mno-3dnow \
 	-mno-sse -mno-sse2 \
 	-D__BOOTLOADER__ \
-	-I$(GNU_EFI)/inc \
-	-I$(BOOT_SRC_DIR)
+	-I$(GNU_EFI)/inc
 
 $(BOOT_BUILD_DIR)/%.c.o: $(SRC_DIR)/%.c
 	$(MKCWD)

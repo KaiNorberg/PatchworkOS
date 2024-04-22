@@ -5,8 +5,8 @@ KERNEL_BUILD_DIR = $(BUILD_DIR)/kernel
 KERNEL_OUT = $(KERNEL_BIN_DIR)/kernel.elf
 
 KERNEL_SRC = \
-	$(call recursive_wildcard, $(KERNEL_SRC_DIR), *.c) \
-	$(call recursive_wildcard, $(KERNEL_SRC_DIR), *.s) \
+	$(wildcard $(KERNEL_SRC_DIR)/*.c) \
+	$(wildcard $(KERNEL_SRC_DIR)/*.s) \
 	$(STDLIB)/stdlib/lltoa.c \
 	$(STDLIB)/stdlib/ulltoa.c \
 	$(STDLIB)/string/memcpy.c \
@@ -28,8 +28,7 @@ KERNEL_C_FLAGS = $(BASE_C_FLAGS) \
 	-ffreestanding \
 	-fno-stack-protector \
 	-fno-pic -mcmodel=large \
-	-D__KERNEL__ \
-	-I$(KERNEL_SRC_DIR)
+	-D__KERNEL__
 
 $(KERNEL_BUILD_DIR)/%.c.o: $(SRC_DIR)/%.c
 	$(MKCWD)
@@ -37,7 +36,7 @@ $(KERNEL_BUILD_DIR)/%.c.o: $(SRC_DIR)/%.c
 
 $(KERNEL_BUILD_DIR)/%.s.o: $(SRC_DIR)/%.s
 	$(MKCWD)
-	$(ASM) $(BASE_ASM_FLAGS) -I$(KERNEL_SRC_DIR) $^ -o $@
+	$(ASM) $(BASE_ASM_FLAGS) $^ -o $@
 
 $(KERNEL_OUT): $(KERNEL_OBJ)	
 	$(MKCWD)

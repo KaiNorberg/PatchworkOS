@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-#include "internal/syscalls/syscalls.h"
+#include "libs/std/internal/syscalls.h"
 
 _NORETURN void exit(int status)
 {
