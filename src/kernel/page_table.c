@@ -89,7 +89,7 @@ void page_table_load(PageTable* table)
     }
 }
 
-void page_table_map_pages(PageTable* table, void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint16_t flags)
+void page_table_map_pages(PageTable* table, void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint64_t flags)
 {
     for (uint64_t page = 0; page < pageAmount; page++)
     {
@@ -97,7 +97,15 @@ void page_table_map_pages(PageTable* table, void* virtualAddress, void* physical
     }
 }
 
-void page_table_map(PageTable* table, void* virtualAddress, void* physicalAddress, uint16_t flags)
+void page_table_unmap_pages(PageTable* table, void* virtualAddress, uint64_t pageAmount)
+{
+    for (uint64_t page = 0; page < pageAmount; page++)
+    {
+        page_table_unmap(table, (void*)((uint64_t)virtualAddress + page * PAGE_SIZE));
+    }
+}
+
+void page_table_map(PageTable* table, void* virtualAddress, void* physicalAddress, uint64_t flags)
 {        
     if ((uint64_t)virtualAddress % PAGE_SIZE != 0)
     {
@@ -109,13 +117,13 @@ void page_table_map(PageTable* table, void* virtualAddress, void* physicalAddres
     }
 
     PageTable* level3 = page_table_get_or_allocate(table, PAGE_TABLE_GET_INDEX(virtualAddress, 4), 
-        (flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR) & ~PAGE_FLAG_GLOBAL);
+        (flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER) & ~PAGE_FLAG_GLOBAL);
 
     PageTable* level2 = page_table_get_or_allocate(level3, PAGE_TABLE_GET_INDEX(virtualAddress, 3), 
-        flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR);
+        flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER);
 
     PageTable* level1 = page_table_get_or_allocate(level2, PAGE_TABLE_GET_INDEX(virtualAddress, 2), 
-        flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR);
+        flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER);
 
     PageEntry* entry = &level1->entries[PAGE_TABLE_GET_INDEX(virtualAddress, 1)];
 
@@ -125,14 +133,6 @@ void page_table_map(PageTable* table, void* virtualAddress, void* physicalAddres
     }
 
     *entry = page_entry_create(physicalAddress, flags);
-}
-
-void page_table_unmap_pages(PageTable* table, void* virtualAddress, uint64_t pageAmount)
-{
-    for (uint64_t page = 0; page < pageAmount; page++)
-    {
-        page_table_unmap(table, (void*)((uint64_t)virtualAddress + page * PAGE_SIZE));
-    }
 }
 
 void page_table_unmap(PageTable* table, void* virtualAddress)
@@ -196,7 +196,7 @@ void* page_table_physical_address(PageTable* table, const void* virtualAddress)
     return (void*)(((uint64_t)PAGE_ENTRY_GET_ADDRESS(*entry)) + offset);
 }
 
-void page_table_change_flags(PageTable* table, void* virtualAddress, uint16_t flags)
+void page_table_change_flags(PageTable* table, void* virtualAddress, uint64_t flags)
 {
     if ((uint64_t)virtualAddress % PAGE_SIZE != 0)
     {

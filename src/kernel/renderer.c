@@ -21,6 +21,11 @@ uint64_t framebuffer_write(File* file, const void* buffer, uint64_t count)
     return writeCount;
 }
 
+void* framebuffer_mmap(File* file, void* address, uint64_t length, uint16_t flags)
+{
+    return NULLPTR(EIMPL);
+}
+
 void renderer_init(GopBuffer* gopBuffer)
 {
     tty_start_message("Renderer initializing");
@@ -29,6 +34,7 @@ void renderer_init(GopBuffer* gopBuffer)
     Framebuffer* framebuffer = kmalloc(sizeof(Framebuffer));
     resource_init(&framebuffer->base, "0");
     framebuffer->base.methods.write = framebuffer_write;
+    framebuffer->base.methods.mmap = framebuffer_mmap;
     framebuffer->buffer = VMM_LOWER_TO_HIGHER(gopBuffer->base);
     framebuffer->size = gopBuffer->size;
     framebuffer->width = gopBuffer->width;

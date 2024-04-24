@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 #include "../_AUX/config.h"
+#include "../_AUX/fd_t.h"
 
 //Use different struct naming convention for stdlib?
 typedef struct ioctl_fb_info
@@ -18,7 +19,7 @@ typedef struct ioctl_fb_info
 
 #define IOCTL_FB_GET_INFO 0
 
-_PUBLIC uint64_t ioctl(uint64_t fd, uint64_t request, void* buffer);
+_PUBLIC uint64_t ioctl(fd_t fd, uint64_t request, void* buffer);
 
 #if defined(__cplusplus)
 }

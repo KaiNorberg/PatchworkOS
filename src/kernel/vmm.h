@@ -28,8 +28,10 @@ void space_load(Space* space);
 
 void vmm_init(EfiMemoryMap* memoryMap);
 
-void* vmm_kernel_map(void* virtualAddress, void* physicalAddress, uint64_t size, uint16_t flags);
+void* vmm_identity_map(void* virtualAddress, void* physicalAddress, uint64_t size, uint64_t flags);
 
-void* vmm_allocate(const void* address, uint64_t size);
+void* vmm_map(void* virtualAddress, void* physicalAddress, uint64_t size, uint64_t flags);
+
+void* vmm_unmap(void* virtualAddress, uint64_t size);
 
 void* vmm_physical_to_virtual(const void* address);

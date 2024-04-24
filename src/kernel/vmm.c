@@ -6,6 +6,7 @@
 #include "pmm.h"
 #include "sched.h"
 #include "regs.h"
+#include "debug.h"
 
 static PageTable* kernelPageTable;
 
@@ -76,47 +77,69 @@ void vmm_init(EfiMemoryMap* memoryMap)
     vmm_deallocate_boot_page_table(memoryMap);
 }
 
-void* vmm_kernel_map(void* virtualAddress, void* physicalAddress, uint64_t size, uint16_t flags)
-{
-    if (virtualAddress == NULL)
-    {
-        virtualAddress = VMM_LOWER_TO_HIGHER(physicalAddress);
-    }
-
-    if (page_table_physical_address(kernelPageTable, virtualAddress) == NULL)
-    {
-        page_table_map_pages(kernelPageTable, virtualAddress, physicalAddress, SIZE_IN_PAGES(size), 
-            flags | VMM_KERNEL_PAGE_FLAGS);
-    }
-
-    return virtualAddress;
-}
-
-void* vmm_allocate(const void* address, uint64_t size)
+void* vmm_allocate(void* address, uint64_t size, uint64_t flags)
 {
     if (address == NULL)
     {
-        //TODO: Choose address
         return NULLPTR(EFAULT);
     }
 
     Space* space = &sched_process()->space;
-    void* alignedAddress = (void*)ROUND_DOWN((uint64_t)address, PAGE_SIZE);
+
+    address = (void*)ROUND_DOWN((uint64_t)address, PAGE_SIZE);
 
     for (uint64_t i = 0; i < SIZE_IN_PAGES(size); i++)
     {                    
         LOCK_GUARD(&space->lock);
 
-        void* virtualAddress = (void*)((uint64_t)alignedAddress + i * PAGE_SIZE);
-        if (page_table_physical_address(space->pageTable, virtualAddress) == NULL)
+        if (page_table_physical_address(space->pageTable, address) == NULL)
         {
             //Page table takes ownership of memory
-            page_table_map(space->pageTable, virtualAddress, pmm_allocate(), 
-                PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR);
+            page_table_map(space->pageTable, address, pmm_allocate(), flags);
         }
+
+        address = (void*)((uint64_t)address + PAGE_SIZE);
     }
 
-    return alignedAddress;
+    return address;
+}
+
+void* vmm_identity_map(void* address, uint64_t size, uint64_t flags)
+{
+    return vmm_map(VMM_LOWER_TO_HIGHER(address), address, size, flags);
+}
+
+void* vmm_map(void* virtualAddress, void* physicalAddress, uint64_t size, uint64_t flags)
+{
+    if (virtualAddress == NULL || physicalAddress == NULL)
+    {
+        return NULLPTR(EFAULT);
+    }
+
+    Space* space = &sched_process()->space;
+    
+    virtualAddress = (void*)ROUND_DOWN(virtualAddress, PAGE_SIZE);
+    physicalAddress = (void*)ROUND_DOWN(physicalAddress, PAGE_SIZE);
+
+    for (uint64_t i = 0; i < SIZE_IN_PAGES(size); i++)
+    {                    
+        LOCK_GUARD(&space->lock);
+
+        if (page_table_physical_address(space->pageTable, virtualAddress) == NULL)
+        {
+            page_table_map(space->pageTable, virtualAddress, physicalAddress, flags);
+        }
+
+        virtualAddress = (void*)((uint64_t)virtualAddress + PAGE_SIZE);
+        physicalAddress = (void*)((uint64_t)physicalAddress + PAGE_SIZE);
+    }
+
+    return virtualAddress;
+}
+
+void* vmm_unmap(void* virtualAddress, uint64_t size)
+{
+    debug_panic("vmm_unmap not implemented");
 }
 
 void* vmm_physical_to_virtual(const void* address)

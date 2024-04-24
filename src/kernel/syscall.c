@@ -70,16 +70,6 @@ uint64_t syscall_sleep(uint64_t nanoseconds)
     return 0;
 }
 
-void* syscall_allocate(void* address, uint64_t size)
-{
-    if (!verify_pointer(address, size))
-    {
-        return NULLPTR(EFAULT);
-    }
-
-    return vmm_allocate(address, size);
-}
-
 uint64_t syscall_error(void)
 {
     return sched_thread()->error;
@@ -234,7 +224,6 @@ void* syscallTable[] =
     syscall_thread_exit,
     syscall_spawn,
     syscall_sleep,
-    syscall_allocate,
     syscall_error,
     syscall_pid,
     syscall_tid,

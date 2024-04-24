@@ -8,12 +8,14 @@ extern "C" {
 #endif
 
 #include "../_AUX/config.h"
+#include "../_AUX/fd_t.h"
 
 #define SEEK_SET 0
 #define SEEK_CUR 1
 #define SEEK_END 2
 
-typedef uint64_t fd_t;
+#define MMAP_READ 0
+#define MMAP_RW 1
 
 _PUBLIC fd_t open(const char* path);
 
@@ -24,6 +26,8 @@ _PUBLIC uint64_t read(fd_t fd, void* buffer, uint64_t count);
 _PUBLIC uint64_t write(fd_t fd, const void* buffer, uint64_t count);
 
 _PUBLIC uint64_t seek(fd_t fd, int64_t offset, uint8_t origin);
+
+_PUBLIC void* mmap(fd_t fd, void* address, uint64_t length, uint16_t flags);
 
 #if defined(__cplusplus)
 }

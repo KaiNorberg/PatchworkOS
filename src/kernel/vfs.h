@@ -20,6 +20,7 @@
 #define VFS_END_OF_NAME(ch) ((ch) == VFS_NAME_SEPARATOR || (ch) == '\0')
 
 #define FILE_CALL_METHOD(file, method, ...) ((file)->methods.method != NULL ? (file)->methods.method(file __VA_OPT__(,) __VA_ARGS__) : ERROR(EACCES))
+#define FILE_CALL_METHOD_PTR(file, method, ...) ((file)->methods.method != NULL ? (file)->methods.method(file __VA_OPT__(,) __VA_ARGS__) : NULLPTR(EACCES))
 
 typedef struct Filesystem Filesystem;
 typedef struct Volume Volume;
@@ -45,6 +46,7 @@ typedef struct
     uint64_t (*read)(File*, void*, uint64_t);
     uint64_t (*write)(File*, const void*, uint64_t);
     uint64_t (*seek)(File*, int64_t, uint8_t);
+    void* (*mmap)(File*, void*, uint64_t, uint16_t);
 } FileMethods;
 
 typedef struct File
