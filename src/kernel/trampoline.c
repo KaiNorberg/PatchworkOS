@@ -18,7 +18,7 @@ void trampoline_setup(void)
     memcpy(VMM_LOWER_TO_HIGHER(TRAMPOLINE_PHYSICAL_START), trampoline_virtual_start, PAGE_SIZE);
 
     space_init(&space);
-    page_table_map(space.pageTable, TRAMPOLINE_PHYSICAL_START, TRAMPOLINE_PHYSICAL_START, PAGE_FLAG_WRITE);
+    page_table_map(space.pageTable, TRAMPOLINE_PHYSICAL_START, TRAMPOLINE_PHYSICAL_START, 1, PAGE_FLAG_WRITE);
     WRITE_64(VMM_LOWER_TO_HIGHER(TRAMPOLINE_PAGE_TABLE_ADDRESS), VMM_HIGHER_TO_LOWER(space.pageTable));
 
     WRITE_64(VMM_LOWER_TO_HIGHER(TRAMPOLINE_ENTRY_ADDRESS), smp_entry);
@@ -34,6 +34,6 @@ void trampoline_cleanup(void)
     memcpy(VMM_LOWER_TO_HIGHER(TRAMPOLINE_PHYSICAL_START), backupBuffer, PAGE_SIZE);
     kfree(backupBuffer);
 
-    page_table_unmap(space.pageTable, TRAMPOLINE_PHYSICAL_START);
+    page_table_unmap(space.pageTable, TRAMPOLINE_PHYSICAL_START, 1);
     space_cleanup(&space);
 }

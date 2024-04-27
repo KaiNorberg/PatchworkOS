@@ -78,12 +78,12 @@ void main(BootInfo* bootInfo)
 
     for (uint64_t i = 0; i < 1000; i++)
     {
-        page_table_map(table, (void*)(i * PAGE_SIZE), pmm_allocate(), PAGE_FLAG_WRITE | PAGE_FLAG_OWNED);
+        page_table_map(table, (void*)(i * PAGE_SIZE), pmm_allocate(), 1, PAGE_FLAG_WRITE | PAGE_FLAG_OWNED);
     }
 
     for (uint64_t i = 0; i < 1000; i++)
     {
-        page_table_unmap(table, (void*)(i * PAGE_SIZE));
+        page_table_unmap(table, (void*)(i * PAGE_SIZE), 1);
     }
 
     tty_print("OLD: ");

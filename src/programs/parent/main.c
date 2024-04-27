@@ -29,8 +29,6 @@ static void rectangle(uint64_t left, uint64_t top, uint64_t right, uint64_t bott
 
 int main(void)
 {
-    *((uint64_t*)main) = *((uint64_t*)main);
-
     fd_t fd = open("A:/framebuffer/0");
 
     if (mmap(fd, FB_ADDR, FB_SIZE, PROT_READ | PROT_WRITE) == NULL)
@@ -44,12 +42,12 @@ int main(void)
 
     close(fd);
 
-    rectangle(100, 100, 300, 200, 0xFF0000);  // Red rectangle
-    rectangle(400, 300, 600, 500, 0x00FF00);  // Green rectangle
-    rectangle(700, 100, 800, 400, 0x0000FF);  // Blue rectangle
-    rectangle(1000, 600, 1200, 800, 0xFFFF00); // Yellow rectangle
-    rectangle(50, 800, 250, 900, 0xFF00FF);   // Magenta rectangle
-    rectangle(1200, 50, 1500, 250, 0x00FFFF); // Cyan rectangle
+    rectangle(100, 100, 300, 200, 0xFF0000);
+    rectangle(400, 300, 600, 500, 0x00FF00);
+    rectangle(700, 100, 800, 400, 0x0000FF);
+    rectangle(1000, 600, 1200, 800, 0xFFFF00);
+    rectangle(50, 800, 250, 900, 0xFF00FF);
+    rectangle(1200, 50, 1500, 250, 0x00FFFF);
     rectangle(100, 500, 300, 700, 0x880000);
     rectangle(500, 1000, 700, 1050, 0x008800);
     rectangle(1000, 300, 1100, 500, 0x000088);
