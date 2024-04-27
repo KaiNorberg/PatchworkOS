@@ -14,6 +14,19 @@
 //TODO: Implement ioctl to get size
 #define FB_SIZE (1920 * 1080 * sizeof(uint32_t))
 
+static void rectangle(uint64_t left, uint64_t top, uint64_t right, uint64_t bottom, uint32_t color)
+{    
+    uint32_t* fb = (uint32_t*)FB_ADDR;
+
+    for (uint64_t y = top; y < bottom; y++) 
+    {
+        for (uint64_t x = left; x < right; x++) 
+        {
+            fb[y * 1920 + x] = color;
+        }
+    }
+}
+
 int main(void)
 {
     *((uint64_t*)main) = *((uint64_t*)main);
@@ -29,10 +42,20 @@ int main(void)
     //mprotect((void*)((uint64_t)FB_ADDR + FB_SIZE / 2), 0x1000, PROT_READ);
     //munmap((void*)((uint64_t)FB_ADDR + FB_SIZE / 2), 0x1000);
 
-    memset(FB_ADDR, -1, FB_SIZE);
-
     close(fd);
 
+    rectangle(100, 100, 300, 200, 0xFF0000);  // Red rectangle
+    rectangle(400, 300, 600, 500, 0x00FF00);  // Green rectangle
+    rectangle(700, 100, 800, 400, 0x0000FF);  // Blue rectangle
+    rectangle(1000, 600, 1200, 800, 0xFFFF00); // Yellow rectangle
+    rectangle(50, 800, 250, 900, 0xFF00FF);   // Magenta rectangle
+    rectangle(1200, 50, 1500, 250, 0x00FFFF); // Cyan rectangle
+    rectangle(100, 500, 300, 700, 0x880000);
+    rectangle(500, 1000, 700, 1050, 0x008800);
+    rectangle(1000, 300, 1100, 500, 0x000088);
+    rectangle(1400, 700, 1600, 900, 0x888800); 
+    rectangle(600, 600, 800, 800, 0x880088);
+    
     if (spawn("child.elf") == ERR)
     {
         SYSCALL(SYS_TEST, 1, strerror(errno));
