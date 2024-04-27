@@ -10,7 +10,11 @@
 
 #define EM_X86_64 0x3E
 
-#define PT_LOAD 0x00000001
+#define PT_LOAD 0x1
+
+#define PF_EXECUTE (1 << 0)
+#define PF_WRITE (1 << 1)
+#define PF_READ (1 << 2)
 
 typedef struct
 {
@@ -33,13 +37,12 @@ typedef struct
 typedef struct
 {
     uint32_t type;
-    uint32_t flags1;
+    uint32_t flags;
     uint64_t offset;
     uint64_t virtualAddress;
     uint64_t physicalAddress;
     uint64_t fileSize;
     uint64_t memorySize;
-    uint32_t flags2;
     uint64_t align;
 } ElfProgramHeader;
 

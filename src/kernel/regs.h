@@ -72,3 +72,15 @@ static inline void cr2_write(uint64_t value)
 {
     asm volatile("mov %0, %%cr2" : : "r"(value));
 }
+
+static inline uint64_t cr0_read() 
+{
+    uint64_t cr0;
+    asm volatile("mov %%cr0, %0" : "=r"(cr0));
+    return cr0;
+}
+
+static inline void cr0_write(uint64_t value) 
+{
+    asm volatile("mov %0, %%cr0" : : "r"(value));
+}

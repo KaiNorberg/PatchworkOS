@@ -18,6 +18,8 @@ static char* errorStrings[] =
     "Bad executable",
     "Out of memory",
     "Bed request",
+    "Bad flag/flags",
+    "Invalid argument",
     "Busy"
 };
 

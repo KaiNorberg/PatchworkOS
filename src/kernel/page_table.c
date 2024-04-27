@@ -59,7 +59,10 @@ static void page_table_free_level(PageTable* table, int64_t level)
             continue;
         }
 
-        page_table_free_level(VMM_LOWER_TO_HIGHER(PAGE_ENTRY_GET_ADDRESS(entry)), level - 1);
+        if (level != 1 || PAGE_ENTRY_GET_FLAG(entry, PAGE_FLAG_OWNED))
+        {
+            page_table_free_level(VMM_LOWER_TO_HIGHER(PAGE_ENTRY_GET_ADDRESS(entry)), level - 1);
+        }
     }
     
     pmm_free(VMM_HIGHER_TO_LOWER(table));
@@ -89,7 +92,7 @@ void page_table_load(PageTable* table)
     }
 }
 
-void page_table_map_pages(PageTable* table, void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint16_t flags)
+void page_table_map_pages(PageTable* table, void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint64_t flags)
 {
     for (uint64_t page = 0; page < pageAmount; page++)
     {
@@ -97,25 +100,24 @@ void page_table_map_pages(PageTable* table, void* virtualAddress, void* physical
     }
 }
 
-void page_table_map(PageTable* table, void* virtualAddress, void* physicalAddress, uint16_t flags)
-{        
-    if ((uint64_t)virtualAddress % PAGE_SIZE != 0)
+void page_table_unmap_pages(PageTable* table, void* virtualAddress, uint64_t pageAmount)
+{
+    for (uint64_t page = 0; page < pageAmount; page++)
     {
-        debug_panic("Failed to map page, invalid virtual address");
-    }    
-    else if ((uint64_t)physicalAddress % PAGE_SIZE != 0)
-    {
-        debug_panic("Failed to map page, invalid physical address");
+        page_table_unmap(table, (void*)((uint64_t)virtualAddress + page * PAGE_SIZE));
     }
+}
 
+void page_table_map(PageTable* table, void* virtualAddress, void* physicalAddress, uint64_t flags)
+{        
     PageTable* level3 = page_table_get_or_allocate(table, PAGE_TABLE_GET_INDEX(virtualAddress, 4), 
-        (flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR) & ~PAGE_FLAG_GLOBAL);
+        (flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER) & ~PAGE_FLAG_GLOBAL);
 
     PageTable* level2 = page_table_get_or_allocate(level3, PAGE_TABLE_GET_INDEX(virtualAddress, 3), 
-        flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR);
+        flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER);
 
     PageTable* level1 = page_table_get_or_allocate(level2, PAGE_TABLE_GET_INDEX(virtualAddress, 2), 
-        flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER_SUPERVISOR);
+        flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER);
 
     PageEntry* entry = &level1->entries[PAGE_TABLE_GET_INDEX(virtualAddress, 1)];
 
@@ -125,14 +127,6 @@ void page_table_map(PageTable* table, void* virtualAddress, void* physicalAddres
     }
 
     *entry = page_entry_create(physicalAddress, flags);
-}
-
-void page_table_unmap_pages(PageTable* table, void* virtualAddress, uint64_t pageAmount)
-{
-    for (uint64_t page = 0; page < pageAmount; page++)
-    {
-        page_table_unmap(table, (void*)((uint64_t)virtualAddress + page * PAGE_SIZE));
-    }
 }
 
 void page_table_unmap(PageTable* table, void* virtualAddress)
@@ -161,7 +155,12 @@ void page_table_unmap(PageTable* table, void* virtualAddress)
         debug_panic("Failed to unmap page");
     }
 
+    if (PAGE_ENTRY_GET_FLAG(*entry, PAGE_FLAG_OWNED))
+    {
+        pmm_free(PAGE_ENTRY_GET_ADDRESS(*entry));
+    }
     *entry = 0;
+    PAGE_INVALIDATE(virtualAddress);
 }
 
 void* page_table_physical_address(PageTable* table, const void* virtualAddress)
@@ -196,13 +195,8 @@ void* page_table_physical_address(PageTable* table, const void* virtualAddress)
     return (void*)(((uint64_t)PAGE_ENTRY_GET_ADDRESS(*entry)) + offset);
 }
 
-void page_table_change_flags(PageTable* table, void* virtualAddress, uint16_t flags)
+void page_table_change_flags(PageTable* table, void* virtualAddress, uint64_t flags)
 {
-    if ((uint64_t)virtualAddress % PAGE_SIZE != 0)
-    {
-        debug_panic("Failed to change page flags");
-    }
-
     PageTable* level3 = page_table_get(table, PAGE_TABLE_GET_INDEX(virtualAddress, 4));
     if (level3 == NULL)
     {
@@ -228,4 +222,5 @@ void page_table_change_flags(PageTable* table, void* virtualAddress, uint16_t fl
     }
 
     *entry = page_entry_create(PAGE_ENTRY_GET_ADDRESS(*entry), flags);
+    PAGE_INVALIDATE(virtualAddress);
 }
