@@ -29,7 +29,17 @@ static bool verify_pointer(const void* pointer, uint64_t size)
         return false;
     }
 
-    if (vmm_physical_to_virtual(pointer) == NULL)
+    return true;
+}
+
+static bool verify_buffer(const void* pointer, uint64_t size)
+{
+    if (!verify_pointer(pointer, size))
+    {
+        return false;
+    }
+
+    if (vmm_virt_to_phys(pointer) == NULL)
     {
         return false;
     }
@@ -39,7 +49,7 @@ static bool verify_pointer(const void* pointer, uint64_t size)
 
 static bool verify_string(const char* string)
 {
-    return verify_pointer(string, 0) && verify_pointer(string, strlen(string));
+    return verify_buffer(string, 0) && verify_buffer(string, strlen(string));
 }
 
 ///////////////////////////////////////////////////////
@@ -108,7 +118,7 @@ uint64_t syscall_close(uint64_t fd)
 
 uint64_t syscall_read(uint64_t fd, void* buffer, uint64_t count)
 {
-    if (!verify_pointer(buffer, count))
+    if (!verify_buffer(buffer, count))
     {
         return ERROR(EFAULT);
     }
@@ -124,7 +134,7 @@ uint64_t syscall_read(uint64_t fd, void* buffer, uint64_t count)
 
 uint64_t syscall_write(uint64_t fd, const void* buffer, uint64_t count)
 {
-    if (!verify_pointer(buffer, count))
+    if (!verify_buffer(buffer, count))
     {
         return ERROR(EFAULT);
     }
@@ -147,6 +157,37 @@ uint64_t syscall_seek(uint64_t fd, int64_t offset, uint8_t origin)
     }
 
     return FILE_CALL_METHOD(file, seek, offset, origin);
+}
+
+void* syscall_mmap(uint64_t fd, void* address, uint64_t length, uint16_t flags)
+{
+    File* file = vfs_context_get(fd);
+    if (file == NULL)
+    {
+        return NULL;
+    }
+
+    return FILE_CALL_METHOD_PTR(file, mmap, address, length, flags);
+}
+
+uint64_t syscall_munmap(void* address, uint64_t length)
+{
+    if (!verify_pointer(address, length))
+    {
+        return ERROR(EFAULT);
+    }
+
+    return vmm_unmap(address, length);
+}
+
+uint64_t syscall_mprotect(void* address, uint64_t length, uint16_t flags)
+{
+    if (!verify_pointer(address, length))
+    {
+        return ERROR(EFAULT);
+    }
+    
+    return vmm_protect(address, length, flags);
 }
 
 //All of this is temporary for testing.
@@ -232,5 +273,8 @@ void* syscallTable[] =
     syscall_read,
     syscall_write,
     syscall_seek,
+    syscall_mmap,
+    syscall_munmap,
+    syscall_mprotect,
     syscall_test
 };

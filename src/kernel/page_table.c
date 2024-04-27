@@ -59,7 +59,10 @@ static void page_table_free_level(PageTable* table, int64_t level)
             continue;
         }
 
-        page_table_free_level(VMM_LOWER_TO_HIGHER(PAGE_ENTRY_GET_ADDRESS(entry)), level - 1);
+        if (level != 1 || PAGE_ENTRY_GET_FLAG(entry, PAGE_FLAG_OWNED))
+        {
+            page_table_free_level(VMM_LOWER_TO_HIGHER(PAGE_ENTRY_GET_ADDRESS(entry)), level - 1);
+        }
     }
     
     pmm_free(VMM_HIGHER_TO_LOWER(table));
@@ -107,15 +110,6 @@ void page_table_unmap_pages(PageTable* table, void* virtualAddress, uint64_t pag
 
 void page_table_map(PageTable* table, void* virtualAddress, void* physicalAddress, uint64_t flags)
 {        
-    if ((uint64_t)virtualAddress % PAGE_SIZE != 0)
-    {
-        debug_panic("Failed to map page, invalid virtual address");
-    }    
-    else if ((uint64_t)physicalAddress % PAGE_SIZE != 0)
-    {
-        debug_panic("Failed to map page, invalid physical address");
-    }
-
     PageTable* level3 = page_table_get_or_allocate(table, PAGE_TABLE_GET_INDEX(virtualAddress, 4), 
         (flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER) & ~PAGE_FLAG_GLOBAL);
 
@@ -161,7 +155,12 @@ void page_table_unmap(PageTable* table, void* virtualAddress)
         debug_panic("Failed to unmap page");
     }
 
+    if (PAGE_ENTRY_GET_FLAG(*entry, PAGE_FLAG_OWNED))
+    {
+        pmm_free(PAGE_ENTRY_GET_ADDRESS(*entry));
+    }
     *entry = 0;
+    PAGE_INVALIDATE(virtualAddress);
 }
 
 void* page_table_physical_address(PageTable* table, const void* virtualAddress)
@@ -198,11 +197,6 @@ void* page_table_physical_address(PageTable* table, const void* virtualAddress)
 
 void page_table_change_flags(PageTable* table, void* virtualAddress, uint64_t flags)
 {
-    if ((uint64_t)virtualAddress % PAGE_SIZE != 0)
-    {
-        debug_panic("Failed to change page flags");
-    }
-
     PageTable* level3 = page_table_get(table, PAGE_TABLE_GET_INDEX(virtualAddress, 4));
     if (level3 == NULL)
     {
@@ -228,4 +222,5 @@ void page_table_change_flags(PageTable* table, void* virtualAddress, uint64_t fl
     }
 
     *entry = page_entry_create(PAGE_ENTRY_GET_ADDRESS(*entry), flags);
+    PAGE_INVALIDATE(virtualAddress);
 }

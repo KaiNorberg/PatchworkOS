@@ -1,6 +1,7 @@
 #include "renderer.h"
 
 #include <string.h>
+#include <errno.h>
 
 #include "sysfs.h"
 #include "sched.h"
@@ -8,22 +9,15 @@
 #include "utils.h"
 #include "tty.h"
 
-uint64_t framebuffer_write(File* file, const void* buffer, uint64_t count)
-{
+void* framebuffer_mmap(File* file, void* address, uint64_t length, uint8_t prot)
+{    
     Framebuffer* framebuffer = file->internal; 
+    if (length > framebuffer->size || length == 0)
+    {
+        return NULLPTR(EINVAL);
+    }
 
-    uint64_t pos = file->position;
-    uint64_t writeCount = (pos <= framebuffer->size) ? MIN(count, framebuffer->size - pos) : 0;
-    
-    file->position += writeCount;
-    memcpy(framebuffer->buffer + pos, buffer, writeCount);
-
-    return writeCount;
-}
-
-void* framebuffer_mmap(File* file, void* address, uint64_t length, uint16_t flags)
-{
-    return NULLPTR(EIMPL);
+    return vmm_map(address, framebuffer->buffer, length, prot);
 }
 
 void renderer_init(GopBuffer* gopBuffer)
@@ -33,9 +27,8 @@ void renderer_init(GopBuffer* gopBuffer)
     //GOP specific
     Framebuffer* framebuffer = kmalloc(sizeof(Framebuffer));
     resource_init(&framebuffer->base, "0");
-    framebuffer->base.methods.write = framebuffer_write;
     framebuffer->base.methods.mmap = framebuffer_mmap;
-    framebuffer->buffer = VMM_LOWER_TO_HIGHER(gopBuffer->base);
+    framebuffer->buffer = gopBuffer->base;
     framebuffer->size = gopBuffer->size;
     framebuffer->width = gopBuffer->width;
     framebuffer->height = gopBuffer->height;

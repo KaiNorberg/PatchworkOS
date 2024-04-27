@@ -49,8 +49,6 @@ void kernel_init(BootInfo* bootInfo)
     vmm_init(&bootInfo->memoryMap);
     heap_init();
 
-    while (1);
-
     tty_init(&bootInfo->gopBuffer, &bootInfo->font);
     tty_print("Hello from the kernel!\n");
 

@@ -26,12 +26,12 @@ static Lock lock;
 
 void tty_init(GopBuffer* gopBuffer, PsfFont* screenFont)
 {
-    frontbuffer.base = vmm_identity_map(gopBuffer->base, gopBuffer->size, PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
+    frontbuffer.base = vmm_kernel_map(NULL, gopBuffer->base, gopBuffer->size, PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
     frontbuffer.size = gopBuffer->size;
     frontbuffer.width = gopBuffer->width;
     frontbuffer.height = gopBuffer->height;
     frontbuffer.pixelsPerScanline = gopBuffer->pixelsPerScanline;
-    
+
     font.header = screenFont->header;   
     font.glyphs = kmalloc(screenFont->glyphsSize);
     memcpy(font.glyphs, screenFont->glyphs, screenFont->glyphsSize);

@@ -29,7 +29,9 @@ _PUBLIC int* _ErrnoFunc();
 #define EEXEC 12 //Bad executable
 #define ENOMEM 13 //Out of memory
 #define EREQ 14 //Bad request
-#define EBUSY 15 //Busy
+#define EFLAGS 15 //Bad flag/flags
+#define EINVAL 16 //Invalid argument
+#define EBUSY 17 //Busy
 
 //NOTE: Values retrievd from linux
 /*

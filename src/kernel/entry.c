@@ -72,6 +72,27 @@ void main(BootInfo* bootInfo)
     tty_set_row(smp_cpu_amount() + 2);
     tty_release();
 
+    /*uint64_t old = pmm_free_amount();
+
+    PageTable* table = page_table_new();
+
+    for (uint64_t i = 0; i < 1000; i++)
+    {
+        page_table_map(table, (void*)(i * PAGE_SIZE), pmm_allocate(), PAGE_FLAG_WRITE | PAGE_FLAG_OWNED);
+    }
+
+    for (uint64_t i = 0; i < 1000; i++)
+    {
+        page_table_unmap(table, (void*)(i * PAGE_SIZE));
+    }
+
+    tty_print("OLD: ");
+    tty_printi(old);
+    tty_print("\nNEW: ");
+    tty_printi(pmm_free_amount());
+    tty_print("\nDELTA: ");
+    tty_printi(pmm_free_amount() - old);*/
+
     for (uint64_t i = 0; i < 2; i++)
     {
         sched_spawn("B:/programs/parent.elf");

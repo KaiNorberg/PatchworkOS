@@ -2,6 +2,8 @@
 
 #include <common/boot_info.h>
 
+#include <sys/mem.h>
+
 #include "defs.h"
 #include "lock.h"
 #include "page_table.h"
@@ -28,10 +30,14 @@ void space_load(Space* space);
 
 void vmm_init(EfiMemoryMap* memoryMap);
 
-void* vmm_identity_map(void* virtualAddress, void* physicalAddress, uint64_t size, uint64_t flags);
+void* vmm_kernel_map(void* virtualAddress, void* physicalAddress, uint64_t length, uint64_t flags);
 
-void* vmm_map(void* virtualAddress, void* physicalAddress, uint64_t size, uint64_t flags);
+void* vmm_allocate(void* virtualAddress, uint64_t length, uint8_t prot);
 
-void* vmm_unmap(void* virtualAddress, uint64_t size);
+void* vmm_map(void* virtualAddress, void* physicalAddress, uint64_t length, uint8_t prot);
 
-void* vmm_physical_to_virtual(const void* address);
+uint64_t vmm_unmap(void* virtualAddress, uint64_t length);
+
+uint64_t vmm_protect(void* virtualAddress, uint64_t length, uint8_t prot);
+
+void* vmm_virt_to_phys(const void* virtualAddress);

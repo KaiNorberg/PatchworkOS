@@ -15,15 +15,14 @@
 static void* loader_allocate_stack()
 {    
     Thread* thread = sched_thread();
+
     void* address = (void*)(VMM_LOWER_HALF_MAX - (CONFIG_USER_STACK * (thread->id + 1) + PAGE_SIZE * (thread->id)));
-    if (vmm_allocate(address, CONFIG_USER_STACK, PAGE_FLAG_WRITE | PAGE_FLAG_USER) == NULL)
+    if (vmm_allocate(address, CONFIG_USER_STACK, PROT_READ | PROT_WRITE) == NULL)
     {
-        debug_panic("Failed to allocate user stack!");
+        debug_panic("Failed to allocate user stack");  
     }
-    else
-    {
-        return address + CONFIG_USER_STACK;
-    }
+
+    return address + CONFIG_USER_STACK;
 }
 
 static void* loader_load_program()
@@ -69,8 +68,8 @@ static void* loader_load_program()
         switch (programHeader.type)
         {
 	    case PT_LOAD:
-        {
-            if (vmm_allocate((void*)programHeader.virtualAddress, programHeader.memorySize + PAGE_SIZE, PAGE_FLAG_WRITE | PAGE_FLAG_USER) == NULL)
+        {    
+            if (vmm_allocate((void*)programHeader.virtualAddress, programHeader.memorySize, PROT_READ | PROT_WRITE) == NULL)
             {
                 sched_process_exit(EEXEC);
             }
@@ -84,6 +83,16 @@ static void* loader_load_program()
             {
                 sched_process_exit(EEXEC);
             }
+
+            vmm_protect((void*)programHeader.virtualAddress, programHeader.memorySize, PROT_READ);
+
+            /*if (programHeader.flags & PF_WRITE)
+            {
+                if (vmm_protect((void*)programHeader.virtualAddress, programHeader.memorySize, PROT_READ) == ERR)
+                {
+                    sched_process_exit(EEXEC);
+                }
+            }*/
 		}
 	    break;
 		}
