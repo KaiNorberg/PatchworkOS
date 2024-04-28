@@ -18,10 +18,11 @@
 #define SYS_READ 9
 #define SYS_WRITE 10
 #define SYS_SEEK 11
-#define SYS_MMAP 12
-#define SYS_MUNMAP 13
-#define SYS_MPROTECT 14
-#define SYS_TEST 15
+#define SYS_IOCTL 12
+#define SYS_MMAP 13
+#define SYS_MUNMAP 14
+#define SYS_MPROTECT 15
+#define SYS_TEST 16
 
 extern uint64_t _Syscall0();
 extern uint64_t _Syscall1();

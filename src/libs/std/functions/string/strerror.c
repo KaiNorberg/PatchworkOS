@@ -20,6 +20,7 @@ static char* errorStrings[] =
     "Bed request",
     "Bad flag/flags",
     "Invalid argument",
+    "Bad buffer",
     "Busy"
 };
 
@@ -29,8 +30,6 @@ _PUBLIC char* strerror(int error)
     {
         return "Unknown error";
     }
-    else
-    {
-        return errorStrings[error];
-    }
+
+    return errorStrings[error];
 }

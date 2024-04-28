@@ -84,15 +84,13 @@ static void* loader_load_program()
                 sched_process_exit(EEXEC);
             }
 
-            vmm_protect((void*)programHeader.virtualAddress, programHeader.memorySize, PROT_READ);
-
-            /*if (programHeader.flags & PF_WRITE)
+            if (!(programHeader.flags & PF_WRITE))
             {
                 if (vmm_protect((void*)programHeader.virtualAddress, programHeader.memorySize, PROT_READ) == ERR)
                 {
                     sched_process_exit(EEXEC);
                 }
-            }*/
+            }
 		}
 	    break;
 		}

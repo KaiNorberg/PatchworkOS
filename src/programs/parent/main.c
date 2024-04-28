@@ -11,8 +11,7 @@
 
 #define FB_ADDR ((void*)0xF0000000)
 
-//TODO: Implement ioctl to get size
-#define FB_SIZE (1920 * 1080 * sizeof(uint32_t))
+static ioctl_fb_info_t fbInfo;
 
 static void rectangle(uint64_t left, uint64_t top, uint64_t right, uint64_t bottom, uint32_t color)
 {    
@@ -22,7 +21,7 @@ static void rectangle(uint64_t left, uint64_t top, uint64_t right, uint64_t bott
     {
         for (uint64_t x = left; x < right; x++) 
         {
-            fb[y * 1920 + x] = color;
+            fb[y * fbInfo.pixelsPerScanline + x] = color;
         }
     }
 }
@@ -31,7 +30,13 @@ int main(void)
 {
     fd_t fd = open("A:/framebuffer/0");
 
-    if (mmap(fd, FB_ADDR, FB_SIZE, PROT_READ | PROT_WRITE) == NULL)
+    if (ioctl(fd, IOCTL_FB_INFO, &fbInfo, sizeof(ioctl_fb_info_t)) == ERR)
+    {
+        SYSCALL(SYS_TEST, 1, strerror(errno));
+        return EXIT_FAILURE;
+    }
+
+    if (mmap(fd, FB_ADDR, fbInfo.size, PROT_READ | PROT_WRITE) == NULL)
     {
         SYSCALL(SYS_TEST, 1, strerror(errno));
         return EXIT_FAILURE;

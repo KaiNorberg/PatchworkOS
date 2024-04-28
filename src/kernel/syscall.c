@@ -17,14 +17,14 @@
 //NOTE: Syscalls should always return a 64 bit value to prevent garbage from remaining in rax.
 
 //TODO: Improve verify funcs, improve multithreading string safety.
-static bool verify_pointer(const void* pointer, uint64_t size)
+static bool verify_pointer(const void* pointer, uint64_t length)
 {
     if (pointer == NULL)
     {
         return false;
     }
 
-    if ((uint64_t)pointer + size > VMM_LOWER_HALF_MAX)
+    if ((uint64_t)pointer + length > VMM_LOWER_HALF_MAX)
     {
         return false;
     }
@@ -32,17 +32,17 @@ static bool verify_pointer(const void* pointer, uint64_t size)
     return true;
 }
 
-static bool verify_buffer(const void* pointer, uint64_t size)
+static bool verify_buffer(const void* pointer, uint64_t length)
 {
-    if (!verify_pointer(pointer, size))
+    if (!verify_pointer(pointer, length))
     {
         return false;
     }
 
-    if (vmm_virt_to_phys(pointer) == NULL)
+    /*if (!vmm_mapped(pointer, length))
     {
         return false;
-    }
+    }*/
 
     return true;
 }
@@ -159,6 +159,22 @@ uint64_t syscall_seek(uint64_t fd, int64_t offset, uint8_t origin)
     return FILE_CALL_METHOD(file, seek, offset, origin);
 }
 
+uint64_t syscall_ioctl(uint64_t fd, uint64_t request, void* buffer, uint64_t length)
+{
+    if (!verify_buffer(buffer, length))
+    {
+        return ERROR(EFAULT);
+    }
+
+    File* file = vfs_context_get(fd);
+    if (file == NULL)
+    {
+        return ERR;
+    }
+
+    return FILE_CALL_METHOD(file, ioctl, request, buffer, length);
+}
+
 void* syscall_mmap(uint64_t fd, void* address, uint64_t length, uint16_t flags)
 {
     File* file = vfs_context_get(fd);
@@ -273,6 +289,7 @@ void* syscallTable[] =
     syscall_read,
     syscall_write,
     syscall_seek,
+    syscall_ioctl,
     syscall_mmap,
     syscall_munmap,
     syscall_mprotect,

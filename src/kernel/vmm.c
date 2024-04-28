@@ -10,6 +10,13 @@
 
 static PageTable* kernelPageTable;
 
+static void vmm_align_region(void** virtualAddress, uint64_t* length)
+{
+    void* aligned = (void*)ROUND_DOWN(*virtualAddress, PAGE_SIZE);
+    *length += ((uint64_t)*virtualAddress - (uint64_t)aligned);
+    *virtualAddress = aligned;
+}
+
 static uint64_t vmm_prot_to_flags(uint8_t prot)
 {
     if (!(prot & PROT_READ))
@@ -106,8 +113,6 @@ void* vmm_allocate(void* virtualAddress, uint64_t length, uint8_t prot)
         return NULLPTR(EFAULT);
     }
 
-    Space* space = &sched_process()->space;
-
     uint64_t flags = vmm_prot_to_flags(prot);
     if (flags == ERR)
     { 
@@ -115,9 +120,11 @@ void* vmm_allocate(void* virtualAddress, uint64_t length, uint8_t prot)
     }
     flags |= PAGE_FLAG_OWNED;
 
-    virtualAddress = (void*)ROUND_DOWN(virtualAddress, PAGE_SIZE);
-    LOCK_GUARD(&space->lock);
+    vmm_align_region(&virtualAddress, &length);
 
+    Space* space = &sched_process()->space;
+    LOCK_GUARD(&space->lock);
+    
     if (page_table_mapped(space->pageTable, virtualAddress, SIZE_IN_PAGES(length)))
     {
         return NULLPTR(EEXIST);
@@ -139,16 +146,16 @@ void* vmm_map(void* virtualAddress, void* physicalAddress, uint64_t length, uint
         return NULLPTR(EFAULT);
     }
 
-    Space* space = &sched_process()->space;
-
     uint64_t flags = vmm_prot_to_flags(prot);
     if (flags == ERR)
     { 
         return NULLPTR(EACCES);
     }
 
-    virtualAddress = (void*)ROUND_DOWN(virtualAddress, PAGE_SIZE);
     physicalAddress = (void*)ROUND_DOWN(physicalAddress, PAGE_SIZE);
+    vmm_align_region(&virtualAddress, &length);
+
+    Space* space = &sched_process()->space;
     LOCK_GUARD(&space->lock);
 
     if (page_table_mapped(space->pageTable, virtualAddress, SIZE_IN_PAGES(length)))
@@ -162,10 +169,10 @@ void* vmm_map(void* virtualAddress, void* physicalAddress, uint64_t length, uint
 }
 
 uint64_t vmm_unmap(void* virtualAddress, uint64_t length)
-{    
-    Space* space = &sched_process()->space;
+{
+    vmm_align_region(&virtualAddress, &length);
 
-    virtualAddress = (void*)ROUND_DOWN(virtualAddress, PAGE_SIZE);
+    Space* space = &sched_process()->space;
     LOCK_GUARD(&space->lock);
 
     if (!page_table_mapped(space->pageTable, virtualAddress, SIZE_IN_PAGES(length)))
@@ -180,16 +187,15 @@ uint64_t vmm_unmap(void* virtualAddress, uint64_t length)
 
 uint64_t vmm_protect(void* virtualAddress, uint64_t length, uint8_t prot)
 {
-    Space* space = &sched_process()->space;
-
     uint64_t flags = vmm_prot_to_flags(prot);
     if (flags == ERR)
     { 
         return ERROR(EACCES);
     }
-    flags |= PAGE_FLAG_USER;
 
-    virtualAddress = (void*)ROUND_DOWN(virtualAddress, PAGE_SIZE);
+    vmm_align_region(&virtualAddress, &length);
+
+    Space* space = &sched_process()->space;
     LOCK_GUARD(&space->lock);
 
     if (!page_table_mapped(space->pageTable, virtualAddress, SIZE_IN_PAGES(length)))
@@ -202,17 +208,12 @@ uint64_t vmm_protect(void* virtualAddress, uint64_t length, uint8_t prot)
     return 0;
 }
 
-void* vmm_virt_to_phys(const void* virtualAddress)
+bool vmm_mapped(const void* virtualAddress, uint64_t length)
 {
+    vmm_align_region((void**)&virtualAddress, &length);
+    
     Space* space = &sched_process()->space;
     LOCK_GUARD(&space->lock);
 
-    virtualAddress = (void*)ROUND_DOWN(virtualAddress, PAGE_SIZE);
-
-    if (!page_table_mapped(space->pageTable, virtualAddress, 1))
-    {
-        return NULL;
-    }
-
-    return page_table_physical_address(space->pageTable, virtualAddress);
+    return page_table_mapped(space->pageTable, virtualAddress, SIZE_IN_PAGES(length));
 }

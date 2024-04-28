@@ -53,6 +53,7 @@ typedef struct
     uint64_t (*read)(File*, void*, uint64_t);
     uint64_t (*write)(File*, const void*, uint64_t);
     uint64_t (*seek)(File*, int64_t, uint8_t);
+    uint64_t (*ioctl)(File*, uint64_t, void*, uint64_t);
     void* (*mmap)(File*, void*, uint64_t, uint8_t);
 } FileMethods;
 

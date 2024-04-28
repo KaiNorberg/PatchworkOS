@@ -40,4 +40,4 @@ uint64_t vmm_unmap(void* virtualAddress, uint64_t length);
 
 uint64_t vmm_protect(void* virtualAddress, uint64_t length, uint8_t prot);
 
-void* vmm_virt_to_phys(const void* virtualAddress);
+bool vmm_mapped(const void* virtualAddress, uint64_t length);

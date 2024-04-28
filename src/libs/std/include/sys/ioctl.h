@@ -10,16 +10,22 @@ extern "C" {
 #include "../_AUX/config.h"
 #include "../_AUX/fd_t.h"
 
-//Use different struct naming convention for stdlib?
 typedef struct ioctl_fb_info
 {
+    uint64_t size;
     uint64_t width;
     uint64_t height;
+    uint64_t pixelsPerScanline;
+    uint8_t bytesPerPixel;
+    uint8_t blueOffset;
+    uint8_t greenOffset;
+    uint8_t redOffset;
+    uint8_t alphaOffset;
 } ioctl_fb_info_t;
 
-#define IOCTL_FB_GET_INFO 0
+#define IOCTL_FB_INFO 0
 
-_PUBLIC uint64_t ioctl(fd_t fd, uint64_t request, void* buffer);
+_PUBLIC uint64_t ioctl(fd_t fd, uint64_t request, void* buffer, uint64_t length);
 
 #if defined(__cplusplus)
 }

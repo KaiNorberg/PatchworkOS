@@ -31,7 +31,8 @@ _PUBLIC int* _ErrnoFunc();
 #define EREQ 14 //Bad request
 #define EFLAGS 15 //Bad flag/flags
 #define EINVAL 16 //Invalid argument
-#define EBUSY 17 //Busy
+#define EBUFFER 17 //Bad buffer
+#define EBUSY 18 //Busy
 
 //NOTE: Values retrievd from linux
 /*
