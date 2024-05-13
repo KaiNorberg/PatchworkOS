@@ -34,8 +34,8 @@ static void time_rtc_init(void)
     io_outb(CMOS_DATA, (temp & 0xF0) | 15);
 
     //TODO: Implement io apic
-    pic_clear_mask(IRQ_CASCADE);
-    pic_clear_mask(IRQ_CMOS);
+    //pic_clear_mask(IRQ_CASCADE);
+    //pic_clear_mask(IRQ_CMOS);
 }
 
 void time_init(void)
