@@ -1,6 +1,6 @@
 #include "ps2.h"
 
-#include <sys/keyboard.h>
+#include <sys/kbd.h>
 
 #include "tty.h"
 #include "io.h"
@@ -11,7 +11,7 @@
 #include "utils.h"
 #include "ring.h"
 
-static uint8_t keyBuffer[PS2_KEY_BUFFER_LENGTH];
+static kbd_event_t eventBuffer[PS2_KEY_BUFFER_LENGTH];
 static uint64_t writeIndex = 0;
 
 static uint8_t scanCodeTable[] =
@@ -180,26 +180,38 @@ static void ps2_kbd_irq(uint8_t irq)
     bool released = scanCode & SCANCODE_RELEASED;
     uint64_t index = scanCode & ~SCANCODE_RELEASED;
 
-    uint8_t key = scanCodeTable[index];
-    if (key >= sizeof(scanCodeTable)/sizeof(scanCodeTable[0]))
+    if (index >= sizeof(scanCodeTable)/sizeof(scanCodeTable[0]))
     {
         return;
     }
+    uint8_t key = scanCodeTable[index];
 
-    keyBuffer[writeIndex] = key;
+    uint64_t time = time_nanoseconds();
+    kbd_event_t event =
+    {
+        .time = {.tv_sec = time / NANOSECONDS_PER_SECOND, .tv_nsec = time % NANOSECONDS_PER_SECOND},
+        .type = released ? KBD_EVENT_TYPE_RELEASE : KBD_EVENT_TYPE_PRESS,
+        .code = key
+    };
+
+    eventBuffer[writeIndex] = event;
     writeIndex = (writeIndex + 1) % PS2_KEY_BUFFER_LENGTH;
 }
 
 static uint64_t ps2_kbd_read(File* file, void* buffer, uint64_t count)
 {
-    for (uint64_t i = 0; i < count; i++)
+    //TODO: Add blocking
+
+    count = ROUND_DOWN(count, sizeof(kbd_event_t));
+
+    for (uint64_t i = 0; i < count / sizeof(kbd_event_t); i++)
     {
         if (file->position == writeIndex)
         {
             return i;
         }
 
-        ((uint8_t*)buffer)[i] = keyBuffer[file->position];
+        ((kbd_event_t*)buffer)[i] = eventBuffer[file->position];
         file->position = (file->position + 1) % PS2_KEY_BUFFER_LENGTH;
     }
 

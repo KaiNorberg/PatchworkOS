@@ -78,7 +78,8 @@ static void* loader_load_program()
             {
                 sched_process_exit(EEXEC);
             }
-
+            
+            memset((void*)programHeader.virtualAddress, 0, programHeader.memorySize);
             if (FILE_CALL_METHOD(file, read, (void*)programHeader.virtualAddress, programHeader.fileSize) != programHeader.fileSize)
             {
                 sched_process_exit(EEXEC);

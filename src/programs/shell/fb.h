@@ -20,9 +20,11 @@ typedef struct __attribute__((packed))
 
 void fb_init();
 
+void fb_clear(uint32_t color);
+
 void fb_scroll(uint64_t offset);
 
-void fb_char(char chr, uint64_t x, uint64_t y, uint32_t foreground, uint32_t background);
+void fb_char(char chr, uint64_t x, uint64_t y, uint64_t scale, uint32_t foreground, uint32_t background);
 
 uint64_t fb_width();
 

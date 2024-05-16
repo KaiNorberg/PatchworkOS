@@ -19,10 +19,11 @@
 #define SYS_WRITE 10
 #define SYS_SEEK 11
 #define SYS_IOCTL 12
-#define SYS_MMAP 13
-#define SYS_MUNMAP 14
-#define SYS_MPROTECT 15
-#define SYS_TEST 16
+#define SYS_REALPATH 13
+#define SYS_CHDIR 14
+#define SYS_MMAP 15
+#define SYS_MUNMAP 16
+#define SYS_MPROTECT 17
 
 extern uint64_t _Syscall0();
 extern uint64_t _Syscall1();

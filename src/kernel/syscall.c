@@ -175,6 +175,26 @@ uint64_t syscall_ioctl(uint64_t fd, uint64_t request, void* buffer, uint64_t len
     return FILE_CALL_METHOD(file, ioctl, request, buffer, length);
 }
 
+uint64_t syscall_realpath(char* out, const char* path)
+{
+    if (!verify_pointer(out, 0) || !verify_string(path))
+    {
+        return ERROR(EFAULT);
+    }
+
+    return vfs_realpath(out, path);
+}
+
+uint64_t syscall_chdir(const char* path)
+{
+    if (!verify_string(path))
+    {
+        return ERROR(EFAULT);
+    }
+
+    return vfs_chdir(path);
+}
+
 void* syscall_mmap(uint64_t fd, void* address, uint64_t length, uint16_t flags)
 {
     File* file = vfs_context_get(fd);
@@ -206,63 +226,6 @@ uint64_t syscall_mprotect(void* address, uint64_t length, uint16_t flags)
     return vmm_protect(address, length, flags);
 }
 
-//All of this is temporary for testing.
-typedef struct 
-{
-    uint64_t iter;
-    uint64_t oldIter;
-    uint64_t oldTime;
-} TestData;
-
-static TestData testData[256];
-
-uint64_t syscall_test(const char* string)
-{
-    tty_acquire();
-
-    uint8_t cpuId = smp_self_unsafe()->id;
-
-    uint8_t oldRow = tty_get_row();
-    uint8_t oldColumn = tty_get_column();
-
-    tty_set_column(0);
-    tty_set_row(cpuId);
-
-    tty_print("CPU: ");
-    tty_printi(cpuId);
-    tty_print(" THREAD AMOUNT: ");
-    tty_printi(sched_local_thread_amount());
-    tty_print(" PID: ");
-    tty_printi(sched_process()->id);
-    tty_print(" TID: ");
-    tty_printi(sched_thread()->id);
-    if (string != 0)
-    {
-        tty_print(" STRING: ");
-        tty_print(string);
-    }
-    TestData* data = &testData[cpuId];
-    data->iter++;
-    if (data->oldTime + NANOSECONDS_PER_SECOND < time_nanoseconds())
-    {
-        data->oldIter = data->iter;
-        data->iter = 0;
-        data->oldTime = time_nanoseconds();
-    }
-    tty_print(" ITER PER SECOND: ");
-    tty_printi(data->oldIter);
-    tty_print(" TIME: ");
-    tty_printi(time_milliseconds());
-    tty_print(" MS                  ");
-
-    tty_set_row(oldRow);
-    tty_set_column(oldColumn);
-
-    tty_release();
-
-    return 0;
-}
-
 ///////////////////////////////////////////////////////
 
 void syscall_handler_end(void)
@@ -290,8 +253,9 @@ void* syscallTable[] =
     syscall_write,
     syscall_seek,
     syscall_ioctl,
+    syscall_realpath,
+    syscall_chdir,
     syscall_mmap,
     syscall_munmap,
-    syscall_mprotect,
-    syscall_test
+    syscall_mprotect
 };
