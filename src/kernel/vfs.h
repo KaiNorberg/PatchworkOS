@@ -14,7 +14,7 @@
 #define VFS_LETTER_BASE 'A'
 #define VFS_LETTER_AMOUNT ('Z' - 'A' + 1)
 
-#define VFS_VALID_CHAR(ch) (isalnum(ch) || (ch) == '_' || (ch) == '.')
+#define VFS_VALID_CHAR(ch) (isalnum(ch) || (ch) == '_' || (ch) == '.' || (ch) == '-' || (ch) == ' ')
 #define VFS_VALID_LETTER(letter) ((letter) >= 'A' && (letter) <= 'Z')
 
 #define VFS_END_OF_NAME(ch) ((ch) == VFS_NAME_SEPARATOR || (ch) == '\0')

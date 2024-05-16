@@ -22,6 +22,7 @@
 #include "sysfs.h"
 #include "ramfs.h"
 #include "regs.h"
+#include "ps2.h"
 #include "renderer.h"
 #include "loader.h"
 
@@ -72,6 +73,7 @@ void kernel_init(BootInfo* bootInfo)
     sysfs_init();
     ramfs_init(bootInfo->ramRoot);
 
+    ps2_init();
     renderer_init(&bootInfo->gopBuffer);
 
     boot_info_deallocate(bootInfo);

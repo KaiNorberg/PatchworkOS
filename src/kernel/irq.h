@@ -22,10 +22,10 @@
 #define IRQ_SECONDARY_ATA_HARD_DRIVE 0xF
 #define IRQ_AMOUNT 0x10
 
-#define IRQ_MAX_HANDLER_AMOUNT 16
+#define IRQ_MAX_HANDLER 16
 
 typedef void(*IrqHandler)(uint8_t irq);
 
 void irq_dispatch(TrapFrame* trapFrame);
 
-void irq_install_handler(IrqHandler handler, uint8_t irq);
+void irq_install(IrqHandler handler, uint8_t irq);

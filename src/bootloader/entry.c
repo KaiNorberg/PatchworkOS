@@ -21,7 +21,7 @@ EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
     BootInfo* bootInfo = virtual_memory_allocate_pool(sizeof(BootInfo), EFI_MEMORY_TYPE_BOOT_INFO);
 
     gop_get_buffer(&bootInfo->gopBuffer);
-    psf_font_load(&bootInfo->font, L"/kernel/fonts/zap-vga16.psf", imageHandle);
+    psf_font_load(&bootInfo->font, L"/fonts/zap-vga16.psf", imageHandle);
     bootInfo->ramRoot = ram_disk_load(imageHandle);
     bootInfo->rsdp = rsdp_get(systemTable);
     bootInfo->runtimeServices = systemTable->RuntimeServices;

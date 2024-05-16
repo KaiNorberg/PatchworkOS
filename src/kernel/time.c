@@ -21,7 +21,7 @@ static void time_irq_handler(uint8_t irq)
 
 static void time_rtc_init(void)
 {
-    irq_install_handler(time_irq_handler, IRQ_CMOS);
+    irq_install(time_irq_handler, IRQ_CMOS);
 
     io_outb(CMOS_ADDRESS, 0x8B);
     uint8_t temp = io_inb(CMOS_DATA);
@@ -32,10 +32,6 @@ static void time_rtc_init(void)
     temp = io_inb(CMOS_DATA);
     io_outb(CMOS_ADDRESS, 0x8A);
     io_outb(CMOS_DATA, (temp & 0xF0) | 15);
-
-    //TODO: Implement io apic
-    pic_clear_mask(IRQ_CASCADE);
-    pic_clear_mask(IRQ_CMOS);
 }
 
 void time_init(void)

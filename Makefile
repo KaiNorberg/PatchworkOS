@@ -72,6 +72,9 @@ deploy:
 	mcopy -i $(OUTPUT_IMAGE) -s $(KERNEL_OUT) ::kernel
 	mcopy -i $(OUTPUT_IMAGE) -s $(BIN_DIR)/programs ::/programs
 
+compile_commands:
+	bear -- make build 
+
 all: build deploy
 
 run:
@@ -84,7 +87,7 @@ run:
     -drive if=pflash,format=raw,unit=1,file=vendor/OVMFbin/OVMF_VARS-pure-efi.fd \
     -net none
 
-run-debug:
+run_debug:
 	@qemu-system-x86_64 \
     -drive file=$(OUTPUT_IMAGE) \
 	-m 1G \

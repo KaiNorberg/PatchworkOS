@@ -4,7 +4,7 @@
 
 ## Features
 
-- Simple Unix inspired architecture (Not Unix-like)
+- Very simple Unix inspired architecture (Not Unix-like)
 - Monolithic preemptive 64-bit kernel
 - SMP (Symmetric Multiprocessing)
 - Multithreading (Kernel Level Threads)
@@ -33,7 +33,7 @@ To clone (download) this repository, you can use the ```Code``` button at the to
 
 <ins>**2. Building Patchwork**</ins>
 
-In order to build Patchwork you will need to use Linux or if you insist WSL. You will also need to have Make, NASM and GCC installed, it is also possible to use clang by just editing the Makefile.
+In order to build Patchwork you will need to use Linux. You will also need to have Make, NASM and GCC installed, it is also possible to use clang by just editing the Makefile.
 
 After everything is installed simply run ```make setup all```. You should then find a .img file in the bin directory.
 

@@ -1,4 +1,5 @@
 .vscode
+compile_commands.json
 build
 bin
 gnu-efi/x86_64
