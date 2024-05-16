@@ -9,6 +9,8 @@ extern "C" {
 
 #include "../_AUX/config.h"
 #include "../_AUX/fd_t.h"
+#include "../_AUX/ERR.h"
+#include "../_AUX/NULL.h"
 
 #define SEEK_SET 0
 #define SEEK_CUR 1

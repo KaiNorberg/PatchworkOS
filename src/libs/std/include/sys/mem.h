@@ -9,6 +9,7 @@ extern "C" {
 
 #include "../_AUX/config.h"
 #include "../_AUX/fd_t.h"
+#include "../_AUX/ERR.h"
 
 #define PROT_NONE 0
 #define PROT_READ (1 << 0)

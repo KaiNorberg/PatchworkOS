@@ -4,13 +4,13 @@
 #include "pic.h"
 #include "debug.h"
 
-static IrqHandler handlers[IRQ_AMOUNT][IRQ_MAX_HANDLER_AMOUNT];
+static IrqHandler handlers[IRQ_AMOUNT][IRQ_MAX_HANDLER];
 
 void irq_dispatch(TrapFrame* trapFrame)
 {
     uint64_t irq = trapFrame->vector - IRQ_BASE;
 
-    for (uint64_t i = 0; i < IRQ_MAX_HANDLER_AMOUNT; i++)
+    for (uint64_t i = 0; i < IRQ_MAX_HANDLER; i++)
     {
         if (handlers[irq][i] != NULL)
         {
@@ -26,9 +26,9 @@ void irq_dispatch(TrapFrame* trapFrame)
     pic_eoi(irq);
 }
 
-void irq_install_handler(IrqHandler handler, uint8_t irq)
+void irq_install(IrqHandler handler, uint8_t irq)
 {
-    for (uint64_t i = 0; i < IRQ_MAX_HANDLER_AMOUNT; i++)
+    for (uint64_t i = 0; i < IRQ_MAX_HANDLER; i++)
     {
         if (handlers[irq][i] == NULL)
         {
