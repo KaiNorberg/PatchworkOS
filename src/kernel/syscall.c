@@ -182,7 +182,7 @@ uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* buffer, uint64_t length)
 
 uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, uint64_t timeout)
 {
-    if (amount == 0)
+    if (amount == 0 || amount > CONFIG_MAX_FILE)
     {
         return ERROR(EINVAL);
     }
