@@ -12,7 +12,7 @@
 #include "utils.h"
 #include "debug.h"
 
-static void* loader_allocate_stack()
+static void* loader_allocate_stack(void)
 {    
     Thread* thread = sched_thread();
 
@@ -25,7 +25,7 @@ static void* loader_allocate_stack()
     return address + CONFIG_USER_STACK;
 }
 
-static void* loader_load_program()
+static void* loader_load_program(void)
 {   
     const char* executable = sched_process()->executable;
     File* file = vfs_open(executable);
@@ -101,7 +101,7 @@ static void* loader_load_program()
     return (void*)header.entry;
 }
 
-void loader_entry()
+void loader_entry(void)
 {
     void* rsp = loader_allocate_stack();
     void* rip = loader_load_program();

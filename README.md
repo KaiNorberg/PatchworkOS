@@ -21,7 +21,7 @@
 ## Tested Hardware Configurations
 
 - Lenovo Thinkpad E495
-- Ryzen 5 3600X | 32GB 3200MHZ Corsair Vengeance RAM
+- Ryzen 5 3600X | 32GB 3200MHZ Corsair Vengeance
 
 Currently untested on Intel hardware.
 

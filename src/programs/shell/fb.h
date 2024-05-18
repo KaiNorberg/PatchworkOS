@@ -18,7 +18,7 @@ typedef struct __attribute__((packed))
     uint8_t charSize;
 } PsfHeader;
 
-void fb_init();
+void fb_init(void);
 
 void fb_clear(uint32_t color);
 
@@ -26,6 +26,6 @@ void fb_scroll(uint64_t offset);
 
 void fb_char(char chr, uint64_t x, uint64_t y, uint64_t scale, uint32_t foreground, uint32_t background);
 
-uint64_t fb_width();
+uint64_t fb_width(void);
 
-uint64_t fb_height();
+uint64_t fb_height(void);

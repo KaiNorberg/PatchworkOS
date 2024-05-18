@@ -46,7 +46,9 @@ BASE_LD_FLAGS = -nostdlib
 USER_C_FLAGS = $(BASE_C_FLAGS) \
 	-ffreestanding
 
-USER_ASM_FLAGS = $(BASE_ASM_FLAGS)
+USER_ASM_FLAGS = $(BASE_ASM_FLAGS) \
+	-I$(LIBS_SRC_DIR)/std/include \
+	-I$(SRC_DIR)
 
 USER_LD_FLAGS = $(LD_FLAGS) \
 	-L$(LIBS_BIN_DIR) -lstd

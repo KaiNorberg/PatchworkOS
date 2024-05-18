@@ -19,7 +19,7 @@ static bool cpuReady = false;
 
 static bool initialized = false;
 
-static NOINLINE void smp_detect_cpus()
+static NOINLINE void smp_detect_cpus(void)
 {
     LocalApicRecord* record = madt_first_record(MADT_RECORD_TYPE_LOCAL_APIC);
     while (record != 0)
@@ -68,7 +68,7 @@ static NOINLINE uint64_t cpu_init(Cpu* cpu, uint8_t id, uint8_t localApicId)
     return 0;
 }
 
-static NOINLINE void smp_startup()
+static NOINLINE void smp_startup(void)
 {
     uint8_t newId = 0;
 
@@ -101,7 +101,7 @@ void smp_init(void)
     cpus = kcalloc(cpuAmount, sizeof(Cpu));
 
     trampoline_setup();
-    smp_startup(cpus);
+    smp_startup();
     trampoline_cleanup();
 
     initialized = true;
@@ -123,7 +123,7 @@ void smp_entry(void)
     }
 }
 
-bool smp_initialized()
+bool smp_initialized(void)
 {
     return initialized;
 }

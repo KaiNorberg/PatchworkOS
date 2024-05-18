@@ -24,7 +24,7 @@ static char* errorStrings[] =
     "Busy"
 };
 
-_PUBLIC char* strerror(int error)
+char* strerror(int error)
 {
     if (error > EBUSY || error < 0)
     {

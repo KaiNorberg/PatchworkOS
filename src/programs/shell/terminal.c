@@ -52,17 +52,17 @@ static void terminal_cursor(void)
     }
 }
 
-static uint64_t terminal_screen_height()
+static uint64_t terminal_screen_height(void)
 {
     return fb_height() / (FB_CHAR_HEIGHT * scale);
 }
 
-/*static uint64_t terminal_screen_width()
+/*static uint64_t terminal_screen_width(void)
 {
     return fb_width() / (FB_CHAR_WIDTH * scale);
 }*/
 
-static uint8_t terminal_read_key()
+static uint8_t terminal_read_key(void)
 {
     while (1)
     {
@@ -111,57 +111,6 @@ static char terminal_key_to_ascii(uint8_t key)
     }
 }
 
-static char* terminal_read_command()
-{
-    static char command[TERMINAL_MAX_COMMAND];
-    command[0] = '\0';
-
-    char cwd[256];
-    realpath(cwd, ".");
-
-    terminal_print("\n");
-    terminal_print(cwd);
-    terminal_print("\n\033[34m>\033[m ");
-
-    uint64_t length = 0;
-    while (1)
-    {
-        uint8_t key = terminal_read_key();
-        char ascii = terminal_key_to_ascii(key);
-
-        if (key == KEY_BACKSPACE)
-        {
-            if (length != 0)
-            {
-                command[length - 1] = '0';
-
-                terminal_put('\b');
-                length--;
-            }
-        }
-        else if (key == KEY_ENTER)
-        {
-            terminal_put('\n');
-            return command;
-        }
-        else if (ascii != '\0' && length < TERMINAL_MAX_COMMAND)
-        {
-            command[length] = ascii;
-            command[length + 1] = '\0';
-
-            terminal_put(ascii);
-            length++;
-        }
-    }
-}
-
-static void terminal_execute(const char* command)
-{
-    //TODO: this stuff.
-
-    terminal_print(command);
-}
-
 static void terminal_put_normal(char chr)
 {
     switch (chr)
@@ -197,7 +146,7 @@ static void terminal_put_normal(char chr)
     }
 }
 
-void terminal_init()
+void terminal_init(void)
 {
     cursor.x = 0;
     cursor.y = 0;
@@ -214,9 +163,57 @@ void terminal_init()
     fb_clear(TERMINAL_BACKGROUND);
 
     keyboard = open("A:/keyboard/ps2");
+    if (keyboard == ERR)
+    {
+        terminal_panic("Failed to open keyboard");
+    }
 
     terminal_print("Welcome to Patchwork OS!\n");
     terminal_print("This currently does absolutely nothing!\n");
+}
+
+const char* terminal_read(void)
+{
+    static char command[TERMINAL_MAX_COMMAND];
+    command[0] = '\0';
+
+    char cwd[256];
+    realpath(cwd, ".");
+
+    terminal_print("\n");
+    terminal_print(cwd);
+    terminal_print("\n\033[35m>\033[m ");
+
+    uint64_t length = 0;
+    while (1)
+    {
+        uint8_t key = terminal_read_key();
+        char ascii = terminal_key_to_ascii(key);
+
+        if (key == KEY_BACKSPACE)
+        {
+            if (length != 0)
+            {
+                command[length - 1] = '0';
+
+                terminal_put('\b');
+                length--;
+            }
+        }
+        else if (key == KEY_ENTER)
+        {
+            terminal_put('\n');
+            return command;
+        }
+        else if (ascii != '\0' && length < TERMINAL_MAX_COMMAND)
+        {
+            command[length] = ascii;
+            command[length + 1] = '\0';
+
+            terminal_put(ascii);
+            length++;
+        }
+    }
 }
 
 void terminal_put(const char chr)
@@ -271,7 +268,7 @@ void terminal_put(const char chr)
     break;
     case TERMINAL_STATE_FOREGROUND:
     {
-        uint8_t selector = chr - '0';
+        uint8_t selector = chr - '0' - 1;
         if (selector < TERMINAL_MAX_COLOR)
         {
             foreground = colors[selector];
@@ -280,8 +277,8 @@ void terminal_put(const char chr)
     break;
     case TERMINAL_STATE_BACKGROUND:
     {
-        uint8_t selector = chr - '0';
-        if (selector < TERMINAL_MAX_COLOR)
+        uint8_t selector = chr - '0' - 1;
+        if (selector <= TERMINAL_MAX_COLOR)
         {
             background = colors[selector];
         }
@@ -303,11 +300,17 @@ void terminal_print(const char* string)
     }
 }
 
-__attribute__((noreturn)) void terminal_loop()
+void terminal_panic(const char* string)
 {
-    while (1)
+    terminal_print("\033[32mTERMINAL PANIC: ");
+    terminal_print(string);
+
+    if (errno != 0)
     {
-        char* command = terminal_read_command();
-        terminal_execute(command);
+        terminal_print(" (");
+        terminal_print(strerror(errno));
+        terminal_print(")");
     }
+
+    exit(EXIT_FAILURE);
 }

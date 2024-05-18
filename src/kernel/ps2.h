@@ -28,4 +28,4 @@
 
 #define SCANCODE_RELEASED (1 << 7)
 
-void ps2_init();
+void ps2_init(void);

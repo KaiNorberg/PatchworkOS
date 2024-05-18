@@ -59,7 +59,7 @@ NORETURN void syscall_process_exit(uint64_t status)
     sched_process_exit(status);
 }
 
-NORETURN void syscall_thread_exit()
+NORETURN void syscall_thread_exit(void)
 {
     sched_thread_exit();
 }

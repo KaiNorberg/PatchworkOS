@@ -1,6 +1,5 @@
 #include <stdlib.h>
-
-#include "libs/std/internal/syscalls.h"
+#include <stdint.h>
 
 char* lltoa(long long number, char* str, int base)
 {

@@ -15,11 +15,11 @@ extern "C" {
 #define PROT_READ (1 << 0)
 #define PROT_WRITE (1 << 1)
 
-_PUBLIC void* mmap(fd_t fd, void* address, uint64_t length, uint8_t prot);
+void* mmap(fd_t fd, void* address, uint64_t length, uint8_t prot);
 
-_PUBLIC uint64_t munmap(void* address, uint64_t length);
+uint64_t munmap(void* address, uint64_t length);
 
-_PUBLIC uint64_t mprotect(void* address, uint64_t length, uint8_t prot);
+uint64_t mprotect(void* address, uint64_t length, uint8_t prot);
 
 #if defined(__cplusplus)
 }

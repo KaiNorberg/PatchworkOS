@@ -1,6 +1,5 @@
 #include <stdlib.h>
-
-#include "libs/std/internal/syscalls.h"
+#include <stdint.h>
 
 char* ulltoa(unsigned long long number, char* str, int base)
 {

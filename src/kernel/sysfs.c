@@ -138,7 +138,7 @@ static uint64_t sysfs_mount(Volume* volume)
     return 0;
 }
 
-void sysfs_init()
+void sysfs_init(void)
 {
     tty_start_message("Sysfs initializing");
 

@@ -142,7 +142,7 @@ void file_deref(File* file)
     }
 }
 
-void vfs_init()
+void vfs_init(void)
 {
     tty_start_message("VFS initializing");
 

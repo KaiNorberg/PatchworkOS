@@ -80,7 +80,7 @@ File* file_ref(File* file);
 
 void file_deref(File* file);
 
-void vfs_init();
+void vfs_init(void);
 
 File* vfs_open(const char* path);
 

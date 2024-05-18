@@ -9,21 +9,21 @@ extern "C" {
 #include "_AUX/size_t.h"
 #include "_AUX/NULL.h"
 
-_PUBLIC void* memcpy(void* _RESTRICT dest, const void* _RESTRICT src, size_t count);
-_PUBLIC void* memmove(void* dest, const void* src, size_t count);
-_PUBLIC char* strcpy(char* _RESTRICT dest, const char* _RESTRICT src);
-_PUBLIC char* strncpy(char* _RESTRICT dest, const char* _RESTRICT src, size_t count);
-_PUBLIC char* strcat(char* _RESTRICT dest, const char* _RESTRICT src);
+void* memcpy(void* _RESTRICT dest, const void* _RESTRICT src, size_t count);
+void* memmove(void* dest, const void* src, size_t count);
+char* strcpy(char* _RESTRICT dest, const char* _RESTRICT src);
+char* strncpy(char* _RESTRICT dest, const char* _RESTRICT src, size_t count);
+char* strcat(char* _RESTRICT dest, const char* _RESTRICT src);
 
-_PUBLIC int memcmp(const void* a, const void* b, size_t count);
-_PUBLIC int strcmp(const char* a, const char* b);
+int memcmp(const void* a, const void* b, size_t count);
+int strcmp(const char* a, const char* b);
 
-_PUBLIC char* strchr(const char* str, int ch);
-_PUBLIC char* strrchr(const char* str, int ch);
+char* strchr(const char* str, int ch);
+char* strrchr(const char* str, int ch);
 
-_PUBLIC void* memset(void* dest, int ch, size_t count);
-_PUBLIC size_t strlen(const char* str);
-_PUBLIC char* strerror(int error);
+void* memset(void* dest, int ch, size_t count);
+size_t strlen(const char* str);
+char* strerror(int error);
 
 #if defined(__cplusplus)
 }

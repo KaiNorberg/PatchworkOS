@@ -12,8 +12,8 @@ extern "C" {
 typedef struct kbd_event
 {
     struct timespec time;
-    uint16_t type;
-    uint16_t code;
+    uint8_t type;
+    uint8_t code;
 } kbd_event_t;
 
 #define KBD_EVENT_TYPE_PRESS 0

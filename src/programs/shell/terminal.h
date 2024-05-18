@@ -26,10 +26,12 @@ typedef struct
     bool visible;
 } Cursor;
 
-void terminal_init();
+void terminal_init(void);
+
+const char* terminal_read(void);
 
 void terminal_put(const char chr);
 
 void terminal_print(const char* string);
 
-__attribute__((noreturn)) void terminal_loop();
+void terminal_panic(const char* string);

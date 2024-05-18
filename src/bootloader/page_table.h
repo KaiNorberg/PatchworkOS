@@ -29,7 +29,7 @@ typedef struct
     PageEntry entries[512];
 } PageTable;
 
-PageTable* page_table_new();
+PageTable* page_table_new(void);
 
 void page_table_map_pages(PageTable* pageTable, void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint16_t flags);
 

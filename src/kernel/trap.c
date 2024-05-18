@@ -55,12 +55,12 @@ static void ipi_handler(TrapFrame const* trapFrame)
     local_apic_eoi();
 }
 
-static void trap_begin()
+static void trap_begin(void)
 {
     smp_self_unsafe()->trapDepth++;
 }
 
-static void trap_end()
+static void trap_end(void)
 {
     smp_self_unsafe()->trapDepth--;
 }

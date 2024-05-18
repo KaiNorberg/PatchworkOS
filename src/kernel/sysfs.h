@@ -34,7 +34,7 @@ static inline void resource_init(Resource* resource, const char* name)
     resource->methods = (FileMethods){};
 }
 
-void sysfs_init();
+void sysfs_init(void);
 
 void sysfs_expose(Resource* resource, const char* path);
 

@@ -14,13 +14,13 @@ extern "C" {
 
 typedef uint64_t pid_t;
 
-_PUBLIC uint64_t uptime(void);
+uint64_t uptime(void);
 
-_PUBLIC uint64_t sleep(uint64_t nanoseconds);
+uint64_t sleep(uint64_t nanoseconds);
 
-_PUBLIC pid_t spawn(const char* path);
+pid_t spawn(const char* path);
 
-_PUBLIC pid_t getpid(void);
+pid_t getpid(void);
 
 #if defined(__cplusplus)
 }

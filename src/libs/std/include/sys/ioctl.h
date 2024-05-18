@@ -26,7 +26,7 @@ typedef struct ioctl_fb_info
 
 #define IOCTL_FB_INFO 0
 
-_PUBLIC uint64_t ioctl(fd_t fd, uint64_t request, void* buffer, uint64_t length);
+uint64_t ioctl(fd_t fd, uint64_t request, void* buffer, uint64_t length);
 
 #if defined(__cplusplus)
 }

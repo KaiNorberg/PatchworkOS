@@ -108,7 +108,7 @@ static uint8_t scanCodeTable[] =
     KEY_KEYPAD_EQUAL
 };
 
-static uint8_t ps2_read()
+static uint8_t ps2_read(void)
 {    
     uint64_t time = time_nanoseconds();
 
@@ -125,7 +125,7 @@ static uint8_t ps2_read()
     debug_panic("PS2 Timeout");
 }
 
-static void ps2_wait()
+static void ps2_wait(void)
 {
     uint64_t time = time_nanoseconds();
 
@@ -157,7 +157,7 @@ static void ps2_cmd(uint8_t command)
     io_outb(PS2_PORT_CMD, command);
 }
 
-static uint64_t ps2_kbd_scan()
+static uint64_t ps2_kbd_scan(void)
 {
     uint8_t status = io_inb(PS2_PORT_STATUS);
     if (!(status & PS2_STATUS_OUT_FULL))
@@ -221,7 +221,7 @@ static bool ps2_kbd_read_avail(File* file)
     return file->position != writeIndex;
 }
 
-static void ps2_controller_init()
+static void ps2_controller_init(void)
 {
     ps2_cmd(PS2_CMD_KBD_DISABLE);
     ps2_cmd(PS2_CMD_AUX_DISABLE);
@@ -247,7 +247,7 @@ static void ps2_controller_init()
     ps2_cmd(PS2_CMD_AUX_ENABLE);
 }
 
-void ps2_init()
+void ps2_init(void)
 {
     tty_start_message("PS2 initializing");
 

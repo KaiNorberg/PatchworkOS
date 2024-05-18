@@ -56,7 +56,7 @@ static void pmm_free_pages_unlocked(void* address, uint64_t count)
     }    
 }
 
-static void pmm_memory_map_deallocate()
+static void pmm_memory_map_deallocate(void)
 {
     for (uint64_t i = 0; i < memoryMap.descriptorAmount; i++)
     {
@@ -71,7 +71,7 @@ static void pmm_memory_map_deallocate()
 }
 
 #if CONFIG_PMM_LAZY
-static void pmm_lazy_load_memory()
+static void pmm_lazy_load_memory(void)
 {
     static uint64_t index = 0;
     static bool full = false;
@@ -107,7 +107,7 @@ static void pmm_lazy_load_memory()
     }
 }
 #else
-static void pmm_load_memory()
+static void pmm_load_memory(void)
 {    
     for (uint64_t i = 0; i < memoryMap.descriptorAmount; i++)
     {
@@ -124,7 +124,7 @@ static void pmm_load_memory()
 }
 #endif
 
-static void pmm_detect_memory()
+static void pmm_detect_memory(void)
 {
     for (uint64_t i = 0; i < memoryMap.descriptorAmount; i++)
     {

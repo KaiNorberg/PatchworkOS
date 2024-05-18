@@ -11,7 +11,7 @@ static ioctl_fb_info_t fbInfo;
 //TODO: Implement malloc and replace this.
 static uint8_t glyphBuffer[16 * 256];
 
-static void fb_map()
+static void fb_map(void)
 {
     fd_t fd = open("A:/framebuffer/0");
     if (fd == ERR)
@@ -32,7 +32,7 @@ static void fb_map()
     close(fd);
 }
 
-static void fb_load_font()
+static void fb_load_font(void)
 {
     fd_t fd = open("/fonts/zap-vga16.psf");
     if (fd == ERR)
@@ -57,7 +57,7 @@ static void fb_load_font()
     close(fd);
 }
 
-void fb_init()
+void fb_init(void)
 {
     fb_map();
     fb_load_font();
@@ -93,12 +93,12 @@ void fb_char(char chr, uint64_t x, uint64_t y, uint64_t scale, uint32_t foregrou
     }
 }
 
-uint64_t fb_width()
+uint64_t fb_width(void)
 {
     return fbInfo.width;
 }
 
-uint64_t fb_height()
+uint64_t fb_height(void)
 {
     return fbInfo.height;
 }

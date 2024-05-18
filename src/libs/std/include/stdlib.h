@@ -10,13 +10,13 @@ extern "C" {
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0
 
-_PUBLIC _NORETURN void exit(int status);
+_NORETURN void exit(int status);
 
-_PUBLIC char* lltoa(long long number, char* str, int base);
+char* lltoa(long long number, char* str, int base);
 #define ltoa(number, str, base) lltoa(number, str, base)
 #define itoa(number, str, base) lltoa(number, str, base)
 
-_PUBLIC char* ulltoa(unsigned long long number, char* str, int base);
+char* ulltoa(unsigned long long number, char* str, int base);
 #define ultoa(number, str, base) lltoa(number, str, base)
 #define uitoa(number, str, base) lltoa(number, str, base)
 

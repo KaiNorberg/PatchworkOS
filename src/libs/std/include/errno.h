@@ -11,7 +11,7 @@ extern "C" {
 #include "_AUX/errno_t.h"
 #include "_AUX/ERR.h"
 
-_PUBLIC int* _ErrnoFunc();
+int* _ErrnoFunc(void);
 
 #define errno (*_ErrnoFunc())
 
