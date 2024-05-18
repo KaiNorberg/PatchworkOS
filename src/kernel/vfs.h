@@ -55,6 +55,8 @@ typedef struct
     uint64_t (*seek)(File*, int64_t, uint8_t);
     uint64_t (*ioctl)(File*, uint64_t, void*, uint64_t);
     void* (*mmap)(File*, void*, uint64_t, uint8_t);
+    bool (*write_avail)(File*);
+    bool (*read_avail)(File*);
 } FileMethods;
 
 typedef struct File
@@ -67,6 +69,13 @@ typedef struct File
     FileMethods methods;
 } File;
 
+typedef struct
+{
+    File* file;
+    uint16_t requested;
+    uint16_t occurred;
+} PollFile;
+
 File* file_ref(File* file);
 
 void file_deref(File* file);
@@ -74,6 +83,9 @@ void file_deref(File* file);
 void vfs_init();
 
 File* vfs_open(const char* path);
+
+//Files should be NULL terminated.
+uint64_t vfs_poll(PollFile* files, uint64_t timeout);
 
 uint64_t vfs_mount(char letter, Filesystem* fs);
 

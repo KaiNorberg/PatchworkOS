@@ -95,6 +95,11 @@ uint64_t syscall_tid(void)
     return sched_thread()->id;
 }
 
+uint64_t syscall_uptime(void)
+{
+    return time_nanoseconds();
+}
+
 uint64_t syscall_open(const char* path)
 {
     if (!verify_string(path))
@@ -111,12 +116,12 @@ uint64_t syscall_open(const char* path)
     return vfs_context_open(file);
 }
 
-uint64_t syscall_close(uint64_t fd)
+uint64_t syscall_close(fd_t fd)
 {
     return vfs_context_close(fd);
 }
 
-uint64_t syscall_read(uint64_t fd, void* buffer, uint64_t count)
+uint64_t syscall_read(fd_t fd, void* buffer, uint64_t count)
 {
     if (!verify_buffer(buffer, count))
     {
@@ -132,7 +137,7 @@ uint64_t syscall_read(uint64_t fd, void* buffer, uint64_t count)
     return FILE_CALL_METHOD(file, read, buffer, count);
 }
 
-uint64_t syscall_write(uint64_t fd, const void* buffer, uint64_t count)
+uint64_t syscall_write(fd_t fd, const void* buffer, uint64_t count)
 {
     if (!verify_buffer(buffer, count))
     {
@@ -148,7 +153,7 @@ uint64_t syscall_write(uint64_t fd, const void* buffer, uint64_t count)
     return FILE_CALL_METHOD(file, write, buffer, count);
 }
 
-uint64_t syscall_seek(uint64_t fd, int64_t offset, uint8_t origin)
+uint64_t syscall_seek(fd_t fd, int64_t offset, uint8_t origin)
 {
     File* file = vfs_context_get(fd);
     if (file == NULL)
@@ -159,7 +164,7 @@ uint64_t syscall_seek(uint64_t fd, int64_t offset, uint8_t origin)
     return FILE_CALL_METHOD(file, seek, offset, origin);
 }
 
-uint64_t syscall_ioctl(uint64_t fd, uint64_t request, void* buffer, uint64_t length)
+uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* buffer, uint64_t length)
 {
     if (!verify_buffer(buffer, length))
     {
@@ -173,6 +178,43 @@ uint64_t syscall_ioctl(uint64_t fd, uint64_t request, void* buffer, uint64_t len
     }
 
     return FILE_CALL_METHOD(file, ioctl, request, buffer, length);
+}
+
+uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, uint64_t timeout)
+{
+    if (amount == 0)
+    {
+        return ERROR(EINVAL);
+    }
+
+    if (!verify_buffer(fds, sizeof(pollfd_t) * amount))
+    {
+        return ERROR(EFAULT);
+    }
+
+    PollFile files[CONFIG_MAX_FILE + 1];
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        files[i].file = vfs_context_get(fds[i].fd);
+        if (files[i].file == NULL)
+        {
+            return ERR;
+        }
+
+        files[i].requested = fds[i].requested;
+        files[i].occurred = 0;
+    }
+    files[amount].file = NULL;
+
+    uint64_t result = vfs_poll(files, timeout);
+
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        fds[i].occurred = files[i].occurred;
+        file_deref(files[i].file);
+    }
+
+    return result;
 }
 
 uint64_t syscall_realpath(char* out, const char* path)
@@ -195,7 +237,7 @@ uint64_t syscall_chdir(const char* path)
     return vfs_chdir(path);
 }
 
-void* syscall_mmap(uint64_t fd, void* address, uint64_t length, uint16_t flags)
+void* syscall_mmap(fd_t fd, void* address, uint64_t length, uint16_t flags)
 {
     File* file = vfs_context_get(fd);
     if (file == NULL)
@@ -247,12 +289,14 @@ void* syscallTable[] =
     syscall_error,
     syscall_pid,
     syscall_tid,
+    syscall_uptime,
     syscall_open,
     syscall_close,
     syscall_read,
     syscall_write,
     syscall_seek,
     syscall_ioctl,
+    syscall_poll,
     syscall_realpath,
     syscall_chdir,
     syscall_mmap,

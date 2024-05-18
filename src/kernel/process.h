@@ -36,8 +36,9 @@ typedef struct
 
 typedef struct Blocker
 {
-    uintptr_t context;
-    bool (*callback)(uintptr_t context);
+    void* context;
+    bool (*callback)(void* context);
+    uint64_t deadline;
 } Blocker;
 
 typedef struct

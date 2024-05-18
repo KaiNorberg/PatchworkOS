@@ -3,13 +3,14 @@
 #include "fb.h"
 #include "ascii.h"
 
+#include <errno.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <sys/io.h>
+#include <sys/process.h>
 #include <sys/kbd.h>
 
-static char buffer[TERMINAL_MAX_TEXT];
 static Cursor cursor;
 static TerminalState state;
 
@@ -28,7 +29,7 @@ static uint32_t colors[] =
     0xFFED1515,
     0xFF44853A,
     0xFFF67400,
-    0xFF1D99F3,
+    0xFF1984D1,
     0xFF9B59B6,
     0xFF1ABC9C,
     0xFFFCFCFC
@@ -39,9 +40,16 @@ static void terminal_char(char chr)
     fb_char(chr, cursor.x * FB_CHAR_WIDTH * scale, cursor.y * FB_CHAR_HEIGHT * scale, scale, foreground, background);
 }
 
-static void terminal_cursor(char chr)
+static void terminal_cursor(void)
 {
-    fb_char(chr, cursor.x * FB_CHAR_WIDTH * scale, cursor.y * FB_CHAR_HEIGHT * scale, scale, background, foreground);    
+    if (cursor.visible)
+    {
+        fb_char(' ', cursor.x * FB_CHAR_WIDTH * scale, cursor.y * FB_CHAR_HEIGHT * scale, scale, background, foreground);    
+    }
+    else
+    {
+        fb_char(' ', cursor.x * FB_CHAR_WIDTH * scale, cursor.y * FB_CHAR_HEIGHT * scale, scale, foreground, background);     
+    }
 }
 
 static uint64_t terminal_screen_height()
@@ -58,6 +66,14 @@ static uint8_t terminal_read_key()
 {
     while (1)
     {
+        terminal_cursor();
+
+        pollfd_t fds[] = 
+        {
+            {.fd = keyboard, .requested = POLL_READ}
+        };
+        poll(fds, 1, TERMINAL_BLINK_INTERVAL);
+
         kbd_event_t event;
         if (read(keyboard, &event, sizeof(kbd_event_t)) == sizeof(kbd_event_t))
         {
@@ -72,8 +88,13 @@ static uint8_t terminal_read_key()
 
             if (event.type == KBD_EVENT_TYPE_PRESS)
             {
+                cursor.visible = true;
                 return event.code;
             }
+        }
+        else
+        {
+            cursor.visible = !cursor.visible;
         }
     }
 }
@@ -92,14 +113,16 @@ static char terminal_key_to_ascii(uint8_t key)
 
 static char* terminal_read_command()
 {
+    static char command[TERMINAL_MAX_COMMAND];
+    command[0] = '\0';
+
     char cwd[256];
     realpath(cwd, ".");
 
     terminal_print("\n");
     terminal_print(cwd);
-    terminal_print("\n\033[32m>\033[m ");
+    terminal_print("\n\033[34m>\033[m ");
 
-    char* command = buffer + cursor.index;
     uint64_t length = 0;
     while (1)
     {
@@ -110,6 +133,8 @@ static char* terminal_read_command()
         {
             if (length != 0)
             {
+                command[length - 1] = '0';
+
                 terminal_put('\b');
                 length--;
             }
@@ -121,6 +146,9 @@ static char* terminal_read_command()
         }
         else if (ascii != '\0' && length < TERMINAL_MAX_COMMAND)
         {
+            command[length] = ascii;
+            command[length + 1] = '\0';
+
             terminal_put(ascii);
             length++;
         }
@@ -130,6 +158,8 @@ static char* terminal_read_command()
 static void terminal_execute(const char* command)
 {
     //TODO: this stuff.
+
+    terminal_print(command);
 }
 
 static void terminal_put_normal(char chr)
@@ -139,9 +169,6 @@ static void terminal_put_normal(char chr)
     case '\n':
     {
         terminal_char(' ');
-        buffer[cursor.index] = '\n';
-        cursor.index++;
-
         cursor.x = 0;
         cursor.y += 1;
 
@@ -156,23 +183,15 @@ static void terminal_put_normal(char chr)
     {
         terminal_char(' ');
         if (cursor.x > 0)
-        {       
-            cursor.index--;
-            buffer[cursor.index] = '\0';
-
+        {
             cursor.x--;
         }
-        terminal_cursor(' ');
     }
     break;
     default:
     {               
         terminal_char(chr);
-        buffer[cursor.index] = chr;
-        cursor.index++;
-        
         cursor.x++;
-        terminal_cursor(' ');
     }
     break;
     }
@@ -180,10 +199,9 @@ static void terminal_put_normal(char chr)
 
 void terminal_init()
 {
-    memset(buffer, 0, TERMINAL_MAX_TEXT);
-    cursor.index = 0;
     cursor.x = 0;
     cursor.y = 0;
+    cursor.visible = true;
     state = TERMINAL_STATE_NORMAL;
 
     capsLock = 0;

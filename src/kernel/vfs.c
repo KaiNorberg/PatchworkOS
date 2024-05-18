@@ -8,6 +8,7 @@
 #include "lock.h"
 #include "sched.h"
 #include "debug.h"
+#include "time.h"
 #include "vfs_context.h"
 
 static Volume volumes[VFS_LETTER_AMOUNT];
@@ -191,6 +192,43 @@ File* vfs_open(const char* path)
     }
 
     return file;
+}
+
+static bool vfs_poll_callback(void* context)
+{
+    PollFile* file = context;
+    while (file->file != NULL)
+    {
+        if (file->requested & POLL_READ &&
+            (file->file->methods.read_avail != NULL && file->file->methods.read_avail(file->file)))
+        {
+            file->occurred = POLL_READ;
+            return true;
+        }
+        if (file->requested & POLL_WRITE &&
+            (file->file->methods.write_avail != NULL && file->file->methods.write_avail(file->file)))
+        {
+            file->occurred = POLL_WRITE;
+            return true;
+        }
+
+        file++;
+    }
+
+    return false;
+}
+
+uint64_t vfs_poll(PollFile* files, uint64_t timeout)
+{
+    Blocker blocker =
+    {
+        .context = files,
+        .callback = vfs_poll_callback,
+        .deadline = timeout == UINT64_MAX ? UINT64_MAX : timeout + time_nanoseconds()
+    };
+    sched_block(blocker);
+
+    return 0;
 }
 
 uint64_t vfs_mount(char letter, Filesystem* fs)

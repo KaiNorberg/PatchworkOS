@@ -1,12 +1,13 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #define TERMINAL_MAX_COMMAND 256
-#define TERMINAL_MAX_TEXT 0x1000
 #define TERMINAL_MAX_COLOR 8
+#define TERMINAL_BLINK_INTERVAL (SEC / 2)
 
-#define TERMINAL_FOREGROUND 0xFF17A88B
+#define TERMINAL_FOREGROUND 0xFF1D99F3
 #define TERMINAL_BACKGROUND 0xFF000000
 
 typedef enum
@@ -20,9 +21,9 @@ typedef enum
 
 typedef struct
 {
-    uint64_t index;
     uint64_t x;
     uint64_t y;
+    bool visible;
 } Cursor;
 
 void terminal_init();

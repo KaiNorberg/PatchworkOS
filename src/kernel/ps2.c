@@ -200,8 +200,6 @@ static void ps2_kbd_irq(uint8_t irq)
 
 static uint64_t ps2_kbd_read(File* file, void* buffer, uint64_t count)
 {
-    //TODO: Add blocking
-
     count = ROUND_DOWN(count, sizeof(kbd_event_t));
 
     for (uint64_t i = 0; i < count / sizeof(kbd_event_t); i++)
@@ -216,6 +214,11 @@ static uint64_t ps2_kbd_read(File* file, void* buffer, uint64_t count)
     }
 
     return count;
+}
+
+static bool ps2_kbd_read_avail(File* file)
+{
+    return file->position != writeIndex;
 }
 
 static void ps2_controller_init()
@@ -255,6 +258,7 @@ void ps2_init()
     Resource* keyboard = kmalloc(sizeof(Resource));
     resource_init(keyboard, "ps2");
     keyboard->methods.read = ps2_kbd_read;
+    keyboard->methods.read_avail = ps2_kbd_read_avail;
 
     sysfs_expose(keyboard, "/keyboard");
 

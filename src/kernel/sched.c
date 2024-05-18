@@ -139,28 +139,18 @@ void sched_yield(void)
     SMP_SEND_IPI_TO_SELF(IPI_SCHEDULE);
 }
 
-static bool sched_sleep_callback(uint64_t deadline)
-{
-    return deadline <= time_nanoseconds();
-}
 
 void sched_sleep(uint64_t nanoseconds)
 {
     Blocker blocker =
     {
-        .context = time_nanoseconds() + nanoseconds,
-        .callback = sched_sleep_callback
+        .deadline = time_nanoseconds() + nanoseconds,
     };
     sched_block(blocker);
 }
 
 void sched_block(Blocker blocker)
 {
-    if (blocker.callback(blocker.context))
-    {
-        return;
-    }
-
     Scheduler* scheduler = &smp_self()->scheduler;
     Thread* thread = scheduler->runningThread;
     thread->blocker = blocker;
@@ -232,7 +222,8 @@ void sched_schedule(TrapFrame* trapFrame)
     Thread* temp;
     LIST_FOR_EACH_SAFE(thread, temp, &scheduler->blockedThreads)
     {
-        if (thread->blocker.callback(thread->blocker.context))
+        if (thread->blocker.deadline < time_nanoseconds() || 
+            (thread->blocker.callback != NULL && thread->blocker.callback(thread->blocker.context)))
         {
             list_remove(thread);
             sched_push(thread, 1);
