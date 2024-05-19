@@ -1,4 +1,4 @@
-#include "virtual_memory.h"
+#include "vm.h"
 
 #include "page_table.h"
 #include "memory.h"
@@ -7,7 +7,7 @@ static PageTable* pageTable;
 
 static void* kernelAddress;
 
-void virtual_memory_init(void)
+void vm_init(void)
 {
     kernelAddress = 0;
     pageTable = page_table_new();
@@ -35,7 +35,7 @@ void virtual_memory_init(void)
     PAGE_TABLE_LOAD(pageTable);
 }
 
-void virtual_memory_allocate_kernel(void* virtualAddress, uint64_t pageAmount)
+void vm_alloc_kernel(void* virtualAddress, uint64_t pageAmount)
 {
     void* physicalAddress = memory_allocate_pages(pageAmount, EFI_MEMORY_TYPE_KERNEL);
     kernelAddress = virtualAddress;
@@ -43,21 +43,16 @@ void virtual_memory_allocate_kernel(void* virtualAddress, uint64_t pageAmount)
     page_table_map_pages(pageTable, virtualAddress, physicalAddress, pageAmount, PAGE_FLAG_WRITE);
 }
 
-void* virtual_memory_allocate_pages(uint64_t pageAmount, uint64_t memoryType)
-{
-    return (void*)((uint64_t)memory_allocate_pages(pageAmount, memoryType) + HIGHER_HALF_BASE);
-}
-
-void* virtual_memory_allocate_pool(uint64_t size, uint64_t memoryType)
+void* vm_alloc(uint64_t size, uint64_t memoryType)
 {
     return (void*)((uint64_t)memory_allocate_pool(size, memoryType) + HIGHER_HALF_BASE);
 }
 
-void virtual_memory_map_init(EfiMemoryMap* memoryMap)
+void vm_map_init(EfiMemoryMap* memoryMap)
 {
     memory_map_init(memoryMap);
 
-    void* newBuffer = virtual_memory_allocate_pool(memoryMap->descriptorAmount * memoryMap->descriptorSize, EFI_MEMORY_TYPE_MEMORY_MAP);
+    void* newBuffer = vm_alloc(memoryMap->descriptorAmount * memoryMap->descriptorSize, EFI_MEMORY_TYPE_MEMORY_MAP);
     CopyMem(newBuffer, memoryMap->base, memoryMap->descriptorAmount * memoryMap->descriptorSize);
 
     memory_map_cleanup(memoryMap);

@@ -1,43 +1,44 @@
 #include "ram_disk.h"
 
 #include <stddef.h>
+#include <string.h>
 
-#include "file_system.h"
-#include "string.h"
-#include "virtual_memory.h"
+#include "fs.h"
+#include "char16.h"
+#include "vm.h"
 
 RamDir* ram_disk_load(EFI_HANDLE imageHandle)
 {
-    EFI_FILE* rootHandle = file_system_open_root_volume(imageHandle);
+    EFI_FILE* rootHandle = fs_open_root_volume(imageHandle);
 
     RamDir* root = ram_disk_load_directory(rootHandle, "root");
 
-    file_system_close(rootHandle);
+    fs_close(rootHandle);
 
     return root;
 }
 
 RamFile* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
 {
-    EFI_FILE* fileHandle = file_system_open_raw(volume, path);
+    EFI_FILE* fileHandle = fs_open_raw(volume, path);
 
-    RamFile* file = virtual_memory_allocate_pool(sizeof(RamFile), EFI_MEMORY_TYPE_RAM_DISK);
+    RamFile* file = vm_alloc(sizeof(RamFile), EFI_MEMORY_TYPE_RAM_DISK);
 
-    file->size = file_system_get_size(fileHandle);
-    file->data = virtual_memory_allocate_pool(file->size, EFI_MEMORY_TYPE_RAM_DISK);
-    file_system_read(fileHandle, file->size, file->data);
+    file->size = fs_get_size(fileHandle);
+    file->data = vm_alloc(file->size, EFI_MEMORY_TYPE_RAM_DISK);
+    fs_read(fileHandle, file->size, file->data);
 
     SetMem(file->name, 32, 0);
     char16_to_char(path, file->name);
 
-    file_system_close(fileHandle);
+    fs_close(fileHandle);
 
     return file;
 }
 
 RamDir* ram_disk_load_directory(EFI_FILE* volume, const char* name)
 {
-    RamDir* dir = virtual_memory_allocate_pool(sizeof(RamDir), EFI_MEMORY_TYPE_RAM_DISK);
+    RamDir* dir = vm_alloc(sizeof(RamDir), EFI_MEMORY_TYPE_RAM_DISK);
 
     SetMem(dir->name, 32, 0);
     strcpy(dir->name, name);
@@ -61,7 +62,7 @@ RamDir* ram_disk_load_directory(EFI_FILE* volume, const char* name)
 
 	    fileInfo = AllocatePool(fileInfoSize);
 
-	    status = file_system_read(volume, fileInfoSize, fileInfo);
+	    status = fs_read(volume, fileInfoSize, fileInfo);
 	    if (EFI_ERROR(status)) 
 		{
 		    Print(L"Error reading file info\n");
@@ -73,7 +74,7 @@ RamDir* ram_disk_load_directory(EFI_FILE* volume, const char* name)
 		{
 		    if (StrCmp(fileInfo->FileName, L".") != 0 && StrCmp(fileInfo->FileName, L"..") != 0) 
 			{
-			    EFI_FILE_PROTOCOL* childVolume = file_system_open_raw(volume, fileInfo->FileName);
+			    EFI_FILE_PROTOCOL* childVolume = fs_open_raw(volume, fileInfo->FileName);
 
 			    char childName[32];
 			    char16_to_char(fileInfo->FileName, childName);
@@ -96,7 +97,7 @@ RamDir* ram_disk_load_directory(EFI_FILE* volume, const char* name)
 				    dir->lastChild = child;
 				}
 
-			    file_system_close(childVolume);
+			    fs_close(childVolume);
 			}
 		}
 	    else

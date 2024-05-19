@@ -8,12 +8,17 @@ BOOT_OUT_EFI = $(BOOT_BIN_DIR)/bootx64.efi
 BOOT_SRC = \
 	$(wildcard $(BOOT_SRC_DIR)/*.c) \
 	$(wildcard $(BOOT_SRC_DIR)/*.s) \
+	$(STDLIB)/string/strcpy.c \
+	$(STDLIB)/string/strcmp.c \
+	$(STDLIB)/string/strlen.c \
+	$(STDLIB)/string/memcmp.c
 
 BOOT_OBJ = $(patsubst $(SRC_DIR)/%, $(BOOT_BUILD_DIR)/%.o, $(BOOT_SRC))
 
 GNU_EFI = vendor/gnu-efi
 
 BOOT_C_FLAGS = $(BASE_C_FLAGS) \
+	-nostdlib \
 	-fpic -ffreestanding \
 	-fno-stack-protector -fno-stack-check \
 	-fshort-wchar -mno-red-zone -Wno-array-bounds \

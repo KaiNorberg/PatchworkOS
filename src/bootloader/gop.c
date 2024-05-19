@@ -3,9 +3,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "virtual_memory.h"
+#include "vm.h"
 
-void gop_get_buffer(GopBuffer* buffer)
+void gop_buffer_init(GopBuffer* buffer)
 {
     EFI_GUID guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
     EFI_GRAPHICS_OUTPUT_PROTOCOL* gop;

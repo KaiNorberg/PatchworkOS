@@ -5,15 +5,15 @@
 
 #include <common/elf.h>
 
-#include "virtual_memory.h"
-#include "file_system.h"
+#include "vm.h"
+#include "fs.h"
 #include "page_table.h"
 
 void* load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
 {
     Print(L"Loading kernel...\n");
 
-    EFI_FILE* file = file_system_open(path, imageHandle);
+    EFI_FILE* file = fs_open(path, imageHandle);
     if (file == 0)
 	{
 	    Print(L"ERROR: Failed to load");
@@ -25,7 +25,7 @@ void* load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
 	}
 
     ElfHeader header;	
-    file_system_read(file, sizeof(ElfHeader), &header);
+    fs_read(file, sizeof(ElfHeader), &header);
 
     if(header.ident[0] != 0x7F ||
        header.ident[1] != 'E' ||
@@ -42,8 +42,8 @@ void* load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
 
     uint64_t programHeaderTableSize = header.programHeaderAmount * header.programHeaderSize;
     ElfProgramHeader* programHeaders = memory_allocate_pool(programHeaderTableSize, EfiLoaderData);
-    file_system_seek(file, header.programHeaderOffset);
-    file_system_read(file, programHeaderTableSize, programHeaders);
+    fs_seek(file, header.programHeaderOffset);
+    fs_read(file, programHeaderTableSize, programHeaders);
 	
     uint64_t kernelStart = UINT64_MAX;
     uint64_t kernelEnd = 0;
@@ -69,7 +69,7 @@ void* load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
 	}
 
     uint64_t kernelPageAmount = (kernelEnd - kernelStart) / EFI_PAGE_SIZE + 1;
-    virtual_memory_allocate_kernel((void*)kernelStart, kernelPageAmount);
+    vm_alloc_kernel((void*)kernelStart, kernelPageAmount);
 	
     for (ElfProgramHeader* programHeader = programHeaders; 
 		(uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize; 
@@ -79,17 +79,17 @@ void* load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
 		{
 	    case PT_LOAD:
 		{
-		    file_system_seek(file, programHeader->offset);
+		    fs_seek(file, programHeader->offset);
 			
 		    SetMem((void*)programHeader->virtualAddress, programHeader->memorySize, 0);
-		    file_system_read(file, programHeader->fileSize, (void*)programHeader->virtualAddress);
+		    fs_read(file, programHeader->fileSize, (void*)programHeader->virtualAddress);
 		}
 	    break;
 		}
 	}
 
     memory_free_pool(programHeaders);
-    file_system_close(file);
+    fs_close(file);
 
     return (void*)header.entry;
 }

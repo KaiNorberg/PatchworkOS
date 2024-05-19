@@ -3,8 +3,6 @@
 #include <common/boot_info.h>
 
 #include "memory.h"
-#include "string.h"
-#include "efilib.h"
 
 static PageEntry page_table_entry_create(void* address, uint64_t flags)
 {

@@ -2,12 +2,12 @@
 
 #include <stddef.h>
 
-#include "file_system.h"
-#include "virtual_memory.h"
+#include "fs.h"
+#include "vm.h"
 
 void psf_font_load(PsfFont* font, CHAR16* path, EFI_HANDLE imageHandle)
 {
-    EFI_FILE* file = file_system_open(path, imageHandle);
+    EFI_FILE* file = fs_open(path, imageHandle);
 
     if (file == 0)
 	{
@@ -19,7 +19,7 @@ void psf_font_load(PsfFont* font, CHAR16* path, EFI_HANDLE imageHandle)
 		}
 	}
 
-    file_system_read(file, sizeof(PsfHeader), &font->header);
+    fs_read(file, sizeof(PsfHeader), &font->header);
 
     if (font->header.magic != PSF_MAGIC)
 	{
@@ -40,13 +40,13 @@ void psf_font_load(PsfFont* font, CHAR16* path, EFI_HANDLE imageHandle)
 	    font->glyphsSize = font->header.charSize * 256;
 	}
 
-    void* glyphBuffer = virtual_memory_allocate_pool(font->glyphsSize, EFI_MEMORY_TYPE_BOOT_INFO);
-    file_system_seek(file, sizeof(PsfHeader));
-    file_system_read(file, font->glyphsSize, glyphBuffer);
+    void* glyphBuffer = vm_alloc(font->glyphsSize, EFI_MEMORY_TYPE_BOOT_INFO);
+    fs_seek(file, sizeof(PsfHeader));
+    fs_read(file, font->glyphsSize, glyphBuffer);
 
     font->glyphs = glyphBuffer;
 
-    file_system_close(file);
+    fs_close(file);
 
     Print(L"FONT INFO\n\r");
     Print(L"Char Size: %d\n\r", font->header.charSize);
