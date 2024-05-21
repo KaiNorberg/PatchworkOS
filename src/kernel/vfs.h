@@ -91,6 +91,19 @@ uint64_t vfs_realpath(char* out, const char* path);
 
 uint64_t vfs_chdir(const char* path);
 
+static inline uint64_t vfs_name_length(const char* name)
+{
+    for (uint64_t i = 0; i < CONFIG_MAX_PATH - 1; i++)
+    {
+        if (VFS_END_OF_NAME(name[i]))
+        {
+            return i;
+        }
+    }
+
+    return CONFIG_MAX_PATH - 1;
+}
+
 static inline void vfs_copy_name(char* dest, const char* src)
 {
     for (uint64_t i = 0; i < CONFIG_MAX_PATH - 1; i++)

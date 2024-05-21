@@ -34,7 +34,7 @@ static void fb_map(void)
 
 static void fb_load_font(void)
 {
-    fd_t fd = open("@home/usr/fonts/zap-vga16.psf");
+    fd_t fd = open("/usr/fonts/zap-vga16.psf");
     if (fd == ERR)
     {
         exit(EXIT_FAILURE);

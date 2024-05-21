@@ -16,93 +16,98 @@ static Lock volumeLock;
 
 //TODO: Improve vfs filepath parsing
 
-static uint64_t vfs_make_canonical(char* out, const char* path)
+static uint64_t vfs_make_canonical(char* start, char* out, const char* path)
 {
-    char* ptr = out + strlen(out);
     const char* name = path;
     while (true)
     {
         if (vfs_compare_names(name, "."))
         {
-            name = vfs_next_name(name);
-            if (name == NULL)
-            {
-                return 0;
-            }
+            //Do nothing
         }
         else if (vfs_compare_names(name, ".."))
         {
-            tty_print(out);
-            tty_print(" ");
-            ptr = strrchr(out, VFS_SEPARATOR);
-            if (ptr == NULL)
+            out--;
+            while (*out != VFS_SEPARATOR)
             {
-                return ERR;
-            }
-            *ptr = '\0'; 
-            tty_print(out);
-            tty_print(" | ");
+                if (out <= start)
+                {
+                    return ERR;
+                }
 
-            name = vfs_next_name(name);
-            if (name == NULL)
-            {
-                return 0;
+                out--;
             }
+            out[1] = '\0';
         }
         else
         {
-            while (true)
+            while (*name != VFS_SEPARATOR)
             {
-                if (*name == VFS_SEPARATOR)
+                if (*name == '\0')
                 {
-                    *ptr = VFS_SEPARATOR;
-                    ptr++;
-                    *ptr = '\0';
-                    name++;
-                    break;
-                }
-                else if (*name == '\0')
-                {
-                    *ptr = '\0';
+                    out++;
+                    *out = '\0';
                     return 0;
                 }
 
-                if (!VFS_VALID_CHAR(*name) || (uint64_t)(ptr - out) >= CONFIG_MAX_PATH)
+                if (!VFS_VALID_CHAR(*name) || (uint64_t)(out - start) >= CONFIG_MAX_PATH - 1)
                 {
                     return ERR;
                 } 
-                *ptr = *name;
-                ptr++;
-                *ptr = '\0';
 
+                out++;
+                *out = *name;
                 name++;
             }
+
+            out++;
+            out[0] = VFS_SEPARATOR;
+            out[1] = '\0';
+        }            
+        
+        name = vfs_next_name(name);
+        if (name == NULL)
+        {                    
+            if (*out == VFS_SEPARATOR)
+            {
+                *out = '\0';
+            }
+            return 0;
         }
     }
 }
 
 static uint64_t vfs_parse_path(char* out, const char* path)
-{   
-    VfsContext* context = &sched_process()->vfsContext;
-    LOCK_GUARD(&context->lock);
-
+{
     if (path[0] == VFS_DRIVE_ACCESSOR) //Absolute path
     {       
         out[0] = VFS_DRIVE_ACCESSOR;
         out[1] = '\0';
-
-        return vfs_make_canonical(out + 1, path + 1);
+        return vfs_make_canonical(out, out, path + 1);
     }
-    else if (path[0] == VFS_SEPARATOR) //Root path
-    {        
+    
+    VfsContext* context = &sched_process()->vfsContext;
+    LOCK_GUARD(&context->lock);
+    
+    if (path[0] == VFS_SEPARATOR) //Root path
+    {
+        uint64_t volumeLength = vfs_name_length(context->cwd + 1);
         out[0] = VFS_DRIVE_ACCESSOR;
-        vfs_copy_name(out + 1, context->cwd + 1);
-
-        return vfs_make_canonical(out, path);
+        memcpy(out + 1, context->cwd + 1, volumeLength);
+        return vfs_make_canonical(out, out + volumeLength, path);
     }
     else if (VFS_VALID_CHAR(path[0])) //Relative path
     {
-        return vfs_make_canonical(out, path);
+        uint64_t i = 0;
+        while (context->cwd[i] != '\0')
+        {
+            out[i] = context->cwd[i];
+            i++;
+        }
+        out[i] = VFS_SEPARATOR;
+        out[i + 1] = '\0';
+
+        return vfs_make_canonical(out, out + i, path);
     }
     else
     {
@@ -156,7 +161,7 @@ void file_deref(File* file)
     }
 }
 
-void test_path(const char* path)
+/*void test_path(const char* path)
 {
     tty_print(path);
     tty_print(" => ");
@@ -171,7 +176,7 @@ void test_path(const char* path)
 
     tty_print(parsedPath);
     tty_print("\n");
-}
+}*/
 
 void vfs_init(void)
 {
@@ -180,15 +185,36 @@ void vfs_init(void)
     list_init(&volumes);
     lock_init(&volumeLock);
 
-    tty_print("\n");
+    /*tty_print("\n");
+
+    vfs_chdir("@volume/wd1/wd2");
 
     test_path("@sys/test1/test2/test3");
     test_path("@sys/test1/../test3");
+    test_path("@sys/../../test3");
+    test_path("@sys/test1/test2/test3/../..");
+    test_path("@sys/test1/../test3/..");
 
-    while (1)
-    {
+    tty_print("\n");
 
-    }
+    test_path("/test1/test2/test3");
+    test_path("/test1/../test3");
+    test_path("/../../test3");
+    test_path("/test1/test2/test3/../..");
+    test_path("/test1/../test3/..");
+
+    tty_print("\n");
+
+    test_path("test1/test2/test3");
+    test_path("test1/../test3");
+    test_path("../../test3");
+    test_path("test1/test2/test3/../..");
+    test_path("test1/../test3/..");
+
+    tty_print("\n");
+
+    test_path("../test3");
+    test_path(".");*/
 
     tty_end_message(TTY_MESSAGE_OK);
 }
