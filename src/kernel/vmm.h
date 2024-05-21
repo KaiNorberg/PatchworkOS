@@ -2,7 +2,7 @@
 
 #include <common/boot_info.h>
 
-#include <sys/mem.h>
+#include <sys/proc.h>
 
 #include "defs.h"
 #include "lock.h"

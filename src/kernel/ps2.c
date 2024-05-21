@@ -260,7 +260,7 @@ void ps2_init(void)
     keyboard->methods.read = ps2_kbd_read;
     keyboard->methods.read_avail = ps2_kbd_read_avail;
 
-    sysfs_expose(keyboard, "/keyboard");
+    sysfs_expose(keyboard, "/kbd");
 
     tty_end_message(TTY_MESSAGE_OK);
 }

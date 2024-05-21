@@ -177,7 +177,7 @@ void ramfs_init(RamDir* ramRoot)
     ramfs.name = "ramfs";
     ramfs.mount = ramfs_mount;
 
-    if (vfs_mount('B', &ramfs) == ERR)
+    if (vfs_mount("home", &ramfs) == ERR)
     {
         tty_print("Failed to mount ramfs");
         tty_end_message(TTY_MESSAGE_ER);

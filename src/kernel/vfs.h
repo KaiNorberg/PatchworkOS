@@ -7,17 +7,12 @@
 
 #include "defs.h"
 #include "lock.h"
+#include "list.h"
 
-#define VFS_NAME_SEPARATOR '/'
-#define VFS_DRIVE_SEPARATOR ':'
-
-#define VFS_LETTER_BASE 'A'
-#define VFS_LETTER_AMOUNT ('Z' - 'A' + 1)
-
+#define VFS_SEPARATOR '/'
+#define VFS_DRIVE_ACCESSOR '@'
 #define VFS_VALID_CHAR(ch) (isalnum(ch) || (ch) == '_' || (ch) == '.' || (ch) == '-' || (ch) == ' ')
-#define VFS_VALID_LETTER(letter) ((letter) >= 'A' && (letter) <= 'Z')
-
-#define VFS_END_OF_NAME(ch) ((ch) == VFS_NAME_SEPARATOR || (ch) == '\0')
+#define VFS_END_OF_NAME(ch) ((ch) == VFS_SEPARATOR || (ch) == '\0')
 
 #define FILE_CALL_METHOD(file, method, ...) \
     ((file)->methods.method != NULL ? \
@@ -41,11 +36,12 @@ typedef struct Filesystem
 
 typedef struct Volume
 {
-    _Atomic(uint64_t) ref;
-    Lock lock;
+    ListEntry base;
+    char label[CONFIG_MAX_LABEL];
     Filesystem* fs;
     uint64_t (*unmount)(Volume*);
     uint64_t (*open)(Volume*, File*, const char*);
+    _Atomic(uint64_t) ref;
 } Volume;
 
 typedef struct
@@ -61,12 +57,12 @@ typedef struct
 
 typedef struct File
 {
-    _Atomic(uint64_t) ref;
     Volume* volume;
     uint64_t position;
     void* internal;
     void (*cleanup)(File*);
     FileMethods methods;
+    _Atomic(uint64_t) ref;
 } File;
 
 typedef struct
@@ -87,9 +83,9 @@ File* vfs_open(const char* path);
 //Files should be NULL terminated.
 uint64_t vfs_poll(PollFile* files, uint64_t timeout);
 
-uint64_t vfs_mount(char letter, Filesystem* fs);
+uint64_t vfs_mount(const char* label, Filesystem* fs);
 
-uint64_t vfs_unmount(char letter);
+uint64_t vfs_unmount(const char* label);
 
 uint64_t vfs_realpath(char* out, const char* path);
 
@@ -131,7 +127,7 @@ static inline bool vfs_compare_names(const char* a, const char* b)
 
 static inline const char* vfs_first_name(const char* path)
 {
-    if (path[0] == VFS_NAME_SEPARATOR)
+    if (path[0] == VFS_SEPARATOR || path[0] == VFS_DRIVE_ACCESSOR)
     {
         return path + 1;
     }
@@ -141,12 +137,12 @@ static inline const char* vfs_first_name(const char* path)
 
 static inline const char* vfs_first_dir(const char* path)
 {
-    if (path[0] == VFS_NAME_SEPARATOR)
+    if (path[0] == VFS_SEPARATOR)
     {
         path++;
     }
 
-    if (strchr(path, VFS_NAME_SEPARATOR) == NULL)
+    if (strchr(path, VFS_SEPARATOR) == NULL)
     {
         return NULL;
     }
@@ -158,7 +154,7 @@ static inline const char* vfs_first_dir(const char* path)
 
 static inline const char* vfs_next_dir(const char* path)
 {
-    const char* next = strchr(path, VFS_NAME_SEPARATOR);
+    const char* next = strchr(path, VFS_SEPARATOR);
     if (next == NULL)
     {
         return NULL;
@@ -166,7 +162,7 @@ static inline const char* vfs_next_dir(const char* path)
     else
     {
         next += 1;
-        if (strchr(next, VFS_NAME_SEPARATOR) != NULL)
+        if (strchr(next, VFS_SEPARATOR) != NULL)
         {
             return next;
         }
@@ -179,19 +175,19 @@ static inline const char* vfs_next_dir(const char* path)
 
 static inline const char* vfs_next_name(const char* path)
 {
-    const char* base = strchr(path, VFS_NAME_SEPARATOR);
+    const char* base = strchr(path, VFS_SEPARATOR);
     return base != NULL ? base + 1 : NULL;
 }
 
 static inline const char* vfs_basename(const char* path)
 {
-    const char* base = strrchr(path, VFS_NAME_SEPARATOR);
+    const char* base = strrchr(path, VFS_SEPARATOR);
     return base != NULL ? base + 1 : path;
 }
 
 static inline uint64_t vfs_parent_dir(char* dest, const char* src)
 {
-    char* end = strrchr(src, VFS_NAME_SEPARATOR);
+    char* end = strrchr(src, VFS_SEPARATOR);
     if (end == NULL)
     {
         return ERR;

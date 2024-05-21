@@ -17,7 +17,7 @@ void main(BootInfo* bootInfo)
 
     tty_clear();
 
-    sched_spawn("B:/programs/shell.elf");
+    //sched_spawn("@home/bin/shell.elf");
 
     //Exit init thread
     sched_thread_exit();
