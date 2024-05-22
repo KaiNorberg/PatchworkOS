@@ -9,7 +9,7 @@
 typedef struct System
 {
     ListEntry base;
-    char name[CONFIG_MAX_NAME];
+    char name[CONFIG_MAX_LABEL];
     List resources;
     List systems;
 } System;
@@ -19,7 +19,7 @@ typedef struct Resource
     ListEntry base;
     System* system;
     _Atomic(uint64_t) ref;
-    char name[CONFIG_MAX_NAME];
+    char name[CONFIG_MAX_LABEL];
     void (*delete)(struct Resource*);
     FileMethods methods;
 } Resource;

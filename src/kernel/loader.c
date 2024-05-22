@@ -8,6 +8,7 @@
 #include "defs.h"
 #include "pmm.h"
 #include "vmm.h"
+#include "tty.h"
 #include "sched.h"
 #include "utils.h"
 #include "debug.h"

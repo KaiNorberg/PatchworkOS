@@ -1,6 +1,6 @@
 #include <threads.h>
 
-#include <sys/process.h>
+#include <sys/proc.h>
 
 int thrd_sleep(const struct timespec* duration, struct timespec* remaining)
 {

@@ -66,7 +66,7 @@ void renderer_init(GopBuffer* gopBuffer)
     framebuffer->info.redOffset = 2 * 8;
     framebuffer->info.alphaOffset = 3 * 8;
 
-    sysfs_expose(&framebuffer->base, "/framebuffer");
+    sysfs_expose(&framebuffer->base, "/fb");
 
     tty_end_message(TTY_MESSAGE_OK);
 }

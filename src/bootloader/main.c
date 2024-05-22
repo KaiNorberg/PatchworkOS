@@ -14,12 +14,12 @@
 void* boot_info_populate(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, BootInfo* bootInfo)
 {
     gop_buffer_init(&bootInfo->gopBuffer);
-    psf_font_load(&bootInfo->font, L"/fonts/zap-vga16.psf", imageHandle);
+    psf_font_load(&bootInfo->font, L"/usr/fonts/zap-vga16.psf", imageHandle);
     bootInfo->ramRoot = ram_disk_load(imageHandle);
     bootInfo->rsdp = rsdp_get(systemTable);
     bootInfo->runtimeServices = systemTable->RuntimeServices;
 
-    void* entry = load_kernel(L"/kernel/kernel.elf", imageHandle);
+    void* entry = load_kernel(L"/boot/kernel.elf", imageHandle);
 
     vm_map_init(&bootInfo->memoryMap);
 

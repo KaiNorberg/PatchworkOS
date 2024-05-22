@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <sys/io.h>
-#include <sys/process.h>
+#include <sys/proc.h>
 #include <sys/kbd.h>
 
 static Cursor cursor;
@@ -162,7 +162,7 @@ void terminal_init(void)
 
     fb_clear(TERMINAL_BACKGROUND);
 
-    keyboard = open("A:/keyboard/ps2");
+    keyboard = open("@sys/kbd/ps2");
     if (keyboard == ERR)
     {
         terminal_panic("Failed to open keyboard");

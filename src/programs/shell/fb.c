@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
-#include <sys/mem.h>
+#include <sys/proc.h>
 #include <sys/io.h>
 
 static ioctl_fb_info_t fbInfo;
@@ -13,7 +13,7 @@ static uint8_t glyphBuffer[16 * 256];
 
 static void fb_map(void)
 {
-    fd_t fd = open("A:/framebuffer/0");
+    fd_t fd = open("@sys/fb/0");
     if (fd == ERR)
     {
         exit(EXIT_FAILURE);
@@ -34,7 +34,7 @@ static void fb_map(void)
 
 static void fb_load_font(void)
 {
-    fd_t fd = open("/fonts/zap-vga16.psf");
+    fd_t fd = open("/usr/fonts/zap-vga16.psf");
     if (fd == ERR)
     {
         exit(EXIT_FAILURE);

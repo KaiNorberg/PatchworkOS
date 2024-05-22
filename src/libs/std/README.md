@@ -1,6 +1,6 @@
 # Standard library
 
-This is a custom superset of the C standard library, extensions can be found within the sys folder, this does potentially limit compatibility with some software.
+This is a custom superset of the C standard library, this is NOT POSIX, extensions can be found within the sys folder, this does potentially limit compatibility with some software.
 
 ## Naming convention
 
