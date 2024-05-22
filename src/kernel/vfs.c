@@ -14,8 +14,6 @@
 static List volumes;
 static Lock volumeLock;
 
-//TODO: Improve vfs filepath parsing
-
 static uint64_t vfs_make_canonical(char* start, char* out, const char* path)
 {
     const char* name = path;
@@ -41,23 +39,17 @@ static uint64_t vfs_make_canonical(char* start, char* out, const char* path)
         }
         else
         {
-            while (*name != VFS_SEPARATOR)
+            const char* ptr = name;
+            while (!VFS_END_OF_NAME(*ptr))
             {
-                if (*name == '\0')
-                {
-                    out++;
-                    *out = '\0';
-                    return 0;
-                }
-
-                if (!VFS_VALID_CHAR(*name) || (uint64_t)(out - start) >= CONFIG_MAX_PATH - 1)
+                if (!VFS_VALID_CHAR(*ptr) || (uint64_t)(out - start) >= CONFIG_MAX_PATH - 2)
                 {
                     return ERR;
                 } 
 
                 out++;
-                *out = *name;
-                name++;
+                *out = *ptr;
+                ptr++;
             }
 
             out++;
@@ -109,10 +101,8 @@ static uint64_t vfs_parse_path(char* out, const char* path)
 
         return vfs_make_canonical(out, out + i, path);
     }
-    else
-    {
-        return ERR;
-    }
+
+    return ERR;
 }
 
 static Volume* volume_ref(Volume* volume)
@@ -161,60 +151,12 @@ void file_deref(File* file)
     }
 }
 
-/*void test_path(const char* path)
-{
-    tty_print(path);
-    tty_print(" => ");
-
-    char parsedPath[CONFIG_MAX_PATH];
-    parsedPath[0] = '\0';
-    if (vfs_parse_path(parsedPath, path) == ERR)
-    {
-        tty_print("ERR\n");
-        return;
-    }
-
-    tty_print(parsedPath);
-    tty_print("\n");
-}*/
-
 void vfs_init(void)
 {
     tty_start_message("VFS initializing");
 
     list_init(&volumes);
     lock_init(&volumeLock);
-
-    /*tty_print("\n");
-
-    vfs_chdir("@volume/wd1/wd2");
-
-    test_path("@sys/test1/test2/test3");
-    test_path("@sys/test1/../test3");
-    test_path("@sys/../../test3");
-    test_path("@sys/test1/test2/test3/../..");
-    test_path("@sys/test1/../test3/..");
-
-    tty_print("\n");
-
-    test_path("/test1/test2/test3");
-    test_path("/test1/../test3");
-    test_path("/../../test3");
-    test_path("/test1/test2/test3/../..");
-    test_path("/test1/../test3/..");
-
-    tty_print("\n");
-
-    test_path("test1/test2/test3");
-    test_path("test1/../test3");
-    test_path("../../test3");
-    test_path("test1/test2/test3/../..");
-    test_path("test1/../test3/..");
-
-    tty_print("\n");
-
-    test_path("../test3");
-    test_path(".");*/
 
     tty_end_message(TTY_MESSAGE_OK);
 }
