@@ -9,7 +9,6 @@
 #include "time.h"
 #include "debug.h"
 #include "utils.h"
-#include "ring.h"
 
 static kbd_event_t eventBuffer[PS2_KEY_BUFFER_LENGTH];
 static uint64_t writeIndex = 0;
