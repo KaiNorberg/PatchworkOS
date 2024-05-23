@@ -10,15 +10,13 @@
 #include "list.h"
 
 #define VFS_NAME_SEPARATOR '/'
-#define VFS_VOLUME_SEPARATOR ':'
+#define VFS_LABEL_SEPARATOR ':'
 
-#define VFS_LETTER_BASE 'A'
-#define VFS_LETTER_AMOUNT ('Z' - 'A' + 1)
-
-#define VFS_VALID_LETTER(ch) ((ch) >= 'A' && (ch) <= 'Z')
-#define VFS_VALID_CHAR(ch) (isalnum(ch) || strchr("_-. ()[]{}~!@#$%^&',;=+", ch))
+#define VFS_VALID_LETTER(ch) ((ch) >= VFS_LETTER_BASE && (ch) <= VFS_LETTER_MAX)
+#define VFS_VALID_CHAR(ch) (isalnum((ch)) || strchr("_-. ()[]{}~!@#$%^&',;=+", (ch)))
 
 #define VFS_END_OF_NAME(ch) ((ch) == VFS_NAME_SEPARATOR || (ch) == '\0')
+#define VFS_END_OF_LABEL(ch) ((ch) == VFS_LABEL_SEPARATOR || (ch) == '\0')
 
 #define FILE_CALL_METHOD(file, method, ...) \
     ((file)->methods.method != NULL ? \
@@ -42,11 +40,12 @@ typedef struct Filesystem
 
 typedef struct Volume
 {
+    ListEntry base;
+    char label[CONFIG_MAX_LABEL];
     Filesystem* fs;
     uint64_t (*unmount)(Volume*);
     uint64_t (*open)(Volume*, File*, const char*);
     _Atomic(uint64_t) ref;
-    Lock lock;
 } Volume;
 
 typedef struct
@@ -85,12 +84,12 @@ void vfs_init(void);
 
 File* vfs_open(const char* path);
 
-//Files should be NULL terminated.
+//Files should be null terminated.
 uint64_t vfs_poll(PollFile* files, uint64_t timeout);
 
-uint64_t vfs_mount(char letter, Filesystem* fs);
+uint64_t vfs_mount(const char* label, Filesystem* fs);
 
-uint64_t vfs_unmount(char letter);
+uint64_t vfs_unmount(const char* label);
 
 uint64_t vfs_realpath(char* out, const char* path);
 
@@ -126,6 +125,23 @@ static inline void vfs_copy_name(char* dest, const char* src)
     dest[CONFIG_MAX_PATH - 1] = '\0';
 }
 
+static inline bool vfs_compare_labels(const char* a, const char* b)
+{
+    for (uint64_t i = 0; i < CONFIG_MAX_PATH; i++)
+    {
+        if (VFS_END_OF_LABEL(a[i]))
+        {
+            return VFS_END_OF_LABEL(b[i]);
+        }
+        if (a[i] != b[i])
+        {
+            return false;
+        }
+    }
+
+    return false;
+}
+
 static inline bool vfs_compare_names(const char* a, const char* b)
 {
     for (uint64_t i = 0; i < CONFIG_MAX_PATH; i++)
@@ -145,7 +161,7 @@ static inline bool vfs_compare_names(const char* a, const char* b)
 
 static inline const char* vfs_first_name(const char* path)
 {
-    if (path[0] == VFS_NAME_SEPARATOR || path[0] == VFS_VOLUME_SEPARATOR)
+    if (path[0] == VFS_NAME_SEPARATOR)
     {
         return path + 1;
     }

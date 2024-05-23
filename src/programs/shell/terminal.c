@@ -162,7 +162,7 @@ void terminal_init(void)
 
     fb_clear(TERMINAL_BACKGROUND);
 
-    keyboard = open("A:/kbd/ps2");
+    keyboard = open("sys:/kbd/ps2");
     if (keyboard == ERR)
     {
         terminal_panic("Failed to open keyboard");

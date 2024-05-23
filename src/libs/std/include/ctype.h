@@ -11,6 +11,8 @@ extern "C" {
 #define isalpha(ch) (((ch) >= 'A' && (ch) <= 'Z') || ((ch) >= 'a' && (ch) <= 'z'))
 #define isdigit(ch) (((ch) >= '0' && (ch) <= '9'))
 
+int tolower(int ch);
+
 #if defined(__cplusplus)
 }
 #endif

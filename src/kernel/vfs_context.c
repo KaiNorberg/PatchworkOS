@@ -7,7 +7,7 @@
 void vfs_context_init(VfsContext* context)
 {
     memset(context, 0, sizeof(VfsContext));
-    strcpy(context->cwd, "@sys/");
+    strcpy(context->cwd, "sys:");
     lock_init(&context->lock);
 }
 
