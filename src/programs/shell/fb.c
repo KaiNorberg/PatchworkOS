@@ -13,7 +13,7 @@ static uint8_t glyphBuffer[16 * 256];
 
 static void fb_map(void)
 {
-    fd_t fd = open("@sys/fb/0");
+    fd_t fd = open("A:/fb/0");
     if (fd == ERR)
     {
         exit(EXIT_FAILURE);

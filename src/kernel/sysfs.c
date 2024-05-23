@@ -149,7 +149,7 @@ void sysfs_init(void)
     sysfs.name = "sysfs";
     sysfs.mount = sysfs_mount;
 
-    if (vfs_mount("sys", &sysfs) == ERR)
+    if (vfs_mount('A', &sysfs) == ERR)
     {
         tty_print("Failed to mount sysfs");
         tty_end_message(TTY_MESSAGE_ER);

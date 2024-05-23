@@ -11,8 +11,7 @@
 #include "time.h"
 #include "vfs_context.h"
 
-static List volumes;
-static Lock volumeLock;
+static Volume volumes[VFS_LETTER_AMOUNT];
 
 static uint64_t vfs_make_canonical(char* start, char* out, const char* path)
 {
@@ -26,7 +25,7 @@ static uint64_t vfs_make_canonical(char* start, char* out, const char* path)
         else if (vfs_compare_names(name, ".."))
         {
             out--;
-            while (*out != VFS_SEPARATOR)
+            while (*out != VFS_NAME_SEPARATOR)
             {
                 if (out <= start)
                 {
@@ -53,14 +52,14 @@ static uint64_t vfs_make_canonical(char* start, char* out, const char* path)
             }
 
             out++;
-            out[0] = VFS_SEPARATOR;
+            out[0] = VFS_NAME_SEPARATOR;
             out[1] = '\0';
         }            
         
         name = vfs_next_name(name);
         if (name == NULL)
         {                    
-            if (*out == VFS_SEPARATOR)
+            if (*out == VFS_NAME_SEPARATOR)
             {
                 *out = '\0';
             }
@@ -70,36 +69,50 @@ static uint64_t vfs_make_canonical(char* start, char* out, const char* path)
 }
 
 static uint64_t vfs_parse_path(char* out, const char* path)
-{
-    if (path[0] == VFS_DRIVE_ACCESSOR) //Absolute path
-    {       
-        out[0] = VFS_DRIVE_ACCESSOR;
-        out[1] = '\0';
-        return vfs_make_canonical(out, out, path + 1);
-    }
-    
+{    
     VfsContext* context = &sched_process()->vfsContext;
     LOCK_GUARD(&context->lock);
     
-    if (path[0] == VFS_SEPARATOR) //Root path
+    if (path[0] == '\0')
     {
-        uint64_t volumeLength = vfs_name_length(context->cwd + 1);
-        out[0] = VFS_DRIVE_ACCESSOR;
-        memcpy(out + 1, context->cwd + 1, volumeLength);
-        return vfs_make_canonical(out, out + volumeLength, path);
+        return ERR;
     }
-    else if (VFS_VALID_CHAR(path[0])) //Relative path
-    {
-        uint64_t i = 0;
-        while (context->cwd[i] != '\0')
-        {
-            out[i] = context->cwd[i];
-            i++;
-        }
-        out[i] = VFS_SEPARATOR;
-        out[i + 1] = '\0';
 
-        return vfs_make_canonical(out, out + i, path);
+    if (path[1] == VFS_VOLUME_SEPARATOR) //Absolute path
+    {
+        if (!VFS_VALID_LETTER(path[0]))
+        {
+            return ERR;
+        }
+
+        out[0] = path[0];
+        out[1] = VFS_VOLUME_SEPARATOR;
+        out[2] = VFS_NAME_SEPARATOR;
+        out[4] = '\0';
+
+        return vfs_make_canonical(out + 2, out + 2, path + 3);
+    }
+    else if (path[0] == VFS_NAME_SEPARATOR) //Root path
+    {
+        out[0] = context->cwd[0];
+        out[1] = VFS_VOLUME_SEPARATOR;
+        out[2] = '\0';
+
+        return vfs_make_canonical(out + 1, out + 1, path);
+    }
+    else if (VFS_VALID_CHAR(path[0]))
+    {
+        uint64_t cwdLength = strlen(context->cwd);
+        if (cwdLength >= CONFIG_MAX_PATH - 2)
+        {
+            return ERR;
+        }
+
+        memcpy(out, context->cwd, cwdLength);
+        out[cwdLength] = VFS_NAME_SEPARATOR;
+        out[cwdLength + 1] = '\0';
+
+        return vfs_make_canonical(out + 2, out + cwdLength, path);
     }
 
     return ERR;
@@ -116,20 +129,22 @@ static void volume_deref(Volume* volume)
     atomic_fetch_sub(&volume->ref, 1);
 }
 
-static Volume* volume_get(const char* label)
+static Volume* volume_get(char letter)
 {
-    LOCK_GUARD(&volumeLock);
-
-    Volume* volume;
-    LIST_FOR_EACH(volume, &volumes)
+    if (!VFS_VALID_LETTER(letter))
     {
-        if (vfs_compare_names(volume->label, label))
-        {
-            return volume_ref(volume);
-        }
+        return NULL;
+    }
+    
+    Volume* volume = &volumes[letter - VFS_LETTER_BASE];
+    LOCK_GUARD(&volume->lock);
+
+    if (atomic_load(&volume->ref) == 0)
+    {
+        return NULL;
     }
 
-    return NULL;
+    return volume_ref(volume);
 }
 
 File* file_ref(File* file)
@@ -151,12 +166,31 @@ void file_deref(File* file)
     }
 }
 
+void test_path(const char* path)
+{
+    tty_print(path);
+    tty_print(" => ");
+    char parsedPath[CONFIG_MAX_PATH];
+    parsedPath[0] = '\0';
+    if (vfs_parse_path(parsedPath, path) == ERR)
+    {
+        tty_print("ERR\n");
+        return;
+    }
+    tty_print(parsedPath);
+    tty_print("\n");
+}
+
 void vfs_init(void)
 {
     tty_start_message("VFS initializing");
 
-    list_init(&volumes);
-    lock_init(&volumeLock);
+    memset(&volumes, 0, sizeof(Volume) * VFS_LETTER_AMOUNT);
+    for (uint64_t i = 0; i < VFS_LETTER_AMOUNT; i++)
+    {
+        atomic_init(&volumes[i].ref, 0); //Not needed but good practice
+        lock_init(&volumes[i].lock);
+    }
 
     tty_end_message(TTY_MESSAGE_OK);
 }
@@ -169,7 +203,7 @@ File* vfs_open(const char* path)
         return NULLPTR(EPATH);
     }
 
-    Volume* volume = volume_get(parsedPath + 1);
+    Volume* volume = volume_get(parsedPath[0]);
     if (volume == NULL)
     {
         return NULLPTR(EPATH);
@@ -190,7 +224,7 @@ File* vfs_open(const char* path)
     file->cleanup = NULL;
     memset(&file->methods, 0, sizeof(FileMethods));
 
-    char* volumePath = strchr(parsedPath, VFS_SEPARATOR);
+    char* volumePath = strchr(parsedPath, VFS_NAME_SEPARATOR);
     if (volumePath == NULL || volume->open(volume, file, volumePath) == ERR)
     {
         file_deref(file);
@@ -237,59 +271,41 @@ uint64_t vfs_poll(PollFile* files, uint64_t timeout)
     return 0;
 }
 
-uint64_t vfs_mount(const char* label, Filesystem* fs)
+uint64_t vfs_mount(char letter, Filesystem* fs)
 {
-    if (strlen(label) >= CONFIG_MAX_LABEL)
+    if (!VFS_VALID_LETTER(letter))
     {
-        return ERROR(EINVAL);
+        return ERROR(ELETTER);
     }
 
-    LOCK_GUARD(&volumeLock);
+    Volume* volume = &volumes[letter - VFS_LETTER_BASE];
+    LOCK_GUARD(&volume->lock);
 
-    Volume* volume;
-    LIST_FOR_EACH(volume, &volumes)
+    if (atomic_load(&volume->ref) != 0) 
     {
-        if (vfs_compare_names(volume->label, label))
-        {
-            return ERROR(EEXIST);
-        }
+        return ERROR(EEXIST);
     }
 
-    volume = kmalloc(sizeof(Volume));
-    memset(volume, 0, sizeof(Volume));
-    strcpy(volume->label, label);
-    volume->fs = fs;
     atomic_init(&volume->ref, 1);
+    volume->fs = fs;
 
     if (fs->mount(volume) == ERR)
     {
-        kfree(volume);
         return ERR;
     }
 
-    list_push(&volumes, volume);
     return 0;
 }
 
-uint64_t vfs_unmount(const char* label)
+uint64_t vfs_unmount(char letter)
 {
-    LOCK_GUARD(&volumeLock);
-
-    Volume* volume;
-    bool found = false;
-    LIST_FOR_EACH(volume, &volumes)
+    if (!VFS_VALID_LETTER(letter))
     {
-        if (vfs_compare_names(volume->label, label))
-        {
-            found = true;
-            break;
-        }
+        return ERROR(ELETTER);
     }
 
-    if (!found)
-    {
-        return ERROR(EPATH);
-    }
+    Volume* volume = &volumes[letter - VFS_LETTER_BASE];
+    LOCK_GUARD(&volume->lock);
 
     if (atomic_load(&volume->ref) != 1)
     {
@@ -306,8 +322,8 @@ uint64_t vfs_unmount(const char* label)
         return ERR;
     }
 
-    list_remove(volume);
-    kfree(volume);
+    memset(volume, 0, sizeof(Volume));
+    atomic_store(&volume->ref, 0);
     return 0;
 }
 
