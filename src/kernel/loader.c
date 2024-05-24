@@ -35,7 +35,7 @@ static void* loader_load_program(void)
         sched_process_exit(EEXEC);
     }
 
-    char parentDir[CONFIG_MAX_PATH];
+    char parentDir[MAX_PATH];
     vfs_parent_dir(parentDir, executable);
     if (vfs_chdir(parentDir) == ERR)
     {

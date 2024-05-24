@@ -195,7 +195,7 @@ uint64_t sched_spawn(const char* path)
 //Temporary
 uint64_t sched_local_thread_amount(void)
 {
-    Scheduler* scheduler = &smp_self()->scheduler;
+    const Scheduler* scheduler = &smp_self()->scheduler;
 
     uint64_t length = (scheduler->runningThread != NULL);
     for (uint64_t i = THREAD_PRIORITY_MIN; i <= THREAD_PRIORITY_MAX; i++)
@@ -293,7 +293,7 @@ void sched_push(Thread* thread, uint8_t boost)
     uint64_t best = 0;
     for (int64_t i = smp_cpu_amount() - 1; i >= 0; i--)
     {
-        Scheduler* scheduler = &smp_cpu(i)->scheduler;
+        const Scheduler* scheduler = &smp_cpu(i)->scheduler;
 
         int64_t length = (int64_t)(scheduler->runningThread != 0);
         for (uint64_t p = THREAD_PRIORITY_MIN; p <= THREAD_PRIORITY_MAX; p++)

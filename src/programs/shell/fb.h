@@ -4,8 +4,6 @@
 
 #define FB_ADDR ((void*)0xF0000000)
 
-#define FB_FONT "B:/fonts/zap-vga16.psf"
-
 #define FB_CHAR_HEIGHT 16
 #define FB_CHAR_WIDTH 8
 

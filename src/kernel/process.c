@@ -17,12 +17,12 @@ Process* process_new(const char* executable)
     Process* process = kmalloc(sizeof(Process));
     process->killed = false;
     process->id = atomic_fetch_add(&newPid, 1);
-    memset(process->executable, 0, CONFIG_MAX_PATH);
+    memset(process->executable, 0, MAX_PATH);
     if (executable != NULL)
     {
         if (vfs_realpath(process->executable, executable) == ERR)
         {
-            memset(process->executable, 0, CONFIG_MAX_PATH);
+            memset(process->executable, 0, MAX_PATH);
         }
     }
     vfs_context_init(&process->vfsContext);

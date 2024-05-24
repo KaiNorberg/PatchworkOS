@@ -97,7 +97,7 @@ uint64_t vfs_chdir(const char* path);
 
 static inline uint64_t vfs_name_length(const char* name)
 {
-    for (uint64_t i = 0; i < CONFIG_MAX_PATH - 1; i++)
+    for (uint64_t i = 0; i < MAX_PATH - 1; i++)
     {
         if (VFS_END_OF_NAME(name[i]))
         {
@@ -105,12 +105,12 @@ static inline uint64_t vfs_name_length(const char* name)
         }
     }
 
-    return CONFIG_MAX_PATH - 1;
+    return MAX_PATH - 1;
 }
 
 static inline void vfs_copy_name(char* dest, const char* src)
 {
-    for (uint64_t i = 0; i < CONFIG_MAX_PATH - 1; i++)
+    for (uint64_t i = 0; i < CONFIG_MAX_NAME - 1; i++)
     {
         if (VFS_END_OF_NAME(src[i]))
         {
@@ -122,12 +122,12 @@ static inline void vfs_copy_name(char* dest, const char* src)
             dest[i] = src[i];
         }
     }
-    dest[CONFIG_MAX_PATH - 1] = '\0';
+    dest[CONFIG_MAX_NAME - 1] = '\0';
 }
 
 static inline bool vfs_compare_labels(const char* a, const char* b)
 {
-    for (uint64_t i = 0; i < CONFIG_MAX_PATH; i++)
+    for (uint64_t i = 0; i < MAX_PATH; i++)
     {
         if (VFS_END_OF_LABEL(a[i]))
         {
@@ -144,7 +144,7 @@ static inline bool vfs_compare_labels(const char* a, const char* b)
 
 static inline bool vfs_compare_names(const char* a, const char* b)
 {
-    for (uint64_t i = 0; i < CONFIG_MAX_PATH; i++)
+    for (uint64_t i = 0; i < MAX_PATH; i++)
     {
         if (VFS_END_OF_NAME(a[i]))
         {

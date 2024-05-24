@@ -12,6 +12,7 @@
 #include "vmm.h"
 #include "rsdt.h"
 #include "smp.h"
+#include "const.h"
 #include "sched.h"
 #include "utils.h"
 #include "process.h"
@@ -74,6 +75,7 @@ void kernel_init(BootInfo* bootInfo)
     ramfs_init(bootInfo->ramRoot);
 
     ps2_init();
+    const_init();
     renderer_init(&bootInfo->gopBuffer);
 
     boot_info_deallocate(bootInfo);

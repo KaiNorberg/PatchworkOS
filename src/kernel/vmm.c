@@ -55,9 +55,26 @@ static void vmm_deallocate_boot_page_table(EfiMemoryMap* memoryMap)
     }
 }
 
+static void* space_find_free_region(Space* space, uint64_t length)
+{
+    uint64_t pageAmount = SIZE_IN_PAGES(length);
+
+    for (uintptr_t addr = space->freeAddress; addr < ROUND_DOWN(UINT64_MAX, 0x1000); addr += pageAmount * PAGE_SIZE)
+    {
+        if (!page_table_mapped(space->pageTable, (void*)addr, pageAmount))
+        {
+            space->freeAddress = addr + pageAmount * PAGE_SIZE;
+            return (void*)addr;
+        }
+    }
+
+    debug_panic("Address space filled, you must have ran this on a super computer... dont do that.");
+}
+
 void space_init(Space* space)
 {
     space->pageTable = page_table_new();
+    space->freeAddress = 0x400000;
     lock_init(&space->lock);
 
     for (uint64_t i = PAGE_ENTRY_AMOUNT / 2; i < PAGE_ENTRY_AMOUNT; i++)
@@ -108,9 +125,12 @@ void* vmm_kernel_map(void* virtualAddress, void* physicalAddress, uint64_t lengt
 
 void* vmm_allocate(void* virtualAddress, uint64_t length, uint8_t prot)
 {
-    if (virtualAddress == NULL)
+    Space* space = &sched_process()->space;
+    LOCK_GUARD(&space->lock);
+
+    if (length == 0)
     {
-        return NULLPTR(EFAULT);
+        return NULLPTR(EINVAL);
     }
 
     uint64_t flags = vmm_prot_to_flags(prot);
@@ -120,10 +140,12 @@ void* vmm_allocate(void* virtualAddress, uint64_t length, uint8_t prot)
     }
     flags |= PAGE_FLAG_OWNED;
 
-    vmm_align_region(&virtualAddress, &length);
+    if (virtualAddress == NULL)
+    {
+        virtualAddress = space_find_free_region(space, length);
+    }
 
-    Space* space = &sched_process()->space;
-    LOCK_GUARD(&space->lock);
+    vmm_align_region(&virtualAddress, &length);
     
     if (page_table_mapped(space->pageTable, virtualAddress, SIZE_IN_PAGES(length)))
     {
@@ -140,10 +162,18 @@ void* vmm_allocate(void* virtualAddress, uint64_t length, uint8_t prot)
 }
 
 void* vmm_map(void* virtualAddress, void* physicalAddress, uint64_t length, uint8_t prot)
-{
-    if (virtualAddress == NULL || physicalAddress == NULL)
+{    
+    Space* space = &sched_process()->space;
+    LOCK_GUARD(&space->lock);
+
+    if (physicalAddress == NULL)
     {
         return NULLPTR(EFAULT);
+    }
+
+    if (length == 0)
+    {
+        return NULLPTR(EINVAL);
     }
 
     uint64_t flags = vmm_prot_to_flags(prot);
@@ -152,11 +182,13 @@ void* vmm_map(void* virtualAddress, void* physicalAddress, uint64_t length, uint
         return NULLPTR(EACCES);
     }
 
+    if (virtualAddress == NULL)
+    {
+        virtualAddress = space_find_free_region(space, length);
+    }
+
     physicalAddress = (void*)ROUND_DOWN(physicalAddress, PAGE_SIZE);
     vmm_align_region(&virtualAddress, &length);
-
-    Space* space = &sched_process()->space;
-    LOCK_GUARD(&space->lock);
 
     if (page_table_mapped(space->pageTable, virtualAddress, SIZE_IN_PAGES(length)))
     {

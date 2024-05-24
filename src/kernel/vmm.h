@@ -19,6 +19,7 @@
 typedef struct
 {
     PageTable* pageTable;
+    uintptr_t freeAddress;
     Lock lock;
 } Space;
 

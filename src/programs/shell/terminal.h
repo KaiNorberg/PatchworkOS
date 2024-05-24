@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define TERMINAL_MAX_COMMAND 256
+#define TERMINAL_MAX_COMMAND MAX_PATH
 #define TERMINAL_MAX_COLOR 8
 #define TERMINAL_BLINK_INTERVAL (SEC / 2)
 
@@ -24,14 +24,17 @@ typedef struct
     uint64_t x;
     uint64_t y;
     bool visible;
+    uint64_t nextBlink;
 } Cursor;
 
 void terminal_init(void);
 
 const char* terminal_read(void);
 
+void terminal_update_cursor(void);
+
 void terminal_put(const char chr);
 
 void terminal_print(const char* string);
 
-void terminal_panic(const char* string);
+void terminal_error(const char* string);

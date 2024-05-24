@@ -27,7 +27,7 @@ typedef struct
 {
     uint64_t id;
     bool killed;
-    char executable[CONFIG_MAX_PATH];
+    char executable[MAX_PATH];
     VfsContext vfsContext;
     Space space;
     _Atomic(uint64_t) threadCount;

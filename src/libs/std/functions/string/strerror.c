@@ -3,25 +3,25 @@
 
 static char* errorStrings[] =
 {
-    "No error",
-    "Math argument out of domain",
-    "Math result not representable",
-    "Illegal byte sequence",
-    "Not implemented",
-    "Bad address",
-    "Already exists",
-    "Invalid letter",
-    "Invalid path",
-    "To many open files",
-    "Bad file descriptor",
-    "Permission denied",
-    "Bad executable",
-    "Out of memory",
-    "Bed request",
-    "Bad flag/flags",
-    "Invalid argument",
-    "Bad buffer",
-    "Busy"
+    "no error",
+    "math argument out of domain",
+    "math result not representable",
+    "illegal byte sequence",
+    "not implemented",
+    "bad address",
+    "already exists",
+    "invalid letter",
+    "invalid path",
+    "too many open files",
+    "bad file descriptor",
+    "permission denied",
+    "bad executable",
+    "out of memory",
+    "bad request",
+    "bad flag/flags",
+    "invalid argument",
+    "bad buffer",
+    "busy"
 };
 
 char* strerror(int error)

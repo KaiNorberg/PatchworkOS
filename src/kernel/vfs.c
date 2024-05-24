@@ -16,7 +16,7 @@ static Lock volumeLock;
 
 //TODO: Improve file path parsing.
 
-static uint64_t vfs_make_canonical(char* start, char* out, const char* path)
+static uint64_t vfs_make_canonical(const char* start, char* out, const char* path)
 {
     const char* name = path;
     while (true)
@@ -44,7 +44,7 @@ static uint64_t vfs_make_canonical(char* start, char* out, const char* path)
             const char* ptr = name;
             while (!VFS_END_OF_NAME(*ptr))
             {
-                if (!VFS_VALID_CHAR(*ptr) || (uint64_t)(out - start) >= CONFIG_MAX_PATH - 2)
+                if (!VFS_VALID_CHAR(*ptr) || (uint64_t)(out - start) >= MAX_PATH - 2)
                 {
                     return ERR;
                 } 
@@ -180,7 +180,7 @@ void file_deref(File* file)
 {
     tty_print(path);
     tty_print(" => ");
-    char parsedPath[CONFIG_MAX_PATH];
+    char parsedPath[MAX_PATH];
     parsedPath[0] = '\0';
     if (vfs_parse_path(parsedPath, path) == ERR)
     {
@@ -239,7 +239,7 @@ void vfs_init(void)
 
 File* vfs_open(const char* path)
 {
-    char parsedPath[CONFIG_MAX_PATH];
+    char parsedPath[MAX_PATH];
     if (vfs_parse_path(parsedPath, path) == ERR)
     {
         return NULLPTR(EPATH);
@@ -401,7 +401,7 @@ uint64_t vfs_realpath(char* out, const char* path)
 
 uint64_t vfs_chdir(const char* path)
 {    
-    char parsedPath[CONFIG_MAX_PATH];
+    char parsedPath[MAX_PATH];
     if (vfs_parse_path(parsedPath, path) == ERR)
     {
         return ERROR(EPATH);
