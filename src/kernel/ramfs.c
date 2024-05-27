@@ -160,9 +160,37 @@ static uint64_t ramfs_open(Volume* volume, File* file, const char* path)
     return 0;
 }
 
+static uint64_t ramfs_stat(Volume* volume, const char* path, stat_t* buffer)
+{
+    buffer->size = 0;
+
+    RamDir* parent = ramfs_traverse(path);
+    if (parent == NULL)
+    {
+        return ERR;
+    }
+
+    const char* name = vfs_basename(path);
+    if (ram_dir_find_file(parent, name) != NULL)
+    {
+        buffer->type = STAT_FILE;
+    }
+    else if (ram_dir_find_dir(parent, name) != NULL)
+    {
+        buffer->type = STAT_DIR;
+    }
+    else
+    {
+        return ERROR(EPATH);
+    }
+
+    return 0;
+}
+
 static uint64_t ramfs_mount(Volume* volume)
 {
     volume->open = ramfs_open;
+    volume->stat = ramfs_stat;
 
     return 0;
 }

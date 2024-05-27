@@ -23,12 +23,12 @@ void vfs_context_cleanup(VfsContext* context)
     }
 }
 
-uint64_t vfs_context_open(File* file)
+fd_t vfs_context_open(File* file)
 {
     VfsContext* context = &sched_process()->vfsContext;
     LOCK_GUARD(&context->lock);
 
-    for (uint64_t fd = 0; fd < CONFIG_MAX_FILE; fd++)
+    for (fd_t fd = 0; fd < CONFIG_MAX_FILE; fd++)
     {
         if (context->files[fd] == NULL)
         {
@@ -40,7 +40,7 @@ uint64_t vfs_context_open(File* file)
     return ERROR(EMFILE);
 }
 
-uint64_t vfs_context_close(uint64_t fd)
+uint64_t vfs_context_close(fd_t fd)
 {
     VfsContext* context = &sched_process()->vfsContext;
     LOCK_GUARD(&context->lock);
@@ -56,7 +56,7 @@ uint64_t vfs_context_close(uint64_t fd)
     return 0;
 }
 
-File* vfs_context_get(uint64_t fd)
+File* vfs_context_get(fd_t fd)
 {
     VfsContext* context = &sched_process()->vfsContext;
     LOCK_GUARD(&context->lock);

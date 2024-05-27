@@ -266,8 +266,8 @@ File* vfs_open(const char* path)
     file->cleanup = NULL;
     memset(&file->methods, 0, sizeof(FileMethods));
 
-    char* volumePath = strchr(parsedPath, VFS_NAME_SEPARATOR);
-    if (volumePath == NULL || volume->open(volume, file, volumePath) == ERR)
+    char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
+    if (rootPath == NULL || volume->open(volume, file, rootPath) == ERR)
     {
         file_deref(file);
         return NULL;
@@ -276,41 +276,36 @@ File* vfs_open(const char* path)
     return file;
 }
 
-static bool vfs_poll_callback(void* context)
+uint64_t vfs_stat(const char* path, stat_t* buffer)
 {
-    PollFile* file = context;
-    while (file->file != NULL)
+    char parsedPath[MAX_PATH];
+    if (vfs_parse_path(parsedPath, path) == ERR)
     {
-        if (file->requested & POLL_READ &&
-            (file->file->methods.read_avail != NULL && file->file->methods.read_avail(file->file)))
-        {
-            file->occurred = POLL_READ;
-            return true;
-        }
-        if (file->requested & POLL_WRITE &&
-            (file->file->methods.write_avail != NULL && file->file->methods.write_avail(file->file)))
-        {
-            file->occurred = POLL_WRITE;
-            return true;
-        }
-
-        file++;
+        return ERROR(EPATH);
+    }
+    
+    Volume* volume = volume_get(parsedPath);
+    if (volume == NULL)
+    {
+        return ERROR(EPATH);
     }
 
-    return false;
-}
-
-uint64_t vfs_poll(PollFile* files, uint64_t timeout)
-{
-    Blocker blocker =
+    if (volume->stat == NULL)
     {
-        .context = files,
-        .callback = vfs_poll_callback,
-        .deadline = timeout == UINT64_MAX ? UINT64_MAX : timeout + time_nanoseconds()
-    };
-    sched_block(blocker);
+        volume_deref(volume);
+        return ERROR(EACCES);
+    }    
+    
+    char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
+    if (rootPath == NULL)
+    {
+        volume_deref(volume);
+        return ERR;
+    }
 
-    return 0;
+    uint64_t result = volume->stat(volume, rootPath, buffer);
+    volume_deref(volume);
+    return result;
 }
 
 uint64_t vfs_mount(const char* label, Filesystem* fs)
@@ -407,9 +402,57 @@ uint64_t vfs_chdir(const char* path)
         return ERROR(EPATH);
     }
 
+    stat_t info;
+    if (vfs_stat(path, &info) == ERR)
+    {
+        return ERR;
+    }
+
+    if (info.type != STAT_DIR)
+    {
+        return ERROR(ENOTDIR);
+    }
+
     VfsContext* context = &sched_process()->vfsContext;
     LOCK_GUARD(&context->lock);
 
     strcpy(context->cwd, parsedPath);
+    return 0;
+}
+
+static bool vfs_poll_callback(void* context)
+{
+    PollFile* file = context;
+    while (file->file != NULL)
+    {
+        if (file->requested & POLL_READ &&
+            (file->file->methods.read_avail != NULL && file->file->methods.read_avail(file->file)))
+        {
+            file->occurred = POLL_READ;
+            return true;
+        }
+        if (file->requested & POLL_WRITE &&
+            (file->file->methods.write_avail != NULL && file->file->methods.write_avail(file->file)))
+        {
+            file->occurred = POLL_WRITE;
+            return true;
+        }
+
+        file++;
+    }
+
+    return false;
+}
+
+uint64_t vfs_poll(PollFile* files, uint64_t timeout)
+{
+    Blocker blocker =
+    {
+        .context = files,
+        .callback = vfs_poll_callback,
+        .deadline = timeout == UINT64_MAX ? UINT64_MAX : timeout + time_nanoseconds()
+    };
+    sched_block(blocker);
+
     return 0;
 }

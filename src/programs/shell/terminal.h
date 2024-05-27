@@ -33,6 +33,8 @@ const char* terminal_read(void);
 
 void terminal_update_cursor(void);
 
+void terminal_clear(void);
+
 void terminal_put(const char chr);
 
 void terminal_print(const char* string);

@@ -5,6 +5,17 @@
 #include <errno.h>
 #include <sys/io.h>
 
+static void command_clear(Token* token)
+{
+    if (token_next(token))
+    {
+        terminal_error("clear does not take arguments");
+        return;
+    }
+
+    terminal_clear();
+}
+
 static void command_cd(Token* token)
 {
     if (!token_next(token))
@@ -29,6 +40,7 @@ static void command_cd(Token* token)
 
 static Command commands[] = 
 {
+    {"clear", command_clear},
     {"cd", command_cd}
 };
 

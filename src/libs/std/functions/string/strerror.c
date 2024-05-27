@@ -21,6 +21,8 @@ static char* errorStrings[] =
     "bad flag/flags",
     "invalid argument",
     "bad buffer",
+    "not a directory",
+    "is a directory",
     "busy"
 };
 

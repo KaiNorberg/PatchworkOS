@@ -20,6 +20,15 @@ typedef struct pollfd
     uint16_t occurred;
 } pollfd_t;
 
+#define STAT_FILE 0
+#define STAT_DIR 1
+
+typedef struct stat
+{
+    uint8_t type;
+    uint64_t size;
+} stat_t;
+
 #define POLL_READ (1 << 0)
 #define POLL_WRITE (1 << 1)
 
@@ -44,6 +53,8 @@ uint64_t poll(pollfd_t* fds, uint64_t amount, uint64_t timeout);
 uint64_t realpath(char* out, const char* path);
 
 uint64_t chdir(const char* path);
+
+uint64_t stat(const char* path, stat_t* buffer);
 
 #if defined(__cplusplus)
 }

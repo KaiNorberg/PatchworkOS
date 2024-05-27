@@ -45,6 +45,7 @@ typedef struct Volume
     Filesystem* fs;
     uint64_t (*unmount)(Volume*);
     uint64_t (*open)(Volume*, File*, const char*);
+    uint64_t (*stat)(Volume*, const char*, stat_t*);
     _Atomic(uint64_t) ref;
 } Volume;
 
@@ -84,8 +85,7 @@ void vfs_init(void);
 
 File* vfs_open(const char* path);
 
-//Files should be null terminated.
-uint64_t vfs_poll(PollFile* files, uint64_t timeout);
+uint64_t vfs_stat(const char* path, stat_t* buffer);
 
 uint64_t vfs_mount(const char* label, Filesystem* fs);
 
@@ -94,6 +94,9 @@ uint64_t vfs_unmount(const char* label);
 uint64_t vfs_realpath(char* out, const char* path);
 
 uint64_t vfs_chdir(const char* path);
+
+//Files should be null terminated.
+uint64_t vfs_poll(PollFile* files, uint64_t timeout);
 
 static inline uint64_t vfs_name_length(const char* name)
 {

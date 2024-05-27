@@ -8,18 +8,19 @@
 %define SYS_UPTIME 7
 %define SYS_OPEN 8
 %define SYS_CLOSE 9
-%define SYS_READ 10
-%define SYS_WRITE 11
-%define SYS_SEEK 12
-%define SYS_IOCTL 13
-%define SYS_POLL 14
+%define SYS_STAT 10
+%define SYS_READ 11
+%define SYS_WRITE 12
+%define SYS_SEEK 13
+%define SYS_IOCTL 14
 %define SYS_REALPATH 15
 %define SYS_CHDIR 16
-%define SYS_MMAP 17
-%define SYS_MUNMAP 18
-%define SYS_MPROTECT 19
+%define SYS_POLL 17
+%define SYS_MMAP 18
+%define SYS_MUNMAP 19
+%define SYS_MPROTECT 20
 
-%define SYS_TOTAL_AMOUNT 20
+%define SYS_TOTAL_AMOUNT 21
 
 %macro SYSTEM_CALL_ERROR_CHECK 0
 extern _ErrnoFunc

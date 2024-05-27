@@ -69,8 +69,16 @@ static void terminal_put_normal(char chr)
         }
     }
     break;
+    case '\t':
+    {
+        for (uint8_t i = 0; i < 4; i++)
+        {
+            terminal_put(' ');
+        }
+    }
+    break;
     default:
-    {               
+    {
         terminal_char(chr);
         cursor.x++;
     }
@@ -113,6 +121,13 @@ void terminal_update_cursor(void)
     {        
         fb_char(' ', cursor.x * FB_CHAR_WIDTH * scale, cursor.y * FB_CHAR_HEIGHT * scale, scale, foreground, background);     
     }
+}
+
+void terminal_clear(void)
+{
+    cursor.x = 0;
+    cursor.y = 0;
+    fb_clear(background);
 }
 
 void terminal_put(const char chr)

@@ -121,6 +121,21 @@ uint64_t syscall_close(fd_t fd)
     return vfs_context_close(fd);
 }
 
+uint64_t syscall_stat(const char* path, stat_t* buffer)
+{
+    if (!verify_string(path))
+    {
+        return ERROR(EFAULT);
+    }
+
+    if (!verify_buffer(buffer, sizeof(stat_t)))
+    {
+        return ERROR(EFAULT);
+    }
+
+    return vfs_stat(path, buffer);
+}
+
 uint64_t syscall_read(fd_t fd, void* buffer, uint64_t count)
 {
     if (!verify_buffer(buffer, count))
@@ -180,6 +195,26 @@ uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* buffer, uint64_t length)
     return FILE_CALL_METHOD(file, ioctl, request, buffer, length);
 }
 
+uint64_t syscall_realpath(char* out, const char* path)
+{
+    if (!verify_pointer(out, 0) || !verify_string(path))
+    {
+        return ERROR(EFAULT);
+    }
+
+    return vfs_realpath(out, path);
+}
+
+uint64_t syscall_chdir(const char* path)
+{
+    if (!verify_string(path))
+    {
+        return ERROR(EFAULT);
+    }
+
+    return vfs_chdir(path);
+}
+
 uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, uint64_t timeout)
 {
     if (amount == 0 || amount > CONFIG_MAX_FILE)
@@ -215,26 +250,6 @@ uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, uint64_t timeout)
     }
 
     return result;
-}
-
-uint64_t syscall_realpath(char* out, const char* path)
-{
-    if (!verify_pointer(out, 0) || !verify_string(path))
-    {
-        return ERROR(EFAULT);
-    }
-
-    return vfs_realpath(out, path);
-}
-
-uint64_t syscall_chdir(const char* path)
-{
-    if (!verify_string(path))
-    {
-        return ERROR(EFAULT);
-    }
-
-    return vfs_chdir(path);
 }
 
 void* syscall_mmap(fd_t fd, void* address, uint64_t length, uint16_t flags)
@@ -292,13 +307,14 @@ void* syscallTable[] =
     syscall_uptime,
     syscall_open,
     syscall_close,
+    syscall_stat,
     syscall_read,
     syscall_write,
     syscall_seek,
     syscall_ioctl,
-    syscall_poll,
     syscall_realpath,
     syscall_chdir,
+    syscall_poll,
     syscall_mmap,
     syscall_munmap,
     syscall_mprotect

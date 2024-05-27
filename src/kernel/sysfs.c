@@ -131,9 +131,37 @@ static uint64_t sysfs_open(Volume* volume, File* file, const char* path)
     return 0;
 }
 
+static uint64_t sysfs_stat(Volume* volume, const char* path, stat_t* buffer)
+{
+    buffer->size = 0;
+
+    System* parent = sysfs_traverse(path);
+    if (parent == NULL)
+    {
+        return ERR;
+    }
+
+    const char* name = vfs_basename(path);
+    if (system_find_resource(parent, name) != NULL)
+    {
+        buffer->type = STAT_FILE;
+    }
+    else if (system_find_system(parent, name) != NULL)
+    {
+        buffer->type = STAT_DIR;
+    }
+    else
+    {
+        return ERROR(EPATH);
+    }
+
+    return 0;
+}
+
 static uint64_t sysfs_mount(Volume* volume)
 {
     volume->open = sysfs_open;
+    volume->stat = sysfs_stat;
 
     return 0;
 }

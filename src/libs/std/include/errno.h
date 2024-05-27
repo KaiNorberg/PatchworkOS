@@ -32,7 +32,9 @@ int* _ErrnoFunc(void);
 #define EFLAGS 15 //Bad flag/flags
 #define EINVAL 16 //Invalid argument
 #define EBUFFER 17 //Bad buffer
-#define EBUSY 18 //Busy
+#define ENOTDIR 18 //Not a directory
+#define EISDIR 19 //Is a directory
+#define EBUSY 20 //Busy
 
 //NOTE: Values retrievd from linux
 /*

@@ -15,8 +15,8 @@ void vfs_context_init(VfsContext* context);
 void vfs_context_cleanup(VfsContext* context);
 
 //Vfs context takes ownership of file reference.
-uint64_t vfs_context_open(File* file);
+fd_t vfs_context_open(File* file);
 
-uint64_t vfs_context_close(uint64_t fd);
+uint64_t vfs_context_close(fd_t fd);
 
-File* vfs_context_get(uint64_t fd);
+File* vfs_context_get(fd_t fd);
