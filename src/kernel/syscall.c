@@ -13,6 +13,7 @@
 #include "debug.h"
 #include "sched.h"
 #include "loader.h"
+#include "net.h"
 
 //NOTE: Syscalls should always return a 64 bit value to prevent garbage from remaining in rax.
 
@@ -113,27 +114,18 @@ uint64_t syscall_open(const char* path)
         return ERR;
     }
 
-    return vfs_context_open(file);
+    fd_t fd = vfs_context_open(file);
+    if (fd == ERR)
+    {
+        return ERR;
+    }
+
+    return fd;
 }
 
 uint64_t syscall_close(fd_t fd)
 {
     return vfs_context_close(fd);
-}
-
-uint64_t syscall_stat(const char* path, stat_t* buffer)
-{
-    if (!verify_string(path))
-    {
-        return ERROR(EFAULT);
-    }
-
-    if (!verify_buffer(buffer, sizeof(stat_t)))
-    {
-        return ERROR(EFAULT);
-    }
-
-    return vfs_stat(path, buffer);
 }
 
 uint64_t syscall_read(fd_t fd, void* buffer, uint64_t count)
@@ -148,6 +140,7 @@ uint64_t syscall_read(fd_t fd, void* buffer, uint64_t count)
     {
         return ERR;
     }
+    FILE_GUARD(file);
 
     return FILE_CALL_METHOD(file, read, buffer, count);
 }
@@ -164,6 +157,7 @@ uint64_t syscall_write(fd_t fd, const void* buffer, uint64_t count)
     {
         return ERR;
     }
+    FILE_GUARD(file);
 
     return FILE_CALL_METHOD(file, write, buffer, count);
 }
@@ -175,6 +169,7 @@ uint64_t syscall_seek(fd_t fd, int64_t offset, uint8_t origin)
     {
         return ERR;
     }
+    FILE_GUARD(file);
 
     return FILE_CALL_METHOD(file, seek, offset, origin);
 }
@@ -191,6 +186,7 @@ uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* buffer, uint64_t length)
     {
         return ERR;
     }
+    FILE_GUARD(file);
 
     return FILE_CALL_METHOD(file, ioctl, request, buffer, length);
 }
@@ -252,15 +248,31 @@ uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, uint64_t timeout)
     return result;
 }
 
-void* syscall_mmap(fd_t fd, void* address, uint64_t length, uint16_t flags)
+uint64_t syscall_stat(const char* path, stat_t* buffer)
+{
+    if (!verify_string(path))
+    {
+        return ERROR(EFAULT);
+    }
+
+    if (!verify_buffer(buffer, sizeof(stat_t)))
+    {
+        return ERROR(EFAULT);
+    }
+
+    return vfs_stat(path, buffer);
+}
+
+void* syscall_mmap(fd_t fd, void* address, uint64_t length, uint8_t prot)
 {
     File* file = vfs_context_get(fd);
     if (file == NULL)
     {
         return NULL;
     }
+    FILE_GUARD(file);
 
-    return FILE_CALL_METHOD_PTR(file, mmap, address, length, flags);
+    return FILE_CALL_METHOD_PTR(file, mmap, address, length, prot);
 }
 
 uint64_t syscall_munmap(void* address, uint64_t length)
@@ -273,14 +285,84 @@ uint64_t syscall_munmap(void* address, uint64_t length)
     return vmm_unmap(address, length);
 }
 
-uint64_t syscall_mprotect(void* address, uint64_t length, uint16_t flags)
+uint64_t syscall_mprotect(void* address, uint64_t length, uint8_t prot)
 {
     if (!verify_pointer(address, length))
     {
         return ERROR(EFAULT);
     }
     
-    return vmm_protect(address, length, flags);
+    return vmm_protect(address, length, prot);
+}
+
+fd_t syscall_announce(const char* address)
+{
+    if (!verify_string(address))
+    {
+        return ERROR(EFAULT);
+    }
+
+    File* file = net_announce(address);
+    if (file == NULL)
+    {
+        return ERR;
+    }
+    FILE_GUARD(file);
+
+    fd_t fd = vfs_context_open(file);
+    if (fd == ERR)
+    {
+        return ERR;
+    }
+
+    return fd;
+}
+
+fd_t syscall_dial(const char* address)
+{
+    if (!verify_string(address))
+    {
+        return ERROR(EFAULT);
+    }
+
+    File* file = net_dial(address);
+    if (file == NULL)
+    {
+        return ERR;
+    }
+    FILE_GUARD(file);
+    
+    fd_t fd = vfs_context_open(file);
+    if (fd == ERR)
+    {
+        return ERR;
+    }
+
+    return fd;
+}
+
+fd_t syscall_accept(fd_t fd)
+{
+    File* server = vfs_context_get(fd);
+    if (server == NULL)
+    {
+        return ERR;
+    }
+    FILE_GUARD(server);
+
+    File* client = FILE_CALL_METHOD_PTR(server, accept);
+    if (client == NULL)
+    {
+        return ERR;
+    }
+
+    fd_t clientFd = vfs_context_open(client);
+    if (clientFd == ERR)
+    {
+        return ERR;
+    }
+
+    return clientFd;
 }
 
 ///////////////////////////////////////////////////////
@@ -307,7 +389,6 @@ void* syscallTable[] =
     syscall_uptime,
     syscall_open,
     syscall_close,
-    syscall_stat,
     syscall_read,
     syscall_write,
     syscall_seek,
@@ -315,7 +396,11 @@ void* syscallTable[] =
     syscall_realpath,
     syscall_chdir,
     syscall_poll,
+    syscall_stat,
     syscall_mmap,
     syscall_munmap,
-    syscall_mprotect
+    syscall_mprotect,
+    syscall_announce,
+    syscall_dial,
+    syscall_accept
 };

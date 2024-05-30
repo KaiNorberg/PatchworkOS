@@ -34,7 +34,8 @@ static void* loader_load_program(void)
     {
         sched_process_exit(EEXEC);
     }
-
+    FILE_GUARD(file);
+    
     char parentDir[MAX_PATH];
     vfs_parent_dir(parentDir, executable);
     if (vfs_chdir(parentDir) == ERR)
@@ -98,7 +99,6 @@ static void* loader_load_program(void)
 		}
 	}
 
-    file_deref(file);
     return (void*)header.entry;
 }
 

@@ -4,6 +4,8 @@
 
 #include "sched.h"
 
+#include "tty.h"
+
 void vfs_context_init(VfsContext* context)
 {
     memset(context, 0, sizeof(VfsContext));
@@ -42,6 +44,7 @@ fd_t vfs_context_open(File* file)
 
 uint64_t vfs_context_close(fd_t fd)
 {
+    
     VfsContext* context = &sched_process()->vfsContext;
     LOCK_GUARD(&context->lock);
 

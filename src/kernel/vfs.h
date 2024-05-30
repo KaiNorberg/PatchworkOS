@@ -20,13 +20,15 @@
 
 #define FILE_CALL_METHOD(file, method, ...) \
     ((file)->methods.method != NULL ? \
-    (file)->methods.method(file, ##__VA_ARGS__) : \
+    (file)->methods.method(file __VA_OPT__(,) ##__VA_ARGS__) : \
     ERROR(EACCES))
 
 #define FILE_CALL_METHOD_PTR(file, method, ...) \
     ((file)->methods.method != NULL ? \
-    (file)->methods.method(file, ##__VA_ARGS__) : \
+    (file)->methods.method(file __VA_OPT__(,) ##__VA_ARGS__) : \
     NULLPTR(EACCES))
+
+#define FILE_GUARD(file) __attribute__((cleanup(file_cleanup))) File* f##__COUNTER__ = (file)
 
 typedef struct Filesystem Filesystem;
 typedef struct Volume Volume;
@@ -58,6 +60,7 @@ typedef struct
     void* (*mmap)(File*, void*, uint64_t, uint8_t);
     bool (*write_avail)(File*);
     bool (*read_avail)(File*);
+    File* (*accept)(File*);
 } FileMethods;
 
 typedef struct File
@@ -77,9 +80,16 @@ typedef struct
     uint16_t occurred;
 } PollFile;
 
+File* file_new(void);
+
 File* file_ref(File* file);
 
 void file_deref(File* file);
+
+static inline void file_cleanup(File** file)
+{
+    file_deref(*file);
+}
 
 void vfs_init(void);
 
@@ -164,7 +174,11 @@ static inline bool vfs_compare_names(const char* a, const char* b)
 
 static inline const char* vfs_first_name(const char* path)
 {
-    if (path[0] == VFS_NAME_SEPARATOR)
+    if (path[0] == '\0')
+    {
+        return NULL;
+    }
+    else if (path[0] == VFS_NAME_SEPARATOR)
     {
         return path + 1;
     }

@@ -221,5 +221,13 @@ void terminal_error(const char* string)
 {    
     terminal_print("error: ");
     terminal_print(string);
+    
+    //if (errno != 0)
+    {
+        terminal_print(" - (");
+        terminal_print(strerror(errno));
+        terminal_print(")");
+    }
+
     terminal_print("\n");
 }

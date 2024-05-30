@@ -1,6 +1,4 @@
-[bits 64]
-
-%define SYSCALL_AMOUNT 20
+%include "libs/std/internal/syscalls.inc"
 
 extern syscall_handler_end
 extern syscallTable
@@ -9,7 +7,7 @@ section .text
 
 global syscall_handler
 syscall_handler:
-    cmp rax, SYSCALL_AMOUNT
+    cmp rax, SYS_TOTAL_AMOUNT
     jae .not_available
 
     push rdi

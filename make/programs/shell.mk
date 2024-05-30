@@ -9,7 +9,7 @@ SHELL_OBJ = $(patsubst $(SRC_DIR)/%, $(SHELL_BUILD_DIR)/%.o, $(SHELL_SRC))
 
 $(SHELL_BUILD_DIR)/%.c.o: $(SRC_DIR)/%.c
 	$(MKCWD)
-	$(CC) $(USER_C_FLAGS) -I $(SHELL_SRC_DIR) -c -o $@ $<
+	$(CC) $(USER_C_FLAGS) -I$(SHELL_SRC_DIR) -c -o $@ $<
 
 $(SHELL_BUILD_DIR)/%.s.o: $(SRC_DIR)/%.s
 	$(MKCWD)

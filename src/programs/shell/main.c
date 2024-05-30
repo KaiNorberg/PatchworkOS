@@ -40,7 +40,7 @@ const char* command_read(void)
         else if (chr == '\n')
         {
             terminal_put('\n');
-            return command;
+            return command;        
         }
         else if (chr != '\0' && length < TERMINAL_MAX_COMMAND)
         {
@@ -53,11 +53,49 @@ const char* command_read(void)
     }
 }
 
+void server(void)
+{    
+    fd_t server = announce("local:winserver");
+    if (server == ERR) 
+    {
+        terminal_error("announce error");
+        return;
+    }
+
+    fd_t client = accept(server);
+    if (client == ERR) 
+    {
+        terminal_error("accept");
+        close(server);
+        return;
+    }
+
+    char buffer[32];
+    if (read(client, buffer, 31) == ERR)
+    {
+        terminal_print("read: ");
+        terminal_print(buffer);
+        terminal_print("\n");
+    }
+    else
+    {
+        terminal_error("read");
+        close(server);
+        close(client);
+        return;
+    }
+
+    close(client);
+    close(server);
+}
+
 int main(void)
 {
     fb_init();
     terminal_init();
     input_init();
+
+    server();
 
     while (1)
     {

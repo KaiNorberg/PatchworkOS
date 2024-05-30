@@ -157,6 +157,19 @@ static Volume* volume_get(const char* label)
     return NULL;
 }
 
+File* file_new(void)
+{
+    File* file = kmalloc(sizeof(File));
+    atomic_init(&file->ref, 1);
+    file->volume = NULL;
+    file->position = 0;
+    file->internal = NULL;
+    file->cleanup = NULL;
+    memset(&file->methods, 0, sizeof(FileMethods));
+
+    return file;
+}
+
 File* file_ref(File* file)
 {
     atomic_fetch_add(&file->ref, 1);
@@ -171,7 +184,10 @@ void file_deref(File* file)
         {
             file->cleanup(file);
         }
-        volume_deref(file->volume);
+        if (file->volume != NULL)
+        {
+            volume_deref(file->volume);
+        }
         kfree(file);
     }
 }
@@ -258,13 +274,8 @@ File* vfs_open(const char* path)
     }
 
     //Volume reference is passed to file.
-    File* file = kmalloc(sizeof(File));
-    atomic_init(&file->ref, 1);
+    File* file = file_new();
     file->volume = volume;
-    file->position = 0;
-    file->internal = NULL;
-    file->cleanup = NULL;
-    memset(&file->methods, 0, sizeof(FileMethods));
 
     char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
     if (rootPath == NULL || volume->open(volume, file, rootPath) == ERR)
