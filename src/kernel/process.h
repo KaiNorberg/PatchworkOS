@@ -18,9 +18,9 @@
 
 typedef enum
 {
+    THREAD_STATE_NONE,
     THREAD_STATE_ACTIVE,
-    THREAD_STATE_KILLED,
-    THREAD_STATE_BLOCKED
+    THREAD_STATE_KILLED
 } ThreadState;
 
 typedef struct
@@ -34,13 +34,6 @@ typedef struct
     _Atomic(uint64_t) newTid;
 } Process;
 
-typedef struct Blocker
-{
-    void* context;
-    bool (*callback)(void* context);
-    uint64_t deadline;
-} Blocker;
-
 typedef struct
 {
     ListEntry base;
@@ -48,11 +41,10 @@ typedef struct
     uint64_t id;
     uint64_t timeStart;
     uint64_t timeEnd;
-    uint64_t error;
+    errno_t error;
     uint8_t priority;
     uint8_t boost;
     ThreadState state;
-    Blocker blocker;
     TrapFrame trapFrame;
     uint8_t kernelStack[CONFIG_KERNEL_STACK];
 } Thread;

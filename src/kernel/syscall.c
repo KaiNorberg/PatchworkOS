@@ -40,10 +40,10 @@ static bool verify_buffer(const void* pointer, uint64_t length)
         return false;
     }
 
-    /*if (!vmm_mapped(pointer, length))
+    if (!vmm_mapped(pointer, length))
     {
         return false;
-    }*/
+    }
 
     return true;
 }
@@ -77,8 +77,7 @@ uint64_t syscall_spawn(const char* path)
 
 uint64_t syscall_sleep(uint64_t nanoseconds)
 {
-    sched_sleep(nanoseconds);
-    return 0;
+    return SCHED_WAIT(false, nanoseconds);
 }
 
 uint64_t syscall_error(void)
@@ -223,7 +222,7 @@ uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, uint64_t timeout)
         return ERROR(EFAULT);
     }
 
-    PollFile files[CONFIG_MAX_FILE + 1];
+    PollFile files[CONFIG_MAX_FILE];
     for (uint64_t i = 0; i < amount; i++)
     {
         files[i].file = vfs_context_get(fds[i].fd);
@@ -235,9 +234,8 @@ uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, uint64_t timeout)
         files[i].requested = fds[i].requested;
         files[i].occurred = 0;
     }
-    files[amount].file = NULL;
 
-    uint64_t result = vfs_poll(files, timeout);
+    uint64_t result = vfs_poll(files, amount, timeout);
 
     for (uint64_t i = 0; i < amount; i++)
     {
@@ -350,19 +348,19 @@ fd_t syscall_accept(fd_t fd)
     }
     FILE_GUARD(server);
 
-    File* client = FILE_CALL_METHOD_PTR(server, accept);
-    if (client == NULL)
+    File* connection = FILE_CALL_METHOD_PTR(server, accept);
+    if (connection == NULL)
     {
         return ERR;
     }
 
-    fd_t clientFd = vfs_context_open(client);
-    if (clientFd == ERR)
+    fd_t connectionFd = vfs_context_open(connection);
+    if (connectionFd == ERR)
     {
         return ERR;
     }
 
-    return clientFd;
+    return connectionFd;
 }
 
 ///////////////////////////////////////////////////////

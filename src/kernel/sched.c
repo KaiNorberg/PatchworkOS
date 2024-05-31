@@ -139,27 +139,6 @@ void sched_yield(void)
     SMP_SEND_IPI_TO_SELF(IPI_SCHEDULE);
 }
 
-
-void sched_sleep(uint64_t nanoseconds)
-{
-    Blocker blocker =
-    {
-        .deadline = time_nanoseconds() + nanoseconds,
-    };
-    sched_block(blocker);
-}
-
-void sched_block(Blocker blocker)
-{
-    Scheduler* scheduler = &smp_self()->scheduler;
-    Thread* thread = scheduler->runningThread;
-    thread->blocker = blocker;
-    thread->state = THREAD_STATE_BLOCKED;
-    smp_put();
-
-    sched_yield();
-}
-
 void sched_process_exit(uint64_t status)
 {
     //TODO: Add handling for status
@@ -220,49 +199,17 @@ void sched_schedule(TrapFrame* trapFrame)
 
     Thread* thread;
     Thread* temp;
-    LIST_FOR_EACH_SAFE(thread, temp, &scheduler->blockedThreads)
-    {
-        if (thread->blocker.deadline < time_nanoseconds() || 
-            (thread->blocker.callback != NULL && thread->blocker.callback(thread->blocker.context)))
-        {
-            list_remove(thread);
-            sched_push(thread, 1);
-        }
-    }
-
     LIST_FOR_EACH_SAFE(thread, temp, &scheduler->killedThreads)
     {
         list_remove(thread);
         thread_free(thread);
     }
 
-    if (scheduler->runningThread != NULL)
+    ThreadState state = scheduler->runningThread != NULL ? scheduler->runningThread->state : THREAD_STATE_NONE;
+    if (state == THREAD_STATE_KILLED)
     {
-        switch (scheduler->runningThread->state)
-        {
-        case THREAD_STATE_ACTIVE:
-        {
-            //Do nothing
-        }
-        break;
-        case THREAD_STATE_KILLED:
-        {
-            list_push(&scheduler->killedThreads, scheduler->runningThread);
-            scheduler->runningThread = NULL;
-        }
-        break;
-        case THREAD_STATE_BLOCKED:
-        {
-            scheduler->runningThread->trapFrame = *trapFrame;
-            list_push(&scheduler->blockedThreads, scheduler->runningThread);
-            scheduler->runningThread = NULL;
-        }
-        break;
-        default:
-        {
-            debug_panic("Invalid process state");
-        }
-        }
+        list_push(&scheduler->killedThreads, scheduler->runningThread);
+        scheduler->runningThread = NULL;
     }
 
     Thread* next;

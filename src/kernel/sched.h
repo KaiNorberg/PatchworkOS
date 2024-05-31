@@ -5,6 +5,16 @@
 #include "queue.h"
 #include "process.h"
 
+#define SCHED_WAIT(condition, timeout) \
+({ \
+    uint64_t deadline = (timeout) == UINT64_MAX ? UINT64_MAX : (timeout) + time_nanoseconds(); \
+    while (!(condition) && deadline > time_nanoseconds()) \
+    { \
+        sched_yield(); \
+    } \
+    0; \
+})
+
 typedef struct
 {
     Queue queues[THREAD_PRIORITY_LEVELS];
@@ -25,11 +35,9 @@ Thread* sched_thread(void);
 
 Process* sched_process(void);
 
+// Yields the current thread's remaining time slice.
+// If no other threads are ready, the CPU will idle until the next call to sched_schedule().
 void sched_yield(void);
-
-void sched_sleep(uint64_t nanoseconds);
-
-void sched_block(Blocker blocker);
 
 NORETURN void sched_process_exit(uint64_t status);
 

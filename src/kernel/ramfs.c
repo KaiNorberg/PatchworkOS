@@ -16,7 +16,7 @@ static RamFile* ram_dir_find_file(RamDir* dir, const char* filename)
     RamFile* file = dir->firstFile;
     while (file != NULL)
     {
-        if (vfs_compare_names(file->name, filename))
+        if (name_compare(file->name, filename))
         {
             return file;
         }
@@ -34,7 +34,7 @@ static RamDir* ram_dir_find_dir(RamDir* dir, const char* dirname)
     RamDir* child = dir->firstChild;
     while (child != NULL)
     {
-        if (vfs_compare_names(child->name, dirname))
+        if (name_compare(child->name, dirname))
         {
             return child;
         }
@@ -50,7 +50,7 @@ static RamDir* ram_dir_find_dir(RamDir* dir, const char* dirname)
 static RamDir* ramfs_traverse(const char* path)
 {
     RamDir* dir = root;
-    const char* dirname = vfs_first_dir(path);
+    const char* dirname = dir_name_first(path);
     while (dirname != NULL)
     {
         dir = ram_dir_find_dir(dir, dirname);
@@ -59,7 +59,7 @@ static RamDir* ramfs_traverse(const char* path)
             return NULL;
         }
 
-        dirname = vfs_next_dir(dirname);
+        dirname = dir_name_next(dirname);
     }
 
     return dir;

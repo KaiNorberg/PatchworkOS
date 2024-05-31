@@ -1,4 +1,5 @@
 .vscode
+perf.data
 compile_commands.json
 build
 bin

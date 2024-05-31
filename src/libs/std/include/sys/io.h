@@ -54,6 +54,8 @@ uint64_t chdir(const char* path);
 
 uint64_t poll(pollfd_t* fds, uint64_t amount, uint64_t timeout);
 
+uint64_t poll1(fd_t fd, uint16_t requested, uint64_t timeout);
+
 uint64_t stat(const char* path, stat_t* buffer);
 
 fd_t announce(const char* address);

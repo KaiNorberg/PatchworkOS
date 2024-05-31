@@ -36,29 +36,30 @@ void input_init(void)
 
 char input_kbd_read(uint64_t timeout)
 {
-    pollfd_t fds[] = 
+    if (poll1(keyboard, POLL_READ, timeout) == 0)
     {
-        {.fd = keyboard, .requested = POLL_READ}
-    };
-    poll(fds, 1, timeout);
-
-    kbd_event_t event;
-    if (read(keyboard, &event, sizeof(kbd_event_t)) == sizeof(kbd_event_t))
-    {
-        if (event.code == KEY_CAPS_LOCK && event.type == KBD_EVENT_TYPE_PRESS)
-        {
-            capsLock = !capsLock;
-        }
-        if (event.code == KEY_LEFT_SHIFT)
-        {
-            shift = event.type == KBD_EVENT_TYPE_PRESS;
-        }
-
-        if (event.type == KBD_EVENT_TYPE_PRESS)
-        {
-            return input_key_to_ascii(event.code);
-        }
+        return '\0';
     }
 
-    return '\0';
+    kbd_event_t event;
+    if (read(keyboard, &event, sizeof(kbd_event_t)) != sizeof(kbd_event_t))
+    {
+        return '\0';
+    }
+
+    if (event.code == KEY_CAPS_LOCK && event.type == KBD_EVENT_TYPE_PRESS)
+    {
+        capsLock = !capsLock;
+    }
+    if (event.code == KEY_LEFT_SHIFT)
+    {
+        shift = event.type == KBD_EVENT_TYPE_PRESS;
+    }
+
+    if (event.type != KBD_EVENT_TYPE_PRESS)
+    {
+        return '\0';
+    }
+
+    return input_key_to_ascii(event.code);
 }

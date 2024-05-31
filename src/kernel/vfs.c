@@ -21,11 +21,11 @@ static uint64_t vfs_make_canonical(const char* start, char* out, const char* pat
     const char* name = path;
     while (true)
     {
-        if (vfs_compare_names(name, "."))
+        if (name_compare(name, "."))
         {
             //Do nothing
         }
-        else if (vfs_compare_names(name, ".."))
+        else if (name_compare(name, ".."))
         {
             out--;
             while (*out != VFS_NAME_SEPARATOR)
@@ -57,7 +57,7 @@ static uint64_t vfs_make_canonical(const char* start, char* out, const char* pat
             out[1] = '\0';
         }            
         
-        name = vfs_next_name(name);
+        name = name_next(name);
         if (name == NULL)
         {                    
             if (*out == VFS_NAME_SEPARATOR)
@@ -148,7 +148,7 @@ static Volume* volume_get(const char* label)
     Volume* volume;
     LIST_FOR_EACH(volume, &volumes)
     {
-        if (vfs_compare_labels(volume->label, label))
+        if (label_compare(volume->label, label))
         {
             return volume_ref(volume);
         }
@@ -331,7 +331,7 @@ uint64_t vfs_mount(const char* label, Filesystem* fs)
     Volume* volume;
     LIST_FOR_EACH(volume, &volumes)
     {
-        if (vfs_compare_names(volume->label, label))
+        if (name_compare(volume->label, label))
         {
             return ERROR(EEXIST);
         }
@@ -361,7 +361,7 @@ uint64_t vfs_unmount(const char* label)
     bool found = false;
     LIST_FOR_EACH(volume, &volumes)
     {
-        if (vfs_compare_names(volume->label, label))
+        if (name_compare(volume->label, label))
         {
             found = true;
             break;
@@ -431,39 +431,39 @@ uint64_t vfs_chdir(const char* path)
     return 0;
 }
 
-static bool vfs_poll_callback(void* context)
+static bool vfs_poll_condition(uint64_t* events, PollFile* files, uint64_t amount)
 {
-    PollFile* file = context;
-    while (file->file != NULL)
+    *events = 0;
+    for (uint64_t i = 0; i < amount; i++)
     {
+        PollFile* file = &files[i];
+        
         if (file->requested & POLL_READ &&
             (file->file->methods.read_avail != NULL && file->file->methods.read_avail(file->file)))
         {
             file->occurred = POLL_READ;
-            return true;
+            (*events)++;
         }
         if (file->requested & POLL_WRITE &&
             (file->file->methods.write_avail != NULL && file->file->methods.write_avail(file->file)))
         {
             file->occurred = POLL_WRITE;
-            return true;
+            (*events)++;
         }
 
         file++;
     }
 
-    return false;
+    return *events != 0;
 }
 
-uint64_t vfs_poll(PollFile* files, uint64_t timeout)
+uint64_t vfs_poll(PollFile* files, uint64_t amount, uint64_t timeout)
 {
-    Blocker blocker =
+    uint64_t events = 0;
+    if (SCHED_WAIT(vfs_poll_condition(&events, files, amount), timeout) == ERR)
     {
-        .context = files,
-        .callback = vfs_poll_callback,
-        .deadline = timeout == UINT64_MAX ? UINT64_MAX : timeout + time_nanoseconds()
-    };
-    sched_block(blocker);
-
-    return 0;
+        return ERR;
+    }
+    
+    return events;
 }

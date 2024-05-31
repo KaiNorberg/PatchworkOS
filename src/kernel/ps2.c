@@ -9,6 +9,7 @@
 #include "time.h"
 #include "debug.h"
 #include "utils.h"
+#include "sched.h"
 
 static kbd_event_t eventBuffer[PS2_KEY_BUFFER_LENGTH];
 static uint64_t writeIndex = 0;
@@ -199,6 +200,11 @@ static void ps2_kbd_irq(uint8_t irq)
 
 static uint64_t ps2_kbd_read(File* file, void* buffer, uint64_t count)
 {
+    if (SCHED_WAIT(file->position != writeIndex, UINT64_MAX) == ERR)
+    {
+        return ERR;
+    }
+
     count = ROUND_DOWN(count, sizeof(kbd_event_t));
 
     for (uint64_t i = 0; i < count / sizeof(kbd_event_t); i++)

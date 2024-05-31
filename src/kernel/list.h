@@ -43,7 +43,6 @@ static inline bool list_empty(List* list)
     return list->head.next == &list->head;
 }
 
-//Add an element after "head".
 static inline void list_append(ListEntry* head, void* element)
 {
     ListEntry* header = (ListEntry*)element;
@@ -54,7 +53,6 @@ static inline void list_append(ListEntry* head, void* element)
     head->next = header;
 }
 
-//Add an element before "head".
 static inline void list_prepend(ListEntry* head, void* element)
 {
     list_append(head->prev, element);

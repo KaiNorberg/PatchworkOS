@@ -38,7 +38,7 @@ static System* system_new(const char* name)
 {
     System* system = kmalloc(sizeof(System));
     list_entry_init(&system->base);
-    vfs_copy_name(system->name, name);
+    name_copy(system->name, name);
     list_init(&system->resources);
     list_init(&system->systems);
 
@@ -50,7 +50,7 @@ static System* system_find_system(System* parent, const char* name)
     System* system;
     LIST_FOR_EACH(system, &parent->systems)
     {
-        if (vfs_compare_names(system->name, name))
+        if (name_compare(system->name, name))
         {
             return system;
         }
@@ -64,7 +64,7 @@ static Resource* system_find_resource(System* parent, const char* name)
     Resource* resource;
     LIST_FOR_EACH(resource, &parent->resources)
     {
-        if (vfs_compare_names(resource->name, name))
+        if (name_compare(resource->name, name))
         {
             return resource;
         }
@@ -76,7 +76,7 @@ static Resource* system_find_resource(System* parent, const char* name)
 static System* sysfs_traverse(const char* path)
 {
     System* system = root;
-    const char* name = vfs_first_dir(path);
+    const char* name = dir_name_first(path);
     while (name != NULL)
     {
         system = system_find_system(system, name);
@@ -85,7 +85,7 @@ static System* sysfs_traverse(const char* path)
             return NULL;
         }
 
-        name = vfs_next_dir(name);
+        name = dir_name_next(name);
     }
 
     return system;
@@ -191,7 +191,7 @@ void sysfs_expose(Resource* resource, const char* path)
     LOCK_GUARD(&lock);
 
     System* system = root;
-    const char* name = vfs_first_name(path);
+    const char* name = name_first(path);
     while (name != NULL)
     {
         System* next = system_find_system(system, name);
@@ -202,7 +202,7 @@ void sysfs_expose(Resource* resource, const char* path)
         }
 
         system = next;
-        name = vfs_next_name(name);
+        name = name_next(name);
     }
 
     resource->system = system;

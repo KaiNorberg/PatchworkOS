@@ -105,10 +105,49 @@ uint64_t vfs_realpath(char* out, const char* path);
 
 uint64_t vfs_chdir(const char* path);
 
-//Files should be null terminated.
-uint64_t vfs_poll(PollFile* files, uint64_t timeout);
+uint64_t vfs_poll(PollFile* files, uint64_t amount, uint64_t timeout);
 
-static inline uint64_t vfs_name_length(const char* name)
+static inline const char* vfs_basename(const char* path)
+{
+    const char* base = strrchr(path, VFS_NAME_SEPARATOR);
+    return base != NULL ? base + 1 : path;
+}
+
+static inline uint64_t vfs_parent_dir(char* dest, const char* src)
+{
+    const char* end = strrchr(src, VFS_NAME_SEPARATOR);
+    if (end == NULL)
+    {
+        return ERR;
+    }
+
+    strncpy(dest, src, end - src);
+    dest[end - src] = '\0';
+
+    return 0;
+}
+
+static inline const char* name_first(const char* path)
+{
+    if (path[0] == '\0')
+    {
+        return NULL;
+    }
+    else if (path[0] == VFS_NAME_SEPARATOR)
+    {
+        return path + 1;
+    }
+    
+    return path;
+}
+
+static inline const char* name_next(const char* path)
+{
+    const char* base = strchr(path, VFS_NAME_SEPARATOR);
+    return base != NULL ? base + 1 : NULL;
+}
+
+static inline uint64_t name_length(const char* name)
 {
     for (uint64_t i = 0; i < MAX_PATH - 1; i++)
     {
@@ -121,7 +160,7 @@ static inline uint64_t vfs_name_length(const char* name)
     return MAX_PATH - 1;
 }
 
-static inline void vfs_copy_name(char* dest, const char* src)
+static inline void name_copy(char* dest, const char* src)
 {
     for (uint64_t i = 0; i < CONFIG_MAX_NAME - 1; i++)
     {
@@ -138,24 +177,7 @@ static inline void vfs_copy_name(char* dest, const char* src)
     dest[CONFIG_MAX_NAME - 1] = '\0';
 }
 
-static inline bool vfs_compare_labels(const char* a, const char* b)
-{
-    for (uint64_t i = 0; i < MAX_PATH; i++)
-    {
-        if (VFS_END_OF_LABEL(a[i]))
-        {
-            return VFS_END_OF_LABEL(b[i]);
-        }
-        if (a[i] != b[i])
-        {
-            return false;
-        }
-    }
-
-    return false;
-}
-
-static inline bool vfs_compare_names(const char* a, const char* b)
+static inline bool name_compare(const char* a, const char* b)
 {
     for (uint64_t i = 0; i < MAX_PATH; i++)
     {
@@ -172,21 +194,43 @@ static inline bool vfs_compare_names(const char* a, const char* b)
     return false;
 }
 
-static inline const char* vfs_first_name(const char* path)
+static inline bool name_valid(const char* name)
 {
-    if (path[0] == '\0')
+    uint64_t length = name_length(name);
+    for (uint64_t i = 0; i < length; i++)
     {
-        return NULL;
+        if (!VFS_VALID_CHAR(name[i]))
+        {
+            return false;
+        }
     }
-    else if (path[0] == VFS_NAME_SEPARATOR)
-    {
-        return path + 1;
-    }
-    
-    return path;
+
+    return true;
 }
 
-static inline const char* vfs_first_dir(const char* path)
+static inline bool name_is_last(const char* name)
+{
+    return strchr(name, VFS_NAME_SEPARATOR) == NULL;
+}
+
+static inline bool label_compare(const char* a, const char* b)
+{
+    for (uint64_t i = 0; i < MAX_PATH; i++)
+    {
+        if (VFS_END_OF_LABEL(a[i]))
+        {
+            return VFS_END_OF_LABEL(b[i]);
+        }
+        if (a[i] != b[i])
+        {
+            return false;
+        }
+    }
+
+    return false;
+}
+
+static inline const char* dir_name_first(const char* path)
 {
     if (path[0] == VFS_NAME_SEPARATOR)
     {
@@ -203,7 +247,7 @@ static inline const char* vfs_first_dir(const char* path)
     }
 }
 
-static inline const char* vfs_next_dir(const char* path)
+static inline const char* dir_name_next(const char* path)
 {
     const char* next = strchr(path, VFS_NAME_SEPARATOR);
     if (next == NULL)
@@ -222,30 +266,4 @@ static inline const char* vfs_next_dir(const char* path)
             return NULL;
         }
     }
-}
-
-static inline const char* vfs_next_name(const char* path)
-{
-    const char* base = strchr(path, VFS_NAME_SEPARATOR);
-    return base != NULL ? base + 1 : NULL;
-}
-
-static inline const char* vfs_basename(const char* path)
-{
-    const char* base = strrchr(path, VFS_NAME_SEPARATOR);
-    return base != NULL ? base + 1 : path;
-}
-
-static inline uint64_t vfs_parent_dir(char* dest, const char* src)
-{
-    char* end = strrchr(src, VFS_NAME_SEPARATOR);
-    if (end == NULL)
-    {
-        return ERR;
-    }
-
-    strncpy(dest, src, end - src);
-    dest[end - src] = '\0';
-
-    return 0;
 }

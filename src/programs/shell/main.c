@@ -25,7 +25,7 @@ const char* command_read(void)
     {
         terminal_update_cursor();
 
-        char chr = input_kbd_read(TERMINAL_BLINK_INTERVAL);
+        char chr = input_kbd_read(TERMINAL_BLINK_INTERVAL / 5);
 
         if (chr == '\b')
         {
@@ -40,7 +40,7 @@ const char* command_read(void)
         else if (chr == '\n')
         {
             terminal_put('\n');
-            return command;        
+            return command;
         }
         else if (chr != '\0' && length < TERMINAL_MAX_COMMAND)
         {

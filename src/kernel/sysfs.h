@@ -29,7 +29,7 @@ static inline void resource_init(Resource* resource, const char* name)
     list_entry_init(&resource->base);
     resource->system = NULL;
     atomic_init(&resource->ref, 1);
-    vfs_copy_name(resource->name, name);
+    name_copy(resource->name, name);
     resource->delete = NULL;
     resource->methods = (FileMethods){};
 }
