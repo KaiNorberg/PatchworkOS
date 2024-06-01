@@ -9,7 +9,6 @@
 - SMP (Symmetric Multiprocessing)
 - Multithreading (Kernel Level Threads)
 - O(1) scheduler
-- Synchronous Non-Blocking IO
 - Custom Standard Library
 - Custom UEFI Bootloader
 - More to be added...
