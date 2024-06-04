@@ -17,7 +17,7 @@ static void vmm_align_region(void** virtualAddress, uint64_t* length)
     *virtualAddress = aligned;
 }
 
-static uint64_t vmm_prot_to_flags(uint8_t prot)
+static uint64_t vmm_prot_to_flags(prot_t prot)
 {
     if (!(prot & PROT_READ))
     {
@@ -123,7 +123,7 @@ void* vmm_kernel_map(void* virtualAddress, void* physicalAddress, uint64_t lengt
     return virtualAddress;
 }
 
-void* vmm_allocate(void* virtualAddress, uint64_t length, uint8_t prot)
+void* vmm_alloc(void* virtualAddress, uint64_t length, prot_t prot)
 {
     Space* space = &sched_process()->space;
     LOCK_GUARD(&space->lock);
@@ -155,13 +155,13 @@ void* vmm_allocate(void* virtualAddress, uint64_t length, uint8_t prot)
     for (uint64_t i = 0; i < SIZE_IN_PAGES(length); i++)
     {
         void* address = (void*)((uint64_t)virtualAddress + i * PAGE_SIZE);
-        page_table_map(space->pageTable, address, pmm_allocate(), 1, flags);
+        page_table_map(space->pageTable, address, pmm_alloc(), 1, flags);
     }
 
     return virtualAddress;
 }
 
-void* vmm_map(void* virtualAddress, void* physicalAddress, uint64_t length, uint8_t prot)
+void* vmm_map(void* virtualAddress, void* physicalAddress, uint64_t length, prot_t prot)
 {    
     Space* space = &sched_process()->space;
     LOCK_GUARD(&space->lock);
@@ -217,7 +217,7 @@ uint64_t vmm_unmap(void* virtualAddress, uint64_t length)
     return 0;
 }
 
-uint64_t vmm_protect(void* virtualAddress, uint64_t length, uint8_t prot)
+uint64_t vmm_protect(void* virtualAddress, uint64_t length, prot_t prot)
 {
     uint64_t flags = vmm_prot_to_flags(prot);
     if (flags == ERR)

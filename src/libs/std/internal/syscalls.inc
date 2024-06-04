@@ -19,11 +19,8 @@
 %define SYS_MMAP 18
 %define SYS_MUNMAP 19
 %define SYS_MPROTECT 20
-%define SYS_ANNOUNCE 21
-%define SYS_DIAL 22
-%define SYS_ACCEPT 23
 
-%define SYS_TOTAL_AMOUNT 24
+%define SYS_TOTAL_AMOUNT 21
 
 extern _ErrnoFunc
 

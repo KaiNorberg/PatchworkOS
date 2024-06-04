@@ -1,33 +1,64 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/io.h>
+#include <sys/ioctl.h>
 #include <sys/proc.h>
+#include <sys/win.h>
 
 int main(void)
 {
-    /*fd_t client = socket(DOMAIN_LOCAL, SOCK_STREAM, PROTO_DEFAULT);
-    if (client == ERR) 
+    return EXIT_SUCCESS;
+}
+
+/*int main(void)
+{
+    fd_t window = open("sys:/srv/win");
+    if (window == ERR)
     {
         return EXIT_FAILURE;
     }
 
-    sockaddr_t serverAddr;
-    strcpy(serverAddr.local.name, "test");
+    win_init_t initInfo;
+    write(window, &initInfo, sizeof(win_init_t));
 
-    if (connect(client, &serverAddr) == ERR) 
+    void* surface = mmap(window, NULL, initInfo.x * initInfo.y, PROT_READ | PROT_WRITE);
+
+    //Event loop
+    while (1)
     {
-        close(client);
-        return EXIT_FAILURE;
+        win_event_t event;
+        read(window, &event, sizeof(win_event_t));
+
+        //Do stuff...
+        if (event.type == WIN_EVENT_KEYBOARD)
+        {
+            
+        }
     }
 
-    const char* message = "Hello from the client!";
-    if (write(client, message, strlen(message) + 1) == ERR) 
-    {
-        close(client);
-        return EXIT_FAILURE;
-    }
-
-    close(client);*/
+    close(window);
 
     return EXIT_SUCCESS;
 }
+
+int main_wrapped(void)
+{
+    win_init_t initInfo;   
+    win_t window = win_init(&initInfo);
+
+    //Event loop
+    while (1)
+    {
+        win_poll_events(window);
+
+        win_pixel(window, 0, 0, 0xFFFFFF);
+
+        win_rectangle(window, 10, 10, 100, 100, 0x000000);
+
+        //Do stuff...
+    }
+
+    win_cleanup(window);
+
+    return EXIT_SUCCESS;
+}*/

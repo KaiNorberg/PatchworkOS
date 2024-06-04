@@ -20,19 +20,15 @@ typedef struct Resource
     System* system;
     _Atomic(uint64_t) ref;
     char name[CONFIG_MAX_NAME];
-    void (*delete)(struct Resource*);
-    FileMethods methods;
+    void (*delete)(struct Resource* resource);
+    uint64_t (*open)(struct Resource* resource, File* file);
 } Resource;
 
-static inline void resource_init(Resource* resource, const char* name)
-{
-    list_entry_init(&resource->base);
-    resource->system = NULL;
-    atomic_init(&resource->ref, 1);
-    name_copy(resource->name, name);
-    resource->delete = NULL;
-    resource->methods = (FileMethods){};
-}
+void resource_init(Resource* resource, const char* name, uint64_t (*open)(Resource* resource, File* file), void (*delete)(Resource* resource));
+
+Resource* resource_ref(Resource* resource);
+
+void resource_unref(Resource* resource);
 
 void sysfs_init(void);
 

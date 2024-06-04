@@ -110,9 +110,9 @@ static uint8_t scanCodeTable[] =
 
 static uint8_t ps2_read(void)
 {    
-    uint64_t time = time_nanoseconds();
+    uint64_t time = time_uptime();
 
-    while (time + NANOSECONDS_PER_SECOND > time_nanoseconds())
+    while (time + NANOSECONDS_PER_SECOND > time_uptime())
     {
         uint8_t status = io_inb(PS2_PORT_STATUS);
 		if (status & PS2_STATUS_OUT_FULL)
@@ -127,9 +127,9 @@ static uint8_t ps2_read(void)
 
 static void ps2_wait(void)
 {
-    uint64_t time = time_nanoseconds();
+    uint64_t time = time_uptime();
 
-    while (time + NANOSECONDS_PER_SECOND > time_nanoseconds())
+    while (time + NANOSECONDS_PER_SECOND > time_uptime())
     {
         uint8_t status = io_inb(PS2_PORT_STATUS);
 		if (status & PS2_STATUS_OUT_FULL)
@@ -186,7 +186,7 @@ static void ps2_kbd_irq(uint8_t irq)
     }
     uint8_t key = scanCodeTable[index];
 
-    uint64_t time = time_nanoseconds();
+    uint64_t time = time_uptime();
     kbd_event_t event =
     {
         .time = {.tv_sec = time / NANOSECONDS_PER_SECOND, .tv_nsec = time % NANOSECONDS_PER_SECOND},
@@ -226,6 +226,21 @@ static bool ps2_kbd_read_avail(File* file)
     return file->position != writeIndex;
 }
 
+static void ps2_kbd_cleanup(File* file)
+{
+    Resource* resource = file->internal;
+    resource_unref(resource);
+}
+
+static uint64_t ps2_kbd_open(Resource* resource, File* file)
+{
+    file->methods.read = ps2_kbd_read;
+    file->methods.read_avail = ps2_kbd_read_avail;
+    file->cleanup = ps2_kbd_cleanup;
+    file->internal = resource_ref(resource);
+    return 0;
+}
+
 static void ps2_controller_init(void)
 {
     ps2_cmd(PS2_CMD_KBD_DISABLE);
@@ -261,10 +276,7 @@ void ps2_init(void)
     irq_install(ps2_kbd_irq, IRQ_KEYBOARD);
 
     Resource* keyboard = kmalloc(sizeof(Resource));
-    resource_init(keyboard, "ps2");
-    keyboard->methods.read = ps2_kbd_read;
-    keyboard->methods.read_avail = ps2_kbd_read_avail;
-
+    resource_init(keyboard, "ps2", ps2_kbd_open, NULL);
     sysfs_expose(keyboard, "/kbd");
 
     tty_end_message(TTY_MESSAGE_OK);

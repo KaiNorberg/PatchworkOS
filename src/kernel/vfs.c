@@ -325,7 +325,6 @@ uint64_t vfs_mount(const char* label, Filesystem* fs)
     {
         return ERROR(EINVAL);
     }
-
     LOCK_GUARD(&volumeLock);
 
     Volume* volume;

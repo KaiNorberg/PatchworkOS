@@ -34,7 +34,8 @@ int* _ErrnoFunc(void);
 #define EBUFFER 17 //Bad buffer
 #define ENOTDIR 18 //Not a directory
 #define EISDIR 19 //Is a directory
-#define EBUSY 20 //Busy
+#define ENORES 20 //No such resource
+#define EBUSY 21 //Busy
 
 //NOTE: Values retrievd from linux
 /*

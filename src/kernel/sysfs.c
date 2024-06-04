@@ -13,27 +13,6 @@ static Filesystem sysfs;
 static System* root;
 static Lock lock;
 
-static Resource* resource_ref(Resource* resource)
-{
-    atomic_fetch_add(&resource->ref, 1);
-    return resource;
-}
-
-static void resource_unref(Resource* resource)
-{
-    if (atomic_fetch_sub(&resource->ref, 1) <= 1)
-    {
-        if (resource->delete != NULL)
-        {
-            resource->delete(resource);
-        }
-        else
-        {
-            debug_panic("Attempt to delete undeletable resource");
-        }
-    }
-}
-
 static System* system_new(const char* name)
 {
     System* system = kmalloc(sizeof(System));
@@ -108,12 +87,6 @@ static Resource* sysfs_find_resource(const char* path)
     return system_find_resource(parent, name);
 }
 
-static void sysfs_cleanup(File* file)
-{
-    Resource* resource = file->internal;
-    resource_unref(resource);
-}
-
 static uint64_t sysfs_open(Volume* volume, File* file, const char* path)
 {
     LOCK_GUARD(&lock);
@@ -124,11 +97,7 @@ static uint64_t sysfs_open(Volume* volume, File* file, const char* path)
         return ERROR(EPATH);
     }
 
-    file->cleanup = sysfs_cleanup;
-    file->methods = resource->methods;
-    file->internal = resource_ref(resource);
-
-    return 0;
+    return resource->open(resource, file);
 }
 
 static uint64_t sysfs_stat(Volume* volume, const char* path, stat_t* buffer)
@@ -164,6 +133,37 @@ static uint64_t sysfs_mount(Volume* volume)
     volume->stat = sysfs_stat;
 
     return 0;
+}
+
+void resource_init(Resource* resource, const char* name, uint64_t (*open)(Resource* resource, File* file), void (*delete)(Resource* resource))
+{
+    list_entry_init(&resource->base);
+    resource->system = NULL;
+    atomic_init(&resource->ref, 1);
+    name_copy(resource->name, name);
+    resource->open = open;
+    resource->delete = delete;
+}
+
+Resource* resource_ref(Resource* resource)
+{
+    atomic_fetch_add(&resource->ref, 1);
+    return resource;
+}
+
+void resource_unref(Resource* resource)
+{
+    if (atomic_fetch_sub(&resource->ref, 1) <= 1)
+    {
+        if (resource->delete != NULL)
+        {
+            resource->delete(resource);
+        }
+        else
+        {
+            debug_panic("Attempt to delete undeletable resource");
+        }
+    }
 }
 
 void sysfs_init(void)

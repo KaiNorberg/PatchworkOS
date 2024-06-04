@@ -10,6 +10,9 @@
 #define NORETURN __attribute__((noreturn))
 #define NOINLINE __attribute__((noinline))
 
+#define CONCAT(a, b) CONCAT_INNER(a, b)
+#define CONCAT_INNER(a, b) a ## b
+
 #define ERROR(code) \
 ({ \
     sched_thread()->error = code; ERR; \

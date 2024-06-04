@@ -17,7 +17,7 @@
 
 static Thread* sched_next_thread(Scheduler* scheduler)
 {
-    if (scheduler->runningThread != NULL && scheduler->runningThread->timeEnd > time_nanoseconds())
+    if (scheduler->runningThread != NULL && scheduler->runningThread->timeEnd > time_uptime())
     {
         for (int64_t i = THREAD_PRIORITY_MAX; i > scheduler->runningThread->priority + scheduler->runningThread->boost; i--)
         {
@@ -57,7 +57,7 @@ static void sched_switch_thread(TrapFrame* trapFrame, Scheduler* scheduler, Thre
             scheduler->runningThread = NULL;
         }
 
-        next->timeStart = time_nanoseconds();
+        next->timeStart = time_uptime();
         next->timeEnd = next->timeStart + CONFIG_TIME_SLICE;
 
         *trapFrame = next->trapFrame;
@@ -162,7 +162,7 @@ void sched_thread_exit(void)
     debug_panic("Returned from thread_exit");
 }
 
-uint64_t sched_spawn(const char* path)
+pid_t sched_spawn(const char* path)
 {
     Process* process = process_new(path);
     Thread* thread = thread_new(process, loader_entry, THREAD_PRIORITY_MIN);
@@ -171,7 +171,6 @@ uint64_t sched_spawn(const char* path)
     return process->id;
 }
 
-//Temporary
 uint64_t sched_local_thread_amount(void)
 {
     const Scheduler* scheduler = &smp_self()->scheduler;

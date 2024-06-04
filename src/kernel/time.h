@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sys/proc.h>
+
 #include "defs.h"
 
 #define RTC_HZ 2
@@ -14,22 +16,16 @@
     tty_acquire(); \
     tty_print("Starting benchmark... "); \
     tty_release(); \
-    uint64_t start = time_milliseconds(); \
+    nsec_t start = time_uptime(); \
     func(); \
-    uint64_t end = time_milliseconds(); \
+    nsec_t end = time_uptime(); \
     tty_acquire(); \
     tty_print("Time taken: "); \
     tty_printi(end - start); \
-    tty_print(" MS\n"); \
+    tty_print(" NS\n"); \
     tty_release(); \
 })
 
 void time_init(void);
 
-void time_accumulate(void);
-
-uint64_t time_seconds(void);
-
-uint64_t time_milliseconds(void);
-
-uint64_t time_nanoseconds(void);
+nsec_t time_uptime(void);

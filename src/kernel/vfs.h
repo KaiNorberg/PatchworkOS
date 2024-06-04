@@ -4,6 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <sys/io.h>
+#include <sys/proc.h>
 
 #include "defs.h"
 #include "lock.h"
@@ -28,7 +29,8 @@
     (file)->methods.method(file __VA_OPT__(,) ##__VA_ARGS__) : \
     NULLPTR(EACCES))
 
-#define FILE_GUARD(file) __attribute__((cleanup(file_cleanup))) File* f##__COUNTER__ = (file)
+#define FILE_GUARD(file) \
+    __attribute__((cleanup(file_cleanup))) File* CONCAT(f, __COUNTER__) = (file)
 
 typedef struct Filesystem Filesystem;
 typedef struct Volume Volume;
@@ -57,10 +59,9 @@ typedef struct
     uint64_t (*write)(File*, const void*, uint64_t);
     uint64_t (*seek)(File*, int64_t, uint8_t);
     uint64_t (*ioctl)(File*, uint64_t, void*, uint64_t);
-    void* (*mmap)(File*, void*, uint64_t, uint8_t);
+    void* (*mmap)(File*, void*, uint64_t, prot_t);
     bool (*write_avail)(File*);
     bool (*read_avail)(File*);
-    File* (*accept)(File*);
 } FileMethods;
 
 typedef struct File

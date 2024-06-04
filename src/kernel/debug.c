@@ -93,7 +93,7 @@ void debug_panic(const char* message)
     debug_print("Reserved Pages = ", pmm_reserved_amount());
 
     debug_move("Other", 2, 0);
-    debug_print("Current Time = ", time_nanoseconds());
+    debug_print("Current Time = ", time_uptime());
     debug_print("Cpu id = ", smp_self()->id);
 
     tty_set_scale(1);
@@ -165,7 +165,7 @@ void debug_exception(TrapFrame const* trapFrame, const char* message)
     debug_print("Unlocked Pages = ", pmm_free_amount());
 
     debug_move("Other", 2, 13);
-    debug_print("Current Time = ", time_nanoseconds());
+    debug_print("Current Time = ", time_uptime());
     debug_print("Cpu Id = ", smp_self()->id);
 
     tty_set_scale(1);

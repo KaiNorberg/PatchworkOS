@@ -25,20 +25,20 @@ typedef enum
 
 typedef struct
 {
-    uint64_t id;
+    pid_t id;
     bool killed;
     char executable[MAX_PATH];
     VfsContext vfsContext;
     Space space;
     _Atomic(uint64_t) threadCount;
-    _Atomic(uint64_t) newTid;
+    _Atomic(tid_t) newTid;
 } Process;
 
 typedef struct
 {
     ListEntry base;
     Process* process;
-    uint64_t id;
+    tid_t id;
     uint64_t timeStart;
     uint64_t timeEnd;
     errno_t error;

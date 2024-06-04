@@ -33,7 +33,7 @@ static HeapHeader* heap_block_new(uint64_t size)
     HeapHeader* newBlock = (HeapHeader*)newAddress;
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        vmm_kernel_map((void*)(newAddress + i * PAGE_SIZE), pmm_allocate(), PAGE_SIZE, PAGE_FLAG_WRITE);
+        vmm_kernel_map((void*)(newAddress + i * PAGE_SIZE), pmm_alloc(), PAGE_SIZE, PAGE_FLAG_WRITE);
     }
 
     newBlock->size = pageAmount * PAGE_SIZE - sizeof(HeapHeader);

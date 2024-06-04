@@ -26,6 +26,7 @@
 #include "ps2.h"
 #include "renderer.h"
 #include "loader.h"
+#include "compositor.h"
 
 static void boot_info_deallocate(BootInfo* bootInfo)
 {
@@ -77,6 +78,7 @@ void kernel_init(BootInfo* bootInfo)
     ps2_init();
     const_init();
     renderer_init(&bootInfo->gopBuffer);
+    compositor_init();
 
     boot_info_deallocate(bootInfo);
 }

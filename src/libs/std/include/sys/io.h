@@ -58,12 +58,6 @@ uint64_t poll1(fd_t fd, uint16_t requested, uint64_t timeout);
 
 uint64_t stat(const char* path, stat_t* buffer);
 
-fd_t announce(const char* address);
-
-fd_t dial(const char* address);
-
-fd_t accept(fd_t fd);
-
 #if defined(__cplusplus)
 }
 #endif

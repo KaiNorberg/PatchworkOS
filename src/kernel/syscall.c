@@ -13,7 +13,6 @@
 #include "debug.h"
 #include "sched.h"
 #include "loader.h"
-#include "net.h"
 
 //NOTE: Syscalls should always return a 64 bit value to prevent garbage from remaining in rax.
 
@@ -65,7 +64,7 @@ NORETURN void syscall_thread_exit(void)
     sched_thread_exit();
 }
 
-uint64_t syscall_spawn(const char* path)
+pid_t syscall_spawn(const char* path)
 {
     if (!verify_string(path))
     {
@@ -75,32 +74,32 @@ uint64_t syscall_spawn(const char* path)
     return sched_spawn(path);
 }
 
-uint64_t syscall_sleep(uint64_t nanoseconds)
+uint64_t syscall_sleep(nsec_t nanoseconds)
 {
     return SCHED_WAIT(false, nanoseconds);
 }
 
-uint64_t syscall_error(void)
+errno_t syscall_error(void)
 {
     return sched_thread()->error;
 }
 
-uint64_t syscall_pid(void)
+pid_t syscall_pid(void)
 {
     return sched_process()->id;
 }
 
-uint64_t syscall_tid(void)
+tid_t syscall_tid(void)
 {
     return sched_thread()->id;
 }
 
-uint64_t syscall_uptime(void)
+nsec_t syscall_uptime(void)
 {
-    return time_nanoseconds();
+    return time_uptime();
 }
 
-uint64_t syscall_open(const char* path)
+fd_t syscall_open(const char* path)
 {
     if (!verify_string(path))
     {
@@ -261,7 +260,7 @@ uint64_t syscall_stat(const char* path, stat_t* buffer)
     return vfs_stat(path, buffer);
 }
 
-void* syscall_mmap(fd_t fd, void* address, uint64_t length, uint8_t prot)
+void* syscall_mmap(fd_t fd, void* address, uint64_t length, prot_t prot)
 {
     File* file = vfs_context_get(fd);
     if (file == NULL)
@@ -283,7 +282,7 @@ uint64_t syscall_munmap(void* address, uint64_t length)
     return vmm_unmap(address, length);
 }
 
-uint64_t syscall_mprotect(void* address, uint64_t length, uint8_t prot)
+uint64_t syscall_mprotect(void* address, uint64_t length, prot_t prot)
 {
     if (!verify_pointer(address, length))
     {
@@ -291,76 +290,6 @@ uint64_t syscall_mprotect(void* address, uint64_t length, uint8_t prot)
     }
     
     return vmm_protect(address, length, prot);
-}
-
-fd_t syscall_announce(const char* address)
-{
-    if (!verify_string(address))
-    {
-        return ERROR(EFAULT);
-    }
-
-    File* file = net_announce(address);
-    if (file == NULL)
-    {
-        return ERR;
-    }
-    FILE_GUARD(file);
-
-    fd_t fd = vfs_context_open(file);
-    if (fd == ERR)
-    {
-        return ERR;
-    }
-
-    return fd;
-}
-
-fd_t syscall_dial(const char* address)
-{
-    if (!verify_string(address))
-    {
-        return ERROR(EFAULT);
-    }
-
-    File* file = net_dial(address);
-    if (file == NULL)
-    {
-        return ERR;
-    }
-    FILE_GUARD(file);
-    
-    fd_t fd = vfs_context_open(file);
-    if (fd == ERR)
-    {
-        return ERR;
-    }
-
-    return fd;
-}
-
-fd_t syscall_accept(fd_t fd)
-{
-    File* server = vfs_context_get(fd);
-    if (server == NULL)
-    {
-        return ERR;
-    }
-    FILE_GUARD(server);
-
-    File* connection = FILE_CALL_METHOD_PTR(server, accept);
-    if (connection == NULL)
-    {
-        return ERR;
-    }
-
-    fd_t connectionFd = vfs_context_open(connection);
-    if (connectionFd == ERR)
-    {
-        return ERR;
-    }
-
-    return connectionFd;
 }
 
 ///////////////////////////////////////////////////////
@@ -398,7 +327,4 @@ void* syscallTable[] =
     syscall_mmap,
     syscall_munmap,
     syscall_mprotect,
-    syscall_announce,
-    syscall_dial,
-    syscall_accept
 };

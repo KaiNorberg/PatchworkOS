@@ -9,7 +9,14 @@
 #include "apic.h"
 #include "hpet.h"
 
-static _Atomic(uint64_t) accumulator = ATOMIC_VAR_INIT(0);
+static _Atomic(nsec_t) accumulator = ATOMIC_VAR_INIT(0);
+
+static void time_accumulate(void)
+{
+    //Avoids overflow on the hpet counter if counter is 32bit.
+    atomic_fetch_add(&accumulator, hpet_read_counter());
+    hpet_reset_counter();
+}
 
 static void time_irq_handler(uint8_t irq)
 {
@@ -41,24 +48,7 @@ void time_init(void)
     time_rtc_init();
 }
 
-void time_accumulate(void)
-{
-    //Avoids overflow on the hpet counter if counter is 32bit.
-    atomic_fetch_add(&accumulator, hpet_read_counter());
-    hpet_reset_counter();
-}
-
-uint64_t time_seconds(void)
-{
-    return time_nanoseconds() / NANOSECONDS_PER_SECOND;
-}
-
-uint64_t time_milliseconds(void)
-{
-    return time_nanoseconds() / NANOSECONDS_PER_MILLISECOND;
-}
-
-uint64_t time_nanoseconds(void)
+nsec_t time_uptime(void)
 {
     return (atomic_load(&accumulator) + hpet_read_counter()) * hpet_nanoseconds_per_tick();
 }

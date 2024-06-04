@@ -10,7 +10,9 @@ typedef struct
     _Atomic(uint32_t) nowServing;
 } Lock;
 
-#define LOCK_GUARD(lock) Lock* l##__COUNTER__ __attribute__((cleanup(lock_cleanup))) = (lock); lock_acquire((lock))
+#define LOCK_GUARD(lock) \
+    __attribute__((cleanup(lock_cleanup))) Lock* CONCAT(l, __COUNTER__) = (lock); \
+    lock_acquire((lock))
 
 void lock_init(Lock* lock);
 

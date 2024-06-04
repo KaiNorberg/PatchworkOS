@@ -10,9 +10,9 @@
 static Resource one;
 static Resource zero;
 
-void* const_one_mmap(File* file, void* address, uint64_t length, uint8_t prot)
+static void* const_one_mmap(File* file, void* address, uint64_t length, prot_t prot)
 {
-    if (vmm_allocate(address, length, prot) == NULL)
+    if (vmm_alloc(address, length, prot) == NULL)
     {
         return NULL;
     }
@@ -21,9 +21,15 @@ void* const_one_mmap(File* file, void* address, uint64_t length, uint8_t prot)
     return 0;
 }
 
-void* const_zero_mmap(File* file, void* address, uint64_t length, uint8_t prot)
+static uint64_t const_one_open(Resource* resource, File* file)
 {
-    if (vmm_allocate(address, length, prot) == NULL)
+    file->methods.mmap = const_one_mmap;
+    return 0;
+}
+
+static void* const_zero_mmap(File* file, void* address, uint64_t length, prot_t prot)
+{
+    if (vmm_alloc(address, length, prot) == NULL)
     {
         return NULL;
     }
@@ -32,16 +38,20 @@ void* const_zero_mmap(File* file, void* address, uint64_t length, uint8_t prot)
     return 0;
 }
 
+static uint64_t const_zero_open(Resource* resource, File* file)
+{
+    file->methods.mmap = const_zero_mmap;
+    return 0;
+}
+
 void const_init(void)
 {    
     tty_start_message("Constants initializing");
 
-    resource_init(&one, "one");
-    one.methods.mmap = const_one_mmap;
+    resource_init(&one, "one", const_one_open, NULL);
     sysfs_expose(&one, "/const");
 
-    resource_init(&zero, "zero");
-    zero.methods.mmap = const_zero_mmap;
+    resource_init(&zero, "zero", const_zero_open, NULL);
     sysfs_expose(&zero, "/const");
 
     tty_end_message(TTY_MESSAGE_OK);

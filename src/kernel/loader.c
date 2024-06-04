@@ -18,7 +18,7 @@ static void* loader_allocate_stack(void)
     Thread* thread = sched_thread();
 
     void* address = (void*)(VMM_LOWER_HALF_MAX - (CONFIG_USER_STACK * (thread->id + 1) + PAGE_SIZE * (thread->id)));
-    if (vmm_allocate(address, CONFIG_USER_STACK, PROT_READ | PROT_WRITE) == NULL)
+    if (vmm_alloc(address, CONFIG_USER_STACK, PROT_READ | PROT_WRITE) == NULL)
     {
         debug_panic("Failed to allocate user stack");  
     }
@@ -71,7 +71,7 @@ static void* loader_load_program(void)
         {
 	    case PT_LOAD:
         {    
-            if (vmm_allocate((void*)programHeader.virtualAddress, programHeader.memorySize, PROT_READ | PROT_WRITE) == NULL)
+            if (vmm_alloc((void*)programHeader.virtualAddress, programHeader.memorySize, PROT_READ | PROT_WRITE) == NULL)
             {
                 sched_process_exit(EEXEC);
             }

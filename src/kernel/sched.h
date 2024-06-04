@@ -7,8 +7,8 @@
 
 #define SCHED_WAIT(condition, timeout) \
 ({ \
-    uint64_t deadline = (timeout) == UINT64_MAX ? UINT64_MAX : (timeout) + time_nanoseconds(); \
-    while (!(condition) && deadline > time_nanoseconds()) \
+    nsec_t deadline = (timeout) == UINT64_MAX ? UINT64_MAX : (timeout) + time_uptime(); \
+    while (!(condition) && deadline > time_uptime()) \
     { \
         sched_yield(); \
     } \
@@ -43,7 +43,7 @@ NORETURN void sched_process_exit(uint64_t status);
 
 NORETURN void sched_thread_exit(void);
 
-uint64_t sched_spawn(const char* path);
+pid_t sched_spawn(const char* path);
 
 uint64_t sched_local_thread_amount(void);
 

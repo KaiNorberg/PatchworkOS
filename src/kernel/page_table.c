@@ -35,7 +35,7 @@ static PageTable* page_table_get_or_allocate(PageTable* table, uint64_t index, u
     }
     else
     {
-        PageTable* address = VMM_LOWER_TO_HIGHER(pmm_allocate());
+        PageTable* address = VMM_LOWER_TO_HIGHER(pmm_alloc());
         memset(address, 0, PAGE_SIZE);
 
         table->entries[index] = page_entry_create(VMM_HIGHER_TO_LOWER(address), flags);
@@ -70,7 +70,7 @@ static void page_table_free_level(PageTable* table, int64_t level)
 
 PageTable* page_table_new(void)
 {
-    PageTable* table = VMM_LOWER_TO_HIGHER(pmm_allocate());
+    PageTable* table = VMM_LOWER_TO_HIGHER(pmm_alloc());
     memset(table, 0, PAGE_SIZE);
     
     return table;

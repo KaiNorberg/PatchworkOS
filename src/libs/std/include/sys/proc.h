@@ -19,20 +19,23 @@ extern "C" {
 #define PROT_WRITE (1 << 1)
 
 typedef uint64_t pid_t;
+typedef uint64_t tid_t;
+typedef uint64_t prot_t;
+typedef uint64_t nsec_t;
 
-uint64_t uptime(void);
+nsec_t uptime(void);
 
-uint64_t sleep(uint64_t nanoseconds);
+uint64_t sleep(nsec_t nanoseconds);
 
 pid_t spawn(const char* path);
 
 pid_t getpid(void);
 
-void* mmap(fd_t fd, void* address, uint64_t length, uint8_t prot);
+void* mmap(fd_t fd, void* address, uint64_t length, prot_t prot);
 
 uint64_t munmap(void* address, uint64_t length);
 
-uint64_t mprotect(void* address, uint64_t length, uint8_t prot);
+uint64_t mprotect(void* address, uint64_t length, prot_t prot);
 
 #if defined(__cplusplus)
 }

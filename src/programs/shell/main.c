@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <sys/io.h>
 #include <sys/proc.h>
+#include <sys/win.h>
 
 const char* command_read(void)
 {
@@ -53,49 +54,31 @@ const char* command_read(void)
     }
 }
 
-void server(void)
-{    
-    fd_t server = announce("local:winserver");
-    if (server == ERR) 
-    {
-        terminal_error("announce error");
-        return;
-    }
-
-    fd_t client = accept(server);
-    if (client == ERR) 
-    {
-        terminal_error("accept");
-        close(server);
-        return;
-    }
-
-    char buffer[32];
-    if (read(client, buffer, 31) == ERR)
-    {
-        terminal_print("read: ");
-        terminal_print(buffer);
-        terminal_print("\n");
-    }
-    else
-    {
-        terminal_error("read");
-        close(server);
-        close(client);
-        return;
-    }
-
-    close(client);
-    close(server);
-}
-
 int main(void)
-{
+{    
     fb_init();
     terminal_init();
     input_init();
 
-    server();
+    /*fd_t window = open("sys:/srv/win");
+    if (window == ERR)
+    {
+        terminal_error("open");
+        return EXIT_FAILURE;
+    }
+
+    win_info_t initInfo;
+    initInfo.width = 500;
+    initInfo.height = 400;
+    initInfo.x = WIN_DEFAULT;
+    initInfo.y = WIN_DEFAULT;
+    if (write(window, &initInfo, sizeof(win_info_t)))
+    {
+        terminal_error("write");
+        return EXIT_FAILURE;
+    }
+
+    close(window);*/
 
     while (1)
     {

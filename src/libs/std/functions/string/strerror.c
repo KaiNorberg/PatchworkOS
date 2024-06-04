@@ -23,6 +23,7 @@ static char* errorStrings[] =
     "bad buffer",
     "not a directory",
     "is a directory",
+    "no such resource",
     "busy"
 };
 

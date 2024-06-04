@@ -146,7 +146,7 @@ void pmm_init(EfiMemoryMap* efiMemoryMap)
 #endif
 }
 
-void* pmm_allocate(void)
+void* pmm_alloc(void)
 {
     LOCK_GUARD(&lock);
 
