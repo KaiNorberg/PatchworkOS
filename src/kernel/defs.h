@@ -6,6 +6,7 @@
 
 #include "config.h"
 
+#define ALIGNED(alignment) __attribute__((aligned(alignment)))
 #define PACKED __attribute__((packed))
 #define NORETURN __attribute__((noreturn))
 #define NOINLINE __attribute__((noinline))

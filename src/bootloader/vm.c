@@ -27,20 +27,20 @@ void vm_init(void)
     {
         EfiMemoryDescriptor* desc = (EfiMemoryDescriptor*)((uint64_t)memoryMap.base + (i * memoryMap.descriptorSize));
         
-        void* virtualAddress = (void*)(HIGHER_HALF_BASE + desc->PhysicalStart);
-        page_table_map_pages(pageTable, virtualAddress, (void*)desc->PhysicalStart, desc->NumberOfPages, PAGE_FLAG_WRITE);
+        void* virtAddr = (void*)(HIGHER_HALF_BASE + desc->PhysicalStart);
+        page_table_map_pages(pageTable, virtAddr, (void*)desc->PhysicalStart, desc->NumberOfPages, PAGE_FLAG_WRITE);
 	}
 
     memory_map_cleanup(&memoryMap);
     PAGE_TABLE_LOAD(pageTable);
 }
 
-void vm_alloc_kernel(void* virtualAddress, uint64_t pageAmount)
+void vm_alloc_kernel(void* virtAddr, uint64_t pageAmount)
 {
-    void* physicalAddress = memory_allocate_pages(pageAmount, EFI_MEMORY_TYPE_KERNEL);
-    kernelAddress = virtualAddress;
+    void* physAddr = memory_allocate_pages(pageAmount, EFI_MEMORY_TYPE_KERNEL);
+    kernelAddress = virtAddr;
 
-    page_table_map_pages(pageTable, virtualAddress, physicalAddress, pageAmount, PAGE_FLAG_WRITE);
+    page_table_map_pages(pageTable, virtAddr, physAddr, pageAmount, PAGE_FLAG_WRITE);
 }
 
 void* vm_alloc(uint64_t size, uint64_t memoryType)

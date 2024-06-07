@@ -92,83 +92,83 @@ void page_table_load(PageTable* table)
     }
 }
 
-void* page_table_physical_address(PageTable* table, const void* virtualAddress)
+void* page_table_phys_addr(PageTable* table, const void* virtAddr)
 {
-    uint64_t offset = ((uint64_t)virtualAddress) % PAGE_SIZE;
-    virtualAddress = (void*)ROUND_DOWN(virtualAddress, PAGE_SIZE);
+    uint64_t offset = ((uint64_t)virtAddr) % PAGE_SIZE;
+    virtAddr = (void*)ROUND_DOWN(virtAddr, PAGE_SIZE);
 
-    PageTable* level3 = page_table_get(table, PAGE_TABLE_GET_INDEX(virtualAddress, 4));
-    PageTable* level2 = page_table_get(level3, PAGE_TABLE_GET_INDEX(virtualAddress, 3));
-    PageTable* level1 = page_table_get(level2, PAGE_TABLE_GET_INDEX(virtualAddress, 2));
-    PageEntry* entry = &level1->entries[PAGE_TABLE_GET_INDEX(virtualAddress, 1)];
+    PageTable* level3 = page_table_get(table, PAGE_TABLE_GET_INDEX(virtAddr, 4));
+    PageTable* level2 = page_table_get(level3, PAGE_TABLE_GET_INDEX(virtAddr, 3));
+    PageTable* level1 = page_table_get(level2, PAGE_TABLE_GET_INDEX(virtAddr, 2));
+    PageEntry* entry = &level1->entries[PAGE_TABLE_GET_INDEX(virtAddr, 1)];
 
     return (void*)(((uint64_t)PAGE_ENTRY_GET_ADDRESS(*entry)) + offset);
 }
 
-bool page_table_mapped(PageTable* table, const void* virtualAddress, uint64_t pageAmount)
+bool page_table_mapped(PageTable* table, const void* virtAddr, uint64_t pageAmount)
 {
     for (uint64_t i = 0; i < pageAmount; i++)
     {    
-        PageTable* level3 = page_table_get(table, PAGE_TABLE_GET_INDEX(virtualAddress, 4));
+        PageTable* level3 = page_table_get(table, PAGE_TABLE_GET_INDEX(virtAddr, 4));
         if (level3 == NULL)
         {
             return false;
         }
 
-        PageTable* level2 = page_table_get(level3, PAGE_TABLE_GET_INDEX(virtualAddress, 3));
+        PageTable* level2 = page_table_get(level3, PAGE_TABLE_GET_INDEX(virtAddr, 3));
         if (level2 == NULL)
         {
             return false;
         }
 
-        PageTable* level1 = page_table_get(level2, PAGE_TABLE_GET_INDEX(virtualAddress, 2));
+        PageTable* level1 = page_table_get(level2, PAGE_TABLE_GET_INDEX(virtAddr, 2));
         if (level1 == NULL)
         {
             return false;
         }
 
-        PageEntry* entry = &level1->entries[PAGE_TABLE_GET_INDEX(virtualAddress, 1)];
+        PageEntry* entry = &level1->entries[PAGE_TABLE_GET_INDEX(virtAddr, 1)];
         if (!(*entry & PAGE_FLAG_PRESENT))
         {
             return false;
         }
 
-        virtualAddress = (void*)((uint64_t)virtualAddress + PAGE_SIZE);
+        virtAddr = (void*)((uint64_t)virtAddr + PAGE_SIZE);
     }
 
     return true;
 }
 
-void page_table_map(PageTable* table, void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint64_t flags)
+void page_table_map(PageTable* table, void* virtAddr, void* physAddr, uint64_t pageAmount, uint64_t flags)
 {
     for (uint64_t i = 0; i < pageAmount; i++)
     {    
-        PageTable* level3 = page_table_get_or_allocate(table, PAGE_TABLE_GET_INDEX(virtualAddress, 4), 
+        PageTable* level3 = page_table_get_or_allocate(table, PAGE_TABLE_GET_INDEX(virtAddr, 4), 
             (flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER) & ~PAGE_FLAG_GLOBAL);
 
-        PageTable* level2 = page_table_get_or_allocate(level3, PAGE_TABLE_GET_INDEX(virtualAddress, 3), 
+        PageTable* level2 = page_table_get_or_allocate(level3, PAGE_TABLE_GET_INDEX(virtAddr, 3), 
             flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER);
 
-        PageTable* level1 = page_table_get_or_allocate(level2, PAGE_TABLE_GET_INDEX(virtualAddress, 2), 
+        PageTable* level1 = page_table_get_or_allocate(level2, PAGE_TABLE_GET_INDEX(virtAddr, 2), 
             flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER);
 
-        PageEntry* entry = &level1->entries[PAGE_TABLE_GET_INDEX(virtualAddress, 1)];
+        PageEntry* entry = &level1->entries[PAGE_TABLE_GET_INDEX(virtAddr, 1)];
 
-        *entry = page_entry_create(physicalAddress, flags);
+        *entry = page_entry_create(physAddr, flags);
 
-        virtualAddress = (void*)((uint64_t)virtualAddress + PAGE_SIZE);
-        physicalAddress = (void*)((uint64_t)physicalAddress + PAGE_SIZE);
+        virtAddr = (void*)((uint64_t)virtAddr + PAGE_SIZE);
+        physAddr = (void*)((uint64_t)physAddr + PAGE_SIZE);
     }
 }
 
-void page_table_unmap(PageTable* table, void* virtualAddress, uint64_t pageAmount)
+void page_table_unmap(PageTable* table, void* virtAddr, uint64_t pageAmount)
 {
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        PageTable* level3 = page_table_get(table, PAGE_TABLE_GET_INDEX(virtualAddress, 4));
-        PageTable* level2 = page_table_get(level3, PAGE_TABLE_GET_INDEX(virtualAddress, 3));
-        PageTable* level1 = page_table_get(level2, PAGE_TABLE_GET_INDEX(virtualAddress, 2));
-        PageEntry* entry = &level1->entries[PAGE_TABLE_GET_INDEX(virtualAddress, 1)];
+        PageTable* level3 = page_table_get(table, PAGE_TABLE_GET_INDEX(virtAddr, 4));
+        PageTable* level2 = page_table_get(level3, PAGE_TABLE_GET_INDEX(virtAddr, 3));
+        PageTable* level1 = page_table_get(level2, PAGE_TABLE_GET_INDEX(virtAddr, 2));
+        PageEntry* entry = &level1->entries[PAGE_TABLE_GET_INDEX(virtAddr, 1)];
 
         if (*entry & PAGE_FLAG_OWNED)
         {
@@ -176,20 +176,20 @@ void page_table_unmap(PageTable* table, void* virtualAddress, uint64_t pageAmoun
         }
         *entry = 0;
 
-        PAGE_INVALIDATE(virtualAddress);
+        PAGE_INVALIDATE(virtAddr);
 
-        virtualAddress = (void*)((uint64_t)virtualAddress + PAGE_SIZE);
+        virtAddr = (void*)((uint64_t)virtAddr + PAGE_SIZE);
     }
 }
 
-void page_table_change_flags(PageTable* table, void* virtualAddress, uint64_t pageAmount, uint64_t flags)
+void page_table_change_flags(PageTable* table, void* virtAddr, uint64_t pageAmount, uint64_t flags)
 {
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        PageTable* level3 = page_table_get(table, PAGE_TABLE_GET_INDEX(virtualAddress, 4));
-        PageTable* level2 = page_table_get(level3, PAGE_TABLE_GET_INDEX(virtualAddress, 3));
-        PageTable* level1 = page_table_get(level2, PAGE_TABLE_GET_INDEX(virtualAddress, 2));
-        PageEntry* entry = &level1->entries[PAGE_TABLE_GET_INDEX(virtualAddress, 1)];
+        PageTable* level3 = page_table_get(table, PAGE_TABLE_GET_INDEX(virtAddr, 4));
+        PageTable* level2 = page_table_get(level3, PAGE_TABLE_GET_INDEX(virtAddr, 3));
+        PageTable* level1 = page_table_get(level2, PAGE_TABLE_GET_INDEX(virtAddr, 2));
+        PageEntry* entry = &level1->entries[PAGE_TABLE_GET_INDEX(virtAddr, 1)];
 
         uint64_t finalFlags = flags;
         if (*entry & PAGE_FLAG_OWNED)
@@ -198,8 +198,8 @@ void page_table_change_flags(PageTable* table, void* virtualAddress, uint64_t pa
         }
 
         *entry = page_entry_create(PAGE_ENTRY_GET_ADDRESS(*entry), finalFlags);
-        PAGE_INVALIDATE(virtualAddress);
+        PAGE_INVALIDATE(virtAddr);
 
-        virtualAddress = (void*)((uint64_t)virtualAddress + PAGE_SIZE);
+        virtAddr = (void*)((uint64_t)virtAddr + PAGE_SIZE);
     }
 }

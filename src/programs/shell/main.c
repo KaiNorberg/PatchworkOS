@@ -60,26 +60,6 @@ int main(void)
     terminal_init();
     input_init();
 
-    /*fd_t window = open("sys:/srv/win");
-    if (window == ERR)
-    {
-        terminal_error("open");
-        return EXIT_FAILURE;
-    }
-
-    win_info_t initInfo;
-    initInfo.width = 500;
-    initInfo.height = 400;
-    initInfo.x = WIN_DEFAULT;
-    initInfo.y = WIN_DEFAULT;
-    if (write(window, &initInfo, sizeof(win_info_t)))
-    {
-        terminal_error("write");
-        return EXIT_FAILURE;
-    }
-
-    close(window);*/
-
     while (1)
     {
         parser_parse(command_read());

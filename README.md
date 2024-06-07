@@ -11,6 +11,7 @@
 - O(1) scheduler
 - Custom Standard Library
 - Custom UEFI Bootloader
+- SIMD
 - More to be added...
 
 ## Limitations

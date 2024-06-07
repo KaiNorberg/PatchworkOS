@@ -6,6 +6,7 @@
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
+#define CLAMP(x, low, high) MIN((high), MAX((low), (x)))
 
 #define READ_8(address) (*((volatile uint8_t*)(address)))
 #define WRITE_8(address, value) (*((volatile uint8_t*)(address)) = (uint8_t)value)

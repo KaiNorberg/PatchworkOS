@@ -19,8 +19,9 @@
 %define SYS_MMAP 18
 %define SYS_MUNMAP 19
 %define SYS_MPROTECT 20
+%define SYS_FLUSH 21
 
-%define SYS_TOTAL_AMOUNT 21
+%define SYS_TOTAL_AMOUNT 22
 
 extern _ErrnoFunc
 

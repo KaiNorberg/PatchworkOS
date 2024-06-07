@@ -81,6 +81,7 @@ all: build deploy
 
 run:
 	@qemu-system-x86_64 \
+	-M q35 \
     -drive file=$(OUTPUT_IMAGE) \
     -m 1G \
 	-smp 6 \
@@ -91,6 +92,7 @@ run:
 
 run_debug:
 	@qemu-system-x86_64 \
+	-M q35 \
     -drive file=$(OUTPUT_IMAGE) \
 	-m 1G \
 	-smp 6 \

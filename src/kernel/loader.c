@@ -4,7 +4,6 @@
 
 #include <common/elf.h>
 
-#include "heap.h"
 #include "defs.h"
 #include "pmm.h"
 #include "vmm.h"
@@ -71,7 +70,7 @@ static void* loader_load_program(void)
         {
 	    case PT_LOAD:
         {    
-            if (vmm_alloc((void*)programHeader.virtualAddress, programHeader.memorySize, PROT_READ | PROT_WRITE) == NULL)
+            if (vmm_alloc((void*)programHeader.virtAddr, programHeader.memorySize, PROT_READ | PROT_WRITE) == NULL)
             {
                 sched_process_exit(EEXEC);
             }
@@ -81,15 +80,15 @@ static void* loader_load_program(void)
                 sched_process_exit(EEXEC);
             }
             
-            memset((void*)programHeader.virtualAddress, 0, programHeader.memorySize);
-            if (FILE_CALL_METHOD(file, read, (void*)programHeader.virtualAddress, programHeader.fileSize) != programHeader.fileSize)
+            memset((void*)programHeader.virtAddr, 0, programHeader.memorySize);
+            if (FILE_CALL_METHOD(file, read, (void*)programHeader.virtAddr, programHeader.fileSize) != programHeader.fileSize)
             {
                 sched_process_exit(EEXEC);
             }
 
             if (!(programHeader.flags & PF_WRITE))
             {
-                if (vmm_protect((void*)programHeader.virtualAddress, programHeader.memorySize, PROT_READ) == ERR)
+                if (vmm_protect((void*)programHeader.virtAddr, programHeader.memorySize, PROT_READ) == ERR)
                 {
                     sched_process_exit(EEXEC);
                 }

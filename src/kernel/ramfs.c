@@ -1,12 +1,12 @@
 #include "ramfs.h"
 
-#include <string.h>
-
 #include "vfs.h"
 #include "tty.h"
-#include "heap.h"
 #include "sched.h"
 #include "utils.h"
+
+#include <stdlib.h>
+#include <string.h>
 
 static Filesystem ramfs;
 static RamDir* root;

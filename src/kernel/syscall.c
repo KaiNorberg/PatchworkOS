@@ -5,7 +5,6 @@
 
 #include "defs.h"
 #include "tty.h"
-#include "heap.h"
 #include "vmm.h"
 #include "time.h"
 #include "utils.h"
@@ -292,6 +291,23 @@ uint64_t syscall_mprotect(void* address, uint64_t length, prot_t prot)
     return vmm_protect(address, length, prot);
 }
 
+uint64_t syscall_flush(fd_t fd, const void* buffer, uint64_t x, uint64_t y, uint64_t width, uint64_t height)
+{
+    if (!verify_buffer(buffer, (x + width) * (y + height)))
+    {
+        return ERROR(EFAULT);
+    }    
+    
+    File* file = vfs_context_get(fd);
+    if (file == NULL)
+    {
+        return ERR;
+    }
+    FILE_GUARD(file);
+
+    return FILE_CALL_METHOD(file, flush, buffer, x, y, width, height);
+}
+
 ///////////////////////////////////////////////////////
 
 void syscall_handler_end(void)
@@ -327,4 +343,5 @@ void* syscallTable[] =
     syscall_mmap,
     syscall_munmap,
     syscall_mprotect,
+    syscall_flush
 };

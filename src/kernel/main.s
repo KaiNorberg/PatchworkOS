@@ -9,6 +9,7 @@ _start:
     cli
     mov rsp, kernel_stack_top
     xor rbp, rbp
+
     call main
 .halt:
     hlt

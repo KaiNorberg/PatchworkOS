@@ -38,12 +38,12 @@ void page_table_free(PageTable* table);
 
 void page_table_load(PageTable* table);
 
-void* page_table_physical_address(PageTable* table, const void* virtualAddress);
+void* page_table_phys_addr(PageTable* table, const void* virtAddr);
 
-bool page_table_mapped(PageTable* table, const void* virtualAddress, uint64_t pageAmount);
+bool page_table_mapped(PageTable* table, const void* virtAddr, uint64_t pageAmount);
 
-void page_table_map(PageTable* table, void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint64_t flags);
+void page_table_map(PageTable* table, void* virtAddr, void* physAddr, uint64_t pageAmount, uint64_t flags);
 
-void page_table_unmap(PageTable* table, void* virtualAddress, uint64_t pageAmount);
+void page_table_unmap(PageTable* table, void* virtAddr, uint64_t pageAmount);
 
-void page_table_change_flags(PageTable* table, void* virtualAddress, uint64_t pageAmount, uint64_t flags);
+void page_table_change_flags(PageTable* table, void* virtAddr, uint64_t pageAmount, uint64_t flags);

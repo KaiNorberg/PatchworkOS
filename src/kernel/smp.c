@@ -1,10 +1,7 @@
 #include "smp.h"
 
-#include <string.h>
-
 #include "tty.h"
 #include "regs.h"
-#include "heap.h"
 #include "apic.h"
 #include "hpet.h"
 #include "madt.h"
@@ -12,6 +9,9 @@
 #include "utils.h"
 #include "kernel.h"
 #include "trampoline.h"
+
+#include <stdlib.h>
+#include <string.h>
 
 static Cpu* cpus = NULL;
 static uint8_t cpuAmount = 0;
@@ -37,7 +37,7 @@ static NOINLINE uint64_t cpu_init(Cpu* cpu, uint8_t id, uint8_t localApicId)
 {
     cpu->id = id;
     cpu->localApicId = localApicId;
-    cpu->idleStack = kmalloc(CPU_IDLE_STACK_SIZE);
+    cpu->idleStack = malloc(CPU_IDLE_STACK_SIZE);
     tss_init(&cpu->tss);
     scheduler_init(&cpu->scheduler);
 
@@ -98,7 +98,7 @@ void smp_init(void)
     tty_start_message("SMP initializing");
 
     smp_detect_cpus();
-    cpus = kcalloc(cpuAmount, sizeof(Cpu));
+    cpus = calloc(cpuAmount, sizeof(Cpu));
 
     trampoline_setup();
     smp_startup();

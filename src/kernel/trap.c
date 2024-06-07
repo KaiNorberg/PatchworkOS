@@ -7,7 +7,6 @@
 #include "apic.h"
 #include "debug.h"
 #include "vmm.h"
-#include "heap.h"
 #include "regs.h"
 #include "utils.h"
 #include "syscall.h"
@@ -39,7 +38,6 @@ static void ipi_handler(TrapFrame const* trapFrame)
             asm volatile("hlt");
         }
     }
-    break;
     case IPI_START:
     {
         sched_cpu_start();

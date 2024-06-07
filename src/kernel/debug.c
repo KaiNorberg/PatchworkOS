@@ -1,7 +1,6 @@
 #include "debug.h"
 
 #include "tty.h"
-#include "heap.h"
 #include "pmm.h"
 #include "time.h"
 #include "hpet.h"
@@ -87,8 +86,6 @@ void debug_panic(const char* message)
     debug_start(message);
 
     debug_move("Memory", 0, 0);
-    debug_print("Free Heap = ", heap_free_size());
-    debug_print("Reserved Heap = ", heap_reserved_size());
     debug_print("Free Pages = ", pmm_free_amount());
     debug_print("Reserved Pages = ", pmm_reserved_amount());
 
@@ -159,8 +156,6 @@ void debug_exception(TrapFrame const* trapFrame, const char* message)
     }
 
     debug_move("Memory", 0, 13);
-    debug_print("Free Heap = ", heap_free_size());
-    debug_print("Reserved Heap = ", heap_reserved_size());
     debug_print("Locked Pages = ", pmm_reserved_amount());
     debug_print("Unlocked Pages = ", pmm_free_amount());
 

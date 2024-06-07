@@ -1,8 +1,5 @@
 #include "process.h"
 
-#include <string.h>
-
-#include "heap.h"
 #include "lock.h"
 #include "vmm.h"
 #include "pmm.h"
@@ -10,11 +7,14 @@
 #include "regs.h"
 #include "debug.h"
 
+#include <stdlib.h>
+#include <string.h>
+
 static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 
 Process* process_new(const char *executable)
 {
-    Process *process = kmalloc(sizeof(Process));
+    Process *process = malloc(sizeof(Process));
     process->killed = false;
     process->id = atomic_fetch_add(&newPid, 1);
     memset(process->executable, 0, MAX_PATH);
@@ -34,7 +34,7 @@ Thread* thread_new(Process* process, void* entry, uint8_t priority)
 {
     atomic_fetch_add(&process->threadCount, 1);
 
-    Thread* thread = kmalloc(sizeof(Thread));
+    Thread* thread = malloc(sizeof(Thread));
     list_entry_init(&thread->base);
     thread->process = process;
     thread->id = atomic_fetch_add(&process->newTid, 1);
@@ -43,7 +43,7 @@ Thread* thread_new(Process* process, void* entry, uint8_t priority)
     thread->error = 0;
     thread->state = THREAD_STATE_ACTIVE;
     thread->priority = priority;
-    thread->boost = 0;
+    simd_context_init(&thread->simdContext);
     memset(&thread->kernelStack, 0, CONFIG_KERNEL_STACK);
 
     memset(&thread->trapFrame, 0, sizeof(TrapFrame));
@@ -62,8 +62,9 @@ void thread_free(Thread* thread)
     {
         vfs_context_cleanup(&thread->process->vfsContext);
         space_cleanup(&thread->process->space);
-        kfree(thread->process);
+        free(thread->process);
     }
 
-    kfree(thread);
+    simd_context_cleanup(&thread->simdContext);
+    free(thread);
 }

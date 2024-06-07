@@ -3,7 +3,6 @@
 #include "gdt.h"
 #include "idt.h"
 #include "tty.h"
-#include "heap.h"
 #include "pmm.h"
 #include "hpet.h"
 #include "time.h"
@@ -24,9 +23,11 @@
 #include "ramfs.h"
 #include "regs.h"
 #include "ps2.h"
-#include "renderer.h"
 #include "loader.h"
 #include "compositor.h"
+#include "simd.h"
+
+#include <libs/std/internal/init.h>
 
 static void boot_info_deallocate(BootInfo* bootInfo)
 {
@@ -50,7 +51,8 @@ void kernel_init(BootInfo* bootInfo)
 {
     pmm_init(&bootInfo->memoryMap);
     vmm_init(&bootInfo->memoryMap);
-    heap_init();
+
+    _StdInit();
 
     tty_init(&bootInfo->gopBuffer, &bootInfo->font);
     tty_print("Hello from the kernel!\n");
@@ -77,8 +79,7 @@ void kernel_init(BootInfo* bootInfo)
 
     ps2_init();
     const_init();
-    renderer_init(&bootInfo->gopBuffer);
-    compositor_init();
+    compositor_init(&bootInfo->gopBuffer);
 
     boot_info_deallocate(bootInfo);
 }
@@ -89,6 +90,7 @@ void kernel_cpu_init(void)
     msr_write(MSR_CPU_ID, cpu->id);
 
     local_apic_init();
+    simd_init();
 
     gdt_load();
     idt_load();

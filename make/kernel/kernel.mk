@@ -20,7 +20,11 @@ KERNEL_SRC = \
 	$(STDLIB)/string/strlen.c \
 	$(STDLIB)/string/strerror.c \
 	$(STDLIB)/string/strncpy.c \
-	$(STDLIB)/string/strcat.c
+	$(STDLIB)/string/strcat.c \
+	$(STDLIB)/stdlib/malloc.c \
+	$(STDLIB)/stdlib/calloc.c \
+	$(STDLIB)/stdlib/free.c \
+	$(STDLIB)/../internal/init.c
 
 KERNEL_OBJ = $(patsubst $(SRC_DIR)/%, $(KERNEL_BUILD_DIR)/%.o, $(KERNEL_SRC))
 
@@ -28,7 +32,9 @@ KERNEL_C_FLAGS = $(BASE_C_FLAGS) \
 	-ffreestanding \
 	-fno-stack-protector \
 	-fno-pic -mcmodel=large \
-	-D__KERNEL__
+	-fno-stack-protector \
+	-D__KERNEL__ \
+	-I$(KERNEL_SRC_DIR)
 
 $(KERNEL_BUILD_DIR)/%.c.o: $(SRC_DIR)/%.c
 	$(MKCWD)

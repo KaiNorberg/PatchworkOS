@@ -14,7 +14,7 @@ static uintptr_t localApicBase;
 
 void apic_init(void)
 {
-    localApicBase = (uintptr_t)vmm_kernel_map(NULL, madt_local_apic_address(), PAGE_SIZE, PAGE_FLAG_WRITE);
+    localApicBase = (uintptr_t)vmm_kernel_map(NULL, madt_local_apic_address(), PAGE_SIZE);
 }
 
 void apic_timer_init(uint8_t vector, uint64_t hz)
@@ -29,7 +29,7 @@ void apic_timer_init(uint8_t vector, uint64_t hz)
     uint32_t ticks = 0xFFFFFFFF - local_apic_read(LOCAL_APIC_REG_TIMER_CURRENT_COUNT);
 
     local_apic_write(LOCAL_APIC_REG_LVT_TIMER, ((uint32_t)vector) | APIC_TIMER_PERIODIC);
-    local_apic_write(LOCAL_APIC_REG_TIMER_DIVIDER, 0x3);
+    local_apic_write(LOCAL_APIC_REG_TIMER_DIVIDER, 0x5);
     local_apic_write(LOCAL_APIC_REG_TIMER_INITIAL_COUNT, ticks);
 }
 

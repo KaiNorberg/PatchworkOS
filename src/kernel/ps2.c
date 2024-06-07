@@ -1,15 +1,15 @@
 #include "ps2.h"
 
-#include <sys/kbd.h>
-
 #include "tty.h"
 #include "io.h"
-#include "heap.h"
 #include "irq.h"
 #include "time.h"
 #include "debug.h"
 #include "utils.h"
 #include "sched.h"
+
+#include <stdlib.h>
+#include <sys/kbd.h>
 
 static kbd_event_t eventBuffer[PS2_KEY_BUFFER_LENGTH];
 static uint64_t writeIndex = 0;
@@ -275,7 +275,7 @@ void ps2_init(void)
 
     irq_install(ps2_kbd_irq, IRQ_KEYBOARD);
 
-    Resource* keyboard = kmalloc(sizeof(Resource));
+    Resource* keyboard = malloc(sizeof(Resource));
     resource_init(keyboard, "ps2", ps2_kbd_open, NULL);
     sysfs_expose(keyboard, "/kbd");
 

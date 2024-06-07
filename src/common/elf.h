@@ -39,8 +39,8 @@ typedef struct
     uint32_t type;
     uint32_t flags;
     uint64_t offset;
-    uint64_t virtualAddress;
-    uint64_t physicalAddress;
+    uint64_t virtAddr;
+    uint64_t physAddr;
     uint64_t fileSize;
     uint64_t memorySize;
     uint64_t align;

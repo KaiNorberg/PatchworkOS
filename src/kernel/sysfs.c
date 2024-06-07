@@ -1,12 +1,12 @@
 #include "sysfs.h"
 
-#include <string.h>
-
-#include "heap.h"
 #include "sched.h"
 #include "tty.h"
 #include "lock.h"
 #include "debug.h"
+
+#include <stdlib.h>
+#include <string.h>
 
 static Filesystem sysfs;
 
@@ -15,7 +15,7 @@ static Lock lock;
 
 static System* system_new(const char* name)
 {
-    System* system = kmalloc(sizeof(System));
+    System* system = malloc(sizeof(System));
     list_entry_init(&system->base);
     name_copy(system->name, name);
     list_init(&system->resources);

@@ -1,13 +1,13 @@
 #include "tty.h"
 
-#include <stdlib.h>
-#include <string.h>
-
 #include "lock.h"
 #include "vmm.h"
 #include "pmm.h"
 #include "smp.h"
-#include "heap.h"
+
+#include <stdlib.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <common/boot_info.h>
 
@@ -26,14 +26,11 @@ static Lock lock;
 
 void tty_init(GopBuffer* gopBuffer, PsfFont* screenFont)
 {
-    frontbuffer.base = vmm_kernel_map(NULL, gopBuffer->base, gopBuffer->size, PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
-    frontbuffer.size = gopBuffer->size;
-    frontbuffer.width = gopBuffer->width;
-    frontbuffer.height = gopBuffer->height;
-    frontbuffer.pixelsPerScanline = gopBuffer->pixelsPerScanline;
+    frontbuffer = *gopBuffer;
+    frontbuffer.base = vmm_kernel_map(NULL, gopBuffer->base, gopBuffer->size);
 
     font.header = screenFont->header;   
-    font.glyphs = kmalloc(screenFont->glyphsSize);
+    font.glyphs = malloc(screenFont->glyphsSize);
     memcpy(font.glyphs, screenFont->glyphs, screenFont->glyphsSize);
 
     scale = 1;

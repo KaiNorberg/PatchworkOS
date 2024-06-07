@@ -31,14 +31,14 @@ void space_load(Space* space);
 
 void vmm_init(EfiMemoryMap* memoryMap);
 
-void* vmm_kernel_map(void* virtualAddress, void* physicalAddress, uint64_t length, uint64_t flags);
+void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t length);
 
-void* vmm_alloc(void* virtualAddress, uint64_t length, prot_t prot);
+void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot);
 
-void* vmm_map(void* virtualAddress, void* physicalAddress, uint64_t length, prot_t prot);
+void* vmm_map(void* virtAddr, void* physAddr, uint64_t length, prot_t prot);
 
-uint64_t vmm_unmap(void* virtualAddress, uint64_t length);
+uint64_t vmm_unmap(void* virtAddr, uint64_t length);
 
-uint64_t vmm_protect(void* virtualAddress, uint64_t length, prot_t prot);
+uint64_t vmm_protect(void* virtAddr, uint64_t length, prot_t prot);
 
-bool vmm_mapped(const void* virtualAddress, uint64_t length);
+bool vmm_mapped(const void* virtAddr, uint64_t length);

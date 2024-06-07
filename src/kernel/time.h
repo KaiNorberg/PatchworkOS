@@ -12,12 +12,15 @@
 #define NANOSECONDS_PER_SECOND 1000000000
 #define NANOSECONDS_PER_MILLISECOND 1000000
 
-#define BENCHMARK(func) ({ \
+#define BENCHMARK(func, iter) ({ \
     tty_acquire(); \
     tty_print("Starting benchmark... "); \
     tty_release(); \
     nsec_t start = time_uptime(); \
-    func(); \
+    for (uint64_t i = 0; i < iter; i++) \
+    { \
+        func; \
+    } \
     nsec_t end = time_uptime(); \
     tty_acquire(); \
     tty_print("Time taken: "); \

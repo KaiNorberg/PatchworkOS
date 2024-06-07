@@ -1,10 +1,7 @@
 #include "sched.h"
 
-#include <string.h>
-
 #include "vmm.h"
 #include "smp.h"
-#include "heap.h"
 #include "gdt.h"
 #include "time.h"
 #include "debug.h"
@@ -13,13 +10,48 @@
 #include "apic.h"
 #include "hpet.h"
 #include "loader.h"
+#include "utils.h"
 #include "tty.h"
+#include "simd.h"
+
+#include <stdlib.h>
+#include <string.h>
+
+static void sched_push(Thread* thread)
+{
+    int64_t bestLength = INT64_MAX;
+    uint64_t best = 0;
+    for (int64_t i = smp_cpu_amount() - 1; i >= 0; i--)
+    {
+        const Scheduler* scheduler = &smp_cpu(i)->scheduler;
+
+        int64_t length = (int64_t)(scheduler->runningThread != 0);
+        for (uint64_t p = THREAD_PRIORITY_MIN; p <= THREAD_PRIORITY_MAX; p++)
+        {
+            length += queue_length(&scheduler->queues[p]);
+        }
+
+        if (length == 0) //Bias towards idle cpus
+        {
+            length--;
+        }
+
+        if (bestLength > length)
+        {
+            bestLength = length;
+            best = i;
+        }
+    }
+    
+    thread->state = THREAD_STATE_ACTIVE;
+    queue_push(&smp_cpu(best)->scheduler.queues[thread->priority], thread);
+}
 
 static Thread* sched_next_thread(Scheduler* scheduler)
 {
     if (scheduler->runningThread != NULL && scheduler->runningThread->timeEnd > time_uptime())
     {
-        for (int64_t i = THREAD_PRIORITY_MAX; i > scheduler->runningThread->priority + scheduler->runningThread->boost; i--)
+        for (int64_t i = THREAD_PRIORITY_MAX; i > scheduler->runningThread->priority; i--)
         {
             Thread* thread = queue_pop(&scheduler->queues[i]);
             if (thread != NULL)
@@ -51,8 +83,8 @@ static void sched_switch_thread(TrapFrame* trapFrame, Scheduler* scheduler, Thre
     {
         if (scheduler->runningThread != NULL)
         {
+            simd_context_save(&scheduler->runningThread->simdContext);
             scheduler->runningThread->trapFrame = *trapFrame;
-            scheduler->runningThread->boost = 0;
             queue_push(&scheduler->queues[scheduler->runningThread->priority], scheduler->runningThread);
             scheduler->runningThread = NULL;
         }
@@ -63,6 +95,7 @@ static void sched_switch_thread(TrapFrame* trapFrame, Scheduler* scheduler, Thre
         *trapFrame = next->trapFrame;
         space_load(&next->process->space);
         tss_stack_load(&self->tss, (void*)((uint64_t)next->kernelStack + CONFIG_KERNEL_STACK));
+        simd_context_load(&next->simdContext);
 
         scheduler->runningThread = next;
     }
@@ -74,6 +107,7 @@ static void sched_switch_thread(TrapFrame* trapFrame, Scheduler* scheduler, Thre
         trapFrame->ss = GDT_KERNEL_DATA;
         trapFrame->rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
         trapFrame->rsp = (uint64_t)smp_self_unsafe()->idleStack + CPU_IDLE_STACK_SIZE;
+        
         space_load(NULL);
         tss_stack_load(&self->tss, NULL);
     }
@@ -136,6 +170,8 @@ Process* sched_process(void)
 
 void sched_yield(void)
 {
+    Thread* thread = sched_thread();
+    thread->timeEnd = 0;
     SMP_SEND_IPI_TO_SELF(IPI_SCHEDULE);
 }
 
@@ -166,9 +202,17 @@ pid_t sched_spawn(const char* path)
 {
     Process* process = process_new(path);
     Thread* thread = thread_new(process, loader_entry, THREAD_PRIORITY_MIN);
-    sched_push(thread, 1);
+    sched_push(thread);
 
     return process->id;
+}
+
+tid_t sched_thread_spawn(void* entry, uint8_t priority)
+{
+    Thread* thread = thread_new(sched_process(), entry, priority);
+    sched_push(thread);
+
+    return thread->id;
 }
 
 uint64_t sched_local_thread_amount(void)
@@ -231,35 +275,4 @@ void sched_schedule(TrapFrame* trapFrame)
     sched_switch_thread(trapFrame, scheduler, next);
 
     smp_put();
-}
-
-void sched_push(Thread* thread, uint8_t boost)
-{
-    int64_t bestLength = INT64_MAX;
-    uint64_t best = 0;
-    for (int64_t i = smp_cpu_amount() - 1; i >= 0; i--)
-    {
-        const Scheduler* scheduler = &smp_cpu(i)->scheduler;
-
-        int64_t length = (int64_t)(scheduler->runningThread != 0);
-        for (uint64_t p = THREAD_PRIORITY_MIN; p <= THREAD_PRIORITY_MAX; p++)
-        {
-            length += queue_length(&scheduler->queues[p]);
-        }
-
-        if (length == 0) //Bias towards idle cpus
-        {
-            length--;
-        }
-
-        if (bestLength > length)
-        {
-            bestLength = length;
-            best = i;
-        }
-    }
-
-    thread->state = THREAD_STATE_ACTIVE;
-    thread->boost = thread->priority + boost <= THREAD_PRIORITY_MAX ? boost : 0;
-    queue_push(&smp_cpu(best)->scheduler.queues[thread->priority + thread->boost], thread);
 }

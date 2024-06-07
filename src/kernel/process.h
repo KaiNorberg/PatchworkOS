@@ -10,9 +10,10 @@
 #include "trap.h"
 #include "vfs.h"
 #include "pmm.h"
+#include "simd.h"
 #include "vfs_context.h"
 
-#define THREAD_PRIORITY_LEVELS 4
+#define THREAD_PRIORITY_LEVELS 3
 #define THREAD_PRIORITY_MIN 0
 #define THREAD_PRIORITY_MAX (THREAD_PRIORITY_LEVELS - 1)
 
@@ -43,9 +44,9 @@ typedef struct
     uint64_t timeEnd;
     errno_t error;
     uint8_t priority;
-    uint8_t boost;
     ThreadState state;
     TrapFrame trapFrame;
+    SimdContext simdContext;
     uint8_t kernelStack[CONFIG_KERNEL_STACK];
 } Thread;
 

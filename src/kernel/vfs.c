@@ -1,15 +1,15 @@
 #include "vfs.h"
 
-#include <string.h>
-#include <errno.h>
-
 #include "tty.h"
-#include "heap.h"
 #include "lock.h"
 #include "sched.h"
 #include "debug.h"
 #include "time.h"
 #include "vfs_context.h"
+
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 
 static List volumes;
 static Lock volumeLock;
@@ -159,7 +159,7 @@ static Volume* volume_get(const char* label)
 
 File* file_new(void)
 {
-    File* file = kmalloc(sizeof(File));
+    File* file = malloc(sizeof(File));
     atomic_init(&file->ref, 1);
     file->volume = NULL;
     file->position = 0;
@@ -188,7 +188,7 @@ void file_deref(File* file)
         {
             volume_deref(file->volume);
         }
-        kfree(file);
+        free(file);
     }
 }
 
@@ -336,7 +336,7 @@ uint64_t vfs_mount(const char* label, Filesystem* fs)
         }
     }
 
-    volume = kmalloc(sizeof(Volume));
+    volume = malloc(sizeof(Volume));
     memset(volume, 0, sizeof(Volume));
     strcpy(volume->label, label);
     volume->fs = fs;
@@ -344,7 +344,7 @@ uint64_t vfs_mount(const char* label, Filesystem* fs)
 
     if (fs->mount(volume) == ERR)
     {
-        kfree(volume);
+        free(volume);
         return ERR;
     }
 
@@ -388,7 +388,7 @@ uint64_t vfs_unmount(const char* label)
     }
 
     list_remove(volume);
-    kfree(volume);
+    free(volume);
     return 0;
 }
 

@@ -3,6 +3,7 @@
 #include "defs.h"
 #include "list.h"
 #include "queue.h"
+#include "time.h"
 #include "process.h"
 
 #define SCHED_WAIT(condition, timeout) \
@@ -45,8 +46,8 @@ NORETURN void sched_thread_exit(void);
 
 pid_t sched_spawn(const char* path);
 
+tid_t sched_thread_spawn(void* entry, uint8_t priority);
+
 uint64_t sched_local_thread_amount(void);
 
 void sched_schedule(TrapFrame* trapFrame);
-
-void sched_push(Thread* thread, uint8_t boost);

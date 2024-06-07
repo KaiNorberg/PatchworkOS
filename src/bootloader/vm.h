@@ -8,7 +8,7 @@
 
 void vm_init(void);
 
-void vm_alloc_kernel(void* virtualAddress, uint64_t pageAmount);
+void vm_alloc_kernel(void* virtAddr, uint64_t pageAmount);
 
 void* vm_alloc(uint64_t size, uint64_t memoryType);
 

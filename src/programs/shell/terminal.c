@@ -69,14 +69,14 @@ static void terminal_put_normal(char chr)
         }
     }
     break;
-    case '\t':
+    /*case '\t':
     {
         for (uint8_t i = 0; i < 4; i++)
         {
             terminal_put(' ');
         }
     }
-    break;
+    break;*/
     default:
     {
         terminal_char(chr);

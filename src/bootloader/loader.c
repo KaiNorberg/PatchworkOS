@@ -55,13 +55,13 @@ void* load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
 		{
 	    case PT_LOAD:
 		{
-		    if (kernelStart > programHeader->virtualAddress)
+		    if (kernelStart > programHeader->virtAddr)
 			{
-			    kernelStart = programHeader->virtualAddress;
+			    kernelStart = programHeader->virtAddr;
 			}
-		    if (kernelEnd < programHeader->virtualAddress + programHeader->memorySize)
+		    if (kernelEnd < programHeader->virtAddr + programHeader->memorySize)
 			{
-			    kernelEnd = programHeader->virtualAddress + programHeader->memorySize;
+			    kernelEnd = programHeader->virtAddr + programHeader->memorySize;
 			}
 		}
 	    break;
@@ -81,8 +81,8 @@ void* load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
 		{
 		    fs_seek(file, programHeader->offset);
 			
-		    SetMem((void*)programHeader->virtualAddress, programHeader->memorySize, 0);
-		    fs_read(file, programHeader->fileSize, (void*)programHeader->virtualAddress);
+		    SetMem((void*)programHeader->virtAddr, programHeader->memorySize, 0);
+		    fs_read(file, programHeader->fileSize, (void*)programHeader->virtAddr);
 		}
 	    break;
 		}

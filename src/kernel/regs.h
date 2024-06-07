@@ -2,13 +2,34 @@
 
 #include "defs.h"
 
+#define XCR0_XSAVE_SAVE_X87 (1 << 0)
+#define XCR0_XSAVE_SAVE_SSE (1 << 1)
+#define XCR0_AVX_ENABLE (1 << 2)
+#define XCR0_AVX512_ENABLE (1 << 5)
+#define XCR0_ZMM0_15_ENABLE (1 << 6)
+#define XCR0_ZMM16_32_ENABLE (1 << 7)
+
 #define MSR_LOCAL_APIC 0x1B
 #define MSR_CPU_ID 0xC0000103 //IA32_TSC_AUX
 
 #define RFLAGS_ALWAYS_SET (1 << 1) 
 #define RFLAGS_INTERRUPT_ENABLE (1 << 9) 
 
+#define CR0_MONITOR_CO_PROCESSOR (1 << 1)
+#define CR0_EMULATION (1 << 2)
+#define CR0_NUMERIC_ERROR_ENABLE (1 << 5)
+
 #define CR4_PAGE_GLOBAL_ENABLE (1 << 7)
+#define CR4_FXSR_ENABLE (1 << 9)
+#define CR4_SIMD_EXCEPTION (1 << 10)
+#define CR4_XSAVE_ENABLE (1 << 18)
+
+static inline void xcr0_write(uint32_t xcr, uint64_t value)
+{
+    uint32_t eax = (uint32_t)value;
+    uint32_t edx = value >> 32;
+    asm volatile("xsetbv" : : "a"(eax), "d"(edx), "c"(xcr) : "memory");
+}
 
 static inline uint64_t msr_read(uint32_t msr) 
 {

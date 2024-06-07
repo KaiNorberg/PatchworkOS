@@ -2,34 +2,36 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ioctl.h>
 #include <sys/proc.h>
 #include <sys/io.h>
+#include <sys/win.h>
 
-static ioctl_fb_info_t fbInfo;
+static fd_t window;
+static win_info_t winInfo;
+static pixel_t* buffer;
 
-//TODO: Implement malloc and replace this.
 static uint8_t glyphBuffer[16 * 256];
 
-static void fb_map(void)
+static void fb_create(void)
 {
-    fd_t fd = open("sys:/fb/0");
-    if (fd == ERR)
+    window = open("sys:/srv/win");
+    if (window == ERR)
     {
         exit(EXIT_FAILURE);
     }
 
-    if (ioctl(fd, IOCTL_FB_INFO, &fbInfo, sizeof(ioctl_fb_info_t)) == ERR)
+    winInfo.width = 1600;
+    winInfo.height = 900;
+    winInfo.x = (1920 - winInfo.width) / 2;
+    winInfo.y = (1080 - winInfo.height) / 2;
+    if (write(window, &winInfo, sizeof(win_info_t)))
     {
         exit(EXIT_FAILURE);
     }
 
-    if (mmap(fd, FB_ADDR, fbInfo.size, PROT_READ | PROT_WRITE) == NULL)
-    {
-        exit(EXIT_FAILURE);
-    }
-
-    close(fd);
+    buffer = malloc(WIN_SIZE(&winInfo));
+    memset(buffer, 0, WIN_SIZE(&winInfo));
+    flush(window, buffer, 0, 0, winInfo.width, winInfo.height);
 }
 
 static void fb_load_font(void)
@@ -48,7 +50,7 @@ static void fb_load_font(void)
 
     if (header.magic != PSF_MAGIC)
     {
-        exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE); 
     }
 
     seek(fd, sizeof(PsfHeader), SEEK_SET);
@@ -59,28 +61,32 @@ static void fb_load_font(void)
 
 void fb_init(void)
 {
-    fb_map();
+    fb_create();
     fb_load_font();
 }
 
 void fb_clear(uint32_t color)
 {
-    for (uint64_t i = 0; i < fbInfo.size / sizeof(uint32_t); i++)
+    for (uint64_t i = 0; i < WIN_SIZE(&winInfo) / sizeof(pixel_t); i++)
     {
-        ((uint32_t*)FB_ADDR)[i] = color;
+        buffer[i] = color;
     }
+
+    flush(window, buffer, 0, 0, winInfo.width, winInfo.height);
 }
 
 void fb_scroll(uint64_t offset)
 {
-    offset *= fbInfo.pixelsPerScanline * sizeof(uint32_t);
-    memmove(FB_ADDR, (void*)(((uint64_t)FB_ADDR) + offset), fbInfo.size - offset);
-    memset((void*)(((uint64_t)FB_ADDR + fbInfo.size - offset)), 0, offset);
+    offset *= winInfo.width * sizeof(pixel_t);
+    memmove(buffer, (void*)(((uint64_t)buffer) + offset), WIN_SIZE(&winInfo) - offset);
+    memset((void*)((uint64_t)buffer + WIN_SIZE(&winInfo) - offset), 0, offset);   
+     
+    flush(window, buffer, 0, 0, winInfo.width, winInfo.height);
 }
 
 void fb_char(char chr, uint64_t x, uint64_t y, uint64_t scale, uint32_t foreground, uint32_t background)
 {
-    char* glyph = (char*)((uint64_t)glyphBuffer + chr * FB_CHAR_HEIGHT);
+    char const* glyph = (char*)((uint64_t)glyphBuffer + chr * FB_CHAR_HEIGHT);
            
     for (uint32_t yOffset = 0; yOffset < FB_CHAR_HEIGHT * scale; yOffset++)
     {
@@ -88,17 +94,19 @@ void fb_char(char chr, uint64_t x, uint64_t y, uint64_t scale, uint32_t foregrou
         {                
             uint32_t pixel = (*(glyph + yOffset / scale) & (0b10000000 >> (xOffset / scale))) > 0 ? foreground : background;
 
-            *((uint32_t *)(FB_ADDR + (x + xOffset) * sizeof(uint32_t) + (y + yOffset) * fbInfo.pixelsPerScanline * sizeof(uint32_t))) = pixel;
+            *((pixel_t*)((uint64_t)buffer + (x + xOffset) * sizeof(pixel_t) + (y + yOffset) * winInfo.width * sizeof(pixel_t))) = pixel;
         }
-    }
+    }   
+
+    flush(window, buffer, x, y, FB_CHAR_WIDTH * scale, FB_CHAR_HEIGHT * scale);
 }
 
 uint64_t fb_width(void)
 {
-    return fbInfo.width;
+    return winInfo.width;
 }
 
 uint64_t fb_height(void)
 {
-    return fbInfo.height;
+    return winInfo.height;
 }

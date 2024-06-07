@@ -9,8 +9,7 @@ extern "C" {
 
 #include "../_AUX/config.h"
 #include "../_AUX/ERR.h"
-
-#define WIN_DEFAULT ERR
+#include "../_AUX/pixel_t.h"
 
 typedef struct win_info 
 {
@@ -19,6 +18,8 @@ typedef struct win_info
     uint64_t x;
     uint64_t y;
 } win_info_t;
+
+#define WIN_SIZE(info) ((info)->width * (info)->height * sizeof(pixel_t))
 
 #if defined(__cplusplus)
 }

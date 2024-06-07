@@ -1,24 +1,23 @@
 #include <string.h>
 #include <stdint.h>
+#include <immintrin.h>
 
 void* memcpy(void* _RESTRICT dest, const void* _RESTRICT src, size_t count)
 {	
-    uint64_t qwordCount = count / 8;
-    uint64_t* qwordDest = (uint64_t*)dest;
-    uint64_t* qwordSrc = (uint64_t*)src;
+    unsigned char *d = dest;
+    const unsigned char *s = src;
 
-    for (uint64_t i = 0; i < qwordCount; i++) 
+    while (count >= 8) 
     {
-        qwordDest[i] = qwordSrc[i];
+        *(uint64_t *)d = *(const uint64_t *)s;
+        d += 8;
+        s += 8;
+        count -= 8;
     }
 
-    uint64_t byteCount = count % 8;
-    uint8_t* byteDest = ((uint8_t*)dest) + qwordCount * 8;
-    uint8_t* byteSrc = ((uint8_t*)src) + qwordCount * 8;
-
-    for (uint64_t i = 0; i < byteCount; i++) 
+    while (count--) 
     {
-        byteDest[i] = byteSrc[i];
+        *d++ = *s++;
     }
 
     return dest;

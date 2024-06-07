@@ -1,9 +1,5 @@
 #include "tss.h"
 
-#include "heap.h"
-#include "smp.h"
-#include "gdt.h"
-
 void tss_init(Tss* tss)
 {
     tss->rsp0 = 0;

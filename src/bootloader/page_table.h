@@ -31,6 +31,6 @@ typedef struct
 
 PageTable* page_table_new(void);
 
-void page_table_map_pages(PageTable* pageTable, void* virtualAddress, void* physicalAddress, uint64_t pageAmount, uint16_t flags);
+void page_table_map_pages(PageTable* pageTable, void* virtAddr, void* physAddr, uint64_t pageAmount, uint16_t flags);
 
-void page_table_map(PageTable* pageTable, void* virtualAddress, void* physicalAddress, uint16_t flags);
+void page_table_map(PageTable* pageTable, void* virtAddr, void* physAddr, uint16_t flags);

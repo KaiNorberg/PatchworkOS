@@ -12,7 +12,7 @@ STD_OBJ = $(patsubst $(SRC_DIR)/%, $(STD_BUILD_DIR)/%.o, $(STD_SRC))
 
 $(STD_BUILD_DIR)/%.c.o: $(SRC_DIR)/%.c
 	$(MKCWD)
-	$(CC) $(USER_C_FLAGS) -c -o $@ $<
+	$(CC) $(USER_C_FLAGS) -I$(STD_SRC_DIR) -c -o $@ $<
 
 $(STD_BUILD_DIR)/%.s.o: $(SRC_DIR)/%.s
 	$(MKCWD)
