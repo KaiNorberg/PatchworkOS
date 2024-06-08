@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/proc.h>
 
 #define TERMINAL_MAX_COMMAND MAX_PATH
 #define TERMINAL_MAX_COLOR 8
@@ -24,7 +25,7 @@ typedef struct
     uint64_t x;
     uint64_t y;
     bool visible;
-    uint64_t nextBlink;
+    nsec_t nextBlink;
 } Cursor;
 
 void terminal_init(void);

@@ -11,7 +11,7 @@
     nsec_t deadline = (timeout) == UINT64_MAX ? UINT64_MAX : (timeout) + time_uptime(); \
     while (!(condition) && deadline > time_uptime()) \
     { \
-        sched_yield(); \
+        sched_pause(); \
     } \
     0; \
 })
@@ -36,9 +36,11 @@ Thread* sched_thread(void);
 
 Process* sched_process(void);
 
+void sched_yield(void);
+
 // Yields the current thread's remaining time slice.
 // If no other threads are ready, the CPU will idle until the next call to sched_schedule().
-void sched_yield(void);
+void sched_pause(void);
 
 NORETURN void sched_process_exit(uint64_t status);
 

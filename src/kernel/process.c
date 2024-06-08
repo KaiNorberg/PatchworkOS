@@ -6,6 +6,7 @@
 #include "gdt.h"
 #include "regs.h"
 #include "debug.h"
+#include "smp.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -67,4 +68,39 @@ void thread_free(Thread* thread)
 
     simd_context_cleanup(&thread->simdContext);
     free(thread);
+}
+
+void thread_save(Thread* thread, const TrapFrame* trapFrame)
+{
+    simd_context_save(&thread->simdContext);
+    thread->trapFrame = *trapFrame;
+}
+
+void thread_load(Thread* thread, TrapFrame* trapFrame)
+{    
+    Cpu* self = smp_self_unsafe();
+
+    if (thread == NULL)
+    {
+        memset(trapFrame, 0, sizeof(TrapFrame));
+        trapFrame->rip = (uint64_t)sched_idle_loop;
+        trapFrame->cs = GDT_KERNEL_CODE;
+        trapFrame->ss = GDT_KERNEL_DATA;
+        trapFrame->rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
+        trapFrame->rsp = (uint64_t)smp_self_unsafe()->idleStack + CPU_IDLE_STACK_SIZE;
+        
+        space_load(NULL);
+        tss_stack_load(&self->tss, NULL);
+    }
+    else
+    {
+        thread->timeStart = time_uptime();
+        thread->timeEnd = thread->timeStart + CONFIG_TIME_SLICE;
+
+        *trapFrame = thread->trapFrame;
+        
+        space_load(&thread->process->space);
+        tss_stack_load(&self->tss, (void*)((uint64_t)thread->kernelStack + CONFIG_KERNEL_STACK));
+        simd_context_load(&thread->simdContext);
+    }
 }

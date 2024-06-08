@@ -6,7 +6,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <sys/proc.h>
 #include <sys/kbd.h>
 
 static Cursor cursor;
@@ -98,7 +97,7 @@ void terminal_init(void)
 
 void terminal_update_cursor(void)
 {
-    uint64_t time = uptime();
+    nsec_t time = uptime();
     if (cursor.nextBlink < time)
     {
         cursor.visible = !cursor.visible;

@@ -77,43 +77,36 @@ static Thread* sched_next_thread(Scheduler* scheduler)
 
 static void sched_switch_thread(TrapFrame* trapFrame, Scheduler* scheduler, Thread* next)
 {
-    Cpu* self = smp_self_unsafe();
-
-    if (next != NULL) //Switch to next thread
+    if (scheduler->runningThread == NULL) //Load next thread or idle
     {
-        if (scheduler->runningThread != NULL)
-        {
-            simd_context_save(&scheduler->runningThread->simdContext);
-            scheduler->runningThread->trapFrame = *trapFrame;
-            queue_push(&scheduler->queues[scheduler->runningThread->priority], scheduler->runningThread);
-            scheduler->runningThread = NULL;
-        }
-
-        next->timeStart = time_uptime();
-        next->timeEnd = next->timeStart + CONFIG_TIME_SLICE;
-
-        *trapFrame = next->trapFrame;
-        space_load(&next->process->space);
-        tss_stack_load(&self->tss, (void*)((uint64_t)next->kernelStack + CONFIG_KERNEL_STACK));
-        simd_context_load(&next->simdContext);
-
+        thread_load(next, trapFrame);
         scheduler->runningThread = next;
     }
-    else if (scheduler->runningThread == NULL) //Idle
-    {
-        memset(trapFrame, 0, sizeof(TrapFrame));
-        trapFrame->rip = (uint64_t)sched_idle_loop;
-        trapFrame->cs = GDT_KERNEL_CODE;
-        trapFrame->ss = GDT_KERNEL_DATA;
-        trapFrame->rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
-        trapFrame->rsp = (uint64_t)smp_self_unsafe()->idleStack + CPU_IDLE_STACK_SIZE;
-        
-        space_load(NULL);
-        tss_stack_load(&self->tss, NULL);
-    }
-    else
-    {
-        //Keep running the same process
+    else 
+    {    
+        if (next != NULL) //Switch to next
+        {
+            thread_save(scheduler->runningThread, trapFrame);
+            queue_push(&scheduler->queues[scheduler->runningThread->priority], scheduler->runningThread);
+            scheduler->runningThread = NULL;
+
+            thread_load(next, trapFrame);
+            scheduler->runningThread = next;
+        }
+        else if (scheduler->runningThread->state == THREAD_STATE_PAUSE) //Pause
+        {
+            scheduler->runningThread->state = THREAD_STATE_ACTIVE;
+
+            thread_save(scheduler->runningThread, trapFrame);
+            queue_push(&scheduler->queues[scheduler->runningThread->priority], scheduler->runningThread);
+            scheduler->runningThread = NULL;
+
+            thread_load(NULL, trapFrame);
+        }
+        else
+        {
+            //Keep running the same thread
+        }
     }
 }
 
@@ -172,6 +165,15 @@ void sched_yield(void)
 {
     Thread* thread = sched_thread();
     thread->timeEnd = 0;
+    SMP_SEND_IPI_TO_SELF(IPI_SCHEDULE);
+}
+
+void sched_pause(void)
+{
+    Thread* thread = smp_self()->scheduler.runningThread;
+    thread->timeEnd = 0;
+    thread->state = THREAD_STATE_PAUSE;
+    smp_put();
     SMP_SEND_IPI_TO_SELF(IPI_SCHEDULE);
 }
 

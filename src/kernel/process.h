@@ -20,6 +20,7 @@
 typedef enum
 {
     THREAD_STATE_NONE,
+    THREAD_STATE_PAUSE,
     THREAD_STATE_ACTIVE,
     THREAD_STATE_KILLED
 } ThreadState;
@@ -55,3 +56,7 @@ Process* process_new(const char* executable);
 Thread* thread_new(Process* process, void* entry, uint8_t priority);
 
 void thread_free(Thread* thread);
+
+void thread_save(Thread* thread, const TrapFrame* trapFrame);
+
+void thread_load(Thread* thread, TrapFrame* trapFrame);

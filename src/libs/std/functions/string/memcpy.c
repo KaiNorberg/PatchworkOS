@@ -4,8 +4,8 @@
 
 void* memcpy(void* _RESTRICT dest, const void* _RESTRICT src, size_t count)
 {	
-    unsigned char *d = dest;
-    const unsigned char *s = src;
+    uint8_t* d = dest;
+    const uint8_t* s = src;
 
     while (count >= 8) 
     {

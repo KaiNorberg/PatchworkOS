@@ -23,6 +23,10 @@ BOOT_C_FLAGS = $(BASE_C_FLAGS) \
 	-fno-stack-protector -fno-stack-check \
 	-fshort-wchar -mno-red-zone -Wno-array-bounds \
 	-fno-stack-protector \
+	-mno-mmx -mno-3dnow \
+	-mno-80387 -mno-sse \
+	-mno-sse2 -mno-sse3 \
+	-mno-ssse3 -mno-sse4 \
 	-D__BOOTLOADER__ \
 	-I$(GNU_EFI)/inc
 

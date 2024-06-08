@@ -33,6 +33,10 @@ KERNEL_C_FLAGS = $(BASE_C_FLAGS) \
 	-fno-stack-protector \
 	-fno-pic -mcmodel=large \
 	-fno-stack-protector \
+	-mno-mmx -mno-3dnow \
+	-mno-80387 -mno-sse \
+	-mno-sse2 -mno-sse3 \
+	-mno-ssse3 -mno-sse4 \
 	-D__KERNEL__ \
 	-I$(KERNEL_SRC_DIR)
 
