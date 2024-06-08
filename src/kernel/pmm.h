@@ -4,10 +4,7 @@
 
 #include <common/boot_info.h>
 
-#define PAGE_SIZE 0x1000
-
-#define SIZE_IN_PAGES(size) (((size) + PAGE_SIZE - 1) / PAGE_SIZE)
-#define PAGE_SIZE_OF(object) SIZE_IN_PAGES(sizeof(object))
+#include <sys/proc.h>
 
 typedef struct PageHeader
 {

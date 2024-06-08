@@ -34,22 +34,35 @@ static uint64_t window_read(File* file, void* buffer, uint64_t length)
     return ERROR(EIMPL);
 }
 
-static uint64_t window_flush(File* file, const void* buffer, uint64_t x, uint64_t y, uint64_t width, uint64_t height)
+static uint64_t window_flush(File* file, const void* buffer, uint64_t size, const rect_t* rectIn)
 {
     Window* window = file->internal;
     LOCK_GUARD(&window->lock);
 
-    if (x + width > frontbuffer.width || y + height > frontbuffer.height)
+    if (size != WIN_SIZE(&window->info))
     {
         return ERROR(EINVAL);
     }
 
-    for (uint64_t yOff = 0; yOff < height; yOff++) 
+    if (rectIn == NULL)
     {
-        uint64_t offset = (y + yOff) * sizeof(pixel_t) * window->info.width + x * sizeof(pixel_t);
+        memcpy(window->buffer, buffer, size);
+    }
+    else
+    {
+        volatile rect_t rect = *rectIn;
+        if (rect.x + rect.width > frontbuffer.width || rect.y + rect.height > frontbuffer.height)
+        {
+            return ERROR(EINVAL);
+        }    
+        
+        for (uint64_t y = 0; y < rect.height; y++) 
+        {
+            uint64_t offset = (rect.y + y) * sizeof(pixel_t) * window->info.width + rect.x * sizeof(pixel_t);
 
-        memcpy((void*)((uint64_t)window->buffer + offset), (void*)((uint64_t)buffer + offset),
-            width * sizeof(pixel_t));
+            memcpy((void*)((uint64_t)window->buffer + offset), (void*)((uint64_t)buffer + offset),
+                rect.width * sizeof(pixel_t));
+        }
     }
 
     atomic_store(&redrawNeeded, true);

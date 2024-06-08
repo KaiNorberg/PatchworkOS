@@ -17,4 +17,6 @@
 #endif
 #endif
 
+#define ALIGNED(alignment) __attribute__((aligned(alignment)))
+
 #endif

@@ -5,8 +5,6 @@
 
 //TODO: Replace this with a better algorithm, slab allocator? buddy allocator?
 
-#define PAGE_SIZE 0x1000
-
 #define HEAP_ALIGNMENT 64
 #define HEAP_BUCKET_AMOUNT 10
 

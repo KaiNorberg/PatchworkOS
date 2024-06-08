@@ -11,6 +11,10 @@ extern "C" {
 #include "../_AUX/ERR.h"
 #include "../_AUX/fd_t.h"
 
+#define PAGE_SIZE 0x1000
+#define SIZE_IN_PAGES(size) (((size) + PAGE_SIZE - 1) / PAGE_SIZE)
+#define PAGE_SIZE_OF(object) SIZE_IN_PAGES(sizeof(object))
+
 #define PROT_NONE 0
 #define PROT_READ (1 << 0)
 #define PROT_WRITE (1 << 1)
@@ -20,7 +24,7 @@ typedef uint64_t tid_t;
 typedef uint64_t prot_t;
 typedef uint64_t nsec_t;
 
-//One second in nanoseconds.
+//Nanoseconds per second.
 #define SEC ((nsec_t)1000000000)
 
 nsec_t uptime(void);

@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <errno.h>
+#include <sys/win.h>
 
 #include "defs.h"
 #include "tty.h"
@@ -291,13 +292,18 @@ uint64_t syscall_mprotect(void* address, uint64_t length, prot_t prot)
     return vmm_protect(address, length, prot);
 }
 
-uint64_t syscall_flush(fd_t fd, const void* buffer, uint64_t x, uint64_t y, uint64_t width, uint64_t height)
+uint64_t syscall_flush(fd_t fd, const void* buffer, uint64_t size, const rect_t* rect)
 {
-    if (!verify_buffer(buffer, (x + width) * (y + height)))
+    if (!verify_buffer(buffer, size))
     {
         return ERROR(EFAULT);
     }    
     
+    if (rect != NULL && !verify_buffer(rect, sizeof(rect_t)))
+    {
+        return ERROR(EFAULT);
+    }
+
     File* file = vfs_context_get(fd);
     if (file == NULL)
     {
@@ -305,7 +311,7 @@ uint64_t syscall_flush(fd_t fd, const void* buffer, uint64_t x, uint64_t y, uint
     }
     FILE_GUARD(file);
 
-    return FILE_CALL_METHOD(file, flush, buffer, x, y, width, height);
+    return FILE_CALL_METHOD(file, flush, buffer, size, rect);
 }
 
 ///////////////////////////////////////////////////////

@@ -2,9 +2,9 @@
 
 #include "tty.h"
 #include "tss.h"
+#include "pmm.h"
 
-__attribute__((aligned(0x1000)))
-static Gdt gdt;
+ALIGNED(PAGE_SIZE) static Gdt gdt;
 
 static GdtEntry gdt_entry_create(uint8_t access, uint8_t flags)
 {

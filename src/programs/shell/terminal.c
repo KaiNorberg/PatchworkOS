@@ -69,14 +69,6 @@ static void terminal_put_normal(char chr)
         }
     }
     break;
-    /*case '\t':
-    {
-        for (uint8_t i = 0; i < 4; i++)
-        {
-            terminal_put(' ');
-        }
-    }
-    break;*/
     default:
     {
         terminal_char(chr);
@@ -222,7 +214,7 @@ void terminal_error(const char* string)
     terminal_print("error: ");
     terminal_print(string);
     
-    //if (errno != 0)
+    if (errno != 0)
     {
         terminal_print(" - (");
         terminal_print(strerror(errno));

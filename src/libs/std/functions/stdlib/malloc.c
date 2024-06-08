@@ -16,12 +16,13 @@
 
 static Lock lock;
 static uintptr_t newAddress;
+
+extern uint64_t _kernelEnd;
 #else
-static fd_t constZero;
+static fd_t zeroResource;
 #endif
 
 #define ROUND_UP(number, multiple) ((((uint64_t)(number) + (uint64_t)(multiple) - 1) / (uint64_t)(multiple)) * (uint64_t)(multiple))
-#define SIZE_IN_PAGES(size) (((size) + PAGE_SIZE - 1) / PAGE_SIZE)
 
 static heap_header_t* firstBlock;
 
@@ -41,13 +42,13 @@ static void _HeapBlockSplit(heap_header_t* block, uint64_t size)
 static heap_header_t* _HeapBlockNew(uint64_t size)
 {
     uint64_t pageAmount = SIZE_IN_PAGES(size + sizeof(heap_header_t));
-    newAddress -= pageAmount * PAGE_SIZE;
 
     heap_header_t* newBlock = (heap_header_t*)newAddress;
     for (uint64_t i = 0; i < pageAmount; i++)
     {
         vmm_kernel_map((void*)(newAddress + i * PAGE_SIZE), pmm_alloc(), PAGE_SIZE);
     }
+    newAddress += pageAmount * PAGE_SIZE;
 
     newBlock->size = pageAmount * PAGE_SIZE - sizeof(heap_header_t);
     newBlock->next = NULL;
@@ -68,8 +69,8 @@ void _HeapRelease(void)
 }
 
 void _HeapInit(void)
-{
-    newAddress = 0xFFFFFFFFFFFFF000; //Top of address space.
+{    
+    newAddress = ROUND_UP((uint64_t)&_kernelEnd, PAGE_SIZE);
     firstBlock = _HeapBlockNew(PAGE_SIZE);
 
     lock_init(&lock);
@@ -77,15 +78,15 @@ void _HeapInit(void)
 #else
 static heap_header_t* _HeapBlockNew(uint64_t size)
 {    
-    uint64_t pageAmount = SIZE_IN_PAGES(size + sizeof(heap_header_t));
+    size = ROUND_UP(size + sizeof(heap_header_t), PAGE_SIZE);
 
-    heap_header_t* newBlock = mmap(constZero, NULL, (pageAmount + 1) * PAGE_SIZE, PROT_READ | PROT_WRITE);
+    heap_header_t* newBlock = mmap(zeroResource, NULL, size, PROT_READ | PROT_WRITE);
     if (newBlock == NULL)
     {
         return NULL;
     }
 
-    newBlock->size = pageAmount * PAGE_SIZE - sizeof(heap_header_t);
+    newBlock->size = size - sizeof(heap_header_t);
     newBlock->next = NULL;
     newBlock->reserved = false;
     newBlock->magic = HEAP_HEADER_MAGIC;
@@ -106,7 +107,7 @@ void _HeapRelease(void)
 
 void _HeapInit(void)
 {
-    constZero = open("sys:/const/zero");
+    zeroResource = open("sys:/const/zero");
     firstBlock = _HeapBlockNew(PAGE_SIZE);
 }
 #endif

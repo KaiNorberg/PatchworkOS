@@ -1,9 +1,9 @@
 #include "idt.h"
 
 #include "syscall.h"
+#include "pmm.h"
 
-__attribute__((aligned(0x1000)))
-static Idt idt;
+ALIGNED(PAGE_SIZE) static Idt idt;
 
 extern void idt_load_descriptor(IdtDesc* descriptor);
 

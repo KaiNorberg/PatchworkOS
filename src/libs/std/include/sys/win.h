@@ -10,6 +10,9 @@ extern "C" {
 #include "../_AUX/config.h"
 #include "../_AUX/ERR.h"
 #include "../_AUX/pixel_t.h"
+#include "../_AUX/point_t.h"
+#include "../_AUX/rect_t.h"
+#include "../_AUX/fd_t.h"
 
 typedef struct win_info 
 {
@@ -20,6 +23,8 @@ typedef struct win_info
 } win_info_t;
 
 #define WIN_SIZE(info) ((info)->width * (info)->height * sizeof(pixel_t))
+
+uint64_t flush(fd_t fd, const void* buffer, uint64_t size, const rect_t* rect);
 
 #if defined(__cplusplus)
 }

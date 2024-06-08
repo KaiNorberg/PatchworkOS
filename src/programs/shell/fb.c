@@ -31,7 +31,7 @@ static void fb_create(void)
 
     buffer = malloc(WIN_SIZE(&winInfo));
     memset(buffer, 0, WIN_SIZE(&winInfo));
-    flush(window, buffer, 0, 0, winInfo.width, winInfo.height);
+    flush(window, buffer, WIN_SIZE(&winInfo), NULL);
 }
 
 static void fb_load_font(void)
@@ -72,7 +72,7 @@ void fb_clear(uint32_t color)
         buffer[i] = color;
     }
 
-    flush(window, buffer, 0, 0, winInfo.width, winInfo.height);
+    flush(window, buffer, WIN_SIZE(&winInfo), NULL);
 }
 
 void fb_scroll(uint64_t offset)
@@ -80,8 +80,8 @@ void fb_scroll(uint64_t offset)
     offset *= winInfo.width * sizeof(pixel_t);
     memmove(buffer, (void*)(((uint64_t)buffer) + offset), WIN_SIZE(&winInfo) - offset);
     memset((void*)((uint64_t)buffer + WIN_SIZE(&winInfo) - offset), 0, offset);   
-     
-    flush(window, buffer, 0, 0, winInfo.width, winInfo.height);
+
+    flush(window, buffer, WIN_SIZE(&winInfo), NULL);
 }
 
 void fb_char(char chr, uint64_t x, uint64_t y, uint64_t scale, uint32_t foreground, uint32_t background)
@@ -98,7 +98,14 @@ void fb_char(char chr, uint64_t x, uint64_t y, uint64_t scale, uint32_t foregrou
         }
     }   
 
-    flush(window, buffer, x, y, FB_CHAR_WIDTH * scale, FB_CHAR_HEIGHT * scale);
+    rect_t rect =
+    {
+        .x = x,
+        .y = y,
+        .width = FB_CHAR_WIDTH * scale,
+        .height = FB_CHAR_HEIGHT * scale
+    };
+    flush(window, buffer, WIN_SIZE(&winInfo), &rect);
 }
 
 uint64_t fb_width(void)

@@ -60,8 +60,6 @@ uint64_t stat(const char* path, stat_t* buffer);
 
 uint64_t ioctl(fd_t fd, uint64_t request, void* buffer, uint64_t length);
 
-uint64_t flush(fd_t fd, const void* buffer, uint64_t x, uint64_t y, uint64_t width, uint64_t height);
-
 #if defined(__cplusplus)
 }
 #endif
