@@ -4,11 +4,12 @@
 #include <stdint.h>
 
 #if defined(__cplusplus)
-extern "C" {
+extern "C"
+{
 #endif
 
-#include "../_AUX/config.h"
 #include "../_AUX/ERR.h"
+#include "../_AUX/config.h"
 #include "../_AUX/fd_t.h"
 
 #define PAGE_SIZE 0x1000
@@ -24,7 +25,7 @@ typedef uint64_t tid_t;
 typedef uint64_t prot_t;
 typedef uint64_t nsec_t;
 
-//Nanoseconds per second.
+// Nanoseconds per second.
 #define SEC ((nsec_t)1000000000)
 
 nsec_t uptime(void);

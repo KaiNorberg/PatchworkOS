@@ -38,11 +38,7 @@ static void command_cd(Token* token)
     }
 }
 
-static Command commands[] = 
-{
-    {"clear", command_clear},
-    {"cd", command_cd}
-};
+static Command commands[] = {{"clear", command_clear}, {"cd", command_cd}};
 
 void parser_parse(const char* string)
 {

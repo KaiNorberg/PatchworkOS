@@ -1,9 +1,9 @@
 #pragma once
 
 #include "defs.h"
-#include "tss.h"
 #include "pmm.h"
 #include "sched.h"
+#include "tss.h"
 
 #define CPU_MAX_AMOUNT 255
 #define CPU_IDLE_STACK_SIZE PAGE_SIZE
@@ -14,7 +14,7 @@
 #define IPI_SCHEDULE 2
 #define IPI_AMOUNT 3
 
-#define SMP_SEND_IPI_TO_SELF(ipi) asm volatile("int %0" : : "i" (IPI_BASE + ipi))
+#define SMP_SEND_IPI_TO_SELF(ipi) asm volatile("int %0" : : "i"(IPI_BASE + ipi))
 
 typedef struct
 {
@@ -42,7 +42,7 @@ uint8_t smp_cpu_amount(void);
 
 Cpu* smp_cpu(uint8_t id);
 
-//Must have a corresponding call to smp_put()
+// Must have a corresponding call to smp_put()
 Cpu* smp_self(void);
 
 Cpu* smp_self_unsafe(void);

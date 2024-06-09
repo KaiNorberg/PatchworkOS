@@ -1,8 +1,8 @@
 #include "fb.h"
+#include "input.h"
+#include "parser.h"
 #include "terminal.h"
 #include "token.h"
-#include "parser.h"
-#include "input.h"
 
 #include <stdlib.h>
 #include <sys/io.h>
@@ -55,7 +55,7 @@ const char* command_read(void)
 }
 
 int main(void)
-{    
+{
     fb_init();
     terminal_init();
     input_init();

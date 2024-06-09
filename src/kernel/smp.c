@@ -1,14 +1,14 @@
 #include "smp.h"
 
-#include "tty.h"
-#include "regs.h"
 #include "apic.h"
-#include "hpet.h"
-#include "madt.h"
 #include "debug.h"
-#include "utils.h"
+#include "hpet.h"
 #include "kernel.h"
+#include "madt.h"
+#include "regs.h"
 #include "trampoline.h"
+#include "tty.h"
+#include "utils.h"
 
 #include <stdlib.h>
 #include <string.h>

@@ -2,8 +2,8 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <sys/proc.h>
 #include <sys/io.h>
+#include <sys/proc.h>
 #include <sys/win.h>
 
 static fd_t window;
@@ -50,7 +50,7 @@ static void fb_load_font(void)
 
     if (header.magic != PSF_MAGIC)
     {
-        exit(EXIT_FAILURE); 
+        exit(EXIT_FAILURE);
     }
 
     seek(fd, sizeof(PsfHeader), SEEK_SET);
@@ -79,7 +79,7 @@ void fb_scroll(uint64_t offset)
 {
     offset *= winInfo.width * sizeof(pixel_t);
     memmove(buffer, (void*)(((uint64_t)buffer) + offset), WIN_SIZE(&winInfo) - offset);
-    memset((void*)((uint64_t)buffer + WIN_SIZE(&winInfo) - offset), 0, offset);   
+    memset((void*)((uint64_t)buffer + WIN_SIZE(&winInfo) - offset), 0, offset);
 
     flush(window, buffer, WIN_SIZE(&winInfo), NULL);
 }
@@ -87,24 +87,20 @@ void fb_scroll(uint64_t offset)
 void fb_char(char chr, uint64_t x, uint64_t y, uint64_t scale, uint32_t foreground, uint32_t background)
 {
     char const* glyph = (char*)((uint64_t)glyphBuffer + chr * FB_CHAR_HEIGHT);
-           
+
     for (uint32_t yOffset = 0; yOffset < FB_CHAR_HEIGHT * scale; yOffset++)
     {
         for (uint32_t xOffset = 0; xOffset < FB_CHAR_WIDTH * scale; xOffset++)
-        {                
-            uint32_t pixel = (*(glyph + yOffset / scale) & (0b10000000 >> (xOffset / scale))) > 0 ? foreground : background;
+        {
+            uint32_t pixel =
+                (*(glyph + yOffset / scale) & (0b10000000 >> (xOffset / scale))) > 0 ? foreground : background;
 
-            *((pixel_t*)((uint64_t)buffer + (x + xOffset) * sizeof(pixel_t) + (y + yOffset) * winInfo.width * sizeof(pixel_t))) = pixel;
+            *((pixel_t*)((uint64_t)buffer + (x + xOffset) * sizeof(pixel_t) +
+                         (y + yOffset) * winInfo.width * sizeof(pixel_t))) = pixel;
         }
-    }   
+    }
 
-    rect_t rect =
-    {
-        .x = x,
-        .y = y,
-        .width = FB_CHAR_WIDTH * scale,
-        .height = FB_CHAR_HEIGHT * scale
-    };
+    rect_t rect = {.x = x, .y = y, .width = FB_CHAR_WIDTH * scale, .height = FB_CHAR_HEIGHT * scale};
     flush(window, buffer, WIN_SIZE(&winInfo), &rect);
 }
 

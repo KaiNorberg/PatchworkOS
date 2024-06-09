@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 #ifdef __KERNEL__
-typedef struct 
+typedef struct
 {
     uint32_t type;
     uint32_t pad;
@@ -14,7 +14,7 @@ typedef struct
 } EfiMemoryDescriptor;
 
 #define EFI_RESERVED 0
-#define EFI_LOADER_CODE 1 
+#define EFI_LOADER_CODE 1
 #define EFI_LOADER_DATA 2
 #define EFI_BOOT_SERVICES_CODE 3
 #define EFI_BOOT_SERVICES_DATA 4
@@ -27,14 +27,15 @@ typedef struct
 #define EFI_MEMORY_MAPPED_IO 11
 #define EFI_MEMORY_MAPPED_IO_PORT_SPACE 12
 #define EFI_PAL_CODE 13
-#define EFI_PERSISTENT_MEMORY 14 
+#define EFI_PERSISTENT_MEMORY 14
 #else
 #include <efi.h>
 #include <efilib.h>
 typedef EFI_MEMORY_DESCRIPTOR EfiMemoryDescriptor;
 #endif
 
-#define EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, index) (EfiMemoryDescriptor*)((uint64_t)(memoryMap)->base + ((index) * (memoryMap)->descriptorSize))
+#define EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, index) \
+    (EfiMemoryDescriptor*)((uint64_t)(memoryMap)->base + ((index) * (memoryMap)->descriptorSize))
 
 #define EFI_MEMORY_TYPE_KERNEL 0x80000000
 #define EFI_MEMORY_TYPE_PAGE_TABLE 0x80000001
@@ -61,7 +62,7 @@ typedef struct
 } GopBuffer;
 
 typedef struct __attribute__((packed))
-{ 
+{
     uint16_t magic;
     uint8_t mode;
     uint8_t charSize;
@@ -94,8 +95,8 @@ typedef struct RamDir
     struct RamDir* prev;
 } RamDir;
 
-typedef struct 
-{    
+typedef struct
+{
     EfiMemoryMap memoryMap;
     GopBuffer gopBuffer;
     PsfFont font;

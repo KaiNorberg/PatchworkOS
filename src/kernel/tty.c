@@ -1,11 +1,10 @@
 #include "tty.h"
 
 #include "lock.h"
-#include "vmm.h"
 #include "pmm.h"
 #include "smp.h"
+#include "vmm.h"
 
-#include <stdlib.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -29,7 +28,7 @@ void tty_init(GopBuffer* gopBuffer, PsfFont* screenFont)
     frontbuffer = *gopBuffer;
     frontbuffer.base = vmm_kernel_map(NULL, gopBuffer->base, gopBuffer->size);
 
-    font.header = screenFont->header;   
+    font.header = screenFont->header;
     font.glyphs = malloc(screenFont->glyphsSize);
     memcpy(font.glyphs, screenFont->glyphs, screenFont->glyphsSize);
 
@@ -41,12 +40,12 @@ void tty_init(GopBuffer* gopBuffer, PsfFont* screenFont)
     background.r = 0;
     background.g = 0;
     background.b = 0;
-    
+
     foreground.a = 255;
     foreground.r = 255;
     foreground.g = 255;
     foreground.b = 255;
-        
+
     lock_init(&lock);
 
     tty_clear();
@@ -69,7 +68,7 @@ void tty_set_background(Pixel value)
 
 void tty_set_pos(uint32_t x, uint32_t y)
 {
-    column = x;   
+    column = x;
     row = y;
 }
 
@@ -129,21 +128,20 @@ void tty_put(uint8_t chr)
     }
     break;
     default:
-    {               
+    {
         char const* glyph = font.glyphs + chr * TTY_CHAR_HEIGHT;
-        
+
         uint32_t x = column * TTY_CHAR_WIDTH * scale;
         uint32_t y = row * TTY_CHAR_HEIGHT * scale;
 
         for (uint32_t yOffset = 0; yOffset < TTY_CHAR_HEIGHT * scale; yOffset++)
         {
             for (uint32_t xOffset = 0; xOffset < TTY_CHAR_WIDTH * scale; xOffset++)
-            {                
+            {
                 Pixel pixel = (*glyph & (0b10000000 >> xOffset / scale)) > 0 ? foreground : background;
-  
-                *((Pixel*)((uint64_t)frontbuffer.base + 
-                (x + xOffset) * sizeof(Pixel) + 
-                (y + yOffset) * frontbuffer.pixelsPerScanline * sizeof(Pixel))) = pixel;
+
+                *((Pixel*)((uint64_t)frontbuffer.base + (x + xOffset) * sizeof(Pixel) +
+                           (y + yOffset) * frontbuffer.pixelsPerScanline * sizeof(Pixel))) = pixel;
             }
             if (yOffset % scale == 0)
             {
@@ -179,7 +177,8 @@ void tty_printx(uint64_t hex)
     char string[64];
     memset(string, 0, 64);
     ulltoa(hex, string, 16);
-    tty_print("0x"); tty_print(string);
+    tty_print("0x");
+    tty_print(string);
 }
 
 void tty_printm(const char* string, uint64_t length)

@@ -8,8 +8,7 @@ char* strchr(const char* str, int ch)
         {
             return (char*)str;
         }
-    } 
-    while(*str++);
+    } while (*str++);
 
     return NULL;
 }

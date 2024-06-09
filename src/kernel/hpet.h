@@ -17,7 +17,7 @@
 #define HPET_TIMER_COMPARATOR(n) (0x108 + 0x20 * n)
 
 typedef struct PACKED
-{   
+{
     SdtHeader header;
     uint8_t hardwareRevId;
     uint8_t info;

@@ -4,7 +4,8 @@
 #include <stdint.h>
 
 #if defined(__cplusplus)
-extern "C" {
+extern "C"
+{
 #endif
 
 #include "../_AUX/timespec.h"

@@ -16,7 +16,7 @@ void vfs_context_init(VfsContext* context)
 void vfs_context_cleanup(VfsContext* context)
 {
     for (uint64_t i = 0; i < CONFIG_MAX_FILE; i++)
-    {    
+    {
         File* file = context->files[i];
         if (file != NULL)
         {
@@ -44,7 +44,7 @@ fd_t vfs_context_open(File* file)
 
 uint64_t vfs_context_close(fd_t fd)
 {
-    
+
     VfsContext* context = &sched_process()->vfsContext;
     LOCK_GUARD(&context->lock);
 

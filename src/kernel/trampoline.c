@@ -8,7 +8,8 @@
 
 static void* backupBuffer;
 static Space space;
-//What a mess...
+
+// What a mess...
 
 void trampoline_setup(void)
 {
@@ -30,7 +31,7 @@ void trampoline_cpu_setup(Cpu* cpu)
 }
 
 void trampoline_cleanup(void)
-{   
+{
     memcpy(VMM_LOWER_TO_HIGHER(TRAMPOLINE_PHYSICAL_START), backupBuffer, PAGE_SIZE);
     free(backupBuffer);
 

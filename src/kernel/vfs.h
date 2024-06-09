@@ -1,15 +1,15 @@
 #pragma once
 
+#include <ctype.h>
 #include <stdatomic.h>
 #include <string.h>
-#include <ctype.h>
 #include <sys/io.h>
 #include <sys/proc.h>
 #include <sys/win.h>
 
 #include "defs.h"
-#include "lock.h"
 #include "list.h"
+#include "lock.h"
 
 #define VFS_NAME_SEPARATOR '/'
 #define VFS_LABEL_SEPARATOR ':'
@@ -21,17 +21,12 @@
 #define VFS_END_OF_LABEL(ch) ((ch) == VFS_LABEL_SEPARATOR || (ch) == '\0')
 
 #define FILE_CALL_METHOD(file, method, ...) \
-    ((file)->methods.method != NULL ? \
-    (file)->methods.method(file __VA_OPT__(,) ##__VA_ARGS__) : \
-    ERROR(EACCES))
+    ((file)->methods.method != NULL ? (file)->methods.method(file __VA_OPT__(, )##__VA_ARGS__) : ERROR(EACCES))
 
 #define FILE_CALL_METHOD_PTR(file, method, ...) \
-    ((file)->methods.method != NULL ? \
-    (file)->methods.method(file __VA_OPT__(,) ##__VA_ARGS__) : \
-    NULLPTR(EACCES))
+    ((file)->methods.method != NULL ? (file)->methods.method(file __VA_OPT__(, )##__VA_ARGS__) : NULLPTR(EACCES))
 
-#define FILE_GUARD(file) \
-    __attribute__((cleanup(file_cleanup))) File* CONCAT(f, __COUNTER__) = (file)
+#define FILE_GUARD(file) __attribute__((cleanup(file_cleanup))) File* CONCAT(f, __COUNTER__) = (file)
 
 typedef struct Filesystem Filesystem;
 typedef struct Volume Volume;
@@ -140,7 +135,7 @@ static inline const char* name_first(const char* path)
     {
         return path + 1;
     }
-    
+
     return path;
 }
 

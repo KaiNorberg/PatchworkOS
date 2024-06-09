@@ -7,8 +7,8 @@
 
 #include "debug.h"
 #include "lock.h"
-#include "vmm.h"
 #include "utils.h"
+#include "vmm.h"
 
 static PageHeader* firstPage = NULL;
 static PageHeader* lastPage = NULL;
@@ -22,11 +22,8 @@ static Lock lock;
 
 static uint8_t is_type_free(uint64_t memoryType)
 {
-    return memoryType == EFI_CONVENTIONAL_MEMORY ||
-        memoryType == EFI_LOADER_CODE ||
-        memoryType == EFI_LOADER_DATA ||
-        memoryType == EFI_BOOT_SERVICES_CODE ||
-        memoryType == EFI_BOOT_SERVICES_DATA;
+    return memoryType == EFI_CONVENTIONAL_MEMORY || memoryType == EFI_LOADER_CODE || memoryType == EFI_LOADER_DATA ||
+           memoryType == EFI_BOOT_SERVICES_CODE || memoryType == EFI_BOOT_SERVICES_DATA;
 }
 
 static void pmm_free_unlocked(void* address)
@@ -53,7 +50,7 @@ static void pmm_free_pages_unlocked(void* address, uint64_t count)
     {
         void* a = (void*)((uint64_t)address + i * PAGE_SIZE);
         pmm_free_unlocked(a);
-    }    
+    }
 }
 
 static void pmm_memory_map_deallocate(void)
@@ -86,8 +83,8 @@ static void pmm_lazy_load_memory(void)
     {
         const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(&memoryMap, index);
         loadedPageAmount += desc->amountOfPages;
-        index++;        
-        
+        index++;
+
         if (index >= memoryMap.descriptorAmount)
         {
             full = true;
@@ -108,7 +105,7 @@ static void pmm_lazy_load_memory(void)
 }
 #else
 static void pmm_load_memory(void)
-{    
+{
     for (uint64_t i = 0; i < memoryMap.descriptorAmount; i++)
     {
         const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(&memoryMap, i);
@@ -135,7 +132,7 @@ static void pmm_detect_memory(void)
 }
 
 void pmm_init(EfiMemoryMap* efiMemoryMap)
-{   
+{
     memoryMap = *efiMemoryMap;
     lock_init(&lock);
 
@@ -158,7 +155,7 @@ void* pmm_alloc(void)
         debug_panic("Physical Memory Manager full!");
 #endif
     }
-    
+
     void* address = firstPage;
     firstPage = firstPage->next;
     freePageAmount--;

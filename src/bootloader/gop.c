@@ -14,7 +14,7 @@ void gop_buffer_init(GopBuffer* buffer)
     if (EFI_ERROR(status))
     {
         Print(L"ERROR: Failed to locate GOP!\n\r");
-        
+
         while (1)
         {
             asm volatile("hlt");

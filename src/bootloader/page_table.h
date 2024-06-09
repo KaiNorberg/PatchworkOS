@@ -13,19 +13,16 @@
 #define PAGE_DIR_CUSTOM_1 (1 << 10)
 #define PAGE_DIR_CUSTOM_2 (1 << 11)
 
-#define PAGE_TABLE_GET_FLAG(entry, flag) \
-    (((entry) >> (flag)) & 1)
+#define PAGE_TABLE_GET_FLAG(entry, flag) (((entry) >> (flag)) & 1)
 
-#define PAGE_TABLE_GET_ADDRESS(entry) \
-    ((entry) & 0x000ffffffffff000)
+#define PAGE_TABLE_GET_ADDRESS(entry) ((entry) & 0x000ffffffffff000)
 
-#define PAGE_TABLE_LOAD(pageTable) \
-    asm volatile ("mov %0, %%cr3" : : "r" ((uint64_t)pageTable))
+#define PAGE_TABLE_LOAD(pageTable) asm volatile("mov %0, %%cr3" : : "r"((uint64_t)pageTable))
 
 typedef uint64_t PageEntry;
 
 typedef struct
-{ 
+{
     PageEntry entries[512];
 } PageTable;
 

@@ -9,11 +9,9 @@
 
 #define LOCAL_APIC_RECORD_GET_FLAG(record, flag) ((record->flags & flag) != 0)
 
-#define MADT_FOR_EACH(record, type, records)  \
-    for ((record) = (typeof(record))(records); \
-        (uint64_t)(record) < (uint64_t)madt + madt->header.length; \
-        record = (RecordHeader*)((uint64_t)record + record->length)) \
-    
+#define MADT_FOR_EACH(record, type, records) \
+    for ((record) = (typeof(record))(records); (uint64_t)(record) < (uint64_t)madt + madt->header.length; \
+         record = (RecordHeader*)((uint64_t)record + record->length))
 
 typedef struct PACKED
 {

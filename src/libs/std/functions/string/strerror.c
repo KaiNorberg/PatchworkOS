@@ -1,8 +1,7 @@
-#include <string.h>
 #include <errno.h>
+#include <string.h>
 
-static char* errorStrings[] =
-{
+static char* errorStrings[] = {
     "no error",
     "math argument out of domain",
     "math result not representable",
@@ -24,7 +23,7 @@ static char* errorStrings[] =
     "not a directory",
     "is a directory",
     "no such resource",
-    "busy"
+    "busy",
 };
 
 char* strerror(int error)

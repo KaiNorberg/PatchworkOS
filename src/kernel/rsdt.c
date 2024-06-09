@@ -48,7 +48,7 @@ void rsdt_init(Xsdp* xsdp)
 }
 
 SdtHeader* rsdt_lookup(const char* signature)
-{   
+{
     for (uint64_t i = 0; i < tableAmount; i++)
     {
         SdtHeader* table = VMM_LOWER_TO_HIGHER(xsdt->tables[i]);

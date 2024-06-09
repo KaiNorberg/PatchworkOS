@@ -31,7 +31,7 @@ int main(void)
         //Do stuff...
         if (event.type == WIN_EVENT_KEYBOARD)
         {
-            
+
         }
     }
 
@@ -42,7 +42,7 @@ int main(void)
 
 int main_wrapped(void)
 {
-    win_init_t initInfo;   
+    win_init_t initInfo;
     win_t window = win_init(&initInfo);
 
     //Event loop

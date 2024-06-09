@@ -2,13 +2,13 @@
 
 #include <string.h>
 
-#include "tty.h"
-#include "smp.h"
-#include "time.h"
 #include "debug.h"
+#include "defs.h"
 #include "kernel.h"
 #include "sched.h"
-#include "defs.h"
+#include "smp.h"
+#include "time.h"
+#include "tty.h"
 #include "utils.h"
 
 void main(BootInfo* bootInfo)
@@ -19,6 +19,6 @@ void main(BootInfo* bootInfo)
 
     sched_spawn("home:/bin/shell.elf");
 
-    //Exit init thread
+    // Exit init thread
     sched_thread_exit();
 }

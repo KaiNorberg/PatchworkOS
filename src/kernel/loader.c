@@ -4,29 +4,29 @@
 
 #include <common/elf.h>
 
+#include "debug.h"
 #include "defs.h"
 #include "pmm.h"
-#include "vmm.h"
-#include "tty.h"
 #include "sched.h"
+#include "tty.h"
 #include "utils.h"
-#include "debug.h"
+#include "vmm.h"
 
 static void* loader_allocate_stack(void)
-{    
+{
     Thread* thread = sched_thread();
 
     void* address = (void*)(VMM_LOWER_HALF_MAX - (CONFIG_USER_STACK * (thread->id + 1) + PAGE_SIZE * (thread->id)));
     if (vmm_alloc(address, CONFIG_USER_STACK, PROT_READ | PROT_WRITE) == NULL)
     {
-        debug_panic("Failed to allocate user stack");  
+        debug_panic("Failed to allocate user stack");
     }
 
     return address + CONFIG_USER_STACK;
 }
 
 static void* loader_load_program(void)
-{   
+{
     const char* executable = sched_process()->executable;
     File* file = vfs_open(executable);
     if (file == NULL)
@@ -34,7 +34,7 @@ static void* loader_load_program(void)
         sched_process_exit(EEXEC);
     }
     FILE_GUARD(file);
-    
+
     char parentDir[MAX_PATH];
     vfs_parent_dir(parentDir, executable);
     if (vfs_chdir(parentDir) == ERR)
@@ -53,7 +53,7 @@ static void* loader_load_program(void)
     }
 
     for (uint64_t i = 0; i < header.programHeaderAmount; i++)
-	{
+    {
         uint64_t offset = sizeof(ElfHeader) + header.programHeaderSize * i;
         if (FILE_CALL_METHOD(file, seek, offset, SEEK_SET) != offset)
         {
@@ -68,8 +68,8 @@ static void* loader_load_program(void)
 
         switch (programHeader.type)
         {
-	    case PT_LOAD:
-        {    
+        case PT_LOAD:
+        {
             if (vmm_alloc((void*)programHeader.virtAddr, programHeader.memorySize, PROT_READ | PROT_WRITE) == NULL)
             {
                 sched_process_exit(EEXEC);
@@ -79,9 +79,10 @@ static void* loader_load_program(void)
             {
                 sched_process_exit(EEXEC);
             }
-            
+
             memset((void*)programHeader.virtAddr, 0, programHeader.memorySize);
-            if (FILE_CALL_METHOD(file, read, (void*)programHeader.virtAddr, programHeader.fileSize) != programHeader.fileSize)
+            if (FILE_CALL_METHOD(file, read, (void*)programHeader.virtAddr, programHeader.fileSize) !=
+                programHeader.fileSize)
             {
                 sched_process_exit(EEXEC);
             }
@@ -93,10 +94,10 @@ static void* loader_load_program(void)
                     sched_process_exit(EEXEC);
                 }
             }
-		}
-	    break;
-		}
-	}
+        }
+        break;
+        }
+    }
 
     return (void*)header.entry;
 }

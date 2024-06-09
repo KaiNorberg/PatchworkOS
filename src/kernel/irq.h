@@ -24,7 +24,7 @@
 
 #define IRQ_MAX_HANDLER 16
 
-typedef void(*IrqHandler)(uint8_t irq);
+typedef void (*IrqHandler)(uint8_t irq);
 
 void irq_dispatch(TrapFrame* trapFrame);
 

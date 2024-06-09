@@ -12,7 +12,7 @@ void lock_acquire(Lock* lock)
 {
     interrupts_disable();
 
-    //Overflow does not matter
+    // Overflow does not matter
     uint32_t ticket = atomic_fetch_add(&lock->nextTicket, 1);
     while (atomic_load(&lock->nowServing) != ticket)
     {

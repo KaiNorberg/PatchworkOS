@@ -21,16 +21,17 @@ void page_table_map_pages(PageTable* pageTable, void* virtAddr, void* physAddr, 
 {
     for (uint64_t page = 0; page < pageAmount; page++)
     {
-        page_table_map(pageTable, (void*)((uint64_t)virtAddr + page * EFI_PAGE_SIZE), (void*)((uint64_t)physAddr + page * EFI_PAGE_SIZE), flags);
+        page_table_map(pageTable, (void*)((uint64_t)virtAddr + page * EFI_PAGE_SIZE),
+            (void*)((uint64_t)physAddr + page * EFI_PAGE_SIZE), flags);
     }
 }
 
 void page_table_map(PageTable* pageTable, void* virtAddr, void* physAddr, uint16_t flags)
-{        
+{
     if ((uint64_t)virtAddr % EFI_PAGE_SIZE != 0)
     {
         Print(L"ERROR: Attempt to map invalid virtual address!");
-    }    
+    }
     else if ((uint64_t)physAddr % EFI_PAGE_SIZE != 0)
     {
         Print(L"ERROR: Attempt to map invalid physical address!");
@@ -57,10 +58,10 @@ void page_table_map(PageTable* pageTable, void* virtAddr, void* physAddr, uint16
         pageTable->entries[pdpIndex] = entry;
     }
     else
-    {        
+    {
         pdp = (PageTable*)(PAGE_TABLE_GET_ADDRESS(entry));
     }
-    
+
     entry = pdp->entries[pdIndex];
     PageTable* pd;
     if (!PAGE_TABLE_GET_FLAG(entry, PAGE_FLAG_PRESENT))
@@ -72,7 +73,7 @@ void page_table_map(PageTable* pageTable, void* virtAddr, void* physAddr, uint16
         pdp->entries[pdIndex] = entry;
     }
     else
-    {          
+    {
         pd = (PageTable*)(PAGE_TABLE_GET_ADDRESS(entry));
     }
 
@@ -87,7 +88,7 @@ void page_table_map(PageTable* pageTable, void* virtAddr, void* physAddr, uint16
         pd->entries[ptIndex] = entry;
     }
     else
-    {   
+    {
 
         pt = (PageTable*)(PAGE_TABLE_GET_ADDRESS(entry));
     }

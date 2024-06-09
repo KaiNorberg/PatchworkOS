@@ -1,12 +1,12 @@
 #include "compositor.h"
 
-#include "tty.h"
 #include "sched.h"
 #include "sysfs.h"
+#include "tty.h"
 #include "utils.h"
 
-#include <stdlib.h>
 #include <errno.h>
+#include <stdlib.h>
 
 static Lock lock;
 
@@ -23,7 +23,7 @@ static void window_cleanup(File* file)
     LOCK_GUARD(&lock);
 
     Window* window = file->internal;
-    
+
     list_remove(window);
     free(window->buffer);
     free(window);
@@ -54,9 +54,9 @@ static uint64_t window_flush(File* file, const void* buffer, uint64_t size, cons
         if (rect.x + rect.width > frontbuffer.width || rect.y + rect.height > frontbuffer.height)
         {
             return ERROR(EINVAL);
-        }    
-        
-        for (uint64_t y = 0; y < rect.height; y++) 
+        }
+
+        for (uint64_t y = 0; y < rect.height; y++)
         {
             uint64_t offset = (rect.y + y) * sizeof(pixel_t) * window->info.width + rect.x * sizeof(pixel_t);
 
@@ -73,21 +73,21 @@ static uint64_t compositor_write(File* file, const void* buffer, uint64_t length
 {
     LOCK_GUARD(&lock);
 
-    //Check if write has already been successfully called.
+    // Check if write has already been successfully called.
     if (file->internal != NULL)
     {
         return ERROR(EACCES);
     }
- 
+
     if (length != sizeof(win_info_t))
     {
-        return ERROR(EINVAL);   
+        return ERROR(EINVAL);
     }
 
     const win_info_t* info = buffer;
-    if (info->width > frontbuffer.width || info->height > frontbuffer.height ||
-        info->x > frontbuffer.width || info->y > frontbuffer.height ||
-        info->x + info->width > frontbuffer.width || info->y + info->height > frontbuffer.height)
+    if (info->width > frontbuffer.width || info->height > frontbuffer.height || info->x > frontbuffer.width ||
+        info->y > frontbuffer.height || info->x + info->width > frontbuffer.width ||
+        info->y + info->height > frontbuffer.height)
     {
         return ERROR(EINVAL);
     }
@@ -127,14 +127,13 @@ static void compositor_draw_windows(void)
         LOCK_GUARD(&window->lock);
 
         // Copy one line at a time from window buffer to backbuffer
-        for (uint64_t y = 0; y < window->info.height; y++) 
+        for (uint64_t y = 0; y < window->info.height; y++)
         {
-            uint64_t bufferOffset = (window->info.x * sizeof(pixel_t)) + 
-                ((y + window->info.y) * sizeof(pixel_t) * frontbuffer.pixelsPerScanline);
+            uint64_t bufferOffset = (window->info.x * sizeof(pixel_t)) +
+                                    ((y + window->info.y) * sizeof(pixel_t) * frontbuffer.pixelsPerScanline);
             uint64_t windowOffset = y * sizeof(pixel_t) * window->info.width;
 
-            memcpy((void*)((uint64_t)backbuffer + bufferOffset), 
-                (void*)((uint64_t)window->buffer + windowOffset),
+            memcpy((void*)((uint64_t)backbuffer + bufferOffset), (void*)((uint64_t)window->buffer + windowOffset),
                 window->info.width * sizeof(pixel_t));
         }
     }
@@ -147,7 +146,7 @@ static void compositor_loop(void)
         memset(backbuffer, 0, frontbuffer.size);
         compositor_draw_windows();
         memcpy(frontbuffer.base, backbuffer, frontbuffer.size);
-    
+
         SCHED_WAIT(atomic_load(&redrawNeeded), UINT64_MAX);
         atomic_store(&redrawNeeded, false);
     }

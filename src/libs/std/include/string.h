@@ -2,12 +2,13 @@
 #define _STRING_H 1
 
 #if defined(__cplusplus)
-extern "C" {
+extern "C"
+{
 #endif
 
+#include "_AUX/NULL.h"
 #include "_AUX/config.h"
 #include "_AUX/size_t.h"
-#include "_AUX/NULL.h"
 
 void* memcpy(void* _RESTRICT dest, const void* _RESTRICT src, size_t count);
 void* memmove(void* dest, const void* src, size_t count);
@@ -28,5 +29,5 @@ char* strerror(int error);
 #if defined(__cplusplus)
 }
 #endif
- 
+
 #endif

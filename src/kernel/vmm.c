@@ -1,11 +1,11 @@
 #include "vmm.h"
 
-#include "utils.h"
+#include "debug.h"
 #include "lock.h"
 #include "pmm.h"
-#include "sched.h"
 #include "regs.h"
-#include "debug.h"
+#include "sched.h"
+#include "utils.h"
 
 #include <stdlib.h>
 
@@ -38,7 +38,7 @@ static void vmm_load_memory_map(EfiMemoryMap* memoryMap)
     {
         const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
 
-        page_table_map(kernelPageTable, desc->virtualStart, desc->physicalStart, desc->amountOfPages, 
+        page_table_map(kernelPageTable, desc->virtualStart, desc->physicalStart, desc->amountOfPages,
             PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
     }
 
@@ -138,7 +138,7 @@ void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot)
 
     uint64_t flags = vmm_prot_to_flags(prot);
     if (flags == ERR)
-    { 
+    {
         return NULLPTR(EACCES);
     }
     flags |= PAGE_FLAG_OWNED;
@@ -149,7 +149,7 @@ void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot)
     }
 
     vmm_align_region(&virtAddr, &length);
-    
+
     if (page_table_mapped(space->pageTable, virtAddr, SIZE_IN_PAGES(length)))
     {
         return NULLPTR(EEXIST);
@@ -165,7 +165,7 @@ void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot)
 }
 
 void* vmm_map(void* virtAddr, void* physAddr, uint64_t length, prot_t prot)
-{    
+{
     Space* space = &sched_process()->space;
     LOCK_GUARD(&space->lock);
 
@@ -181,7 +181,7 @@ void* vmm_map(void* virtAddr, void* physAddr, uint64_t length, prot_t prot)
 
     uint64_t flags = vmm_prot_to_flags(prot);
     if (flags == ERR)
-    { 
+    {
         return NULLPTR(EACCES);
     }
 
@@ -224,7 +224,7 @@ uint64_t vmm_protect(void* virtAddr, uint64_t length, prot_t prot)
 {
     uint64_t flags = vmm_prot_to_flags(prot);
     if (flags == ERR)
-    { 
+    {
         return ERROR(EACCES);
     }
 
@@ -246,7 +246,7 @@ uint64_t vmm_protect(void* virtAddr, uint64_t length, prot_t prot)
 bool vmm_mapped(const void* virtAddr, uint64_t length)
 {
     vmm_align_region((void**)&virtAddr, &length);
-    
+
     Space* space = &sched_process()->space;
     LOCK_GUARD(&space->lock);
 

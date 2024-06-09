@@ -1,18 +1,18 @@
-#include <stdlib.h>
-#include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <sys/io.h>
 #include <sys/proc.h>
 
 #include "libs/std/internal/heap.h"
 
-//TODO: Implement correct alignment rules
+// TODO: Implement correct alignment rules
 
 #ifdef __KERNEL__
+#include "lock.h"
 #include "pmm.h"
 #include "vmm.h"
-#include "lock.h"
 
 static Lock lock;
 static uintptr_t newAddress;
@@ -22,12 +22,13 @@ extern uint64_t _kernelEnd;
 static fd_t zeroResource;
 #endif
 
-#define ROUND_UP(number, multiple) ((((uint64_t)(number) + (uint64_t)(multiple) - 1) / (uint64_t)(multiple)) * (uint64_t)(multiple))
+#define ROUND_UP(number, multiple) \
+    ((((uint64_t)(number) + (uint64_t)(multiple) - 1) / (uint64_t)(multiple)) * (uint64_t)(multiple))
 
 static heap_header_t* firstBlock;
 
 static void _HeapBlockSplit(heap_header_t* block, uint64_t size)
-{   
+{
     heap_header_t* newBlock = (heap_header_t*)((uint64_t)block + sizeof(heap_header_t) + size);
     newBlock->size = block->size - sizeof(heap_header_t) - size;
     newBlock->next = block->next;
@@ -69,7 +70,7 @@ void _HeapRelease(void)
 }
 
 void _HeapInit(void)
-{    
+{
     newAddress = ROUND_UP((uint64_t)&_kernelEnd, PAGE_SIZE);
     firstBlock = _HeapBlockNew(PAGE_SIZE);
 
@@ -77,7 +78,7 @@ void _HeapInit(void)
 }
 #else
 static heap_header_t* _HeapBlockNew(uint64_t size)
-{    
+{
     size = ROUND_UP(size + sizeof(heap_header_t), PAGE_SIZE);
 
     heap_header_t* newBlock = mmap(zeroResource, NULL, size, PROT_READ | PROT_WRITE);
@@ -94,15 +95,13 @@ static heap_header_t* _HeapBlockNew(uint64_t size)
     return newBlock;
 }
 
-//TODO: Implement user space mutex
+// TODO: Implement user space mutex
 void _HeapAcquire(void)
 {
-
 }
 
 void _HeapRelease(void)
 {
-
 }
 
 void _HeapInit(void)
@@ -116,25 +115,25 @@ void* malloc(size_t size)
 {
     _HeapAcquire();
 
-    if (size == 0) 
+    if (size == 0)
     {
         return NULL;
     }
     size = ROUND_UP(size, HEAP_ALIGNMENT);
 
     heap_header_t* currentBlock = firstBlock;
-    while (true) 
+    while (true)
     {
-        if (!currentBlock->reserved) 
+        if (!currentBlock->reserved)
         {
-            if (currentBlock->size == size) 
+            if (currentBlock->size == size)
             {
                 currentBlock->reserved = true;
 
                 _HeapRelease();
                 return HEAP_HEADER_GET_START(currentBlock);
             }
-            else if (currentBlock->size > size + sizeof(heap_header_t) + HEAP_ALIGNMENT) 
+            else if (currentBlock->size > size + sizeof(heap_header_t) + HEAP_ALIGNMENT)
             {
                 currentBlock->reserved = true;
                 _HeapBlockSplit(currentBlock, size);
@@ -160,7 +159,7 @@ void* malloc(size_t size)
         return NULL;
     }
 
-    if (newBlock->size > size + sizeof(heap_header_t) + HEAP_ALIGNMENT) 
+    if (newBlock->size > size + sizeof(heap_header_t) + HEAP_ALIGNMENT)
     {
         _HeapBlockSplit(newBlock, size);
     }

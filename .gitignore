@@ -1,4 +1,5 @@
 .vscode
+.cache
 perf.data
 compile_commands.json
 build

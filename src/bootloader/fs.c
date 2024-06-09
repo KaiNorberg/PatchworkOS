@@ -6,13 +6,13 @@
 
 EFI_FILE* fs_open_root_volume(EFI_HANDLE imageHandle)
 {
-    EFI_LOADED_IMAGE *loaded_image = 0;
+    EFI_LOADED_IMAGE* loaded_image = 0;
     EFI_GUID lipGuid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
-    EFI_FILE_IO_INTERFACE *IOVolume;
+    EFI_FILE_IO_INTERFACE* IOVolume;
     EFI_GUID fsGuid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
-    EFI_FILE* volume; 
-	
-    uefi_call_wrapper(BS->HandleProtocol, 3, imageHandle, &lipGuid, (void **) &loaded_image);
+    EFI_FILE* volume;
+
+    uefi_call_wrapper(BS->HandleProtocol, 3, imageHandle, &lipGuid, (void**)&loaded_image);
 
     uefi_call_wrapper(BS->HandleProtocol, 3, loaded_image->DeviceHandle, &fsGuid, (VOID*)&IOVolume);
 
@@ -22,10 +22,11 @@ EFI_FILE* fs_open_root_volume(EFI_HANDLE imageHandle)
 }
 
 EFI_FILE* fs_open_raw(EFI_FILE* volume, CHAR16* path)
-{	
+{
     EFI_FILE* fileHandle;
-	
-    uefi_call_wrapper(volume->Open, 5, volume, &fileHandle, path, EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+
+    uefi_call_wrapper(volume->Open, 5, volume, &fileHandle, path, EFI_FILE_MODE_READ,
+        EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
 
     return fileHandle;
 }
@@ -46,7 +47,7 @@ EFI_FILE* fs_open(CHAR16* path, EFI_HANDLE imageHandle)
         while (1)
         {
             index++;
-        
+
             if (path[index] == L'/')
             {
                 CHAR16* nameStart = path + prevIndex;
@@ -58,9 +59,9 @@ EFI_FILE* fs_open(CHAR16* path, EFI_HANDLE imageHandle)
                 name[nameLength] = 0;
 
                 EFI_FILE* oldVolume = currentVolume;
-                
+
                 currentVolume = fs_open_raw(oldVolume, name);
-                
+
                 if (prevIndex != 1)
                 {
                     fs_close(oldVolume);
@@ -71,7 +72,7 @@ EFI_FILE* fs_open(CHAR16* path, EFI_HANDLE imageHandle)
                 prevIndex = index + 1;
             }
             else if (path[index] == L'\0')
-            {                
+            {
                 CHAR16* nameStart = path + prevIndex;
                 CHAR16* nameEnd = path + index;
                 uint64_t nameLength = ((uint64_t)nameEnd - (uint64_t)nameStart) / 2;
@@ -103,7 +104,7 @@ void fs_seek(EFI_FILE* file, uint64_t offset)
 }
 
 EFI_STATUS fs_read(EFI_FILE* file, uint64_t readSize, void* buffer)
-{	
+{
     return uefi_call_wrapper(file->Read, 3, file, &readSize, buffer);
 }
 

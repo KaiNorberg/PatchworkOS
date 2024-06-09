@@ -4,17 +4,18 @@
 #include <stdint.h>
 
 #if defined(__cplusplus)
-extern "C" {
+extern "C"
+{
 #endif
 
-#include "../_AUX/config.h"
 #include "../_AUX/ERR.h"
+#include "../_AUX/config.h"
+#include "../_AUX/fd_t.h"
 #include "../_AUX/pixel_t.h"
 #include "../_AUX/point_t.h"
 #include "../_AUX/rect_t.h"
-#include "../_AUX/fd_t.h"
 
-typedef struct win_info 
+typedef struct win_info
 {
     uint64_t width;
     uint64_t height;

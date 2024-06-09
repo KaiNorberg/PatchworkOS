@@ -2,10 +2,9 @@
 
 #include <sys/kbd.h>
 
-//TODO: Implement proper locale for keyboard.
+// TODO: Implement proper locale for keyboard.
 
-static char keyToAscii[] = 
-{
+static char keyToAscii[] = {
     [KEY_A] = 'a',
     [KEY_B] = 'b',
     [KEY_C] = 'c',
@@ -132,11 +131,10 @@ static char keyToAscii[] =
     [KEY_RIGHT_SUPER] = '\0',
     [KEY_ESC] = '\0',
     [KEY_SYSREQ] = '\0',
-    [KEY_EUROPE_2] = '\0'
+    [KEY_EUROPE_2] = '\0',
 };
 
-static char shiftedKeyToAscii[] = 
-{
+static char shiftedKeyToAscii[] = {
     [KEY_A] = 'A',
     [KEY_B] = 'B',
     [KEY_C] = 'C',
@@ -263,5 +261,5 @@ static char shiftedKeyToAscii[] =
     [KEY_RIGHT_SUPER] = '\0',
     [KEY_ESC] = '\0',
     [KEY_SYSREQ] = '\0',
-    [KEY_EUROPE_2] = '\0'
+    [KEY_EUROPE_2] = '\0',
 };

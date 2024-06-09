@@ -3,8 +3,8 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "fs.h"
 #include "char16.h"
+#include "fs.h"
 #include "vm.h"
 
 RamDir* ram_disk_load(EFI_HANDLE imageHandle)
@@ -49,81 +49,81 @@ RamDir* ram_disk_load_directory(EFI_FILE* volume, const char* name)
     dir->next = 0;
     dir->prev = 0;
 
-    while (1) 
-	{
-	    EFI_FILE_INFO* fileInfo;
-	    UINTN fileInfoSize = 0;
+    while (1)
+    {
+        EFI_FILE_INFO* fileInfo;
+        UINTN fileInfoSize = 0;
 
-	    EFI_STATUS status = uefi_call_wrapper(volume->Read, 3, volume, &fileInfoSize, 0);
-        if (status != EFI_BUFFER_TOO_SMALL) 
-		{
+        EFI_STATUS status = uefi_call_wrapper(volume->Read, 3, volume, &fileInfoSize, 0);
+        if (status != EFI_BUFFER_TOO_SMALL)
+        {
             break;
-		}
+        }
 
-	    fileInfo = AllocatePool(fileInfoSize);
+        fileInfo = AllocatePool(fileInfoSize);
 
-	    status = fs_read(volume, fileInfoSize, fileInfo);
-	    if (EFI_ERROR(status)) 
-		{
-		    Print(L"Error reading file info\n");
-		    FreePool(fileInfo);
-		    break;
-		}
+        status = fs_read(volume, fileInfoSize, fileInfo);
+        if (EFI_ERROR(status))
+        {
+            Print(L"Error reading file info\n");
+            FreePool(fileInfo);
+            break;
+        }
 
-	    if (fileInfo->Attribute & EFI_FILE_DIRECTORY) 
-		{
-		    if (StrCmp(fileInfo->FileName, L".") != 0 && StrCmp(fileInfo->FileName, L"..") != 0) 
-			{
-			    EFI_FILE_PROTOCOL* childVolume = fs_open_raw(volume, fileInfo->FileName);
+        if (fileInfo->Attribute & EFI_FILE_DIRECTORY)
+        {
+            if (StrCmp(fileInfo->FileName, L".") != 0 && StrCmp(fileInfo->FileName, L"..") != 0)
+            {
+                EFI_FILE_PROTOCOL* childVolume = fs_open_raw(volume, fileInfo->FileName);
 
-			    char childName[32];
-			    char16_to_char(fileInfo->FileName, childName);
-			    RamDir* child = ram_disk_load_directory(childVolume, childName);
+                char childName[32];
+                char16_to_char(fileInfo->FileName, childName);
+                RamDir* child = ram_disk_load_directory(childVolume, childName);
 
-			    if (dir->firstChild == 0)
-				{
-				    child->next = 0;
-				    child->prev = 0;
+                if (dir->firstChild == 0)
+                {
+                    child->next = 0;
+                    child->prev = 0;
 
-				    dir->firstChild = child;
-				    dir->lastChild = child;
-				}
-			    else
-				{
-				    child->next = 0;
-				    child->prev = dir->lastChild;
+                    dir->firstChild = child;
+                    dir->lastChild = child;
+                }
+                else
+                {
+                    child->next = 0;
+                    child->prev = dir->lastChild;
 
-				    dir->lastChild->next = child;
-				    dir->lastChild = child;
-				}
+                    dir->lastChild->next = child;
+                    dir->lastChild = child;
+                }
 
-			    fs_close(childVolume);
-			}
-		}
-	    else
-		{
-		    RamFile* file = ram_disk_load_file(volume, fileInfo->FileName);
-				
-		    if (dir->firstFile == 0)
-			{
-			    file->next = 0;
-			    file->prev = 0;
+                fs_close(childVolume);
+            }
+        }
+        else
+        {
+            RamFile* file = ram_disk_load_file(volume, fileInfo->FileName);
 
-			    dir->firstFile = file;
-			    dir->lastFile = file;
-			}
-		    else
-			{
-			    file->next = 0;
-			    file->prev = dir->lastFile;
+            if (dir->firstFile == 0)
+            {
+                file->next = 0;
+                file->prev = 0;
 
-			    dir->lastFile->next = file;
-			    dir->lastFile = file;
-			}	
-		}
+                dir->firstFile = file;
+                dir->lastFile = file;
+            }
+            else
+            {
+                file->next = 0;
+                file->prev = dir->lastFile;
 
-	    FreePool(fileInfo);
-	}
+                dir->lastFile->next = file;
+                dir->lastFile = file;
+            }
+        }
+
+        FreePool(fileInfo);
+    }
 
     return dir;
 }

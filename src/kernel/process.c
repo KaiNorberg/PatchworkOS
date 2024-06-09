@@ -1,21 +1,21 @@
 #include "process.h"
 
-#include "lock.h"
-#include "vmm.h"
-#include "pmm.h"
-#include "gdt.h"
-#include "regs.h"
 #include "debug.h"
+#include "gdt.h"
+#include "lock.h"
+#include "pmm.h"
+#include "regs.h"
 #include "smp.h"
+#include "vmm.h"
 
 #include <stdlib.h>
 #include <string.h>
 
 static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 
-Process* process_new(const char *executable)
+Process* process_new(const char* executable)
 {
-    Process *process = malloc(sizeof(Process));
+    Process* process = malloc(sizeof(Process));
     process->killed = false;
     process->id = atomic_fetch_add(&newPid, 1);
     memset(process->executable, 0, MAX_PATH);
@@ -53,7 +53,7 @@ Thread* thread_new(Process* process, void* entry, uint8_t priority)
     thread->trapFrame.cs = GDT_KERNEL_CODE;
     thread->trapFrame.ss = GDT_KERNEL_DATA;
     thread->trapFrame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
-    
+
     return thread;
 }
 
@@ -77,7 +77,7 @@ void thread_save(Thread* thread, const TrapFrame* trapFrame)
 }
 
 void thread_load(Thread* thread, TrapFrame* trapFrame)
-{    
+{
     Cpu* self = smp_self_unsafe();
 
     if (thread == NULL)
@@ -88,7 +88,7 @@ void thread_load(Thread* thread, TrapFrame* trapFrame)
         trapFrame->ss = GDT_KERNEL_DATA;
         trapFrame->rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
         trapFrame->rsp = (uint64_t)smp_self_unsafe()->idleStack + CPU_IDLE_STACK_SIZE;
-        
+
         space_load(NULL);
         tss_stack_load(&self->tss, NULL);
     }
@@ -98,7 +98,7 @@ void thread_load(Thread* thread, TrapFrame* trapFrame)
         thread->timeEnd = thread->timeStart + CONFIG_TIME_SLICE;
 
         *trapFrame = thread->trapFrame;
-        
+
         space_load(&thread->process->space);
         tss_stack_load(&self->tss, (void*)((uint64_t)thread->kernelStack + CONFIG_KERNEL_STACK));
         simd_context_load(&thread->simdContext);

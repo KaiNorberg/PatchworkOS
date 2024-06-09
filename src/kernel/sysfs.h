@@ -24,7 +24,8 @@ typedef struct Resource
     uint64_t (*open)(struct Resource* resource, File* file);
 } Resource;
 
-void resource_init(Resource* resource, const char* name, uint64_t (*open)(Resource* resource, File* file), void (*delete)(Resource* resource));
+void resource_init(Resource* resource, const char* name, uint64_t (*open)(Resource* resource, File* file),
+    void (*delete)(Resource* resource));
 
 Resource* resource_ref(Resource* resource);
 

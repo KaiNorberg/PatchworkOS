@@ -1,7 +1,7 @@
 #pragma once
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <sys/proc.h>
 
 #define TERMINAL_MAX_COMMAND MAX_PATH

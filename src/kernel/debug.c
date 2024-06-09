@@ -1,29 +1,29 @@
 #include "debug.h"
 
-#include "tty.h"
-#include "pmm.h"
-#include "time.h"
 #include "hpet.h"
+#include "pmm.h"
 #include "regs.h"
 #include "smp.h"
+#include "time.h"
+#include "tty.h"
 
 static int8_t xPos;
 static int8_t yPos;
 
 static void debug_set_x(int8_t x)
-{    
+{
     xPos = x;
     tty_set_column((tty_column_amount() - DEBUG_COLUMN_AMOUNT * DEBUG_COLUMN_WIDTH) / 2 + x * DEBUG_COLUMN_WIDTH);
 }
 
 static void debug_set_y(int8_t y)
-{    
+{
     yPos = y;
     tty_set_row((tty_row_amount() - DEBUG_ROW_AMOUNT) / 2 + y);
 }
 
 static void debug_start(const char* message)
-{ 
+{
     Pixel red;
     red.a = 255;
     red.r = 224;
@@ -95,7 +95,7 @@ void debug_panic(const char* message)
 
     tty_set_scale(1);
     tty_set_row(oldRow);
-    tty_set_column(oldColumn);        
+    tty_set_column(oldColumn);
 
     tty_release();
 
@@ -107,7 +107,7 @@ void debug_panic(const char* message)
 }
 
 void debug_exception(TrapFrame const* trapFrame, const char* message)
-{    
+{
     asm volatile("cli");
 
     tty_acquire();
@@ -127,7 +127,7 @@ void debug_exception(TrapFrame const* trapFrame, const char* message)
         debug_print("RFLAGS = ", trapFrame->rflags);
         debug_print("CS = ", trapFrame->cs);
         debug_print("SS = ", trapFrame->ss);
-        
+
         debug_move("Registers", 2, 0);
         debug_print("R9 = ", trapFrame->r9);
         debug_print("R8 = ", trapFrame->r8);
@@ -165,8 +165,8 @@ void debug_exception(TrapFrame const* trapFrame, const char* message)
 
     tty_set_scale(1);
     tty_set_row(oldRow);
-    tty_set_column(oldColumn);        
-    
+    tty_set_column(oldColumn);
+
     tty_release();
 
     smp_send_ipi_to_others(IPI_HALT);

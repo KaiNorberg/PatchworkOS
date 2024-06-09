@@ -1,19 +1,19 @@
 #include "trap.h"
 
+#include "apic.h"
+#include "debug.h"
 #include "defs.h"
 #include "gdt.h"
 #include "irq.h"
-#include "tty.h"
-#include "apic.h"
-#include "debug.h"
-#include "vmm.h"
 #include "regs.h"
-#include "utils.h"
-#include "syscall.h"
 #include "smp.h"
+#include "syscall.h"
+#include "tty.h"
+#include "utils.h"
+#include "vmm.h"
 
 static void exception_handler(TrapFrame const* trapFrame)
-{   
+{
     switch (trapFrame->vector)
     {
     default:
@@ -45,11 +45,11 @@ static void ipi_handler(TrapFrame const* trapFrame)
     break;
     case IPI_SCHEDULE:
     {
-        //Does nothing, scheduling is performed in vector_common
+        // Does nothing, scheduling is performed in vector_common
     }
     break;
     }
-    
+
     local_apic_eoi();
 }
 
@@ -70,11 +70,11 @@ void interrupts_disable(void)
         return;
     }
 
-    //Race condition does not matter
+    // Race condition does not matter
     uint64_t rflags = rflags_read();
 
     asm volatile("cli");
-    
+
     Cpu* cpu = smp_self_unsafe();
     if (cpu->cliAmount == 0)
     {
@@ -94,7 +94,7 @@ void interrupts_enable(void)
 
     cpu->cliAmount--;
     if (cpu->cliAmount == 0 && cpu->interruptsEnabled)
-    {    
+    {
         asm volatile("sti");
     }
 }

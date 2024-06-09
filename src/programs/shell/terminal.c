@@ -3,9 +3,8 @@
 #include "fb.h"
 
 #include <errno.h>
-#include <string.h>
-#include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 #include <sys/kbd.h>
 
 static Cursor cursor;
@@ -15,8 +14,7 @@ static uint32_t foreground;
 static uint32_t background;
 static uint64_t scale;
 
-static uint32_t colors[] = 
-{
+static uint32_t colors[] = {
     0xFF1E2229,
     0xFFED1515,
     0xFF44853A,
@@ -24,7 +22,7 @@ static uint32_t colors[] =
     0xFF1984D1,
     0xFF9B59B6,
     0xFF1ABC9C,
-    0xFFFCFCFC
+    0xFFFCFCFC,
 };
 
 static void terminal_char(char chr)
@@ -106,11 +104,13 @@ void terminal_update_cursor(void)
 
     if (cursor.visible)
     {
-        fb_char(' ', cursor.x * FB_CHAR_WIDTH * scale, cursor.y * FB_CHAR_HEIGHT * scale, scale, background, foreground);
+        fb_char(
+            ' ', cursor.x * FB_CHAR_WIDTH * scale, cursor.y * FB_CHAR_HEIGHT * scale, scale, background, foreground);
     }
     else
-    {        
-        fb_char(' ', cursor.x * FB_CHAR_WIDTH * scale, cursor.y * FB_CHAR_HEIGHT * scale, scale, foreground, background);     
+    {
+        fb_char(
+            ' ', cursor.x * FB_CHAR_WIDTH * scale, cursor.y * FB_CHAR_HEIGHT * scale, scale, foreground, background);
     }
 }
 
@@ -123,7 +123,7 @@ void terminal_clear(void)
 
 void terminal_put(const char chr)
 {
-    //This is kinda bad but it works for now.
+    // This is kinda bad but it works for now.
 
     switch (state)
     {
@@ -201,7 +201,7 @@ void terminal_put(const char chr)
 }
 
 void terminal_print(const char* string)
-{    
+{
     for (uint64_t i = 0; i < strlen(string); i++)
     {
         terminal_put(string[i]);
@@ -209,10 +209,10 @@ void terminal_print(const char* string)
 }
 
 void terminal_error(const char* string)
-{    
+{
     terminal_print("error: ");
     terminal_print(string);
-    
+
     if (errno != 0)
     {
         terminal_print(" - (");

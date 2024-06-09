@@ -1,7 +1,7 @@
 #pragma once
 
-#include "tss.h"
 #include "defs.h"
+#include "tss.h"
 
 #define GDT_NULL 0x00
 #define GDT_KERNEL_CODE 0x08
@@ -14,7 +14,7 @@ typedef struct PACKED
 {
     uint16_t size;
     uint64_t offset;
-} GdtDesc;  
+} GdtDesc;
 
 typedef struct PACKED
 {

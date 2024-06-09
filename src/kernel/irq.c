@@ -1,8 +1,8 @@
 #include "irq.h"
 
 #include "apic.h"
-#include "pic.h"
 #include "debug.h"
+#include "pic.h"
 
 static IrqHandler handlers[IRQ_AMOUNT][IRQ_MAX_HANDLER];
 
@@ -22,7 +22,7 @@ void irq_dispatch(TrapFrame* trapFrame)
         }
     }
 
-    //TODO: Replace with io apic
+    // TODO: Replace with io apic
     pic_eoi(irq);
 }
 

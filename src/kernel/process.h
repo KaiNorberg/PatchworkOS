@@ -1,17 +1,17 @@
 #pragma once
 
-#include <stdatomic.h>
 #include <errno.h>
+#include <stdatomic.h>
 
 #include "defs.h"
-#include "vmm.h"
 #include "list.h"
 #include "lock.h"
-#include "trap.h"
-#include "vfs.h"
 #include "pmm.h"
 #include "simd.h"
+#include "trap.h"
+#include "vfs.h"
 #include "vfs_context.h"
+#include "vmm.h"
 
 #define THREAD_PRIORITY_LEVELS 3
 #define THREAD_PRIORITY_MIN 0

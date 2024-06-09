@@ -2,7 +2,7 @@
 
 #include "defs.h"
 
-//Must be placed at the top of a struct.
+// Must be placed at the top of a struct.
 typedef struct ListEntry
 {
     struct ListEntry* prev;
@@ -15,17 +15,13 @@ typedef struct
 } List;
 
 #define LIST_FOR_EACH(elem, list) \
-    for ((elem) = (typeof(elem))((list)->head.next); \
-        (elem) != (typeof(elem))(list); \
-        (elem) = (typeof(elem))(((ListEntry*)(elem))->next))
+    for ((elem) = (typeof(elem))((list)->head.next); (elem) != (typeof(elem))(list); \
+         (elem) = (typeof(elem))(((ListEntry*)(elem))->next))
 
-//Allows for safely removing elements from the list while iterating over it.
+// Allows for safely removing elements from the list while iterating over it.
 #define LIST_FOR_EACH_SAFE(elem, temp, list) \
-    for ((elem) = (typeof(elem))((list)->head.next), \
-            (temp) = (typeof(elem))(((ListEntry*)(elem))->next); \
-        (elem) != (typeof(elem))(list); \
-        (elem) = (temp), \
-            (temp) = (typeof(elem))(((ListEntry*)(elem))->next))
+    for ((elem) = (typeof(elem))((list)->head.next), (temp) = (typeof(elem))(((ListEntry*)(elem))->next); \
+         (elem) != (typeof(elem))(list); (elem) = (temp), (temp) = (typeof(elem))(((ListEntry*)(elem))->next))
 
 static inline void list_entry_init(ListEntry* entry)
 {

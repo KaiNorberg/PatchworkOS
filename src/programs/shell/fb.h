@@ -8,7 +8,7 @@
 #define PSF_MAGIC 1078
 
 typedef struct __attribute__((packed))
-{ 
+{
     uint16_t magic;
     uint8_t mode;
     uint8_t charSize;

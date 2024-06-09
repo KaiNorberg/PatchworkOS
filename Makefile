@@ -34,6 +34,7 @@ BASE_C_FLAGS = -O3 \
 	-Wno-implicit-fallthrough \
 	-Wno-deprecated-non-prototype \
 	-fno-stack-protector \
+	-ffreestanding -nostdlib \
 	-I$(LIBS_SRC_DIR)/std/include \
 	-I$(SRC_DIR)
 
@@ -72,6 +73,9 @@ deploy:
 
 compile_commands:
 	bear -- make build 
+
+format:
+	find $(SRC_DIR)/ -iname '*.h' -o -iname '*.c' | xargs clang-format -style=file -i
 
 all: build deploy
 

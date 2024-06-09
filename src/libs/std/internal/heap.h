@@ -1,9 +1,9 @@
 #pragma once
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
-//TODO: Replace this with a better algorithm, slab allocator? buddy allocator?
+// TODO: Replace this with a better algorithm, slab allocator? buddy allocator?
 
 #define HEAP_ALIGNMENT 64
 #define HEAP_BUCKET_AMOUNT 10
@@ -12,7 +12,7 @@
 #define HEAP_HEADER_GET_END(block) ((void*)((uint64_t)block + sizeof(heap_header_t) + block->size))
 #define HEAP_HEADER_MAGIC 0xBC709F7DE48C8381
 
-//Should be exactly 64 bytes long
+// Should be exactly 64 bytes long
 typedef struct heap_header
 {
     uint64_t magic;

@@ -1,14 +1,14 @@
 #include "apic.h"
 
-#include "tty.h"
-#include "regs.h"
-#include "utils.h"
-#include "madt.h"
 #include "hpet.h"
-#include "time.h"
-#include "vmm.h"
-#include "rsdt.h"
+#include "madt.h"
 #include "pmm.h"
+#include "regs.h"
+#include "rsdt.h"
+#include "time.h"
+#include "tty.h"
+#include "utils.h"
+#include "vmm.h"
 
 static uintptr_t localApicBase;
 

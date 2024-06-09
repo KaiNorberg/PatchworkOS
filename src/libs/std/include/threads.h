@@ -2,7 +2,8 @@
 #define _THREADS_H 1
 
 #if defined(__cplusplus)
-extern "C" {
+extern "C"
+{
 #endif
 
 #include "_AUX/config.h"

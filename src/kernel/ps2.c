@@ -1,12 +1,12 @@
 #include "ps2.h"
 
-#include "tty.h"
+#include "debug.h"
 #include "io.h"
 #include "irq.h"
-#include "time.h"
-#include "debug.h"
-#include "utils.h"
 #include "sched.h"
+#include "time.h"
+#include "tty.h"
+#include "utils.h"
 
 #include <stdlib.h>
 #include <sys/kbd.h>
@@ -14,10 +14,9 @@
 static kbd_event_t eventBuffer[PS2_KEY_BUFFER_LENGTH];
 static uint64_t writeIndex = 0;
 
-static uint8_t scanCodeTable[] =
-{
-    0, 
-    KEY_ESC, 
+static uint8_t scanCodeTable[] = {
+    0,
+    KEY_ESC,
     KEY_1,
     KEY_2,
     KEY_3,
@@ -105,17 +104,17 @@ static uint8_t scanCodeTable[] =
     KEY_EUROPE_2,
     KEY_F11,
     KEY_F12,
-    KEY_KEYPAD_EQUAL
+    KEY_KEYPAD_EQUAL,
 };
 
 static uint8_t ps2_read(void)
-{    
+{
     uint64_t time = time_uptime();
 
     while (time + NANOSECONDS_PER_SECOND > time_uptime())
     {
         uint8_t status = io_inb(PS2_PORT_STATUS);
-		if (status & PS2_STATUS_OUT_FULL)
+        if (status & PS2_STATUS_OUT_FULL)
         {
             io_wait();
             return io_inb(PS2_PORT_DATA);
@@ -132,9 +131,9 @@ static void ps2_wait(void)
     while (time + NANOSECONDS_PER_SECOND > time_uptime())
     {
         uint8_t status = io_inb(PS2_PORT_STATUS);
-		if (status & PS2_STATUS_OUT_FULL)
+        if (status & PS2_STATUS_OUT_FULL)
         {
-            ps2_read(); //Discard
+            ps2_read(); // Discard
         }
         if (!(status & (PS2_STATUS_IN_FULL | PS2_STATUS_OUT_FULL)))
         {
@@ -164,13 +163,13 @@ static uint64_t ps2_kbd_scan(void)
     {
         return ERR;
     }
-    
+
     uint8_t scanCode = io_inb(PS2_PORT_DATA);
     return scanCode;
 }
 
 static void ps2_kbd_irq(uint8_t irq)
-{    
+{
     uint64_t scanCode = ps2_kbd_scan();
     if (scanCode == ERR)
     {
@@ -180,19 +179,16 @@ static void ps2_kbd_irq(uint8_t irq)
     bool released = scanCode & SCANCODE_RELEASED;
     uint64_t index = scanCode & ~SCANCODE_RELEASED;
 
-    if (index >= sizeof(scanCodeTable)/sizeof(scanCodeTable[0]))
+    if (index >= sizeof(scanCodeTable) / sizeof(scanCodeTable[0]))
     {
         return;
     }
     uint8_t key = scanCodeTable[index];
 
     uint64_t time = time_uptime();
-    kbd_event_t event =
-    {
-        .time = {.tv_sec = time / NANOSECONDS_PER_SECOND, .tv_nsec = time % NANOSECONDS_PER_SECOND},
+    kbd_event_t event = {.time = {.tv_sec = time / NANOSECONDS_PER_SECOND, .tv_nsec = time % NANOSECONDS_PER_SECOND},
         .type = released ? KBD_EVENT_TYPE_RELEASE : KBD_EVENT_TYPE_PRESS,
-        .code = key
-    };
+        .code = key};
 
     eventBuffer[writeIndex] = event;
     writeIndex = (writeIndex + 1) % PS2_KEY_BUFFER_LENGTH;
@@ -246,7 +242,7 @@ static void ps2_controller_init(void)
     ps2_cmd(PS2_CMD_KBD_DISABLE);
     ps2_cmd(PS2_CMD_AUX_DISABLE);
 
-    io_inb(PS2_PORT_DATA); //Discard
+    io_inb(PS2_PORT_DATA); // Discard
 
     ps2_cmd(PS2_CMD_CFG_READ);
     uint8_t cfg = ps2_read();

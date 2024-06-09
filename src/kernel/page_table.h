@@ -2,7 +2,7 @@
 
 #include "defs.h"
 
-//Note: Page table does not perform error checking.
+// Note: Page table does not perform error checking.
 
 #define PAGE_FLAG_PRESENT (1 << 0)
 #define PAGE_FLAG_WRITE (1 << 1)
@@ -14,13 +14,14 @@
 #define PAGE_FLAG_PAGE_SIZE (1 << 7)
 #define PAGE_FLAG_GLOBAL (1 << 8)
 
-//If the page is owned by the page table and should be freed when the page is unmapped.
+// If the page is owned by the page table and should be freed when the page is unmapped.
 #define PAGE_FLAG_OWNED (1 << 9)
 
 #define PAGE_ENTRY_AMOUNT 512
 #define PAGE_ENTRY_GET_ADDRESS(entry) ((void*)((entry) & 0x000FFFFFFFFFF000))
 
-//#define PAGE_TABLE_GET_INDEX(address, level) (((uint64_t)(address) & ((uint64_t)0x1FF << (((level) - 1) * 9 + 12))) >> (((level) - 1) * 9 + 12))
+// #define PAGE_TABLE_GET_INDEX(address, level) (((uint64_t)(address) & ((uint64_t)0x1FF << (((level) - 1) * 9 + 12)))
+// >> (((level) - 1) * 9 + 12))
 #define PAGE_TABLE_GET_INDEX(address, level) (((uint64_t)(address) >> (((level) - 1) * 9 + 12)) & 0x1FF)
 
 #define PAGE_INVALIDATE(address) asm volatile("invlpg %0" : : "m"(address))
@@ -28,7 +29,7 @@
 typedef uint64_t PageEntry;
 
 typedef struct
-{ 
+{
     PageEntry entries[PAGE_ENTRY_AMOUNT];
 } PageTable;
 

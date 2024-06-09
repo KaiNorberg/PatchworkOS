@@ -47,7 +47,7 @@ static uint64_t const_zero_open(Resource* resource, File* file)
 }
 
 void const_init(void)
-{    
+{
     tty_start_message("Constants initializing");
 
     resource_init(&one, "one", const_one_open, NULL);

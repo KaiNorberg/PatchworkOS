@@ -1,18 +1,12 @@
 #include "sched.h"
 
-#include "vmm.h"
-#include "smp.h"
-#include "gdt.h"
-#include "time.h"
-#include "debug.h"
-#include "regs.h"
-#include "irq.h"
 #include "apic.h"
-#include "hpet.h"
+#include "debug.h"
+#include "gdt.h"
 #include "loader.h"
-#include "utils.h"
+#include "smp.h"
+#include "time.h"
 #include "tty.h"
-#include "simd.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -31,7 +25,7 @@ static void sched_push(Thread* thread)
             length += queue_length(&scheduler->queues[p]);
         }
 
-        if (length == 0) //Bias towards idle cpus
+        if (length == 0) // Bias towards idle cpus
         {
             length--;
         }
@@ -42,7 +36,7 @@ static void sched_push(Thread* thread)
             best = i;
         }
     }
-    
+
     thread->state = THREAD_STATE_ACTIVE;
     queue_push(&smp_cpu(best)->scheduler.queues[thread->priority], thread);
 }
@@ -71,20 +65,20 @@ static Thread* sched_next_thread(Scheduler* scheduler)
             }
         }
     }
-    
+
     return NULL;
 }
 
 static void sched_switch_thread(TrapFrame* trapFrame, Scheduler* scheduler, Thread* next)
 {
-    if (scheduler->runningThread == NULL) //Load next thread or idle
+    if (scheduler->runningThread == NULL) // Load next thread or idle if (next == NULL)
     {
         thread_load(next, trapFrame);
         scheduler->runningThread = next;
     }
-    else 
-    {    
-        if (next != NULL) //Switch to next
+    else
+    {
+        if (next != NULL) // Switch to next
         {
             thread_save(scheduler->runningThread, trapFrame);
             queue_push(&scheduler->queues[scheduler->runningThread->priority], scheduler->runningThread);
@@ -93,7 +87,7 @@ static void sched_switch_thread(TrapFrame* trapFrame, Scheduler* scheduler, Thre
             thread_load(next, trapFrame);
             scheduler->runningThread = next;
         }
-        else if (scheduler->runningThread->state == THREAD_STATE_PAUSE) //Pause
+        else if (scheduler->runningThread->state == THREAD_STATE_PAUSE) // Pause
         {
             scheduler->runningThread->state = THREAD_STATE_ACTIVE;
 
@@ -105,7 +99,7 @@ static void sched_switch_thread(TrapFrame* trapFrame, Scheduler* scheduler, Thre
         }
         else
         {
-            //Keep running the same thread
+            // Keep running the same thread
         }
     }
 }
@@ -135,7 +129,7 @@ void sched_start(void)
     tty_start_message("Scheduler starting");
 
     sched_spawn_init_thread();
-    
+
     smp_send_ipi_to_others(IPI_START);
     SMP_SEND_IPI_TO_SELF(IPI_START);
 
@@ -179,7 +173,7 @@ void sched_pause(void)
 
 void sched_process_exit(uint64_t status)
 {
-    //TODO: Add handling for status
+    // TODO: Add handling for status
 
     Scheduler* scheduler = &smp_self()->scheduler;
     scheduler->runningThread->state = THREAD_STATE_KILLED;
@@ -262,7 +256,7 @@ void sched_schedule(TrapFrame* trapFrame)
     {
         next = sched_next_thread(scheduler);
 
-        //If next has been killed and is in userspace kill next.
+        // If next has been killed and is in userspace kill next.
         if (next != NULL && next->process->killed && next->trapFrame.cs != GDT_KERNEL_CODE)
         {
             list_push(&scheduler->killedThreads, next);

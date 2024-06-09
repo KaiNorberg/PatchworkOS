@@ -1,11 +1,11 @@
 #include "input.h"
 
-#include "terminal.h"
 #include "ascii.h"
+#include "terminal.h"
 
 #include <stdlib.h>
-#include <sys/proc.h>
 #include <sys/io.h>
+#include <sys/proc.h>
 
 static fd_t keyboard;
 

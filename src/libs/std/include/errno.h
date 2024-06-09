@@ -2,42 +2,43 @@
 #define _ERRNO_H 1
 
 #if defined(__cplusplus)
-extern "C" {
+extern "C"
+{
 #endif
 
-//TODO: Implement thread local storage for errno
+// TODO: Implement thread local storage for errno
 
+#include "_AUX/ERR.h"
 #include "_AUX/config.h"
 #include "_AUX/errno_t.h"
-#include "_AUX/ERR.h"
 
 int* _ErrnoFunc(void);
 
 #define errno (*_ErrnoFunc())
 
-#define EDOM 1 //Math argument out of domain
-#define ERANGE 2 //Math result not representable
-#define EILSEQ 3 //Illegal byte sequence
-#define EIMPL 4 //Not implemented
-#define EFAULT 5 //Bad address
-#define EEXIST 6 //Already exists
-#define ELETTER 7 //Invalid letter
-#define EPATH 8 //Invalid path
-#define EMFILE 9 //To many open files
-#define EBADF 10 //Bad file descriptor
-#define EACCES 11 //Permission denied
-#define EEXEC 12 //Bad executable
-#define ENOMEM 13 //Out of memory
-#define EREQ 14 //Bad request
-#define EFLAGS 15 //Bad flag/flags
-#define EINVAL 16 //Invalid argument
-#define EBUFFER 17 //Bad buffer
-#define ENOTDIR 18 //Not a directory
-#define EISDIR 19 //Is a directory
-#define ENORES 20 //No such resource
-#define EBUSY 21 //Busy
+#define EDOM 1     // Math argument out of domain
+#define ERANGE 2   // Math result not representable
+#define EILSEQ 3   // Illegal byte sequence
+#define EIMPL 4    // Not implemented
+#define EFAULT 5   // Bad address
+#define EEXIST 6   // Already exists
+#define ELETTER 7  // Invalid letter
+#define EPATH 8    // Invalid path
+#define EMFILE 9   // To many open files
+#define EBADF 10   // Bad file descriptor
+#define EACCES 11  // Permission denied
+#define EEXEC 12   // Bad executable
+#define ENOMEM 13  // Out of memory
+#define EREQ 14    // Bad request
+#define EFLAGS 15  // Bad flag/flags
+#define EINVAL 16  // Invalid argument
+#define EBUFFER 17 // Bad buffer
+#define ENOTDIR 18 // Not a directory
+#define EISDIR 19  // Is a directory
+#define ENORES 20  // No such resource
+#define EBUSY 21   // Busy
 
-//NOTE: Values retrievd from linux
+// NOTE: Values retrievd from linux
 /*
 #define EPERM 1 //Operation not permitted
 #define ENOENT 2 //No such file or directory

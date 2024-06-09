@@ -1,14 +1,14 @@
+#include <common/boot_info.h>
 #include <efi.h>
 #include <efilib.h>
-#include <common/boot_info.h>
 
-#include "gop.h"
-#include "psf.h"
-#include "rsdp.h"
-#include "loader.h"
-#include "ram_disk.h"
 #include "fs.h"
+#include "gop.h"
+#include "loader.h"
 #include "memory.h"
+#include "psf.h"
+#include "ram_disk.h"
+#include "rsdp.h"
 #include "vm.h"
 
 void* boot_info_populate(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, BootInfo* bootInfo)
@@ -26,7 +26,8 @@ void* boot_info_populate(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, 
     return entry;
 }
 
-EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
+EFI_STATUS
+efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
 {
     InitializeLib(imageHandle, imageHandle);
     Print(L"Hello from the bootloader!\n\r");

@@ -2,10 +2,11 @@
 
 #include "defs.h"
 #include "list.h"
+#include "process.h"
 #include "queue.h"
 #include "time.h"
-#include "process.h"
 
+// clang-format off
 #define SCHED_WAIT(condition, timeout) \
 ({ \
     nsec_t deadline = (timeout) == UINT64_MAX ? UINT64_MAX : (timeout) + time_uptime(); \
@@ -15,6 +16,7 @@
     } \
     0; \
 })
+// clang-format on
 
 typedef struct
 {

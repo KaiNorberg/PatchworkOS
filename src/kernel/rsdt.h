@@ -11,7 +11,7 @@ typedef struct PACKED
     uint8_t checksum;
     char oemId[6];
     uint8_t revision;
-    uint32_t rsdtAddress; 
+    uint32_t rsdtAddress;
     uint32_t length;
     uint64_t xsdtAddress;
     uint8_t extendedChecksum;
@@ -28,7 +28,7 @@ typedef struct PACKED
     uint8_t oemTableId[8];
     uint32_t oemRevision;
     uint32_t creatorID;
-    uint32_t creatorRevision; 
+    uint32_t creatorRevision;
 } SdtHeader;
 
 typedef struct PACKED

@@ -1,16 +1,16 @@
 #include "hpet.h"
 
+#include "pmm.h"
 #include "tty.h"
 #include "utils.h"
 #include "vmm.h"
-#include "pmm.h"
 
 static Hpet* hpet;
 static uintptr_t address;
 static uint64_t period;
 
 void hpet_init(void)
-{    
+{
     tty_start_message("HPET initializing");
 
     hpet = (Hpet*)rsdt_lookup("HPET");

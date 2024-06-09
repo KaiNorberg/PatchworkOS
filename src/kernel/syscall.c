@@ -1,22 +1,17 @@
 #include "syscall.h"
 
-#include <string.h>
 #include <errno.h>
+#include <string.h>
 #include <sys/win.h>
 
 #include "defs.h"
-#include "tty.h"
-#include "vmm.h"
-#include "time.h"
-#include "utils.h"
-#include "smp.h"
-#include "debug.h"
 #include "sched.h"
-#include "loader.h"
+#include "time.h"
+#include "vmm.h"
 
-//NOTE: Syscalls should always return a 64 bit value to prevent garbage from remaining in rax.
+// NOTE: Syscalls should always return a 64 bit value to prevent garbage from remaining in rax.
 
-//TODO: Improve verify funcs, improve multithreading string safety.
+// TODO: Improve verify funcs, improve multithreading string safety.
 static bool verify_pointer(const void* pointer, uint64_t length)
 {
     if (pointer == NULL)
@@ -288,7 +283,7 @@ uint64_t syscall_mprotect(void* address, uint64_t length, prot_t prot)
     {
         return ERROR(EFAULT);
     }
-    
+
     return vmm_protect(address, length, prot);
 }
 
@@ -297,8 +292,8 @@ uint64_t syscall_flush(fd_t fd, const void* buffer, uint64_t size, const rect_t*
     if (!verify_buffer(buffer, size))
     {
         return ERROR(EFAULT);
-    }    
-    
+    }
+
     if (rect != NULL && !verify_buffer(rect, sizeof(rect_t)))
     {
         return ERROR(EFAULT);
@@ -326,8 +321,7 @@ void syscall_handler_end(void)
     sched_yield();
 }
 
-void* syscallTable[] =
-{
+void* syscallTable[] = {
     syscall_process_exit,
     syscall_thread_exit,
     syscall_spawn,
@@ -349,5 +343,5 @@ void* syscallTable[] =
     syscall_mmap,
     syscall_munmap,
     syscall_mprotect,
-    syscall_flush
+    syscall_flush,
 };

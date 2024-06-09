@@ -1,8 +1,8 @@
 #include "gdt.h"
 
-#include "tty.h"
-#include "tss.h"
 #include "pmm.h"
+#include "tss.h"
+#include "tty.h"
 
 ALIGNED(PAGE_SIZE) static Gdt gdt;
 
@@ -35,7 +35,7 @@ void gdt_load(void)
     GdtDesc gdtDesc;
     gdtDesc.size = sizeof(Gdt) - 1;
     gdtDesc.offset = (uint64_t)&gdt;
-    gdt_load_descriptor(&gdtDesc);  
+    gdt_load_descriptor(&gdtDesc);
 }
 
 void gdt_load_tss(Tss* tss)
@@ -44,7 +44,7 @@ void gdt_load_tss(Tss* tss)
     gdt.tss.baseLow = (uint16_t)((uint64_t)tss);
     gdt.tss.baseLowerMiddle = (uint8_t)((uint64_t)tss >> 16);
     gdt.tss.access = 0x89;
-    gdt.tss.flagsAndLimitHigh = 0x00; //Flags = 0x0, LimitHigh = 0x0
+    gdt.tss.flagsAndLimitHigh = 0x00; // Flags = 0x0, LimitHigh = 0x0
     gdt.tss.baseUpperMiddle = (uint8_t)((uint64_t)tss >> (16 + 8));
     gdt.tss.baseHigh = (uint32_t)((uint64_t)tss >> (16 + 8 + 8));
     tss_load();

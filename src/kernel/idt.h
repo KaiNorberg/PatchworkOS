@@ -13,7 +13,7 @@
 
 typedef struct PACKED
 {
-    uint16_t isrLow;      
+    uint16_t isrLow;
     uint16_t codeSegment;
     uint8_t ist;
     uint8_t attributes;

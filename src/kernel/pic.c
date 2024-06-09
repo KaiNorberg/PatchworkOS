@@ -34,7 +34,7 @@ void pic_init(void)
     io_wait();
     io_outb(PIC2_DATA, a2);
     io_wait();
-    
+
     io_outb(PIC1_DATA, 0x0);
     io_outb(PIC2_DATA, 0x0);
 }
@@ -49,34 +49,34 @@ void pic_eoi(uint8_t irq)
     io_outb(PIC1_COMMAND, PIC_EOI);
 }
 
-void pic_set_mask(uint8_t irq) 
+void pic_set_mask(uint8_t irq)
 {
     uint16_t port;
-    if (irq < 8) 
+    if (irq < 8)
     {
         port = PIC1_DATA;
-    } 
-    else 
+    }
+    else
     {
         port = PIC2_DATA;
         irq -= 8;
     }
     uint8_t value = io_inb(port) | (uint8_t)(1 << irq);
-    io_outb(port, value);        
+    io_outb(port, value);
 }
- 
+
 void pic_clear_mask(uint8_t irq)
 {
     uint16_t port;
-    if (irq < 8) 
+    if (irq < 8)
     {
         port = PIC1_DATA;
-    } 
-    else 
+    }
+    else
     {
         port = PIC2_DATA;
         irq -= 8;
     }
     uint8_t value = io_inb(port) & ~(1 << irq);
-    io_outb(port, value);        
+    io_outb(port, value);
 }
