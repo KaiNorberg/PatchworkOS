@@ -135,8 +135,8 @@ static uint64_t sysfs_mount(Volume* volume)
     return 0;
 }
 
-void resource_init(Resource* resource, const char* name, uint64_t (*open)(Resource* resource, File* file),
-    void (*delete)(Resource* resource))
+void resource_init(
+    Resource* resource, const char* name, uint64_t (*open)(Resource* resource, File* file), void (*delete)(Resource* resource))
 {
     list_entry_init(&resource->base);
     resource->system = NULL;

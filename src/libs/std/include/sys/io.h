@@ -8,10 +8,11 @@ extern "C"
 {
 #endif
 
-#include "../_AUX/ERR.h"
-#include "../_AUX/NULL.h"
-#include "../_AUX/config.h"
-#include "../_AUX/fd_t.h"
+#include "_AUX/ERR.h"
+#include "_AUX/NULL.h"
+#include "_AUX/config.h"
+#include "_AUX/fd_t.h"
+#include "_AUX/rect_t.h"
 
 typedef struct pollfd
 {
@@ -59,6 +60,8 @@ uint64_t poll1(fd_t fd, uint16_t requested, uint64_t timeout);
 uint64_t stat(const char* path, stat_t* buffer);
 
 uint64_t ioctl(fd_t fd, uint64_t request, void* buffer, uint64_t length);
+
+uint64_t flush(fd_t fd, const void* buffer, uint64_t size, const rect_t* rect);
 
 #if defined(__cplusplus)
 }

@@ -437,8 +437,7 @@ static bool vfs_poll_condition(uint64_t* events, PollFile* files, uint64_t amoun
     {
         PollFile* file = &files[i];
 
-        if (file->requested & POLL_READ &&
-            (file->file->methods.read_avail != NULL && file->file->methods.read_avail(file->file)))
+        if (file->requested & POLL_READ && (file->file->methods.read_avail != NULL && file->file->methods.read_avail(file->file)))
         {
             file->occurred = POLL_READ;
             (*events)++;

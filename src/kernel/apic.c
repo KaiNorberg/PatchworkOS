@@ -2,11 +2,8 @@
 
 #include "hpet.h"
 #include "madt.h"
-#include "pmm.h"
 #include "regs.h"
-#include "rsdt.h"
 #include "time.h"
-#include "tty.h"
 #include "utils.h"
 #include "vmm.h"
 

@@ -36,8 +36,7 @@ void* madt_first_record(uint8_t type)
 void* madt_next_record(void* prev, uint8_t type)
 {
     for (RecordHeader* record = (RecordHeader*)((uint64_t)prev + ((RecordHeader*)prev)->length);
-         (uint64_t)record < (uint64_t)madt + madt->header.length;
-         record = (RecordHeader*)((uint64_t)record + record->length))
+         (uint64_t)record < (uint64_t)madt + madt->header.length; record = (RecordHeader*)((uint64_t)record + record->length))
     {
         if (record->type == type)
         {

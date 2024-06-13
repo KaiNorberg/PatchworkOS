@@ -1,7 +1,8 @@
 #include "idt.h"
 
-#include "pmm.h"
 #include "syscall.h"
+
+#include <sys/proc.h>
 
 ALIGNED(PAGE_SIZE) static Idt idt;
 

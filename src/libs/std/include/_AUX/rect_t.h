@@ -5,10 +5,14 @@
 
 typedef struct rect
 {
-    uint64_t x;
-    uint64_t y;
-    uint64_t width;
-    uint64_t height;
+    uint64_t left;
+    uint64_t right;
+    uint64_t bottom;
+    uint64_t top;
 } rect_t;
+
+#define RECT_WIDTH(rect) ((rect)->right - (rect)->left)
+#define RECT_HEIGHT(rect) ((rect)->top - (rect)->bottom)
+#define RECT_AREA(rect) (RECT_WIDTH(rect) * RECT_HEIGHT(rect))
 
 #endif

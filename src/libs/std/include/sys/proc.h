@@ -8,9 +8,10 @@ extern "C"
 {
 #endif
 
-#include "../_AUX/ERR.h"
-#include "../_AUX/config.h"
-#include "../_AUX/fd_t.h"
+#include "_AUX/ERR.h"
+#include "_AUX/config.h"
+#include "_AUX/fd_t.h"
+#include "_AUX/nsec_t.h"
 
 #define PAGE_SIZE 0x1000
 #define SIZE_IN_PAGES(size) (((size) + PAGE_SIZE - 1) / PAGE_SIZE)
@@ -23,10 +24,10 @@ extern "C"
 typedef uint64_t pid_t;
 typedef uint64_t tid_t;
 typedef uint64_t prot_t;
-typedef uint64_t nsec_t;
 
 // Nanoseconds per second.
 #define SEC ((nsec_t)1000000000)
+#define NEVER ((nsec_t)UINT64_MAX)
 
 nsec_t uptime(void);
 

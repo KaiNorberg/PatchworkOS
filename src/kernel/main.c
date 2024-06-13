@@ -1,15 +1,9 @@
 #include <common/boot_info.h>
 
-#include <string.h>
-
-#include "debug.h"
 #include "defs.h"
 #include "kernel.h"
 #include "sched.h"
-#include "smp.h"
-#include "time.h"
 #include "tty.h"
-#include "utils.h"
 
 void main(BootInfo* bootInfo)
 {
@@ -17,7 +11,7 @@ void main(BootInfo* bootInfo)
 
     tty_clear();
 
-    sched_spawn("home:/bin/shell.elf");
+    sched_spawn("home:/bin/calculator.elf");
 
     // Exit init thread
     sched_thread_exit();

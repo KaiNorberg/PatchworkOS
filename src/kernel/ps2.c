@@ -185,10 +185,11 @@ static void ps2_kbd_irq(uint8_t irq)
     }
     uint8_t key = scanCodeTable[index];
 
-    uint64_t time = time_uptime();
-    kbd_event_t event = {.time = {.tv_sec = time / NANOSECONDS_PER_SECOND, .tv_nsec = time % NANOSECONDS_PER_SECOND},
+    kbd_event_t event = {
+        .time = time_uptime(),
         .type = released ? KBD_EVENT_TYPE_RELEASE : KBD_EVENT_TYPE_PRESS,
-        .code = key};
+        .code = key,
+    };
 
     eventBuffer[writeIndex] = event;
     writeIndex = (writeIndex + 1) % PS2_KEY_BUFFER_LENGTH;

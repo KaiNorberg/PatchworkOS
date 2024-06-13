@@ -8,11 +8,11 @@ extern "C"
 {
 #endif
 
-#include "../_AUX/timespec.h"
+#include "_AUX/nsec_t.h"
 
 typedef struct kbd_event
 {
-    struct timespec time;
+    nsec_t time;
     uint8_t type;
     uint8_t code;
 } kbd_event_t;

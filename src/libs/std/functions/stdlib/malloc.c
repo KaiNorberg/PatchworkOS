@@ -107,7 +107,7 @@ void _HeapRelease(void)
 void _HeapInit(void)
 {
     zeroResource = open("sys:/const/zero");
-    firstBlock = _HeapBlockNew(PAGE_SIZE);
+    firstBlock = _HeapBlockNew(PAGE_SIZE - sizeof(heap_header_t));
 }
 #endif
 

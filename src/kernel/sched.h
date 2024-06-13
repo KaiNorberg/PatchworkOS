@@ -14,7 +14,7 @@
     { \
         sched_pause(); \
     } \
-    0; \
+    0ULL; \
 })
 // clang-format on
 

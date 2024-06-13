@@ -1,9 +1,13 @@
 #include "compositor.h"
 
+#include "_AUX/rect_t.h"
+#include "list.h"
+#include "lock.h"
+#include "queue.h"
 #include "sched.h"
+#include "sys/win.h"
 #include "sysfs.h"
 #include "tty.h"
-#include "utils.h"
 
 #include <errno.h>
 #include <stdlib.h>
@@ -18,10 +22,42 @@ static pixel_t* backbuffer;
 
 static _Atomic(bool) redrawNeeded;
 
+static void message_queue_init(MessageQueue* queue)
+{
+    memset(queue->queue, 0, sizeof(queue->queue));
+    queue->readIndex = 0;
+    queue->writeIndex = 0;
+    lock_init(&queue->lock);
+}
+
+static void message_queue_push(MessageQueue* queue, msg_t type, uint64_t size, void* data)
+{
+    LOCK_GUARD(&queue->lock);
+
+    queue->queue[queue->writeIndex] = (Message){
+        .size = size,
+        .type = type,
+    };
+    queue->writeIndex = (queue->writeIndex + 1) % MESSAGE_QUEUE_MAX;
+}
+
+static bool message_queue_pop(MessageQueue* queue, Message* out)
+{
+    LOCK_GUARD(&queue->lock);
+
+    if (queue->readIndex == queue->writeIndex)
+    {
+        return false;
+    }
+
+    *out = queue->queue[queue->readIndex];
+    queue->readIndex = (queue->readIndex + 1) % MESSAGE_QUEUE_MAX;
+
+    return true;
+}
+
 static void window_cleanup(File* file)
 {
-    LOCK_GUARD(&lock);
-
     Window* window = file->internal;
 
     list_remove(window);
@@ -29,9 +65,37 @@ static void window_cleanup(File* file)
     free(window);
 }
 
-static uint64_t window_read(File* file, void* buffer, uint64_t length)
+static uint64_t window_ioctl(File* file, uint64_t request, void* buffer, uint64_t length)
 {
-    return ERROR(EIMPL);
+    Window* window = file->internal;
+
+    switch (request)
+    {
+    case IOCTL_WIN_DISPATCH:
+    {
+        if (length != sizeof(ioctl_win_dispatch_t))
+        {
+            return ERROR(EINVAL);
+        }
+
+        ioctl_win_dispatch_t* dispatch = buffer;
+
+        Message message;
+        if (SCHED_WAIT(message_queue_pop(&window->messages, &message), dispatch->timeout) == ERR)
+        {
+            return ERR;
+        }
+
+        memcpy(dispatch->data, message.data, message.size);
+        dispatch->type = MSG_INIT;
+
+        return 0;
+    }
+    default:
+    {
+        return ERROR(EREQ);
+    }
+    }
 }
 
 static uint64_t window_flush(File* file, const void* buffer, uint64_t size, const rect_t* rectIn)
@@ -39,7 +103,7 @@ static uint64_t window_flush(File* file, const void* buffer, uint64_t size, cons
     Window* window = file->internal;
     LOCK_GUARD(&window->lock);
 
-    if (size != WIN_SIZE(&window->info))
+    if (size != window->width * window->height * sizeof(pixel_t))
     {
         return ERROR(EINVAL);
     }
@@ -51,17 +115,18 @@ static uint64_t window_flush(File* file, const void* buffer, uint64_t size, cons
     else
     {
         volatile rect_t rect = *rectIn;
-        if (rect.x + rect.width > frontbuffer.width || rect.y + rect.height > frontbuffer.height)
+        if (rect.right > frontbuffer.width || rect.bottom > frontbuffer.height || rect.left > frontbuffer.width ||
+            rect.top > frontbuffer.height)
         {
             return ERROR(EINVAL);
         }
 
-        for (uint64_t y = 0; y < rect.height; y++)
+        for (uint64_t y = rect.top; y < rect.bottom; y++)
         {
-            uint64_t offset = (rect.y + y) * sizeof(pixel_t) * window->info.width + rect.x * sizeof(pixel_t);
+            uint64_t offset = y * sizeof(pixel_t) * window->width + rect.left * sizeof(pixel_t);
 
             memcpy((void*)((uint64_t)window->buffer + offset), (void*)((uint64_t)buffer + offset),
-                rect.width * sizeof(pixel_t));
+                (rect.right - rect.left) * sizeof(pixel_t));
         }
     }
 
@@ -69,51 +134,66 @@ static uint64_t window_flush(File* file, const void* buffer, uint64_t size, cons
     return 0;
 }
 
-static uint64_t compositor_write(File* file, const void* buffer, uint64_t length)
+static uint64_t compositor_ioctl(File* file, uint64_t request, void* buffer, uint64_t length)
 {
     LOCK_GUARD(&lock);
 
-    // Check if write has already been successfully called.
-    if (file->internal != NULL)
+    switch (request)
     {
-        return ERROR(EACCES);
-    }
-
-    if (length != sizeof(win_info_t))
+    case IOCTL_WIN_INIT:
     {
-        return ERROR(EINVAL);
-    }
+        // Check if write has already been successfully called.
+        if (file->internal != NULL)
+        {
+            return ERROR(EBUSY);
+        }
 
-    const win_info_t* info = buffer;
-    if (info->width > frontbuffer.width || info->height > frontbuffer.height || info->x > frontbuffer.width ||
-        info->y > frontbuffer.height || info->x + info->width > frontbuffer.width ||
-        info->y + info->height > frontbuffer.height)
+        if (length != sizeof(ioctl_win_init_t))
+        {
+            return ERROR(EINVAL);
+        }
+
+        const ioctl_win_init_t* info = buffer;
+        if (info->width > frontbuffer.width || info->height > frontbuffer.height || info->x > frontbuffer.width ||
+            info->y > frontbuffer.height || info->x + info->width > frontbuffer.width ||
+            info->y + info->height > frontbuffer.height)
+        {
+            return ERROR(EINVAL);
+        }
+
+        Window* window = malloc(sizeof(Window));
+        list_entry_init(&window->base);
+        window->x = info->x;
+        window->y = info->y;
+        window->width = info->width;
+        window->height = info->height;
+        window->buffer = malloc(WIN_SIZE(info));
+        memset(window->buffer, 0, WIN_SIZE(info));
+        lock_init(&window->lock);
+        message_queue_init(&window->messages);
+        LOCK_GUARD(&window->lock);
+
+        file->internal = window;
+        file->cleanup = window_cleanup;
+        file->methods.flush = window_flush;
+        file->methods.ioctl = window_ioctl;
+
+        message_queue_push(&window->messages, MSG_INIT, 0, NULL);
+
+        list_push(&windows, window);
+        atomic_store(&redrawNeeded, true);
+        return 0;
+    }
+    default:
     {
-        return ERROR(EINVAL);
+        return ERROR(EREQ);
     }
-
-    Window* window = malloc(sizeof(Window));
-    list_entry_init(&window->base);
-    window->info = *info;
-    window->buffer = malloc(WIN_SIZE(info));
-    memset(window->buffer, 0, WIN_SIZE(info));
-    lock_init(&window->lock);
-    list_push(&windows, window);
-
-    LOCK_GUARD(&window->lock);
-    file->internal = window;
-    file->cleanup = window_cleanup;
-    file->methods.write = NULL;
-    file->methods.read = window_read;
-    file->methods.flush = window_flush;
-
-    atomic_store(&redrawNeeded, true);
-    return 0;
+    }
 }
 
 static uint64_t compositor_open(Resource* resource, File* file)
 {
-    file->methods.write = compositor_write;
+    file->methods.ioctl = compositor_ioctl;
     return 0;
 }
 
@@ -127,14 +207,14 @@ static void compositor_draw_windows(void)
         LOCK_GUARD(&window->lock);
 
         // Copy one line at a time from window buffer to backbuffer
-        for (uint64_t y = 0; y < window->info.height; y++)
+        for (uint64_t y = 0; y < window->height; y++)
         {
-            uint64_t bufferOffset = (window->info.x * sizeof(pixel_t)) +
-                                    ((y + window->info.y) * sizeof(pixel_t) * frontbuffer.pixelsPerScanline);
-            uint64_t windowOffset = y * sizeof(pixel_t) * window->info.width;
+            uint64_t bufferOffset =
+                (window->x * sizeof(pixel_t)) + (y + window->y) * sizeof(pixel_t) * frontbuffer.pixelsPerScanline;
+            uint64_t windowOffset = y * sizeof(pixel_t) * window->width;
 
             memcpy((void*)((uint64_t)backbuffer + bufferOffset), (void*)((uint64_t)window->buffer + windowOffset),
-                window->info.width * sizeof(pixel_t));
+                window->width * sizeof(pixel_t));
         }
     }
 }

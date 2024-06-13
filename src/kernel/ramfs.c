@@ -7,6 +7,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <sys/math.h>
 
 static Filesystem ramfs;
 static RamDir* root;

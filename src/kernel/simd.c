@@ -5,7 +5,6 @@
 #include "regs.h"
 #include "vmm.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 static uint8_t initContext[PAGE_SIZE];

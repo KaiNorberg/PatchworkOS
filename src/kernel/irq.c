@@ -1,6 +1,5 @@
 #include "irq.h"
 
-#include "apic.h"
 #include "debug.h"
 #include "pic.h"
 
