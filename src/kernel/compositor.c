@@ -167,8 +167,7 @@ static uint64_t compositor_ioctl(File* file, uint64_t request, void* buffer, uin
         window->y = info->y;
         window->width = info->width;
         window->height = info->height;
-        window->buffer = malloc(WIN_SIZE(info));
-        memset(window->buffer, 0, WIN_SIZE(info));
+        window->buffer = calloc(info->width * info->height, sizeof(pixel_t));
         lock_init(&window->lock);
         message_queue_init(&window->messages);
         LOCK_GUARD(&window->lock);
@@ -223,7 +222,7 @@ static void compositor_loop(void)
 {
     while (1)
     {
-        memset(backbuffer, 0, frontbuffer.size);
+        memset(backbuffer, 100, frontbuffer.size);
         compositor_draw_windows();
         memcpy(frontbuffer.base, backbuffer, frontbuffer.size);
 

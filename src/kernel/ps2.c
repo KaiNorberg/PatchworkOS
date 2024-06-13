@@ -187,7 +187,7 @@ static void ps2_kbd_irq(uint8_t irq)
 
     kbd_event_t event = {
         .time = time_uptime(),
-        .type = released ? KBD_EVENT_TYPE_RELEASE : KBD_EVENT_TYPE_PRESS,
+        .type = released ? KBD_RELEASE : KBD_PRESS,
         .code = key,
     };
 

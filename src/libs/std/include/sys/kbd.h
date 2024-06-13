@@ -17,8 +17,8 @@ typedef struct kbd_event
     uint8_t code;
 } kbd_event_t;
 
-#define KBD_EVENT_TYPE_PRESS 0
-#define KBD_EVENT_TYPE_RELEASE 1
+#define KBD_PRESS 0
+#define KBD_RELEASE 1
 
 #define KEY_A 0
 #define KEY_B 1

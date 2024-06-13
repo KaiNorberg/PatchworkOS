@@ -2,7 +2,10 @@
 #include "_AUX/point_t.h"
 #include "_AUX/rect_t.h"
 
+#include "theme.h"
+
 #include <stdlib.h>
+#include <sys/gfx.h>
 #include <sys/io.h>
 #include <sys/math.h>
 
@@ -15,16 +18,26 @@ typedef struct win
 {
     fd_t fd;
     pixel_t* buffer;
+    rect_t screenArea;
+    rect_t localArea;
+    rect_t clientArea;
     rect_t invalidArea;
-    point_t pos;
-    uint64_t width;
-    uint64_t height;
+    win_flag_t flags;
     procedure_t procedure;
 } win_t;
 
 static inline void win_invalidate(win_t* window, const rect_t* rect)
 {
-    if (RECT_AREA(&window->invalidArea) == 0)
+    if (rect == NULL)
+    {
+        window->invalidArea = (rect_t){
+            .left = 0,
+            .top = 0,
+            .right = RECT_WIDTH(&window->screenArea),
+            .bottom = RECT_HEIGHT(&window->screenArea),
+        };
+    }
+    else if (RECT_AREA(&window->invalidArea) == 0)
     {
         window->invalidArea = *rect;
     }
@@ -35,6 +48,55 @@ static inline void win_invalidate(win_t* window, const rect_t* rect)
         window->invalidArea.right = MAX(window->invalidArea.right, rect->right);
         window->invalidArea.bottom = MAX(window->invalidArea.bottom, rect->bottom);
     }
+}
+
+static inline void win_rect_to_client(win_t* window, rect_t* dest, const rect_t* src)
+{
+    *dest = (rect_t){
+        .left = src->left + window->clientArea.left,
+        .top = src->top + window->clientArea.top,
+        .right = src->right + window->clientArea.left,
+        .bottom = src->bottom + window->clientArea.top,
+    };
+}
+
+static inline uint64_t win_set_area(win_t* window, const rect_t* rect)
+{
+    if (window->buffer != NULL)
+    {
+        free(window->buffer);
+    }
+
+    window->screenArea = *rect;
+
+    window->localArea = (rect_t){
+        .left = 0,
+        .top = 0,
+        .right = RECT_WIDTH(&window->screenArea),
+        .bottom = RECT_HEIGHT(&window->screenArea),
+    };
+
+    if (window->flags & WIN_DECO)
+    {
+        window->clientArea = (rect_t){
+            .left = THEME_EDGE_WIDTH,
+            .top = THEME_EDGE_WIDTH + THEME_TOPBAR_HEIGHT,
+            .right = RECT_WIDTH(&window->screenArea) - THEME_EDGE_WIDTH,
+            .bottom = RECT_HEIGHT(&window->screenArea) - THEME_EDGE_WIDTH,
+        };
+    }
+    else
+    {
+        window->clientArea = window->localArea;
+    }
+
+    window->buffer = calloc(RECT_AREA(&window->screenArea), sizeof(pixel_t));
+    if (window->buffer == NULL)
+    {
+        return ERR;
+    }
+
+    return 0;
 }
 
 win_t* win_new(ioctl_win_init_t* info, procedure_t procedure, win_flag_t flags)
@@ -52,6 +114,16 @@ win_t* win_new(ioctl_win_init_t* info, procedure_t procedure, win_flag_t flags)
         return NULL;
     }
 
+    window->buffer = NULL;
+    window->flags = flags;
+    window->procedure = procedure;
+
+    if (window->flags & WIN_DECO)
+    {
+        info->width += THEME_EDGE_WIDTH * 2;
+        info->height += THEME_EDGE_WIDTH * 2 + THEME_TOPBAR_HEIGHT;
+    }
+
     if (ioctl(window->fd, IOCTL_WIN_INIT, info, sizeof(ioctl_win_init_t)) == ERR)
     {
         close(window->fd);
@@ -59,22 +131,32 @@ win_t* win_new(ioctl_win_init_t* info, procedure_t procedure, win_flag_t flags)
         return NULL;
     }
 
-    window->buffer = calloc(info->height * info->width, sizeof(pixel_t));
-    if (window->buffer == NULL)
+    rect_t screenArea = (rect_t){
+        .left = info->x,
+        .top = info->y,
+        .right = info->x + info->width,
+        .bottom = info->y + info->height,
+    };
+    win_set_area(window, &screenArea);
+
+    // Temp
+    if (window->flags & WIN_DECO)
     {
-        close(window->fd);
-        free(window);
-        return NULL;
+        uint64_t width = RECT_WIDTH(&window->screenArea);
+        gfx_rect(window->buffer, width, &window->localArea, THEME_BACKGROUND);
+        gfx_edge(window->buffer, width, &window->localArea, THEME_EDGE_WIDTH, THEME_HIGHLIGHT, THEME_SHADOW);
+
+        rect_t topBar = (rect_t){
+            .left = window->localArea.left + THEME_EDGE_WIDTH,
+            .top = window->localArea.top + THEME_EDGE_WIDTH,
+            .right = window->localArea.right - THEME_EDGE_WIDTH,
+            .bottom = window->localArea.top + THEME_TOPBAR_HEIGHT + THEME_EDGE_WIDTH,
+        };
+        gfx_rect(window->buffer, width, &topBar, THEME_TOPBAR_HIGHLIGHT);
     }
 
-    window->pos = (point_t){
-        .x = info->x,
-        .y = info->y,
-    };
-    window->width = info->width;
-    window->height = info->height;
-    window->invalidArea = (rect_t){};
-    window->procedure = procedure;
+    win_invalidate(window, NULL);
+    win_flush(window);
 
     return window;
 }
@@ -93,36 +175,29 @@ uint64_t win_free(win_t* window)
 
 uint64_t win_flush(win_t* window)
 {
-    uint64_t result = flush(window->fd, window->buffer, window->width * window->height * sizeof(pixel_t), NULL);
+    uint64_t result = flush(window->fd, window->buffer, RECT_AREA(&window->screenArea) * sizeof(pixel_t), &window->invalidArea);
     window->invalidArea = (rect_t){};
     return result;
 }
 
-void win_screen_rect(win_t* window, rect_t* rect)
+void win_screen_area(win_t* window, rect_t* rect)
 {
-    *rect = (rect_t){
-        .left = window->pos.x,
-        .top = window->pos.y,
-        .right = window->pos.x + window->width,
-        .bottom = window->pos.y + window->height,
-    };
+    *rect = window->screenArea;
 }
 
-void win_local_rect(win_t* window, rect_t* rect)
+void win_local_area(win_t* window, rect_t* rect)
 {
-    *rect = (rect_t){
-        .left = 0,
-        .top = 0,
-        .right = window->width,
-        .bottom = window->height,
-    };
+    *rect = window->localArea;
+}
+
+void win_client_area(win_t* window, rect_t* rect)
+{
+    *rect = window->clientArea;
 }
 
 msg_t win_dispatch(win_t* window, nsec_t timeout)
 {
-    ioctl_win_dispatch_t dispatch = {
-        .timeout = timeout,
-    };
+    ioctl_win_dispatch_t dispatch = {.timeout = timeout};
     if (ioctl(window->fd, IOCTL_WIN_DISPATCH, &dispatch, sizeof(ioctl_win_dispatch_t)) == ERR)
     {
         return ERR;
@@ -138,17 +213,11 @@ msg_t win_dispatch(win_t* window, nsec_t timeout)
     return dispatch.type;
 }
 
-uint64_t gfx_rect(win_t* window, const rect_t* rect, pixel_t pixel)
+void win_draw_rect(win_t* window, const rect_t* rect, pixel_t pixel)
 {
-    for (uint64_t x = rect->left; x < rect->right; x++)
-    {
-        for (uint64_t y = rect->top; y < rect->bottom; y++)
-        {
-            window->buffer[x + y * window->width] = pixel;
-        }
-    }
+    rect_t clientRect;
+    win_rect_to_client(window, &clientRect, rect);
 
-    win_invalidate(window, rect);
-
-    return 0;
+    gfx_rect(window->buffer, RECT_WIDTH(&window->screenArea), &clientRect, pixel);
+    win_invalidate(window, &clientRect);
 }

@@ -17,14 +17,6 @@ extern "C"
 #include "_AUX/point_t.h"
 #include "_AUX/rect_t.h"
 
-typedef uint64_t win_flag_t;
-
-#define WIN_SIZE(info) ((info)->width * (info)->height * sizeof(pixel_t))
-
-#ifndef _WIN_INTERNAL
-typedef void win_t;
-#endif
-
 typedef uint64_t msg_t;
 
 typedef struct msg_kbd
@@ -59,6 +51,15 @@ typedef struct ioctl_win_dispatch
 #define IOCTL_WIN_INIT 0
 #define IOCTL_WIN_DISPATCH 1
 
+#ifndef _WIN_INTERNAL
+typedef void win_t;
+#endif
+
+typedef uint64_t win_flag_t;
+
+#define WIN_NONE 0
+#define WIN_DECO (1 << 0)
+
 typedef uint64_t (*procedure_t)(win_t*, msg_t, void* data);
 
 win_t* win_new(ioctl_win_init_t* info, procedure_t procedure, win_flag_t flags);
@@ -67,17 +68,15 @@ uint64_t win_free(win_t* window);
 
 uint64_t win_flush(win_t* window);
 
-void win_screen_rect(win_t* window, rect_t* rect);
+void win_screen_area(win_t* window, rect_t* rect);
 
-void win_local_rect(win_t* window, rect_t* rect);
+void win_local_area(win_t* window, rect_t* rect);
+
+void win_client_area(win_t* window, rect_t* rect);
 
 msg_t win_dispatch(win_t* window, nsec_t timeout);
 
-uint64_t win_send(win_t* window, msg_t msg, void* data);
-
-uint64_t gfx_bitfield(win_t* window, const rect_t* rect, const void* buffer);
-
-uint64_t gfx_rect(win_t* window, const rect_t* rect, pixel_t pixel);
+void win_draw_rect(win_t* window, const rect_t* rect, pixel_t pixel);
 
 #if defined(__cplusplus)
 }

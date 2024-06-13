@@ -12,7 +12,7 @@ typedef struct rect
 } rect_t;
 
 #define RECT_WIDTH(rect) ((rect)->right - (rect)->left)
-#define RECT_HEIGHT(rect) ((rect)->top - (rect)->bottom)
+#define RECT_HEIGHT(rect) ((rect)->bottom - (rect)->top)
 #define RECT_AREA(rect) (RECT_WIDTH(rect) * RECT_HEIGHT(rect))
 
 #endif
