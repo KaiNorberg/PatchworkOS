@@ -145,7 +145,7 @@ win_t* win_new(const rect_t* rect, procedure_t procedure, win_flag_t flags)
         return NULL;
     }
 
-    window->fd = open("sys:/srv/win");
+    window->fd = open("sys:/srv/dwm");
     if (window->fd == ERR)
     {
         free(window);
