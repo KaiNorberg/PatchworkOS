@@ -26,12 +26,21 @@ typedef struct msg_kbd
     uint8_t code;
 } msg_kbd_t;
 
+#define MSG_MAX_DATA 48
+
+// Kernel messages
 #define MSG_NONE 0
-#define MSG_INIT 1
-#define MSG_QUIT 2
-#define MSG_KBD 3
-#define MSG_MOUSE 4
-#define MSG_USER (1ULL << 63)
+#define MSG_KBD 1
+#define MSG_MOUSE 2
+
+// Library messages
+#define LMSG_BASE (1ULL << 62)
+#define LMSG_INIT (LMSG_BASE + 0)
+#define LMSG_QUIT (LMSG_BASE + 1)
+#define LMSG_REDRAW (LMSG_BASE + 2)
+
+// User messages
+#define UMSG_BASE (1ULL << 63)
 
 typedef struct ioctl_win_init
 {
@@ -41,15 +50,31 @@ typedef struct ioctl_win_init
     uint64_t height;
 } ioctl_win_init_t;
 
-typedef struct ioctl_win_dispatch
+typedef struct ioctl_win_receive
 {
     nsec_t timeout;
     msg_t type;
-    uint8_t data[48];
-} ioctl_win_dispatch_t;
+    uint8_t data[MSG_MAX_DATA];
+} ioctl_win_receive_t;
+
+typedef struct ioctl_win_send
+{
+    msg_t type;
+    uint8_t data[MSG_MAX_DATA];
+} ioctl_win_send_t;
+
+typedef struct ioctl_win_move
+{
+    uint64_t x;
+    uint64_t y;
+    uint64_t width;
+    uint64_t height;
+} ioctl_win_move_t;
 
 #define IOCTL_WIN_INIT 0
-#define IOCTL_WIN_DISPATCH 1
+#define IOCTL_WIN_RECEIVE 1
+#define IOCTL_WIN_SEND 2
+#define IOCTL_WIN_MOVE 3
 
 #ifndef _WIN_INTERNAL
 typedef void win_t;
@@ -62,19 +87,25 @@ typedef uint64_t win_flag_t;
 
 typedef uint64_t (*procedure_t)(win_t*, msg_t, void* data);
 
-win_t* win_new(ioctl_win_init_t* info, procedure_t procedure, win_flag_t flags);
+void win_client_to_window(rect_t* rect, win_flag_t flags);
+
+void win_window_to_client(rect_t* rect, win_flag_t flags);
+
+win_t* win_new(const rect_t* rect, procedure_t procedure, win_flag_t flags);
 
 uint64_t win_free(win_t* window);
 
 uint64_t win_flush(win_t* window);
 
-void win_screen_area(win_t* window, rect_t* rect);
+msg_t win_dispatch(win_t* window, nsec_t timeout);
 
-void win_local_area(win_t* window, rect_t* rect);
+uint64_t win_send(win_t* window, msg_t type, void* data, uint64_t size);
+
+uint64_t win_move(win_t* window, const rect_t* rect);
+
+void win_window_area(win_t* window, rect_t* rect);
 
 void win_client_area(win_t* window, rect_t* rect);
-
-msg_t win_dispatch(win_t* window, nsec_t timeout);
 
 void win_draw_rect(win_t* window, const rect_t* rect, pixel_t pixel);
 

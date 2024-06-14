@@ -1,9 +1,7 @@
 #include "compositor.h"
 
-#include "_AUX/rect_t.h"
 #include "list.h"
 #include "lock.h"
-#include "queue.h"
 #include "sched.h"
 #include "sys/win.h"
 #include "sysfs.h"
@@ -30,14 +28,20 @@ static void message_queue_init(MessageQueue* queue)
     lock_init(&queue->lock);
 }
 
-static void message_queue_push(MessageQueue* queue, msg_t type, uint64_t size, void* data)
+static void message_queue_push(MessageQueue* queue, msg_t type, const void* data, uint64_t size)
 {
     LOCK_GUARD(&queue->lock);
 
-    queue->queue[queue->writeIndex] = (Message){
+    Message message = (Message){
         .size = size,
         .type = type,
     };
+    if (data != NULL)
+    {
+        memcpy(queue->queue[queue->writeIndex].data, data, size);
+    }
+
+    queue->queue[queue->writeIndex] = message;
     queue->writeIndex = (queue->writeIndex + 1) % MESSAGE_QUEUE_MAX;
 }
 
@@ -71,24 +75,67 @@ static uint64_t window_ioctl(File* file, uint64_t request, void* buffer, uint64_
 
     switch (request)
     {
-    case IOCTL_WIN_DISPATCH:
+    case IOCTL_WIN_RECEIVE:
     {
-        if (length != sizeof(ioctl_win_dispatch_t))
+        if (length != sizeof(ioctl_win_receive_t))
+        {
+            return ERROR(EINVAL);
+        }
+        ioctl_win_receive_t* receive = buffer;
+
+        Message message;
+        if (SCHED_WAIT(message_queue_pop(&window->messages, &message), receive->timeout) == SCHED_WAIT_TIMEOUT)
+        {
+            receive->type = MSG_NONE;
+            return 0;
+        }
+
+        memcpy(receive->data, message.data, message.size);
+        receive->type = message.type;
+
+        return 0;
+    }
+    case IOCTL_WIN_SEND:
+    {
+        if (length != sizeof(ioctl_win_send_t))
+        {
+            return ERROR(EINVAL);
+        }
+        const ioctl_win_send_t* send = buffer;
+
+        message_queue_push(&window->messages, send->type, send->data, MSG_MAX_DATA);
+
+        return 0;
+    }
+    case IOCTL_WIN_MOVE:
+    {
+        if (length != sizeof(ioctl_win_move_t))
+        {
+            return ERROR(EINVAL);
+        }
+        const ioctl_win_move_t* move = buffer;
+
+        if (move->width > frontbuffer.width || move->height > frontbuffer.height || move->x > frontbuffer.width ||
+            move->y > frontbuffer.height || move->x + move->width > frontbuffer.width ||
+            move->y + move->height > frontbuffer.height)
         {
             return ERROR(EINVAL);
         }
 
-        ioctl_win_dispatch_t* dispatch = buffer;
+        LOCK_GUARD(&window->lock);
+        window->x = move->x;
+        window->y = move->y;
 
-        Message message;
-        if (SCHED_WAIT(message_queue_pop(&window->messages, &message), dispatch->timeout) == ERR)
+        if (window->width != move->width || window->height != move->height)
         {
-            return ERR;
+            window->width = move->width;
+            window->height = move->height;
+
+            free(window->buffer);
+            window->buffer = calloc(window->width * window->height, sizeof(pixel_t));
         }
 
-        memcpy(dispatch->data, message.data, message.size);
-        dispatch->type = MSG_INIT;
-
+        atomic_store(&redrawNeeded, true);
         return 0;
     }
     default:
@@ -153,21 +200,21 @@ static uint64_t compositor_ioctl(File* file, uint64_t request, void* buffer, uin
             return ERROR(EINVAL);
         }
 
-        const ioctl_win_init_t* info = buffer;
-        if (info->width > frontbuffer.width || info->height > frontbuffer.height || info->x > frontbuffer.width ||
-            info->y > frontbuffer.height || info->x + info->width > frontbuffer.width ||
-            info->y + info->height > frontbuffer.height)
+        const ioctl_win_init_t* init = buffer;
+        if (init->width > frontbuffer.width || init->height > frontbuffer.height || init->x > frontbuffer.width ||
+            init->y > frontbuffer.height || init->x + init->width > frontbuffer.width ||
+            init->y + init->height > frontbuffer.height)
         {
             return ERROR(EINVAL);
         }
 
         Window* window = malloc(sizeof(Window));
         list_entry_init(&window->base);
-        window->x = info->x;
-        window->y = info->y;
-        window->width = info->width;
-        window->height = info->height;
-        window->buffer = calloc(info->width * info->height, sizeof(pixel_t));
+        window->x = init->x;
+        window->y = init->y;
+        window->width = init->width;
+        window->height = init->height;
+        window->buffer = calloc(init->width * init->height, sizeof(pixel_t));
         lock_init(&window->lock);
         message_queue_init(&window->messages);
         LOCK_GUARD(&window->lock);
@@ -176,8 +223,6 @@ static uint64_t compositor_ioctl(File* file, uint64_t request, void* buffer, uin
         file->cleanup = window_cleanup;
         file->methods.flush = window_flush;
         file->methods.ioctl = window_ioctl;
-
-        message_queue_push(&window->messages, MSG_INIT, 0, NULL);
 
         list_push(&windows, window);
         atomic_store(&redrawNeeded, true);
@@ -226,7 +271,7 @@ static void compositor_loop(void)
         compositor_draw_windows();
         memcpy(frontbuffer.base, backbuffer, frontbuffer.size);
 
-        SCHED_WAIT(atomic_load(&redrawNeeded), UINT64_MAX);
+        SCHED_WAIT(atomic_load(&redrawNeeded), NEVER);
         atomic_store(&redrawNeeded, false);
     }
 }
@@ -238,7 +283,6 @@ void compositor_init(GopBuffer* gopBuffer)
     frontbuffer = *gopBuffer;
     frontbuffer.base = vmm_kernel_map(NULL, gopBuffer->base, gopBuffer->size);
     backbuffer = malloc(frontbuffer.size);
-
     list_init(&windows);
     lock_init(&lock);
     atomic_init(&redrawNeeded, true);

@@ -11,7 +11,11 @@ uint64_t procedure(win_t* window, msg_t type, void* data)
 {
     switch (type)
     {
-    case MSG_INIT:
+    case LMSG_INIT:
+    {
+    }
+    break;
+    case LMSG_REDRAW:
     {
         rect_t rect = (rect_t){
             .left = 5,
@@ -22,13 +26,8 @@ uint64_t procedure(win_t* window, msg_t type, void* data)
         win_draw_rect(window, &rect, 0xFFFF00FF);
     }
     break;
-    case MSG_QUIT:
+    case LMSG_QUIT:
     {
-    }
-    break;
-    case MSG_KBD:
-    {
-        msg_kbd_t* msg = data;
     }
     break;
     }
@@ -38,21 +37,21 @@ uint64_t procedure(win_t* window, msg_t type, void* data)
 
 int main(void)
 {
-    ioctl_win_init_t info;
-    info.x = 500;
-    info.y = 200;
-    info.width = WINDOW_WIDTH;
-    info.height = WINDOW_HEIGHT;
+    rect_t rect = (rect_t){
+        .left = 500,
+        .top = 200,
+        .right = 500 + WINDOW_WIDTH,
+        .bottom = 200 + WINDOW_HEIGHT,
+    };
+    win_client_to_window(&rect, WIN_DECO);
 
-    win_t* window = win_new(&info, procedure, WIN_DECO);
+    win_t* window = win_new(&rect, procedure, WIN_DECO);
     if (window == NULL)
     {
         exit(EXIT_FAILURE);
     }
 
-    while (win_dispatch(window, NEVER) != MSG_QUIT)
-    {
-    }
+    while (win_dispatch(window, NEVER) != LMSG_QUIT);
 
     win_free(window);
 

@@ -3,7 +3,6 @@
 #include "defs.h"
 #include "list.h"
 #include "lock.h"
-#include "queue.h"
 
 #include <common/boot_info.h>
 
@@ -15,7 +14,7 @@ typedef struct
 {
     msg_t type;
     uint64_t size;
-    uint8_t data[48];
+    uint8_t data[MSG_MAX_DATA];
 } Message;
 
 typedef struct
