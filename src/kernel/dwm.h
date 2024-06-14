@@ -37,4 +37,4 @@ typedef struct
     MessageQueue messages;
 } Window;
 
-void compositor_init(GopBuffer* gopBuffer);
+void dwm_init(GopBuffer* gopBuffer);

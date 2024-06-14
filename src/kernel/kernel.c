@@ -1,7 +1,7 @@
 #include "kernel.h"
 
 #include "apic.h"
-#include "compositor.h"
+#include "dwm.h"
 #include "const.h"
 #include "gdt.h"
 #include "hpet.h"
@@ -74,7 +74,7 @@ void kernel_init(BootInfo* bootInfo)
 
     ps2_init();
     const_init();
-    compositor_init(&bootInfo->gopBuffer);
+    dwm_init(&bootInfo->gopBuffer);
 
     boot_info_deallocate(bootInfo);
 }

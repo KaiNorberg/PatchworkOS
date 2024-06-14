@@ -1,4 +1,4 @@
-#include "compositor.h"
+#include "dwm.h"
 
 #include "list.h"
 #include "lock.h"
@@ -13,7 +13,7 @@
 static Lock lock;
 
 static List windows;
-static Resource compositor;
+static Resource dwm;
 
 static GopBuffer frontbuffer;
 static pixel_t* backbuffer;
@@ -181,7 +181,7 @@ static uint64_t window_flush(File* file, const void* buffer, uint64_t size, cons
     return 0;
 }
 
-static uint64_t compositor_ioctl(File* file, uint64_t request, void* buffer, uint64_t length)
+static uint64_t dwm_ioctl(File* file, uint64_t request, void* buffer, uint64_t length)
 {
     LOCK_GUARD(&lock);
 
@@ -235,13 +235,13 @@ static uint64_t compositor_ioctl(File* file, uint64_t request, void* buffer, uin
     }
 }
 
-static uint64_t compositor_open(Resource* resource, File* file)
+static uint64_t dwm_open(Resource* resource, File* file)
 {
-    file->methods.ioctl = compositor_ioctl;
+    file->methods.ioctl = dwm_ioctl;
     return 0;
 }
 
-static void compositor_draw_windows(void)
+static void dwm_draw_windows(void)
 {
     LOCK_GUARD(&lock);
 
@@ -250,7 +250,6 @@ static void compositor_draw_windows(void)
     {
         LOCK_GUARD(&window->lock);
 
-        // Copy one line at a time from window buffer to backbuffer
         for (uint64_t y = 0; y < window->height; y++)
         {
             uint64_t bufferOffset =
@@ -263,12 +262,12 @@ static void compositor_draw_windows(void)
     }
 }
 
-static void compositor_loop(void)
+static void dwm_loop(void)
 {
     while (1)
     {
         memset(backbuffer, 100, frontbuffer.size);
-        compositor_draw_windows();
+        dwm_draw_windows();
         memcpy(frontbuffer.base, backbuffer, frontbuffer.size);
 
         SCHED_WAIT(atomic_load(&redrawNeeded), NEVER);
@@ -276,9 +275,9 @@ static void compositor_loop(void)
     }
 }
 
-void compositor_init(GopBuffer* gopBuffer)
+void dwm_init(GopBuffer* gopBuffer)
 {
-    tty_start_message("Compositor initializing");
+    tty_start_message("Desktop Window Manager initializing");
 
     frontbuffer = *gopBuffer;
     frontbuffer.base = vmm_kernel_map(NULL, gopBuffer->base, gopBuffer->size);
@@ -287,10 +286,10 @@ void compositor_init(GopBuffer* gopBuffer)
     lock_init(&lock);
     atomic_init(&redrawNeeded, true);
 
-    resource_init(&compositor, "win", compositor_open, NULL);
-    sysfs_expose(&compositor, "/srv");
+    resource_init(&dwm, "dwm", dwm_open, NULL);
+    sysfs_expose(&dwm, "/srv");
 
-    sched_thread_spawn(compositor_loop, THREAD_PRIORITY_MAX);
+    sched_thread_spawn(dwm_loop, THREAD_PRIORITY_MAX);
 
     tty_end_message(TTY_MESSAGE_OK);
 }
