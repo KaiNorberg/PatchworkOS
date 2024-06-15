@@ -25,8 +25,8 @@
         nsec_t end = time_uptime(); \
         tty_acquire(); \
         tty_print("Time taken: "); \
-        tty_printi(end - start); \
-        tty_print(" NS\n"); \
+        tty_printi((end - start) / (SEC / 1000)); \
+        tty_print(" MS\n"); \
         tty_release(); \
     })
 

@@ -1,58 +1,58 @@
 #include <stdint.h>
 #include <sys/gfx.h>
 
-void gfx_rect(pixel_t* buffer, uint64_t width, const rect_t* rect, pixel_t pixel)
+void gfx_rect(surface_t* surface, const rect_t* rect, pixel_t pixel)
 {
     for (uint64_t x = rect->left; x < rect->right; x++)
     {
         for (uint64_t y = rect->top; y < rect->bottom; y++)
         {
-            buffer[x + y * width] = pixel;
+            surface->buffer[x + y * surface->stride] = pixel;
         }
     }
 }
 
-void gfx_edge(pixel_t* buffer, uint64_t width, const rect_t* rect, uint64_t edgeWidth, pixel_t foreground, pixel_t background)
+void gfx_edge(surface_t* surface, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background)
 {
     rect_t leftRect = (rect_t){
         .left = rect->left,
         .top = rect->top,
-        .right = rect->left + edgeWidth,
-        .bottom = rect->bottom - edgeWidth,
+        .right = rect->left + width,
+        .bottom = rect->bottom - width,
     };
-    gfx_rect(buffer, width, &leftRect, foreground);
+    gfx_rect(surface, &leftRect, foreground);
 
     rect_t topRect = (rect_t){
-        .left = rect->left + edgeWidth,
+        .left = rect->left + width,
         .top = rect->top,
-        .right = rect->right - edgeWidth,
-        .bottom = rect->top + edgeWidth,
+        .right = rect->right - width,
+        .bottom = rect->top + width,
     };
-    gfx_rect(buffer, width, &topRect, foreground);
+    gfx_rect(surface, &topRect, foreground);
 
     rect_t rightRect = (rect_t){
-        .left = rect->right - edgeWidth,
-        .top = rect->top + edgeWidth,
+        .left = rect->right - width,
+        .top = rect->top + width,
         .right = rect->right,
         .bottom = rect->bottom,
     };
-    gfx_rect(buffer, width, &rightRect, background);
+    gfx_rect(surface, &rightRect, background);
 
     rect_t bottomRect = (rect_t){
-        .left = rect->left + edgeWidth,
-        .top = rect->bottom - edgeWidth,
-        .right = rect->right - edgeWidth,
+        .left = rect->left + width,
+        .top = rect->bottom - width,
+        .right = rect->right - width,
         .bottom = rect->bottom,
     };
-    gfx_rect(buffer, width, &bottomRect, background);
+    gfx_rect(surface, &bottomRect, background);
 
-    for (uint64_t y = 0; y < edgeWidth; y++)
+    for (uint64_t y = 0; y < width; y++)
     {
-        for (uint64_t x = 0; x < edgeWidth; x++)
+        for (uint64_t x = 0; x < width; x++)
         {
-            pixel_t color = x + y < edgeWidth ? foreground : background;
-            buffer[(rect->right - edgeWidth + x) + (rect->top + y) * width] = color;
-            buffer[(rect->left + x) + (rect->bottom - edgeWidth + y) * width] = color;
+            pixel_t color = x + y < width ? foreground : background;
+            surface->buffer[(rect->right - width + x) + (rect->top + y) * surface->stride] = color;
+            surface->buffer[(rect->left + x) + (rect->bottom - width + y) * surface->stride] = color;
         }
     }
 }

@@ -1,8 +1,8 @@
 #include "kernel.h"
 
 #include "apic.h"
-#include "dwm.h"
 #include "const.h"
+#include "dwm.h"
 #include "gdt.h"
 #include "hpet.h"
 #include "idt.h"
@@ -41,6 +41,8 @@ static void boot_info_deallocate(BootInfo* bootInfo)
 
     tty_end_message(TTY_MESSAGE_OK);
 }
+
+char buffer1[1920 * 1080 * 4];
 
 void kernel_init(BootInfo* bootInfo)
 {

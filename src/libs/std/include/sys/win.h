@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <sys/gfx.h>
+#include <sys/io.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -48,6 +50,7 @@ typedef struct ioctl_win_init
     uint64_t y;
     uint64_t width;
     uint64_t height;
+    char name[MAX_PATH];
 } ioctl_win_init_t;
 
 typedef struct ioctl_win_receive
@@ -77,25 +80,37 @@ typedef struct ioctl_win_move
 #define IOCTL_WIN_MOVE 3
 
 #ifndef _WIN_INTERNAL
-typedef void win_t;
+typedef uint8_t win_t;
 #endif
 
 typedef uint64_t win_flag_t;
 
 #define WIN_NONE 0
 #define WIN_DECO (1 << 0)
+#define WIN_NORESIZE (1 << 1)
+
+typedef struct win_theme
+{
+    uint64_t edgeWidth;
+    pixel_t highlight;
+    pixel_t shadow;
+    pixel_t background;
+    pixel_t topbarHighlight;
+    pixel_t topbarShadow;
+    uint64_t topbarHeight;
+} win_theme_t;
 
 typedef uint64_t (*procedure_t)(win_t*, msg_t, void* data);
 
-void win_client_to_window(rect_t* rect, win_flag_t flags);
+void win_default_theme(win_theme_t* theme);
 
-void win_window_to_client(rect_t* rect, win_flag_t flags);
+void win_client_to_window(rect_t* rect, const win_theme_t* theme, win_flag_t flags);
 
-win_t* win_new(const rect_t* rect, procedure_t procedure, win_flag_t flags);
+void win_window_to_client(rect_t* rect, const win_theme_t* theme, win_flag_t flags);
+
+win_t* win_new(const char* name, const rect_t* rect, const win_theme_t* theme, procedure_t procedure, win_flag_t flags);
 
 uint64_t win_free(win_t* window);
-
-uint64_t win_flush(win_t* window);
 
 msg_t win_dispatch(win_t* window, nsec_t timeout);
 
@@ -107,7 +122,9 @@ void win_window_area(win_t* window, rect_t* rect);
 
 void win_client_area(win_t* window, rect_t* rect);
 
-void win_draw_rect(win_t* window, const rect_t* rect, pixel_t pixel);
+void win_window_surface(win_t* window, surface_t* surface);
+
+void win_client_surface(win_t* window, surface_t* surface);
 
 #if defined(__cplusplus)
 }

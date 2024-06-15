@@ -250,6 +250,7 @@ static void dwm_draw_windows(void)
     {
         LOCK_GUARD(&window->lock);
 
+        // Copy one line at a time from window buffer to backbuffer
         for (uint64_t y = 0; y < window->height; y++)
         {
             uint64_t bufferOffset =
