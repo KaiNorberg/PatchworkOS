@@ -4,8 +4,8 @@
 #include "io.h"
 #include "irq.h"
 #include "sched.h"
+#include "splash.h"
 #include "time.h"
-#include "tty.h"
 #include "utils.h"
 
 #include <stdlib.h>
@@ -249,11 +249,7 @@ static void ps2_controller_init(void)
     uint8_t cfg = ps2_read();
 
     ps2_cmd(PS2_CMD_CONTROLLER_TEST);
-    if (ps2_read() != 0x55)
-    {
-        tty_print("Controller test failed");
-        tty_end_message(TTY_MESSAGE_ER);
-    }
+    SPLASH_ASSERT(ps2_read() == 0x55, "self test fail");
 
     cfg |= PS2_CFG_KBD_IRQ;
 
@@ -266,7 +262,7 @@ static void ps2_controller_init(void)
 
 void ps2_init(void)
 {
-    tty_start_message("PS2 initializing");
+    SPLASH_FUNC();
 
     ps2_controller_init();
 
@@ -275,6 +271,4 @@ void ps2_init(void)
     Resource* keyboard = malloc(sizeof(Resource));
     resource_init(keyboard, "ps2", ps2_kbd_open, NULL);
     sysfs_expose(keyboard, "/kbd");
-
-    tty_end_message(TTY_MESSAGE_OK);
 }

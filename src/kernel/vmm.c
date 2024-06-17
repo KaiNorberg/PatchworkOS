@@ -1,5 +1,6 @@
 #include "vmm.h"
 
+#include "common/boot_info.h"
 #include "debug.h"
 #include "lock.h"
 #include "pmm.h"
@@ -108,10 +109,12 @@ void space_load(Space* space)
     }
 }
 
-void vmm_init(EfiMemoryMap* memoryMap)
+void vmm_init(EfiMemoryMap* memoryMap, GopBuffer* gopBuffer)
 {
     vmm_load_memory_map(memoryMap);
     vmm_deallocate_boot_page_table(memoryMap);
+
+    gopBuffer->base = vmm_kernel_map(NULL, gopBuffer->base, gopBuffer->size);
 }
 
 void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t length)

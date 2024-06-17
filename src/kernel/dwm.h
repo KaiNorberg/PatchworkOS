@@ -38,3 +38,5 @@ typedef struct
 } Window;
 
 void dwm_init(GopBuffer* gopBuffer);
+
+void dwm_start(void);

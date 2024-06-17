@@ -3,13 +3,13 @@
 #include "pmm.h"
 #include "regs.h"
 #include "smp.h"
+#include "splash.h"
 #include "time.h"
-#include "tty.h"
 
 static int8_t xPos;
 static int8_t yPos;
 
-static void debug_set_x(int8_t x)
+/*static void debug_set_x(int8_t x)
 {
     xPos = x;
     tty_set_column((tty_column_amount() - DEBUG_COLUMN_AMOUNT * DEBUG_COLUMN_WIDTH) / 2 + x * DEBUG_COLUMN_WIDTH);
@@ -71,11 +71,27 @@ static void debug_print(const char* string, uint64_t value)
 
     debug_set_x(xPos);
     debug_set_y(yPos + 1);
+}*/
+
+void debug_init(GopBuffer* gopBuffer, BootFont* screenFont)
+{
+    SPLASH_FUNC();
+
+    /*win_default_theme(&theme);
+
+    font.scale = SPLASH_NAME_SCALE;
+    font.glyphs = malloc(screenFont->glyphsSize);
+    memcpy(font.glyphs, screenFont->glyphs, screenFont->glyphsSize);
+
+    surface.buffer = gopBuffer->base;
+    surface.height = gopBuffer->height;
+    surface.width = gopBuffer->width;
+    surface.stride = gopBuffer->stride;*/
 }
 
 void debug_panic(const char* message)
 {
-    while (1)
+    /*while (1)
     {
         asm volatile("cli");
 
@@ -101,12 +117,15 @@ void debug_panic(const char* message)
         tty_release();
 
         smp_send_ipi_to_others(IPI_HALT);
-    }
+    }*/
+
+    while (1)
+        ;
 }
 
 void debug_exception(TrapFrame const* trapFrame, const char* message)
 {
-    while (1)
+    /*while (1)
     {
         asm volatile("cli");
 
@@ -170,5 +189,7 @@ void debug_exception(TrapFrame const* trapFrame, const char* message)
         tty_release();
 
         smp_send_ipi_to_others(IPI_HALT);
-    }
+    }*/
+    while (1)
+        ;
 }

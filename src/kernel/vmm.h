@@ -29,7 +29,7 @@ void space_cleanup(Space* space);
 
 void space_load(Space* space);
 
-void vmm_init(EfiMemoryMap* memoryMap);
+void vmm_init(EfiMemoryMap* memoryMap, GopBuffer* gopBuffer);
 
 void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t length);
 

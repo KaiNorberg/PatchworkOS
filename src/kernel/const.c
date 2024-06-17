@@ -1,7 +1,7 @@
 #include "const.h"
 
+#include "splash.h"
 #include "sysfs.h"
-#include "tty.h"
 #include "vmm.h"
 
 #include <stdlib.h>
@@ -48,13 +48,11 @@ static uint64_t const_zero_open(Resource* resource, File* file)
 
 void const_init(void)
 {
-    tty_start_message("Constants initializing");
+    SPLASH_FUNC();
 
     resource_init(&one, "one", const_one_open, NULL);
     sysfs_expose(&one, "/const");
 
     resource_init(&zero, "zero", const_zero_open, NULL);
     sysfs_expose(&zero, "/const");
-
-    tty_end_message(TTY_MESSAGE_OK);
 }

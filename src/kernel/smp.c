@@ -6,8 +6,8 @@
 #include "kernel.h"
 #include "madt.h"
 #include "regs.h"
+#include "splash.h"
 #include "trampoline.h"
-#include "tty.h"
 #include "utils.h"
 
 #include <stdlib.h>
@@ -80,13 +80,7 @@ static NOINLINE void smp_startup(void)
             uint8_t id = newId;
             newId++;
 
-            if (cpu_init(&cpus[id], id, record->localApicId) == ERR)
-            {
-                tty_print("CPU ");
-                tty_printi(id);
-                tty_print(" failed to start!");
-                tty_end_message(TTY_MESSAGE_ER);
-            }
+            SPLASH_ASSERT(cpu_init(&cpus[id], id, record->localApicId) != ERR, "ap fail");
         }
 
         record = madt_next_record(record, MADT_RECORD_TYPE_LOCAL_APIC);
@@ -95,7 +89,7 @@ static NOINLINE void smp_startup(void)
 
 void smp_init(void)
 {
-    tty_start_message("SMP initializing");
+    SPLASH_FUNC();
 
     smp_detect_cpus();
     cpus = calloc(cpuAmount, sizeof(Cpu));
@@ -105,8 +99,6 @@ void smp_init(void)
     trampoline_cleanup();
 
     initialized = true;
-
-    tty_end_message(TTY_MESSAGE_OK);
 }
 
 void smp_entry(void)

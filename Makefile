@@ -72,7 +72,7 @@ deploy:
 	mcopy -i $(OUTPUT_IMAGE) -s $(BIN_DIR)/programs ::/bin
 
 compile_commands:
-	bear -- make build 
+	bear -- make build
 
 format:
 	find $(SRC_DIR)/ -iname '*.h' -o -iname '*.c' | xargs clang-format -style=file -i
@@ -103,7 +103,7 @@ run_debug:
     -drive if=pflash,format=raw,unit=1,file=vendor/OVMFbin/OVMF_VARS-pure-efi.fd \
     -net none
 
-clean:		
+clean:
 #@cd vendor/gnu-efi && make clean && cd ../..
 	rm -rf $(BUILD_DIR)
 	rm -rf $(BIN_DIR)

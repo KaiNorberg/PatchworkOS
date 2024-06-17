@@ -8,7 +8,6 @@
 #include "regs.h"
 #include "smp.h"
 #include "syscall.h"
-#include "tty.h"
 #include "utils.h"
 #include "vmm.h"
 

@@ -1,6 +1,7 @@
 #include "idt.h"
 
 #include "syscall.h"
+#include "splash.h"
 
 #include <sys/proc.h>
 
@@ -23,6 +24,8 @@ static void idt_set_vector(uint8_t vector, void* isr, uint8_t privilegeLevel, ui
 
 void idt_init(void)
 {
+    SPLASH_FUNC();
+
     for (uint16_t vector = 0; vector < VECTOR_AMOUNT; vector++)
     {
         idt_set_vector((uint8_t)vector, vectorTable[vector], IDT_RING0, IDT_INTERRUPT_GATE);

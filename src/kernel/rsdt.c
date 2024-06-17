@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-#include "tty.h"
+#include "splash.h"
 #include "vmm.h"
 
 static uint64_t tableAmount;
@@ -21,12 +21,12 @@ static bool rsdt_valid_checksum(void* table, uint64_t length)
 
 void rsdt_init(Xsdp* xsdp)
 {
-    tty_start_message("Parsing RSDT");
+    SPLASH_FUNC();
 
     xsdp = VMM_LOWER_TO_HIGHER(xsdp);
 
-    tty_assert(xsdp->revision == ACPI_REVISION_2_0, "Incompatible ACPI revision");
-    tty_assert(rsdt_valid_checksum(xsdp, xsdp->length), "Invalid XSDP checksum");
+    SPLASH_ASSERT(xsdp->revision == ACPI_REVISION_2_0, "revision");
+    SPLASH_ASSERT(rsdt_valid_checksum(xsdp, xsdp->length), "checksum");
 
     xsdt = VMM_LOWER_TO_HIGHER((void*)xsdp->xsdtAddress);
     tableAmount = (xsdt->header.length - sizeof(SdtHeader)) / 8;
@@ -35,16 +35,8 @@ void rsdt_init(Xsdp* xsdp)
     {
         SdtHeader* table = VMM_LOWER_TO_HIGHER(xsdt->tables[i]);
 
-        if (!rsdt_valid_checksum(table, table->length))
-        {
-            tty_print("Invalid ");
-            tty_printm((const char*)table->signature, 4);
-            tty_print(" checksum");
-            tty_end_message(TTY_MESSAGE_ER);
-        }
+        SPLASH_ASSERT(rsdt_valid_checksum(table, table->length), "table")
     }
-
-    tty_end_message(TTY_MESSAGE_OK);
 }
 
 SdtHeader* rsdt_lookup(const char* signature)

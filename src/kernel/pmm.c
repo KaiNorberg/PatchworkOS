@@ -7,6 +7,7 @@
 
 #include "debug.h"
 #include "lock.h"
+#include "splash.h"
 #include "utils.h"
 #include "vmm.h"
 

@@ -3,10 +3,9 @@
 #include "debug.h"
 #include "lock.h"
 #include "sched.h"
+#include "splash.h"
 #include "time.h"
-#include "tty.h"
 #include "vfs_context.h"
-
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -209,7 +208,7 @@ void file_deref(File* file)
 
 void vfs_init(void)
 {
-    tty_start_message("VFS initializing");
+    SPLASH_FUNC();
 
     list_init(&volumes);
     lock_init(&volumeLock);
@@ -249,8 +248,6 @@ void vfs_init(void)
     test_path("/test1/test2/../../test3");
 
     while (1);*/
-
-    tty_end_message(TTY_MESSAGE_OK);
 }
 
 File* vfs_open(const char* path)

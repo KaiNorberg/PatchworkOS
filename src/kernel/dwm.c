@@ -1,11 +1,12 @@
 #include "dwm.h"
 
+#include "_AUX/rect_t.h"
 #include "list.h"
 #include "lock.h"
 #include "sched.h"
+#include "splash.h"
 #include "sys/win.h"
 #include "sysfs.h"
-#include "tty.h"
 
 #include <errno.h>
 #include <stdlib.h>
@@ -16,7 +17,8 @@ static List windows;
 static Resource dwm;
 
 static GopBuffer frontbuffer;
-static pixel_t* backbuffer;
+static surface_t backbuffer;
+static win_theme_t theme;
 
 static _Atomic(bool) redrawNeeded;
 
@@ -187,7 +189,7 @@ static uint64_t dwm_ioctl(File* file, uint64_t request, void* buffer, uint64_t l
 
     switch (request)
     {
-    case IOCTL_WIN_INIT:
+    case IOCTL_DWM_CREATE:
     {
         // Check if write has already been successfully called.
         if (file->internal != NULL)
@@ -195,26 +197,26 @@ static uint64_t dwm_ioctl(File* file, uint64_t request, void* buffer, uint64_t l
             return ERROR(EBUSY);
         }
 
-        if (length != sizeof(ioctl_win_init_t))
+        if (length != sizeof(ioctl_dwm_create_t))
         {
             return ERROR(EINVAL);
         }
 
-        const ioctl_win_init_t* init = buffer;
-        if (init->width > frontbuffer.width || init->height > frontbuffer.height || init->x > frontbuffer.width ||
-            init->y > frontbuffer.height || init->x + init->width > frontbuffer.width ||
-            init->y + init->height > frontbuffer.height)
+        const ioctl_dwm_create_t* create = buffer;
+        if (create->width > frontbuffer.width || create->height > frontbuffer.height || create->x > frontbuffer.width ||
+            create->y > frontbuffer.height || create->x + create->width > frontbuffer.width ||
+            create->y + create->height > frontbuffer.height)
         {
             return ERROR(EINVAL);
         }
 
         Window* window = malloc(sizeof(Window));
         list_entry_init(&window->base);
-        window->x = init->x;
-        window->y = init->y;
-        window->width = init->width;
-        window->height = init->height;
-        window->buffer = calloc(init->width * init->height, sizeof(pixel_t));
+        window->x = create->x;
+        window->y = create->y;
+        window->width = create->width;
+        window->height = create->height;
+        window->buffer = calloc(create->width * create->height, sizeof(pixel_t));
         lock_init(&window->lock);
         message_queue_init(&window->messages);
         LOCK_GUARD(&window->lock);
@@ -243,6 +245,8 @@ static uint64_t dwm_open(Resource* resource, File* file)
 
 static void dwm_draw_windows(void)
 {
+    // TODO: Optimize this, add rectangle subtraction.
+
     LOCK_GUARD(&lock);
 
     Window* window;
@@ -253,11 +257,10 @@ static void dwm_draw_windows(void)
         // Copy one line at a time from window buffer to backbuffer
         for (uint64_t y = 0; y < window->height; y++)
         {
-            uint64_t bufferOffset =
-                (window->x * sizeof(pixel_t)) + (y + window->y) * sizeof(pixel_t) * frontbuffer.pixelsPerScanline;
+            uint64_t bufferOffset = (window->x * sizeof(pixel_t)) + (y + window->y) * sizeof(pixel_t) * frontbuffer.stride;
             uint64_t windowOffset = y * sizeof(pixel_t) * window->width;
 
-            memcpy((void*)((uint64_t)backbuffer + bufferOffset), (void*)((uint64_t)window->buffer + windowOffset),
+            memcpy((void*)((uint64_t)backbuffer.buffer + bufferOffset), (void*)((uint64_t)window->buffer + windowOffset),
                 window->width * sizeof(pixel_t));
         }
     }
@@ -267,9 +270,16 @@ static void dwm_loop(void)
 {
     while (1)
     {
-        memset(backbuffer, 100, frontbuffer.size);
+        rect_t rect = (rect_t){
+            .left = 0,
+            .top = 0,
+            .right = backbuffer.width,
+            .bottom = backbuffer.height,
+        };
+        gfx_rect(&backbuffer, &rect, theme.wall);
+
         dwm_draw_windows();
-        memcpy(frontbuffer.base, backbuffer, frontbuffer.size);
+        memcpy(frontbuffer.base, backbuffer.buffer, frontbuffer.size);
 
         SCHED_WAIT(atomic_load(&redrawNeeded), NEVER);
         atomic_store(&redrawNeeded, false);
@@ -278,19 +288,26 @@ static void dwm_loop(void)
 
 void dwm_init(GopBuffer* gopBuffer)
 {
-    tty_start_message("Desktop Window Manager initializing");
+    SPLASH_FUNC();
 
     frontbuffer = *gopBuffer;
-    frontbuffer.base = vmm_kernel_map(NULL, gopBuffer->base, gopBuffer->size);
-    backbuffer = malloc(frontbuffer.size);
+    frontbuffer.base = gopBuffer->base;
+    backbuffer.buffer = malloc(frontbuffer.size);
+    backbuffer.height = frontbuffer.height;
+    backbuffer.width = frontbuffer.width;
+    backbuffer.stride = frontbuffer.stride;
     list_init(&windows);
     lock_init(&lock);
     atomic_init(&redrawNeeded, true);
+    win_default_theme(&theme);
 
     resource_init(&dwm, "dwm", dwm_open, NULL);
     sysfs_expose(&dwm, "/srv");
+}
+
+void dwm_start(void)
+{
+    SPLASH_FUNC();
 
     sched_thread_spawn(dwm_loop, THREAD_PRIORITY_MAX);
-
-    tty_end_message(TTY_MESSAGE_OK);
 }

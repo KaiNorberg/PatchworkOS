@@ -44,14 +44,16 @@ typedef struct msg_kbd
 // User messages
 #define UMSG_BASE (1ULL << 63)
 
-typedef struct ioctl_win_init
+typedef struct ioctl_dwm_create
 {
     uint64_t x;
     uint64_t y;
     uint64_t width;
     uint64_t height;
     char name[MAX_PATH];
-} ioctl_win_init_t;
+} ioctl_dwm_create_t;
+
+#define IOCTL_DWM_CREATE 0
 
 typedef struct ioctl_win_receive
 {
@@ -74,10 +76,9 @@ typedef struct ioctl_win_move
     uint64_t height;
 } ioctl_win_move_t;
 
-#define IOCTL_WIN_INIT 0
-#define IOCTL_WIN_RECEIVE 1
-#define IOCTL_WIN_SEND 2
-#define IOCTL_WIN_MOVE 3
+#define IOCTL_WIN_RECEIVE 0
+#define IOCTL_WIN_SEND 1
+#define IOCTL_WIN_MOVE 2
 
 #ifndef _WIN_INTERNAL
 typedef uint8_t win_t;
@@ -95,6 +96,7 @@ typedef struct win_theme
     pixel_t highlight;
     pixel_t shadow;
     pixel_t background;
+    pixel_t wall;
     pixel_t topbarHighlight;
     pixel_t topbarShadow;
     uint64_t topbarHeight;

@@ -109,17 +109,6 @@ static inline uint64_t win_set_area(win_t* window, const rect_t* rect)
     return 0;
 }
 
-void win_default_theme(win_theme_t* theme)
-{
-    theme->edgeWidth = 4;
-    theme->highlight = 0xFFFEFEFE;
-    theme->shadow = 0xFF3C3C3C;
-    theme->background = 0xFFBFBFBF;
-    theme->topbarHighlight = 0xFF00007F;
-    theme->topbarShadow = 0xFF7F7F7F;
-    theme->topbarHeight = 32;
-}
-
 void win_client_to_window(rect_t* rect, const win_theme_t* theme, win_flag_t flags)
 {
     if (flags & WIN_DECO)
@@ -163,13 +152,13 @@ win_t* win_new(const char* name, const rect_t* rect, const win_theme_t* theme, p
         return NULL;
     }
 
-    ioctl_win_init_t init;
-    init.x = rect->left;
-    init.y = rect->top;
-    init.width = RECT_WIDTH(rect);
-    init.height = RECT_HEIGHT(rect);
-    strcpy(init.name, name);
-    if (ioctl(window->fd, IOCTL_WIN_INIT, &init, sizeof(ioctl_win_init_t)) == ERR)
+    ioctl_dwm_create_t create;
+    create.x = rect->left;
+    create.y = rect->top;
+    create.width = RECT_WIDTH(rect);
+    create.height = RECT_HEIGHT(rect);
+    strcpy(create.name, name);
+    if (ioctl(window->fd, IOCTL_DWM_CREATE, &create, sizeof(ioctl_dwm_create_t)) == ERR)
     {
         close(window->fd);
         free(window);

@@ -9,4 +9,4 @@
 
 #define PSF_MAGIC 1078
 
-void psf_font_load(PsfFont* font, CHAR16* path, EFI_HANDLE imageHandle);
+void psf_font_load(BootFont* font, CHAR16* path, EFI_HANDLE imageHandle);

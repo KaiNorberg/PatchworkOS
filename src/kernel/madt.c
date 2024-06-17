@@ -1,17 +1,15 @@
 #include "madt.h"
 
-#include "tty.h"
+#include "splash.h"
 
 static Madt* madt;
 
 void madt_init(void)
 {
-    tty_start_message("MADT initializing");
+    SPLASH_FUNC();
 
     madt = (Madt*)rsdt_lookup("APIC");
-    tty_assert(madt != NULL, "Hardware is incompatible, unable to find MADT");
-
-    tty_end_message(TTY_MESSAGE_OK);
+    SPLASH_ASSERT(madt != NULL, "not found");
 }
 
 void* madt_local_apic_address(void)

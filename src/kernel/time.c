@@ -7,7 +7,7 @@
 #include "io.h"
 #include "irq.h"
 #include "pic.h"
-#include "tty.h"
+#include "splash.h"
 
 static _Atomic(nsec_t) accumulator = ATOMIC_VAR_INIT(0);
 
@@ -43,6 +43,8 @@ static void time_rtc_init(void)
 
 void time_init(void)
 {
+    SPLASH_FUNC();
+
     time_accumulate();
 
     time_rtc_init();

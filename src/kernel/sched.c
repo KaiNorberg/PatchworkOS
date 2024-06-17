@@ -5,8 +5,8 @@
 #include "gdt.h"
 #include "loader.h"
 #include "smp.h"
+#include "splash.h"
 #include "time.h"
-#include "tty.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -126,14 +126,12 @@ void scheduler_init(Scheduler* scheduler)
 
 void sched_start(void)
 {
-    tty_start_message("Scheduler starting");
+    SPLASH_FUNC();
 
     sched_spawn_init_thread();
 
     smp_send_ipi_to_others(IPI_START);
     SMP_SEND_IPI_TO_SELF(IPI_START);
-
-    tty_end_message(TTY_MESSAGE_OK);
 }
 
 void sched_cpu_start(void)

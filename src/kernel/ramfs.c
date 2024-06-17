@@ -1,7 +1,7 @@
 #include "ramfs.h"
 
 #include "sched.h"
-#include "tty.h"
+#include "splash.h"
 #include "utils.h"
 #include "vfs.h"
 
@@ -198,7 +198,7 @@ static uint64_t ramfs_mount(Volume* volume)
 
 void ramfs_init(RamDir* ramRoot)
 {
-    tty_start_message("Ramfs initializing");
+    SPLASH_FUNC();
 
     root = ramRoot;
 
@@ -208,9 +208,6 @@ void ramfs_init(RamDir* ramRoot)
 
     if (vfs_mount("home", &ramfs) == ERR)
     {
-        tty_print("Failed to mount ramfs");
-        tty_end_message(TTY_MESSAGE_ER);
+        SPLASH_FUNC();
     }
-
-    tty_end_message(TTY_MESSAGE_OK);
 }

@@ -1,17 +1,6 @@
 #include <stdint.h>
 #include <sys/gfx.h>
 
-void gfx_rect(surface_t* surface, const rect_t* rect, pixel_t pixel)
-{
-    for (uint64_t x = rect->left; x < rect->right; x++)
-    {
-        for (uint64_t y = rect->top; y < rect->bottom; y++)
-        {
-            surface->buffer[x + y * surface->stride] = pixel;
-        }
-    }
-}
-
 void gfx_edge(surface_t* surface, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background)
 {
     rect_t leftRect = (rect_t){

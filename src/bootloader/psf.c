@@ -5,7 +5,7 @@
 #include "fs.h"
 #include "vm.h"
 
-void psf_font_load(PsfFont* font, CHAR16* path, EFI_HANDLE imageHandle)
+void psf_font_load(BootFont* font, CHAR16* path, EFI_HANDLE imageHandle)
 {
     EFI_FILE* file = fs_open(path, imageHandle);
 
