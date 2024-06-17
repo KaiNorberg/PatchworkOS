@@ -1,8 +1,10 @@
 #include "kernel.h"
 
 #include "apic.h"
-#include "compositor.h"
+#include "common/boot_info.h"
 #include "const.h"
+#include "debug.h"
+#include "dwm.h"
 #include "gdt.h"
 #include "hpet.h"
 #include "idt.h"
@@ -16,9 +18,10 @@
 #include "sched.h"
 #include "simd.h"
 #include "smp.h"
+#include "splash.h"
+#include "stdlib.h"
 #include "sysfs.h"
 #include "time.h"
-#include "tty.h"
 #include "vfs.h"
 #include "vmm.h"
 
@@ -26,8 +29,6 @@
 
 static void boot_info_deallocate(BootInfo* bootInfo)
 {
-    tty_start_message("Deallocating boot info");
-
     EfiMemoryMap* memoryMap = &bootInfo->memoryMap;
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
@@ -38,19 +39,17 @@ static void boot_info_deallocate(BootInfo* bootInfo)
             pmm_free_pages(desc->physicalStart, desc->amountOfPages);
         }
     }
-
-    tty_end_message(TTY_MESSAGE_OK);
 }
 
 void kernel_init(BootInfo* bootInfo)
 {
     pmm_init(&bootInfo->memoryMap);
-    vmm_init(&bootInfo->memoryMap);
+    vmm_init(&bootInfo->memoryMap, &bootInfo->gopBuffer);
 
     _StdInit();
 
-    tty_init(&bootInfo->gopBuffer, &bootInfo->font);
-    tty_print("Hello from the kernel!\n");
+    splash_init(&bootInfo->gopBuffer, &bootInfo->font);
+    debug_init(&bootInfo->gopBuffer, &bootInfo->font);
 
     gdt_init();
     idt_init();
@@ -60,11 +59,11 @@ void kernel_init(BootInfo* bootInfo)
     madt_init();
     apic_init();
 
-    smp_init();
-    kernel_cpu_init();
-
     pic_init();
     time_init();
+
+    smp_init();
+    kernel_cpu_init();
 
     sched_start();
 
@@ -74,9 +73,12 @@ void kernel_init(BootInfo* bootInfo)
 
     ps2_init();
     const_init();
-    compositor_init(&bootInfo->gopBuffer);
+    dwm_init(&bootInfo->gopBuffer);
 
     boot_info_deallocate(bootInfo);
+    splash_cleanup();
+
+    dwm_start();
 }
 
 void kernel_cpu_init(void)

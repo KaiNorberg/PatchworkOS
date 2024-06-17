@@ -7,6 +7,7 @@
 
 #include "debug.h"
 #include "lock.h"
+#include "splash.h"
 #include "utils.h"
 #include "vmm.h"
 
@@ -23,7 +24,7 @@ static Lock lock;
 static uint8_t is_type_free(uint64_t memoryType)
 {
     return memoryType == EFI_CONVENTIONAL_MEMORY || memoryType == EFI_LOADER_CODE || memoryType == EFI_LOADER_DATA ||
-           memoryType == EFI_BOOT_SERVICES_CODE || memoryType == EFI_BOOT_SERVICES_DATA;
+        memoryType == EFI_BOOT_SERVICES_CODE || memoryType == EFI_BOOT_SERVICES_DATA;
 }
 
 static void pmm_free_unlocked(void* address)

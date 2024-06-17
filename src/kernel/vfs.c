@@ -3,10 +3,9 @@
 #include "debug.h"
 #include "lock.h"
 #include "sched.h"
+#include "splash.h"
 #include "time.h"
-#include "tty.h"
 #include "vfs_context.h"
-
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -209,8 +208,6 @@ void file_deref(File* file)
 
 void vfs_init(void)
 {
-    tty_start_message("VFS initializing");
-
     list_init(&volumes);
     lock_init(&volumeLock);
 
@@ -249,8 +246,6 @@ void vfs_init(void)
     test_path("/test1/test2/../../test3");
 
     while (1);*/
-
-    tty_end_message(TTY_MESSAGE_OK);
 }
 
 File* vfs_open(const char* path)
@@ -437,8 +432,7 @@ static bool vfs_poll_condition(uint64_t* events, PollFile* files, uint64_t amoun
     {
         PollFile* file = &files[i];
 
-        if (file->requested & POLL_READ &&
-            (file->file->methods.read_avail != NULL && file->file->methods.read_avail(file->file)))
+        if (file->requested & POLL_READ && (file->file->methods.read_avail != NULL && file->file->methods.read_avail(file->file)))
         {
             file->occurred = POLL_READ;
             (*events)++;

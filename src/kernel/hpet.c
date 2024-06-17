@@ -1,7 +1,6 @@
 #include "hpet.h"
 
-#include "pmm.h"
-#include "tty.h"
+#include "debug.h"
 #include "utils.h"
 #include "vmm.h"
 
@@ -11,10 +10,8 @@ static uint64_t period;
 
 void hpet_init(void)
 {
-    tty_start_message("HPET initializing");
-
     hpet = (Hpet*)rsdt_lookup("HPET");
-    tty_assert(hpet != NULL, "Hardware is incompatible, unable to find HPET");
+    DEBUG_ASSERT(hpet != NULL, "lookup fail");
 
     address = (uintptr_t)vmm_kernel_map(NULL, (void*)hpet->address, PAGE_SIZE);
     period = hpet_read(HPET_GENERAL_CAPABILITIES) >> HPET_COUNTER_CLOCK_OFFSET;
@@ -22,8 +19,6 @@ void hpet_init(void)
     hpet_write(HPET_GENERAL_CONFIG, HPET_CONFIG_DISABLE);
     hpet_write(HPET_MAIN_COUNTER_VALUE, 0);
     hpet_write(HPET_GENERAL_CONFIG, HPET_CONFIG_ENABLE);
-
-    tty_end_message(TTY_MESSAGE_OK);
 }
 
 uint64_t hpet_read_counter(void)

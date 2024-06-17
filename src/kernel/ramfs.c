@@ -1,12 +1,12 @@
 #include "ramfs.h"
 
+#include "debug.h"
 #include "sched.h"
-#include "tty.h"
-#include "utils.h"
 #include "vfs.h"
 
 #include <stdlib.h>
 #include <string.h>
+#include <sys/math.h>
 
 static Filesystem ramfs;
 static RamDir* root;
@@ -197,19 +197,11 @@ static uint64_t ramfs_mount(Volume* volume)
 
 void ramfs_init(RamDir* ramRoot)
 {
-    tty_start_message("Ramfs initializing");
-
     root = ramRoot;
 
     memset(&ramfs, 0, sizeof(Filesystem));
     ramfs.name = "ramfs";
     ramfs.mount = ramfs_mount;
 
-    if (vfs_mount("home", &ramfs) == ERR)
-    {
-        tty_print("Failed to mount ramfs");
-        tty_end_message(TTY_MESSAGE_ER);
-    }
-
-    tty_end_message(TTY_MESSAGE_OK);
+    DEBUG_ASSERT(vfs_mount("home", &ramfs) != ERR, "mount fail");
 }

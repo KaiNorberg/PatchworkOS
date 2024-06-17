@@ -58,7 +58,7 @@ typedef struct
     uint64_t size;
     uint32_t width;
     uint32_t height;
-    uint32_t pixelsPerScanline;
+    uint32_t stride;
 } GopBuffer;
 
 typedef struct __attribute__((packed))
@@ -73,7 +73,7 @@ typedef struct
     PsfHeader header;
     uint64_t glyphsSize;
     void* glyphs;
-} PsfFont;
+} BootFont;
 
 typedef struct RamFile
 {
@@ -99,7 +99,7 @@ typedef struct
 {
     EfiMemoryMap memoryMap;
     GopBuffer gopBuffer;
-    PsfFont font;
+    BootFont font;
     RamDir* ramRoot;
     void* rsdp;
     void* runtimeServices;

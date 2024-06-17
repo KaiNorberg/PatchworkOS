@@ -3,7 +3,7 @@
 #include "debug.h"
 #include "lock.h"
 #include "sched.h"
-#include "tty.h"
+#include "splash.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -135,8 +135,8 @@ static uint64_t sysfs_mount(Volume* volume)
     return 0;
 }
 
-void resource_init(Resource* resource, const char* name, uint64_t (*open)(Resource* resource, File* file),
-    void (*delete)(Resource* resource))
+void resource_init(
+    Resource* resource, const char* name, uint64_t (*open)(Resource* resource, File* file), void (*delete)(Resource* resource))
 {
     list_entry_init(&resource->base);
     resource->system = NULL;
@@ -169,8 +169,6 @@ void resource_unref(Resource* resource)
 
 void sysfs_init(void)
 {
-    tty_start_message("Sysfs initializing");
-
     root = system_new("root");
     lock_init(&lock);
 
@@ -178,13 +176,7 @@ void sysfs_init(void)
     sysfs.name = "sysfs";
     sysfs.mount = sysfs_mount;
 
-    if (vfs_mount("sys", &sysfs) == ERR)
-    {
-        tty_print("Failed to mount sysfs");
-        tty_end_message(TTY_MESSAGE_ER);
-    }
-
-    tty_end_message(TTY_MESSAGE_OK);
+    DEBUG_ASSERT(vfs_mount("sys", &sysfs) != ERR, "mount fail");
 }
 
 void sysfs_expose(Resource* resource, const char* path)

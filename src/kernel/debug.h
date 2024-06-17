@@ -3,10 +3,30 @@
 #include "defs.h"
 #include "trap.h"
 
+#define DEBUG_BACKGROUND 0xFF0000AA
+#define DEBUG_RED 0xFFFF0000
+#define DEBUG_WHITE 0xFFFFFFFF
+
+#define DEBUG_SCALE 2
 #define DEBUG_ROW_AMOUNT 18
 #define DEBUG_COLUMN_AMOUNT 4
 #define DEBUG_COLUMN_WIDTH 25
-#define DEBUG_TEXT_SCALE 2
+
+#include <common/boot_info.h>
+
+#define DEBUG_ASSERT(condition, msg) \
+    ({ \
+        if (!(condition)) \
+        { \
+            debug_panic(__FILE_NAME__ ": " msg); \
+            while (1) \
+            { \
+                asm volatile("hlt"); \
+            } \
+        } \
+    })
+
+void debug_init(GopBuffer* gopBuffer, BootFont* screenFont);
 
 NORETURN void debug_panic(const char* message);
 

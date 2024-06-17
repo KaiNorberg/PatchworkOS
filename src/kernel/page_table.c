@@ -146,11 +146,11 @@ void page_table_map(PageTable* table, void* virtAddr, void* physAddr, uint64_t p
         PageTable* level3 = page_table_get_or_allocate(
             table, PAGE_TABLE_GET_INDEX(virtAddr, 4), (flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER) & ~PAGE_FLAG_GLOBAL);
 
-        PageTable* level2 = page_table_get_or_allocate(
-            level3, PAGE_TABLE_GET_INDEX(virtAddr, 3), flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+        PageTable* level2 =
+            page_table_get_or_allocate(level3, PAGE_TABLE_GET_INDEX(virtAddr, 3), flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER);
 
-        PageTable* level1 = page_table_get_or_allocate(
-            level2, PAGE_TABLE_GET_INDEX(virtAddr, 2), flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+        PageTable* level1 =
+            page_table_get_or_allocate(level2, PAGE_TABLE_GET_INDEX(virtAddr, 2), flags | PAGE_FLAG_WRITE | PAGE_FLAG_USER);
 
         PageEntry* entry = &level1->entries[PAGE_TABLE_GET_INDEX(virtAddr, 1)];
 

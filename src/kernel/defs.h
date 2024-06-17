@@ -1,10 +1,10 @@
 #pragma once
 
+#include "config.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-
-#include "config.h"
 
 #define ALIGNED(alignment) __attribute__((aligned(alignment)))
 #define PACKED __attribute__((packed))

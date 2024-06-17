@@ -5,11 +5,7 @@
 #include <common/elf.h>
 
 #include "debug.h"
-#include "defs.h"
-#include "pmm.h"
 #include "sched.h"
-#include "tty.h"
-#include "utils.h"
 #include "vmm.h"
 
 static void* loader_allocate_stack(void)
@@ -81,8 +77,7 @@ static void* loader_load_program(void)
             }
 
             memset((void*)programHeader.virtAddr, 0, programHeader.memorySize);
-            if (FILE_CALL_METHOD(file, read, (void*)programHeader.virtAddr, programHeader.fileSize) !=
-                programHeader.fileSize)
+            if (FILE_CALL_METHOD(file, read, (void*)programHeader.virtAddr, programHeader.fileSize) != programHeader.fileSize)
             {
                 sched_process_exit(EEXEC);
             }

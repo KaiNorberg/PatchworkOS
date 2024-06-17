@@ -24,6 +24,10 @@ KERNEL_SRC = \
 	$(STDLIB)/stdlib/malloc.c \
 	$(STDLIB)/stdlib/calloc.c \
 	$(STDLIB)/stdlib/free.c \
+	$(STDLIB)/gfx/gfx_psf.c \
+	$(STDLIB)/gfx/gfx_rect.c \
+	$(STDLIB)/gfx/gfx_edge.c \
+	$(STDLIB)/win/win_default_theme.c \
 	$(STDLIB)/../internal/init.c
 
 KERNEL_OBJ = $(patsubst $(SRC_DIR)/%, $(KERNEL_BUILD_DIR)/%.o, $(KERNEL_SRC))
@@ -48,7 +52,7 @@ $(KERNEL_BUILD_DIR)/%.s.o: $(SRC_DIR)/%.s
 	$(MKCWD)
 	$(ASM) $(BASE_ASM_FLAGS) $^ -o $@
 
-$(KERNEL_OUT): $(KERNEL_OBJ)	
+$(KERNEL_OUT): $(KERNEL_OBJ)
 	$(MKCWD)
 	$(LD) $(BASE_LD_FLAGS) -T$(KERNEL_SRC_DIR)/linker.ld -o $@ $^
 

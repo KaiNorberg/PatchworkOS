@@ -4,8 +4,6 @@
 
 #include "sched.h"
 
-#include "tty.h"
-
 void vfs_context_init(VfsContext* context)
 {
     memset(context, 0, sizeof(VfsContext));

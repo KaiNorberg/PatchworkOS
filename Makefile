@@ -63,16 +63,16 @@ deploy:
 	dd status=progress if=/dev/zero of=$(OUTPUT_IMAGE) bs=4096 count=1024
 	mkfs -t vfat $(OUTPUT_IMAGE)
 	mlabel -i $(OUTPUT_IMAGE) -s ::PatchworkOS
-	mmd -i $(OUTPUT_IMAGE) ::/boot
-	mmd -i $(OUTPUT_IMAGE) ::/efi
-	mmd -i $(OUTPUT_IMAGE) ::/efi/boot
+	mmd -i $(OUTPUT_IMAGE) ::boot
+	mmd -i $(OUTPUT_IMAGE) ::efi
+	mmd -i $(OUTPUT_IMAGE) ::efi/boot
 	mcopy -i $(OUTPUT_IMAGE) -s $(ROOT_DIR)/* ::
 	mcopy -i $(OUTPUT_IMAGE) -s $(BOOT_OUT_EFI) ::efi/boot
 	mcopy -i $(OUTPUT_IMAGE) -s $(KERNEL_OUT) ::boot
-	mcopy -i $(OUTPUT_IMAGE) -s $(BIN_DIR)/programs ::/bin
+	mcopy -i $(OUTPUT_IMAGE) -s $(BIN_DIR)/programs ::bin
 
 compile_commands:
-	bear -- make build 
+	bear -- make build
 
 format:
 	find $(SRC_DIR)/ -iname '*.h' -o -iname '*.c' | xargs clang-format -style=file -i
@@ -103,7 +103,7 @@ run_debug:
     -drive if=pflash,format=raw,unit=1,file=vendor/OVMFbin/OVMF_VARS-pure-efi.fd \
     -net none
 
-clean:		
+clean:
 #@cd vendor/gnu-efi && make clean && cd ../..
 	rm -rf $(BUILD_DIR)
 	rm -rf $(BIN_DIR)

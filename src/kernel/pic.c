@@ -2,6 +2,7 @@
 
 #include "io.h"
 #include "irq.h"
+#include "splash.h"
 
 void pic_init(void)
 {

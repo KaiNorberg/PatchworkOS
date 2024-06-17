@@ -55,7 +55,7 @@ int main(void)
     };
     win_client_to_window(&rect, &theme, WIN_DECO);
 
-    win_t* window = win_new("Shell", &rect, &theme, procedure, WIN_DECO);
+    win_t* window = win_new("Calculator", &rect, &theme, procedure, WIN_DECO);
     if (window == NULL)
     {
         exit(EXIT_FAILURE);

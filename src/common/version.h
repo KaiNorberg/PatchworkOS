@@ -1,3 +1,4 @@
 #pragma once
 
-#define OS_VERSION "Patchwork OS - Prototype"
+#define OS_NAME "Patchwork OS"
+#define OS_VERSION "Prototype"

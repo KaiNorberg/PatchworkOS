@@ -4,8 +4,8 @@
 #include "io.h"
 #include "irq.h"
 #include "sched.h"
+#include "splash.h"
 #include "time.h"
-#include "tty.h"
 #include "utils.h"
 
 #include <stdlib.h>
@@ -185,10 +185,11 @@ static void ps2_kbd_irq(uint8_t irq)
     }
     uint8_t key = scanCodeTable[index];
 
-    uint64_t time = time_uptime();
-    kbd_event_t event = {.time = {.tv_sec = time / NANOSECONDS_PER_SECOND, .tv_nsec = time % NANOSECONDS_PER_SECOND},
-        .type = released ? KBD_EVENT_TYPE_RELEASE : KBD_EVENT_TYPE_PRESS,
-        .code = key};
+    kbd_event_t event = {
+        .time = time_uptime(),
+        .type = released ? KBD_RELEASE : KBD_PRESS,
+        .code = key,
+    };
 
     eventBuffer[writeIndex] = event;
     writeIndex = (writeIndex + 1) % PS2_KEY_BUFFER_LENGTH;
@@ -248,11 +249,7 @@ static void ps2_controller_init(void)
     uint8_t cfg = ps2_read();
 
     ps2_cmd(PS2_CMD_CONTROLLER_TEST);
-    if (ps2_read() != 0x55)
-    {
-        tty_print("Controller test failed");
-        tty_end_message(TTY_MESSAGE_ER);
-    }
+    DEBUG_ASSERT(ps2_read() == 0x55, "self test fail");
 
     cfg |= PS2_CFG_KBD_IRQ;
 
@@ -265,8 +262,6 @@ static void ps2_controller_init(void)
 
 void ps2_init(void)
 {
-    tty_start_message("PS2 initializing");
-
     ps2_controller_init();
 
     irq_install(ps2_kbd_irq, IRQ_KEYBOARD);
@@ -274,6 +269,4 @@ void ps2_init(void)
     Resource* keyboard = malloc(sizeof(Resource));
     resource_init(keyboard, "ps2", ps2_kbd_open, NULL);
     sysfs_expose(keyboard, "/kbd");
-
-    tty_end_message(TTY_MESSAGE_OK);
 }

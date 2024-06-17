@@ -41,8 +41,8 @@ void memory_free_pool(void* pool)
 
 void memory_map_init(EfiMemoryMap* memoryMap)
 {
-    memoryMap->base = LibMemoryMap(
-        &memoryMap->descriptorAmount, &memoryMap->key, &memoryMap->descriptorSize, &memoryMap->descriptorVersion);
+    memoryMap->base =
+        LibMemoryMap(&memoryMap->descriptorAmount, &memoryMap->key, &memoryMap->descriptorSize, &memoryMap->descriptorVersion);
 }
 
 void memory_map_cleanup(EfiMemoryMap* memoryMap)
