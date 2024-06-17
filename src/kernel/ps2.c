@@ -249,7 +249,7 @@ static void ps2_controller_init(void)
     uint8_t cfg = ps2_read();
 
     ps2_cmd(PS2_CMD_CONTROLLER_TEST);
-    SPLASH_ASSERT(ps2_read() == 0x55, "self test fail");
+    DEBUG_ASSERT(ps2_read() == 0x55, "self test fail");
 
     cfg |= PS2_CFG_KBD_IRQ;
 
@@ -262,8 +262,6 @@ static void ps2_controller_init(void)
 
 void ps2_init(void)
 {
-    SPLASH_FUNC();
-
     ps2_controller_init();
 
     irq_install(ps2_kbd_irq, IRQ_KEYBOARD);

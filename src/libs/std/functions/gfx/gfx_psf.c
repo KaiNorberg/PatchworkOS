@@ -1,3 +1,4 @@
+#include "_AUX/pixel_t.h"
 #include <stdint.h>
 #include <sys/gfx.h>
 
@@ -5,19 +6,35 @@ void gfx_psf_char(surface_t* surface, const psf_t* psf, const point_t* point, ch
 {
     const uint8_t* glyph = psf->glyphs + chr * PSF_HEIGHT;
 
-    for (uint64_t y = 0; y < PSF_HEIGHT * psf->scale; y++)
+    if (PIXEL_ALPHA(psf->foreground) == 0xFF && PIXEL_ALPHA(psf->background) == 0xFF)
     {
-        for (uint64_t x = 0; x < PSF_WIDTH * psf->scale; x++)
+        for (uint64_t y = 0; y < PSF_HEIGHT * psf->scale; y++)
         {
-            pixel_t pixel = (*glyph & (0b10000000 >> (x / psf->scale))) > 0 ? psf->foreground : psf->background;
-            if ((*glyph & (0b10000000 >> (x / psf->scale))) > 0)
+            for (uint64_t x = 0; x < PSF_WIDTH * psf->scale; x++)
             {
-                surface->buffer[(point->x + x) + (point->y + y) * surface->stride] = psf->foreground;
+                pixel_t pixel = (*glyph & (0b10000000 >> (x / psf->scale))) > 0 ? psf->foreground : psf->background;
+                surface->buffer[(point->x + x) + (point->y + y) * surface->stride] = pixel;
+            }
+            if (y % psf->scale == 0)
+            {
+                glyph++;
             }
         }
-        if (y % psf->scale == 0)
+    }
+    else
+    {
+        for (uint64_t y = 0; y < PSF_HEIGHT * psf->scale; y++)
         {
-            glyph++;
+            for (uint64_t x = 0; x < PSF_WIDTH * psf->scale; x++)
+            {
+                pixel_t pixel = (*glyph & (0b10000000 >> (x / psf->scale))) > 0 ? psf->foreground : psf->background;
+                pixel_t* out = &surface->buffer[(point->x + x) + (point->y + y) * surface->stride];
+                *out = PIXEL_BLEND(pixel, *out);
+            }
+            if (y % psf->scale == 0)
+            {
+                glyph++;
+            }
         }
     }
 }

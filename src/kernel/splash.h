@@ -17,9 +17,8 @@
 #define SPLASH_MESSAGE_SCALE 2
 #define SPLASH_MESSAGE_OFFSET (-100)
 
-#define SPLASH_FUNC() splash_print(__FUNCTION__, 0xFF000000)
-#define SPLASH_ASSERT(condition, msg) if (!(condition)) { splash_print("err: " msg, 0xFFFF0000); while(1) { asm volatile("hlt"); } }
-
 void splash_init(GopBuffer* gopBuffer, BootFont* screenFont);
+
+void splash_cleanup(void);
 
 void splash_print(const char* string, pixel_t color);

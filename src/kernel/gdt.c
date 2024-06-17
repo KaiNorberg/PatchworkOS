@@ -1,8 +1,8 @@
 #include "gdt.h"
 
 #include "pmm.h"
-#include "tss.h"
 #include "splash.h"
+#include "tss.h"
 
 ALIGNED(PAGE_SIZE) static Gdt gdt;
 
@@ -21,8 +21,6 @@ static GdtEntry gdt_entry_create(uint8_t access, uint8_t flags)
 
 void gdt_init(void)
 {
-    SPLASH_FUNC();
-
     gdt.null = gdt_entry_create(0, 0);
     gdt.kernelCode = gdt_entry_create(0x9A, 0xA);
     gdt.kernelData = gdt_entry_create(0x92, 0xC);

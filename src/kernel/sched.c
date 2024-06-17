@@ -126,8 +126,6 @@ void scheduler_init(Scheduler* scheduler)
 
 void sched_start(void)
 {
-    SPLASH_FUNC();
-
     sched_spawn_init_thread();
 
     smp_send_ipi_to_others(IPI_START);

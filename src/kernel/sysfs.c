@@ -169,8 +169,6 @@ void resource_unref(Resource* resource)
 
 void sysfs_init(void)
 {
-    SPLASH_FUNC();
-
     root = system_new("root");
     lock_init(&lock);
 
@@ -178,7 +176,7 @@ void sysfs_init(void)
     sysfs.name = "sysfs";
     sysfs.mount = sysfs_mount;
 
-    SPLASH_ASSERT(vfs_mount("sys", &sysfs) != ERR, "mount fail");
+    DEBUG_ASSERT(vfs_mount("sys", &sysfs) != ERR, "mount fail");
 }
 
 void sysfs_expose(Resource* resource, const char* path)

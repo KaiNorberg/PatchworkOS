@@ -3,17 +3,15 @@
 #include "hpet.h"
 #include "madt.h"
 #include "regs.h"
+#include "splash.h"
 #include "time.h"
 #include "utils.h"
 #include "vmm.h"
-#include "splash.h"
 
 static uintptr_t localApicBase;
 
 void apic_init(void)
 {
-    SPLASH_FUNC();
-
     localApicBase = (uintptr_t)vmm_kernel_map(NULL, madt_local_apic_address(), PAGE_SIZE);
 }
 

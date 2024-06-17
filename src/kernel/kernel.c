@@ -19,6 +19,7 @@
 #include "simd.h"
 #include "smp.h"
 #include "splash.h"
+#include "stdlib.h"
 #include "sysfs.h"
 #include "time.h"
 #include "vfs.h"
@@ -28,8 +29,6 @@
 
 static void boot_info_deallocate(BootInfo* bootInfo)
 {
-    SPLASH_FUNC();
-
     EfiMemoryMap* memoryMap = &bootInfo->memoryMap;
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
@@ -60,11 +59,11 @@ void kernel_init(BootInfo* bootInfo)
     madt_init();
     apic_init();
 
-    smp_init();
-    kernel_cpu_init();
-
     pic_init();
     time_init();
+
+    smp_init();
+    kernel_cpu_init();
 
     sched_start();
 
@@ -77,6 +76,7 @@ void kernel_init(BootInfo* bootInfo)
     dwm_init(&bootInfo->gopBuffer);
 
     boot_info_deallocate(bootInfo);
+    splash_cleanup();
 
     dwm_start();
 }

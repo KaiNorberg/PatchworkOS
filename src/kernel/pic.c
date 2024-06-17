@@ -6,8 +6,6 @@
 
 void pic_init(void)
 {
-    SPLASH_FUNC();
-
     uint8_t a1 = io_inb(PIC1_DATA);
     io_wait();
     uint8_t a2 = io_inb(PIC2_DATA);

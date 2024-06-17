@@ -48,8 +48,6 @@ static uint64_t const_zero_open(Resource* resource, File* file)
 
 void const_init(void)
 {
-    SPLASH_FUNC();
-
     resource_init(&one, "one", const_one_open, NULL);
     sysfs_expose(&one, "/const");
 

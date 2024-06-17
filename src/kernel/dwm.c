@@ -288,8 +288,6 @@ static void dwm_loop(void)
 
 void dwm_init(GopBuffer* gopBuffer)
 {
-    SPLASH_FUNC();
-
     frontbuffer = *gopBuffer;
     frontbuffer.base = gopBuffer->base;
     backbuffer.buffer = malloc(frontbuffer.size);
@@ -307,7 +305,5 @@ void dwm_init(GopBuffer* gopBuffer)
 
 void dwm_start(void)
 {
-    SPLASH_FUNC();
-
     sched_thread_spawn(dwm_loop, THREAD_PRIORITY_MAX);
 }

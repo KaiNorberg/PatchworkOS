@@ -5,11 +5,8 @@
 
 #include "defs.h"
 #include "list.h"
-#include "lock.h"
-#include "pmm.h"
 #include "simd.h"
 #include "trap.h"
-#include "vfs.h"
 #include "vfs_context.h"
 #include "vmm.h"
 

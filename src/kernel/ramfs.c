@@ -1,8 +1,7 @@
 #include "ramfs.h"
 
+#include "debug.h"
 #include "sched.h"
-#include "splash.h"
-#include "utils.h"
 #include "vfs.h"
 
 #include <stdlib.h>
@@ -198,16 +197,11 @@ static uint64_t ramfs_mount(Volume* volume)
 
 void ramfs_init(RamDir* ramRoot)
 {
-    SPLASH_FUNC();
-
     root = ramRoot;
 
     memset(&ramfs, 0, sizeof(Filesystem));
     ramfs.name = "ramfs";
     ramfs.mount = ramfs_mount;
 
-    if (vfs_mount("home", &ramfs) == ERR)
-    {
-        SPLASH_FUNC();
-    }
+    DEBUG_ASSERT(vfs_mount("home", &ramfs) != ERR, "mount fail");
 }

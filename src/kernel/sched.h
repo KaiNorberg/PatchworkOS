@@ -9,23 +9,21 @@
 #define SCHED_WAIT_NORMAL 0
 #define SCHED_WAIT_TIMEOUT 1
 
-// clang-format off
 #define SCHED_WAIT(condition, timeout) \
-({ \
-    nsec_t deadline = (timeout) == NEVER ? NEVER : (timeout) + time_uptime(); \
-    uint8_t result = SCHED_WAIT_NORMAL; \
-    while (!(condition)) \
-    { \
-        if (deadline < time_uptime()) \
+    ({ \
+        nsec_t deadline = (timeout) == NEVER ? NEVER : (timeout) + time_uptime(); \
+        uint8_t result = SCHED_WAIT_NORMAL; \
+        while (!(condition)) \
         { \
-            result = SCHED_WAIT_TIMEOUT; \
-            break; \
+            if (deadline < time_uptime()) \
+            { \
+                result = SCHED_WAIT_TIMEOUT; \
+                break; \
+            } \
+            sched_pause(); \
         } \
-        sched_pause(); \
-    } \
-    result; \
-})
-// clang-format on
+        result; \
+    })
 
 typedef struct
 {

@@ -31,7 +31,7 @@ static void splash_text(int64_t offset, uint8_t scale, const char* string, pixel
     gfx_psf_string(&surface, &font, &shadowPos, string);
 
     font.foreground = color;
-    font.background = theme.background;
+    font.background = theme.background & 0x00FFFFFF;
     gfx_psf_string(&surface, &font, &pos, string);
 }
 
@@ -61,7 +61,14 @@ void splash_init(GopBuffer* gopBuffer, BootFont* screenFont)
     splash_text(SPLASH_NAME_OFFSET, SPLASH_NAME_SCALE, OS_NAME, 0xFF000000);
     splash_text(SPLASH_VERSION_OFFSET, SPLASH_VERSION_SCALE, OS_VERSION, 0xFF000000);
 
-    SPLASH_FUNC();
+    splash_print("please wait", 0xFF000000);
+}
+
+void splash_cleanup(void)
+{
+    splash_print("done", 0xFF000000);
+
+    free(font.glyphs);
 }
 
 void splash_print(const char* string, pixel_t color)

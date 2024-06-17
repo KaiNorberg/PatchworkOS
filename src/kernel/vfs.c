@@ -208,8 +208,6 @@ void file_deref(File* file)
 
 void vfs_init(void)
 {
-    SPLASH_FUNC();
-
     list_init(&volumes);
     lock_init(&volumeLock);
 

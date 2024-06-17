@@ -1,7 +1,6 @@
 #include "hpet.h"
 
-#include "pmm.h"
-#include "splash.h"
+#include "debug.h"
 #include "utils.h"
 #include "vmm.h"
 
@@ -11,10 +10,8 @@ static uint64_t period;
 
 void hpet_init(void)
 {
-    SPLASH_FUNC();
-
     hpet = (Hpet*)rsdt_lookup("HPET");
-    SPLASH_ASSERT(hpet != NULL, "not found");
+    DEBUG_ASSERT(hpet != NULL, "lookup fail");
 
     address = (uintptr_t)vmm_kernel_map(NULL, (void*)hpet->address, PAGE_SIZE);
     period = hpet_read(HPET_GENERAL_CAPABILITIES) >> HPET_COUNTER_CLOCK_OFFSET;

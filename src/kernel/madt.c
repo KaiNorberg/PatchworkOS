@@ -1,15 +1,13 @@
 #include "madt.h"
 
-#include "splash.h"
+#include "debug.h"
 
 static Madt* madt;
 
 void madt_init(void)
 {
-    SPLASH_FUNC();
-
     madt = (Madt*)rsdt_lookup("APIC");
-    SPLASH_ASSERT(madt != NULL, "not found");
+    DEBUG_ASSERT(madt != NULL, "lookup fail");
 }
 
 void* madt_local_apic_address(void)

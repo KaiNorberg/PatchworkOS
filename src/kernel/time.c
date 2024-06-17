@@ -43,8 +43,6 @@ static void time_rtc_init(void)
 
 void time_init(void)
 {
-    SPLASH_FUNC();
-
     time_accumulate();
 
     time_rtc_init();

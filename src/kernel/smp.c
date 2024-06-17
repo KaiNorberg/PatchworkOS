@@ -80,7 +80,7 @@ static NOINLINE void smp_startup(void)
             uint8_t id = newId;
             newId++;
 
-            SPLASH_ASSERT(cpu_init(&cpus[id], id, record->localApicId) != ERR, "ap fail");
+            DEBUG_ASSERT(cpu_init(&cpus[id], id, record->localApicId) != ERR, "ap fail");
         }
 
         record = madt_next_record(record, MADT_RECORD_TYPE_LOCAL_APIC);
@@ -89,8 +89,6 @@ static NOINLINE void smp_startup(void)
 
 void smp_init(void)
 {
-    SPLASH_FUNC();
-
     smp_detect_cpus();
     cpus = calloc(cpuAmount, sizeof(Cpu));
 
