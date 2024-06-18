@@ -1,14 +1,10 @@
 #include "splash.h"
 
-#include "common/version.h"
-#include "hpet.h"
-#include "smp.h"
-#include "sys/win.h"
-#include "vmm.h"
+#include <common/version.h>
 
 #include <stdlib.h>
 #include <string.h>
-#include <sys/gfx.h>
+#include <sys/win.h>
 
 static win_theme_t theme;
 static psf_t font;

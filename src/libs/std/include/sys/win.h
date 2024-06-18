@@ -44,16 +44,31 @@ typedef struct msg_kbd
 // User messages
 #define UMSG_BASE (1ULL << 63)
 
+typedef uint8_t win_type_t;
+
+#define WIN_WINDOW 0
+#define WIN_FULLSCREEN 1 // NOT IMPLEMENTED
+#define WIN_TASKBAR 2    // NOT IMPLEMENTED
+#define WIN_WALL 3       // NOT IMPLEMENTED
+
 typedef struct ioctl_dwm_create
 {
     uint64_t x;
     uint64_t y;
     uint64_t width;
     uint64_t height;
+    win_type_t type;
     char name[MAX_PATH];
 } ioctl_dwm_create_t;
 
+typedef struct ioctl_dwm_size
+{
+    uint64_t width;
+    uint64_t height;
+} ioctl_dwm_size_t;
+
 #define IOCTL_DWM_CREATE 0
+#define IOCTL_DWM_SIZE 1
 
 typedef struct ioctl_win_receive
 {
@@ -84,12 +99,6 @@ typedef struct ioctl_win_move
 typedef uint8_t win_t;
 #endif
 
-typedef uint64_t win_flag_t;
-
-#define WIN_NONE 0
-#define WIN_DECO (1 << 0)
-#define WIN_NORESIZE (1 << 1)
-
 typedef struct win_theme
 {
     uint64_t edgeWidth;
@@ -106,13 +115,17 @@ typedef uint64_t (*procedure_t)(win_t*, msg_t, void* data);
 
 void win_default_theme(win_theme_t* theme);
 
-void win_client_to_window(rect_t* rect, const win_theme_t* theme, win_flag_t flags);
+uint64_t win_screen_rect(rect_t* rect);
 
-void win_window_to_client(rect_t* rect, const win_theme_t* theme, win_flag_t flags);
+void win_client_to_window(rect_t* rect, const win_theme_t* theme, win_type_t type);
 
-win_t* win_new(const char* name, const rect_t* rect, const win_theme_t* theme, procedure_t procedure, win_flag_t flags);
+void win_window_to_client(rect_t* rect, const win_theme_t* theme, win_type_t type);
+
+win_t* win_new(const char* name, const rect_t* rect, const win_theme_t* theme, procedure_t procedure, win_type_t type);
 
 uint64_t win_free(win_t* window);
+
+uint64_t win_flush(win_t* window, const surface_t* surface);
 
 msg_t win_dispatch(win_t* window, nsec_t timeout);
 

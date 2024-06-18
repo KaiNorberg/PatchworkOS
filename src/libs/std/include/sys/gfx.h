@@ -30,7 +30,10 @@ typedef struct surface
     uint64_t width;
     uint64_t height;
     uint64_t stride;
+    rect_t invalidArea;
 } surface_t;
+
+void gfx_invalidate(surface_t* surface, const rect_t* rect);
 
 void gfx_psf_char(surface_t* surface, const psf_t* psf, const point_t* point, char chr);
 

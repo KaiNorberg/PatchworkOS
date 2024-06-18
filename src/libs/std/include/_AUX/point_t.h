@@ -9,4 +9,12 @@ typedef struct point
     uint64_t y;
 } point_t;
 
+#define POINT_INIT(point, x, y) \
+    ({ \
+        *point = (point_t){ \
+            x, \
+            y, \
+        }; \
+    })
+
 #endif

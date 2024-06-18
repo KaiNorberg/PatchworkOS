@@ -1,5 +1,6 @@
 #include "debug.h"
 
+#include "_AUX/rect_t.h"
 #include "pmm.h"
 #include "regs.h"
 #include "smp.h"
@@ -44,12 +45,8 @@ static uint64_t debug_row_to_screen(int64_t y)
 
 static void debug_start(const char* message)
 {
-    rect_t rect = (rect_t){
-        .left = 0,
-        .top = 0,
-        .right = surface.width,
-        .bottom = surface.height,
-    };
+    rect_t rect;
+    RECT_INIT_DIM(&rect, 0, 0, surface.width, surface.height);
     gfx_rect(&surface, &rect, DEBUG_BACKGROUND);
 
     char buffer[MAX_PATH];

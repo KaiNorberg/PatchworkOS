@@ -1,3 +1,4 @@
+#include "_AUX/rect_t.h"
 #include "sys/gfx.h"
 #include <stdint.h>
 #include <stdlib.h>
@@ -23,15 +24,13 @@ uint64_t procedure(win_t* window, msg_t type, void* data)
         surface_t surface;
         win_client_surface(window, &surface);
 
-        rect_t rect = (rect_t){
-            .left = 5,
-            .top = 5,
-            .right = surface.width - 5,
-            .bottom = 5 + 64,
-        };
+        rect_t rect;
+        RECT_INIT(&rect, 5, 5, surface.width - 5, 5 + 64);
 
         gfx_rect(&surface, &rect, theme.background);
         gfx_edge(&surface, &rect, theme.edgeWidth, theme.shadow, theme.highlight);
+
+        win_flush(window, &surface);
     }
     break;
     case LMSG_QUIT:
@@ -47,15 +46,11 @@ int main(void)
 {
     win_default_theme(&theme);
 
-    rect_t rect = (rect_t){
-        .left = 500,
-        .top = 200,
-        .right = 500 + WINDOW_WIDTH,
-        .bottom = 200 + WINDOW_HEIGHT,
-    };
-    win_client_to_window(&rect, &theme, WIN_DECO);
+    rect_t rect;
+    RECT_INIT_DIM(&rect, 500, 200, WINDOW_WIDTH, WINDOW_HEIGHT);
+    win_client_to_window(&rect, &theme, WIN_WINDOW);
 
-    win_t* window = win_new("Calculator", &rect, &theme, procedure, WIN_DECO);
+    win_t* window = win_new("Calculator", &rect, &theme, procedure, WIN_WINDOW);
     if (window == NULL)
     {
         exit(EXIT_FAILURE);

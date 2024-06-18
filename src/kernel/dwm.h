@@ -33,6 +33,7 @@ typedef struct
     uint64_t height;
     uint64_t width;
     pixel_t* buffer;
+    win_type_t type;
     Lock lock;
     MessageQueue messages;
 } Window;

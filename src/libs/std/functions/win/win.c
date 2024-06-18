@@ -21,39 +21,15 @@ typedef struct win
     rect_t windowArea;
     rect_t clientArea;
     rect_t invalidArea;
-    win_flag_t flags;
+    win_type_t type;
     procedure_t procedure;
     win_theme_t theme;
     char name[MAX_PATH];
 } win_t;
 
-static void win_invalidate(win_t* window, const rect_t* rect)
-{
-    if (rect == NULL)
-    {
-        window->invalidArea = (rect_t){
-            .left = 0,
-            .top = 0,
-            .right = RECT_WIDTH(&window->windowArea),
-            .bottom = RECT_HEIGHT(&window->windowArea),
-        };
-    }
-    else if (RECT_AREA(&window->invalidArea) == 0)
-    {
-        window->invalidArea = *rect;
-    }
-    else
-    {
-        window->invalidArea.left = MIN(window->invalidArea.left, rect->left);
-        window->invalidArea.top = MIN(window->invalidArea.top, rect->top);
-        window->invalidArea.right = MAX(window->invalidArea.right, rect->right);
-        window->invalidArea.bottom = MAX(window->invalidArea.bottom, rect->bottom);
-    }
-}
-
 static void win_draw_decorations(win_t* window)
 {
-    if (window->flags & WIN_DECO)
+    if (window->type == WIN_WINDOW)
     {
         surface_t surface;
         win_window_surface(window, &surface);
@@ -76,7 +52,7 @@ static void win_draw_decorations(win_t* window)
         };
         gfx_rect(&surface, &topBar, window->theme.topbarHighlight);
 
-        win_invalidate(window, NULL);
+        win_flush(window, &surface);
     }
 }
 
@@ -104,14 +80,39 @@ static inline uint64_t win_set_area(win_t* window, const rect_t* rect)
         .right = RECT_WIDTH(&window->windowArea),
         .bottom = RECT_HEIGHT(&window->windowArea),
     };
-    win_window_to_client(&window->clientArea, &window->theme, window->flags);
+    win_window_to_client(&window->clientArea, &window->theme, window->type);
 
     return 0;
 }
 
-void win_client_to_window(rect_t* rect, const win_theme_t* theme, win_flag_t flags)
+uint64_t win_screen_rect(rect_t* rect)
 {
-    if (flags & WIN_DECO)
+    fd_t fd = open("sys:/srv/dwm");
+    if (fd == ERR)
+    {
+        return ERR;
+    }
+
+    ioctl_dwm_size_t size;
+    if (ioctl(fd, IOCTL_DWM_SIZE, &size, sizeof(ioctl_dwm_size_t)) == ERR)
+    {
+        return ERR;
+    }
+
+    close(fd);
+
+    *rect = (rect_t){
+        .left = 0,
+        .top = 0,
+        .right = size.width,
+        .bottom = size.height,
+    };
+    return 0;
+}
+
+void win_client_to_window(rect_t* rect, const win_theme_t* theme, win_type_t type)
+{
+    if (type == WIN_WINDOW)
     {
         rect->left -= theme->edgeWidth;
         rect->top -= theme->edgeWidth + theme->topbarHeight;
@@ -120,9 +121,9 @@ void win_client_to_window(rect_t* rect, const win_theme_t* theme, win_flag_t fla
     }
 }
 
-void win_window_to_client(rect_t* rect, const win_theme_t* theme, win_flag_t flags)
+void win_window_to_client(rect_t* rect, const win_theme_t* theme, win_type_t type)
 {
-    if (flags & WIN_DECO)
+    if (type == WIN_WINDOW)
     {
         rect->left += theme->edgeWidth;
         rect->top += theme->edgeWidth + theme->topbarHeight;
@@ -131,7 +132,7 @@ void win_window_to_client(rect_t* rect, const win_theme_t* theme, win_flag_t fla
     }
 }
 
-win_t* win_new(const char* name, const rect_t* rect, const win_theme_t* theme, procedure_t procedure, win_flag_t flags)
+win_t* win_new(const char* name, const rect_t* rect, const win_theme_t* theme, procedure_t procedure, win_type_t type)
 {
     if (strlen(name) >= MAX_PATH)
     {
@@ -157,6 +158,7 @@ win_t* win_new(const char* name, const rect_t* rect, const win_theme_t* theme, p
     create.y = rect->top;
     create.width = RECT_WIDTH(rect);
     create.height = RECT_HEIGHT(rect);
+    create.type = type;
     strcpy(create.name, name);
     if (ioctl(window->fd, IOCTL_DWM_CREATE, &create, sizeof(ioctl_dwm_create_t)) == ERR)
     {
@@ -165,12 +167,6 @@ win_t* win_new(const char* name, const rect_t* rect, const win_theme_t* theme, p
         return NULL;
     }
 
-    window->flags = flags;
-    window->procedure = procedure;
-    window->theme = *theme;
-    strcpy(window->name, name);
-    win_set_area(window, rect);
-
     window->buffer = calloc(RECT_AREA(rect), sizeof(pixel_t));
     if (window->buffer == NULL)
     {
@@ -178,6 +174,13 @@ win_t* win_new(const char* name, const rect_t* rect, const win_theme_t* theme, p
         free(window);
         return NULL;
     }
+
+    window->type = type;
+    window->procedure = procedure;
+    window->theme = *theme;
+    strcpy(window->name, name);
+    win_set_area(window, rect);
+    window->invalidArea = (rect_t){};
 
     win_send(window, LMSG_INIT, NULL, 0);
     win_send(window, LMSG_REDRAW, NULL, 0);
@@ -197,6 +200,34 @@ uint64_t win_free(win_t* window)
     return 0;
 }
 
+uint64_t win_flush(win_t* window, const surface_t* surface)
+{
+    uint64_t offset = ((uint64_t)surface->buffer - (uint64_t)window->buffer) / sizeof(pixel_t);
+    uint64_t x = offset % surface->stride;
+    uint64_t y = offset / surface->stride;
+
+    rect_t rect = (rect_t){
+        .left = x + surface->invalidArea.left,
+        .top = y + surface->invalidArea.top,
+        .right = x + surface->invalidArea.right,
+        .bottom = y + surface->invalidArea.bottom,
+    };
+
+    if (RECT_AREA(&window->invalidArea) == 0)
+    {
+        window->invalidArea = rect;
+    }
+    else
+    {
+        window->invalidArea.left = MIN(window->invalidArea.left, rect.left);
+        window->invalidArea.top = MIN(window->invalidArea.top, rect.top);
+        window->invalidArea.right = MAX(window->invalidArea.right, rect.right);
+        window->invalidArea.bottom = MAX(window->invalidArea.bottom, rect.bottom);
+    }
+
+    return 0;
+}
+
 msg_t win_dispatch(win_t* window, nsec_t timeout)
 {
     ioctl_win_receive_t receive = {.timeout = timeout};
@@ -207,20 +238,23 @@ msg_t win_dispatch(win_t* window, nsec_t timeout)
 
     if (win_background_procedure(window, receive.type, receive.data) == ERR)
     {
-        return LMSG_QUIT;
+        win_send(window, LMSG_QUIT, NULL, 0);
+        return MSG_NONE;
     }
 
     if (window->procedure(window, receive.type, receive.data) == ERR)
     {
-        return LMSG_QUIT;
+        win_send(window, LMSG_QUIT, NULL, 0);
+        return MSG_NONE;
     }
 
-    if (RECT_AREA(&window->windowArea) != 0 &&
+    if (RECT_AREA(&window->invalidArea) != 0 &&
         flush(window->fd, window->buffer, RECT_AREA(&window->windowArea) * sizeof(pixel_t), &window->invalidArea) == ERR)
     {
-        window->invalidArea = (rect_t){};
-        return LMSG_QUIT;
+        win_send(window, LMSG_QUIT, NULL, 0);
+        return MSG_NONE;
     }
+    window->invalidArea = (rect_t){};
 
     return receive.type;
 }
@@ -257,13 +291,6 @@ uint64_t win_move(win_t* window, const rect_t* rect)
     move.width = RECT_WIDTH(rect);
     move.height = RECT_HEIGHT(rect);
 
-    if (window->flags & WIN_NORESIZE &&
-        (RECT_WIDTH(rect) != RECT_WIDTH(&window->windowArea) || RECT_HEIGHT(rect) != RECT_HEIGHT(&window->windowArea)))
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
     if (ioctl(window->fd, IOCTL_WIN_MOVE, &move, sizeof(ioctl_win_move_t)) == ERR)
     {
         return ERR;
@@ -299,6 +326,7 @@ void win_client_area(win_t* window, rect_t* rect)
 
 void win_window_surface(win_t* window, surface_t* surface)
 {
+    surface->invalidArea = (rect_t){};
     surface->buffer = window->buffer;
     surface->width = RECT_WIDTH(&window->windowArea);
     surface->height = RECT_HEIGHT(&window->windowArea);
@@ -307,6 +335,7 @@ void win_window_surface(win_t* window, surface_t* surface)
 
 void win_client_surface(win_t* window, surface_t* surface)
 {
+    surface->invalidArea = (rect_t){};
     surface->width = RECT_WIDTH(&window->clientArea);
     surface->height = RECT_HEIGHT(&window->clientArea);
     surface->stride = RECT_WIDTH(&window->windowArea);

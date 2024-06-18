@@ -24,9 +24,7 @@ KERNEL_SRC = \
 	$(STDLIB)/stdlib/malloc.c \
 	$(STDLIB)/stdlib/calloc.c \
 	$(STDLIB)/stdlib/free.c \
-	$(STDLIB)/gfx/gfx_psf.c \
-	$(STDLIB)/gfx/gfx_rect.c \
-	$(STDLIB)/gfx/gfx_edge.c \
+	$(STDLIB)/gfx/gfx.c \
 	$(STDLIB)/win/win_default_theme.c \
 	$(STDLIB)/../internal/init.c
 

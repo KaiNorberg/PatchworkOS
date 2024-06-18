@@ -8,6 +8,7 @@ void main(BootInfo* bootInfo)
 {
     kernel_init(bootInfo);
 
+    sched_spawn("home:/bin/shell.elf");
     sched_spawn("home:/bin/calculator.elf");
 
     // Exit init thread

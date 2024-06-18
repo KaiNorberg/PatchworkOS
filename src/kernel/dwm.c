@@ -230,6 +230,19 @@ static uint64_t dwm_ioctl(File* file, uint64_t request, void* buffer, uint64_t l
         atomic_store(&redrawNeeded, true);
         return 0;
     }
+    case IOCTL_DWM_SIZE:
+    {
+        if (length != sizeof(ioctl_dwm_size_t))
+        {
+            return ERROR(EINVAL);
+        }
+
+        ioctl_dwm_size_t* size = buffer;
+        size->width = backbuffer.width;
+        size->height = backbuffer.height;
+
+        return 0;
+    }
     default:
     {
         return ERROR(EREQ);
@@ -270,12 +283,8 @@ static void dwm_loop(void)
 {
     while (1)
     {
-        rect_t rect = (rect_t){
-            .left = 0,
-            .top = 0,
-            .right = backbuffer.width,
-            .bottom = backbuffer.height,
-        };
+        rect_t rect;
+        RECT_INIT_DIM(&rect, 0, 0, backbuffer.width, backbuffer.height);
         gfx_rect(&backbuffer, &rect, theme.wall);
 
         dwm_draw_windows();
@@ -294,6 +303,7 @@ void dwm_init(GopBuffer* gopBuffer)
     backbuffer.height = frontbuffer.height;
     backbuffer.width = frontbuffer.width;
     backbuffer.stride = frontbuffer.stride;
+
     list_init(&windows);
     lock_init(&lock);
     atomic_init(&redrawNeeded, true);
