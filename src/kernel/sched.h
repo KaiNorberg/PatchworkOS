@@ -27,23 +27,22 @@
 
 typedef struct
 {
-    Queue queues[THREAD_PRIORITY_LEVELS];
-    List killedThreads;
-    List blockedThreads;
-    Thread* runningThread;
-} Scheduler;
+    queue_t queues[THREAD_PRIORITY_LEVELS];
+    list_t graveyard;
+    thread_t* runningThread;
+} scheduler_t;
 
 extern void sched_idle_loop(void);
 
-void scheduler_init(Scheduler* scheduler);
+void scheduler_init(scheduler_t* scheduler);
 
 void sched_start(void);
 
 void sched_cpu_start(void);
 
-Thread* sched_thread(void);
+thread_t* sched_thread(void);
 
-Process* sched_process(void);
+process_t* sched_process(void);
 
 void sched_yield(void);
 
@@ -61,4 +60,4 @@ tid_t sched_thread_spawn(void* entry, uint8_t priority);
 
 uint64_t sched_local_thread_amount(void);
 
-void sched_schedule(TrapFrame* trapFrame);
+void sched_schedule(trap_frame_t* trapFrame);

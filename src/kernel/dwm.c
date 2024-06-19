@@ -11,18 +11,18 @@
 #include <errno.h>
 #include <stdlib.h>
 
-static Lock lock;
+static lock_t lock;
 
-static List windows;
-static Resource dwm;
+static list_t windows;
+static resource_t dwm;
 
-static GopBuffer frontbuffer;
+static gop_buffer_t frontbuffer;
 static surface_t backbuffer;
 static win_theme_t theme;
 
 static _Atomic(bool) redrawNeeded;
 
-static void message_queue_init(MessageQueue* queue)
+static void message_queue_init(message_queue_t* queue)
 {
     memset(queue->queue, 0, sizeof(queue->queue));
     queue->readIndex = 0;
@@ -30,11 +30,11 @@ static void message_queue_init(MessageQueue* queue)
     lock_init(&queue->lock);
 }
 
-static void message_queue_push(MessageQueue* queue, msg_t type, const void* data, uint64_t size)
+static void message_queue_push(message_queue_t* queue, msg_t type, const void* data, uint64_t size)
 {
     LOCK_GUARD(&queue->lock);
 
-    Message message = (Message){
+    message_t message = (message_t){
         .size = size,
         .type = type,
     };
@@ -47,7 +47,7 @@ static void message_queue_push(MessageQueue* queue, msg_t type, const void* data
     queue->writeIndex = (queue->writeIndex + 1) % MESSAGE_QUEUE_MAX;
 }
 
-static bool message_queue_pop(MessageQueue* queue, Message* out)
+static bool message_queue_pop(message_queue_t* queue, message_t* out)
 {
     LOCK_GUARD(&queue->lock);
 
@@ -62,18 +62,18 @@ static bool message_queue_pop(MessageQueue* queue, Message* out)
     return true;
 }
 
-static void window_cleanup(File* file)
+static void window_cleanup(file_t* file)
 {
-    Window* window = file->internal;
+    window_t* window = file->internal;
 
     list_remove(window);
     free(window->buffer);
     free(window);
 }
 
-static uint64_t window_ioctl(File* file, uint64_t request, void* buffer, uint64_t length)
+static uint64_t window_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t length)
 {
-    Window* window = file->internal;
+    window_t* window = file->internal;
 
     switch (request)
     {
@@ -85,7 +85,7 @@ static uint64_t window_ioctl(File* file, uint64_t request, void* buffer, uint64_
         }
         ioctl_win_receive_t* receive = buffer;
 
-        Message message;
+        message_t message;
         if (SCHED_WAIT(message_queue_pop(&window->messages, &message), receive->timeout) == SCHED_WAIT_TIMEOUT)
         {
             receive->type = MSG_NONE;
@@ -147,9 +147,9 @@ static uint64_t window_ioctl(File* file, uint64_t request, void* buffer, uint64_
     }
 }
 
-static uint64_t window_flush(File* file, const void* buffer, uint64_t size, const rect_t* rectIn)
+static uint64_t window_flush(file_t* file, const void* buffer, uint64_t size, const rect_t* rectIn)
 {
-    Window* window = file->internal;
+    window_t* window = file->internal;
     LOCK_GUARD(&window->lock);
 
     if (size != window->width * window->height * sizeof(pixel_t))
@@ -183,7 +183,7 @@ static uint64_t window_flush(File* file, const void* buffer, uint64_t size, cons
     return 0;
 }
 
-static uint64_t dwm_ioctl(File* file, uint64_t request, void* buffer, uint64_t length)
+static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t length)
 {
     LOCK_GUARD(&lock);
 
@@ -210,7 +210,7 @@ static uint64_t dwm_ioctl(File* file, uint64_t request, void* buffer, uint64_t l
             return ERROR(EINVAL);
         }
 
-        Window* window = malloc(sizeof(Window));
+        window_t* window = malloc(sizeof(window_t));
         list_entry_init(&window->base);
         window->x = create->x;
         window->y = create->y;
@@ -223,8 +223,8 @@ static uint64_t dwm_ioctl(File* file, uint64_t request, void* buffer, uint64_t l
 
         file->internal = window;
         file->cleanup = window_cleanup;
-        file->methods.flush = window_flush;
-        file->methods.ioctl = window_ioctl;
+        file->ops.flush = window_flush;
+        file->ops.ioctl = window_ioctl;
 
         list_push(&windows, window);
         atomic_store(&redrawNeeded, true);
@@ -250,9 +250,9 @@ static uint64_t dwm_ioctl(File* file, uint64_t request, void* buffer, uint64_t l
     }
 }
 
-static uint64_t dwm_open(Resource* resource, File* file)
+static uint64_t dwm_open(resource_t* resource, file_t* file)
 {
-    file->methods.ioctl = dwm_ioctl;
+    file->ops.ioctl = dwm_ioctl;
     return 0;
 }
 
@@ -262,7 +262,7 @@ static void dwm_draw_windows(void)
 
     LOCK_GUARD(&lock);
 
-    Window* window;
+    window_t* window;
     LIST_FOR_EACH(window, &windows)
     {
         LOCK_GUARD(&window->lock);
@@ -295,7 +295,7 @@ static void dwm_loop(void)
     }
 }
 
-void dwm_init(GopBuffer* gopBuffer)
+void dwm_init(gop_buffer_t* gopBuffer)
 {
     frontbuffer = *gopBuffer;
     frontbuffer.base = gopBuffer->base;

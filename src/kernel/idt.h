@@ -13,6 +13,12 @@
 
 typedef struct PACKED
 {
+    uint16_t size;
+    uint64_t offset;
+} idt_desc_t;
+
+typedef struct PACKED
+{
     uint16_t isrLow;
     uint16_t codeSegment;
     uint8_t ist;
@@ -20,18 +26,12 @@ typedef struct PACKED
     uint16_t isrMid;
     uint32_t isrHigh;
     uint32_t reserved;
-} IdtEntry;
+} idt_entry_t;
 
 typedef struct PACKED
 {
-    uint16_t size;
-    uint64_t offset;
-} IdtDesc;
-
-typedef struct PACKED
-{
-    IdtEntry entries[VECTOR_AMOUNT];
-} Idt;
+    idt_entry_t entries[VECTOR_AMOUNT];
+} idt_t;
 
 void idt_init(void);
 

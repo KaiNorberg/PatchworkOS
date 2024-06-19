@@ -1,8 +1,7 @@
 #include "loader.h"
 
 #include <string.h>
-
-#include <common/elf.h>
+#include <sys/elf.h>
 
 #include "debug.h"
 #include "sched.h"
@@ -10,7 +9,7 @@
 
 static void* loader_allocate_stack(void)
 {
-    Thread* thread = sched_thread();
+    thread_t* thread = sched_thread();
 
     void* address = (void*)(VMM_LOWER_HALF_MAX - (CONFIG_USER_STACK * (thread->id + 1) + PAGE_SIZE * (thread->id)));
     if (vmm_alloc(address, CONFIG_USER_STACK, PROT_READ | PROT_WRITE) == NULL)
@@ -24,7 +23,7 @@ static void* loader_allocate_stack(void)
 static void* loader_load_program(void)
 {
     const char* executable = sched_process()->executable;
-    File* file = vfs_open(executable);
+    file_t* file = vfs_open(executable);
     if (file == NULL)
     {
         sched_process_exit(EEXEC);
@@ -38,8 +37,8 @@ static void* loader_load_program(void)
         sched_process_exit(EEXEC);
     }
 
-    ElfHeader header;
-    if (FILE_CALL_METHOD(file, read, &header, sizeof(ElfHeader)) != sizeof(ElfHeader))
+    elf_hdr_t header;
+    if (FILE_CALL(file, read, &header, sizeof(elf_hdr_t)) != sizeof(elf_hdr_t))
     {
         sched_process_exit(EEXEC);
     }
@@ -50,14 +49,14 @@ static void* loader_load_program(void)
 
     for (uint64_t i = 0; i < header.programHeaderAmount; i++)
     {
-        uint64_t offset = sizeof(ElfHeader) + header.programHeaderSize * i;
-        if (FILE_CALL_METHOD(file, seek, offset, SEEK_SET) != offset)
+        uint64_t offset = sizeof(elf_hdr_t) + header.programHeaderSize * i;
+        if (FILE_CALL(file, seek, offset, SEEK_SET) != offset)
         {
             sched_process_exit(EEXEC);
         }
 
-        ElfProgramHeader programHeader;
-        if (FILE_CALL_METHOD(file, read, &programHeader, sizeof(ElfProgramHeader)) != sizeof(ElfProgramHeader))
+        elf_phdr_t programHeader;
+        if (FILE_CALL(file, read, &programHeader, sizeof(elf_phdr_t)) != sizeof(elf_phdr_t))
         {
             sched_process_exit(EEXEC);
         }
@@ -71,13 +70,13 @@ static void* loader_load_program(void)
                 sched_process_exit(EEXEC);
             }
 
-            if (FILE_CALL_METHOD(file, seek, programHeader.offset, SEEK_SET) != programHeader.offset)
+            if (FILE_CALL(file, seek, programHeader.offset, SEEK_SET) != programHeader.offset)
             {
                 sched_process_exit(EEXEC);
             }
 
             memset((void*)programHeader.virtAddr, 0, programHeader.memorySize);
-            if (FILE_CALL_METHOD(file, read, (void*)programHeader.virtAddr, programHeader.fileSize) != programHeader.fileSize)
+            if (FILE_CALL(file, read, (void*)programHeader.virtAddr, programHeader.fileSize) != programHeader.fileSize)
             {
                 sched_process_exit(EEXEC);
             }

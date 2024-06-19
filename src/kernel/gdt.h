@@ -14,7 +14,7 @@ typedef struct PACKED
 {
     uint16_t size;
     uint64_t offset;
-} GdtDesc;
+} gdt_desc_t;
 
 typedef struct PACKED
 {
@@ -24,7 +24,7 @@ typedef struct PACKED
     uint8_t access;
     uint8_t flagsAndLimitHigh;
     uint8_t baseHigh;
-} GdtEntry;
+} gdt_entry_t;
 
 typedef struct PACKED
 {
@@ -36,22 +36,22 @@ typedef struct PACKED
     uint8_t baseUpperMiddle;
     uint32_t baseHigh;
     uint32_t reserved;
-} LongGdtEntry;
+} gdt_long_entry_t;
 
 typedef struct PACKED
 {
-    GdtEntry null;
-    GdtEntry kernelCode;
-    GdtEntry kernelData;
-    GdtEntry userCode;
-    GdtEntry userData;
-    LongGdtEntry tss;
-} Gdt;
+    gdt_entry_t null;
+    gdt_entry_t kernelCode;
+    gdt_entry_t kernelData;
+    gdt_entry_t userCode;
+    gdt_entry_t userData;
+    gdt_long_entry_t tss;
+} gdt_t;
 
-extern void gdt_load_descriptor(GdtDesc* descriptor);
+extern void gdt_load_descriptor(gdt_desc_t* descriptor);
 
 void gdt_init(void);
 
 void gdt_load(void);
 
-void gdt_load_tss(Tss* tss);
+void gdt_load_tss(tss_t* tss);

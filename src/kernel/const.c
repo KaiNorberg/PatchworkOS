@@ -7,10 +7,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-static Resource one;
-static Resource zero;
+static resource_t one;
+static resource_t zero;
 
-static void* const_one_mmap(File* file, void* address, uint64_t length, prot_t prot)
+static void* const_one_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
 {
     address = vmm_alloc(address, length, prot);
     if (address == NULL)
@@ -22,13 +22,13 @@ static void* const_one_mmap(File* file, void* address, uint64_t length, prot_t p
     return address;
 }
 
-static uint64_t const_one_open(Resource* resource, File* file)
+static uint64_t const_one_open(resource_t* resource, file_t* file)
 {
-    file->methods.mmap = const_one_mmap;
+    file->ops.mmap = const_one_mmap;
     return 0;
 }
 
-static void* const_zero_mmap(File* file, void* address, uint64_t length, prot_t prot)
+static void* const_zero_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
 {
     address = vmm_alloc(address, length, prot);
     if (address == NULL)
@@ -40,9 +40,9 @@ static void* const_zero_mmap(File* file, void* address, uint64_t length, prot_t 
     return address;
 }
 
-static uint64_t const_zero_open(Resource* resource, File* file)
+static uint64_t const_zero_open(resource_t* resource, file_t* file)
 {
-    file->methods.mmap = const_zero_mmap;
+    file->ops.mmap = const_zero_mmap;
     return 0;
 }
 

@@ -5,7 +5,7 @@
 #include "fs.h"
 #include "vm.h"
 
-void psf_font_load(BootFont* font, CHAR16* path, EFI_HANDLE imageHandle)
+void psf_font_load(boot_font_t* font, CHAR16* path, EFI_HANDLE imageHandle)
 {
     EFI_FILE* file = fs_open(path, imageHandle);
 
@@ -19,7 +19,7 @@ void psf_font_load(BootFont* font, CHAR16* path, EFI_HANDLE imageHandle)
         }
     }
 
-    fs_read(file, sizeof(PsfHeader), &font->header);
+    fs_read(file, sizeof(psf_header_t), &font->header);
 
     if (font->header.magic != PSF_MAGIC)
     {
@@ -40,8 +40,8 @@ void psf_font_load(BootFont* font, CHAR16* path, EFI_HANDLE imageHandle)
         font->glyphsSize = font->header.charSize * 256;
     }
 
-    void* glyphBuffer = vm_alloc(font->glyphsSize, EFI_MEMORY_TYPE_BOOT_INFO);
-    fs_seek(file, sizeof(PsfHeader));
+    void* glyphBuffer = vm_alloc(font->glyphsSize, EFI_BOOT_INFO);
+    fs_seek(file, sizeof(psf_header_t));
     fs_read(file, font->glyphsSize, glyphBuffer);
 
     font->glyphs = glyphBuffer;

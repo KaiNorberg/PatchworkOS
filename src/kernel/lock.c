@@ -2,13 +2,13 @@
 
 #include "trap.h"
 
-void lock_init(Lock* lock)
+void lock_init(lock_t* lock)
 {
     atomic_init(&lock->nextTicket, 0);
     atomic_init(&lock->nowServing, 0);
 }
 
-void lock_acquire(Lock* lock)
+void lock_acquire(lock_t* lock)
 {
     interrupts_disable();
 
@@ -20,7 +20,7 @@ void lock_acquire(Lock* lock)
     }
 }
 
-void lock_release(Lock* lock)
+void lock_release(lock_t* lock)
 {
     atomic_fetch_add(&lock->nowServing, 1);
 

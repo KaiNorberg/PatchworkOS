@@ -1,7 +1,7 @@
-%define PHYSICAL_ADDRESS(address) address - trampoline_virtual_start + TRAMPOLINE_PHYSICAL_START 
+%define PHYSICAL_ADDRESS(address) address - trampoline_virtual_start + TRAMPOLINE_PHYSICAL_START
 
 TRAMPOLINE_PHYSICAL_START equ 0x8000
-TRAMPOLINE_PAGE_TABLE_ADDRESS equ 0x8FF0
+TRAMPOLINE_PML_ADDRESS equ 0x8FF0
 TRAMPOLINE_STACK_ADDRESS equ 0x8FE0
 TRAMPOLINE_ENTRY_ADDRESS equ 0x8FD0
 
@@ -22,7 +22,7 @@ trampoline_virtual_start:
     mov eax, cr0
     or al, 0x1
     mov cr0, eax
-    
+
     jmp 0x8:(PHYSICAL_ADDRESS(trampoline_protected_mode_entry))
 
 [bits 32]
@@ -41,7 +41,7 @@ trampoline_protected_mode_entry:
     or  eax, (1 << 8)
     wrmsr
 
-    mov eax, dword [TRAMPOLINE_PAGE_TABLE_ADDRESS]
+    mov eax, dword [TRAMPOLINE_PML_ADDRESS]
     mov cr3, eax
 
     mov edx, cr0
@@ -53,7 +53,7 @@ trampoline_protected_mode_entry:
     jmp 0x8:(PHYSICAL_ADDRESS(trampoline_long_mode_entry))
 
 [bits 64]
-trampoline_long_mode_entry:    
+trampoline_long_mode_entry:
     mov ax, 0x10
     mov ds, ax
     mov es, ax
@@ -69,7 +69,7 @@ trampoline_long_mode_entry:
     popfq
 
     jmp [TRAMPOLINE_ENTRY_ADDRESS]
-    
+
 align 16
 protected_mode_gdtr:
     dw protected_mode_gdt_end - protected_mode_gdt_start - 1

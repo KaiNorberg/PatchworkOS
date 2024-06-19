@@ -4,11 +4,11 @@
 #include "splash.h"
 #include "tss.h"
 
-ALIGNED(PAGE_SIZE) static Gdt gdt;
+ALIGNED(PAGE_SIZE) static gdt_t gdt;
 
-static GdtEntry gdt_entry_create(uint8_t access, uint8_t flags)
+static gdt_entry_t gdt_entry_create(uint8_t access, uint8_t flags)
 {
-    GdtEntry entry;
+    gdt_entry_t entry;
     entry.limitLow = 0;
     entry.baseLow = 0;
     entry.baseMiddle = 0;
@@ -32,15 +32,15 @@ void gdt_init(void)
 
 void gdt_load(void)
 {
-    GdtDesc gdtDesc;
-    gdtDesc.size = sizeof(Gdt) - 1;
+    gdt_desc_t gdtDesc;
+    gdtDesc.size = sizeof(gdt_t) - 1;
     gdtDesc.offset = (uint64_t)&gdt;
     gdt_load_descriptor(&gdtDesc);
 }
 
-void gdt_load_tss(Tss* tss)
+void gdt_load_tss(tss_t* tss)
 {
-    gdt.tss.limitLow = sizeof(Tss);
+    gdt.tss.limitLow = sizeof(tss_t);
     gdt.tss.baseLow = (uint16_t)((uint64_t)tss);
     gdt.tss.baseLowerMiddle = (uint8_t)((uint64_t)tss >> 16);
     gdt.tss.access = 0x89;

@@ -113,7 +113,7 @@ static void debug_move(const char* name, uint8_t x)
     pos.y = 1;
 }
 
-void debug_init(GopBuffer* gopBuffer, BootFont* screenFont)
+void debug_init(gop_buffer_t* gopBuffer, boot_font_t* screenFont)
 {
     font.foreground = DEBUG_WHITE;
     font.background = DEBUG_BACKGROUND;
@@ -148,7 +148,7 @@ void debug_panic(const char* message)
     }
 }
 
-void debug_exception(TrapFrame const* trapFrame, const char* message)
+void debug_exception(trap_frame_t const* trapFrame, const char* message)
 {
     asm volatile("cli");
     smp_send_ipi_to_others(IPI_HALT);

@@ -6,33 +6,33 @@
 #include "list.h"
 #include "vfs.h"
 
-typedef struct System
+typedef struct system
 {
-    ListEntry base;
+    list_entry_t base;
     char name[CONFIG_MAX_NAME];
-    List resources;
-    List systems;
-} System;
+    list_t resources;
+    list_t systems;
+} system_t;
 
-typedef struct Resource
+typedef struct resource
 {
-    ListEntry base;
-    System* system;
+    list_entry_t base;
+    system_t* system;
     _Atomic(uint64_t) ref;
     char name[CONFIG_MAX_NAME];
-    void (*delete)(struct Resource* resource);
-    uint64_t (*open)(struct Resource* resource, File* file);
-} Resource;
+    void (*delete)(struct resource* resource);
+    uint64_t (*open)(struct resource* resource, file_t* file);
+} resource_t;
 
-void resource_init(
-    Resource* resource, const char* name, uint64_t (*open)(Resource* resource, File* file), void (*delete)(Resource* resource));
+void resource_init(resource_t* resource, const char* name, uint64_t (*open)(resource_t* resource, file_t* file),
+    void (*delete)(resource_t* resource));
 
-Resource* resource_ref(Resource* resource);
+resource_t* resource_ref(resource_t* resource);
 
-void resource_unref(Resource* resource);
+void resource_unref(resource_t* resource);
 
 void sysfs_init(void);
 
-void sysfs_expose(Resource* resource, const char* path);
+void sysfs_expose(resource_t* resource, const char* path);
 
-void sysfs_hide(Resource* resource);
+void sysfs_hide(resource_t* resource);

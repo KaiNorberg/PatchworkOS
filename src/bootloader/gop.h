@@ -4,4 +4,4 @@
 #include <efi.h>
 #include <efilib.h>
 
-void gop_buffer_init(GopBuffer* buffer);
+void gop_buffer_init(gop_buffer_t* buffer);

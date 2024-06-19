@@ -14,7 +14,7 @@
 #include "pmm.h"
 #include "vmm.h"
 
-static Lock lock;
+static lock_t lock;
 static uintptr_t newAddress;
 
 extern uint64_t _kernelEnd;

@@ -2,4 +2,4 @@
 
 #include <common/boot_info.h>
 
-void ramfs_init(RamDir* ramRoot);
+void ramfs_init(ram_dir_t* ramRoot);

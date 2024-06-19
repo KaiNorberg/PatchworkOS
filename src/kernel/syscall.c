@@ -101,7 +101,7 @@ fd_t syscall_open(const char* path)
         return ERROR(EFAULT);
     }
 
-    File* file = vfs_open(path);
+    file_t* file = vfs_open(path);
     if (file == NULL)
     {
         return ERR;
@@ -128,14 +128,14 @@ uint64_t syscall_read(fd_t fd, void* buffer, uint64_t count)
         return ERROR(EFAULT);
     }
 
-    File* file = vfs_context_get(fd);
+    file_t* file = vfs_context_get(fd);
     if (file == NULL)
     {
         return ERR;
     }
     FILE_GUARD(file);
 
-    return FILE_CALL_METHOD(file, read, buffer, count);
+    return FILE_CALL(file, read, buffer, count);
 }
 
 uint64_t syscall_write(fd_t fd, const void* buffer, uint64_t count)
@@ -145,26 +145,26 @@ uint64_t syscall_write(fd_t fd, const void* buffer, uint64_t count)
         return ERROR(EFAULT);
     }
 
-    File* file = vfs_context_get(fd);
+    file_t* file = vfs_context_get(fd);
     if (file == NULL)
     {
         return ERR;
     }
     FILE_GUARD(file);
 
-    return FILE_CALL_METHOD(file, write, buffer, count);
+    return FILE_CALL(file, write, buffer, count);
 }
 
 uint64_t syscall_seek(fd_t fd, int64_t offset, uint8_t origin)
 {
-    File* file = vfs_context_get(fd);
+    file_t* file = vfs_context_get(fd);
     if (file == NULL)
     {
         return ERR;
     }
     FILE_GUARD(file);
 
-    return FILE_CALL_METHOD(file, seek, offset, origin);
+    return FILE_CALL(file, seek, offset, origin);
 }
 
 uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* buffer, uint64_t length)
@@ -174,14 +174,14 @@ uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* buffer, uint64_t length)
         return ERROR(EFAULT);
     }
 
-    File* file = vfs_context_get(fd);
+    file_t* file = vfs_context_get(fd);
     if (file == NULL)
     {
         return ERR;
     }
     FILE_GUARD(file);
 
-    return FILE_CALL_METHOD(file, ioctl, request, buffer, length);
+    return FILE_CALL(file, ioctl, request, buffer, length);
 }
 
 uint64_t syscall_realpath(char* out, const char* path)
@@ -216,7 +216,7 @@ uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, uint64_t timeout)
         return ERROR(EFAULT);
     }
 
-    PollFile files[CONFIG_MAX_FILE];
+    poll_file_t files[CONFIG_MAX_FILE];
     for (uint64_t i = 0; i < amount; i++)
     {
         files[i].file = vfs_context_get(fds[i].fd);
@@ -257,14 +257,14 @@ uint64_t syscall_stat(const char* path, stat_t* buffer)
 
 void* syscall_mmap(fd_t fd, void* address, uint64_t length, prot_t prot)
 {
-    File* file = vfs_context_get(fd);
+    file_t* file = vfs_context_get(fd);
     if (file == NULL)
     {
         return NULL;
     }
     FILE_GUARD(file);
 
-    return FILE_CALL_METHOD_PTR(file, mmap, address, length, prot);
+    return FILE_CALL_PTR(file, mmap, address, length, prot);
 }
 
 uint64_t syscall_munmap(void* address, uint64_t length)
@@ -299,14 +299,14 @@ uint64_t syscall_flush(fd_t fd, const void* buffer, uint64_t size, const rect_t*
         return ERROR(EFAULT);
     }
 
-    File* file = vfs_context_get(fd);
+    file_t* file = vfs_context_get(fd);
     if (file == NULL)
     {
         return ERR;
     }
     FILE_GUARD(file);
 
-    return FILE_CALL_METHOD(file, flush, buffer, size, rect);
+    return FILE_CALL(file, flush, buffer, size, rect);
 }
 
 ///////////////////////////////////////////////////////

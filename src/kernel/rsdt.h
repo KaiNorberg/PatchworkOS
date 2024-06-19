@@ -16,7 +16,7 @@ typedef struct PACKED
     uint64_t xsdtAddress;
     uint8_t extendedChecksum;
     uint8_t reserved[3];
-} Xsdp;
+} xsdp_t;
 
 typedef struct PACKED
 {
@@ -29,14 +29,14 @@ typedef struct PACKED
     uint32_t oemRevision;
     uint32_t creatorID;
     uint32_t creatorRevision;
-} SdtHeader;
+} sdt_t;
 
 typedef struct PACKED
 {
-    SdtHeader header;
-    SdtHeader* tables[];
-} Xsdt;
+    sdt_t header;
+    sdt_t* tables[];
+} xsdt_t;
 
-void rsdt_init(Xsdp* xsdp);
+void rsdt_init(xsdp_t* xsdp);
 
-SdtHeader* rsdt_lookup(const char* signature);
+sdt_t* rsdt_lookup(const char* signature);

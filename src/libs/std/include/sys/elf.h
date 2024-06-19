@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _SYS_ELF_H
+#define _SYS_ELF_H 1
 
 #include <stdint.h>
 
@@ -32,7 +33,7 @@ typedef struct
     uint16_t sectionHeaderSize;
     uint16_t sectionHeaderAmount;
     uint16_t sectionHeaderStringIndex;
-} ElfHeader;
+} elf_hdr_t;
 
 typedef struct
 {
@@ -44,7 +45,7 @@ typedef struct
     uint64_t fileSize;
     uint64_t memorySize;
     uint64_t align;
-} ElfProgramHeader;
+} elf_phdr_t;
 
 typedef struct
 {
@@ -58,4 +59,6 @@ typedef struct
     uint32_t info;
     uint64_t addressAlign;
     uint64_t entrySize;
-} ElfSectionHeader;
+} elf_shdr_t;
+
+#endif

@@ -3,45 +3,45 @@
 #include "defs.h"
 
 // Must be placed at the top of a struct.
-typedef struct ListEntry
+typedef struct list_entry_t
 {
-    struct ListEntry* prev;
-    struct ListEntry* next;
-} ListEntry;
+    struct list_entry_t* prev;
+    struct list_entry_t* next;
+} list_entry_t;
 
 typedef struct
 {
-    ListEntry head;
-} List;
+    list_entry_t head;
+} list_t;
 
 #define LIST_FOR_EACH(elem, list) \
     for ((elem) = (typeof(elem))((list)->head.next); (elem) != (typeof(elem))(list); \
-         (elem) = (typeof(elem))(((ListEntry*)(elem))->next))
+         (elem) = (typeof(elem))(((list_entry_t*)(elem))->next))
 
 // Allows for safely removing elements from the list while iterating over it.
 #define LIST_FOR_EACH_SAFE(elem, temp, list) \
-    for ((elem) = (typeof(elem))((list)->head.next), (temp) = (typeof(elem))(((ListEntry*)(elem))->next); \
-         (elem) != (typeof(elem))(list); (elem) = (temp), (temp) = (typeof(elem))(((ListEntry*)(elem))->next))
+    for ((elem) = (typeof(elem))((list)->head.next), (temp) = (typeof(elem))(((list_entry_t*)(elem))->next); \
+         (elem) != (typeof(elem))(list); (elem) = (temp), (temp) = (typeof(elem))(((list_entry_t*)(elem))->next))
 
-static inline void list_entry_init(ListEntry* entry)
+static inline void list_entry_init(list_entry_t* entry)
 {
     entry->next = entry;
     entry->prev = entry;
 }
 
-static inline void list_init(List* list)
+static inline void list_init(list_t* list)
 {
     list_entry_init(&list->head);
 }
 
-static inline bool list_empty(List* list)
+static inline bool list_empty(list_t* list)
 {
     return list->head.next == &list->head;
 }
 
-static inline void list_append(ListEntry* head, void* element)
+static inline void list_append(list_entry_t* head, void* element)
 {
-    ListEntry* header = (ListEntry*)element;
+    list_entry_t* header = (list_entry_t*)element;
 
     header->next = head->next;
     header->prev = head;
@@ -49,14 +49,14 @@ static inline void list_append(ListEntry* head, void* element)
     head->next = header;
 }
 
-static inline void list_prepend(ListEntry* head, void* element)
+static inline void list_prepend(list_entry_t* head, void* element)
 {
     list_append(head->prev, element);
 }
 
 static inline void list_remove(void* element)
 {
-    ListEntry* header = (ListEntry*)element;
+    list_entry_t* header = (list_entry_t*)element;
 
     header->next->prev = header->prev;
     header->prev->next = header->next;
@@ -64,19 +64,19 @@ static inline void list_remove(void* element)
     header->prev = header;
 }
 
-static inline void list_push(List* list, void* element)
+static inline void list_push(list_t* list, void* element)
 {
     list_prepend(&list->head, element);
 }
 
-static inline void* list_pop(List* list)
+static inline void* list_pop(list_t* list)
 {
     if (list_empty(list))
     {
         return NULL;
     }
 
-    ListEntry* element = list->head.prev;
+    list_entry_t* element = list->head.prev;
     list_remove(element);
     return element;
 }

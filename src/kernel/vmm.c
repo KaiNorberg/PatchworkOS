@@ -10,9 +10,9 @@
 
 #include <stdlib.h>
 
-static PageTable* kernelPageTable;
+static pml_t* kernelPageTable;
 
-static List blocks;
+static list_t blocks;
 
 static void vmm_align_region(void** virtAddr, uint64_t* length)
 {
@@ -28,44 +28,43 @@ static uint64_t vmm_prot_to_flags(prot_t prot)
         return ERR;
     }
 
-    return (prot & PROT_WRITE ? PAGE_FLAG_WRITE : 0) | PAGE_FLAG_USER;
+    return (prot & PROT_WRITE ? PAGE_WRITE : 0) | PAGE_USER;
 }
 
-static void vmm_load_memory_map(EfiMemoryMap* memoryMap)
+static void vmm_load_memory_map(efi_mem_map_t* memoryMap)
 {
-    kernelPageTable = page_table_new();
+    kernelPageTable = pml_new();
 
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
+        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
 
-        page_table_map(kernelPageTable, desc->virtualStart, desc->physicalStart, desc->amountOfPages,
-            PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
+        pml_map(kernelPageTable, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_WRITE | VMM_KERNEL_PAGES);
     }
 
-    page_table_load(kernelPageTable);
+    pml_load(kernelPageTable);
 }
 
-static void vmm_deallocate_boot_page_table(EfiMemoryMap* memoryMap)
+static void vmm_deallocate_boot_pml(efi_mem_map_t* memoryMap)
 {
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
+        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
 
-        if (desc->type == EFI_MEMORY_TYPE_PAGE_TABLE)
+        if (desc->type == EFI_PML_MEMORY)
         {
             pmm_free_pages(desc->physicalStart, desc->amountOfPages);
         }
     }
 }
 
-static void* space_find_free_region(Space* space, uint64_t length)
+static void* space_find_free_region(space_t* space, uint64_t length)
 {
     uint64_t pageAmount = SIZE_IN_PAGES(length);
 
     for (uintptr_t addr = space->freeAddress; addr < ROUND_DOWN(UINT64_MAX, 0x1000); addr += pageAmount * PAGE_SIZE)
     {
-        if (!page_table_mapped(space->pageTable, (void*)addr, pageAmount))
+        if (!pml_mapped(space->pml, (void*)addr, pageAmount))
         {
             space->freeAddress = addr + pageAmount * PAGE_SIZE;
             return (void*)addr;
@@ -75,44 +74,44 @@ static void* space_find_free_region(Space* space, uint64_t length)
     debug_panic("Address space filled, you must have ran this on a super computer... dont do that.");
 }
 
-void space_init(Space* space)
+void space_init(space_t* space)
 {
-    space->pageTable = page_table_new();
+    space->pml = pml_new();
     space->freeAddress = 0x400000;
     lock_init(&space->lock);
 
     for (uint64_t i = PAGE_ENTRY_AMOUNT / 2; i < PAGE_ENTRY_AMOUNT; i++)
     {
-        space->pageTable->entries[i] = kernelPageTable->entries[i];
+        space->pml->entries[i] = kernelPageTable->entries[i];
     }
 }
 
-void space_cleanup(Space* space)
+void space_cleanup(space_t* space)
 {
     for (uint64_t i = PAGE_ENTRY_AMOUNT / 2; i < PAGE_ENTRY_AMOUNT; i++)
     {
-        space->pageTable->entries[i] = (PageEntry){0};
+        space->pml->entries[i] = (pml_entry_t){0};
     }
 
-    page_table_free(space->pageTable);
+    pml_free(space->pml);
 }
 
-void space_load(Space* space)
+void space_load(space_t* space)
 {
     if (space == NULL)
     {
-        page_table_load(kernelPageTable);
+        pml_load(kernelPageTable);
     }
     else
     {
-        page_table_load(space->pageTable);
+        pml_load(space->pml);
     }
 }
 
-void vmm_init(EfiMemoryMap* memoryMap, GopBuffer* gopBuffer)
+void vmm_init(efi_mem_map_t* memoryMap, gop_buffer_t* gopBuffer)
 {
     vmm_load_memory_map(memoryMap);
-    vmm_deallocate_boot_page_table(memoryMap);
+    vmm_deallocate_boot_pml(memoryMap);
 
     gopBuffer->base = vmm_kernel_map(NULL, gopBuffer->base, gopBuffer->size);
 }
@@ -124,14 +123,14 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t length)
         virtAddr = VMM_LOWER_TO_HIGHER(physAddr);
     }
 
-    page_table_map(kernelPageTable, virtAddr, physAddr, SIZE_IN_PAGES(length), PAGE_FLAG_WRITE | VMM_KERNEL_PAGE_FLAGS);
+    pml_map(kernelPageTable, virtAddr, physAddr, SIZE_IN_PAGES(length), PAGE_WRITE | VMM_KERNEL_PAGES);
 
     return virtAddr;
 }
 
 void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot)
 {
-    Space* space = &sched_process()->space;
+    space_t* space = &sched_process()->space;
     LOCK_GUARD(&space->lock);
 
     if (length == 0)
@@ -144,7 +143,7 @@ void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot)
     {
         return NULLPTR(EACCES);
     }
-    flags |= PAGE_FLAG_OWNED;
+    flags |= PAGE_OWNED;
 
     if (virtAddr == NULL)
     {
@@ -153,7 +152,7 @@ void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot)
 
     vmm_align_region(&virtAddr, &length);
 
-    if (page_table_mapped(space->pageTable, virtAddr, SIZE_IN_PAGES(length)))
+    if (pml_mapped(space->pml, virtAddr, SIZE_IN_PAGES(length)))
     {
         return NULLPTR(EEXIST);
     }
@@ -161,7 +160,7 @@ void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot)
     for (uint64_t i = 0; i < SIZE_IN_PAGES(length); i++)
     {
         void* address = (void*)((uint64_t)virtAddr + i * PAGE_SIZE);
-        page_table_map(space->pageTable, address, pmm_alloc(), 1, flags);
+        pml_map(space->pml, address, pmm_alloc(), 1, flags);
     }
 
     return virtAddr;
@@ -169,7 +168,7 @@ void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot)
 
 void* vmm_map(void* virtAddr, void* physAddr, uint64_t length, prot_t prot)
 {
-    Space* space = &sched_process()->space;
+    space_t* space = &sched_process()->space;
     LOCK_GUARD(&space->lock);
 
     if (physAddr == NULL)
@@ -196,12 +195,12 @@ void* vmm_map(void* virtAddr, void* physAddr, uint64_t length, prot_t prot)
     physAddr = (void*)ROUND_DOWN(physAddr, PAGE_SIZE);
     vmm_align_region(&virtAddr, &length);
 
-    if (page_table_mapped(space->pageTable, virtAddr, SIZE_IN_PAGES(length)))
+    if (pml_mapped(space->pml, virtAddr, SIZE_IN_PAGES(length)))
     {
         return NULLPTR(EEXIST);
     }
 
-    page_table_map(space->pageTable, virtAddr, physAddr, SIZE_IN_PAGES(length), flags);
+    pml_map(space->pml, virtAddr, physAddr, SIZE_IN_PAGES(length), flags);
 
     return virtAddr;
 }
@@ -210,15 +209,15 @@ uint64_t vmm_unmap(void* virtAddr, uint64_t length)
 {
     vmm_align_region(&virtAddr, &length);
 
-    Space* space = &sched_process()->space;
+    space_t* space = &sched_process()->space;
     LOCK_GUARD(&space->lock);
 
-    if (!page_table_mapped(space->pageTable, virtAddr, SIZE_IN_PAGES(length)))
+    if (!pml_mapped(space->pml, virtAddr, SIZE_IN_PAGES(length)))
     {
         return ERROR(EFAULT);
     }
 
-    page_table_unmap(space->pageTable, virtAddr, SIZE_IN_PAGES(length));
+    pml_unmap(space->pml, virtAddr, SIZE_IN_PAGES(length));
 
     return 0;
 }
@@ -233,15 +232,15 @@ uint64_t vmm_protect(void* virtAddr, uint64_t length, prot_t prot)
 
     vmm_align_region(&virtAddr, &length);
 
-    Space* space = &sched_process()->space;
+    space_t* space = &sched_process()->space;
     LOCK_GUARD(&space->lock);
 
-    if (!page_table_mapped(space->pageTable, virtAddr, SIZE_IN_PAGES(length)))
+    if (!pml_mapped(space->pml, virtAddr, SIZE_IN_PAGES(length)))
     {
         return ERROR(EFAULT);
     }
 
-    page_table_change_flags(space->pageTable, virtAddr, SIZE_IN_PAGES(length), flags);
+    pml_change_flags(space->pml, virtAddr, SIZE_IN_PAGES(length), flags);
 
     return 0;
 }
@@ -250,8 +249,8 @@ bool vmm_mapped(const void* virtAddr, uint64_t length)
 {
     vmm_align_region((void**)&virtAddr, &length);
 
-    Space* space = &sched_process()->space;
+    space_t* space = &sched_process()->space;
     LOCK_GUARD(&space->lock);
 
-    return page_table_mapped(space->pageTable, virtAddr, SIZE_IN_PAGES(length));
+    return pml_mapped(space->pml, virtAddr, SIZE_IN_PAGES(length));
 }

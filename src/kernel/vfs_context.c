@@ -4,18 +4,18 @@
 
 #include "sched.h"
 
-void vfs_context_init(VfsContext* context)
+void vfs_context_init(vfs_context_t* context)
 {
-    memset(context, 0, sizeof(VfsContext));
+    memset(context, 0, sizeof(vfs_context_t));
     strcpy(context->cwd, "sys:");
     lock_init(&context->lock);
 }
 
-void vfs_context_cleanup(VfsContext* context)
+void vfs_context_cleanup(vfs_context_t* context)
 {
     for (uint64_t i = 0; i < CONFIG_MAX_FILE; i++)
     {
-        File* file = context->files[i];
+        file_t* file = context->files[i];
         if (file != NULL)
         {
             file_deref(file);
@@ -23,9 +23,9 @@ void vfs_context_cleanup(VfsContext* context)
     }
 }
 
-fd_t vfs_context_open(File* file)
+fd_t vfs_context_open(file_t* file)
 {
-    VfsContext* context = &sched_process()->vfsContext;
+    vfs_context_t* context = &sched_process()->vfsContext;
     LOCK_GUARD(&context->lock);
 
     for (fd_t fd = 0; fd < CONFIG_MAX_FILE; fd++)
@@ -43,7 +43,7 @@ fd_t vfs_context_open(File* file)
 uint64_t vfs_context_close(fd_t fd)
 {
 
-    VfsContext* context = &sched_process()->vfsContext;
+    vfs_context_t* context = &sched_process()->vfsContext;
     LOCK_GUARD(&context->lock);
 
     if (fd >= CONFIG_MAX_FILE || context->files[fd] == NULL)
@@ -51,15 +51,15 @@ uint64_t vfs_context_close(fd_t fd)
         return ERROR(EBADF);
     }
 
-    File* file = context->files[fd];
+    file_t* file = context->files[fd];
     context->files[fd] = NULL;
     file_deref(file);
     return 0;
 }
 
-File* vfs_context_get(fd_t fd)
+file_t* vfs_context_get(fd_t fd)
 {
-    VfsContext* context = &sched_process()->vfsContext;
+    vfs_context_t* context = &sched_process()->vfsContext;
     LOCK_GUARD(&context->lock);
 
     if (context->files[fd] == NULL)

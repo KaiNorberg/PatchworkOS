@@ -4,21 +4,21 @@
 #include "utils.h"
 #include "vmm.h"
 
-static Hpet* hpet;
+static hpet_t* hpet;
 static uintptr_t address;
 static uint64_t period;
 
 void hpet_init(void)
 {
-    hpet = (Hpet*)rsdt_lookup("HPET");
+    hpet = (hpet_t*)rsdt_lookup("HPET");
     DEBUG_ASSERT(hpet != NULL, "lookup fail");
 
     address = (uintptr_t)vmm_kernel_map(NULL, (void*)hpet->address, PAGE_SIZE);
     period = hpet_read(HPET_GENERAL_CAPABILITIES) >> HPET_COUNTER_CLOCK_OFFSET;
 
-    hpet_write(HPET_GENERAL_CONFIG, HPET_CONFIG_DISABLE);
+    hpet_write(HPET_GENERAL_CONFIG, HPET_CFG_DISABLE);
     hpet_write(HPET_MAIN_COUNTER_VALUE, 0);
-    hpet_write(HPET_GENERAL_CONFIG, HPET_CONFIG_ENABLE);
+    hpet_write(HPET_GENERAL_CONFIG, HPET_CFG_ENABLE);
 }
 
 uint64_t hpet_read_counter(void)
@@ -28,9 +28,9 @@ uint64_t hpet_read_counter(void)
 
 void hpet_reset_counter(void)
 {
-    hpet_write(HPET_GENERAL_CONFIG, HPET_CONFIG_DISABLE);
+    hpet_write(HPET_GENERAL_CONFIG, HPET_CFG_DISABLE);
     hpet_write(HPET_MAIN_COUNTER_VALUE, 0);
-    hpet_write(HPET_GENERAL_CONFIG, HPET_CONFIG_ENABLE);
+    hpet_write(HPET_GENERAL_CONFIG, HPET_CFG_ENABLE);
 }
 
 uint64_t hpet_nanoseconds_per_tick(void)

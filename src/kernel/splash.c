@@ -31,7 +31,7 @@ static void splash_text(int64_t offset, uint8_t scale, const char* string, pixel
     gfx_psf_string(&surface, &font, &pos, string);
 }
 
-void splash_init(GopBuffer* gopBuffer, BootFont* screenFont)
+void splash_init(gop_buffer_t* gopBuffer, boot_font_t* screenFont)
 {
     win_default_theme(&theme);
 

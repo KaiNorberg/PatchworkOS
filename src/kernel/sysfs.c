@@ -3,19 +3,18 @@
 #include "debug.h"
 #include "lock.h"
 #include "sched.h"
-#include "splash.h"
 
 #include <stdlib.h>
 #include <string.h>
 
-static Filesystem sysfs;
+static fs_t sysfs;
 
-static System* root;
-static Lock lock;
+static system_t* root;
+static lock_t lock;
 
-static System* system_new(const char* name)
+static system_t* system_new(const char* name)
 {
-    System* system = malloc(sizeof(System));
+    system_t* system = malloc(sizeof(system_t));
     list_entry_init(&system->base);
     name_copy(system->name, name);
     list_init(&system->resources);
@@ -24,9 +23,9 @@ static System* system_new(const char* name)
     return system;
 }
 
-static System* system_find_system(System* parent, const char* name)
+static system_t* system_find_system(system_t* parent, const char* name)
 {
-    System* system;
+    system_t* system;
     LIST_FOR_EACH(system, &parent->systems)
     {
         if (name_compare(system->name, name))
@@ -38,9 +37,9 @@ static System* system_find_system(System* parent, const char* name)
     return NULL;
 }
 
-static Resource* system_find_resource(System* parent, const char* name)
+static resource_t* system_find_resource(system_t* parent, const char* name)
 {
-    Resource* resource;
+    resource_t* resource;
     LIST_FOR_EACH(resource, &parent->resources)
     {
         if (name_compare(resource->name, name))
@@ -52,9 +51,9 @@ static Resource* system_find_resource(System* parent, const char* name)
     return NULL;
 }
 
-static System* sysfs_traverse(const char* path)
+static system_t* sysfs_traverse(const char* path)
 {
-    System* system = root;
+    system_t* system = root;
     const char* name = dir_name_first(path);
     while (name != NULL)
     {
@@ -70,9 +69,9 @@ static System* sysfs_traverse(const char* path)
     return system;
 }
 
-static Resource* sysfs_find_resource(const char* path)
+static resource_t* sysfs_find_resource(const char* path)
 {
-    System* parent = sysfs_traverse(path);
+    system_t* parent = sysfs_traverse(path);
     if (parent == NULL)
     {
         return NULL;
@@ -87,11 +86,11 @@ static Resource* sysfs_find_resource(const char* path)
     return system_find_resource(parent, name);
 }
 
-static uint64_t sysfs_open(Volume* volume, File* file, const char* path)
+static uint64_t sysfs_open(volume_t* volume, file_t* file, const char* path)
 {
     LOCK_GUARD(&lock);
 
-    Resource* resource = sysfs_find_resource(path);
+    resource_t* resource = sysfs_find_resource(path);
     if (resource == NULL)
     {
         return ERROR(EPATH);
@@ -100,11 +99,11 @@ static uint64_t sysfs_open(Volume* volume, File* file, const char* path)
     return resource->open(resource, file);
 }
 
-static uint64_t sysfs_stat(Volume* volume, const char* path, stat_t* buffer)
+static uint64_t sysfs_stat(volume_t* volume, const char* path, stat_t* buffer)
 {
     buffer->size = 0;
 
-    System* parent = sysfs_traverse(path);
+    system_t* parent = sysfs_traverse(path);
     if (parent == NULL)
     {
         return ERR;
@@ -127,7 +126,7 @@ static uint64_t sysfs_stat(Volume* volume, const char* path, stat_t* buffer)
     return 0;
 }
 
-static uint64_t sysfs_mount(Volume* volume)
+static uint64_t sysfs_mount(volume_t* volume)
 {
     volume->open = sysfs_open;
     volume->stat = sysfs_stat;
@@ -135,8 +134,8 @@ static uint64_t sysfs_mount(Volume* volume)
     return 0;
 }
 
-void resource_init(
-    Resource* resource, const char* name, uint64_t (*open)(Resource* resource, File* file), void (*delete)(Resource* resource))
+void resource_init(resource_t* resource, const char* name, uint64_t (*open)(resource_t* resource, file_t* file),
+    void (*delete)(resource_t* resource))
 {
     list_entry_init(&resource->base);
     resource->system = NULL;
@@ -146,13 +145,13 @@ void resource_init(
     resource->delete = delete;
 }
 
-Resource* resource_ref(Resource* resource)
+resource_t* resource_ref(resource_t* resource)
 {
     atomic_fetch_add(&resource->ref, 1);
     return resource;
 }
 
-void resource_unref(Resource* resource)
+void resource_unref(resource_t* resource)
 {
     if (atomic_fetch_sub(&resource->ref, 1) <= 1)
     {
@@ -172,22 +171,22 @@ void sysfs_init(void)
     root = system_new("root");
     lock_init(&lock);
 
-    memset(&sysfs, 0, sizeof(Filesystem));
+    memset(&sysfs, 0, sizeof(fs_t));
     sysfs.name = "sysfs";
     sysfs.mount = sysfs_mount;
 
     DEBUG_ASSERT(vfs_mount("sys", &sysfs) != ERR, "mount fail");
 }
 
-void sysfs_expose(Resource* resource, const char* path)
+void sysfs_expose(resource_t* resource, const char* path)
 {
     LOCK_GUARD(&lock);
 
-    System* system = root;
+    system_t* system = root;
     const char* name = name_first(path);
     while (name != NULL)
     {
-        System* next = system_find_system(system, name);
+        system_t* next = system_find_system(system, name);
         if (next == NULL)
         {
             next = system_new(name);
@@ -202,7 +201,7 @@ void sysfs_expose(Resource* resource, const char* path)
     list_push(&system->resources, resource);
 }
 
-void sysfs_hide(Resource* resource)
+void sysfs_hide(resource_t* resource)
 {
     LOCK_GUARD(&lock);
 

@@ -1,6 +1,6 @@
-#include "memory.h"
+#include "mem.h"
 
-void* memory_allocate_pages(uint64_t pageAmount, uint64_t memoryType)
+void* mem_alloc_pages(uint64_t pageAmount, uint64_t memoryType)
 {
     EFI_PHYSICAL_ADDRESS address = 0;
     EFI_STATUS status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, memoryType, pageAmount, &address);
@@ -17,7 +17,7 @@ void* memory_allocate_pages(uint64_t pageAmount, uint64_t memoryType)
     return (void*)address;
 }
 
-void* memory_allocate_pool(uint64_t size, uint64_t memoryType)
+void* mem_alloc_pool(uint64_t size, uint64_t memoryType)
 {
     EFI_PHYSICAL_ADDRESS address = 0;
     EFI_STATUS status = uefi_call_wrapper(BS->AllocatePool, 4, memoryType, size, &address);
@@ -34,18 +34,18 @@ void* memory_allocate_pool(uint64_t size, uint64_t memoryType)
     return (void*)address;
 }
 
-void memory_free_pool(void* pool)
+void mem_free_pool(void* pool)
 {
     uefi_call_wrapper(BS->FreePool, 1, pool);
 }
 
-void memory_map_init(EfiMemoryMap* memoryMap)
+void mem_map_init(efi_mem_map_t* memoryMap)
 {
     memoryMap->base =
         LibMemoryMap(&memoryMap->descriptorAmount, &memoryMap->key, &memoryMap->descriptorSize, &memoryMap->descriptorVersion);
 }
 
-void memory_map_cleanup(EfiMemoryMap* memoryMap)
+void mem_map_cleanup(efi_mem_map_t* memoryMap)
 {
-    memory_free_pool(memoryMap->base);
+    mem_free_pool(memoryMap->base);
 }

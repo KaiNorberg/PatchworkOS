@@ -11,7 +11,7 @@ typedef struct
     void* virtualStart;
     uint64_t amountOfPages;
     uint64_t attribute;
-} EfiMemoryDescriptor;
+} efi_mem_desc_t;
 
 #define EFI_RESERVED 0
 #define EFI_LOADER_CODE 1
@@ -31,26 +31,26 @@ typedef struct
 #else
 #include <efi.h>
 #include <efilib.h>
-typedef EFI_MEMORY_DESCRIPTOR EfiMemoryDescriptor;
+typedef EFI_MEMORY_DESCRIPTOR efi_mem_desc_t;
 #endif
 
 #define EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, index) \
-    (EfiMemoryDescriptor*)((uint64_t)(memoryMap)->base + ((index) * (memoryMap)->descriptorSize))
+    (efi_mem_desc_t*)((uint64_t)(memoryMap)->base + ((index) * (memoryMap)->descriptorSize))
 
-#define EFI_MEMORY_TYPE_KERNEL 0x80000000
-#define EFI_MEMORY_TYPE_PAGE_TABLE 0x80000001
-#define EFI_MEMORY_TYPE_BOOT_INFO 0x80000002
-#define EFI_MEMORY_TYPE_RAM_DISK 0x80000003
-#define EFI_MEMORY_TYPE_MEMORY_MAP 0x80000004
+#define EFI_KERNEL_MEMORY 0x80000000
+#define EFI_PML_MEMORY 0x80000001
+#define EFI_BOOT_INFO 0x80000002
+#define EFI_RAM_DISK 0x80000003
+#define EFI_MEMORY_MAP 0x80000004
 
 typedef struct
 {
-    EfiMemoryDescriptor* base;
+    efi_mem_desc_t* base;
     uint64_t descriptorAmount;
     uint64_t key;
     uint64_t descriptorSize;
     uint32_t descriptorVersion;
-} EfiMemoryMap;
+} efi_mem_map_t;
 
 typedef struct
 {
@@ -59,48 +59,48 @@ typedef struct
     uint32_t width;
     uint32_t height;
     uint32_t stride;
-} GopBuffer;
+} gop_buffer_t;
 
 typedef struct __attribute__((packed))
 {
     uint16_t magic;
     uint8_t mode;
     uint8_t charSize;
-} PsfHeader;
+} psf_header_t;
 
 typedef struct
 {
-    PsfHeader header;
+    psf_header_t header;
     uint64_t glyphsSize;
     void* glyphs;
-} BootFont;
+} boot_font_t;
 
-typedef struct RamFile
+typedef struct ram_file_t
 {
     char name[32];
     void* data;
     uint64_t size;
-    struct RamFile* next;
-    struct RamFile* prev;
-} RamFile;
+    struct ram_file_t* next;
+    struct ram_file_t* prev;
+} ram_file_t;
 
-typedef struct RamDir
+typedef struct ram_dir_t
 {
     char name[32];
-    RamFile* firstFile;
-    RamFile* lastFile;
-    struct RamDir* firstChild;
-    struct RamDir* lastChild;
-    struct RamDir* next;
-    struct RamDir* prev;
-} RamDir;
+    ram_file_t* firstFile;
+    ram_file_t* lastFile;
+    struct ram_dir_t* firstChild;
+    struct ram_dir_t* lastChild;
+    struct ram_dir_t* next;
+    struct ram_dir_t* prev;
+} ram_dir_t;
 
 typedef struct
 {
-    EfiMemoryMap memoryMap;
-    GopBuffer gopBuffer;
-    BootFont font;
-    RamDir* ramRoot;
+    efi_mem_map_t memoryMap;
+    gop_buffer_t gopBuffer;
+    boot_font_t font;
+    ram_dir_t* ramRoot;
     void* rsdp;
     void* runtimeServices;
-} BootInfo;
+} boot_info_t;

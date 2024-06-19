@@ -8,12 +8,12 @@
 #include <string.h>
 #include <sys/math.h>
 
-static Filesystem ramfs;
-static RamDir* root;
+static fs_t ramfs;
+static ram_dir_t* root;
 
-static RamFile* ram_dir_find_file(RamDir* dir, const char* filename)
+static ram_file_t* ram_dir_find_file(ram_dir_t* dir, const char* filename)
 {
-    RamFile* file = dir->firstFile;
+    ram_file_t* file = dir->firstFile;
     while (file != NULL)
     {
         if (name_compare(file->name, filename))
@@ -29,9 +29,9 @@ static RamFile* ram_dir_find_file(RamDir* dir, const char* filename)
     return NULL;
 }
 
-static RamDir* ram_dir_find_dir(RamDir* dir, const char* dirname)
+static ram_dir_t* ram_dir_find_dir(ram_dir_t* dir, const char* dirname)
 {
-    RamDir* child = dir->firstChild;
+    ram_dir_t* child = dir->firstChild;
     while (child != NULL)
     {
         if (name_compare(child->name, dirname))
@@ -47,9 +47,9 @@ static RamDir* ram_dir_find_dir(RamDir* dir, const char* dirname)
     return NULL;
 }
 
-static RamDir* ramfs_traverse(const char* path)
+static ram_dir_t* ramfs_traverse(const char* path)
 {
-    RamDir* dir = root;
+    ram_dir_t* dir = root;
     const char* dirname = dir_name_first(path);
     while (dirname != NULL)
     {
@@ -65,9 +65,9 @@ static RamDir* ramfs_traverse(const char* path)
     return dir;
 }
 
-static RamFile* ramfs_find_file(const char* path)
+static ram_file_t* ramfs_find_file(const char* path)
 {
-    RamDir* parent = ramfs_traverse(path);
+    ram_dir_t* parent = ramfs_traverse(path);
     if (parent == NULL)
     {
         return NULL;
@@ -82,9 +82,9 @@ static RamFile* ramfs_find_file(const char* path)
     return ram_dir_find_file(parent, filename);
 }
 
-/*static RamFile* ramfs_find_dir(const char* path)
+/*static ram_file_t* ramfs_find_dir(const char* path)
 {
-    RamDir* parent = ramfs_traverse(path);
+    ram_dir_t* parent = ramfs_traverse(path);
     if (parent == NULL)
     {
         return NULL;
@@ -99,9 +99,9 @@ static RamFile* ramfs_find_file(const char* path)
     return ram_dir_find_dir(parent, dirname);
 }*/
 
-static uint64_t ramfs_read(File* file, void* buffer, uint64_t count)
+static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count)
 {
-    RamFile* internal = file->internal;
+    ram_file_t* internal = file->internal;
 
     uint64_t pos = file->position;
     uint64_t readCount = (pos <= internal->size) ? MIN(count, internal->size - pos) : 0;
@@ -112,9 +112,9 @@ static uint64_t ramfs_read(File* file, void* buffer, uint64_t count)
     return readCount;
 }
 
-static uint64_t ramfs_seek(File* file, int64_t offset, uint8_t origin)
+static uint64_t ramfs_seek(file_t* file, int64_t offset, uint8_t origin)
 {
-    RamFile* internal = file->internal;
+    ram_file_t* internal = file->internal;
 
     uint64_t position;
     switch (origin)
@@ -145,26 +145,26 @@ static uint64_t ramfs_seek(File* file, int64_t offset, uint8_t origin)
     return position;
 }
 
-static uint64_t ramfs_open(Volume* volume, File* file, const char* path)
+static uint64_t ramfs_open(volume_t* volume, file_t* file, const char* path)
 {
-    RamFile* ramFile = ramfs_find_file(path);
+    ram_file_t* ramFile = ramfs_find_file(path);
     if (ramFile == NULL)
     {
         return ERROR(EPATH);
     }
 
-    file->methods.read = ramfs_read;
-    file->methods.seek = ramfs_seek;
+    file->ops.read = ramfs_read;
+    file->ops.seek = ramfs_seek;
     file->internal = ramFile;
 
     return 0;
 }
 
-static uint64_t ramfs_stat(Volume* volume, const char* path, stat_t* buffer)
+static uint64_t ramfs_stat(volume_t* volume, const char* path, stat_t* buffer)
 {
     buffer->size = 0;
 
-    RamDir* parent = ramfs_traverse(path);
+    ram_dir_t* parent = ramfs_traverse(path);
     if (parent == NULL)
     {
         return ERR;
@@ -187,7 +187,7 @@ static uint64_t ramfs_stat(Volume* volume, const char* path, stat_t* buffer)
     return 0;
 }
 
-static uint64_t ramfs_mount(Volume* volume)
+static uint64_t ramfs_mount(volume_t* volume)
 {
     volume->open = ramfs_open;
     volume->stat = ramfs_stat;
@@ -195,11 +195,11 @@ static uint64_t ramfs_mount(Volume* volume)
     return 0;
 }
 
-void ramfs_init(RamDir* ramRoot)
+void ramfs_init(ram_dir_t* ramRoot)
 {
     root = ramRoot;
 
-    memset(&ramfs, 0, sizeof(Filesystem));
+    memset(&ramfs, 0, sizeof(fs_t));
     ramfs.name = "ramfs";
     ramfs.mount = ramfs_mount;
 

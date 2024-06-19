@@ -7,18 +7,18 @@
 typedef struct
 {
     uint64_t length;
-    List list;
-    Lock lock;
-} Queue;
+    list_t list;
+    lock_t lock;
+} queue_t;
 
-static inline void queue_init(Queue* queue)
+static inline void queue_init(queue_t* queue)
 {
     queue->length = 0;
     list_init(&queue->list);
     lock_init(&queue->lock);
 }
 
-static inline void queue_push(Queue* queue, void* element)
+static inline void queue_push(queue_t* queue, void* element)
 {
     LOCK_GUARD(&queue->lock);
 
@@ -26,7 +26,7 @@ static inline void queue_push(Queue* queue, void* element)
     list_push(&queue->list, element);
 }
 
-static inline void* queue_pop(Queue* queue)
+static inline void* queue_pop(queue_t* queue)
 {
     LOCK_GUARD(&queue->lock);
     if (queue->length == 0)
@@ -38,7 +38,7 @@ static inline void* queue_pop(Queue* queue)
     return list_pop(&queue->list);
 }
 
-static inline uint64_t queue_length(Queue const* queue)
+static inline uint64_t queue_length(queue_t const* queue)
 {
     return queue->length;
 }

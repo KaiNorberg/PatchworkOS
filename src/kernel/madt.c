@@ -2,23 +2,23 @@
 
 #include "debug.h"
 
-static Madt* madt;
+static madt_t* madt;
 
 void madt_init(void)
 {
-    madt = (Madt*)rsdt_lookup("APIC");
+    madt = (madt_t*)rsdt_lookup("APIC");
     DEBUG_ASSERT(madt != NULL, "lookup fail");
 }
 
-void* madt_local_apic_address(void)
+void* madt_lapic_address(void)
 {
     return (void*)(uint64_t)madt->localApicAddress;
 }
 
 void* madt_first_record(uint8_t type)
 {
-    for (RecordHeader* record = madt->records; (uint64_t)record < (uint64_t)madt + madt->header.length;
-         record = (RecordHeader*)((uint64_t)record + record->length))
+    for (madt_header_t* record = madt->records; (uint64_t)record < (uint64_t)madt + madt->header.length;
+         record = (madt_header_t*)((uint64_t)record + record->length))
     {
         if (record->type == type)
         {
@@ -31,8 +31,8 @@ void* madt_first_record(uint8_t type)
 
 void* madt_next_record(void* prev, uint8_t type)
 {
-    for (RecordHeader* record = (RecordHeader*)((uint64_t)prev + ((RecordHeader*)prev)->length);
-         (uint64_t)record < (uint64_t)madt + madt->header.length; record = (RecordHeader*)((uint64_t)record + record->length))
+    for (madt_header_t* record = (madt_header_t*)((uint64_t)prev + ((madt_header_t*)prev)->length);
+         (uint64_t)record < (uint64_t)madt + madt->header.length; record = (madt_header_t*)((uint64_t)record + record->length))
     {
         if (record->type == type)
         {

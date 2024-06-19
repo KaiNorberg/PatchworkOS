@@ -5,13 +5,13 @@
 
 #include <sys/proc.h>
 
-ALIGNED(PAGE_SIZE) static Idt idt;
+ALIGNED(PAGE_SIZE) static idt_t idt;
 
-extern void idt_load_descriptor(IdtDesc* descriptor);
+extern void idt_load_descriptor(idt_desc_t* descriptor);
 
 static void idt_set_vector(uint8_t vector, void* isr, uint8_t privilegeLevel, uint8_t gateType)
 {
-    IdtEntry* descriptor = &(idt.entries[vector]);
+    idt_entry_t* descriptor = &(idt.entries[vector]);
 
     descriptor->isrLow = (uint64_t)isr & 0xFFFF;
     descriptor->codeSegment = 0x08;
@@ -35,8 +35,8 @@ void idt_init(void)
 
 void idt_load(void)
 {
-    IdtDesc idtDesc;
-    idtDesc.size = (sizeof(Idt)) - 1;
+    idt_desc_t idtDesc;
+    idtDesc.size = (sizeof(idt_t)) - 1;
     idtDesc.offset = (uint64_t)&idt;
     idt_load_descriptor(&idtDesc);
 }

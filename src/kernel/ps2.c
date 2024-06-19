@@ -195,7 +195,7 @@ static void ps2_kbd_irq(uint8_t irq)
     writeIndex = (writeIndex + 1) % PS2_KEY_BUFFER_LENGTH;
 }
 
-static uint64_t ps2_kbd_read(File* file, void* buffer, uint64_t count)
+static uint64_t ps2_kbd_read(file_t* file, void* buffer, uint64_t count)
 {
     if (SCHED_WAIT(file->position != writeIndex, UINT64_MAX) == ERR)
     {
@@ -218,21 +218,21 @@ static uint64_t ps2_kbd_read(File* file, void* buffer, uint64_t count)
     return count;
 }
 
-static bool ps2_kbd_read_avail(File* file)
+static bool ps2_kbd_read_avail(file_t* file)
 {
     return file->position != writeIndex;
 }
 
-static void ps2_kbd_cleanup(File* file)
+static void ps2_kbd_cleanup(file_t* file)
 {
-    Resource* resource = file->internal;
+    resource_t* resource = file->internal;
     resource_unref(resource);
 }
 
-static uint64_t ps2_kbd_open(Resource* resource, File* file)
+static uint64_t ps2_kbd_open(resource_t* resource, file_t* file)
 {
-    file->methods.read = ps2_kbd_read;
-    file->methods.read_avail = ps2_kbd_read_avail;
+    file->ops.read = ps2_kbd_read;
+    file->ops.read_avail = ps2_kbd_read_avail;
     file->cleanup = ps2_kbd_cleanup;
     file->internal = resource_ref(resource);
     return 0;
@@ -266,7 +266,7 @@ void ps2_init(void)
 
     irq_install(ps2_kbd_irq, IRQ_KEYBOARD);
 
-    Resource* keyboard = malloc(sizeof(Resource));
+    resource_t* keyboard = malloc(sizeof(resource_t));
     resource_init(keyboard, "ps2", ps2_kbd_open, NULL);
     sysfs_expose(keyboard, "/kbd");
 }

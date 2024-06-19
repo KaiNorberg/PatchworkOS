@@ -27,21 +27,21 @@
 
 #include <libs/std/internal/init.h>
 
-static void boot_info_deallocate(BootInfo* bootInfo)
+static void boot_info_deallocate(boot_info_t* bootInfo)
 {
-    EfiMemoryMap* memoryMap = &bootInfo->memoryMap;
+    efi_mem_map_t* memoryMap = &bootInfo->memoryMap;
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
+        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
 
-        if (desc->type == EFI_MEMORY_TYPE_BOOT_INFO)
+        if (desc->type == EFI_BOOT_INFO)
         {
             pmm_free_pages(desc->physicalStart, desc->amountOfPages);
         }
     }
 }
 
-void kernel_init(BootInfo* bootInfo)
+void kernel_init(boot_info_t* bootInfo)
 {
     pmm_init(&bootInfo->memoryMap);
     vmm_init(&bootInfo->memoryMap, &bootInfo->gopBuffer);
@@ -83,10 +83,10 @@ void kernel_init(BootInfo* bootInfo)
 
 void kernel_cpu_init(void)
 {
-    Cpu* cpu = smp_self_brute();
+    cpu_t* cpu = smp_self_brute();
     msr_write(MSR_CPU_ID, cpu->id);
 
-    local_apic_init();
+    lapic_init();
     simd_init();
 
     gdt_load();

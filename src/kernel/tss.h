@@ -13,10 +13,10 @@ typedef struct PACKED
     uint64_t reserved3;
     uint16_t reserved4;
     uint16_t iopb;
-} Tss;
+} tss_t;
 
 extern void tss_load(void);
 
-void tss_init(Tss* tss);
+void tss_init(tss_t* tss);
 
-void tss_stack_load(Tss* tss, void* stackTop);
+void tss_stack_load(tss_t* tss, void* stackTop);

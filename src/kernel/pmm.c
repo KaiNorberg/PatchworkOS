@@ -7,19 +7,17 @@
 
 #include "debug.h"
 #include "lock.h"
-#include "splash.h"
-#include "utils.h"
 #include "vmm.h"
 
-static PageHeader* firstPage = NULL;
-static PageHeader* lastPage = NULL;
+static page_header_t* firstPage = NULL;
+static page_header_t* lastPage = NULL;
 static uint64_t pageAmount = 0;
 static uint64_t loadedPageAmount = 0;
 static uint64_t freePageAmount = 0;
 
-static EfiMemoryMap memoryMap;
+static efi_mem_map_t memoryMap;
 
-static Lock lock;
+static lock_t lock;
 
 static uint8_t is_type_free(uint64_t memoryType)
 {
@@ -58,9 +56,9 @@ static void pmm_memory_map_deallocate(void)
 {
     for (uint64_t i = 0; i < memoryMap.descriptorAmount; i++)
     {
-        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(&memoryMap, i);
+        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(&memoryMap, i);
 
-        if (desc->type == EFI_MEMORY_TYPE_MEMORY_MAP)
+        if (desc->type == EFI_MEMORY_MAP)
         {
             pmm_free_pages_unlocked(desc->physicalStart, desc->amountOfPages);
         }
@@ -82,7 +80,7 @@ static void pmm_lazy_load_memory(void)
 
     while (true)
     {
-        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(&memoryMap, index);
+        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(&memoryMap, index);
         loadedPageAmount += desc->amountOfPages;
         index++;
 
@@ -109,7 +107,7 @@ static void pmm_load_memory(void)
 {
     for (uint64_t i = 0; i < memoryMap.descriptorAmount; i++)
     {
-        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(&memoryMap, i);
+        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(&memoryMap, i);
 
         if (is_type_free(desc->type))
         {
@@ -126,15 +124,15 @@ static void pmm_detect_memory(void)
 {
     for (uint64_t i = 0; i < memoryMap.descriptorAmount; i++)
     {
-        const EfiMemoryDescriptor* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(&memoryMap, i);
+        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(&memoryMap, i);
 
         pageAmount += desc->amountOfPages;
     }
 }
 
-void pmm_init(EfiMemoryMap* efiMemoryMap)
+void pmm_init(efi_mem_map_t* efi_mem_map_t)
 {
-    memoryMap = *efiMemoryMap;
+    memoryMap = *efi_mem_map_t;
     lock_init(&lock);
 
     pmm_detect_memory();

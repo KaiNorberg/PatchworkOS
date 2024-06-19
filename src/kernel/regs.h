@@ -9,7 +9,7 @@
 #define XCR0_ZMM0_15_ENABLE (1 << 6)
 #define XCR0_ZMM16_32_ENABLE (1 << 7)
 
-#define MSR_LOCAL_APIC 0x1B
+#define MSR_LAPIC 0x1B
 #define MSR_CPU_ID 0xC0000103 // IA32_TSC_AUX
 
 #define RFLAGS_ALWAYS_SET (1 << 1)

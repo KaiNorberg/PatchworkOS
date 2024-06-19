@@ -7,7 +7,7 @@
 #include <string.h>
 
 static uint64_t tableAmount;
-static Xsdt* xsdt;
+static xsdt_t* xsdt;
 
 static bool rsdt_valid_checksum(void* table, uint64_t length)
 {
@@ -20,7 +20,7 @@ static bool rsdt_valid_checksum(void* table, uint64_t length)
     return sum == 0;
 }
 
-void rsdt_init(Xsdp* xsdp)
+void rsdt_init(xsdp_t* xsdp)
 {
     xsdp = VMM_LOWER_TO_HIGHER(xsdp);
 
@@ -28,21 +28,21 @@ void rsdt_init(Xsdp* xsdp)
     DEBUG_ASSERT(rsdt_valid_checksum(xsdp, xsdp->length), "checksum");
 
     xsdt = VMM_LOWER_TO_HIGHER((void*)xsdp->xsdtAddress);
-    tableAmount = (xsdt->header.length - sizeof(SdtHeader)) / 8;
+    tableAmount = (xsdt->header.length - sizeof(sdt_t)) / 8;
 
     for (uint64_t i = 0; i < tableAmount; i++)
     {
-        SdtHeader* table = VMM_LOWER_TO_HIGHER(xsdt->tables[i]);
+        sdt_t* table = VMM_LOWER_TO_HIGHER(xsdt->tables[i]);
 
         DEBUG_ASSERT(rsdt_valid_checksum(table, table->length), "table");
     }
 }
 
-SdtHeader* rsdt_lookup(const char* signature)
+sdt_t* rsdt_lookup(const char* signature)
 {
     for (uint64_t i = 0; i < tableAmount; i++)
     {
-        SdtHeader* table = VMM_LOWER_TO_HIGHER(xsdt->tables[i]);
+        sdt_t* table = VMM_LOWER_TO_HIGHER(xsdt->tables[i]);
 
         if (memcmp(table->signature, signature, 4) == 0)
         {

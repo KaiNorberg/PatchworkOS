@@ -53,18 +53,18 @@ void simd_init(void)
     }
 }
 
-void simd_context_init(SimdContext* context)
+void simd_context_init(simd_context_t* context)
 {
     context->buffer = VMM_LOWER_TO_HIGHER(pmm_alloc());
     memcpy(context->buffer, initContext, PAGE_SIZE);
 }
 
-void simd_context_cleanup(SimdContext* context)
+void simd_context_cleanup(simd_context_t* context)
 {
     pmm_free(VMM_HIGHER_TO_LOWER(context->buffer));
 }
 
-void simd_context_save(SimdContext* context)
+void simd_context_save(simd_context_t* context)
 {
     if (cpuid_xsave_avail())
     {
@@ -76,7 +76,7 @@ void simd_context_save(SimdContext* context)
     }
 }
 
-void simd_context_load(SimdContext* context)
+void simd_context_load(simd_context_t* context)
 {
     if (cpuid_xsave_avail())
     {

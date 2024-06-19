@@ -7,25 +7,25 @@
 #include "fs.h"
 #include "vm.h"
 
-RamDir* ram_disk_load(EFI_HANDLE imageHandle)
+ram_dir_t* ram_disk_load(EFI_HANDLE imageHandle)
 {
     EFI_FILE* rootHandle = fs_open_root_volume(imageHandle);
 
-    RamDir* root = ram_disk_load_directory(rootHandle, "root");
+    ram_dir_t* root = ram_disk_load_directory(rootHandle, "root");
 
     fs_close(rootHandle);
 
     return root;
 }
 
-RamFile* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
+ram_file_t* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
 {
     EFI_FILE* fileHandle = fs_open_raw(volume, path);
 
-    RamFile* file = vm_alloc(sizeof(RamFile), EFI_MEMORY_TYPE_RAM_DISK);
+    ram_file_t* file = vm_alloc(sizeof(ram_file_t), EFI_RAM_DISK);
 
     file->size = fs_get_size(fileHandle);
-    file->data = vm_alloc(file->size, EFI_MEMORY_TYPE_RAM_DISK);
+    file->data = vm_alloc(file->size, EFI_RAM_DISK);
     fs_read(fileHandle, file->size, file->data);
 
     SetMem(file->name, 32, 0);
@@ -36,9 +36,9 @@ RamFile* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
     return file;
 }
 
-RamDir* ram_disk_load_directory(EFI_FILE* volume, const char* name)
+ram_dir_t* ram_disk_load_directory(EFI_FILE* volume, const char* name)
 {
-    RamDir* dir = vm_alloc(sizeof(RamDir), EFI_MEMORY_TYPE_RAM_DISK);
+    ram_dir_t* dir = vm_alloc(sizeof(ram_dir_t), EFI_RAM_DISK);
 
     SetMem(dir->name, 32, 0);
     strcpy(dir->name, name);
@@ -78,7 +78,7 @@ RamDir* ram_disk_load_directory(EFI_FILE* volume, const char* name)
 
                 char childName[32];
                 char16_to_char(fileInfo->FileName, childName);
-                RamDir* child = ram_disk_load_directory(childVolume, childName);
+                ram_dir_t* child = ram_disk_load_directory(childVolume, childName);
 
                 if (dir->firstChild == 0)
                 {
@@ -102,7 +102,7 @@ RamDir* ram_disk_load_directory(EFI_FILE* volume, const char* name)
         }
         else
         {
-            RamFile* file = ram_disk_load_file(volume, fileInfo->FileName);
+            ram_file_t* file = ram_disk_load_file(volume, fileInfo->FileName);
 
             if (dir->firstFile == 0)
             {

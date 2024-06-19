@@ -4,7 +4,7 @@
 #include "kernel.h"
 #include "sched.h"
 
-void main(BootInfo* bootInfo)
+void main(boot_info_t* bootInfo)
 {
     kernel_init(bootInfo);
 

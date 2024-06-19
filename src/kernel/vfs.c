@@ -10,8 +10,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-static List volumes;
-static Lock volumeLock;
+static list_t volumes;
+static lock_t volumeLock;
 
 // TODO: Improve file path parsing.
 
@@ -70,7 +70,7 @@ static uint64_t vfs_make_canonical(const char* start, char* out, const char* pat
 
 static uint64_t vfs_parse_path(char* out, const char* path)
 {
-    VfsContext* context = &sched_process()->vfsContext;
+    vfs_context_t* context = &sched_process()->vfsContext;
     LOCK_GUARD(&context->lock);
 
     if (path[0] == VFS_NAME_SEPARATOR) // Root path
@@ -129,22 +129,22 @@ static uint64_t vfs_parse_path(char* out, const char* path)
     }
 }
 
-static Volume* volume_ref(Volume* volume)
+static volume_t* volume_ref(volume_t* volume)
 {
     atomic_fetch_add(&volume->ref, 1);
     return volume;
 }
 
-static void volume_deref(Volume* volume)
+static void volume_deref(volume_t* volume)
 {
     atomic_fetch_sub(&volume->ref, 1);
 }
 
-static Volume* volume_get(const char* label)
+static volume_t* volume_get(const char* label)
 {
     LOCK_GUARD(&volumeLock);
 
-    Volume* volume;
+    volume_t* volume;
     LIST_FOR_EACH(volume, &volumes)
     {
         if (label_compare(volume->label, label))
@@ -156,26 +156,26 @@ static Volume* volume_get(const char* label)
     return NULL;
 }
 
-File* file_new(void)
+file_t* file_new(void)
 {
-    File* file = malloc(sizeof(File));
+    file_t* file = malloc(sizeof(file_t));
     atomic_init(&file->ref, 1);
     file->volume = NULL;
     file->position = 0;
     file->internal = NULL;
     file->cleanup = NULL;
-    memset(&file->methods, 0, sizeof(FileMethods));
+    memset(&file->ops, 0, sizeof(file_ops_t));
 
     return file;
 }
 
-File* file_ref(File* file)
+file_t* file_ref(file_t* file)
 {
     atomic_fetch_add(&file->ref, 1);
     return file;
 }
 
-void file_deref(File* file)
+void file_deref(file_t* file)
 {
     if (atomic_fetch_sub(&file->ref, 1) <= 1)
     {
@@ -248,7 +248,7 @@ void vfs_init(void)
     while (1);*/
 }
 
-File* vfs_open(const char* path)
+file_t* vfs_open(const char* path)
 {
     char parsedPath[MAX_PATH];
     if (vfs_parse_path(parsedPath, path) == ERR)
@@ -256,7 +256,7 @@ File* vfs_open(const char* path)
         return NULLPTR(EPATH);
     }
 
-    Volume* volume = volume_get(parsedPath);
+    volume_t* volume = volume_get(parsedPath);
     if (volume == NULL)
     {
         return NULLPTR(EPATH);
@@ -268,8 +268,8 @@ File* vfs_open(const char* path)
         return NULLPTR(EACCES);
     }
 
-    // Volume reference is passed to file.
-    File* file = file_new();
+    // volume_t reference is passed to file.
+    file_t* file = file_new();
     file->volume = volume;
 
     char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
@@ -290,7 +290,7 @@ uint64_t vfs_stat(const char* path, stat_t* buffer)
         return ERROR(EPATH);
     }
 
-    Volume* volume = volume_get(parsedPath);
+    volume_t* volume = volume_get(parsedPath);
     if (volume == NULL)
     {
         return ERROR(EPATH);
@@ -314,7 +314,7 @@ uint64_t vfs_stat(const char* path, stat_t* buffer)
     return result;
 }
 
-uint64_t vfs_mount(const char* label, Filesystem* fs)
+uint64_t vfs_mount(const char* label, fs_t* fs)
 {
     if (strlen(label) >= CONFIG_MAX_LABEL)
     {
@@ -322,7 +322,7 @@ uint64_t vfs_mount(const char* label, Filesystem* fs)
     }
     LOCK_GUARD(&volumeLock);
 
-    Volume* volume;
+    volume_t* volume;
     LIST_FOR_EACH(volume, &volumes)
     {
         if (name_compare(volume->label, label))
@@ -331,8 +331,8 @@ uint64_t vfs_mount(const char* label, Filesystem* fs)
         }
     }
 
-    volume = malloc(sizeof(Volume));
-    memset(volume, 0, sizeof(Volume));
+    volume = malloc(sizeof(volume_t));
+    memset(volume, 0, sizeof(volume_t));
     strcpy(volume->label, label);
     volume->fs = fs;
     atomic_init(&volume->ref, 1);
@@ -351,7 +351,7 @@ uint64_t vfs_unmount(const char* label)
 {
     LOCK_GUARD(&volumeLock);
 
-    Volume* volume;
+    volume_t* volume;
     bool found = false;
     LIST_FOR_EACH(volume, &volumes)
     {
@@ -418,27 +418,26 @@ uint64_t vfs_chdir(const char* path)
         return ERROR(ENOTDIR);
     }
 
-    VfsContext* context = &sched_process()->vfsContext;
+    vfs_context_t* context = &sched_process()->vfsContext;
     LOCK_GUARD(&context->lock);
 
     strcpy(context->cwd, parsedPath);
     return 0;
 }
 
-static bool vfs_poll_condition(uint64_t* events, PollFile* files, uint64_t amount)
+static bool vfs_poll_condition(uint64_t* events, poll_file_t* files, uint64_t amount)
 {
     *events = 0;
     for (uint64_t i = 0; i < amount; i++)
     {
-        PollFile* file = &files[i];
+        poll_file_t* file = &files[i];
 
-        if (file->requested & POLL_READ && (file->file->methods.read_avail != NULL && file->file->methods.read_avail(file->file)))
+        if (file->requested & POLL_READ && (file->file->ops.read_avail != NULL && file->file->ops.read_avail(file->file)))
         {
             file->occurred = POLL_READ;
             (*events)++;
         }
-        if (file->requested & POLL_WRITE &&
-            (file->file->methods.write_avail != NULL && file->file->methods.write_avail(file->file)))
+        if (file->requested & POLL_WRITE && (file->file->ops.write_avail != NULL && file->file->ops.write_avail(file->file)))
         {
             file->occurred = POLL_WRITE;
             (*events)++;
@@ -450,7 +449,7 @@ static bool vfs_poll_condition(uint64_t* events, PollFile* files, uint64_t amoun
     return *events != 0;
 }
 
-uint64_t vfs_poll(PollFile* files, uint64_t amount, uint64_t timeout)
+uint64_t vfs_poll(poll_file_t* files, uint64_t amount, uint64_t timeout)
 {
     uint64_t events = 0;
     if (SCHED_WAIT(vfs_poll_condition(&events, files, amount), timeout) == ERR)

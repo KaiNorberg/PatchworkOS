@@ -6,12 +6,12 @@
 
 #include <sys/proc.h>
 
-typedef struct PageHeader
+typedef struct page_header
 {
-    struct PageHeader* next;
-} PageHeader;
+    struct page_header* next;
+} page_header_t;
 
-void pmm_init(EfiMemoryMap* efiMemoryMap);
+void pmm_init(efi_mem_map_t* efi_mem_map_t);
 
 void* pmm_alloc(void);
 

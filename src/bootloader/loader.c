@@ -2,11 +2,10 @@
 
 #include <stddef.h>
 #include <stdint.h>
-
-#include <common/elf.h>
+#include <sys/elf.h>
 
 #include "fs.h"
-#include "page_table.h"
+#include "pml.h"
 #include "vm.h"
 
 void* load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
@@ -24,8 +23,8 @@ void* load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
         }
     }
 
-    ElfHeader header;
-    fs_read(file, sizeof(ElfHeader), &header);
+    elf_hdr_t header;
+    fs_read(file, sizeof(elf_hdr_t), &header);
 
     if (header.ident[0] != 0x7F || header.ident[1] != 'E' || header.ident[2] != 'L' || header.ident[3] != 'F')
     {
@@ -38,15 +37,14 @@ void* load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
     }
 
     uint64_t programHeaderTableSize = header.programHeaderAmount * header.programHeaderSize;
-    ElfProgramHeader* programHeaders = memory_allocate_pool(programHeaderTableSize, EfiLoaderData);
+    elf_phdr_t* programHeaders = mem_alloc_pool(programHeaderTableSize, EfiLoaderData);
     fs_seek(file, header.programHeaderOffset);
     fs_read(file, programHeaderTableSize, programHeaders);
 
     uint64_t kernelStart = UINT64_MAX;
     uint64_t kernelEnd = 0;
-    for (ElfProgramHeader* programHeader = programHeaders;
-         (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize;
-         programHeader = (ElfProgramHeader*)((uint64_t)programHeader + header.programHeaderSize))
+    for (elf_phdr_t* programHeader = programHeaders; (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize;
+         programHeader = (elf_phdr_t*)((uint64_t)programHeader + header.programHeaderSize))
     {
         switch (programHeader->type)
         {
@@ -68,9 +66,8 @@ void* load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
     uint64_t kernelPageAmount = (kernelEnd - kernelStart) / EFI_PAGE_SIZE + 1;
     vm_alloc_kernel((void*)kernelStart, kernelPageAmount);
 
-    for (ElfProgramHeader* programHeader = programHeaders;
-         (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize;
-         programHeader = (ElfProgramHeader*)((uint64_t)programHeader + header.programHeaderSize))
+    for (elf_phdr_t* programHeader = programHeaders; (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize;
+         programHeader = (elf_phdr_t*)((uint64_t)programHeader + header.programHeaderSize))
     {
         switch (programHeader->type)
         {
@@ -85,14 +82,14 @@ void* load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
         }
     }
 
-    memory_free_pool(programHeaders);
+    mem_free_pool(programHeaders);
     fs_close(file);
 
     return (void*)header.entry;
 }
 
-void jump_to_kernel(void* entry, BootInfo* bootInfo)
+void jump_to_kernel(void* entry, boot_info_t* bootInfo)
 {
-    void (*main)(BootInfo*) = ((void (*)(BootInfo*))entry);
+    void (*main)(boot_info_t*) = ((void (*)(boot_info_t*))entry);
     main(bootInfo);
 }

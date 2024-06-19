@@ -11,7 +11,7 @@
 #include "utils.h"
 #include "vmm.h"
 
-static void exception_handler(TrapFrame const* trapFrame)
+static void exception_handler(trap_frame_t const* trapFrame)
 {
     switch (trapFrame->vector)
     {
@@ -23,7 +23,7 @@ static void exception_handler(TrapFrame const* trapFrame)
     }
 }
 
-static void ipi_handler(TrapFrame const* trapFrame)
+static void ipi_handler(trap_frame_t const* trapFrame)
 {
     uint8_t ipi = trapFrame->vector - IPI_BASE;
 
@@ -49,7 +49,7 @@ static void ipi_handler(TrapFrame const* trapFrame)
     break;
     }
 
-    local_apic_eoi();
+    lapic_eoi();
 }
 
 static void trap_begin(void)
@@ -74,7 +74,7 @@ void interrupts_disable(void)
 
     asm volatile("cli");
 
-    Cpu* cpu = smp_self_unsafe();
+    cpu_t* cpu = smp_self_unsafe();
     if (cpu->cliAmount == 0)
     {
         cpu->interruptsEnabled = (rflags & RFLAGS_INTERRUPT_ENABLE) != 0;
@@ -89,7 +89,7 @@ void interrupts_enable(void)
         return;
     }
 
-    Cpu* cpu = smp_self_unsafe();
+    cpu_t* cpu = smp_self_unsafe();
 
     cpu->cliAmount--;
     if (cpu->cliAmount == 0 && cpu->interruptsEnabled)
@@ -98,7 +98,7 @@ void interrupts_enable(void)
     }
 }
 
-void trap_handler(TrapFrame* trapFrame)
+void trap_handler(trap_frame_t* trapFrame)
 {
     if (trapFrame->vector < IRQ_BASE)
     {
@@ -120,7 +120,7 @@ void trap_handler(TrapFrame* trapFrame)
         debug_panic("Unknown interrupt vector");
     }
 
-    Thread* thread = sched_thread();
+    thread_t* thread = sched_thread();
     if (thread != NULL && thread->process->killed && trapFrame->cs != GDT_KERNEL_CODE)
     {
         thread->state = THREAD_STATE_KILLED;

@@ -5,7 +5,7 @@
 
 #include "vm.h"
 
-void gop_buffer_init(GopBuffer* buffer)
+void gop_buffer_init(gop_buffer_t* buffer)
 {
     EFI_GUID guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
     EFI_GRAPHICS_OUTPUT_PROTOCOL* gop;

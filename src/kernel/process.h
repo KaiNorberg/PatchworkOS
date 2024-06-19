@@ -20,40 +20,40 @@ typedef enum
     THREAD_STATE_PAUSE,
     THREAD_STATE_ACTIVE,
     THREAD_STATE_KILLED
-} ThreadState;
+} thread_state_t;
 
 typedef struct
 {
     pid_t id;
     bool killed;
     char executable[MAX_PATH];
-    VfsContext vfsContext;
-    Space space;
+    vfs_context_t vfsContext;
+    space_t space;
     _Atomic(uint64_t) threadCount;
     _Atomic(tid_t) newTid;
-} Process;
+} process_t;
 
 typedef struct
 {
-    ListEntry base;
-    Process* process;
+    list_entry_t base;
+    process_t* process;
     tid_t id;
     uint64_t timeStart;
     uint64_t timeEnd;
     errno_t error;
     uint8_t priority;
-    ThreadState state;
-    TrapFrame trapFrame;
-    SimdContext simdContext;
+    thread_state_t state;
+    trap_frame_t trapFrame;
+    simd_context_t simdContext;
     uint8_t kernelStack[CONFIG_KERNEL_STACK];
-} Thread;
+} thread_t;
 
-Process* process_new(const char* executable);
+process_t* process_new(const char* executable);
 
-Thread* thread_new(Process* process, void* entry, uint8_t priority);
+thread_t* thread_new(process_t* process, void* entry, uint8_t priority);
 
-void thread_free(Thread* thread);
+void thread_free(thread_t* thread);
 
-void thread_save(Thread* thread, const TrapFrame* trapFrame);
+void thread_save(thread_t* thread, const trap_frame_t* trapFrame);
 
-void thread_load(Thread* thread, TrapFrame* trapFrame);
+void thread_load(thread_t* thread, trap_frame_t* trapFrame);

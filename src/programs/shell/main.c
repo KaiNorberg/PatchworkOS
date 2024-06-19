@@ -1,9 +1,9 @@
 #include "taskbar.h"
 
 #include <stdlib.h>
+#include <sys/gfx.h>
 #include <sys/kbd.h>
 #include <sys/proc.h>
-#include <sys/gfx.h>
 
 int main(void)
 {

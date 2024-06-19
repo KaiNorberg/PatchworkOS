@@ -5,13 +5,13 @@
 #include "fs.h"
 #include "gop.h"
 #include "loader.h"
-#include "memory.h"
+#include "mem.h"
 #include "psf.h"
 #include "ram_disk.h"
 #include "rsdp.h"
 #include "vm.h"
 
-void* boot_info_populate(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, BootInfo* bootInfo)
+void* boot_info_populate(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, boot_info_t* bootInfo)
 {
     gop_buffer_init(&bootInfo->gopBuffer);
     psf_font_load(&bootInfo->font, L"/usr/fonts/zap-vga16.psf", imageHandle);
@@ -34,7 +34,7 @@ efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
 
     vm_init();
 
-    BootInfo* bootInfo = vm_alloc(sizeof(BootInfo), EFI_MEMORY_TYPE_BOOT_INFO);
+    boot_info_t* bootInfo = vm_alloc(sizeof(boot_info_t), EFI_BOOT_INFO);
     void* entry = boot_info_populate(imageHandle, systemTable, bootInfo);
 
     jump_to_kernel(entry, bootInfo);
