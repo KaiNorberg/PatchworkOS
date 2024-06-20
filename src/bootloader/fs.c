@@ -25,8 +25,8 @@ EFI_FILE* fs_open_raw(EFI_FILE* volume, CHAR16* path)
 {
     EFI_FILE* fileHandle;
 
-    uefi_call_wrapper(
-        volume->Open, 5, volume, &fileHandle, path, EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    uefi_call_wrapper(volume->Open, 5, volume, &fileHandle, path, EFI_FILE_MODE_READ,
+        EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
 
     return fileHandle;
 }

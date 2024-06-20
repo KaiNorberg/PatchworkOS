@@ -9,6 +9,8 @@ int main(void)
 {
     win_t* taskbar = taskbar_init();
 
+    spawn("home:/bin/calculator.elf");
+
     while (win_dispatch(taskbar, NEVER) != LMSG_QUIT)
     {
     }

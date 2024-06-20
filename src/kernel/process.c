@@ -1,9 +1,6 @@
 #include "process.h"
 
-#include "debug.h"
 #include "gdt.h"
-#include "lock.h"
-#include "pmm.h"
 #include "regs.h"
 #include "smp.h"
 #include "vmm.h"

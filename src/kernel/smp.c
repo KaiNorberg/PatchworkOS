@@ -38,6 +38,8 @@ static NOINLINE uint64_t cpu_init(cpu_t* cpu, uint8_t id, uint8_t localApicId)
     cpu->id = id;
     cpu->localApicId = localApicId;
     cpu->idleStack = malloc(CPU_IDLE_STACK_SIZE);
+    cpu->prevFlags = 0;
+    cpu->cliAmount = 0;
     tss_init(&cpu->tss);
     scheduler_init(&cpu->scheduler);
 

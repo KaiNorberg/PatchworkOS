@@ -3,10 +3,10 @@
 #include "defs.h"
 
 // Must be placed at the top of a struct.
-typedef struct list_entry_t
+typedef struct list_entry
 {
-    struct list_entry_t* prev;
-    struct list_entry_t* next;
+    struct list_entry* prev;
+    struct list_entry* next;
 } list_entry_t;
 
 typedef struct

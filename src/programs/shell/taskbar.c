@@ -46,7 +46,7 @@ win_t* taskbar_init(void)
     win_screen_rect(&rect);
     rect.top = rect.bottom - 45;
 
-    win_t* taskbar = win_new("Taskbar", &rect, &theme, procedure, WIN_TASKBAR);
+    win_t* taskbar = win_new("Taskbar", &rect, &theme, procedure, WIN_PANEL);
     if (taskbar == NULL)
     {
         exit(EXIT_FAILURE);

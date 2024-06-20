@@ -1,233 +1,139 @@
 #include "dwm.h"
 
 #include "_AUX/rect_t.h"
+#include "debug.h"
 #include "list.h"
 #include "lock.h"
 #include "sched.h"
-#include "splash.h"
 #include "sys/win.h"
 #include "sysfs.h"
 
 #include <errno.h>
+#include <stdatomic.h>
 #include <stdlib.h>
+#include <sys/gfx.h>
+#include <sys/math.h>
 
-static lock_t lock;
+// TODO: Implement rectangle subtraction
 
-static list_t windows;
 static resource_t dwm;
 
-static gop_buffer_t frontbuffer;
+static surface_t frontbuffer;
 static surface_t backbuffer;
-static win_theme_t theme;
+static rect_t clientArea;
+
+static list_t windows;
+static lock_t windowsLock;
+
+static list_t panels;
+static lock_t panelsLock;
 
 static _Atomic(bool) redrawNeeded;
 
-static void message_queue_init(message_queue_t* queue)
+static void dwm_update_client_area(void)
 {
-    memset(queue->queue, 0, sizeof(queue->queue));
-    queue->readIndex = 0;
-    queue->writeIndex = 0;
-    lock_init(&queue->lock);
-}
+    rect_t newArea;
+    RECT_INIT_DIM(&newArea, 0, 0, backbuffer.width, backbuffer.height);
 
-static void message_queue_push(message_queue_t* queue, msg_t type, const void* data, uint64_t size)
-{
-    LOCK_GUARD(&queue->lock);
-
-    message_t message = (message_t){
-        .size = size,
-        .type = type,
-    };
-    if (data != NULL)
+    window_t* panel;
+    LIST_FOR_EACH(panel, &panels)
     {
-        memcpy(queue->queue[queue->writeIndex].data, data, size);
+        uint64_t leftDist = panel->pos.x + panel->surface.width;
+        uint64_t topDist = panel->pos.y + panel->surface.height;
+        uint64_t rightDist = backbuffer.width - panel->pos.x;
+        uint64_t bottomDist = backbuffer.height - panel->pos.y;
+
+        if (leftDist <= topDist && leftDist <= rightDist && leftDist <= bottomDist)
+        {
+            newArea.left = MAX(panel->pos.x + panel->surface.width, newArea.left);
+        }
+        else if (topDist <= leftDist && topDist <= rightDist && topDist <= bottomDist)
+        {
+            newArea.top = MAX(panel->pos.y + panel->surface.height, newArea.top);
+        }
+        else if (rightDist <= leftDist && rightDist <= topDist && rightDist <= bottomDist)
+        {
+            newArea.right = MIN(panel->pos.x, newArea.right);
+        }
+        else if (bottomDist <= leftDist && bottomDist <= topDist && bottomDist <= rightDist)
+        {
+            newArea.bottom = MIN(panel->pos.y, newArea.bottom);
+        }
     }
 
-    queue->queue[queue->writeIndex] = message;
-    queue->writeIndex = (queue->writeIndex + 1) % MESSAGE_QUEUE_MAX;
+    clientArea = newArea;
 }
 
-static bool message_queue_pop(message_queue_t* queue, message_t* out)
-{
-    LOCK_GUARD(&queue->lock);
-
-    if (queue->readIndex == queue->writeIndex)
-    {
-        return false;
-    }
-
-    *out = queue->queue[queue->readIndex];
-    queue->readIndex = (queue->readIndex + 1) % MESSAGE_QUEUE_MAX;
-
-    return true;
-}
-
-static void window_cleanup(file_t* file)
+static void dwm_window_cleanup(file_t* file)
 {
     window_t* window = file->internal;
 
-    list_remove(window);
-    free(window->buffer);
-    free(window);
-}
-
-static uint64_t window_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t length)
-{
-    window_t* window = file->internal;
-
-    switch (request)
+    switch (window->type)
     {
-    case IOCTL_WIN_RECEIVE:
+    case WIN_WINDOW:
     {
-        if (length != sizeof(ioctl_win_receive_t))
-        {
-            return ERROR(EINVAL);
-        }
-        ioctl_win_receive_t* receive = buffer;
-
-        message_t message;
-        if (SCHED_WAIT(message_queue_pop(&window->messages, &message), receive->timeout) == SCHED_WAIT_TIMEOUT)
-        {
-            receive->type = MSG_NONE;
-            return 0;
-        }
-
-        memcpy(receive->data, message.data, message.size);
-        receive->type = message.type;
-
-        return 0;
+        LOCK_GUARD(&windowsLock);
+        list_remove(window);
     }
-    case IOCTL_WIN_SEND:
+    break;
+    case WIN_PANEL:
     {
-        if (length != sizeof(ioctl_win_send_t))
-        {
-            return ERROR(EINVAL);
-        }
-        const ioctl_win_send_t* send = buffer;
+        LOCK_GUARD(&panelsLock);
+        list_remove(window);
 
-        message_queue_push(&window->messages, send->type, send->data, MSG_MAX_DATA);
-
-        return 0;
+        dwm_update_client_area();
     }
-    case IOCTL_WIN_MOVE:
-    {
-        if (length != sizeof(ioctl_win_move_t))
-        {
-            return ERROR(EINVAL);
-        }
-        const ioctl_win_move_t* move = buffer;
-
-        if (move->width > frontbuffer.width || move->height > frontbuffer.height || move->x > frontbuffer.width ||
-            move->y > frontbuffer.height || move->x + move->width > frontbuffer.width ||
-            move->y + move->height > frontbuffer.height)
-        {
-            return ERROR(EINVAL);
-        }
-
-        LOCK_GUARD(&window->lock);
-        window->x = move->x;
-        window->y = move->y;
-
-        if (window->width != move->width || window->height != move->height)
-        {
-            window->width = move->width;
-            window->height = move->height;
-
-            free(window->buffer);
-            window->buffer = calloc(window->width * window->height, sizeof(pixel_t));
-        }
-
-        atomic_store(&redrawNeeded, true);
-        return 0;
-    }
-    default:
-    {
-        return ERROR(EREQ);
-    }
-    }
-}
-
-static uint64_t window_flush(file_t* file, const void* buffer, uint64_t size, const rect_t* rectIn)
-{
-    window_t* window = file->internal;
-    LOCK_GUARD(&window->lock);
-
-    if (size != window->width * window->height * sizeof(pixel_t))
-    {
-        return ERROR(EINVAL);
+    break;
     }
 
-    if (rectIn == NULL)
-    {
-        memcpy(window->buffer, buffer, size);
-    }
-    else
-    {
-        volatile rect_t rect = *rectIn;
-        if (rect.right > frontbuffer.width || rect.bottom > frontbuffer.height || rect.left > frontbuffer.width ||
-            rect.top > frontbuffer.height)
-        {
-            return ERROR(EINVAL);
-        }
-
-        for (uint64_t y = rect.top; y < rect.bottom; y++)
-        {
-            uint64_t offset = y * sizeof(pixel_t) * window->width + rect.left * sizeof(pixel_t);
-
-            memcpy((void*)((uint64_t)window->buffer + offset), (void*)((uint64_t)buffer + offset),
-                (rect.right - rect.left) * sizeof(pixel_t));
-        }
-    }
-
-    atomic_store(&redrawNeeded, true);
-    return 0;
+    window_free(window);
 }
 
 static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t length)
 {
-    LOCK_GUARD(&lock);
-
     switch (request)
     {
     case IOCTL_DWM_CREATE:
     {
-        // Check if write has already been successfully called.
-        if (file->internal != NULL)
-        {
-            return ERROR(EBUSY);
-        }
-
         if (length != sizeof(ioctl_dwm_create_t))
         {
             return ERROR(EINVAL);
         }
-
         const ioctl_dwm_create_t* create = buffer;
-        if (create->width > frontbuffer.width || create->height > frontbuffer.height || create->x > frontbuffer.width ||
-            create->y > frontbuffer.height || create->x + create->width > frontbuffer.width ||
-            create->y + create->height > frontbuffer.height)
+
+        point_t pos;
+        POINT_INIT(&pos, create->x, create->y);
+        window_t* window = window_new(&pos, create->width, create->height, create->type, file, dwm_window_cleanup);
+        if (window == NULL)
         {
-            return ERROR(EINVAL);
+            return ERR;
         }
 
-        window_t* window = malloc(sizeof(window_t));
-        list_entry_init(&window->base);
-        window->x = create->x;
-        window->y = create->y;
-        window->width = create->width;
-        window->height = create->height;
-        window->buffer = calloc(create->width * create->height, sizeof(pixel_t));
-        lock_init(&window->lock);
-        message_queue_init(&window->messages);
         LOCK_GUARD(&window->lock);
 
-        file->internal = window;
-        file->cleanup = window_cleanup;
-        file->ops.flush = window_flush;
-        file->ops.ioctl = window_ioctl;
+        switch (window->type)
+        {
+        case WIN_WINDOW:
+        {
+            LOCK_GUARD(&windowsLock);
+            list_push(&windows, window);
+        }
+        break;
+        case WIN_PANEL:
+        {
+            LOCK_GUARD(&panelsLock);
+            list_push(&panels, window);
 
-        list_push(&windows, window);
-        atomic_store(&redrawNeeded, true);
+            dwm_update_client_area();
+        }
+        break;
+        default:
+        {
+            debug_panic("Invalid window type");
+        }
+        }
+
+        dwm_redraw();
         return 0;
     }
     case IOCTL_DWM_SIZE:
@@ -238,8 +144,8 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t
         }
 
         ioctl_dwm_size_t* size = buffer;
-        size->width = backbuffer.width;
-        size->height = backbuffer.height;
+        size->width = RECT_WIDTH(&clientArea);
+        size->height = RECT_HEIGHT(&clientArea);
 
         return 0;
     }
@@ -256,26 +162,57 @@ static uint64_t dwm_open(resource_t* resource, file_t* file)
     return 0;
 }
 
+static void dwm_draw_panels(void)
+{
+    LOCK_GUARD(&panelsLock);
+
+    window_t* panel;
+    LIST_FOR_EACH(panel, &panels)
+    {
+        LOCK_GUARD(&panel->lock);
+
+        if (!panel->invalid)
+        {
+            continue;
+        }
+        panel->invalid = false;
+
+        rect_t screenRect;
+        RECT_INIT_DIM(&screenRect, 0, 0, backbuffer.width, backbuffer.height);
+
+        rect_t destRect;
+        RECT_INIT_DIM(&destRect, panel->pos.x, panel->pos.y, panel->surface.width, panel->surface.height);
+
+        if (!RECT_CONTAINS(&screenRect, &destRect))
+        {
+            continue;
+        }
+
+        point_t srcPoint = {0};
+        gfx_transfer(&backbuffer, &panel->surface, &destRect, &srcPoint);
+    }
+}
+
 static void dwm_draw_windows(void)
 {
-    // TODO: Optimize this, add rectangle subtraction.
-
-    LOCK_GUARD(&lock);
+    LOCK_GUARD(&windowsLock);
 
     window_t* window;
     LIST_FOR_EACH(window, &windows)
     {
         LOCK_GUARD(&window->lock);
 
-        // Copy one line at a time from window buffer to backbuffer
-        for (uint64_t y = 0; y < window->height; y++)
-        {
-            uint64_t bufferOffset = (window->x * sizeof(pixel_t)) + (y + window->y) * sizeof(pixel_t) * frontbuffer.stride;
-            uint64_t windowOffset = y * sizeof(pixel_t) * window->width;
+        rect_t destRect;
+        RECT_INIT_DIM(&destRect, window->pos.x + clientArea.left, window->pos.y + clientArea.top, window->surface.width,
+            window->surface.height);
+        RECT_FIT(&destRect, &clientArea);
 
-            memcpy((void*)((uint64_t)backbuffer.buffer + bufferOffset), (void*)((uint64_t)window->buffer + windowOffset),
-                window->width * sizeof(pixel_t));
-        }
+        point_t srcPoint = {
+            .x = destRect.left - (window->pos.x + clientArea.left),
+            .y = destRect.top - (window->pos.y + clientArea.top),
+        };
+
+        gfx_transfer(&backbuffer, &window->surface, &destRect, &srcPoint);
     }
 }
 
@@ -283,12 +220,17 @@ static void dwm_loop(void)
 {
     while (1)
     {
-        rect_t rect;
-        RECT_INIT_DIM(&rect, 0, 0, backbuffer.width, backbuffer.height);
-        gfx_rect(&backbuffer, &rect, theme.wall);
+        // Temp
+        gfx_rect(&backbuffer, &clientArea, 0xFF007E81);
 
         dwm_draw_windows();
-        memcpy(frontbuffer.base, backbuffer.buffer, frontbuffer.size);
+        dwm_draw_panels();
+
+        point_t srcPoint;
+        POINT_INIT(&srcPoint, 0, 0);
+        rect_t destRect;
+        RECT_INIT_DIM(&destRect, 0, 0, backbuffer.width, backbuffer.height);
+        gfx_transfer(&frontbuffer, &backbuffer, &destRect, &srcPoint);
 
         SCHED_WAIT(atomic_load(&redrawNeeded), NEVER);
         atomic_store(&redrawNeeded, false);
@@ -297,17 +239,22 @@ static void dwm_loop(void)
 
 void dwm_init(gop_buffer_t* gopBuffer)
 {
-    frontbuffer = *gopBuffer;
-    frontbuffer.base = gopBuffer->base;
-    backbuffer.buffer = malloc(frontbuffer.size);
-    backbuffer.height = frontbuffer.height;
-    backbuffer.width = frontbuffer.width;
-    backbuffer.stride = frontbuffer.stride;
+    frontbuffer.buffer = gopBuffer->base;
+    frontbuffer.height = gopBuffer->height;
+    frontbuffer.width = gopBuffer->width;
+    frontbuffer.stride = gopBuffer->stride;
 
+    backbuffer.buffer = calloc(gopBuffer->width * gopBuffer->height, sizeof(pixel_t));
+    backbuffer.height = gopBuffer->height;
+    backbuffer.width = gopBuffer->width;
+    backbuffer.stride = backbuffer.width;
+
+    RECT_INIT_DIM(&clientArea, 0, 0, backbuffer.width, backbuffer.height);
     list_init(&windows);
-    lock_init(&lock);
+    lock_init(&windowsLock);
+    list_init(&panels);
+    lock_init(&panelsLock);
     atomic_init(&redrawNeeded, true);
-    win_default_theme(&theme);
 
     resource_init(&dwm, "dwm", dwm_open, NULL);
     sysfs_expose(&dwm, "/srv");
@@ -316,4 +263,9 @@ void dwm_init(gop_buffer_t* gopBuffer)
 void dwm_start(void)
 {
     sched_thread_spawn(dwm_loop, THREAD_PRIORITY_MAX);
+}
+
+void dwm_redraw(void)
+{
+    atomic_store(&redrawNeeded, true);
 }

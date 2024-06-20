@@ -64,12 +64,13 @@ static void trap_end(void)
 
 void interrupts_disable(void)
 {
+    // Race condition does not matter
+
     if (!smp_initialized())
     {
         return;
     }
 
-    // Race condition does not matter
     uint64_t rflags = rflags_read();
 
     asm volatile("cli");
@@ -77,7 +78,7 @@ void interrupts_disable(void)
     cpu_t* cpu = smp_self_unsafe();
     if (cpu->cliAmount == 0)
     {
-        cpu->interruptsEnabled = (rflags & RFLAGS_INTERRUPT_ENABLE) != 0;
+        cpu->prevFlags = rflags;
     }
     cpu->cliAmount++;
 }
@@ -92,7 +93,7 @@ void interrupts_enable(void)
     cpu_t* cpu = smp_self_unsafe();
 
     cpu->cliAmount--;
-    if (cpu->cliAmount == 0 && cpu->interruptsEnabled)
+    if (cpu->cliAmount == 0 && cpu->prevFlags & RFLAGS_INTERRUPT_ENABLE)
     {
         asm volatile("sti");
     }

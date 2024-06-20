@@ -48,23 +48,23 @@ typedef uint8_t win_type_t;
 
 #define WIN_WINDOW 0
 #define WIN_FULLSCREEN 1 // NOT IMPLEMENTED
-#define WIN_TASKBAR 2    // NOT IMPLEMENTED
-#define WIN_WALL 3       // NOT IMPLEMENTED
+#define WIN_PANEL 2
+#define WIN_WALL 3 // NOT IMPLEMENTED
 
 typedef struct ioctl_dwm_create
 {
-    uint64_t x;
-    uint64_t y;
-    uint64_t width;
-    uint64_t height;
+    int64_t x;
+    int64_t y;
+    uint32_t width;
+    uint32_t height;
     win_type_t type;
     char name[MAX_PATH];
 } ioctl_dwm_create_t;
 
 typedef struct ioctl_dwm_size
 {
-    uint64_t width;
-    uint64_t height;
+    uint32_t width;
+    uint32_t height;
 } ioctl_dwm_size_t;
 
 #define IOCTL_DWM_CREATE 0
@@ -85,10 +85,10 @@ typedef struct ioctl_win_send
 
 typedef struct ioctl_win_move
 {
-    uint64_t x;
-    uint64_t y;
-    uint64_t width;
-    uint64_t height;
+    int64_t x;
+    int64_t y;
+    uint32_t width;
+    uint32_t height;
 } ioctl_win_move_t;
 
 #define IOCTL_WIN_RECEIVE 0
@@ -101,11 +101,10 @@ typedef uint8_t win_t;
 
 typedef struct win_theme
 {
-    uint64_t edgeWidth;
+    uint32_t edgeWidth;
     pixel_t highlight;
     pixel_t shadow;
     pixel_t background;
-    pixel_t wall;
     pixel_t topbarHighlight;
     pixel_t topbarShadow;
     uint64_t topbarHeight;

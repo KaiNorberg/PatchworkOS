@@ -1,4 +1,7 @@
+#include "_AUX/rect_t.h"
+
 #include <stdint.h>
+#include <string.h>
 #include <sys/gfx.h>
 #include <sys/math.h>
 
@@ -83,7 +86,7 @@ void gfx_rect(surface_t* surface, const rect_t* rect, pixel_t pixel)
 {
     uint64_t pixel64 = ((uint64_t)pixel << 32) | pixel;
 
-    for (uint64_t y = rect->top; y < rect->bottom; y++)
+    for (int64_t y = rect->top; y < rect->bottom; y++)
     {
         uint64_t count = (rect->right - rect->left) * sizeof(pixel_t);
         uint8_t* ptr = (uint8_t*)&surface->buffer[rect->left + y * surface->stride];
@@ -163,4 +166,18 @@ void gfx_edge(surface_t* surface, const rect_t* rect, uint64_t width, pixel_t fo
     }
 
     gfx_invalidate(surface, rect);
+}
+
+void gfx_transfer(surface_t* dest, const surface_t* src, const rect_t* destRect, const point_t* srcPoint)
+{
+    for (int64_t y = 0; y < RECT_HEIGHT(destRect); y++)
+    {
+        uint64_t destOffset = (destRect->left * sizeof(pixel_t)) + (y + destRect->top) * sizeof(pixel_t) * dest->stride;
+        uint64_t srcOffset = srcPoint->x * sizeof(pixel_t) + (y + srcPoint->y) * sizeof(pixel_t) * src->stride;
+
+        memcpy((void*)((uint64_t)dest->buffer + destOffset), (void*)((uint64_t)src->buffer + srcOffset),
+            RECT_WIDTH(destRect) * sizeof(pixel_t));
+    }
+
+    gfx_invalidate(dest, destRect);
 }

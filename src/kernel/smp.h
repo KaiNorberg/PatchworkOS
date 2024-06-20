@@ -22,7 +22,7 @@ typedef struct
     uint8_t localApicId;
     uint8_t* idleStack;
     uint64_t trapDepth;
-    bool interruptsEnabled;
+    uint64_t prevFlags;
     uint64_t cliAmount;
     tss_t tss;
     scheduler_t scheduler;
