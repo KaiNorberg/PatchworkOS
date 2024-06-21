@@ -144,8 +144,8 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t
         }
 
         ioctl_dwm_size_t* size = buffer;
-        size->width = RECT_WIDTH(&clientArea);
-        size->height = RECT_HEIGHT(&clientArea);
+        size->outWidth = RECT_WIDTH(&clientArea);
+        size->outHeight = RECT_HEIGHT(&clientArea);
 
         return 0;
     }

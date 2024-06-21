@@ -104,8 +104,8 @@ uint64_t win_screen_rect(rect_t* rect)
     *rect = (rect_t){
         .left = 0,
         .top = 0,
-        .right = size.width,
-        .bottom = size.height,
+        .right = size.outWidth,
+        .bottom = size.outHeight,
     };
     return 0;
 }
@@ -236,13 +236,13 @@ msg_t win_dispatch(win_t* window, nsec_t timeout)
         return LMSG_QUIT;
     }
 
-    if (win_background_procedure(window, receive.type, receive.data) == ERR)
+    if (win_background_procedure(window, receive.outType, receive.outData) == ERR)
     {
         win_send(window, LMSG_QUIT, NULL, 0);
         return MSG_NONE;
     }
 
-    if (window->procedure(window, receive.type, receive.data) == ERR)
+    if (window->procedure(window, receive.outType, receive.outData) == ERR)
     {
         win_send(window, LMSG_QUIT, NULL, 0);
         return MSG_NONE;
@@ -256,7 +256,7 @@ msg_t win_dispatch(win_t* window, nsec_t timeout)
     }
     window->invalidArea = (rect_t){};
 
-    return receive.type;
+    return receive.outType;
 }
 
 uint64_t win_send(win_t* window, msg_t type, void* data, uint64_t size)

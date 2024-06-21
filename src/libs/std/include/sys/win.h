@@ -63,8 +63,8 @@ typedef struct ioctl_dwm_create
 
 typedef struct ioctl_dwm_size
 {
-    uint32_t width;
-    uint32_t height;
+    uint32_t outWidth;
+    uint32_t outHeight;
 } ioctl_dwm_size_t;
 
 #define IOCTL_DWM_CREATE 0
@@ -73,8 +73,8 @@ typedef struct ioctl_dwm_size
 typedef struct ioctl_win_receive
 {
     nsec_t timeout;
-    msg_t type;
-    uint8_t data[MSG_MAX_DATA];
+    msg_t outType;
+    uint8_t outData[MSG_MAX_DATA];
 } ioctl_win_receive_t;
 
 typedef struct ioctl_win_send

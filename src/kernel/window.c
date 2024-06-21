@@ -24,12 +24,12 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* buffer, uint6
         message_t message;
         if (SCHED_WAIT(message_queue_pop(&window->messages, &message), receive->timeout) == SCHED_WAIT_TIMEOUT)
         {
-            receive->type = MSG_NONE;
+            receive->outType = MSG_NONE;
             return 0;
         }
 
-        memcpy(receive->data, message.data, message.size);
-        receive->type = message.type;
+        memcpy(receive->outData, message.data, message.size);
+        receive->outType = message.type;
 
         return 0;
     }
