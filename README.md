@@ -12,6 +12,7 @@
 - Custom Standard Library
 - Custom UEFI Bootloader
 - SIMD
+- ![Custom image format (.fbmp)](https://github.com/KaiNorberg/fbmp)
 - More to be added...
 
 ## Limitations
