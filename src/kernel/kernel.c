@@ -12,6 +12,8 @@
 #include "pic.h"
 #include "pmm.h"
 #include "ps2.h"
+#include "ps2_keyboard.h"
+#include "ps2_mouse.h"
 #include "ramfs.h"
 #include "regs.h"
 #include "rsdt.h"
@@ -72,6 +74,9 @@ void kernel_init(boot_info_t* bootInfo)
     ramfs_init(bootInfo->ramRoot);
 
     ps2_init();
+    ps2_keyboard_init();
+    ps2_mouse_init();
+
     const_init();
     dwm_init(&bootInfo->gopBuffer);
 

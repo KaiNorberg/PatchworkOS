@@ -2,7 +2,7 @@
 #include "sys/gfx.h"
 #include <stdint.h>
 #include <stdlib.h>
-#include <sys/kbd.h>
+#include <sys/keyboard.h>
 #include <sys/proc.h>
 #include <sys/win.h>
 

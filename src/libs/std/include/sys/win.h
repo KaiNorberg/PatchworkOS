@@ -21,19 +21,21 @@ extern "C"
 
 typedef uint64_t msg_t;
 
-typedef struct msg_kbd
+typedef struct msg_keyboard
 {
     nsec_t time;
     uint8_t type;
     uint8_t code;
-} msg_kbd_t;
+} msg_keyboard_t;
 
 #define MSG_MAX_DATA 48
 
 // Kernel messages
 #define MSG_NONE 0
-#define MSG_KBD 1
+#define MSG_KEYBOARD 1
 #define MSG_MOUSE 2
+#define MSG_SELECT 3
+#define MSG_DESELECT 4
 
 // Library messages
 #define LMSG_BASE (1ULL << 62)
@@ -53,8 +55,7 @@ typedef uint8_t win_type_t;
 
 typedef struct ioctl_dwm_create
 {
-    int64_t x;
-    int64_t y;
+    point_t pos;
     uint32_t width;
     uint32_t height;
     win_type_t type;

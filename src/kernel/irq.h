@@ -16,7 +16,7 @@
 #define IRQ_FREE1 0x9
 #define IRQ_FREE2 0xA
 #define IRQ_FREE3 0xB
-#define IRQ_PS2_MOUSE 0xC
+#define IRQ_MOUSE 0xC
 #define IRQ_FPU 0xD
 #define IRQ_PRIMARY_ATA_HARD_DRIVE 0xE
 #define IRQ_SECONDARY_ATA_HARD_DRIVE 0xF

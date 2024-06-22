@@ -33,8 +33,6 @@ typedef struct surface
     rect_t invalidArea;
 } surface_t;
 
-void gfx_invalidate(surface_t* surface, const rect_t* rect);
-
 void gfx_psf_char(surface_t* surface, const psf_t* psf, const point_t* point, char chr);
 
 void gfx_psf_string(surface_t* surface, const psf_t* psf, const point_t* point, const char* string);
@@ -44,6 +42,8 @@ void gfx_rect(surface_t* surface, const rect_t* rect, pixel_t pixel);
 void gfx_edge(surface_t* surface, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background);
 
 void gfx_transfer(surface_t* dest, const surface_t* src, const rect_t* destRect, const point_t* srcPoint);
+
+void gfx_invalidate(surface_t* surface, const rect_t* rect);
 
 #if defined(__cplusplus)
 }

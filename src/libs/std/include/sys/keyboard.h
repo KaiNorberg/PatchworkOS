@@ -1,5 +1,5 @@
-#ifndef _SYS_KBD_H
-#define _SYS_KBD_H 1
+#ifndef _SYS_KEYBOARD_H
+#define _SYS_KEYBOARD_H 1
 
 #include <stdint.h>
 
@@ -10,15 +10,15 @@ extern "C"
 
 #include "_AUX/nsec_t.h"
 
-typedef struct kbd_event
+typedef struct keyboard_event
 {
     nsec_t time;
     uint8_t type;
     uint8_t code;
-} kbd_event_t;
+} keyboard_event_t;
 
-#define KBD_PRESS 0
-#define KBD_RELEASE 1
+#define KEYBOARD_PRESS 0
+#define KEYBOARD_RELEASE 1
 
 #define KEY_A 0
 #define KEY_B 1

@@ -5,8 +5,11 @@
 #include "list.h"
 #include "lock.h"
 #include "sched.h"
+#include "sys/io.h"
+#include "sys/mouse.h"
 #include "sys/win.h"
 #include "sysfs.h"
+#include "vfs.h"
 
 #include <errno.h>
 #include <stdatomic.h>
@@ -27,6 +30,9 @@ static lock_t windowsLock;
 
 static list_t panels;
 static lock_t panelsLock;
+
+static point_t mousePos;
+static file_t* mouse;
 
 static _Atomic(bool) redrawNeeded;
 
@@ -101,9 +107,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t
         }
         const ioctl_dwm_create_t* create = buffer;
 
-        point_t pos;
-        POINT_INIT(&pos, create->x, create->y);
-        window_t* window = window_new(&pos, create->width, create->height, create->type, file, dwm_window_cleanup);
+        window_t* window = window_new(&create->pos, create->width, create->height, create->type, file, dwm_window_cleanup);
         if (window == NULL)
         {
             return ERR;
@@ -216,6 +220,32 @@ static void dwm_draw_windows(void)
     }
 }
 
+static void dwm_poll(void)
+{
+    while (!atomic_load(&redrawNeeded))
+    {
+        poll_file_t poll[] = {(poll_file_t){.file = mouse, .requested = POLL_READ}};
+        if (vfs_poll(poll, 1, SEC / CONFIG_DWM_FPS) != 0)
+        {
+            mouse_event_t event;
+            FILE_CALL(mouse, read, &event, sizeof(mouse_event_t));
+
+            rect_t cursor;
+            RECT_INIT_DIM(&cursor, mousePos.x, mousePos.y, 32, 32);
+            gfx_transfer(&frontbuffer, &backbuffer, &cursor, &mousePos);
+
+            mousePos.x += event.deltaX;
+            mousePos.y += event.deltaY;
+            mousePos.x = CLAMP(mousePos.x, 0, backbuffer.width - 32);
+            mousePos.y = CLAMP(mousePos.y, 0, backbuffer.height - 32);
+
+            RECT_INIT_DIM(&cursor, mousePos.x, mousePos.y, 32, 32);
+            gfx_rect(&frontbuffer, &cursor, 0xFF00FF00);
+        }
+    }
+    atomic_store(&redrawNeeded, false);
+}
+
 static void dwm_loop(void)
 {
     while (1)
@@ -226,14 +256,17 @@ static void dwm_loop(void)
         dwm_draw_windows();
         dwm_draw_panels();
 
-        point_t srcPoint;
-        POINT_INIT(&srcPoint, 0, 0);
-        rect_t destRect;
-        RECT_INIT_DIM(&destRect, 0, 0, backbuffer.width, backbuffer.height);
-        gfx_transfer(&frontbuffer, &backbuffer, &destRect, &srcPoint);
+        for (uint64_t y = 0; y < backbuffer.height; y++)
+        {
+            memcpy(&frontbuffer.buffer[y * frontbuffer.stride], &backbuffer.buffer[y * backbuffer.stride],
+                backbuffer.width * sizeof(pixel_t));
+        }
 
-        SCHED_WAIT(atomic_load(&redrawNeeded), NEVER);
-        atomic_store(&redrawNeeded, false);
+        rect_t cursor;
+        RECT_INIT_DIM(&cursor, mousePos.x, mousePos.y, 32, 32);
+        gfx_rect(&frontbuffer, &cursor, 0xFF00FF00);
+
+        dwm_poll();
     }
 }
 
@@ -256,8 +289,12 @@ void dwm_init(gop_buffer_t* gopBuffer)
     lock_init(&panelsLock);
     atomic_init(&redrawNeeded, true);
 
+    mousePos.x = backbuffer.width / 2;
+    mousePos.y = backbuffer.height / 2;
+    mouse = vfs_open("sys:/mouse/ps2");
+
     resource_init(&dwm, "dwm", dwm_open, NULL);
-    sysfs_expose(&dwm, "/srv");
+    sysfs_expose(&dwm, "/server");
 }
 
 void dwm_start(void)

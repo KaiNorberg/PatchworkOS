@@ -26,7 +26,8 @@ KERNEL_SRC = \
 	$(STDLIB)/stdlib/free.c \
 	$(STDLIB)/gfx/gfx.c \
 	$(STDLIB)/win/win_default_theme.c \
-	$(STDLIB)/../internal/init.c
+	$(STDLIB)/../internal/init.c \
+	$(STDLIB)/../internal/heap.c
 
 KERNEL_OBJ = $(patsubst $(SRC_DIR)/%, $(KERNEL_BUILD_DIR)/%.o, $(KERNEL_SRC))
 

@@ -22,7 +22,13 @@ typedef struct heap_header
     uint64_t padding[4];
 } heap_header_t;
 
+heap_header_t* _HeapBlockNew(uint64_t size);
+
+void _HeapBlockSplit(heap_header_t* block, uint64_t size);
+
 void _HeapInit(void);
+
+heap_header_t* _HeapFirstBlock(void);
 
 void _HeapAcquire(void);
 

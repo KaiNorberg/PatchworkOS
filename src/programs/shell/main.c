@@ -2,7 +2,7 @@
 
 #include <stdlib.h>
 #include <sys/gfx.h>
-#include <sys/kbd.h>
+#include <sys/keyboard.h>
 #include <sys/proc.h>
 
 int main(void)

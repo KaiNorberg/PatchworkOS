@@ -27,6 +27,7 @@ BASE_C_FLAGS = -O3 \
 	-Wall \
 	-Wextra \
 	-Werror \
+	-Wno-unused-function \
 	-Wno-unused-variable \
 	-Wno-ignored-qualifiers \
 	-Wno-unused-parameter \
@@ -60,16 +61,16 @@ build: $(BUILD)
 
 deploy:
 	@echo "!====== RUNNING DEPLOY ======!"
-	dd status=progress if=/dev/zero of=$(OUTPUT_IMAGE) bs=4096 count=1024
-	mkfs -t vfat $(OUTPUT_IMAGE)
-	mlabel -i $(OUTPUT_IMAGE) -s ::PatchworkOS
-	mmd -i $(OUTPUT_IMAGE) ::boot
-	mmd -i $(OUTPUT_IMAGE) ::efi
-	mmd -i $(OUTPUT_IMAGE) ::efi/boot
+	dd if=/dev/zero of=$(OUTPUT_IMAGE) bs=1M count=64
+	mkfs.vfat -F 32 -n "PatchworkOS" $(OUTPUT_IMAGE)
+	mlabel -i $(OUTPUT_IMAGE) ::PatchworkOS
+	mmd -i $(OUTPUT_IMAGE) ::/boot
+	mmd -i $(OUTPUT_IMAGE) ::/efi
+	mmd -i $(OUTPUT_IMAGE) ::/efi/boot
 	mcopy -i $(OUTPUT_IMAGE) -s $(ROOT_DIR)/* ::
-	mcopy -i $(OUTPUT_IMAGE) -s $(BOOT_OUT_EFI) ::efi/boot
-	mcopy -i $(OUTPUT_IMAGE) -s $(KERNEL_OUT) ::boot
-	mcopy -i $(OUTPUT_IMAGE) -s $(BIN_DIR)/programs ::bin
+	mcopy -i $(OUTPUT_IMAGE) -s $(BOOT_OUT_EFI) ::/efi/boot
+	mcopy -i $(OUTPUT_IMAGE) -s $(KERNEL_OUT) ::/boot
+	mcopy -i $(OUTPUT_IMAGE) -s $(BIN_DIR)/programs ::/bin
 
 compile_commands:
 	bear -- make build
@@ -82,7 +83,8 @@ all: build deploy
 run:
 	@qemu-system-x86_64 \
 	-M q35 \
-    -drive file=$(OUTPUT_IMAGE) \
+	-display sdl \
+	-drive file=$(OUTPUT_IMAGE) \
     -m 1G \
 	-smp 6 \
     -no-shutdown -no-reboot \
@@ -93,6 +95,7 @@ run:
 run_debug:
 	@qemu-system-x86_64 \
 	-M q35 \
+	-display sdl \
     -drive file=$(OUTPUT_IMAGE) \
 	-m 1G \
 	-smp 6 \

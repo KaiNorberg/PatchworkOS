@@ -87,7 +87,7 @@ static inline uint64_t win_set_area(win_t* window, const rect_t* rect)
 
 uint64_t win_screen_rect(rect_t* rect)
 {
-    fd_t fd = open("sys:/srv/dwm");
+    fd_t fd = open("sys:/server/dwm");
     if (fd == ERR)
     {
         return ERR;
@@ -146,7 +146,7 @@ win_t* win_new(const char* name, const rect_t* rect, const win_theme_t* theme, p
         return NULL;
     }
 
-    window->fd = open("sys:/srv/dwm");
+    window->fd = open("sys:/server/dwm");
     if (window->fd == ERR)
     {
         free(window);
@@ -154,8 +154,8 @@ win_t* win_new(const char* name, const rect_t* rect, const win_theme_t* theme, p
     }
 
     ioctl_dwm_create_t create;
-    create.x = rect->left;
-    create.y = rect->top;
+    create.pos.x = rect->left;
+    create.pos.y = rect->top;
     create.width = RECT_WIDTH(rect);
     create.height = RECT_HEIGHT(rect);
     create.type = type;
@@ -291,21 +291,29 @@ uint64_t win_move(win_t* window, const rect_t* rect)
     move.width = RECT_WIDTH(rect);
     move.height = RECT_HEIGHT(rect);
 
-    if (ioctl(window->fd, IOCTL_WIN_MOVE, &move, sizeof(ioctl_win_move_t)) == ERR)
-    {
-        return ERR;
-    }
-
+    void* newBuffer = NULL;
     if (RECT_WIDTH(rect) != RECT_WIDTH(&window->windowArea) || RECT_HEIGHT(rect) != RECT_HEIGHT(&window->windowArea))
     {
-        free(window->buffer);
-
-        window->buffer = calloc(RECT_AREA(rect), sizeof(pixel_t));
-        if (window->buffer == NULL)
+        newBuffer = calloc(RECT_AREA(rect), sizeof(pixel_t));
+        if (newBuffer == NULL)
         {
             return ERR;
         }
+    }
 
+    if (ioctl(window->fd, IOCTL_WIN_MOVE, &move, sizeof(ioctl_win_move_t)) == ERR)
+    {
+        if (newBuffer == NULL)
+        {
+            free(newBuffer);
+        }
+        return ERR;
+    }
+
+    if (newBuffer != NULL)
+    {
+        free(window->buffer);
+        window->buffer = newBuffer;
         win_send(window, LMSG_REDRAW, NULL, 0);
     }
 
