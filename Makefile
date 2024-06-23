@@ -4,19 +4,11 @@ CC = gcc
 LD = ld
 ASM = nasm
 
-SRC_DIR = src
-BIN_DIR = bin
-BUILD_DIR = build
-MAKE_DIR = make
-ROOT_DIR = root
-INCLUDE_DIR = include
-DEPS_DIR = deps
-
-OUTPUT_IMAGE = $(BIN_DIR)/PatchworkOS.img
+OUTPUT_IMAGE = bin/PatchworkOS.img
 
 BASE_ASM_FLAGS = -f elf64 \
-	-I$(INCLUDE_DIR)/stdlib \
-	-I$(INCLUDE_DIR)
+	-Iinclude/stdlib \
+	-Iinclude
 
 BASE_C_FLAGS = -O3 \
 	-Wall \
@@ -31,8 +23,8 @@ BASE_C_FLAGS = -O3 \
 	-Wno-deprecated-non-prototype \
 	-fno-stack-protector \
 	-ffreestanding -nostdlib \
-	-I$(INCLUDE_DIR)/stdlib \
-	-I$(INCLUDE_DIR)
+	-Iinclude/stdlib \
+	-Iinclude
 
 BASE_LD_FLAGS = -nostdlib
 
@@ -41,16 +33,16 @@ USER_C_FLAGS = $(BASE_C_FLAGS)
 USER_ASM_FLAGS = $(BASE_ASM_FLAGS)
 
 USER_LD_FLAGS = $(BASE_LD_FLAGS) \
-	-L$(BIN_DIR)/stdlib -lstd
+	-Lbin/stdlib -lstd
 
 include make/bootloader/bootloader.mk
 include make/kernel/kernel.mk
 include make/stdlib/stdlib.mk
-include $(wildcard $(MAKE_DIR)/programs/*.mk)
+include $(wildcard make/programs/*.mk)
 
 setup:
 	@echo "!====== RUNNING SETUP  ======!"
-	@cd deps/gnu-efi && make all && cd ../..
+	@cd lib/gnu-efi && make all && cd ../..
 
 build: $(BUILD)
 
@@ -62,16 +54,16 @@ deploy:
 	mmd -i $(OUTPUT_IMAGE) ::/boot
 	mmd -i $(OUTPUT_IMAGE) ::/efi
 	mmd -i $(OUTPUT_IMAGE) ::/efi/boot
-	mcopy -i $(OUTPUT_IMAGE) -s $(ROOT_DIR)/* ::
+	mcopy -i $(OUTPUT_IMAGE) -s root/* ::
 	mcopy -i $(OUTPUT_IMAGE) -s $(BOOT_OUT_EFI) ::/efi/boot
 	mcopy -i $(OUTPUT_IMAGE) -s $(KERNEL_OUT) ::/boot
-	mcopy -i $(OUTPUT_IMAGE) -s $(BIN_DIR)/programs ::/bin
+	mcopy -i $(OUTPUT_IMAGE) -s bin/programs ::/bin
 
 compile_commands:
 	bear -- make build
 
 format:
-	find $(SRC_DIR)/ $(INCLUDE_DIR)/ -iname '*.h' -o -iname '*.c' | xargs clang-format -style=file -i
+	find src/ include/ -iname '*.h' -o -iname '*.c' | xargs clang-format -style=file -i
 
 all: build deploy
 
@@ -83,8 +75,8 @@ run:
     -m 1G \
 	-smp 6 \
     -no-shutdown -no-reboot \
-    -drive if=pflash,format=raw,unit=0,file=deps/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
-    -drive if=pflash,format=raw,unit=1,file=deps/OVMFbin/OVMF_VARS-pure-efi.fd \
+    -drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
+    -drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd \
     -net none
 
 run_debug:
@@ -97,13 +89,13 @@ run_debug:
     -serial stdio \
 	-d int \
     -no-shutdown -no-reboot \
-    -drive if=pflash,format=raw,unit=0,file=deps/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
-    -drive if=pflash,format=raw,unit=1,file=deps/OVMFbin/OVMF_VARS-pure-efi.fd \
+    -drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
+    -drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd \
     -net none
 
 clean:
-#@cd deps/gnu-efi && make clean && cd ../..
-	rm -rf $(BUILD_DIR)
-	rm -rf $(BIN_DIR)
+#@cd lib/gnu-efi && make clean && cd ../..
+	rm -rf build
+	rm -rf bin
 
 .PHONY: setup build deploy all run run-debug clean

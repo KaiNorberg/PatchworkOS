@@ -1,14 +1,14 @@
-GNU_EFI = deps/gnu-efi
+GNU_EFI = lib/gnu-efi
 
-BOOT_OUT_SO = $(BIN_DIR)/bootloader/boot.so
-BOOT_OUT_EFI = $(BIN_DIR)/bootloader/bootx64.efi
+BOOT_OUT_SO = bin/bootloader/boot.so
+BOOT_OUT_EFI = bin/bootloader/bootx64.efi
 
 BOOT_SRC = \
-	$(wildcard $(SRC_DIR)/bootloader/*.c) \
-	$(wildcard $(SRC_DIR)/bootloader/*.s) \
-	$(SRC_DIR)/stdlib/string.c
+	$(wildcard src/bootloader/*.c) \
+	$(wildcard src/bootloader/*.s) \
+	src/stdlib/string.c
 
-BOOT_OBJ = $(patsubst $(SRC_DIR)/%, $(BUILD_DIR)/bootloader/%.o, $(BOOT_SRC))
+BOOT_OBJ = $(patsubst src/%, build/bootloader/%.o, $(BOOT_SRC))
 
 BOOT_C_FLAGS = $(BASE_C_FLAGS) \
 	-fpic -fno-stack-check \
@@ -19,19 +19,19 @@ BOOT_C_FLAGS = $(BASE_C_FLAGS) \
 	-mno-ssse3 -mno-sse4 \
 	-D__BOOTLOADER__ \
 	-D__EMBED__ \
-	-I$(INCLUDE_DIR)/bootloader \
+	-Iinclude/bootloader \
 	-I$(GNU_EFI)/inc
 
 BOOT_ASM_FLAGS = $(BASE_ASM_FLAGS) \
 	-D__EMBED__ \
-	-I$(INCLUDE_DIR)/bootloader \
+	-Iinclude/bootloader \
 	-I$(GNU_EFI)/inc
 
-$(BUILD_DIR)/bootloader/%.c.o: $(SRC_DIR)/%.c
+build/bootloader/%.c.o: src/%.c
 	$(MKCWD)
 	$(CC) $(BOOT_C_FLAGS) -c -o $@ $<
 
-$(BUILD_DIR)/bootloader/%.s.o: $(SRC_DIR)/%.s
+build/bootloader/%.s.o: src/%.s
 	$(MKCWD)
 	$(ASM) $(BOOT_ASM_FLAGS) $^ -o $@
 

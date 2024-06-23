@@ -1,10 +1,10 @@
-SHELL_OUT = $(BIN_DIR)/programs/shell.elf
+SHELL_OUT = bin/programs/shell.elf
 
-SHELL_SRC = $(wildcard $(SRC_DIR)/programs/shell/*.c)
+SHELL_SRC = $(wildcard src/programs/shell/*.c)
 
-SHELL_OBJ = $(patsubst $(SRC_DIR)/%, $(BUILD_DIR)/shell/%.o, $(SHELL_SRC))
+SHELL_OBJ = $(patsubst src/%, build/shell/%.o, $(SHELL_SRC))
 
-$(BUILD_DIR)/shell/%.c.o: $(SRC_DIR)/%.c
+build/shell/%.c.o: src/%.c
 	$(MKCWD)
 	$(CC) $(USER_C_FLAGS) -c -o $@ $<
 

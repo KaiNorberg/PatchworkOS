@@ -1,12 +1,12 @@
-KERNEL_OUT = $(BIN_DIR)/kernel/kernel.elf
+KERNEL_OUT = bin/kernel/kernel.elf
 
 KERNEL_SRC = \
-	$(wildcard $(SRC_DIR)/kernel/*.c) \
-	$(wildcard $(SRC_DIR)/kernel/*.s) \
-	$(wildcard $(SRC_DIR)/stdlib/*.c) \
-	$(wildcard $(SRC_DIR)/stdlib/*.s)
+	$(wildcard src/kernel/*.c) \
+	$(wildcard src/kernel/*.s) \
+	$(wildcard src/stdlib/*.c) \
+	$(wildcard src/stdlib/*.s)
 
-KERNEL_OBJ = $(patsubst $(SRC_DIR)/%, $(BUILD_DIR)/kernel/%.o, $(KERNEL_SRC))
+KERNEL_OBJ = $(patsubst src/%, build/kernel/%.o, $(KERNEL_SRC))
 
 KERNEL_C_FLAGS = $(BASE_C_FLAGS) \
 	-fno-pic -mcmodel=large \
@@ -16,24 +16,24 @@ KERNEL_C_FLAGS = $(BASE_C_FLAGS) \
 	-mno-sse2 -mno-sse3 \
 	-mno-ssse3 -mno-sse4 \
 	-D__EMBED__ \
-	-I$(INCLUDE_DIR)/kernel \
-	-I$(SRC_DIR)/kernel
+	-Iinclude/kernel \
+	-Isrc/kernel
 
 KERNEL_ASM_FLAGS = $(BASE_ASM_FLAGS) \
 	-D__EMBED__ \
-	-I$(INCLUDE_DIR)/kernel \
-	-I$(SRC_DIR)/kernel
+	-Iinclude/kernel \
+	-Isrc/kernel
 
-$(BUILD_DIR)/kernel/%.c.o: $(SRC_DIR)/%.c
+build/kernel/%.c.o: src/%.c
 	$(MKCWD)
 	$(CC) $(KERNEL_C_FLAGS) -c -o $@ $<
 
-$(BUILD_DIR)/kernel/%.s.o: $(SRC_DIR)/%.s
+build/kernel/%.s.o: src/%.s
 	$(MKCWD)
 	$(ASM) $(KERNEL_ASM_FLAGS) $^ -o $@
 
 $(KERNEL_OUT): $(KERNEL_OBJ)
 	$(MKCWD)
-	$(LD) $(BASE_LD_FLAGS) -T$(SRC_DIR)/kernel/linker.ld -o $@ $^
+	$(LD) $(BASE_LD_FLAGS) -Tsrc/kernel/linker.ld -o $@ $^
 
 BUILD += $(KERNEL_OUT)

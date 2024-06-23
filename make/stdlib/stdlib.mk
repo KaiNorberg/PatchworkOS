@@ -1,22 +1,22 @@
-STD_OUT = $(BIN_DIR)/stdlib/libstd.a
+STD_OUT = bin/stdlib/libstd.a
 
 STD_SRC = \
-	$(wildcard $(SRC_DIR)/stdlib/*.c) \
-	$(wildcard $(SRC_DIR)/stdlib/*.s)
+	$(wildcard src/stdlib/*.c) \
+	$(wildcard src/stdlib/*.s)
 
-STD_OBJ = $(patsubst $(SRC_DIR)/%, $(BUILD_DIR)/stdlib/%.o, $(STD_SRC))
+STD_OBJ = $(patsubst src/%, build/stdlib/%.o, $(STD_SRC))
 
 STD_C_FLAGS = $(BASE_C_FLAGS) \
-	-I$(INCLUDE_DIR)/stdlib \
-	-I$(INCLUDE_DIR)/stdlib_internal
+	-Iinclude/stdlib \
+	-Iinclude/stdlib_internal
 
-STD_ASM_FLAGS = $(BASE_ASM_FLAGS) \
+STD_ASM_FLAGS = $(BASE_ASM_FLAGS)
 
-$(BUILD_DIR)/stdlib/%.c.o: $(SRC_DIR)/%.c
+build/stdlib/%.c.o: src/%.c
 	$(MKCWD)
 	$(CC) $(STD_C_FLAGS) -c -o $@ $<
 
-$(BUILD_DIR)/stdlib/%.s.o: $(SRC_DIR)/%.s
+build/stdlib/%.s.o: src/%.s
 	$(MKCWD)
 	$(ASM) $(STD_ASM_FLAGS) $^ -o $@
 
