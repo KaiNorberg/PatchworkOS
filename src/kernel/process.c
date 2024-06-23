@@ -3,6 +3,7 @@
 #include "gdt.h"
 #include "regs.h"
 #include "smp.h"
+#include "sys/io.h"
 #include "vmm.h"
 
 #include <stdlib.h>
@@ -16,9 +17,26 @@ process_t* process_new(const char* executable)
     process->killed = false;
     process->id = atomic_fetch_add(&newPid, 1);
     memset(process->executable, 0, MAX_PATH);
-    if (executable != NULL && vfs_realpath(process->executable, executable) == ERR)
+    if (executable != NULL)
     {
-        memset(process->executable, 0, MAX_PATH);
+        if (vfs_realpath(process->executable, executable) == ERR)
+        {
+            free(process);
+            return NULL;
+        }
+
+        stat_t info;
+        if (vfs_stat(process->executable, &info) == ERR)
+        {
+            free(process);
+            return NULL;
+        }
+
+        if (info.type != STAT_FILE)
+        {
+            free(process);
+            return NULLPTR(EISDIR);
+        }
     }
     vfs_context_init(&process->vfsContext);
     space_init(&process->space);

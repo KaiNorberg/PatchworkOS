@@ -27,7 +27,7 @@
 #include "vfs.h"
 #include "vmm.h"
 
-#include <libs/std/internal/init.h>
+#include <stdlib_internal/init.h>
 
 static void boot_info_deallocate(boot_info_t* bootInfo)
 {

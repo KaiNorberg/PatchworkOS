@@ -112,7 +112,7 @@ static uint64_t sysfs_stat(volume_t* volume, const char* path, stat_t* buffer)
     const char* name = vfs_basename(path);
     if (system_find_resource(parent, name) != NULL)
     {
-        buffer->type = STAT_FILE;
+        buffer->type = STAT_RES;
     }
     else if (system_find_system(parent, name) != NULL)
     {

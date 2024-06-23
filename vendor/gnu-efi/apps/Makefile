@@ -45,7 +45,7 @@ TOPDIR = $(SRCDIR)/..
 CDIR=$(TOPDIR)/..
 LINUX_HEADERS	= /usr/src/sys/build
 APPSDIR		= $(LIBDIR)/gnuefi/apps
-CPPFLAGS	+= -D__KERNEL__ -I$(LINUX_HEADERS)/include
+CPPFLAGS	+= -D__EMBED__ -I$(LINUX_HEADERS)/include
 CRTOBJS		= ../gnuefi/crt0-efi-$(ARCH).o
 
 LDSCRIPT	= $(TOPDIR)/gnuefi/elf_$(ARCH)_efi.lds

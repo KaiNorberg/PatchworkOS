@@ -191,6 +191,11 @@ void sched_thread_exit(void)
 pid_t sched_spawn(const char* path)
 {
     process_t* process = process_new(path);
+    if (process == NULL)
+    {
+        return ERR;
+    }
+
     thread_t* thread = thread_new(process, loader_entry, THREAD_PRIORITY_MIN);
     sched_push(thread);
 

@@ -31,16 +31,16 @@ InitializeLib (
 Routine Description:
 
     Initializes EFI library for use
-    
+
 Arguments:
 
     Firmware's EFI system table
-    
+
 Returns:
 
     None
 
---*/ 
+--*/
 {
     EFI_LOADED_IMAGE        *LoadedImage;
     EFI_STATUS              Status;
@@ -187,7 +187,8 @@ EFIDebugVariable (
 #define __SIZE_TYPE__ UINTN
 #endif
 
-void *memset(void *s, int c, __SIZE_TYPE__ n)
+// EXTERNAL CHANGE: Functions now provided by stdlib
+/*void *memset(void *s, int c, __SIZE_TYPE__ n)
 {
     unsigned char *p = s;
 
@@ -206,4 +207,4 @@ void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n)
         *p++ = *q++;
 
     return dest;
-}
+}*/

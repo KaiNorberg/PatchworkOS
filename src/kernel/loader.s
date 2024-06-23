@@ -1,7 +1,7 @@
 [bits 64]
 
-%include "kernel/gdt.inc"
-%include "kernel/regs.inc"
+%include "gdt.inc"
+%include "regs.inc"
 
 section .text
 

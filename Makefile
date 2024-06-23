@@ -9,19 +9,14 @@ BIN_DIR = bin
 BUILD_DIR = build
 MAKE_DIR = make
 ROOT_DIR = root
-
-LIBS_SRC_DIR = $(SRC_DIR)/libs
-LIBS_BIN_DIR = $(BIN_DIR)/libs
-LIBS_BUILD_DIR = $(BUILD_DIR)/libs
-STDLIB = $(LIBS_SRC_DIR)/std/functions
-
-PROGRAMS_BIN_DIR = $(BIN_DIR)/programs
+INCLUDE_DIR = include
+VENDOR_DIR = vendor
 
 OUTPUT_IMAGE = $(BIN_DIR)/PatchworkOS.img
 
 BASE_ASM_FLAGS = -f elf64 \
-	-I$(LIBS_SRC_DIR)/std/include \
-	-I$(SRC_DIR)
+	-I$(INCLUDE_DIR)/stdlib \
+	-I$(INCLUDE_DIR)
 
 BASE_C_FLAGS = -O3 \
 	-Wall \
@@ -36,22 +31,22 @@ BASE_C_FLAGS = -O3 \
 	-Wno-deprecated-non-prototype \
 	-fno-stack-protector \
 	-ffreestanding -nostdlib \
-	-I$(LIBS_SRC_DIR)/std/include \
-	-I$(SRC_DIR)
+	-I$(INCLUDE_DIR)/stdlib \
+	-I$(INCLUDE_DIR)
 
 BASE_LD_FLAGS = -nostdlib
 
-USER_C_FLAGS = $(BASE_C_FLAGS) \
-	-ffreestanding
+USER_C_FLAGS = $(BASE_C_FLAGS)
 
-USER_ASM_FLAGS = $(BASE_ASM_FLAGS) \
-	-I$(LIBS_SRC_DIR)/std/include \
-	-I$(SRC_DIR)
+USER_ASM_FLAGS = $(BASE_ASM_FLAGS)
 
-USER_LD_FLAGS = $(LD_FLAGS) \
-	-L$(LIBS_BIN_DIR) -lstd
+USER_LD_FLAGS = $(BASE_LD_FLAGS) \
+	-L$(BIN_DIR)/stdlib -lstd
 
-include $(wildcard $(MAKE_DIR)/*/*.mk)
+include make/bootloader/bootloader.mk
+include make/kernel/kernel.mk
+include make/stdlib/stdlib.mk
+include $(wildcard $(MAKE_DIR)/programs/*.mk)
 
 setup:
 	@echo "!====== RUNNING SETUP  ======!"
@@ -76,7 +71,7 @@ compile_commands:
 	bear -- make build
 
 format:
-	find $(SRC_DIR)/ -iname '*.h' -o -iname '*.c' | xargs clang-format -style=file -i
+	find $(SRC_DIR)/ $(INCLUDE_DIR)/ -iname '*.h' -o -iname '*.c' | xargs clang-format -style=file -i
 
 all: build deploy
 

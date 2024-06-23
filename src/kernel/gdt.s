@@ -1,12 +1,12 @@
 [bits 64]
 
-%include "kernel/gdt.inc"
+%include "gdt.inc"
 
 section .text
 
 ;rdi = gdt descriptor
 global gdt_load_descriptor
-gdt_load_descriptor:    
+gdt_load_descriptor:
     lgdt  [rdi]
     push GDT_KERNEL_CODE
     lea rax, [rel .reload_CS]

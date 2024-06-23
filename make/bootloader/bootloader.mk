@@ -1,42 +1,39 @@
-BOOT_SRC_DIR = $(SRC_DIR)/bootloader
-BOOT_BIN_DIR = $(BIN_DIR)/bootloader
-BOOT_BUILD_DIR = $(BUILD_DIR)/bootloader
-
-BOOT_OUT_SO = $(BOOT_BIN_DIR)/bootloader.so
-BOOT_OUT_EFI = $(BOOT_BIN_DIR)/bootx64.efi
-
-BOOT_SRC = \
-	$(wildcard $(BOOT_SRC_DIR)/*.c) \
-	$(wildcard $(BOOT_SRC_DIR)/*.s) \
-	$(STDLIB)/string/strcpy.c \
-	$(STDLIB)/string/strcmp.c \
-	$(STDLIB)/string/strlen.c \
-	$(STDLIB)/string/memcmp.c
-
-BOOT_OBJ = $(patsubst $(SRC_DIR)/%, $(BOOT_BUILD_DIR)/%.o, $(BOOT_SRC))
-
 GNU_EFI = vendor/gnu-efi
 
+BOOT_OUT_SO = $(BIN_DIR)/bootloader/boot.so
+BOOT_OUT_EFI = $(BIN_DIR)/bootloader/bootx64.efi
+
+BOOT_SRC = \
+	$(wildcard $(SRC_DIR)/bootloader/*.c) \
+	$(wildcard $(SRC_DIR)/bootloader/*.s) \
+	$(SRC_DIR)/stdlib/string.c
+
+BOOT_OBJ = $(patsubst $(SRC_DIR)/%, $(BUILD_DIR)/bootloader/%.o, $(BOOT_SRC))
+
 BOOT_C_FLAGS = $(BASE_C_FLAGS) \
-	-nostdlib \
-	-fpic -ffreestanding \
-	-fno-stack-protector -fno-stack-check \
+	-fpic -fno-stack-check \
 	-fshort-wchar -mno-red-zone -Wno-array-bounds \
-	-fno-stack-protector \
 	-mno-mmx -mno-3dnow \
 	-mno-80387 -mno-sse \
 	-mno-sse2 -mno-sse3 \
 	-mno-ssse3 -mno-sse4 \
 	-D__BOOTLOADER__ \
+	-D__EMBED__ \
+	-I$(INCLUDE_DIR)/bootloader \
 	-I$(GNU_EFI)/inc
 
-$(BOOT_BUILD_DIR)/%.c.o: $(SRC_DIR)/%.c
+BOOT_ASM_FLAGS = $(BASE_ASM_FLAGS) \
+	-D__EMBED__ \
+	-I$(INCLUDE_DIR)/bootloader \
+	-I$(GNU_EFI)/inc
+
+$(BUILD_DIR)/bootloader/%.c.o: $(SRC_DIR)/%.c
 	$(MKCWD)
 	$(CC) $(BOOT_C_FLAGS) -c -o $@ $<
 
-$(BOOT_BUILD_DIR)/%.s.o: $(SRC_DIR)/%.s
+$(BUILD_DIR)/bootloader/%.s.o: $(SRC_DIR)/%.s
 	$(MKCWD)
-	$(ASM) $(ASM_FLAGS) $^ -o $@
+	$(ASM) $(BOOT_ASM_FLAGS) $^ -o $@
 
 $(BOOT_OUT_EFI): $(BOOT_OBJ)
 	$(MKCWD)
