@@ -10,7 +10,7 @@ BUILD_DIR = build
 MAKE_DIR = make
 ROOT_DIR = root
 INCLUDE_DIR = include
-VENDOR_DIR = vendor
+DEPS_DIR = deps
 
 OUTPUT_IMAGE = $(BIN_DIR)/PatchworkOS.img
 
@@ -50,7 +50,7 @@ include $(wildcard $(MAKE_DIR)/programs/*.mk)
 
 setup:
 	@echo "!====== RUNNING SETUP  ======!"
-	@cd vendor/gnu-efi && make all && cd ../..
+	@cd deps/gnu-efi && make all && cd ../..
 
 build: $(BUILD)
 
@@ -83,8 +83,8 @@ run:
     -m 1G \
 	-smp 6 \
     -no-shutdown -no-reboot \
-    -drive if=pflash,format=raw,unit=0,file=vendor/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
-    -drive if=pflash,format=raw,unit=1,file=vendor/OVMFbin/OVMF_VARS-pure-efi.fd \
+    -drive if=pflash,format=raw,unit=0,file=deps/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
+    -drive if=pflash,format=raw,unit=1,file=deps/OVMFbin/OVMF_VARS-pure-efi.fd \
     -net none
 
 run_debug:
@@ -97,12 +97,12 @@ run_debug:
     -serial stdio \
 	-d int \
     -no-shutdown -no-reboot \
-    -drive if=pflash,format=raw,unit=0,file=vendor/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
-    -drive if=pflash,format=raw,unit=1,file=vendor/OVMFbin/OVMF_VARS-pure-efi.fd \
+    -drive if=pflash,format=raw,unit=0,file=deps/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
+    -drive if=pflash,format=raw,unit=1,file=deps/OVMFbin/OVMF_VARS-pure-efi.fd \
     -net none
 
 clean:
-#@cd vendor/gnu-efi && make clean && cd ../..
+#@cd deps/gnu-efi && make clean && cd ../..
 	rm -rf $(BUILD_DIR)
 	rm -rf $(BIN_DIR)
 

@@ -1,4 +1,4 @@
-GNU_EFI = vendor/gnu-efi
+GNU_EFI = deps/gnu-efi
 
 BOOT_OUT_SO = $(BIN_DIR)/bootloader/boot.so
 BOOT_OUT_EFI = $(BIN_DIR)/bootloader/bootx64.efi
