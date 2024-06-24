@@ -1,5 +1,3 @@
-#include "_AUX/rect_t.h"
-#include "sys/gfx.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/keyboard.h>

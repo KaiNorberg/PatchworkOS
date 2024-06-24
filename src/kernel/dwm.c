@@ -10,6 +10,7 @@
 #include "sys/win.h"
 #include "sysfs.h"
 #include "vfs.h"
+#include "window.h"
 
 #include <errno.h>
 #include <stdatomic.h>
@@ -23,6 +24,7 @@ static resource_t dwm;
 
 static surface_t frontbuffer;
 static surface_t backbuffer;
+static rect_t screenArea;
 static rect_t clientArea;
 
 static list_t windows;
@@ -31,8 +33,10 @@ static lock_t windowsLock;
 static list_t panels;
 static lock_t panelsLock;
 
-static point_t mousePos;
 static file_t* mouse;
+
+static window_t* cursor;
+static lock_t cursorLock;
 
 static _Atomic(bool) redrawNeeded;
 
@@ -90,6 +94,16 @@ static void dwm_window_cleanup(file_t* file)
         dwm_update_client_area();
     }
     break;
+    case WIN_CURSOR:
+    {
+        LOCK_GUARD(&cursorLock);
+        cursor = NULL;
+    }
+    break;
+    default:
+    {
+        debug_panic("Invalid window type");
+    }
     }
 
     window_free(window);
@@ -129,6 +143,18 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t
             list_push(&panels, window);
 
             dwm_update_client_area();
+        }
+        break;
+        case WIN_CURSOR:
+        {
+            LOCK_GUARD(&cursorLock);
+            if (cursor != NULL)
+            {
+                window_free(window);
+                return ERROR(EEXIST);
+            }
+
+            cursor = window;
         }
         break;
         default:
@@ -181,13 +207,10 @@ static void dwm_draw_panels(void)
         }
         panel->invalid = false;
 
-        rect_t screenRect;
-        RECT_INIT_DIM(&screenRect, 0, 0, backbuffer.width, backbuffer.height);
-
         rect_t destRect;
         RECT_INIT_DIM(&destRect, panel->pos.x, panel->pos.y, panel->surface.width, panel->surface.height);
 
-        if (!RECT_CONTAINS(&screenRect, &destRect))
+        if (!RECT_CONTAINS(&screenArea, &destRect))
         {
             continue;
         }
@@ -220,6 +243,24 @@ static void dwm_draw_windows(void)
     }
 }
 
+static void dwm_draw_cursor(const point_t* oldPos)
+{
+    if (oldPos != NULL)
+    {
+        rect_t oldRect;
+        RECT_INIT_DIM(&oldRect, oldPos->x, oldPos->y, cursor->surface.width, cursor->surface.height);
+        RECT_FIT(&oldRect, &screenArea);
+        gfx_transfer(&frontbuffer, &backbuffer, &oldRect, oldPos);
+    }
+
+    rect_t cursorRect;
+    RECT_INIT_DIM(&cursorRect, cursor->pos.x, cursor->pos.y, cursor->surface.width, cursor->surface.height);
+    RECT_FIT(&cursorRect, &screenArea);
+
+    point_t srcPoint = {0};
+    gfx_transfer_blend(&frontbuffer, &cursor->surface, &cursorRect, &srcPoint);
+}
+
 static void dwm_poll(void)
 {
     while (!atomic_load(&redrawNeeded))
@@ -230,17 +271,20 @@ static void dwm_poll(void)
             mouse_event_t event;
             FILE_CALL(mouse, read, &event, sizeof(mouse_event_t));
 
-            rect_t cursor;
-            RECT_INIT_DIM(&cursor, mousePos.x, mousePos.y, 32, 32);
-            gfx_transfer(&frontbuffer, &backbuffer, &cursor, &mousePos);
+            LOCK_GUARD(&cursorLock);
+            if (cursor != NULL)
+            {
+                LOCK_GUARD(&cursor->lock);
 
-            mousePos.x += event.deltaX;
-            mousePos.y += event.deltaY;
-            mousePos.x = CLAMP(mousePos.x, 0, backbuffer.width - 32);
-            mousePos.y = CLAMP(mousePos.y, 0, backbuffer.height - 32);
+                point_t oldPos = cursor->pos;
 
-            RECT_INIT_DIM(&cursor, mousePos.x, mousePos.y, 32, 32);
-            gfx_rect(&frontbuffer, &cursor, 0xFF00FF00);
+                cursor->pos.x += event.deltaX;
+                cursor->pos.y += event.deltaY;
+                cursor->pos.x = CLAMP(cursor->pos.x, 0, backbuffer.width - 1);
+                cursor->pos.y = CLAMP(cursor->pos.y, 0, backbuffer.height - 1);
+
+                dwm_draw_cursor(&oldPos);
+            }
         }
     }
     atomic_store(&redrawNeeded, false);
@@ -262,9 +306,12 @@ static void dwm_loop(void)
                 backbuffer.width * sizeof(pixel_t));
         }
 
-        rect_t cursor;
-        RECT_INIT_DIM(&cursor, mousePos.x, mousePos.y, 32, 32);
-        gfx_rect(&frontbuffer, &cursor, 0xFF00FF00);
+        lock_acquire(&cursorLock);
+        if (cursor != NULL)
+        {
+            dwm_draw_cursor(NULL);
+        }
+        lock_release(&cursorLock);
 
         dwm_poll();
     }
@@ -282,16 +329,19 @@ void dwm_init(gop_buffer_t* gopBuffer)
     backbuffer.width = gopBuffer->width;
     backbuffer.stride = backbuffer.width;
 
-    RECT_INIT_DIM(&clientArea, 0, 0, backbuffer.width, backbuffer.height);
+    RECT_INIT_SURFACE(&clientArea, &backbuffer);
+    RECT_INIT_SURFACE(&screenArea, &backbuffer);
+
     list_init(&windows);
     lock_init(&windowsLock);
     list_init(&panels);
     lock_init(&panelsLock);
     atomic_init(&redrawNeeded, true);
 
-    mousePos.x = backbuffer.width / 2;
-    mousePos.y = backbuffer.height / 2;
     mouse = vfs_open("sys:/mouse/ps2");
+
+    cursor = NULL;
+    lock_init(&cursorLock);
 
     resource_init(&dwm, "dwm", dwm_open, NULL);
     sysfs_expose(&dwm, "/server");

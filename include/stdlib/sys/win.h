@@ -51,7 +51,8 @@ typedef uint8_t win_type_t;
 #define WIN_WINDOW 0
 #define WIN_FULLSCREEN 1 // NOT IMPLEMENTED
 #define WIN_PANEL 2
-#define WIN_WALL 3 // NOT IMPLEMENTED
+#define WIN_CURSOR 3
+#define WIN_WALL 4 // NOT IMPLEMENTED
 
 typedef struct ioctl_dwm_create
 {

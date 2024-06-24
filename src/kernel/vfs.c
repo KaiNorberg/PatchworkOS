@@ -442,8 +442,6 @@ static bool vfs_poll_condition(uint64_t* events, poll_file_t* files, uint64_t am
             file->occurred = POLL_WRITE;
             (*events)++;
         }
-
-        file++;
     }
 
     return *events != 0;
@@ -452,10 +450,7 @@ static bool vfs_poll_condition(uint64_t* events, poll_file_t* files, uint64_t am
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, uint64_t timeout)
 {
     uint64_t events = 0;
-    if (SCHED_WAIT(vfs_poll_condition(&events, files, amount), timeout) == ERR)
-    {
-        return ERR;
-    }
+    SCHED_WAIT(vfs_poll_condition(&events, files, amount), timeout);
 
     return events;
 }

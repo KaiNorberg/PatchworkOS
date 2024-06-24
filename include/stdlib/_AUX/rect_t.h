@@ -31,6 +31,16 @@ typedef struct rect
         }; \
     })
 
+#define RECT_INIT_SURFACE(rect, surface) \
+    ({ \
+        *rect = (rect_t){ \
+            0, \
+            0, \
+            (surface)->width, \
+            (surface)->height, \
+        }; \
+    })
+
 #define RECT_FIT(rect, parent) \
     ({ \
         (rect)->left = CLAMP((rect)->left, (parent)->left, (parent)->right); \

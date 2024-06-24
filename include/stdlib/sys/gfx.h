@@ -16,6 +16,16 @@ extern "C"
 #define PSF_HEIGHT 16
 #define PSF_WIDTH 8
 
+#define FBMP_MAGIC 0x706D6266
+
+typedef struct fbmp
+{
+    uint32_t magic;
+    uint32_t width;
+    uint32_t height;
+    pixel_t data[];
+} fbmp_t;
+
 typedef struct psf
 {
     pixel_t foreground;
@@ -33,6 +43,10 @@ typedef struct surface
     rect_t invalidArea;
 } surface_t;
 
+fbmp_t* gfx_load_fbmp(const char* path);
+
+void gfx_fbmp(surface_t* surface, const fbmp_t* fbmp, const point_t* point);
+
 void gfx_psf_char(surface_t* surface, const psf_t* psf, const point_t* point, char chr);
 
 void gfx_psf_string(surface_t* surface, const psf_t* psf, const point_t* point, const char* string);
@@ -42,6 +56,8 @@ void gfx_rect(surface_t* surface, const rect_t* rect, pixel_t pixel);
 void gfx_edge(surface_t* surface, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background);
 
 void gfx_transfer(surface_t* dest, const surface_t* src, const rect_t* destRect, const point_t* srcPoint);
+
+void gfx_transfer_blend(surface_t* dest, const surface_t* src, const rect_t* destRect, const point_t* srcPoint);
 
 void gfx_invalidate(surface_t* surface, const rect_t* rect);
 

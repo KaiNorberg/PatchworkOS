@@ -1,21 +1,65 @@
+#include "_AUX/pixel_t.h"
+#include "_AUX/rect_t.h"
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/gfx.h>
 #include <sys/math.h>
+#include <sys/io.h>
 
-void gfx_invalidate(surface_t* surface, const rect_t* rect)
+#ifndef __EMBED__
+
+fbmp_t* gfx_load_fbmp(const char* path)
 {
-    if (RECT_AREA(&surface->invalidArea) == 0)
+    fd_t file = open(path);
+    if (file == ERR)
     {
-        surface->invalidArea = *rect;
+        return NULL;
     }
-    else
+
+    uint64_t fileSize = seek(file, 0, SEEK_END);
+    seek(file, 0, SEEK_SET);
+
+    fbmp_t* image = malloc(fileSize);
+    if (image == NULL)
     {
-        surface->invalidArea.left = MIN(surface->invalidArea.left, rect->left);
-        surface->invalidArea.top = MIN(surface->invalidArea.top, rect->top);
-        surface->invalidArea.right = MAX(surface->invalidArea.right, rect->right);
-        surface->invalidArea.bottom = MAX(surface->invalidArea.bottom, rect->bottom);
+        close(file);
+        return NULL;
     }
+
+    if (read(file, image, fileSize) != fileSize)
+    {
+        close(file);
+        free(image);
+        return NULL;
+    }
+
+    close(file);
+
+    if (image->magic != FBMP_MAGIC)
+    {
+        free(image);
+        return NULL;
+    }
+
+    return image;
+}
+
+#endif
+
+void gfx_fbmp(surface_t* surface, const fbmp_t* fbmp, const point_t* point)
+{
+    for (uint32_t y = 0; y < fbmp->height; y++)
+    {
+        for (uint32_t x = 0; x < fbmp->width; x++)
+        {
+            surface->buffer[(point->x + x) + (point->y + y) * surface->stride] = fbmp->data[x + y * fbmp->width];
+        }
+    }
+
+    rect_t rect;
+    RECT_INIT_DIM(&rect, point->x, point->x, fbmp->width, fbmp->height);
+    gfx_invalidate(surface, &rect);
 }
 
 void gfx_psf_char(surface_t* surface, const psf_t* psf, const point_t* point, char chr)
@@ -168,7 +212,7 @@ void gfx_edge(surface_t* surface, const rect_t* rect, uint64_t width, pixel_t fo
 
 void gfx_transfer(surface_t* dest, const surface_t* src, const rect_t* destRect, const point_t* srcPoint)
 {
-    for (int64_t y = 0; y < RECT_HEIGHT(destRect); y++)
+    for (int32_t y = 0; y < RECT_HEIGHT(destRect); y++)
     {
         uint64_t destOffset = (destRect->left * sizeof(pixel_t)) + (y + destRect->top) * sizeof(pixel_t) * dest->stride;
         uint64_t srcOffset = srcPoint->x * sizeof(pixel_t) + (y + srcPoint->y) * sizeof(pixel_t) * src->stride;
@@ -178,4 +222,34 @@ void gfx_transfer(surface_t* dest, const surface_t* src, const rect_t* destRect,
     }
 
     gfx_invalidate(dest, destRect);
+}
+
+void gfx_transfer_blend(surface_t* dest, const surface_t* src, const rect_t* destRect, const point_t* srcPoint)
+{
+    for (int32_t y = 0; y < RECT_HEIGHT(destRect); y++)
+    {
+        for (int32_t x = 0; x < RECT_WIDTH(destRect); x++)
+        {
+            pixel_t pixel = src->buffer[(srcPoint->x + x) + (srcPoint->y + y) * src->stride];
+            pixel_t* out = &dest->buffer[(destRect->left + x) + (destRect->top + y) * dest->stride];
+            *out = PIXEL_BLEND(pixel, *out);
+        }
+    }
+
+    gfx_invalidate(dest, destRect);
+}
+
+void gfx_invalidate(surface_t* surface, const rect_t* rect)
+{
+    if (RECT_AREA(&surface->invalidArea) == 0)
+    {
+        surface->invalidArea = *rect;
+    }
+    else
+    {
+        surface->invalidArea.left = MIN(surface->invalidArea.left, rect->left);
+        surface->invalidArea.top = MIN(surface->invalidArea.top, rect->top);
+        surface->invalidArea.right = MAX(surface->invalidArea.right, rect->right);
+        surface->invalidArea.bottom = MAX(surface->invalidArea.bottom, rect->bottom);
+    }
 }

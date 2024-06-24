@@ -1,7 +1,7 @@
-#include "taskbar.h"
-#include "sys/win.h"
-
 #include <stdlib.h>
+#include <sys/proc.h>
+#include <sys/win.h>
+#include <sys/gfx.h>
 
 static win_theme_t theme;
 
@@ -9,10 +9,6 @@ static uint64_t procedure(win_t* window, msg_t type, void* data)
 {
     switch (type)
     {
-    case LMSG_INIT:
-    {
-    }
-    break;
     case LMSG_REDRAW:
     {
         surface_t surface;
@@ -29,16 +25,12 @@ static uint64_t procedure(win_t* window, msg_t type, void* data)
         win_flush(window, &surface);
     }
     break;
-    case LMSG_QUIT:
-    {
-    }
-    break;
     }
 
     return 0;
 }
 
-win_t* taskbar_init(void)
+int main(void)
 {
     win_default_theme(&theme);
 
@@ -52,5 +44,11 @@ win_t* taskbar_init(void)
         exit(EXIT_FAILURE);
     }
 
-    return taskbar;
+    while (win_dispatch(taskbar, NEVER) != LMSG_QUIT)
+    {
+    }
+
+    win_free(taskbar);
+
+    return 0;
 }

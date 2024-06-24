@@ -175,7 +175,16 @@ win_t* win_new(const char* name, const rect_t* rect, const win_theme_t* theme, p
 
     window->type = type;
     window->procedure = procedure;
-    window->theme = *theme;
+
+    if (theme != NULL)
+    {
+        window->theme = *theme;
+    }
+    else
+    {
+        memset(&window->theme, 0, sizeof(win_theme_t));
+    }
+
     strcpy(window->name, name);
     win_set_area(window, rect);
     window->invalidArea = (rect_t){};

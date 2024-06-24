@@ -14,6 +14,7 @@ BASE_C_FLAGS = -O3 \
 	-Wall \
 	-Wextra \
 	-Werror \
+	-Wno-deprecated-pragma \
 	-Wno-unused-function \
 	-Wno-unused-variable \
 	-Wno-ignored-qualifiers \

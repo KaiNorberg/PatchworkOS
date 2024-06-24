@@ -1,4 +1,5 @@
 #include "message.h"
+#include "lock.h"
 
 #include <string.h>
 
@@ -8,6 +9,13 @@ void message_queue_init(message_queue_t* queue)
     queue->readIndex = 0;
     queue->writeIndex = 0;
     lock_init(&queue->lock);
+}
+
+bool message_queue_avail(message_queue_t* queue)
+{
+    LOCK_GUARD(&queue->lock);
+
+    return queue->readIndex != queue->writeIndex;
 }
 
 void message_queue_push(message_queue_t* queue, msg_t type, const void* data, uint64_t size)

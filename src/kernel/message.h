@@ -23,6 +23,8 @@ typedef struct message_queue
 
 void message_queue_init(message_queue_t* queue);
 
+bool message_queue_avail(message_queue_t* queue);
+
 void message_queue_push(message_queue_t* queue, msg_t type, const void* data, uint64_t size);
 
 bool message_queue_pop(message_queue_t* queue, message_t* out);
