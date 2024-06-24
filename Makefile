@@ -55,10 +55,14 @@ deploy:
 	mmd -i $(OUTPUT_IMAGE) ::/boot
 	mmd -i $(OUTPUT_IMAGE) ::/efi
 	mmd -i $(OUTPUT_IMAGE) ::/efi/boot
+	mmd -i $(OUTPUT_IMAGE) ::/usr
+	mmd -i $(OUTPUT_IMAGE) ::/usr/licence
 	mcopy -i $(OUTPUT_IMAGE) -s root/* ::
 	mcopy -i $(OUTPUT_IMAGE) -s $(BOOT_OUT_EFI) ::/efi/boot
 	mcopy -i $(OUTPUT_IMAGE) -s $(KERNEL_OUT) ::/boot
 	mcopy -i $(OUTPUT_IMAGE) -s bin/programs ::/bin
+	mcopy -i $(OUTPUT_IMAGE) -s COPYING ::/usr/licence
+	mcopy -i $(OUTPUT_IMAGE) -s LICENSE ::/usr/licence
 
 compile_commands:
 	bear -- make build
