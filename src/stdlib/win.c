@@ -48,7 +48,7 @@ static void win_draw_decorations(win_t* window)
             .right = localArea.right - window->theme.edgeWidth,
             .bottom = localArea.top + window->theme.topbarHeight + window->theme.edgeWidth,
         };
-        gfx_rect(&surface, &topBar, window->theme.topbarHighlight);
+        gfx_rect(&surface, &topBar, window->theme.selected);
 
         win_flush(window, &surface);
     }

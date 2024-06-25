@@ -3,6 +3,7 @@
 #include "apic.h"
 #include "debug.h"
 #include "gdt.h"
+#include "list.h"
 #include "loader.h"
 #include "smp.h"
 #include "time.h"
@@ -235,11 +236,14 @@ void sched_schedule(trap_frame_t* trapFrame)
         return;
     }
 
-    thread_t* thread;
-    thread_t* temp;
-    LIST_FOR_EACH_SAFE(thread, temp, &scheduler->graveyard)
+    while (1)
     {
-        list_remove(thread);
+        thread_t* thread = list_pop(&scheduler->graveyard);
+        if (thread == NULL)
+        {
+            break;
+        }
+
         thread_free(thread);
     }
 

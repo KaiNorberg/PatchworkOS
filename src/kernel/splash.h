@@ -19,7 +19,7 @@
 #define SPLASH_MESSAGE_SCALE 2
 #define SPLASH_MESSAGE_OFFSET (-100)
 
-void splash_init(gop_buffer_t* gopBuffer, boot_font_t* screenFont);
+void splash_init(gop_buffer_t* gopBuffer, psf_t* screenFont);
 
 void splash_cleanup(void);
 

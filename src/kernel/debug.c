@@ -113,13 +113,13 @@ static void debug_move(const char* name, uint8_t x)
     pos.y = 1;
 }
 
-void debug_init(gop_buffer_t* gopBuffer, boot_font_t* screenFont)
+void debug_init(gop_buffer_t* gopBuffer, psf_t* screenFont)
 {
     font.foreground = DEBUG_WHITE;
     font.background = DEBUG_BACKGROUND;
     font.scale = DEBUG_SCALE;
-    font.glyphs = glyphs;
-    memcpy(font.glyphs, screenFont->glyphs, screenFont->glyphsSize);
+    font.glyphs = malloc(PSF_WIDTH * PSF_HEIGHT * 256);
+    memcpy(font.glyphs, screenFont->glyphs, PSF_WIDTH * PSF_HEIGHT * 256);
 
     surface.buffer = gopBuffer->base;
     surface.height = gopBuffer->height;

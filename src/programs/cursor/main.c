@@ -1,7 +1,7 @@
 #include <stdlib.h>
-#include <sys/win.h>
 #include <sys/gfx.h>
 #include <sys/proc.h>
+#include <sys/win.h>
 
 static fbmp_t* image;
 

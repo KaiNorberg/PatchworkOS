@@ -1,7 +1,7 @@
 #ifndef __EMBED__
 
-#include <threads.h>
 #include <sys/proc.h>
+#include <threads.h>
 
 int thrd_sleep(const struct timespec* duration, struct timespec* remaining)
 {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <sys/gfx.h>
 
 #ifndef __BOOTLOADER__
 
@@ -65,20 +66,6 @@ typedef struct
     uint32_t stride;
 } gop_buffer_t;
 
-typedef struct __attribute__((packed))
-{
-    uint16_t magic;
-    uint8_t mode;
-    uint8_t charSize;
-} psf_header_t;
-
-typedef struct
-{
-    psf_header_t header;
-    uint64_t glyphsSize;
-    void* glyphs;
-} boot_font_t;
-
 typedef struct ram_file_t
 {
     char name[32];
@@ -103,7 +90,7 @@ typedef struct
 {
     efi_mem_map_t memoryMap;
     gop_buffer_t gopBuffer;
-    boot_font_t font;
+    psf_t font;
     ram_dir_t* ramRoot;
     void* rsdp;
     void* runtimeServices;

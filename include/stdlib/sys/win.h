@@ -107,8 +107,8 @@ typedef struct win_theme
     pixel_t highlight;
     pixel_t shadow;
     pixel_t background;
-    pixel_t topbarHighlight;
-    pixel_t topbarShadow;
+    pixel_t selected;
+    pixel_t unSelected;
     uint64_t topbarHeight;
 } win_theme_t;
 

@@ -6,8 +6,11 @@
 #include "vmm.h"
 
 #include <string.h>
+#include <stdlib.h>
 
 static uint8_t initContext[PAGE_SIZE];
+
+static uint64_t contextSize;
 
 static void simd_xsave_init(void)
 {
@@ -40,6 +43,12 @@ void simd_init(void)
     if (cpuid_xsave_avail())
     {
         simd_xsave_init();
+
+        contextSize = cpuid_xsave_size();
+    }
+    else
+    {
+        contextSize = 512;
     }
 
     asm volatile("fninit");
@@ -55,13 +64,13 @@ void simd_init(void)
 
 void simd_context_init(simd_context_t* context)
 {
-    context->buffer = VMM_LOWER_TO_HIGHER(pmm_alloc());
-    memcpy(context->buffer, initContext, PAGE_SIZE);
+    context->buffer = malloc(contextSize);
+    memcpy(context->buffer, initContext, contextSize);
 }
 
 void simd_context_cleanup(simd_context_t* context)
 {
-    pmm_free(VMM_HIGHER_TO_LOWER(context->buffer));
+    free(context->buffer);
 }
 
 void simd_context_save(simd_context_t* context)
@@ -72,7 +81,7 @@ void simd_context_save(simd_context_t* context)
     }
     else
     {
-        asm volatile("fxsave (%0)" ::"a"(context));
+        asm volatile("fxsave (%0)" ::"a"(context->buffer));
     }
 }
 
@@ -84,6 +93,6 @@ void simd_context_load(simd_context_t* context)
     }
     else
     {
-        asm volatile("fxrstor (%0)" ::"a"(context));
+        asm volatile("fxrstor (%0)" ::"a"(context->buffer));
     }
 }

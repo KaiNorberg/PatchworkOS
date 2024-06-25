@@ -4,6 +4,7 @@
 
 #define CPUID_REQ_FEATURE 1
 #define CPUID_REQ_FEATURE_EXTENDED 7
+#define CPUID_XSAVE_SIZE 13
 
 #define CPUID_EBX_AVX512_AVAIL (1 << 16)
 
@@ -37,4 +38,12 @@ static inline bool cpuid_avx512_avail(void)
     uint32_t unused;
     cpuid(CPUID_REQ_FEATURE_EXTENDED, &unused, &ebx, &unused, &unused);
     return ebx & CPUID_EBX_AVX512_AVAIL;
+}
+
+static inline uint64_t cpuid_xsave_size(void)
+{
+    uint32_t ecx;
+    uint32_t unused;
+    cpuid(CPUID_XSAVE_SIZE, &unused, &unused, &ecx, &unused);
+    return ecx;
 }

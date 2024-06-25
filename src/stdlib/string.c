@@ -1,6 +1,6 @@
-#include <string.h>
-#include <stdint.h>
 #include <errno.h>
+#include <stdint.h>
+#include <string.h>
 
 static char* errorStrings[] = {
     "no error",

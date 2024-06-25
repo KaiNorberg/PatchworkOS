@@ -1,4 +1,5 @@
 #include "splash.h"
+#include "sys/gfx.h"
 
 #include <common/version.h>
 
@@ -31,13 +32,13 @@ static void splash_text(int64_t offset, uint8_t scale, const char* string, pixel
     gfx_psf_string(&surface, &font, &pos, string);
 }
 
-void splash_init(gop_buffer_t* gopBuffer, boot_font_t* screenFont)
+void splash_init(gop_buffer_t* gopBuffer, psf_t* screenFont)
 {
     win_default_theme(&theme);
 
     font.scale = SPLASH_NAME_SCALE;
-    font.glyphs = malloc(screenFont->glyphsSize);
-    memcpy(font.glyphs, screenFont->glyphs, screenFont->glyphsSize);
+    font.glyphs = malloc(PSF_WIDTH * PSF_HEIGHT * 256);
+    memcpy(font.glyphs, screenFont->glyphs, PSF_WIDTH * PSF_HEIGHT * 256);
 
     surface.buffer = gopBuffer->base;
     surface.height = gopBuffer->height;

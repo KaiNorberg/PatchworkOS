@@ -1,7 +1,7 @@
 #include <stdlib.h>
+#include <sys/gfx.h>
 #include <sys/proc.h>
 #include <sys/win.h>
-#include <sys/gfx.h>
 
 static win_theme_t theme;
 

@@ -26,6 +26,13 @@ typedef struct fbmp
     pixel_t data[];
 } fbmp_t;
 
+typedef struct __attribute__((packed))
+{
+    uint16_t magic;
+    uint8_t mode;
+    uint8_t charSize;
+} psf_header_t;
+
 typedef struct psf
 {
     pixel_t foreground;

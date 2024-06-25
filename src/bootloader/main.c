@@ -26,8 +26,7 @@ void* boot_info_populate(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, 
     return entry;
 }
 
-EFI_STATUS
-efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
+EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
 {
     InitializeLib(imageHandle, imageHandle);
     Print(L"Hello from the bootloader!\n\r");

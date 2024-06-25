@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/gfx.h>
-#include <sys/math.h>
 #include <sys/io.h>
+#include <sys/math.h>
 
 #ifndef __EMBED__
 
