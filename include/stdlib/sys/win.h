@@ -52,7 +52,8 @@ typedef uint8_t win_type_t;
 #define WIN_FULLSCREEN 1 // NOT IMPLEMENTED
 #define WIN_PANEL 2
 #define WIN_CURSOR 3
-#define WIN_WALL 4 // NOT IMPLEMENTED
+#define WIN_WALL 4
+#define WIN_MAX WIN_WALL
 
 typedef struct ioctl_dwm_create
 {
@@ -104,6 +105,7 @@ typedef uint8_t win_t;
 typedef struct win_theme
 {
     uint32_t edgeWidth;
+    uint32_t ridgeWidth;
     pixel_t highlight;
     pixel_t shadow;
     pixel_t background;

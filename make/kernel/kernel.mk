@@ -1,4 +1,4 @@
-KERNEL_OUT = bin/kernel/kernel.elf
+KERNEL_OUT = bin/kernel/kernel
 
 KERNEL_SRC = \
 	$(wildcard src/kernel/*.c) \
@@ -10,7 +10,10 @@ KERNEL_OBJ = $(patsubst src/%, build/kernel/%.o, $(KERNEL_SRC))
 
 KERNEL_C_FLAGS = $(BASE_C_FLAGS) \
 	-fno-pic -mcmodel=large \
+	-fno-stack-check \
+	-mno-red-zone -Wno-array-bounds \
 	-fno-stack-protector \
+	-fomit-frame-pointer \
 	-mno-mmx -mno-3dnow \
 	-mno-80387 -mno-sse \
 	-mno-sse2 -mno-sse3 \

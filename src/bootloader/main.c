@@ -19,7 +19,7 @@ void* boot_info_populate(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, 
     bootInfo->rsdp = rsdp_get(systemTable);
     bootInfo->runtimeServices = systemTable->RuntimeServices;
 
-    void* entry = load_kernel(L"/boot/kernel.elf", imageHandle);
+    void* entry = load_kernel(L"/boot/kernel", imageHandle);
 
     vm_map_init(&bootInfo->memoryMap);
 

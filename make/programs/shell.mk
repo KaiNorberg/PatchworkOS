@@ -1,4 +1,4 @@
-SHELL_OUT = bin/programs/shell.elf
+SHELL_OUT = bin/programs/shell
 
 SHELL_SRC = $(wildcard src/programs/shell/*.c)
 

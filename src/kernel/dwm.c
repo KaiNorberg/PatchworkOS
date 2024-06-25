@@ -33,10 +33,13 @@ static lock_t windowsLock;
 static list_t panels;
 static lock_t panelsLock;
 
-static file_t* mouse;
-
 static window_t* cursor;
 static lock_t cursorLock;
+
+static window_t* wall;
+static lock_t wallLock;
+
+static file_t* mouse;
 
 static _Atomic(bool) redrawNeeded;
 
@@ -100,6 +103,12 @@ static void dwm_window_cleanup(file_t* file)
         cursor = NULL;
     }
     break;
+    case WIN_WALL:
+    {
+        LOCK_GUARD(&wallLock);
+        wall = NULL;
+    }
+    break;
     default:
     {
         debug_panic("Invalid window type");
@@ -121,7 +130,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t
         }
         const ioctl_dwm_create_t* create = buffer;
 
-        window_t* window = window_new(&create->pos, create->width, create->height, create->type, file, dwm_window_cleanup);
+        window_t* window = window_new(&create->pos, create->width, create->height, create->type);
         if (window == NULL)
         {
             return ERR;
@@ -157,13 +166,31 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t
             cursor = window;
         }
         break;
+        case WIN_WALL:
+        {
+            LOCK_GUARD(&wallLock);
+            if (wall != NULL)
+            {
+                window_free(window);
+                return ERROR(EEXIST);
+            }
+
+            wall = window;
+        }
+        break;
         default:
         {
             debug_panic("Invalid window type");
         }
         }
 
-        dwm_redraw();
+        window_populate_file(window, file, dwm_window_cleanup);
+
+        // Preserve splash screen on boot, wall will be drawn on first flush.
+        if (window->type != WIN_WALL)
+        {
+            dwm_redraw();
+        }
         return 0;
     }
     case IOCTL_DWM_SIZE:
@@ -190,6 +217,19 @@ static uint64_t dwm_open(resource_t* resource, file_t* file)
 {
     file->ops.ioctl = dwm_ioctl;
     return 0;
+}
+
+static void dwm_draw_wall(void)
+{
+    rect_t destRect;
+    RECT_INIT_DIM(&destRect, wall->pos.x + clientArea.left, wall->pos.y + clientArea.top, wall->surface.width,
+        wall->surface.height);
+    RECT_FIT(&destRect, &clientArea);
+    point_t srcPoint = {
+        .x = destRect.left - (wall->pos.x + clientArea.left),
+        .y = destRect.top - (wall->pos.y + clientArea.top),
+    };
+    gfx_transfer(&backbuffer, &wall->surface, &destRect, &srcPoint);
 }
 
 static void dwm_draw_panels(void)
@@ -294,17 +334,17 @@ static void dwm_loop(void)
 {
     while (1)
     {
-        // Temp
-        gfx_rect(&backbuffer, &clientArea, 0xFF007E81);
+        lock_acquire(&wallLock);
+        if (wall != NULL)
+        {
+            dwm_draw_wall();
+        }
+        lock_release(&wallLock);
 
         dwm_draw_windows();
         dwm_draw_panels();
 
-        for (uint64_t y = 0; y < backbuffer.height; y++)
-        {
-            memcpy(&frontbuffer.buffer[y * frontbuffer.stride], &backbuffer.buffer[y * backbuffer.stride],
-                backbuffer.width * sizeof(pixel_t));
-        }
+        gfx_swap(&frontbuffer, &backbuffer);
 
         lock_acquire(&cursorLock);
         if (cursor != NULL)
@@ -324,10 +364,10 @@ void dwm_init(gop_buffer_t* gopBuffer)
     frontbuffer.width = gopBuffer->width;
     frontbuffer.stride = gopBuffer->stride;
 
-    backbuffer.buffer = calloc(gopBuffer->width * gopBuffer->height, sizeof(pixel_t));
+    backbuffer.buffer = malloc(gopBuffer->size);
     backbuffer.height = gopBuffer->height;
     backbuffer.width = gopBuffer->width;
-    backbuffer.stride = backbuffer.width;
+    backbuffer.stride = gopBuffer->stride;
 
     RECT_INIT_SURFACE(&clientArea, &backbuffer);
     RECT_INIT_SURFACE(&screenArea, &backbuffer);
@@ -336,12 +376,14 @@ void dwm_init(gop_buffer_t* gopBuffer)
     lock_init(&windowsLock);
     list_init(&panels);
     lock_init(&panelsLock);
-    atomic_init(&redrawNeeded, true);
+    cursor = NULL;
+    lock_init(&cursorLock);
+    wall = NULL;
+    lock_init(&wallLock);
 
     mouse = vfs_open("sys:/mouse/ps2");
 
-    cursor = NULL;
-    lock_init(&cursorLock);
+    atomic_init(&redrawNeeded, true);
 
     resource_init(&dwm, "dwm", dwm_open, NULL);
     sysfs_expose(&dwm, "/server");
@@ -349,6 +391,7 @@ void dwm_init(gop_buffer_t* gopBuffer)
 
 void dwm_start(void)
 {
+    gfx_swap(&backbuffer, &frontbuffer);
     sched_thread_spawn(dwm_loop, THREAD_PRIORITY_MAX);
 }
 

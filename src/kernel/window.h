@@ -19,7 +19,8 @@ typedef struct window
     message_queue_t messages;
 } window_t;
 
-window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, win_type_t type, file_t* file,
-    void (*cleanup)(file_t* file));
+window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, win_type_t type);
 
 void window_free(window_t* window);
+
+void window_populate_file(window_t* window, file_t* file, void (*cleanup)(file_t*));

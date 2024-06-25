@@ -15,7 +15,7 @@ static void splash_text(int64_t offset, uint8_t scale, const char* string, pixel
 {
     point_t pos = (point_t){
         .x = surface.width / 2 - strlen(string) * scale * PSF_WIDTH / 2,
-        .y = surface.height / 2 - offset,
+        .y = surface.height / 2 + offset,
     };
     point_t shadowPos = (point_t){
         .x = pos.x + SPLASH_SHADOW_OFFSET * scale,
@@ -46,7 +46,7 @@ void splash_init(gop_buffer_t* gopBuffer, psf_t* screenFont)
     surface.stride = gopBuffer->stride;
     memset(surface.buffer, 0, surface.height * surface.stride * sizeof(pixel_t));
 
-    rect_t windowRect = (rect_t){
+    rect_t windowRect = {
         .left = surface.width / 2 - SPLASH_WIDTH / 2,
         .top = surface.height / 2 - SPLASH_HEIGHT / 2,
         .right = surface.width / 2 + SPLASH_WIDTH / 2,
@@ -55,16 +55,23 @@ void splash_init(gop_buffer_t* gopBuffer, psf_t* screenFont)
     gfx_rect(&surface, &windowRect, theme.background);
     gfx_edge(&surface, &windowRect, theme.edgeWidth, theme.highlight, theme.shadow);
 
+    rect_t ridgeRect = {
+        .left = windowRect.left + 15,
+        .top = windowRect.top + 15,
+        .right = windowRect.right - 15,
+        .bottom = windowRect.bottom - 15,
+    };
+    gfx_ridge(&surface, &ridgeRect, theme.ridgeWidth, theme.highlight, theme.shadow);
+
     splash_text(SPLASH_NAME_OFFSET, SPLASH_NAME_SCALE, OS_NAME, 0xFF000000);
     splash_text(SPLASH_VERSION_OFFSET, SPLASH_VERSION_SCALE, OS_VERSION, 0xFF000000);
 
-    splash_print("please wait", 0xFF000000);
+    splash_text(SPLASH_LICENCE_OFFSET, SPLASH_LICENCE_SCALE, SPLASH_LICENCE, 0xFF000000);
+    splash_text(SPLASH_LICENCE_OFFSET + PSF_HEIGHT * SPLASH_LICENCE_SCALE, SPLASH_LICENCE_SCALE, SPLASH_LICENCE2, 0xFF000000);
 }
 
 void splash_cleanup(void)
 {
-    splash_print("done", 0xFF000000);
-
     free(font.glyphs);
 }
 
@@ -72,9 +79,9 @@ void splash_print(const char* string, pixel_t color)
 {
     rect_t rect = (rect_t){
         .left = surface.width / 2 - SPLASH_WIDTH / 2 + 32,
-        .top = surface.height / 2 - SPLASH_MESSAGE_OFFSET - 10,
+        .top = surface.height / 2 + SPLASH_MESSAGE_OFFSET - 10,
         .right = surface.width / 2 + SPLASH_WIDTH / 2 - 32,
-        .bottom = surface.height / 2 - SPLASH_MESSAGE_OFFSET + PSF_HEIGHT * SPLASH_MESSAGE_SCALE + 10,
+        .bottom = surface.height / 2 + SPLASH_MESSAGE_OFFSET + PSF_HEIGHT * SPLASH_MESSAGE_SCALE + 10,
     };
     gfx_rect(&surface, &rect, theme.background);
     gfx_edge(&surface, &rect, theme.edgeWidth, theme.shadow, theme.highlight);

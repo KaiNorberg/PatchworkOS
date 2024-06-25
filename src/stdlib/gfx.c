@@ -210,6 +210,19 @@ void gfx_edge(surface_t* surface, const rect_t* rect, uint64_t width, pixel_t fo
     gfx_invalidate(surface, rect);
 }
 
+void gfx_ridge(surface_t* surface, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background)
+{
+    gfx_edge(surface, rect, width / 2, background, foreground);
+
+    rect_t innerRect = {
+        .left = rect->left + width / 2,
+        .top = rect->top + width / 2,
+        .right = rect->right - width / 2,
+        .bottom = rect->bottom - width / 2,
+    };
+    gfx_edge(surface, &innerRect, width / 2, foreground, background);
+}
+
 void gfx_transfer(surface_t* dest, const surface_t* src, const rect_t* destRect, const point_t* srcPoint)
 {
     for (int32_t y = 0; y < RECT_HEIGHT(destRect); y++)
@@ -237,6 +250,14 @@ void gfx_transfer_blend(surface_t* dest, const surface_t* src, const rect_t* des
     }
 
     gfx_invalidate(dest, destRect);
+}
+
+void gfx_swap(surface_t* dest, const surface_t* src)
+{
+    for (uint64_t y = 0; y < dest->height; y++)
+    {
+        memcpy(&dest->buffer[y * dest->stride], &src->buffer[y * src->stride], dest->width * sizeof(pixel_t));
+    }
 }
 
 void gfx_invalidate(surface_t* surface, const rect_t* rect)

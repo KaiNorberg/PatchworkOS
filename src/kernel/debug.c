@@ -17,20 +17,6 @@ static uint8_t glyphs[0x2000];
 static surface_t surface;
 static point_t pos;
 
-_Atomic(bool) halt = false;
-
-/*Pixel red;
-red.a = 255;
-red.r = 224;
-red.g = 108;
-red.b = 117;
-
-Pixel white;
-white.a = 255;
-white.r = 255;
-white.g = 255;
-white.b = 255;*/
-
 static uint64_t debug_column_to_screen(int64_t x)
 {
     return (((surface.width / (PSF_WIDTH * DEBUG_SCALE)) - DEBUG_COLUMN_AMOUNT * DEBUG_COLUMN_WIDTH) / 2 +

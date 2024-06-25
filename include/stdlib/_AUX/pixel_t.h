@@ -17,9 +17,18 @@ typedef uint32_t pixel_t;
         uint8_t aAlpha = PIXEL_ALPHA(a); \
         uint8_t bAlpha = PIXEL_ALPHA(b); \
         uint8_t alpha = aAlpha + ((bAlpha * (0xFF - aAlpha)) / 0xFF); \
-        PIXEL_ARGB(alpha, (PIXEL_RED(a) * aAlpha + PIXEL_RED(b) * bAlpha * (0xFF - aAlpha) / 0xFF) / alpha, \
-            (PIXEL_GREEN(a) * aAlpha + PIXEL_GREEN(b) * bAlpha * (0xFF - aAlpha) / 0xFF) / alpha, \
-            (PIXEL_BLUE(a) * aAlpha + PIXEL_BLUE(b) * bAlpha * (0xFF - aAlpha) / 0xFF) / alpha); \
+        pixel_t result; \
+        if (alpha != 0) \
+        { \
+            result = PIXEL_ARGB(alpha, (PIXEL_RED(a) * aAlpha + PIXEL_RED(b) * bAlpha * (0xFF - aAlpha) / 0xFF) / alpha, \
+                (PIXEL_GREEN(a) * aAlpha + PIXEL_GREEN(b) * bAlpha * (0xFF - aAlpha) / 0xFF) / alpha, \
+                (PIXEL_BLUE(a) * aAlpha + PIXEL_BLUE(b) * bAlpha * (0xFF - aAlpha) / 0xFF) / alpha); \
+        } \
+        else \
+        { \
+            result = 0; \
+        } \
+        result; \
     })
 
 #endif

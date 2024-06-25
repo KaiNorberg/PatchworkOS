@@ -10,7 +10,7 @@
 
 extern void trampoline_virtual_start(void);
 
-void trampoline_setup(void);
+void trampoline_init(void);
 
 void trampoline_cpu_setup(cpu_t* cpu);
 

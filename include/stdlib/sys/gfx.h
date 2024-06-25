@@ -62,9 +62,13 @@ void gfx_rect(surface_t* surface, const rect_t* rect, pixel_t pixel);
 
 void gfx_edge(surface_t* surface, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background);
 
+void gfx_ridge(surface_t* surface, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background);
+
 void gfx_transfer(surface_t* dest, const surface_t* src, const rect_t* destRect, const point_t* srcPoint);
 
 void gfx_transfer_blend(surface_t* dest, const surface_t* src, const rect_t* destRect, const point_t* srcPoint);
+
+void gfx_swap(surface_t* dest, const surface_t* src);
 
 void gfx_invalidate(surface_t* surface, const rect_t* rect);
 

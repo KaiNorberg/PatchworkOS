@@ -1,4 +1,4 @@
-CURSOR_OUT = bin/programs/cursor.elf
+CURSOR_OUT = bin/programs/cursor
 
 CURSOR_SRC = $(wildcard src/programs/cursor/*.c)
 

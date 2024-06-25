@@ -5,7 +5,7 @@
 #include <sys/win.h>
 
 #define WINDOW_WIDTH 350
-#define WINDOW_HEIGHT 500
+#define WINDOW_HEIGHT 400
 
 win_theme_t theme;
 
@@ -23,7 +23,7 @@ uint64_t procedure(win_t* window, msg_t type, void* data)
         win_client_surface(window, &surface);
 
         rect_t rect;
-        RECT_INIT(&rect, 5, 5, surface.width - 5, 5 + 64);
+        RECT_INIT(&rect, 5, 5, surface.width - 5, 5 + 40);
 
         gfx_rect(&surface, &rect, theme.background);
         gfx_edge(&surface, &rect, theme.edgeWidth, theme.shadow, theme.highlight);

@@ -9,17 +9,16 @@
 static void* backupBuffer;
 static space_t space;
 
-void trampoline_setup(void)
+void trampoline_init(void)
 {
     backupBuffer = malloc(PAGE_SIZE);
     memcpy(backupBuffer, VMM_LOWER_TO_HIGHER(TRAMPOLINE_PHYSICAL_START), PAGE_SIZE);
-
     memcpy(VMM_LOWER_TO_HIGHER(TRAMPOLINE_PHYSICAL_START), trampoline_virtual_start, PAGE_SIZE);
 
     space_init(&space);
     pml_map(space.pml, TRAMPOLINE_PHYSICAL_START, TRAMPOLINE_PHYSICAL_START, 1, PAGE_WRITE);
-    WRITE_64(VMM_LOWER_TO_HIGHER(TRAMPOLINE_PML_ADDRESS), VMM_HIGHER_TO_LOWER(space.pml));
 
+    WRITE_64(VMM_LOWER_TO_HIGHER(TRAMPOLINE_PML_ADDRESS), VMM_HIGHER_TO_LOWER(space.pml));
     WRITE_64(VMM_LOWER_TO_HIGHER(TRAMPOLINE_ENTRY_ADDRESS), smp_entry);
 }
 

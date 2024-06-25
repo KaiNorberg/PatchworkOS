@@ -19,36 +19,22 @@ static bool cpuReady = false;
 
 static bool initialized = false;
 
-static NOINLINE void smp_detect_cpus(void)
-{
-    madt_lapic_t* record = madt_first_record(MADT_LAPIC);
-    while (record != 0)
-    {
-        if (record->flags & MADT_LAPIC_INITABLE)
-        {
-            cpuAmount++;
-        }
-
-        record = madt_next_record(record, MADT_LAPIC);
-    }
-}
-
 static NOINLINE uint64_t cpu_init(cpu_t* cpu, uint8_t id, uint8_t localApicId)
 {
     cpu->id = id;
     cpu->localApicId = localApicId;
-    cpu->idleStack = malloc(CPU_IDLE_STACK_SIZE);
+    cpu->trapDepth = 0;
     cpu->prevFlags = 0;
     cpu->cliAmount = 0;
     tss_init(&cpu->tss);
     scheduler_init(&cpu->scheduler);
 
-    cpuReady = false;
-
     if (localApicId == lapic_id())
     {
         return 0;
     }
+
+    cpuReady = false;
 
     trampoline_cpu_setup(cpu);
 
@@ -56,7 +42,7 @@ static NOINLINE uint64_t cpu_init(cpu_t* cpu, uint8_t id, uint8_t localApicId)
     hpet_sleep(10);
     lapic_send_sipi(localApicId, ((uint64_t)TRAMPOLINE_PHYSICAL_START) / PAGE_SIZE);
 
-    uint64_t timeout = 1000;
+    uint64_t timeout = 10000;
     while (!cpuReady)
     {
         hpet_sleep(1);
@@ -68,6 +54,20 @@ static NOINLINE uint64_t cpu_init(cpu_t* cpu, uint8_t id, uint8_t localApicId)
     }
 
     return 0;
+}
+
+static NOINLINE void smp_detect_cpus(void)
+{
+    madt_lapic_t* record = madt_first_record(MADT_LAPIC);
+    while (record != NULL)
+    {
+        if (record->flags & MADT_LAPIC_INITABLE)
+        {
+            cpuAmount++;
+        }
+
+        record = madt_next_record(record, MADT_LAPIC);
+    }
 }
 
 static NOINLINE void smp_startup(void)
@@ -94,7 +94,7 @@ void smp_init(void)
     smp_detect_cpus();
     cpus = calloc(cpuAmount, sizeof(cpu_t));
 
-    trampoline_setup();
+    trampoline_init();
     smp_startup();
     trampoline_cleanup();
 

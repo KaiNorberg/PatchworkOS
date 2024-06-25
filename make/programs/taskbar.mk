@@ -1,4 +1,4 @@
-TASKBAR_OUT = bin/programs/taskbar.elf
+TASKBAR_OUT = bin/programs/taskbar
 
 TASKBAR_SRC = $(wildcard src/programs/taskbar/*.c)
 

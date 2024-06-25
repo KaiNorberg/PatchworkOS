@@ -1,4 +1,4 @@
-CALC_OUT = bin/programs/calculator.elf
+CALC_OUT = bin/programs/calculator
 
 CALC_SRC = $(wildcard src/programs/calculator/*.c)
 

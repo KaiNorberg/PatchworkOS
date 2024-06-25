@@ -119,17 +119,16 @@ static uint64_t window_flush(file_t* file, const void* buffer, uint64_t size, co
     return 0;
 }
 
-static bool window_read_avail(file_t* file)
+bool window_read_avail(file_t* file)
 {
     window_t* window = file->internal;
 
     return message_queue_avail(&window->messages);
 }
 
-window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, win_type_t type, file_t* file,
-    void (*cleanup)(file_t* file))
+window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, win_type_t type)
 {
-    if (type > WIN_WALL)
+    if (type > WIN_MAX)
     {
         return NULL;
     }
@@ -146,12 +145,6 @@ window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, win_ty
     message_queue_init(&window->messages);
     window->invalid = true;
 
-    file->internal = window;
-    file->cleanup = cleanup;
-    file->ops.read_avail = window_read_avail;
-    file->ops.flush = window_flush;
-    file->ops.ioctl = window_ioctl;
-
     return window;
 }
 
@@ -159,4 +152,13 @@ void window_free(window_t* window)
 {
     free(window->surface.buffer);
     free(window);
+}
+
+void window_populate_file(window_t* window, file_t* file, void (*cleanup)(file_t*))
+{
+    file->internal = window;
+    file->cleanup = cleanup;
+    file->ops.read_avail = window_read_avail;
+    file->ops.flush = window_flush;
+    file->ops.ioctl = window_ioctl;
 }

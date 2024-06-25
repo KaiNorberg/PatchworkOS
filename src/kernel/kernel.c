@@ -76,7 +76,6 @@ void kernel_init(boot_info_t* bootInfo)
     ps2_init();
     ps2_keyboard_init();
     ps2_mouse_init();
-
     const_init();
     dwm_init(&bootInfo->gopBuffer);
 
