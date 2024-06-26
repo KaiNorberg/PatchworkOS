@@ -27,25 +27,34 @@ static psf_t font;
 static bool screenEnabled;
 static bool timeEnabled;
 
+static void log_clear_line(uint64_t y, uint64_t height)
+{
+    for (uint64_t i = 0; i < height; i++)
+    {
+        memset(&surface.buffer[(y + i) * surface.stride], 0, surface.width * sizeof(pixel_t));
+    }
+}
+
 static void log_write_to_screen(const char* str)
 {
     uint64_t strLen = strlen(str);
 
     for (uint64_t i = 0; i < strLen; i++)
     {
-        if (str[i] == '\n' || point.x >= surface.width - PSF_WIDTH * 2)
+        if (str[i] == '\n' || point.x >= surface.width - PSF_WIDTH)
         {
             point.y += PSF_HEIGHT;
-            point.x = point.x >= surface.width - PSF_WIDTH * 2 ? PSF_WIDTH * 4 : 0;
+            point.x = point.x >= surface.width - PSF_WIDTH ? PSF_WIDTH * 4 : 0;
 
-            if (point.y >= surface.height - PSF_HEIGHT * 2)
+            if (point.y >= surface.height - PSF_HEIGHT)
             {
                 point.y = 0;
+                log_clear_line(point.y, PSF_HEIGHT);
             }
 
-            for (uint64_t y = 0; y < PSF_HEIGHT; y++)
+            if (point.y <= surface.height - PSF_HEIGHT * 2)
             {
-                memset(&surface.buffer[(point.y + PSF_HEIGHT + y) * surface.stride], 0, surface.width * sizeof(pixel_t));
+                log_clear_line(point.y + PSF_HEIGHT, PSF_HEIGHT);
             }
 
             continue;
@@ -82,24 +91,36 @@ static void log_write_to_buffer(const char* str)
     }
 }
 
+static void log_print_va_padded_number(char** out, uint64_t padding, char chr, uint64_t number)
+{
+    char str[20];
+    ulltoa(number, str, 10);
+
+    uint64_t len = strlen(str);
+
+    for (uint64_t i = 0; i < padding - len; i++)
+    {
+        *(*out)++ = chr;
+    }
+    for (uint64_t i = 0; i < len; i++)
+    {
+        *(*out)++ = str[i];
+    }
+}
+
 static void log_print_va(const char* string, va_list args)
 {
     char buffer[MAX_PATH];
     char* out = buffer;
 
-    uint64_t time = timeEnabled ? time_uptime() : 0;
-    char timeStr[15];
-    ulltoa(time / (SEC / 1000), timeStr, 10);
+    nsec_t time = timeEnabled ? time_uptime() : 0;
+    nsec_t sec = time / SEC;
+    nsec_t ms = (time % SEC) / (SEC / 1000);
 
     *out++ = '[';
-    for (uint64_t i = 0; i < 14 - strlen(timeStr); i++)
-    {
-        *out++ = ' ';
-    }
-    for (uint64_t i = 0; i < strlen(timeStr); i++)
-    {
-        *out++ = timeStr[i];
-    }
+    log_print_va_padded_number(&out, 11, ' ', sec);
+    *out++ = '.';
+    log_print_va_padded_number(&out, 4, '0', ms);
     *out++ = ']';
     *out++ = ' ';
 
@@ -234,15 +255,15 @@ void log_enable_time(void)
 
 void log_panic(const char* string, ...)
 {
-    if (surface.buffer != NULL && !screenEnabled)
-    {
-        log_enable_screen(NULL);
-    }
-
     asm volatile("cli");
     if (smp_initialized())
     {
         smp_send_ipi_to_others(IPI_HALT);
+    }
+
+    if (surface.buffer != NULL && !screenEnabled)
+    {
+        log_enable_screen(NULL);
     }
 
     log_print("!!! KERNEL PANIC !!!");
