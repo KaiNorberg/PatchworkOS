@@ -37,11 +37,9 @@ static void log_clear_line(uint64_t y, uint64_t height)
 
 static void log_write_to_screen(const char* str)
 {
-    uint64_t strLen = strlen(str);
-
-    for (uint64_t i = 0; i < strLen; i++)
+    while (*str != '\0')
     {
-        if (str[i] == '\n' || point.x >= surface.width - PSF_WIDTH)
+        if (*str == '\n' || point.x >= surface.width - PSF_WIDTH)
         {
             point.y += PSF_HEIGHT;
             point.x = point.x >= surface.width - PSF_WIDTH ? PSF_WIDTH * 4 : 0;
@@ -56,12 +54,15 @@ static void log_write_to_screen(const char* str)
             {
                 log_clear_line(point.y + PSF_HEIGHT, PSF_HEIGHT);
             }
-
-            continue;
         }
 
-        gfx_psf_char(&surface, &font, &point, str[i]);
-        point.x += PSF_WIDTH;
+        if (*str != '\n')
+        {
+            gfx_psf_char(&surface, &font, &point, *str);
+            point.x += PSF_WIDTH;
+        }
+
+        str++;
     }
 }
 
@@ -221,6 +222,8 @@ void log_init(void)
 
 void log_enable_screen(gop_buffer_t* gopBuffer)
 {
+    LOCK_GUARD(&lock);
+
     if (gopBuffer != NULL)
     {
         surface.buffer = gopBuffer->base;

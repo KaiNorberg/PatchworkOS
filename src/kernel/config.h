@@ -9,4 +9,4 @@
 #define CONFIG_MAX_LABEL 32
 #define CONFIG_MAX_FILE 64
 #define CONFIG_DWM_FPS 165
-#define CONFIG_LOG_SERIAL true
+#define CONFIG_LOG_SERIAL false

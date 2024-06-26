@@ -118,11 +118,11 @@ void debug_panic(const char* message)
 
     debug_start(message);
 
-    debug_move("memory", 1);
+    debug_move("Memory", 1);
     debug_value("free pages", pmm_free_amount());
     debug_value("reserved pages", pmm_reserved_amount());
 
-    debug_move("other", 2);
+    debug_move("Other", 2);
     debug_value("uptime", time_uptime());
     debug_value("cpu id", smp_self()->id);
 
