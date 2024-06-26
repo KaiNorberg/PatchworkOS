@@ -1,8 +1,8 @@
 #include "rsdt.h"
 
 #include "debug.h"
-#include "splash.h"
 #include "vmm.h"
+#include "log.h"
 
 #include <string.h>
 
@@ -30,9 +30,15 @@ void rsdt_init(xsdp_t* xsdp)
     xsdt = VMM_LOWER_TO_HIGHER((void*)xsdp->xsdtAddress);
     tableAmount = (xsdt->header.length - sizeof(sdt_t)) / 8;
 
+    log_print("Found ACPI tables:");
     for (uint64_t i = 0; i < tableAmount; i++)
     {
         sdt_t* table = VMM_LOWER_TO_HIGHER(xsdt->tables[i]);
+
+        char string[5];
+        memcpy(string, table->signature, 4);
+        string[4] = '\0';
+        log_print("ACPI: %s %a", string, VMM_HIGHER_TO_LOWER(table));
 
         DEBUG_ASSERT(rsdt_valid_checksum(table, table->length), "table");
     }

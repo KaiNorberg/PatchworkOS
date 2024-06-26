@@ -1,6 +1,5 @@
 #include "const.h"
 
-#include "splash.h"
 #include "sysfs.h"
 #include "vmm.h"
 

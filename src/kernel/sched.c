@@ -7,6 +7,7 @@
 #include "loader.h"
 #include "smp.h"
 #include "time.h"
+#include "log.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -125,6 +126,8 @@ void scheduler_init(scheduler_t* scheduler)
 
 void sched_start(void)
 {
+    log_print("Starting scheduler");
+
     sched_spawn_init_thread();
 
     smp_send_ipi_to_others(IPI_START);
@@ -189,7 +192,7 @@ void sched_thread_exit(void)
     debug_panic("Returned from thread_exit");
 }
 
-pid_t sched_spawn(const char* path)
+pid_t sched_spawn(const char* path, uint8_t priority)
 {
     process_t* process = process_new(path);
     if (process == NULL)
@@ -197,7 +200,7 @@ pid_t sched_spawn(const char* path)
         return ERR;
     }
 
-    thread_t* thread = thread_new(process, loader_entry, THREAD_PRIORITY_MIN);
+    thread_t* thread = thread_new(process, loader_entry, priority);
     sched_push(thread);
 
     return process->id;

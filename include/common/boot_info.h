@@ -42,11 +42,11 @@ typedef EFI_MEMORY_DESCRIPTOR efi_mem_desc_t;
 #define EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, index) \
     (efi_mem_desc_t*)((uint64_t)(memoryMap)->base + ((index) * (memoryMap)->descriptorSize))
 
-#define EFI_KERNEL_MEMORY 0x80000000
-#define EFI_PML_MEMORY 0x80000001
-#define EFI_BOOT_INFO 0x80000002
-#define EFI_RAM_DISK 0x80000003
-#define EFI_MEMORY_MAP 0x80000004
+#define EFI_MEM_KERNEL 0x80000000
+#define EFI_MEM_BOOT_PML 0x80000001
+#define EFI_MEM_BOOT_INFO 0x80000002
+#define EFI_MEM_RAM_DISK 0x80000003
+#define EFI_MEM_MEMORY_MAP 0x80000004
 
 typedef struct
 {
@@ -59,7 +59,7 @@ typedef struct
 
 typedef struct
 {
-    void* base;
+    uint32_t* base;
     uint64_t size;
     uint32_t width;
     uint32_t height;
@@ -90,7 +90,6 @@ typedef struct
 {
     efi_mem_map_t memoryMap;
     gop_buffer_t gopBuffer;
-    psf_t font;
     ram_dir_t* ramRoot;
     void* rsdp;
     void* runtimeServices;

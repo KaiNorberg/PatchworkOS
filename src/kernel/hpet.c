@@ -1,6 +1,6 @@
 #include "hpet.h"
 
-#include "debug.h"
+#include "log.h"
 #include "utils.h"
 #include "vmm.h"
 
@@ -11,7 +11,7 @@ static uint64_t period;
 void hpet_init(void)
 {
     hpet = (hpet_t*)rsdt_lookup("HPET");
-    DEBUG_ASSERT(hpet != NULL, "lookup fail");
+    LOG_ASSERT(hpet != NULL, "Unable to find hpet, hardware is not compatible");
 
     address = (uintptr_t)vmm_kernel_map(NULL, (void*)hpet->address, PAGE_SIZE);
     period = hpet_read(HPET_GENERAL_CAPABILITIES) >> HPET_COUNTER_CLOCK_OFFSET;

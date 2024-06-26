@@ -54,7 +54,7 @@ NORETURN void sched_process_exit(uint64_t status);
 
 NORETURN void sched_thread_exit(void);
 
-pid_t sched_spawn(const char* path);
+pid_t sched_spawn(const char* path, uint8_t priority);
 
 tid_t sched_thread_spawn(void* entry, uint8_t priority);
 

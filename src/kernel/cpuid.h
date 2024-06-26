@@ -34,8 +34,9 @@ static inline bool cpuid_avx_avail(void)
 
 static inline bool cpuid_avx512_avail(void)
 {
+    uint32_t eax;
     uint32_t ebx;
     uint32_t unused;
-    cpuid(CPUID_FEATURE_EXTENDED_ID, 0, &unused, &ebx, &unused, &unused);
-    return ebx & CPUID_EBX_AVX512_AVAIL;
+    cpuid(CPUID_FEATURE_EXTENDED_ID, 0, &eax, &ebx, &unused, &unused);
+    return (eax != 0) && (ebx & CPUID_EBX_AVX512_AVAIL);
 }

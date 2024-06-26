@@ -1,14 +1,13 @@
 #include "simd.h"
-
 #include "cpuid.h"
 #include "pmm.h"
 #include "regs.h"
 #include "vmm.h"
 
-#include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
-static uint8_t initContext[PAGE_SIZE];
+static uint8_t initContext[PAGE_SIZE] ALIGNED(64);
 
 static void simd_xsave_init(void)
 {
@@ -46,11 +45,11 @@ void simd_init(void)
     asm volatile("fninit");
     if (cpuid_xsave_avail())
     {
-        asm volatile("xsave %0" ::"m"(*initContext), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
+        asm volatile("xsave %0" : : "m"(*initContext), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
     }
     else
     {
-        asm volatile("fxsave (%0)" ::"a"(initContext));
+        asm volatile("fxsave (%0)" : : "r"(initContext));
     }
 }
 
@@ -69,11 +68,11 @@ void simd_context_save(simd_context_t* context)
 {
     if (cpuid_xsave_avail())
     {
-        asm volatile("xsave %0" ::"m"(*context->buffer), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
+        asm volatile("xsave %0" : : "m"(*context->buffer), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
     }
     else
     {
-        asm volatile("fxsave (%0)" ::"a"(context->buffer));
+        asm volatile("fxsave (%0)" : : "r"(context->buffer));
     }
 }
 
@@ -81,10 +80,10 @@ void simd_context_load(simd_context_t* context)
 {
     if (cpuid_xsave_avail())
     {
-        asm volatile("xrstor %0" ::"m"(*context->buffer), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
+        asm volatile("xrstor %0" : : "m"(*context->buffer), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
     }
     else
     {
-        asm volatile("fxrstor (%0)" ::"a"(context->buffer));
+        asm volatile("fxrstor (%0)" : : "r"(context->buffer));
     }
 }

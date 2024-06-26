@@ -1,19 +1,15 @@
 #include "debug.h"
 
-#include "_AUX/rect_t.h"
+#include "font.h"
 #include "pmm.h"
 #include "regs.h"
 #include "smp.h"
-#include "splash.h"
-#include "sys/gfx.h"
-#include "sys/io.h"
 #include "time.h"
 
 #include <stdlib.h>
 #include <sys/gfx.h>
 
 static psf_t font;
-static uint8_t glyphs[0x2000];
 static surface_t surface;
 static point_t pos;
 
@@ -99,13 +95,12 @@ static void debug_move(const char* name, uint8_t x)
     pos.y = 1;
 }
 
-void debug_init(gop_buffer_t* gopBuffer, psf_t* screenFont)
+void debug_init(gop_buffer_t* gopBuffer)
 {
     font.foreground = DEBUG_WHITE;
     font.background = DEBUG_BACKGROUND;
     font.scale = DEBUG_SCALE;
-    font.glyphs = malloc(PSF_WIDTH * PSF_HEIGHT * 256);
-    memcpy(font.glyphs, screenFont->glyphs, PSF_WIDTH * PSF_HEIGHT * 256);
+    font.glyphs = font_get() + sizeof(psf_header_t);
 
     surface.buffer = gopBuffer->base;
     surface.height = gopBuffer->height;
@@ -116,7 +111,10 @@ void debug_init(gop_buffer_t* gopBuffer, psf_t* screenFont)
 void debug_panic(const char* message)
 {
     asm volatile("cli");
-    smp_send_ipi_to_others(IPI_HALT);
+    if (smp_initialized())
+    {
+        smp_send_ipi_to_others(IPI_HALT);
+    }
 
     debug_start(message);
 
@@ -137,7 +135,10 @@ void debug_panic(const char* message)
 void debug_exception(trap_frame_t const* trapFrame, const char* message)
 {
     asm volatile("cli");
-    smp_send_ipi_to_others(IPI_HALT);
+    if (smp_initialized())
+    {
+        smp_send_ipi_to_others(IPI_HALT);
+    }
 
     debug_start(message);
 

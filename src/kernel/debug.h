@@ -26,7 +26,7 @@
         } \
     })
 
-void debug_init(gop_buffer_t* gopBuffer, psf_t* screenFont);
+void debug_init(gop_buffer_t* gopBuffer);
 
 NORETURN void debug_panic(const char* message);
 

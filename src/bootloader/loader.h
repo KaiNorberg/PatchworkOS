@@ -7,7 +7,6 @@
 
 #include "gop.h"
 #include "mem.h"
-#include "psf.h"
 #include "ram_disk.h"
 
 void* load_kernel(CHAR16* path, EFI_HANDLE imageHandle);

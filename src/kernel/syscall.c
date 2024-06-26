@@ -5,6 +5,7 @@
 #include <sys/win.h>
 
 #include "defs.h"
+#include "process.h"
 #include "sched.h"
 #include "time.h"
 #include "vmm.h"
@@ -66,7 +67,7 @@ pid_t syscall_spawn(const char* path)
         return ERROR(EFAULT);
     }
 
-    return sched_spawn(path);
+    return sched_spawn(path, THREAD_PRIORITY_MIN);
 }
 
 uint64_t syscall_sleep(nsec_t nanoseconds)

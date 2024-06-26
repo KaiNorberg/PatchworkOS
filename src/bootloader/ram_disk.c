@@ -22,10 +22,10 @@ ram_file_t* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
 {
     EFI_FILE* fileHandle = fs_open_raw(volume, path);
 
-    ram_file_t* file = vm_alloc(sizeof(ram_file_t), EFI_RAM_DISK);
+    ram_file_t* file = vm_alloc(sizeof(ram_file_t), EFI_MEM_RAM_DISK);
 
     file->size = fs_get_size(fileHandle);
-    file->data = vm_alloc(file->size, EFI_RAM_DISK);
+    file->data = vm_alloc(file->size, EFI_MEM_RAM_DISK);
     fs_read(fileHandle, file->size, file->data);
 
     SetMem(file->name, 32, 0);
@@ -38,7 +38,7 @@ ram_file_t* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
 
 ram_dir_t* ram_disk_load_directory(EFI_FILE* volume, const char* name)
 {
-    ram_dir_t* dir = vm_alloc(sizeof(ram_dir_t), EFI_RAM_DISK);
+    ram_dir_t* dir = vm_alloc(sizeof(ram_dir_t), EFI_MEM_RAM_DISK);
 
     SetMem(dir->name, 32, 0);
     strcpy(dir->name, name);

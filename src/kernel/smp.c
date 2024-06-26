@@ -6,9 +6,9 @@
 #include "kernel.h"
 #include "madt.h"
 #include "regs.h"
-#include "splash.h"
 #include "trampoline.h"
 #include "utils.h"
+#include "log.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -68,6 +68,8 @@ static NOINLINE void smp_detect_cpus(void)
 
         record = madt_next_record(record, MADT_LAPIC);
     }
+
+    log_print("SMP: startup, %d cpus detected", (uint64_t)cpuAmount);
 }
 
 static NOINLINE void smp_startup(void)

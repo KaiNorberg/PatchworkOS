@@ -3,6 +3,7 @@
 #include "debug.h"
 #include "lock.h"
 #include "sched.h"
+#include "log.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -176,6 +177,8 @@ void sysfs_init(void)
     sysfs.mount = sysfs_mount;
 
     DEBUG_ASSERT(vfs_mount("sys", &sysfs) != ERR, "mount fail");
+
+    log_print("sysfs: initialized");
 }
 
 void sysfs_expose(resource_t* resource, const char* path)

@@ -7,7 +7,6 @@
 #include "io.h"
 #include "irq.h"
 #include "pic.h"
-#include "splash.h"
 
 static _Atomic(nsec_t) accumulator = ATOMIC_VAR_INIT(0);
 

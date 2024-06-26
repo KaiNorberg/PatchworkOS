@@ -11,6 +11,7 @@
 #include "sysfs.h"
 #include "vfs.h"
 #include "window.h"
+#include "log.h"
 
 #include <errno.h>
 #include <stdatomic.h>
@@ -152,6 +153,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t
             list_push(&panels, window);
 
             dwm_update_client_area();
+            log_print("dwm: create panel");
         }
         break;
         case WIN_CURSOR:
@@ -164,6 +166,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t
             }
 
             cursor = window;
+            log_print("dwm: create cursor");
         }
         break;
         case WIN_WALL:
@@ -176,6 +179,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t
             }
 
             wall = window;
+            log_print("dwm: create wall");
         }
         break;
         default:
@@ -359,6 +363,8 @@ static void dwm_loop(void)
 
 void dwm_init(gop_buffer_t* gopBuffer)
 {
+    log_print("dwm: %dx%d", (uint64_t)gopBuffer->width, (uint64_t)gopBuffer->height);
+
     frontbuffer.buffer = gopBuffer->base;
     frontbuffer.height = gopBuffer->height;
     frontbuffer.width = gopBuffer->width;
@@ -391,6 +397,8 @@ void dwm_init(gop_buffer_t* gopBuffer)
 
 void dwm_start(void)
 {
+    log_print("dwm: start");
+
     gfx_swap(&backbuffer, &frontbuffer);
     sched_thread_spawn(dwm_loop, THREAD_PRIORITY_MAX);
 }

@@ -7,6 +7,7 @@
 #include "regs.h"
 #include "sched.h"
 #include "utils.h"
+#include "log.h"
 
 #include <stdlib.h>
 
@@ -43,19 +44,6 @@ static void vmm_load_memory_map(efi_mem_map_t* memoryMap)
     }
 
     pml_load(kernelPageTable);
-}
-
-static void vmm_deallocate_boot_pml(efi_mem_map_t* memoryMap)
-{
-    for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
-    {
-        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
-
-        if (desc->type == EFI_PML_MEMORY)
-        {
-            pmm_free_pages(desc->physicalStart, desc->amountOfPages);
-        }
-    }
 }
 
 static void* space_find_free_region(space_t* space, uint64_t length)
@@ -111,7 +99,9 @@ void space_load(space_t* space)
 void vmm_init(efi_mem_map_t* memoryMap, gop_buffer_t* gopBuffer)
 {
     vmm_load_memory_map(memoryMap);
-    vmm_deallocate_boot_pml(memoryMap);
+    log_print("Kernel PML loaded %a", kernelPageTable);
+
+    pmm_free_type(EFI_MEM_BOOT_PML);
 
     gopBuffer->base = vmm_kernel_map(NULL, gopBuffer->base, gopBuffer->size);
 }

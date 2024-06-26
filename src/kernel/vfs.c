@@ -3,7 +3,6 @@
 #include "debug.h"
 #include "lock.h"
 #include "sched.h"
-#include "splash.h"
 #include "time.h"
 #include "vfs_context.h"
 #include <errno.h>
@@ -210,42 +209,6 @@ void vfs_init(void)
 {
     list_init(&volumes);
     lock_init(&volumeLock);
-
-    /*tty_print("\n");
-
-    vfs_chdir("vol:/wd1/wd2");
-
-    test_path("sys:/test1/test2/test3");
-    test_path("sys:/test1/../test3");
-    test_path("sys:/../../test3");
-    test_path("sys:/test1/test2/test3/../..");
-    test_path("sys:/test1/../test3/..");
-
-    tty_print("\n");
-
-    test_path("/test1/test2/test3");
-    test_path("/test1/../test3");
-    test_path("/../../test3");
-    test_path("/test1/test2/test3/../..");
-    test_path("/test1/../test3/..");
-
-    tty_print("\n");
-
-    test_path("test1/test2/test3");
-    test_path("test1/../test3");
-    test_path("../../test3");
-    test_path("test1/test2/test3/../..");
-    test_path("test1/../test3/..");
-
-    tty_print("\n");
-
-    test_path("../test3");
-    test_path(".");
-    test_path("sys:/test1/test2");
-    test_path("sys:test1/test2");
-    test_path("/test1/test2/../../test3");
-
-    while (1);*/
 }
 
 file_t* vfs_open(const char* path)

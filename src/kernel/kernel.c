@@ -8,6 +8,7 @@
 #include "gdt.h"
 #include "hpet.h"
 #include "idt.h"
+#include "log.h"
 #include "madt.h"
 #include "pic.h"
 #include "pmm.h"
@@ -20,8 +21,6 @@
 #include "sched.h"
 #include "simd.h"
 #include "smp.h"
-#include "splash.h"
-#include "stdlib.h"
 #include "sysfs.h"
 #include "time.h"
 #include "vfs.h"
@@ -29,40 +28,30 @@
 
 #include <stdlib_internal/init.h>
 
-static void boot_info_deallocate(boot_info_t* bootInfo)
-{
-    efi_mem_map_t* memoryMap = &bootInfo->memoryMap;
-    for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
-    {
-        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
-
-        if (desc->type == EFI_BOOT_INFO)
-        {
-            pmm_free_pages(desc->physicalStart, desc->amountOfPages);
-        }
-    }
-}
-
 void kernel_init(boot_info_t* bootInfo)
 {
+    log_init();
+
     pmm_init(&bootInfo->memoryMap);
     vmm_init(&bootInfo->memoryMap, &bootInfo->gopBuffer);
 
-    _StdInit();
-
-    splash_init(&bootInfo->gopBuffer, &bootInfo->font);
-    debug_init(&bootInfo->gopBuffer, &bootInfo->font);
+    log_enable_screen(&bootInfo->gopBuffer);
+    debug_init(&bootInfo->gopBuffer);
 
     gdt_init();
     idt_init();
+
+    _StdInit();
 
     rsdt_init(bootInfo->rsdp);
     hpet_init();
     madt_init();
     apic_init();
 
-    pic_init();
     time_init();
+    log_enable_time();
+
+    pic_init();
 
     smp_init();
     kernel_cpu_init();
@@ -76,26 +65,29 @@ void kernel_init(boot_info_t* bootInfo)
     ps2_init();
     ps2_keyboard_init();
     ps2_mouse_init();
+
     const_init();
     dwm_init(&bootInfo->gopBuffer);
 
-    boot_info_deallocate(bootInfo);
-    splash_cleanup();
+    pmm_free_type(EFI_MEM_BOOT_INFO);
 
     dwm_start();
+    log_disable_screen();
 }
 
 void kernel_cpu_init(void)
 {
+    gdt_load();
+    idt_load();
+
     cpu_t* cpu = smp_self_brute();
     msr_write(MSR_CPU_ID, cpu->id);
+    gdt_load_tss(&cpu->tss);
 
     lapic_init();
     simd_init();
 
-    gdt_load();
-    idt_load();
-    gdt_load_tss(&cpu->tss);
-
     cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);
+
+    log_print("CPU %d: initialized", (uint64_t)cpu->id);
 }

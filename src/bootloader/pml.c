@@ -11,7 +11,7 @@ static pml_entry_t pml_entry_create(void* address, uint64_t flags)
 
 pml_t* pml_new(void)
 {
-    pml_t* pageTable = (pml_t*)mem_alloc_pages(1, EFI_PML_MEMORY);
+    pml_t* pageTable = (pml_t*)mem_alloc_pages(1, EFI_MEM_BOOT_PML);
     SetMem(pageTable, EFI_PAGE_SIZE, 0);
 
     return pageTable;
@@ -51,7 +51,7 @@ void pml_map(pml_t* pageTable, void* virtAddr, void* physAddr, uint16_t flags)
     pml_t* pdp;
     if ((entry & PAGE_PRESENT) == 0)
     {
-        pdp = (pml_t*)mem_alloc_pages(1, EFI_PML_MEMORY);
+        pdp = (pml_t*)mem_alloc_pages(1, EFI_MEM_BOOT_PML);
         SetMem(pdp, EFI_PAGE_SIZE, 0);
 
         entry = pml_entry_create(pdp, flags);
@@ -66,7 +66,7 @@ void pml_map(pml_t* pageTable, void* virtAddr, void* physAddr, uint16_t flags)
     pml_t* pd;
     if ((entry & PAGE_PRESENT) == 0)
     {
-        pd = (pml_t*)mem_alloc_pages(1, EFI_PML_MEMORY);
+        pd = (pml_t*)mem_alloc_pages(1, EFI_MEM_BOOT_PML);
         SetMem(pd, EFI_PAGE_SIZE, 0);
 
         entry = pml_entry_create(pd, flags);
@@ -81,7 +81,7 @@ void pml_map(pml_t* pageTable, void* virtAddr, void* physAddr, uint16_t flags)
     pml_t* pt;
     if ((entry & PAGE_PRESENT) == 0)
     {
-        pt = (pml_t*)mem_alloc_pages(1, EFI_PML_MEMORY);
+        pt = (pml_t*)mem_alloc_pages(1, EFI_MEM_BOOT_PML);
         SetMem(pt, EFI_PAGE_SIZE, 0);
 
         entry = pml_entry_create(pt, flags);

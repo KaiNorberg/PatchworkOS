@@ -1,6 +1,5 @@
 #include "idt.h"
 
-#include "splash.h"
 #include "syscall.h"
 
 #include <sys/proc.h>

@@ -3,6 +3,7 @@
 #include "debug.h"
 #include "sched.h"
 #include "vfs.h"
+#include "log.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -204,4 +205,6 @@ void ramfs_init(ram_dir_t* ramRoot)
     ramfs.mount = ramfs_mount;
 
     DEBUG_ASSERT(vfs_mount("home", &ramfs) != ERR, "mount fail");
+
+    log_print("ramfs: initialized");
 }

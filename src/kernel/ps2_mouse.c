@@ -42,8 +42,7 @@ static uint64_t ps2_mouse_scan(void)
     return data;
 }
 
-// #include "splash.h"
-
+//
 static void ps2_mouse_irq(uint8_t irq)
 {
     static uint64_t index = 0;
@@ -122,6 +121,9 @@ static uint64_t ps2_mouse_open(resource_t* resource, file_t* file)
 
 void ps2_mouse_init(void)
 {
+    ps2_cmd(PS2_CMD_AUX_TEST);
+    DEBUG_ASSERT(ps2_read() == 0x0, "ps2 mouse not found");
+
     ps2_cmd(PS2_CMD_WRITE_MOUSE);
     ps2_write(PS2_SET_DEFAULTS);
 

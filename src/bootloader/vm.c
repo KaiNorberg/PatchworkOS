@@ -37,7 +37,7 @@ void vm_init(void)
 
 void vm_alloc_kernel(void* virtAddr, uint64_t pageAmount)
 {
-    void* physAddr = mem_alloc_pages(pageAmount, EFI_KERNEL_MEMORY);
+    void* physAddr = mem_alloc_pages(pageAmount, EFI_MEM_KERNEL);
     kernelAddress = virtAddr;
 
     pml_map_pages(pageTable, virtAddr, physAddr, pageAmount, PAGE_WRITE);
@@ -52,7 +52,7 @@ void vm_map_init(efi_mem_map_t* memoryMap)
 {
     mem_map_init(memoryMap);
 
-    void* newBuffer = vm_alloc(memoryMap->descriptorAmount * memoryMap->descriptorSize, EFI_MEMORY_MAP);
+    void* newBuffer = vm_alloc(memoryMap->descriptorAmount * memoryMap->descriptorSize, EFI_MEM_MEMORY_MAP);
     CopyMem(newBuffer, memoryMap->base, memoryMap->descriptorAmount * memoryMap->descriptorSize);
 
     mem_map_cleanup(memoryMap);
@@ -62,7 +62,7 @@ void vm_map_init(efi_mem_map_t* memoryMap)
     {
         efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
 
-        if (desc->Type == EFI_KERNEL_MEMORY)
+        if (desc->Type == EFI_MEM_KERNEL)
         {
             desc->VirtualStart = (uint64_t)kernelAddress;
         }

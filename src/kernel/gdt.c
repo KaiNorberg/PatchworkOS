@@ -1,7 +1,6 @@
 #include "gdt.h"
 
 #include "pmm.h"
-#include "splash.h"
 #include "tss.h"
 
 ALIGNED(PAGE_SIZE) static gdt_t gdt;

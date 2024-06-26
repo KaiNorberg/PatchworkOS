@@ -190,6 +190,9 @@ static uint64_t ps2_keyboard_open(resource_t* resource, file_t* file)
 
 void ps2_keyboard_init(void)
 {
+    ps2_cmd(PS2_CMD_KEYBOARD_TEST);
+    DEBUG_ASSERT(ps2_read() == 0x0, "ps2 keyboard not found");
+
     irq_install(ps2_keyboard_irq, IRQ_KEYBOARD);
 
     resource_init(&keyboard, "ps2", ps2_keyboard_open, NULL);

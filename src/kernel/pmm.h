@@ -13,6 +13,8 @@ typedef struct page_header
 
 void pmm_init(efi_mem_map_t* efi_mem_map_t);
 
+void pmm_free_type(uint32_t type);
+
 void* pmm_alloc(void);
 
 void pmm_free(void* address);
