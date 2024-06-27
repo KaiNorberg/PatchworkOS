@@ -1,18 +1,18 @@
 #include "madt.h"
 
-#include "debug.h"
+#include "log.h"
 
 static madt_t* madt;
 
 void madt_init(void)
 {
-    madt = (madt_t*)rsdt_lookup("APIC");
-    DEBUG_ASSERT(madt != NULL, "lookup fail");
+    madt = (madt_t*)acpi_lookup("APIC");
+    LOG_ASSERT(madt != NULL, "Unable to find madt, hardware is not compatible");
 }
 
 void* madt_lapic_address(void)
 {
-    return (void*)(uint64_t)madt->localApicAddress;
+    return (void*)(uint64_t)madt->lapicAddress;
 }
 
 void* madt_first_record(uint8_t type)

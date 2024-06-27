@@ -1,8 +1,8 @@
 #include "ps2_mouse.h"
 
-#include "debug.h"
 #include "io.h"
 #include "irq.h"
+#include "log.h"
 #include "ps2.h"
 #include "sched.h"
 #include "stdlib.h"
@@ -122,17 +122,17 @@ static uint64_t ps2_mouse_open(resource_t* resource, file_t* file)
 void ps2_mouse_init(void)
 {
     ps2_cmd(PS2_CMD_AUX_TEST);
-    DEBUG_ASSERT(ps2_read() == 0x0, "ps2 mouse not found");
+    LOG_ASSERT(ps2_read() == 0x0, "ps2 mouse not found");
 
     ps2_cmd(PS2_CMD_WRITE_MOUSE);
     ps2_write(PS2_SET_DEFAULTS);
 
-    DEBUG_ASSERT(ps2_read() == 0xFA, "set defaults fail");
+    LOG_ASSERT(ps2_read() == 0xFA, "set defaults fail");
 
     ps2_cmd(PS2_CMD_WRITE_MOUSE);
     ps2_write(PS2_ENABLE_DATA_REPORTING);
 
-    DEBUG_ASSERT(ps2_read() == 0xFA, "data reporting fail");
+    LOG_ASSERT(ps2_read() == 0xFA, "data reporting fail");
 
     irq_install(ps2_mouse_irq, IRQ_MOUSE);
 

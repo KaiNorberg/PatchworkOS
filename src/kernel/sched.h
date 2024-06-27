@@ -30,11 +30,11 @@ typedef struct
     queue_t queues[THREAD_PRIORITY_LEVELS];
     list_t graveyard;
     thread_t* runningThread;
-} scheduler_t;
+} sched_context_t;
+
+void sched_context_init(sched_context_t* context);
 
 extern void sched_idle_loop(void);
-
-void scheduler_init(scheduler_t* scheduler);
 
 void sched_start(void);
 

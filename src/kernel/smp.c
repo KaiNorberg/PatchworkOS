@@ -1,15 +1,16 @@
 #include "smp.h"
 
 #include "apic.h"
-#include "debug.h"
+#include "gdt.h"
 #include "hpet.h"
+#include "idt.h"
 #include "kernel.h"
+#include "log.h"
 #include "madt.h"
 #include "regs.h"
 #include "trampoline.h"
-#include "utils.h"
-#include "log.h"
 
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -19,17 +20,19 @@ static bool cpuReady = false;
 
 static bool initialized = false;
 
-static NOINLINE uint64_t cpu_init(cpu_t* cpu, uint8_t id, uint8_t localApicId)
+_Atomic(uint8_t) haltedAmount = ATOMIC_VAR_INIT(0);
+
+static NOINLINE uint64_t cpu_init(cpu_t* cpu, uint8_t id, uint8_t lapicId)
 {
     cpu->id = id;
-    cpu->localApicId = localApicId;
+    cpu->lapicId = lapicId;
     cpu->trapDepth = 0;
     cpu->prevFlags = 0;
     cpu->cliAmount = 0;
     tss_init(&cpu->tss);
-    scheduler_init(&cpu->scheduler);
+    sched_context_init(&cpu->schedContext);
 
-    if (localApicId == lapic_id())
+    if (lapicId == lapic_id())
     {
         return 0;
     }
@@ -38,9 +41,9 @@ static NOINLINE uint64_t cpu_init(cpu_t* cpu, uint8_t id, uint8_t localApicId)
 
     trampoline_cpu_setup(cpu);
 
-    lapic_send_init(localApicId);
+    lapic_send_init(lapicId);
     hpet_sleep(10);
-    lapic_send_sipi(localApicId, ((uint64_t)TRAMPOLINE_PHYSICAL_START) / PAGE_SIZE);
+    lapic_send_sipi(lapicId, ((uint64_t)TRAMPOLINE_PHYSICAL_START) / PAGE_SIZE);
 
     uint64_t timeout = 10000;
     while (!cpuReady)
@@ -84,7 +87,7 @@ static NOINLINE void smp_startup(void)
             uint8_t id = newId;
             newId++;
 
-            DEBUG_ASSERT(cpu_init(&cpus[id], id, record->localApicId) != ERR, "ap fail");
+            LOG_ASSERT(cpu_init(&cpus[id], id, record->lapicId) != ERR, "startup failure");
         }
 
         record = madt_next_record(record, MADT_LAPIC);
@@ -103,8 +106,17 @@ void smp_init(void)
     initialized = true;
 }
 
+void smp_cpu_init(void)
+{
+    cpu_t* cpu = smp_self_brute();
+    msr_write(MSR_CPU_ID, cpu->id);
+}
+
 void smp_entry(void)
 {
+    gdt_load();
+    idt_load();
+
     space_load(NULL);
 
     kernel_cpu_init();
@@ -122,9 +134,30 @@ bool smp_initialized(void)
     return initialized;
 }
 
+void smp_halt_others(void)
+{
+    smp_send_ipi_to_others(IPI_HALT);
+
+    while (atomic_load(&haltedAmount) < cpuAmount - 1)
+    {
+        asm volatile("pause");
+    }
+}
+
+void smp_halt_self(void)
+{
+    atomic_fetch_add(&haltedAmount, 1);
+
+    while (1)
+    {
+        asm volatile("cli");
+        asm volatile("hlt");
+    }
+}
+
 void smp_send_ipi(cpu_t const* cpu, uint8_t ipi)
 {
-    lapic_send_ipi(cpu->localApicId, IPI_BASE + ipi);
+    lapic_send_ipi(cpu->lapicId, IPI_BASE + ipi);
 }
 
 void smp_send_ipi_to_others(uint8_t ipi)
@@ -160,7 +193,7 @@ cpu_t* smp_self_unsafe(void)
 {
     if (rflags_read() & RFLAGS_INTERRUPT_ENABLE)
     {
-        debug_panic("smp_self_unsafe called with interrupts enabled");
+        log_panic(NULL, "smp_self_unsafe called with interrupts enabled");
     }
 
     return &cpus[msr_read(MSR_CPU_ID)];
@@ -170,19 +203,19 @@ cpu_t* smp_self_brute(void)
 {
     if (rflags_read() & RFLAGS_INTERRUPT_ENABLE)
     {
-        debug_panic("smp_self_brute called with interrupts enabled");
+        log_panic(NULL, "smp_self_brute called with interrupts enabled");
     }
 
-    uint8_t localApicId = lapic_id();
+    uint8_t lapicId = lapic_id();
     for (uint16_t id = 0; id < cpuAmount; id++)
     {
-        if (cpus[id].localApicId == localApicId)
+        if (cpus[id].lapicId == lapicId)
         {
             return &cpus[id];
         }
     }
 
-    debug_panic("Unable to find cpu");
+    log_panic(NULL, "Unable to find cpu");
 }
 
 void smp_put(void)

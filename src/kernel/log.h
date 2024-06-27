@@ -1,12 +1,11 @@
 #pragma once
 
 #include "defs.h"
+#include "trap.h"
 
 #include <common/boot_info.h>
 
 #define LOG_BUFFER_LENGTH 0x1000
-
-#define LOG_PORT 0x3F8
 
 #define LOG_BREAK '%'
 #define LOG_ADDR 'a'
@@ -17,7 +16,7 @@
     ({ \
         if (!(condition)) \
         { \
-            log_panic(msg __VA_OPT__(,) __VA_ARGS__); \
+            log_panic(NULL, __FILE_NAME__ ": " msg __VA_OPT__(, ) __VA_ARGS__); \
         } \
     })
 
@@ -29,6 +28,6 @@ void log_disable_screen(void);
 
 void log_enable_time(void);
 
-void log_panic(const char* string, ...);
+NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...);
 
 void log_print(const char* string, ...);

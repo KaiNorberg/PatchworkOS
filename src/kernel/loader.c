@@ -3,7 +3,7 @@
 #include <string.h>
 #include <sys/elf.h>
 
-#include "debug.h"
+#include "errno.h"
 #include "sched.h"
 #include "vmm.h"
 
@@ -14,7 +14,7 @@ static void* loader_allocate_stack(void)
     void* address = (void*)(VMM_LOWER_HALF_MAX - (CONFIG_USER_STACK * (thread->id + 1) + PAGE_SIZE * (thread->id)));
     if (vmm_alloc(address, CONFIG_USER_STACK, PROT_READ | PROT_WRITE) == NULL)
     {
-        debug_panic("Failed to allocate user stack");
+        sched_process_exit(EEXEC);
     }
 
     return address + CONFIG_USER_STACK;

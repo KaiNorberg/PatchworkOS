@@ -7,11 +7,11 @@
 #include "utils.h"
 #include "vmm.h"
 
-static uintptr_t localApicBase;
+static uintptr_t lapicBase;
 
 void apic_init(void)
 {
-    localApicBase = (uintptr_t)vmm_kernel_map(NULL, madt_lapic_address(), PAGE_SIZE);
+    lapicBase = (uintptr_t)vmm_kernel_map(NULL, madt_lapic_address(), PAGE_SIZE);
 }
 
 void apic_timer_init(uint8_t vector, uint64_t hz)
@@ -44,12 +44,12 @@ uint8_t lapic_id(void)
 
 void lapic_write(uint32_t reg, uint32_t value)
 {
-    WRITE_32(localApicBase + reg, value);
+    WRITE_32(lapicBase + reg, value);
 }
 
 uint32_t lapic_read(uint32_t reg)
 {
-    return READ_32(localApicBase + reg);
+    return READ_32(lapicBase + reg);
 }
 
 void lapic_send_init(uint32_t id)

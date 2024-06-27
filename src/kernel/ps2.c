@@ -1,7 +1,7 @@
 #include "ps2.h"
 
-#include "debug.h"
 #include "io.h"
+#include "log.h"
 #include "time.h"
 
 void ps2_init(void)
@@ -15,7 +15,7 @@ void ps2_init(void)
     uint8_t cfg = ps2_read();
 
     ps2_cmd(PS2_CMD_CONTROLLER_TEST);
-    DEBUG_ASSERT(ps2_read() == 0x55, "self test fail");
+    LOG_ASSERT(ps2_read() == 0x55, "self test fail");
 
     cfg = cfg | PS2_CFG_KEYBOARD_IRQ | PS2_CFG_MOUSE_IRQ;
 
@@ -40,7 +40,7 @@ uint8_t ps2_read(void)
         }
     }
 
-    debug_panic("PS2 Timeout");
+    log_panic(NULL, "PS2 Timeout");
 }
 
 void ps2_write(uint8_t data)
@@ -66,7 +66,7 @@ void ps2_wait(void)
         }
     }
 
-    debug_panic("PS2 Timeout");
+    log_panic(NULL, "PS2 Timeout");
 }
 
 void ps2_cmd(uint8_t command)

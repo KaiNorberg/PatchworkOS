@@ -1,6 +1,6 @@
 #include "irq.h"
 
-#include "debug.h"
+#include "log.h"
 #include "pic.h"
 
 static irq_handler_t handlers[IRQ_AMOUNT][IRQ_MAX_HANDLER];
@@ -36,5 +36,5 @@ void irq_install(irq_handler_t handler, uint8_t irq)
         }
     }
 
-    debug_panic("IRQ handler limit exceeded");
+    log_panic(NULL, "IRQ handler limit exceeded");
 }

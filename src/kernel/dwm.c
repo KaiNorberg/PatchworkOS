@@ -1,9 +1,8 @@
 #include "dwm.h"
 
-#include "_AUX/rect_t.h"
-#include "debug.h"
 #include "list.h"
 #include "lock.h"
+#include "log.h"
 #include "sched.h"
 #include "sys/io.h"
 #include "sys/mouse.h"
@@ -11,7 +10,6 @@
 #include "sysfs.h"
 #include "vfs.h"
 #include "window.h"
-#include "log.h"
 
 #include <errno.h>
 #include <stdatomic.h>
@@ -112,7 +110,7 @@ static void dwm_window_cleanup(file_t* file)
     break;
     default:
     {
-        debug_panic("Invalid window type");
+        log_panic(NULL, "Invalid window type %d", window->type);
     }
     }
 
@@ -184,7 +182,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t
         break;
         default:
         {
-            debug_panic("Invalid window type");
+            log_panic(NULL, "Invalid window type %d", window->type);
         }
         }
 

@@ -1,7 +1,7 @@
 #pragma once
 
+#include "acpi.h"
 #include "defs.h"
-#include "rsdt.h"
 
 #define MADT_LAPIC 0
 
@@ -22,14 +22,14 @@ typedef struct PACKED
     madt_header_t header;
 
     uint8_t cpuId;
-    uint8_t localApicId;
+    uint8_t lapicId;
     uint32_t flags;
 } madt_lapic_t;
 
 typedef struct PACKED
 {
     sdt_t header;
-    uint32_t localApicAddress;
+    uint32_t lapicAddress;
     uint32_t flags;
     madt_header_t records[];
 } madt_t;

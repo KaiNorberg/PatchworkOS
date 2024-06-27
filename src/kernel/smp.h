@@ -19,20 +19,26 @@
 typedef struct
 {
     uint8_t id;
-    uint8_t localApicId;
+    uint8_t lapicId;
     uint64_t trapDepth;
     uint64_t prevFlags;
     uint64_t cliAmount;
     tss_t tss;
-    scheduler_t scheduler;
+    sched_context_t schedContext;
     uint8_t idleStack[CPU_IDLE_STACK_SIZE];
 } cpu_t;
 
 void smp_init(void);
 
+void smp_cpu_init(void);
+
 void smp_entry(void);
 
 bool smp_initialized(void);
+
+void smp_halt_others(void);
+
+void smp_halt_self(void);
 
 void smp_send_ipi(cpu_t const* cpu, uint8_t ipi);
 

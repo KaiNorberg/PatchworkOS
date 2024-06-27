@@ -1,9 +1,8 @@
 #include "sysfs.h"
 
-#include "debug.h"
 #include "lock.h"
-#include "sched.h"
 #include "log.h"
+#include "sched.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -162,7 +161,7 @@ void resource_unref(resource_t* resource)
         }
         else
         {
-            debug_panic("Attempt to delete undeletable resource");
+            log_panic(NULL, "Attempt to delete undeletable resource");
         }
     }
 }
@@ -176,7 +175,7 @@ void sysfs_init(void)
     sysfs.name = "sysfs";
     sysfs.mount = sysfs_mount;
 
-    DEBUG_ASSERT(vfs_mount("sys", &sysfs) != ERR, "mount fail");
+    LOG_ASSERT(vfs_mount("sys", &sysfs) != ERR, "mount fail");
 
     log_print("sysfs: initialized");
 }

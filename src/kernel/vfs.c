@@ -1,6 +1,5 @@
 #include "vfs.h"
 
-#include "debug.h"
 #include "lock.h"
 #include "sched.h"
 #include "time.h"

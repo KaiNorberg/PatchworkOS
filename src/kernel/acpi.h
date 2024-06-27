@@ -11,7 +11,7 @@ typedef struct PACKED
     uint8_t checksum;
     char oemId[6];
     uint8_t revision;
-    uint32_t rsdtAddress;
+    uint32_t acpiAddress;
     uint32_t length;
     uint64_t xsdtAddress;
     uint8_t extendedChecksum;
@@ -37,6 +37,6 @@ typedef struct PACKED
     sdt_t* tables[];
 } xsdt_t;
 
-void rsdt_init(xsdp_t* xsdp);
+void acpi_init(xsdp_t* xsdp);
 
-sdt_t* rsdt_lookup(const char* signature);
+sdt_t* acpi_lookup(const char* signature);

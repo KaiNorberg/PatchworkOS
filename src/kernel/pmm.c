@@ -6,32 +6,16 @@
 #include <common/boot_info.h>
 
 #include "config.h"
-#include "debug.h"
 #include "lock.h"
 #include "log.h"
 #include "vmm.h"
 
-static const char* efiMemTypeToString[] =
-{
-    "efi reserved memory type",
-    "efi loader code",
-    "efi loader data",
-    "efi boot services code",
-    "efi boot services data",
-    "efi runtime services code",
-    "efi runtime services data",
-    "efi conventional memory",
-    "efi unusable memory",
-    "efi acpi reclaim memory",
-    "efi acpi memory nvs",
-    "efi memory mapped io",
-    "efi memory mapped io port space",
-    "efi pal code",
-    "efi persistent memory"
-};
+static const char* efiMemTypeToString[] = {"efi reserved memory type", "efi loader code", "efi loader data",
+    "efi boot services code", "efi boot services data", "efi runtime services code", "efi runtime services data",
+    "efi conventional memory", "efi unusable memory", "efi acpi reclaim memory", "efi acpi memory nvs", "efi memory mapped io",
+    "efi memory mapped io port space", "efi pal code", "efi persistent memory"};
 
-static const char* kernelMemTypeToString[] =
-{
+static const char* kernelMemTypeToString[] = {
     "kernel memory",
     "pml memory",
     "boot info",
@@ -102,7 +86,7 @@ static void pmm_lazy_load_memory(void)
     if (full)
     {
         lock_release(&lock);
-        debug_panic("PMM full");
+        log_panic(NULL, "Physical Memory Manager full");
     }
 
     while (true)
@@ -157,7 +141,7 @@ static void pmm_detect_memory(void)
     }
 
     log_print("UEFI-provided memory map: ");
-    log_print("Detected memory: %d KB", (pageAmount * 0x1000) / 1000);
+    log_print("Detected memory: %d KB", (pageAmount * PAGE_SIZE) / 1024);
 
     if (CONFIG_PMM_LAZY)
     {
@@ -185,7 +169,8 @@ void pmm_free_type(uint32_t type)
 
         if (desc->type == type)
         {
-            log_print("pmm: free [mem %a-%a] %s", desc->physicalStart, ((uintptr_t)desc->physicalStart) + desc->amountOfPages, pmm_mem_type_to_string(desc->type));
+            log_print("pmm: free [mem %a-%a] %s", desc->physicalStart,
+                ((uintptr_t)desc->physicalStart) + desc->amountOfPages * PAGE_SIZE, pmm_mem_type_to_string(desc->type));
             pmm_free_pages(desc->physicalStart, desc->amountOfPages);
         }
     }
@@ -200,7 +185,7 @@ void* pmm_alloc(void)
 #if CONFIG_PMM_LAZY
         pmm_lazy_load_memory();
 #else
-        debug_panic("Physical Memory Manager full!");
+        log_panic(NULL, "Physical Memory Manager full");
 #endif
     }
 

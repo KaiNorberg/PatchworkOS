@@ -1,29 +1,29 @@
 #include "trap.h"
 
 #include "apic.h"
-#include "debug.h"
 #include "defs.h"
 #include "gdt.h"
 #include "irq.h"
+#include "log.h"
 #include "regs.h"
 #include "smp.h"
 #include "syscall.h"
 #include "utils.h"
 #include "vmm.h"
 
-static void exception_handler(trap_frame_t const* trapFrame)
+static void exception_handler(const trap_frame_t* trapFrame)
 {
     switch (trapFrame->vector)
     {
     default:
     {
-        debug_exception(trapFrame, "Exception");
+        log_panic(trapFrame, "Exception");
     }
     break;
     }
 }
 
-static void ipi_handler(trap_frame_t const* trapFrame)
+static void ipi_handler(const trap_frame_t* trapFrame)
 {
     uint8_t ipi = trapFrame->vector - IPI_BASE;
 
@@ -31,10 +31,17 @@ static void ipi_handler(trap_frame_t const* trapFrame)
     {
     case IPI_HALT:
     {
-        asm volatile("cli");
-        while (1)
+        if (smp_initialized())
         {
-            asm volatile("hlt");
+            smp_halt_self();
+        }
+        else
+        {
+            while (1)
+            {
+                asm volatile("cli");
+                asm volatile("hlt");
+            }
         }
     }
     case IPI_START:
@@ -118,7 +125,7 @@ void trap_handler(trap_frame_t* trapFrame)
     }
     else
     {
-        debug_panic("Unknown interrupt vector");
+        log_panic(trapFrame, "Unknown interrupt vector");
     }
 
     thread_t* thread = sched_thread();

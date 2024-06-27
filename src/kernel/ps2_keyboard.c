@@ -1,8 +1,8 @@
 #include "ps2_keyboard.h"
 
-#include "debug.h"
 #include "io.h"
 #include "irq.h"
+#include "log.h"
 #include "ps2.h"
 #include "sched.h"
 #include "sysfs.h"
@@ -191,7 +191,7 @@ static uint64_t ps2_keyboard_open(resource_t* resource, file_t* file)
 void ps2_keyboard_init(void)
 {
     ps2_cmd(PS2_CMD_KEYBOARD_TEST);
-    DEBUG_ASSERT(ps2_read() == 0x0, "ps2 keyboard not found");
+    LOG_ASSERT(ps2_read() == 0x0, "ps2 keyboard not found");
 
     irq_install(ps2_keyboard_irq, IRQ_KEYBOARD);
 

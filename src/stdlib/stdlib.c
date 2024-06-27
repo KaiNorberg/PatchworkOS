@@ -5,7 +5,7 @@
 #include "heap.h"
 
 #ifdef __EMBED__
-#include "debug.h"
+#include "log.h"
 #endif
 
 void* malloc(size_t size)
@@ -82,11 +82,11 @@ void free(void* ptr)
 #ifdef __EMBED__
     if (block->magic != HEAP_HEADER_MAGIC)
     {
-        debug_panic("Invalid heap magic\n");
+        log_panic(NULL, "Invalid heap magic\n");
     }
     else if (!block->reserved)
     {
-        debug_panic("Attempt to free unreserved block");
+        log_panic(NULL, "Attempt to free unreserved block");
     }
 #endif
     block->reserved = false;

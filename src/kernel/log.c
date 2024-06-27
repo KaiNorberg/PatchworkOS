@@ -1,17 +1,19 @@
 #include "log.h"
 
-#include "io.h"
-#include "time.h"
+#include "com.h"
 #include "font.h"
+#include "io.h"
 #include "lock.h"
+#include "pmm.h"
 #include "smp.h"
+#include "time.h"
 
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/io.h>
 #include <sys/gfx.h>
+#include <sys/io.h>
 #include <sys/proc.h>
 
 #include <common/version.h>
@@ -74,10 +76,7 @@ static void log_write_to_buffer(const char* str)
     while (*ptr != '\0')
     {
 #if CONFIG_LOG_SERIAL
-        while ((io_inb(LOG_PORT + 5) & 0x20) == 0)
-        {
-        }
-        io_outb(LOG_PORT, *ptr);
+        com_write(COM1, *ptr);
 #endif
 
         buffer[writeIndex] = *ptr;
@@ -192,19 +191,6 @@ static void log_print_va(const char* string, va_list args)
     log_write_to_buffer(buffer);
 }
 
-#if CONFIG_LOG_SERIAL
-static void log_serial_init()
-{
-    io_outb(LOG_PORT + 1, 0x00);
-    io_outb(LOG_PORT + 3, 0x80);
-    io_outb(LOG_PORT + 0, 0x03);
-    io_outb(LOG_PORT + 1, 0x00);
-    io_outb(LOG_PORT + 3, 0x03);
-    io_outb(LOG_PORT + 2, 0xC7);
-    io_outb(LOG_PORT + 4, 0x0B);
-}
-#endif
-
 void log_init(void)
 {
     writeIndex = 0;
@@ -213,7 +199,7 @@ void log_init(void)
     lock_init(&lock);
 
 #if CONFIG_LOG_SERIAL
-    log_serial_init();
+    com_init(COM1);
 #endif
 
     log_print(OS_NAME " - " OS_VERSION "");
@@ -230,16 +216,16 @@ void log_enable_screen(gop_buffer_t* gopBuffer)
         surface.width = gopBuffer->width;
         surface.height = gopBuffer->height;
         surface.stride = gopBuffer->stride;
-        memset(gopBuffer->base, 0, gopBuffer->size);
-
-        point.x = 0;
-        point.y = 0;
 
         font.foreground = 0xFFA3A4A3;
         font.background = 0xFF000000;
         font.scale = 1;
         font.glyphs = font_get() + sizeof(psf_header_t);
     }
+
+    point.x = 0;
+    point.y = 0;
+    memset(surface.buffer, 0, surface.stride * surface.height * sizeof(pixel_t));
 
     log_write_to_screen(buffer);
 
@@ -256,12 +242,12 @@ void log_enable_time(void)
     timeEnabled = true;
 }
 
-void log_panic(const char* string, ...)
+NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
 {
     asm volatile("cli");
     if (smp_initialized())
     {
-        smp_send_ipi_to_others(IPI_HALT);
+        smp_halt_others();
     }
 
     if (surface.buffer != NULL && !screenEnabled)
@@ -269,12 +255,39 @@ void log_panic(const char* string, ...)
         log_enable_screen(NULL);
     }
 
-    log_print("!!! KERNEL PANIC !!!");
-
+    char buffer[MAX_PATH];
+    strcpy(buffer, "!!! KERNEL PANIC - ");
+    strcat(buffer, string);
+    strcat(buffer, " !!!");
     va_list args;
     va_start(args, string);
-    log_print_va(string, args);
+    log_print_va(buffer, args);
     va_end(args);
+
+    if (smp_initialized())
+    {
+        log_print("Occured on cpu %d", smp_self_unsafe()->id);
+    }
+    else
+    {
+        log_print("Occured before smp init, assumed cpu 0");
+    }
+
+    log_print("pmm: free %d, reserved %d", pmm_free_amount(), pmm_reserved_amount());
+
+    if (trapFrame != NULL)
+    {
+        log_print("Trap Frame:");
+        log_print("ss %a, rsp %a, rflags %a, cs %a, rip %a", trapFrame->ss, trapFrame->rsp, trapFrame->rflags, trapFrame->cs,
+            trapFrame->rip);
+        log_print("error code %a, vector %a", trapFrame->errorCode, trapFrame->vector);
+        log_print("rax %a, rbx %a, rcx %a, rdx %a, rsi %a, rdi %a, rbp %a", trapFrame->rax, trapFrame->rbx, trapFrame->rcx,
+            trapFrame->rdx, trapFrame->rsi, trapFrame->rdi, trapFrame->rbp);
+        log_print("r8 %a, r9 %a, r10 %a, r11 %a, r12 %a, r13 %a, r14 %a, r15 %a", trapFrame->r8, trapFrame->r9, trapFrame->r10,
+            trapFrame->r11, trapFrame->r12, trapFrame->r13, trapFrame->r14, trapFrame->r15);
+    }
+
+    log_print("Please restart your machine");
 
     while (1)
     {

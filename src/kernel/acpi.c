@@ -1,15 +1,14 @@
-#include "rsdt.h"
+#include "acpi.h"
 
-#include "debug.h"
-#include "vmm.h"
 #include "log.h"
+#include "vmm.h"
 
 #include <string.h>
 
 static uint64_t tableAmount;
 static xsdt_t* xsdt;
 
-static bool rsdt_valid_checksum(void* table, uint64_t length)
+static bool acpi_valid_checksum(void* table, uint64_t length)
 {
     int8_t sum = 0;
     for (uint64_t i = 0; i < length; i++)
@@ -20,31 +19,31 @@ static bool rsdt_valid_checksum(void* table, uint64_t length)
     return sum == 0;
 }
 
-void rsdt_init(xsdp_t* xsdp)
+void acpi_init(xsdp_t* xsdp)
 {
     xsdp = VMM_LOWER_TO_HIGHER(xsdp);
 
-    DEBUG_ASSERT(xsdp->revision == ACPI_REVISION_2_0, "revision");
-    DEBUG_ASSERT(rsdt_valid_checksum(xsdp, xsdp->length), "checksum");
+    LOG_ASSERT(xsdp->revision == ACPI_REVISION_2_0, "Invalid ACPI revision");
+    LOG_ASSERT(acpi_valid_checksum(xsdp, xsdp->length), "Invalid XSDP checksum");
 
     xsdt = VMM_LOWER_TO_HIGHER((void*)xsdp->xsdtAddress);
-    tableAmount = (xsdt->header.length - sizeof(sdt_t)) / 8;
+    tableAmount = (xsdt->header.length - sizeof(sdt_t)) / sizeof(void*);
 
     log_print("Found ACPI tables:");
     for (uint64_t i = 0; i < tableAmount; i++)
     {
         sdt_t* table = VMM_LOWER_TO_HIGHER(xsdt->tables[i]);
 
-        char string[5];
-        memcpy(string, table->signature, 4);
-        string[4] = '\0';
-        log_print("ACPI: %s %a", string, VMM_HIGHER_TO_LOWER(table));
+        char signature[5];
+        memcpy(signature, table->signature, 4);
+        signature[4] = '\0';
+        log_print("ACPI: %s %a", signature, VMM_HIGHER_TO_LOWER(table));
 
-        DEBUG_ASSERT(rsdt_valid_checksum(table, table->length), "table");
+        LOG_ASSERT(acpi_valid_checksum(table, table->length), "ACPI: %s, invalid checksum", signature);
     }
 }
 
-sdt_t* rsdt_lookup(const char* signature)
+sdt_t* acpi_lookup(const char* signature)
 {
     for (uint64_t i = 0; i < tableAmount; i++)
     {

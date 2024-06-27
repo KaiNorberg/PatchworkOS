@@ -1,13 +1,12 @@
 #include "vmm.h"
 
 #include "common/boot_info.h"
-#include "debug.h"
 #include "lock.h"
+#include "log.h"
 #include "pmm.h"
 #include "regs.h"
 #include "sched.h"
 #include "utils.h"
-#include "log.h"
 
 #include <stdlib.h>
 
@@ -59,7 +58,7 @@ static void* space_find_free_region(space_t* space, uint64_t length)
         }
     }
 
-    debug_panic("Address space filled, you must have ran this on a super computer... dont do that.");
+    log_panic(NULL, "Address space filled, you must have ran this on a super computer... dont do that.");
 }
 
 void space_init(space_t* space)
@@ -106,11 +105,18 @@ void vmm_init(efi_mem_map_t* memoryMap, gop_buffer_t* gopBuffer)
     gopBuffer->base = vmm_kernel_map(NULL, gopBuffer->base, gopBuffer->size);
 }
 
+void vmm_cpu_init(void)
+{
+    cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);
+}
+
 void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t length)
 {
     if (virtAddr == NULL)
     {
         virtAddr = VMM_LOWER_TO_HIGHER(physAddr);
+
+        log_print("vmm: map lower [mem %a-%a] to higher", physAddr, ((uintptr_t)physAddr) + length);
     }
 
     pml_map(kernelPageTable, virtAddr, physAddr, SIZE_IN_PAGES(length), PAGE_WRITE | VMM_KERNEL_PAGES);

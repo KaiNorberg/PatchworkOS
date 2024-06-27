@@ -1,7 +1,7 @@
 #pragma once
 
+#include "acpi.h"
 #include "defs.h"
-#include "rsdt.h"
 
 #define HPET_COUNTER_CLOCK_OFFSET 0x20
 

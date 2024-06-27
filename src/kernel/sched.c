@@ -1,13 +1,12 @@
 #include "sched.h"
 
 #include "apic.h"
-#include "debug.h"
 #include "gdt.h"
 #include "list.h"
 #include "loader.h"
+#include "log.h"
 #include "smp.h"
 #include "time.h"
-#include "log.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -18,12 +17,12 @@ static void sched_push(thread_t* thread)
     uint64_t best = 0;
     for (int64_t i = smp_cpu_amount() - 1; i >= 0; i--)
     {
-        const scheduler_t* scheduler = &smp_cpu(i)->scheduler;
+        const sched_context_t* context = &smp_cpu(i)->schedContext;
 
-        int64_t length = (int64_t)(scheduler->runningThread != 0);
+        int64_t length = (int64_t)(context->runningThread != 0);
         for (uint64_t p = THREAD_PRIORITY_MIN; p <= THREAD_PRIORITY_MAX; p++)
         {
-            length += queue_length(&scheduler->queues[p]);
+            length += queue_length(&context->queues[p]);
         }
 
         if (length == 0) // Bias towards idle cpus
@@ -39,16 +38,16 @@ static void sched_push(thread_t* thread)
     }
 
     thread->state = THREAD_STATE_ACTIVE;
-    queue_push(&smp_cpu(best)->scheduler.queues[thread->priority], thread);
+    queue_push(&smp_cpu(best)->schedContext.queues[thread->priority], thread);
 }
 
-static thread_t* sched_next_thread(scheduler_t* scheduler)
+static thread_t* sched_next_thread(sched_context_t* context)
 {
-    if (scheduler->runningThread != NULL && scheduler->runningThread->timeEnd > time_uptime())
+    if (context->runningThread != NULL && context->runningThread->timeEnd > time_uptime())
     {
-        for (int64_t i = THREAD_PRIORITY_MAX; i > scheduler->runningThread->priority; i--)
+        for (int64_t i = THREAD_PRIORITY_MAX; i > context->runningThread->priority; i--)
         {
-            thread_t* thread = queue_pop(&scheduler->queues[i]);
+            thread_t* thread = queue_pop(&context->queues[i]);
             if (thread != NULL)
             {
                 return thread;
@@ -59,7 +58,7 @@ static thread_t* sched_next_thread(scheduler_t* scheduler)
     {
         for (int64_t i = THREAD_PRIORITY_MAX; i >= THREAD_PRIORITY_MIN; i--)
         {
-            thread_t* thread = queue_pop(&scheduler->queues[i]);
+            thread_t* thread = queue_pop(&context->queues[i]);
             if (thread != NULL)
             {
                 return thread;
@@ -70,31 +69,31 @@ static thread_t* sched_next_thread(scheduler_t* scheduler)
     return NULL;
 }
 
-static void sched_switch_thread(trap_frame_t* trapFrame, scheduler_t* scheduler, thread_t* next)
+static void sched_switch_thread(trap_frame_t* trapFrame, sched_context_t* context, thread_t* next)
 {
-    if (scheduler->runningThread == NULL) // Load next thread or idle if (next == NULL)
+    if (context->runningThread == NULL) // Load next thread or idle if (next == NULL)
     {
         thread_load(next, trapFrame);
-        scheduler->runningThread = next;
+        context->runningThread = next;
     }
     else
     {
         if (next != NULL) // Switch to next
         {
-            thread_save(scheduler->runningThread, trapFrame);
-            queue_push(&scheduler->queues[scheduler->runningThread->priority], scheduler->runningThread);
-            scheduler->runningThread = NULL;
+            thread_save(context->runningThread, trapFrame);
+            queue_push(&context->queues[context->runningThread->priority], context->runningThread);
+            context->runningThread = NULL;
 
             thread_load(next, trapFrame);
-            scheduler->runningThread = next;
+            context->runningThread = next;
         }
-        else if (scheduler->runningThread->state == THREAD_STATE_PAUSE) // Pause
+        else if (context->runningThread->state == THREAD_STATE_PAUSE) // Pause
         {
-            scheduler->runningThread->state = THREAD_STATE_ACTIVE;
+            context->runningThread->state = THREAD_STATE_ACTIVE;
 
-            thread_save(scheduler->runningThread, trapFrame);
-            queue_push(&scheduler->queues[scheduler->runningThread->priority], scheduler->runningThread);
-            scheduler->runningThread = NULL;
+            thread_save(context->runningThread, trapFrame);
+            queue_push(&context->queues[context->runningThread->priority], context->runningThread);
+            context->runningThread = NULL;
 
             thread_load(NULL, trapFrame);
         }
@@ -111,17 +110,17 @@ static void sched_spawn_init_thread(void)
     thread_t* thread = thread_new(process, NULL, THREAD_PRIORITY_MAX);
     thread->timeEnd = UINT64_MAX;
 
-    smp_self_unsafe()->scheduler.runningThread = thread;
+    smp_self_unsafe()->schedContext.runningThread = thread;
 }
 
-void scheduler_init(scheduler_t* scheduler)
+void sched_context_init(sched_context_t* context)
 {
     for (uint64_t i = THREAD_PRIORITY_MIN; i <= THREAD_PRIORITY_MAX; i++)
     {
-        queue_init(&scheduler->queues[i]);
+        queue_init(&context->queues[i]);
     }
-    list_init(&scheduler->graveyard);
-    scheduler->runningThread = NULL;
+    list_init(&context->graveyard);
+    context->runningThread = NULL;
 }
 
 void sched_start(void)
@@ -141,14 +140,14 @@ void sched_cpu_start(void)
 
 thread_t* sched_thread(void)
 {
-    thread_t* thread = smp_self()->scheduler.runningThread;
+    thread_t* thread = smp_self()->schedContext.runningThread;
     smp_put();
     return thread;
 }
 
 process_t* sched_process(void)
 {
-    process_t* process = smp_self()->scheduler.runningThread->process;
+    process_t* process = smp_self()->schedContext.runningThread->process;
     smp_put();
     return process;
 }
@@ -162,7 +161,7 @@ void sched_yield(void)
 
 void sched_pause(void)
 {
-    thread_t* thread = smp_self()->scheduler.runningThread;
+    thread_t* thread = smp_self()->schedContext.runningThread;
     thread->timeEnd = 0;
     thread->state = THREAD_STATE_PAUSE;
     smp_put();
@@ -173,23 +172,23 @@ void sched_process_exit(uint64_t status)
 {
     // TODO: Add handling for status
 
-    scheduler_t* scheduler = &smp_self()->scheduler;
-    scheduler->runningThread->state = THREAD_STATE_KILLED;
-    scheduler->runningThread->process->killed = true;
+    sched_context_t* context = &smp_self()->schedContext;
+    context->runningThread->state = THREAD_STATE_KILLED;
+    context->runningThread->process->killed = true;
     smp_put();
 
     sched_yield();
-    debug_panic("Returned from process_exit");
+    log_panic(NULL, "returned from process_exit");
 }
 
 void sched_thread_exit(void)
 {
-    scheduler_t* scheduler = &smp_self()->scheduler;
-    scheduler->runningThread->state = THREAD_STATE_KILLED;
+    sched_context_t* context = &smp_self()->schedContext;
+    context->runningThread->state = THREAD_STATE_KILLED;
     smp_put();
 
     sched_yield();
-    debug_panic("Returned from thread_exit");
+    log_panic(NULL, "returned from thread_exit");
 }
 
 pid_t sched_spawn(const char* path, uint8_t priority)
@@ -216,12 +215,12 @@ tid_t sched_thread_spawn(void* entry, uint8_t priority)
 
 uint64_t sched_local_thread_amount(void)
 {
-    const scheduler_t* scheduler = &smp_self()->scheduler;
+    const sched_context_t* context = &smp_self()->schedContext;
 
-    uint64_t length = (scheduler->runningThread != NULL);
+    uint64_t length = (context->runningThread != NULL);
     for (uint64_t i = THREAD_PRIORITY_MIN; i <= THREAD_PRIORITY_MAX; i++)
     {
-        length += queue_length(&scheduler->queues[i]);
+        length += queue_length(&context->queues[i]);
     }
 
     smp_put();
@@ -231,7 +230,7 @@ uint64_t sched_local_thread_amount(void)
 void sched_schedule(trap_frame_t* trapFrame)
 {
     cpu_t* self = smp_self();
-    scheduler_t* scheduler = &self->scheduler;
+    sched_context_t* context = &self->schedContext;
 
     if (self->trapDepth != 0)
     {
@@ -241,7 +240,7 @@ void sched_schedule(trap_frame_t* trapFrame)
 
     while (1)
     {
-        thread_t* thread = list_pop(&scheduler->graveyard);
+        thread_t* thread = list_pop(&context->graveyard);
         if (thread == NULL)
         {
             break;
@@ -250,22 +249,22 @@ void sched_schedule(trap_frame_t* trapFrame)
         thread_free(thread);
     }
 
-    thread_state_t state = scheduler->runningThread != NULL ? scheduler->runningThread->state : THREAD_STATE_NONE;
+    thread_state_t state = context->runningThread != NULL ? context->runningThread->state : THREAD_STATE_NONE;
     if (state == THREAD_STATE_KILLED)
     {
-        list_push(&scheduler->graveyard, scheduler->runningThread);
-        scheduler->runningThread = NULL;
+        list_push(&context->graveyard, context->runningThread);
+        context->runningThread = NULL;
     }
 
     thread_t* next;
     while (true)
     {
-        next = sched_next_thread(scheduler);
+        next = sched_next_thread(context);
 
         // If next has been killed and is in userspace kill next.
         if (next != NULL && next->process->killed && next->trapFrame.cs != GDT_KERNEL_CODE)
         {
-            list_push(&scheduler->graveyard, next);
+            list_push(&context->graveyard, next);
             next = NULL;
         }
         else
@@ -274,7 +273,7 @@ void sched_schedule(trap_frame_t* trapFrame)
         }
     }
 
-    sched_switch_thread(trapFrame, scheduler, next);
+    sched_switch_thread(trapFrame, context, next);
 
     smp_put();
 }

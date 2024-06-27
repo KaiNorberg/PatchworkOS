@@ -31,6 +31,8 @@ void space_load(space_t* space);
 
 void vmm_init(efi_mem_map_t* memoryMap, gop_buffer_t* gopBuffer);
 
+void vmm_cpu_init(void);
+
 void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t length);
 
 void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot);
