@@ -3,7 +3,7 @@
 #include "defs.h"
 #include "trap.h"
 
-#include <common/boot_info.h>
+#include <bootloader/boot_info.h>
 
 #define LOG_BUFFER_LENGTH 0x1000
 

@@ -1,28 +1,23 @@
-#include <common/boot_info.h>
-#include <efi.h>
-#include <efilib.h>
-
-#include "fs.h"
 #include "gop.h"
 #include "loader.h"
-#include "mem.h"
 #include "ram_disk.h"
 #include "rsdp.h"
 #include "vm.h"
-#include "x86_64/efibind.h"
 
-void* boot_info_populate(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, boot_info_t* bootInfo)
+#include <bootloader/boot_info.h>
+
+#include <efi.h>
+#include <efilib.h>
+
+static void boot_info_populate(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, boot_info_t* bootInfo)
 {
     gop_buffer_init(&bootInfo->gopBuffer);
     bootInfo->ramRoot = ram_disk_load(imageHandle);
     bootInfo->rsdp = rsdp_get(systemTable);
     bootInfo->runtimeServices = systemTable->RuntimeServices;
-
-    void* entry = load_kernel(L"/boot/kernel", imageHandle);
+    bootInfo->kernelEntry = loader_load_kernel(L"/boot/kernel", imageHandle);
 
     vm_map_init(&bootInfo->memoryMap);
-
-    return entry;
 }
 
 EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
@@ -33,10 +28,10 @@ EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
     vm_init();
 
     boot_info_t* bootInfo = vm_alloc(sizeof(boot_info_t), EFI_MEM_BOOT_INFO);
-    void* entry = boot_info_populate(imageHandle, systemTable, bootInfo);
+    boot_info_populate(imageHandle, systemTable, bootInfo);
 
-    uefi_call_wrapper(gBS->ExitBootServices, 1, imageHandle, bootInfo->memoryMap.key);
+    uefi_call_wrapper(BS->ExitBootServices, 2, imageHandle, bootInfo->memoryMap.key);
+    bootInfo->kernelEntry(bootInfo);
 
-    jump_to_kernel(entry, bootInfo);
     return EFI_ABORTED;
 }

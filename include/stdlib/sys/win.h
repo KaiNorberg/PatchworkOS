@@ -21,12 +21,14 @@ extern "C"
 
 typedef uint64_t msg_t;
 
-typedef struct msg_keyboard
+typedef struct msg_mouse
 {
     nsec_t time;
-    uint8_t type;
-    uint8_t code;
-} msg_keyboard_t;
+    uint8_t buttons;
+    point_t pos;
+    int16_t deltaX;
+    int16_t deltaY;
+} msg_mouse_t;
 
 #define MSG_MAX_DATA 48
 

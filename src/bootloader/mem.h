@@ -5,7 +5,7 @@
 #include <efi.h>
 #include <efilib.h>
 
-#include <common/boot_info.h>
+#include <bootloader/boot_info.h>
 
 void* mem_alloc_pages(uint64_t pageAmount, uint64_t memoryType);
 

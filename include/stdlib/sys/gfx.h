@@ -68,7 +68,7 @@ void gfx_transfer(surface_t* dest, const surface_t* src, const rect_t* destRect,
 
 void gfx_transfer_blend(surface_t* dest, const surface_t* src, const rect_t* destRect, const point_t* srcPoint);
 
-void gfx_swap(surface_t* dest, const surface_t* src);
+void gfx_swap(surface_t* dest, const surface_t* src, const rect_t* rect);
 
 void gfx_invalidate(surface_t* surface, const rect_t* rect);
 

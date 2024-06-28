@@ -18,6 +18,9 @@ int main(void)
     spawn("home:/bin/taskbar");
 
     spawn("home:/bin/calculator");
+    spawn("home:/bin/calculator");
+    spawn("home:/bin/calculator");
+    spawn("home:/bin/calculator");
 
     while (win_dispatch(wallpaper, NEVER) != LMSG_QUIT)
     {

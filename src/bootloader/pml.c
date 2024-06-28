@@ -1,6 +1,6 @@
 #include "pml.h"
 
-#include <common/boot_info.h>
+#include <bootloader/boot_info.h>
 
 #include "mem.h"
 

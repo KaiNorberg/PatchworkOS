@@ -28,7 +28,7 @@ void message_queue_push(message_queue_t* queue, msg_t type, const void* data, ui
     };
     if (data != NULL)
     {
-        memcpy(queue->queue[queue->writeIndex].data, data, size);
+        memcpy(message.data, data, size);
     }
 
     queue->queue[queue->writeIndex] = message;

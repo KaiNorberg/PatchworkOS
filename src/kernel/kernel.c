@@ -3,18 +3,15 @@
 #include "acpi.h"
 #include "apic.h"
 #include "const.h"
-#include "dwm.h"
+#include "dwm/dwm.h"
 #include "gdt.h"
 #include "hpet.h"
-
 #include "idt.h"
 #include "log.h"
 #include "madt.h"
 #include "pic.h"
 #include "pmm.h"
-#include "ps2.h"
-#include "ps2_keyboard.h"
-#include "ps2_mouse.h"
+#include "ps2/ps2.h"
 #include "ramfs.h"
 #include "regs.h"
 #include "sched.h"
@@ -24,8 +21,8 @@
 #include "time.h"
 #include "vfs.h"
 #include "vmm.h"
-#include <common/boot_info.h>
 
+#include <bootloader/boot_info.h>
 #include <stdlib_internal/init.h>
 
 void kernel_init(boot_info_t* bootInfo)
@@ -61,11 +58,8 @@ void kernel_init(boot_info_t* bootInfo)
     sysfs_init();
     ramfs_init(bootInfo->ramRoot);
 
-    ps2_init();
-    ps2_keyboard_init();
-    ps2_mouse_init();
-
     const_init();
+    ps2_init();
     dwm_init(&bootInfo->gopBuffer);
 
     pmm_free_type(EFI_MEM_BOOT_INFO);

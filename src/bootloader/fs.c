@@ -13,9 +13,7 @@ EFI_FILE* fs_open_root_volume(EFI_HANDLE imageHandle)
     EFI_FILE* volume;
 
     uefi_call_wrapper(BS->HandleProtocol, 3, imageHandle, &lipGuid, (void**)&loaded_image);
-
     uefi_call_wrapper(BS->HandleProtocol, 3, loaded_image->DeviceHandle, &fsGuid, (VOID*)&IOVolume);
-
     uefi_call_wrapper(IOVolume->OpenVolume, 2, IOVolume, &volume);
 
     return volume;

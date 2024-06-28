@@ -19,8 +19,7 @@ uint64_t procedure(win_t* window, msg_t type, void* data)
         surface_t surface;
         win_client_surface(window, &surface);
 
-        rect_t rect;
-        RECT_INIT_DIM(&rect, 0, 0, surface.width, surface.height);
+        rect_t rect = RECT_INIT_DIM(0, 0, surface.width, surface.height);
 
         gfx_rect(&surface, &rect, 0xFF007E81);
 

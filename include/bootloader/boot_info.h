@@ -86,11 +86,12 @@ typedef struct ram_dir_t
     struct ram_dir_t* prev;
 } ram_dir_t;
 
-typedef struct
+typedef struct boot_info
 {
     efi_mem_map_t memoryMap;
     gop_buffer_t gopBuffer;
     ram_dir_t* ramRoot;
     void* rsdp;
     void* runtimeServices;
+    void (*kernelEntry)(struct boot_info*);
 } boot_info_t;

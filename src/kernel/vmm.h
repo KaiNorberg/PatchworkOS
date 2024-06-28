@@ -1,12 +1,12 @@
 #pragma once
 
-#include <common/boot_info.h>
-
-#include <sys/proc.h>
-
 #include "defs.h"
 #include "lock.h"
 #include "pml.h"
+
+#include <bootloader/boot_info.h>
+
+#include <sys/proc.h>
 
 #define VMM_HIGHER_HALF_BASE 0xFFFF800000000000
 #define VMM_LOWER_HALF_MAX 0x800000000000

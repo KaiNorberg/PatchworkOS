@@ -1,14 +1,13 @@
 #include "loader.h"
 
-#include <stddef.h>
 #include <stdint.h>
 #include <sys/elf.h>
 
 #include "fs.h"
-#include "pml.h"
+#include "mem.h"
 #include "vm.h"
 
-void* load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
+void* loader_load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
 {
     Print(L"Loading kernel...\n");
 
@@ -86,10 +85,4 @@ void* load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
     fs_close(file);
 
     return (void*)header.entry;
-}
-
-void jump_to_kernel(void* entry, boot_info_t* bootInfo)
-{
-    void (*main)(boot_info_t*) = ((void (*)(boot_info_t*))entry);
-    main(bootInfo);
 }

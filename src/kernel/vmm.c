@@ -1,6 +1,5 @@
 #include "vmm.h"
 
-#include "common/boot_info.h"
 #include "lock.h"
 #include "log.h"
 #include "pmm.h"

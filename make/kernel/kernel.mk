@@ -3,6 +3,8 @@ KERNEL_OUT = bin/kernel/kernel
 KERNEL_SRC = \
 	$(wildcard src/kernel/*.c) \
 	$(wildcard src/kernel/*.s) \
+	$(wildcard src/kernel/*/*.c) \
+	$(wildcard src/kernel/*/*.s) \
 	$(wildcard src/stdlib/*.c) \
 	$(wildcard src/stdlib/*.s)
 

@@ -57,8 +57,7 @@ void gfx_fbmp(surface_t* surface, const fbmp_t* fbmp, const point_t* point)
         }
     }
 
-    rect_t rect;
-    RECT_INIT_DIM(&rect, point->x, point->x, fbmp->width, fbmp->height);
+    rect_t rect = RECT_INIT_DIM(point->x, point->x, fbmp->width, fbmp->height);
     gfx_invalidate(surface, &rect);
 }
 
@@ -252,11 +251,14 @@ void gfx_transfer_blend(surface_t* dest, const surface_t* src, const rect_t* des
     gfx_invalidate(dest, destRect);
 }
 
-void gfx_swap(surface_t* dest, const surface_t* src)
+void gfx_swap(surface_t* dest, const surface_t* src, const rect_t* rect)
 {
-    for (uint64_t y = 0; y < dest->height; y++)
+    for (int32_t y = 0; y < RECT_HEIGHT(rect); y++)
     {
-        memcpy(&dest->buffer[y * dest->stride], &src->buffer[y * src->stride], dest->width * sizeof(pixel_t));
+        uint64_t offset = (rect->left * sizeof(pixel_t)) + (y + rect->top) * sizeof(pixel_t) * dest->stride;
+
+        memcpy((void*)((uint64_t)dest->buffer + offset), (void*)((uint64_t)src->buffer + offset),
+            RECT_WIDTH(rect) * sizeof(pixel_t));
     }
 }
 

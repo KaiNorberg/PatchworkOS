@@ -2,6 +2,8 @@
 
 #include "io.h"
 #include "log.h"
+#include "ps2/keyboard.h"
+#include "ps2/mouse.h"
 #include "time.h"
 
 void ps2_init(void)
@@ -24,6 +26,9 @@ void ps2_init(void)
 
     ps2_cmd(PS2_CMD_KEYBOARD_ENABLE);
     ps2_cmd(PS2_CMD_AUX_ENABLE);
+
+    ps2_keyboard_init();
+    ps2_mouse_init();
 }
 
 uint8_t ps2_read(void)

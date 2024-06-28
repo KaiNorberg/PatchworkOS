@@ -1,4 +1,4 @@
-#include "ps2_keyboard.h"
+#include "keyboard.h"
 
 #include "io.h"
 #include "irq.h"

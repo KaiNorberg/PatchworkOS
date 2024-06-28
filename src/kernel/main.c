@@ -1,4 +1,4 @@
-#include <common/boot_info.h>
+#include <bootloader/boot_info.h>
 
 #include "defs.h"
 #include "kernel.h"

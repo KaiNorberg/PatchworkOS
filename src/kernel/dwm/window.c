@@ -1,7 +1,9 @@
 #include "window.h"
 
+#include "_AUX/rect_t.h"
 #include "dwm.h"
 #include "sched.h"
+#include "sys/gfx.h"
 
 #include <errno.h>
 #include <stdlib.h>
@@ -67,6 +69,7 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* buffer, uint6
             window->surface.buffer = calloc(move->width * move->height, sizeof(pixel_t));
         }
 
+        window->moved = true;
         dwm_redraw();
         return 0;
     }
@@ -90,6 +93,9 @@ static uint64_t window_flush(file_t* file, const void* buffer, uint64_t size, co
     if (rectIn == NULL)
     {
         memcpy(window->surface.buffer, buffer, size);
+
+        rect_t rect = RECT_INIT_SURFACE(&window->surface);
+        gfx_invalidate(&window->surface, &rect);
     }
     else
     {
@@ -112,6 +118,8 @@ static uint64_t window_flush(file_t* file, const void* buffer, uint64_t size, co
             memcpy((void*)((uint64_t)window->surface.buffer + offset), (void*)((uint64_t)buffer + offset),
                 (rect.right - rect.left) * sizeof(pixel_t));
         }
+
+        gfx_invalidate(&window->surface, &rect);
     }
 
     window->invalid = true;
@@ -140,10 +148,13 @@ window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, win_ty
     window->surface.width = width;
     window->surface.height = height;
     window->surface.stride = width;
+    window->surface.invalidArea = (rect_t){0};
+    window->invalid = false;
+    window->moved = false;
+    window->prevRect = RECT_INIT_DIM(pos->x, pos->y, width, height);
     window->type = type;
     lock_init(&window->lock);
     message_queue_init(&window->messages);
-    window->invalid = true;
 
     return window;
 }

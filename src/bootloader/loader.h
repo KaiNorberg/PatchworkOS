@@ -3,12 +3,6 @@
 #include <efi.h>
 #include <efilib.h>
 
-#include <common/boot_info.h>
+#include <bootloader/boot_info.h>
 
-#include "gop.h"
-#include "mem.h"
-#include "ram_disk.h"
-
-void* load_kernel(CHAR16* path, EFI_HANDLE imageHandle);
-
-void jump_to_kernel(void* entry, boot_info_t* bootInfo);
+void* loader_load_kernel(CHAR16* path, EFI_HANDLE imageHandle);

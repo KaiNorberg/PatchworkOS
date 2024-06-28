@@ -15,6 +15,8 @@ typedef struct window
     surface_t surface;
     win_type_t type;
     bool invalid;
+    bool moved;
+    rect_t prevRect;
     lock_t lock;
     message_queue_t messages;
 } window_t;

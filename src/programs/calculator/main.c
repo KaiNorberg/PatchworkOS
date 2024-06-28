@@ -22,9 +22,7 @@ uint64_t procedure(win_t* window, msg_t type, void* data)
         surface_t surface;
         win_client_surface(window, &surface);
 
-        rect_t rect;
-        RECT_INIT(&rect, 5, 5, surface.width - 5, 5 + 40);
-
+        rect_t rect = RECT_INIT(5, 5, surface.width - 5, 5 + 40);
         gfx_rect(&surface, &rect, theme.background);
         gfx_edge(&surface, &rect, theme.edgeWidth, theme.shadow, theme.highlight);
 
@@ -44,8 +42,7 @@ int main(void)
 {
     win_default_theme(&theme);
 
-    rect_t rect;
-    RECT_INIT_DIM(&rect, 500, 200, WINDOW_WIDTH, WINDOW_HEIGHT);
+    rect_t rect = RECT_INIT_DIM(500 * (1 + getpid() % 2), 200, WINDOW_WIDTH, WINDOW_HEIGHT);
     win_client_to_window(&rect, &theme, WIN_WINDOW);
 
     win_t* window = win_new("Calculator", &rect, &theme, procedure, WIN_WINDOW);

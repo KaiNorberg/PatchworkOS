@@ -1,4 +1,4 @@
-#include "ps2_mouse.h"
+#include "mouse.h"
 
 #include "io.h"
 #include "irq.h"

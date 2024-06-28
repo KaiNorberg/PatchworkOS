@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include <common/boot_info.h>
+#include <bootloader/boot_info.h>
 
 #define HIGHER_HALF_BASE 0xFFFF800000000000
 

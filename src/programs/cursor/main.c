@@ -29,8 +29,7 @@ static win_t* cursor_create(void)
 {
     rect_t screenRect;
     win_screen_rect(&screenRect);
-    rect_t rect;
-    RECT_INIT_DIM(&rect, RECT_WIDTH(&screenRect) / 2, RECT_HEIGHT(&screenRect) / 2, image->width, image->height);
+    rect_t rect = RECT_INIT_DIM(RECT_WIDTH(&screenRect) / 2, RECT_HEIGHT(&screenRect) / 2, image->width, image->height);
 
     win_t* cursor = win_new("Cursor", &rect, NULL, procedure, WIN_CURSOR);
     if (cursor == NULL)

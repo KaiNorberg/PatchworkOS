@@ -6,6 +6,7 @@
 #include <sys/gfx.h>
 #include <sys/io.h>
 #include <sys/math.h>
+#include <sys/mouse.h>
 
 typedef struct win win_t;
 
@@ -22,8 +23,27 @@ typedef struct win
     win_type_t type;
     procedure_t procedure;
     win_theme_t theme;
+    bool selected;
     char name[MAX_PATH];
 } win_t;
+
+static void win_draw_topbar(win_t* window)
+{
+    surface_t surface;
+    win_window_surface(window, &surface);
+    rect_t localArea = RECT_INIT_SURFACE(&surface);
+
+    rect_t topBar = (rect_t){
+        .left = localArea.left + window->theme.edgeWidth,
+        .top = localArea.top + window->theme.edgeWidth,
+        .right = localArea.right - window->theme.edgeWidth,
+        .bottom = localArea.top + window->theme.topbarHeight + window->theme.edgeWidth,
+    };
+    gfx_rect(&surface, &topBar, window->selected ? window->theme.selected : window->theme.unSelected);
+    gfx_edge(&surface, &topBar, window->theme.edgeWidth, window->theme.shadow, window->theme.highlight);
+
+    win_flush(window, &surface);
+}
 
 static void win_draw_decorations(win_t* window)
 {
@@ -31,25 +51,12 @@ static void win_draw_decorations(win_t* window)
     {
         surface_t surface;
         win_window_surface(window, &surface);
-
-        rect_t localArea = (rect_t){
-            .left = 0,
-            .top = 0,
-            .right = surface.width,
-            .bottom = surface.height,
-        };
+        rect_t localArea = RECT_INIT_SURFACE(&surface);
 
         gfx_rect(&surface, &localArea, window->theme.background);
         gfx_edge(&surface, &localArea, window->theme.edgeWidth, window->theme.highlight, window->theme.shadow);
 
-        rect_t topBar = (rect_t){
-            .left = localArea.left + window->theme.edgeWidth,
-            .top = localArea.top + window->theme.edgeWidth,
-            .right = localArea.right - window->theme.edgeWidth,
-            .bottom = localArea.top + window->theme.topbarHeight + window->theme.edgeWidth,
-        };
-        gfx_rect(&surface, &topBar, window->theme.selected);
-        gfx_edge(&surface, &topBar, window->theme.edgeWidth, window->theme.shadow, window->theme.highlight);
+        win_draw_topbar(window);
 
         win_flush(window, &surface);
     }
@@ -59,6 +66,35 @@ static uint64_t win_background_procedure(win_t* window, msg_t type, void* data)
 {
     switch (type)
     {
+    case MSG_MOUSE:
+    {
+        msg_mouse_t* message = data;
+
+        if (message->buttons & MOUSE_LEFT)
+        {
+            rect_t rect;
+            win_window_area(window, &rect);
+            rect.left += message->deltaX;
+            rect.top += message->deltaY;
+            rect.right += message->deltaX;
+            rect.bottom += message->deltaY;
+
+            win_move(window, &rect);
+        }
+    }
+    break;
+    case MSG_SELECT:
+    {
+        window->selected = true;
+        win_draw_topbar(window);
+    }
+    break;
+    case MSG_DESELECT:
+    {
+        window->selected = false;
+        win_draw_topbar(window);
+    }
+    break;
     case LMSG_REDRAW:
     {
         win_draw_decorations(window);

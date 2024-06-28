@@ -18,10 +18,19 @@ typedef struct
     for ((elem) = (typeof(elem))((list)->head.next); (elem) != (typeof(elem))(list); \
          (elem) = (typeof(elem))(((list_entry_t*)(elem))->next))
 
-// Allows for safely removing elements from the list while iterating over it.
 #define LIST_FOR_EACH_SAFE(elem, temp, list) \
     for ((elem) = (typeof(elem))((list)->head.next), (temp) = (typeof(elem))(((list_entry_t*)(elem))->next); \
          (elem) != (typeof(elem))(list); (elem) = (temp), (temp) = (typeof(elem))(((list_entry_t*)(elem))->next))
+
+#define LIST_FOR_EACH_REVERSE(elem, list) \
+    for ((elem) = (typeof(elem))((list)->head.prev); (elem) != (typeof(elem))(list); \
+         (elem) = (typeof(elem))(((list_entry_t*)(elem))->prev))
+
+#define LIST_FOR_EACH_FROM(elem, start, list) \
+    for ((elem) = (typeof(elem))(start); (elem) != (typeof(elem))(list); (elem) = (typeof(elem))(((list_entry_t*)(elem))->next))
+
+#define LIST_FOR_EACH_FROM_REVERSE(elem, start, list) \
+    for ((elem) = (typeof(elem))(start); (elem) != (typeof(elem))(list); (elem) = (typeof(elem))(((list_entry_t*)(elem))->prev))
 
 static inline void list_entry_init(list_entry_t* entry)
 {
