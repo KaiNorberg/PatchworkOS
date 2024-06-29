@@ -56,8 +56,7 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* buffer, uint6
         const ioctl_win_move_t* move = buffer;
 
         LOCK_GUARD(&window->lock);
-        window->pos.x = move->x;
-        window->pos.y = move->y;
+        window->pos = move->pos;
 
         if (window->surface.width != move->width || window->surface.height != move->height)
         {
@@ -90,8 +89,8 @@ static uint64_t window_flush(file_t* file, const void* buffer, uint64_t size, co
         return ERROR(EBUFFER);
     }
 
-    if (rect->left > rect->right || rect->top > rect->bottom ||
-        rect->right > window->surface.width || rect->bottom > window->surface.height)
+    if (rect->left > rect->right || rect->top > rect->bottom || rect->right > window->surface.width ||
+        rect->bottom > window->surface.height)
     {
         return ERROR(EINVAL);
     }
@@ -131,7 +130,7 @@ window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, win_ty
     window->surface.width = width;
     window->surface.height = height;
     window->surface.stride = width;
-    window->surface.invalidArea = (rect_t){0};
+    window->surface.invalidArea = RECT_INIT_DIM(0, 0, width, height);
     window->invalid = false;
     window->moved = false;
     window->prevRect = RECT_INIT_DIM(pos->x, pos->y, width, height);

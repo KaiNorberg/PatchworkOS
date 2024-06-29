@@ -33,14 +33,6 @@ typedef struct
         (y) + (height), \
     };
 
-#define RECT_INIT_SURFACE(surface) \
-    (rect_t){ \
-        0, \
-        0, \
-        (surface)->width, \
-        (surface)->height, \
-    };
-
 #define RECT_WIDTH(rect) ((rect)->right - (rect)->left)
 #define RECT_HEIGHT(rect) ((rect)->bottom - (rect)->top)
 #define RECT_AREA(rect) (RECT_WIDTH(rect) * RECT_HEIGHT(rect))

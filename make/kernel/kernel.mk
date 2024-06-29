@@ -6,7 +6,9 @@ KERNEL_SRC = \
 	$(wildcard src/kernel/*/*.c) \
 	$(wildcard src/kernel/*/*.s) \
 	$(wildcard src/stdlib/*.c) \
-	$(wildcard src/stdlib/*.s)
+	$(wildcard src/stdlib/*.s) \
+	$(wildcard src/stdlib/*/*.c) \
+	$(wildcard src/stdlib/*/*.s)
 
 KERNEL_OBJ = $(patsubst src/%, build/kernel/%.o, $(KERNEL_SRC))
 

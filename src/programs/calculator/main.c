@@ -46,7 +46,7 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    while (win_dispatch(window, NEVER) != LMSG_QUIT)
+    while (win_receive(window, NEVER) != LMSG_QUIT)
     {
     }
 

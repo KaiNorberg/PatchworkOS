@@ -1,4 +1,4 @@
-%include "stdlib_internal/syscalls.inc"
+%include "kernel/syscalls.inc"
 
 extern syscall_handler_end
 extern syscallTable

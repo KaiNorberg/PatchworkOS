@@ -2,7 +2,9 @@ STD_OUT = bin/stdlib/libstd.a
 
 STD_SRC = \
 	$(wildcard src/stdlib/*.c) \
-	$(wildcard src/stdlib/*.s)
+	$(wildcard src/stdlib/*.s) \
+	$(wildcard src/stdlib/*/*.c) \
+	$(wildcard src/stdlib/*/*.s)
 
 STD_OBJ = $(patsubst src/%, build/stdlib/%.o, $(STD_SRC))
 
@@ -10,7 +12,8 @@ STD_C_FLAGS = $(BASE_C_FLAGS) \
 	-Iinclude/stdlib \
 	-Iinclude/stdlib_internal
 
-STD_ASM_FLAGS = $(BASE_ASM_FLAGS)
+STD_ASM_FLAGS = $(BASE_ASM_FLAGS) \
+	-Isrc/stdlib
 
 build/stdlib/%.c.o: src/%.c
 	$(MKCWD)

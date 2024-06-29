@@ -2,7 +2,7 @@
 #include <string.h>
 #include <sys/math.h>
 
-#include "heap.h"
+#include "internal/heap.h"
 
 #ifdef __EMBED__
 #include "log.h"

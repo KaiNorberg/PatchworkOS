@@ -74,27 +74,7 @@ static void dwm_update_client_area(void)
     clientArea = newArea;
 }
 
-static void dwm_window_rect(window_t* window, rect_t* rect)
-{
-    *rect = RECT_INIT_DIM(window->pos.x, window->pos.y, window->surface.width, window->surface.height);
-}
-
-static void dwm_window_invalid_rect(window_t* window, rect_t* rect)
-{
-    *rect = RECT_INIT_DIM(window->pos.x + window->surface.invalidArea.left, window->pos.y + window->surface.invalidArea.top,
-        RECT_WIDTH(&window->surface.invalidArea), RECT_HEIGHT(&window->surface.invalidArea));
-}
-
-static void dwm_window_transfer(window_t* window, const rect_t* rect)
-{
-    point_t srcPoint = {
-        .x = rect->left - window->pos.x,
-        .y = rect->top - window->pos.y,
-    };
-    gfx_transfer(&backbuffer, &window->surface, rect, &srcPoint);
-}
-
-static void dwm_window_select(window_t* window)
+static void dwm_select(window_t* window)
 {
     if (selected != NULL)
     {
@@ -107,6 +87,9 @@ static void dwm_window_select(window_t* window)
         list_push(&windows, window);
         selected = window;
 
+        selected->moved = true;
+        atomic_store(&redrawNeeded, true);
+
         message_queue_push(&selected->messages, MSG_SELECT, NULL, 0);
     }
     else
@@ -115,156 +98,13 @@ static void dwm_window_select(window_t* window)
     }
 }
 
-static void dwm_window_cleanup(file_t* file)
+static void dwm_transfer(window_t* window, const rect_t* rect)
 {
-    LOCK_GUARD(&lock);
-
-    window_t* window = file->internal;
-
-    if (window == selected)
-    {
-        selected = NULL;
-    }
-
-    switch (window->type)
-    {
-    case WIN_WINDOW:
-    {
-        list_remove(window);
-    }
-    break;
-    case WIN_PANEL:
-    {
-        list_remove(window);
-
-        dwm_update_client_area();
-    }
-    break;
-    case WIN_CURSOR:
-    {
-        cursor = NULL;
-    }
-    break;
-    case WIN_WALL:
-    {
-        wall = NULL;
-    }
-    break;
-    default:
-    {
-        log_panic(NULL, "Invalid window type %d", window->type);
-    }
-    }
-
-    if (wall != NULL)
-    {
-        wall->invalid = true;
-    }
-
-    window_free(window);
-}
-
-static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t length)
-{
-    LOCK_GUARD(&lock);
-
-    switch (request)
-    {
-    case IOCTL_DWM_CREATE:
-    {
-        if (length != sizeof(ioctl_dwm_create_t))
-        {
-            return ERROR(EINVAL);
-        }
-        const ioctl_dwm_create_t* create = buffer;
-
-        window_t* window = window_new(&create->pos, create->width, create->height, create->type);
-        if (window == NULL)
-        {
-            return ERR;
-        }
-
-        LOCK_GUARD(&window->lock);
-
-        switch (window->type)
-        {
-        case WIN_WINDOW:
-        {
-            list_push(&windows, window);
-            log_print("dwm: create window");
-        }
-        break;
-        case WIN_PANEL:
-        {
-            list_push(&panels, window);
-
-            dwm_update_client_area();
-            log_print("dwm: create panel");
-        }
-        break;
-        case WIN_CURSOR:
-        {
-            if (cursor != NULL)
-            {
-                window_free(window);
-                return ERROR(EEXIST);
-            }
-
-            cursor = window;
-            log_print("dwm: create cursor");
-        }
-        break;
-        case WIN_WALL:
-        {
-            if (wall != NULL)
-            {
-                window_free(window);
-                return ERROR(EEXIST);
-            }
-
-            wall = window;
-            log_print("dwm: create wall");
-        }
-        break;
-        default:
-        {
-            log_panic(NULL, "Invalid window type %d", window->type);
-        }
-        }
-
-        window_populate_file(window, file, dwm_window_cleanup);
-
-        // Preserve splash screen on boot, wall will be drawn on first flush.
-        if (window->type != WIN_WALL)
-        {
-            dwm_redraw();
-        }
-        return 0;
-    }
-    case IOCTL_DWM_SIZE:
-    {
-        if (length != sizeof(ioctl_dwm_size_t))
-        {
-            return ERROR(EINVAL);
-        }
-
-        ioctl_dwm_size_t* size = buffer;
-        size->outWidth = RECT_WIDTH(&screenArea);
-        size->outHeight = RECT_HEIGHT(&screenArea);
-
-        return 0;
-    }
-    default:
-    {
-        return ERROR(EREQ);
-    }
-    }
-}
-
-static uint64_t dwm_open(resource_t* resource, file_t* file)
-{
-    file->ops.ioctl = dwm_ioctl;
-    return 0;
+    point_t srcPoint = {
+        .x = rect->left - window->pos.x,
+        .y = rect->top - window->pos.y,
+    };
+    gfx_transfer(&backbuffer, &window->surface, rect, &srcPoint);
 }
 
 static void dwm_redraw_below(window_t* window, const rect_t* rect)
@@ -281,15 +121,13 @@ static void dwm_redraw_below(window_t* window, const rect_t* rect)
         }
         LOCK_GUARD(&other->lock);
 
-        rect_t otherRect;
-        dwm_window_rect(other, &otherRect);
-
+        rect_t otherRect = WINDOW_RECT(other);
         if (RECT_OVERLAP(rect, &otherRect))
         {
             rect_t invalidRect = *rect;
             RECT_FIT(&invalidRect, &otherRect);
 
-            dwm_window_transfer(other, &invalidRect);
+            dwm_transfer(other, &invalidRect);
         }
     }
 }
@@ -301,9 +139,7 @@ static void dwm_invalidate_above(window_t* window, const rect_t* rect)
     {
         LOCK_GUARD(&other->lock);
 
-        rect_t otherRect;
-        dwm_window_rect(other, &otherRect);
-
+        rect_t otherRect = WINDOW_RECT(other);
         if (RECT_OVERLAP(rect, &otherRect))
         {
             rect_t invalidRect = *rect;
@@ -329,7 +165,7 @@ static void dwm_draw_windows(void)
         rect_t rect;
         if (window->moved)
         {
-            dwm_window_rect(window, &rect);
+            rect = WINDOW_RECT(window);
             RECT_FIT(&rect, &clientArea);
 
             rect_subtract_t subtract;
@@ -340,7 +176,7 @@ static void dwm_draw_windows(void)
                 dwm_redraw_below(window, &window->prevRect);
             }
 
-            dwm_window_transfer(window, &rect);
+            dwm_transfer(window, &rect);
 
             window->moved = false;
             window->invalid = false;
@@ -348,7 +184,7 @@ static void dwm_draw_windows(void)
         }
         else if (window->invalid)
         {
-            dwm_window_invalid_rect(window, &rect);
+            rect = WINDOW_INVALID_RECT(window);
             RECT_FIT(&rect, &clientArea);
 
             window->invalid = false;
@@ -358,7 +194,7 @@ static void dwm_draw_windows(void)
             continue;
         }
 
-        dwm_window_transfer(window, &rect);
+        dwm_transfer(window, &rect);
         dwm_invalidate_above(window, &rect);
         window->surface.invalidArea = (rect_t){0};
     }
@@ -367,24 +203,28 @@ static void dwm_draw_windows(void)
 static void dwm_draw_wall(void)
 {
     LOCK_GUARD(&wall->lock);
-
     if (!wall->invalid)
     {
         return;
     }
     wall->invalid = false;
 
-    rect_t wallRect;
-    dwm_window_rect(wall, &wallRect);
+    rect_t wallRect = WINDOW_RECT(wall);
     RECT_FIT(&wallRect, &clientArea);
-
-    point_t srcPoint = {.x = clientArea.left, .y = clientArea.top};
-    gfx_transfer(&backbuffer, &wall->surface, &wallRect, &srcPoint);
+    dwm_transfer(wall, &wallRect);
 
     window_t* window;
     LIST_FOR_EACH(window, &windows)
     {
+        LOCK_GUARD(&window->lock);
         window->invalid = true;
+    }
+
+    window_t* panel;
+    LIST_FOR_EACH(panel, &panels)
+    {
+        LOCK_GUARD(&panel->lock);
+        panel->invalid = true;
     }
 }
 
@@ -394,40 +234,35 @@ static void dwm_draw_panels(void)
     LIST_FOR_EACH(panel, &panels)
     {
         LOCK_GUARD(&panel->lock);
-
         if (!panel->invalid)
         {
             continue;
         }
         panel->invalid = false;
 
-        rect_t panelRect = RECT_INIT_DIM(panel->pos.x, panel->pos.y, panel->surface.width, panel->surface.height);
-
-        if (!RECT_CONTAINS(&screenArea, &panelRect))
-        {
-            continue;
-        }
-
-        point_t srcPoint = {0};
-        gfx_transfer(&backbuffer, &panel->surface, &panelRect, &srcPoint);
+        rect_t panelRect = WINDOW_RECT(panel);
+        RECT_FIT(&panelRect, &screenArea);
+        dwm_transfer(panel, &panelRect);
     }
 }
 
-static void dwm_draw_cursor(const point_t* oldPos)
+static void dwm_draw_cursor(const point_t* cursorDelta)
 {
     LOCK_GUARD(&cursor->lock);
+    point_t srcPoint = {0};
 
-    if (oldPos != NULL)
+    if (cursorDelta != NULL)
     {
-        rect_t oldRect = RECT_INIT_DIM(oldPos->x, oldPos->y, cursor->surface.width, cursor->surface.height);
+        rect_t oldRect = WINDOW_RECT(cursor);
         RECT_FIT(&oldRect, &screenArea);
-        gfx_transfer(&frontbuffer, &backbuffer, &oldRect, oldPos);
+        gfx_transfer(&frontbuffer, &backbuffer, &oldRect, &cursor->pos);
+
+        cursor->pos.x = CLAMP(cursor->pos.x + cursorDelta->x, 0, backbuffer.width - 1);
+        cursor->pos.y = CLAMP(cursor->pos.y + cursorDelta->y, 0, backbuffer.height - 1);
     }
 
-    rect_t cursorRect = RECT_INIT_DIM(cursor->pos.x, cursor->pos.y, cursor->surface.width, cursor->surface.height);
+    rect_t cursorRect = WINDOW_RECT(cursor);
     RECT_FIT(&cursorRect, &screenArea);
-
-    point_t srcPoint = {0};
     gfx_transfer_blend(&frontbuffer, &cursor->surface, &cursorRect, &srcPoint);
 }
 
@@ -436,29 +271,24 @@ static void dwm_handle_mouse_message(uint8_t buttons, const point_t* cursorDelta
     static uint8_t oldButtons = 0;
 
     point_t oldPos = cursor->pos;
+    dwm_draw_cursor(cursorDelta);
 
-    cursor->pos.x = CLAMP(cursor->pos.x + cursorDelta->x, 0, backbuffer.width - 1);
-    cursor->pos.y = CLAMP(cursor->pos.y + cursorDelta->y, 0, backbuffer.height - 1);
-
-    dwm_draw_cursor(&oldPos);
-
-    if (buttons != oldButtons)
+    if ((buttons & ~oldButtons) != 0) // If any button has been pressed
     {
         window_t* window;
         LIST_FOR_EACH_REVERSE(window, &windows)
         {
             LOCK_GUARD(&window->lock);
 
-            rect_t windowRect = RECT_INIT_DIM(window->pos.x, window->pos.y, window->surface.width, window->surface.height);
-
+            rect_t windowRect = WINDOW_RECT(window);
             if (RECT_CONTAINS_POINT(&windowRect, cursor->pos.x, cursor->pos.y))
             {
-                dwm_window_select(window);
+                dwm_select(window);
                 goto found;
             }
         }
 
-        dwm_window_select(NULL);
+        dwm_select(NULL);
     }
 found:
     oldButtons = buttons;
@@ -540,6 +370,157 @@ static void dwm_loop(void)
 
         dwm_poll();
     }
+}
+
+static void dwm_window_cleanup(file_t* file)
+{
+    LOCK_GUARD(&lock);
+
+    window_t* window = file->internal;
+
+    if (window == selected)
+    {
+        selected = NULL;
+    }
+
+    switch (window->type)
+    {
+    case WIN_WINDOW:
+    {
+        list_remove(window);
+    }
+    break;
+    case WIN_PANEL:
+    {
+        list_remove(window);
+
+        dwm_update_client_area();
+    }
+    break;
+    case WIN_CURSOR:
+    {
+        cursor = NULL;
+    }
+    break;
+    case WIN_WALL:
+    {
+        wall = NULL;
+    }
+    break;
+    default:
+    {
+        log_panic(NULL, "Invalid window type %d", window->type);
+    }
+    }
+
+    if (wall != NULL)
+    {
+        wall->invalid = true;
+    }
+
+    window_free(window);
+}
+
+static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t length)
+{
+    LOCK_GUARD(&lock);
+
+    switch (request)
+    {
+    case IOCTL_DWM_CREATE:
+    {
+        if (length != sizeof(ioctl_dwm_create_t))
+        {
+            return ERROR(EINVAL);
+        }
+        const ioctl_dwm_create_t* create = buffer;
+
+        window_t* window = window_new(&create->pos, create->width, create->height, create->type);
+        if (window == NULL)
+        {
+            return ERR;
+        }
+        LOCK_GUARD(&window->lock);
+
+        switch (window->type)
+        {
+        case WIN_WINDOW:
+        {
+            list_push(&windows, window);
+            log_print("dwm: create window");
+        }
+        break;
+        case WIN_PANEL:
+        {
+            list_push(&panels, window);
+
+            dwm_update_client_area();
+            log_print("dwm: create panel");
+        }
+        break;
+        case WIN_CURSOR:
+        {
+            if (cursor != NULL)
+            {
+                window_free(window);
+                return ERROR(EEXIST);
+            }
+
+            cursor = window;
+            log_print("dwm: create cursor");
+        }
+        break;
+        case WIN_WALL:
+        {
+            if (wall != NULL)
+            {
+                window_free(window);
+                return ERROR(EEXIST);
+            }
+
+            wall = window;
+            log_print("dwm: create wall");
+        }
+        break;
+        default:
+        {
+            log_panic(NULL, "Invalid window type %d", window->type);
+        }
+        }
+
+        window_populate_file(window, file, dwm_window_cleanup);
+
+        // Preserve splash screen on boot, wall will be drawn on first flush.
+        if (window->type != WIN_WALL)
+        {
+            dwm_redraw();
+        }
+        return 0;
+    }
+    case IOCTL_DWM_SIZE:
+    {
+        if (length != sizeof(ioctl_dwm_size_t))
+        {
+            return ERROR(EINVAL);
+        }
+
+        ioctl_dwm_size_t* size = buffer;
+        size->outWidth = RECT_WIDTH(&screenArea);
+        size->outHeight = RECT_HEIGHT(&screenArea);
+
+        return 0;
+    }
+    default:
+    {
+        return ERROR(EREQ);
+    }
+    }
+}
+
+static uint64_t dwm_open(resource_t* resource, file_t* file)
+{
+    file->ops.ioctl = dwm_ioctl;
+    return 0;
 }
 
 void dwm_init(gop_buffer_t* gopBuffer)

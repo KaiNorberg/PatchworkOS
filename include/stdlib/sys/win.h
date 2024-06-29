@@ -90,8 +90,7 @@ typedef struct ioctl_win_send
 
 typedef struct ioctl_win_move
 {
-    int64_t x;
-    int64_t y;
+    point_t pos;
     uint32_t width;
     uint32_t height;
 } ioctl_win_move_t;
@@ -118,7 +117,21 @@ typedef struct win_theme
 
 typedef uint64_t (*procedure_t)(win_t*, surface_t*, msg_t, void* data);
 
-void win_default_theme(win_theme_t* theme);
+win_t* win_new(const char* name, const rect_t* rect, const win_theme_t* theme, procedure_t procedure, win_type_t type);
+
+uint64_t win_free(win_t* window);
+
+msg_t win_receive(win_t* window, nsec_t timeout);
+
+uint64_t win_send(win_t* window, msg_t type, void* data, uint64_t size);
+
+uint64_t win_move(win_t* window, const rect_t* rect);
+
+void win_screen_area(win_t* window, rect_t* rect);
+
+void win_client_area(win_t* window, rect_t* rect);
+
+void win_screen_to_client(win_t* window, point_t* point);
 
 uint64_t win_screen_rect(rect_t* rect);
 
@@ -126,19 +139,7 @@ void win_client_to_window(rect_t* rect, const win_theme_t* theme, win_type_t typ
 
 void win_window_to_client(rect_t* rect, const win_theme_t* theme, win_type_t type);
 
-win_t* win_new(const char* name, const rect_t* rect, const win_theme_t* theme, procedure_t procedure, win_type_t type);
-
-uint64_t win_free(win_t* window);
-
-msg_t win_dispatch(win_t* window, nsec_t timeout);
-
-uint64_t win_send(win_t* window, msg_t type, void* data, uint64_t size);
-
-uint64_t win_move(win_t* window, const rect_t* rect);
-
-void win_window_area(win_t* window, rect_t* rect);
-
-void win_client_area(win_t* window, rect_t* rect);
+void win_default_theme(win_theme_t* theme);
 
 #if defined(__cplusplus)
 }

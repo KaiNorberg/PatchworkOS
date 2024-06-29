@@ -42,7 +42,6 @@ static uint64_t ps2_mouse_scan(void)
     return data;
 }
 
-//
 static void ps2_mouse_irq(uint8_t irq)
 {
     static uint64_t index = 0;

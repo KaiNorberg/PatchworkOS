@@ -50,6 +50,14 @@ typedef struct surface
     rect_t invalidArea;
 } surface_t;
 
+#define RECT_INIT_SURFACE(surface) \
+    (rect_t){ \
+        0, \
+        0, \
+        (surface)->width, \
+        (surface)->height, \
+    };
+
 fbmp_t* gfx_load_fbmp(const char* path);
 
 void gfx_fbmp(surface_t* surface, const fbmp_t* fbmp, const point_t* point);

@@ -39,7 +39,7 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    while (win_dispatch(taskbar, NEVER) != LMSG_QUIT)
+    while (win_receive(taskbar, NEVER) != LMSG_QUIT)
     {
     }
 

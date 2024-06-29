@@ -1,6 +1,6 @@
 %ifndef __EMBED__
 
-%include "stdlib_internal/syscalls.inc"
+%include "internal/syscall.inc"
 
 global exit
 exit:
