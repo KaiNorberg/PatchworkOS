@@ -80,47 +80,29 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* buffer, uint6
     }
 }
 
-static uint64_t window_flush(file_t* file, const void* buffer, uint64_t size, const rect_t* rectIn)
+static uint64_t window_flush(file_t* file, const void* buffer, uint64_t size, const rect_t* rect)
 {
     window_t* window = file->internal;
     LOCK_GUARD(&window->lock);
 
     if (size != window->surface.width * window->surface.height * sizeof(pixel_t))
     {
+        return ERROR(EBUFFER);
+    }
+
+    if (rect->left > rect->right || rect->top > rect->bottom ||
+        rect->right > window->surface.width || rect->bottom > window->surface.height)
+    {
         return ERROR(EINVAL);
     }
 
-    if (rectIn == NULL)
+    for (int64_t y = 0; y < RECT_HEIGHT(rect); y++)
     {
-        memcpy(window->surface.buffer, buffer, size);
-
-        rect_t rect = RECT_INIT_SURFACE(&window->surface);
-        gfx_invalidate(&window->surface, &rect);
+        uint64_t index = rect->left + (rect->top + y) * window->surface.width;
+        memcpy(&window->surface.buffer[index], &((pixel_t*)buffer)[index], RECT_WIDTH(rect) * sizeof(pixel_t));
     }
-    else
-    {
-        if (rectIn->left > rectIn->right || rectIn->top > rectIn->bottom)
-        {
-            return ERROR(EINVAL);
-        }
 
-        rect_t rect = (rect_t){
-            .left = MAX(rectIn->left, 0),
-            .top = MAX(rectIn->top, 0),
-            .right = MIN(rectIn->right, window->surface.width),
-            .bottom = MIN(rectIn->bottom, window->surface.height),
-        };
-
-        for (int64_t y = rect.top; y < MIN(rect.bottom, (int64_t)window->surface.height); y++)
-        {
-            uint64_t offset = y * sizeof(pixel_t) * window->surface.width + rect.left * sizeof(pixel_t);
-
-            memcpy((void*)((uint64_t)window->surface.buffer + offset), (void*)((uint64_t)buffer + offset),
-                (rect.right - rect.left) * sizeof(pixel_t));
-        }
-
-        gfx_invalidate(&window->surface, &rect);
-    }
+    gfx_invalidate(&window->surface, rect);
 
     window->invalid = true;
     dwm_redraw();
@@ -144,6 +126,7 @@ window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, win_ty
     window_t* window = malloc(sizeof(window_t));
     list_entry_init(&window->base);
     window->pos = *pos;
+    window->type = type;
     window->surface.buffer = calloc(width * height, sizeof(pixel_t));
     window->surface.width = width;
     window->surface.height = height;
@@ -152,7 +135,6 @@ window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, win_ty
     window->invalid = false;
     window->moved = false;
     window->prevRect = RECT_INIT_DIM(pos->x, pos->y, width, height);
-    window->type = type;
     lock_init(&window->lock);
     message_queue_init(&window->messages);
 

@@ -295,7 +295,7 @@ uint64_t syscall_flush(fd_t fd, const void* buffer, uint64_t size, const rect_t*
         return ERROR(EFAULT);
     }
 
-    if (rect != NULL && !verify_buffer(rect, sizeof(rect_t)))
+    if (!verify_buffer(rect, sizeof(rect_t)))
     {
         return ERROR(EFAULT);
     }

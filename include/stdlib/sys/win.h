@@ -116,7 +116,7 @@ typedef struct win_theme
     uint64_t topbarHeight;
 } win_theme_t;
 
-typedef uint64_t (*procedure_t)(win_t*, msg_t, void* data);
+typedef uint64_t (*procedure_t)(win_t*, surface_t*, msg_t, void* data);
 
 void win_default_theme(win_theme_t* theme);
 
@@ -130,8 +130,6 @@ win_t* win_new(const char* name, const rect_t* rect, const win_theme_t* theme, p
 
 uint64_t win_free(win_t* window);
 
-uint64_t win_flush(win_t* window, const surface_t* surface);
-
 msg_t win_dispatch(win_t* window, nsec_t timeout);
 
 uint64_t win_send(win_t* window, msg_t type, void* data, uint64_t size);
@@ -141,10 +139,6 @@ uint64_t win_move(win_t* window, const rect_t* rect);
 void win_window_area(win_t* window, rect_t* rect);
 
 void win_client_area(win_t* window, rect_t* rect);
-
-void win_window_surface(win_t* window, surface_t* surface);
-
-void win_client_surface(win_t* window, surface_t* surface);
 
 #if defined(__cplusplus)
 }

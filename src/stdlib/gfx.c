@@ -226,11 +226,8 @@ void gfx_transfer(surface_t* dest, const surface_t* src, const rect_t* destRect,
 {
     for (int32_t y = 0; y < RECT_HEIGHT(destRect); y++)
     {
-        uint64_t destOffset = (destRect->left * sizeof(pixel_t)) + (y + destRect->top) * sizeof(pixel_t) * dest->stride;
-        uint64_t srcOffset = srcPoint->x * sizeof(pixel_t) + (y + srcPoint->y) * sizeof(pixel_t) * src->stride;
-
-        memcpy((void*)((uint64_t)dest->buffer + destOffset), (void*)((uint64_t)src->buffer + srcOffset),
-            RECT_WIDTH(destRect) * sizeof(pixel_t));
+        memcpy(&dest->buffer[destRect->left + (y + destRect->top) * dest->stride],
+            &src->buffer[srcPoint->x + (y + srcPoint->y) * src->stride], RECT_WIDTH(destRect) * sizeof(pixel_t));
     }
 
     gfx_invalidate(dest, destRect);
@@ -260,6 +257,8 @@ void gfx_swap(surface_t* dest, const surface_t* src, const rect_t* rect)
         memcpy((void*)((uint64_t)dest->buffer + offset), (void*)((uint64_t)src->buffer + offset),
             RECT_WIDTH(rect) * sizeof(pixel_t));
     }
+
+    gfx_invalidate(dest, rect);
 }
 
 void gfx_invalidate(surface_t* surface, const rect_t* rect)

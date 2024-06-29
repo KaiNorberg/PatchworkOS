@@ -6,7 +6,7 @@
 
 static win_theme_t theme;
 
-uint64_t procedure(win_t* window, msg_t type, void* data)
+static uint64_t procedure(win_t* window, surface_t* surface, msg_t type, void* data)
 {
     switch (type)
     {
@@ -16,14 +16,9 @@ uint64_t procedure(win_t* window, msg_t type, void* data)
     break;
     case LMSG_REDRAW:
     {
-        surface_t surface;
-        win_client_surface(window, &surface);
+        rect_t rect = RECT_INIT_DIM(0, 0, surface->width, surface->height);
 
-        rect_t rect = RECT_INIT_DIM(0, 0, surface.width, surface.height);
-
-        gfx_rect(&surface, &rect, 0xFF007E81);
-
-        win_flush(window, &surface);
+        gfx_rect(surface, &rect, 0xFF007E81);
     }
     break;
     case LMSG_QUIT:

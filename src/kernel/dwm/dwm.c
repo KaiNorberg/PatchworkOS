@@ -101,11 +101,18 @@ static void dwm_window_select(window_t* window)
         message_queue_push(&selected->messages, MSG_DESELECT, NULL, 0);
     }
 
-    list_remove(window);
-    list_push(&windows, window);
-    selected = window;
+    if (window != NULL)
+    {
+        list_remove(window);
+        list_push(&windows, window);
+        selected = window;
 
-    message_queue_push(&selected->messages, MSG_SELECT, NULL, 0);
+        message_queue_push(&selected->messages, MSG_SELECT, NULL, 0);
+    }
+    else
+    {
+        selected = NULL;
+    }
 }
 
 static void dwm_window_cleanup(file_t* file)
@@ -301,6 +308,10 @@ static void dwm_invalidate_above(window_t* window, const rect_t* rect)
         {
             rect_t invalidRect = *rect;
             RECT_FIT(&invalidRect, &otherRect);
+            invalidRect.left -= otherRect.left;
+            invalidRect.top -= otherRect.top;
+            invalidRect.right -= otherRect.left;
+            invalidRect.bottom -= otherRect.top;
 
             other->invalid = true;
             gfx_invalidate(&other->surface, &invalidRect);
@@ -329,12 +340,15 @@ static void dwm_draw_windows(void)
                 dwm_redraw_below(window, &window->prevRect);
             }
 
+            dwm_window_transfer(window, &rect);
+
             window->moved = false;
             window->invalid = false;
+            window->prevRect = rect;
         }
-        else if (window->invalid || window->moved)
+        else if (window->invalid)
         {
-            dwm_window_rect(window, &rect);
+            dwm_window_invalid_rect(window, &rect);
             RECT_FIT(&rect, &clientArea);
 
             window->invalid = false;
@@ -345,10 +359,8 @@ static void dwm_draw_windows(void)
         }
 
         dwm_window_transfer(window, &rect);
-        window->prevRect = rect;
-        window->surface.invalidArea = (rect_t){};
-
         dwm_invalidate_above(window, &rect);
+        window->surface.invalidArea = (rect_t){0};
     }
 }
 
@@ -442,10 +454,13 @@ static void dwm_handle_mouse_message(uint8_t buttons, const point_t* cursorDelta
             if (RECT_CONTAINS_POINT(&windowRect, cursor->pos.x, cursor->pos.y))
             {
                 dwm_window_select(window);
-                break;
+                goto found;
             }
         }
+
+        dwm_window_select(NULL);
     }
+found:
     oldButtons = buttons;
 
     if (selected != NULL)

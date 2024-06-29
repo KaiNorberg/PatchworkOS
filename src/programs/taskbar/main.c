@@ -5,24 +5,19 @@
 
 static win_theme_t theme;
 
-static uint64_t procedure(win_t* window, msg_t type, void* data)
+static uint64_t procedure(win_t* window, surface_t* surface, msg_t type, void* data)
 {
     switch (type)
     {
     case LMSG_REDRAW:
     {
-        surface_t surface;
-        win_client_surface(window, &surface);
-
         rect_t rect;
         win_client_area(window, &rect);
 
-        gfx_rect(&surface, &rect, theme.background);
+        gfx_rect(surface, &rect, theme.background);
 
         rect.bottom = rect.top + theme.edgeWidth;
-        gfx_rect(&surface, &rect, theme.highlight);
-
-        win_flush(window, &surface);
+        gfx_rect(surface, &rect, theme.highlight);
     }
     break;
     }

@@ -5,19 +5,14 @@
 
 static fbmp_t* image;
 
-static uint64_t procedure(win_t* window, msg_t type, void* data)
+static uint64_t procedure(win_t* window, surface_t* surface, msg_t type, void* data)
 {
     switch (type)
     {
     case LMSG_REDRAW:
     {
-        surface_t surface;
-        win_client_surface(window, &surface);
-
         point_t point = {0};
-        gfx_fbmp(&surface, image, &point);
-
-        win_flush(window, &surface);
+        gfx_fbmp(surface, image, &point);
     }
     break;
     }
