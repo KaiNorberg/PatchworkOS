@@ -176,8 +176,6 @@ static void dwm_draw_windows(void)
                 dwm_redraw_below(window, &window->prevRect);
             }
 
-            dwm_transfer(window, &rect);
-
             window->moved = false;
             window->invalid = false;
             window->prevRect = rect;
