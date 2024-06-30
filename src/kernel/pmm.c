@@ -10,17 +10,22 @@
 #include "log.h"
 #include "vmm.h"
 
-static const char* efiMemTypeToString[] = {"efi reserved memory type", "efi loader code", "efi loader data",
-    "efi boot services code", "efi boot services data", "efi runtime services code", "efi runtime services data",
-    "efi conventional memory", "efi unusable memory", "efi acpi reclaim memory", "efi acpi memory nvs", "efi memory mapped io",
-    "efi memory mapped io port space", "efi pal code", "efi persistent memory"};
-
-static const char* kernelMemTypeToString[] = {
-    "kernel memory",
-    "pml memory",
-    "boot info",
-    "ram disk",
-    "memory map",
+static const char* efiMemTypeToString[] = {
+    "reserved memory type",
+    "loader code",
+    "loader data",
+    "boot services code",
+    "boot services data",
+    "runtime services code",
+    "runtime services data",
+    "conventional memory",
+    "unusable memory",
+    "acpi reclaim memory",
+    "acpi memory nvs",
+    "memory mapped io",
+    "memory mapped io port space",
+    "pal code",
+    "persistent memory",
 };
 
 static page_header_t* firstPage = NULL;
@@ -29,20 +34,7 @@ static uint64_t pageAmount = 0;
 static uint64_t loadedPageAmount = 0;
 static uint64_t freePageAmount = 0;
 
-static efi_mem_map_t memoryMap;
-
 static lock_t lock;
-
-static uint8_t pmm_is_type_free(uint64_t memoryType)
-{
-    return memoryType == EFI_CONVENTIONAL_MEMORY || memoryType == EFI_LOADER_CODE || memoryType == EFI_LOADER_DATA ||
-        memoryType == EFI_BOOT_SERVICES_CODE || memoryType == EFI_BOOT_SERVICES_DATA;
-}
-
-static const char* pmm_mem_type_to_string(uint32_t type)
-{
-    return type < EFI_MEM_KERNEL ? efiMemTypeToString[type] : kernelMemTypeToString[type - EFI_MEM_KERNEL];
-}
 
 static void pmm_free_unlocked(void* address)
 {
@@ -71,109 +63,41 @@ static void pmm_free_pages_unlocked(void* address, uint64_t count)
     }
 }
 
-static void pmm_memory_map_deallocate(void)
+static void pmm_load_memory(efi_mem_map_t* memoryMap)
 {
-    pmm_free_type(EFI_MEM_MEMORY_MAP);
-    memoryMap.base = NULL;
-}
+    log_print("pmm: load");
 
-#if CONFIG_PMM_LAZY
-static void pmm_lazy_load_memory(void)
-{
-    static uint64_t index = 0;
-    static bool full = false;
-
-    if (full)
+    for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        lock_release(&lock);
-        log_panic(NULL, "Physical Memory Manager full");
-    }
+        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
+        loadedPageAmount = pageAmount;
 
-    while (true)
-    {
-        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(&memoryMap, index);
-        loadedPageAmount += desc->amountOfPages;
-        index++;
-
-        if (index >= memoryMap.descriptorAmount)
-        {
-            full = true;
-            pmm_memory_map_deallocate();
-            if (pmm_is_type_free(desc->type))
-            {
-                pmm_free_pages_unlocked(desc->physicalStart, desc->amountOfPages);
-            }
-            return;
-        }
-
-        if (pmm_is_type_free(desc->type))
-        {
-            pmm_free_pages_unlocked(desc->physicalStart, desc->amountOfPages);
-            return;
-        }
-    }
-}
-#else
-static void pmm_load_memory(void)
-{
-    for (uint64_t i = 0; i < memoryMap.descriptorAmount; i++)
-    {
-        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(&memoryMap, i);
-
-        if (pmm_is_type_free(desc->type))
+        if (EFI_IS_MEMORY_AVAIL(desc->type))
         {
             pmm_free_pages_unlocked(desc->physicalStart, desc->amountOfPages);
         }
     }
-    loadedPageAmount = pageAmount;
-
-    pmm_memory_map_deallocate();
 }
-#endif
 
-static void pmm_detect_memory(void)
+static void pmm_detect_memory(efi_mem_map_t* memoryMap)
 {
-    for (uint64_t i = 0; i < memoryMap.descriptorAmount; i++)
+    for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
-        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(&memoryMap, i);
+        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
 
         pageAmount += desc->amountOfPages;
     }
 
     log_print("UEFI-provided memory map: ");
     log_print("Detected memory: %d KB", (pageAmount * PAGE_SIZE) / 1024);
-
-    if (CONFIG_PMM_LAZY)
-    {
-        log_print("pmm: lazy");
-    }
 }
 
-void pmm_init(efi_mem_map_t* efi_mem_map_t)
+void pmm_init(efi_mem_map_t* memoryMap)
 {
-    memoryMap = *efi_mem_map_t;
     lock_init(&lock);
 
-    pmm_detect_memory();
-
-#if !(CONFIG_PMM_LAZY)
-    pmm_load_memory();
-#endif
-}
-
-void pmm_free_type(uint32_t type)
-{
-    for (uint64_t i = 0; i < memoryMap.descriptorAmount; i++)
-    {
-        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(&memoryMap, i);
-
-        if (desc->type == type)
-        {
-            log_print("pmm: free [mem %a-%a] %s", desc->physicalStart,
-                ((uintptr_t)desc->physicalStart) + desc->amountOfPages * PAGE_SIZE, pmm_mem_type_to_string(desc->type));
-            pmm_free_pages(desc->physicalStart, desc->amountOfPages);
-        }
-    }
+    pmm_detect_memory(memoryMap);
+    pmm_load_memory(memoryMap);
 }
 
 void* pmm_alloc(void)
@@ -182,11 +106,7 @@ void* pmm_alloc(void)
 
     if (firstPage == NULL)
     {
-#if CONFIG_PMM_LAZY
-        pmm_lazy_load_memory();
-#else
         log_panic(NULL, "Physical Memory Manager full");
-#endif
     }
 
     void* address = firstPage;

@@ -1,11 +1,11 @@
 #pragma once
 
 #include "defs.h"
-#include "list.h"
 #include "lock.h"
 #include "message.h"
 #include "vfs.h"
 
+#include <sys/list.h>
 #include <sys/win.h>
 
 typedef struct window

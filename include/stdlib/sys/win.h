@@ -127,9 +127,13 @@ uint64_t win_send(win_t* window, msg_t type, void* data, uint64_t size);
 
 uint64_t win_move(win_t* window, const rect_t* rect);
 
-void win_screen_area(win_t* window, rect_t* rect);
+void win_screen_window_area(win_t* window, rect_t* rect);
+
+void win_screen_client_area(win_t* window, rect_t* rect);
 
 void win_client_area(win_t* window, rect_t* rect);
+
+void win_screen_to_window(win_t* window, point_t* point);
 
 void win_screen_to_client(win_t* window, point_t* point);
 

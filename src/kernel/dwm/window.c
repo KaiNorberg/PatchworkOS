@@ -1,12 +1,12 @@
 #include "window.h"
 
-#include "_AUX/rect_t.h"
 #include "dwm.h"
+#include "log.h"
 #include "sched.h"
-#include "sys/gfx.h"
 
 #include <errno.h>
 #include <stdlib.h>
+#include <sys/gfx.h>
 #include <sys/math.h>
 
 static uint64_t window_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t length)

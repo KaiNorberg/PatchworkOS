@@ -1,8 +1,6 @@
 #include "dwm.h"
 
-#include "_AUX/rect_t.h"
 #include "config.h"
-#include "list.h"
 #include "lock.h"
 #include "log.h"
 #include "message.h"

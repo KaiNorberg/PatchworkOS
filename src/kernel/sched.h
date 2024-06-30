@@ -1,10 +1,11 @@
 #pragma once
 
 #include "defs.h"
-#include "list.h"
 #include "process.h"
 #include "queue.h"
 #include "time.h"
+
+#include <sys/list.h>
 
 #define SCHED_WAIT_NORMAL 0
 #define SCHED_WAIT_TIMEOUT 1

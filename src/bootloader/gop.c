@@ -17,7 +17,7 @@ void gop_buffer_init(gop_buffer_t* buffer)
 
         while (1)
         {
-            asm volatile("hlt");
+            __asm__ volatile("hlt");
         }
     }
 

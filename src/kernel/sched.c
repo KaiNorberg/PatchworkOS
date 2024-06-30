@@ -2,11 +2,11 @@
 
 #include "apic.h"
 #include "gdt.h"
-#include "list.h"
 #include "loader.h"
 #include "log.h"
 #include "smp.h"
-#include "time.h"
+
+#include <sys/list.h>
 
 #include <stdlib.h>
 #include <string.h>

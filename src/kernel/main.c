@@ -1,9 +1,11 @@
 #include <bootloader/boot_info.h>
 
 #include "defs.h"
+#include "log.h"
 #include "kernel.h"
 #include "process.h"
 #include "sched.h"
+#include "vfs.h"
 
 void main(boot_info_t* bootInfo)
 {

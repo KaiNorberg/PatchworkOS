@@ -15,23 +15,28 @@ static void boot_info_populate(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemT
     bootInfo->ramRoot = ram_disk_load(imageHandle);
     bootInfo->rsdp = rsdp_get(systemTable);
     bootInfo->runtimeServices = systemTable->RuntimeServices;
-    bootInfo->kernelEntry = loader_load_kernel(L"/boot/kernel", imageHandle);
-
+    loader_load_kernel(&bootInfo->kernel, L"/boot/kernel", imageHandle);
     vm_map_init(&bootInfo->memoryMap);
 }
 
 EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
 {
-    InitializeLib(imageHandle, imageHandle);
+    InitializeLib(imageHandle, systemTable);
     Print(L"Hello from the bootloader!\n\r");
 
     vm_init();
 
-    boot_info_t* bootInfo = vm_alloc(sizeof(boot_info_t), EFI_MEM_BOOT_INFO);
+    boot_info_t* bootInfo = vm_alloc(sizeof(boot_info_t));
     boot_info_populate(imageHandle, systemTable, bootInfo);
 
-    uefi_call_wrapper(BS->ExitBootServices, 2, imageHandle, bootInfo->memoryMap.key);
-    bootInfo->kernelEntry(bootInfo);
+    EFI_STATUS status = uefi_call_wrapper(BS->ExitBootServices, 2, imageHandle, bootInfo->memoryMap.key);
+    if (EFI_ERROR(status))
+    {
+        Print(L"ERROR: Failed to exit boot services (%r)\n\r", status);
+        return status;
+    }
+
+    bootInfo->kernel.entry(bootInfo);
 
     return EFI_ABORTED;
 }

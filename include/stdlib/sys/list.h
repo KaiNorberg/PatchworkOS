@@ -1,6 +1,8 @@
 #pragma once
 
-#include "defs.h"
+#include "_AUX/NULL.h"
+
+#include <stdbool.h>
 
 // Must be placed at the top of a struct.
 typedef struct list_entry

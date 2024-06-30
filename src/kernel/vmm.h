@@ -29,7 +29,7 @@ void space_cleanup(space_t* space);
 
 void space_load(space_t* space);
 
-void vmm_init(efi_mem_map_t* memoryMap, gop_buffer_t* gopBuffer);
+void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gopBuffer);
 
 void vmm_cpu_init(void);
 

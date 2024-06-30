@@ -2,7 +2,22 @@
 
 #include <bootloader/boot_info.h>
 
-#include "mem.h"
+static void* pml_alloc_page(void)
+{
+    EFI_PHYSICAL_ADDRESS address = 0;
+    EFI_STATUS status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, 1, &address);
+    if (EFI_ERROR(status))
+    {
+        Print(L"ERROR: Unable to allocate pml!");
+
+        while (1)
+        {
+            __asm__ volatile("hlt");
+        }
+    }
+
+    return (void*)address;
+}
 
 static pml_entry_t pml_entry_create(void* address, uint64_t flags)
 {
@@ -11,7 +26,7 @@ static pml_entry_t pml_entry_create(void* address, uint64_t flags)
 
 pml_t* pml_new(void)
 {
-    pml_t* pageTable = (pml_t*)mem_alloc_pages(1, EFI_MEM_BOOT_PML);
+    pml_t* pageTable = pml_alloc_page();
     SetMem(pageTable, EFI_PAGE_SIZE, 0);
 
     return pageTable;
@@ -51,7 +66,7 @@ void pml_map(pml_t* pageTable, void* virtAddr, void* physAddr, uint16_t flags)
     pml_t* pdp;
     if ((entry & PAGE_PRESENT) == 0)
     {
-        pdp = (pml_t*)mem_alloc_pages(1, EFI_MEM_BOOT_PML);
+        pdp = pml_alloc_page();
         SetMem(pdp, EFI_PAGE_SIZE, 0);
 
         entry = pml_entry_create(pdp, flags);
@@ -66,7 +81,7 @@ void pml_map(pml_t* pageTable, void* virtAddr, void* physAddr, uint16_t flags)
     pml_t* pd;
     if ((entry & PAGE_PRESENT) == 0)
     {
-        pd = (pml_t*)mem_alloc_pages(1, EFI_MEM_BOOT_PML);
+        pd = pml_alloc_page();
         SetMem(pd, EFI_PAGE_SIZE, 0);
 
         entry = pml_entry_create(pd, flags);
@@ -81,7 +96,7 @@ void pml_map(pml_t* pageTable, void* virtAddr, void* physAddr, uint16_t flags)
     pml_t* pt;
     if ((entry & PAGE_PRESENT) == 0)
     {
-        pt = (pml_t*)mem_alloc_pages(1, EFI_MEM_BOOT_PML);
+        pt = pml_alloc_page();
         SetMem(pt, EFI_PAGE_SIZE, 0);
 
         entry = pml_entry_create(pt, flags);

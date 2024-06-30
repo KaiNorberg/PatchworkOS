@@ -4,11 +4,12 @@
 #include <stdatomic.h>
 
 #include "defs.h"
-#include "list.h"
 #include "simd.h"
 #include "trap.h"
 #include "vfs_context.h"
 #include "vmm.h"
+
+#include <sys/list.h>
 
 #define THREAD_PRIORITY_LEVELS 3
 #define THREAD_PRIORITY_MIN 0

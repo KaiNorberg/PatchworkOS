@@ -1,15 +1,16 @@
 #include "loader.h"
 
-#include <stdint.h>
-#include <sys/elf.h>
-
 #include "fs.h"
-#include "mem.h"
 #include "vm.h"
 
-void* loader_load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
+#include <stdint.h>
+#include <string.h>
+#include <sys/elf.h>
+#include <sys/math.h>
+
+void loader_load_kernel(boot_kernel_t* kernel, CHAR16* path, EFI_HANDLE imageHandle)
 {
-    Print(L"Loading kernel...\n");
+    Print(L"Loading kernel...");
 
     EFI_FILE* file = fs_open(path, imageHandle);
     if (file == 0)
@@ -18,7 +19,7 @@ void* loader_load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
 
         while (1)
         {
-            asm volatile("hlt");
+            __asm__ volatile("hlt");
         }
     }
 
@@ -31,12 +32,12 @@ void* loader_load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
 
         while (1)
         {
-            asm volatile("hlt");
+            __asm__ volatile("hlt");
         }
     }
 
     uint64_t programHeaderTableSize = header.programHeaderAmount * header.programHeaderSize;
-    elf_phdr_t* programHeaders = mem_alloc_pool(programHeaderTableSize, EfiLoaderData);
+    elf_phdr_t* programHeaders = AllocatePool(programHeaderTableSize);
     fs_seek(file, header.programHeaderOffset);
     fs_read(file, programHeaderTableSize, programHeaders);
 
@@ -49,21 +50,18 @@ void* loader_load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
         {
         case PT_LOAD:
         {
-            if (kernelStart > programHeader->virtAddr)
-            {
-                kernelStart = programHeader->virtAddr;
-            }
-            if (kernelEnd < programHeader->virtAddr + programHeader->memorySize)
-            {
-                kernelEnd = programHeader->virtAddr + programHeader->memorySize;
-            }
+            kernelStart = MIN(kernelStart, programHeader->virtAddr);
+            kernelEnd = MAX(kernelEnd, programHeader->virtAddr + programHeader->memorySize);
         }
         break;
         }
     }
 
     uint64_t kernelPageAmount = (kernelEnd - kernelStart) / EFI_PAGE_SIZE + 1;
-    vm_alloc_kernel((void*)kernelStart, kernelPageAmount);
+    kernel->physStart = vm_alloc_pages((void*)kernelStart, kernelPageAmount, EFI_RESERVED);
+    kernel->virtStart = (void*)kernelStart;
+    kernel->entry = (void*)header.entry;
+    kernel->length = kernelPageAmount * EFI_PAGE_SIZE;
 
     for (elf_phdr_t* programHeader = programHeaders; (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize;
          programHeader = (elf_phdr_t*)((uint64_t)programHeader + header.programHeaderSize))
@@ -74,15 +72,15 @@ void* loader_load_kernel(CHAR16* path, EFI_HANDLE imageHandle)
         {
             fs_seek(file, programHeader->offset);
 
-            SetMem((void*)programHeader->virtAddr, programHeader->memorySize, 0);
+            memset((void*)programHeader->virtAddr, 0, programHeader->memorySize);
             fs_read(file, programHeader->fileSize, (void*)programHeader->virtAddr);
         }
         break;
         }
     }
 
-    mem_free_pool(programHeaders);
+    FreePool(programHeaders);
     fs_close(file);
 
-    return (void*)header.entry;
+    Print(L" done!\n");
 }

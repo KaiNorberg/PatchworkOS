@@ -1,8 +1,9 @@
 #pragma once
 
 #include "defs.h"
-#include "list.h"
 #include "lock.h"
+
+#include <sys/list.h>
 
 typedef struct
 {

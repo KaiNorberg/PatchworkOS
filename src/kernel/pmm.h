@@ -11,9 +11,7 @@ typedef struct page_header
     struct page_header* next;
 } page_header_t;
 
-void pmm_init(efi_mem_map_t* efi_mem_map_t);
-
-void pmm_free_type(uint32_t type);
+void pmm_init(efi_mem_map_t* memoryMap);
 
 void* pmm_alloc(void);
 
@@ -26,3 +24,5 @@ uint64_t pmm_total_amount(void);
 uint64_t pmm_free_amount(void);
 
 uint64_t pmm_reserved_amount(void);
+
+const char* pmm_mem_type_to_string(uint32_t type);

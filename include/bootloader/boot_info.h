@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include <sys/gfx.h>
+#include <sys/list.h>
 
 #ifndef __BOOTLOADER__
 
@@ -14,6 +14,14 @@ typedef struct
     uint64_t amountOfPages;
     uint64_t attribute;
 } efi_mem_desc_t;
+
+#else
+
+#include <efi.h>
+#include <efilib.h>
+typedef EFI_MEMORY_DESCRIPTOR efi_mem_desc_t;
+
+#endif
 
 #define EFI_RESERVED 0
 #define EFI_LOADER_CODE 1
@@ -31,22 +39,12 @@ typedef struct
 #define EFI_PAL_CODE 13
 #define EFI_PERSISTENT_MEMORY 14
 
-#else
-
-#include <efi.h>
-#include <efilib.h>
-typedef EFI_MEMORY_DESCRIPTOR efi_mem_desc_t;
-
-#endif
+#define EFI_IS_MEMORY_AVAIL(type) \
+    ((type == EFI_CONVENTIONAL_MEMORY) || (type == EFI_PERSISTENT_MEMORY) || (type == EFI_LOADER_CODE) || \
+        (type == EFI_BOOT_SERVICES_CODE) || (type == EFI_BOOT_SERVICES_DATA))
 
 #define EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, index) \
     (efi_mem_desc_t*)((uint64_t)(memoryMap)->base + ((index) * (memoryMap)->descriptorSize))
-
-#define EFI_MEM_KERNEL 0x80000000
-#define EFI_MEM_BOOT_PML 0x80000001
-#define EFI_MEM_BOOT_INFO 0x80000002
-#define EFI_MEM_RAM_DISK 0x80000003
-#define EFI_MEM_MEMORY_MAP 0x80000004
 
 typedef struct
 {
@@ -66,25 +64,31 @@ typedef struct
     uint32_t stride;
 } gop_buffer_t;
 
-typedef struct ram_file_t
+typedef struct ram_file
 {
+    list_entry_t base;
     char name[32];
     void* data;
     uint64_t size;
-    struct ram_file_t* next;
-    struct ram_file_t* prev;
 } ram_file_t;
 
-typedef struct ram_dir_t
+typedef struct ram_dir
 {
+    list_entry_t base;
     char name[32];
-    ram_file_t* firstFile;
-    ram_file_t* lastFile;
-    struct ram_dir_t* firstChild;
-    struct ram_dir_t* lastChild;
-    struct ram_dir_t* next;
-    struct ram_dir_t* prev;
+    list_t children;
+    list_t files;
 } ram_dir_t;
+
+typedef struct boot_info boot_info_t;
+
+typedef struct
+{
+    void* physStart;
+    void* virtStart;
+    void (*entry)(boot_info_t*);
+    uint64_t length;
+} boot_kernel_t;
 
 typedef struct boot_info
 {
@@ -93,5 +97,5 @@ typedef struct boot_info
     ram_dir_t* ramRoot;
     void* rsdp;
     void* runtimeServices;
-    void (*kernelEntry)(struct boot_info*);
+    boot_kernel_t kernel;
 } boot_info_t;

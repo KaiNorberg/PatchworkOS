@@ -13,7 +13,7 @@
 #define PAGE_GLOBAL (1 << 8)
 
 #define PML_GET_ADDRESS(entry) ((entry) & 0x000ffffffffff000)
-#define PML_LOAD(pageTable) asm volatile("mov %0, %%cr3" : : "r"((uint64_t)pageTable))
+#define PML_LOAD(pageTable) __asm__ volatile("mov %0, %%cr3" : : "r"((uint64_t)pageTable))
 
 typedef uint64_t pml_entry_t;
 

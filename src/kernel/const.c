@@ -1,5 +1,6 @@
 #include "const.h"
 
+#include "log.h"
 #include "sysfs.h"
 #include "vmm.h"
 

@@ -8,8 +8,8 @@
 
 void vm_init(void);
 
-void vm_alloc_kernel(void* virtAddr, uint64_t pageAmount);
+void* vm_alloc_pages(void* virtAddr, uint64_t pageAmount, uint32_t type);
 
-void* vm_alloc(uint64_t size, uint64_t memoryType);
+void* vm_alloc(uint64_t size);
 
 void vm_map_init(efi_mem_map_t* memoryMap);

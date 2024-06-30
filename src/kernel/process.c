@@ -3,7 +3,7 @@
 #include "gdt.h"
 #include "regs.h"
 #include "smp.h"
-#include "sys/io.h"
+#include "time.h"
 #include "vmm.h"
 
 #include <stdlib.h>

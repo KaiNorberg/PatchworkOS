@@ -25,6 +25,28 @@
 #include <bootloader/boot_info.h>
 #include <stdlib_internal/init.h>
 
+#include <stdlib.h>
+
+static void kernel_free_boot_data(efi_mem_map_t* memoryMap)
+{
+    efi_mem_map_t memoryMapCopy = *memoryMap;
+    memoryMap->base = malloc(memoryMap->descriptorSize * memoryMap->descriptorAmount * 2);
+
+    for (uint64_t i = 0; i < memoryMapCopy.descriptorAmount; i++)
+    {
+        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(&memoryMapCopy, i);
+
+        if (desc->type == EFI_LOADER_DATA)
+        {
+            pmm_free_pages(desc->physicalStart, desc->amountOfPages);
+            log_print("boot data: free [%a-%a]", desc->physicalStart,
+                ((uintptr_t)desc->physicalStart) + desc->amountOfPages * PAGE_SIZE);
+        }
+    }
+
+    free(memoryMap->base);
+}
+
 void kernel_init(boot_info_t* bootInfo)
 {
     gdt_init();
@@ -33,7 +55,7 @@ void kernel_init(boot_info_t* bootInfo)
     log_init();
 
     pmm_init(&bootInfo->memoryMap);
-    vmm_init(&bootInfo->memoryMap, &bootInfo->gopBuffer);
+    vmm_init(&bootInfo->memoryMap, &bootInfo->kernel, &bootInfo->gopBuffer);
 
     log_enable_screen(&bootInfo->gopBuffer);
 
@@ -62,7 +84,7 @@ void kernel_init(boot_info_t* bootInfo)
     ps2_init();
     dwm_init(&bootInfo->gopBuffer);
 
-    pmm_free_type(EFI_MEM_BOOT_INFO);
+    kernel_free_boot_data(&bootInfo->memoryMap);
 
     dwm_start();
     log_disable_screen();

@@ -4,8 +4,11 @@
 #include "sched.h"
 #include "vfs.h"
 
+#include <bootloader/boot_info.h>
+
 #include <stdlib.h>
 #include <string.h>
+#include <sys/list.h>
 #include <sys/math.h>
 
 static fs_t ramfs;
@@ -13,16 +16,12 @@ static ram_dir_t* root;
 
 static ram_file_t* ram_dir_find_file(ram_dir_t* dir, const char* filename)
 {
-    ram_file_t* file = dir->firstFile;
-    while (file != NULL)
+    ram_file_t* file;
+    LIST_FOR_EACH(file, &dir->files)
     {
         if (name_compare(file->name, filename))
         {
             return file;
-        }
-        else
-        {
-            file = file->next;
         }
     }
 
@@ -31,16 +30,12 @@ static ram_file_t* ram_dir_find_file(ram_dir_t* dir, const char* filename)
 
 static ram_dir_t* ram_dir_find_dir(ram_dir_t* dir, const char* dirname)
 {
-    ram_dir_t* child = dir->firstChild;
-    while (child != NULL)
+    ram_dir_t* child;
+    LIST_FOR_EACH(child, &dir->children)
     {
         if (name_compare(child->name, dirname))
         {
             return child;
-        }
-        else
-        {
-            child = child->next;
         }
     }
 
@@ -82,7 +77,7 @@ static ram_file_t* ramfs_find_file(const char* path)
     return ram_dir_find_file(parent, filename);
 }
 
-/*static ram_file_t* ramfs_find_dir(const char* path)
+static ram_dir_t* ramfs_find_dir(const char* path)
 {
     ram_dir_t* parent = ramfs_traverse(path);
     if (parent == NULL)
@@ -97,7 +92,7 @@ static ram_file_t* ramfs_find_file(const char* path)
     }
 
     return ram_dir_find_dir(parent, dirname);
-}*/
+}
 
 static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count)
 {
@@ -195,9 +190,39 @@ static uint64_t ramfs_mount(volume_t* volume)
     return 0;
 }
 
+static ram_dir_t* ramfs_load_dir(ram_dir_t* in)
+{
+    ram_dir_t* out = malloc(sizeof(ram_dir_t));
+    list_entry_init(&out->base);
+    strcpy(out->name, in->name);
+    list_init(&out->children);
+    list_init(&out->files);
+
+    ram_dir_t* child;
+    LIST_FOR_EACH(child, &in->children)
+    {
+        list_push(&out->children, ramfs_load_dir(child));
+    }
+
+    ram_file_t* inFile;
+    LIST_FOR_EACH(inFile, &in->files)
+    {
+        ram_file_t* outFile = malloc(sizeof(ram_file_t));
+        list_entry_init(&outFile->base);
+        strcpy(outFile->name, inFile->name);
+        outFile->size = inFile->size;
+        outFile->data = malloc(outFile->size);
+        memcpy(outFile->data, inFile->data, outFile->size);
+
+        list_push(&out->files, outFile);
+    }
+
+    return out;
+}
+
 void ramfs_init(ram_dir_t* ramRoot)
 {
-    root = ramRoot;
+    root = ramfs_load_dir(ramRoot);
 
     memset(&ramfs, 0, sizeof(fs_t));
     ramfs.name = "ramfs";

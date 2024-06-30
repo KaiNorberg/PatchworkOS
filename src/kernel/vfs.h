@@ -8,8 +8,8 @@
 #include <sys/win.h>
 
 #include "defs.h"
-#include "list.h"
-#include "lock.h"
+
+#include <sys/list.h>
 
 #define VFS_NAME_SEPARATOR '/'
 #define VFS_LABEL_SEPARATOR ':'

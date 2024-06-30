@@ -1,10 +1,12 @@
 #include "vmm.h"
 
+#include "bootloader/boot_info.h"
 #include "lock.h"
 #include "log.h"
 #include "pmm.h"
 #include "regs.h"
 #include "sched.h"
+#include "sys/proc.h"
 #include "utils.h"
 
 #include <stdlib.h>
@@ -40,8 +42,13 @@ static void vmm_load_memory_map(efi_mem_map_t* memoryMap)
 
         pml_map(kernelPageTable, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_WRITE | VMM_KERNEL_PAGES);
     }
+}
 
-    pml_load(kernelPageTable);
+static inline void vmm_map_kernel(boot_kernel_t* kernel)
+{
+    log_print("vmm: kernel %a [%a-%a]", kernel->physStart, kernel->virtStart, kernel->virtStart + kernel->length);
+
+    pml_map(kernelPageTable, kernel->virtStart, kernel->physStart, SIZE_IN_PAGES(kernel->length), PAGE_WRITE | VMM_KERNEL_PAGES);
 }
 
 static void* space_find_free_region(space_t* space, uint64_t length)
@@ -94,12 +101,14 @@ void space_load(space_t* space)
     }
 }
 
-void vmm_init(efi_mem_map_t* memoryMap, gop_buffer_t* gopBuffer)
+void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gopBuffer)
 {
     vmm_load_memory_map(memoryMap);
-    log_print("Kernel PML loaded %a", kernelPageTable);
+    vmm_map_kernel(kernel);
 
-    pmm_free_type(EFI_MEM_BOOT_PML);
+    log_print("Kernel PML loading %a", kernelPageTable);
+    pml_load(kernelPageTable);
+    log_print("Kernel PML loaded");
 
     gopBuffer->base = vmm_kernel_map(NULL, gopBuffer->base, gopBuffer->size);
 }
@@ -115,7 +124,7 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t length)
     {
         virtAddr = VMM_LOWER_TO_HIGHER(physAddr);
 
-        log_print("vmm: map lower [mem %a-%a] to higher", physAddr, ((uintptr_t)physAddr) + length);
+        log_print("vmm: map lower [%a-%a] to higher", physAddr, ((uintptr_t)physAddr) + length);
     }
 
     pml_map(kernelPageTable, virtAddr, physAddr, SIZE_IN_PAGES(length), PAGE_WRITE | VMM_KERNEL_PAGES);

@@ -352,14 +352,30 @@ uint64_t win_move(win_t* window, const rect_t* rect)
     return 0;
 }
 
-void win_screen_area(win_t* window, rect_t* rect)
+void win_screen_window_area(win_t* window, rect_t* rect)
 {
     *rect = RECT_INIT_DIM(window->pos.x, window->pos.y, window->width, window->height);
+}
+
+void win_screen_client_area(win_t* window, rect_t* rect)
+{
+    *rect = (rect_t){
+        .left = window->pos.x + window->clientArea.left,
+        .top = window->pos.y + window->clientArea.top,
+        .right = window->pos.x + window->clientArea.right,
+        .bottom = window->pos.y + window->clientArea.bottom,
+    };
 }
 
 void win_client_area(win_t* window, rect_t* rect)
 {
     *rect = window->clientArea;
+}
+
+void win_screen_to_window(win_t* window, point_t* point)
+{
+    point->x += window->pos.x;
+    point->y += window->pos.y;
 }
 
 void win_screen_to_client(win_t* window, point_t* point)

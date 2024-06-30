@@ -3,8 +3,9 @@
 #include <stdatomic.h>
 
 #include "defs.h"
-#include "list.h"
 #include "vfs.h"
+
+#include <sys/list.h>
 
 typedef struct system
 {

@@ -5,49 +5,32 @@
 
 #include "char16.h"
 #include "fs.h"
+#include "sys/list.h"
 #include "vm.h"
 
-ram_dir_t* ram_disk_load(EFI_HANDLE imageHandle)
-{
-    EFI_FILE* rootHandle = fs_open_root_volume(imageHandle);
-
-    ram_dir_t* root = ram_disk_load_directory(rootHandle, "root");
-
-    fs_close(rootHandle);
-
-    return root;
-}
-
-ram_file_t* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
+static ram_file_t* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
 {
     EFI_FILE* fileHandle = fs_open_raw(volume, path);
 
-    ram_file_t* file = vm_alloc(sizeof(ram_file_t), EFI_MEM_RAM_DISK);
-
-    file->size = fs_get_size(fileHandle);
-    file->data = vm_alloc(file->size, EFI_MEM_RAM_DISK);
-    fs_read(fileHandle, file->size, file->data);
-
-    SetMem(file->name, 32, 0);
+    ram_file_t* file = vm_alloc(sizeof(ram_file_t));
+    list_entry_init(&file->base);
     char16_to_char(path, file->name);
+    file->size = fs_get_size(fileHandle);
+    file->data = vm_alloc(file->size);
+    fs_read(fileHandle, file->size, file->data);
 
     fs_close(fileHandle);
 
     return file;
 }
 
-ram_dir_t* ram_disk_load_directory(EFI_FILE* volume, const char* name)
+static ram_dir_t* ram_disk_load_directory(EFI_FILE* volume, const char* name)
 {
-    ram_dir_t* dir = vm_alloc(sizeof(ram_dir_t), EFI_MEM_RAM_DISK);
-
-    SetMem(dir->name, 32, 0);
+    ram_dir_t* dir = vm_alloc(sizeof(ram_dir_t));
+    list_entry_init(&dir->base);
     strcpy(dir->name, name);
-    dir->firstFile = 0;
-    dir->lastFile = 0;
-    dir->firstChild = 0;
-    dir->lastChild = 0;
-    dir->next = 0;
-    dir->prev = 0;
+    list_init(&dir->children);
+    list_init(&dir->files);
 
     while (1)
     {
@@ -80,22 +63,7 @@ ram_dir_t* ram_disk_load_directory(EFI_FILE* volume, const char* name)
                 char16_to_char(fileInfo->FileName, childName);
                 ram_dir_t* child = ram_disk_load_directory(childVolume, childName);
 
-                if (dir->firstChild == 0)
-                {
-                    child->next = 0;
-                    child->prev = 0;
-
-                    dir->firstChild = child;
-                    dir->lastChild = child;
-                }
-                else
-                {
-                    child->next = 0;
-                    child->prev = dir->lastChild;
-
-                    dir->lastChild->next = child;
-                    dir->lastChild = child;
-                }
+                list_push(&dir->children, child);
 
                 fs_close(childVolume);
             }
@@ -104,26 +72,22 @@ ram_dir_t* ram_disk_load_directory(EFI_FILE* volume, const char* name)
         {
             ram_file_t* file = ram_disk_load_file(volume, fileInfo->FileName);
 
-            if (dir->firstFile == 0)
-            {
-                file->next = 0;
-                file->prev = 0;
-
-                dir->firstFile = file;
-                dir->lastFile = file;
-            }
-            else
-            {
-                file->next = 0;
-                file->prev = dir->lastFile;
-
-                dir->lastFile->next = file;
-                dir->lastFile = file;
-            }
+            list_push(&dir->files, file);
         }
 
         FreePool(fileInfo);
     }
 
     return dir;
+}
+
+ram_dir_t* ram_disk_load(EFI_HANDLE imageHandle)
+{
+    EFI_FILE* rootHandle = fs_open_root_volume(imageHandle);
+
+    ram_dir_t* root = ram_disk_load_directory(rootHandle, "root");
+
+    fs_close(rootHandle);
+
+    return root;
 }
