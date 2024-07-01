@@ -8,8 +8,8 @@
 #include "stdlib.h"
 #include "sysfs.h"
 #include "time.h"
-#include "utils.h"
 
+#include <sys/math.h>
 #include <sys/mouse.h>
 
 static mouse_event_t eventBuffer[PS2_BUFFER_LENGTH];

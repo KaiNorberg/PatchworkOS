@@ -328,7 +328,7 @@ static void dwm_poll(void)
                 eventRecived = true;
             }
 
-            sched_yield();
+            sched_pause();
         } while (time_uptime() - before < SEC / CONFIG_DWM_FPS);
         before = time_uptime();
 

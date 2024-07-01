@@ -55,13 +55,13 @@ void simd_init(void)
 
 void simd_context_init(simd_context_t* context)
 {
-    context->buffer = VMM_LOWER_TO_HIGHER(pmm_alloc());
+    context->buffer = pmm_alloc();
     memcpy(context->buffer, initContext, PAGE_SIZE);
 }
 
 void simd_context_cleanup(simd_context_t* context)
 {
-    pmm_free(VMM_HIGHER_TO_LOWER(context->buffer));
+    pmm_free(context->buffer);
 }
 
 void simd_context_save(simd_context_t* context)

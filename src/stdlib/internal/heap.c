@@ -48,7 +48,7 @@ heap_header_t* _HeapBlockNew(uint64_t size)
     heap_header_t* newBlock = (heap_header_t*)newAddress;
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        vmm_kernel_map((void*)(newAddress + i * PAGE_SIZE), pmm_alloc(), PAGE_SIZE);
+        vmm_kernel_map((void*)(newAddress + i * PAGE_SIZE), VMM_HIGHER_TO_LOWER(pmm_alloc()), PAGE_SIZE);
     }
     newAddress += pageAmount * PAGE_SIZE;
 

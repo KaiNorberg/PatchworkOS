@@ -45,7 +45,7 @@ static NOINLINE uint64_t cpu_init(cpu_t* cpu, uint8_t id, uint8_t lapicId)
     hpet_sleep(10);
     lapic_send_sipi(lapicId, ((uint64_t)TRAMPOLINE_PHYSICAL_START) / PAGE_SIZE);
 
-    uint64_t timeout = 10000;
+    uint64_t timeout = 1000;
     while (!cpuReady)
     {
         hpet_sleep(1);
@@ -106,19 +106,8 @@ void smp_init(void)
     initialized = true;
 }
 
-void smp_cpu_init(void)
-{
-    cpu_t* cpu = smp_self_brute();
-    msr_write(MSR_CPU_ID, cpu->id);
-}
-
 void smp_entry(void)
 {
-    gdt_load();
-    idt_load();
-
-    space_load(NULL);
-
     kernel_cpu_init();
 
     cpuReady = true;

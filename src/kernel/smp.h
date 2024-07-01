@@ -30,8 +30,6 @@ typedef struct
 
 void smp_init(void);
 
-void smp_cpu_init(void);
-
 void smp_entry(void);
 
 bool smp_initialized(void);

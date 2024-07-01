@@ -1,19 +1,34 @@
 #include "vmm.h"
 
-#include "bootloader/boot_info.h"
 #include "lock.h"
 #include "log.h"
 #include "pmm.h"
 #include "regs.h"
 #include "sched.h"
-#include "sys/proc.h"
-#include "utils.h"
+#include "space.h"
 
 #include <stdlib.h>
+#include <sys/math.h>
 
-static pml_t* kernelPageTable;
+static pml_t* kernelPml;
 
 static list_t blocks;
+
+static void* vmm_find_free_region(space_t* space, uint64_t length)
+{
+    uint64_t pageAmount = SIZE_IN_PAGES(length);
+
+    for (uintptr_t addr = space->freeAddress; addr < ROUND_DOWN(UINT64_MAX, 0x1000); addr += pageAmount * PAGE_SIZE)
+    {
+        if (!pml_mapped(space->pml, (void*)addr, pageAmount))
+        {
+            space->freeAddress = addr + pageAmount * PAGE_SIZE;
+            return (void*)addr;
+        }
+    }
+
+    log_panic(NULL, "Address space filled, you must have ran this on a super computer... dont do that.");
+}
 
 static void vmm_align_region(void** virtAddr, uint64_t* length)
 {
@@ -34,80 +49,28 @@ static uint64_t vmm_prot_to_flags(prot_t prot)
 
 static void vmm_load_memory_map(efi_mem_map_t* memoryMap)
 {
-    kernelPageTable = pml_new();
+    // Kernel pml must be within 32 bit boundry becouse smp trampline loads it as a dword.
+    kernelPml = pmm_alloc_special(1, UINT32_MAX, 0);
+    memset(kernelPml, 0, PAGE_SIZE);
 
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
         const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
 
-        pml_map(kernelPageTable, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_WRITE | VMM_KERNEL_PAGES);
-    }
-}
-
-static inline void vmm_map_kernel(boot_kernel_t* kernel)
-{
-    log_print("vmm: kernel %a [%a-%a]", kernel->physStart, kernel->virtStart, kernel->virtStart + kernel->length);
-
-    pml_map(kernelPageTable, kernel->virtStart, kernel->physStart, SIZE_IN_PAGES(kernel->length), PAGE_WRITE | VMM_KERNEL_PAGES);
-}
-
-static void* space_find_free_region(space_t* space, uint64_t length)
-{
-    uint64_t pageAmount = SIZE_IN_PAGES(length);
-
-    for (uintptr_t addr = space->freeAddress; addr < ROUND_DOWN(UINT64_MAX, 0x1000); addr += pageAmount * PAGE_SIZE)
-    {
-        if (!pml_mapped(space->pml, (void*)addr, pageAmount))
-        {
-            space->freeAddress = addr + pageAmount * PAGE_SIZE;
-            return (void*)addr;
-        }
-    }
-
-    log_panic(NULL, "Address space filled, you must have ran this on a super computer... dont do that.");
-}
-
-void space_init(space_t* space)
-{
-    space->pml = pml_new();
-    space->freeAddress = 0x400000;
-    lock_init(&space->lock);
-
-    for (uint64_t i = PAGE_ENTRY_AMOUNT / 2; i < PAGE_ENTRY_AMOUNT; i++)
-    {
-        space->pml->entries[i] = kernelPageTable->entries[i];
-    }
-}
-
-void space_cleanup(space_t* space)
-{
-    for (uint64_t i = PAGE_ENTRY_AMOUNT / 2; i < PAGE_ENTRY_AMOUNT; i++)
-    {
-        space->pml->entries[i] = (pml_entry_t){0};
-    }
-
-    pml_free(space->pml);
-}
-
-void space_load(space_t* space)
-{
-    if (space == NULL)
-    {
-        pml_load(kernelPageTable);
-    }
-    else
-    {
-        pml_load(space->pml);
+        pml_map(kernelPml, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_WRITE | VMM_KERNEL_PAGES);
     }
 }
 
 void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gopBuffer)
 {
+    log_print("vmm: load");
     vmm_load_memory_map(memoryMap);
-    vmm_map_kernel(kernel);
 
-    log_print("Kernel PML loading %a", kernelPageTable);
-    pml_load(kernelPageTable);
+    log_print("vmm: kernel %a [%a-%a]", kernel->physStart, kernel->virtStart, kernel->virtStart + kernel->length);
+    pml_map(kernelPml, kernel->virtStart, kernel->physStart, SIZE_IN_PAGES(kernel->length), PAGE_WRITE | VMM_KERNEL_PAGES);
+
+    log_print("Kernel PML loading %a", kernelPml);
+    pml_load(kernelPml);
     log_print("Kernel PML loaded");
 
     gopBuffer->base = vmm_kernel_map(NULL, gopBuffer->base, gopBuffer->size);
@@ -118,16 +81,20 @@ void vmm_cpu_init(void)
     cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);
 }
 
+pml_t* vmm_kernel_pml(void)
+{
+    return kernelPml;
+}
+
 void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t length)
 {
     if (virtAddr == NULL)
     {
         virtAddr = VMM_LOWER_TO_HIGHER(physAddr);
-
         log_print("vmm: map lower [%a-%a] to higher", physAddr, ((uintptr_t)physAddr) + length);
     }
 
-    pml_map(kernelPageTable, virtAddr, physAddr, SIZE_IN_PAGES(length), PAGE_WRITE | VMM_KERNEL_PAGES);
+    pml_map(kernelPml, virtAddr, physAddr, SIZE_IN_PAGES(length), PAGE_WRITE | VMM_KERNEL_PAGES);
 
     return virtAddr;
 }
@@ -151,7 +118,7 @@ void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot)
 
     if (virtAddr == NULL)
     {
-        virtAddr = space_find_free_region(space, length);
+        virtAddr = vmm_find_free_region(space, length);
     }
 
     vmm_align_region(&virtAddr, &length);
@@ -164,7 +131,7 @@ void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot)
     for (uint64_t i = 0; i < SIZE_IN_PAGES(length); i++)
     {
         void* address = (void*)((uint64_t)virtAddr + i * PAGE_SIZE);
-        pml_map(space->pml, address, pmm_alloc(), 1, flags);
+        pml_map(space->pml, address, VMM_HIGHER_TO_LOWER(pmm_alloc()), 1, flags);
     }
 
     return virtAddr;
@@ -193,7 +160,7 @@ void* vmm_map(void* virtAddr, void* physAddr, uint64_t length, prot_t prot)
 
     if (virtAddr == NULL)
     {
-        virtAddr = space_find_free_region(space, length);
+        virtAddr = vmm_find_free_region(space, length);
     }
 
     physAddr = (void*)ROUND_DOWN(physAddr, PAGE_SIZE);

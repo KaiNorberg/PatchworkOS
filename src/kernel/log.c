@@ -5,6 +5,7 @@
 #include "io.h"
 #include "lock.h"
 #include "pmm.h"
+#include "regs.h"
 #include "smp.h"
 #include "time.h"
 
@@ -286,6 +287,8 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
         log_print("r8 %a, r9 %a, r10 %a, r11 %a, r12 %a, r13 %a, r14 %a, r15 %a", trapFrame->r8, trapFrame->r9, trapFrame->r10,
             trapFrame->r11, trapFrame->r12, trapFrame->r13, trapFrame->r14, trapFrame->r15);
     }
+
+    log_print("cr0: %a, cr2: %a, cr3: %a, cr4: %a", cr0_read(), cr2_read(), cr3_read(), cr4_read());
 
     log_print("Please restart your machine");
 

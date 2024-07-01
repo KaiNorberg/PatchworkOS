@@ -5,9 +5,9 @@
 
 #include "defs.h"
 #include "simd.h"
+#include "space.h"
 #include "trap.h"
 #include "vfs_context.h"
-#include "vmm.h"
 
 #include <sys/list.h>
 

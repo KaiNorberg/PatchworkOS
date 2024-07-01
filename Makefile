@@ -50,7 +50,7 @@ build: $(BUILD)
 deploy:
 	@echo "!====== RUNNING DEPLOY ======!"
 	dd if=/dev/zero of=$(OUTPUT_IMAGE) bs=1M count=64
-	mkfs.vfat -F 32 -n "PatchworkOS" $(OUTPUT_IMAGE)
+	mkfs.vfat -F 32 -n "PATCHWORKOS" $(OUTPUT_IMAGE)
 	mlabel -i $(OUTPUT_IMAGE) ::PatchworkOS
 	mmd -i $(OUTPUT_IMAGE) ::/boot
 	mmd -i $(OUTPUT_IMAGE) ::/efi

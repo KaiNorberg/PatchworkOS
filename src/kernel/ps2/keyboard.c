@@ -7,8 +7,8 @@
 #include "sched.h"
 #include "sysfs.h"
 #include "time.h"
-#include "utils.h"
 
+#include <sys/math.h>
 #include <sys/keyboard.h>
 
 static keyboard_event_t eventBuffer[PS2_BUFFER_LENGTH];

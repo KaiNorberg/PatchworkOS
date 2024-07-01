@@ -1,8 +1,8 @@
 #include <bootloader/boot_info.h>
 
 #include "defs.h"
-#include "log.h"
 #include "kernel.h"
+#include "log.h"
 #include "process.h"
 #include "sched.h"
 #include "vfs.h"

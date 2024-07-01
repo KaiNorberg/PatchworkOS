@@ -18,13 +18,12 @@
 #define PAGE_OWNED (1 << 9)
 
 #define PAGE_ENTRY_AMOUNT 512
-#define PAGE_ENTRY_GET_ADDRESS(entry) ((void*)((entry) & 0x000FFFFFFFFFF000))
+#define PAGE_ENTRY_GET_ADDRESS(entry) VMM_LOWER_TO_HIGHER((entry) & 0x000FFFFFFFFFF000)
 
 #define PAGE_INVALIDATE(address) asm volatile("invlpg %0" : : "m"(address))
 
-// #define PML_GET_INDEX(address, level) (((uint64_t)(address) & ((uint64_t)0x1FF << (((level) - 1) * 9 + 12)))
-// >> (((level) - 1) * 9 + 12))
-#define PML_GET_INDEX(address, level) (((uint64_t)(address) >> (((level) - 1) * 9 + 12)) & 0x1FF)
+#define PML_GET_INDEX(address, level) (((uint64_t)(address) & ((uint64_t)0x1FF << (((level) - 1) * 9 + 12))) >> (((level) - 1) * 9 + 12))
+//#define PML_GET_INDEX(address, level) (((uint64_t)(address) >> (((level) - 1) * 9 + 12)) & 0x1FF)
 
 typedef uint64_t pml_entry_t;
 

@@ -38,7 +38,7 @@ static void kernel_free_boot_data(efi_mem_map_t* memoryMap)
 
         if (desc->type == EFI_LOADER_DATA)
         {
-            pmm_free_pages(desc->physicalStart, desc->amountOfPages);
+            pmm_free_pages(VMM_LOWER_TO_HIGHER(desc->physicalStart), desc->amountOfPages);
             log_print("boot data: free [%a-%a]", desc->physicalStart,
                 ((uintptr_t)desc->physicalStart) + desc->amountOfPages * PAGE_SIZE);
         }
@@ -92,6 +92,9 @@ void kernel_init(boot_info_t* bootInfo)
 
 void kernel_cpu_init(void)
 {
+    gdt_init();
+    idt_init();
+
     cpu_t* cpu = smp_self_brute();
     msr_write(MSR_CPU_ID, cpu->id);
     gdt_load_tss(&cpu->tss);
