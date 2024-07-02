@@ -35,7 +35,7 @@ To clone (download) this repository, you can use the ```Code``` button at the to
 
 <ins>**2. Building Patchwork**</ins>
 
-You will also need to have xmake installed, it can be installed ![here](https://xmake.io/#/guide/installation). It is also recommended to use Linux.
+You will need to have xmake installed, it can be installed ![here](https://xmake.io/#/guide/installation). It is also recommended to use Linux.
 
 After xmake is installed simply run ```xmake```. You should then find a PatchworkOS.img file in the newly created bin directory.
 
