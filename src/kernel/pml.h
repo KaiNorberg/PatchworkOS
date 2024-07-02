@@ -22,8 +22,9 @@
 
 #define PAGE_INVALIDATE(address) asm volatile("invlpg %0" : : "m"(address))
 
-#define PML_GET_INDEX(address, level) (((uint64_t)(address) & ((uint64_t)0x1FF << (((level) - 1) * 9 + 12))) >> (((level) - 1) * 9 + 12))
-//#define PML_GET_INDEX(address, level) (((uint64_t)(address) >> (((level) - 1) * 9 + 12)) & 0x1FF)
+/*#define PML_GET_INDEX(address, level) \
+    (((uint64_t)(address) & ((uint64_t)0x1FF << (((level) - 1) * 9 + 12))) >> (((level) - 1) * 9 + 12))*/
+#define PML_GET_INDEX(address, level) (((uint64_t)(address) >> (((level) - 1) * 9 + 12)) & 0x1FF)
 
 typedef uint64_t pml_entry_t;
 

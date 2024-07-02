@@ -153,6 +153,12 @@ static void dwm_invalidate_above(window_t* window, const rect_t* rect)
     }
 }
 
+static void dwm_swap(void)
+{
+    gfx_swap(&frontbuffer, &backbuffer, &backbuffer.invalidArea);
+    backbuffer.invalidArea = (rect_t){0};
+}
+
 static void dwm_draw_windows(void)
 {
     window_t* window;
@@ -230,36 +236,69 @@ static void dwm_draw_panels(void)
     LIST_FOR_EACH(panel, &panels)
     {
         LOCK_GUARD(&panel->lock);
-        if (!panel->invalid)
+
+        rect_t rect;
+        if (panel->moved)
+        {
+            rect = WINDOW_RECT(panel);
+            RECT_FIT(&rect, &screenArea);
+
+            rect_subtract_t subtract;
+            RECT_SUBTRACT(&subtract, &panel->prevRect, &rect);
+
+            for (uint64_t i = 0; i < subtract.count; i++)
+            {
+                dwm_transfer(wall, &panel->prevRect);
+            }
+
+            panel->moved = false;
+            panel->invalid = false;
+            panel->prevRect = rect;
+        }
+        else if (panel->invalid)
+        {
+            rect = WINDOW_INVALID_RECT(panel);
+            RECT_FIT(&rect, &screenArea);
+            panel->invalid = false;
+        }
+        else
         {
             continue;
         }
-        panel->invalid = false;
 
-        rect_t panelRect = WINDOW_RECT(panel);
-        RECT_FIT(&panelRect, &screenArea);
-        dwm_transfer(panel, &panelRect);
+        dwm_transfer(panel, &rect);
+        panel->surface.invalidArea = (rect_t){0};
     }
 }
 
-static void dwm_draw_cursor(const point_t* cursorDelta)
+static void dwm_draw_cursor(void)
 {
     LOCK_GUARD(&cursor->lock);
+
     point_t srcPoint = {0};
+    rect_t cursorRect = WINDOW_RECT(cursor);
+    RECT_FIT(&cursorRect, &screenArea);
+    gfx_transfer_blend(&backbuffer, &cursor->surface, &cursorRect, &srcPoint);
+}
 
-    if (cursorDelta != NULL)
-    {
-        rect_t oldRect = WINDOW_RECT(cursor);
-        RECT_FIT(&oldRect, &screenArea);
-        gfx_transfer(&frontbuffer, &backbuffer, &oldRect, &cursor->pos);
+static void dwm_draw_and_update_cursor(const point_t* cursorDelta)
+{
+    LOCK_GUARD(&cursor->lock);
 
-        cursor->pos.x = CLAMP(cursor->pos.x + cursorDelta->x, 0, backbuffer.width - 1);
-        cursor->pos.y = CLAMP(cursor->pos.y + cursorDelta->y, 0, backbuffer.height - 1);
-    }
+    rect_t oldRect = WINDOW_RECT(cursor);
+    RECT_FIT(&oldRect, &screenArea);
+    dwm_redraw_below(cursor, &oldRect);
+
+    cursor->pos.x = CLAMP(cursor->pos.x + cursorDelta->x, 0, backbuffer.width - 1);
+    cursor->pos.y = CLAMP(cursor->pos.y + cursorDelta->y, 0, backbuffer.height - 1);
 
     rect_t cursorRect = WINDOW_RECT(cursor);
     RECT_FIT(&cursorRect, &screenArea);
-    gfx_transfer_blend(&frontbuffer, &cursor->surface, &cursorRect, &srcPoint);
+
+    point_t srcPoint = {0};
+    gfx_transfer_blend(&backbuffer, &cursor->surface, &cursorRect, &srcPoint);
+
+    dwm_swap();
 }
 
 static void dwm_handle_mouse_message(uint8_t buttons, const point_t* cursorDelta)
@@ -267,7 +306,7 @@ static void dwm_handle_mouse_message(uint8_t buttons, const point_t* cursorDelta
     static uint8_t oldButtons = 0;
 
     point_t oldPos = cursor->pos;
-    dwm_draw_cursor(cursorDelta);
+    dwm_draw_and_update_cursor(cursorDelta);
 
     if ((buttons & ~oldButtons) != 0) // If any button has been pressed
     {
@@ -354,13 +393,12 @@ static void dwm_loop(void)
             dwm_draw_windows();
             dwm_draw_panels();
 
-            gfx_swap(&frontbuffer, &backbuffer, &backbuffer.invalidArea);
-            backbuffer.invalidArea = (rect_t){0};
-        }
+            if (cursor != NULL)
+            {
+                dwm_draw_cursor();
+            }
 
-        if (cursor != NULL)
-        {
-            dwm_draw_cursor(NULL);
+            dwm_swap();
         }
         lock_release(&lock);
 
