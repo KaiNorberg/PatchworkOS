@@ -55,4 +55,5 @@ dkms.conf
 bin
 build
 .cache
+.xmake
 compile_commands.json

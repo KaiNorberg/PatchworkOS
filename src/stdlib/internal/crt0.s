@@ -8,7 +8,7 @@ extern _StdInit
 section .text
 global _start:function (_start.end - _start)
 _start:
-    call _init
+    ;call _init ; I will figure out why this is broken later...
 
     call _StdInit
 

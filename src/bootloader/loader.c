@@ -19,7 +19,7 @@ void loader_load_kernel(boot_kernel_t* kernel, CHAR16* path, EFI_HANDLE imageHan
 
         while (1)
         {
-            __asm__ volatile("hlt");
+            asm volatile("hlt");
         }
     }
 
@@ -32,7 +32,7 @@ void loader_load_kernel(boot_kernel_t* kernel, CHAR16* path, EFI_HANDLE imageHan
 
         while (1)
         {
-            __asm__ volatile("hlt");
+            asm volatile("hlt");
         }
     }
 

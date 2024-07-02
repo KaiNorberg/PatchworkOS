@@ -8,8 +8,8 @@
 #include "sysfs.h"
 #include "time.h"
 
-#include <sys/math.h>
 #include <sys/keyboard.h>
+#include <sys/math.h>
 
 static keyboard_event_t eventBuffer[PS2_BUFFER_LENGTH];
 static uint64_t writeIndex = 0;

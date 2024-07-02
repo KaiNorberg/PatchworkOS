@@ -2,10 +2,12 @@
 
 #include <string.h>
 #include <sys/elf.h>
+#include <sys/math.h>
 
 #include "errno.h"
 #include "sched.h"
 #include "vmm.h"
+#include "log.h"
 
 static void* loader_allocate_stack(void)
 {
@@ -65,7 +67,9 @@ static void* loader_load_program(void)
         {
         case PT_LOAD:
         {
-            if (vmm_alloc((void*)programHeader.virtAddr, programHeader.memorySize, PROT_READ | PROT_WRITE) == NULL)
+            uint64_t size = MAX(programHeader.memorySize, programHeader.fileSize);
+
+            if (vmm_alloc((void*)programHeader.virtAddr, size, PROT_READ | PROT_WRITE) == NULL)
             {
                 sched_process_exit(EEXEC);
             }
@@ -75,15 +79,15 @@ static void* loader_load_program(void)
                 sched_process_exit(EEXEC);
             }
 
-            memset((void*)programHeader.virtAddr, 0, programHeader.memorySize);
-            if (FILE_CALL(file, read, (void*)programHeader.virtAddr, programHeader.fileSize) != programHeader.fileSize)
+            memset((void*)programHeader.virtAddr, 0, size);
+            if (FILE_CALL(file, read, (void*)programHeader.virtAddr, size) != size)
             {
                 sched_process_exit(EEXEC);
             }
 
             if (!(programHeader.flags & PF_WRITE))
             {
-                if (vmm_protect((void*)programHeader.virtAddr, programHeader.memorySize, PROT_READ) == ERR)
+                if (vmm_protect((void*)programHeader.virtAddr, size, PROT_READ) == ERR)
                 {
                     sched_process_exit(EEXEC);
                 }

@@ -12,7 +12,7 @@ void vm_init(void)
     pageTable = pml_new();
 
     pml_t* cr3;
-    __asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
+    asm volatile("mov %%cr3, %0" : "=r"(cr3));
     for (uint64_t i = 0; i < 256; i++)
     {
         pageTable->entries[i] = cr3->entries[i];
@@ -42,7 +42,7 @@ void* vm_alloc_pages(void* virtAddr, uint64_t pageAmount, uint32_t type)
 
         while (1)
         {
-            __asm__ volatile("hlt");
+            asm volatile("hlt");
         }
     }
 

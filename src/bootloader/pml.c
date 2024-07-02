@@ -12,7 +12,7 @@ static void* pml_alloc_page(void)
 
         while (1)
         {
-            __asm__ volatile("hlt");
+            asm volatile("hlt");
         }
     }
 

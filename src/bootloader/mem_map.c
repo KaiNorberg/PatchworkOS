@@ -16,7 +16,7 @@ void mem_map_init(efi_mem_map_t* memoryMap)
 
         while (1)
         {
-            __asm__ volatile("hlt");
+            asm volatile("hlt");
         }
     }
 }

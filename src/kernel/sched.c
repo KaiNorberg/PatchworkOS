@@ -175,6 +175,7 @@ void sched_process_exit(uint64_t status)
     sched_context_t* context = &smp_self()->schedContext;
     context->runningThread->state = THREAD_STATE_KILLED;
     context->runningThread->process->killed = true;
+    log_print("sched: process exit (%d)", context->runningThread->process->id);
     smp_put();
 
     sched_yield();
@@ -202,6 +203,7 @@ pid_t sched_spawn(const char* path, uint8_t priority)
     thread_t* thread = thread_new(process, loader_entry, priority);
     sched_push(thread);
 
+    log_print("sched: process spawn (%d)", process->id);
     return process->id;
 }
 

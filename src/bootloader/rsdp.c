@@ -22,7 +22,7 @@ void* rsdp_get(EFI_SYSTEM_TABLE* systemTable)
         Print(L"ERROR: Failed to locate rsdp!");
         while (1)
         {
-            __asm__ volatile("hlt");
+            asm volatile("hlt");
         }
     }
 
