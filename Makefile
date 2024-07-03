@@ -45,27 +45,27 @@ run:
 	-M q35 \
 	-display sdl \
 	-drive file=$(TARGET) \
-    -m 1G \
+	-m 1G \
 	-smp 6 \
 	-serial stdio \
-    -no-shutdown -no-reboot \
-    -drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
-    -drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd \
-    -net none
+	-no-shutdown -no-reboot \
+	-drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
+	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd \
+	-net none
 
 run_debug:
 	@qemu-system-x86_64 \
 	-M q35 \
 	-display sdl \
-    -drive file=$(TARGET) \
+	-drive file=$(TARGET) \
 	-m 1G \
 	-smp 6 \
-    -serial stdio \
+	-serial stdio \
 	-d int \
-    -no-shutdown -no-reboot \
-    -drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
-    -drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd \
-    -net none
+	-no-shutdown -no-reboot \
+	-drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
+	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd \
+	-net none
 
 clean:
 	rm -rf build
