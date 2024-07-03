@@ -13,7 +13,7 @@ void loader_load_kernel(boot_kernel_t* kernel, CHAR16* path, EFI_HANDLE imageHan
     Print(L"Loading kernel...");
 
     EFI_FILE* file = fs_open(path, imageHandle);
-    if (file == 0)
+    if (file == NULL)
     {
         Print(L"ERROR: Failed to load");
 

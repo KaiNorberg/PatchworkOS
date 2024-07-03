@@ -35,9 +35,9 @@ To clone this repository, you can either use the ```Code``` button at the top le
 
 <ins>**2. Building**</ins>
 
-Before building Patchwork, ensure you have xmake installed. If not, you can install it from ![xmake.io](https://xmake.io/#/guide/installation). Linux is recommended.
+Before building Patchwork, ensure you have make, gcc, nasm and mtools installed, Linux is also recommended.
 
-Once xmake is installed, navigate to the cloned repository and run the ```xmake``` command:
+Once everything is installed, navigate to the cloned repository and run the ```make setup all``` command:
 
 You should then find a ```PatchworkOS.img``` file in the newly created bin directory.
 
@@ -46,7 +46,7 @@ You should then find a ```PatchworkOS.img``` file in the newly created bin direc
 There are three ways to run Patchwork.
 
 1. **Create a Bootable USB:** Use a tool like [balenaEtcher](https://etcher.balena.io/) to create a bootable USB using the created .img file.
-2. **Use QEMU:** Download [QEMU](https://www.qemu.org/) and use the ```xmake run``` command.
+2. **Use QEMU:** Download [QEMU](https://www.qemu.org/) and use the ```make run``` command.
 3. **Other Virtual Machine:** Run the created .img file in a virtual machine of your choice.
 
 ## Roadmap
