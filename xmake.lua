@@ -18,7 +18,6 @@ set_license("GPL-3.0")
 set_languages("gnu11")
 set_optimize("fastest")
 set_toolchains("nasm")
-
 add_cxflags("-Wall", "-Wextra", "-Werror", "-Wno-deprecated-pragma", "-Wno-unused-function", "-Wno-unused-variable",
     "-Wno-ignored-qualifiers", "-Wno-unused-parameter", "-Wno-unused-but-set-variable", "-Wno-implicit-fallthrough",
     "-Wno-deprecated-non-prototype", "-fno-stack-protector", "-ffreestanding", "-nostdlib")
@@ -68,9 +67,6 @@ target("kernel")
     add_files("src/stdlib/**.s")
     add_files("src/kernel/linker.ld")
     add_defines("__EMBED__")
-    add_cxflags("-fno-pic", "-mcmodel=large", "-fno-stack-check", "-mno-red-zone", "-Wno-array-bounds",
-        "-fomit-frame-pointer", "-mno-mmx", "-mno-3dnow", "-mno-80387", "-mno-sse", "-mno-sse2", "-mno-sse3", "-mno-ssse3",
-        "-mno-sse4")
     add_includedirs("include", "include/stdlib", "src/kernel")
 
 target("stdlib")
