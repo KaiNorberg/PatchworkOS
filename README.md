@@ -29,23 +29,25 @@ Currently untested on Intel hardware.
 
 ## Setup
 
-<ins>**1. Cloning (downloading) this repository**</ins>
+<ins>**1. Cloning**</ins>
 
-To clone (download) this repository, you can use the ```Code``` button at the top left of the screen, or if you have git installed use the following command ```git clone --recursive https://github.com/KaiNorberg/PatchworkOS```.
+To clone this repository, you can either use the ```Code``` button at the top left of the screen on GitHub, or if you have ![Git](https://git-scm.com/) installed, run the ```git clone --recursive https://github.com/KaiNorberg/PatchworkOS``` command.
 
-<ins>**2. Building Patchwork**</ins>
+<ins>**2. Building**</ins>
 
-You will need to have xmake installed, it can be installed ![here](https://xmake.io/#/guide/installation). It is also recommended to use Linux.
+Before building Patchwork, ensure you have xmake installed. If not, you can install it from ![xmake.io](https://xmake.io/#/guide/installation). Linux is recommended.
 
-After xmake is installed simply run ```xmake```. You should then find a PatchworkOS.img file in the newly created bin directory.
+Once xmake is installed, navigate to the cloned repository and run the ```xmake``` command:
 
-<ins>**3. Running Patchwork**</ins>
+You should then find a ```PatchworkOS.img``` file in the newly created bin directory.
+
+<ins>**3. Running**</ins>
 
 There are three ways to run Patchwork.
 
-1. Use a tool like [balenaEtcher](https://etcher.balena.io/) to create a bootable USB using the created .img file.
-2. Download [QEMU](https://www.qemu.org/) and use ```xmake run```.
-3. Run the created .img file in a virtual machine of your choice.
+1. **Create a Bootable USB:** Use a tool like [balenaEtcher](https://etcher.balena.io/) to create a bootable USB using the created .img file.
+2. **Use QEMU:** Download [QEMU](https://www.qemu.org/) and use the ```xmake run``` command.
+3. **Other Virtual Machine:** Run the created .img file in a virtual machine of your choice.
 
 ## Roadmap
 
