@@ -4,6 +4,9 @@ MODULES := $(basename $(notdir $(wildcard make/*.mk)))
 PROGRAMS := $(basename $(notdir $(wildcard make/programs/*.mk)))
 TARGET := bin/PatchworkOS.img
 
+setup:
+	make -C lib/gnu-efi all
+
 build:
 	@for MODULE in $(MODULES) ; do \
 	   $(MAKE) -f make/$$MODULE.mk SRCDIR=src/$$MODULE BUILDDIR=build/$$MODULE BINDIR=bin/$$MODULE ; \
