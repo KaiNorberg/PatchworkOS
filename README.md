@@ -35,7 +35,7 @@ To clone this repository, you can either use the ```Code``` button at the top le
 
 <ins>**2. Building**</ins>
 
-Before building Patchwork, ensure you have make, gcc, nasm and mtools installed, Linux is also recommended.
+Before building Patchwork, ensure you have make, gcc, nasm and mtools installed, you will also need to use Linux.
 
 Once everything is installed, navigate to the cloned repository and run the ```make setup all``` command.
 
