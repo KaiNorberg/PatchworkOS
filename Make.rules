@@ -1,0 +1,21 @@
+$(BUILDDIR)/%.c.o: src/%.c
+	$(MKCWD)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+$(BUILDDIR)/%.s.o: src/%.s
+	$(MKCWD)
+	$(AS) $(ASFLAGS) $^ -o $@
+
+$(BINDIR)/%.a: $(OBJ)
+	$(MKCWD)
+	$(LD) $(LDFLAGS) -r -o $@ $^
+
+$(BINDIR)/%.elf: $(OBJ)
+	$(MKCWD)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+$(BINDIR)/%.efi: $(OBJ)
+	$(MKCWD)
+	$(LD) -shared -Bsymbolic -Llib/gnu-efi/x86_64/lib -Llib/gnu-efi/x86_64/gnuefi -Tlib/gnu-efi/gnuefi/elf_x86_64_efi.lds lib/gnu-efi/x86_64/gnuefi/crt0-efi-x86_64.o $^ -o $(BINDIR)/temp.so -lgnuefi -lefi
+	$(OBJCOPY) -j .text -j .sdata -j .data -j .dynamic -j .dynsym  -j .rel -j .rela -j .rel.* -j .rela.* -j .reloc --target efi-app-x86_64 --subsystem=10 $(BINDIR)/temp.so $@
+	@rm $(BINDIR)/temp.so

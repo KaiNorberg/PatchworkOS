@@ -11,7 +11,10 @@ void main(boot_info_t* bootInfo)
 {
     kernel_init(bootInfo);
 
-    sched_spawn("home:/bin/shell", THREAD_PRIORITY_MIN + 1);
+    if (sched_spawn("home:/bin/shell.elf", THREAD_PRIORITY_MIN + 1) == ERR)
+    {
+        log_panic(NULL, "Failed to start shell");
+    }
 
     // Exit init thread
     sched_thread_exit();

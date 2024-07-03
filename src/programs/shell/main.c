@@ -46,13 +46,13 @@ int main(void)
     {
     }
 
-    spawn("home:/bin/cursor");
-    spawn("home:/bin/taskbar");
+    spawn("/bin/cursor.elf");
+    spawn("/bin/taskbar.elf");
 
-    spawn("home:/bin/calculator");
-    spawn("home:/bin/calculator");
-    spawn("home:/bin/calculator");
-    spawn("home:/bin/calculator");
+    spawn("/bin/calculator.elf");
+    spawn("/bin/calculator.elf");
+    spawn("/bin/calculator.elf");
+    spawn("/bin/calculator.elf");
 
     while (win_receive(wallpaper, NEVER) != LMSG_QUIT)
     {

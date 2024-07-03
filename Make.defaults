@@ -1,0 +1,41 @@
+MKCWD = mkdir -p $(@D)
+
+CC := gcc
+AS := nasm
+LD := ld
+MAKE := make
+OBJCOPY := objcopy
+
+CFLAGS := -O3 \
+	-Wall \
+	-Wextra \
+	-Werror \
+	-Wno-deprecated-pragma \
+	-Wno-unused-function \
+	-Wno-unused-variable \
+	-Wno-ignored-qualifiers \
+	-Wno-unused-parameter \
+	-Wno-unused-but-set-variable \
+	-Wno-implicit-fallthrough \
+	-Wno-deprecated-non-prototype \
+	-fno-stack-protector \
+	-ffreestanding -nostdlib \
+	-Iinclude/stdlib \
+	-Iinclude \
+	-I$(SRCDIR)
+
+CFLAGS_DISABLE_SIMD := -mno-mmx -mno-3dnow \
+	-mno-80387 -mno-sse \
+	-mno-sse2 -mno-sse3 \
+	-mno-ssse3 -mno-sse4
+
+ASFLAGS := -f elf64 \
+	-Iinclude/stdlib \
+	-Iinclude \
+	-I$(SRCDIR)
+
+LDFLAGS := -nostdlib
+
+SRC = $(wildcard $(SRCDIR)/*.c) $(wildcard $(SRCDIR)/*.s) \
+	$(wildcard $(SRCDIR)/*/*.c) $(wildcard $(SRCDIR)/*/*.s)
+OBJ = $(patsubst src/%, $(BUILDDIR)/%.o, $(SRC))

@@ -1,15 +1,11 @@
-SHELL_OUT = bin/programs/shell
+include Make.defaults
 
-SHELL_SRC = $(wildcard src/programs/shell/*.c)
+TARGET := $(BINDIR)/shell.elf
 
-SHELL_OBJ = $(patsubst src/%, build/shell/%.o, $(SHELL_SRC))
+LDFLAGS += -Lbin/stdlib -lstd
 
-build/shell/%.c.o: src/%.c
-	$(MKCWD)
-	$(CC) $(USER_C_FLAGS) -c -o $@ $<
+all: $(TARGET)
 
-$(SHELL_OUT): $(SHELL_OBJ)
-	$(MKCWD)
-	$(LD) $(USER_LD_FLAGS) -o $@ $^
+.PHONY: all
 
-BUILD += $(SHELL_OUT)
+include Make.rules

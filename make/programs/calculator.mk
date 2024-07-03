@@ -1,15 +1,11 @@
-CALC_OUT = bin/programs/calculator
+include Make.defaults
 
-CALC_SRC = $(wildcard src/programs/calculator/*.c)
+TARGET := $(BINDIR)/calculator.elf
 
-CALC_OBJ = $(patsubst src/%, build/calculator/%.o, $(CALC_SRC))
+LDFLAGS += -Lbin/stdlib -lstd
 
-build/calculator/%.c.o: src/%.c
-	$(MKCWD)
-	$(CC) $(USER_C_FLAGS) -c -o $@ $<
+all: $(TARGET)
 
-$(CALC_OUT): $(CALC_OBJ)
-	$(MKCWD)
-	$(LD) $(USER_LD_FLAGS) -o $@ $^
+.PHONY: all
 
-BUILD += $(CALC_OUT)
+include Make.rules

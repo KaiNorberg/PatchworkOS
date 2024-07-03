@@ -1,15 +1,11 @@
-TASKBAR_OUT = bin/programs/taskbar
+include Make.defaults
 
-TASKBAR_SRC = $(wildcard src/programs/taskbar/*.c)
+TARGET := $(BINDIR)/taskbar.elf
 
-TASKBAR_OBJ = $(patsubst src/%, build/taskbar/%.o, $(TASKBAR_SRC))
+LDFLAGS += -Lbin/stdlib -lstd
 
-build/taskbar/%.c.o: src/%.c
-	$(MKCWD)
-	$(CC) $(USER_C_FLAGS) -c -o $@ $<
+all: $(TARGET)
 
-$(TASKBAR_OUT): $(TASKBAR_OBJ)
-	$(MKCWD)
-	$(LD) $(USER_LD_FLAGS) -o $@ $^
+.PHONY: all
 
-BUILD += $(TASKBAR_OUT)
+include Make.rules

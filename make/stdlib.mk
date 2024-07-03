@@ -1,8 +1,6 @@
 include Make.defaults
 
-TARGET := $(BINDIR)/cursor.elf
-
-LDFLAGS += -Lbin/stdlib -lstd
+TARGET := $(BINDIR)/libstd.a
 
 all: $(TARGET)
 
