@@ -71,4 +71,4 @@ clean:
 	rm -rf build
 	rm -rf bin
 
-.PHONY: all
+.PHONY: all build deploy
