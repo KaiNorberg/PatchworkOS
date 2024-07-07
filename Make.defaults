@@ -7,6 +7,7 @@ MAKE := make
 OBJCOPY := objcopy
 
 CFLAGS := -O3 \
+	-std=gnu11 \
 	-Wall \
 	-Wextra \
 	-Werror \

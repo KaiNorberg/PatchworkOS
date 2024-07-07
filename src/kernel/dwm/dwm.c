@@ -1,5 +1,13 @@
 #include "dwm.h"
 
+#include <errno.h>
+#include <stdatomic.h>
+#include <stdlib.h>
+#include <sys/gfx.h>
+#include <sys/io.h>
+#include <sys/math.h>
+#include <sys/mouse.h>
+
 #include "config.h"
 #include "lock.h"
 #include "log.h"
@@ -10,16 +18,6 @@
 #include "time.h"
 #include "vfs.h"
 #include "window.h"
-
-#include <errno.h>
-#include <stdatomic.h>
-#include <stdlib.h>
-#include <sys/gfx.h>
-#include <sys/io.h>
-#include <sys/math.h>
-#include <sys/mouse.h>
-
-static resource_t dwm;
 
 static surface_t frontbuffer;
 static surface_t backbuffer;
@@ -406,11 +404,9 @@ static void dwm_loop(void)
     }
 }
 
-static void dwm_window_cleanup(file_t* file)
+static void dwm_window_cleanup(window_t* window)
 {
     LOCK_GUARD(&lock);
-
-    window_t* window = file->internal;
 
     if (window == selected)
     {
@@ -451,8 +447,6 @@ static void dwm_window_cleanup(file_t* file)
     {
         wall->invalid = true;
     }
-
-    window_free(window);
 }
 
 static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t length)
@@ -469,7 +463,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t
         }
         const ioctl_dwm_create_t* create = buffer;
 
-        window_t* window = window_new(&create->pos, create->width, create->height, create->type);
+        window_t* window = window_new(&create->pos, create->width, create->height, create->type, dwm_window_cleanup);
         if (window == NULL)
         {
             return ERR;
@@ -522,7 +516,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t
         }
         }
 
-        window_populate_file(window, file, dwm_window_cleanup);
+        window_populate_file(window, file);
 
         // Preserve splash screen on boot, wall will be drawn on first flush.
         if (window->type != WIN_WALL)
@@ -551,11 +545,9 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t
     }
 }
 
-static uint64_t dwm_open(resource_t* resource, file_t* file)
-{
-    file->ops.ioctl = dwm_ioctl;
-    return 0;
-}
+static file_ops_t fileOps = {
+    .ioctl = dwm_ioctl,
+};
 
 void dwm_init(gop_buffer_t* gopBuffer)
 {
@@ -585,8 +577,7 @@ void dwm_init(gop_buffer_t* gopBuffer)
 
     atomic_init(&redrawNeeded, true);
 
-    resource_init(&dwm, "dwm", dwm_open, NULL);
-    sysfs_expose(&dwm, "/server");
+    sysfs_expose("/server", "dwm", &fileOps);
 }
 
 void dwm_start(void)

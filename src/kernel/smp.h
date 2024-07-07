@@ -30,6 +30,8 @@ typedef struct
 
 void smp_init(void);
 
+void smp_init_others(void);
+
 void smp_entry(void);
 
 bool smp_initialized(void);
@@ -46,11 +48,11 @@ uint8_t smp_cpu_amount(void);
 
 cpu_t* smp_cpu(uint8_t id);
 
-// Must have a corresponding call to smp_put()
-cpu_t* smp_self(void);
-
 cpu_t* smp_self_unsafe(void);
 
 cpu_t* smp_self_brute(void);
+
+// Must have a corresponding call to smp_put()
+cpu_t* smp_self(void);
 
 void smp_put(void);

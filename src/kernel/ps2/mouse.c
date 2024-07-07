@@ -8,14 +8,13 @@
 #include "stdlib.h"
 #include "sysfs.h"
 #include "time.h"
+#include "vfs.h"
 
 #include <sys/math.h>
 #include <sys/mouse.h>
 
 static mouse_event_t eventBuffer[PS2_BUFFER_LENGTH];
 static uint64_t writeIndex = 0;
-
-static resource_t mouse;
 
 static void ps2_mouse_handle_packet(const ps2_mouse_packet_t* packet)
 {
@@ -103,20 +102,10 @@ static bool ps2_mouse_read_avail(file_t* file)
     return file->position != writeIndex;
 }
 
-static void ps2_mouse_cleanup(file_t* file)
-{
-    resource_t* resource = file->internal;
-    resource_unref(resource);
-}
-
-static uint64_t ps2_mouse_open(resource_t* resource, file_t* file)
-{
-    file->ops.read = ps2_mouse_read;
-    file->ops.read_avail = ps2_mouse_read_avail;
-    file->cleanup = ps2_mouse_cleanup;
-    file->internal = resource_ref(resource);
-    return 0;
-}
+static file_ops_t fileOps = {
+    .read = ps2_mouse_read,
+    .read_avail = ps2_mouse_read_avail,
+};
 
 void ps2_mouse_init(void)
 {
@@ -135,6 +124,5 @@ void ps2_mouse_init(void)
 
     irq_install(ps2_mouse_irq, IRQ_MOUSE);
 
-    resource_init(&mouse, "ps2", ps2_mouse_open, NULL);
-    sysfs_expose(&mouse, "/mouse");
+    sysfs_expose("/mouse", "ps2", &fileOps);
 }

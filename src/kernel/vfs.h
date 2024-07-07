@@ -4,12 +4,11 @@
 #include <stdatomic.h>
 #include <string.h>
 #include <sys/io.h>
+#include <sys/list.h>
 #include <sys/proc.h>
 #include <sys/win.h>
 
 #include "defs.h"
-
-#include <sys/list.h>
 
 #define VFS_NAME_SEPARATOR '/'
 #define VFS_LABEL_SEPARATOR ':'
@@ -21,7 +20,6 @@
 #define VFS_END_OF_LABEL(ch) ((ch) == VFS_LABEL_SEPARATOR || (ch) == '\0')
 
 #define FILE_CALL(file, op, ...) ((file)->ops.op != NULL ? (file)->ops.op(file __VA_OPT__(, )##__VA_ARGS__) : ERROR(EACCES))
-
 #define FILE_CALL_PTR(file, op, ...) ((file)->ops.op != NULL ? (file)->ops.op(file __VA_OPT__(, )##__VA_ARGS__) : NULLPTR(EACCES))
 
 #define FILE_GUARD(file) __attribute__((cleanup(file_cleanup))) file_t* CONCAT(f, __COUNTER__) = (file)
@@ -30,41 +28,63 @@ typedef struct fs fs_t;
 typedef struct volume volume_t;
 typedef struct file file_t;
 
+typedef uint64_t (*fs_mount_t)(const char*); //Add arguemnts as they are needed
+
+typedef uint64_t (*volume_unmount_t)(volume_t*);
+typedef uint64_t (*volume_open_t)(volume_t*, file_t*, const char*);
+typedef uint64_t (*volume_stat_t)(volume_t*, const char*, stat_t*);
+
+typedef uint64_t (*file_open_t)(file_t*, const char*);
+typedef void (*file_cleanup_t)(file_t*);
+typedef uint64_t (*file_read_t)(file_t*, void*, uint64_t);
+typedef uint64_t (*file_write_t)(file_t*, const void*, uint64_t);
+typedef uint64_t (*file_seek_t)(file_t*, int64_t, uint8_t);
+typedef uint64_t (*file_ioctl_t)(file_t*, uint64_t, void*, uint64_t);
+typedef uint64_t (*file_flush_t)(file_t*, const void*, uint64_t, const rect_t*);
+typedef void* (*file_mmap_t)(file_t*, void*, uint64_t, prot_t);
+typedef bool (*file_write_avail_t)(file_t*);
+typedef bool (*file_read_avail_t)(file_t*);
+
+typedef struct file_ops
+{
+    file_open_t open;
+    file_cleanup_t cleanup;
+    file_read_t read;
+    file_write_t write;
+    file_seek_t seek;
+    file_ioctl_t ioctl;
+    file_flush_t flush;
+    file_mmap_t mmap;
+    file_write_avail_t write_avail;
+    file_read_avail_t read_avail;
+} file_ops_t;
+
+typedef struct volume_ops
+{
+    volume_unmount_t unmount;
+    volume_stat_t stat;
+} volume_ops_t;
+
 typedef struct fs
 {
     char* name;
-    uint64_t (*mount)(volume_t*);
+    fs_mount_t mount;
 } fs_t;
 
 typedef struct volume
 {
     list_entry_t base;
     char label[CONFIG_MAX_LABEL];
-    fs_t* fs;
-    uint64_t (*unmount)(volume_t*);
-    uint64_t (*open)(volume_t*, file_t*, const char*);
-    uint64_t (*stat)(volume_t*, const char*, stat_t*);
+    volume_ops_t volumeOps;
+    file_ops_t fileOps;
     _Atomic(uint64_t) ref;
 } volume_t;
-
-typedef struct file_ops
-{
-    uint64_t (*read)(file_t*, void*, uint64_t);
-    uint64_t (*write)(file_t*, const void*, uint64_t);
-    uint64_t (*seek)(file_t*, int64_t, uint8_t);
-    uint64_t (*ioctl)(file_t*, uint64_t, void*, uint64_t);
-    uint64_t (*flush)(file_t*, const void*, uint64_t, const rect_t* rect);
-    void* (*mmap)(file_t*, void*, uint64_t, prot_t);
-    bool (*write_avail)(file_t*);
-    bool (*read_avail)(file_t*);
-} file_ops_t;
 
 typedef struct file
 {
     volume_t* volume;
     uint64_t position;
     void* internal;
-    void (*cleanup)(file_t*);
     file_ops_t ops;
     _Atomic(uint64_t) ref;
 } file_t;
@@ -76,7 +96,7 @@ typedef struct
     uint16_t occurred;
 } poll_file_t;
 
-file_t* file_new(void);
+file_t* file_new(const file_ops_t* ops);
 
 file_t* file_ref(file_t* file);
 
@@ -89,13 +109,15 @@ static inline void file_cleanup(file_t** file)
 
 void vfs_init(void);
 
-file_t* vfs_open(const char* path);
-
-uint64_t vfs_stat(const char* path, stat_t* buffer);
+uint64_t vfs_attach_simple(const char* label, volume_ops_t* volumeOps, file_ops_t* fileOps);
 
 uint64_t vfs_mount(const char* label, fs_t* fs);
 
 uint64_t vfs_unmount(const char* label);
+
+file_t* vfs_open(const char* path);
+
+uint64_t vfs_stat(const char* path, stat_t* buffer);
 
 uint64_t vfs_realpath(char* out, const char* path);
 

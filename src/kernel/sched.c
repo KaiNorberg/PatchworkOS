@@ -123,14 +123,19 @@ void sched_context_init(sched_context_t* context)
     context->runningThread = NULL;
 }
 
-void sched_start(void)
+void sched_init(void)
 {
-    log_print("Starting scheduler");
-
     sched_spawn_init_thread();
 
+    log_print("sched: init");
+}
+
+void sched_start(void)
+{
     smp_send_ipi_to_others(IPI_START);
     SMP_SEND_IPI_TO_SELF(IPI_START);
+
+    log_print("sched: start");
 }
 
 void sched_cpu_start(void)

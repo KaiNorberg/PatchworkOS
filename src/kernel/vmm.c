@@ -74,6 +74,8 @@ void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gop
     log_print("Kernel PML loaded");
 
     gopBuffer->base = vmm_kernel_map(NULL, gopBuffer->base, gopBuffer->size);
+
+    vmm_cpu_init();
 }
 
 void vmm_cpu_init(void)

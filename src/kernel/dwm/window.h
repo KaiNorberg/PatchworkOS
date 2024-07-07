@@ -17,6 +17,7 @@ typedef struct window
     bool invalid;
     bool moved;
     rect_t prevRect;
+    void (*cleanup)(struct window*);
     lock_t lock;
     message_queue_t messages;
 } window_t;
@@ -27,8 +28,8 @@ typedef struct window
     RECT_INIT_DIM(window->pos.x + window->surface.invalidArea.left, window->pos.y + window->surface.invalidArea.top, \
         RECT_WIDTH(&window->surface.invalidArea), RECT_HEIGHT(&window->surface.invalidArea));
 
-window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, win_type_t type);
+window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, win_type_t type, void (*cleanup)(window_t*));
 
 void window_free(window_t* window);
 
-void window_populate_file(window_t* window, file_t* file, void (*cleanup)(file_t*));
+void window_populate_file(window_t* window, file_t* file);

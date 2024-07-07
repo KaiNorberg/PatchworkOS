@@ -6,6 +6,7 @@
 #include "lock.h"
 #include "pmm.h"
 #include "regs.h"
+#include "sched.h"
 #include "smp.h"
 #include "time.h"
 
@@ -267,7 +268,7 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
 
     if (smp_initialized())
     {
-        log_print("Occured on cpu %d", smp_self_unsafe()->id);
+        log_print("Occured on cpu %d in process %d", smp_self_unsafe()->id, sched_process()->id);
     }
     else
     {

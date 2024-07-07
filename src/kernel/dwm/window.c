@@ -108,14 +108,30 @@ static uint64_t window_flush(file_t* file, const void* buffer, uint64_t size, co
     return 0;
 }
 
-bool window_read_avail(file_t* file)
+static bool window_read_avail(file_t* file)
 {
     window_t* window = file->internal;
 
     return message_queue_avail(&window->messages);
 }
 
-window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, win_type_t type)
+static void window_cleanup(file_t* file)
+{
+    window_t* window = file->internal;
+
+    window->cleanup(window);
+
+    window_free(window);
+}
+
+static file_ops_t fileOps = {
+    .cleanup = window_cleanup,
+    .ioctl = window_ioctl,
+    .flush = window_flush,
+    .read_avail = window_read_avail,
+};
+
+window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, win_type_t type, void (*cleanup)(window_t*))
 {
     if (type > WIN_MAX)
     {
@@ -134,6 +150,7 @@ window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, win_ty
     window->invalid = false;
     window->moved = false;
     window->prevRect = RECT_INIT_DIM(pos->x, pos->y, width, height);
+    window->cleanup = cleanup;
     lock_init(&window->lock);
     message_queue_init(&window->messages);
 
@@ -146,11 +163,8 @@ void window_free(window_t* window)
     free(window);
 }
 
-void window_populate_file(window_t* window, file_t* file, void (*cleanup)(file_t*))
+void window_populate_file(window_t* window, file_t* file)
 {
     file->internal = window;
-    file->cleanup = cleanup;
-    file->ops.read_avail = window_read_avail;
-    file->ops.flush = window_flush;
-    file->ops.ioctl = window_ioctl;
+    file->ops = fileOps;
 }

@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "sched.h"
+#include "log.h"
 
 void vfs_context_init(vfs_context_t* context)
 {
@@ -42,7 +43,6 @@ fd_t vfs_context_open(file_t* file)
 
 uint64_t vfs_context_close(fd_t fd)
 {
-
     vfs_context_t* context = &sched_process()->vfsContext;
     LOCK_GUARD(&context->lock);
 

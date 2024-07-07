@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// TODO: Replace this with a better algorithm, slab allocator? buddy allocator?
+// TODO: Replace heap with a better algorithm, buddy allocator?
 
 #define HEAP_ALIGNMENT 64
 #define HEAP_BUCKET_AMOUNT 10

@@ -5,6 +5,7 @@
 #include "log.h"
 #include "process.h"
 #include "sched.h"
+#include "sys/keyboard.h"
 #include "vfs.h"
 
 void main(boot_info_t* bootInfo)

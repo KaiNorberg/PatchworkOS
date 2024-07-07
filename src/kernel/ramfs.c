@@ -11,7 +11,6 @@
 #include <sys/list.h>
 #include <sys/math.h>
 
-static fs_t ramfs;
 static ram_dir_t* root;
 
 static ram_file_t* ram_dir_find_file(ram_dir_t* dir, const char* filename)
@@ -94,6 +93,18 @@ static ram_dir_t* ramfs_find_dir(const char* path)
     return ram_dir_find_dir(parent, dirname);
 }
 
+static uint64_t ramfs_open(file_t* file, const char* path)
+{
+    ram_file_t* ramFile = ramfs_find_file(path);
+    if (ramFile == NULL)
+    {
+        return ERROR(EPATH);
+    }
+
+    file->internal = ramFile;
+    return 0;
+}
+
 static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count)
 {
     ram_file_t* internal = file->internal;
@@ -140,21 +151,6 @@ static uint64_t ramfs_seek(file_t* file, int64_t offset, uint8_t origin)
     return position;
 }
 
-static uint64_t ramfs_open(volume_t* volume, file_t* file, const char* path)
-{
-    ram_file_t* ramFile = ramfs_find_file(path);
-    if (ramFile == NULL)
-    {
-        return ERROR(EPATH);
-    }
-
-    file->ops.read = ramfs_read;
-    file->ops.seek = ramfs_seek;
-    file->internal = ramFile;
-
-    return 0;
-}
-
 static uint64_t ramfs_stat(volume_t* volume, const char* path, stat_t* buffer)
 {
     buffer->size = 0;
@@ -182,13 +178,25 @@ static uint64_t ramfs_stat(volume_t* volume, const char* path, stat_t* buffer)
     return 0;
 }
 
-static uint64_t ramfs_mount(volume_t* volume)
-{
-    volume->open = ramfs_open;
-    volume->stat = ramfs_stat;
+static volume_ops_t volumeOps = {
+    .stat = ramfs_stat
+};
 
-    return 0;
+static file_ops_t fileOps = {
+    .open = ramfs_open,
+    .read = ramfs_read,
+    .seek = ramfs_seek,
+};
+
+static uint64_t ramfs_mount(const char* label)
+{
+    return vfs_attach_simple(label, &volumeOps, &fileOps);
 }
+
+static fs_t ramfs = {
+    .name = "ramfs",
+    .mount = ramfs_mount,
+};
 
 static ram_dir_t* ramfs_load_dir(ram_dir_t* in)
 {
@@ -223,10 +231,6 @@ static ram_dir_t* ramfs_load_dir(ram_dir_t* in)
 void ramfs_init(ram_dir_t* ramRoot)
 {
     root = ramfs_load_dir(ramRoot);
-
-    memset(&ramfs, 0, sizeof(fs_t));
-    ramfs.name = "ramfs";
-    ramfs.mount = ramfs_mount;
 
     LOG_ASSERT(vfs_mount("home", &ramfs) != ERR, "mount fail");
 

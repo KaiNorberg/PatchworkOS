@@ -57,27 +57,30 @@ void kernel_init(boot_info_t* bootInfo)
     pmm_init(&bootInfo->memoryMap);
     vmm_init(&bootInfo->memoryMap, &bootInfo->kernel, &bootInfo->gopBuffer);
 
+    _StdInit();
+
+    vfs_init();
+    sysfs_init();
+
     log_enable_screen(&bootInfo->gopBuffer);
 
-    _StdInit();
+    smp_init();
+    sched_init();
 
     acpi_init(bootInfo->rsdp);
     hpet_init();
     madt_init();
     apic_init();
+    lapic_init();
 
+    pic_init();
+    simd_init();
     time_init();
     log_enable_time();
 
-    pic_init();
-
-    smp_init();
-    kernel_cpu_init();
-
+    smp_init_others();
     sched_start();
 
-    vfs_init();
-    sysfs_init();
     ramfs_init(bootInfo->ramRoot);
 
     const_init();
@@ -88,21 +91,4 @@ void kernel_init(boot_info_t* bootInfo)
 
     dwm_start();
     log_disable_screen();
-}
-
-void kernel_cpu_init(void)
-{
-    gdt_init();
-    idt_init();
-
-    cpu_t* cpu = smp_self_brute();
-    msr_write(MSR_CPU_ID, cpu->id);
-    gdt_load_tss(&cpu->tss);
-
-    lapic_init();
-    simd_init();
-
-    vmm_cpu_init();
-
-    log_print("CPU %d: initialized", (uint64_t)cpu->id);
 }

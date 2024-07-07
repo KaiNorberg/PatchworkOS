@@ -111,6 +111,7 @@ fd_t syscall_open(const char* path)
     fd_t fd = vfs_context_open(file);
     if (fd == ERR)
     {
+        file_deref(file);
         return ERR;
     }
 

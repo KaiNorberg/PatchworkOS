@@ -16,6 +16,7 @@ _NORETURN void exit(int status);
 
 void* malloc(size_t size);
 void* calloc(size_t num, size_t size);
+void* realloc(void* ptr, size_t size);
 void free(void* ptr);
 
 char* lltoa(long long number, char* str, int base);

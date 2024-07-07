@@ -2,6 +2,7 @@
 
 #include "lock.h"
 #include "sched.h"
+#include "sys/list.h"
 #include "time.h"
 #include "vfs_context.h"
 #include <errno.h>
@@ -12,6 +13,67 @@ static list_t volumes;
 static lock_t volumeLock;
 
 // TODO: Improve file path parsing.
+
+static volume_t* volume_ref(volume_t* volume)
+{
+    atomic_fetch_add(&volume->ref, 1);
+    return volume;
+}
+
+static void volume_deref(volume_t* volume)
+{
+    atomic_fetch_sub(&volume->ref, 1);
+}
+
+static volume_t* volume_get(const char* label)
+{
+    LOCK_GUARD(&volumeLock);
+
+    volume_t* volume;
+    LIST_FOR_EACH(volume, &volumes)
+    {
+        if (label_compare(volume->label, label))
+        {
+            return volume_ref(volume);
+        }
+    }
+
+    return NULL;
+}
+
+file_t* file_new(const file_ops_t* ops)
+{
+    file_t* file = malloc(sizeof(file_t));
+    file->volume = NULL;
+    file->position = 0;
+    file->internal = NULL;
+    file->ops = *ops;
+    atomic_init(&file->ref, 1);
+
+    return file;
+}
+
+file_t* file_ref(file_t* file)
+{
+    atomic_fetch_add(&file->ref, 1);
+    return file;
+}
+
+void file_deref(file_t* file)
+{
+    if (atomic_fetch_sub(&file->ref, 1) <= 1)
+    {
+        if (file->ops.cleanup != NULL)
+        {
+            file->ops.cleanup(file);
+        }
+        if (file->volume != NULL)
+        {
+            volume_deref(file->volume);
+        }
+        free(file);
+    }
+}
 
 static uint64_t vfs_make_canonical(const char* start, char* out, const char* path)
 {
@@ -127,156 +189,13 @@ static uint64_t vfs_parse_path(char* out, const char* path)
     }
 }
 
-static volume_t* volume_ref(volume_t* volume)
-{
-    atomic_fetch_add(&volume->ref, 1);
-    return volume;
-}
-
-static void volume_deref(volume_t* volume)
-{
-    atomic_fetch_sub(&volume->ref, 1);
-}
-
-static volume_t* volume_get(const char* label)
-{
-    LOCK_GUARD(&volumeLock);
-
-    volume_t* volume;
-    LIST_FOR_EACH(volume, &volumes)
-    {
-        if (label_compare(volume->label, label))
-        {
-            return volume_ref(volume);
-        }
-    }
-
-    return NULL;
-}
-
-file_t* file_new(void)
-{
-    file_t* file = malloc(sizeof(file_t));
-    atomic_init(&file->ref, 1);
-    file->volume = NULL;
-    file->position = 0;
-    file->internal = NULL;
-    file->cleanup = NULL;
-    memset(&file->ops, 0, sizeof(file_ops_t));
-
-    return file;
-}
-
-file_t* file_ref(file_t* file)
-{
-    atomic_fetch_add(&file->ref, 1);
-    return file;
-}
-
-void file_deref(file_t* file)
-{
-    if (atomic_fetch_sub(&file->ref, 1) <= 1)
-    {
-        if (file->cleanup != NULL)
-        {
-            file->cleanup(file);
-        }
-        if (file->volume != NULL)
-        {
-            volume_deref(file->volume);
-        }
-        free(file);
-    }
-}
-
-/*void test_path(const char* path)
-{
-    tty_print(path);
-    tty_print(" => ");
-    char parsedPath[MAX_PATH];
-    parsedPath[0] = '\0';
-    if (vfs_parse_path(parsedPath, path) == ERR)
-    {
-        tty_print("ERR\n");
-        return;
-    }
-    tty_print(parsedPath);
-    tty_print("\n");
-}*/
-
 void vfs_init(void)
 {
     list_init(&volumes);
     lock_init(&volumeLock);
 }
 
-file_t* vfs_open(const char* path)
-{
-    char parsedPath[MAX_PATH];
-    if (vfs_parse_path(parsedPath, path) == ERR)
-    {
-        return NULLPTR(EPATH);
-    }
-
-    volume_t* volume = volume_get(parsedPath);
-    if (volume == NULL)
-    {
-        return NULLPTR(EPATH);
-    }
-
-    if (volume->open == NULL)
-    {
-        volume_deref(volume);
-        return NULLPTR(EACCES);
-    }
-
-    // volume_t reference is passed to file.
-    file_t* file = file_new();
-    file->volume = volume;
-
-    char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
-    if (rootPath == NULL || volume->open(volume, file, rootPath) == ERR)
-    {
-        file_deref(file);
-        return NULL;
-    }
-
-    return file;
-}
-
-uint64_t vfs_stat(const char* path, stat_t* buffer)
-{
-    char parsedPath[MAX_PATH];
-    if (vfs_parse_path(parsedPath, path) == ERR)
-    {
-        return ERROR(EPATH);
-    }
-
-    volume_t* volume = volume_get(parsedPath);
-    if (volume == NULL)
-    {
-        return ERROR(EPATH);
-    }
-
-    if (volume->stat == NULL)
-    {
-        volume_deref(volume);
-        return ERROR(EACCES);
-    }
-
-    char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
-    if (rootPath == NULL)
-    {
-        volume_deref(volume);
-        return ERR;
-    }
-
-    uint64_t result = volume->stat(volume, rootPath, buffer);
-    volume_deref(volume);
-    return result;
-}
-
-uint64_t vfs_mount(const char* label, fs_t* fs)
+uint64_t vfs_attach_simple(const char* label, volume_ops_t* volumeOps, file_ops_t* fileOps)
 {
     if (strlen(label) >= CONFIG_MAX_LABEL)
     {
@@ -294,19 +213,19 @@ uint64_t vfs_mount(const char* label, fs_t* fs)
     }
 
     volume = malloc(sizeof(volume_t));
-    memset(volume, 0, sizeof(volume_t));
+    list_entry_init(&volume->base);
     strcpy(volume->label, label);
-    volume->fs = fs;
+    volume->volumeOps = *volumeOps;
+    volume->fileOps = *fileOps;
     atomic_init(&volume->ref, 1);
-
-    if (fs->mount(volume) == ERR)
-    {
-        free(volume);
-        return ERR;
-    }
 
     list_push(&volumes, volume);
     return 0;
+}
+
+uint64_t vfs_mount(const char* label, fs_t* fs)
+{
+    return fs->mount(label);
 }
 
 uint64_t vfs_unmount(const char* label)
@@ -334,12 +253,12 @@ uint64_t vfs_unmount(const char* label)
         return ERROR(EBUSY);
     }
 
-    if (volume->unmount == NULL)
+    if (volume->volumeOps.unmount == NULL)
     {
         return ERROR(EACCES);
     }
 
-    if (volume->unmount(volume) == ERR)
+    if (volume->volumeOps.unmount(volume) == ERR)
     {
         return ERR;
     }
@@ -347,6 +266,72 @@ uint64_t vfs_unmount(const char* label)
     list_remove(volume);
     free(volume);
     return 0;
+}
+
+file_t* vfs_open(const char* path)
+{
+    char parsedPath[MAX_PATH];
+    if (vfs_parse_path(parsedPath, path) == ERR)
+    {
+        return NULLPTR(EPATH);
+    }
+
+    volume_t* volume = volume_get(parsedPath);
+    if (volume == NULL)
+    {
+        return NULLPTR(EPATH);
+    }
+
+    if (volume->fileOps.open == NULL)
+    {
+        volume_deref(volume);
+        return NULLPTR(EACCES);
+    }
+
+    // Volume reference is passed to file.
+    file_t* file = file_new(&volume->fileOps);
+    file->volume = volume;
+
+    char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
+    if (rootPath == NULL || file->ops.open(file, rootPath) == ERR)
+    {
+        file_deref(file);
+        return NULL;
+    }
+
+    return file;
+}
+
+uint64_t vfs_stat(const char* path, stat_t* buffer)
+{
+    char parsedPath[MAX_PATH];
+    if (vfs_parse_path(parsedPath, path) == ERR)
+    {
+        return ERROR(EPATH);
+    }
+
+    volume_t* volume = volume_get(parsedPath);
+    if (volume == NULL)
+    {
+        return ERROR(EPATH);
+    }
+
+    if (volume->volumeOps.stat == NULL)
+    {
+        volume_deref(volume);
+        return ERROR(EACCES);
+    }
+
+    char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
+    if (rootPath == NULL)
+    {
+        volume_deref(volume);
+        return ERR;
+    }
+
+    uint64_t result = volume->volumeOps.stat(volume, rootPath, buffer);
+    volume_deref(volume);
+    return result;
 }
 
 uint64_t vfs_realpath(char* out, const char* path)

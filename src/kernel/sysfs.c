@@ -3,11 +3,11 @@
 #include "lock.h"
 #include "log.h"
 #include "sched.h"
+#include "sys/list.h"
+#include "vfs.h"
 
 #include <stdlib.h>
 #include <string.h>
-
-static fs_t sysfs;
 
 static system_t* root;
 static lock_t lock;
@@ -86,7 +86,7 @@ static resource_t* sysfs_find_resource(const char* path)
     return system_find_resource(parent, name);
 }
 
-static uint64_t sysfs_open(volume_t* volume, file_t* file, const char* path)
+static uint64_t sysfs_open(file_t* file, const char* path)
 {
     LOCK_GUARD(&lock);
 
@@ -96,11 +96,18 @@ static uint64_t sysfs_open(volume_t* volume, file_t* file, const char* path)
         return ERROR(EPATH);
     }
 
-    return resource->open(resource, file);
+    file->ops = resource->ops;
+    if (file->ops.open != NULL)
+    {
+        return file->ops.open(file, path);
+    }
+    return 0;
 }
 
 static uint64_t sysfs_stat(volume_t* volume, const char* path, stat_t* buffer)
 {
+    LOCK_GUARD(&lock);
+
     buffer->size = 0;
 
     system_t* parent = sysfs_traverse(path);
@@ -126,61 +133,35 @@ static uint64_t sysfs_stat(volume_t* volume, const char* path, stat_t* buffer)
     return 0;
 }
 
-static uint64_t sysfs_mount(volume_t* volume)
-{
-    volume->open = sysfs_open;
-    volume->stat = sysfs_stat;
+static volume_ops_t volumeOps = {
+    .stat = sysfs_stat
+};
 
-    return 0;
+static file_ops_t fileOps = {
+    .open = sysfs_open,
+};
+
+static uint64_t sysfs_mount(const char* label)
+{
+    return vfs_attach_simple(label, &volumeOps, &fileOps);
 }
 
-void resource_init(resource_t* resource, const char* name, uint64_t (*open)(resource_t* resource, file_t* file),
-    void (*delete)(resource_t* resource))
-{
-    list_entry_init(&resource->base);
-    resource->system = NULL;
-    atomic_init(&resource->ref, 1);
-    name_copy(resource->name, name);
-    resource->open = open;
-    resource->delete = delete;
-}
-
-resource_t* resource_ref(resource_t* resource)
-{
-    atomic_fetch_add(&resource->ref, 1);
-    return resource;
-}
-
-void resource_unref(resource_t* resource)
-{
-    if (atomic_fetch_sub(&resource->ref, 1) <= 1)
-    {
-        if (resource->delete != NULL)
-        {
-            resource->delete (resource);
-        }
-        else
-        {
-            log_panic(NULL, "Attempt to delete undeletable resource");
-        }
-    }
-}
+static fs_t sysfs = {
+    .name = "sysfs",
+    .mount = sysfs_mount,
+};
 
 void sysfs_init(void)
 {
     root = system_new("root");
     lock_init(&lock);
 
-    memset(&sysfs, 0, sizeof(fs_t));
-    sysfs.name = "sysfs";
-    sysfs.mount = sysfs_mount;
-
     LOG_ASSERT(vfs_mount("sys", &sysfs) != ERR, "mount fail");
 
-    log_print("sysfs: initialized");
+    log_print("sysfs: init");
 }
 
-void sysfs_expose(resource_t* resource, const char* path)
+void sysfs_expose(const char* path, const char* filename, const file_ops_t* ops)
 {
     LOCK_GUARD(&lock);
 
@@ -199,15 +180,11 @@ void sysfs_expose(resource_t* resource, const char* path)
         name = name_next(name);
     }
 
+    resource_t* resource = malloc(sizeof(resource_t));
+    list_entry_init(&resource->base);
     resource->system = system;
+    strcpy(resource->name, filename);
+    resource->ops = *ops;
+
     list_push(&system->resources, resource);
-}
-
-void sysfs_hide(resource_t* resource)
-{
-    LOCK_GUARD(&lock);
-
-    resource->system = NULL;
-    list_remove(resource);
-    resource_unref(resource);
 }

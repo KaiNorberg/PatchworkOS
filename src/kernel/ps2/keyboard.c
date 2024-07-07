@@ -173,20 +173,10 @@ static bool ps2_keyboard_read_avail(file_t* file)
     return file->position != writeIndex;
 }
 
-static void ps2_keyboard_cleanup(file_t* file)
-{
-    resource_t* resource = file->internal;
-    resource_unref(resource);
-}
-
-static uint64_t ps2_keyboard_open(resource_t* resource, file_t* file)
-{
-    file->ops.read = ps2_keyboard_read;
-    file->ops.read_avail = ps2_keyboard_read_avail;
-    file->cleanup = ps2_keyboard_cleanup;
-    file->internal = resource_ref(resource);
-    return 0;
-}
+static file_ops_t fileOps = {
+    .read = ps2_keyboard_read,
+    .read_avail = ps2_keyboard_read_avail,
+};
 
 void ps2_keyboard_init(void)
 {
@@ -195,6 +185,5 @@ void ps2_keyboard_init(void)
 
     irq_install(ps2_keyboard_irq, IRQ_KEYBOARD);
 
-    resource_init(&keyboard, "ps2", ps2_keyboard_open, NULL);
-    sysfs_expose(&keyboard, "/keyboard");
+    sysfs_expose("/keyboard", "ps2", &fileOps);
 }

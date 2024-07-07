@@ -37,6 +37,8 @@ void sched_context_init(sched_context_t* context);
 
 extern void sched_idle_loop(void);
 
+void sched_init(void);
+
 void sched_start(void);
 
 void sched_cpu_start(void);

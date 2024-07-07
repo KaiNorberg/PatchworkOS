@@ -8,10 +8,8 @@
 #include "log.h"
 #endif
 
-void* malloc(size_t size)
+static void* malloc_unlocked(size_t size)
 {
-    _HeapAcquire();
-
     if (size == 0)
     {
         return NULL;
@@ -27,7 +25,6 @@ void* malloc(size_t size)
             {
                 currentBlock->reserved = true;
 
-                _HeapRelease();
                 return HEAP_HEADER_GET_START(currentBlock);
             }
             else if (currentBlock->size > size + sizeof(heap_header_t) + HEAP_ALIGNMENT)
@@ -35,7 +32,6 @@ void* malloc(size_t size)
                 currentBlock->reserved = true;
                 _HeapBlockSplit(currentBlock, size);
 
-                _HeapRelease();
                 return HEAP_HEADER_GET_START(currentBlock);
             }
         }
@@ -63,21 +59,11 @@ void* malloc(size_t size)
     currentBlock->next = newBlock;
     newBlock->reserved = true;
 
-    _HeapRelease();
     return HEAP_HEADER_GET_START(newBlock);
 }
 
-void* calloc(size_t num, size_t size)
+static void free_unlocked(void* ptr)
 {
-    void* data = malloc(num * size);
-    memset(data, 0, num * size);
-    return data;
-}
-
-void free(void* ptr)
-{
-    _HeapAcquire();
-
     heap_header_t* block = (heap_header_t*)((uint64_t)ptr - sizeof(heap_header_t));
 #ifdef __EMBED__
     if (block->magic != HEAP_HEADER_MAGIC)
@@ -86,11 +72,54 @@ void free(void* ptr)
     }
     else if (!block->reserved)
     {
-        log_panic(NULL, "Attempt to free unreserved block");
+        log_panic(NULL, "Attempt to free unreserved block at %a, size %d", ptr, block->size);
     }
 #endif
     block->reserved = false;
+}
 
+void* malloc(size_t size)
+{
+    _HeapAcquire();
+    void* ptr = malloc_unlocked(size);
+    _HeapRelease();
+    return ptr;
+}
+
+void* calloc(size_t num, size_t size)
+{
+    void* data = malloc(num * size);
+    if (data == NULL)
+    {
+        return NULL;
+    }
+    memset(data, 0, num * size);
+    return data;
+}
+
+void* realloc(void* ptr, size_t size)
+{
+    _HeapAcquire();
+    heap_header_t* block = (heap_header_t*)((uint64_t)ptr - sizeof(heap_header_t));
+#ifdef __EMBED__
+    if (block->magic != HEAP_HEADER_MAGIC)
+    {
+        log_panic(NULL, "Invalid heap magic\n");
+    }
+#endif
+
+    void* newPtr = malloc_unlocked(size);
+    memcpy(newPtr, ptr, MIN(size, block->size));
+    free_unlocked(ptr);
+
+    _HeapRelease();
+    return newPtr;
+}
+
+void free(void* ptr)
+{
+    _HeapAcquire();
+    free_unlocked(ptr);
     _HeapRelease();
 }
 

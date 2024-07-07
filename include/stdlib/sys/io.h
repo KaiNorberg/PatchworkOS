@@ -40,6 +40,8 @@ typedef struct stat
 
 #define MAX_PATH 256
 
+#ifndef __EMBED__
+
 fd_t open(const char* path);
 
 uint64_t close(fd_t fd);
@@ -63,6 +65,8 @@ uint64_t stat(const char* path, stat_t* buffer);
 uint64_t ioctl(fd_t fd, uint64_t request, void* buffer, uint64_t length);
 
 uint64_t flush(fd_t fd, const void* buffer, uint64_t size, const rect_t* rect);
+
+#endif
 
 #if defined(__cplusplus)
 }
