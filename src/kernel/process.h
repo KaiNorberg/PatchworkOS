@@ -2,14 +2,14 @@
 
 #include <errno.h>
 #include <stdatomic.h>
+#include <sys/list.h>
+#include <sys/proc.h>
 
 #include "defs.h"
 #include "simd.h"
 #include "space.h"
 #include "trap.h"
 #include "vfs_context.h"
-
-#include <sys/list.h>
 
 #define THREAD_PRIORITY_LEVELS 3
 #define THREAD_PRIORITY_MIN 0
@@ -30,8 +30,8 @@ typedef struct
     char executable[MAX_PATH];
     vfs_context_t vfsContext;
     space_t space;
-    _Atomic(uint64_t) threadCount;
-    _Atomic(tid_t) newTid;
+    atomic_uint64_t threadCount;
+    _Atomic tid_t newTid;
 } process_t;
 
 typedef struct

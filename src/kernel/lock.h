@@ -7,8 +7,8 @@
 
 typedef struct
 {
-    _Atomic(uint32_t) nextTicket;
-    _Atomic(uint32_t) nowServing;
+    atomic_uint16_t nextTicket;
+    atomic_uint16_t nowServing;
 } lock_t;
 
 #define LOCK_GUARD(lock) \

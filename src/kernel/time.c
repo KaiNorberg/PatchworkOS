@@ -8,7 +8,7 @@
 #include "irq.h"
 #include "pic.h"
 
-static _Atomic(nsec_t) accumulator = ATOMIC_VAR_INIT(0);
+static _Atomic nsec_t accumulator = ATOMIC_VAR_INIT(0);
 
 static void time_accumulate(void)
 {

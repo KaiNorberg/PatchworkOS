@@ -1,5 +1,5 @@
-#ifndef _SYS_KEYBOARD_H
-#define _SYS_KEYBOARD_H 1
+#ifndef _SYS_MOUSE_H
+#define _SYS_MOUSE_H 1
 
 #include <stdint.h>
 

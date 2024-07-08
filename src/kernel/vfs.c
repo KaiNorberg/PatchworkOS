@@ -47,7 +47,8 @@ file_t* file_new(const file_ops_t* ops)
     file->volume = NULL;
     file->position = 0;
     file->internal = NULL;
-    file->ops = *ops;
+    file->resource = NULL;
+    file->ops = ops;
     atomic_init(&file->ref, 1);
 
     return file;
@@ -63,9 +64,9 @@ void file_deref(file_t* file)
 {
     if (atomic_fetch_sub(&file->ref, 1) <= 1)
     {
-        if (file->ops.cleanup != NULL)
+        if (file->ops->cleanup != NULL)
         {
-            file->ops.cleanup(file);
+            file->ops->cleanup(file);
         }
         if (file->volume != NULL)
         {
@@ -195,7 +196,7 @@ void vfs_init(void)
     lock_init(&volumeLock);
 }
 
-uint64_t vfs_attach_simple(const char* label, volume_ops_t* volumeOps, file_ops_t* fileOps)
+uint64_t vfs_attach_simple(const char* label, const volume_ops_t* volumeOps, const file_ops_t* fileOps)
 {
     if (strlen(label) >= CONFIG_MAX_LABEL)
     {
@@ -215,8 +216,8 @@ uint64_t vfs_attach_simple(const char* label, volume_ops_t* volumeOps, file_ops_
     volume = malloc(sizeof(volume_t));
     list_entry_init(&volume->base);
     strcpy(volume->label, label);
-    volume->volumeOps = *volumeOps;
-    volume->fileOps = *fileOps;
+    volume->volumeOps = volumeOps;
+    volume->fileOps = fileOps;
     atomic_init(&volume->ref, 1);
 
     list_push(&volumes, volume);
@@ -253,12 +254,12 @@ uint64_t vfs_unmount(const char* label)
         return ERROR(EBUSY);
     }
 
-    if (volume->volumeOps.unmount == NULL)
+    if (volume->volumeOps->unmount == NULL)
     {
         return ERROR(EACCES);
     }
 
-    if (volume->volumeOps.unmount(volume) == ERR)
+    if (volume->volumeOps->unmount(volume) == ERR)
     {
         return ERR;
     }
@@ -282,18 +283,18 @@ file_t* vfs_open(const char* path)
         return NULLPTR(EPATH);
     }
 
-    if (volume->fileOps.open == NULL)
+    if (volume->fileOps->open == NULL)
     {
         volume_deref(volume);
         return NULLPTR(EACCES);
     }
 
     // Volume reference is passed to file.
-    file_t* file = file_new(&volume->fileOps);
+    file_t* file = file_new(volume->fileOps);
     file->volume = volume;
 
     char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
-    if (rootPath == NULL || file->ops.open(file, rootPath) == ERR)
+    if (rootPath == NULL || file->ops->open(file, rootPath) == ERR)
     {
         file_deref(file);
         return NULL;
@@ -316,7 +317,7 @@ uint64_t vfs_stat(const char* path, stat_t* buffer)
         return ERROR(EPATH);
     }
 
-    if (volume->volumeOps.stat == NULL)
+    if (volume->volumeOps->stat == NULL)
     {
         volume_deref(volume);
         return ERROR(EACCES);
@@ -329,7 +330,7 @@ uint64_t vfs_stat(const char* path, stat_t* buffer)
         return ERR;
     }
 
-    uint64_t result = volume->volumeOps.stat(volume, rootPath, buffer);
+    uint64_t result = volume->volumeOps->stat(volume, rootPath, buffer);
     volume_deref(volume);
     return result;
 }
@@ -377,16 +378,16 @@ static bool vfs_poll_condition(uint64_t* events, poll_file_t* files, uint64_t am
     *events = 0;
     for (uint64_t i = 0; i < amount; i++)
     {
-        poll_file_t* file = &files[i];
+        poll_file_t* pollFile = &files[i];
 
-        if (file->requested & POLL_READ && (file->file->ops.read_avail != NULL && file->file->ops.read_avail(file->file)))
+        if (pollFile->file->ops->status(pollFile->file, pollFile) == ERR)
         {
-            file->occurred = POLL_READ;
-            (*events)++;
+            *events = ERR;
+            return true;
         }
-        if (file->requested & POLL_WRITE && (file->file->ops.write_avail != NULL && file->file->ops.write_avail(file->file)))
+
+        if ((pollFile->occurred & pollFile->requested) != 0)
         {
-            file->occurred = POLL_WRITE;
             (*events)++;
         }
     }
@@ -396,6 +397,14 @@ static bool vfs_poll_condition(uint64_t* events, poll_file_t* files, uint64_t am
 
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, uint64_t timeout)
 {
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        if (files->file[i].ops->status == NULL)
+        {
+            return ERROR(EACCES);
+        }
+    }
+
     uint64_t events = 0;
     SCHED_WAIT(vfs_poll_condition(&events, files, amount), timeout);
 

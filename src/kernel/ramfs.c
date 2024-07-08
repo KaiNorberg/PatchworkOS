@@ -178,9 +178,7 @@ static uint64_t ramfs_stat(volume_t* volume, const char* path, stat_t* buffer)
     return 0;
 }
 
-static volume_ops_t volumeOps = {
-    .stat = ramfs_stat
-};
+static volume_ops_t volumeOps = {.stat = ramfs_stat};
 
 static file_ops_t fileOps = {
     .open = ramfs_open,

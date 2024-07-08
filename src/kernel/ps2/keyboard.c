@@ -1,20 +1,18 @@
 #include "keyboard.h"
 
+#include "input.h"
 #include "io.h"
 #include "irq.h"
 #include "log.h"
 #include "ps2.h"
 #include "sched.h"
-#include "sysfs.h"
 #include "time.h"
+#include "vfs.h"
 
 #include <sys/keyboard.h>
 #include <sys/math.h>
 
-static keyboard_event_t eventBuffer[PS2_BUFFER_LENGTH];
-static uint64_t writeIndex = 0;
-
-static resource_t keyboard;
+static input_t keyboard;
 
 static uint8_t scanCodeTable[] = {
     0,
@@ -143,40 +141,8 @@ static void ps2_keyboard_irq(uint8_t irq)
         .type = released ? KEYBOARD_RELEASE : KEYBOARD_PRESS,
         .code = key,
     };
-
-    eventBuffer[writeIndex] = event;
-    writeIndex = (writeIndex + 1) % PS2_BUFFER_LENGTH;
+    input_push(&keyboard, &event, sizeof(keyboard_event_t));
 }
-
-static uint64_t ps2_keyboard_read(file_t* file, void* buffer, uint64_t count)
-{
-    SCHED_WAIT(file->position != writeIndex, NEVER);
-
-    count = ROUND_DOWN(count, sizeof(keyboard_event_t));
-
-    for (uint64_t i = 0; i < count / sizeof(keyboard_event_t); i++)
-    {
-        if (file->position == writeIndex)
-        {
-            return i;
-        }
-
-        ((keyboard_event_t*)buffer)[i] = eventBuffer[file->position];
-        file->position = (file->position + 1) % PS2_BUFFER_LENGTH;
-    }
-
-    return count;
-}
-
-static bool ps2_keyboard_read_avail(file_t* file)
-{
-    return file->position != writeIndex;
-}
-
-static file_ops_t fileOps = {
-    .read = ps2_keyboard_read,
-    .read_avail = ps2_keyboard_read_avail,
-};
 
 void ps2_keyboard_init(void)
 {
@@ -185,5 +151,5 @@ void ps2_keyboard_init(void)
 
     irq_install(ps2_keyboard_irq, IRQ_KEYBOARD);
 
-    sysfs_expose("/keyboard", "ps2", &fileOps);
+    input_init(&keyboard, "/keyboard", "ps2", sizeof(keyboard_event_t), PS2_BUFFER_LENGTH);
 }

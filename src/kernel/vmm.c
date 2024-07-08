@@ -8,6 +8,7 @@
 #include "space.h"
 
 #include <stdlib.h>
+#include <string.h>
 #include <sys/math.h>
 
 static pml_t* kernelPml;

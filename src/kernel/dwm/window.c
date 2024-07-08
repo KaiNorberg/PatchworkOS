@@ -3,13 +3,24 @@
 #include "dwm.h"
 #include "log.h"
 #include "sched.h"
+#include "sys/io.h"
+#include "vfs.h"
 
 #include <errno.h>
 #include <stdlib.h>
 #include <sys/gfx.h>
 #include <sys/math.h>
 
-static uint64_t window_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t length)
+static void window_cleanup(file_t* file)
+{
+    window_t* window = file->internal;
+
+    window->cleanup(window);
+
+    window_free(window);
+}
+
+static uint64_t window_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
 {
     window_t* window = file->internal;
 
@@ -17,11 +28,11 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* buffer, uint6
     {
     case IOCTL_WIN_RECEIVE:
     {
-        if (length != sizeof(ioctl_win_receive_t))
+        if (size != sizeof(ioctl_win_receive_t))
         {
             return ERROR(EINVAL);
         }
-        ioctl_win_receive_t* receive = buffer;
+        ioctl_win_receive_t* receive = argp;
 
         message_t message;
         if (SCHED_WAIT(message_queue_pop(&window->messages, &message), receive->timeout) == SCHED_WAIT_TIMEOUT)
@@ -37,11 +48,11 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* buffer, uint6
     }
     case IOCTL_WIN_SEND:
     {
-        if (length != sizeof(ioctl_win_send_t))
+        if (size != sizeof(ioctl_win_send_t))
         {
             return ERROR(EINVAL);
         }
-        const ioctl_win_send_t* send = buffer;
+        const ioctl_win_send_t* send = argp;
 
         message_queue_push(&window->messages, send->type, send->data, MSG_MAX_DATA);
 
@@ -49,11 +60,11 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* buffer, uint6
     }
     case IOCTL_WIN_MOVE:
     {
-        if (length != sizeof(ioctl_win_move_t))
+        if (size != sizeof(ioctl_win_move_t))
         {
             return ERROR(EINVAL);
         }
-        const ioctl_win_move_t* move = buffer;
+        const ioctl_win_move_t* move = argp;
 
         LOCK_GUARD(&window->lock);
         window->pos = move->pos;
@@ -108,27 +119,19 @@ static uint64_t window_flush(file_t* file, const void* buffer, uint64_t size, co
     return 0;
 }
 
-static bool window_read_avail(file_t* file)
+static uint64_t window_status(file_t* file, poll_file_t* pollFile)
 {
     window_t* window = file->internal;
 
-    return message_queue_avail(&window->messages);
-}
-
-static void window_cleanup(file_t* file)
-{
-    window_t* window = file->internal;
-
-    window->cleanup(window);
-
-    window_free(window);
+    pollFile->occurred = POLL_READ & message_queue_avail(&window->messages);
+    return 0;
 }
 
 static file_ops_t fileOps = {
     .cleanup = window_cleanup,
     .ioctl = window_ioctl,
     .flush = window_flush,
-    .read_avail = window_read_avail,
+    .status = window_status,
 };
 
 window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, win_type_t type, void (*cleanup)(window_t*))
@@ -166,5 +169,5 @@ void window_free(window_t* window)
 void window_populate_file(window_t* window, file_t* file)
 {
     file->internal = window;
-    file->ops = fileOps;
+    file->ops = &fileOps;
 }

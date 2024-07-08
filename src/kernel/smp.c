@@ -20,7 +20,7 @@ static bool cpuReady = false;
 
 static bool initialized = false;
 
-_Atomic(uint8_t) haltedAmount = ATOMIC_VAR_INIT(0);
+atomic_uint8_t haltedAmount = ATOMIC_VAR_INIT(0);
 
 static NOINLINE void cpu_init(cpu_t* cpu, uint8_t id, uint8_t lapicId)
 {
@@ -40,13 +40,13 @@ static NOINLINE uint64_t cpu_start(cpu_t* cpu)
     trampoline_cpu_setup(cpu);
 
     lapic_send_init(cpu->lapicId);
-    hpet_sleep(10);
+    hpet_sleep(SEC / 100);
     lapic_send_sipi(cpu->lapicId, ((uint64_t)TRAMPOLINE_PHYSICAL_START) / PAGE_SIZE);
 
     uint64_t timeout = 1000;
     while (!cpuReady)
     {
-        hpet_sleep(1);
+        hpet_sleep(SEC / 1000);
         timeout--;
         if (timeout == 0)
         {
@@ -78,19 +78,19 @@ static NOINLINE void smp_detect_cpus(void)
 static NOINLINE void smp_start_others(void)
 {
     uint8_t newId = 1;
+    uint8_t lapicId = lapic_id();
 
     madt_lapic_t* record = madt_first_record(MADT_LAPIC);
     while (record != NULL)
     {
         if (record->flags & MADT_LAPIC_INITABLE)
         {
-            uint8_t lapicId = lapic_id();
             if (lapicId != record->lapicId)
             {
                 uint8_t id = newId++;
                 cpus[id] = malloc(sizeof(cpu_t));
                 cpu_init(cpus[id], id, record->lapicId);
-                LOG_ASSERT(cpu_start(cpus[id]) != ERR, "startup failure");
+                LOG_ASSERT(cpu_start(cpus[id]) != ERR, "startup fail");
             }
             else
             {

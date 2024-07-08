@@ -6,6 +6,8 @@
 #include "sys/list.h"
 #include "vfs.h"
 
+#include <stdarg.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -49,6 +51,16 @@ static resource_t* system_find_resource(system_t* parent, const char* name)
     }
 
     return NULL;
+}
+
+static void resource_free(resource_t* resource)
+{
+    if (resource->delete != NULL)
+    {
+        resource->delete (resource); // Why is clang-format doing this?
+    }
+
+    free(resource);
 }
 
 static system_t* sysfs_traverse(const char* path)
@@ -96,12 +108,95 @@ static uint64_t sysfs_open(file_t* file, const char* path)
         return ERROR(EPATH);
     }
 
-    file->ops = resource->ops;
-    if (file->ops.open != NULL)
+    file->resource = resource;
+    file->internal = resource->internal;
+    atomic_fetch_add(&file->resource->openFiles, 1);
+
+    return resource->ops->open != NULL ? resource->ops->open(file, path) : 0;
+}
+
+static void sysfs_cleanup(file_t* file)
+{
+    if (file->resource->ops->cleanup != NULL)
     {
-        return file->ops.open(file, path);
+        file->resource->ops->cleanup(file);
     }
-    return 0;
+
+    if (atomic_fetch_sub(&file->resource->openFiles, 1) <= 1 && atomic_load(&file->resource->dead))
+    {
+        resource_free(file->resource);
+    }
+}
+
+#define SYSFS_OPERATION(name, file, ...) \
+    ({ \
+        uint64_t result; \
+        if (atomic_load(&file->resource->dead)) \
+        { \
+            result = ERROR(ENORES); \
+        } \
+        else if (file->resource->ops->name != NULL) \
+        { \
+            result = file->resource->ops->name(file __VA_OPT__(, ) __VA_ARGS__); \
+        } \
+        else \
+        { \
+            result = ERROR(EACCES); \
+        } \
+        result; \
+    })
+
+#define SYSFS_OPERATION_PTR(name, file, ...) \
+    ({ \
+        void* result; \
+        if (atomic_load(&file->resource->dead)) \
+        { \
+            result = NULLPTR(ENORES); \
+        } \
+        else if (file->resource->ops->name != NULL) \
+        { \
+            result = file->resource->ops->name(file __VA_OPT__(, ) __VA_ARGS__); \
+        } \
+        else \
+        { \
+            result = NULLPTR(EACCES); \
+        } \
+        result; \
+    })
+
+static uint64_t sysfs_read(file_t* file, void* buffer, uint64_t count)
+{
+    return SYSFS_OPERATION(read, file, buffer, count);
+}
+
+static uint64_t sysfs_write(file_t* file, const void* buffer, uint64_t count)
+{
+    return SYSFS_OPERATION(write, file, buffer, count);
+}
+
+static uint64_t sysfs_seek(file_t* file, int64_t offset, uint8_t origin)
+{
+    return SYSFS_OPERATION(seek, file, offset, origin);
+}
+
+static uint64_t sysfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
+{
+    return SYSFS_OPERATION(ioctl, file, request, argp, size);
+}
+
+static uint64_t sysfs_flush(file_t* file, const void* buffer, uint64_t count, const rect_t* rect)
+{
+    return SYSFS_OPERATION(flush, file, buffer, count, rect);
+}
+
+static void* sysfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
+{
+    return SYSFS_OPERATION_PTR(mmap, file, address, length, prot);
+}
+
+static uint64_t sysfs_status(file_t* file, poll_file_t* pollFile)
+{
+    return SYSFS_OPERATION(status, file, pollFile);
 }
 
 static uint64_t sysfs_stat(volume_t* volume, const char* path, stat_t* buffer)
@@ -133,12 +228,20 @@ static uint64_t sysfs_stat(volume_t* volume, const char* path, stat_t* buffer)
     return 0;
 }
 
-static volume_ops_t volumeOps = {
-    .stat = sysfs_stat
-};
-
 static file_ops_t fileOps = {
     .open = sysfs_open,
+    .cleanup = sysfs_cleanup,
+    .read = sysfs_read,
+    .write = sysfs_write,
+    .seek = sysfs_seek,
+    .ioctl = sysfs_ioctl,
+    .flush = sysfs_flush,
+    .mmap = sysfs_mmap,
+    .status = sysfs_status,
+};
+
+static volume_ops_t volumeOps = {
+    .stat = sysfs_stat,
 };
 
 static uint64_t sysfs_mount(const char* label)
@@ -161,7 +264,7 @@ void sysfs_init(void)
     log_print("sysfs: init");
 }
 
-void sysfs_expose(const char* path, const char* filename, const file_ops_t* ops)
+resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_t* ops, void* internal, resource_delete_t delete)
 {
     LOCK_GUARD(&lock);
 
@@ -184,7 +287,26 @@ void sysfs_expose(const char* path, const char* filename, const file_ops_t* ops)
     list_entry_init(&resource->base);
     resource->system = system;
     strcpy(resource->name, filename);
-    resource->ops = *ops;
+    resource->ops = ops;
+    resource->internal = internal;
+    resource->delete = delete;
+    atomic_init(&resource->openFiles, 0);
+    atomic_init(&resource->dead, false);
 
     list_push(&system->resources, resource);
+    return resource;
+}
+
+uint64_t sysfs_hide(resource_t* resource)
+{
+    lock_acquire(&lock);
+    list_remove(resource);
+    atomic_store(&resource->dead, true);
+    lock_release(&lock);
+
+    if (atomic_load(&resource->openFiles) == 0)
+    {
+        resource_free(resource);
+    }
+    return 0;
 }

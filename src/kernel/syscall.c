@@ -8,11 +8,12 @@
 #include "process.h"
 #include "sched.h"
 #include "time.h"
+#include "vfs.h"
 #include "vmm.h"
 
 // NOTE: Syscalls should always return a 64 bit value to prevent garbage from remaining in rax.
 
-// TODO: Improve verify funcs, improve multithreading string safety.
+// TODO: Improve verify funcs, improve multithreading string safety. copy_to_user? copy_from_user?
 static bool verify_pointer(const void* pointer, uint64_t length)
 {
     if (pointer == NULL)
@@ -137,7 +138,7 @@ uint64_t syscall_read(fd_t fd, void* buffer, uint64_t count)
     }
     FILE_GUARD(file);
 
-    return FILE_CALL(file, read, buffer, count);
+    return vfs_read(file, buffer, count);
 }
 
 uint64_t syscall_write(fd_t fd, const void* buffer, uint64_t count)
@@ -154,7 +155,7 @@ uint64_t syscall_write(fd_t fd, const void* buffer, uint64_t count)
     }
     FILE_GUARD(file);
 
-    return FILE_CALL(file, write, buffer, count);
+    return vfs_write(file, buffer, count);
 }
 
 uint64_t syscall_seek(fd_t fd, int64_t offset, uint8_t origin)
@@ -166,12 +167,12 @@ uint64_t syscall_seek(fd_t fd, int64_t offset, uint8_t origin)
     }
     FILE_GUARD(file);
 
-    return FILE_CALL(file, seek, offset, origin);
+    return vfs_seek(file, offset, origin);
 }
 
-uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* buffer, uint64_t length)
+uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
 {
-    if (!verify_buffer(buffer, length))
+    if (!verify_buffer(argp, size))
     {
         return ERROR(EFAULT);
     }
@@ -183,7 +184,7 @@ uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* buffer, uint64_t length)
     }
     FILE_GUARD(file);
 
-    return FILE_CALL(file, ioctl, request, buffer, length);
+    return vfs_ioctl(file, request, argp, size);
 }
 
 uint64_t syscall_realpath(char* out, const char* path)
@@ -266,7 +267,7 @@ void* syscall_mmap(fd_t fd, void* address, uint64_t length, prot_t prot)
     }
     FILE_GUARD(file);
 
-    return FILE_CALL_PTR(file, mmap, address, length, prot);
+    return vfs_mmap(file, address, length, prot);
 }
 
 uint64_t syscall_munmap(void* address, uint64_t length)
@@ -308,7 +309,7 @@ uint64_t syscall_flush(fd_t fd, const void* buffer, uint64_t size, const rect_t*
     }
     FILE_GUARD(file);
 
-    return FILE_CALL(file, flush, buffer, size, rect);
+    return vfs_flush(file, buffer, size, rect);
 }
 
 ///////////////////////////////////////////////////////

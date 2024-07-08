@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "sched.h"
-#include "log.h"
+#include "vfs.h"
 
 void vfs_context_init(vfs_context_t* context)
 {

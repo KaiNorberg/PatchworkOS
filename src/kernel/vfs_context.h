@@ -1,7 +1,11 @@
 #pragma once
 
+#include <sys/io.h>
+
+#include "defs.h"
 #include "lock.h"
-#include "vfs.h"
+
+typedef struct file file_t;
 
 typedef struct
 {

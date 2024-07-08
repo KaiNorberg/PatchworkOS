@@ -4,12 +4,12 @@
 #include "regs.h"
 #include "smp.h"
 #include "time.h"
-#include "vmm.h"
+#include "vfs.h"
 
 #include <stdlib.h>
 #include <string.h>
 
-static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
+static _Atomic pid_t newPid = ATOMIC_VAR_INIT(0);
 
 process_t* process_new(const char* executable)
 {

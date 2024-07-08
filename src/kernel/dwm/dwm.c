@@ -35,7 +35,7 @@ static file_t* mouse;
 
 static lock_t lock;
 
-static _Atomic(bool) redrawNeeded;
+static atomic_bool redrawNeeded;
 
 static void dwm_update_client_area(void)
 {
@@ -356,7 +356,7 @@ static void dwm_poll(void)
             while (vfs_poll(poll, 1, 0) != 0)
             {
                 mouse_event_t event;
-                FILE_CALL(mouse, read, &event, sizeof(mouse_event_t));
+                LOG_ASSERT(vfs_read(mouse, &event, sizeof(mouse_event_t)), "mouse read fail");
 
                 cursorDelta.x += event.deltaX;
                 cursorDelta.y += event.deltaY;
@@ -449,7 +449,7 @@ static void dwm_window_cleanup(window_t* window)
     }
 }
 
-static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t length)
+static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
 {
     LOCK_GUARD(&lock);
 
@@ -457,11 +457,11 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t
     {
     case IOCTL_DWM_CREATE:
     {
-        if (length != sizeof(ioctl_dwm_create_t))
+        if (size != sizeof(ioctl_dwm_create_t))
         {
             return ERROR(EINVAL);
         }
-        const ioctl_dwm_create_t* create = buffer;
+        const ioctl_dwm_create_t* create = argp;
 
         window_t* window = window_new(&create->pos, create->width, create->height, create->type, dwm_window_cleanup);
         if (window == NULL)
@@ -527,12 +527,12 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* buffer, uint64_t
     }
     case IOCTL_DWM_SIZE:
     {
-        if (length != sizeof(ioctl_dwm_size_t))
+        if (size != sizeof(ioctl_dwm_size_t))
         {
             return ERROR(EINVAL);
         }
 
-        ioctl_dwm_size_t* size = buffer;
+        ioctl_dwm_size_t* size = argp;
         size->outWidth = RECT_WIDTH(&screenArea);
         size->outHeight = RECT_HEIGHT(&screenArea);
 
@@ -577,7 +577,7 @@ void dwm_init(gop_buffer_t* gopBuffer)
 
     atomic_init(&redrawNeeded, true);
 
-    sysfs_expose("/server", "dwm", &fileOps);
+    sysfs_expose("/server", "dwm", &fileOps, NULL, NULL);
 }
 
 void dwm_start(void)

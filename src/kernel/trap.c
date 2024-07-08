@@ -1,15 +1,11 @@
 #include "trap.h"
 
 #include "apic.h"
-#include "defs.h"
 #include "gdt.h"
 #include "irq.h"
 #include "log.h"
 #include "regs.h"
 #include "smp.h"
-#include "syscall.h"
-#include "utils.h"
-#include "vmm.h"
 
 static void exception_handler(const trap_frame_t* trapFrame)
 {

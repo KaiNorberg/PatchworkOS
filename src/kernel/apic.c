@@ -19,7 +19,7 @@ void apic_timer_init(uint8_t vector, uint64_t hz)
     lapic_write(LAPIC_REG_TIMER_DIVIDER, 0x3);
     lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, 0xFFFFFFFF);
 
-    hpet_nanosleep(NANOSECONDS_PER_SECOND / hz);
+    hpet_sleep(NANOSECONDS_PER_SECOND / hz);
 
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
 

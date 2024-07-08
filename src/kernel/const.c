@@ -8,28 +8,28 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void* const_one_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
+static void* const_one_mmap(file_t* file, void* addr, uint64_t length, prot_t prot)
 {
-    address = vmm_alloc(address, length, prot);
-    if (address == NULL)
+    addr = vmm_alloc(addr, length, prot);
+    if (addr == NULL)
     {
         return NULL;
     }
 
-    memset(address, UINT32_MAX, length);
-    return address;
+    memset(addr, UINT32_MAX, length);
+    return addr;
 }
 
-static void* const_zero_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
+static void* const_zero_mmap(file_t* file, void* addr, uint64_t length, prot_t prot)
 {
-    address = vmm_alloc(address, length, prot);
-    if (address == NULL)
+    addr = vmm_alloc(addr, length, prot);
+    if (addr == NULL)
     {
         return NULL;
     }
 
-    memset(address, 0, length);
-    return address;
+    memset(addr, 0, length);
+    return addr;
 }
 
 static file_ops_t constOneOps = {
@@ -42,6 +42,6 @@ static file_ops_t constZeroOps = {
 
 void const_init(void)
 {
-    sysfs_expose("/const", "one", &constOneOps);
-    sysfs_expose("/const", "zero", &constZeroOps);
+    sysfs_expose("/const", "one", &constOneOps, NULL, NULL);
+    sysfs_expose("/const", "zero", &constZeroOps, NULL, NULL);
 }

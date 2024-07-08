@@ -7,10 +7,16 @@
 #include "errno.h"
 #include "log.h"
 #include "sched.h"
+#include "vfs.h"
 #include "vmm.h"
 
-NORETURN static void loader_error(void)
+NORETURN static void loader_error(file_t* file)
 {
+    if (file != NULL)
+    {
+        file_deref(file);
+    }
+
     log_print("loader: failure (%s, %d)", sched_process()->executable, sched_process()->id);
     sched_process_exit(EEXEC);
 }
@@ -22,7 +28,7 @@ static void* loader_allocate_stack(void)
     void* address = (void*)(VMM_LOWER_HALF_MAX - (CONFIG_USER_STACK * (thread->id + 1) + PAGE_SIZE * (thread->id)));
     if (vmm_alloc(address, CONFIG_USER_STACK, PROT_READ | PROT_WRITE) == NULL)
     {
-        loader_error();
+        loader_error(NULL);
     }
 
     return address + CONFIG_USER_STACK;
@@ -34,39 +40,38 @@ static void* loader_load_program(void)
     file_t* file = vfs_open(executable);
     if (file == NULL)
     {
-        loader_error();
+        loader_error(NULL);
     }
-    FILE_GUARD(file);
 
     char parentDir[MAX_PATH];
     vfs_parent_dir(parentDir, executable);
     if (vfs_chdir(parentDir) == ERR)
     {
-        loader_error();
+        loader_error(file);
     }
 
     elf_hdr_t header;
-    if (FILE_CALL(file, read, &header, sizeof(elf_hdr_t)) != sizeof(elf_hdr_t))
+    if (vfs_read(file, &header, sizeof(elf_hdr_t)) != sizeof(elf_hdr_t))
     {
-        loader_error();
+        loader_error(file);
     }
     if (header.ident[0] != 0x7F || header.ident[1] != 'E' || header.ident[2] != 'L' || header.ident[3] != 'F')
     {
-        loader_error();
+        loader_error(file);
     }
 
     for (uint64_t i = 0; i < header.programHeaderAmount; i++)
     {
         uint64_t offset = sizeof(elf_hdr_t) + header.programHeaderSize * i;
-        if (FILE_CALL(file, seek, offset, SEEK_SET) != offset)
+        if (vfs_seek(file, offset, SEEK_SET) != offset)
         {
-            loader_error();
+            loader_error(file);
         }
 
         elf_phdr_t programHeader;
-        if (FILE_CALL(file, read, &programHeader, sizeof(elf_phdr_t)) != sizeof(elf_phdr_t))
+        if (vfs_read(file, &programHeader, sizeof(elf_phdr_t)) != sizeof(elf_phdr_t))
         {
-            loader_error();
+            loader_error(file);
         }
 
         switch (programHeader.type)
@@ -77,25 +82,25 @@ static void* loader_load_program(void)
 
             if (vmm_alloc((void*)programHeader.virtAddr, size, PROT_READ | PROT_WRITE) == NULL)
             {
-                loader_error();
+                loader_error(file);
             }
 
-            if (FILE_CALL(file, seek, programHeader.offset, SEEK_SET) != programHeader.offset)
+            if (vfs_seek(file, programHeader.offset, SEEK_SET) != programHeader.offset)
             {
-                loader_error();
+                loader_error(file);
             }
 
             memset((void*)programHeader.virtAddr, 0, size);
-            if (FILE_CALL(file, read, (void*)programHeader.virtAddr, size) != size)
+            if (vfs_read(file, (void*)programHeader.virtAddr, size) != size)
             {
-                loader_error();
+                loader_error(file);
             }
 
             if (!(programHeader.flags & PF_WRITE))
             {
                 if (vmm_protect((void*)programHeader.virtAddr, size, PROT_READ) == ERR)
                 {
-                    loader_error();
+                    loader_error(file);
                 }
             }
         }
@@ -103,6 +108,7 @@ static void* loader_load_program(void)
         }
     }
 
+    file_deref(file);
     return (void*)header.entry;
 }
 

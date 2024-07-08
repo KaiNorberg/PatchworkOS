@@ -11,6 +11,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+void sched_context_init(sched_context_t* context)
+{
+    for (uint64_t i = THREAD_PRIORITY_MIN; i <= THREAD_PRIORITY_MAX; i++)
+    {
+        queue_init(&context->queues[i]);
+    }
+    list_init(&context->graveyard);
+    context->runningThread = NULL;
+}
+
 static void sched_push(thread_t* thread)
 {
     int64_t bestLength = INT64_MAX;
@@ -111,16 +121,6 @@ static void sched_spawn_init_thread(void)
     thread->timeEnd = UINT64_MAX;
 
     smp_self_unsafe()->schedContext.runningThread = thread;
-}
-
-void sched_context_init(sched_context_t* context)
-{
-    for (uint64_t i = THREAD_PRIORITY_MIN; i <= THREAD_PRIORITY_MAX; i++)
-    {
-        queue_init(&context->queues[i]);
-    }
-    list_init(&context->graveyard);
-    context->runningThread = NULL;
 }
 
 void sched_init(void)
