@@ -76,18 +76,18 @@ static void win_draw_decorations(win_t* window, surface_t* surface)
     }
 }
 
-static uint64_t win_background_procedure(win_t* window, surface_t* surface, msg_t type, void* data)
+static uint64_t win_background_procedure(win_t* window, surface_t* surface, const msg_t* msg)
 {
     if (window->type != WIN_WINDOW)
     {
         return 0;
     }
 
-    switch (type)
+    switch (msg->type)
     {
     case MSG_MOUSE:
     {
-        msg_mouse_t* message = data;
+        msg_mouse_t* data = (msg_mouse_t*)msg->data;
 
         rect_t topBar = (rect_t){
             .left = window->pos.x + window->theme.edgeWidth,
@@ -99,15 +99,15 @@ static uint64_t win_background_procedure(win_t* window, surface_t* surface, msg_
         if (window->moving)
         {
             rect_t rect =
-                RECT_INIT_DIM(window->pos.x + message->deltaX, window->pos.y + message->deltaY, window->width, window->height);
+                RECT_INIT_DIM(window->pos.x + data->deltaX, window->pos.y + data->deltaY, window->width, window->height);
             win_move(window, &rect);
 
-            if (!(message->buttons & MOUSE_LEFT))
+            if (!(data->buttons & MOUSE_LEFT))
             {
                 window->moving = false;
             }
         }
-        else if (RECT_CONTAINS_POINT(&topBar, message->pos.x, message->pos.y) && message->buttons & MOUSE_LEFT)
+        else if (RECT_CONTAINS_POINT(&topBar, data->pos.x, data->pos.y) && data->buttons & MOUSE_LEFT)
         {
             window->moving = true;
         }
@@ -212,8 +212,8 @@ win_t* win_new(const char* name, const rect_t* rect, const win_theme_t* theme, p
     strcpy(window->name, name);
     win_set_area(window, &create.pos, create.width, create.height);
 
-    win_send(window, LMSG_INIT, NULL, 0);
-    win_send(window, LMSG_REDRAW, NULL, 0);
+    win_send_empty(window, LMSG_INIT);
+    win_send_empty(window, LMSG_REDRAW);
 
     return window;
 }
@@ -230,31 +230,44 @@ uint64_t win_free(win_t* window)
     return 0;
 }
 
-msg_t win_receive(win_t* window, nsec_t timeout)
+uint64_t win_receive(win_t* window, msg_t* msg, nsec_t timeout)
 {
     ioctl_win_receive_t receive = {.timeout = timeout};
     if (ioctl(window->fd, IOCTL_WIN_RECEIVE, &receive, sizeof(ioctl_win_receive_t)) == ERR)
     {
-        return LMSG_QUIT;
+        return ERR;
     }
 
+    *msg = receive.outMsg;
+    return receive.outMsg.type != MSG_NONE;
+}
+
+uint64_t win_send(win_t* window, const msg_t* msg)
+{
+    ioctl_win_send_t send = {.msg = *msg};
+    if (ioctl(window->fd, IOCTL_WIN_SEND, &send, sizeof(ioctl_win_send_t)) == ERR)
+    {
+        return ERR;
+    }
+
+    return 0;
+}
+
+uint64_t win_send_empty(win_t* window, uint16_t type)
+{
+    msg_t msg = {.type = type};
+    return win_send(window, &msg);
+}
+
+uint64_t win_dispatch(win_t* window, const msg_t* msg)
+{
     surface_t windowSurface;
     win_window_surface(window, &windowSurface);
-
-    if (win_background_procedure(window, &windowSurface, receive.outType, receive.outData) == ERR)
-    {
-        win_send(window, LMSG_QUIT, NULL, 0);
-        return MSG_NONE;
-    }
-
     surface_t clientSurface;
     win_client_surface(window, &clientSurface);
 
-    if (window->procedure(window, &clientSurface, receive.outType, receive.outData) == ERR)
-    {
-        win_send(window, LMSG_QUIT, NULL, 0);
-        return MSG_NONE;
-    }
+    win_background_procedure(window, &windowSurface, msg);
+    uint64_t result = window->procedure(window, &clientSurface, msg);
 
     if (RECT_AREA(&clientSurface.invalidArea) != 0 || RECT_AREA(&windowSurface.invalidArea) != 0)
     {
@@ -284,36 +297,17 @@ msg_t win_receive(win_t* window, nsec_t timeout)
 
         if (flush(window->fd, window->buffer, window->width * window->height * sizeof(pixel_t), &invalidRect) == ERR)
         {
-            win_send(window, LMSG_QUIT, NULL, 0);
-            return MSG_NONE;
+            return ERR;
         }
     }
 
-    return receive.outType;
+    return result;
 }
 
-uint64_t win_send(win_t* window, msg_t type, void* data, uint64_t size)
+uint64_t win_dispatch_empty(win_t* window, uint16_t type)
 {
-    if (size >= MSG_MAX_DATA)
-    {
-        errno = EBUFFER;
-        return ERR;
-    }
-
-    ioctl_win_send_t send;
-    send.type = type;
-    memset(send.data, 0, MSG_MAX_DATA);
-    if (data == NULL)
-    {
-        memcpy(send.data, data, size);
-    }
-
-    if (ioctl(window->fd, IOCTL_WIN_SEND, &send, sizeof(ioctl_win_send_t)) == ERR)
-    {
-        return ERR;
-    }
-
-    return 0;
+    msg_t msg = {.type = type};
+    return win_dispatch(window, &msg);
 }
 
 uint64_t win_move(win_t* window, const rect_t* rect)
@@ -344,7 +338,7 @@ uint64_t win_move(win_t* window, const rect_t* rect)
         free(window->buffer);
         window->buffer = newBuffer;
 
-        win_send(window, LMSG_REDRAW, NULL, 0);
+        win_send_empty(window, LMSG_REDRAW);
     }
 
     win_set_area(window, &move.pos, move.width, move.height);
@@ -382,6 +376,11 @@ void win_screen_to_client(win_t* window, point_t* point)
 {
     point->x += window->pos.x + window->clientArea.left;
     point->y += window->pos.y + window->clientArea.top;
+}
+
+void win_theme(win_t* window, win_theme_t* theme)
+{
+    *theme = window->theme;
 }
 
 uint64_t win_screen_rect(rect_t* rect)

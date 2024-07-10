@@ -1,6 +1,6 @@
 #include "mouse.h"
 
-#include "input.h"
+#include "event_stream.h"
 #include "io.h"
 #include "irq.h"
 #include "log.h"
@@ -13,7 +13,7 @@
 #include <sys/math.h>
 #include <sys/mouse.h>
 
-static input_t mouse;
+static event_stream_t mouse;
 
 static void ps2_mouse_handle_packet(const ps2_mouse_packet_t* packet)
 {
@@ -26,7 +26,7 @@ static void ps2_mouse_handle_packet(const ps2_mouse_packet_t* packet)
         .deltaY = -((int16_t)packet->deltaY - (((int16_t)packet->flags << 3) & 0x100)),
     };
 
-    input_push(&mouse, &event, sizeof(mouse_event_t));
+    event_stream_push(&mouse, &event, sizeof(mouse_event_t));
 }
 
 static uint64_t ps2_mouse_scan(void)
@@ -92,7 +92,7 @@ void ps2_mouse_init(void)
 
     LOG_ASSERT(ps2_read() == 0xFA, "data reporting fail");
 
-    input_init(&mouse, "/mouse", "ps2", sizeof(mouse_event_t), PS2_BUFFER_LENGTH);
+    event_stream_init(&mouse, "/mouse", "ps2", sizeof(mouse_event_t), PS2_BUFFER_LENGTH);
 
     irq_install(ps2_mouse_irq, IRQ_MOUSE);
 }

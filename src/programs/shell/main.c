@@ -5,22 +5,14 @@
 
 static win_theme_t theme;
 
-static uint64_t procedure(win_t* window, surface_t* surface, msg_t type, void* data)
+static uint64_t procedure(win_t* window, surface_t* surface, const msg_t* msg)
 {
-    switch (type)
+    switch (msg->type)
     {
-    case LMSG_INIT:
-    {
-    }
-    break;
     case LMSG_REDRAW:
     {
         rect_t rect = RECT_INIT_SURFACE(surface);
         gfx_rect(surface, &rect, 0xFF007E81);
-    }
-    break;
-    case LMSG_QUIT:
-    {
     }
     break;
     }
@@ -30,6 +22,7 @@ static uint64_t procedure(win_t* window, surface_t* surface, msg_t type, void* d
 
 int main(void)
 {
+    win_theme_t theme;
     win_default_theme(&theme);
 
     rect_t rect;
@@ -38,12 +31,15 @@ int main(void)
     win_t* wallpaper = win_new("Wallpaper", &rect, &theme, procedure, WIN_WALL);
     if (wallpaper == NULL)
     {
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
     // Wait for wallpaper to be drawn before spawning processes.
-    while (win_receive(wallpaper, NEVER) != LMSG_REDRAW)
+    msg_t msg = {0};
+    while (msg.type != LMSG_QUIT && msg.type != LMSG_REDRAW)
     {
+        win_receive(wallpaper, &msg, NEVER);
+        win_dispatch(wallpaper, &msg);
     }
 
     spawn("/bin/cursor.elf");
@@ -54,8 +50,11 @@ int main(void)
     spawn("/bin/calculator.elf");
     spawn("/bin/calculator.elf");
 
-    while (win_receive(wallpaper, NEVER) != LMSG_QUIT)
+    msg = (msg_t){0};
+    while (msg.type != LMSG_QUIT)
     {
+        win_receive(wallpaper, &msg, NEVER);
+        win_dispatch(wallpaper, &msg);
     }
 
     win_free(wallpaper);

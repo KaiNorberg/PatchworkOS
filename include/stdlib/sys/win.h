@@ -19,9 +19,15 @@ extern "C"
 #include "_AUX/point_t.h"
 #include "_AUX/rect_t.h"
 
-typedef uint64_t msg_t;
+#define MSG_MAX_DATA 62
 
-typedef struct msg_mouse
+typedef struct
+{
+    uint16_t type;
+    uint8_t data[MSG_MAX_DATA];
+} msg_t;
+
+typedef struct
 {
     nsec_t time;
     uint8_t buttons;
@@ -30,7 +36,12 @@ typedef struct msg_mouse
     int16_t deltaY;
 } msg_mouse_t;
 
-#define MSG_MAX_DATA 48
+#define MSG_INIT(msgType, msgData) \
+    ({ \
+        msg_t msg = {.type = (msgType)}; \
+        memcpy(msg.data, (msgData), sizeof(*(msgData))); \
+        msg; \
+    })
 
 // Kernel messages
 #define MSG_NONE 0
@@ -40,13 +51,13 @@ typedef struct msg_mouse
 #define MSG_DESELECT 4
 
 // Library messages
-#define LMSG_BASE (1ULL << 62)
+#define LMSG_BASE (1 << 14)
 #define LMSG_INIT (LMSG_BASE + 0)
 #define LMSG_QUIT (LMSG_BASE + 1)
 #define LMSG_REDRAW (LMSG_BASE + 2)
 
 // User messages
-#define UMSG_BASE (1ULL << 63)
+#define UMSG_BASE (1 << 15)
 
 typedef uint8_t win_type_t;
 
@@ -78,14 +89,12 @@ typedef struct ioctl_dwm_size
 typedef struct ioctl_win_receive
 {
     nsec_t timeout;
-    msg_t outType;
-    uint8_t outData[MSG_MAX_DATA];
+    msg_t outMsg;
 } ioctl_win_receive_t;
 
 typedef struct ioctl_win_send
 {
-    msg_t type;
-    uint8_t data[MSG_MAX_DATA];
+    msg_t msg;
 } ioctl_win_send_t;
 
 typedef struct ioctl_win_move
@@ -115,15 +124,21 @@ typedef struct win_theme
     uint64_t topbarHeight;
 } win_theme_t;
 
-typedef uint64_t (*procedure_t)(win_t*, surface_t*, msg_t, void* data);
+typedef uint64_t (*procedure_t)(win_t*, surface_t*, const msg_t*);
 
 win_t* win_new(const char* name, const rect_t* rect, const win_theme_t* theme, procedure_t procedure, win_type_t type);
 
 uint64_t win_free(win_t* window);
 
-msg_t win_receive(win_t* window, nsec_t timeout);
+uint64_t win_receive(win_t* window, msg_t* msg, nsec_t timeout);
 
-uint64_t win_send(win_t* window, msg_t type, void* data, uint64_t size);
+uint64_t win_send(win_t* window, const msg_t* msg);
+
+uint64_t win_send_empty(win_t* window, uint16_t type);
+
+uint64_t win_dispatch(win_t* window, const msg_t* msg);
+
+uint64_t win_dispatch_empty(win_t* window, uint16_t type);
 
 uint64_t win_move(win_t* window, const rect_t* rect);
 
@@ -136,6 +151,8 @@ void win_client_area(win_t* window, rect_t* rect);
 void win_screen_to_window(win_t* window, point_t* point);
 
 void win_screen_to_client(win_t* window, point_t* point);
+
+void win_theme(win_t* window, win_theme_t* theme);
 
 uint64_t win_screen_rect(rect_t* rect);
 

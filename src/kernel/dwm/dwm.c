@@ -11,7 +11,7 @@
 #include "config.h"
 #include "lock.h"
 #include "log.h"
-#include "message.h"
+#include "msg_queue.h"
 #include "sched.h"
 #include "sys/win.h"
 #include "sysfs.h"
@@ -74,7 +74,7 @@ static void dwm_select(window_t* window)
 {
     if (selected != NULL)
     {
-        message_queue_push(&selected->messages, MSG_DESELECT, NULL, 0);
+        msg_queue_push_empty(&selected->messages, MSG_DESELECT);
     }
 
     if (window != NULL)
@@ -86,7 +86,7 @@ static void dwm_select(window_t* window)
         selected->moved = true;
         atomic_store(&redrawNeeded, true);
 
-        message_queue_push(&selected->messages, MSG_SELECT, NULL, 0);
+        msg_queue_push_empty(&selected->messages, MSG_SELECT);
     }
     else
     {
@@ -328,7 +328,7 @@ found:
 
     if (selected != NULL)
     {
-        msg_mouse_t message = {
+        msg_mouse_t data = {
             .time = time_uptime(),
             .buttons = buttons,
             .pos.x = cursor->pos.x,
@@ -336,7 +336,8 @@ found:
             .deltaX = cursor->pos.x - oldPos.x,
             .deltaY = cursor->pos.y - oldPos.y,
         };
-        message_queue_push(&selected->messages, MSG_MOUSE, &message, sizeof(msg_mouse_t));
+        msg_t msg = MSG_INIT(MSG_MOUSE, &data);
+        msg_queue_push(&selected->messages, &msg);
     }
 }
 

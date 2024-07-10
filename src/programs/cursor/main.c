@@ -5,9 +5,9 @@
 
 static fbmp_t* image;
 
-static uint64_t procedure(win_t* window, surface_t* surface, msg_t type, void* data)
+static uint64_t procedure(win_t* window, surface_t* surface, const msg_t* msg)
 {
-    switch (type)
+    switch (msg->type)
     {
     case LMSG_REDRAW:
     {
@@ -22,7 +22,7 @@ static uint64_t procedure(win_t* window, surface_t* surface, msg_t type, void* d
 
 int main(void)
 {
-    image = gfx_load_fbmp("home:/usr/cursor/arrow.fbmp");
+    image = gfx_load_fbmp("/usr/cursor/arrow.fbmp");
     if (image == NULL)
     {
         exit(EXIT_FAILURE);
@@ -35,11 +35,14 @@ int main(void)
     win_t* cursor = win_new("Cursor", &rect, NULL, procedure, WIN_CURSOR);
     if (cursor == NULL)
     {
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
-    while (win_receive(cursor, NEVER) != LMSG_QUIT)
+    msg_t msg = {0};
+    while (msg.type != LMSG_QUIT)
     {
+        win_receive(cursor, &msg, NEVER);
+        win_dispatch(cursor, &msg);
     }
 
     win_free(cursor);

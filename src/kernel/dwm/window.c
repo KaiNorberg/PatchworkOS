@@ -34,15 +34,14 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* argp, uint64_
         }
         ioctl_win_receive_t* receive = argp;
 
-        message_t message;
-        if (SCHED_WAIT(message_queue_pop(&window->messages, &message), receive->timeout) == SCHED_WAIT_TIMEOUT)
+        msg_t msg;
+        if (SCHED_WAIT(msg_queue_pop(&window->messages, &msg), receive->timeout) == SCHED_WAIT_TIMEOUT)
         {
-            receive->outType = MSG_NONE;
+            receive->outMsg.type = MSG_NONE;
             return 0;
         }
 
-        memcpy(receive->outData, message.data, message.size);
-        receive->outType = message.type;
+        receive->outMsg = msg;
 
         return 0;
     }
@@ -54,7 +53,7 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* argp, uint64_
         }
         const ioctl_win_send_t* send = argp;
 
-        message_queue_push(&window->messages, send->type, send->data, MSG_MAX_DATA);
+        msg_queue_push(&window->messages, &send->msg);
 
         return 0;
     }
@@ -123,7 +122,7 @@ static uint64_t window_status(file_t* file, poll_file_t* pollFile)
 {
     window_t* window = file->internal;
 
-    pollFile->occurred = POLL_READ & message_queue_avail(&window->messages);
+    pollFile->occurred = POLL_READ & msg_queue_avail(&window->messages);
     return 0;
 }
 
@@ -155,7 +154,7 @@ window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, win_ty
     window->prevRect = RECT_INIT_DIM(pos->x, pos->y, width, height);
     window->cleanup = cleanup;
     lock_init(&window->lock);
-    message_queue_init(&window->messages);
+    msg_queue_init(&window->messages);
 
     return window;
 }

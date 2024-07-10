@@ -1,6 +1,6 @@
 #include "keyboard.h"
 
-#include "input.h"
+#include "event_stream.h"
 #include "io.h"
 #include "irq.h"
 #include "log.h"
@@ -12,7 +12,7 @@
 #include <sys/keyboard.h>
 #include <sys/math.h>
 
-static input_t keyboard;
+static event_stream_t keyboard;
 
 static uint8_t scanCodeTable[] = {
     0,
@@ -141,7 +141,7 @@ static void ps2_keyboard_irq(uint8_t irq)
         .type = released ? KEYBOARD_RELEASE : KEYBOARD_PRESS,
         .code = key,
     };
-    input_push(&keyboard, &event, sizeof(keyboard_event_t));
+    event_stream_push(&keyboard, &event, sizeof(keyboard_event_t));
 }
 
 void ps2_keyboard_init(void)
@@ -151,5 +151,5 @@ void ps2_keyboard_init(void)
 
     irq_install(ps2_keyboard_irq, IRQ_KEYBOARD);
 
-    input_init(&keyboard, "/keyboard", "ps2", sizeof(keyboard_event_t), PS2_BUFFER_LENGTH);
+    event_stream_init(&keyboard, "/keyboard", "ps2", sizeof(keyboard_event_t), PS2_BUFFER_LENGTH);
 }

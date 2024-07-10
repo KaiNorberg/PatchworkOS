@@ -3,14 +3,15 @@
 #include <sys/proc.h>
 #include <sys/win.h>
 
-static win_theme_t theme;
-
-static uint64_t procedure(win_t* window, surface_t* surface, msg_t type, void* data)
+static uint64_t procedure(win_t* window, surface_t* surface, const msg_t* msg)
 {
-    switch (type)
+    switch (msg->type)
     {
     case LMSG_REDRAW:
     {
+        win_theme_t theme;
+        win_theme(window, &theme);
+
         rect_t rect;
         win_client_area(window, &rect);
 
@@ -27,6 +28,7 @@ static uint64_t procedure(win_t* window, surface_t* surface, msg_t type, void* d
 
 int main(void)
 {
+    win_theme_t theme;
     win_default_theme(&theme);
 
     rect_t rect;
@@ -36,11 +38,14 @@ int main(void)
     win_t* taskbar = win_new("Taskbar", &rect, &theme, procedure, WIN_PANEL);
     if (taskbar == NULL)
     {
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
-    while (win_receive(taskbar, NEVER) != LMSG_QUIT)
+    msg_t msg = {0};
+    while (msg.type != LMSG_QUIT)
     {
+        win_receive(taskbar, &msg, NEVER);
+        win_dispatch(taskbar, &msg);
     }
 
     win_free(taskbar);

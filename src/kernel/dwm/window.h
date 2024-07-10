@@ -2,7 +2,7 @@
 
 #include "defs.h"
 #include "lock.h"
-#include "message.h"
+#include "msg_queue.h"
 #include "vfs.h"
 
 #include <sys/list.h>
@@ -19,7 +19,7 @@ typedef struct window
     rect_t prevRect;
     void (*cleanup)(struct window*);
     lock_t lock;
-    message_queue_t messages;
+    msg_queue_t messages;
 } window_t;
 
 #define WINDOW_RECT(window) RECT_INIT_DIM(window->pos.x, window->pos.y, window->surface.width, window->surface.height);
