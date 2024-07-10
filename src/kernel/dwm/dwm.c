@@ -25,11 +25,10 @@ static rect_t screenArea;
 static rect_t clientArea;
 
 static list_t windows;
-static list_t panels;
+static window_t* selected;
 
 static window_t* cursor;
 static window_t* wall;
-static window_t* selected;
 
 static file_t* mouse;
 
@@ -41,29 +40,34 @@ static void dwm_update_client_area(void)
 {
     rect_t newArea = RECT_INIT_DIM(0, 0, backbuffer.width, backbuffer.height);
 
-    window_t* panel;
-    LIST_FOR_EACH(panel, &panels)
+    window_t* window;
+    LIST_FOR_EACH(window, &windows)
     {
-        uint64_t leftDist = panel->pos.x + panel->surface.width;
-        uint64_t topDist = panel->pos.y + panel->surface.height;
-        uint64_t rightDist = backbuffer.width - panel->pos.x;
-        uint64_t bottomDist = backbuffer.height - panel->pos.y;
+        if (window->type != WIN_PANEL)
+        {
+            continue;
+        }
+
+        uint64_t leftDist = window->pos.x + window->surface.width;
+        uint64_t topDist = window->pos.y + window->surface.height;
+        uint64_t rightDist = backbuffer.width - window->pos.x;
+        uint64_t bottomDist = backbuffer.height - window->pos.y;
 
         if (leftDist <= topDist && leftDist <= rightDist && leftDist <= bottomDist)
         {
-            newArea.left = MAX(panel->pos.x + panel->surface.width, newArea.left);
+            newArea.left = MAX(window->pos.x + window->surface.width, newArea.left);
         }
         else if (topDist <= leftDist && topDist <= rightDist && topDist <= bottomDist)
         {
-            newArea.top = MAX(panel->pos.y + panel->surface.height, newArea.top);
+            newArea.top = MAX(window->pos.y + window->surface.height, newArea.top);
         }
         else if (rightDist <= leftDist && rightDist <= topDist && rightDist <= bottomDist)
         {
-            newArea.right = MIN(panel->pos.x, newArea.right);
+            newArea.right = MIN(window->pos.x, newArea.right);
         }
         else if (bottomDist <= leftDist && bottomDist <= topDist && bottomDist <= rightDist)
         {
-            newArea.bottom = MIN(panel->pos.y, newArea.bottom);
+            newArea.bottom = MIN(window->pos.y, newArea.bottom);
         }
     }
 
@@ -103,7 +107,7 @@ static void dwm_transfer(window_t* window, const rect_t* rect)
     gfx_transfer(&backbuffer, &window->surface, rect, &srcPoint);
 }
 
-static void dwm_redraw_below(window_t* window, const rect_t* rect)
+static void dwm_redraw_others(window_t* window, const rect_t* rect)
 {
     point_t srcPoint = {0};
     gfx_transfer(&backbuffer, &wall->surface, rect, &srcPoint);
@@ -122,6 +126,7 @@ static void dwm_redraw_below(window_t* window, const rect_t* rect)
         {
             rect_t invalidRect = *rect;
             RECT_FIT(&invalidRect, &otherRect);
+            RECT_FIT(&invalidRect, other->type == WIN_WINDOW ? &clientArea : &screenArea);
 
             dwm_transfer(other, &invalidRect);
         }
@@ -157,49 +162,6 @@ static void dwm_swap(void)
     backbuffer.invalidArea = (rect_t){0};
 }
 
-static void dwm_draw_windows(void)
-{
-    window_t* window;
-    LIST_FOR_EACH(window, &windows)
-    {
-        LOCK_GUARD(&window->lock);
-
-        rect_t rect;
-        if (window->moved)
-        {
-            rect = WINDOW_RECT(window);
-            RECT_FIT(&rect, &clientArea);
-
-            rect_subtract_t subtract;
-            RECT_SUBTRACT(&subtract, &window->prevRect, &rect);
-
-            for (uint64_t i = 0; i < subtract.count; i++)
-            {
-                dwm_redraw_below(window, &window->prevRect);
-            }
-
-            window->moved = false;
-            window->invalid = false;
-            window->prevRect = rect;
-        }
-        else if (window->invalid)
-        {
-            rect = WINDOW_INVALID_RECT(window);
-            RECT_FIT(&rect, &clientArea);
-
-            window->invalid = false;
-        }
-        else
-        {
-            continue;
-        }
-
-        dwm_transfer(window, &rect);
-        dwm_invalidate_above(window, &rect);
-        window->surface.invalidArea = (rect_t){0};
-    }
-}
-
 static void dwm_draw_wall(void)
 {
     LOCK_GUARD(&wall->lock);
@@ -219,53 +181,49 @@ static void dwm_draw_wall(void)
         LOCK_GUARD(&window->lock);
         window->invalid = true;
     }
-
-    window_t* panel;
-    LIST_FOR_EACH(panel, &panels)
-    {
-        LOCK_GUARD(&panel->lock);
-        panel->invalid = true;
-    }
 }
 
-static void dwm_draw_panels(void)
+static void dwm_draw_windows(void)
 {
-    window_t* panel;
-    LIST_FOR_EACH(panel, &panels)
+    window_t* window;
+    LIST_FOR_EACH(window, &windows)
     {
-        LOCK_GUARD(&panel->lock);
+        LOCK_GUARD(&window->lock);
+        const rect_t* fitArea = window->type == WIN_WINDOW ? &clientArea : &screenArea;
 
         rect_t rect;
-        if (panel->moved)
+        if (window->moved)
         {
-            rect = WINDOW_RECT(panel);
-            RECT_FIT(&rect, &screenArea);
+            rect = WINDOW_RECT(window);
+            RECT_FIT(&rect, fitArea);
 
             rect_subtract_t subtract;
-            RECT_SUBTRACT(&subtract, &panel->prevRect, &rect);
+            RECT_SUBTRACT(&subtract, &window->prevRect, &rect);
 
             for (uint64_t i = 0; i < subtract.count; i++)
             {
-                dwm_transfer(wall, &panel->prevRect);
+                dwm_redraw_others(window, &window->prevRect);
             }
 
-            panel->moved = false;
-            panel->invalid = false;
-            panel->prevRect = rect;
+            window->moved = false;
+            window->invalid = false;
+            window->prevRect = rect;
         }
-        else if (panel->invalid)
+        else if (window->invalid)
         {
-            rect = WINDOW_INVALID_RECT(panel);
-            RECT_FIT(&rect, &screenArea);
-            panel->invalid = false;
+            rect = WINDOW_INVALID_RECT(window);
+            RECT_FIT(&rect, fitArea);
+
+            window->invalid = false;
         }
         else
         {
             continue;
         }
 
-        dwm_transfer(panel, &rect);
-        panel->surface.invalidArea = (rect_t){0};
+        dwm_transfer(window, &rect);
+        dwm_invalidate_above(window, &rect);
+        window->surface.invalidArea = (rect_t){0};
     }
 }
 
@@ -285,7 +243,7 @@ static void dwm_draw_and_update_cursor(const point_t* cursorDelta)
 
     rect_t oldRect = WINDOW_RECT(cursor);
     RECT_FIT(&oldRect, &screenArea);
-    dwm_redraw_below(cursor, &oldRect);
+    dwm_redraw_others(cursor, &oldRect);
 
     cursor->pos.x = CLAMP(cursor->pos.x + cursorDelta->x, 0, backbuffer.width - 1);
     cursor->pos.y = CLAMP(cursor->pos.y + cursorDelta->y, 0, backbuffer.height - 1);
@@ -308,6 +266,7 @@ static void dwm_handle_mouse_message(uint8_t buttons, const point_t* cursorDelta
 
     if ((buttons & ~oldButtons) != 0) // If any button has been pressed
     {
+        bool found = false;
         window_t* window;
         LIST_FOR_EACH_REVERSE(window, &windows)
         {
@@ -316,14 +275,13 @@ static void dwm_handle_mouse_message(uint8_t buttons, const point_t* cursorDelta
             rect_t windowRect = WINDOW_RECT(window);
             if (RECT_CONTAINS_POINT(&windowRect, cursor->pos.x, cursor->pos.y))
             {
-                dwm_select(window);
-                goto found;
+                found = true;
+                break;
             }
         }
 
-        dwm_select(NULL);
+        dwm_select(found ? window : NULL);
     }
-found:
     oldButtons = buttons;
 
     if (selected != NULL)
@@ -388,15 +346,11 @@ static void dwm_loop(void)
         if (wall != NULL)
         {
             dwm_draw_wall();
-
             dwm_draw_windows();
-            dwm_draw_panels();
-
             if (cursor != NULL)
             {
                 dwm_draw_cursor();
             }
-
             dwm_swap();
         }
         lock_release(&lock);
@@ -424,7 +378,6 @@ static void dwm_window_cleanup(window_t* window)
     case WIN_PANEL:
     {
         list_remove(window);
-
         dwm_update_client_area();
     }
     break;
@@ -481,8 +434,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
         break;
         case WIN_PANEL:
         {
-            list_push(&panels, window);
-
+            list_push(&windows, window);
             dwm_update_client_area();
             log_print("dwm: create panel");
         }
@@ -568,7 +520,8 @@ void dwm_init(gop_buffer_t* gopBuffer)
     screenArea = RECT_INIT_SURFACE(&backbuffer);
 
     list_init(&windows);
-    list_init(&panels);
+    selected = NULL;
+
     cursor = NULL;
     wall = NULL;
 

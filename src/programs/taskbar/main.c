@@ -49,6 +49,5 @@ int main(void)
     }
 
     win_free(taskbar);
-
     return 0;
 }

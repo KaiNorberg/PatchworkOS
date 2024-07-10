@@ -46,6 +46,5 @@ int main(void)
     }
 
     win_free(cursor);
-
     return EXIT_SUCCESS;
 }

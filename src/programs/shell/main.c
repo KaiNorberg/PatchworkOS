@@ -58,6 +58,5 @@ int main(void)
     }
 
     win_free(wallpaper);
-
     return EXIT_SUCCESS;
 }
