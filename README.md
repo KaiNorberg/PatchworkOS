@@ -12,7 +12,7 @@
 - Custom Standard Library
 - Custom UEFI Bootloader
 - SIMD
-- ![Custom image format (.fbmp)](https://github.com/KaiNorberg/fbmp)
+- [Custom image format (.fbmp)](https://github.com/KaiNorberg/fbmp)
 - More to be added...
 
 ## Limitations
@@ -31,7 +31,7 @@ Currently untested on Intel hardware.
 
 <ins>**1. Cloning**</ins>
 
-To clone this repository, you can either use the ```Code``` button at the top left of the screen on GitHub, or if you have ![Git](https://git-scm.com/) installed, run the ```git clone --recursive https://github.com/KaiNorberg/PatchworkOS``` command.
+To clone this repository, you can either use the ```Code``` button at the top left of the screen on GitHub, or if you have [Git](https://git-scm.com/) installed, run the ```git clone --recursive https://github.com/KaiNorberg/PatchworkOS``` command.
 
 <ins>**2. Building**</ins>
 
@@ -55,7 +55,7 @@ The short term goal is to create a basic user-space shell, however the long term
 
 ## Documentation (WIP)
 
-Documentation will eventually be found on the ![wiki](https://github.com/Kaj9296/PatchworkOS/wiki) page.
+Documentation will eventually be found on the [wiki](https://github.com/Kaj9296/PatchworkOS/wiki) page.
 
 ## Contributing
 
