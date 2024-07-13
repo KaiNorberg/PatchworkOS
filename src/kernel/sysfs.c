@@ -109,7 +109,7 @@ static uint64_t sysfs_open(file_t* file, const char* path)
     }
 
     file->resource = resource;
-    file->internal = resource->internal;
+    file->private = resource->private;
     atomic_fetch_add(&file->resource->openFiles, 1);
 
     return resource->ops->open != NULL ? resource->ops->open(file, path) : 0;
@@ -264,7 +264,7 @@ void sysfs_init(void)
     log_print("sysfs: init");
 }
 
-resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_t* ops, void* internal, resource_delete_t delete)
+resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_t* ops, void* private, resource_delete_t delete)
 {
     LOCK_GUARD(&lock);
 
@@ -288,7 +288,7 @@ resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_
     resource->system = system;
     strcpy(resource->name, filename);
     resource->ops = ops;
-    resource->internal = internal;
+    resource->private = private;
     resource->delete = delete;
     atomic_init(&resource->openFiles, 0);
     atomic_init(&resource->dead, false);

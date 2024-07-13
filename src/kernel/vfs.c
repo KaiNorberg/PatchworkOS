@@ -46,7 +46,7 @@ file_t* file_new(const file_ops_t* ops)
     file_t* file = malloc(sizeof(file_t));
     file->volume = NULL;
     file->position = 0;
-    file->internal = NULL;
+    file->private = NULL;
     file->resource = NULL;
     file->ops = ops;
     atomic_init(&file->ref, 1);

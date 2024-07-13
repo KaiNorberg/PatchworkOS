@@ -3,20 +3,27 @@
 #include <sys/proc.h>
 #include <sys/win.h>
 
-static uint64_t procedure(win_t* window, surface_t* surface, const msg_t* msg)
+static uint64_t procedure(win_t* window, void* private, surface_t* surface, msg_t* msg)
 {
     switch (msg->type)
     {
+    case LMSG_INIT:
+    {
+        lmsg_init_t* data = (lmsg_init_t*)msg->data;
+        data->name = "Taskbar";
+        data->type = DWM_PANEL;
+        win_screen_rect(&data->rect);
+        data->rect.top = data->rect.bottom - 45;
+    }
+    break;
     case LMSG_REDRAW:
     {
         win_theme_t theme;
-        win_theme(window, &theme);
-
+        win_theme(&theme);
         rect_t rect;
         win_client_area(window, &rect);
 
         gfx_rect(surface, &rect, theme.background);
-
         rect.bottom = rect.top + theme.edgeWidth;
         gfx_rect(surface, &rect, theme.highlight);
     }
@@ -28,14 +35,7 @@ static uint64_t procedure(win_t* window, surface_t* surface, const msg_t* msg)
 
 int main(void)
 {
-    win_theme_t theme;
-    win_default_theme(&theme);
-
-    rect_t rect;
-    win_screen_rect(&rect);
-    rect.top = rect.bottom - 45;
-
-    win_t* taskbar = win_new("Taskbar", &rect, &theme, procedure, WIN_PANEL);
+    win_t* taskbar = win_new(procedure);
     if (taskbar == NULL)
     {
         return EXIT_FAILURE;

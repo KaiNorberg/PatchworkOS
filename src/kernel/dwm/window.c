@@ -1,19 +1,18 @@
 #include "window.h"
 
 #include "dwm.h"
-#include "log.h"
 #include "sched.h"
-#include "sys/io.h"
 #include "vfs.h"
 
 #include <errno.h>
 #include <stdlib.h>
+#include <sys/dwm.h>
 #include <sys/gfx.h>
 #include <sys/math.h>
 
 static void window_cleanup(file_t* file)
 {
-    window_t* window = file->internal;
+    window_t* window = file->private;
 
     window->cleanup(window);
 
@@ -22,17 +21,17 @@ static void window_cleanup(file_t* file)
 
 static uint64_t window_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
 {
-    window_t* window = file->internal;
+    window_t* window = file->private;
 
     switch (request)
     {
-    case IOCTL_WIN_RECEIVE:
+    case IOCTL_WINDOW_RECEIVE:
     {
-        if (size != sizeof(ioctl_win_receive_t))
+        if (size != sizeof(ioctl_window_receive_t))
         {
             return ERROR(EINVAL);
         }
-        ioctl_win_receive_t* receive = argp;
+        ioctl_window_receive_t* receive = argp;
 
         msg_t msg;
         if (SCHED_WAIT(msg_queue_pop(&window->messages, &msg), receive->timeout) == SCHED_WAIT_TIMEOUT)
@@ -45,25 +44,25 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* argp, uint64_
 
         return 0;
     }
-    case IOCTL_WIN_SEND:
+    case IOCTL_WINDOW_SEND:
     {
-        if (size != sizeof(ioctl_win_send_t))
+        if (size != sizeof(ioctl_window_send_t))
         {
             return ERROR(EINVAL);
         }
-        const ioctl_win_send_t* send = argp;
+        const ioctl_window_send_t* send = argp;
 
-        msg_queue_push(&window->messages, &send->msg);
+        msg_queue_push(&window->messages, send->msg.type, send->msg.data, MSG_MAX_DATA);
 
         return 0;
     }
-    case IOCTL_WIN_MOVE:
+    case IOCTL_WINDOW_MOVE:
     {
-        if (size != sizeof(ioctl_win_move_t))
+        if (size != sizeof(ioctl_window_move_t))
         {
             return ERROR(EINVAL);
         }
-        const ioctl_win_move_t* move = argp;
+        const ioctl_window_move_t* move = argp;
 
         LOCK_GUARD(&window->lock);
         window->pos = move->pos;
@@ -91,7 +90,7 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* argp, uint64_
 
 static uint64_t window_flush(file_t* file, const void* buffer, uint64_t size, const rect_t* rect)
 {
-    window_t* window = file->internal;
+    window_t* window = file->private;
     LOCK_GUARD(&window->lock);
 
     if (size != window->surface.width * window->surface.height * sizeof(pixel_t))
@@ -120,7 +119,7 @@ static uint64_t window_flush(file_t* file, const void* buffer, uint64_t size, co
 
 static uint64_t window_status(file_t* file, poll_file_t* pollFile)
 {
-    window_t* window = file->internal;
+    window_t* window = file->private;
 
     pollFile->occurred = POLL_READ & msg_queue_avail(&window->messages);
     return 0;
@@ -133,9 +132,9 @@ static file_ops_t fileOps = {
     .status = window_status,
 };
 
-window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, win_type_t type, void (*cleanup)(window_t*))
+window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, dwm_type_t type, void (*cleanup)(window_t*))
 {
-    if (type > WIN_MAX)
+    if (type > DWM_MAX)
     {
         return NULL;
     }
@@ -167,6 +166,6 @@ void window_free(window_t* window)
 
 void window_populate_file(window_t* window, file_t* file)
 {
-    file->internal = window;
+    file->private = window;
     file->ops = &fileOps;
 }

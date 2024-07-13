@@ -1,5 +1,7 @@
 #include "msg_queue.h"
+
 #include "lock.h"
+#include "time.h"
 
 #include <string.h>
 
@@ -18,18 +20,16 @@ bool msg_queue_avail(msg_queue_t* queue)
     return queue->readIndex != queue->writeIndex;
 }
 
-void msg_queue_push(msg_queue_t* queue, const msg_t* msg)
+void msg_queue_push(msg_queue_t* queue, msg_type_t type, const void* data, uint64_t size)
 {
     LOCK_GUARD(&queue->lock);
 
-    queue->queue[queue->writeIndex] = *msg;
-    queue->writeIndex = (queue->writeIndex + 1) % MSG_QUEUE_MAX;
-}
+    msg_t* msg = &queue->queue[queue->writeIndex];
+    msg->type = type;
+    msg->time = time_uptime();
+    memcpy(msg->data, data, size);
 
-void msg_queue_push_empty(msg_queue_t* queue, uint16_t type)
-{
-    msg_t msg = {.type = type};
-    msg_queue_push(queue, &msg);
+    queue->writeIndex = (queue->writeIndex + 1) % MSG_QUEUE_MAX;
 }
 
 bool msg_queue_pop(msg_queue_t* queue, msg_t* msg)

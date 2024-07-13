@@ -6,7 +6,6 @@
 #include <sys/io.h>
 #include <sys/list.h>
 #include <sys/proc.h>
-#include <sys/win.h>
 
 #include "defs.h"
 #include "sched.h"
@@ -83,7 +82,7 @@ typedef struct file
 {
     volume_t* volume;
     uint64_t position;
-    void* internal;
+    void* private;
     resource_t* resource; // Used by sysfs
     const file_ops_t* ops;
     atomic_uint64_t ref;

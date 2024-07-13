@@ -22,7 +22,7 @@ typedef struct resource
     system_t* system;
     char name[CONFIG_MAX_NAME];
     const file_ops_t* ops;
-    void* internal;
+    void* private;
     resource_delete_t delete;
     atomic_uint64_t openFiles;
     atomic_bool dead;
@@ -30,6 +30,6 @@ typedef struct resource
 
 void sysfs_init(void);
 
-resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_t* ops, void* internal, resource_delete_t delete);
+resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_t* ops, void* private, resource_delete_t delete);
 
 uint64_t sysfs_hide(resource_t* resource);

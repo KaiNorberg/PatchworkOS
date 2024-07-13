@@ -7,18 +7,39 @@
 #define WINDOW_WIDTH 350
 #define WINDOW_HEIGHT 400
 
-static uint64_t procedure(win_t* window, surface_t* surface, const msg_t* msg)
+#define BUTTON_ID 1
+
+static uint64_t procedure(win_t* window, void* private, surface_t* surface, msg_t* msg)
 {
     switch (msg->type)
     {
-    case LMSG_REDRAW:
+    case LMSG_INIT:
     {
-        win_theme_t theme;
-        win_theme(window, &theme);
+        lmsg_init_t* data = (lmsg_init_t*)msg->data;
+        data->name = "Calculator";
+        data->type = DWM_WINDOW;
+        data->rectIsClient = true;
+        data->rect = RECT_INIT_DIM(500 * (1 + getpid() % 2), 200, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-        rect_t rect = RECT_INIT(5, 5, surface->width - 5, 5 + 40);
-        gfx_rect(surface, &rect, theme.background);
-        gfx_edge(surface, &rect, theme.edgeWidth, theme.shadow, theme.highlight);
+        rect_t buttonRect = RECT_INIT_DIM(125, 50, 100, 100);
+        win_widget_new(window, win_widget_button, "Press Me!", &buttonRect, BUTTON_ID);
+
+        /*wmsg_set_font_t font = {
+            .font = "/usr/fonts/zap-light16.psf"
+        };
+        win_widget_send(button, WMSG_SET_FONT, &font, sizeof(wmsg_set_font_t));*/
+    }
+    break;
+    case LMSG_BUTTON:
+    {
+        lmsg_button_t* data = (lmsg_button_t*)msg->data;
+        if (data->pressed)
+        {
+            if (data->id == BUTTON_ID)
+            {
+                asm volatile("ud2");
+            }
+        }
     }
     break;
     }
@@ -28,13 +49,7 @@ static uint64_t procedure(win_t* window, surface_t* surface, const msg_t* msg)
 
 int main(void)
 {
-    win_theme_t theme;
-    win_default_theme(&theme);
-
-    rect_t rect = RECT_INIT_DIM(500 * (1 + getpid() % 2), 200, WINDOW_WIDTH, WINDOW_HEIGHT);
-    win_client_to_window(&rect, &theme, WIN_WINDOW);
-
-    win_t* window = win_new("Calculator", &rect, &theme, procedure, WIN_WINDOW);
+    win_t* window = win_new(procedure);
     if (window == NULL)
     {
         return EXIT_FAILURE;

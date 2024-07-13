@@ -2,7 +2,6 @@
 
 #include <errno.h>
 #include <string.h>
-#include <sys/win.h>
 
 #include "defs.h"
 #include "process.h"

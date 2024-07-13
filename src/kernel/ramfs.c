@@ -101,26 +101,26 @@ static uint64_t ramfs_open(file_t* file, const char* path)
         return ERROR(EPATH);
     }
 
-    file->internal = ramFile;
+    file->private = ramFile;
     return 0;
 }
 
 static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count)
 {
-    ram_file_t* internal = file->internal;
+    ram_file_t* private = file->private;
 
     uint64_t pos = file->position;
-    uint64_t readCount = (pos <= internal->size) ? MIN(count, internal->size - pos) : 0;
+    uint64_t readCount = (pos <= private->size) ? MIN(count, private->size - pos) : 0;
 
     file->position += readCount;
-    memcpy(buffer, internal->data + pos, readCount);
+    memcpy(buffer, private->data + pos, readCount);
 
     return readCount;
 }
 
 static uint64_t ramfs_seek(file_t* file, int64_t offset, uint8_t origin)
 {
-    ram_file_t* internal = file->internal;
+    ram_file_t* private = file->private;
 
     uint64_t position;
     switch (origin)
@@ -137,7 +137,7 @@ static uint64_t ramfs_seek(file_t* file, int64_t offset, uint8_t origin)
     break;
     case SEEK_END:
     {
-        position = internal->size - offset;
+        position = private->size - offset;
     }
     break;
     default:
@@ -147,7 +147,7 @@ static uint64_t ramfs_seek(file_t* file, int64_t offset, uint8_t origin)
     break;
     }
 
-    file->position = MIN(position, internal->size);
+    file->position = MIN(position, private->size);
     return position;
 }
 

@@ -3,12 +3,18 @@
 #include <sys/proc.h>
 #include <sys/win.h>
 
-static win_theme_t theme;
-
-static uint64_t procedure(win_t* window, surface_t* surface, const msg_t* msg)
+static uint64_t procedure(win_t* window, void* private, surface_t* surface, msg_t* msg)
 {
     switch (msg->type)
     {
+    case LMSG_INIT:
+    {
+        lmsg_init_t* data = (lmsg_init_t*)msg->data;
+        data->name = "Wallpaper";
+        data->type = DWM_WALL;
+        win_screen_rect(&data->rect);
+    }
+    break;
     case LMSG_REDRAW:
     {
         rect_t rect = RECT_INIT_SURFACE(surface);
@@ -22,13 +28,7 @@ static uint64_t procedure(win_t* window, surface_t* surface, const msg_t* msg)
 
 int main(void)
 {
-    win_theme_t theme;
-    win_default_theme(&theme);
-
-    rect_t rect;
-    win_screen_rect(&rect);
-
-    win_t* wallpaper = win_new("Wallpaper", &rect, &theme, procedure, WIN_WALL);
+    win_t* wallpaper = win_new(procedure);
     if (wallpaper == NULL)
     {
         return EXIT_FAILURE;

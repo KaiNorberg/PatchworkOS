@@ -88,7 +88,7 @@ void gfx_psf_char(surface_t* surface, const psf_t* psf, const point_t* point, ch
             {
                 pixel_t pixel = (*glyph & (0b10000000 >> (x / psf->scale))) > 0 ? psf->foreground : psf->background;
                 pixel_t* out = &surface->buffer[(point->x + x) + (point->y + y) * surface->stride];
-                *out = PIXEL_BLEND(pixel, *out);
+                PIXEL_BLEND(out, &pixel);
             }
             if (y % psf->scale == 0)
             {
@@ -241,7 +241,7 @@ void gfx_transfer_blend(surface_t* dest, const surface_t* src, const rect_t* des
         {
             pixel_t pixel = src->buffer[(srcPoint->x + x) + (srcPoint->y + y) * src->stride];
             pixel_t* out = &dest->buffer[(destRect->left + x) + (destRect->top + y) * dest->stride];
-            *out = PIXEL_BLEND(pixel, *out);
+            PIXEL_BLEND(out, &pixel);
         }
     }
 

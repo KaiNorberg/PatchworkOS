@@ -8,7 +8,7 @@
 
 static uint64_t event_stream_read(file_t* file, void* buffer, uint64_t count)
 {
-    event_stream_t* stream = file->internal;
+    event_stream_t* stream = file->private;
 
     count = ROUND_DOWN(count, stream->eventSize);
     for (uint64_t i = 0; i < count / stream->eventSize; i++)
@@ -31,7 +31,7 @@ static uint64_t event_stream_read(file_t* file, void* buffer, uint64_t count)
 
 static uint64_t event_stream_status(file_t* file, poll_file_t* pollFile)
 {
-    event_stream_t* stream = file->internal;
+    event_stream_t* stream = file->private;
     pollFile->occurred = POLL_READ & (stream->writeIndex != file->position);
     return 0;
 }
@@ -41,9 +41,9 @@ static file_ops_t fileOps = {
     .status = event_stream_status,
 };
 
-static void event_stream_delete(void* internal)
+static void event_stream_delete(void* private)
 {
-    event_stream_t* stream = internal;
+    event_stream_t* stream = private;
     free(stream->buffer);
 }
 

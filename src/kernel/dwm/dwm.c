@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <stdatomic.h>
 #include <stdlib.h>
+#include <sys/dwm.h>
 #include <sys/gfx.h>
 #include <sys/io.h>
 #include <sys/math.h>
@@ -13,7 +14,6 @@
 #include "log.h"
 #include "msg_queue.h"
 #include "sched.h"
-#include "sys/win.h"
 #include "sysfs.h"
 #include "time.h"
 #include "vfs.h"
@@ -43,7 +43,7 @@ static void dwm_update_client_area(void)
     window_t* window;
     LIST_FOR_EACH(window, &windows)
     {
-        if (window->type != WIN_PANEL)
+        if (window->type != DWM_PANEL)
         {
             continue;
         }
@@ -78,7 +78,7 @@ static void dwm_select(window_t* window)
 {
     if (selected != NULL)
     {
-        msg_queue_push_empty(&selected->messages, MSG_DESELECT);
+        msg_queue_push(&selected->messages, MSG_DESELECT, NULL, 0);
     }
 
     if (window != NULL)
@@ -90,7 +90,7 @@ static void dwm_select(window_t* window)
         selected->moved = true;
         atomic_store(&redrawNeeded, true);
 
-        msg_queue_push_empty(&selected->messages, MSG_SELECT);
+        msg_queue_push(&selected->messages, MSG_SELECT, NULL, 0);
     }
     else
     {
@@ -126,7 +126,7 @@ static void dwm_redraw_others(window_t* window, const rect_t* rect)
         {
             rect_t invalidRect = *rect;
             RECT_FIT(&invalidRect, &otherRect);
-            RECT_FIT(&invalidRect, other->type == WIN_WINDOW ? &clientArea : &screenArea);
+            RECT_FIT(&invalidRect, other->type == DWM_WINDOW ? &clientArea : &screenArea);
 
             dwm_transfer(other, &invalidRect);
         }
@@ -189,7 +189,7 @@ static void dwm_draw_windows(void)
     LIST_FOR_EACH(window, &windows)
     {
         LOCK_GUARD(&window->lock);
-        const rect_t* fitArea = window->type == WIN_WINDOW ? &clientArea : &screenArea;
+        const rect_t* fitArea = window->type == DWM_WINDOW ? &clientArea : &screenArea;
 
         rect_t rect;
         if (window->moved)
@@ -287,15 +287,13 @@ static void dwm_handle_mouse_message(uint8_t buttons, const point_t* cursorDelta
     if (selected != NULL)
     {
         msg_mouse_t data = {
-            .time = time_uptime(),
             .buttons = buttons,
             .pos.x = cursor->pos.x,
             .pos.y = cursor->pos.y,
             .deltaX = cursor->pos.x - oldPos.x,
             .deltaY = cursor->pos.y - oldPos.y,
         };
-        msg_t msg = MSG_INIT(MSG_MOUSE, &data);
-        msg_queue_push(&selected->messages, &msg);
+        msg_queue_push(&selected->messages, MSG_MOUSE, &data, sizeof(msg_mouse_t));
     }
 }
 
@@ -370,23 +368,23 @@ static void dwm_window_cleanup(window_t* window)
 
     switch (window->type)
     {
-    case WIN_WINDOW:
+    case DWM_WINDOW:
     {
         list_remove(window);
     }
     break;
-    case WIN_PANEL:
+    case DWM_PANEL:
     {
         list_remove(window);
         dwm_update_client_area();
     }
     break;
-    case WIN_CURSOR:
+    case DWM_CURSOR:
     {
         cursor = NULL;
     }
     break;
-    case WIN_WALL:
+    case DWM_WALL:
     {
         wall = NULL;
     }
@@ -426,20 +424,20 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
 
         switch (window->type)
         {
-        case WIN_WINDOW:
+        case DWM_WINDOW:
         {
             list_push(&windows, window);
             log_print("dwm: create window");
         }
         break;
-        case WIN_PANEL:
+        case DWM_PANEL:
         {
             list_push(&windows, window);
             dwm_update_client_area();
             log_print("dwm: create panel");
         }
         break;
-        case WIN_CURSOR:
+        case DWM_CURSOR:
         {
             if (cursor != NULL)
             {
@@ -451,7 +449,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
             log_print("dwm: create cursor");
         }
         break;
-        case WIN_WALL:
+        case DWM_WALL:
         {
             if (wall != NULL)
             {
@@ -472,7 +470,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
         window_populate_file(window, file);
 
         // Preserve splash screen on boot, wall will be drawn on first flush.
-        if (window->type != WIN_WALL)
+        if (window->type != DWM_WALL)
         {
             dwm_redraw();
         }

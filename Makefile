@@ -9,10 +9,10 @@ setup:
 
 build:
 	@for MODULE in $(MODULES) ; do \
-	   $(MAKE) -f make/$$MODULE.mk SRCDIR=src/$$MODULE BUILDDIR=build/$$MODULE BINDIR=bin/$$MODULE ; \
+	   $(MAKE) -f make/$$MODULE.mk SRCDIR=src/$$MODULE BUILDDIR=build/$$MODULE BINDIR=bin/$$MODULE || exit 1 ; \
 	done
 	@for PROGRAM in $(PROGRAMS) ; do \
-	   $(MAKE) -f make/programs/$$PROGRAM.mk SRCDIR=src/programs/$$PROGRAM BUILDDIR=build/programs/$$PROGRAM BINDIR=bin/programs ; \
+	   $(MAKE) -f make/programs/$$PROGRAM.mk SRCDIR=src/programs/$$PROGRAM BUILDDIR=build/programs/$$PROGRAM BINDIR=bin/programs || exit 1 ; \
 	done
 
 deploy:
