@@ -49,10 +49,6 @@ There are three ways to run Patchwork.
 2. **Use QEMU:** Download [QEMU](https://www.qemu.org/) and use the ```make run``` command.
 3. **Other Virtual Machine:** Run the created .img file in a virtual machine of your choice.
 
-## Roadmap
-
-The short term goal is to create a basic user-space shell, however the long term goal is to play DOOM.
-
 ## Documentation (WIP)
 
 Documentation will eventually be found on the [wiki](https://github.com/Kaj9296/PatchworkOS/wiki) page.
