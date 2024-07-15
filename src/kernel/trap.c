@@ -124,11 +124,5 @@ void trap_handler(trap_frame_t* trapFrame)
         log_panic(trapFrame, "Unknown interrupt vector");
     }
 
-    thread_t* thread = sched_thread();
-    if (thread != NULL && thread->process->killed && trapFrame->cs != GDT_KERNEL_CODE)
-    {
-        thread->state = THREAD_STATE_KILLED;
-    }
-
     trap_end();
 }

@@ -14,6 +14,7 @@ typedef struct
     uint64_t length;
     void* buffer;
     resource_t* resource;
+    blocker_t blocker;
     lock_t lock;
 } event_stream_t;
 

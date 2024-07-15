@@ -32,7 +32,6 @@ typedef struct win
     dwm_type_t type;
     win_proc_t procedure;
     list_t widgets;
-    void* private;
     bool selected;
     bool moving;
     char name[DWM_MAX_NAME];
@@ -51,3 +50,22 @@ typedef struct widget
     uint8_t readIndex;
     char name[DWM_MAX_NAME];
 } widget_t;
+
+static inline void win_window_surface(win_t* window, surface_t* surface)
+{
+    surface->invalidArea = (rect_t){0};
+    surface->buffer = window->buffer;
+    surface->width = window->width;
+    surface->height = window->height;
+    surface->stride = surface->width;
+}
+
+static inline void win_client_surface(win_t* window, surface_t* surface)
+{
+    surface->invalidArea = (rect_t){0};
+    surface->width = RECT_WIDTH(&window->clientArea);
+    surface->height = RECT_HEIGHT(&window->clientArea);
+    surface->stride = window->width;
+    surface->buffer = (pixel_t*)((uint64_t)window->buffer + (window->clientArea.left * sizeof(pixel_t)) +
+        (window->clientArea.top * surface->stride * sizeof(pixel_t)));
+}

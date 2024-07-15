@@ -1,6 +1,7 @@
 #include "window.h"
 
 #include "dwm.h"
+#include "dwm/msg_queue.h"
 #include "sched.h"
 #include "vfs.h"
 
@@ -33,14 +34,7 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* argp, uint64_
         }
         ioctl_window_receive_t* receive = argp;
 
-        msg_t msg;
-        if (SCHED_WAIT(msg_queue_pop(&window->messages, &msg), receive->timeout) == SCHED_WAIT_TIMEOUT)
-        {
-            receive->outMsg.type = MSG_NONE;
-            return 0;
-        }
-
-        receive->outMsg = msg;
+        msg_queue_pop(&window->messages, &receive->outMsg, receive->timeout);
 
         return 0;
     }
@@ -112,7 +106,12 @@ static uint64_t window_flush(file_t* file, const void* buffer, uint64_t size, co
 
     gfx_invalidate(&window->surface, rect);
 
+    if (!window->shown)
+    {
+        window->moved = true;
+    }
     window->invalid = true;
+
     dwm_redraw();
     return 0;
 }
@@ -150,7 +149,8 @@ window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, dwm_ty
     window->surface.invalidArea = RECT_INIT_DIM(0, 0, width, height);
     window->invalid = false;
     window->moved = false;
-    window->prevRect = RECT_INIT_DIM(pos->x, pos->y, width, height);
+    window->shown = false;
+    window->prevRect = RECT_INIT_DIM(0, 0, 0, 0);
     window->cleanup = cleanup;
     lock_init(&window->lock);
     msg_queue_init(&window->messages);
@@ -160,6 +160,7 @@ window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, dwm_ty
 
 void window_free(window_t* window)
 {
+    msg_queue_cleanup(&window->messages);
     free(window->surface.buffer);
     free(window);
 }

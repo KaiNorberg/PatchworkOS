@@ -4,6 +4,7 @@
 #include <sys/math.h>
 
 #include "lock.h"
+#include "sched.h"
 #include "sysfs.h"
 
 static uint64_t event_stream_read(file_t* file, void* buffer, uint64_t count)
@@ -13,13 +14,11 @@ static uint64_t event_stream_read(file_t* file, void* buffer, uint64_t count)
     count = ROUND_DOWN(count, stream->eventSize);
     for (uint64_t i = 0; i < count / stream->eventSize; i++)
     {
-        SCHED_WAIT(stream->writeIndex != file->position, NEVER);
-        LOCK_GUARD(&stream->lock);
-
-        if (file->position == stream->writeIndex)
+        if (SCHED_BLOCK(&stream->blocker, stream->writeIndex != file->position, NEVER) != BLOCK_NORM)
         {
             return i * stream->eventSize;
         }
+        LOCK_GUARD(&stream->lock);
 
         memcpy((uint8_t*)buffer + stream->eventSize * i, (uint8_t*)stream->buffer + stream->eventSize * file->position,
             stream->eventSize);
@@ -45,6 +44,7 @@ static void event_stream_delete(void* private)
 {
     event_stream_t* stream = private;
     free(stream->buffer);
+    blocker_cleanup(&stream->blocker);
 }
 
 uint64_t event_stream_init(event_stream_t* stream, const char* path, const char* name, uint64_t eventSize, uint64_t length)
@@ -58,6 +58,7 @@ uint64_t event_stream_init(event_stream_t* stream, const char* path, const char*
     {
         return ERR;
     }
+    blocker_init(&stream->blocker);
     lock_init(&stream->lock);
 
     return 0;
@@ -79,5 +80,7 @@ uint64_t event_stream_push(event_stream_t* stream, const void* event, uint64_t e
 
     memcpy((void*)((uintptr_t)stream->buffer + stream->eventSize * stream->writeIndex), event, stream->eventSize);
     stream->writeIndex = (stream->writeIndex + 1) % stream->length;
+    sched_wake_up(&stream->blocker);
+
     return 0;
 }

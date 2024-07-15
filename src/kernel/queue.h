@@ -2,6 +2,7 @@
 
 #include "defs.h"
 #include "lock.h"
+#include "log.h"
 
 #include <sys/list.h>
 
@@ -39,7 +40,30 @@ static inline void* queue_pop(queue_t* queue)
     return list_pop(&queue->list);
 }
 
-static inline uint64_t queue_length(queue_t const* queue)
+static inline uint64_t queue_length(const queue_t* queue)
 {
     return queue->length;
+}
+
+static inline void* queue_find(queue_t* queue, bool (*predicate)(void*))
+{
+    LOCK_GUARD(&queue->lock);
+
+    void* elem;
+    LIST_FOR_EACH(elem, &queue->list)
+    {
+        list_entry_t* entry = elem;
+
+        log_print("%a, %a, %a, %a", &queue->list.head, entry, entry->next, entry->prev);
+        // log_print("loop begin");
+        if (predicate(elem))
+        {
+            log_print("loop ret");
+            return elem;
+        }
+        // log_print("loop end");
+    }
+
+    log_print("loop NULL");
+    return NULL;
 }

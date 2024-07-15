@@ -114,8 +114,11 @@ static void* loader_load_program(void)
 
 void loader_entry(void)
 {
+    // log_print("loader: loading (%d)", sched_process()->id);
+
     void* rsp = loader_allocate_stack();
     void* rip = loader_load_program();
 
+    // log_print("loader: loaded (%d)", sched_process()->id);
     loader_jump_to_user_space(rsp, rip);
 }

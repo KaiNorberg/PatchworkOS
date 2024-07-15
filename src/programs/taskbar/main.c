@@ -3,29 +3,25 @@
 #include <sys/proc.h>
 #include <sys/win.h>
 
-static uint64_t procedure(win_t* window, void* private, surface_t* surface, msg_t* msg)
+static uint64_t procedure(win_t* window, const msg_t* msg)
 {
     switch (msg->type)
     {
-    case LMSG_INIT:
-    {
-        lmsg_init_t* data = (lmsg_init_t*)msg->data;
-        data->name = "Taskbar";
-        data->type = DWM_PANEL;
-        win_screen_rect(&data->rect);
-        data->rect.top = data->rect.bottom - 45;
-    }
-    break;
     case LMSG_REDRAW:
     {
+        surface_t surface;
+        win_draw_begin(window, &surface);
+
         win_theme_t theme;
         win_theme(&theme);
         rect_t rect;
         win_client_area(window, &rect);
 
-        gfx_rect(surface, &rect, theme.background);
+        gfx_rect(&surface, &rect, theme.background);
         rect.bottom = rect.top + theme.edgeWidth;
-        gfx_rect(surface, &rect, theme.highlight);
+        gfx_rect(&surface, &rect, theme.highlight);
+
+        win_draw_end(window, &surface);
     }
     break;
     }
@@ -35,8 +31,12 @@ static uint64_t procedure(win_t* window, void* private, surface_t* surface, msg_
 
 int main(void)
 {
-    win_t* taskbar = win_new(procedure);
-    if (taskbar == NULL)
+    rect_t rect;
+    win_screen_rect(&rect);
+    rect.top = rect.bottom - 45;
+
+    win_t* window = win_new("Taskbar", DWM_PANEL, &rect, procedure);
+    if (window == NULL)
     {
         return EXIT_FAILURE;
     }
@@ -44,10 +44,10 @@ int main(void)
     msg_t msg = {0};
     while (msg.type != LMSG_QUIT)
     {
-        win_receive(taskbar, &msg, NEVER);
-        win_dispatch(taskbar, &msg);
+        win_receive(window, &msg, NEVER);
+        win_dispatch(window, &msg);
     }
 
-    win_free(taskbar);
+    win_free(window);
     return 0;
 }

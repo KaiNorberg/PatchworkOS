@@ -1,6 +1,7 @@
 #include "log.h"
 
 #include "com.h"
+#include "defs.h"
 #include "font.h"
 #include "io.h"
 #include "lock.h"
@@ -268,7 +269,15 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
 
     if (smp_initialized())
     {
-        log_print("Occured on cpu %d in process %d", smp_self_unsafe()->id, sched_process()->id);
+        thread_t* thread = sched_thread();
+        if (thread == NULL)
+        {
+            log_print("Occured on cpu %d in idle process", smp_self_unsafe()->id, sched_process()->id);
+        }
+        else
+        {
+            log_print("Occured on cpu %d in process %d", smp_self_unsafe()->id, thread->process->id);
+        }
     }
     else
     {

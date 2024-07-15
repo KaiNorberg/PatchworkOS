@@ -1,6 +1,7 @@
 #include "msg_queue.h"
 
 #include "lock.h"
+#include "sched.h"
 #include "time.h"
 
 #include <string.h>
@@ -10,7 +11,13 @@ void msg_queue_init(msg_queue_t* queue)
     memset(queue->queue, 0, sizeof(queue->queue));
     queue->readIndex = 0;
     queue->writeIndex = 0;
+    blocker_init(&queue->blocker);
     lock_init(&queue->lock);
+}
+
+void msg_queue_cleanup(msg_queue_t* queue)
+{
+    blocker_cleanup(&queue->blocker);
 }
 
 bool msg_queue_avail(msg_queue_t* queue)
@@ -28,21 +35,20 @@ void msg_queue_push(msg_queue_t* queue, msg_type_t type, const void* data, uint6
     msg->type = type;
     msg->time = time_uptime();
     memcpy(msg->data, data, size);
-
     queue->writeIndex = (queue->writeIndex + 1) % MSG_QUEUE_MAX;
+
+    sched_wake_up(&queue->blocker);
 }
 
-bool msg_queue_pop(msg_queue_t* queue, msg_t* msg)
+void msg_queue_pop(msg_queue_t* queue, msg_t* msg, nsec_t timeout)
 {
-    LOCK_GUARD(&queue->lock);
-
-    if (queue->readIndex == queue->writeIndex)
+    if (SCHED_BLOCK(&queue->blocker, msg_queue_avail(queue), timeout) != BLOCK_NORM)
     {
-        return false;
+        *msg = (msg_t){.type = MSG_NONE};
     }
+
+    LOCK_GUARD(&queue->lock);
 
     *msg = queue->queue[queue->readIndex];
     queue->readIndex = (queue->readIndex + 1) % MSG_QUEUE_MAX;
-
-    return true;
 }

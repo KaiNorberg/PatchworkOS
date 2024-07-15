@@ -56,30 +56,32 @@ typedef struct
 } lmsg_button_t;
 
 #define LMSG_BASE (1 << 14)
-#define LMSG_INIT (LMSG_BASE + 0)
-#define LMSG_FREE (LMSG_BASE + 1)
-#define LMSG_QUIT (LMSG_BASE + 2)
-#define LMSG_REDRAW (LMSG_BASE + 3)
-#define LMSG_BUTTON (LMSG_BASE + 4)
+#define LMSG_QUIT (LMSG_BASE + 1)
+#define LMSG_REDRAW (LMSG_BASE + 2)
+#define LMSG_BUTTON (LMSG_BASE + 3)
 
 // Widget messages
 typedef struct
 {
-    void* private;
-} wmsg_init_t;
+    uint8_t buttons;
+    point_t pos;
+    int16_t deltaX;
+    int16_t deltaY;
+} wmsg_mouse_t;
 
 #define WMSG_BASE (1 << 15)
 #define WMSG_INIT (WMSG_BASE + 0)
 #define WMSG_FREE (WMSG_BASE + 1)
 #define WMSG_REDRAW (WMSG_BASE + 2)
+#define WMSG_MOUSE (WMSG_BASE + 3)
 
 // User messages
 #define UMSG_BASE ((1 << 15) | (1 << 14))
 
-typedef uint64_t (*win_proc_t)(win_t*, void*, surface_t*, msg_t*);
-typedef uint64_t (*widget_proc_t)(widget_t*, void*, win_t*, surface_t*, msg_t*);
+typedef uint64_t (*win_proc_t)(win_t*, const msg_t*);
+typedef uint64_t (*widget_proc_t)(widget_t*, win_t*, const msg_t*);
 
-win_t* win_new(win_proc_t procedure);
+win_t* win_new(const char* name, dwm_type_t type, const rect_t* rect, win_proc_t procedure);
 
 uint64_t win_free(win_t* window);
 
@@ -87,7 +89,11 @@ uint64_t win_send(win_t* window, msg_type_t type, const void* data, uint64_t siz
 
 uint64_t win_receive(win_t* window, msg_t* msg, nsec_t timeout);
 
-uint64_t win_dispatch(win_t* window, msg_t* msg);
+uint64_t win_dispatch(win_t* window, const msg_t* msg);
+
+uint64_t win_draw_begin(win_t* window, surface_t* surface);
+
+uint64_t win_draw_end(win_t* window, surface_t* surface);
 
 uint64_t win_move(win_t* window, const rect_t* rect);
 
@@ -109,13 +115,21 @@ void win_widget_free(widget_t* widget);
 
 uint64_t win_widget_send(widget_t* widget, msg_type_t type, const void* data, uint64_t size);
 
+uint64_t win_widget_send_all(win_t* window, msg_type_t type, const void* data, uint64_t size);
+
 void win_widget_rect(widget_t* widget, rect_t* rect);
+
+widget_id_t win_widget_id(widget_t* widget);
+
+void* win_widget_private(widget_t* widget);
+
+void win_widget_private_set(widget_t* widget, void* private);
 
 uint64_t win_screen_rect(rect_t* rect);
 
 void win_theme(win_theme_t* winTheme);
 
-uint64_t win_widget_button(widget_t* widget, void* private, win_t* window, surface_t* surface, msg_t* msg);
+uint64_t win_widget_button(widget_t* widget, win_t* window, const msg_t* msg);
 
 #if defined(__cplusplus)
 }

@@ -3,22 +3,19 @@
 #include <sys/proc.h>
 #include <sys/win.h>
 
-static uint64_t procedure(win_t* window, void* private, surface_t* surface, msg_t* msg)
+static uint64_t procedure(win_t* window, const msg_t* msg)
 {
     switch (msg->type)
     {
-    case LMSG_INIT:
-    {
-        lmsg_init_t* data = (lmsg_init_t*)msg->data;
-        data->name = "Wallpaper";
-        data->type = DWM_WALL;
-        win_screen_rect(&data->rect);
-    }
-    break;
     case LMSG_REDRAW:
     {
-        rect_t rect = RECT_INIT_SURFACE(surface);
-        gfx_rect(surface, &rect, 0xFF007E81);
+        surface_t surface;
+        win_draw_begin(window, &surface);
+
+        rect_t rect = RECT_INIT_SURFACE(&surface);
+        gfx_rect(&surface, &rect, 0xFF007E81);
+
+        win_draw_end(window, &surface);
     }
     break;
     }
@@ -28,7 +25,9 @@ static uint64_t procedure(win_t* window, void* private, surface_t* surface, msg_
 
 int main(void)
 {
-    win_t* wallpaper = win_new(procedure);
+    rect_t rect;
+    win_screen_rect(&rect);
+    win_t* wallpaper = win_new("Wallpaper", DWM_WALL, &rect, procedure);
     if (wallpaper == NULL)
     {
         return EXIT_FAILURE;
@@ -39,22 +38,18 @@ int main(void)
     while (msg.type != LMSG_QUIT && msg.type != LMSG_REDRAW)
     {
         win_receive(wallpaper, &msg, NEVER);
-        win_dispatch(wallpaper, &msg);
+        procedure(wallpaper, &msg);
     }
 
     spawn("/bin/cursor.elf");
     spawn("/bin/taskbar.elf");
-
-    spawn("/bin/calculator.elf");
-    spawn("/bin/calculator.elf");
-    spawn("/bin/calculator.elf");
     spawn("/bin/calculator.elf");
 
     msg = (msg_t){0};
     while (msg.type != LMSG_QUIT)
     {
         win_receive(wallpaper, &msg, NEVER);
-        win_dispatch(wallpaper, &msg);
+        procedure(wallpaper, &msg);
     }
 
     win_free(wallpaper);

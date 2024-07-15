@@ -6,6 +6,7 @@
 #include "defs.h"
 #include "process.h"
 #include "sched.h"
+#include "smp.h"
 #include "time.h"
 #include "vfs.h"
 #include "vmm.h"
@@ -72,7 +73,7 @@ pid_t syscall_spawn(const char* path)
 
 uint64_t syscall_sleep(nsec_t nanoseconds)
 {
-    return SCHED_WAIT(false, nanoseconds);
+    return sched_sleep(NULL, nanoseconds);
 }
 
 errno_t syscall_error(void)
@@ -320,7 +321,7 @@ void syscall_handler_end(void)
         sched_thread_exit();
     }
 
-    sched_yield();
+    SMP_SEND_IPI_TO_SELF(IPI_SCHEDULE);
 }
 
 void* syscallTable[] = {

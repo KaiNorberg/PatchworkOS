@@ -15,11 +15,20 @@
 #define THREAD_PRIORITY_MIN 0
 #define THREAD_PRIORITY_MAX (THREAD_PRIORITY_LEVELS - 1)
 
+typedef struct blocker blocker_t;
+
+typedef enum
+{
+    BLOCK_NORM,
+    BLOCK_TIMEOUT
+} block_result_t;
+
 typedef enum
 {
     THREAD_STATE_NONE,
     THREAD_STATE_PAUSE,
     THREAD_STATE_ACTIVE,
+    THREAD_STATE_BLOCKED,
     THREAD_STATE_KILLED
 } thread_state_t;
 
@@ -39,8 +48,11 @@ typedef struct
     list_entry_t base;
     process_t* process;
     tid_t id;
-    uint64_t timeStart;
-    uint64_t timeEnd;
+    nsec_t timeStart;
+    nsec_t timeEnd;
+    nsec_t blockDeadline;
+    block_result_t blockResult;
+    blocker_t* blocker;
     errno_t error;
     uint8_t priority;
     thread_state_t state;

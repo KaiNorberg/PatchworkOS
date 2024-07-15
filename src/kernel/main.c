@@ -5,16 +5,15 @@
 #include "log.h"
 #include "process.h"
 #include "sched.h"
-#include "sys/keyboard.h"
-#include "vfs.h"
 
 void main(boot_info_t* bootInfo)
 {
     kernel_init(bootInfo);
 
+    log_print("kernel: shell spawn");
     if (sched_spawn("home:/bin/shell.elf", THREAD_PRIORITY_MIN + 1) == ERR)
     {
-        log_panic(NULL, "Failed to start shell");
+        log_panic(NULL, "Failed to spawn shell");
     }
 
     // Exit init thread

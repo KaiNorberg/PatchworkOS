@@ -5,25 +5,19 @@
 
 static fbmp_t* image;
 
-static uint64_t procedure(win_t* window, void* private, surface_t* surface, msg_t* msg)
+static uint64_t procedure(win_t* window, const msg_t* msg)
 {
     switch (msg->type)
     {
-    case LMSG_INIT:
-    {
-        rect_t screenRect;
-        win_screen_rect(&screenRect);
-
-        lmsg_init_t* data = (lmsg_init_t*)msg->data;
-        data->name = "Cursor";
-        data->type = DWM_CURSOR;
-        data->rect = RECT_INIT_DIM(RECT_WIDTH(&screenRect) / 2, RECT_HEIGHT(&screenRect) / 2, image->width, image->height);
-    }
-    break;
     case LMSG_REDRAW:
     {
+        surface_t surface;
+        win_draw_begin(window, &surface);
+
         point_t point = {0};
-        gfx_fbmp(surface, image, &point);
+        gfx_fbmp(&surface, image, &point);
+
+        win_draw_end(window, &surface);
     }
     break;
     }
@@ -39,7 +33,10 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    win_t* cursor = win_new(procedure);
+    rect_t screenRect;
+    win_screen_rect(&screenRect);
+    rect_t rect = RECT_INIT_DIM(RECT_WIDTH(&screenRect) / 2, RECT_HEIGHT(&screenRect) / 2, image->width, image->height);
+    win_t* cursor = win_new("Cursor", DWM_CURSOR, &rect, procedure);
     if (cursor == NULL)
     {
         return EXIT_FAILURE;

@@ -405,8 +405,14 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, uint64_t timeout)
         }
     }
 
+    uint64_t deadline = timeout == NEVER ? NEVER : timeout + time_uptime();
+
+    // TODO: Dont worry this is "temporary"
     uint64_t events = 0;
-    SCHED_WAIT(vfs_poll_condition(&events, files, amount), timeout);
+    while (!vfs_poll_condition(&events, files, amount) && deadline > time_uptime())
+    {
+        sched_sleep(NULL, SEC / 1000);
+    }
 
     return events;
 }

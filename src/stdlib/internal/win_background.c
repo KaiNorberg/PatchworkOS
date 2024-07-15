@@ -1,4 +1,8 @@
 #include "win_background.h"
+#include "_AUX/rect_t.h"
+#include "sys/dwm.h"
+#include "sys/list.h"
+#include "sys/win.h"
 
 #include <sys/mouse.h>
 
@@ -31,40 +35,48 @@ static void win_draw_decorations(win_t* window, surface_t* surface)
     }
 }
 
-void win_background_procedure(win_t* window, surface_t* surface, const msg_t* msg)
+static void win_handle_drag(win_t* window, surface_t* surface, const msg_mouse_t* data)
 {
+    rect_t topBar = (rect_t){
+        .left = window->pos.x + theme.edgeWidth,
+        .top = window->pos.y + theme.edgeWidth,
+        .right = window->pos.x + window->width - theme.edgeWidth,
+        .bottom = window->pos.y + theme.topbarHeight + theme.edgeWidth,
+    };
+
+    if (window->moving)
+    {
+        rect_t rect = RECT_INIT_DIM(window->pos.x + data->deltaX, window->pos.y + data->deltaY, window->width, window->height);
+        win_move(window, &rect);
+
+        if (!(data->buttons & MOUSE_LEFT))
+        {
+            window->moving = false;
+        }
+    }
+    else if (RECT_CONTAINS_POINT(&topBar, data->pos.x, data->pos.y) && data->buttons & MOUSE_LEFT)
+    {
+        window->moving = true;
+    }
+}
+
+void win_background_procedure(win_t* window, const msg_t* msg)
+{
+    surface_t surface;
+    win_window_surface(window, &surface);
+
     switch (msg->type)
     {
     case MSG_MOUSE:
     {
         msg_mouse_t* data = (msg_mouse_t*)msg->data;
-        if (window->type != DWM_WINDOW)
+
+        if (window->type == DWM_WINDOW)
         {
-            break;
+            win_handle_drag(window, &surface, data);
         }
 
-        rect_t topBar = (rect_t){
-            .left = window->pos.x + theme.edgeWidth,
-            .top = window->pos.y + theme.edgeWidth,
-            .right = window->pos.x + window->width - theme.edgeWidth,
-            .bottom = window->pos.y + theme.topbarHeight + theme.edgeWidth,
-        };
-
-        if (window->moving)
-        {
-            rect_t rect =
-                RECT_INIT_DIM(window->pos.x + data->deltaX, window->pos.y + data->deltaY, window->width, window->height);
-            win_move(window, &rect);
-
-            if (!(data->buttons & MOUSE_LEFT))
-            {
-                window->moving = false;
-            }
-        }
-        else if (RECT_CONTAINS_POINT(&topBar, data->pos.x, data->pos.y) && data->buttons & MOUSE_LEFT)
-        {
-            window->moving = true;
-        }
+        win_widget_send_all(window, WMSG_MOUSE, msg->data, sizeof(msg_mouse_t));
     }
     break;
     case MSG_SELECT:
@@ -72,7 +84,7 @@ void win_background_procedure(win_t* window, surface_t* surface, const msg_t* ms
         window->selected = true;
         if (window->type == DWM_WINDOW)
         {
-            win_draw_topbar(window, surface);
+            win_draw_topbar(window, &surface);
         }
     }
     break;
@@ -81,7 +93,7 @@ void win_background_procedure(win_t* window, surface_t* surface, const msg_t* ms
         window->selected = false;
         if (window->type == DWM_WINDOW)
         {
-            win_draw_topbar(window, surface);
+            win_draw_topbar(window, &surface);
         }
     }
     break;
@@ -89,10 +101,18 @@ void win_background_procedure(win_t* window, surface_t* surface, const msg_t* ms
     {
         if (window->type == DWM_WINDOW)
         {
-            win_draw_decorations(window, surface);
+            win_draw_decorations(window, &surface);
         }
+
+        win_widget_send_all(window, WMSG_REDRAW, NULL, 0);
     }
     break;
+    }
+
+    if (RECT_AREA(&surface.invalidArea) != 0 &&
+        flush(window->fd, window->buffer, window->width * window->height * sizeof(pixel_t), &surface.invalidArea) == ERR)
+    {
+        win_send(window, LMSG_QUIT, NULL, 0);
     }
 }
 

@@ -11,27 +11,7 @@
 
 #ifndef __EMBED__
 
-static uint64_t win_widget_recieve(widget_t* widget, msg_t* msg);
-static uint64_t win_widget_dispatch(widget_t* widget, surface_t* surface, msg_t* msg);
-
-static void win_window_surface(win_t* window, surface_t* surface)
-{
-    surface->invalidArea = (rect_t){0};
-    surface->buffer = window->buffer;
-    surface->width = window->width;
-    surface->height = window->height;
-    surface->stride = surface->width;
-}
-
-static void win_client_surface(win_t* window, surface_t* surface)
-{
-    surface->invalidArea = (rect_t){0};
-    surface->width = RECT_WIDTH(&window->clientArea);
-    surface->height = RECT_HEIGHT(&window->clientArea);
-    surface->stride = window->width;
-    surface->buffer = (pixel_t*)((uint64_t)window->buffer + (window->clientArea.left * sizeof(pixel_t)) +
-        (window->clientArea.top * surface->stride * sizeof(pixel_t)));
-}
+static uint64_t win_widget_dispatch(widget_t* widget, const msg_t* msg);
 
 static uint64_t win_set_area(win_t* window, const rect_t* rect)
 {
@@ -61,47 +41,18 @@ static uint64_t win_set_area(win_t* window, const rect_t* rect)
     return 0;
 }
 
-win_t* win_new(win_proc_t procedure)
+win_t* win_new(const char* name, dwm_type_t type, const rect_t* rect, win_proc_t procedure)
 {
+    if (RECT_AREA(rect) == 0 || strlen(name) >= DWM_MAX_NAME || name == NULL)
+    {
+        return NULL;
+    }
+
     win_t* window = malloc(sizeof(win_t));
     if (window == NULL)
     {
         return NULL;
     }
-
-    window->procedure = procedure;
-    list_init(&window->widgets);
-    window->moving = false;
-    window->selected = false;
-
-    msg_t initMsg = {.type = LMSG_INIT};
-    lmsg_init_t* initData = (lmsg_init_t*)initMsg.data;
-    initData->name = NULL;
-    initData->type = DWM_WINDOW;
-    initData->rect = RECT_INIT(0, 0, 0, 0);
-    initData->rectIsClient = false;
-    initData->private = NULL;
-    if (window->procedure(window, NULL, NULL, &initMsg) == ERR || initData->name == NULL || RECT_AREA(&initData->rect) == 0 ||
-        strlen(initData->name) >= DWM_MAX_NAME)
-    {
-        free(window);
-        return NULL;
-    }
-
-    if (initData->rectIsClient)
-    {
-        if (window->type == DWM_WINDOW)
-        {
-            initData->rect.left -= theme.edgeWidth;
-            initData->rect.top -= theme.edgeWidth + theme.topbarHeight;
-            initData->rect.right += theme.edgeWidth;
-            initData->rect.bottom += theme.edgeWidth;
-        }
-    }
-    strcpy(window->name, initData->name);
-    window->type = initData->type;
-    window->private = initData->private;
-    win_set_area(window, &initData->rect);
 
     window->fd = open("sys:/server/dwm");
     if (window->fd == ERR)
@@ -111,16 +62,15 @@ win_t* win_new(win_proc_t procedure)
     }
 
     ioctl_dwm_create_t create;
-    create.pos.x = initData->rect.left;
-    create.pos.y = initData->rect.top;
-    create.width = RECT_WIDTH(&initData->rect);
-    create.height = RECT_HEIGHT(&initData->rect);
-    create.type = initData->type;
-    strcpy(create.name, initData->name);
+    create.pos.x = rect->left;
+    create.pos.y = rect->top;
+    create.width = RECT_WIDTH(rect);
+    create.height = RECT_HEIGHT(rect);
+    create.type = type;
+    strcpy(create.name, name);
     if (ioctl(window->fd, IOCTL_DWM_CREATE, &create, sizeof(ioctl_dwm_create_t)) == ERR)
     {
         close(window->fd);
-        free(window);
         return NULL;
     }
 
@@ -128,9 +78,16 @@ win_t* win_new(win_proc_t procedure)
     if (window->buffer == NULL)
     {
         close(window->fd);
-        free(window);
         return NULL;
     }
+
+    window->type = type;
+    list_init(&window->widgets);
+    window->selected = false;
+    window->moving = false;
+    window->procedure = procedure;
+    strcpy(window->name, name);
+    win_set_area(window, rect);
 
     win_send(window, LMSG_REDRAW, NULL, 0);
 
@@ -148,11 +105,8 @@ uint64_t win_free(win_t* window)
     LIST_FOR_EACH(widget, &window->widgets)
     {
         msg_t msg = {.type = WMSG_FREE};
-        win_widget_dispatch(widget, NULL, &msg);
+        win_widget_dispatch(widget, &msg);
     }
-
-    msg_t msg = {.type = LMSG_FREE};
-    window->procedure(window, NULL, NULL, &msg);
 
     free(window->buffer);
     free(window);
@@ -190,59 +144,45 @@ uint64_t win_receive(win_t* window, msg_t* msg, nsec_t timeout)
     return receive.outMsg.type != MSG_NONE;
 }
 
-uint64_t win_dispatch(win_t* window, msg_t* msg)
+uint64_t win_dispatch(win_t* window, const msg_t* msg)
 {
-    surface_t windowSurface;
-    win_window_surface(window, &windowSurface);
-    surface_t clientSurface;
-    win_client_surface(window, &clientSurface);
-
-    win_background_procedure(window, &windowSurface, msg);
-    uint64_t result = window->procedure(window, window->private, &clientSurface, msg);
+    win_background_procedure(window, msg);
+    uint64_t result = window->procedure(window, msg);
 
     widget_t* widget;
     LIST_FOR_EACH(widget, &window->widgets)
     {
         while (widget->readIndex != widget->writeIndex)
         {
-            win_widget_dispatch(widget, &clientSurface, &widget->messages[widget->readIndex]);
+            win_widget_dispatch(widget, &widget->messages[widget->readIndex]);
             widget->readIndex = (widget->readIndex + 1) % WIN_WIDGET_MAX_MSG;
         }
     }
 
-    if (RECT_AREA(&clientSurface.invalidArea) != 0 || RECT_AREA(&windowSurface.invalidArea) != 0)
-    {
-        rect_t invalidRect;
-        if (RECT_AREA(&windowSurface.invalidArea) == 0)
-        {
-            invalidRect = (rect_t){
-                .left = window->clientArea.left + clientSurface.invalidArea.left,
-                .top = window->clientArea.top + clientSurface.invalidArea.top,
-                .right = window->clientArea.left + clientSurface.invalidArea.right,
-                .bottom = window->clientArea.top + clientSurface.invalidArea.bottom,
-            };
-        }
-        else if (RECT_AREA(&clientSurface.invalidArea) == 0)
-        {
-            invalidRect = windowSurface.invalidArea;
-        }
-        else
-        {
-            invalidRect = (rect_t){
-                .left = MIN(window->clientArea.left + clientSurface.invalidArea.left, windowSurface.invalidArea.left),
-                .top = MIN(window->clientArea.top + clientSurface.invalidArea.top, windowSurface.invalidArea.top),
-                .right = MAX(window->clientArea.left + clientSurface.invalidArea.right, windowSurface.invalidArea.right),
-                .bottom = MAX(window->clientArea.top + clientSurface.invalidArea.bottom, windowSurface.invalidArea.bottom),
-            };
-        }
+    return result;
+}
 
-        if (flush(window->fd, window->buffer, window->width * window->height * sizeof(pixel_t), &invalidRect) == ERR)
-        {
-            return ERR;
-        }
+uint64_t win_draw_begin(win_t* window, surface_t* surface)
+{
+    win_client_surface(window, surface);
+    return 0;
+}
+
+uint64_t win_draw_end(win_t* window, surface_t* surface)
+{
+    rect_t rect = (rect_t){
+        .left = window->clientArea.left + surface->invalidArea.left,
+        .top = window->clientArea.top + surface->invalidArea.top,
+        .right = window->clientArea.left + surface->invalidArea.right,
+        .bottom = window->clientArea.top + surface->invalidArea.bottom,
+    };
+
+    if (flush(window->fd, window->buffer, window->width * window->height * sizeof(pixel_t), &rect) == ERR)
+    {
+        return ERR;
     }
 
-    return result;
+    return 0;
 }
 
 uint64_t win_move(win_t* window, const rect_t* rect)
@@ -303,20 +243,20 @@ void win_client_area(win_t* window, rect_t* rect)
 
 void win_screen_to_window(win_t* window, point_t* point)
 {
-    point->x += window->pos.x;
-    point->y += window->pos.y;
+    point->x -= window->pos.x;
+    point->y -= window->pos.y;
 }
 
 void win_screen_to_client(win_t* window, point_t* point)
 {
-    point->x += window->pos.x + window->clientArea.left;
-    point->y += window->pos.y + window->clientArea.top;
+    point->x -= window->pos.x + window->clientArea.left;
+    point->y -= window->pos.y + window->clientArea.top;
 }
 
 void win_window_to_client(win_t* window, point_t* point)
 {
-    point->x += window->clientArea.left;
-    point->y += window->clientArea.top;
+    point->x -= window->clientArea.left;
+    point->y -= window->clientArea.top;
 }
 
 widget_t* win_widget_new(win_t* window, widget_proc_t procedure, const char* name, const rect_t* rect, widget_id_t id)
@@ -332,20 +272,13 @@ widget_t* win_widget_new(win_t* window, widget_proc_t procedure, const char* nam
     widget->procedure = procedure;
     widget->rect = *rect;
     widget->window = window;
+    widget->private = NULL;
     widget->readIndex = 0;
     widget->writeIndex = 0;
-    widget->private = NULL;
     strcpy(widget->name, name);
     list_push(&window->widgets, widget);
 
-    msg_t initMsg = {.type = LMSG_INIT};
-    if (win_widget_dispatch(widget, NULL, &initMsg) == ERR)
-    {
-        list_remove(widget);
-        free(widget);
-        return NULL;
-    }
-
+    win_widget_send(widget, WMSG_INIT, NULL, 0);
     win_widget_send(widget, WMSG_REDRAW, NULL, 0);
 
     return widget;
@@ -354,7 +287,7 @@ widget_t* win_widget_new(win_t* window, widget_proc_t procedure, const char* nam
 void win_widget_free(widget_t* widget)
 {
     msg_t freeMsg = {.type = WMSG_FREE};
-    win_widget_dispatch(widget, NULL, &freeMsg);
+    win_widget_dispatch(widget, &freeMsg);
 
     list_remove(widget);
     free(widget);
@@ -369,14 +302,40 @@ uint64_t win_widget_send(widget_t* widget, msg_type_t type, const void* data, ui
     return 0;
 }
 
-static uint64_t win_widget_dispatch(widget_t* widget, surface_t* surface, msg_t* msg)
+uint64_t win_widget_send_all(win_t* window, msg_type_t type, const void* data, uint64_t size)
 {
-    return widget->procedure(widget, widget->private, widget->window, surface, msg);
+    widget_t* widget;
+    LIST_FOR_EACH(widget, &window->widgets)
+    {
+        win_widget_send(widget, type, data, size);
+    }
+
+    return 0;
+}
+
+static uint64_t win_widget_dispatch(widget_t* widget, const msg_t* msg)
+{
+    return widget->procedure(widget, widget->window, msg);
 }
 
 void win_widget_rect(widget_t* widget, rect_t* rect)
 {
     *rect = widget->rect;
+}
+
+widget_id_t win_widget_id(widget_t* widget)
+{
+    return widget->id;
+}
+
+void* win_widget_private(widget_t* widget)
+{
+    return widget->private;
+}
+
+void win_widget_private_set(widget_t* widget, void* private)
+{
+    widget->private = private;
 }
 
 uint64_t win_screen_rect(rect_t* rect)

@@ -50,34 +50,35 @@ static inline bool list_empty(list_t* list)
     return list->head.next == &list->head;
 }
 
-static inline void list_append(list_entry_t* head, void* element)
+static inline void list_add(list_entry_t* prev, list_entry_t* next, list_entry_t* elem)
 {
-    list_entry_t* header = (list_entry_t*)element;
-
-    header->next = head->next;
-    header->prev = head;
-    head->next->prev = header;
-    head->next = header;
+    next->prev = elem;
+    elem->next = next;
+    elem->prev = prev;
+    prev->next = elem;
 }
 
-static inline void list_prepend(list_entry_t* head, void* element)
+static inline void list_append(list_entry_t* prev, void* elem)
 {
-    list_append(head->prev, element);
+    list_add(prev, prev->next, elem);
 }
 
-static inline void list_remove(void* element)
+static inline void list_prepend(list_entry_t* head, void* elem)
 {
-    list_entry_t* header = (list_entry_t*)element;
-
-    header->next->prev = header->prev;
-    header->prev->next = header->next;
-    header->next = header;
-    header->prev = header;
+    list_add(head->prev, head, elem);
 }
 
-static inline void list_push(list_t* list, void* element)
+static inline void list_remove(void* elem)
 {
-    list_prepend(&list->head, element);
+    list_entry_t* entry = (list_entry_t*)elem;
+    entry->prev->next = entry->next;
+    entry->next->prev = entry->prev;
+    list_entry_init(entry);
+}
+
+static inline void list_push(list_t* list, void* elem)
+{
+    list_add(list->head.prev, &list->head, elem);
 }
 
 static inline void* list_pop(list_t* list)
@@ -87,7 +88,16 @@ static inline void* list_pop(list_t* list)
         return NULL;
     }
 
-    list_entry_t* element = list->head.prev;
-    list_remove(element);
-    return element;
+    list_entry_t* elem = list->head.next;
+    list_remove(elem);
+    return elem;
+}
+
+static inline void* list_first(list_t* list)
+{
+    if (list_empty(list))
+    {
+        return NULL;
+    }
+    return list->head.next;
 }

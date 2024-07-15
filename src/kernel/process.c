@@ -8,6 +8,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <sys/math.h>
 
 static _Atomic pid_t newPid = ATOMIC_VAR_INIT(0);
 
@@ -56,9 +57,12 @@ thread_t* thread_new(process_t* process, void* entry, uint8_t priority)
     thread->id = atomic_fetch_add(&process->newTid, 1);
     thread->timeStart = 0;
     thread->timeEnd = 0;
+    thread->blockDeadline = 0;
+    thread->blockResult = BLOCK_NORM;
+    thread->blocker = NULL;
     thread->error = 0;
     thread->state = THREAD_STATE_ACTIVE;
-    thread->priority = priority;
+    thread->priority = MIN(priority, THREAD_PRIORITY_MAX);
     simd_context_init(&thread->simdContext);
     memset(&thread->kernelStack, 0, CONFIG_KERNEL_STACK);
 
@@ -102,7 +106,7 @@ void thread_load(thread_t* thread, trap_frame_t* trapFrame)
         trapFrame->cs = GDT_KERNEL_CODE;
         trapFrame->ss = GDT_KERNEL_DATA;
         trapFrame->rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
-        trapFrame->rsp = (uint64_t)smp_self_unsafe()->idleStack + CPU_IDLE_STACK_SIZE;
+        trapFrame->rsp = (uint64_t)self->idleStack + CPU_IDLE_STACK_SIZE;
 
         space_load(NULL);
         tss_stack_load(&self->tss, NULL);

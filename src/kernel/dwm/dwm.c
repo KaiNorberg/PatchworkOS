@@ -122,7 +122,7 @@ static void dwm_redraw_others(window_t* window, const rect_t* rect)
         LOCK_GUARD(&other->lock);
 
         rect_t otherRect = WINDOW_RECT(other);
-        if (RECT_OVERLAP(rect, &otherRect))
+        if (other->shown && RECT_OVERLAP(rect, &otherRect))
         {
             rect_t invalidRect = *rect;
             RECT_FIT(&invalidRect, &otherRect);
@@ -224,6 +224,7 @@ static void dwm_draw_windows(void)
         dwm_transfer(window, &rect);
         dwm_invalidate_above(window, &rect);
         window->surface.invalidArea = (rect_t){0};
+        window->shown = true;
     }
 }
 
@@ -299,32 +300,26 @@ static void dwm_handle_mouse_message(uint8_t buttons, const point_t* cursorDelta
 
 static void dwm_poll(void)
 {
-    static nsec_t before = 0;
-
     while (!atomic_load(&redrawNeeded))
     {
+        sched_sleep(NULL, SEC / 1000); // TODO: Implement something better then this.
+
         uint8_t buttons = 0;
         point_t cursorDelta = {0};
         bool eventRecived = false;
 
-        do
+        poll_file_t poll[] = {(poll_file_t){.file = mouse, .requested = POLL_READ}};
+        while (vfs_poll(poll, 1, 0) != 0)
         {
-            poll_file_t poll[] = {(poll_file_t){.file = mouse, .requested = POLL_READ}};
-            while (vfs_poll(poll, 1, 0) != 0)
-            {
-                mouse_event_t event;
-                LOG_ASSERT(vfs_read(mouse, &event, sizeof(mouse_event_t)), "mouse read fail");
+            mouse_event_t event;
+            LOG_ASSERT(vfs_read(mouse, &event, sizeof(mouse_event_t)), "mouse read fail");
 
-                cursorDelta.x += event.deltaX;
-                cursorDelta.y += event.deltaY;
-                buttons |= event.buttons;
+            cursorDelta.x += event.deltaX;
+            cursorDelta.y += event.deltaY;
+            buttons |= event.buttons;
 
-                eventRecived = true;
-            }
-
-            sched_pause();
-        } while (time_uptime() - before < SEC / CONFIG_DWM_FPS);
-        before = time_uptime();
+            eventRecived = true;
+        }
 
         lock_acquire(&lock);
         if (cursor != NULL && eventRecived)
@@ -474,6 +469,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
         {
             dwm_redraw();
         }
+
         return 0;
     }
     case IOCTL_DWM_SIZE:
