@@ -36,6 +36,8 @@ static lock_t lock;
 
 static atomic_bool redrawNeeded;
 
+static blocker_t blocker;
+
 static void dwm_update_client_area(void)
 {
     rect_t newArea = RECT_INIT_DIM(0, 0, backbuffer.width, backbuffer.height);
@@ -302,7 +304,9 @@ static void dwm_poll(void)
 {
     while (!atomic_load(&redrawNeeded))
     {
-        sched_sleep(NULL, SEC / 1000); // TODO: Implement something better then this.
+        sched_block_begin(&blocker);
+        sched_block_do(&blocker, SEC / 1000); // TODO: Implement something better then this.
+        sched_block_end(&blocker);
 
         uint8_t buttons = 0;
         point_t cursorDelta = {0};
@@ -524,6 +528,8 @@ void dwm_init(gop_buffer_t* gopBuffer)
     mouse = vfs_open("sys:/mouse/ps2");
 
     atomic_init(&redrawNeeded, true);
+
+    blocker_init(&blocker);
 
     sysfs_expose("/server", "dwm", &fileOps, NULL, NULL);
 }

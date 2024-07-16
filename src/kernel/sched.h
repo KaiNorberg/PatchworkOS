@@ -1,20 +1,37 @@
 #pragma once
 
 #include "defs.h"
+#include "lock.h"
 #include "process.h"
 #include "queue.h"
 #include "time.h"
 
 #include <sys/list.h>
 
-#define SCHED_BLOCK(blocker, condition, timeout) \
+#define SCHED_BLOCK(blocker, condition) \
     ({ \
-        nsec_t deadline = (timeout) == NEVER ? NEVER : (timeout) + time_uptime(); \
         block_result_t result = BLOCK_NORM; \
+        sched_block_begin(blocker); \
         while (!(condition) && result == BLOCK_NORM) \
         { \
-            result = sched_sleep(blocker, timeout); \
+            result = sched_block_do(blocker, NEVER); \
         } \
+        sched_block_end(blocker); \
+        result; \
+    })
+
+#define SCHED_BLOCK_TIMEOUT(blocker, condition, timeout) \
+    ({ \
+        block_result_t result = BLOCK_NORM; \
+        nsec_t deadline = (timeout) == NEVER ? NEVER : (timeout) + time_uptime(); \
+        sched_block_begin(blocker); \
+        while (!(condition) && result == BLOCK_NORM) \
+        { \
+            nsec_t uptime = time_uptime(); \
+            nsec_t remaining = deadline == NEVER ? NEVER : (deadline > uptime ? deadline - uptime : 0); \
+            result = sched_block_do(blocker, remaining); \
+        } \
+        sched_block_end(blocker); \
         result; \
     })
 
@@ -46,9 +63,15 @@ void sched_start(void);
 
 void sched_cpu_start(void);
 
-block_result_t sched_sleep(blocker_t* blocker, nsec_t timeout);
+void sched_block_ipi(trap_frame_t* trapFrame);
 
-void sched_wake_up(blocker_t* blocker);
+void sched_block_begin(blocker_t* blocker);
+
+block_result_t sched_block_do(blocker_t* blocker, nsec_t timeout);
+
+void sched_block_end(blocker_t* blocker);
+
+void sched_unblock(blocker_t* blocker);
 
 thread_t* sched_thread(void);
 

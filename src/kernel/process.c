@@ -55,13 +55,13 @@ thread_t* thread_new(process_t* process, void* entry, uint8_t priority)
     list_entry_init(&thread->base);
     thread->process = process;
     thread->id = atomic_fetch_add(&process->newTid, 1);
+    thread->killed = false;
     thread->timeStart = 0;
     thread->timeEnd = 0;
     thread->blockDeadline = 0;
     thread->blockResult = BLOCK_NORM;
     thread->blocker = NULL;
     thread->error = 0;
-    thread->state = THREAD_STATE_ACTIVE;
     thread->priority = MIN(priority, THREAD_PRIORITY_MAX);
     simd_context_init(&thread->simdContext);
     memset(&thread->kernelStack, 0, CONFIG_KERNEL_STACK);

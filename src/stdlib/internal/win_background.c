@@ -35,7 +35,7 @@ static void win_draw_decorations(win_t* window, surface_t* surface)
     }
 }
 
-static void win_handle_drag(win_t* window, surface_t* surface, const msg_mouse_t* data)
+static void win_handle_drag(win_t* window, const msg_mouse_t* data)
 {
     rect_t topBar = (rect_t){
         .left = window->pos.x + theme.edgeWidth,
@@ -73,7 +73,7 @@ void win_background_procedure(win_t* window, const msg_t* msg)
 
         if (window->type == DWM_WINDOW)
         {
-            win_handle_drag(window, &surface, data);
+            win_handle_drag(window, data);
         }
 
         win_widget_send_all(window, WMSG_MOUSE, msg->data, sizeof(msg_mouse_t));

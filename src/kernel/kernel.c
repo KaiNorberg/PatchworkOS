@@ -59,13 +59,13 @@ void kernel_init(boot_info_t* bootInfo)
 
     _StdInit();
 
+    smp_init();
+    sched_init();
+
     vfs_init();
     sysfs_init();
 
     log_enable_screen(&bootInfo->gopBuffer);
-
-    smp_init();
-    sched_init();
 
     acpi_init(bootInfo->rsdp);
     hpet_init();

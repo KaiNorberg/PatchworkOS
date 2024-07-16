@@ -8,9 +8,11 @@
 #include "log.h"
 #include "process.h"
 #include "queue.h"
+#include "regs.h"
 #include "smp.h"
 #include "sys/math.h"
 #include "time.h"
+#include "trap.h"
 
 #include <sys/list.h>
 
@@ -19,8 +21,6 @@
 
 static list_t blockers;
 static lock_t blockersLock;
-
-static blocker_t genericBlocker;
 
 static void sched_push(thread_t* thread);
 
@@ -50,8 +50,6 @@ void blocker_cleanup(blocker_t* blocker)
 
 static void blocker_push(blocker_t* blocker, thread_t* thread)
 {
-    LOCK_GUARD(&blocker->lock);
-
     thread_t* other;
     LIST_FOR_EACH(other, &blocker->threads)
     {
@@ -148,7 +146,6 @@ static void sched_push(thread_t* thread)
         }
     }
 
-    thread->state = THREAD_STATE_ACTIVE;
     sched_context_push(&best->schedContext, thread);
 }
 
@@ -165,7 +162,6 @@ void sched_init(void)
 {
     list_init(&blockers);
     lock_init(&blockersLock);
-    blocker_init(&genericBlocker);
 
     sched_spawn_init_thread();
 
@@ -189,21 +185,58 @@ void sched_cpu_start(void)
     apic_timer_init(IPI_BASE + IPI_SCHEDULE, CONFIG_SCHED_HZ);
 }
 
-block_result_t sched_sleep(blocker_t* blocker, nsec_t timeout)
+void sched_block_ipi(trap_frame_t* trapFrame)
 {
-    thread_t* thread = smp_self()->schedContext.runThread;
+    cpu_t* self = smp_self_unsafe();
+    sched_context_t* context = &self->schedContext;
+    blocker_t* blocker = context->runThread->blocker;
+
+    thread_save(context->runThread, trapFrame);
+    blocker_push(blocker, context->runThread);
+
+    thread_t* next = sched_context_find_any(context);
+    if (next == NULL)
+    {
+        thread_load(NULL, trapFrame);
+        context->runThread = NULL;
+    }
+    else
+    {
+        thread_load(next, trapFrame);
+        context->runThread = next;
+    }
+
+    lock_release(&blocker->lock);
+}
+
+void sched_block_begin(blocker_t* blocker)
+{
+    lock_acquire(&blocker->lock);
+}
+
+block_result_t sched_block_do(blocker_t* blocker, nsec_t timeout)
+{
+    if (rflags_read() & RFLAGS_INTERRUPT_ENABLE)
+    {
+        log_panic(NULL, "Attempt to block on unacquired blocker");
+    }
+
+    thread_t* thread = smp_self_unsafe()->schedContext.runThread;
     thread->timeEnd = 0;
     thread->blockDeadline = timeout == NEVER ? NEVER : timeout + time_uptime();
-    thread->blocker = blocker == NULL ? &genericBlocker : blocker;
-    thread->state = THREAD_STATE_BLOCKED;
-    smp_put();
+    thread->blocker = blocker;
 
-    SMP_SEND_IPI_TO_SELF(IPI_SCHEDULE);
-
+    SMP_SEND_IPI_TO_SELF(IPI_SLEEP);
+    lock_acquire(&blocker->lock);
     return thread->blockResult;
 }
 
-void sched_wake_up(blocker_t* blocker)
+void sched_block_end(blocker_t* blocker)
+{
+    lock_release(&blocker->lock);
+}
+
+void sched_unblock(blocker_t* blocker)
 {
     LOCK_GUARD(&blocker->lock);
 
@@ -218,7 +251,6 @@ void sched_wake_up(blocker_t* blocker)
         thread->blockDeadline = 0;
         thread->blockResult = BLOCK_NORM;
         thread->blocker = NULL;
-        thread->state = THREAD_STATE_ACTIVE;
         sched_push(thread);
     }
 }
@@ -255,7 +287,7 @@ void sched_process_exit(uint64_t status)
     // TODO: Add handling for status
 
     sched_context_t* context = &smp_self()->schedContext;
-    context->runThread->state = THREAD_STATE_KILLED;
+    context->runThread->killed = true;
     context->runThread->process->killed = true;
     log_print("sched: process exit (%d)", context->runThread->process->id);
     smp_put();
@@ -267,7 +299,7 @@ void sched_process_exit(uint64_t status)
 void sched_thread_exit(void)
 {
     sched_context_t* context = &smp_self()->schedContext;
-    context->runThread->state = THREAD_STATE_KILLED;
+    context->runThread->killed = true;
     smp_put();
 
     sched_yield();
@@ -329,8 +361,7 @@ static void sched_update_graveyard(trap_frame_t* trapFrame, sched_context_t* con
     }
 
     if (context->runThread != NULL &&
-        (context->runThread->state == THREAD_STATE_KILLED ||
-            (context->runThread->process->killed && trapFrame->cs != GDT_KERNEL_CODE)))
+        (context->runThread->killed || (context->runThread->process->killed && trapFrame->cs != GDT_KERNEL_CODE)))
     {
         list_push(&context->graveyard, context->runThread);
         context->runThread = NULL;
@@ -364,52 +395,22 @@ void sched_schedule(trap_frame_t* trapFrame)
         }
         else
         {
-            next->state = THREAD_STATE_ACTIVE;
             thread_load(next, trapFrame);
             context->runThread = next;
         }
     }
     else
     {
-        switch (context->runThread->state)
-        {
-        case THREAD_STATE_ACTIVE:
-        {
-            thread_t* next = context->runThread->timeEnd < time_uptime()
-                ? sched_context_find_any(context)
-                : sched_context_find_higher(context, context->runThread->priority);
-            if (next != NULL)
-            {
-                thread_save(context->runThread, trapFrame);
-                sched_context_push(context, context->runThread);
-
-                thread_load(next, trapFrame);
-                context->runThread = next;
-            }
-        }
-        break;
-        case THREAD_STATE_BLOCKED:
+        thread_t* next = context->runThread->timeEnd < time_uptime()
+            ? sched_context_find_any(context)
+            : sched_context_find_higher(context, context->runThread->priority);
+        if (next != NULL)
         {
             thread_save(context->runThread, trapFrame);
-            blocker_push(context->runThread->blocker, context->runThread);
+            sched_context_push(context, context->runThread);
 
-            thread_t* next = sched_context_find_any(context);
-            if (next == NULL)
-            {
-                thread_load(NULL, trapFrame);
-                context->runThread = NULL;
-            }
-            else
-            {
-                thread_load(next, trapFrame);
-                context->runThread = next;
-            }
-        }
-        break;
-        default:
-        {
-            log_panic(NULL, "Unexpected thread state %d", context->runThread->state);
-        }
+            thread_load(next, trapFrame);
+            context->runThread = next;
         }
     }
 }

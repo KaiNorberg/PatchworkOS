@@ -45,7 +45,6 @@ int main(void)
     spawn("/bin/taskbar.elf");
     spawn("/bin/calculator.elf");
 
-    msg = (msg_t){0};
     while (msg.type != LMSG_QUIT)
     {
         win_receive(wallpaper, &msg, NEVER);

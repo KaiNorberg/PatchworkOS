@@ -19,7 +19,7 @@ static void exception_handler(const trap_frame_t* trapFrame)
     }
 }
 
-static void ipi_handler(const trap_frame_t* trapFrame)
+static void ipi_handler(trap_frame_t* trapFrame)
 {
     uint8_t ipi = trapFrame->vector - IPI_BASE;
 
@@ -48,6 +48,11 @@ static void ipi_handler(const trap_frame_t* trapFrame)
     case IPI_SCHEDULE:
     {
         // Does nothing, scheduling is performed in vector_common
+    }
+    break;
+    case IPI_SLEEP:
+    {
+        sched_block_ipi(trapFrame);
     }
     break;
     }
@@ -96,7 +101,7 @@ void interrupts_enable(void)
     cpu_t* cpu = smp_self_unsafe();
 
     cpu->cliAmount--;
-    if (cpu->cliAmount == 0 && cpu->prevFlags & RFLAGS_INTERRUPT_ENABLE)
+    if (cpu->cliAmount == 0 && cpu->prevFlags & RFLAGS_INTERRUPT_ENABLE && cpu->trapDepth == 0)
     {
         asm volatile("sti");
     }

@@ -23,15 +23,6 @@ typedef enum
     BLOCK_TIMEOUT
 } block_result_t;
 
-typedef enum
-{
-    THREAD_STATE_NONE,
-    THREAD_STATE_PAUSE,
-    THREAD_STATE_ACTIVE,
-    THREAD_STATE_BLOCKED,
-    THREAD_STATE_KILLED
-} thread_state_t;
-
 typedef struct
 {
     pid_t id;
@@ -48,6 +39,7 @@ typedef struct
     list_entry_t base;
     process_t* process;
     tid_t id;
+    bool killed;
     nsec_t timeStart;
     nsec_t timeEnd;
     nsec_t blockDeadline;
@@ -55,7 +47,6 @@ typedef struct
     blocker_t* blocker;
     errno_t error;
     uint8_t priority;
-    thread_state_t state;
     trap_frame_t trapFrame;
     simd_context_t simdContext;
     uint8_t kernelStack[CONFIG_KERNEL_STACK];

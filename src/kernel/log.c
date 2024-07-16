@@ -272,7 +272,7 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
         thread_t* thread = sched_thread();
         if (thread == NULL)
         {
-            log_print("Occured on cpu %d in idle process", smp_self_unsafe()->id, sched_process()->id);
+            log_print("Occured on cpu %d while idle", smp_self_unsafe()->id);
         }
         else
         {

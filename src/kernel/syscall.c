@@ -73,7 +73,8 @@ pid_t syscall_spawn(const char* path)
 
 uint64_t syscall_sleep(nsec_t nanoseconds)
 {
-    return sched_sleep(NULL, nanoseconds);
+    // return sched_block(NULL, nanoseconds);
+    return ERROR(EIMPL);
 }
 
 errno_t syscall_error(void)

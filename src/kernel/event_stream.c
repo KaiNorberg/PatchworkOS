@@ -14,7 +14,7 @@ static uint64_t event_stream_read(file_t* file, void* buffer, uint64_t count)
     count = ROUND_DOWN(count, stream->eventSize);
     for (uint64_t i = 0; i < count / stream->eventSize; i++)
     {
-        if (SCHED_BLOCK(&stream->blocker, stream->writeIndex != file->position, NEVER) != BLOCK_NORM)
+        if (SCHED_BLOCK(&stream->blocker, stream->writeIndex != file->position) != BLOCK_NORM)
         {
             return i * stream->eventSize;
         }
@@ -80,7 +80,7 @@ uint64_t event_stream_push(event_stream_t* stream, const void* event, uint64_t e
 
     memcpy((void*)((uintptr_t)stream->buffer + stream->eventSize * stream->writeIndex), event, stream->eventSize);
     stream->writeIndex = (stream->writeIndex + 1) % stream->length;
-    sched_wake_up(&stream->blocker);
+    sched_unblock(&stream->blocker);
 
     return 0;
 }

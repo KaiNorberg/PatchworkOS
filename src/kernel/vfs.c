@@ -12,6 +12,8 @@
 static list_t volumes;
 static lock_t volumeLock;
 
+static blocker_t pollBlocker;
+
 // TODO: Improve file path parsing.
 
 static volume_t* volume_ref(volume_t* volume)
@@ -194,6 +196,8 @@ void vfs_init(void)
 {
     list_init(&volumes);
     lock_init(&volumeLock);
+
+    blocker_init(&pollBlocker);
 }
 
 uint64_t vfs_attach_simple(const char* label, const volume_ops_t* volumeOps, const file_ops_t* fileOps)
@@ -409,10 +413,13 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, uint64_t timeout)
 
     // TODO: Dont worry this is "temporary"
     uint64_t events = 0;
+
+    sched_block_begin(&pollBlocker);
     while (!vfs_poll_condition(&events, files, amount) && deadline > time_uptime())
     {
-        sched_sleep(NULL, SEC / 1000);
+        sched_block_do(&pollBlocker, SEC / 1000);
     }
+    sched_block_end(&pollBlocker);
 
     return events;
 }
