@@ -27,6 +27,7 @@ typedef uint64_t prot_t;
 
 // Nanoseconds per second.
 #define SEC ((nsec_t)1000000000)
+
 #define NEVER ((nsec_t)UINT64_MAX)
 
 nsec_t uptime(void);

@@ -13,6 +13,7 @@
 #include "sys/math.h"
 #include "time.h"
 #include "trap.h"
+#include "vectors.h"
 
 #include <sys/list.h>
 
@@ -135,7 +136,7 @@ static void sched_push(thread_t* thread)
     for (uint64_t i = 0; i < smp_cpu_amount(); i++)
     {
         cpu_t* cpu = smp_cpu(i);
-        const sched_context_t* context = &cpu->schedContext;
+        const sched_context_t* context = &cpu->sched;
 
         int64_t length = sched_context_thread_amount(context);
 
@@ -146,7 +147,7 @@ static void sched_push(thread_t* thread)
         }
     }
 
-    sched_context_push(&best->schedContext, thread);
+    sched_context_push(&best->sched, thread);
 }
 
 static void sched_spawn_init_thread(void)
@@ -155,7 +156,7 @@ static void sched_spawn_init_thread(void)
     thread_t* thread = thread_new(process, NULL, THREAD_PRIORITY_MAX);
     thread->timeEnd = UINT64_MAX;
 
-    smp_self_unsafe()->schedContext.runThread = thread;
+    smp_self_unsafe()->sched.runThread = thread;
 }
 
 void sched_init(void)
@@ -168,27 +169,28 @@ void sched_init(void)
     log_print("sched: init");
 }
 
+static void sched_start_ipi(trap_frame_t* trapFrame)
+{
+    nsec_t uptime = time_uptime();
+    nsec_t interval = (SEC / CONFIG_SCHED_HZ) / smp_cpu_amount();
+    nsec_t offset = ROUND_UP(uptime, interval) - uptime;
+    hpet_sleep(offset + interval * smp_self_unsafe()->id);
+
+    apic_timer_init(VECTOR_SCHED_TIMER, CONFIG_SCHED_HZ);
+}
+
 void sched_start(void)
 {
-    smp_send_ipi_to_others(IPI_START);
-    SMP_SEND_IPI_TO_SELF(IPI_START);
+    smp_send_others(sched_start_ipi);
+    smp_send_self(sched_start_ipi);
 
     log_print("sched: start");
 }
 
-void sched_cpu_start(void)
-{
-    nsec_t uptime = time_uptime();
-    nsec_t offset = ROUND_UP(uptime, (SEC / CONFIG_SCHED_HZ) / smp_cpu_amount()) - uptime;
-    hpet_sleep(offset * smp_self_unsafe()->id);
-
-    apic_timer_init(IPI_BASE + IPI_SCHEDULE, CONFIG_SCHED_HZ);
-}
-
-void sched_block_ipi(trap_frame_t* trapFrame)
+static void sched_block_ipi(trap_frame_t* trapFrame)
 {
     cpu_t* self = smp_self_unsafe();
-    sched_context_t* context = &self->schedContext;
+    sched_context_t* context = &self->sched;
     blocker_t* blocker = context->runThread->blocker;
 
     thread_save(context->runThread, trapFrame);
@@ -216,17 +218,14 @@ void sched_block_begin(blocker_t* blocker)
 
 block_result_t sched_block_do(blocker_t* blocker, nsec_t timeout)
 {
-    if (rflags_read() & RFLAGS_INTERRUPT_ENABLE)
-    {
-        log_panic(NULL, "Attempt to block on unacquired blocker");
-    }
+    LOG_ASSERT((rflags_read() & RFLAGS_INTERRUPT_ENABLE) == 0, "Attempt to block on unacquired blocker");
 
-    thread_t* thread = smp_self_unsafe()->schedContext.runThread;
+    thread_t* thread = smp_self_unsafe()->sched.runThread;
     thread->timeEnd = 0;
     thread->blockDeadline = timeout == NEVER ? NEVER : timeout + time_uptime();
     thread->blocker = blocker;
 
-    SMP_SEND_IPI_TO_SELF(IPI_SLEEP);
+    smp_send_self(sched_block_ipi);
     lock_acquire(&blocker->lock);
     return thread->blockResult;
 }
@@ -257,7 +256,7 @@ void sched_unblock(blocker_t* blocker)
 
 thread_t* sched_thread(void)
 {
-    thread_t* thread = smp_self()->schedContext.runThread;
+    thread_t* thread = smp_self()->sched.runThread;
     smp_put();
     return thread;
 }
@@ -273,20 +272,25 @@ process_t* sched_process(void)
     return thread->process;
 }
 
+void sched_invoke(void)
+{
+    asm volatile("int %0" :: "i" (VECTOR_SCHED_INVOKE));
+}
+
 void sched_yield(void)
 {
-    thread_t* thread = smp_self()->schedContext.runThread;
+    thread_t* thread = smp_self()->sched.runThread;
     thread->timeEnd = 0;
     smp_put();
 
-    SMP_SEND_IPI_TO_SELF(IPI_SCHEDULE);
+    sched_invoke();
 }
 
 void sched_process_exit(uint64_t status)
 {
     // TODO: Add handling for status
 
-    sched_context_t* context = &smp_self()->schedContext;
+    sched_context_t* context = &smp_self()->sched;
     context->runThread->killed = true;
     context->runThread->process->killed = true;
     log_print("sched: process exit (%d)", context->runThread->process->id);
@@ -298,7 +302,7 @@ void sched_process_exit(uint64_t status)
 
 void sched_thread_exit(void)
 {
-    sched_context_t* context = &smp_self()->schedContext;
+    sched_context_t* context = &smp_self()->sched;
     context->runThread->killed = true;
     smp_put();
 
@@ -315,7 +319,7 @@ pid_t sched_spawn(const char* path, uint8_t priority)
     }
 
     thread_t* thread = thread_new(process, loader_entry, priority);
-    sched_context_push(&smp_cpu(0)->schedContext, thread);
+    sched_context_push(&smp_cpu(0)->sched, thread);
 
     log_print("sched: process spawn (%d)", process->id);
     return process->id;
@@ -371,7 +375,7 @@ static void sched_update_graveyard(trap_frame_t* trapFrame, sched_context_t* con
 void sched_schedule(trap_frame_t* trapFrame)
 {
     cpu_t* self = smp_self_unsafe();
-    sched_context_t* context = &self->schedContext;
+    sched_context_t* context = &self->sched;
 
     if (self->trapDepth != 0)
     {

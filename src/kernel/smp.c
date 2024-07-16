@@ -4,10 +4,13 @@
 #include "gdt.h"
 #include "hpet.h"
 #include "idt.h"
+#include "lock.h"
 #include "log.h"
 #include "madt.h"
 #include "regs.h"
+#include "sched.h"
 #include "trampoline.h"
+#include "trap.h"
 #include "vmm.h"
 
 #include <stdatomic.h>
@@ -22,6 +25,31 @@ static bool initialized = false;
 
 atomic_uint8_t haltedAmount = ATOMIC_VAR_INIT(0);
 
+static void ipi_queue_init(ipi_queue_t* queue)
+{
+    queue->readIndex = 0;
+    queue->writeIndex = 0;
+    lock_init(&queue->lock);
+}
+
+static void ipi_queue_push(ipi_queue_t* queue, ipi_t ipi)
+{
+    queue->ipis[queue->writeIndex] = ipi;
+    queue->writeIndex = (queue->writeIndex + 1) % IPI_QUEUE_MAX;
+}
+
+static ipi_t ipi_queue_pop(ipi_queue_t* queue)
+{
+    if (queue->writeIndex == queue->readIndex)
+    {
+        return NULL;
+    }
+
+    ipi_t ipi = queue->ipis[queue->readIndex];
+    queue->readIndex = (queue->readIndex + 1) % IPI_QUEUE_MAX;
+    return ipi;
+}
+
 static NOINLINE void cpu_init(cpu_t* cpu, uint8_t id, uint8_t lapicId)
 {
     cpu->id = id;
@@ -30,7 +58,8 @@ static NOINLINE void cpu_init(cpu_t* cpu, uint8_t id, uint8_t lapicId)
     cpu->prevFlags = 0;
     cpu->cliAmount = 0;
     tss_init(&cpu->tss);
-    sched_context_init(&cpu->schedContext);
+    sched_context_init(&cpu->sched);
+    ipi_queue_init(&cpu->queue);
 }
 
 static NOINLINE uint64_t cpu_start(cpu_t* cpu)
@@ -142,11 +171,7 @@ void smp_entry(void)
     log_print("CPU %d: ready", (uint64_t)cpu->id);
 
     cpuReady = true;
-    while (true)
-    {
-        asm volatile("sti");
-        asm volatile("hlt");
-    }
+    sched_idle_loop();
 }
 
 bool smp_initialized(void)
@@ -154,17 +179,7 @@ bool smp_initialized(void)
     return initialized;
 }
 
-void smp_halt_others(void)
-{
-    smp_send_ipi_to_others(IPI_HALT);
-
-    while (atomic_load(&haltedAmount) < cpuAmount - 1)
-    {
-        asm volatile("pause");
-    }
-}
-
-void smp_halt_self(void)
+static void smp_halt_ipi(trap_frame_t* trapFrame)
 {
     atomic_fetch_add(&haltedAmount, 1);
 
@@ -175,19 +190,57 @@ void smp_halt_self(void)
     }
 }
 
-void smp_send_ipi(cpu_t const* cpu, uint8_t ipi)
+void smp_halt_others(void)
 {
-    lapic_send_ipi(cpu->lapicId, IPI_BASE + ipi);
+    smp_send_others(smp_halt_ipi);
+
+    while (atomic_load(&haltedAmount) < cpuAmount - 1)
+    {
+        asm volatile("pause");
+    }
 }
 
-void smp_send_ipi_to_others(uint8_t ipi)
+ipi_t smp_recieve(cpu_t* cpu)
 {
-    cpu_t const* self = smp_self_unsafe();
+    ipi_queue_t* queue = &cpu->queue;
+
+    lock_acquire(&queue->lock);
+    ipi_t ipi = ipi_queue_pop(queue);
+    lock_release(&queue->lock);
+
+    return ipi;
+}
+
+void smp_send(cpu_t* cpu, ipi_t ipi)
+{
+    ipi_queue_t* queue = &cpu->queue;
+
+    lock_acquire(&queue->lock);
+    ipi_queue_push(queue, ipi);
+    lock_release(&queue->lock);
+
+    lapic_send_ipi(cpu->lapicId, VECTOR_IPI);
+}
+
+void smp_send_self(ipi_t ipi)
+{
+    ipi_queue_t* queue = &smp_self_unsafe()->queue;
+
+    lock_acquire(&queue->lock);
+    ipi_queue_push(queue, ipi);
+    lock_release(&queue->lock);
+
+    asm volatile("int %0" :: "i" (VECTOR_IPI));
+}
+
+void smp_send_others(ipi_t ipi)
+{
+    const cpu_t* self = smp_self_unsafe();
     for (uint8_t id = 0; id < cpuAmount; id++)
     {
         if (self->id != id)
         {
-            smp_send_ipi(cpus[id], ipi);
+            smp_send(cpus[id], ipi);
         }
     }
 }
@@ -204,20 +257,14 @@ cpu_t* smp_cpu(uint8_t id)
 
 cpu_t* smp_self_unsafe(void)
 {
-    if (rflags_read() & RFLAGS_INTERRUPT_ENABLE)
-    {
-        log_panic(NULL, "smp_self_unsafe called with interrupts enabled");
-    }
+    LOG_ASSERT((rflags_read() & RFLAGS_INTERRUPT_ENABLE) == 0, "smp_self_unsafe called with interrupts enabled");
 
     return cpus[msr_read(MSR_CPU_ID)];
 }
 
 cpu_t* smp_self_brute(void)
 {
-    if (rflags_read() & RFLAGS_INTERRUPT_ENABLE)
-    {
-        log_panic(NULL, "smp_self_brute called with interrupts enabled");
-    }
+    LOG_ASSERT((rflags_read() & RFLAGS_INTERRUPT_ENABLE) == 0, "smp_self_brute called with interrupts enabled");
 
     uint8_t lapicId = lapic_id();
     for (uint16_t id = 0; id < cpuAmount; id++)

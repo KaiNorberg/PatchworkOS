@@ -19,14 +19,14 @@ void apic_timer_init(uint8_t vector, uint64_t hz)
     lapic_write(LAPIC_REG_TIMER_DIVIDER, 0x3);
     lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, 0xFFFFFFFF);
 
-    hpet_sleep(NANOSECONDS_PER_SECOND / hz);
+    hpet_sleep(SEC / hz);
 
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
 
     uint32_t ticks = 0xFFFFFFFF - lapic_read(LAPIC_REG_TIMER_CURRENT_COUNT);
 
     lapic_write(LAPIC_REG_LVT_TIMER, ((uint32_t)vector) | APIC_TIMER_PERIODIC);
-    lapic_write(LAPIC_REG_TIMER_DIVIDER, 0x5);
+    lapic_write(LAPIC_REG_TIMER_DIVIDER, 0x3);
     lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, ticks);
 }
 

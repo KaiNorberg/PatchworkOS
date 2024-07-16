@@ -322,7 +322,7 @@ void syscall_handler_end(void)
         sched_thread_exit();
     }
 
-    SMP_SEND_IPI_TO_SELF(IPI_SCHEDULE);
+    sched_invoke();
 }
 
 void* syscallTable[] = {

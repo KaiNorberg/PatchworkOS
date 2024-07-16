@@ -35,8 +35,10 @@ void pic_init(void)
     io_outb(PIC2_DATA, a2);
     io_wait();
 
-    io_outb(PIC1_DATA, 0x0);
-    io_outb(PIC2_DATA, 0x0);
+    io_outb(PIC1_DATA, 0xFF);
+    io_outb(PIC2_DATA, 0xFF);
+
+    pic_clear_mask(IRQ_CASCADE);
 }
 
 void pic_eoi(uint8_t irq)

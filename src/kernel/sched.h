@@ -23,13 +23,14 @@
 #define SCHED_BLOCK_TIMEOUT(blocker, condition, timeout) \
     ({ \
         block_result_t result = BLOCK_NORM; \
-        nsec_t deadline = (timeout) == NEVER ? NEVER : (timeout) + time_uptime(); \
+        nsec_t uptime = time_uptime(); \
+        nsec_t deadline = (timeout) == NEVER ? NEVER : (timeout) + uptime; \
         sched_block_begin(blocker); \
-        while (!(condition) && result == BLOCK_NORM) \
+        while (!(condition) && result == BLOCK_NORM && deadline > uptime) \
         { \
-            nsec_t uptime = time_uptime(); \
             nsec_t remaining = deadline == NEVER ? NEVER : (deadline > uptime ? deadline - uptime : 0); \
             result = sched_block_do(blocker, remaining); \
+            uptime = time_uptime(); \
         } \
         sched_block_end(blocker); \
         result; \
@@ -61,10 +62,6 @@ void sched_init(void);
 
 void sched_start(void);
 
-void sched_cpu_start(void);
-
-void sched_block_ipi(trap_frame_t* trapFrame);
-
 void sched_block_begin(blocker_t* blocker);
 
 block_result_t sched_block_do(blocker_t* blocker, nsec_t timeout);
@@ -76,6 +73,8 @@ void sched_unblock(blocker_t* blocker);
 thread_t* sched_thread(void);
 
 process_t* sched_process(void);
+
+void sched_invoke(void);
 
 void sched_yield(void);
 

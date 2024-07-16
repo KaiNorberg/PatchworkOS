@@ -3,23 +3,22 @@
 #include "defs.h"
 #include "pmm.h"
 #include "sched.h"
+#include "trap.h"
 #include "tss.h"
 
 #define CPU_MAX_AMOUNT 255
 #define CPU_IDLE_STACK_SIZE PAGE_SIZE
 
-#define IPI_BASE 0x90
-#define IPI_HALT 0
-#define IPI_START 1
-#define IPI_SCHEDULE 2
-#define IPI_SLEEP 3
-#define IPI_AMOUNT 4
+#define IPI_QUEUE_MAX 4
 
-#define SMP_SEND_IPI_TO_SELF(ipi) asm volatile("int %0" : : "i"(IPI_BASE + ipi))
+typedef void(*ipi_t)(trap_frame_t*);
 
 typedef struct
 {
-
+    ipi_t ipis[IPI_QUEUE_MAX];
+    uint8_t readIndex;
+    uint8_t writeIndex;
+    lock_t lock;
 } ipi_queue_t;
 
 typedef struct
@@ -30,7 +29,8 @@ typedef struct
     uint64_t prevFlags;
     uint64_t cliAmount;
     tss_t tss;
-    sched_context_t schedContext;
+    sched_context_t sched;
+    ipi_queue_t queue;
     uint8_t idleStack[CPU_IDLE_STACK_SIZE];
 } cpu_t;
 
@@ -44,11 +44,13 @@ bool smp_initialized(void);
 
 void smp_halt_others(void);
 
-void smp_halt_self(void);
+ipi_t smp_recieve(cpu_t* cpu);
 
-void smp_send_ipi(cpu_t const* cpu, uint8_t ipi);
+void smp_send(cpu_t* cpu, ipi_t ipi);
 
-void smp_send_ipi_to_others(uint8_t ipi);
+void smp_send_self(ipi_t ipi);
+
+void smp_send_others(ipi_t ipi);
 
 uint8_t smp_cpu_amount(void);
 

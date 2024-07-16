@@ -32,6 +32,7 @@ void irq_install(irq_handler_t handler, uint8_t irq)
         if (handlers[irq][i] == NULL)
         {
             handlers[irq][i] = handler;
+            pic_clear_mask(irq);
             return;
         }
     }

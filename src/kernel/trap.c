@@ -5,70 +5,9 @@
 #include "irq.h"
 #include "log.h"
 #include "regs.h"
+#include "sched.h"
 #include "smp.h"
-
-static void exception_handler(const trap_frame_t* trapFrame)
-{
-    switch (trapFrame->vector)
-    {
-    default:
-    {
-        log_panic(trapFrame, "Exception");
-    }
-    break;
-    }
-}
-
-static void ipi_handler(trap_frame_t* trapFrame)
-{
-    uint8_t ipi = trapFrame->vector - IPI_BASE;
-
-    switch (ipi)
-    {
-    case IPI_HALT:
-    {
-        if (smp_initialized())
-        {
-            smp_halt_self();
-        }
-        else
-        {
-            while (1)
-            {
-                asm volatile("cli");
-                asm volatile("hlt");
-            }
-        }
-    }
-    case IPI_START:
-    {
-        sched_cpu_start();
-    }
-    break;
-    case IPI_SCHEDULE:
-    {
-        // Does nothing, scheduling is performed in vector_common
-    }
-    break;
-    case IPI_SLEEP:
-    {
-        sched_block_ipi(trapFrame);
-    }
-    break;
-    }
-
-    lapic_eoi();
-}
-
-static void trap_begin(void)
-{
-    smp_self_unsafe()->trapDepth++;
-}
-
-static void trap_end(void)
-{
-    smp_self_unsafe()->trapDepth--;
-}
+#include "vectors.h"
 
 void interrupts_disable(void)
 {
@@ -107,8 +46,48 @@ void interrupts_enable(void)
     }
 }
 
+static void exception_handler(const trap_frame_t* trapFrame)
+{
+    switch (trapFrame->vector)
+    {
+    default:
+    {
+        log_panic(trapFrame, "Exception");
+    }
+    break;
+    }
+}
+
+static void ipi_handler(trap_frame_t* trapFrame)
+{
+    cpu_t* cpu = smp_self_unsafe();
+    while (1)
+    {
+        ipi_t ipi = smp_recieve(cpu);
+        if (ipi == NULL)
+        {
+            break;
+        }
+
+        ipi(trapFrame);
+    }
+
+    lapic_eoi();
+}
+
+static void trap_begin(void)
+{
+    smp_self_unsafe()->trapDepth++;
+}
+
+static void trap_end(void)
+{
+    smp_self_unsafe()->trapDepth--;
+}
+
 void trap_handler(trap_frame_t* trapFrame)
 {
+    cpu_t* cpu = smp_self_unsafe();
     if (trapFrame->vector < IRQ_BASE)
     {
         exception_handler(trapFrame);
@@ -120,13 +99,21 @@ void trap_handler(trap_frame_t* trapFrame)
     {
         irq_dispatch(trapFrame);
     }
-    else if (trapFrame->vector >= IPI_BASE && trapFrame->vector < IPI_BASE + IPI_AMOUNT)
+    else if (trapFrame->vector == VECTOR_IPI)
     {
         ipi_handler(trapFrame);
     }
+    else if (trapFrame->vector == VECTOR_SCHED_TIMER)
+    {
+        lapic_eoi();
+    }
+    else if (trapFrame->vector == VECTOR_SCHED_INVOKE)
+    {
+        // Does nothing, scheduling happens in vector_common
+    }
     else
     {
-        log_panic(trapFrame, "Unknown interrupt vector");
+        log_panic(trapFrame, "Unknown vector");
     }
 
     trap_end();

@@ -35,7 +35,7 @@ uint8_t ps2_read(void)
 {
     uint64_t time = time_uptime();
 
-    while (time + NANOSECONDS_PER_SECOND > time_uptime())
+    while (time + SEC > time_uptime())
     {
         uint8_t status = io_inb(PS2_PORT_STATUS);
         if (status & PS2_STATUS_OUT_FULL)
@@ -58,7 +58,7 @@ void ps2_wait(void)
 {
     uint64_t time = time_uptime();
 
-    while (time + NANOSECONDS_PER_SECOND > time_uptime())
+    while (time + SEC > time_uptime())
     {
         uint8_t status = io_inb(PS2_PORT_STATUS);
         if (status & PS2_STATUS_OUT_FULL)
