@@ -5,6 +5,6 @@ This is a custom superset of the C standard library, this is NOT POSIX, extensio
 ## Naming convention
 
 The conventions used in the extensions should be similar with the rest of the c library.
-Internal functions should use _UppercaseCamelCase to comply with the spec.  
-Internal defines don't need a special naming convention as they are not visible outside of the library.  
-Auxiliary defines will be visible outside the library thus they should be _UPPERCASE_SNAKE_CASE to comply with the spec.  
+Internal functions should use _UppercaseCamelCase or use another library owned prefix like win or gfx.
+Internal defines don't need a special naming convention as they are not visible outside of the library.
+Auxiliary defines will be visible outside the library thus they should be _UPPERCASE_SNAKE_CASE to comply with the spec.

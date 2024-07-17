@@ -23,8 +23,10 @@ static void button_draw(widget_t* widget, win_t* window)
     rect_t rect;
     win_widget_rect(widget, &rect);
 
-    gfx_rect(&surface, &rect, theme.background);
+    gfx_edge(&surface, &rect, theme.edgeWidth, theme.shadow, theme.shadow);
+    RECT_SHRINK(&rect, theme.edgeWidth);
 
+    gfx_rect(&surface, &rect, theme.background);
     if (button->pressed)
     {
         gfx_edge(&surface, &rect, theme.edgeWidth, theme.shadow, theme.highlight);

@@ -6,6 +6,7 @@
 #include <sys/math.h>
 #include <sys/mouse.h>
 
+#include "_AUX/rect_t.h"
 #include "internal/win_background.h"
 #include "internal/win_internal.h"
 
@@ -19,24 +20,8 @@ static uint64_t win_set_area(win_t* window, const rect_t* rect)
     window->width = RECT_WIDTH(rect);
     window->height = RECT_HEIGHT(rect);
 
-    if (window->type == DWM_WINDOW)
-    {
-        window->clientArea = (rect_t){
-            .left = theme.edgeWidth,
-            .top = theme.edgeWidth + theme.topbarHeight,
-            .right = window->width - theme.edgeWidth,
-            .bottom = window->height - theme.edgeWidth,
-        };
-    }
-    else
-    {
-        window->clientArea = (rect_t){
-            .left = 0,
-            .top = 0,
-            .right = window->width,
-            .bottom = window->height,
-        };
-    }
+    window->clientArea = RECT_INIT_DIM(0, 0, window->width, window->height);
+    win_shrink_to_client(&window->clientArea, window->type);
 
     return 0;
 }

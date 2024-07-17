@@ -247,8 +247,6 @@ void log_enable_time(void)
 
 NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
 {
-    log_print("PANIC DETECTED");
-
     asm volatile("cli");
     if (smp_initialized())
     {

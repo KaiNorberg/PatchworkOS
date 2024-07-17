@@ -18,7 +18,6 @@ static win_theme_t theme = {
     .background = 0xFFBFBFBF,
     .selected = 0xFF00007F,
     .unSelected = 0xFF7F7F7F,
-    .topbarHeight = 32,
 };
 
 typedef struct win

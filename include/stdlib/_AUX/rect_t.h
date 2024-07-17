@@ -55,6 +55,22 @@ typedef struct
         (rect)->bottom = CLAMP((rect)->bottom, (parent)->top, (parent)->bottom); \
     })
 
+#define RECT_SHRINK(rect, margin) \
+    ({ \
+        (rect)->left += margin; \
+        (rect)->top += margin; \
+        (rect)->right -= margin; \
+        (rect)->bottom -= margin; \
+    }) \
+
+#define RECT_EXPAND(rect, margin) \
+    ({ \
+        (rect)->left -= margin; \
+        (rect)->top -= margin; \
+        (rect)->right += margin; \
+        (rect)->bottom += margin; \
+    }) \
+
 #define RECT_SUBTRACT(result, rect, other) \
     ({ \
         rect_subtract_t res = {.count = 0}; \

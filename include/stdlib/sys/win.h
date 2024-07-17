@@ -36,7 +36,6 @@ typedef struct win_theme
     pixel_t background;
     pixel_t selected;
     pixel_t unSelected;
-    uint64_t topbarHeight;
 } win_theme_t;
 
 // Library messages
@@ -128,6 +127,10 @@ void win_widget_private_set(widget_t* widget, void* private);
 uint64_t win_screen_rect(rect_t* rect);
 
 void win_theme(win_theme_t* winTheme);
+
+void win_expand_to_window(rect_t* clientArea, dwm_type_t type);
+
+void win_shrink_to_client(rect_t* windowArea, dwm_type_t type);
 
 uint64_t win_widget_button(widget_t* widget, win_t* window, const msg_t* msg);
 

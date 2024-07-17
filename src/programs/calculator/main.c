@@ -33,6 +33,8 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
 int main(void)
 {
     rect_t rect = RECT_INIT_DIM(500, 200, WINDOW_WIDTH, WINDOW_HEIGHT);
+    win_expand_to_window(&rect, DWM_WINDOW);
+
     win_t* window = win_new("Calculator", DWM_WINDOW, &rect, procedure);
     if (window == NULL)
     {
