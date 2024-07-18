@@ -28,6 +28,6 @@ void log_disable_screen(void);
 
 void log_enable_time(void);
 
-NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...);
-
 void log_print(const char* string, ...);
+
+NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...);

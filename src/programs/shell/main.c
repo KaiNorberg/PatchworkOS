@@ -14,6 +14,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
 
         rect_t rect = RECT_INIT_SURFACE(&surface);
         gfx_rect(&surface, &rect, 0xFF007E81);
+        //gfx_rect(&surface, &rect, 0xFF3E77B3);
 
         win_draw_end(window, &surface);
     }

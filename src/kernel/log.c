@@ -23,14 +23,14 @@
 
 static char buffer[LOG_BUFFER_LENGTH];
 static uint64_t writeIndex;
-static lock_t lock;
 
 static surface_t surface;
 static point_t point;
-static psf_t font;
 
 static bool screenEnabled;
 static bool timeEnabled;
+
+static lock_t lock;
 
 static void log_clear_line(uint64_t y, uint64_t height)
 {
@@ -40,7 +40,22 @@ static void log_clear_line(uint64_t y, uint64_t height)
     }
 }
 
-static void log_write_to_screen(const char* str)
+static void log_draw_char(char chr)
+{
+    const uint8_t* glyph = font_glyphs() + chr * PSF_HEIGHT;
+
+    for (uint64_t y = 0; y < PSF_HEIGHT; y++)
+    {
+        for (uint64_t x = 0; x < PSF_WIDTH; x++)
+        {
+            pixel_t pixel = (glyph[y] & (0b10000000 >> x)) > 0 ? 0xFFA3A4A3 : 0;
+            surface.buffer[(point.x + x) + (point.y + y) * surface.stride] = pixel;
+        }
+    }
+    point.x += PSF_WIDTH;
+}
+
+static void log_draw_string(const char* str)
 {
     while (*str != '\0')
     {
@@ -63,15 +78,14 @@ static void log_write_to_screen(const char* str)
 
         if (*str != '\n')
         {
-            gfx_psf_char(&surface, &font, &point, *str);
-            point.x += PSF_WIDTH;
+            log_draw_char(*str);
         }
 
         str++;
     }
 }
 
-static void log_write_to_buffer(const char* str)
+static void log_write(const char* str)
 {
     LOCK_GUARD(&lock);
 
@@ -90,11 +104,11 @@ static void log_write_to_buffer(const char* str)
 
     if (screenEnabled)
     {
-        log_write_to_screen(str);
+        log_draw_string(str);
     }
 }
 
-static void log_print_va_padded_number(char** out, uint64_t padding, char chr, uint64_t number)
+static void log_padd_number(char** out, uint64_t padding, char chr, uint64_t number)
 {
     char str[20];
     ulltoa(number, str, 10);
@@ -121,9 +135,9 @@ static void log_print_va(const char* string, va_list args)
     nsec_t ms = (time % SEC) / (SEC / 1000);
 
     *out++ = '[';
-    log_print_va_padded_number(&out, 11, ' ', sec);
+    log_padd_number(&out, 11, ' ', sec);
     *out++ = '.';
-    log_print_va_padded_number(&out, 4, '0', ms);
+    log_padd_number(&out, 4, '0', ms);
     *out++ = ']';
     *out++ = ' ';
 
@@ -191,7 +205,7 @@ static void log_print_va(const char* string, va_list args)
 
     *out++ = '\n';
     *out++ = '\0';
-    log_write_to_buffer(buffer);
+    log_write(buffer);
 }
 
 void log_init(void)
@@ -219,30 +233,35 @@ void log_enable_screen(gop_buffer_t* gopBuffer)
         surface.width = gopBuffer->width;
         surface.height = gopBuffer->height;
         surface.stride = gopBuffer->stride;
-
-        font.foreground = 0xFFA3A4A3;
-        font.background = 0xFF000000;
-        font.scale = 1;
-        font.glyphs = font_get() + sizeof(psf_header_t);
     }
 
     point.x = 0;
     point.y = 0;
     memset(surface.buffer, 0, surface.stride * surface.height * sizeof(pixel_t));
 
-    log_write_to_screen(buffer);
+    log_draw_string(buffer);
 
     screenEnabled = true;
 }
 
 void log_disable_screen(void)
 {
+    LOCK_GUARD(&lock);
     screenEnabled = false;
 }
 
 void log_enable_time(void)
 {
+    LOCK_GUARD(&lock);
     timeEnabled = true;
+}
+
+void log_print(const char* string, ...)
+{
+    va_list args;
+    va_start(args, string);
+    log_print_va(string, args);
+    va_end(args);
 }
 
 NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
@@ -306,12 +325,4 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
     {
         asm volatile("hlt");
     }
-}
-
-void log_print(const char* string, ...)
-{
-    va_list args;
-    va_start(args, string);
-    log_print_va(string, args);
-    va_end(args);
 }

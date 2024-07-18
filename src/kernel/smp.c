@@ -230,7 +230,7 @@ void smp_send_self(ipi_t ipi)
     ipi_queue_push(queue, ipi);
     lock_release(&queue->lock);
 
-    asm volatile("int %0" :: "i" (VECTOR_IPI));
+    asm volatile("int %0" ::"i"(VECTOR_IPI));
 }
 
 void smp_send_others(ipi_t ipi)

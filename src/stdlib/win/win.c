@@ -1,3 +1,7 @@
+#ifndef __EMBED__
+
+#include "internal.h"
+
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,12 +9,6 @@
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/mouse.h>
-
-#include "_AUX/rect_t.h"
-#include "internal/win_background.h"
-#include "internal/win_internal.h"
-
-#ifndef __EMBED__
 
 static uint64_t win_widget_dispatch(widget_t* widget, const msg_t* msg);
 
@@ -313,6 +311,11 @@ widget_id_t win_widget_id(widget_t* widget)
     return widget->id;
 }
 
+const char* win_widget_name(widget_t* widget)
+{
+    return widget->name;
+}
+
 void* win_widget_private(widget_t* widget)
 {
     return widget->private;
@@ -348,9 +351,31 @@ uint64_t win_screen_rect(rect_t* rect)
     return 0;
 }
 
-#endif
-
-void win_theme(win_theme_t* winTheme)
+void win_theme(win_theme_t* out)
 {
-    *winTheme = theme;
+    *out = theme;
 }
+
+void win_expand_to_window(rect_t* clientArea, dwm_type_t type)
+{
+    if (type == DWM_WINDOW)
+    {
+        clientArea->left -= theme.edgeWidth;
+        clientArea->top -= theme.edgeWidth + theme.topbarHeight + theme.topbarPadding;
+        clientArea->right += theme.edgeWidth;
+        clientArea->bottom += theme.edgeWidth;
+    }
+}
+
+void win_shrink_to_client(rect_t* windowArea, dwm_type_t type)
+{
+    if (type == DWM_WINDOW)
+    {
+        windowArea->left += theme.edgeWidth;
+        windowArea->top += theme.edgeWidth + theme.topbarHeight + theme.topbarPadding;
+        windowArea->right -= theme.edgeWidth;
+        windowArea->bottom -= theme.edgeWidth;
+    }
+}
+
+#endif

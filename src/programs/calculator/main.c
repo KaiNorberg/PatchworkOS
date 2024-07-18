@@ -1,3 +1,4 @@
+#include "sys/gfx.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/keyboard.h>
@@ -6,6 +7,9 @@
 
 #define WINDOW_WIDTH 350
 #define WINDOW_HEIGHT 400
+
+#define BUTTON_WIDTH 100
+#define BUTTON_HEIGHT 100
 
 #define BUTTON_ID 1
 
@@ -41,7 +45,7 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    rect_t buttonRect = RECT_INIT_DIM(125, 50, 100, 100);
+    rect_t buttonRect = RECT_INIT_DIM(WINDOW_WIDTH / 2 - BUTTON_WIDTH / 2, 100, BUTTON_WIDTH, BUTTON_HEIGHT);
     win_widget_new(window, win_widget_button, "Press Me!", &buttonRect, BUTTON_ID);
 
     msg_t msg = {0};

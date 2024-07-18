@@ -2,4 +2,4 @@
 
 #include <stdint.h>
 
-uint8_t* font_get(void);
+uint8_t* font_glyphs(void);

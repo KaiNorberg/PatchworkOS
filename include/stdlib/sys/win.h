@@ -29,13 +29,18 @@ typedef uint16_t widget_id_t;
 
 typedef struct win_theme
 {
-    uint32_t edgeWidth;
-    uint32_t ridgeWidth;
+    uint8_t edgeWidth;
+    uint8_t rimWidth;
+    uint8_t ridgeWidth;
     pixel_t highlight;
     pixel_t shadow;
+    pixel_t bright;
+    pixel_t dark;
     pixel_t background;
     pixel_t selected;
     pixel_t unSelected;
+    uint8_t topbarHeight;
+    uint8_t topbarPadding;
 } win_theme_t;
 
 // Library messages
@@ -120,13 +125,15 @@ void win_widget_rect(widget_t* widget, rect_t* rect);
 
 widget_id_t win_widget_id(widget_t* widget);
 
+const char* win_widget_name(widget_t* widget);
+
 void* win_widget_private(widget_t* widget);
 
 void win_widget_private_set(widget_t* widget, void* private);
 
 uint64_t win_screen_rect(rect_t* rect);
 
-void win_theme(win_theme_t* winTheme);
+void win_theme(win_theme_t* out);
 
 void win_expand_to_window(rect_t* clientArea, dwm_type_t type);
 

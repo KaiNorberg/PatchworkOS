@@ -61,7 +61,7 @@ typedef struct
         (rect)->top += margin; \
         (rect)->right -= margin; \
         (rect)->bottom -= margin; \
-    }) \
+    })
 
 #define RECT_EXPAND(rect, margin) \
     ({ \
@@ -69,7 +69,7 @@ typedef struct
         (rect)->top -= margin; \
         (rect)->right += margin; \
         (rect)->bottom += margin; \
-    }) \
+    })
 
 #define RECT_SUBTRACT(result, rect, other) \
     ({ \

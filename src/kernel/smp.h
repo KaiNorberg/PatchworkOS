@@ -11,7 +11,7 @@
 
 #define IPI_QUEUE_MAX 4
 
-typedef void(*ipi_t)(trap_frame_t*);
+typedef void (*ipi_t)(trap_frame_t*);
 
 typedef struct
 {

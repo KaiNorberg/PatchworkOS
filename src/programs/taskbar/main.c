@@ -19,7 +19,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
 
         gfx_rect(&surface, &rect, theme.background);
         rect.bottom = rect.top + theme.edgeWidth;
-        gfx_rect(&surface, &rect, theme.highlight);
+        gfx_rect(&surface, &rect, theme.bright);
 
         win_draw_end(window, &surface);
     }

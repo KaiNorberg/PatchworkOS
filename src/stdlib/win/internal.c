@@ -1,25 +1,56 @@
-#include "win_background.h"
-#include "win_internal.h"
+#ifndef __EMBED__
 
-#include <sys/win.h>
-#include <sys/gfx.h>
-#include <sys/dwm.h>
 #include <sys/mouse.h>
 
-#ifndef __EMBED__
+#include "internal.h"
+
+// TODO: this should be stored in some sort of config file, lua? make something custom?
+win_theme_t theme = {
+    .edgeWidth = 3,
+    .rimWidth = 3,
+    .ridgeWidth = 2,
+    .highlight = 0xFFFCFCFC,
+    .shadow = 0xFF6F6F6F,
+    .bright = 0xFFFFFFFF,
+    .dark = 0xFF000000,
+    .background = 0xFFBFBFBF,
+    .selected = 0xFF00007F,
+    .unSelected = 0xFF7F7F7F,
+    .topbarHeight = 40,
+    .topbarPadding = 2,
+};
+
+static void win_draw_close_button(win_t* window, surface_t* surface, const rect_t* topbar)
+{
+    uint64_t width = RECT_HEIGHT(topbar);
+
+    rect_t rect = {
+        .left = topbar->right - width,
+        .top = topbar->top,
+        .right = topbar->right,
+        .bottom = topbar->bottom,
+    };
+    gfx_rim(surface, &rect, theme.rimWidth, theme.dark);
+    RECT_SHRINK(&rect, theme.rimWidth);
+
+    gfx_edge(surface, &rect, theme.edgeWidth, theme.highlight, theme.shadow);
+    RECT_SHRINK(&rect, theme.edgeWidth);
+    gfx_rect(surface, &rect, theme.background);
+}
 
 static void win_draw_topbar(win_t* window, surface_t* surface)
 {
-    rect_t localArea = RECT_INIT_SURFACE(surface);
-
-    rect_t topBar = (rect_t){
-        .left = localArea.left + theme.edgeWidth + TOPBAR_PADDING,
-        .top = localArea.top + theme.edgeWidth + TOPBAR_PADDING,
-        .right = localArea.right - theme.edgeWidth - TOPBAR_PADDING,
-        .bottom = localArea.top + TOPBAR_HEIGHT + theme.edgeWidth - TOPBAR_PADDING,
+    rect_t rect = {
+        .left = theme.edgeWidth + theme.topbarPadding,
+        .top = theme.edgeWidth + theme.topbarPadding,
+        .right = surface->width - theme.edgeWidth - theme.topbarPadding,
+        .bottom = theme.topbarHeight + theme.edgeWidth - theme.topbarPadding,
     };
-    gfx_rect(surface, &topBar, window->selected ? theme.selected : theme.unSelected);
-    gfx_edge(surface, &topBar, theme.edgeWidth, theme.shadow, theme.highlight);
+    gfx_edge(surface, &rect, theme.edgeWidth, theme.dark, theme.highlight);
+    RECT_SHRINK(&rect, theme.edgeWidth);
+    gfx_rect(surface, &rect, window->selected ? theme.selected : theme.unSelected);
+
+    win_draw_close_button(window, surface, &rect);
 }
 
 static void win_draw_border_and_background(win_t* window, surface_t* surface)
@@ -29,7 +60,7 @@ static void win_draw_border_and_background(win_t* window, surface_t* surface)
         rect_t localArea = RECT_INIT_SURFACE(surface);
 
         gfx_rect(surface, &localArea, theme.background);
-        gfx_edge(surface, &localArea, theme.edgeWidth, theme.highlight, theme.shadow);
+        gfx_edge(surface, &localArea, theme.edgeWidth, theme.bright, theme.dark);
     }
 }
 
@@ -39,7 +70,7 @@ static void win_handle_drag(win_t* window, const msg_mouse_t* data)
         .left = window->pos.x + theme.edgeWidth,
         .top = window->pos.y + theme.edgeWidth,
         .right = window->pos.x + window->width - theme.edgeWidth,
-        .bottom = window->pos.y + TOPBAR_HEIGHT + theme.edgeWidth,
+        .bottom = window->pos.y + theme.topbarHeight + theme.edgeWidth,
     };
 
     if (window->moving)
@@ -55,28 +86,6 @@ static void win_handle_drag(win_t* window, const msg_mouse_t* data)
     else if (RECT_CONTAINS_POINT(&topBar, data->pos.x, data->pos.y) && data->buttons & MOUSE_LEFT)
     {
         window->moving = true;
-    }
-}
-
-void win_expand_to_window(rect_t* clientArea, dwm_type_t type)
-{
-    if (type == DWM_WINDOW)
-    {
-        clientArea->left -= theme.edgeWidth;
-        clientArea->top -= theme.edgeWidth + TOPBAR_HEIGHT;
-        clientArea->right += theme.edgeWidth;
-        clientArea->bottom += theme.edgeWidth;
-    }
-}
-
-void win_shrink_to_client(rect_t* windowArea, dwm_type_t type)
-{
-    if (type == DWM_WINDOW)
-    {
-        windowArea->left += theme.edgeWidth;
-        windowArea->top += theme.edgeWidth + TOPBAR_HEIGHT;
-        windowArea->right -= theme.edgeWidth;
-        windowArea->bottom -= theme.edgeWidth;
     }
 }
 

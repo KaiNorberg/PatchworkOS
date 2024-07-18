@@ -1,9 +1,9 @@
-#include "_AUX/rect_t.h"
-#include "sys/dwm.h"
-#include "sys/mouse.h"
+#include "internal.h"
+#include "sys/gfx.h"
 #ifndef __EMBED__
 
 #include <stdlib.h>
+#include <sys/mouse.h>
 #include <sys/win.h>
 
 typedef struct
@@ -11,22 +11,30 @@ typedef struct
     bool pressed;
 } button_t;
 
-static void button_draw(widget_t* widget, win_t* window)
+static void button_draw(widget_t* widget, win_t* window, bool redraw)
 {
     button_t* button = win_widget_private(widget);
 
     surface_t surface;
     win_draw_begin(window, &surface);
-
     win_theme_t theme;
     win_theme(&theme);
     rect_t rect;
     win_widget_rect(widget, &rect);
 
-    gfx_edge(&surface, &rect, theme.edgeWidth, theme.shadow, theme.shadow);
-    RECT_SHRINK(&rect, theme.edgeWidth);
+    if (redraw)
+    {
+        gfx_rim(&surface, &rect, theme.rimWidth, theme.dark);
+    }
+    RECT_SHRINK(&rect, theme.rimWidth);
 
-    gfx_rect(&surface, &rect, theme.background);
+    if (redraw)
+    {
+        gfx_rect(&surface, &rect, theme.background);
+        // gfx_string(&surface, win_default_font(), &rect, GFX_CENTER, GFX_CENTER, 16, win_widget_name(widget), theme.highlight,
+        // 0);
+    }
+
     if (button->pressed)
     {
         gfx_edge(&surface, &rect, theme.edgeWidth, theme.shadow, theme.highlight);
@@ -86,13 +94,13 @@ uint64_t win_widget_button(widget_t* widget, win_t* window, const msg_t* msg)
 
         if (button->pressed != prev)
         {
-            button_draw(widget, window);
+            button_draw(widget, window, false);
         }
     }
     break;
     case WMSG_REDRAW:
     {
-        button_draw(widget, window);
+        button_draw(widget, window, true);
     }
     break;
     }

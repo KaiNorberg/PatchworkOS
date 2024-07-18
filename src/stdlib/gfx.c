@@ -1,4 +1,3 @@
-#include "_AUX/pixel_t.h"
 #include "_AUX/rect_t.h"
 #include <stdint.h>
 #include <stdlib.h>
@@ -9,7 +8,7 @@
 
 #ifndef __EMBED__
 
-fbmp_t* gfx_load_fbmp(const char* path)
+fbmp_t* gfx_fbmp_new(const char* path)
 {
     fd_t file = open(path);
     if (file == ERR)
@@ -45,6 +44,11 @@ fbmp_t* gfx_load_fbmp(const char* path)
     return image;
 }
 
+void gfx_fbmp_cleanup(fbmp_t* fbmp)
+{
+    free(fbmp);
+}
+
 #endif
 
 void gfx_fbmp(surface_t* surface, const fbmp_t* fbmp, const point_t* point)
@@ -63,7 +67,7 @@ void gfx_fbmp(surface_t* surface, const fbmp_t* fbmp, const point_t* point)
 
 void gfx_psf_char(surface_t* surface, const psf_t* psf, const point_t* point, char chr)
 {
-    const uint8_t* glyph = psf->glyphs + chr * PSF_HEIGHT;
+    const uint8_t* glyph = psf->file->glyphs + chr * PSF_HEIGHT;
 
     if (PIXEL_ALPHA(psf->foreground) == 0xFF && PIXEL_ALPHA(psf->background) == 0xFF)
     {
@@ -200,7 +204,7 @@ void gfx_edge(surface_t* surface, const rect_t* rect, uint64_t width, pixel_t fo
     {
         for (uint64_t x = 0; x < width; x++)
         {
-            pixel_t color = x + y < width ? foreground : background;
+            pixel_t color = x + y < width - 1 ? foreground : background;
             surface->buffer[(rect->right - width + x) + (rect->top + y) * surface->stride] = color;
             surface->buffer[(rect->left + x) + (rect->bottom - width + y) * surface->stride] = color;
         }
@@ -213,13 +217,44 @@ void gfx_ridge(surface_t* surface, const rect_t* rect, uint64_t width, pixel_t f
 {
     gfx_edge(surface, rect, width / 2, background, foreground);
 
-    rect_t innerRect = {
-        .left = rect->left + width / 2,
-        .top = rect->top + width / 2,
-        .right = rect->right - width / 2,
-        .bottom = rect->bottom - width / 2,
-    };
+    rect_t innerRect = *rect;
+    RECT_SHRINK(&innerRect, width / 2);
     gfx_edge(surface, &innerRect, width / 2, foreground, background);
+}
+
+void gfx_rim(surface_t* surface, const rect_t* rect, uint64_t width, pixel_t pixel)
+{
+    rect_t leftRect = (rect_t){
+        .left = rect->left,
+        .top = rect->top + width - width / 2,
+        .right = rect->left + width,
+        .bottom = rect->bottom - width + width / 2,
+    };
+    gfx_rect(surface, &leftRect, pixel);
+
+    rect_t topRect = (rect_t){
+        .left = rect->left + width - width / 2,
+        .top = rect->top,
+        .right = rect->right - width + width / 2,
+        .bottom = rect->top + width,
+    };
+    gfx_rect(surface, &topRect, pixel);
+
+    rect_t rightRect = (rect_t){
+        .left = rect->right - width,
+        .top = rect->top + width - width / 2,
+        .right = rect->right,
+        .bottom = rect->bottom - width + width / 2,
+    };
+    gfx_rect(surface, &rightRect, pixel);
+
+    rect_t bottomRect = (rect_t){
+        .left = rect->left + width - width / 2,
+        .top = rect->bottom - width,
+        .right = rect->right - width + width / 2,
+        .bottom = rect->bottom,
+    };
+    gfx_rect(surface, &bottomRect, pixel);
 }
 
 void gfx_transfer(surface_t* dest, const surface_t* src, const rect_t* destRect, const point_t* srcPoint)

@@ -274,7 +274,7 @@ process_t* sched_process(void)
 
 void sched_invoke(void)
 {
-    asm volatile("int %0" :: "i" (VECTOR_SCHED_INVOKE));
+    asm volatile("int %0" ::"i"(VECTOR_SCHED_INVOKE));
 }
 
 void sched_yield(void)

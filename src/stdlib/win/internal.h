@@ -8,17 +8,11 @@ typedef struct widget widget_t;
 #define _WIN_INTERNAL
 #include <sys/win.h>
 
+#define WIN_DEFAULT_FONT "home:/usr/fonts/default"
+
 #define WIN_WIDGET_MAX_MSG 8
 
-static win_theme_t theme = {
-    .edgeWidth = 3,
-    .ridgeWidth = 2,
-    .highlight = 0xFFFCFCFC,
-    .shadow = 0xFF232629,
-    .background = 0xFFBFBFBF,
-    .selected = 0xFF00007F,
-    .unSelected = 0xFF7F7F7F,
-};
+extern win_theme_t theme;
 
 typedef struct win
 {
@@ -68,3 +62,5 @@ static inline void win_client_surface(win_t* window, surface_t* surface)
     surface->buffer = (pixel_t*)((uint64_t)window->buffer + (window->clientArea.left * sizeof(pixel_t)) +
         (window->clientArea.top * surface->stride * sizeof(pixel_t)));
 }
+
+void win_background_procedure(win_t* window, const msg_t* msg);
