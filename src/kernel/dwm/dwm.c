@@ -19,8 +19,8 @@
 #include "vfs.h"
 #include "window.h"
 
-static surface_t frontbuffer;
-static surface_t backbuffer;
+static gfx_t frontbuffer;
+static gfx_t backbuffer;
 static rect_t screenArea;
 static rect_t clientArea;
 
@@ -50,18 +50,18 @@ static void dwm_update_client_area(void)
             continue;
         }
 
-        uint64_t leftDist = window->pos.x + window->surface.width;
-        uint64_t topDist = window->pos.y + window->surface.height;
+        uint64_t leftDist = window->pos.x + window->gfx.width;
+        uint64_t topDist = window->pos.y + window->gfx.height;
         uint64_t rightDist = backbuffer.width - window->pos.x;
         uint64_t bottomDist = backbuffer.height - window->pos.y;
 
         if (leftDist <= topDist && leftDist <= rightDist && leftDist <= bottomDist)
         {
-            newArea.left = MAX(window->pos.x + window->surface.width, newArea.left);
+            newArea.left = MAX(window->pos.x + window->gfx.width, newArea.left);
         }
         else if (topDist <= leftDist && topDist <= rightDist && topDist <= bottomDist)
         {
-            newArea.top = MAX(window->pos.y + window->surface.height, newArea.top);
+            newArea.top = MAX(window->pos.y + window->gfx.height, newArea.top);
         }
         else if (rightDist <= leftDist && rightDist <= topDist && rightDist <= bottomDist)
         {
@@ -106,13 +106,13 @@ static void dwm_transfer(window_t* window, const rect_t* rect)
         .x = rect->left - window->pos.x,
         .y = rect->top - window->pos.y,
     };
-    gfx_transfer(&backbuffer, &window->surface, rect, &srcPoint);
+    gfx_transfer(&backbuffer, &window->gfx, rect, &srcPoint);
 }
 
 static void dwm_redraw_others(window_t* window, const rect_t* rect)
 {
     point_t srcPoint = {0};
-    gfx_transfer(&backbuffer, &wall->surface, rect, &srcPoint);
+    gfx_transfer(&backbuffer, &wall->gfx, rect, &srcPoint);
 
     window_t* other;
     LIST_FOR_EACH(other, &windows)
@@ -153,7 +153,7 @@ static void dwm_invalidate_above(window_t* window, const rect_t* rect)
             invalidRect.bottom -= otherRect.top;
 
             other->invalid = true;
-            gfx_invalidate(&other->surface, &invalidRect);
+            gfx_invalidate(&other->gfx, &invalidRect);
         }
     }
 }
@@ -225,7 +225,7 @@ static void dwm_draw_windows(void)
 
         dwm_transfer(window, &rect);
         dwm_invalidate_above(window, &rect);
-        window->surface.invalidArea = (rect_t){0};
+        window->gfx.invalidArea = (rect_t){0};
         window->shown = true;
     }
 }
@@ -237,7 +237,7 @@ static void dwm_draw_cursor(void)
     point_t srcPoint = {0};
     rect_t cursorRect = WINDOW_RECT(cursor);
     RECT_FIT(&cursorRect, &screenArea);
-    gfx_transfer_blend(&backbuffer, &cursor->surface, &cursorRect, &srcPoint);
+    gfx_transfer_blend(&backbuffer, &cursor->gfx, &cursorRect, &srcPoint);
 }
 
 static void dwm_draw_and_update_cursor(const point_t* cursorDelta)
@@ -255,7 +255,7 @@ static void dwm_draw_and_update_cursor(const point_t* cursorDelta)
     RECT_FIT(&cursorRect, &screenArea);
 
     point_t srcPoint = {0};
-    gfx_transfer_blend(&backbuffer, &cursor->surface, &cursorRect, &srcPoint);
+    gfx_transfer_blend(&backbuffer, &cursor->gfx, &cursorRect, &srcPoint);
 
     dwm_swap();
 }
@@ -514,8 +514,8 @@ void dwm_init(gop_buffer_t* gopBuffer)
     backbuffer.width = gopBuffer->width;
     backbuffer.stride = gopBuffer->stride;
 
-    clientArea = RECT_INIT_SURFACE(&backbuffer);
-    screenArea = RECT_INIT_SURFACE(&backbuffer);
+    clientArea = RECT_INIT_GFX(&backbuffer);
+    screenArea = RECT_INIT_GFX(&backbuffer);
 
     list_init(&windows);
     selected = NULL;
@@ -538,7 +538,7 @@ void dwm_start(void)
 {
     log_print("dwm: start");
 
-    rect_t rect = RECT_INIT_SURFACE(&backbuffer);
+    rect_t rect = RECT_INIT_GFX(&backbuffer);
     gfx_swap(&backbuffer, &frontbuffer, &rect);
 
     sched_thread_spawn(dwm_loop, THREAD_PRIORITY_MAX);

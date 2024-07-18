@@ -9,14 +9,14 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
     {
     case LMSG_REDRAW:
     {
-        surface_t surface;
-        win_draw_begin(window, &surface);
+        gfx_t gfx;
+        win_draw_begin(window, &gfx);
 
-        rect_t rect = RECT_INIT_SURFACE(&surface);
-        gfx_rect(&surface, &rect, 0xFF007E81);
-        //gfx_rect(&surface, &rect, 0xFF3E77B3);
+        rect_t rect = RECT_INIT_GFX(&gfx);
+        gfx_rect(&gfx, &rect, 0xFF007E81);
+        // gfx_rect(&gfx, &rect, 0xFF3E77B3);
 
-        win_draw_end(window, &surface);
+        win_draw_end(window, &gfx);
     }
     break;
     }

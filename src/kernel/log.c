@@ -24,7 +24,7 @@
 static char buffer[LOG_BUFFER_LENGTH];
 static uint64_t writeIndex;
 
-static surface_t surface;
+static gfx_t gfx;
 static point_t point;
 
 static bool screenEnabled;
@@ -36,43 +36,43 @@ static void log_clear_line(uint64_t y, uint64_t height)
 {
     for (uint64_t i = 0; i < height; i++)
     {
-        memset(&surface.buffer[(y + i) * surface.stride], 0, surface.width * sizeof(pixel_t));
+        memset(&gfx.buffer[(y + i) * gfx.stride], 0, gfx.width * sizeof(pixel_t));
     }
 }
 
 static void log_draw_char(char chr)
 {
-    const uint8_t* glyph = font_glyphs() + chr * PSF_HEIGHT;
+    const uint8_t* glyph = font_glyphs() + chr * FONT_HEIGHT;
 
-    for (uint64_t y = 0; y < PSF_HEIGHT; y++)
+    for (uint64_t y = 0; y < FONT_HEIGHT; y++)
     {
-        for (uint64_t x = 0; x < PSF_WIDTH; x++)
+        for (uint64_t x = 0; x < FONT_WIDTH; x++)
         {
             pixel_t pixel = (glyph[y] & (0b10000000 >> x)) > 0 ? 0xFFA3A4A3 : 0;
-            surface.buffer[(point.x + x) + (point.y + y) * surface.stride] = pixel;
+            gfx.buffer[(point.x + x) + (point.y + y) * gfx.stride] = pixel;
         }
     }
-    point.x += PSF_WIDTH;
+    point.x += FONT_WIDTH;
 }
 
 static void log_draw_string(const char* str)
 {
     while (*str != '\0')
     {
-        if (*str == '\n' || point.x >= surface.width - PSF_WIDTH)
+        if (*str == '\n' || point.x >= gfx.width - FONT_WIDTH)
         {
-            point.y += PSF_HEIGHT;
-            point.x = point.x >= surface.width - PSF_WIDTH ? PSF_WIDTH * 4 : 0;
+            point.y += FONT_HEIGHT;
+            point.x = point.x >= gfx.width - FONT_WIDTH ? FONT_WIDTH * 4 : 0;
 
-            if (point.y >= surface.height - PSF_HEIGHT)
+            if (point.y >= gfx.height - FONT_HEIGHT)
             {
                 point.y = 0;
-                log_clear_line(point.y, PSF_HEIGHT);
+                log_clear_line(point.y, FONT_HEIGHT);
             }
 
-            if (point.y <= surface.height - PSF_HEIGHT * 2)
+            if (point.y <= gfx.height - FONT_HEIGHT * 2)
             {
-                log_clear_line(point.y + PSF_HEIGHT, PSF_HEIGHT);
+                log_clear_line(point.y + FONT_HEIGHT, FONT_HEIGHT);
             }
         }
 
@@ -229,15 +229,15 @@ void log_enable_screen(gop_buffer_t* gopBuffer)
 
     if (gopBuffer != NULL)
     {
-        surface.buffer = gopBuffer->base;
-        surface.width = gopBuffer->width;
-        surface.height = gopBuffer->height;
-        surface.stride = gopBuffer->stride;
+        gfx.buffer = gopBuffer->base;
+        gfx.width = gopBuffer->width;
+        gfx.height = gopBuffer->height;
+        gfx.stride = gopBuffer->stride;
     }
 
     point.x = 0;
     point.y = 0;
-    memset(surface.buffer, 0, surface.stride * surface.height * sizeof(pixel_t));
+    memset(gfx.buffer, 0, gfx.stride * gfx.height * sizeof(pixel_t));
 
     log_draw_string(buffer);
 
@@ -272,7 +272,7 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
         smp_halt_others();
     }
 
-    if (surface.buffer != NULL && !screenEnabled)
+    if (gfx.buffer != NULL && !screenEnabled)
     {
         log_enable_screen(NULL);
     }

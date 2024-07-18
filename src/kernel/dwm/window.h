@@ -12,7 +12,7 @@ typedef struct window
 {
     list_entry_t base;
     point_t pos;
-    surface_t surface;
+    gfx_t gfx;
     dwm_type_t type;
     bool invalid;
     bool moved;
@@ -23,11 +23,11 @@ typedef struct window
     msg_queue_t messages;
 } window_t;
 
-#define WINDOW_RECT(window) RECT_INIT_DIM(window->pos.x, window->pos.y, window->surface.width, window->surface.height);
+#define WINDOW_RECT(window) RECT_INIT_DIM(window->pos.x, window->pos.y, window->gfx.width, window->gfx.height);
 
 #define WINDOW_INVALID_RECT(window) \
-    RECT_INIT_DIM(window->pos.x + window->surface.invalidArea.left, window->pos.y + window->surface.invalidArea.top, \
-        RECT_WIDTH(&window->surface.invalidArea), RECT_HEIGHT(&window->surface.invalidArea));
+    RECT_INIT_DIM(window->pos.x + window->gfx.invalidArea.left, window->pos.y + window->gfx.invalidArea.top, \
+        RECT_WIDTH(&window->gfx.invalidArea), RECT_HEIGHT(&window->gfx.invalidArea));
 
 window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, dwm_type_t type, void (*cleanup)(window_t*));
 

@@ -9,19 +9,19 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
     {
     case LMSG_REDRAW:
     {
-        surface_t surface;
-        win_draw_begin(window, &surface);
+        gfx_t gfx;
+        win_draw_begin(window, &gfx);
 
         win_theme_t theme;
         win_theme(&theme);
         rect_t rect;
         win_client_area(window, &rect);
 
-        gfx_rect(&surface, &rect, theme.background);
+        gfx_rect(&gfx, &rect, theme.background);
         rect.bottom = rect.top + theme.edgeWidth;
-        gfx_rect(&surface, &rect, theme.bright);
+        gfx_rect(&gfx, &rect, theme.bright);
 
-        win_draw_end(window, &surface);
+        win_draw_end(window, &gfx);
     }
     break;
     }

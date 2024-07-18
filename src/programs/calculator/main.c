@@ -8,7 +8,7 @@
 #define WINDOW_WIDTH 350
 #define WINDOW_HEIGHT 400
 
-#define BUTTON_WIDTH 100
+#define BUTTON_WIDTH 200
 #define BUTTON_HEIGHT 100
 
 #define BUTTON_ID 1
@@ -46,7 +46,10 @@ int main(void)
     }
 
     rect_t buttonRect = RECT_INIT_DIM(WINDOW_WIDTH / 2 - BUTTON_WIDTH / 2, 100, BUTTON_WIDTH, BUTTON_HEIGHT);
-    win_widget_new(window, win_widget_button, "Press Me!", &buttonRect, BUTTON_ID);
+    widget_t* button = win_widget_new(window, win_widget_button, "Press Me!", &buttonRect, BUTTON_ID);
+
+    wmsg_set_text setText = {.height = 32, .foreground = 0xFF000000, .background = 0};
+    win_widget_send(button, WMSG_SET_TEXT, &setText, sizeof(wmsg_set_text));
 
     msg_t msg = {0};
     while (msg.type != LMSG_QUIT)

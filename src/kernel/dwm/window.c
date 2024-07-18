@@ -61,14 +61,14 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* argp, uint64_
         LOCK_GUARD(&window->lock);
         window->pos = move->pos;
 
-        if (window->surface.width != move->width || window->surface.height != move->height)
+        if (window->gfx.width != move->width || window->gfx.height != move->height)
         {
-            window->surface.width = move->width;
-            window->surface.height = move->height;
-            window->surface.stride = move->width;
+            window->gfx.width = move->width;
+            window->gfx.height = move->height;
+            window->gfx.stride = move->width;
 
-            free(window->surface.buffer);
-            window->surface.buffer = calloc(move->width * move->height, sizeof(pixel_t));
+            free(window->gfx.buffer);
+            window->gfx.buffer = calloc(move->width * move->height, sizeof(pixel_t));
         }
 
         window->moved = true;
@@ -87,24 +87,24 @@ static uint64_t window_flush(file_t* file, const void* buffer, uint64_t size, co
     window_t* window = file->private;
     LOCK_GUARD(&window->lock);
 
-    if (size != window->surface.width * window->surface.height * sizeof(pixel_t))
+    if (size != window->gfx.width * window->gfx.height * sizeof(pixel_t))
     {
         return ERROR(EBUFFER);
     }
 
-    if (rect->left > rect->right || rect->top > rect->bottom || rect->right > window->surface.width ||
-        rect->bottom > window->surface.height)
+    if (rect->left > rect->right || rect->top > rect->bottom || rect->right > window->gfx.width ||
+        rect->bottom > window->gfx.height)
     {
         return ERROR(EINVAL);
     }
 
     for (int64_t y = 0; y < RECT_HEIGHT(rect); y++)
     {
-        uint64_t index = rect->left + (rect->top + y) * window->surface.width;
-        memcpy(&window->surface.buffer[index], &((pixel_t*)buffer)[index], RECT_WIDTH(rect) * sizeof(pixel_t));
+        uint64_t index = rect->left + (rect->top + y) * window->gfx.width;
+        memcpy(&window->gfx.buffer[index], &((pixel_t*)buffer)[index], RECT_WIDTH(rect) * sizeof(pixel_t));
     }
 
-    gfx_invalidate(&window->surface, rect);
+    gfx_invalidate(&window->gfx, rect);
 
     if (!window->shown)
     {
@@ -142,11 +142,11 @@ window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, dwm_ty
     list_entry_init(&window->base);
     window->pos = *pos;
     window->type = type;
-    window->surface.buffer = calloc(width * height, sizeof(pixel_t));
-    window->surface.width = width;
-    window->surface.height = height;
-    window->surface.stride = width;
-    window->surface.invalidArea = RECT_INIT_DIM(0, 0, width, height);
+    window->gfx.buffer = calloc(width * height, sizeof(pixel_t));
+    window->gfx.width = width;
+    window->gfx.height = height;
+    window->gfx.stride = width;
+    window->gfx.invalidArea = RECT_INIT_DIM(0, 0, width, height);
     window->invalid = false;
     window->moved = false;
     window->shown = false;
@@ -161,7 +161,7 @@ window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, dwm_ty
 void window_free(window_t* window)
 {
     msg_queue_cleanup(&window->messages);
-    free(window->surface.buffer);
+    free(window->gfx.buffer);
     free(window);
 }
 

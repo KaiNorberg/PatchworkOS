@@ -73,11 +73,22 @@ typedef struct
     int16_t deltaY;
 } wmsg_mouse_t;
 
+typedef struct
+{
+    const char* text;
+    uint64_t height;
+    pixel_t foreground;
+    pixel_t background;
+    gfx_align_t xAlign;
+    gfx_align_t yAlign;
+} wmsg_set_text;
+
 #define WMSG_BASE (1 << 15)
 #define WMSG_INIT (WMSG_BASE + 0)
 #define WMSG_FREE (WMSG_BASE + 1)
 #define WMSG_REDRAW (WMSG_BASE + 2)
 #define WMSG_MOUSE (WMSG_BASE + 3)
+#define WMSG_SET_TEXT (WMSG_BASE + 4)
 
 // User messages
 #define UMSG_BASE ((1 << 15) | (1 << 14))
@@ -95,11 +106,13 @@ uint64_t win_receive(win_t* window, msg_t* msg, nsec_t timeout);
 
 uint64_t win_dispatch(win_t* window, const msg_t* msg);
 
-uint64_t win_draw_begin(win_t* window, surface_t* surface);
+uint64_t win_draw_begin(win_t* window, gfx_t* gfx);
 
-uint64_t win_draw_end(win_t* window, surface_t* surface);
+uint64_t win_draw_end(win_t* window, gfx_t* gfx);
 
 uint64_t win_move(win_t* window, const rect_t* rect);
+
+const char* win_name(win_t* window);
 
 void win_screen_window_area(win_t* window, rect_t* rect);
 
@@ -112,6 +125,10 @@ void win_screen_to_window(win_t* window, point_t* point);
 void win_screen_to_client(win_t* window, point_t* point);
 
 void win_window_to_client(win_t* window, point_t* point);
+
+gfx_psf_t* win_font(win_t* window);
+
+uint64_t win_font_set(win_t* window, const char* path);
 
 widget_t* win_widget_new(win_t* window, widget_proc_t procedure, const char* name, const rect_t* rect, widget_id_t id);
 

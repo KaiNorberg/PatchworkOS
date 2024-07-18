@@ -1,14 +1,69 @@
 #ifndef __EMBED__
 
-#include "internal.h"
+typedef struct win win_t;
+typedef struct widget widget_t;
+
+#define _WIN_INTERNAL
+#include <sys/win.h>
 
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/gfx.h>
 #include <sys/io.h>
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/mouse.h>
+
+#define WIN_WIDGET_MAX_MSG 8
+
+typedef struct win
+{
+    fd_t fd;
+    pixel_t* buffer;
+    point_t pos;
+    uint32_t width;
+    uint32_t height;
+    rect_t clientArea;
+    dwm_type_t type;
+    win_proc_t procedure;
+    list_t widgets;
+    bool selected;
+    bool moving;
+    gfx_psf_t psf;
+    char name[DWM_MAX_NAME];
+} win_t;
+
+typedef struct widget
+{
+    list_entry_t base;
+    widget_id_t id;
+    widget_proc_t procedure;
+    rect_t rect;
+    win_t* window;
+    void* private;
+    msg_t messages[WIN_WIDGET_MAX_MSG];
+    uint8_t writeIndex;
+    uint8_t readIndex;
+    char name[DWM_MAX_NAME];
+} widget_t;
+
+// TODO: this should be stored in some sort of config file, lua? make something custom?
+#define WIN_DEFAULT_FONT "home:/usr/fonts/zap-vga16.psf"
+win_theme_t theme = {
+    .edgeWidth = 3,
+    .rimWidth = 3,
+    .ridgeWidth = 2,
+    .highlight = 0xFFFCFCFC,
+    .shadow = 0xFF6F6F6F,
+    .bright = 0xFFFFFFFF,
+    .dark = 0xFF000000,
+    .background = 0xFFBFBFBF,
+    .selected = 0xFF00007F,
+    .unSelected = 0xFF7F7F7F,
+    .topbarHeight = 40,
+    .topbarPadding = 2,
+};
 
 static uint64_t win_widget_dispatch(widget_t* widget, const msg_t* msg);
 
@@ -22,6 +77,164 @@ static uint64_t win_set_area(win_t* window, const rect_t* rect)
     win_shrink_to_client(&window->clientArea, window->type);
 
     return 0;
+}
+
+static inline void win_window_surface(win_t* window, gfx_t* gfx)
+{
+    gfx->invalidArea = (rect_t){0};
+    gfx->buffer = window->buffer;
+    gfx->width = window->width;
+    gfx->height = window->height;
+    gfx->stride = gfx->width;
+}
+
+static inline void win_client_surface(win_t* window, gfx_t* gfx)
+{
+    gfx->invalidArea = (rect_t){0};
+    gfx->width = RECT_WIDTH(&window->clientArea);
+    gfx->height = RECT_HEIGHT(&window->clientArea);
+    gfx->stride = window->width;
+    gfx->buffer = (pixel_t*)((uint64_t)window->buffer + (window->clientArea.left * sizeof(pixel_t)) +
+        (window->clientArea.top * gfx->stride * sizeof(pixel_t)));
+}
+
+static void win_draw_close_button(win_t* window, gfx_t* gfx, const rect_t* topbar)
+{
+    uint64_t width = RECT_HEIGHT(topbar);
+
+    rect_t rect = {
+        .left = topbar->right - width,
+        .top = topbar->top,
+        .right = topbar->right,
+        .bottom = topbar->bottom,
+    };
+
+    gfx_rim(gfx, &rect, theme.rimWidth, theme.dark);
+    RECT_SHRINK(&rect, theme.rimWidth);
+
+    gfx_edge(gfx, &rect, theme.edgeWidth, theme.highlight, theme.shadow);
+    RECT_SHRINK(&rect, theme.edgeWidth);
+    gfx_rect(gfx, &rect, theme.background);
+
+    RECT_EXPAND(&rect, 32);
+    gfx_psf(gfx, &window->psf, &rect, GFX_CENTER, GFX_CENTER, 32, "x", theme.shadow, 0);
+}
+
+static void win_draw_topbar(win_t* window, gfx_t* gfx)
+{
+    rect_t rect = {
+        .left = theme.edgeWidth + theme.topbarPadding,
+        .top = theme.edgeWidth + theme.topbarPadding,
+        .right = gfx->width - theme.edgeWidth - theme.topbarPadding,
+        .bottom = theme.topbarHeight + theme.edgeWidth - theme.topbarPadding,
+    };
+    gfx_edge(gfx, &rect, theme.edgeWidth, theme.dark, theme.highlight);
+    RECT_SHRINK(&rect, theme.edgeWidth);
+    gfx_rect(gfx, &rect, window->selected ? theme.selected : theme.unSelected);
+
+    win_draw_close_button(window, gfx, &rect);
+
+    rect.left += theme.topbarPadding * 3;
+    rect.right -= theme.topbarHeight;
+    gfx_psf(gfx, &window->psf, &rect, GFX_MIN, GFX_CENTER, 16, "Calculator", theme.background, 0);
+}
+
+static void win_draw_border_and_background(win_t* window, gfx_t* gfx)
+{
+    if (window->type == DWM_WINDOW)
+    {
+        rect_t localArea = RECT_INIT_GFX(gfx);
+
+        gfx_rect(gfx, &localArea, theme.background);
+        gfx_edge(gfx, &localArea, theme.edgeWidth, theme.bright, theme.dark);
+    }
+}
+
+static void win_handle_drag(win_t* window, const msg_mouse_t* data)
+{
+    rect_t topBar = (rect_t){
+        .left = window->pos.x + theme.edgeWidth,
+        .top = window->pos.y + theme.edgeWidth,
+        .right = window->pos.x + window->width - theme.edgeWidth,
+        .bottom = window->pos.y + theme.topbarHeight + theme.edgeWidth,
+    };
+
+    if (window->moving)
+    {
+        rect_t rect = RECT_INIT_DIM(window->pos.x + data->deltaX, window->pos.y + data->deltaY, window->width, window->height);
+        win_move(window, &rect);
+
+        if (!(data->buttons & MOUSE_LEFT))
+        {
+            window->moving = false;
+        }
+    }
+    else if (RECT_CONTAINS_POINT(&topBar, data->pos.x, data->pos.y) && data->buttons & MOUSE_LEFT)
+    {
+        window->moving = true;
+    }
+}
+
+static void win_background_procedure(win_t* window, const msg_t* msg)
+{
+    gfx_t gfx;
+    win_window_surface(window, &gfx);
+
+    switch (msg->type)
+    {
+    case MSG_MOUSE:
+    {
+        msg_mouse_t* data = (msg_mouse_t*)msg->data;
+
+        if (window->type == DWM_WINDOW)
+        {
+            win_handle_drag(window, data);
+        }
+
+        wmsg_mouse_t wmsg;
+        wmsg.buttons = data->buttons;
+        wmsg.pos = data->pos;
+        wmsg.deltaX = data->deltaX;
+        wmsg.deltaY = data->deltaY;
+        win_widget_send_all(window, WMSG_MOUSE, &wmsg, sizeof(wmsg_mouse_t));
+    }
+    break;
+    case MSG_SELECT:
+    {
+        window->selected = true;
+        if (window->type == DWM_WINDOW)
+        {
+            win_draw_topbar(window, &gfx);
+        }
+    }
+    break;
+    case MSG_DESELECT:
+    {
+        window->selected = false;
+        if (window->type == DWM_WINDOW)
+        {
+            win_draw_topbar(window, &gfx);
+        }
+    }
+    break;
+    case LMSG_REDRAW:
+    {
+        if (window->type == DWM_WINDOW)
+        {
+            win_draw_border_and_background(window, &gfx);
+            win_draw_topbar(window, &gfx);
+        }
+
+        win_widget_send_all(window, WMSG_REDRAW, NULL, 0);
+    }
+    break;
+    }
+
+    if (RECT_AREA(&gfx.invalidArea) != 0 &&
+        flush(window->fd, window->buffer, window->width * window->height * sizeof(pixel_t), &gfx.invalidArea) == ERR)
+    {
+        win_send(window, LMSG_QUIT, NULL, 0);
+    }
 }
 
 win_t* win_new(const char* name, dwm_type_t type, const rect_t* rect, win_proc_t procedure)
@@ -53,6 +266,7 @@ win_t* win_new(const char* name, dwm_type_t type, const rect_t* rect, win_proc_t
     strcpy(create.name, name);
     if (ioctl(window->fd, IOCTL_DWM_CREATE, &create, sizeof(ioctl_dwm_create_t)) == ERR)
     {
+        free(window);
         close(window->fd);
         return NULL;
     }
@@ -60,6 +274,7 @@ win_t* win_new(const char* name, dwm_type_t type, const rect_t* rect, win_proc_t
     window->buffer = calloc(create.width * create.height, sizeof(pixel_t));
     if (window->buffer == NULL)
     {
+        free(window);
         close(window->fd);
         return NULL;
     }
@@ -71,6 +286,13 @@ win_t* win_new(const char* name, dwm_type_t type, const rect_t* rect, win_proc_t
     window->procedure = procedure;
     strcpy(window->name, name);
     win_set_area(window, rect);
+    if (gfx_psf_load(&window->psf, WIN_DEFAULT_FONT) == ERR)
+    {
+        free(window);
+        free(window->buffer);
+        close(window->fd);
+        return NULL;
+    }
 
     win_send(window, LMSG_REDRAW, NULL, 0);
 
@@ -145,19 +367,19 @@ uint64_t win_dispatch(win_t* window, const msg_t* msg)
     return result;
 }
 
-uint64_t win_draw_begin(win_t* window, surface_t* surface)
+uint64_t win_draw_begin(win_t* window, gfx_t* gfx)
 {
-    win_client_surface(window, surface);
+    win_client_surface(window, gfx);
     return 0;
 }
 
-uint64_t win_draw_end(win_t* window, surface_t* surface)
+uint64_t win_draw_end(win_t* window, gfx_t* gfx)
 {
     rect_t rect = (rect_t){
-        .left = window->clientArea.left + surface->invalidArea.left,
-        .top = window->clientArea.top + surface->invalidArea.top,
-        .right = window->clientArea.left + surface->invalidArea.right,
-        .bottom = window->clientArea.top + surface->invalidArea.bottom,
+        .left = window->clientArea.left + gfx->invalidArea.left,
+        .top = window->clientArea.top + gfx->invalidArea.top,
+        .right = window->clientArea.left + gfx->invalidArea.right,
+        .bottom = window->clientArea.top + gfx->invalidArea.bottom,
     };
 
     if (flush(window->fd, window->buffer, window->width * window->height * sizeof(pixel_t), &rect) == ERR)
@@ -204,6 +426,11 @@ uint64_t win_move(win_t* window, const rect_t* rect)
     return 0;
 }
 
+const char* win_name(win_t* window)
+{
+    return window->name;
+}
+
 void win_screen_window_area(win_t* window, rect_t* rect)
 {
     *rect = RECT_INIT_DIM(window->pos.x, window->pos.y, window->width, window->height);
@@ -240,6 +467,17 @@ void win_window_to_client(win_t* window, point_t* point)
 {
     point->x -= window->clientArea.left;
     point->y -= window->clientArea.top;
+}
+
+gfx_psf_t* win_font(win_t* window)
+{
+    return &window->psf;
+}
+
+uint64_t win_font_set(win_t* window, const char* path)
+{
+    gfx_psf_cleanup(&window->psf);
+    return gfx_psf_load(&window->psf, path);
 }
 
 widget_t* win_widget_new(win_t* window, widget_proc_t procedure, const char* name, const rect_t* rect, widget_id_t id)

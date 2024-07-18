@@ -3,7 +3,7 @@
 #include <sys/proc.h>
 #include <sys/win.h>
 
-static fbmp_t* image;
+static gfx_fbmp_t* image;
 
 static uint64_t procedure(win_t* window, const msg_t* msg)
 {
@@ -11,13 +11,13 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
     {
     case LMSG_REDRAW:
     {
-        surface_t surface;
-        win_draw_begin(window, &surface);
+        gfx_t gfx;
+        win_draw_begin(window, &gfx);
 
         point_t point = {0};
-        gfx_fbmp(&surface, image, &point);
+        gfx_fbmp(&gfx, image, &point);
 
-        win_draw_end(window, &surface);
+        win_draw_end(window, &gfx);
     }
     break;
     }
@@ -27,7 +27,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
 
 int main(void)
 {
-    image = gfx_fbmp_new("/usr/cursor/arrow.fbmp");
+    image = gfx_fbmp_load("/usr/cursor/arrow.fbmp");
     if (image == NULL)
     {
         exit(EXIT_FAILURE);
