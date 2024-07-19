@@ -137,7 +137,7 @@ static void log_print_va(const char* string, va_list args)
     *out++ = '[';
     log_padd_number(&out, 11, ' ', sec);
     *out++ = '.';
-    log_padd_number(&out, 4, '0', ms);
+    log_padd_number(&out, 3, '0', ms);
     *out++ = ']';
     *out++ = ' ';
 

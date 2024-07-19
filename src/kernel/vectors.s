@@ -42,9 +42,6 @@ vector_common:
     mov rdi, rsp
     call trap_handler
 
-    mov rdi, rsp
-    call sched_schedule
-
     pop r15
     pop r14
     pop r13

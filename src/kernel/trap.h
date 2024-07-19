@@ -30,8 +30,8 @@ typedef struct PACKED
     uint64_t ss;
 } trap_frame_t;
 
-void interrupts_disable(void);
+void cli_push(void);
 
-void interrupts_enable(void);
+void cli_pop(void);
 
 void trap_handler(trap_frame_t* trapFrame);

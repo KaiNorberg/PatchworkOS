@@ -280,12 +280,12 @@ cpu_t* smp_self_brute(void)
 
 cpu_t* smp_self(void)
 {
-    interrupts_disable();
+    cli_push();
 
     return cpus[msr_read(MSR_CPU_ID)];
 }
 
 void smp_put(void)
 {
-    interrupts_enable();
+    cli_pop();
 }

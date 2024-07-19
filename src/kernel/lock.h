@@ -23,7 +23,7 @@ static inline void lock_init(lock_t* lock)
 
 static inline void lock_acquire(lock_t* lock)
 {
-    interrupts_disable();
+    cli_push();
 
     // Overflow does not matter
     uint32_t ticket = atomic_fetch_add(&lock->nextTicket, 1);
@@ -37,7 +37,7 @@ static inline void lock_release(lock_t* lock)
 {
     atomic_fetch_add(&lock->nowServing, 1);
 
-    interrupts_enable();
+    cli_pop();
 }
 
 static inline void lock_cleanup(lock_t** lock)

@@ -9,17 +9,15 @@
 #include "smp.h"
 #include "vectors.h"
 
-void interrupts_disable(void)
+void cli_push(void)
 {
-    // Race condition does not matter
-
     if (!smp_initialized())
     {
         return;
     }
 
+    // Race condition does not matter
     uint64_t rflags = rflags_read();
-
     asm volatile("cli");
 
     cpu_t* cpu = smp_self_unsafe();
@@ -30,7 +28,7 @@ void interrupts_disable(void)
     cpu->cliAmount++;
 }
 
-void interrupts_enable(void)
+void cli_pop(void)
 {
     if (!smp_initialized())
     {
@@ -39,8 +37,10 @@ void interrupts_enable(void)
 
     cpu_t* cpu = smp_self_unsafe();
 
+    LOG_ASSERT(cpu->cliAmount != 0, "cli amount underflow");
+
     cpu->cliAmount--;
-    if (cpu->cliAmount == 0 && cpu->prevFlags & RFLAGS_INTERRUPT_ENABLE && cpu->trapDepth == 0)
+    if (cpu->cliAmount == 0 && cpu->prevFlags & RFLAGS_INTERRUPT_ENABLE)
     {
         asm volatile("sti");
     }
@@ -75,25 +75,26 @@ static void ipi_handler(trap_frame_t* trapFrame)
     lapic_eoi();
 }
 
-static void trap_begin(void)
+static void trap_begin(cpu_t* cpu)
 {
-    smp_self_unsafe()->trapDepth++;
+    cpu->trapDepth++;
 }
 
-static void trap_end(void)
+static void trap_end(cpu_t* cpu)
 {
-    smp_self_unsafe()->trapDepth--;
+    cpu->trapDepth--;
 }
 
 void trap_handler(trap_frame_t* trapFrame)
 {
     cpu_t* cpu = smp_self_unsafe();
+
     if (trapFrame->vector < IRQ_BASE)
     {
         exception_handler(trapFrame);
     }
 
-    trap_begin();
+    trap_begin(cpu);
 
     if (trapFrame->vector >= IRQ_BASE && trapFrame->vector < IRQ_BASE + IRQ_AMOUNT)
     {
@@ -105,16 +106,17 @@ void trap_handler(trap_frame_t* trapFrame)
     }
     else if (trapFrame->vector == VECTOR_SCHED_TIMER)
     {
+        sched_schedule(trapFrame);
         lapic_eoi();
     }
     else if (trapFrame->vector == VECTOR_SCHED_INVOKE)
     {
-        // Does nothing, scheduling happens in vector_common
+        sched_schedule(trapFrame);
     }
     else
     {
         log_panic(trapFrame, "Unknown vector");
     }
 
-    trap_end();
+    trap_end(cpu);
 }

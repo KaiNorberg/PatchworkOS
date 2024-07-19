@@ -296,7 +296,7 @@ void sched_process_exit(uint64_t status)
     log_print("sched: process exit (%d)", context->runThread->process->id);
     smp_put();
 
-    sched_yield();
+    sched_invoke();
     log_panic(NULL, "returned from process_exit");
 }
 
@@ -306,7 +306,7 @@ void sched_thread_exit(void)
     context->runThread->killed = true;
     smp_put();
 
-    sched_yield();
+    sched_invoke();
     log_panic(NULL, "returned from thread_exit");
 }
 
@@ -377,31 +377,19 @@ void sched_schedule(trap_frame_t* trapFrame)
     cpu_t* self = smp_self_unsafe();
     sched_context_t* context = &self->sched;
 
-    if (self->trapDepth != 0)
+    if (self->trapDepth > 1)
     {
-        smp_put();
         return;
     }
 
-    if (self->id == smp_cpu_amount() - 1) // Last cpu handles blockers, this is not ideal
-    {
-        sched_update_blockers();
-    }
+    sched_update_blockers();
     sched_update_graveyard(trapFrame, context);
 
     if (context->runThread == NULL)
     {
         thread_t* next = sched_context_find_any(context);
-        if (next == NULL)
-        {
-            thread_load(NULL, trapFrame);
-            context->runThread = NULL;
-        }
-        else
-        {
-            thread_load(next, trapFrame);
-            context->runThread = next;
-        }
+        thread_load(next, trapFrame);
+        context->runThread = next;
     }
     else
     {
