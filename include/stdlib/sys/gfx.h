@@ -49,7 +49,7 @@ typedef struct gfx
     uint32_t width;
     uint32_t height;
     uint32_t stride;
-    rect_t invalidArea;
+    rect_t invalidRect;
 } gfx_t;
 
 #define RECT_INIT_GFX(gfx) \

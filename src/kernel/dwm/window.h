@@ -26,8 +26,8 @@ typedef struct window
 #define WINDOW_RECT(window) RECT_INIT_DIM(window->pos.x, window->pos.y, window->gfx.width, window->gfx.height);
 
 #define WINDOW_INVALID_RECT(window) \
-    RECT_INIT_DIM(window->pos.x + window->gfx.invalidArea.left, window->pos.y + window->gfx.invalidArea.top, \
-        RECT_WIDTH(&window->gfx.invalidArea), RECT_HEIGHT(&window->gfx.invalidArea));
+    RECT_INIT_DIM(window->pos.x + window->gfx.invalidRect.left, window->pos.y + window->gfx.invalidRect.top, \
+        RECT_WIDTH(&window->gfx.invalidRect), RECT_HEIGHT(&window->gfx.invalidRect));
 
 window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, dwm_type_t type, void (*cleanup)(window_t*));
 

@@ -146,7 +146,7 @@ window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, dwm_ty
     window->gfx.width = width;
     window->gfx.height = height;
     window->gfx.stride = width;
-    window->gfx.invalidArea = RECT_INIT_DIM(0, 0, width, height);
+    window->gfx.invalidRect = RECT_INIT_DIM(0, 0, width, height);
     window->invalid = false;
     window->moved = false;
     window->shown = false;

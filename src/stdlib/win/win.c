@@ -24,7 +24,7 @@ typedef struct win
     point_t pos;
     uint32_t width;
     uint32_t height;
-    rect_t clientArea;
+    rect_t clientRect;
     dwm_type_t type;
     win_proc_t procedure;
     list_t widgets;
@@ -45,7 +45,7 @@ typedef struct widget
     msg_t messages[WIN_WIDGET_MAX_MSG];
     uint8_t writeIndex;
     uint8_t readIndex;
-    char name[DWM_MAX_NAME];
+    char* name;
 } widget_t;
 
 // TODO: this should be stored in some sort of config file, lua? make something custom?
@@ -54,7 +54,7 @@ win_theme_t theme = {
     .edgeWidth = 3,
     .rimWidth = 3,
     .ridgeWidth = 2,
-    .highlight = 0xFFFCFCFC,
+    .highlight = 0xFFE0E0E0,
     .shadow = 0xFF6F6F6F,
     .bright = 0xFFFFFFFF,
     .dark = 0xFF000000,
@@ -67,21 +67,21 @@ win_theme_t theme = {
 
 static uint64_t win_widget_dispatch(widget_t* widget, const msg_t* msg);
 
-static uint64_t win_set_area(win_t* window, const rect_t* rect)
+static uint64_t win_set_rect(win_t* window, const rect_t* rect)
 {
     window->pos = (point_t){.x = rect->left, .y = rect->top};
     window->width = RECT_WIDTH(rect);
     window->height = RECT_HEIGHT(rect);
 
-    window->clientArea = RECT_INIT_DIM(0, 0, window->width, window->height);
-    win_shrink_to_client(&window->clientArea, window->type);
+    window->clientRect = RECT_INIT_DIM(0, 0, window->width, window->height);
+    win_shrink_to_client(&window->clientRect, window->type);
 
     return 0;
 }
 
 static inline void win_window_surface(win_t* window, gfx_t* gfx)
 {
-    gfx->invalidArea = (rect_t){0};
+    gfx->invalidRect = (rect_t){0};
     gfx->buffer = window->buffer;
     gfx->width = window->width;
     gfx->height = window->height;
@@ -90,12 +90,11 @@ static inline void win_window_surface(win_t* window, gfx_t* gfx)
 
 static inline void win_client_surface(win_t* window, gfx_t* gfx)
 {
-    gfx->invalidArea = (rect_t){0};
-    gfx->width = RECT_WIDTH(&window->clientArea);
-    gfx->height = RECT_HEIGHT(&window->clientArea);
+    gfx->invalidRect = (rect_t){0};
+    gfx->width = RECT_WIDTH(&window->clientRect);
+    gfx->height = RECT_HEIGHT(&window->clientRect);
     gfx->stride = window->width;
-    gfx->buffer = (pixel_t*)((uint64_t)window->buffer + (window->clientArea.left * sizeof(pixel_t)) +
-        (window->clientArea.top * gfx->stride * sizeof(pixel_t)));
+    gfx->buffer = &window->buffer[window->clientRect.left + window->clientRect.top * gfx->stride];
 }
 
 static void win_draw_close_button(win_t* window, gfx_t* gfx, const rect_t* topbar)
@@ -136,17 +135,17 @@ static void win_draw_topbar(win_t* window, gfx_t* gfx)
 
     rect.left += theme.topbarPadding * 3;
     rect.right -= theme.topbarHeight;
-    gfx_psf(gfx, &window->psf, &rect, GFX_MIN, GFX_CENTER, 16, "Calculator", theme.background, 0);
+    gfx_psf(gfx, &window->psf, &rect, GFX_MIN, GFX_CENTER, 16, window->name, theme.background, 0);
 }
 
 static void win_draw_border_and_background(win_t* window, gfx_t* gfx)
 {
     if (window->type == DWM_WINDOW)
     {
-        rect_t localArea = RECT_INIT_GFX(gfx);
+        rect_t localRect = RECT_INIT_GFX(gfx);
 
-        gfx_rect(gfx, &localArea, theme.background);
-        gfx_edge(gfx, &localArea, theme.edgeWidth, theme.bright, theme.dark);
+        gfx_rect(gfx, &localRect, theme.background);
+        gfx_edge(gfx, &localRect, theme.edgeWidth, theme.bright, theme.dark);
     }
 }
 
@@ -230,8 +229,8 @@ static void win_background_procedure(win_t* window, const msg_t* msg)
     break;
     }
 
-    if (RECT_AREA(&gfx.invalidArea) != 0 &&
-        flush(window->fd, window->buffer, window->width * window->height * sizeof(pixel_t), &gfx.invalidArea) == ERR)
+    if (RECT_AREA(&gfx.invalidRect) != 0 &&
+        flush(window->fd, window->buffer, window->width * window->height * sizeof(pixel_t), &gfx.invalidRect) == ERR)
     {
         win_send(window, LMSG_QUIT, NULL, 0);
     }
@@ -285,7 +284,7 @@ win_t* win_new(const char* name, dwm_type_t type, const rect_t* rect, win_proc_t
     window->moving = false;
     window->procedure = procedure;
     strcpy(window->name, name);
-    win_set_area(window, rect);
+    win_set_rect(window, rect);
     if (gfx_psf_load(&window->psf, WIN_DEFAULT_FONT) == ERR)
     {
         free(window);
@@ -294,6 +293,7 @@ win_t* win_new(const char* name, dwm_type_t type, const rect_t* rect, win_proc_t
         return NULL;
     }
 
+    win_send(window, LMSG_INIT, NULL, 0);
     win_send(window, LMSG_REDRAW, NULL, 0);
 
     return window;
@@ -306,11 +306,11 @@ uint64_t win_free(win_t* window)
         return ERR;
     }
 
+    widget_t* temp;
     widget_t* widget;
-    LIST_FOR_EACH(widget, &window->widgets)
+    LIST_FOR_EACH_SAFE(widget, temp, &window->widgets)
     {
-        msg_t msg = {.type = WMSG_FREE};
-        win_widget_dispatch(widget, &msg);
+        win_widget_free(widget);
     }
 
     free(window->buffer);
@@ -376,10 +376,10 @@ uint64_t win_draw_begin(win_t* window, gfx_t* gfx)
 uint64_t win_draw_end(win_t* window, gfx_t* gfx)
 {
     rect_t rect = (rect_t){
-        .left = window->clientArea.left + gfx->invalidArea.left,
-        .top = window->clientArea.top + gfx->invalidArea.top,
-        .right = window->clientArea.left + gfx->invalidArea.right,
-        .bottom = window->clientArea.top + gfx->invalidArea.bottom,
+        .left = window->clientRect.left + gfx->invalidRect.left,
+        .top = window->clientRect.top + gfx->invalidRect.top,
+        .right = window->clientRect.left + gfx->invalidRect.right,
+        .bottom = window->clientRect.top + gfx->invalidRect.bottom,
     };
 
     if (flush(window->fd, window->buffer, window->width * window->height * sizeof(pixel_t), &rect) == ERR)
@@ -421,7 +421,7 @@ uint64_t win_move(win_t* window, const rect_t* rect)
         win_send(window, LMSG_REDRAW, NULL, 0);
     }
 
-    win_set_area(window, rect);
+    win_set_rect(window, rect);
 
     return 0;
 }
@@ -431,24 +431,24 @@ const char* win_name(win_t* window)
     return window->name;
 }
 
-void win_screen_window_area(win_t* window, rect_t* rect)
+void win_screen_window_rect(win_t* window, rect_t* rect)
 {
     *rect = RECT_INIT_DIM(window->pos.x, window->pos.y, window->width, window->height);
 }
 
-void win_screen_client_area(win_t* window, rect_t* rect)
+void win_screen_client_rect(win_t* window, rect_t* rect)
 {
     *rect = (rect_t){
-        .left = window->pos.x + window->clientArea.left,
-        .top = window->pos.y + window->clientArea.top,
-        .right = window->pos.x + window->clientArea.right,
-        .bottom = window->pos.y + window->clientArea.bottom,
+        .left = window->pos.x + window->clientRect.left,
+        .top = window->pos.y + window->clientRect.top,
+        .right = window->pos.x + window->clientRect.right,
+        .bottom = window->pos.y + window->clientRect.bottom,
     };
 }
 
-void win_client_area(win_t* window, rect_t* rect)
+void win_client_rect(win_t* window, rect_t* rect)
 {
-    *rect = window->clientArea;
+    *rect = window->clientRect;
 }
 
 void win_screen_to_window(win_t* window, point_t* point)
@@ -459,14 +459,14 @@ void win_screen_to_window(win_t* window, point_t* point)
 
 void win_screen_to_client(win_t* window, point_t* point)
 {
-    point->x -= window->pos.x + window->clientArea.left;
-    point->y -= window->pos.y + window->clientArea.top;
+    point->x -= window->pos.x + window->clientRect.left;
+    point->y -= window->pos.y + window->clientRect.top;
 }
 
 void win_window_to_client(win_t* window, point_t* point)
 {
-    point->x -= window->clientArea.left;
-    point->y -= window->clientArea.top;
+    point->x -= window->clientRect.left;
+    point->y -= window->clientRect.top;
 }
 
 gfx_psf_t* win_font(win_t* window)
@@ -480,9 +480,27 @@ uint64_t win_font_set(win_t* window, const char* path)
     return gfx_psf_load(&window->psf, path);
 }
 
+widget_t* win_widget(win_t* window, widget_id_t id)
+{
+    widget_t* widget;
+    LIST_FOR_EACH(widget, &window->widgets)
+    {
+        if (widget->id == id)
+        {
+            return widget;
+        }
+        if (widget->id > id)
+        {
+            return NULL;
+        }
+    }
+
+    return NULL;
+}
+
 widget_t* win_widget_new(win_t* window, widget_proc_t procedure, const char* name, const rect_t* rect, widget_id_t id)
 {
-    if (strlen(name) >= DWM_MAX_NAME)
+    if (win_widget(window, id) != NULL)
     {
         return NULL;
     }
@@ -496,12 +514,23 @@ widget_t* win_widget_new(win_t* window, widget_proc_t procedure, const char* nam
     widget->private = NULL;
     widget->readIndex = 0;
     widget->writeIndex = 0;
+    widget->name = malloc(strlen(name) + 1);
     strcpy(widget->name, name);
-    list_push(&window->widgets, widget);
 
     win_widget_send(widget, WMSG_INIT, NULL, 0);
     win_widget_send(widget, WMSG_REDRAW, NULL, 0);
 
+    widget_t* other;
+    LIST_FOR_EACH(other, &window->widgets)
+    {
+        if (other->id > widget->id)
+        {
+            list_prepend(&other->base, widget);
+            return widget;
+        }
+    }
+
+    list_push(&window->widgets, widget);
     return widget;
 }
 
@@ -511,6 +540,7 @@ void win_widget_free(widget_t* widget)
     win_widget_dispatch(widget, &freeMsg);
 
     list_remove(widget);
+    free(widget->name);
     free(widget);
 }
 
@@ -554,6 +584,14 @@ const char* win_widget_name(widget_t* widget)
     return widget->name;
 }
 
+void win_widget_name_set(widget_t* widget, const char* name)
+{
+    widget->name = realloc(widget->name, strlen(name) + 1);
+    strcpy(widget->name, name);
+
+    win_widget_send(widget, WMSG_REDRAW, NULL, 0);
+}
+
 void* win_widget_private(widget_t* widget)
 {
     return widget->private;
@@ -594,25 +632,25 @@ void win_theme(win_theme_t* out)
     *out = theme;
 }
 
-void win_expand_to_window(rect_t* clientArea, dwm_type_t type)
+void win_expand_to_window(rect_t* clientRect, dwm_type_t type)
 {
     if (type == DWM_WINDOW)
     {
-        clientArea->left -= theme.edgeWidth;
-        clientArea->top -= theme.edgeWidth + theme.topbarHeight + theme.topbarPadding;
-        clientArea->right += theme.edgeWidth;
-        clientArea->bottom += theme.edgeWidth;
+        clientRect->left -= theme.edgeWidth;
+        clientRect->top -= theme.edgeWidth + theme.topbarHeight + theme.topbarPadding;
+        clientRect->right += theme.edgeWidth;
+        clientRect->bottom += theme.edgeWidth;
     }
 }
 
-void win_shrink_to_client(rect_t* windowArea, dwm_type_t type)
+void win_shrink_to_client(rect_t* windowRect, dwm_type_t type)
 {
     if (type == DWM_WINDOW)
     {
-        windowArea->left += theme.edgeWidth;
-        windowArea->top += theme.edgeWidth + theme.topbarHeight + theme.topbarPadding;
-        windowArea->right -= theme.edgeWidth;
-        windowArea->bottom -= theme.edgeWidth;
+        windowRect->left += theme.edgeWidth;
+        windowRect->top += theme.edgeWidth + theme.topbarHeight + theme.topbarPadding;
+        windowRect->right -= theme.edgeWidth;
+        windowRect->bottom -= theme.edgeWidth;
     }
 }
 

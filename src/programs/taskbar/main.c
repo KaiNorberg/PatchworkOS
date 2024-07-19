@@ -15,7 +15,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         win_theme_t theme;
         win_theme(&theme);
         rect_t rect;
-        win_client_area(window, &rect);
+        win_client_rect(window, &rect);
 
         gfx_rect(&gfx, &rect, theme.background);
         rect.bottom = rect.top + theme.edgeWidth;

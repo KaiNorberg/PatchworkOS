@@ -40,7 +40,7 @@ void cli_pop(void)
     LOG_ASSERT(cpu->cliAmount != 0, "cli amount underflow");
 
     cpu->cliAmount--;
-    if (cpu->cliAmount == 0 && cpu->prevFlags & RFLAGS_INTERRUPT_ENABLE)
+    if (cpu->cliAmount == 0 && cpu->prevFlags & RFLAGS_INTERRUPT_ENABLE && cpu->trapDepth == 0)
     {
         asm volatile("sti");
     }

@@ -18,20 +18,16 @@ typedef struct
 } rect_subtract_t;
 
 #define RECT_INIT(left, top, right, bottom) \
-    (rect_t){ \
-        left, \
-        top, \
-        right, \
-        bottom, \
-    };
+    (rect_t) \
+    { \
+        left, top, right, bottom, \
+    }
 
 #define RECT_INIT_DIM(x, y, width, height) \
-    (rect_t){ \
-        (x), \
-        (y), \
-        (x) + (width), \
-        (y) + (height), \
-    };
+    (rect_t) \
+    { \
+        (x), (y), (x) + (width), (y) + (height), \
+    }
 
 #define RECT_WIDTH(rect) ((rect)->right - (rect)->left)
 #define RECT_HEIGHT(rect) ((rect)->bottom - (rect)->top)

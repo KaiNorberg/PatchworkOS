@@ -9,12 +9,7 @@
 typedef struct
 {
     bool pressed;
-    char* label;
-    uint64_t height;
-    pixel_t foreground;
-    pixel_t background;
-    gfx_align_t xAlign;
-    gfx_align_t yAlign;
+    win_text_prop_t props;
 } button_t;
 
 static void button_draw(widget_t* widget, win_t* window, bool redraw)
@@ -34,13 +29,6 @@ static void button_draw(widget_t* widget, win_t* window, bool redraw)
     }
     RECT_SHRINK(&rect, theme.rimWidth);
 
-    if (redraw)
-    {
-        gfx_rect(&gfx, &rect, theme.background);
-        gfx_psf(&gfx, win_font(window), &rect, button->xAlign, button->yAlign, button->height, button->label, button->foreground,
-            button->background);
-    }
-
     if (button->pressed)
     {
         gfx_edge(&gfx, &rect, theme.edgeWidth, theme.shadow, theme.highlight);
@@ -49,11 +37,19 @@ static void button_draw(widget_t* widget, win_t* window, bool redraw)
     {
         gfx_edge(&gfx, &rect, theme.edgeWidth, theme.highlight, theme.shadow);
     }
+    RECT_SHRINK(&rect, theme.edgeWidth);
+
+    if (redraw)
+    {
+        gfx_rect(&gfx, &rect, theme.background);
+        gfx_psf(&gfx, win_font(window), &rect, button->props.xAlign, button->props.yAlign, button->props.height,
+            win_widget_name(widget), button->props.foreground, button->props.background);
+    }
 
     win_draw_end(window, &gfx);
 }
 
-uint64_t win_widget_button(widget_t* widget, win_t* window, const msg_t* msg)
+uint64_t win_button_proc(widget_t* widget, win_t* window, const msg_t* msg)
 {
     switch (msg->type)
     {
@@ -61,43 +57,21 @@ uint64_t win_widget_button(widget_t* widget, win_t* window, const msg_t* msg)
     {
         button_t* button = malloc(sizeof(button_t));
         button->pressed = false;
-        button->height = 16;
-        button->background = 0;
-        button->foreground = 0xFF000000;
-        button->xAlign = GFX_CENTER;
-        button->yAlign = GFX_CENTER;
-
-        const char* label = win_widget_name(widget);
-        button->label = malloc(strlen(label) + 1);
-        strcpy(button->label, label);
-
+        button->props = WIN_TEXT_PROP_DEFAULT();
         win_widget_private_set(widget, button);
     }
     break;
     case WMSG_FREE:
     {
         button_t* button = win_widget_private(widget);
-
-        free(button->label);
-        free(win_widget_private(widget));
+        free(button);
     }
     break;
-    case WMSG_SET_TEXT:
+    case WMSG_TEXT_PROP:
     {
-        wmsg_set_text* data = (wmsg_set_text*)msg->data;
+        wmsg_text_prop_t* data = (wmsg_text_prop_t*)msg->data;
         button_t* button = win_widget_private(widget);
-
-        if (data->text != NULL)
-        {
-            button->label = realloc(button->label, strlen(data->text) + 1);
-            strcpy(button->label, data->text);
-        }
-
-        button->height = data->height;
-        button->foreground = data->foreground;
-        button->background = data->background;
-        button->xAlign = data->xAlign;
-        button->yAlign = data->yAlign;
+        button->props = *data;
     }
     break;
     case WMSG_MOUSE:

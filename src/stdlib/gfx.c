@@ -230,7 +230,7 @@ void gfx_psf(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t x
     {
     case GFX_CENTER:
     {
-        point.y = MAX(rect->top, (rect->bottom + rect->top) / 2 - (int64_t)height / 2);
+        point.y = MAX(rect->top, (rect->bottom + rect->top - (int64_t)height) / 2);
     }
     break;
     case GFX_MAX:
@@ -447,15 +447,15 @@ void gfx_swap(gfx_t* dest, const gfx_t* src, const rect_t* rect)
 
 void gfx_invalidate(gfx_t* gfx, const rect_t* rect)
 {
-    if (RECT_AREA(&gfx->invalidArea) == 0)
+    if (RECT_AREA(&gfx->invalidRect) == 0)
     {
-        gfx->invalidArea = *rect;
+        gfx->invalidRect = *rect;
     }
     else
     {
-        gfx->invalidArea.left = MIN(gfx->invalidArea.left, rect->left);
-        gfx->invalidArea.top = MIN(gfx->invalidArea.top, rect->top);
-        gfx->invalidArea.right = MAX(gfx->invalidArea.right, rect->right);
-        gfx->invalidArea.bottom = MAX(gfx->invalidArea.bottom, rect->bottom);
+        gfx->invalidRect.left = MIN(gfx->invalidRect.left, rect->left);
+        gfx->invalidRect.top = MIN(gfx->invalidRect.top, rect->top);
+        gfx->invalidRect.right = MAX(gfx->invalidRect.right, rect->right);
+        gfx->invalidRect.bottom = MAX(gfx->invalidRect.bottom, rect->bottom);
     }
 }

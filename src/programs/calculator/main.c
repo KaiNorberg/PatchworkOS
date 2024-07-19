@@ -1,31 +1,119 @@
-#include "sys/gfx.h"
 #include <stdint.h>
 #include <stdlib.h>
+#include <sys/gfx.h>
 #include <sys/keyboard.h>
 #include <sys/proc.h>
 #include <sys/win.h>
 
-#define WINDOW_WIDTH 350
-#define WINDOW_HEIGHT 400
+#define WINDOW_WIDTH 275
+#define WINDOW_HEIGHT 330
 
-#define BUTTON_WIDTH 200
-#define BUTTON_HEIGHT 100
+#define NUMPAD_COLUMNS 4
+#define NUMPAD_ROWS 4
+#define NUMPAD_PADDING 6
+#define NUMPAD_BUTTON_WIDTH ((WINDOW_WIDTH - NUMPAD_PADDING * (NUMPAD_ROWS + 1)) / NUMPAD_ROWS)
+#define NUMPAD_WIDTH (NUMPAD_PADDING * (NUMPAD_ROWS + 1) + NUMPAD_BUTTON_WIDTH * NUMPAD_ROWS)
 
-#define BUTTON_ID 1
+#define LABEL_ID 1234
+
+static void numpad_button_create(win_t* window, uint64_t column, uint64_t row, const char* name, widget_id_t id)
+{
+    rect_t rect = RECT_INIT_DIM(NUMPAD_PADDING * (column + 1) + NUMPAD_BUTTON_WIDTH * column,
+        WINDOW_HEIGHT - NUMPAD_WIDTH + NUMPAD_PADDING * (row + 1) + NUMPAD_BUTTON_WIDTH * row, NUMPAD_BUTTON_WIDTH,
+        NUMPAD_BUTTON_WIDTH);
+    widget_t* button = win_widget_new(window, win_button_proc, name, &rect, id);
+
+    wmsg_text_prop_t textProperties = {.height = 32, .foreground = 0xFF000000};
+    win_widget_send(button, WMSG_TEXT_PROP, &textProperties, sizeof(wmsg_text_prop_t));
+}
 
 static uint64_t procedure(win_t* window, const msg_t* msg)
 {
+    static uint64_t input;
+    static uint64_t accumulator;
+    static char operation;
+
     switch (msg->type)
     {
+    case LMSG_INIT:
+    {
+        input = 0;
+        accumulator = 0;
+        operation = '=';
+
+        for (uint64_t column = 0; column < 3; column++)
+        {
+            for (uint64_t row = 0; row < 3; row++)
+            {
+                widget_id_t id = 9 - ((2 - column) + row * 3);
+                char name[2] = {'0' + id, '\0'};
+
+                numpad_button_create(window, column, row, name, id);
+            }
+        }
+        numpad_button_create(window, 1, 3, "0", 0);
+
+        numpad_button_create(window, 3, 0, "/", '/');
+        numpad_button_create(window, 3, 1, "*", '*');
+        numpad_button_create(window, 3, 2, "-", '-');
+        numpad_button_create(window, 3, 3, "+", '+');
+
+        numpad_button_create(window, 0, 3, "<", '<');
+        numpad_button_create(window, 2, 3, "=", '=');
+
+        win_theme_t theme;
+        win_theme(&theme);
+
+        rect_t labelRect = RECT_INIT_DIM(NUMPAD_PADDING, NUMPAD_PADDING, WINDOW_WIDTH - NUMPAD_PADDING * 2,
+            WINDOW_HEIGHT - NUMPAD_WIDTH - NUMPAD_PADDING * 2);
+        widget_t* label = win_widget_new(window, win_label_proc, "0", &labelRect, LABEL_ID);
+
+        wmsg_text_prop_t textProperties = {.height = 32, .foreground = theme.dark, .xAlign = GFX_MAX, .yAlign = GFX_CENTER};
+        win_widget_send(label, WMSG_TEXT_PROP, &textProperties, sizeof(wmsg_text_prop_t));
+    }
+    break;
     case LMSG_BUTTON:
     {
         lmsg_button_t* data = (lmsg_button_t*)msg->data;
         if (!data->pressed)
         {
-            if (data->id == BUTTON_ID)
+            if (data->id <= 9)
             {
-                spawn("calculator.elf");
+                input *= 10;
+                input += data->id;
             }
+            else if (data->id == '<')
+            {
+                input /= 10;
+            }
+            else
+            {
+                switch (operation)
+                {
+                case '/':
+                    accumulator /= input;
+                    break;
+                case '*':
+                    accumulator *= input;
+                    break;
+                case '-':
+                    accumulator -= input;
+                    break;
+                case '+':
+                    accumulator += input;
+                    break;
+                case '=':
+                    accumulator = input;
+                    break;
+                }
+                input = 0;
+
+                operation = data->id;
+            }
+
+            char buffer[32];
+            ulltoa(data->id == '=' ? accumulator : input, buffer, 10);
+            win_widget_name_set(win_widget(window, LABEL_ID), buffer);
         }
     }
     break;
@@ -44,12 +132,6 @@ int main(void)
     {
         return EXIT_FAILURE;
     }
-
-    rect_t buttonRect = RECT_INIT_DIM(WINDOW_WIDTH / 2 - BUTTON_WIDTH / 2, 100, BUTTON_WIDTH, BUTTON_HEIGHT);
-    widget_t* button = win_widget_new(window, win_widget_button, "Press Me!", &buttonRect, BUTTON_ID);
-
-    wmsg_set_text setText = {.height = 32, .foreground = 0xFF000000, .background = 0};
-    win_widget_send(button, WMSG_SET_TEXT, &setText, sizeof(wmsg_set_text));
 
     msg_t msg = {0};
     while (msg.type != LMSG_QUIT)

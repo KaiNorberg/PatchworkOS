@@ -43,6 +43,21 @@ typedef struct win_theme
     uint8_t topbarPadding;
 } win_theme_t;
 
+typedef struct win_text_prop
+{
+    uint64_t height;
+    pixel_t foreground;
+    pixel_t background;
+    gfx_align_t xAlign;
+    gfx_align_t yAlign;
+} win_text_prop_t;
+
+#define WIN_TEXT_PROP_DEFAULT() \
+    (win_text_prop_t) \
+    { \
+        .height = 16, .foreground = 0xFF000000, .background = 0, .xAlign = GFX_CENTER, .yAlign = GFX_CENTER, \
+    }
+
 // Library messages
 typedef struct
 {
@@ -60,9 +75,10 @@ typedef struct
 } lmsg_button_t;
 
 #define LMSG_BASE (1 << 14)
-#define LMSG_QUIT (LMSG_BASE + 1)
-#define LMSG_REDRAW (LMSG_BASE + 2)
-#define LMSG_BUTTON (LMSG_BASE + 3)
+#define LMSG_INIT (LMSG_BASE + 1)
+#define LMSG_QUIT (LMSG_BASE + 2)
+#define LMSG_REDRAW (LMSG_BASE + 3)
+#define LMSG_BUTTON (LMSG_BASE + 4)
 
 // Widget messages
 typedef struct
@@ -73,22 +89,14 @@ typedef struct
     int16_t deltaY;
 } wmsg_mouse_t;
 
-typedef struct
-{
-    const char* text;
-    uint64_t height;
-    pixel_t foreground;
-    pixel_t background;
-    gfx_align_t xAlign;
-    gfx_align_t yAlign;
-} wmsg_set_text;
+typedef win_text_prop_t wmsg_text_prop_t;
 
 #define WMSG_BASE (1 << 15)
 #define WMSG_INIT (WMSG_BASE + 0)
 #define WMSG_FREE (WMSG_BASE + 1)
 #define WMSG_REDRAW (WMSG_BASE + 2)
 #define WMSG_MOUSE (WMSG_BASE + 3)
-#define WMSG_SET_TEXT (WMSG_BASE + 4)
+#define WMSG_TEXT_PROP (WMSG_BASE + 4)
 
 // User messages
 #define UMSG_BASE ((1 << 15) | (1 << 14))
@@ -114,11 +122,11 @@ uint64_t win_move(win_t* window, const rect_t* rect);
 
 const char* win_name(win_t* window);
 
-void win_screen_window_area(win_t* window, rect_t* rect);
+void win_screen_window_rect(win_t* window, rect_t* rect);
 
-void win_screen_client_area(win_t* window, rect_t* rect);
+void win_screen_client_rect(win_t* window, rect_t* rect);
 
-void win_client_area(win_t* window, rect_t* rect);
+void win_client_rect(win_t* window, rect_t* rect);
 
 void win_screen_to_window(win_t* window, point_t* point);
 
@@ -129,6 +137,8 @@ void win_window_to_client(win_t* window, point_t* point);
 gfx_psf_t* win_font(win_t* window);
 
 uint64_t win_font_set(win_t* window, const char* path);
+
+widget_t* win_widget(win_t* window, widget_id_t id);
 
 widget_t* win_widget_new(win_t* window, widget_proc_t procedure, const char* name, const rect_t* rect, widget_id_t id);
 
@@ -144,6 +154,8 @@ widget_id_t win_widget_id(widget_t* widget);
 
 const char* win_widget_name(widget_t* widget);
 
+void win_widget_name_set(widget_t* widget, const char* name);
+
 void* win_widget_private(widget_t* widget);
 
 void win_widget_private_set(widget_t* widget, void* private);
@@ -152,11 +164,13 @@ uint64_t win_screen_rect(rect_t* rect);
 
 void win_theme(win_theme_t* out);
 
-void win_expand_to_window(rect_t* clientArea, dwm_type_t type);
+void win_expand_to_window(rect_t* clientRect, dwm_type_t type);
 
-void win_shrink_to_client(rect_t* windowArea, dwm_type_t type);
+void win_shrink_to_client(rect_t* windowRect, dwm_type_t type);
 
-uint64_t win_widget_button(widget_t* widget, win_t* window, const msg_t* msg);
+uint64_t win_button_proc(widget_t* widget, win_t* window, const msg_t* msg);
+
+uint64_t win_label_proc(widget_t* widget, win_t* window, const msg_t* msg);
 
 #if defined(__cplusplus)
 }
