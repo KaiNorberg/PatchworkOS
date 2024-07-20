@@ -28,8 +28,8 @@ int main(void)
 {
     rect_t rect;
     win_screen_rect(&rect);
-    win_t* wallpaper = win_new("Wallpaper", DWM_WALL, &rect, procedure);
-    if (wallpaper == NULL)
+    win_t* wall = win_new("Wallpaper", &rect, DWM_WALL, WIN_NONE, procedure);
+    if (wall == NULL)
     {
         return EXIT_FAILURE;
     }
@@ -38,8 +38,8 @@ int main(void)
     msg_t msg = {0};
     while (msg.type != LMSG_QUIT && msg.type != LMSG_REDRAW)
     {
-        win_receive(wallpaper, &msg, NEVER);
-        procedure(wallpaper, &msg);
+        win_receive(wall, &msg, NEVER);
+        procedure(wall, &msg);
     }
 
     spawn("/bin/cursor.elf");
@@ -48,10 +48,10 @@ int main(void)
 
     while (msg.type != LMSG_QUIT)
     {
-        win_receive(wallpaper, &msg, NEVER);
-        procedure(wallpaper, &msg);
+        win_receive(wall, &msg, NEVER);
+        procedure(wall, &msg);
     }
 
-    win_free(wallpaper);
+    win_free(wall);
     return EXIT_SUCCESS;
 }

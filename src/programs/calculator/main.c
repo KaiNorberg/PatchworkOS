@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <sys/gfx.h>
 #include <sys/keyboard.h>
+#include <sys/math.h>
 #include <sys/proc.h>
 #include <sys/win.h>
 
@@ -52,12 +53,10 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
             }
         }
         numpad_button_create(window, 1, 3, "0", 0);
-
         numpad_button_create(window, 3, 0, "/", '/');
         numpad_button_create(window, 3, 1, "*", '*');
         numpad_button_create(window, 3, 2, "-", '-');
         numpad_button_create(window, 3, 3, "+", '+');
-
         numpad_button_create(window, 0, 3, "<", '<');
         numpad_button_create(window, 2, 3, "=", '=');
 
@@ -79,8 +78,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         {
             if (data->id <= 9)
             {
-                input *= 10;
-                input += data->id;
+                input = input * 10 + data->id;
             }
             else if (data->id == '<')
             {
@@ -91,6 +89,11 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
                 switch (operation)
                 {
                 case '/':
+                    if (input == 0)
+                    {
+                        win_widget_name_set(win_widget(window, LABEL_ID), "DIV BY ZERO");
+                        return 0;
+                    }
                     accumulator /= input;
                     break;
                 case '*':
@@ -125,9 +128,9 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
 int main(void)
 {
     rect_t rect = RECT_INIT_DIM(500, 200, WINDOW_WIDTH, WINDOW_HEIGHT);
-    win_expand_to_window(&rect, DWM_WINDOW);
+    win_expand_to_window(&rect, WIN_DECO);
 
-    win_t* window = win_new("Calculator", DWM_WINDOW, &rect, procedure);
+    win_t* window = win_new("Calculator", &rect, DWM_WINDOW, WIN_DECO, procedure);
     if (window == NULL)
     {
         return EXIT_FAILURE;

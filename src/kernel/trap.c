@@ -52,7 +52,15 @@ static void exception_handler(const trap_frame_t* trapFrame)
     {
     default:
     {
-        log_panic(trapFrame, "Exception");
+        if (trapFrame->ss == GDT_KERNEL_DATA)
+        {
+            log_panic(trapFrame, "Exception");
+        }
+        else
+        {
+            log_panic(trapFrame, "Unhandled User Exception");
+            // sched_process_exit(1);
+        }
     }
     break;
     }

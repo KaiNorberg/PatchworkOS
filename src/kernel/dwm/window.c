@@ -2,6 +2,7 @@
 
 #include "dwm.h"
 #include "dwm/msg_queue.h"
+#include "lock.h"
 #include "sched.h"
 #include "vfs.h"
 
@@ -58,7 +59,7 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* argp, uint64_
         }
         const ioctl_window_move_t* move = argp;
 
-        LOCK_GUARD(&window->lock);
+        lock_acquire(&window->lock);
         window->pos = move->pos;
 
         if (window->gfx.width != move->width || window->gfx.height != move->height)
@@ -67,12 +68,18 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* argp, uint64_
             window->gfx.height = move->height;
             window->gfx.stride = move->width;
 
-            free(window->gfx.buffer);
-            window->gfx.buffer = calloc(move->width * move->height, sizeof(pixel_t));
+            window->gfx.buffer = realloc(window->gfx.buffer, move->width * move->height * sizeof(pixel_t));
         }
 
         window->moved = true;
         dwm_redraw();
+        lock_release(&window->lock);
+
+        if (window->type == DWM_PANEL)
+        {
+            dwm_update_client_rect();
+        }
+
         return 0;
     }
     default:

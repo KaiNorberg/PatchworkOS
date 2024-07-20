@@ -8,6 +8,7 @@
 
 #include <sys/list.h>
 
+// Blocks untill condition is true, condition will be tested after every call to sched_unblock.
 #define SCHED_BLOCK(blocker, condition) \
     ({ \
         block_result_t result = BLOCK_NORM; \
@@ -20,6 +21,8 @@
         result; \
     })
 
+// Blocks untill condition is true, condition will be tested after every call to sched_unblock.
+// Will also return after timeout is reached, timeout will be reached even if sched_unblock is never called.
 #define SCHED_BLOCK_TIMEOUT(blocker, condition, timeout) \
     ({ \
         block_result_t result = BLOCK_NORM; \
@@ -28,6 +31,51 @@
         sched_block_begin(blocker); \
         while (!(condition) && result == BLOCK_NORM && deadline > uptime) \
         { \
+            nsec_t remaining = deadline == NEVER ? NEVER : (deadline > uptime ? deadline - uptime : 0); \
+            result = sched_block_do(blocker, remaining); \
+            uptime = time_uptime(); \
+        } \
+        sched_block_end(blocker); \
+        result; \
+    })
+
+// Blocks untill condition is true, condition will be tested after every call to sched_unblock.
+// When condition is tested it will also acquire lock, and the macro will return with lock still acquired.
+#define SCHED_BLOCK_LOCK(blocker, lock, condition) \
+    ({ \
+        block_result_t result = BLOCK_NORM; \
+        sched_block_begin(blocker); \
+        while (result == BLOCK_NORM) \
+        { \
+            lock_acquire(lock); \
+            if (condition) \
+            { \
+                break; \
+            } \
+            lock_release(lock); \
+            result = sched_block_do(blocker, NEVER); \
+        } \
+        sched_block_end(blocker); \
+        result; \
+    })
+
+// Blocks untill condition is true, condition will be tested after every call to sched_unblock.
+// When condition is tested it will also acquire lock, and the macro will return with lock still acquired.
+// Will also return after timeout is reached, timeout will be reached even if sched_unblock is never called.
+#define SCHED_BLOCK_LOCK_TIMEOUT(blocker, lock, condition, timeout) \
+    ({ \
+        block_result_t result = BLOCK_NORM; \
+        nsec_t uptime = time_uptime(); \
+        nsec_t deadline = (timeout) == NEVER ? NEVER : (timeout) + uptime; \
+        sched_block_begin(blocker); \
+        while (result == BLOCK_NORM && deadline > uptime) \
+        { \
+            lock_acquire(lock); \
+            if (condition) \
+            { \
+                break; \
+            } \
+            lock_release(lock); \
             nsec_t remaining = deadline == NEVER ? NEVER : (deadline > uptime ? deadline - uptime : 0); \
             result = sched_block_do(blocker, remaining); \
             uptime = time_uptime(); \
@@ -61,6 +109,8 @@ extern void sched_idle_loop(void);
 void sched_init(void);
 
 void sched_start(void);
+
+block_result_t sched_sleep(nsec_t timeout);
 
 void sched_block_begin(blocker_t* blocker);
 

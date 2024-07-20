@@ -25,7 +25,7 @@ typedef struct win
     uint32_t width;
     uint32_t height;
     rect_t clientRect;
-    dwm_type_t type;
+    win_flags_t flags;
     win_proc_t procedure;
     list_t widgets;
     bool selected;
@@ -74,7 +74,7 @@ static uint64_t win_set_rect(win_t* window, const rect_t* rect)
     window->height = RECT_HEIGHT(rect);
 
     window->clientRect = RECT_INIT_DIM(0, 0, window->width, window->height);
-    win_shrink_to_client(&window->clientRect, window->type);
+    win_shrink_to_client(&window->clientRect, window->flags);
 
     return 0;
 }
@@ -97,16 +97,27 @@ static inline void win_client_surface(win_t* window, gfx_t* gfx)
     gfx->buffer = &window->buffer[window->clientRect.left + window->clientRect.top * gfx->stride];
 }
 
-static void win_draw_close_button(win_t* window, gfx_t* gfx, const rect_t* topbar)
+static void win_topbar_rect(win_t* window, rect_t* rect)
 {
-    uint64_t width = RECT_HEIGHT(topbar);
-
-    rect_t rect = {
-        .left = topbar->right - width,
-        .top = topbar->top,
-        .right = topbar->right,
-        .bottom = topbar->bottom,
+    *rect = (rect_t){
+        .left = theme.edgeWidth + theme.topbarPadding,
+        .top = theme.edgeWidth + theme.topbarPadding,
+        .right = window->width - theme.edgeWidth - theme.topbarPadding,
+        .bottom = theme.topbarHeight + theme.edgeWidth - theme.topbarPadding,
     };
+}
+
+static void win_close_button_rect(win_t* window, rect_t* rect)
+{
+    win_topbar_rect(window, rect);
+    RECT_SHRINK(rect, theme.edgeWidth);
+    rect->left = rect->right - (rect->bottom - rect->top);
+}
+
+static void win_close_button_draw(win_t* window, gfx_t* gfx)
+{
+    rect_t rect;
+    win_close_button_rect(window, &rect);
 
     gfx_rim(gfx, &rect, theme.rimWidth, theme.dark);
     RECT_SHRINK(&rect, theme.rimWidth);
@@ -119,19 +130,16 @@ static void win_draw_close_button(win_t* window, gfx_t* gfx, const rect_t* topba
     gfx_psf(gfx, &window->psf, &rect, GFX_CENTER, GFX_CENTER, 32, "x", theme.shadow, 0);
 }
 
-static void win_draw_topbar(win_t* window, gfx_t* gfx)
+static void win_topbar_draw(win_t* window, gfx_t* gfx)
 {
-    rect_t rect = {
-        .left = theme.edgeWidth + theme.topbarPadding,
-        .top = theme.edgeWidth + theme.topbarPadding,
-        .right = gfx->width - theme.edgeWidth - theme.topbarPadding,
-        .bottom = theme.topbarHeight + theme.edgeWidth - theme.topbarPadding,
-    };
+    rect_t rect;
+    win_topbar_rect(window, &rect);
+
     gfx_edge(gfx, &rect, theme.edgeWidth, theme.dark, theme.highlight);
     RECT_SHRINK(&rect, theme.edgeWidth);
     gfx_rect(gfx, &rect, window->selected ? theme.selected : theme.unSelected);
 
-    win_draw_close_button(window, gfx, &rect);
+    win_close_button_draw(window, gfx);
 
     rect.left += theme.topbarPadding * 3;
     rect.right -= theme.topbarHeight;
@@ -140,13 +148,10 @@ static void win_draw_topbar(win_t* window, gfx_t* gfx)
 
 static void win_draw_border_and_background(win_t* window, gfx_t* gfx)
 {
-    if (window->type == DWM_WINDOW)
-    {
-        rect_t localRect = RECT_INIT_GFX(gfx);
+    rect_t rect = RECT_INIT_GFX(gfx);
 
-        gfx_rect(gfx, &localRect, theme.background);
-        gfx_edge(gfx, &localRect, theme.edgeWidth, theme.bright, theme.dark);
-    }
+    gfx_rect(gfx, &rect, theme.background);
+    gfx_edge(gfx, &rect, theme.edgeWidth, theme.bright, theme.dark);
 }
 
 static void win_handle_drag(win_t* window, const msg_mouse_t* data)
@@ -185,7 +190,7 @@ static void win_background_procedure(win_t* window, const msg_t* msg)
     {
         msg_mouse_t* data = (msg_mouse_t*)msg->data;
 
-        if (window->type == DWM_WINDOW)
+        if (window->flags & WIN_DECO)
         {
             win_handle_drag(window, data);
         }
@@ -201,27 +206,27 @@ static void win_background_procedure(win_t* window, const msg_t* msg)
     case MSG_SELECT:
     {
         window->selected = true;
-        if (window->type == DWM_WINDOW)
+        if (window->flags & WIN_DECO)
         {
-            win_draw_topbar(window, &gfx);
+            win_topbar_draw(window, &gfx);
         }
     }
     break;
     case MSG_DESELECT:
     {
         window->selected = false;
-        if (window->type == DWM_WINDOW)
+        if (window->flags & WIN_DECO)
         {
-            win_draw_topbar(window, &gfx);
+            win_topbar_draw(window, &gfx);
         }
     }
     break;
     case LMSG_REDRAW:
     {
-        if (window->type == DWM_WINDOW)
+        if (window->flags & WIN_DECO)
         {
             win_draw_border_and_background(window, &gfx);
-            win_draw_topbar(window, &gfx);
+            win_topbar_draw(window, &gfx);
         }
 
         win_widget_send_all(window, WMSG_REDRAW, NULL, 0);
@@ -236,7 +241,7 @@ static void win_background_procedure(win_t* window, const msg_t* msg)
     }
 }
 
-win_t* win_new(const char* name, dwm_type_t type, const rect_t* rect, win_proc_t procedure)
+win_t* win_new(const char* name, const rect_t* rect, dwm_type_t type, win_flags_t flags, win_proc_t procedure)
 {
     if (RECT_AREA(rect) == 0 || strlen(name) >= DWM_MAX_NAME || name == NULL)
     {
@@ -278,7 +283,7 @@ win_t* win_new(const char* name, dwm_type_t type, const rect_t* rect, win_proc_t
         return NULL;
     }
 
-    window->type = type;
+    window->flags = flags;
     list_init(&window->widgets);
     window->selected = false;
     window->moving = false;
@@ -632,9 +637,9 @@ void win_theme(win_theme_t* out)
     *out = theme;
 }
 
-void win_expand_to_window(rect_t* clientRect, dwm_type_t type)
+void win_expand_to_window(rect_t* clientRect, win_flags_t flags)
 {
-    if (type == DWM_WINDOW)
+    if (flags & WIN_DECO)
     {
         clientRect->left -= theme.edgeWidth;
         clientRect->top -= theme.edgeWidth + theme.topbarHeight + theme.topbarPadding;
@@ -643,9 +648,9 @@ void win_expand_to_window(rect_t* clientRect, dwm_type_t type)
     }
 }
 
-void win_shrink_to_client(rect_t* windowRect, dwm_type_t type)
+void win_shrink_to_client(rect_t* windowRect, win_flags_t flags)
 {
-    if (type == DWM_WINDOW)
+    if (flags & WIN_DECO)
     {
         windowRect->left += theme.edgeWidth;
         windowRect->top += theme.edgeWidth + theme.topbarHeight + theme.topbarPadding;

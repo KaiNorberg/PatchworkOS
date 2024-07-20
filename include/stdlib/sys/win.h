@@ -25,6 +25,11 @@ typedef uint8_t win_t;
 typedef uint8_t widget_t;
 #endif
 
+typedef uint32_t win_flags_t;
+
+#define WIN_NONE 0
+#define WIN_DECO (1 << 0)
+
 typedef uint16_t widget_id_t;
 
 typedef struct win_theme
@@ -104,7 +109,7 @@ typedef win_text_prop_t wmsg_text_prop_t;
 typedef uint64_t (*win_proc_t)(win_t*, const msg_t*);
 typedef uint64_t (*widget_proc_t)(widget_t*, win_t*, const msg_t*);
 
-win_t* win_new(const char* name, dwm_type_t type, const rect_t* rect, win_proc_t procedure);
+win_t* win_new(const char* name, const rect_t* rect, dwm_type_t type, win_flags_t flags, win_proc_t procedure);
 
 uint64_t win_free(win_t* window);
 
@@ -164,9 +169,9 @@ uint64_t win_screen_rect(rect_t* rect);
 
 void win_theme(win_theme_t* out);
 
-void win_expand_to_window(rect_t* clientRect, dwm_type_t type);
+void win_expand_to_window(rect_t* clientRect, win_flags_t flags);
 
-void win_shrink_to_client(rect_t* windowRect, dwm_type_t type);
+void win_shrink_to_client(rect_t* windowRect, win_flags_t flags);
 
 uint64_t win_button_proc(widget_t* widget, win_t* window, const msg_t* msg);
 

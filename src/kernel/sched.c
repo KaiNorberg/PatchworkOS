@@ -11,6 +11,7 @@
 #include "regs.h"
 #include "smp.h"
 #include "sys/math.h"
+#include "sys/proc.h"
 #include "time.h"
 #include "trap.h"
 #include "vectors.h"
@@ -23,7 +24,7 @@
 static list_t blockers;
 static lock_t blockersLock;
 
-static void sched_push(thread_t* thread);
+static blocker_t sleepBlocker;
 
 void blocker_init(blocker_t* blocker)
 {
@@ -164,6 +165,8 @@ void sched_init(void)
     list_init(&blockers);
     lock_init(&blockersLock);
 
+    blocker_init(&sleepBlocker);
+
     sched_spawn_init_thread();
 
     log_print("sched: init");
@@ -185,6 +188,15 @@ void sched_start(void)
     smp_send_self(sched_start_ipi);
 
     log_print("sched: start");
+}
+
+block_result_t sched_sleep(nsec_t timeout)
+{
+    sched_block_begin(&sleepBlocker);
+    block_result_t result = sched_block_do(&sleepBlocker, timeout);
+    sched_block_end(&sleepBlocker);
+
+    return result;
 }
 
 static void sched_block_ipi(trap_frame_t* trapFrame)
@@ -319,7 +331,7 @@ pid_t sched_spawn(const char* path, uint8_t priority)
     }
 
     thread_t* thread = thread_new(process, loader_entry, priority);
-    sched_context_push(&smp_cpu(0)->sched, thread);
+    sched_push(thread);
 
     log_print("sched: process spawn (%d)", process->id);
     return process->id;

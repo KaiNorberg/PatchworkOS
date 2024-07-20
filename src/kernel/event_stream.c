@@ -7,6 +7,17 @@
 #include "sched.h"
 #include "sysfs.h"
 
+static uint64_t event_stream_avail_count(event_stream_t* stream, uint64_t readIndex)
+{
+    uint64_t count = 0;
+    while (readIndex != stream->writeIndex)
+    {
+        count++;
+        readIndex = (readIndex + 1) % stream->length;
+    }
+    return count;
+}
+
 static uint64_t event_stream_read(file_t* file, void* buffer, uint64_t count)
 {
     event_stream_t* stream = file->private;
@@ -14,15 +25,17 @@ static uint64_t event_stream_read(file_t* file, void* buffer, uint64_t count)
     count = ROUND_DOWN(count, stream->eventSize);
     for (uint64_t i = 0; i < count / stream->eventSize; i++)
     {
-        if (SCHED_BLOCK(&stream->blocker, stream->writeIndex != file->position) != BLOCK_NORM)
+        if (SCHED_BLOCK_LOCK(&stream->blocker, &stream->lock, file->position != stream->writeIndex) != BLOCK_NORM)
         {
+            lock_release(&stream->lock);
             return i * stream->eventSize;
         }
-        LOCK_GUARD(&stream->lock);
 
         memcpy((uint8_t*)buffer + stream->eventSize * i, (uint8_t*)stream->buffer + stream->eventSize * file->position,
             stream->eventSize);
         file->position = (file->position + 1) % stream->length;
+
+        lock_release(&stream->lock);
     }
 
     return count;
@@ -71,12 +84,11 @@ uint64_t event_stream_cleanup(event_stream_t* stream)
 
 uint64_t event_stream_push(event_stream_t* stream, const void* event, uint64_t eventSize)
 {
-    LOCK_GUARD(&stream->lock);
-
     if (stream->eventSize != eventSize)
     {
         return ERROR(EINVAL);
     }
+    LOCK_GUARD(&stream->lock);
 
     memcpy((void*)((uintptr_t)stream->buffer + stream->eventSize * stream->writeIndex), event, stream->eventSize);
     stream->writeIndex = (stream->writeIndex + 1) % stream->length;

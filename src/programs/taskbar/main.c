@@ -35,8 +35,8 @@ int main(void)
     win_screen_rect(&rect);
     rect.top = rect.bottom - 45;
 
-    win_t* window = win_new("Taskbar", DWM_PANEL, &rect, procedure);
-    if (window == NULL)
+    win_t* panel = win_new("Taskbar", &rect, DWM_PANEL, WIN_NONE, procedure);
+    if (panel == NULL)
     {
         return EXIT_FAILURE;
     }
@@ -44,10 +44,10 @@ int main(void)
     msg_t msg = {0};
     while (msg.type != LMSG_QUIT)
     {
-        win_receive(window, &msg, NEVER);
-        win_dispatch(window, &msg);
+        win_receive(panel, &msg, NEVER);
+        win_dispatch(panel, &msg);
     }
 
-    win_free(window);
+    win_free(panel);
     return 0;
 }

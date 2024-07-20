@@ -9,8 +9,6 @@
 #include <sys/math.h>
 #include <sys/mouse.h>
 
-#include "_AUX/rect_t.h"
-#include "config.h"
 #include "lock.h"
 #include "log.h"
 #include "msg_queue.h"
@@ -39,13 +37,15 @@ static atomic_bool redrawNeeded;
 
 static blocker_t blocker;
 
-static void dwm_update_client_rect(void)
+static void dwm_update_client_rect_unlocked(void)
 {
     rect_t newRect = RECT_INIT_DIM(0, 0, backbuffer.width, backbuffer.height);
 
     window_t* window;
     LIST_FOR_EACH(window, &windows)
     {
+        window->moved = true;
+
         if (window->type != DWM_PANEL)
         {
             continue;
@@ -168,11 +168,12 @@ static void dwm_swap(void)
 static void dwm_draw_wall(void)
 {
     LOCK_GUARD(&wall->lock);
-    if (!wall->invalid)
+    if (!wall->invalid && !wall->moved)
     {
         return;
     }
     wall->invalid = false;
+    wall->moved = false;
 
     rect_t wallRect = WINDOW_RECT(wall);
     RECT_FIT(&wallRect, &clientRect);
@@ -376,7 +377,7 @@ static void dwm_window_cleanup(window_t* window)
     case DWM_PANEL:
     {
         list_remove(window);
-        dwm_update_client_rect();
+        dwm_update_client_rect_unlocked();
     }
     break;
     case DWM_CURSOR:
@@ -433,7 +434,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
         case DWM_PANEL:
         {
             list_push(&windows, window);
-            dwm_update_client_rect();
+            dwm_update_client_rect_unlocked();
             log_print("dwm: create panel");
         }
         break;
@@ -548,4 +549,11 @@ void dwm_start(void)
 void dwm_redraw(void)
 {
     atomic_store(&redrawNeeded, true);
+}
+
+void dwm_update_client_rect(void)
+{
+    LOCK_GUARD(&lock);
+
+    dwm_update_client_rect_unlocked();
 }

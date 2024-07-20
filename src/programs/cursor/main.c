@@ -36,7 +36,7 @@ int main(void)
     rect_t screenRect;
     win_screen_rect(&screenRect);
     rect_t rect = RECT_INIT_DIM(RECT_WIDTH(&screenRect) / 2, RECT_HEIGHT(&screenRect) / 2, image->width, image->height);
-    win_t* cursor = win_new("Cursor", DWM_CURSOR, &rect, procedure);
+    win_t* cursor = win_new("Cursor", &rect, DWM_CURSOR, WIN_NONE, procedure);
     if (cursor == NULL)
     {
         return EXIT_FAILURE;
