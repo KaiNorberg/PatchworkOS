@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <sys/io.h>
+#include <sys/mouse.h>
 #include <sys/proc.h>
 
 #if defined(__cplusplus)
@@ -13,14 +14,15 @@ extern "C"
 #include "_AUX/nsec_t.h"
 #include "_AUX/point_t.h"
 
-typedef uint8_t dwm_type_t;
-
-#define DWM_WINDOW 0
-#define DWM_FULLSCREEN 1 // NOT IMPLEMENTED
-#define DWM_PANEL 2
-#define DWM_CURSOR 3
-#define DWM_WALL 4
-#define DWM_MAX DWM_WALL
+typedef enum
+{
+    DWM_WINDOW = 0,
+    DWM_FULLSCREEN = 1,
+    DWM_PANEL = 2,
+    DWM_CURSOR = 3,
+    DWM_WALL = 4,
+    DWM_MAX = 4
+} dwm_type_t;
 
 #define DWM_MAX_NAME 32
 
@@ -32,13 +34,14 @@ typedef struct
 {
     nsec_t time;
     msg_type_t type;
-    uint8_t data[MSG_MAX_DATA];
+    uint8_t data[MSG_MAX_DATA]; // Stores the *msg_*_t structs.
 } msg_t;
 
-// Stored in msg.data
 typedef struct
 {
-    uint8_t buttons;
+    mouse_buttons_t held;
+    mouse_buttons_t pressed;
+    mouse_buttons_t released;
     point_t pos;
     int16_t deltaX;
     int16_t deltaY;

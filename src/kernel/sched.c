@@ -10,16 +10,15 @@
 #include "queue.h"
 #include "regs.h"
 #include "smp.h"
-#include "sys/math.h"
-#include "sys/proc.h"
 #include "time.h"
 #include "trap.h"
 #include "vectors.h"
 
-#include <sys/list.h>
-
 #include <stdlib.h>
 #include <string.h>
+#include <sys/list.h>
+#include <sys/math.h>
+#include <sys/proc.h>
 
 static list_t blockers;
 static lock_t blockersLock;

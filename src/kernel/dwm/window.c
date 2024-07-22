@@ -36,9 +36,8 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* argp, uint64_
         ioctl_window_receive_t* receive = argp;
 
         msg_queue_pop(&window->messages, &receive->outMsg, receive->timeout);
-
-        return 0;
     }
+    break;
     case IOCTL_WINDOW_SEND:
     {
         if (size != sizeof(ioctl_window_send_t))
@@ -48,9 +47,8 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* argp, uint64_
         const ioctl_window_send_t* send = argp;
 
         msg_queue_push(&window->messages, send->msg.type, send->msg.data, MSG_MAX_DATA);
-
-        return 0;
     }
+    break;
     case IOCTL_WINDOW_MOVE:
     {
         if (size != sizeof(ioctl_window_move_t))
@@ -73,20 +71,22 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* argp, uint64_
 
         window->moved = true;
         dwm_redraw();
+
         lock_release(&window->lock);
 
         if (window->type == DWM_PANEL)
         {
             dwm_update_client_rect();
         }
-
-        return 0;
     }
+    break;
     default:
     {
         return ERROR(EREQ);
     }
     }
+
+    return 0;
 }
 
 static uint64_t window_flush(file_t* file, const void* buffer, uint64_t size, const rect_t* rect)
@@ -110,15 +110,9 @@ static uint64_t window_flush(file_t* file, const void* buffer, uint64_t size, co
         uint64_t index = rect->left + (rect->top + y) * window->gfx.width;
         memcpy(&window->gfx.buffer[index], &((pixel_t*)buffer)[index], RECT_WIDTH(rect) * sizeof(pixel_t));
     }
-
     gfx_invalidate(&window->gfx, rect);
 
-    if (!window->shown)
-    {
-        window->moved = true;
-    }
     window->invalid = true;
-
     dwm_redraw();
     return 0;
 }
@@ -156,7 +150,6 @@ window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, dwm_ty
     window->gfx.invalidRect = RECT_INIT_DIM(0, 0, width, height);
     window->invalid = false;
     window->moved = false;
-    window->shown = false;
     window->prevRect = RECT_INIT_DIM(0, 0, 0, 0);
     window->cleanup = cleanup;
     lock_init(&window->lock);
@@ -170,6 +163,8 @@ void window_free(window_t* window)
     msg_queue_cleanup(&window->messages);
     free(window->gfx.buffer);
     free(window);
+
+    dwm_redraw();
 }
 
 void window_populate_file(window_t* window, file_t* file)

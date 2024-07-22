@@ -74,7 +74,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
     case LMSG_BUTTON:
     {
         lmsg_button_t* data = (lmsg_button_t*)msg->data;
-        if (!data->pressed)
+        if (data->type == LMSG_BUTTON_RELEASED)
         {
             if (data->id <= 9)
             {

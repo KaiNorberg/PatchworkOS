@@ -1,3 +1,4 @@
+#include "_AUX/rect_t.h"
 #ifndef __EMBED__
 
 typedef struct win win_t;
@@ -30,6 +31,7 @@ typedef struct win
     list_t widgets;
     bool selected;
     bool moving;
+    bool closeButtonPressed;
     gfx_psf_t psf;
     char name[DWM_MAX_NAME];
 } win_t;
@@ -66,6 +68,7 @@ win_theme_t theme = {
 };
 
 static uint64_t win_widget_dispatch(widget_t* widget, const msg_t* msg);
+static void win_close_button_draw(win_t* window, gfx_t* gfx);
 
 static uint64_t win_set_rect(win_t* window, const rect_t* rect)
 {
@@ -107,29 +110,6 @@ static void win_topbar_rect(win_t* window, rect_t* rect)
     };
 }
 
-static void win_close_button_rect(win_t* window, rect_t* rect)
-{
-    win_topbar_rect(window, rect);
-    RECT_SHRINK(rect, theme.edgeWidth);
-    rect->left = rect->right - (rect->bottom - rect->top);
-}
-
-static void win_close_button_draw(win_t* window, gfx_t* gfx)
-{
-    rect_t rect;
-    win_close_button_rect(window, &rect);
-
-    gfx_rim(gfx, &rect, theme.rimWidth, theme.dark);
-    RECT_SHRINK(&rect, theme.rimWidth);
-
-    gfx_edge(gfx, &rect, theme.edgeWidth, theme.highlight, theme.shadow);
-    RECT_SHRINK(&rect, theme.edgeWidth);
-    gfx_rect(gfx, &rect, theme.background);
-
-    RECT_EXPAND(&rect, 32);
-    gfx_psf(gfx, &window->psf, &rect, GFX_CENTER, GFX_CENTER, 32, "x", theme.shadow, 0);
-}
-
 static void win_topbar_draw(win_t* window, gfx_t* gfx)
 {
     rect_t rect;
@@ -146,7 +126,37 @@ static void win_topbar_draw(win_t* window, gfx_t* gfx)
     gfx_psf(gfx, &window->psf, &rect, GFX_MIN, GFX_CENTER, 16, window->name, theme.background, 0);
 }
 
-static void win_draw_border_and_background(win_t* window, gfx_t* gfx)
+static void win_close_button_rect(win_t* window, rect_t* rect)
+{
+    win_topbar_rect(window, rect);
+    RECT_SHRINK(rect, theme.edgeWidth);
+    rect->left = rect->right - (rect->bottom - rect->top);
+}
+
+static void win_close_button_draw(win_t* window, gfx_t* gfx)
+{
+    rect_t rect;
+    win_close_button_rect(window, &rect);
+
+    gfx_rim(gfx, &rect, theme.rimWidth, theme.dark);
+    RECT_SHRINK(&rect, theme.rimWidth);
+
+    if (window->closeButtonPressed)
+    {
+        gfx_edge(gfx, &rect, theme.edgeWidth, theme.shadow, theme.highlight);
+    }
+    else
+    {
+        gfx_edge(gfx, &rect, theme.edgeWidth, theme.highlight, theme.shadow);
+    }
+    RECT_SHRINK(&rect, theme.edgeWidth);
+    gfx_rect(gfx, &rect, theme.background);
+
+    RECT_EXPAND(&rect, 32);
+    gfx_psf(gfx, &window->psf, &rect, GFX_CENTER, GFX_CENTER, 32, "x", theme.shadow, 0);
+}
+
+static void win_background_draw(win_t* window, gfx_t* gfx)
 {
     rect_t rect = RECT_INIT_GFX(gfx);
 
@@ -154,28 +164,48 @@ static void win_draw_border_and_background(win_t* window, gfx_t* gfx)
     gfx_edge(gfx, &rect, theme.edgeWidth, theme.bright, theme.dark);
 }
 
-static void win_handle_drag(win_t* window, const msg_mouse_t* data)
+static void win_handle_drag_and_close_button(win_t* window, gfx_t* gfx, const msg_mouse_t* data)
 {
-    rect_t topBar = (rect_t){
-        .left = window->pos.x + theme.edgeWidth,
-        .top = window->pos.y + theme.edgeWidth,
-        .right = window->pos.x + window->width - theme.edgeWidth,
-        .bottom = window->pos.y + theme.topbarHeight + theme.edgeWidth,
-    };
+    rect_t topBar;
+    win_topbar_rect(window, &topBar);
+    rect_t closeButton;
+    win_close_button_rect(window, &closeButton);
+    point_t mousePos = data->pos;
+    win_screen_to_window(window, &mousePos);
 
     if (window->moving)
     {
         rect_t rect = RECT_INIT_DIM(window->pos.x + data->deltaX, window->pos.y + data->deltaY, window->width, window->height);
         win_move(window, &rect);
 
-        if (!(data->buttons & MOUSE_LEFT))
+        if (!(data->held & MOUSE_LEFT))
         {
             window->moving = false;
         }
     }
-    else if (RECT_CONTAINS_POINT(&topBar, data->pos.x, data->pos.y) && data->buttons & MOUSE_LEFT)
+    else if (window->closeButtonPressed)
     {
-        window->moving = true;
+        if (!RECT_CONTAINS_POINT(&closeButton, &mousePos))
+        {
+            window->closeButtonPressed = false;
+            win_close_button_draw(window, gfx);
+        }
+        else if (data->released & MOUSE_LEFT)
+        {
+            win_send(window, LMSG_QUIT, NULL, 0);
+        }
+    }
+    else if (RECT_CONTAINS_POINT(&topBar, &mousePos) && data->pressed & MOUSE_LEFT)
+    {
+        if (RECT_CONTAINS_POINT(&closeButton, &mousePos))
+        {
+            window->closeButtonPressed = true;
+            win_close_button_draw(window, gfx);
+        }
+        else
+        {
+            window->moving = true;
+        }
     }
 }
 
@@ -192,14 +222,10 @@ static void win_background_procedure(win_t* window, const msg_t* msg)
 
         if (window->flags & WIN_DECO)
         {
-            win_handle_drag(window, data);
+            win_handle_drag_and_close_button(window, &gfx, data);
         }
 
-        wmsg_mouse_t wmsg;
-        wmsg.buttons = data->buttons;
-        wmsg.pos = data->pos;
-        wmsg.deltaX = data->deltaX;
-        wmsg.deltaY = data->deltaY;
+        wmsg_mouse_t wmsg = *data;
         win_widget_send_all(window, WMSG_MOUSE, &wmsg, sizeof(wmsg_mouse_t));
     }
     break;
@@ -225,7 +251,7 @@ static void win_background_procedure(win_t* window, const msg_t* msg)
     {
         if (window->flags & WIN_DECO)
         {
-            win_draw_border_and_background(window, &gfx);
+            win_background_draw(window, &gfx);
             win_topbar_draw(window, &gfx);
         }
 
@@ -287,6 +313,7 @@ win_t* win_new(const char* name, const rect_t* rect, dwm_type_t type, win_flags_
     list_init(&window->widgets);
     window->selected = false;
     window->moving = false;
+    window->closeButtonPressed = false;
     window->procedure = procedure;
     strcpy(window->name, name);
     win_set_rect(window, rect);

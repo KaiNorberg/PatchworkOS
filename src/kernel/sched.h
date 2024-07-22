@@ -4,7 +4,6 @@
 #include "lock.h"
 #include "process.h"
 #include "queue.h"
-#include "time.h"
 
 #include <sys/list.h>
 
@@ -40,7 +39,7 @@
     })
 
 // Blocks untill condition is true, condition will be tested after every call to sched_unblock.
-// When condition is tested it will also acquire lock, and the macro will return with lock still acquired.
+// When condition is tested it will also acquire lock, and the macro will always return with lock still acquired.
 #define SCHED_BLOCK_LOCK(blocker, lock, condition) \
     ({ \
         block_result_t result = BLOCK_NORM; \
@@ -60,7 +59,7 @@
     })
 
 // Blocks untill condition is true, condition will be tested after every call to sched_unblock.
-// When condition is tested it will also acquire lock, and the macro will return with lock still acquired.
+// When condition is tested it will also acquire lock, and the macro will always return with lock still acquired.
 // Will also return after timeout is reached, timeout will be reached even if sched_unblock is never called.
 #define SCHED_BLOCK_LOCK_TIMEOUT(blocker, lock, condition, timeout) \
     ({ \

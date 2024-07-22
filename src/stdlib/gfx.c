@@ -1,4 +1,3 @@
-#include "stdbool.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -197,17 +196,16 @@ void gfx_psf_char(gfx_t* gfx, const gfx_psf_t* psf, const point_t* point, uint64
 void gfx_psf(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign, uint64_t height,
     const char* str, pixel_t foreground, pixel_t background)
 {
-    int64_t strLen = strlen(str);
     uint64_t scale = MAX(1, height / psf->height);
-    int64_t width = strLen * psf->width * scale;
     height = psf->height * scale;
+    int64_t width = strlen(str) * psf->width * scale;
 
     point_t point;
     switch (xAlign)
     {
     case GFX_CENTER:
     {
-        point.x = MAX(rect->left, (rect->right + rect->left) / 2 - width / 2);
+        point.x = MAX(rect->left, (rect->right + rect->left - width) / 2);
     }
     break;
     case GFX_MAX:

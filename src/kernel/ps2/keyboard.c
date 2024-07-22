@@ -147,9 +147,14 @@ static void ps2_keyboard_irq(uint8_t irq)
 void ps2_keyboard_init(void)
 {
     ps2_cmd(PS2_CMD_KEYBOARD_TEST);
-    LOG_ASSERT(ps2_read() == 0x0, "ps2 keyboard not found");
+    LOG_ASSERT(ps2_read() == 0x0, "ps2 keyboard test fail");
 
-    irq_install(ps2_keyboard_irq, IRQ_KEYBOARD);
+    ps2_write(PS2_SET_DEFAULTS);
+    LOG_ASSERT(ps2_read() == PS2_ACK, "set defaults fail, ps2 keyboard might not exist");
+
+    ps2_write(PS2_ENABLE_DATA_REPORTING);
+    LOG_ASSERT(ps2_read() == PS2_ACK, "data reporting fail");
 
     event_stream_init(&keyboard, "/keyboard", "ps2", sizeof(keyboard_event_t), PS2_BUFFER_LENGTH);
+    irq_install(ps2_keyboard_irq, IRQ_PS2_KEYBOARD);
 }

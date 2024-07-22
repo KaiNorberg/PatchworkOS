@@ -25,10 +25,11 @@ typedef uint8_t win_t;
 typedef uint8_t widget_t;
 #endif
 
-typedef uint32_t win_flags_t;
-
-#define WIN_NONE 0
-#define WIN_DECO (1 << 0)
+typedef enum win_flags
+{
+    WIN_NONE = 0,
+    WIN_DECO = (1 << 0)
+} win_flags_t;
 
 typedef uint16_t widget_id_t;
 
@@ -73,9 +74,15 @@ typedef struct
     void* private;
 } lmsg_init_t;
 
+typedef enum lmsg_button_type
+{
+    LMSG_BUTTON_RELEASED = 0,
+    LMSG_BUTTON_PRESS = 1
+} lmsg_button_type_t;
+
 typedef struct
 {
-    uint8_t pressed;
+    lmsg_button_type_t type;
     widget_id_t id;
 } lmsg_button_t;
 
@@ -86,14 +93,7 @@ typedef struct
 #define LMSG_BUTTON (LMSG_BASE + 4)
 
 // Widget messages
-typedef struct
-{
-    uint8_t buttons;
-    point_t pos;
-    int16_t deltaX;
-    int16_t deltaY;
-} wmsg_mouse_t;
-
+typedef msg_mouse_t wmsg_mouse_t;
 typedef win_text_prop_t wmsg_text_prop_t;
 
 #define WMSG_BASE (1 << 15)

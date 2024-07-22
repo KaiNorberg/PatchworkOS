@@ -19,7 +19,7 @@ void ps2_init(void)
     ps2_cmd(PS2_CMD_CONTROLLER_TEST);
     LOG_ASSERT(ps2_read() == 0x55, "self test fail");
 
-    cfg = cfg | PS2_CFG_KEYBOARD_IRQ | PS2_CFG_MOUSE_IRQ;
+    cfg = cfg | PS2_CFG_KEYBOARD_IRQ | PS2_CFG_AUX_IRQ;
 
     ps2_cmd(PS2_CMD_CFG_WRITE);
     ps2_write(cfg);

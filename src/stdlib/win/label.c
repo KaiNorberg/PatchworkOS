@@ -12,10 +12,14 @@ typedef struct
 
 uint64_t win_label_proc(widget_t* widget, win_t* window, const msg_t* msg)
 {
+    static win_theme_t theme;
+
     switch (msg->type)
     {
     case WMSG_INIT:
     {
+        win_theme(&theme);
+
         label_t* label = malloc(sizeof(label_t));
         label->props = WIN_TEXT_PROP_DEFAULT();
         win_widget_private_set(widget, label);
@@ -23,8 +27,7 @@ uint64_t win_label_proc(widget_t* widget, win_t* window, const msg_t* msg)
     break;
     case WMSG_FREE:
     {
-        label_t* label = win_widget_private(widget);
-        free(label);
+        free(win_widget_private(widget));
     }
     break;
     case WMSG_TEXT_PROP:
@@ -38,8 +41,6 @@ uint64_t win_label_proc(widget_t* widget, win_t* window, const msg_t* msg)
     {
         label_t* label = win_widget_private(widget);
 
-        win_theme_t theme;
-        win_theme(&theme);
         rect_t rect;
         win_widget_rect(widget, &rect);
 

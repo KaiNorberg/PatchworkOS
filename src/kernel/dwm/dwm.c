@@ -125,7 +125,7 @@ static void dwm_redraw_others(window_t* window, const rect_t* rect)
         LOCK_GUARD(&other->lock);
 
         rect_t otherRect = WINDOW_RECT(other);
-        if (other->shown && RECT_OVERLAP(rect, &otherRect))
+        if (RECT_OVERLAP(rect, &otherRect))
         {
             rect_t overlapRect = *rect;
             RECT_FIT(&overlapRect, &otherRect);
@@ -228,7 +228,6 @@ static void dwm_draw_windows(void)
         dwm_transfer(window, &rect);
         dwm_invalidate_above(window, &rect);
         window->gfx.invalidRect = (rect_t){0};
-        window->shown = true;
     }
 }
 
@@ -278,7 +277,7 @@ static void dwm_handle_mouse_message(uint8_t buttons, const point_t* cursorDelta
             LOCK_GUARD(&window->lock);
 
             rect_t windowRect = WINDOW_RECT(window);
-            if (RECT_CONTAINS_POINT(&windowRect, cursor->pos.x, cursor->pos.y))
+            if (RECT_CONTAINS_POINT(&windowRect, &cursor->pos))
             {
                 found = true;
                 break;
@@ -287,12 +286,13 @@ static void dwm_handle_mouse_message(uint8_t buttons, const point_t* cursorDelta
 
         dwm_select(found ? window : NULL);
     }
-    oldButtons = buttons;
 
     if (selected != NULL)
     {
         msg_mouse_t data = {
-            .buttons = buttons,
+            .held = buttons,
+            .pressed = (buttons & ~oldButtons),
+            .released = (oldButtons & ~buttons),
             .pos.x = cursor->pos.x,
             .pos.y = cursor->pos.y,
             .deltaX = cursor->pos.x - oldPos.x,
@@ -300,6 +300,8 @@ static void dwm_handle_mouse_message(uint8_t buttons, const point_t* cursorDelta
         };
         msg_queue_push(&selected->messages, MSG_MOUSE, &data, sizeof(msg_mouse_t));
     }
+
+    oldButtons = buttons;
 }
 
 static void dwm_poll(void)
@@ -469,13 +471,6 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
         }
 
         window_populate_file(window, file);
-
-        // Preserve splash screen on boot, wall will be drawn on first flush.
-        if (window->type != DWM_WALL)
-        {
-            dwm_redraw();
-        }
-
         return 0;
     }
     case IOCTL_DWM_SIZE:
@@ -488,7 +483,6 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
         ioctl_dwm_size_t* size = argp;
         size->outWidth = RECT_WIDTH(&screenRect);
         size->outHeight = RECT_HEIGHT(&screenRect);
-
         return 0;
     }
     default:
