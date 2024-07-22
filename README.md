@@ -1,4 +1,4 @@
-# Patchwork OS [![License](https://img.shields.io/badge/licence-MIT-green)](https://github.com/KaiNorberg/PatchworkOS/blob/main/LICENSE)
+# Patchwork OS
 
 **Keep in mind that PatchworkOS is currently in a very early stage of development.**
 
