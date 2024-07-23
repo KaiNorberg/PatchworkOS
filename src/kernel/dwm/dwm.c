@@ -79,6 +79,11 @@ static void dwm_update_client_rect_unlocked(void)
 
 static void dwm_select(window_t* window)
 {
+    if (selected == window)
+    {
+        return;
+    }
+
     if (selected != NULL)
     {
         msg_queue_push(&selected->messages, MSG_DESELECT, NULL, 0);
@@ -241,34 +246,33 @@ static void dwm_draw_cursor(void)
     gfx_transfer_blend(&backbuffer, &cursor->gfx, &cursorRect, &srcPoint);
 }
 
-static void dwm_draw_and_update_cursor(const point_t* cursorDelta)
+static void dwm_handle_mouse_message(mouse_buttons_t held, const point_t* delta)
 {
+    static mouse_buttons_t oldHeld = MOUSE_NONE;
+
     LOCK_GUARD(&cursor->lock);
 
-    rect_t oldRect = WINDOW_RECT(cursor);
-    RECT_FIT(&oldRect, &screenRect);
-    dwm_redraw_others(cursor, &oldRect);
+    mouse_buttons_t pressed = (held & ~oldHeld);
+    mouse_buttons_t released = (oldHeld & ~held);
 
-    cursor->pos.x = CLAMP(cursor->pos.x + cursorDelta->x, 0, backbuffer.width - 1);
-    cursor->pos.y = CLAMP(cursor->pos.y + cursorDelta->y, 0, backbuffer.height - 1);
+    if (delta->x != 0 || delta->y != 0)
+    {
+        rect_t oldRect = WINDOW_RECT(cursor);
+        RECT_FIT(&oldRect, &screenRect);
+        dwm_redraw_others(cursor, &oldRect);
 
-    rect_t cursorRect = WINDOW_RECT(cursor);
-    RECT_FIT(&cursorRect, &screenRect);
+        cursor->pos.x = CLAMP(cursor->pos.x + delta->x, 0, backbuffer.width - 1);
+        cursor->pos.y = CLAMP(cursor->pos.y + delta->y, 0, backbuffer.height - 1);
 
-    point_t srcPoint = {0};
-    gfx_transfer_blend(&backbuffer, &cursor->gfx, &cursorRect, &srcPoint);
+        point_t srcPoint = {0};
+        rect_t cursorRect = WINDOW_RECT(cursor);
+        RECT_FIT(&cursorRect, &screenRect);
+        gfx_transfer_blend(&backbuffer, &cursor->gfx, &cursorRect, &srcPoint);
 
-    dwm_swap();
-}
+        dwm_swap();
+    }
 
-static void dwm_handle_mouse_message(uint8_t buttons, const point_t* cursorDelta)
-{
-    static uint8_t oldButtons = 0;
-
-    point_t oldPos = cursor->pos;
-    dwm_draw_and_update_cursor(cursorDelta);
-
-    if ((buttons & ~oldButtons) != 0) // If any button has been pressed
+    if (pressed != MOUSE_NONE)
     {
         bool found = false;
         window_t* window;
@@ -290,18 +294,18 @@ static void dwm_handle_mouse_message(uint8_t buttons, const point_t* cursorDelta
     if (selected != NULL)
     {
         msg_mouse_t data = {
-            .held = buttons,
-            .pressed = (buttons & ~oldButtons),
-            .released = (oldButtons & ~buttons),
+            .held = held,
+            .pressed = pressed,
+            .released = released,
             .pos.x = cursor->pos.x,
             .pos.y = cursor->pos.y,
-            .deltaX = cursor->pos.x - oldPos.x,
-            .deltaY = cursor->pos.y - oldPos.y,
+            .delta.x = delta->x,
+            .delta.y = delta->y,
         };
         msg_queue_push(&selected->messages, MSG_MOUSE, &data, sizeof(msg_mouse_t));
     }
 
-    oldButtons = buttons;
+    oldHeld = held;
 }
 
 static void dwm_poll(void)
@@ -312,29 +316,32 @@ static void dwm_poll(void)
         sched_block_do(&blocker, SEC / 1000); // TODO: Implement something better then this.
         sched_block_end(&blocker);
 
-        uint8_t buttons = 0;
-        point_t cursorDelta = {0};
-        bool eventRecived = false;
+        if (cursor == NULL)
+        {
+            continue;
+        }
 
-        poll_file_t poll[] = {(poll_file_t){.file = mouse, .requested = POLL_READ}};
+        mouse_buttons_t held = MOUSE_NONE;
+        point_t delta = {0};
+        bool recived = false;
+
+        poll_file_t poll[] = {{.file = mouse, .requested = POLL_READ}};
         while (vfs_poll(poll, 1, 0) != 0)
         {
             mouse_event_t event;
-            LOG_ASSERT(vfs_read(mouse, &event, sizeof(mouse_event_t)), "mouse read fail");
+            LOG_ASSERT(vfs_read(mouse, &event, sizeof(mouse_event_t)) == sizeof(mouse_event_t), "mouse read fail");
 
-            cursorDelta.x += event.deltaX;
-            cursorDelta.y += event.deltaY;
-            buttons |= event.buttons;
+            delta.x += event.delta.x;
+            delta.y += event.delta.y;
+            held |= event.buttons;
 
-            eventRecived = true;
+            recived = true;
         }
 
-        lock_acquire(&lock);
-        if (cursor != NULL && eventRecived)
+        if (recived)
         {
-            dwm_handle_mouse_message(buttons, &cursorDelta);
+            dwm_handle_mouse_message(held, &delta);
         }
-        lock_release(&lock);
     }
     atomic_store(&redrawNeeded, false);
 }

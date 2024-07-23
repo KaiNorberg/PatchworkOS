@@ -175,7 +175,7 @@ static void win_handle_drag_and_close_button(win_t* window, gfx_t* gfx, const ms
 
     if (window->moving)
     {
-        rect_t rect = RECT_INIT_DIM(window->pos.x + data->deltaX, window->pos.y + data->deltaY, window->width, window->height);
+        rect_t rect = RECT_INIT_DIM(window->pos.x + data->delta.x, window->pos.y + data->delta.y, window->width, window->height);
         win_move(window, &rect);
 
         if (!(data->held & MOUSE_LEFT))

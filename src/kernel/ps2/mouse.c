@@ -22,8 +22,8 @@ static void ps2_mouse_handle_packet(const ps2_mouse_packet_t* packet)
         .buttons = ((packet->flags & PS2_PACKET_BUTTON_RIGHT) != 0 ? MOUSE_RIGHT : 0) |
             ((packet->flags & PS2_PACKET_BUTTON_MIDDLE) != 0 ? MOUSE_MIDDLE : 0) |
             ((packet->flags & PS2_PACKET_BUTTON_LEFT) != 0 ? MOUSE_LEFT : 0),
-        .deltaX = (int16_t)packet->deltaX - (((int16_t)packet->flags << 4) & 0x100),
-        .deltaY = -((int16_t)packet->deltaY - (((int16_t)packet->flags << 3) & 0x100)),
+        .delta.x = (int16_t)packet->deltaX - (((int16_t)packet->flags << 4) & 0x100),
+        .delta.y = -((int16_t)packet->deltaY - (((int16_t)packet->flags << 3) & 0x100)),
     };
 
     event_stream_push(&mouse, &event, sizeof(mouse_event_t));

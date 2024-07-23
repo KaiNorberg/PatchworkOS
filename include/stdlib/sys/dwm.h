@@ -43,8 +43,7 @@ typedef struct
     mouse_buttons_t pressed;
     mouse_buttons_t released;
     point_t pos;
-    int16_t deltaX;
-    int16_t deltaY;
+    point_t delta;
 } msg_mouse_t;
 
 #define MSG_NONE 0
