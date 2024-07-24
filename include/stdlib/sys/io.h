@@ -1,3 +1,4 @@
+#include "_AUX/pixel_t.h"
 #ifndef _SYS_IO_H
 #define _SYS_IO_H 1
 
@@ -64,7 +65,7 @@ uint64_t stat(const char* path, stat_t* buffer);
 
 uint64_t ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size);
 
-uint64_t flush(fd_t fd, const void* buffer, uint64_t size, const rect_t* rect);
+uint64_t flush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect_t* rect);
 
 #endif
 

@@ -184,9 +184,9 @@ static uint64_t sysfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t
     return SYSFS_OPERATION(ioctl, file, request, argp, size);
 }
 
-static uint64_t sysfs_flush(file_t* file, const void* buffer, uint64_t count, const rect_t* rect)
+static uint64_t sysfs_flush(file_t* file, const pixel_t* buffer, uint64_t size, const rect_t* rect)
 {
-    return SYSFS_OPERATION(flush, file, buffer, count, rect);
+    return SYSFS_OPERATION(flush, file, buffer, size, rect);
 }
 
 static void* sysfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)

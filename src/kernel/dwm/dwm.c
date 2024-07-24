@@ -255,6 +255,7 @@ static void dwm_handle_mouse_message(mouse_buttons_t held, const point_t* delta)
     mouse_buttons_t pressed = (held & ~oldHeld);
     mouse_buttons_t released = (oldHeld & ~held);
 
+    point_t oldPos = cursor->pos;
     if (delta->x != 0 || delta->y != 0)
     {
         rect_t oldRect = WINDOW_RECT(cursor);
@@ -299,8 +300,8 @@ static void dwm_handle_mouse_message(mouse_buttons_t held, const point_t* delta)
             .released = released,
             .pos.x = cursor->pos.x,
             .pos.y = cursor->pos.y,
-            .delta.x = delta->x,
-            .delta.y = delta->y,
+            .delta.x = cursor->pos.x - oldPos.x,
+            .delta.y = cursor->pos.y - oldPos.y,
         };
         msg_queue_push(&selected->messages, MSG_MOUSE, &data, sizeof(msg_mouse_t));
     }

@@ -290,7 +290,7 @@ uint64_t syscall_mprotect(void* address, uint64_t length, prot_t prot)
     return vmm_protect(address, length, prot);
 }
 
-uint64_t syscall_flush(fd_t fd, const void* buffer, uint64_t size, const rect_t* rect)
+uint64_t syscall_flush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect_t* rect)
 {
     if (!verify_buffer(buffer, size))
     {

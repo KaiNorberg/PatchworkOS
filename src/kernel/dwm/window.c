@@ -89,7 +89,7 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* argp, uint64_
     return 0;
 }
 
-static uint64_t window_flush(file_t* file, const void* buffer, uint64_t size, const rect_t* rect)
+static uint64_t window_flush(file_t* file, const pixel_t* buffer, uint64_t size, const rect_t* rect)
 {
     window_t* window = file->private;
     LOCK_GUARD(&window->lock);
@@ -107,8 +107,8 @@ static uint64_t window_flush(file_t* file, const void* buffer, uint64_t size, co
 
     for (int64_t y = 0; y < RECT_HEIGHT(rect); y++)
     {
-        uint64_t index = rect->left + (rect->top + y) * window->gfx.width;
-        memcpy(&window->gfx.buffer[index], &((pixel_t*)buffer)[index], RECT_WIDTH(rect) * sizeof(pixel_t));
+        uint64_t index = rect->left + (rect->top + y) * window->gfx.stride;
+        memcpy(&window->gfx.buffer[index], &buffer[index], RECT_WIDTH(rect) * sizeof(pixel_t));
     }
     gfx_invalidate(&window->gfx, rect);
 

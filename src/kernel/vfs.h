@@ -40,7 +40,7 @@ typedef uint64_t (*file_read_t)(file_t*, void*, uint64_t);
 typedef uint64_t (*file_write_t)(file_t*, const void*, uint64_t);
 typedef uint64_t (*file_seek_t)(file_t*, int64_t, uint8_t);
 typedef uint64_t (*file_ioctl_t)(file_t*, uint64_t, void*, uint64_t);
-typedef uint64_t (*file_flush_t)(file_t*, const void*, uint64_t, const rect_t*);
+typedef uint64_t (*file_flush_t)(file_t*, const pixel_t*, uint64_t, const rect_t*);
 typedef void* (*file_mmap_t)(file_t*, void*, uint64_t, prot_t);
 typedef uint64_t (*file_status_t)(file_t*, poll_file_t*);
 
@@ -160,13 +160,13 @@ static inline uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uin
     return file->ops->ioctl(file, request, argp, size);
 }
 
-static inline uint64_t vfs_flush(file_t* file, const void* buffer, uint64_t count, const rect_t* rect)
+static inline uint64_t vfs_flush(file_t* file, const void* buffer, uint64_t size, const rect_t* rect)
 {
     if (file->ops->flush == NULL)
     {
         return ERROR(EACCES);
     }
-    return file->ops->flush(file, buffer, count, rect);
+    return file->ops->flush(file, buffer, size, rect);
 }
 
 static inline void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
