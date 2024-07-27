@@ -38,7 +38,7 @@ typedef struct win
 
 typedef struct widget
 {
-    list_entry_t base;
+    list_entry_t entry;
     widget_id_t id;
     widget_proc_t procedure;
     rect_t rect;
@@ -350,6 +350,19 @@ uint64_t win_free(win_t* window)
     return 0;
 }
 
+uint64_t win_poll(win_t** windows, uint64_t amount, nsec_t timeout)
+{
+    pollfd_t array[amount];
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        array[i] = (pollfd_t){
+            .fd = windows[i]->fd,
+            .requested = POLL_READ
+        };
+    }
+    return poll(array, amount, timeout);
+}
+
 uint64_t win_send(win_t* window, msg_type_t type, const void* data, uint64_t size)
 {
     if (size >= MSG_MAX_DATA)
@@ -538,7 +551,7 @@ widget_t* win_widget_new(win_t* window, widget_proc_t procedure, const char* nam
     }
 
     widget_t* widget = malloc(sizeof(widget_t));
-    list_entry_init(&widget->base);
+    list_entry_init(&widget->entry);
     widget->id = id;
     widget->procedure = procedure;
     widget->rect = *rect;
@@ -557,7 +570,7 @@ widget_t* win_widget_new(win_t* window, widget_proc_t procedure, const char* nam
     {
         if (other->id > widget->id)
         {
-            list_prepend(&other->base, widget);
+            list_prepend(&other->entry, widget);
             return widget;
         }
     }

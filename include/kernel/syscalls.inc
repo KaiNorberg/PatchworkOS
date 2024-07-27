@@ -20,5 +20,6 @@
 %define SYS_MUNMAP 19
 %define SYS_MPROTECT 20
 %define SYS_FLUSH 21
+%define SYS_LISTDIR 22
 
-%define SYS_TOTAL_AMOUNT 22
+%define SYS_TOTAL_AMOUNT 23

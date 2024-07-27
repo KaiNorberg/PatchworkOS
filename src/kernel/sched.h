@@ -28,8 +28,13 @@
         nsec_t uptime = time_uptime(); \
         nsec_t deadline = (timeout) == NEVER ? NEVER : (timeout) + uptime; \
         sched_block_begin(blocker); \
-        while (!(condition) && result == BLOCK_NORM && deadline > uptime) \
+        while (!(condition) && result == BLOCK_NORM) \
         { \
+            if (deadline < uptime) \
+            { \
+                result = BLOCK_TIMEOUT; \
+                break; \
+            } \
             nsec_t remaining = deadline == NEVER ? NEVER : (deadline > uptime ? deadline - uptime : 0); \
             result = sched_block_do(blocker, remaining); \
             uptime = time_uptime(); \
@@ -44,15 +49,16 @@
     ({ \
         block_result_t result = BLOCK_NORM; \
         sched_block_begin(blocker); \
+        lock_acquire(lock); \
         while (result == BLOCK_NORM) \
         { \
-            lock_acquire(lock); \
             if (condition) \
             { \
                 break; \
             } \
             lock_release(lock); \
             result = sched_block_do(blocker, NEVER); \
+            lock_acquire(lock); \
         } \
         sched_block_end(blocker); \
         result; \
@@ -67,10 +73,15 @@
         nsec_t uptime = time_uptime(); \
         nsec_t deadline = (timeout) == NEVER ? NEVER : (timeout) + uptime; \
         sched_block_begin(blocker); \
-        while (result == BLOCK_NORM && deadline > uptime) \
+        lock_acquire(lock); \
+        while (result == BLOCK_NORM) \
         { \
-            lock_acquire(lock); \
-            if (condition) \
+            if (deadline < uptime) \
+            { \
+                result = BLOCK_TIMEOUT; \
+                break; \
+            } \
+            else if (condition) \
             { \
                 break; \
             } \
@@ -78,6 +89,7 @@
             nsec_t remaining = deadline == NEVER ? NEVER : (deadline > uptime ? deadline - uptime : 0); \
             result = sched_block_do(blocker, remaining); \
             uptime = time_uptime(); \
+            lock_acquire(lock); \
         } \
         sched_block_end(blocker); \
         result; \
@@ -92,7 +104,7 @@ typedef struct
 
 typedef struct blocker
 {
-    list_entry_t base;
+    list_entry_t entry;
     list_t threads;
     lock_t lock;
 } blocker_t;

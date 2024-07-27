@@ -10,7 +10,7 @@
 
 typedef struct window
 {
-    list_entry_t base;
+    list_entry_t entry;
     point_t pos;
     gfx_t gfx;
     dwm_type_t type;

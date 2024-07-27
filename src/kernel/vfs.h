@@ -33,12 +33,13 @@ typedef uint64_t (*fs_mount_t)(const char*); // Add arguemnts as they are needed
 typedef uint64_t (*volume_unmount_t)(volume_t*);
 typedef uint64_t (*volume_open_t)(volume_t*, file_t*, const char*);
 typedef uint64_t (*volume_stat_t)(volume_t*, const char*, stat_t*);
+typedef uint64_t (*volume_listdir_t)(volume_t*, const char*, dir_entry_t*, uint64_t);
 
 typedef uint64_t (*file_open_t)(file_t*, const char*);
 typedef void (*file_cleanup_t)(file_t*);
 typedef uint64_t (*file_read_t)(file_t*, void*, uint64_t);
 typedef uint64_t (*file_write_t)(file_t*, const void*, uint64_t);
-typedef uint64_t (*file_seek_t)(file_t*, int64_t, uint8_t);
+typedef uint64_t (*file_seek_t)(file_t*, int64_t, seek_origin_t);
 typedef uint64_t (*file_ioctl_t)(file_t*, uint64_t, void*, uint64_t);
 typedef uint64_t (*file_flush_t)(file_t*, const pixel_t*, uint64_t, const rect_t*);
 typedef void* (*file_mmap_t)(file_t*, void*, uint64_t, prot_t);
@@ -61,6 +62,7 @@ typedef struct volume_ops
 {
     volume_unmount_t unmount;
     volume_stat_t stat;
+    volume_listdir_t listdir;
 } volume_ops_t;
 
 typedef struct fs
@@ -71,8 +73,8 @@ typedef struct fs
 
 typedef struct volume
 {
-    list_entry_t base;
-    char label[CONFIG_MAX_LABEL];
+    list_entry_t entry;
+    char label[MAX_NAME];
     const volume_ops_t* volumeOps;
     const file_ops_t* fileOps;
     atomic_uint64_t ref;
@@ -91,8 +93,8 @@ typedef struct file
 typedef struct poll_file
 {
     file_t* file;
-    uint16_t requested;
-    uint16_t occurred;
+    poll_event_t requested;
+    poll_event_t occurred;
 } poll_file_t;
 
 file_t* file_new(const file_ops_t* ops);
@@ -118,11 +120,13 @@ file_t* vfs_open(const char* path);
 
 uint64_t vfs_stat(const char* path, stat_t* buffer);
 
+uint64_t vfs_listdir(const char* path, dir_entry_t* entries, uint64_t amount);
+
 uint64_t vfs_realpath(char* out, const char* path);
 
 uint64_t vfs_chdir(const char* path);
 
-uint64_t vfs_poll(poll_file_t* files, uint64_t amount, uint64_t timeout);
+uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout);
 
 static inline uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
 {
@@ -142,7 +146,7 @@ static inline uint64_t vfs_write(file_t* file, const void* buffer, uint64_t coun
     return file->ops->write(file, buffer, count);
 }
 
-static inline uint64_t vfs_seek(file_t* file, int64_t offset, uint8_t origin)
+static inline uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
 {
     if (file->ops->seek == NULL)
     {
@@ -206,6 +210,11 @@ static inline const char* name_first(const char* path)
     }
     else if (path[0] == VFS_NAME_SEPARATOR)
     {
+        if (path[1] == '\0')
+        {
+            return NULL;
+        }
+
         return path + 1;
     }
 
@@ -233,7 +242,7 @@ static inline uint64_t name_length(const char* name)
 
 static inline void name_copy(char* dest, const char* src)
 {
-    for (uint64_t i = 0; i < CONFIG_MAX_NAME - 1; i++)
+    for (uint64_t i = 0; i < MAX_NAME - 1; i++)
     {
         if (VFS_END_OF_NAME(src[i]))
         {
@@ -245,7 +254,7 @@ static inline void name_copy(char* dest, const char* src)
             dest[i] = src[i];
         }
     }
-    dest[CONFIG_MAX_NAME - 1] = '\0';
+    dest[MAX_NAME - 1] = '\0';
 }
 
 static inline bool name_compare(const char* a, const char* b)
@@ -337,4 +346,14 @@ static inline const char* dir_name_next(const char* path)
             return NULL;
         }
     }
+}
+
+static void dir_entry_push(dir_entry_t* entries, uint64_t max, uint64_t* index, uint64_t* total, dir_entry_t* entry)
+{
+    if (*index < max)
+    {
+        entries[(*index)++] = *entry;
+    }
+
+    (*total)++;
 }

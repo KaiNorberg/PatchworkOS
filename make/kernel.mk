@@ -7,7 +7,7 @@ SRC += $(wildcard src/stdlib/*.c) $(wildcard src/stdlib/*.s) \
 
 CFLAGS += $(CFLAGS_DISABLE_SIMD) -fno-pic -mcmodel=large \
 	-fno-stack-check -mno-red-zone -Wno-array-bounds \
-	-fno-stack-protector -fomit-frame-pointer \
+	-fno-stack-protector \
 	-D__EMBED__
 
 ASFLAGS += -D__EMBED__

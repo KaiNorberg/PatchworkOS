@@ -6,6 +6,7 @@
 #include <sys/proc.h>
 
 #include "defs.h"
+#include "lock.h"
 #include "simd.h"
 #include "space.h"
 #include "trap.h"
@@ -19,9 +20,15 @@ typedef struct blocker blocker_t;
 
 typedef enum
 {
-    BLOCK_NORM,
-    BLOCK_TIMEOUT
+    BLOCK_NORM = 0,
+    BLOCK_TIMEOUT = 1
 } block_result_t;
+
+typedef struct
+{
+    list_t list;
+    lock_t lock;
+} child_storage_t;
 
 typedef struct
 {
@@ -30,13 +37,14 @@ typedef struct
     char executable[MAX_PATH];
     vfs_context_t vfsContext;
     space_t space;
+    child_storage_t children;
     atomic_uint64_t threadCount;
     _Atomic tid_t newTid;
 } process_t;
 
 typedef struct
 {
-    list_entry_t base;
+    list_entry_t entry;
     process_t* process;
     tid_t id;
     bool killed;

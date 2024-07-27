@@ -1,4 +1,5 @@
 #include <bootloader/boot_info.h>
+#include <stdlib.h>
 
 #include "defs.h"
 #include "kernel.h"

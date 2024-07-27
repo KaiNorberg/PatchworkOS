@@ -52,7 +52,7 @@ thread_t* thread_new(process_t* process, void* entry, uint8_t priority)
     atomic_fetch_add(&process->threadCount, 1);
 
     thread_t* thread = malloc(sizeof(thread_t));
-    list_entry_init(&thread->base);
+    list_entry_init(&thread->entry);
     thread->process = process;
     thread->id = atomic_fetch_add(&process->newTid, 1);
     thread->killed = false;

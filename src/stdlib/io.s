@@ -59,4 +59,9 @@ write:
     SYSTEM_CALL SYS_WRITE
     ret
 
+global listdir
+listdir:
+    SYSTEM_CALL SYS_LISTDIR
+    ret
+
 %endif

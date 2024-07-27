@@ -105,3 +105,27 @@ static inline void cr0_write(uint64_t value)
 {
     asm volatile("mov %0, %%cr0" : : "r"(value));
 }
+
+static inline uint64_t rsp_read()
+{
+    uint64_t rsp;
+    asm volatile("mov %%rsp, %0" : "=r"(rsp));
+    return rsp;
+}
+
+static inline void rsp_write(uint64_t value)
+{
+    asm volatile("mov %0, %%rsp" : : "r"(value));
+}
+
+static inline uint64_t rbp_read()
+{
+    uint64_t rbp;
+    asm volatile("mov %%rbp, %0" : "=r"(rbp));
+    return rbp;
+}
+
+static inline void rbp_write(uint64_t value)
+{
+    asm volatile("mov %0, %%rbp" : : "r"(value));
+}

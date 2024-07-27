@@ -13,7 +13,7 @@ static ram_file_t* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
     EFI_FILE* fileHandle = fs_open_raw(volume, path);
 
     ram_file_t* file = vm_alloc(sizeof(ram_file_t));
-    list_entry_init(&file->base);
+    list_entry_init(&file->entry);
     char16_to_char(path, file->name);
     file->size = fs_get_size(fileHandle);
     file->data = vm_alloc(file->size);
@@ -27,7 +27,7 @@ static ram_file_t* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
 static ram_dir_t* ram_disk_load_directory(EFI_FILE* volume, const char* name)
 {
     ram_dir_t* dir = vm_alloc(sizeof(ram_dir_t));
-    list_entry_init(&dir->base);
+    list_entry_init(&dir->entry);
     strcpy(dir->name, name);
     list_init(&dir->children);
     list_init(&dir->files);

@@ -27,7 +27,7 @@ static blocker_t sleepBlocker;
 
 void blocker_init(blocker_t* blocker)
 {
-    list_entry_init(&blocker->base);
+    list_entry_init(&blocker->entry);
     list_init(&blocker->threads);
     lock_init(&blocker->lock);
 
@@ -56,7 +56,7 @@ static void blocker_push(blocker_t* blocker, thread_t* thread)
     {
         if (other->blockDeadline > thread->blockDeadline)
         {
-            list_prepend(&other->base, thread);
+            list_prepend(&other->entry, thread);
             return;
         }
     }

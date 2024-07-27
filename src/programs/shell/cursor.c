@@ -1,7 +1,8 @@
+#include "cursor.h"
+
 #include <stdlib.h>
-#include <sys/gfx.h>
-#include <sys/proc.h>
 #include <sys/win.h>
+#include <sys/gfx.h>
 
 static gfx_fbmp_t* image;
 
@@ -25,7 +26,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
     return 0;
 }
 
-int main(void)
+win_t* cursor_new(void)
 {
     image = gfx_fbmp_load("/usr/cursor/arrow.fbmp");
     if (image == NULL)
@@ -36,19 +37,5 @@ int main(void)
     rect_t screenRect;
     win_screen_rect(&screenRect);
     rect_t rect = RECT_INIT_DIM(RECT_WIDTH(&screenRect) / 2, RECT_HEIGHT(&screenRect) / 2, image->width, image->height);
-    win_t* cursor = win_new("Cursor", &rect, DWM_CURSOR, WIN_NONE, procedure);
-    if (cursor == NULL)
-    {
-        return EXIT_FAILURE;
-    }
-
-    msg_t msg = {0};
-    while (msg.type != LMSG_QUIT)
-    {
-        win_receive(cursor, &msg, NEVER);
-        win_dispatch(cursor, &msg);
-    }
-
-    win_free(cursor);
-    return EXIT_SUCCESS;
+    return win_new("Cursor", &rect, DWM_CURSOR, WIN_NONE, procedure);
 }

@@ -202,7 +202,7 @@ void vfs_init(void)
 
 uint64_t vfs_attach_simple(const char* label, const volume_ops_t* volumeOps, const file_ops_t* fileOps)
 {
-    if (strlen(label) >= CONFIG_MAX_LABEL)
+    if (strlen(label) >= MAX_NAME)
     {
         return ERROR(EINVAL);
     }
@@ -218,7 +218,7 @@ uint64_t vfs_attach_simple(const char* label, const volume_ops_t* volumeOps, con
     }
 
     volume = malloc(sizeof(volume_t));
-    list_entry_init(&volume->base);
+    list_entry_init(&volume->entry);
     strcpy(volume->label, label);
     volume->volumeOps = volumeOps;
     volume->fileOps = fileOps;
@@ -339,6 +339,38 @@ uint64_t vfs_stat(const char* path, stat_t* buffer)
     return result;
 }
 
+uint64_t vfs_listdir(const char* path, dir_entry_t* entries, uint64_t amount)
+{
+    char parsedPath[MAX_PATH];
+    if (vfs_parse_path(parsedPath, path) == ERR)
+    {
+        return ERROR(EPATH);
+    }
+
+    volume_t* volume = volume_get(parsedPath);
+    if (volume == NULL)
+    {
+        return ERROR(EPATH);
+    }
+
+    if (volume->volumeOps->listdir == NULL)
+    {
+        volume_deref(volume);
+        return ERROR(EACCES);
+    }
+
+    char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
+    if (rootPath == NULL)
+    {
+        volume_deref(volume);
+        return ERR;
+    }
+
+    uint64_t result = volume->volumeOps->listdir(volume, rootPath, entries, amount);
+    volume_deref(volume);
+    return result;
+}
+
 uint64_t vfs_realpath(char* out, const char* path)
 {
     if (vfs_parse_path(out, path) == ERR)
@@ -382,15 +414,13 @@ static bool vfs_poll_condition(uint64_t* events, poll_file_t* files, uint64_t am
     *events = 0;
     for (uint64_t i = 0; i < amount; i++)
     {
-        poll_file_t* pollFile = &files[i];
-
-        if (pollFile->file->ops->status(pollFile->file, pollFile) == ERR)
+        if (files[i].file->ops->status(files[i].file, &files[i]) == ERR)
         {
             *events = ERR;
             return true;
         }
 
-        if ((pollFile->occurred & pollFile->requested) != 0)
+        if ((files[i].occurred & files[i].requested) != 0)
         {
             (*events)++;
         }
@@ -399,11 +429,11 @@ static bool vfs_poll_condition(uint64_t* events, poll_file_t* files, uint64_t am
     return *events != 0;
 }
 
-uint64_t vfs_poll(poll_file_t* files, uint64_t amount, uint64_t timeout)
+uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
 {
     for (uint64_t i = 0; i < amount; i++)
     {
-        if (files->file[i].ops->status == NULL)
+        if (files[i].file->ops->status == NULL)
         {
             return ERROR(EACCES);
         }

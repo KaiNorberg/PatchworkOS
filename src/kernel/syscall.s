@@ -18,12 +18,16 @@ syscall_handler:
     push r9
     push r10
     push r11
+    push rbp
+
+    mov rbp, 0
 
     call [syscallTable + rax * 8]
     push rax
     call syscall_handler_end
     pop rax
 
+    pop rbp
     pop r11
     pop r10
     pop r9
@@ -32,6 +36,7 @@ syscall_handler:
     pop rdx
     pop rsi
     pop rdi
+
     iretq
 .not_available:
     mov rax, -1

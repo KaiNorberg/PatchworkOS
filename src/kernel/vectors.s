@@ -39,6 +39,8 @@ vector_common:
     push r14
     push r15
 
+    mov rbp, 0
+
     mov rdi, rsp
     call trap_handler
 

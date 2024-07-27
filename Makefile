@@ -21,14 +21,17 @@ deploy:
 	mkfs.vfat -F 32 -n "PATCHWORKOS" $(TARGET)
 	mlabel -i $(TARGET) ::PatchworkOS
 	mmd -i $(TARGET) ::/boot
+	mmd -i $(TARGET) ::/bin
 	mmd -i $(TARGET) ::/efi
 	mmd -i $(TARGET) ::/efi/boot
 	mmd -i $(TARGET) ::/usr
+	mmd -i $(TARGET) ::/usr/bin
 	mmd -i $(TARGET) ::/usr/licence
 	mcopy -i $(TARGET) -s root/* ::
 	mcopy -i $(TARGET) -s bin/bootloader/bootx64.efi ::/efi/boot
 	mcopy -i $(TARGET) -s bin/kernel/kernel.elf ::/boot
-	mcopy -i $(TARGET) -s bin/programs ::/bin
+	mcopy -i $(TARGET) -s bin/programs/shell.elf ::/bin
+	mcopy -i $(TARGET) -s bin/programs/calculator.elf ::/usr/bin
 	mcopy -i $(TARGET) -s COPYING ::/usr/licence
 	mcopy -i $(TARGET) -s LICENSE ::/usr/licence
 

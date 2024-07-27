@@ -3,7 +3,6 @@
 #include "dwm.h"
 #include "dwm/msg_queue.h"
 #include "lock.h"
-#include "sched.h"
 #include "vfs.h"
 
 #include <errno.h>
@@ -66,7 +65,8 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* argp, uint64_
             window->gfx.height = move->height;
             window->gfx.stride = move->width;
 
-            window->gfx.buffer = realloc(window->gfx.buffer, move->width * move->height * sizeof(pixel_t));
+            free(window->gfx.buffer);
+            window->gfx.buffer = malloc(move->width * move->height * sizeof(pixel_t));
         }
 
         window->moved = true;
@@ -140,7 +140,7 @@ window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, dwm_ty
     }
 
     window_t* window = malloc(sizeof(window_t));
-    list_entry_init(&window->base);
+    list_entry_init(&window->entry);
     window->pos = *pos;
     window->type = type;
     window->gfx.buffer = calloc(width * height, sizeof(pixel_t));

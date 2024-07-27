@@ -9,6 +9,7 @@
 #include "smp.h"
 #include "time.h"
 #include "vfs.h"
+#include "vfs_context.h"
 #include "vmm.h"
 
 // NOTE: Syscalls should always return a 64 bit value to prevent garbage from remaining in rax.
@@ -158,7 +159,7 @@ uint64_t syscall_write(fd_t fd, const void* buffer, uint64_t count)
     return vfs_write(file, buffer, count);
 }
 
-uint64_t syscall_seek(fd_t fd, int64_t offset, uint8_t origin)
+uint64_t syscall_seek(fd_t fd, int64_t offset, seek_origin_t origin)
 {
     file_t* file = vfs_context_get(fd);
     if (file == NULL)
@@ -207,9 +208,9 @@ uint64_t syscall_chdir(const char* path)
     return vfs_chdir(path);
 }
 
-uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, uint64_t timeout)
+uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, nsec_t timeout)
 {
-    if (amount == 0 || amount > CONFIG_MAX_FILE)
+    if (amount == 0 || amount > CONFIG_MAX_FD)
     {
         return ERROR(EINVAL);
     }
@@ -219,7 +220,7 @@ uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, uint64_t timeout)
         return ERROR(EFAULT);
     }
 
-    poll_file_t files[CONFIG_MAX_FILE];
+    poll_file_t files[CONFIG_MAX_FD];
     for (uint64_t i = 0; i < amount; i++)
     {
         files[i].file = vfs_context_get(fds[i].fd);
@@ -312,6 +313,16 @@ uint64_t syscall_flush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect
     return vfs_flush(file, buffer, size, rect);
 }
 
+uint64_t syscall_listdir(const char* path, dir_entry_t* entries, uint64_t amount)
+{
+    if (!verify_buffer(entries, sizeof(dir_entry_t) * amount))
+    {
+        return ERROR(EFAULT);
+    }
+
+    return vfs_listdir(path, entries, amount);
+}
+
 ///////////////////////////////////////////////////////
 
 void syscall_handler_end(void)
@@ -347,4 +358,5 @@ void* syscallTable[] = {
     syscall_munmap,
     syscall_mprotect,
     syscall_flush,
+    syscall_listdir,
 };

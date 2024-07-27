@@ -144,7 +144,7 @@ static void dwm_redraw_others(window_t* window, const rect_t* rect)
 static void dwm_invalidate_above(window_t* window, const rect_t* rect)
 {
     window_t* other;
-    LIST_FOR_EACH_FROM(other, window->base.next, &windows)
+    LIST_FOR_EACH_FROM(other, window->entry.next, &windows)
     {
         LOCK_GUARD(&other->lock);
 
@@ -314,7 +314,7 @@ static void dwm_poll(void)
     while (!atomic_load(&redrawNeeded))
     {
         sched_block_begin(&blocker);
-        sched_block_do(&blocker, SEC / 1000); // TODO: Implement something better then this.
+        sched_block_do(&blocker, SEC / 1000);
         sched_block_end(&blocker);
 
         if (cursor == NULL)
@@ -551,6 +551,7 @@ void dwm_start(void)
 void dwm_redraw(void)
 {
     atomic_store(&redrawNeeded, true);
+    sched_unblock(&blocker);
 }
 
 void dwm_update_client_rect(void)

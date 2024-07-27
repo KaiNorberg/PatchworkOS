@@ -17,7 +17,7 @@ static lock_t lock;
 static system_t* system_new(const char* name)
 {
     system_t* system = malloc(sizeof(system_t));
-    list_entry_init(&system->base);
+    list_entry_init(&system->entry);
     name_copy(system->name, name);
     list_init(&system->resources);
     list_init(&system->systems);
@@ -66,6 +66,24 @@ static void resource_free(resource_t* resource)
 static system_t* sysfs_traverse(const char* path)
 {
     system_t* system = root;
+    const char* name = name_first(path);
+    while (name != NULL)
+    {
+        system = system_find_system(system, name);
+        if (system == NULL)
+        {
+            return NULL;
+        }
+
+        name = name_next(name);
+    }
+
+    return system;
+}
+
+static system_t* sysfs_traverse_parent(const char* path)
+{
+    system_t* system = root;
     const char* name = dir_name_first(path);
     while (name != NULL)
     {
@@ -83,7 +101,7 @@ static system_t* sysfs_traverse(const char* path)
 
 static resource_t* sysfs_find_resource(const char* path)
 {
-    system_t* parent = sysfs_traverse(path);
+    system_t* parent = sysfs_traverse_parent(path);
     if (parent == NULL)
     {
         return NULL;
@@ -174,7 +192,7 @@ static uint64_t sysfs_write(file_t* file, const void* buffer, uint64_t count)
     return SYSFS_OPERATION(write, file, buffer, count);
 }
 
-static uint64_t sysfs_seek(file_t* file, int64_t offset, uint8_t origin)
+static uint64_t sysfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
 {
     return SYSFS_OPERATION(seek, file, offset, origin);
 }
@@ -205,10 +223,10 @@ static uint64_t sysfs_stat(volume_t* volume, const char* path, stat_t* buffer)
 
     buffer->size = 0;
 
-    system_t* parent = sysfs_traverse(path);
+    system_t* parent = sysfs_traverse_parent(path);
     if (parent == NULL)
     {
-        return ERR;
+        return ERROR(EPATH);
     }
 
     const char* name = vfs_basename(path);
@@ -228,6 +246,42 @@ static uint64_t sysfs_stat(volume_t* volume, const char* path, stat_t* buffer)
     return 0;
 }
 
+static uint64_t sysfs_listdir(volume_t* volume, const char* path, dir_entry_t* entries, uint64_t amount)
+{
+    LOCK_GUARD(&lock);
+
+    system_t* parent = sysfs_traverse(path);
+    if (parent == NULL)
+    {
+        return ERROR(EPATH);
+    }
+
+    uint64_t index = 0;
+    uint64_t total = 0;
+
+    system_t* system;
+    LIST_FOR_EACH(system, &parent->systems)
+    {
+        dir_entry_t entry = {0};
+        strcpy(entry.name, system->name);
+        entry.type = STAT_DIR;
+
+        dir_entry_push(entries, amount, &index, &total, &entry);
+    }
+
+    resource_t* resource;
+    LIST_FOR_EACH(resource, &parent->resources)
+    {
+        dir_entry_t entry = {0};
+        strcpy(entry.name, resource->name);
+        entry.type = STAT_RES;
+
+        dir_entry_push(entries, amount, &index, &total, &entry);
+    }
+
+    return total;
+}
+
 static file_ops_t fileOps = {
     .open = sysfs_open,
     .cleanup = sysfs_cleanup,
@@ -242,6 +296,7 @@ static file_ops_t fileOps = {
 
 static volume_ops_t volumeOps = {
     .stat = sysfs_stat,
+    .listdir = sysfs_listdir,
 };
 
 static uint64_t sysfs_mount(const char* label)
@@ -284,7 +339,7 @@ resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_
     }
 
     resource_t* resource = malloc(sizeof(resource_t));
-    list_entry_init(&resource->base);
+    list_entry_init(&resource->entry);
     resource->system = system;
     strcpy(resource->name, filename);
     resource->ops = ops;

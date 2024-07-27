@@ -66,7 +66,7 @@ typedef struct
 
 typedef struct ram_file
 {
-    list_entry_t base;
+    list_entry_t entry;
     char name[32];
     void* data;
     uint64_t size;
@@ -74,7 +74,7 @@ typedef struct ram_file
 
 typedef struct ram_dir
 {
-    list_entry_t base;
+    list_entry_t entry;
     char name[32];
     list_t children;
     list_t files;

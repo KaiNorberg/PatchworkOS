@@ -44,6 +44,24 @@ static ram_dir_t* ram_dir_find_dir(ram_dir_t* dir, const char* dirname)
 static ram_dir_t* ramfs_traverse(const char* path)
 {
     ram_dir_t* dir = root;
+    const char* dirname = name_first(path);
+    while (dirname != NULL)
+    {
+        dir = ram_dir_find_dir(dir, dirname);
+        if (dir == NULL)
+        {
+            return NULL;
+        }
+
+        dirname = name_next(dirname);
+    }
+
+    return dir;
+}
+
+static ram_dir_t* ramfs_traverse_parent(const char* path)
+{
+    ram_dir_t* dir = root;
     const char* dirname = dir_name_first(path);
     while (dirname != NULL)
     {
@@ -61,7 +79,7 @@ static ram_dir_t* ramfs_traverse(const char* path)
 
 static ram_file_t* ramfs_find_file(const char* path)
 {
-    ram_dir_t* parent = ramfs_traverse(path);
+    ram_dir_t* parent = ramfs_traverse_parent(path);
     if (parent == NULL)
     {
         return NULL;
@@ -78,7 +96,7 @@ static ram_file_t* ramfs_find_file(const char* path)
 
 static ram_dir_t* ramfs_find_dir(const char* path)
 {
-    ram_dir_t* parent = ramfs_traverse(path);
+    ram_dir_t* parent = ramfs_traverse_parent(path);
     if (parent == NULL)
     {
         return NULL;
@@ -118,7 +136,7 @@ static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count)
     return readCount;
 }
 
-static uint64_t ramfs_seek(file_t* file, int64_t offset, uint8_t origin)
+static uint64_t ramfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
 {
     ram_file_t* private = file->private;
 
@@ -155,10 +173,10 @@ static uint64_t ramfs_stat(volume_t* volume, const char* path, stat_t* buffer)
 {
     buffer->size = 0;
 
-    ram_dir_t* parent = ramfs_traverse(path);
+    ram_dir_t* parent = ramfs_traverse_parent(path);
     if (parent == NULL)
     {
-        return ERR;
+        return ERROR(EPATH);
     }
 
     const char* name = vfs_basename(path);
@@ -178,7 +196,44 @@ static uint64_t ramfs_stat(volume_t* volume, const char* path, stat_t* buffer)
     return 0;
 }
 
-static volume_ops_t volumeOps = {.stat = ramfs_stat};
+static uint64_t ramfs_listdir(volume_t* volume, const char* path, dir_entry_t* entries, uint64_t amount)
+{
+    ram_dir_t* parent = ramfs_traverse(path);
+    if (parent == NULL)
+    {
+        return ERROR(EPATH);
+    }
+
+    uint64_t index = 0;
+    uint64_t total = 0;
+
+    ram_dir_t* dir;
+    LIST_FOR_EACH(dir, &parent->children)
+    {
+        dir_entry_t entry = {0};
+        strcpy(entry.name, dir->name);
+        entry.type = STAT_DIR;
+
+        dir_entry_push(entries, amount, &index, &total, &entry);
+    }
+
+    ram_file_t* file;
+    LIST_FOR_EACH(file, &parent->files)
+    {
+        dir_entry_t entry = {0};
+        strcpy(entry.name, file->name);
+        entry.type = STAT_FILE;
+
+        dir_entry_push(entries, amount, &index, &total, &entry);
+    }
+
+    return total;
+}
+
+static volume_ops_t volumeOps = {
+    .stat = ramfs_stat,
+    .listdir = ramfs_listdir,
+};
 
 static file_ops_t fileOps = {
     .open = ramfs_open,
@@ -199,7 +254,7 @@ static fs_t ramfs = {
 static ram_dir_t* ramfs_load_dir(ram_dir_t* in)
 {
     ram_dir_t* out = malloc(sizeof(ram_dir_t));
-    list_entry_init(&out->base);
+    list_entry_init(&out->entry);
     strcpy(out->name, in->name);
     list_init(&out->children);
     list_init(&out->files);
@@ -214,7 +269,7 @@ static ram_dir_t* ramfs_load_dir(ram_dir_t* in)
     LIST_FOR_EACH(inFile, &in->files)
     {
         ram_file_t* outFile = malloc(sizeof(ram_file_t));
-        list_entry_init(&outFile->base);
+        list_entry_init(&outFile->entry);
         strcpy(outFile->name, inFile->name);
         outFile->size = inFile->size;
         outFile->data = malloc(outFile->size);

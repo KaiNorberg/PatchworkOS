@@ -14,7 +14,7 @@ void vfs_context_init(vfs_context_t* context)
 
 void vfs_context_cleanup(vfs_context_t* context)
 {
-    for (uint64_t i = 0; i < CONFIG_MAX_FILE; i++)
+    for (uint64_t i = 0; i < CONFIG_MAX_FD; i++)
     {
         file_t* file = context->files[i];
         if (file != NULL)
@@ -29,7 +29,7 @@ fd_t vfs_context_open(file_t* file)
     vfs_context_t* context = &sched_process()->vfsContext;
     LOCK_GUARD(&context->lock);
 
-    for (fd_t fd = 0; fd < CONFIG_MAX_FILE; fd++)
+    for (fd_t fd = 0; fd < CONFIG_MAX_FD; fd++)
     {
         if (context->files[fd] == NULL)
         {
@@ -46,7 +46,7 @@ uint64_t vfs_context_close(fd_t fd)
     vfs_context_t* context = &sched_process()->vfsContext;
     LOCK_GUARD(&context->lock);
 
-    if (fd >= CONFIG_MAX_FILE || context->files[fd] == NULL)
+    if (fd >= CONFIG_MAX_FD || context->files[fd] == NULL)
     {
         return ERROR(EBADF);
     }

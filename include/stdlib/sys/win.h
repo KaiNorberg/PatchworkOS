@@ -113,6 +113,8 @@ win_t* win_new(const char* name, const rect_t* rect, dwm_type_t type, win_flags_
 
 uint64_t win_free(win_t* window);
 
+uint64_t win_poll(win_t** windows, uint64_t amount, nsec_t timeout);
+
 uint64_t win_send(win_t* window, msg_type_t type, const void* data, uint64_t size);
 
 uint64_t win_receive(win_t* window, msg_t* msg, nsec_t timeout);

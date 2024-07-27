@@ -72,7 +72,7 @@ static NOINLINE uint64_t cpu_start(cpu_t* cpu)
     hpet_sleep(SEC / 100);
     lapic_send_sipi(cpu->lapicId, ((uint64_t)TRAMPOLINE_PHYSICAL_START) / PAGE_SIZE);
 
-    uint64_t timeout = 1000;
+    nsec_t timeout = 1000;
     while (!cpuReady)
     {
         hpet_sleep(SEC / 1000);

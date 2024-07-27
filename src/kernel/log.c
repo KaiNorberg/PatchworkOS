@@ -3,7 +3,6 @@
 #include "com.h"
 #include "defs.h"
 #include "font.h"
-#include "io.h"
 #include "lock.h"
 #include "pmm.h"
 #include "regs.h"
@@ -307,7 +306,6 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
 
     if (trapFrame != NULL)
     {
-        log_print("Trap Frame:");
         log_print("ss %a, rsp %a, rflags %a, cs %a, rip %a", trapFrame->ss, trapFrame->rsp, trapFrame->rflags, trapFrame->cs,
             trapFrame->rip);
         log_print("error code %a, vector %a", trapFrame->errorCode, trapFrame->vector);
@@ -318,6 +316,19 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
     }
 
     log_print("cr0: %a, cr2: %a, cr3: %a, cr4: %a", cr0_read(), cr2_read(), cr3_read(), cr4_read());
+
+    log_print("Call Stack:");
+    uint64_t *frame = (uint64_t *)__builtin_frame_address(0);
+    for (uint64_t i = 0; i < 16; i++)
+    {
+        if (frame == NULL)
+        {
+            break;
+        }
+
+        log_print("%a", frame[1]);
+        frame = (uint64_t*)frame[0];
+    }
 
     log_print("Please restart your machine");
 

@@ -10,7 +10,7 @@ typedef struct file file_t;
 typedef struct
 {
     char cwd[MAX_PATH];
-    file_t* files[CONFIG_MAX_FILE];
+    file_t* files[CONFIG_MAX_FD];
     lock_t lock;
 } vfs_context_t;
 
