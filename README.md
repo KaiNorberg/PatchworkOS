@@ -6,10 +6,11 @@ Patchwork is a 64 bit monolithic hobbyist OS built from scratch in C for the x86
 
 ## Differences with Unix
 
-- Multiroot Filesystem, with labels not letters ```home:/usr/fonts```
+- Multiroot filesystem, with labels not letters ```home:/usr/fonts```
 - Replaced ```fork(), exec()``` with ```spawn()```
-- Non POSIX Standard Library
-- GUI Centric design
+- Single-User
+- Non POSIX standard library
+- GUI centric design
 
 ## Features
 
@@ -18,8 +19,8 @@ Patchwork is a 64 bit monolithic hobbyist OS built from scratch in C for the x86
 - SMP (Symmetric Multiprocessing)
 - Multithreading (Kernel Level Threads)
 - O(1) scheduler
-- Custom Standard Library
-- Custom UEFI Bootloader
+- Custom standard library
+- Custom UEFI bootloader
 - SIMD
 - [Custom image format (.fbmp)](https://github.com/KaiNorberg/fbmp)
 - More to be added...
