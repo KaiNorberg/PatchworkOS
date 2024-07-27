@@ -1,12 +1,19 @@
-# Patchwork OS
+# Patchwork OS ![](https://img.shields.io/badge/License-GNU%20GPL-blue)
 
 **Keep in mind that PatchworkOS is currently in a very early stage of development.**
 
-Patchwork is a 64 bit monolithic hobbyist OS built from scratch in C for the x86_64 architecture, it is similar to Unix in many ways but not Unix-like.
+Patchwork is a 64 bit monolithic hobbyist OS built from scratch in C for the x86_64 architecture, it is intended as a easy-to-modify toy-like Unix-inspired OS, taking many ideas from Unix but also simlifying and modernizing them while removing fat.
+
+## Differences with Unix
+
+- Multiroot Filesystem, with labels not letters ```home:/usr/fonts```
+- Replaced ```fork(), exec()``` with ```spawn()```
+- Non POSIX Standard Library
+- GUI Centric design
 
 ## Features
 
-- Very simple Unix inspired architecture (Not Unix-like)
+- Easy to understand Unix inspired architecture (Not Unix-like)
 - Monolithic preemptive 64-bit kernel
 - SMP (Symmetric Multiprocessing)
 - Multithreading (Kernel Level Threads)
