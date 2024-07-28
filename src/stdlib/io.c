@@ -1,7 +1,7 @@
 #ifndef __EMBED__
 
-#include <sys/io.h>
 #include <stdlib.h>
+#include <sys/io.h>
 
 uint64_t loaddir(dir_entry_t** out, const char* path)
 {

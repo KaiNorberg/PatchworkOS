@@ -1,8 +1,8 @@
 #include "cursor.h"
 
 #include <stdlib.h>
-#include <sys/win.h>
 #include <sys/gfx.h>
+#include <sys/win.h>
 
 static gfx_fbmp_t* image;
 

@@ -17,13 +17,15 @@ extern "C"
 #define SIZE_IN_PAGES(size) (((size) + PAGE_SIZE - 1) / PAGE_SIZE)
 #define PAGE_SIZE_OF(object) SIZE_IN_PAGES(sizeof(object))
 
-#define PROT_NONE 0
-#define PROT_READ (1 << 0)
-#define PROT_WRITE (1 << 1)
+typedef enum prot
+{
+    PROT_NONE = 0,
+    PROT_READ = (1 << 0),
+    PROT_WRITE = (1 << 1)
+} prot_t;
 
 typedef uint64_t pid_t;
 typedef uint64_t tid_t;
-typedef uint64_t prot_t;
 
 // Nanoseconds per second.
 #define SEC ((nsec_t)1000000000)
@@ -34,6 +36,7 @@ nsec_t uptime(void);
 
 uint64_t sleep(nsec_t nanoseconds);
 
+// Very WIP, how to deal with file descriptors? Posix style? Table of file descriptors to dup?
 pid_t spawn(const char* path);
 
 pid_t getpid(void);

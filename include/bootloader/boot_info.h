@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <sys/io.h>
 #include <sys/list.h>
 
 #ifndef __BOOTLOADER__
@@ -67,7 +68,7 @@ typedef struct
 typedef struct ram_file
 {
     list_entry_t entry;
-    char name[32];
+    char name[MAX_NAME];
     void* data;
     uint64_t size;
 } ram_file_t;
@@ -75,7 +76,7 @@ typedef struct ram_file
 typedef struct ram_dir
 {
     list_entry_t entry;
-    char name[32];
+    char name[MAX_NAME];
     list_t children;
     list_t files;
 } ram_dir_t;

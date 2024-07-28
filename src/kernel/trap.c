@@ -48,21 +48,14 @@ void cli_pop(void)
 
 static void exception_handler(const trap_frame_t* trapFrame)
 {
-    switch (trapFrame->vector)
+    if (trapFrame->ss != GDT_KERNEL_DATA)
     {
-    default:
-    {
-        if (trapFrame->ss == GDT_KERNEL_DATA)
-        {
-            log_panic(trapFrame, "Exception");
-        }
-        else
-        {
-            log_panic(trapFrame, "Unhandled User Exception");
-            // sched_process_exit(1);
-        }
+        log_panic(trapFrame, "Exception");
     }
-    break;
+    else
+    {
+        log_panic(trapFrame, "Unhandled User Exception");
+        // sched_process_exit(1);
     }
 }
 
@@ -83,26 +76,15 @@ static void ipi_handler(trap_frame_t* trapFrame)
     lapic_eoi();
 }
 
-static void trap_begin(cpu_t* cpu)
-{
-    cpu->trapDepth++;
-}
-
-static void trap_end(cpu_t* cpu)
-{
-    cpu->trapDepth--;
-}
-
 void trap_handler(trap_frame_t* trapFrame)
 {
-    cpu_t* cpu = smp_self_unsafe();
-
     if (trapFrame->vector < IRQ_BASE)
     {
         exception_handler(trapFrame);
     }
 
-    trap_begin(cpu);
+    cpu_t* cpu = smp_self_unsafe();
+    cpu->trapDepth++;
 
     if (trapFrame->vector >= IRQ_BASE && trapFrame->vector < IRQ_BASE + IRQ_AMOUNT)
     {
@@ -114,17 +96,18 @@ void trap_handler(trap_frame_t* trapFrame)
     }
     else if (trapFrame->vector == VECTOR_SCHED_TIMER)
     {
-        sched_schedule(trapFrame);
         lapic_eoi();
     }
     else if (trapFrame->vector == VECTOR_SCHED_INVOKE)
     {
-        sched_schedule(trapFrame);
+        // Do nothing
     }
     else
     {
         log_panic(trapFrame, "Unknown vector");
     }
 
-    trap_end(cpu);
+    sched_schedule(trapFrame);
+
+    cpu->trapDepth--;
 }

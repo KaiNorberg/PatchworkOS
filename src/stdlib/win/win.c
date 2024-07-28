@@ -355,10 +355,7 @@ uint64_t win_poll(win_t** windows, uint64_t amount, nsec_t timeout)
     pollfd_t array[amount];
     for (uint64_t i = 0; i < amount; i++)
     {
-        array[i] = (pollfd_t){
-            .fd = windows[i]->fd,
-            .requested = POLL_READ
-        };
+        array[i] = (pollfd_t){.fd = windows[i]->fd, .requested = POLL_READ};
     }
     return poll(array, amount, timeout);
 }

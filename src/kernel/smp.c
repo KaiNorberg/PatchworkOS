@@ -90,15 +90,14 @@ static NOINLINE void smp_detect_cpus(void)
 {
     cpuAmount = 0;
 
-    madt_lapic_t* record = madt_first_record(MADT_LAPIC);
-    while (record != NULL)
+    madt_t* madt = madt_get();
+    madt_lapic_t* record;
+    MADT_FOR_EACH(madt, record)
     {
-        if (record->flags & MADT_LAPIC_INITABLE)
+        if (record->header.type == MADT_LAPIC && record->flags & MADT_LAPIC_INITABLE)
         {
             cpuAmount++;
         }
-
-        record = madt_next_record(record, MADT_LAPIC);
     }
 
     log_print("smp: startup, %d cpus detected", (uint64_t)cpuAmount);
@@ -109,25 +108,22 @@ static NOINLINE void smp_start_others(void)
     uint8_t newId = 1;
     uint8_t lapicId = lapic_id();
 
-    madt_lapic_t* record = madt_first_record(MADT_LAPIC);
-    while (record != NULL)
+    madt_t* madt = madt_get();
+    madt_lapic_t* record;
+    MADT_FOR_EACH(madt, record)
     {
-        if (record->flags & MADT_LAPIC_INITABLE)
+        if (record->header.type != MADT_LAPIC)
         {
-            if (lapicId != record->lapicId)
-            {
-                uint8_t id = newId++;
-                cpus[id] = malloc(sizeof(cpu_t));
-                cpu_init(cpus[id], id, record->lapicId);
-                LOG_ASSERT(cpu_start(cpus[id]) != ERR, "startup fail");
-            }
-            else
-            {
-                cpus[0]->lapicId = lapicId;
-            }
+            continue;
         }
 
-        record = madt_next_record(record, MADT_LAPIC);
+        if (record->flags & MADT_LAPIC_INITABLE && lapicId != record->lapicId)
+        {
+            uint8_t id = newId++;
+            cpus[id] = malloc(sizeof(cpu_t));
+            cpu_init(cpus[id], id, record->lapicId);
+            LOG_ASSERT(cpu_start(cpus[id]) != ERR, "startup fail");
+        }
     }
 }
 
@@ -145,6 +141,7 @@ void smp_init(void)
 
 void smp_init_others(void)
 {
+    cpus[0]->lapicId = lapic_id();
     smp_detect_cpus();
 
     trampoline_init();

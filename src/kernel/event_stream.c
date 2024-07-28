@@ -25,15 +25,15 @@ static uint64_t event_stream_read(file_t* file, void* buffer, uint64_t count)
     count = ROUND_DOWN(count, stream->eventSize);
     for (uint64_t i = 0; i < count / stream->eventSize; i++)
     {
-        if (SCHED_BLOCK_LOCK(&stream->blocker, &stream->lock, file->position != stream->writeIndex) != BLOCK_NORM)
+        if (SCHED_BLOCK_LOCK(&stream->blocker, &stream->lock, file->pos != stream->writeIndex) != BLOCK_NORM)
         {
             lock_release(&stream->lock);
             return i * stream->eventSize;
         }
 
-        memcpy((uint8_t*)buffer + stream->eventSize * i, (uint8_t*)stream->buffer + stream->eventSize * file->position,
+        memcpy((uint8_t*)buffer + stream->eventSize * i, (uint8_t*)stream->buffer + stream->eventSize * file->pos,
             stream->eventSize);
-        file->position = (file->position + 1) % stream->length;
+        file->pos = (file->pos + 1) % stream->length;
 
         lock_release(&stream->lock);
     }
@@ -44,7 +44,7 @@ static uint64_t event_stream_read(file_t* file, void* buffer, uint64_t count)
 static uint64_t event_stream_status(file_t* file, poll_file_t* pollFile)
 {
     event_stream_t* stream = file->private;
-    pollFile->occurred = POLL_READ & (stream->writeIndex != file->position);
+    pollFile->occurred = POLL_READ & (stream->writeIndex != file->pos);
     return 0;
 }
 

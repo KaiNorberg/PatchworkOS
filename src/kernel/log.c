@@ -318,7 +318,7 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
     log_print("cr0: %a, cr2: %a, cr3: %a, cr4: %a", cr0_read(), cr2_read(), cr3_read(), cr4_read());
 
     log_print("Call Stack:");
-    uint64_t *frame = (uint64_t *)__builtin_frame_address(0);
+    uint64_t* frame = (uint64_t*)__builtin_frame_address(0);
     for (uint64_t i = 0; i < 16; i++)
     {
         if (frame == NULL)

@@ -18,8 +18,8 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
     {
         win_theme(&theme);
 
-        //rect_t rect = RECT_INIT_DIM(START_PADDING * 2, START_PADDING + theme.edgeWidth, START_WIDTH, TOPBAR_HEIGHT - START_PADDING * 2);
-        //widget_t* button = win_widget_new(window, win_button_proc, "Start", &rect, START_ID);
+        // rect_t rect = RECT_INIT_DIM(START_PADDING * 2, START_PADDING + theme.edgeWidth, START_WIDTH, TOPBAR_HEIGHT -
+        // START_PADDING * 2); widget_t* button = win_widget_new(window, win_button_proc, "Start", &rect, START_ID);
     }
     break;
     case LMSG_REDRAW:
@@ -44,7 +44,6 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         {
             if (data->id == START_ID)
             {
-
             }
         }
     }

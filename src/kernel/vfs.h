@@ -83,7 +83,7 @@ typedef struct volume
 typedef struct file
 {
     volume_t* volume;
-    uint64_t position;
+    uint64_t pos;
     void* private;
     resource_t* resource; // Used by sysfs
     const file_ops_t* ops;

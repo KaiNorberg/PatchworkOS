@@ -206,20 +206,9 @@ static void sched_block_ipi(trap_frame_t* trapFrame)
 
     thread_save(context->runThread, trapFrame);
     blocker_push(blocker, context->runThread);
-
-    thread_t* next = sched_context_find_any(context);
-    if (next == NULL)
-    {
-        thread_load(NULL, trapFrame);
-        context->runThread = NULL;
-    }
-    else
-    {
-        thread_load(next, trapFrame);
-        context->runThread = next;
-    }
-
     lock_release(&blocker->lock);
+
+    context->runThread = NULL;
 }
 
 void sched_block_begin(blocker_t* blocker)

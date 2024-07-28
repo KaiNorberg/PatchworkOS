@@ -7,9 +7,9 @@
 
 #define MADT_LAPIC_INITABLE (1 << 0)
 
-#define MADT_FOR_EACH(record, type, records) \
-    for ((record) = (typeof(record))(records); (uint64_t)(record) < (uint64_t)madt + madt->header.length; \
-         record = (madt_header_t*)((uint64_t)record + record->length))
+#define MADT_FOR_EACH(madt, record) \
+    for (record = (typeof(record))madt->records; (uint64_t)record < (uint64_t)madt + madt->header.length; \
+         record = (typeof(record))((uint64_t)record + record->header.length))
 
 typedef struct PACKED
 {
@@ -20,7 +20,6 @@ typedef struct PACKED
 typedef struct PACKED
 {
     madt_header_t header;
-
     uint8_t cpuId;
     uint8_t lapicId;
     uint32_t flags;
@@ -36,8 +35,6 @@ typedef struct PACKED
 
 void madt_init(void);
 
+madt_t* madt_get(void);
+
 void* madt_lapic_address(void);
-
-void* madt_first_record(uint8_t type);
-
-void* madt_next_record(void* prev, uint8_t type);
