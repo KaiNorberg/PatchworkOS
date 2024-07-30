@@ -19,7 +19,7 @@
 #define VFS_END_OF_NAME(ch) ((ch) == VFS_NAME_SEPARATOR || (ch) == '\0')
 #define VFS_END_OF_LABEL(ch) ((ch) == VFS_LABEL_SEPARATOR || (ch) == '\0')
 
-#define FILE_GUARD(file) __attribute__((cleanup(file_cleanup))) file_t* CONCAT(f, __COUNTER__) = (file)
+#define FILE_GUARD(file) __attribute__((cleanup(file_guard_release))) file_t* CONCAT(f, __COUNTER__) = (file)
 
 typedef struct resource resource_t;
 
@@ -30,12 +30,25 @@ typedef struct poll_file poll_file_t;
 
 typedef uint64_t (*fs_mount_t)(const char*); // Add arguemnts as they are needed
 
+typedef struct fs
+{
+    char* name;
+    fs_mount_t mount;
+} fs_t;
+
 typedef uint64_t (*volume_unmount_t)(volume_t*);
-typedef uint64_t (*volume_open_t)(volume_t*, file_t*, const char*);
+typedef file_t* (*volume_open_t)(volume_t*, const char*);
 typedef uint64_t (*volume_stat_t)(volume_t*, const char*, stat_t*);
 typedef uint64_t (*volume_listdir_t)(volume_t*, const char*, dir_entry_t*, uint64_t);
 
-typedef uint64_t (*file_open_t)(file_t*, const char*);
+typedef struct volume_ops
+{
+    volume_unmount_t unmount;
+    volume_open_t open;
+    volume_stat_t stat;
+    volume_listdir_t listdir;
+} volume_ops_t;
+
 typedef void (*file_cleanup_t)(file_t*);
 typedef uint64_t (*file_read_t)(file_t*, void*, uint64_t);
 typedef uint64_t (*file_write_t)(file_t*, const void*, uint64_t);
@@ -47,7 +60,6 @@ typedef uint64_t (*file_status_t)(file_t*, poll_file_t*);
 
 typedef struct file_ops
 {
-    file_open_t open;
     file_cleanup_t cleanup;
     file_read_t read;
     file_write_t write;
@@ -58,25 +70,11 @@ typedef struct file_ops
     file_status_t status;
 } file_ops_t;
 
-typedef struct volume_ops
-{
-    volume_unmount_t unmount;
-    volume_stat_t stat;
-    volume_listdir_t listdir;
-} volume_ops_t;
-
-typedef struct fs
-{
-    char* name;
-    fs_mount_t mount;
-} fs_t;
-
 typedef struct volume
 {
     list_entry_t entry;
     char label[MAX_NAME];
-    const volume_ops_t* volumeOps;
-    const file_ops_t* fileOps;
+    const volume_ops_t* ops;
     atomic_uint64_t ref;
 } volume_t;
 
@@ -97,20 +95,20 @@ typedef struct poll_file
     poll_event_t occurred;
 } poll_file_t;
 
-file_t* file_new(const file_ops_t* ops);
+file_t* file_new(volume_t* volume);
 
 file_t* file_ref(file_t* file);
 
 void file_deref(file_t* file);
 
-static inline void file_cleanup(file_t** file)
+static inline void file_guard_release(file_t** file)
 {
     file_deref(*file);
 }
 
 void vfs_init(void);
 
-uint64_t vfs_attach_simple(const char* label, const volume_ops_t* volumeOps, const file_ops_t* fileOps);
+uint64_t vfs_attach_simple(const char* label, const volume_ops_t* ops);
 
 uint64_t vfs_mount(const char* label, fs_t* fs);
 

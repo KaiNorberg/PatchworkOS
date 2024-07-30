@@ -66,7 +66,7 @@ uint64_t event_stream_init(event_stream_t* stream, const char* path, const char*
     stream->eventSize = eventSize;
     stream->length = length;
     stream->buffer = calloc(length, eventSize);
-    stream->resource = sysfs_expose(path, name, &fileOps, stream, event_stream_delete);
+    stream->resource = sysfs_expose(path, name, &fileOps, stream, NULL, event_stream_delete);
     if (stream->resource == NULL)
     {
         return ERR;

@@ -111,18 +111,6 @@ static ram_dir_t* ramfs_find_dir(const char* path)
     return ram_dir_find_dir(parent, dirname);
 }
 
-static uint64_t ramfs_open(file_t* file, const char* path)
-{
-    ram_file_t* ramFile = ramfs_find_file(path);
-    if (ramFile == NULL)
-    {
-        return ERROR(EPATH);
-    }
-
-    file->private = ramFile;
-    return 0;
-}
-
 static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count)
 {
     ram_file_t* private = file->private;
@@ -165,6 +153,26 @@ static uint64_t ramfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
 
     file->pos = MIN(position, private->size);
     return position;
+}
+
+static file_ops_t fileOps = {
+    .read = ramfs_read,
+    .seek = ramfs_seek,
+};
+
+static file_t* ramfs_open(volume_t* volume, const char* path)
+{
+    ram_file_t* ramFile = ramfs_find_file(path);
+    if (ramFile == NULL)
+    {
+        return NULLPTR(EPATH);
+    }
+
+    file_t* file = file_new(volume);
+    file->ops = &fileOps;
+    file->private = ramFile;
+
+    return file;
 }
 
 static uint64_t ramfs_stat(volume_t* volume, const char* path, stat_t* buffer)
@@ -229,19 +237,14 @@ static uint64_t ramfs_listdir(volume_t* volume, const char* path, dir_entry_t* e
 }
 
 static volume_ops_t volumeOps = {
+    .open = ramfs_open,
     .stat = ramfs_stat,
     .listdir = ramfs_listdir,
 };
 
-static file_ops_t fileOps = {
-    .open = ramfs_open,
-    .read = ramfs_read,
-    .seek = ramfs_seek,
-};
-
 static uint64_t ramfs_mount(const char* label)
 {
-    return vfs_attach_simple(label, &volumeOps, &fileOps);
+    return vfs_attach_simple(label, &volumeOps);
 }
 
 static fs_t ramfs = {

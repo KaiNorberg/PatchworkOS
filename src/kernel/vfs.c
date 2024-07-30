@@ -43,14 +43,14 @@ static volume_t* volume_get(const char* label)
     return NULL;
 }
 
-file_t* file_new(const file_ops_t* ops)
+file_t* file_new(volume_t* volume)
 {
-    file_t* file = malloc(sizeof(file_t));
-    file->volume = NULL;
+    file_t* file = malloc(sizeof(file_t)); // TODO: Slab allocator
+    file->volume = volume;
     file->pos = 0;
     file->private = NULL;
     file->resource = NULL;
-    file->ops = ops;
+    file->ops = NULL;
     atomic_init(&file->ref, 1);
 
     return file;
@@ -200,7 +200,7 @@ void vfs_init(void)
     blocker_init(&pollBlocker);
 }
 
-uint64_t vfs_attach_simple(const char* label, const volume_ops_t* volumeOps, const file_ops_t* fileOps)
+uint64_t vfs_attach_simple(const char* label, const volume_ops_t* ops)
 {
     if (strlen(label) >= MAX_NAME)
     {
@@ -220,8 +220,7 @@ uint64_t vfs_attach_simple(const char* label, const volume_ops_t* volumeOps, con
     volume = malloc(sizeof(volume_t));
     list_entry_init(&volume->entry);
     strcpy(volume->label, label);
-    volume->volumeOps = volumeOps;
-    volume->fileOps = fileOps;
+    volume->ops = ops;
     atomic_init(&volume->ref, 1);
 
     list_push(&volumes, volume);
@@ -258,12 +257,12 @@ uint64_t vfs_unmount(const char* label)
         return ERROR(EBUSY);
     }
 
-    if (volume->volumeOps->unmount == NULL)
+    if (volume->ops->unmount == NULL)
     {
         return ERROR(EACCES);
     }
 
-    if (volume->volumeOps->unmount(volume) == ERR)
+    if (volume->ops->unmount(volume) == ERR)
     {
         return ERR;
     }
@@ -287,20 +286,23 @@ file_t* vfs_open(const char* path)
         return NULLPTR(EPATH);
     }
 
-    if (volume->fileOps->open == NULL)
+    if (volume->ops->open == NULL)
     {
         volume_deref(volume);
         return NULLPTR(EACCES);
     }
 
-    // Volume reference is passed to file.
-    file_t* file = file_new(volume->fileOps);
-    file->volume = volume;
-
     char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
-    if (rootPath == NULL || file->ops->open(file, rootPath) == ERR)
+    if (rootPath == NULL)
     {
-        file_deref(file);
+        volume_deref(volume);
+        return NULL;
+    }
+
+    file_t* file = volume->ops->open(volume, rootPath);
+    if (file == NULL)
+    {
+        volume_deref(volume);
         return NULL;
     }
 
@@ -321,7 +323,7 @@ uint64_t vfs_stat(const char* path, stat_t* buffer)
         return ERROR(EPATH);
     }
 
-    if (volume->volumeOps->stat == NULL)
+    if (volume->ops->stat == NULL)
     {
         volume_deref(volume);
         return ERROR(EACCES);
@@ -334,7 +336,7 @@ uint64_t vfs_stat(const char* path, stat_t* buffer)
         return ERR;
     }
 
-    uint64_t result = volume->volumeOps->stat(volume, rootPath, buffer);
+    uint64_t result = volume->ops->stat(volume, rootPath, buffer);
     volume_deref(volume);
     return result;
 }
@@ -353,7 +355,7 @@ uint64_t vfs_listdir(const char* path, dir_entry_t* entries, uint64_t amount)
         return ERROR(EPATH);
     }
 
-    if (volume->volumeOps->listdir == NULL)
+    if (volume->ops->listdir == NULL)
     {
         volume_deref(volume);
         return ERROR(EACCES);
@@ -366,7 +368,7 @@ uint64_t vfs_listdir(const char* path, dir_entry_t* entries, uint64_t amount)
         return ERR;
     }
 
-    uint64_t result = volume->volumeOps->listdir(volume, rootPath, entries, amount);
+    uint64_t result = volume->ops->listdir(volume, rootPath, entries, amount);
     volume_deref(volume);
     return result;
 }

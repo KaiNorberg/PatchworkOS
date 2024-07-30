@@ -1,5 +1,6 @@
 #pragma once
 
+#define VECTOR_IRQ_BASE 0x20
 #define VECTOR_IPI 0x90
 #define VECTOR_SCHED_TIMER 0xA0
 #define VECTOR_SCHED_INVOKE 0xB0

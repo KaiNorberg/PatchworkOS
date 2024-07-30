@@ -100,7 +100,7 @@ heap_header_t* _HeapBlockNew(uint64_t size)
 
 void _HeapInit(void)
 {
-    zeroResource = open("sys:/const/zero");
+    zeroResource = open("sys:/zero");
     firstBlock = _HeapBlockNew(PAGE_SIZE - sizeof(heap_header_t));
 }
 

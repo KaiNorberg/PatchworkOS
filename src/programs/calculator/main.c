@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/gfx.h>
-#include <sys/keyboard.h>
+#include <sys/kbd.h>
 #include <sys/math.h>
 #include <sys/proc.h>
 #include <sys/win.h>

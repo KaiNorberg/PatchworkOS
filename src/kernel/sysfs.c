@@ -116,36 +116,6 @@ static resource_t* sysfs_find_resource(const char* path)
     return system_find_resource(parent, name);
 }
 
-static uint64_t sysfs_open(file_t* file, const char* path)
-{
-    LOCK_GUARD(&lock);
-
-    resource_t* resource = sysfs_find_resource(path);
-    if (resource == NULL)
-    {
-        return ERROR(EPATH);
-    }
-
-    file->resource = resource;
-    file->private = resource->private;
-    atomic_fetch_add(&file->resource->openFiles, 1);
-
-    return resource->ops->open != NULL ? resource->ops->open(file, path) : 0;
-}
-
-static void sysfs_cleanup(file_t* file)
-{
-    if (file->resource->ops->cleanup != NULL)
-    {
-        file->resource->ops->cleanup(file);
-    }
-
-    if (atomic_fetch_sub(&file->resource->openFiles, 1) <= 1 && atomic_load(&file->resource->dead))
-    {
-        resource_free(file->resource);
-    }
-}
-
 #define SYSFS_OPERATION(name, file, ...) \
     ({ \
         uint64_t result; \
@@ -217,6 +187,62 @@ static uint64_t sysfs_status(file_t* file, poll_file_t* pollFile)
     return SYSFS_OPERATION(status, file, pollFile);
 }
 
+static void sysfs_cleanup(file_t* file)
+{
+    if (file->resource->ops->cleanup != NULL)
+    {
+        file->resource->ops->cleanup(file);
+    }
+
+    if (atomic_fetch_sub(&file->resource->openFiles, 1) <= 1 && atomic_load(&file->resource->dead))
+    {
+        resource_free(file->resource);
+    }
+}
+
+static file_ops_t fileOps = {
+    .read = sysfs_read,
+    .write = sysfs_write,
+    .seek = sysfs_seek,
+    .ioctl = sysfs_ioctl,
+    .flush = sysfs_flush,
+    .mmap = sysfs_mmap,
+    .status = sysfs_status,
+    .cleanup = sysfs_cleanup,
+};
+
+static file_t* sysfs_open(volume_t* volume, const char* path)
+{
+    LOCK_GUARD(&lock);
+
+    resource_t* resource = sysfs_find_resource(path);
+    if (resource == NULL)
+    {
+        return NULLPTR(EPATH);
+    }
+
+    file_t* file;
+    if (resource->open != NULL)
+    {
+        file = resource->open(resource, path);
+        if (file == NULL)
+        {
+            return NULL;
+        }
+    }
+    else
+    {
+        file = file_new(volume);
+        file->ops = resource->ops;
+        file->private = resource->private;
+    }
+
+    file->resource = resource;
+    atomic_fetch_add(&file->resource->openFiles, 1);
+
+    return file;
+}
+
 static uint64_t sysfs_stat(volume_t* volume, const char* path, stat_t* buffer)
 {
     LOCK_GUARD(&lock);
@@ -282,26 +308,15 @@ static uint64_t sysfs_listdir(volume_t* volume, const char* path, dir_entry_t* e
     return total;
 }
 
-static file_ops_t fileOps = {
-    .open = sysfs_open,
-    .cleanup = sysfs_cleanup,
-    .read = sysfs_read,
-    .write = sysfs_write,
-    .seek = sysfs_seek,
-    .ioctl = sysfs_ioctl,
-    .flush = sysfs_flush,
-    .mmap = sysfs_mmap,
-    .status = sysfs_status,
-};
-
 static volume_ops_t volumeOps = {
+    .open = sysfs_open,
     .stat = sysfs_stat,
     .listdir = sysfs_listdir,
 };
 
 static uint64_t sysfs_mount(const char* label)
 {
-    return vfs_attach_simple(label, &volumeOps, &fileOps);
+    return vfs_attach_simple(label, &volumeOps);
 }
 
 static fs_t sysfs = {
@@ -319,7 +334,8 @@ void sysfs_init(void)
     log_print("sysfs: init");
 }
 
-resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_t* ops, void* private, resource_delete_t delete)
+resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_t* ops, void* private, resource_open_t open,
+    resource_delete_t delete)
 {
     LOCK_GUARD(&lock);
 
@@ -344,6 +360,7 @@ resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_
     strcpy(resource->name, filename);
     resource->ops = ops;
     resource->private = private;
+    resource->open = open;
     resource->delete = delete;
     atomic_init(&resource->openFiles, 0);
     atomic_init(&resource->dead, false);

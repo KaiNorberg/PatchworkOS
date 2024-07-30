@@ -47,7 +47,7 @@ typedef struct
 } msg_mouse_t;
 
 #define MSG_NONE 0
-#define MSG_KEYBOARD 1
+#define MSG_KBD 1
 #define MSG_MOUSE 2
 #define MSG_SELECT 3
 #define MSG_DESELECT 4

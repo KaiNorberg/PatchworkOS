@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdatomic.h>
-#include <sys/keyboard.h>
+#include <sys/kbd.h>
 #include <sys/mouse.h>
 
 #include "defs.h"

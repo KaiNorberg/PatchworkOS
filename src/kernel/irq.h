@@ -3,9 +3,8 @@
 #include "defs.h"
 #include "trap.h"
 
-#define IRQ_BASE 0x20
 #define IRQ_PIT 0x0
-#define IRQ_PS2_KEYBOARD 0x1
+#define IRQ_PS2_KBD 0x1
 #define IRQ_CASCADE 0x2
 #define IRQ_COM2 0x3
 #define IRQ_COM1 0x4

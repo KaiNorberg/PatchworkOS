@@ -14,6 +14,7 @@ typedef struct system
     list_t systems;
 } system_t;
 
+typedef file_t* (*resource_open_t)(resource_t*, const char*);
 typedef void (*resource_delete_t)(void*);
 
 typedef struct resource
@@ -23,6 +24,7 @@ typedef struct resource
     char name[MAX_NAME];
     const file_ops_t* ops;
     void* private;
+    resource_open_t open;
     resource_delete_t delete;
     atomic_uint64_t openFiles;
     atomic_bool dead;
@@ -30,6 +32,7 @@ typedef struct resource
 
 void sysfs_init(void);
 
-resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_t* ops, void* private, resource_delete_t delete);
+resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_t* ops, void* private, resource_open_t open,
+    resource_delete_t delete);
 
 uint64_t sysfs_hide(resource_t* resource);

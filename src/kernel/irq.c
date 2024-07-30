@@ -2,12 +2,13 @@
 
 #include "log.h"
 #include "pic.h"
+#include "vectors.h"
 
 static irq_handler_t handlers[IRQ_AMOUNT][IRQ_MAX_HANDLER];
 
 void irq_dispatch(trap_frame_t* trapFrame)
 {
-    uint64_t irq = trapFrame->vector - IRQ_BASE;
+    uint64_t irq = trapFrame->vector - VECTOR_IRQ_BASE;
 
     for (uint64_t i = 0; i < IRQ_MAX_HANDLER; i++)
     {

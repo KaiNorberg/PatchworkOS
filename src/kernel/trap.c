@@ -48,7 +48,7 @@ void cli_pop(void)
 
 static void exception_handler(const trap_frame_t* trapFrame)
 {
-    if (trapFrame->ss != GDT_KERNEL_DATA)
+    if (trapFrame->ss == GDT_KERNEL_DATA)
     {
         log_panic(trapFrame, "Exception");
     }
@@ -78,7 +78,7 @@ static void ipi_handler(trap_frame_t* trapFrame)
 
 void trap_handler(trap_frame_t* trapFrame)
 {
-    if (trapFrame->vector < IRQ_BASE)
+    if (trapFrame->vector < VECTOR_IRQ_BASE)
     {
         exception_handler(trapFrame);
     }
@@ -86,7 +86,7 @@ void trap_handler(trap_frame_t* trapFrame)
     cpu_t* cpu = smp_self_unsafe();
     cpu->trapDepth++;
 
-    if (trapFrame->vector >= IRQ_BASE && trapFrame->vector < IRQ_BASE + IRQ_AMOUNT)
+    if (trapFrame->vector >= VECTOR_IRQ_BASE && trapFrame->vector < VECTOR_IRQ_BASE + IRQ_AMOUNT)
     {
         irq_dispatch(trapFrame);
     }

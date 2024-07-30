@@ -1,4 +1,4 @@
-#include "keyboard.h"
+#include "kbd.h"
 
 #include "event_stream.h"
 #include "io.h"
@@ -9,10 +9,10 @@
 #include "time.h"
 #include "vfs.h"
 
-#include <sys/keyboard.h>
+#include <sys/kbd.h>
 #include <sys/math.h>
 
-static event_stream_t keyboard;
+static event_stream_t kbd;
 
 static uint8_t scanCodeTable[] = {
     0,
@@ -107,7 +107,7 @@ static uint8_t scanCodeTable[] = {
     KEY_KEYPAD_EQUAL,
 };
 
-static uint64_t ps2_keyboard_scan(void)
+static uint64_t ps2_kbd_scan(void)
 {
     uint8_t status = io_inb(PS2_PORT_STATUS);
     if (!(status & PS2_STATUS_OUT_FULL))
@@ -119,9 +119,9 @@ static uint64_t ps2_keyboard_scan(void)
     return scanCode;
 }
 
-static void ps2_keyboard_irq(uint8_t irq)
+static void ps2_kbd_irq(uint8_t irq)
 {
-    uint64_t scanCode = ps2_keyboard_scan();
+    uint64_t scanCode = ps2_kbd_scan();
     if (scanCode == ERR)
     {
         return;
@@ -136,25 +136,25 @@ static void ps2_keyboard_irq(uint8_t irq)
     }
     uint8_t key = scanCodeTable[index];
 
-    keyboard_event_t event = {
+    kbd_event_t event = {
         .time = time_uptime(),
-        .type = released ? KEYBOARD_RELEASE : KEYBOARD_PRESS,
+        .type = released ? KBD_RELEASE : KBD_PRESS,
         .code = key,
     };
-    event_stream_push(&keyboard, &event, sizeof(keyboard_event_t));
+    event_stream_push(&kbd, &event, sizeof(kbd_event_t));
 }
 
-void ps2_keyboard_init(void)
+void ps2_kbd_init(void)
 {
-    ps2_cmd(PS2_CMD_KEYBOARD_TEST);
-    LOG_ASSERT(ps2_read() == 0x0, "ps2 keyboard test fail");
+    ps2_cmd(PS2_CMD_KBD_TEST);
+    LOG_ASSERT(ps2_read() == 0x0, "ps2 kbd test fail");
 
     ps2_write(PS2_SET_DEFAULTS);
-    LOG_ASSERT(ps2_read() == PS2_ACK, "set defaults fail, ps2 keyboard might not exist");
+    LOG_ASSERT(ps2_read() == PS2_ACK, "set defaults fail, ps2 kbd might not exist");
 
     ps2_write(PS2_ENABLE_DATA_REPORTING);
     LOG_ASSERT(ps2_read() == PS2_ACK, "data reporting fail");
 
-    event_stream_init(&keyboard, "/keyboard", "ps2", sizeof(keyboard_event_t), PS2_BUFFER_LENGTH);
-    irq_install(ps2_keyboard_irq, IRQ_PS2_KEYBOARD);
+    event_stream_init(&kbd, "/kbd", "ps2", sizeof(kbd_event_t), PS2_BUFFER_LENGTH);
+    irq_install(ps2_kbd_irq, IRQ_PS2_KBD);
 }

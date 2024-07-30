@@ -2,13 +2,13 @@
 
 #include "io.h"
 #include "log.h"
-#include "ps2/keyboard.h"
+#include "ps2/kbd.h"
 #include "ps2/mouse.h"
 #include "time.h"
 
 void ps2_init(void)
 {
-    ps2_cmd(PS2_CMD_KEYBOARD_DISABLE);
+    ps2_cmd(PS2_CMD_KBD_DISABLE);
     ps2_cmd(PS2_CMD_AUX_DISABLE);
 
     io_inb(PS2_PORT_DATA); // Discard
@@ -19,15 +19,15 @@ void ps2_init(void)
     ps2_cmd(PS2_CMD_CONTROLLER_TEST);
     LOG_ASSERT(ps2_read() == 0x55, "self test fail");
 
-    cfg = cfg | PS2_CFG_KEYBOARD_IRQ | PS2_CFG_AUX_IRQ;
+    cfg = cfg | PS2_CFG_KBD_IRQ | PS2_CFG_AUX_IRQ;
 
     ps2_cmd(PS2_CMD_CFG_WRITE);
     ps2_write(cfg);
 
-    ps2_cmd(PS2_CMD_KEYBOARD_ENABLE);
+    ps2_cmd(PS2_CMD_KBD_ENABLE);
     ps2_cmd(PS2_CMD_AUX_ENABLE);
 
-    ps2_keyboard_init();
+    ps2_kbd_init();
     ps2_mouse_init();
 }
 

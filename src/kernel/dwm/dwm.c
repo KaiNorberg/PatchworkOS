@@ -311,7 +311,7 @@ static void dwm_handle_mouse_message(mouse_buttons_t held, const point_t* delta)
 
 static void dwm_poll(void)
 {
-    while (!atomic_load(&redrawNeeded))
+    while (!atomic_exchange_explicit(&redrawNeeded, false, __ATOMIC_RELAXED))
     {
         sched_block_begin(&blocker);
         sched_block_do(&blocker, SEC / 1000);
@@ -344,7 +344,6 @@ static void dwm_poll(void)
             dwm_handle_mouse_message(held, &delta);
         }
     }
-    atomic_store(&redrawNeeded, false);
 }
 
 static void dwm_loop(void)
@@ -535,7 +534,7 @@ void dwm_init(gop_buffer_t* gopBuffer)
 
     blocker_init(&blocker);
 
-    sysfs_expose("/server", "dwm", &fileOps, NULL, NULL);
+    sysfs_expose("/", "dwm", &fileOps, NULL, NULL, NULL);
 }
 
 void dwm_start(void)

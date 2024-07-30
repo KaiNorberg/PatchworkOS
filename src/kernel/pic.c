@@ -2,6 +2,7 @@
 
 #include "io.h"
 #include "irq.h"
+#include "vectors.h"
 
 void pic_init(void)
 {
@@ -15,9 +16,9 @@ void pic_init(void)
     io_outb(PIC2_COMMAND, ICW1_INIT | ICW1_ICW4);
     io_wait();
 
-    io_outb(PIC1_DATA, IRQ_BASE);
+    io_outb(PIC1_DATA, VECTOR_IRQ_BASE);
     io_wait();
-    io_outb(PIC2_DATA, IRQ_BASE + 0x8);
+    io_outb(PIC2_DATA, VECTOR_IRQ_BASE + 0x8);
     io_wait();
 
     io_outb(PIC1_DATA, 4);

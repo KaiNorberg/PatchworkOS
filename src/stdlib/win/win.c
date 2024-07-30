@@ -1,4 +1,3 @@
-#include "_AUX/rect_t.h"
 #ifndef __EMBED__
 
 typedef struct win win_t;
@@ -280,7 +279,7 @@ win_t* win_new(const char* name, const rect_t* rect, dwm_type_t type, win_flags_
         return NULL;
     }
 
-    window->fd = open("sys:/server/dwm");
+    window->fd = open("sys:/dwm");
     if (window->fd == ERR)
     {
         free(window);
@@ -646,7 +645,7 @@ void win_widget_private_set(widget_t* widget, void* private)
 
 uint64_t win_screen_rect(rect_t* rect)
 {
-    fd_t fd = open("sys:/server/dwm");
+    fd_t fd = open("sys:/dwm");
     if (fd == ERR)
     {
         return ERR;
