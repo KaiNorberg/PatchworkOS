@@ -100,7 +100,7 @@ void trap_handler(trap_frame_t* trapFrame)
     }
     else if (trapFrame->vector == VECTOR_SCHED_INVOKE)
     {
-        // Do nothing
+        // Do nothing, sheduling happens below
     }
     else
     {

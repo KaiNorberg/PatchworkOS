@@ -37,17 +37,6 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         win_draw_end(window, &gfx);
     }
     break;
-    case LMSG_BUTTON:
-    {
-        lmsg_button_t* data = (lmsg_button_t*)msg->data;
-        if (data->type == LMSG_BUTTON_RELEASED)
-        {
-            if (data->id == START_ID)
-            {
-            }
-        }
-    }
-    break;
     }
 
     return 0;

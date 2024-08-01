@@ -10,7 +10,7 @@
 #include <string.h>
 
 static list_t volumes;
-static lock_t volumeLock;
+static lock_t volumesLock;
 
 static blocker_t pollBlocker;
 
@@ -29,7 +29,7 @@ static void volume_deref(volume_t* volume)
 
 static volume_t* volume_get(const char* label)
 {
-    LOCK_GUARD(&volumeLock);
+    LOCK_GUARD(&volumesLock);
 
     volume_t* volume;
     LIST_FOR_EACH(volume, &volumes)
@@ -195,7 +195,7 @@ static uint64_t vfs_parse_path(char* out, const char* path)
 void vfs_init(void)
 {
     list_init(&volumes);
-    lock_init(&volumeLock);
+    lock_init(&volumesLock);
 
     blocker_init(&pollBlocker);
 }
@@ -206,7 +206,7 @@ uint64_t vfs_attach_simple(const char* label, const volume_ops_t* ops)
     {
         return ERROR(EINVAL);
     }
-    LOCK_GUARD(&volumeLock);
+    LOCK_GUARD(&volumesLock);
 
     volume_t* volume;
     LIST_FOR_EACH(volume, &volumes)
@@ -234,7 +234,7 @@ uint64_t vfs_mount(const char* label, fs_t* fs)
 
 uint64_t vfs_unmount(const char* label)
 {
-    LOCK_GUARD(&volumeLock);
+    LOCK_GUARD(&volumesLock);
 
     volume_t* volume;
     bool found = false;

@@ -9,6 +9,7 @@ typedef struct
 {
     bool pressed;
     win_text_prop_t props;
+    win_button_flags_t flags;
 } button_t;
 
 static void button_draw(widget_t* widget, win_t* window, win_theme_t* theme, bool redraw)
@@ -68,11 +69,11 @@ uint64_t win_button_proc(widget_t* widget, win_t* window, const msg_t* msg)
         free(win_widget_private(widget));
     }
     break;
-    case WMSG_TEXT_PROP:
+    case WMSG_BUTTON_PROP:
     {
-        wmsg_text_prop_t* data = (wmsg_text_prop_t*)msg->data;
+        wmsg_button_prop_t* data = (wmsg_button_prop_t*)msg->data;
         button_t* button = win_widget_private(widget);
-        button->props = *data;
+        button->props = data->props;
     }
     break;
     case WMSG_MOUSE:
@@ -92,14 +93,14 @@ uint64_t win_button_proc(widget_t* widget, win_t* window, const msg_t* msg)
             if (data->pressed & MOUSE_LEFT && !button->pressed)
             {
                 button->pressed = true;
-                lmsg_button_t msg = {.id = win_widget_id(widget), .type = LMSG_BUTTON_PRESS};
-                win_send(window, LMSG_BUTTON, &msg, sizeof(lmsg_button_t));
+                lmsg_command_t msg = {.id = win_widget_id(widget), .type = LMSG_COMMAND_PRESS};
+                win_send(window, LMSG_COMMAND, &msg, sizeof(lmsg_command_t));
             }
             else if (data->released & MOUSE_LEFT && button->pressed)
             {
                 button->pressed = false;
-                lmsg_button_t msg = {.id = win_widget_id(widget), .type = LMSG_BUTTON_RELEASED};
-                win_send(window, LMSG_BUTTON, &msg, sizeof(lmsg_button_t));
+                lmsg_command_t msg = {.id = win_widget_id(widget), .type = LMSG_COMMAND_RELEASE};
+                win_send(window, LMSG_COMMAND, &msg, sizeof(lmsg_command_t));
             }
         }
         else
@@ -121,6 +122,17 @@ uint64_t win_button_proc(widget_t* widget, win_t* window, const msg_t* msg)
     }
 
     return 0;
+}
+
+widget_t* win_button_new(win_t* window, const char* name, const rect_t* rect, widget_id_t id, win_text_prop_t* textProp,
+    win_button_flags_t flags)
+{
+    widget_t* button = win_widget_new(window, win_button_proc, name, rect, id);
+
+    wmsg_button_prop_t props = {.props = *textProp, .flags = flags};
+    win_widget_send(button, WMSG_BUTTON_PROP, &props, sizeof(wmsg_button_prop_t));
+
+    return button;
 }
 
 #endif

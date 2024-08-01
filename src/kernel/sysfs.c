@@ -119,7 +119,7 @@ static resource_t* sysfs_find_resource(const char* path)
 #define SYSFS_OPERATION(name, file, ...) \
     ({ \
         uint64_t result; \
-        if (atomic_load(&file->resource->dead)) \
+        if (atomic_load(&file->resource->hidden)) \
         { \
             result = ERROR(ENORES); \
         } \
@@ -137,7 +137,7 @@ static resource_t* sysfs_find_resource(const char* path)
 #define SYSFS_OPERATION_PTR(name, file, ...) \
     ({ \
         void* result; \
-        if (atomic_load(&file->resource->dead)) \
+        if (atomic_load(&file->resource->hidden)) \
         { \
             result = NULLPTR(ENORES); \
         } \
@@ -194,7 +194,7 @@ static void sysfs_cleanup(file_t* file)
         file->resource->ops->cleanup(file);
     }
 
-    if (atomic_fetch_sub(&file->resource->openFiles, 1) <= 1 && atomic_load(&file->resource->dead))
+    if (atomic_fetch_sub(&file->resource->ref, 1) <= 1)
     {
         resource_free(file->resource);
     }
@@ -221,24 +221,17 @@ static file_t* sysfs_open(volume_t* volume, const char* path)
         return NULLPTR(EPATH);
     }
 
-    file_t* file;
-    if (resource->open != NULL)
+    file_t* file = file_new(volume);
+    file->private = resource->private;
+    file->ops = resource->ops;
+    file->resource = resource;
+
+    if (resource->open != NULL && resource->open(resource, file) == ERR)
     {
-        file = resource->open(resource, path);
-        if (file == NULL)
-        {
-            return NULL;
-        }
-    }
-    else
-    {
-        file = file_new(volume);
-        file->ops = resource->ops;
-        file->private = resource->private;
+        return NULL;
     }
 
-    file->resource = resource;
-    atomic_fetch_add(&file->resource->openFiles, 1);
+    atomic_fetch_add(&file->resource->ref, 1);
 
     return file;
 }
@@ -343,14 +336,14 @@ resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_
     const char* name = name_first(path);
     while (name != NULL)
     {
-        system_t* next = system_find_system(system, name);
-        if (next == NULL)
+        system_t* child = system_find_system(system, name);
+        if (child == NULL)
         {
-            next = system_new(name);
-            list_push(&system->systems, next);
+            child = system_new(name);
+            list_push(&system->systems, child);
         }
 
-        system = next;
+        system = child;
         name = name_next(name);
     }
 
@@ -362,8 +355,8 @@ resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_
     resource->private = private;
     resource->open = open;
     resource->delete = delete;
-    atomic_init(&resource->openFiles, 0);
-    atomic_init(&resource->dead, false);
+    atomic_init(&resource->ref, 1);
+    atomic_init(&resource->hidden, false);
 
     list_push(&system->resources, resource);
     return resource;
@@ -373,12 +366,13 @@ uint64_t sysfs_hide(resource_t* resource)
 {
     lock_acquire(&lock);
     list_remove(resource);
-    atomic_store(&resource->dead, true);
     lock_release(&lock);
 
-    if (atomic_load(&resource->openFiles) == 0)
+    atomic_store(&resource->hidden, true);
+    if (atomic_fetch_sub(&resource->ref, 1) <= 1)
     {
         resource_free(resource);
     }
+
     return 0;
 }

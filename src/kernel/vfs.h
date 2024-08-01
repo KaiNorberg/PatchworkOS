@@ -49,6 +49,14 @@ typedef struct volume_ops
     volume_listdir_t listdir;
 } volume_ops_t;
 
+typedef struct volume
+{
+    list_entry_t entry;
+    char label[MAX_NAME];
+    const volume_ops_t* ops;
+    atomic_uint64_t ref;
+} volume_t;
+
 typedef void (*file_cleanup_t)(file_t*);
 typedef uint64_t (*file_read_t)(file_t*, void*, uint64_t);
 typedef uint64_t (*file_write_t)(file_t*, const void*, uint64_t);
@@ -69,14 +77,6 @@ typedef struct file_ops
     file_mmap_t mmap;
     file_status_t status;
 } file_ops_t;
-
-typedef struct volume
-{
-    list_entry_t entry;
-    char label[MAX_NAME];
-    const volume_ops_t* ops;
-    atomic_uint64_t ref;
-} volume_t;
 
 typedef struct file
 {
@@ -286,11 +286,6 @@ static inline bool name_valid(const char* name)
     return true;
 }
 
-static inline bool name_is_last(const char* name)
-{
-    return strchr(name, VFS_NAME_SEPARATOR) == NULL;
-}
-
 static inline bool label_compare(const char* a, const char* b)
 {
     for (uint64_t i = 0; i < MAX_PATH; i++)
@@ -346,9 +341,9 @@ static inline const char* dir_name_next(const char* path)
     }
 }
 
-static void dir_entry_push(dir_entry_t* entries, uint64_t max, uint64_t* index, uint64_t* total, dir_entry_t* entry)
+static void dir_entry_push(dir_entry_t* entries, uint64_t amount, uint64_t* index, uint64_t* total, dir_entry_t* entry)
 {
-    if (*index < max)
+    if (*index < amount)
     {
         entries[(*index)++] = *entry;
     }

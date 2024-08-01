@@ -24,10 +24,8 @@ static void numpad_button_create(win_t* window, uint64_t column, uint64_t row, c
 {
     rect_t rect =
         RECT_INIT_DIM(NUMPAD_COLUMN_TO_WINDOW(column), NUMPAD_ROW_TO_WINDOW(row), NUMPAD_BUTTON_WIDTH, NUMPAD_BUTTON_WIDTH);
-    widget_t* button = win_widget_new(window, win_button_proc, name, &rect, id);
-
-    wmsg_text_prop_t textProperties = {.height = 32, .foreground = 0xFF000000};
-    win_widget_send(button, WMSG_TEXT_PROP, &textProperties, sizeof(wmsg_text_prop_t));
+    win_text_prop_t props = {.height = 32, .foreground = 0xFF000000};
+    widget_t* button = win_button_new(window, name, &rect, id, &props, WIN_BUTTON_NONE);
 }
 
 static uint64_t procedure(win_t* window, const msg_t* msg)
@@ -67,16 +65,14 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
 
         rect_t labelRect = RECT_INIT_DIM(NUMPAD_PADDING, NUMPAD_PADDING, WINDOW_WIDTH - NUMPAD_PADDING * 2,
             WINDOW_HEIGHT - NUMPAD_WIDTH - NUMPAD_PADDING * 2);
-        widget_t* label = win_widget_new(window, win_label_proc, "0", &labelRect, LABEL_ID);
-
-        wmsg_text_prop_t textProperties = {.height = 32, .foreground = theme.dark, .xAlign = GFX_MAX, .yAlign = GFX_CENTER};
-        win_widget_send(label, WMSG_TEXT_PROP, &textProperties, sizeof(wmsg_text_prop_t));
+        wmsg_text_prop_t props = {.height = 32, .foreground = theme.dark, .xAlign = GFX_MAX, .yAlign = GFX_CENTER};
+        win_label_new(window, "0", &labelRect, LABEL_ID, &props);
     }
     break;
-    case LMSG_BUTTON:
+    case LMSG_COMMAND:
     {
-        lmsg_button_t* data = (lmsg_button_t*)msg->data;
-        if (data->type == LMSG_BUTTON_RELEASED)
+        lmsg_command_t* data = (lmsg_command_t*)msg->data;
+        if (data->type == LMSG_COMMAND_RELEASE)
         {
             if (data->id <= 9)
             {

@@ -30,11 +30,11 @@ uint64_t win_label_proc(widget_t* widget, win_t* window, const msg_t* msg)
         free(win_widget_private(widget));
     }
     break;
-    case WMSG_TEXT_PROP:
+    case WMSG_LABEL_PROP:
     {
-        wmsg_text_prop_t* data = (wmsg_text_prop_t*)msg->data;
+        wmsg_label_prop_t* data = (wmsg_label_prop_t*)msg->data;
         label_t* label = win_widget_private(widget);
-        label->props = *data;
+        label->props = data->props;
     }
     break;
     case WMSG_REDRAW:
@@ -61,6 +61,16 @@ uint64_t win_label_proc(widget_t* widget, win_t* window, const msg_t* msg)
     }
 
     return 0;
+}
+
+widget_t* win_label_new(win_t* window, const char* name, const rect_t* rect, widget_id_t id, win_text_prop_t* textProp)
+{
+    widget_t* label = win_widget_new(window, win_label_proc, name, rect, id);
+
+    wmsg_label_prop_t props = {.props = *textProp};
+    win_widget_send(label, WMSG_LABEL_PROP, &props, sizeof(wmsg_label_prop_t));
+
+    return label;
 }
 
 #endif
