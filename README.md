@@ -1,4 +1,4 @@
-# Patchwork OS ![](https://img.shields.io/badge/License-GNU%20GPL-blue)
+# PatchworkOS ![](https://img.shields.io/badge/License-GNU%20GPL-blue)
 
 **Keep in mind that PatchworkOS is currently in a very early stage of development.**
 
