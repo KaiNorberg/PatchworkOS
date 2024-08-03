@@ -188,7 +188,7 @@ static void dwm_draw_wall(void)
     LIST_FOR_EACH(window, &windows)
     {
         LOCK_GUARD(&window->lock);
-        window->invalid = true;
+        window->moved = true;
     }
 }
 
@@ -380,22 +380,26 @@ static void dwm_window_cleanup(window_t* window)
     {
     case DWM_WINDOW:
     {
+        log_print("dwm: cleanup window");
         list_remove(window);
     }
     break;
     case DWM_PANEL:
     {
+        log_print("dwm: cleanup panel");
         list_remove(window);
         dwm_update_client_rect_unlocked();
     }
     break;
     case DWM_CURSOR:
     {
+        log_print("dwm: cleanup cursor");
         cursor = NULL;
     }
     break;
     case DWM_WALL:
     {
+        log_print("dwm: cleanup wall");
         wall = NULL;
     }
     break;
@@ -407,8 +411,10 @@ static void dwm_window_cleanup(window_t* window)
 
     if (wall != NULL)
     {
-        wall->invalid = true;
+        wall->moved = true;
     }
+
+    dwm_redraw();
 }
 
 static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
@@ -478,6 +484,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
         }
 
         window_populate_file(window, file);
+        dwm_redraw();
         return 0;
     }
     case IOCTL_DWM_SIZE:
@@ -531,7 +538,6 @@ void dwm_init(gop_buffer_t* gopBuffer)
     mouse = vfs_open("sys:/mouse/ps2");
 
     atomic_init(&redrawNeeded, true);
-
     blocker_init(&blocker);
 
     sysfs_expose("/", "dwm", &fileOps, NULL, NULL, NULL);

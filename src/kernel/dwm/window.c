@@ -125,16 +125,9 @@ static uint64_t window_status(file_t* file, poll_file_t* pollFile)
     return 0;
 }
 
-static file_ops_t fileOps = {
-    .cleanup = window_cleanup,
-    .ioctl = window_ioctl,
-    .flush = window_flush,
-    .status = window_status,
-};
-
 window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, dwm_type_t type, void (*cleanup)(window_t*))
 {
-    if (type > DWM_MAX)
+    if (type < 0 || type > DWM_MAX)
     {
         return NULL;
     }
@@ -149,7 +142,7 @@ window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, dwm_ty
     window->gfx.stride = width;
     window->gfx.invalidRect = RECT_INIT_DIM(0, 0, width, height);
     window->invalid = false;
-    window->moved = false;
+    window->moved = true;
     window->prevRect = RECT_INIT_DIM(0, 0, 0, 0);
     window->cleanup = cleanup;
     lock_init(&window->lock);
@@ -163,9 +156,14 @@ void window_free(window_t* window)
     msg_queue_cleanup(&window->messages);
     free(window->gfx.buffer);
     free(window);
-
-    dwm_redraw();
 }
+
+static file_ops_t fileOps = {
+    .cleanup = window_cleanup,
+    .ioctl = window_ioctl,
+    .flush = window_flush,
+    .status = window_status,
+};
 
 void window_populate_file(window_t* window, file_t* file)
 {

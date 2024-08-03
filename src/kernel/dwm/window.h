@@ -16,6 +16,7 @@ typedef struct window
     dwm_type_t type;
     bool invalid;
     bool moved;
+    bool hidden;
     rect_t prevRect;
     void (*cleanup)(struct window*);
     lock_t lock;

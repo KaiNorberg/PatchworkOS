@@ -51,7 +51,7 @@ typedef struct widget
 
 // TODO: this should be stored in some sort of config file, lua? make something custom?
 #define WIN_DEFAULT_FONT "home:/usr/fonts/zap-vga16.psf"
-win_theme_t theme = {
+win_theme_t winTheme = {
     .edgeWidth = 3,
     .rimWidth = 3,
     .ridgeWidth = 2,
@@ -102,10 +102,10 @@ static inline void win_client_surface(win_t* window, gfx_t* gfx)
 static void win_topbar_rect(win_t* window, rect_t* rect)
 {
     *rect = (rect_t){
-        .left = theme.edgeWidth + theme.topbarPadding,
-        .top = theme.edgeWidth + theme.topbarPadding,
-        .right = window->width - theme.edgeWidth - theme.topbarPadding,
-        .bottom = theme.topbarHeight + theme.edgeWidth - theme.topbarPadding,
+        .left = winTheme.edgeWidth + winTheme.topbarPadding,
+        .top = winTheme.edgeWidth + winTheme.topbarPadding,
+        .right = window->width - winTheme.edgeWidth - winTheme.topbarPadding,
+        .bottom = winTheme.topbarHeight + winTheme.edgeWidth - winTheme.topbarPadding,
     };
 }
 
@@ -114,21 +114,21 @@ static void win_topbar_draw(win_t* window, gfx_t* gfx)
     rect_t rect;
     win_topbar_rect(window, &rect);
 
-    gfx_edge(gfx, &rect, theme.edgeWidth, theme.dark, theme.highlight);
-    RECT_SHRINK(&rect, theme.edgeWidth);
-    gfx_rect(gfx, &rect, window->selected ? theme.selected : theme.unSelected);
+    gfx_edge(gfx, &rect, winTheme.edgeWidth, winTheme.dark, winTheme.highlight);
+    RECT_SHRINK(&rect, winTheme.edgeWidth);
+    gfx_rect(gfx, &rect, window->selected ? winTheme.selected : winTheme.unSelected);
 
     win_close_button_draw(window, gfx);
 
-    rect.left += theme.topbarPadding * 3;
-    rect.right -= theme.topbarHeight;
-    gfx_psf(gfx, &window->psf, &rect, GFX_MIN, GFX_CENTER, 16, window->name, theme.background, 0);
+    rect.left += winTheme.topbarPadding * 3;
+    rect.right -= winTheme.topbarHeight;
+    gfx_psf(gfx, &window->psf, &rect, GFX_MIN, GFX_CENTER, 16, window->name, winTheme.background, 0);
 }
 
 static void win_close_button_rect(win_t* window, rect_t* rect)
 {
     win_topbar_rect(window, rect);
-    RECT_SHRINK(rect, theme.edgeWidth);
+    RECT_SHRINK(rect, winTheme.edgeWidth);
     rect->left = rect->right - (rect->bottom - rect->top);
 }
 
@@ -137,30 +137,30 @@ static void win_close_button_draw(win_t* window, gfx_t* gfx)
     rect_t rect;
     win_close_button_rect(window, &rect);
 
-    gfx_rim(gfx, &rect, theme.rimWidth, theme.dark);
-    RECT_SHRINK(&rect, theme.rimWidth);
+    gfx_rim(gfx, &rect, winTheme.rimWidth, winTheme.dark);
+    RECT_SHRINK(&rect, winTheme.rimWidth);
 
     if (window->closeButtonPressed)
     {
-        gfx_edge(gfx, &rect, theme.edgeWidth, theme.shadow, theme.highlight);
+        gfx_edge(gfx, &rect, winTheme.edgeWidth, winTheme.shadow, winTheme.highlight);
     }
     else
     {
-        gfx_edge(gfx, &rect, theme.edgeWidth, theme.highlight, theme.shadow);
+        gfx_edge(gfx, &rect, winTheme.edgeWidth, winTheme.highlight, winTheme.shadow);
     }
-    RECT_SHRINK(&rect, theme.edgeWidth);
-    gfx_rect(gfx, &rect, theme.background);
+    RECT_SHRINK(&rect, winTheme.edgeWidth);
+    gfx_rect(gfx, &rect, winTheme.background);
 
     RECT_EXPAND(&rect, 32);
-    gfx_psf(gfx, &window->psf, &rect, GFX_CENTER, GFX_CENTER, 32, "x", theme.shadow, 0);
+    gfx_psf(gfx, &window->psf, &rect, GFX_CENTER, GFX_CENTER, 32, "x", winTheme.shadow, 0);
 }
 
 static void win_background_draw(win_t* window, gfx_t* gfx)
 {
     rect_t rect = RECT_INIT_GFX(gfx);
 
-    gfx_rect(gfx, &rect, theme.background);
-    gfx_edge(gfx, &rect, theme.edgeWidth, theme.bright, theme.dark);
+    gfx_rect(gfx, &rect, winTheme.background);
+    gfx_edge(gfx, &rect, winTheme.edgeWidth, winTheme.bright, winTheme.dark);
 }
 
 static void win_handle_drag_and_close_button(win_t* window, gfx_t* gfx, const msg_mouse_t* data)
@@ -668,19 +668,14 @@ uint64_t win_screen_rect(rect_t* rect)
     return 0;
 }
 
-void win_theme(win_theme_t* out)
-{
-    *out = theme;
-}
-
 void win_expand_to_window(rect_t* clientRect, win_flags_t flags)
 {
     if (flags & WIN_DECO)
     {
-        clientRect->left -= theme.edgeWidth;
-        clientRect->top -= theme.edgeWidth + theme.topbarHeight + theme.topbarPadding;
-        clientRect->right += theme.edgeWidth;
-        clientRect->bottom += theme.edgeWidth;
+        clientRect->left -= winTheme.edgeWidth;
+        clientRect->top -= winTheme.edgeWidth + winTheme.topbarHeight + winTheme.topbarPadding;
+        clientRect->right += winTheme.edgeWidth;
+        clientRect->bottom += winTheme.edgeWidth;
     }
 }
 
@@ -688,10 +683,10 @@ void win_shrink_to_client(rect_t* windowRect, win_flags_t flags)
 {
     if (flags & WIN_DECO)
     {
-        windowRect->left += theme.edgeWidth;
-        windowRect->top += theme.edgeWidth + theme.topbarHeight + theme.topbarPadding;
-        windowRect->right -= theme.edgeWidth;
-        windowRect->bottom -= theme.edgeWidth;
+        windowRect->left += winTheme.edgeWidth;
+        windowRect->top += winTheme.edgeWidth + winTheme.topbarHeight + winTheme.topbarPadding;
+        windowRect->right -= winTheme.edgeWidth;
+        windowRect->bottom -= winTheme.edgeWidth;
     }
 }
 

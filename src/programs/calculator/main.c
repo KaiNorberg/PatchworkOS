@@ -6,7 +6,7 @@
 #include <sys/proc.h>
 #include <sys/win.h>
 
-#define WINDOW_WIDTH 275
+#define WINDOW_WIDTH 280
 #define WINDOW_HEIGHT 330
 
 #define NUMPAD_COLUMNS 4
@@ -42,9 +42,6 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         accumulator = 0;
         operation = '=';
 
-        win_theme_t theme;
-        win_theme(&theme);
-
         for (uint64_t column = 0; column < 3; column++)
         {
             for (uint64_t row = 0; row < 3; row++)
@@ -65,7 +62,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
 
         rect_t labelRect = RECT_INIT_DIM(NUMPAD_PADDING, NUMPAD_PADDING, WINDOW_WIDTH - NUMPAD_PADDING * 2,
             WINDOW_HEIGHT - NUMPAD_WIDTH - NUMPAD_PADDING * 2);
-        wmsg_text_prop_t props = {.height = 32, .foreground = theme.dark, .xAlign = GFX_MAX, .yAlign = GFX_CENTER};
+        wmsg_text_prop_t props = {.height = 32, .foreground = winTheme.dark, .xAlign = GFX_MAX, .yAlign = GFX_CENTER};
         win_label_new(window, "0", &labelRect, LABEL_ID, &props);
     }
     break;

@@ -49,6 +49,8 @@ typedef struct win_theme
     uint8_t topbarPadding;
 } win_theme_t;
 
+extern win_theme_t winTheme;
+
 typedef struct win_text_prop
 {
     uint64_t height;
@@ -70,7 +72,7 @@ typedef uint64_t (*widget_proc_t)(widget_t*, win_t*, const msg_t*);
 typedef enum
 {
     WIN_BUTTON_NONE = 0,
-    WIN_BUTTON_FLAT = (1 << 0)
+    WIN_BUTTON_TOGGLE = (1 << 0)
 } win_button_flags_t;
 
 // Library messages
@@ -160,7 +162,6 @@ void* win_widget_private(widget_t* widget);
 void win_widget_private_set(widget_t* widget, void* private);
 
 uint64_t win_screen_rect(rect_t* rect);
-void win_theme(win_theme_t* out);
 void win_expand_to_window(rect_t* clientRect, win_flags_t flags);
 void win_shrink_to_client(rect_t* windowRect, win_flags_t flags);
 
