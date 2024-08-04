@@ -7,7 +7,7 @@ TARGET := bin/PatchworkOS.img
 setup:
 	make -C lib/gnu-efi all
 
-build: setup
+build:
 	@for MODULE in $(MODULES) ; do \
 	   $(MAKE) -f make/$$MODULE.mk SRCDIR=src/$$MODULE BUILDDIR=build/$$MODULE BINDIR=bin/$$MODULE || exit 1 ; \
 	done
