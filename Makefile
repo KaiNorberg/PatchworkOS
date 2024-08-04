@@ -5,17 +5,15 @@ PROGRAMS := $(basename $(notdir $(wildcard make/programs/*.mk)))
 TARGET := bin/PatchworkOS.img
 
 setup:
-	make -C lib/gnu-efi all
+	$(MAKE) -C lib/gnu-efi
 
-build: setup
-	@for MODULE in $(MODULES) ; do \
-	   $(MAKE) -f make/$$MODULE.mk SRCDIR=src/$$MODULE BUILDDIR=build/$$MODULE BINDIR=bin/$$MODULE || exit 1 ; \
-	done
-	@for PROGRAM in $(PROGRAMS) ; do \
-	   $(MAKE) -f make/programs/$$PROGRAM.mk SRCDIR=src/programs/$$PROGRAM BUILDDIR=build/programs/$$PROGRAM BINDIR=bin/programs || exit 1 ; \
-	done
+$(MODULES):
+	$(MAKE) -f make/$@.mk SRCDIR=src/$@ BUILDDIR=build/$@ BINDIR=bin/$@
 
-deploy: build
+$(PROGRAMS): $(MODULES)
+	$(MAKE) -f make/programs/$@.mk SRCDIR=src/programs/$@ BUILDDIR=build/programs/$@ BINDIR=bin/programs
+
+deploy: $(PROGRAMS)
 	@echo "!====== RUNNING DEPLOY ======!"
 	dd if=/dev/zero of=$(TARGET) bs=1M count=64
 	mkfs.vfat -F 32 -n "PATCHWORKOS" $(TARGET)
@@ -35,7 +33,7 @@ deploy: build
 	mcopy -i $(TARGET) -s COPYING ::/usr/licence
 	mcopy -i $(TARGET) -s LICENSE ::/usr/licence
 
-all: build deploy
+all: $(MODULES) $(PROGRAMS) deploy
 
 compile_commands:
 	bear -- make build
@@ -74,4 +72,4 @@ clean:
 	rm -rf build
 	rm -rf bin
 
-.PHONY: all build deploy
+.PHONY: all
