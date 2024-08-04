@@ -7,7 +7,7 @@ TARGET := bin/PatchworkOS.img
 setup:
 	make -C lib/gnu-efi all
 
-build:
+build: setup
 	@for MODULE in $(MODULES) ; do \
 	   $(MAKE) -f make/$$MODULE.mk SRCDIR=src/$$MODULE BUILDDIR=build/$$MODULE BINDIR=bin/$$MODULE || exit 1 ; \
 	done
@@ -15,7 +15,7 @@ build:
 	   $(MAKE) -f make/programs/$$PROGRAM.mk SRCDIR=src/programs/$$PROGRAM BUILDDIR=build/programs/$$PROGRAM BINDIR=bin/programs || exit 1 ; \
 	done
 
-deploy:
+deploy: build
 	@echo "!====== RUNNING DEPLOY ======!"
 	dd if=/dev/zero of=$(TARGET) bs=1M count=64
 	mkfs.vfat -F 32 -n "PATCHWORKOS" $(TARGET)

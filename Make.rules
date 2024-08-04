@@ -4,7 +4,7 @@ $(BUILDDIR)/%.c.o: src/%.c
 
 $(BUILDDIR)/%.s.o: src/%.s
 	$(MKCWD)
-	$(AS) $(ASFLAGS) $^ -o $@
+	$(AS) $(ASFLAGS) $< -o $@
 
 $(BINDIR)/%.a: $(OBJ)
 	$(MKCWD)

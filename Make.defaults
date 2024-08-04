@@ -3,7 +3,6 @@ MKCWD = mkdir -p $(@D)
 CC := gcc
 AS := nasm
 LD := ld
-MAKE := make
 OBJCOPY := objcopy
 
 CFLAGS := -O3 \
