@@ -7,14 +7,13 @@ TARGET := bin/PatchworkOS.img
 setup:
 	$(MAKE) -C lib/gnu-efi
 
-$(MODULES):
+$(MODULES): setup
 	$(MAKE) -f make/$@.mk SRCDIR=src/$@ BUILDDIR=build/$@ BINDIR=bin/$@
 
 $(PROGRAMS): $(MODULES)
 	$(MAKE) -f make/programs/$@.mk SRCDIR=src/programs/$@ BUILDDIR=build/programs/$@ BINDIR=bin/programs
 
 deploy: $(PROGRAMS)
-	@echo "!====== RUNNING DEPLOY ======!"
 	dd if=/dev/zero of=$(TARGET) bs=1M count=64
 	mkfs.vfat -F 32 -n "PATCHWORKOS" $(TARGET)
 	mlabel -i $(TARGET) ::PatchworkOS
@@ -33,7 +32,15 @@ deploy: $(PROGRAMS)
 	mcopy -i $(TARGET) -s COPYING ::/usr/licence
 	mcopy -i $(TARGET) -s LICENSE ::/usr/licence
 
-all: $(MODULES) $(PROGRAMS) deploy
+clean:
+	rm -rf build
+	rm -rf bin
+
+nuke: clean
+	$(MAKE) -C lib/gnu-efi clean
+
+.PHONY: all
+all: $(LIBS) $(MODULES) $(PROGRAMS) deploy
 
 compile_commands: clean
 	bear -- make all
@@ -41,7 +48,7 @@ compile_commands: clean
 format:
 	find src/ include/ -iname '*.h' -o -iname '*.c' | xargs clang-format -style=file -i
 
-run:
+run: all
 	@qemu-system-x86_64 \
 	-M q35 \
 	-display sdl \
@@ -54,7 +61,7 @@ run:
 	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd \
 	-net none
 
-run_debug:
+run_debug: all
 	@qemu-system-x86_64 \
 	-M q35 \
 	-display sdl \
@@ -67,9 +74,3 @@ run_debug:
 	-drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
 	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd \
 	-net none
-
-clean:
-	rm -rf build
-	rm -rf bin
-
-.PHONY: all

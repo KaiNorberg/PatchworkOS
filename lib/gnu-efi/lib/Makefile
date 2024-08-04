@@ -68,16 +68,39 @@ SUBDIRS = ia32 x86_64 ia64 aarch64 arm mips64el riscv64 loongarch64 runtime
 
 LIBDIRINSTALL = $(INSTALLROOT)$(LIBDIR)
 
-all: libsubdirs libefi.a
+# Modified to fix bug where files are unnecessarily recompiled
 
-.PHONY: libsubdirs
-libsubdirs:
-	@set -e ; for sdir in $(SUBDIRS); do mkdir -p $$sdir; done
+#all: libsubdirs libefi.a
+#
+#.PHONY: libsubdirs
+#libsubdirs:
+#	@set -e ; for sdir in $(SUBDIRS); do mkdir -p $$sdir; done
+#
+#$(OBJS): libsubdirs
+#
+#libefi.a: $(OBJS)
+#	$(AR) $(ARFLAGS) $@ $^
+#
+#include $(SRCDIR)/../Make.rules
 
-$(OBJS): libsubdirs
+# New stuff
+
+all: libefi.a
+
+$(OBJS):
 
 libefi.a: $(OBJS)
 	$(AR) $(ARFLAGS) $@ $^
+
+%.o: %.c
+	mkdir -p $(@D)
+	$(CC) $(INCDIR) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+
+%.o: %.S
+	mkdir -p $(@D)
+	$(CC) $(INCDIR) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+
+# End of new stuff
 
 clean:
 	rm -f libefi.a *~ $(OBJS) */*.o
@@ -89,5 +112,3 @@ $(LIBDIRINSTALL)/libefi.a: libefi.a | $(LIBDIRINSTALL)
 	$(INSTALL) -m 644 $< $(dir $@)
 
 install: $(LIBDIRINSTALL)/libefi.a
-
-include $(SRCDIR)/../Make.rules

@@ -1,6 +1,6 @@
 $(BUILDDIR)/%.c.o: src/%.c
 	$(MKCWD)
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) -c -o $@ $^
 
 $(BUILDDIR)/%.s.o: src/%.s
 	$(MKCWD)
