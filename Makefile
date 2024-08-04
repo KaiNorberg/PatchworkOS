@@ -40,7 +40,7 @@ nuke: clean
 	$(MAKE) -C lib/gnu-efi clean
 
 .PHONY: all
-all: $(LIBS) $(MODULES) $(PROGRAMS) deploy
+all: setup $(MODULES) $(PROGRAMS) deploy
 
 compile_commands: clean
 	bear -- make all
@@ -48,7 +48,7 @@ compile_commands: clean
 format:
 	find src/ include/ -iname '*.h' -o -iname '*.c' | xargs clang-format -style=file -i
 
-run: all
+run:
 	@qemu-system-x86_64 \
 	-M q35 \
 	-display sdl \
@@ -61,7 +61,7 @@ run: all
 	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd \
 	-net none
 
-run_debug: all
+run_debug:
 	@qemu-system-x86_64 \
 	-M q35 \
 	-display sdl \
