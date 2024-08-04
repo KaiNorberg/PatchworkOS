@@ -35,8 +35,8 @@ deploy: $(PROGRAMS)
 
 all: $(MODULES) $(PROGRAMS) deploy
 
-compile_commands:
-	bear -- make build
+compile_commands: clean
+	bear -- make all
 
 format:
 	find src/ include/ -iname '*.h' -o -iname '*.c' | xargs clang-format -style=file -i
