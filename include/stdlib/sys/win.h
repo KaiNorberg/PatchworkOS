@@ -98,7 +98,8 @@ typedef struct lmsg_command
 } lmsg_command_t;
 
 #define LMSG_BASE (1 << 14)
-#define LMSG_INIT (LMSG_BASE + 1)
+#define LMSG_INIT (LMSG_BASE + 0)
+#define LMSG_FREE (LMSG_BASE + 1)
 #define LMSG_QUIT (LMSG_BASE + 2)
 #define LMSG_REDRAW (LMSG_BASE + 3)
 #define LMSG_COMMAND (LMSG_BASE + 4)
@@ -148,8 +149,8 @@ void win_screen_to_client(win_t* window, point_t* point);
 void win_window_to_client(win_t* window, point_t* point);
 gfx_psf_t* win_font(win_t* window);
 uint64_t win_font_set(win_t* window, const char* path);
-
 widget_t* win_widget(win_t* window, widget_id_t id);
+
 widget_t* win_widget_new(win_t* window, widget_proc_t procedure, const char* name, const rect_t* rect, widget_id_t id);
 void win_widget_free(widget_t* widget);
 uint64_t win_widget_send(widget_t* widget, msg_type_t type, const void* data, uint64_t size);

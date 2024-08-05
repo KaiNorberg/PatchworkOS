@@ -324,7 +324,9 @@ win_t* win_new(const char* name, const rect_t* rect, dwm_type_t type, win_flags_
         return NULL;
     }
 
-    win_send(window, LMSG_INIT, NULL, 0);
+    msg_t msg = {.type = LMSG_INIT, .time = uptime()};
+    win_dispatch(window, &msg);
+
     win_send(window, LMSG_REDRAW, NULL, 0);
 
     return window;
@@ -336,6 +338,9 @@ uint64_t win_free(win_t* window)
     {
         return ERR;
     }
+
+    msg_t msg = {.type = LMSG_FREE, .time = uptime()};
+    win_dispatch(window, &msg);
 
     widget_t* temp;
     widget_t* widget;
@@ -558,7 +563,9 @@ widget_t* win_widget_new(win_t* window, widget_proc_t procedure, const char* nam
     widget->name = malloc(strlen(name) + 1);
     strcpy(widget->name, name);
 
-    win_widget_send(widget, WMSG_INIT, NULL, 0);
+    msg_t msg = {.type = WMSG_INIT, .time = uptime()};
+    win_widget_dispatch(widget, &msg);
+
     win_widget_send(widget, WMSG_REDRAW, NULL, 0);
 
     widget_t* other;
@@ -577,8 +584,8 @@ widget_t* win_widget_new(win_t* window, widget_proc_t procedure, const char* nam
 
 void win_widget_free(widget_t* widget)
 {
-    msg_t freeMsg = {.type = WMSG_FREE};
-    win_widget_dispatch(widget, &freeMsg);
+    msg_t msg = {.type = WMSG_FREE, .time = uptime()};
+    win_widget_dispatch(widget, &msg);
 
     list_remove(widget);
     free(widget->name);

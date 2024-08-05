@@ -11,8 +11,6 @@ int main(void)
     shell_push(taskbar_new());
     shell_push(cursor_new());
 
-    spawn("/usr/bin/calculator.elf");
-
     shell_loop();
 
     return 0;

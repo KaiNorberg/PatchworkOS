@@ -16,7 +16,6 @@ static void window_cleanup(file_t* file)
     window_t* window = file->private;
 
     window->cleanup(window);
-
     window_free(window);
 }
 

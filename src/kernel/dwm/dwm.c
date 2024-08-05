@@ -443,6 +443,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
         case DWM_WINDOW:
         {
             list_push(&windows, window);
+            dwm_select(window);
             log_print("dwm: create window");
         }
         break;
@@ -450,6 +451,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
         {
             list_push(&windows, window);
             dwm_update_client_rect_unlocked();
+            dwm_select(window);
             log_print("dwm: create panel");
         }
         break;
