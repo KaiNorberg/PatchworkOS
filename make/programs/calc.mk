@@ -1,6 +1,6 @@
 include Make.defaults
 
-TARGET := $(BINDIR)/calculator.elf
+TARGET := $(BINDIR)/calc
 
 LDFLAGS += -Lbin/stdlib -lstd
 

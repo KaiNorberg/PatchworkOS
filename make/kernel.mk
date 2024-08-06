@@ -1,6 +1,6 @@
 include Make.defaults
 
-TARGET := $(BINDIR)/kernel.elf
+TARGET := $(BINDIR)/kernel
 
 SRC += $(wildcard src/stdlib/*.c) $(wildcard src/stdlib/*.s) \
 	$(wildcard src/stdlib/*/*.c) $(wildcard src/stdlib/*/*.s)

@@ -1,6 +1,6 @@
 include Make.defaults
 
-TARGET := $(BINDIR)/shell.elf
+TARGET := $(BINDIR)/shell
 
 LDFLAGS += -Lbin/stdlib -lstd
 

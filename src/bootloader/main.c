@@ -15,7 +15,7 @@ static void boot_info_populate(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemT
     bootInfo->ramRoot = ram_disk_load(imageHandle);
     bootInfo->rsdp = rsdp_get(systemTable);
     bootInfo->runtimeServices = systemTable->RuntimeServices;
-    loader_load_kernel(&bootInfo->kernel, L"/boot/kernel.elf", imageHandle);
+    loader_load_kernel(&bootInfo->kernel, L"/boot/kernel", imageHandle);
     vm_map_init(&bootInfo->memoryMap);
 }
 

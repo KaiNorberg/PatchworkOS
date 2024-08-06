@@ -7,10 +7,23 @@
 #include <sys/gfx.h>
 #include <sys/win.h>
 
+#define START_BUTTON_HEIGHT 32
+
 #define START_MENU_WIDTH 250
 #define START_MENU_HEIGHT 400
 
 static win_t* startMenu = NULL;
+
+typedef struct
+{
+    const char* name;
+    const char* path;
+} start_entry_t;
+
+// TODO: Load this from config file.
+static start_entry_t entries[] = {
+    {.name = "Calculator", .path = "home:/usr/bin/calc"},
+};
 
 static uint64_t procedure(win_t* window, const msg_t* msg)
 {
@@ -23,8 +36,11 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
 
         win_text_prop_t props = {.height = 16, .xAlign = GFX_CENTER, .yAlign = GFX_CENTER, .foreground = 0xFF000000};
 
-        rect_t rect = RECT_INIT_DIM(winTheme.edgeWidth * 2, winTheme.edgeWidth * 2, RECT_WIDTH(&clientRect) - winTheme.edgeWidth * 4, 32);
-        win_button_new(window, "Calculator", &rect, 0, &props, WIN_BUTTON_NONE);
+        for (uint64_t i = 0; i < sizeof(entries)/sizeof(entries[0]); i++)
+        {
+            rect_t rect = RECT_INIT_DIM(winTheme.edgeWidth * 2, winTheme.edgeWidth + winTheme.edgeWidth * (i + 1) + i * START_BUTTON_HEIGHT, RECT_WIDTH(&clientRect) - winTheme.edgeWidth * 4, START_BUTTON_HEIGHT);
+            win_button_new(window, entries[i].name, &rect, i, &props, WIN_BUTTON_NONE);
+        }
     }
     break;
     case LMSG_REDRAW:
@@ -47,7 +63,10 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         lmsg_command_t* data = (lmsg_command_t*)msg->data;
         if (data->type == LMSG_COMMAND_RELEASE)
         {
-            spawn("home:/usr/bin/calculator.elf");
+            if (spawn(entries[data->id].path) == ERR)
+            {
+                //TODO: Add err handling, msg box?
+            }
         }
     }
     }

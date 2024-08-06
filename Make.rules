@@ -10,7 +10,7 @@ $(BINDIR)/%.a: $(OBJ)
 	$(MKCWD)
 	$(LD) $(LDFLAGS) -r -o $@ $^
 
-$(BINDIR)/%.elf: $(OBJ)
+$(BINDIR)/%: $(OBJ)
 	$(MKCWD)
 	$(LD) $(LDFLAGS) -o $@ $^
 

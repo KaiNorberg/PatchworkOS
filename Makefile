@@ -26,9 +26,9 @@ deploy: $(PROGRAMS)
 	mmd -i $(TARGET) ::/usr/licence
 	mcopy -i $(TARGET) -s root/* ::
 	mcopy -i $(TARGET) -s bin/bootloader/bootx64.efi ::/efi/boot
-	mcopy -i $(TARGET) -s bin/kernel/kernel.elf ::/boot
-	mcopy -i $(TARGET) -s bin/programs/shell.elf ::/bin
-	mcopy -i $(TARGET) -s bin/programs/calculator.elf ::/usr/bin
+	mcopy -i $(TARGET) -s bin/kernel/kernel ::/boot
+	mcopy -i $(TARGET) -s bin/programs/shell ::/bin
+	mcopy -i $(TARGET) -s bin/programs/calc ::/usr/bin
 	mcopy -i $(TARGET) -s COPYING ::/usr/licence
 	mcopy -i $(TARGET) -s LICENSE ::/usr/licence
 
