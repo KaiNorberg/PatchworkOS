@@ -1,5 +1,4 @@
 #include "wall.h"
-#include "sys/win.h"
 
 static uint64_t procedure(win_t* window, const msg_t* msg)
 {
@@ -10,11 +9,10 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         gfx_t gfx;
         win_draw_begin(window, &gfx);
 
-        rect_t rect;
-        win_client_rect(window, &rect);
+        rect_t rect = RECT_INIT_GFX(&gfx);
 
-        gfx_rect(&gfx, &rect, 0xFF007E81);
-        // gfx_rect(&gfx, &rect, 0xFF427F99);
+        //gfx_rect(&gfx, &rect, 0xFF007E81);
+        gfx_rect(&gfx, &rect, 0xFF427F99);
 
         win_draw_end(window, &gfx);
     }

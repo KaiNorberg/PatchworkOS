@@ -23,6 +23,7 @@ typedef struct
 // TODO: Load this from config file.
 static start_entry_t entries[] = {
     {.name = "Calculator", .path = "home:/usr/bin/calc"},
+    {.name = "Terminal", .path = "home:/usr/bin/terminal"},
 };
 
 static uint64_t procedure(win_t* window, const msg_t* msg)
@@ -36,9 +37,11 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
 
         win_text_prop_t props = {.height = 16, .xAlign = GFX_CENTER, .yAlign = GFX_CENTER, .foreground = 0xFF000000};
 
-        for (uint64_t i = 0; i < sizeof(entries)/sizeof(entries[0]); i++)
+        for (uint64_t i = 0; i < sizeof(entries) / sizeof(entries[0]); i++)
         {
-            rect_t rect = RECT_INIT_DIM(winTheme.edgeWidth * 2, winTheme.edgeWidth + winTheme.edgeWidth * (i + 1) + i * START_BUTTON_HEIGHT, RECT_WIDTH(&clientRect) - winTheme.edgeWidth * 4, START_BUTTON_HEIGHT);
+            rect_t rect =
+                RECT_INIT_DIM(winTheme.edgeWidth * 2, winTheme.edgeWidth + winTheme.edgeWidth * (i + 1) + i * START_BUTTON_HEIGHT,
+                    RECT_WIDTH(&clientRect) - winTheme.edgeWidth * 4, START_BUTTON_HEIGHT);
             win_button_new(window, entries[i].name, &rect, i, &props, WIN_BUTTON_NONE);
         }
     }
@@ -48,8 +51,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         gfx_t gfx;
         win_draw_begin(window, &gfx);
 
-        rect_t rect;
-        win_client_rect(window, &rect);
+        rect_t rect = RECT_INIT_GFX(&gfx);
 
         gfx_edge(&gfx, &rect, winTheme.edgeWidth, winTheme.bright, winTheme.dark);
         RECT_SHRINK(&rect, winTheme.edgeWidth);
@@ -65,7 +67,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         {
             if (spawn(entries[data->id].path) == ERR)
             {
-                //TODO: Add err handling, msg box?
+                // TODO: Add err handling, msg box?
             }
         }
     }
@@ -84,7 +86,8 @@ void start_menu_open(void)
     rect_t screenRect;
     win_screen_rect(&screenRect);
 
-    rect_t rect = RECT_INIT_DIM(0, RECT_HEIGHT(&screenRect) - TOPBAR_HEIGHT - START_MENU_HEIGHT, START_MENU_WIDTH, START_MENU_HEIGHT);
+    rect_t rect =
+        RECT_INIT_DIM(0, RECT_HEIGHT(&screenRect) - TOPBAR_HEIGHT - START_MENU_HEIGHT, START_MENU_WIDTH, START_MENU_HEIGHT);
     startMenu = win_new("StartMenu", &rect, DWM_WINDOW, WIN_NONE, procedure);
 
     shell_push(startMenu);

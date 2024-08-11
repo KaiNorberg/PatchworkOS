@@ -5,6 +5,7 @@
 #include <sys/io.h>
 #include <sys/mouse.h>
 #include <sys/proc.h>
+#include <sys/kbd.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -36,6 +37,12 @@ typedef struct
     msg_type_t type;
     uint8_t data[MSG_MAX_DATA]; // Stores the *msg_*_t structs.
 } msg_t;
+
+typedef struct
+{
+    kbd_event_type_t type;
+    keycode_t code;
+} msg_kbd_t;
 
 typedef struct
 {

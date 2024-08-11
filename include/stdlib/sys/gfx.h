@@ -62,22 +62,22 @@ typedef struct gfx
 
 #ifndef __EMBED__
 
-gfx_fbmp_t* gfx_fbmp_load(const char* path);
+gfx_fbmp_t* gfx_fbmp_new(const char* path);
 
-void gfx_fbmp_cleanup(gfx_fbmp_t* fbmp);
+void gfx_fbmp_free(gfx_fbmp_t* fbmp);
 
-uint64_t gfx_psf_load(gfx_psf_t* psf, const char* path);
+uint64_t gfx_psf_new(gfx_psf_t* psf, const char* path);
 
-void gfx_psf_cleanup(gfx_psf_t* psf);
+void gfx_psf_free(gfx_psf_t* psf);
 
 #endif
 
 void gfx_fbmp(gfx_t* gfx, const gfx_fbmp_t* fbmp, const point_t* point);
 
-void gfx_psf_char(gfx_t* gfx, const gfx_psf_t* psf, const point_t* point, uint64_t height, char chr, pixel_t foreground,
+void gfx_char(gfx_t* gfx, const gfx_psf_t* psf, const point_t* point, uint64_t height, char chr, pixel_t foreground,
     pixel_t background);
 
-void gfx_psf(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign, uint64_t height,
+void gfx_text(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign, uint64_t height,
     const char* str, pixel_t foreground, pixel_t background);
 
 void gfx_rect(gfx_t* gfx, const rect_t* rect, pixel_t pixel);

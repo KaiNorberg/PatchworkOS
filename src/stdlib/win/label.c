@@ -48,7 +48,7 @@ uint64_t win_label_proc(widget_t* widget, win_t* window, const msg_t* msg)
         gfx_rect(&gfx, &rect, winTheme.bright);
         RECT_SHRINK(&rect, winTheme.edgeWidth);
         rect.top += winTheme.edgeWidth;
-        gfx_psf(&gfx, win_font(window), &rect, label->props.xAlign, label->props.yAlign, label->props.height,
+        gfx_text(&gfx, win_font(window), &rect, label->props.xAlign, label->props.yAlign, label->props.height,
             win_widget_name(widget), label->props.foreground, label->props.background);
 
         win_draw_end(window, &gfx);

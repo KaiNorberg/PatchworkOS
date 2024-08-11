@@ -32,6 +32,7 @@ typedef struct win
     bool moving;
     bool closeButtonPressed;
     gfx_psf_t psf;
+    nsec_t timerDeadline;
     char name[DWM_MAX_NAME];
 } win_t;
 
@@ -63,7 +64,7 @@ win_theme_t winTheme = {
     .selected = 0xFF00007F,
     .unSelected = 0xFF7F7F7F,
     .topbarHeight = 40,
-    .topbarPadding = 2,
+    .padding = 2,
 };
 
 static uint64_t win_widget_dispatch(widget_t* widget, const msg_t* msg);
@@ -102,10 +103,10 @@ static inline void win_client_surface(win_t* window, gfx_t* gfx)
 static void win_topbar_rect(win_t* window, rect_t* rect)
 {
     *rect = (rect_t){
-        .left = winTheme.edgeWidth + winTheme.topbarPadding,
-        .top = winTheme.edgeWidth + winTheme.topbarPadding,
-        .right = window->width - winTheme.edgeWidth - winTheme.topbarPadding,
-        .bottom = winTheme.topbarHeight + winTheme.edgeWidth - winTheme.topbarPadding,
+        .left = winTheme.edgeWidth + winTheme.padding,
+        .top = winTheme.edgeWidth + winTheme.padding,
+        .right = window->width - winTheme.edgeWidth - winTheme.padding,
+        .bottom = winTheme.topbarHeight + winTheme.edgeWidth - winTheme.padding,
     };
 }
 
@@ -120,9 +121,9 @@ static void win_topbar_draw(win_t* window, gfx_t* gfx)
 
     win_close_button_draw(window, gfx);
 
-    rect.left += winTheme.topbarPadding * 3;
+    rect.left += winTheme.padding * 3;
     rect.right -= winTheme.topbarHeight;
-    gfx_psf(gfx, &window->psf, &rect, GFX_MIN, GFX_CENTER, 16, window->name, winTheme.background, 0);
+    gfx_text(gfx, &window->psf, &rect, GFX_MIN, GFX_CENTER, 16, window->name, winTheme.background, 0);
 }
 
 static void win_close_button_rect(win_t* window, rect_t* rect)
@@ -152,7 +153,7 @@ static void win_close_button_draw(win_t* window, gfx_t* gfx)
     gfx_rect(gfx, &rect, winTheme.background);
 
     RECT_EXPAND(&rect, 32);
-    gfx_psf(gfx, &window->psf, &rect, GFX_CENTER, GFX_CENTER, 32, "x", winTheme.shadow, 0);
+    gfx_text(gfx, &window->psf, &rect, GFX_CENTER, GFX_CENTER, 32, "x", winTheme.shadow, 0);
 }
 
 static void win_background_draw(win_t* window, gfx_t* gfx)
@@ -316,7 +317,8 @@ win_t* win_new(const char* name, const rect_t* rect, dwm_type_t type, win_flags_
     window->procedure = procedure;
     strcpy(window->name, name);
     win_set_rect(window, rect);
-    if (gfx_psf_load(&window->psf, WIN_DEFAULT_FONT) == ERR)
+    window->timerDeadline = NEVER;
+    if (gfx_psf_new(&window->psf, WIN_DEFAULT_FONT) == ERR)
     {
         free(window);
         free(window->buffer);
@@ -354,14 +356,9 @@ uint64_t win_free(win_t* window)
     return 0;
 }
 
-uint64_t win_poll(win_t** windows, uint64_t amount, nsec_t timeout)
+fd_t win_fd(win_t* window)
 {
-    pollfd_t array[amount];
-    for (uint64_t i = 0; i < amount; i++)
-    {
-        array[i] = (pollfd_t){.fd = windows[i]->fd, .requested = POLL_READ};
-    }
-    return poll(array, amount, timeout);
+    return window->fd;
 }
 
 uint64_t win_send(win_t* window, msg_type_t type, const void* data, uint64_t size)
@@ -385,14 +382,45 @@ uint64_t win_send(win_t* window, msg_type_t type, const void* data, uint64_t siz
 
 uint64_t win_receive(win_t* window, msg_t* msg, nsec_t timeout)
 {
-    ioctl_window_receive_t receive = {.timeout = timeout};
-    if (ioctl(window->fd, IOCTL_WINDOW_RECEIVE, &receive, sizeof(ioctl_window_receive_t)) == ERR)
+    nsec_t upTime = uptime();
+    nsec_t deadline = timeout != NEVER ? timeout + upTime : NEVER;
+
+    while (true)
     {
-        return ERR;
+        nsec_t nextDeadline = MIN(deadline, window->timerDeadline);
+        nsec_t remaining = nextDeadline != NEVER ? (nextDeadline - upTime) : NEVER;
+
+        ioctl_window_receive_t receive = {.timeout = remaining};
+        if (ioctl(window->fd, IOCTL_WINDOW_RECEIVE, &receive, sizeof(ioctl_window_receive_t)) == ERR)
+        {
+            return ERR;
+        }
+
+        if (receive.outMsg.type != MSG_NONE)
+        {
+            *msg = receive.outMsg;
+            return true;
+        }
+
+        upTime = uptime();
+
+        if (window->timerDeadline <= upTime)
+        {
+            lmsg_timer_t data = {.deadline = window->timerDeadline};
+            *msg = (msg_t){.type = LMSG_TIMER, .time = upTime};
+            memcpy(msg->data, &data, sizeof(lmsg_timer_t));
+
+            window->timerDeadline = NEVER;
+            return true;
+        }
+
+        if (deadline < upTime)
+        {
+            break;
+        }
     }
 
-    *msg = receive.outMsg;
-    return receive.outMsg.type != MSG_NONE;
+    return false;
 }
 
 uint64_t win_dispatch(win_t* window, const msg_t* msg)
@@ -522,8 +550,8 @@ gfx_psf_t* win_font(win_t* window)
 
 uint64_t win_font_set(win_t* window, const char* path)
 {
-    gfx_psf_cleanup(&window->psf);
-    return gfx_psf_load(&window->psf, path);
+    gfx_psf_free(&window->psf);
+    return gfx_psf_new(&window->psf, path);
 }
 
 widget_t* win_widget(win_t* window, widget_id_t id)
@@ -542,6 +570,12 @@ widget_t* win_widget(win_t* window, widget_id_t id)
     }
 
     return NULL;
+}
+
+uint64_t win_timer_set(win_t* window, nsec_t timeout)
+{
+    window->timerDeadline = timeout != NEVER ? timeout + uptime() : NEVER;
+    return 0;
 }
 
 widget_t* win_widget_new(win_t* window, widget_proc_t procedure, const char* name, const rect_t* rect, widget_id_t id)
@@ -680,7 +714,7 @@ void win_expand_to_window(rect_t* clientRect, win_flags_t flags)
     if (flags & WIN_DECO)
     {
         clientRect->left -= winTheme.edgeWidth;
-        clientRect->top -= winTheme.edgeWidth + winTheme.topbarHeight + winTheme.topbarPadding;
+        clientRect->top -= winTheme.edgeWidth + winTheme.topbarHeight + winTheme.padding;
         clientRect->right += winTheme.edgeWidth;
         clientRect->bottom += winTheme.edgeWidth;
     }
@@ -691,7 +725,7 @@ void win_shrink_to_client(rect_t* windowRect, win_flags_t flags)
     if (flags & WIN_DECO)
     {
         windowRect->left += winTheme.edgeWidth;
-        windowRect->top += winTheme.edgeWidth + winTheme.topbarHeight + winTheme.topbarPadding;
+        windowRect->top += winTheme.edgeWidth + winTheme.topbarHeight + winTheme.padding;
         windowRect->right -= winTheme.edgeWidth;
         windowRect->bottom -= winTheme.edgeWidth;
     }

@@ -18,9 +18,20 @@ void shell_loop(void)
 {
     while (windowAmount != 0)
     {
-        win_poll(windows, windowAmount, NEVER);
+        pollfd_t fds[64];
+        for (uint64_t i = 0; i < windowAmount; i++)
+        {
+            fds[i] = (pollfd_t){.fd = win_fd(windows[i]), .requested = POLL_READ};
+        }
+        poll(fds, windowAmount, NEVER);
+
         for (int64_t i = 0; i < windowAmount; i++)
         {
+            if (!(fds[i].occurred & POLL_READ))
+            {
+                continue;
+            }
+
             msg_t msg = {0};
             while (win_receive(windows[i], &msg, 0))
             {

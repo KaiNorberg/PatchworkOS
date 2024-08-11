@@ -13,6 +13,7 @@
 #include "log.h"
 #include "msg_queue.h"
 #include "sched.h"
+#include "sys/kbd.h"
 #include "sysfs.h"
 #include "time.h"
 #include "vfs.h"
@@ -30,6 +31,7 @@ static window_t* cursor;
 static window_t* wall;
 
 static file_t* mouse;
+static file_t* keyboard;
 
 static lock_t lock;
 
@@ -246,24 +248,24 @@ static void dwm_draw_cursor(void)
     gfx_transfer_blend(&backbuffer, &cursor->gfx, &cursorRect, &srcPoint);
 }
 
-static void dwm_handle_mouse_message(mouse_buttons_t held, const point_t* delta)
+static void dwm_handle_mouse_message(const mouse_event_t* event)
 {
-    static mouse_buttons_t oldHeld = MOUSE_NONE;
+    static mouse_buttons_t oldButtons = MOUSE_NONE;
 
     LOCK_GUARD(&cursor->lock);
 
-    mouse_buttons_t pressed = (held & ~oldHeld);
-    mouse_buttons_t released = (oldHeld & ~held);
+    mouse_buttons_t pressed = (event->buttons & ~oldButtons);
+    mouse_buttons_t released = (oldButtons & ~event->buttons);
 
     point_t oldPos = cursor->pos;
-    if (delta->x != 0 || delta->y != 0)
+    if (event->delta.x != 0 || event->delta.y != 0)
     {
         rect_t oldRect = WINDOW_RECT(cursor);
         RECT_FIT(&oldRect, &screenRect);
         dwm_redraw_others(cursor, &oldRect);
 
-        cursor->pos.x = CLAMP(cursor->pos.x + delta->x, 0, backbuffer.width - 1);
-        cursor->pos.y = CLAMP(cursor->pos.y + delta->y, 0, backbuffer.height - 1);
+        cursor->pos.x = CLAMP(cursor->pos.x + event->delta.x, 0, backbuffer.width - 1);
+        cursor->pos.y = CLAMP(cursor->pos.y + event->delta.y, 0, backbuffer.height - 1);
 
         point_t srcPoint = {0};
         rect_t cursorRect = WINDOW_RECT(cursor);
@@ -295,7 +297,7 @@ static void dwm_handle_mouse_message(mouse_buttons_t held, const point_t* delta)
     if (selected != NULL)
     {
         msg_mouse_t data = {
-            .held = held,
+            .held = event->buttons,
             .pressed = pressed,
             .released = released,
             .pos.x = cursor->pos.x,
@@ -306,7 +308,7 @@ static void dwm_handle_mouse_message(mouse_buttons_t held, const point_t* delta)
         msg_queue_push(&selected->messages, MSG_MOUSE, &data, sizeof(msg_mouse_t));
     }
 
-    oldHeld = held;
+    oldButtons = event->buttons;
 }
 
 static void dwm_poll(void)
@@ -317,31 +319,27 @@ static void dwm_poll(void)
         sched_block_do(&blocker, SEC / 1000);
         sched_block_end(&blocker);
 
-        if (cursor == NULL)
-        {
-            continue;
-        }
+        LOCK_GUARD(&lock);
 
-        mouse_buttons_t held = MOUSE_NONE;
-        point_t delta = {0};
-        bool recived = false;
-
-        poll_file_t poll[] = {{.file = mouse, .requested = POLL_READ}};
-        while (vfs_poll(poll, 1, 0) != 0)
+        poll_file_t poll[] = {{.file = mouse, .requested = POLL_READ}, {.file = keyboard, .requested = POLL_READ}};
+        vfs_poll(poll, 2, 0);
+        if (cursor != NULL && poll[0].occurred & POLL_READ) // Mouse
         {
             mouse_event_t event;
             LOG_ASSERT(vfs_read(mouse, &event, sizeof(mouse_event_t)) == sizeof(mouse_event_t), "mouse read fail");
 
-            delta.x += event.delta.x;
-            delta.y += event.delta.y;
-            held |= event.buttons;
-
-            recived = true;
+            dwm_handle_mouse_message(&event);
         }
-
-        if (recived)
+        if (selected != NULL && poll[1].occurred & POLL_READ) // Keyboard
         {
-            dwm_handle_mouse_message(held, &delta);
+            kbd_event_t event;
+            LOG_ASSERT(vfs_read(keyboard, &event, sizeof(kbd_event_t)) == sizeof(kbd_event_t), "kbd read fail");
+
+            msg_kbd_t data = {
+                .code = event.code,
+                .type = event.type
+            };
+            msg_queue_push(&selected->messages, MSG_KBD, &data, sizeof(msg_kbd_t));
         }
     }
 }
@@ -537,7 +535,9 @@ void dwm_init(gop_buffer_t* gopBuffer)
 
     lock_init(&lock);
 
+    // TODO: Add system to choose input devices
     mouse = vfs_open("sys:/mouse/ps2");
+    keyboard = vfs_open("sys:/kbd/ps2");
 
     atomic_init(&redrawNeeded, true);
     blocker_init(&blocker);

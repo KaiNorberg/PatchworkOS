@@ -25,13 +25,14 @@ typedef uint8_t win_t;
 typedef uint8_t widget_t;
 #endif
 
+typedef uint16_t widget_id_t;
+typedef uint16_t timer_id_t;
+
 typedef enum win_flags
 {
     WIN_NONE = 0,
     WIN_DECO = (1 << 0)
 } win_flags_t;
-
-typedef uint16_t widget_id_t;
 
 typedef struct win_theme
 {
@@ -46,7 +47,7 @@ typedef struct win_theme
     pixel_t selected;
     pixel_t unSelected;
     uint8_t topbarHeight;
-    uint8_t topbarPadding;
+    uint8_t padding;
 } win_theme_t;
 
 extern win_theme_t winTheme;
@@ -97,12 +98,18 @@ typedef struct lmsg_command
     widget_id_t id;
 } lmsg_command_t;
 
+typedef struct lmsg_timer
+{
+    nsec_t deadline;
+} lmsg_timer_t;
+
 #define LMSG_BASE (1 << 14)
 #define LMSG_INIT (LMSG_BASE + 0)
 #define LMSG_FREE (LMSG_BASE + 1)
 #define LMSG_QUIT (LMSG_BASE + 2)
 #define LMSG_REDRAW (LMSG_BASE + 3)
 #define LMSG_COMMAND (LMSG_BASE + 4)
+#define LMSG_TIMER (LMSG_BASE + 5)
 
 // Widget messages
 typedef msg_mouse_t wmsg_mouse_t;
@@ -133,7 +140,7 @@ typedef win_text_prop_t wmsg_text_prop_t;
 
 win_t* win_new(const char* name, const rect_t* rect, dwm_type_t type, win_flags_t flags, win_proc_t procedure);
 uint64_t win_free(win_t* window);
-uint64_t win_poll(win_t** windows, uint64_t amount, nsec_t timeout);
+fd_t win_fd(win_t* window);
 uint64_t win_send(win_t* window, msg_type_t type, const void* data, uint64_t size);
 uint64_t win_receive(win_t* window, msg_t* msg, nsec_t timeout);
 uint64_t win_dispatch(win_t* window, const msg_t* msg);
@@ -150,6 +157,7 @@ void win_window_to_client(win_t* window, point_t* point);
 gfx_psf_t* win_font(win_t* window);
 uint64_t win_font_set(win_t* window, const char* path);
 widget_t* win_widget(win_t* window, widget_id_t id);
+uint64_t win_timer_set(win_t* window, nsec_t timeout);
 
 widget_t* win_widget_new(win_t* window, widget_proc_t procedure, const char* name, const rect_t* rect, widget_id_t id);
 void win_widget_free(widget_t* widget);

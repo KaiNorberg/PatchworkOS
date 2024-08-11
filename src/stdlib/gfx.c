@@ -7,7 +7,7 @@
 
 #ifndef __EMBED__
 
-gfx_fbmp_t* gfx_fbmp_load(const char* path)
+gfx_fbmp_t* gfx_fbmp_new(const char* path)
 {
     fd_t file = open(path);
     if (file == ERR)
@@ -43,7 +43,7 @@ gfx_fbmp_t* gfx_fbmp_load(const char* path)
     return image;
 }
 
-void gfx_fbmp_cleanup(gfx_fbmp_t* fbmp)
+void gfx_fbmp_free(gfx_fbmp_t* fbmp)
 {
     free(fbmp);
 }
@@ -123,7 +123,7 @@ static uint64_t gfx_psf2_load(gfx_psf_t* psf, fd_t file)
     return 0;
 }
 
-uint64_t gfx_psf_load(gfx_psf_t* psf, const char* path)
+uint64_t gfx_psf_new(gfx_psf_t* psf, const char* path)
 {
     fd_t file = open(path);
     if (file == ERR)
@@ -156,7 +156,7 @@ uint64_t gfx_psf_load(gfx_psf_t* psf, const char* path)
     return result;
 }
 
-void gfx_psf_cleanup(gfx_psf_t* psf)
+void gfx_psf_free(gfx_psf_t* psf)
 {
     free(psf->glyphs);
 }
@@ -177,7 +177,7 @@ void gfx_fbmp(gfx_t* gfx, const gfx_fbmp_t* fbmp, const point_t* point)
     gfx_invalidate(gfx, &rect);
 }
 
-void gfx_psf_char(gfx_t* gfx, const gfx_psf_t* psf, const point_t* point, uint64_t height, char chr, pixel_t foreground,
+void gfx_char(gfx_t* gfx, const gfx_psf_t* psf, const point_t* point, uint64_t height, char chr, pixel_t foreground,
     pixel_t background)
 {
     uint64_t scale = MAX(1, height / psf->height);
@@ -191,9 +191,12 @@ void gfx_psf_char(gfx_t* gfx, const gfx_psf_t* psf, const point_t* point, uint64
             PIXEL_BLEND(&gfx->buffer[(point->x + x) + (point->y + y) * gfx->stride], &pixel);
         }
     }
+
+    rect_t rect = RECT_INIT_DIM(point->x, point->y, psf->width * scale, psf->height * scale);
+    gfx_invalidate(gfx, &rect);
 }
 
-void gfx_psf(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign, uint64_t height,
+void gfx_text(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign, uint64_t height,
     const char* str, pixel_t foreground, pixel_t background)
 {
     uint64_t scale = MAX(1, height / psf->height);
@@ -251,13 +254,13 @@ void gfx_psf(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t x
     {
         for (uint64_t i = 0; i < RECT_WIDTH(rect) / (psf->width * scale) - 3; i++)
         {
-            gfx_psf_char(gfx, psf, &point, height, str[i], foreground, background);
+            gfx_char(gfx, psf, &point, height, str[i], foreground, background);
             point.x += psf->width * scale;
         }
 
         for (uint64_t i = 0; i < 3; i++)
         {
-            gfx_psf_char(gfx, psf, &point, height, '.', foreground, background);
+            gfx_char(gfx, psf, &point, height, '.', foreground, background);
             point.x += psf->width * scale;
         }
     }
@@ -267,7 +270,7 @@ void gfx_psf(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t x
         uint64_t offset = 0;
         while (*chr != '\0')
         {
-            gfx_psf_char(gfx, psf, &point, height, *chr, foreground, background);
+            gfx_char(gfx, psf, &point, height, *chr, foreground, background);
             point.x += psf->width * scale;
             chr++;
         }
