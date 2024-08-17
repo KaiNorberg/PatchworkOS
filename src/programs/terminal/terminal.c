@@ -1,10 +1,10 @@
 #include "terminal.h"
-#include "sys/dwm.h"
+#include "command.h"
 #include "sys/gfx.h"
-#include "sys/kbd.h"
 
 #include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/win.h>
 
 #define UMSG_BLINK (UMSG_BASE + 1)
@@ -25,7 +25,7 @@ static bool cursorVisible;
         .y = ((cursorPos)->y * (font)->height) + winTheme.edgeWidth + winTheme.padding, \
     };
 
-static void terminal_draw_cursor(void)
+static void terminal_cursor_draw(void)
 {
     const gfx_psf_t* font = win_font(terminal);
     point_t point = CURSOR_POS_TO_CLIENT_POS(&cursorPos, font);
@@ -43,34 +43,59 @@ static void terminal_draw_cursor(void)
     win_draw_end(terminal, &gfx);
 }
 
+static void terminal_cursor_clear(void)
+{
+    bool temp = cursorVisible;
+    cursorVisible = false;
+    terminal_cursor_draw();
+    cursorVisible = temp;
+}
+
+static void terminal_print_prompt(void)
+{
+    char cwd[MAX_PATH];
+    realpath(cwd, ".");
+
+    terminal_print("\n");
+    terminal_print(cwd);
+    terminal_print("\n> ");
+}
+
+static void terminal_scroll(void)
+{
+    cursorPos.y -= 2;
+
+    gfx_t gfx;
+    win_draw_begin(terminal, &gfx);
+
+    rect_t rect = RECT_INIT_GFX(&gfx);
+    RECT_SHRINK(&rect, winTheme.edgeWidth);
+
+    gfx_scroll(&gfx, &rect, win_font(terminal)->height * 2, winTheme.dark);
+
+    win_draw_end(terminal, &gfx);
+}
+
 uint64_t procedure(win_t* window, const msg_t* msg)
 {
+    static char command[MAX_PATH];
+
     switch (msg->type)
     {
     case LMSG_INIT:
     {
+        command[0] = '\0';
         win_timer_set(window, BLINK_INTERVAL);
     }
     break;
     case LMSG_REDRAW:
     {
-        cursorVisible = false;
+        terminal_clear();
 
-        gfx_t gfx;
-        win_draw_begin(window, &gfx);
-
-        rect_t rect = RECT_INIT_GFX(&gfx);
-        gfx_edge(&gfx, &rect, winTheme.edgeWidth, winTheme.shadow, winTheme.highlight);
-        RECT_SHRINK(&rect, winTheme.edgeWidth);
-        gfx_rect(&gfx, &rect, winTheme.dark);
-
-        win_draw_end(window, &gfx);
-
-        cursorPos = (point_t){.x = 0, .y = 0};
         terminal_print("Welcome to the Terminal (Very WIP)\n");
-        //terminal_print("Type help for a list of commands\n\n");
+        terminal_print("Type help for a list of commands\n");
 
-        terminal_print("home:/usr/bin\n> ");
+        terminal_print_prompt();
     }
     break;
     case LMSG_TIMER:
@@ -78,23 +103,64 @@ uint64_t procedure(win_t* window, const msg_t* msg)
         win_timer_set(window, BLINK_INTERVAL);
 
         cursorVisible = !cursorVisible;
-        terminal_draw_cursor();
+        terminal_cursor_draw();
     }
     break;
-    /*case MSG_KBD:
+    case MSG_KBD:
     {
         msg_kbd_t* data = (msg_kbd_t*)msg->data;
-
-        if (data->type == KBD_PRESS)
+        if (data->type != KBD_PRESS)
         {
-            terminal_put(data->code);
+            break;
+        }
+
+        char chr = kbd_ascii(data->code, data->mods);
+        if (chr == '\0')
+        {
+            break;
+        }
+
+        switch (chr)
+        {
+        case '\n':
+        {
+            terminal_put('\n');
+            command_parse(command);
+            command[0] = '\0';
+
+            terminal_print_prompt();
+        }
+        break;
+        case '\b':
+        {
+            uint64_t strLen = strlen(command);
+            if (strLen != 0)
+            {
+                command[strLen - 1] = '\0';
+                terminal_put('\b');
+            }
+        }
+        break;
+        default:
+        {
+            uint64_t strLen = strlen(command);
+            if (strLen >= MAX_PATH - 2)
+            {
+                break;
+            }
+            command[strLen] = chr;
+            command[strLen + 1] = '\0';
+
+            terminal_put(kbd_ascii(data->code, data->mods));
+        }
+        break;
         }
 
         cursorVisible = true;
-        terminal_draw_cursor();
+        terminal_cursor_draw();
         win_timer_set(window, BLINK_INTERVAL);
     }
-    break;*/
+    break;
     }
 
     return 0;
@@ -127,6 +193,22 @@ void terminal_loop(void)
     }
 }
 
+void terminal_clear(void)
+{
+    cursorVisible = false;
+    cursorPos = (point_t){.x = 0, .y = 0};
+
+    gfx_t gfx;
+    win_draw_begin(terminal, &gfx);
+
+    rect_t rect = RECT_INIT_GFX(&gfx);
+    gfx_edge(&gfx, &rect, winTheme.edgeWidth, winTheme.shadow, winTheme.highlight);
+    RECT_SHRINK(&rect, winTheme.edgeWidth);
+    gfx_rect(&gfx, &rect, winTheme.dark);
+
+    win_draw_end(terminal, &gfx);
+}
+
 static void terminal_put_backend(gfx_t* gfx, char chr)
 {
     const gfx_psf_t* font = win_font(terminal);
@@ -135,15 +217,23 @@ static void terminal_put_backend(gfx_t* gfx, char chr)
     {
     case '\n':
     {
+        terminal_cursor_clear();
         cursorPos.x = 0;
         cursorPos.y++;
+
+        if ((cursorPos.y + 1) * font->height > gfx->height - winTheme.edgeWidth * 2 - winTheme.padding * 2)
+        {
+            terminal_scroll();
+        }
     }
     break;
     case '\b':
     {
         if (cursorPos.x != 0)
         {
+            terminal_cursor_clear();
             cursorPos.x--;
+            terminal_cursor_clear();
         }
     }
     break;
@@ -153,7 +243,7 @@ static void terminal_put_backend(gfx_t* gfx, char chr)
         gfx_char(gfx, font, &point, font->height, chr, winTheme.bright, winTheme.dark);
         cursorPos.x++;
 
-        if ((cursorPos.x + 1) * font->width > gfx->width - winTheme.edgeWidth * 2 - winTheme.padding * 2)
+        if ((cursorPos.x + 2) * font->width > gfx->width - winTheme.edgeWidth * 2 - winTheme.padding * 2)
         {
             terminal_put_backend(gfx, '\n');
         }
@@ -184,4 +274,18 @@ void terminal_print(const char* str)
     }
 
     win_draw_end(terminal, &gfx);
+}
+
+void terminal_error(const char* str)
+{
+    terminal_print("error: ");
+    if (str != NULL)
+    {
+        terminal_print(str);
+    }
+    else
+    {
+        terminal_print(strerror(errno));
+    }
+    terminal_put('\n');
 }

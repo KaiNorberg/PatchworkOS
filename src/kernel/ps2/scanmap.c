@@ -106,5 +106,5 @@ const keycode_t scanmap[] = {
 
 keycode_t ps2_scancode_to_keycode(uint64_t scancode)
 {
-    return scancode < (sizeof(scanmap)/sizeof(scanmap[0])) ? scanmap[scancode] : 0;
+    return scancode < (sizeof(scanmap) / sizeof(scanmap[0])) ? scanmap[scancode] : 0;
 }

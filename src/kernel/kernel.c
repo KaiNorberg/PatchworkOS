@@ -74,7 +74,7 @@ void kernel_init(boot_info_t* bootInfo)
     smp_init_others();
     sched_start();
 
-    ramfs_init(bootInfo->ramRoot);
+    ramfs_init(&bootInfo->ramDisk);
 
     const_init();
     ps2_init();

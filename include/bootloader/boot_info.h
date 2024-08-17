@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include <sys/io.h>
-#include <sys/list.h>
+#include <sys/node.h>
 
 #ifndef __BOOTLOADER__
 
@@ -65,21 +65,20 @@ typedef struct
     uint32_t stride;
 } gop_buffer_t;
 
+#define RAMFS_FILE 0
+#define RAMFS_DIR 1
+
 typedef struct ram_file
 {
-    list_entry_t entry;
-    char name[MAX_NAME];
+    node_t node;
     void* data;
     uint64_t size;
 } ram_file_t;
 
-typedef struct ram_dir
+typedef struct ram_disk
 {
-    list_entry_t entry;
-    char name[MAX_NAME];
-    list_t children;
-    list_t files;
-} ram_dir_t;
+    node_t* root;
+} ram_disk_t;
 
 typedef struct boot_info boot_info_t;
 
@@ -95,7 +94,7 @@ typedef struct boot_info
 {
     efi_mem_map_t memoryMap;
     gop_buffer_t gopBuffer;
-    ram_dir_t* ramRoot;
+    ram_disk_t ramDisk;
     void* rsdp;
     void* runtimeServices;
     boot_kernel_t kernel;

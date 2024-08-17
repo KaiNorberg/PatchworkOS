@@ -88,6 +88,8 @@ void gfx_ridge(gfx_t* gfx, const rect_t* rect, uint64_t width, pixel_t foregroun
 
 void gfx_rim(gfx_t* gfx, const rect_t* rect, uint64_t width, pixel_t pixel);
 
+void gfx_scroll(gfx_t* gfx, const rect_t* rect, uint64_t offset, pixel_t background);
+
 void gfx_transfer(gfx_t* dest, const gfx_t* src, const rect_t* destRect, const point_t* srcPoint);
 
 void gfx_transfer_blend(gfx_t* dest, const gfx_t* src, const rect_t* destRect, const point_t* srcPoint);

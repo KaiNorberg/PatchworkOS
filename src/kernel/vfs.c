@@ -78,6 +78,8 @@ void file_deref(file_t* file)
     }
 }
 
+// TODO: Path parsing is completly incomprehensible.
+
 static uint64_t vfs_make_canonical(const char* start, char* out, const char* path)
 {
     const char* name = path;
@@ -120,7 +122,7 @@ static uint64_t vfs_make_canonical(const char* start, char* out, const char* pat
         }
 
         name = name_next(name);
-        if (name == NULL)
+        if (name == NULL || name[0] == '\0')
         {
             if (*out == VFS_NAME_SEPARATOR)
             {
@@ -272,107 +274,6 @@ uint64_t vfs_unmount(const char* label)
     return 0;
 }
 
-file_t* vfs_open(const char* path)
-{
-    char parsedPath[MAX_PATH];
-    if (vfs_parse_path(parsedPath, path) == ERR)
-    {
-        return NULLPTR(EPATH);
-    }
-
-    volume_t* volume = volume_get(parsedPath);
-    if (volume == NULL)
-    {
-        return NULLPTR(EPATH);
-    }
-
-    if (volume->ops->open == NULL)
-    {
-        volume_deref(volume);
-        return NULLPTR(EACCES);
-    }
-
-    char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
-    if (rootPath == NULL)
-    {
-        volume_deref(volume);
-        return NULL;
-    }
-
-    file_t* file = volume->ops->open(volume, rootPath);
-    if (file == NULL)
-    {
-        volume_deref(volume);
-        return NULL;
-    }
-
-    return file;
-}
-
-uint64_t vfs_stat(const char* path, stat_t* buffer)
-{
-    char parsedPath[MAX_PATH];
-    if (vfs_parse_path(parsedPath, path) == ERR)
-    {
-        return ERROR(EPATH);
-    }
-
-    volume_t* volume = volume_get(parsedPath);
-    if (volume == NULL)
-    {
-        return ERROR(EPATH);
-    }
-
-    if (volume->ops->stat == NULL)
-    {
-        volume_deref(volume);
-        return ERROR(EACCES);
-    }
-
-    char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
-    if (rootPath == NULL)
-    {
-        volume_deref(volume);
-        return ERR;
-    }
-
-    uint64_t result = volume->ops->stat(volume, rootPath, buffer);
-    volume_deref(volume);
-    return result;
-}
-
-uint64_t vfs_listdir(const char* path, dir_entry_t* entries, uint64_t amount)
-{
-    char parsedPath[MAX_PATH];
-    if (vfs_parse_path(parsedPath, path) == ERR)
-    {
-        return ERROR(EPATH);
-    }
-
-    volume_t* volume = volume_get(parsedPath);
-    if (volume == NULL)
-    {
-        return ERROR(EPATH);
-    }
-
-    if (volume->ops->listdir == NULL)
-    {
-        volume_deref(volume);
-        return ERROR(EACCES);
-    }
-
-    char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
-    if (rootPath == NULL)
-    {
-        volume_deref(volume);
-        return ERR;
-    }
-
-    uint64_t result = volume->ops->listdir(volume, rootPath, entries, amount);
-    volume_deref(volume);
-    return result;
-}
-
 uint64_t vfs_realpath(char* out, const char* path)
 {
     if (vfs_parse_path(out, path) == ERR)
@@ -452,4 +353,102 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
     sched_block_end(&pollBlocker);
 
     return events;
+}
+
+file_t* vfs_open(const char* path)
+{
+    char parsedPath[MAX_PATH];
+    if (vfs_parse_path(parsedPath, path) == ERR)
+    {
+        return NULLPTR(EPATH);
+    }
+
+    volume_t* volume = volume_get(parsedPath);
+    if (volume == NULL)
+    {
+        return NULLPTR(EPATH);
+    }
+
+    if (volume->ops->open == NULL)
+    {
+        volume_deref(volume);
+        return NULLPTR(EACCES);
+    }
+
+    char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
+    if (rootPath == NULL)
+    {
+        rootPath = parsedPath + strlen(parsedPath);
+    }
+
+    file_t* file = volume->ops->open(volume, rootPath);
+    if (file == NULL)
+    {
+        volume_deref(volume);
+        return NULL;
+    }
+
+    return file;
+}
+
+uint64_t vfs_stat(const char* path, stat_t* buffer)
+{
+    char parsedPath[MAX_PATH];
+    if (vfs_parse_path(parsedPath, path) == ERR)
+    {
+        return ERROR(EPATH);
+    }
+
+    volume_t* volume = volume_get(parsedPath);
+    if (volume == NULL)
+    {
+        return ERROR(EPATH);
+    }
+
+    if (volume->ops->stat == NULL)
+    {
+        volume_deref(volume);
+        return ERROR(EACCES);
+    }
+
+    char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
+    if (rootPath == NULL)
+    {
+        rootPath = parsedPath + strlen(parsedPath);
+    }
+
+    uint64_t result = volume->ops->stat(volume, rootPath, buffer);
+    volume_deref(volume);
+    return result;
+}
+
+uint64_t vfs_listdir(const char* path, dir_entry_t* entries, uint64_t amount)
+{
+    char parsedPath[MAX_PATH];
+    if (vfs_parse_path(parsedPath, path) == ERR)
+    {
+        return ERROR(EPATH);
+    }
+
+    volume_t* volume = volume_get(parsedPath);
+    if (volume == NULL)
+    {
+        return ERROR(EPATH);
+    }
+
+    if (volume->ops->listdir == NULL)
+    {
+        volume_deref(volume);
+        return ERROR(EACCES);
+    }
+
+    char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
+    if (rootPath == NULL)
+    {
+        rootPath = parsedPath + strlen(parsedPath);
+    }
+
+    uint64_t result = volume->ops->listdir(volume, rootPath, entries, amount);
+    volume_deref(volume);
+    return result;
 }

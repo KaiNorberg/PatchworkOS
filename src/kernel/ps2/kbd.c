@@ -1,19 +1,16 @@
 #include "kbd.h"
 
-#include "event_stream.h"
+#include "../kbd.h"
 #include "io.h"
 #include "irq.h"
 #include "log.h"
 #include "ps2.h"
 #include "ps2/scanmap.h"
-#include "sched.h"
-#include "time.h"
-#include "vfs.h"
 
 #include <sys/kbd.h>
 #include <sys/math.h>
 
-static event_stream_t kbd;
+static kbd_t* kbd;
 
 static uint64_t ps2_kbd_scan(void)
 {
@@ -35,12 +32,9 @@ static void ps2_kbd_irq(uint8_t irq)
         return;
     }
 
-    kbd_event_t event = {
-        .time = time_uptime(),
-        .type = scanCode & SCANCODE_RELEASED ? KBD_RELEASE : KBD_PRESS,
-        .code = ps2_scancode_to_keycode(scanCode & ~SCANCODE_RELEASED),
-    };
-    event_stream_push(&kbd, &event, sizeof(kbd_event_t));
+    kbd_event_type_t type = scanCode & SCANCODE_RELEASED ? KBD_RELEASE : KBD_PRESS;
+    keycode_t code = ps2_scancode_to_keycode(scanCode & ~SCANCODE_RELEASED);
+    kbd_push(kbd, type, code);
 }
 
 void ps2_kbd_init(void)
@@ -54,6 +48,6 @@ void ps2_kbd_init(void)
     ps2_write(PS2_ENABLE_DATA_REPORTING);
     LOG_ASSERT(ps2_read() == PS2_ACK, "data reporting fail");
 
-    event_stream_init(&kbd, "/kbd", "ps2", sizeof(kbd_event_t), PS2_BUFFER_LENGTH);
+    kbd = kbd_new("ps2");
     irq_install(ps2_kbd_irq, IRQ_PS2_KBD);
 }

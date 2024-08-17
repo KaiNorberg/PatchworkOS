@@ -1,6 +1,6 @@
 #include "mouse.h"
 
-#include "event_stream.h"
+#include "../mouse.h"
 #include "io.h"
 #include "irq.h"
 #include "log.h"
@@ -13,20 +13,15 @@
 #include <sys/math.h>
 #include <sys/mouse.h>
 
-static event_stream_t mouse;
+static mouse_t* mouse;
 
 static void ps2_mouse_handle_packet(const ps2_mouse_packet_t* packet)
 {
-    mouse_event_t event = {
-        .time = time_uptime(),
-        .buttons = ((packet->flags & PS2_PACKET_BUTTON_RIGHT) != 0 ? MOUSE_RIGHT : 0) |
-            ((packet->flags & PS2_PACKET_BUTTON_MIDDLE) != 0 ? MOUSE_MIDDLE : 0) |
-            ((packet->flags & PS2_PACKET_BUTTON_LEFT) != 0 ? MOUSE_LEFT : 0),
-        .delta.x = (int16_t)packet->deltaX - (((int16_t)packet->flags << 4) & 0x100),
-        .delta.y = -((int16_t)packet->deltaY - (((int16_t)packet->flags << 3) & 0x100)),
-    };
-
-    event_stream_push(&mouse, &event, sizeof(mouse_event_t));
+    mouse_buttons_t buttons = (packet->flags & PS2_PACKET_BUTTON_RIGHT ? MOUSE_RIGHT : 0) |
+        (packet->flags & PS2_PACKET_BUTTON_MIDDLE ? MOUSE_MIDDLE : 0) | (packet->flags & PS2_PACKET_BUTTON_LEFT ? MOUSE_LEFT : 0);
+    point_t delta = {.x = (int16_t)packet->deltaX - (((int16_t)packet->flags << 4) & 0x100),
+        .y = -((int16_t)packet->deltaY - (((int16_t)packet->flags << 3) & 0x100))};
+    mouse_push(mouse, buttons, &delta);
 }
 
 static uint64_t ps2_mouse_scan(void)
@@ -92,6 +87,6 @@ void ps2_mouse_init(void)
 
     LOG_ASSERT(ps2_read() == PS2_ACK, "data reporting fail");
 
-    event_stream_init(&mouse, "/mouse", "ps2", sizeof(mouse_event_t), PS2_BUFFER_LENGTH);
+    mouse = mouse_new("ps2");
     irq_install(ps2_mouse_irq, IRQ_PS2_AUX);
 }

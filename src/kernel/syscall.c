@@ -315,7 +315,7 @@ uint64_t syscall_flush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect
 
 uint64_t syscall_listdir(const char* path, dir_entry_t* entries, uint64_t amount)
 {
-    if (!verify_buffer(entries, sizeof(dir_entry_t) * amount))
+    if (entries != NULL && !verify_buffer(entries, sizeof(dir_entry_t) * amount))
     {
         return ERROR(EFAULT);
     }

@@ -11,47 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-static system_t* root;
+static node_t root;
 static lock_t lock;
-
-static system_t* system_new(const char* name)
-{
-    system_t* system = malloc(sizeof(system_t));
-    list_entry_init(&system->entry);
-    name_copy(system->name, name);
-    list_init(&system->resources);
-    list_init(&system->systems);
-
-    return system;
-}
-
-static system_t* system_find_system(system_t* parent, const char* name)
-{
-    system_t* system;
-    LIST_FOR_EACH(system, &parent->systems)
-    {
-        if (name_compare(system->name, name))
-        {
-            return system;
-        }
-    }
-
-    return NULL;
-}
-
-static resource_t* system_find_resource(system_t* parent, const char* name)
-{
-    resource_t* resource;
-    LIST_FOR_EACH(resource, &parent->resources)
-    {
-        if (name_compare(resource->name, name))
-        {
-            return resource;
-        }
-    }
-
-    return NULL;
-}
 
 static void resource_free(resource_t* resource)
 {
@@ -60,60 +21,8 @@ static void resource_free(resource_t* resource)
         resource->delete (resource); // Why is clang-format doing this?
     }
 
+    node_remove(&resource->node);
     free(resource);
-}
-
-static system_t* sysfs_traverse(const char* path)
-{
-    system_t* system = root;
-    const char* name = name_first(path);
-    while (name != NULL)
-    {
-        system = system_find_system(system, name);
-        if (system == NULL)
-        {
-            return NULL;
-        }
-
-        name = name_next(name);
-    }
-
-    return system;
-}
-
-static system_t* sysfs_traverse_parent(const char* path)
-{
-    system_t* system = root;
-    const char* name = dir_name_first(path);
-    while (name != NULL)
-    {
-        system = system_find_system(system, name);
-        if (system == NULL)
-        {
-            return NULL;
-        }
-
-        name = dir_name_next(name);
-    }
-
-    return system;
-}
-
-static resource_t* sysfs_find_resource(const char* path)
-{
-    system_t* parent = sysfs_traverse_parent(path);
-    if (parent == NULL)
-    {
-        return NULL;
-    }
-
-    const char* name = vfs_basename(path);
-    if (name == NULL)
-    {
-        return NULL;
-    }
-
-    return system_find_resource(parent, name);
 }
 
 #define SYSFS_OPERATION(name, file, ...) \
@@ -215,11 +124,16 @@ static file_t* sysfs_open(volume_t* volume, const char* path)
 {
     LOCK_GUARD(&lock);
 
-    resource_t* resource = sysfs_find_resource(path);
-    if (resource == NULL)
+    node_t* node = node_traverse(&root, path, VFS_NAME_SEPARATOR);
+    if (node == NULL)
     {
         return NULLPTR(EPATH);
     }
+    else if (node->type == SYSFS_SYSTEM)
+    {
+        return NULLPTR(EISDIR);
+    }
+    resource_t* resource = (resource_t*)node;
 
     file_t* file = file_new(volume);
     file->private = resource->private;
@@ -236,31 +150,18 @@ static file_t* sysfs_open(volume_t* volume, const char* path)
     return file;
 }
 
-static uint64_t sysfs_stat(volume_t* volume, const char* path, stat_t* buffer)
+static uint64_t sysfs_stat(volume_t* volume, const char* path, stat_t* stat)
 {
     LOCK_GUARD(&lock);
 
-    buffer->size = 0;
-
-    system_t* parent = sysfs_traverse_parent(path);
-    if (parent == NULL)
+    node_t* node = node_traverse(&root, path, VFS_NAME_SEPARATOR);
+    if (node == NULL)
     {
         return ERROR(EPATH);
     }
 
-    const char* name = vfs_basename(path);
-    if (system_find_resource(parent, name) != NULL)
-    {
-        buffer->type = STAT_RES;
-    }
-    else if (system_find_system(parent, name) != NULL)
-    {
-        buffer->type = STAT_DIR;
-    }
-    else
-    {
-        return ERROR(EPATH);
-    }
+    stat->size = 0;
+    stat->type = node->type == SYSFS_RESOURCE ? STAT_RES : STAT_DIR;
 
     return 0;
 }
@@ -269,31 +170,25 @@ static uint64_t sysfs_listdir(volume_t* volume, const char* path, dir_entry_t* e
 {
     LOCK_GUARD(&lock);
 
-    system_t* parent = sysfs_traverse(path);
-    if (parent == NULL)
+    node_t* node = node_traverse(&root, path, VFS_NAME_SEPARATOR);
+    if (node == NULL)
     {
         return ERROR(EPATH);
+    }
+    else if (node->type == SYSFS_RESOURCE)
+    {
+        return ERROR(ENOTDIR);
     }
 
     uint64_t index = 0;
     uint64_t total = 0;
 
-    system_t* system;
-    LIST_FOR_EACH(system, &parent->systems)
+    node_t* child;
+    LIST_FOR_EACH(child, &node->children)
     {
         dir_entry_t entry = {0};
-        strcpy(entry.name, system->name);
-        entry.type = STAT_DIR;
-
-        dir_entry_push(entries, amount, &index, &total, &entry);
-    }
-
-    resource_t* resource;
-    LIST_FOR_EACH(resource, &parent->resources)
-    {
-        dir_entry_t entry = {0};
-        strcpy(entry.name, resource->name);
-        entry.type = STAT_RES;
+        strcpy(entry.name, child->name);
+        entry.type = child->type == SYSFS_RESOURCE ? STAT_RES : STAT_DIR;
 
         dir_entry_push(entries, amount, &index, &total, &entry);
     }
@@ -319,7 +214,7 @@ static fs_t sysfs = {
 
 void sysfs_init(void)
 {
-    root = system_new("root");
+    node_init(&root, "root", SYSFS_SYSTEM);
     lock_init(&lock);
 
     LOG_ASSERT(vfs_mount("sys", &sysfs) != ERR, "mount fail");
@@ -332,33 +227,34 @@ resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_
 {
     LOCK_GUARD(&lock);
 
-    system_t* system = root;
+    node_t* parent = &root;
     const char* name = name_first(path);
     while (name != NULL)
     {
-        system_t* child = system_find_system(system, name);
+        node_t* child = node_find(parent, name, VFS_NAME_SEPARATOR);
         if (child == NULL)
         {
-            child = system_new(name);
-            list_push(&system->systems, child);
+            child = malloc(sizeof(node_t));
+            char nameCopy[MAX_NAME];
+            name_copy(nameCopy, name);
+            node_init(child, nameCopy, SYSFS_SYSTEM);
+            node_push(parent, child);
         }
 
-        system = child;
+        parent = child;
         name = name_next(name);
     }
 
     resource_t* resource = malloc(sizeof(resource_t));
-    list_entry_init(&resource->entry);
-    resource->system = system;
-    strcpy(resource->name, filename);
+    node_init(&resource->node, filename, SYSFS_RESOURCE);
     resource->ops = ops;
     resource->private = private;
     resource->open = open;
     resource->delete = delete;
     atomic_init(&resource->ref, 1);
     atomic_init(&resource->hidden, false);
+    node_push(parent, &resource->node);
 
-    list_push(&system->resources, resource);
     return resource;
 }
 

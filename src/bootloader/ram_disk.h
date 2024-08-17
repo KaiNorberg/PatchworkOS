@@ -4,4 +4,4 @@
 #include <efi.h>
 #include <efilib.h>
 
-ram_dir_t* ram_disk_load(EFI_HANDLE imageHandle);
+void ram_disk_load(ram_disk_t* disk, EFI_HANDLE imageHandle);

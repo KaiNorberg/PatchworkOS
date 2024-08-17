@@ -335,10 +335,7 @@ static void dwm_poll(void)
             kbd_event_t event;
             LOG_ASSERT(vfs_read(keyboard, &event, sizeof(kbd_event_t)) == sizeof(kbd_event_t), "kbd read fail");
 
-            msg_kbd_t data = {
-                .code = event.code,
-                .type = event.type
-            };
+            msg_kbd_t data = {.code = event.code, .type = event.type, .mods = event.mods};
             msg_queue_push(&selected->messages, MSG_KBD, &data, sizeof(msg_kbd_t));
         }
     }

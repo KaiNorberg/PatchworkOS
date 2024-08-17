@@ -12,7 +12,7 @@
 static void boot_info_populate(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable, boot_info_t* bootInfo)
 {
     gop_buffer_init(&bootInfo->gopBuffer);
-    bootInfo->ramRoot = ram_disk_load(imageHandle);
+    ram_disk_load(&bootInfo->ramDisk, imageHandle);
     bootInfo->rsdp = rsdp_get(systemTable);
     bootInfo->runtimeServices = systemTable->RuntimeServices;
     loader_load_kernel(&bootInfo->kernel, L"/boot/kernel", imageHandle);

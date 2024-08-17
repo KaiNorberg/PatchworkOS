@@ -2,6 +2,7 @@
 
 #include "log.h"
 #include "sched.h"
+#include "sysfs.h"
 #include "vfs.h"
 
 #include <bootloader/boot_info.h>
@@ -11,105 +12,7 @@
 #include <sys/list.h>
 #include <sys/math.h>
 
-static ram_dir_t* root;
-
-static ram_file_t* ram_dir_find_file(ram_dir_t* dir, const char* filename)
-{
-    ram_file_t* file;
-    LIST_FOR_EACH(file, &dir->files)
-    {
-        if (name_compare(file->name, filename))
-        {
-            return file;
-        }
-    }
-
-    return NULL;
-}
-
-static ram_dir_t* ram_dir_find_dir(ram_dir_t* dir, const char* dirname)
-{
-    ram_dir_t* child;
-    LIST_FOR_EACH(child, &dir->children)
-    {
-        if (name_compare(child->name, dirname))
-        {
-            return child;
-        }
-    }
-
-    return NULL;
-}
-
-static ram_dir_t* ramfs_traverse(const char* path)
-{
-    ram_dir_t* dir = root;
-    const char* dirname = name_first(path);
-    while (dirname != NULL)
-    {
-        dir = ram_dir_find_dir(dir, dirname);
-        if (dir == NULL)
-        {
-            return NULL;
-        }
-
-        dirname = name_next(dirname);
-    }
-
-    return dir;
-}
-
-static ram_dir_t* ramfs_traverse_parent(const char* path)
-{
-    ram_dir_t* dir = root;
-    const char* dirname = dir_name_first(path);
-    while (dirname != NULL)
-    {
-        dir = ram_dir_find_dir(dir, dirname);
-        if (dir == NULL)
-        {
-            return NULL;
-        }
-
-        dirname = dir_name_next(dirname);
-    }
-
-    return dir;
-}
-
-static ram_file_t* ramfs_find_file(const char* path)
-{
-    ram_dir_t* parent = ramfs_traverse_parent(path);
-    if (parent == NULL)
-    {
-        return NULL;
-    }
-
-    const char* filename = vfs_basename(path);
-    if (filename == NULL)
-    {
-        return NULL;
-    }
-
-    return ram_dir_find_file(parent, filename);
-}
-
-static ram_dir_t* ramfs_find_dir(const char* path)
-{
-    ram_dir_t* parent = ramfs_traverse_parent(path);
-    if (parent == NULL)
-    {
-        return NULL;
-    }
-
-    const char* dirname = vfs_basename(path);
-    if (dirname == NULL)
-    {
-        return NULL;
-    }
-
-    return ram_dir_find_dir(parent, dirname);
-}
+static node_t* root;
 
 static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count)
 {
@@ -162,11 +65,16 @@ static file_ops_t fileOps = {
 
 static file_t* ramfs_open(volume_t* volume, const char* path)
 {
-    ram_file_t* ramFile = ramfs_find_file(path);
-    if (ramFile == NULL)
+    node_t* node = node_traverse(root, path, VFS_NAME_SEPARATOR);
+    if (node == NULL)
     {
         return NULLPTR(EPATH);
     }
+    else if (node->type == RAMFS_DIR)
+    {
+        return NULLPTR(EISDIR);
+    }
+    ram_file_t* ramFile = (ram_file_t*)node;
 
     file_t* file = file_new(volume);
     file->ops = &fileOps;
@@ -175,60 +83,41 @@ static file_t* ramfs_open(volume_t* volume, const char* path)
     return file;
 }
 
-static uint64_t ramfs_stat(volume_t* volume, const char* path, stat_t* buffer)
+static uint64_t ramfs_stat(volume_t* volume, const char* path, stat_t* stat)
 {
-    buffer->size = 0;
-
-    ram_dir_t* parent = ramfs_traverse_parent(path);
-    if (parent == NULL)
+    node_t* node = node_traverse(root, path, VFS_NAME_SEPARATOR);
+    if (node == NULL)
     {
         return ERROR(EPATH);
     }
 
-    const char* name = vfs_basename(path);
-    if (ram_dir_find_file(parent, name) != NULL)
-    {
-        buffer->type = STAT_FILE;
-    }
-    else if (ram_dir_find_dir(parent, name) != NULL)
-    {
-        buffer->type = STAT_DIR;
-    }
-    else
-    {
-        return ERROR(EPATH);
-    }
+    stat->size = 0;
+    stat->type = node->type == RAMFS_FILE ? STAT_FILE : STAT_DIR;
 
     return 0;
 }
 
 static uint64_t ramfs_listdir(volume_t* volume, const char* path, dir_entry_t* entries, uint64_t amount)
 {
-    ram_dir_t* parent = ramfs_traverse(path);
-    if (parent == NULL)
+    node_t* node = node_traverse(root, path, VFS_NAME_SEPARATOR);
+    if (node == NULL)
     {
         return ERROR(EPATH);
+    }
+    else if (node->type == SYSFS_RESOURCE)
+    {
+        return ERROR(ENOTDIR);
     }
 
     uint64_t index = 0;
     uint64_t total = 0;
 
-    ram_dir_t* dir;
-    LIST_FOR_EACH(dir, &parent->children)
+    node_t* child;
+    LIST_FOR_EACH(child, &node->children)
     {
         dir_entry_t entry = {0};
-        strcpy(entry.name, dir->name);
-        entry.type = STAT_DIR;
-
-        dir_entry_push(entries, amount, &index, &total, &entry);
-    }
-
-    ram_file_t* file;
-    LIST_FOR_EACH(file, &parent->files)
-    {
-        dir_entry_t entry = {0};
-        strcpy(entry.name, file->name);
-        entry.type = STAT_FILE;
+        strcpy(entry.name, child->name);
+        entry.type = child->type == SYSFS_RESOURCE ? STAT_RES : STAT_DIR;
 
         dir_entry_push(entries, amount, &index, &total, &entry);
     }
@@ -252,40 +141,41 @@ static fs_t ramfs = {
     .mount = ramfs_mount,
 };
 
-static ram_dir_t* ramfs_load_dir(ram_dir_t* in)
+static node_t* ramfs_load_dir(node_t* in)
 {
-    ram_dir_t* out = malloc(sizeof(ram_dir_t));
-    list_entry_init(&out->entry);
-    strcpy(out->name, in->name);
-    list_init(&out->children);
-    list_init(&out->files);
+    node_t* node = malloc(sizeof(node_t));
+    node_init(node, in->name, RAMFS_DIR);
 
-    ram_dir_t* child;
-    LIST_FOR_EACH(child, &in->children)
+    node_t* inChild;
+    LIST_FOR_EACH(inChild, &in->children)
     {
-        list_push(&out->children, ramfs_load_dir(child));
+        if (inChild->type == RAMFS_DIR)
+        {
+            node_t* inDir = (node_t*)inChild;
+
+            node_t* outDir = ramfs_load_dir(inDir);
+            node_push(node, outDir);
+        }
+        else if (inChild->type == RAMFS_FILE)
+        {
+            ram_file_t* inFile = (ram_file_t*)inChild;
+
+            ram_file_t* outFile = malloc(sizeof(ram_file_t));
+            node_init(&outFile->node, inFile->node.name, RAMFS_FILE);
+            outFile->size = inFile->size;
+            outFile->data = malloc(outFile->size);
+            memcpy(outFile->data, inFile->data, outFile->size);
+
+            node_push(node, &outFile->node);
+        }
     }
 
-    ram_file_t* inFile;
-    LIST_FOR_EACH(inFile, &in->files)
-    {
-        ram_file_t* outFile = malloc(sizeof(ram_file_t));
-        list_entry_init(&outFile->entry);
-        strcpy(outFile->name, inFile->name);
-        outFile->size = inFile->size;
-        outFile->data = malloc(outFile->size);
-        memcpy(outFile->data, inFile->data, outFile->size);
-
-        list_push(&out->files, outFile);
-    }
-
-    return out;
+    return node;
 }
 
-void ramfs_init(ram_dir_t* ramRoot)
+void ramfs_init(ram_disk_t* disk)
 {
-    root = ramfs_load_dir(ramRoot);
-
+    root = ramfs_load_dir(disk->root);
     LOG_ASSERT(vfs_mount("home", &ramfs) != ERR, "mount fail");
 
     log_print("ramfs: initialized");

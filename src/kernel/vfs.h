@@ -114,17 +114,17 @@ uint64_t vfs_mount(const char* label, fs_t* fs);
 
 uint64_t vfs_unmount(const char* label);
 
-file_t* vfs_open(const char* path);
-
-uint64_t vfs_stat(const char* path, stat_t* buffer);
-
-uint64_t vfs_listdir(const char* path, dir_entry_t* entries, uint64_t amount);
-
 uint64_t vfs_realpath(char* out, const char* path);
 
 uint64_t vfs_chdir(const char* path);
 
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout);
+
+file_t* vfs_open(const char* path);
+
+uint64_t vfs_stat(const char* path, stat_t* buffer);
+
+uint64_t vfs_listdir(const char* path, dir_entry_t* entries, uint64_t amount);
 
 static inline uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
 {

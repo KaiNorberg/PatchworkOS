@@ -3,18 +3,20 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "boot_info.h"
 #include "char16.h"
 #include "fs.h"
-#include "sys/list.h"
 #include "vm.h"
 
 static ram_file_t* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
 {
     EFI_FILE* fileHandle = fs_open_raw(volume, path);
 
+    char name[MAX_NAME];
+    char16_to_char(path, name);
+
     ram_file_t* file = vm_alloc(sizeof(ram_file_t));
-    list_entry_init(&file->entry);
-    char16_to_char(path, file->name);
+    node_init(&file->node, name, RAMFS_FILE);
     file->size = fs_get_size(fileHandle);
     file->data = vm_alloc(file->size);
     fs_read(fileHandle, file->size, file->data);
@@ -24,13 +26,10 @@ static ram_file_t* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
     return file;
 }
 
-static ram_dir_t* ram_disk_load_directory(EFI_FILE* volume, const char* name)
+static node_t* ram_disk_load_directory(EFI_FILE* volume, const char* name)
 {
-    ram_dir_t* dir = vm_alloc(sizeof(ram_dir_t));
-    list_entry_init(&dir->entry);
-    strcpy(dir->name, name);
-    list_init(&dir->children);
-    list_init(&dir->files);
+    node_t* node = vm_alloc(sizeof(node_t));
+    node_init(node, name, RAMFS_DIR);
 
     while (1)
     {
@@ -61,9 +60,9 @@ static ram_dir_t* ram_disk_load_directory(EFI_FILE* volume, const char* name)
 
                 char childName[32];
                 char16_to_char(fileInfo->FileName, childName);
-                ram_dir_t* child = ram_disk_load_directory(childVolume, childName);
 
-                list_push(&dir->children, child);
+                node_t* child = ram_disk_load_directory(childVolume, childName);
+                node_push(node, child);
 
                 fs_close(childVolume);
             }
@@ -71,23 +70,20 @@ static ram_dir_t* ram_disk_load_directory(EFI_FILE* volume, const char* name)
         else
         {
             ram_file_t* file = ram_disk_load_file(volume, fileInfo->FileName);
-
-            list_push(&dir->files, file);
+            node_push(node, &file->node);
         }
 
         FreePool(fileInfo);
     }
 
-    return dir;
+    return node;
 }
 
-ram_dir_t* ram_disk_load(EFI_HANDLE imageHandle)
+void ram_disk_load(ram_disk_t* disk, EFI_HANDLE imageHandle)
 {
     EFI_FILE* rootHandle = fs_open_root_volume(imageHandle);
 
-    ram_dir_t* root = ram_disk_load_directory(rootHandle, "root");
+    disk->root = ram_disk_load_directory(rootHandle, "root");
 
     fs_close(rootHandle);
-
-    return root;
 }

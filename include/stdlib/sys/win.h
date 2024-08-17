@@ -114,6 +114,8 @@ typedef struct lmsg_timer
 // Widget messages
 typedef msg_mouse_t wmsg_mouse_t;
 
+typedef msg_kbd_t wmsg_kbd_t;
+
 typedef struct
 {
     win_text_prop_t props;
@@ -132,8 +134,9 @@ typedef win_text_prop_t wmsg_text_prop_t;
 #define WMSG_FREE (WMSG_BASE + 1)
 #define WMSG_REDRAW (WMSG_BASE + 2)
 #define WMSG_MOUSE (WMSG_BASE + 3)
-#define WMSG_BUTTON_PROP (WMSG_BASE + 4)
-#define WMSG_LABEL_PROP (WMSG_BASE + 5)
+#define WMSG_KBD (WMSG_BASE + 4)
+#define WMSG_BUTTON_PROP (WMSG_BASE + 5)
+#define WMSG_LABEL_PROP (WMSG_BASE + 6)
 
 // User messages
 #define UMSG_BASE ((1 << 15) | (1 << 14))

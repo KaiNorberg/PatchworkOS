@@ -229,6 +229,14 @@ static void win_background_procedure(win_t* window, const msg_t* msg)
         win_widget_send_all(window, WMSG_MOUSE, &wmsg, sizeof(wmsg_mouse_t));
     }
     break;
+    case MSG_KBD:
+    {
+        msg_kbd_t* data = (msg_kbd_t*)msg->data;
+
+        wmsg_kbd_t wmsg = *data;
+        win_widget_send_all(window, WMSG_KBD, &wmsg, sizeof(wmsg_kbd_t));
+    }
+    break;
     case MSG_SELECT:
     {
         window->selected = true;

@@ -372,6 +372,30 @@ void gfx_ridge(gfx_t* gfx, const rect_t* rect, uint64_t width, pixel_t foregroun
     gfx_edge(gfx, &innerRect, width / 2, foreground, background);
 }
 
+void gfx_scroll(gfx_t* gfx, const rect_t* rect, uint64_t offset, pixel_t background)
+{
+    int64_t width = RECT_WIDTH(rect);
+    int64_t height = RECT_HEIGHT(rect);
+
+    for (uint64_t y = 0; y < height - offset; y++)
+    {
+        pixel_t* src = &gfx->buffer[rect->left + (rect->top + y + offset) * gfx->stride];
+        pixel_t* dest = &gfx->buffer[rect->left + (rect->top + y) * gfx->stride];
+        memmove(dest, src, width * sizeof(pixel_t));
+    }
+
+    for (int64_t y = height - offset; y < height; y++)
+    {
+        pixel_t* dest = &gfx->buffer[rect->left + (rect->top + y) * gfx->stride];
+        for (int64_t x = 0; x < width; x++)
+        {
+            dest[x] = background;
+        }
+    }
+
+    gfx_invalidate(gfx, rect);
+}
+
 void gfx_rim(gfx_t* gfx, const rect_t* rect, uint64_t width, pixel_t pixel)
 {
     rect_t leftRect = (rect_t){

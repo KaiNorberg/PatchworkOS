@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 #include <sys/io.h>
+#include <sys/kbd.h>
 #include <sys/mouse.h>
 #include <sys/proc.h>
-#include <sys/kbd.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -42,6 +42,7 @@ typedef struct
 {
     kbd_event_type_t type;
     keycode_t code;
+    kbd_mods_t mods;
 } msg_kbd_t;
 
 typedef struct
