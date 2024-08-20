@@ -48,7 +48,7 @@ static void resource_free(resource_t* resource)
         void* result; \
         if (atomic_load(&file->resource->hidden)) \
         { \
-            result = NULLPTR(ENORES); \
+            result = ERRPTR(ENORES); \
         } \
         else if (file->resource->ops->name != NULL) \
         { \
@@ -56,7 +56,7 @@ static void resource_free(resource_t* resource)
         } \
         else \
         { \
-            result = NULLPTR(EACCES); \
+            result = ERRPTR(EACCES); \
         } \
         result; \
     })
@@ -127,11 +127,11 @@ static file_t* sysfs_open(volume_t* volume, const char* path)
     node_t* node = node_traverse(&root, path, VFS_NAME_SEPARATOR);
     if (node == NULL)
     {
-        return NULLPTR(EPATH);
+        return ERRPTR(EPATH);
     }
     else if (node->type == SYSFS_SYSTEM)
     {
-        return NULLPTR(EISDIR);
+        return ERRPTR(EISDIR);
     }
     resource_t* resource = (resource_t*)node;
 

@@ -52,11 +52,23 @@ typedef enum origin
     SEEK_END = 2
 } seek_origin_t;
 
-typedef struct dir
+typedef struct dir_entry
 {
     char name[MAX_NAME];
     stat_type_t type;
 } dir_entry_t;
+
+typedef struct dir_list
+{
+    uint64_t amount;
+    dir_entry_t entries[];
+} dir_list_t;
+
+typedef struct pipefd
+{
+    fd_t read;
+    fd_t write;
+} pipefd_t;
 
 #ifndef __EMBED__
 
@@ -84,7 +96,9 @@ uint64_t flush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect_t* rect
 
 uint64_t listdir(const char* path, dir_entry_t* entries, uint64_t amount);
 
-uint64_t loaddir(dir_entry_t** out, const char* path);
+dir_list_t* loaddir(const char* path);
+
+uint64_t pipe(pipefd_t* pipefd);
 
 #endif
 

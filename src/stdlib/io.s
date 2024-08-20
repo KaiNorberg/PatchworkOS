@@ -64,4 +64,9 @@ listdir:
     SYSTEM_CALL SYS_LISTDIR
     ret
 
+global pipe
+pipe:
+    SYSTEM_CALL SYS_PIPE
+    ret
+
 %endif

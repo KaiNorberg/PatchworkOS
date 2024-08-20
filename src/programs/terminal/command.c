@@ -36,13 +36,17 @@ static void command_ls(const char* token)
         token_copy(path, token);
     }
 
-    dir_entry_t* entries;
-    uint64_t amount = loaddir(&entries, path);
-
-    for (uint64_t i = 0; i < amount; i++)
+    dir_list_t* list = loaddir(path);
+    if (list == NULL)
     {
-        terminal_print(entries[i].name);
-        if (entries[i].type == STAT_DIR)
+        terminal_error(NULL);
+        return;
+    }
+
+    for (uint64_t i = 0; i < list->amount; i++)
+    {
+        terminal_print(list->entries[i].name);
+        if (list->entries[i].type == STAT_DIR)
         {
             terminal_put('/');
         }
@@ -50,7 +54,7 @@ static void command_ls(const char* token)
     }
 
     terminal_put('\n');
-    free(entries);
+    free(list);
 }
 
 static void command_clear(const char* token)
@@ -133,19 +137,22 @@ static void command_help(const char* token)
 
 bool command_look_for_binary(const char* binary, const char* path)
 {
-    dir_entry_t* entries;
-    uint64_t amount = loaddir(&entries, path);
-
-    for (uint64_t i = 0; i < amount; i++)
+    dir_list_t* list = loaddir(path);
+    if (list == NULL)
     {
-        if (strcmp(binary, entries[i].name) == 0)
+        return false;
+    }
+
+    for (uint64_t i = 0; i < list->amount; i++)
+    {
+        if (strcmp(binary, list->entries[i].name) == 0)
         {
-            free(entries);
+            free(list);
             return true;
         }
     }
 
-    free(entries);
+    free(list);
     return false;
 }
 
@@ -168,7 +175,9 @@ void command_spawn(const char* dir, const char* command)
             strcpy(path, lookupDirs[i]);
             strcat(path, "/");
             strcat(path, binary);
-            spawn(path);
+
+            const char* argv[] = {path, NULL};
+            spawn(argv, NULL);
             return;
         }
     }

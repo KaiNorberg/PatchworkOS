@@ -118,6 +118,30 @@ char* strcat(char* _RESTRICT dest, const char* _RESTRICT src)
     return ret;
 }
 
+size_t strlen(const char* str)
+{
+    size_t i = 0;
+
+    while (str[i])
+    {
+        i++;
+    }
+
+    return i;
+}
+
+size_t strnlen(const char* str, size_t max)
+{
+    size_t i = 0;
+
+    while (i < max && str[i])
+    {
+        i++;
+    }
+
+    return i;
+}
+
 int memcmp(const void* a, const void* b, size_t count)
 {
     unsigned char* p1 = (unsigned char*)a;
@@ -222,18 +246,6 @@ void* memset(void* dest, int ch, size_t count)
     }
 
     return dest;
-}
-
-size_t strlen(const char* str)
-{
-    size_t i = 0;
-
-    while (str[i])
-    {
-        i++;
-    }
-
-    return i;
 }
 
 static char* errorStrings[] = {

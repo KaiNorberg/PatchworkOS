@@ -31,7 +31,7 @@ typedef struct win
     bool selected;
     bool moving;
     bool closeButtonPressed;
-    gfx_psf_t psf;
+    gfx_psf_t* psf;
     nsec_t timerDeadline;
     char name[DWM_MAX_NAME];
 } win_t;
@@ -123,7 +123,7 @@ static void win_topbar_draw(win_t* window, gfx_t* gfx)
 
     rect.left += winTheme.padding * 3;
     rect.right -= winTheme.topbarHeight;
-    gfx_text(gfx, &window->psf, &rect, GFX_MIN, GFX_CENTER, 16, window->name, winTheme.background, 0);
+    gfx_text(gfx, window->psf, &rect, GFX_MIN, GFX_CENTER, 16, window->name, winTheme.background, 0);
 }
 
 static void win_close_button_rect(win_t* window, rect_t* rect)
@@ -153,7 +153,7 @@ static void win_close_button_draw(win_t* window, gfx_t* gfx)
     gfx_rect(gfx, &rect, winTheme.background);
 
     RECT_EXPAND(&rect, 32);
-    gfx_text(gfx, &window->psf, &rect, GFX_CENTER, GFX_CENTER, 32, "x", winTheme.shadow, 0);
+    gfx_text(gfx, window->psf, &rect, GFX_CENTER, GFX_CENTER, 32, "x", winTheme.shadow, 0);
 }
 
 static void win_background_draw(win_t* window, gfx_t* gfx)
@@ -326,7 +326,8 @@ win_t* win_new(const char* name, const rect_t* rect, dwm_type_t type, win_flags_
     strcpy(window->name, name);
     win_set_rect(window, rect);
     window->timerDeadline = NEVER;
-    if (gfx_psf_new(&window->psf, WIN_DEFAULT_FONT) == ERR)
+    window->psf = gfx_psf_new(WIN_DEFAULT_FONT);
+    if (window->psf == NULL)
     {
         free(window);
         free(window->buffer);
@@ -553,13 +554,19 @@ void win_window_to_client(win_t* window, point_t* point)
 
 gfx_psf_t* win_font(win_t* window)
 {
-    return &window->psf;
+    return window->psf;
 }
 
 uint64_t win_font_set(win_t* window, const char* path)
 {
-    gfx_psf_free(&window->psf);
-    return gfx_psf_new(&window->psf, path);
+    gfx_psf_t* psf = gfx_psf_new(path);
+    if (psf == NULL)
+    {
+        return ERR;
+    }
+
+    window->psf = psf;
+    return 0;
 }
 
 widget_t* win_widget(win_t* window, widget_id_t id)

@@ -15,6 +15,7 @@
 #include "sched.h"
 #include "sys/kbd.h"
 #include "sysfs.h"
+#include "thread.h"
 #include "time.h"
 #include "vfs.h"
 #include "window.h"
@@ -549,7 +550,7 @@ void dwm_start(void)
     rect_t rect = RECT_INIT_GFX(&backbuffer);
     gfx_swap(&backbuffer, &frontbuffer, &rect);
 
-    sched_thread_spawn(dwm_loop, THREAD_PRIORITY_MAX);
+    sched_push(thread_split(sched_thread(), dwm_loop, PRIORITY_MAX - 1));
 }
 
 void dwm_redraw(void)

@@ -1,18 +1,20 @@
 #include "sched.h"
 
+#include "_AUX/ERR.h"
 #include "apic.h"
 #include "gdt.h"
 #include "hpet.h"
 #include "loader.h"
 #include "lock.h"
 #include "log.h"
-#include "process.h"
+#include "thread.h"
 #include "queue.h"
 #include "regs.h"
 #include "smp.h"
 #include "time.h"
 #include "trap.h"
 #include "vectors.h"
+#include "vfs.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -66,7 +68,7 @@ static void blocker_push(blocker_t* blocker, thread_t* thread)
 
 void sched_context_init(sched_context_t* context)
 {
-    for (uint64_t i = THREAD_PRIORITY_MIN; i <= THREAD_PRIORITY_MAX; i++)
+    for (uint64_t i = PRIORITY_MIN; i <= PRIORITY_MAX; i++)
     {
         queue_init(&context->queues[i]);
     }
@@ -82,7 +84,7 @@ static void sched_context_push(sched_context_t* context, thread_t* thread)
 static uint64_t sched_context_thread_amount(const sched_context_t* context)
 {
     uint64_t length = (context->runThread != NULL);
-    for (int64_t i = THREAD_PRIORITY_MAX; i >= THREAD_PRIORITY_MIN; i--)
+    for (int64_t i = PRIORITY_MAX; i >= PRIORITY_MIN; i--)
     {
         length += queue_length(&context->queues[i]);
     }
@@ -90,9 +92,9 @@ static uint64_t sched_context_thread_amount(const sched_context_t* context)
     return length;
 }
 
-static thread_t* sched_context_find_higher(sched_context_t* context, uint8_t priority)
+static thread_t* sched_context_find_higher(sched_context_t* context, priority_t priority)
 {
-    for (int64_t i = THREAD_PRIORITY_MAX; i > priority; i--)
+    for (int64_t i = PRIORITY_MAX; i > priority; i--)
     {
         thread_t* thread = queue_pop(&context->queues[i]);
         if (thread != NULL)
@@ -111,7 +113,7 @@ static thread_t* sched_context_find_higher(sched_context_t* context, uint8_t pri
 
 static thread_t* sched_context_find_any(sched_context_t* context)
 {
-    for (int64_t i = THREAD_PRIORITY_MAX; i >= THREAD_PRIORITY_MIN; i--)
+    for (int64_t i = PRIORITY_MAX; i >= PRIORITY_MIN; i--)
     {
         thread_t* thread = queue_pop(&context->queues[i]);
         if (thread != NULL)
@@ -129,31 +131,9 @@ static thread_t* sched_context_find_any(sched_context_t* context)
     return NULL;
 }
 
-static void sched_push(thread_t* thread)
-{
-    int64_t bestLength = INT64_MAX;
-    cpu_t* best = NULL;
-    for (uint64_t i = 0; i < smp_cpu_amount(); i++)
-    {
-        cpu_t* cpu = smp_cpu(i);
-        const sched_context_t* context = &cpu->sched;
-
-        int64_t length = sched_context_thread_amount(context);
-
-        if (bestLength > length)
-        {
-            bestLength = length;
-            best = cpu;
-        }
-    }
-
-    sched_context_push(&best->sched, thread);
-}
-
 static void sched_spawn_init_thread(void)
 {
-    process_t* process = process_new(NULL);
-    thread_t* thread = thread_new(process, NULL, THREAD_PRIORITY_MAX);
+    thread_t* thread = thread_new(NULL, NULL, PRIORITY_MAX);
     thread->timeEnd = UINT64_MAX;
 
     smp_self_unsafe()->sched.runThread = thread;
@@ -310,27 +290,25 @@ void sched_thread_exit(void)
     log_panic(NULL, "returned from thread_exit");
 }
 
-pid_t sched_spawn(const char* path, uint8_t priority)
+void sched_push(thread_t* thread)
 {
-    process_t* process = process_new(path);
-    if (process == NULL)
+    int64_t bestLength = INT64_MAX;
+    cpu_t* best = NULL;
+    for (uint64_t i = 0; i < smp_cpu_amount(); i++)
     {
-        return ERR;
+        cpu_t* cpu = smp_cpu(i);
+        const sched_context_t* context = &cpu->sched;
+
+        int64_t length = sched_context_thread_amount(context);
+
+        if (bestLength > length)
+        {
+            bestLength = length;
+            best = cpu;
+        }
     }
 
-    thread_t* thread = thread_new(process, loader_entry, priority);
-    sched_push(thread);
-
-    log_print("sched: process spawn (%d)", process->id);
-    return process->id;
-}
-
-tid_t sched_thread_spawn(void* entry, uint8_t priority)
-{
-    thread_t* thread = thread_new(sched_process(), entry, priority);
-    sched_push(thread);
-
-    return thread->id;
+    sched_context_push(&best->sched, thread);
 }
 
 static void sched_update_blockers(void)

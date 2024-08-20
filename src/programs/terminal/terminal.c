@@ -15,9 +15,12 @@
 #define TERMINAL_HEIGHT 500
 
 static win_t* terminal;
+static terminal_state_t state;
 
 static point_t cursorPos;
 static bool cursorVisible;
+
+static char command[MAX_PATH];
 
 #define CURSOR_POS_TO_CLIENT_POS(cursorPos, font) \
     (point_t){ \
@@ -76,16 +79,55 @@ static void terminal_scroll(void)
     win_draw_end(terminal, &gfx);
 }
 
+static void terminal_handle_input_command(char chr)
+{
+    switch (chr)
+    {
+    case '\n':
+    {
+        terminal_put('\n');
+        command_parse(command);
+        command[0] = '\0';
+
+        terminal_print_prompt();
+    }
+    break;
+    case '\b':
+    {
+        uint64_t strLen = strlen(command);
+        if (strLen != 0)
+        {
+            command[strLen - 1] = '\0';
+            terminal_put('\b');
+        }
+    }
+    break;
+    default:
+    {
+        uint64_t strLen = strlen(command);
+        if (strLen >= MAX_PATH - 2)
+        {
+            break;
+        }
+        command[strLen] = chr;
+        command[strLen + 1] = '\0';
+
+        terminal_put(chr);
+    }
+    break;
+    }
+}
+
 uint64_t procedure(win_t* window, const msg_t* msg)
 {
-    static char command[MAX_PATH];
-
     switch (msg->type)
     {
     case LMSG_INIT:
     {
         command[0] = '\0';
         win_timer_set(window, BLINK_INTERVAL);
+
+        chdir("home:/usr");
     }
     break;
     case LMSG_REDRAW:
@@ -120,38 +162,11 @@ uint64_t procedure(win_t* window, const msg_t* msg)
             break;
         }
 
-        switch (chr)
+        switch (state)
         {
-        case '\n':
+        case TERMINAL_COMMAND:
         {
-            terminal_put('\n');
-            command_parse(command);
-            command[0] = '\0';
-
-            terminal_print_prompt();
-        }
-        break;
-        case '\b':
-        {
-            uint64_t strLen = strlen(command);
-            if (strLen != 0)
-            {
-                command[strLen - 1] = '\0';
-                terminal_put('\b');
-            }
-        }
-        break;
-        default:
-        {
-            uint64_t strLen = strlen(command);
-            if (strLen >= MAX_PATH - 2)
-            {
-                break;
-            }
-            command[strLen] = chr;
-            command[strLen + 1] = '\0';
-
-            terminal_put(kbd_ascii(data->code, data->mods));
+            terminal_handle_input_command(kbd_ascii(data->code, data->mods));
         }
         break;
         }

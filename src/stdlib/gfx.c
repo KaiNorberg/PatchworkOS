@@ -43,12 +43,7 @@ gfx_fbmp_t* gfx_fbmp_new(const char* path)
     return image;
 }
 
-void gfx_fbmp_free(gfx_fbmp_t* fbmp)
-{
-    free(fbmp);
-}
-
-static uint64_t gfx_psf1_load(gfx_psf_t* psf, fd_t file)
+static gfx_psf_t* gfx_psf1_load(fd_t file)
 {
     struct
     {
@@ -58,32 +53,37 @@ static uint64_t gfx_psf1_load(gfx_psf_t* psf, fd_t file)
     } header;
     if (read(file, &header, sizeof(header)) != sizeof(header))
     {
-        return ERR;
+        return NULL;
     }
 
     if (header.magic != PSF1_MAGIC)
     {
-        return ERR;
+        return NULL;
+    }
+
+    uint64_t glyphAmount = header.mode & PSF1_MODE_512 ? 512 : 256;
+    uint64_t glyphBufferSize = glyphAmount * header.glyphSize;
+
+    gfx_psf_t* psf = malloc(sizeof(gfx_psf_t) + glyphBufferSize);
+    if (psf == NULL)
+    {
+        return NULL;
     }
 
     psf->width = 8;
     psf->height = header.glyphSize;
     psf->glyphSize = header.glyphSize;
-    psf->glyphAmount = header.mode & PSF1_MODE_512 ? 512 : 256;
-
-    uint64_t glyphBufferSize = psf->glyphAmount * psf->glyphSize;
-
-    psf->glyphs = malloc(glyphBufferSize);
+    psf->glyphAmount = glyphAmount;
     if (read(file, psf->glyphs, glyphBufferSize) != glyphBufferSize)
     {
-        free(psf->glyphs);
-        return ERR;
+        free(psf);
+        return NULL;
     }
 
-    return 0;
+    return psf;
 }
 
-static uint64_t gfx_psf2_load(gfx_psf_t* psf, fd_t file)
+static gfx_psf_t* gfx_psf2_load(fd_t file)
 {
     struct
     {
@@ -98,67 +98,66 @@ static uint64_t gfx_psf2_load(gfx_psf_t* psf, fd_t file)
     } header;
     if (read(file, &header, sizeof(header)) != sizeof(header))
     {
-        return ERR;
+        return NULL;
     }
 
     if (header.magic != PSF2_MAGIC || header.version != 0 || header.headerSize != sizeof(header))
     {
-        return ERR;
+        return NULL;
+    }
+
+    uint64_t glyphBufferSize = header.glyphAmount * header.glyphSize;
+
+    gfx_psf_t* psf = malloc(sizeof(gfx_psf_t) + glyphBufferSize);
+    if (psf == NULL)
+    {
+        return NULL;
     }
 
     psf->width = header.width;
     psf->height = header.height;
     psf->glyphSize = header.glyphSize;
     psf->glyphAmount = header.glyphAmount;
-
-    uint64_t glyphBufferSize = psf->glyphAmount * psf->glyphSize;
-
-    psf->glyphs = malloc(glyphBufferSize);
     if (read(file, psf->glyphs, glyphBufferSize) != glyphBufferSize)
     {
-        free(psf->glyphs);
-        return ERR;
+        free(psf);
+        return NULL;
     }
 
-    return 0;
+    return psf;
 }
 
-uint64_t gfx_psf_new(gfx_psf_t* psf, const char* path)
+gfx_psf_t* gfx_psf_new(const char* path)
 {
     fd_t file = open(path);
     if (file == ERR)
     {
-        return ERR;
+        return NULL;
     }
 
     uint8_t firstByte;
     if (read(file, &firstByte, sizeof(firstByte)) != sizeof(firstByte))
     {
-        return ERR;
+        return NULL;
     }
     seek(file, 0, SEEK_SET);
 
-    uint64_t result;
+    gfx_psf_t* psf;
     if (firstByte == 0x36) // Is psf1
     {
-        result = gfx_psf1_load(psf, file);
+        psf = gfx_psf1_load(file);
     }
     else if (firstByte == 0x72) // Is psf2
     {
-        result = gfx_psf2_load(psf, file);
+        psf = gfx_psf2_load(file);
     }
     else
     {
-        result = ERR;
+        psf = NULL;
     }
 
     close(file);
-    return result;
-}
-
-void gfx_psf_free(gfx_psf_t* psf)
-{
-    free(psf->glyphs);
+    return psf;
 }
 
 #endif

@@ -31,7 +31,7 @@ fd_t vfs_context_open(vfs_context_t* context, file_t* file)
     {
         if (context->files[fd] == NULL)
         {
-            context->files[fd] = file;
+            context->files[fd] = file_ref(file);
             return fd;
         }
     }
@@ -54,13 +54,31 @@ uint64_t vfs_context_close(vfs_context_t* context, fd_t fd)
     return 0;
 }
 
+fd_t vfs_context_openat(vfs_context_t* context, fd_t fd, file_t* file)
+{
+    LOCK_GUARD(&context->lock);
+
+    if (fd >= CONFIG_MAX_FD)
+    {
+        return ERROR(EINVAL);
+    }
+
+    if (context->files[fd] != NULL)
+    {
+        return ERROR(EMFILE);
+    }
+
+    context->files[fd] = file_ref(file);
+    return fd;
+}
+
 file_t* vfs_context_get(vfs_context_t* context, fd_t fd)
 {
     LOCK_GUARD(&context->lock);
 
     if (context->files[fd] == NULL)
     {
-        return NULLPTR(EBADF);
+        return ERRPTR(EBADF);
     }
 
     return file_ref(context->files[fd]);

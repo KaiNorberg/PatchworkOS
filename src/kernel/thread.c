@@ -1,5 +1,6 @@
-#include "process.h"
+#include "thread.h"
 
+#include "defs.h"
 #include "gdt.h"
 #include "regs.h"
 #include "smp.h"
@@ -12,49 +13,87 @@
 
 static _Atomic pid_t newPid = ATOMIC_VAR_INIT(0);
 
-process_t* process_new(const char* executable)
+static char** process_allocate_argv(const char** src)
 {
-    process_t* process = malloc(sizeof(process_t));
-    process->killed = false;
-    process->id = atomic_fetch_add(&newPid, 1);
-    memset(process->executable, 0, MAX_PATH);
-    if (executable != NULL)
+    uint64_t argc = 0;
+    if (src != NULL)
     {
-        if (vfs_realpath(process->executable, executable) == ERR)
+        while (src[argc] != NULL)
         {
-            free(process);
-            return NULL;
-        }
-
-        stat_t info;
-        if (vfs_stat(process->executable, &info) == ERR)
-        {
-            free(process);
-            return NULL;
-        }
-
-        if (info.type != STAT_FILE)
-        {
-            free(process);
-            return NULLPTR(EISDIR);
+            argc++;
         }
     }
+
+    if (argc != 0)
+    {
+        uint64_t size = sizeof(const char*) * (argc + 1);
+        for (uint64_t i = 0; i < argc; i++)
+        {
+            uint64_t strLen = strnlen(src[i], MAX_PATH + 1);
+            if (strLen >= MAX_PATH + 1)
+            {
+                return NULL;
+            }
+            size += (strLen + 1) * sizeof(char);
+        }
+
+        char** dest = malloc(size);
+        uint64_t offset = sizeof(const char*) * (argc + 1);
+        for (uint64_t i = 0; i < argc; i++)
+        {
+            void* arg = (void*)((uint64_t)dest + offset);
+            strcpy(arg, src[i]);
+            dest[i] = arg;
+            offset += strlen(src[i]) + 1;
+        }
+        dest[argc] = NULL;
+
+        return dest;
+    }
+    else
+    {
+        char** dest = malloc(sizeof(const char*));
+        dest[0] = NULL;
+
+        return dest;
+    }
+}
+
+static process_t* process_new(const char** argv)
+{
+    process_t* process = malloc(sizeof(process_t));
+    process->argv = process_allocate_argv(argv);
+    if (process->argv == NULL)
+    {
+        free(process);
+        return NULL;
+    }
+    process->killed = false;
+    process->id = atomic_fetch_add(&newPid, 1);
     vfs_context_init(&process->vfsContext);
     space_init(&process->space);
-    atomic_init(&process->threadCount, 0);
+    atomic_init(&process->ref, 1);
     atomic_init(&process->newTid, 0);
 
     return process;
 }
 
-thread_t* thread_new(process_t* process, void* entry, uint8_t priority)
+static void process_free(process_t* process)
 {
-    atomic_fetch_add(&process->threadCount, 1);
+    vfs_context_cleanup(&process->vfsContext);
+    space_cleanup(&process->space);
+    free(process->argv);
+    free(process);
+}
+
+static thread_t* process_thread_new(process_t* process, void* entry, priority_t priority)
+{
+    atomic_fetch_add(&process->ref, 1);
 
     thread_t* thread = malloc(sizeof(thread_t));
     list_entry_init(&thread->entry);
     thread->process = process;
-    thread->id = atomic_fetch_add(&process->newTid, 1);
+    thread->id = atomic_fetch_add(&thread->process->newTid, 1);
     thread->killed = false;
     thread->timeStart = 0;
     thread->timeEnd = 0;
@@ -62,7 +101,7 @@ thread_t* thread_new(process_t* process, void* entry, uint8_t priority)
     thread->blockResult = BLOCK_NORM;
     thread->blocker = NULL;
     thread->error = 0;
-    thread->priority = MIN(priority, THREAD_PRIORITY_MAX);
+    thread->priority = MIN(priority, PRIORITY_MAX);
     simd_context_init(&thread->simdContext);
     memset(&thread->kernelStack, 0, CONFIG_KERNEL_STACK);
 
@@ -76,17 +115,37 @@ thread_t* thread_new(process_t* process, void* entry, uint8_t priority)
     return thread;
 }
 
+thread_t* thread_new(const char** argv, void* entry, priority_t priority)
+{
+    process_t* process = process_new(argv);
+    if (process == NULL)
+    {
+        return ERRPTR(EINVAL);
+    }
+
+    thread_t* thread = process_thread_new(process, entry, priority);
+    if (thread == NULL)
+    {
+        return ERRPTR(EINVAL);
+    }
+
+    return thread;
+}
+
 void thread_free(thread_t* thread)
 {
-    if (atomic_fetch_sub(&thread->process->threadCount, 1) <= 1)
+    if (atomic_fetch_sub(&thread->process->ref, 1) <= 1)
     {
-        vfs_context_cleanup(&thread->process->vfsContext);
-        space_cleanup(&thread->process->space);
-        free(thread->process);
+        process_free(thread->process);
     }
 
     simd_context_cleanup(&thread->simdContext);
     free(thread);
+}
+
+thread_t* thread_split(thread_t* thread, void* entry, priority_t priority)
+{
+    return process_thread_new(thread->process, entry, priority);
 }
 
 void thread_save(thread_t* thread, const trap_frame_t* trapFrame)

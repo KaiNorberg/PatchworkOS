@@ -17,7 +17,7 @@ NORETURN static void loader_error(file_t* file)
         file_deref(file);
     }
 
-    log_print("loader: failure (%s, %d)", sched_process()->executable, sched_process()->id);
+    log_print("loader: failure (%s, %d)", sched_process()->argv[0], sched_process()->id);
     sched_process_exit(EEXEC);
 }
 
@@ -36,7 +36,12 @@ static void* loader_allocate_stack(void)
 
 static void* loader_load_program(void)
 {
-    const char* executable = sched_process()->executable;
+    const char* executable = sched_process()->argv[0];
+    if (executable == NULL)
+    {
+        loader_error(NULL);
+    }
+
     file_t* file = vfs_open(executable);
     if (file == NULL)
     {
@@ -114,11 +119,39 @@ static void* loader_load_program(void)
 
 void loader_entry(void)
 {
-    // log_print("loader: loading (%d)", sched_process()->id);
+    log_print("loader: loading (%d)", sched_process()->id);
 
     void* rsp = loader_allocate_stack();
     void* rip = loader_load_program();
 
-    // log_print("loader: loaded (%d)", sched_process()->id);
+    log_print("loader: loaded (%d)", sched_process()->id);
     loader_jump_to_user_space(rsp, rip);
+}
+
+thread_t* loader_spawn(const char** argv, priority_t priority)
+{
+    if (argv == NULL || argv[0] == NULL)
+    {
+        return ERRPTR(EINVAL);
+    }
+
+    char executable[MAX_PATH];
+    stat_t info;
+    if (vfs_realpath(executable, argv[0]) == ERR || vfs_stat(executable, &info) == ERR)
+    {
+        return NULL;
+    }
+
+    if (info.type != STAT_FILE)
+    {
+        return ERRPTR(EISDIR);
+    }
+
+    thread_t* thread = thread_new(argv, loader_entry, priority);
+    if (thread == NULL)
+    {
+        return NULL;
+    }
+
+    return thread;
 }

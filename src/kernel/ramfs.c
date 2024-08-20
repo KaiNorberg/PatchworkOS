@@ -68,11 +68,11 @@ static file_t* ramfs_open(volume_t* volume, const char* path)
     node_t* node = node_traverse(root, path, VFS_NAME_SEPARATOR);
     if (node == NULL)
     {
-        return NULLPTR(EPATH);
+        return ERRPTR(EPATH);
     }
     else if (node->type == RAMFS_DIR)
     {
-        return NULLPTR(EISDIR);
+        return ERRPTR(EISDIR);
     }
     ram_file_t* ramFile = (ram_file_t*)node;
 

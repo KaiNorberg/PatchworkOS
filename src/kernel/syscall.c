@@ -3,10 +3,13 @@
 #include <errno.h>
 #include <string.h>
 
+#include "_AUX/fd_t.h"
+#include "config.h"
 #include "defs.h"
-#include "process.h"
+#include "pipe.h"
+#include "thread.h"
 #include "sched.h"
-#include "smp.h"
+#include "loader.h"
 #include "time.h"
 #include "vfs.h"
 #include "vfs_context.h"
@@ -62,14 +65,78 @@ NORETURN void syscall_thread_exit(void)
     sched_thread_exit();
 }
 
-pid_t syscall_spawn(const char* path)
+pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds)
 {
-    if (!verify_string(path))
+    uint64_t argc = 0;
+    while (1)
     {
-        return ERROR(EFAULT);
+        if (argc >= CONFIG_MAX_ARG)
+        {
+            return ERROR(EINVAL);
+        }
+        else if (!verify_buffer(&argv[argc], sizeof(const char*)))
+        {
+            return ERROR(EFAULT);
+        }
+        else if (argv[argc] == NULL)
+        {
+            break;
+        }
+        else if (!verify_string(argv[argc]))
+        {
+            return ERROR(EFAULT);
+        }
+
+        argc++;
     }
 
-    return sched_spawn(path, THREAD_PRIORITY_MIN);
+    uint64_t fdAmount = 0;
+    if (fds != NULL)
+    {
+        while (1)
+        {
+            if (fdAmount >= CONFIG_MAX_FD)
+            {
+                return ERROR(EINVAL);
+            }
+            else if (!verify_buffer(&fds[fdAmount], sizeof(fd_t)))
+            {
+                return ERROR(EFAULT);
+            }
+            else if (fds[fdAmount].child == FD_NONE || fds[fdAmount].parent == FD_NONE)
+            {
+                break;
+            }
+
+            fdAmount++;
+        }
+    }
+
+
+    thread_t* thread = loader_spawn(argv, PRIORITY_MIN);
+
+    vfs_context_t* parentVfsContext = &sched_process()->vfsContext;
+    vfs_context_t* childVfsContext = &thread->process->vfsContext;
+
+    for (uint64_t i = 0; i < fdAmount; i++)
+    {
+        file_t* file = vfs_context_get(parentVfsContext, fds[i].parent);
+        if (file == NULL)
+        {
+            thread_free(thread);
+            return ERROR(EBADF);
+        }
+        FILE_DEFER(file);
+
+        if (vfs_context_openat(childVfsContext, fds[i].child, file) == ERR)
+        {
+            thread_free(thread);
+            return ERROR(EBADF);
+        }
+    }
+
+    sched_push(thread);
+    return thread->process->id;
 }
 
 uint64_t syscall_sleep(nsec_t nanoseconds)
@@ -109,15 +176,9 @@ fd_t syscall_open(const char* path)
     {
         return ERR;
     }
+    FILE_DEFER(file);
 
-    fd_t fd = vfs_context_open(&sched_process()->vfsContext, file);
-    if (fd == ERR)
-    {
-        file_deref(file);
-        return ERR;
-    }
-
-    return fd;
+    return vfs_context_open(&sched_process()->vfsContext, file);
 }
 
 uint64_t syscall_close(fd_t fd)
@@ -137,7 +198,7 @@ uint64_t syscall_read(fd_t fd, void* buffer, uint64_t count)
     {
         return ERR;
     }
-    FILE_GUARD(file);
+    FILE_DEFER(file);
 
     return vfs_read(file, buffer, count);
 }
@@ -154,7 +215,7 @@ uint64_t syscall_write(fd_t fd, const void* buffer, uint64_t count)
     {
         return ERR;
     }
-    FILE_GUARD(file);
+    FILE_DEFER(file);
 
     return vfs_write(file, buffer, count);
 }
@@ -166,7 +227,7 @@ uint64_t syscall_seek(fd_t fd, int64_t offset, seek_origin_t origin)
     {
         return ERR;
     }
-    FILE_GUARD(file);
+    FILE_DEFER(file);
 
     return vfs_seek(file, offset, origin);
 }
@@ -183,7 +244,7 @@ uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
     {
         return ERR;
     }
-    FILE_GUARD(file);
+    FILE_DEFER(file);
 
     return vfs_ioctl(file, request, argp, size);
 }
@@ -226,6 +287,10 @@ uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, nsec_t timeout)
         files[i].file = vfs_context_get(&sched_process()->vfsContext, fds[i].fd);
         if (files[i].file == NULL)
         {
+            for (uint64_t j = 0; j < i; j++)
+            {
+                file_deref(files[j].file);
+            }
             return ERR;
         }
 
@@ -266,7 +331,7 @@ void* syscall_mmap(fd_t fd, void* address, uint64_t length, prot_t prot)
     {
         return NULL;
     }
-    FILE_GUARD(file);
+    FILE_DEFER(file);
 
     return vfs_mmap(file, address, length, prot);
 }
@@ -308,7 +373,7 @@ uint64_t syscall_flush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect
     {
         return ERR;
     }
-    FILE_GUARD(file);
+    FILE_DEFER(file);
 
     return vfs_flush(file, buffer, size, rect);
 }
@@ -321,6 +386,39 @@ uint64_t syscall_listdir(const char* path, dir_entry_t* entries, uint64_t amount
     }
 
     return vfs_listdir(path, entries, amount);
+}
+
+uint64_t syscall_pipe(pipefd_t* pipefd)
+{
+    if (!verify_buffer(pipefd, sizeof(pipefd_t)))
+    {
+        return ERROR(EFAULT);
+    }
+
+    pipe_file_t pipe;
+    if (pipe_init(&pipe) == ERR)
+    {
+        return ERR;
+    }
+    FILE_DEFER(pipe.read);
+    FILE_DEFER(pipe.write);
+
+    vfs_context_t* vfsContext = &sched_process()->vfsContext;
+
+    pipefd->read = vfs_context_open(vfsContext, pipe.read);
+    if (pipefd->read == ERR)
+    {
+        return ERR;
+    }
+
+    pipefd->write = vfs_context_open(vfsContext, pipe.write);
+    if (pipefd->write == ERR)
+    {
+        vfs_context_close(vfsContext, pipefd->read);
+        return ERR;
+    }
+
+    return 0;
 }
 
 ///////////////////////////////////////////////////////
@@ -359,4 +457,5 @@ void* syscallTable[] = {
     syscall_mprotect,
     syscall_flush,
     syscall_listdir,
+    syscall_pipe,
 };

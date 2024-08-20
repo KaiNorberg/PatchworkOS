@@ -19,7 +19,7 @@
 #define VFS_END_OF_NAME(ch) ((ch) == VFS_NAME_SEPARATOR || (ch) == '\0')
 #define VFS_END_OF_LABEL(ch) ((ch) == VFS_LABEL_SEPARATOR || (ch) == '\0')
 
-#define FILE_GUARD(file) __attribute__((cleanup(file_guard_release))) file_t* CONCAT(f, __COUNTER__) = (file)
+#define FILE_DEFER(file) __attribute__((cleanup(file_guard_release))) file_t* CONCAT(f, __COUNTER__) = (file)
 
 typedef struct resource resource_t;
 
@@ -175,7 +175,7 @@ static inline void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_
 {
     if (file->ops->mmap == NULL)
     {
-        return NULLPTR(EACCES);
+        return ERRPTR(EACCES);
     }
     return file->ops->mmap(file, address, length, prot);
 }

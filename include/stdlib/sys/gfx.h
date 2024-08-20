@@ -40,7 +40,7 @@ typedef struct gfx_psf
     uint32_t height;
     uint32_t glyphSize;
     uint32_t glyphAmount;
-    uint8_t* glyphs;
+    uint8_t glyphs[];
 } gfx_psf_t;
 
 typedef struct gfx
@@ -64,11 +64,7 @@ typedef struct gfx
 
 gfx_fbmp_t* gfx_fbmp_new(const char* path);
 
-void gfx_fbmp_free(gfx_fbmp_t* fbmp);
-
-uint64_t gfx_psf_new(gfx_psf_t* psf, const char* path);
-
-void gfx_psf_free(gfx_psf_t* psf);
+gfx_psf_t* gfx_psf_new(const char* path);
 
 #endif
 

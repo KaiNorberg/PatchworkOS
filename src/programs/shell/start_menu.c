@@ -65,12 +65,14 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         lmsg_command_t* data = (lmsg_command_t*)msg->data;
         if (data->type == LMSG_COMMAND_RELEASE)
         {
-            if (spawn(entries[data->id].path) == ERR)
+            const char* argv[] = {entries[data->id].path, NULL};
+            if (spawn(argv, NULL) == ERR)
             {
-                // TODO: Add err handling, msg box?
+                //TODO: Add err handling, msg box?
             }
         }
     }
+    break;
     }
 
     return 0;

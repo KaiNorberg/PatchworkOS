@@ -2,7 +2,7 @@
 
 #include "defs.h"
 #include "lock.h"
-#include "process.h"
+#include "thread.h"
 #include "queue.h"
 
 #include <sys/list.h>
@@ -97,7 +97,7 @@
 
 typedef struct
 {
-    queue_t queues[THREAD_PRIORITY_LEVELS];
+    queue_t queues[PRIORITY_LEVELS];
     list_t graveyard;
     thread_t* runThread;
 } sched_context_t;
@@ -143,8 +143,6 @@ NORETURN void sched_process_exit(uint64_t status);
 
 NORETURN void sched_thread_exit(void);
 
-pid_t sched_spawn(const char* path, uint8_t priority);
-
-tid_t sched_thread_spawn(void* entry, uint8_t priority);
+void sched_push(thread_t* thread);
 
 void sched_schedule(trap_frame_t* trapFrame);

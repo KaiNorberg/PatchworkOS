@@ -2,6 +2,11 @@
 
 #include <stdbool.h>
 
+typedef enum
+{
+    TERMINAL_COMMAND
+} terminal_state_t;
+
 void terminal_init(void);
 
 void terminal_cleanup(void);

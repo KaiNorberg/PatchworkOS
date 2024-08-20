@@ -9,6 +9,7 @@ extern "C"
 #endif
 
 #include "_AUX/ERR.h"
+#include "_AUX/NULL.h"
 #include "_AUX/config.h"
 #include "_AUX/fd_t.h"
 #include "_AUX/nsec_t.h"
@@ -24,6 +25,18 @@ typedef enum prot
     PROT_WRITE = (1 << 1)
 } prot_t;
 
+typedef struct
+{
+    fd_t child;
+    fd_t parent;
+} spawn_fd_t;
+
+#define SPAWN_FD_END \
+    (spawn_fd_t) \
+    { \
+        .child = FD_NONE, .parent = FD_NONE \
+    }
+
 typedef uint64_t pid_t;
 typedef uint64_t tid_t;
 
@@ -36,8 +49,8 @@ nsec_t uptime(void);
 
 uint64_t sleep(nsec_t nanoseconds);
 
-// Very WIP, how to deal with file descriptors? Posix style? Table of file descriptors to dup?
-pid_t spawn(const char* path);
+// argv[0] = executable
+pid_t spawn(const char** argv, const spawn_fd_t* fds);
 
 pid_t getpid(void);
 

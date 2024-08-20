@@ -3,27 +3,28 @@
 #include <stdlib.h>
 #include <sys/io.h>
 
-uint64_t loaddir(dir_entry_t** out, const char* path)
+dir_list_t* loaddir(const char* path)
 {
     uint64_t amount = listdir(path, NULL, 0);
     if (amount == ERR)
     {
-        return ERR;
+        return NULL;
     }
 
-    *out = malloc(sizeof(dir_entry_t) * amount);
-    if (*out == NULL)
+    dir_list_t* list = malloc(sizeof(dir_list_t) + sizeof(dir_entry_t) * amount);
+    if (list == NULL)
     {
-        return ERR;
+        return NULL;
     }
 
-    if (listdir(path, *out, amount) == ERR)
+    list->amount = amount;
+    if (listdir(path, list->entries, amount) == ERR)
     {
-        free(*out);
-        return ERR;
+        free(list);
+        return NULL;
     }
 
-    return amount;
+    return list;
 }
 
 #endif

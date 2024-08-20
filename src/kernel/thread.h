@@ -5,6 +5,7 @@
 #include <sys/list.h>
 #include <sys/proc.h>
 
+#include "config.h"
 #include "defs.h"
 #include "lock.h"
 #include "simd.h"
@@ -12,9 +13,11 @@
 #include "trap.h"
 #include "vfs_context.h"
 
-#define THREAD_PRIORITY_LEVELS 3
-#define THREAD_PRIORITY_MIN 0
-#define THREAD_PRIORITY_MAX (THREAD_PRIORITY_LEVELS - 1)
+typedef uint8_t priority_t;
+
+#define PRIORITY_LEVELS 3
+#define PRIORITY_MIN 0
+#define PRIORITY_MAX (PRIORITY_LEVELS - 1)
 
 typedef struct blocker blocker_t;
 
@@ -26,19 +29,12 @@ typedef enum
 
 typedef struct
 {
-    list_t list;
-    lock_t lock;
-} child_storage_t;
-
-typedef struct
-{
     pid_t id;
+    char** argv;
     bool killed;
-    char executable[MAX_PATH];
     vfs_context_t vfsContext;
     space_t space;
-    child_storage_t children;
-    atomic_uint64_t threadCount;
+    atomic_uint64_t ref;
     _Atomic tid_t newTid;
 } process_t;
 
@@ -54,17 +50,17 @@ typedef struct
     block_result_t blockResult;
     blocker_t* blocker;
     errno_t error;
-    uint8_t priority;
+    priority_t priority;
     trap_frame_t trapFrame;
     simd_context_t simdContext;
     uint8_t kernelStack[CONFIG_KERNEL_STACK];
 } thread_t;
 
-process_t* process_new(const char* executable);
-
-thread_t* thread_new(process_t* process, void* entry, uint8_t priority);
+thread_t* thread_new(const char** argv, void* entry, priority_t priority);
 
 void thread_free(thread_t* thread);
+
+thread_t* thread_split(thread_t* thread, void* entry, priority_t priority);
 
 void thread_save(thread_t* thread, const trap_frame_t* trapFrame);
 

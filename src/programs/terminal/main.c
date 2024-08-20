@@ -1,5 +1,7 @@
 #include "terminal.h"
 
+#include <sys/proc.h>
+
 int main(void)
 {
     terminal_init();

@@ -1,19 +1,23 @@
 #include <bootloader/boot_info.h>
 #include <string.h>
 
-#include "defs.h"
 #include "kernel.h"
 #include "log.h"
-#include "process.h"
+#include "thread.h"
 #include "sched.h"
-#include "vfs.h"
+#include "loader.h"
 
 void main(boot_info_t* bootInfo)
 {
     kernel_init(bootInfo);
 
     log_print("kernel: shell spawn");
-    LOG_ASSERT(sched_spawn("home:/bin/shell", THREAD_PRIORITY_MIN + 1) != ERR, "Failed to spawn shell");
+
+    const char* argv[] = {"home:/bin/shell", NULL};
+    thread_t* shell = loader_spawn(argv, PRIORITY_MIN + 1);
+    LOG_ASSERT(shell != NULL, "Failed to spawn shell");
+
+    sched_push(shell);
 
     // Exit init thread
     sched_thread_exit();

@@ -360,19 +360,19 @@ file_t* vfs_open(const char* path)
     char parsedPath[MAX_PATH];
     if (vfs_parse_path(parsedPath, path) == ERR)
     {
-        return NULLPTR(EPATH);
+        return ERRPTR(EPATH);
     }
 
     volume_t* volume = volume_get(parsedPath);
     if (volume == NULL)
     {
-        return NULLPTR(EPATH);
+        return ERRPTR(EPATH);
     }
 
     if (volume->ops->open == NULL)
     {
         volume_deref(volume);
-        return NULLPTR(EACCES);
+        return ERRPTR(EACCES);
     }
 
     char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);

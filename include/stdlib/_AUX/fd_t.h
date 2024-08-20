@@ -5,4 +5,6 @@
 
 typedef uint64_t fd_t;
 
+#define FD_NONE ((fd_t) - 1ULL)
+
 #endif

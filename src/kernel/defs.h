@@ -20,7 +20,7 @@
         ERR; \
     })
 
-#define NULLPTR(code) \
+#define ERRPTR(code) \
     ({ \
         sched_thread()->error = code; \
         NULL; \

@@ -109,13 +109,13 @@ void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot)
 
     if (length == 0)
     {
-        return NULLPTR(EINVAL);
+        return ERRPTR(EINVAL);
     }
 
     uint64_t flags = vmm_prot_to_flags(prot);
     if (flags == ERR)
     {
-        return NULLPTR(EACCES);
+        return ERRPTR(EACCES);
     }
     flags |= PAGE_OWNED;
 
@@ -127,7 +127,7 @@ void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot)
 
     if (pml_mapped(space->pml, virtAddr, SIZE_IN_PAGES(length)))
     {
-        return NULLPTR(EEXIST);
+        return ERRPTR(EEXIST);
     }
 
     for (uint64_t i = 0; i < SIZE_IN_PAGES(length); i++)
@@ -146,18 +146,18 @@ void* vmm_map(void* virtAddr, void* physAddr, uint64_t length, prot_t prot)
 
     if (physAddr == NULL)
     {
-        return NULLPTR(EFAULT);
+        return ERRPTR(EFAULT);
     }
 
     if (length == 0)
     {
-        return NULLPTR(EINVAL);
+        return ERRPTR(EINVAL);
     }
 
     uint64_t flags = vmm_prot_to_flags(prot);
     if (flags == ERR)
     {
-        return NULLPTR(EACCES);
+        return ERRPTR(EACCES);
     }
 
     if (virtAddr == NULL)
@@ -169,7 +169,7 @@ void* vmm_map(void* virtAddr, void* physAddr, uint64_t length, prot_t prot)
 
     if (pml_mapped(space->pml, virtAddr, SIZE_IN_PAGES(length)))
     {
-        return NULLPTR(EEXIST);
+        return ERRPTR(EEXIST);
     }
 
     pml_map(space->pml, virtAddr, physAddr, SIZE_IN_PAGES(length), flags);

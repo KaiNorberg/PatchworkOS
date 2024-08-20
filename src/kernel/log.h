@@ -20,6 +20,14 @@
         } \
     })
 
+#define LOG_TEST(condition, msg, ...) \
+    ({ \
+        if (!(condition)) \
+        { \
+            log_print(msg __VA_OPT__(, ) __VA_ARGS__); \
+        } \
+    })
+
 void log_init(void);
 
 void log_enable_screen(gop_buffer_t* gopBuffer);
