@@ -2,8 +2,8 @@
 
 #include "defs.h"
 #include "lock.h"
-#include "thread.h"
 #include "queue.h"
+#include "thread.h"
 
 #include <sys/list.h>
 

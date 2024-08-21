@@ -6,10 +6,10 @@
 #include "_AUX/fd_t.h"
 #include "config.h"
 #include "defs.h"
-#include "pipe.h"
-#include "thread.h"
-#include "sched.h"
 #include "loader.h"
+#include "pipe.h"
+#include "sched.h"
+#include "thread.h"
 #include "time.h"
 #include "vfs.h"
 #include "vfs_context.h"
@@ -112,8 +112,11 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds)
         }
     }
 
-
     thread_t* thread = loader_spawn(argv, PRIORITY_MIN);
+    if (thread == NULL)
+    {
+        return ERR;
+    }
 
     vfs_context_t* parentVfsContext = &sched_process()->vfsContext;
     vfs_context_t* childVfsContext = &thread->process->vfsContext;

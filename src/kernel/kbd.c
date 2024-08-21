@@ -59,9 +59,9 @@ kbd_t* kbd_new(const char* name)
     return kbd;
 }
 
-uint64_t kbd_free(kbd_t* kbd)
+void kbd_free(kbd_t* kbd)
 {
-    return sysfs_hide(kbd->resource);
+    sysfs_hide(kbd->resource);
 }
 
 static void kbd_update_mod(kbd_t* kbd, kbd_event_type_t type, kbd_mods_t mod)

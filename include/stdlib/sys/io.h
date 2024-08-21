@@ -19,6 +19,9 @@ extern "C"
 #define MAX_PATH 256
 #define MAX_NAME 32
 
+#define STDIN_FILENO 0
+#define STDOUT_FILENO 1
+
 typedef enum poll_event
 {
     POLL_READ = (1 << 0),

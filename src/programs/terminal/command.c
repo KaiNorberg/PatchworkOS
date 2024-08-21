@@ -177,7 +177,10 @@ void command_spawn(const char* dir, const char* command)
             strcat(path, binary);
 
             const char* argv[] = {path, NULL};
-            spawn(argv, NULL);
+            if (terminal_spawn(argv) == ERR)
+            {
+                terminal_error(NULL);
+            }
             return;
         }
     }

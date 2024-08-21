@@ -2,14 +2,13 @@
 
 #include "sched.h"
 #include "vfs.h"
+#include "ring.h"
 
 typedef struct
 {
-    void* buffer;
+    ring_t ring;
     bool readClosed;
     bool writeClosed;
-    uint64_t readIndex;
-    uint64_t writeIndex;
     blocker_t blocker;
     lock_t lock;
 } pipe_private_t;

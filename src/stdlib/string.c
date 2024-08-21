@@ -270,6 +270,7 @@ static char* errorStrings[] = {
     "not a directory",
     "is a directory",
     "no such resource",
+    "broken pipe",
     "busy",
 };
 

@@ -2,16 +2,16 @@
 
 #include "lock.h"
 #include "pmm.h"
+#include "ring.h"
 #include "sched.h"
 #include "vfs.h"
 
 #include <stdlib.h>
-
-// TODO: Optimize this, it is truly awful, create ring struct?
+#include <sys/math.h>
 
 static void pipe_private_free(pipe_private_t* private)
 {
-    pmm_free(private->buffer);
+    ring_cleanup(&private->ring);
     blocker_cleanup(&private->blocker);
     free(private);
 }
@@ -20,21 +20,26 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count)
 {
     pipe_private_t* private = file->private;
 
-    for (uint64_t i = 0; i < count; i++)
+    if (count >= RING_SIZE)
     {
-        if (SCHED_BLOCK_LOCK(&private->blocker, &private->lock, private->readIndex != private->writeIndex) != BLOCK_NORM)
-        {
-            lock_release(&private->lock);
-            return i;
-        }
-
-        ((uint8_t*)buffer)[i] = ((uint8_t*)private->buffer)[private->readIndex];
-        private->readIndex = (private->readIndex + 1) % PAGE_SIZE;
-
-        lock_release(&private->lock);
-        sched_unblock(&private->blocker);
+        return ERROR(EINVAL);
     }
 
+    if (SCHED_BLOCK_LOCK(&private->blocker, &private->lock, ring_data_length(&private->ring) >= count || private->writeClosed) != BLOCK_NORM)
+    {
+        lock_release(&private->lock);
+        return 0;
+    }
+
+    if (private->writeClosed)
+    {
+        count = MIN(count, ring_data_length(&private->ring));
+    }
+
+    LOG_ASSERT(ring_read(&private->ring, buffer, count) != ERR, "ring_read");
+
+    lock_release(&private->lock);
+    sched_unblock(&private->blocker);
     return count;
 }
 
@@ -42,23 +47,45 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count)
 {
     pipe_private_t* private = file->private;
 
-    for (uint64_t i = 0; i < count; i++)
+    if (count >= RING_SIZE)
     {
-        if (SCHED_BLOCK_LOCK(&private->blocker, &private->lock, (private->writeIndex + 1) % PAGE_SIZE != private->readIndex) !=
-            BLOCK_NORM)
-        {
-            lock_release(&private->lock);
-            return i;
-        }
-
-        ((uint8_t*)private->buffer)[private->writeIndex] = ((uint8_t*)buffer)[i];
-        private->writeIndex = (private->writeIndex + 1) % PAGE_SIZE;
-
-        lock_release(&private->lock);
-        sched_unblock(&private->blocker);
+        return ERROR(EINVAL);
     }
 
+    if (SCHED_BLOCK_LOCK(&private->blocker, &private->lock, ring_free_length(&private->ring) >= count || private->readClosed) != BLOCK_NORM)
+    {
+        lock_release(&private->lock);
+        return 0;
+    }
+
+    if (private->readClosed)
+    {
+        lock_release(&private->lock);
+        sched_unblock(&private->blocker);
+        return ERROR(EPIPE);
+    }
+
+    LOG_ASSERT(ring_write(&private->ring, buffer, count) != ERR, "ring_write");
+
+    lock_release(&private->lock);
+    sched_unblock(&private->blocker);
     return count;
+}
+
+static uint64_t pipe_read_status(file_t* file, poll_file_t* pollFile)
+{
+    pipe_private_t* private = file->private;
+
+    pollFile->occurred = POLL_READ & (ring_data_length(&private->ring) != 0 || private->writeClosed);
+    return 0;
+}
+
+static uint64_t pipe_write_status(file_t* file, poll_file_t* pollFile)
+{
+    pipe_private_t* private = file->private;
+
+    pollFile->occurred = POLL_WRITE & (ring_free_length(&private->ring) != 0 || private->readClosed);
+    return 0;
 }
 
 static void pipe_read_cleanup(file_t* file)
@@ -95,11 +122,13 @@ static void pipe_write_cleanup(file_t* file)
 
 static file_ops_t readOps = {
     .read = pipe_read,
+    .status = pipe_read_status,
     .cleanup = pipe_read_cleanup,
 };
 
 static file_ops_t writeOps = {
     .write = pipe_write,
+    .status = pipe_write_status,
     .cleanup = pipe_write_cleanup,
 };
 
@@ -127,11 +156,9 @@ uint64_t pipe_init(pipe_file_t* pipe)
         file_deref(pipe->write);
         return ERR;
     }
-    private->buffer = pmm_alloc();
+    ring_init(&private->ring);
     private->readClosed = false;
     private->writeClosed = false;
-    private->readIndex = 0;
-    private->writeIndex = 0;
     blocker_init(&private->blocker);
     lock_init(&private->lock);
 

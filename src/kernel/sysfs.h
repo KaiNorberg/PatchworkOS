@@ -28,4 +28,4 @@ void sysfs_init(void);
 resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_t* ops, void* private, resource_open_t open,
     resource_delete_t delete);
 
-uint64_t sysfs_hide(resource_t* resource);
+void sysfs_hide(resource_t* resource);

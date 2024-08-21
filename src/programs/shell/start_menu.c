@@ -68,7 +68,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
             const char* argv[] = {entries[data->id].path, NULL};
             if (spawn(argv, NULL) == ERR)
             {
-                //TODO: Add err handling, msg box?
+                // TODO: Add err handling, msg box?
             }
         }
     }

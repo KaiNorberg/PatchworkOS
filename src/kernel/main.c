@@ -2,10 +2,10 @@
 #include <string.h>
 
 #include "kernel.h"
-#include "log.h"
-#include "thread.h"
-#include "sched.h"
 #include "loader.h"
+#include "log.h"
+#include "ring.h"
+#include "sched.h"
 
 void main(boot_info_t* bootInfo)
 {

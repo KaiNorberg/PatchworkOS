@@ -72,7 +72,7 @@ static process_t* process_new(const char** argv)
     process->id = atomic_fetch_add(&newPid, 1);
     vfs_context_init(&process->vfsContext);
     space_init(&process->space);
-    atomic_init(&process->ref, 1);
+    atomic_init(&process->ref, 0);
     atomic_init(&process->newTid, 0);
 
     return process;

@@ -258,7 +258,7 @@ resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_
     return resource;
 }
 
-uint64_t sysfs_hide(resource_t* resource)
+void sysfs_hide(resource_t* resource)
 {
     lock_acquire(&lock);
     list_remove(resource);
@@ -269,6 +269,4 @@ uint64_t sysfs_hide(resource_t* resource)
     {
         resource_free(resource);
     }
-
-    return 0;
 }

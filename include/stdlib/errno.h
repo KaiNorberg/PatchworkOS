@@ -36,7 +36,8 @@ int* _ErrnoFunc(void);
 #define ENOTDIR 18 // Not a directory
 #define EISDIR 19  // Is a directory
 #define ENORES 20  // No such resource
-#define EBUSY 21   // Busy
+#define EPIPE 21   // Broken pipe
+#define EBUSY 22   // Busy
 
 // NOTE: Values retrievd from linux
 /*
