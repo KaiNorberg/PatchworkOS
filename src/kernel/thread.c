@@ -97,9 +97,9 @@ static thread_t* process_thread_new(process_t* process, void* entry, priority_t 
     thread->killed = false;
     thread->timeStart = 0;
     thread->timeEnd = 0;
-    thread->blockDeadline = 0;
-    thread->blockResult = BLOCK_NORM;
-    thread->blocker = NULL;
+    thread->block.deadline = 0;
+    thread->block.result = BLOCK_NORM;
+    thread->block.blocker = NULL;
     thread->error = 0;
     thread->priority = MIN(priority, PRIORITY_MAX);
     simd_context_init(&thread->simdContext);

@@ -312,33 +312,70 @@ static void dwm_handle_mouse_message(const mouse_event_t* event)
     oldButtons = event->buttons;
 }
 
-static void dwm_poll(void)
+static void dwm_poll_mouse(void)
 {
-    while (!atomic_exchange_explicit(&redrawNeeded, false, __ATOMIC_RELAXED))
+    if (cursor == NULL)
     {
-        sched_block_begin(&blocker);
-        sched_block_do(&blocker, SEC / 1000);
-        sched_block_end(&blocker);
+        return;
+    }
 
-        LOCK_GUARD(&lock);
-
-        poll_file_t poll[] = {{.file = mouse, .requested = POLL_READ}, {.file = keyboard, .requested = POLL_READ}};
-        vfs_poll(poll, 2, 0);
-        if (cursor != NULL && poll[0].occurred & POLL_READ) // Mouse
+    mouse_event_t total = {0};
+    bool received = false;
+    while (1)
+    {
+        poll_file_t poll = {.file = mouse, .requested = POLL_READ};
+        vfs_poll(&poll, 1, 0);
+        if (poll.occurred & POLL_READ)
         {
             mouse_event_t event;
             LOG_ASSERT(vfs_read(mouse, &event, sizeof(mouse_event_t)) == sizeof(mouse_event_t), "mouse read fail");
 
-            dwm_handle_mouse_message(&event);
+            total.buttons |= event.buttons;
+            total.delta.x += event.delta.x;
+            total.delta.y += event.delta.y;
+            received = true;
         }
-        if (selected != NULL && poll[1].occurred & POLL_READ) // Keyboard
+        else
         {
-            kbd_event_t event;
-            LOG_ASSERT(vfs_read(keyboard, &event, sizeof(kbd_event_t)) == sizeof(kbd_event_t), "kbd read fail");
-
-            msg_kbd_t data = {.code = event.code, .type = event.type, .mods = event.mods};
-            msg_queue_push(&selected->messages, MSG_KBD, &data, sizeof(msg_kbd_t));
+            break;
         }
+    }
+
+    if (received)
+    {
+        dwm_handle_mouse_message(&total);
+    }
+}
+
+static void dwm_poll_keyboard(void)
+{
+    if (selected == NULL)
+    {
+        return;
+    }
+
+    poll_file_t poll = {.file = keyboard, .requested = POLL_READ};
+    vfs_poll(&poll, 1, 0);
+    if (poll.occurred & POLL_READ)
+    {
+        kbd_event_t event;
+        LOG_ASSERT(vfs_read(keyboard, &event, sizeof(kbd_event_t)) == sizeof(kbd_event_t), "kbd read fail");
+
+        msg_kbd_t data = {.code = event.code, .type = event.type, .mods = event.mods};
+        msg_queue_push(&selected->messages, MSG_KBD, &data, sizeof(msg_kbd_t));
+    }
+}
+
+static void dwm_poll(void)
+{
+    while (!atomic_exchange_explicit(&redrawNeeded, false, __ATOMIC_RELAXED))
+    {
+        sched_block(&blocker, SEC / 256);
+
+        LOCK_GUARD(&lock);
+
+        dwm_poll_mouse();
+        dwm_poll_keyboard();
     }
 }
 

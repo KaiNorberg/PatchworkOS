@@ -12,7 +12,7 @@
 #define START_MENU_WIDTH 250
 #define START_MENU_HEIGHT 400
 
-static win_t* startMenu = NULL;
+static win_t* startMenu;
 
 typedef struct
 {
@@ -80,11 +80,6 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
 
 void start_menu_open(void)
 {
-    if (startMenu != NULL)
-    {
-        return;
-    }
-
     rect_t screenRect;
     win_screen_rect(&screenRect);
 
@@ -97,11 +92,6 @@ void start_menu_open(void)
 
 void start_menu_close(void)
 {
-    if (startMenu == NULL)
-    {
-        return;
-    }
-
     win_send(startMenu, LMSG_QUIT, NULL, 0);
     startMenu = NULL;
 }

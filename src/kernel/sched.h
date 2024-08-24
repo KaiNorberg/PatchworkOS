@@ -11,12 +11,10 @@
 #define SCHED_BLOCK(blocker, condition) \
     ({ \
         block_result_t result = BLOCK_NORM; \
-        sched_block_begin(blocker); \
         while (!(condition) && result == BLOCK_NORM) \
         { \
-            result = sched_block_do(blocker, NEVER); \
+            result = sched_block(blocker, NEVER); \
         } \
-        sched_block_end(blocker); \
         result; \
     })
 
@@ -27,7 +25,6 @@
         block_result_t result = BLOCK_NORM; \
         nsec_t uptime = time_uptime(); \
         nsec_t deadline = (timeout) == NEVER ? NEVER : (timeout) + uptime; \
-        sched_block_begin(blocker); \
         while (!(condition) && result == BLOCK_NORM) \
         { \
             if (deadline < uptime) \
@@ -36,10 +33,9 @@
                 break; \
             } \
             nsec_t remaining = deadline == NEVER ? NEVER : (deadline > uptime ? deadline - uptime : 0); \
-            result = sched_block_do(blocker, remaining); \
+            result = sched_block(blocker, remaining); \
             uptime = time_uptime(); \
         } \
-        sched_block_end(blocker); \
         result; \
     })
 
@@ -48,7 +44,6 @@
 #define SCHED_BLOCK_LOCK(blocker, lock, condition) \
     ({ \
         block_result_t result = BLOCK_NORM; \
-        sched_block_begin(blocker); \
         lock_acquire(lock); \
         while (result == BLOCK_NORM) \
         { \
@@ -57,10 +52,9 @@
                 break; \
             } \
             lock_release(lock); \
-            result = sched_block_do(blocker, NEVER); \
+            result = sched_block(blocker, NEVER); \
             lock_acquire(lock); \
         } \
-        sched_block_end(blocker); \
         result; \
     })
 
@@ -72,7 +66,6 @@
         block_result_t result = BLOCK_NORM; \
         nsec_t uptime = time_uptime(); \
         nsec_t deadline = (timeout) == NEVER ? NEVER : (timeout) + uptime; \
-        sched_block_begin(blocker); \
         lock_acquire(lock); \
         while (result == BLOCK_NORM) \
         { \
@@ -87,11 +80,10 @@
             } \
             lock_release(lock); \
             nsec_t remaining = deadline == NEVER ? NEVER : (deadline > uptime ? deadline - uptime : 0); \
-            result = sched_block_do(blocker, remaining); \
+            result = sched_block(blocker, remaining); \
             uptime = time_uptime(); \
             lock_acquire(lock); \
         } \
-        sched_block_end(blocker); \
         result; \
     })
 
@@ -123,11 +115,7 @@ void sched_start(void);
 
 block_result_t sched_sleep(nsec_t timeout);
 
-void sched_block_begin(blocker_t* blocker);
-
-block_result_t sched_block_do(blocker_t* blocker, nsec_t timeout);
-
-void sched_block_end(blocker_t* blocker);
+block_result_t sched_block(blocker_t* blocker, nsec_t timeout);
 
 void sched_unblock(blocker_t* blocker);
 

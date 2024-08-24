@@ -29,6 +29,11 @@ getpid:
     SYSTEM_CALL SYS_PID
     ret
 
+global gettid
+gettid:
+    SYSTEM_CALL SYS_TID
+    ret
+
 global uptime
 uptime:
     SYSTEM_CALL SYS_UPTIME
@@ -37,6 +42,21 @@ uptime:
 global spawn
 spawn:
     SYSTEM_CALL SYS_SPAWN
+    ret
+
+global split
+split:
+    SYSTEM_CALL SYS_SPLIT
+    ret
+
+global thread_exit
+thread_exit:
+    SYSTEM_CALL SYS_THREAD_EXIT
+    ret
+
+global yield
+yield:
+    SYSTEM_CALL SYS_YIELD
     ret
 
 %endif

@@ -53,10 +53,12 @@ void blocker_cleanup(blocker_t* blocker)
 
 static void blocker_push(blocker_t* blocker, thread_t* thread)
 {
+    LOCK_GUARD(&blocker->lock);
+
     thread_t* other;
     LIST_FOR_EACH(other, &blocker->threads)
     {
-        if (other->blockDeadline > thread->blockDeadline)
+        if (other->block.deadline > thread->block.deadline)
         {
             list_prepend(&other->entry, thread);
             return;
@@ -171,48 +173,21 @@ void sched_start(void)
 
 block_result_t sched_sleep(nsec_t timeout)
 {
-    sched_block_begin(&sleepBlocker);
-    block_result_t result = sched_block_do(&sleepBlocker, timeout);
-    sched_block_end(&sleepBlocker);
-
-    return result;
+    return sched_block(&sleepBlocker, timeout);
 }
 
-static void sched_block_ipi(trap_frame_t* trapFrame)
+block_result_t sched_block(blocker_t* blocker, nsec_t timeout)
 {
-    cpu_t* self = smp_self_unsafe();
-    sched_context_t* context = &self->sched;
-    blocker_t* blocker = context->runThread->blocker;
+    LOG_ASSERT(rflags_read() & RFLAGS_INTERRUPT_ENABLE, "sched_block, interupts disabled");
 
-    thread_save(context->runThread, trapFrame);
-    blocker_push(blocker, context->runThread);
-    lock_release(&blocker->lock);
-
-    context->runThread = NULL;
-}
-
-void sched_block_begin(blocker_t* blocker)
-{
-    lock_acquire(&blocker->lock);
-}
-
-block_result_t sched_block_do(blocker_t* blocker, nsec_t timeout)
-{
-    LOG_ASSERT((rflags_read() & RFLAGS_INTERRUPT_ENABLE) == 0, "Attempt to block on unacquired blocker");
-
-    thread_t* thread = smp_self_unsafe()->sched.runThread;
+    thread_t* thread = smp_self()->sched.runThread;
     thread->timeEnd = 0;
-    thread->blockDeadline = timeout == NEVER ? NEVER : timeout + time_uptime();
-    thread->blocker = blocker;
+    thread->block.deadline = timeout == NEVER ? NEVER : timeout + time_uptime();
+    thread->block.blocker = blocker;
+    smp_put();
 
-    smp_send_self(sched_block_ipi);
-    lock_acquire(&blocker->lock);
-    return thread->blockResult;
-}
-
-void sched_block_end(blocker_t* blocker)
-{
-    lock_release(&blocker->lock);
+    sched_invoke();
+    return thread->block.result;
 }
 
 void sched_unblock(blocker_t* blocker)
@@ -227,9 +202,9 @@ void sched_unblock(blocker_t* blocker)
             break;
         }
 
-        thread->blockDeadline = 0;
-        thread->blockResult = BLOCK_NORM;
-        thread->blocker = NULL;
+        thread->block.deadline = 0;
+        thread->block.result = BLOCK_NORM;
+        thread->block.blocker = NULL;
         sched_push(thread);
     }
 }
@@ -294,14 +269,21 @@ void sched_push(thread_t* thread)
 {
     int64_t bestLength = INT64_MAX;
     cpu_t* best = NULL;
-    for (uint64_t i = 0; i < smp_cpu_amount(); i++)
+    uint64_t cpuAmount = smp_cpu_amount();
+    for (uint64_t i = 0; i < cpuAmount; i++)
     {
         cpu_t* cpu = smp_cpu(i);
         const sched_context_t* context = &cpu->sched;
 
         int64_t length = sched_context_thread_amount(context);
 
-        if (bestLength > length)
+        if (length == 0)
+        {
+            sched_context_push(&cpu->sched, thread);
+            return;
+        }
+
+        if (length < bestLength)
         {
             bestLength = length;
             best = cpu;
@@ -319,10 +301,13 @@ static void sched_update_blockers(void)
     blocker_t* blocker;
     LIST_FOR_EACH(blocker, &blockers)
     {
+        LOCK_GUARD(&blocker->lock);
+
         thread_t* thread = list_first(&blocker->threads);
-        if (thread != NULL && thread->blockDeadline < uptime)
+        if (thread != NULL && thread->block.deadline < uptime)
         {
-            thread->blockResult = BLOCK_TIMEOUT;
+            thread->block.result = BLOCK_TIMEOUT;
+            thread->block.blocker = NULL;
             list_remove(thread);
             sched_push(thread);
         }
@@ -360,7 +345,11 @@ void sched_schedule(trap_frame_t* trapFrame)
         return;
     }
 
-    sched_update_blockers();
+    if (self->id == 0)
+    {
+        sched_update_blockers();
+    }
+
     sched_update_graveyard(trapFrame, context);
 
     if (context->runThread == NULL)
@@ -371,16 +360,29 @@ void sched_schedule(trap_frame_t* trapFrame)
     }
     else
     {
-        thread_t* next = context->runThread->timeEnd < time_uptime()
-            ? sched_context_find_any(context)
-            : sched_context_find_higher(context, context->runThread->priority);
-        if (next != NULL)
+        blocker_t* blocker = context->runThread->block.blocker;
+        if (blocker != NULL)
         {
             thread_save(context->runThread, trapFrame);
-            sched_context_push(context, context->runThread);
+            blocker_push(blocker, context->runThread);
 
+            thread_t* next = sched_context_find_any(context);
             thread_load(next, trapFrame);
             context->runThread = next;
+        }
+        else
+        {
+            thread_t* next = context->runThread->timeEnd < time_uptime()
+                ? sched_context_find_any(context)
+                : sched_context_find_higher(context, context->runThread->priority);
+            if (next != NULL)
+            {
+                thread_save(context->runThread, trapFrame);
+                sched_context_push(context, context->runThread);
+
+                thread_load(next, trapFrame);
+                context->runThread = next;
+            }
         }
     }
 }

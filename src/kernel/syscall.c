@@ -6,6 +6,7 @@
 #include "_AUX/fd_t.h"
 #include "config.h"
 #include "defs.h"
+#include "gdt.h"
 #include "loader.h"
 #include "pipe.h"
 #include "sched.h"
@@ -424,6 +425,25 @@ uint64_t syscall_pipe(pipefd_t* pipefd)
     return 0;
 }
 
+tid_t syscall_split(void* entry)
+{
+    if (!verify_buffer(entry, sizeof(uint64_t)))
+    {
+        return ERROR(EFAULT);
+    }
+
+    thread_t* thread = loader_split(sched_thread(), entry, PRIORITY_MIN);
+
+    sched_push(thread);
+    return thread->id;
+}
+
+uint64_t syscall_yield(void)
+{
+    sched_yield();
+    return 0;
+}
+
 ///////////////////////////////////////////////////////
 
 void syscall_handler_end(void)
@@ -461,4 +481,6 @@ void* syscallTable[] = {
     syscall_flush,
     syscall_listdir,
     syscall_pipe,
+    syscall_split,
+    syscall_yield,
 };

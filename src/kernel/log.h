@@ -16,7 +16,7 @@
     ({ \
         if (!(condition)) \
         { \
-            log_panic(NULL, __FILE_NAME__ ": " msg __VA_OPT__(, ) __VA_ARGS__); \
+            log_panic(NULL, __FILE__ ": " msg __VA_OPT__(, ) __VA_ARGS__); \
         } \
     })
 

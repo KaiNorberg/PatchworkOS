@@ -40,15 +40,20 @@ typedef struct
 
 typedef struct
 {
+    nsec_t deadline;
+    block_result_t result;
+    blocker_t* blocker;
+} block_data_t;
+
+typedef struct
+{
     list_entry_t entry;
     process_t* process;
     tid_t id;
     bool killed;
     nsec_t timeStart;
     nsec_t timeEnd;
-    nsec_t blockDeadline;
-    block_result_t blockResult;
-    blocker_t* blocker;
+    block_data_t block;
     errno_t error;
     priority_t priority;
     trap_frame_t trapFrame;

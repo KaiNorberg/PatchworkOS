@@ -194,7 +194,7 @@ uint64_t procedure(win_t* window, const msg_t* msg)
             break;
         }
 
-        terminal_handle_input(kbd_ascii(data->code, data->mods));
+        terminal_handle_input(chr);
 
         cursorVisible = true;
         terminal_cursor_draw();
@@ -359,7 +359,6 @@ static void terminal_put_backend(gfx_t* gfx, char chr)
     break;
     case '\0':
     {
-
     }
     break;
     default:

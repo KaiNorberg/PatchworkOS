@@ -25,7 +25,8 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count)
         return ERROR(EINVAL);
     }
 
-    if (SCHED_BLOCK_LOCK(&private->blocker, &private->lock, ring_data_length(&private->ring) >= count || private->writeClosed) != BLOCK_NORM)
+    if (SCHED_BLOCK_LOCK(&private->blocker, &private->lock, ring_data_length(&private->ring) >= count || private->writeClosed) !=
+        BLOCK_NORM)
     {
         lock_release(&private->lock);
         return 0;
@@ -52,7 +53,8 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count)
         return ERROR(EINVAL);
     }
 
-    if (SCHED_BLOCK_LOCK(&private->blocker, &private->lock, ring_free_length(&private->ring) >= count || private->readClosed) != BLOCK_NORM)
+    if (SCHED_BLOCK_LOCK(&private->blocker, &private->lock, ring_free_length(&private->ring) >= count || private->readClosed) !=
+        BLOCK_NORM)
     {
         lock_release(&private->lock);
         return 0;

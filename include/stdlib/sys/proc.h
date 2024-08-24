@@ -13,6 +13,8 @@ extern "C"
 #include "_AUX/config.h"
 #include "_AUX/fd_t.h"
 #include "_AUX/nsec_t.h"
+#include "_AUX/pid_t.h"
+#include "_AUX/tid_t.h"
 
 #define PAGE_SIZE 0x1000
 #define SIZE_IN_PAGES(size) (((size) + PAGE_SIZE - 1) / PAGE_SIZE)
@@ -37,9 +39,6 @@ typedef struct
         .child = FD_NONE, .parent = FD_NONE \
     }
 
-typedef uint64_t pid_t;
-typedef uint64_t tid_t;
-
 // Nanoseconds per second.
 #define SEC ((nsec_t)1000000000)
 
@@ -54,11 +53,19 @@ pid_t spawn(const char** argv, const spawn_fd_t* fds);
 
 pid_t getpid(void);
 
+tid_t gettid(void);
+
 void* mmap(fd_t fd, void* address, uint64_t length, prot_t prot);
 
 uint64_t munmap(void* address, uint64_t length);
 
 uint64_t mprotect(void* address, uint64_t length, prot_t prot);
+
+tid_t split(void* entry);
+
+_NORETURN void thread_exit(void);
+
+void yield(void);
 
 #if defined(__cplusplus)
 }

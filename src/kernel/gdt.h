@@ -10,6 +10,11 @@
 #define GDT_USER_DATA 0x20
 #define GDT_TSS 0x28
 
+#define GDT_RING3 3
+#define GDT_RING2 2
+#define GDT_RING1 1
+#define GDT_RING0 0
+
 typedef struct PACKED
 {
     uint16_t size;

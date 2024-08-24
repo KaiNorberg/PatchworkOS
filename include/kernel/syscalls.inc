@@ -22,5 +22,7 @@
 %define SYS_FLUSH 21
 %define SYS_LISTDIR 22
 %define SYS_PIPE 23
+%define SYS_SPLIT 24
+%define SYS_YIELD 25
 
-%define SYS_TOTAL_AMOUNT 24
+%define SYS_TOTAL_AMOUNT 26

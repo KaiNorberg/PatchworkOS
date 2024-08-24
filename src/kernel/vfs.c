@@ -345,12 +345,10 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
     // TODO: Dont worry this is "temporary"
     uint64_t deadline = timeout == NEVER ? NEVER : timeout + time_uptime();
     uint64_t events = 0;
-    sched_block_begin(&pollBlocker);
     while (!vfs_poll_condition(&events, files, amount) && deadline > time_uptime())
     {
-        sched_block_do(&pollBlocker, SEC / 1000);
+        sched_block(&pollBlocker, SEC / 1000);
     }
-    sched_block_end(&pollBlocker);
 
     return events;
 }

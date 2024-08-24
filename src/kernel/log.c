@@ -294,7 +294,7 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
         }
         else
         {
-            log_print("Occured on cpu %d in process %d", smp_self_unsafe()->id, thread->process->id);
+            log_print("Occured on cpu %d in process %d thread %d", smp_self_unsafe()->id, thread->process->id, thread->id);
         }
     }
     else

@@ -1,13 +1,12 @@
-#include <errno.h>
-
 #ifndef __EMBED__
 
-// Thread specific storage not implemented at kernel level
-static int _errno = 0;
+#include <errno.h>
+
+#include "internal/thrd.h"
 
 int* _ErrnoFunc(void)
 {
-    return &_errno;
+    return &_ThrdBlockById(gettid())->err;
 }
 
 #endif

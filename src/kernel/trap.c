@@ -96,18 +96,17 @@ void trap_handler(trap_frame_t* trapFrame)
     }
     else if (trapFrame->vector == VECTOR_SCHED_TIMER)
     {
+        sched_schedule(trapFrame);
         lapic_eoi();
     }
     else if (trapFrame->vector == VECTOR_SCHED_INVOKE)
     {
-        // Do nothing, sheduling happens below
+        sched_schedule(trapFrame);
     }
     else
     {
         log_panic(trapFrame, "Unknown vector");
     }
-
-    sched_schedule(trapFrame);
 
     cpu->trapDepth--;
 }

@@ -1,8 +1,8 @@
 #pragma once
 
+#include "ring.h"
 #include "sched.h"
 #include "vfs.h"
-#include "ring.h"
 
 typedef struct
 {
