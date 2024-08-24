@@ -6,22 +6,30 @@
 #include <sys/proc.h>
 #include <threads.h>
 
-#define PRIME_MAX (1 << 17)
+#define PRIME_MAX (10000000)
 
 static atomic_long count;
-
+static atomic_long next;
 static uint64_t threadAmount;
 
-static bool is_prime(uint64_t num)
+bool is_prime(int n)
 {
-    if (num == 0 || num == 1)
+    if (n <= 1)
+    {
+        return false;
+    }
+    if (n <= 3)
+    {
+        return true;
+    }
+    if (n % 2 == 0 || n % 3 == 0)
     {
         return false;
     }
 
-    for (uint64_t i = 2; i <= num / 2; i++)
+    for (int i = 5; i * i <= n; i += 6)
     {
-        if (num % i == 0)
+        if (n % i == 0 || n % (i + 2) == 0)
         {
             return false;
         }
@@ -30,26 +38,29 @@ static bool is_prime(uint64_t num)
     return true;
 }
 
-static void count_primes(uint64_t low, uint64_t high)
+static void count_primes(uint64_t start, uint64_t end)
 {
-    for (uint64_t i = low; i < high; i++)
+    for (uint64_t i = start; i < end; i++)
     {
         if (is_prime(i))
         {
-            atomic_fetch_add(&count, 1);
+            atomic_fetch_add_explicit(&count, 1, __ATOMIC_RELAXED);
         }
     }
 }
 
 static int thread_entry(void* arg)
 {
-    uint64_t index = (uint64_t)arg;
-
-    uint64_t delta = PRIME_MAX / threadAmount;
-    uint64_t low = delta * index;
-    uint64_t high = low + delta;
-
-    count_primes(low, high);
+    uint64_t start;
+    while ((start = atomic_fetch_add_explicit(&next, 1000, __ATOMIC_RELAXED)) < PRIME_MAX)
+    {
+        uint64_t end = start + 1000;
+        if (end > PRIME_MAX)
+        {
+            end = PRIME_MAX;
+        }
+        count_primes(start, end);
+    }
     return thrd_success;
 }
 
@@ -75,11 +86,12 @@ static void benchmark(void)
     print("starting... ");
 
     atomic_init(&count, 0);
+    atomic_init(&next, 0);
 
     thrd_t threads[threadAmount];
     for (uint64_t i = 0; i < threadAmount; i++)
     {
-        thrd_create(&threads[i], thread_entry, (void*)i);
+        thrd_create(&threads[i], thread_entry, NULL);
     }
 
     for (uint64_t i = 0; i < threadAmount; i++)
@@ -104,6 +116,8 @@ int main(void)
     threadAmount = 2;
     benchmark();
     threadAmount = 4;
+    benchmark();
+    threadAmount = 8;
     benchmark();
 
     return 0;
