@@ -57,7 +57,7 @@ run:
 	-display sdl \
 	-drive file=$(TARGET) \
 	-m 1G \
-	-smp 4 \
+	-smp 8 \
 	-serial stdio \
 	-no-shutdown -no-reboot \
 	-drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
@@ -70,7 +70,7 @@ run_debug:
 	-display sdl \
 	-drive file=$(TARGET) \
 	-m 1G \
-	-smp 4 \
+	-smp 8 \
 	-serial stdio \
 	-d int \
 	-no-shutdown -no-reboot \

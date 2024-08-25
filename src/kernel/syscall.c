@@ -2,8 +2,8 @@
 
 #include <errno.h>
 #include <string.h>
+#include <stdarg.h>
 
-#include "_AUX/fd_t.h"
 #include "config.h"
 #include "defs.h"
 #include "gdt.h"
@@ -425,14 +425,27 @@ uint64_t syscall_pipe(pipefd_t* pipefd)
     return 0;
 }
 
-tid_t syscall_split(void* entry)
+tid_t syscall_split(void* entry, uint64_t argc, ...)
 {
+    if (argc > LOADER_SPLIT_MAX_ARGS)
+    {
+        return ERROR(EINVAL);
+    }
+
     if (!verify_buffer(entry, sizeof(uint64_t)))
     {
         return ERROR(EFAULT);
     }
 
-    thread_t* thread = loader_split(sched_thread(), entry, PRIORITY_MIN);
+    va_list args;
+    va_start(args, argc);
+    thread_t* thread = loader_split(sched_thread(), entry, PRIORITY_MIN, argc, args);
+    va_end(args);
+
+    if (thread == NULL)
+    {
+        return ERR;
+    }
 
     sched_push(thread);
     return thread->id;

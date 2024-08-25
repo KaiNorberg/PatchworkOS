@@ -16,14 +16,10 @@ typedef struct
     uint8_t index;
     tid_t id;
     uint8_t result;
-    int (*func)(void*);
-    void* arg;
     int err;
 } thrd_block_t;
 
 void _ThrdInit(void);
-
-void _ThrdBlockInit(thrd_block_t* block, int (*func)(void*), void* arg, tid_t id);
 
 thrd_block_t* _ThrdBlockReserve(void);
 

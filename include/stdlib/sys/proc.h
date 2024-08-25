@@ -61,7 +61,7 @@ uint64_t munmap(void* address, uint64_t length);
 
 uint64_t mprotect(void* address, uint64_t length, prot_t prot);
 
-tid_t split(void* entry);
+tid_t split(void* entry, uint64_t argc, ...);
 
 _NORETURN void thread_exit(void);
 

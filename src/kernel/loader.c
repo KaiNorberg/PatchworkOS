@@ -8,6 +8,7 @@
 #include "gdt.h"
 #include "log.h"
 #include "sched.h"
+#include "stdarg.h"
 #include "thread.h"
 #include "vfs.h"
 #include "vmm.h"
@@ -155,8 +156,13 @@ thread_t* loader_spawn(const char** argv, priority_t priority)
     return thread;
 }
 
-thread_t* loader_split(thread_t* thread, void* entry, priority_t priority)
+thread_t* loader_split(thread_t* thread, void* entry, priority_t priority, uint64_t argc, va_list args)
 {
+    if (argc > LOADER_SPLIT_MAX_ARGS)
+    {
+        return ERRPTR(EINVAL);
+    }
+
     thread_t* child = thread_split(thread, entry, priority);
     if (child == NULL)
     {
@@ -173,6 +179,23 @@ thread_t* loader_split(thread_t* thread, void* entry, priority_t priority)
     child->trapFrame.cs = GDT_USER_CODE | GDT_RING3;
     child->trapFrame.ss = GDT_USER_DATA | GDT_RING3;
     child->trapFrame.rsp = (uint64_t)rsp;
+
+    if (argc >= 1)
+    {
+        child->trapFrame.rdi = va_arg(args, uint64_t);
+    }
+    if (argc >= 2)
+    {
+        child->trapFrame.rsi = va_arg(args, uint64_t);
+    }
+    if (argc >= 3)
+    {
+        child->trapFrame.rdx = va_arg(args, uint64_t);
+    }
+    if (argc >= 4)
+    {
+        child->trapFrame.rcx = va_arg(args, uint64_t);
+    }
 
     return child;
 }

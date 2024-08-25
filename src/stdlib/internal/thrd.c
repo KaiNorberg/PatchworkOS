@@ -9,23 +9,9 @@ void _ThrdInit(void)
     atomic_init(&blocks[0].ref, 1);
     atomic_init(&blocks[0].running, true);
     blocks[0].index = 0;
-    _ThrdBlockInit(&blocks[0], NULL, NULL, gettid());
-
-    for (uint64_t i = 1; i < _MAX_THRD; i++)
-    {
-        atomic_init(&blocks[i].ref, 0);
-        atomic_init(&blocks[i].running, false);
-        blocks[i].index = i;
-    }
-}
-
-void _ThrdBlockInit(thrd_block_t* block, int (*func)(void*), void* arg, tid_t id)
-{
-    block->id = id;
-    block->result = 0;
-    block->func = func;
-    block->arg = arg;
-    block->err = 0;
+    blocks[0].id = gettid();
+    blocks[0].result = 0;
+    blocks[0].err = 0;
 }
 
 thrd_block_t* _ThrdBlockReserve(void)
@@ -35,6 +21,11 @@ thrd_block_t* _ThrdBlockReserve(void)
         atomic_long expected = 0;
         if (atomic_compare_exchange_strong(&blocks[i].ref, &expected, 1))
         {
+            atomic_init(&blocks[i].running, false);
+            blocks[i].index = i;
+            blocks[i].id = 0;
+            blocks[i].result = 0;
+            blocks[i].err = 0;
             return &blocks[i];
         }
     }

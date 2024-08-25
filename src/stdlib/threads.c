@@ -6,18 +6,12 @@
 
 #include "internal/thrd.h"
 
-static void _ThrdEntry(void)
+static void _ThrdEntry(thrd_block_t* block, thrd_start_t func, void* arg)
 {
-    sleep(SEC / 1000); // HIGH PRIORITY TODO: Implement user space mutex to avoid this stuff
-    thrd_block_t* block = _ThrdBlockById(gettid());
     while (!atomic_load(&block->running))
     {
         yield();
     }
-
-    thrd_start_t func = block->func;
-    void* arg = block->arg;
-    _ThrdBlockUnref(block);
 
     int res = func(arg);
     thrd_exit(res);
@@ -25,20 +19,19 @@ static void _ThrdEntry(void)
 
 int thrd_create(thrd_t* thr, thrd_start_t func, void* arg)
 {
-    thrd_block_t* block = _ThrdBlockReserve();
+    thrd_block_t* block = _ThrdBlockReserve(); // Base reference
     if (block == NULL)
     {
         return thrd_error;
     }
 
-    tid_t id = split(_ThrdEntry);
+    block->id = split(_ThrdEntry, 3, block, func, arg);
     if (block->id == ERR)
     {
         _ThrdBlockFree(block);
         return thrd_error;
     }
 
-    _ThrdBlockInit(block, func, arg, id);
     atomic_store(&block->running, true);
 
     thr->index = block->index;
@@ -78,7 +71,7 @@ _NORETURN void thrd_exit(int res)
     block->result = res;
     atomic_store(&block->running, false);
     _ThrdBlockUnref(block);
-    //_ThrdBlockUnref(block); // Dereference base reference
+    _ThrdBlockUnref(block); // Dereference base reference
     thread_exit();
 }
 
