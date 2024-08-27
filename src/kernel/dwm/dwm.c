@@ -249,6 +249,23 @@ static void dwm_draw_cursor(void)
     gfx_transfer_blend(&backbuffer, &cursor->gfx, &cursorRect, &srcPoint);
 }
 
+static window_t* dwm_window_under_point(const point_t* point)
+{
+    window_t* window;
+    LIST_FOR_EACH_REVERSE(window, &windows)
+    {
+        LOCK_GUARD(&window->lock);
+
+        rect_t windowRect = WINDOW_RECT(window);
+        if (RECT_CONTAINS_POINT(&windowRect, point))
+        {
+            return window;
+        }
+    }
+
+    return NULL;
+}
+
 static void dwm_handle_mouse_message(const mouse_event_t* event)
 {
     static mouse_buttons_t oldButtons = MOUSE_NONE;
@@ -276,26 +293,14 @@ static void dwm_handle_mouse_message(const mouse_event_t* event)
         dwm_swap();
     }
 
+    window_t* window = dwm_window_under_point(&cursor->pos);
+
     if (pressed != MOUSE_NONE)
     {
-        bool found = false;
-        window_t* window;
-        LIST_FOR_EACH_REVERSE(window, &windows)
-        {
-            LOCK_GUARD(&window->lock);
-
-            rect_t windowRect = WINDOW_RECT(window);
-            if (RECT_CONTAINS_POINT(&windowRect, &cursor->pos))
-            {
-                found = true;
-                break;
-            }
-        }
-
-        dwm_select(found ? window : NULL);
+        dwm_select(window);
     }
 
-    if (selected != NULL)
+    if (window != NULL)
     {
         msg_mouse_t data = {
             .held = event->buttons,
@@ -306,7 +311,7 @@ static void dwm_handle_mouse_message(const mouse_event_t* event)
             .delta.x = cursor->pos.x - oldPos.x,
             .delta.y = cursor->pos.y - oldPos.y,
         };
-        msg_queue_push(&selected->messages, MSG_MOUSE, &data, sizeof(msg_mouse_t));
+        msg_queue_push(&window->messages, MSG_MOUSE, &data, sizeof(msg_mouse_t));
     }
 
     oldButtons = event->buttons;
@@ -349,11 +354,6 @@ static void dwm_poll_mouse(void)
 
 static void dwm_poll_keyboard(void)
 {
-    if (selected == NULL)
-    {
-        return;
-    }
-
     poll_file_t poll = {.file = keyboard, .requested = POLL_READ};
     vfs_poll(&poll, 1, 0);
     if (poll.occurred & POLL_READ)
@@ -361,8 +361,11 @@ static void dwm_poll_keyboard(void)
         kbd_event_t event;
         LOG_ASSERT(vfs_read(keyboard, &event, sizeof(kbd_event_t)) == sizeof(kbd_event_t), "kbd read fail");
 
-        msg_kbd_t data = {.code = event.code, .type = event.type, .mods = event.mods};
-        msg_queue_push(&selected->messages, MSG_KBD, &data, sizeof(msg_kbd_t));
+        if (selected != NULL)
+        {
+            msg_kbd_t data = {.code = event.code, .type = event.type, .mods = event.mods};
+            msg_queue_push(&selected->messages, MSG_KBD, &data, sizeof(msg_kbd_t));
+        }
     }
 }
 
