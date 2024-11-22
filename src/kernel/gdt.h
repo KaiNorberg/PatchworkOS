@@ -50,7 +50,7 @@ typedef struct PACKED
     gdt_entry_t kernelData;
     gdt_entry_t userCode;
     gdt_entry_t userData;
-    gdt_long_entry_t tss;
+    gdt_long_entry_t tssDesc;
 } gdt_t;
 
 extern void gdt_load_descriptor(gdt_desc_t* descriptor);

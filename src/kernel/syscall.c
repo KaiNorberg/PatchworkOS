@@ -1,8 +1,8 @@
 #include "syscall.h"
 
 #include <errno.h>
-#include <string.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "config.h"
 #include "defs.h"

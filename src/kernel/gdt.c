@@ -39,12 +39,12 @@ void gdt_load(void)
 
 void gdt_load_tss(tss_t* tss)
 {
-    gdt.tss.limitLow = sizeof(tss_t);
-    gdt.tss.baseLow = (uint16_t)((uint64_t)tss);
-    gdt.tss.baseLowerMiddle = (uint8_t)((uint64_t)tss >> 16);
-    gdt.tss.access = 0x89;
-    gdt.tss.flagsAndLimitHigh = 0x00; // Flags = 0x0, LimitHigh = 0x0
-    gdt.tss.baseUpperMiddle = (uint8_t)((uint64_t)tss >> (16 + 8));
-    gdt.tss.baseHigh = (uint32_t)((uint64_t)tss >> (16 + 8 + 8));
+    gdt.tssDesc.limitLow = sizeof(tss_t);
+    gdt.tssDesc.baseLow = (uint16_t)((uint64_t)tss);
+    gdt.tssDesc.baseLowerMiddle = (uint8_t)((uint64_t)tss >> 16);
+    gdt.tssDesc.access = 0x89;
+    gdt.tssDesc.flagsAndLimitHigh = 0x00; // Flags = 0x0, LimitHigh = 0x0
+    gdt.tssDesc.baseUpperMiddle = (uint8_t)((uint64_t)tss >> (16 + 8));
+    gdt.tssDesc.baseHigh = (uint32_t)((uint64_t)tss >> (16 + 8 + 8));
     tss_load();
 }
