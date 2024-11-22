@@ -28,6 +28,7 @@ static point_t point;
 
 static bool screenEnabled;
 static bool timeEnabled;
+static atomic_bool panicking;
 
 static lock_t lock;
 
@@ -213,6 +214,7 @@ void log_init(void)
     screenEnabled = false;
     timeEnabled = false;
     lock_init(&lock);
+    atomic_init(&panicking, false);
 
 #if CONFIG_LOG_SERIAL
     com_init(COM1);
@@ -266,6 +268,15 @@ void log_print(const char* string, ...)
 NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
 {
     asm volatile("cli");
+
+    if (atomic_exchange(&panicking, true))
+    {
+        while (true)
+        {
+            asm volatile("hlt");
+        }
+    }
+
     if (smp_initialized())
     {
         smp_halt_others();
