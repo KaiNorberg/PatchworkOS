@@ -57,3 +57,4 @@ build
 .cache
 .xmake
 compile_commands.json
+lib/OVMFbin/OVMF_VARS-pure-efi.fd
