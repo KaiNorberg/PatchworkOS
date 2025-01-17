@@ -10,7 +10,6 @@
 
 static atomic_long count;
 static atomic_long next;
-static uint64_t threadAmount;
 
 bool is_prime(int n)
 {
@@ -77,7 +76,7 @@ static void printnum(int num)
     print(buffer);
 }
 
-static void benchmark(void)
+static void benchmark(uint64_t threadAmount)
 {
     printnum(threadAmount);
     print(" threads: ");
@@ -111,14 +110,10 @@ static void benchmark(void)
 
 int main(void)
 {
-    threadAmount = 1;
-    benchmark();
-    threadAmount = 2;
-    benchmark();
-    threadAmount = 4;
-    benchmark();
-    threadAmount = 8;
-    benchmark();
+    benchmark(1);
+    benchmark(2);
+    benchmark(4);
+    benchmark(8);
 
     return 0;
 }

@@ -23,7 +23,7 @@ deploy: $(PROGRAMS)
 	mmd -i $(TARGET) ::/efi/boot
 	mmd -i $(TARGET) ::/usr
 	mmd -i $(TARGET) ::/usr/bin
-	mmd -i $(TARGET) ::/usr/licence
+	mmd -i $(TARGET) ::/usr/license
 	mcopy -i $(TARGET) -s root/* ::
 	mcopy -i $(TARGET) -s bin/bootloader/bootx64.efi ::/efi/boot
 	mcopy -i $(TARGET) -s bin/kernel/kernel ::/boot
@@ -32,8 +32,7 @@ deploy: $(PROGRAMS)
 	mcopy -i $(TARGET) -s bin/programs/terminal ::/usr/bin
 	mcopy -i $(TARGET) -s bin/programs/helloworld ::/usr/bin
 	mcopy -i $(TARGET) -s bin/programs/threadtest ::/usr/bin
-	mcopy -i $(TARGET) -s COPYING ::/usr/licence
-	mcopy -i $(TARGET) -s LICENSE ::/usr/licence
+	mcopy -i $(TARGET) -s LICENSE ::/usr/license
 
 clean:
 	rm -rf build
