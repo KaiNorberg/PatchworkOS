@@ -293,14 +293,12 @@ static void dwm_handle_mouse_message(const mouse_event_t* event)
         dwm_swap();
     }
 
-    window_t* window = dwm_window_under_point(&cursor->pos);
-
-    if (pressed != MOUSE_NONE)
+    if (pressed != MOUSE_NONE && oldButtons == MOUSE_NONE)
     {
-        dwm_select(window);
+        dwm_select(dwm_window_under_point(&cursor->pos));
     }
 
-    if (window != NULL)
+    if (selected != NULL)
     {
         msg_mouse_t data = {
             .held = event->buttons,
@@ -311,7 +309,7 @@ static void dwm_handle_mouse_message(const mouse_event_t* event)
             .delta.x = cursor->pos.x - oldPos.x,
             .delta.y = cursor->pos.y - oldPos.y,
         };
-        msg_queue_push(&window->messages, MSG_MOUSE, &data, sizeof(msg_mouse_t));
+        msg_queue_push(&selected->messages, MSG_MOUSE, &data, sizeof(msg_mouse_t));
     }
 
     oldButtons = event->buttons;
