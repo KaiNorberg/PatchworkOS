@@ -64,4 +64,8 @@ Documentation will eventually be found on the [wiki](https://github.com/Kaj9296/
 
 ## Contributing
 
-Patchwork is intended as a personal project, therefor contributions are unwanted. However if you find any bugs, issues or just have a suggestion for something i could do better, then feel free to open an issue. This might change in the future.
+Patchwork is now open to contribution. If you find any bugs, issues or just have a suggestion for something I could do better, then feel free to open an issue or if you feel like it, you may submit a pull request. 
+
+Due to the small size of the project there are no strict guidelines, simply try to use descriptive branch names and commit messages, follow the code style of the rest of the project and the clang-format file and ensure your contributions comply with licensing.
+
+The guidelines may expand in the future as necessary.
