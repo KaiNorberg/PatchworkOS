@@ -59,7 +59,7 @@ void simd_context_init(simd_context_t* context)
     memcpy(context->buffer, initContext, PAGE_SIZE);
 }
 
-void simd_context_cleanup(simd_context_t* context)
+void simd_context_deinit(simd_context_t* context)
 {
     pmm_free(context->buffer);
 }

@@ -44,7 +44,7 @@ void loader_load_kernel(boot_kernel_t* kernel, CHAR16* path, EFI_HANDLE imageHan
     uint64_t kernelStart = UINT64_MAX;
     uint64_t kernelEnd = 0;
     for (elf_phdr_t* programHeader = programHeaders; (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize;
-         programHeader = (elf_phdr_t*)((uint64_t)programHeader + header.programHeaderSize))
+        programHeader = (elf_phdr_t*)((uint64_t)programHeader + header.programHeaderSize))
     {
         switch (programHeader->type)
         {
@@ -64,7 +64,7 @@ void loader_load_kernel(boot_kernel_t* kernel, CHAR16* path, EFI_HANDLE imageHan
     kernel->length = kernelPageAmount * EFI_PAGE_SIZE;
 
     for (elf_phdr_t* programHeader = programHeaders; (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize;
-         programHeader = (elf_phdr_t*)((uint64_t)programHeader + header.programHeaderSize))
+        programHeader = (elf_phdr_t*)((uint64_t)programHeader + header.programHeaderSize))
     {
         switch (programHeader->type)
         {

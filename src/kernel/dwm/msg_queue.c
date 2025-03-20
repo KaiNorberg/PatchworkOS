@@ -15,9 +15,9 @@ void msg_queue_init(msg_queue_t* queue)
     lock_init(&queue->lock);
 }
 
-void msg_queue_cleanup(msg_queue_t* queue)
+void msg_queue_deinit(msg_queue_t* queue)
 {
-    blocker_cleanup(&queue->blocker);
+    blocker_deinit(&queue->blocker);
 }
 
 bool msg_queue_avail(msg_queue_t* queue)

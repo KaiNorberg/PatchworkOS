@@ -152,7 +152,7 @@ window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, dwm_ty
 
 void window_free(window_t* window)
 {
-    msg_queue_cleanup(&window->messages);
+    msg_queue_deinit(&window->messages);
     free(window->gfx.buffer);
     free(window);
 }

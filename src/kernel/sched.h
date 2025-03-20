@@ -103,7 +103,7 @@ typedef struct blocker
 
 void blocker_init(blocker_t* blocker);
 
-void blocker_cleanup(blocker_t* blocker);
+void blocker_deinit(blocker_t* blocker);
 
 void sched_context_init(sched_context_t* context);
 

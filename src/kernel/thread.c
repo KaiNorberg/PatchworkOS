@@ -38,6 +38,11 @@ static char** process_allocate_argv(const char** src)
         }
 
         char** dest = malloc(size);
+        if (dest == NULL)
+        {
+            return NULL;
+        }
+
         uint64_t offset = sizeof(const char*) * (argc + 1);
         for (uint64_t i = 0; i < argc; i++)
         {
@@ -53,6 +58,11 @@ static char** process_allocate_argv(const char** src)
     else
     {
         char** dest = malloc(sizeof(const char*));
+        if (dest == NULL)
+        {
+            return NULL;
+        }
+
         dest[0] = NULL;
 
         return dest;
@@ -62,12 +72,18 @@ static char** process_allocate_argv(const char** src)
 static process_t* process_new(const char** argv)
 {
     process_t* process = malloc(sizeof(process_t));
+    if (process == NULL)
+    {
+        return ERRPTR(ENOMEM);
+    }
+
     process->argv = process_allocate_argv(argv);
     if (process->argv == NULL)
     {
         free(process);
-        return NULL;
+        return ERRPTR(ENOMEM);
     }
+
     process->killed = false;
     process->id = atomic_fetch_add(&newPid, 1);
     vfs_context_init(&process->vfsContext);
@@ -80,8 +96,8 @@ static process_t* process_new(const char** argv)
 
 static void process_free(process_t* process)
 {
-    vfs_context_cleanup(&process->vfsContext);
-    space_cleanup(&process->space);
+    vfs_context_deinit(&process->vfsContext);
+    space_deinit(&process->space);
     free(process->argv);
     free(process);
 }
@@ -139,7 +155,7 @@ void thread_free(thread_t* thread)
         process_free(thread->process);
     }
 
-    simd_context_cleanup(&thread->simdContext);
+    simd_context_deinit(&thread->simdContext);
     free(thread);
 }
 

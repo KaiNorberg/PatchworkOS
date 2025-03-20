@@ -30,7 +30,7 @@ typedef enum
 typedef struct
 {
     pid_t id;
-    char** argv;
+    char** argv; // Stores both pointers and strings like "[ptr1][ptr2][ptr3][NULL][string1][string2][string3]"
     bool killed;
     vfs_context_t vfsContext;
     space_t space;

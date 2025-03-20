@@ -18,7 +18,7 @@ typedef struct msg_queue
 
 void msg_queue_init(msg_queue_t* queue);
 
-void msg_queue_cleanup(msg_queue_t* queue);
+void msg_queue_deinit(msg_queue_t* queue);
 
 bool msg_queue_avail(msg_queue_t* queue);
 

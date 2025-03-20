@@ -18,7 +18,7 @@ void space_init(space_t* space)
     }
 }
 
-void space_cleanup(space_t* space)
+void space_deinit(space_t* space)
 {
     for (uint64_t i = PAGE_ENTRY_AMOUNT / 2; i < PAGE_ENTRY_AMOUNT; i++)
     {

@@ -129,6 +129,8 @@ static NOINLINE void smp_start_others(void)
 
 void smp_init(void)
 {
+    log_print("smp: 1");
+
     cpuAmount = 1;
     cpus[0] = malloc(sizeof(cpu_t));
     cpu_init(cpus[0], 0, 0);
@@ -136,7 +138,7 @@ void smp_init(void)
     msr_write(MSR_CPU_ID, cpus[0]->id);
     gdt_load_tss(&cpus[0]->tss);
 
-    log_print("smp: init self");
+    log_print("smp: init");
 }
 
 void smp_init_others(void)
@@ -146,7 +148,7 @@ void smp_init_others(void)
 
     trampoline_init();
     smp_start_others();
-    trampoline_cleanup();
+    trampoline_deinit();
 
     initialized = true;
 }

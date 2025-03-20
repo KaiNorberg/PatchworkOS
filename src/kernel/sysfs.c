@@ -16,9 +16,9 @@ static lock_t lock;
 
 static void resource_free(resource_t* resource)
 {
-    if (resource->delete != NULL)
+    if (resource->onFree != NULL)
     {
-        resource->delete (resource); // Why is clang-format doing this?
+        resource->onFree(resource);
     }
 
     node_remove(&resource->node);
@@ -136,11 +136,15 @@ static file_t* sysfs_open(volume_t* volume, const char* path)
     resource_t* resource = (resource_t*)node;
 
     file_t* file = file_new(volume);
+    if (file == NULL)
+    {
+        return NULL;
+    }
     file->private = resource->private;
     file->ops = resource->ops;
     file->resource = resource;
 
-    if (resource->open != NULL && resource->open(resource, file) == ERR)
+    if (resource->onOpen != NULL && resource->onOpen(resource, file) == ERR)
     {
         return NULL;
     }
@@ -222,8 +226,8 @@ void sysfs_init(void)
     log_print("sysfs: init");
 }
 
-resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_t* ops, void* private, resource_open_t open,
-    resource_delete_t delete)
+resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_t* ops, void* private, resource_on_open_t onOpen,
+    resource_on_free_t onFree)
 {
     LOCK_GUARD(&lock);
 
@@ -249,8 +253,8 @@ resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_
     node_init(&resource->node, filename, SYSFS_RESOURCE);
     resource->ops = ops;
     resource->private = private;
-    resource->open = open;
-    resource->delete = delete;
+    resource->onOpen = onOpen;
+    resource->onFree = onFree;
     atomic_init(&resource->ref, 1);
     atomic_init(&resource->hidden, false);
     node_push(parent, &resource->node);

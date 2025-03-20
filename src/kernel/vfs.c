@@ -5,6 +5,7 @@
 #include "sys/list.h"
 #include "time.h"
 #include "vfs_context.h"
+
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,7 +46,12 @@ static volume_t* volume_get(const char* label)
 
 file_t* file_new(volume_t* volume)
 {
-    file_t* file = malloc(sizeof(file_t)); // TODO: Slab allocator
+    file_t* file = malloc(sizeof(file_t));
+    if (file == NULL)
+    {
+        return NULL;
+    }
+
     file->volume = volume;
     file->pos = 0;
     file->private = NULL;

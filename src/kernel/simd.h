@@ -11,7 +11,7 @@ void simd_init(void);
 
 void simd_context_init(simd_context_t* context);
 
-void simd_context_cleanup(simd_context_t* context);
+void simd_context_deinit(simd_context_t* context);
 
 void simd_context_save(simd_context_t* context);
 

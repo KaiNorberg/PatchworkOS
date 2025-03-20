@@ -51,7 +51,7 @@ static uint64_t vmm_prot_to_flags(prot_t prot)
 static void vmm_load_memory_map(efi_mem_map_t* memoryMap)
 {
     // Kernel pml must be within 32 bit boundry becouse smp trampline loads it as a dword.
-    kernelPml = pmm_alloc_special(1, UINT32_MAX, 0);
+    kernelPml = pmm_alloc_bitmap(1, UINT32_MAX, 0);
     memset(kernelPml, 0, PAGE_SIZE);
 
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)

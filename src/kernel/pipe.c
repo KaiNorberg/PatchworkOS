@@ -11,8 +11,8 @@
 
 static void pipe_private_free(pipe_private_t* private)
 {
-    ring_cleanup(&private->ring);
-    blocker_cleanup(&private->blocker);
+    ring_deinit(&private->ring);
+    blocker_deinit(&private->blocker);
     free(private);
 }
 

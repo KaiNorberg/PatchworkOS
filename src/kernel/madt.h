@@ -9,7 +9,7 @@
 
 #define MADT_FOR_EACH(madt, record) \
     for (record = (typeof(record))madt->records; (uint64_t)record < (uint64_t)madt + madt->header.length; \
-         record = (typeof(record))((uint64_t)record + record->header.length))
+        record = (typeof(record))((uint64_t)record + record->header.length))
 
 typedef struct PACKED
 {

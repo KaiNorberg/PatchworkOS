@@ -8,6 +8,6 @@ int main(void)
 
     terminal_loop();
 
-    terminal_cleanup();
+    terminal_deinit();
     return 0;
 }

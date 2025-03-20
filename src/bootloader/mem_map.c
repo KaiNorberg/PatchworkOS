@@ -21,7 +21,7 @@ void mem_map_init(efi_mem_map_t* memoryMap)
     }
 }
 
-void mem_map_cleanup(efi_mem_map_t* memoryMap)
+void mem_map_deinit(efi_mem_map_t* memoryMap)
 {
     FreePool(memoryMap->base);
 }

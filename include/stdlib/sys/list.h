@@ -18,15 +18,15 @@ typedef struct
 
 #define LIST_FOR_EACH(elem, list) \
     for ((elem) = (typeof(elem))((list)->head.next); (elem) != (typeof(elem))(list); \
-         (elem) = (typeof(elem))(((list_entry_t*)(elem))->next))
+        (elem) = (typeof(elem))(((list_entry_t*)(elem))->next))
 
 #define LIST_FOR_EACH_SAFE(elem, temp, list) \
     for ((elem) = (typeof(elem))((list)->head.next), (temp) = (typeof(elem))(((list_entry_t*)(elem))->next); \
-         (elem) != (typeof(elem))(list); (elem) = (temp), (temp) = (typeof(elem))(((list_entry_t*)(elem))->next))
+        (elem) != (typeof(elem))(list); (elem) = (temp), (temp) = (typeof(elem))(((list_entry_t*)(elem))->next))
 
 #define LIST_FOR_EACH_REVERSE(elem, list) \
     for ((elem) = (typeof(elem))((list)->head.prev); (elem) != (typeof(elem))(list); \
-         (elem) = (typeof(elem))(((list_entry_t*)(elem))->prev))
+        (elem) = (typeof(elem))(((list_entry_t*)(elem))->prev))
 
 #define LIST_FOR_EACH_FROM(elem, start, list) \
     for ((elem) = (typeof(elem))(start); (elem) != (typeof(elem))(list); (elem) = (typeof(elem))(((list_entry_t*)(elem))->next))

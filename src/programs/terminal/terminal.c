@@ -218,7 +218,7 @@ void terminal_init(void)
     }
 }
 
-void terminal_cleanup(void)
+void terminal_deinit(void)
 {
     win_free(terminal);
 }

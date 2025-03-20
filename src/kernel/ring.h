@@ -22,7 +22,7 @@ static inline void ring_init(ring_t* ring)
     ring->dataLength = 0;
 }
 
-static inline void ring_cleanup(ring_t* ring)
+static inline void ring_deinit(ring_t* ring)
 {
     pmm_free(ring->buffer);
 }

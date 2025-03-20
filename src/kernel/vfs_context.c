@@ -12,7 +12,7 @@ void vfs_context_init(vfs_context_t* context)
     lock_init(&context->lock);
 }
 
-void vfs_context_cleanup(vfs_context_t* context)
+void vfs_context_deinit(vfs_context_t* context)
 {
     for (uint64_t i = 0; i < CONFIG_MAX_FD; i++)
     {

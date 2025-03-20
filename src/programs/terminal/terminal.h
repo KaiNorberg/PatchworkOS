@@ -11,7 +11,7 @@ typedef enum
 
 void terminal_init(void);
 
-void terminal_cleanup(void);
+void terminal_deinit(void);
 
 void terminal_loop(void);
 

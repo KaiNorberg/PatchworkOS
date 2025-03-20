@@ -1,6 +1,7 @@
 #include "ramfs.h"
 
 #include "log.h"
+#include "pmm.h"
 #include "sched.h"
 #include "sysfs.h"
 #include "vfs.h"
@@ -77,6 +78,10 @@ static file_t* ramfs_open(volume_t* volume, const char* path)
     ram_file_t* ramFile = (ram_file_t*)node;
 
     file_t* file = file_new(volume);
+    if (file == NULL)
+    {
+        return NULL;
+    }
     file->ops = &fileOps;
     file->private = ramFile;
 

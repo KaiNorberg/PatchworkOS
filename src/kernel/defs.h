@@ -16,13 +16,21 @@
 
 #define ERROR(code) \
     ({ \
-        sched_thread()->error = code; \
+        thread_t* thread = sched_thread(); \
+        if (thread != NULL) \
+        { \
+            thread->error = code; \
+        } \
         ERR; \
     })
 
 #define ERRPTR(code) \
     ({ \
-        sched_thread()->error = code; \
+        thread_t* thread = sched_thread(); \
+        if (thread != NULL) \
+        { \
+            thread->error = code; \
+        } \
         NULL; \
     })
 

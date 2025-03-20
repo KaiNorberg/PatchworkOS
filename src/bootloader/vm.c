@@ -27,7 +27,7 @@ void vm_init(void)
         void* virtAddr = (void*)(HIGHER_HALF_BASE + desc->PhysicalStart);
         pml_map_pages(pageTable, virtAddr, (void*)desc->PhysicalStart, desc->NumberOfPages, PAGE_WRITE);
     }
-    mem_map_cleanup(&memoryMap);
+    mem_map_deinit(&memoryMap);
 
     PML_LOAD(pageTable);
 }

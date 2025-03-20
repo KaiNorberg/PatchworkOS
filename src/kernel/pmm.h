@@ -6,7 +6,7 @@
 
 #include <sys/proc.h>
 
-#define PMM_MAX_SPECIAL_ADDR (0x100000)
+#define PMM_MAX_SPECIAL_ADDR (0x100000 * 64)
 
 typedef struct page_buffer
 {
@@ -24,15 +24,15 @@ typedef struct page_stack
 
 typedef struct page_bitmap
 {
-    uint8_t map[(PMM_MAX_SPECIAL_ADDR / PAGE_SIZE) / 8];
     uint64_t firstFreeIndex;
+    uint8_t map[(PMM_MAX_SPECIAL_ADDR / PAGE_SIZE) / 8];
 } page_bitmap_t;
 
 void pmm_init(efi_mem_map_t* memoryMap);
 
 void* pmm_alloc(void);
 
-void* pmm_alloc_special(uint64_t count, uintptr_t maxAddr, uint64_t alignment);
+void* pmm_alloc_bitmap(uint64_t count, uintptr_t maxAddr, uint64_t alignment);
 
 void pmm_free(void* address);
 

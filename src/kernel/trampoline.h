@@ -14,4 +14,4 @@ void trampoline_init(void);
 
 void trampoline_cpu_setup(cpu_t* cpu);
 
-void trampoline_cleanup(void);
+void trampoline_deinit(void);

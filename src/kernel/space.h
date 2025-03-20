@@ -13,6 +13,6 @@ typedef struct
 
 void space_init(space_t* space);
 
-void space_cleanup(space_t* space);
+void space_deinit(space_t* space);
 
 void space_load(space_t* space);

@@ -9,9 +9,12 @@
 #include "config.h"
 #include "lock.h"
 #include "log.h"
+#include "smp.h"
 #include "sys/proc.h"
 #include "utils.h"
 #include "vmm.h"
+
+static uint64_t flexAreaSize;
 
 static const char* efiMemTypeToString[] = {
     "reserved memory type",
@@ -96,7 +99,7 @@ static void page_stack_free(void* address)
 
 static void page_bitmap_init(void)
 {
-    memset(bitmap.map, 255, sizeof(page_bitmap_t));
+    memset(bitmap.map, -1, sizeof(page_bitmap_t));
     bitmap.firstFreeIndex = 0;
 }
 
@@ -177,10 +180,21 @@ static void pmm_free_pages_unlocked(void* address, uint64_t count)
     }
 }
 
+static void pmm_detect_memory(efi_mem_map_t* memoryMap)
+{
+    log_print("UEFI-provided memory map");
+
+    for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
+    {
+        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
+        pageAmount += desc->amountOfPages;
+    }
+
+    log_print("Detected memory: %d KB", (pageAmount * PAGE_SIZE) / 1024);
+}
+
 static void pmm_load_memory(efi_mem_map_t* memoryMap)
 {
-    log_print("UEFI-provided memory map: ");
-
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
         const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
@@ -189,16 +203,14 @@ static void pmm_load_memory(efi_mem_map_t* memoryMap)
         {
             pmm_free_pages_unlocked(VMM_LOWER_TO_HIGHER(desc->physicalStart), desc->amountOfPages);
         }
-
-        pageAmount += desc->amountOfPages;
     }
-
-    log_print("Detected memory: %d KB", (pageAmount * PAGE_SIZE) / 1024);
 }
 
 void pmm_init(efi_mem_map_t* memoryMap)
 {
     lock_init(&lock);
+
+    pmm_detect_memory(memoryMap);
 
     page_stack_init();
     page_bitmap_init();
@@ -210,16 +222,14 @@ void* pmm_alloc(void)
 {
     LOCK_GUARD(&lock);
     void* address = page_stack_alloc();
-    LOG_ASSERT(address != NULL, "no more memory");
-    return address;
+    return address != NULL ? address : ERRPTR(ENOMEM);
 }
 
-void* pmm_alloc_special(uint64_t count, uintptr_t maxAddr, uint64_t alignment)
+void* pmm_alloc_bitmap(uint64_t count, uintptr_t maxAddr, uint64_t alignment)
 {
     LOCK_GUARD(&lock);
     void* address = page_bitmap_alloc(count, maxAddr, alignment);
-    LOG_ASSERT(address != NULL, "no more special memory");
-    return address;
+    return address != NULL ? address : ERRPTR(ENOMEM);
 }
 
 void pmm_free(void* address)

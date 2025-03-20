@@ -16,10 +16,8 @@ void cli_push(void)
         return;
     }
 
-    // Race condition does not matter
     uint64_t rflags = rflags_read();
     asm volatile("cli");
-
     cpu_t* cpu = smp_self_unsafe();
     if (cpu->cliAmount == 0)
     {
@@ -35,10 +33,11 @@ void cli_pop(void)
         return;
     }
 
+    // Make sure interrupts are disabled
+    asm volatile("cli");
+
     cpu_t* cpu = smp_self_unsafe();
-
     LOG_ASSERT(cpu->cliAmount != 0, "cli amount underflow");
-
     cpu->cliAmount--;
     if (cpu->cliAmount == 0 && cpu->prevFlags & RFLAGS_INTERRUPT_ENABLE && cpu->trapDepth == 0)
     {

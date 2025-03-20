@@ -16,7 +16,7 @@ typedef struct
 
 void vfs_context_init(vfs_context_t* context);
 
-void vfs_context_cleanup(vfs_context_t* context);
+void vfs_context_deinit(vfs_context_t* context);
 
 fd_t vfs_context_open(vfs_context_t* context, file_t* file);
 

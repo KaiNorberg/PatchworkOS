@@ -27,7 +27,7 @@ void trampoline_cpu_setup(cpu_t* cpu)
     WRITE_64(TRAMPOLINE_STACK_TOP_ADDRESS, (uint64_t)cpu->idleStack + CPU_IDLE_STACK_SIZE);
 }
 
-void trampoline_cleanup(void)
+void trampoline_deinit(void)
 {
     memcpy(TRAMPOLINE_PHYSICAL_START, backupBuffer, PAGE_SIZE);
     pmm_free(backupBuffer);
