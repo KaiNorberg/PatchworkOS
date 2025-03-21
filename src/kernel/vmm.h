@@ -22,6 +22,8 @@ void vmm_cpu_init(void);
 
 pml_t* vmm_kernel_pml(void);
 
+void* vmm_kernel_alloc(void* virtAddr, uint64_t length);
+
 void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t length);
 
 void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot);

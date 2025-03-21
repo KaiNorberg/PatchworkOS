@@ -107,6 +107,11 @@ static thread_t* process_thread_new(process_t* process, void* entry, priority_t 
     atomic_fetch_add(&process->ref, 1);
 
     thread_t* thread = malloc(sizeof(thread_t));
+    if (thread == NULL)
+    {
+        atomic_fetch_sub(&process->ref, 1);
+        return NULL;
+    }
     list_entry_init(&thread->entry);
     thread->process = process;
     thread->id = atomic_fetch_add(&thread->process->newTid, 1);
@@ -118,7 +123,12 @@ static thread_t* process_thread_new(process_t* process, void* entry, priority_t 
     thread->block.blocker = NULL;
     thread->error = 0;
     thread->priority = MIN(priority, PRIORITY_MAX);
-    simd_context_init(&thread->simdContext);
+    if (simd_context_init(&thread->simdContext) == ERR)
+    {
+        atomic_fetch_sub(&process->ref, 1);
+        free(thread);
+        return NULL;
+    }
     memset(&thread->kernelStack, 0, CONFIG_KERNEL_STACK);
 
     memset(&thread->trapFrame, 0, sizeof(trap_frame_t));
@@ -142,6 +152,7 @@ thread_t* thread_new(const char** argv, void* entry, priority_t priority)
     thread_t* thread = process_thread_new(process, entry, priority);
     if (thread == NULL)
     {
+        process_free(process);
         return ERRPTR(EINVAL);
     }
 

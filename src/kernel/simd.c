@@ -53,10 +53,17 @@ void simd_init(void)
     }
 }
 
-void simd_context_init(simd_context_t* context)
+uint64_t simd_context_init(simd_context_t* context)
 {
     context->buffer = pmm_alloc();
+    if (context->buffer == NULL)
+    {
+        return ERR;
+    }
+
     memcpy(context->buffer, initContext, PAGE_SIZE);
+
+    return 0;
 }
 
 void simd_context_deinit(simd_context_t* context)

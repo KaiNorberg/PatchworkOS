@@ -43,8 +43,8 @@ void* pml_phys_addr(pml_t* table, const void* virtAddr);
 
 bool pml_mapped(pml_t* table, const void* virtAddr, uint64_t pageAmount);
 
-void pml_map(pml_t* table, void* virtAddr, void* physAddr, uint64_t pageAmount, uint64_t flags);
+uint64_t pml_map(pml_t* table, void* virtAddr, void* physAddr, uint64_t pageAmount, uint64_t flags);
 
 void pml_unmap(pml_t* table, void* virtAddr, uint64_t pageAmount);
 
-void pml_change_flags(pml_t* table, void* virtAddr, uint64_t pageAmount, uint64_t flags);
+uint64_t pml_change_flags(pml_t* table, void* virtAddr, uint64_t pageAmount, uint64_t flags);

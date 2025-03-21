@@ -37,20 +37,23 @@ void _HeapBlockSplit(heap_header_t* block, uint64_t size)
 
 heap_header_t* _HeapFirstBlock(void)
 {
+    if (firstBlock == NULL)
+    {
+        firstBlock = _HeapBlockNew(PAGE_SIZE - sizeof(heap_header_t));
+    }
+
     return firstBlock;
 }
 
-#ifdef __EMBED__
 heap_header_t* _HeapBlockNew(uint64_t size)
 {
     uint64_t pageAmount = SIZE_IN_PAGES(size + sizeof(heap_header_t));
 
-    heap_header_t* newBlock = (heap_header_t*)newAddress;
-    for (uint64_t i = 0; i < pageAmount; i++)
+    heap_header_t* newBlock = _PageAlloc(pageAmount);
+    if (newBlock == NULL)
     {
-        vmm_kernel_map((void*)(newAddress + i * PAGE_SIZE), VMM_HIGHER_TO_LOWER(pmm_alloc()), PAGE_SIZE);
+        return NULL;
     }
-    newAddress += pageAmount * PAGE_SIZE;
 
     newBlock->size = pageAmount * PAGE_SIZE - sizeof(heap_header_t);
     newBlock->next = NULL;
@@ -60,12 +63,14 @@ heap_header_t* _HeapBlockNew(uint64_t size)
     return newBlock;
 }
 
+#ifdef __EMBED__
+
 void _HeapInit(void)
 {
     newAddress = ROUND_UP((uint64_t)&_kernelEnd, PAGE_SIZE);
-    firstBlock = _HeapBlockNew(PAGE_SIZE);
-
     lock_init(&lock);
+
+    firstBlock = NULL;
 }
 
 void _HeapAcquire(void)
@@ -78,30 +83,24 @@ void _HeapRelease(void)
     lock_release(&lock);
 }
 
-#else
-
-heap_header_t* _HeapBlockNew(uint64_t size)
+void* _PageAlloc(uint64_t amount)
 {
-    size = ROUND_UP(size + sizeof(heap_header_t), PAGE_SIZE);
-
-    heap_header_t* newBlock = mmap(zeroResource, NULL, size, PROT_READ | PROT_WRITE);
-    if (newBlock == NULL)
+    void* addr = (void*)newAddress;
+    if (vmm_kernel_alloc(addr, amount * PAGE_SIZE) == NULL)
     {
         return NULL;
     }
+    newAddress += amount * PAGE_SIZE;
 
-    newBlock->size = size - sizeof(heap_header_t);
-    newBlock->next = NULL;
-    newBlock->reserved = false;
-    newBlock->magic = HEAP_HEADER_MAGIC;
-
-    return newBlock;
+    return addr;
 }
+
+#else
 
 void _HeapInit(void)
 {
     zeroResource = open("sys:/zero");
-    firstBlock = _HeapBlockNew(PAGE_SIZE - sizeof(heap_header_t));
+    firstBlock = NULL;
 }
 
 // TODO: Implement user space mutex
@@ -111,6 +110,11 @@ void _HeapAcquire(void)
 
 void _HeapRelease(void)
 {
+}
+
+void* _PageAlloc(uint64_t amount)
+{
+    return mmap(zeroResource, NULL, amount * PAGE_SIZE, PROT_READ | PROT_WRITE);
 }
 
 #endif

@@ -1,9 +1,7 @@
 #include "pml.h"
-
 #include "pmm.h"
 #include "regs.h"
 #include "vmm.h"
-
 #include <string.h>
 #include <sys/math.h>
 
@@ -15,19 +13,16 @@ static pml_entry_t page_entry_create(void* physAddr, uint64_t flags)
 static pml_t* pml_get(pml_t* table, uint64_t index)
 {
     pml_entry_t entry = table->entries[index];
-
     if (!(entry & PAGE_PRESENT))
     {
         return NULL;
     }
-
     return PAGE_ENTRY_GET_ADDRESS(entry);
 }
 
 static pml_t* pml_get_or_allocate(pml_t* table, uint64_t index, uint64_t flags)
 {
     pml_entry_t entry = table->entries[index];
-
     if (entry & PAGE_PRESENT)
     {
         return PAGE_ENTRY_GET_ADDRESS(entry);
@@ -35,10 +30,12 @@ static pml_t* pml_get_or_allocate(pml_t* table, uint64_t index, uint64_t flags)
     else
     {
         pml_t* address = pmm_alloc();
+        if (address == NULL)
+        {
+            return NULL;
+        }
         memset(address, 0, PAGE_SIZE);
-
         table->entries[index] = page_entry_create(VMM_HIGHER_TO_LOWER(address), flags);
-
         return address;
     }
 }
@@ -63,15 +60,18 @@ static void pml_free_level(pml_t* table, int64_t level)
             pml_free_level(PAGE_ENTRY_GET_ADDRESS(entry), level - 1);
         }
     }
-
     pmm_free(table);
 }
 
 pml_t* pml_new(void)
 {
     pml_t* table = pmm_alloc();
-    memset(table, 0, PAGE_SIZE);
+    if (table == NULL)
+    {
+        return NULL;
+    }
 
+    memset(table, 0, PAGE_SIZE);
     return table;
 }
 
@@ -96,9 +96,28 @@ void* pml_phys_addr(pml_t* table, const void* virtAddr)
     virtAddr = (void*)ROUND_DOWN(virtAddr, PAGE_SIZE);
 
     pml_t* level3 = pml_get(table, PML_GET_INDEX(virtAddr, 4));
+    if (level3 == NULL)
+    {
+        return NULL;
+    }
+
     pml_t* level2 = pml_get(level3, PML_GET_INDEX(virtAddr, 3));
+    if (level2 == NULL)
+    {
+        return NULL;
+    }
+
     pml_t* level1 = pml_get(level2, PML_GET_INDEX(virtAddr, 2));
+    if (level1 == NULL)
+    {
+        return NULL;
+    }
+
     pml_entry_t* entry = &level1->entries[PML_GET_INDEX(virtAddr, 1)];
+    if (!(*entry & PAGE_PRESENT))
+    {
+        return NULL;
+    }
 
     return (void*)(((uint64_t)PAGE_ENTRY_GET_ADDRESS(*entry)) + offset);
 }
@@ -133,26 +152,39 @@ bool pml_mapped(pml_t* table, const void* virtAddr, uint64_t pageAmount)
 
         virtAddr = (void*)((uint64_t)virtAddr + PAGE_SIZE);
     }
-
     return true;
 }
 
-#include "log.h"
-
-void pml_map(pml_t* table, void* virtAddr, void* physAddr, uint64_t pageAmount, uint64_t flags)
+uint64_t pml_map(pml_t* table, void* virtAddr, void* physAddr, uint64_t pageAmount, uint64_t flags)
 {
     for (uint64_t i = 0; i < pageAmount; i++)
     {
         pml_t* level3 = pml_get_or_allocate(table, PML_GET_INDEX(virtAddr, 4), (flags | PAGE_WRITE | PAGE_USER) & ~PAGE_GLOBAL);
-        pml_t* level2 = pml_get_or_allocate(level3, PML_GET_INDEX(virtAddr, 3), flags | PAGE_WRITE | PAGE_USER);
-        pml_t* level1 = pml_get_or_allocate(level2, PML_GET_INDEX(virtAddr, 2), flags | PAGE_WRITE | PAGE_USER);
-        pml_entry_t* entry = &level1->entries[PML_GET_INDEX(virtAddr, 1)];
+        if (level3 == NULL)
+        {
+            return ERR;
+        }
 
+        pml_t* level2 = pml_get_or_allocate(level3, PML_GET_INDEX(virtAddr, 3), flags | PAGE_WRITE | PAGE_USER);
+        if (level2 == NULL)
+        {
+            return ERR;
+        }
+
+        pml_t* level1 = pml_get_or_allocate(level2, PML_GET_INDEX(virtAddr, 2), flags | PAGE_WRITE | PAGE_USER);
+        if (level1 == NULL)
+        {
+            return ERR;
+        }
+
+        pml_entry_t* entry = &level1->entries[PML_GET_INDEX(virtAddr, 1)];
         *entry = page_entry_create(physAddr, flags);
 
         virtAddr = (void*)((uint64_t)virtAddr + PAGE_SIZE);
         physAddr = (void*)((uint64_t)physAddr + PAGE_SIZE);
     }
+
+    return 0; // Success
 }
 
 void pml_unmap(pml_t* table, void* virtAddr, uint64_t pageAmount)
@@ -160,30 +192,62 @@ void pml_unmap(pml_t* table, void* virtAddr, uint64_t pageAmount)
     for (uint64_t i = 0; i < pageAmount; i++)
     {
         pml_t* level3 = pml_get(table, PML_GET_INDEX(virtAddr, 4));
-        pml_t* level2 = pml_get(level3, PML_GET_INDEX(virtAddr, 3));
-        pml_t* level1 = pml_get(level2, PML_GET_INDEX(virtAddr, 2));
-        pml_entry_t* entry = &level1->entries[PML_GET_INDEX(virtAddr, 1)];
+        if (level3 == NULL)
+        {
+            continue;
+        }
 
+        pml_t* level2 = pml_get(level3, PML_GET_INDEX(virtAddr, 3));
+        if (level2 == NULL)
+        {
+            continue;
+        }
+
+        pml_t* level1 = pml_get(level2, PML_GET_INDEX(virtAddr, 2));
+        if (level1 == NULL)
+        {
+            continue;
+        }
+
+        pml_entry_t* entry = &level1->entries[PML_GET_INDEX(virtAddr, 1)];
         if (*entry & PAGE_OWNED)
         {
             pmm_free(PAGE_ENTRY_GET_ADDRESS(*entry));
         }
+
         *entry = 0;
-
         PAGE_INVALIDATE(virtAddr);
-
         virtAddr = (void*)((uint64_t)virtAddr + PAGE_SIZE);
     }
 }
 
-void pml_change_flags(pml_t* table, void* virtAddr, uint64_t pageAmount, uint64_t flags)
+uint64_t pml_change_flags(pml_t* table, void* virtAddr, uint64_t pageAmount, uint64_t flags)
 {
     for (uint64_t i = 0; i < pageAmount; i++)
     {
         pml_t* level3 = pml_get(table, PML_GET_INDEX(virtAddr, 4));
+        if (level3 == NULL)
+        {
+            return ERR;
+        }
+
         pml_t* level2 = pml_get(level3, PML_GET_INDEX(virtAddr, 3));
+        if (level2 == NULL)
+        {
+            return ERR;
+        }
+
         pml_t* level1 = pml_get(level2, PML_GET_INDEX(virtAddr, 2));
+        if (level1 == NULL)
+        {
+            return ERR;
+        }
+
         pml_entry_t* entry = &level1->entries[PML_GET_INDEX(virtAddr, 1)];
+        if (!(*entry & PAGE_PRESENT))
+        {
+            return ERR;
+        }
 
         uint64_t finalFlags = flags;
         if (*entry & PAGE_OWNED)
@@ -193,7 +257,8 @@ void pml_change_flags(pml_t* table, void* virtAddr, uint64_t pageAmount, uint64_
 
         *entry = page_entry_create(VMM_HIGHER_TO_LOWER(PAGE_ENTRY_GET_ADDRESS(*entry)), finalFlags);
         PAGE_INVALIDATE(virtAddr);
-
         virtAddr = (void*)((uint64_t)virtAddr + PAGE_SIZE);
     }
+
+    return 0; // Success
 }

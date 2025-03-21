@@ -33,3 +33,5 @@ void _HeapInit(void);
 void _HeapAcquire(void);
 
 void _HeapRelease(void);
+
+void* _PageAlloc(uint64_t amount);

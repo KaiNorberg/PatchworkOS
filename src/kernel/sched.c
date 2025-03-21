@@ -136,6 +136,7 @@ static thread_t* sched_context_find_any(sched_context_t* context)
 static void sched_spawn_init_thread(void)
 {
     thread_t* thread = thread_new(NULL, NULL, PRIORITY_MAX);
+    LOG_ASSERT(thread != NULL, "failed to create init thread");
     thread->timeEnd = UINT64_MAX;
 
     smp_self_unsafe()->sched.runThread = thread;
