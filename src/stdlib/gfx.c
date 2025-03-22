@@ -5,7 +5,8 @@
 #include <sys/io.h>
 #include <sys/math.h>
 
-#ifndef __EMBED__
+#include "platform/platform.h"
+#if _PLATFORM_HAS_FILE_IO
 
 gfx_fbmp_t* gfx_fbmp_new(const char* path)
 {

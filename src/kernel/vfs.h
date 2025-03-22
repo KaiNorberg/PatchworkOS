@@ -20,7 +20,7 @@
 #define VFS_END_OF_NAME(ch) ((ch) == VFS_NAME_SEPARATOR || (ch) == '\0')
 #define VFS_END_OF_LABEL(ch) ((ch) == VFS_LABEL_SEPARATOR || (ch) == '\0')
 
-#define FILE_DEFER(file) __attribute__((cleanup(file_guard_release))) file_t* CONCAT(f, __COUNTER__) = (file)
+#define FILE_DEFER(file) __attribute__((cleanup(file_defer_cleanup))) file_t* CONCAT(f, __COUNTER__) = (file)
 
 typedef struct resource resource_t;
 
@@ -102,7 +102,7 @@ file_t* file_ref(file_t* file);
 
 void file_deref(file_t* file);
 
-static inline void file_guard_release(file_t** file)
+static inline void file_defer_cleanup(file_t** file)
 {
     file_deref(*file);
 }

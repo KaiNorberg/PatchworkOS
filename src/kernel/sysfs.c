@@ -7,9 +7,9 @@
 
 #include <stdarg.h>
 #include <stdatomic.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include <sys/list.h>
 
 static node_t root;
@@ -123,7 +123,7 @@ static file_ops_t fileOps = {
 
 static file_t* sysfs_open(volume_t* volume, const char* path)
 {
-    LOCK_GUARD(&lock);
+    LOCK_DEFER(&lock);
 
     node_t* node = node_traverse(&root, path, VFS_NAME_SEPARATOR);
     if (node == NULL)
@@ -157,7 +157,7 @@ static file_t* sysfs_open(volume_t* volume, const char* path)
 
 static uint64_t sysfs_stat(volume_t* volume, const char* path, stat_t* stat)
 {
-    LOCK_GUARD(&lock);
+    LOCK_DEFER(&lock);
 
     node_t* node = node_traverse(&root, path, VFS_NAME_SEPARATOR);
     if (node == NULL)
@@ -173,7 +173,7 @@ static uint64_t sysfs_stat(volume_t* volume, const char* path, stat_t* stat)
 
 static uint64_t sysfs_listdir(volume_t* volume, const char* path, dir_entry_t* entries, uint64_t amount)
 {
-    LOCK_GUARD(&lock);
+    LOCK_DEFER(&lock);
 
     node_t* node = node_traverse(&root, path, VFS_NAME_SEPARATOR);
     if (node == NULL)
@@ -230,7 +230,7 @@ void sysfs_init(void)
 resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_t* ops, void* private, resource_on_open_t onOpen,
     resource_on_free_t onFree)
 {
-    LOCK_GUARD(&lock);
+    LOCK_DEFER(&lock);
 
     node_t* parent = &root;
     const char* name = name_first(path);

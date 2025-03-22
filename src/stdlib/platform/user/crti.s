@@ -1,5 +1,3 @@
-%ifndef __EMBED__
-
 section .init
 global _init
 _init:
@@ -11,5 +9,3 @@ global _fini
 _fini:
    push rbp
    mov rbp, rsp
-
-%endif

@@ -12,13 +12,13 @@
 
 #include <errno.h>
 #include <stdatomic.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/dwm.h>
 #include <sys/gfx.h>
 #include <sys/io.h>
-#include <sys/math.h>
 #include <sys/kbd.h>
+#include <sys/math.h>
 #include <sys/mouse.h>
 
 static gfx_t frontbuffer;
@@ -131,7 +131,7 @@ static void dwm_redraw_others(window_t* window, const rect_t* rect)
         {
             continue;
         }
-        LOCK_GUARD(&other->lock);
+        LOCK_DEFER(&other->lock);
 
         rect_t otherRect = WINDOW_RECT(other);
         if (RECT_OVERLAP(rect, &otherRect))
@@ -150,7 +150,7 @@ static void dwm_invalidate_above(window_t* window, const rect_t* rect)
     window_t* other;
     LIST_FOR_EACH_FROM(other, window->entry.next, &windows)
     {
-        LOCK_GUARD(&other->lock);
+        LOCK_DEFER(&other->lock);
 
         rect_t otherRect = WINDOW_RECT(other);
         if (RECT_OVERLAP(rect, &otherRect))
@@ -176,7 +176,7 @@ static void dwm_swap(void)
 
 static void dwm_draw_wall(void)
 {
-    LOCK_GUARD(&wall->lock);
+    LOCK_DEFER(&wall->lock);
     if (!wall->invalid && !wall->moved)
     {
         return;
@@ -191,7 +191,7 @@ static void dwm_draw_wall(void)
     window_t* window;
     LIST_FOR_EACH(window, &windows)
     {
-        LOCK_GUARD(&window->lock);
+        LOCK_DEFER(&window->lock);
         window->moved = true;
     }
 }
@@ -201,7 +201,7 @@ static void dwm_draw_windows(void)
     window_t* window;
     LIST_FOR_EACH(window, &windows)
     {
-        LOCK_GUARD(&window->lock);
+        LOCK_DEFER(&window->lock);
         const rect_t* fitRect = window->type == DWM_WINDOW ? &clientRect : &screenRect;
 
         rect_t rect;
@@ -242,7 +242,7 @@ static void dwm_draw_windows(void)
 
 static void dwm_draw_cursor(void)
 {
-    LOCK_GUARD(&cursor->lock);
+    LOCK_DEFER(&cursor->lock);
 
     point_t srcPoint = {0};
     rect_t cursorRect = WINDOW_RECT(cursor);
@@ -255,7 +255,7 @@ static window_t* dwm_window_under_point(const point_t* point)
     window_t* window;
     LIST_FOR_EACH_REVERSE(window, &windows)
     {
-        LOCK_GUARD(&window->lock);
+        LOCK_DEFER(&window->lock);
 
         rect_t windowRect = WINDOW_RECT(window);
         if (RECT_CONTAINS_POINT(&windowRect, point))
@@ -271,7 +271,7 @@ static void dwm_handle_mouse_message(const mouse_event_t* event)
 {
     static mouse_buttons_t oldButtons = MOUSE_NONE;
 
-    LOCK_GUARD(&cursor->lock);
+    LOCK_DEFER(&cursor->lock);
 
     mouse_buttons_t pressed = (event->buttons & ~oldButtons);
     mouse_buttons_t released = (oldButtons & ~event->buttons);
@@ -374,7 +374,7 @@ static void dwm_poll(void)
     {
         sched_block(&blocker, SEC / 256);
 
-        LOCK_GUARD(&lock);
+        LOCK_DEFER(&lock);
 
         dwm_poll_mouse();
         dwm_poll_keyboard();
@@ -404,7 +404,7 @@ static void dwm_loop(void)
 
 static void dwm_window_cleanup(window_t* window)
 {
-    LOCK_GUARD(&lock);
+    LOCK_DEFER(&lock);
 
     if (window == selected)
     {
@@ -454,7 +454,7 @@ static void dwm_window_cleanup(window_t* window)
 
 static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
 {
-    LOCK_GUARD(&lock);
+    LOCK_DEFER(&lock);
 
     switch (request)
     {
@@ -471,7 +471,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
         {
             return ERR;
         }
-        LOCK_GUARD(&window->lock);
+        LOCK_DEFER(&window->lock);
 
         switch (window->type)
         {
@@ -600,7 +600,7 @@ void dwm_redraw(void)
 
 void dwm_update_client_rect(void)
 {
-    LOCK_GUARD(&lock);
+    LOCK_DEFER(&lock);
 
     dwm_update_client_rect_unlocked();
 }

@@ -1,5 +1,3 @@
-%ifndef __EMBED__
-
 extern main
 extern exit
 extern _init
@@ -18,5 +16,3 @@ _start:
     call exit
     ud2
 .end:
-
-%endif

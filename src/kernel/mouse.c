@@ -65,7 +65,7 @@ void mouse_free(mouse_t* mouse)
 
 void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, const point_t* delta)
 {
-    LOCK_GUARD(&mouse->lock);
+    LOCK_DEFER(&mouse->lock);
     mouse->events[mouse->writeIndex] = (mouse_event_t){
         .time = time_uptime(),
         .buttons = buttons,

@@ -12,9 +12,9 @@
 
 #include <stdarg.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include <sys/gfx.h>
 #include <sys/io.h>
 #include <sys/proc.h>
@@ -104,7 +104,7 @@ void log_init(void)
 
 void log_enable_screen(gop_buffer_t* gopBuffer)
 {
-    LOCK_GUARD(&lock);
+    LOCK_DEFER(&lock);
 
     if (gopBuffer != NULL)
     {
@@ -125,13 +125,13 @@ void log_enable_screen(gop_buffer_t* gopBuffer)
 
 void log_disable_screen(void)
 {
-    LOCK_GUARD(&lock);
+    LOCK_DEFER(&lock);
     screenEnabled = false;
 }
 
 void log_enable_time(void)
 {
-    LOCK_GUARD(&lock);
+    LOCK_DEFER(&lock);
     timeEnabled = true;
 }
 
@@ -142,7 +142,7 @@ bool log_time_enabled(void)
 
 void log_write(const char* str)
 {
-    LOCK_GUARD(&lock);
+    LOCK_DEFER(&lock);
 
     const char* ptr = str;
     while (*ptr != '\0')

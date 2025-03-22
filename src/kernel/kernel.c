@@ -23,8 +23,8 @@
 #include "vmm.h"
 
 #include <bootloader/boot_info.h>
-#include <stdlib_internal/init.h>
 #include <stdio.h>
+#include <stdlib_internal/init.h>
 
 static void kernel_free_boot_data(efi_mem_map_t* memoryMap)
 {

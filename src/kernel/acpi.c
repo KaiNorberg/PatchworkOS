@@ -3,8 +3,8 @@
 #include "log.h"
 #include "vmm.h"
 
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 
 static uint64_t tableAmount;
 static xsdt_t* xsdt;

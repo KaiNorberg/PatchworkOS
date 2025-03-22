@@ -11,10 +11,9 @@
 #include <bootloader/boot_info.h>
 
 #include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/math.h>
-#include <stdio.h>
-
 
 static uint64_t flexAreaSize;
 
@@ -222,14 +221,14 @@ void pmm_init(efi_mem_map_t* memoryMap)
 
 void* pmm_alloc(void)
 {
-    LOCK_GUARD(&lock);
+    LOCK_DEFER(&lock);
     void* address = page_stack_alloc();
     return address != NULL ? address : ERRPTR(ENOMEM);
 }
 
 void* pmm_alloc_bitmap(uint64_t count, uintptr_t maxAddr, uint64_t alignment)
 {
-    LOCK_GUARD(&lock);
+    LOCK_DEFER(&lock);
     void* address = page_bitmap_alloc(count, maxAddr, alignment);
     return address != NULL ? address : ERRPTR(ENOMEM);
 }
@@ -237,14 +236,14 @@ void* pmm_alloc_bitmap(uint64_t count, uintptr_t maxAddr, uint64_t alignment)
 void pmm_free(void* address)
 {
     address = (void*)ROUND_DOWN(address, PAGE_SIZE);
-    LOCK_GUARD(&lock);
+    LOCK_DEFER(&lock);
     pmm_free_unlocked(address);
 }
 
 void pmm_free_pages(void* address, uint64_t count)
 {
     address = (void*)ROUND_DOWN(address, PAGE_SIZE);
-    LOCK_GUARD(&lock);
+    LOCK_DEFER(&lock);
     pmm_free_pages_unlocked(address, count);
 }
 

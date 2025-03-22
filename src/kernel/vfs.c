@@ -30,7 +30,7 @@ static void volume_deref(volume_t* volume)
 
 static volume_t* volume_get(const char* label)
 {
-    LOCK_GUARD(&volumesLock);
+    LOCK_DEFER(&volumesLock);
 
     volume_t* volume;
     LIST_FOR_EACH(volume, &volumes)
@@ -142,7 +142,7 @@ static uint64_t vfs_make_canonical(const char* start, char* out, const char* pat
 static uint64_t vfs_parse_path(char* out, const char* path)
 {
     vfs_context_t* context = &sched_process()->vfsContext;
-    LOCK_GUARD(&context->lock);
+    LOCK_DEFER(&context->lock);
 
     if (path[0] == VFS_NAME_SEPARATOR) // Root path
     {
@@ -214,7 +214,7 @@ uint64_t vfs_attach_simple(const char* label, const volume_ops_t* ops)
     {
         return ERROR(EINVAL);
     }
-    LOCK_GUARD(&volumesLock);
+    LOCK_DEFER(&volumesLock);
 
     volume_t* volume;
     LIST_FOR_EACH(volume, &volumes)
@@ -242,7 +242,7 @@ uint64_t vfs_mount(const char* label, fs_t* fs)
 
 uint64_t vfs_unmount(const char* label)
 {
-    LOCK_GUARD(&volumesLock);
+    LOCK_DEFER(&volumesLock);
 
     volume_t* volume;
     bool found = false;
@@ -312,7 +312,7 @@ uint64_t vfs_chdir(const char* path)
     }
 
     vfs_context_t* context = &sched_process()->vfsContext;
-    LOCK_GUARD(&context->lock);
+    LOCK_DEFER(&context->lock);
 
     strcpy(context->cwd, parsedPath);
     return 0;

@@ -6,7 +6,7 @@ SRC += src/stdlib/string.c
 
 CFLAGS += $(CFLAGS_DISABLE_SIMD) -fpic -fno-stack-check \
 	-fshort-wchar -mno-red-zone -Wno-array-bounds \
-	-D__BOOTLOADER__ -D__EMBED__ \
+	-D__BOOTLOADER__ \
 	-Iinclude/bootloader -Ilib/gnu-efi/inc
 
 all: $(TARGET)

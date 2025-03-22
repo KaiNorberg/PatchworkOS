@@ -1,9 +1,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/io.h>
 
-#include "internal/print.h"
-#include "sys/io.h"
+#include "common/print.h"
 
 // TODO: Implement streams! All these implementations will need to be scrapped when streams are implemented.
 
@@ -24,7 +24,7 @@ int sprintf(char* _RESTRICT buffer, const char* _RESTRICT format, ...)
     sprintf_ctx_t ctx = {buffer, 0};
     va_list args;
     va_start(args, format);
-    int result = _GenericPrint(put_func, &ctx, format, args);
+    int result = _Print(put_func, &ctx, format, args);
     va_end(args);
 
     buffer[result] = '\0';
@@ -47,7 +47,7 @@ int vsprintf(char* _RESTRICT buffer, const char* _RESTRICT format, va_list args)
     }
 
     vsprintf_ctx_t ctx = {buffer, 0};
-    int result = _GenericPrint(put_func, &ctx, format, args);
+    int result = _Print(put_func, &ctx, format, args);
 
     buffer[result] = '\0';
 
@@ -76,7 +76,7 @@ int snprintf(char* _RESTRICT buffer, size_t size, const char* _RESTRICT format, 
     snprtinf_ctx_t ctx = {buffer, size, 0};
     va_list args;
     va_start(args, format);
-    int result = _GenericPrint(put_func, &ctx, format, args);
+    int result = _Print(put_func, &ctx, format, args);
     va_end(args);
 
     if (size > 0)
@@ -107,7 +107,7 @@ int vsnprintf(char* _RESTRICT buffer, size_t size, const char* _RESTRICT format,
     }
 
     vsnprintf_ctx_t ctx = {buffer, size, 0};
-    int result = _GenericPrint(put_func, &ctx, format, args);
+    int result = _Print(put_func, &ctx, format, args);
 
     if (size > 0)
     {
@@ -167,7 +167,7 @@ char* vasprintf(const char* _RESTRICT format, va_list args)
     return buffer;
 }
 
-#ifndef __EMBED__
+#ifndef __KERNEL__
 
 int printf(const char* _RESTRICT format, ...)
 {
@@ -178,7 +178,7 @@ int printf(const char* _RESTRICT format, ...)
 
     va_list args;
     va_start(args, format);
-    int result = _GenericPrint(put_func, NULL, format, args);
+    int result = _Print(put_func, NULL, format, args);
     va_end(args);
     return result;
 }
@@ -190,7 +190,7 @@ int vprintf(const char* _RESTRICT format, va_list args)
         write(STDOUT_FILENO, &chr, 1);
     }
 
-    return _GenericPrint(put_func, NULL, format, args);
+    return _Print(put_func, NULL, format, args);
 }
 
 int dprintf(fd_t fd, const char* _RESTRICT format, ...)
@@ -209,7 +209,7 @@ int dprintf(fd_t fd, const char* _RESTRICT format, ...)
     dprintf_ctx_t ctx = {fd};
     va_list args;
     va_start(args, format);
-    int result = _GenericPrint(put_func, &ctx, format, args);
+    int result = _Print(put_func, &ctx, format, args);
     va_end(args);
 
     return result;
@@ -229,12 +229,12 @@ int vdprintf(fd_t fd, const char* _RESTRICT format, va_list args)
     }
 
     vdprintf_ctx_t ctx = {fd};
-    return _GenericPrint(put_func, &ctx, format, args);
+    return _Print(put_func, &ctx, format, args);
 }
 
-#endif // #ifndef __EMBED__
+#endif // #ifndef __KERNEL__
 
-#ifdef __EMBED__
+#ifdef __KERNEL__
 
 #include "log.h"
 #include "time.h"
@@ -246,12 +246,12 @@ int printf(const char* _RESTRICT format, ...)
     nsec_t time = log_time_enabled() ? time_uptime() : 0;
     nsec_t sec = time / SEC;
     nsec_t ms = (time % SEC) / (SEC / 1000);
-    
+
     va_list args;
     va_start(args, format);
     int result = vsprintf(buffer + sprintf(buffer, "[%10llu.%03llu] ", sec, ms), format, args);
     va_end(args);
-    
+
     log_write(buffer);
     log_write("\n");
     return result + 1;
@@ -264,12 +264,12 @@ int vprintf(const char* _RESTRICT format, va_list args)
     nsec_t time = log_time_enabled() ? time_uptime() : 0;
     nsec_t sec = time / SEC;
     nsec_t ms = (time % SEC) / (SEC / 1000);
-    
+
     uint64_t result = vsprintf(buffer + sprintf(buffer, "[%10llu.%03llu] ", sec, ms), format, args);
-    
+
     log_write(buffer);
     log_write("\n");
     return result + 1;
 }
 
-#endif // #ifdef __EMBED__
+#endif // #ifdef __KERNEL__

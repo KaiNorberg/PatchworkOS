@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "../platform/platform.h"
+
 /*
  * This code is mostly copied from nanoprintf v0.5.4.
  * nanoprintf v0.5.4: a tiny embeddable printf replacement written in C.
@@ -25,10 +27,15 @@ typedef void (*npf_putc)(char c, void* ctx);
 
 #define NANOPRINTF_USE_FIELD_WIDTH_FORMAT_SPECIFIERS 1
 #define NANOPRINTF_USE_PRECISION_FORMAT_SPECIFIERS 1
-#define NANOPRINTF_USE_FLOAT_FORMAT_SPECIFIERS 0
 #define NANOPRINTF_USE_LARGE_FORMAT_SPECIFIERS 1
 #define NANOPRINTF_USE_BINARY_FORMAT_SPECIFIERS 1
+#if _PLATFORM_HAS_SSE
+#define NANOPRINTF_USE_WRITEBACK_FORMAT_SPECIFIERS 1
+#define NANOPRINTF_USE_FLOAT_FORMAT_SPECIFIERS 1
+#else
 #define NANOPRINTF_USE_WRITEBACK_FORMAT_SPECIFIERS 0
+#define NANOPRINTF_USE_FLOAT_FORMAT_SPECIFIERS 0
+#endif
 
 // If anything's been configured, everything must be configured.
 #ifndef NANOPRINTF_USE_FIELD_WIDTH_FORMAT_SPECIFIERS
@@ -1337,7 +1344,7 @@ static int npf_vpprintf(npf_putc pc, void* pc_ctx, char const* format, va_list a
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-uint32_t _GenericPrint(void (*putFunc)(char, void*), void* context, const char* format, va_list args)
+uint32_t _Print(void (*putFunc)(char, void*), void* context, const char* format, va_list args)
 {
     return npf_vpprintf(putFunc, context, format, args);
 }

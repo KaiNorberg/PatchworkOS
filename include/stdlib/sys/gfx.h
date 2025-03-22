@@ -60,13 +60,9 @@ typedef struct gfx
         (gfx)->height, \
     };
 
-#ifndef __EMBED__
-
 gfx_fbmp_t* gfx_fbmp_new(const char* path);
 
 gfx_psf_t* gfx_psf_new(const char* path);
-
-#endif
 
 void gfx_fbmp(gfx_t* gfx, const gfx_fbmp_t* fbmp, const point_t* point);
 

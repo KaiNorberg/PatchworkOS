@@ -1,12 +1,13 @@
-#ifndef __EMBED__
+#include "platform/platform.h"
+#if _PLATFORM_HAS_SCHEDULING
 
 #include <errno.h>
 
-#include "internal/thrd.h"
+#include "common/thread.h"
 
 int* _ErrnoFunc(void)
 {
-    return &_ThrdBlockById(gettid())->err;
+    return &_ThreadById(gettid())->err;
 }
 
 #endif

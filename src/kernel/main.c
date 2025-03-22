@@ -5,8 +5,8 @@
 #include "sched.h"
 
 #include <bootloader/boot_info.h>
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 
 void main(boot_info_t* bootInfo)
 {

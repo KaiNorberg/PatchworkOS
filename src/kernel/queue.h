@@ -22,7 +22,7 @@ static inline void queue_init(queue_t* queue)
 
 static inline void queue_push(queue_t* queue, void* element)
 {
-    LOCK_GUARD(&queue->lock);
+    LOCK_DEFER(&queue->lock);
 
     queue->length++;
     list_push(&queue->list, element);
@@ -30,7 +30,7 @@ static inline void queue_push(queue_t* queue, void* element)
 
 static inline void* queue_pop(queue_t* queue)
 {
-    LOCK_GUARD(&queue->lock);
+    LOCK_DEFER(&queue->lock);
     if (queue->length == 0)
     {
         return NULL;
@@ -47,7 +47,7 @@ static inline uint64_t queue_length(const queue_t* queue)
 
 static inline void* queue_find(queue_t* queue, bool (*predicate)(void*))
 {
-    LOCK_GUARD(&queue->lock);
+    LOCK_DEFER(&queue->lock);
 
     void* elem;
     LIST_FOR_EACH(elem, &queue->list)

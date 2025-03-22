@@ -14,9 +14,9 @@
 #include "vmm.h"
 
 #include <stdatomic.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 static cpu_t* cpus[UINT8_MAX];
 static uint8_t cpuAmount = 0;

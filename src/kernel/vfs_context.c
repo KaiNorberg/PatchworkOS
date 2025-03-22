@@ -25,7 +25,7 @@ void vfs_context_deinit(vfs_context_t* context)
 
 fd_t vfs_context_open(vfs_context_t* context, file_t* file)
 {
-    LOCK_GUARD(&context->lock);
+    LOCK_DEFER(&context->lock);
 
     for (fd_t fd = 0; fd < CONFIG_MAX_FD; fd++)
     {
@@ -41,7 +41,7 @@ fd_t vfs_context_open(vfs_context_t* context, file_t* file)
 
 uint64_t vfs_context_close(vfs_context_t* context, fd_t fd)
 {
-    LOCK_GUARD(&context->lock);
+    LOCK_DEFER(&context->lock);
 
     if (fd >= CONFIG_MAX_FD || context->files[fd] == NULL)
     {
@@ -56,7 +56,7 @@ uint64_t vfs_context_close(vfs_context_t* context, fd_t fd)
 
 fd_t vfs_context_openat(vfs_context_t* context, fd_t fd, file_t* file)
 {
-    LOCK_GUARD(&context->lock);
+    LOCK_DEFER(&context->lock);
 
     if (fd >= CONFIG_MAX_FD)
     {
@@ -74,7 +74,7 @@ fd_t vfs_context_openat(vfs_context_t* context, fd_t fd, file_t* file)
 
 file_t* vfs_context_get(vfs_context_t* context, fd_t fd)
 {
-    LOCK_GUARD(&context->lock);
+    LOCK_DEFER(&context->lock);
 
     if (context->files[fd] == NULL)
     {

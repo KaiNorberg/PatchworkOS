@@ -1,4 +1,5 @@
-#ifndef __EMBED__
+#include "platform/platform.h"
+#if _PLATFORM_HAS_WIN
 
 #include <stdlib.h>
 #include <sys/gfx.h>

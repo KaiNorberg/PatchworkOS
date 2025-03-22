@@ -6,9 +6,9 @@
 #include "sched.h"
 #include "space.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include <sys/math.h>
 
 static lock_t kernelLock;
@@ -110,7 +110,7 @@ pml_t* vmm_kernel_pml(void)
 
 void* vmm_kernel_alloc(void* virtAddr, uint64_t length)
 {
-    LOCK_GUARD(&kernelLock);
+    LOCK_DEFER(&kernelLock);
 
     if (length == 0)
     {
@@ -151,7 +151,7 @@ void* vmm_kernel_alloc(void* virtAddr, uint64_t length)
 
 void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t length)
 {
-    LOCK_GUARD(&kernelLock);
+    LOCK_DEFER(&kernelLock);
 
     if (length == 0)
     {
@@ -185,7 +185,7 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t length)
 void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot)
 {
     space_t* space = &sched_process()->space;
-    LOCK_GUARD(&space->lock);
+    LOCK_DEFER(&space->lock);
 
     if (length == 0)
     {
@@ -239,7 +239,7 @@ void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot)
 void* vmm_map(void* virtAddr, void* physAddr, uint64_t length, prot_t prot)
 {
     space_t* space = &sched_process()->space;
-    LOCK_GUARD(&space->lock);
+    LOCK_DEFER(&space->lock);
 
     if (physAddr == NULL)
     {
@@ -283,7 +283,7 @@ uint64_t vmm_unmap(void* virtAddr, uint64_t length)
 {
     vmm_align_region(&virtAddr, &length);
     space_t* space = &sched_process()->space;
-    LOCK_GUARD(&space->lock);
+    LOCK_DEFER(&space->lock);
 
     if (!pml_mapped(space->pml, virtAddr, SIZE_IN_PAGES(length)))
     {
@@ -304,7 +304,7 @@ uint64_t vmm_protect(void* virtAddr, uint64_t length, prot_t prot)
 
     vmm_align_region(&virtAddr, &length);
     space_t* space = &sched_process()->space;
-    LOCK_GUARD(&space->lock);
+    LOCK_DEFER(&space->lock);
 
     if (!pml_mapped(space->pml, virtAddr, SIZE_IN_PAGES(length)))
     {
@@ -324,6 +324,6 @@ bool vmm_mapped(const void* virtAddr, uint64_t length)
 {
     vmm_align_region((void**)&virtAddr, &length);
     space_t* space = &sched_process()->space;
-    LOCK_GUARD(&space->lock);
+    LOCK_DEFER(&space->lock);
     return pml_mapped(space->pml, virtAddr, SIZE_IN_PAGES(length));
 }

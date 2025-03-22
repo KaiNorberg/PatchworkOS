@@ -1,4 +1,5 @@
-#ifndef __EMBED__
+#include "platform/platform.h"
+#if _PLATFORM_HAS_WIN
 
 typedef struct win win_t;
 typedef struct widget widget_t;

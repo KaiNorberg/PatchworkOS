@@ -22,13 +22,13 @@ void msg_queue_deinit(msg_queue_t* queue)
 
 bool msg_queue_avail(msg_queue_t* queue)
 {
-    LOCK_GUARD(&queue->lock);
+    LOCK_DEFER(&queue->lock);
     return queue->readIndex != queue->writeIndex;
 }
 
 void msg_queue_push(msg_queue_t* queue, msg_type_t type, const void* data, uint64_t size)
 {
-    LOCK_GUARD(&queue->lock);
+    LOCK_DEFER(&queue->lock);
 
     msg_t* msg = &queue->queue[queue->writeIndex];
     msg->type = type;

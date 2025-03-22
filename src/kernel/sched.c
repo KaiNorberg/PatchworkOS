@@ -16,9 +16,9 @@
 #include "vectors.h"
 #include "vfs.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/proc.h>
@@ -34,7 +34,7 @@ void blocker_init(blocker_t* blocker)
     list_init(&blocker->threads);
     lock_init(&blocker->lock);
 
-    LOCK_GUARD(&blockersLock);
+    LOCK_DEFER(&blockersLock);
     list_push(&blockers, blocker);
 }
 
@@ -48,13 +48,13 @@ void blocker_deinit(blocker_t* blocker)
     }
     lock_release(&blocker->lock);
 
-    LOCK_GUARD(&blockersLock);
+    LOCK_DEFER(&blockersLock);
     list_remove(blocker);
 }
 
 static void blocker_push(blocker_t* blocker, thread_t* thread)
 {
-    LOCK_GUARD(&blocker->lock);
+    LOCK_DEFER(&blocker->lock);
 
     thread_t* other;
     LIST_FOR_EACH(other, &blocker->threads)
@@ -194,7 +194,7 @@ block_result_t sched_block(blocker_t* blocker, nsec_t timeout)
 
 void sched_unblock(blocker_t* blocker)
 {
-    LOCK_GUARD(&blocker->lock);
+    LOCK_DEFER(&blocker->lock);
 
     while (1)
     {
@@ -306,13 +306,13 @@ void sched_push(thread_t* thread)
 
 static void sched_update_blockers(void)
 {
-    LOCK_GUARD(&blockersLock);
+    LOCK_DEFER(&blockersLock);
     nsec_t uptime = time_uptime();
 
     blocker_t* blocker;
     LIST_FOR_EACH(blocker, &blockers)
     {
-        LOCK_GUARD(&blocker->lock);
+        LOCK_DEFER(&blocker->lock);
 
         thread_t* thread = list_first(&blocker->threads);
         if (thread != NULL && thread->block.deadline < uptime)

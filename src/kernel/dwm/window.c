@@ -91,7 +91,7 @@ static uint64_t window_ioctl(file_t* file, uint64_t request, void* argp, uint64_
 static uint64_t window_flush(file_t* file, const pixel_t* buffer, uint64_t size, const rect_t* rect)
 {
     window_t* window = file->private;
-    LOCK_GUARD(&window->lock);
+    LOCK_DEFER(&window->lock);
 
     if (size != window->gfx.width * window->gfx.height * sizeof(pixel_t))
     {

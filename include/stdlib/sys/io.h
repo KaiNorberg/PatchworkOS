@@ -73,7 +73,9 @@ typedef struct pipefd
     fd_t write;
 } pipefd_t;
 
-#ifndef __EMBED__
+dir_list_t* loaddir(const char* path);
+
+uint64_t listdir(const char* path, dir_entry_t* entries, uint64_t amount);
 
 fd_t open(const char* path);
 
@@ -97,13 +99,7 @@ uint64_t ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size);
 
 uint64_t flush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect_t* rect);
 
-uint64_t listdir(const char* path, dir_entry_t* entries, uint64_t amount);
-
-dir_list_t* loaddir(const char* path);
-
 uint64_t pipe(pipefd_t* pipefd);
-
-#endif
 
 #if defined(__cplusplus)
 }

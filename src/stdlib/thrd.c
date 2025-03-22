@@ -1,14 +1,15 @@
-#ifndef __EMBED__
+#include "platform/platform.h"
+#if _PLATFORM_HAS_SCHEDULING
 
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <sys/proc.h>
 
-#include "internal/thrd.h"
+#include "common/thread.h"
 
-static void _ThrdEntry(thrd_block_t* block, thrd_start_t func, void* arg)
+static void _ThrdEntry(_Thread_t* thread, thrd_start_t func, void* arg)
 {
-    while (!atomic_load(&block->running))
+    while (!atomic_load(&thread->running))
     {
         yield();
     }
@@ -19,22 +20,22 @@ static void _ThrdEntry(thrd_block_t* block, thrd_start_t func, void* arg)
 
 int thrd_create(thrd_t* thr, thrd_start_t func, void* arg)
 {
-    thrd_block_t* block = _ThrdBlockReserve(); // Base reference
-    if (block == NULL)
+    _Thread_t* thread = _ThreadReserve(); // Base reference
+    if (thread == NULL)
     {
         return thrd_error;
     }
 
-    block->id = split(_ThrdEntry, 3, block, func, arg);
-    if (block->id == ERR)
+    thread->id = split(_ThrdEntry, 3, thread, func, arg);
+    if (thread->id == ERR)
     {
-        _ThrdBlockFree(block);
+        _ThreadFree(thread);
         return thrd_error;
     }
 
-    atomic_store(&block->running, true);
+    atomic_store(&thread->running, true);
 
-    thr->index = block->index;
+    thr->index = thread->index;
     return thrd_success;
 }
 
@@ -45,10 +46,10 @@ int thread_equal(thrd_t lhs, thrd_t rhs)
 
 thrd_t thrd_current(void)
 {
-    thrd_block_t* block = _ThrdBlockById(gettid());
-    thrd_t thr = {.index = block->index};
+    _Thread_t* thread = _ThreadById(gettid());
+    thrd_t thr = {.index = thread->index};
 
-    _ThrdBlockUnref(block);
+    _ThreadUnref(thread);
     return thr;
 }
 
@@ -67,11 +68,11 @@ void thrd_yield(void)
 
 _NORETURN void thrd_exit(int res)
 {
-    thrd_block_t* block = _ThrdBlockById(gettid());
-    block->result = res;
-    atomic_store(&block->running, false);
-    _ThrdBlockUnref(block);
-    _ThrdBlockUnref(block); // Dereference base reference
+    _Thread_t* thread = _ThreadById(gettid());
+    thread->result = res;
+    atomic_store(&thread->running, false);
+    _ThreadUnref(thread);
+    _ThreadUnref(thread); // Dereference base reference
     thread_exit();
 }
 
@@ -83,23 +84,23 @@ int thrd_detach(thrd_t thr)
 
 int thrd_join(thrd_t thr, int* res)
 {
-    thrd_block_t* block = _ThrdBlockByIndex(thr.index);
-    if (block == NULL)
+    _Thread_t* thread = _ThreadByIndex(thr.index);
+    if (thread == NULL)
     {
         return thrd_error;
     }
 
     // TODO: Implement kernel side blocking for this
-    while (atomic_load(&block->running))
+    while (atomic_load(&thread->running))
     {
         sleep(SEC / 1000);
     }
 
     if (res != NULL)
     {
-        *res = block->result;
+        *res = thread->result;
     }
-    _ThrdBlockUnref(block);
+    _ThreadUnref(thread);
     return thrd_success;
 }
 

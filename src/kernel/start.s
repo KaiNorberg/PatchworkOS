@@ -19,6 +19,6 @@ section .bss
 
 global kernel_stack_bottom
 kernel_stack_bottom:
-resb 0x4000
+resb 0x1000
 global kernel_stack_top
 kernel_stack_top:

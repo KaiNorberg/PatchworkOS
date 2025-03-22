@@ -1,5 +1,3 @@
-%ifndef __EMBED__
-
 %include "kernel/syscalls.inc"
 
 extern _ErrnoFunc
@@ -36,5 +34,3 @@ extern _ErrnoFunc
     SYSTEM_CALL_ERROR_CHECK
 .no_error:
 %endmacro
-
-%endif

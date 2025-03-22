@@ -26,3 +26,5 @@
 %define SYS_YIELD 25
 
 %define SYS_TOTAL_AMOUNT 26
+
+%define SYSCALL_VECTOR 0x80

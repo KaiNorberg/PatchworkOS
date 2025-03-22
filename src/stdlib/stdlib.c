@@ -2,10 +2,14 @@
 #include <string.h>
 #include <sys/math.h>
 
-#include "internal/heap.h"
+#include "common/heap.h"
+#include "platform/platform.h"
 
-#ifdef __EMBED__
-#include "log.h"
+#if _PLATFORM_HAS_SCHEDULING
+_NORETURN void exit(int status)
+{
+    _PlatformExit(status);
+}
 #endif
 
 static void* malloc_unlocked(size_t size)
@@ -14,9 +18,9 @@ static void* malloc_unlocked(size_t size)
     {
         return NULL;
     }
-    size = ROUND_UP(size, HEAP_ALIGNMENT);
+    size = ROUND_UP(size, _HEAP_ALIGNMENT);
 
-    heap_header_t* currentBlock = _HeapFirstBlock();
+    _HeapHeader_t* currentBlock = _HeapFirstBlock();
     while (true)
     {
         if (!currentBlock->reserved)
@@ -25,14 +29,14 @@ static void* malloc_unlocked(size_t size)
             {
                 currentBlock->reserved = true;
 
-                return HEAP_HEADER_GET_START(currentBlock);
+                return _HEAP_HEADER_GET_START(currentBlock);
             }
-            else if (currentBlock->size > size + sizeof(heap_header_t) + HEAP_ALIGNMENT)
+            else if (currentBlock->size > size + sizeof(_HeapHeader_t) + _HEAP_ALIGNMENT)
             {
                 currentBlock->reserved = true;
                 _HeapBlockSplit(currentBlock, size);
 
-                return HEAP_HEADER_GET_START(currentBlock);
+                return _HEAP_HEADER_GET_START(currentBlock);
             }
         }
 
@@ -46,35 +50,33 @@ static void* malloc_unlocked(size_t size)
         }
     }
 
-    heap_header_t* newBlock = _HeapBlockNew(size);
+    _HeapHeader_t* newBlock = _HeapBlockNew(size);
     if (newBlock == NULL)
     {
         return NULL;
     }
 
-    if (newBlock->size > size + sizeof(heap_header_t) + HEAP_ALIGNMENT)
+    if (newBlock->size > size + sizeof(_HeapHeader_t) + _HEAP_ALIGNMENT)
     {
         _HeapBlockSplit(newBlock, size);
     }
     currentBlock->next = newBlock;
     newBlock->reserved = true;
 
-    return HEAP_HEADER_GET_START(newBlock);
+    return _HEAP_HEADER_GET_START(newBlock);
 }
 
 static void free_unlocked(void* ptr)
 {
-    heap_header_t* block = (heap_header_t*)((uint64_t)ptr - sizeof(heap_header_t));
-#ifdef __EMBED__
-    if (block->magic != HEAP_HEADER_MAGIC)
+    _HeapHeader_t* block = (_HeapHeader_t*)((uint64_t)ptr - sizeof(_HeapHeader_t));
+    /*if (block->magic != _HEAP_HEADER_MAGIC)
     {
-        log_panic(NULL, "Invalid heap magic\n");
+        _PlatformPanic("Invalid heap magic\n");
     }
     else if (!block->reserved)
     {
-        log_panic(NULL, "Attempt to free unreserved block at %a, size %d", ptr, block->size);
-    }
-#endif
+        _PlatformPanic("Attempt to free unreserved block at %a, size %d", ptr, block->size);
+    }*/
     block->reserved = false;
 }
 
@@ -100,13 +102,12 @@ void* calloc(size_t num, size_t size)
 void* realloc(void* ptr, size_t size)
 {
     _HeapAcquire();
-    heap_header_t* block = (heap_header_t*)((uint64_t)ptr - sizeof(heap_header_t));
-#ifdef __EMBED__
-    if (block->magic != HEAP_HEADER_MAGIC)
+    _HeapHeader_t* block = (_HeapHeader_t*)((uint64_t)ptr - sizeof(_HeapHeader_t));
+
+    /*if (block->magic != _HEAP_HEADER_MAGIC)
     {
-        log_panic(NULL, "Invalid heap magic\n");
-    }
-#endif
+        _PlatformPanic("Invalid heap magic\n");
+    }*/
 
     void* newPtr = malloc_unlocked(size);
     memcpy(newPtr, ptr, MIN(size, block->size));
