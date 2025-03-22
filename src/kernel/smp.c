@@ -16,6 +16,7 @@
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 static cpu_t* cpus[UINT8_MAX];
 static uint8_t cpuAmount = 0;
@@ -100,7 +101,7 @@ static NOINLINE void smp_detect_cpus(void)
         }
     }
 
-    log_print("smp: startup, %d cpus detected", (uint64_t)cpuAmount);
+    printf("smp: startup, %d cpus detected", (uint64_t)cpuAmount);
 }
 
 static NOINLINE void smp_start_others(void)
@@ -122,14 +123,14 @@ static NOINLINE void smp_start_others(void)
             uint8_t id = newId++;
             cpus[id] = malloc(sizeof(cpu_t));
             cpu_init(cpus[id], id, record->lapicId);
-            LOG_ASSERT(cpu_start(cpus[id]) != ERR, "startup fail");
+            ASSERT_PANIC(cpu_start(cpus[id]) != ERR, "startup fail");
         }
     }
 }
 
 void smp_init(void)
 {
-    log_print("smp: 1");
+    printf("smp: 1");
 
     cpuAmount = 1;
     cpus[0] = malloc(sizeof(cpu_t));
@@ -138,7 +139,7 @@ void smp_init(void)
     msr_write(MSR_CPU_ID, cpus[0]->id);
     gdt_load_tss(&cpus[0]->tss);
 
-    log_print("smp: init");
+    printf("smp: init");
 }
 
 void smp_init_others(void)
@@ -167,7 +168,7 @@ void smp_entry(void)
 
     vmm_cpu_init();
 
-    log_print("CPU %d: ready", (uint64_t)cpu->id);
+    printf("cpu %d: ready", (uint64_t)cpu->id);
 
     cpuReady = true;
     sched_idle_loop();
@@ -256,14 +257,14 @@ cpu_t* smp_cpu(uint8_t id)
 
 cpu_t* smp_self_unsafe(void)
 {
-    LOG_ASSERT((rflags_read() & RFLAGS_INTERRUPT_ENABLE) == 0, "smp_self_unsafe called with interrupts enabled");
+    ASSERT_PANIC((rflags_read() & RFLAGS_INTERRUPT_ENABLE) == 0, "smp_self_unsafe called with interrupts enabled");
 
     return cpus[msr_read(MSR_CPU_ID)];
 }
 
 cpu_t* smp_self_brute(void)
 {
-    LOG_ASSERT((rflags_read() & RFLAGS_INTERRUPT_ENABLE) == 0, "smp_self_brute called with interrupts enabled");
+    ASSERT_PANIC((rflags_read() & RFLAGS_INTERRUPT_ENABLE) == 0, "smp_self_brute called with interrupts enabled");
 
     uint8_t lapicId = lapic_id();
     for (uint16_t id = 0; id < cpuAmount; id++)

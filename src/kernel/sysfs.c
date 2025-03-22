@@ -3,13 +3,14 @@
 #include "lock.h"
 #include "log.h"
 #include "sched.h"
-#include "sys/list.h"
 #include "vfs.h"
 
 #include <stdarg.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <sys/list.h>
 
 static node_t root;
 static lock_t lock;
@@ -221,9 +222,9 @@ void sysfs_init(void)
     node_init(&root, "root", SYSFS_SYSTEM);
     lock_init(&lock);
 
-    LOG_ASSERT(vfs_mount("sys", &sysfs) != ERR, "mount fail");
+    ASSERT_PANIC(vfs_mount("sys", &sysfs) != ERR, "mount fail");
 
-    log_print("sysfs: init");
+    printf("sysfs: init");
 }
 
 resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_t* ops, void* private, resource_on_open_t onOpen,

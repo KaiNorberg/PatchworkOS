@@ -75,17 +75,17 @@ static void ps2_mouse_irq(uint8_t irq)
 void ps2_mouse_init(void)
 {
     ps2_cmd(PS2_CMD_AUX_TEST);
-    LOG_ASSERT(ps2_read() == 0x0, "ps2 mouse test fail");
+    ASSERT_PANIC(ps2_read() == 0x0, "ps2 mouse test fail");
 
     ps2_cmd(PS2_CMD_AUX_WRITE);
     ps2_write(PS2_SET_DEFAULTS);
 
-    LOG_ASSERT(ps2_read() == PS2_ACK, "set defaults fail, ps2 mouse might not exist");
+    ASSERT_PANIC(ps2_read() == PS2_ACK, "set defaults fail, ps2 mouse might not exist");
 
     ps2_cmd(PS2_CMD_AUX_WRITE);
     ps2_write(PS2_ENABLE_DATA_REPORTING);
 
-    LOG_ASSERT(ps2_read() == PS2_ACK, "data reporting fail");
+    ASSERT_PANIC(ps2_read() == PS2_ACK, "data reporting fail");
 
     mouse = mouse_new("ps2");
     irq_install(ps2_mouse_irq, IRQ_PS2_AUX);

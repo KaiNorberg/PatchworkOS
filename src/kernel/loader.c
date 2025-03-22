@@ -13,6 +13,8 @@
 #include "vfs.h"
 #include "vmm.h"
 
+#include <stdio.h>
+
 static void* loader_load_program(thread_t* thread)
 {
     const char* executable = sched_process()->argv[0];
@@ -114,14 +116,14 @@ static void loader_spawn_entry(void)
     void* rsp = loader_allocate_stack(thread);
     if (rsp == NULL)
     {
-        log_print("loader: stack failure (%s, %d)", thread->process->argv[0], thread->process->id);
+        printf("loader: stack failure (%s, %d)", thread->process->argv[0], thread->process->id);
         sched_process_exit(EEXEC);
     }
 
     void* rip = loader_load_program(thread);
     if (rip == NULL)
     {
-        log_print("loader: load failure (%s, %d)", thread->process->argv[0], thread->process->id);
+        printf("loader: load failure (%s, %d)", thread->process->argv[0], thread->process->id);
         sched_process_exit(EEXEC);
     }
 

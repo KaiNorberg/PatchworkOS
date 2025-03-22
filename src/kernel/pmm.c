@@ -1,11 +1,5 @@
 #include "pmm.h"
 
-#include <stddef.h>
-#include <string.h>
-#include <sys/math.h>
-
-#include <bootloader/boot_info.h>
-
 #include "config.h"
 #include "lock.h"
 #include "log.h"
@@ -13,6 +7,14 @@
 #include "sys/proc.h"
 #include "utils.h"
 #include "vmm.h"
+
+#include <bootloader/boot_info.h>
+
+#include <stddef.h>
+#include <string.h>
+#include <sys/math.h>
+#include <stdio.h>
+
 
 static uint64_t flexAreaSize;
 
@@ -105,13 +107,13 @@ static void page_bitmap_init(void)
 
 static bool page_bitmap_reserved(uint64_t index)
 {
-    LOG_ASSERT(index < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE, "bitmap out of bounds");
+    ASSERT_PANIC(index < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE, "bitmap out of bounds");
     return (bitmap.map[(index) / 8] & (1ULL << ((index) % 8)));
 }
 
 static void page_bitmap_reserve(uint64_t low, uint64_t high)
 {
-    LOG_ASSERT(high < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE, "bitmap out of bounds");
+    ASSERT_PANIC(high < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE, "bitmap out of bounds");
     for (uint64_t i = low; i < high; i++)
     {
         bitmap.map[i / 8] |= (1ULL << (i % 8));
@@ -153,7 +155,7 @@ static void* page_bitmap_alloc(uint64_t count, uintptr_t maxAddr, uint64_t align
 static void page_bitmap_free(void* address)
 {
     uint64_t index = ((uint64_t)address - VMM_HIGHER_HALF_BASE) / PAGE_SIZE;
-    LOG_ASSERT(index < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE, "bitmap out of bounds");
+    ASSERT_PANIC(index < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE, "bitmap out of bounds");
 
     bitmap.map[index / 8] &= ~(1ULL << (index % 8));
     bitmap.firstFreeIndex = MIN(bitmap.firstFreeIndex, index);
@@ -182,7 +184,7 @@ static void pmm_free_pages_unlocked(void* address, uint64_t count)
 
 static void pmm_detect_memory(efi_mem_map_t* memoryMap)
 {
-    log_print("UEFI-provided memory map");
+    printf("UEFI-provided memory map");
 
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
@@ -190,7 +192,7 @@ static void pmm_detect_memory(efi_mem_map_t* memoryMap)
         pageAmount += desc->amountOfPages;
     }
 
-    log_print("Detected memory: %d KB", (pageAmount * PAGE_SIZE) / 1024);
+    printf("Detected memory: %d KB", (pageAmount * PAGE_SIZE) / 1024);
 }
 
 static void pmm_load_memory(efi_mem_map_t* memoryMap)

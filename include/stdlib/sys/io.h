@@ -1,4 +1,3 @@
-#include "_AUX/pixel_t.h"
 #ifndef _SYS_IO_H
 #define _SYS_IO_H 1
 
@@ -14,6 +13,7 @@ extern "C"
 #include "_AUX/config.h"
 #include "_AUX/fd_t.h"
 #include "_AUX/nsec_t.h"
+#include "_AUX/pixel_t.h"
 #include "_AUX/rect_t.h"
 
 #define MAX_PATH 256

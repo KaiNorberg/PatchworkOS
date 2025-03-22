@@ -37,7 +37,7 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count)
         count = MIN(count, ring_data_length(&private->ring));
     }
 
-    LOG_ASSERT(ring_read(&private->ring, buffer, count) != ERR, "ring_read");
+    ASSERT_PANIC(ring_read(&private->ring, buffer, count) != ERR, "ring_read");
 
     lock_release(&private->lock);
     sched_unblock(&private->blocker);
@@ -67,7 +67,7 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count)
         return ERROR(EPIPE);
     }
 
-    LOG_ASSERT(ring_write(&private->ring, buffer, count) != ERR, "ring_write");
+    ASSERT_PANIC(ring_write(&private->ring, buffer, count) != ERR, "ring_write");
 
     lock_release(&private->lock);
     sched_unblock(&private->blocker);

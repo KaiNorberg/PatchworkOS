@@ -17,6 +17,12 @@
 #endif
 #endif
 
-#define ALIGNED(alignment) __attribute__((aligned(alignment)))
+#if defined(__cplusplus) || !defined(__STDC_VERSION) || __STDC_VERSION__ < 199901L
+#define _RESTRICT
+#define _INLINE
+#else
+#define _RESTRICT restrict
+#define _INLINE inline
+#endif
 
 #endif

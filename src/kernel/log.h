@@ -12,19 +12,11 @@
 #define LOG_STR 's'
 #define LOG_INT 'd'
 
-#define LOG_ASSERT(condition, msg, ...) \
+#define ASSERT_PANIC(condition, msg, ...) \
     ({ \
         if (!(condition)) \
         { \
             log_panic(NULL, __FILE__ ": " msg __VA_OPT__(, ) __VA_ARGS__); \
-        } \
-    })
-
-#define LOG_TEST(condition, msg, ...) \
-    ({ \
-        if (!(condition)) \
-        { \
-            log_print(msg __VA_OPT__(, ) __VA_ARGS__); \
         } \
     })
 
@@ -36,6 +28,8 @@ void log_disable_screen(void);
 
 void log_enable_time(void);
 
-void log_print(const char* string, ...);
+bool log_time_enabled(void);
+
+void log_write(const char* str);
 
 NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...);

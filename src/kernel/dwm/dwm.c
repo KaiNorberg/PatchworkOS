@@ -1,24 +1,25 @@
 #include "dwm.h"
 
-#include <errno.h>
-#include <stdatomic.h>
-#include <stdlib.h>
-#include <sys/dwm.h>
-#include <sys/gfx.h>
-#include <sys/io.h>
-#include <sys/math.h>
-#include <sys/mouse.h>
-
 #include "lock.h"
 #include "log.h"
 #include "msg_queue.h"
 #include "sched.h"
-#include "sys/kbd.h"
 #include "sysfs.h"
 #include "thread.h"
 #include "time.h"
 #include "vfs.h"
 #include "window.h"
+
+#include <errno.h>
+#include <stdatomic.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/dwm.h>
+#include <sys/gfx.h>
+#include <sys/io.h>
+#include <sys/math.h>
+#include <sys/kbd.h>
+#include <sys/mouse.h>
 
 static gfx_t frontbuffer;
 static gfx_t backbuffer;
@@ -331,7 +332,7 @@ static void dwm_poll_mouse(void)
         if (poll.occurred & POLL_READ)
         {
             mouse_event_t event;
-            LOG_ASSERT(vfs_read(mouse, &event, sizeof(mouse_event_t)) == sizeof(mouse_event_t), "mouse read fail");
+            ASSERT_PANIC(vfs_read(mouse, &event, sizeof(mouse_event_t)) == sizeof(mouse_event_t), "mouse read fail");
 
             total.buttons |= event.buttons;
             total.delta.x += event.delta.x;
@@ -357,7 +358,7 @@ static void dwm_poll_keyboard(void)
     if (poll.occurred & POLL_READ)
     {
         kbd_event_t event;
-        LOG_ASSERT(vfs_read(keyboard, &event, sizeof(kbd_event_t)) == sizeof(kbd_event_t), "kbd read fail");
+        ASSERT_PANIC(vfs_read(keyboard, &event, sizeof(kbd_event_t)) == sizeof(kbd_event_t), "kbd read fail");
 
         if (selected != NULL)
         {
@@ -414,26 +415,26 @@ static void dwm_window_cleanup(window_t* window)
     {
     case DWM_WINDOW:
     {
-        log_print("dwm: cleanup window");
+        printf("dwm: cleanup window");
         list_remove(window);
     }
     break;
     case DWM_PANEL:
     {
-        log_print("dwm: cleanup panel");
+        printf("dwm: cleanup panel");
         list_remove(window);
         dwm_update_client_rect_unlocked();
     }
     break;
     case DWM_CURSOR:
     {
-        log_print("dwm: cleanup cursor");
+        printf("dwm: cleanup cursor");
         cursor = NULL;
     }
     break;
     case DWM_WALL:
     {
-        log_print("dwm: cleanup wall");
+        printf("dwm: cleanup wall");
         wall = NULL;
     }
     break;
@@ -478,7 +479,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
         {
             list_push(&windows, window);
             dwm_select(window);
-            log_print("dwm: create window");
+            printf("dwm: create window");
         }
         break;
         case DWM_PANEL:
@@ -486,7 +487,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
             list_push(&windows, window);
             dwm_update_client_rect_unlocked();
             dwm_select(window);
-            log_print("dwm: create panel");
+            printf("dwm: create panel");
         }
         break;
         case DWM_CURSOR:
@@ -498,7 +499,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
             }
 
             cursor = window;
-            log_print("dwm: create cursor");
+            printf("dwm: create cursor");
         }
         break;
         case DWM_WALL:
@@ -510,7 +511,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
             }
 
             wall = window;
-            log_print("dwm: create wall");
+            printf("dwm: create wall");
         }
         break;
         default:
@@ -548,7 +549,7 @@ static file_ops_t fileOps = {
 
 void dwm_init(gop_buffer_t* gopBuffer)
 {
-    log_print("dwm: %dx%d", (uint64_t)gopBuffer->width, (uint64_t)gopBuffer->height);
+    printf("dwm: %dx%d", (uint64_t)gopBuffer->width, (uint64_t)gopBuffer->height);
 
     frontbuffer.buffer = gopBuffer->base;
     frontbuffer.height = gopBuffer->height;
@@ -583,7 +584,7 @@ void dwm_init(gop_buffer_t* gopBuffer)
 
 void dwm_start(void)
 {
-    log_print("dwm: start");
+    printf("dwm: start");
 
     rect_t rect = RECT_INIT_GFX(&backbuffer);
     gfx_swap(&backbuffer, &frontbuffer, &rect);

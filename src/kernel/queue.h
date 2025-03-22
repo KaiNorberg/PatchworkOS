@@ -54,16 +54,11 @@ static inline void* queue_find(queue_t* queue, bool (*predicate)(void*))
     {
         list_entry_t* entry = elem;
 
-        log_print("%a, %a, %a, %a", &queue->list.head, entry, entry->next, entry->prev);
-        // log_print("loop begin");
         if (predicate(elem))
         {
-            log_print("loop ret");
             return elem;
         }
-        // log_print("loop end");
     }
 
-    log_print("loop NULL");
     return NULL;
 }

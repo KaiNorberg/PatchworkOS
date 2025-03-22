@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <sys/gfx.h>
 #include <sys/io.h>
 #include <sys/proc.h>
@@ -85,129 +86,6 @@ static void log_draw_string(const char* str)
     }
 }
 
-static void log_write(const char* str)
-{
-    LOCK_GUARD(&lock);
-
-    const char* ptr = str;
-    while (*ptr != '\0')
-    {
-#if CONFIG_LOG_SERIAL
-        com_write(COM1, *ptr);
-#endif
-
-        buffer[writeIndex] = *ptr;
-        writeIndex = (writeIndex + 1) % LOG_BUFFER_LENGTH;
-
-        ptr++;
-    }
-
-    if (screenEnabled)
-    {
-        log_draw_string(str);
-    }
-}
-
-static void log_padd_number(char** out, uint64_t padding, char chr, uint64_t number)
-{
-    char str[20];
-    ulltoa(number, str, 10);
-
-    uint64_t len = strlen(str);
-
-    for (uint64_t i = 0; i < padding - len; i++)
-    {
-        *(*out)++ = chr;
-    }
-    for (uint64_t i = 0; i < len; i++)
-    {
-        *(*out)++ = str[i];
-    }
-}
-
-static void log_print_va(const char* string, va_list args)
-{
-    char buffer[MAX_PATH];
-    char* out = buffer;
-
-    nsec_t time = timeEnabled ? time_uptime() : 0;
-    nsec_t sec = time / SEC;
-    nsec_t ms = (time % SEC) / (SEC / 1000);
-
-    *out++ = '[';
-    log_padd_number(&out, 11, ' ', sec);
-    *out++ = '.';
-    log_padd_number(&out, 3, '0', ms);
-    *out++ = ']';
-    *out++ = ' ';
-
-    const char* ptr = string;
-    while (*ptr != '\0')
-    {
-        if (*ptr != LOG_BREAK)
-        {
-            *out++ = *ptr++;
-            continue;
-        }
-
-        ptr++;
-        switch (*ptr)
-        {
-        case LOG_ADDR:
-        {
-            *out++ = '0';
-            *out++ = 'x';
-
-            uintptr_t addr = va_arg(args, uintptr_t);
-            char addrStr[17];
-            ulltoa(addr, addrStr, 16);
-
-            uint64_t addrStrlen = strlen(addrStr);
-            for (uint64_t i = 0; i < 16 - addrStrlen; i++)
-            {
-                *out++ = '0';
-            }
-
-            for (uint64_t i = 0; i < addrStrlen; i++)
-            {
-                *out++ = addrStr[i];
-            }
-        }
-        break;
-        case LOG_STR:
-        {
-            const char* str = va_arg(args, const char*);
-            for (uint64_t i = 0; i < strlen(str); i++)
-            {
-                *out++ = str[i];
-            }
-        }
-        break;
-        case LOG_INT:
-        {
-            uint64_t num = va_arg(args, uint64_t);
-            char numStr[17];
-            ulltoa(num, numStr, 10);
-
-            for (uint64_t i = 0; i < strlen(numStr); i++)
-            {
-                *out++ = numStr[i];
-            }
-        }
-        break;
-        default:
-        {
-            return;
-        }
-        }
-        ptr++;
-    }
-
-    *out++ = '\n';
-    *out++ = '\0';
-    log_write(buffer);
-}
-
 void log_init(void)
 {
     writeIndex = 0;
@@ -220,8 +98,8 @@ void log_init(void)
     com_init(COM1);
 #endif
 
-    log_print(OS_NAME " - " OS_VERSION "");
-    log_print("Licensed under GPLv3. See www.gnu.org/licenses/gpl-3.0.html.");
+    printf(OS_NAME " - " OS_VERSION "");
+    printf("Licensed under GPLv3. See www.gnu.org/licenses/gpl-3.0.html.");
 }
 
 void log_enable_screen(gop_buffer_t* gopBuffer)
@@ -257,12 +135,32 @@ void log_enable_time(void)
     timeEnabled = true;
 }
 
-void log_print(const char* string, ...)
+bool log_time_enabled(void)
 {
-    va_list args;
-    va_start(args, string);
-    log_print_va(string, args);
-    va_end(args);
+    return timeEnabled;
+}
+
+void log_write(const char* str)
+{
+    LOCK_GUARD(&lock);
+
+    const char* ptr = str;
+    while (*ptr != '\0')
+    {
+#if CONFIG_LOG_SERIAL
+        com_write(COM1, *ptr);
+#endif
+
+        buffer[writeIndex] = *ptr;
+        writeIndex = (writeIndex + 1) % LOG_BUFFER_LENGTH;
+
+        ptr++;
+    }
+
+    if (screenEnabled)
+    {
+        log_draw_string(str);
+    }
 }
 
 NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
@@ -287,13 +185,14 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
         log_enable_screen(NULL);
     }
 
-    char buffer[MAX_PATH];
-    strcpy(buffer, "!!! KERNEL PANIC - ");
-    strcat(buffer, string);
-    strcat(buffer, " !!!");
+    char bigString[MAX_PATH];
+    strcpy(bigString, "!!! KERNEL PANIC - ");
+    strcat(bigString, string);
+    strcat(bigString, " !!!");
+
     va_list args;
     va_start(args, string);
-    log_print_va(buffer, args);
+    vprintf(bigString, args);
     va_end(args);
 
     if (smp_initialized())
@@ -301,34 +200,34 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
         thread_t* thread = sched_thread();
         if (thread == NULL)
         {
-            log_print("Occured on cpu %d while idle", smp_self_unsafe()->id);
+            printf("Occured on cpu %d while idle", smp_self_unsafe()->id);
         }
         else
         {
-            log_print("Occured on cpu %d in process %d thread %d", smp_self_unsafe()->id, thread->process->id, thread->id);
+            printf("Occured on cpu %d in process %d thread %d", smp_self_unsafe()->id, thread->process->id, thread->id);
         }
     }
     else
     {
-        log_print("Occured before smp init, assumed cpu 0");
+        printf("Occured before smp init, assumed cpu 0");
     }
 
-    log_print("pmm: free %d, reserved %d", pmm_free_amount(), pmm_reserved_amount());
+    printf("pmm: free %d, reserved %d", pmm_free_amount(), pmm_reserved_amount());
 
     if (trapFrame != NULL)
     {
-        log_print("ss %a, rsp %a, rflags %a, cs %a, rip %a", trapFrame->ss, trapFrame->rsp, trapFrame->rflags, trapFrame->cs,
+        printf("ss %p, rsp %p, rflags %p, cs %p, rip %p", trapFrame->ss, trapFrame->rsp, trapFrame->rflags, trapFrame->cs,
             trapFrame->rip);
-        log_print("error code %a, vector %a", trapFrame->errorCode, trapFrame->vector);
-        log_print("rax %a, rbx %a, rcx %a, rdx %a, rsi %a, rdi %a, rbp %a", trapFrame->rax, trapFrame->rbx, trapFrame->rcx,
+        printf("error code %p, vector %p", trapFrame->errorCode, trapFrame->vector);
+        printf("rax %p, rbx %p, rcx %p, rdx %p, rsi %p, rdi %p, rbp %p", trapFrame->rax, trapFrame->rbx, trapFrame->rcx,
             trapFrame->rdx, trapFrame->rsi, trapFrame->rdi, trapFrame->rbp);
-        log_print("r8 %a, r9 %a, r10 %a, r11 %a, r12 %a, r13 %a, r14 %a, r15 %a", trapFrame->r8, trapFrame->r9, trapFrame->r10,
+        printf("r8 %p, r9 %p, r10 %p, r11 %p, r12 %p, r13 %p, r14 %p, r15 %p", trapFrame->r8, trapFrame->r9, trapFrame->r10,
             trapFrame->r11, trapFrame->r12, trapFrame->r13, trapFrame->r14, trapFrame->r15);
     }
 
-    log_print("cr0: %a, cr2: %a, cr3: %a, cr4: %a", cr0_read(), cr2_read(), cr3_read(), cr4_read());
+    printf("cr0: %p, cr2: %p, cr3: %p, cr4: %p", cr0_read(), cr2_read(), cr3_read(), cr4_read());
 
-    log_print("Call Stack:");
+    printf("call stack:");
     uint64_t* frame = (uint64_t*)__builtin_frame_address(0);
     for (uint64_t i = 0; i < 16; i++)
     {
@@ -337,11 +236,11 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
             break;
         }
 
-        log_print("%a", frame[1]);
+        printf("%p", frame[1]);
         frame = (uint64_t*)frame[0];
     }
 
-    log_print("Please restart your machine");
+    printf("Please restart your machine");
 
     while (1)
     {

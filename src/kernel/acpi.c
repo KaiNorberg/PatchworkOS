@@ -4,6 +4,7 @@
 #include "vmm.h"
 
 #include <string.h>
+#include <stdio.h>
 
 static uint64_t tableAmount;
 static xsdt_t* xsdt;
@@ -23,13 +24,12 @@ void acpi_init(xsdp_t* xsdp)
 {
     xsdp = VMM_LOWER_TO_HIGHER(xsdp);
 
-    LOG_ASSERT(xsdp->revision == ACPI_REVISION_2_0, "Invalid ACPI revision");
-    LOG_ASSERT(acpi_valid_checksum(xsdp, xsdp->length), "Invalid XSDP checksum");
+    ASSERT_PANIC(xsdp->revision == ACPI_REVISION_2_0, "Invalid acpi revision");
+    ASSERT_PANIC(acpi_valid_checksum(xsdp, xsdp->length), "Invalid xsdp checksum");
 
     xsdt = VMM_LOWER_TO_HIGHER((void*)xsdp->xsdtAddress);
     tableAmount = (xsdt->header.length - sizeof(sdt_t)) / sizeof(void*);
 
-    log_print("Found ACPI tables:");
     for (uint64_t i = 0; i < tableAmount; i++)
     {
         sdt_t* table = VMM_LOWER_TO_HIGHER(xsdt->tables[i]);
@@ -37,9 +37,9 @@ void acpi_init(xsdp_t* xsdp)
         char signature[5];
         memcpy(signature, table->signature, 4);
         signature[4] = '\0';
-        log_print("ACPI: %s %a", signature, VMM_HIGHER_TO_LOWER(table));
+        printf("acpi: %s at %p", signature, VMM_HIGHER_TO_LOWER(table));
 
-        LOG_ASSERT(acpi_valid_checksum(table, table->length), "ACPI: %s, invalid checksum", signature);
+        ASSERT_PANIC(acpi_valid_checksum(table, table->length), "acpi: %s, invalid checksum", signature);
     }
 }
 

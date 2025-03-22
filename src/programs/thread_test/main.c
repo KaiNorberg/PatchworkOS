@@ -1,8 +1,8 @@
 #include <stdatomic.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/io.h>
 #include <sys/proc.h>
 #include <threads.h>
 
@@ -63,26 +63,10 @@ static int thread_entry(void* arg)
     return thrd_success;
 }
 
-// Temporary becouse printf does not exist yet
-static void print(const char* str)
-{
-    write(STDOUT_FILENO, str, strlen(str));
-}
-
-static void printnum(int num)
-{
-    char buffer[32];
-    ulltoa(num, buffer, 10);
-    print(buffer);
-}
-
 static void benchmark(uint64_t threadAmount)
 {
-    printnum(threadAmount);
-    print(" threads: ");
-
+    printf("%d threads: starting... ", threadAmount);
     nsec_t start = uptime();
-    print("starting... ");
 
     atomic_init(&count, 0);
     atomic_init(&next, 0);
@@ -98,14 +82,8 @@ static void benchmark(uint64_t threadAmount)
         thrd_join(threads[i], NULL);
     }
 
-    print("took ");
-
     nsec_t end = uptime();
-    printnum((end - start) / (SEC / 1000));
-    print(" ms to find ");
-
-    printnum(atomic_load(&count));
-    print(" primes\n");
+    printf("took %d ms to find %d primes\n", (end - start) / (SEC / 1000), atomic_load(&count));
 }
 
 int main(void)

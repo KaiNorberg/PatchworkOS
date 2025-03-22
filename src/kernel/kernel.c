@@ -24,6 +24,7 @@
 
 #include <bootloader/boot_info.h>
 #include <stdlib_internal/init.h>
+#include <stdio.h>
 
 static void kernel_free_boot_data(efi_mem_map_t* memoryMap)
 {
@@ -34,7 +35,7 @@ static void kernel_free_boot_data(efi_mem_map_t* memoryMap)
         if (desc->type == EFI_LOADER_DATA)
         {
             pmm_free_pages(VMM_LOWER_TO_HIGHER(desc->physicalStart), desc->amountOfPages);
-            log_print("boot data: free [%a-%a]", desc->physicalStart,
+            printf("boot data: free [%p-%p]", desc->physicalStart,
                 ((uintptr_t)desc->physicalStart) + desc->amountOfPages * PAGE_SIZE);
         }
     }

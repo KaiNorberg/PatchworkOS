@@ -18,6 +18,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/proc.h>
@@ -136,7 +137,7 @@ static thread_t* sched_context_find_any(sched_context_t* context)
 static void sched_spawn_init_thread(void)
 {
     thread_t* thread = thread_new(NULL, NULL, PRIORITY_MAX);
-    LOG_ASSERT(thread != NULL, "failed to create init thread");
+    ASSERT_PANIC(thread != NULL, "failed to create init thread");
     thread->timeEnd = UINT64_MAX;
 
     smp_self_unsafe()->sched.runThread = thread;
@@ -151,7 +152,7 @@ void sched_init(void)
 
     sched_spawn_init_thread();
 
-    log_print("sched: init");
+    printf("sched: init");
 }
 
 static void sched_start_ipi(trap_frame_t* trapFrame)
@@ -169,7 +170,7 @@ void sched_start(void)
     smp_send_others(sched_start_ipi);
     smp_send_self(sched_start_ipi);
 
-    log_print("sched: start");
+    printf("sched: start");
 }
 
 block_result_t sched_sleep(nsec_t timeout)
@@ -179,7 +180,7 @@ block_result_t sched_sleep(nsec_t timeout)
 
 block_result_t sched_block(blocker_t* blocker, nsec_t timeout)
 {
-    LOG_ASSERT(rflags_read() & RFLAGS_INTERRUPT_ENABLE, "sched_block, interupts disabled");
+    ASSERT_PANIC(rflags_read() & RFLAGS_INTERRUPT_ENABLE, "sched_block, interupts disabled");
 
     thread_t* thread = smp_self()->sched.runThread;
     thread->timeEnd = 0;
@@ -258,7 +259,7 @@ void sched_process_exit(uint64_t status)
     sched_context_t* context = &smp_self()->sched;
     context->runThread->killed = true;
     context->runThread->process->killed = true;
-    log_print("sched: process exit (%d)", context->runThread->process->id);
+    printf("sched: process exit (%d)", context->runThread->process->id);
     smp_put();
 
     sched_invoke();

@@ -10,6 +10,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <sys/list.h>
 #include <sys/math.h>
 
@@ -181,7 +182,7 @@ static node_t* ramfs_load_dir(node_t* in)
 void ramfs_init(ram_disk_t* disk)
 {
     root = ramfs_load_dir(disk->root);
-    LOG_ASSERT(vfs_mount("home", &ramfs) != ERR, "mount fail");
+    ASSERT_PANIC(vfs_mount("home", &ramfs) != ERR, "mount fail");
 
-    log_print("ramfs: initialized");
+    printf("ramfs: initialized");
 }

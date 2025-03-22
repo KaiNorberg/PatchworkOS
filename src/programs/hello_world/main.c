@@ -1,7 +1,7 @@
-#include <sys/io.h>
+#include <stdio.h>
 
 int main(void)
 {
-    write(STDOUT_FILENO, "Hello, World!\n", 14);
+    printf("Hello, World!");
     return 0;
 }

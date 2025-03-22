@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <stdatomic.h>
 #include <string.h>
+#include <sys/gfx.h>
 #include <sys/io.h>
 #include <sys/list.h>
 #include <sys/proc.h>
