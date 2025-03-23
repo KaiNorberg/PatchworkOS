@@ -9,12 +9,10 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <waitsys.h>
+#include <stdio.h>
 
 static list_t volumes;
 static lock_t volumesLock;
-
-static blocker_t pollBlocker;
 
 // TODO: Improve file path parsing.
 
@@ -205,8 +203,6 @@ void vfs_init(void)
 {
     list_init(&volumes);
     lock_init(&volumesLock);
-
-    blocker_init(&pollBlocker);
 }
 
 uint64_t vfs_attach_simple(const char* label, const volume_ops_t* ops)
@@ -319,29 +315,10 @@ uint64_t vfs_chdir(const char* path)
     return 0;
 }
 
-static bool vfs_poll_condition(uint64_t* events, poll_file_t* files, uint64_t amount)
-{
-    *events = 0;
-    for (uint64_t i = 0; i < amount; i++)
-    {
-        if (files[i].file->ops->poll(files[i].file, &files[i]) == NULL)
-        {
-            *events = ERR;
-            return true;
-        }
-
-        if ((files[i].occurred & files[i].requested) != 0)
-        {
-            (*events)++;
-        }
-    }
-
-    return *events != 0;
-}
-
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
-{    
-    uint64_t deadline = timeout == NEVER ? NEVER : timeout + time_uptime();
+{        
+    uint64_t currentTime = time_uptime();
+    uint64_t deadline = timeout == NEVER ? NEVER : currentTime + timeout;
 
     if (amount > CONFIG_MAX_BLOCKERS_PER_THREAD)
     {
@@ -366,22 +343,38 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
         {
             return ERR;
         }
+    }
 
-        if ((files[i].occurred & files[i].requested) != 0)
+    while (true)
+    {
+        currentTime = time_uptime();
+        
+        if (timeout != NEVER && currentTime >= deadline)
         {
-            events++;
+            break;
         }
-    }
 
-    if (events != 0)
-    {
-        return events;
-    }
+        events = 0;
+        for (uint64_t i = 0; i < amount; i++)
+        {
+            if (files[i].file->ops->poll(files[i].file, &files[i]) == NULL)
+            {
+                return ERR;
+            }
+    
+            if ((files[i].occurred & files[i].requested) != 0)
+            {
+                events++;
+            }
+        }
 
-    events = 0;
-    while (!vfs_poll_condition(&events, files, amount) && events != ERR && deadline > time_uptime())
-    {
-        blocker_block_many(blockers, amount, NEVER);
+        if (events != 0)
+        {
+            break;
+        }
+        
+        nsec_t remainingTime = deadline == NEVER ? NEVER : deadline - currentTime;
+        blocker_block_many(blockers, amount, remainingTime);
     }
 
     return events;

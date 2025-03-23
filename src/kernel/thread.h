@@ -46,7 +46,6 @@ typedef struct
     uint8_t entryAmount;
     block_result_t result;
     nsec_t deadline;
-    atomic_bool blocking;
 } block_data_t;
 
 typedef struct

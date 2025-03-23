@@ -98,7 +98,7 @@ void trap_handler(trap_frame_t* trapFrame)
     {
         if (cpu->id == 0)
         {
-            waitsys_update();
+            waitsys_update(trapFrame);
         }
         sched_schedule(trapFrame);
         lapic_eoi();

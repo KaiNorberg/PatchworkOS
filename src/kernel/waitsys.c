@@ -8,9 +8,38 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 
-static list_t threads;
-static lock_t threadsLock;
+static list_t blockedThreads;
+static lock_t blockedThreadsLock;
+
+static void blocked_threads_add(thread_t* thread)
+{
+    LOCK_DEFER(&blockedThreadsLock);
+
+    if (thread->block.deadline == NEVER)
+    {
+        list_push(&blockedThreads, thread);
+        return;
+    }
+
+    thread_t* other;
+    LIST_FOR_EACH(other, &blockedThreads)
+    {
+        if (other->block.deadline > thread->block.deadline)
+        {
+            list_prepend(&other->entry, thread);
+            return;
+        }
+    }
+    list_push(&blockedThreads, thread);
+}
+
+static void blocked_threads_remove(thread_t* thread)
+{
+    LOCK_DEFER(&blockedThreadsLock);
+    list_remove(thread);
+}
 
 void blocker_init(blocker_t* blocker)
 {
@@ -49,52 +78,11 @@ block_result_t blocker_block(blocker_t* blocker, nsec_t timeout)
     thread->block.result = BLOCK_NORM;
     thread->block.deadline = timeout == NEVER ? NEVER : time_uptime() + timeout;
 
-    lock_acquire(&blocker->lock);
-    list_push(&blocker->entires, entry);
-    lock_release(&blocker->lock);
     smp_put();
 
     asm volatile("int %0" :: "i" (VECTOR_WAITSYS_BLOCK));
 
     return thread->block.result;
-}
-
-void blocker_unblock(blocker_t* blocker)
-{
-    LOCK_DEFER(&blocker->lock);
-
-    blocker_entry_t* entry;
-    blocker_entry_t* temp;
-    LIST_FOR_EACH_SAFE(entry, temp, &blocker->entires)
-    {
-        thread_t* thread = entry->thread;
-        while (!atomic_load(&thread->block.blocking))
-        {
-            asm volatile("pause");
-        }
-
-        thread->block.result = BLOCK_NORM;
-
-        lock_acquire(&threadsLock);
-        list_remove(thread);
-        lock_release(&threadsLock);
-    
-        for (uint64_t i = 0; i < thread->block.entryAmount; i++)
-        {
-            if (thread->block.blockEntires[i] == NULL)
-            {
-                break;
-            }
-            blocker_entry_t* entry = thread->block.blockEntires[i];
-            thread->block.blockEntires[i] = NULL;
-        
-            list_remove(entry);
-            free(entry);
-        }
-
-        atomic_store(&thread->block.blocking, false);
-        sched_push(thread);
-    }
 }
 
 block_result_t blocker_block_many(blocker_t** blockers, uint64_t amount, nsec_t timeout)
@@ -114,11 +102,11 @@ block_result_t blocker_block_many(blocker_t** blockers, uint64_t amount, nsec_t 
         blocker_entry_t* entry = malloc(sizeof(blocker_entry_t));
         if (entry == NULL)
         {
-            smp_put();
             for (uint64_t j = 0; j < i; j++)
             {
-                free(thread->block.blockEntires[i]);
+                free(thread->block.blockEntires[j]);
             }
+            smp_put();
             thread->error = ENOMEM;
             return BLOCK_ERROR;
         }
@@ -127,10 +115,6 @@ block_result_t blocker_block_many(blocker_t** blockers, uint64_t amount, nsec_t 
         entry->thread = thread;
     
         thread->block.blockEntires[i] = entry;
-    
-        lock_acquire(&blockers[i]->lock);
-        list_push(&blockers[i]->entires, entry);
-        lock_release(&blockers[i]->lock);
     }
 
     thread->block.entryAmount = amount;
@@ -144,27 +128,54 @@ block_result_t blocker_block_many(blocker_t** blockers, uint64_t amount, nsec_t 
     return thread->block.result;
 }
 
-void waitsys_init(void)
+void blocker_unblock(blocker_t* blocker)
 {
-    list_init(&threads);
-    lock_init(&threadsLock);
+    LOCK_DEFER(&blocker->lock);
+
+    blocker_entry_t* entry;
+    blocker_entry_t* temp;
+    LIST_FOR_EACH_SAFE(entry, temp, &blocker->entires)
+    {
+        thread_t* thread = entry->thread;
+
+        thread->block.result = BLOCK_NORM;
+        blocked_threads_remove(thread);
+    
+        for (uint64_t i = 0; i < thread->block.entryAmount; i++)
+        {
+            if (thread->block.blockEntires[i] == NULL)
+            {
+                break;
+            }
+            blocker_entry_t* entry = thread->block.blockEntires[i];
+            thread->block.blockEntires[i] = NULL;
+        
+            list_remove(entry);
+            free(entry);
+        }
+
+        sched_push(thread);
+    }
 }
 
-void waitsys_update(void)
+void waitsys_init(void)
 {
-    LOCK_DEFER(&threadsLock);
+    list_init(&blockedThreads);
+    lock_init(&blockedThreadsLock);
+}
 
-    if (list_empty(&threads))
+void waitsys_update(trap_frame_t* trapFrame)
+{
+    cpu_t* self = smp_self_unsafe();
+
+    LOCK_DEFER(&blockedThreadsLock);
+
+    if (list_empty(&blockedThreads))
     {
         return;
     }
 
-    thread_t* thread = list_first(&threads);
-    while (!atomic_load(&thread->block.blocking))
-    {
-        asm volatile("pause");
-    }
-
+    thread_t* thread = list_first(&blockedThreads);
     if (time_uptime() >= thread->block.deadline)
     {            
         thread->block.result = BLOCK_TIMEOUT;
@@ -182,7 +193,6 @@ void waitsys_update(void)
             free(entry);
         }
         
-        atomic_store(&thread->block.blocking, false);
         sched_push(thread);
     }
 }
@@ -190,27 +200,20 @@ void waitsys_update(void)
 void waitsys_block(trap_frame_t* trapFrame)
 {
     cpu_t* self = smp_self_unsafe();
-    sched_context_t* context = &self->sched;
+    sched_context_t* sched = &self->sched;
 
-    LOCK_DEFER(&threadsLock);
+    thread_save(sched->runThread, trapFrame);
 
-    thread_save(context->runThread, trapFrame);
-
-    thread_t* thread;
-    LIST_FOR_EACH(thread, &threads)
+    for (uint64_t i = 0; i < sched->runThread->block.entryAmount; i++)
     {
-        if (thread->block.deadline > context->runThread->block.deadline)
-        {
-            list_prepend(&thread->entry, context->runThread);
-            atomic_store(&context->runThread->block.blocking, true);
-            goto next_thread;
-        }
+        blocker_t* blocker = sched->runThread->block.blockEntires[i]->blocker;
+        LOCK_DEFER(&blocker->lock);
+
+        list_push(&blocker->entires, sched->runThread->block.blockEntires[i]);
     }
 
-    list_push(&threads, context->runThread);
-    atomic_store(&context->runThread->block.blocking, true);
+    blocked_threads_add(sched->runThread);
 
-next_thread:
-    context->runThread = NULL;
+    sched->runThread = NULL;
     sched_schedule(trapFrame);
 }

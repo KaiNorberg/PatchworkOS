@@ -22,7 +22,7 @@
     ({ \
         block_result_t result = BLOCK_NORM; \
         nsec_t uptime = time_uptime(); \
-        nsec_t deadline = (timeout) == NEVER ? NEVER : (timeout) + uptime; \
+        nsec_t deadline = (timeout) == NEVER? NEVER : (timeout) + uptime; \
         while (!(condition) && result == BLOCK_NORM) \
         { \
             if (deadline < uptime) \
@@ -30,7 +30,7 @@
                 result = BLOCK_TIMEOUT; \
                 break; \
             } \
-            nsec_t remaining = deadline == NEVER ? NEVER : (deadline > uptime ? deadline - uptime : 0); \
+            nsec_t remaining = deadline == NEVER? NEVER : (deadline > uptime? deadline - uptime : 0); \
             result = blocker_block(blocker, remaining); \
             uptime = time_uptime(); \
         } \
@@ -63,7 +63,7 @@
     ({ \
         block_result_t result = BLOCK_NORM; \
         nsec_t uptime = time_uptime(); \
-        nsec_t deadline = (timeout) == NEVER ? NEVER : (timeout) + uptime; \
+        nsec_t deadline = (timeout) == NEVER? NEVER : (timeout) + uptime; \
         lock_acquire(lock); \
         while (result == BLOCK_NORM) \
         { \
@@ -77,7 +77,7 @@
                 break; \
             } \
             lock_release(lock); \
-            nsec_t remaining = deadline == NEVER ? NEVER : (deadline > uptime ? deadline - uptime : 0); \
+            nsec_t remaining = deadline == NEVER? NEVER : (deadline > uptime? deadline - uptime : 0); \
             result = blocker_block(blocker, remaining); \
             uptime = time_uptime(); \
             lock_acquire(lock); \
@@ -104,13 +104,12 @@ void blocker_deinit(blocker_t* blocker);
 
 block_result_t blocker_block(blocker_t* blocker, nsec_t timeout);
 
-// Blockers should be null terminated.
 block_result_t blocker_block_many(blocker_t** blockers, uint64_t amount, nsec_t timeout);
 
 void blocker_unblock(blocker_t* blocker);
 
 void waitsys_init(void);
 
-void waitsys_update(void);
+void waitsys_update(trap_frame_t* trapFrame);
 
 void waitsys_block(trap_frame_t* trapFrame);

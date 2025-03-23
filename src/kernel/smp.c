@@ -130,8 +130,6 @@ static NOINLINE void smp_start_others(void)
 
 void smp_init(void)
 {
-    printf("smp: 1");
-
     cpuAmount = 1;
     cpus[0] = malloc(sizeof(cpu_t));
     cpu_init(cpus[0], 0, 0);

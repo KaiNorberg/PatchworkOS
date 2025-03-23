@@ -5,6 +5,7 @@
 #include "sched.h"
 #include "trap.h"
 #include "tss.h"
+#include "waitsys.h"
 
 #define CPU_MAX_AMOUNT 255
 #define CPU_IDLE_STACK_SIZE PAGE_SIZE
