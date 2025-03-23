@@ -44,14 +44,14 @@ static void blocked_threads_remove(thread_t* thread)
 void blocker_init(blocker_t* blocker)
 {
     lock_init(&blocker->lock);
-    list_init(&blocker->entires);
+    list_init(&blocker->entries);
 }
 
 void blocker_deinit(blocker_t* blocker)
 {
     LOCK_DEFER(&blocker->lock);
 
-    if (!list_empty(&blocker->entires))
+    if (!list_empty(&blocker->entries))
     {
         log_panic(NULL, "Blocker with pending threads freed");
     }
@@ -134,7 +134,7 @@ void blocker_unblock(blocker_t* blocker)
 
     blocker_entry_t* entry;
     blocker_entry_t* temp;
-    LIST_FOR_EACH_SAFE(entry, temp, &blocker->entires)
+    LIST_FOR_EACH_SAFE(entry, temp, &blocker->entries)
     {
         thread_t* thread = entry->thread;
 
@@ -209,7 +209,7 @@ void waitsys_block(trap_frame_t* trapFrame)
         blocker_t* blocker = sched->runThread->block.blockEntires[i]->blocker;
         LOCK_DEFER(&blocker->lock);
 
-        list_push(&blocker->entires, sched->runThread->block.blockEntires[i]);
+        list_push(&blocker->entries, sched->runThread->block.blockEntires[i]);
     }
 
     blocked_threads_add(sched->runThread);

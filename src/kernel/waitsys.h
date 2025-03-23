@@ -95,7 +95,7 @@ typedef struct blocker_entry
 typedef struct blocker
 {
     lock_t lock;
-    list_t entires;
+    list_t entries;
 } blocker_t;
 
 void blocker_init(blocker_t* blocker);
