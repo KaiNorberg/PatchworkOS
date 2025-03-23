@@ -25,7 +25,7 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count)
         return ERROR(EINVAL);
     }
 
-    if (SCHED_BLOCK_LOCK(&private->blocker, &private->lock, ring_data_length(&private->ring) >= count || private->writeClosed) !=
+    if (WAITSYS_BLOCK_LOCK(&private->blocker, &private->lock, ring_data_length(&private->ring) >= count || private->writeClosed) !=
         BLOCK_NORM)
     {
         lock_release(&private->lock);
@@ -40,7 +40,7 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count)
     ASSERT_PANIC(ring_read(&private->ring, buffer, count) != ERR, "ring_read");
 
     lock_release(&private->lock);
-    sched_unblock(&private->blocker);
+    blocker_unblock(&private->blocker);
     return count;
 }
 
@@ -53,7 +53,7 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count)
         return ERROR(EINVAL);
     }
 
-    if (SCHED_BLOCK_LOCK(&private->blocker, &private->lock, ring_free_length(&private->ring) >= count || private->readClosed) !=
+    if (WAITSYS_BLOCK_LOCK(&private->blocker, &private->lock, ring_free_length(&private->ring) >= count || private->readClosed) !=
         BLOCK_NORM)
     {
         lock_release(&private->lock);
@@ -63,31 +63,31 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count)
     if (private->readClosed)
     {
         lock_release(&private->lock);
-        sched_unblock(&private->blocker);
+        blocker_unblock(&private->blocker);
         return ERROR(EPIPE);
     }
 
     ASSERT_PANIC(ring_write(&private->ring, buffer, count) != ERR, "ring_write");
 
     lock_release(&private->lock);
-    sched_unblock(&private->blocker);
+    blocker_unblock(&private->blocker);
     return count;
 }
 
-static uint64_t pipe_read_status(file_t* file, poll_file_t* pollFile)
+static blocker_t* pipe_read_poll(file_t* file, poll_file_t* pollFile)
 {
     pipe_private_t* private = file->private;
 
     pollFile->occurred = POLL_READ & (ring_data_length(&private->ring) != 0 || private->writeClosed);
-    return 0;
+    return &private->blocker;
 }
 
-static uint64_t pipe_write_status(file_t* file, poll_file_t* pollFile)
+static blocker_t* pipe_write_poll(file_t* file, poll_file_t* pollFile)
 {
     pipe_private_t* private = file->private;
 
     pollFile->occurred = POLL_WRITE & (ring_free_length(&private->ring) != 0 || private->readClosed);
-    return 0;
+    return &private->blocker;
 }
 
 static void pipe_read_cleanup(file_t* file)
@@ -124,13 +124,13 @@ static void pipe_write_cleanup(file_t* file)
 
 static file_ops_t readOps = {
     .read = pipe_read,
-    .status = pipe_read_status,
+    .poll = pipe_read_poll,
     .cleanup = pipe_read_cleanup,
 };
 
 static file_ops_t writeOps = {
     .write = pipe_write,
-    .status = pipe_write_status,
+    .poll = pipe_write_poll,
     .cleanup = pipe_write_cleanup,
 };
 

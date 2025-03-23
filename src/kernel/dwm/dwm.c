@@ -370,17 +370,29 @@ static void dwm_poll_keyboard(void)
 
 static void dwm_poll(void)
 {
+    int64_t oldTime = time_uptime();
+    const int64_t targetDelta = SEC / 60;
+    
     while (!atomic_exchange_explicit(&redrawNeeded, false, __ATOMIC_RELAXED))
     {
-        sched_block(&blocker, SEC / 256);
-
+        int64_t time = time_uptime();
+        int64_t delta = time - oldTime;
+        
+        int64_t timeout = targetDelta - delta;
+        printf("block: %d", timeout);
+        if (timeout > 0) 
+        {
+            blocker_block(&blocker, timeout);
+        }
+        
+        oldTime = time_uptime();
+        
         LOCK_DEFER(&lock);
-
+    
         dwm_poll_mouse();
         dwm_poll_keyboard();
     }
 }
-
 static void dwm_loop(void)
 {
     while (1)
@@ -595,7 +607,7 @@ void dwm_start(void)
 void dwm_redraw(void)
 {
     atomic_store(&redrawNeeded, true);
-    sched_unblock(&blocker);
+    blocker_unblock(&blocker);
 }
 
 void dwm_update_client_rect(void)

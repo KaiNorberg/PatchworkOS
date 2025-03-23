@@ -1,9 +1,10 @@
 #pragma once
 
+#include "sysfs.h"
+#include "waitsys.h"
+
 #include <stdint.h>
 #include <sys/kbd.h>
-
-#include "sysfs.h"
 
 #define KBD_MAX_EVENT 32
 

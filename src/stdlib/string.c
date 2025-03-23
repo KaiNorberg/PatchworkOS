@@ -271,6 +271,7 @@ static char* errorStrings[] = {
     "is a directory",
     "no such resource",
     "broken pipe",
+    "blocker limit exceeded",
     "busy",
 };
 

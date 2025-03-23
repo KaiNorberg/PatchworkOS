@@ -37,7 +37,8 @@ int* _ErrnoFunc(void);
 #define EISDIR 19  // Is a directory
 #define ENORES 20  // No such resource
 #define EPIPE 21   // Broken pipe
-#define EBUSY 22   // Busy
+#define EBLOCKLIMIT 22 // Blocker limit exceeded
+#define EBUSY 23   // Busy
 
 // NOTE: Values retrievd from linux
 /*

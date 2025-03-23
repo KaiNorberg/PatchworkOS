@@ -2,6 +2,7 @@
 
 #include "lock.h"
 #include "sched.h"
+#include "waitsys.h"
 
 #include <sys/dwm.h>
 

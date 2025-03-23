@@ -3,6 +3,7 @@
 #include "ring.h"
 #include "sched.h"
 #include "vfs.h"
+#include "waitsys.h"
 
 typedef struct
 {

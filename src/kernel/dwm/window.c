@@ -116,12 +116,12 @@ static uint64_t window_flush(file_t* file, const pixel_t* buffer, uint64_t size,
     return 0;
 }
 
-static uint64_t window_status(file_t* file, poll_file_t* pollFile)
+static blocker_t* window_poll(file_t* file, poll_file_t* pollFile)
 {
     window_t* window = file->private;
 
     pollFile->occurred = POLL_READ & msg_queue_avail(&window->messages);
-    return 0;
+    return &window->messages.blocker;
 }
 
 window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, dwm_type_t type, void (*cleanup)(window_t*))
@@ -161,7 +161,7 @@ static file_ops_t fileOps = {
     .cleanup = window_cleanup,
     .ioctl = window_ioctl,
     .flush = window_flush,
-    .status = window_status,
+    .poll = window_poll,
 };
 
 void window_populate_file(window_t* window, file_t* file)

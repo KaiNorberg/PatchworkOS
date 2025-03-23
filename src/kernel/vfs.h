@@ -65,7 +65,7 @@ typedef uint64_t (*file_seek_t)(file_t*, int64_t, seek_origin_t);
 typedef uint64_t (*file_ioctl_t)(file_t*, uint64_t, void*, uint64_t);
 typedef uint64_t (*file_flush_t)(file_t*, const pixel_t*, uint64_t, const rect_t*);
 typedef void* (*file_mmap_t)(file_t*, void*, uint64_t, prot_t);
-typedef uint64_t (*file_status_t)(file_t*, poll_file_t*);
+typedef blocker_t* (*file_poll_t)(file_t*, poll_file_t*);
 
 typedef struct file_ops
 {
@@ -76,7 +76,7 @@ typedef struct file_ops
     file_ioctl_t ioctl;
     file_flush_t flush;
     file_mmap_t mmap;
-    file_status_t status;
+    file_poll_t poll;
 } file_ops_t;
 
 typedef struct file

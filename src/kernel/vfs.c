@@ -2,13 +2,14 @@
 
 #include "lock.h"
 #include "sched.h"
-#include "sys/list.h"
 #include "time.h"
+#include "waitsys.h"
 #include "vfs_context.h"
 
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <waitsys.h>
 
 static list_t volumes;
 static lock_t volumesLock;
@@ -323,7 +324,7 @@ static bool vfs_poll_condition(uint64_t* events, poll_file_t* files, uint64_t am
     *events = 0;
     for (uint64_t i = 0; i < amount; i++)
     {
-        if (files[i].file->ops->status(files[i].file, &files[i]) == ERR)
+        if (files[i].file->ops->poll(files[i].file, &files[i]) == NULL)
         {
             *events = ERR;
             return true;
@@ -339,21 +340,48 @@ static bool vfs_poll_condition(uint64_t* events, poll_file_t* files, uint64_t am
 }
 
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
-{
+{    
+    uint64_t deadline = timeout == NEVER ? NEVER : timeout + time_uptime();
+
+    if (amount > CONFIG_MAX_BLOCKERS_PER_THREAD)
+    {
+        return ERROR(EBLOCKLIMIT);
+    }
+
     for (uint64_t i = 0; i < amount; i++)
     {
-        if (files[i].file->ops->status == NULL)
+        if (files[i].file->ops->poll == NULL)
         {
             return ERROR(EACCES);
         }
+        files[i].occurred = 0;
     }
 
-    // TODO: Dont worry this is "temporary"
-    uint64_t deadline = timeout == NEVER ? NEVER : timeout + time_uptime();
     uint64_t events = 0;
-    while (!vfs_poll_condition(&events, files, amount) && deadline > time_uptime())
+    blocker_t* blockers[CONFIG_MAX_BLOCKERS_PER_THREAD];
+    for (uint64_t i = 0; i < amount; i++)
     {
-        sched_block(&pollBlocker, SEC / 1000);
+        blockers[i] = files[i].file->ops->poll(files[i].file, &files[i]);
+        if (blockers[i] == NULL)
+        {
+            return ERR;
+        }
+
+        if ((files[i].occurred & files[i].requested) != 0)
+        {
+            events++;
+        }
+    }
+
+    if (events != 0)
+    {
+        return events;
+    }
+
+    events = 0;
+    while (!vfs_poll_condition(&events, files, amount) && events != ERR && deadline > time_uptime())
+    {
+        blocker_block_many(blockers, amount, NEVER);
     }
 
     return events;

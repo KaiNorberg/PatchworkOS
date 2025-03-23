@@ -18,7 +18,6 @@ vector_%1:
 %endmacro
 
 extern trap_handler
-extern sched_schedule
 
 section .text
 
