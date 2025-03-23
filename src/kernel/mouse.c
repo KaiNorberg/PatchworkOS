@@ -14,7 +14,7 @@ static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count)
     count = ROUND_DOWN(count, sizeof(mouse_event_t));
     for (uint64_t i = 0; i < count / sizeof(mouse_event_t); i++)
     {
-        if (SCHED_BLOCK_LOCK(&mouse->blocker, &mouse->lock, file->pos != mouse->writeIndex) != BLOCK_NORM)
+        if (WAITSYS_BLOCK_LOCK(&mouse->blocker, &mouse->lock, file->pos != mouse->writeIndex) != BLOCK_NORM)
         {
             lock_release(&mouse->lock);
             return i * sizeof(mouse_event_t);
@@ -29,16 +29,16 @@ static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count)
     return count;
 }
 
-static uint64_t mouse_status(file_t* file, poll_file_t* pollFile)
+static blocker_t* mouse_poll(file_t* file, poll_file_t* pollFile)
 {
     mouse_t* mouse = file->private;
     pollFile->occurred = POLL_READ & (mouse->writeIndex != file->pos);
-    return 0;
+    return &mouse->blocker;
 }
 
 static file_ops_t fileOps = {
     .read = mouse_read,
-    .status = mouse_status,
+    .poll = mouse_poll,
 };
 
 static void mouse_delete(void* private)
@@ -72,5 +72,5 @@ void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, const point_t* delta)
         .delta = *delta,
     };
     mouse->writeIndex = (mouse->writeIndex + 1) % MOUSE_MAX_EVENT;
-    sched_unblock(&mouse->blocker);
+    blocker_unblock(&mouse->blocker);
 }

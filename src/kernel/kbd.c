@@ -14,7 +14,7 @@ static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count)
     count = ROUND_DOWN(count, sizeof(kbd_event_t));
     for (uint64_t i = 0; i < count / sizeof(kbd_event_t); i++)
     {
-        if (SCHED_BLOCK_LOCK(&kbd->blocker, &kbd->lock, file->pos != kbd->writeIndex) != BLOCK_NORM)
+        if (WAITSYS_BLOCK_LOCK(&kbd->blocker, &kbd->lock, file->pos != kbd->writeIndex) != BLOCK_NORM)
         {
             lock_release(&kbd->lock);
             return i * sizeof(kbd_event_t);
@@ -29,16 +29,16 @@ static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count)
     return count;
 }
 
-static uint64_t kbd_status(file_t* file, poll_file_t* pollFile)
+static blocker_t* kbd_poll(file_t* file, poll_file_t* pollFile)
 {
     kbd_t* kbd = file->private;
     pollFile->occurred = POLL_READ & (kbd->writeIndex != file->pos);
-    return 0;
+    return &kbd->blocker;
 }
 
 static file_ops_t fileOps = {
     .read = kbd_read,
-    .status = kbd_status,
+    .poll = kbd_poll,
 };
 
 static void kbd_delete(void* private)
@@ -112,5 +112,5 @@ void kbd_push(kbd_t* kbd, kbd_event_type_t type, keycode_t code)
         .type = type,
     };
     kbd->writeIndex = (kbd->writeIndex + 1) % KBD_MAX_EVENT;
-    sched_unblock(&kbd->blocker);
+    blocker_unblock(&kbd->blocker);
 }

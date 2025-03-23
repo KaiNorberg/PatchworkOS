@@ -21,6 +21,7 @@
 #include "time.h"
 #include "vfs.h"
 #include "vmm.h"
+#include "waitsys.h"
 
 #include <bootloader/boot_info.h>
 #include <stdio.h>
@@ -55,6 +56,7 @@ void kernel_init(boot_info_t* bootInfo)
 
     smp_init();
     sched_init();
+    waitsys_init();
 
     vfs_init();
     sysfs_init();

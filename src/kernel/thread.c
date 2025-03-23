@@ -118,9 +118,10 @@ static thread_t* process_thread_new(process_t* process, void* entry, priority_t 
     thread->killed = false;
     thread->timeStart = 0;
     thread->timeEnd = 0;
-    thread->block.deadline = 0;
+    thread->block.blockEntires[0] = NULL;
+    thread->block.entryAmount = 0;
     thread->block.result = BLOCK_NORM;
-    thread->block.blocker = NULL;
+    thread->block.deadline = 0;
     thread->error = 0;
     thread->priority = MIN(priority, PRIORITY_MAX);
     if (simd_context_init(&thread->simdContext) == ERR)

@@ -37,9 +37,9 @@ static file_t* keyboard;
 
 static lock_t lock;
 
+static file_t* redrawNotifier;
 static atomic_bool redrawNeeded;
-
-static blocker_t blocker;
+static blocker_t redrawBlocker;
 
 static void dwm_update_client_rect_unlocked(void)
 {
@@ -370,17 +370,19 @@ static void dwm_poll_keyboard(void)
 
 static void dwm_poll(void)
 {
+    int64_t oldTime = time_uptime();
+    
     while (!atomic_exchange_explicit(&redrawNeeded, false, __ATOMIC_RELAXED))
     {
-        sched_block(&blocker, SEC / 256);
-
+        poll_file_t poll[] = {{.file = mouse, .requested = POLL_READ}, { .file = keyboard, .requested = POLL_READ}, { .file = redrawNotifier, .requested = POLL_READ}};
+        vfs_poll(poll, 3, NEVER);
+        
         LOCK_DEFER(&lock);
-
+    
         dwm_poll_mouse();
         dwm_poll_keyboard();
     }
 }
-
 static void dwm_loop(void)
 {
     while (1)
@@ -547,6 +549,17 @@ static file_ops_t fileOps = {
     .ioctl = dwm_ioctl,
 };
 
+static blocker_t* dwm_redraw_notifier_status(file_t* file, poll_file_t* pollFile)
+{
+    pollFile->occurred = POLL_READ & atomic_load(&redrawNeeded);
+    return &redrawBlocker;
+}
+
+static file_ops_t redrawNotifierOps = 
+{
+    .poll = dwm_redraw_notifier_status
+};
+
 void dwm_init(gop_buffer_t* gopBuffer)
 {
     printf("dwm: %dx%d", (uint64_t)gopBuffer->width, (uint64_t)gopBuffer->height);
@@ -576,8 +589,10 @@ void dwm_init(gop_buffer_t* gopBuffer)
     mouse = vfs_open("sys:/mouse/ps2");
     keyboard = vfs_open("sys:/kbd/ps2");
 
+    redrawNotifier = file_new(NULL);
+    redrawNotifier->ops = &redrawNotifierOps;
     atomic_init(&redrawNeeded, true);
-    blocker_init(&blocker);
+    blocker_init(&redrawBlocker);
 
     sysfs_expose("/", "dwm", &fileOps, NULL, NULL, NULL);
 }
@@ -595,7 +610,7 @@ void dwm_start(void)
 void dwm_redraw(void)
 {
     atomic_store(&redrawNeeded, true);
-    sched_unblock(&blocker);
+    blocker_unblock(&redrawBlocker);
 }
 
 void dwm_update_client_rect(void)

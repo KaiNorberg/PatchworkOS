@@ -92,9 +92,9 @@ static void* sysfs_mmap(file_t* file, void* address, uint64_t length, prot_t pro
     return SYSFS_OPERATION_PTR(mmap, file, address, length, prot);
 }
 
-static uint64_t sysfs_status(file_t* file, poll_file_t* pollFile)
+static blocker_t* sysfs_poll(file_t* file, poll_file_t* pollFile)
 {
-    return SYSFS_OPERATION(status, file, pollFile);
+    return SYSFS_OPERATION_PTR(poll, file, pollFile);
 }
 
 static void sysfs_cleanup(file_t* file)
@@ -117,7 +117,7 @@ static file_ops_t fileOps = {
     .ioctl = sysfs_ioctl,
     .flush = sysfs_flush,
     .mmap = sysfs_mmap,
-    .status = sysfs_status,
+    .poll = sysfs_poll,
     .cleanup = sysfs_cleanup,
 };
 

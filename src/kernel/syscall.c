@@ -1,9 +1,5 @@
 #include "syscall.h"
 
-#include <errno.h>
-#include <stdarg.h>
-#include <string.h>
-
 #include "config.h"
 #include "defs.h"
 #include "gdt.h"
@@ -15,6 +11,11 @@
 #include "vfs.h"
 #include "vfs_context.h"
 #include "vmm.h"
+
+#include <errno.h>
+#include <stdarg.h>
+#include <string.h>
+#include <stdio.h>
 
 // NOTE: Syscalls should always return a 64 bit value to prevent garbage from remaining in rax.
 

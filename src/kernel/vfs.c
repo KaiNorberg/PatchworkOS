@@ -2,18 +2,17 @@
 
 #include "lock.h"
 #include "sched.h"
-#include "sys/list.h"
 #include "time.h"
+#include "waitsys.h"
 #include "vfs_context.h"
 
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 static list_t volumes;
 static lock_t volumesLock;
-
-static blocker_t pollBlocker;
 
 // TODO: Improve file path parsing.
 
@@ -204,8 +203,6 @@ void vfs_init(void)
 {
     list_init(&volumes);
     lock_init(&volumesLock);
-
-    blocker_init(&pollBlocker);
 }
 
 uint64_t vfs_attach_simple(const char* label, const volume_ops_t* ops)
@@ -318,42 +315,66 @@ uint64_t vfs_chdir(const char* path)
     return 0;
 }
 
-static bool vfs_poll_condition(uint64_t* events, poll_file_t* files, uint64_t amount)
-{
-    *events = 0;
-    for (uint64_t i = 0; i < amount; i++)
-    {
-        if (files[i].file->ops->status(files[i].file, &files[i]) == ERR)
-        {
-            *events = ERR;
-            return true;
-        }
+uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
+{        
+    uint64_t currentTime = time_uptime();
+    uint64_t deadline = timeout == NEVER ? NEVER : currentTime + timeout;
 
-        if ((files[i].occurred & files[i].requested) != 0)
-        {
-            (*events)++;
-        }
+    if (amount > CONFIG_MAX_BLOCKERS_PER_THREAD)
+    {
+        return ERROR(EBLOCKLIMIT);
     }
 
-    return *events != 0;
-}
-
-uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
-{
     for (uint64_t i = 0; i < amount; i++)
     {
-        if (files[i].file->ops->status == NULL)
+        if (files[i].file->ops->poll == NULL)
         {
             return ERROR(EACCES);
         }
+        files[i].occurred = 0;
     }
 
-    // TODO: Dont worry this is "temporary"
-    uint64_t deadline = timeout == NEVER ? NEVER : timeout + time_uptime();
     uint64_t events = 0;
-    while (!vfs_poll_condition(&events, files, amount) && deadline > time_uptime())
+    blocker_t* blockers[CONFIG_MAX_BLOCKERS_PER_THREAD];
+    for (uint64_t i = 0; i < amount; i++)
     {
-        sched_block(&pollBlocker, SEC / 1000);
+        blockers[i] = files[i].file->ops->poll(files[i].file, &files[i]);
+        if (blockers[i] == NULL)
+        {
+            return ERR;
+        }
+    }
+
+    while (true)
+    {
+        currentTime = time_uptime();
+        
+        if (timeout != NEVER && currentTime >= deadline)
+        {
+            break;
+        }
+
+        events = 0;
+        for (uint64_t i = 0; i < amount; i++)
+        {
+            if (files[i].file->ops->poll(files[i].file, &files[i]) == NULL)
+            {
+                return ERR;
+            }
+    
+            if ((files[i].occurred & files[i].requested) != 0)
+            {
+                events++;
+            }
+        }
+
+        if (events != 0)
+        {
+            break;
+        }
+        
+        nsec_t remainingTime = deadline == NEVER ? NEVER : deadline - currentTime;
+        blocker_block_many(blockers, amount, remainingTime);
     }
 
     return events;

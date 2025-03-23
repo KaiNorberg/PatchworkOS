@@ -36,12 +36,12 @@ void msg_queue_push(msg_queue_t* queue, msg_type_t type, const void* data, uint6
     memcpy(msg->data, data, size);
     queue->writeIndex = (queue->writeIndex + 1) % MSG_QUEUE_MAX;
 
-    sched_unblock(&queue->blocker);
+    blocker_unblock(&queue->blocker);
 }
 
 void msg_queue_pop(msg_queue_t* queue, msg_t* msg, nsec_t timeout)
 {
-    if (SCHED_BLOCK_LOCK_TIMEOUT(&queue->blocker, &queue->lock, queue->readIndex != queue->writeIndex, timeout) != BLOCK_NORM)
+    if (WAITSYS_BLOCK_LOCK_TIMEOUT(&queue->blocker, &queue->lock, queue->readIndex != queue->writeIndex, timeout) != BLOCK_NORM)
     {
         *msg = (msg_t){.type = MSG_NONE};
         lock_release(&queue->lock);

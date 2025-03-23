@@ -6,6 +6,7 @@
 #include "log.h"
 #include "regs.h"
 #include "sched.h"
+#include "waitsys.h"
 #include "smp.h"
 #include "vectors.h"
 
@@ -93,14 +94,22 @@ void trap_handler(trap_frame_t* trapFrame)
     {
         ipi_handler(trapFrame);
     }
-    else if (trapFrame->vector == VECTOR_SCHED_TIMER)
+    else if (trapFrame->vector == VECTOR_TIMER)
     {
+        if (cpu->id == 0)
+        {
+            waitsys_update(trapFrame);
+        }
         sched_schedule(trapFrame);
         lapic_eoi();
     }
-    else if (trapFrame->vector == VECTOR_SCHED_INVOKE)
+    else if (trapFrame->vector == VECTOR_SCHED_SCHEDULE)
     {
         sched_schedule(trapFrame);
+    }
+    else if (trapFrame->vector == VECTOR_WAITSYS_BLOCK)
+    {
+        waitsys_block(trapFrame);
     }
     else
     {

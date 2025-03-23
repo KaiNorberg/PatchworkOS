@@ -1,9 +1,10 @@
 #pragma once
 
+#include "sysfs.h"
+#include "waitsys.h"
+
 #include <stdint.h>
 #include <sys/mouse.h>
-
-#include "sysfs.h"
 
 #define MOUSE_MAX_EVENT 32
 
