@@ -98,18 +98,18 @@ void trap_handler(trap_frame_t* trapFrame)
     {
         if (cpu->id == 0)
         {
-            waitsys_update(trapFrame);
+            waitsys_update_trap(trapFrame);
         }
-        sched_schedule(trapFrame);
+        sched_schedule_trap(trapFrame);
         lapic_eoi();
     }
     else if (trapFrame->vector == VECTOR_SCHED_SCHEDULE)
     {
-        sched_schedule(trapFrame);
+        sched_schedule_trap(trapFrame);
     }
     else if (trapFrame->vector == VECTOR_WAITSYS_BLOCK)
     {
-        waitsys_block(trapFrame);
+        waitsys_block_trap(trapFrame);
     }
     else
     {

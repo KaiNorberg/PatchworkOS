@@ -13,7 +13,7 @@ typedef struct
     mouse_event_t events[MOUSE_MAX_EVENT];
     uint64_t writeIndex;
     resource_t* resource;
-    blocker_t blocker;
+    wait_queue_t waitQueue;
     lock_t lock;
 } mouse_t;
 

@@ -19,8 +19,8 @@ typedef uint8_t priority_t;
 #define PRIORITY_MIN 0
 #define PRIORITY_MAX (PRIORITY_LEVELS - 1)
 
-typedef struct blocker_entry blocker_entry_t;
-typedef struct blocker blocker_t;
+typedef struct wait_queue_entry wait_queue_entry_t;
+typedef struct wait_queue wait_queue_t;
 
 typedef enum
 {
@@ -42,7 +42,7 @@ typedef struct
 
 typedef struct
 {
-    blocker_entry_t* blockEntires[CONFIG_MAX_BLOCKERS_PER_THREAD];
+    wait_queue_entry_t* waitEntries[CONFIG_MAX_BLOCKERS_PER_THREAD];
     uint8_t entryAmount;
     block_result_t result;
     nsec_t deadline;

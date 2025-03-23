@@ -39,7 +39,7 @@ static lock_t lock;
 
 static file_t* redrawNotifier;
 static atomic_bool redrawNeeded;
-static blocker_t redrawBlocker;
+static wait_queue_t redrawWaitQueue;
 
 static void dwm_update_client_rect_unlocked(void)
 {
@@ -549,10 +549,10 @@ static file_ops_t fileOps = {
     .ioctl = dwm_ioctl,
 };
 
-static blocker_t* dwm_redraw_notifier_status(file_t* file, poll_file_t* pollFile)
+static wait_queue_t* dwm_redraw_notifier_status(file_t* file, poll_file_t* pollFile)
 {
     pollFile->occurred = POLL_READ & atomic_load(&redrawNeeded);
-    return &redrawBlocker;
+    return &redrawWaitQueue;
 }
 
 static file_ops_t redrawNotifierOps = 
@@ -592,7 +592,7 @@ void dwm_init(gop_buffer_t* gopBuffer)
     redrawNotifier = file_new(NULL);
     redrawNotifier->ops = &redrawNotifierOps;
     atomic_init(&redrawNeeded, true);
-    blocker_init(&redrawBlocker);
+    wait_queue_init(&redrawWaitQueue);
 
     sysfs_expose("/", "dwm", &fileOps, NULL, NULL, NULL);
 }
@@ -610,7 +610,7 @@ void dwm_start(void)
 void dwm_redraw(void)
 {
     atomic_store(&redrawNeeded, true);
-    blocker_unblock(&redrawBlocker);
+    waitsys_unblock(&redrawWaitQueue);
 }
 
 void dwm_update_client_rect(void)

@@ -10,7 +10,7 @@ typedef struct
     ring_t ring;
     bool readClosed;
     bool writeClosed;
-    blocker_t blocker;
+    wait_queue_t waitQueue;
     lock_t lock;
 } pipe_private_t;
 

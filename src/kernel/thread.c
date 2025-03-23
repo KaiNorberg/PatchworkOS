@@ -118,7 +118,7 @@ static thread_t* process_thread_new(process_t* process, void* entry, priority_t 
     thread->killed = false;
     thread->timeStart = 0;
     thread->timeEnd = 0;
-    thread->block.blockEntires[0] = NULL;
+    thread->block.waitEntries[0] = NULL;
     thread->block.entryAmount = 0;
     thread->block.result = BLOCK_NORM;
     thread->block.deadline = 0;

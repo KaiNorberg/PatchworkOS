@@ -92,7 +92,7 @@ static void* sysfs_mmap(file_t* file, void* address, uint64_t length, prot_t pro
     return SYSFS_OPERATION_PTR(mmap, file, address, length, prot);
 }
 
-static blocker_t* sysfs_poll(file_t* file, poll_file_t* pollFile)
+static wait_queue_t* sysfs_poll(file_t* file, poll_file_t* pollFile)
 {
     return SYSFS_OPERATION_PTR(poll, file, pollFile);
 }

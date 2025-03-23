@@ -11,13 +11,13 @@ void msg_queue_init(msg_queue_t* queue)
     memset(queue->queue, 0, sizeof(queue->queue));
     queue->readIndex = 0;
     queue->writeIndex = 0;
-    blocker_init(&queue->blocker);
+    wait_queue_init(&queue->waitQueue);
     lock_init(&queue->lock);
 }
 
 void msg_queue_deinit(msg_queue_t* queue)
 {
-    blocker_deinit(&queue->blocker);
+    wait_queue_deinit(&queue->waitQueue);
 }
 
 bool msg_queue_avail(msg_queue_t* queue)
@@ -36,12 +36,12 @@ void msg_queue_push(msg_queue_t* queue, msg_type_t type, const void* data, uint6
     memcpy(msg->data, data, size);
     queue->writeIndex = (queue->writeIndex + 1) % MSG_QUEUE_MAX;
 
-    blocker_unblock(&queue->blocker);
+    waitsys_unblock(&queue->waitQueue);
 }
 
 void msg_queue_pop(msg_queue_t* queue, msg_t* msg, nsec_t timeout)
 {
-    if (WAITSYS_BLOCK_LOCK_TIMEOUT(&queue->blocker, &queue->lock, queue->readIndex != queue->writeIndex, timeout) != BLOCK_NORM)
+    if (WAITSYS_BLOCK_LOCK_TIMEOUT(&queue->waitQueue, &queue->lock, queue->readIndex != queue->writeIndex, timeout) != BLOCK_NORM)
     {
         *msg = (msg_t){.type = MSG_NONE};
         lock_release(&queue->lock);

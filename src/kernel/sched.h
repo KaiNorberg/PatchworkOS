@@ -38,4 +38,4 @@ NORETURN void sched_thread_exit(void);
 
 void sched_push(thread_t* thread);
 
-void sched_schedule(trap_frame_t* trapFrame);
+void sched_schedule_trap(trap_frame_t* trapFrame);

@@ -14,7 +14,7 @@ typedef struct
     uint64_t writeIndex;
     kbd_mods_t mods;
     resource_t* resource;
-    blocker_t blocker;
+    wait_queue_t waitQueue;
     lock_t lock;
 } kbd_t;
 

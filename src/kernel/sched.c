@@ -242,7 +242,7 @@ static void sched_update_graveyard(trap_frame_t* trapFrame, sched_context_t* con
     }
 }
 
-void sched_schedule(trap_frame_t* trapFrame)
+void sched_schedule_trap(trap_frame_t* trapFrame)
 {
     cpu_t* self = smp_self_unsafe();
     sched_context_t* context = &self->sched;

@@ -14,7 +14,7 @@ static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count)
     count = ROUND_DOWN(count, sizeof(kbd_event_t));
     for (uint64_t i = 0; i < count / sizeof(kbd_event_t); i++)
     {
-        if (WAITSYS_BLOCK_LOCK(&kbd->blocker, &kbd->lock, file->pos != kbd->writeIndex) != BLOCK_NORM)
+        if (WAITSYS_BLOCK_LOCK(&kbd->waitQueue, &kbd->lock, file->pos != kbd->writeIndex) != BLOCK_NORM)
         {
             lock_release(&kbd->lock);
             return i * sizeof(kbd_event_t);
@@ -29,11 +29,11 @@ static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count)
     return count;
 }
 
-static blocker_t* kbd_poll(file_t* file, poll_file_t* pollFile)
+static wait_queue_t* kbd_poll(file_t* file, poll_file_t* pollFile)
 {
     kbd_t* kbd = file->private;
     pollFile->occurred = POLL_READ & (kbd->writeIndex != file->pos);
-    return &kbd->blocker;
+    return &kbd->waitQueue;
 }
 
 static file_ops_t fileOps = {
@@ -53,7 +53,7 @@ kbd_t* kbd_new(const char* name)
     kbd->writeIndex = 0;
     kbd->mods = KBD_MOD_NONE;
     kbd->resource = sysfs_expose("/kbd", name, &fileOps, kbd, NULL, kbd_delete);
-    blocker_init(&kbd->blocker);
+    wait_queue_init(&kbd->waitQueue);
     lock_init(&kbd->lock);
 
     return kbd;
@@ -112,5 +112,5 @@ void kbd_push(kbd_t* kbd, kbd_event_type_t type, keycode_t code)
         .type = type,
     };
     kbd->writeIndex = (kbd->writeIndex + 1) % KBD_MAX_EVENT;
-    blocker_unblock(&kbd->blocker);
+    waitsys_unblock(&kbd->waitQueue);
 }

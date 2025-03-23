@@ -13,7 +13,7 @@ typedef struct msg_queue
     msg_t queue[MSG_QUEUE_MAX];
     uint8_t readIndex;
     uint8_t writeIndex;
-    blocker_t blocker;
+    wait_queue_t waitQueue;
     lock_t lock;
 } msg_queue_t;
 

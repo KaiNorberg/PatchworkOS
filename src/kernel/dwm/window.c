@@ -116,12 +116,12 @@ static uint64_t window_flush(file_t* file, const pixel_t* buffer, uint64_t size,
     return 0;
 }
 
-static blocker_t* window_poll(file_t* file, poll_file_t* pollFile)
+static wait_queue_t* window_poll(file_t* file, poll_file_t* pollFile)
 {
     window_t* window = file->private;
 
     pollFile->occurred = POLL_READ & msg_queue_avail(&window->messages);
-    return &window->messages.blocker;
+    return &window->messages.waitQueue;
 }
 
 window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, dwm_type_t type, void (*cleanup)(window_t*))

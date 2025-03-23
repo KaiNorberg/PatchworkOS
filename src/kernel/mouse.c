@@ -14,7 +14,7 @@ static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count)
     count = ROUND_DOWN(count, sizeof(mouse_event_t));
     for (uint64_t i = 0; i < count / sizeof(mouse_event_t); i++)
     {
-        if (WAITSYS_BLOCK_LOCK(&mouse->blocker, &mouse->lock, file->pos != mouse->writeIndex) != BLOCK_NORM)
+        if (WAITSYS_BLOCK_LOCK(&mouse->waitQueue, &mouse->lock, file->pos != mouse->writeIndex) != BLOCK_NORM)
         {
             lock_release(&mouse->lock);
             return i * sizeof(mouse_event_t);
@@ -29,11 +29,11 @@ static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count)
     return count;
 }
 
-static blocker_t* mouse_poll(file_t* file, poll_file_t* pollFile)
+static wait_queue_t* mouse_poll(file_t* file, poll_file_t* pollFile)
 {
     mouse_t* mouse = file->private;
     pollFile->occurred = POLL_READ & (mouse->writeIndex != file->pos);
-    return &mouse->blocker;
+    return &mouse->waitQueue;
 }
 
 static file_ops_t fileOps = {
@@ -52,7 +52,7 @@ mouse_t* mouse_new(const char* name)
     mouse_t* mouse = malloc(sizeof(mouse_t));
     mouse->writeIndex = 0;
     mouse->resource = sysfs_expose("/mouse", name, &fileOps, mouse, NULL, mouse_delete);
-    blocker_init(&mouse->blocker);
+    wait_queue_init(&mouse->waitQueue);
     lock_init(&mouse->lock);
 
     return mouse;
@@ -72,5 +72,5 @@ void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, const point_t* delta)
         .delta = *delta,
     };
     mouse->writeIndex = (mouse->writeIndex + 1) % MOUSE_MAX_EVENT;
-    blocker_unblock(&mouse->blocker);
+    waitsys_unblock(&mouse->waitQueue);
 }

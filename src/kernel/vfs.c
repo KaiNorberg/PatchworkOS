@@ -335,11 +335,11 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
     }
 
     uint64_t events = 0;
-    blocker_t* blockers[CONFIG_MAX_BLOCKERS_PER_THREAD];
+    wait_queue_t* waitQueues[CONFIG_MAX_BLOCKERS_PER_THREAD];
     for (uint64_t i = 0; i < amount; i++)
     {
-        blockers[i] = files[i].file->ops->poll(files[i].file, &files[i]);
-        if (blockers[i] == NULL)
+        waitQueues[i] = files[i].file->ops->poll(files[i].file, &files[i]);
+        if (waitQueues[i] == NULL)
         {
             return ERR;
         }
@@ -374,7 +374,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
         }
         
         nsec_t remainingTime = deadline == NEVER ? NEVER : deadline - currentTime;
-        blocker_block_many(blockers, amount, remainingTime);
+        waitsys_block_many(waitQueues, amount, remainingTime);
     }
 
     return events;
