@@ -10,8 +10,8 @@
 #include "queue.h"
 #include "regs.h"
 #include "smp.h"
+#include "systime.h"
 #include "thread.h"
-#include "time.h"
 #include "trap.h"
 #include "vectors.h"
 #include "vfs.h"
@@ -107,7 +107,7 @@ void sched_init(void)
 // TODO: Move this to time_timer
 static void sched_start_ipi(trap_frame_t* trapFrame)
 {
-    nsec_t uptime = time_uptime();
+    nsec_t uptime = systime_uptime();
     nsec_t interval = (SEC / CONFIG_SCHED_HZ) / smp_cpu_amount();
     nsec_t offset = ROUND_UP(uptime, interval) - uptime;
     hpet_sleep(offset + interval * smp_self_unsafe()->id);
@@ -262,7 +262,7 @@ void sched_schedule_trap(trap_frame_t* trapFrame)
     }
     else
     {
-        thread_t* next = context->runThread->timeEnd < time_uptime()
+        thread_t* next = context->runThread->timeEnd < systime_uptime()
             ? sched_context_find_any(context)
             : sched_context_find_higher(context, context->runThread->priority);
         if (next != NULL)

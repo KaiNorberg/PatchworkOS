@@ -316,6 +316,76 @@ void gfx_rect(gfx_t* gfx, const rect_t* rect, pixel_t pixel)
     gfx_invalidate(gfx, rect);
 }
 
+void gfx_gradient(gfx_t* gfx, const rect_t* rect, pixel_t start, pixel_t end, gfx_gradient_type_t type, bool addNoise)
+{
+    int64_t width = rect->right - rect->left;
+    int64_t height = rect->bottom - rect->top;
+
+    for (int64_t y = rect->top; y < rect->bottom; y++)
+    {
+        for (int64_t x = rect->left; x < rect->right; x++)
+        {
+            int32_t factorNum;
+            int32_t factorDenom;
+
+            switch (type)
+            {
+            case GFX_GRADIENT_VERTICAL:
+            {
+                factorNum = (y - rect->top);
+                factorDenom = height;
+            }
+            break;
+            case GFX_GRADIENT_HORIZONTAL:
+            {
+                factorNum = (x - rect->left);
+                factorDenom = width;
+            }
+            break;
+            case GFX_GRADIENT_DIAGONAL:
+            {
+                factorNum = (x - rect->left) + (y - rect->top);
+                factorDenom = width + height;
+            }
+            break;
+            default:
+            {
+                factorNum = 0;
+                factorDenom = 1;
+            }
+            break;
+            }
+
+            int32_t deltaRed = PIXEL_RED(end) - PIXEL_RED(start);
+            int32_t deltaGreen = PIXEL_GREEN(end) - PIXEL_GREEN(start);
+            int32_t deltaBlue = PIXEL_BLUE(end) - PIXEL_BLUE(start);
+
+            int32_t red = PIXEL_RED(start) + ((factorNum * deltaRed) / factorDenom);
+            int32_t green = PIXEL_GREEN(start) + ((factorNum * deltaGreen) / factorDenom);
+            int32_t blue = PIXEL_BLUE(start) + ((factorNum * deltaBlue) / factorDenom);
+
+            if (addNoise)
+            {
+                int32_t noiseRed = (rand() % 5) - 2;
+                int32_t noiseGreen = (rand() % 5) - 2;
+                int32_t noiseBlue = (rand() % 5) - 2;
+
+                red += noiseRed;
+                green += noiseGreen;
+                blue += noiseBlue;
+
+                red = CLAMP(0, 255, red);
+                green = CLAMP(0, 255, green);
+                blue = CLAMP(0, 255, blue);
+            }
+
+            pixel_t pixel = PIXEL_ARGB(255, red, green, blue);
+            gfx->buffer[x + y * gfx->stride] = pixel;
+        }
+    }
+    gfx_invalidate(gfx, rect);
+}
+
 void gfx_edge(gfx_t* gfx, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background)
 {
     rect_t leftRect = (rect_t){

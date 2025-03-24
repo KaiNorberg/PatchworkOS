@@ -6,9 +6,9 @@
 #include "log.h"
 #include "regs.h"
 #include "sched.h"
-#include "waitsys.h"
 #include "smp.h"
 #include "vectors.h"
+#include "waitsys.h"
 
 void cli_push(void)
 {

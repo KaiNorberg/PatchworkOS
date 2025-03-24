@@ -177,3 +177,16 @@ char* ulltoa(unsigned long long number, char* str, int base)
 
     return str;
 }
+
+static uint64_t seed = 1;
+
+int rand()
+{
+    seed = (1103515245 * seed + 12345) % 2147483648;
+    return (int)(seed & RAND_MAX);
+}
+
+void srand(unsigned newSeed)
+{
+    seed = newSeed;
+}

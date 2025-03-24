@@ -63,7 +63,9 @@ win_theme_t winTheme = {
     .dark = 0xFF000000,
     .background = 0xFFBFBFBF,
     .selected = 0xFF00007F,
+    .selectedHighlight = 0xFF2186CD,
     .unSelected = 0xFF7F7F7F,
+    .unSelectedHighlight = 0xFFAFAFAF,
     .topbarHeight = 40,
     .padding = 2,
 };
@@ -118,7 +120,14 @@ static void win_topbar_draw(win_t* window, gfx_t* gfx)
 
     gfx_edge(gfx, &rect, winTheme.edgeWidth, winTheme.dark, winTheme.highlight);
     RECT_SHRINK(&rect, winTheme.edgeWidth);
-    gfx_rect(gfx, &rect, window->selected ? winTheme.selected : winTheme.unSelected);
+    if (window->selected)
+    {
+        gfx_gradient(gfx, &rect, winTheme.selected, winTheme.selectedHighlight, GFX_GRADIENT_HORIZONTAL, false);
+    }
+    else
+    {
+        gfx_gradient(gfx, &rect, winTheme.unSelected, winTheme.unSelectedHighlight, GFX_GRADIENT_HORIZONTAL, false);
+    }
 
     win_close_button_draw(window, gfx);
 

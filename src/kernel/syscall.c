@@ -6,16 +6,17 @@
 #include "loader.h"
 #include "pipe.h"
 #include "sched.h"
+#include "systime.h"
 #include "thread.h"
-#include "time.h"
 #include "vfs.h"
 #include "vfs_context.h"
 #include "vmm.h"
 
 #include <errno.h>
 #include <stdarg.h>
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
+#include <time.h>
 
 // NOTE: Syscalls should always return a 64 bit value to prevent garbage from remaining in rax.
 
@@ -166,7 +167,12 @@ tid_t syscall_tid(void)
 
 nsec_t syscall_uptime(void)
 {
-    return time_uptime();
+    return systime_uptime();
+}
+
+time_t syscall_time(time_t* arg)
+{
+    return ERROR(EIMPL);
 }
 
 fd_t syscall_open(const char* path)
@@ -479,6 +485,7 @@ void* syscallTable[] = {
     syscall_pid,
     syscall_tid,
     syscall_uptime,
+    syscall_time,
     syscall_open,
     syscall_close,
     syscall_read,

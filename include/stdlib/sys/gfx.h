@@ -19,6 +19,13 @@ extern "C"
 
 #define FBMP_MAGIC 0x706D6266
 
+typedef enum
+{
+    GFX_GRADIENT_VERTICAL,
+    GFX_GRADIENT_HORIZONTAL,
+    GFX_GRADIENT_DIAGONAL
+} gfx_gradient_type_t;
+
 typedef enum gfx_align
 {
     GFX_CENTER = 0,
@@ -73,6 +80,8 @@ void gfx_text(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t 
     const char* str, pixel_t foreground, pixel_t background);
 
 void gfx_rect(gfx_t* gfx, const rect_t* rect, pixel_t pixel);
+
+void gfx_gradient(gfx_t* gfx, const rect_t* rect, pixel_t start, pixel_t end, gfx_gradient_type_t type, bool addNoise);
 
 void gfx_edge(gfx_t* gfx, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background);
 

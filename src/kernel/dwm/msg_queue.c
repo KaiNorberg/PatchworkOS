@@ -2,7 +2,7 @@
 
 #include "lock.h"
 #include "sched.h"
-#include "time.h"
+#include "systime.h"
 
 #include <string.h>
 
@@ -32,7 +32,7 @@ void msg_queue_push(msg_queue_t* queue, msg_type_t type, const void* data, uint6
 
     msg_t* msg = &queue->queue[queue->writeIndex];
     msg->type = type;
-    msg->time = time_uptime();
+    msg->time = systime_uptime();
     memcpy(msg->data, data, size);
     queue->writeIndex = (queue->writeIndex + 1) % MSG_QUEUE_MAX;
 

@@ -5,8 +5,8 @@
 #include "msg_queue.h"
 #include "sched.h"
 #include "sysfs.h"
+#include "systime.h"
 #include "thread.h"
-#include "time.h"
 #include "vfs.h"
 #include "window.h"
 
@@ -121,7 +121,10 @@ static void dwm_transfer(window_t* window, const rect_t* rect)
 
 static void dwm_redraw_others(window_t* window, const rect_t* rect)
 {
-    point_t srcPoint = {0};
+    point_t srcPoint = {
+        .x = rect->left,
+        .y = rect->top,
+    };
     gfx_transfer(&backbuffer, &wall->gfx, rect, &srcPoint);
 
     window_t* other;
@@ -370,15 +373,14 @@ static void dwm_poll_keyboard(void)
 
 static void dwm_poll(void)
 {
-    int64_t oldTime = time_uptime();
-    
     while (!atomic_exchange_explicit(&redrawNeeded, false, __ATOMIC_RELAXED))
     {
-        poll_file_t poll[] = {{.file = mouse, .requested = POLL_READ}, { .file = keyboard, .requested = POLL_READ}, { .file = redrawNotifier, .requested = POLL_READ}};
+        poll_file_t poll[] = {{.file = mouse, .requested = POLL_READ}, {.file = keyboard, .requested = POLL_READ},
+            {.file = redrawNotifier, .requested = POLL_READ}};
         vfs_poll(poll, 3, NEVER);
-        
+
         LOCK_DEFER(&lock);
-    
+
         dwm_poll_mouse();
         dwm_poll_keyboard();
     }
@@ -555,10 +557,7 @@ static wait_queue_t* dwm_redraw_notifier_status(file_t* file, poll_file_t* pollF
     return &redrawWaitQueue;
 }
 
-static file_ops_t redrawNotifierOps = 
-{
-    .poll = dwm_redraw_notifier_status
-};
+static file_ops_t redrawNotifierOps = {.poll = dwm_redraw_notifier_status};
 
 void dwm_init(gop_buffer_t* gopBuffer)
 {

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "thread.h"
 #include "lock.h"
+#include "thread.h"
 
 #include <sys/list.h>
 
@@ -21,8 +21,8 @@
 #define WAITSYS_BLOCK_TIMEOUT(waitQueue, condition, timeout) \
     ({ \
         block_result_t result = BLOCK_NORM; \
-        nsec_t uptime = time_uptime(); \
-        nsec_t deadline = (timeout) == NEVER? NEVER : (timeout) + uptime; \
+        nsec_t uptime = systime_uptime(); \
+        nsec_t deadline = (timeout) == NEVER ? NEVER : (timeout) + uptime; \
         while (!(condition) && result == BLOCK_NORM) \
         { \
             if (deadline < uptime) \
@@ -30,9 +30,9 @@
                 result = BLOCK_TIMEOUT; \
                 break; \
             } \
-            nsec_t remaining = deadline == NEVER? NEVER : (deadline > uptime? deadline - uptime : 0); \
+            nsec_t remaining = deadline == NEVER ? NEVER : (deadline > uptime ? deadline - uptime : 0); \
             result = waitsys_block(waitQueue, remaining); \
-            uptime = time_uptime(); \
+            uptime = systime_uptime(); \
         } \
         result; \
     })
@@ -62,8 +62,8 @@
 #define WAITSYS_BLOCK_LOCK_TIMEOUT(waitQueue, lock, condition, timeout) \
     ({ \
         block_result_t result = BLOCK_NORM; \
-        nsec_t uptime = time_uptime(); \
-        nsec_t deadline = (timeout) == NEVER? NEVER : (timeout) + uptime; \
+        nsec_t uptime = systime_uptime(); \
+        nsec_t deadline = (timeout) == NEVER ? NEVER : (timeout) + uptime; \
         lock_acquire(lock); \
         while (result == BLOCK_NORM) \
         { \
@@ -77,9 +77,9 @@
                 break; \
             } \
             lock_release(lock); \
-            nsec_t remaining = deadline == NEVER? NEVER : (deadline > uptime? deadline - uptime : 0); \
+            nsec_t remaining = deadline == NEVER ? NEVER : (deadline > uptime ? deadline - uptime : 0); \
             result = waitsys_block(waitQueue, remaining); \
-            uptime = time_uptime(); \
+            uptime = systime_uptime(); \
             lock_acquire(lock); \
         } \
         result; \

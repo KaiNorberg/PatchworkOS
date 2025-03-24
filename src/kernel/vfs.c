@@ -2,14 +2,14 @@
 
 #include "lock.h"
 #include "sched.h"
-#include "time.h"
-#include "waitsys.h"
+#include "systime.h"
 #include "vfs_context.h"
+#include "waitsys.h"
 
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 static list_t volumes;
 static lock_t volumesLock;
@@ -316,8 +316,8 @@ uint64_t vfs_chdir(const char* path)
 }
 
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
-{        
-    uint64_t currentTime = time_uptime();
+{
+    uint64_t currentTime = systime_uptime();
     uint64_t deadline = timeout == NEVER ? NEVER : currentTime + timeout;
 
     if (amount > CONFIG_MAX_BLOCKERS_PER_THREAD)
@@ -347,8 +347,8 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
 
     while (true)
     {
-        currentTime = time_uptime();
-        
+        currentTime = systime_uptime();
+
         if (timeout != NEVER && currentTime >= deadline)
         {
             break;
@@ -361,7 +361,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
             {
                 return ERR;
             }
-    
+
             if ((files[i].occurred & files[i].requested) != 0)
             {
                 events++;
@@ -372,7 +372,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
         {
             break;
         }
-        
+
         nsec_t remainingTime = deadline == NEVER ? NEVER : deadline - currentTime;
         waitsys_block_many(waitQueues, amount, remainingTime);
     }

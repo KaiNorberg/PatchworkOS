@@ -12,6 +12,8 @@ extern "C"
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0
 
+#define RAND_MAX __INT32_MAX__
+
 _NORETURN void exit(int status);
 
 void* malloc(size_t size);
@@ -26,6 +28,9 @@ char* lltoa(long long number, char* str, int base);
 char* ulltoa(unsigned long long number, char* str, int base);
 #define ultoa(number, str, base) lltoa(number, str, base)
 #define uitoa(number, str, base) lltoa(number, str, base)
+
+int rand();
+void srand(unsigned newSeed);
 
 #if defined(__cplusplus)
 }

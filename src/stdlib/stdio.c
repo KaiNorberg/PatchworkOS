@@ -237,13 +237,13 @@ int vdprintf(fd_t fd, const char* _RESTRICT format, va_list args)
 #ifdef __KERNEL__
 
 #include "log.h"
-#include "time.h"
+#include "systime.h"
 
 int printf(const char* _RESTRICT format, ...)
 {
     char buffer[MAX_PATH];
 
-    nsec_t time = log_time_enabled() ? time_uptime() : 0;
+    nsec_t time = log_time_enabled() ? systime_uptime() : 0;
     nsec_t sec = time / SEC;
     nsec_t ms = (time % SEC) / (SEC / 1000);
 
@@ -261,7 +261,7 @@ int vprintf(const char* _RESTRICT format, va_list args)
 {
     char buffer[MAX_PATH];
 
-    nsec_t time = log_time_enabled() ? time_uptime() : 0;
+    nsec_t time = log_time_enabled() ? systime_uptime() : 0;
     nsec_t sec = time / SEC;
     nsec_t ms = (time % SEC) / (SEC / 1000);
 

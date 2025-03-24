@@ -18,7 +18,7 @@
 #include "simd.h"
 #include "smp.h"
 #include "sysfs.h"
-#include "time.h"
+#include "systime.h"
 #include "vfs.h"
 #include "vmm.h"
 #include "waitsys.h"
@@ -71,8 +71,10 @@ void kernel_init(boot_info_t* bootInfo)
 
     pic_init();
     simd_init();
-    time_init();
+    systime_init();
     log_enable_time();
+
+    printf("%d", systime_time());
 
     smp_init_others();
     sched_start();

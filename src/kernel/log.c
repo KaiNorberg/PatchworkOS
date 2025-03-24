@@ -8,7 +8,7 @@
 #include "regs.h"
 #include "sched.h"
 #include "smp.h"
-#include "time.h"
+#include "systime.h"
 
 #include <stdarg.h>
 #include <stdint.h>

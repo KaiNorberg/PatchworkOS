@@ -12,6 +12,11 @@
 #define START_MENU_WIDTH 250
 #define START_MENU_HEIGHT 400
 
+#define START_MENU_SIDE_BAR_WIDTH 32
+
+#define START_MENU_SHUT_DOWN_ID 100
+#define START_MENU_RESTART_ID 101
+
 static win_t* startMenu;
 
 typedef struct
@@ -39,11 +44,14 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
 
         for (uint64_t i = 0; i < sizeof(entries) / sizeof(entries[0]); i++)
         {
-            rect_t rect =
-                RECT_INIT_DIM(winTheme.edgeWidth * 2, winTheme.edgeWidth + winTheme.edgeWidth * (i + 1) + i * START_BUTTON_HEIGHT,
-                    RECT_WIDTH(&clientRect) - winTheme.edgeWidth * 4, START_BUTTON_HEIGHT);
+            rect_t rect = RECT_INIT(winTheme.edgeWidth * 2 + START_MENU_SIDE_BAR_WIDTH,
+                winTheme.edgeWidth + winTheme.edgeWidth * (i + 1) + i * START_BUTTON_HEIGHT,
+                RECT_WIDTH(&clientRect) - winTheme.edgeWidth * 2,
+                winTheme.edgeWidth + winTheme.edgeWidth * (i + 1) + i * START_BUTTON_HEIGHT + START_BUTTON_HEIGHT);
             win_button_new(window, entries[i].name, &rect, i, &props, WIN_BUTTON_NONE);
         }
+
+        // win_button_new(window, entries[i].name, &rect, i, &props, WIN_BUTTON_NONE);
     }
     break;
     case LMSG_REDRAW:
@@ -56,6 +64,11 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         gfx_edge(&gfx, &rect, winTheme.edgeWidth, winTheme.bright, winTheme.dark);
         RECT_SHRINK(&rect, winTheme.edgeWidth);
         gfx_rect(&gfx, &rect, winTheme.background);
+
+        rect_t sideBar = RECT_INIT(winTheme.edgeWidth + winTheme.padding, winTheme.edgeWidth + winTheme.padding,
+            winTheme.edgeWidth + winTheme.padding + START_MENU_SIDE_BAR_WIDTH,
+            START_MENU_HEIGHT - winTheme.edgeWidth - winTheme.padding);
+        gfx_rect(&gfx, &sideBar, winTheme.unSelected);
 
         win_draw_end(window, &gfx);
     }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sys/proc.h>
+#include <time.h>
 
 #include "defs.h"
 
@@ -9,6 +10,8 @@
 #define CMOS_ADDRESS 0x70
 #define CMOS_DATA 0x71
 
-void time_init(void);
+void systime_init(void);
 
-nsec_t time_uptime(void);
+nsec_t systime_uptime(void);
+
+time_t systime_time(void);

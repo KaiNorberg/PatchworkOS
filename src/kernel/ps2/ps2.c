@@ -4,7 +4,7 @@
 #include "log.h"
 #include "ps2/kbd.h"
 #include "ps2/mouse.h"
-#include "time.h"
+#include "systime.h"
 
 void ps2_init(void)
 {
@@ -33,9 +33,9 @@ void ps2_init(void)
 
 uint8_t ps2_read(void)
 {
-    uint64_t time = time_uptime();
+    uint64_t time = systime_uptime();
 
-    while (time + SEC > time_uptime())
+    while (time + SEC > systime_uptime())
     {
         uint8_t status = io_inb(PS2_PORT_STATUS);
         if (status & PS2_STATUS_OUT_FULL)
@@ -56,9 +56,9 @@ void ps2_write(uint8_t data)
 
 void ps2_wait(void)
 {
-    uint64_t time = time_uptime();
+    uint64_t time = systime_uptime();
 
-    while (time + SEC > time_uptime())
+    while (time + SEC > systime_uptime())
     {
         uint8_t status = io_inb(PS2_PORT_STATUS);
         if (status & PS2_STATUS_OUT_FULL)

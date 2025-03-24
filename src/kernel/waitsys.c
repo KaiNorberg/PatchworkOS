@@ -1,14 +1,14 @@
 #include "waitsys.h"
 
-#include "sched.h"
-#include "time.h"
-#include "smp.h"
-#include "vectors.h"
 #include "regs.h"
+#include "sched.h"
+#include "smp.h"
+#include "systime.h"
+#include "vectors.h"
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 static list_t blockedThreads;
 static lock_t blockedThreadsLock;
@@ -75,23 +75,23 @@ void waitsys_update_trap(trap_frame_t* trapFrame)
     }
 
     thread_t* thread = list_first(&blockedThreads);
-    if (time_uptime() >= thread->block.deadline)
-    {            
+    if (systime_uptime() >= thread->block.deadline)
+    {
         thread->block.result = BLOCK_TIMEOUT;
 
         list_remove(thread);
-    
+
         for (uint64_t i = 0; i < thread->block.entryAmount; i++)
         {
             wait_queue_entry_t* entry = thread->block.waitEntries[i];
             thread->block.waitEntries[i] = NULL;
-    
+
             LOCK_DEFER(&entry->waitQueue->lock);
-    
+
             list_remove(entry);
             free(entry);
         }
-        
+
         sched_push(thread);
     }
 }
@@ -136,20 +136,20 @@ block_result_t waitsys_block(wait_queue_t* waitQueue, nsec_t timeout)
     thread->block.waitEntries[0] = entry;
     thread->block.entryAmount = 1;
     thread->block.result = BLOCK_NORM;
-    thread->block.deadline = timeout == NEVER ? NEVER : time_uptime() + timeout;
+    thread->block.deadline = timeout == NEVER ? NEVER : systime_uptime() + timeout;
 
     smp_put();
 
-    asm volatile("int %0" :: "i" (VECTOR_WAITSYS_BLOCK));
+    asm volatile("int %0" ::"i"(VECTOR_WAITSYS_BLOCK));
 
     return thread->block.result;
 }
 
 block_result_t waitsys_block_many(wait_queue_t** waitQueues, uint64_t amount, nsec_t timeout)
-{    
+{
     ASSERT_PANIC(rflags_read() & RFLAGS_INTERRUPT_ENABLE, "waitsys_block_many, interupts disabled");
 
-    thread_t* thread = smp_self()->sched.runThread;    
+    thread_t* thread = smp_self()->sched.runThread;
     if (amount > CONFIG_MAX_BLOCKERS_PER_THREAD)
     {
         smp_put();
@@ -173,17 +173,17 @@ block_result_t waitsys_block_many(wait_queue_t** waitQueues, uint64_t amount, ns
         list_entry_init(&entry->entry);
         entry->waitQueue = waitQueues[i];
         entry->thread = thread;
-    
+
         thread->block.waitEntries[i] = entry;
     }
 
     thread->block.entryAmount = amount;
     thread->block.result = BLOCK_NORM;
-    thread->block.deadline = timeout == NEVER ? NEVER : time_uptime() + timeout;
+    thread->block.deadline = timeout == NEVER ? NEVER : systime_uptime() + timeout;
 
     smp_put();
 
-    asm volatile("int %0" :: "i" (VECTOR_WAITSYS_BLOCK));
+    asm volatile("int %0" ::"i"(VECTOR_WAITSYS_BLOCK));
 
     return thread->block.result;
 }
@@ -200,7 +200,7 @@ void waitsys_unblock(wait_queue_t* waitQueue)
 
         thread->block.result = BLOCK_NORM;
         blocked_threads_remove(thread);
-    
+
         for (uint64_t i = 0; i < thread->block.entryAmount; i++)
         {
             if (thread->block.waitEntries[i] == NULL)
@@ -209,7 +209,7 @@ void waitsys_unblock(wait_queue_t* waitQueue)
             }
             wait_queue_entry_t* entry = thread->block.waitEntries[i];
             thread->block.waitEntries[i] = NULL;
-        
+
             list_remove(entry);
             free(entry);
         }

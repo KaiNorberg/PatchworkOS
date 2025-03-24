@@ -87,6 +87,11 @@ _PlatformUptime:
     SYSTEM_CALL SYS_UPTIME
     ret
 
+global _PlatformTime
+_PlatformTime:
+    SYSTEM_CALL SYS_TIME
+    ret
+
 global _PlatformSpawn
 _PlatformSpawn:
     SYSTEM_CALL SYS_SPAWN

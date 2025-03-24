@@ -35,7 +35,7 @@ tid_t gettid(void)
 // Pretend you dont se this, we have to do this becouse of the variadic arguments.
 __attribute__((naked)) tid_t split(void* entry, uint64_t argc, ...)
 {
-    asm volatile("jmp _PlatformSplit"); 
+    asm volatile("jmp _PlatformSplit");
 }
 
 _NORETURN void thread_exit(void)

@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <sys/io.h>
 #include <sys/proc.h>
+#include <time.h>
 
 #ifdef __KERNEL__
 
@@ -59,6 +60,8 @@ uint64_t _PlatformPipe(pipefd_t* pipefd);
 #if _PLATFORM_HAS_SCHEDULING
 
 nsec_t _PlatformUptime(void);
+
+time_t _PlatformTime(time_t* arg);
 
 uint64_t _PlatformSleep(nsec_t nanoseconds);
 

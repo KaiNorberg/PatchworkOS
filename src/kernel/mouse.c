@@ -2,7 +2,7 @@
 #include "lock.h"
 #include "sys/mouse.h"
 #include "sysfs.h"
-#include "time.h"
+#include "systime.h"
 
 #include <stdlib.h>
 #include <sys/math.h>
@@ -67,7 +67,7 @@ void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, const point_t* delta)
 {
     LOCK_DEFER(&mouse->lock);
     mouse->events[mouse->writeIndex] = (mouse_event_t){
-        .time = time_uptime(),
+        .time = systime_uptime(),
         .buttons = buttons,
         .delta = *delta,
     };

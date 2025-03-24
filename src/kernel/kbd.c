@@ -2,7 +2,7 @@
 #include "lock.h"
 #include "sys/kbd.h"
 #include "sysfs.h"
-#include "time.h"
+#include "systime.h"
 
 #include <stdlib.h>
 #include <sys/math.h>
@@ -106,7 +106,7 @@ void kbd_push(kbd_t* kbd, kbd_event_type_t type, keycode_t code)
     }
 
     kbd->events[kbd->writeIndex] = (kbd_event_t){
-        .time = time_uptime(),
+        .time = systime_uptime(),
         .code = code,
         .mods = kbd->mods,
         .type = type,

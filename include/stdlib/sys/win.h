@@ -45,7 +45,9 @@ typedef struct win_theme
     pixel_t dark;
     pixel_t background;
     pixel_t selected;
+    pixel_t selectedHighlight;
     pixel_t unSelected;
+    pixel_t unSelectedHighlight;
     uint8_t topbarHeight;
     uint8_t padding;
 } win_theme_t;

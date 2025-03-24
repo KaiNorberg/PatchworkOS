@@ -3,7 +3,7 @@
 #include "hpet.h"
 #include "madt.h"
 #include "regs.h"
-#include "time.h"
+#include "systime.h"
 #include "utils.h"
 #include "vmm.h"
 

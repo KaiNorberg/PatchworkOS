@@ -4,7 +4,7 @@
 #include "gdt.h"
 #include "regs.h"
 #include "smp.h"
-#include "time.h"
+#include "systime.h"
 #include "vfs.h"
 
 #include <stdlib.h>
@@ -200,7 +200,7 @@ void thread_load(thread_t* thread, trap_frame_t* trapFrame)
     }
     else
     {
-        thread->timeStart = time_uptime();
+        thread->timeStart = systime_uptime();
         thread->timeEnd = thread->timeStart + CONFIG_TIME_SLICE;
 
         *trapFrame = thread->trapFrame;

@@ -7,7 +7,7 @@
 #include "ps2.h"
 #include "sched.h"
 #include "stdlib.h"
-#include "time.h"
+#include "systime.h"
 #include "vfs.h"
 
 #include <sys/math.h>
