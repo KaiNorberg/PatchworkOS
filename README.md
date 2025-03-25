@@ -31,6 +31,10 @@ Patchwork is a 64 bit monolithic hobbyist OS built from scratch in C for the x86
 - Ram disks only
 - Only x86_64
 
+## Screenshots
+
+<img src="meta/screenshots/screenshot1.png" style="image-rendering: pixelated;">
+
 ## Tested Hardware Configurations
 
 - Lenovo Thinkpad E495
