@@ -170,9 +170,20 @@ nsec_t syscall_uptime(void)
     return systime_uptime();
 }
 
-time_t syscall_time(time_t* arg)
+time_t syscall_time(time_t* timePtr)
 {
-    return ERROR(EIMPL);
+    time_t epoch = systime_time();
+    if (timePtr != NULL)
+    {
+        if (!verify_pointer(timePtr, sizeof(time_t)))
+        {
+            return ERROR(EFAULT);
+        }
+
+        *timePtr = epoch;
+    }
+
+    return epoch;
 }
 
 fd_t syscall_open(const char* path)

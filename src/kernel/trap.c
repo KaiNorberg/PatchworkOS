@@ -54,6 +54,7 @@ static void exception_handler(const trap_frame_t* trapFrame)
     }
     else
     {
+        // TODO: Add handling for user exceptions
         log_panic(trapFrame, "Unhandled User Exception");
         // sched_process_exit(1);
     }

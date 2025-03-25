@@ -74,8 +74,6 @@ void kernel_init(boot_info_t* bootInfo)
     systime_init();
     log_enable_time();
 
-    printf("%d", systime_time());
-
     smp_init_others();
     sched_start();
 

@@ -56,5 +56,6 @@ bin
 build
 .cache
 .xmake
+.vscode
 compile_commands.json
 lib/OVMFbin/OVMF_VARS-pure-efi.fd

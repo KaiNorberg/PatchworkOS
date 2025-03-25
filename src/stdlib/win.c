@@ -407,7 +407,7 @@ uint64_t win_receive(win_t* window, msg_t* msg, nsec_t timeout)
     while (true)
     {
         nsec_t nextDeadline = MIN(deadline, window->timerDeadline);
-        nsec_t remaining = nextDeadline != NEVER ? (nextDeadline - upTime) : NEVER;
+        nsec_t remaining = nextDeadline != NEVER ? (nextDeadline > upTime ? (nextDeadline - upTime) : 0) : NEVER;
 
         ioctl_window_receive_t receive = {.timeout = remaining};
         if (ioctl(window->fd, IOCTL_WINDOW_RECEIVE, &receive, sizeof(ioctl_window_receive_t)) == ERR)
@@ -422,7 +422,6 @@ uint64_t win_receive(win_t* window, msg_t* msg, nsec_t timeout)
         }
 
         upTime = uptime();
-
         if (window->timerDeadline <= upTime)
         {
             lmsg_timer_t data = {.deadline = window->timerDeadline};

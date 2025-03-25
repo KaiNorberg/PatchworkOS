@@ -61,7 +61,7 @@ uint64_t _PlatformPipe(pipefd_t* pipefd);
 
 nsec_t _PlatformUptime(void);
 
-time_t _PlatformTime(time_t* arg);
+time_t _PlatformTime(time_t* timePtr);
 
 uint64_t _PlatformSleep(nsec_t nanoseconds);
 

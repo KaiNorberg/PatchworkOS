@@ -7,6 +7,7 @@
 
 #include <errno.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <sys/dwm.h>
 #include <sys/gfx.h>
 #include <sys/math.h>

@@ -3,6 +3,7 @@
 #include "../platform/platform.h"
 #include "heap.h"
 #include "thread.h"
+#include "time_zone.h"
 
 void _StdInit(void)
 {
@@ -10,5 +11,6 @@ void _StdInit(void)
 #if _PLATFORM_HAS_SCHEDULING
     _ThreadingInit();
 #endif
+    _TimeZoneInit();
     _PlatformInit();
 }

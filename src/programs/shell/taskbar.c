@@ -1,12 +1,15 @@
 #include "taskbar.h"
 #include "start_menu.h"
-#include "sys/gfx.h"
 
+#include <stdio.h>
+#include <sys/gfx.h>
 #include <sys/win.h>
+#include <time.h>
 
-#define START_PADDING 5
 #define START_WIDTH 75
 #define START_ID 0
+
+#define TIME_WIDTH 150
 
 static uint64_t procedure(win_t* window, const msg_t* msg)
 {
@@ -15,7 +18,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
     case LMSG_INIT:
     {
         rect_t rect =
-            RECT_INIT_DIM(START_PADDING, START_PADDING + winTheme.edgeWidth, START_WIDTH, TOPBAR_HEIGHT - START_PADDING * 2);
+            RECT_INIT_DIM(TOPBAR_PADDING, TOPBAR_PADDING + winTheme.edgeWidth, START_WIDTH, TOPBAR_HEIGHT - TOPBAR_PADDING * 2);
         widget_t* button = win_button_new(window, "Start", &rect, START_ID, NULL, WIN_BUTTON_TOGGLE);
     }
     break;
@@ -31,6 +34,8 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         gfx_rect(&gfx, &rect, winTheme.bright);
 
         win_draw_end(window, &gfx);
+
+        win_timer_set(window, 0);
     }
     break;
     case LMSG_COMMAND:
@@ -47,6 +52,32 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
                 start_menu_close();
             }
         }
+    }
+    break;
+    case LMSG_TIMER:
+    {
+        gfx_t gfx;
+        win_draw_begin(window, &gfx);
+
+        rect_t rect = RECT_INIT_GFX(&gfx);
+
+        rect_t timeRect = RECT_INIT_DIM(RECT_WIDTH(&rect) - TOPBAR_PADDING - TIME_WIDTH, TOPBAR_PADDING + winTheme.edgeWidth,
+            TIME_WIDTH, TOPBAR_HEIGHT - TOPBAR_PADDING * 2);
+        gfx_edge(&gfx, &timeRect, winTheme.edgeWidth, winTheme.shadow, winTheme.highlight);
+        RECT_SHRINK(&timeRect, winTheme.edgeWidth);
+        gfx_rect(&gfx, &timeRect, winTheme.background);
+
+        time_t epoch = time(NULL);
+        struct tm timeData;
+        localtime_r(&epoch, &timeData);
+        char buffer[MAX_PATH];
+        sprintf(buffer, "%d:%d %d-%d-%d", timeData.tm_hour, timeData.tm_min, timeData.tm_year + 1900, timeData.tm_mon + 1,
+            timeData.tm_mday);
+        gfx_text(&gfx, win_font(window), &timeRect, GFX_CENTER, GFX_CENTER, 16, buffer, winTheme.dark, 0);
+
+        win_draw_end(window, &gfx);
+
+        win_timer_set(window, SEC);
     }
     break;
     }
