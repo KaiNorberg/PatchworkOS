@@ -1,9 +1,9 @@
 #include "start_menu.h"
 
-#include "_AUX/rect_t.h"
 #include "shell.h"
 #include "taskbar.h"
 
+#include <stdio.h>
 #include <sys/gfx.h>
 #include <sys/win.h>
 
@@ -29,6 +29,7 @@ typedef struct
 static start_entry_t entries[] = {
     {.name = "Calculator", .path = "home:/usr/bin/calc"},
     {.name = "Terminal", .path = "home:/usr/bin/terminal"},
+    {.name = "Error Test", .path = "this:/is/a/nonsense/file/path"},
 };
 
 static uint64_t procedure(win_t* window, const msg_t* msg)
@@ -51,7 +52,11 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
             win_button_new(window, entries[i].name, &rect, i, &props, WIN_BUTTON_NONE);
         }
 
-        // win_button_new(window, entries[i].name, &rect, i, &props, WIN_BUTTON_NONE);
+        /*rect_t shutdownRect = RECT_INIT();
+        win_button_new(window, entries[i].name, &shutdownRect, START_MENU_SHUT_DOWN_ID, &props, WIN_BUTTON_NONE);
+
+        rect_t restartRect = RECT_INIT()
+        win_button_new(window, entries[i].name, &rect, START_MENU_RESTART_ID, &props, WIN_BUTTON_NONE);*/
     }
     break;
     case LMSG_REDRAW:
@@ -81,7 +86,10 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
             const char* argv[] = {entries[data->id].path, NULL};
             if (spawn(argv, NULL) == ERR)
             {
-                // TODO: Add err handling, msg box?
+                char buffer[MAX_PATH];
+                sprintf(buffer, "Failed to spawn process (%s)!", entries[data->id].path);
+
+                win_popup(buffer, "Error!", POPUP_TYPE_OK, NULL);
             }
         }
     }

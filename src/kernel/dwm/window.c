@@ -6,8 +6,8 @@
 #include "vfs.h"
 
 #include <errno.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/dwm.h>
 #include <sys/gfx.h>
 #include <sys/math.h>

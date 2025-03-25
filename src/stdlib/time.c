@@ -1,6 +1,6 @@
+#include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
-#include <stdbool.h>
 
 #include "common/time_zone.h"
 #include "platform/platform.h"

@@ -143,6 +143,30 @@ typedef win_text_prop_t wmsg_text_prop_t;
 // User messages
 #define UMSG_BASE ((1 << 15) | (1 << 14))
 
+/// Popup
+typedef enum
+{
+    POPUP_RESULT_OK,
+    POPUP_RESULT_RETRY,
+    POPUP_RESULT_CANCEL,
+    POPUP_RESULT_YES,
+    POPUP_RESULT_NO,
+    POPUP_RESULT_CLOSE
+} popup_result_t;
+
+typedef enum
+{
+    POPUP_TYPE_OK,
+    POPUP_TYPE_RETRY_CANCEL,
+    POPUP_TYPE_YES_NO
+} popup_type_t;
+
+#define POPUP_HEIGHT 150
+#define POPUP_WIDTH 350
+#define POPUP_BUTTON_AREA_HEIGHT 50
+#define POPUP_BUTTON_HEIGHT 32
+#define POPUP_BUTTON_WIDTH 100
+
 win_t* win_new(const char* name, const rect_t* rect, dwm_type_t type, win_flags_t flags, win_proc_t procedure);
 uint64_t win_free(win_t* window);
 fd_t win_fd(win_t* window);
@@ -163,6 +187,8 @@ gfx_psf_t* win_font(win_t* window);
 uint64_t win_font_set(win_t* window, const char* path);
 widget_t* win_widget(win_t* window, widget_id_t id);
 uint64_t win_timer_set(win_t* window, nsec_t timeout);
+void* win_private(win_t* win);
+void win_private_set(win_t* win, void* private);
 
 widget_t* win_widget_new(win_t* window, widget_proc_t procedure, const char* name, const rect_t* rect, widget_id_t id);
 void win_widget_free(widget_t* widget);
@@ -185,6 +211,8 @@ widget_t* win_button_new(win_t* window, const char* name, const rect_t* rect, wi
 
 uint64_t win_label_proc(widget_t* widget, win_t* window, const msg_t* msg);
 widget_t* win_label_new(win_t* window, const char* name, const rect_t* rect, widget_id_t id, win_text_prop_t* textProp);
+
+uint64_t win_popup(const char* text, const char* title, popup_type_t type, popup_result_t* result);
 
 #if defined(__cplusplus)
 }

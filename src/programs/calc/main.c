@@ -24,7 +24,7 @@ static void numpad_button_create(win_t* window, uint64_t column, uint64_t row, c
 {
     rect_t rect =
         RECT_INIT_DIM(NUMPAD_COLUMN_TO_WINDOW(column), NUMPAD_ROW_TO_WINDOW(row), NUMPAD_BUTTON_WIDTH, NUMPAD_BUTTON_WIDTH);
-    win_text_prop_t props = {.height = 32, .foreground = 0xFF000000};
+    win_text_prop_t props = {.height = 32, .foreground = 0xFF000000, .xAlign = GFX_CENTER, .yAlign = GFX_CENTER};
     widget_t* button = win_button_new(window, name, &rect, id, &props, WIN_BUTTON_NONE);
 }
 
@@ -62,6 +62,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
 
         rect_t labelRect = RECT_INIT_DIM(NUMPAD_PADDING, NUMPAD_PADDING, WINDOW_WIDTH - NUMPAD_PADDING * 2,
             WINDOW_HEIGHT - NUMPAD_WIDTH - NUMPAD_PADDING * 2);
+
         wmsg_text_prop_t props = {.height = 32, .foreground = winTheme.dark, .xAlign = GFX_MAX, .yAlign = GFX_CENTER};
         win_label_new(window, "0", &labelRect, LABEL_ID, &props);
     }

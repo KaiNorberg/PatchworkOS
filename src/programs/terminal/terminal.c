@@ -208,6 +208,8 @@ uint64_t procedure(win_t* window, const msg_t* msg)
 
 void terminal_init(void)
 {
+    state = TERMINAL_COMMAND;
+
     rect_t rect = RECT_INIT_DIM(500, 200, TERMINAL_WIDTH, TERMINAL_HEIGHT);
     win_expand_to_window(&rect, WIN_DECO);
 

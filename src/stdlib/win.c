@@ -34,6 +34,7 @@ typedef struct win
     bool closeButtonPressed;
     gfx_psf_t* psf;
     nsec_t timerDeadline;
+    void* private;
     char name[DWM_MAX_NAME];
 } win_t;
 
@@ -345,8 +346,7 @@ win_t* win_new(const char* name, const rect_t* rect, dwm_type_t type, win_flags_
         return NULL;
     }
 
-    msg_t msg = {.type = LMSG_INIT, .time = uptime()};
-    win_dispatch(window, &msg);
+    win_send(window, LMSG_INIT, NULL, 0);
 
     win_send(window, LMSG_REDRAW, NULL, 0);
 
@@ -602,6 +602,16 @@ uint64_t win_timer_set(win_t* window, nsec_t timeout)
     return 0;
 }
 
+void* win_private(win_t* win)
+{
+    return win->private;
+}
+
+void win_private_set(win_t* win, void* private)
+{
+    win->private = private;
+}
+
 widget_t* win_widget_new(win_t* window, widget_proc_t procedure, const char* name, const rect_t* rect, widget_id_t id)
 {
     if (win_widget(window, id) != NULL)
@@ -753,6 +763,127 @@ void win_shrink_to_client(rect_t* windowRect, win_flags_t flags)
         windowRect->right -= winTheme.edgeWidth;
         windowRect->bottom -= winTheme.edgeWidth;
     }
+}
+
+typedef struct
+{
+    popup_result_t result;
+    const char* text;
+    popup_type_t type;
+} popup_data_t;
+
+static uint64_t win_popup_procedure(win_t* window, const msg_t* msg)
+{
+    popup_data_t* popupData = win_private(window);
+
+    switch (msg->type)
+    {
+    case LMSG_INIT:
+    {
+        rect_t clientRect = {};
+        win_client_rect(window, &clientRect);
+
+        rect_t middleButtonRect = RECT_INIT_DIM(RECT_WIDTH(&clientRect) / 2 - POPUP_BUTTON_WIDTH / 2,
+            RECT_HEIGHT(&clientRect) - POPUP_BUTTON_AREA_HEIGHT + POPUP_BUTTON_HEIGHT / 2 - 10, POPUP_BUTTON_WIDTH,
+            POPUP_BUTTON_HEIGHT);
+        rect_t leftButtonRect = middleButtonRect;
+        leftButtonRect.left -= POPUP_BUTTON_WIDTH + winTheme.padding * 3;
+        leftButtonRect.right -= POPUP_BUTTON_WIDTH + winTheme.padding * 3;
+        rect_t rightButtonRect = middleButtonRect;
+        rightButtonRect.left += POPUP_BUTTON_WIDTH + winTheme.padding * 3;
+        rightButtonRect.right += POPUP_BUTTON_WIDTH + winTheme.padding * 3;
+
+        win_text_prop_t buttonTextProps = {.height = 16, .xAlign = GFX_CENTER, .yAlign = GFX_CENTER, .foreground = winTheme.dark};
+
+        switch (popupData->type)
+        {
+        case POPUP_TYPE_OK:
+        {
+            win_button_new(window, "Ok", &rightButtonRect, POPUP_RESULT_OK, &buttonTextProps, WIN_BUTTON_NONE);
+        }
+        break;
+        case POPUP_TYPE_RETRY_CANCEL:
+        {
+            win_button_new(window, "Retry", &middleButtonRect, POPUP_RESULT_RETRY, &buttonTextProps, WIN_BUTTON_NONE);
+            win_button_new(window, "Cancel", &rightButtonRect, POPUP_RESULT_CANCEL, &buttonTextProps, WIN_BUTTON_NONE);
+        }
+        break;
+        case POPUP_TYPE_YES_NO:
+        {
+            win_button_new(window, "Yes", &middleButtonRect, POPUP_RESULT_YES, &buttonTextProps, WIN_BUTTON_NONE);
+            win_button_new(window, "No", &rightButtonRect, POPUP_RESULT_NO, &buttonTextProps, WIN_BUTTON_NONE);
+        }
+        break;
+        }
+    }
+    break;
+    case LMSG_REDRAW:
+    {
+        gfx_t gfx;
+        win_draw_begin(window, &gfx);
+
+        rect_t textRect = RECT_INIT_GFX(&gfx);
+        textRect.bottom -= POPUP_BUTTON_AREA_HEIGHT;
+        gfx_text(&gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, 16, popupData->text, winTheme.dark, 0);
+
+        rect_t buttonArea = RECT_INIT_GFX(&gfx);
+        buttonArea.top = buttonArea.bottom - POPUP_BUTTON_AREA_HEIGHT;
+        // gfx_rect(&gfx, &buttonArea, winTheme.unSelected);
+
+        win_draw_end(window, &gfx);
+    }
+    break;
+    case LMSG_COMMAND:
+    {
+        lmsg_command_t* data = (lmsg_command_t*)msg->data;
+        if (data->type != LMSG_COMMAND_RELEASE)
+        {
+            break;
+        }
+
+        popupData->result = data->id;
+        win_send(window, LMSG_QUIT, NULL, 0);
+    }
+    break;
+    }
+
+    return 0;
+}
+
+uint64_t win_popup(const char* text, const char* title, popup_type_t type, popup_result_t* result)
+{
+    rect_t screenRect = {0};
+    win_screen_rect(&screenRect);
+
+    popup_data_t popupData = {
+        .result = POPUP_RESULT_CLOSE,
+        .text = text,
+        .type = type,
+    };
+
+    rect_t rect = RECT_INIT_DIM(RECT_WIDTH(&screenRect) / 2 - POPUP_WIDTH / 2, RECT_HEIGHT(&screenRect) / 2 - POPUP_HEIGHT / 2,
+        POPUP_WIDTH, POPUP_HEIGHT);
+    win_t* window = win_new(title, &rect, DWM_WINDOW, WIN_DECO, win_popup_procedure);
+    if (window == NULL)
+    {
+        return ERR;
+    }
+    win_private_set(window, &popupData);
+
+    msg_t msg = {};
+    while (msg.type != LMSG_QUIT)
+    {
+        win_receive(window, &msg, NEVER);
+        win_dispatch(window, &msg);
+    }
+
+    win_free(window);
+
+    if (result != NULL)
+    {
+        *result = popupData.result;
+    }
+    return 0;
 }
 
 #endif

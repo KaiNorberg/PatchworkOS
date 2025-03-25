@@ -199,26 +199,66 @@ void gfx_char(gfx_t* gfx, const gfx_psf_t* psf, const point_t* point, uint64_t h
 void gfx_text(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign, uint64_t height,
     const char* str, pixel_t foreground, pixel_t background)
 {
-    uint64_t scale = MAX(1, height / psf->height);
-    height = psf->height * scale;
-    int64_t width = strlen(str) * psf->width * scale;
+    if (str == NULL || *str == '\0')
+    {
+        return;
+    }
 
-    point_t point;
+    int64_t scale = MAX(1, height / psf->height);
+    height = psf->height * scale;
+
+    int64_t numLines = 1;
+    int64_t maxLineWidth = 0;
+
+    int64_t wordLength = 0;
+    int64_t currentXPos = 0;
+    const char* chr = str;
+    while (true)
+    {
+        if (*chr == ' ' || *chr == '\0')
+        {
+            int64_t wordEndPos = currentXPos + wordLength * psf->width * scale;
+            if (wordEndPos > RECT_WIDTH(rect))
+            {
+                numLines++;
+                maxLineWidth = MAX(maxLineWidth, currentXPos);
+                currentXPos = wordLength * psf->width * scale;
+            }
+            else
+            {
+                currentXPos = wordEndPos;
+            }
+            if (*chr == '\0')
+            {
+                maxLineWidth = MAX(maxLineWidth, currentXPos);
+                break;
+            }
+            wordLength = 0;
+            currentXPos += psf->width * scale;
+        }
+        else
+        {
+            wordLength++;
+        }
+        chr++;
+    }
+
+    point_t startPoint;
     switch (xAlign)
     {
     case GFX_CENTER:
     {
-        point.x = MAX(rect->left, (rect->right + rect->left - width) / 2);
+        startPoint.x = rect->left + (RECT_WIDTH(rect) - maxLineWidth) / 2;
     }
     break;
     case GFX_MAX:
     {
-        point.x = MAX(rect->left, rect->right - width);
+        startPoint.x = rect->right - maxLineWidth;
     }
     break;
     case GFX_MIN:
     {
-        point.x = rect->left;
+        startPoint.x = rect->left;
     }
     break;
     default:
@@ -231,17 +271,18 @@ void gfx_text(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t 
     {
     case GFX_CENTER:
     {
-        point.y = MAX(rect->top, (rect->bottom + rect->top - (int64_t)height) / 2);
+        int64_t totalTextHeight = height * numLines;
+        startPoint.y = rect->top + (RECT_HEIGHT(rect) - totalTextHeight) / 2;
     }
     break;
     case GFX_MAX:
     {
-        point.y = MAX(rect->top, rect->bottom - (int64_t)height);
+        startPoint.y = MAX(rect->top, rect->bottom - (int64_t)height * numLines);
     }
     break;
     case GFX_MIN:
     {
-        point.y = rect->top;
+        startPoint.y = rect->top;
     }
     break;
     default:
@@ -250,28 +291,42 @@ void gfx_text(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t 
     }
     }
 
-    if (RECT_WIDTH(rect) < width)
+    chr = str;
+    point_t currentPoint = startPoint;
+    while (*chr != '\0')
     {
-        for (uint64_t i = 0; i < RECT_WIDTH(rect) / (psf->width * scale) - 3; i++)
+        const char* wordStart = chr;
+        wordLength = 0;
+        while (*chr != ' ' && *chr != '\0')
         {
-            gfx_char(gfx, psf, &point, height, str[i], foreground, background);
-            point.x += psf->width * scale;
+            wordLength++;
+            chr++;
         }
 
-        for (uint64_t i = 0; i < 3; i++)
+        int64_t wordWidth = wordLength * psf->width * scale;
+
+        if (currentPoint.x + wordWidth > rect->right)
         {
-            gfx_char(gfx, psf, &point, height, '.', foreground, background);
-            point.x += psf->width * scale;
+            currentPoint.y += height;
+            currentPoint.x = startPoint.x;
         }
-    }
-    else
-    {
-        const char* chr = str;
-        uint64_t offset = 0;
-        while (*chr != '\0')
+        for (int64_t i = 0; i < wordLength; i++)
         {
-            gfx_char(gfx, psf, &point, height, *chr, foreground, background);
-            point.x += psf->width * scale;
+            gfx_char(gfx, psf, &currentPoint, height, wordStart[i], foreground, background);
+            currentPoint.x += psf->width * scale;
+        }
+
+        if (*chr == ' ')
+        {
+            if (currentPoint.x + psf->width * scale > rect->right)
+            {
+                currentPoint.y += height;
+            }
+            else
+            {
+                gfx_char(gfx, psf, &currentPoint, height, ' ', foreground, background);
+                currentPoint.x += psf->width * scale;
+            }
             chr++;
         }
     }
