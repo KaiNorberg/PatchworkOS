@@ -71,8 +71,13 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         struct tm timeData;
         localtime_r(&epoch, &timeData);
         char buffer[MAX_PATH];
-        sprintf(buffer, "%d:%d %d-%d-%d", timeData.tm_hour, timeData.tm_min, timeData.tm_year + 1900, timeData.tm_mon + 1,
-            timeData.tm_mday);
+        sprintf(buffer, "%02d:%02d %d-%02d-%02d", 
+            timeData.tm_hour, 
+            timeData.tm_min, 
+            timeData.tm_year + 1900, 
+            timeData.tm_mon + 1,
+            timeData.tm_mday
+        );
         gfx_text(&gfx, win_font(window), &timeRect, GFX_CENTER, GFX_CENTER, 16, buffer, winTheme.dark, 0);
 
         win_draw_end(window, &gfx);
