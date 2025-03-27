@@ -11,6 +11,11 @@
 
 // TODO: These commands should probobly be script files or something.
 
+static const char* lookupDirs[] = {
+    "home:/bin",
+    "home:/usr/bin",
+};
+
 static void command_cd(uint64_t argc, const char** argv)
 {
     if (argc < 2)
@@ -62,10 +67,9 @@ static void command_help(uint64_t argc, const char** argv)
         terminal_print("Type help [COMMAND] for more information about COMMAND\n  ");
         for (uint64_t i = 0; i < sizeof(commands) / sizeof(commands[0]); i++)
         {
-            terminal_print(commands[i].name);
-            terminal_print(" ");
+            terminal_print("%s ", commands[i].name);
         }
-        terminal_print("./[BINARY IN CWD] [BINARY IN LOOKUP PATHS]");
+        terminal_print("./[BINARY IN CWD] [BINARY IN home:/bin OR home:/bin/usr/]");
     }
     else
     {
@@ -94,12 +98,6 @@ static void command_help(uint64_t argc, const char** argv)
         terminal_print(command->description);
     }
 }
-
-// TODO: Config file?
-static const char* lookupDirs[] = {
-    "home:/bin",
-    "home:/usr/bin",
-};
 
 void command_execute(const char* command)
 {
