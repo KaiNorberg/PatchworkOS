@@ -19,8 +19,6 @@ void terminal_clear(void);
 
 uint64_t terminal_spawn(const char** argv);
 
-void terminal_put(char chr);
+void terminal_print(const char* str, ...);
 
-void terminal_print(const char* str);
-
-void terminal_error(const char* str);
+void terminal_error(const char* str, ...);

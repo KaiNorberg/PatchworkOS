@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h> 
 #include <sys/win.h>
 
 // This is probobly one of the messiest parts of this project.
@@ -104,7 +105,7 @@ static void terminal_handle_input(char chr)
     {
     case '\n':
     {
-        terminal_put('\n');
+        terminal_print("%c", '\n');
 
         switch (state)
         {
@@ -131,14 +132,14 @@ static void terminal_handle_input(char chr)
     {
         if (input_pop() != '\0')
         {
-            terminal_put('\b');
+            terminal_print("%c", '\b');
         }
     }
     break;
     default:
     {
         input_push(chr);
-        terminal_put(chr);
+        terminal_print("%c", chr);
     }
     break;
     }
@@ -241,7 +242,7 @@ static void terminal_read_stdout(void)
             break;
         }
 
-        terminal_put(chr);
+        terminal_print("%c", chr);
         poll(&fd, 1, 0);
     } while (fd.occurred & POLL_READ);
 }
@@ -316,22 +317,17 @@ uint64_t terminal_spawn(const char** argv)
     return 0;
 }
 
-static void terminal_scroll(void)
+static void terminal_scroll(gfx_t* gfx)
 {
     cursorPos.y -= 2;
 
-    gfx_t gfx;
-    win_draw_begin(terminal, &gfx);
-
-    rect_t rect = RECT_INIT_GFX(&gfx);
+    rect_t rect = RECT_INIT_GFX(gfx);
     RECT_SHRINK(&rect, winTheme.edgeWidth);
 
-    gfx_scroll(&gfx, &rect, win_font(terminal)->height * 2, winTheme.dark);
-
-    win_draw_end(terminal, &gfx);
+    gfx_scroll(gfx, &rect, win_font(terminal)->height * 2, winTheme.dark);
 }
 
-static void terminal_put_backend(gfx_t* gfx, char chr)
+static void terminal_put(gfx_t* gfx, char chr)
 {
     const gfx_psf_t* font = win_font(terminal);
 
@@ -345,7 +341,7 @@ static void terminal_put_backend(gfx_t* gfx, char chr)
 
         if ((cursorPos.y + 1) * font->height > gfx->height - winTheme.edgeWidth * 2 - winTheme.padding * 2)
         {
-            terminal_scroll();
+            terminal_scroll(gfx);
         }
     }
     break;
@@ -371,24 +367,14 @@ static void terminal_put_backend(gfx_t* gfx, char chr)
 
         if ((cursorPos.x + 2) * font->width > gfx->width - winTheme.edgeWidth * 2 - winTheme.padding * 2)
         {
-            terminal_put_backend(gfx, '\n');
+            terminal_put(gfx, '\n');
         }
     }
     break;
     }
 }
 
-void terminal_put(char chr)
-{
-    gfx_t gfx;
-    win_draw_begin(terminal, &gfx);
-
-    terminal_put_backend(&gfx, chr);
-
-    win_draw_end(terminal, &gfx);
-}
-
-void terminal_print(const char* str)
+void terminal_print(const char* str, ...)
 {
     if (str == NULL)
     {
@@ -398,25 +384,35 @@ void terminal_print(const char* str)
     gfx_t gfx;
     win_draw_begin(terminal, &gfx);
 
-    while (*str != '\0')
+    char buffer[MAX_PATH];
+    va_list args;
+    va_start(args, str);
+    vsprintf(buffer, str, args);
+    va_end(args);
+
+    char* chr = buffer;
+    while (*chr != '\0')
     {
-        terminal_put_backend(&gfx, *str);
-        str++;
+        terminal_put(&gfx, *chr++);
     }
 
     win_draw_end(terminal, &gfx);
 }
 
-void terminal_error(const char* str)
+void terminal_error(const char* str, ...)
 {
-    terminal_print("error: ");
     if (str != NULL)
     {
-        terminal_print(str);
+        char buffer[MAX_PATH];
+        va_list args;
+        va_start(args, str);
+        vsprintf(buffer, str, args);
+        va_end(args);
+    
+        terminal_print("error: %s\n", buffer);      
     }
     else
     {
-        terminal_print(strerror(errno));
+        terminal_print("error: %s\n", strerror(errno));
     }
-    terminal_put('\n');
 }
