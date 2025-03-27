@@ -28,10 +28,7 @@ deploy: $(PROGRAMS)
 	mcopy -i $(TARGET) -s bin/bootloader/bootx64.efi ::/efi/boot
 	mcopy -i $(TARGET) -s bin/kernel/kernel ::/boot
 	mcopy -i $(TARGET) -s bin/programs/shell ::/bin
-	mcopy -i $(TARGET) -s bin/programs/calc ::/usr/bin
-	mcopy -i $(TARGET) -s bin/programs/terminal ::/usr/bin
-	mcopy -i $(TARGET) -s bin/programs/helloworld ::/usr/bin
-	mcopy -i $(TARGET) -s bin/programs/threadtest ::/usr/bin
+	$(foreach prog,$(filter-out shell,$(PROGRAMS)),mcopy -i $(TARGET) -s bin/programs/$(prog) ::/usr/bin;)
 	mcopy -i $(TARGET) -s LICENSE ::/usr/license
 
 clean:

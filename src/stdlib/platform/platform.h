@@ -27,6 +27,8 @@ void _PlatformInit(void);
 
 void* _PlatformPageAlloc(uint64_t amount);
 
+int* _PlatformErrnoFunc(void);
+
 #if _PLATFORM_HAS_FILE_IO
 
 uint64_t _PlatformListdir(const char* path, dir_entry_t* entries, uint64_t amount);
@@ -47,7 +49,7 @@ uint64_t _PlatformChdir(const char* path);
 
 uint64_t _PlatformPoll(pollfd_t* fds, uint64_t amount, nsec_t timeout);
 
-uint64_t _PlatformStat(const char* path, stat_t* stat);
+uint64_t _PlatformStat(const char* path, stat_t* info);
 
 uint64_t _PlatformIoctl(fd_t fd, uint64_t request, void* argp, uint64_t size);
 

@@ -7,62 +7,30 @@
 #include <string.h>
 #include <sys/io.h>
 #include <sys/proc.h>
+#include <sys/argsplit.h>
 
 // TODO: These commands should probobly be script files or something.
 
-static void command_cd(const char* token)
+static void command_cd(uint64_t argc, const char** argv)
 {
-    if (token == NULL)
+    if (argc < 2)
     {
         chdir("home:/usr");
         return;
     }
 
-    if (chdir(token) == ERR)
+    if (chdir(argv[1]) == ERR)
     {
         terminal_error(NULL);
     }
 }
 
-static void command_ls(const char* token)
-{
-    char path[MAX_PATH];
-    if (token == NULL)
-    {
-        strcpy(path, ".");
-    }
-    else
-    {
-        token_copy(path, token);
-    }
-
-    dir_list_t* list = loaddir(path);
-    if (list == NULL)
-    {
-        terminal_error(NULL);
-        return;
-    }
-
-    for (uint64_t i = 0; i < list->amount; i++)
-    {
-        terminal_print(list->entries[i].name);
-        if (list->entries[i].type == STAT_DIR)
-        {
-            terminal_put('/');
-        }
-        terminal_put(' ');
-    }
-
-    terminal_put('\n');
-    free(list);
-}
-
-static void command_clear(const char* token)
+static void command_clear(uint64_t argc, const char** argv)
 {
     terminal_clear();
 }
 
-static void command_help(const char* token);
+static void command_help(uint64_t argc, const char** argv);
 
 static command_t commands[] = {
     {
@@ -71,14 +39,6 @@ static command_t commands[] = {
         .description =
             "If DIRECTORY is given, the current working directory will be set to DIRECTORY else it will be set to \"home:/usr\"",
         .callback = command_cd,
-    },
-    {
-        .name = "ls",
-        .synopsis = "ls [DIRECTORY]",
-        .description =
-            "If DIRECTORY is given, the contents of DIRECTORY will be printed, else the contents of the working "
-            "directory will be printed. Any printed entry followed by a \"/\" is a directory, other entries are files.",
-        .callback = command_ls,
     },
     {
         .name = "clear",
@@ -95,9 +55,9 @@ static command_t commands[] = {
     },
 };
 
-static void command_help(const char* token)
+static void command_help(uint64_t argc, const char** argv)
 {
-    if (token == NULL)
+    if (argc < 2)
     {
         terminal_print("Type help [COMMAND] for more information about COMMAND\n  ");
         for (uint64_t i = 0; i < sizeof(commands) / sizeof(commands[0]); i++)
@@ -112,7 +72,7 @@ static void command_help(const char* token)
         command_t* command = NULL;
         for (uint64_t i = 0; i < sizeof(commands) / sizeof(commands[0]); i++)
         {
-            if (token_equal(token, commands[i].name))
+            if (token_equal(argv[1], commands[i].name))
             {
                 command = &commands[i];
                 break;
@@ -135,81 +95,64 @@ static void command_help(const char* token)
     }
 }
 
-bool command_look_for_binary(const char* binary, const char* path)
-{
-    dir_list_t* list = loaddir(path);
-    if (list == NULL)
-    {
-        return false;
-    }
-
-    for (uint64_t i = 0; i < list->amount; i++)
-    {
-        if (strcmp(binary, list->entries[i].name) == 0)
-        {
-            free(list);
-            return true;
-        }
-    }
-
-    free(list);
-    return false;
-}
-
 // TODO: Config file?
 static const char* lookupDirs[] = {
     "home:/bin",
     "home:/usr/bin",
 };
 
-void command_spawn(const char* dir, const char* command)
+void command_execute(const char* command)
 {
-    char binary[MAX_PATH];
-    token_copy(binary, command);
-
-    for (uint64_t i = 0; i < sizeof(lookupDirs) / sizeof(lookupDirs[0]); i++)
+    uint64_t argc;
+    const char** argv = argsplit(command, &argc);
+    if (argc == 0 || argv == NULL)
     {
-        if (command_look_for_binary(binary, lookupDirs[i]))
-        {
-            char path[MAX_PATH] = {0};
-            strcpy(path, lookupDirs[i]);
-            strcat(path, "/");
-            strcat(path, binary);
+        terminal_print("empty command");
+        return;
+    }
 
-            const char* argv[] = {path, NULL};
+    if (argv[0][0] == '.' && argv[0][1]  == '/')
+    {
+        stat_t info;
+        if (stat(argv[0], &info) != ERR && info.type == STAT_FILE)
+        {
             if (terminal_spawn(argv) == ERR)
             {
                 terminal_error(NULL);
             }
             return;
-        }
-    }
-}
-
-void command_parse(const char* command)
-{
-    if (command[0] == '.' && command[1] == '/')
-    {
-        command_spawn(".", command + 2);
-        return;
+        }    
     }
 
     for (uint64_t i = 0; i < sizeof(commands) / sizeof(commands[0]); i++)
     {
         if (token_equal(command, commands[i].name))
         {
-            commands[i].callback(token_next(command));
+            commands[i].callback(argc, argv);
             return;
         }
     }
 
-    char binary[MAX_PATH];
-    token_copy(binary, command);
     for (uint64_t i = 0; i < sizeof(lookupDirs) / sizeof(lookupDirs[0]); i++)
     {
-        if (command_look_for_binary(binary, lookupDirs[i]))
+        if (strlen(lookupDirs[i]) + strlen(argv[0]) + 1 >= MAX_PATH)
         {
-            command_spawn(lookupDirs[i], command);
+            continue;
+        }
+
+        char path[MAX_PATH];
+        strcpy(path, lookupDirs[i]);
+        strcat(path, "/");
+        strcat(path, argv[0]);
+
+        stat_t info;
+        if (stat(path, &info) != ERR && info.type == STAT_FILE)
+        {
+            argv[0] = path;
+            if (terminal_spawn(argv) == ERR)
+            {
+                terminal_error(NULL);
+            }
             return;
         }
     }

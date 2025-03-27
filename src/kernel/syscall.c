@@ -53,7 +53,26 @@ static bool verify_buffer(const void* pointer, uint64_t length)
 
 static bool verify_string(const char* string)
 {
-    return verify_buffer(string, 0) && verify_buffer(string, strlen(string));
+    if (!verify_buffer(string, sizeof(const char*)))
+    {
+        return false;
+    }
+
+    const char* chr = string;
+    while (true)
+    {
+        if (!verify_buffer(chr, sizeof(char)))
+        {
+            return false;
+        }
+
+        if (*chr == '\0')
+        {
+            return true;
+        }
+
+        chr++;
+    }
 }
 
 ///////////////////////////////////////////////////////

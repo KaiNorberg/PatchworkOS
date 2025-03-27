@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-// TODO: Time zone handling is NOT compliant with the c standard (for now)
+// TODO: Time zone handling is NOT compliant with the c standard (for now). Daylight savings time.
 typedef struct
 {
     int64_t secondsOffset;

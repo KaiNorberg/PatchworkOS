@@ -2,8 +2,10 @@
 
 #include "log.h"
 #include "pmm.h"
+#include "sched.h"
 #include "vmm.h"
 
+#include <sched.h>
 #include <sys/math.h>
 #include <sys/proc.h>
 
@@ -25,4 +27,9 @@ void* _PlatformPageAlloc(uint64_t amount)
     newAddress += amount * PAGE_SIZE;
 
     return addr;
+}
+
+int* _PlatformErrnoFunc(void)
+{
+    return &sched_thread()->error;
 }

@@ -17,7 +17,7 @@
 
 static void* loader_load_program(thread_t* thread)
 {
-    const char* executable = sched_process()->argv[0];
+    const char* executable = sched_process()->argv.buffer[0];
     if (executable == NULL)
     {
         return NULL;
@@ -100,13 +100,25 @@ static void* loader_load_program(thread_t* thread)
 
 static void* loader_allocate_stack(thread_t* thread)
 {
-    void* address = (void*)(VMM_LOWER_HALF_MAX - (CONFIG_USER_STACK * (thread->id + 1) + PAGE_SIZE * (thread->id)));
-    if (vmm_alloc(address, CONFIG_USER_STACK, PROT_READ | PROT_WRITE) == NULL)
+    uintptr_t base = VMM_LOWER_HALF_MAX - (CONFIG_USER_STACK * (thread->id + 1)) -
+        (PAGE_SIZE * (thread->id + 1)); // We add one more page of spacing as a guard page
+    if (vmm_alloc((void*)(base + PAGE_SIZE), CONFIG_USER_STACK, PROT_READ | PROT_WRITE) == NULL)
     {
         return NULL;
     }
 
-    return address + CONFIG_USER_STACK;
+    return (void*)(base + PAGE_SIZE + CONFIG_USER_STACK);
+}
+
+static char** loader_setup_argv(thread_t* thread, void* rsp)
+{
+    char** argv = memcpy(rsp - thread->process->argv.size, thread->process->argv.buffer, thread->process->argv.size);
+    for (uint64_t i = 0; i < thread->process->argv.amount; i++)
+    {
+        argv[i] = (void*)((uint64_t)argv[i] - (uint64_t)thread->process->argv.buffer + (uint64_t)argv);
+    }
+
+    return argv;
 }
 
 static void loader_spawn_entry(void)
@@ -116,18 +128,21 @@ static void loader_spawn_entry(void)
     void* rsp = loader_allocate_stack(thread);
     if (rsp == NULL)
     {
-        printf("loader: stack failure (%s, %d)", thread->process->argv[0], thread->process->id);
+        printf("loader: stack failure (%s, %d)", thread->process->argv.buffer[0], thread->process->id);
         sched_process_exit(EEXEC);
     }
 
     void* rip = loader_load_program(thread);
     if (rip == NULL)
     {
-        printf("loader: load failure (%s, %d)", thread->process->argv[0], thread->process->id);
+        printf("loader: load failure (%s, %d)", thread->process->argv.buffer[0], thread->process->id);
         sched_process_exit(EEXEC);
     }
 
-    loader_jump_to_user_space(rsp, rip);
+    char** argv = loader_setup_argv(thread, rsp);
+    rsp = (void*)ROUND_DOWN((uint64_t)argv - 1, 16);
+
+    loader_jump_to_user_space(thread->process->argv.amount, argv, rsp, rip);
 }
 
 thread_t* loader_spawn(const char** argv, priority_t priority)
@@ -149,7 +164,13 @@ thread_t* loader_spawn(const char** argv, priority_t priority)
         return ERRPTR(EISDIR);
     }
 
+    const char* temp = argv[0];
+    argv[0] = executable;
+
     thread_t* thread = thread_new(argv, loader_spawn_entry, priority);
+
+    argv[0] = temp;
+
     if (thread == NULL)
     {
         return NULL;

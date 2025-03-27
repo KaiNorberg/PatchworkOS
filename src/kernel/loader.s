@@ -5,14 +5,14 @@
 
 section .text
 
-;rdi = rsp
-;rsi = rip
+;rdi = argc
+;rsi = argv
+;rdx = rsp
+;rcx = rip
 global loader_jump_to_user_space
 loader_jump_to_user_space:
     xor rax, rax
     xor rbx, rbx
-    xor rcx, rcx
-    xor rdx, rdx
     xor rbp, rbp
     xor r8, r8
     xor r9, r9
@@ -24,8 +24,8 @@ loader_jump_to_user_space:
     xor r15, r15
 
     push GDT_USER_DATA | 3
-    push rdi
+    push rdx
     push RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET
     push GDT_USER_CODE | 3
-    push rsi
+    push rcx
     iretq

@@ -7,66 +7,67 @@
 #include "systime.h"
 #include "vfs.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/math.h>
 
 static _Atomic pid_t newPid = ATOMIC_VAR_INIT(0);
 
-static char** process_allocate_argv(const char** src)
+static uint64_t argv_init(argv_t* argv, const char** src)
 {
+    if (src == NULL)
+    {
+        argv->buffer = malloc(sizeof(const char*));
+        argv->size = sizeof(const char*);
+        argv->amount = 1;
+
+        argv->buffer[0] = NULL;
+        return 0;
+    }
+
     uint64_t argc = 0;
-    if (src != NULL)
+    while (src[argc] != NULL)
     {
-        while (src[argc] != NULL)
-        {
-            argc++;
-        }
+        argc++;
     }
 
-    if (argc != 0)
+    uint64_t size = sizeof(const char*) * (argc + 1);
+    for (uint64_t i = 0; i < argc; i++)
     {
-        uint64_t size = sizeof(const char*) * (argc + 1);
-        for (uint64_t i = 0; i < argc; i++)
+        uint64_t strLen = strnlen(src[i], MAX_PATH + 1);
+        if (strLen >= MAX_PATH + 1)
         {
-            uint64_t strLen = strnlen(src[i], MAX_PATH + 1);
-            if (strLen >= MAX_PATH + 1)
-            {
-                return NULL;
-            }
-            size += (strLen + 1) * sizeof(char);
+            return ERR;
         }
-
-        char** dest = malloc(size);
-        if (dest == NULL)
-        {
-            return NULL;
-        }
-
-        uint64_t offset = sizeof(const char*) * (argc + 1);
-        for (uint64_t i = 0; i < argc; i++)
-        {
-            void* arg = (void*)((uint64_t)dest + offset);
-            strcpy(arg, src[i]);
-            dest[i] = arg;
-            offset += strlen(src[i]) + 1;
-        }
-        dest[argc] = NULL;
-
-        return dest;
+        size += strLen + 1;
     }
-    else
+
+    char** dest = malloc(size);
+    if (dest == NULL)
     {
-        char** dest = malloc(sizeof(const char*));
-        if (dest == NULL)
-        {
-            return NULL;
-        }
-
-        dest[0] = NULL;
-
-        return dest;
+        return ERR;
     }
+
+    char* strings = (char*)((uintptr_t)dest + sizeof(char*) * (argc + 1));
+    for (uint64_t i = 0; i < argc; i++)
+    {
+        dest[i] = strings;
+        strcpy(strings, src[i]);
+        strings += strlen(src[i]) + 1;
+    }
+    dest[argc] = NULL;
+
+    argv->buffer = dest;
+    argv->size = size;
+    argv->amount = argc;
+
+    return 0;
+}
+
+static void argv_uninit(argv_t* argv)
+{
+    free(argv->buffer);
 }
 
 static process_t* process_new(const char** argv)
@@ -77,8 +78,7 @@ static process_t* process_new(const char** argv)
         return ERRPTR(ENOMEM);
     }
 
-    process->argv = process_allocate_argv(argv);
-    if (process->argv == NULL)
+    if (argv_init(&process->argv, argv) == ERR)
     {
         free(process);
         return ERRPTR(ENOMEM);
@@ -98,7 +98,7 @@ static void process_free(process_t* process)
 {
     vfs_context_deinit(&process->vfsContext);
     space_deinit(&process->space);
-    free(process->argv);
+    argv_uninit(&process->argv);
     free(process);
 }
 
@@ -147,14 +147,14 @@ thread_t* thread_new(const char** argv, void* entry, priority_t priority)
     process_t* process = process_new(argv);
     if (process == NULL)
     {
-        return ERRPTR(EINVAL);
+        return NULL;
     }
 
     thread_t* thread = process_thread_new(process, entry, priority);
     if (thread == NULL)
     {
         process_free(process);
-        return ERRPTR(EINVAL);
+        return ERRPTR(ENOMEM);
     }
 
     return thread;

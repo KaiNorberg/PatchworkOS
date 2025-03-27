@@ -110,7 +110,7 @@ static void terminal_handle_input(char chr)
         {
         case TERMINAL_COMMAND:
         {
-            command_parse(input);
+            command_execute(input);
             if (state == TERMINAL_COMMAND)
             {
                 terminal_print_prompt();
@@ -390,6 +390,11 @@ void terminal_put(char chr)
 
 void terminal_print(const char* str)
 {
+    if (str == NULL)
+    {
+        return;
+    }
+
     gfx_t gfx;
     win_draw_begin(terminal, &gfx);
 

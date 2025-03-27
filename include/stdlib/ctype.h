@@ -11,6 +11,7 @@ extern "C"
 #define isalnum(ch) (isdigit((ch)) || isalpha((ch)))
 #define isalpha(ch) (((ch) >= 'A' && (ch) <= 'Z') || ((ch) >= 'a' && (ch) <= 'z'))
 #define isdigit(ch) (((ch) >= '0' && (ch) <= '9'))
+#define isspace(ch) ((ch) == ' ' || (ch) == '\t' || (ch) == '\n' || (ch) == '\v' || (ch) == '\f' || (ch) == '\r')
 
 int tolower(int ch);
 

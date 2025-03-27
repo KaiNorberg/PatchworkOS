@@ -31,8 +31,15 @@ typedef enum
 
 typedef struct
 {
+    char** buffer; // Stores both pointers and strings like "[ptr1][ptr2][ptr3][NULL][string1][string2][string3]"
+    uint64_t size;
+    uint64_t amount;
+} argv_t;
+
+typedef struct
+{
     pid_t id;
-    char** argv; // Stores both pointers and strings like "[ptr1][ptr2][ptr3][NULL][string1][string2][string3]"
+    argv_t argv;
     bool killed;
     vfs_context_t vfsContext;
     space_t space;

@@ -7,7 +7,7 @@
 
 #define LOADER_SPLIT_MAX_ARGS 4
 
-extern NORETURN void loader_jump_to_user_space(void* rsp, void* rip);
+extern NORETURN void loader_jump_to_user_space(int argc, char** argv, void* rsp, void* rip);
 
 thread_t* loader_spawn(const char** argv, priority_t priority);
 

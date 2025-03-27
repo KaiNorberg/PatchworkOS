@@ -1,4 +1,5 @@
 #include "../platform.h"
+#include "common/thread.h"
 
 #include <sys/io.h>
 #include <sys/proc.h>
@@ -13,4 +14,9 @@ void _PlatformInit(void)
 void* _PlatformPageAlloc(uint64_t amount)
 {
     return mmap(zeroResource, NULL, amount * PAGE_SIZE, PROT_READ | PROT_WRITE);
+}
+
+int* _PlatformErrnoFunc(void)
+{
+    return &_ThreadById(gettid())->err;
 }

@@ -25,7 +25,9 @@
 
 #include <bootloader/boot_info.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdlib_internal/init.h>
+#include <sys/argsplit.h>
 
 static void kernel_free_boot_data(efi_mem_map_t* memoryMap)
 {
