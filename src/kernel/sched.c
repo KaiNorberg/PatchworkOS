@@ -88,39 +88,20 @@ static thread_t* sched_context_find_any(sched_context_t* context)
     return NULL;
 }
 
-static void sched_spawn_init_thread(void)
+static void sched_spawn_boot_thread(void)
 {
     thread_t* thread = thread_new(NULL, NULL, PRIORITY_MAX);
-    ASSERT_PANIC(thread != NULL, "failed to create init thread");
+    ASSERT_PANIC(thread != NULL, "failed to create boot thread");
     thread->timeEnd = UINT64_MAX;
 
     smp_self_unsafe()->sched.runThread = thread;
+
+    printf("sched: spawned boot thread");
 }
 
 void sched_init(void)
 {
-    sched_spawn_init_thread();
-
-    printf("sched: init");
-}
-
-// TODO: Move this to time_timer
-static void sched_start_ipi(trap_frame_t* trapFrame)
-{
-    nsec_t uptime = systime_uptime();
-    nsec_t interval = (SEC / CONFIG_SCHED_HZ) / smp_cpu_amount();
-    nsec_t offset = ROUND_UP(uptime, interval) - uptime;
-    hpet_sleep(offset + interval * smp_self_unsafe()->id);
-
-    apic_timer_init(VECTOR_TIMER, CONFIG_SCHED_HZ);
-}
-
-void sched_start(void)
-{
-    smp_send_others(sched_start_ipi);
-    smp_send_self(sched_start_ipi);
-
-    printf("sched: start");
+    sched_spawn_boot_thread();
 }
 
 block_result_t sched_sleep(nsec_t timeout)
@@ -176,7 +157,7 @@ void sched_process_exit(uint64_t status)
     sched_context_t* context = &smp_self()->sched;
     context->runThread->killed = true;
     context->runThread->process->killed = true;
-    printf("sched: process exit (%d)", context->runThread->process->id);
+    printf("sched: process_exit pid=%d", context->runThread->process->id);
     smp_put();
 
     sched_invoke();

@@ -128,14 +128,14 @@ static void loader_spawn_entry(void)
     void* rsp = loader_allocate_stack(thread);
     if (rsp == NULL)
     {
-        printf("loader: stack failure (%s, %d)", thread->process->argv.buffer[0], thread->process->id);
+        printf("loader: allocate_stack failure pid=%d", thread->process->id);
         sched_process_exit(EEXEC);
     }
 
     void* rip = loader_load_program(thread);
     if (rip == NULL)
     {
-        printf("loader: load failure (%s, %d)", thread->process->argv.buffer[0], thread->process->id);
+        printf("loader: load_program failure pid=%d", thread->process->id);
         sched_process_exit(EEXEC);
     }
 
@@ -152,9 +152,9 @@ thread_t* loader_spawn(const char** argv, priority_t priority)
         return ERRPTR(EINVAL);
     }
 
-    char executable[MAX_PATH];
+    char path[MAX_PATH];
     stat_t info;
-    if (vfs_realpath(executable, argv[0]) == ERR || vfs_stat(executable, &info) == ERR)
+    if (vfs_realpath(path, argv[0]) == ERR || vfs_stat(path, &info) == ERR)
     {
         return NULL;
     }
@@ -165,7 +165,7 @@ thread_t* loader_spawn(const char** argv, priority_t priority)
     }
 
     const char* temp = argv[0];
-    argv[0] = executable;
+    argv[0] = path;
 
     thread_t* thread = thread_new(argv, loader_spawn_entry, priority);
 
@@ -176,6 +176,7 @@ thread_t* loader_spawn(const char** argv, priority_t priority)
         return NULL;
     }
 
+    printf("loader: spawn path=%s pid=%d", path, thread->process->id);
     return thread;
 }
 

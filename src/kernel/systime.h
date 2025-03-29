@@ -15,3 +15,5 @@ void systime_init(void);
 nsec_t systime_uptime(void);
 
 time_t systime_time(void);
+
+void systime_timer_init(void);

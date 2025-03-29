@@ -1,8 +1,10 @@
 include Make.defaults
 
 MODULES := $(basename $(notdir $(wildcard make/*.mk)))
-PROGRAMS := $(basename $(notdir $(wildcard make/programs/*.mk)))
+PROGRAMS := $(notdir $(wildcard src/programs/*))
 TARGET := bin/PatchworkOS.img
+
+ROOT_PROGRAMS := init shell
 
 setup:
 	$(MAKE) -C lib/gnu-efi
@@ -11,7 +13,7 @@ $(MODULES): setup
 	$(MAKE) -f make/$@.mk SRCDIR=src/$@ BUILDDIR=build/$@ BINDIR=bin/$@
 
 $(PROGRAMS): $(MODULES)
-	$(MAKE) -f make/programs/$@.mk SRCDIR=src/programs/$@ BUILDDIR=build/programs/$@ BINDIR=bin/programs
+	$(MAKE) -f make/programs/programs.mk SRCDIR=src/programs/$@ BUILDDIR=build/programs/$@ BINDIR=bin/programs PROGRAM=$@
 
 deploy: $(PROGRAMS)
 	dd if=/dev/zero of=$(TARGET) bs=1M count=64
@@ -27,8 +29,8 @@ deploy: $(PROGRAMS)
 	mcopy -i $(TARGET) -s root/* ::
 	mcopy -i $(TARGET) -s bin/bootloader/bootx64.efi ::/efi/boot
 	mcopy -i $(TARGET) -s bin/kernel/kernel ::/boot
-	mcopy -i $(TARGET) -s bin/programs/shell ::/bin
-	$(foreach prog,$(filter-out shell,$(PROGRAMS)),mcopy -i $(TARGET) -s bin/programs/$(prog) ::/usr/bin;)
+	$(foreach prog,$(ROOT_PROGRAMS),mcopy -i $(TARGET) -s bin/programs/$(prog) ::/bin;)
+	$(foreach prog,$(filter-out $(ROOT_PROGRAMS),$(PROGRAMS)),mcopy -i $(TARGET) -s bin/programs/$(prog) ::/usr/bin;)
 	mcopy -i $(TARGET) -s LICENSE ::/usr/license
 
 clean:

@@ -77,7 +77,7 @@ void kernel_init(boot_info_t* bootInfo)
     log_enable_time();
 
     smp_init_others();
-    sched_start();
+    systime_timer_init();
 
     ramfs_init(&bootInfo->ramDisk);
 

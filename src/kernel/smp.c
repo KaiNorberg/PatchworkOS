@@ -101,13 +101,16 @@ static NOINLINE void smp_detect_cpus(void)
         }
     }
 
-    printf("smp: startup, %d cpus detected", (uint64_t)cpuAmount);
+    printf("smp: detected %d cpus", (uint64_t)cpuAmount);
 }
 
-static NOINLINE void smp_start_others(void)
+static NOINLINE void smp_start(void)
 {
     uint8_t newId = 1;
     uint8_t lapicId = lapic_id();
+
+    cpus[0]->lapicId = lapicId;
+    printf("cpu %d: bootstrap cpu, ready", (uint64_t)cpus[0]->id);
 
     madt_t* madt = madt_get();
     madt_lapic_t* record;
@@ -137,19 +140,17 @@ void smp_init(void)
     msr_write(MSR_CPU_ID, cpus[0]->id);
     gdt_load_tss(&cpus[0]->tss);
 
+    initialized = true;
     printf("smp: init");
 }
 
 void smp_init_others(void)
 {
-    cpus[0]->lapicId = lapic_id();
     smp_detect_cpus();
 
     trampoline_init();
-    smp_start_others();
+    smp_start();
     trampoline_deinit();
-
-    initialized = true;
 }
 
 void smp_entry(void)

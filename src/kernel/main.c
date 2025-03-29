@@ -12,14 +12,12 @@ void main(boot_info_t* bootInfo)
 {
     kernel_init(bootInfo);
 
-    printf("kernel: shell spawn");
+    const char* argv[] = {"home:/bin/init", NULL};
+    thread_t* initThread = loader_spawn(argv, PRIORITY_MIN + 1);
+    ASSERT_PANIC(initThread != NULL, "Failed to spawn init thread");
 
-    const char* argv[] = {"home:/bin/shell", NULL};
-    thread_t* shell = loader_spawn(argv, PRIORITY_MIN + 1);
-    ASSERT_PANIC(shell != NULL, "Failed to spawn shell");
+    sched_push(initThread);
 
-    sched_push(shell);
-
-    // Exit init thread
+    // Exit boot thread
     sched_thread_exit();
 }

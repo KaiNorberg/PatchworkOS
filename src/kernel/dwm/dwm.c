@@ -419,26 +419,26 @@ static void dwm_window_cleanup(window_t* window)
     {
     case DWM_WINDOW:
     {
-        printf("dwm: cleanup window");
+        printf("dwm: cleanup type=window");
         list_remove(window);
     }
     break;
     case DWM_PANEL:
     {
-        printf("dwm: cleanup panel");
+        printf("dwm: cleanup type=panel");
         list_remove(window);
         dwm_update_client_rect_unlocked();
     }
     break;
     case DWM_CURSOR:
     {
-        printf("dwm: cleanup cursor");
+        printf("dwm: cleanup type=cursor");
         cursor = NULL;
     }
     break;
     case DWM_WALL:
     {
-        printf("dwm: cleanup wall");
+        printf("dwm: cleanup type=wall");
         wall = NULL;
     }
     break;
@@ -483,7 +483,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
         {
             list_push(&windows, window);
             dwm_select(window);
-            printf("dwm: create window");
+            printf("dwm: create type=window");
         }
         break;
         case DWM_PANEL:
@@ -491,7 +491,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
             list_push(&windows, window);
             dwm_update_client_rect_unlocked();
             dwm_select(window);
-            printf("dwm: create panel");
+            printf("dwm: create type=panel");
         }
         break;
         case DWM_CURSOR:
@@ -503,7 +503,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
             }
 
             cursor = window;
-            printf("dwm: create cursor");
+            printf("dwm: create type=cursor");
         }
         break;
         case DWM_WALL:
@@ -515,7 +515,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
             }
 
             wall = window;
-            printf("dwm: create wall");
+            printf("dwm: create type=wall");
         }
         break;
         default:
@@ -561,7 +561,7 @@ static file_ops_t redrawNotifierOps = {.poll = dwm_redraw_notifier_status};
 
 void dwm_init(gop_buffer_t* gopBuffer)
 {
-    printf("dwm: %dx%d", (uint64_t)gopBuffer->width, (uint64_t)gopBuffer->height);
+    printf("dwm: init width=%d height=%d", (uint64_t)gopBuffer->width, (uint64_t)gopBuffer->height);
 
     frontbuffer.buffer = gopBuffer->base;
     frontbuffer.height = gopBuffer->height;

@@ -5,9 +5,9 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <sys/argsplit.h>
 #include <sys/io.h>
 #include <sys/proc.h>
-#include <sys/argsplit.h>
 
 // TODO: These commands should probobly be script files or something.
 
@@ -109,7 +109,7 @@ void command_execute(const char* command)
         return;
     }
 
-    if (argv[0][0] == '.' && argv[0][1]  == '/')
+    if (argv[0][0] == '.' && argv[0][1] == '/')
     {
         stat_t info;
         if (stat(argv[0], &info) != ERR && info.type == STAT_FILE)
@@ -119,7 +119,7 @@ void command_execute(const char* command)
                 terminal_error(NULL);
             }
             return;
-        }    
+        }
     }
 
     for (uint64_t i = 0; i < sizeof(commands) / sizeof(commands[0]); i++)

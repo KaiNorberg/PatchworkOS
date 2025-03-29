@@ -12,6 +12,7 @@
  * charles.nicholson+nanoprintf@gmail.com
  * dual-licensed under 0bsd and unlicense, take your pick.
  */
+
 #include <limits.h>
 #include <stdint.h>
 

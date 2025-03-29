@@ -6,8 +6,6 @@ extern "C"
 {
 #endif
 
-// TODO: Implement thread local storage for errno
-
 #include "_AUX/ERR.h"
 #include "_AUX/config.h"
 #include "_AUX/errno_t.h"

@@ -23,7 +23,7 @@ static bool _ArgsplitIsNewArg(_ArgsplitState_t* state)
 }
 
 static bool _ArgsplitStepState(_ArgsplitState_t* state)
-{                  
+{
     state->newArg = false;
 
     if (!state->first)
@@ -37,7 +37,7 @@ static bool _ArgsplitStepState(_ArgsplitState_t* state)
     state->first = false;
 
     while (true)
-    {              
+    {
         if (state->escaped != 0)
         {
             state->escaped--;
@@ -121,7 +121,7 @@ const char** argsplit(const char* str, uint64_t* count)
 
     char** argv = malloc(argvSize + stringsSize);
     if (argv == NULL)
-    {        
+    {
         return NULL;
     }
 

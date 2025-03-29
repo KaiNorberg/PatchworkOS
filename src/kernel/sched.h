@@ -20,8 +20,6 @@ extern void sched_idle_loop(void);
 
 void sched_init(void);
 
-void sched_start(void);
-
 block_result_t sched_sleep(nsec_t timeout);
 
 thread_t* sched_thread(void);

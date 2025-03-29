@@ -3,9 +3,9 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h> 
 #include <sys/win.h>
 
 // This is probobly one of the messiest parts of this project.
@@ -408,8 +408,8 @@ void terminal_error(const char* str, ...)
         va_start(args, str);
         vsprintf(buffer, str, args);
         va_end(args);
-    
-        terminal_print("error: %s\n", buffer);      
+
+        terminal_print("error: %s\n", buffer);
     }
     else
     {

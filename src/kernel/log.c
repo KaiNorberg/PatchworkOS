@@ -162,7 +162,6 @@ void log_write(const char* str)
         log_draw_string(str);
     }
 }
-
 NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
 {
     asm volatile("cli");
@@ -179,7 +178,6 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
     {
         smp_halt_others();
     }
-
     if (gfx.buffer != NULL && !screenEnabled)
     {
         log_enable_screen(NULL);
@@ -189,59 +187,62 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
     strcpy(bigString, "!!! KERNEL PANIC - ");
     strcat(bigString, string);
     strcat(bigString, " !!!");
-
     va_list args;
     va_start(args, string);
     vprintf(bigString, args);
     va_end(args);
 
+    // System context
+    printf("[SYSTEM STATE]");
     if (smp_initialized())
     {
         thread_t* thread = sched_thread();
-        if (thread == NULL)
+        if (thread != NULL)
         {
-            printf("Occured on cpu %d while idle", smp_self_unsafe()->id);
+            printf("thread: cpu=%d pid=%d tid=%d", smp_self_unsafe()->id, thread->process->id, thread->id);
         }
         else
         {
-            printf("Occured on cpu %d in process %d thread %d", smp_self_unsafe()->id, thread->process->id, thread->id);
+            printf("thread: CPU=%d IDLE", smp_self_unsafe()->id);
         }
     }
     else
     {
-        printf("Occured before smp init, assumed cpu 0");
+        printf("thread: occured before smp_init, assume CPU 0", smp_self_unsafe()->id);
     }
 
-    printf("pmm: free %d, reserved %d", pmm_free_amount(), pmm_reserved_amount());
+    printf("memory: free=%dKB reserved=%dKB", (pmm_free_amount() * PAGE_SIZE) / 1024, (pmm_reserved_amount() * PAGE_SIZE) / 1024);
+    printf("control regs: cr0=0x%016lx cr2=0x%016lx cr3=0x%016lx cr4=0x%016lx", cr0_read(), cr2_read(), cr3_read(),
+        cr4_read());
 
-    if (trapFrame != NULL)
+    if (trapFrame)
     {
-        printf("ss %p, rsp %p, rflags %p, cs %p, rip %p", trapFrame->ss, trapFrame->rsp, trapFrame->rflags, trapFrame->cs,
-            trapFrame->rip);
-        printf("error code %p, vector %p", trapFrame->errorCode, trapFrame->vector);
-        printf("rax %p, rbx %p, rcx %p, rdx %p, rsi %p, rdi %p, rbp %p", trapFrame->rax, trapFrame->rbx, trapFrame->rcx,
-            trapFrame->rdx, trapFrame->rsi, trapFrame->rdi, trapFrame->rbp);
-        printf("r8 %p, r9 %p, r10 %p, r11 %p, r12 %p, r13 %p, r14 %p, r15 %p", trapFrame->r8, trapFrame->r9, trapFrame->r10,
-            trapFrame->r11, trapFrame->r12, trapFrame->r13, trapFrame->r14, trapFrame->r15);
+        printf("[TRAP FRAME]");
+        printf("vector=0x%02lx error=0x%016lx", trapFrame->vector, trapFrame->errorCode);
+        printf("rflags=0x%016lx", trapFrame->rflags);
+        printf("rip=0x%016lx cs =%04lx", trapFrame->rip, trapFrame->cs);
+        printf("rsp=0x%016lx ss =%04lx", trapFrame->rsp, trapFrame->ss);
+        printf("rax=0x%016lx rbx=0x%016lx rcx=0x%016lx rdx=0x%016lx", trapFrame->rax, trapFrame->rbx, trapFrame->rcx,
+            trapFrame->rdx);
+        printf("rsi=0x%016lx rdi=0x%016lx rbp=0x%016lx", trapFrame->rsi, trapFrame->rdi, trapFrame->rbp);
+        printf("r8 =0x%016lx r9 =0x%016lx r10=0x%016lx r11=0x%016lx", trapFrame->r8, trapFrame->r9, trapFrame->r10, trapFrame->r11);
+        printf("r12=0x%016lx r13=0x%016lx r14=0x%016lx r15=0x%016lx", trapFrame->r12, trapFrame->r13, trapFrame->r14,
+            trapFrame->r15);
     }
 
-    printf("cr0: %p, cr2: %p, cr3: %p, cr4: %p", cr0_read(), cr2_read(), cr3_read(), cr4_read());
-
-    printf("call stack:");
+    printf("[STACK TRACE]");
     uint64_t* frame = (uint64_t*)__builtin_frame_address(0);
     for (uint64_t i = 0; i < 16; i++)
     {
-        if (frame == NULL)
+        if (frame == NULL || frame[1] == 0)
         {
             break;
         }
-
-        printf("%p", frame[1]);
+        printf("#%02d %016lx", i, frame[1]);
         frame = (uint64_t*)frame[0];
     }
 
-    printf("Please restart your machine");
-
+    printf("!!! KERNEL PANIC END - Please restart your machine !!!");
     while (1)
     {
         asm volatile("hlt");

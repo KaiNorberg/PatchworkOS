@@ -1,12 +1,16 @@
 #include "systime.h"
+#include "apic.h"
 #include "hpet.h"
 #include "io.h"
 #include "irq.h"
+#include "smp.h"
+#include "vectors.h"
 
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/math.h>
 
 static _Atomic nsec_t accumulator;
 static time_t bootEpoch;
@@ -74,7 +78,7 @@ void systime_init(void)
     systime_read_cmos_time();
     systime_rtc_init();
 
-    printf("time: epoch (%d)", systime_time());
+    printf("systime: init epoch=%d", systime_time());
 }
 
 nsec_t systime_uptime(void)
@@ -85,4 +89,22 @@ nsec_t systime_uptime(void)
 time_t systime_time(void)
 {
     return bootEpoch + systime_uptime() / SEC;
+}
+
+static void systime_timer_init_ipi(trap_frame_t* trapFrame)
+{
+    nsec_t uptime = systime_uptime();
+    nsec_t interval = (SEC / CONFIG_TIMER_HZ) / smp_cpu_amount();
+    nsec_t offset = ROUND_UP(uptime, interval) - uptime;
+    hpet_sleep(offset + interval * smp_self_unsafe()->id);
+
+    apic_timer_init(VECTOR_TIMER, CONFIG_TIMER_HZ);
+}
+
+void systime_timer_init(void)
+{
+    smp_send_others(systime_timer_init_ipi);
+    smp_send_self(systime_timer_init_ipi);
+
+    printf("systime: timer_init hz=%d", CONFIG_TIMER_HZ);
 }
