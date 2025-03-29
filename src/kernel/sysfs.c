@@ -166,7 +166,7 @@ static uint64_t sysfs_stat(volume_t* volume, const char* path, stat_t* stat)
     }
 
     stat->size = 0;
-    stat->type = node->type == SYSFS_RESOURCE ? STAT_RES : STAT_DIR;
+    stat->type = node->type == SYSFS_RESOURCE ? STAT_FILE : STAT_DIR;
 
     return 0;
 }
@@ -193,7 +193,7 @@ static uint64_t sysfs_listdir(volume_t* volume, const char* path, dir_entry_t* e
     {
         dir_entry_t entry = {0};
         strcpy(entry.name, child->name);
-        entry.type = child->type == SYSFS_RESOURCE ? STAT_RES : STAT_DIR;
+        entry.type = child->type == SYSFS_RESOURCE ? STAT_FILE : STAT_DIR;
 
         dir_entry_push(entries, amount, &index, &total, &entry);
     }

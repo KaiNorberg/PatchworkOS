@@ -14,7 +14,7 @@ typedef struct
     lock_t lock;
 } vfs_context_t;
 
-void vfs_context_init(vfs_context_t* context);
+void vfs_context_init(vfs_context_t* context, const char* cwd);
 
 void vfs_context_deinit(vfs_context_t* context);
 
@@ -25,3 +25,5 @@ uint64_t vfs_context_close(vfs_context_t* context, fd_t fd);
 fd_t vfs_context_openat(vfs_context_t* context, fd_t fd, file_t* file);
 
 file_t* vfs_context_get(vfs_context_t* context, fd_t fd);
+
+void vfs_context_get_cwd(vfs_context_t* context, char* dest);

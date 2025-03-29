@@ -70,7 +70,7 @@ static void argv_uninit(argv_t* argv)
     free(argv->buffer);
 }
 
-static process_t* process_new(const char** argv)
+static process_t* process_new(const char** argv, const char* cwd)
 {
     process_t* process = malloc(sizeof(process_t));
     if (process == NULL)
@@ -86,7 +86,7 @@ static process_t* process_new(const char** argv)
 
     process->killed = false;
     process->id = atomic_fetch_add(&newPid, 1);
-    vfs_context_init(&process->vfsContext);
+    vfs_context_init(&process->vfsContext, cwd);
     space_init(&process->space);
     atomic_init(&process->ref, 0);
     atomic_init(&process->newTid, 0);
@@ -142,9 +142,9 @@ static thread_t* process_thread_new(process_t* process, void* entry, priority_t 
     return thread;
 }
 
-thread_t* thread_new(const char** argv, void* entry, priority_t priority)
+thread_t* thread_new(const char** argv, void* entry, priority_t priority, const char* cwd)
 {
-    process_t* process = process_new(argv);
+    process_t* process = process_new(argv, cwd);
     if (process == NULL)
     {
         return NULL;

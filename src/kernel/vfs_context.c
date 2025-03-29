@@ -5,10 +5,17 @@
 #include "sched.h"
 #include "vfs.h"
 
-void vfs_context_init(vfs_context_t* context)
+void vfs_context_init(vfs_context_t* context, const char* cwd)
 {
     memset(context, 0, sizeof(vfs_context_t));
-    strcpy(context->cwd, "sys:");
+    if (cwd != NULL)
+    {
+        strcpy(context->cwd, cwd);
+    }
+    else
+    {
+        strcpy(context->cwd, "sys:");
+    }
     lock_init(&context->lock);
 }
 
@@ -82,4 +89,11 @@ file_t* vfs_context_get(vfs_context_t* context, fd_t fd)
     }
 
     return file_ref(context->files[fd]);
+}
+
+void vfs_context_get_cwd(vfs_context_t* context, char* dest)
+{
+    LOCK_DEFER(&context->lock);
+
+    strcpy(dest, context->cwd);
 }

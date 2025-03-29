@@ -30,13 +30,6 @@ static void* loader_load_program(thread_t* thread)
     }
     FILE_DEFER(file);
 
-    char parentDir[MAX_PATH];
-    vfs_parent_dir(parentDir, executable);
-    if (vfs_chdir(parentDir) == ERR)
-    {
-        return NULL;
-    }
-
     elf_hdr_t header;
     if (vfs_read(file, &header, sizeof(elf_hdr_t)) != sizeof(elf_hdr_t))
     {
@@ -152,9 +145,8 @@ thread_t* loader_spawn(const char** argv, priority_t priority)
         return ERRPTR(EINVAL);
     }
 
-    char path[MAX_PATH];
     stat_t info;
-    if (vfs_realpath(path, argv[0]) == ERR || vfs_stat(path, &info) == ERR)
+    if (vfs_stat(argv[0], &info) == ERR)
     {
         return NULL;
     }
@@ -164,19 +156,16 @@ thread_t* loader_spawn(const char** argv, priority_t priority)
         return ERRPTR(EISDIR);
     }
 
-    const char* temp = argv[0];
-    argv[0] = path;
+    char cwd[MAX_PATH];
+    vfs_context_get_cwd(&sched_thread()->process->vfsContext, cwd);
 
-    thread_t* thread = thread_new(argv, loader_spawn_entry, priority);
-
-    argv[0] = temp;
-
+    thread_t* thread = thread_new(argv, loader_spawn_entry, priority, cwd);
     if (thread == NULL)
     {
         return NULL;
     }
 
-    printf("loader: spawn path=%s pid=%d", path, thread->process->id);
+    printf("loader: spawn path=%s pid=%d", argv[0], thread->process->id);
     return thread;
 }
 

@@ -6,7 +6,7 @@
 
 #include "platform/platform.h"
 
-dir_list_t* loaddir(const char* path)
+dir_list_t* allocdir(const char* path)
 {
     uint64_t amount = listdir(path, NULL, 0);
     if (amount == ERR)

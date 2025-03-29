@@ -90,7 +90,7 @@ static thread_t* sched_context_find_any(sched_context_t* context)
 
 static void sched_spawn_boot_thread(void)
 {
-    thread_t* thread = thread_new(NULL, NULL, PRIORITY_MAX);
+    thread_t* thread = thread_new(NULL, NULL, PRIORITY_MAX, NULL);
     ASSERT_PANIC(thread != NULL, "failed to create boot thread");
     thread->timeEnd = UINT64_MAX;
 

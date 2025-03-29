@@ -123,7 +123,7 @@ static uint64_t ramfs_listdir(volume_t* volume, const char* path, dir_entry_t* e
     {
         dir_entry_t entry = {0};
         strcpy(entry.name, child->name);
-        entry.type = child->type == SYSFS_RESOURCE ? STAT_RES : STAT_DIR;
+        entry.type = child->type == SYSFS_RESOURCE ? STAT_FILE : STAT_DIR;
 
         dir_entry_push(entries, amount, &index, &total, &entry);
     }
