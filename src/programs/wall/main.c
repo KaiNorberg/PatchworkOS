@@ -1,4 +1,4 @@
-#include "wall.h"
+#include <sys/win.h>
 
 static uint64_t procedure(win_t* window, const msg_t* msg)
 {
@@ -22,9 +22,20 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
     return 0;
 }
 
-win_t* wall_new(void)
+int main(void) 
 {
     rect_t rect;
     win_screen_rect(&rect);
-    return win_new("Wallpaper", &rect, DWM_WALL, WIN_NONE, procedure);
+    
+    win_t* window = win_new("Wallpaper", &rect, DWM_WALL, WIN_NONE, procedure);
+
+    msg_t msg = {0};
+    while (msg.type != LMSG_QUIT)
+    {
+        win_receive(window, &msg, NEVER);
+        win_dispatch(window, &msg);
+    }
+
+    win_free(window);
+    return 0;
 }

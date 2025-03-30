@@ -74,10 +74,24 @@ void waitsys_update_trap(trap_frame_t* trapFrame)
         return;
     }
 
-    thread_t* thread = list_first(&blockedThreads);
-    if (systime_uptime() >= thread->block.deadline)
+    // TODO: This is O(n)... fix that
+    thread_t* thread;
+    thread_t* temp;
+    LIST_FOR_EACH_SAFE(thread, temp, &blockedThreads)
     {
-        thread->block.result = BLOCK_TIMEOUT;
+        if (systime_uptime() < thread->block.deadline && !(thread->process->killed || thread->killed))
+        {
+            continue;
+        }
+
+        if (thread->process->killed || thread->killed)
+        {
+            thread->block.result = BLOCK_KILLED;
+        }
+        else
+        {
+            thread->block.result = BLOCK_TIMEOUT;
+        }
 
         list_remove(thread);
 

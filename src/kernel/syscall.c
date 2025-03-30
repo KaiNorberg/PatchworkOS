@@ -275,7 +275,12 @@ uint64_t syscall_seek(fd_t fd, int64_t offset, seek_origin_t origin)
 
 uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
 {
-    if (!verify_buffer(argp, size))
+    if (argp != NULL && !verify_buffer(argp, size))
+    {
+        return ERROR(EFAULT);
+    }
+
+    if (argp == NULL && size != 0)
     {
         return ERROR(EFAULT);
     }
@@ -285,7 +290,7 @@ uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
     {
         return ERR;
     }
-    FILE_DEFER(file);
+    FILE_DEFER(file);  
 
     return vfs_ioctl(file, request, argp, size);
 }

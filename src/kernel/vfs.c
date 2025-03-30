@@ -477,3 +477,228 @@ uint64_t vfs_listdir(const char* path, dir_entry_t* entries, uint64_t amount)
     volume_deref(volume);
     return result;
 }
+
+uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
+{
+    if (file->ops->read == NULL)
+    {
+        return ERROR(EACCES);
+    }
+    return file->ops->read(file, buffer, count);
+}
+
+uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
+{
+    if (file->ops->write == NULL)
+    {
+        return ERROR(EACCES);
+    }
+    return file->ops->write(file, buffer, count);
+}
+
+uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
+{
+    if (file->ops->seek == NULL)
+    {
+        return ERROR(EACCES);
+    }
+    return file->ops->seek(file, offset, origin);
+}
+
+uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
+{
+    if (file->ops->ioctl == NULL)
+    {
+        return ERROR(EACCES);
+    }
+    return file->ops->ioctl(file, request, argp, size);
+}
+
+uint64_t vfs_flush(file_t* file, const void* buffer, uint64_t size, const rect_t* rect)
+{
+    if (file->ops->flush == NULL)
+    {
+        return ERROR(EACCES);
+    }
+    return file->ops->flush(file, buffer, size, rect);
+}
+
+void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
+{
+    if (file->ops->mmap == NULL)
+    {
+        return ERRPTR(EACCES);
+    }
+    return file->ops->mmap(file, address, length, prot);
+}
+
+const char* vfs_basename(const char* path)
+{
+    const char* base = strrchr(path, VFS_NAME_SEPARATOR);
+    return base != NULL ? base + 1 : path;
+}
+
+uint64_t vfs_parent_dir(char* dest, const char* src)
+{
+    const char* end = strrchr(src, VFS_NAME_SEPARATOR);
+    if (end == NULL)
+    {
+        return ERR;
+    }
+
+    strncpy(dest, src, end - src);
+    dest[end - src] = '\0';
+
+    return 0;
+}
+
+const char* name_first(const char* path)
+{
+    if (path[0] == '\0')
+    {
+        return NULL;
+    }
+    else if (path[0] == VFS_NAME_SEPARATOR)
+    {
+        if (path[1] == '\0')
+        {
+            return NULL;
+        }
+
+        return path + 1;
+    }
+
+    return path;
+}
+
+const char* name_next(const char* path)
+{
+    const char* base = strchr(path, VFS_NAME_SEPARATOR);
+    return base != NULL ? base + 1 : NULL;
+}
+
+uint64_t name_length(const char* name)
+{
+    for (uint64_t i = 0; i < MAX_PATH - 1; i++)
+    {
+        if (VFS_END_OF_NAME(name[i]))
+        {
+            return i;
+        }
+    }
+
+    return MAX_PATH - 1;
+}
+
+void name_copy(char* dest, const char* src)
+{
+    for (uint64_t i = 0; i < MAX_NAME - 1; i++)
+    {
+        if (VFS_END_OF_NAME(src[i]))
+        {
+            dest[i] = '\0';
+            return;
+        }
+        else
+        {
+            dest[i] = src[i];
+        }
+    }
+    dest[MAX_NAME - 1] = '\0';
+}
+
+bool name_compare(const char* a, const char* b)
+{
+    for (uint64_t i = 0; i < MAX_PATH; i++)
+    {
+        if (VFS_END_OF_NAME(a[i]))
+        {
+            return VFS_END_OF_NAME(b[i]);
+        }
+        if (a[i] != b[i])
+        {
+            return false;
+        }
+    }
+
+    return false;
+}
+
+bool name_valid(const char* name)
+{
+    uint64_t length = name_length(name);
+    for (uint64_t i = 0; i < length; i++)
+    {
+        if (!VFS_VALID_CHAR(name[i]))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool label_compare(const char* a, const char* b)
+{
+    for (uint64_t i = 0; i < MAX_PATH; i++)
+    {
+        if (VFS_END_OF_LABEL(a[i]))
+        {
+            return VFS_END_OF_LABEL(b[i]);
+        }
+        if (a[i] != b[i])
+        {
+            return false;
+        }
+    }
+
+    return false;
+}
+
+const char* dir_name_first(const char* path)
+{
+    if (path[0] == VFS_NAME_SEPARATOR)
+    {
+        path++;
+    }
+
+    if (strchr(path, VFS_NAME_SEPARATOR) == NULL)
+    {
+        return NULL;
+    }
+    else
+    {
+        return path;
+    }
+}
+
+const char* dir_name_next(const char* path)
+{
+    const char* next = strchr(path, VFS_NAME_SEPARATOR);
+    if (next == NULL)
+    {
+        return NULL;
+    }
+    else
+    {
+        next += 1;
+        if (strchr(next, VFS_NAME_SEPARATOR) != NULL)
+        {
+            return next;
+        }
+        else
+        {
+            return NULL;
+        }
+    }
+}
+
+void dir_entry_push(dir_entry_t* entries, uint64_t amount, uint64_t* index, uint64_t* total, dir_entry_t* entry)
+{
+    if (*index < amount)
+    {
+        entries[(*index)++] = *entry;
+    }
+
+    (*total)++;
+}

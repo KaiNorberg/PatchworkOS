@@ -162,6 +162,7 @@ void log_write(const char* str)
         log_draw_string(str);
     }
 }
+
 NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
 {
     asm volatile("cli");

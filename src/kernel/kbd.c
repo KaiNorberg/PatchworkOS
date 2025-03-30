@@ -41,9 +41,9 @@ static file_ops_t fileOps = {
     .poll = kbd_poll,
 };
 
-static void kbd_delete(void* private)
+static void kbd_on_free(resource_t* resource)
 {
-    kbd_t* kbd = private;
+    kbd_t* kbd = resource->private;
     free(kbd);
 }
 
@@ -52,7 +52,7 @@ kbd_t* kbd_new(const char* name)
     kbd_t* kbd = malloc(sizeof(kbd_t));
     kbd->writeIndex = 0;
     kbd->mods = KBD_MOD_NONE;
-    kbd->resource = sysfs_expose("/kbd", name, &fileOps, kbd, NULL, kbd_delete);
+    kbd->resource = sysfs_expose("/kbd", name, &fileOps, kbd, NULL, kbd_on_free);
     wait_queue_init(&kbd->waitQueue);
     lock_init(&kbd->lock);
 

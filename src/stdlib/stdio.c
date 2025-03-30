@@ -252,8 +252,9 @@ int printf(const char* _RESTRICT format, ...)
     int result = vsprintf(buffer + sprintf(buffer, "[%10llu.%03llu] ", sec, ms), format, args);
     va_end(args);
 
+    char newline[] = {'\n', '\0'};
+    strcat(buffer, newline);
     log_write(buffer);
-    log_write("\n");
     return result + 1;
 }
 
@@ -267,8 +268,9 @@ int vprintf(const char* _RESTRICT format, va_list args)
 
     uint64_t result = vsprintf(buffer + sprintf(buffer, "[%10llu.%03llu] ", sec, ms), format, args);
 
+    char newline[] = {'\n', '\0'};
+    strcat(buffer, newline);
     log_write(buffer);
-    log_write("\n");
     return result + 1;
 }
 

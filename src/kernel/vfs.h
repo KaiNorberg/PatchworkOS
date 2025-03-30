@@ -9,7 +9,6 @@
 #include <sys/proc.h>
 
 #include "defs.h"
-#include "sched.h"
 
 #define VFS_NAME_SEPARATOR '/'
 #define VFS_LABEL_SEPARATOR ':'
@@ -57,6 +56,8 @@ typedef struct volume
     const volume_ops_t* ops;
     atomic_uint64_t ref;
 } volume_t;
+
+typedef struct wait_queue wait_queue_t;
 
 typedef void (*file_cleanup_t)(file_t*);
 typedef uint64_t (*file_read_t)(file_t*, void*, uint64_t);
@@ -127,227 +128,38 @@ uint64_t vfs_stat(const char* path, stat_t* buffer);
 
 uint64_t vfs_listdir(const char* path, dir_entry_t* entries, uint64_t amount);
 
-static inline uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
-{
-    if (file->ops->read == NULL)
-    {
-        return ERROR(EACCES);
-    }
-    return file->ops->read(file, buffer, count);
-}
+uint64_t vfs_read(file_t* file, void* buffer, uint64_t count);
 
-static inline uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
-{
-    if (file->ops->write == NULL)
-    {
-        return ERROR(EACCES);
-    }
-    return file->ops->write(file, buffer, count);
-}
+uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count);
 
-static inline uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
-{
-    if (file->ops->seek == NULL)
-    {
-        return ERROR(EACCES);
-    }
-    return file->ops->seek(file, offset, origin);
-}
+uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin);
 
-static inline uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
-{
-    if (file->ops->ioctl == NULL)
-    {
-        return ERROR(EACCES);
-    }
-    return file->ops->ioctl(file, request, argp, size);
-}
+uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size);
 
-static inline uint64_t vfs_flush(file_t* file, const void* buffer, uint64_t size, const rect_t* rect)
-{
-    if (file->ops->flush == NULL)
-    {
-        return ERROR(EACCES);
-    }
-    return file->ops->flush(file, buffer, size, rect);
-}
+uint64_t vfs_flush(file_t* file, const void* buffer, uint64_t size, const rect_t* rect);
 
-static inline void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
-{
-    if (file->ops->mmap == NULL)
-    {
-        return ERRPTR(EACCES);
-    }
-    return file->ops->mmap(file, address, length, prot);
-}
+void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot);
 
-static inline const char* vfs_basename(const char* path)
-{
-    const char* base = strrchr(path, VFS_NAME_SEPARATOR);
-    return base != NULL ? base + 1 : path;
-}
+const char* vfs_basename(const char* path);
 
-static inline uint64_t vfs_parent_dir(char* dest, const char* src)
-{
-    const char* end = strrchr(src, VFS_NAME_SEPARATOR);
-    if (end == NULL)
-    {
-        return ERR;
-    }
+uint64_t vfs_parent_dir(char* dest, const char* src);
 
-    strncpy(dest, src, end - src);
-    dest[end - src] = '\0';
+const char* name_first(const char* path);
 
-    return 0;
-}
+const char* name_next(const char* path);
 
-static inline const char* name_first(const char* path)
-{
-    if (path[0] == '\0')
-    {
-        return NULL;
-    }
-    else if (path[0] == VFS_NAME_SEPARATOR)
-    {
-        if (path[1] == '\0')
-        {
-            return NULL;
-        }
+uint64_t name_length(const char* name);
 
-        return path + 1;
-    }
+void name_copy(char* dest, const char* src);
 
-    return path;
-}
+bool name_compare(const char* a, const char* b);
 
-static inline const char* name_next(const char* path)
-{
-    const char* base = strchr(path, VFS_NAME_SEPARATOR);
-    return base != NULL ? base + 1 : NULL;
-}
+bool name_valid(const char* name);
 
-static inline uint64_t name_length(const char* name)
-{
-    for (uint64_t i = 0; i < MAX_PATH - 1; i++)
-    {
-        if (VFS_END_OF_NAME(name[i]))
-        {
-            return i;
-        }
-    }
+bool label_compare(const char* a, const char* b);
 
-    return MAX_PATH - 1;
-}
+const char* dir_name_first(const char* path);
 
-static inline void name_copy(char* dest, const char* src)
-{
-    for (uint64_t i = 0; i < MAX_NAME - 1; i++)
-    {
-        if (VFS_END_OF_NAME(src[i]))
-        {
-            dest[i] = '\0';
-            return;
-        }
-        else
-        {
-            dest[i] = src[i];
-        }
-    }
-    dest[MAX_NAME - 1] = '\0';
-}
+const char* dir_name_next(const char* path);
 
-static inline bool name_compare(const char* a, const char* b)
-{
-    for (uint64_t i = 0; i < MAX_PATH; i++)
-    {
-        if (VFS_END_OF_NAME(a[i]))
-        {
-            return VFS_END_OF_NAME(b[i]);
-        }
-        if (a[i] != b[i])
-        {
-            return false;
-        }
-    }
-
-    return false;
-}
-
-static inline bool name_valid(const char* name)
-{
-    uint64_t length = name_length(name);
-    for (uint64_t i = 0; i < length; i++)
-    {
-        if (!VFS_VALID_CHAR(name[i]))
-        {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-static inline bool label_compare(const char* a, const char* b)
-{
-    for (uint64_t i = 0; i < MAX_PATH; i++)
-    {
-        if (VFS_END_OF_LABEL(a[i]))
-        {
-            return VFS_END_OF_LABEL(b[i]);
-        }
-        if (a[i] != b[i])
-        {
-            return false;
-        }
-    }
-
-    return false;
-}
-
-static inline const char* dir_name_first(const char* path)
-{
-    if (path[0] == VFS_NAME_SEPARATOR)
-    {
-        path++;
-    }
-
-    if (strchr(path, VFS_NAME_SEPARATOR) == NULL)
-    {
-        return NULL;
-    }
-    else
-    {
-        return path;
-    }
-}
-
-static inline const char* dir_name_next(const char* path)
-{
-    const char* next = strchr(path, VFS_NAME_SEPARATOR);
-    if (next == NULL)
-    {
-        return NULL;
-    }
-    else
-    {
-        next += 1;
-        if (strchr(next, VFS_NAME_SEPARATOR) != NULL)
-        {
-            return next;
-        }
-        else
-        {
-            return NULL;
-        }
-    }
-}
-
-static void dir_entry_push(dir_entry_t* entries, uint64_t amount, uint64_t* index, uint64_t* total, dir_entry_t* entry)
-{
-    if (*index < amount)
-    {
-        entries[(*index)++] = *entry;
-    }
-
-    (*total)++;
-}
+void dir_entry_push(dir_entry_t* entries, uint64_t amount, uint64_t* index, uint64_t* total, dir_entry_t* entry);

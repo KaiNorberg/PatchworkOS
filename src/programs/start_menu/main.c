@@ -1,11 +1,8 @@
-#include "start_menu.h"
-
-#include "shell.h"
-#include "taskbar.h"
-
 #include <stdio.h>
 #include <sys/gfx.h>
 #include <sys/win.h>
+
+#define TOPBAR_HEIGHT 43
 
 #define START_BUTTON_HEIGHT 32
 
@@ -17,7 +14,7 @@
 #define START_MENU_SHUT_DOWN_ID 100
 #define START_MENU_RESTART_ID 101
 
-static win_t* startMenu;
+static win_t* startMenu = NULL;
 
 typedef struct
 {
@@ -99,20 +96,22 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
     return 0;
 }
 
-void start_menu_open(void)
+int main(void)
 {
     rect_t screenRect;
     win_screen_rect(&screenRect);
 
     rect_t rect =
         RECT_INIT_DIM(0, RECT_HEIGHT(&screenRect) - TOPBAR_HEIGHT - START_MENU_HEIGHT, START_MENU_WIDTH, START_MENU_HEIGHT);
-    startMenu = win_new("StartMenu", &rect, DWM_WINDOW, WIN_NONE, procedure);
+    win_t* window = win_new("StartMenu", &rect, DWM_WINDOW, WIN_NONE, procedure);
 
-    shell_push(startMenu);
-}
+    msg_t msg = {0};
+    while (msg.type != LMSG_QUIT)
+    {
+        win_receive(window, &msg, NEVER);
+        win_dispatch(window, &msg);
+    }
 
-void start_menu_close(void)
-{
-    win_send(startMenu, LMSG_QUIT, NULL, 0);
-    startMenu = NULL;
+    win_free(window);
+    return 0;
 }

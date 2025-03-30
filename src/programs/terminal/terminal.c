@@ -231,7 +231,7 @@ static void terminal_read_stdout(void)
     pollfd_t fd = {.fd = stdout.read, .requested = POLL_READ};
 
     do
-    {
+    {            
         char chr;
         if (read(stdout.read, &chr, 1) == 0)
         {

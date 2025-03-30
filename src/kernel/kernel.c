@@ -57,11 +57,13 @@ void kernel_init(boot_info_t* bootInfo)
     _StdInit();
 
     smp_init();
-    sched_init();
-    waitsys_init();
-
+    
     vfs_init();
     sysfs_init();
+    ramfs_init(&bootInfo->ramDisk);
+
+    sched_init();
+    waitsys_init();
 
     log_enable_screen(&bootInfo->gopBuffer);
 
@@ -78,8 +80,6 @@ void kernel_init(boot_info_t* bootInfo)
 
     smp_init_others();
     systime_timer_init();
-
-    ramfs_init(&bootInfo->ramDisk);
 
     const_init();
     ps2_init();

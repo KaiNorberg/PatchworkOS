@@ -10,7 +10,7 @@
 #define SYSFS_SYSTEM 1
 
 typedef uint64_t (*resource_on_open_t)(resource_t*, file_t*);
-typedef void (*resource_on_free_t)(void*);
+typedef void (*resource_on_free_t)(resource_t*);
 
 typedef struct resource
 {

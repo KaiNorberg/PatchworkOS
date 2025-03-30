@@ -2,6 +2,7 @@
 #if _PLATFORM_HAS_SCHEDULING
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <sys/io.h>
 
 #include "platform/platform.h"
@@ -30,6 +31,14 @@ pid_t getpid(void)
 tid_t gettid(void)
 {
     return _PlatformGettid();
+}
+
+fd_t procfd(pid_t pid)
+{
+    char path[MAX_PATH];
+    snprintf(path, MAX_PATH, "sys:/proc/%d", pid);
+    
+    return open(path);
 }
 
 // Pretend you dont se this, we have to do this becouse of the variadic arguments.

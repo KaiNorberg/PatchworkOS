@@ -22,7 +22,6 @@ static void resource_free(resource_t* resource)
         resource->onFree(resource);
     }
 
-    node_remove(&resource->node);
     free(resource);
 }
 
@@ -104,9 +103,15 @@ static void sysfs_cleanup(file_t* file)
         file->resource->ops->cleanup(file);
     }
 
-    if (atomic_fetch_sub(&file->resource->ref, 1) <= 1)
+    uint64_t val;
+    if ((val = atomic_fetch_sub(&file->resource->ref, 1)) <= 1)
     {
+        printf("sysfs_cleanup: %d", val);
         resource_free(file->resource);
+    }
+    else
+    {
+        printf("sysfs_cleanup: %d", val);
     }
 }
 
@@ -142,7 +147,7 @@ static file_t* sysfs_open(volume_t* volume, const char* path)
         return NULL;
     }
     file->private = resource->private;
-    file->ops = resource->ops;
+    file->ops = &fileOps;
     file->resource = resource;
 
     if (resource->onOpen != NULL && resource->onOpen(resource, file) == ERR)
@@ -266,12 +271,19 @@ resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_
 void sysfs_hide(resource_t* resource)
 {
     lock_acquire(&lock);
-    list_remove(resource);
+    node_remove(&resource->node);
     lock_release(&lock);
 
     atomic_store(&resource->hidden, true);
-    if (atomic_fetch_sub(&resource->ref, 1) <= 1)
+    uint64_t val;
+    if ((val = atomic_fetch_sub(&resource->ref, 1)) <= 1)
     {
+        printf("sysfs_hide: %d", val);
         resource_free(resource);
+    }
+    else
+    {
+
+        printf("sysfs_hide: %d", val);
     }
 }

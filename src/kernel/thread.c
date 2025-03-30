@@ -65,9 +65,42 @@ static uint64_t argv_init(argv_t* argv, const char** src)
     return 0;
 }
 
-static void argv_uninit(argv_t* argv)
+static void argv_deinit(argv_t* argv)
 {
     free(argv->buffer);
+}
+
+static uint64_t process_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
+{
+    process_t* process = file->private;
+
+    switch (request)
+    {
+    case IOCTL_PROC_KILL:
+    {
+        process->killed = true;
+    }
+    break;
+    default:
+    {
+        return ERROR(EREQ);
+    }
+    }
+
+    return 0;
+}
+
+static file_ops_t fileOps = {
+    .ioctl = process_ioctl
+};
+
+static void process_on_free(resource_t* resource)
+{
+    process_t* process = resource->private;
+    vfs_context_deinit(&process->vfsContext);
+    space_deinit(&process->space);
+    argv_deinit(&process->argv);
+    free(process);
 }
 
 static process_t* process_new(const char** argv, const char* cwd)
@@ -78,17 +111,27 @@ static process_t* process_new(const char** argv, const char* cwd)
         return ERRPTR(ENOMEM);
     }
 
+    process->id = atomic_fetch_add(&newPid, 1);
     if (argv_init(&process->argv, argv) == ERR)
     {
         free(process);
         return ERRPTR(ENOMEM);
     }
 
+    char idString[MAX_PATH];
+    ulltoa(process->id, idString, 10);
+    process->resource = sysfs_expose("/proc", idString, &fileOps, process, NULL, process_on_free);
+    if (process->resource == NULL)
+    {
+        argv_deinit(&process->argv);
+        free(process);
+        return NULL;
+    }
+
     process->killed = false;
-    process->id = atomic_fetch_add(&newPid, 1);
     vfs_context_init(&process->vfsContext, cwd);
     space_init(&process->space);
-    atomic_init(&process->ref, 0);
+    atomic_init(&process->threadCount, 0);
     atomic_init(&process->newTid, 0);
 
     return process;
@@ -96,20 +139,17 @@ static process_t* process_new(const char** argv, const char* cwd)
 
 static void process_free(process_t* process)
 {
-    vfs_context_deinit(&process->vfsContext);
-    space_deinit(&process->space);
-    argv_uninit(&process->argv);
-    free(process);
+    sysfs_hide(process->resource);
 }
 
 static thread_t* process_thread_new(process_t* process, void* entry, priority_t priority)
 {
-    atomic_fetch_add(&process->ref, 1);
+    atomic_fetch_add(&process->threadCount, 1);
 
     thread_t* thread = malloc(sizeof(thread_t));
     if (thread == NULL)
     {
-        atomic_fetch_sub(&process->ref, 1);
+        atomic_fetch_sub(&process->threadCount, 1);
         return NULL;
     }
     list_entry_init(&thread->entry);
@@ -126,7 +166,7 @@ static thread_t* process_thread_new(process_t* process, void* entry, priority_t 
     thread->priority = MIN(priority, PRIORITY_MAX);
     if (simd_context_init(&thread->simdContext) == ERR)
     {
-        atomic_fetch_sub(&process->ref, 1);
+        atomic_fetch_sub(&process->threadCount, 1);
         free(thread);
         return NULL;
     }
@@ -162,7 +202,7 @@ thread_t* thread_new(const char** argv, void* entry, priority_t priority, const 
 
 void thread_free(thread_t* thread)
 {
-    if (atomic_fetch_sub(&thread->process->ref, 1) <= 1)
+    if (atomic_fetch_sub(&thread->process->threadCount, 1) <= 1)
     {
         process_free(thread->process);
     }

@@ -41,9 +41,9 @@ static file_ops_t fileOps = {
     .poll = mouse_poll,
 };
 
-static void mouse_delete(void* private)
+static void mouse_on_free(resource_t* resource)
 {
-    mouse_t* mouse = private;
+    mouse_t* mouse = resource->private;
     free(mouse);
 }
 
@@ -51,7 +51,7 @@ mouse_t* mouse_new(const char* name)
 {
     mouse_t* mouse = malloc(sizeof(mouse_t));
     mouse->writeIndex = 0;
-    mouse->resource = sysfs_expose("/mouse", name, &fileOps, mouse, NULL, mouse_delete);
+    mouse->resource = sysfs_expose("/mouse", name, &fileOps, mouse, NULL, mouse_on_free);
     wait_queue_init(&mouse->waitQueue);
     lock_init(&mouse->lock);
 

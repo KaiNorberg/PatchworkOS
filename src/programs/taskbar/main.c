@@ -1,10 +1,12 @@
-#include "taskbar.h"
 #include "start_menu.h"
 
 #include <stdio.h>
 #include <sys/gfx.h>
 #include <sys/win.h>
 #include <time.h>
+
+#define TOPBAR_HEIGHT 43
+#define TOPBAR_PADDING 5
 
 #define START_WIDTH 75
 #define START_ID 0
@@ -85,11 +87,21 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
     return 0;
 }
 
-win_t* taskbar_new(void)
+int main(void)
 {
     rect_t rect;
     win_screen_rect(&rect);
     rect.top = rect.bottom - TOPBAR_HEIGHT;
 
-    return win_new("Taskbar", &rect, DWM_PANEL, WIN_NONE, procedure);
+    win_t* window = win_new("Taskbar", &rect, DWM_PANEL, WIN_NONE, procedure);
+
+    msg_t msg = {0};
+    while (msg.type != LMSG_QUIT)
+    {
+        win_receive(window, &msg, NEVER);
+        win_dispatch(window, &msg);
+    }
+
+    win_free(window);
+    return 0;
 }

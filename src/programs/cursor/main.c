@@ -1,5 +1,3 @@
-#include "cursor.h"
-
 #include <stdlib.h>
 #include <sys/gfx.h>
 #include <sys/win.h>
@@ -26,9 +24,9 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
     return 0;
 }
 
-win_t* cursor_new(void)
+int main(void) 
 {
-    image = gfx_fbmp_new("/lib/shell/arrow.fbmp");
+    image = gfx_fbmp_new("/lib/cursor/arrow.fbmp");
     if (image == NULL)
     {
         exit(EXIT_FAILURE);
@@ -37,5 +35,16 @@ win_t* cursor_new(void)
     rect_t screenRect;
     win_screen_rect(&screenRect);
     rect_t rect = RECT_INIT_DIM(RECT_WIDTH(&screenRect) / 2, RECT_HEIGHT(&screenRect) / 2, image->width, image->height);
-    return win_new("Cursor", &rect, DWM_CURSOR, WIN_NONE, procedure);
+
+    win_t* window = win_new("Cursor", &rect, DWM_CURSOR, WIN_NONE, procedure);
+
+    msg_t msg = {0};
+    while (msg.type != LMSG_QUIT)
+    {
+        win_receive(window, &msg, NEVER);
+        win_dispatch(window, &msg);
+    }
+
+    win_free(window);
+    return 0;
 }

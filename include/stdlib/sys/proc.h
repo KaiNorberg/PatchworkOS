@@ -44,6 +44,8 @@ typedef struct
 
 #define NEVER ((nsec_t)UINT64_MAX)
 
+#define IOCTL_PROC_KILL 0
+
 nsec_t uptime(void);
 
 uint64_t sleep(nsec_t nanoseconds);
@@ -54,6 +56,8 @@ pid_t spawn(const char** argv, const spawn_fd_t* fds);
 pid_t getpid(void);
 
 tid_t gettid(void);
+
+fd_t procfd(pid_t pid);
 
 tid_t split(void* entry, uint64_t argc, ...);
 

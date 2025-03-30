@@ -74,7 +74,7 @@ uint64_t args_init(args_t* args, int argc, char** argv)
     return 0;
 }
 
-void args_uninit(args_t* args)
+void args_deinit(args_t* args)
 {
     free(args->paths);
 }
@@ -143,6 +143,6 @@ int main(int argc, char** argv)
         }
     }
 
-    args_uninit(&args);
+    args_deinit(&args);
     return EXIT_SUCCESS;
 }

@@ -4,7 +4,7 @@ MODULES := $(basename $(notdir $(wildcard make/*.mk)))
 PROGRAMS := $(notdir $(wildcard src/programs/*))
 TARGET := bin/PatchworkOS.img
 
-ROOT_PROGRAMS := init shell
+ROOT_PROGRAMS := init wall cursor taskbar start_menu
 
 setup:
 	$(MAKE) -C lib/gnu-efi

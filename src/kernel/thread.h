@@ -1,10 +1,5 @@
 #pragma once
 
-#include <errno.h>
-#include <stdatomic.h>
-#include <sys/list.h>
-#include <sys/proc.h>
-
 #include "config.h"
 #include "defs.h"
 #include "lock.h"
@@ -12,6 +7,12 @@
 #include "space.h"
 #include "trap.h"
 #include "vfs_context.h"
+#include "sysfs.h"
+
+#include <errno.h>
+#include <stdatomic.h>
+#include <sys/list.h>
+#include <sys/proc.h>
 
 typedef uint8_t priority_t;
 
@@ -26,7 +27,8 @@ typedef enum
 {
     BLOCK_NORM = 0,
     BLOCK_TIMEOUT = 1,
-    BLOCK_ERROR = 2
+    BLOCK_KILLED = 2,
+    BLOCK_ERROR = 3
 } block_result_t;
 
 typedef struct
@@ -40,10 +42,11 @@ typedef struct
 {
     pid_t id;
     argv_t argv;
+    resource_t* resource;
     bool killed;
     vfs_context_t vfsContext;
     space_t space;
-    atomic_uint64_t ref;
+    atomic_uint64_t threadCount;
     _Atomic tid_t newTid;
 } process_t;
 

@@ -126,7 +126,7 @@ typedef void (*npf_putc)(char c, void* ctx);
 #pragma warning(disable : 4127)  // conditional expression is constant
 #pragma warning(disable : 4505)  // unreferenced local function has been removed
 #pragma warning(disable : 4514)  // unreferenced inline function has been removed
-#pragma warning(disable : 4701)  // potentially uninitialized local variable used
+#pragma warning(disable : 4701)  // potentially deinitialized local variable used
 #pragma warning(disable : 4706)  // assignment within conditional expression
 #pragma warning(disable : 4710)  // function not inlined
 #pragma warning(disable : 4711)  // function selected for inline expansion

@@ -211,7 +211,6 @@ static void sched_update_graveyard(trap_frame_t* trapFrame, sched_context_t* con
         {
             break;
         }
-
         thread_free(thread);
     }
 

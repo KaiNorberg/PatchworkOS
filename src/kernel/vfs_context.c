@@ -1,9 +1,10 @@
 #include "vfs_context.h"
 
-#include <string.h>
-
 #include "sched.h"
 #include "vfs.h"
+
+#include <string.h>
+#include <stdio.h>
 
 void vfs_context_init(vfs_context_t* context, const char* cwd)
 {

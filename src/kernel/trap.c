@@ -77,6 +77,8 @@ static void ipi_handler(trap_frame_t* trapFrame)
     lapic_eoi();
 }
 
+#include <stdio.h>
+
 void trap_handler(trap_frame_t* trapFrame)
 {
     if (trapFrame->vector < VECTOR_IRQ_BASE)
