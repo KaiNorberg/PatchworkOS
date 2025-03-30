@@ -9,7 +9,7 @@ void spawn_program(const char* path)
 
 int main(void)
 {
-    chdir("home:/");
+    chdir("home:/usr");
 
     spawn_program("home:/bin/wall");
     spawn_program("home:/bin/cursor");

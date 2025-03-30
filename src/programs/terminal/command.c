@@ -99,6 +99,44 @@ static void command_help(uint64_t argc, const char** argv)
     }
 }
 
+static uint64_t command_spawn(const char** argv)
+{
+    pipefd_t childStdin;
+    pipefd_t childStdout;
+
+    pipe(&childStdin);
+    pipe(&childStdout);
+
+    spawn_fd_t fds[] = {{.child = STDIN_FILENO, .parent = childStdin.read}, {.child = STDOUT_FILENO, .parent = childStdout.write}, SPAWN_FD_END};
+    pid_t pid = spawn(argv, fds);
+    if (pid == ERR)
+    {
+        close(childStdin.write);
+        close(childStdin.read);
+        close(childStdout.write);
+        close(childStdout.read);
+        return ERR;
+    }
+
+    close(childStdin.read);
+    close(childStdout.write);
+    
+    while (1)
+    {
+        char chr;
+        if (read(childStdout.read, &chr, 1) == 0)
+        {
+            break;
+        }
+
+        terminal_print("%c", chr);
+    }
+
+    close(childStdin.write);
+    close(childStdout.read);
+    return 0;
+}
+
 void command_execute(const char* command)
 {
     uint64_t argc;
@@ -114,7 +152,7 @@ void command_execute(const char* command)
         stat_t info;
         if (stat(argv[0], &info) != ERR && info.type == STAT_FILE)
         {
-            if (terminal_spawn(argv) == ERR)
+            if (command_spawn(argv) == ERR)
             {
                 terminal_error(NULL);
             }
@@ -147,7 +185,7 @@ void command_execute(const char* command)
         if (stat(path, &info) != ERR && info.type == STAT_FILE)
         {
             argv[0] = path;
-            if (terminal_spawn(argv) == ERR)
+            if (command_spawn(argv) == ERR)
             {
                 terminal_error(NULL);
             }

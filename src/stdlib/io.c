@@ -75,6 +75,13 @@ uint64_t poll(pollfd_t* fds, uint64_t amount, nsec_t timeout)
     return _PlatformPoll(fds, amount, timeout);
 }
 
+poll_event_t poll1(fd_t fd, poll_event_t requested, nsec_t timeout)
+{
+    pollfd_t pollfd = {.fd = fd, .requested = requested};
+    _PlatformPoll(&pollfd, 1, timeout);
+    return pollfd.occurred;
+}
+
 uint64_t stat(const char* path, stat_t* info)
 {
     return _PlatformStat(path, info);

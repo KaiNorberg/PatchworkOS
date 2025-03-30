@@ -7,6 +7,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/win.h>
+#include <sys/io.h>
+#include <sys/proc.h>
+#include <threads.h>
+#include <stdatomic.h>
 
 // This is probobly one of the messiest parts of this project.
 
@@ -18,50 +22,23 @@
 #define TERMINAL_HEIGHT 500
 
 static win_t* terminal;
-static terminal_state_t state;
-
-static pipefd_t stdin;
-static pipefd_t stdout;
 
 static point_t cursorPos;
 static bool cursorVisible;
 
-static char input[MAX_PATH];
+static thrd_t thread;
+
+static pipefd_t printPipe;
+static pipefd_t kbdPipe;
+
+static atomic_bool shouldQuit;
+static atomic_bool hasQuit;
 
 #define CURSOR_POS_TO_CLIENT_POS(cursorPos, font) \
     (point_t){ \
         .x = ((cursorPos)->x * (font)->width) + winTheme.edgeWidth + winTheme.padding, \
         .y = ((cursorPos)->y * (font)->height) + winTheme.edgeWidth + winTheme.padding, \
     };
-
-static void input_push(char chr)
-{
-    uint64_t strLen = strlen(input);
-    if (strLen >= MAX_PATH - 2)
-    {
-        return;
-    }
-    input[strLen] = chr;
-    input[strLen + 1] = '\0';
-}
-
-static char input_pop(void)
-{
-    uint64_t strLen = strlen(input);
-    if (strLen != 0)
-    {
-        char result = input[strLen - 1];
-        input[strLen - 1] = '\0';
-        return result;
-    }
-
-    return '\0';
-}
-
-static void input_clear(void)
-{
-    input[0] = '\0';
-}
 
 static void terminal_cursor_draw(void)
 {
@@ -89,88 +66,18 @@ static void terminal_cursor_clear(void)
     cursorVisible = temp;
 }
 
-static void terminal_print_prompt(void)
-{
-    char cwd[MAX_PATH];
-    realpath(cwd, ".");
-
-    terminal_print("\n");
-    terminal_print(cwd);
-    terminal_print("\n> ");
-}
-
-static void terminal_handle_input(char chr)
-{
-    switch (chr)
-    {
-    case '\n':
-    {
-        terminal_print("%c", '\n');
-
-        switch (state)
-        {
-        case TERMINAL_COMMAND:
-        {
-            command_execute(input);
-            if (state == TERMINAL_COMMAND)
-            {
-                terminal_print_prompt();
-            }
-        }
-        break;
-        case TERMINAL_SPAWN:
-        {
-            write(stdin.write, input, strlen(input));
-        }
-        break;
-        }
-
-        input_clear();
-    }
-    break;
-    case '\b':
-    {
-        if (input_pop() != '\0')
-        {
-            terminal_print("%c", '\b');
-        }
-    }
-    break;
-    default:
-    {
-        input_push(chr);
-        terminal_print("%c", chr);
-    }
-    break;
-    }
-}
-
-static void terminal_state_set(terminal_state_t newState)
-{
-    state = newState;
-    input_clear();
-}
-
 uint64_t procedure(win_t* window, const msg_t* msg)
 {
     switch (msg->type)
     {
     case LMSG_INIT:
     {
-        terminal_state_set(TERMINAL_COMMAND);
         win_timer_set(window, BLINK_INTERVAL);
-
-        chdir("home:/usr");
     }
     break;
     case LMSG_REDRAW:
     {
         terminal_clear();
-
-        terminal_print("Welcome to the Terminal (Very WIP)\n");
-        terminal_print("Type help for a list of commands\n");
-
-        terminal_print_prompt();
     }
     break;
     case LMSG_TIMER:
@@ -195,11 +102,7 @@ uint64_t procedure(win_t* window, const msg_t* msg)
             break;
         }
 
-        terminal_handle_input(chr);
-
-        cursorVisible = true;
-        terminal_cursor_draw();
-        win_timer_set(window, BLINK_INTERVAL);
+        write(kbdPipe.write, &chr, 1);
     }
     break;
     }
@@ -207,115 +110,6 @@ uint64_t procedure(win_t* window, const msg_t* msg)
     return 0;
 }
 
-void terminal_init(void)
-{
-    state = TERMINAL_COMMAND;
-
-    rect_t rect = RECT_INIT_DIM(500, 200, TERMINAL_WIDTH, TERMINAL_HEIGHT);
-    win_expand_to_window(&rect, WIN_DECO);
-
-    terminal = win_new("Terminal", &rect, DWM_WINDOW, WIN_DECO, procedure);
-    if (terminal == NULL)
-    {
-        exit(errno);
-    }
-}
-
-void terminal_deinit(void)
-{
-    win_free(terminal);
-}
-
-static void terminal_read_stdout(void)
-{
-    pollfd_t fd = {.fd = stdout.read, .requested = POLL_READ};
-
-    do
-    {            
-        char chr;
-        if (read(stdout.read, &chr, 1) == 0)
-        {
-            close(stdout.read);
-            close(stdin.write);
-            terminal_print_prompt();
-            terminal_state_set(TERMINAL_COMMAND);
-            break;
-        }
-
-        terminal_print("%c", chr);
-        poll(&fd, 1, 0);
-    } while (fd.occurred & POLL_READ);
-}
-
-void terminal_loop(void)
-{
-    msg_t msg = {0};
-    while (msg.type != LMSG_QUIT)
-    {
-        switch (state)
-        {
-        case TERMINAL_COMMAND:
-        {
-            win_receive(terminal, &msg, NEVER);
-            win_dispatch(terminal, &msg);
-        }
-        break;
-        case TERMINAL_SPAWN:
-        {
-            pollfd_t fds[] = {{.fd = win_fd(terminal), .requested = POLL_READ}, {.fd = stdout.read, .requested = POLL_READ}};
-            poll(fds, 2, BLINK_INTERVAL);
-
-            if (win_receive(terminal, &msg, 0))
-            {
-                win_dispatch(terminal, &msg);
-            }
-            if (fds[1].occurred & POLL_READ)
-            {
-                terminal_read_stdout();
-            }
-        }
-        break;
-        }
-    }
-}
-
-void terminal_clear(void)
-{
-    cursorVisible = false;
-    cursorPos = (point_t){.x = 0, .y = 0};
-
-    gfx_t gfx;
-    win_draw_begin(terminal, &gfx);
-
-    rect_t rect = RECT_INIT_GFX(&gfx);
-    gfx_edge(&gfx, &rect, winTheme.edgeWidth, winTheme.shadow, winTheme.highlight);
-    RECT_SHRINK(&rect, winTheme.edgeWidth);
-    gfx_rect(&gfx, &rect, winTheme.dark);
-
-    win_draw_end(terminal, &gfx);
-}
-
-uint64_t terminal_spawn(const char** argv)
-{
-    pipe(&stdin);
-    pipe(&stdout);
-
-    spawn_fd_t fds[] = {{STDIN_FILENO, stdin.read}, {STDOUT_FILENO, stdout.write}, SPAWN_FD_END};
-    pid_t pid = spawn(argv, fds);
-    if (pid == ERR)
-    {
-        close(stdin.read);
-        close(stdin.write);
-        close(stdout.read);
-        close(stdout.write);
-        return ERR;
-    }
-
-    close(stdin.read);
-    close(stdout.write);
-    terminal_state_set(TERMINAL_SPAWN);
-    return 0;
-}
 
 static void terminal_scroll(gfx_t* gfx)
 {
@@ -331,11 +125,12 @@ static void terminal_put(gfx_t* gfx, char chr)
 {
     const gfx_psf_t* font = win_font(terminal);
 
+    terminal_cursor_clear();
+
     switch (chr)
     {
     case '\n':
     {
-        terminal_cursor_clear();
         cursorPos.x = 0;
         cursorPos.y++;
 
@@ -349,9 +144,7 @@ static void terminal_put(gfx_t* gfx, char chr)
     {
         if (cursorPos.x != 0)
         {
-            terminal_cursor_clear();
             cursorPos.x--;
-            terminal_cursor_clear();
         }
     }
     break;
@@ -372,11 +165,114 @@ static void terminal_put(gfx_t* gfx, char chr)
     }
     break;
     }
+
+    cursorVisible = true;
+    terminal_cursor_draw();
+    win_timer_set(terminal, BLINK_INTERVAL);
+}
+
+
+int terminal_loop(void* data)
+{
+    msg_t msg = {0};
+    while (msg.type != LMSG_QUIT && !shouldQuit)
+    {
+        pollfd_t fds[] = {{.fd = printPipe.read, .requested = POLL_READ}, {.fd = win_fd(terminal), .requested = POLL_READ}};
+        poll(fds, 2, BLINK_INTERVAL);
+
+        while (win_receive(terminal, &msg, 0))
+        {
+            win_dispatch(terminal, &msg);
+        }
+
+        if (fds[0].occurred == POLL_READ)
+        {
+            gfx_t gfx;
+            win_draw_begin(terminal, &gfx);
+
+            while (poll1(printPipe.read, POLL_READ, 0) == POLL_READ)
+            {
+                char chr;
+                read(printPipe.read, &chr, 1);
+                terminal_put(&gfx, chr);
+            }
+
+            win_draw_end(terminal, &gfx);
+        }
+    }
+
+    atomic_store(&hasQuit, true);
+    exit(EXIT_SUCCESS);
+}
+
+void terminal_init(void)
+{
+    rect_t rect = RECT_INIT_DIM(500, 200, TERMINAL_WIDTH, TERMINAL_HEIGHT);
+    win_expand_to_window(&rect, WIN_DECO);
+
+    terminal = win_new("Terminal", &rect, DWM_WINDOW, WIN_DECO, procedure);
+    if (terminal == NULL)
+    {
+        exit(errno);
+    }
+
+    pipe(&printPipe);
+    pipe(&kbdPipe);
+
+    atomic_init(&shouldQuit, false);
+    atomic_init(&hasQuit, false);
+
+    thrd_create(&thread, terminal_loop, NULL);
+}
+
+void terminal_deinit(void)
+{
+    atomic_store(&shouldQuit, true);
+    while (!atomic_load(&hasQuit))
+    {
+        asm volatile("pause");
+    }
+    close(printPipe.read);
+    close(printPipe.write);
+    close(kbdPipe.read);
+    close(kbdPipe.write);
+    win_free(terminal);
+}
+
+void terminal_clear(void)
+{
+    cursorVisible = false;
+    cursorPos = (point_t){.x = 0, .y = 0};
+
+    gfx_t gfx;
+    win_draw_begin(terminal, &gfx);
+
+    rect_t rect = RECT_INIT_GFX(&gfx);
+    gfx_edge(&gfx, &rect, winTheme.edgeWidth, winTheme.shadow, winTheme.highlight);
+    RECT_SHRINK(&rect, winTheme.edgeWidth);
+    gfx_rect(&gfx, &rect, winTheme.dark);
+
+    win_draw_end(terminal, &gfx);
+}
+
+char terminal_input(void)
+{
+    char chr;
+    read(kbdPipe.read, &chr, 1);
+    return chr;
 }
 
 void terminal_print(const char* str, ...)
-{
-    if (str == NULL)
+{    
+    char buffer[MAX_PATH];
+    va_list args;
+    va_start(args, str);
+    vsprintf(buffer, str, args);
+    va_end(args);
+
+    write(printPipe.write, buffer, strlen(buffer));
+
+    /*if (str == NULL)
     {
         return;
     }
@@ -396,7 +292,7 @@ void terminal_print(const char* str, ...)
         terminal_put(&gfx, *chr++);
     }
 
-    win_draw_end(terminal, &gfx);
+    win_draw_end(terminal, &gfx);*/
 }
 
 void terminal_error(const char* str, ...)

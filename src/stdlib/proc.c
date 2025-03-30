@@ -41,9 +41,9 @@ fd_t procfd(pid_t pid)
     return open(path);
 }
 
-// Pretend you dont se this, we have to do this becouse of the variadic arguments.
 __attribute__((naked)) tid_t split(void* entry, uint64_t argc, ...)
 {
+    // Pretend you dont se this, we have to do this becouse of the variadic arguments.
     asm volatile("jmp _PlatformSplit");
 }
 

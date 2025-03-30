@@ -106,12 +106,7 @@ static void sysfs_cleanup(file_t* file)
     uint64_t val;
     if ((val = atomic_fetch_sub(&file->resource->ref, 1)) <= 1)
     {
-        printf("sysfs_cleanup: %d", val);
         resource_free(file->resource);
-    }
-    else
-    {
-        printf("sysfs_cleanup: %d", val);
     }
 }
 
@@ -278,12 +273,6 @@ void sysfs_hide(resource_t* resource)
     uint64_t val;
     if ((val = atomic_fetch_sub(&resource->ref, 1)) <= 1)
     {
-        printf("sysfs_hide: %d", val);
         resource_free(resource);
-    }
-    else
-    {
-
-        printf("sysfs_hide: %d", val);
     }
 }

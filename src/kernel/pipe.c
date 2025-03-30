@@ -96,6 +96,7 @@ static void pipe_read_cleanup(file_t* file)
     lock_acquire(&private->lock);
 
     private->readClosed = true;
+    waitsys_unblock(&private->waitQueue);
     if (private->writeClosed)
     {
         lock_release(&private->lock);
@@ -106,12 +107,15 @@ static void pipe_read_cleanup(file_t* file)
     lock_release(&private->lock);
 }
 
+#include <stdio.h>
+
 static void pipe_write_cleanup(file_t* file)
 {
     pipe_private_t* private = file->private;
     lock_acquire(&private->lock);
 
     private->writeClosed = true;
+    waitsys_unblock(&private->waitQueue);
     if (private->readClosed)
     {
         lock_release(&private->lock);

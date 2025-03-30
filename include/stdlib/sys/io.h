@@ -92,6 +92,8 @@ uint64_t chdir(const char* path);
 
 uint64_t poll(pollfd_t* fds, uint64_t amount, nsec_t timeout);
 
+poll_event_t poll1(fd_t fd, poll_event_t requested, nsec_t timeout);
+
 uint64_t stat(const char* path, stat_t* stat);
 
 uint64_t ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size);

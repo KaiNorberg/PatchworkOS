@@ -192,6 +192,7 @@ thread_t* loader_split(thread_t* thread, void* entry, priority_t priority, uint6
     child->trapFrame.cs = GDT_USER_CODE | GDT_RING3;
     child->trapFrame.ss = GDT_USER_DATA | GDT_RING3;
     child->trapFrame.rsp = (uint64_t)rsp;
+    child->trapFrame.rbp = (uint64_t)rsp;
 
     if (argc >= 1)
     {
