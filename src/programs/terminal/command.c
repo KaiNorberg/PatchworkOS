@@ -107,7 +107,8 @@ static uint64_t command_spawn(const char** argv)
     pipe(&childStdin);
     pipe(&childStdout);
 
-    spawn_fd_t fds[] = {{.child = STDIN_FILENO, .parent = childStdin.read}, {.child = STDOUT_FILENO, .parent = childStdout.write}, SPAWN_FD_END};
+    spawn_fd_t fds[] = {{.child = STDIN_FILENO, .parent = childStdin.read}, {.child = STDOUT_FILENO, .parent = childStdout.write},
+        SPAWN_FD_END};
     pid_t pid = spawn(argv, fds);
     if (pid == ERR)
     {
@@ -120,7 +121,7 @@ static uint64_t command_spawn(const char** argv)
 
     close(childStdin.read);
     close(childStdout.write);
-    
+
     while (1)
     {
         char chr;

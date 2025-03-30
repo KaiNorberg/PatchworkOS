@@ -7,7 +7,6 @@
 #include "loader.h"
 #include "lock.h"
 #include "log.h"
-#include "queue.h"
 #include "regs.h"
 #include "smp.h"
 #include "systime.h"
@@ -23,11 +22,44 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
+static inline void thread_queue_init(thread_queue_t* queue)
+{
+    queue->length = 0;
+    list_init(&queue->list);
+    lock_init(&queue->lock);
+}
+
+static inline void thread_queue_push(thread_queue_t* queue, thread_t* thread)
+{
+    LOCK_DEFER(&queue->lock);
+
+    queue->length++;
+    list_push(&queue->list, &thread->entry);
+}
+
+static inline thread_t* thread_queue_pop(thread_queue_t* queue)
+{
+    LOCK_DEFER(&queue->lock);
+    if (queue->length == 0)
+    {
+        return NULL;
+    }
+
+    queue->length--;
+    return LIST_CONTAINER(list_pop(&queue->list), thread_t, entry);
+}
+
+static inline uint64_t thread_queue_length(thread_queue_t* queue)
+{
+    LOCK_DEFER(&queue->lock);
+    return queue->length;
+}
+
 void sched_context_init(sched_context_t* context)
 {
     for (uint64_t i = PRIORITY_MIN; i <= PRIORITY_MAX; i++)
     {
-        queue_init(&context->queues[i]);
+        thread_queue_init(&context->queues[i]);
     }
     list_init(&context->graveyard);
     context->runThread = NULL;
@@ -35,15 +67,15 @@ void sched_context_init(sched_context_t* context)
 
 static void sched_context_push(sched_context_t* context, thread_t* thread)
 {
-    queue_push(&context->queues[thread->priority], thread);
+    thread_queue_push(&context->queues[thread->priority], thread);
 }
 
-static uint64_t sched_context_thread_amount(const sched_context_t* context)
+static uint64_t sched_context_thread_amount(sched_context_t* context)
 {
     uint64_t length = (context->runThread != NULL);
     for (int64_t i = PRIORITY_MAX; i >= PRIORITY_MIN; i--)
     {
-        length += queue_length(&context->queues[i]);
+        length += thread_queue_length(&context->queues[i]);
     }
 
     return length;
@@ -53,7 +85,7 @@ static thread_t* sched_context_find_higher(sched_context_t* context, priority_t 
 {
     for (int64_t i = PRIORITY_MAX; i > priority; i--)
     {
-        thread_t* thread = queue_pop(&context->queues[i]);
+        thread_t* thread = thread_queue_pop(&context->queues[i]);
         if (thread != NULL)
         {
             if (thread->process->killed && thread->trapFrame.cs != GDT_KERNEL_CODE)
@@ -61,6 +93,7 @@ static thread_t* sched_context_find_higher(sched_context_t* context, priority_t 
                 thread_free(thread);
                 return sched_context_find_higher(context, priority);
             }
+
             return thread;
         }
     }
@@ -72,7 +105,7 @@ static thread_t* sched_context_find_any(sched_context_t* context)
 {
     for (int64_t i = PRIORITY_MAX; i >= PRIORITY_MIN; i--)
     {
-        thread_t* thread = queue_pop(&context->queues[i]);
+        thread_t* thread = thread_queue_pop(&context->queues[i]);
         if (thread != NULL)
         {
             if (thread->process->killed && thread->trapFrame.cs != GDT_KERNEL_CODE)
@@ -182,7 +215,7 @@ void sched_push(thread_t* thread)
     for (uint64_t i = 0; i < cpuAmount; i++)
     {
         cpu_t* cpu = smp_cpu(i);
-        const sched_context_t* context = &cpu->sched;
+        sched_context_t* context = &cpu->sched;
 
         int64_t length = sched_context_thread_amount(context);
 
@@ -206,18 +239,19 @@ static void sched_update_graveyard(trap_frame_t* trapFrame, sched_context_t* con
 {
     while (1)
     {
-        thread_t* thread = list_pop(&context->graveyard);
+        thread_t* thread = LIST_CONTAINER_SAFE(list_pop(&context->graveyard), thread_t, entry);
         if (thread == NULL)
         {
             break;
         }
+
         thread_free(thread);
     }
 
     if (context->runThread != NULL &&
         (context->runThread->killed || (context->runThread->process->killed && trapFrame->cs != GDT_KERNEL_CODE)))
     {
-        list_push(&context->graveyard, context->runThread);
+        list_push(&context->graveyard, &context->runThread->entry);
         context->runThread = NULL;
     }
 }

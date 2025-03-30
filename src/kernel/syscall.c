@@ -290,7 +290,7 @@ uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
     {
         return ERR;
     }
-    FILE_DEFER(file);  
+    FILE_DEFER(file);
 
     return vfs_ioctl(file, request, argp, size);
 }

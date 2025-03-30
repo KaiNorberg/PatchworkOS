@@ -32,7 +32,7 @@ static volume_t* volume_get(const char* label)
     LOCK_DEFER(&volumesLock);
 
     volume_t* volume;
-    LIST_FOR_EACH(volume, &volumes)
+    LIST_FOR_EACH(volume, &volumes, entry)
     {
         if (label_compare(volume->label, label))
         {
@@ -214,7 +214,7 @@ uint64_t vfs_attach_simple(const char* label, const volume_ops_t* ops)
     LOCK_DEFER(&volumesLock);
 
     volume_t* volume;
-    LIST_FOR_EACH(volume, &volumes)
+    LIST_FOR_EACH(volume, &volumes, entry)
     {
         if (name_compare(volume->label, label))
         {
@@ -228,7 +228,7 @@ uint64_t vfs_attach_simple(const char* label, const volume_ops_t* ops)
     volume->ops = ops;
     atomic_init(&volume->ref, 1);
 
-    list_push(&volumes, volume);
+    list_push(&volumes, &volume->entry);
     return 0;
 }
 
@@ -243,7 +243,7 @@ uint64_t vfs_unmount(const char* label)
 
     volume_t* volume;
     bool found = false;
-    LIST_FOR_EACH(volume, &volumes)
+    LIST_FOR_EACH(volume, &volumes, entry)
     {
         if (name_compare(volume->label, label))
         {
@@ -272,7 +272,7 @@ uint64_t vfs_unmount(const char* label)
         return ERR;
     }
 
-    list_remove(volume);
+    list_remove(&volume->entry);
     free(volume);
     return 0;
 }

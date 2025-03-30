@@ -1,5 +1,6 @@
 #include "waitsys.h"
 
+#include "log.h"
 #include "regs.h"
 #include "sched.h"
 #include "smp.h"
@@ -9,37 +10,6 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-static list_t blockedThreads;
-static lock_t blockedThreadsLock;
-
-static void blocked_threads_add(thread_t* thread)
-{
-    LOCK_DEFER(&blockedThreadsLock);
-
-    if (thread->block.deadline == NEVER)
-    {
-        list_push(&blockedThreads, thread);
-        return;
-    }
-
-    thread_t* other;
-    LIST_FOR_EACH(other, &blockedThreads)
-    {
-        if (other->block.deadline > thread->block.deadline)
-        {
-            list_prepend(&other->entry, thread);
-            return;
-        }
-    }
-    list_push(&blockedThreads, thread);
-}
-
-static void blocked_threads_remove(thread_t* thread)
-{
-    LOCK_DEFER(&blockedThreadsLock);
-    list_remove(thread);
-}
 
 void wait_queue_init(wait_queue_t* waitQueue)
 {
@@ -57,19 +27,48 @@ void wait_queue_deinit(wait_queue_t* waitQueue)
     }
 }
 
-void waitsys_init(void)
+void waitsys_context_init(waitsys_context_t* waitsys)
 {
-    list_init(&blockedThreads);
-    lock_init(&blockedThreadsLock);
+    list_init(&waitsys->threads);
+    lock_init(&waitsys->lock);
+}
+
+static void waitsys_context_add(waitsys_context_t* waitsys, thread_t* thread)
+{
+    LOCK_DEFER(&waitsys->lock);
+
+    if (thread->block.deadline == NEVER)
+    {
+        list_push(&waitsys->threads, &thread->entry);
+        return;
+    }
+
+    thread_t* other;
+    LIST_FOR_EACH(other, &waitsys->threads, entry)
+    {
+        if (other->block.deadline > thread->block.deadline)
+        {
+            list_prepend(&other->entry, &thread->entry);
+            return;
+        }
+    }
+    list_push(&waitsys->threads, &thread->entry);
+}
+
+static void waitsys_context_remove(waitsys_context_t* waitsys, thread_t* thread)
+{
+    LOCK_DEFER(&waitsys->lock);
+    list_remove(&thread->entry);
 }
 
 void waitsys_update_trap(trap_frame_t* trapFrame)
 {
     cpu_t* self = smp_self_unsafe();
+    waitsys_context_t* waitsys = &self->waitsys;
 
-    LOCK_DEFER(&blockedThreadsLock);
+    LOCK_DEFER(&waitsys->lock);
 
-    if (list_empty(&blockedThreads))
+    if (list_empty(&waitsys->threads))
     {
         return;
     }
@@ -77,7 +76,7 @@ void waitsys_update_trap(trap_frame_t* trapFrame)
     // TODO: This is O(n)... fix that
     thread_t* thread;
     thread_t* temp;
-    LIST_FOR_EACH_SAFE(thread, temp, &blockedThreads)
+    LIST_FOR_EACH_SAFE(thread, temp, &waitsys->threads, entry)
     {
         if (systime_uptime() < thread->block.deadline && !(thread->process->killed || thread->killed))
         {
@@ -93,7 +92,7 @@ void waitsys_update_trap(trap_frame_t* trapFrame)
             thread->block.result = BLOCK_TIMEOUT;
         }
 
-        list_remove(thread);
+        list_remove(&thread->entry);
 
         for (uint64_t i = 0; i < thread->block.entryAmount; i++)
         {
@@ -102,7 +101,7 @@ void waitsys_update_trap(trap_frame_t* trapFrame)
 
             LOCK_DEFER(&entry->waitQueue->lock);
 
-            list_remove(entry);
+            list_remove(&entry->entry);
             free(entry);
         }
 
@@ -114,6 +113,7 @@ void waitsys_block_trap(trap_frame_t* trapFrame)
 {
     cpu_t* self = smp_self_unsafe();
     sched_context_t* sched = &self->sched;
+    waitsys_context_t* waitsys = &self->waitsys;
 
     thread_save(sched->runThread, trapFrame);
 
@@ -122,10 +122,11 @@ void waitsys_block_trap(trap_frame_t* trapFrame)
         wait_queue_t* waitQueue = sched->runThread->block.waitEntries[i]->waitQueue;
         LOCK_DEFER(&waitQueue->lock);
 
-        list_push(&waitQueue->entries, sched->runThread->block.waitEntries[i]);
+        list_push(&waitQueue->entries, &sched->runThread->block.waitEntries[i]->entry);
     }
 
-    blocked_threads_add(sched->runThread);
+    sched->runThread->block.waitsys = waitsys;
+    waitsys_context_add(waitsys, sched->runThread);
 
     sched->runThread = NULL;
     sched_schedule_trap(trapFrame);
@@ -208,12 +209,12 @@ void waitsys_unblock(wait_queue_t* waitQueue)
 
     wait_queue_entry_t* entry;
     wait_queue_entry_t* temp;
-    LIST_FOR_EACH_SAFE(entry, temp, &waitQueue->entries)
+    LIST_FOR_EACH_SAFE(entry, temp, &waitQueue->entries, entry)
     {
         thread_t* thread = entry->thread;
 
         thread->block.result = BLOCK_NORM;
-        blocked_threads_remove(thread);
+        waitsys_context_remove(thread->block.waitsys, thread);
 
         for (uint64_t i = 0; i < thread->block.entryAmount; i++)
         {
@@ -224,7 +225,7 @@ void waitsys_unblock(wait_queue_t* waitQueue)
             wait_queue_entry_t* entry = thread->block.waitEntries[i];
             thread->block.waitEntries[i] = NULL;
 
-            list_remove(entry);
+            list_remove(&entry->entry);
             free(entry);
         }
 

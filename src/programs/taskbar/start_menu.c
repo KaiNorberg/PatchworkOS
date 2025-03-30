@@ -1,7 +1,7 @@
 #include "start_menu.h"
 
-#include <sys/proc.h>
 #include <sys/io.h>
+#include <sys/proc.h>
 
 static pid_t pid = ERR;
 

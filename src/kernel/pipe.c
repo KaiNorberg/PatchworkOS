@@ -1,6 +1,7 @@
 #include "pipe.h"
 
 #include "lock.h"
+#include "log.h"
 #include "pmm.h"
 #include "ring.h"
 #include "sched.h"

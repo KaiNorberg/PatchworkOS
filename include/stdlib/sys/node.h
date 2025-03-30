@@ -32,7 +32,7 @@ static inline void node_init(node_t* node, const char* name, uint64_t type)
 static inline void node_push(node_t* parent, node_t* child)
 {
     child->parent = parent;
-    list_push(&parent->children, child);
+    list_push(&parent->children, &child->entry);
 }
 
 static inline uint64_t node_remove(node_t* node)
@@ -44,7 +44,7 @@ static inline uint64_t node_remove(node_t* node)
 
     if (node->parent != NULL)
     {
-        list_remove(node);
+        list_remove(&node->entry);
         node->parent = NULL;
     }
 
@@ -54,7 +54,7 @@ static inline uint64_t node_remove(node_t* node)
 static inline node_t* node_find(node_t* node, const char* name, char deliminator)
 {
     node_t* child;
-    LIST_FOR_EACH(child, &node->children)
+    LIST_FOR_EACH(child, &node->children, entry)
     {
         for (uint64_t i = 0; i < MAX_NAME; i++)
         {

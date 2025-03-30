@@ -2,14 +2,20 @@
 
 #include "defs.h"
 #include "lock.h"
-#include "queue.h"
 #include "thread.h"
 
 #include <sys/list.h>
 
 typedef struct
 {
-    queue_t queues[PRIORITY_LEVELS];
+    uint64_t length;
+    list_t list;
+    lock_t lock;
+} thread_queue_t;
+
+typedef struct
+{
+    thread_queue_t queues[PRIORITY_LEVELS];
     list_t graveyard;
     thread_t* runThread;
 } sched_context_t;

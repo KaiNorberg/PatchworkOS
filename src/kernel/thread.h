@@ -5,9 +5,9 @@
 #include "lock.h"
 #include "simd.h"
 #include "space.h"
+#include "sysfs.h"
 #include "trap.h"
 #include "vfs_context.h"
-#include "sysfs.h"
 
 #include <errno.h>
 #include <stdatomic.h>
@@ -22,6 +22,7 @@ typedef uint8_t priority_t;
 
 typedef struct wait_queue_entry wait_queue_entry_t;
 typedef struct wait_queue wait_queue_t;
+typedef struct waitsys_context waitsys_context_t;
 
 typedef enum
 {
@@ -52,6 +53,7 @@ typedef struct
 
 typedef struct
 {
+    waitsys_context_t* waitsys;
     wait_queue_entry_t* waitEntries[CONFIG_MAX_BLOCKERS_PER_THREAD];
     uint8_t entryAmount;
     block_result_t result;

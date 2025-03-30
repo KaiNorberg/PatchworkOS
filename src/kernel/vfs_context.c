@@ -3,8 +3,8 @@
 #include "sched.h"
 #include "vfs.h"
 
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 
 void vfs_context_init(vfs_context_t* context, const char* cwd)
 {

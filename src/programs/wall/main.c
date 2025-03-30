@@ -22,11 +22,11 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
     return 0;
 }
 
-int main(void) 
+int main(void)
 {
     rect_t rect;
     win_screen_rect(&rect);
-    
+
     win_t* window = win_new("Wallpaper", &rect, DWM_WALL, WIN_NONE, procedure);
 
     msg_t msg = {0};

@@ -3,14 +3,14 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/win.h>
 #include <sys/io.h>
 #include <sys/proc.h>
+#include <sys/win.h>
 #include <threads.h>
-#include <stdatomic.h>
 
 // This is probobly one of the messiest parts of this project.
 
@@ -110,7 +110,6 @@ uint64_t procedure(win_t* window, const msg_t* msg)
     return 0;
 }
 
-
 static void terminal_scroll(gfx_t* gfx)
 {
     cursorPos.y -= 2;
@@ -170,7 +169,6 @@ static void terminal_put(gfx_t* gfx, char chr)
     terminal_cursor_draw();
     win_timer_set(terminal, BLINK_INTERVAL);
 }
-
 
 int terminal_loop(void* data)
 {
@@ -263,7 +261,7 @@ char terminal_input(void)
 }
 
 void terminal_print(const char* str, ...)
-{    
+{
     char buffer[MAX_PATH];
     va_list args;
     va_start(args, str);

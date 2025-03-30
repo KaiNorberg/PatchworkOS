@@ -46,7 +46,7 @@ static void dwm_update_client_rect_unlocked(void)
     rect_t newRect = RECT_INIT_DIM(0, 0, backbuffer.width, backbuffer.height);
 
     window_t* window;
-    LIST_FOR_EACH(window, &windows)
+    LIST_FOR_EACH(window, &windows, entry)
     {
         window->moved = true;
 
@@ -95,8 +95,8 @@ static void dwm_select(window_t* window)
 
     if (window != NULL)
     {
-        list_remove(window);
-        list_push(&windows, window);
+        list_remove(&window->entry);
+        list_push(&windows, &window->entry);
         selected = window;
 
         selected->moved = true;
@@ -128,7 +128,7 @@ static void dwm_redraw_others(window_t* window, const rect_t* rect)
     gfx_transfer(&backbuffer, &wall->gfx, rect, &srcPoint);
 
     window_t* other;
-    LIST_FOR_EACH(other, &windows)
+    LIST_FOR_EACH(other, &windows, entry)
     {
         if (other == window)
         {
@@ -151,7 +151,7 @@ static void dwm_redraw_others(window_t* window, const rect_t* rect)
 static void dwm_invalidate_above(window_t* window, const rect_t* rect)
 {
     window_t* other;
-    LIST_FOR_EACH_FROM(other, window->entry.next, &windows)
+    LIST_FOR_EACH_FROM(other, window->entry.next, &windows, entry)
     {
         LOCK_DEFER(&other->lock);
 
@@ -192,7 +192,7 @@ static void dwm_draw_wall(void)
     dwm_transfer(wall, &wallRect);
 
     window_t* window;
-    LIST_FOR_EACH(window, &windows)
+    LIST_FOR_EACH(window, &windows, entry)
     {
         LOCK_DEFER(&window->lock);
         window->moved = true;
@@ -202,7 +202,7 @@ static void dwm_draw_wall(void)
 static void dwm_draw_windows(void)
 {
     window_t* window;
-    LIST_FOR_EACH(window, &windows)
+    LIST_FOR_EACH(window, &windows, entry)
     {
         LOCK_DEFER(&window->lock);
         const rect_t* fitRect = window->type == DWM_WINDOW ? &clientRect : &screenRect;
@@ -256,7 +256,7 @@ static void dwm_draw_cursor(void)
 static window_t* dwm_window_under_point(const point_t* point)
 {
     window_t* window;
-    LIST_FOR_EACH_REVERSE(window, &windows)
+    LIST_FOR_EACH_REVERSE(window, &windows, entry)
     {
         LOCK_DEFER(&window->lock);
 
@@ -420,13 +420,13 @@ static void dwm_window_cleanup(window_t* window)
     case DWM_WINDOW:
     {
         printf("dwm: cleanup type=window");
-        list_remove(window);
+        list_remove(&window->entry);
     }
     break;
     case DWM_PANEL:
     {
         printf("dwm: cleanup type=panel");
-        list_remove(window);
+        list_remove(&window->entry);
         dwm_update_client_rect_unlocked();
     }
     break;
@@ -481,14 +481,14 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
         {
         case DWM_WINDOW:
         {
-            list_push(&windows, window);
+            list_push(&windows, &window->entry);
             dwm_select(window);
             printf("dwm: create type=window");
         }
         break;
         case DWM_PANEL:
         {
-            list_push(&windows, window);
+            list_push(&windows, &window->entry);
             dwm_update_client_rect_unlocked();
             dwm_select(window);
             printf("dwm: create type=panel");

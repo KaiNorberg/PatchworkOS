@@ -76,7 +76,8 @@ void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gop
     lock_init(&kernelLock);
     vmm_load_memory_map(memoryMap);
 
-    printf("vmm: kernel detected physical=[%p-%p] virtual=[%p-%p]", kernel->physStart, kernel->physStart + kernel->length, kernel->virtStart, kernel->virtStart + kernel->length);
+    printf("vmm: kernel detected physical=[%p-%p] virtual=[%p-%p]", kernel->physStart, kernel->physStart + kernel->length,
+        kernel->virtStart, kernel->virtStart + kernel->length);
 
     uint64_t result =
         pml_map(kernelPml, kernel->virtStart, kernel->physStart, SIZE_IN_PAGES(kernel->length), PAGE_WRITE | VMM_KERNEL_PAGES);

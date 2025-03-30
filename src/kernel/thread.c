@@ -91,7 +91,7 @@ static uint64_t process_ioctl(file_t* file, uint64_t request, void* argp, uint64
 }
 
 static file_ops_t fileOps = {
-    .ioctl = process_ioctl
+    .ioctl = process_ioctl,
 };
 
 static void process_on_free(resource_t* resource)

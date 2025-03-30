@@ -1,8 +1,8 @@
 #include "platform/platform.h"
 #if _PLATFORM_HAS_SCHEDULING
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/io.h>
 
 #include "platform/platform.h"
@@ -37,7 +37,7 @@ fd_t procfd(pid_t pid)
 {
     char path[MAX_PATH];
     snprintf(path, MAX_PATH, "sys:/proc/%d", pid);
-    
+
     return open(path);
 }
 

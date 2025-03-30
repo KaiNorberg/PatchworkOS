@@ -365,7 +365,7 @@ uint64_t win_free(win_t* window)
 
     widget_t* temp;
     widget_t* widget;
-    LIST_FOR_EACH_SAFE(widget, temp, &window->widgets)
+    LIST_FOR_EACH_SAFE(widget, temp, &window->widgets, entry)
     {
         win_widget_free(widget);
     }
@@ -447,7 +447,7 @@ uint64_t win_dispatch(win_t* window, const msg_t* msg)
     uint64_t result = window->procedure(window, msg);
 
     widget_t* widget;
-    LIST_FOR_EACH(widget, &window->widgets)
+    LIST_FOR_EACH(widget, &window->widgets, entry)
     {
         while (widget->readIndex != widget->writeIndex)
         {
@@ -581,7 +581,7 @@ uint64_t win_font_set(win_t* window, const char* path)
 widget_t* win_widget(win_t* window, widget_id_t id)
 {
     widget_t* widget;
-    LIST_FOR_EACH(widget, &window->widgets)
+    LIST_FOR_EACH(widget, &window->widgets, entry)
     {
         if (widget->id == id)
         {
@@ -637,16 +637,16 @@ widget_t* win_widget_new(win_t* window, widget_proc_t procedure, const char* nam
     win_widget_send(widget, WMSG_REDRAW, NULL, 0);
 
     widget_t* other;
-    LIST_FOR_EACH(other, &window->widgets)
+    LIST_FOR_EACH(other, &window->widgets, entry)
     {
         if (other->id > widget->id)
         {
-            list_prepend(&other->entry, widget);
+            list_prepend(&other->entry, &widget->entry);
             return widget;
         }
     }
 
-    list_push(&window->widgets, widget);
+    list_push(&window->widgets, &widget->entry);
     return widget;
 }
 
@@ -655,7 +655,7 @@ void win_widget_free(widget_t* widget)
     msg_t msg = {.type = WMSG_FREE, .time = uptime()};
     win_widget_dispatch(widget, &msg);
 
-    list_remove(widget);
+    list_remove(&widget->entry);
     free(widget->name);
     free(widget);
 }
@@ -672,7 +672,7 @@ uint64_t win_widget_send(widget_t* widget, msg_type_t type, const void* data, ui
 uint64_t win_widget_send_all(win_t* window, msg_type_t type, const void* data, uint64_t size)
 {
     widget_t* widget;
-    LIST_FOR_EACH(widget, &window->widgets)
+    LIST_FOR_EACH(widget, &window->widgets, entry)
     {
         win_widget_send(widget, type, data, size);
     }

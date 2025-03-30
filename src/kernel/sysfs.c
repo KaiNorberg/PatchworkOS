@@ -189,7 +189,7 @@ static uint64_t sysfs_listdir(volume_t* volume, const char* path, dir_entry_t* e
     uint64_t total = 0;
 
     node_t* child;
-    LIST_FOR_EACH(child, &node->children)
+    LIST_FOR_EACH(child, &node->children, entry)
     {
         dir_entry_t entry = {0};
         strcpy(entry.name, child->name);

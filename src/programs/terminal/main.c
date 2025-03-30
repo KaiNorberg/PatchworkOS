@@ -1,5 +1,5 @@
-#include "terminal.h"
 #include "command.h"
+#include "terminal.h"
 
 #include <sys/io.h>
 #include <sys/proc.h>
@@ -55,7 +55,7 @@ int main(void)
     terminal_print("Welcome to the Terminal (Very WIP)\n");
     terminal_print("Type help for a list of commands\n");
 
-    while(1)
+    while (1)
     {
         print_prompt();
 

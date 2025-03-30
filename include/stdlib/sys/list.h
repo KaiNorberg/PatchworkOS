@@ -3,8 +3,8 @@
 #include "_AUX/NULL.h"
 
 #include <stdbool.h>
+#include <stddef.h>
 
-// Must be placed at the top of a struct.
 typedef struct list_entry
 {
     struct list_entry* prev;
@@ -16,23 +16,35 @@ typedef struct
     list_entry_t head;
 } list_t;
 
-#define LIST_FOR_EACH(elem, list) \
-    for ((elem) = (typeof(elem))((list)->head.next); (elem) != (typeof(elem))(list); \
-        (elem) = (typeof(elem))(((list_entry_t*)(elem))->next))
+#define LIST_CONTAINER(ptr, type, member) ((type*)((char*)(ptr) - offsetof(type, member)))
 
-#define LIST_FOR_EACH_SAFE(elem, temp, list) \
-    for ((elem) = (typeof(elem))((list)->head.next), (temp) = (typeof(elem))(((list_entry_t*)(elem))->next); \
-        (elem) != (typeof(elem))(list); (elem) = (temp), (temp) = (typeof(elem))(((list_entry_t*)(elem))->next))
+#define LIST_CONTAINER_SAFE(ptr, type, member) \
+    ({ \
+        list_entry_t* entry = ptr; \
+        ((entry != NULL) ? LIST_CONTAINER(entry, type, member) : NULL); \
+    })
 
-#define LIST_FOR_EACH_REVERSE(elem, list) \
-    for ((elem) = (typeof(elem))((list)->head.prev); (elem) != (typeof(elem))(list); \
-        (elem) = (typeof(elem))(((list_entry_t*)(elem))->prev))
+#define LIST_FOR_EACH(elem, list, member) \
+    for ((elem) = LIST_CONTAINER((list)->head.next, typeof(*elem), member); &(elem)->member != &((list)->head); \
+        (elem) = LIST_CONTAINER((elem)->member.next, typeof(*elem), member))
 
-#define LIST_FOR_EACH_FROM(elem, start, list) \
-    for ((elem) = (typeof(elem))(start); (elem) != (typeof(elem))(list); (elem) = (typeof(elem))(((list_entry_t*)(elem))->next))
+#define LIST_FOR_EACH_SAFE(elem, temp, list, member) \
+    for ((elem) = LIST_CONTAINER((list)->head.next, typeof(*elem), member), \
+        (temp) = LIST_CONTAINER((elem)->member.next, typeof(*elem), member); \
+        &(elem)->member != &((list)->head); \
+        (elem) = (temp), (temp) = LIST_CONTAINER((elem)->member.next, typeof(*elem), member))
 
-#define LIST_FOR_EACH_FROM_REVERSE(elem, start, list) \
-    for ((elem) = (typeof(elem))(start); (elem) != (typeof(elem))(list); (elem) = (typeof(elem))(((list_entry_t*)(elem))->prev))
+#define LIST_FOR_EACH_REVERSE(elem, list, member) \
+    for ((elem) = LIST_CONTAINER((list)->head.prev, typeof(*elem), member); &(elem)->member != &((list)->head); \
+        (elem) = LIST_CONTAINER((elem)->member.prev, typeof(*elem), member))
+
+#define LIST_FOR_EACH_FROM(elem, start, list, member) \
+    for ((elem) = LIST_CONTAINER(start, typeof(*elem), member); &(elem)->member != &((list)->head); \
+        (elem) = LIST_CONTAINER((elem)->member.next, typeof(*elem), member))
+
+#define LIST_FOR_EACH_FROM_REVERSE(elem, start, list, member) \
+    for ((elem) = LIST_CONTAINER(start, typeof(*elem), member); &(elem)->member != &((list)->head); \
+        (elem) = LIST_CONTAINER((elem)->member.prev, typeof(*elem), member))
 
 static inline void list_entry_init(list_entry_t* entry)
 {
@@ -58,42 +70,41 @@ static inline void list_add(list_entry_t* prev, list_entry_t* next, list_entry_t
     prev->next = elem;
 }
 
-static inline void list_append(list_entry_t* prev, void* elem)
+static inline void list_append(list_entry_t* prev, list_entry_t* entry)
 {
-    list_add(prev, prev->next, elem);
+    list_add(prev, prev->next, entry);
 }
 
-static inline void list_prepend(list_entry_t* head, void* elem)
+static inline void list_prepend(list_entry_t* head, list_entry_t* entry)
 {
-    list_add(head->prev, head, elem);
+    list_add(head->prev, head, entry);
 }
 
-static inline void list_remove(void* elem)
+static inline void list_remove(list_entry_t* entry)
 {
-    list_entry_t* entry = (list_entry_t*)elem;
     entry->prev->next = entry->next;
     entry->next->prev = entry->prev;
     list_entry_init(entry);
 }
 
-static inline void list_push(list_t* list, void* elem)
+static inline void list_push(list_t* list, list_entry_t* entry)
 {
-    list_add(list->head.prev, &list->head, elem);
+    list_add(list->head.prev, &list->head, entry);
 }
 
-static inline void* list_pop(list_t* list)
+static inline list_entry_t* list_pop(list_t* list)
 {
     if (list_empty(list))
     {
         return NULL;
     }
 
-    list_entry_t* elem = list->head.next;
-    list_remove(elem);
-    return elem;
+    list_entry_t* entry = list->head.next;
+    list_remove(entry);
+    return entry;
 }
 
-static inline void* list_first(list_t* list)
+static inline list_entry_t* list_first(list_t* list)
 {
     if (list_empty(list))
     {

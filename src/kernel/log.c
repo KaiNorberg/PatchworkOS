@@ -213,8 +213,7 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
     }
 
     printf("memory: free=%dKB reserved=%dKB", (pmm_free_amount() * PAGE_SIZE) / 1024, (pmm_reserved_amount() * PAGE_SIZE) / 1024);
-    printf("control regs: cr0=0x%016lx cr2=0x%016lx cr3=0x%016lx cr4=0x%016lx", cr0_read(), cr2_read(), cr3_read(),
-        cr4_read());
+    printf("control regs: cr0=0x%016lx cr2=0x%016lx cr3=0x%016lx cr4=0x%016lx", cr0_read(), cr2_read(), cr3_read(), cr4_read());
 
     if (trapFrame)
     {
@@ -226,7 +225,8 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
         printf("rax=0x%016lx rbx=0x%016lx rcx=0x%016lx rdx=0x%016lx", trapFrame->rax, trapFrame->rbx, trapFrame->rcx,
             trapFrame->rdx);
         printf("rsi=0x%016lx rdi=0x%016lx rbp=0x%016lx", trapFrame->rsi, trapFrame->rdi, trapFrame->rbp);
-        printf("r8 =0x%016lx r9 =0x%016lx r10=0x%016lx r11=0x%016lx", trapFrame->r8, trapFrame->r9, trapFrame->r10, trapFrame->r11);
+        printf("r8 =0x%016lx r9 =0x%016lx r10=0x%016lx r11=0x%016lx", trapFrame->r8, trapFrame->r9, trapFrame->r10,
+            trapFrame->r11);
         printf("r12=0x%016lx r13=0x%016lx r14=0x%016lx r15=0x%016lx", trapFrame->r12, trapFrame->r13, trapFrame->r14,
             trapFrame->r15);
     }

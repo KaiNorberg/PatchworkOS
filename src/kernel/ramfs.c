@@ -119,7 +119,7 @@ static uint64_t ramfs_listdir(volume_t* volume, const char* path, dir_entry_t* e
     uint64_t total = 0;
 
     node_t* child;
-    LIST_FOR_EACH(child, &node->children)
+    LIST_FOR_EACH(child, &node->children, entry)
     {
         dir_entry_t entry = {0};
         strcpy(entry.name, child->name);
@@ -153,7 +153,7 @@ static node_t* ramfs_load_dir(node_t* in)
     node_init(node, in->name, RAMFS_DIR);
 
     node_t* inChild;
-    LIST_FOR_EACH(inChild, &in->children)
+    LIST_FOR_EACH(inChild, &in->children, entry)
     {
         if (inChild->type == RAMFS_DIR)
         {

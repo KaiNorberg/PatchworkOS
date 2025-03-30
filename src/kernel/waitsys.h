@@ -98,11 +98,17 @@ typedef struct wait_queue
     list_t entries;
 } wait_queue_t;
 
+typedef struct waitsys_context
+{
+    list_t threads;
+    lock_t lock;
+} waitsys_context_t;
+
 void wait_queue_init(wait_queue_t* waitQueue);
 
 void wait_queue_deinit(wait_queue_t* waitQueue);
 
-void waitsys_init(void);
+void waitsys_context_init(waitsys_context_t* waitsys);
 
 void waitsys_update_trap(trap_frame_t* trapFrame);
 

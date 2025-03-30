@@ -7,8 +7,9 @@
 
 #include "common/thread.h"
 
-__attribute__((noreturn)) __attribute__((force_align_arg_pointer)) static void _ThrdEntry(_Thread_t* thread, thrd_start_t func, void* arg)
-{    
+__attribute__((noreturn)) __attribute__((force_align_arg_pointer)) static void _ThrdEntry(_Thread_t* thread, thrd_start_t func,
+    void* arg)
+{
     while (!atomic_load(&thread->running))
     {
         yield();

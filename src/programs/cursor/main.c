@@ -24,7 +24,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
     return 0;
 }
 
-int main(void) 
+int main(void)
 {
     image = gfx_fbmp_new("/lib/cursor/arrow.fbmp");
     if (image == NULL)
