@@ -27,7 +27,6 @@ Patchwork is a 64 bit monolithic hobbyist OS built from scratch in C for the x86
 - Custom UEFI bootloader
 - SIMD
 - [Custom image format (.fbmp)](https://github.com/KaiNorberg/fbmp)
-- Plan9 inspired adherence to "Everything is a file"
 - More to be added...
 
 ## Limitations
