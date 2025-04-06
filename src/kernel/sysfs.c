@@ -149,10 +149,54 @@ static file_t* sysfs_open(volume_t* volume, const char* path)
     {
         return NULL;
     }
-
-    atomic_fetch_add(&file->resource->ref, 1);
-
+    
+    atomic_fetch_add(&resource->ref, 1);
     return file;
+}
+
+static uint64_t sysfs_open2(volume_t* volume, const char* path, file_t* files[2])
+{
+    LOCK_DEFER(&lock);
+
+    node_t* node = node_traverse(&root, path, VFS_NAME_SEPARATOR);
+    if (node == NULL)
+    {
+        return ERROR(EPATH);
+    }
+    else if (node->type == SYSFS_SYSTEM)
+    {
+        return ERROR(EISDIR);
+    }
+    resource_t* resource = (resource_t*)node;
+
+    files[0] = file_new(volume);
+    if (files[0] == NULL)
+    {
+        return ERR;
+    }
+    files[0]->private = resource->private;
+    files[0]->ops = &fileOps;
+    files[0]->resource = resource;
+
+    files[1] = file_new(volume);
+    if (files[1] == NULL)
+    {
+        file_deref(files[0]);
+        return ERR;
+    }
+    files[1]->private = resource->private;
+    files[1]->ops = &fileOps;
+    files[1]->resource = resource;
+
+    if (resource->onOpen2 != NULL && resource->onOpen2(resource, files) == ERR)
+    {
+        file_deref(files[0]);
+        file_deref(files[1]);
+        return ERR;
+    }
+
+    atomic_fetch_add(&resource->ref, 2);
+    return 0;
 }
 
 static uint64_t sysfs_stat(volume_t* volume, const char* path, stat_t* stat)
@@ -203,6 +247,7 @@ static uint64_t sysfs_listdir(volume_t* volume, const char* path, dir_entry_t* e
 
 static volume_ops_t volumeOps = {
     .open = sysfs_open,
+    .open2 = sysfs_open2,
     .stat = sysfs_stat,
     .listdir = sysfs_listdir,
 };
@@ -227,7 +272,7 @@ void sysfs_init(void)
     printf("sysfs: init");
 }
 
-resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_t* ops, void* private, resource_on_open_t onOpen,
+resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_t* ops, void* private, resource_on_open_t onOpen, resource_on_open2_t onOpen2,
     resource_on_free_t onFree)
 {
     LOCK_DEFER(&lock);
@@ -255,6 +300,7 @@ resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_
     resource->ops = ops;
     resource->private = private;
     resource->onOpen = onOpen;
+    resource->onOpen2 = onOpen2;
     resource->onFree = onFree;
     atomic_init(&resource->ref, 1);
     atomic_init(&resource->hidden, false);

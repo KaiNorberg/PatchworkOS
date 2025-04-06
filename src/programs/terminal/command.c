@@ -101,31 +101,36 @@ static void command_help(uint64_t argc, const char** argv)
 
 static uint64_t command_spawn(const char** argv)
 {
-    pipefd_t childStdin;
-    pipefd_t childStdout;
-
-    pipe(&childStdin);
-    pipe(&childStdout);
-
-    spawn_fd_t fds[] = {{.child = STDIN_FILENO, .parent = childStdin.read}, {.child = STDOUT_FILENO, .parent = childStdout.write},
+    fd_t childStdin[2];
+    if (open2("sys:/pipe/new", childStdin) == ERR)
+    {
+        return ERR;
+    }
+    fd_t childStdout[2];
+    if (open2("sys:/pipe/new", childStdout) == ERR)
+    {
+        return ERR;
+    }
+    
+    spawn_fd_t fds[] = {{.child = STDIN_FILENO, .parent = childStdin[PIPE_READ]}, {.child = STDOUT_FILENO, .parent = childStdout[PIPE_WRITE]},
         SPAWN_FD_END};
     pid_t pid = spawn(argv, fds);
     if (pid == ERR)
     {
-        close(childStdin.write);
-        close(childStdin.read);
-        close(childStdout.write);
-        close(childStdout.read);
+        close(childStdin[PIPE_WRITE]);
+        close(childStdin[PIPE_READ]);
+        close(childStdout[PIPE_WRITE]);
+        close(childStdout[PIPE_READ]);
         return ERR;
     }
 
-    close(childStdin.read);
-    close(childStdout.write);
+    close(childStdin[PIPE_READ]);
+    close(childStdout[PIPE_WRITE]);
 
     while (1)
     {
         char chr;
-        if (read(childStdout.read, &chr, 1) == 0)
+        if (read(childStdout[PIPE_READ], &chr, 1) == 0)
         {
             break;
         }
@@ -133,8 +138,8 @@ static uint64_t command_spawn(const char** argv)
         terminal_print("%c", chr);
     }
 
-    close(childStdin.write);
-    close(childStdout.read);
+    close(childStdin[PIPE_WRITE]);
+    close(childStdout[PIPE_READ]);
     return 0;
 }
 

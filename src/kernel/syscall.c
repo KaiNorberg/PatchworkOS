@@ -222,6 +222,40 @@ fd_t syscall_open(const char* path)
     return vfs_context_open(&sched_process()->vfsContext, file);
 }
 
+uint64_t syscall_open2(const char* path, fd_t fds[2])
+{
+    if (!verify_string(path))
+    {
+        return ERROR(EFAULT);
+    }
+
+    if (!verify_buffer(fds, sizeof(fd_t) * 2))
+    {
+        return ERROR(EFAULT);
+    }
+
+    file_t* files[2];
+    if (vfs_open2(path, files) == ERR)
+    {
+        return ERR;
+    }
+    FILE_DEFER(files[0]);
+    FILE_DEFER(files[1]);
+
+    fds[0] = vfs_context_open(&sched_process()->vfsContext, files[0]);
+    if (fds[0] == ERR)
+    {
+        return ERR;
+    }
+    fds[1] = vfs_context_open(&sched_process()->vfsContext, files[1]);
+    if (fds[1] == ERR)
+    {
+        return ERR;
+    }
+
+    return 0;
+}
+
 uint64_t syscall_close(fd_t fd)
 {
     return vfs_context_close(&sched_process()->vfsContext, fd);
@@ -434,39 +468,6 @@ uint64_t syscall_listdir(const char* path, dir_entry_t* entries, uint64_t amount
     return vfs_listdir(path, entries, amount);
 }
 
-uint64_t syscall_pipe(pipefd_t* pipefd)
-{
-    if (!verify_buffer(pipefd, sizeof(pipefd_t)))
-    {
-        return ERROR(EFAULT);
-    }
-
-    pipe_file_t pipe;
-    if (pipe_init(&pipe) == ERR)
-    {
-        return ERR;
-    }
-    FILE_DEFER(pipe.read);
-    FILE_DEFER(pipe.write);
-
-    vfs_context_t* vfsContext = &sched_process()->vfsContext;
-
-    pipefd->read = vfs_context_open(vfsContext, pipe.read);
-    if (pipefd->read == ERR)
-    {
-        return ERR;
-    }
-
-    pipefd->write = vfs_context_open(vfsContext, pipe.write);
-    if (pipefd->write == ERR)
-    {
-        vfs_context_close(vfsContext, pipefd->read);
-        return ERR;
-    }
-
-    return 0;
-}
-
 tid_t syscall_split(void* entry, uint64_t argc, ...)
 {
     if (argc > LOADER_SPLIT_MAX_ARGS)
@@ -522,6 +523,7 @@ void* syscallTable[] = {
     syscall_uptime,
     syscall_time,
     syscall_open,
+    syscall_open2,
     syscall_close,
     syscall_read,
     syscall_write,
@@ -536,7 +538,6 @@ void* syscallTable[] = {
     syscall_mprotect,
     syscall_flush,
     syscall_listdir,
-    syscall_pipe,
     syscall_split,
     syscall_yield,
 };

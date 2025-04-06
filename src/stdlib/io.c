@@ -40,6 +40,11 @@ fd_t open(const char* path)
     return _PlatformOpen(path);
 }
 
+uint64_t open2(const char* path, fd_t fds[2])
+{
+    return _PlatformOpen2(path, fds);
+}
+
 uint64_t close(fd_t fd)
 {
     return _PlatformClose(fd);
@@ -95,11 +100,6 @@ uint64_t ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
 uint64_t flush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect_t* rect)
 {
     return _PlatformFlush(fd, buffer, size, rect);
-}
-
-uint64_t pipe(pipefd_t* pipefd)
-{
-    return _PlatformPipe(pipefd);
 }
 
 #endif

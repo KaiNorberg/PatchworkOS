@@ -42,6 +42,6 @@ static file_ops_t constZeroOps = {
 
 void const_init(void)
 {
-    sysfs_expose("/", "one", &constOneOps, NULL, NULL, NULL);
-    sysfs_expose("/", "zero", &constZeroOps, NULL, NULL, NULL);
+    sysfs_expose("/", "one", &constOneOps, NULL, NULL, NULL, NULL);
+    sysfs_expose("/", "zero", &constZeroOps, NULL, NULL, NULL, NULL);
 }

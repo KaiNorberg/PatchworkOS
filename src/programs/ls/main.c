@@ -83,7 +83,7 @@ uint64_t print_directory(const char* path, flags_t flags, bool forceLabel)
 {
     if (flags & FLAG_RECURSIVE || forceLabel)
     {
-        printf("%s:\n", path);
+        printf("[%s]\n", path);
     }
 
     dir_list_t* dirs = allocdir(path);

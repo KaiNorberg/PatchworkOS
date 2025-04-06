@@ -22,6 +22,9 @@ extern "C"
 #define STDIN_FILENO 0
 #define STDOUT_FILENO 1
 
+#define PIPE_READ 0
+#define PIPE_WRITE 1
+
 typedef enum poll_event
 {
     POLL_READ = (1 << 0),
@@ -66,17 +69,13 @@ typedef struct dir_list
     dir_entry_t entries[];
 } dir_list_t;
 
-typedef struct pipefd
-{
-    fd_t read;
-    fd_t write;
-} pipefd_t;
-
 dir_list_t* allocdir(const char* path);
 
 uint64_t listdir(const char* path, dir_entry_t* entries, uint64_t amount);
 
 fd_t open(const char* path);
+
+uint64_t open2(const char* path, fd_t fd[2]);
 
 uint64_t close(fd_t fd);
 
@@ -99,8 +98,6 @@ uint64_t stat(const char* path, stat_t* stat);
 uint64_t ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size);
 
 uint64_t flush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect_t* rect);
-
-uint64_t pipe(pipefd_t* pipefd);
 
 #if defined(__cplusplus)
 }

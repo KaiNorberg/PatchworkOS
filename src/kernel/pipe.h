@@ -12,12 +12,9 @@ typedef struct
     bool writeClosed;
     wait_queue_t waitQueue;
     lock_t lock;
+    // Note: This pointers are just for checking which end the current file is, they should not be referenced.
+    void* readEnd;
+    void* writeEnd;
 } pipe_private_t;
 
-typedef struct
-{
-    file_t* read;
-    file_t* write;
-} pipe_file_t;
-
-uint64_t pipe_init(pipe_file_t* pipe);
+void pipe_init(void);

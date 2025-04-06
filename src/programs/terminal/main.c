@@ -19,11 +19,11 @@ void read_command(char* buffer, uint64_t size)
     while (1)
     {
         char chr = terminal_input();
-        terminal_print("%c", chr);
         switch (chr)
         {
         case '\n':
         {
+            terminal_print("%c", chr);
             return;
         }
         break;
@@ -31,6 +31,7 @@ void read_command(char* buffer, uint64_t size)
         {
             if (index != 0)
             {
+                terminal_print("%c", chr);
                 buffer[--index] = '\0';
             }
         }
@@ -39,6 +40,7 @@ void read_command(char* buffer, uint64_t size)
         {
             if (index != size)
             {
+                terminal_print("%c", chr);
                 buffer[index++] = chr;
                 buffer[index] = '\0';
             }

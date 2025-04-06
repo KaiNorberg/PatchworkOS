@@ -10,16 +10,15 @@
 #include <stdlib.h>
 #include <sys/math.h>
 
-static void pipe_private_free(pipe_private_t* private)
-{
-    ring_deinit(&private->ring);
-    wait_queue_deinit(&private->waitQueue);
-    free(private);
-}
+static resource_t* pipeNewResource;
 
 static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count)
 {
     pipe_private_t* private = file->private;
+    if (private->readEnd != file)
+    {
+        return ERROR(EACCES);
+    }
 
     if (count >= RING_SIZE)
     {
@@ -48,6 +47,10 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count)
 static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count)
 {
     pipe_private_t* private = file->private;
+    if (private->writeEnd != file)
+    {
+        return ERROR(EACCES);
+    }
 
     if (count >= RING_SIZE)
     {
@@ -75,92 +78,52 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count)
     return count;
 }
 
-static wait_queue_t* pipe_read_poll(file_t* file, poll_file_t* pollFile)
+static wait_queue_t* pipe_poll(file_t* file, poll_file_t* pollFile)
 {
     pipe_private_t* private = file->private;
 
-    pollFile->occurred = POLL_READ & (ring_data_length(&private->ring) != 0 || private->writeClosed);
+    pollFile->occurred = (POLL_READ & (ring_data_length(&private->ring) != 0 || private->writeClosed)) | (POLL_WRITE & (ring_free_length(&private->ring) != 0 || private->readClosed));
     return &private->waitQueue;
 }
 
-static wait_queue_t* pipe_write_poll(file_t* file, poll_file_t* pollFile)
-{
-    pipe_private_t* private = file->private;
-
-    pollFile->occurred = POLL_WRITE & (ring_free_length(&private->ring) != 0 || private->readClosed);
-    return &private->waitQueue;
-}
-
-static void pipe_read_cleanup(file_t* file)
+static void pipe_cleanup(file_t* file)
 {
     pipe_private_t* private = file->private;
     lock_acquire(&private->lock);
+    if (private->readEnd == file)
+    {
+        private->readClosed = true;
+    }
+    if (private->writeEnd == file)
+    {
+        private->writeClosed = true;
+    }
 
-    private->readClosed = true;
     waitsys_unblock(&private->waitQueue);
-    if (private->writeClosed)
+    if (private->writeClosed && private->readClosed)
     {
         lock_release(&private->lock);
-        pipe_private_free(private);
+        ring_deinit(&private->ring);
+        wait_queue_deinit(&private->waitQueue);
+        free(private);
         return;
     }
 
     lock_release(&private->lock);
 }
 
-#include <stdio.h>
-
-static void pipe_write_cleanup(file_t* file)
-{
-    pipe_private_t* private = file->private;
-    lock_acquire(&private->lock);
-
-    private->writeClosed = true;
-    waitsys_unblock(&private->waitQueue);
-    if (private->readClosed)
-    {
-        lock_release(&private->lock);
-        pipe_private_free(private);
-        return;
-    }
-
-    lock_release(&private->lock);
-}
-
-static file_ops_t readOps = {
+static file_ops_t fileOps = {
     .read = pipe_read,
-    .poll = pipe_read_poll,
-    .cleanup = pipe_read_cleanup,
-};
-
-static file_ops_t writeOps = {
     .write = pipe_write,
-    .poll = pipe_write_poll,
-    .cleanup = pipe_write_cleanup,
+    .poll = pipe_poll,
+    .cleanup = pipe_cleanup,
 };
 
-uint64_t pipe_init(pipe_file_t* pipe)
+static uint64_t pipe_open(resource_t* resource, file_t* file)
 {
-    pipe->read = file_new(NULL);
-    if (pipe->read == NULL)
-    {
-        return ERR;
-    }
-    pipe->read->ops = &readOps;
-
-    pipe->write = file_new(NULL);
-    if (pipe->write == NULL)
-    {
-        file_deref(pipe->read);
-        return ERR;
-    }
-    pipe->write->ops = &writeOps;
-
     pipe_private_t* private = malloc(sizeof(pipe_private_t));
     if (private == NULL)
     {
-        file_deref(pipe->read);
-        file_deref(pipe->write);
         return ERR;
     }
     ring_init(&private->ring);
@@ -168,9 +131,36 @@ uint64_t pipe_init(pipe_file_t* pipe)
     private->writeClosed = false;
     wait_queue_init(&private->waitQueue);
     lock_init(&private->lock);
+    private->readEnd = file;
+    private->writeEnd = file;
 
-    pipe->read->private = private;
-    pipe->write->private = private;
+    file->private = private;
 
     return 0;
+}
+
+static uint64_t pipe_open2(resource_t* resource, file_t* files[2])
+{    
+    pipe_private_t* private = malloc(sizeof(pipe_private_t));
+    if (private == NULL)
+    {
+        return ERR;
+    }
+    ring_init(&private->ring);
+    private->readClosed = false;
+    private->writeClosed = false;
+    wait_queue_init(&private->waitQueue);
+    lock_init(&private->lock);
+    private->readEnd = files[PIPE_READ];
+    private->writeEnd = files[PIPE_WRITE];
+
+    files[0]->private = private;
+    files[1]->private = private;
+
+    return 0;
+}
+
+void pipe_init(void)
+{
+    pipeNewResource = sysfs_expose("/pipe", "new", &fileOps, NULL, pipe_open, pipe_open2, NULL);
 }

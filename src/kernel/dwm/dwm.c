@@ -593,7 +593,7 @@ void dwm_init(gop_buffer_t* gopBuffer)
     atomic_init(&redrawNeeded, true);
     wait_queue_init(&redrawWaitQueue);
 
-    sysfs_expose("/", "dwm", &fileOps, NULL, NULL, NULL);
+    sysfs_expose("/", "dwm", &fileOps, NULL, NULL, NULL, NULL);
 }
 
 void dwm_start(void)

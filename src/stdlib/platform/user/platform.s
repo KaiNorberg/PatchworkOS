@@ -27,6 +27,11 @@ _PlatformOpen:
     SYSTEM_CALL SYS_OPEN
     ret
 
+global _PlatformOpen2
+_PlatformOpen2:
+    SYSTEM_CALL SYS_OPEN2
+    ret
+
 global _PlatformPoll
 _PlatformPoll:
     SYSTEM_CALL SYS_POLL
@@ -60,11 +65,6 @@ _PlatformWrite:
 global _PlatformListdir
 _PlatformListdir:
     SYSTEM_CALL SYS_LISTDIR
-    ret
-
-global _PlatformPipe
-_PlatformPipe:
-    SYSTEM_CALL SYS_PIPE
     ret
 
 global _PlatformSleep

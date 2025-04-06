@@ -38,6 +38,7 @@ typedef struct fs
 
 typedef uint64_t (*volume_unmount_t)(volume_t*);
 typedef file_t* (*volume_open_t)(volume_t*, const char*);
+typedef uint64_t (*volume_open2_t)(volume_t*, const char*, file_t*[2]);
 typedef uint64_t (*volume_stat_t)(volume_t*, const char*, stat_t*);
 typedef uint64_t (*volume_listdir_t)(volume_t*, const char*, dir_entry_t*, uint64_t);
 
@@ -45,6 +46,7 @@ typedef struct volume_ops
 {
     volume_unmount_t unmount;
     volume_open_t open;
+    volume_open2_t open2;
     volume_stat_t stat;
     volume_listdir_t listdir;
 } volume_ops_t;
@@ -123,6 +125,8 @@ uint64_t vfs_chdir(const char* path);
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout);
 
 file_t* vfs_open(const char* path);
+
+uint64_t vfs_open2(const char* path, file_t* files[2]);
 
 uint64_t vfs_stat(const char* path, stat_t* buffer);
 

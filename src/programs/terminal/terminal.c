@@ -28,8 +28,8 @@ static bool cursorVisible;
 
 static thrd_t thread;
 
-static pipefd_t printPipe;
-static pipefd_t kbdPipe;
+static fd_t printPipe;
+static fd_t kbdPipe;
 
 static atomic_bool shouldQuit;
 static atomic_bool hasQuit;
@@ -102,7 +102,7 @@ uint64_t procedure(win_t* window, const msg_t* msg)
             break;
         }
 
-        write(kbdPipe.write, &chr, 1);
+        write(kbdPipe, &chr, 1);
     }
     break;
     }
@@ -175,7 +175,7 @@ int terminal_loop(void* data)
     msg_t msg = {0};
     while (msg.type != LMSG_QUIT && !shouldQuit)
     {
-        pollfd_t fds[] = {{.fd = printPipe.read, .requested = POLL_READ}, {.fd = win_fd(terminal), .requested = POLL_READ}};
+        pollfd_t fds[] = {{.fd = printPipe, .requested = POLL_READ}, {.fd = win_fd(terminal), .requested = POLL_READ}};
         poll(fds, 2, BLINK_INTERVAL);
 
         while (win_receive(terminal, &msg, 0))
@@ -188,10 +188,10 @@ int terminal_loop(void* data)
             gfx_t gfx;
             win_draw_begin(terminal, &gfx);
 
-            while (poll1(printPipe.read, POLL_READ, 0) == POLL_READ)
+            while (poll1(printPipe, POLL_READ, 0) == POLL_READ)
             {
                 char chr;
-                read(printPipe.read, &chr, 1);
+                read(printPipe, &chr, 1);
                 terminal_put(&gfx, chr);
             }
 
@@ -214,9 +214,9 @@ void terminal_init(void)
         exit(errno);
     }
 
-    pipe(&printPipe);
-    pipe(&kbdPipe);
-
+    printPipe = open("sys:/pipe/new");
+    kbdPipe = open("sys:/pipe/new");
+    
     atomic_init(&shouldQuit, false);
     atomic_init(&hasQuit, false);
 
@@ -230,10 +230,8 @@ void terminal_deinit(void)
     {
         asm volatile("pause");
     }
-    close(printPipe.read);
-    close(printPipe.write);
-    close(kbdPipe.read);
-    close(kbdPipe.write);
+    close(printPipe);
+    close(kbdPipe);
     win_free(terminal);
 }
 
@@ -256,7 +254,7 @@ void terminal_clear(void)
 char terminal_input(void)
 {
     char chr;
-    read(kbdPipe.read, &chr, 1);
+    read(kbdPipe, &chr, 1);
     return chr;
 }
 
@@ -268,7 +266,7 @@ void terminal_print(const char* str, ...)
     vsprintf(buffer, str, args);
     va_end(args);
 
-    write(printPipe.write, buffer, strlen(buffer));
+    write(printPipe, buffer, strlen(buffer));
 
     /*if (str == NULL)
     {

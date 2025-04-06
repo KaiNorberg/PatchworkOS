@@ -22,8 +22,11 @@ _start:
     pop rsi
 
     call main
+    push rax
 
-    mov rdi, rax
+    ;call _StdDeinit
+
+    pop rdi
     call exit
     ud2
 .end:

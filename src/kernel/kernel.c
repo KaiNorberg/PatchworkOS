@@ -22,6 +22,8 @@
 #include "vfs.h"
 #include "vmm.h"
 #include "waitsys.h"
+#include "pipe.h"
+#include "net/net.h"
 
 #include <bootloader/boot_info.h>
 #include <stdio.h>
@@ -82,6 +84,8 @@ void kernel_init(boot_info_t* bootInfo)
 
     const_init();
     ps2_init();
+    net_init();
+    pipe_init();
     dwm_init(&bootInfo->gopBuffer);
 
     kernel_free_boot_data(&bootInfo->memoryMap);

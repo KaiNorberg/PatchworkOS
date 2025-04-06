@@ -35,6 +35,8 @@ uint64_t _PlatformListdir(const char* path, dir_entry_t* entries, uint64_t amoun
 
 fd_t _PlatformOpen(const char* path);
 
+uint64_t _PlatformOpen2(const char* path, fd_t fds[2]);
+
 uint64_t _PlatformClose(fd_t fd);
 
 uint64_t _PlatformRead(fd_t fd, void* buffer, uint64_t count);
@@ -54,8 +56,6 @@ uint64_t _PlatformStat(const char* path, stat_t* info);
 uint64_t _PlatformIoctl(fd_t fd, uint64_t request, void* argp, uint64_t size);
 
 uint64_t _PlatformFlush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect_t* rect);
-
-uint64_t _PlatformPipe(pipefd_t* pipefd);
 
 #endif
 

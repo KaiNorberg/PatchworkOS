@@ -10,6 +10,7 @@
 #define SYSFS_SYSTEM 1
 
 typedef uint64_t (*resource_on_open_t)(resource_t*, file_t*);
+typedef uint64_t (*resource_on_open2_t)(resource_t*, file_t*[2]);
 typedef void (*resource_on_free_t)(resource_t*);
 
 typedef struct resource
@@ -18,6 +19,7 @@ typedef struct resource
     const file_ops_t* ops;
     void* private;
     resource_on_open_t onOpen;
+    resource_on_open2_t onOpen2;
     resource_on_free_t onFree;
     atomic_uint64_t ref;
     atomic_bool hidden;
@@ -25,7 +27,7 @@ typedef struct resource
 
 void sysfs_init(void);
 
-resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_t* ops, void* private, resource_on_open_t onOpen,
+resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_t* ops, void* private, resource_on_open_t onOpen, resource_on_open2_t onOpen2,
     resource_on_free_t onFree);
 
 void sysfs_hide(resource_t* resource);

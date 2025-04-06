@@ -412,6 +412,42 @@ file_t* vfs_open(const char* path)
     return file;
 }
 
+uint64_t vfs_open2(const char* path, file_t* files[2])
+{
+    char parsedPath[MAX_PATH];
+    if (vfs_parse_path(parsedPath, path) == ERR)
+    {
+        return ERROR(EPATH);
+    }
+
+    volume_t* volume = volume_get(parsedPath);
+    if (volume == NULL)
+    {
+        return ERROR(EPATH);
+    }
+
+    if (volume->ops->open2 == NULL)
+    {
+        volume_deref(volume);
+        return ERROR(EACCES);
+    }
+
+    char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
+    if (rootPath == NULL)
+    {
+        rootPath = parsedPath + strlen(parsedPath);
+    }
+
+    uint64_t result = volume->ops->open2(volume, rootPath, files);
+    if (result == ERR)
+    {
+        volume_deref(volume);
+        return ERR;
+    }
+
+    return result;
+}
+
 uint64_t vfs_stat(const char* path, stat_t* buffer)
 {
     char parsedPath[MAX_PATH];

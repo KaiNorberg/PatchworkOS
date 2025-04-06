@@ -120,7 +120,7 @@ static process_t* process_new(const char** argv, const char* cwd)
 
     char idString[MAX_PATH];
     ulltoa(process->id, idString, 10);
-    process->resource = sysfs_expose("/proc", idString, &fileOps, process, NULL, process_on_free);
+    process->resource = sysfs_expose("/proc", idString, &fileOps, process, NULL, NULL, process_on_free);
     if (process->resource == NULL)
     {
         argv_deinit(&process->argv);
