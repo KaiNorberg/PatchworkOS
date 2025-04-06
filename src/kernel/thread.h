@@ -28,7 +28,7 @@ typedef enum
 {
     BLOCK_NORM = 0,
     BLOCK_TIMEOUT = 1,
-    BLOCK_KILLED = 2,
+    BLOCK_dead = 2,
     BLOCK_ERROR = 3
 } block_result_t;
 
@@ -44,7 +44,7 @@ typedef struct
     pid_t id;
     argv_t argv;
     resource_t* resource;
-    bool killed;
+    atomic_bool dead;
     vfs_context_t vfsContext;
     space_t space;
     atomic_uint64_t threadCount;
@@ -65,7 +65,7 @@ typedef struct
     list_entry_t entry;
     process_t* process;
     tid_t id;
-    bool killed;
+    bool dead;
     nsec_t timeStart;
     nsec_t timeEnd;
     block_data_t block;

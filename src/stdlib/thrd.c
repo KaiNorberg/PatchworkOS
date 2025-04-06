@@ -56,9 +56,23 @@ thrd_t thrd_current(void)
 
 int thrd_sleep(const struct timespec* duration, struct timespec* remaining)
 {
-    // TODO: Sleep is currently uninterruptible so "remaining" is ignored.
-    uint64_t nanoseconds = (uint64_t)duration->tv_sec * 1000000000ULL + (uint64_t)duration->tv_nsec;
-    sleep(nanoseconds);
+    uint64_t nanoseconds = (uint64_t)duration->tv_sec * SEC + (uint64_t)duration->tv_nsec;
+
+    if (remaining != NULL)
+    {
+        nsec_t start = uptime();
+        sleep(nanoseconds);
+        nsec_t end = uptime();
+
+        nsec_t timeTaken = end - start;
+        remaining->tv_sec = timeTaken / SEC;
+        remaining->tv_nsec = timeTaken % SEC;
+    }
+    else
+    {
+        sleep(nanoseconds);
+    }
+
     return 0;
 }
 

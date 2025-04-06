@@ -78,14 +78,14 @@ void waitsys_update_trap(trap_frame_t* trapFrame)
     thread_t* temp;
     LIST_FOR_EACH_SAFE(thread, temp, &waitsys->threads, entry)
     {
-        if (systime_uptime() < thread->block.deadline && !(thread->process->killed || thread->killed))
+        if (systime_uptime() < thread->block.deadline && !(atomic_load(&thread->process->dead) || thread->dead))
         {
             continue;
         }
 
-        if (thread->process->killed || thread->killed)
+        if (atomic_load(&thread->process->dead) || thread->dead)
         {
-            thread->block.result = BLOCK_KILLED;
+            thread->block.result = BLOCK_dead;
         }
         else
         {

@@ -9,7 +9,7 @@
 #include <sys/io.h>
 #include <sys/proc.h>
 
-// TODO: These commands should probobly be script files or something.
+// TODO: These commands should probobly be script files or something. Lua? Custom?
 
 static const char* lookupDirs[] = {
     "home:/bin",

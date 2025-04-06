@@ -15,7 +15,7 @@ void loader_load_kernel(boot_kernel_t* kernel, CHAR16* path, EFI_HANDLE imageHan
     EFI_FILE* file = fs_open(path, imageHandle);
     if (file == NULL)
     {
-        Print(L"ERROR: Failed to load");
+        Print(L" ERROR: Failed to load");
 
         while (1)
         {
@@ -26,9 +26,9 @@ void loader_load_kernel(boot_kernel_t* kernel, CHAR16* path, EFI_HANDLE imageHan
     elf_hdr_t header;
     fs_read(file, sizeof(elf_hdr_t), &header);
 
-    if (header.ident[0] != 0x7F || header.ident[1] != 'E' || header.ident[2] != 'L' || header.ident[3] != 'F')
+    if (!ELF_VALID_CHECK(&header))
     {
-        Print(L"ERROR: File is corrupt");
+        Print(L" ERROR: File is corrupt");
 
         while (1)
         {
@@ -36,22 +36,22 @@ void loader_load_kernel(boot_kernel_t* kernel, CHAR16* path, EFI_HANDLE imageHan
         }
     }
 
-    uint64_t programHeaderTableSize = header.programHeaderAmount * header.programHeaderSize;
-    elf_phdr_t* programHeaders = AllocatePool(programHeaderTableSize);
-    fs_seek(file, header.programHeaderOffset);
-    fs_read(file, programHeaderTableSize, programHeaders);
+    uint64_t phdrTableSize = header.phdrAmount * header.phdrSize;
+    elf_phdr_t* phdrs = AllocatePool(phdrTableSize);
+    fs_seek(file, header.phdrOffset);
+    fs_read(file, phdrTableSize, phdrs);
 
     uint64_t kernelStart = UINT64_MAX;
     uint64_t kernelEnd = 0;
-    for (elf_phdr_t* programHeader = programHeaders; (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize;
-        programHeader = (elf_phdr_t*)((uint64_t)programHeader + header.programHeaderSize))
+    for (elf_phdr_t* phdr = phdrs; (uint64_t)phdr < (uint64_t)phdrs + phdrTableSize;
+        phdr = (elf_phdr_t*)((uint64_t)phdr + header.phdrSize))
     {
-        switch (programHeader->type)
+        switch (phdr->type)
         {
-        case PT_LOAD:
+        case ELF_PHDR_TYPE_LOAD:
         {
-            kernelStart = MIN(kernelStart, programHeader->virtAddr);
-            kernelEnd = MAX(kernelEnd, programHeader->virtAddr + programHeader->memorySize);
+            kernelStart = MIN(kernelStart, phdr->virtAddr);
+            kernelEnd = MAX(kernelEnd, phdr->virtAddr + phdr->memorySize);
         }
         break;
         }
@@ -63,23 +63,23 @@ void loader_load_kernel(boot_kernel_t* kernel, CHAR16* path, EFI_HANDLE imageHan
     kernel->entry = (void*)header.entry;
     kernel->length = kernelPageAmount * EFI_PAGE_SIZE;
 
-    for (elf_phdr_t* programHeader = programHeaders; (uint64_t)programHeader < (uint64_t)programHeaders + programHeaderTableSize;
-        programHeader = (elf_phdr_t*)((uint64_t)programHeader + header.programHeaderSize))
+    for (elf_phdr_t* phdr = phdrs; (uint64_t)phdr < (uint64_t)phdrs + phdrTableSize;
+        phdr = (elf_phdr_t*)((uint64_t)phdr + header.phdrSize))
     {
-        switch (programHeader->type)
+        switch (phdr->type)
         {
-        case PT_LOAD:
+        case ELF_PHDR_TYPE_LOAD:
         {
-            fs_seek(file, programHeader->offset);
+            fs_seek(file, phdr->offset);
 
-            memset((void*)programHeader->virtAddr, 0, programHeader->memorySize);
-            fs_read(file, programHeader->fileSize, (void*)programHeader->virtAddr);
+            memset((void*)phdr->virtAddr, 0, phdr->memorySize);
+            fs_read(file, phdr->fileSize, (void*)phdr->virtAddr);
         }
         break;
         }
     }
 
-    FreePool(programHeaders);
+    FreePool(phdrs);
     fs_close(file);
 
     Print(L" done!\n");

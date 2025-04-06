@@ -35,50 +35,50 @@ static void* loader_load_program(thread_t* thread)
     {
         return NULL;
     }
-    if (header.ident[0] != 0x7F || header.ident[1] != 'E' || header.ident[2] != 'L' || header.ident[3] != 'F')
+    if (!ELF_VALID_CHECK(&header))
     {
         return NULL;
     }
 
-    for (uint64_t i = 0; i < header.programHeaderAmount; i++)
+    for (uint64_t i = 0; i < header.phdrAmount; i++)
     {
-        uint64_t offset = sizeof(elf_hdr_t) + header.programHeaderSize * i;
+        uint64_t offset = sizeof(elf_hdr_t) + header.phdrSize * i;
         if (vfs_seek(file, offset, SEEK_SET) != offset)
         {
             return NULL;
         }
 
-        elf_phdr_t programHeader;
-        if (vfs_read(file, &programHeader, sizeof(elf_phdr_t)) != sizeof(elf_phdr_t))
+        elf_phdr_t phdr;
+        if (vfs_read(file, &phdr, sizeof(elf_phdr_t)) != sizeof(elf_phdr_t))
         {
             return NULL;
         }
 
-        switch (programHeader.type)
+        switch (phdr.type)
         {
-        case PT_LOAD:
+        case ELF_PHDR_TYPE_LOAD:
         {
-            uint64_t size = MAX(programHeader.memorySize, programHeader.fileSize);
+            uint64_t size = MAX(phdr.memorySize, phdr.fileSize);
 
-            if (vmm_alloc((void*)programHeader.virtAddr, size, PROT_READ | PROT_WRITE) == NULL)
+            if (vmm_alloc((void*)phdr.virtAddr, size, PROT_READ | PROT_WRITE) == NULL)
             {
                 return NULL;
             }
 
-            if (vfs_seek(file, programHeader.offset, SEEK_SET) != programHeader.offset)
+            if (vfs_seek(file, phdr.offset, SEEK_SET) != phdr.offset)
             {
                 return NULL;
             }
 
-            memset((void*)programHeader.virtAddr, 0, size);
-            if (vfs_read(file, (void*)programHeader.virtAddr, size) != size)
+            memset((void*)phdr.virtAddr, 0, size);
+            if (vfs_read(file, (void*)phdr.virtAddr, size) != size)
             {
                 return NULL;
             }
 
-            if (!(programHeader.flags & PF_WRITE))
+            if (!(phdr.flags & ELF_PHDR_FLAGS_WRITE))
             {
-                if (vmm_protect((void*)programHeader.virtAddr, size, PROT_READ) == ERR)
+                if (vmm_protect((void*)phdr.virtAddr, size, PROT_READ) == ERR)
                 {
                     return NULL;
                 }

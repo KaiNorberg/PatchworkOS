@@ -78,7 +78,7 @@ static uint64_t process_ioctl(file_t* file, uint64_t request, void* argp, uint64
     {
     case IOCTL_PROC_KILL:
     {
-        process->killed = true;
+        atomic_store(&process->dead, true);
     }
     break;
     default:
@@ -128,7 +128,7 @@ static process_t* process_new(const char** argv, const char* cwd)
         return NULL;
     }
 
-    process->killed = false;
+    atomic_init(&process->dead, false);
     vfs_context_init(&process->vfsContext, cwd);
     space_init(&process->space);
     atomic_init(&process->threadCount, 0);
@@ -155,7 +155,7 @@ static thread_t* process_thread_new(process_t* process, void* entry, priority_t 
     list_entry_init(&thread->entry);
     thread->process = process;
     thread->id = atomic_fetch_add(&thread->process->newTid, 1);
-    thread->killed = false;
+    thread->dead = false;
     thread->timeStart = 0;
     thread->timeEnd = 0;
     thread->block.waitEntries[0] = NULL;

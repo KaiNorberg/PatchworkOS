@@ -503,7 +503,7 @@ uint64_t syscall_yield(void)
 
 void syscall_handler_end(void)
 {
-    if (sched_process()->killed)
+    if (atomic_load(&sched_process()->dead))
     {
         sched_thread_exit();
     }

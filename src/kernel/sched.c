@@ -22,6 +22,8 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
+static wait_queue_t sleepQueue;
+
 static inline void thread_queue_init(thread_queue_t* queue)
 {
     queue->length = 0;
@@ -88,7 +90,7 @@ static thread_t* sched_context_find_higher(sched_context_t* context, priority_t 
         thread_t* thread = thread_queue_pop(&context->queues[i]);
         if (thread != NULL)
         {
-            if (thread->process->killed && thread->trapFrame.cs != GDT_KERNEL_CODE)
+            if (atomic_load(&thread->process->dead) && thread->trapFrame.cs != GDT_KERNEL_CODE)
             {
                 thread_free(thread);
                 return sched_context_find_higher(context, priority);
@@ -108,7 +110,7 @@ static thread_t* sched_context_find_any(sched_context_t* context)
         thread_t* thread = thread_queue_pop(&context->queues[i]);
         if (thread != NULL)
         {
-            if (thread->process->killed && thread->trapFrame.cs != GDT_KERNEL_CODE)
+            if (atomic_load(&thread->process->dead) && thread->trapFrame.cs != GDT_KERNEL_CODE)
             {
                 thread_free(thread);
                 return sched_context_find_any(context);
@@ -135,11 +137,13 @@ static void sched_spawn_boot_thread(void)
 void sched_init(void)
 {
     sched_spawn_boot_thread();
+
+    wait_queue_init(&sleepQueue);
 }
 
 block_result_t sched_sleep(nsec_t timeout)
 {
-    return 0;
+    return waitsys_block(&sleepQueue, timeout);
 }
 
 thread_t* sched_thread(void)
@@ -188,8 +192,8 @@ void sched_process_exit(uint64_t status)
     // TODO: Add handling for status
 
     sched_context_t* context = &smp_self()->sched;
-    context->runThread->killed = true;
-    context->runThread->process->killed = true;
+    context->runThread->dead = true;
+    atomic_store(&context->runThread->process->dead, true);
     printf("sched: process_exit pid=%d", context->runThread->process->id);
     smp_put();
 
@@ -200,7 +204,7 @@ void sched_process_exit(uint64_t status)
 void sched_thread_exit(void)
 {
     sched_context_t* context = &smp_self()->sched;
-    context->runThread->killed = true;
+    context->runThread->dead = true;
     smp_put();
 
     sched_invoke();
@@ -249,7 +253,7 @@ static void sched_update_graveyard(trap_frame_t* trapFrame, sched_context_t* con
     }
 
     if (context->runThread != NULL &&
-        (context->runThread->killed || (context->runThread->process->killed && trapFrame->cs != GDT_KERNEL_CODE)))
+        (context->runThread->dead || (atomic_load(&context->runThread->process->dead) && trapFrame->cs != GDT_KERNEL_CODE)))
     {
         list_push(&context->graveyard, &context->runThread->entry);
         context->runThread = NULL;

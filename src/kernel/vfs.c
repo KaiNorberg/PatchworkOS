@@ -14,8 +14,6 @@
 static list_t volumes;
 static lock_t volumesLock;
 
-// TODO: Improve file path parsing.
-
 static volume_t* volume_ref(volume_t* volume)
 {
     atomic_fetch_add(&volume->ref, 1);
@@ -82,8 +80,6 @@ void file_deref(file_t* file)
         free(file);
     }
 }
-
-// TODO: Path parsing is completly incomprehensible.
 
 static uint64_t vfs_make_canonical(const char* start, char* out, const char* path)
 {
