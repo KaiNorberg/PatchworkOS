@@ -32,16 +32,48 @@ static void* const_zero_mmap(file_t* file, void* addr, uint64_t length, prot_t p
     return addr;
 }
 
-static file_ops_t constOneOps = {
+static file_ops_t oneOps = {
     .mmap = const_one_mmap,
 };
 
-static file_ops_t constZeroOps = {
+static file_ops_t zeroOps = {
     .mmap = const_zero_mmap,
+};
+
+static file_t* const_one_open(volume_t* volume, resource_t* resource)
+{
+    file_t* file = file_new(volume);
+    if (file == NULL)
+    {
+        return NULL;
+    }
+    file->ops = &oneOps;
+
+    return file;
+}
+
+static file_t* const_zero_open(volume_t* volume, resource_t* resource)
+{
+    file_t* file = file_new(volume);
+    if (file == NULL)
+    {
+        return NULL;
+    }
+    file->ops = &zeroOps;
+
+    return file;
+}
+
+static resource_ops_t oneResOps = {
+    .open = const_one_open,
+};
+
+static resource_ops_t zeroResOps = {
+    .open = const_zero_open,
 };
 
 void const_init(void)
 {
-    sysfs_expose("/", "one", &constOneOps, NULL, NULL, NULL, NULL);
-    sysfs_expose("/", "zero", &constZeroOps, NULL, NULL, NULL, NULL);
+    sysfs_expose("/", "one", &oneResOps, NULL);
+    sysfs_expose("/", "zero", &zeroResOps, NULL);
 }

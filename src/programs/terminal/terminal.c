@@ -216,7 +216,7 @@ void terminal_init(void)
 
     printPipe = open("sys:/pipe/new");
     kbdPipe = open("sys:/pipe/new");
-    
+
     atomic_init(&shouldQuit, false);
     atomic_init(&hasQuit, false);
 

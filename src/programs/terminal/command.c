@@ -111,9 +111,9 @@ static uint64_t command_spawn(const char** argv)
     {
         return ERR;
     }
-    
-    spawn_fd_t fds[] = {{.child = STDIN_FILENO, .parent = childStdin[PIPE_READ]}, {.child = STDOUT_FILENO, .parent = childStdout[PIPE_WRITE]},
-        SPAWN_FD_END};
+
+    spawn_fd_t fds[] = {{.child = STDIN_FILENO, .parent = childStdin[PIPE_READ]},
+        {.child = STDOUT_FILENO, .parent = childStdout[PIPE_WRITE]}, SPAWN_FD_END};
     pid_t pid = spawn(argv, fds);
     if (pid == ERR)
     {

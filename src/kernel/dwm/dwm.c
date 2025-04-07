@@ -551,13 +551,31 @@ static file_ops_t fileOps = {
     .ioctl = dwm_ioctl,
 };
 
+static file_t* dwm_open(volume_t* volume, resource_t* resource)
+{
+    file_t* file = file_new(volume);
+    if (file == NULL)
+    {
+        return NULL;
+    }
+    file->ops = &fileOps;
+
+    return file;
+}
+
+static resource_ops_t resOps = {
+    .open = dwm_open,
+};
+
 static wait_queue_t* dwm_redraw_notifier_status(file_t* file, poll_file_t* pollFile)
 {
     pollFile->occurred = POLL_READ & atomic_load(&redrawNeeded);
     return &redrawWaitQueue;
 }
 
-static file_ops_t redrawNotifierOps = {.poll = dwm_redraw_notifier_status};
+static file_ops_t redrawNotifierOps = {
+    .poll = dwm_redraw_notifier_status,
+};
 
 void dwm_init(gop_buffer_t* gopBuffer)
 {
@@ -593,7 +611,7 @@ void dwm_init(gop_buffer_t* gopBuffer)
     atomic_init(&redrawNeeded, true);
     wait_queue_init(&redrawWaitQueue);
 
-    sysfs_expose("/", "dwm", &fileOps, NULL, NULL, NULL, NULL);
+    sysfs_expose("/", "dwm", &resOps, NULL);
 }
 
 void dwm_start(void)

@@ -9,7 +9,9 @@
 #include "idt.h"
 #include "log.h"
 #include "madt.h"
+#include "net/net.h"
 #include "pic.h"
+#include "pipe.h"
 #include "pmm.h"
 #include "ps2/ps2.h"
 #include "ramfs.h"
@@ -22,8 +24,6 @@
 #include "vfs.h"
 #include "vmm.h"
 #include "waitsys.h"
-#include "pipe.h"
-#include "net/net.h"
 
 #include <bootloader/boot_info.h>
 #include <stdio.h>

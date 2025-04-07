@@ -15,112 +15,6 @@
 static node_t root;
 static lock_t lock;
 
-static void resource_free(resource_t* resource)
-{
-    if (resource->onFree != NULL)
-    {
-        resource->onFree(resource);
-    }
-
-    free(resource);
-}
-
-#define SYSFS_OPERATION(name, file, ...) \
-    ({ \
-        uint64_t result; \
-        if (atomic_load(&file->resource->hidden)) \
-        { \
-            result = ERROR(ENORES); \
-        } \
-        else if (file->resource->ops->name != NULL) \
-        { \
-            result = file->resource->ops->name(file __VA_OPT__(, ) __VA_ARGS__); \
-        } \
-        else \
-        { \
-            result = ERROR(EACCES); \
-        } \
-        result; \
-    })
-
-#define SYSFS_OPERATION_PTR(name, file, ...) \
-    ({ \
-        void* result; \
-        if (atomic_load(&file->resource->hidden)) \
-        { \
-            result = ERRPTR(ENORES); \
-        } \
-        else if (file->resource->ops->name != NULL) \
-        { \
-            result = file->resource->ops->name(file __VA_OPT__(, ) __VA_ARGS__); \
-        } \
-        else \
-        { \
-            result = ERRPTR(EACCES); \
-        } \
-        result; \
-    })
-
-static uint64_t sysfs_read(file_t* file, void* buffer, uint64_t count)
-{
-    return SYSFS_OPERATION(read, file, buffer, count);
-}
-
-static uint64_t sysfs_write(file_t* file, const void* buffer, uint64_t count)
-{
-    return SYSFS_OPERATION(write, file, buffer, count);
-}
-
-static uint64_t sysfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
-{
-    return SYSFS_OPERATION(seek, file, offset, origin);
-}
-
-static uint64_t sysfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
-{
-    return SYSFS_OPERATION(ioctl, file, request, argp, size);
-}
-
-static uint64_t sysfs_flush(file_t* file, const pixel_t* buffer, uint64_t size, const rect_t* rect)
-{
-    return SYSFS_OPERATION(flush, file, buffer, size, rect);
-}
-
-static void* sysfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
-{
-    return SYSFS_OPERATION_PTR(mmap, file, address, length, prot);
-}
-
-static wait_queue_t* sysfs_poll(file_t* file, poll_file_t* pollFile)
-{
-    return SYSFS_OPERATION_PTR(poll, file, pollFile);
-}
-
-static void sysfs_cleanup(file_t* file)
-{
-    if (file->resource->ops->cleanup != NULL)
-    {
-        file->resource->ops->cleanup(file);
-    }
-
-    uint64_t val;
-    if ((val = atomic_fetch_sub(&file->resource->ref, 1)) <= 1)
-    {
-        resource_free(file->resource);
-    }
-}
-
-static file_ops_t fileOps = {
-    .read = sysfs_read,
-    .write = sysfs_write,
-    .seek = sysfs_seek,
-    .ioctl = sysfs_ioctl,
-    .flush = sysfs_flush,
-    .mmap = sysfs_mmap,
-    .poll = sysfs_poll,
-    .cleanup = sysfs_cleanup,
-};
-
 static file_t* sysfs_open(volume_t* volume, const char* path)
 {
     LOCK_DEFER(&lock);
@@ -136,20 +30,18 @@ static file_t* sysfs_open(volume_t* volume, const char* path)
     }
     resource_t* resource = (resource_t*)node;
 
-    file_t* file = file_new(volume);
+    if (resource->ops->open == NULL)
+    {
+        return ERRPTR(EACCES);
+    }
+
+    file_t* file = resource->ops->open(volume, resource);
     if (file == NULL)
     {
         return NULL;
     }
-    file->private = resource->private;
-    file->ops = &fileOps;
-    file->resource = resource;
 
-    if (resource->onOpen != NULL && resource->onOpen(resource, file) == ERR)
-    {
-        return NULL;
-    }
-    
+    file->resource = resource;
     atomic_fetch_add(&resource->ref, 1);
     return file;
 }
@@ -169,32 +61,18 @@ static uint64_t sysfs_open2(volume_t* volume, const char* path, file_t* files[2]
     }
     resource_t* resource = (resource_t*)node;
 
-    files[0] = file_new(volume);
-    if (files[0] == NULL)
+    if (resource->ops->open2 == NULL)
+    {
+        return ERROR(EACCES);
+    }
+
+    if (resource->ops->open2(volume, resource, files) == ERR)
     {
         return ERR;
     }
-    files[0]->private = resource->private;
-    files[0]->ops = &fileOps;
+
     files[0]->resource = resource;
-
-    files[1] = file_new(volume);
-    if (files[1] == NULL)
-    {
-        file_deref(files[0]);
-        return ERR;
-    }
-    files[1]->private = resource->private;
-    files[1]->ops = &fileOps;
     files[1]->resource = resource;
-
-    if (resource->onOpen2 != NULL && resource->onOpen2(resource, files) == ERR)
-    {
-        file_deref(files[0]);
-        file_deref(files[1]);
-        return ERR;
-    }
-
     atomic_fetch_add(&resource->ref, 2);
     return 0;
 }
@@ -272,8 +150,7 @@ void sysfs_init(void)
     printf("sysfs: init");
 }
 
-resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_t* ops, void* private, resource_on_open_t onOpen, resource_on_open2_t onOpen2,
-    resource_on_free_t onFree)
+resource_t* sysfs_expose(const char* path, const char* filename, const resource_ops_t* ops, void* private)
 {
     LOCK_DEFER(&lock);
 
@@ -299,9 +176,6 @@ resource_t* sysfs_expose(const char* path, const char* filename, const file_ops_
     node_init(&resource->node, filename, SYSFS_RESOURCE);
     resource->ops = ops;
     resource->private = private;
-    resource->onOpen = onOpen;
-    resource->onOpen2 = onOpen2;
-    resource->onFree = onFree;
     atomic_init(&resource->ref, 1);
     atomic_init(&resource->hidden, false);
     node_push(parent, &resource->node);
@@ -316,9 +190,13 @@ void sysfs_hide(resource_t* resource)
     lock_release(&lock);
 
     atomic_store(&resource->hidden, true);
-    uint64_t val;
-    if ((val = atomic_fetch_sub(&resource->ref, 1)) <= 1)
+    if (atomic_fetch_sub(&resource->ref, 1) <= 1)
     {
-        resource_free(resource);
+        if (resource->ops->onFree != NULL)
+        {
+            resource->ops->onFree(resource);
+        }
+
+        free(resource);
     }
 }

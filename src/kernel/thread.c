@@ -72,7 +72,7 @@ static void argv_deinit(argv_t* argv)
 
 static uint64_t process_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
 {
-    process_t* process = file->private;
+    process_t* process = file->resource->private;
 
     switch (request)
     {
@@ -90,9 +90,26 @@ static uint64_t process_ioctl(file_t* file, uint64_t request, void* argp, uint64
     return 0;
 }
 
+static void process_cleanup(file_t* file)
+{
+    SYSFS_CLEANUP(file);
+}
+
 static file_ops_t fileOps = {
     .ioctl = process_ioctl,
 };
+
+static file_t* process_open(volume_t* volume, resource_t* resource)
+{
+    file_t* file = file_new(volume);
+    if (file == NULL)
+    {
+        return NULL;
+    }
+    file->ops = &fileOps;
+
+    return file;
+}
 
 static void process_on_free(resource_t* resource)
 {
@@ -102,6 +119,11 @@ static void process_on_free(resource_t* resource)
     argv_deinit(&process->argv);
     free(process);
 }
+
+static resource_ops_t resOps = {
+    .open = process_open,
+    .onFree = process_on_free,
+};
 
 static process_t* process_new(const char** argv, const char* cwd)
 {
@@ -120,7 +142,7 @@ static process_t* process_new(const char** argv, const char* cwd)
 
     char idString[MAX_PATH];
     ulltoa(process->id, idString, 10);
-    process->resource = sysfs_expose("/proc", idString, &fileOps, process, NULL, NULL, process_on_free);
+    process->resource = sysfs_expose("/proc", idString, &resOps, process);
     if (process->resource == NULL)
     {
         argv_deinit(&process->argv);

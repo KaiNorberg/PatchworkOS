@@ -9,7 +9,7 @@
 
 static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count)
 {
-    mouse_t* mouse = file->private;
+    mouse_t* mouse = file->resource->private;
 
     count = ROUND_DOWN(count, sizeof(mouse_event_t));
     for (uint64_t i = 0; i < count / sizeof(mouse_event_t); i++)
@@ -31,15 +31,33 @@ static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count)
 
 static wait_queue_t* mouse_poll(file_t* file, poll_file_t* pollFile)
 {
-    mouse_t* mouse = file->private;
+    mouse_t* mouse = file->resource->private;
     pollFile->occurred = POLL_READ & (mouse->writeIndex != file->pos);
     return &mouse->waitQueue;
+}
+
+static void mouse_cleanup(file_t* file)
+{
+    SYSFS_CLEANUP(file);
 }
 
 static file_ops_t fileOps = {
     .read = mouse_read,
     .poll = mouse_poll,
+    .cleanup = mouse_cleanup,
 };
+
+static file_t* mouse_open(volume_t* volume, resource_t* resource)
+{
+    file_t* file = file_new(volume);
+    if (file == NULL)
+    {
+        return NULL;
+    }
+    file->ops = &fileOps;
+
+    return file;
+}
 
 static void mouse_on_free(resource_t* resource)
 {
@@ -47,11 +65,15 @@ static void mouse_on_free(resource_t* resource)
     free(mouse);
 }
 
+static resource_ops_t resOps = {
+    .open = mouse_open,
+};
+
 mouse_t* mouse_new(const char* name)
 {
     mouse_t* mouse = malloc(sizeof(mouse_t));
     mouse->writeIndex = 0;
-    mouse->resource = sysfs_expose("/mouse", name, &fileOps, mouse, NULL, NULL, mouse_on_free);
+    mouse->resource = sysfs_expose("/mouse", name, &resOps, mouse);
     wait_queue_init(&mouse->waitQueue);
     lock_init(&mouse->lock);
 

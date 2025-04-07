@@ -10,8 +10,6 @@
 #include <stdlib.h>
 #include <sys/math.h>
 
-static resource_t* pipeNewResource;
-
 static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count)
 {
     pipe_private_t* private = file->private;
@@ -82,12 +80,15 @@ static wait_queue_t* pipe_poll(file_t* file, poll_file_t* pollFile)
 {
     pipe_private_t* private = file->private;
 
-    pollFile->occurred = (POLL_READ & (ring_data_length(&private->ring) != 0 || private->writeClosed)) | (POLL_WRITE & (ring_free_length(&private->ring) != 0 || private->readClosed));
+    pollFile->occurred = (POLL_READ & (ring_data_length(&private->ring) != 0 || private->writeClosed)) |
+        (POLL_WRITE & (ring_free_length(&private->ring) != 0 || private->readClosed));
     return &private->waitQueue;
 }
 
 static void pipe_cleanup(file_t* file)
 {
+    // Note: Lack of SYSFS_CLEANUP is intentional. The underlying resource is never freed, just the files themselves.
+
     pipe_private_t* private = file->private;
     lock_acquire(&private->lock);
     if (private->readEnd == file)
@@ -119,12 +120,19 @@ static file_ops_t fileOps = {
     .cleanup = pipe_cleanup,
 };
 
-static uint64_t pipe_open(resource_t* resource, file_t* file)
+static file_t* pipe_open(volume_t* volume, resource_t* resource)
 {
+    file_t* file = file_new(volume);
+    if (file == NULL)
+    {
+        return NULL;
+    }
+    file->ops = &fileOps;
+
     pipe_private_t* private = malloc(sizeof(pipe_private_t));
     if (private == NULL)
     {
-        return ERR;
+        return NULL;
     }
     ring_init(&private->ring);
     private->readClosed = false;
@@ -135,12 +143,25 @@ static uint64_t pipe_open(resource_t* resource, file_t* file)
     private->writeEnd = file;
 
     file->private = private;
-
-    return 0;
+    return file;
 }
 
-static uint64_t pipe_open2(resource_t* resource, file_t* files[2])
-{    
+static uint64_t pipe_open2(volume_t* volume, resource_t* resource, file_t* files[2])
+{
+    files[0] = file_new(volume);
+    if (files[0] == NULL)
+    {
+        return ERR;
+    }
+    files[0]->ops = &fileOps;
+
+    files[1] = file_new(volume);
+    if (files[1] == NULL)
+    {
+        return ERR;
+    }
+    files[1]->ops = &fileOps;
+
     pipe_private_t* private = malloc(sizeof(pipe_private_t));
     if (private == NULL)
     {
@@ -160,7 +181,12 @@ static uint64_t pipe_open2(resource_t* resource, file_t* files[2])
     return 0;
 }
 
+static resource_ops_t resOps = {
+    .open = pipe_open,
+    .open2 = pipe_open2,
+};
+
 void pipe_init(void)
 {
-    pipeNewResource = sysfs_expose("/pipe", "new", &fileOps, NULL, pipe_open, pipe_open2, NULL);
+    sysfs_expose("/pipe", "new", &resOps, NULL);
 }

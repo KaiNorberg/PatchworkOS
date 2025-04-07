@@ -311,71 +311,6 @@ uint64_t vfs_chdir(const char* path)
     return 0;
 }
 
-uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
-{
-    uint64_t currentTime = systime_uptime();
-    uint64_t deadline = timeout == NEVER ? NEVER : currentTime + timeout;
-
-    if (amount > CONFIG_MAX_BLOCKERS_PER_THREAD)
-    {
-        return ERROR(EBLOCKLIMIT);
-    }
-
-    for (uint64_t i = 0; i < amount; i++)
-    {
-        if (files[i].file->ops->poll == NULL)
-        {
-            return ERROR(EACCES);
-        }
-        files[i].occurred = 0;
-    }
-
-    uint64_t events = 0;
-    wait_queue_t* waitQueues[CONFIG_MAX_BLOCKERS_PER_THREAD];
-    for (uint64_t i = 0; i < amount; i++)
-    {
-        waitQueues[i] = files[i].file->ops->poll(files[i].file, &files[i]);
-        if (waitQueues[i] == NULL)
-        {
-            return ERR;
-        }
-    }
-
-    while (true)
-    {
-        currentTime = systime_uptime();
-
-        if (timeout != NEVER && currentTime >= deadline)
-        {
-            break;
-        }
-
-        events = 0;
-        for (uint64_t i = 0; i < amount; i++)
-        {
-            if (files[i].file->ops->poll(files[i].file, &files[i]) == NULL)
-            {
-                return ERR;
-            }
-
-            if ((files[i].occurred & files[i].requested) != 0)
-            {
-                events++;
-            }
-        }
-
-        if (events != 0)
-        {
-            break;
-        }
-
-        nsec_t remainingTime = deadline == NEVER ? NEVER : deadline - currentTime;
-        waitsys_block_many(waitQueues, amount, remainingTime);
-    }
-
-    return events;
-}
-
 file_t* vfs_open(const char* path)
 {
     char parsedPath[MAX_PATH];
@@ -512,6 +447,10 @@ uint64_t vfs_listdir(const char* path, dir_entry_t* entries, uint64_t amount)
 
 uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
 {
+    if (file->resource != NULL && atomic_load(&file->resource->hidden))
+    {
+        return ERROR(ENORES);
+    }
     if (file->ops->read == NULL)
     {
         return ERROR(EACCES);
@@ -521,6 +460,10 @@ uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
 
 uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
 {
+    if (file->resource != NULL && atomic_load(&file->resource->hidden))
+    {
+        return ERROR(ENORES);
+    }
     if (file->ops->write == NULL)
     {
         return ERROR(EACCES);
@@ -530,6 +473,10 @@ uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
 
 uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
 {
+    if (file->resource != NULL && atomic_load(&file->resource->hidden))
+    {
+        return ERROR(ENORES);
+    }
     if (file->ops->seek == NULL)
     {
         return ERROR(EACCES);
@@ -539,6 +486,10 @@ uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
 
 uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
 {
+    if (file->resource != NULL && atomic_load(&file->resource->hidden))
+    {
+        return ERROR(ENORES);
+    }
     if (file->ops->ioctl == NULL)
     {
         return ERROR(EACCES);
@@ -548,6 +499,10 @@ uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
 
 uint64_t vfs_flush(file_t* file, const void* buffer, uint64_t size, const rect_t* rect)
 {
+    if (file->resource != NULL && atomic_load(&file->resource->hidden))
+    {
+        return ERROR(ENORES);
+    }
     if (file->ops->flush == NULL)
     {
         return ERROR(EACCES);
@@ -557,11 +512,84 @@ uint64_t vfs_flush(file_t* file, const void* buffer, uint64_t size, const rect_t
 
 void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
 {
+    if (file->resource != NULL && atomic_load(&file->resource->hidden))
+    {
+        return ERRPTR(ENORES);
+    }
     if (file->ops->mmap == NULL)
     {
         return ERRPTR(EACCES);
     }
     return file->ops->mmap(file, address, length, prot);
+}
+
+uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
+{
+    uint64_t currentTime = systime_uptime();
+    uint64_t deadline = timeout == NEVER ? NEVER : currentTime + timeout;
+
+    if (amount > CONFIG_MAX_BLOCKERS_PER_THREAD)
+    {
+        return ERROR(EBLOCKLIMIT);
+    }
+
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        if (files[i].file->resource != NULL && atomic_load(&files[i].file->resource->hidden))
+        {
+            return ERROR(ENORES);
+        }
+        if (files[i].file->ops->poll == NULL)
+        {
+            return ERROR(EACCES);
+        }
+        files[i].occurred = 0;
+    }
+
+    uint64_t events = 0;
+    wait_queue_t* waitQueues[CONFIG_MAX_BLOCKERS_PER_THREAD];
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        waitQueues[i] = files[i].file->ops->poll(files[i].file, &files[i]);
+        if (waitQueues[i] == NULL)
+        {
+            return ERR;
+        }
+    }
+
+    while (true)
+    {
+        currentTime = systime_uptime();
+
+        if (timeout != NEVER && currentTime >= deadline)
+        {
+            break;
+        }
+
+        events = 0;
+        for (uint64_t i = 0; i < amount; i++)
+        {
+            if (files[i].file->ops->poll(files[i].file, &files[i]) == NULL)
+            {
+                return ERR;
+            }
+
+            if ((files[i].occurred & files[i].requested) != 0)
+            {
+                events++;
+            }
+        }
+
+        if (events != 0)
+        {
+            break;
+        }
+
+        nsec_t remainingTime = deadline == NEVER ? NEVER : deadline - currentTime;
+        waitsys_block_many(waitQueues, amount, remainingTime);
+    }
+
+    return events;
 }
 
 const char* vfs_basename(const char* path)
