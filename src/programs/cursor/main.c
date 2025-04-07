@@ -26,7 +26,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
 
 int main(void)
 {
-    image = gfx_fbmp_new("/lib/cursor/arrow.fbmp");
+    image = gfx_fbmp_new("home:/theme/cursor/arrow.fbmp");
     if (image == NULL)
     {
         exit(EXIT_FAILURE);

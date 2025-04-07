@@ -87,7 +87,7 @@ static wait_queue_t* pipe_poll(file_t* file, poll_file_t* pollFile)
 
 static void pipe_cleanup(file_t* file)
 {
-    // Note: Lack of SYSFS_CLEANUP is intentional. The underlying resource is never freed, just the files themselves.
+    SYSFS_CLEANUP(file);
 
     pipe_private_t* private = file->private;
     lock_acquire(&private->lock);

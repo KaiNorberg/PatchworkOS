@@ -177,6 +177,20 @@ void gfx_fbmp(gfx_t* gfx, const gfx_fbmp_t* fbmp, const point_t* point)
     gfx_invalidate(gfx, &rect);
 }
 
+void gfx_fbmp_alpha(gfx_t* gfx, const gfx_fbmp_t* fbmp, const point_t* point)
+{
+    for (uint32_t y = 0; y < fbmp->height; y++)
+    {
+        for (uint32_t x = 0; x < fbmp->width; x++)
+        {
+            PIXEL_BLEND(&gfx->buffer[(point->x + x) + (point->y + y) * gfx->stride], &fbmp->data[x + y * fbmp->width]);
+        }
+    }
+
+    rect_t rect = RECT_INIT_DIM(point->x, point->x, fbmp->width, fbmp->height);
+    gfx_invalidate(gfx, &rect);
+}
+
 void gfx_char(gfx_t* gfx, const gfx_psf_t* psf, const point_t* point, uint64_t height, char chr, pixel_t foreground,
     pixel_t background)
 {

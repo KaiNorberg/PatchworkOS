@@ -13,7 +13,7 @@ typedef file_t* (*resource_open_t)(volume_t*, resource_t*);
 typedef uint64_t (*resource_open2_t)(volume_t*, resource_t*, file_t* [2]);
 typedef void (*resource_on_free_t)(resource_t*);
 
-// If a resource might need to be freed then this must be called in all file cleanup functions.
+// Yhis must be called in all file cleanup functions.
 // Also note that it frees the resource struct if its reference count reaches 0.
 // Returns true if the resource has been freed, false otherwise.
 #define SYSFS_CLEANUP(file) \

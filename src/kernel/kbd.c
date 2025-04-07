@@ -65,7 +65,10 @@ static void kbd_on_free(resource_t* resource)
     free(kbd);
 }
 
-static resource_ops_t resOps = {.open = kbd_open, .onFree = kbd_on_free};
+static resource_ops_t resOps = {
+    .open = kbd_open,
+    .onFree = kbd_on_free,
+};
 
 kbd_t* kbd_new(const char* name)
 {

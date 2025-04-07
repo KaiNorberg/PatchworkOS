@@ -73,6 +73,8 @@ gfx_psf_t* gfx_psf_new(const char* path);
 
 void gfx_fbmp(gfx_t* gfx, const gfx_fbmp_t* fbmp, const point_t* point);
 
+void gfx_fbmp_alpha(gfx_t* gfx, const gfx_fbmp_t* fbmp, const point_t* point);
+
 void gfx_char(gfx_t* gfx, const gfx_psf_t* psf, const point_t* point, uint64_t height, char chr, pixel_t foreground,
     pixel_t background);
 
