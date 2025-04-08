@@ -1,6 +1,7 @@
 #include "command.h"
 #include "terminal.h"
 
+#include <stdio.h>
 #include <sys/io.h>
 #include <sys/proc.h>
 
@@ -9,7 +10,7 @@ void print_prompt(void)
     char cwd[MAX_PATH];
     realpath(cwd, ".");
 
-    terminal_print("\n%s\n> ", cwd);
+    printf("\n%s\n> ", cwd);
 }
 
 void read_command(char* buffer, uint64_t size)
@@ -18,12 +19,13 @@ void read_command(char* buffer, uint64_t size)
     buffer[0] = '\0';
     while (1)
     {
-        char chr = terminal_input();
+        char chr;
+        read(STDIN_FILENO, &chr, 1);
         switch (chr)
         {
         case '\n':
         {
-            terminal_print("%c", chr);
+            printf("%c", chr);
             return;
         }
         break;
@@ -31,7 +33,7 @@ void read_command(char* buffer, uint64_t size)
         {
             if (index != 0)
             {
-                terminal_print("%c", chr);
+                printf("%c", chr);
                 buffer[--index] = '\0';
             }
         }
@@ -40,7 +42,7 @@ void read_command(char* buffer, uint64_t size)
         {
             if (index != size)
             {
-                terminal_print("%c", chr);
+                printf("%c", chr);
                 buffer[index++] = chr;
                 buffer[index] = '\0';
             }
@@ -54,8 +56,8 @@ int main(void)
 {
     terminal_init();
 
-    terminal_print("Welcome to the Terminal (Very WIP)\n");
-    terminal_print("Type help for a list of commands\n");
+    printf("Welcome to the Terminal (Very WIP)\n");
+    printf("Type help for a list of commands\n");
 
     while (1)
     {

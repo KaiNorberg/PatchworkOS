@@ -5,14 +5,14 @@
 typedef struct
 {
     uint8_t* buffer;
-} simd_context_t;
+} simd_ctx_t;
 
 void simd_init(void);
 
-uint64_t simd_context_init(simd_context_t* context);
+uint64_t simd_ctx_init(simd_ctx_t* ctx);
 
-void simd_context_deinit(simd_context_t* context);
+void simd_ctx_deinit(simd_ctx_t* ctx);
 
-void simd_context_save(simd_context_t* context);
+void simd_ctx_save(simd_ctx_t* ctx);
 
-void simd_context_load(simd_context_t* context);
+void simd_ctx_load(simd_ctx_t* ctx);

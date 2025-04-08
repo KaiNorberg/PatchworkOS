@@ -3,6 +3,8 @@
 #include "terminal.h"
 #include "token.h"
 
+#include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/argsplit.h>
@@ -26,7 +28,7 @@ static void command_cd(uint64_t argc, const char** argv)
 
     if (chdir(argv[1]) == ERR)
     {
-        terminal_error(NULL);
+        printf("error: %s", strerror(errno));
     }
 }
 
@@ -64,12 +66,12 @@ static void command_help(uint64_t argc, const char** argv)
 {
     if (argc < 2)
     {
-        terminal_print("Type help [COMMAND] for more information about COMMAND\n  ");
+        printf("Type help [COMMAND] for more information about COMMAND\n  ");
         for (uint64_t i = 0; i < sizeof(commands) / sizeof(commands[0]); i++)
         {
-            terminal_print("%s ", commands[i].name);
+            printf("%s ", commands[i].name);
         }
-        terminal_print("./[BINARY IN CWD] [BINARY IN home:/bin OR home:/bin/usr/]");
+        printf("./[BINARY IN CWD] [BINARY IN home:/bin OR home:/bin/usr/]");
     }
     else
     {
@@ -84,216 +86,63 @@ static void command_help(uint64_t argc, const char** argv)
         }
         if (command == NULL)
         {
-            terminal_error("command not found");
+            printf("error: command not found");
             return;
         }
 
-        terminal_print("NAME\n  ");
-        terminal_print(command->name);
+        printf("NAME\n  ");
+        printf(command->name);
 
-        terminal_print("\nSYNOPSIS\n  ");
-        terminal_print(command->synopsis);
+        printf("\nSYNOPSIS\n  ");
+        printf(command->synopsis);
 
-        terminal_print("\nDESCRIPTION\n  ");
-        terminal_print(command->description);
+        printf("\nDESCRIPTION\n  ");
+        printf(command->description);
     }
-}
-
-static uint64_t spawn_with_redirection(const char** argv, fd_t in_fd, fd_t out_fd)
-{
-    fd_t childStdin[2];
-    if (in_fd == STDIN_FILENO)
-    {
-        if (open2("sys:/pipe/new", childStdin) == ERR)
-            return ERR;
-    }
-    else
-    {
-        childStdin[PIPE_READ] = in_fd;
-        childStdin[PIPE_WRITE] = -1; // Mark as not ours to close
-    }
-
-    fd_t childStdout[2];
-    if (out_fd == STDOUT_FILENO)
-    {
-        if (open2("sys:/pipe/new", childStdout) == ERR)
-        {
-            if (in_fd == STDIN_FILENO)
-                close(childStdin[PIPE_READ]);
-            return ERR;
-        }
-    }
-    else
-    {
-        childStdout[PIPE_WRITE] = out_fd;
-        childStdout[PIPE_READ] = -1; // Mark as not ours to close
-    }
-
-    spawn_fd_t fds[] = {{.child = STDIN_FILENO, .parent = childStdin[PIPE_READ]},
-        {.child = STDOUT_FILENO, .parent = childStdout[PIPE_WRITE]}, SPAWN_FD_END};
-
-    pid_t pid = spawn(argv, fds);
-    if (pid == ERR)
-    {
-        if (in_fd == STDIN_FILENO)
-        {
-            close(childStdin[PIPE_WRITE]);
-            close(childStdin[PIPE_READ]);
-        }
-        if (out_fd == STDOUT_FILENO)
-        {
-            close(childStdout[PIPE_WRITE]);
-            close(childStdout[PIPE_READ]);
-        }
-        return ERR;
-    }
-
-    // Close ends we don't need
-    if (in_fd == STDIN_FILENO)
-        close(childStdin[PIPE_READ]);
-    if (out_fd == STDOUT_FILENO)
-        close(childStdout[PIPE_WRITE]);
-
-    // Read output if not redirected
-    if (out_fd == STDOUT_FILENO)
-    {
-        while (1)
-        {
-            char chr;
-            if (read(childStdout[PIPE_READ], &chr, 1) == 0)
-                break;
-            terminal_print("%c", chr);
-        }
-        close(childStdout[PIPE_READ]);
-    }
-
-    if (in_fd == STDIN_FILENO)
-        close(childStdin[PIPE_WRITE]);
-    return 0;
-}
-
-static uint64_t handle_redirection(const char* filename)
-{
-    fd_t fd = open(filename);
-    if (fd == ERR)
-    {
-        terminal_error("failed to open file");
-        return ERR;
-    }
-    return fd;
 }
 
 static uint64_t command_spawn(const char** argv)
 {
-    fd_t childStdin[2];
-    if (open2("sys:/pipe/new", childStdin) == ERR)
-    {
-        return ERR;
-    }
-    fd_t childStdout[2];
-    if (open2("sys:/pipe/new", childStdout) == ERR)
-    {
-        return ERR;
-    }
-
-    spawn_fd_t fds[] = {{.child = STDIN_FILENO, .parent = childStdin[PIPE_READ]},
-        {.child = STDOUT_FILENO, .parent = childStdout[PIPE_WRITE]}, SPAWN_FD_END};
+    spawn_fd_t fds[] = {
+        {.child = STDIN_FILENO, .parent = STDIN_FILENO},
+        {.child = STDOUT_FILENO, .parent = STDOUT_FILENO},
+        SPAWN_FD_END,
+    };
     pid_t pid = spawn(argv, fds);
     if (pid == ERR)
     {
-        close(childStdin[PIPE_WRITE]);
-        close(childStdin[PIPE_READ]);
-        close(childStdout[PIPE_WRITE]);
-        close(childStdout[PIPE_READ]);
         return ERR;
     }
 
-    close(childStdin[PIPE_READ]);
-    close(childStdout[PIPE_WRITE]);
+    fd_t child = procfd(pid);
+    writef(child, "wait");
+    close(child);
 
-    while (1)
-    {
-        char chr;
-        if (read(childStdout[PIPE_READ], &chr, 1) == 0)
-        {
-            break;
-        }
-
-        terminal_print("%c", chr);
-    }
-
-    close(childStdin[PIPE_WRITE]);
-    close(childStdout[PIPE_READ]);
     return 0;
 }
 
 void command_execute(const char* command)
 {
-    // Split into commands separated by pipes
-    const char* pipe_pos = strchr(command, '|');
-    if (pipe_pos || strstr(command, ">"))
-    {
-        // Handle pipes and redirections
-        uint64_t argc;
-        const char** argv = argsplit(command, &argc);
-
-        fd_t in_fd = STDIN_FILENO;
-        fd_t out_fd = STDOUT_FILENO;
-        const char* output_file = NULL;
-
-        // Parse redirections
-        for (uint64_t i = 0; i < argc; i++)
-        {
-            if (strcmp(argv[i], ">") == 0 && i + 1 < argc)
-            {
-                output_file = argv[i + 1];
-                out_fd = handle_redirection(output_file);
-                if (out_fd == ERR)
-                    return;
-                argc = i; // Truncate command at redirection
-                break;
-            }
-        }
-
-        // Handle simple commands with redirection
-        if (!pipe_pos && output_file)
-        {
-            if (argv[0][0] == '.' && argv[0][1] == '/')
-            {
-                stat_t info;
-                if (stat(argv[0], &info) != ERR && info.type == STAT_FILE)
-                {
-                    if (spawn_with_redirection(argv, in_fd, out_fd) == ERR)
-                    {
-                        terminal_error(NULL);
-                    }
-                    close(out_fd);
-                    return;
-                }
-            }
-
-            // [Rest of command handling remains similar...]
-        }
-
-        // Handle pipes (more complex case)
-        if (pipe_pos)
-        {
-            // [Full pipe implementation would go here...]
-            terminal_error("pipes not fully implemented yet");
-        }
-
-        if (out_fd != STDOUT_FILENO)
-            close(out_fd);
-        return;
-    }
-
-    // Original non-pipe/redirection handling
     uint64_t argc;
     const char** argv = argsplit(command, &argc);
     if (argc == 0 || argv == NULL)
     {
-        terminal_print("empty command");
-        return;
+        goto end_of_func;
+    }
+
+    for (int64_t i = 0; i < (int64_t)argc; i++)
+    {
+        if (strcmp(argv[i], ">") == 0)
+        {
+            if (i != (int64_t)argc - 2)
+            {
+                printf("error: invalid command format");
+                goto end_of_func;
+            }
+            
+            const char* target = argv[argc - 1];
+            fd_t fd = openas(STDOUT_FILENO, target);
+        }
     }
 
     if (argv[0][0] == '.' && argv[0][1] == '/')
@@ -303,9 +152,9 @@ void command_execute(const char* command)
         {
             if (command_spawn(argv) == ERR)
             {
-                terminal_error(NULL);
+                printf("error: %s", strerror(errno));
             }
-            return;
+            goto end_of_func;
         }
     }
 
@@ -314,7 +163,7 @@ void command_execute(const char* command)
         if (token_equal(command, commands[i].name))
         {
             commands[i].callback(argc, argv);
-            return;
+            goto end_of_func;
         }
     }
 
@@ -336,11 +185,13 @@ void command_execute(const char* command)
             argv[0] = path;
             if (command_spawn(argv) == ERR)
             {
-                terminal_error(NULL);
+                printf("error: %s", strerror(errno));
             }
-            return;
+            goto end_of_func;
         }
     }
 
-    terminal_error("command not found");
+    printf("error: command not found");
+end_of_func:
+    terminal_reset_stdio();
 }

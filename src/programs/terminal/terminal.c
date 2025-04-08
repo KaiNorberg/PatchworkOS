@@ -28,8 +28,8 @@ static bool cursorVisible;
 
 static thrd_t thread;
 
-static fd_t printPipe;
-static fd_t kbdPipe;
+static fd_t stdin[2];
+static fd_t stdout[2];
 
 static atomic_bool shouldQuit;
 static atomic_bool hasQuit;
@@ -102,7 +102,7 @@ uint64_t procedure(win_t* window, const msg_t* msg)
             break;
         }
 
-        write(kbdPipe, &chr, 1);
+        write(stdin[PIPE_WRITE], &chr, 1);
     }
     break;
     }
@@ -175,7 +175,7 @@ int terminal_loop(void* data)
     msg_t msg = {0};
     while (msg.type != LMSG_QUIT && !shouldQuit)
     {
-        pollfd_t fds[] = {{.fd = printPipe, .requested = POLL_READ}, {.fd = win_fd(terminal), .requested = POLL_READ}};
+        pollfd_t fds[] = {{.fd = stdout[PIPE_READ], .requested = POLL_READ}, {.fd = win_fd(terminal), .requested = POLL_READ}};
         poll(fds, 2, BLINK_INTERVAL);
 
         while (win_receive(terminal, &msg, 0))
@@ -188,10 +188,10 @@ int terminal_loop(void* data)
             gfx_t gfx;
             win_draw_begin(terminal, &gfx);
 
-            while (poll1(printPipe, POLL_READ, 0) == POLL_READ)
+            while (poll1(stdout[PIPE_READ], POLL_READ, 0) == POLL_READ)
             {
                 char chr;
-                read(printPipe, &chr, 1);
+                read(stdout[PIPE_READ], &chr, 1);
                 terminal_put(&gfx, chr);
             }
 
@@ -200,7 +200,7 @@ int terminal_loop(void* data)
     }
 
     atomic_store(&hasQuit, true);
-    exit(EXIT_SUCCESS);
+    return EXIT_SUCCESS;
 }
 
 void terminal_init(void)
@@ -214,8 +214,11 @@ void terminal_init(void)
         exit(errno);
     }
 
-    printPipe = open("sys:/pipe/new");
-    kbdPipe = open("sys:/pipe/new");
+    open2("sys:/pipe/new", stdin);
+    open2("sys:/pipe/new", stdout);
+
+    dup2(stdin[PIPE_READ], STDIN_FILENO);
+    dup2(stdout[PIPE_WRITE], STDOUT_FILENO);
 
     atomic_init(&shouldQuit, false);
     atomic_init(&hasQuit, false);
@@ -230,8 +233,12 @@ void terminal_deinit(void)
     {
         asm volatile("pause");
     }
-    close(printPipe);
-    close(kbdPipe);
+    close(stdin[0]);
+    close(stdin[1]);
+    close(stdout[0]);
+    close(stdout[1]);
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
     win_free(terminal);
 }
 
@@ -251,60 +258,8 @@ void terminal_clear(void)
     win_draw_end(terminal, &gfx);
 }
 
-char terminal_input(void)
+void terminal_reset_stdio(void)
 {
-    char chr;
-    read(kbdPipe, &chr, 1);
-    return chr;
-}
-
-void terminal_print(const char* str, ...)
-{
-    char buffer[MAX_PATH];
-    va_list args;
-    va_start(args, str);
-    vsprintf(buffer, str, args);
-    va_end(args);
-
-    write(printPipe, buffer, strlen(buffer));
-
-    /*if (str == NULL)
-    {
-        return;
-    }
-
-    gfx_t gfx;
-    win_draw_begin(terminal, &gfx);
-
-    char buffer[MAX_PATH];
-    va_list args;
-    va_start(args, str);
-    vsprintf(buffer, str, args);
-    va_end(args);
-
-    char* chr = buffer;
-    while (*chr != '\0')
-    {
-        terminal_put(&gfx, *chr++);
-    }
-
-    win_draw_end(terminal, &gfx);*/
-}
-
-void terminal_error(const char* str, ...)
-{
-    if (str != NULL)
-    {
-        char buffer[MAX_PATH];
-        va_list args;
-        va_start(args, str);
-        vsprintf(buffer, str, args);
-        va_end(args);
-
-        terminal_print("error: %s\n", buffer);
-    }
-    else
-    {
-        terminal_print("error: %s\n", strerror(errno));
-    }
+    dup2(stdin[PIPE_READ], STDIN_FILENO);
+    dup2(stdout[PIPE_WRITE], STDOUT_FILENO);
 }

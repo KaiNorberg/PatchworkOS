@@ -10,7 +10,7 @@
 typedef struct
 {
     char cwd[MAX_PATH];
-} loader_context_t;
+} loader_ctx_t;
 
 extern NORETURN void loader_jump_to_user_space(int argc, char** argv, void* rsp, void* rip);
 

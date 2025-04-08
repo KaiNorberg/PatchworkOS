@@ -57,43 +57,43 @@ static inline uint64_t thread_queue_length(thread_queue_t* queue)
     return queue->length;
 }
 
-void sched_context_init(sched_context_t* context)
+void sched_ctx_init(sched_ctx_t* ctx)
 {
     for (uint64_t i = PRIORITY_MIN; i <= PRIORITY_MAX; i++)
     {
-        thread_queue_init(&context->queues[i]);
+        thread_queue_init(&ctx->queues[i]);
     }
-    list_init(&context->graveyard);
-    context->runThread = NULL;
+    list_init(&ctx->graveyard);
+    ctx->runThread = NULL;
 }
 
-static void sched_context_push(sched_context_t* context, thread_t* thread)
+static void sched_ctx_push(sched_ctx_t* ctx, thread_t* thread)
 {
-    thread_queue_push(&context->queues[thread->priority], thread);
+    thread_queue_push(&ctx->queues[thread->priority], thread);
 }
 
-static uint64_t sched_context_thread_amount(sched_context_t* context)
+static uint64_t sched_ctx_thread_amount(sched_ctx_t* ctx)
 {
-    uint64_t length = (context->runThread != NULL);
+    uint64_t length = (ctx->runThread != NULL);
     for (int64_t i = PRIORITY_MAX; i >= PRIORITY_MIN; i--)
     {
-        length += thread_queue_length(&context->queues[i]);
+        length += thread_queue_length(&ctx->queues[i]);
     }
 
     return length;
 }
 
-static thread_t* sched_context_find_higher(sched_context_t* context, priority_t priority)
+static thread_t* sched_ctx_find_higher(sched_ctx_t* ctx, priority_t priority)
 {
     for (int64_t i = PRIORITY_MAX; i > priority; i--)
     {
-        thread_t* thread = thread_queue_pop(&context->queues[i]);
+        thread_t* thread = thread_queue_pop(&ctx->queues[i]);
         if (thread != NULL)
         {
             if (atomic_load(&thread->process->dead) && thread->trapFrame.cs != GDT_KERNEL_CODE)
             {
                 thread_free(thread);
-                return sched_context_find_higher(context, priority);
+                return sched_ctx_find_higher(ctx, priority);
             }
 
             return thread;
@@ -103,17 +103,17 @@ static thread_t* sched_context_find_higher(sched_context_t* context, priority_t 
     return NULL;
 }
 
-static thread_t* sched_context_find_any(sched_context_t* context)
+static thread_t* sched_ctx_find_any(sched_ctx_t* ctx)
 {
     for (int64_t i = PRIORITY_MAX; i >= PRIORITY_MIN; i--)
     {
-        thread_t* thread = thread_queue_pop(&context->queues[i]);
+        thread_t* thread = thread_queue_pop(&ctx->queues[i]);
         if (thread != NULL)
         {
             if (atomic_load(&thread->process->dead) && thread->trapFrame.cs != GDT_KERNEL_CODE)
             {
                 thread_free(thread);
-                return sched_context_find_any(context);
+                return sched_ctx_find_any(ctx);
             }
 
             return thread;
@@ -191,10 +191,10 @@ void sched_process_exit(uint64_t status)
 {
     // TODO: Add handling for status
 
-    sched_context_t* context = &smp_self()->sched;
-    context->runThread->dead = true;
-    atomic_store(&context->runThread->process->dead, true);
-    printf("sched: process_exit pid=%d", context->runThread->process->id);
+    sched_ctx_t* ctx = &smp_self()->sched;
+    ctx->runThread->dead = true;
+    atomic_store(&ctx->runThread->process->dead, true);
+    printf("sched: process_exit pid=%d", ctx->runThread->process->id);
     smp_put();
 
     sched_invoke();
@@ -203,8 +203,8 @@ void sched_process_exit(uint64_t status)
 
 void sched_thread_exit(void)
 {
-    sched_context_t* context = &smp_self()->sched;
-    context->runThread->dead = true;
+    sched_ctx_t* ctx = &smp_self()->sched;
+    ctx->runThread->dead = true;
     smp_put();
 
     sched_invoke();
@@ -219,13 +219,13 @@ void sched_push(thread_t* thread)
     for (uint64_t i = 0; i < cpuAmount; i++)
     {
         cpu_t* cpu = smp_cpu(i);
-        sched_context_t* context = &cpu->sched;
+        sched_ctx_t* ctx = &cpu->sched;
 
-        int64_t length = sched_context_thread_amount(context);
+        int64_t length = sched_ctx_thread_amount(ctx);
 
         if (length == 0)
         {
-            sched_context_push(&cpu->sched, thread);
+            sched_ctx_push(&cpu->sched, thread);
             return;
         }
 
@@ -236,14 +236,14 @@ void sched_push(thread_t* thread)
         }
     }
 
-    sched_context_push(&best->sched, thread);
+    sched_ctx_push(&best->sched, thread);
 }
 
-static void sched_update_graveyard(trap_frame_t* trapFrame, sched_context_t* context)
+static void sched_update_graveyard(trap_frame_t* trapFrame, sched_ctx_t* ctx)
 {
     while (1)
     {
-        thread_t* thread = LIST_CONTAINER_SAFE(list_pop(&context->graveyard), thread_t, entry);
+        thread_t* thread = LIST_CONTAINER_SAFE(list_pop(&ctx->graveyard), thread_t, entry);
         if (thread == NULL)
         {
             break;
@@ -252,44 +252,43 @@ static void sched_update_graveyard(trap_frame_t* trapFrame, sched_context_t* con
         thread_free(thread);
     }
 
-    if (context->runThread != NULL &&
-        (context->runThread->dead || (atomic_load(&context->runThread->process->dead) && trapFrame->cs != GDT_KERNEL_CODE)))
+    if (ctx->runThread != NULL &&
+        (ctx->runThread->dead || (atomic_load(&ctx->runThread->process->dead) && trapFrame->cs != GDT_KERNEL_CODE)))
     {
-        list_push(&context->graveyard, &context->runThread->entry);
-        context->runThread = NULL;
+        list_push(&ctx->graveyard, &ctx->runThread->entry);
+        ctx->runThread = NULL;
     }
 }
 
 void sched_schedule_trap(trap_frame_t* trapFrame)
 {
     cpu_t* self = smp_self_unsafe();
-    sched_context_t* context = &self->sched;
+    sched_ctx_t* ctx = &self->sched;
 
     if (self->trapDepth > 1)
     {
         return;
     }
 
-    sched_update_graveyard(trapFrame, context);
+    sched_update_graveyard(trapFrame, ctx);
 
-    if (context->runThread == NULL)
+    if (ctx->runThread == NULL)
     {
-        thread_t* next = sched_context_find_any(context);
+        thread_t* next = sched_ctx_find_any(ctx);
         thread_load(next, trapFrame);
-        context->runThread = next;
+        ctx->runThread = next;
     }
     else
     {
-        thread_t* next = context->runThread->timeEnd < systime_uptime()
-            ? sched_context_find_any(context)
-            : sched_context_find_higher(context, context->runThread->priority);
+        thread_t* next = ctx->runThread->timeEnd < systime_uptime() ? sched_ctx_find_any(ctx)
+                                                                    : sched_ctx_find_higher(ctx, ctx->runThread->priority);
         if (next != NULL)
         {
-            thread_save(context->runThread, trapFrame);
-            sched_context_push(context, context->runThread);
+            thread_save(ctx->runThread, trapFrame);
+            sched_ctx_push(ctx, ctx->runThread);
 
             thread_load(next, trapFrame);
-            context->runThread = next;
+            ctx->runThread = next;
         }
     }
 }

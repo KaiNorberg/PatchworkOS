@@ -74,9 +74,14 @@ static uint64_t process_write(file_t* file, const void* buffer, uint64_t count)
 {
     process_t* process = file->resource->private;
 
+    // TODO: Implement proper command parsing with args.
     if (strncmp(buffer, "kill", count) == 0)
     {
         atomic_store(&process->dead, true);
+    }
+    else if (strncmp(buffer, "wait", count) == 0)
+    {
+        WAITSYS_BLOCK(&process->queue, process->dead);
     }
     else
     {
@@ -111,9 +116,10 @@ static file_t* process_open(volume_t* volume, resource_t* resource)
 static void process_on_free(resource_t* resource)
 {
     process_t* process = resource->private;
-    // vfs_context_deinit() is in process_free
+    // vfs_ctx_deinit() is in process_free
     space_deinit(&process->space);
     argv_deinit(&process->argv);
+    wait_queue_deinit(&process->queue);
     free(process);
 }
 
@@ -148,9 +154,10 @@ static process_t* process_new(const char** argv, const char* cwd)
     }
 
     atomic_init(&process->dead, false);
-    vfs_context_init(&process->vfsContext, cwd);
+    vfs_ctx_init(&process->vfsCtx, cwd);
     space_init(&process->space);
     atomic_init(&process->threadCount, 0);
+    wait_queue_init(&process->queue);
     atomic_init(&process->newTid, 0);
 
     return process;
@@ -158,8 +165,9 @@ static process_t* process_new(const char** argv, const char* cwd)
 
 static void process_free(process_t* process)
 {
+    vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_on_free
+    waitsys_unblock(&process->queue);
     sysfs_hide(process->resource);
-    vfs_context_deinit(&process->vfsContext); // Here instead of in process_on_free
 }
 
 static thread_t* process_thread_new(process_t* process, void* entry, priority_t priority)
@@ -184,7 +192,7 @@ static thread_t* process_thread_new(process_t* process, void* entry, priority_t 
     thread->block.deadline = 0;
     thread->error = 0;
     thread->priority = MIN(priority, PRIORITY_MAX);
-    if (simd_context_init(&thread->simdContext) == ERR)
+    if (simd_ctx_init(&thread->simdCtx) == ERR)
     {
         atomic_fetch_sub(&process->threadCount, 1);
         free(thread);
@@ -227,7 +235,7 @@ void thread_free(thread_t* thread)
         process_free(thread->process);
     }
 
-    simd_context_deinit(&thread->simdContext);
+    simd_ctx_deinit(&thread->simdCtx);
     free(thread);
 }
 
@@ -238,7 +246,7 @@ thread_t* thread_split(thread_t* thread, void* entry, priority_t priority)
 
 void thread_save(thread_t* thread, const trap_frame_t* trapFrame)
 {
-    simd_context_save(&thread->simdContext);
+    simd_ctx_save(&thread->simdCtx);
     thread->trapFrame = *trapFrame;
 }
 
@@ -267,6 +275,6 @@ void thread_load(thread_t* thread, trap_frame_t* trapFrame)
 
         space_load(&thread->process->space);
         tss_stack_load(&self->tss, (void*)((uint64_t)thread->kernelStack + CONFIG_KERNEL_STACK));
-        simd_context_load(&thread->simdContext);
+        simd_ctx_load(&thread->simdCtx);
     }
 }

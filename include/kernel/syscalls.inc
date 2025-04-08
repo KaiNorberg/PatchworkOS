@@ -25,7 +25,11 @@
 %define SYS_LISTDIR 24
 %define SYS_SPLIT 25
 %define SYS_YIELD 26
+%define SYS_OPENAT 27
+%define SYS_OPEN2AT 28
+%define SYS_DUP 29
+%define SYS_DUP2 30
 
-%define SYS_TOTAL_AMOUNT 27
+%define SYS_TOTAL_AMOUNT 31
 
 %define SYSCALL_VECTOR 0x80

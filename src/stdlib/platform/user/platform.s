@@ -17,6 +17,16 @@ _PlatformFlush:
     SYSTEM_CALL SYS_FLUSH
     ret
 
+global _PlatformDup
+_PlatformDup:
+    SYSTEM_CALL SYS_DUP
+    ret
+
+global _PlatformDup2
+_PlatformDup2:
+    SYSTEM_CALL SYS_DUP2
+    ret
+
 global _PlatformIoctl
 _PlatformIoctl:
     SYSTEM_CALL SYS_IOCTL
@@ -27,9 +37,19 @@ _PlatformOpen:
     SYSTEM_CALL SYS_OPEN
     ret
 
+global _PlatformOpenas
+_PlatformOpenas:
+    SYSTEM_CALL SYS_OPENAT
+    ret
+
 global _PlatformOpen2
 _PlatformOpen2:
     SYSTEM_CALL SYS_OPEN2
+    ret
+
+global _PlatformOpen2as
+_PlatformOpen2as:
+    SYSTEM_CALL SYS_OPEN2AT
     ret
 
 global _PlatformPoll

@@ -18,9 +18,9 @@ typedef struct
     thread_queue_t queues[PRIORITY_LEVELS];
     list_t graveyard;
     thread_t* runThread;
-} sched_context_t;
+} sched_ctx_t;
 
-void sched_context_init(sched_context_t* context);
+void sched_ctx_init(sched_ctx_t* ctx);
 
 extern void sched_idle_loop(void);
 

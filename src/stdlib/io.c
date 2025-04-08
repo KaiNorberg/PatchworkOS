@@ -42,9 +42,19 @@ fd_t open(const char* path)
     return _PlatformOpen(path);
 }
 
+fd_t openas(fd_t target, const char* path)
+{
+    return _PlatformOpenas(target, path);
+}
+
 uint64_t open2(const char* path, fd_t fds[2])
 {
     return _PlatformOpen2(path, fds);
+}
+
+uint64_t open2as(const char* path, fd_t fds[2])
+{
+    return _PlatformOpen2as(path, fds);
 }
 
 uint64_t close(fd_t fd)
@@ -139,6 +149,16 @@ uint64_t ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
 uint64_t flush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect_t* rect)
 {
     return _PlatformFlush(fd, buffer, size, rect);
+}
+
+fd_t dup(fd_t oldFd)
+{
+    return _PlatformDup(oldFd);
+}
+
+fd_t dup2(fd_t oldFd, fd_t newFd)
+{
+    return _PlatformDup2(oldFd, newFd);
 }
 
 #endif

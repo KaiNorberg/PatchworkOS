@@ -7,7 +7,8 @@
 #include "space.h"
 #include "sysfs.h"
 #include "trap.h"
-#include "vfs_context.h"
+#include "vfs_ctx.h"
+#include "waitsys.h"
 
 #include <errno.h>
 #include <stdatomic.h>
@@ -19,18 +20,6 @@ typedef uint8_t priority_t;
 #define PRIORITY_LEVELS 3
 #define PRIORITY_MIN 0
 #define PRIORITY_MAX (PRIORITY_LEVELS - 1)
-
-typedef struct wait_queue_entry wait_queue_entry_t;
-typedef struct wait_queue wait_queue_t;
-typedef struct waitsys_context waitsys_context_t;
-
-typedef enum
-{
-    BLOCK_NORM = 0,
-    BLOCK_TIMEOUT = 1,
-    BLOCK_dead = 2,
-    BLOCK_ERROR = 3
-} block_result_t;
 
 typedef struct
 {
@@ -45,22 +34,14 @@ typedef struct
     argv_t argv;
     resource_t* resource;
     atomic_bool dead;
-    vfs_context_t vfsContext;
+    vfs_ctx_t vfsCtx;
     space_t space;
     atomic_uint64_t threadCount;
+    wait_queue_t queue;
     _Atomic tid_t newTid;
 } process_t;
 
-typedef struct
-{
-    waitsys_context_t* waitsys;
-    wait_queue_entry_t* waitEntries[CONFIG_MAX_BLOCKERS_PER_THREAD];
-    uint8_t entryAmount;
-    block_result_t result;
-    nsec_t deadline;
-} block_data_t;
-
-typedef struct
+typedef struct thread
 {
     list_entry_t entry;
     process_t* process;
@@ -72,7 +53,7 @@ typedef struct
     errno_t error;
     priority_t priority;
     trap_frame_t trapFrame;
-    simd_context_t simdContext;
+    simd_ctx_t simdCtx;
     uint8_t kernelStack[CONFIG_KERNEL_STACK];
 } thread_t;
 

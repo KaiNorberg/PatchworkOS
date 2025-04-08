@@ -3,7 +3,7 @@
 #include "lock.h"
 #include "sched.h"
 #include "systime.h"
-#include "vfs_context.h"
+#include "vfs_ctx.h"
 #include "waitsys.h"
 
 #include <errno.h>
@@ -136,13 +136,13 @@ static uint64_t vfs_make_canonical(const char* start, char* out, const char* pat
 
 static uint64_t vfs_parse_path(char* out, const char* path)
 {
-    vfs_context_t* context = &sched_process()->vfsContext;
-    LOCK_DEFER(&context->lock);
+    vfs_ctx_t* ctx = &sched_process()->vfsCtx;
+    LOCK_DEFER(&ctx->lock);
 
     if (path[0] == VFS_NAME_SEPARATOR) // Root path
     {
-        uint64_t labelLength = strchr(context->cwd, VFS_LABEL_SEPARATOR) - context->cwd;
-        memcpy(out, context->cwd, labelLength);
+        uint64_t labelLength = strchr(ctx->cwd, VFS_LABEL_SEPARATOR) - ctx->cwd;
+        memcpy(out, ctx->cwd, labelLength);
 
         out[labelLength] = ':';
         out[labelLength + 1] = '\0';
@@ -183,10 +183,10 @@ static uint64_t vfs_parse_path(char* out, const char* path)
     }
     else // Relative path
     {
-        uint64_t labelLength = strchr(context->cwd, VFS_LABEL_SEPARATOR) - context->cwd;
-        uint64_t cwdLength = strlen(context->cwd);
+        uint64_t labelLength = strchr(ctx->cwd, VFS_LABEL_SEPARATOR) - ctx->cwd;
+        uint64_t cwdLength = strlen(ctx->cwd);
 
-        memcpy(out, context->cwd, cwdLength + 1);
+        memcpy(out, ctx->cwd, cwdLength + 1);
 
         out[cwdLength] = VFS_NAME_SEPARATOR;
         out[cwdLength + 1] = '\0';
@@ -304,10 +304,10 @@ uint64_t vfs_chdir(const char* path)
         return ERROR(ENOTDIR);
     }
 
-    vfs_context_t* context = &sched_process()->vfsContext;
-    LOCK_DEFER(&context->lock);
+    vfs_ctx_t* ctx = &sched_process()->vfsCtx;
+    LOCK_DEFER(&ctx->lock);
 
-    strcpy(context->cwd, parsedPath);
+    strcpy(ctx->cwd, parsedPath);
     return 0;
 }
 

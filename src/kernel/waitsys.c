@@ -6,6 +6,7 @@
 #include "smp.h"
 #include "systime.h"
 #include "vectors.h"
+#include "thread.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -27,13 +28,13 @@ void wait_queue_deinit(wait_queue_t* waitQueue)
     }
 }
 
-void waitsys_context_init(waitsys_context_t* waitsys)
+void waitsys_ctx_init(waitsys_ctx_t* waitsys)
 {
     list_init(&waitsys->threads);
     lock_init(&waitsys->lock);
 }
 
-static void waitsys_context_add(waitsys_context_t* waitsys, thread_t* thread)
+static void waitsys_ctx_add(waitsys_ctx_t* waitsys, thread_t* thread)
 {
     LOCK_DEFER(&waitsys->lock);
 
@@ -55,7 +56,7 @@ static void waitsys_context_add(waitsys_context_t* waitsys, thread_t* thread)
     list_push(&waitsys->threads, &thread->entry);
 }
 
-static void waitsys_context_remove(waitsys_context_t* waitsys, thread_t* thread)
+static void waitsys_ctx_remove(waitsys_ctx_t* waitsys, thread_t* thread)
 {
     LOCK_DEFER(&waitsys->lock);
     list_remove(&thread->entry);
@@ -64,7 +65,7 @@ static void waitsys_context_remove(waitsys_context_t* waitsys, thread_t* thread)
 void waitsys_update_trap(trap_frame_t* trapFrame)
 {
     cpu_t* self = smp_self_unsafe();
-    waitsys_context_t* waitsys = &self->waitsys;
+    waitsys_ctx_t* waitsys = &self->waitsys;
 
     LOCK_DEFER(&waitsys->lock);
 
@@ -85,7 +86,7 @@ void waitsys_update_trap(trap_frame_t* trapFrame)
 
         if (atomic_load(&thread->process->dead) || thread->dead)
         {
-            thread->block.result = BLOCK_dead;
+            thread->block.result = BLOCK_DEAD;
         }
         else
         {
@@ -112,8 +113,8 @@ void waitsys_update_trap(trap_frame_t* trapFrame)
 void waitsys_block_trap(trap_frame_t* trapFrame)
 {
     cpu_t* self = smp_self_unsafe();
-    sched_context_t* sched = &self->sched;
-    waitsys_context_t* waitsys = &self->waitsys;
+    sched_ctx_t* sched = &self->sched;
+    waitsys_ctx_t* waitsys = &self->waitsys;
 
     thread_save(sched->runThread, trapFrame);
 
@@ -126,7 +127,7 @@ void waitsys_block_trap(trap_frame_t* trapFrame)
     }
 
     sched->runThread->block.waitsys = waitsys;
-    waitsys_context_add(waitsys, sched->runThread);
+    waitsys_ctx_add(waitsys, sched->runThread);
 
     sched->runThread = NULL;
     sched_schedule_trap(trapFrame);
@@ -214,7 +215,7 @@ void waitsys_unblock(wait_queue_t* waitQueue)
         thread_t* thread = entry->thread;
 
         thread->block.result = BLOCK_NORM;
-        waitsys_context_remove(thread->block.waitsys, thread);
+        waitsys_ctx_remove(thread->block.waitsys, thread);
 
         for (uint64_t i = 0; i < thread->block.entryAmount; i++)
         {

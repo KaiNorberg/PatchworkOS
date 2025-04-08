@@ -193,7 +193,7 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
     vprintf(bigString, args);
     va_end(args);
 
-    // System context
+    // System ctx
     printf("[SYSTEM STATE]");
     if (smp_initialized())
     {

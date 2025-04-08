@@ -1,8 +1,8 @@
 #pragma once
 
 #include "lock.h"
-#include "thread.h"
 
+#include <sys/proc.h>
 #include <sys/list.h>
 
 // Blocks untill condition is true, condition will be tested after every call to waitsys_unblock.
@@ -85,12 +85,7 @@
         result; \
     })
 
-typedef struct wait_queue_entry
-{
-    list_entry_t entry;
-    thread_t* thread;
-    wait_queue_t* waitQueue;
-} wait_queue_entry_t;
+typedef struct thread thread_t;
 
 typedef struct wait_queue
 {
@@ -98,17 +93,41 @@ typedef struct wait_queue
     list_t entries;
 } wait_queue_t;
 
-typedef struct waitsys_context
+typedef struct wait_queue_entry
+{
+    list_entry_t entry;
+    thread_t* thread;
+    wait_queue_t* waitQueue;
+} wait_queue_entry_t;
+
+typedef struct waitsys_ctx
 {
     list_t threads;
     lock_t lock;
-} waitsys_context_t;
+} waitsys_ctx_t;
+
+typedef enum
+{
+    BLOCK_NORM = 0,
+    BLOCK_TIMEOUT = 1,
+    BLOCK_DEAD = 2,
+    BLOCK_ERROR = 3
+} block_result_t;
+
+typedef struct 
+{
+    waitsys_ctx_t* waitsys;
+    wait_queue_entry_t* waitEntries[CONFIG_MAX_BLOCKERS_PER_THREAD];
+    uint8_t entryAmount;
+    block_result_t result;
+    nsec_t deadline;
+} block_data_t;
 
 void wait_queue_init(wait_queue_t* waitQueue);
 
 void wait_queue_deinit(wait_queue_t* waitQueue);
 
-void waitsys_context_init(waitsys_context_t* waitsys);
+void waitsys_ctx_init(waitsys_ctx_t* waitsys);
 
 void waitsys_update_trap(trap_frame_t* trapFrame);
 

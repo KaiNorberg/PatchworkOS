@@ -157,7 +157,7 @@ thread_t* loader_spawn(const char** argv, priority_t priority)
     }
 
     char cwd[MAX_PATH];
-    vfs_context_get_cwd(&sched_thread()->process->vfsContext, cwd);
+    vfs_ctx_cwd(&sched_thread()->process->vfsCtx, cwd);
 
     thread_t* thread = thread_new(argv, loader_spawn_entry, priority, cwd);
     if (thread == NULL)

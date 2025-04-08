@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <string.h>
 
-static uint8_t initContext[PAGE_SIZE] ALIGNED(64);
+static uint8_t initCtx[PAGE_SIZE] ALIGNED(64);
 
 static void simd_xsave_init(void)
 {
@@ -45,52 +45,52 @@ void simd_init(void)
     asm volatile("fninit");
     if (cpuid_xsave_avail())
     {
-        asm volatile("xsave %0" : : "m"(*initContext), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
+        asm volatile("xsave %0" : : "m"(*initCtx), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
     }
     else
     {
-        asm volatile("fxsave (%0)" : : "r"(initContext));
+        asm volatile("fxsave (%0)" : : "r"(initCtx));
     }
 }
 
-uint64_t simd_context_init(simd_context_t* context)
+uint64_t simd_ctx_init(simd_ctx_t* ctx)
 {
-    context->buffer = pmm_alloc();
-    if (context->buffer == NULL)
+    ctx->buffer = pmm_alloc();
+    if (ctx->buffer == NULL)
     {
         return ERR;
     }
 
-    memcpy(context->buffer, initContext, PAGE_SIZE);
+    memcpy(ctx->buffer, initCtx, PAGE_SIZE);
 
     return 0;
 }
 
-void simd_context_deinit(simd_context_t* context)
+void simd_ctx_deinit(simd_ctx_t* ctx)
 {
-    pmm_free(context->buffer);
+    pmm_free(ctx->buffer);
 }
 
-void simd_context_save(simd_context_t* context)
+void simd_ctx_save(simd_ctx_t* ctx)
 {
     if (cpuid_xsave_avail())
     {
-        asm volatile("xsave %0" : : "m"(*context->buffer), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
+        asm volatile("xsave %0" : : "m"(*ctx->buffer), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
     }
     else
     {
-        asm volatile("fxsave (%0)" : : "r"(context->buffer));
+        asm volatile("fxsave (%0)" : : "r"(ctx->buffer));
     }
 }
 
-void simd_context_load(simd_context_t* context)
+void simd_ctx_load(simd_ctx_t* ctx)
 {
     if (cpuid_xsave_avail())
     {
-        asm volatile("xrstor %0" : : "m"(*context->buffer), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
+        asm volatile("xrstor %0" : : "m"(*ctx->buffer), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
     }
     else
     {
-        asm volatile("fxrstor (%0)" : : "r"(context->buffer));
+        asm volatile("fxrstor (%0)" : : "r"(ctx->buffer));
     }
 }

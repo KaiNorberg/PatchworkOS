@@ -9,7 +9,7 @@
 #include "systime.h"
 #include "thread.h"
 #include "vfs.h"
-#include "vfs_context.h"
+#include "vfs_ctx.h"
 #include "vmm.h"
 
 #include <errno.h>
@@ -22,7 +22,12 @@
 
 // TODO: Improve verify funcs, improve multithreading string safety. copy_to_user? copy_from_user?
 static bool verify_pointer(const void* pointer, uint64_t length)
-{
+{    
+    if (length == 0)
+    {
+        return true;
+    }
+
     if (pointer == NULL)
     {
         return false;
@@ -38,6 +43,11 @@ static bool verify_pointer(const void* pointer, uint64_t length)
 
 static bool verify_buffer(const void* pointer, uint64_t length)
 {
+    if (length == 0)
+    {
+        return true;
+    }
+
     if (!verify_pointer(pointer, length))
     {
         return false;
@@ -140,12 +150,12 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds)
         return ERR;
     }
 
-    vfs_context_t* parentVfsContext = &sched_process()->vfsContext;
-    vfs_context_t* childVfsContext = &thread->process->vfsContext;
+    vfs_ctx_t* parentVfsCtx = &sched_process()->vfsCtx;
+    vfs_ctx_t* childVfsCtx = &thread->process->vfsCtx;
 
     for (uint64_t i = 0; i < fdAmount; i++)
     {
-        file_t* file = vfs_context_get(parentVfsContext, fds[i].parent);
+        file_t* file = vfx_ctx_file(parentVfsCtx, fds[i].parent);
         if (file == NULL)
         {
             thread_free(thread);
@@ -153,7 +163,7 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds)
         }
         FILE_DEFER(file);
 
-        if (vfs_context_openat(childVfsContext, fds[i].child, file) == ERR)
+        if (vfs_ctx_openat(childVfsCtx, fds[i].child, file) == ERR)
         {
             thread_free(thread);
             return ERROR(EBADF);
@@ -219,7 +229,7 @@ fd_t syscall_open(const char* path)
     }
     FILE_DEFER(file);
 
-    return vfs_context_open(&sched_process()->vfsContext, file);
+    return vfs_ctx_open(&sched_process()->vfsCtx, file);
 }
 
 uint64_t syscall_open2(const char* path, fd_t fds[2])
@@ -242,12 +252,12 @@ uint64_t syscall_open2(const char* path, fd_t fds[2])
     FILE_DEFER(files[0]);
     FILE_DEFER(files[1]);
 
-    fds[0] = vfs_context_open(&sched_process()->vfsContext, files[0]);
+    fds[0] = vfs_ctx_open(&sched_process()->vfsCtx, files[0]);
     if (fds[0] == ERR)
     {
         return ERR;
     }
-    fds[1] = vfs_context_open(&sched_process()->vfsContext, files[1]);
+    fds[1] = vfs_ctx_open(&sched_process()->vfsCtx, files[1]);
     if (fds[1] == ERR)
     {
         return ERR;
@@ -258,7 +268,7 @@ uint64_t syscall_open2(const char* path, fd_t fds[2])
 
 uint64_t syscall_close(fd_t fd)
 {
-    return vfs_context_close(&sched_process()->vfsContext, fd);
+    return vfs_ctx_close(&sched_process()->vfsCtx, fd);
 }
 
 uint64_t syscall_read(fd_t fd, void* buffer, uint64_t count)
@@ -268,7 +278,7 @@ uint64_t syscall_read(fd_t fd, void* buffer, uint64_t count)
         return ERROR(EFAULT);
     }
 
-    file_t* file = vfs_context_get(&sched_process()->vfsContext, fd);
+    file_t* file = vfx_ctx_file(&sched_process()->vfsCtx, fd);
     if (file == NULL)
     {
         return ERR;
@@ -285,7 +295,7 @@ uint64_t syscall_write(fd_t fd, const void* buffer, uint64_t count)
         return ERROR(EFAULT);
     }
 
-    file_t* file = vfs_context_get(&sched_process()->vfsContext, fd);
+    file_t* file = vfx_ctx_file(&sched_process()->vfsCtx, fd);
     if (file == NULL)
     {
         return ERR;
@@ -297,7 +307,7 @@ uint64_t syscall_write(fd_t fd, const void* buffer, uint64_t count)
 
 uint64_t syscall_seek(fd_t fd, int64_t offset, seek_origin_t origin)
 {
-    file_t* file = vfs_context_get(&sched_process()->vfsContext, fd);
+    file_t* file = vfx_ctx_file(&sched_process()->vfsCtx, fd);
     if (file == NULL)
     {
         return ERR;
@@ -319,7 +329,7 @@ uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
         return ERROR(EFAULT);
     }
 
-    file_t* file = vfs_context_get(&sched_process()->vfsContext, fd);
+    file_t* file = vfx_ctx_file(&sched_process()->vfsCtx, fd);
     if (file == NULL)
     {
         return ERR;
@@ -364,7 +374,7 @@ uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, nsec_t timeout)
     poll_file_t files[CONFIG_MAX_FD];
     for (uint64_t i = 0; i < amount; i++)
     {
-        files[i].file = vfs_context_get(&sched_process()->vfsContext, fds[i].fd);
+        files[i].file = vfx_ctx_file(&sched_process()->vfsCtx, fds[i].fd);
         if (files[i].file == NULL)
         {
             for (uint64_t j = 0; j < i; j++)
@@ -406,7 +416,7 @@ uint64_t syscall_stat(const char* path, stat_t* buffer)
 
 void* syscall_mmap(fd_t fd, void* address, uint64_t length, prot_t prot)
 {
-    file_t* file = vfs_context_get(&sched_process()->vfsContext, fd);
+    file_t* file = vfx_ctx_file(&sched_process()->vfsCtx, fd);
     if (file == NULL)
     {
         return NULL;
@@ -448,7 +458,7 @@ uint64_t syscall_flush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect
         return ERROR(EFAULT);
     }
 
-    file_t* file = vfs_context_get(&sched_process()->vfsContext, fd);
+    file_t* file = vfx_ctx_file(&sched_process()->vfsCtx, fd);
     if (file == NULL)
     {
         return ERR;
@@ -500,6 +510,67 @@ uint64_t syscall_yield(void)
     return 0;
 }
 
+fd_t syscall_openat(fd_t target, const char* path)
+{
+    if (!verify_string(path))
+    {
+        return ERROR(EFAULT);
+    }
+
+    file_t* file = vfs_open(path);
+    if (file == NULL)
+    {
+        return ERR;
+    }
+    FILE_DEFER(file);
+
+    return vfs_ctx_openat(&sched_process()->vfsCtx, target, file);
+}
+
+uint64_t syscall_open2at(const char* path, fd_t fds[2])
+{
+    if (!verify_string(path))
+    {
+        return ERROR(EFAULT);
+    }
+
+    if (!verify_buffer(fds, sizeof(fd_t) * 2))
+    {
+        return ERROR(EFAULT);
+    }
+
+    file_t* files[2];
+    if (vfs_open2(path, files) == ERR)
+    {
+        return ERR;
+    }
+    FILE_DEFER(files[0]);
+    FILE_DEFER(files[1]);
+
+    fds[0] = vfs_ctx_openat(&sched_process()->vfsCtx, fds[0], files[0]);
+    if (fds[0] == ERR)
+    {
+        return ERR;
+    }
+    fds[1] = vfs_ctx_openat(&sched_process()->vfsCtx, fds[0], files[1]);
+    if (fds[1] == ERR)
+    {
+        return ERR;
+    }
+
+    return 0;
+}
+
+fd_t syscall_dup(fd_t oldFd)
+{
+    return vfs_ctx_dup(&sched_process()->vfsCtx, oldFd);
+}
+
+fd_t syscall_dup2(fd_t oldFd, fd_t newFd)
+{
+    return vfs_ctx_dup2(&sched_process()->vfsCtx, oldFd, newFd);
+}
+
 ///////////////////////////////////////////////////////
 
 void syscall_handler_end(void)
@@ -540,4 +611,8 @@ void* syscallTable[] = {
     syscall_listdir,
     syscall_split,
     syscall_yield,
+    syscall_openat,
+    syscall_open2at,
+    syscall_dup,
+    syscall_dup2,
 };
