@@ -21,6 +21,12 @@ void read_command(char* buffer, uint64_t size)
     {
         char chr;
         read(STDIN_FILENO, &chr, 1);
+
+        if (terminal_should_quit())
+        {
+            break;
+        }
+
         switch (chr)
         {
         case '\n':
@@ -65,6 +71,11 @@ int main(void)
 
         char buffer[MAX_PATH];
         read_command(buffer, MAX_PATH);
+
+        if (terminal_should_quit())
+        {
+            break;
+        }
 
         command_execute(buffer);
     }

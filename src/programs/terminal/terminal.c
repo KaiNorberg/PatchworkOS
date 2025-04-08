@@ -199,6 +199,13 @@ int terminal_loop(void* data)
         }
     }
 
+    close(stdin[0]);
+    close(stdin[1]);
+    close(stdout[0]);
+    close(stdout[1]);
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    atomic_store(&shouldQuit, true);
     atomic_store(&hasQuit, true);
     return EXIT_SUCCESS;
 }
@@ -233,13 +240,12 @@ void terminal_deinit(void)
     {
         asm volatile("pause");
     }
-    close(stdin[0]);
-    close(stdin[1]);
-    close(stdout[0]);
-    close(stdout[1]);
-    close(STDIN_FILENO);
-    close(STDOUT_FILENO);
     win_free(terminal);
+}
+
+bool terminal_should_quit(void)
+{
+    return atomic_load(&shouldQuit);
 }
 
 void terminal_clear(void)
