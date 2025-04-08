@@ -44,8 +44,6 @@ typedef struct
 
 #define NEVER ((nsec_t)UINT64_MAX)
 
-#define IOCTL_PROC_KILL 0
-
 nsec_t uptime(void);
 
 uint64_t sleep(nsec_t nanoseconds);

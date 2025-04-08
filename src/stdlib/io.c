@@ -1,9 +1,11 @@
 #include "platform/platform.h"
 #if _PLATFORM_HAS_FILE_IO
 
+#include <stdarg.h>
 #include <stdlib.h>
 #include <sys/io.h>
 
+#include "common/print.h"
 #include "platform/platform.h"
 
 dir_list_t* allocdir(const char* path)
@@ -58,6 +60,43 @@ uint64_t read(fd_t fd, void* buffer, uint64_t count)
 uint64_t write(fd_t fd, const void* buffer, uint64_t count)
 {
     return _PlatformWrite(fd, buffer, count);
+}
+
+uint64_t writef(fd_t fd, const char* _RESTRICT format, ...)
+{
+    typedef struct
+    {
+        fd_t fd;
+        char buffer[MAX_PATH];
+        uint64_t count;
+    } writef_ctx_t;
+
+    void put_func(char chr, void* context)
+    {
+        writef_ctx_t* ctx = (writef_ctx_t*)context;
+
+        if (ctx->count >= MAX_PATH)
+        {
+            _PlatformWrite(ctx->fd, ctx->buffer, ctx->count);
+            ctx->count = 0;
+        }
+        ctx->buffer[ctx->count++] = chr;
+    }
+
+    writef_ctx_t ctx = {
+        .fd = fd,
+        .count = 0,
+    };
+
+    va_list args;
+    va_start(args, format);
+    int result = _Print(put_func, &ctx, format, args);
+    if (ctx.count > 0)
+    {
+        _PlatformWrite(fd, ctx.buffer, ctx.count);
+    }
+    va_end(args);
+    return result;
 }
 
 uint64_t seek(fd_t fd, int64_t offset, seek_origin_t origin)

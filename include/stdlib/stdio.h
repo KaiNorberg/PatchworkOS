@@ -22,10 +22,6 @@ char* vasprintf(const char* _RESTRICT format, va_list args);
 int printf(const char* _RESTRICT format, ...);
 int vprintf(const char* _RESTRICT format, va_list args);
 
-// These are slightly different then standard due to the usage of the fd_t type.
-int dprintf(fd_t fd, const char* _RESTRICT format, ...);
-int vdprintf(fd_t fd, const char* _RESTRICT format, va_list args);
-
 #if defined(__cplusplus)
 }
 #endif

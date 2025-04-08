@@ -70,21 +70,17 @@ static void argv_deinit(argv_t* argv)
     free(argv->buffer);
 }
 
-static uint64_t process_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
+static uint64_t process_write(file_t* file, const void* buffer, uint64_t count)
 {
     process_t* process = file->resource->private;
 
-    switch (request)
-    {
-    case IOCTL_PROC_KILL:
+    if (strncmp(buffer, "kill", count) == 0)
     {
         atomic_store(&process->dead, true);
     }
-    break;
-    default:
+    else
     {
         return ERROR(EREQ);
-    }
     }
 
     return 0;
@@ -96,7 +92,8 @@ static void process_cleanup(file_t* file)
 }
 
 static file_ops_t fileOps = {
-    .ioctl = process_ioctl,
+    .write = process_write,
+    .cleanup = process_cleanup,
 };
 
 static file_t* process_open(volume_t* volume, resource_t* resource)
@@ -114,7 +111,7 @@ static file_t* process_open(volume_t* volume, resource_t* resource)
 static void process_on_free(resource_t* resource)
 {
     process_t* process = resource->private;
-    vfs_context_deinit(&process->vfsContext);
+    // vfs_context_deinit() is in process_free
     space_deinit(&process->space);
     argv_deinit(&process->argv);
     free(process);
@@ -162,6 +159,7 @@ static process_t* process_new(const char** argv, const char* cwd)
 static void process_free(process_t* process)
 {
     sysfs_hide(process->resource);
+    vfs_context_deinit(&process->vfsContext); // Here instead of in process_on_free
 }
 
 static thread_t* process_thread_new(process_t* process, void* entry, priority_t priority)

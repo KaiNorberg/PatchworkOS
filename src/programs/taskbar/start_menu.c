@@ -19,7 +19,7 @@ void start_menu_close(void)
         return;
     }
 
-    ioctl(procFile, IOCTL_PROC_KILL, NULL, 0);
+    writef(procFile, "kill");
 
     close(procFile);
 }

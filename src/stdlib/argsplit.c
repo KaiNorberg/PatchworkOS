@@ -102,29 +102,9 @@ static uint64_t _ArgsplitCountCharsAndArgs(const char* str, uint64_t* argc, uint
     return 0;
 }
 
-const char** argsplit(const char* str, uint64_t* count)
+static const char** _ArgsplitBackend(char** argv, const char* str, uint64_t argc)
 {
-    while (isspace(*str))
-    {
-        str++;
-    }
-
-    uint64_t argc;
-    uint64_t totalChars;
-    if (_ArgsplitCountCharsAndArgs(str, &argc, &totalChars) == UINT64_MAX)
-    {
-        return NULL;
-    }
-
     uint64_t argvSize = sizeof(char*) * (argc + 1);
-    uint64_t stringsSize = totalChars + argc;
-
-    char** argv = malloc(argvSize + stringsSize);
-    if (argv == NULL)
-    {
-        return NULL;
-    }
-
     char* strings = (char*)((uintptr_t)argv + argvSize);
     argv[0] = strings;
     argv[argc] = NULL;
@@ -155,9 +135,64 @@ const char** argsplit(const char* str, uint64_t* count)
         *out++ = '\0';
     }
 
+    return (const char**)argv;
+}
+
+const char** argsplit(const char* str, uint64_t* count)
+{
+    while (isspace(*str))
+    {
+        str++;
+    }
+
+    uint64_t argc;
+    uint64_t totalChars;
+    if (_ArgsplitCountCharsAndArgs(str, &argc, &totalChars) == UINT64_MAX)
+    {
+        return NULL;
+    }
+
+    uint64_t argvSize = sizeof(char*) * (argc + 1);
+    uint64_t stringsSize = totalChars + argc;
+
+    char** argv = malloc(argvSize + stringsSize);
+    if (argv == NULL)
+    {
+        return NULL;
+    }
     if (count != NULL)
     {
         *count = argc;
     }
-    return (const char**)argv;
+
+    return _ArgsplitBackend(argv, str, argc);
+}
+
+const char** argsplit_buf(void* buf, uint64_t size, const char* str, uint64_t* count)
+{
+    while (isspace(*str))
+    {
+        str++;
+    }
+
+    uint64_t argc;
+    uint64_t totalChars;
+    if (_ArgsplitCountCharsAndArgs(str, &argc, &totalChars) == UINT64_MAX)
+    {
+        return NULL;
+    }
+
+    uint64_t argvSize = sizeof(char*) * (argc + 1);
+    uint64_t stringsSize = totalChars + argc;
+
+    if (size < argvSize + stringsSize)
+    {
+        return NULL;
+    }
+    if (count != NULL)
+    {
+        *count = argc;
+    }
+
+    return _ArgsplitBackend(buf, str, argc);
 }

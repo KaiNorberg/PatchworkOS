@@ -172,6 +172,25 @@ int strcmp(const char* a, const char* b)
     return (*((unsigned char*)a) - *((unsigned char*)b));
 }
 
+int strncmp(const char* a, const char* b, size_t count)
+{
+    while (count && *a && (*a == *b))
+    {
+        ++a;
+        ++b;
+        --count;
+    }
+
+    if (count == 0)
+    {
+        return 0;
+    }
+    else
+    {
+        return (*(unsigned char*)a - *(unsigned char*)b);
+    }
+}
+
 char* strchr(const char* str, int ch)
 {
     do
@@ -201,6 +220,33 @@ char* strrchr(const char* str, int ch)
             return (char*)str + i;
         }
     } while (i);
+
+    return NULL;
+}
+
+char* strstr(const char* a, const char* b)
+{
+    const char* p1 = a;
+    const char* p2;
+
+    while (*a)
+    {
+        p2 = b;
+
+        while (*p2 && (*p1 == *p2))
+        {
+            ++p1;
+            ++p2;
+        }
+
+        if (!*p2)
+        {
+            return (char*)a;
+        }
+
+        ++a;
+        p1 = a;
+    }
 
     return NULL;
 }

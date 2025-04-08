@@ -12,6 +12,8 @@ extern "C"
 
 const char** argsplit(const char* str, uint64_t* count);
 
+const char** argsplit_buf(void* buf, uint64_t size, const char* str, uint64_t* count);
+
 #if defined(__cplusplus)
 }
 #endif

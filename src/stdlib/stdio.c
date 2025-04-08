@@ -193,45 +193,6 @@ int vprintf(const char* _RESTRICT format, va_list args)
     return _Print(put_func, NULL, format, args);
 }
 
-int dprintf(fd_t fd, const char* _RESTRICT format, ...)
-{
-    typedef struct
-    {
-        fd_t fd;
-    } dprintf_ctx_t;
-
-    void put_func(char chr, void* context)
-    {
-        dprintf_ctx_t* ctx = (dprintf_ctx_t*)context;
-        write(ctx->fd, &chr, 1);
-    }
-
-    dprintf_ctx_t ctx = {fd};
-    va_list args;
-    va_start(args, format);
-    int result = _Print(put_func, &ctx, format, args);
-    va_end(args);
-
-    return result;
-}
-
-int vdprintf(fd_t fd, const char* _RESTRICT format, va_list args)
-{
-    typedef struct
-    {
-        fd_t fd;
-    } vdprintf_ctx_t;
-
-    void put_func(char chr, void* context)
-    {
-        vdprintf_ctx_t* ctx = (vdprintf_ctx_t*)context;
-        write(ctx->fd, &chr, 1);
-    }
-
-    vdprintf_ctx_t ctx = {fd};
-    return _Print(put_func, &ctx, format, args);
-}
-
 #endif // #ifndef __KERNEL__
 
 #ifdef __KERNEL__
