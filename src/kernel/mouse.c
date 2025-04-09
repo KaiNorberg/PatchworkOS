@@ -36,28 +36,12 @@ static wait_queue_t* mouse_poll(file_t* file, poll_file_t* pollFile)
     return &mouse->waitQueue;
 }
 
-static void mouse_cleanup(file_t* file)
-{
-    SYSFS_CLEANUP(file);
-}
-
 static file_ops_t fileOps = {
     .read = mouse_read,
     .poll = mouse_poll,
-    .cleanup = mouse_cleanup,
 };
 
-static file_t* mouse_open(volume_t* volume, resource_t* resource)
-{
-    file_t* file = file_new(volume);
-    if (file == NULL)
-    {
-        return NULL;
-    }
-    file->ops = &fileOps;
-
-    return file;
-}
+SYSFS_STANDARD_RESOURCE_OPEN(mouse_open, &fileOps);
 
 static void mouse_on_free(resource_t* resource)
 {
@@ -67,6 +51,7 @@ static void mouse_on_free(resource_t* resource)
 
 static resource_ops_t resOps = {
     .open = mouse_open,
+    .onFree = mouse_on_free,
 };
 
 mouse_t* mouse_new(const char* name)

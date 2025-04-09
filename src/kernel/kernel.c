@@ -63,6 +63,7 @@ void kernel_init(boot_info_t* bootInfo)
     vfs_init();
     sysfs_init();
     ramfs_init(&bootInfo->ramDisk);
+    log_expose();
 
     sched_init();
 

@@ -10,6 +10,7 @@
 #include "smp.h"
 #include "systime.h"
 
+#include <ring.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -22,7 +23,7 @@
 #include <common/version.h>
 
 static char buffer[LOG_BUFFER_LENGTH];
-static uint64_t writeIndex;
+static ring_t ring;
 
 static gfx_t gfx;
 static point_t point;
@@ -88,7 +89,7 @@ static void log_draw_string(const char* str)
 
 void log_init(void)
 {
-    writeIndex = 0;
+    ring_init(&ring, buffer, LOG_BUFFER_LENGTH);
     screenEnabled = false;
     timeEnabled = false;
     lock_init(&lock);
@@ -99,7 +100,7 @@ void log_init(void)
 #endif
 
     printf(OS_NAME " - " OS_VERSION "");
-    printf("Licensed under GPLv3. See www.gnu.org/licenses/gpl-3.0.html.");
+    printf("Licensed under MIT. See home:/usr/license/LICENSE.");
 }
 
 void log_enable_screen(gop_buffer_t* gopBuffer)
@@ -140,6 +141,26 @@ bool log_time_enabled(void)
     return timeEnabled;
 }
 
+static uint64_t log_read(file_t* file, void* buffer, uint64_t count)
+{
+    LOCK_DEFER(&lock);
+
+    uint64_t result = ring_read_at(&ring, file->pos, buffer, count);
+    file->pos += result;
+    return result;
+}
+
+static file_ops_t fileOps = {
+    .read = log_read,
+};
+
+SYSFS_STANDARD_RESOURCE_OPS(resOps, &fileOps);
+
+void log_expose(void)
+{
+    sysfs_expose("/", "klog", &resOps, NULL);
+}
+
 void log_write(const char* str)
 {
     LOCK_DEFER(&lock);
@@ -151,9 +172,7 @@ void log_write(const char* str)
         com_write(COM1, *ptr);
 #endif
 
-        buffer[writeIndex] = *ptr;
-        writeIndex = (writeIndex + 1) % LOG_BUFFER_LENGTH;
-
+        ring_write(&ring, ptr, 1);
         ptr++;
     }
 

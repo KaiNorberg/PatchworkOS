@@ -3,8 +3,8 @@
 
 #include <stdatomic.h>
 #include <stdbool.h>
-#include <threads.h>
 #include <sys/proc.h>
+#include <threads.h>
 
 #include "common/thread.h"
 

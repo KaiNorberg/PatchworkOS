@@ -36,28 +36,12 @@ static wait_queue_t* kbd_poll(file_t* file, poll_file_t* pollFile)
     return &kbd->waitQueue;
 }
 
-static void kbd_cleanup(file_t* file)
-{
-    SYSFS_CLEANUP(file);
-}
-
 static file_ops_t fileOps = {
     .read = kbd_read,
     .poll = kbd_poll,
-    .cleanup = kbd_cleanup,
 };
 
-static file_t* kbd_open(volume_t* volume, resource_t* resource)
-{
-    file_t* file = file_new(volume);
-    if (file == NULL)
-    {
-        return NULL;
-    }
-    file->ops = &fileOps;
-
-    return file;
-}
+SYSFS_STANDARD_RESOURCE_OPEN(kbd_open, &fileOps);
 
 static void kbd_on_free(resource_t* resource)
 {

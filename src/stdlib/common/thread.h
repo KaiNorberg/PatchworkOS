@@ -2,12 +2,12 @@
 #include "../platform/platform.h"
 #if _PLATFORM_HAS_SCHEDULING
 
+#include <errno.h>
 #include <stdatomic.h>
 #include <stdbool.h>
-#include <threads.h>
-#include <errno.h>
-#include <sys/proc.h>
 #include <sys/list.h>
+#include <sys/proc.h>
+#include <threads.h>
 
 typedef struct _Thread
 {

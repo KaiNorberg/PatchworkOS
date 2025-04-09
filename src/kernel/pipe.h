@@ -7,6 +7,7 @@
 
 typedef struct
 {
+    void* buffer;
     ring_t ring;
     bool readClosed;
     bool writeClosed;

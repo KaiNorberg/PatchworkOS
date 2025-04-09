@@ -1,30 +1,26 @@
 #pragma once
 
-#include "pmm.h"
+#include "defs.h"
 
 #include <stdint.h>
-
-#define RING_SIZE 100
+#include <string.h>
 
 typedef struct
 {
     void* buffer;
+    uint64_t size;
     uint64_t readIndex;
     uint64_t writeIndex;
     uint64_t dataLength;
 } ring_t;
 
-static inline void ring_init(ring_t* ring)
+static inline void ring_init(ring_t* ring, void* buffer, uint64_t size)
 {
-    ring->buffer = pmm_alloc();
+    ring->buffer = buffer;
+    ring->size = size;
     ring->readIndex = 0;
     ring->writeIndex = 0;
     ring->dataLength = 0;
-}
-
-static inline void ring_deinit(ring_t* ring)
-{
-    pmm_free(ring->buffer);
 }
 
 static inline uint64_t ring_data_length(ring_t* ring)
@@ -34,7 +30,7 @@ static inline uint64_t ring_data_length(ring_t* ring)
 
 static inline uint64_t ring_free_length(ring_t* ring)
 {
-    return RING_SIZE - ring->dataLength;
+    return ring->size - ring->dataLength;
 }
 
 static inline uint64_t ring_write(ring_t* ring, const void* buffer, uint64_t count)
@@ -44,7 +40,14 @@ static inline uint64_t ring_write(ring_t* ring, const void* buffer, uint64_t cou
         return ERR;
     }
 
-    uint64_t upperHalfSize = RING_SIZE - ring->writeIndex;
+    if (count > ring_free_length(ring))
+    {
+        uint64_t overflow = count - ring_free_length(ring);
+        ring->readIndex = (ring->readIndex + overflow) % ring->size;
+        ring->dataLength -= overflow;
+    }
+
+    uint64_t upperHalfSize = ring->size - ring->writeIndex;
     if (count < upperHalfSize)
     {
         memcpy((void*)((uint64_t)ring->buffer + ring->writeIndex), buffer, count);
@@ -57,7 +60,7 @@ static inline uint64_t ring_write(ring_t* ring, const void* buffer, uint64_t cou
         memcpy(ring->buffer, (void*)((uint64_t)buffer + upperHalfSize), lowerHalfSize);
     }
 
-    ring->writeIndex = (ring->writeIndex + count) % RING_SIZE;
+    ring->writeIndex = (ring->writeIndex + count) % ring->size;
     ring->dataLength += count;
 
     return count;
@@ -70,7 +73,7 @@ static inline uint64_t ring_read(ring_t* ring, void* buffer, uint64_t count)
         return ERR;
     }
 
-    uint64_t upperHalfSize = RING_SIZE - ring->readIndex;
+    uint64_t upperHalfSize = ring->size - ring->readIndex;
     if (count < upperHalfSize)
     {
         memcpy(buffer, (void*)((uint64_t)ring->buffer + ring->readIndex), count);
@@ -83,8 +86,35 @@ static inline uint64_t ring_read(ring_t* ring, void* buffer, uint64_t count)
         memcpy((void*)((uint64_t)buffer + upperHalfSize), ring->buffer, lowerHalfSize);
     }
 
-    ring->readIndex = (ring->readIndex + count) % RING_SIZE;
+    ring->readIndex = (ring->readIndex + count) % ring->size;
     ring->dataLength -= count;
+
+    return count;
+}
+
+static inline uint64_t ring_read_at(const ring_t* ring, uint64_t offset, void* buffer, uint64_t count)
+{
+    uint64_t availableBytes = (offset >= ring->dataLength) ? 0 : (ring->dataLength - offset);
+    count = (count > availableBytes) ? availableBytes : count;
+
+    if (count == 0)
+    {
+        return 0;
+    }
+
+    uint64_t pos = (ring->readIndex + offset) % ring->size;
+
+    uint64_t upperHalfSize = ring->size - pos;
+    if (count < upperHalfSize)
+    {
+        memcpy(buffer, (void*)((uint64_t)ring->buffer + pos), count);
+    }
+    else
+    {
+        memcpy(buffer, (void*)((uint64_t)ring->buffer + pos), upperHalfSize);
+        uint64_t lowerHalfSize = count - upperHalfSize;
+        memcpy((void*)((uint64_t)buffer + upperHalfSize), ring->buffer, lowerHalfSize);
+    }
 
     return count;
 }

@@ -7,6 +7,8 @@
 
 #define LOADER_SPLIT_MAX_ARGS 4
 
+#define LOADER_STACK_ADDRESS(tid) (VMM_LOWER_HALF_MAX - (CONFIG_USER_STACK * ((tid) + 1)) - (PAGE_SIZE * ((tid) + 1)))
+
 typedef struct
 {
     char cwd[MAX_PATH];

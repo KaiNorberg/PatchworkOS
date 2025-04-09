@@ -18,7 +18,7 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count)
         return ERROR(EACCES);
     }
 
-    if (count >= RING_SIZE)
+    if (count >= PAGE_SIZE)
     {
         return ERROR(EINVAL);
     }
@@ -50,7 +50,7 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count)
         return ERROR(EACCES);
     }
 
-    if (count >= RING_SIZE)
+    if (count >= PAGE_SIZE)
     {
         return ERROR(EINVAL);
     }
@@ -85,10 +85,95 @@ static wait_queue_t* pipe_poll(file_t* file, poll_file_t* pollFile)
     return &private->waitQueue;
 }
 
-static void pipe_cleanup(file_t* file)
-{
-    SYSFS_CLEANUP(file);
+static file_ops_t fileOps = {
+    .read = pipe_read,
+    .write = pipe_write,
+    .poll = pipe_poll,
+};
 
+static file_t* pipe_open(volume_t* volume, resource_t* resource)
+{
+    pipe_private_t* private = malloc(sizeof(pipe_private_t));
+    if (private == NULL)
+    {
+        return NULL;
+    }
+    private->buffer = pmm_alloc();
+    if (private->buffer == NULL)
+    {
+        free(private);
+        return NULL;
+    }
+    ring_init(&private->ring, private->buffer, PAGE_SIZE);
+    private->readClosed = false;
+    private->writeClosed = false;
+    wait_queue_init(&private->waitQueue);
+    lock_init(&private->lock);
+
+    file_t* file = file_new(volume);
+    if (file == NULL)
+    {
+        free(private->buffer);
+        free(private);
+        return NULL;
+    }
+    file->ops = &fileOps;
+
+    private->readEnd = file;
+    private->writeEnd = file;
+
+    file->private = private;
+    return file;
+}
+
+static uint64_t pipe_open2(volume_t* volume, resource_t* resource, file_t* files[2])
+{
+    pipe_private_t* private = malloc(sizeof(pipe_private_t));
+    if (private == NULL)
+    {
+        return ERR;
+    }
+    private->buffer = pmm_alloc();
+    if (private->buffer == NULL)
+    {
+        free(private);
+        return ERR;
+    }
+    ring_init(&private->ring, private->buffer, PAGE_SIZE);
+    private->readClosed = false;
+    private->writeClosed = false;
+    wait_queue_init(&private->waitQueue);
+    lock_init(&private->lock);
+
+    files[0] = file_new(volume);
+    if (files[0] == NULL)
+    {
+        free(private->buffer);
+        free(private);
+        return ERR;
+    }
+    files[0]->ops = &fileOps;
+
+    files[1] = file_new(volume);
+    if (files[1] == NULL)
+    {
+        free(private->buffer);
+        free(private);
+        return ERR;
+    }
+    files[1]->ops = &fileOps;
+
+    private->readEnd = files[PIPE_READ];
+    private->writeEnd = files[PIPE_WRITE];
+
+    files[0]->private = private;
+    files[1]->private = private;
+
+    return 0;
+}
+
+static void pipe_on_cleanup(resource_t* resource, file_t* file)
+{
     pipe_private_t* private = file->private;
     lock_acquire(&private->lock);
     if (private->readEnd == file)
@@ -104,8 +189,8 @@ static void pipe_cleanup(file_t* file)
     if (private->writeClosed && private->readClosed)
     {
         lock_release(&private->lock);
-        ring_deinit(&private->ring);
         wait_queue_deinit(&private->waitQueue);
+        free(private->buffer);
         free(private);
         return;
     }
@@ -113,77 +198,10 @@ static void pipe_cleanup(file_t* file)
     lock_release(&private->lock);
 }
 
-static file_ops_t fileOps = {
-    .read = pipe_read,
-    .write = pipe_write,
-    .poll = pipe_poll,
-    .cleanup = pipe_cleanup,
-};
-
-static file_t* pipe_open(volume_t* volume, resource_t* resource)
-{
-    file_t* file = file_new(volume);
-    if (file == NULL)
-    {
-        return NULL;
-    }
-    file->ops = &fileOps;
-
-    pipe_private_t* private = malloc(sizeof(pipe_private_t));
-    if (private == NULL)
-    {
-        return NULL;
-    }
-    ring_init(&private->ring);
-    private->readClosed = false;
-    private->writeClosed = false;
-    wait_queue_init(&private->waitQueue);
-    lock_init(&private->lock);
-    private->readEnd = file;
-    private->writeEnd = file;
-
-    file->private = private;
-    return file;
-}
-
-static uint64_t pipe_open2(volume_t* volume, resource_t* resource, file_t* files[2])
-{
-    files[0] = file_new(volume);
-    if (files[0] == NULL)
-    {
-        return ERR;
-    }
-    files[0]->ops = &fileOps;
-
-    files[1] = file_new(volume);
-    if (files[1] == NULL)
-    {
-        return ERR;
-    }
-    files[1]->ops = &fileOps;
-
-    pipe_private_t* private = malloc(sizeof(pipe_private_t));
-    if (private == NULL)
-    {
-        return ERR;
-    }
-    ring_init(&private->ring);
-    private->readClosed = false;
-    private->writeClosed = false;
-    wait_queue_init(&private->waitQueue);
-    lock_init(&private->lock);
-    private->readEnd = files[PIPE_READ];
-    private->writeEnd = files[PIPE_WRITE];
-
-    files[0]->private = private;
-    files[1]->private = private;
-
-    return 0;
-}
-
 static resource_ops_t resOps = {
     .open = pipe_open,
     .open2 = pipe_open2,
+    .onCleanup = pipe_on_cleanup,
 };
 
 void pipe_init(void)

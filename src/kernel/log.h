@@ -30,6 +30,8 @@ void log_enable_time(void);
 
 bool log_time_enabled(void);
 
+void log_expose(void);
+
 void log_write(const char* str);
 
 NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...);

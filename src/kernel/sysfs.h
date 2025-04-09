@@ -11,30 +11,35 @@
 
 typedef file_t* (*resource_open_t)(volume_t*, resource_t*);
 typedef uint64_t (*resource_open2_t)(volume_t*, resource_t*, file_t* [2]);
+typedef void (*resource_on_cleanup_t)(resource_t*, file_t* file);
 typedef void (*resource_on_free_t)(resource_t*);
 
-// Yhis must be called in all file cleanup functions.
-// Also note that it frees the resource struct if its reference count reaches 0.
-// Returns true if the resource has been freed, false otherwise.
-#define SYSFS_CLEANUP(file) \
-    ({ \
-        uint64_t ref = atomic_fetch_sub(&(file)->resource->ref, 1); \
-        bool result = ref <= 1; \
-        if (result) \
+// Avoid code duplication by using the standard functions when possible
+
+#define SYSFS_STANDARD_RESOURCE_OPEN(name, fileOps) \
+    static file_t* name(volume_t* volume, resource_t* resource) \
+    { \
+        file_t* file = file_new(volume); \
+        if (file == NULL) \
         { \
-            if ((file)->resource->ops->onFree != NULL) \
-            { \
-                (file)->resource->ops->onFree((file)->resource); \
-            } \
-            free((file)->resource); \
+            return NULL; \
         } \
-        result; \
-    })
+        file->ops = fileOps; \
+        file->private = resource->private; \
+        return file; \
+    }
+
+#define SYSFS_STANDARD_RESOURCE_OPS(name, fileOps) \
+    SYSFS_STANDARD_RESOURCE_OPEN(name##_standard_open, fileOps) \
+    static resource_ops_t name = { \
+        .open = name##_standard_open, \
+    };
 
 typedef struct resource_ops
 {
     resource_open_t open;
     resource_open2_t open2;
+    resource_on_cleanup_t onCleanup;
     resource_on_free_t onFree;
 } resource_ops_t;
 

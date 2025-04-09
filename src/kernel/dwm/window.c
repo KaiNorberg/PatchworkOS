@@ -12,14 +12,6 @@
 #include <sys/gfx.h>
 #include <sys/math.h>
 
-static void window_cleanup(file_t* file)
-{
-    window_t* window = file->private;
-
-    window->cleanup(window);
-    window_free(window);
-}
-
 static uint64_t window_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
 {
     window_t* window = file->private;
@@ -125,7 +117,7 @@ static wait_queue_t* window_poll(file_t* file, poll_file_t* pollFile)
     return &window->messages.waitQueue;
 }
 
-window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, dwm_type_t type, void (*cleanup)(window_t*))
+window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, dwm_type_t type)
 {
     if (type < 0 || type > DWM_MAX)
     {
@@ -144,7 +136,6 @@ window_t* window_new(const point_t* pos, uint32_t width, uint32_t height, dwm_ty
     window->invalid = false;
     window->moved = true;
     window->prevRect = RECT_INIT_DIM(0, 0, 0, 0);
-    window->cleanup = cleanup;
     lock_init(&window->lock);
     msg_queue_init(&window->messages);
 
@@ -159,7 +150,6 @@ void window_free(window_t* window)
 }
 
 static file_ops_t fileOps = {
-    .cleanup = window_cleanup,
     .ioctl = window_ioctl,
     .flush = window_flush,
     .poll = window_poll,

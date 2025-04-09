@@ -39,6 +39,7 @@ typedef struct fs
 typedef uint64_t (*volume_unmount_t)(volume_t*);
 typedef file_t* (*volume_open_t)(volume_t*, const char*);
 typedef uint64_t (*volume_open2_t)(volume_t*, const char*, file_t* [2]);
+typedef void (*volume_cleanup_t)(volume_t*, file_t*);
 typedef uint64_t (*volume_stat_t)(volume_t*, const char*, stat_t*);
 typedef uint64_t (*volume_listdir_t)(volume_t*, const char*, dir_entry_t*, uint64_t);
 
@@ -47,6 +48,7 @@ typedef struct volume_ops
     volume_unmount_t unmount;
     volume_open_t open;
     volume_open2_t open2;
+    volume_cleanup_t cleanup;
     volume_stat_t stat;
     volume_listdir_t listdir;
 } volume_ops_t;
@@ -61,7 +63,6 @@ typedef struct volume
 
 typedef struct wait_queue wait_queue_t;
 
-typedef void (*file_cleanup_t)(file_t*);
 typedef uint64_t (*file_read_t)(file_t*, void*, uint64_t);
 typedef uint64_t (*file_write_t)(file_t*, const void*, uint64_t);
 typedef uint64_t (*file_seek_t)(file_t*, int64_t, seek_origin_t);
@@ -72,7 +73,6 @@ typedef wait_queue_t* (*file_poll_t)(file_t*, poll_file_t*);
 
 typedef struct file_ops
 {
-    file_cleanup_t cleanup;
     file_read_t read;
     file_write_t write;
     file_seek_t seek;

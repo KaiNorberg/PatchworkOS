@@ -69,9 +69,9 @@ void file_deref(file_t* file)
 {
     if (atomic_fetch_sub(&file->ref, 1) <= 1)
     {
-        if (file->ops->cleanup != NULL)
+        if (file->volume->ops->cleanup != NULL)
         {
-            file->ops->cleanup(file);
+            file->volume->ops->cleanup(file->volume, file);
         }
         if (file->volume != NULL)
         {

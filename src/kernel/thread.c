@@ -91,27 +91,11 @@ static uint64_t process_write(file_t* file, const void* buffer, uint64_t count)
     return 0;
 }
 
-static void process_cleanup(file_t* file)
-{
-    SYSFS_CLEANUP(file);
-}
-
 static file_ops_t fileOps = {
     .write = process_write,
-    .cleanup = process_cleanup,
 };
 
-static file_t* process_open(volume_t* volume, resource_t* resource)
-{
-    file_t* file = file_new(volume);
-    if (file == NULL)
-    {
-        return NULL;
-    }
-    file->ops = &fileOps;
-
-    return file;
-}
+SYSFS_STANDARD_RESOURCE_OPEN(process_open, &fileOps);
 
 static void process_on_free(resource_t* resource)
 {

@@ -55,53 +55,9 @@ static file_ops_t nullOps = {
     .write = const_null_write,
 };
 
-static file_t* const_one_open(volume_t* volume, resource_t* resource)
-{
-    file_t* file = file_new(volume);
-    if (file == NULL)
-    {
-        return NULL;
-    }
-    file->ops = &oneOps;
-
-    return file;
-}
-
-static resource_ops_t oneResOps = {
-    .open = const_one_open,
-};
-
-static file_t* const_zero_open(volume_t* volume, resource_t* resource)
-{
-    file_t* file = file_new(volume);
-    if (file == NULL)
-    {
-        return NULL;
-    }
-    file->ops = &zeroOps;
-
-    return file;
-}
-
-static resource_ops_t zeroResOps = {
-    .open = const_zero_open,
-};
-
-static file_t* const_null_open(volume_t* volume, resource_t* resource)
-{
-    file_t* file = file_new(volume);
-    if (file == NULL)
-    {
-        return NULL;
-    }
-    file->ops = &nullOps;
-
-    return file;
-}
-
-static resource_ops_t nullResOps = {
-    .open = const_null_open,
-};
+SYSFS_STANDARD_RESOURCE_OPS(oneResOps, &oneOps);
+SYSFS_STANDARD_RESOURCE_OPS(zeroResOps, &zeroOps);
+SYSFS_STANDARD_RESOURCE_OPS(nullResOps, &nullOps);
 
 void const_init(void)
 {

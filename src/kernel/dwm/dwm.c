@@ -406,56 +406,6 @@ static void dwm_loop(void)
     }
 }
 
-static void dwm_window_cleanup(window_t* window)
-{
-    LOCK_DEFER(&lock);
-
-    if (window == selected)
-    {
-        selected = NULL;
-    }
-
-    switch (window->type)
-    {
-    case DWM_WINDOW:
-    {
-        printf("dwm: cleanup type=window");
-        list_remove(&window->entry);
-    }
-    break;
-    case DWM_PANEL:
-    {
-        printf("dwm: cleanup type=panel");
-        list_remove(&window->entry);
-        dwm_update_client_rect_unlocked();
-    }
-    break;
-    case DWM_CURSOR:
-    {
-        printf("dwm: cleanup type=cursor");
-        cursor = NULL;
-    }
-    break;
-    case DWM_WALL:
-    {
-        printf("dwm: cleanup type=wall");
-        wall = NULL;
-    }
-    break;
-    default:
-    {
-        log_panic(NULL, "Invalid window type %d", window->type);
-    }
-    }
-
-    if (wall != NULL)
-    {
-        wall->moved = true;
-    }
-
-    dwm_redraw();
-}
-
 static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
 {
     LOCK_DEFER(&lock);
@@ -470,7 +420,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
         }
         const ioctl_dwm_create_t* create = argp;
 
-        window_t* window = window_new(&create->pos, create->width, create->height, create->type, dwm_window_cleanup);
+        window_t* window = window_new(&create->pos, create->width, create->height, create->type);
         if (window == NULL)
         {
             return ERR;
@@ -551,20 +501,71 @@ static file_ops_t fileOps = {
     .ioctl = dwm_ioctl,
 };
 
-static file_t* dwm_open(volume_t* volume, resource_t* resource)
-{
-    file_t* file = file_new(volume);
-    if (file == NULL)
-    {
-        return NULL;
-    }
-    file->ops = &fileOps;
+SYSFS_STANDARD_RESOURCE_OPEN(dwm_open, &fileOps);
 
-    return file;
+static void dwm_on_cleanup(resource_t* resource, file_t* file)
+{
+    LOCK_DEFER(&lock);
+
+    window_t* window = file->private;
+    if (window == NULL)
+    {
+        return;
+    }
+
+    if (window == selected)
+    {
+        selected = NULL;
+    }
+
+    switch (window->type)
+    {
+    case DWM_WINDOW:
+    {
+        printf("dwm: cleanup type=window");
+        list_remove(&window->entry);
+        window_free(window);
+    }
+    break;
+    case DWM_PANEL:
+    {
+        printf("dwm: cleanup type=panel");
+        list_remove(&window->entry);
+        window_free(window);
+        dwm_update_client_rect_unlocked();
+    }
+    break;
+    case DWM_CURSOR:
+    {
+        printf("dwm: cleanup type=cursor");
+        cursor = NULL;
+        window_free(window);
+    }
+    break;
+    case DWM_WALL:
+    {
+        printf("dwm: cleanup type=wall");
+        wall = NULL;
+        window_free(window);
+    }
+    break;
+    default:
+    {
+        log_panic(NULL, "Invalid window type %d", window->type);
+    }
+    }
+
+    if (wall != NULL)
+    {
+        wall->moved = true;
+    }
+
+    dwm_redraw();
 }
 
 static resource_ops_t resOps = {
     .open = dwm_open,
+    .onCleanup = dwm_on_cleanup,
 };
 
 static wait_queue_t* dwm_redraw_notifier_status(file_t* file, poll_file_t* pollFile)

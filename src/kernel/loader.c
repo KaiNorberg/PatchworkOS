@@ -93,8 +93,7 @@ static void* loader_load_program(thread_t* thread)
 
 static void* loader_allocate_stack(thread_t* thread)
 {
-    uintptr_t base = VMM_LOWER_HALF_MAX - (CONFIG_USER_STACK * (thread->id + 1)) -
-        (PAGE_SIZE * (thread->id + 1)); // We add one more page of spacing as a guard page
+    uintptr_t base = LOADER_STACK_ADDRESS(thread->id);
     if (vmm_alloc((void*)(base + PAGE_SIZE), CONFIG_USER_STACK, PROT_READ | PROT_WRITE) == NULL)
     {
         return NULL;

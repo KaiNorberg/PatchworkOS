@@ -8,6 +8,8 @@
 #include "sched.h"
 #include "smp.h"
 #include "vectors.h"
+#include "vmm.h"
+#include "loader.h"
 #include "waitsys.h"
 
 void cli_push(void)

@@ -309,7 +309,7 @@ void sched_schedule_trap(trap_frame_t* trapFrame)
         return;
     }
 
-    static nsec_t lasttime = 0;
+    /*static nsec_t lasttime = 0;
 
     if (self->id == 0 && systime_uptime() > lasttime + SEC / 10)
     {
@@ -325,7 +325,7 @@ void sched_schedule_trap(trap_frame_t* trapFrame)
         }
         printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
         lasttime = systime_uptime();
-    }
+    }*/
 
     sched_update_parked_threads(trapFrame, ctx);
     sched_update_zombie_threads(trapFrame, ctx);

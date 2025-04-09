@@ -123,11 +123,29 @@ static uint64_t sysfs_listdir(volume_t* volume, const char* path, dir_entry_t* e
     return total;
 }
 
+static void sysfs_cleanup(volume_t* volume, file_t* file)
+{
+    if (file->resource->ops->onCleanup != NULL)
+    {
+        file->resource->ops->onCleanup(file->resource, file);
+    }
+
+    if (atomic_fetch_sub(&file->resource->ref, 1) <= 1)
+    {
+        if (file->resource->ops->onFree != NULL)
+        {
+            file->resource->ops->onFree(file->resource);
+        }
+        free(file->resource);
+    }
+}
+
 static volume_ops_t volumeOps = {
     .open = sysfs_open,
     .open2 = sysfs_open2,
     .stat = sysfs_stat,
     .listdir = sysfs_listdir,
+    .cleanup = sysfs_cleanup,
 };
 
 static uint64_t sysfs_mount(const char* label)
