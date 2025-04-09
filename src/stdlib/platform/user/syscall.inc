@@ -11,7 +11,7 @@ extern _ErrnoFunc
     push rax
     call _ErrnoFunc
     pop rbx
-    mov [rax], rbx
+    mov [rax], rbx ; Set errno
 
     pop rbx
     pop rax

@@ -16,7 +16,8 @@ typedef struct
 typedef struct
 {
     thread_queue_t queues[PRIORITY_LEVELS];
-    list_t graveyard;
+    list_t parkedThreads;
+    list_t zombieThreads;
     thread_t* runThread;
 } sched_ctx_t;
 
@@ -41,5 +42,7 @@ NORETURN void sched_process_exit(uint64_t status);
 NORETURN void sched_thread_exit(void);
 
 void sched_push(thread_t* thread);
+
+void sched_timer_trap(trap_frame_t* trapFrame);
 
 void sched_schedule_trap(trap_frame_t* trapFrame);

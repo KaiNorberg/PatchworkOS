@@ -129,7 +129,7 @@ void wait_queue_deinit(wait_queue_t* waitQueue);
 
 void waitsys_ctx_init(waitsys_ctx_t* waitsys);
 
-void waitsys_update_trap(trap_frame_t* trapFrame);
+void waitsys_timer_trap(trap_frame_t* trapFrame);
 
 void waitsys_block_trap(trap_frame_t* trapFrame);
 

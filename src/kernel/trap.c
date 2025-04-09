@@ -97,8 +97,8 @@ void trap_handler(trap_frame_t* trapFrame)
     }
     else if (trapFrame->vector == VECTOR_TIMER)
     {
-        waitsys_update_trap(trapFrame);
-        sched_schedule_trap(trapFrame);
+        waitsys_timer_trap(trapFrame);
+        sched_timer_trap(trapFrame);
         lapic_eoi();
     }
     else if (trapFrame->vector == VECTOR_SCHED_SCHEDULE)

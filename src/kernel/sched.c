@@ -63,7 +63,8 @@ void sched_ctx_init(sched_ctx_t* ctx)
     {
         thread_queue_init(&ctx->queues[i]);
     }
-    list_init(&ctx->graveyard);
+    list_init(&ctx->parkedThreads);
+    list_init(&ctx->zombieThreads);
     ctx->runThread = NULL;
 }
 
@@ -103,7 +104,7 @@ static thread_t* sched_ctx_find_higher(sched_ctx_t* ctx, priority_t priority)
     return NULL;
 }
 
-static thread_t* sched_ctx_find_any(sched_ctx_t* ctx)
+static thread_t* sched_ctx_find_any_same(sched_ctx_t* ctx)
 {
     for (int64_t i = PRIORITY_MAX; i >= PRIORITY_MIN; i--)
     {
@@ -113,9 +114,35 @@ static thread_t* sched_ctx_find_any(sched_ctx_t* ctx)
             if (atomic_load(&thread->process->dead) && thread->trapFrame.cs != GDT_KERNEL_CODE)
             {
                 thread_free(thread);
-                return sched_ctx_find_any(ctx);
+                return sched_ctx_find_any_same(ctx);
             }
 
+            return thread;
+        }
+    }
+
+    return NULL;
+}
+
+static thread_t* sched_ctx_find_any(sched_ctx_t* ctx)
+{
+    thread_t* thread = sched_ctx_find_any_same(ctx);
+    if (thread != NULL)
+    {
+        return thread;
+    }
+
+    for (uint64_t i = 0; i < smp_cpu_amount(); i++)
+    {
+        sched_ctx_t* other = &smp_cpu(i)->sched;
+        if (ctx == other)
+        {
+            continue;
+        }
+
+        thread_t* thread = sched_ctx_find_any_same(other);
+        if (thread != NULL)
+        {
             return thread;
         }
     }
@@ -213,22 +240,15 @@ void sched_thread_exit(void)
 
 void sched_push(thread_t* thread)
 {
-    int64_t bestLength = INT64_MAX;
-    cpu_t* best = NULL;
     uint64_t cpuAmount = smp_cpu_amount();
+
+    uint64_t bestLength = UINT64_MAX;
+    cpu_t* best = NULL;
     for (uint64_t i = 0; i < cpuAmount; i++)
     {
         cpu_t* cpu = smp_cpu(i);
-        sched_ctx_t* ctx = &cpu->sched;
 
-        int64_t length = sched_ctx_thread_amount(ctx);
-
-        if (length == 0)
-        {
-            sched_ctx_push(&cpu->sched, thread);
-            return;
-        }
-
+        uint64_t length = sched_ctx_thread_amount(&cpu->sched);
         if (length < bestLength)
         {
             bestLength = length;
@@ -239,11 +259,25 @@ void sched_push(thread_t* thread)
     sched_ctx_push(&best->sched, thread);
 }
 
-static void sched_update_graveyard(trap_frame_t* trapFrame, sched_ctx_t* ctx)
+static void sched_update_parked_threads(trap_frame_t* trapFrame, sched_ctx_t* ctx)
 {
     while (1)
     {
-        thread_t* thread = LIST_CONTAINER_SAFE(list_pop(&ctx->graveyard), thread_t, entry);
+        thread_t* thread = LIST_CONTAINER_SAFE(list_pop(&ctx->parkedThreads), thread_t, entry);
+        if (thread == NULL)
+        {
+            break;
+        }
+
+        sched_push(thread);
+    }
+}
+
+static void sched_update_zombie_threads(trap_frame_t* trapFrame, sched_ctx_t* ctx)
+{
+    while (1)
+    {
+        thread_t* thread = LIST_CONTAINER_SAFE(list_pop(&ctx->zombieThreads), thread_t, entry);
         if (thread == NULL)
         {
             break;
@@ -255,9 +289,14 @@ static void sched_update_graveyard(trap_frame_t* trapFrame, sched_ctx_t* ctx)
     if (ctx->runThread != NULL &&
         (ctx->runThread->dead || (atomic_load(&ctx->runThread->process->dead) && trapFrame->cs != GDT_KERNEL_CODE)))
     {
-        list_push(&ctx->graveyard, &ctx->runThread->entry);
+        list_push(&ctx->zombieThreads, &ctx->runThread->entry);
         ctx->runThread = NULL;
     }
+}
+
+void sched_timer_trap(trap_frame_t* trapFrame)
+{
+    sched_schedule_trap(trapFrame);
 }
 
 void sched_schedule_trap(trap_frame_t* trapFrame)
@@ -270,7 +309,26 @@ void sched_schedule_trap(trap_frame_t* trapFrame)
         return;
     }
 
-    sched_update_graveyard(trapFrame, ctx);
+    static nsec_t lasttime = 0;
+
+    if (self->id == 0 && systime_uptime() > lasttime + SEC / 10)
+    {
+        printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+        uint64_t cpuAmount = smp_cpu_amount();
+        for (uint64_t i = 0; i < cpuAmount; i++)
+        {
+            cpu_t* cpu = smp_cpu(i);
+
+            uint64_t length = sched_ctx_thread_amount(&cpu->sched);
+            printf("cpu %d: %.*s>", i, length, "==========================================");
+        }
+        printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+        lasttime = systime_uptime();
+    }
+
+    sched_update_parked_threads(trapFrame, ctx);
+    sched_update_zombie_threads(trapFrame, ctx);
 
     if (ctx->runThread == NULL)
     {
@@ -285,7 +343,7 @@ void sched_schedule_trap(trap_frame_t* trapFrame)
         if (next != NULL)
         {
             thread_save(ctx->runThread, trapFrame);
-            sched_ctx_push(ctx, ctx->runThread);
+            list_push(&ctx->parkedThreads, &ctx->runThread->entry);
 
             thread_load(next, trapFrame);
             ctx->runThread = next;

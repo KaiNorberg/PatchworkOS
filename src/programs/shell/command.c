@@ -201,7 +201,7 @@ void command_execute(const char* command)
     }
 
     printf("error: command not found");
-    
+
 cleanup:
     dup2(stdinTemp, STDIN_FILENO);
     dup2(stdoutTemp, STDOUT_FILENO);

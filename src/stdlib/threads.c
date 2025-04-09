@@ -3,6 +3,7 @@
 
 #include <stdatomic.h>
 #include <stdbool.h>
+#include <threads.h>
 #include <sys/proc.h>
 
 #include "common/thread.h"
@@ -21,7 +22,7 @@ __attribute__((noreturn)) __attribute__((force_align_arg_pointer)) static void _
 
 int thrd_create(thrd_t* thr, thrd_start_t func, void* arg)
 {
-    _Thread_t* thread = _ThreadReserve(); // Base reference
+    _Thread_t* thread = _ThreadNew(); // Dereference base reference
     if (thread == NULL)
     {
         return thrd_error;
@@ -36,19 +37,19 @@ int thrd_create(thrd_t* thr, thrd_start_t func, void* arg)
 
     atomic_store(&thread->running, true);
 
-    thr->index = thread->index;
+    thr->thread = thread;
     return thrd_success;
 }
 
-int thread_equal(thrd_t lhs, thrd_t rhs)
+int thrd_equal(thrd_t lhs, thrd_t rhs)
 {
-    return (lhs.index == rhs.index);
+    return (lhs.thread == rhs.thread);
 }
 
 thrd_t thrd_current(void)
 {
     _Thread_t* thread = _ThreadById(gettid());
-    thrd_t thr = {.index = thread->index};
+    thrd_t thr = {.thread = thread};
 
     _ThreadUnref(thread);
     return thr;
@@ -99,11 +100,7 @@ int thrd_detach(thrd_t thr)
 
 int thrd_join(thrd_t thr, int* res)
 {
-    _Thread_t* thread = _ThreadByIndex(thr.index);
-    if (thread == NULL)
-    {
-        return thrd_error;
-    }
+    _Thread_t* thread = _ThreadRef(thr.thread);
 
     // TODO: Implement kernel side blocking for this
     while (atomic_load(&thread->running))
@@ -116,6 +113,38 @@ int thrd_join(thrd_t thr, int* res)
         *res = thread->result;
     }
     _ThreadUnref(thread);
+    return thrd_success;
+}
+
+// TODO: High priority, implement a proper user space mutex, futex?
+int mtx_init(mtx_t* mutex, int type)
+{
+    if (type != mtx_plain)
+    {
+        return thrd_error;
+    }
+
+    atomic_init(&mutex->nextTicket, 0);
+    atomic_init(&mutex->nowServing, 0);
+
+    return thrd_success;
+}
+
+int mtx_lock(mtx_t* mutex)
+{
+    int ticket = atomic_fetch_add(&mutex->nextTicket, 1);
+    while (atomic_load(&mutex->nowServing) != ticket)
+    {
+        asm volatile("pause");
+    }
+
+    return thrd_success;
+}
+
+int mtx_unlock(mtx_t* mutex)
+{
+    atomic_fetch_add(&mutex->nowServing, 1);
+
     return thrd_success;
 }
 

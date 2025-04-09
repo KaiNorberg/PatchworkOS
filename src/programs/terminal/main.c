@@ -206,7 +206,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         }
         break;
         }
-        
+
         win_draw_end(window, &gfx);
     }
     break;

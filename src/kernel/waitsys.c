@@ -62,7 +62,7 @@ static void waitsys_ctx_remove(waitsys_ctx_t* waitsys, thread_t* thread)
     list_remove(&thread->entry);
 }
 
-void waitsys_update_trap(trap_frame_t* trapFrame)
+void waitsys_timer_trap(trap_frame_t* trapFrame)
 {
     cpu_t* self = smp_self_unsafe();
     waitsys_ctx_t* waitsys = &self->waitsys;

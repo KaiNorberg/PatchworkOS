@@ -10,6 +10,9 @@
 
 void _StdInit(void)
 {
+#if _PLATFORM_HAS_SCHEDULING
+    _ThreadingInit();
+#endif
 #if _PLATFORM_HAS_FILE_IO
     if (write(STDOUT_FILENO, NULL, 0) == ERR)
     {
@@ -24,9 +27,6 @@ void _StdInit(void)
 #endif
 
     _HeapInit();
-#if _PLATFORM_HAS_SCHEDULING
-    _ThreadingInit();
-#endif
     _TimeZoneInit();
     _PlatformInit();
 }
