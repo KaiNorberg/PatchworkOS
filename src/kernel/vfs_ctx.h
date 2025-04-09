@@ -20,7 +20,7 @@ void vfs_ctx_deinit(vfs_ctx_t* ctx);
 
 fd_t vfs_ctx_open(vfs_ctx_t* ctx, file_t* file);
 
-fd_t vfs_ctx_openat(vfs_ctx_t* ctx, fd_t fd, file_t* file);
+fd_t vfs_ctx_openas(vfs_ctx_t* ctx, fd_t fd, file_t* file);
 
 uint64_t vfs_ctx_close(vfs_ctx_t* ctx, fd_t fd);
 

@@ -1,8 +1,5 @@
 #include "command.h"
 
-#include "terminal.h"
-#include "token.h"
-
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,7 +31,6 @@ static void command_cd(uint64_t argc, const char** argv)
 
 static void command_clear(uint64_t argc, const char** argv)
 {
-    terminal_clear();
 }
 
 static void command_help(uint64_t argc, const char** argv);
@@ -47,12 +43,12 @@ static command_t commands[] = {
             "If DIRECTORY is given, the current working directory will be set to DIRECTORY else it will be set to \"home:/usr\"",
         .callback = command_cd,
     },
-    {
+    /*{
         .name = "clear",
         .synopsis = "clear",
         .description = "Clears the screen",
         .callback = command_clear,
-    },
+    },*/
     {
         .name = "help",
         .synopsis = "help [COMMAND]",
@@ -78,7 +74,7 @@ static void command_help(uint64_t argc, const char** argv)
         command_t* command = NULL;
         for (uint64_t i = 0; i < sizeof(commands) / sizeof(commands[0]); i++)
         {
-            if (token_equal(argv[1], commands[i].name))
+            if (strcmp(argv[1], commands[i].name) == 0)
             {
                 command = &commands[i];
                 break;
@@ -125,10 +121,18 @@ void command_execute(const char* command)
 {
     uint64_t argc;
     const char** argv = argsplit(command, &argc);
-    if (argc == 0 || argv == NULL)
+    if (argv == NULL)
     {
-        goto end_of_func;
+        return;
     }
+    if (argc == 0)
+    {
+        free(argv);
+        return;
+    }
+
+    fd_t stdinTemp = dup(STDIN_FILENO);
+    fd_t stdoutTemp = dup(STDOUT_FILENO);
 
     for (int64_t i = 0; i < (int64_t)argc; i++)
     {
@@ -137,11 +141,16 @@ void command_execute(const char* command)
             if (i != (int64_t)argc - 2)
             {
                 printf("error: invalid command format");
-                goto end_of_func;
+                goto cleanup;
             }
-            
+
             const char* target = argv[argc - 1];
-            fd_t fd = openas(STDOUT_FILENO, target);
+            if (openas(STDOUT_FILENO, target) == ERR)
+            {
+                printf("error: failed to open %s", target);
+                goto cleanup;
+            }
+            argv[i] = NULL;
         }
     }
 
@@ -154,16 +163,16 @@ void command_execute(const char* command)
             {
                 printf("error: %s", strerror(errno));
             }
-            goto end_of_func;
+            goto cleanup;
         }
     }
 
     for (uint64_t i = 0; i < sizeof(commands) / sizeof(commands[0]); i++)
     {
-        if (token_equal(command, commands[i].name))
+        if (strcmp(argv[0], commands[i].name) == 0)
         {
             commands[i].callback(argc, argv);
-            goto end_of_func;
+            goto cleanup;
         }
     }
 
@@ -187,11 +196,16 @@ void command_execute(const char* command)
             {
                 printf("error: %s", strerror(errno));
             }
-            goto end_of_func;
+            goto cleanup;
         }
     }
 
     printf("error: command not found");
-end_of_func:
-    terminal_reset_stdio();
+    
+cleanup:
+    dup2(stdinTemp, STDIN_FILENO);
+    dup2(stdoutTemp, STDOUT_FILENO);
+    close(stdinTemp);
+    close(stdoutTemp);
+    free(argv);
 }

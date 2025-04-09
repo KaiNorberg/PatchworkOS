@@ -47,7 +47,7 @@ fd_t vfs_ctx_open(vfs_ctx_t* ctx, file_t* file)
     return ERROR(EMFILE);
 }
 
-fd_t vfs_ctx_openat(vfs_ctx_t* ctx, fd_t fd, file_t* file)
+fd_t vfs_ctx_openas(vfs_ctx_t* ctx, fd_t fd, file_t* file)
 {
     LOCK_DEFER(&ctx->lock);
 

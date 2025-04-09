@@ -81,7 +81,7 @@ static uint64_t process_write(file_t* file, const void* buffer, uint64_t count)
     }
     else if (strncmp(buffer, "wait", count) == 0)
     {
-        WAITSYS_BLOCK(&process->queue, process->dead);
+        WAITSYS_BLOCK(&process->queue, atomic_load(&process->dead));
     }
     else
     {

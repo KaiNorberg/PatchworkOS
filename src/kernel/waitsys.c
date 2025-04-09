@@ -5,8 +5,8 @@
 #include "sched.h"
 #include "smp.h"
 #include "systime.h"
-#include "vectors.h"
 #include "thread.h"
+#include "vectors.h"
 
 #include <errno.h>
 #include <stdio.h>

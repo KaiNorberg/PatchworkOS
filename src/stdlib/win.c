@@ -53,7 +53,7 @@ typedef struct widget
 } widget_t;
 
 // TODO: this should be stored in some sort of config file, lua? make something custom?
-#define WIN_DEFAULT_FONT "home:/fonts/zap-vga16.psf"
+#define WIN_DEFAULT_FONT "home:/theme/fonts/zap-vga16.psf"
 win_theme_t winTheme = {
     .edgeWidth = 3,
     .rimWidth = 3,

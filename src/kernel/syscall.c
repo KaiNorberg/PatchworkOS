@@ -22,7 +22,7 @@
 
 // TODO: Improve verify funcs, improve multithreading string safety. copy_to_user? copy_from_user?
 static bool verify_pointer(const void* pointer, uint64_t length)
-{    
+{
     if (length == 0)
     {
         return true;
@@ -163,7 +163,7 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds)
         }
         FILE_DEFER(file);
 
-        if (vfs_ctx_openat(childVfsCtx, fds[i].child, file) == ERR)
+        if (vfs_ctx_openas(childVfsCtx, fds[i].child, file) == ERR)
         {
             thread_free(thread);
             return ERROR(EBADF);
@@ -510,7 +510,7 @@ uint64_t syscall_yield(void)
     return 0;
 }
 
-fd_t syscall_openat(fd_t target, const char* path)
+fd_t syscall_openas(fd_t target, const char* path)
 {
     if (!verify_string(path))
     {
@@ -524,10 +524,10 @@ fd_t syscall_openat(fd_t target, const char* path)
     }
     FILE_DEFER(file);
 
-    return vfs_ctx_openat(&sched_process()->vfsCtx, target, file);
+    return vfs_ctx_openas(&sched_process()->vfsCtx, target, file);
 }
 
-uint64_t syscall_open2at(const char* path, fd_t fds[2])
+uint64_t syscall_open2as(const char* path, fd_t fds[2])
 {
     if (!verify_string(path))
     {
@@ -547,12 +547,12 @@ uint64_t syscall_open2at(const char* path, fd_t fds[2])
     FILE_DEFER(files[0]);
     FILE_DEFER(files[1]);
 
-    fds[0] = vfs_ctx_openat(&sched_process()->vfsCtx, fds[0], files[0]);
+    fds[0] = vfs_ctx_openas(&sched_process()->vfsCtx, fds[0], files[0]);
     if (fds[0] == ERR)
     {
         return ERR;
     }
-    fds[1] = vfs_ctx_openat(&sched_process()->vfsCtx, fds[0], files[1]);
+    fds[1] = vfs_ctx_openas(&sched_process()->vfsCtx, fds[0], files[1]);
     if (fds[1] == ERR)
     {
         return ERR;
@@ -611,8 +611,8 @@ void* syscallTable[] = {
     syscall_listdir,
     syscall_split,
     syscall_yield,
-    syscall_openat,
-    syscall_open2at,
+    syscall_openas,
+    syscall_open2as,
     syscall_dup,
     syscall_dup2,
 };

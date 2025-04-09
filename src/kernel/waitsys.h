@@ -2,8 +2,8 @@
 
 #include "lock.h"
 
-#include <sys/proc.h>
 #include <sys/list.h>
+#include <sys/proc.h>
 
 // Blocks untill condition is true, condition will be tested after every call to waitsys_unblock.
 #define WAITSYS_BLOCK(waitQueue, condition) \
@@ -114,7 +114,7 @@ typedef enum
     BLOCK_ERROR = 3
 } block_result_t;
 
-typedef struct 
+typedef struct
 {
     waitsys_ctx_t* waitsys;
     wait_queue_entry_t* waitEntries[CONFIG_MAX_BLOCKERS_PER_THREAD];
