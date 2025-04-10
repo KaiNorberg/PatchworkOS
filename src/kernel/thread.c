@@ -70,9 +70,29 @@ static void argv_deinit(argv_t* argv)
     free(argv->buffer);
 }
 
-static uint64_t process_write(file_t* file, const void* buffer, uint64_t count)
+/*static uint64_t process_kill_action(file_t* file, const char** argv, uint64_t argc)
 {
     process_t* process = file->resource->private;
+    atomic_store(&process->dead, true);
+}
+
+static uint64_t process_wait_action(file_t* file, const char** argv, uint64_t argc)
+{
+    process_t* process = file->resource->private;
+    WAITSYS_BLOCK(&process->queue, atomic_load(&process->dead));
+}
+
+static action_table_t actions = {
+    {"kill", process_kill_action, 0, 0, "Kills the process immediately"},
+    {"wait", process_wait_action, 0, 0, "Blocks until the process is killed"},
+    {0},
+};*/
+
+// ACTION_STANDARD_RESOURCE_WRITE(process_write, &actions);
+
+static uint64_t process_ctl_write(file_t* file, const void* buffer, uint64_t count)
+{
+    process_t* process = file->resource->dir->private;
 
     // TODO: Implement proper command parsing with args.
     if (strncmp(buffer, "kill", count) == 0)
@@ -91,26 +111,21 @@ static uint64_t process_write(file_t* file, const void* buffer, uint64_t count)
     return 0;
 }
 
-static file_ops_t fileOps = {
-    .write = process_write,
+static file_ops_t ctlFileOps = {
+    .write = process_ctl_write,
 };
 
-SYSFS_STANDARD_RESOURCE_OPEN(process_open, &fileOps);
+SYSFS_STANDARD_RESOURCE_OPS(ctlResOps, &ctlFileOps)
 
-static void process_on_free(resource_t* resource)
+static void process_on_free(sysdir_t* dir)
 {
-    process_t* process = resource->private;
+    process_t* process = dir->private;
     // vfs_ctx_deinit() is in process_free
     space_deinit(&process->space);
     argv_deinit(&process->argv);
     wait_queue_deinit(&process->queue);
     free(process);
 }
-
-static resource_ops_t resOps = {
-    .open = process_open,
-    .onFree = process_on_free,
-};
 
 static process_t* process_new(const char** argv, const char* cwd)
 {
@@ -127,16 +142,23 @@ static process_t* process_new(const char** argv, const char* cwd)
         return ERRPTR(ENOMEM);
     }
 
-    char idString[MAX_PATH];
-    ulltoa(process->id, idString, 10);
-    process->resource = sysfs_expose("/proc", idString, &resOps, process);
+    char dirname[MAX_PATH];
+    ulltoa(process->id, dirname, 10);
+    /*process->resource = sysfs_expose("/proc", idString, &resOps, process);
     if (process->resource == NULL)
     {
         argv_deinit(&process->argv);
         free(process);
         return NULL;
-    }
+    }*/
 
+    process->dir = sysfs_mkdir("/proc", dirname, process_on_free, process);
+    if (process->dir == NULL || sysfs_create(process->dir, "ctl", &ctlResOps, NULL) == ERR)
+    {
+        argv_deinit(&process->argv);
+        free(process);
+        return NULL;
+    }
     atomic_init(&process->dead, false);
     vfs_ctx_init(&process->vfsCtx, cwd);
     space_init(&process->space);
@@ -151,7 +173,7 @@ static void process_free(process_t* process)
 {
     vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_on_free
     waitsys_unblock(&process->queue);
-    sysfs_hide(process->resource);
+    sysfs_rmdir(process->dir);
 }
 
 static thread_t* process_thread_new(process_t* process, void* entry, priority_t priority)

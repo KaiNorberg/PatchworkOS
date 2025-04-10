@@ -20,6 +20,8 @@ typedef struct node
     char name[MAX_NAME];
 } node_t;
 
+#define NODE_CONTAINER(ptr, type, member) ((type*)((char*)(ptr) - offsetof(type, member)))
+
 static inline void node_init(node_t* node, const char* name, uint64_t type)
 {
     list_entry_init(&node->entry);

@@ -36,7 +36,7 @@ tid_t gettid(void)
 fd_t procfd(pid_t pid)
 {
     char path[MAX_PATH];
-    snprintf(path, MAX_PATH, "sys:/proc/%d", pid);
+    snprintf(path, MAX_PATH, "sys:/proc/%d/ctl", pid);
 
     return open(path);
 }

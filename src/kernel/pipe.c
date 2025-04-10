@@ -198,7 +198,7 @@ static void pipe_on_cleanup(resource_t* resource, file_t* file)
     lock_release(&private->lock);
 }
 
-static resource_ops_t resOps = {
+static resource_ops_t sysfileOps = {
     .open = pipe_open,
     .open2 = pipe_open2,
     .onCleanup = pipe_on_cleanup,
@@ -206,5 +206,5 @@ static resource_ops_t resOps = {
 
 void pipe_init(void)
 {
-    sysfs_expose("/pipe", "new", &resOps, NULL);
+    sysfs_expose("/pipe", "new", &sysfileOps, NULL);
 }

@@ -7,7 +7,7 @@ static pid_t pid = ERR;
 
 void start_menu_open(void)
 {
-    const char* argv[] = {"home:/bin/start_menu", NULL};
+    const char* argv[] = {"home:/bin/startmenu", NULL};
     pid = spawn(argv, NULL);
 }
 

@@ -12,7 +12,7 @@ int main(int argc, char** argv)
 {
     if (argc == 1)
     {
-        while (1) 
+        while (1)
         {
             char buffer[BUFFER_SIZE];
             uint64_t count = read(STDIN_FILENO, buffer, BUFFER_SIZE);
@@ -39,7 +39,7 @@ int main(int argc, char** argv)
             continue;
         }
 
-        while (1) 
+        while (1)
         {
             char buffer[BUFFER_SIZE];
             uint64_t count = read(fd, buffer, BUFFER_SIZE);

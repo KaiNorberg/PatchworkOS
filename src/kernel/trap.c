@@ -3,13 +3,13 @@
 #include "apic.h"
 #include "gdt.h"
 #include "irq.h"
+#include "loader.h"
 #include "log.h"
 #include "regs.h"
 #include "sched.h"
 #include "smp.h"
 #include "vectors.h"
 #include "vmm.h"
-#include "loader.h"
 #include "waitsys.h"
 
 void cli_push(void)
@@ -50,14 +50,14 @@ void cli_pop(void)
 
 static void exception_handler(const trap_frame_t* trapFrame)
 {
-    if (trapFrame->ss == GDT_KERNEL_DATA)
+    if (trapFrame->ss == GDT_USER_DATA && trapFrame->cs == GDT_USER_CODE)
     {
-        log_panic(trapFrame, "Exception");
+        log_panic(trapFrame, "Unhandled User Exception");
     }
     else
     {
         // TODO: Add handling for user exceptions
-        log_panic(trapFrame, "Unhandled User Exception");
+        log_panic(trapFrame, "Exception");
         // sched_process_exit(1);
     }
 }

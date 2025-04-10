@@ -32,7 +32,7 @@ typedef struct
 {
     pid_t id;
     argv_t argv;
-    resource_t* resource;
+    sysdir_t* dir;
     atomic_bool dead;
     vfs_ctx_t vfsCtx;
     space_t space;
