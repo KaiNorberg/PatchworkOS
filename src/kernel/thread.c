@@ -90,6 +90,28 @@ static action_table_t actions = {
 
 // ACTION_STANDARD_RESOURCE_WRITE(process_write, &actions);
 
+static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count)
+{
+    process_t* process = file->resource->dir->private;
+    LOCK_DEFER(&process->vfsCtx.lock);
+
+    uint64_t cwdLen = strlen(process->vfsCtx.cwd);
+    count = MIN(count, cwdLen - file->pos);
+
+    for (uint64_t i = 0; i < count; i++)
+    {
+        ((char*)buffer)[i] = process->vfsCtx.cwd[file->pos + i];
+    }
+
+    return count;
+}
+
+static file_ops_t cwdFileOps = {
+    .read = process_cwd_read,
+};
+
+SYSFS_STANDARD_RESOURCE_OPS(cwdResOps, &cwdFileOps)
+
 static uint64_t process_ctl_write(file_t* file, const void* buffer, uint64_t count)
 {
     process_t* process = file->resource->dir->private;
@@ -153,7 +175,7 @@ static process_t* process_new(const char** argv, const char* cwd)
     }*/
 
     process->dir = sysfs_mkdir("/proc", dirname, process_on_free, process);
-    if (process->dir == NULL || sysfs_create(process->dir, "ctl", &ctlResOps, NULL) == ERR)
+    if (process->dir == NULL || sysfs_create(process->dir, "ctl", &ctlResOps, NULL) == ERR || sysfs_create(process->dir, "cwd", &cwdResOps, NULL) == ERR)
     {
         argv_deinit(&process->argv);
         free(process);

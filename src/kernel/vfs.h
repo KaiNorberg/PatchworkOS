@@ -118,8 +118,6 @@ uint64_t vfs_mount(const char* label, fs_t* fs);
 
 uint64_t vfs_unmount(const char* label);
 
-uint64_t vfs_realpath(char* out, const char* path);
-
 uint64_t vfs_chdir(const char* path);
 
 file_t* vfs_open(const char* path);

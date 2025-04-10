@@ -14,22 +14,21 @@
 %define SYS_WRITE 13
 %define SYS_SEEK 14
 %define SYS_IOCTL 15
-%define SYS_REALPATH 16
-%define SYS_CHDIR 17
-%define SYS_POLL 18
-%define SYS_STAT 19
-%define SYS_MMAP 20
-%define SYS_MUNMAP 21
-%define SYS_MPROTECT 22
-%define SYS_FLUSH 23
-%define SYS_LISTDIR 24
-%define SYS_SPLIT 25
-%define SYS_YIELD 26
-%define SYS_OPENAT 27
-%define SYS_OPEN2AT 28
-%define SYS_DUP 29
-%define SYS_DUP2 30
+%define SYS_CHDIR 16
+%define SYS_POLL 17
+%define SYS_STAT 18
+%define SYS_MMAP 19
+%define SYS_MUNMAP 20
+%define SYS_MPROTECT 21
+%define SYS_FLUSH 22
+%define SYS_LISTDIR 23
+%define SYS_SPLIT 24
+%define SYS_YIELD 25
+%define SYS_OPENAT 26
+%define SYS_OPEN2AT 27
+%define SYS_DUP 28
+%define SYS_DUP2 29
 
-%define SYS_TOTAL_AMOUNT 31
+%define SYS_TOTAL_AMOUNT 30
 
 %define SYSCALL_VECTOR 0x80

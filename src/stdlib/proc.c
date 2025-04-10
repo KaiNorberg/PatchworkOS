@@ -33,10 +33,10 @@ tid_t gettid(void)
     return _PlatformGettid();
 }
 
-fd_t procfd(pid_t pid)
+fd_t procfd(pid_t pid, const char* file)
 {
     char path[MAX_PATH];
-    snprintf(path, MAX_PATH, "sys:/proc/%d/ctl", pid);
+    snprintf(path, MAX_PATH, "sys:/proc/%d/%s", pid, file);
 
     return open(path);
 }

@@ -110,7 +110,7 @@ static uint64_t command_spawn(const char** argv)
         return ERR;
     }
 
-    fd_t child = procfd(pid);
+    fd_t child = procfd(pid, "ctl");
     writef(child, "wait");
     close(child);
 

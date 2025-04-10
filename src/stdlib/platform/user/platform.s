@@ -62,11 +62,6 @@ _PlatformRead:
     SYSTEM_CALL SYS_READ
     ret
 
-global _PlatformRealpath
-_PlatformRealpath:
-    SYSTEM_CALL SYS_REALPATH
-    ret
-
 global _PlatformSeek
 _PlatformSeek:
     SYSTEM_CALL SYS_SEEK

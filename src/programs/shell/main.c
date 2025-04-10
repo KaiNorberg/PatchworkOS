@@ -8,7 +8,9 @@
 void print_prompt(void)
 {
     char cwd[MAX_PATH];
-    realpath(cwd, ".");
+    fd_t fd = procfd(getpid(), "cwd");
+    read(fd, cwd, MAX_PATH);
+    close(fd);
 
     printf("\n%s\n> ", cwd);
 }

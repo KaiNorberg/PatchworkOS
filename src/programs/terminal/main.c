@@ -237,7 +237,7 @@ int main(void)
         {.child = STDOUT_FILENO, .parent = STDOUT_FILENO},
         SPAWN_FD_END,
     };
-    fd_t shell = procfd(spawn(argv, fds));
+    fd_t shell = procfd(spawn(argv, fds), "ctl");
 
     msg_t msg = {0};
     while (msg.type != LMSG_QUIT)

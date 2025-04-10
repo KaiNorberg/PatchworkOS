@@ -114,11 +114,6 @@ uint64_t seek(fd_t fd, int64_t offset, seek_origin_t origin)
     return _PlatformSeek(fd, offset, origin);
 }
 
-uint64_t realpath(char* out, const char* path)
-{
-    return _PlatformRealpath(out, path);
-}
-
 uint64_t chdir(const char* path)
 {
     return _PlatformChdir(path);

@@ -55,7 +55,7 @@ pid_t getpid(void);
 
 tid_t gettid(void);
 
-fd_t procfd(pid_t pid);
+fd_t procfd(pid_t pid, const char* file);
 
 tid_t split(void* entry, uint64_t argc, ...);
 

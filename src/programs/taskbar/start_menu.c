@@ -13,7 +13,7 @@ void start_menu_open(void)
 
 void start_menu_close(void)
 {
-    fd_t procFile = procfd(pid);
+    fd_t procFile = procfd(pid, "ctl");
     if (procFile == ERR)
     {
         return;

@@ -273,18 +273,6 @@ uint64_t vfs_unmount(const char* label)
     return 0;
 }
 
-uint64_t vfs_realpath(char* out, const char* path)
-{
-    if (vfs_parse_path(out, path) == ERR)
-    {
-        return ERROR(EPATH);
-    }
-    else
-    {
-        return 0;
-    }
-}
-
 uint64_t vfs_chdir(const char* path)
 {
     char parsedPath[MAX_PATH];

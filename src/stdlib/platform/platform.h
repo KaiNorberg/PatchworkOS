@@ -49,8 +49,6 @@ uint64_t _PlatformWrite(fd_t fd, const void* buffer, uint64_t count);
 
 uint64_t _PlatformSeek(fd_t fd, int64_t offset, seek_origin_t origin);
 
-uint64_t _PlatformRealpath(char* out, const char* path);
-
 uint64_t _PlatformChdir(const char* path);
 
 uint64_t _PlatformPoll(pollfd_t* fds, uint64_t amount, nsec_t timeout);

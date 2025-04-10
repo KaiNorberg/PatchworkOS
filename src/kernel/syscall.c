@@ -339,16 +339,6 @@ uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
     return vfs_ioctl(file, request, argp, size);
 }
 
-uint64_t syscall_realpath(char* out, const char* path)
-{
-    if (!verify_pointer(out, 0) || !verify_string(path))
-    {
-        return ERROR(EFAULT);
-    }
-
-    return vfs_realpath(out, path);
-}
-
 uint64_t syscall_chdir(const char* path)
 {
     if (!verify_string(path))
@@ -600,7 +590,6 @@ void* syscallTable[] = {
     syscall_write,
     syscall_seek,
     syscall_ioctl,
-    syscall_realpath,
     syscall_chdir,
     syscall_poll,
     syscall_stat,
