@@ -9,15 +9,7 @@
 #include <sys/proc.h>
 
 #include "defs.h"
-
-#define VFS_NAME_SEPARATOR '/'
-#define VFS_LABEL_SEPARATOR ':'
-
-#define VFS_VALID_LETTER(ch) ((ch) >= VFS_LETTER_BASE && (ch) <= VFS_LETTER_MAX)
-#define VFS_VALID_CHAR(ch) (isalnum((ch)) || strchr("_-. ()[]{}~!@#$%^&',;=+", (ch)))
-
-#define VFS_END_OF_NAME(ch) ((ch) == VFS_NAME_SEPARATOR || (ch) == '\0')
-#define VFS_END_OF_LABEL(ch) ((ch) == VFS_LABEL_SEPARATOR || (ch) == '\0')
+#include "path.h"
 
 #define FILE_DEFER(file) __attribute__((cleanup(file_defer_cleanup))) file_t* CONCAT(f, __COUNTER__) = (file)
 
@@ -37,20 +29,20 @@ typedef struct fs
 } fs_t;
 
 typedef uint64_t (*volume_unmount_t)(volume_t*);
-typedef file_t* (*volume_open_t)(volume_t*, const char*);
-typedef uint64_t (*volume_open2_t)(volume_t*, const char*, file_t* [2]);
+typedef file_t* (*volume_open_t)(volume_t*, const path_t*);
+typedef uint64_t (*volume_open2_t)(volume_t*, const path_t*, file_t* [2]);
+typedef uint64_t (*volume_stat_t)(volume_t*, const path_t*, stat_t*);
+typedef uint64_t (*volume_listdir_t)(volume_t*, const path_t*, dir_entry_t*, uint64_t);
 typedef void (*volume_cleanup_t)(volume_t*, file_t*);
-typedef uint64_t (*volume_stat_t)(volume_t*, const char*, stat_t*);
-typedef uint64_t (*volume_listdir_t)(volume_t*, const char*, dir_entry_t*, uint64_t);
 
 typedef struct volume_ops
 {
     volume_unmount_t unmount;
     volume_open_t open;
     volume_open2_t open2;
-    volume_cleanup_t cleanup;
     volume_stat_t stat;
     volume_listdir_t listdir;
+    volume_cleanup_t cleanup;
 } volume_ops_t;
 
 typedef struct volume
@@ -141,27 +133,5 @@ uint64_t vfs_flush(file_t* file, const void* buffer, uint64_t size, const rect_t
 void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot);
 
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout);
-
-const char* vfs_basename(const char* path);
-
-uint64_t vfs_parent_dir(char* dest, const char* src);
-
-const char* name_first(const char* path);
-
-const char* name_next(const char* path);
-
-uint64_t name_length(const char* name);
-
-void name_copy(char* dest, const char* src);
-
-bool name_compare(const char* a, const char* b);
-
-bool name_valid(const char* name);
-
-bool label_compare(const char* a, const char* b);
-
-const char* dir_name_first(const char* path);
-
-const char* dir_name_next(const char* path);
 
 void dir_entry_push(dir_entry_t* entries, uint64_t amount, uint64_t* index, uint64_t* total, dir_entry_t* entry);

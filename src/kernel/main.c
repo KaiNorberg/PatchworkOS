@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "path.h"
+
 void main(boot_info_t* bootInfo)
 {
     kernel_init(bootInfo);
@@ -15,10 +17,7 @@ void main(boot_info_t* bootInfo)
     const char* argv[] = {"home:/bin/init", NULL};
     thread_t* initThread = loader_spawn(argv, PRIORITY_MIN + 1);
     ASSERT_PANIC(initThread != NULL, "Failed to spawn init thread");
-
-    // thread_free(initThread);
-    // while(1);
-
+    
     sched_push(initThread);
 
     // Exit boot thread

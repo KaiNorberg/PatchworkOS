@@ -12,6 +12,7 @@ extern "C"
 
 void* memcpy(void* _RESTRICT dest, const void* _RESTRICT src, size_t count);
 void* memmove(void* dest, const void* src, size_t count);
+void* memchr(const void* ptr, int ch, size_t count);
 char* strcpy(char* _RESTRICT dest, const char* _RESTRICT src);
 char* strncpy(char* _RESTRICT dest, const char* _RESTRICT src, size_t count);
 char* strcat(char* _RESTRICT dest, const char* _RESTRICT src);

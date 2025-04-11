@@ -237,14 +237,19 @@ int main(void)
     };
     fd_t shell = procfd(spawn(argv, fds), "ctl");
 
-    msg_t msg = {0};
-    while (msg.type != LMSG_QUIT)
+    bool shouldQuit = false;
+    while (!shouldQuit)
     {
         pollfd_t fds[] = {{.fd = stdout[PIPE_READ], .requested = POLL_READ}, {.fd = win_fd(terminal), .requested = POLL_READ}};
         poll(fds, 2, BLINK_INTERVAL);
 
+        msg_t msg = {0};
         while (win_receive(terminal, &msg, 0))
         {
+            if (msg.type == LMSG_QUIT)
+            {
+                shouldQuit = true;
+            }
             win_dispatch(terminal, &msg);
         }
 

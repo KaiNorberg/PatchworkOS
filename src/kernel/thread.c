@@ -93,21 +93,24 @@ static action_table_t actions = {
 static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count)
 {
     process_t* process = file->resource->dir->private;
-    LOCK_DEFER(&process->vfsCtx.lock);
-
     if (count == 0)
     {
         return 0;
     }
 
-    uint64_t cwdLen = strlen(process->vfsCtx.cwd) + 1; // Include \0 char.
+    char cwd[MAX_PATH];
+    lock_acquire(&process->vfsCtx.lock);
+    path_to_string(&process->vfsCtx.cwd, cwd);
+    lock_release(&process->vfsCtx.lock);
+
+    uint64_t cwdLen = strlen(cwd) + 1; // Include \0 char.
     uint64_t readCount = MIN(count, cwdLen - file->pos);
     if (readCount == 0)
     {
         return 0;
     }
 
-    memcpy(buffer, process->vfsCtx.cwd + file->pos, readCount);
+    memcpy(buffer, cwd + file->pos, readCount);
 
     file->pos += readCount;
     return readCount;
@@ -161,7 +164,7 @@ static void process_on_free(sysdir_t* dir)
     free(process);
 }
 
-static process_t* process_new(const char** argv, const char* cwd)
+static process_t* process_new(const char** argv, const path_t* cwd)
 {
     process_t* process = malloc(sizeof(process_t));
     if (process == NULL)
@@ -243,7 +246,7 @@ static thread_t* process_thread_new(process_t* process, void* entry, priority_t 
     return thread;
 }
 
-thread_t* thread_new(const char** argv, void* entry, priority_t priority, const char* cwd)
+thread_t* thread_new(const char** argv, void* entry, priority_t priority, const path_t* cwd)
 {
     process_t* process = process_new(argv, cwd);
     if (process == NULL)

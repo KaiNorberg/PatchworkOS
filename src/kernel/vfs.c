@@ -32,7 +32,7 @@ static volume_t* volume_get(const char* label)
     volume_t* volume;
     LIST_FOR_EACH(volume, &volumes, entry)
     {
-        if (label_compare(volume->label, label))
+        if (strcmp(volume->label, label) == 0)
         {
             return volume_ref(volume);
         }
@@ -81,118 +81,11 @@ void file_deref(file_t* file)
     }
 }
 
-static uint64_t vfs_make_canonical(const char* start, char* out, const char* path)
-{
-    const char* name = path;
-    while (true)
-    {
-        if (name_compare(name, "."))
-        {
-            // Do nothing
-        }
-        else if (name_compare(name, ".."))
-        {
-            out--;
-            while (*out != VFS_NAME_SEPARATOR)
-            {
-                if (out <= start)
-                {
-                    return ERR;
-                }
-
-                out--;
-            }
-            out[1] = '\0';
-        }
-        else
-        {
-            const char* ptr = name;
-            while (!VFS_END_OF_NAME(*ptr))
-            {
-                if (!VFS_VALID_CHAR(*ptr) || (uint64_t)(out - start) >= MAX_PATH - 2)
-                {
-                    return ERR;
-                }
-
-                *++out = *ptr++;
-            }
-
-            out++;
-            out[0] = VFS_NAME_SEPARATOR;
-            out[1] = '\0';
-        }
-
-        name = name_next(name);
-        if (name == NULL || name[0] == '\0')
-        {
-            if (*out == VFS_NAME_SEPARATOR)
-            {
-                *out = '\0';
-            }
-            return 0;
-        }
-    }
-}
-
-static uint64_t vfs_parse_path(char* out, const char* path)
+static uint64_t vfs_parse_path(path_t* out, const char* path)
 {
     vfs_ctx_t* ctx = &sched_process()->vfsCtx;
     LOCK_DEFER(&ctx->lock);
-
-    if (path[0] == VFS_NAME_SEPARATOR) // Root path
-    {
-        uint64_t labelLength = strchr(ctx->cwd, VFS_LABEL_SEPARATOR) - ctx->cwd;
-        memcpy(out, ctx->cwd, labelLength);
-
-        out[labelLength] = ':';
-        out[labelLength + 1] = '\0';
-
-        return vfs_make_canonical(out + labelLength, out + labelLength, path);
-    }
-
-    bool absolute = false;
-    uint64_t i = 0;
-    for (; !VFS_END_OF_NAME(path[i]); i++)
-    {
-        if (path[i] == VFS_LABEL_SEPARATOR)
-        {
-            if (!VFS_END_OF_NAME(path[i + 1]))
-            {
-                return ERR;
-            }
-
-            absolute = true;
-            break;
-        }
-        else if (!VFS_VALID_CHAR(path[i]))
-        {
-            return ERR;
-        }
-    }
-
-    if (absolute) // Absolute path
-    {
-        uint64_t labelLength = i;
-        memcpy(out, path, labelLength);
-
-        out[labelLength] = ':';
-        out[labelLength + 1] = '/';
-        out[labelLength + 2] = '\0';
-
-        return vfs_make_canonical(out + labelLength, out + labelLength, path + labelLength + 1);
-    }
-    else // Relative path
-    {
-        uint64_t labelLength = strchr(ctx->cwd, VFS_LABEL_SEPARATOR) - ctx->cwd;
-        uint64_t cwdLength = strlen(ctx->cwd);
-
-        memcpy(out, ctx->cwd, cwdLength + 1);
-
-        out[cwdLength] = VFS_NAME_SEPARATOR;
-        out[cwdLength + 1] = '\0';
-
-        return vfs_make_canonical(out + labelLength, out + cwdLength, path);
-    }
+    return path_init(out, path, &ctx->cwd);
 }
 
 void vfs_init(void)
@@ -212,7 +105,7 @@ uint64_t vfs_attach_simple(const char* label, const volume_ops_t* ops)
     volume_t* volume;
     LIST_FOR_EACH(volume, &volumes, entry)
     {
-        if (name_compare(volume->label, label))
+        if (strcmp(volume->label, label) == 0)
         {
             return ERROR(EEXIST);
         }
@@ -241,7 +134,7 @@ uint64_t vfs_unmount(const char* label)
     bool found = false;
     LIST_FOR_EACH(volume, &volumes, entry)
     {
-        if (name_compare(volume->label, label))
+        if (strcmp(volume->label, label) == 0)
         {
             found = true;
             break;
@@ -275,10 +168,10 @@ uint64_t vfs_unmount(const char* label)
 
 uint64_t vfs_chdir(const char* path)
 {
-    char parsedPath[MAX_PATH];
-    if (vfs_parse_path(parsedPath, path) == ERR)
+    path_t parsedPath;
+    if (vfs_parse_path(&parsedPath, path) == ERR)
     {
-        return ERROR(EPATH);
+        return ERR;
     }
 
     stat_t info;
@@ -294,20 +187,19 @@ uint64_t vfs_chdir(const char* path)
 
     vfs_ctx_t* ctx = &sched_process()->vfsCtx;
     LOCK_DEFER(&ctx->lock);
-
-    strcpy(ctx->cwd, parsedPath);
+    ctx->cwd = parsedPath;
     return 0;
 }
 
 file_t* vfs_open(const char* path)
 {
-    char parsedPath[MAX_PATH];
-    if (vfs_parse_path(parsedPath, path) == ERR)
+    path_t parsedPath;
+    if (vfs_parse_path(&parsedPath, path) == ERR)
     {
-        return ERRPTR(EPATH);
+        return NULL;
     }
 
-    volume_t* volume = volume_get(parsedPath);
+    volume_t* volume = volume_get(parsedPath.volume);
     if (volume == NULL)
     {
         return ERRPTR(EPATH);
@@ -319,13 +211,7 @@ file_t* vfs_open(const char* path)
         return ERRPTR(EACCES);
     }
 
-    char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
-    if (rootPath == NULL)
-    {
-        rootPath = parsedPath + strlen(parsedPath);
-    }
-
-    file_t* file = volume->ops->open(volume, rootPath);
+    file_t* file = volume->ops->open(volume, &parsedPath);
     if (file == NULL)
     {
         volume_deref(volume);
@@ -337,13 +223,13 @@ file_t* vfs_open(const char* path)
 
 uint64_t vfs_open2(const char* path, file_t* files[2])
 {
-    char parsedPath[MAX_PATH];
-    if (vfs_parse_path(parsedPath, path) == ERR)
+    path_t parsedPath;
+    if (vfs_parse_path(&parsedPath, path) == ERR)
     {
-        return ERROR(EPATH);
+        return ERR;
     }
 
-    volume_t* volume = volume_get(parsedPath);
+    volume_t* volume = volume_get(parsedPath.volume);
     if (volume == NULL)
     {
         return ERROR(EPATH);
@@ -355,13 +241,7 @@ uint64_t vfs_open2(const char* path, file_t* files[2])
         return ERROR(EACCES);
     }
 
-    char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
-    if (rootPath == NULL)
-    {
-        rootPath = parsedPath + strlen(parsedPath);
-    }
-
-    uint64_t result = volume->ops->open2(volume, rootPath, files);
+    uint64_t result = volume->ops->open2(volume, &parsedPath, files);
     if (result == ERR)
     {
         volume_deref(volume);
@@ -373,13 +253,13 @@ uint64_t vfs_open2(const char* path, file_t* files[2])
 
 uint64_t vfs_stat(const char* path, stat_t* buffer)
 {
-    char parsedPath[MAX_PATH];
-    if (vfs_parse_path(parsedPath, path) == ERR)
+    path_t parsedPath;
+    if (vfs_parse_path(&parsedPath, path) == ERR)
     {
-        return ERROR(EPATH);
+        return ERR;
     }
 
-    volume_t* volume = volume_get(parsedPath);
+    volume_t* volume = volume_get(parsedPath.volume);
     if (volume == NULL)
     {
         return ERROR(EPATH);
@@ -391,26 +271,20 @@ uint64_t vfs_stat(const char* path, stat_t* buffer)
         return ERROR(EACCES);
     }
 
-    char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
-    if (rootPath == NULL)
-    {
-        rootPath = parsedPath + strlen(parsedPath);
-    }
-
-    uint64_t result = volume->ops->stat(volume, rootPath, buffer);
+    uint64_t result = volume->ops->stat(volume, &parsedPath, buffer);
     volume_deref(volume);
     return result;
 }
 
 uint64_t vfs_listdir(const char* path, dir_entry_t* entries, uint64_t amount)
 {
-    char parsedPath[MAX_PATH];
-    if (vfs_parse_path(parsedPath, path) == ERR)
+    path_t parsedPath;
+    if (vfs_parse_path(&parsedPath, path) == ERR)
     {
-        return ERROR(EPATH);
+        return ERR;
     }
 
-    volume_t* volume = volume_get(parsedPath);
+    volume_t* volume = volume_get(parsedPath.volume);
     if (volume == NULL)
     {
         return ERROR(EPATH);
@@ -422,13 +296,7 @@ uint64_t vfs_listdir(const char* path, dir_entry_t* entries, uint64_t amount)
         return ERROR(EACCES);
     }
 
-    char* rootPath = strchr(parsedPath, VFS_NAME_SEPARATOR);
-    if (rootPath == NULL)
-    {
-        rootPath = parsedPath + strlen(parsedPath);
-    }
-
-    uint64_t result = volume->ops->listdir(volume, rootPath, entries, amount);
+    uint64_t result = volume->ops->listdir(volume, &parsedPath, entries, amount);
     volume_deref(volume);
     return result;
 }
@@ -578,167 +446,6 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
     }
 
     return events;
-}
-
-const char* vfs_basename(const char* path)
-{
-    const char* base = strrchr(path, VFS_NAME_SEPARATOR);
-    return base != NULL ? base + 1 : path;
-}
-
-uint64_t vfs_parent_dir(char* dest, const char* src)
-{
-    const char* end = strrchr(src, VFS_NAME_SEPARATOR);
-    if (end == NULL)
-    {
-        return ERR;
-    }
-
-    strncpy(dest, src, end - src);
-    dest[end - src] = '\0';
-
-    return 0;
-}
-
-const char* name_first(const char* path)
-{
-    if (path[0] == '\0')
-    {
-        return NULL;
-    }
-    else if (path[0] == VFS_NAME_SEPARATOR)
-    {
-        if (path[1] == '\0')
-        {
-            return NULL;
-        }
-
-        return path + 1;
-    }
-
-    return path;
-}
-
-const char* name_next(const char* path)
-{
-    const char* base = strchr(path, VFS_NAME_SEPARATOR);
-    return base != NULL ? base + 1 : NULL;
-}
-
-uint64_t name_length(const char* name)
-{
-    for (uint64_t i = 0; i < MAX_PATH - 1; i++)
-    {
-        if (VFS_END_OF_NAME(name[i]))
-        {
-            return i;
-        }
-    }
-
-    return MAX_PATH - 1;
-}
-
-void name_copy(char* dest, const char* src)
-{
-    for (uint64_t i = 0; i < MAX_NAME - 1; i++)
-    {
-        if (VFS_END_OF_NAME(src[i]))
-        {
-            dest[i] = '\0';
-            return;
-        }
-        else
-        {
-            dest[i] = src[i];
-        }
-    }
-    dest[MAX_NAME - 1] = '\0';
-}
-
-bool name_compare(const char* a, const char* b)
-{
-    for (uint64_t i = 0; i < MAX_PATH; i++)
-    {
-        if (VFS_END_OF_NAME(a[i]))
-        {
-            return VFS_END_OF_NAME(b[i]);
-        }
-        if (a[i] != b[i])
-        {
-            return false;
-        }
-    }
-
-    return false;
-}
-
-bool name_valid(const char* name)
-{
-    uint64_t length = name_length(name);
-    for (uint64_t i = 0; i < length; i++)
-    {
-        if (!VFS_VALID_CHAR(name[i]))
-        {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-bool label_compare(const char* a, const char* b)
-{
-    for (uint64_t i = 0; i < MAX_PATH; i++)
-    {
-        if (VFS_END_OF_LABEL(a[i]))
-        {
-            return VFS_END_OF_LABEL(b[i]);
-        }
-        if (a[i] != b[i])
-        {
-            return false;
-        }
-    }
-
-    return false;
-}
-
-const char* dir_name_first(const char* path)
-{
-    if (path[0] == VFS_NAME_SEPARATOR)
-    {
-        path++;
-    }
-
-    if (strchr(path, VFS_NAME_SEPARATOR) == NULL)
-    {
-        return NULL;
-    }
-    else
-    {
-        return path;
-    }
-}
-
-const char* dir_name_next(const char* path)
-{
-    const char* next = strchr(path, VFS_NAME_SEPARATOR);
-    if (next == NULL)
-    {
-        return NULL;
-    }
-    else
-    {
-        next += 1;
-        if (strchr(next, VFS_NAME_SEPARATOR) != NULL)
-        {
-            return next;
-        }
-        else
-        {
-            return NULL;
-        }
-    }
 }
 
 void dir_entry_push(dir_entry_t* entries, uint64_t amount, uint64_t* index, uint64_t* total, dir_entry_t* entry)

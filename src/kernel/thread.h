@@ -57,7 +57,7 @@ typedef struct thread
     uint8_t kernelStack[CONFIG_KERNEL_STACK];
 } thread_t;
 
-thread_t* thread_new(const char** argv, void* entry, priority_t priority, const char* cwd);
+thread_t* thread_new(const char** argv, void* entry, priority_t priority, const path_t* cwd);
 
 void thread_free(thread_t* thread);
 

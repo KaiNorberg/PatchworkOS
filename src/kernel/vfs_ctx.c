@@ -5,17 +5,22 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <log.h>
 
-void vfs_ctx_init(vfs_ctx_t* ctx, const char* cwd)
+void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd)
 {
-    memset(ctx, 0, sizeof(vfs_ctx_t));
-    if (cwd != NULL)
+    if (cwd == NULL)
     {
-        strcpy(ctx->cwd, cwd);
+        ASSERT_PANIC(path_init(&ctx->cwd, "home:/usr", NULL) != ERR, "vfs_ctx_init");
     }
     else
     {
-        strcpy(ctx->cwd, "sys:");
+        ctx->cwd = *cwd;
+    }
+
+    for (uint64_t i = 0; i < CONFIG_MAX_FD; i++)
+    {
+        ctx->files[i] = NULL;
     }
     lock_init(&ctx->lock);
 }
@@ -92,13 +97,6 @@ file_t* vfx_ctx_file(vfs_ctx_t* ctx, fd_t fd)
     }
 
     return file_ref(ctx->files[fd]);
-}
-
-void vfs_ctx_cwd(vfs_ctx_t* ctx, char* dest)
-{
-    LOCK_DEFER(&ctx->lock);
-
-    strcpy(dest, ctx->cwd);
 }
 
 fd_t vfs_ctx_dup(vfs_ctx_t* ctx, fd_t oldFd)

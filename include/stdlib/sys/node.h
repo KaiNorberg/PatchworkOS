@@ -1,8 +1,8 @@
-#include <string.h>
 #ifndef _SYS_NODE_H
 #define _SYS_NODE_H 1
 
 #include <stdint.h>
+#include <string.h>
 #include <sys/io.h>
 #include <sys/list.h>
 
@@ -53,55 +53,42 @@ static inline uint64_t node_remove(node_t* node)
     return 0;
 }
 
-static inline node_t* node_find(node_t* node, const char* name, char deliminator)
+static inline node_t* node_find(node_t* node, const char* name)
 {
     node_t* child;
     LIST_FOR_EACH(child, &node->children, entry)
     {
-        for (uint64_t i = 0; i < MAX_NAME; i++)
+        if (strcmp(child->name, name) == 0)
         {
-            if (name[i] == '\0' || name[i] == deliminator)
-            {
-                if (child->name[i] == '\0' || child->name[i] == deliminator)
-                {
-                    return child;
-                }
-                else
-                {
-                    break;
-                }
-            }
-            if (name[i] != child->name[i])
-            {
-                break;
-            }
+            return child;
         }
     }
 
     return NULL;
 }
 
-static inline node_t* node_traverse(node_t* node, const char* path, char deliminator)
-{
-    while (path != NULL && path[0] != '\0')
-    {
-        if (path[0] == deliminator)
-        {
-            path++;
-        }
+#ifdef __KERNEL__
 
-        node_t* child = node_find(node, path, deliminator);
+#include "path.h"
+
+static inline node_t* node_traverse(node_t* node, const path_t* path)
+{
+    const char* name;
+    PATH_FOR_EACH(name, path)
+    {
+        node_t* child = node_find(node, name);
         if (child == NULL)
         {
             return NULL;
         }
 
-        path = strchr(path, deliminator);
         node = child;
     }
 
     return node;
 }
+
+#endif
 
 #if defined(__cplusplus)
 }

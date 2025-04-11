@@ -70,6 +70,23 @@ void* memmove(void* dest, const void* src, size_t count)
     return dest;
 }
 
+void* memchr(const void* ptr, int ch, size_t count)
+{
+    const unsigned char* p = (const unsigned char*)ptr;
+
+    while (count--)
+    {
+        if (*p == (unsigned char)ch)
+        {
+            return (void*)p;
+        }
+
+        ++p;
+    }
+
+    return NULL;
+}
+
 char* strcpy(char* _RESTRICT dest, const char* _RESTRICT src)
 {
     char* temp = dest;

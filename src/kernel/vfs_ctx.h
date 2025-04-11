@@ -4,17 +4,18 @@
 
 #include "defs.h"
 #include "lock.h"
+#include "path.h"
 
 typedef struct file file_t;
 
 typedef struct
 {
-    char cwd[MAX_PATH];
+    path_t cwd;
     file_t* files[CONFIG_MAX_FD];
     lock_t lock;
 } vfs_ctx_t;
 
-void vfs_ctx_init(vfs_ctx_t* ctx, const char* cwd);
+void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd);
 
 void vfs_ctx_deinit(vfs_ctx_t* ctx);
 
@@ -25,8 +26,6 @@ fd_t vfs_ctx_openas(vfs_ctx_t* ctx, fd_t fd, file_t* file);
 uint64_t vfs_ctx_close(vfs_ctx_t* ctx, fd_t fd);
 
 file_t* vfx_ctx_file(vfs_ctx_t* ctx, fd_t fd);
-
-void vfs_ctx_cwd(vfs_ctx_t* ctx, char* dest);
 
 fd_t vfs_ctx_dup(vfs_ctx_t* ctx, fd_t oldFd);
 

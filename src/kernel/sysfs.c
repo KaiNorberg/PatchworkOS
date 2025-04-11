@@ -49,11 +49,11 @@ static void resource_deref(resource_t* resource)
     }
 }
 
-static file_t* sysfs_open(volume_t* volume, const char* path)
+static file_t* sysfs_open(volume_t* volume, const path_t* path)
 {
     LOCK_DEFER(&lock);
 
-    node_t* node = node_traverse(&root.node, path, VFS_NAME_SEPARATOR);
+    node_t* node = node_traverse(&root.node, path);
     if (node == NULL)
     {
         return ERRPTR(EPATH);
@@ -80,11 +80,11 @@ static file_t* sysfs_open(volume_t* volume, const char* path)
     return file;
 }
 
-static uint64_t sysfs_open2(volume_t* volume, const char* path, file_t* files[2])
+static uint64_t sysfs_open2(volume_t* volume, const path_t* path, file_t* files[2])
 {
     LOCK_DEFER(&lock);
 
-    node_t* node = node_traverse(&root.node, path, VFS_NAME_SEPARATOR);
+    node_t* node = node_traverse(&root.node, path);
     if (node == NULL)
     {
         return ERROR(EPATH);
@@ -111,11 +111,11 @@ static uint64_t sysfs_open2(volume_t* volume, const char* path, file_t* files[2]
     return 0;
 }
 
-static uint64_t sysfs_stat(volume_t* volume, const char* path, stat_t* stat)
+static uint64_t sysfs_stat(volume_t* volume, const path_t* path, stat_t* stat)
 {
     LOCK_DEFER(&lock);
 
-    node_t* node = node_traverse(&root.node, path, VFS_NAME_SEPARATOR);
+    node_t* node = node_traverse(&root.node, path);
     if (node == NULL)
     {
         return ERROR(EPATH);
@@ -127,11 +127,11 @@ static uint64_t sysfs_stat(volume_t* volume, const char* path, stat_t* stat)
     return 0;
 }
 
-static uint64_t sysfs_listdir(volume_t* volume, const char* path, dir_entry_t* entries, uint64_t amount)
+static uint64_t sysfs_listdir(volume_t* volume, const path_t* path, dir_entry_t* entries, uint64_t amount)
 {
     LOCK_DEFER(&lock);
 
-    node_t* node = node_traverse(&root.node, path, VFS_NAME_SEPARATOR);
+    node_t* node = node_traverse(&root.node, path);
     if (node == NULL)
     {
         return ERROR(EPATH);
@@ -200,12 +200,22 @@ void sysfs_init(void)
 }
 
 static node_t* sysfs_traverse_and_allocate(const char* path)
-{
-    node_t* parent = &root.node;
-    const char* name = name_first(path);
-    while (name != NULL)
+{    
+    path_t parsedPath;
+    if (path_init(&parsedPath, path, NULL) == ERR)
     {
-        node_t* child = node_find(parent, name, VFS_NAME_SEPARATOR);
+        return NULL;
+    }
+    if (parsedPath.volume[0] != '\0')
+    {
+        return NULL;
+    }
+
+    node_t* parent = &root.node;
+    const char* name;
+    PATH_FOR_EACH(name, &parsedPath)
+    {
+        node_t* child = node_find(parent, name);
         if (child == NULL)
         {
             sysdir_t* dir = malloc(sizeof(sysdir_t));
@@ -214,9 +224,7 @@ static node_t* sysfs_traverse_and_allocate(const char* path)
                 return NULL;
             }
 
-            char nameCopy[MAX_NAME];
-            name_copy(nameCopy, name);
-            node_init(&dir->node, nameCopy, SYSFS_DIR);
+            node_init(&dir->node, name, SYSFS_DIR);
             dir->private = NULL;
             dir->onFree = NULL;
             atomic_init(&dir->ref, 1);
@@ -230,7 +238,6 @@ static node_t* sysfs_traverse_and_allocate(const char* path)
         }
 
         parent = child;
-        name = name_next(name);
     }
 
     return parent;
@@ -323,7 +330,7 @@ resource_t* sysfs_expose(const char* path, const char* filename, const resource_
     resource->dir = sysdir_ref(NODE_CONTAINER(parent, sysdir_t, node));
 
     node_push(parent, &resource->node); // First reference
-    return resource; // Second reference
+    return resource;                    // Second reference
 }
 
 void sysfs_hide(resource_t* resource)
