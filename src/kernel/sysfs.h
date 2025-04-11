@@ -69,8 +69,11 @@ typedef struct sysdir
 void sysfs_init(void);
 
 sysdir_t* sysfs_mkdir(const char* path, const char* dirname, sysdir_on_free_t onFree, void* private);
+
 uint64_t sysfs_create(sysdir_t* dir, const char* filename, const resource_ops_t* ops, void* private);
+
 void sysfs_rmdir(sysdir_t* dir);
 
 resource_t* sysfs_expose(const char* path, const char* filename, const resource_ops_t* ops, void* private);
+
 void sysfs_hide(resource_t* resource);

@@ -121,23 +121,28 @@ SYSFS_STANDARD_RESOURCE_OPS(cwdResOps, &cwdFileOps)
 
 static uint64_t process_ctl_write(file_t* file, const void* buffer, uint64_t count)
 {
+    if (count == 0)
+    {
+        return 0;
+    }
+
     process_t* process = file->resource->dir->private;
 
-    // TODO: Implement proper command parsing with args.
+    // TODO: Implement a proper command system with args, actions?
     if (strncmp(buffer, "kill", count) == 0)
     {
         atomic_store(&process->dead, true);
+        return 4;
     }
     else if (strncmp(buffer, "wait", count) == 0)
     {
         WAITSYS_BLOCK(&process->queue, atomic_load(&process->dead));
+        return 4;
     }
     else
     {
         return ERROR(EREQ);
     }
-
-    return 0;
 }
 
 static file_ops_t ctlFileOps = {
@@ -173,16 +178,9 @@ static process_t* process_new(const char** argv, const char* cwd)
 
     char dirname[MAX_PATH];
     ulltoa(process->id, dirname, 10);
-    /*process->resource = sysfs_expose("/proc", idString, &resOps, process);
-    if (process->resource == NULL)
-    {
-        argv_deinit(&process->argv);
-        free(process);
-        return NULL;
-    }*/
-
     process->dir = sysfs_mkdir("/proc", dirname, process_on_free, process);
-    if (process->dir == NULL || sysfs_create(process->dir, "ctl", &ctlResOps, NULL) == ERR || sysfs_create(process->dir, "cwd", &cwdResOps, NULL) == ERR)
+    if (process->dir == NULL || sysfs_create(process->dir, "ctl", &ctlResOps, NULL) == ERR ||
+        sysfs_create(process->dir, "cwd", &cwdResOps, NULL) == ERR)
     {
         argv_deinit(&process->argv);
         free(process);

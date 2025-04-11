@@ -146,7 +146,7 @@ static uint64_t sysfs_listdir(volume_t* volume, const char* path, dir_entry_t* e
 
     node_t* child;
     LIST_FOR_EACH(child, &node->children, entry)
-    {    
+    {
         dir_entry_t entry = {0};
         strcpy(entry.name, child->name);
         entry.type = child->type == SYSFS_RESOURCE ? STAT_FILE : STAT_DIR;
@@ -264,11 +264,6 @@ uint64_t sysfs_create(sysdir_t* dir, const char* filename, const resource_ops_t*
 {
     LOCK_DEFER(&lock);
 
-    if (dir == NULL)
-    {
-        dir = &root;
-    }
-
     resource_t* resource = malloc(sizeof(resource_t));
     if (resource == NULL)
     {
@@ -281,7 +276,7 @@ uint64_t sysfs_create(sysdir_t* dir, const char* filename, const resource_ops_t*
     atomic_init(&resource->hidden, false);
     resource->dir = sysdir_ref(dir);
 
-    node_push(&dir->node, &resource->node);
+    node_push(&dir->node, &resource->node); // Reference
     return 0;
 }
 
@@ -327,8 +322,8 @@ resource_t* sysfs_expose(const char* path, const char* filename, const resource_
     atomic_init(&resource->hidden, false);
     resource->dir = sysdir_ref(NODE_CONTAINER(parent, sysdir_t, node));
 
-    node_push(parent, &resource->node);
-    return resource;
+    node_push(parent, &resource->node); // First reference
+    return resource; // Second reference
 }
 
 void sysfs_hide(resource_t* resource)

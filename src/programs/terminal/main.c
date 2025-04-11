@@ -9,8 +9,6 @@
 #include <sys/win.h>
 #include <threads.h>
 
-// This is probobly one of the messiest parts of this project.
-
 #define UMSG_BLINK (UMSG_BASE + 1)
 
 #define BLINK_INTERVAL (SEC / 2)

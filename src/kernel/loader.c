@@ -104,8 +104,9 @@ static void* loader_allocate_stack(thread_t* thread)
 
 static char** loader_setup_argv(thread_t* thread, void* rsp)
 {
-    char** argv = memcpy(rsp - sizeof(uint64_t) - thread->process->argv.size, thread->process->argv.buffer, thread->process->argv.size);
-    
+    char** argv =
+        memcpy(rsp - sizeof(uint64_t) - thread->process->argv.size, thread->process->argv.buffer, thread->process->argv.size);
+
     for (uint64_t i = 0; i < thread->process->argv.amount; i++)
     {
         argv[i] = (void*)((uint64_t)argv[i] - (uint64_t)thread->process->argv.buffer + (uint64_t)argv);
