@@ -217,6 +217,9 @@ time_t syscall_time(time_t* timePtr)
 
 fd_t syscall_open(const char* path)
 {
+    printf("start");
+    printf("%s [%p-%p]", path, path, path + strlen(path) + 1);
+
     if (!verify_string(path))
     {
         return ERROR(EFAULT);
@@ -229,6 +232,7 @@ fd_t syscall_open(const char* path)
     }
     FILE_DEFER(file);
 
+    printf("end");
     return vfs_ctx_open(&sched_process()->vfsCtx, file);
 }
 

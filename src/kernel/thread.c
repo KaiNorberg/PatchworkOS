@@ -95,15 +95,22 @@ static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count)
     process_t* process = file->resource->dir->private;
     LOCK_DEFER(&process->vfsCtx.lock);
 
-    uint64_t cwdLen = strlen(process->vfsCtx.cwd);
-    count = MIN(count, cwdLen - file->pos);
-
-    for (uint64_t i = 0; i < count; i++)
+    if (count == 0)
     {
-        ((char*)buffer)[i] = process->vfsCtx.cwd[file->pos + i];
+        return 0;
     }
 
-    return count;
+    uint64_t cwdLen = strlen(process->vfsCtx.cwd) + 1; // Include \0 char.
+    uint64_t readCount = MIN(count, cwdLen - file->pos);
+    if (readCount == 0)
+    {
+        return 0;
+    }
+
+    memcpy(buffer, process->vfsCtx.cwd + file->pos, readCount);
+
+    file->pos += readCount;
+    return readCount;
 }
 
 static file_ops_t cwdFileOps = {
