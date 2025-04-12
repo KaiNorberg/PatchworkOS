@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdarg.h>
 #include <stdint.h>
 #include <sys/io.h>
 #include <sys/proc.h>
@@ -28,6 +29,8 @@ void _PlatformInit(void);
 void* _PlatformPageAlloc(uint64_t amount);
 
 int* _PlatformErrnoFunc(void);
+
+int _PlatformVprintf(const char* _RESTRICT format, va_list args);
 
 #if _PLATFORM_HAS_FILE_IO
 

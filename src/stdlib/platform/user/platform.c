@@ -1,4 +1,5 @@
 #include "../platform.h"
+#include "common/print.h"
 #include "common/thread.h"
 
 #include <sys/io.h>
@@ -19,4 +20,15 @@ void* _PlatformPageAlloc(uint64_t amount)
 int* _PlatformErrnoFunc(void)
 {
     return &_ThreadById(gettid())->err;
+}
+
+// TODO: Implement streams!
+int _PlatformVprintf(const char* _RESTRICT format, va_list args)
+{
+    void put_func(char chr, void* context)
+    {
+        write(STDOUT_FILENO, &chr, 1);
+    }
+
+    return _Print(put_func, NULL, format, args);
 }

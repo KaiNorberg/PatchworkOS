@@ -40,6 +40,8 @@ static void* loader_load_program(thread_t* thread)
         return NULL;
     }
 
+    uint64_t min = UINT64_MAX;
+    uint64_t max = 0;
     for (uint64_t i = 0; i < header.phdrAmount; i++)
     {
         uint64_t offset = sizeof(elf_hdr_t) + header.phdrSize * i;
@@ -58,6 +60,8 @@ static void* loader_load_program(thread_t* thread)
         {
         case ELF_PHDR_TYPE_LOAD:
         {
+            min = MIN(min, phdr.virtAddr);
+            max = MAX(max, phdr.virtAddr + phdr.memorySize);
             uint64_t size = MAX(phdr.memorySize, phdr.fileSize);
 
             if (vmm_alloc((void*)phdr.virtAddr, size, PROT_READ | PROT_WRITE) == NULL)
@@ -88,6 +92,7 @@ static void* loader_load_program(thread_t* thread)
         }
     }
 
+    printf("program loaded to [%p-%p]", min, max);
     return (void*)header.entry;
 }
 

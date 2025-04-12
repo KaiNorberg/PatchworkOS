@@ -4,8 +4,9 @@
 #include <sys/io.h>
 
 #include "common/print.h"
+#include "platform/platform.h"
 
-// TODO: Implement streams! All these implementations will need to be scrapped when streams are implemented.
+// TODO: Implement streams!
 
 int sprintf(char* _RESTRICT buffer, const char* _RESTRICT format, ...)
 {
@@ -167,72 +168,16 @@ char* vasprintf(const char* _RESTRICT format, va_list args)
     return buffer;
 }
 
-#ifndef __KERNEL__
-
 int printf(const char* _RESTRICT format, ...)
 {
-    void put_func(char chr, void* context)
-    {
-        write(STDOUT_FILENO, &chr, 1);
-    }
-
     va_list args;
     va_start(args, format);
-    int result = _Print(put_func, NULL, format, args);
+    int result = vprintf(format, args);
     va_end(args);
     return result;
 }
 
 int vprintf(const char* _RESTRICT format, va_list args)
 {
-    void put_func(char chr, void* context)
-    {
-        write(STDOUT_FILENO, &chr, 1);
-    }
-
-    return _Print(put_func, NULL, format, args);
+    return _PlatformVprintf(format, args);
 }
-
-#endif // #ifndef __KERNEL__
-
-#ifdef __KERNEL__
-
-#include "log.h"
-#include "systime.h"
-
-int printf(const char* _RESTRICT format, ...)
-{
-    char buffer[MAX_PATH];
-
-    nsec_t time = log_time_enabled() ? systime_uptime() : 0;
-    nsec_t sec = time / SEC;
-    nsec_t ms = (time % SEC) / (SEC / 1000);
-
-    va_list args;
-    va_start(args, format);
-    int result = vsprintf(buffer + sprintf(buffer, "[%10llu.%03llu] ", sec, ms), format, args);
-    va_end(args);
-
-    char newline[] = {'\n', '\0'};
-    strcat(buffer, newline);
-    log_write(buffer);
-    return result + 1;
-}
-
-int vprintf(const char* _RESTRICT format, va_list args)
-{
-    char buffer[MAX_PATH];
-
-    nsec_t time = log_time_enabled() ? systime_uptime() : 0;
-    nsec_t sec = time / SEC;
-    nsec_t ms = (time % SEC) / (SEC / 1000);
-
-    uint64_t result = vsprintf(buffer + sprintf(buffer, "[%10llu.%03llu] ", sec, ms), format, args);
-
-    char newline[] = {'\n', '\0'};
-    strcat(buffer, newline);
-    log_write(buffer);
-    return result + 1;
-}
-
-#endif // #ifdef __KERNEL__

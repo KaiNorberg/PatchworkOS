@@ -242,7 +242,7 @@ static int npf_max(int x, int y)
     return (x > y) ? x : y;
 }
 
-static int npf_parse_format_spec(char const* format, npf_format_spec_t* out_spec)
+static int npf_parse_format_spec(char const* _RESTRICT format, npf_format_spec_t* out_spec)
 {
     char const* cur = format;
 
@@ -872,7 +872,7 @@ static void npf_putc_cnt(int c, void* ctx)
         *(va_arg(args, TYPE*)) = (TYPE)pc_cnt.n; \
         break
 
-static int npf_vpprintf(npf_putc pc, void* pc_ctx, char const* format, va_list args)
+static int npf_vpprintf(npf_putc pc, void* pc_ctx, char const* _RESTRICT format, va_list args)
 {
     npf_format_spec_t fs;
     char const* cur = format;

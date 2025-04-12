@@ -67,7 +67,7 @@ static file_ops_t fileOps = {
 
 static file_t* ramfs_open(volume_t* volume, const path_t* path)
 {
-    node_t* node = node_traverse(root, path);
+    node_t* node = path_traverse_node(path, root);
     if (node == NULL)
     {
         return ERRPTR(EPATH);
@@ -91,7 +91,7 @@ static file_t* ramfs_open(volume_t* volume, const path_t* path)
 
 static uint64_t ramfs_stat(volume_t* volume, const path_t* path, stat_t* stat)
 {
-    node_t* node = node_traverse(root, path);
+    node_t* node = path_traverse_node(path, root);
     if (node == NULL)
     {
         return ERROR(EPATH);
@@ -105,7 +105,7 @@ static uint64_t ramfs_stat(volume_t* volume, const path_t* path, stat_t* stat)
 
 static uint64_t ramfs_listdir(volume_t* volume, const path_t* path, dir_entry_t* entries, uint64_t amount)
 {
-    node_t* node = node_traverse(root, path);
+    node_t* node = path_traverse_node(path, root);
     if (node == NULL)
     {
         return ERROR(EPATH);

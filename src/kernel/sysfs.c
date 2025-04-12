@@ -53,7 +53,7 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
 {
     LOCK_DEFER(&lock);
 
-    node_t* node = node_traverse(&root.node, path);
+    node_t* node = path_traverse_node(path, &root.node);
     if (node == NULL)
     {
         return ERRPTR(EPATH);
@@ -84,7 +84,7 @@ static uint64_t sysfs_open2(volume_t* volume, const path_t* path, file_t* files[
 {
     LOCK_DEFER(&lock);
 
-    node_t* node = node_traverse(&root.node, path);
+    node_t* node = path_traverse_node(path, &root.node);
     if (node == NULL)
     {
         return ERROR(EPATH);
@@ -115,7 +115,7 @@ static uint64_t sysfs_stat(volume_t* volume, const path_t* path, stat_t* stat)
 {
     LOCK_DEFER(&lock);
 
-    node_t* node = node_traverse(&root.node, path);
+    node_t* node = path_traverse_node(path, &root.node);
     if (node == NULL)
     {
         return ERROR(EPATH);
@@ -131,7 +131,7 @@ static uint64_t sysfs_listdir(volume_t* volume, const path_t* path, dir_entry_t*
 {
     LOCK_DEFER(&lock);
 
-    node_t* node = node_traverse(&root.node, path);
+    node_t* node = path_traverse_node(path, &root.node);
     if (node == NULL)
     {
         return ERROR(EPATH);
@@ -200,7 +200,7 @@ void sysfs_init(void)
 }
 
 static node_t* sysfs_traverse_and_allocate(const char* path)
-{    
+{
     path_t parsedPath;
     if (path_init(&parsedPath, path, NULL) == ERR)
     {

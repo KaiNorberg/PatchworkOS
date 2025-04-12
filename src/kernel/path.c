@@ -154,3 +154,20 @@ void path_to_string(const path_t* path, char* dest)
         strcat(dest, name);
     }
 }
+
+node_t* path_traverse_node(const path_t* path, node_t* node)
+{
+    const char* name;
+    PATH_FOR_EACH(name, path)
+    {
+        node_t* child = node_find(node, name);
+        if (child == NULL)
+        {
+            return NULL;
+        }
+
+        node = child;
+    }
+
+    return node;
+}

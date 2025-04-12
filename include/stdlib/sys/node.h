@@ -67,29 +67,6 @@ static inline node_t* node_find(node_t* node, const char* name)
     return NULL;
 }
 
-#ifdef __KERNEL__
-
-#include "path.h"
-
-static inline node_t* node_traverse(node_t* node, const path_t* path)
-{
-    const char* name;
-    PATH_FOR_EACH(name, path)
-    {
-        node_t* child = node_find(node, name);
-        if (child == NULL)
-        {
-            return NULL;
-        }
-
-        node = child;
-    }
-
-    return node;
-}
-
-#endif
-
 #if defined(__cplusplus)
 }
 #endif

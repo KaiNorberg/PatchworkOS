@@ -3,9 +3,9 @@
 #include "sched.h"
 #include "vfs.h"
 
+#include <log.h>
 #include <stdio.h>
 #include <string.h>
-#include <log.h>
 
 void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd)
 {

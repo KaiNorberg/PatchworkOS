@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <sys/io.h>
+#include <sys/node.h>
 
 #define PATH_NAME_SEPARATOR '/'
 #define PATH_LABEL_SEPARATOR ':'
@@ -24,3 +25,5 @@ typedef struct path
 uint64_t path_init(path_t* path, const char* string, path_t* cwd);
 
 void path_to_string(const path_t* path, char* dest);
+
+node_t* path_traverse_node(const path_t* path, node_t* node);
