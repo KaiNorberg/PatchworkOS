@@ -366,19 +366,6 @@ uint64_t vfs_flush(file_t* file, const void* buffer, uint64_t size, const rect_t
     return file->ops->flush(file, buffer, size, rect);
 }
 
-void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
-{
-    if (file->resource != NULL && atomic_load(&file->resource->hidden))
-    {
-        return ERRPTR(ENORES);
-    }
-    if (file->ops->mmap == NULL)
-    {
-        return ERRPTR(EACCES);
-    }
-    return file->ops->mmap(file, address, length, prot);
-}
-
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
 {
     uint64_t currentTime = systime_uptime();

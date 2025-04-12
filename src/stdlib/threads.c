@@ -89,7 +89,7 @@ _NORETURN void thrd_exit(int res)
     atomic_store(&thread->running, false);
     _ThreadUnref(thread);
     _ThreadUnref(thread); // Dereference base reference
-    thread_exit();
+    _PlatformThreadExit();
 }
 
 int thrd_detach(thrd_t thr)

@@ -60,7 +60,6 @@ typedef uint64_t (*file_write_t)(file_t*, const void*, uint64_t);
 typedef uint64_t (*file_seek_t)(file_t*, int64_t, seek_origin_t);
 typedef uint64_t (*file_ioctl_t)(file_t*, uint64_t, void*, uint64_t);
 typedef uint64_t (*file_flush_t)(file_t*, const pixel_t*, uint64_t, const rect_t*);
-typedef void* (*file_mmap_t)(file_t*, void*, uint64_t, prot_t);
 typedef wait_queue_t* (*file_poll_t)(file_t*, poll_file_t*);
 
 typedef struct file_ops
@@ -70,7 +69,6 @@ typedef struct file_ops
     file_seek_t seek;
     file_ioctl_t ioctl;
     file_flush_t flush;
-    file_mmap_t mmap;
     file_poll_t poll;
 } file_ops_t;
 
@@ -129,8 +127,6 @@ uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin);
 uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size);
 
 uint64_t vfs_flush(file_t* file, const void* buffer, uint64_t size, const rect_t* rect);
-
-void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot);
 
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout);
 

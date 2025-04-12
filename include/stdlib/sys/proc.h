@@ -59,15 +59,13 @@ fd_t procfd(pid_t pid, const char* file);
 
 tid_t split(void* entry, uint64_t argc, ...);
 
-_NORETURN void thread_exit(void);
-
 void yield(void);
 
-void* mmap(fd_t fd, void* address, uint64_t length, prot_t prot);
+void* valloc(void* address, uint64_t length, prot_t prot);
 
-uint64_t munmap(void* address, uint64_t length);
+uint64_t vfree(void* address, uint64_t length);
 
-uint64_t mprotect(void* address, uint64_t length, prot_t prot);
+uint64_t vprotect(void* address, uint64_t length, prot_t prot);
 
 #if defined(__cplusplus)
 }

@@ -88,11 +88,11 @@ _NORETURN void _PlatformThreadExit(void);
 
 void _PlatformYield(void);
 
-void* _PlatformMmap(fd_t fd, void* address, uint64_t length, prot_t prot);
+void* _PlatformValloc(void* address, uint64_t length, prot_t prot);
 
-uint64_t _PlatformMunmap(void* address, uint64_t length);
+uint64_t _PlatformVfree(void* address, uint64_t length);
 
-uint64_t _PlatformMprotect(void* address, uint64_t length, prot_t prot);
+uint64_t _PlatformVprotect(void* address, uint64_t length, prot_t prot);
 
 _NORETURN void _PlatformExit(int status);
 

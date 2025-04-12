@@ -184,12 +184,12 @@ errno_t syscall_error(void)
     return sched_thread()->error;
 }
 
-pid_t syscall_pid(void)
+pid_t syscall_getpid(void)
 {
     return sched_process()->id;
 }
 
-tid_t syscall_tid(void)
+tid_t syscall_gettid(void)
 {
     return sched_thread()->id;
 }
@@ -404,29 +404,22 @@ uint64_t syscall_stat(const char* path, stat_t* buffer)
     return vfs_stat(path, buffer);
 }
 
-void* syscall_mmap(fd_t fd, void* address, uint64_t length, prot_t prot)
+void* syscall_valloc(void* address, uint64_t length, prot_t prot)
 {
-    file_t* file = vfx_ctx_file(&sched_process()->vfsCtx, fd);
-    if (file == NULL)
-    {
-        return NULL;
-    }
-    FILE_DEFER(file);
-
-    return vfs_mmap(file, address, length, prot);
+    return vmm_alloc(address, length, prot);
 }
 
-uint64_t syscall_munmap(void* address, uint64_t length)
+uint64_t syscall_vfree(void* address, uint64_t length)
 {
     if (!verify_pointer(address, length))
     {
         return ERROR(EFAULT);
     }
 
-    return vmm_unmap(address, length);
+    return vmm_free(address, length);
 }
 
-uint64_t syscall_mprotect(void* address, uint64_t length, prot_t prot)
+uint64_t syscall_vprotect(void* address, uint64_t length, prot_t prot)
 {
     if (!verify_pointer(address, length))
     {
@@ -579,8 +572,8 @@ void* syscallTable[] = {
     syscall_spawn,
     syscall_sleep,
     syscall_error,
-    syscall_pid,
-    syscall_tid,
+    syscall_getpid,
+    syscall_gettid,
     syscall_uptime,
     syscall_time,
     syscall_open,
@@ -593,9 +586,9 @@ void* syscallTable[] = {
     syscall_chdir,
     syscall_poll,
     syscall_stat,
-    syscall_mmap,
-    syscall_munmap,
-    syscall_mprotect,
+    syscall_valloc,
+    syscall_vfree,
+    syscall_vprotect,
     syscall_flush,
     syscall_listdir,
     syscall_split,

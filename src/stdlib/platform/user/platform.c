@@ -14,7 +14,7 @@ void _PlatformInit(void)
 
 void* _PlatformPageAlloc(uint64_t amount)
 {
-    return mmap(zeroResource, NULL, amount * PAGE_SIZE, PROT_READ | PROT_WRITE);
+    return valloc(NULL, amount * PAGE_SIZE, PROT_READ | PROT_WRITE);
 }
 
 int* _PlatformErrnoFunc(void)

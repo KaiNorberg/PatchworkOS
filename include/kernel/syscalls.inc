@@ -3,8 +3,8 @@
 %define SYS_SPAWN 2
 %define SYS_SLEEP 3
 %define SYS_ERROR 4
-%define SYS_PID 5
-%define SYS_TID 6
+%define SYS_GETPID 5
+%define SYS_GETTID 6
 %define SYS_UPTIME 7
 %define SYS_TIME 8
 %define SYS_OPEN 9
@@ -17,9 +17,9 @@
 %define SYS_CHDIR 16
 %define SYS_POLL 17
 %define SYS_STAT 18
-%define SYS_MMAP 19
-%define SYS_MUNMAP 20
-%define SYS_MPROTECT 21
+%define SYS_VALLOC 19
+%define SYS_VFREE 20
+%define SYS_VPROTECT 21
 %define SYS_FLUSH 22
 %define SYS_LISTDIR 23
 %define SYS_SPLIT 24

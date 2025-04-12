@@ -89,12 +89,12 @@ _PlatformSleep:
 
 global _PlatformGetpid
 _PlatformGetpid:
-    SYSTEM_CALL SYS_PID
+    SYSTEM_CALL SYS_GETPID
     ret
 
 global _PlatformGettid
 _PlatformGettid:
-    SYSTEM_CALL SYS_TID
+    SYSTEM_CALL SYS_GETTID
     ret
 
 global _PlatformUptime
@@ -127,19 +127,19 @@ _PlatformYield:
     SYSTEM_CALL SYS_YIELD
     ret
 
-global _PlatformMmap
-_PlatformMmap:
-    SYSTEM_CALL_PTR SYS_MMAP
+global _PlatformValloc
+_PlatformValloc:
+    SYSTEM_CALL_PTR SYS_VALLOC
     ret
 
-global _PlatformMunmap
-_PlatformMunmap:
-    SYSTEM_CALL SYS_MUNMAP
+global _PlatformVfree
+_PlatformVfree:
+    SYSTEM_CALL SYS_VFREE
     ret
 
-global _PlatformMprotect
-_PlatformMprotect:
-    SYSTEM_CALL SYS_MPROTECT
+global _PlatformVprotect
+_PlatformVprotect:
+    SYSTEM_CALL SYS_VPROTECT
     ret
 
 global _PlatformExit
