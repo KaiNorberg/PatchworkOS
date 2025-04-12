@@ -100,12 +100,6 @@ typedef struct wait_queue_entry
     wait_queue_t* waitQueue;
 } wait_queue_entry_t;
 
-typedef struct waitsys_ctx
-{
-    list_t threads;
-    lock_t lock;
-} waitsys_ctx_t;
-
 typedef enum
 {
     BLOCK_NORM = 0,
@@ -116,7 +110,6 @@ typedef enum
 
 typedef struct
 {
-    waitsys_ctx_t* waitsys;
     wait_queue_entry_t* waitEntries[CONFIG_MAX_BLOCKERS_PER_THREAD];
     uint8_t entryAmount;
     block_result_t result;
@@ -127,7 +120,7 @@ void wait_queue_init(wait_queue_t* waitQueue);
 
 void wait_queue_deinit(wait_queue_t* waitQueue);
 
-void waitsys_ctx_init(waitsys_ctx_t* waitsys);
+void waitsys_init(void);
 
 void waitsys_timer_trap(trap_frame_t* trapFrame);
 

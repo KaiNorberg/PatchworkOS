@@ -31,7 +31,6 @@ typedef struct
     uint64_t cliAmount;
     tss_t tss;
     sched_ctx_t sched;
-    waitsys_ctx_t waitsys;
     ipi_queue_t queue;
     uint8_t idleStack[CPU_IDLE_STACK_SIZE];
 } cpu_t;

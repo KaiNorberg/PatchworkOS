@@ -60,7 +60,6 @@ static NOINLINE void cpu_init(cpu_t* cpu, uint8_t id, uint8_t lapicId)
     cpu->cliAmount = 0;
     tss_init(&cpu->tss);
     sched_ctx_init(&cpu->sched);
-    waitsys_ctx_init(&cpu->waitsys);
     ipi_queue_init(&cpu->queue);
 }
 

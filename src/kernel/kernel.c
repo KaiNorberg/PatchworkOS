@@ -66,6 +66,7 @@ void kernel_init(boot_info_t* bootInfo)
     log_expose();
 
     sched_init();
+    waitsys_init();
 
     log_enable_screen(&bootInfo->gopBuffer);
 

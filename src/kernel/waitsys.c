@@ -12,6 +12,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// TODO: This is using one big list for all cpus, this causes a lot of lock contention. Fix that.
+static list_t threads;
+static lock_t lock;
+
 void wait_queue_init(wait_queue_t* waitQueue)
 {
     lock_init(&waitQueue->lock);
@@ -28,24 +32,18 @@ void wait_queue_deinit(wait_queue_t* waitQueue)
     }
 }
 
-void waitsys_ctx_init(waitsys_ctx_t* waitsys)
+static void waitsys_add(thread_t* thread)
 {
-    list_init(&waitsys->threads);
-    lock_init(&waitsys->lock);
-}
-
-static void waitsys_ctx_add(waitsys_ctx_t* waitsys, thread_t* thread)
-{
-    LOCK_DEFER(&waitsys->lock);
+    LOCK_DEFER(&lock);
 
     if (thread->block.deadline == NEVER)
     {
-        list_push(&waitsys->threads, &thread->entry);
+        list_push(&threads, &thread->entry);
         return;
     }
 
     thread_t* other;
-    LIST_FOR_EACH(other, &waitsys->threads, entry)
+    LIST_FOR_EACH(other, &threads, entry)
     {
         if (other->block.deadline > thread->block.deadline)
         {
@@ -53,23 +51,32 @@ static void waitsys_ctx_add(waitsys_ctx_t* waitsys, thread_t* thread)
             return;
         }
     }
-    list_push(&waitsys->threads, &thread->entry);
+    list_push(&threads, &thread->entry);
 }
 
-static void waitsys_ctx_remove(waitsys_ctx_t* waitsys, thread_t* thread)
+static void waitsys_remove(thread_t* thread)
 {
-    LOCK_DEFER(&waitsys->lock);
+    LOCK_DEFER(&lock);
     list_remove(&thread->entry);
+}
+
+void waitsys_init(void)
+{
+    list_init(&threads);
+    lock_init(&lock);
 }
 
 void waitsys_timer_trap(trap_frame_t* trapFrame)
 {
     cpu_t* self = smp_self_unsafe();
-    waitsys_ctx_t* waitsys = &self->waitsys;
+    if (self->id != 0)
+    {
+        return;
+    }
 
-    LOCK_DEFER(&waitsys->lock);
+    LOCK_DEFER(&lock);
 
-    if (list_empty(&waitsys->threads))
+    if (list_empty(&threads))
     {
         return;
     }
@@ -77,7 +84,7 @@ void waitsys_timer_trap(trap_frame_t* trapFrame)
     // TODO: This is O(n)... fix that
     thread_t* thread;
     thread_t* temp;
-    LIST_FOR_EACH_SAFE(thread, temp, &waitsys->threads, entry)
+    LIST_FOR_EACH_SAFE(thread, temp, &threads, entry)
     {
         if (systime_uptime() < thread->block.deadline && !(atomic_load(&thread->process->dead) || thread->dead))
         {
@@ -114,7 +121,6 @@ void waitsys_block_trap(trap_frame_t* trapFrame)
 {
     cpu_t* self = smp_self_unsafe();
     sched_ctx_t* sched = &self->sched;
-    waitsys_ctx_t* waitsys = &self->waitsys;
 
     thread_save(sched->runThread, trapFrame);
 
@@ -126,10 +132,9 @@ void waitsys_block_trap(trap_frame_t* trapFrame)
         list_push(&waitQueue->entries, &sched->runThread->block.waitEntries[i]->entry);
     }
 
-    sched->runThread->block.waitsys = waitsys;
-    waitsys_ctx_add(waitsys, sched->runThread);
-
+    waitsys_add(sched->runThread);
     sched->runThread = NULL;
+
     sched_schedule_trap(trapFrame);
 }
 
@@ -215,7 +220,7 @@ void waitsys_unblock(wait_queue_t* waitQueue)
         thread_t* thread = entry->thread;
 
         thread->block.result = BLOCK_NORM;
-        waitsys_ctx_remove(thread->block.waitsys, thread);
+        waitsys_remove(thread);
 
         for (uint64_t i = 0; i < thread->block.entryAmount; i++)
         {
