@@ -1,5 +1,5 @@
 #include "platform/platform.h"
-#if _PLATFORM_HAS_SCHEDULING
+#if _PLATFORM_HAS_SYSCALLS
 
 #include <stdatomic.h>
 #include <stdbool.h>
@@ -89,7 +89,7 @@ _NORETURN void thrd_exit(int res)
     atomic_store(&thread->running, false);
     _ThreadUnref(thread);
     _ThreadUnref(thread); // Dereference base reference
-    _PlatformThreadExit();
+    _SyscallThreadExit();
 }
 
 int thrd_detach(thrd_t thr)

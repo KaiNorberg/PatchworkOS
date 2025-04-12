@@ -1,6 +1,6 @@
 #pragma once
 #include "../platform/platform.h"
-#if _PLATFORM_HAS_SCHEDULING
+#if _PLATFORM_HAS_SYSCALLS
 
 #include <errno.h>
 #include <stdatomic.h>

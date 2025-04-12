@@ -24,8 +24,8 @@
 %define SYS_LISTDIR 23
 %define SYS_SPLIT 24
 %define SYS_YIELD 25
-%define SYS_OPENAT 26
-%define SYS_OPEN2AT 27
+%define SYS_OPENAS 26
+%define SYS_OPEN2AS 27
 %define SYS_DUP 28
 %define SYS_DUP2 29
 

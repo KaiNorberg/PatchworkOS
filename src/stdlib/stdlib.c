@@ -5,10 +5,10 @@
 #include "common/heap.h"
 #include "platform/platform.h"
 
-#if _PLATFORM_HAS_SCHEDULING
+#if _PLATFORM_HAS_SYSCALLS
 _NORETURN void exit(int status)
 {
-    _PlatformExit(status);
+    _SyscallProcessExit(status);
 }
 #endif
 

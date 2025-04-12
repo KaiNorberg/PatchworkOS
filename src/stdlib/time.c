@@ -5,10 +5,15 @@
 #include "common/time_zone.h"
 #include "platform/platform.h"
 
-#if _PLATFORM_HAS_SCHEDULING == 1
+#if _PLATFORM_HAS_SYSCALLS == 1
 time_t time(time_t* timePtr)
 {
-    return _PlatformTime(timePtr);
+    time_t time = _SyscallTime();
+    if (timePtr != NULL)
+    {
+        *timePtr = time;
+    }
+    return time;
 }
 #endif
 

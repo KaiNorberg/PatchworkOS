@@ -1,5 +1,5 @@
 #include "platform/platform.h"
-#if _PLATFORM_HAS_SCHEDULING
+#if _PLATFORM_HAS_SYSCALLS
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,28 +9,28 @@
 
 nsec_t uptime(void)
 {
-    return _PlatformUptime();
+    return _SyscallUptime();
 }
 
 uint64_t sleep(nsec_t nanoseconds)
 {
-    return _PlatformSleep(nanoseconds);
+    return _SyscallSleep(nanoseconds);
 }
 
 // argv[0] = executable
 pid_t spawn(const char** argv, const spawn_fd_t* fds)
 {
-    return _PlatformSpawn(argv, fds);
+    return _SyscallSpawn(argv, fds);
 }
 
 pid_t getpid(void)
 {
-    return _PlatformGetpid();
+    return _SyscallGetpid();
 }
 
 tid_t gettid(void)
 {
-    return _PlatformGettid();
+    return _SyscallGettid();
 }
 
 fd_t procfd(pid_t pid, const char* file)
@@ -44,27 +44,27 @@ fd_t procfd(pid_t pid, const char* file)
 __attribute__((naked)) tid_t split(void* entry, uint64_t argc, ...)
 {
     // Pretend you dont se this, we have to do this becouse of the variadic arguments.
-    asm volatile("jmp _PlatformSplit");
+    asm volatile("jmp _SyscallSplit");
 }
 
 void yield(void)
 {
-    _PlatformYield();
+    _SyscallYield();
 }
 
 void* valloc(void* address, uint64_t length, prot_t prot)
 {
-    return _PlatformValloc(address, length, prot);
+    return _SyscallValloc(address, length, prot);
 }
 
 uint64_t vfree(void* address, uint64_t length)
 {
-    return _PlatformVfree(address, length);
+    return _SyscallVfree(address, length);
 }
 
 uint64_t vprotect(void* address, uint64_t length, prot_t prot)
 {
-    return _PlatformVprotect(address, length, prot);
+    return _SyscallVprotect(address, length, prot);
 }
 
 #endif

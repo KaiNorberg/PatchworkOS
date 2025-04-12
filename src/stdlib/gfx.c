@@ -6,7 +6,7 @@
 #include <sys/math.h>
 
 #include "platform/platform.h"
-#if _PLATFORM_HAS_FILE_IO
+#if _PLATFORM_HAS_SYSCALLS
 
 gfx_fbmp_t* gfx_fbmp_new(const char* path)
 {

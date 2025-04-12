@@ -92,7 +92,6 @@ static void* loader_load_program(thread_t* thread)
         }
     }
 
-    printf("program loaded to [%p-%p]", min, max);
     return (void*)header.entry;
 }
 

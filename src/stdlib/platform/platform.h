@@ -2,23 +2,22 @@
 
 #include <stdarg.h>
 #include <stdint.h>
+#include <time.h>
+#include <errno.h>
 #include <sys/io.h>
 #include <sys/proc.h>
-#include <time.h>
 
 #ifdef __KERNEL__
 
 #include "kernel/platform.h"
-#define _PLATFORM_HAS_FILE_IO 0
-#define _PLATFORM_HAS_SCHEDULING 0
+#define _PLATFORM_HAS_SYSCALLS 0
 #define _PLATFORM_HAS_SSE 0
 #define _PLATFORM_HAS_WIN 0
 
 #else
 
 #include "user/platform.h"
-#define _PLATFORM_HAS_FILE_IO 1
-#define _PLATFORM_HAS_SCHEDULING 1
+#define _PLATFORM_HAS_SYSCALLS 1
 #define _PLATFORM_HAS_SSE 1
 #define _PLATFORM_HAS_WIN 1
 
@@ -32,68 +31,66 @@ int* _PlatformErrnoFunc(void);
 
 int _PlatformVprintf(const char* _RESTRICT format, va_list args);
 
-#if _PLATFORM_HAS_FILE_IO
+#if _PLATFORM_HAS_SYSCALLS
 
-uint64_t _PlatformListdir(const char* path, dir_entry_t* entries, uint64_t amount);
+_NORETURN void _SyscallProcessExit(uint64_t status);
 
-fd_t _PlatformOpen(const char* path);
+_NORETURN void _SyscallThreadExit(void);
 
-fd_t _PlatformOpenas(fd_t target, const char* path);
+pid_t _SyscallSpawn(const char** argv, const spawn_fd_t* fds);
 
-uint64_t _PlatformOpen2(const char* path, fd_t fds[2]);
+uint64_t _SyscallSleep(nsec_t nanoseconds);
 
-uint64_t _PlatformOpen2as(const char* path, fd_t fd[2]);
+errno_t _SyscallError(void);
 
-uint64_t _PlatformClose(fd_t fd);
+pid_t _SyscallGetpid(void);
 
-uint64_t _PlatformRead(fd_t fd, void* buffer, uint64_t count);
+tid_t _SyscallGettid(void);
 
-uint64_t _PlatformWrite(fd_t fd, const void* buffer, uint64_t count);
+nsec_t _SyscallUptime(void);
 
-uint64_t _PlatformSeek(fd_t fd, int64_t offset, seek_origin_t origin);
+time_t _SyscallTime(void);
 
-uint64_t _PlatformChdir(const char* path);
+fd_t _SyscallOpen(const char* path);
 
-uint64_t _PlatformPoll(pollfd_t* fds, uint64_t amount, nsec_t timeout);
+uint64_t _SyscallOpen2(const char* path, fd_t fds[2]);
 
-uint64_t _PlatformStat(const char* path, stat_t* info);
+uint64_t _SyscallClose(fd_t fd);
 
-uint64_t _PlatformIoctl(fd_t fd, uint64_t request, void* argp, uint64_t size);
+uint64_t _SyscallRead(fd_t fd, void* buffer, uint64_t count);
 
-uint64_t _PlatformFlush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect_t* rect);
+uint64_t _SyscallWrite(fd_t fd, const void* buffer, uint64_t count);
 
-fd_t _PlatformDup(fd_t oldFd);
+uint64_t _SyscallSeek(fd_t fd, int64_t offset, seek_origin_t origin);
 
-fd_t _PlatformDup2(fd_t oldFd, fd_t newFd);
+uint64_t _SyscallIoctl(fd_t fd, uint64_t request, void* argp, uint64_t size);
 
-#endif
+uint64_t _SyscallChdir(const char* path);
 
-#if _PLATFORM_HAS_SCHEDULING
+uint64_t _SyscallPoll(pollfd_t* fds, uint64_t amount, nsec_t timeout);
 
-nsec_t _PlatformUptime(void);
+uint64_t _SyscallStat(const char* path, stat_t* info);
 
-time_t _PlatformTime(time_t* timePtr);
+void* _SyscallValloc(void* address, uint64_t length, prot_t prot);
 
-uint64_t _PlatformSleep(nsec_t nanoseconds);
+uint64_t _SyscallVfree(void* address, uint64_t length);
 
-pid_t _PlatformSpawn(const char** argv, const spawn_fd_t* fds);
+uint64_t _SyscallVprotect(void* address, uint64_t length, prot_t prot);
 
-pid_t _PlatformGetpid(void);
+uint64_t _SyscallFlush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect_t* rect);
 
-tid_t _PlatformGettid(void);
+uint64_t _SyscallListdir(const char* path, dir_entry_t* entries, uint64_t amount);
 
-tid_t _PlatformSplit(void* entry, uint64_t argc, ...);
+tid_t _SyscallSplit(void* entry, uint64_t argc, ...);
 
-_NORETURN void _PlatformThreadExit(void);
+void _SyscallYield(void);
 
-void _PlatformYield(void);
+fd_t _SyscallOpenas(fd_t target, const char* path);
 
-void* _PlatformValloc(void* address, uint64_t length, prot_t prot);
+uint64_t _SyscallOpen2as(const char* path, fd_t fd[2]);
 
-uint64_t _PlatformVfree(void* address, uint64_t length);
+fd_t _SyscallDup(fd_t oldFd);
 
-uint64_t _PlatformVprotect(void* address, uint64_t length, prot_t prot);
-
-_NORETURN void _PlatformExit(int status);
+fd_t _SyscallDup2(fd_t oldFd, fd_t newFd);
 
 #endif
