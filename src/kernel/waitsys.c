@@ -140,7 +140,7 @@ void waitsys_block_trap(trap_frame_t* trapFrame)
 
 block_result_t waitsys_block(wait_queue_t* waitQueue, nsec_t timeout)
 {
-    ASSERT_PANIC(rflags_read() & RFLAGS_INTERRUPT_ENABLE, "waitsys_block, interupts disabled");
+    ASSERT_PANIC(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 
     thread_t* thread = smp_self()->sched.runThread;
     wait_queue_entry_t* entry = malloc(sizeof(wait_queue_entry_t));
@@ -168,7 +168,7 @@ block_result_t waitsys_block(wait_queue_t* waitQueue, nsec_t timeout)
 
 block_result_t waitsys_block_many(wait_queue_t** waitQueues, uint64_t amount, nsec_t timeout)
 {
-    ASSERT_PANIC(rflags_read() & RFLAGS_INTERRUPT_ENABLE, "waitsys_block_many, interupts disabled");
+    ASSERT_PANIC(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 
     thread_t* thread = smp_self()->sched.runThread;
     if (amount > CONFIG_MAX_BLOCKERS_PER_THREAD)
@@ -209,7 +209,28 @@ block_result_t waitsys_block_many(wait_queue_t** waitQueues, uint64_t amount, ns
     return thread->block.result;
 }
 
-void waitsys_unblock(wait_queue_t* waitQueue)
+static void waitsys_unblock_thread(thread_t* thread)
+{
+    thread->block.result = BLOCK_NORM;
+    waitsys_remove(thread);
+
+    for (uint64_t i = 0; i < thread->block.entryAmount; i++)
+    {
+        if (thread->block.waitEntries[i] == NULL)
+        {
+            break;
+        }
+        wait_queue_entry_t* entry = thread->block.waitEntries[i];
+        thread->block.waitEntries[i] = NULL;
+
+        list_remove(&entry->entry);
+        free(entry);
+    }
+
+    sched_push(thread);
+}
+
+void waitsys_unblock(wait_queue_t* waitQueue, uint64_t amount)
 {
     LOCK_DEFER(&waitQueue->lock);
 
@@ -217,24 +238,13 @@ void waitsys_unblock(wait_queue_t* waitQueue)
     wait_queue_entry_t* temp;
     LIST_FOR_EACH_SAFE(entry, temp, &waitQueue->entries, entry)
     {
-        thread_t* thread = entry->thread;
-
-        thread->block.result = BLOCK_NORM;
-        waitsys_remove(thread);
-
-        for (uint64_t i = 0; i < thread->block.entryAmount; i++)
+        if (amount == 0)
         {
-            if (thread->block.waitEntries[i] == NULL)
-            {
-                break;
-            }
-            wait_queue_entry_t* entry = thread->block.waitEntries[i];
-            thread->block.waitEntries[i] = NULL;
-
-            list_remove(&entry->entry);
-            free(entry);
+            return;
         }
 
-        sched_push(thread);
+        thread_t* thread = entry->thread;
+        waitsys_unblock_thread(thread);
+        amount--;
     }
 }

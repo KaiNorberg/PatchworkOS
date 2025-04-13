@@ -40,7 +40,7 @@ void cli_pop(void)
     asm volatile("cli");
 
     cpu_t* cpu = smp_self_unsafe();
-    ASSERT_PANIC(cpu->cliAmount != 0, "cli amount underflow");
+    ASSERT_PANIC(cpu->cliAmount != 0);
     cpu->cliAmount--;
     if (cpu->cliAmount == 0 && cpu->prevFlags & RFLAGS_INTERRUPT_ENABLE && cpu->trapDepth == 0)
     {

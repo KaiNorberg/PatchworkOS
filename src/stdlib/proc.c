@@ -2,7 +2,6 @@
 #if _PLATFORM_HAS_SYSCALLS
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <sys/io.h>
 
 #include "platform/platform.h"
@@ -65,6 +64,11 @@ uint64_t vfree(void* address, uint64_t length)
 uint64_t vprotect(void* address, uint64_t length, prot_t prot)
 {
     return _SyscallVprotect(address, length, prot);
+}
+
+uint64_t futex(atomic_uint64* addr, uint64_t val, futex_op_t op, nsec_t timeout)
+{
+    return _SyscallFutex(addr, val, op, timeout);
 }
 
 #endif

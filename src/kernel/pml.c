@@ -256,7 +256,7 @@ uint64_t pml_change_flags(pml_t* table, void* virtAddr, uint64_t pageAmount, uin
         }
 
         *entry = page_entry_create(VMM_HIGHER_TO_LOWER(PAGE_ENTRY_GET_ADDRESS(*entry)), finalFlags);
-        
+
         PAGE_INVALIDATE(virtAddr);
         virtAddr = (void*)((uint64_t)virtAddr + PAGE_SIZE);
     }

@@ -123,6 +123,7 @@ void command_execute(const char* command)
     const char** argv = argsplit(command, &argc);
     if (argv == NULL)
     {
+        printf("error: invalid format");
         return;
     }
     if (argc == 0)
@@ -140,7 +141,7 @@ void command_execute(const char* command)
         {
             if (i != (int64_t)argc - 2)
             {
-                printf("error: invalid command format");
+                printf("error: invalid format");
                 goto cleanup;
             }
 

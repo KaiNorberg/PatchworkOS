@@ -335,7 +335,7 @@ static void dwm_poll_mouse(void)
         if (poll.occurred & POLL_READ)
         {
             mouse_event_t event;
-            ASSERT_PANIC(vfs_read(mouse, &event, sizeof(mouse_event_t)) == sizeof(mouse_event_t), "mouse read fail");
+            ASSERT_PANIC(vfs_read(mouse, &event, sizeof(mouse_event_t)) == sizeof(mouse_event_t));
 
             total.buttons |= event.buttons;
             total.delta.x += event.delta.x;
@@ -361,7 +361,7 @@ static void dwm_poll_keyboard(void)
     if (poll.occurred & POLL_READ)
     {
         kbd_event_t event;
-        ASSERT_PANIC(vfs_read(keyboard, &event, sizeof(kbd_event_t)) == sizeof(kbd_event_t), "kbd read fail");
+        ASSERT_PANIC(vfs_read(keyboard, &event, sizeof(kbd_event_t)) == sizeof(kbd_event_t));
 
         if (selected != NULL)
         {
@@ -628,7 +628,7 @@ void dwm_start(void)
 void dwm_redraw(void)
 {
     atomic_store(&redrawNeeded, true);
-    waitsys_unblock(&redrawWaitQueue);
+    waitsys_unblock(&redrawWaitQueue, WAITSYS_ALL);
 }
 
 void dwm_update_client_rect(void)

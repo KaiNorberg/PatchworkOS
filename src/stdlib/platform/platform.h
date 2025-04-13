@@ -1,11 +1,11 @@
 #pragma once
 
+#include <errno.h>
 #include <stdarg.h>
 #include <stdint.h>
-#include <time.h>
-#include <errno.h>
 #include <sys/io.h>
 #include <sys/proc.h>
+#include <time.h>
 
 #ifdef __KERNEL__
 
@@ -92,5 +92,7 @@ uint64_t _SyscallOpen2as(const char* path, fd_t fd[2]);
 fd_t _SyscallDup(fd_t oldFd);
 
 fd_t _SyscallDup2(fd_t oldFd, fd_t newFd);
+
+uint64_t _SyscallFutex(atomic_uint64* addr, uint64_t val, futex_op_t op, nsec_t timeout);
 
 #endif

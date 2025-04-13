@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <sys/math.h>
 
-static _Atomic nsec_t accumulator;
+static _Atomic(nsec_t) accumulator;
 static time_t bootEpoch;
 
 static uint8_t cmos_read(uint8_t reg)

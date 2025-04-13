@@ -2,6 +2,7 @@
 
 #include "config.h"
 #include "defs.h"
+#include "futex.h"
 #include "lock.h"
 #include "simd.h"
 #include "space.h"
@@ -36,9 +37,10 @@ typedef struct
     atomic_bool dead;
     vfs_ctx_t vfsCtx;
     space_t space;
-    atomic_uint64_t threadCount;
+    atomic_uint64 threadCount;
     wait_queue_t queue;
-    _Atomic tid_t newTid;
+    futex_ctx_t futexCtx;
+    _Atomic(tid_t) newTid;
 } process_t;
 
 typedef struct thread

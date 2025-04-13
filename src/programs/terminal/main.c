@@ -1,3 +1,4 @@
+#include "_AUX/rect_t.h"
 #include <ctype.h>
 #include <errno.h>
 #include <stdatomic.h>
@@ -72,21 +73,27 @@ static void terminal_clear(void)
     win_draw_end(terminal, &gfx);
 }
 
-static void terminal_scroll(gfx_t* gfx)
+static void terminal_scroll(void)
 {
+    gfx_t gfx;
+    win_draw_begin(terminal, &gfx);
     cursorPos.y -= 2;
 
-    rect_t rect = RECT_INIT_GFX(gfx);
+    rect_t rect = RECT_INIT_GFX(&gfx);
     RECT_SHRINK(&rect, winTheme.edgeWidth);
 
-    gfx_scroll(gfx, &rect, win_font(terminal)->height * 2, winTheme.dark);
+    gfx_scroll(&gfx, &rect, win_font(terminal)->height * 2, winTheme.dark);
+    win_draw_end(terminal, &gfx);
 }
 
-static void terminal_put(gfx_t* gfx, char chr)
+static void terminal_put(char chr)
 {
     const gfx_psf_t* font = win_font(terminal);
 
     terminal_cursor_clear();
+
+    rect_t rect;
+    win_client_rect(terminal, &rect);
 
     switch (chr)
     {
@@ -95,9 +102,9 @@ static void terminal_put(gfx_t* gfx, char chr)
         cursorPos.x = 0;
         cursorPos.y++;
 
-        if ((cursorPos.y + 1) * font->height > gfx->height - winTheme.edgeWidth * 2 - winTheme.padding * 2)
+        if ((cursorPos.y + 1) * font->height > RECT_HEIGHT(&rect) - winTheme.edgeWidth * 2 - winTheme.padding * 2)
         {
-            terminal_scroll(gfx);
+            terminal_scroll();
         }
     }
     break;
@@ -115,13 +122,16 @@ static void terminal_put(gfx_t* gfx, char chr)
     break;
     default:
     {
+        gfx_t gfx;
+        win_draw_begin(terminal, &gfx);
         point_t point = CURSOR_POS_TO_CLIENT_POS(&cursorPos, font);
-        gfx_char(gfx, font, &point, font->height, chr, winTheme.bright, winTheme.dark);
+        gfx_char(&gfx, font, &point, font->height, chr, winTheme.bright, winTheme.dark);
         cursorPos.x++;
+        win_draw_end(terminal, &gfx);
 
-        if ((cursorPos.x + 2) * font->width > gfx->width - winTheme.edgeWidth * 2 - winTheme.padding * 2)
+        if ((cursorPos.x + 2) * font->width > RECT_WIDTH(&rect) - winTheme.edgeWidth * 2 - winTheme.padding * 2)
         {
-            terminal_put(gfx, '\n');
+            terminal_put('\n');
         }
     }
     break;
@@ -167,9 +177,6 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
             break;
         }
 
-        gfx_t gfx;
-        win_draw_begin(window, &gfx);
-
         char chr = kbd_ascii(data->code, data->mods);
         if (chr == '\0')
         {
@@ -182,7 +189,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
             buffer[index] = '\0';
             writef(stdin[PIPE_WRITE], "%s\n", buffer);
             index = 0;
-            terminal_put(&gfx, chr);
+            terminal_put(chr);
         }
         break;
         case '\b':
@@ -190,7 +197,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
             if (index != 0)
             {
                 --index;
-                terminal_put(&gfx, chr);
+                terminal_put(chr);
             }
         }
         break;
@@ -199,13 +206,11 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
             if (index < MAX_PATH)
             {
                 buffer[index++] = chr;
-                terminal_put(&gfx, chr);
+                terminal_put(chr);
             }
         }
         break;
         }
-
-        win_draw_end(window, &gfx);
     }
     break;
     }
@@ -255,17 +260,12 @@ int main(void)
 
         if (fds[0].occurred == POLL_READ)
         {
-            gfx_t gfx;
-            win_draw_begin(terminal, &gfx);
-
             while (poll1(stdout[PIPE_READ], POLL_READ, 0) == POLL_READ)
             {
                 char chr;
                 read(stdout[PIPE_READ], &chr, 1);
-                terminal_put(&gfx, chr);
+                terminal_put(chr);
             }
-
-            win_draw_end(terminal, &gfx);
         }
     }
 

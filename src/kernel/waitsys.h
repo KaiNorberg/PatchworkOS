@@ -1,11 +1,14 @@
 #pragma once
 
 #include "lock.h"
+#include "systime.h"
 
 #include <sys/list.h>
 #include <sys/proc.h>
 
-// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock.
+#define WAITSYS_ALL UINT64_MAX
+
+// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock_all.
 #define WAITSYS_BLOCK(waitQueue, condition) \
     ({ \
         block_result_t result = BLOCK_NORM; \
@@ -16,8 +19,8 @@
         result; \
     })
 
-// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock.
-// Will also return after timeout is reached, timeout will be reached even if waitsys_unblock is never called.
+// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock_all.
+// Will also return after timeout is reached, timeout will be reached even if waitsys_unblock_all is never called.
 #define WAITSYS_BLOCK_TIMEOUT(waitQueue, condition, timeout) \
     ({ \
         block_result_t result = BLOCK_NORM; \
@@ -37,7 +40,7 @@
         result; \
     })
 
-// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock.
+// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock_all.
 // When condition is tested it will also acquire lock, and the macro will always return with lock still acquired.
 #define WAITSYS_BLOCK_LOCK(waitQueue, lock, condition) \
     ({ \
@@ -56,9 +59,9 @@
         result; \
     })
 
-// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock.
+// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock_all.
 // When condition is tested it will also acquire lock, and the macro will always return with lock still acquired.
-// Will also return after timeout is reached, timeout will be reached even if waitsys_unblock is never called.
+// Will also return after timeout is reached, timeout will be reached even if waitsys_unblock_all is never called.
 #define WAITSYS_BLOCK_LOCK_TIMEOUT(waitQueue, lock, condition, timeout) \
     ({ \
         block_result_t result = BLOCK_NORM; \
@@ -130,4 +133,4 @@ block_result_t waitsys_block(wait_queue_t* waitQueue, nsec_t timeout);
 
 block_result_t waitsys_block_many(wait_queue_t** waitQueues, uint64_t amount, nsec_t timeout);
 
-void waitsys_unblock(wait_queue_t* waitQueue);
+void waitsys_unblock(wait_queue_t* waitQueue, uint64_t amount);

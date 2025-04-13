@@ -36,7 +36,8 @@ int* _ErrnoFunc(void);
 #define ENORES 20      // No such resource
 #define EPIPE 21       // Broken pipe
 #define EBLOCKLIMIT 22 // Blocker limit exceeded
-#define EBUSY 23       // Busy
+#define EAGAIN 23      // Try again
+#define EBUSY 24       // Busy
 
 // NOTE: Values retrievd from linux
 /*

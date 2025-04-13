@@ -134,7 +134,7 @@ _SyscallStat:
 
 global _SyscallValloc
 _SyscallValloc:
-    SYSTEM_CALL SYS_VALLOC
+    SYSTEM_CALL_PTR SYS_VALLOC
     ret
 
 global _SyscallVfree
@@ -185,4 +185,9 @@ _SyscallDup:
 global _SyscallDup2
 _SyscallDup2:
     SYSTEM_CALL SYS_DUP2
+    ret
+
+global _SyscallFutex
+_SyscallFutex:
+    SYSTEM_CALL SYS_FUTEX
     ret

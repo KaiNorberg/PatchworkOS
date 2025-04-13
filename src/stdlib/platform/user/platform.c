@@ -7,7 +7,6 @@
 
 void _PlatformInit(void)
 {
-
 }
 
 void* _PlatformPageAlloc(uint64_t amount)

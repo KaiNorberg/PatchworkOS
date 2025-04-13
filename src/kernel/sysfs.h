@@ -53,7 +53,7 @@ typedef struct resource
     node_t node;
     void* private;
     const resource_ops_t* ops;
-    atomic_uint64_t ref;
+    atomic_uint64 ref;
     atomic_bool hidden;
     sysdir_t* dir;
 } resource_t;
@@ -63,7 +63,7 @@ typedef struct sysdir
     node_t node;
     void* private;
     sysdir_on_free_t onFree;
-    atomic_uint64_t ref;
+    atomic_uint64 ref;
 } sysdir_t;
 
 void sysfs_init(void);

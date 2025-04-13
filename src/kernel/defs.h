@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/atomint.h>
 
 #define ALIGNED(alignment) __attribute__((aligned(alignment)))
 #define PACKED __attribute__((packed))
@@ -33,13 +34,3 @@
         } \
         NULL; \
     })
-
-typedef _Atomic(uint64_t) atomic_uint64_t;
-typedef _Atomic(uint32_t) atomic_uint32_t;
-typedef _Atomic(uint16_t) atomic_uint16_t;
-typedef _Atomic(uint8_t) atomic_uint8_t;
-
-typedef _Atomic(uint64_t) atomic_int64_t;
-typedef _Atomic(uint32_t) atomic_int32_t;
-typedef _Atomic(uint16_t) atomic_int16_t;
-typedef _Atomic(uint8_t) atomic_int8_t;

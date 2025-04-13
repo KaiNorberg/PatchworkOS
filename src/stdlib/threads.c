@@ -116,7 +116,6 @@ int thrd_join(thrd_t thr, int* res)
     return thrd_success;
 }
 
-// TODO: High priority, implement a proper user space mutex, futex?
 int mtx_init(mtx_t* mutex, int type)
 {
     if (type != mtx_plain)
@@ -124,27 +123,55 @@ int mtx_init(mtx_t* mutex, int type)
         return thrd_error;
     }
 
-    atomic_init(&mutex->nextTicket, 0);
-    atomic_init(&mutex->nowServing, 0);
+    atomic_init(&mutex->state, FUTEX_UNLOCKED);
 
     return thrd_success;
 }
 
 int mtx_lock(mtx_t* mutex)
 {
-    int ticket = atomic_fetch_add(&mutex->nextTicket, 1);
-    while (atomic_load(&mutex->nowServing) != ticket)
+    uint64_t expected = FUTEX_UNLOCKED;
+    if (atomic_compare_exchange_strong(&(mutex->state), &expected, FUTEX_LOCKED))
     {
+        return thrd_success;
+    }
+
+    for (int i = 0; i < _MTX_SPIN_COUNT; ++i)
+    {
+        if (atomic_load(&(mutex->state)) == FUTEX_UNLOCKED)
+        {
+            expected = FUTEX_UNLOCKED;
+            if (atomic_compare_exchange_strong(&(mutex->state), &expected, FUTEX_LOCKED))
+            {
+                return thrd_success;
+            }
+        }
         asm volatile("pause");
     }
+
+    do
+    {
+        expected = FUTEX_UNLOCKED;
+        if (atomic_compare_exchange_strong(&(mutex->state), &expected, FUTEX_CONTESTED) ||
+            atomic_load(&(mutex->state)) == FUTEX_CONTESTED)
+        {
+            futex(&(mutex->state), FUTEX_CONTESTED, FUTEX_WAIT, NEVER);
+        }
+        else
+        {
+            continue;
+        }
+    } while (atomic_load(&(mutex->state)) != FUTEX_LOCKED);
 
     return thrd_success;
 }
 
 int mtx_unlock(mtx_t* mutex)
 {
-    atomic_fetch_add(&mutex->nowServing, 1);
-
+    if (atomic_exchange(&(mutex->state), FUTEX_UNLOCKED) == FUTEX_CONTESTED)
+    {
+        futex(&(mutex->state), 1, FUTEX_WAKE, NEVER);
+    }
     return thrd_success;
 }
 

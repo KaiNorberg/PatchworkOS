@@ -13,7 +13,7 @@ static bool name_compare(const char* a, const char* b)
     {
         if (PATH_END_OF_NAME(a[i]))
         {
-            return PATH_END_OF_NAME(b[i]);
+            return a[i] == b[i];
         }
         if (a[i] != b[i])
         {
@@ -147,11 +147,19 @@ void path_to_string(const path_t* path, char* dest)
         strcat(dest, ":");
     }
 
+    uint64_t nameAmount = 0;
+
     const char* name;
     PATH_FOR_EACH(name, path)
     {
         strcat(dest, "/");
         strcat(dest, name);
+        nameAmount++;
+    }
+
+    if (nameAmount == 0)
+    {
+        strcat(dest, "/");
     }
 }
 

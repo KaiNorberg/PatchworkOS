@@ -50,7 +50,7 @@ typedef struct volume
     list_entry_t entry;
     char label[MAX_NAME];
     const volume_ops_t* ops;
-    atomic_uint64_t ref;
+    atomic_uint64 ref;
 } volume_t;
 
 typedef struct wait_queue wait_queue_t;
@@ -79,7 +79,7 @@ typedef struct file
     void* private;
     resource_t* resource; // Used by sysfs
     const file_ops_t* ops;
-    atomic_uint64_t ref;
+    atomic_uint64 ref;
 } file_t;
 
 typedef struct poll_file

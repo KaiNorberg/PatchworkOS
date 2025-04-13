@@ -554,6 +554,11 @@ fd_t syscall_dup2(fd_t oldFd, fd_t newFd)
     return vfs_ctx_dup2(&sched_process()->vfsCtx, oldFd, newFd);
 }
 
+uint64_t syscall_futex(atomic_uint64* addr, uint64_t val, futex_op_t op, nsec_t timeout)
+{
+    return futex_do(addr, val, op, timeout);
+}
+
 ///////////////////////////////////////////////////////
 
 void syscall_handler_end(void)
@@ -597,4 +602,5 @@ void* syscallTable[] = {
     syscall_open2as,
     syscall_dup,
     syscall_dup2,
+    syscall_futex,
 };

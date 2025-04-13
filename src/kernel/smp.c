@@ -1,6 +1,7 @@
 #include "smp.h"
 
 #include "apic.h"
+#include "futex.h"
 #include "gdt.h"
 #include "hpet.h"
 #include "idt.h"
@@ -24,7 +25,7 @@ static bool cpuReady = false;
 
 static bool initialized = false;
 
-atomic_uint8_t haltedAmount = ATOMIC_VAR_INIT(0);
+atomic_uint8 haltedAmount = ATOMIC_VAR_INIT(0);
 
 static void ipi_queue_init(ipi_queue_t* queue)
 {
@@ -126,7 +127,7 @@ static NOINLINE void smp_start(void)
             uint8_t id = newId++;
             cpus[id] = malloc(sizeof(cpu_t));
             cpu_init(cpus[id], id, record->lapicId);
-            ASSERT_PANIC(cpu_start(cpus[id]) != ERR, "startup fail");
+            ASSERT_PANIC(cpu_start(cpus[id]) != ERR);
         }
     }
 }
@@ -256,14 +257,14 @@ cpu_t* smp_cpu(uint8_t id)
 
 cpu_t* smp_self_unsafe(void)
 {
-    ASSERT_PANIC((rflags_read() & RFLAGS_INTERRUPT_ENABLE) == 0, "smp_self_unsafe called with interrupts enabled");
+    ASSERT_PANIC((rflags_read() & RFLAGS_INTERRUPT_ENABLE) == 0);
 
     return cpus[msr_read(MSR_CPU_ID)];
 }
 
 cpu_t* smp_self_brute(void)
 {
-    ASSERT_PANIC((rflags_read() & RFLAGS_INTERRUPT_ENABLE) == 0, "smp_self_brute called with interrupts enabled");
+    ASSERT_PANIC((rflags_read() & RFLAGS_INTERRUPT_ENABLE) == 0);
 
     uint8_t lapicId = lapic_id();
     for (uint16_t id = 0; id < cpuAmount; id++)

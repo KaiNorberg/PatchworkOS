@@ -24,8 +24,8 @@ void acpi_init(xsdp_t* xsdp)
 {
     xsdp = VMM_LOWER_TO_HIGHER(xsdp);
 
-    ASSERT_PANIC(xsdp->revision == ACPI_REVISION_2_0, "Invalid acpi revision");
-    ASSERT_PANIC(acpi_valid_checksum(xsdp, xsdp->length), "Invalid xsdp checksum");
+    ASSERT_PANIC(xsdp->revision == ACPI_REVISION_2_0);
+    ASSERT_PANIC(acpi_valid_checksum(xsdp, xsdp->length));
 
     xsdt = VMM_LOWER_TO_HIGHER((void*)xsdp->xsdtAddress);
     tableAmount = (xsdt->header.length - sizeof(sdt_t)) / sizeof(void*);
@@ -39,7 +39,7 @@ void acpi_init(xsdp_t* xsdp)
         signature[4] = '\0';
         printf("acpi: %s at %p", signature, VMM_HIGHER_TO_LOWER(table));
 
-        ASSERT_PANIC(acpi_valid_checksum(table, table->length), "acpi: %s, invalid checksum", signature);
+        ASSERT_PANIC_MSG(acpi_valid_checksum(table, table->length), "acpi: %s, invalid checksum", signature);
     }
 }
 

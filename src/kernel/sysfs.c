@@ -194,7 +194,7 @@ void sysfs_init(void)
 
     lock_init(&lock);
 
-    ASSERT_PANIC(vfs_mount("sys", &sysfs) != ERR, "mount fail");
+    ASSERT_PANIC(vfs_mount("sys", &sysfs) != ERR);
 
     printf("sysfs: init");
 }
@@ -295,7 +295,7 @@ void sysfs_rmdir(sysdir_t* dir)
     node_t* temp;
     LIST_FOR_EACH_SAFE(node, temp, &dir->node.children, entry)
     {
-        ASSERT_PANIC(node->type == SYSFS_RESOURCE, "attempt to remove directory containing directories");
+        ASSERT_PANIC(node->type == SYSFS_RESOURCE);
         resource_t* resource = NODE_CONTAINER(node, resource_t, node);
 
         atomic_store(&resource->hidden, true);

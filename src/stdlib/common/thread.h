@@ -9,6 +9,8 @@
 #include <sys/proc.h>
 #include <threads.h>
 
+#define _MTX_SPIN_COUNT 100
+
 typedef struct _Thread
 {
     list_entry_t entry;

@@ -4,4 +4,3 @@ typedef struct
 {
 
 } socket_t;
-

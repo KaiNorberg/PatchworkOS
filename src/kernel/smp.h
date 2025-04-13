@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defs.h"
+#include "futex.h"
 #include "pmm.h"
 #include "sched.h"
 #include "trap.h"

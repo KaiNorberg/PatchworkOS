@@ -79,5 +79,5 @@ void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, const point_t* delta)
         .delta = *delta,
     };
     mouse->writeIndex = (mouse->writeIndex + 1) % MOUSE_MAX_EVENT;
-    waitsys_unblock(&mouse->waitQueue);
+    waitsys_unblock(&mouse->waitQueue, WAITSYS_ALL);
 }

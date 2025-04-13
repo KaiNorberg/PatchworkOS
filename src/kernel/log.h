@@ -12,11 +12,19 @@
 #define LOG_STR 's'
 #define LOG_INT 'd'
 
-#define ASSERT_PANIC(condition, msg, ...) \
+#define ASSERT_PANIC_MSG(condition, msg, ...) \
     ({ \
         if (!(condition)) \
         { \
             log_panic(NULL, __FILE__ ": " msg __VA_OPT__(, ) __VA_ARGS__); \
+        } \
+    })
+
+#define ASSERT_PANIC(condition) \
+    ({ \
+        if (!(condition)) \
+        { \
+            log_panic(NULL, __FILE__ ": " #condition); \
         } \
     })
 

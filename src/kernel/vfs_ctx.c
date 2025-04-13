@@ -11,7 +11,7 @@ void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd)
 {
     if (cwd == NULL)
     {
-        ASSERT_PANIC(path_init(&ctx->cwd, "home:/usr", NULL) != ERR, "vfs_ctx_init");
+        ASSERT_PANIC(path_init(&ctx->cwd, "home:/usr", NULL) != ERR);
     }
     else
     {

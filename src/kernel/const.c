@@ -27,5 +27,5 @@ SYSFS_STANDARD_RESOURCE_OPS(nullResOps, &nullOps);
 
 void const_init(void)
 {
-    ASSERT_PANIC(sysfs_expose("/", "null", &nullResOps, NULL) != NULL, "const null");
+    ASSERT_PANIC(sysfs_expose("/", "null", &nullResOps, NULL) != NULL);
 }

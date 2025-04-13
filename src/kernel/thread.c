@@ -1,6 +1,7 @@
 #include "thread.h"
 
 #include "defs.h"
+#include "futex.h"
 #include "gdt.h"
 #include "regs.h"
 #include "smp.h"
@@ -12,7 +13,7 @@
 #include <string.h>
 #include <sys/math.h>
 
-static _Atomic pid_t newPid = ATOMIC_VAR_INIT(0);
+static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 
 static uint64_t argv_init(argv_t* argv, const char** src)
 {
@@ -161,6 +162,7 @@ static void process_on_free(sysdir_t* dir)
     space_deinit(&process->space);
     argv_deinit(&process->argv);
     wait_queue_deinit(&process->queue);
+    futex_ctx_deinit(&process->futexCtx);
     free(process);
 }
 
@@ -194,6 +196,7 @@ static process_t* process_new(const char** argv, const path_t* cwd)
     space_init(&process->space);
     atomic_init(&process->threadCount, 0);
     wait_queue_init(&process->queue);
+    futex_ctx_init(&process->futexCtx);
     atomic_init(&process->newTid, 0);
 
     return process;
@@ -202,7 +205,7 @@ static process_t* process_new(const char** argv, const path_t* cwd)
 static void process_free(process_t* process)
 {
     vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_on_free
-    waitsys_unblock(&process->queue);
+    waitsys_unblock(&process->queue, WAITSYS_ALL);
     sysfs_rmdir(process->dir);
 }
 

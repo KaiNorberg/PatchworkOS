@@ -119,5 +119,5 @@ void kbd_push(kbd_t* kbd, kbd_event_type_t type, keycode_t code)
         .type = type,
     };
     kbd->writeIndex = (kbd->writeIndex + 1) % KBD_MAX_EVENT;
-    waitsys_unblock(&kbd->waitQueue);
+    waitsys_unblock(&kbd->waitQueue, WAITSYS_ALL);
 }

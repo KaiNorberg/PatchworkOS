@@ -36,7 +36,7 @@ void msg_queue_push(msg_queue_t* queue, msg_type_t type, const void* data, uint6
     memcpy(msg->data, data, size);
     queue->writeIndex = (queue->writeIndex + 1) % MSG_QUEUE_MAX;
 
-    waitsys_unblock(&queue->waitQueue);
+    waitsys_unblock(&queue->waitQueue, WAITSYS_ALL);
 }
 
 void msg_queue_pop(msg_queue_t* queue, msg_t* msg, nsec_t timeout)

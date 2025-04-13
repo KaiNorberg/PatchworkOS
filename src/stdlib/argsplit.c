@@ -135,6 +135,11 @@ static const char** _ArgsplitBackend(char** argv, const char* str, uint64_t argc
         *out++ = '\0';
     }
 
+    if (state.inQuote || state.escaped)
+    {
+        return NULL;
+    }
+
     return (const char**)argv;
 }
 

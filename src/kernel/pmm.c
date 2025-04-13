@@ -106,13 +106,13 @@ static void page_bitmap_init(void)
 
 static bool page_bitmap_reserved(uint64_t index)
 {
-    ASSERT_PANIC(index < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE, "bitmap out of bounds");
+    ASSERT_PANIC(index < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE);
     return (bitmap.map[(index) / 8] & (1ULL << ((index) % 8)));
 }
 
 static void page_bitmap_reserve(uint64_t low, uint64_t high)
 {
-    ASSERT_PANIC(high < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE, "bitmap out of bounds");
+    ASSERT_PANIC(high < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE);
     for (uint64_t i = low; i < high; i++)
     {
         bitmap.map[i / 8] |= (1ULL << (i % 8));
@@ -154,7 +154,7 @@ static void* page_bitmap_alloc(uint64_t count, uintptr_t maxAddr, uint64_t align
 static void page_bitmap_free(void* address)
 {
     uint64_t index = ((uint64_t)address - VMM_HIGHER_HALF_BASE) / PAGE_SIZE;
-    ASSERT_PANIC(index < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE, "bitmap out of bounds");
+    ASSERT_PANIC(index < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE);
 
     bitmap.map[index / 8] &= ~(1ULL << (index % 8));
     bitmap.firstFreeIndex = MIN(bitmap.firstFreeIndex, index);

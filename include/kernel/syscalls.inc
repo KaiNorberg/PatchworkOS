@@ -28,7 +28,8 @@
 %define SYS_OPEN2AS 27
 %define SYS_DUP 28
 %define SYS_DUP2 29
+%define SYS_FUTEX 30
 
-%define SYS_TOTAL_AMOUNT 30
+%define SYS_TOTAL_AMOUNT 31
 
 %define SYSCALL_VECTOR 0x80

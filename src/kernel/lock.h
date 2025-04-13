@@ -7,8 +7,8 @@
 
 typedef struct
 {
-    atomic_uint16_t nextTicket;
-    atomic_uint16_t nowServing;
+    atomic_uint16 nextTicket;
+    atomic_uint16 nowServing;
 } lock_t;
 
 #define LOCK_DEFER(lock) \

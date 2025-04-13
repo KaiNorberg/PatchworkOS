@@ -2,6 +2,7 @@
 #define _SYS_PROC_H 1
 
 #include <stdint.h>
+#include <sys/atomint.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -39,6 +40,19 @@ typedef struct
         .child = FD_NONE, .parent = FD_NONE \
     }
 
+typedef enum
+{
+    FUTEX_WAIT,
+    FUTEX_WAKE,
+    FUTEX_TRYLOCK
+} futex_op_t;
+
+#define FUTEX_ALL UINT64_MAX
+
+#define FUTEX_UNLOCKED 0
+#define FUTEX_LOCKED 1
+#define FUTEX_CONTESTED 2
+
 // Nanoseconds per second.
 #define SEC ((nsec_t)1000000000)
 
@@ -66,6 +80,8 @@ void* valloc(void* address, uint64_t length, prot_t prot);
 uint64_t vfree(void* address, uint64_t length);
 
 uint64_t vprotect(void* address, uint64_t length, prot_t prot);
+
+uint64_t futex(atomic_uint64* addr, uint64_t val, futex_op_t op, nsec_t timeout);
 
 #if defined(__cplusplus)
 }

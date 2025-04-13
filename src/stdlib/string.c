@@ -335,6 +335,7 @@ static char* errorStrings[] = {
     "no such resource",
     "broken pipe",
     "blocker limit exceeded",
+    "try again",
     "busy",
 };
 

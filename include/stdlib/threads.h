@@ -1,6 +1,8 @@
 #ifndef _THREADS_H
 #define _THREADS_H 1
 
+#include <sys/atomint.h>
+
 #if defined(__cplusplus)
 extern "C"
 {
@@ -38,8 +40,7 @@ enum
 // TODO: High priority, implement a proper user space mutex, futex?
 typedef struct
 {
-    atomic_int nextTicket;
-    atomic_int nowServing;
+    atomic_uint64 state;
 } mtx_t;
 
 typedef int (*thrd_start_t)(void*);
