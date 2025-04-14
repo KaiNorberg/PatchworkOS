@@ -28,6 +28,8 @@
         } \
     })
 
+#define LOG_SCROLL_OFFSET 5
+
 void log_init(void);
 
 void log_enable_screen(gop_buffer_t* gopBuffer);

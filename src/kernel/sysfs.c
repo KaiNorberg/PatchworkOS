@@ -66,7 +66,7 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
 
     if (resource->ops->open == NULL)
     {
-        return ERRPTR(EACCES);
+        return ERRPTR(ENOOP);
     }
 
     file_t* file = resource->ops->open(volume, resource);
@@ -97,7 +97,7 @@ static uint64_t sysfs_open2(volume_t* volume, const path_t* path, file_t* files[
 
     if (resource->ops->open2 == NULL)
     {
-        return ERROR(EACCES);
+        return ERROR(ENOOP);
     }
 
     if (resource->ops->open2(volume, resource, files) == ERR)

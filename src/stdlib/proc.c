@@ -6,33 +6,12 @@
 
 #include "platform/platform.h"
 
-nsec_t uptime(void)
+pid_t process_create(const char** argv, const spawn_fd_t* fds)
 {
-    return _SyscallUptime();
+    return _SyscallProcessCreate(argv, fds);
 }
 
-uint64_t sleep(nsec_t nanoseconds)
-{
-    return _SyscallSleep(nanoseconds);
-}
-
-// argv[0] = executable
-pid_t spawn(const char** argv, const spawn_fd_t* fds)
-{
-    return _SyscallSpawn(argv, fds);
-}
-
-pid_t getpid(void)
-{
-    return _SyscallGetpid();
-}
-
-tid_t gettid(void)
-{
-    return _SyscallGettid();
-}
-
-fd_t procfd(pid_t pid, const char* file)
+fd_t process_open(pid_t pid, const char* file)
 {
     char path[MAX_PATH];
     snprintf(path, MAX_PATH, "sys:/proc/%d/%s", pid, file);
@@ -40,30 +19,34 @@ fd_t procfd(pid_t pid, const char* file)
     return open(path);
 }
 
-__attribute__((naked)) tid_t split(void* entry, uint64_t argc, ...)
+pid_t process_id(void)
 {
-    // Pretend you dont se this, we have to do this becouse of the variadic arguments.
-    asm volatile("jmp _SyscallSplit");
+    return _SyscallProcessId();
 }
 
-void yield(void)
+tid_t thread_id(void)
 {
-    _SyscallYield();
+    return _SyscallThreadId();
 }
 
-void* valloc(void* address, uint64_t length, prot_t prot)
+nsec_t uptime(void)
 {
-    return _SyscallValloc(address, length, prot);
+    return _SyscallUptime();
 }
 
-uint64_t vfree(void* address, uint64_t length)
+void* virtual_alloc(void* address, uint64_t length, prot_t prot)
 {
-    return _SyscallVfree(address, length);
+    return _SyscallVirtualAlloc(address, length, prot);
 }
 
-uint64_t vprotect(void* address, uint64_t length, prot_t prot)
+uint64_t virtual_free(void* address, uint64_t length)
 {
-    return _SyscallVprotect(address, length, prot);
+    return _SyscallVirtualFree(address, length);
+}
+
+uint64_t virtual_protect(void* address, uint64_t length, prot_t prot)
+{
+    return _SyscallVirtualProtect(address, length, prot);
 }
 
 uint64_t futex(atomic_uint64* addr, uint64_t val, futex_op_t op, nsec_t timeout)

@@ -19,7 +19,7 @@ void _ThreadingInit(void)
     list_entry_init(&thread0.entry);
     atomic_init(&thread0.running, true);
     atomic_init(&thread0.ref, 1);
-    thread0.id = gettid();
+    thread0.id = _SyscallThreadId();
     thread0.result = 0;
     thread0.err = 0;
 

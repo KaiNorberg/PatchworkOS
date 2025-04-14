@@ -8,6 +8,11 @@
 
 #define PMM_MAX_SPECIAL_ADDR (0x100000 * 64)
 
+// Note: We free EFI_LOADER_DATA in kernel_init() after we are done copying data
+#define PMM_IS_MEMORY_AVAIL(type) \
+    ((type == EFI_CONVENTIONAL_MEMORY) || (type == EFI_PERSISTENT_MEMORY) || (type == EFI_LOADER_CODE) || \
+        (type == EFI_BOOT_SERVICES_CODE) || (type == EFI_BOOT_SERVICES_DATA))
+
 typedef struct page_buffer
 {
     struct page_buffer* prev;

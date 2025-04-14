@@ -8,12 +8,12 @@ static pid_t pid = ERR;
 void start_menu_open(void)
 {
     const char* argv[] = {"home:/bin/startmenu", NULL};
-    pid = spawn(argv, NULL);
+    pid = process_create(argv, NULL);
 }
 
 void start_menu_close(void)
 {
-    fd_t procFile = procfd(pid, "ctl");
+    fd_t procFile = process_open(pid, "ctl");
     if (procFile == ERR)
     {
         return;

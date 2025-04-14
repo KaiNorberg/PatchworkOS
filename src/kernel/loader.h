@@ -5,7 +5,7 @@
 #include "defs.h"
 #include "thread.h"
 
-#define LOADER_SPLIT_MAX_ARGS 4
+#define LOADER_THREAD_MAX_ARGS 4
 
 #define LOADER_STACK_ADDRESS(tid) (VMM_LOWER_HALF_MAX - (CONFIG_USER_STACK * ((tid) + 1)) - (PAGE_SIZE * ((tid) + 1)))
 
@@ -16,6 +16,6 @@ typedef struct
 
 extern NORETURN void loader_jump_to_user_space(int argc, char** argv, void* rsp, void* rip);
 
-thread_t* loader_spawn(const char** argv, priority_t priority);
+thread_t* loader_process_create(const char** argv, priority_t priority);
 
-thread_t* loader_split(thread_t* thread, void* entry, priority_t priority, uint64_t argc, va_list args);
+thread_t* loader_thread_create(thread_t* thread, void* entry, priority_t priority, uint64_t argc, va_list args);

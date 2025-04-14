@@ -37,7 +37,8 @@ int* _ErrnoFunc(void);
 #define EPIPE 21       // Broken pipe
 #define EBLOCKLIMIT 22 // Blocker limit exceeded
 #define EAGAIN 23      // Try again
-#define EBUSY 24       // Busy
+#define ENOOP 24       // Operation not defined
+#define EBUSY 25       // Busy
 
 // NOTE: Values retrievd from linux
 /*

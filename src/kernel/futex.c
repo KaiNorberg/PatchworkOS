@@ -61,11 +61,11 @@ uint64_t futex_do(atomic_uint64* addr, uint64_t val, futex_op_t op, nsec_t timeo
             return ERROR(EAGAIN);
         }
 
-        nsec_t start = systime_time();
+        nsec_t start = systime_uptime();
         block_result_t result = WAITSYS_BLOCK_TIMEOUT(&futex->queue, atomic_load(addr) == val, timeout);
         if (result == BLOCK_TIMEOUT)
         {
-            return (systime_time() - start);
+            return (systime_uptime() - start);
         }
     }
     break;

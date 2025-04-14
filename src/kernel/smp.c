@@ -142,7 +142,7 @@ void smp_init(void)
     gdt_load_tss(&cpus[0]->tss);
 
     initialized = true;
-    printf("smp: init");
+    printf("smp: fake bootstrap cpu");
 }
 
 void smp_init_others(void)

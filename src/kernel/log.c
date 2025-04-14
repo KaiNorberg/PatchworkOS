@@ -22,7 +22,7 @@
 
 #include <common/version.h>
 
-static char buffer[LOG_BUFFER_LENGTH];
+static char ringBuffer[LOG_BUFFER_LENGTH];
 static ring_t ring;
 
 static gfx_t gfx;
@@ -89,7 +89,7 @@ static void log_draw_string(const char* str)
 
 void log_init(void)
 {
-    ring_init(&ring, buffer, LOG_BUFFER_LENGTH);
+    ring_init(&ring, ringBuffer, LOG_BUFFER_LENGTH);
     screenEnabled = false;
     timeEnabled = false;
     lock_init(&lock);
@@ -119,7 +119,7 @@ void log_enable_screen(gop_buffer_t* gopBuffer)
     point.y = 0;
     memset(gfx.buffer, 0, gfx.stride * gfx.height * sizeof(pixel_t));
 
-    log_draw_string(buffer);
+    log_draw_string(ringBuffer);
 
     screenEnabled = true;
 }

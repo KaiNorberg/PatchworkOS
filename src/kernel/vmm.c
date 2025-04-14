@@ -71,13 +71,11 @@ static void vmm_load_memory_map(efi_mem_map_t* memoryMap)
 
 void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gopBuffer)
 {
-    printf("vmm: load");
-
     lock_init(&kernelLock);
     vmm_load_memory_map(memoryMap);
 
-    printf("vmm: kernel detected physical=[%p-%p] virtual=[%p-%p]", kernel->physStart, kernel->physStart + kernel->length,
-        kernel->virtStart, kernel->virtStart + kernel->length);
+    printf("vmm: kernel detected physical=[0x%016lx-0x%016lx] virtual=[0x%016lx-0x%016lx]", kernel->physStart,
+        kernel->physStart + kernel->length, kernel->virtStart, kernel->virtStart + kernel->length);
 
     uint64_t result =
         pml_map(kernelPml, kernel->virtStart, kernel->physStart, SIZE_IN_PAGES(kernel->length), PAGE_WRITE | VMM_KERNEL_PAGES);
@@ -86,9 +84,9 @@ void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gop
         log_panic(NULL, "Failed to map kernel");
     }
 
-    printf("Kernel PML loading %p", kernelPml);
+    printf("vmm: loading pml 0x%016lx", kernelPml);
     pml_load(kernelPml);
-    printf("Kernel PML loaded");
+    printf("vmm: pml loaded");
 
     gopBuffer->base = vmm_kernel_map(NULL, gopBuffer->base, gopBuffer->size);
     if (gopBuffer->base == NULL)
@@ -164,7 +162,7 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t length)
     if (virtAddr == NULL)
     {
         virtAddr = VMM_LOWER_TO_HIGHER(physAddr);
-        printf("vmm: map lower [%p-%p] to higher", physAddr, ((uintptr_t)physAddr) + length);
+        printf("vmm: map lower [0x%016lx-0x%016lx] to higher", physAddr, ((uintptr_t)physAddr) + length);
     }
 
     if (pml_mapped(kernelPml, virtAddr, SIZE_IN_PAGES(length)))
@@ -196,7 +194,7 @@ void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot)
     uint64_t flags = vmm_prot_to_flags(prot);
     if (flags == ERR)
     {
-        return ERRPTR(EACCES);
+        return ERRPTR(EINVAL);
     }
     flags |= PAGE_OWNED;
 
@@ -257,7 +255,7 @@ uint64_t vmm_protect(void* virtAddr, uint64_t length, prot_t prot)
     uint64_t flags = vmm_prot_to_flags(prot);
     if (flags == ERR)
     {
-        return ERROR(EACCES);
+        return ERROR(EINVAL);
     }
 
     vmm_align_region(&virtAddr, &length);

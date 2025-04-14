@@ -15,7 +15,7 @@ void main(boot_info_t* bootInfo)
     kernel_init(bootInfo);
 
     const char* argv[] = {"home:/bin/init", NULL};
-    thread_t* initThread = loader_spawn(argv, PRIORITY_MIN + 1);
+    thread_t* initThread = loader_process_create(argv, PRIORITY_MIN + 1);
     ASSERT_PANIC(initThread != NULL);
 
     sched_push(initThread);

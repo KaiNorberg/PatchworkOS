@@ -58,30 +58,24 @@ typedef enum
 
 #define NEVER ((nsec_t)UINT64_MAX)
 
-nsec_t uptime(void);
-
-uint64_t sleep(nsec_t nanoseconds);
-
 // argv[0] = executable
-pid_t spawn(const char** argv, const spawn_fd_t* fds);
+pid_t process_create(const char** argv, const spawn_fd_t* fds);
 
-pid_t getpid(void);
+fd_t process_open(pid_t pid, const char* file);
 
-tid_t gettid(void);
+pid_t process_id(void);
 
-fd_t procfd(pid_t pid, const char* file);
+tid_t thread_id(void);
 
-tid_t split(void* entry, uint64_t argc, ...);
+void* virtual_alloc(void* address, uint64_t length, prot_t prot);
 
-void yield(void);
+uint64_t virtual_free(void* address, uint64_t length);
 
-void* valloc(void* address, uint64_t length, prot_t prot);
-
-uint64_t vfree(void* address, uint64_t length);
-
-uint64_t vprotect(void* address, uint64_t length, prot_t prot);
+uint64_t virtual_protect(void* address, uint64_t length, prot_t prot);
 
 uint64_t futex(atomic_uint64* addr, uint64_t val, futex_op_t op, nsec_t timeout);
+
+nsec_t uptime(void);
 
 #if defined(__cplusplus)
 }

@@ -15,7 +15,7 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count)
     pipe_private_t* private = file->private;
     if (private->readEnd != file)
     {
-        return ERROR(EACCES);
+        return ERROR(ENOOP);
     }
 
     if (count >= PAGE_SIZE)
@@ -47,7 +47,7 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count)
     pipe_private_t* private = file->private;
     if (private->writeEnd != file)
     {
-        return ERROR(EACCES);
+        return ERROR(ENOOP);
     }
 
     if (count >= PAGE_SIZE)

@@ -59,11 +59,13 @@ typedef struct thread
     uint8_t kernelStack[CONFIG_KERNEL_STACK];
 } thread_t;
 
+void process_self_init(void);
+
 thread_t* thread_new(const char** argv, void* entry, priority_t priority, const path_t* cwd);
 
-void thread_free(thread_t* thread);
+thread_t* thread_new_inherit(thread_t* thread, void* entry, priority_t priority);
 
-thread_t* thread_split(thread_t* thread, void* entry, priority_t priority);
+void thread_free(thread_t* thread);
 
 void thread_save(thread_t* thread, const trap_frame_t* trapFrame);
 

@@ -240,7 +240,7 @@ int main(void)
         {.child = STDOUT_FILENO, .parent = STDOUT_FILENO},
         SPAWN_FD_END,
     };
-    fd_t shell = procfd(spawn(argv, fds), "ctl");
+    fd_t shell = process_open(process_create(argv, fds), "ctl");
 
     bool shouldQuit = false;
     while (!shouldQuit)

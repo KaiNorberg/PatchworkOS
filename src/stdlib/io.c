@@ -8,9 +8,9 @@
 #include "common/print.h"
 #include "platform/platform.h"
 
-dir_list_t* allocdir(const char* path)
+dir_list_t* dir_alloc(const char* path)
 {
-    uint64_t amount = listdir(path, NULL, 0);
+    uint64_t amount = _SyscallDirList(path, NULL, 0);
     if (amount == ERR)
     {
         return NULL;
@@ -23,7 +23,7 @@ dir_list_t* allocdir(const char* path)
     }
 
     list->amount = amount;
-    if (listdir(path, list->entries, amount) == ERR)
+    if (_SyscallDirList(path, list->entries, amount) == ERR)
     {
         free(list);
         return NULL;
@@ -32,9 +32,9 @@ dir_list_t* allocdir(const char* path)
     return list;
 }
 
-uint64_t listdir(const char* path, dir_entry_t* entries, uint64_t amount)
+uint64_t dir_list(const char* path, dir_entry_t* entries, uint64_t amount)
 {
-    return _SyscallListdir(path, entries, amount);
+    return _SyscallDirList(path, entries, amount);
 }
 
 fd_t open(const char* path)

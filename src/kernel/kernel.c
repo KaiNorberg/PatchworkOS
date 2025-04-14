@@ -31,7 +31,7 @@
 #include <stdlib_internal/init.h>
 #include <sys/argsplit.h>
 
-static void kernel_free_boot_data(efi_mem_map_t* memoryMap)
+static void kernel_free_loader_data(efi_mem_map_t* memoryMap)
 {
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
@@ -40,7 +40,7 @@ static void kernel_free_boot_data(efi_mem_map_t* memoryMap)
         if (desc->type == EFI_LOADER_DATA)
         {
             pmm_free_pages(VMM_LOWER_TO_HIGHER(desc->physicalStart), desc->amountOfPages);
-            printf("boot data: free [%p-%p]", desc->physicalStart,
+            printf("loader data: free [0x%016lx-0x%016lx]", desc->physicalStart,
                 ((uintptr_t)desc->physicalStart) + desc->amountOfPages * PAGE_SIZE);
         }
     }
@@ -56,6 +56,8 @@ void kernel_init(boot_info_t* bootInfo)
     pmm_init(&bootInfo->memoryMap);
     vmm_init(&bootInfo->memoryMap, &bootInfo->kernel, &bootInfo->gopBuffer);
 
+    log_enable_screen(&bootInfo->gopBuffer);
+
     _StdInit();
 
     smp_init();
@@ -63,12 +65,12 @@ void kernel_init(boot_info_t* bootInfo)
     vfs_init();
     sysfs_init();
     ramfs_init(&bootInfo->ramDisk);
+
     log_expose();
+    process_self_init();
 
     sched_init();
     waitsys_init();
-
-    log_enable_screen(&bootInfo->gopBuffer);
 
     acpi_init(bootInfo->rsdp);
     hpet_init();
@@ -90,7 +92,7 @@ void kernel_init(boot_info_t* bootInfo)
     pipe_init();
     dwm_init(&bootInfo->gopBuffer);
 
-    kernel_free_boot_data(&bootInfo->memoryMap);
+    kernel_free_loader_data(&bootInfo->memoryMap);
 
     dwm_start();
     log_disable_screen();

@@ -14,6 +14,6 @@ void systime_init(void);
 
 nsec_t systime_uptime(void);
 
-time_t systime_time(void);
+time_t systime_unix_epoch(void);
 
 void systime_timer_init(void);

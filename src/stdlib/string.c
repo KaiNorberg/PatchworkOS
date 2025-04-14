@@ -336,6 +336,7 @@ static char* errorStrings[] = {
     "broken pipe",
     "blocker limit exceeded",
     "try again",
+    "operation not defined",
     "busy",
 };
 

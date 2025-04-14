@@ -622,7 +622,7 @@ void dwm_start(void)
     rect_t rect = RECT_INIT_GFX(&backbuffer);
     gfx_swap(&backbuffer, &frontbuffer, &rect);
 
-    sched_push(thread_split(sched_thread(), dwm_loop, PRIORITY_MAX - 1));
+    sched_push(thread_new_inherit(sched_thread(), dwm_loop, PRIORITY_MAX - 1));
 }
 
 void dwm_redraw(void)

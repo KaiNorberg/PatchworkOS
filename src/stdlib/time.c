@@ -8,7 +8,7 @@
 #if _PLATFORM_HAS_SYSCALLS == 1
 time_t time(time_t* timePtr)
 {
-    time_t time = _SyscallTime();
+    time_t time = _SyscallUnixEpoch();
     if (timePtr != NULL)
     {
         *timePtr = time;

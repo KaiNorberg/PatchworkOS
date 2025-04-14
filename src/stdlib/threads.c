@@ -13,7 +13,7 @@ __attribute__((noreturn)) __attribute__((force_align_arg_pointer)) static void _
 {
     while (!atomic_load(&thread->running))
     {
-        yield();
+        _SyscallYield();
     }
 
     int res = func(arg);
@@ -28,7 +28,7 @@ int thrd_create(thrd_t* thr, thrd_start_t func, void* arg)
         return thrd_error;
     }
 
-    thread->id = split(_ThrdEntry, 3, thread, func, arg);
+    thread->id = _SyscallThreadCreate(_ThrdEntry, 3, thread, func, arg);
     if (thread->id == ERR)
     {
         _ThreadFree(thread);
@@ -48,7 +48,7 @@ int thrd_equal(thrd_t lhs, thrd_t rhs)
 
 thrd_t thrd_current(void)
 {
-    _Thread_t* thread = _ThreadById(gettid());
+    _Thread_t* thread = _ThreadById(_SyscallThreadId());
     thrd_t thr = {.thread = thread};
 
     _ThreadUnref(thread);
@@ -62,7 +62,7 @@ int thrd_sleep(const struct timespec* duration, struct timespec* remaining)
     if (remaining != NULL)
     {
         nsec_t start = uptime();
-        sleep(nanoseconds);
+        _SyscallThreadSleep(nanoseconds);
         nsec_t end = uptime();
 
         nsec_t timeTaken = end - start;
@@ -71,7 +71,7 @@ int thrd_sleep(const struct timespec* duration, struct timespec* remaining)
     }
     else
     {
-        sleep(nanoseconds);
+        _SyscallThreadSleep(nanoseconds);
     }
 
     return 0;
@@ -79,12 +79,12 @@ int thrd_sleep(const struct timespec* duration, struct timespec* remaining)
 
 void thrd_yield(void)
 {
-    yield();
+    _SyscallYield();
 }
 
 _NORETURN void thrd_exit(int res)
 {
-    _Thread_t* thread = _ThreadById(gettid());
+    _Thread_t* thread = _ThreadById(_SyscallThreadId());
     thread->result = res;
     atomic_store(&thread->running, false);
     _ThreadUnref(thread);
@@ -102,10 +102,9 @@ int thrd_join(thrd_t thr, int* res)
 {
     _Thread_t* thread = _ThreadRef(thr.thread);
 
-    // TODO: Implement kernel side blocking for this
-    while (atomic_load(&thread->running))
+    while (!atomic_load(&thread->running))
     {
-        sleep(SEC / 1000);
+        _SyscallYield();
     }
 
     if (res != NULL)

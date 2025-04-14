@@ -97,7 +97,7 @@ NORETURN void syscall_thread_exit(void)
     sched_thread_exit();
 }
 
-pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds)
+pid_t syscall_process_create(const char** argv, const spawn_fd_t* fds)
 {
     uint64_t argc = 0;
     while (1)
@@ -144,7 +144,7 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds)
         }
     }
 
-    thread_t* thread = loader_spawn(argv, PRIORITY_MIN);
+    thread_t* thread = loader_process_create(argv, PRIORITY_MIN);
     if (thread == NULL)
     {
         return ERR;
@@ -174,22 +174,22 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds)
     return thread->process->id;
 }
 
-uint64_t syscall_sleep(nsec_t nanoseconds)
+uint64_t syscall_thread_sleep(nsec_t nanoseconds)
 {
     return sched_sleep(nanoseconds);
 }
 
-errno_t syscall_error(void)
+errno_t syscall_last_error(void)
 {
     return sched_thread()->error;
 }
 
-pid_t syscall_getpid(void)
+pid_t syscall_process_id(void)
 {
     return sched_process()->id;
 }
 
-tid_t syscall_gettid(void)
+tid_t syscall_thread_id(void)
 {
     return sched_thread()->id;
 }
@@ -199,9 +199,9 @@ nsec_t syscall_uptime(void)
     return systime_uptime();
 }
 
-time_t syscall_time(time_t* timePtr)
+time_t syscall_unix_epoch(time_t* timePtr)
 {
-    time_t epoch = systime_time();
+    time_t epoch = systime_unix_epoch();
     if (timePtr != NULL)
     {
         if (!verify_pointer(timePtr, sizeof(time_t)))
@@ -404,12 +404,12 @@ uint64_t syscall_stat(const char* path, stat_t* buffer)
     return vfs_stat(path, buffer);
 }
 
-void* syscall_valloc(void* address, uint64_t length, prot_t prot)
+void* syscall_virtual_alloc(void* address, uint64_t length, prot_t prot)
 {
     return vmm_alloc(address, length, prot);
 }
 
-uint64_t syscall_vfree(void* address, uint64_t length)
+uint64_t syscall_virtual_free(void* address, uint64_t length)
 {
     if (!verify_pointer(address, length))
     {
@@ -419,7 +419,7 @@ uint64_t syscall_vfree(void* address, uint64_t length)
     return vmm_free(address, length);
 }
 
-uint64_t syscall_vprotect(void* address, uint64_t length, prot_t prot)
+uint64_t syscall_virtual_protect(void* address, uint64_t length, prot_t prot)
 {
     if (!verify_pointer(address, length))
     {
@@ -451,7 +451,7 @@ uint64_t syscall_flush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect
     return vfs_flush(file, buffer, size, rect);
 }
 
-uint64_t syscall_listdir(const char* path, dir_entry_t* entries, uint64_t amount)
+uint64_t syscall_dir_list(const char* path, dir_entry_t* entries, uint64_t amount)
 {
     if (entries != NULL && !verify_buffer(entries, sizeof(dir_entry_t) * amount))
     {
@@ -461,9 +461,9 @@ uint64_t syscall_listdir(const char* path, dir_entry_t* entries, uint64_t amount
     return vfs_listdir(path, entries, amount);
 }
 
-tid_t syscall_split(void* entry, uint64_t argc, ...)
+tid_t syscall_thread_create(void* entry, uint64_t argc, ...)
 {
-    if (argc > LOADER_SPLIT_MAX_ARGS)
+    if (argc > LOADER_THREAD_MAX_ARGS)
     {
         return ERROR(EINVAL);
     }
@@ -475,7 +475,7 @@ tid_t syscall_split(void* entry, uint64_t argc, ...)
 
     va_list args;
     va_start(args, argc);
-    thread_t* thread = loader_split(sched_thread(), entry, PRIORITY_MIN, argc, args);
+    thread_t* thread = loader_thread_create(sched_thread(), entry, PRIORITY_MIN, argc, args);
     va_end(args);
 
     if (thread == NULL)
@@ -574,13 +574,13 @@ void syscall_handler_end(void)
 void* syscallTable[] = {
     syscall_process_exit,
     syscall_thread_exit,
-    syscall_spawn,
-    syscall_sleep,
-    syscall_error,
-    syscall_getpid,
-    syscall_gettid,
+    syscall_process_create,
+    syscall_thread_sleep,
+    syscall_last_error,
+    syscall_process_id,
+    syscall_thread_id,
     syscall_uptime,
-    syscall_time,
+    syscall_unix_epoch,
     syscall_open,
     syscall_open2,
     syscall_close,
@@ -591,12 +591,12 @@ void* syscallTable[] = {
     syscall_chdir,
     syscall_poll,
     syscall_stat,
-    syscall_valloc,
-    syscall_vfree,
-    syscall_vprotect,
+    syscall_virtual_alloc,
+    syscall_virtual_free,
+    syscall_virtual_protect,
     syscall_flush,
-    syscall_listdir,
-    syscall_split,
+    syscall_dir_list,
+    syscall_thread_create,
     syscall_yield,
     syscall_openas,
     syscall_open2as,

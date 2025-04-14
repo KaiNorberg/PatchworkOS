@@ -78,7 +78,7 @@ void systime_init(void)
     systime_read_cmos_time();
     systime_rtc_init();
 
-    printf("systime: init epoch=%d", systime_time());
+    printf("systime: init epoch=%d", systime_unix_epoch());
 }
 
 nsec_t systime_uptime(void)
@@ -86,7 +86,7 @@ nsec_t systime_uptime(void)
     return (atomic_load(&accumulator) + hpet_read_counter()) * hpet_nanoseconds_per_tick();
 }
 
-time_t systime_time(void)
+time_t systime_unix_epoch(void)
 {
     return bootEpoch + systime_uptime() / SEC;
 }

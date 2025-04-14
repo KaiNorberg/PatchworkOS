@@ -86,7 +86,7 @@ uint64_t print_directory(const char* path, flags_t flags, bool forceLabel)
         printf("[%s]\n", path);
     }
 
-    dir_list_t* dirs = allocdir(path);
+    dir_list_t* dirs = dir_alloc(path);
     if (dirs == NULL)
     {
         printf("error: %s\n", strerror(errno));

@@ -40,10 +40,6 @@ typedef EFI_MEMORY_DESCRIPTOR efi_mem_desc_t;
 #define EFI_PAL_CODE 13
 #define EFI_PERSISTENT_MEMORY 14
 
-#define EFI_IS_MEMORY_AVAIL(type) \
-    ((type == EFI_CONVENTIONAL_MEMORY) || (type == EFI_PERSISTENT_MEMORY) || (type == EFI_LOADER_CODE) || \
-        (type == EFI_BOOT_SERVICES_CODE) || (type == EFI_BOOT_SERVICES_DATA))
-
 #define EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, index) \
     (efi_mem_desc_t*)((uint64_t)(memoryMap)->base + ((index) * (memoryMap)->descriptorSize))
 

@@ -69,9 +69,9 @@ typedef struct dir_list
     dir_entry_t entries[];
 } dir_list_t;
 
-dir_list_t* allocdir(const char* path);
+dir_list_t* dir_alloc(const char* path);
 
-uint64_t listdir(const char* path, dir_entry_t* entries, uint64_t amount);
+uint64_t dir_list(const char* path, dir_entry_t* entries, uint64_t amount);
 
 fd_t open(const char* path);
 

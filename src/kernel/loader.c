@@ -119,7 +119,7 @@ static char** loader_setup_argv(thread_t* thread, void* rsp)
     return argv;
 }
 
-static void loader_spawn_entry(void)
+static void loader_process_entry(void)
 {
     thread_t* thread = sched_thread();
 
@@ -143,7 +143,7 @@ static void loader_spawn_entry(void)
     loader_jump_to_user_space(thread->process->argv.amount, argv, rsp, rip);
 }
 
-thread_t* loader_spawn(const char** argv, priority_t priority)
+thread_t* loader_process_create(const char** argv, priority_t priority)
 {
     if (argv == NULL || argv[0] == NULL)
     {
@@ -164,7 +164,7 @@ thread_t* loader_spawn(const char** argv, priority_t priority)
     vfs_ctx_t* ctx = &sched_thread()->process->vfsCtx;
     LOCK_DEFER(&ctx->lock);
 
-    thread_t* thread = thread_new(argv, loader_spawn_entry, priority, &ctx->cwd);
+    thread_t* thread = thread_new(argv, loader_process_entry, priority, &ctx->cwd);
     if (thread == NULL)
     {
         return NULL;
@@ -174,14 +174,14 @@ thread_t* loader_spawn(const char** argv, priority_t priority)
     return thread;
 }
 
-thread_t* loader_split(thread_t* thread, void* entry, priority_t priority, uint64_t argc, va_list args)
+thread_t* loader_thread_create(thread_t* thread, void* entry, priority_t priority, uint64_t argc, va_list args)
 {
-    if (argc > LOADER_SPLIT_MAX_ARGS)
+    if (argc > LOADER_THREAD_MAX_ARGS)
     {
         return ERRPTR(EINVAL);
     }
 
-    thread_t* child = thread_split(thread, entry, priority);
+    thread_t* child = thread_new_inherit(thread, entry, priority);
     if (child == NULL)
     {
         return NULL;

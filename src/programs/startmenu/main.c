@@ -81,7 +81,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         if (data->type == LMSG_COMMAND_RELEASE)
         {
             const char* argv[] = {entries[data->id].path, NULL};
-            if (spawn(argv, NULL) == ERR)
+            if (process_create(argv, NULL) == ERR)
             {
                 char buffer[MAX_PATH];
                 sprintf(buffer, "Failed to spawn process (%s)!", entries[data->id].path);

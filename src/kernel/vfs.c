@@ -90,6 +90,8 @@ static uint64_t vfs_parse_path(path_t* out, const char* path)
 
 void vfs_init(void)
 {
+    printf("vfs: init");
+
     list_init(&volumes);
     lock_init(&volumesLock);
 }
@@ -153,7 +155,7 @@ uint64_t vfs_unmount(const char* label)
 
     if (volume->ops->unmount == NULL)
     {
-        return ERROR(EACCES);
+        return ERROR(ENOOP);
     }
 
     if (volume->ops->unmount(volume) == ERR)
@@ -208,7 +210,7 @@ file_t* vfs_open(const char* path)
     if (volume->ops->open == NULL)
     {
         volume_deref(volume);
-        return ERRPTR(EACCES);
+        return ERRPTR(ENOOP);
     }
 
     file_t* file = volume->ops->open(volume, &parsedPath);
@@ -238,7 +240,7 @@ uint64_t vfs_open2(const char* path, file_t* files[2])
     if (volume->ops->open2 == NULL)
     {
         volume_deref(volume);
-        return ERROR(EACCES);
+        return ERROR(ENOOP);
     }
 
     uint64_t result = volume->ops->open2(volume, &parsedPath, files);
@@ -268,7 +270,7 @@ uint64_t vfs_stat(const char* path, stat_t* buffer)
     if (volume->ops->stat == NULL)
     {
         volume_deref(volume);
-        return ERROR(EACCES);
+        return ERROR(ENOOP);
     }
 
     uint64_t result = volume->ops->stat(volume, &parsedPath, buffer);
@@ -293,7 +295,7 @@ uint64_t vfs_listdir(const char* path, dir_entry_t* entries, uint64_t amount)
     if (volume->ops->listdir == NULL)
     {
         volume_deref(volume);
-        return ERROR(EACCES);
+        return ERROR(ENOOP);
     }
 
     uint64_t result = volume->ops->listdir(volume, &parsedPath, entries, amount);
@@ -309,7 +311,7 @@ uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
     }
     if (file->ops->read == NULL)
     {
-        return ERROR(EACCES);
+        return ERROR(ENOOP);
     }
     return file->ops->read(file, buffer, count);
 }
@@ -322,7 +324,7 @@ uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
     }
     if (file->ops->write == NULL)
     {
-        return ERROR(EACCES);
+        return ERROR(ENOOP);
     }
     return file->ops->write(file, buffer, count);
 }
@@ -335,7 +337,7 @@ uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
     }
     if (file->ops->seek == NULL)
     {
-        return ERROR(EACCES);
+        return ERROR(ENOOP);
     }
     return file->ops->seek(file, offset, origin);
 }
@@ -348,7 +350,7 @@ uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
     }
     if (file->ops->ioctl == NULL)
     {
-        return ERROR(EACCES);
+        return ERROR(ENOOP);
     }
     return file->ops->ioctl(file, request, argp, size);
 }
@@ -361,7 +363,7 @@ uint64_t vfs_flush(file_t* file, const void* buffer, uint64_t size, const rect_t
     }
     if (file->ops->flush == NULL)
     {
-        return ERROR(EACCES);
+        return ERROR(ENOOP);
     }
     return file->ops->flush(file, buffer, size, rect);
 }
@@ -384,7 +386,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
         }
         if (files[i].file->ops->poll == NULL)
         {
-            return ERROR(EACCES);
+            return ERROR(ENOOP);
         }
         files[i].occurred = 0;
     }

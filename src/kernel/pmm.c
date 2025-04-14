@@ -15,8 +15,6 @@
 #include <string.h>
 #include <sys/math.h>
 
-static uint64_t flexAreaSize;
-
 static const char* efiMemTypeToString[] = {
     "reserved memory type",
     "loader code",
@@ -190,8 +188,6 @@ static void pmm_detect_memory(efi_mem_map_t* memoryMap)
         const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
         pageAmount += desc->amountOfPages;
     }
-
-    printf("Detected memory: %d KB", (pageAmount * PAGE_SIZE) / 1024);
 }
 
 static void pmm_load_memory(efi_mem_map_t* memoryMap)
@@ -200,11 +196,19 @@ static void pmm_load_memory(efi_mem_map_t* memoryMap)
     {
         const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
 
-        if (EFI_IS_MEMORY_AVAIL(desc->type))
+        if (PMM_IS_MEMORY_AVAIL(desc->type))
         {
             pmm_free_pages_unlocked(VMM_LOWER_TO_HIGHER(desc->physicalStart), desc->amountOfPages);
         }
+        else
+        {
+            printf("pmm: reserve [0x%016lx-0x%016lx]", desc->physicalStart,
+                (uint64_t)desc->physicalStart + desc->amountOfPages * PAGE_SIZE);
+        }
     }
+
+    printf("pmm: memory %d MB (usable %d MB reserved %d MB)", (pageAmount * PAGE_SIZE) / 1000000,
+        (freePageAmount * PAGE_SIZE) / 1000000, ((pageAmount - freePageAmount) * PAGE_SIZE) / 1000000);
 }
 
 void pmm_init(efi_mem_map_t* memoryMap)

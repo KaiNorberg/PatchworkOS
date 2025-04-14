@@ -37,19 +37,19 @@ _NORETURN void _SyscallProcessExit(uint64_t status);
 
 _NORETURN void _SyscallThreadExit(void);
 
-pid_t _SyscallSpawn(const char** argv, const spawn_fd_t* fds);
+pid_t _SyscallProcessCreate(const char** argv, const spawn_fd_t* fds);
 
-uint64_t _SyscallSleep(nsec_t nanoseconds);
+uint64_t _SyscallThreadSleep(nsec_t nanoseconds);
 
-errno_t _SyscallError(void);
+errno_t _SyscallLastError(void);
 
-pid_t _SyscallGetpid(void);
+pid_t _SyscallProcessId(void);
 
-tid_t _SyscallGettid(void);
+tid_t _SyscallThreadId(void);
 
 nsec_t _SyscallUptime(void);
 
-time_t _SyscallTime(void);
+time_t _SyscallUnixEpoch(void);
 
 fd_t _SyscallOpen(const char* path);
 
@@ -71,17 +71,17 @@ uint64_t _SyscallPoll(pollfd_t* fds, uint64_t amount, nsec_t timeout);
 
 uint64_t _SyscallStat(const char* path, stat_t* info);
 
-void* _SyscallValloc(void* address, uint64_t length, prot_t prot);
+void* _SyscallVirtualAlloc(void* address, uint64_t length, prot_t prot);
 
-uint64_t _SyscallVfree(void* address, uint64_t length);
+uint64_t _SyscallVirtualFree(void* address, uint64_t length);
 
-uint64_t _SyscallVprotect(void* address, uint64_t length, prot_t prot);
+uint64_t _SyscallVirtualProtect(void* address, uint64_t length, prot_t prot);
 
 uint64_t _SyscallFlush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect_t* rect);
 
-uint64_t _SyscallListdir(const char* path, dir_entry_t* entries, uint64_t amount);
+uint64_t _SyscallDirList(const char* path, dir_entry_t* entries, uint64_t amount);
 
-tid_t _SyscallSplit(void* entry, uint64_t argc, ...);
+tid_t _SyscallThreadCreate(void* entry, uint64_t argc, ...);
 
 void _SyscallYield(void);
 

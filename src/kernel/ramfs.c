@@ -184,5 +184,5 @@ void ramfs_init(ram_disk_t* disk)
     root = ramfs_load_dir(disk->root);
     ASSERT_PANIC(vfs_mount("home", &ramfs) != ERR);
 
-    printf("ramfs: initialized");
+    printf("ramfs: init");
 }

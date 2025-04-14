@@ -5,6 +5,7 @@
 #include "gdt.h"
 #include "regs.h"
 #include "smp.h"
+#include "sysfs.h"
 #include "systime.h"
 #include "vfs.h"
 
@@ -93,10 +94,15 @@ static action_table_t actions = {
 
 static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count)
 {
-    process_t* process = file->resource->dir->private;
     if (count == 0)
     {
         return 0;
+    }
+
+    process_t* process = file->resource->dir->private;
+    if (process == NULL)
+    {
+        process = sched_process();
     }
 
     char cwd[MAX_PATH];
@@ -117,8 +123,20 @@ static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count)
     return readCount;
 }
 
+static uint64_t process_cwd_write(file_t* file, const void* buffer, uint64_t count)
+{
+    process_t* process = file->resource->dir->private;
+    if (process == NULL)
+    {
+        process = sched_process();
+    }
+
+    return ERROR(EIMPL);
+}
+
 static file_ops_t cwdFileOps = {
     .read = process_cwd_read,
+    .write = process_cwd_write,
 };
 
 SYSFS_STANDARD_RESOURCE_OPS(cwdResOps, &cwdFileOps)
@@ -131,6 +149,10 @@ static uint64_t process_ctl_write(file_t* file, const void* buffer, uint64_t cou
     }
 
     process_t* process = file->resource->dir->private;
+    if (process == NULL)
+    {
+        process = sched_process();
+    }
 
     // TODO: Implement a proper command system with args, actions?
     if (strncmp(buffer, "kill", count) == 0)
@@ -166,6 +188,23 @@ static void process_on_free(sysdir_t* dir)
     free(process);
 }
 
+static sysdir_t* process_create_proc_dir(const char* name, void* private)
+{
+    sysdir_t* dir = sysfs_mkdir("/proc", name, process_on_free, private);
+    if (dir == NULL)
+    {
+        return NULL;
+    }
+
+    if (sysfs_create(dir, "ctl", &ctlResOps, NULL) == ERR || sysfs_create(dir, "cwd", &cwdResOps, NULL) == ERR)
+    {
+        sysfs_rmdir(dir);
+        return NULL;
+    }
+
+    return dir;
+}
+
 static process_t* process_new(const char** argv, const path_t* cwd)
 {
     process_t* process = malloc(sizeof(process_t));
@@ -183,9 +222,8 @@ static process_t* process_new(const char** argv, const path_t* cwd)
 
     char dirname[MAX_PATH];
     ulltoa(process->id, dirname, 10);
-    process->dir = sysfs_mkdir("/proc", dirname, process_on_free, process);
-    if (process->dir == NULL || sysfs_create(process->dir, "ctl", &ctlResOps, NULL) == ERR ||
-        sysfs_create(process->dir, "cwd", &cwdResOps, NULL) == ERR)
+    process->dir = process_create_proc_dir(dirname, process);
+    if (process->dir == NULL)
     {
         argv_deinit(&process->argv);
         free(process);
@@ -209,7 +247,7 @@ static void process_free(process_t* process)
     sysfs_rmdir(process->dir);
 }
 
-static thread_t* process_thread_new(process_t* process, void* entry, priority_t priority)
+static thread_t* process_thread_create(process_t* process, void* entry, priority_t priority)
 {
     atomic_fetch_add(&process->threadCount, 1);
 
@@ -249,6 +287,11 @@ static thread_t* process_thread_new(process_t* process, void* entry, priority_t 
     return thread;
 }
 
+void process_self_init(void)
+{
+    process_create_proc_dir("self", NULL);
+}
+
 thread_t* thread_new(const char** argv, void* entry, priority_t priority, const path_t* cwd)
 {
     process_t* process = process_new(argv, cwd);
@@ -257,7 +300,7 @@ thread_t* thread_new(const char** argv, void* entry, priority_t priority, const 
         return NULL;
     }
 
-    thread_t* thread = process_thread_new(process, entry, priority);
+    thread_t* thread = process_thread_create(process, entry, priority);
     if (thread == NULL)
     {
         process_free(process);
@@ -265,6 +308,11 @@ thread_t* thread_new(const char** argv, void* entry, priority_t priority, const 
     }
 
     return thread;
+}
+
+thread_t* thread_new_inherit(thread_t* thread, void* entry, priority_t priority)
+{
+    return process_thread_create(thread->process, entry, priority);
 }
 
 void thread_free(thread_t* thread)
@@ -276,11 +324,6 @@ void thread_free(thread_t* thread)
 
     simd_ctx_deinit(&thread->simdCtx);
     free(thread);
-}
-
-thread_t* thread_split(thread_t* thread, void* entry, priority_t priority)
-{
-    return process_thread_new(thread->process, entry, priority);
 }
 
 void thread_save(thread_t* thread, const trap_frame_t* trapFrame)

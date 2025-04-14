@@ -6,7 +6,7 @@ extern _ErrnoFunc
     push rax
     push rbx
 
-    mov rax, SYS_ERROR
+    mov rax, SYS_LAST_ERROR
     int 0x80
     push rax
     call _ErrnoFunc
@@ -47,14 +47,14 @@ _SyscallThreadExit:
     SYSTEM_CALL SYS_THREAD_EXIT
     ret
 
-global _SyscallSpawn
-_SyscallSpawn:
-    SYSTEM_CALL SYS_SPAWN
+global _SyscallProcessCreate
+_SyscallProcessCreate:
+    SYSTEM_CALL SYS_PROCESS_CREATE
     ret
 
-global _SyscallSleep
-_SyscallSleep:
-    SYSTEM_CALL SYS_SLEEP
+global _SyscallThreadSleep
+_SyscallThreadSleep:
+    SYSTEM_CALL SYS_THREAD_SLEEP
     ret
 
 global _SyscallUptime
@@ -62,24 +62,24 @@ _SyscallUptime:
     SYSTEM_CALL SYS_UPTIME
     ret
 
-global _SyscallTime
-_SyscallTime:
-    SYSTEM_CALL SYS_TIME
+global _SyscallUnixEpoch
+_SyscallUnixEpoch:
+    SYSTEM_CALL SYS_UNIX_EPOCH
     ret
 
-global _SyscallError
+global _SyscallLastError
 _SyscallError:
-    SYSTEM_CALL SYS_ERROR
+    SYSTEM_CALL SYS_LAST_ERROR
     ret
 
-global _SyscallGetpid
-_SyscallGetpid:
-    SYSTEM_CALL SYS_GETPID
+global _SyscallProcessId
+_SyscallProcessId:
+    SYSTEM_CALL SYS_PROCESS_ID
     ret
 
-global _SyscallGettid
-_SyscallGettid:
-    SYSTEM_CALL SYS_GETTID
+global _SyscallThreadId
+_SyscallThreadId:
+    SYSTEM_CALL SYS_THREAD_ID
     ret
 
 global _SyscallOpen
@@ -132,19 +132,19 @@ _SyscallStat:
     SYSTEM_CALL SYS_STAT
     ret
 
-global _SyscallValloc
-_SyscallValloc:
-    SYSTEM_CALL_PTR SYS_VALLOC
+global _SyscallVirtualAlloc
+_SyscallVirtualAlloc:
+    SYSTEM_CALL_PTR SYS_VIRTUAL_ALLOC
     ret
 
-global _SyscallVfree
-_SyscallVfree:
-    SYSTEM_CALL SYS_VFREE
+global _SyscallVirtualFree
+_SyscallVirtualFree:
+    SYSTEM_CALL SYS_VIRTUAL_FREE
     ret
 
-global _SyscallVprotect
-_SyscallVprotect:
-    SYSTEM_CALL SYS_VPROTECT
+global _SyscallVirtualProtect
+_SyscallVirtualProtect:
+    SYSTEM_CALL SYS_VIRTUAL_PROTECT
     ret
 
 global _SyscallFlush
@@ -152,14 +152,14 @@ _SyscallFlush:
     SYSTEM_CALL SYS_FLUSH
     ret
 
-global _SyscallListdir
-_SyscallListdir:
-    SYSTEM_CALL SYS_LISTDIR
+global _SyscallDirList
+_SyscallDirList:
+    SYSTEM_CALL SYS_DIR_LIST
     ret
 
-global _SyscallSplit
-_SyscallSplit:
-    SYSTEM_CALL SYS_SPLIT
+global _SyscallThreadCreate
+_SyscallThreadCreate:
+    SYSTEM_CALL SYS_THREAD_CREATE
     ret
 
 global _SyscallYield
