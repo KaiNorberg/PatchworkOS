@@ -461,22 +461,14 @@ uint64_t syscall_dir_list(const char* path, dir_entry_t* entries, uint64_t amoun
     return vfs_listdir(path, entries, amount);
 }
 
-tid_t syscall_thread_create(void* entry, uint64_t argc, ...)
+tid_t syscall_thread_create(void* entry, void* arg)
 {
-    if (argc > LOADER_THREAD_MAX_ARGS)
-    {
-        return ERROR(EINVAL);
-    }
-
     if (!verify_buffer(entry, sizeof(uint64_t)))
     {
         return ERROR(EFAULT);
     }
 
-    va_list args;
-    va_start(args, argc);
-    thread_t* thread = loader_thread_create(sched_thread(), entry, PRIORITY_MIN, argc, args);
-    va_end(args);
+    thread_t* thread = loader_thread_create(sched_thread(), PRIORITY_MIN, entry, arg);
 
     if (thread == NULL)
     {

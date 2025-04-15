@@ -174,13 +174,8 @@ thread_t* loader_spawn(const char** argv, priority_t priority)
     return thread;
 }
 
-thread_t* loader_thread_create(thread_t* thread, void* entry, priority_t priority, uint64_t argc, va_list args)
+thread_t* loader_thread_create(thread_t* thread, priority_t priority, void* entry, void* arg)
 {
-    if (argc > LOADER_THREAD_MAX_ARGS)
-    {
-        return ERRPTR(EINVAL);
-    }
-
     thread_t* child = thread_new_inherit(thread, entry, priority);
     if (child == NULL)
     {
@@ -199,22 +194,6 @@ thread_t* loader_thread_create(thread_t* thread, void* entry, priority_t priorit
     child->trapFrame.rsp = (uint64_t)rsp;
     child->trapFrame.rbp = (uint64_t)rsp;
 
-    if (argc >= 1)
-    {
-        child->trapFrame.rdi = va_arg(args, uint64_t);
-    }
-    if (argc >= 2)
-    {
-        child->trapFrame.rsi = va_arg(args, uint64_t);
-    }
-    if (argc >= 3)
-    {
-        child->trapFrame.rdx = va_arg(args, uint64_t);
-    }
-    if (argc >= 4)
-    {
-        child->trapFrame.rcx = va_arg(args, uint64_t);
-    }
-
+    child->trapFrame.rdi = (uint64_t)arg;
     return child;
 }

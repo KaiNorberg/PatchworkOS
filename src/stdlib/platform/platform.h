@@ -81,7 +81,7 @@ uint64_t _SyscallFlush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect
 
 uint64_t _SyscallDirList(const char* path, dir_entry_t* entries, uint64_t amount);
 
-tid_t _SyscallThreadCreate(void* entry, uint64_t argc, ...);
+tid_t _SyscallThreadCreate(void* entry, void* arg);
 
 void _SyscallYield(void);
 

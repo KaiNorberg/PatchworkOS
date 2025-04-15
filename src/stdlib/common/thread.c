@@ -22,11 +22,13 @@ void _ThreadingInit(void)
     thread0.id = _SyscallThreadId();
     thread0.result = 0;
     thread0.err = 0;
+    thread0.func = NULL;
+    thread0.arg = NULL;
 
     list_push(&threads, &thread0.entry);
 }
 
-_Thread_t* _ThreadNew(void)
+_Thread_t* _ThreadNew(thrd_start_t func, void* arg)
 {
     _Thread_t* thread = malloc(sizeof(_Thread_t));
     if (thread == NULL)
@@ -40,6 +42,8 @@ _Thread_t* _ThreadNew(void)
     thread->id = 0;
     thread->result = 0;
     thread->err = 0;
+    thread->func = func;
+    thread->arg = arg;
 
     mtx_lock(&mutex);
     list_push(&threads, &thread->entry);

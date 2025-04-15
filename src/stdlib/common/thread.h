@@ -15,15 +15,17 @@ typedef struct _Thread
 {
     list_entry_t entry;
     atomic_long ref;
-    atomic_bool running;
+    atomic_uint64 running;
     tid_t id;
     uint8_t result;
     errno_t err;
+    thrd_start_t func;
+    void* arg;
 } _Thread_t;
 
 void _ThreadingInit(void);
 
-_Thread_t* _ThreadNew(void);
+_Thread_t* _ThreadNew(thrd_start_t func, void* arg);
 
 void _ThreadFree(_Thread_t* thread);
 

@@ -73,6 +73,8 @@ uint64_t virtual_free(void* address, uint64_t length);
 
 uint64_t virtual_protect(void* address, uint64_t length, prot_t prot);
 
+// if op == FUTEX_WAIT then wait until *addr != val.
+// if op == FUTEX_WAKE then val == amount of threads to wake.
 uint64_t futex(atomic_uint64* addr, uint64_t val, futex_op_t op, nsec_t timeout);
 
 nsec_t uptime(void);

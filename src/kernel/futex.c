@@ -11,6 +11,7 @@
 void futex_ctx_init(futex_ctx_t* ctx)
 {
     hashmap_init(&ctx->futexes);
+    lock_init(&ctx->lock);
 }
 
 void futex_ctx_deinit(futex_ctx_t* ctx)
@@ -29,6 +30,8 @@ void futex_ctx_deinit(futex_ctx_t* ctx)
     }
     hashmap_deinit(&ctx->futexes);
 }
+
+#include <stdio.h>
 
 static futex_t* futex_ctx_futex(futex_ctx_t* ctx, atomic_uint64* addr)
 {
@@ -62,7 +65,7 @@ uint64_t futex_do(atomic_uint64* addr, uint64_t val, futex_op_t op, nsec_t timeo
         }
 
         nsec_t start = systime_uptime();
-        block_result_t result = WAITSYS_BLOCK_TIMEOUT(&futex->queue, atomic_load(addr) == val, timeout);
+        block_result_t result = WAITSYS_BLOCK_TIMEOUT(&futex->queue, atomic_load(addr) != val, timeout);
         if (result == BLOCK_TIMEOUT)
         {
             return (systime_uptime() - start);

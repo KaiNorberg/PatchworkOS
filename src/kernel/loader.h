@@ -18,4 +18,4 @@ extern NORETURN void loader_jump_to_user_space(int argc, char** argv, void* rsp,
 
 thread_t* loader_spawn(const char** argv, priority_t priority);
 
-thread_t* loader_thread_create(thread_t* thread, void* entry, priority_t priority, uint64_t argc, va_list args);
+thread_t* loader_thread_create(thread_t* thread, priority_t priority, void* entry, void* arg);

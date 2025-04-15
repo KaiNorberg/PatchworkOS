@@ -8,36 +8,36 @@
 
 #include "common/thread.h"
 
-__attribute__((noreturn)) __attribute__((force_align_arg_pointer)) static void _ThrdEntry(_Thread_t* thread, thrd_start_t func,
-    void* arg)
+#include <stdio.h>
+
+__attribute__((noreturn)) __attribute__((force_align_arg_pointer)) static void _ThrdEntry(_Thread_t* thread)
 {
     while (!atomic_load(&thread->running))
     {
         _SyscallYield();
     }
 
-    int res = func(arg);
+    int res = thread->func(thread->arg);
     thrd_exit(res);
 }
 
 int thrd_create(thrd_t* thr, thrd_start_t func, void* arg)
 {
-    _Thread_t* thread = _ThreadNew(); // Dereference base reference
+    _Thread_t* thread = _ThreadNew(func, arg); // Dereference base reference
     if (thread == NULL)
     {
         return thrd_error;
     }
 
-    thread->id = _SyscallThreadCreate(_ThrdEntry, 3, thread, func, arg);
+    thread->id = _SyscallThreadCreate(_ThrdEntry, thread);
     if (thread->id == ERR)
     {
         _ThreadFree(thread);
         return thrd_error;
     }
 
-    atomic_store(&thread->running, true);
-
     thr->thread = thread;
+    atomic_store(&thread->running, true);
     return thrd_success;
 }
 
@@ -87,7 +87,9 @@ _NORETURN void thrd_exit(int res)
     _Thread_t* thread = _ThreadById(_SyscallThreadId());
     thread->result = res;
     atomic_store(&thread->running, false);
+    futex(&thread->running, FUTEX_ALL, FUTEX_WAKE, NEVER);
     _ThreadUnref(thread);
+
     _ThreadUnref(thread); // Dereference base reference
     _SyscallThreadExit();
 }
@@ -101,12 +103,7 @@ int thrd_detach(thrd_t thr)
 int thrd_join(thrd_t thr, int* res)
 {
     _Thread_t* thread = _ThreadRef(thr.thread);
-
-    while (!atomic_load(&thread->running))
-    {
-        _SyscallYield();
-    }
-
+    futex(&thread->running, true, FUTEX_WAIT, NEVER);
     if (res != NULL)
     {
         *res = thread->result;
@@ -151,16 +148,19 @@ int mtx_lock(mtx_t* mutex)
     do
     {
         expected = FUTEX_UNLOCKED;
-        if (atomic_compare_exchange_strong(&(mutex->state), &expected, FUTEX_CONTESTED) ||
-            atomic_load(&(mutex->state)) == FUTEX_CONTESTED)
+        if (atomic_compare_exchange_strong(&(mutex->state), &expected, FUTEX_LOCKED))
         {
-            futex(&(mutex->state), FUTEX_CONTESTED, FUTEX_WAIT, NEVER);
+            return thrd_success;
         }
-        else
+
+        uint64_t current = atomic_load(&(mutex->state));
+        if (current != FUTEX_CONTESTED)
         {
-            continue;
+            expected = current;
+            atomic_compare_exchange_strong(&(mutex->state), &expected, FUTEX_CONTESTED);
         }
-    } while (atomic_load(&(mutex->state)) != FUTEX_LOCKED);
+        futex(&(mutex->state), FUTEX_CONTESTED, FUTEX_WAIT, NEVER);
+    } while (1);
 
     return thrd_success;
 }
