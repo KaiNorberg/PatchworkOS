@@ -1,6 +1,7 @@
 #include "vfs.h"
 
 #include "lock.h"
+#include "path.h"
 #include "sched.h"
 #include "systime.h"
 #include "vfs_ctx.h"
@@ -170,12 +171,6 @@ uint64_t vfs_unmount(const char* label)
 
 uint64_t vfs_chdir(const char* path)
 {
-    path_t parsedPath;
-    if (vfs_parse_path(&parsedPath, path) == ERR)
-    {
-        return ERR;
-    }
-
     stat_t info;
     if (vfs_stat(path, &info) == ERR)
     {
@@ -185,6 +180,12 @@ uint64_t vfs_chdir(const char* path)
     if (info.type != STAT_DIR)
     {
         return ERROR(ENOTDIR);
+    }
+
+    path_t parsedPath;
+    if (vfs_parse_path(&parsedPath, path) == ERR)
+    {
+        return ERR;
     }
 
     vfs_ctx_t* ctx = &sched_process()->vfsCtx;

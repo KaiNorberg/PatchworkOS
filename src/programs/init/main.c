@@ -4,14 +4,12 @@
 void spawn_program(const char* path)
 {
     const char* argv[] = {path, NULL};
-    process_create(argv, NULL);
+    spawn(argv, NULL);
 }
 
 int main(void)
 {
-    fd_t cwd = open("sys:/proc/self/cwd");
-    writef(cwd, "home:/usr");
-    close(cwd);
+    chdir("home:/usr");
 
     spawn_program("home:/bin/wall");
     spawn_program("home:/bin/cursor");

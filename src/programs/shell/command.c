@@ -104,13 +104,13 @@ static uint64_t command_spawn(const char** argv)
         {.child = STDOUT_FILENO, .parent = STDOUT_FILENO},
         SPAWN_FD_END,
     };
-    pid_t pid = process_create(argv, fds);
+    pid_t pid = spawn(argv, fds);
     if (pid == ERR)
     {
         return ERR;
     }
 
-    fd_t child = process_open(pid, "ctl");
+    fd_t child = pid_open(pid, "ctl");
     writef(child, "wait");
     close(child);
 

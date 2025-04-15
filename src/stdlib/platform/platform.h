@@ -37,9 +37,9 @@ _NORETURN void _SyscallProcessExit(uint64_t status);
 
 _NORETURN void _SyscallThreadExit(void);
 
-pid_t _SyscallProcessCreate(const char** argv, const spawn_fd_t* fds);
+pid_t _SyscallSpawn(const char** argv, const spawn_fd_t* fds);
 
-uint64_t _SyscallThreadSleep(nsec_t nanoseconds);
+uint64_t _SyscallSleep(nsec_t nanoseconds);
 
 errno_t _SyscallLastError(void);
 

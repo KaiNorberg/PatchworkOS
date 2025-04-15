@@ -143,7 +143,7 @@ static void loader_process_entry(void)
     loader_jump_to_user_space(thread->process->argv.amount, argv, rsp, rip);
 }
 
-thread_t* loader_process_create(const char** argv, priority_t priority)
+thread_t* loader_spawn(const char** argv, priority_t priority)
 {
     if (argv == NULL || argv[0] == NULL)
     {

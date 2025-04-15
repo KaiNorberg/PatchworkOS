@@ -47,14 +47,14 @@ _SyscallThreadExit:
     SYSTEM_CALL SYS_THREAD_EXIT
     ret
 
-global _SyscallProcessCreate
-_SyscallProcessCreate:
-    SYSTEM_CALL SYS_PROCESS_CREATE
+global _SyscallSpawn
+_SyscallSpawn:
+    SYSTEM_CALL SYS_SPAWN
     ret
 
-global _SyscallThreadSleep
-_SyscallThreadSleep:
-    SYSTEM_CALL SYS_THREAD_SLEEP
+global _SyscallSleep
+_SyscallSleep:
+    SYSTEM_CALL SYS_SLEEP
     ret
 
 global _SyscallUptime

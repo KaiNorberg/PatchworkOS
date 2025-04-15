@@ -46,7 +46,14 @@ static uint64_t path_make_canonical(char* dest, char* out, const char* src)
                 return ERROR(EPATH);
             }
 
-            out--;
+            if (*out == '\3')
+            {
+                out -= 2;
+            }
+            else
+            {
+                out -= 1;
+            }
             while (*(--out) != '\0' && out != dest)
                 ;
         }
@@ -72,6 +79,10 @@ static uint64_t path_make_canonical(char* dest, char* out, const char* src)
         name = name_next(name);
         if (name == NULL || name[0] == '\0')
         {
+            if (*out == '\0')
+            {
+                out++;
+            }
             *out = '\3';
             return 0;
         }

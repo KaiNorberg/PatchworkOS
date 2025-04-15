@@ -18,8 +18,8 @@
 #include <string.h>
 #include <sys/gfx.h>
 #include <sys/io.h>
-#include <sys/proc.h>
 #include <sys/math.h>
+#include <sys/proc.h>
 
 #include <common/version.h>
 
@@ -46,7 +46,8 @@ static void log_clear_rect(uint64_t x, uint64_t y, uint64_t width, uint64_t heig
     }
 }
 
-static void log_scroll(void)
+// Also handles scrolling
+static void log_redraw(void)
 {
     point.y = 0;
     point.x = 0;
@@ -130,7 +131,7 @@ static void log_draw_char(char chr)
 
         if (point.y >= gfx.height - FONT_HEIGHT)
         {
-            log_scroll();
+            log_redraw();
         }
     }
 
@@ -192,12 +193,7 @@ void log_enable_screen(gop_buffer_t* gopBuffer)
     point.y = 0;
     memset(gfx.buffer, 0, gfx.stride * gfx.height * sizeof(pixel_t));
 
-    for (uint64_t i = 0; i < ring.dataLength; i++)
-    {
-        uint8_t byte = ((uint8_t*)ring.buffer)[(ring.readIndex + i) % ring.size];
-        log_draw_char(byte);
-    }
-
+    log_redraw();
     screenEnabled = true;
 }
 

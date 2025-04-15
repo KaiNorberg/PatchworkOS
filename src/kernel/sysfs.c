@@ -2,6 +2,7 @@
 
 #include "lock.h"
 #include "log.h"
+#include "path.h"
 #include "sched.h"
 #include "vfs.h"
 

@@ -97,7 +97,7 @@ NORETURN void syscall_thread_exit(void)
     sched_thread_exit();
 }
 
-pid_t syscall_process_create(const char** argv, const spawn_fd_t* fds)
+pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds)
 {
     uint64_t argc = 0;
     while (1)
@@ -144,7 +144,7 @@ pid_t syscall_process_create(const char** argv, const spawn_fd_t* fds)
         }
     }
 
-    thread_t* thread = loader_process_create(argv, PRIORITY_MIN);
+    thread_t* thread = loader_spawn(argv, PRIORITY_MIN);
     if (thread == NULL)
     {
         return ERR;
@@ -174,7 +174,7 @@ pid_t syscall_process_create(const char** argv, const spawn_fd_t* fds)
     return thread->process->id;
 }
 
-uint64_t syscall_thread_sleep(nsec_t nanoseconds)
+uint64_t syscall_sleep(nsec_t nanoseconds)
 {
     return sched_sleep(nanoseconds);
 }
@@ -574,8 +574,8 @@ void syscall_handler_end(void)
 void* syscallTable[] = {
     syscall_process_exit,
     syscall_thread_exit,
-    syscall_process_create,
-    syscall_thread_sleep,
+    syscall_spawn,
+    syscall_sleep,
     syscall_last_error,
     syscall_process_id,
     syscall_thread_id,

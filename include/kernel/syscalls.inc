@@ -1,7 +1,7 @@
 %define SYS_PROCESS_EXIT 0
 %define SYS_THREAD_EXIT 1
-%define SYS_PROCESS_CREATE 2
-%define SYS_THREAD_SLEEP 3
+%define SYS_SPAWN 2
+%define SYS_SLEEP 3
 %define SYS_LAST_ERROR 4
 %define SYS_PROCESS_ID 5
 %define SYS_THREAD_ID 6
@@ -14,7 +14,7 @@
 %define SYS_WRITE 13
 %define SYS_SEEK 14
 %define SYS_IOCTL 15
-%define SYS_CHDIR 16 ; Remove this, replace with sys:/proc/cwd
+%define SYS_CHDIR 16
 %define SYS_POLL 17
 %define SYS_STAT 18
 %define SYS_VIRTUAL_ALLOC 19

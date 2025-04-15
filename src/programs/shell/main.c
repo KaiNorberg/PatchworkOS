@@ -8,7 +8,7 @@
 void print_prompt(void)
 {
     char cwd[MAX_PATH];
-    fd_t fd = process_open(process_id(), "cwd");
+    fd_t fd = pid_open(process_id(), "cwd");
     read(fd, cwd, MAX_PATH);
     close(fd);
 

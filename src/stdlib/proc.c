@@ -6,12 +6,12 @@
 
 #include "platform/platform.h"
 
-pid_t process_create(const char** argv, const spawn_fd_t* fds)
+pid_t spawn(const char** argv, const spawn_fd_t* fds)
 {
-    return _SyscallProcessCreate(argv, fds);
+    return _SyscallSpawn(argv, fds);
 }
 
-fd_t process_open(pid_t pid, const char* file)
+fd_t pid_open(pid_t pid, const char* file)
 {
     char path[MAX_PATH];
     snprintf(path, MAX_PATH, "sys:/proc/%d/%s", pid, file);

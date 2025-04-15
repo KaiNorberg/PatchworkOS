@@ -3,8 +3,12 @@
 #include "defs.h"
 #include "futex.h"
 #include "gdt.h"
+#include "lock.h"
+#include "path.h"
 #include "regs.h"
+#include "sched.h"
 #include "smp.h"
+#include "sys/io.h"
 #include "sysfs.h"
 #include "systime.h"
 #include "vfs.h"
@@ -86,7 +90,11 @@ static uint64_t process_cmdline_read(file_t* file, void* buffer, uint64_t count)
     }
 
     char* first = process->argv.buffer[0];
-    char* last = first + process->argv.size;
+    if (first == NULL)
+    {
+        return 0;
+    }
+    char* last = (char*)((uint64_t)process->argv.buffer + process->argv.size);
     uint64_t length = last - first;
 
     uint64_t readCount = MIN(count, length - file->pos);
@@ -138,20 +146,8 @@ static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count)
     return readCount;
 }
 
-static uint64_t process_cwd_write(file_t* file, const void* buffer, uint64_t count)
-{
-    process_t* process = file->resource->dir->private;
-    if (process == NULL)
-    {
-        process = sched_process();
-    }
-
-    return ERROR(EIMPL);
-}
-
 static file_ops_t cwdFileOps = {
     .read = process_cwd_read,
-    .write = process_cwd_write,
 };
 
 SYSFS_STANDARD_RESOURCE_OPS(cwdResOps, &cwdFileOps)
@@ -231,7 +227,8 @@ static sysdir_t* process_dir_create(const char* name, void* private)
         return NULL;
     }
 
-    if (sysfs_create(dir, "ctl", &ctlResOps, NULL) == ERR || sysfs_create(dir, "cwd", &cwdResOps, NULL) == ERR || sysfs_create(dir, "cmdline", &cmdlineResOps, NULL) == ERR)
+    if (sysfs_create(dir, "ctl", &ctlResOps, NULL) == ERR || sysfs_create(dir, "cwd", &cwdResOps, NULL) == ERR ||
+        sysfs_create(dir, "cmdline", &cmdlineResOps, NULL) == ERR)
     {
         sysfs_rmdir(dir);
         return NULL;

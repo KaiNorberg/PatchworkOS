@@ -62,7 +62,7 @@ int thrd_sleep(const struct timespec* duration, struct timespec* remaining)
     if (remaining != NULL)
     {
         nsec_t start = uptime();
-        _SyscallThreadSleep(nanoseconds);
+        _SyscallSleep(nanoseconds);
         nsec_t end = uptime();
 
         nsec_t timeTaken = end - start;
@@ -71,7 +71,7 @@ int thrd_sleep(const struct timespec* duration, struct timespec* remaining)
     }
     else
     {
-        _SyscallThreadSleep(nanoseconds);
+        _SyscallSleep(nanoseconds);
     }
 
     return 0;
