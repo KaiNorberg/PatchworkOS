@@ -617,12 +617,12 @@ void dwm_init(gop_buffer_t* gopBuffer)
 
 void dwm_start(void)
 {
-    printf("dwm: start");
-
     rect_t rect = RECT_INIT_GFX(&backbuffer);
     gfx_swap(&backbuffer, &frontbuffer, &rect);
 
-    sched_push(thread_new_inherit(sched_thread(), dwm_loop, PRIORITY_MAX - 1));
+    thread_t* thread = thread_new_inherit(sched_thread(), dwm_loop, PRIORITY_MAX - 1);
+    sched_push(thread);
+    printf("dwm: start pid=%d tid=%d", thread->process->id, thread->id);
 }
 
 void dwm_redraw(void)

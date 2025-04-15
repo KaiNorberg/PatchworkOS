@@ -203,6 +203,8 @@ static void pmm_load_memory(efi_mem_map_t* memoryMap)
         else
         {
             printf("pmm: reserve [0x%016lx-0x%016lx]", desc->physicalStart,
+                    (uint64_t)desc->physicalStart + desc->amountOfPages * PAGE_SIZE);
+            printf("pmm: reserve [0x%016lx-0x%016lx]", desc->physicalStart,
                 (uint64_t)desc->physicalStart + desc->amountOfPages * PAGE_SIZE);
         }
     }

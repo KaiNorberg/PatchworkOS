@@ -7,6 +7,8 @@
 #include "utils.h"
 #include "vmm.h"
 
+#include <stdio.h>
+
 static uintptr_t lapicBase;
 
 void apic_init(void)
@@ -32,6 +34,7 @@ void apic_timer_init(uint8_t vector, uint64_t hz)
 
 void lapic_init(void)
 {
+    printf("lapic: init");
     msr_write(MSR_LAPIC, (msr_read(MSR_LAPIC) | LAPIC_MSR_ENABLE) & ~(1 << 10));
 
     lapic_write(LAPIC_REG_SPURIOUS, lapic_read(LAPIC_REG_SPURIOUS) | 0x100);

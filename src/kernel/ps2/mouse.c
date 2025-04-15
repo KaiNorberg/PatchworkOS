@@ -10,6 +10,7 @@
 #include "systime.h"
 #include "vfs.h"
 
+#include <stdio.h>
 #include <sys/math.h>
 #include <sys/mouse.h>
 
@@ -89,4 +90,5 @@ void ps2_mouse_init(void)
 
     mouse = mouse_new("ps2");
     irq_install(ps2_mouse_irq, IRQ_PS2_AUX);
+    printf("ps2: mouse");
 }

@@ -72,25 +72,40 @@ static void argv_deinit(argv_t* argv)
     free(argv->buffer);
 }
 
-/*static uint64_t process_kill_action(file_t* file, const char** argv, uint64_t argc)
+static uint64_t process_cmdline_read(file_t* file, void* buffer, uint64_t count)
 {
-    process_t* process = file->resource->private;
-    atomic_store(&process->dead, true);
+    if (count == 0)
+    {
+        return 0;
+    }
+
+    process_t* process = file->resource->dir->private;
+    if (process == NULL)
+    {
+        process = sched_process();
+    }
+
+    char* first = process->argv.buffer[0];
+    char* last = first + process->argv.size;
+    uint64_t length = last - first;
+
+    uint64_t readCount = MIN(count, length - file->pos);
+    if (readCount == 0)
+    {
+        return 0;
+    }
+
+    memcpy(buffer, first + file->pos, readCount);
+
+    file->pos += readCount;
+    return readCount;
 }
 
-static uint64_t process_wait_action(file_t* file, const char** argv, uint64_t argc)
-{
-    process_t* process = file->resource->private;
-    WAITSYS_BLOCK(&process->queue, atomic_load(&process->dead));
-}
+static file_ops_t cmdlineFileOps = {
+    .read = process_cmdline_read,
+};
 
-static action_table_t actions = {
-    {"kill", process_kill_action, 0, 0, "Kills the process immediately"},
-    {"wait", process_wait_action, 0, 0, "Blocks until the process is killed"},
-    {0},
-};*/
-
-// ACTION_STANDARD_RESOURCE_WRITE(process_write, &actions);
+SYSFS_STANDARD_RESOURCE_OPS(cmdlineResOps, &cmdlineFileOps)
 
 static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count)
 {
@@ -141,6 +156,26 @@ static file_ops_t cwdFileOps = {
 
 SYSFS_STANDARD_RESOURCE_OPS(cwdResOps, &cwdFileOps)
 
+/*static uint64_t process_kill_action(file_t* file, const char** argv, uint64_t argc)
+{
+    process_t* process = file->resource->private;
+    atomic_store(&process->dead, true);
+}
+
+static uint64_t process_wait_action(file_t* file, const char** argv, uint64_t argc)
+{
+    process_t* process = file->resource->private;
+    WAITSYS_BLOCK(&process->queue, atomic_load(&process->dead));
+}
+
+static action_table_t actions = {
+    {"kill", process_kill_action, 0, 0, "Kills the process immediately"},
+    {"wait", process_wait_action, 0, 0, "Blocks until the process is killed"},
+    {0},
+};*/
+
+// ACTION_STANDARD_RESOURCE_WRITE(process_write, &actions);
+//
 static uint64_t process_ctl_write(file_t* file, const void* buffer, uint64_t count)
 {
     if (count == 0)
@@ -188,7 +223,7 @@ static void process_on_free(sysdir_t* dir)
     free(process);
 }
 
-static sysdir_t* process_create_proc_dir(const char* name, void* private)
+static sysdir_t* process_dir_create(const char* name, void* private)
 {
     sysdir_t* dir = sysfs_mkdir("/proc", name, process_on_free, private);
     if (dir == NULL)
@@ -196,7 +231,7 @@ static sysdir_t* process_create_proc_dir(const char* name, void* private)
         return NULL;
     }
 
-    if (sysfs_create(dir, "ctl", &ctlResOps, NULL) == ERR || sysfs_create(dir, "cwd", &cwdResOps, NULL) == ERR)
+    if (sysfs_create(dir, "ctl", &ctlResOps, NULL) == ERR || sysfs_create(dir, "cwd", &cwdResOps, NULL) == ERR || sysfs_create(dir, "cmdline", &cmdlineResOps, NULL) == ERR)
     {
         sysfs_rmdir(dir);
         return NULL;
@@ -222,7 +257,7 @@ static process_t* process_new(const char** argv, const path_t* cwd)
 
     char dirname[MAX_PATH];
     ulltoa(process->id, dirname, 10);
-    process->dir = process_create_proc_dir(dirname, process);
+    process->dir = process_dir_create(dirname, process);
     if (process->dir == NULL)
     {
         argv_deinit(&process->argv);
@@ -289,7 +324,7 @@ static thread_t* process_thread_create(process_t* process, void* entry, priority
 
 void process_self_init(void)
 {
-    process_create_proc_dir("self", NULL);
+    process_dir_create("self", NULL);
 }
 
 thread_t* thread_new(const char** argv, void* entry, priority_t priority, const path_t* cwd)

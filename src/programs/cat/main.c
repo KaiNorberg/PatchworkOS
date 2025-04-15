@@ -26,7 +26,7 @@ int main(int argc, char** argv)
                 break;
             }
 
-            write(STDOUT_FILENO, buffer, count);
+            printf(buffer);
         }
     }
 
@@ -54,7 +54,7 @@ int main(int argc, char** argv)
                 break;
             }
 
-            write(STDOUT_FILENO, buffer, count);
+            printf(buffer);
         }
 
         close(fd);

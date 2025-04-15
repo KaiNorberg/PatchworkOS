@@ -5,6 +5,7 @@
 #include "vmm.h"
 
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 static uint8_t initCtx[PAGE_SIZE] ALIGNED(64);
@@ -32,6 +33,7 @@ static void simd_xsave_init(void)
 
 void simd_init(void)
 {
+    printf("simd: init");
     cr0_write(cr0_read() & ~((uint64_t)CR0_EMULATION));
     cr0_write(cr0_read() | CR0_MONITOR_CO_PROCESSOR | CR0_NUMERIC_ERROR_ENABLE);
 
@@ -39,6 +41,7 @@ void simd_init(void)
 
     if (cpuid_xsave_avail())
     {
+        printf("simd: xsave available");
         simd_xsave_init();
     }
 

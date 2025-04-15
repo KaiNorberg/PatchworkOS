@@ -37,11 +37,6 @@ static inline uint64_t ring_write(ring_t* ring, const void* buffer, uint64_t cou
 {
     if (count > ring_free_length(ring))
     {
-        return ERR;
-    }
-
-    if (count > ring_free_length(ring))
-    {
         uint64_t overflow = count - ring_free_length(ring);
         ring->readIndex = (ring->readIndex + overflow) % ring->size;
         ring->dataLength -= overflow;

@@ -74,7 +74,7 @@ void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gop
     lock_init(&kernelLock);
     vmm_load_memory_map(memoryMap);
 
-    printf("vmm: kernel detected physical=[0x%016lx-0x%016lx] virtual=[0x%016lx-0x%016lx]", kernel->physStart,
+    printf("vmm: kernel phys=[0x%016lx-0x%016lx] virt=[0x%016lx-0x%016lx]", kernel->physStart,
         kernel->physStart + kernel->length, kernel->virtStart, kernel->virtStart + kernel->length);
 
     uint64_t result =
@@ -99,6 +99,7 @@ void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gop
 
 void vmm_cpu_init(void)
 {
+    printf("vmm: global page enable");
     cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);
 }
 

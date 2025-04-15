@@ -48,6 +48,6 @@ int _PlatformVprintf(const char* _RESTRICT format, va_list args)
 
     char newline[] = {'\n', '\0'};
     strcat(buffer, newline);
-    log_write(buffer);
+    log_print(buffer);
     return result + 1;
 }
