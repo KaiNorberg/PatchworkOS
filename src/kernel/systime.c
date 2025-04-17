@@ -104,7 +104,7 @@ static void systime_timer_init_ipi(trap_frame_t* trapFrame)
 void systime_timer_init(void)
 {
     smp_send_others(systime_timer_init_ipi);
-    smp_send_self(systime_timer_init_ipi);
+    systime_timer_init_ipi(NULL);
 
     printf("systime: timer_init hz=%d", CONFIG_TIMER_HZ);
 }

@@ -50,7 +50,7 @@ ipi_t smp_recieve(cpu_t* cpu);
 
 void smp_send(cpu_t* cpu, ipi_t ipi);
 
-void smp_send_self(ipi_t ipi);
+void smp_send_all(ipi_t ipi);
 
 void smp_send_others(ipi_t ipi);
 

@@ -116,5 +116,10 @@ void trap_handler(trap_frame_t* trapFrame)
         log_panic(trapFrame, "Unknown vector");
     }
 
+    if (!(trapFrame->rflags & RFLAGS_INTERRUPT_ENABLE))
+    {
+        log_panic(trapFrame, "Return to context with interrupts disabled");
+    }
+
     cpu->trapDepth--;
 }

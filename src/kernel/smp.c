@@ -171,6 +171,7 @@ void smp_entry(void)
     printf("cpu %d: ready", (uint64_t)cpu->id);
 
     cpuReady = true;
+
     sched_idle_loop();
 }
 
@@ -193,11 +194,6 @@ static void smp_halt_ipi(trap_frame_t* trapFrame)
 void smp_halt_others(void)
 {
     smp_send_others(smp_halt_ipi);
-
-    while (atomic_load(&haltedAmount) < cpuAmount - 1)
-    {
-        asm volatile("pause");
-    }
 }
 
 ipi_t smp_recieve(cpu_t* cpu)
@@ -222,15 +218,12 @@ void smp_send(cpu_t* cpu, ipi_t ipi)
     lapic_send_ipi(cpu->lapicId, VECTOR_IPI);
 }
 
-void smp_send_self(ipi_t ipi)
+void smp_send_all(ipi_t ipi)
 {
-    ipi_queue_t* queue = &smp_self_unsafe()->queue;
-
-    lock_acquire(&queue->lock);
-    ipi_queue_push(queue, ipi);
-    lock_release(&queue->lock);
-
-    asm volatile("int %0" ::"i"(VECTOR_IPI));
+    for (uint8_t id = 0; id < cpuAmount; id++)
+    {
+        smp_send(cpus[id], ipi);
+    }
 }
 
 void smp_send_others(ipi_t ipi)
@@ -257,14 +250,14 @@ cpu_t* smp_cpu(uint8_t id)
 
 cpu_t* smp_self_unsafe(void)
 {
-    ASSERT_PANIC((rflags_read() & RFLAGS_INTERRUPT_ENABLE) == 0);
+    ASSERT_PANIC(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
     return cpus[msr_read(MSR_CPU_ID)];
 }
 
 cpu_t* smp_self_brute(void)
 {
-    ASSERT_PANIC((rflags_read() & RFLAGS_INTERRUPT_ENABLE) == 0);
+    ASSERT_PANIC(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
     uint8_t lapicId = lapic_id();
     for (uint16_t id = 0; id < cpuAmount; id++)
