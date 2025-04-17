@@ -66,7 +66,7 @@ typedef struct win_text_prop
 #define WIN_TEXT_PROP_DEFAULT() \
     (win_text_prop_t) \
     { \
-        .height = 16, .foreground = 0xFF000000, .background = 0, .xAlign = GFX_CENTER, .yAlign = GFX_CENTER, \
+        .height = 16, .foreground = 0xFF000000, .background = 0xFFFFFFFF, .xAlign = GFX_CENTER, .yAlign = GFX_CENTER, \
     }
 
 typedef uint64_t (*win_proc_t)(win_t*, const msg_t*);

@@ -59,7 +59,7 @@ typedef struct thread
     uint8_t kernelStack[CONFIG_KERNEL_STACK];
 } thread_t;
 
-void process_self_init(void);
+void process_self_expose(void);
 
 thread_t* thread_new(const char** argv, void* entry, priority_t priority, const path_t* cwd);
 

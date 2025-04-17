@@ -178,15 +178,22 @@ char* ulltoa(unsigned long long number, char* str, int base)
     return str;
 }
 
-static uint64_t seed = 1;
+static uint64_t seed = 0;
 
 int rand()
 {
-    seed = (1103515245 * seed + 12345) % 2147483648;
-    return (int)(seed & RAND_MAX);
+    uint64_t oldstate = seed;
+
+    seed = oldstate * 6364136223846793005ULL + 1442695040888963407ULL;
+
+    uint32_t xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
+    uint32_t rot = oldstate >> 59u;
+    uint32_t result = (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
+
+    return (int)(result & RAND_MAX);
 }
 
 void srand(unsigned newSeed)
 {
-    seed = newSeed;
+    seed = newSeed * 6364136223846793005ULL + 1442695040888963407ULL;
 }

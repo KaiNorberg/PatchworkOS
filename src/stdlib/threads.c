@@ -124,6 +124,11 @@ int mtx_init(mtx_t* mutex, int type)
     return thrd_success;
 }
 
+void mtx_destory(mtx_t* mutex)
+{
+    // Do nothing
+}
+
 int mtx_lock(mtx_t* mutex)
 {
     uint64_t expected = FUTEX_UNLOCKED;

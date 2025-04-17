@@ -33,6 +33,8 @@
 
 void log_init(void);
 
+void log_expose(void);
+
 void log_enable_screen(gop_buffer_t* gopBuffer);
 
 void log_disable_screen(void);
@@ -40,8 +42,6 @@ void log_disable_screen(void);
 void log_enable_time(void);
 
 bool log_time_enabled(void);
-
-void log_expose(void);
 
 void log_print(const char* str);
 

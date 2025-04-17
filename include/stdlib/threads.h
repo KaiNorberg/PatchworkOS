@@ -63,6 +63,8 @@ int thrd_join(thrd_t thr, int* res);
 
 int mtx_init(mtx_t* mutex, int type);
 
+void mtx_destory(mtx_t* mutex);
+
 int mtx_lock(mtx_t* mutex);
 
 int mtx_unlock(mtx_t* mutex);

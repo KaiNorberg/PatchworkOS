@@ -2,91 +2,6 @@
 #include <stdint.h>
 #include <string.h>
 
-void* memcpy(void* _RESTRICT dest, const void* _RESTRICT src, size_t count)
-{
-    uint8_t* d = dest;
-    const uint8_t* s = src;
-
-    while (((uintptr_t)d & 7) && count)
-    {
-        *d++ = *s++;
-        count--;
-    }
-
-    while (count >= 64)
-    {
-        *(uint64_t*)(d + 0) = *(const uint64_t*)(s + 0);
-        *(uint64_t*)(d + 8) = *(const uint64_t*)(s + 8);
-        *(uint64_t*)(d + 16) = *(const uint64_t*)(s + 16);
-        *(uint64_t*)(d + 24) = *(const uint64_t*)(s + 24);
-        *(uint64_t*)(d + 32) = *(const uint64_t*)(s + 32);
-        *(uint64_t*)(d + 40) = *(const uint64_t*)(s + 40);
-        *(uint64_t*)(d + 48) = *(const uint64_t*)(s + 48);
-        *(uint64_t*)(d + 56) = *(const uint64_t*)(s + 56);
-        d += 64;
-        s += 64;
-        count -= 64;
-    }
-
-    while (count >= 8)
-    {
-        *(uint64_t*)d = *(const uint64_t*)s;
-        d += 8;
-        s += 8;
-        count -= 8;
-    }
-
-    while (count--)
-    {
-        *d++ = *s++;
-    }
-
-    return dest;
-}
-
-void* memmove(void* dest, const void* src, size_t count)
-{
-    char* p1 = (char*)src;
-    char* p2 = (char*)dest;
-
-    if (p2 <= p1)
-    {
-        while (count--)
-        {
-            *p2++ = *p1++;
-        }
-    }
-    else
-    {
-        p1 += count;
-        p2 += count;
-
-        while (count--)
-        {
-            *--p2 = *--p1;
-        }
-    }
-
-    return dest;
-}
-
-void* memchr(const void* ptr, int ch, size_t count)
-{
-    const unsigned char* p = (const unsigned char*)ptr;
-
-    while (count--)
-    {
-        if (*p == (unsigned char)ch)
-        {
-            return (void*)p;
-        }
-
-        ++p;
-    }
-
-    return NULL;
-}
-
 char* strcpy(char* _RESTRICT dest, const char* _RESTRICT src)
 {
     char* temp = dest;
@@ -157,25 +72,6 @@ size_t strnlen(const char* str, size_t max)
     }
 
     return i;
-}
-
-int memcmp(const void* a, const void* b, size_t count)
-{
-    unsigned char* p1 = (unsigned char*)a;
-    unsigned char* p2 = (unsigned char*)b;
-
-    while (count--)
-    {
-        if (*p1 != *p2)
-        {
-            return *p1 - *p2;
-        }
-
-        ++p1;
-        ++p2;
-    }
-
-    return 0;
 }
 
 int strcmp(const char* a, const char* b)
@@ -268,6 +164,42 @@ char* strstr(const char* a, const char* b)
     return NULL;
 }
 
+void* memchr(const void* ptr, int ch, size_t count)
+{
+    const unsigned char* p = (const unsigned char*)ptr;
+
+    while (count--)
+    {
+        if (*p == (unsigned char)ch)
+        {
+            return (void*)p;
+        }
+
+        ++p;
+    }
+
+    return NULL;
+}
+
+int memcmp(const void* a, const void* b, size_t count)
+{
+    unsigned char* p1 = (unsigned char*)a;
+    unsigned char* p2 = (unsigned char*)b;
+
+    while (count--)
+    {
+        if (*p1 != *p2)
+        {
+            return *p1 - *p2;
+        }
+
+        ++p1;
+        ++p2;
+    }
+
+    return 0;
+}
+
 void* memset(void* dest, int ch, size_t count)
 {
     uint8_t* p = dest;
@@ -306,6 +238,74 @@ void* memset(void* dest, int ch, size_t count)
     while (count--)
     {
         *p++ = ch8;
+    }
+
+    return dest;
+}
+
+void* memcpy(void* _RESTRICT dest, const void* _RESTRICT src, size_t count)
+{
+    uint8_t* d = dest;
+    const uint8_t* s = src;
+
+    while (((uintptr_t)d & 7) && count)
+    {
+        *d++ = *s++;
+        count--;
+    }
+
+    while (count >= 64)
+    {
+        *(uint64_t*)(d + 0) = *(const uint64_t*)(s + 0);
+        *(uint64_t*)(d + 8) = *(const uint64_t*)(s + 8);
+        *(uint64_t*)(d + 16) = *(const uint64_t*)(s + 16);
+        *(uint64_t*)(d + 24) = *(const uint64_t*)(s + 24);
+        *(uint64_t*)(d + 32) = *(const uint64_t*)(s + 32);
+        *(uint64_t*)(d + 40) = *(const uint64_t*)(s + 40);
+        *(uint64_t*)(d + 48) = *(const uint64_t*)(s + 48);
+        *(uint64_t*)(d + 56) = *(const uint64_t*)(s + 56);
+        d += 64;
+        s += 64;
+        count -= 64;
+    }
+
+    while (count >= 8)
+    {
+        *(uint64_t*)d = *(const uint64_t*)s;
+        d += 8;
+        s += 8;
+        count -= 8;
+    }
+
+    while (count--)
+    {
+        *d++ = *s++;
+    }
+
+    return dest;
+}
+
+void* memmove(void* dest, const void* src, size_t count)
+{
+    char* p1 = (char*)src;
+    char* p2 = (char*)dest;
+
+    if (p2 <= p1)
+    {
+        while (count--)
+        {
+            *p2++ = *p1++;
+        }
+    }
+    else
+    {
+        p1 += count;
+        p2 += count;
+
+        while (count--)
+        {
+            *--p2 = *--p1;
+        }
     }
 
     return dest;

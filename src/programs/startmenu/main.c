@@ -24,8 +24,9 @@ typedef struct
 
 // TODO: Load this from config file.
 static start_entry_t entries[] = {
-    {.name = "Calculator", .path = "home:/usr/bin/calc"},
+    {.name = "Calculator", .path = "home:/usr/bin/calculator"},
     {.name = "Terminal", .path = "home:/usr/bin/terminal"},
+    {.name = "Tetris", .path = "home:/usr/bin/tetris"},
     {.name = "Error Test", .path = "this:/is/a/nonsense/file/path"},
 };
 
@@ -38,7 +39,11 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         rect_t clientRect;
         win_client_rect(window, &clientRect);
 
-        win_text_prop_t props = {.height = 16, .xAlign = GFX_CENTER, .yAlign = GFX_CENTER, .foreground = 0xFF000000};
+        win_text_prop_t props = {.height = 16,
+            .xAlign = GFX_CENTER,
+            .yAlign = GFX_CENTER,
+            .foreground = winTheme.dark,
+            winTheme.background};
 
         for (uint64_t i = 0; i < sizeof(entries) / sizeof(entries[0]); i++)
         {

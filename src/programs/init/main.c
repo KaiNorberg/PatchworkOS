@@ -1,5 +1,6 @@
 #include <sys/io.h>
 #include <sys/proc.h>
+#include <threads.h>
 
 void spawn_program(const char* path)
 {
@@ -14,6 +15,10 @@ int main(void)
     spawn_program("home:/bin/wall");
     spawn_program("home:/bin/cursor");
     spawn_program("home:/bin/taskbar");
+
+    struct timespec time = {.tv_sec = 1};
+    thrd_sleep(&time, NULL);
+    spawn_program("home:/usr/bin/tetris");
 
     return 0;
 }

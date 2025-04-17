@@ -31,8 +31,6 @@ void futex_ctx_deinit(futex_ctx_t* ctx)
     hashmap_deinit(&ctx->futexes);
 }
 
-#include <stdio.h>
-
 static futex_t* futex_ctx_futex(futex_ctx_t* ctx, atomic_uint64* addr)
 {
     LOCK_DEFER(&ctx->lock);

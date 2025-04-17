@@ -176,6 +176,26 @@ void log_init(void)
     printf("Licensed under MIT. See home:/usr/license/LICENSE.");
 }
 
+static uint64_t log_read(file_t* file, void* buffer, uint64_t count)
+{
+    LOCK_DEFER(&lock);
+
+    uint64_t result = ring_read_at(&ring, file->pos, buffer, count);
+    file->pos += result;
+    return result;
+}
+
+static file_ops_t fileOps = {
+    .read = log_read,
+};
+
+SYSFS_STANDARD_RESOURCE_OPS(resOps, &fileOps);
+
+void log_expose(void)
+{
+    sysfs_expose("/", "klog", &resOps, NULL);
+}
+
 void log_enable_screen(gop_buffer_t* gopBuffer)
 {
     printf("log: enable screen");
@@ -213,26 +233,6 @@ void log_enable_time(void)
 bool log_time_enabled(void)
 {
     return timeEnabled;
-}
-
-static uint64_t log_read(file_t* file, void* buffer, uint64_t count)
-{
-    LOCK_DEFER(&lock);
-
-    uint64_t result = ring_read_at(&ring, file->pos, buffer, count);
-    file->pos += result;
-    return result;
-}
-
-static file_ops_t fileOps = {
-    .read = log_read,
-};
-
-SYSFS_STANDARD_RESOURCE_OPS(resOps, &fileOps);
-
-void log_expose(void)
-{
-    sysfs_expose("/", "klog", &resOps, NULL);
 }
 
 void log_print(const char* str)

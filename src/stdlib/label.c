@@ -46,7 +46,7 @@ uint64_t win_label_proc(widget_t* widget, win_t* window, const msg_t* msg)
 
         gfx_edge(&gfx, &rect, winTheme.edgeWidth, winTheme.shadow, winTheme.highlight);
         RECT_SHRINK(&rect, winTheme.edgeWidth);
-        gfx_rect(&gfx, &rect, winTheme.bright);
+        gfx_rect(&gfx, &rect, label->props.background);
         RECT_SHRINK(&rect, winTheme.edgeWidth);
         rect.top += winTheme.edgeWidth;
         gfx_text(&gfx, win_font(window), &rect, label->props.xAlign, label->props.yAlign, label->props.height,

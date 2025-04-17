@@ -41,7 +41,7 @@ static void button_draw(widget_t* widget, win_t* window, bool redraw)
 
     if (redraw)
     {
-        gfx_rect(&gfx, &rect, winTheme.background);
+        gfx_rect(&gfx, &rect, button->props.background);
         gfx_text(&gfx, win_font(window), &rect, button->props.xAlign, button->props.yAlign, button->props.height,
             win_widget_name(widget), button->props.foreground, button->props.background);
     }

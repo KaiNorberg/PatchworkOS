@@ -29,7 +29,7 @@ char* ulltoa(unsigned long long number, char* str, int base);
 #define ultoa(number, str, base) lltoa(number, str, base)
 #define uitoa(number, str, base) lltoa(number, str, base)
 
-int rand();
+int rand(void);
 void srand(unsigned newSeed);
 
 #if defined(__cplusplus)

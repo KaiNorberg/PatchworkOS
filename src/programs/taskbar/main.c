@@ -21,7 +21,11 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
     {
         rect_t rect =
             RECT_INIT_DIM(TOPBAR_PADDING, TOPBAR_PADDING + winTheme.edgeWidth, START_WIDTH, TOPBAR_HEIGHT - TOPBAR_PADDING * 2);
-        widget_t* button = win_button_new(window, "Start", &rect, START_ID, NULL, WIN_BUTTON_TOGGLE);
+
+        win_text_prop_t textProp = WIN_TEXT_PROP_DEFAULT();
+        textProp.background = winTheme.background;
+
+        widget_t* button = win_button_new(window, "Start", &rect, START_ID, &textProp, WIN_BUTTON_TOGGLE);
     }
     break;
     case LMSG_REDRAW:

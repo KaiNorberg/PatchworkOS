@@ -319,7 +319,7 @@ static thread_t* process_thread_create(process_t* process, void* entry, priority
     return thread;
 }
 
-void process_self_init(void)
+void process_self_expose(void)
 {
     process_dir_create("self", NULL);
 }

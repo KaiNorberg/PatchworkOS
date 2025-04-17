@@ -346,7 +346,8 @@ win_t* win_new(const char* name, const rect_t* rect, dwm_type_t type, win_flags_
         return NULL;
     }
 
-    win_send(window, LMSG_INIT, NULL, 0);
+    msg_t msg = {.type = LMSG_INIT, .time = uptime()};
+    win_dispatch(window, &msg);
 
     win_send(window, LMSG_REDRAW, NULL, 0);
 

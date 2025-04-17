@@ -5,6 +5,7 @@
 #include <sys/io.h>
 #include <sys/math.h>
 
+#include "_AUX/rect_t.h"
 #include "platform/platform.h"
 #if _PLATFORM_HAS_SYSCALLS
 
@@ -348,12 +349,17 @@ void gfx_text(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t 
 
 void gfx_rect(gfx_t* gfx, const rect_t* rect, pixel_t pixel)
 {
+    if (rect->left < 0 || rect->top < 0 || rect->right > gfx->width || rect->bottom > gfx->height)
+    {
+        return;
+    }
+
     uint64_t pixel64 = ((uint64_t)pixel << 32) | pixel;
 
     for (int64_t y = rect->top; y < rect->bottom; y++)
     {
-        uint64_t count = (rect->right - rect->left) * sizeof(pixel_t);
         uint8_t* ptr = (uint8_t*)&gfx->buffer[rect->left + y * gfx->stride];
+        uint64_t count = (rect->right - rect->left) * sizeof(pixel_t);
 
         while (count >= 64)
         {
@@ -376,15 +382,16 @@ void gfx_rect(gfx_t* gfx, const rect_t* rect, pixel_t pixel)
             count -= 8;
         }
 
-        while (count--)
+        while (count >= sizeof(pixel_t))
         {
-            *ptr++ = pixel;
+            *(pixel_t*)ptr = pixel;
+            ptr += sizeof(pixel_t);
+            count -= sizeof(pixel_t);
         }
     }
 
     gfx_invalidate(gfx, rect);
 }
-
 void gfx_gradient(gfx_t* gfx, const rect_t* rect, pixel_t start, pixel_t end, gfx_gradient_type_t type, bool addNoise)
 {
     int64_t width = rect->right - rect->left;
