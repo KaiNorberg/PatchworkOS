@@ -726,7 +726,6 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         win_label_new(window, "000000", &textRect, PLAYED_BLOCKS_WIDGET_ID, &prop);
 
         pause();
-        win_timer_set(window, 0);
     }
     break;
     case LMSG_REDRAW:
@@ -739,6 +738,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         side_panel_draw(window, &gfx);
 
         win_draw_end(window, &gfx);
+        win_timer_set(window, 0);
     }
     break;
     case LMSG_TIMER:
