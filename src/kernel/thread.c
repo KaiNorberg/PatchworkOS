@@ -212,6 +212,7 @@ SYSFS_STANDARD_RESOURCE_OPS(ctlResOps, &ctlFileOps)
 static void process_on_free(sysdir_t* dir)
 {
     process_t* process = dir->private;
+    printf("process: on_free pid=%d", process->id);
     // vfs_ctx_deinit() is in process_free
     space_deinit(&process->space);
     argv_deinit(&process->argv);

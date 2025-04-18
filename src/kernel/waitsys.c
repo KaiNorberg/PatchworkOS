@@ -164,11 +164,11 @@ void waitsys_timer_trap(trap_frame_t* trapFrame)
         block_result_t result = BLOCK_NORM;
         if (atomic_load(&thread->process->dead) || thread->dead)
         {
-            thread->waitsys.result = BLOCK_DEAD;
+            result = BLOCK_DEAD;
         }
         else if (systime_uptime() >= thread->waitsys.deadline)
         {
-            thread->waitsys.result = BLOCK_TIMEOUT;
+            result = BLOCK_TIMEOUT;
         }
         else
         {
