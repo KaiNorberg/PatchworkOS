@@ -7,14 +7,17 @@ OBJCOPY := objcopy
 
 OPTIMIZATION = -O3
 DEBUG_SYMBOLS =
+TESTING =
 
 ifeq ($(DEBUG),1)
     OPTIMIZATION = -O0
     DEBUG_SYMBOLS = -ggdb
+    TESTING = -DTESTING
 endif
 
 CFLAGS := $(OPTIMIZATION) \
     $(DEBUG_SYMBOLS) \
+    $(TESTING) \
     -std=gnu11 \
     -Wall \
     -Wextra \
@@ -29,7 +32,7 @@ CFLAGS := $(OPTIMIZATION) \
     -Wno-deprecated-non-prototype \
     -fno-stack-protector \
     -fno-omit-frame-pointer \
-    -ffreestanding -nostdlib \
+    -nostdlib -nostartfiles -ffreestanding \
     -Iinclude/stdlib \
     -Iinclude \
     -I$(SRCDIR)

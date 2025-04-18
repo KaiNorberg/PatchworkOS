@@ -21,6 +21,7 @@
 #include "smp.h"
 #include "sysfs.h"
 #include "systime.h"
+#include "testing.h"
 #include "vfs.h"
 #include "vmm.h"
 #include "waitsys.h"
@@ -29,6 +30,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdlib_internal/init.h>
+#include <string.h>
 #include <sys/argsplit.h>
 
 static void kernel_free_loader_data(efi_mem_map_t* memoryMap)
@@ -93,6 +95,10 @@ void kernel_init(boot_info_t* bootInfo)
     dwm_init(&bootInfo->gopBuffer);
 
     kernel_free_loader_data(&bootInfo->memoryMap);
+
+#ifdef TESTING
+    testing_run_tests();
+#endif
 
     dwm_start();
     log_disable_screen();

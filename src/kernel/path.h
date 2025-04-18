@@ -12,7 +12,9 @@
 #define PATH_END_OF_NAME(ch) ((ch) == PATH_NAME_SEPARATOR || (ch) == '\0')
 #define PATH_END_OF_LABEL(ch) ((ch) == PATH_LABEL_SEPARATOR || (ch) == '\0')
 
-// TODO: Expand to handle flags and variables.
+#define PATH_NAME_IS_DOT(name) ((name)[0] == '.' && PATH_END_OF_NAME((name)[1]))
+#define PATH_NAME_IS_DOT_DOT(name) ((name)[0] == '.' && (name)[1] == '.' && PATH_END_OF_NAME((name)[2]))
+
 typedef struct path
 {
     char volume[MAX_NAME];

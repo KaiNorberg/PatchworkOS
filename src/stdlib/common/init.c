@@ -12,8 +12,7 @@ void _StdInit(void)
 {
 #if _PLATFORM_HAS_SYSCALLS
     _ThreadingInit();
-#endif
-#if _PLATFORM_HAS_SYSCALLS
+
     if (write(STDOUT_FILENO, NULL, 0) == ERR)
     {
         openas(STDOUT_FILENO, "sys:/null");

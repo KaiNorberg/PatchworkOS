@@ -7,23 +7,6 @@
 #include <stdio.h>
 #include <string.h>
 
-static bool name_compare(const char* a, const char* b)
-{
-    for (uint64_t i = 0; i < MAX_PATH; i++)
-    {
-        if (PATH_END_OF_NAME(a[i]))
-        {
-            return a[i] == b[i];
-        }
-        if (a[i] != b[i])
-        {
-            return false;
-        }
-    }
-
-    return false;
-}
-
 static const char* name_next(const char* path)
 {
     const char* base = strchr(path, PATH_NAME_SEPARATOR);
@@ -35,54 +18,46 @@ static uint64_t path_make_canonical(char* dest, char* out, const char* src)
     const char* name = src;
     while (1)
     {
-        if (name_compare(name, "."))
+        if (PATH_NAME_IS_DOT(name))
         {
             // Do nothing
         }
-        else if (name_compare(name, ".."))
+        else if (PATH_NAME_IS_DOT_DOT(name))
         {
             if (out == dest)
             {
                 return ERROR(EPATH);
             }
 
-            if (*out == '\3')
+            do
             {
-                out -= 2;
-            }
-            else
-            {
-                out -= 1;
-            }
-            while (*(--out) != '\0' && out != dest)
-                ;
+                // out--;
+            } while (out != dest && *(out - 1) != '\0');
         }
         else
         {
-            const char* ptr = name;
-            while (!PATH_END_OF_NAME(*ptr))
+            uint64_t i = 0;
+            for (; i < MAX_NAME; i++)
             {
-                if (!PATH_VALID_CHAR(*ptr) || (uint64_t)(out - dest) >= MAX_PATH - 2)
+                if (PATH_END_OF_NAME(name[i]))
                 {
-                    return ERROR(EPATH);
+                    break;
                 }
 
-                *out++ = *ptr++;
+                *out = name[i];
+                out++;
             }
 
-            if (ptr != name)
+            if (i != 0)
             {
-                *out++ = '\0';
+                *out = '\0';
+                out++;
             }
         }
 
         name = name_next(name);
         if (name == NULL || name[0] == '\0')
         {
-            if (*out == '\0')
-            {
-                out++;
-            }
             *out = '\3';
             return 0;
         }
@@ -190,3 +165,83 @@ node_t* path_traverse_node(const path_t* path, node_t* node)
 
     return node;
 }
+
+#ifdef TESTING
+#include "testing.h"
+
+static uint64_t path_test(const char* cwdStr, const char* testPath, const char* expectedResult)
+{
+    path_t cwd;
+    path_t path;
+    char buffer[MAX_PATH];
+
+    if (cwdStr != NULL)
+    {
+        path_init(&cwd, cwdStr, NULL);
+    }
+
+    uint64_t result = path_init(&path, testPath, cwdStr != NULL ? &cwd : NULL);
+
+    if (result == ERR)
+    {
+        if (expectedResult != NULL)
+        {
+            printf("failed: unexpectedly returned error, cwd=\"%s\" path=\"%s\"", cwdStr != NULL ? cwdStr : "NULL", testPath);
+            return ERR;
+        }
+        return 0;
+    }
+
+    path_to_string(&path, buffer);
+
+    if (strcmp(buffer, expectedResult) != 0)
+    {
+        printf("failed: cwd=\"%s\" path=\"%s\" expected=\"%s\" result=\"%s\"", cwdStr != NULL ? cwdStr : "NULL", testPath,
+            expectedResult, buffer);
+        return ERR;
+    }
+
+    return 0;
+}
+
+TESTING_REGISTER_TEST(path_all_tests)
+{
+    uint64_t result = 0;
+    result |= path_test("sys:/proc", "sys:/kbd/ps2", "sys:/kbd/ps2");
+    result |= path_test("sys:/proc", ".", "sys:/proc");
+    result |= path_test("sys:/proc", "..", "sys:/");
+    result |= path_test("sys:/proc", "../dev/./null", "sys:/dev/null");
+    result |= path_test("sys:/", "home/user", "sys:/home/user");
+    result |= path_test("sys:/usr/local/bin", "../lib", "sys:/usr/local/lib");
+    result |= path_test("sys:/usr/local/bin", "../../../", "sys:/");
+    result |= path_test("sys:/usr/local/bin", "usr:/bin", "usr:/bin");
+    result |= path_test("usr:/lib", "include", "usr:/lib/include");
+    result |= path_test("usr:/lib", "sys:/proc", "sys:/proc");
+    result |= path_test("usr:/lib", "", "usr:/lib");
+    result |= path_test("usr:/lib", "/", "usr:/");
+    result |= path_test("data:/users/admin", "documents///photos//vacation/", "data:/users/admin/documents/photos/vacation");
+    result |= path_test("data:/users/admin", "./downloads/../documents/./reports/../../photos", "data:/users/admin/photos");
+    result |= path_test("data:/users/admin", "notes/report (2023).txt", "data:/users/admin/notes/report (2023).txt");
+    result |= path_test("data:/users/admin", "bad|file?name", NULL);
+    result |= path_test(NULL, "relative/path", NULL);
+    result |= path_test("data:/users/admin", "bad:volume/path", NULL);
+    result |= path_test("app:/games", "rpg/saves/.", "app:/games/rpg/saves");
+    result |= path_test("app:/games", "rpg/saves/..", "app:/games/rpg");
+    result |= path_test("app:/games", "rpg/../../games/shooter", "app:/games/shooter");
+    result |= path_test("temp:/downloads", "log:/system/errors", "log:/system/errors");
+    result |= path_test("temp:/downloads", "temp:/uploads", "temp:/uploads");
+    result |= path_test("root:/", "/", "root:/");
+    result |= path_test("root:/", "/bin", "root:/bin");
+    result |= path_test("dev:/tools", "//multiple//slashes///", "dev:/multiple/slashes");
+    result |= path_test("sys:/usr/bin", "/", "sys:/");
+    result |= path_test("etc:/config", "home/user/.config/app/./../..", "etc:/config/home/user");
+    result |= path_test("project:/src", "lib/core/utils/string/parser/../../network/http/client/api/v1/../../../../../../tests",
+        "project:/src/lib/core/tests");
+    result |= path_test("docs:/", "research/paper (draft 2).pdf", "docs:/research/paper (draft 2).pdf");
+    result |= path_test("media:/music", "Albums/Rock & Roll/Bands", "media:/music/Albums/Rock & Roll/Bands");
+    result |= path_test("backup:/2023", "files_v1.2-beta+build.3", "backup:/2023/files_v1.2-beta+build.3");
+
+    return result;
+}
+
+#endif

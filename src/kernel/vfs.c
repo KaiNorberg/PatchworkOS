@@ -381,6 +381,10 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
 
     for (uint64_t i = 0; i < amount; i++)
     {
+        if (files[i].file == NULL)
+        {
+            return ERROR(EINVAL);
+        }
         if (files[i].file->resource != NULL && atomic_load(&files[i].file->resource->hidden))
         {
             return ERROR(ENORES);

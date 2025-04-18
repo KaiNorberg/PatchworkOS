@@ -35,17 +35,20 @@ extern _ErrnoFunc
 .no_error:
 %endmacro
 
+extern _fini
+
 section .text
 
 global _SyscallProcessExit
 _SyscallProcessExit:
+    call _fini
     SYSTEM_CALL SYS_PROCESS_EXIT
-    ret
+    ud2
 
 global _SyscallThreadExit
 _SyscallThreadExit:
     SYSTEM_CALL SYS_THREAD_EXIT
-    ret
+    ud2
 
 global _SyscallSpawn
 _SyscallSpawn:

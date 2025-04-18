@@ -8,15 +8,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "path.h"
-
-void print_path(path_t* path)
-{
-    char buffer[MAX_PATH];
-    path_to_string(path, buffer);
-    printf(buffer);
-}
-
 void main(boot_info_t* bootInfo)
 {
     kernel_init(bootInfo);

@@ -209,7 +209,7 @@ static void pmm_load_memory(efi_mem_map_t* memoryMap)
         }
     }
 
-    printf("pmm: memory %d MB (usable %d MB reserved %d MB)", (pageAmount * PAGE_SIZE) / 1000000,
+    printf("pmm: memory %llu MB (usable %llu MB reserved %llu MB)", (pageAmount * PAGE_SIZE) / 1000000,
         (freePageAmount * PAGE_SIZE) / 1000000, ((pageAmount - freePageAmount) * PAGE_SIZE) / 1000000);
 }
 

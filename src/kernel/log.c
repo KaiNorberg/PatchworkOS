@@ -336,7 +336,7 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
     {
         if ((uintptr_t)frame & 0x7)
         {
-            printf("[MISALIGNED FRAME: 0x%016lx]\n", (uintptr_t)frame);
+            printf("[MISALIGNED FRAME: 0x%016lx]", (uintptr_t)frame);
             break;
         }
 

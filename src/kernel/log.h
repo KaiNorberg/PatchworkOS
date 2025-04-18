@@ -8,7 +8,7 @@
 #define LOG_BUFFER_LENGTH 0x1000
 
 #define LOG_SCROLL_OFFSET 3
-#define LOG_MAX_LINE MAX_PATH
+#define LOG_MAX_LINE (512)
 
 #define LOG_BREAK '%'
 #define LOG_ADDR 'a'

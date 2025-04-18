@@ -29,6 +29,13 @@ SECTIONS
         *(.bss)
     }
 
+    .tests :
+    {
+        _testsStart = .;
+        KEEP(*(.tests))
+        _testsEnd = .;
+    }
+
     .trampoline : ALIGN(4K)
     {
         *(.trampoline)
