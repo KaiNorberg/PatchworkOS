@@ -117,11 +117,14 @@ typedef struct
     uint8_t entryAmount;
     block_result_t result;
     nsec_t deadline;
-} block_data_t;
+    bool blocking;
+} waitsys_ctx_t;
 
 void wait_queue_init(wait_queue_t* waitQueue);
 
 void wait_queue_deinit(wait_queue_t* waitQueue);
+
+void waitsys_ctx_init(waitsys_ctx_t* waitsys);
 
 void waitsys_init(void);
 

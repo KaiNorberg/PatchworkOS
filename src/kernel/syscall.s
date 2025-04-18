@@ -20,7 +20,7 @@ syscall_handler:
     push r11
     push rbp
 
-    mov rbp, 0
+    mov rbp, rsp
 
     call [syscallTable + rax * 8]
     push rax

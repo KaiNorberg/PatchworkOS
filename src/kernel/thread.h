@@ -34,12 +34,13 @@ typedef struct
     pid_t id;
     argv_t argv;
     sysdir_t* dir;
-    atomic_bool dead;
     vfs_ctx_t vfsCtx;
     space_t space;
+    atomic_bool dead;
     atomic_uint64 threadCount;
     wait_queue_t queue;
     futex_ctx_t futexCtx;
+    list_t threads;
     _Atomic(tid_t) newTid;
 } process_t;
 
@@ -51,11 +52,11 @@ typedef struct thread
     bool dead;
     nsec_t timeStart;
     nsec_t timeEnd;
-    block_data_t block;
+    waitsys_ctx_t waitsys;
     errno_t error;
     priority_t priority;
+    simd_ctx_t simd;
     trap_frame_t trapFrame;
-    simd_ctx_t simdCtx;
     uint8_t kernelStack[CONFIG_KERNEL_STACK];
 } thread_t;
 

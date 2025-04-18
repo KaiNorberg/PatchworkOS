@@ -5,24 +5,34 @@ AS := nasm
 LD := ld
 OBJCOPY := objcopy
 
-CFLAGS := -O3 \
-	-std=gnu11 \
-	-Wall \
-	-Wextra \
-	-Werror \
-	-Wno-deprecated-pragma \
-	-Wno-unused-function \
-	-Wno-unused-variable \
-	-Wno-ignored-qualifiers \
-	-Wno-unused-parameter \
-	-Wno-unused-but-set-variable \
-	-Wno-implicit-fallthrough \
-	-Wno-deprecated-non-prototype \
-	-fno-stack-protector \
-	-ffreestanding -nostdlib \
-	-Iinclude/stdlib \
-	-Iinclude \
-	-I$(SRCDIR)
+OPTIMIZATION = -O3
+DEBUG_SYMBOLS =
+
+ifeq ($(DEBUG),1)
+    OPTIMIZATION = -O0
+    DEBUG_SYMBOLS = -ggdb
+endif
+
+CFLAGS := $(OPTIMIZATION) \
+    $(DEBUG_SYMBOLS) \
+    -std=gnu11 \
+    -Wall \
+    -Wextra \
+    -Werror \
+    -Wno-deprecated-pragma \
+    -Wno-unused-function \
+    -Wno-unused-variable \
+    -Wno-ignored-qualifiers \
+    -Wno-unused-parameter \
+    -Wno-unused-but-set-variable \
+    -Wno-implicit-fallthrough \
+    -Wno-deprecated-non-prototype \
+    -fno-stack-protector \
+    -fno-omit-frame-pointer \
+    -ffreestanding -nostdlib \
+    -Iinclude/stdlib \
+    -Iinclude \
+    -I$(SRCDIR)
 
 CFLAGS_DISABLE_SIMD := -mno-mmx -mno-3dnow \
 	-mno-80387 -mno-sse \

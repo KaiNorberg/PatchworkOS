@@ -65,11 +65,11 @@ run:
 run_debug:
 	@qemu-system-x86_64 \
 	-M q35 \
+	-s \
 	-display sdl \
 	-drive file=$(TARGET) \
 	-m 1G \
 	-smp 8 \
-	-serial stdio \
 	-d int \
 	-no-shutdown -no-reboot \
 	-drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \

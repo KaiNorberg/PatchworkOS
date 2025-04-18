@@ -37,6 +37,9 @@ static lock_t lock;
 
 static void log_draw_char(char chr);
 
+extern uint64_t _kernelStart;
+extern uint64_t _kernelEnd;
+
 static void log_clear_rect(uint64_t x, uint64_t y, uint64_t width, uint64_t height)
 {
     width = MIN(width, (gfx.width - x));
@@ -327,15 +330,29 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
     }
 
     printf("[STACK TRACE]");
-    uint64_t* frame = (uint64_t*)__builtin_frame_address(0);
-    for (uint64_t i = 0; i < 16; i++)
+    void* frame = __builtin_frame_address(0);
+    uint64_t frameNum = 0;
+    while (frame != NULL && frameNum < 64)
     {
-        if (frame == NULL || frame[1] == 0)
+        if ((uintptr_t)frame & 0x7)
         {
+            printf("[MISALIGNED FRAME: 0x%016lx]\n", (uintptr_t)frame);
             break;
         }
-        printf("#%02d %016lx", i, frame[1]);
-        frame = (uint64_t*)frame[0];
+
+        void* returnAddr = *((void**)frame + 1);
+        if (returnAddr != NULL && (returnAddr >= (void*)&_kernelStart && returnAddr < (void*)&_kernelEnd))
+        {
+            printf("#%02d: [0x%016lx]", frameNum, returnAddr);
+        }
+        else
+        {
+            printf("[STACK TRACE END: 0x%016lx]", returnAddr);
+            break;
+        }
+
+        frame = *((void**)frame);
+        frameNum++;
     }
 
     printf("!!! KERNEL PANIC END - Please restart your machine !!!");

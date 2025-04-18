@@ -12,6 +12,7 @@
 #include "sysfs.h"
 #include "systime.h"
 #include "vfs.h"
+#include "waitsys.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -295,26 +296,22 @@ static thread_t* process_thread_create(process_t* process, void* entry, priority
     thread->dead = false;
     thread->timeStart = 0;
     thread->timeEnd = 0;
-    thread->block.waitEntries[0] = NULL;
-    thread->block.entryAmount = 0;
-    thread->block.result = BLOCK_NORM;
-    thread->block.deadline = 0;
+    waitsys_ctx_init(&thread->waitsys);
     thread->error = 0;
     thread->priority = MIN(priority, PRIORITY_MAX);
-    if (simd_ctx_init(&thread->simdCtx) == ERR)
+    if (simd_ctx_init(&thread->simd) == ERR)
     {
         atomic_fetch_sub(&process->threadCount, 1);
         free(thread);
         return NULL;
     }
-    memset(&thread->kernelStack, 0, CONFIG_KERNEL_STACK);
-
     memset(&thread->trapFrame, 0, sizeof(trap_frame_t));
     thread->trapFrame.rip = (uint64_t)entry;
     thread->trapFrame.rsp = ((uint64_t)thread->kernelStack) + CONFIG_KERNEL_STACK;
     thread->trapFrame.cs = GDT_KERNEL_CODE;
     thread->trapFrame.ss = GDT_KERNEL_DATA;
     thread->trapFrame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
+    memset(&thread->kernelStack, 0, CONFIG_KERNEL_STACK);
 
     return thread;
 }
@@ -354,13 +351,13 @@ void thread_free(thread_t* thread)
         process_free(thread->process);
     }
 
-    simd_ctx_deinit(&thread->simdCtx);
+    simd_ctx_deinit(&thread->simd);
     free(thread);
 }
 
 void thread_save(thread_t* thread, const trap_frame_t* trapFrame)
 {
-    simd_ctx_save(&thread->simdCtx);
+    simd_ctx_save(&thread->simd);
     thread->trapFrame = *trapFrame;
 }
 
@@ -389,6 +386,6 @@ void thread_load(thread_t* thread, trap_frame_t* trapFrame)
 
         space_load(&thread->process->space);
         tss_stack_load(&self->tss, (void*)((uint64_t)thread->kernelStack + CONFIG_KERNEL_STACK));
-        simd_ctx_load(&thread->simdCtx);
+        simd_ctx_load(&thread->simd);
     }
 }

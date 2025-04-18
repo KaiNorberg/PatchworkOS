@@ -555,7 +555,9 @@ uint64_t syscall_futex(atomic_uint64* addr, uint64_t val, futex_op_t op, nsec_t 
 
 void syscall_handler_end(void)
 {
-    if (atomic_load(&sched_process()->dead))
+    thread_t* thread = sched_thread();
+
+    if (atomic_load(&thread->process->dead) || thread->dead)
     {
         sched_thread_exit();
     }
