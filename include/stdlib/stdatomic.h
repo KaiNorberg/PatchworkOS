@@ -43,6 +43,10 @@
 #endif
 #define __GNUC_PREREQ__(ma, mi) __GNUC_PREREQ(ma, mi)
 
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+
 #if __has_feature(cxx_atomic)
 #define __CLANG_ATOMICS
 #elif __GNUC_PREREQ__(4, 7)

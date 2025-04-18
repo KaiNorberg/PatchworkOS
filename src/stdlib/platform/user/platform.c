@@ -19,13 +19,13 @@ int* _PlatformErrnoFunc(void)
     return &_ThreadById(_SyscallThreadId())->err;
 }
 
+static void _PlatformVprintfPutFunc(char chr, void* context)
+{
+    write(STDOUT_FILENO, &chr, 1);
+}
+
 // TODO: Implement streams!
 int _PlatformVprintf(const char* _RESTRICT format, va_list args)
 {
-    void put_func(char chr, void* context)
-    {
-        write(STDOUT_FILENO, &chr, 1);
-    }
-
-    return _Print(put_func, NULL, format, args);
+    return _Print(_PlatformVprintfPutFunc, NULL, format, args);
 }

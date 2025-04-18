@@ -8,24 +8,24 @@
 
 // TODO: Implement streams!
 
+typedef struct
+{
+    char* buffer;
+    size_t count;
+} sprintf_ctx_t;
+
+static void sprintf_put_func(char chr, void* context)
+{
+    sprintf_ctx_t* ctx = (sprintf_ctx_t*)context;
+    ctx->buffer[ctx->count++] = chr;
+}
+
 int sprintf(char* _RESTRICT buffer, const char* _RESTRICT format, ...)
 {
-    typedef struct
-    {
-        char* buffer;
-        size_t count;
-    } sprintf_ctx_t;
-
-    void put_func(char chr, void* context)
-    {
-        sprintf_ctx_t* ctx = (sprintf_ctx_t*)context;
-        ctx->buffer[ctx->count++] = chr;
-    }
-
     sprintf_ctx_t ctx = {buffer, 0};
     va_list args;
     va_start(args, format);
-    int result = _Print(put_func, &ctx, format, args);
+    int result = _Print(sprintf_put_func, &ctx, format, args);
     va_end(args);
 
     buffer[result] = '\0';
@@ -33,51 +33,51 @@ int sprintf(char* _RESTRICT buffer, const char* _RESTRICT format, ...)
     return result;
 }
 
+typedef struct
+{
+    char* buffer;
+    size_t count;
+} vsprintf_ctx_t;
+
+static void vsprintf_put_func(char chr, void* context)
+{
+    vsprintf_ctx_t* ctx = (vsprintf_ctx_t*)context;
+    ctx->buffer[ctx->count++] = chr;
+}
+
 int vsprintf(char* _RESTRICT buffer, const char* _RESTRICT format, va_list args)
 {
-    typedef struct
-    {
-        char* buffer;
-        size_t count;
-    } vsprintf_ctx_t;
-
-    void put_func(char chr, void* context)
-    {
-        vsprintf_ctx_t* ctx = (vsprintf_ctx_t*)context;
-        ctx->buffer[ctx->count++] = chr;
-    }
-
     vsprintf_ctx_t ctx = {buffer, 0};
-    int result = _Print(put_func, &ctx, format, args);
+    int result = _Print(vsprintf_put_func, &ctx, format, args);
 
     buffer[result] = '\0';
 
     return result;
 }
 
+typedef struct
+{
+    char* buffer;
+    size_t maxSize;
+    size_t count;
+} snprtinf_ctx_t;
+
+static void snprintf_put_func(char chr, void* context)
+{
+    snprtinf_ctx_t* ctx = (snprtinf_ctx_t*)context;
+    if (ctx->count < ctx->maxSize - 1)
+    {
+        ctx->buffer[ctx->count] = chr;
+    }
+    ctx->count++;
+}
+
 int snprintf(char* _RESTRICT buffer, size_t size, const char* _RESTRICT format, ...)
 {
-    typedef struct
-    {
-        char* buffer;
-        size_t maxSize;
-        size_t count;
-    } snprtinf_ctx_t;
-
-    void put_func(char chr, void* context)
-    {
-        snprtinf_ctx_t* ctx = (snprtinf_ctx_t*)context;
-        if (ctx->count < ctx->maxSize - 1)
-        {
-            ctx->buffer[ctx->count] = chr;
-        }
-        ctx->count++;
-    }
-
     snprtinf_ctx_t ctx = {buffer, size, 0};
     va_list args;
     va_start(args, format);
-    int result = _Print(put_func, &ctx, format, args);
+    int result = _Print(snprintf_put_func, &ctx, format, args);
     va_end(args);
 
     if (size > 0)
@@ -88,27 +88,27 @@ int snprintf(char* _RESTRICT buffer, size_t size, const char* _RESTRICT format, 
     return result;
 }
 
+typedef struct
+{
+    char* buffer;
+    size_t maxSize;
+    size_t count;
+} vsnprintf_ctx_t;
+
+void vsnprintf_put_func(char chr, void* context)
+{
+    vsnprintf_ctx_t* ctx = (vsnprintf_ctx_t*)context;
+    if (ctx->count < ctx->maxSize - 1)
+    {
+        ctx->buffer[ctx->count] = chr;
+    }
+    ctx->count++;
+}
+
 int vsnprintf(char* _RESTRICT buffer, size_t size, const char* _RESTRICT format, va_list args)
 {
-    typedef struct
-    {
-        char* buffer;
-        size_t maxSize;
-        size_t count;
-    } vsnprintf_ctx_t;
-
-    void put_func(char chr, void* context)
-    {
-        vsnprintf_ctx_t* ctx = (vsnprintf_ctx_t*)context;
-        if (ctx->count < ctx->maxSize - 1)
-        {
-            ctx->buffer[ctx->count] = chr;
-        }
-        ctx->count++;
-    }
-
     vsnprintf_ctx_t ctx = {buffer, size, 0};
-    int result = _Print(put_func, &ctx, format, args);
+    int result = _Print(vsnprintf_put_func, &ctx, format, args);
 
     if (size > 0)
     {

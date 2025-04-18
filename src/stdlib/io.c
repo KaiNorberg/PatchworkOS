@@ -72,27 +72,27 @@ uint64_t write(fd_t fd, const void* buffer, uint64_t count)
     return _SyscallWrite(fd, buffer, count);
 }
 
+typedef struct
+{
+    fd_t fd;
+    char buffer[MAX_PATH];
+    uint64_t count;
+} writef_ctx_t;
+
+static void writef_put_func(char chr, void* context)
+{
+    writef_ctx_t* ctx = (writef_ctx_t*)context;
+
+    if (ctx->count >= MAX_PATH)
+    {
+        _SyscallWrite(ctx->fd, ctx->buffer, ctx->count);
+        ctx->count = 0;
+    }
+    ctx->buffer[ctx->count++] = chr;
+}
+
 uint64_t writef(fd_t fd, const char* _RESTRICT format, ...)
 {
-    typedef struct
-    {
-        fd_t fd;
-        char buffer[MAX_PATH];
-        uint64_t count;
-    } writef_ctx_t;
-
-    void put_func(char chr, void* context)
-    {
-        writef_ctx_t* ctx = (writef_ctx_t*)context;
-
-        if (ctx->count >= MAX_PATH)
-        {
-            _SyscallWrite(ctx->fd, ctx->buffer, ctx->count);
-            ctx->count = 0;
-        }
-        ctx->buffer[ctx->count++] = chr;
-    }
-
     writef_ctx_t ctx = {
         .fd = fd,
         .count = 0,
@@ -100,7 +100,7 @@ uint64_t writef(fd_t fd, const char* _RESTRICT format, ...)
 
     va_list args;
     va_start(args, format);
-    int result = _Print(put_func, &ctx, format, args);
+    int result = _Print(writef_put_func, &ctx, format, args);
     if (ctx.count > 0)
     {
         _SyscallWrite(fd, ctx.buffer, ctx.count);

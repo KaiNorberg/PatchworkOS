@@ -515,7 +515,6 @@ static void field_check_for_lines(gfx_t* gfx)
     field_draw(gfx);
 }
 
-
 static void pause()
 {
     clearingLines = false;
@@ -531,7 +530,6 @@ static void pause()
 
     started = false;
 }
-
 
 static void start()
 {
@@ -664,24 +662,31 @@ static void current_piece_rotate(gfx_t* gfx)
 
 static void start_tetris_draw(win_t* window, gfx_t* gfx)
 {
-    rect_t rect = RECT_INIT((FIELD_RIGHT + FIELD_LEFT) / 2 - (START_SCREEN_FONT_SIZE / 2) * 3, FIELD_TOP, (FIELD_RIGHT + FIELD_LEFT) / 2 - (START_SCREEN_FONT_SIZE / 2) * 2, FIELD_TOP + (FIELD_BOTTOM - FIELD_TOP) / 2);
+    rect_t rect = RECT_INIT((FIELD_RIGHT + FIELD_LEFT) / 2 - (START_SCREEN_FONT_SIZE / 2) * 3, FIELD_TOP,
+        (FIELD_RIGHT + FIELD_LEFT) / 2 - (START_SCREEN_FONT_SIZE / 2) * 2, FIELD_TOP + (FIELD_BOTTOM - FIELD_TOP) / 2);
 
-    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "T", normalColors[BLOCK_RED], winTheme.dark);
+    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "T", normalColors[BLOCK_RED],
+        winTheme.dark);
     rect.left += (START_SCREEN_FONT_SIZE / 2) + 2;
     rect.right += (START_SCREEN_FONT_SIZE / 2) + 2;
-    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "E", normalColors[BLOCK_ORANGE], winTheme.dark);
+    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "E", normalColors[BLOCK_ORANGE],
+        winTheme.dark);
     rect.left += (START_SCREEN_FONT_SIZE / 2) - 2;
     rect.right += (START_SCREEN_FONT_SIZE / 2) - 2;
-    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "T", normalColors[BLOCK_YELLOW], winTheme.dark);
+    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "T", normalColors[BLOCK_YELLOW],
+        winTheme.dark);
     rect.left += (START_SCREEN_FONT_SIZE / 2) + 2;
     rect.right += (START_SCREEN_FONT_SIZE / 2) + 2;
-    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "R", normalColors[BLOCK_GREEN], winTheme.dark);
+    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "R", normalColors[BLOCK_GREEN],
+        winTheme.dark);
     rect.left += (START_SCREEN_FONT_SIZE / 2) - 2;
     rect.right += (START_SCREEN_FONT_SIZE / 2) - 2;
-    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "I", normalColors[BLOCK_CYAN], winTheme.dark);
+    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "I", normalColors[BLOCK_CYAN],
+        winTheme.dark);
     rect.left += (START_SCREEN_FONT_SIZE / 2);
     rect.right += (START_SCREEN_FONT_SIZE / 2);
-    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "S", normalColors[BLOCK_BLUE], winTheme.dark);
+    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "S", normalColors[BLOCK_BLUE],
+        winTheme.dark);
 }
 
 static void start_press_space_draw(win_t* window, gfx_t* gfx)
@@ -689,7 +694,8 @@ static void start_press_space_draw(win_t* window, gfx_t* gfx)
     static bool blink = false;
 
     rect_t rect = RECT_INIT(FIELD_LEFT, (FIELD_TOP + FIELD_BOTTOM) / 2, FIELD_RIGHT, FIELD_BOTTOM);
-    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE / 2, "PRESS SPACE", blink ? winTheme.bright : winTheme.dark, winTheme.dark);
+    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE / 2, "PRESS SPACE",
+        blink ? winTheme.bright : winTheme.dark, winTheme.dark);
     blink = !blink;
 }
 
