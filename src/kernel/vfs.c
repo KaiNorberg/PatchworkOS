@@ -419,6 +419,10 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
         events = 0;
         for (uint64_t i = 0; i < amount; i++)
         {
+            if (files[i].file == NULL || files[i].file->ops == NULL) {
+                return ERROR(EINVAL);
+            }
+
             if (files[i].file->ops->poll(files[i].file, &files[i]) == NULL)
             {
                 return ERR;
