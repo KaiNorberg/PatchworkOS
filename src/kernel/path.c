@@ -31,7 +31,7 @@ static uint64_t path_make_canonical(char* dest, char* out, const char* src)
 
             do
             {
-                // out--;
+                out--;
             } while (out != dest && *(out - 1) != '\0');
         }
         else
