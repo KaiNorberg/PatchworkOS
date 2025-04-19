@@ -59,14 +59,23 @@ static void log_redraw(void)
     for (uint64_t i = 0; i < ring.dataLength; i++)
     {
         uint8_t byte = ((uint8_t*)ring.buffer)[(ring.readIndex + i) % ring.size];
-        if (byte == '\n')
+        if (byte == '\n' || point.x >= gfx.width - FONT_WIDTH)
         {
             lineAmount++;
+            point.y += FONT_HEIGHT;
+            point.x = point.x >= gfx.width - FONT_WIDTH ? FONT_WIDTH * 4 : 0; // Add indentation if wrapping to next line
+        }
+
+        if (byte != '\n')
+        {
+            point.x += FONT_WIDTH;
         }
     }
 
-    uint64_t amountOfLinesToSkip = MAX(0, lineAmount - ((int64_t)gfx.height / FONT_HEIGHT - LOG_SCROLL_OFFSET));
+    point.y = 0;
+    point.x = 0;
 
+    uint64_t amountOfLinesToSkip = MAX(0, lineAmount - ((int64_t)gfx.height / FONT_HEIGHT - LOG_SCROLL_OFFSET));
     uint64_t i = 0;
     if (amountOfLinesToSkip != 0)
     {
@@ -99,10 +108,10 @@ static void log_redraw(void)
         }
     }
 
+    uint64_t lineWidth = 0;
     for (; i < ring.dataLength; i++)
     {
         uint8_t byte = ((uint8_t*)ring.buffer)[(ring.readIndex + i) % ring.size];
-        uint64_t lineWidth = 0;
         if (byte == '\n')
         {
             if (lineWidth < LOG_MAX_LINE)

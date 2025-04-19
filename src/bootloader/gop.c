@@ -3,13 +3,40 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "efilib.h"
 #include "vm.h"
+
+static void gop_select_mode(EFI_GRAPHICS_OUTPUT_PROTOCOL* gop, int64_t width, int64_t height)
+{
+    uint64_t bestMatch = UINT64_MAX;
+    uint64_t bestDistance = UINT64_MAX;
+    for (uint64_t i = 0; i < gop->Mode->MaxMode; ++i)
+    {
+        EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *info;
+        uint64_t size;
+        uefi_call_wrapper(gop->QueryMode, 4, gop, i, &size, &info);
+
+        // Note: The distance is squared but it does not matter as we are only doing comparisons.
+        int64_t xOffset = (int64_t)info->HorizontalResolution - width;
+        int64_t yOffset = (int64_t)info->VerticalResolution - height;
+        uint64_t distance = xOffset * xOffset + yOffset * yOffset;
+        if (distance < bestDistance)
+        {
+            bestMatch = i;
+            bestDistance = distance;
+        }
+
+        Print(L"GOP Mode %u: %ux%u\n", i, info->HorizontalResolution, info->VerticalResolution);
+    }
+
+    uefi_call_wrapper(gop->SetMode, 2, gop, bestMatch);
+}
 
 void gop_buffer_init(gop_buffer_t* buffer)
 {
-    EFI_GUID guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
     EFI_GRAPHICS_OUTPUT_PROTOCOL* gop;
-    EFI_STATUS status = uefi_call_wrapper(BS->LocateProtocol, 3, &guid, 0, (void**)&gop);
+    EFI_GUID guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
+    EFI_STATUS status = uefi_call_wrapper(gBS->LocateProtocol, 3, &guid, 0, (void**)&gop);
 
     if (EFI_ERROR(status))
     {
@@ -21,6 +48,7 @@ void gop_buffer_init(gop_buffer_t* buffer)
         }
     }
 
+    gop_select_mode(gop, GOP_WIDTH, GOP_HEIGHT);
     buffer->base = (uint32_t*)gop->Mode->FrameBufferBase;
     buffer->size = gop->Mode->FrameBufferSize;
     buffer->width = gop->Mode->Info->HorizontalResolution;
