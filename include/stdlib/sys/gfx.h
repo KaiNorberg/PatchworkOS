@@ -81,8 +81,8 @@ void gfx_char(gfx_t* gfx, const gfx_psf_t* psf, const point_t* point, uint64_t h
 void gfx_text(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign, uint64_t height,
     const char* str, pixel_t foreground, pixel_t background);
 
-void gfx_text_multiline(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign, uint64_t height,
-    const char* str, pixel_t foreground, pixel_t background);
+void gfx_text_multiline(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign,
+    uint64_t height, const char* str, pixel_t foreground, pixel_t background);
 
 void gfx_rect(gfx_t* gfx, const rect_t* rect, pixel_t pixel);
 

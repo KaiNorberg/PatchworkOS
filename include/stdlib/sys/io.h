@@ -21,6 +21,7 @@ extern "C"
 
 #define STDIN_FILENO 0
 #define STDOUT_FILENO 1
+#define STDERR_FILENO 2
 
 #define PIPE_READ 0
 #define PIPE_WRITE 1

@@ -324,8 +324,8 @@ void gfx_text(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t 
     }
 }
 
-void gfx_text_multiline(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign, uint64_t height,
-    const char* str, pixel_t foreground, pixel_t background)
+void gfx_text_multiline(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign,
+    uint64_t height, const char* str, pixel_t foreground, pixel_t background)
 {
     if (str == NULL || *str == '\0')
     {
@@ -505,6 +505,7 @@ void gfx_rect(gfx_t* gfx, const rect_t* rect, pixel_t pixel)
 
     gfx_invalidate(gfx, rect);
 }
+
 void gfx_gradient(gfx_t* gfx, const rect_t* rect, pixel_t start, pixel_t end, gfx_gradient_type_t type, bool addNoise)
 {
     int64_t width = rect->right - rect->left;
@@ -692,6 +693,22 @@ void gfx_rim(gfx_t* gfx, const rect_t* rect, uint64_t width, pixel_t pixel)
 
 void gfx_transfer(gfx_t* dest, const gfx_t* src, const rect_t* destRect, const point_t* srcPoint)
 {
+    int32_t width = RECT_WIDTH(destRect);
+    int32_t height = RECT_HEIGHT(destRect);
+
+    if (width <= 0 || height <= 0)
+    {
+        return;
+    }
+    if (srcPoint->x < 0 || srcPoint->y < 0 || srcPoint->x + width > src->width || srcPoint->y + height > src->height)
+    {
+        return;
+    }
+    if (destRect->left < 0 || destRect->top < 0 || destRect->left + width > dest->width || destRect->top + height > dest->height)
+    {
+        return;
+    }
+
     for (int32_t y = 0; y < RECT_HEIGHT(destRect); y++)
     {
         memcpy(&dest->buffer[destRect->left + (y + destRect->top) * dest->stride],
@@ -703,6 +720,22 @@ void gfx_transfer(gfx_t* dest, const gfx_t* src, const rect_t* destRect, const p
 
 void gfx_transfer_blend(gfx_t* dest, const gfx_t* src, const rect_t* destRect, const point_t* srcPoint)
 {
+    int32_t width = RECT_WIDTH(destRect);
+    int32_t height = RECT_HEIGHT(destRect);
+
+    if (width <= 0 || height <= 0)
+    {
+        return;
+    }
+    if (srcPoint->x < 0 || srcPoint->y < 0 || srcPoint->x + width > src->width || srcPoint->y + height > src->height)
+    {
+        return;
+    }
+    if (destRect->left < 0 || destRect->top < 0 || destRect->left + width > dest->width || destRect->top + height > dest->height)
+    {
+        return;
+    }
+
     for (int32_t y = 0; y < RECT_HEIGHT(destRect); y++)
     {
         for (int32_t x = 0; x < RECT_WIDTH(destRect); x++)

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 typedef struct
@@ -8,6 +9,8 @@ typedef struct
     const char* synopsis;
     const char* description;
     void (*callback)(uint64_t argc, const char** argv);
-} command_t;
+} builtin_t;
 
-void command_execute(const char* command);
+bool builtin_exists(const char* name);
+
+void builtin_execute(uint64_t argc, const char** argv);

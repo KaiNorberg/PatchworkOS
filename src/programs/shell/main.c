@@ -1,4 +1,4 @@
-#include "command.h"
+#include "pipeline.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -54,7 +54,14 @@ int main(void)
             break;
         }
 
-        command_execute(buffer);
+        pipeline_t pipeline;
+        if (pipeline_init(&pipeline, buffer) == ERR)
+        {
+            printf("error: unable to parse pipeline");
+            continue;
+        }
+
+        pipeline_execute(&pipeline);
     }
     return 0;
 }

@@ -836,7 +836,8 @@ static uint64_t win_popup_procedure(win_t* window, const msg_t* msg)
 
         rect_t textRect = RECT_INIT_GFX(&gfx);
         textRect.bottom -= POPUP_BUTTON_AREA_HEIGHT;
-        gfx_text_multiline(&gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, 16, popupData->text, winTheme.dark, winTheme.background);
+        gfx_text_multiline(&gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, 16, popupData->text, winTheme.dark,
+            winTheme.background);
 
         rect_t buttonArea = RECT_INIT_GFX(&gfx);
         buttonArea.top = buttonArea.bottom - POPUP_BUTTON_AREA_HEIGHT;

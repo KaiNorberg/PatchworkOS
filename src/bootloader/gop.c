@@ -12,7 +12,7 @@ static void gop_select_mode(EFI_GRAPHICS_OUTPUT_PROTOCOL* gop, int64_t width, in
     uint64_t bestDistance = UINT64_MAX;
     for (uint64_t i = 0; i < gop->Mode->MaxMode; ++i)
     {
-        EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *info;
+        EFI_GRAPHICS_OUTPUT_MODE_INFORMATION* info;
         uint64_t size;
         uefi_call_wrapper(gop->QueryMode, 4, gop, i, &size, &info);
 
