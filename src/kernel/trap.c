@@ -12,37 +12,34 @@
 #include "vmm.h"
 #include "waitsys.h"
 
+void cli_ctx_init(cli_ctx_t* cli)
+{
+    cli->intEnable = false;
+    cli->depth = 0;
+}
+
 void cli_push(void)
 {
-    if (!smp_initialized())
-    {
-        return;
-    }
-
     uint64_t rflags = rflags_read();
     asm volatile("cli");
-    cpu_t* cpu = smp_self_unsafe();
-    if (cpu->cliAmount == 0)
+    cli_ctx_t* cli = &smp_self_unsafe()->cli;
+    if (cli->depth == 0)
     {
-        cpu->prevFlags = rflags;
+        cli->intEnable = rflags & RFLAGS_INTERRUPT_ENABLE;
     }
-    cpu->cliAmount++;
+    cli->depth++;
 }
 
 void cli_pop(void)
 {
-    if (!smp_initialized())
-    {
-        return;
-    }
+    uint64_t rflags = rflags_read();
+    ASSERT_PANIC(!(rflags & RFLAGS_INTERRUPT_ENABLE));
 
-    // Make sure interrupts are disabled
-    asm volatile("cli");
+    cli_ctx_t* cli = &smp_self_unsafe()->cli;
+    ASSERT_PANIC(cli->depth != 0);
+    cli->depth--;
 
-    cpu_t* cpu = smp_self_unsafe();
-    ASSERT_PANIC(cpu->cliAmount != 0);
-    cpu->cliAmount--;
-    if (cpu->cliAmount == 0 && cpu->prevFlags & RFLAGS_INTERRUPT_ENABLE && cpu->trapDepth == 0)
+    if (cli->depth == 0 && cli->intEnable)
     {
         asm volatile("sti");
     }
@@ -116,10 +113,6 @@ void trap_handler(trap_frame_t* trapFrame)
         log_panic(trapFrame, "Unknown vector");
     }
 
-    if (!(trapFrame->rflags & RFLAGS_INTERRUPT_ENABLE))
-    {
-        log_panic(trapFrame, "Return to context with interrupts disabled");
-    }
-
+    ASSERT_PANIC(trapFrame->rflags & RFLAGS_INTERRUPT_ENABLE);
     cpu->trapDepth--;
 }

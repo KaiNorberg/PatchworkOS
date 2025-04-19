@@ -30,6 +30,14 @@ typedef struct PACKED
     uint64_t ss;
 } trap_frame_t;
 
+typedef struct
+{
+    bool intEnable;
+    uint64_t depth;
+} cli_ctx_t;
+
+void cli_ctx_init(cli_ctx_t* cli);
+
 void cli_push(void);
 
 void cli_pop(void);

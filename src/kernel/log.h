@@ -7,7 +7,7 @@
 
 #define LOG_BUFFER_LENGTH 0x1000
 
-#define LOG_SCROLL_OFFSET 3
+#define LOG_SCROLL_OFFSET 2
 #define LOG_MAX_LINE (512)
 
 #define LOG_BREAK '%'

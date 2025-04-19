@@ -1,5 +1,6 @@
 #include "log.h"
 
+#include "bootloader/boot_info.h"
 #include "com.h"
 #include "defs.h"
 #include "font.h"
@@ -16,7 +17,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/gfx.h>
 #include <sys/io.h>
 #include <sys/math.h>
 #include <sys/proc.h>
@@ -26,8 +26,9 @@
 static char ringBuffer[LOG_BUFFER_LENGTH];
 static ring_t ring;
 
-static gfx_t gfx;
-static point_t point;
+static gop_buffer_t gop;
+static uint64_t posX;
+static uint64_t posY;
 
 static bool screenEnabled;
 static bool timeEnabled;
@@ -35,47 +36,47 @@ static atomic_bool panicking;
 
 static lock_t lock;
 
-static void log_draw_char(char chr);
-
 extern uint64_t _kernelStart;
 extern uint64_t _kernelEnd;
 
+static void log_draw_char(char chr);
+
 static void log_clear_rect(uint64_t x, uint64_t y, uint64_t width, uint64_t height)
 {
-    width = MIN(width, (gfx.width - x));
+    width = MIN(width, (gop.width - x));
     for (uint64_t i = 0; i < height; i++)
     {
-        memset(&gfx.buffer[x + (y + i) * gfx.stride], 0, (width) * sizeof(pixel_t));
+        memset(&gop.base[x + (y + i) * gop.stride], 0, (width) * sizeof(pixel_t));
     }
 }
 
 // Also handles scrolling
 static void log_redraw(void)
 {
-    point.y = 0;
-    point.x = 0;
+    posY = 0;
+    posX = 0;
 
     int64_t lineAmount = 0;
     for (uint64_t i = 0; i < ring.dataLength; i++)
     {
         uint8_t byte = ((uint8_t*)ring.buffer)[(ring.readIndex + i) % ring.size];
-        if (byte == '\n' || point.x >= gfx.width - FONT_WIDTH)
+        if (byte == '\n' || posX >= gop.width - FONT_WIDTH)
         {
             lineAmount++;
-            point.y += FONT_HEIGHT;
-            point.x = point.x >= gfx.width - FONT_WIDTH ? FONT_WIDTH * 4 : 0; // Add indentation if wrapping to next line
+            posY += FONT_HEIGHT;
+            posX = posX >= gop.width - FONT_WIDTH ? FONT_WIDTH * 4 : 0; // Add indentation if wrapping to next line
         }
 
         if (byte != '\n')
         {
-            point.x += FONT_WIDTH;
+            posX += FONT_WIDTH;
         }
     }
 
-    point.y = 0;
-    point.x = 0;
+    posY = 0;
+    posX = 0;
 
-    uint64_t amountOfLinesToSkip = MAX(0, lineAmount - ((int64_t)gfx.height / FONT_HEIGHT - LOG_SCROLL_OFFSET));
+    uint64_t amountOfLinesToSkip = MAX(0, lineAmount - ((int64_t)gop.height / FONT_HEIGHT - LOG_SCROLL_OFFSET));
     uint64_t i = 0;
     if (amountOfLinesToSkip != 0)
     {
@@ -116,7 +117,8 @@ static void log_redraw(void)
         {
             if (lineWidth < LOG_MAX_LINE)
             {
-                log_clear_rect(point.x, point.y, (LOG_MAX_LINE - lineWidth) * FONT_WIDTH, FONT_HEIGHT);
+                uint64_t width = MIN(LOG_MAX_LINE * FONT_WIDTH, gop.width) - posX;
+                log_clear_rect(posX, posY, width, FONT_HEIGHT);
             }
             lineWidth = 0;
         }
@@ -128,20 +130,20 @@ static void log_redraw(void)
         log_draw_char(byte);
     }
 
-    for (uint64_t y = point.y; y < gfx.height - FONT_HEIGHT; y += FONT_HEIGHT)
+    for (uint64_t y = posY; y < gop.height - FONT_HEIGHT; y += FONT_HEIGHT)
     {
-        log_clear_rect(point.x, y, LOG_MAX_LINE * FONT_WIDTH, FONT_HEIGHT);
+        log_clear_rect(posX, y, LOG_MAX_LINE * FONT_WIDTH, FONT_HEIGHT);
     }
 }
 
 static void log_draw_char(char chr)
 {
-    if (chr == '\n' || point.x >= gfx.width - FONT_WIDTH)
+    if (chr == '\n' || posX >= gop.width - FONT_WIDTH)
     {
-        point.y += FONT_HEIGHT;
-        point.x = point.x >= gfx.width - FONT_WIDTH ? FONT_WIDTH * 4 : 0; // Add indentation if wrapping to next line
+        posY += FONT_HEIGHT;
+        posX = posX >= gop.width - FONT_WIDTH ? FONT_WIDTH * 4 : 0; // Add indentation if wrapping to next line
 
-        if (point.y >= gfx.height - FONT_HEIGHT)
+        if (posY >= gop.height - FONT_HEIGHT)
         {
             log_redraw();
         }
@@ -156,10 +158,10 @@ static void log_draw_char(char chr)
             for (uint64_t x = 0; x < FONT_WIDTH; x++)
             {
                 pixel_t pixel = (glyph[y] & (0b10000000 >> x)) > 0 ? 0xFFA3A4A3 : 0;
-                gfx.buffer[(point.x + x) + (point.y + y) * gfx.stride] = pixel;
+                gop.base[(posX + x) + (posY + y) * gop.stride] = pixel;
             }
         }
-        point.x += FONT_WIDTH;
+        posX += FONT_WIDTH;
     }
 }
 
@@ -179,6 +181,7 @@ void log_init(void)
     timeEnabled = false;
     lock_init(&lock);
     atomic_init(&panicking, false);
+    gop.base = NULL;
 
 #if CONFIG_LOG_SERIAL
     com_init(COM1);
@@ -215,15 +218,12 @@ void log_enable_screen(gop_buffer_t* gopBuffer)
 
     if (gopBuffer != NULL)
     {
-        gfx.buffer = gopBuffer->base;
-        gfx.width = gopBuffer->width;
-        gfx.height = gopBuffer->height;
-        gfx.stride = gopBuffer->stride;
+        gop = *gopBuffer;
     }
+    memset(gop.base, 0, gop.height * gop.height * sizeof(pixel_t));
 
-    point.x = 0;
-    point.y = 0;
-    memset(gfx.buffer, 0, gfx.stride * gfx.height * sizeof(pixel_t));
+    posX = 0;
+    posY = 0;
 
     log_redraw();
     screenEnabled = true;
@@ -282,11 +282,8 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
         }
     }
 
-    if (smp_initialized())
-    {
-        smp_halt_others();
-    }
-    if (gfx.buffer != NULL && !screenEnabled)
+    smp_halt_others();
+    if (gop.base != NULL && !screenEnabled)
     {
         log_enable_screen(NULL);
     }
@@ -302,21 +299,14 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
 
     // System ctx
     printf("[SYSTEM STATE]");
-    if (smp_initialized())
+    thread_t* thread = sched_thread();
+    if (thread != NULL)
     {
-        thread_t* thread = sched_thread();
-        if (thread != NULL)
-        {
-            printf("thread: cpu=%d pid=%d tid=%d", smp_self_unsafe()->id, thread->process->id, thread->id);
-        }
-        else
-        {
-            printf("thread: CPU=%d IDLE", smp_self_unsafe()->id);
-        }
+        printf("thread: cpu=%d pid=%d tid=%d", smp_self_unsafe()->id, thread->process->id, thread->id);
     }
     else
     {
-        printf("thread: occured before smp_init, assume CPU 0", smp_self_unsafe()->id);
+        printf("thread: CPU=%d IDLE", smp_self_unsafe()->id);
     }
 
     printf("memory: free=%dKB reserved=%dKB", (pmm_free_amount() * PAGE_SIZE) / 1024, (pmm_reserved_amount() * PAGE_SIZE) / 1024);

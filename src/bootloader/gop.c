@@ -25,8 +25,6 @@ static void gop_select_mode(EFI_GRAPHICS_OUTPUT_PROTOCOL* gop, int64_t width, in
             bestMatch = i;
             bestDistance = distance;
         }
-
-        Print(L"GOP Mode %u: %ux%u\n", i, info->HorizontalResolution, info->VerticalResolution);
     }
 
     uefi_call_wrapper(gop->SetMode, 2, gop, bestMatch);

@@ -28,9 +28,8 @@ typedef struct
     uint8_t id;
     uint8_t lapicId;
     uint64_t trapDepth;
-    uint64_t prevFlags;
-    uint64_t cliAmount;
     tss_t tss;
+    cli_ctx_t cli;
     sched_ctx_t sched;
     ipi_queue_t queue;
     uint8_t idleStack[CPU_IDLE_STACK_SIZE];
@@ -41,8 +40,6 @@ void smp_init(void);
 void smp_init_others(void);
 
 void smp_entry(void);
-
-bool smp_initialized(void);
 
 void smp_halt_others(void);
 

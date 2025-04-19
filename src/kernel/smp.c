@@ -19,11 +19,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+static cpu_t bootstrapCpu;
 static cpu_t* cpus[UINT8_MAX];
 static uint8_t cpuAmount = 0;
 static bool cpuReady = false;
-
-static bool initialized = false;
 
 atomic_uint8 haltedAmount = ATOMIC_VAR_INIT(0);
 
@@ -36,12 +35,14 @@ static void ipi_queue_init(ipi_queue_t* queue)
 
 static void ipi_queue_push(ipi_queue_t* queue, ipi_t ipi)
 {
+    LOCK_DEFER(&queue->lock);
     queue->ipis[queue->writeIndex] = ipi;
     queue->writeIndex = (queue->writeIndex + 1) % IPI_QUEUE_MAX;
 }
 
 static ipi_t ipi_queue_pop(ipi_queue_t* queue)
 {
+    LOCK_DEFER(&queue->lock);
     if (queue->writeIndex == queue->readIndex)
     {
         return NULL;
@@ -52,19 +53,18 @@ static ipi_t ipi_queue_pop(ipi_queue_t* queue)
     return ipi;
 }
 
-static NOINLINE void cpu_init(cpu_t* cpu, uint8_t id, uint8_t lapicId)
+static void cpu_init(cpu_t* cpu, uint8_t id, uint8_t lapicId)
 {
     cpu->id = id;
     cpu->lapicId = lapicId;
     cpu->trapDepth = 0;
-    cpu->prevFlags = 0;
-    cpu->cliAmount = 0;
     tss_init(&cpu->tss);
+    cli_ctx_init(&cpu->cli);
     sched_ctx_init(&cpu->sched);
     ipi_queue_init(&cpu->queue);
 }
 
-static NOINLINE uint64_t cpu_start(cpu_t* cpu)
+static uint64_t cpu_start(cpu_t* cpu)
 {
     cpuReady = false;
 
@@ -74,11 +74,12 @@ static NOINLINE uint64_t cpu_start(cpu_t* cpu)
     hpet_sleep(SEC / 100);
     lapic_send_sipi(cpu->lapicId, ((uint64_t)TRAMPOLINE_PHYSICAL_START) / PAGE_SIZE);
 
-    nsec_t timeout = 1000;
+    nsec_t timeout = SEC * 100;
     while (!cpuReady)
     {
-        hpet_sleep(SEC / 1000);
-        timeout--;
+        nsec_t sleepDuration = SEC / 1000;
+        hpet_sleep(sleepDuration);
+        timeout -= sleepDuration;
         if (timeout == 0)
         {
             return ERR;
@@ -88,25 +89,20 @@ static NOINLINE uint64_t cpu_start(cpu_t* cpu)
     return 0;
 }
 
-static NOINLINE void smp_detect_cpus(void)
+void smp_init(void)
 {
-    cpuAmount = 0;
+    cpuAmount = 1;
+    cpus[0] = &bootstrapCpu;
+    cpu_init(cpus[0], 0, 0);
 
-    madt_t* madt = madt_get();
-    madt_lapic_t* record;
-    MADT_FOR_EACH(madt, record)
-    {
-        if (record->header.type == MADT_LAPIC && record->flags & MADT_LAPIC_INITABLE)
-        {
-            cpuAmount++;
-        }
-    }
-
-    printf("smp: detected %d cpus", (uint64_t)cpuAmount);
+    msr_write(MSR_CPU_ID, cpus[0]->id);
+    gdt_load_tss(&cpus[0]->tss);
 }
 
-static NOINLINE void smp_start(void)
+void smp_init_others(void)
 {
+    trampoline_init();
+
     uint8_t newId = 1;
     uint8_t lapicId = lapic_id();
 
@@ -127,30 +123,11 @@ static NOINLINE void smp_start(void)
             uint8_t id = newId++;
             cpus[id] = malloc(sizeof(cpu_t));
             cpu_init(cpus[id], id, record->lapicId);
+            cpuAmount++;
             ASSERT_PANIC(cpu_start(cpus[id]) != ERR);
         }
     }
-}
 
-void smp_init(void)
-{
-    cpuAmount = 1;
-    cpus[0] = malloc(sizeof(cpu_t));
-    cpu_init(cpus[0], 0, 0);
-
-    msr_write(MSR_CPU_ID, cpus[0]->id);
-    gdt_load_tss(&cpus[0]->tss);
-
-    initialized = true;
-    printf("smp: fake bootstrap cpu");
-}
-
-void smp_init_others(void)
-{
-    smp_detect_cpus();
-
-    trampoline_init();
-    smp_start();
     trampoline_deinit();
 }
 
@@ -169,15 +146,8 @@ void smp_entry(void)
     vmm_cpu_init();
 
     printf("cpu %d: ready", (uint64_t)cpu->id);
-
     cpuReady = true;
-
     sched_idle_loop();
-}
-
-bool smp_initialized(void)
-{
-    return initialized;
 }
 
 static void smp_halt_ipi(trap_frame_t* trapFrame)
@@ -199,22 +169,14 @@ void smp_halt_others(void)
 ipi_t smp_recieve(cpu_t* cpu)
 {
     ipi_queue_t* queue = &cpu->queue;
-
-    lock_acquire(&queue->lock);
     ipi_t ipi = ipi_queue_pop(queue);
-    lock_release(&queue->lock);
-
     return ipi;
 }
 
 void smp_send(cpu_t* cpu, ipi_t ipi)
 {
     ipi_queue_t* queue = &cpu->queue;
-
-    lock_acquire(&queue->lock);
     ipi_queue_push(queue, ipi);
-    lock_release(&queue->lock);
-
     lapic_send_ipi(cpu->lapicId, VECTOR_IPI);
 }
 

@@ -175,11 +175,6 @@ block_result_t sched_sleep(nsec_t timeout)
 
 thread_t* sched_thread(void)
 {
-    if (!smp_initialized())
-    {
-        return NULL;
-    }
-
     thread_t* thread = smp_self()->sched.runThread;
     smp_put();
     return thread;
@@ -187,11 +182,6 @@ thread_t* sched_thread(void)
 
 process_t* sched_process(void)
 {
-    if (!smp_initialized())
-    {
-        return NULL;
-    }
-
     thread_t* thread = sched_thread();
     if (thread == NULL)
     {
