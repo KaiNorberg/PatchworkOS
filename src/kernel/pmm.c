@@ -16,28 +16,28 @@
 #include <sys/math.h>
 
 static const char* efiMemTypeToString[] = {
-    "reserved memory type",
+    "reserved",
     "loader code",
     "loader data",
     "boot services code",
     "boot services data",
     "runtime services code",
     "runtime services data",
-    "conventional memory",
-    "unusable memory",
-    "acpi reclaim memory",
+    "conventional",
+    "unusable",
+    "acpi reclaim",
     "acpi memory nvs",
-    "memory mapped io",
-    "memory mapped io port space",
+    "io",
+    "io port space",
     "pal code",
-    "persistent memory",
+    "persistent",
 };
 
 static page_stack_t stack;
 static page_bitmap_t bitmap;
 
-static uint64_t pageAmount = 0;
-static uint64_t freePageAmount = 0;
+static uint64_t pageAmount;
+static uint64_t freePageAmount;
 
 static lock_t lock;
 
@@ -202,10 +202,12 @@ static void pmm_load_memory(efi_mem_map_t* memoryMap)
         }
         else
         {
-            printf("pmm: reserve [0x%016lx-0x%016lx]", desc->physicalStart,
-                (uint64_t)desc->physicalStart + desc->amountOfPages * PAGE_SIZE);
-            printf("pmm: reserve [0x%016lx-0x%016lx]", desc->physicalStart,
-                (uint64_t)desc->physicalStart + desc->amountOfPages * PAGE_SIZE);
+            printf("pmm: reserve [0x%016lx-0x%016lx] pages=%d type=%s", desc->physicalStart,
+                (uint64_t)desc->physicalStart + desc->amountOfPages * PAGE_SIZE, desc->amountOfPages,
+                efiMemTypeToString[desc->type]);
+            printf("pmm: reserve [0x%016lx-0x%016lx] pages=%d type=%s", desc->physicalStart,
+                (uint64_t)desc->physicalStart + desc->amountOfPages * PAGE_SIZE, desc->amountOfPages,
+                efiMemTypeToString[desc->type]);
         }
     }
 
@@ -215,6 +217,8 @@ static void pmm_load_memory(efi_mem_map_t* memoryMap)
 
 void pmm_init(efi_mem_map_t* memoryMap)
 {
+    pageAmount = 0;
+    freePageAmount = 0;
     lock_init(&lock);
 
     pmm_detect_memory(memoryMap);
@@ -255,15 +259,18 @@ void pmm_free_pages(void* address, uint64_t count)
 
 uint64_t pmm_total_amount(void)
 {
+    LOCK_DEFER(&lock);
     return pageAmount;
 }
 
 uint64_t pmm_free_amount(void)
 {
+    LOCK_DEFER(&lock);
     return freePageAmount;
 }
 
 uint64_t pmm_reserved_amount(void)
 {
-    return pageAmount - pmm_free_amount();
+    LOCK_DEFER(&lock);
+    return pageAmount - freePageAmount;
 }

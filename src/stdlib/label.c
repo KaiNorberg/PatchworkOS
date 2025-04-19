@@ -1,7 +1,9 @@
+#include "_AUX/rect_t.h"
 #include "platform/platform.h"
 #if _PLATFORM_HAS_WIN
 
 #include <stdlib.h>
+#include <string.h>
 #include <sys/gfx.h>
 #include <sys/mouse.h>
 #include <sys/win.h>

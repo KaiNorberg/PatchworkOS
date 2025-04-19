@@ -221,6 +221,104 @@ void gfx_text(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t 
 
     int64_t scale = MAX(1, height / psf->height);
     height = psf->height * scale;
+    int64_t width = strlen(str) * psf->width * scale;
+
+    int64_t maxWidth = RECT_WIDTH(rect);
+    if (width > maxWidth)
+    {
+        uint64_t maxLength = maxWidth / (psf->width * scale);
+        if (maxLength == 0)
+        {
+            return;
+        }
+
+        const char* dots[] = {".", "..", "..."};
+        if (maxLength <= 3)
+        {
+            gfx_text(gfx, psf, rect, xAlign, yAlign, height, dots[maxLength - 1], foreground, background);
+            return;
+        }
+
+        char buffer[maxLength + 1];
+        memcpy(buffer, str, maxLength - 3);
+        memset(buffer + maxLength - 3, '.', 3);
+        buffer[maxLength] = '\0';
+
+        gfx_text(gfx, psf, rect, xAlign, yAlign, height, buffer, foreground, background);
+        return;
+    }
+
+    point_t startPoint;
+    switch (xAlign)
+    {
+    case GFX_CENTER:
+    {
+        startPoint.x = (rect->left + rect->right) / 2 - width / 2;
+    }
+    break;
+    case GFX_MAX:
+    {
+        startPoint.x = rect->right - width;
+    }
+    break;
+    case GFX_MIN:
+    {
+        startPoint.x = rect->left;
+    }
+    break;
+    default:
+    {
+        return;
+    }
+    }
+
+    switch (yAlign)
+    {
+    case GFX_CENTER:
+    {
+        startPoint.y = (rect->top + rect->bottom) / 2 - height / 2;
+    }
+    break;
+    case GFX_MAX:
+    {
+        startPoint.y = MAX(rect->top, rect->bottom - (int64_t)height);
+    }
+    break;
+    case GFX_MIN:
+    {
+        startPoint.y = rect->top;
+    }
+    break;
+    default:
+    {
+        return;
+    }
+    }
+
+    const char* chr = str;
+    uint64_t offset = 0;
+    while (*chr != '\0')
+    {
+        point_t point = (point_t){
+            .x = startPoint.x + offset,
+            .y = startPoint.y,
+        };
+        gfx_char(gfx, psf, &point, psf->height * scale, *chr, foreground, background);
+        offset += psf->width * scale;
+        chr++;
+    }
+}
+
+void gfx_text_multiline(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign, uint64_t height,
+    const char* str, pixel_t foreground, pixel_t background)
+{
+    if (str == NULL || *str == '\0')
+    {
+        return;
+    }
+
+    int64_t scale = MAX(1, height / psf->height);
+    height = psf->height * scale;
 
     int64_t numLines = 1;
     int64_t maxLineWidth = 0;

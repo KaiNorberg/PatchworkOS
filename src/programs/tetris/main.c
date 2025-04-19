@@ -142,6 +142,7 @@ static uint64_t oldPlayedBlocks;
 
 static bool clearingLines;
 static bool started;
+static bool gameover;
 
 static struct
 {
@@ -529,6 +530,7 @@ static void pause()
     }
 
     started = false;
+    gameover = false;
 }
 
 static void start()
@@ -552,6 +554,7 @@ static void start()
     currentPiece.dropping = false;
 
     started = true;
+    gameover = false;
 }
 
 static void current_piece_choose_new(void)
@@ -565,6 +568,7 @@ static void current_piece_choose_new(void)
     if (field_collides(&currentPiece.piece, currentPiece.x, currentPiece.y))
     {
         pause();
+        gameover = true;
     }
 }
 
@@ -782,8 +786,9 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         current_piece_update(&gfx);
         win_draw_end(window, &gfx);
 
-        if (clearingLines)
+        if (clearingLines || gameover)
         {
+            gameover = false;
             win_timer_set(window, 0);
         }
     }

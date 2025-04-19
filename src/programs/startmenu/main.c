@@ -89,7 +89,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
             if (spawn(argv, NULL) == ERR)
             {
                 char buffer[MAX_PATH];
-                sprintf(buffer, "Failed to spawn process (%s)!", entries[data->id].path);
+                sprintf(buffer, "Failed to spawn (%s)!", entries[data->id].path);
 
                 win_popup(buffer, "Error!", POPUP_TYPE_OK, NULL);
             }

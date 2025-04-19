@@ -67,11 +67,13 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         rect_t labelRect = RECT_INIT_DIM(NUMPAD_PADDING, NUMPAD_PADDING, WINDOW_WIDTH - NUMPAD_PADDING * 2,
             WINDOW_HEIGHT - NUMPAD_WIDTH - NUMPAD_PADDING * 2);
 
-        wmsg_text_prop_t props = {.height = 32,
+        wmsg_text_prop_t props = {
+            .height = 32,
             .foreground = winTheme.dark,
             .background = winTheme.bright,
             .xAlign = GFX_MAX,
-            .yAlign = GFX_CENTER};
+            .yAlign = GFX_CENTER,
+        };
         win_label_new(window, "0", &labelRect, LABEL_ID, &props);
     }
     break;

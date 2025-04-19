@@ -274,6 +274,7 @@ static void dwm_handle_mouse_message(const mouse_event_t* event)
 {
     static mouse_buttons_t oldButtons = MOUSE_NONE;
 
+    LOCK_DEFER(&lock);
     LOCK_DEFER(&cursor->lock);
 
     mouse_buttons_t pressed = (event->buttons & ~oldButtons);
@@ -378,8 +379,6 @@ static void dwm_poll(void)
         poll_file_t poll[] = {{.file = mouse, .requested = POLL_READ}, {.file = keyboard, .requested = POLL_READ},
             {.file = redrawNotifier, .requested = POLL_READ}};
         vfs_poll(poll, 3, NEVER);
-
-        LOCK_DEFER(&lock);
 
         dwm_poll_mouse();
         dwm_poll_keyboard();

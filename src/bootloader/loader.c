@@ -58,6 +58,8 @@ void loader_load_kernel(boot_kernel_t* kernel, CHAR16* path, EFI_HANDLE imageHan
     }
 
     uint64_t kernelPageAmount = (kernelEnd - kernelStart) / EFI_PAGE_SIZE + 1;
+
+    Print(L"Allocating %d KB... ", (kernelPageAmount * EFI_PAGE_SIZE) / 1000);
     kernel->physStart = vm_alloc_pages((void*)kernelStart, kernelPageAmount, EFI_RESERVED);
     kernel->virtStart = (void*)kernelStart;
     kernel->entry = (void*)header.entry;

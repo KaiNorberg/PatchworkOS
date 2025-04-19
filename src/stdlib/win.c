@@ -35,6 +35,7 @@ typedef struct win
     gfx_psf_t* psf;
     nsec_t timerDeadline;
     void* private;
+    bool initialized;
     char name[DWM_MAX_NAME];
 } win_t;
 
@@ -338,6 +339,8 @@ win_t* win_new(const char* name, const rect_t* rect, dwm_type_t type, win_flags_
     win_set_rect(window, rect);
     window->timerDeadline = NEVER;
     window->psf = gfx_psf_new(WIN_DEFAULT_FONT);
+    window->private = NULL;
+    window->initialized = false;
     if (window->psf == NULL)
     {
         free(window);
@@ -345,9 +348,6 @@ win_t* win_new(const char* name, const rect_t* rect, dwm_type_t type, win_flags_
         close(window->fd);
         return NULL;
     }
-
-    msg_t msg = {.type = LMSG_INIT, .time = uptime()};
-    win_dispatch(window, &msg);
 
     win_send(window, LMSG_REDRAW, NULL, 0);
 
@@ -402,6 +402,13 @@ uint64_t win_send(win_t* window, msg_type_t type, const void* data, uint64_t siz
 
 uint64_t win_receive(win_t* window, msg_t* msg, nsec_t timeout)
 {
+    if (!window->initialized)
+    {
+        *msg = (msg_t){.time = uptime(), .type = LMSG_INIT};
+        window->initialized = true;
+        return true;
+    }
+
     nsec_t upTime = uptime();
     nsec_t deadline = timeout != NEVER ? timeout + upTime : NEVER;
 
@@ -413,7 +420,7 @@ uint64_t win_receive(win_t* window, msg_t* msg, nsec_t timeout)
         ioctl_window_receive_t receive = {.timeout = remaining};
         if (ioctl(window->fd, IOCTL_WINDOW_RECEIVE, &receive, sizeof(ioctl_window_receive_t)) == ERR)
         {
-            return ERR;
+            return false;
         }
 
         if (receive.outMsg.type != MSG_NONE)
@@ -794,7 +801,11 @@ static uint64_t win_popup_procedure(win_t* window, const msg_t* msg)
         rightButtonRect.left += POPUP_BUTTON_WIDTH + winTheme.padding * 3;
         rightButtonRect.right += POPUP_BUTTON_WIDTH + winTheme.padding * 3;
 
-        win_text_prop_t buttonTextProps = {.height = 16, .xAlign = GFX_CENTER, .yAlign = GFX_CENTER, .foreground = winTheme.dark};
+        win_text_prop_t buttonTextProps = {.height = 16,
+            .xAlign = GFX_CENTER,
+            .yAlign = GFX_CENTER,
+            .foreground = winTheme.dark,
+            .background = winTheme.background};
 
         switch (popupData->type)
         {
@@ -825,7 +836,7 @@ static uint64_t win_popup_procedure(win_t* window, const msg_t* msg)
 
         rect_t textRect = RECT_INIT_GFX(&gfx);
         textRect.bottom -= POPUP_BUTTON_AREA_HEIGHT;
-        gfx_text(&gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, 16, popupData->text, winTheme.dark, 0);
+        gfx_text_multiline(&gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, 16, popupData->text, winTheme.dark, winTheme.background);
 
         rect_t buttonArea = RECT_INIT_GFX(&gfx);
         buttonArea.top = buttonArea.bottom - POPUP_BUTTON_AREA_HEIGHT;

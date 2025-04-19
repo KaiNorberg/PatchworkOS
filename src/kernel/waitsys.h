@@ -28,7 +28,7 @@
         nsec_t deadline = (timeout) == NEVER ? NEVER : (timeout) + uptime; \
         while (!(condition) && result == BLOCK_NORM) \
         { \
-            if (deadline < uptime) \
+            if (deadline <= uptime) \
             { \
                 result = BLOCK_TIMEOUT; \
                 break; \
@@ -46,12 +46,8 @@
     ({ \
         block_result_t result = BLOCK_NORM; \
         lock_acquire(lock); \
-        while (result == BLOCK_NORM) \
+        while (!(condition) && result == BLOCK_NORM) \
         { \
-            if (condition) \
-            { \
-                break; \
-            } \
             lock_release(lock); \
             result = waitsys_block(waitQueue, NEVER); \
             lock_acquire(lock); \
@@ -68,15 +64,11 @@
         nsec_t uptime = systime_uptime(); \
         nsec_t deadline = (timeout) == NEVER ? NEVER : (timeout) + uptime; \
         lock_acquire(lock); \
-        while (result == BLOCK_NORM) \
+        while (!(condition) && result == BLOCK_NORM) \
         { \
-            if (deadline < uptime) \
+            if (deadline <= uptime) \
             { \
                 result = BLOCK_TIMEOUT; \
-                break; \
-            } \
-            else if (condition) \
-            { \
                 break; \
             } \
             lock_release(lock); \

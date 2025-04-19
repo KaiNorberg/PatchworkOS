@@ -371,9 +371,6 @@ uint64_t vfs_flush(file_t* file, const void* buffer, uint64_t size, const rect_t
 
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
 {
-    uint64_t currentTime = systime_uptime();
-    uint64_t deadline = timeout == NEVER ? NEVER : currentTime + timeout;
-
     if (amount > CONFIG_MAX_BLOCKERS_PER_THREAD)
     {
         return ERROR(EBLOCKLIMIT);
@@ -396,7 +393,6 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
         files[i].occurred = 0;
     }
 
-    uint64_t events = 0;
     wait_queue_t* waitQueues[CONFIG_MAX_BLOCKERS_PER_THREAD];
     for (uint64_t i = 0; i < amount; i++)
     {
@@ -407,15 +403,11 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
         }
     }
 
+    uint64_t events = 0;
+    uint64_t currentTime = systime_uptime();
+    uint64_t deadline = timeout == NEVER ? NEVER : currentTime + timeout;
     while (true)
     {
-        currentTime = systime_uptime();
-
-        if (timeout != NEVER && currentTime >= deadline)
-        {
-            break;
-        }
-
         events = 0;
         for (uint64_t i = 0; i < amount; i++)
         {
@@ -434,14 +426,15 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
                 events++;
             }
         }
-
-        if (events != 0)
+        if (events != 0 || currentTime >= deadline)
         {
             break;
         }
 
         nsec_t remainingTime = deadline == NEVER ? NEVER : deadline - currentTime;
         waitsys_block_many(waitQueues, amount, remainingTime);
+
+        currentTime = systime_uptime();
     }
 
     return events;
