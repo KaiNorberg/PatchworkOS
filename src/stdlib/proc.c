@@ -11,14 +11,6 @@ pid_t spawn(const char** argv, const spawn_fd_t* fds)
     return _SyscallSpawn(argv, fds);
 }
 
-fd_t pid_open(pid_t pid, const char* file)
-{
-    char path[MAX_PATH];
-    snprintf(path, MAX_PATH, "sys:/proc/%d/%s", pid, file);
-
-    return open(path);
-}
-
 pid_t process_id(void)
 {
     return _SyscallProcessId();

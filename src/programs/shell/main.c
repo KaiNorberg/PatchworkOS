@@ -5,17 +5,17 @@
 #include <sys/io.h>
 #include <sys/proc.h>
 
-void print_prompt(void)
+void prompt_print(void)
 {
     char cwd[MAX_PATH];
-    fd_t fd = pid_open(process_id(), "cwd");
+    fd_t fd = open("sys:/proc/self/cwd");
     read(fd, cwd, MAX_PATH);
     close(fd);
 
     printf("\n%s\n> ", cwd);
 }
 
-bool read_command(char* buffer, uint64_t size)
+bool cmdline_read(char* buffer, uint64_t size)
 {
     uint64_t index = 0;
     buffer[0] = '\0';
@@ -46,16 +46,16 @@ int main(void)
 
     while (1)
     {
-        print_prompt();
+        prompt_print();
 
-        char buffer[MAX_PATH];
-        if (!read_command(buffer, MAX_PATH))
+        char cmdline[MAX_PATH];
+        if (!cmdline_read(cmdline, MAX_PATH))
         {
             break;
         }
 
         pipeline_t pipeline;
-        if (pipeline_init(&pipeline, buffer) == ERR)
+        if (pipeline_init(&pipeline, cmdline) == ERR)
         {
             printf("error: unable to parse pipeline");
             continue;

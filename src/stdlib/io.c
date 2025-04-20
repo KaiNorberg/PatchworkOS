@@ -2,6 +2,7 @@
 #if _PLATFORM_HAS_SYSCALLS
 
 #include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <sys/io.h>
 
@@ -39,6 +40,18 @@ uint64_t dir_list(const char* path, dir_entry_t* entries, uint64_t amount)
 
 fd_t open(const char* path)
 {
+    return _SyscallOpen(path);
+}
+
+fd_t openf(const char* _RESTRICT format, ...)
+{
+    va_list args;
+    char path[MAX_PATH];
+
+    va_start(args, format);
+    vsnprintf(path, MAX_PATH, format, args);
+    va_end(args);
+
     return _SyscallOpen(path);
 }
 

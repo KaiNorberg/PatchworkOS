@@ -76,6 +76,8 @@ uint64_t dir_list(const char* path, dir_entry_t* entries, uint64_t amount);
 
 fd_t open(const char* path);
 
+fd_t openf(const char* _RESTRICT format, ...);
+
 fd_t openas(fd_t target, const char* path);
 
 uint64_t open2(const char* path, fd_t fd[2]);

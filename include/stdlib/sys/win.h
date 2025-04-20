@@ -106,7 +106,7 @@ typedef struct lmsg_timer
 } lmsg_timer_t;
 
 #define LMSG_BASE (1 << 14)
-#define LMSG_INIT (LMSG_BASE + 0)
+#define LMSG_INIT (LMSG_BASE + 0) // TODO: Remove this message
 #define LMSG_FREE (LMSG_BASE + 1)
 #define LMSG_QUIT (LMSG_BASE + 2)
 #define LMSG_REDRAW (LMSG_BASE + 3)

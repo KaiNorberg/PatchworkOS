@@ -61,8 +61,6 @@ typedef enum
 // argv[0] = executable
 pid_t spawn(const char** argv, const spawn_fd_t* fds);
 
-fd_t pid_open(pid_t pid, const char* file);
-
 pid_t process_id(void);
 
 tid_t thread_id(void);

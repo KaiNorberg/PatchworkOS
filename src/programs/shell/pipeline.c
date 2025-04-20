@@ -305,7 +305,7 @@ void pipeline_execute(pipeline_t* pipeline)
     {
         if (pids[i] != ERR)
         {
-            fd_t child = pid_open(pids[i], "ctl");
+            fd_t child = openf("sys:/proc/%d/ctl", pids[i]);
             writef(child, "wait");
             close(child);
         }
