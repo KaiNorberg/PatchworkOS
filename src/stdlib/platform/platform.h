@@ -85,10 +85,6 @@ tid_t _SyscallThreadCreate(void* entry, void* arg);
 
 void _SyscallYield(void);
 
-fd_t _SyscallOpenas(fd_t target, const char* path);
-
-uint64_t _SyscallOpen2as(const char* path, fd_t fd[2]);
-
 fd_t _SyscallDup(fd_t oldFd);
 
 fd_t _SyscallDup2(fd_t oldFd, fd_t newFd);

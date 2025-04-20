@@ -15,17 +15,27 @@ void _StdInit(void)
 
     if (write(STDOUT_FILENO, NULL, 0) == ERR)
     {
-        openas(STDOUT_FILENO, "sys:/null");
+        fd_t fd = open("sys:/null");
+        if (fd != STDOUT_FILENO)
+        {
+            dup2(fd, STDOUT_FILENO);
+            close(fd);
+        }
     }
     if (read(STDIN_FILENO, NULL, 0) == ERR)
     {
-        openas(STDIN_FILENO, "sys:/null");
+        fd_t fd = open("sys:/null");
+        if (fd != STDIN_FILENO)
+        {
+            dup2(fd, STDIN_FILENO);
+            close(fd);
+        }
     }
-
     errno = 0;
 #endif
 
     _HeapInit();
     _TimeZoneInit();
+
     _PlatformInit();
 }

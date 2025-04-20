@@ -1,36 +1,40 @@
 #include "terminal.h"
+#include "input.h"
 #include "sys/io.h"
+#include "sys/kbd.h"
 
 #include <errno.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <sys/win.h>
 
 static void terminal_cursor_draw(terminal_t* term)
 {
     const gfx_psf_t* font = win_font(term->win);
-    point_t point = CURSOR_POS_TO_CLIENT_POS(&term->cursorPos, font);
+
+    char cursor  = ' ';
+    point_t cursorPos = term->cursorPos;
+    if (term->input.length != 0)
+    {
+        if (term->input.index != term->input.length)
+        {
+            cursor = term->input.buffer[term->input.index];
+        }
+        cursorPos.x += term->input.index;
+    }
+    point_t point = CURSOR_POS_TO_CLIENT_POS(&cursorPos, font);
 
     gfx_t gfx;
     win_draw_begin(term->win, &gfx);
-
     if (term->cursorVisible)
     {
-        gfx_char(&gfx, font, &point, font->height, ' ', winTheme.bright, winTheme.bright);
+        gfx_char(&gfx, font, &point, font->height, cursor, winTheme.dark, winTheme.bright);
     }
     else
     {
-        gfx_char(&gfx, font, &point, font->height, ' ', winTheme.dark, winTheme.dark);
+        gfx_char(&gfx, font, &point, font->height, cursor, winTheme.bright, winTheme.dark);
     }
-
     win_draw_end(term->win, &gfx);
-}
-
-static void terminal_cursor_clear(terminal_t* term)
-{
-    bool temp = term->cursorVisible;
-    term->cursorVisible = false;
-    terminal_cursor_draw(term);
-    term->cursorVisible = temp;
 }
 
 static void terminal_clear(terminal_t* term)
@@ -52,25 +56,26 @@ static void terminal_clear(terminal_t* term)
     terminal_cursor_draw(term);
 }
 
-static void terminal_scroll(terminal_t* term)
+static void terminal_scroll(terminal_t* term, gfx_t* gfx)
 {
-    gfx_t gfx;
-    win_draw_begin(term->win, &gfx);
-    term->cursorPos.y -= 2;
+    term->cursorPos.y -= 1;
 
-    rect_t rect = RECT_INIT_GFX(&gfx);
+    rect_t rect = RECT_INIT_GFX(gfx);
     RECT_SHRINK(&rect, winTheme.edgeWidth);
 
-    gfx_scroll(&gfx, &rect, win_font(term->win)->height * 2, winTheme.dark);
-    win_draw_end(term->win, &gfx);
+    gfx_scroll(gfx, &rect, win_font(term->win)->height, winTheme.dark);
 }
 
-static void terminal_put(terminal_t* term, char chr)
+static void terminal_draw_char(terminal_t* term, gfx_t* gfx, const point_t* point, char chr)
 {
     const gfx_psf_t* font = win_font(term->win);
+    point_t clientPos = CURSOR_POS_TO_CLIENT_POS(point, font);
+    gfx_char(gfx, font, &clientPos, font->height, chr, winTheme.bright, winTheme.dark);
+}
 
-    terminal_cursor_clear(term);
-
+static void terminal_put(terminal_t* term, gfx_t* gfx, char chr)
+{
+    const gfx_psf_t* font = win_font(term->win);
     rect_t rect;
     win_client_rect(term->win, &rect);
 
@@ -78,12 +83,18 @@ static void terminal_put(terminal_t* term, char chr)
     {
     case '\n':
     {
+        if (term->cursorVisible)
+        {
+            term->cursorVisible = false;
+            terminal_cursor_draw(term);
+        }
+
         term->cursorPos.x = 0;
         term->cursorPos.y++;
 
-        if ((term->cursorPos.y + 1) * font->height > RECT_HEIGHT(&rect) - winTheme.edgeWidth * 2 - winTheme.padding * 2)
+        if (CURSOR_POS_Y_OUT_OF_BOUNDS(term->cursorPos.y + 1, font))
         {
-            terminal_scroll(term);
+            terminal_scroll(term, gfx);
         }
     }
     break;
@@ -95,60 +106,114 @@ static void terminal_put(terminal_t* term, char chr)
         }
     }
     break;
-    case '\0':
-    {
-    }
-    break;
     default:
     {
-        gfx_t gfx;
-        win_draw_begin(term->win, &gfx);
-        point_t point = CURSOR_POS_TO_CLIENT_POS(&term->cursorPos, font);
-        gfx_char(&gfx, font, &point, font->height, chr, winTheme.bright, winTheme.dark);
+        terminal_draw_char(term, gfx, &term->cursorPos, chr);
         term->cursorPos.x++;
-        win_draw_end(term->win, &gfx);
+        term->cursorVisible = false;
 
-        if ((term->cursorPos.x + 2) * font->width > RECT_WIDTH(&rect) - winTheme.edgeWidth * 2 - winTheme.padding * 2)
+        if (CURSOR_POS_X_OUT_OF_BOUNDS(term->cursorPos.x + 1, font))
         {
-            terminal_put(term, '\n');
+            terminal_put(term, gfx, '\n');
         }
     }
     break;
     }
+}
+
+static void terminal_write(terminal_t* term, const char* str)
+{
+    gfx_t gfx;
+    win_draw_begin(term->win, &gfx);
+    const char* chr = str;
+    while (*chr != '\0')
+    {
+        terminal_put(term, &gfx, *chr);
+        chr++;
+    }
+    win_draw_end(term->win, &gfx);
 
     term->cursorVisible = true;
     terminal_cursor_draw(term);
     win_timer_set(term->win, BLINK_INTERVAL);
 }
 
-static void terminal_handle_input(terminal_t* term, char chr)
+static void terminal_redraw_input(terminal_t* term, uint64_t prevLength)
 {
-    switch (chr)
+    gfx_t gfx;
+    win_draw_begin(term->win, &gfx);
+    point_t point = term->cursorPos;
+    for (uint64_t i = 0; i < term->input.length; i++)
     {
-    case '\n':
+        terminal_draw_char(term, &gfx, &point, term->input.buffer[i]);
+        point.x++;
+    }
+    for (uint64_t i = term->input.length; i < prevLength + 1; i++)
     {
-        term->inputBuffer[term->inputIndex] = '\0';
-        writef(term->stdin[PIPE_WRITE], "%s\n", term->inputBuffer);
-        term->inputIndex = 0;
-        terminal_put(term, chr);
+        terminal_draw_char(term, &gfx, &point, ' ');
+        point.x++;
+    }
+    win_draw_end(term->win, &gfx);
+
+    term->cursorVisible = true;
+    terminal_cursor_draw(term);
+    win_timer_set(term->win, BLINK_INTERVAL);
+}
+
+static void terminal_handle_input(terminal_t* term, keycode_t key, kbd_mods_t mods)
+{
+    uint64_t prevLength = term->input.length;
+
+    switch (key)
+    {
+    case KEY_LEFT:
+    {
+        if (input_move(&term->input, -1) != ERR)
+        {
+            terminal_redraw_input(term, prevLength);
+        }
     }
     break;
-    case '\b':
+    case KEY_RIGHT:
     {
-        if (term->inputIndex > 0)
+        if (input_move(&term->input, +1) != ERR)
         {
-            term->inputIndex--;
-            terminal_put(term, chr);
+            terminal_redraw_input(term, prevLength);
         }
+    }
+    break;
+    case KEY_ENTER:
+    {
+        writef(term->stdin[PIPE_WRITE], "%s\n", term->input.buffer);
+
+        term->cursorVisible = false;
+        terminal_cursor_draw(term);
+
+        input_set(&term->input, "");
+        terminal_write(term, "\n");
+    }
+    break;
+    case KEY_BACKSPACE:
+    {
+        input_backspace(&term->input);
+        terminal_redraw_input(term, prevLength);
     }
     break;
     default:
     {
-        if (term->inputIndex < MAX_PATH)
+        char ascii = kbd_ascii(key, mods);
+        if (ascii == '\0')
         {
-            term->inputBuffer[term->inputIndex++] = chr;
-            terminal_put(term, chr);
+            break;
         }
+
+        if (CURSOR_POS_X_OUT_OF_BOUNDS(term->cursorPos.x + (int64_t)term->input.length + 2, win_font(term->win)))
+        {
+            break;
+        }
+
+        input_insert(&term->input, ascii);
+        terminal_redraw_input(term, prevLength);
     }
     break;
     }
@@ -176,16 +241,11 @@ static uint64_t terminal_procedure(win_t* win, const msg_t* msg)
     case MSG_KBD:
     {
         msg_kbd_t* data = (msg_kbd_t*)msg->data;
-        if (data->type != KBD_PRESS)
+        if (data->type != KBD_PRESS || data->code == 0)
         {
             break;
         }
-
-        char chr = kbd_ascii(data->code, data->mods);
-        if (chr != '\0')
-        {
-            terminal_handle_input(term, chr);
-        }
+        terminal_handle_input(term, data->code, data->mods);
     }
     break;
     }
@@ -208,8 +268,7 @@ void terminal_init(terminal_t* term)
 
     term->cursorPos = (point_t){0};
     term->cursorVisible = false;
-    term->inputBuffer[0] = '\0';
-    term->inputIndex = 0;
+    input_init(&term->input);
 
     if (open2("sys:/pipe/new", term->stdin) == ERR || open2("sys:/pipe/new", term->stdout) == ERR)
     {
@@ -248,6 +307,8 @@ void terminal_init(terminal_t* term)
 
 void terminal_deinit(terminal_t* term)
 {
+    input_deinit(&term->input);
+
     writef(term->shellCtl, "kill");
     close(term->shellCtl);
 
@@ -279,11 +340,12 @@ bool terminal_update(terminal_t* term)
     {
         while (poll1(term->stdout[PIPE_READ], POLL_READ, 0) == POLL_READ)
         {
-            char chr;
-            read(term->stdout[PIPE_READ], &chr, 1);
-            terminal_put(term, chr);
+            char buffer[2] = {0, '\0'};
+            read(term->stdout[PIPE_READ], buffer, 1);
+            terminal_write(term, buffer);
+            input_set(&term->input, "");
         }
     }
 
-    return shouldQuit;
+    return !shouldQuit;
 }

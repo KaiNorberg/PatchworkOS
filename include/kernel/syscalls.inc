@@ -24,12 +24,10 @@
 %define SYS_DIR_LIST 23
 %define SYS_THREAD_CREATE 24
 %define SYS_YIELD 25
-%define SYS_OPENAS 26
-%define SYS_OPEN2AS 27
-%define SYS_DUP 28
-%define SYS_DUP2 29
-%define SYS_FUTEX 30
+%define SYS_DUP 26
+%define SYS_DUP2 27
+%define SYS_FUTEX 28
 
-%define SYS_TOTAL_AMOUNT 31
+%define SYS_TOTAL_AMOUNT 29
 
 %define SYSCALL_VECTOR 0x80

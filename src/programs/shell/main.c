@@ -32,7 +32,7 @@ bool cmdline_read(char* buffer, uint64_t size)
             return true;
         }
 
-        if (index < MAX_PATH)
+        if (index + 1 < size)
         {
             buffer[index++] = chr;
         }
@@ -49,7 +49,7 @@ int main(void)
         prompt_print();
 
         char cmdline[MAX_PATH];
-        if (!cmdline_read(cmdline, MAX_PATH))
+        if (!cmdline_read(cmdline, MAX_PATH - 2))
         {
             break;
         }

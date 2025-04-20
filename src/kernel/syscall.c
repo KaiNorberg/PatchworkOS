@@ -485,57 +485,6 @@ uint64_t syscall_yield(void)
     return 0;
 }
 
-fd_t syscall_openas(fd_t target, const char* path)
-{
-    if (!verify_string(path))
-    {
-        return ERROR(EFAULT);
-    }
-
-    file_t* file = vfs_open(path);
-    if (file == NULL)
-    {
-        return ERR;
-    }
-    FILE_DEFER(file);
-
-    return vfs_ctx_openas(&sched_process()->vfsCtx, target, file);
-}
-
-uint64_t syscall_open2as(const char* path, fd_t fds[2])
-{
-    if (!verify_string(path))
-    {
-        return ERROR(EFAULT);
-    }
-
-    if (!verify_buffer(fds, sizeof(fd_t) * 2))
-    {
-        return ERROR(EFAULT);
-    }
-
-    file_t* files[2];
-    if (vfs_open2(path, files) == ERR)
-    {
-        return ERR;
-    }
-    FILE_DEFER(files[0]);
-    FILE_DEFER(files[1]);
-
-    fds[0] = vfs_ctx_openas(&sched_process()->vfsCtx, fds[0], files[0]);
-    if (fds[0] == ERR)
-    {
-        return ERR;
-    }
-    fds[1] = vfs_ctx_openas(&sched_process()->vfsCtx, fds[0], files[1]);
-    if (fds[1] == ERR)
-    {
-        return ERR;
-    }
-
-    return 0;
-}
-
 fd_t syscall_dup(fd_t oldFd)
 {
     return vfs_ctx_dup(&sched_process()->vfsCtx, oldFd);
@@ -592,8 +541,6 @@ void* syscallTable[] = {
     syscall_dir_list,
     syscall_thread_create,
     syscall_yield,
-    syscall_openas,
-    syscall_open2as,
     syscall_dup,
     syscall_dup2,
     syscall_futex,

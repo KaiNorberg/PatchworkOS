@@ -15,7 +15,7 @@ typedef struct
     bool first;
 } _ArgsplitState_t;
 
-#define _ARGSPLIR_CREATE(str) {str, 0, false, false, true}
+#define _ARGSPLIT_CREATE(str) {str, 0, false, false, true}
 
 static bool _ArgsplitIsNewArg(_ArgsplitState_t* state)
 {
@@ -79,7 +79,7 @@ static uint64_t _ArgsplitCountCharsAndArgs(const char* str, uint64_t* argc, uint
     *argc = 0;
     *totalChars = 0;
 
-    _ArgsplitState_t state = _ARGSPLIR_CREATE(str);
+    _ArgsplitState_t state = _ARGSPLIT_CREATE(str);
     while (true)
     {
         if (!_ArgsplitStepState(&state))
@@ -91,7 +91,7 @@ static uint64_t _ArgsplitCountCharsAndArgs(const char* str, uint64_t* argc, uint
         {
             (*argc)++;
         }
-        totalChars++;
+        (*totalChars)++;
     }
 
     if (state.inQuote || state.escaped)
@@ -102,14 +102,14 @@ static uint64_t _ArgsplitCountCharsAndArgs(const char* str, uint64_t* argc, uint
     return 0;
 }
 
-static const char** _ArgsplitBackend(char** argv, const char* str, uint64_t argc)
+static const char** _ArgsplitBackend(const char** argv, const char* str, uint64_t argc)
 {
     uint64_t argvSize = sizeof(char*) * (argc + 1);
     char* strings = (char*)((uintptr_t)argv + argvSize);
     argv[0] = strings;
     argv[argc] = NULL;
 
-    _ArgsplitState_t state = _ARGSPLIR_CREATE(str);
+    _ArgsplitState_t state = _ARGSPLIT_CREATE(str);
     uint64_t stringIndex = 0;
     char* out = strings;
     while (true)
@@ -160,7 +160,7 @@ const char** argsplit(const char* str, uint64_t* count)
     uint64_t argvSize = sizeof(char*) * (argc + 1);
     uint64_t stringsSize = totalChars + argc;
 
-    char** argv = malloc(argvSize + stringsSize);
+    const char** argv = malloc(argvSize + stringsSize);
     if (argv == NULL)
     {
         return NULL;
@@ -168,6 +168,11 @@ const char** argsplit(const char* str, uint64_t* count)
     if (count != NULL)
     {
         *count = argc;
+    }
+    if (argc == 0)
+    {
+        argv[0] = NULL;
+        return argv;
     }
 
     return _ArgsplitBackend(argv, str, argc);
@@ -190,6 +195,7 @@ const char** argsplit_buf(void* buf, uint64_t size, const char* str, uint64_t* c
     uint64_t argvSize = sizeof(char*) * (argc + 1);
     uint64_t stringsSize = totalChars + argc;
 
+    const char** argv = buf;
     if (size < argvSize + stringsSize)
     {
         return NULL;
@@ -197,6 +203,11 @@ const char** argsplit_buf(void* buf, uint64_t size, const char* str, uint64_t* c
     if (count != NULL)
     {
         *count = argc;
+    }
+    if (argc == 0)
+    {
+        argv[0] = NULL;
+        return argv;
     }
 
     return _ArgsplitBackend(buf, str, argc);

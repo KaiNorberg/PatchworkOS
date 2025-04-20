@@ -3,8 +3,6 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
-#define PIPELINE_MAX_CMD 32
-
 typedef struct
 {
     const char** argv;
@@ -19,7 +17,8 @@ typedef struct
 
 typedef struct
 {
-    cmd_t cmds[PIPELINE_MAX_CMD];
+    cmd_t* cmds;
+    uint64_t capacity;
     uint64_t amount;
 } pipeline_t;
 

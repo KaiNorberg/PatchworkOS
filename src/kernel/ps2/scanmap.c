@@ -1,7 +1,7 @@
 #include "scanmap.h"
 #include "sys/kbd.h"
 
-const keycode_t scanmap[] = {
+const keycode_t scanmap[0xFF] = {
     [0x01] = KEY_ESC,
     [0x02] = KEY_1,
     [0x03] = KEY_2,
@@ -104,7 +104,23 @@ const keycode_t scanmap[] = {
     [0x7E] = KEY_EQUAL,
 };
 
-keycode_t ps2_scancode_to_keycode(uint64_t scancode)
+const keycode_t extendedScanmap[0xFF] = {
+    [0x1C] = KEY_KP_ENTER,
+    [0x35] = KEY_KP_SLASH,
+    [0x37] = KEY_SYSRQ,
+    [0x47] = KEY_HOME,
+    [0x48] = KEY_UP,
+    [0x49] = KEY_PAGE_UP,
+    [0x4B] = KEY_LEFT,
+    [0x4D] = KEY_RIGHT,
+    [0x4F] = KEY_END,
+    [0x50] = KEY_DOWN,
+    [0x51] = KEY_PAGE_DOWN,
+    [0x52] = KEY_INSERT,
+    [0x53] = KEY_DELETE,
+};
+
+keycode_t ps2_scancode_to_keycode(bool extended, uint8_t scancode)
 {
-    return scancode < (sizeof(scanmap) / sizeof(scanmap[0])) ? scanmap[scancode] : 0;
+    return extended ? extendedScanmap[scancode] : scanmap[scancode];
 }

@@ -78,11 +78,7 @@ fd_t open(const char* path);
 
 fd_t openf(const char* _RESTRICT format, ...);
 
-fd_t openas(fd_t target, const char* path);
-
 uint64_t open2(const char* path, fd_t fd[2]);
-
-uint64_t open2as(const char* path, fd_t fd[2]);
 
 uint64_t close(fd_t fd);
 

@@ -13,6 +13,8 @@
 
 static kbd_t* kbd;
 
+static bool extended;
+
 static uint64_t ps2_kbd_scan(void)
 {
     uint8_t status = io_inb(PS2_PORT_STATUS);
@@ -27,19 +29,29 @@ static uint64_t ps2_kbd_scan(void)
 
 static void ps2_kbd_irq(uint8_t irq)
 {
-    uint64_t scanCode = ps2_kbd_scan();
-    if (scanCode == ERR)
+    uint64_t scancode = ps2_kbd_scan();
+    if (scancode == ERR)
     {
         return;
     }
 
-    kbd_event_type_t type = scanCode & SCANCODE_RELEASED ? KBD_RELEASE : KBD_PRESS;
-    keycode_t code = ps2_scancode_to_keycode(scanCode & ~SCANCODE_RELEASED);
-    kbd_push(kbd, type, code);
+    if (scancode == PS2_EXTENDED_CODE)
+    {
+        extended = true;
+    }
+    else
+    {
+        kbd_event_type_t type = scancode & SCANCODE_RELEASED ? KBD_RELEASE : KBD_PRESS;
+        keycode_t code = ps2_scancode_to_keycode(extended, scancode & ~SCANCODE_RELEASED);
+        kbd_push(kbd, type, code);
+        extended = false;
+    }
 }
 
 void ps2_kbd_init(void)
 {
+    extended = false;
+
     ps2_cmd(PS2_CMD_KBD_TEST);
     ASSERT_PANIC_MSG(ps2_read() == 0x0, "ps2 kbd test fail");
 

@@ -1,13 +1,15 @@
 #pragma once
 
+#include "input.h"
+
 #include <sys/win.h>
 
 #define UMSG_BLINK (UMSG_BASE + 1)
 
 #define BLINK_INTERVAL (SEC / 2)
 
-#define TERMINAL_WIDTH 750
-#define TERMINAL_HEIGHT 500
+#define TERMINAL_WIDTH (80 * 8 + winTheme.edgeWidth * 2 + winTheme.padding * 2)
+#define TERMINAL_HEIGHT (24 * 16 + winTheme.edgeWidth * 2 + winTheme.padding * 2)
 
 typedef struct
 {
@@ -16,8 +18,7 @@ typedef struct
     bool cursorVisible;
     fd_t stdin[2];
     fd_t stdout[2];
-    char inputBuffer[MAX_PATH];
-    size_t inputIndex;
+    input_t input;
     fd_t shellCtl;
 } terminal_t;
 
@@ -26,6 +27,12 @@ typedef struct
         .x = ((cursorPos)->x * (font)->width) + winTheme.edgeWidth + winTheme.padding, \
         .y = ((cursorPos)->y * (font)->height) + winTheme.edgeWidth + winTheme.padding, \
     };
+
+#define CURSOR_POS_X_OUT_OF_BOUNDS(cursorPosX, font) \
+((cursorPosX) * (font)->width > TERMINAL_WIDTH - winTheme.edgeWidth * 2 - winTheme.padding * 2)
+
+#define CURSOR_POS_Y_OUT_OF_BOUNDS(cursorPosY, font) \
+((cursorPosY) * (font)->height > TERMINAL_HEIGHT - winTheme.edgeWidth * 2 - winTheme.padding * 2)
 
 void terminal_init(terminal_t* term);
 

@@ -170,16 +170,6 @@ _SyscallYield:
     SYSTEM_CALL SYS_YIELD
     ret
 
-global _SyscallOpenas
-_SyscallOpenas:
-    SYSTEM_CALL SYS_OPENAS
-    ret
-
-global _SyscallOpen2as
-_SyscallOpen2as:
-    SYSTEM_CALL SYS_OPEN2AS
-    ret
-
 global _SyscallDup
 _SyscallDup:
     SYSTEM_CALL SYS_DUP

@@ -55,19 +55,9 @@ fd_t openf(const char* _RESTRICT format, ...)
     return _SyscallOpen(path);
 }
 
-fd_t openas(fd_t target, const char* path)
-{
-    return _SyscallOpenas(target, path);
-}
-
 uint64_t open2(const char* path, fd_t fds[2])
 {
     return _SyscallOpen2(path, fds);
-}
-
-uint64_t open2as(const char* path, fd_t fds[2])
-{
-    return _SyscallOpen2as(path, fds);
 }
 
 uint64_t close(fd_t fd)

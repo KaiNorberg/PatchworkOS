@@ -16,7 +16,27 @@ static const char* lookupDirs[] = {
 
 uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
 {
-    for (uint64_t i = 0; i < PIPELINE_MAX_CMD; i++)
+    uint64_t tokenAmount;
+    const char** tokens = argsplit(cmdline, &tokenAmount);
+    if (tokens == NULL)
+    {
+        return ERR;
+    }
+
+    if (tokenAmount == 0)
+    {
+        pipeline->cmds = NULL;
+        pipeline->capacity = tokenAmount;
+        pipeline->amount = 0;
+        free(tokens);
+        return 0;
+    }
+
+    pipeline->cmds = malloc(sizeof(cmd_t) * tokenAmount);
+    pipeline->capacity = tokenAmount;
+    pipeline->amount = 0;
+
+    for (uint64_t i = 0; i < tokenAmount; i++)
     {
         cmd_t* cmd = &pipeline->cmds[i];
         cmd->argv = NULL;
@@ -28,14 +48,6 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
         cmd->closeStdout = false;
         cmd->closeStderr = false;
     }
-    pipeline->amount = 0;
-
-    uint64_t tokenAmount;
-    const char** tokens = argsplit(cmdline, &tokenAmount);
-    if (tokens == NULL)
-    {
-        return ERR;
-    }
 
     uint64_t currentCmd = 0;
     uint64_t currentArg = 0;
@@ -44,11 +56,6 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
     {
         if (strcmp(tokens[i], "|") == 0)
         {
-            if (currentCmd == PIPELINE_MAX_CMD - 1)
-            {
-                goto token_parse_error;
-            }
-
             if (currentArg == 0)
             {
                 goto token_parse_error;
@@ -173,15 +180,32 @@ token_parse_error:
         }
         free(pipeline->cmds[j].argv);
     }
+    free(pipeline->cmds);
     free(tokens);
     return ERR;
 }
 
 void pipeline_deinit(pipeline_t* pipeline)
 {
-    for (uint64_t i = 0; i < pipeline->amount; i++)
+    for (uint64_t j = 0; j < pipeline->amount; j++)
     {
-        free(pipeline->cmds[i].argv);
+        if (pipeline->cmds[j].closeStdin)
+        {
+            close(pipeline->cmds[j].stdin);
+        }
+        if (pipeline->cmds[j].closeStdout)
+        {
+            close(pipeline->cmds[j].stdout);
+        }
+        if (pipeline->cmds[j].closeStderr)
+        {
+            close(pipeline->cmds[j].stderr);
+        }
+        free(pipeline->cmds[j].argv);
+    }
+    if (pipeline->cmds != NULL)
+    {
+        free(pipeline->cmds);
     }
 }
 
@@ -294,7 +318,12 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
 
 void pipeline_execute(pipeline_t* pipeline)
 {
-    pid_t pids[PIPELINE_MAX_CMD];
+    if (pipeline->amount == 0)
+    {
+        return;
+    }
+
+    pid_t* pids = malloc(sizeof(pid_t) * pipeline->amount);
 
     for (uint64_t i = 0; i < pipeline->amount; i++)
     {
@@ -310,4 +339,6 @@ void pipeline_execute(pipeline_t* pipeline)
             close(child);
         }
     }
+
+    free(pids);
 }
