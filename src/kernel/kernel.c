@@ -46,8 +46,6 @@ static void kernel_free_loader_data(efi_mem_map_t* memoryMap)
                 ((uintptr_t)desc->physicalStart) + desc->amountOfPages * PAGE_SIZE);
         }
     }
-    printf("################################################################");
-    hpet_sleep(SEC);
 }
 
 void kernel_init(boot_info_t* bootInfo)
@@ -95,6 +93,7 @@ void kernel_init(boot_info_t* bootInfo)
     pipe_init();
     dwm_init(&bootInfo->gopBuffer);
 
+    asm volatile("sti");
     kernel_free_loader_data(&bootInfo->memoryMap);
 
 #ifdef TESTING
@@ -103,6 +102,4 @@ void kernel_init(boot_info_t* bootInfo)
 
     dwm_start();
     log_disable_screen();
-
-    asm volatile("sti");
 }

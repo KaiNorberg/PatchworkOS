@@ -167,9 +167,9 @@ gfx_psf_t* gfx_psf_new(const char* path)
 
 void gfx_fbmp(gfx_t* gfx, const gfx_fbmp_t* fbmp, const point_t* point)
 {
-    for (uint32_t y = 0; y < fbmp->height; y++)
+    for (int64_t y = 0; y < fbmp->height; y++)
     {
-        for (uint32_t x = 0; x < fbmp->width; x++)
+        for (int64_t x = 0; x < fbmp->width; x++)
         {
             gfx->buffer[(point->x + x) + (point->y + y) * gfx->stride] = fbmp->data[x + y * fbmp->width];
         }
@@ -181,9 +181,9 @@ void gfx_fbmp(gfx_t* gfx, const gfx_fbmp_t* fbmp, const point_t* point)
 
 void gfx_fbmp_alpha(gfx_t* gfx, const gfx_fbmp_t* fbmp, const point_t* point)
 {
-    for (uint32_t y = 0; y < fbmp->height; y++)
+    for (int64_t y = 0; y < fbmp->height; y++)
     {
-        for (uint32_t x = 0; x < fbmp->width; x++)
+        for (int64_t x = 0; x < fbmp->width; x++)
         {
             PIXEL_BLEND(&gfx->buffer[(point->x + x) + (point->y + y) * gfx->stride], &fbmp->data[x + y * fbmp->width]);
         }
@@ -693,8 +693,8 @@ void gfx_rim(gfx_t* gfx, const rect_t* rect, uint64_t width, pixel_t pixel)
 
 void gfx_transfer(gfx_t* dest, const gfx_t* src, const rect_t* destRect, const point_t* srcPoint)
 {
-    int32_t width = RECT_WIDTH(destRect);
-    int32_t height = RECT_HEIGHT(destRect);
+    int64_t width = RECT_WIDTH(destRect);
+    int64_t height = RECT_HEIGHT(destRect);
 
     if (width <= 0 || height <= 0)
     {
@@ -709,7 +709,7 @@ void gfx_transfer(gfx_t* dest, const gfx_t* src, const rect_t* destRect, const p
         return;
     }
 
-    for (int32_t y = 0; y < RECT_HEIGHT(destRect); y++)
+    for (int64_t y = 0; y < RECT_HEIGHT(destRect); y++)
     {
         memcpy(&dest->buffer[destRect->left + (y + destRect->top) * dest->stride],
             &src->buffer[srcPoint->x + (y + srcPoint->y) * src->stride], RECT_WIDTH(destRect) * sizeof(pixel_t));
@@ -720,8 +720,8 @@ void gfx_transfer(gfx_t* dest, const gfx_t* src, const rect_t* destRect, const p
 
 void gfx_transfer_blend(gfx_t* dest, const gfx_t* src, const rect_t* destRect, const point_t* srcPoint)
 {
-    int32_t width = RECT_WIDTH(destRect);
-    int32_t height = RECT_HEIGHT(destRect);
+    int64_t width = RECT_WIDTH(destRect);
+    int64_t height = RECT_HEIGHT(destRect);
 
     if (width <= 0 || height <= 0)
     {
@@ -736,9 +736,9 @@ void gfx_transfer_blend(gfx_t* dest, const gfx_t* src, const rect_t* destRect, c
         return;
     }
 
-    for (int32_t y = 0; y < RECT_HEIGHT(destRect); y++)
+    for (int64_t y = 0; y < RECT_HEIGHT(destRect); y++)
     {
-        for (int32_t x = 0; x < RECT_WIDTH(destRect); x++)
+        for (int64_t x = 0; x < RECT_WIDTH(destRect); x++)
         {
             pixel_t pixel = src->buffer[(srcPoint->x + x) + (srcPoint->y + y) * src->stride];
             pixel_t* out = &dest->buffer[(destRect->left + x) + (destRect->top + y) * dest->stride];
@@ -751,7 +751,7 @@ void gfx_transfer_blend(gfx_t* dest, const gfx_t* src, const rect_t* destRect, c
 
 void gfx_swap(gfx_t* dest, const gfx_t* src, const rect_t* rect)
 {
-    for (int32_t y = 0; y < RECT_HEIGHT(rect); y++)
+    for (int64_t y = 0; y < RECT_HEIGHT(rect); y++)
     {
         uint64_t offset = (rect->left * sizeof(pixel_t)) + (y + rect->top) * sizeof(pixel_t) * dest->stride;
 
