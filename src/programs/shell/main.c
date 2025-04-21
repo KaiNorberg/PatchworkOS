@@ -57,7 +57,6 @@ int main(void)
         pipeline_t pipeline;
         if (pipeline_init(&pipeline, cmdline) == ERR)
         {
-            printf("error: unable to parse pipeline");
             continue;
         }
 

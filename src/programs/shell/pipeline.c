@@ -58,6 +58,7 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
         {
             if (currentArg == 0)
             {
+                printf("error: empty command in pipeline\n");
                 goto token_parse_error;
             }
 
@@ -70,6 +71,7 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
             fd_t pipe[2];
             if (open2("sys:/pipe/new", pipe) == ERR)
             {
+                printf("error: unable to open pipe (%s)\n", strerror(errno));
                 goto token_parse_error;
             }
 
@@ -88,12 +90,14 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
         {
             if (i + 1 >= tokenAmount)
             {
+                printf("error: missing filename after <\n");
                 goto token_parse_error;
             }
 
             fd_t fd = open(tokens[i + 1]);
             if (fd == ERR)
             {
+                printf("error: unable to open %s (%s)\n", tokens[i + 1], strerror(errno));
                 goto token_parse_error;
             }
 
@@ -111,12 +115,14 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
         {
             if (i + 1 >= tokenAmount)
             {
+                printf("error: missing filename after >\n");
                 goto token_parse_error;
             }
 
             fd_t fd = open(tokens[i + 1]);
             if (fd == ERR)
             {
+                printf("error: unable to open %s (%s)\n", tokens[i + 1], strerror(errno));
                 goto token_parse_error;
             }
 
@@ -133,11 +139,13 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
         else if (strcmp(tokens[i], ">>") == 0)
         {
             // TODO: Implement this
+            printf("error: not implemented");
             goto token_parse_error;
         }
         else if (strcmp(tokens[i], "2>") == 0)
         {
             // TODO: Implement this
+            printf("error: not implemented");
             goto token_parse_error;
         }
         else
