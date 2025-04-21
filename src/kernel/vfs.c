@@ -1,8 +1,11 @@
 #include "vfs.h"
 
 #include "lock.h"
+#include "log.h"
 #include "path.h"
 #include "sched.h"
+#include "sys/list.h"
+#include "sysfs.h"
 #include "systime.h"
 #include "vfs_ctx.h"
 #include "waitsys.h"
@@ -14,6 +17,23 @@
 
 static list_t volumes;
 static lock_t volumesLock;
+
+static void volume_on_free(sysdir_t* dir)
+{
+    volume_t* volume = dir->private;
+    free(volume);
+}
+
+static uint64_t volume_expose(volume_t* volume)
+{
+    volume->dir = sysdir_new("/vol", volume->label, volume_on_free, volume);
+    if (volume->dir == NULL)
+    {
+        return ERR;
+    }
+
+    return 0;
+}
 
 static volume_t* volume_ref(volume_t* volume)
 {
@@ -119,7 +139,11 @@ uint64_t vfs_attach_simple(const char* label, const volume_ops_t* ops)
     strcpy(volume->label, label);
     volume->ops = ops;
     atomic_init(&volume->ref, 1);
-
+    if (volume_expose(volume) == ERR)
+    {
+        free(volume);
+        return ERR;
+    }
     list_push(&volumes, &volume->entry);
     return 0;
 }
@@ -165,7 +189,7 @@ uint64_t vfs_unmount(const char* label)
     }
 
     list_remove(&volume->entry);
-    free(volume);
+    sysdir_free(volume->dir);
     return 0;
 }
 

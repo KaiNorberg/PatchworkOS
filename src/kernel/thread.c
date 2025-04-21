@@ -223,16 +223,16 @@ static void process_on_free(sysdir_t* dir)
 
 static sysdir_t* process_dir_create(const char* name, void* private)
 {
-    sysdir_t* dir = sysfs_mkdir("/proc", name, process_on_free, private);
+    sysdir_t* dir = sysdir_new("/proc", name, process_on_free, private);
     if (dir == NULL)
     {
         return NULL;
     }
 
-    if (sysfs_create(dir, "ctl", &ctlResOps, NULL) == ERR || sysfs_create(dir, "cwd", &cwdResOps, NULL) == ERR ||
-        sysfs_create(dir, "cmdline", &cmdlineResOps, NULL) == ERR)
+    if (resource_new(dir, "ctl", &ctlResOps, NULL) == ERR || resource_new(dir, "cwd", &cwdResOps, NULL) == ERR ||
+        resource_new(dir, "cmdline", &cmdlineResOps, NULL) == ERR)
     {
-        sysfs_rmdir(dir);
+        sysdir_free(dir);
         return NULL;
     }
 
@@ -278,7 +278,7 @@ static void process_free(process_t* process)
 {
     vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_on_free
     waitsys_unblock(&process->queue, WAITSYS_ALL);
-    sysfs_rmdir(process->dir);
+    sysdir_free(process->dir);
 }
 
 static thread_t* process_thread_create(process_t* process, void* entry, priority_t priority)

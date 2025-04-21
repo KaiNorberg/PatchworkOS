@@ -14,6 +14,7 @@
 #define FILE_DEFER(file) __attribute__((cleanup(file_defer_cleanup))) file_t* CONCAT(f, __COUNTER__) = (file)
 
 typedef struct resource resource_t;
+typedef struct sysdir sysdir_t;
 
 typedef struct fs fs_t;
 typedef struct volume volume_t;
@@ -50,6 +51,7 @@ typedef struct volume
     list_entry_t entry;
     char label[MAX_NAME];
     const volume_ops_t* ops;
+    sysdir_t* dir;
     atomic_uint64 ref;
 } volume_t;
 

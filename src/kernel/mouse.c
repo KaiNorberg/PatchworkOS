@@ -67,7 +67,7 @@ mouse_t* mouse_new(const char* name)
 
 void mouse_free(mouse_t* mouse)
 {
-    sysfs_hide(mouse->resource);
+    resource_free(mouse->resource);
 }
 
 void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, const point_t* delta)

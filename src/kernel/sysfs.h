@@ -68,12 +68,16 @@ typedef struct sysdir
 
 void sysfs_init(void);
 
-sysdir_t* sysfs_mkdir(const char* path, const char* dirname, sysdir_on_free_t onFree, void* private);
+// The vfs exposes its volumes in the sysfs, however this creates a circular dependency so we first call sysfs_init() then wait to mount sysfs untill after vfs_init().
+void sysfs_mount_to_vfs(void);
 
-uint64_t sysfs_create(sysdir_t* dir, const char* filename, const resource_ops_t* ops, void* private);
-
-void sysfs_rmdir(sysdir_t* dir);
-
+// Used to create resources without needing to create a sysdir
 resource_t* sysfs_expose(const char* path, const char* filename, const resource_ops_t* ops, void* private);
 
-void sysfs_hide(resource_t* resource);
+uint64_t resource_new(sysdir_t* dir, const char* filename, const resource_ops_t* ops, void* private);
+
+void resource_free(resource_t* resource);
+
+sysdir_t* sysdir_new(const char* path, const char* dirname, sysdir_on_free_t onFree, void* private);
+
+void sysdir_free(sysdir_t* dir);

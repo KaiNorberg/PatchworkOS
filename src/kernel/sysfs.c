@@ -195,9 +195,12 @@ void sysfs_init(void)
 
     lock_init(&lock);
 
-    ASSERT_PANIC(vfs_mount("sys", &sysfs) != ERR);
-
     printf("sysfs: init");
+}
+
+void sysfs_mount_to_vfs(void)
+{
+    ASSERT_PANIC(vfs_mount("sys", &sysfs) != ERR);
 }
 
 static node_t* sysfs_traverse_and_allocate(const char* path)
@@ -244,70 +247,6 @@ static node_t* sysfs_traverse_and_allocate(const char* path)
     return parent;
 }
 
-sysdir_t* sysfs_mkdir(const char* path, const char* dirname, sysdir_on_free_t onFree, void* private)
-{
-    LOCK_DEFER(&lock);
-
-    node_t* parent = sysfs_traverse_and_allocate(path);
-    if (parent == NULL)
-    {
-        return NULL;
-    }
-
-    sysdir_t* dir = malloc(sizeof(sysdir_t));
-    if (dir == NULL)
-    {
-        return NULL;
-    }
-    node_init(&dir->node, dirname, SYSFS_DIR);
-    dir->private = private;
-    dir->onFree = onFree;
-    atomic_init(&dir->ref, 1);
-    node_push(parent, &dir->node);
-
-    return dir;
-}
-
-uint64_t sysfs_create(sysdir_t* dir, const char* filename, const resource_ops_t* ops, void* private)
-{
-    LOCK_DEFER(&lock);
-
-    resource_t* resource = malloc(sizeof(resource_t));
-    if (resource == NULL)
-    {
-        return ERR;
-    }
-    node_init(&resource->node, filename, SYSFS_RESOURCE);
-    resource->private = private;
-    resource->ops = ops;
-    atomic_init(&resource->ref, 1);
-    atomic_init(&resource->hidden, false);
-    resource->dir = sysdir_ref(dir);
-
-    node_push(&dir->node, &resource->node); // Reference
-    return 0;
-}
-
-void sysfs_rmdir(sysdir_t* dir)
-{
-    LOCK_DEFER(&lock);
-
-    node_t* node;
-    node_t* temp;
-    LIST_FOR_EACH_SAFE(node, temp, &dir->node.children, entry)
-    {
-        ASSERT_PANIC(node->type == SYSFS_RESOURCE);
-        resource_t* resource = NODE_CONTAINER(node, resource_t, node);
-
-        atomic_store(&resource->hidden, true);
-        node_remove(&resource->node);
-        resource_deref(resource);
-    }
-
-    node_remove(&dir->node);
-    sysdir_deref(dir);
-}
-
 resource_t* sysfs_expose(const char* path, const char* filename, const resource_ops_t* ops, void* private)
 {
     LOCK_DEFER(&lock);
@@ -334,7 +273,71 @@ resource_t* sysfs_expose(const char* path, const char* filename, const resource_
     return resource;                    // Second reference
 }
 
-void sysfs_hide(resource_t* resource)
+sysdir_t* sysdir_new(const char* path, const char* dirname, sysdir_on_free_t onFree, void* private)
+{
+    LOCK_DEFER(&lock);
+
+    node_t* parent = sysfs_traverse_and_allocate(path);
+    if (parent == NULL)
+    {
+        return NULL;
+    }
+
+    sysdir_t* dir = malloc(sizeof(sysdir_t));
+    if (dir == NULL)
+    {
+        return NULL;
+    }
+    node_init(&dir->node, dirname, SYSFS_DIR);
+    dir->private = private;
+    dir->onFree = onFree;
+    atomic_init(&dir->ref, 1);
+    node_push(parent, &dir->node);
+
+    return dir;
+}
+
+void sysdir_free(sysdir_t* dir)
+{
+    LOCK_DEFER(&lock);
+
+    node_t* node;
+    node_t* temp;
+    LIST_FOR_EACH_SAFE(node, temp, &dir->node.children, entry)
+    {
+        ASSERT_PANIC(node->type == SYSFS_RESOURCE);
+        resource_t* resource = NODE_CONTAINER(node, resource_t, node);
+
+        atomic_store(&resource->hidden, true);
+        node_remove(&resource->node);
+        resource_deref(resource);
+    }
+
+    node_remove(&dir->node);
+    sysdir_deref(dir);
+}
+
+uint64_t resource_new(sysdir_t* dir, const char* filename, const resource_ops_t* ops, void* private)
+{
+    LOCK_DEFER(&lock);
+
+    resource_t* resource = malloc(sizeof(resource_t));
+    if (resource == NULL)
+    {
+        return ERR;
+    }
+    node_init(&resource->node, filename, SYSFS_RESOURCE);
+    resource->private = private;
+    resource->ops = ops;
+    atomic_init(&resource->ref, 1);
+    atomic_init(&resource->hidden, false);
+    resource->dir = sysdir_ref(dir);
+
+    node_push(&dir->node, &resource->node); // Reference
+    return 0;
+}
+
+void resource_free(resource_t* resource)
 {
     LOCK_DEFER(&lock);
 

@@ -63,8 +63,9 @@ void kernel_init(boot_info_t* bootInfo)
 
     _StdInit();
 
-    vfs_init();
     sysfs_init();
+    vfs_init();
+    sysfs_mount_to_vfs();
     ramfs_init(&bootInfo->ramDisk);
 
     log_expose();
@@ -93,7 +94,6 @@ void kernel_init(boot_info_t* bootInfo)
     pipe_init();
     dwm_init(&bootInfo->gopBuffer);
 
-    asm volatile("sti");
     kernel_free_loader_data(&bootInfo->memoryMap);
 
 #ifdef TESTING
@@ -102,4 +102,6 @@ void kernel_init(boot_info_t* bootInfo)
 
     dwm_start();
     log_disable_screen();
+
+    asm volatile("sti");
 }
