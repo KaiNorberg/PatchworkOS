@@ -46,7 +46,9 @@ void gop_buffer_init(gop_buffer_t* buffer)
         }
     }
 
+#if !(GOP_USE_DEFAULT_RES)
     gop_select_mode(gop, GOP_WIDTH, GOP_HEIGHT);
+#endif
     buffer->base = (uint32_t*)gop->Mode->FrameBufferBase;
     buffer->size = gop->Mode->FrameBufferSize;
     buffer->width = gop->Mode->Info->HorizontalResolution;

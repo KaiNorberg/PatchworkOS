@@ -35,7 +35,7 @@ void input_set(input_t* input, const char* str)
     uint64_t len = strlen(str);
     strcpy(input->buffer, str);
     input->length = len;
-    input->index = 0;
+    input->index = len;
 }
 
 void input_backspace(input_t* input)
@@ -73,4 +73,14 @@ uint64_t input_move(input_t* input, int64_t offset)
     }
 
     return 0;
+}
+
+void input_save(input_t* input)
+{
+    strcpy(input->savedBuffer, input->buffer);
+}
+
+void input_restore(input_t* input)
+{
+    input_set(input, input->savedBuffer);
 }

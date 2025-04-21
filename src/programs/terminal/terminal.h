@@ -1,5 +1,6 @@
 #pragma once
 
+#include "history.h"
 #include "input.h"
 
 #include <sys/win.h>
@@ -19,6 +20,7 @@ typedef struct
     fd_t stdin[2];
     fd_t stdout[2];
     input_t input;
+    history_t history;
     fd_t shellCtl;
 } terminal_t;
 

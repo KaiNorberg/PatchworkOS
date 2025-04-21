@@ -1,4 +1,5 @@
 #include "terminal.h"
+#include "history.h"
 #include "input.h"
 #include "sys/io.h"
 #include "sys/kbd.h"
@@ -166,6 +167,35 @@ static void terminal_handle_input(terminal_t* term, keycode_t key, kbd_mods_t mo
 
     switch (key)
     {
+    case KEY_UP:
+    {
+        if (term->history.index == term->history.count)
+        {
+            input_save(&term->input);
+        }
+
+        const char* prev = history_previous(&term->history);
+        if (prev != NULL)
+        {
+            input_set(&term->input, prev);
+            terminal_redraw_input(term, prevLength);
+        }
+    }
+    break;
+    case KEY_DOWN:
+    {
+        const char* next = history_next(&term->history);
+        if (next != NULL)
+        {
+            input_set(&term->input, next);
+        }
+        else
+        {
+            input_restore(&term->input);
+        }
+        terminal_redraw_input(term, prevLength);
+    }
+    break;
     case KEY_LEFT:
     {
         if (input_move(&term->input, -1) != ERR)
@@ -189,6 +219,7 @@ static void terminal_handle_input(terminal_t* term, keycode_t key, kbd_mods_t mo
         term->cursorVisible = false;
         terminal_cursor_draw(term);
 
+        history_push(&term->history, term->input.buffer);
         input_set(&term->input, "");
         terminal_write(term, "\n");
     }
@@ -269,6 +300,7 @@ void terminal_init(terminal_t* term)
     term->cursorPos = (point_t){0};
     term->cursorVisible = false;
     input_init(&term->input);
+    history_init(&term->history);
 
     if (open2("sys:/pipe/new", term->stdin) == ERR || open2("sys:/pipe/new", term->stdout) == ERR)
     {
@@ -308,6 +340,7 @@ void terminal_init(terminal_t* term)
 void terminal_deinit(terminal_t* term)
 {
     input_deinit(&term->input);
+    history_deinit(&term->history);
 
     writef(term->shellCtl, "kill");
     close(term->shellCtl);

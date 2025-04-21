@@ -7,6 +7,7 @@ typedef struct
     char buffer[MAX_PATH];
     uint64_t length;
     uint64_t index;
+    char savedBuffer[MAX_PATH];
 } input_t;
 
 void input_init(input_t* input);
@@ -20,3 +21,7 @@ void input_set(input_t* input, const char* str);
 void input_backspace(input_t* input);
 
 uint64_t input_move(input_t* input, int64_t offset);
+
+void input_save(input_t* input);
+
+void input_restore(input_t* input);

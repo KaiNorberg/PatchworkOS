@@ -3,11 +3,11 @@
 #include <string.h>
 #include <stdint.h>
 
-#define HISTORY_MAX_ENTRY 124
+#define HISTORY_MAX_ENTRY 32
 
 typedef struct
 {
-    char* entires[HISTORY_MAX_ENTRY];
+    char* entries[HISTORY_MAX_ENTRY];
     uint64_t count;
     uint64_t index;
 } history_t;
