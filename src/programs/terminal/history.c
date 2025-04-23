@@ -1,7 +1,7 @@
 #include "history.h"
 
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 void history_init(history_t* history)
 {
@@ -11,7 +11,8 @@ void history_init(history_t* history)
 
 void history_deinit(history_t* history)
 {
-    for (uint64_t i = 0; i < history->count; i++) {
+    for (uint64_t i = 0; i < history->count; i++)
+    {
         free(history->entries[i]);
     }
 }

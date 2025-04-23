@@ -31,10 +31,10 @@ typedef struct
     };
 
 #define CURSOR_POS_X_OUT_OF_BOUNDS(cursorPosX, font) \
-((cursorPosX) * (font)->width > TERMINAL_WIDTH - winTheme.edgeWidth * 2 - winTheme.padding * 2)
+    ((cursorPosX) * (font)->width > TERMINAL_WIDTH - winTheme.edgeWidth * 2 - winTheme.padding * 2)
 
 #define CURSOR_POS_Y_OUT_OF_BOUNDS(cursorPosY, font) \
-((cursorPosY) * (font)->height > TERMINAL_HEIGHT - winTheme.edgeWidth * 2 - winTheme.padding * 2)
+    ((cursorPosY) * (font)->height > TERMINAL_HEIGHT - winTheme.edgeWidth * 2 - winTheme.padding * 2)
 
 void terminal_init(terminal_t* term);
 

@@ -58,7 +58,7 @@ mouse_t* mouse_new(const char* name)
 {
     mouse_t* mouse = malloc(sizeof(mouse_t));
     mouse->writeIndex = 0;
-    mouse->resource = sysfs_expose("/mouse", name, &resOps, mouse);
+    mouse->resource = resource_new("/mouse", name, &resOps, mouse);
     wait_queue_init(&mouse->waitQueue);
     lock_init(&mouse->lock);
 

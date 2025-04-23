@@ -4,9 +4,12 @@
 #include <sys/node.h>
 
 #include "defs.h"
+#include "sys/list.h"
 #include "vfs.h"
 
 // Avoid code duplication by using the standard functions when possible
+
+// TODO: Implement namespace system
 
 #define SYSFS_STANDARD_RESOURCE_OPEN(name, fileOps) \
     static file_t* name(volume_t* volume, resource_t* resource) \
@@ -35,7 +38,7 @@ typedef struct sysdir sysdir_t;
 
 typedef file_t* (*resource_open_t)(volume_t*, resource_t*);
 typedef uint64_t (*resource_open2_t)(volume_t*, resource_t*, file_t* [2]);
-typedef void (*resource_on_cleanup_t)(resource_t*, file_t* file);
+typedef void (*resource_cleanup_t)(resource_t*, file_t* file);
 typedef void (*resource_on_free_t)(resource_t*);
 
 typedef void (*sysdir_on_free_t)(sysdir_t*);
@@ -44,7 +47,7 @@ typedef struct resource_ops
 {
     resource_open_t open;
     resource_open2_t open2;
-    resource_on_cleanup_t onCleanup;
+    resource_cleanup_t cleanup;
     resource_on_free_t onFree;
 } resource_ops_t;
 
@@ -68,16 +71,16 @@ typedef struct sysdir
 
 void sysfs_init(void);
 
-// The vfs exposes its volumes in the sysfs, however this creates a circular dependency so we first call sysfs_init() then wait to mount sysfs untill after vfs_init().
+// The vfs exposes its volumes in the sysfs, however this creates a circular dependency so we first call sysfs_init() then wait to
+// mount sysfs untill after vfs_init().
 void sysfs_mount_to_vfs(void);
-
-// Used to create resources without needing to create a sysdir
-resource_t* sysfs_expose(const char* path, const char* filename, const resource_ops_t* ops, void* private);
-
-uint64_t resource_new(sysdir_t* dir, const char* filename, const resource_ops_t* ops, void* private);
-
-void resource_free(resource_t* resource);
 
 sysdir_t* sysdir_new(const char* path, const char* dirname, sysdir_on_free_t onFree, void* private);
 
 void sysdir_free(sysdir_t* dir);
+
+uint64_t sysdir_add(sysdir_t* dir, const char* filename, const resource_ops_t* ops, void* private);
+
+resource_t* resource_new(const char* path, const char* filename, const resource_ops_t* ops, void* private);
+
+void resource_free(resource_t* resource);

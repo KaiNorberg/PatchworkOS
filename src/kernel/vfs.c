@@ -1,6 +1,7 @@
 #include "vfs.h"
 
 #include "lock.h"
+#include "rwlock.h"
 #include "log.h"
 #include "path.h"
 #include "sched.h"
@@ -16,7 +17,7 @@
 #include <string.h>
 
 static list_t volumes;
-static lock_t volumesLock;
+static rwlock_t volumesLock;
 
 static void volume_on_free(sysdir_t* dir)
 {
@@ -48,7 +49,7 @@ static void volume_deref(volume_t* volume)
 
 static volume_t* volume_get(const char* label)
 {
-    LOCK_DEFER(&volumesLock);
+    RWLOCK_READ_DEFER(&volumesLock);
 
     volume_t* volume;
     LIST_FOR_EACH(volume, &volumes, entry)
@@ -114,7 +115,7 @@ void vfs_init(void)
     printf("vfs: init");
 
     list_init(&volumes);
-    lock_init(&volumesLock);
+    rwlock_init(&volumesLock);
 }
 
 uint64_t vfs_attach_simple(const char* label, const volume_ops_t* ops)
@@ -123,7 +124,7 @@ uint64_t vfs_attach_simple(const char* label, const volume_ops_t* ops)
     {
         return ERROR(EINVAL);
     }
-    LOCK_DEFER(&volumesLock);
+    RWLOCK_WRITE_DEFER(&volumesLock);
 
     volume_t* volume;
     LIST_FOR_EACH(volume, &volumes, entry)
@@ -155,7 +156,7 @@ uint64_t vfs_mount(const char* label, fs_t* fs)
 
 uint64_t vfs_unmount(const char* label)
 {
-    LOCK_DEFER(&volumesLock);
+    RWLOCK_WRITE_DEFER(&volumesLock);
 
     volume_t* volume;
     bool found = false;

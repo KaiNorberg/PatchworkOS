@@ -46,9 +46,7 @@ void input_backspace(input_t* input)
     }
 
     input->index--;
-    memmove(input->buffer + input->index,
-            input->buffer + input->index + 1,
-            input->length - input->index);
+    memmove(input->buffer + input->index, input->buffer + input->index + 1, input->length - input->index);
     input->length--;
 }
 

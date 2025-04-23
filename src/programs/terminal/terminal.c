@@ -5,15 +5,15 @@
 #include "sys/kbd.h"
 
 #include <errno.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/win.h>
 
 static void terminal_cursor_draw(terminal_t* term)
 {
     const gfx_psf_t* font = win_font(term->win);
 
-    char cursor  = ' ';
+    char cursor = ' ';
     point_t cursorPos = term->cursorPos;
     if (term->input.length != 0)
     {

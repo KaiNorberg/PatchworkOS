@@ -5,6 +5,6 @@
 
 typedef uint64_t fd_t;
 
-#define FD_NONE ((fd_t) - 1ULL)
+#define FD_NONE ((fd_t)UINT64_MAX)
 
 #endif

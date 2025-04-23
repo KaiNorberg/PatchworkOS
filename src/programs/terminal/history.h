@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string.h>
 #include <stdint.h>
+#include <string.h>
 
 #define HISTORY_MAX_ENTRY 32
 

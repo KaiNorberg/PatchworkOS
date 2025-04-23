@@ -208,7 +208,7 @@ SYSFS_STANDARD_RESOURCE_OPS(resOps, &fileOps);
 
 void log_expose(void)
 {
-    sysfs_expose("/", "klog", &resOps, NULL);
+    resource_new("/", "klog", &resOps, NULL);
 }
 
 void log_enable_screen(gop_buffer_t* gopBuffer)

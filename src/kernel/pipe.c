@@ -172,7 +172,7 @@ static uint64_t pipe_open2(volume_t* volume, resource_t* resource, file_t* files
     return 0;
 }
 
-static void pipe_on_cleanup(resource_t* resource, file_t* file)
+static void pipe_cleanup(resource_t* resource, file_t* file)
 {
     pipe_private_t* private = file->private;
     lock_acquire(&private->lock);
@@ -198,13 +198,13 @@ static void pipe_on_cleanup(resource_t* resource, file_t* file)
     lock_release(&private->lock);
 }
 
-static resource_ops_t sysfileOps = {
+static resource_ops_t resourceOps = {
     .open = pipe_open,
     .open2 = pipe_open2,
-    .onCleanup = pipe_on_cleanup,
+    .cleanup = pipe_cleanup,
 };
 
 void pipe_init(void)
 {
-    sysfs_expose("/pipe", "new", &sysfileOps, NULL);
+    resource_new("/pipe", "new", &resourceOps, NULL);
 }

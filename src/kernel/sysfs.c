@@ -1,11 +1,13 @@
 #include "sysfs.h"
 
-#include "lock.h"
+#include "rwlock.h"
 #include "log.h"
 #include "path.h"
 #include "sched.h"
+#include "sys/node.h"
 #include "vfs.h"
 
+#include <errno.h>
 #include <stdarg.h>
 #include <stdatomic.h>
 #include <stdio.h>
@@ -14,7 +16,7 @@
 #include <sys/list.h>
 
 static sysdir_t root;
-static lock_t lock;
+static rwlock_t lock;
 
 static sysdir_t* sysdir_ref(sysdir_t* dir)
 {
@@ -35,6 +37,12 @@ static void sysdir_deref(sysdir_t* dir)
     }
 }
 
+static resource_t* resource_ref(resource_t* resource)
+{
+    atomic_fetch_add(&resource->ref, 1);
+    return resource;
+}
+
 static void resource_deref(resource_t* resource)
 {
     if (atomic_fetch_sub(&resource->ref, 1) <= 1)
@@ -52,8 +60,7 @@ static void resource_deref(resource_t* resource)
 
 static file_t* sysfs_open(volume_t* volume, const path_t* path)
 {
-    LOCK_DEFER(&lock);
-
+    rwlock_read_acquire(&lock);
     node_t* node = path_traverse_node(path, &root.node);
     if (node == NULL)
     {
@@ -63,28 +70,29 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
     {
         return ERRPTR(EISDIR);
     }
-    resource_t* resource = NODE_CONTAINER(node, resource_t, node);
+    resource_t* resource = resource_ref(NODE_CONTAINER(node, resource_t, node));
+    rwlock_read_release(&lock);
 
     if (resource->ops->open == NULL)
     {
+        resource_deref(resource);
         return ERRPTR(ENOOP);
     }
 
     file_t* file = resource->ops->open(volume, resource);
     if (file == NULL)
     {
+        resource_deref(resource);
         return NULL;
     }
 
     file->resource = resource;
-    atomic_fetch_add(&resource->ref, 1);
     return file;
 }
 
 static uint64_t sysfs_open2(volume_t* volume, const path_t* path, file_t* files[2])
 {
-    LOCK_DEFER(&lock);
-
+    rwlock_read_acquire(&lock);
     node_t* node = path_traverse_node(path, &root.node);
     if (node == NULL)
     {
@@ -94,27 +102,29 @@ static uint64_t sysfs_open2(volume_t* volume, const path_t* path, file_t* files[
     {
         return ERROR(EISDIR);
     }
-    resource_t* resource = NODE_CONTAINER(node, resource_t, node);
+    resource_t* resource = resource_ref(NODE_CONTAINER(node, resource_t, node)); // First ref
+    rwlock_read_release(&lock);
 
     if (resource->ops->open2 == NULL)
     {
+        resource_deref(resource);
         return ERROR(ENOOP);
     }
 
     if (resource->ops->open2(volume, resource, files) == ERR)
     {
+        resource_deref(resource);
         return ERR;
     }
 
-    files[0]->resource = resource;
-    files[1]->resource = resource;
-    atomic_fetch_add(&resource->ref, 2);
+    files[0]->resource = resource; // First ref
+    files[1]->resource = resource_ref(resource);
     return 0;
 }
 
 static uint64_t sysfs_stat(volume_t* volume, const path_t* path, stat_t* stat)
 {
-    LOCK_DEFER(&lock);
+    RWLOCK_READ_DEFER(&lock);
 
     node_t* node = path_traverse_node(path, &root.node);
     if (node == NULL)
@@ -130,7 +140,7 @@ static uint64_t sysfs_stat(volume_t* volume, const path_t* path, stat_t* stat)
 
 static uint64_t sysfs_listdir(volume_t* volume, const path_t* path, dir_entry_t* entries, uint64_t amount)
 {
-    LOCK_DEFER(&lock);
+    RWLOCK_READ_DEFER(&lock);
 
     node_t* node = path_traverse_node(path, &root.node);
     if (node == NULL)
@@ -160,9 +170,9 @@ static uint64_t sysfs_listdir(volume_t* volume, const path_t* path, dir_entry_t*
 
 static void sysfs_cleanup(volume_t* volume, file_t* file)
 {
-    if (file->resource->ops->onCleanup != NULL)
+    if (file->resource->ops->cleanup != NULL)
     {
-        file->resource->ops->onCleanup(file->resource, file);
+        file->resource->ops->cleanup(file->resource, file);
     }
 
     resource_deref(file->resource);
@@ -193,7 +203,7 @@ void sysfs_init(void)
     root.onFree = NULL;
     atomic_init(&root.ref, 1);
 
-    lock_init(&lock);
+    rwlock_init(&lock);
 
     printf("sysfs: init");
 }
@@ -247,40 +257,19 @@ static node_t* sysfs_traverse_and_allocate(const char* path)
     return parent;
 }
 
-resource_t* sysfs_expose(const char* path, const char* filename, const resource_ops_t* ops, void* private)
-{
-    LOCK_DEFER(&lock);
-
-    node_t* parent = sysfs_traverse_and_allocate(path);
-    if (parent == NULL)
-    {
-        return NULL;
-    }
-
-    resource_t* resource = malloc(sizeof(resource_t));
-    if (resource == NULL)
-    {
-        return NULL;
-    }
-    node_init(&resource->node, filename, SYSFS_RESOURCE);
-    resource->private = private;
-    resource->ops = ops;
-    atomic_init(&resource->ref, 2);
-    atomic_init(&resource->hidden, false);
-    resource->dir = sysdir_ref(NODE_CONTAINER(parent, sysdir_t, node));
-
-    node_push(parent, &resource->node); // First reference
-    return resource;                    // Second reference
-}
-
 sysdir_t* sysdir_new(const char* path, const char* dirname, sysdir_on_free_t onFree, void* private)
 {
-    LOCK_DEFER(&lock);
+    RWLOCK_WRITE_DEFER(&lock);
 
     node_t* parent = sysfs_traverse_and_allocate(path);
     if (parent == NULL)
     {
         return NULL;
+    }
+
+    if (node_find(parent, dirname) != NULL)
+    {
+        return ERRPTR(EEXIST);
     }
 
     sysdir_t* dir = malloc(sizeof(sysdir_t));
@@ -299,7 +288,7 @@ sysdir_t* sysdir_new(const char* path, const char* dirname, sysdir_on_free_t onF
 
 void sysdir_free(sysdir_t* dir)
 {
-    LOCK_DEFER(&lock);
+    RWLOCK_WRITE_DEFER(&lock);
 
     node_t* node;
     node_t* temp;
@@ -317,9 +306,14 @@ void sysdir_free(sysdir_t* dir)
     sysdir_deref(dir);
 }
 
-uint64_t resource_new(sysdir_t* dir, const char* filename, const resource_ops_t* ops, void* private)
+uint64_t sysdir_add(sysdir_t* dir, const char* filename, const resource_ops_t* ops, void* private)
 {
-    LOCK_DEFER(&lock);
+    RWLOCK_WRITE_DEFER(&lock);
+
+    if (node_find(&dir->node, filename) != NULL)
+    {
+        return ERROR(EEXIST);
+    }
 
     resource_t* resource = malloc(sizeof(resource_t));
     if (resource == NULL)
@@ -337,9 +331,40 @@ uint64_t resource_new(sysdir_t* dir, const char* filename, const resource_ops_t*
     return 0;
 }
 
+resource_t* resource_new(const char* path, const char* filename, const resource_ops_t* ops, void* private)
+{
+    RWLOCK_WRITE_DEFER(&lock);
+
+    node_t* parent = sysfs_traverse_and_allocate(path);
+    if (parent == NULL)
+    {
+        return NULL;
+    }
+
+    if (node_find(parent, filename) != NULL)
+    {
+        return ERRPTR(EEXIST);
+    }
+
+    resource_t* resource = malloc(sizeof(resource_t));
+    if (resource == NULL)
+    {
+        return NULL;
+    }
+    node_init(&resource->node, filename, SYSFS_RESOURCE);
+    resource->private = private;
+    resource->ops = ops;
+    atomic_init(&resource->ref, 2);
+    atomic_init(&resource->hidden, false);
+    resource->dir = sysdir_ref(NODE_CONTAINER(parent, sysdir_t, node));
+
+    node_push(parent, &resource->node); // First reference
+    return resource;                    // Second reference
+}
+
 void resource_free(resource_t* resource)
 {
-    LOCK_DEFER(&lock);
+    RWLOCK_WRITE_DEFER(&lock);
 
     atomic_store(&resource->hidden, true);
     node_remove(&resource->node);

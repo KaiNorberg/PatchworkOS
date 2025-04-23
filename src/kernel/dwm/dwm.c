@@ -3,6 +3,7 @@
 #include "lock.h"
 #include "log.h"
 #include "msg_queue.h"
+#include "rwlock.h"
 #include "sched.h"
 #include "sysfs.h"
 #include "systime.h"
@@ -35,7 +36,7 @@ static window_t* wall;
 static file_t* mouse;
 static file_t* keyboard;
 
-static lock_t lock;
+static rwlock_t lock;
 
 static file_t* redrawNotifier;
 static atomic_bool redrawNeeded;
@@ -274,7 +275,7 @@ static void dwm_handle_mouse_message(const mouse_event_t* event)
 {
     static mouse_buttons_t oldButtons = MOUSE_NONE;
 
-    LOCK_DEFER(&lock);
+    RWLOCK_READ_DEFER(&lock);
     LOCK_DEFER(&cursor->lock);
 
     mouse_buttons_t pressed = (event->buttons & ~oldButtons);
@@ -388,7 +389,7 @@ static void dwm_loop(void)
 {
     while (1)
     {
-        lock_acquire(&lock);
+        rwlock_read_acquire(&lock);
         if (wall != NULL)
         {
             dwm_draw_wall();
@@ -399,7 +400,7 @@ static void dwm_loop(void)
             }
             dwm_swap();
         }
-        lock_release(&lock);
+        rwlock_read_release(&lock);
 
         dwm_poll();
     }
@@ -407,7 +408,7 @@ static void dwm_loop(void)
 
 static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
 {
-    LOCK_DEFER(&lock);
+    RWLOCK_WRITE_DEFER(&lock);
 
     switch (request)
     {
@@ -502,9 +503,9 @@ static file_ops_t fileOps = {
 
 SYSFS_STANDARD_RESOURCE_OPEN(dwm_open, &fileOps);
 
-static void dwm_on_cleanup(resource_t* resource, file_t* file)
+static void dwm_cleanup(resource_t* resource, file_t* file)
 {
-    LOCK_DEFER(&lock);
+    RWLOCK_WRITE_DEFER(&lock);
 
     window_t* window = file->private;
     if (window == NULL)
@@ -564,7 +565,7 @@ static void dwm_on_cleanup(resource_t* resource, file_t* file)
 
 static resource_ops_t resOps = {
     .open = dwm_open,
-    .onCleanup = dwm_on_cleanup,
+    .cleanup = dwm_cleanup,
 };
 
 static wait_queue_t* dwm_redraw_notifier_status(file_t* file, poll_file_t* pollFile)
@@ -600,7 +601,7 @@ void dwm_init(gop_buffer_t* gopBuffer)
     cursor = NULL;
     wall = NULL;
 
-    lock_init(&lock);
+    rwlock_init(&lock);
 
     // TODO: Add system to choose input devices
     mouse = vfs_open("sys:/mouse/ps2");
@@ -611,7 +612,7 @@ void dwm_init(gop_buffer_t* gopBuffer)
     atomic_init(&redrawNeeded, true);
     wait_queue_init(&redrawWaitQueue);
 
-    sysfs_expose("/", "dwm", &resOps, NULL);
+    resource_new("/", "dwm", &resOps, NULL);
 }
 
 void dwm_start(void)
@@ -619,7 +620,8 @@ void dwm_start(void)
     rect_t rect = RECT_INIT_GFX(&backbuffer);
     gfx_swap(&backbuffer, &frontbuffer, &rect);
 
-    thread_t* thread = thread_new_inherit(sched_thread(), dwm_loop, PRIORITY_MAX - 1);
+    thread_t* thread = thread_new(sched_process(), dwm_loop, PRIORITY_MAX - 1);
+    ASSERT_PANIC(thread != NULL);
     sched_push(thread);
     printf("dwm: start pid=%d tid=%d", thread->process->id, thread->id);
 }
@@ -632,7 +634,7 @@ void dwm_redraw(void)
 
 void dwm_update_client_rect(void)
 {
-    LOCK_DEFER(&lock);
+    RWLOCK_WRITE_DEFER(&lock);
 
     dwm_update_client_rect_unlocked();
 }

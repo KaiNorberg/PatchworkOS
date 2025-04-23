@@ -59,7 +59,7 @@ kbd_t* kbd_new(const char* name)
     kbd_t* kbd = malloc(sizeof(kbd_t));
     kbd->writeIndex = 0;
     kbd->mods = KBD_MOD_NONE;
-    kbd->resource = sysfs_expose("/kbd", name, &resOps, kbd);
+    kbd->resource = resource_new("/kbd", name, &resOps, kbd);
     wait_queue_init(&kbd->waitQueue);
     lock_init(&kbd->lock);
 

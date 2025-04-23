@@ -3,6 +3,7 @@
 **Keep in mind that PatchworkOS is currently in a very early stage of development.**
 
 Patchwork is a 64 bit monolithic hobbyist OS built from scratch in C for the x86_64 architecture, it is intended as an easy-to-modify toy-like Unix-inspired OS (not Unix-like) it takes many ideas from Unix, Plan9, DOS and other places while simplifying them and removing some of the fat. Made entirely for fun.
+
 ## Screenshots
 
 <img src="meta/screenshots/screenshot1.png" style="image-rendering: pixelated;">

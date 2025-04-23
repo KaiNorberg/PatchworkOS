@@ -7,8 +7,8 @@
 
 typedef struct
 {
-    atomic_uint16 nextTicket;
-    atomic_uint16 nowServing;
+    atomic_uint_fast16_t nextTicket;
+    atomic_uint_fast16_t nowServing;
 } lock_t;
 
 #define LOCK_DEFER(lock) \
@@ -26,8 +26,8 @@ static inline void lock_acquire(lock_t* lock)
     cli_push();
 
     // Overflow does not matter
-    uint32_t ticket = atomic_fetch_add(&lock->nextTicket, 1);
-    while (atomic_load(&lock->nowServing) != ticket)
+    uint_fast16_t ticket = atomic_fetch_add_explicit(&lock->nextTicket, 1, memory_order_relaxed);
+    while (atomic_load_explicit(&lock->nowServing, memory_order_acquire) != ticket)
     {
         asm volatile("pause");
     }
@@ -35,7 +35,7 @@ static inline void lock_acquire(lock_t* lock)
 
 static inline void lock_release(lock_t* lock)
 {
-    atomic_fetch_add(&lock->nowServing, 1);
+    atomic_fetch_add_explicit(&lock->nowServing, 1, memory_order_release);
 
     cli_pop();
 }

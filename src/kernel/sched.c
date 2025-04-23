@@ -152,7 +152,10 @@ static thread_t* sched_ctx_find_any(sched_ctx_t* ctx)
 
 static void sched_spawn_boot_thread(void)
 {
-    thread_t* thread = thread_new(NULL, NULL, PRIORITY_MAX, NULL);
+    process_t* process = process_new(NULL, NULL);
+    ASSERT_PANIC_MSG(process != NULL, "failed to create boot process");
+
+    thread_t* thread = thread_new(process, NULL, PRIORITY_MAX);
     ASSERT_PANIC_MSG(thread != NULL, "failed to create boot thread");
     thread->timeEnd = UINT64_MAX;
 

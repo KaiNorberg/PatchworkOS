@@ -164,9 +164,16 @@ thread_t* loader_spawn(const char** argv, priority_t priority)
     vfs_ctx_t* ctx = &sched_thread()->process->vfsCtx;
     LOCK_DEFER(&ctx->lock);
 
-    thread_t* thread = thread_new(argv, loader_process_entry, priority, &ctx->cwd);
+    process_t* process = process_new(argv, &ctx->cwd);
+    if (process == NULL)
+    {
+        return NULL;
+    }
+
+    thread_t* thread = thread_new(process, loader_process_entry, priority);
     if (thread == NULL)
     {
+        process_free(process);
         return NULL;
     }
 
@@ -176,7 +183,7 @@ thread_t* loader_spawn(const char** argv, priority_t priority)
 
 thread_t* loader_thread_create(thread_t* thread, priority_t priority, void* entry, void* arg)
 {
-    thread_t* child = thread_new_inherit(thread, entry, priority);
+    thread_t* child = thread_new(thread->process, entry, priority);
     if (child == NULL)
     {
         return NULL;
