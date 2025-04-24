@@ -5,6 +5,7 @@
 #include "log.h"
 #include "rwlock.h"
 #include "actions.h"
+#include "vfs.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,18 +36,9 @@ static uint64_t process_cmdline_read(file_t* file, void* buffer, uint64_t count)
         return 0;
     }
     char* last = (char*)((uint64_t)process->argv.buffer + process->argv.size);
+
     uint64_t length = last - first;
-
-    uint64_t readCount = MIN(count, length - file->pos);
-    if (readCount == 0)
-    {
-        return 0;
-    }
-
-    memcpy(buffer, first + file->pos, readCount);
-
-    file->pos += readCount;
-    return readCount;
+    return BUFFER_READ(file, buffer, count, first, length);
 }
 
 static file_ops_t cmdlineFileOps = {
@@ -74,16 +66,7 @@ static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count)
     lock_release(&process->vfsCtx.lock);
 
     uint64_t cwdLen = strlen(cwd) + 1; // Include \0 char.
-    uint64_t readCount = MIN(count, cwdLen - file->pos);
-    if (readCount == 0)
-    {
-        return 0;
-    }
-
-    memcpy(buffer, cwd + file->pos, readCount);
-
-    file->pos += readCount;
-    return readCount;
+    return BUFFER_READ(file, buffer, count, cwd, cwdLen);
 }
 
 static file_ops_t cwdFileOps = {

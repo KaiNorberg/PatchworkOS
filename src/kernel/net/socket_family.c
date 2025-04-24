@@ -4,6 +4,7 @@
 #include "sched.h"
 #include "socket.h"
 #include "sysfs.h"
+#include "vfs.h"
 
 #include <stdatomic.h>
 #include <stdlib.h>
@@ -17,51 +18,12 @@ static uint64_t socket_family_new_read(file_t* file, void* buffer, uint64_t coun
     const char* id = file->private;
     uint64_t len = strlen(id);
 
-    count = (file->pos <= len) ? MIN(count, len - file->pos) : 0;
-    memcpy(buffer, id + file->pos, count);
-    file->pos += count;
-
-    return 0;
-}
-
-static uint64_t socket_family_new_seek(file_t* file, int64_t offset, seek_origin_t origin)
-{
-    char* id = file->private;
-    uint64_t len = strlen(id);
-
-    uint64_t position;
-    switch (origin)
-    {
-    case SEEK_SET:
-    {
-        position = offset;
-    }
-    break;
-    case SEEK_CUR:
-    {
-        position = file->pos + offset;
-    }
-    break;
-    case SEEK_END:
-    {
-        position = len - offset;
-    }
-    break;
-    default:
-    {
-        position = 0;
-    }
-    break;
-    }
-
-    file->pos = MIN(position, len);
-    return position;
+    return BUFFER_READ(file, buffer, count, id, len + 1); // Include null terminator
 }
 
 static file_ops_t familyNewFileOps =
 {
     .read = socket_family_new_read,
-    .seek = socket_family_new_seek,
 };
 
 static file_t* socket_family_new_open(volume_t* volume, resource_t* resource)

@@ -132,4 +132,44 @@ uint64_t vfs_flush(file_t* file, const void* buffer, uint64_t size, const rect_t
 
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout);
 
+// Helper function for implementing listdir
 void dir_entry_push(dir_entry_t* entries, uint64_t amount, uint64_t* index, uint64_t* total, dir_entry_t* entry);
+
+// Helper macros for implementing file operations dealing with simple buffers
+#define BUFFER_READ(file, buffer, count, src, size) \
+({ \
+    uint64_t readCount = (file->pos <= (size)) ? MIN((count), (size) - file->pos) : 0; \
+    memcpy((buffer), (src) + file->pos, readCount); \
+    file->pos += readCount; \
+    readCount; \
+})
+
+#define BUFFER_SEEK(file, offset, origin, size) \
+({ \
+    uint64_t position; \
+    switch (origin) \
+    { \
+    case SEEK_SET: \
+    { \
+        position = offset; \
+    } \
+    break; \
+    case SEEK_CUR: \
+    { \
+        position = file->pos + (offset); \
+    } \
+    break; \
+    case SEEK_END: \
+    { \
+        position = (size) - (offset); \
+    } \
+    break; \
+    default: \
+    { \
+        position = 0; \
+    } \
+    break; \
+    }  \
+    file->pos = MIN(position, (size)); \
+    position; \
+})

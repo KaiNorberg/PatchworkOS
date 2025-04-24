@@ -20,44 +20,14 @@ static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count)
 {
     ram_file_t* private = file->private;
 
-    count = (file->pos <= private->size) ? MIN(count, private->size - file->pos) : 0;
-    memcpy(buffer, private->data + file->pos, count);
-    file->pos += count;
-
-    return count;
+    return BUFFER_READ(file, buffer, count, private->data, private->size);
 }
 
 static uint64_t ramfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
 {
     ram_file_t* private = file->private;
 
-    uint64_t position;
-    switch (origin)
-    {
-    case SEEK_SET:
-    {
-        position = offset;
-    }
-    break;
-    case SEEK_CUR:
-    {
-        position = file->pos + offset;
-    }
-    break;
-    case SEEK_END:
-    {
-        position = private->size - offset;
-    }
-    break;
-    default:
-    {
-        position = 0;
-    }
-    break;
-    }
-
-    file->pos = MIN(position, private->size);
-    return position;
+    return BUFFER_SEEK(file, offset, origin, private->size);
 }
 
 static file_ops_t fileOps = {
