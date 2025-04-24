@@ -5,6 +5,7 @@
 #include "log.h"
 #include "rwlock.h"
 #include "actions.h"
+#include "sys/io.h"
 #include "vfs.h"
 
 #include <stdio.h>
@@ -19,11 +20,6 @@ static rwlock_t treeLock;
 
 static uint64_t process_cmdline_read(file_t* file, void* buffer, uint64_t count)
 {
-    if (count == 0)
-    {
-        return 0;
-    }
-
     process_t* process = file->resource->dir->private;
     if (process == NULL)
     {
@@ -41,19 +37,34 @@ static uint64_t process_cmdline_read(file_t* file, void* buffer, uint64_t count)
     return BUFFER_READ(file, buffer, count, first, length);
 }
 
+static uint64_t process_cmdline_seek(file_t* file, int64_t offset, seek_origin_t origin)
+{
+    process_t* process = file->resource->dir->private;
+    if (process == NULL)
+    {
+        process = sched_process();
+    }
+
+    char* first = process->argv.buffer[0];
+    if (first == NULL)
+    {
+        return 0;
+    }
+    char* last = (char*)((uint64_t)process->argv.buffer + process->argv.size);
+
+    uint64_t size = last - first;
+    return BUFFER_SEEK(file, offset, origin, size);
+}
+
 static file_ops_t cmdlineFileOps = {
     .read = process_cmdline_read,
+    .seek = process_cmdline_seek,
 };
 
 SYSFS_STANDARD_RESOURCE_OPS_DEFINE(cmdlineResOps, &cmdlineFileOps)
 
 static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count)
 {
-    if (count == 0)
-    {
-        return 0;
-    }
-
     process_t* process = file->resource->dir->private;
     if (process == NULL)
     {
@@ -65,12 +76,30 @@ static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count)
     path_to_string(&process->vfsCtx.cwd, cwd);
     lock_release(&process->vfsCtx.lock);
 
-    uint64_t cwdLen = strlen(cwd) + 1; // Include \0 char.
-    return BUFFER_READ(file, buffer, count, cwd, cwdLen);
+    uint64_t size = strlen(cwd) + 1; // Include null terminator
+    return BUFFER_READ(file, buffer, count, cwd, size);
+}
+
+static uint64_t process_cwd_seek(file_t* file, int64_t offset, seek_origin_t origin)
+{
+    process_t* process = file->resource->dir->private;
+    if (process == NULL)
+    {
+        process = sched_process();
+    }
+
+    char cwd[MAX_PATH];
+    lock_acquire(&process->vfsCtx.lock);
+    path_to_string(&process->vfsCtx.cwd, cwd);
+    lock_release(&process->vfsCtx.lock);
+
+    uint64_t size = strlen(cwd) + 1; // Include null terminator
+    return BUFFER_SEEK(file, offset, origin, size);
 }
 
 static file_ops_t cwdFileOps = {
     .read = process_cwd_read,
+    .seek = process_cwd_seek,
 };
 
 SYSFS_STANDARD_RESOURCE_OPS_DEFINE(cwdResOps, &cwdFileOps)

@@ -21,9 +21,18 @@ static uint64_t socket_family_new_read(file_t* file, void* buffer, uint64_t coun
     return BUFFER_READ(file, buffer, count, id, len + 1); // Include null terminator
 }
 
+static uint64_t socket_family_new_seek(file_t* file, int64_t offset, seek_origin_t origin)
+{
+    const char* id = file->private;
+    uint64_t len = strlen(id);
+
+    return BUFFER_SEEK(file, offset, origin, len + 1); // Include null terminator
+}
+
 static file_ops_t familyNewFileOps =
 {
     .read = socket_family_new_read,
+    .seek = socket_family_new_seek,
 };
 
 static file_t* socket_family_new_open(volume_t* volume, resource_t* resource)

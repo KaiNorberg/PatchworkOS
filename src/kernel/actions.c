@@ -5,13 +5,14 @@
 #include "pmm.h"
 
 #include <errno.h>
+#include <stdio.h>
 #include <sys/argsplit.h>
 
 uint64_t actions_dispatch(actions_t* actions, const void* buffer, uint64_t count, void* private)
 {
     if (count == 0)
     {
-        return ERROR(EREQ);
+        return 0;
     }
 
     uint8_t argBuffer[MAX_PATH];
@@ -37,7 +38,11 @@ uint64_t actions_dispatch(actions_t* actions, const void* buffer, uint64_t count
                 return ERROR(EREQ);
             }
 
-            return action->func(argc, argv, private);
+            if (action->func(argc, argv, private) == ERR)
+            {
+                return ERR;
+            }
+            return count;
         }
 
         action++;
