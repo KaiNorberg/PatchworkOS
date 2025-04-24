@@ -58,9 +58,9 @@ static void resource_deref(resource_t* resource)
     }
 }
 
-static file_t* sysfs_open(volume_t* volume, const path_t* path)
+static resource_t* sysfs_resource_get(const path_t* path)
 {
-    rwlock_read_acquire(&lock);
+    RWLOCK_READ_DEFER(&lock);
     node_t* node = path_traverse_node(path, &root.node);
     if (node == NULL)
     {
@@ -70,8 +70,16 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
     {
         return ERRPTR(EISDIR);
     }
-    resource_t* resource = resource_ref(NODE_CONTAINER(node, resource_t, node));
-    rwlock_read_release(&lock);
+    return resource_ref(NODE_CONTAINER(node, resource_t, node));
+}
+
+static file_t* sysfs_open(volume_t* volume, const path_t* path)
+{
+    resource_t* resource = sysfs_resource_get(path);
+    if (resource == NULL)
+    {
+        return NULL;
+    }
 
     if (resource->ops->open == NULL)
     {
@@ -92,18 +100,11 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
 
 static uint64_t sysfs_open2(volume_t* volume, const path_t* path, file_t* files[2])
 {
-    rwlock_read_acquire(&lock);
-    node_t* node = path_traverse_node(path, &root.node);
-    if (node == NULL)
+    resource_t* resource = sysfs_resource_get(path); // First ref
+    if (resource == NULL)
     {
-        return ERROR(EPATH);
+        return ERR;
     }
-    else if (node->type != SYSFS_RESOURCE)
-    {
-        return ERROR(EISDIR);
-    }
-    resource_t* resource = resource_ref(NODE_CONTAINER(node, resource_t, node)); // First ref
-    rwlock_read_release(&lock);
 
     if (resource->ops->open2 == NULL)
     {

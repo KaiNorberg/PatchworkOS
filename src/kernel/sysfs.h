@@ -7,11 +7,11 @@
 #include "sys/list.h"
 #include "vfs.h"
 
-// Avoid code duplication by using the standard functions when possible
+// Note: Avoid code duplication by using the standard functions when possible
 
 // TODO: Implement namespace system
 
-#define SYSFS_STANDARD_RESOURCE_OPEN(name, fileOps) \
+#define SYSFS_STANDARD_RESOURCE_OPEN_DEFINE(name, fileOps) \
     static file_t* name(volume_t* volume, resource_t* resource) \
     { \
         file_t* file = file_new(volume); \
@@ -24,8 +24,8 @@
         return file; \
     }
 
-#define SYSFS_STANDARD_RESOURCE_OPS(name, fileOps) \
-    SYSFS_STANDARD_RESOURCE_OPEN(name##_standard_open, fileOps) \
+#define SYSFS_STANDARD_RESOURCE_OPS_DEFINE(name, fileOps) \
+    SYSFS_STANDARD_RESOURCE_OPEN_DEFINE(name##_standard_open, fileOps) \
     static resource_ops_t name = { \
         .open = name##_standard_open, \
     };

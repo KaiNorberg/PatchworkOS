@@ -18,12 +18,16 @@ typedef struct process
     atomic_uint64 threadCount;
     wait_queue_t queue;
     futex_ctx_t futexCtx;
-    list_t threads;
     _Atomic(tid_t) newTid;
+    list_entry_t entry;
+    list_t children;
+    struct process* parent;
 } process_t;
 
-process_t* process_new(const char** argv, const path_t* cwd);
+process_t* process_new(process_t* parent, const char** argv);
 
 void process_free(process_t* process);
 
-void process_self_expose(void);
+bool process_is_child(process_t* process, pid_t parentId);
+
+void process_backend_init(void);

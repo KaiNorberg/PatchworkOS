@@ -501,7 +501,7 @@ static file_ops_t fileOps = {
     .ioctl = dwm_ioctl,
 };
 
-SYSFS_STANDARD_RESOURCE_OPEN(dwm_open, &fileOps);
+SYSFS_STANDARD_RESOURCE_OPEN_DEFINE(dwm_open, &fileOps);
 
 static void dwm_cleanup(resource_t* resource, file_t* file)
 {

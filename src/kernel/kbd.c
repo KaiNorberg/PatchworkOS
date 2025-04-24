@@ -41,7 +41,7 @@ static file_ops_t fileOps = {
     .poll = kbd_poll,
 };
 
-SYSFS_STANDARD_RESOURCE_OPEN(kbd_open, &fileOps);
+SYSFS_STANDARD_RESOURCE_OPEN_DEFINE(kbd_open, &fileOps);
 
 static void kbd_on_free(resource_t* resource)
 {

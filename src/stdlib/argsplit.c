@@ -13,14 +13,11 @@ typedef struct
     bool inQuote;
     bool newArg;
     bool first;
+    uint64_t processedChars;
+    uint64_t maxLen;
 } _ArgsplitState_t;
 
-#define _ARGSPLIT_CREATE(str) {str, 0, false, false, true}
-
-static bool _ArgsplitIsNewArg(_ArgsplitState_t* state)
-{
-    return state->newArg;
-}
+#define _ARGSPLIT_CREATE(str, maxLen) {str, 0, false, false, true, 0, maxLen}
 
 static bool _ArgsplitStepState(_ArgsplitState_t* state)
 {
@@ -29,6 +26,12 @@ static bool _ArgsplitStepState(_ArgsplitState_t* state)
     if (!state->first)
     {
         state->current++;
+        state->processedChars++;
+
+        if (state->maxLen != 0 && state->processedChars >= state->maxLen)
+        {
+            return false;
+        }
     }
     else
     {
@@ -49,6 +52,11 @@ static bool _ArgsplitStepState(_ArgsplitState_t* state)
             while (isspace(*state->current))
             {
                 state->current++;
+                state->processedChars++;
+                if (state->maxLen != 0 && state->processedChars >= state->maxLen)
+                {
+                    return false;
+                }
             }
         }
 
@@ -71,15 +79,21 @@ static bool _ArgsplitStepState(_ArgsplitState_t* state)
         }
 
         state->current++;
+        state->processedChars++;
+
+        if (state->maxLen != 0 && state->processedChars >= state->maxLen)
+        {
+            return false;
+        }
     }
 }
 
-static uint64_t _ArgsplitCountCharsAndArgs(const char* str, uint64_t* argc, uint64_t* totalChars)
+static uint64_t _ArgsplitCountCharsAndArgs(const char* str, uint64_t* argc, uint64_t* totalChars, uint64_t maxLen)
 {
     *argc = 0;
     *totalChars = 0;
 
-    _ArgsplitState_t state = _ARGSPLIT_CREATE(str);
+    _ArgsplitState_t state = _ARGSPLIT_CREATE(str, maxLen);
     while (true)
     {
         if (!_ArgsplitStepState(&state))
@@ -102,14 +116,14 @@ static uint64_t _ArgsplitCountCharsAndArgs(const char* str, uint64_t* argc, uint
     return 0;
 }
 
-static const char** _ArgsplitBackend(const char** argv, const char* str, uint64_t argc)
+static const char** _ArgsplitBackend(const char** argv, const char* str, uint64_t argc, uint64_t maxLen)
 {
     uint64_t argvSize = sizeof(char*) * (argc + 1);
     char* strings = (char*)((uintptr_t)argv + argvSize);
     argv[0] = strings;
     argv[argc] = NULL;
 
-    _ArgsplitState_t state = _ARGSPLIT_CREATE(str);
+    _ArgsplitState_t state = _ARGSPLIT_CREATE(str, maxLen);
     uint64_t stringIndex = 0;
     char* out = strings;
     while (true)
@@ -143,16 +157,19 @@ static const char** _ArgsplitBackend(const char** argv, const char* str, uint64_
     return (const char**)argv;
 }
 
-const char** argsplit(const char* str, uint64_t* count)
+const char** argsplit(const char* str, uint64_t maxLen, uint64_t* count)
 {
-    while (isspace(*str))
+    uint64_t skipped = 0;
+    while (isspace(*str) && (maxLen == 0 || skipped < maxLen))
     {
         str++;
+        skipped++;
     }
+    maxLen = (maxLen == 0) ? 0 : (maxLen > skipped ? maxLen - skipped : 0);
 
     uint64_t argc;
     uint64_t totalChars;
-    if (_ArgsplitCountCharsAndArgs(str, &argc, &totalChars) == UINT64_MAX)
+    if (_ArgsplitCountCharsAndArgs(str, &argc, &totalChars, maxLen) == UINT64_MAX)
     {
         return NULL;
     }
@@ -175,19 +192,22 @@ const char** argsplit(const char* str, uint64_t* count)
         return argv;
     }
 
-    return _ArgsplitBackend(argv, str, argc);
+    return _ArgsplitBackend(argv, str, argc, maxLen);
 }
 
-const char** argsplit_buf(void* buf, uint64_t size, const char* str, uint64_t* count)
+const char** argsplit_buf(void* buf, uint64_t size, const char* str, uint64_t maxLen, uint64_t* count)
 {
-    while (isspace(*str))
+    uint64_t skipped = 0;
+    while (isspace(*str) && (maxLen == 0 || skipped < maxLen))
     {
         str++;
+        skipped++;
     }
+    maxLen = (maxLen == 0) ? 0 : (maxLen > skipped ? maxLen - skipped : 0);
 
     uint64_t argc;
     uint64_t totalChars;
-    if (_ArgsplitCountCharsAndArgs(str, &argc, &totalChars) == UINT64_MAX)
+    if (_ArgsplitCountCharsAndArgs(str, &argc, &totalChars, maxLen) == UINT64_MAX)
     {
         return NULL;
     }
@@ -210,5 +230,5 @@ const char** argsplit_buf(void* buf, uint64_t size, const char* str, uint64_t* c
         return argv;
     }
 
-    return _ArgsplitBackend(buf, str, argc);
+    return _ArgsplitBackend(buf, str, argc, maxLen);
 }

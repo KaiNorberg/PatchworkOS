@@ -204,7 +204,7 @@ static file_ops_t fileOps = {
     .read = log_read,
 };
 
-SYSFS_STANDARD_RESOURCE_OPS(resOps, &fileOps);
+SYSFS_STANDARD_RESOURCE_OPS_DEFINE(resOps, &fileOps);
 
 void log_expose(void)
 {

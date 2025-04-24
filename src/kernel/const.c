@@ -23,7 +23,7 @@ static file_ops_t nullOps = {
     .write = const_null_write,
 };
 
-SYSFS_STANDARD_RESOURCE_OPS(nullResOps, &nullOps);
+SYSFS_STANDARD_RESOURCE_OPS_DEFINE(nullResOps, &nullOps);
 
 void const_init(void)
 {

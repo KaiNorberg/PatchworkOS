@@ -17,7 +17,7 @@ static const char* lookupDirs[] = {
 uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
 {
     uint64_t tokenAmount;
-    const char** tokens = argsplit(cmdline, &tokenAmount);
+    const char** tokens = argsplit(cmdline, UINT64_MAX, &tokenAmount);
     if (tokens == NULL)
     {
         return ERR;

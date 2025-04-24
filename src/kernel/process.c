@@ -1,13 +1,20 @@
 #include "process.h"
 
+#include "lock.h"
 #include "sched.h"
 #include "log.h"
+#include "rwlock.h"
+#include "actions.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/math.h>
+#include <sys/list.h>
 
 static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
+
+// Note: Should be acquired whenever a process tree is being read or modified.
+static rwlock_t treeLock;
 
 static uint64_t process_cmdline_read(file_t* file, void* buffer, uint64_t count)
 {
@@ -46,7 +53,7 @@ static file_ops_t cmdlineFileOps = {
     .read = process_cmdline_read,
 };
 
-SYSFS_STANDARD_RESOURCE_OPS(cmdlineResOps, &cmdlineFileOps)
+SYSFS_STANDARD_RESOURCE_OPS_DEFINE(cmdlineResOps, &cmdlineFileOps)
 
 static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count)
 {
@@ -83,63 +90,44 @@ static file_ops_t cwdFileOps = {
     .read = process_cwd_read,
 };
 
-SYSFS_STANDARD_RESOURCE_OPS(cwdResOps, &cwdFileOps)
+SYSFS_STANDARD_RESOURCE_OPS_DEFINE(cwdResOps, &cwdFileOps)
 
-/*static uint64_t process_kill_action(file_t* file, const char** argv, uint64_t argc)
+static uint64_t process_action_kill(uint64_t argc, const char** argv, void* private)
 {
-    process_t* process = file->resource->private;
+    process_t* process = private;
     atomic_store(&process->dead, true);
+    return 0;
 }
 
-static uint64_t process_wait_action(file_t* file, const char** argv, uint64_t argc)
+static uint64_t process_action_wait(uint64_t argc, const char** argv, void* private)
 {
-    process_t* process = file->resource->private;
+    process_t* process = private;
     WAITSYS_BLOCK(&process->queue, atomic_load(&process->dead));
+    return 0;
 }
 
-static action_table_t actions = {
-    {"kill", process_kill_action, 0, 0, "Kills the process immediately"},
-    {"wait", process_wait_action, 0, 0, "Blocks until the process is killed"},
+static actions_t actions = {
+    {"kill", process_action_kill, 1, 1},
+    {"wait", process_action_wait, 1, 1},
     {0},
-};*/
+};
 
-// ACTION_STANDARD_RESOURCE_WRITE(process_write, &actions);
-//
 static uint64_t process_ctl_write(file_t* file, const void* buffer, uint64_t count)
 {
-    if (count == 0)
-    {
-        return 0;
-    }
-
     process_t* process = file->resource->dir->private;
     if (process == NULL)
     {
         process = sched_process();
     }
 
-    // TODO: Implement a proper command system with args, actions?
-    if (strncmp(buffer, "kill", count) == 0)
-    {
-        atomic_store(&process->dead, true);
-        return 4;
-    }
-    else if (strncmp(buffer, "wait", count) == 0)
-    {
-        WAITSYS_BLOCK(&process->queue, atomic_load(&process->dead));
-        return 4;
-    }
-    else
-    {
-        return ERROR(EREQ);
-    }
+    return actions_dispatch(&actions, buffer, count, process);
 }
 
 static file_ops_t ctlFileOps = {
     .write = process_ctl_write,
 };
 
-SYSFS_STANDARD_RESOURCE_OPS(ctlResOps, &ctlFileOps)
+SYSFS_STANDARD_RESOURCE_OPS_DEFINE(ctlResOps, &ctlFileOps)
 
 static void process_on_free(sysdir_t* dir)
 {
@@ -164,7 +152,7 @@ static uint64_t process_dir_populate(sysdir_t* dir)
     return 0;
 }
 
-process_t* process_new(const char** argv, const path_t* cwd)
+process_t* process_new(process_t* parent, const char** argv)
 {
     process_t* process = malloc(sizeof(process_t));
     if (process == NULL)
@@ -187,7 +175,17 @@ process_t* process_new(const char** argv, const path_t* cwd)
         return NULL;
     }
     atomic_init(&process->dead, false);
-    vfs_ctx_init(&process->vfsCtx, cwd);
+
+    if (parent != NULL)
+    {
+        LOCK_DEFER(&parent->vfsCtx.lock);
+        vfs_ctx_init(&process->vfsCtx, &parent->vfsCtx.cwd);
+    }
+    else
+    {
+        vfs_ctx_init(&process->vfsCtx, NULL);
+    }
+
     space_init(&process->space);
     atomic_init(&process->threadCount, 0);
     wait_queue_init(&process->queue);
@@ -200,19 +198,69 @@ process_t* process_new(const char** argv, const path_t* cwd)
         return NULL;
     }
 
+    list_entry_init(&process->entry);
+    list_init(&process->children);
+    if (parent != NULL)
+    {
+        RWLOCK_WRITE_DEFER(&treeLock);
+        list_push(&parent->children, &process->entry);
+        process->parent = parent;
+    }
+    else
+    {
+        process->parent = NULL;
+    }
+
     return process;
 }
 
 void process_free(process_t* process)
 {
+    if (process->parent != NULL)
+    {
+        RWLOCK_WRITE_DEFER(&treeLock);
+        list_remove(&process->entry);
+
+        process_t* child;
+        process_t* temp;
+        LIST_FOR_EACH_SAFE(child, temp, &process->children, entry)
+        {
+            list_remove(&child->entry);
+            child->parent = NULL;
+        }
+        process->parent = NULL;
+    }
+
     vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_on_free
     waitsys_unblock(&process->queue, WAITSYS_ALL);
     sysdir_free(process->dir);
 }
 
-void process_self_expose(void)
+bool process_is_child(process_t* process, pid_t parentId)
+{
+    RWLOCK_READ_DEFER(&treeLock);
+
+    process_t* parent = process->parent;
+    while (1)
+    {
+        if (parent == NULL)
+        {
+            return false;
+        }
+
+        if (parent->id == parentId)
+        {
+            return true;
+        }
+        parent = parent->parent;
+    }
+}
+
+void process_backend_init(void)
 {
     sysdir_t* selfdir = sysdir_new("/proc", "self", NULL, NULL);
     ASSERT_PANIC(selfdir != NULL);
     ASSERT_PANIC(process_dir_populate(selfdir) != ERR);
+
+    rwlock_init(&treeLock);
 }

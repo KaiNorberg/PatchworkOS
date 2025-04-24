@@ -69,7 +69,7 @@ void kernel_init(boot_info_t* bootInfo)
     ramfs_init(&bootInfo->ramDisk);
 
     log_expose();
-    process_self_expose();
+    process_backend_init();
 
     sched_init();
     waitsys_init();

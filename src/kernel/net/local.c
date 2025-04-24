@@ -14,9 +14,7 @@ static uint64_t local_socket_init(socket_t* socket)
     {
         return ERR;
     }
-    socket->state = SOCKET_BLANK;
     socket->private = private;
-    lock_init(&socket->lock);
 
     return 0;
 }

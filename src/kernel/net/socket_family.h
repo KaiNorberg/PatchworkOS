@@ -28,4 +28,10 @@ typedef struct
     socket_receive_t receive;
 } socket_family_t;
 
+typedef struct
+{
+    char id[32];
+    sysdir_t* dir;
+} socket_handle_t;
+
 sysdir_t* socket_family_expose(socket_family_t* family);

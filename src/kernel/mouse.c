@@ -41,7 +41,7 @@ static file_ops_t fileOps = {
     .poll = mouse_poll,
 };
 
-SYSFS_STANDARD_RESOURCE_OPEN(mouse_open, &fileOps);
+SYSFS_STANDARD_RESOURCE_OPEN_DEFINE(mouse_open, &fileOps);
 
 static void mouse_on_free(resource_t* resource)
 {

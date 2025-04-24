@@ -3,6 +3,7 @@
 #include "defs.h"
 #include "sched.h"
 #include "socket.h"
+#include "sysfs.h"
 
 #include <stdatomic.h>
 #include <stdlib.h>
@@ -63,36 +64,36 @@ static file_ops_t familyNewFileOps =
     .seek = socket_family_new_seek,
 };
 
-#include <stdio.h>
-
 static file_t* socket_family_new_open(volume_t* volume, resource_t* resource)
 {
     socket_family_t* family = resource->dir->private;
 
-    char* id = malloc(32);
-    ulltoa(atomic_fetch_add(&newId, 1), id, 10);
+    socket_handle_t* handle = malloc(sizeof(socket_handle_t));
+    ulltoa(atomic_fetch_add(&newId, 1), handle->id, 10);
+    handle->dir = socket_create(family, handle->id);
+    if (handle->dir == NULL)
+    {
+        free(handle);
+        return NULL;
+    }
 
     file_t* file = file_new(volume);
     if (file == NULL)
     {
-        free(id);
+        sysdir_free(handle->dir);
+        free(handle);
         return NULL;
     }
     file->ops = &familyNewFileOps;
-    file->private = id;
-
-    if (socket_create(family, id) == ERR)
-    {
-        file_deref(file);
-        return NULL;
-    }
+    file->private = handle;
     return file;
 }
 
 static void socket_family_new_cleanup(resource_t* resource, file_t* file)
 {
-    char* id = file->private;
-    free(id);
+    socket_handle_t* handle = file->private;
+    sysdir_free(handle->dir);
+    free(handle);
 }
 
 static resource_ops_t familyNewResOps =

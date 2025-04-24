@@ -161,10 +161,7 @@ thread_t* loader_spawn(const char** argv, priority_t priority)
         return ERRPTR(EISDIR);
     }
 
-    vfs_ctx_t* ctx = &sched_thread()->process->vfsCtx;
-    LOCK_DEFER(&ctx->lock);
-
-    process_t* process = process_new(argv, &ctx->cwd);
+    process_t* process = process_new(sched_process(), argv);
     if (process == NULL)
     {
         return NULL;

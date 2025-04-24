@@ -10,9 +10,9 @@ extern "C"
 
 #include "_AUX/config.h"
 
-const char** argsplit(const char* str, uint64_t* count);
+const char** argsplit(const char* str, uint64_t maxLen, uint64_t* count);
 
-const char** argsplit_buf(void* buf, uint64_t size, const char* str, uint64_t* count);
+const char** argsplit_buf(void* buf, uint64_t size, const char* str, uint64_t maxLen, uint64_t* count);
 
 #if defined(__cplusplus)
 }
