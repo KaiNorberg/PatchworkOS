@@ -29,3 +29,5 @@ uint64_t path_init(path_t* path, const char* string, path_t* cwd);
 void path_to_string(const path_t* path, char* dest);
 
 node_t* path_traverse_node(const path_t* path, node_t* node);
+
+bool path_valid_name(const char* name);

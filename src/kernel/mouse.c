@@ -9,7 +9,7 @@
 
 static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count)
 {
-    mouse_t* mouse = file->resource->private;
+    mouse_t* mouse = file->sysobj->private;
 
     count = ROUND_DOWN(count, sizeof(mouse_event_t));
     for (uint64_t i = 0; i < count / sizeof(mouse_event_t); i++)
@@ -31,7 +31,7 @@ static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count)
 
 static wait_queue_t* mouse_poll(file_t* file, poll_file_t* pollFile)
 {
-    mouse_t* mouse = file->resource->private;
+    mouse_t* mouse = file->sysobj->private;
     pollFile->occurred = POLL_READ & (mouse->writeIndex != file->pos);
     return &mouse->waitQueue;
 }
@@ -41,15 +41,15 @@ static file_ops_t fileOps = {
     .poll = mouse_poll,
 };
 
-SYSFS_STANDARD_RESOURCE_OPEN_DEFINE(mouse_open, &fileOps);
+SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(mouse_open, &fileOps);
 
-static void mouse_on_free(resource_t* resource)
+static void mouse_on_free(sysobj_t* sysobj)
 {
-    mouse_t* mouse = resource->private;
+    mouse_t* mouse = sysobj->private;
     free(mouse);
 }
 
-static resource_ops_t resOps = {
+static sysobj_ops_t resOps = {
     .open = mouse_open,
     .onFree = mouse_on_free,
 };
@@ -58,7 +58,7 @@ mouse_t* mouse_new(const char* name)
 {
     mouse_t* mouse = malloc(sizeof(mouse_t));
     mouse->writeIndex = 0;
-    mouse->resource = resource_new("/mouse", name, &resOps, mouse);
+    mouse->sysobj = sysobj_new("/mouse", name, &resOps, mouse);
     wait_queue_init(&mouse->waitQueue);
     lock_init(&mouse->lock);
 
@@ -67,7 +67,7 @@ mouse_t* mouse_new(const char* name)
 
 void mouse_free(mouse_t* mouse)
 {
-    resource_free(mouse->resource);
+    sysobj_free(mouse->sysobj);
 }
 
 void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, const point_t* delta)

@@ -332,7 +332,7 @@ static char* errorStrings[] = {
     "bad buffer",
     "not a directory",
     "is a directory",
-    "no such resource",
+    "no such sysobj",
     "broken pipe",
     "blocker limit exceeded",
     "try again",

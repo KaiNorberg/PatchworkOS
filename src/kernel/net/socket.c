@@ -1,5 +1,6 @@
 #include "socket.h"
 #include "defs.h"
+#include "log.h"
 #include "pmm.h"
 #include "process.h"
 #include "stdbool.h"
@@ -14,39 +15,143 @@
 #include <stdlib.h>
 #include <sys/math.h>
 
-static file_ops_t dataOps =
+static uint64_t socket_accept_read(file_t* file, void* buffer, uint64_t count)
 {
+    socket_t* socket = file->private;
+    return socket->family->receive(socket, buffer, count);
+}
 
+static uint64_t socket_accept_write(file_t* file, const void* buffer, uint64_t count)
+{
+    socket_t* socket = file->private;
+    return socket->family->send(socket, buffer, count);
+}
+
+static file_ops_t acceptOps =
+{
+    .read = socket_accept_read,
+    .write = socket_accept_write,
 };
 
-SYSFS_STANDARD_RESOURCE_OPS_DEFINE(dataResOps, &dataOps);
+static file_t* socket_accept_open(volume_t* volume, sysobj_t* sysobj)
+{
+    socket_t* socket = sysobj->dir->private;
+    process_t* process = sched_process();
+    if (process->id != socket->creator && !process_is_child(process, socket->creator))
+    {
+        return ERRPTR(EACCES);
+    }
+
+    socket_t* newSocket = malloc(sizeof(socket_t));
+    if (socket == NULL)
+    {
+        return NULL;
+    }
+    newSocket->family = socket->family;
+    newSocket->creator = socket->creator;
+
+    if (socket->family->accept(socket, newSocket) == ERR)
+    {
+        free(socket);
+        return NULL;
+    }
+
+    file_t* file = file_new(volume);
+    if (file == NULL)
+    {
+        free(socket);
+        return NULL;
+    }
+    file->ops = &acceptOps;
+    file->private = newSocket;
+    return file;
+}
+
+static void socket_accept_cleanup(sysobj_t* sysobj, file_t* file)
+{
+    socket_t* socket = file->private;
+    socket->family->deinit(socket);
+    free(socket);
+}
+
+static sysobj_ops_t acceptObjOps =
+{
+    .open = socket_accept_open,
+    .cleanup = socket_accept_cleanup,
+};
+
+static uint64_t socket_data_read(file_t* file, void* buffer, uint64_t count)
+{
+    socket_t* socket = file->sysobj->dir->private;
+    return socket->family->receive(socket, buffer, count);
+}
+
+static uint64_t socket_data_write(file_t* file, const void* buffer, uint64_t count)
+{
+    socket_t* socket = file->sysobj->dir->private;
+    return socket->family->send(socket, buffer, count);
+}
+
+static file_ops_t dataOps =
+{
+    .read = socket_data_read,
+    .write = socket_data_write,
+};
+
+static file_t* socket_data_open(volume_t* volume, sysobj_t* sysobj)
+{
+    socket_t* socket = sysobj->dir->private;
+    process_t* process = sched_process();
+    if (process->id != socket->creator && !process_is_child(process, socket->creator))
+    {
+        return ERRPTR(EACCES);
+    }
+
+    file_t* file = file_new(volume);
+    if (file == NULL)
+    {
+        return NULL;
+    }
+    file->ops = &dataOps;
+    return file;
+}
+
+static sysobj_ops_t dataObjOps =
+{
+    .open = socket_data_open,
+};
 
 static uint64_t socket_action_bind(uint64_t argc, const char** argv, void* private)
 {
     socket_t* socket = private;
-    if (socket->state != SOCKET_BLANK || socket->family->bind == NULL)
-    {
-        return ERROR(ENOOP);
-    }
     return socket->family->bind(socket, argv[1]);
+}
+
+static uint64_t socket_action_listen(uint64_t argc, const char** argv, void* private)
+{
+    socket_t* socket = private;
+    return socket->family->listen(socket);
+}
+
+static uint64_t socket_action_connect(uint64_t argc, const char** argv, void* private)
+{
+    socket_t* socket = private;
+    return socket->family->connect(socket, argv[1]);
 }
 
 static actions_t actions =
 {
     {"bind", socket_action_bind, 2, 2},
-    {0}
+    {"listen", socket_action_listen, 1, 1},
+    {"connect", socket_action_connect, 2, 2},
+    {0},
 };
 
 static uint64_t socket_ctl_write(file_t* file, const void* buffer, uint64_t count)
 {
-    socket_t* socket = file->resource->dir->private;
-    process_t* process = sched_process();
-    if (process->id != socket->creator && !process_is_child(process, socket->creator))
-    {
-        return ERROR(EACCES);
-    }
-
-    return actions_dispatch(&actions, buffer, count, socket);
+    socket_t* socket = file->sysobj->dir->private;
+    uint64_t result =  actions_dispatch(&actions, buffer, count, socket);
+    return result;
 }
 
 static file_ops_t ctlOps =
@@ -54,7 +159,28 @@ static file_ops_t ctlOps =
     .write = socket_ctl_write,
 };
 
-SYSFS_STANDARD_RESOURCE_OPS_DEFINE(ctlResOps, &ctlOps);
+static file_t* socket_ctl_open(volume_t* volume, sysobj_t* sysobj)
+{
+    socket_t* socket = sysobj->dir->private;
+    process_t* process = sched_process();
+    if (process->id != socket->creator && !process_is_child(process, socket->creator))
+    {
+        return ERRPTR(EACCES);
+    }
+
+    file_t* file = file_new(volume);
+    if (file == NULL)
+    {
+        return NULL;
+    }
+    file->ops = &ctlOps;
+    return file;
+}
+
+static sysobj_ops_t ctlObjOps =
+{
+    .open = socket_ctl_open,
+};
 
 static void socket_on_free(sysdir_t* sysdir)
 {
@@ -71,9 +197,7 @@ sysdir_t* socket_create(socket_family_t* family, const char* id)
         return NULL;
     }
     socket->family = family;
-    socket->state = SOCKET_BLANK;
     socket->creator = sched_process()->id;
-    lock_init(&socket->lock);
 
     if (family->init(socket) == ERR)
     {
@@ -91,7 +215,7 @@ sysdir_t* socket_create(socket_family_t* family, const char* id)
         return NULL;
     }
 
-    if (sysdir_add(socketDir, "ctl", &ctlResOps, NULL) == ERR || sysdir_add(socketDir, "data", &dataResOps, NULL) == ERR)
+    if (sysdir_add(socketDir, "ctl", &ctlObjOps, NULL) == ERR || sysdir_add(socketDir, "data", &dataObjOps, NULL) == ERR || sysdir_add(socketDir, "accept", &acceptObjOps, NULL) == ERR)
     {
         sysdir_free(socketDir);
         return NULL;

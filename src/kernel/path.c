@@ -166,6 +166,20 @@ node_t* path_traverse_node(const path_t* path, node_t* node)
     return node;
 }
 
+bool path_valid_name(const char* name)
+{
+    const char* chr = name;
+    while (*chr != '\0')
+    {
+        if (!PATH_VALID_CHAR(*chr))
+        {
+            return false;
+        }
+        chr++;
+    }
+    return true;
+}
+
 #ifdef TESTING
 #include "testing.h"
 

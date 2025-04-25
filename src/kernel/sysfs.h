@@ -11,8 +11,8 @@
 
 // TODO: Implement namespace system
 
-#define SYSFS_STANDARD_RESOURCE_OPEN_DEFINE(name, fileOps) \
-    static file_t* name(volume_t* volume, resource_t* resource) \
+#define SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(name, fileOps) \
+    static file_t* name(volume_t* volume, sysobj_t* sysobj) \
     { \
         file_t* file = file_new(volume); \
         if (file == NULL) \
@@ -20,46 +20,46 @@
             return NULL; \
         } \
         file->ops = fileOps; \
-        file->private = resource->private; \
+        file->private = sysobj->private; \
         return file; \
     }
 
-#define SYSFS_STANDARD_RESOURCE_OPS_DEFINE(name, fileOps) \
-    SYSFS_STANDARD_RESOURCE_OPEN_DEFINE(name##_standard_open, fileOps) \
-    static resource_ops_t name = { \
+#define SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(name, fileOps) \
+    SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(name##_standard_open, fileOps) \
+    static sysobj_ops_t name = { \
         .open = name##_standard_open, \
     };
 
-#define SYSFS_RESOURCE 0
+#define SYSFS_OBJ 0
 #define SYSFS_DIR 1
 
-typedef struct resource resource_t;
+typedef struct sysobj sysobj_t;
 typedef struct sysdir sysdir_t;
 
-typedef file_t* (*resource_open_t)(volume_t*, resource_t*);
-typedef uint64_t (*resource_open2_t)(volume_t*, resource_t*, file_t* [2]);
-typedef void (*resource_cleanup_t)(resource_t*, file_t* file);
-typedef void (*resource_on_free_t)(resource_t*);
+typedef file_t* (*sysobj_open_t)(volume_t*, sysobj_t*);
+typedef uint64_t (*sysobj_open2_t)(volume_t*, sysobj_t*, file_t* [2]);
+typedef void (*sysobj_cleanup_t)(sysobj_t*, file_t* file);
+typedef void (*sysobj_on_free_t)(sysobj_t*);
 
 typedef void (*sysdir_on_free_t)(sysdir_t*);
 
-typedef struct resource_ops
+typedef struct sysobj_ops
 {
-    resource_open_t open;
-    resource_open2_t open2;
-    resource_cleanup_t cleanup;
-    resource_on_free_t onFree;
-} resource_ops_t;
+    sysobj_open_t open;
+    sysobj_open2_t open2;
+    sysobj_cleanup_t cleanup;
+    sysobj_on_free_t onFree;
+} sysobj_ops_t;
 
-typedef struct resource
+typedef struct sysobj
 {
     node_t node;
     void* private;
-    const resource_ops_t* ops;
+    const sysobj_ops_t* ops;
     atomic_uint64 ref;
     atomic_bool hidden;
     sysdir_t* dir;
-} resource_t;
+} sysobj_t;
 
 typedef struct sysdir
 {
@@ -79,8 +79,8 @@ sysdir_t* sysdir_new(const char* path, const char* dirname, sysdir_on_free_t onF
 
 void sysdir_free(sysdir_t* dir);
 
-uint64_t sysdir_add(sysdir_t* dir, const char* filename, const resource_ops_t* ops, void* private);
+uint64_t sysdir_add(sysdir_t* dir, const char* filename, const sysobj_ops_t* ops, void* private);
 
-resource_t* resource_new(const char* path, const char* filename, const resource_ops_t* ops, void* private);
+sysobj_t* sysobj_new(const char* path, const char* filename, const sysobj_ops_t* ops, void* private);
 
-void resource_free(resource_t* resource);
+void sysobj_free(sysobj_t* sysobj);

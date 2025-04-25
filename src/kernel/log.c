@@ -204,11 +204,11 @@ static file_ops_t fileOps = {
     .read = log_read,
 };
 
-SYSFS_STANDARD_RESOURCE_OPS_DEFINE(resOps, &fileOps);
+SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(resOps, &fileOps);
 
 void log_expose(void)
 {
-    resource_new("/", "klog", &resOps, NULL);
+    sysobj_new("/", "klog", &resOps, NULL);
 }
 
 void log_enable_screen(gop_buffer_t* gopBuffer)

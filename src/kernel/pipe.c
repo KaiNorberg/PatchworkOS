@@ -91,7 +91,7 @@ static file_ops_t fileOps = {
     .poll = pipe_poll,
 };
 
-static file_t* pipe_open(volume_t* volume, resource_t* resource)
+static file_t* pipe_open(volume_t* volume, sysobj_t* sysobj)
 {
     pipe_private_t* private = malloc(sizeof(pipe_private_t));
     if (private == NULL)
@@ -126,7 +126,7 @@ static file_t* pipe_open(volume_t* volume, resource_t* resource)
     return file;
 }
 
-static uint64_t pipe_open2(volume_t* volume, resource_t* resource, file_t* files[2])
+static uint64_t pipe_open2(volume_t* volume, sysobj_t* sysobj, file_t* files[2])
 {
     pipe_private_t* private = malloc(sizeof(pipe_private_t));
     if (private == NULL)
@@ -172,7 +172,7 @@ static uint64_t pipe_open2(volume_t* volume, resource_t* resource, file_t* files
     return 0;
 }
 
-static void pipe_cleanup(resource_t* resource, file_t* file)
+static void pipe_cleanup(sysobj_t* sysobj, file_t* file)
 {
     pipe_private_t* private = file->private;
     lock_acquire(&private->lock);
@@ -198,7 +198,7 @@ static void pipe_cleanup(resource_t* resource, file_t* file)
     lock_release(&private->lock);
 }
 
-static resource_ops_t resourceOps = {
+static sysobj_ops_t resourceOps = {
     .open = pipe_open,
     .open2 = pipe_open2,
     .cleanup = pipe_cleanup,
@@ -206,5 +206,5 @@ static resource_ops_t resourceOps = {
 
 void pipe_init(void)
 {
-    resource_new("/pipe", "new", &resourceOps, NULL);
+    sysobj_new("/pipe", "new", &resourceOps, NULL);
 }

@@ -23,9 +23,9 @@ static file_ops_t nullOps = {
     .write = const_null_write,
 };
 
-SYSFS_STANDARD_RESOURCE_OPS_DEFINE(nullResOps, &nullOps);
+SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(nullObjOps, &nullOps);
 
 void const_init(void)
 {
-    ASSERT_PANIC(resource_new("/", "null", &nullResOps, NULL) != NULL);
+    ASSERT_PANIC(sysobj_new("/", "null", &nullObjOps, NULL) != NULL);
 }

@@ -13,7 +13,7 @@
 
 #define FILE_DEFER(file) __attribute__((cleanup(file_defer_cleanup))) file_t* CONCAT(f, __COUNTER__) = (file)
 
-typedef struct resource resource_t;
+typedef struct sysobj sysobj_t;
 typedef struct sysdir sysdir_t;
 
 typedef struct fs fs_t;
@@ -79,7 +79,7 @@ typedef struct file
     volume_t* volume;
     uint64_t pos;
     void* private;
-    resource_t* resource; // Used by sysfs
+    sysobj_t* sysobj; // Used by sysfs
     const file_ops_t* ops;
     atomic_uint64 ref;
 } file_t;

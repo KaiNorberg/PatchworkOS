@@ -33,7 +33,7 @@ int* _ErrnoFunc(void);
 #define EBUFFER 17     // Bad buffer
 #define ENOTDIR 18     // Not a directory
 #define EISDIR 19      // Is a directory
-#define ENORES 20      // No such resource
+#define ENOOBJ 20      // No such object
 #define EPIPE 21       // Broken pipe
 #define EBLOCKLIMIT 22 // Blocker limit exceeded
 #define EAGAIN 23      // Try again
@@ -57,7 +57,7 @@ int* _ErrnoFunc(void);
 #define EACCES 13 //Permission denied
 #define EFAULT 14 //Bad address
 #define ENOTBLK 15 //Block device required
-#define EBUSY 16 //Device or resource busy
+#define EBUSY 16 //Device or sysobj busy
 #define EEXIST 17 //File exists
 #define EXDEV 18 //Cross-device link
 #define ENODEV 19 //No such device

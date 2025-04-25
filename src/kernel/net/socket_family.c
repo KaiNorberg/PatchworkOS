@@ -35,9 +35,9 @@ static file_ops_t familyNewFileOps =
     .seek = socket_family_new_seek,
 };
 
-static file_t* socket_family_new_open(volume_t* volume, resource_t* resource)
+static file_t* socket_family_new_open(volume_t* volume, sysobj_t* sysobj)
 {
-    socket_family_t* family = resource->dir->private;
+    socket_family_t* family = sysobj->dir->private;
 
     socket_handle_t* handle = malloc(sizeof(socket_handle_t));
     ulltoa(atomic_fetch_add(&newId, 1), handle->id, 10);
@@ -60,14 +60,14 @@ static file_t* socket_family_new_open(volume_t* volume, resource_t* resource)
     return file;
 }
 
-static void socket_family_new_cleanup(resource_t* resource, file_t* file)
+static void socket_family_new_cleanup(sysobj_t* sysobj, file_t* file)
 {
     socket_handle_t* handle = file->private;
     sysdir_free(handle->dir);
     free(handle);
 }
 
-static resource_ops_t familyNewResOps =
+static sysobj_ops_t familyNewObjOps =
 {
     .open = socket_family_new_open,
     .cleanup = socket_family_new_cleanup,
@@ -91,7 +91,7 @@ sysdir_t* socket_family_expose(socket_family_t* family)
         return NULL;
     }
 
-    if (sysdir_add(sysdir, "new", &familyNewResOps, NULL) == ERR)
+    if (sysdir_add(sysdir, "new", &familyNewObjOps, NULL) == ERR)
     {
         sysdir_free(sysdir);
         return NULL;

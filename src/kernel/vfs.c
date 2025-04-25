@@ -74,7 +74,7 @@ file_t* file_new(volume_t* volume)
     file->volume = volume;
     file->pos = 0;
     file->private = NULL;
-    file->resource = NULL;
+    file->sysobj = NULL;
     file->ops = NULL;
     atomic_init(&file->ref, 1);
 
@@ -331,9 +331,9 @@ uint64_t vfs_listdir(const char* path, dir_entry_t* entries, uint64_t amount)
 
 uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
 {
-    if (file->resource != NULL && atomic_load(&file->resource->hidden))
+    if (file->sysobj != NULL && atomic_load(&file->sysobj->hidden))
     {
-        return ERROR(ENORES);
+        return ERROR(ENOOBJ);
     }
     if (file->ops->read == NULL)
     {
@@ -344,9 +344,9 @@ uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
 
 uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
 {
-    if (file->resource != NULL && atomic_load(&file->resource->hidden))
+    if (file->sysobj != NULL && atomic_load(&file->sysobj->hidden))
     {
-        return ERROR(ENORES);
+        return ERROR(ENOOBJ);
     }
     if (file->ops->write == NULL)
     {
@@ -357,9 +357,9 @@ uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
 
 uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
 {
-    if (file->resource != NULL && atomic_load(&file->resource->hidden))
+    if (file->sysobj != NULL && atomic_load(&file->sysobj->hidden))
     {
-        return ERROR(ENORES);
+        return ERROR(ENOOBJ);
     }
     if (file->ops->seek == NULL)
     {
@@ -370,9 +370,9 @@ uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
 
 uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
 {
-    if (file->resource != NULL && atomic_load(&file->resource->hidden))
+    if (file->sysobj != NULL && atomic_load(&file->sysobj->hidden))
     {
-        return ERROR(ENORES);
+        return ERROR(ENOOBJ);
     }
     if (file->ops->ioctl == NULL)
     {
@@ -383,9 +383,9 @@ uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
 
 uint64_t vfs_flush(file_t* file, const void* buffer, uint64_t size, const rect_t* rect)
 {
-    if (file->resource != NULL && atomic_load(&file->resource->hidden))
+    if (file->sysobj != NULL && atomic_load(&file->sysobj->hidden))
     {
-        return ERROR(ENORES);
+        return ERROR(ENOOBJ);
     }
     if (file->ops->flush == NULL)
     {
@@ -407,9 +407,9 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
         {
             return ERROR(EINVAL);
         }
-        if (files[i].file->resource != NULL && atomic_load(&files[i].file->resource->hidden))
+        if (files[i].file->sysobj != NULL && atomic_load(&files[i].file->sysobj->hidden))
         {
-            return ERROR(ENORES);
+            return ERROR(ENOOBJ);
         }
         if (files[i].file->ops->poll == NULL)
         {

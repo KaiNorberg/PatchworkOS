@@ -13,7 +13,7 @@ typedef struct
     kbd_event_t events[KBD_MAX_EVENT];
     uint64_t writeIndex;
     kbd_mods_t mods;
-    resource_t* resource;
+    sysobj_t* sysobj;
     wait_queue_t waitQueue;
     lock_t lock;
 } kbd_t;

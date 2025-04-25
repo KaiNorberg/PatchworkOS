@@ -27,19 +27,22 @@ int main(void)
         printf("error: listen (%s)\n", strerror(errno));
     }
 
-    fd_t conn = openf("sys:/net/local/%s/data", id);
+    fd_t conn = openf("sys:/net/local/%s/accept", id);
     if (conn == ERR)
     {
-        printf("error: conn open (%s)\n", strerror(errno));
+        printf("error: accept open (%s)\n", strerror(errno));
     }
     char buffer[MAX_PATH];
     uint64_t count = read(conn, buffer, MAX_PATH - 1);
     if (count == ERR)
     {
-        printf("error: conn read (%s)\n", strerror(errno));
+        printf("error: accept read (%s)\n", strerror(errno));
     }
-    buffer[count] = '\0';
-    printf(buffer);
+    else
+    {
+        buffer[count] = '\0';
+        printf(buffer);
+    }
     close(conn);
 
     close(ctl);

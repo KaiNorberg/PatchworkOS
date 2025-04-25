@@ -9,7 +9,7 @@
 
 static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count)
 {
-    kbd_t* kbd = file->resource->private;
+    kbd_t* kbd = file->sysobj->private;
 
     count = ROUND_DOWN(count, sizeof(kbd_event_t));
     for (uint64_t i = 0; i < count / sizeof(kbd_event_t); i++)
@@ -31,7 +31,7 @@ static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count)
 
 static wait_queue_t* kbd_poll(file_t* file, poll_file_t* pollFile)
 {
-    kbd_t* kbd = file->resource->private;
+    kbd_t* kbd = file->sysobj->private;
     pollFile->occurred = POLL_READ & (kbd->writeIndex != file->pos);
     return &kbd->waitQueue;
 }
@@ -41,15 +41,15 @@ static file_ops_t fileOps = {
     .poll = kbd_poll,
 };
 
-SYSFS_STANDARD_RESOURCE_OPEN_DEFINE(kbd_open, &fileOps);
+SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(kbd_open, &fileOps);
 
-static void kbd_on_free(resource_t* resource)
+static void kbd_on_free(sysobj_t* sysobj)
 {
-    kbd_t* kbd = resource->private;
+    kbd_t* kbd = sysobj->private;
     free(kbd);
 }
 
-static resource_ops_t resOps = {
+static sysobj_ops_t resOps = {
     .open = kbd_open,
     .onFree = kbd_on_free,
 };
@@ -59,7 +59,7 @@ kbd_t* kbd_new(const char* name)
     kbd_t* kbd = malloc(sizeof(kbd_t));
     kbd->writeIndex = 0;
     kbd->mods = KBD_MOD_NONE;
-    kbd->resource = resource_new("/kbd", name, &resOps, kbd);
+    kbd->sysobj = sysobj_new("/kbd", name, &resOps, kbd);
     wait_queue_init(&kbd->waitQueue);
     lock_init(&kbd->lock);
 
@@ -68,7 +68,7 @@ kbd_t* kbd_new(const char* name)
 
 void kbd_free(kbd_t* kbd)
 {
-    resource_free(kbd->resource);
+    sysobj_free(kbd->sysobj);
 }
 
 static void kbd_update_mod(kbd_t* kbd, kbd_event_type_t type, kbd_mods_t mod)

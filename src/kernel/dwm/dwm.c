@@ -501,9 +501,9 @@ static file_ops_t fileOps = {
     .ioctl = dwm_ioctl,
 };
 
-SYSFS_STANDARD_RESOURCE_OPEN_DEFINE(dwm_open, &fileOps);
+SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(dwm_open, &fileOps);
 
-static void dwm_cleanup(resource_t* resource, file_t* file)
+static void dwm_cleanup(sysobj_t* sysobj, file_t* file)
 {
     RWLOCK_WRITE_DEFER(&lock);
 
@@ -563,7 +563,7 @@ static void dwm_cleanup(resource_t* resource, file_t* file)
     dwm_redraw();
 }
 
-static resource_ops_t resOps = {
+static sysobj_ops_t resOps = {
     .open = dwm_open,
     .cleanup = dwm_cleanup,
 };
@@ -612,7 +612,7 @@ void dwm_init(gop_buffer_t* gopBuffer)
     atomic_init(&redrawNeeded, true);
     wait_queue_init(&redrawWaitQueue);
 
-    resource_new("/", "dwm", &resOps, NULL);
+    sysobj_new("/", "dwm", &resOps, NULL);
 }
 
 void dwm_start(void)

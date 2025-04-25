@@ -15,12 +15,12 @@
 
 static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 
-// Note: Should be acquired whenever a process tree is being read or modified.
+// Should be acquired whenever a process tree is being read or modified.
 static rwlock_t treeLock;
 
 static uint64_t process_cmdline_read(file_t* file, void* buffer, uint64_t count)
 {
-    process_t* process = file->resource->dir->private;
+    process_t* process = file->sysobj->dir->private;
     if (process == NULL)
     {
         process = sched_process();
@@ -39,7 +39,7 @@ static uint64_t process_cmdline_read(file_t* file, void* buffer, uint64_t count)
 
 static uint64_t process_cmdline_seek(file_t* file, int64_t offset, seek_origin_t origin)
 {
-    process_t* process = file->resource->dir->private;
+    process_t* process = file->sysobj->dir->private;
     if (process == NULL)
     {
         process = sched_process();
@@ -61,11 +61,11 @@ static file_ops_t cmdlineFileOps = {
     .seek = process_cmdline_seek,
 };
 
-SYSFS_STANDARD_RESOURCE_OPS_DEFINE(cmdlineResOps, &cmdlineFileOps)
+SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(cmdlineObjOps, &cmdlineFileOps)
 
 static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count)
 {
-    process_t* process = file->resource->dir->private;
+    process_t* process = file->sysobj->dir->private;
     if (process == NULL)
     {
         process = sched_process();
@@ -82,7 +82,7 @@ static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count)
 
 static uint64_t process_cwd_seek(file_t* file, int64_t offset, seek_origin_t origin)
 {
-    process_t* process = file->resource->dir->private;
+    process_t* process = file->sysobj->dir->private;
     if (process == NULL)
     {
         process = sched_process();
@@ -102,7 +102,7 @@ static file_ops_t cwdFileOps = {
     .seek = process_cwd_seek,
 };
 
-SYSFS_STANDARD_RESOURCE_OPS_DEFINE(cwdResOps, &cwdFileOps)
+SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(cwdObjOps, &cwdFileOps)
 
 static uint64_t process_action_kill(uint64_t argc, const char** argv, void* private)
 {
@@ -126,7 +126,7 @@ static actions_t actions = {
 
 static uint64_t process_ctl_write(file_t* file, const void* buffer, uint64_t count)
 {
-    process_t* process = file->resource->dir->private;
+    process_t* process = file->sysobj->dir->private;
     if (process == NULL)
     {
         process = sched_process();
@@ -139,7 +139,7 @@ static file_ops_t ctlFileOps = {
     .write = process_ctl_write,
 };
 
-SYSFS_STANDARD_RESOURCE_OPS_DEFINE(ctlResOps, &ctlFileOps)
+SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(ctlObjOps, &ctlFileOps)
 
 static void process_on_free(sysdir_t* dir)
 {
@@ -155,8 +155,8 @@ static void process_on_free(sysdir_t* dir)
 
 static uint64_t process_dir_populate(sysdir_t* dir)
 {
-    if (sysdir_add(dir, "ctl", &ctlResOps, NULL) == ERR || sysdir_add(dir, "cwd", &cwdResOps, NULL) == ERR ||
-        sysdir_add(dir, "cmdline", &cmdlineResOps, NULL) == ERR)
+    if (sysdir_add(dir, "ctl", &ctlObjOps, NULL) == ERR || sysdir_add(dir, "cwd", &cwdObjOps, NULL) == ERR ||
+        sysdir_add(dir, "cmdline", &cmdlineObjOps, NULL) == ERR)
     {
         return ERR;
     }

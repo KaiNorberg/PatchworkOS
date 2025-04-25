@@ -80,7 +80,7 @@ static uint64_t ramfs_listdir(volume_t* volume, const path_t* path, dir_entry_t*
     {
         return ERROR(EPATH);
     }
-    else if (node->type == SYSFS_RESOURCE)
+    else if (node->type == SYSFS_OBJ)
     {
         return ERROR(ENOTDIR);
     }
@@ -93,7 +93,7 @@ static uint64_t ramfs_listdir(volume_t* volume, const path_t* path, dir_entry_t*
     {
         dir_entry_t entry = {0};
         strcpy(entry.name, child->name);
-        entry.type = child->type == SYSFS_RESOURCE ? STAT_FILE : STAT_DIR;
+        entry.type = child->type == SYSFS_OBJ ? STAT_FILE : STAT_DIR;
 
         dir_entry_push(entries, amount, &index, &total, &entry);
     }
