@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _SYS_LIST_H
+#define _SYS_LIST_H 1
 
 #include "_AUX/NULL.h"
 
@@ -112,3 +113,5 @@ static inline list_entry_t* list_first(list_t* list)
     }
     return list->head.next;
 }
+
+#endif

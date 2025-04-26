@@ -236,7 +236,50 @@ void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot)
     return virtAddr;
 }
 
-uint64_t vmm_free(void* virtAddr, uint64_t length)
+void* vmm_map(void* virtAddr, void* physAddr, uint64_t length, prot_t prot)
+{
+    space_t* space = &sched_process()->space;
+    LOCK_DEFER(&space->lock);
+
+    if (physAddr == NULL)
+    {
+        return ERRPTR(EFAULT);
+    }
+
+    if (length == 0)
+    {
+        return ERRPTR(EINVAL);
+    }
+
+    uint64_t flags = vmm_prot_to_flags(prot);
+    if (flags == ERR)
+    {
+        return ERRPTR(EACCES);
+    }
+
+    if (virtAddr == NULL)
+    {
+        virtAddr = vmm_find_free_region(space, length);
+    }
+
+    physAddr = (void*)ROUND_DOWN(physAddr, PAGE_SIZE);
+    vmm_align_region(&virtAddr, &length);
+
+    if (pml_mapped(space->pml, virtAddr, SIZE_IN_PAGES(length)))
+    {
+        return ERRPTR(EEXIST);
+    }
+
+    uint64_t result = pml_map(space->pml, virtAddr, physAddr, SIZE_IN_PAGES(length), flags);
+    if (result == ERR)
+    {
+        return ERRPTR(ENOMEM);
+    }
+
+    return virtAddr;
+}
+
+uint64_t vmm_unmap(void* virtAddr, uint64_t length)
 {
     vmm_align_region(&virtAddr, &length);
     space_t* space = &sched_process()->space;

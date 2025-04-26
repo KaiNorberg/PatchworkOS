@@ -17,17 +17,16 @@
 %define SYS_CHDIR 16
 %define SYS_POLL 17
 %define SYS_STAT 18
-%define SYS_VIRTUAL_ALLOC 19
-%define SYS_VIRTUAL_FREE 20
-%define SYS_VIRTUAL_PROTECT 21
-%define SYS_FLUSH 22
-%define SYS_DIR_LIST 23
-%define SYS_THREAD_CREATE 24
-%define SYS_YIELD 25
-%define SYS_DUP 26
-%define SYS_DUP2 27
-%define SYS_FUTEX 28
+%define SYS_MMAP 19
+%define SYS_MUNMAP 20
+%define SYS_MPROTECT 21
+%define SYS_DIR_LIST 22
+%define SYS_THREAD_CREATE 23
+%define SYS_YIELD 24
+%define SYS_DUP 25
+%define SYS_DUP2 26
+%define SYS_FUTEX 27
 
-%define SYS_TOTAL_AMOUNT 29
+%define SYS_TOTAL_AMOUNT 28
 
 %define SYSCALL_VECTOR 0x80

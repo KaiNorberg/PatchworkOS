@@ -100,8 +100,6 @@ uint64_t stat(const char* path, stat_t* stat);
 
 uint64_t ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size);
 
-uint64_t flush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect_t* rect);
-
 fd_t dup(fd_t oldFd);
 
 fd_t dup2(fd_t oldFd, fd_t newFd);

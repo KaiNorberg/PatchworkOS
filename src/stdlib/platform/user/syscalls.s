@@ -135,24 +135,19 @@ _SyscallStat:
     SYSTEM_CALL SYS_STAT
     ret
 
-global _SyscallVirtualAlloc
-_SyscallVirtualAlloc:
-    SYSTEM_CALL_PTR SYS_VIRTUAL_ALLOC
+global _SyscallMmap
+_SyscallMmap:
+    SYSTEM_CALL_PTR SYS_MMAP
     ret
 
-global _SyscallVirtualFree
-_SyscallVirtualFree:
-    SYSTEM_CALL SYS_VIRTUAL_FREE
+global _SyscallMunmap
+_SyscallMunmap:
+    SYSTEM_CALL SYS_MUNMAP
     ret
 
-global _SyscallVirtualProtect
-_SyscallVirtualProtect:
-    SYSTEM_CALL SYS_VIRTUAL_PROTECT
-    ret
-
-global _SyscallFlush
-_SyscallFlush:
-    SYSTEM_CALL SYS_FLUSH
+global _SyscallMprotect
+_SyscallMprotect:
+    SYSTEM_CALL SYS_MPROTECT
     ret
 
 global _SyscallDirList

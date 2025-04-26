@@ -165,11 +165,6 @@ uint64_t ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
     return _SyscallIoctl(fd, request, argp, size);
 }
 
-uint64_t flush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect_t* rect)
-{
-    return _SyscallFlush(fd, buffer, size, rect);
-}
-
 fd_t dup(fd_t oldFd)
 {
     return _SyscallDup(oldFd);

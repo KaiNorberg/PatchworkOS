@@ -26,19 +26,19 @@ nsec_t uptime(void)
     return _SyscallUptime();
 }
 
-void* virtual_alloc(void* address, uint64_t length, prot_t prot)
+void* mmap(fd_t fd, void* address, uint64_t length, prot_t prot)
 {
-    return _SyscallVirtualAlloc(address, length, prot);
+    return _SyscallMmap(fd, address, length, prot);
 }
 
-uint64_t virtual_free(void* address, uint64_t length)
+uint64_t munmap(void* address, uint64_t length)
 {
-    return _SyscallVirtualFree(address, length);
+    return _SyscallMunmap(address, length);
 }
 
-uint64_t virtual_protect(void* address, uint64_t length, prot_t prot)
+uint64_t mprotect(void* address, uint64_t length, prot_t prot)
 {
-    return _SyscallVirtualProtect(address, length, prot);
+    return _SyscallMprotect(address, length, prot);
 }
 
 uint64_t futex(atomic_uint64* addr, uint64_t val, futex_op_t op, nsec_t timeout)

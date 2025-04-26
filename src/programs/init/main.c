@@ -12,9 +12,9 @@ int main(void)
 {
     chdir("home:/usr");
 
-    spawn_program("home:/bin/wall");
-    spawn_program("home:/bin/cursor");
-    spawn_program("home:/bin/taskbar");
+    spawn_program("home:/bin/dwm");
+    //spawn_program("home:/bin/cursor");
+    //spawn_program("home:/bin/taskbar");
 
     return 0;
 }

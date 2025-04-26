@@ -28,7 +28,9 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t length);
 
 void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot);
 
-uint64_t vmm_free(void* virtAddr, uint64_t length);
+void* vmm_map(void* virtAddr, void* physAddr, uint64_t length, prot_t prot);
+
+uint64_t vmm_unmap(void* virtAddr, uint64_t length);
 
 uint64_t vmm_protect(void* virtAddr, uint64_t length, prot_t prot);
 

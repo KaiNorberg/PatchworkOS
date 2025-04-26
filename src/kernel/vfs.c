@@ -381,17 +381,17 @@ uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
     return file->ops->ioctl(file, request, argp, size);
 }
 
-uint64_t vfs_flush(file_t* file, const void* buffer, uint64_t size, const rect_t* rect)
+void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
 {
     if (file->sysobj != NULL && atomic_load(&file->sysobj->hidden))
     {
-        return ERROR(ENOOBJ);
+        return ERRPTR(ENOOBJ);
     }
-    if (file->ops->flush == NULL)
+    if (file->ops->mmap == NULL)
     {
-        return ERROR(ENOOP);
+        return ERRPTR(ENOOP);
     }
-    return file->ops->flush(file, buffer, size, rect);
+    return file->ops->mmap(file, address, length, prot);
 }
 
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)

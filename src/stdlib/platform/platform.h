@@ -71,13 +71,11 @@ uint64_t _SyscallPoll(pollfd_t* fds, uint64_t amount, nsec_t timeout);
 
 uint64_t _SyscallStat(const char* path, stat_t* info);
 
-void* _SyscallVirtualAlloc(void* address, uint64_t length, prot_t prot);
+void* _SyscallMmap(fd_t fd, void* address, uint64_t length, prot_t prot);
 
-uint64_t _SyscallVirtualFree(void* address, uint64_t length);
+uint64_t _SyscallMunmap(void* address, uint64_t length);
 
-uint64_t _SyscallVirtualProtect(void* address, uint64_t length, prot_t prot);
-
-uint64_t _SyscallFlush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect_t* rect);
+uint64_t _SyscallMprotect(void* address, uint64_t length, prot_t prot);
 
 uint64_t _SyscallDirList(const char* path, dir_entry_t* entries, uint64_t amount);
 

@@ -18,6 +18,45 @@
 #include <stdlib.h>
 #include <sys/math.h>
 
+// TODO: This is incomprehensible fix that.
+
+static local_connection_t* local_connection_new(const char* address)
+{
+    local_connection_t* conn = malloc(sizeof(local_connection_t));
+
+    void* serverBuffer = pmm_alloc();
+    if (serverBuffer == NULL)
+    {
+        free(conn);
+        return NULL;
+    }
+    ring_init(&conn->serverRing, serverBuffer, PAGE_SIZE);
+    void* clientBuffer = pmm_alloc();
+    if (clientBuffer == NULL)
+    {
+        pmm_free(serverBuffer);
+        free(conn);
+        return NULL;
+    }
+    ring_init(&conn->clientRing, clientBuffer, PAGE_SIZE);
+
+    char path[MAX_PATH];
+    sprintf(path, "sys:/net/local/listen/%s", address);
+    conn->listener = vfs_open(path);
+    if (conn->listener == NULL)
+    {
+        pmm_free(serverBuffer);
+        pmm_free(clientBuffer);
+        free(conn);
+        return NULL;
+    }
+    wait_queue_init(&conn->waitQueue);
+    lock_init(&conn->lock);
+    atomic_init(&conn->ref, 1);
+
+    return conn;
+}
+
 static local_connection_t* local_connection_ref(local_connection_t* conn)
 {
     atomic_fetch_add(&conn->ref, 1);
@@ -192,36 +231,11 @@ static uint64_t local_socket_connect(socket_t* socket, const char* address)
         return ERROR(EINVAL);
     }
 
-    local_connection_t* conn = malloc(sizeof(local_connection_t));
-    void* serverBuffer = pmm_alloc();
-    if (serverBuffer == NULL)
+    local_connection_t* conn = local_connection_new(address);
+    if (conn == NULL)
     {
-        free(conn);
         return ERR;
     }
-    ring_init(&conn->serverRing, serverBuffer, PAGE_SIZE);
-    void* clientBuffer = pmm_alloc();
-    if (clientBuffer == NULL)
-    {
-        pmm_free(serverBuffer);
-        free(conn);
-        return ERR;
-    }
-    ring_init(&conn->clientRing, clientBuffer, PAGE_SIZE);
-
-    char path[MAX_PATH];
-    sprintf(path, "sys:/net/local/listen/%s", address);
-    conn->listener = vfs_open(path);
-    if (conn->listener == NULL)
-    {
-        pmm_free(serverBuffer);
-        pmm_free(clientBuffer);
-        free(conn);
-        return ERR;
-    }
-    wait_queue_init(&conn->waitQueue);
-    lock_init(&conn->lock);
-    atomic_init(&conn->ref, 1);
 
     local_socket_t* listener = conn->listener->private;
     LOCK_DEFER(&listener->lock);
@@ -287,7 +301,7 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
     return count;
 }
 
-static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t count, uint64_t offset)
+static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t count, uint64_t offset, bool* endOfSegment)
 {
     local_socket_t* local = socket->private;
     LOCK_DEFER(&local->lock);
@@ -333,6 +347,7 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
     if (sizeof(uint64_t) + offset + count >= availCount)
     {
         ring_move_read_forward(ring, sizeof(uint64_t) + availCount);
+        *endOfSegment = true;
     }
 
     lock_release(&conn->lock);

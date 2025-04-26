@@ -65,11 +65,11 @@ pid_t process_id(void);
 
 tid_t thread_id(void);
 
-void* virtual_alloc(void* address, uint64_t length, prot_t prot);
+void* mmap(fd_t fd, void* address, uint64_t length, prot_t prot);
 
-uint64_t virtual_free(void* address, uint64_t length);
+uint64_t munmap(void* address, uint64_t length);
 
-uint64_t virtual_protect(void* address, uint64_t length, prot_t prot);
+uint64_t mprotect(void* address, uint64_t length, prot_t prot);
 
 // if op == FUTEX_WAIT then wait until *addr != val.
 // if op == FUTEX_WAKE then val = amount of threads to wake.
