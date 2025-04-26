@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <sys/math.h>
 
 static local_connection_t* local_connection_ref(local_connection_t* conn)
 {
@@ -30,6 +31,7 @@ static void local_connection_deref(local_connection_t* conn)
         pmm_free(conn->serverRing.buffer);
         pmm_free(conn->clientRing.buffer);
         file_deref(conn->listener);
+        wait_queue_deinit(&conn->waitQueue);
         free(conn);
     }
 }
@@ -219,6 +221,7 @@ static uint64_t local_socket_connect(socket_t* socket, const char* address)
         free(conn);
         return ERR;
     }
+    wait_queue_init(&conn->waitQueue);
     lock_init(&conn->lock);
     atomic_init(&conn->ref, 1);
 
@@ -246,15 +249,96 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
     local_socket_t* local = socket->private;
     LOCK_DEFER(&local->lock);
 
-    return ERROR(EIMPL);
+    ring_t* ring;
+    local_connection_t* conn;
+    switch (local->state)
+    {
+    case LOCAL_SOCKET_CONNECT:
+    {
+        ring = &local->connect.conn->serverRing;
+        conn = local->connect.conn;
+    }
+    break;
+    case LOCAL_SOCKET_ACCEPT:
+    {
+        ring = &local->accept.conn->clientRing;
+        conn = local->accept.conn;
+    }
+    break;
+    default:
+    {
+        return ERROR(ENOOP);
+    }
+    }
+
+    if (count >= PAGE_SIZE / 2)
+    {
+        return ERROR(EINVAL);
+    }
+
+    if (WAITSYS_BLOCK_LOCK(&conn->waitQueue, &conn->lock, ring_free_length(ring) >= count + sizeof(uint64_t)) != BLOCK_NORM)
+    {
+        lock_release(&conn->lock);
+        return 0;
+    }
+
+    ring_write(ring, &count, sizeof(uint64_t));
+    ring_write(ring, buffer, count);
+
+    lock_release(&conn->lock);
+    return count;
 }
 
-static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t count)
+static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t count, uint64_t offset)
 {
     local_socket_t* local = socket->private;
     LOCK_DEFER(&local->lock);
 
-    return ERROR(EIMPL);
+    ring_t* ring;
+    local_connection_t* conn;
+    switch (local->state)
+    {
+    case LOCAL_SOCKET_CONNECT:
+    {
+        ring = &local->connect.conn->clientRing;
+        conn = local->connect.conn;
+    }
+    break;
+    case LOCAL_SOCKET_ACCEPT:
+    {
+        ring = &local->accept.conn->serverRing;
+        conn = local->accept.conn;
+    }
+    break;
+    default:
+    {
+        return ERROR(ENOOP);
+    }
+    }
+
+    if (count >= PAGE_SIZE / 2)
+    {
+        return ERROR(EINVAL);
+    }
+
+    if (WAITSYS_BLOCK_LOCK(&conn->waitQueue, &conn->lock, ring_data_length(ring) != 0) != BLOCK_NORM)
+    {
+        lock_release(&conn->lock);
+        return 0;
+    }
+
+    uint64_t availCount;
+    ring_read_at(ring, 0, &availCount, sizeof(uint64_t));
+    uint64_t readCount = (offset <= availCount) ? MIN(count, availCount - offset) : 0;
+    ring_read_at(ring, sizeof(uint64_t) + offset, buffer, readCount);
+
+    if (sizeof(uint64_t) + offset + count >= availCount)
+    {
+        ring_move_read_forward(ring, sizeof(uint64_t) + availCount);
+    }
+
+    lock_release(&conn->lock);
+    return readCount;
 }
 
 static socket_family_t family =

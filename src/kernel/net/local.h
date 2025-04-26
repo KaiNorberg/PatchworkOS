@@ -27,6 +27,7 @@ typedef struct local_connection
     ring_t serverRing;
     ring_t clientRing;
     file_t* listener;
+    wait_queue_t waitQueue;
     lock_t lock;
     atomic_uint64 ref;
 } local_connection_t;

@@ -113,3 +113,14 @@ static inline uint64_t ring_read_at(const ring_t* ring, uint64_t offset, void* b
 
     return count;
 }
+
+static void ring_move_read_forward(ring_t* ring, uint64_t offset)
+{
+    if (offset > ring_data_length(ring))
+    {
+        return;
+    }
+
+    ring->readIndex = (ring->readIndex + offset) % ring->size;
+    ring->dataLength -= offset;
+}

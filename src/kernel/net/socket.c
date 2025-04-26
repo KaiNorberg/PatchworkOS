@@ -18,7 +18,12 @@
 static uint64_t socket_accept_read(file_t* file, void* buffer, uint64_t count)
 {
     socket_t* socket = file->private;
-    return socket->family->receive(socket, buffer, count);
+    uint64_t readCount = socket->family->receive(socket, buffer, count, file->pos);
+    if (readCount != ERR)
+    {
+        file->pos += readCount;
+    }
+    return readCount;
 }
 
 static uint64_t socket_accept_write(file_t* file, const void* buffer, uint64_t count)
@@ -83,7 +88,12 @@ static sysobj_ops_t acceptObjOps =
 static uint64_t socket_data_read(file_t* file, void* buffer, uint64_t count)
 {
     socket_t* socket = file->sysobj->dir->private;
-    return socket->family->receive(socket, buffer, count);
+    uint64_t readCount = socket->family->receive(socket, buffer, count, file->pos);
+    if (readCount != ERR)
+    {
+        file->pos += readCount;
+    }
+    return readCount;
 }
 
 static uint64_t socket_data_write(file_t* file, const void* buffer, uint64_t count)

@@ -13,7 +13,7 @@ typedef uint64_t (*socket_listen_t)(socket_t*);
 typedef uint64_t (*socket_accept_t)(socket_t*, socket_t*);
 typedef uint64_t (*socket_connect_t)(socket_t*, const char*);
 typedef uint64_t (*socket_send_t)(socket_t*, const void*, uint64_t);
-typedef uint64_t (*socket_receive_t)(socket_t*, void*, uint64_t);
+typedef uint64_t (*socket_receive_t)(socket_t*, void*, uint64_t, uint64_t);
 
 // Note: All functions must be implemented.
 typedef struct
