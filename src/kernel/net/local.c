@@ -3,19 +3,19 @@
 #include "lock.h"
 #include "log.h"
 #include "path.h"
+#include "pmm.h"
 #include "ring.h"
-#include "socket.h"
 #include "sched.h"
+#include "socket.h"
 #include "sys/io.h"
 #include "sysfs.h"
 #include "vfs.h"
-#include "pmm.h"
 #include "waitsys.h"
 
+#include <errno.h>
 #include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
 #include <sys/math.h>
 
 static local_connection_t* local_connection_ref(local_connection_t* conn)
@@ -50,8 +50,7 @@ static void local_listen_on_free(sysobj_t* obj)
     free(local);
 }
 
-static sysobj_ops_t localListenObjOps =
-{
+static sysobj_ops_t localListenObjOps = {
     .open = local_listen_open,
     .onFree = local_listen_on_free,
 };
@@ -108,7 +107,7 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
 static void local_socket_deinit(socket_t* socket)
 {
     local_socket_t* local = socket->private;
-    switch(local->state)
+    switch (local->state)
     {
     case LOCAL_SOCKET_BLANK:
     case LOCAL_SOCKET_BOUND:
@@ -341,8 +340,7 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
     return readCount;
 }
 
-static socket_family_t family =
-{
+static socket_family_t family = {
     .name = "local",
     .init = local_socket_init,
     .deinit = local_socket_deinit,

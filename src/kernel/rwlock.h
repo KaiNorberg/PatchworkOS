@@ -38,11 +38,13 @@ static inline void rwlock_read_acquire(rwlock_t* lock)
 
     uint_fast16_t ticket = atomic_fetch_add(&lock->readTicket, 1);
 
-    while (atomic_load(&lock->readServe) != ticket) {
+    while (atomic_load(&lock->readServe) != ticket)
+    {
         asm volatile("pause");
     }
 
-    while (atomic_load(&lock->writeServe) != atomic_load(&lock->writeTicket)) {
+    while (atomic_load(&lock->writeServe) != atomic_load(&lock->writeTicket))
+    {
         asm volatile("pause");
     }
 
@@ -63,16 +65,19 @@ static inline void rwlock_write_acquire(rwlock_t* lock)
 
     uint_fast16_t ticket = atomic_fetch_add(&lock->writeTicket, 1);
 
-    while (atomic_load(&lock->writeServe) != ticket) {
+    while (atomic_load(&lock->writeServe) != ticket)
+    {
         asm volatile("pause");
     }
 
-    while (atomic_load(&lock->activeReaders) > 0) {
+    while (atomic_load(&lock->activeReaders) > 0)
+    {
         asm volatile("pause");
     }
 
     bool expected = false;
-    while (!atomic_compare_exchange_weak(&lock->activeWriter, &expected, true)) {
+    while (!atomic_compare_exchange_weak(&lock->activeWriter, &expected, true))
+    {
         expected = false;
         asm volatile("pause");
     }

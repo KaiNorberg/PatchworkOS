@@ -1,8 +1,8 @@
 #include "sysfs.h"
 
-#include "rwlock.h"
 #include "log.h"
 #include "path.h"
+#include "rwlock.h"
 #include "sched.h"
 #include "sys/node.h"
 #include "vfs.h"

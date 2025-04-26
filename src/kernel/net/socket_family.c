@@ -6,9 +6,9 @@
 #include "sysfs.h"
 #include "vfs.h"
 
+#include <errno.h>
 #include <stdatomic.h>
 #include <stdlib.h>
-#include <errno.h>
 #include <sys/math.h>
 
 static atomic_uint64 newId = ATOMIC_VAR_INIT(0);
@@ -29,8 +29,7 @@ static uint64_t socket_family_new_seek(file_t* file, int64_t offset, seek_origin
     return BUFFER_SEEK(file, offset, origin, len + 1); // Include null terminator
 }
 
-static file_ops_t familyNewFileOps =
-{
+static file_ops_t familyNewFileOps = {
     .read = socket_family_new_read,
     .seek = socket_family_new_seek,
 };
@@ -67,8 +66,7 @@ static void socket_family_new_cleanup(sysobj_t* sysobj, file_t* file)
     free(handle);
 }
 
-static sysobj_ops_t familyNewObjOps =
-{
+static sysobj_ops_t familyNewObjOps = {
     .open = socket_family_new_open,
     .cleanup = socket_family_new_cleanup,
 };

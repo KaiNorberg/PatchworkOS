@@ -1,10 +1,10 @@
 #pragma once
 
 #include "config.h"
+#include "process.h"
 #include "simd.h"
 #include "trap.h"
 #include "waitsys.h"
-#include "process.h"
 
 #include <errno.h>
 #include <sys/list.h>

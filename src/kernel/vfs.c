@@ -1,9 +1,9 @@
 #include "vfs.h"
 
 #include "lock.h"
-#include "rwlock.h"
 #include "log.h"
 #include "path.h"
+#include "rwlock.h"
 #include "sched.h"
 #include "sys/list.h"
 #include "sysfs.h"

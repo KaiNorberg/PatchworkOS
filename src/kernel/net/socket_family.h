@@ -31,7 +31,7 @@ typedef struct
 
 typedef struct
 {
-    char id[32];
+    char id[MAX_NAME];
     sysdir_t* dir;
 } socket_handle_t;
 

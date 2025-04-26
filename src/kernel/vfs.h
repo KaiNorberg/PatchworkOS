@@ -137,39 +137,39 @@ void dir_entry_push(dir_entry_t* entries, uint64_t amount, uint64_t* index, uint
 
 // Helper macros for implementing file operations dealing with simple buffers
 #define BUFFER_READ(file, buffer, count, src, size) \
-({ \
-    uint64_t readCount = (file->pos <= (size)) ? MIN((count), (size) - file->pos) : 0; \
-    memcpy((buffer), (src) + file->pos, readCount); \
-    file->pos += readCount; \
-    readCount; \
-})
+    ({ \
+        uint64_t readCount = (file->pos <= (size)) ? MIN((count), (size) - file->pos) : 0; \
+        memcpy((buffer), (src) + file->pos, readCount); \
+        file->pos += readCount; \
+        readCount; \
+    })
 
 #define BUFFER_SEEK(file, offset, origin, size) \
-({ \
-    uint64_t position; \
-    switch (origin) \
-    { \
-    case SEEK_SET: \
-    { \
-        position = offset; \
-    } \
-    break; \
-    case SEEK_CUR: \
-    { \
-        position = file->pos + (offset); \
-    } \
-    break; \
-    case SEEK_END: \
-    { \
-        position = (size) - (offset); \
-    } \
-    break; \
-    default: \
-    { \
-        position = 0; \
-    } \
-    break; \
-    }  \
-    file->pos = MIN(position, (size)); \
-    position; \
-})
+    ({ \
+        uint64_t position; \
+        switch (origin) \
+        { \
+        case SEEK_SET: \
+        { \
+            position = offset; \
+        } \
+        break; \
+        case SEEK_CUR: \
+        { \
+            position = file->pos + (offset); \
+        } \
+        break; \
+        case SEEK_END: \
+        { \
+            position = (size) - (offset); \
+        } \
+        break; \
+        default: \
+        { \
+            position = 0; \
+        } \
+        break; \
+        } \
+        file->pos = MIN(position, (size)); \
+        position; \
+    })

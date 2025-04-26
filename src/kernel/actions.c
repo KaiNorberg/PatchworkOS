@@ -1,8 +1,8 @@
 #include "actions.h"
 
 #include "defs.h"
-#include "sched.h"
 #include "pmm.h"
+#include "sched.h"
 
 #include <errno.h>
 #include <stdio.h>

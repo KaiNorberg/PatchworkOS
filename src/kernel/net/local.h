@@ -36,8 +36,7 @@ typedef struct
 {
     local_socket_state_t state;
     char address[MAX_NAME];
-    union
-    {
+    union {
         struct
         {
             sysobj_t* obj;

@@ -1,13 +1,13 @@
 #include "socket.h"
+#include "actions.h"
 #include "defs.h"
 #include "log.h"
 #include "pmm.h"
 #include "process.h"
+#include "sched.h"
 #include "stdbool.h"
 #include "sysfs.h"
 #include "vfs.h"
-#include "sched.h"
-#include "actions.h"
 
 #include <errno.h>
 #include <stdatomic.h>
@@ -32,8 +32,7 @@ static uint64_t socket_accept_write(file_t* file, const void* buffer, uint64_t c
     return socket->family->send(socket, buffer, count);
 }
 
-static file_ops_t acceptOps =
-{
+static file_ops_t acceptOps = {
     .read = socket_accept_read,
     .write = socket_accept_write,
 };
@@ -79,8 +78,7 @@ static void socket_accept_cleanup(sysobj_t* sysobj, file_t* file)
     free(socket);
 }
 
-static sysobj_ops_t acceptObjOps =
-{
+static sysobj_ops_t acceptObjOps = {
     .open = socket_accept_open,
     .cleanup = socket_accept_cleanup,
 };
@@ -102,8 +100,7 @@ static uint64_t socket_data_write(file_t* file, const void* buffer, uint64_t cou
     return socket->family->send(socket, buffer, count);
 }
 
-static file_ops_t dataOps =
-{
+static file_ops_t dataOps = {
     .read = socket_data_read,
     .write = socket_data_write,
 };
@@ -126,8 +123,7 @@ static file_t* socket_data_open(volume_t* volume, sysobj_t* sysobj)
     return file;
 }
 
-static sysobj_ops_t dataObjOps =
-{
+static sysobj_ops_t dataObjOps = {
     .open = socket_data_open,
 };
 
@@ -149,8 +145,7 @@ static uint64_t socket_action_connect(uint64_t argc, const char** argv, void* pr
     return socket->family->connect(socket, argv[1]);
 }
 
-static actions_t actions =
-{
+static actions_t actions = {
     {"bind", socket_action_bind, 2, 2},
     {"listen", socket_action_listen, 1, 1},
     {"connect", socket_action_connect, 2, 2},
@@ -160,12 +155,10 @@ static actions_t actions =
 static uint64_t socket_ctl_write(file_t* file, const void* buffer, uint64_t count)
 {
     socket_t* socket = file->sysobj->dir->private;
-    uint64_t result =  actions_dispatch(&actions, buffer, count, socket);
-    return result;
+    return actions_dispatch(&actions, buffer, count, socket);
 }
 
-static file_ops_t ctlOps =
-{
+static file_ops_t ctlOps = {
     .write = socket_ctl_write,
 };
 
@@ -187,8 +180,7 @@ static file_t* socket_ctl_open(volume_t* volume, sysobj_t* sysobj)
     return file;
 }
 
-static sysobj_ops_t ctlObjOps =
-{
+static sysobj_ops_t ctlObjOps = {
     .open = socket_ctl_open,
 };
 
@@ -225,7 +217,8 @@ sysdir_t* socket_create(socket_family_t* family, const char* id)
         return NULL;
     }
 
-    if (sysdir_add(socketDir, "ctl", &ctlObjOps, NULL) == ERR || sysdir_add(socketDir, "data", &dataObjOps, NULL) == ERR || sysdir_add(socketDir, "accept", &acceptObjOps, NULL) == ERR)
+    if (sysdir_add(socketDir, "ctl", &ctlObjOps, NULL) == ERR || sysdir_add(socketDir, "data", &dataObjOps, NULL) == ERR ||
+        sysdir_add(socketDir, "accept", &acceptObjOps, NULL) == ERR)
     {
         sysdir_free(socketDir);
         return NULL;

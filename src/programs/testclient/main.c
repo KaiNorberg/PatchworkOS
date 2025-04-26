@@ -1,7 +1,7 @@
-#include <sys/io.h>
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
+#include <sys/io.h>
 
 int main(void)
 {

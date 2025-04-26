@@ -1,17 +1,17 @@
 #include "process.h"
 
+#include "actions.h"
 #include "lock.h"
-#include "sched.h"
 #include "log.h"
 #include "rwlock.h"
-#include "actions.h"
+#include "sched.h"
 #include "sys/io.h"
 #include "vfs.h"
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/math.h>
 #include <sys/list.h>
+#include <sys/math.h>
 
 static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 
