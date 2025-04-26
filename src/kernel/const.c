@@ -18,14 +18,13 @@ static uint64_t const_null_write(file_t* file, const void* buffer, uint64_t coun
     return 0;
 }
 
-static file_ops_t nullOps = {
+
+SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(nullOps, (file_ops_t){
     .read = const_null_read,
     .write = const_null_write,
-};
-
-SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(nullObjOps, &nullOps);
+});
 
 void const_init(void)
 {
-    ASSERT_PANIC(sysobj_new("/", "null", &nullObjOps, NULL) != NULL);
+    ASSERT_PANIC(sysobj_new("/", "null", &nullOps, NULL) != NULL);
 }

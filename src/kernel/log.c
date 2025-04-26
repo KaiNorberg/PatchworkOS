@@ -200,15 +200,13 @@ static uint64_t log_read(file_t* file, void* buffer, uint64_t count)
     return result;
 }
 
-static file_ops_t fileOps = {
+SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(klogOps, (file_ops_t){
     .read = log_read,
-};
-
-SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(resOps, &fileOps);
+});
 
 void log_expose(void)
 {
-    sysobj_new("/", "klog", &resOps, NULL);
+    sysobj_new("/", "klog", &klogOps, NULL);
 }
 
 void log_enable_screen(gop_buffer_t* gopBuffer)

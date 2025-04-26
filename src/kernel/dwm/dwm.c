@@ -497,11 +497,9 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
     }
 }
 
-static file_ops_t fileOps = {
+SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(dwm_open, (file_ops_t){
     .ioctl = dwm_ioctl,
-};
-
-SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(dwm_open, &fileOps);
+});
 
 static void dwm_cleanup(sysobj_t* sysobj, file_t* file)
 {

@@ -36,8 +36,8 @@ static void local_connection_deref(local_connection_t* conn)
     }
 }
 
-static file_ops_t localListenerOps = {0};
-SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(local_listen_open, &localListenerOps);
+// Note: The listener files are only used within the kernel, thus it should not have any operations defined.
+SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(local_listen_open, (file_ops_t){0});
 
 static void local_listen_on_free(sysobj_t* obj)
 {
@@ -50,7 +50,7 @@ static void local_listen_on_free(sysobj_t* obj)
     free(local);
 }
 
-static sysobj_ops_t localListenObjOps = {
+static sysobj_ops_t localListenOps = {
     .open = local_listen_open,
     .onFree = local_listen_on_free,
 };
@@ -122,7 +122,6 @@ static void local_socket_deinit(socket_t* socket)
     break;
     case LOCAL_SOCKET_CONNECT:
     {
-
         local_connection_deref(local->connect.conn);
         free(local);
     }
@@ -166,7 +165,7 @@ static uint64_t local_socket_listen(socket_t* socket)
         return ERROR(ENOOP);
     }
 
-    local->listen.obj = sysobj_new("/net/local/listen", local->address, &localListenObjOps, local);
+    local->listen.obj = sysobj_new("/net/local/listen", local->address, &localListenOps, local);
     if (local->listen.obj == NULL)
     {
         return ERR;

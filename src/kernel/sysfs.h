@@ -11,7 +11,7 @@
 
 // TODO: Implement namespace system
 
-#define SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(name, fileOps) \
+#define SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(name, ...) \
     static file_t* name(volume_t* volume, sysobj_t* sysobj) \
     { \
         file_t* file = file_new(volume); \
@@ -19,13 +19,14 @@
         { \
             return NULL; \
         } \
-        file->ops = fileOps; \
+        static file_ops_t fileOps = __VA_ARGS__; \
+        file->ops = &fileOps; \
         file->private = sysobj->private; \
         return file; \
     }
 
-#define SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(name, fileOps) \
-    SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(name##_standard_open, fileOps) \
+#define SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(name, ...) \
+    SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(name##_standard_open, __VA_ARGS__) \
     static sysobj_ops_t name = { \
         .open = name##_standard_open, \
     };

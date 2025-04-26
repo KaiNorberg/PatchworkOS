@@ -56,12 +56,10 @@ static uint64_t process_cmdline_seek(file_t* file, int64_t offset, seek_origin_t
     return BUFFER_SEEK(file, offset, origin, size);
 }
 
-static file_ops_t cmdlineFileOps = {
+SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(cmdlineOps, (file_ops_t){
     .read = process_cmdline_read,
     .seek = process_cmdline_seek,
-};
-
-SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(cmdlineObjOps, &cmdlineFileOps)
+});
 
 static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count)
 {
@@ -97,12 +95,10 @@ static uint64_t process_cwd_seek(file_t* file, int64_t offset, seek_origin_t ori
     return BUFFER_SEEK(file, offset, origin, size);
 }
 
-static file_ops_t cwdFileOps = {
+SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(cwdOps, (file_ops_t){
     .read = process_cwd_read,
     .seek = process_cwd_seek,
-};
-
-SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(cwdObjOps, &cwdFileOps)
+})
 
 static uint64_t process_action_kill(uint64_t argc, const char** argv, void* private)
 {
@@ -135,11 +131,9 @@ static uint64_t process_ctl_write(file_t* file, const void* buffer, uint64_t cou
     return actions_dispatch(&actions, buffer, count, process);
 }
 
-static file_ops_t ctlFileOps = {
+SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(ctlOps, (file_ops_t){
     .write = process_ctl_write,
-};
-
-SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(ctlObjOps, &ctlFileOps)
+});
 
 static void process_on_free(sysdir_t* dir)
 {
@@ -155,8 +149,8 @@ static void process_on_free(sysdir_t* dir)
 
 static uint64_t process_dir_populate(sysdir_t* dir)
 {
-    if (sysdir_add(dir, "ctl", &ctlObjOps, NULL) == ERR || sysdir_add(dir, "cwd", &cwdObjOps, NULL) == ERR ||
-        sysdir_add(dir, "cmdline", &cmdlineObjOps, NULL) == ERR)
+    if (sysdir_add(dir, "ctl", &ctlOps, NULL) == ERR || sysdir_add(dir, "cwd", &cwdOps, NULL) == ERR ||
+        sysdir_add(dir, "cmdline", &cmdlineOps, NULL) == ERR)
     {
         return ERR;
     }

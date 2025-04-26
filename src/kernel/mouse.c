@@ -36,12 +36,10 @@ static wait_queue_t* mouse_poll(file_t* file, poll_file_t* pollFile)
     return &mouse->waitQueue;
 }
 
-static file_ops_t fileOps = {
+SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(mouse_open, (file_ops_t){
     .read = mouse_read,
     .poll = mouse_poll,
-};
-
-SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(mouse_open, &fileOps);
+});
 
 static void mouse_on_free(sysobj_t* sysobj)
 {
