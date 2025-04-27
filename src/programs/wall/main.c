@@ -25,15 +25,13 @@ int main(void)
     display_t* disp = display_open();
 
     rect_t rect;
-    display_screen_rect(disp, &rect);
+    display_screen_rect(disp, &rect, 0);
+    printf("%d, %d, %d, %d", rect.left, rect.top, rect.right, rect.bottom);
 
     //win_t* win = win_new(disp, "Wallpaper)
 
-    while(1);
-
     display_close(disp);
     //win_t* window = win_new();
-    while(1);
 
     /*rect_t rect;
     win_screen_rect(&rect);

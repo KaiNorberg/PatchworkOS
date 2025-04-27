@@ -18,7 +18,7 @@ display_t* display_open(void);
 
 void display_close(display_t* disp);
 
-void display_screen_rect(display_t* disp, rect_t* rect);
+void display_screen_rect(display_t* disp, rect_t* rect, uint64_t index);
 
 #if defined(__cplusplus)
 }

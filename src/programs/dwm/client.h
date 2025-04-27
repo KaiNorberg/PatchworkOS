@@ -1,5 +1,6 @@
 #pragma once
 
+#include "win/dwm.h"
 #include "window.h"
 
 #include <sys/io.h>
@@ -20,4 +21,4 @@ void client_free(client_t* client);
 
 uint64_t client_recieve_cmds(client_t* client);
 
-uint64_t client_send_event(client_t* client, const event_t* event);
+uint64_t client_send_event(client_t* client, event_type_t type, void* data, uint64_t size);

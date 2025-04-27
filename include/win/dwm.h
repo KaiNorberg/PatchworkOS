@@ -29,7 +29,7 @@ typedef enum
 
 typedef struct
 {
-
+    uint64_t index;
 } cmd_screen_info_t;
 
 typedef struct cmd

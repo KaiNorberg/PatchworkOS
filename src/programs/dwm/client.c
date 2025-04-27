@@ -1,8 +1,10 @@
 #include "client.h"
+#include "screen.h"
 #include "win/dwm.h"
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 client_t* client_new(fd_t fd)
 {
@@ -23,19 +25,32 @@ void client_free(client_t* client)
     free(client);
 }
 
-static uint64_t client_action_screen_info(const cmd_t* cmd)
+static uint64_t client_action_screen_info(client_t* client, const cmd_t* cmd)
 {
-    printf("screen info");
+    event_screen_info_t screenInfo;
+    if (cmd->screenInfo.index != 0)
+    {
+        screenInfo.width = 0;
+        screenInfo.height = 0;
+    }
+    else
+    {
+        screenInfo.width = screen_width();
+        screenInfo.height = screen_height();
+    }
+
+    client_send_event(client, EVENT_SCREEN_INFO, &screenInfo, sizeof(event_screen_info_t));
     return 0;
 }
 
-static uint64_t(*actions[])(const cmd_t*) = {
+static uint64_t(*actions[])(client_t*, const cmd_t*) = {
     [CMD_SCREEN_INFO] = client_action_screen_info,
 };
 
 uint64_t client_recieve_cmds(client_t* client)
 {
-    if (read(client->fd, &client->cmds, sizeof(cmd_buffer_t) + 1) > sizeof(cmd_buffer_t))
+    uint64_t result = read(client->fd, &client->cmds, sizeof(cmd_buffer_t) + 1);
+    if (result > sizeof(cmd_buffer_t) || result == 0) // Program wrote to much or end of file
     {
         return ERR;
     }
@@ -53,7 +68,7 @@ uint64_t client_recieve_cmds(client_t* client)
             return ERR;
         }
 
-        if (actions[cmd->type](cmd) == ERR)
+        if (actions[cmd->type](client, cmd) == ERR)
         {
             return ERR;
         }
@@ -62,10 +77,13 @@ uint64_t client_recieve_cmds(client_t* client)
     return 0;
 }
 
-uint64_t client_send_event(client_t* client, const event_t* event)
+uint64_t client_send_event(client_t* client, event_type_t type, void* data, uint64_t size)
 {
-    if (write(client->fd, event, sizeof(event_t)) == ERR)
+    event_t event = {.type = type};
+    memcpy(&event.data, data, size);
+    if (write(client->fd, &event, sizeof(event_t)) == ERR)
     {
-
+        return ERR;
     }
+    return 0;
 }

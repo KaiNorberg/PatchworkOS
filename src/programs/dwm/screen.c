@@ -51,3 +51,13 @@ void screen_deinit(void)
     free(backbuffer);
     munmap(frontbuffer, info.stride * info.height * sizeof(uint32_t));
 }
+
+uint64_t screen_width(void)
+{
+    return info.width;
+}
+
+uint64_t screen_height(void)
+{
+    return info.height;
+}

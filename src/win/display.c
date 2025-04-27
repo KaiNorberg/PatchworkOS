@@ -1,4 +1,5 @@
 #include "internal.h"
+#include "win/dwm.h"
 
 static void display_cmds_flush(display_t* disp)
 {
@@ -16,9 +17,9 @@ static void display_cmds_push(display_t* disp, const cmd_t* cmd)
     disp->cmds.amount++;
 }
 
-static void display_recieve_event(display_t* disp)
+static void display_recieve_event(display_t* disp, event_t* event)
 {
-
+    read(disp->data, event, sizeof(event_t));
 }
 
 display_t* display_open(void)
@@ -69,14 +70,33 @@ display_t* display_open(void)
 void display_close(display_t* disp)
 {
     close(disp->handle);
+    close(disp->data);
     free(disp);
 }
 
-void display_screen_rect(display_t* disp, rect_t* rect)
+void display_screen_rect(display_t* disp, rect_t* rect, uint64_t index)
 {
-    cmd_t cmd = {.type = CMD_SCREEN_INFO};
+    cmd_t cmd = {.type = CMD_SCREEN_INFO, .screenInfo.index = index};
     display_cmds_push(disp, &cmd);
     display_cmds_flush(disp);
 
+    while (1)
+    {
+        event_t event;
+        display_recieve_event(disp, &event);
 
+        if (event.type != EVENT_SCREEN_INFO)
+        {
+            // TODO: Push to queue
+        }
+        else
+        {
+            event_screen_info_t* screenInfo = (event_screen_info_t*)event.data;
+            rect->left = 0;
+            rect->top = 0;
+            rect->right = screenInfo->width;
+            rect->bottom = screenInfo->height;
+            return;
+        }
+    }
 }

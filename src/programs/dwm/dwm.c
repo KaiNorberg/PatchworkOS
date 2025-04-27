@@ -85,8 +85,10 @@ static void dwm_poll(fd_t data)
         {
             if (client_recieve_cmds(client) == ERR)
             {
+                printf("client free");
                 list_remove(&client->entry);
                 client_free(client);
+                clientAmount--;
             }
         }
     }

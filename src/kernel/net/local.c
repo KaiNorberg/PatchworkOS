@@ -139,7 +139,7 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
     }
     newLocal->state = LOCAL_SOCKET_ACCEPT;
     newLocal->address[0] = '\0';
-    newLocal->accept.conn = local_connection_ref(local->listen.backlog[local->listen.readIndex]);
+    newLocal->accept.conn = local->listen.backlog[local->listen.readIndex]; // Transfer reference from backlog to accept socket
     local->listen.readIndex = (local->listen.readIndex + 1) % LOCAL_BACKLOG_MAX;
     local->listen.length--;
     lock_init(&newLocal->lock);
@@ -167,12 +167,15 @@ static void local_socket_deinit(socket_t* socket)
     break;
     case LOCAL_SOCKET_CONNECT:
     {
+        printf("socket connet close: %d", atomic_load(&local->connect.conn->ref));
+        waitsys_unblock(&local->connect.conn->waitQueue, UINT64_MAX);
         local_connection_deref(local->connect.conn);
         free(local);
     }
     break;
     case LOCAL_SOCKET_ACCEPT:
     {
+        waitsys_unblock(&local->accept.conn->waitQueue, UINT64_MAX);
         local_connection_deref(local->accept.conn);
         free(local);
     }
@@ -270,8 +273,7 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
     }
 
     local_socket_t* local = socket->private;
-    LOCK_DEFER(&local->lock);
-
+    lock_acquire(&local->lock);
     ring_t* ring;
     local_connection_t* conn;
     switch (local->state)
@@ -290,9 +292,11 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
     break;
     default:
     {
+        lock_release(&local->lock);
         return ERROR(ENOOP);
     }
     }
+    lock_release(&local->lock);
 
     if (count >= PAGE_SIZE / 2)
     {
@@ -327,8 +331,7 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
     }
 
     local_socket_t* local = socket->private;
-    LOCK_DEFER(&local->lock);
-
+    lock_acquire(&local->lock);
     ring_t* ring;
     local_connection_t* conn;
     switch (local->state)
@@ -347,9 +350,11 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
     break;
     default:
     {
+        lock_release(&local->lock);
         return ERROR(ENOOP);
     }
     }
+    lock_release(&local->lock);
 
     if (WAITSYS_BLOCK_LOCK(&conn->waitQueue, &conn->lock, ring_data_length(ring) != 0 || atomic_load(&conn->ref) == 1) != BLOCK_NORM)
     {
