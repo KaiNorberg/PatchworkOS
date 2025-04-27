@@ -14,6 +14,7 @@
 
 #include <errno.h>
 #include <stdatomic.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/math.h>
@@ -23,6 +24,10 @@
 static local_connection_t* local_connection_new(const char* address)
 {
     local_connection_t* conn = malloc(sizeof(local_connection_t));
+    if (conn == NULL)
+    {
+        return NULL;
+    }
 
     void* serverBuffer = pmm_alloc();
     if (serverBuffer == NULL)
@@ -115,6 +120,7 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
     lock_acquire(&local->lock);
     if (local->state != LOCAL_SOCKET_LISTEN)
     {
+        lock_release(&local->lock);
         return ERROR(ENOOP);
     }
     lock_release(&local->lock);
@@ -133,7 +139,7 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
     }
     newLocal->state = LOCAL_SOCKET_ACCEPT;
     newLocal->address[0] = '\0';
-    newLocal->accept.conn = local->listen.backlog[local->listen.readIndex];
+    newLocal->accept.conn = local_connection_ref(local->listen.backlog[local->listen.readIndex]);
     local->listen.readIndex = (local->listen.readIndex + 1) % LOCAL_BACKLOG_MAX;
     local->listen.length--;
     lock_init(&newLocal->lock);
@@ -231,7 +237,7 @@ static uint64_t local_socket_connect(socket_t* socket, const char* address)
         return ERROR(EINVAL);
     }
 
-    local_connection_t* conn = local_connection_new(address);
+    local_connection_t* conn = local_connection_new(address); // First ref
     if (conn == NULL)
     {
         return ERR;
@@ -246,18 +252,23 @@ static uint64_t local_socket_connect(socket_t* socket, const char* address)
         return ERROR(EBUSY);
     }
 
-    listener->listen.backlog[listener->listen.writeIndex] = conn;
+    listener->listen.backlog[listener->listen.writeIndex] = conn; // First ref
     listener->listen.writeIndex = (listener->listen.writeIndex + 1) % LOCAL_BACKLOG_MAX;
     listener->listen.length++;
-    waitsys_unblock(&listener->listen.waitQueue, 1);
+    waitsys_unblock(&listener->listen.waitQueue, UINT64_MAX);
 
-    local->connect.conn = conn;
+    local->connect.conn = local_connection_ref(conn);
     local->state = LOCAL_SOCKET_CONNECT;
     return 0;
 }
 
 static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t count)
 {
+    if (count == 0 || count >= PAGE_SIZE / 2)
+    {
+        return ERROR(EINVAL);
+    }
+
     local_socket_t* local = socket->private;
     LOCK_DEFER(&local->lock);
 
@@ -288,7 +299,13 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
         return ERROR(EINVAL);
     }
 
-    if (WAITSYS_BLOCK_LOCK(&conn->waitQueue, &conn->lock, ring_free_length(ring) >= count + sizeof(uint64_t)) != BLOCK_NORM)
+    if (WAITSYS_BLOCK_LOCK(&conn->waitQueue, &conn->lock, ring_free_length(ring) >= count + sizeof(uint64_t) || atomic_load(&conn->ref) == 1) != BLOCK_NORM)
+    {
+        lock_release(&conn->lock);
+        return 0;
+    }
+
+    if (atomic_load(&conn->ref) == 1)
     {
         lock_release(&conn->lock);
         return 0;
@@ -297,12 +314,18 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
     ring_write(ring, &count, sizeof(uint64_t));
     ring_write(ring, buffer, count);
 
+    waitsys_unblock(&conn->waitQueue, UINT64_MAX);
     lock_release(&conn->lock);
     return count;
 }
 
 static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t count, uint64_t offset, bool* endOfSegment)
 {
+    if (count == 0 || count >= PAGE_SIZE / 2)
+    {
+        return ERROR(EINVAL);
+    }
+
     local_socket_t* local = socket->private;
     LOCK_DEFER(&local->lock);
 
@@ -328,12 +351,13 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
     }
     }
 
-    if (count >= PAGE_SIZE / 2)
+    if (WAITSYS_BLOCK_LOCK(&conn->waitQueue, &conn->lock, ring_data_length(ring) != 0 || atomic_load(&conn->ref) == 1) != BLOCK_NORM)
     {
-        return ERROR(EINVAL);
+        lock_release(&conn->lock);
+        return 0;
     }
 
-    if (WAITSYS_BLOCK_LOCK(&conn->waitQueue, &conn->lock, ring_data_length(ring) != 0) != BLOCK_NORM)
+    if (atomic_load(&conn->ref) == 1)
     {
         lock_release(&conn->lock);
         return 0;
@@ -350,8 +374,43 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
         *endOfSegment = true;
     }
 
+    waitsys_unblock(&conn->waitQueue, UINT64_MAX);
     lock_release(&conn->lock);
     return readCount;
+}
+
+static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
+{
+    local_socket_t* local = socket->private;
+    LOCK_DEFER(&local->lock);
+
+    switch (local->state)
+    {
+    case LOCAL_SOCKET_LISTEN:
+    {
+        poll->occurred = POLL_READ & (local->listen.length != 0);
+        return &local->listen.waitQueue;
+    }
+    break;
+    case LOCAL_SOCKET_CONNECT:
+    {
+        LOCK_DEFER(&local->connect.conn->lock);
+        poll->occurred = POLL_READ & (ring_data_length(&local->connect.conn->clientRing) != 0 || atomic_load(&local->connect.conn->ref) == 1);
+        return &local->connect.conn->waitQueue;
+    }
+    break;
+    case LOCAL_SOCKET_ACCEPT:
+    {
+        LOCK_DEFER(&local->accept.conn->lock);
+        poll->occurred = POLL_READ & (ring_data_length(&local->accept.conn->serverRing) != 0 || atomic_load(&local->accept.conn->ref) == 1);
+        return &local->accept.conn->waitQueue;
+    }
+    break;
+    default:
+    {
+        return ERRPTR(ENOOP);
+    }
+    }
 }
 
 static socket_family_t family = {
@@ -364,6 +423,7 @@ static socket_family_t family = {
     .connect = local_socket_connect,
     .send = local_socket_send,
     .receive = local_socket_receive,
+    .poll = local_socket_poll,
 };
 
 void net_local_init(void)

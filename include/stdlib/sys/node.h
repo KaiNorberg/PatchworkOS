@@ -3,13 +3,14 @@
 
 #include <stdint.h>
 #include <string.h>
-#include <sys/io.h>
 #include <sys/list.h>
 
 #if defined(__cplusplus)
 extern "C"
 {
 #endif
+
+#include "_AUX/MAX_NAME.h"
 
 typedef struct node
 {

@@ -1,3 +1,4 @@
+#include "stdarg.h"
 #ifndef _SYS_IO_H
 #define _SYS_IO_H 1
 
@@ -13,11 +14,8 @@ extern "C"
 #include "_AUX/config.h"
 #include "_AUX/fd_t.h"
 #include "_AUX/nsec_t.h"
-#include "_AUX/pixel_t.h"
-#include "_AUX/rect_t.h"
-
-#define MAX_PATH 256
-#define MAX_NAME 32
+#include "_AUX/MAX_NAME.h"
+#include "_AUX/MAX_PATH.h"
 
 #define STDIN_FILENO 0
 #define STDOUT_FILENO 1
@@ -78,6 +76,8 @@ fd_t open(const char* path);
 
 fd_t openf(const char* _RESTRICT format, ...);
 
+fd_t vopenf(const char* _RESTRICT format, va_list args);
+
 uint64_t open2(const char* path, fd_t fd[2]);
 
 uint64_t close(fd_t fd);
@@ -87,6 +87,8 @@ uint64_t read(fd_t fd, void* buffer, uint64_t count);
 uint64_t write(fd_t fd, const void* buffer, uint64_t count);
 
 uint64_t writef(fd_t fd, const char* _RESTRICT format, ...);
+
+uint64_t vwritef(fd_t fd, const char* _RESTRICT format, va_list args);
 
 uint64_t seek(fd_t fd, int64_t offset, seek_origin_t origin);
 

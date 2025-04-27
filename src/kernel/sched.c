@@ -195,6 +195,7 @@ process_t* sched_process(void)
 
 void sched_invoke(void)
 {
+    ASSERT_PANIC(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
     asm volatile("int %0" ::"i"(VECTOR_SCHED_SCHEDULE));
 }
 

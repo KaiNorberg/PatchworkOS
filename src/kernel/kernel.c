@@ -102,7 +102,5 @@ void kernel_init(boot_info_t* bootInfo)
     testing_run_tests();
 #endif
 
-    log_disable_screen();
-
     asm volatile("sti");
 }

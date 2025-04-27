@@ -9,7 +9,6 @@ extern "C"
 #endif
 
 #include "_AUX/nsec_t.h"
-#include "_AUX/point_t.h"
 
 typedef enum
 {
@@ -23,7 +22,8 @@ typedef struct mouse_event
 {
     nsec_t time;
     mouse_buttons_t buttons;
-    point_t delta;
+    int64_t deltaX;
+    int64_t deltaY;
 } mouse_event_t;
 
 #if defined(__cplusplus)

@@ -1,7 +1,12 @@
-#ifndef _AUX_PIXEL_T_H
-#define _AUX_PIXEL_T_H 1
+#ifndef _SYS_PIXEL_H
+#define _SYS_PIXEL_H 1
 
 #include <stdint.h>
+
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
 
 typedef uint32_t pixel_t;
 
@@ -28,5 +33,9 @@ typedef uint32_t pixel_t;
             *dest = 0; \
         } \
     })
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif

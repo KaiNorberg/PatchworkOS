@@ -14,6 +14,7 @@ typedef uint64_t (*socket_accept_t)(socket_t*, socket_t*);
 typedef uint64_t (*socket_connect_t)(socket_t*, const char*);
 typedef uint64_t (*socket_send_t)(socket_t*, const void*, uint64_t);
 typedef uint64_t (*socket_receive_t)(socket_t*, void*, uint64_t, uint64_t, bool*);
+typedef wait_queue_t* (*socket_poll_t)(socket_t*, poll_file_t*);
 
 // Note: All functions must be implemented.
 typedef struct
@@ -27,6 +28,7 @@ typedef struct
     socket_accept_t accept;
     socket_send_t send;
     socket_receive_t receive;
+    socket_poll_t poll;
 } socket_family_t;
 
 typedef struct

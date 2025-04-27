@@ -1,7 +1,12 @@
-#ifndef _AUX_RECT_T_H
-#define _AUX_RECT_T_H 1
+#ifndef _SYS_RECT_H
+#define _SYS_RECT_H 1
 
 #include <stdint.h>
+
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
 
 typedef struct rect
 {
@@ -97,5 +102,9 @@ typedef struct
         } \
         *(result) = res; \
     })
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif

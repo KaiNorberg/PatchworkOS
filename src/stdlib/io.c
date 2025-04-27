@@ -45,13 +45,20 @@ fd_t open(const char* path)
 
 fd_t openf(const char* _RESTRICT format, ...)
 {
-    va_list args;
     char path[MAX_PATH];
 
+    va_list args;
     va_start(args, format);
     vsnprintf(path, MAX_PATH, format, args);
     va_end(args);
 
+    return _SyscallOpen(path);
+}
+
+fd_t vopenf(const char* _RESTRICT format, va_list args)
+{
+    char path[MAX_PATH];
+    vsnprintf(path, MAX_PATH, format, args);
     return _SyscallOpen(path);
 }
 
@@ -75,6 +82,15 @@ uint64_t write(fd_t fd, const void* buffer, uint64_t count)
     return _SyscallWrite(fd, buffer, count);
 }
 
+uint64_t writef(fd_t fd, const char* _RESTRICT format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    uint64_t result = vwritef(fd, format, args);
+    va_end(args);
+    return result;
+}
+
 typedef struct
 {
     fd_t fd;
@@ -82,11 +98,11 @@ typedef struct
     uint64_t count;
     uint64_t total;
     bool error;
-} writef_ctx_t;
+} vwritef_ctx_t;
 
-static void writef_put_func(char chr, void* context)
+static void vwritef_put_func(char chr, void* context)
 {
-    writef_ctx_t* ctx = (writef_ctx_t*)context;
+    vwritef_ctx_t* ctx = (vwritef_ctx_t*)context;
 
     if (ctx->count >= MAX_PATH)
     {
@@ -104,18 +120,16 @@ static void writef_put_func(char chr, void* context)
     ctx->buffer[ctx->count++] = chr;
 }
 
-uint64_t writef(fd_t fd, const char* _RESTRICT format, ...)
+uint64_t vwritef(fd_t fd, const char* _RESTRICT format, va_list args)
 {
-    writef_ctx_t ctx = {
+    vwritef_ctx_t ctx = {
         .fd = fd,
         .count = 0,
         .total = 0,
         .error = false,
     };
 
-    va_list args;
-    va_start(args, format);
-    _Print(writef_put_func, &ctx, format, args);
+    _Print(vwritef_put_func, &ctx, format, args);
     if (ctx.count > 0)
     {
         uint64_t result = _SyscallWrite(ctx.fd, ctx.buffer, ctx.count);
@@ -129,7 +143,6 @@ uint64_t writef(fd_t fd, const char* _RESTRICT format, ...)
         }
         ctx.count = 0;
     }
-    va_end(args);
     return ctx.error ? ERR : ctx.count;
 }
 

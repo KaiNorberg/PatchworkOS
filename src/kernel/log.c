@@ -46,7 +46,7 @@ static void log_clear_rect(uint64_t x, uint64_t y, uint64_t width, uint64_t heig
     width = MIN(width, (gop.width - x));
     for (uint64_t i = 0; i < height; i++)
     {
-        memset(&gop.base[x + (y + i) * gop.stride], 0, (width) * sizeof(pixel_t));
+        memset(&gop.base[x + (y + i) * gop.stride], 0, (width) * sizeof(uint32_t));
     }
 }
 
@@ -157,7 +157,7 @@ static void log_draw_char(char chr)
         {
             for (uint64_t x = 0; x < FONT_WIDTH; x++)
             {
-                pixel_t pixel = (glyph[y] & (0b10000000 >> x)) > 0 ? 0xFFA3A4A3 : 0;
+                uint32_t pixel = (glyph[y] & (0b10000000 >> x)) > 0 ? 0xFFA3A4A3 : 0;
                 gop.base[(posX + x) + (posY + y) * gop.stride] = pixel;
             }
         }
@@ -200,8 +200,26 @@ static uint64_t log_read(file_t* file, void* buffer, uint64_t count)
     return result;
 }
 
+static uint64_t log_write(file_t* file, const void* buffer, uint64_t count)
+{
+    if (count == 0)
+    {
+        return 0;
+    }
+    if (count >= LOG_MAX_LINE)
+    {
+        return ERROR(EINVAL);
+    }
+    char string[LOG_MAX_LINE];
+    memcpy(string, buffer, count);
+    string[count] = '\0';
+    printf(string);
+    return count;
+}
+
 SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(klogOps, (file_ops_t){
     .read = log_read,
+    .write = log_write,
 });
 
 void log_expose(void)
@@ -218,7 +236,7 @@ void log_enable_screen(gop_buffer_t* gopBuffer)
     {
         gop = *gopBuffer;
     }
-    memset(gop.base, 0, gop.height * gop.height * sizeof(pixel_t));
+    memset(gop.base, 0, gop.height * gop.height * sizeof(uint32_t));
 
     posX = 0;
     posY = 0;
@@ -229,9 +247,11 @@ void log_enable_screen(gop_buffer_t* gopBuffer)
 
 void log_disable_screen(void)
 {
-    printf("log: disable screen");
-    LOCK_DEFER(&lock);
-    screenEnabled = false;
+    if (screenEnabled)
+    {
+        printf("log: disable screen");
+        screenEnabled = false;
+    }
 }
 
 void log_enable_time(void)

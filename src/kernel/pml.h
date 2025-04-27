@@ -2,8 +2,6 @@
 
 #include "defs.h"
 
-// Note: Page table does not perform error checking.
-
 #define PAGE_PRESENT (1 << 0)
 #define PAGE_WRITE (1 << 1)
 #define PAGE_USER (1 << 2)
@@ -41,7 +39,11 @@ void pml_load(pml_t* table);
 
 void* pml_phys_addr(pml_t* table, const void* virtAddr);
 
-bool pml_mapped(pml_t* table, const void* virtAddr, uint64_t pageAmount);
+// Returns if entire region is mapped.
+bool pml_region_mapped(pml_t* table, const void* virtAddr, uint64_t pageAmount);
+
+// Returns if entire region is unmapped.
+bool pml_region_unmapped(pml_t* table, const void* virtAddr, uint64_t pageAmount);
 
 uint64_t pml_map(pml_t* table, void* virtAddr, void* physAddr, uint64_t pageAmount, uint64_t flags);
 

@@ -122,7 +122,7 @@ void* pml_phys_addr(pml_t* table, const void* virtAddr)
     return (void*)(((uint64_t)PAGE_ENTRY_GET_ADDRESS(*entry)) + offset);
 }
 
-bool pml_mapped(pml_t* table, const void* virtAddr, uint64_t pageAmount)
+bool pml_region_mapped(pml_t* table, const void* virtAddr, uint64_t pageAmount)
 {
     for (uint64_t i = 0; i < pageAmount; i++)
     {
@@ -152,6 +152,43 @@ bool pml_mapped(pml_t* table, const void* virtAddr, uint64_t pageAmount)
 
         virtAddr = (void*)((uint64_t)virtAddr + PAGE_SIZE);
     }
+    return true;
+}
+
+bool pml_region_unmapped(pml_t* table, const void* virtAddr, uint64_t pageAmount)
+{
+    for (uint64_t i = 0; i < pageAmount; i++)
+    {
+        pml_t* level3 = pml_get(table, PML_GET_INDEX(virtAddr, 4));
+        if (level3 == NULL)
+        {
+            virtAddr = (void*)((uint64_t)virtAddr + PAGE_SIZE);
+            continue;
+        }
+
+        pml_t* level2 = pml_get(level3, PML_GET_INDEX(virtAddr, 3));
+        if (level2 == NULL)
+        {
+            virtAddr = (void*)((uint64_t)virtAddr + PAGE_SIZE);
+            continue;
+        }
+
+        pml_t* level1 = pml_get(level2, PML_GET_INDEX(virtAddr, 2));
+        if (level1 == NULL)
+        {
+            virtAddr = (void*)((uint64_t)virtAddr + PAGE_SIZE);
+            continue;
+        }
+
+        pml_entry_t* entry = &level1->entries[PML_GET_INDEX(virtAddr, 1)];
+        if (*entry & PAGE_PRESENT)
+        {
+            return false;
+        }
+
+        virtAddr = (void*)((uint64_t)virtAddr + PAGE_SIZE);
+    }
+
     return true;
 }
 
@@ -261,5 +298,5 @@ uint64_t pml_change_flags(pml_t* table, void* virtAddr, uint64_t pageAmount, uin
         virtAddr = (void*)((uint64_t)virtAddr + PAGE_SIZE);
     }
 
-    return 0; // Success
+    return 0;
 }

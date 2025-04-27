@@ -14,14 +14,12 @@
 static lock_t kernelLock;
 static pml_t* kernelPml;
 
-static list_t blocks;
-
 static void* vmm_find_free_region(space_t* space, uint64_t length)
 {
     uint64_t pageAmount = SIZE_IN_PAGES(length);
     for (uintptr_t addr = space->freeAddress; addr < ROUND_DOWN(UINT64_MAX, 0x1000); addr += pageAmount * PAGE_SIZE)
     {
-        if (!pml_mapped(space->pml, (void*)addr, pageAmount))
+        if (pml_region_unmapped(space->pml, (void*)addr, pageAmount))
         {
             space->freeAddress = addr + pageAmount * PAGE_SIZE;
             return (void*)addr;
@@ -119,7 +117,7 @@ void* vmm_kernel_alloc(void* virtAddr, uint64_t length)
 
     vmm_align_region(&virtAddr, &length);
 
-    if (pml_mapped(kernelPml, virtAddr, SIZE_IN_PAGES(length)))
+    if (!pml_region_unmapped(kernelPml, virtAddr, SIZE_IN_PAGES(length)))
     {
         return ERRPTR(EEXIST);
     }
@@ -166,7 +164,7 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t length)
         printf("vmm: map lower [0x%016lx-0x%016lx] to higher", physAddr, ((uintptr_t)physAddr) + length);
     }
 
-    if (pml_mapped(kernelPml, virtAddr, SIZE_IN_PAGES(length)))
+    if (!pml_region_unmapped(kernelPml, virtAddr, SIZE_IN_PAGES(length)))
     {
         printf("vmm_kernel_map: already mapped");
         return ERRPTR(EEXIST);
@@ -206,7 +204,7 @@ void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot)
 
     vmm_align_region(&virtAddr, &length);
 
-    if (pml_mapped(space->pml, virtAddr, SIZE_IN_PAGES(length)))
+    if (!pml_region_unmapped(space->pml, virtAddr, SIZE_IN_PAGES(length)))
     {
         return ERRPTR(EEXIST);
     }
@@ -265,13 +263,12 @@ void* vmm_map(void* virtAddr, void* physAddr, uint64_t length, prot_t prot)
     physAddr = (void*)ROUND_DOWN(physAddr, PAGE_SIZE);
     vmm_align_region(&virtAddr, &length);
 
-    if (pml_mapped(space->pml, virtAddr, SIZE_IN_PAGES(length)))
+    if (!pml_region_unmapped(space->pml, virtAddr, SIZE_IN_PAGES(length)))
     {
         return ERRPTR(EEXIST);
     }
 
-    uint64_t result = pml_map(space->pml, virtAddr, physAddr, SIZE_IN_PAGES(length), flags);
-    if (result == ERR)
+    if (pml_map(space->pml, virtAddr, physAddr, SIZE_IN_PAGES(length), flags) == ERR)
     {
         return ERRPTR(ENOMEM);
     }
@@ -285,7 +282,7 @@ uint64_t vmm_unmap(void* virtAddr, uint64_t length)
     space_t* space = &sched_process()->space;
     LOCK_DEFER(&space->lock);
 
-    if (!pml_mapped(space->pml, virtAddr, SIZE_IN_PAGES(length)))
+    if (pml_region_unmapped(space->pml, virtAddr, SIZE_IN_PAGES(length)))
     {
         return ERROR(EFAULT);
     }
@@ -306,7 +303,7 @@ uint64_t vmm_protect(void* virtAddr, uint64_t length, prot_t prot)
     space_t* space = &sched_process()->space;
     LOCK_DEFER(&space->lock);
 
-    if (!pml_mapped(space->pml, virtAddr, SIZE_IN_PAGES(length)))
+    if (pml_region_unmapped(space->pml, virtAddr, SIZE_IN_PAGES(length)))
     {
         return ERROR(EFAULT);
     }
@@ -325,5 +322,5 @@ bool vmm_mapped(const void* virtAddr, uint64_t length)
     vmm_align_region((void**)&virtAddr, &length);
     space_t* space = &sched_process()->space;
     LOCK_DEFER(&space->lock);
-    return pml_mapped(space->pml, virtAddr, SIZE_IN_PAGES(length));
+    return pml_region_mapped(space->pml, virtAddr, SIZE_IN_PAGES(length));
 }

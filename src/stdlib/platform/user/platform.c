@@ -2,6 +2,8 @@
 #include "common/print.h"
 #include "common/thread.h"
 
+#include <stdarg.h>
+#include <stdio.h>
 #include <sys/io.h>
 #include <sys/proc.h>
 
@@ -22,13 +24,8 @@ int* _PlatformErrnoFunc(void)
     return &_ThreadById(_SyscallThreadId())->err;
 }
 
-static void _PlatformVprintfPutFunc(char chr, void* context)
-{
-    write(STDOUT_FILENO, &chr, 1);
-}
-
 // TODO: Implement streams!
 int _PlatformVprintf(const char* _RESTRICT format, va_list args)
 {
-    return _Print(_PlatformVprintfPutFunc, NULL, format, args);
+    return vwritef(STDOUT_FILENO, format, args);
 }

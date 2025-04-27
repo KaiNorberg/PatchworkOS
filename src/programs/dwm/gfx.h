@@ -1,17 +1,10 @@
-#ifndef _SYS_GFX_H
-#define _SYS_GFX_H 1
+#pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
-
-#if defined(__cplusplus)
-extern "C"
-{
-#endif
-
-#include "_AUX/pixel_t.h"
-#include "_AUX/point_t.h"
-#include "_AUX/rect_t.h"
+#include <win/pixel.h>
+#include <win/point.h>
+#include <win/rect.h>
 
 #define PSF1_MAGIC 0x0436
 #define PSF2_MAGIC 0x864AB572
@@ -103,9 +96,3 @@ void gfx_transfer_blend(gfx_t* dest, const gfx_t* src, const rect_t* destRect, c
 void gfx_swap(gfx_t* dest, const gfx_t* src, const rect_t* rect);
 
 void gfx_invalidate(gfx_t* gfx, const rect_t* rect);
-
-#if defined(__cplusplus)
-}
-#endif
-
-#endif

@@ -68,13 +68,14 @@ void mouse_free(mouse_t* mouse)
     sysobj_free(mouse->sysobj);
 }
 
-void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, const point_t* delta)
+void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, int64_t deltaX, int64_t deltaY)
 {
     LOCK_DEFER(&mouse->lock);
     mouse->events[mouse->writeIndex] = (mouse_event_t){
         .time = systime_uptime(),
         .buttons = buttons,
-        .delta = *delta,
+        .deltaX = deltaX,
+        .deltaY = deltaY,
     };
     mouse->writeIndex = (mouse->writeIndex + 1) % MOUSE_MAX_EVENT;
     waitsys_unblock(&mouse->waitQueue, WAITSYS_ALL);

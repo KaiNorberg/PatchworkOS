@@ -4,24 +4,40 @@
 #include "defs.h"
 #include "log.h"
 #include "sched.h"
+#include "vmm.h"
 
 #include <errno.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/fb.h>
+#include <sys/math.h>
 
-static uint64_t gop_flush(fb_t* fb, const fb_pixel_t* buffer, uint64_t x, uint64_t y, uint64_t width, uint64_t height, uint64_t stride)
+static gop_buffer_t gop;
+
+static void* gop_mmap(fb_t* fb, void* addr, uint64_t length, prot_t prot)
 {
-    return ERROR(EIMPL);
+    length = MIN(gop.height * gop.stride * sizeof(uint32_t), length);
+    addr = vmm_map(addr, VMM_HIGHER_TO_LOWER(gop.base), length, prot);
+    if (addr == NULL)
+    {
+        return NULL;
+    }
+    return addr;
 }
 
 static fb_t fb =
 {
-    .width = 0, // Updated in gop_init
-    .height = 0, // Updated in gop_init
-    .flush = gop_flush,
+    .info = {0}, // Set in gop_init
+    .mmap = gop_mmap,
 };
 
 void gop_init(gop_buffer_t* gopBuffer)
 {
-    fb.width = gopBuffer->width;
-    fb.height = gopBuffer->height;
-    //ASSERT_PANIC(fb_expose(&fb) != ERR);
+    fb.info.width = gopBuffer->width;
+    fb.info.height = gopBuffer->height;
+    fb.info.stride = gopBuffer->stride;
+    fb.info.format = FB_ARGB32;
+    gop = *gopBuffer;
+
+    ASSERT_PANIC(fb_expose(&fb) != NULL);
 }

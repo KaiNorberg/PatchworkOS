@@ -3,9 +3,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "efilib.h"
-#include "vm.h"
-
 static void gop_select_mode(EFI_GRAPHICS_OUTPUT_PROTOCOL* gop, int64_t width, int64_t height)
 {
     uint64_t bestMatch = UINT64_MAX;

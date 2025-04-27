@@ -1,16 +1,21 @@
 #ifndef _SYS_FB_H
 #define _SYS_FB_H 1
 
-// Should be followed by the buffer to be flushed.
-typedef struct ioctl_fb_flush
-{
-    uint64_t x;
-    uint64_t y;
-    uint64_t height;
-    uint64_t width;
-    uint64_t stride;
-} ioctl_fb_flush_t;
+#include <stdint.h>
 
-#define IOCTL_FB_FLUSH 1234
+typedef enum
+{
+    FB_ARGB32,
+} fb_format_t;
+
+typedef struct
+{
+    uint64_t width;
+    uint64_t height;
+    uint64_t stride;
+    fb_format_t format;
+} fb_info_t;
+
+#define IOCTL_FB_INFO 0
 
 #endif

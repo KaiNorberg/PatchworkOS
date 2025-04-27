@@ -1,14 +1,10 @@
+#include "gfx.h"
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/gfx.h>
 #include <sys/io.h>
 #include <sys/math.h>
-
-#include "_AUX/pixel_t.h"
-#include "_AUX/rect_t.h"
-#include "platform/platform.h"
-#if _PLATFORM_HAS_SYSCALLS
 
 gfx_fbmp_t* gfx_fbmp_new(const char* path)
 {
@@ -162,8 +158,6 @@ gfx_psf_t* gfx_psf_new(const char* path)
     close(file);
     return psf;
 }
-
-#endif
 
 void gfx_fbmp(gfx_t* gfx, const gfx_fbmp_t* fbmp, const point_t* point)
 {
