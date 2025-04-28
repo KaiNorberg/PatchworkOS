@@ -1,4 +1,4 @@
-#include "stdlib_internal/init.h"
+#include "libstd_internal/init.h"
 
 #include "../platform/platform.h"
 #include "heap.h"

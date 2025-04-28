@@ -167,7 +167,6 @@ static void local_socket_deinit(socket_t* socket)
     break;
     case LOCAL_SOCKET_CONNECT:
     {
-        printf("socket connet close: %d", atomic_load(&local->connect.conn->ref));
         waitsys_unblock(&local->connect.conn->waitQueue, UINT64_MAX);
         local_connection_deref(local->connect.conn);
         free(local);
@@ -303,7 +302,8 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
         return ERROR(EINVAL);
     }
 
-    if (WAITSYS_BLOCK_LOCK(&conn->waitQueue, &conn->lock, ring_free_length(ring) >= count + sizeof(uint64_t) || atomic_load(&conn->ref) == 1) != BLOCK_NORM)
+    if (WAITSYS_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
+            ring_free_length(ring) >= count + sizeof(uint64_t) || atomic_load(&conn->ref) == 1) != BLOCK_NORM)
     {
         lock_release(&conn->lock);
         return 0;
@@ -356,7 +356,8 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
     }
     lock_release(&local->lock);
 
-    if (WAITSYS_BLOCK_LOCK(&conn->waitQueue, &conn->lock, ring_data_length(ring) != 0 || atomic_load(&conn->ref) == 1) != BLOCK_NORM)
+    if (WAITSYS_BLOCK_LOCK(&conn->waitQueue, &conn->lock, ring_data_length(ring) != 0 || atomic_load(&conn->ref) == 1) !=
+        BLOCK_NORM)
     {
         lock_release(&conn->lock);
         return 0;
@@ -400,14 +401,16 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
     case LOCAL_SOCKET_CONNECT:
     {
         LOCK_DEFER(&local->connect.conn->lock);
-        poll->occurred = POLL_READ & (ring_data_length(&local->connect.conn->clientRing) != 0 || atomic_load(&local->connect.conn->ref) == 1);
+        poll->occurred =
+            POLL_READ & (ring_data_length(&local->connect.conn->clientRing) != 0 || atomic_load(&local->connect.conn->ref) == 1);
         return &local->connect.conn->waitQueue;
     }
     break;
     case LOCAL_SOCKET_ACCEPT:
     {
         LOCK_DEFER(&local->accept.conn->lock);
-        poll->occurred = POLL_READ & (ring_data_length(&local->accept.conn->serverRing) != 0 || atomic_load(&local->accept.conn->ref) == 1);
+        poll->occurred =
+            POLL_READ & (ring_data_length(&local->accept.conn->serverRing) != 0 || atomic_load(&local->accept.conn->ref) == 1);
         return &local->accept.conn->waitQueue;
     }
     break;

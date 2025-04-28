@@ -1,7 +1,8 @@
-#ifndef _SYS_RECT_H
-#define _SYS_RECT_H 1
+#ifndef _DWM_RECT_H
+#define _DWM_RECT_H 1
 
 #include <stdint.h>
+#include <sys/math.h>
 
 #if defined(__cplusplus)
 extern "C"

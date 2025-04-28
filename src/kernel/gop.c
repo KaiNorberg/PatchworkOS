@@ -1,7 +1,7 @@
 #include "gop.h"
 
-#include "fb.h"
 #include "defs.h"
+#include "fb.h"
 #include "log.h"
 #include "sched.h"
 #include "vmm.h"
@@ -25,8 +25,7 @@ static void* gop_mmap(fb_t* fb, void* addr, uint64_t length, prot_t prot)
     return addr;
 }
 
-static fb_t fb =
-{
+static fb_t fb = {
     .info = {0}, // Set in gop_init
     .mmap = gop_mmap,
 };

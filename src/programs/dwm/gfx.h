@@ -2,9 +2,9 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <win/pixel.h>
-#include <win/point.h>
-#include <win/rect.h>
+#include <libdwm/pixel.h>
+#include <libdwm/point.h>
+#include <libdwm/rect.h>
 
 #define PSF1_MAGIC 0x0436
 #define PSF2_MAGIC 0x864AB572

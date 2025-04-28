@@ -1,9 +1,9 @@
 #include "fb.h"
 
 #include "defs.h"
+#include "log.h"
 #include "sched.h"
 #include "sysfs.h"
-#include "log.h"
 
 #include <stdatomic.h>
 #include <stdio.h>
@@ -44,10 +44,11 @@ static uint64_t fb_ioctl(file_t* file, uint64_t request, void* argp, uint64_t si
     return 0;
 }
 
-SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(fbOps, (file_ops_t){
-    .mmap = fb_mmap,
-    .ioctl = fb_ioctl,
-});
+SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(fbOps,
+    (file_ops_t){
+        .mmap = fb_mmap,
+        .ioctl = fb_ioctl,
+    });
 
 sysobj_t* fb_expose(fb_t* fb)
 {

@@ -56,10 +56,11 @@ static uint64_t process_cmdline_seek(file_t* file, int64_t offset, seek_origin_t
     return BUFFER_SEEK(file, offset, origin, size);
 }
 
-SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(cmdlineOps, (file_ops_t){
-    .read = process_cmdline_read,
-    .seek = process_cmdline_seek,
-});
+SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(cmdlineOps,
+    (file_ops_t){
+        .read = process_cmdline_read,
+        .seek = process_cmdline_seek,
+    });
 
 static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count)
 {
@@ -95,10 +96,11 @@ static uint64_t process_cwd_seek(file_t* file, int64_t offset, seek_origin_t ori
     return BUFFER_SEEK(file, offset, origin, size);
 }
 
-SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(cwdOps, (file_ops_t){
-    .read = process_cwd_read,
-    .seek = process_cwd_seek,
-})
+SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(cwdOps,
+    (file_ops_t){
+        .read = process_cwd_read,
+        .seek = process_cwd_seek,
+    })
 
 static uint64_t process_action_kill(uint64_t argc, const char** argv, void* private)
 {
@@ -131,9 +133,10 @@ static uint64_t process_ctl_write(file_t* file, const void* buffer, uint64_t cou
     return actions_dispatch(&actions, buffer, count, process);
 }
 
-SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(ctlOps, (file_ops_t){
-    .write = process_ctl_write,
-});
+SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(ctlOps,
+    (file_ops_t){
+        .write = process_ctl_write,
+    });
 
 static void process_on_free(sysdir_t* dir)
 {

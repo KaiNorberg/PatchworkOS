@@ -1,18 +1,18 @@
 #pragma once
 
-#include "win/dwm.h"
-#include "window.h"
+#include "surface.h"
 
 #include <sys/io.h>
 #include <sys/list.h>
+#include <libdwm/cmd.h>
+#include <libdwm/event.h>
 
-typedef struct
+typedef struct client
 {
     list_entry_t entry;
     fd_t fd;
-    window_t* window;
+    list_t surfaces;
     cmd_buffer_t cmds;
-    uint64_t padding;
 } client_t;
 
 client_t* client_new(fd_t fd);
@@ -21,4 +21,4 @@ void client_free(client_t* client);
 
 uint64_t client_recieve_cmds(client_t* client);
 
-uint64_t client_send_event(client_t* client, event_type_t type, void* data, uint64_t size);
+uint64_t client_send_event(client_t* client, event_type_t type, surface_id_t target, void* data, uint64_t size);

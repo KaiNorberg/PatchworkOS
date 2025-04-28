@@ -18,12 +18,17 @@ int main(void)
     spawn_program("home:/bin/dwm");
 
     stat_t info;
-    while (stat("sys:/net/local/listen/dwm", &info) == ERR);
+    while (stat("sys:/net/local/listen/dwm", &info) == ERR)
+        ;
 
     spawn_program("home:/bin/wall");
 
-    //spawn_program("home:/bin/cursor");
-    //spawn_program("home:/bin/taskbar");
+    struct timespec spec = {.tv_sec = 1};
+    thrd_sleep(&spec, NULL);
+    spawn_program("home:/usr/bin/calculator");
+
+    // spawn_program("home:/bin/cursor");
+    // spawn_program("home:/bin/taskbar");
 
     return 0;
 }

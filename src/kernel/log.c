@@ -217,10 +217,11 @@ static uint64_t log_write(file_t* file, const void* buffer, uint64_t count)
     return count;
 }
 
-SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(klogOps, (file_ops_t){
-    .read = log_read,
-    .write = log_write,
-});
+SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(klogOps,
+    (file_ops_t){
+        .read = log_read,
+        .write = log_write,
+    });
 
 void log_expose(void)
 {

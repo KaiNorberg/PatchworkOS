@@ -1,8 +1,8 @@
-#include "stdarg.h"
 #ifndef _SYS_IO_H
 #define _SYS_IO_H 1
 
 #include <stdint.h>
+#include <stdarg.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -10,12 +10,12 @@ extern "C"
 #endif
 
 #include "_AUX/ERR.h"
+#include "_AUX/MAX_NAME.h"
+#include "_AUX/MAX_PATH.h"
 #include "_AUX/NULL.h"
 #include "_AUX/config.h"
 #include "_AUX/fd_t.h"
 #include "_AUX/nsec_t.h"
-#include "_AUX/MAX_NAME.h"
-#include "_AUX/MAX_PATH.h"
 
 #define STDIN_FILENO 0
 #define STDOUT_FILENO 1

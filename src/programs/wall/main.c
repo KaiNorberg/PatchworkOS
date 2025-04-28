@@ -1,24 +1,28 @@
-#include "win/display.h"
-#include <win/win.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <libdwm/dwm.h>
 
-/*static uint64_t procedure(win_t* window, const msg_t* msg)
+static uint64_t procedure(window_t* window, const event_t* event)
 {
-    switch (msg->type)
+    switch (event->type)
     {
-    case LMSG_REDRAW:
+    case EVENT_INIT:
     {
-        rect_t rect = RECT_INIT_GFX(&gfx);
-
-        gfx_rect(&gfx, &rect, 0xFF007E81);
-        //gfx_gradient(&gfx, &rect, 0xFF427F99, 0xFF5FA6C2, GFX_GRADIENT_DIAGONAL, true);
+        printf("init");
+    }
+    break;
+    case EVENT_REDRAW:
+    {
+        rect_t rect;
+        window_get_rect(window, &rect);
+        //gfx_gradient(&gfx, &rect, 0xFF427F99, 0xFF5FA6C2, GFX_GRADIENT_DIAGONAL, true);*/
+        window_draw_rect(window, &rect, 0xFF427F99);
     }
     break;
     }
 
     return 0;
-}*/
-
-#include <stdio.h>
+}
 
 int main(void)
 {
@@ -26,26 +30,21 @@ int main(void)
 
     rect_t rect;
     display_screen_rect(disp, &rect, 0);
-    printf("%d, %d, %d, %d", rect.left, rect.top, rect.right, rect.bottom);
 
-    //win_t* win = win_new(disp, "Wallpaper)
-
-    display_close(disp);
-    //win_t* window = win_new();
-
-    /*rect_t rect;
-    win_screen_rect(&rect);
-
-    win_t* window = win_new("Wallpaper", &rect, DWM_WALL, WIN_NONE, procedure);
-
-    msg_t msg = {0};
-    while (msg.type != LMSG_QUIT)
+    window_t* win = window_new(disp, NULL, "Wallpaper", &rect, 0, SURFACE_WALL, WINDOW_NONE, procedure);
+    if (win == NULL)
     {
-        win_receive(window, &msg, NEVER);
-        win_dispatch(window, &msg);
+        return EXIT_FAILURE;
     }
 
-    win_free(window);
-    dwm_close(dwm);
-    return 0;*/
+    event_t event = {0};
+    while (display_connected(disp))
+    {
+        display_next_event(disp, &event, NEVER);
+        display_dispatch(disp, &event);
+    }
+
+    window_free(win);
+    display_close(disp);
+    return 0;
 }

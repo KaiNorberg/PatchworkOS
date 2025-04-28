@@ -1,10 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
-#include <sys/gfx.h>
-#include <sys/kbd.h>
-#include <sys/math.h>
-#include <sys/proc.h>
-#include <sys/win.h>
+#include <stdio.h>
+#include <libdwm/dwm.h>
 
 #define WINDOW_WIDTH 280
 #define WINDOW_HEIGHT 330
@@ -20,7 +17,7 @@
 
 #define LABEL_ID 1234
 
-static void numpad_button_create(win_t* window, uint64_t column, uint64_t row, const char* name, widget_id_t id)
+/*static void numpad_button_create(win_t* window, uint64_t column, uint64_t row, const char* name, widget_id_t id)
 {
     rect_t rect =
         RECT_INIT_DIM(NUMPAD_COLUMN_TO_WINDOW(column), NUMPAD_ROW_TO_WINDOW(row), NUMPAD_BUTTON_WIDTH, NUMPAD_BUTTON_WIDTH);
@@ -30,19 +27,20 @@ static void numpad_button_create(win_t* window, uint64_t column, uint64_t row, c
         .xAlign = GFX_CENTER,
         .yAlign = GFX_CENTER};
     widget_t* button = win_button_new(window, name, &rect, id, &props, WIN_BUTTON_NONE);
-}
+}*/
 
-static uint64_t procedure(win_t* window, const msg_t* msg)
+static uint64_t procedure(window_t* window, const event_t* event)
 {
     static uint64_t input;
     static uint64_t accumulator;
     static char operation;
 
-    switch (msg->type)
+    switch (event->type)
     {
-    case LMSG_INIT:
+    case EVENT_INIT:
     {
-        input = 0;
+        printf("calc init");
+        /*input = 0;
         accumulator = 0;
         operation = '=';
 
@@ -74,12 +72,19 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
             .xAlign = GFX_MAX,
             .yAlign = GFX_CENTER,
         };
-        win_label_new(window, "0", &labelRect, LABEL_ID, &props);
+        win_label_new(window, "0", &labelRect, LABEL_ID, &props);*/
     }
     break;
-    case LMSG_COMMAND:
+    case EVENT_REDRAW:
     {
-        lmsg_command_t* data = (lmsg_command_t*)msg->data;
+        rect_t rect;
+        window_get_rect(window, &rect);
+        window_draw_rect(window, &rect, 0xFFFF0000);
+    }
+    break;
+    //case LMSG_COMMAND:
+    {
+        /*lmsg_command_t* data = (lmsg_command_t*)msg->data;
         if (data->type == LMSG_COMMAND_RELEASE)
         {
             if (data->id <= 9)
@@ -123,7 +128,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
             char buffer[32];
             ulltoa(data->id == '=' ? accumulator : input, buffer, 10);
             win_widget_name_set(win_widget(window, LABEL_ID), buffer);
-        }
+        }*/
     }
     break;
     }
@@ -133,22 +138,23 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
 
 int main(void)
 {
-    rect_t rect = RECT_INIT_DIM(500, 200, WINDOW_WIDTH, WINDOW_HEIGHT);
-    win_expand_to_window(&rect, WIN_DECO);
+    display_t* disp = display_open();
 
-    win_t* window = win_new("Calculator", &rect, DWM_WINDOW, WIN_DECO, procedure);
-    if (window == NULL)
+    rect_t rect = RECT_INIT_DIM(500, 200, WINDOW_WIDTH, WINDOW_HEIGHT);
+    window_t* win = window_new(disp, NULL, "Calculator", &rect, 0, SURFACE_WINDOW, WINDOW_DECO, procedure);
+    if (win == NULL)
     {
         return EXIT_FAILURE;
     }
 
-    msg_t msg = {0};
-    while (msg.type != LMSG_QUIT)
+    event_t event = {0};
+    while (display_connected(disp))
     {
-        win_receive(window, &msg, NEVER);
-        win_dispatch(window, &msg);
+        display_next_event(disp, &event, NEVER);
+        display_dispatch(disp, &event);
     }
 
-    win_free(window);
+    window_free(win);
+    display_close(disp);
     return EXIT_SUCCESS;
 }

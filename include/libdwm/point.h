@@ -1,5 +1,5 @@
-#ifndef _SYS_POINT_H
-#define _SYS_POINT_H 1
+#ifndef _DWM_POINT_H
+#define _DWM_POINT_H 1
 
 #include <stdint.h>
 
@@ -10,8 +10,8 @@ extern "C"
 
 typedef struct point
 {
-    int64_t x;
-    int64_t y;
+    int32_t x;
+    int32_t y;
 } point_t;
 
 #if defined(__cplusplus)
