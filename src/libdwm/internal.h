@@ -10,9 +10,9 @@ typedef struct window
     char name[MAX_NAME];
     rect_t rect;
     surface_type_t type;
-    window_flags_t flags;
     procedure_t proc;
     display_t* display;
+    bool selected;
 } window_t;
 
 #define DISPLAY_MAX_EVENT 32
@@ -31,6 +31,7 @@ typedef struct display
         uint64_t writeIndex;
     } events;
     list_t windows;
+    surface_id_t newId;
 } display_t;
 
 uint64_t display_send_recieve_pattern(display_t* disp, cmd_t* cmd, event_t* event, event_type_t expected);

@@ -25,7 +25,7 @@ int main(void)
 
     struct timespec spec = {.tv_sec = 1};
     thrd_sleep(&spec, NULL);
-    spawn_program("home:/usr/bin/calculator");
+    // spawn_program("home:/usr/bin/calculator");
 
     // spawn_program("home:/bin/cursor");
     // spawn_program("home:/bin/taskbar");

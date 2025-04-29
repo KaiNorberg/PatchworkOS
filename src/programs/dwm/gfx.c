@@ -500,7 +500,7 @@ void gfx_rect(gfx_t* gfx, const rect_t* rect, pixel_t pixel)
     gfx_invalidate(gfx, rect);
 }
 
-void gfx_gradient(gfx_t* gfx, const rect_t* rect, pixel_t start, pixel_t end, gfx_gradient_type_t type, bool addNoise)
+void gfx_gradient(gfx_t* gfx, const rect_t* rect, pixel_t start, pixel_t end, gradient_type_t type, bool addNoise)
 {
     int64_t width = rect->right - rect->left;
     int64_t height = rect->bottom - rect->top;
@@ -514,19 +514,19 @@ void gfx_gradient(gfx_t* gfx, const rect_t* rect, pixel_t start, pixel_t end, gf
 
             switch (type)
             {
-            case GFX_GRADIENT_VERTICAL:
+            case GRADIENT_VERTICAL:
             {
                 factorNum = (y - rect->top);
                 factorDenom = height;
             }
             break;
-            case GFX_GRADIENT_HORIZONTAL:
+            case GRADIENT_HORIZONTAL:
             {
                 factorNum = (x - rect->left);
                 factorDenom = width;
             }
             break;
-            case GFX_GRADIENT_DIAGONAL:
+            case GRADIENT_DIAGONAL:
             {
                 factorNum = (x - rect->left) + (y - rect->top);
                 factorDenom = width + height;

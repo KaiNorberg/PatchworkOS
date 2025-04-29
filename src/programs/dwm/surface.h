@@ -12,8 +12,7 @@ typedef struct client client_t;
 
 typedef struct surface
 {
-    list_entry_t surfaceEntry;
-    list_t children;
+    list_entry_t dwmEntry;
     list_entry_t clientEntry;
     client_t* client;
     point_t pos;
@@ -26,6 +25,8 @@ typedef struct surface
 } surface_t;
 
 #define SURFACE_RECT(surface) RECT_INIT_DIM(surface->pos.x, surface->pos.y, surface->gfx.width, surface->gfx.height);
+
+#define SURFACE_LOCAL_RECT(surface) RECT_INIT_DIM(0, 0, surface->gfx.width, surface->gfx.height);
 
 #define SURFACE_INVALID_RECT(surface) \
     RECT_INIT_DIM(surface->pos.x + surface->gfx.invalidRect.left, surface->pos.y + surface->gfx.invalidRect.top, \

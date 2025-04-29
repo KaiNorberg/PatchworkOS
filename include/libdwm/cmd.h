@@ -19,8 +19,9 @@ typedef enum
     CMD_SURFACE_NEW,
     CMD_SURFACE_FREE,
     CMD_DRAW_RECT,
-    CMD_TOTAL_AMOUNT, // Above this are unimplemented cmds.
+    CMD_DRAW_EDGE,
     CMD_DRAW_GRADIENT,
+    CMD_TOTAL_AMOUNT, // Above this are unimplemented cmds.
     CMD_DRAW_LINE,
     CMD_DRAW_POINT,
     CMD_DRAW_TRIANGLE,
@@ -37,7 +38,6 @@ typedef struct
 typedef struct
 {
     surface_id_t id;
-    surface_id_t parent;
     surface_type_t type;
     rect_t rect;
 } cmd_surface_new_t;
@@ -54,6 +54,32 @@ typedef struct
     pixel_t pixel;
 } cmd_draw_rect_t;
 
+typedef struct
+{
+    surface_id_t target;
+    rect_t rect;
+    uint64_t width;
+    pixel_t foreground;
+    pixel_t background;
+} cmd_draw_edge_t;
+
+typedef enum
+{
+    GRADIENT_VERTICAL,
+    GRADIENT_HORIZONTAL,
+    GRADIENT_DIAGONAL
+} gradient_type_t;
+
+typedef struct
+{
+    surface_id_t target;
+    rect_t rect;
+    pixel_t start;
+    pixel_t end;
+    gradient_type_t type;
+    bool addNoise;
+} cmd_draw_gradient_t;
+
 typedef struct cmd
 {
     cmd_type_t type;
@@ -62,6 +88,8 @@ typedef struct cmd
         cmd_surface_new_t surfaceNew;
         cmd_surface_free_t surfaceFree;
         cmd_draw_rect_t drawRect;
+        cmd_draw_edge_t drawEdge;
+        cmd_draw_gradient_t drawGradient;
         uint8_t padding[64];
     };
 } cmd_t;

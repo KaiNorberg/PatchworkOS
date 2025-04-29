@@ -78,7 +78,7 @@ static uint64_t procedure(window_t* window, const event_t* event)
     case EVENT_REDRAW:
     {
         rect_t rect;
-        window_get_rect(window, &rect);
+        window_get_local_rect(window, &rect);
         window_draw_rect(window, &rect, 0xFFFF0000);
     }
     break;
@@ -141,7 +141,7 @@ int main(void)
     display_t* disp = display_open();
 
     rect_t rect = RECT_INIT_DIM(500, 200, WINDOW_WIDTH, WINDOW_HEIGHT);
-    window_t* win = window_new(disp, NULL, "Calculator", &rect, 0, SURFACE_WINDOW, WINDOW_DECO, procedure);
+    window_t* win = window_new(disp, "Calculator", &rect, SURFACE_WINDOW, WINDOW_DECO, procedure);
     if (win == NULL)
     {
         return EXIT_FAILURE;

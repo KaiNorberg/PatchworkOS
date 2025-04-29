@@ -10,11 +10,19 @@ extern "C"
 {
 #endif
 
-// Note: Event types are not enums to allow for user defined event types.
 typedef uint16_t event_type_t;
+
+// Dwm events, send from the dwm.
 #define EVENT_SCREEN_INFO 0
 #define EVENT_INIT 1
 #define EVENT_REDRAW 2
+
+// Library events, defined by libdwm.
+#define LEVENT_BASE (1 << 14)
+#define LEVENT_FREE (LEVENT_BASE + 1)
+
+// User events, defined by individual programs
+#define UEVENT_BASE (1 << 15)
 
 typedef struct
 {

@@ -4,13 +4,18 @@
 
 #include <sys/io.h>
 #include <sys/list.h>
+#include <libdwm/event.h>
+
+typedef struct client
+{
+    list_entry_t entry;
+    fd_t fd;
+    list_t surfaces;
+    cmd_buffer_t cmds;
+} client_t;
 
 void dwm_init(void);
 
 void dwm_deinit(void);
-
-uint64_t dwm_attach_to_wall(surface_t* surface);
-
-void dwm_set_redraw_needed(void);
 
 void dwm_loop(void);

@@ -20,6 +20,8 @@ display_t* display_open(void);
 
 void display_close(display_t* disp);
 
+surface_id_t display_gen_id(display_t* disp);
+
 void display_screen_rect(display_t* disp, rect_t* rect, uint64_t index);
 
 bool display_connected(display_t* disp);

@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <sys/list.h>
 
 surface_t* surface_new(client_t* client, surface_id_t id, const point_t* point, uint64_t width, uint64_t height, surface_type_t type)
@@ -9,11 +10,11 @@ surface_t* surface_new(client_t* client, surface_id_t id, const point_t* point, 
     surface_t* surface = malloc(sizeof(surface_t));
     if (surface == NULL)
     {
+        printf("dwm surface error: failed to allocate surface");
         return NULL;
     }
 
-    list_entry_init(&surface->surfaceEntry);
-    list_init(&surface->children);
+    list_entry_init(&surface->dwmEntry);
     list_entry_init(&surface->clientEntry);
     surface->client = client;
     surface->pos = *point;
@@ -21,6 +22,7 @@ surface_t* surface_new(client_t* client, surface_id_t id, const point_t* point, 
     if (surface->gfx.buffer == NULL)
     {
         free(surface);
+        printf("dwm surface error: failed to allocate gfx buffer");
         return NULL;
     }
     memset(surface->gfx.buffer, 0, width * height * sizeof(pixel_t));
@@ -36,20 +38,8 @@ surface_t* surface_new(client_t* client, surface_id_t id, const point_t* point, 
     return surface;
 }
 
-static void surface_free_children(surface_t* surface)
-{
-    surface_t* child;
-    surface_t* temp;
-    LIST_FOR_EACH_SAFE(child, temp, &surface->children, surfaceEntry)
-    {
-        surface_free(child);
-    }
-}
-
 void surface_free(surface_t* surface)
 {
-    surface_free_children(surface);
-    list_remove(&surface->surfaceEntry);
     free(surface->gfx.buffer);
     free(surface);
 }

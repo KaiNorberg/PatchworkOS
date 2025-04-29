@@ -39,6 +39,7 @@ display_t* display_open(void)
     display_t* disp = malloc(sizeof(display_t));
     if (disp == NULL)
     {
+
         return NULL;
     }
 
@@ -78,6 +79,7 @@ display_t* display_open(void)
     disp->events.writeIndex = 0;
     disp->cmds.amount = 0;
     list_init(&disp->windows);
+    disp->newId = SURFACE_ID_NONE - 1;
     return disp;
 }
 
@@ -93,6 +95,11 @@ void display_close(display_t* disp)
     close(disp->handle);
     close(disp->data);
     free(disp);
+}
+
+surface_id_t display_gen_id(display_t* disp)
+{
+    return disp->newId--;
 }
 
 void display_screen_rect(display_t* disp, rect_t* rect, uint64_t index)
@@ -139,7 +146,7 @@ bool display_next_event(display_t* disp, event_t* event, nsec_t timeout)
 
 void display_dispatch(display_t* disp, event_t* event)
 {
-    if (event->target == SURFACE_ID_ROOT)
+    if (event->target == SURFACE_ID_NONE)
     {
         return;
     }
@@ -160,6 +167,8 @@ void display_dispatch(display_t* disp, event_t* event)
     display_cmds_flush(disp);
 }
 
+#include <stdio.h>
+
 uint64_t display_send_recieve_pattern(display_t* disp, cmd_t* cmd, event_t* event, event_type_t expected)
 {
     display_cmds_push(disp, cmd);
@@ -167,7 +176,9 @@ uint64_t display_send_recieve_pattern(display_t* disp, cmd_t* cmd, event_t* even
 
     while (display_connected(disp))
     {
+        printf("display: recieve start");
         display_recieve_event(disp, event);
+        printf("display: recieve end");
 
         if (event->type != expected)
         {

@@ -5,19 +5,13 @@
 #include <libdwm/pixel.h>
 #include <libdwm/point.h>
 #include <libdwm/rect.h>
+#include <libdwm/cmd.h>
 
 #define PSF1_MAGIC 0x0436
 #define PSF2_MAGIC 0x864AB572
 #define PSF1_MODE_512 (1 << 0)
 
 #define FBMP_MAGIC 0x706D6266
-
-typedef enum
-{
-    GFX_GRADIENT_VERTICAL,
-    GFX_GRADIENT_HORIZONTAL,
-    GFX_GRADIENT_DIAGONAL
-} gfx_gradient_type_t;
 
 typedef enum gfx_align
 {
@@ -79,7 +73,7 @@ void gfx_text_multiline(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gf
 
 void gfx_rect(gfx_t* gfx, const rect_t* rect, pixel_t pixel);
 
-void gfx_gradient(gfx_t* gfx, const rect_t* rect, pixel_t start, pixel_t end, gfx_gradient_type_t type, bool addNoise);
+void gfx_gradient(gfx_t* gfx, const rect_t* rect, pixel_t start, pixel_t end, gradient_type_t type, bool addNoise);
 
 void gfx_edge(gfx_t* gfx, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background);
 

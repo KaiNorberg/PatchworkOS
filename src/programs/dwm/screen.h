@@ -8,7 +8,7 @@ void screen_init(void);
 
 void screen_deinit(void);
 
-void screen_transfer(surface_t* surface, const rect_t* destRect, const point_t* srcPoint);
+void screen_transfer(surface_t* surface, const rect_t* rect);
 
 void screen_swap(void);
 
