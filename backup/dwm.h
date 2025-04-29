@@ -1,5 +1,5 @@
-#ifndef _SYS_DWM_H
-#define _SYS_DWM_H 1
+#ifndef _SYSDWM_H
+#define _SYSDWM_H 1
 
 #include <stdint.h>
 #include <sys/io.h>
@@ -82,8 +82,8 @@ typedef struct ioctl_dwm_size
     uint32_t outHeight;
 } ioctl_dwm_size_t;
 
-#define IOCTL_DWM_CREATE 0
-#define IOCTL_DWM_SIZE 1
+#define IOCTLDWM_CREATE 0
+#define IOCTLDWM_SIZE 1
 
 typedef struct ioctl_window_receive
 {

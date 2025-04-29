@@ -1,7 +1,7 @@
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <libdwm/dwm.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #define WINDOW_WIDTH 280
 #define WINDOW_HEIGHT 330
@@ -29,7 +29,7 @@
     widget_t* button = win_button_new(window, name, &rect, id, &props, WIN_BUTTON_NONE);
 }*/
 
-static uint64_t procedure(window_t* window, const event_t* event)
+static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
     static uint64_t input;
     static uint64_t accumulator;
@@ -78,59 +78,59 @@ static uint64_t procedure(window_t* window, const event_t* event)
     case EVENT_REDRAW:
     {
         rect_t rect;
-        window_get_local_rect(window, &rect);
-        window_draw_rect(window, &rect, 0xFFFF0000);
+        element_content_rect(elem, &rect);
+        element_draw_rect(elem, &rect, 0xFFFF0000);
     }
     break;
-    //case LMSG_COMMAND:
-    {
-        /*lmsg_command_t* data = (lmsg_command_t*)msg->data;
-        if (data->type == LMSG_COMMAND_RELEASE)
+        // case LMSG_COMMAND:
         {
-            if (data->id <= 9)
+            /*lmsg_command_t* data = (lmsg_command_t*)msg->data;
+            if (data->type == LMSG_COMMAND_RELEASE)
             {
-                input = input * 10 + data->id;
-            }
-            else if (data->id == '<')
-            {
-                input /= 10;
-            }
-            else
-            {
-                switch (operation)
+                if (data->id <= 9)
                 {
-                case '/':
-                    if (input == 0)
-                    {
-                        win_widget_name_set(win_widget(window, LABEL_ID), "DIV BY ZERO");
-                        return 0;
-                    }
-                    accumulator /= input;
-                    break;
-                case '*':
-                    accumulator *= input;
-                    break;
-                case '-':
-                    accumulator -= input;
-                    break;
-                case '+':
-                    accumulator += input;
-                    break;
-                case '=':
-                    accumulator = input;
-                    break;
+                    input = input * 10 + data->id;
                 }
-                input = 0;
+                else if (data->id == '<')
+                {
+                    input /= 10;
+                }
+                else
+                {
+                    switch (operation)
+                    {
+                    case '/':
+                        if (input == 0)
+                        {
+                            win_widget_name_set(win_widget(window, LABEL_ID), "DIV BY ZERO");
+                            return 0;
+                        }
+                        accumulator /= input;
+                        break;
+                    case '*':
+                        accumulator *= input;
+                        break;
+                    case '-':
+                        accumulator -= input;
+                        break;
+                    case '+':
+                        accumulator += input;
+                        break;
+                    case '=':
+                        accumulator = input;
+                        break;
+                    }
+                    input = 0;
 
-                operation = data->id;
-            }
+                    operation = data->id;
+                }
 
-            char buffer[32];
-            ulltoa(data->id == '=' ? accumulator : input, buffer, 10);
-            win_widget_name_set(win_widget(window, LABEL_ID), buffer);
-        }*/
-    }
-    break;
+                char buffer[32];
+                ulltoa(data->id == '=' ? accumulator : input, buffer, 10);
+                win_widget_name_set(win_widget(window, LABEL_ID), buffer);
+            }*/
+        }
+        break;
     }
 
     return 0;

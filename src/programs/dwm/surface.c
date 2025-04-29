@@ -1,11 +1,12 @@
 #include "surface.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include <sys/list.h>
 
-surface_t* surface_new(client_t* client, surface_id_t id, const point_t* point, uint64_t width, uint64_t height, surface_type_t type)
+surface_t* surface_new(client_t* client, surface_id_t id, const point_t* point, uint64_t width, uint64_t height,
+    surface_type_t type)
 {
     surface_t* surface = malloc(sizeof(surface_t));
     if (surface == NULL)

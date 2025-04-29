@@ -210,7 +210,8 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
     local_listener_t* listener = local->listen.listener;
     lock_release(&local->lock);
 
-    if (WAITSYS_BLOCK_LOCK(&listener->waitQueue, &listener->lock, local_listener_conn_avail(listener) || local_listener_closed(listener)) != BLOCK_NORM)
+    if (WAITSYS_BLOCK_LOCK(&listener->waitQueue, &listener->lock,
+            local_listener_conn_avail(listener) || local_listener_closed(listener)) != BLOCK_NORM)
     {
         lock_release(&listener->lock);
         return 0;
@@ -436,16 +437,12 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
         return 0;
     }
 
-    local_packet_header_t header =
-    {
-        .size = count
-    };
+    local_packet_header_t header = {.size = count};
     ring_write(ring, &header, sizeof(local_packet_header_t));
     ring_write(ring, buffer, count);
 
     lock_release(&conn->lock);
     waitsys_unblock(&conn->waitQueue, UINT64_MAX);
-    printf("local socket: send %d", local->state);
     return count;
 }
 
@@ -468,14 +465,12 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
         return ERR;
     }
 
-    printf("local socket: receive block %d", local->state);
-    if (WAITSYS_BLOCK_LOCK(&conn->waitQueue, &conn->lock, printf("awake %d", local->state) == 1234 || ring_data_length(ring) >= sizeof(local_packet_header_t) || local_connection_closed(conn)) !=
-        BLOCK_NORM)
+    if (WAITSYS_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
+            ring_data_length(ring) >= sizeof(local_packet_header_t) || local_connection_closed(conn)) != BLOCK_NORM)
     {
         lock_release(&conn->lock);
         return 0;
     }
-    printf("local socket: receive unblock %d", local->state);
 
     if (local_connection_closed(conn))
     {
@@ -524,8 +519,7 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
     {
         local_connection_t* conn = local->accept.conn;
         LOCK_DEFER(&conn->lock);
-        poll->occurred =
-            POLL_READ & (ring_data_length(&conn->serverRing) != 0 || local_connection_closed(conn));
+        poll->occurred = POLL_READ & (ring_data_length(&conn->serverRing) != 0 || local_connection_closed(conn));
         return &conn->waitQueue;
     }
     break;

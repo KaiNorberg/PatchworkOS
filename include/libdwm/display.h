@@ -1,9 +1,9 @@
-#ifndef _DWM_DISPLAY_H
-#define _DWM_DISPLAY_H 1
+#ifndef DWM_DISPLAY_H
+#define DWM_DISPLAY_H 1
 
-#include "rect.h"
 #include "cmd.h"
 #include "event.h"
+#include "rect.h"
 
 #include <stdbool.h>
 #include <stdint.h>

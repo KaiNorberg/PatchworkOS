@@ -412,7 +412,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
 
     switch (request)
     {
-    case IOCTL_DWM_CREATE:
+    case IOCTLDWM_CREATE:
     {
         if (size != sizeof(ioctl_dwm_create_t))
         {
@@ -478,7 +478,7 @@ static uint64_t dwm_ioctl(file_t* file, uint64_t request, void* argp, uint64_t s
         dwm_redraw();
         return 0;
     }
-    case IOCTL_DWM_SIZE:
+    case IOCTLDWM_SIZE:
     {
         if (size != sizeof(ioctl_dwm_size_t))
         {

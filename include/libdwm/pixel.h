@@ -1,5 +1,5 @@
-#ifndef _DWM_PIXEL_H
-#define _DWM_PIXEL_H 1
+#ifndef DWM_PIXEL_H
+#define DWM_PIXEL_H 1
 
 #include <stdint.h>
 

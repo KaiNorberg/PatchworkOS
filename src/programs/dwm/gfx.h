@@ -1,11 +1,11 @@
 #pragma once
 
-#include <stdbool.h>
-#include <stdint.h>
+#include <libdwm/cmd.h>
 #include <libdwm/pixel.h>
 #include <libdwm/point.h>
 #include <libdwm/rect.h>
-#include <libdwm/cmd.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 #define PSF1_MAGIC 0x0436
 #define PSF2_MAGIC 0x864AB572

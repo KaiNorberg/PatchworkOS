@@ -156,9 +156,9 @@ void display_dispatch(display_t* disp, event_t* event)
     {
         if (event->target == win->id)
         {
-            if (win->proc(win, event) == ERR)
+            if (window_dispatch(win, event) == ERR)
             {
-                disp->connected = false;
+                window_free(win);
             }
             break;
         }
@@ -167,8 +167,6 @@ void display_dispatch(display_t* disp, event_t* event)
     display_cmds_flush(disp);
 }
 
-#include <stdio.h>
-
 uint64_t display_send_recieve_pattern(display_t* disp, cmd_t* cmd, event_t* event, event_type_t expected)
 {
     display_cmds_push(disp, cmd);
@@ -176,9 +174,7 @@ uint64_t display_send_recieve_pattern(display_t* disp, cmd_t* cmd, event_t* even
 
     while (display_connected(disp))
     {
-        printf("display: recieve start");
         display_recieve_event(disp, event);
-        printf("display: recieve end");
 
         if (event->type != expected)
         {

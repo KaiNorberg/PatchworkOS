@@ -1,8 +1,8 @@
+#include <libdwm/dwm.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <libdwm/dwm.h>
 
-static uint64_t procedure(window_t* window, const event_t* event)
+static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
     switch (event->type)
     {
@@ -14,9 +14,9 @@ static uint64_t procedure(window_t* window, const event_t* event)
     case EVENT_REDRAW:
     {
         rect_t rect;
-        window_get_local_rect(window, &rect);
-        //gfx_gradient(&gfx, &rect, 0xFF427F99, 0xFF5FA6C2, GFX_GRADIENT_DIAGONAL, true);*/
-        window_draw_rect(window, &rect, 0xFF427F99);
+        element_content_rect(elem, &rect);
+        // gfx_gradient(&gfx, &rect, 0xFF427F99, 0xFF5FA6C2, GFX_GRADIENT_DIAGONAL, true);*/
+        element_draw_rect(elem, &rect, 0xFF427F99);
     }
     break;
     }

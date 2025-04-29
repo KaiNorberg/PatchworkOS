@@ -3,6 +3,16 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
+typedef struct element
+{
+    list_entry_t entry;
+    list_t children;
+    struct element* parent;
+    rect_t rect;
+    procedure_t proc;
+    window_t* win;
+} element_t;
+
 typedef struct window
 {
     list_entry_t entry;
@@ -10,10 +20,12 @@ typedef struct window
     char name[MAX_NAME];
     rect_t rect;
     surface_type_t type;
-    procedure_t proc;
-    display_t* display;
+    display_t* disp;
     bool selected;
+    element_t* root;
 } window_t;
+
+uint64_t window_dispatch(window_t* win, event_t* event);
 
 #define DISPLAY_MAX_EVENT 32
 

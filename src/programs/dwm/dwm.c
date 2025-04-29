@@ -1,18 +1,18 @@
 #include "dwm.h"
 
-#include "surface.h"
-#include "screen.h"
 #include "compositor.h"
+#include "screen.h"
+#include "surface.h"
 
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <threads.h>
 #include <sys/fb.h>
 #include <sys/io.h>
 #include <sys/list.h>
 #include <sys/proc.h>
+#include <threads.h>
 
 static fd_t handle;
 static char id[MAX_NAME];
@@ -176,7 +176,8 @@ static uint64_t client_action_surface_new(client_t* client, const cmd_t* cmd)
 
     const rect_t* rect = &cmd->surfaceNew.rect;
     point_t point = {.x = rect->left, .y = rect->top};
-    surface_t* surface = surface_new(client, cmd->surfaceNew.id, &point, RECT_WIDTH(rect), RECT_HEIGHT(rect), cmd->surfaceNew.type);
+    surface_t* surface =
+        surface_new(client, cmd->surfaceNew.id, &point, RECT_WIDTH(rect), RECT_HEIGHT(rect), cmd->surfaceNew.type);
     if (surface == NULL)
     {
         return ERR;
@@ -254,7 +255,7 @@ static uint64_t client_action_draw_rect(client_t* client, const cmd_t* cmd)
         return ERR;
     }
 
-    rect_t surfaceRect = SURFACE_LOCAL_RECT(surface);
+    rect_t surfaceRect = SURFACE_CONTENT_RECT(surface);
     rect_t rect = cmd->drawRect.rect;
     RECT_FIT(&rect, &surfaceRect);
     gfx_rect(&surface->gfx, &rect, cmd->drawRect.pixel);
@@ -272,7 +273,7 @@ static uint64_t client_action_draw_edge(client_t* client, const cmd_t* cmd)
         return ERR;
     }
 
-    rect_t surfaceRect = SURFACE_LOCAL_RECT(surface);
+    rect_t surfaceRect = SURFACE_CONTENT_RECT(surface);
     rect_t rect = cmd->drawEdge.rect;
     RECT_FIT(&rect, &surfaceRect);
     gfx_edge(&surface->gfx, &rect, cmd->drawEdge.width, cmd->drawEdge.foreground, cmd->drawEdge.background);
@@ -290,17 +291,18 @@ static uint64_t client_action_draw_gradient(client_t* client, const cmd_t* cmd)
         return ERR;
     }
 
-    rect_t surfaceRect = SURFACE_LOCAL_RECT(surface);
+    rect_t surfaceRect = SURFACE_CONTENT_RECT(surface);
     rect_t rect = cmd->drawGradient.rect;
     RECT_FIT(&rect, &surfaceRect);
-    gfx_gradient(&surface->gfx, &rect, cmd->drawGradient.start, cmd->drawGradient.end, cmd->drawGradient.type, cmd->drawGradient.addNoise);
+    gfx_gradient(&surface->gfx, &rect, cmd->drawGradient.start, cmd->drawGradient.end, cmd->drawGradient.type,
+        cmd->drawGradient.addNoise);
 
     surface->invalid = true;
     compositor_set_redraw_needed();
     return 0;
 }
 
-static uint64_t(*actions[])(client_t*, const cmd_t*) = {
+static uint64_t (*actions[])(client_t*, const cmd_t*) = {
     [CMD_SCREEN_INFO] = client_action_screen_info,
     [CMD_SURFACE_NEW] = client_action_surface_new,
     [CMD_SURFACE_FREE] = client_action_surface_free,
@@ -382,7 +384,8 @@ static void dwm_poll(fd_t data)
         fd->requested = POLL_READ;
         fd->occurred = 0;
     }
-    while (poll(fds, 1 + clientAmount, SEC / 60) == 0 && !compositor_redraw_needed());
+    while (poll(fds, 1 + clientAmount, SEC / 60) == 0 && !compositor_redraw_needed())
+        ;
 
     if (fds[0].occurred & POLL_READ)
     {
@@ -405,8 +408,7 @@ static void dwm_poll(fd_t data)
 
     free(fds);
 
-    compositor_ctx_t ctx =
-    {
+    compositor_ctx_t ctx = {
         .windows = &windows,
         .panels = &panels,
         .wall = wall,

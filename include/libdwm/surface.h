@@ -1,5 +1,5 @@
-#ifndef _DWM_SURFACE_H
-#define _DWM_SURFACE_H 1
+#ifndef DWM_SURFACE_H
+#define DWM_SURFACE_H 1
 
 #include <stdint.h>
 

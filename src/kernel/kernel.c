@@ -27,12 +27,12 @@
 #include "vmm.h"
 #include "waitsys.h"
 
+#include <bootloader/boot_info.h>
+#include <libstd_internal/init.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/argsplit.h>
-#include <bootloader/boot_info.h>
-#include <libstd_internal/init.h>
 
 static void kernel_free_loader_data(efi_mem_map_t* memoryMap)
 {

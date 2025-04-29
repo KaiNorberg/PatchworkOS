@@ -1,8 +1,8 @@
 #include "screen.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include <sys/fb.h>
 #include <sys/io.h>
 #include <sys/proc.h>

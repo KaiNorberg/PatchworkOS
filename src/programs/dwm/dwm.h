@@ -2,9 +2,9 @@
 
 #include "surface.h"
 
+#include <libdwm/event.h>
 #include <sys/io.h>
 #include <sys/list.h>
-#include <libdwm/event.h>
 
 typedef struct client
 {

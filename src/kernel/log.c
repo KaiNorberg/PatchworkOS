@@ -237,7 +237,7 @@ void log_enable_screen(gop_buffer_t* gopBuffer)
     {
         gop = *gopBuffer;
     }
-    memset(gop.base, 0, gop.height * gop.height * sizeof(uint32_t));
+    memset(gop.base, 0, gop.stride * gop.height * sizeof(uint32_t));
 
     posX = 0;
     posY = 0;

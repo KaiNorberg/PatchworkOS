@@ -1,9 +1,9 @@
-#ifndef _DWM_CMD_H
-#define _DWM_CMD_H 1
+#ifndef DWM_CMD_H
+#define DWM_CMD_H 1
 
-#include "surface.h"
-#include "rect.h"
 #include "pixel.h"
+#include "rect.h"
+#include "surface.h"
 
 #include <stdint.h>
 #include <sys/proc.h>

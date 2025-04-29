@@ -1,5 +1,5 @@
-#ifndef _DWM_EVENT_H
-#define _DWM_EVENT_H 1
+#ifndef DWM_EVENT_H
+#define DWM_EVENT_H 1
 
 #include "surface.h"
 
@@ -17,7 +17,7 @@ typedef uint16_t event_type_t;
 #define EVENT_INIT 1
 #define EVENT_REDRAW 2
 
-// Library events, defined by libdwm.
+// Library events, defined by libdwm. May be recieved outside of a dispatch call.
 #define LEVENT_BASE (1 << 14)
 #define LEVENT_FREE (LEVENT_BASE + 1)
 

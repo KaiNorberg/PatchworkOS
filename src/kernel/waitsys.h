@@ -8,7 +8,7 @@
 
 #define WAITSYS_ALL UINT64_MAX
 
-// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock_all.
+// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock.
 #define WAITSYS_BLOCK(waitQueue, condition) \
     ({ \
         block_result_t result = BLOCK_NORM; \
@@ -19,8 +19,8 @@
         result; \
     })
 
-// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock_all.
-// Will also return after timeout is reached, timeout will be reached even if waitsys_unblock_all is never called.
+// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock.
+// Will also return after timeout is reached, timeout will be reached even if waitsys_unblock is never called.
 #define WAITSYS_BLOCK_TIMEOUT(waitQueue, condition, timeout) \
     ({ \
         block_result_t result = BLOCK_NORM; \
@@ -40,7 +40,7 @@
         result; \
     })
 
-// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock_all.
+// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock.
 // When condition is tested it will also acquire lock, and the macro will always return with lock still acquired.
 #define WAITSYS_BLOCK_LOCK(waitQueue, lock, condition) \
     ({ \
@@ -53,9 +53,9 @@
         result; \
     })
 
-// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock_all.
+// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock.
 // When condition is tested it will also acquire lock, and the macro will always return with lock still acquired.
-// Will also return after timeout is reached, timeout will be reached even if waitsys_unblock_all is never called.
+// Will also return after timeout is reached, timeout will be reached even if waitsys_unblock is never called.
 #define WAITSYS_BLOCK_LOCK_TIMEOUT(waitQueue, lock, condition, timeout) \
     ({ \
         block_result_t result = BLOCK_NORM; \

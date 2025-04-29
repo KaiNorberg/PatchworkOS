@@ -314,7 +314,7 @@ win_t* win_new(const char* name, const rect_t* rect, dwm_type_t type, win_flags_
     create.height = RECT_HEIGHT(rect);
     create.type = type;
     strcpy(create.name, name);
-    if (ioctl(window->fd, IOCTL_DWM_CREATE, &create, sizeof(ioctl_dwm_create_t)) == ERR)
+    if (ioctl(window->fd, IOCTLDWM_CREATE, &create, sizeof(ioctl_dwm_create_t)) == ERR)
     {
         free(window);
         close(window->fd);
@@ -735,7 +735,7 @@ uint64_t win_screen_rect(rect_t* rect)
     }
 
     ioctl_dwm_size_t size;
-    if (ioctl(fd, IOCTL_DWM_SIZE, &size, sizeof(ioctl_dwm_size_t)) == ERR)
+    if (ioctl(fd, IOCTLDWM_SIZE, &size, sizeof(ioctl_dwm_size_t)) == ERR)
     {
         return ERR;
     }

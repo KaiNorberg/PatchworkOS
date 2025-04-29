@@ -1,5 +1,5 @@
-#ifndef _DWM_POINT_H
-#define _DWM_POINT_H 1
+#ifndef DWM_POINT_H
+#define DWM_POINT_H 1
 
 #include <stdint.h>
 

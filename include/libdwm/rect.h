@@ -1,5 +1,5 @@
-#ifndef _DWM_RECT_H
-#define _DWM_RECT_H 1
+#ifndef DWM_RECT_H
+#define DWM_RECT_H 1
 
 #include <stdint.h>
 #include <sys/math.h>

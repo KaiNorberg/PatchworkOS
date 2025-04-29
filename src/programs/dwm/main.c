@@ -1,6 +1,6 @@
+#include "compositor.h"
 #include "dwm.h"
 #include "screen.h"
-#include "compositor.h"
 
 int main(void)
 {

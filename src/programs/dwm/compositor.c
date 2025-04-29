@@ -1,7 +1,7 @@
 #include "compositor.h"
 
-#include "screen.h"
 #include "dwm.h"
+#include "screen.h"
 
 static bool redrawNeeded;
 
@@ -144,6 +144,7 @@ void compositor_redraw(compositor_ctx_t* ctx)
     }
 
     compositor_draw_wall(ctx);
+    compositor_draw_windows_panels(ctx);
 
     screen_swap();
 }

@@ -23,7 +23,7 @@ window_theme_t windowTheme = {
     .paddingWidth = 2,
 };
 
-static uint64_t window_deco_procedure(window_t* win, const event_t* event)
+static uint64_t window_deco_procedure(window_t* win, element_t* elem, const event_t* event)
 {
     switch (event->type)
     {
@@ -35,25 +35,26 @@ static uint64_t window_deco_procedure(window_t* win, const event_t* event)
     case EVENT_REDRAW:
     {
         rect_t rect;
-        window_get_local_rect(win, &rect);
-
-        window_draw_edge(win, &rect, windowTheme.edgeWidth, windowTheme.bright, windowTheme.dark);
+        element_content_rect(elem, &rect);
+        element_draw_rect(elem, &rect, windowTheme.background);
+        element_draw_edge(elem, &rect, windowTheme.edgeWidth, windowTheme.bright, windowTheme.dark);
 
         rect_t topBar = (rect_t){
             .left = windowTheme.edgeWidth + windowTheme.paddingWidth,
             .top = windowTheme.edgeWidth + windowTheme.paddingWidth,
-            .right = RECT_WIDTH(&win->rect) - windowTheme.edgeWidth - windowTheme.paddingWidth,
+            .right = RECT_WIDTH(&rect) - windowTheme.edgeWidth - windowTheme.paddingWidth,
             .bottom = windowTheme.topbarHeight + windowTheme.edgeWidth - windowTheme.paddingWidth,
         };
-        window_draw_edge(win, &topBar, windowTheme.edgeWidth, windowTheme.dark, windowTheme.highlight);
+        element_draw_edge(elem, &topBar, windowTheme.edgeWidth, windowTheme.dark, windowTheme.highlight);
         RECT_SHRINK(&topBar, windowTheme.edgeWidth);
         if (win->selected)
         {
-            window_draw_gradient(win, &topBar, windowTheme.selected, windowTheme.selectedHighlight, GRADIENT_HORIZONTAL, false);
+            element_draw_gradient(elem, &topBar, windowTheme.selected, windowTheme.selectedHighlight, GRADIENT_HORIZONTAL, false);
         }
         else
         {
-            window_draw_gradient(win, &topBar, windowTheme.unSelected, windowTheme.unSelectedHighlight, GRADIENT_HORIZONTAL, false);
+            element_draw_gradient(elem, &topBar, windowTheme.unSelected, windowTheme.unSelectedHighlight, GRADIENT_HORIZONTAL,
+                false);
         }
     }
     break;
@@ -62,11 +63,12 @@ static uint64_t window_deco_procedure(window_t* win, const event_t* event)
     return 0;
 }
 
-static window_t* window_new_raw(display_t* disp, const char* name, const rect_t* rect, surface_type_t type, procedure_t procedure)
+window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surface_type_t type, window_flags_t flags,
+    procedure_t procedure)
 {
     if (strlen(name) >= MAX_NAME)
     {
-       return NULL;
+        return NULL;
     }
 
     window_t* win = malloc(sizeof(window_t));
@@ -75,103 +77,121 @@ static window_t* window_new_raw(display_t* disp, const char* name, const rect_t*
         return NULL;
     }
 
-    surface_id_t id = display_gen_id(disp);
-
-    cmd_t cmd;
-    cmd.type = CMD_SURFACE_NEW;
-    cmd.surfaceNew.id = id;
-    cmd.surfaceNew.type = type;
-    cmd.surfaceNew.rect = *rect;
-    display_cmds_push(disp, &cmd);
-    display_cmds_flush(disp);
-
     list_entry_init(&win->entry);
-    win->id = id;
+    win->id = display_gen_id(disp);
     strcpy(win->name, name);
     win->rect = *rect;
     win->type = type;
-    win->proc = procedure;
-    win->display = disp;
+    win->disp = disp;
     win->selected = false;
-    list_push(&disp->windows, &win->entry);
-    return win;
-}
 
-window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surface_type_t type, window_flags_t flags, procedure_t procedure)
-{
-    /*if (flags & WINDOW_DECO)
+    if (flags & WINDOW_DECO)
     {
-        rect_t decoRect =
+        win->rect.left -= windowTheme.edgeWidth;
+        win->rect.top -= windowTheme.edgeWidth + windowTheme.topbarHeight + windowTheme.paddingWidth;
+        win->rect.right += windowTheme.edgeWidth;
+        win->rect.bottom += windowTheme.edgeWidth;
+
+        rect_t decoRect = RECT_INIT_DIM(0, 0, RECT_WIDTH(&win->rect), RECT_HEIGHT(&win->rect));
+        win->root = element_new(NULL, &decoRect, window_deco_procedure);
+        if (win->root == NULL)
         {
-            .left = rect->left - windowTheme.edgeWidth,
-            .top = rect->top - windowTheme.edgeWidth - windowTheme.topbarHeight - windowTheme.paddingWidth,
-            .right = rect->right + windowTheme.edgeWidth,
-            .bottom = rect->bottom + windowTheme.edgeWidth,
-        };
-        window_t* deco = window_new_raw(disp, parent, "deco", &decoRect, display_gen_id(disp), type, window_deco_procedure);
-        if (deco == NULL)
-        {
+            free(win);
             return NULL;
         }
-        rect_t newRect =
-        {
+        win->root->win = win;
+
+        rect_t clientRect = {
             .left = windowTheme.edgeWidth,
             .top = windowTheme.edgeWidth + windowTheme.topbarHeight + windowTheme.paddingWidth,
             .right = windowTheme.edgeWidth + RECT_WIDTH(rect),
             .bottom = windowTheme.edgeWidth + windowTheme.topbarHeight + windowTheme.paddingWidth + RECT_HEIGHT(rect),
         };
-        window_t* win = window_new_raw(disp, deco, name, &newRect, id, type, procedure);
-        if (win == NULL)
+        if (element_new(win->root, &clientRect, procedure) == NULL)
         {
-            window_free(deco);
+            element_free(win->root);
+            free(win);
+        }
+    }
+    else
+    {
+        rect_t rootElemRect = RECT_INIT_DIM(0, 0, RECT_WIDTH(rect), RECT_HEIGHT(rect));
+        win->root = element_new(NULL, &rootElemRect, procedure);
+        if (win->root == NULL)
+        {
+            free(win);
             return NULL;
         }
-        win->deco = deco;
-        return win;
+        win->root->win = win;
     }
-    else*/
-    {
-        return window_new_raw(disp, name, rect, type, procedure);
-    }
+
+    cmd_t cmd;
+    cmd.type = CMD_SURFACE_NEW;
+    cmd.surfaceNew.id = win->id;
+    cmd.surfaceNew.type = win->type;
+    cmd.surfaceNew.rect = win->rect;
+    display_cmds_push(disp, &cmd);
+    display_cmds_flush(disp);
+    list_push(&disp->windows, &win->entry);
+    return win;
 }
 
 void window_free(window_t* win)
 {
-    // Send fake free event.
-    event_t event = {.type = LEVENT_FREE, .target = win->id};
-    win->proc(win, &event);
+    element_free(win->root);
 
     cmd_t cmd = {.type = CMD_SURFACE_FREE, .surfaceFree.target = win->id};
-    display_cmds_push(win->display, &cmd);
-    display_cmds_flush(win->display);
+    display_cmds_push(win->disp, &cmd);
+    display_cmds_flush(win->disp);
     list_remove(&win->entry);
     free(win);
 }
 
-void window_get_rect(window_t* win, rect_t* rect)
+void window_rect(window_t* win, rect_t* rect)
 {
     *rect = win->rect;
 }
 
-void window_get_local_rect(window_t* win, rect_t* rect)
+void window_local_rect(window_t* win, rect_t* rect)
 {
     *rect = RECT_INIT_DIM(0, 0, RECT_WIDTH(&win->rect), RECT_HEIGHT(&win->rect));
 }
 
-void window_draw_rect(window_t* win, const rect_t* rect, pixel_t pixel)
+static uint64_t window_element_dispatch_event(window_t* win, element_t* elem, event_t* event, bool propagate)
 {
-    cmd_t cmd = {.type = CMD_DRAW_RECT, .drawRect = {.target = win->id, .rect = *rect, .pixel = pixel}};
-    display_cmds_push(win->display, &cmd);
+    if (elem->proc(win, elem, event) == ERR)
+    {
+        return ERR;
+    }
+
+    if (propagate)
+    {
+        element_t* child;
+        LIST_FOR_EACH(child, &elem->children, entry)
+        {
+            if (window_element_dispatch_event(win, child, event, propagate) == ERR)
+            {
+                return ERR;
+            }
+        }
+    }
+
+    return 0;
 }
 
-void window_draw_edge(window_t* win, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background)
+uint64_t window_dispatch(window_t* win, event_t* event)
 {
-    cmd_t cmd = {.type = CMD_DRAW_EDGE, .drawEdge = {.target = win->id, .rect = *rect, .width = width, .foreground = foreground, .background = background}};
-    display_cmds_push(win->display, &cmd);
-}
+    switch (event->type)
+    {
+    default:
+    {
+        if (window_element_dispatch_event(win, win->root, event, true) == ERR)
+        {
+            return ERR;
+        }
+    }
+    break;
+    }
 
-void window_draw_gradient(window_t* win, const rect_t* rect, pixel_t start, pixel_t end, gradient_type_t type, bool addNoise)
-{
-    cmd_t cmd = {.type = CMD_DRAW_GRADIENT, .drawGradient = {.target = win->id, .rect = *rect, .start = start, .end = end, .type = type, .addNoise = addNoise}};
-    display_cmds_push(win->display, &cmd);
+    return 0;
 }
