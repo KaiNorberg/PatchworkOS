@@ -288,8 +288,6 @@ typedef struct kbd_event
     keycode_t code;
 } kbd_event_t;
 
-char kbd_ascii(keycode_t code, kbd_mods_t mods);
-
 #if defined(__cplusplus)
 }
 #endif

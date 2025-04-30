@@ -29,11 +29,11 @@ void wait_queue_deinit(wait_queue_t* waitQueue)
 
     if (!list_empty(&waitQueue->entries))
     {
-        log_panic(NULL, "WaitQueue with pending threads freed");
+        log_panic(NULL, "Wait queue with pending threads freed");
     }
 }
 
-void waitsys_ctx_init(waitsys_ctx_t* waitsys)
+void waitsys_thread_ctx_init(waitsys_thread_ctx_t* waitsys)
 {
     waitsys->waitEntries[0] = NULL;
     waitsys->entryAmount = 0;
@@ -41,26 +41,9 @@ void waitsys_ctx_init(waitsys_ctx_t* waitsys)
     waitsys->deadline = 0;
 }
 
-static void waitsys_add(thread_t* thread)
+void waitsys_cpu_ctx_init(waitsys_cpu_ctx_t* waitsys)
 {
-    LOCK_DEFER(&threadsLock);
-
-    if (thread->waitsys.deadline == NEVER)
-    {
-        list_push(&threads, &thread->entry);
-        return;
-    }
-
-    thread_t* other;
-    LIST_FOR_EACH(other, &threads, entry)
-    {
-        if (other->waitsys.deadline > thread->waitsys.deadline)
-        {
-            list_prepend(&other->entry, &thread->entry);
-            return;
-        }
-    }
-    list_push(&threads, &thread->entry);
+    list_init(&waitsys->parkedThreads);
 }
 
 void waitsys_init(void)
@@ -69,7 +52,8 @@ void waitsys_init(void)
     lock_init(&threadsLock);
 }
 
-static uint64_t waitsys_thread_block(thread_t* thread, wait_queue_t** waitQueues, uint64_t amount, nsec_t timeout, lock_t* lock)
+// Sets up a threads waitsys ctx but does not yet block
+static uint64_t waitsys_thread_setup(thread_t* thread, wait_queue_t** waitQueues, uint64_t amount, nsec_t timeout, lock_t* lock)
 {
     if (thread->dead)
     {
@@ -95,6 +79,8 @@ static uint64_t waitsys_thread_block(thread_t* thread, wait_queue_t** waitQueues
         list_entry_init(&entry->entry);
         entry->waitQueue = waitQueues[i];
         entry->thread = thread;
+        entry->blocking = false;
+        entry->cancelBlock = false;
 
         thread->waitsys.waitEntries[i] = entry;
     }
@@ -147,6 +133,33 @@ static void waitsys_thread_unblock(thread_t* thread, block_result_t result, wait
 void waitsys_timer_trap(trap_frame_t* trapFrame)
 {
     cpu_t* self = smp_self_unsafe();
+
+    while (1)
+    {
+        thread_t* thread = LIST_CONTAINER_SAFE(list_pop(&self->waitsys.parkedThreads), thread_t, entry);
+        if (thread == NULL)
+        {
+            break;
+        }
+
+        LOCK_DEFER(&threadsLock);
+        list_push(&threads, &thread->entry);
+
+        for (uint64_t i = 0; i < thread->waitsys.entryAmount; i++)
+        {
+            wait_queue_entry_t* waitEntry = thread->waitsys.waitEntries[i];
+            wait_queue_t* waitQueue = waitEntry->waitQueue;
+            LOCK_DEFER(&waitQueue->lock);
+
+            if (waitEntry->cancelBlock)
+            {
+                waitsys_thread_unblock(thread, BLOCK_NORM, waitQueue, true);
+                break;
+            }
+            waitEntry->blocking = true;
+        }
+    }
+
     if (self->id != 0)
     {
         return;
@@ -181,20 +194,22 @@ void waitsys_block_trap(trap_frame_t* trapFrame)
 {
     cpu_t* self = smp_self_unsafe();
     sched_ctx_t* sched = &self->sched;
+    waitsys_cpu_ctx_t* waitsys = &self->waitsys;
 
     thread_t* thread = sched->runThread;
     sched->runThread = NULL;
 
     for (uint64_t i = 0; i < thread->waitsys.entryAmount; i++)
     {
-        wait_queue_t* waitQueue = thread->waitsys.waitEntries[i]->waitQueue;
+        wait_queue_entry_t* waitEntry = thread->waitsys.waitEntries[i];
+        wait_queue_t* waitQueue = waitEntry->waitQueue;
         LOCK_DEFER(&waitQueue->lock);
-        list_push(&waitQueue->entries, &thread->waitsys.waitEntries[i]->entry);
+
+        list_push(&waitQueue->entries, &waitEntry->entry);
     }
 
-    waitsys_add(thread);
     thread_save(thread, trapFrame);
-    sched_schedule_trap(trapFrame);
+    list_push(&waitsys->parkedThreads, &thread->entry);
 
     if (thread->waitsys.lock != NULL)
     {
@@ -205,14 +220,21 @@ void waitsys_block_trap(trap_frame_t* trapFrame)
         self->cli.depth = 0;
         thread->trapFrame.rflags |= RFLAGS_INTERRUPT_ENABLE;
     }
+
+    sched_schedule_trap(trapFrame);
 }
 
 block_result_t waitsys_block(wait_queue_t* waitQueue, nsec_t timeout)
 {
+    if (timeout == 0)
+    {
+        return BLOCK_TIMEOUT;
+    }
+
     ASSERT_PANIC(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 
     thread_t* thread = smp_self()->sched.runThread;
-    if (waitsys_thread_block(thread, &waitQueue, 1, timeout, NULL) == ERR)
+    if (waitsys_thread_setup(thread, &waitQueue, 1, timeout, NULL) == ERR)
     {
         smp_put();
         return BLOCK_ERROR;
@@ -226,10 +248,16 @@ block_result_t waitsys_block(wait_queue_t* waitQueue, nsec_t timeout)
 
 block_result_t waitsys_block_lock(wait_queue_t* waitQueue, nsec_t timeout, lock_t* lock)
 {
+    if (timeout == 0)
+    {
+        return BLOCK_TIMEOUT;
+    }
+
     ASSERT_PANIC(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
+    ASSERT_PANIC(smp_self_unsafe()->cli.depth == 1); // Only one lock is allowed to be acquired when calling this function.
 
     thread_t* thread = smp_self_unsafe()->sched.runThread;
-    if (waitsys_thread_block(thread, &waitQueue, 1, timeout, lock) == ERR)
+    if (waitsys_thread_setup(thread, &waitQueue, 1, timeout, lock) == ERR)
     {
         return BLOCK_ERROR;
     }
@@ -243,10 +271,15 @@ block_result_t waitsys_block_lock(wait_queue_t* waitQueue, nsec_t timeout, lock_
 
 block_result_t waitsys_block_many(wait_queue_t** waitQueues, uint64_t amount, nsec_t timeout)
 {
+    if (timeout == 0)
+    {
+        return BLOCK_TIMEOUT;
+    }
+
     ASSERT_PANIC(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 
     thread_t* thread = smp_self()->sched.runThread;
-    if (waitsys_thread_block(thread, waitQueues, amount, timeout, NULL) == ERR)
+    if (waitsys_thread_setup(thread, waitQueues, amount, timeout, NULL) == ERR)
     {
         smp_put();
         return BLOCK_ERROR;
@@ -272,7 +305,14 @@ void waitsys_unblock(wait_queue_t* waitQueue, uint64_t amount)
         }
 
         thread_t* thread = entry->thread;
-        waitsys_thread_unblock(thread, BLOCK_NORM, waitQueue, false);
+        if (entry->blocking)
+        {
+            waitsys_thread_unblock(thread, BLOCK_NORM, waitQueue, false);
+        }
+        else // If the thread has not fully blocked yet.
+        {
+            entry->cancelBlock = true; // Tell waitsys to unblock before blocking is fully perfomed.
+        }
         amount--;
     }
 }

@@ -2,7 +2,7 @@
 
 #include <stdlib.h>
 
-element_t* element_new(element_t* parent, const rect_t* rect, procedure_t procedure)
+element_t* element_new(element_t* parent, const rect_t* rect, procedure_t procedure, void* private)
 {
     element_t* elem = malloc(sizeof(element_t));
     if (elem == NULL)
@@ -13,6 +13,7 @@ element_t* element_new(element_t* parent, const rect_t* rect, procedure_t proced
     list_init(&elem->children);
     elem->rect = *rect;
     elem->proc = procedure;
+    elem->private = private;
 
     if (parent != NULL)
     {
@@ -48,6 +49,16 @@ void element_free(element_t* elem)
 
     element_free_children(elem);
     free(elem);
+}
+
+void element_private_set(element_t* elem, void* private)
+{
+    elem->private = private;
+}
+
+void* element_private(element_t* elem)
+{
+    return elem->private;
 }
 
 void element_rect(element_t* elem, rect_t* rect)

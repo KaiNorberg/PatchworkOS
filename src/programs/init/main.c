@@ -2,6 +2,8 @@
 #include <sys/proc.h>
 #include <threads.h>
 
+// TODO: Add config file to specify programs to start att boot.
+
 void spawn_program(const char* path)
 {
     fd_t klog = open("sys:/klog");
@@ -24,6 +26,7 @@ int main(void)
     }
 
     spawn_program("home:/bin/wall");
+    spawn_program("home:/bin/cursor");
     spawn_program("home:/usr/bin/calculator");
 
     // spawn_program("home:/bin/cursor");

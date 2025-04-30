@@ -14,6 +14,14 @@ typedef struct client
     cmd_buffer_t cmds;
 } client_t;
 
+typedef struct
+{
+    pollfd_t data;
+    pollfd_t kbd;
+    pollfd_t mouse;
+    pollfd_t clients[];
+} poll_ctx_t;
+
 void dwm_init(void);
 
 void dwm_deinit(void);

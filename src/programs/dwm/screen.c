@@ -80,6 +80,15 @@ void screen_transfer(surface_t* surface, const rect_t* rect)
     gfx_transfer(&backbuffer, &surface->gfx, rect, &srcPoint);
 }
 
+void screen_transfer_blend(surface_t* surface, const rect_t* rect)
+{
+    point_t srcPoint = {
+        .x = MAX(rect->left - surface->pos.x, 0),
+        .y = MAX(rect->top - surface->pos.y, 0),
+    };
+    gfx_transfer_blend(&backbuffer, &surface->gfx, rect, &srcPoint);
+}
+
 void screen_swap(void)
 {
     switch (info.format)

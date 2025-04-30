@@ -10,6 +10,8 @@ void screen_deinit(void);
 
 void screen_transfer(surface_t* surface, const rect_t* rect);
 
+void screen_transfer_blend(surface_t* surface, const rect_t* rect);
+
 void screen_swap(void);
 
 uint64_t screen_width(void);

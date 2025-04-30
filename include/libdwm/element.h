@@ -16,9 +16,13 @@ extern "C"
 
 typedef struct element element_t;
 
-element_t* element_new(element_t* parent, const rect_t* rect, procedure_t procedure);
+element_t* element_new(element_t* parent, const rect_t* rect, procedure_t procedure, void* private);
 
 void element_free(element_t* elem);
+
+void element_private_set(element_t* elem, void* private);
+
+void* element_private(element_t* elem);
 
 void element_rect(element_t* elem, rect_t* rect);
 

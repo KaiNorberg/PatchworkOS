@@ -98,14 +98,18 @@ void* realloc(void* ptr, size_t size)
         return malloc(size);
     }
 
-    _HeapAcquire();
     _HeapHeader_t* block = (_HeapHeader_t*)((uint64_t)ptr - sizeof(_HeapHeader_t));
+    if (block->size ==  ROUND_UP(size, _HEAP_ALIGNMENT))
+    {
+        return ptr;
+    }
 
+    _HeapAcquire();
     void* newPtr = malloc_unlocked(size);
     memcpy(newPtr, ptr, MIN(size, block->size));
     free_unlocked(ptr);
-
     _HeapRelease();
+
     return newPtr;
 }
 

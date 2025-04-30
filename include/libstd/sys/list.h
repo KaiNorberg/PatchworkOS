@@ -21,8 +21,8 @@ typedef struct
 
 #define LIST_CONTAINER_SAFE(ptr, type, member) \
     ({ \
-        list_entry_t* entry = ptr; \
-        ((entry != NULL) ? LIST_CONTAINER(entry, type, member) : NULL); \
+        list_entry_t* e = ptr; \
+        ((e != NULL) ? LIST_CONTAINER(e, type, member) : NULL); \
     })
 
 #define LIST_FOR_EACH(elem, list, member) \

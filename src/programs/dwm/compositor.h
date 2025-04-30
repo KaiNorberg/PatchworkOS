@@ -16,7 +16,9 @@ typedef struct
 
 void compositor_init(void);
 
-void compositor_redraw(compositor_ctx_t* ctx);
+void compositor_redraw_cursor(compositor_ctx_t* ctx);
+
+void compositor_draw(compositor_ctx_t* ctx);
 
 void compositor_set_redraw_needed(void);
 

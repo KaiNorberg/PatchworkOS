@@ -23,13 +23,63 @@ window_theme_t windowTheme = {
     .paddingWidth = 2,
 };
 
+typedef struct
+{
+    bool focused;
+} deco_private_t;
+
+static void window_deco_draw_topbar(window_t* win, element_t* elem)
+{
+    deco_private_t* private = element_private(elem);
+
+    rect_t rect;
+    element_content_rect(elem, &rect);
+
+    rect_t topBar = (rect_t){
+        .left = windowTheme.edgeWidth + windowTheme.paddingWidth,
+        .top = windowTheme.edgeWidth + windowTheme.paddingWidth,
+        .right = RECT_WIDTH(&rect) - windowTheme.edgeWidth - windowTheme.paddingWidth,
+        .bottom = windowTheme.topbarHeight + windowTheme.edgeWidth - windowTheme.paddingWidth,
+    };
+    element_draw_edge(elem, &topBar, windowTheme.edgeWidth, windowTheme.dark, windowTheme.highlight);
+    RECT_SHRINK(&topBar, windowTheme.edgeWidth);
+    if (private->focused)
+    {
+        element_draw_gradient(elem, &topBar, windowTheme.selected, windowTheme.selectedHighlight, GRADIENT_HORIZONTAL, false);
+    }
+    else
+    {
+        element_draw_gradient(elem, &topBar, windowTheme.unSelected, windowTheme.unSelectedHighlight, GRADIENT_HORIZONTAL,
+            false);
+    }
+}
+
 static uint64_t window_deco_procedure(window_t* win, element_t* elem, const event_t* event)
 {
+    deco_private_t* private = element_private(elem);
+
     switch (event->type)
     {
     case EVENT_INIT:
     {
-
+        private->focused = false;
+    }
+    break;
+    case LEVENT_FREE:
+    {
+        free(private);
+    }
+    break;
+    case EVENT_FOCUS_IN:
+    {
+        private->focused = true;
+        window_deco_draw_topbar(win, elem);
+    }
+    break;
+    case EVENT_FOCUS_OUT:
+    {
+        private->focused = false;
+        window_deco_draw_topbar(win, elem);
     }
     break;
     case EVENT_REDRAW:
@@ -39,23 +89,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
         element_draw_rect(elem, &rect, windowTheme.background);
         element_draw_edge(elem, &rect, windowTheme.edgeWidth, windowTheme.bright, windowTheme.dark);
 
-        rect_t topBar = (rect_t){
-            .left = windowTheme.edgeWidth + windowTheme.paddingWidth,
-            .top = windowTheme.edgeWidth + windowTheme.paddingWidth,
-            .right = RECT_WIDTH(&rect) - windowTheme.edgeWidth - windowTheme.paddingWidth,
-            .bottom = windowTheme.topbarHeight + windowTheme.edgeWidth - windowTheme.paddingWidth,
-        };
-        element_draw_edge(elem, &topBar, windowTheme.edgeWidth, windowTheme.dark, windowTheme.highlight);
-        RECT_SHRINK(&topBar, windowTheme.edgeWidth);
-        if (win->selected)
-        {
-            element_draw_gradient(elem, &topBar, windowTheme.selected, windowTheme.selectedHighlight, GRADIENT_HORIZONTAL, false);
-        }
-        else
-        {
-            element_draw_gradient(elem, &topBar, windowTheme.unSelected, windowTheme.unSelectedHighlight, GRADIENT_HORIZONTAL,
-                false);
-        }
+        window_deco_draw_topbar(win, elem);
     }
     break;
     }
@@ -83,7 +117,6 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     win->rect = *rect;
     win->type = type;
     win->disp = disp;
-    win->selected = false;
 
     if (flags & WINDOW_DECO)
     {
@@ -92,10 +125,18 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
         win->rect.right += windowTheme.edgeWidth;
         win->rect.bottom += windowTheme.edgeWidth;
 
+        deco_private_t* private = malloc(sizeof(deco_private_t));
+        if (private == NULL)
+        {
+            free(win);
+            return NULL;
+        }
+
         rect_t decoRect = RECT_INIT_DIM(0, 0, RECT_WIDTH(&win->rect), RECT_HEIGHT(&win->rect));
-        win->root = element_new(NULL, &decoRect, window_deco_procedure);
+        win->root = element_new(NULL, &decoRect, window_deco_procedure, private);
         if (win->root == NULL)
         {
+            free(private);
             free(win);
             return NULL;
         }
@@ -107,16 +148,17 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
             .right = windowTheme.edgeWidth + RECT_WIDTH(rect),
             .bottom = windowTheme.edgeWidth + windowTheme.topbarHeight + windowTheme.paddingWidth + RECT_HEIGHT(rect),
         };
-        if (element_new(win->root, &clientRect, procedure) == NULL)
+        if (element_new(win->root, &clientRect, procedure, NULL) == NULL)
         {
             element_free(win->root);
+            free(private);
             free(win);
         }
     }
     else
     {
         rect_t rootElemRect = RECT_INIT_DIM(0, 0, RECT_WIDTH(rect), RECT_HEIGHT(rect));
-        win->root = element_new(NULL, &rootElemRect, procedure);
+        win->root = element_new(NULL, &rootElemRect, procedure, NULL);
         if (win->root == NULL)
         {
             free(win);

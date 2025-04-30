@@ -36,7 +36,7 @@ thread_t* thread_new(process_t* process, void* entry, priority_t priority)
     thread->dead = false;
     thread->timeStart = 0;
     thread->timeEnd = 0;
-    waitsys_ctx_init(&thread->waitsys);
+    waitsys_thread_ctx_init(&thread->waitsys);
     thread->error = 0;
     thread->priority = MIN(priority, PRIORITY_MAX);
     if (simd_ctx_init(&thread->simd) == ERR)

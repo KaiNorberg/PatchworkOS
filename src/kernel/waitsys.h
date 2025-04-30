@@ -89,6 +89,8 @@ typedef struct wait_queue_entry
     list_entry_t entry;
     thread_t* thread;
     wait_queue_t* waitQueue;
+    bool blocking;
+    bool cancelBlock;
 } wait_queue_entry_t;
 
 typedef enum
@@ -106,13 +108,20 @@ typedef struct
     block_result_t result;
     nsec_t deadline;
     lock_t* lock;
-} waitsys_ctx_t;
+} waitsys_thread_ctx_t;
+
+typedef struct
+{
+    list_t parkedThreads;
+} waitsys_cpu_ctx_t;
 
 void wait_queue_init(wait_queue_t* waitQueue);
 
 void wait_queue_deinit(wait_queue_t* waitQueue);
 
-void waitsys_ctx_init(waitsys_ctx_t* waitsys);
+void waitsys_thread_ctx_init(waitsys_thread_ctx_t* waitsys);
+
+void waitsys_cpu_ctx_init(waitsys_cpu_ctx_t* waitsys);
 
 void waitsys_init(void);
 

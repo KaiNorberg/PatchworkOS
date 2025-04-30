@@ -24,7 +24,7 @@ typedef struct thread
     bool dead;
     nsec_t timeStart;
     nsec_t timeEnd;
-    waitsys_ctx_t waitsys;
+    waitsys_thread_ctx_t waitsys;
     errno_t error;
     priority_t priority;
     simd_ctx_t simd;

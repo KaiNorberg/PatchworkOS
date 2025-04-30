@@ -11,6 +11,7 @@ typedef struct element
     rect_t rect;
     procedure_t proc;
     window_t* win;
+    void* private;
 } element_t;
 
 typedef struct window
@@ -21,7 +22,6 @@ typedef struct window
     rect_t rect;
     surface_type_t type;
     display_t* disp;
-    bool selected;
     element_t* root;
 } window_t;
 

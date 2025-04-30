@@ -1,5 +1,4 @@
-#include <stdint.h>
-#include <sys/kbd.h>
+#include "kbd.h"
 
 // TODO: Create a system for keymap files
 
