@@ -24,18 +24,19 @@ typedef uint16_t event_type_t;
 // User events, defined by individual programs
 #define UEVENT_BASE (1 << 15)
 
-typedef struct
-{
-    uint64_t width;
-    uint64_t height;
-} event_screen_info_t;
-
 typedef struct event
 {
     event_type_t type;
     surface_id_t target;
     uint8_t data[64];
 } event_t;
+
+// Structs stored in event_t.data
+typedef struct
+{
+    uint64_t width;
+    uint64_t height;
+} event_screen_info_t;
 
 #if defined(__cplusplus)
 }

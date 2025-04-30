@@ -21,7 +21,7 @@ typedef enum
     CMD_DRAW_RECT,
     CMD_DRAW_EDGE,
     CMD_DRAW_GRADIENT,
-    CMD_TOTAL_AMOUNT, // Above this are unimplemented cmds.
+    CMD_TYPE_AMOUNT, // Below this are unimplemented cmds.
     CMD_DRAW_LINE,
     CMD_DRAW_POINT,
     CMD_DRAW_TRIANGLE,
@@ -30,13 +30,31 @@ typedef enum
     CMD_DRAW_BITMAP
 } cmd_type_t;
 
+#define CMD_MAGIC 0xDEADC0DE
+
+#define CMD_INIT(cmd, cmdTypeEnum, cmdType) \
+    ({ \
+        (cmd)->header.magic = CMD_MAGIC; \
+        (cmd)->header.type = cmdTypeEnum; \
+        (cmd)->header.size = sizeof(cmdType); \
+    })
+
+typedef struct cmd_header
+{
+    uint32_t magic;
+    cmd_type_t type;
+    uint64_t size;
+} cmd_header_t;
+
 typedef struct
 {
+    cmd_header_t header;
     uint64_t index;
 } cmd_screen_info_t;
 
 typedef struct
 {
+    cmd_header_t header;
     surface_id_t id;
     surface_type_t type;
     rect_t rect;
@@ -44,11 +62,13 @@ typedef struct
 
 typedef struct
 {
+    cmd_header_t header;
     surface_id_t target;
 } cmd_surface_free_t;
 
 typedef struct
 {
+    cmd_header_t header;
     surface_id_t target;
     rect_t rect;
     pixel_t pixel;
@@ -56,6 +76,7 @@ typedef struct
 
 typedef struct
 {
+    cmd_header_t header;
     surface_id_t target;
     rect_t rect;
     uint64_t width;
@@ -72,6 +93,7 @@ typedef enum
 
 typedef struct
 {
+    cmd_header_t header;
     surface_id_t target;
     rect_t rect;
     pixel_t start;
@@ -80,27 +102,18 @@ typedef struct
     bool addNoise;
 } cmd_draw_gradient_t;
 
-typedef struct cmd
-{
-    cmd_type_t type;
-    union {
-        cmd_screen_info_t screenInfo;
-        cmd_surface_new_t surfaceNew;
-        cmd_surface_free_t surfaceFree;
-        cmd_draw_rect_t drawRect;
-        cmd_draw_edge_t drawEdge;
-        cmd_draw_gradient_t drawGradient;
-        uint8_t padding[64];
-    };
-} cmd_t;
+#define CMD_BUFFER_MAX_DATA (0x4000)
 
-#define CMD_BUFFER_MAX_CMD (((PAGE_SIZE) / 2) / (sizeof(cmd_t)) - 1)
-#define CMD_BUFFER_SIZE(amount) (offsetof(cmd_buffer_t, buffer) + (amount) * sizeof(cmd_t))
+#define CMD_BUFFER_FOR_EACH(buffer, cmd) \
+    for (uint8_t *_ptr = (buffer)->data, *_end = (uint8_t*)((uint64_t)(buffer) + (buffer)->size); _ptr < _end; \
+        _ptr += ((cmd_header_t*)_ptr)->size) \
+        for (cmd = (cmd_header_t*)_ptr; cmd; cmd = NULL)
 
 typedef struct cmd_buffer
 {
     uint64_t amount;
-    cmd_t buffer[CMD_BUFFER_MAX_CMD];
+    uint64_t size; // The entire used size of the cmd_buffer.
+    uint8_t data[CMD_BUFFER_MAX_DATA];
 } cmd_buffer_t;
 
 #if defined(__cplusplus)

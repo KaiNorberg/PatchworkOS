@@ -129,27 +129,27 @@ static local_connection_t* local_connection_new(const char* address)
         return NULL;
     }
 
-    void* serverBuffer = pmm_alloc();
+    void* serverBuffer = malloc(LOCAL_BUFFER_SIZE);
     if (serverBuffer == NULL)
     {
         free(conn);
         return NULL;
     }
-    ring_init(&conn->serverRing, serverBuffer, PAGE_SIZE);
-    void* clientBuffer = pmm_alloc();
+    ring_init(&conn->serverRing, serverBuffer, LOCAL_BUFFER_SIZE);
+    void* clientBuffer = malloc(LOCAL_BUFFER_SIZE);
     if (clientBuffer == NULL)
     {
-        pmm_free(serverBuffer);
+        free(serverBuffer);
         free(conn);
         return NULL;
     }
-    ring_init(&conn->clientRing, clientBuffer, PAGE_SIZE);
+    ring_init(&conn->clientRing, clientBuffer, LOCAL_BUFFER_SIZE);
 
     conn->listener = local_listener_get(address);
     if (conn->listener == NULL)
     {
-        pmm_free(serverBuffer);
-        pmm_free(clientBuffer);
+        free(serverBuffer);
+        free(clientBuffer);
         free(conn);
         return NULL;
     }
@@ -171,8 +171,8 @@ static void local_connection_deref(local_connection_t* conn)
 {
     if (atomic_fetch_sub(&conn->ref, 1) <= 1)
     {
-        pmm_free(conn->serverRing.buffer);
-        pmm_free(conn->clientRing.buffer);
+        free(conn->serverRing.buffer);
+        free(conn->clientRing.buffer);
         local_listener_deref(conn->listener);
         wait_queue_deinit(&conn->waitQueue);
         free(conn);
@@ -412,7 +412,7 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
     {
         return ERROR(ENOOP);
     }
-    if (count == 0 || count >= PAGE_SIZE / 2)
+    if (count == 0 || count >= LOCAL_BUFFER_SIZE / 2)
     {
         return ERROR(EINVAL);
     }
@@ -446,14 +446,14 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
     return count;
 }
 
-static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t count)
+static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t count, uint64_t* offset)
 {
     local_socket_t* local = socket->private;
     if (local->state != LOCAL_SOCKET_CONNECT && local->state != LOCAL_SOCKET_ACCEPT)
     {
         return ERROR(ENOOP);
     }
-    if (count == 0 || count >= PAGE_SIZE / 2)
+    if (count == 0 || count >= LOCAL_BUFFER_SIZE / 2)
     {
         return ERROR(EINVAL);
     }
@@ -479,13 +479,19 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
     }
 
     local_packet_header_t header;
-    ring_read(ring, &header, sizeof(local_packet_header_t));
+    ring_read_at(ring, 0, &header, sizeof(local_packet_header_t));
 
-    uint64_t readCount = MIN(header.size, count);
-    ring_read(ring, buffer, readCount);
+    uint64_t readCount = (*offset <= header.size) ? MIN(count, header.size - *offset) : 0;
+    if (readCount != 0)
+    {
+        ring_read_at(ring, sizeof(local_packet_header_t) + *offset, buffer, readCount);
+    }
 
-    // Consume remainder of packet.
-    ring_move_read_forward(ring, header.size - readCount);
+    if (sizeof(local_packet_header_t) + *offset + count >= readCount)
+    {
+        ring_move_read_forward(ring, sizeof(local_packet_header_t) + header.size);
+        *offset = 0;
+    }
 
     lock_release(&conn->lock);
     waitsys_unblock(&conn->waitQueue, UINT64_MAX);

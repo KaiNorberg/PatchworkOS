@@ -69,14 +69,6 @@ static void* malloc_unlocked(size_t size)
 static void free_unlocked(void* ptr)
 {
     _HeapHeader_t* block = (_HeapHeader_t*)((uint64_t)ptr - sizeof(_HeapHeader_t));
-    /*if (block->magic != _HEAP_HEADER_MAGIC)
-    {
-        _PlatformPanic("Invalid heap magic\n");
-    }
-    else if (!block->reserved)
-    {
-        _PlatformPanic("Attempt to free unreserved block at %a, size %d", ptr, block->size);
-    }*/
     block->reserved = false;
 }
 
@@ -101,13 +93,13 @@ void* calloc(size_t num, size_t size)
 
 void* realloc(void* ptr, size_t size)
 {
+    if (ptr == NULL)
+    {
+        return malloc(size);
+    }
+
     _HeapAcquire();
     _HeapHeader_t* block = (_HeapHeader_t*)((uint64_t)ptr - sizeof(_HeapHeader_t));
-
-    /*if (block->magic != _HEAP_HEADER_MAGIC)
-    {
-        _PlatformPanic("Invalid heap magic\n");
-    }*/
 
     void* newPtr = malloc_unlocked(size);
     memcpy(newPtr, ptr, MIN(size, block->size));

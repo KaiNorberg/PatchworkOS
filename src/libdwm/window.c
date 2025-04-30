@@ -29,7 +29,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
     {
     case EVENT_INIT:
     {
-        printf("deco: init");
+
     }
     break;
     case EVENT_REDRAW:
@@ -125,13 +125,14 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
         win->root->win = win;
     }
 
-    cmd_t cmd;
-    cmd.type = CMD_SURFACE_NEW;
-    cmd.surfaceNew.id = win->id;
-    cmd.surfaceNew.type = win->type;
-    cmd.surfaceNew.rect = win->rect;
-    display_cmds_push(disp, &cmd);
+    cmd_surface_new_t cmd;
+    CMD_INIT(&cmd, CMD_SURFACE_NEW, cmd_surface_new_t);
+    cmd.id = win->id;
+    cmd.type = win->type;
+    cmd.rect = win->rect;
+    display_cmds_push(disp, &cmd.header);
     display_cmds_flush(disp);
+
     list_push(&disp->windows, &win->entry);
     return win;
 }
@@ -140,9 +141,12 @@ void window_free(window_t* win)
 {
     element_free(win->root);
 
-    cmd_t cmd = {.type = CMD_SURFACE_FREE, .surfaceFree.target = win->id};
-    display_cmds_push(win->disp, &cmd);
+    cmd_surface_free_t cmd;
+    CMD_INIT(&cmd, CMD_SURFACE_FREE, cmd_surface_free_t);
+    cmd.target = win->id;
+    display_cmds_push(win->disp, &cmd.header);
     display_cmds_flush(win->disp);
+
     list_remove(&win->entry);
     free(win);
 }

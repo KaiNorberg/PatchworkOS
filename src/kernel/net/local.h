@@ -13,6 +13,8 @@
 
 #define LOCAL_BACKLOG_MAX 32
 
+#define LOCAL_BUFFER_SIZE (0x10000)
+
 typedef enum
 {
     LOCAL_SOCKET_BLANK,

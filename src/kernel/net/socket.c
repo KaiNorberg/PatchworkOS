@@ -19,7 +19,7 @@ static uint64_t socket_accept_read(file_t* file, void* buffer, uint64_t count)
 {
     socket_t* socket = file->private;
     bool endOfSegment = false;
-    uint64_t readCount = socket->family->receive(socket, buffer, count);
+    uint64_t readCount = socket->family->receive(socket, buffer, count, &file->pos);
     return readCount;
 }
 
@@ -89,7 +89,7 @@ static sysobj_ops_t acceptOps = {
 static uint64_t socket_data_read(file_t* file, void* buffer, uint64_t count)
 {
     socket_t* socket = file->sysobj->dir->private;
-    uint64_t readCount = socket->family->receive(socket, buffer, count);
+    uint64_t readCount = socket->family->receive(socket, buffer, count, &file->pos);
     return readCount;
 }
 

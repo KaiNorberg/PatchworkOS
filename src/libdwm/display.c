@@ -1,6 +1,7 @@
 #include "internal.h"
 
 #include <stdlib.h>
+#include <string.h>
 #include <sys/list.h>
 
 static bool display_events_available(display_t* disp)
@@ -78,6 +79,7 @@ display_t* display_open(void)
     disp->events.readIndex = 0;
     disp->events.writeIndex = 0;
     disp->cmds.amount = 0;
+    disp->cmds.size = offsetof(cmd_buffer_t, data);
     list_init(&disp->windows);
     disp->newId = SURFACE_ID_NONE - 1;
     return disp;
@@ -104,9 +106,12 @@ surface_id_t display_gen_id(display_t* disp)
 
 void display_screen_rect(display_t* disp, rect_t* rect, uint64_t index)
 {
-    cmd_t cmd = {.type = CMD_SCREEN_INFO, .screenInfo.index = index};
+    cmd_screen_info_t cmd;
+    CMD_INIT(&cmd, CMD_SCREEN_INFO, cmd_screen_info_t);
+    cmd.index = index;
+
     event_t event;
-    if (display_send_recieve_pattern(disp, &cmd, &event, EVENT_SCREEN_INFO) == ERR)
+    if (display_send_recieve_pattern(disp, &cmd.header, &event, EVENT_SCREEN_INFO) == ERR)
     {
         rect->left = 0;
         rect->top = 0;
@@ -167,7 +172,7 @@ void display_dispatch(display_t* disp, event_t* event)
     display_cmds_flush(disp);
 }
 
-uint64_t display_send_recieve_pattern(display_t* disp, cmd_t* cmd, event_t* event, event_type_t expected)
+uint64_t display_send_recieve_pattern(display_t* disp, cmd_header_t* cmd, event_t* event, event_type_t expected)
 {
     display_cmds_push(disp, cmd);
     display_cmds_flush(disp);
@@ -189,23 +194,24 @@ uint64_t display_send_recieve_pattern(display_t* disp, cmd_t* cmd, event_t* even
     return ERR;
 }
 
-void display_cmds_push(display_t* disp, const cmd_t* cmd)
+void display_cmds_push(display_t* disp, const cmd_header_t* cmd)
 {
-    if (disp->cmds.amount == CMD_BUFFER_MAX_CMD)
+    if (disp->cmds.size + cmd->size >= CMD_BUFFER_MAX_DATA - offsetof(cmd_buffer_t, data))
     {
         display_cmds_flush(disp);
     }
 
-    disp->cmds.buffer[disp->cmds.amount] = *cmd;
+    memcpy((void*)((uint64_t)&disp->cmds + disp->cmds.size), cmd, cmd->size);
     disp->cmds.amount++;
+    disp->cmds.size += cmd->size;
 }
 
 void display_cmds_flush(display_t* disp)
 {
-    uint64_t size = CMD_BUFFER_SIZE(disp->cmds.amount);
-    if (write(disp->data, &disp->cmds, size) != size)
+    if (write(disp->data, &disp->cmds, disp->cmds.size) != disp->cmds.size)
     {
         disp->connected = false;
     }
+    disp->cmds.size = offsetof(cmd_buffer_t, data);
     disp->cmds.amount = 0;
 }

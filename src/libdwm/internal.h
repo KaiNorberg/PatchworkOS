@@ -46,8 +46,8 @@ typedef struct display
     surface_id_t newId;
 } display_t;
 
-uint64_t display_send_recieve_pattern(display_t* disp, cmd_t* cmd, event_t* event, event_type_t expected);
+uint64_t display_send_recieve_pattern(display_t* disp, cmd_header_t* cmd, event_t* event, event_type_t expected);
 
-void display_cmds_push(display_t* disp, const cmd_t* cmd);
+void display_cmds_push(display_t* disp, const cmd_header_t* cmd);
 
 void display_cmds_flush(display_t* disp);

@@ -88,23 +88,38 @@ void element_rect_to_global(element_t* elem, rect_t* dest, const rect_t* src)
 
 void element_draw_rect(element_t* elem, const rect_t* rect, pixel_t pixel)
 {
-    cmd_t cmd = {.type = CMD_DRAW_RECT, .drawRect = {.target = elem->win->id, .pixel = pixel}};
-    element_rect_to_global(elem, &cmd.drawRect.rect, rect);
-    display_cmds_push(elem->win->disp, &cmd);
+    cmd_draw_rect_t cmd;
+    CMD_INIT(&cmd, CMD_DRAW_RECT, cmd_draw_rect_t);
+    cmd.target = elem->win->id;
+    element_rect_to_global(elem, &cmd.rect, rect);
+    cmd.pixel = pixel;
+
+    display_cmds_push(elem->win->disp, &cmd.header);
 }
 
 void element_draw_edge(element_t* elem, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background)
 {
-    cmd_t cmd = {.type = CMD_DRAW_EDGE,
-        .drawEdge = {.target = elem->win->id, .width = width, .foreground = foreground, .background = background}};
-    element_rect_to_global(elem, &cmd.drawEdge.rect, rect);
-    display_cmds_push(elem->win->disp, &cmd);
+    cmd_draw_edge_t cmd;
+    CMD_INIT(&cmd, CMD_DRAW_EDGE, cmd_draw_edge_t);
+    cmd.target = elem->win->id;
+    element_rect_to_global(elem, &cmd.rect, rect);
+    cmd.width = width;
+    cmd.foreground = foreground;
+    cmd.background = background;
+
+    display_cmds_push(elem->win->disp, &cmd.header);
 }
 
 void element_draw_gradient(element_t* elem, const rect_t* rect, pixel_t start, pixel_t end, gradient_type_t type, bool addNoise)
 {
-    cmd_t cmd = {.type = CMD_DRAW_GRADIENT,
-        .drawGradient = {.target = elem->win->id, .start = start, .end = end, .type = type, .addNoise = addNoise}};
-    element_rect_to_global(elem, &cmd.drawGradient.rect, rect);
-    display_cmds_push(elem->win->disp, &cmd);
+    cmd_draw_gradient_t cmd;
+    CMD_INIT(&cmd, CMD_DRAW_GRADIENT, cmd_draw_gradient_t);
+    cmd.target = elem->win->id;
+    element_rect_to_global(elem, &cmd.rect, rect);
+    cmd.start = start;
+    cmd.end = end;
+    cmd.type = type;
+    cmd.addNoise = addNoise;
+
+    display_cmds_push(elem->win->disp, &cmd.header);
 }

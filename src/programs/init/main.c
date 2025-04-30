@@ -19,7 +19,9 @@ int main(void)
 
     stat_t info;
     while (stat("sys:/net/local/listen/dwm", &info) == ERR)
-        ;
+    {
+        thrd_yield();
+    }
 
     spawn_program("home:/bin/wall");
     spawn_program("home:/usr/bin/calculator");

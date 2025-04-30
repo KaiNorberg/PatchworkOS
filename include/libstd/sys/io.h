@@ -1,8 +1,8 @@
 #ifndef _SYS_IO_H
 #define _SYS_IO_H 1
 
-#include <stdint.h>
 #include <stdarg.h>
+#include <stdint.h>
 
 #if defined(__cplusplus)
 extern "C"
