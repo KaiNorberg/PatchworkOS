@@ -1,9 +1,9 @@
 #include "start_menu.h"
 
+#include <stdlib.h>
 #include <stdio.h>
-#include <sys/gfx.h>
-#include <sys/win.h>
 #include <time.h>
+#include <libdwm/dwm.h>
 
 #define TOPBAR_HEIGHT 43
 #define TOPBAR_PADDING 5
@@ -13,38 +13,34 @@
 
 #define TIME_WIDTH 150
 
-static uint64_t procedure(win_t* window, const msg_t* msg)
+static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
-    switch (msg->type)
+    switch (event->type)
     {
-    case LMSG_INIT:
+    case EVENT_INIT:
     {
-        rect_t rect =
+        /*rect_t rect =
             RECT_INIT_DIM(TOPBAR_PADDING, TOPBAR_PADDING + winTheme.edgeWidth, START_WIDTH, TOPBAR_HEIGHT - TOPBAR_PADDING * 2);
 
         win_text_prop_t textProp = WIN_TEXT_PROP_DEFAULT();
         textProp.background = winTheme.background;
 
-        widget_t* button = win_button_new(window, "Start", &rect, START_ID, &textProp, WIN_BUTTON_TOGGLE);
+        widget_t* button = win_button_new(window, "Start", &rect, START_ID, &textProp, WIN_BUTTON_TOGGLE);*/
     }
     break;
-    case LMSG_REDRAW:
+    case EVENT_REDRAW:
     {
-        gfx_t gfx;
-        win_draw_begin(window, &gfx);
+        rect_t rect;
+        element_content_rect(elem, &rect);
 
-        rect_t rect = RECT_INIT_GFX(&gfx);
+        element_draw_rect(elem, &rect, windowTheme.background);
+        rect.bottom = rect.top + windowTheme.edgeWidth;
+        element_draw_rect(elem, &rect, windowTheme.bright);
 
-        gfx_rect(&gfx, &rect, winTheme.background);
-        rect.bottom = rect.top + winTheme.edgeWidth;
-        gfx_rect(&gfx, &rect, winTheme.bright);
-
-        win_draw_end(window, &gfx);
-
-        win_timer_set(window, 0);
+        //win_timer_set(window, 0);
     }
     break;
-    case LMSG_COMMAND:
+    /*case LMSG_COMMAND:
     {
         lmsg_command_t* data = (lmsg_command_t*)msg->data;
         if (data->id == START_ID)
@@ -59,8 +55,8 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
             }
         }
     }
-    break;
-    case LMSG_TIMER:
+    break;*/
+    /*case LMSG_TIMER:
     {
         gfx_t gfx;
         win_draw_begin(window, &gfx);
@@ -85,7 +81,7 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
 
         win_timer_set(window, SEC);
     }
-    break;
+    break;*/
     }
 
     return 0;
@@ -93,19 +89,25 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
 
 int main(void)
 {
+    display_t* disp = display_open();
+
     rect_t rect;
-    win_screen_rect(&rect);
+    display_screen_rect(disp, &rect, 0);
     rect.top = rect.bottom - TOPBAR_HEIGHT;
-
-    win_t* window = win_new("Taskbar", &rect, DWM_PANEL, WIN_NONE, procedure);
-
-    msg_t msg = {0};
-    while (msg.type != LMSG_QUIT)
+    window_t* win = window_new(disp, "Taskbar", &rect, SURFACE_PANEL, WINDOW_NONE, procedure);
+    if (win == NULL)
     {
-        win_receive(window, &msg, NEVER);
-        win_dispatch(window, &msg);
+        return EXIT_FAILURE;
     }
 
-    win_free(window);
+    event_t event = {0};
+    while (display_connected(disp))
+    {
+        display_next_event(disp, &event, NEVER);
+        display_dispatch(disp, &event);
+    }
+
+    window_free(win);
+    display_close(disp);
     return 0;
 }

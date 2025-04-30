@@ -3,6 +3,8 @@
 #include "dwm.h"
 #include "screen.h"
 
+#include <stdio.h>
+
 static bool redrawNeeded;
 
 static rect_t screenRect;
@@ -44,6 +46,8 @@ static void compositor_compute_client_area(compositor_ctx_t* ctx)
             clientRect.bottom = MIN(panel->pos.y, clientRect.bottom);
         }
     }
+
+    printf("%d %d %d %d", clientRect.left, clientRect.top, clientRect.right, clientRect.bottom);
 }
 
 static void compositor_draw_other(surface_t* other, const rect_t* rect)
@@ -186,7 +190,10 @@ static void compositor_draw_window_panel(compositor_ctx_t* ctx, surface_t* surfa
     }
 
     screen_transfer(surface, &rect);
-    compositor_invalidate_windows_above(ctx, surface, &rect);
+    if (surface->type == SURFACE_WINDOW)
+    {
+        compositor_invalidate_windows_above(ctx, surface, &rect);
+    }
     surface->gfx.invalidRect = (rect_t){0};
 }
 
@@ -207,6 +214,10 @@ static void compositor_draw_windows_panels(compositor_ctx_t* ctx)
 
 void compositor_draw(compositor_ctx_t* ctx)
 {
+    if (!redrawNeeded)
+    {
+        return;
+    }
     redrawNeeded = false;
     if (ctx->wall == NULL)
     {

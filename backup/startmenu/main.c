@@ -1,6 +1,4 @@
 #include <stdio.h>
-#include <sys/gfx.h>
-#include <sys/win.h>
 
 #define TOPBAR_HEIGHT 43
 
