@@ -25,8 +25,6 @@ typedef struct window
     element_t* root;
 } window_t;
 
-uint64_t window_dispatch(window_t* win, event_t* event);
-
 #define DISPLAY_MAX_EVENT 32
 
 typedef struct display
@@ -46,8 +44,10 @@ typedef struct display
     surface_id_t newId;
 } display_t;
 
-uint64_t display_send_recieve_pattern(display_t* disp, cmd_header_t* cmd, event_t* event, event_type_t expected);
+void display_events_push(display_t* disp, event_t* event);
 
 void display_cmds_push(display_t* disp, const cmd_header_t* cmd);
 
 void display_cmds_flush(display_t* disp);
+
+uint64_t display_send_recieve_pattern(display_t* disp, cmd_header_t* cmd, event_t* event, event_type_t expected);

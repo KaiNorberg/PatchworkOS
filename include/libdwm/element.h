@@ -38,6 +38,8 @@ void element_draw_edge(element_t* elem, const rect_t* rect, uint64_t width, pixe
 
 void element_draw_gradient(element_t* elem, const rect_t* rect, pixel_t start, pixel_t end, gradient_type_t type, bool addNoise);
 
+uint64_t element_dispatch(element_t* elem, event_t* event, bool propagate);
+
 #if defined(__cplusplus)
 }
 #endif

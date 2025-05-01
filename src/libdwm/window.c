@@ -82,7 +82,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
         window_deco_draw_topbar(win, elem);
     }
     break;
-    case EVENT_REDRAW:
+    case LEVENT_REDRAW:
     {
         rect_t rect;
         element_content_rect(elem, &rect);
@@ -203,35 +203,24 @@ void window_local_rect(window_t* win, rect_t* rect)
     *rect = RECT_INIT_DIM(0, 0, RECT_WIDTH(&win->rect), RECT_HEIGHT(&win->rect));
 }
 
-static uint64_t window_element_dispatch_event(window_t* win, element_t* elem, event_t* event, bool propagate)
-{
-    if (elem->proc(win, elem, event) == ERR)
-    {
-        return ERR;
-    }
-
-    if (propagate)
-    {
-        element_t* child;
-        LIST_FOR_EACH(child, &elem->children, entry)
-        {
-            if (window_element_dispatch_event(win, child, event, propagate) == ERR)
-            {
-                return ERR;
-            }
-        }
-    }
-
-    return 0;
-}
-
 uint64_t window_dispatch(window_t* win, event_t* event)
 {
     switch (event->type)
     {
+    case EVENT_INIT:
+    {
+        if (element_dispatch(win->root, event, true) == ERR)
+        {
+            return ERR;
+        }
+
+        event_t redrawEvent = {.type = LEVENT_REDRAW, . target = win->id};
+        display_events_push(win->disp, &redrawEvent);
+    }
+    break;
     default:
     {
-        if (window_element_dispatch_event(win, win->root, event, true) == ERR)
+        if (element_dispatch(win->root, event, true) == ERR)
         {
             return ERR;
         }

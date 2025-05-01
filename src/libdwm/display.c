@@ -9,18 +9,6 @@ static bool display_events_available(display_t* disp)
     return disp->events.readIndex != disp->events.writeIndex;
 }
 
-static void display_events_push(display_t* disp, event_t* event)
-{
-    uint64_t nextWriteIndex = (disp->events.writeIndex + 1) % DISPLAY_MAX_EVENT;
-    if (nextWriteIndex == disp->events.readIndex)
-    {
-        disp->events.readIndex = (disp->events.readIndex + 1) % DISPLAY_MAX_EVENT;
-    }
-
-    disp->events.buffer[disp->events.writeIndex] = *event;
-    disp->events.writeIndex = nextWriteIndex;
-}
-
 static void display_events_pop(display_t* disp, event_t* event)
 {
     *event = disp->events.buffer[disp->events.readIndex];
@@ -33,6 +21,40 @@ static void display_recieve_event(display_t* disp, event_t* event)
     {
         disp->connected = false;
     }
+}
+
+void display_events_push(display_t* disp, event_t* event)
+{
+    uint64_t nextWriteIndex = (disp->events.writeIndex + 1) % DISPLAY_MAX_EVENT;
+    if (nextWriteIndex == disp->events.readIndex)
+    {
+        disp->events.readIndex = (disp->events.readIndex + 1) % DISPLAY_MAX_EVENT;
+    }
+
+    disp->events.buffer[disp->events.writeIndex] = *event;
+    disp->events.writeIndex = nextWriteIndex;
+}
+
+void display_cmds_push(display_t* disp, const cmd_header_t* cmd)
+{
+    if (disp->cmds.size + cmd->size >= CMD_BUFFER_MAX_DATA - offsetof(cmd_buffer_t, data))
+    {
+        display_cmds_flush(disp);
+    }
+
+    memcpy((void*)((uint64_t)&disp->cmds + disp->cmds.size), cmd, cmd->size);
+    disp->cmds.amount++;
+    disp->cmds.size += cmd->size;
+}
+
+void display_cmds_flush(display_t* disp)
+{
+    if (write(disp->data, &disp->cmds, disp->cmds.size) != disp->cmds.size)
+    {
+        disp->connected = false;
+    }
+    disp->cmds.size = offsetof(cmd_buffer_t, data);
+    disp->cmds.amount = 0;
 }
 
 display_t* display_open(void)
@@ -120,11 +142,10 @@ void display_screen_rect(display_t* disp, rect_t* rect, uint64_t index)
         return;
     }
 
-    event_screen_info_t* screenInfo = (event_screen_info_t*)event.data;
     rect->left = 0;
     rect->top = 0;
-    rect->right = screenInfo->width;
-    rect->bottom = screenInfo->height;
+    rect->right = event.screenInfo.width;
+    rect->bottom = event.screenInfo.height;
 }
 
 bool display_connected(display_t* disp)
@@ -192,26 +213,4 @@ uint64_t display_send_recieve_pattern(display_t* disp, cmd_header_t* cmd, event_
     }
 
     return ERR;
-}
-
-void display_cmds_push(display_t* disp, const cmd_header_t* cmd)
-{
-    if (disp->cmds.size + cmd->size >= CMD_BUFFER_MAX_DATA - offsetof(cmd_buffer_t, data))
-    {
-        display_cmds_flush(disp);
-    }
-
-    memcpy((void*)((uint64_t)&disp->cmds + disp->cmds.size), cmd, cmd->size);
-    disp->cmds.amount++;
-    disp->cmds.size += cmd->size;
-}
-
-void display_cmds_flush(display_t* disp)
-{
-    if (write(disp->data, &disp->cmds, disp->cmds.size) != disp->cmds.size)
-    {
-        disp->connected = false;
-    }
-    disp->cmds.size = offsetof(cmd_buffer_t, data);
-    disp->cmds.amount = 0;
 }

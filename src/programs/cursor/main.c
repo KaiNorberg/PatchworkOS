@@ -5,7 +5,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
     switch (event->type)
     {
-    case EVENT_REDRAW:
+    case LEVENT_REDRAW:
     {
         /*gfx_t gfx;
         win_draw_begin(window, &gfx);

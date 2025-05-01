@@ -47,6 +47,8 @@ void window_rect(window_t* win, rect_t* rect);
 
 void window_content_rect(window_t* win, rect_t* rect);
 
+uint64_t window_dispatch(window_t* win, event_t* event);
+
 #if defined(__cplusplus)
 }
 #endif

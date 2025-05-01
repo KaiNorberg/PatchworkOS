@@ -28,7 +28,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         widget_t* button = win_button_new(window, "Start", &rect, START_ID, &textProp, WIN_BUTTON_TOGGLE);*/
     }
     break;
-    case EVENT_REDRAW:
+    case LEVENT_REDRAW:
     {
         rect_t rect;
         element_content_rect(elem, &rect);

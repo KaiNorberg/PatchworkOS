@@ -134,3 +134,25 @@ void element_draw_gradient(element_t* elem, const rect_t* rect, pixel_t start, p
 
     display_cmds_push(elem->win->disp, &cmd.header);
 }
+
+uint64_t element_dispatch(element_t* elem, event_t* event, bool propagate)
+{
+    if (elem->proc(elem->win, elem, event) == ERR)
+    {
+        return ERR;
+    }
+
+    if (propagate)
+    {
+        element_t* child;
+        LIST_FOR_EACH(child, &elem->children, entry)
+        {
+            if (element_dispatch(child, event, propagate) == ERR)
+            {
+                return ERR;
+            }
+        }
+    }
+
+    return 0;
+}

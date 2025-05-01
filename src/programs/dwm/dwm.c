@@ -98,7 +98,7 @@ static surface_t* client_find_surface(client_t* client, surface_id_t id)
 static uint64_t client_send_event(client_t* client, event_type_t type, surface_id_t target, void* data, uint64_t size)
 {
     event_t event = {.type = type, .target = target};
-    memcpy(&event.data, data, size);
+    memcpy(&event.raw, data, size);
     if (write(client->fd, &event, sizeof(event_t)) == ERR)
     {
         return ERR;
@@ -210,7 +210,6 @@ static uint64_t client_action_surface_new(client_t* client, const cmd_header_t* 
     list_push(&client->surfaces, &surface->clientEntry);
 
     client_send_event(client, EVENT_INIT, surface->id, NULL, 0);
-    client_send_event(client, EVENT_REDRAW, surface->id, NULL, 0);
     dwm_focus_set(surface);
     return 0;
 }

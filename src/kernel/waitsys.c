@@ -79,8 +79,7 @@ static uint64_t waitsys_thread_setup(thread_t* thread, wait_queue_t** waitQueues
         list_entry_init(&entry->entry);
         entry->waitQueue = waitQueues[i];
         entry->thread = thread;
-        entry->blocking = false;
-        entry->cancelBlock = false;
+        atomic_init(&entry->state, WAIT_QUEUE_ENTRY_PENDING);
 
         thread->waitsys.waitEntries[i] = entry;
     }
@@ -134,6 +133,8 @@ void waitsys_timer_trap(trap_frame_t* trapFrame)
 {
     cpu_t* self = smp_self_unsafe();
 
+    LOCK_DEFER(&threadsLock);
+
     while (1)
     {
         thread_t* thread = LIST_CONTAINER_SAFE(list_pop(&self->waitsys.parkedThreads), thread_t, entry);
@@ -142,21 +143,18 @@ void waitsys_timer_trap(trap_frame_t* trapFrame)
             break;
         }
 
-        LOCK_DEFER(&threadsLock);
         list_push(&threads, &thread->entry);
 
         for (uint64_t i = 0; i < thread->waitsys.entryAmount; i++)
         {
             wait_queue_entry_t* waitEntry = thread->waitsys.waitEntries[i];
-            wait_queue_t* waitQueue = waitEntry->waitQueue;
-            LOCK_DEFER(&waitQueue->lock);
 
-            if (waitEntry->cancelBlock)
+            wait_queue_entry_state_t expected = WAIT_QUEUE_ENTRY_PENDING;
+            if (!atomic_compare_exchange_strong(&waitEntry->state, &expected, WAIT_QUEUE_ENTRY_BLOCKED)) // if state != WAIT_QUEUE_ENTRY_PENDING
             {
-                waitsys_thread_unblock(thread, BLOCK_NORM, waitQueue, true);
+                waitsys_thread_unblock(thread, BLOCK_NORM, NULL, true);
                 break;
             }
-            waitEntry->blocking = true;
         }
     }
 
@@ -164,8 +162,6 @@ void waitsys_timer_trap(trap_frame_t* trapFrame)
     {
         return;
     }
-
-    LOCK_DEFER(&threadsLock);
 
     // TODO: This is O(n)... fix that
     thread_t* thread;
@@ -295,24 +291,22 @@ void waitsys_unblock(wait_queue_t* waitQueue, uint64_t amount)
 {
     LOCK_DEFER(&waitQueue->lock);
 
-    wait_queue_entry_t* entry;
+    wait_queue_entry_t* waitEntry;
     wait_queue_entry_t* temp;
-    LIST_FOR_EACH_SAFE(entry, temp, &waitQueue->entries, entry)
+    LIST_FOR_EACH_SAFE(waitEntry, temp, &waitQueue->entries, entry)
     {
         if (amount == 0)
         {
             return;
         }
 
-        thread_t* thread = entry->thread;
-        if (entry->blocking)
+        thread_t* thread = waitEntry->thread;
+
+        wait_queue_entry_state_t expected = WAIT_QUEUE_ENTRY_PENDING;
+        if (!atomic_compare_exchange_strong(&waitEntry->state, &expected, WAIT_QUEUE_ENTRY_CANCEL_BLOCK)) // if state != WAIT_QUEUE_ENTRY_PENDING
         {
             waitsys_thread_unblock(thread, BLOCK_NORM, waitQueue, false);
+            amount--;
         }
-        else // If the thread has not fully blocked yet.
-        {
-            entry->cancelBlock = true; // Tell waitsys to unblock before blocking is fully perfomed.
-        }
-        amount--;
     }
 }

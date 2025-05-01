@@ -84,13 +84,19 @@ typedef struct wait_queue
     list_t entries;
 } wait_queue_t;
 
+typedef enum
+{
+    WAIT_QUEUE_ENTRY_PENDING,
+    WAIT_QUEUE_ENTRY_BLOCKED,
+    WAIT_QUEUE_ENTRY_CANCEL_BLOCK,
+} wait_queue_entry_state_t;
+
 typedef struct wait_queue_entry
 {
     list_entry_t entry;
     thread_t* thread;
     wait_queue_t* waitQueue;
-    bool blocking;
-    bool cancelBlock;
+    _Atomic(wait_queue_entry_state_t) state;
 } wait_queue_entry_t;
 
 typedef enum

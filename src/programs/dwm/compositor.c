@@ -46,8 +46,6 @@ static void compositor_compute_client_area(compositor_ctx_t* ctx)
             clientRect.bottom = MIN(panel->pos.y, clientRect.bottom);
         }
     }
-
-    printf("%d %d %d %d", clientRect.left, clientRect.top, clientRect.right, clientRect.bottom);
 }
 
 static void compositor_draw_other(surface_t* other, const rect_t* rect)

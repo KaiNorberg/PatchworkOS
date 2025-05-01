@@ -75,7 +75,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         win_label_new(window, "0", &labelRect, LABEL_ID, &props);*/
     }
     break;
-    case EVENT_REDRAW:
+    case LEVENT_REDRAW:
     {
         rect_t rect;
         element_content_rect(elem, &rect);
