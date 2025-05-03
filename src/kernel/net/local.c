@@ -407,6 +407,7 @@ static uint64_t local_socket_get_ring_and_conn(local_socket_t* local, bool sendi
 
 static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t count)
 {
+    printf("local_socket_send: test1");
     local_socket_t* local = socket->private;
     if (local->state != LOCAL_SOCKET_CONNECT && local->state != LOCAL_SOCKET_ACCEPT)
     {
@@ -417,6 +418,7 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
         return ERROR(EINVAL);
     }
 
+    printf("local_socket_send: test2");
     ring_t* ring;
     local_connection_t* conn;
     if (local_socket_get_ring_and_conn(local, true, &ring, &conn) == ERR)
@@ -424,25 +426,31 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
         return ERR;
     }
 
+    printf("local_socket_send: test3");
     if (WAITSYS_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
             ring_free_length(ring) >= count + sizeof(local_packet_header_t) || local_connection_closed(conn)) != BLOCK_NORM)
     {
         lock_release(&conn->lock);
         return 0;
     }
+    printf("local_socket_send: test4");
+
 
     if (local_connection_closed(conn))
     {
         lock_release(&conn->lock);
         return 0;
     }
+    printf("local_socket_send: test5");
 
     local_packet_header_t header = {.size = count};
     ring_write(ring, &header, sizeof(local_packet_header_t));
     ring_write(ring, buffer, count);
+    printf("local_socket_send: test6");
 
     lock_release(&conn->lock);
     waitsys_unblock(&conn->waitQueue, UINT64_MAX);
+    printf("local_socket_send: test7");
     return count;
 }
 
@@ -517,7 +525,15 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
     {
         local_connection_t* conn = local->connect.conn;
         LOCK_DEFER(&conn->lock);
-        poll->occurred = POLL_READ & (ring_data_length(&conn->clientRing) != 0 || local_connection_closed(conn));
+        if (local_connection_closed(conn))
+        {
+            poll->occurred = POLL_READ & POLL_WRITE;
+        }
+        else
+        {
+            poll->occurred = (ring_data_length(&conn->clientRing) != 0 ? POLL_READ : 0) |
+                (ring_free_length(&conn->serverRing) >= sizeof(local_packet_header_t) ? POLL_WRITE : 0);
+        }
         return &conn->waitQueue;
     }
     break;
@@ -525,7 +541,15 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
     {
         local_connection_t* conn = local->accept.conn;
         LOCK_DEFER(&conn->lock);
-        poll->occurred = POLL_READ & (ring_data_length(&conn->serverRing) != 0 || local_connection_closed(conn));
+        if (local_connection_closed(conn))
+        {
+            poll->occurred = POLL_READ & POLL_WRITE;
+        }
+        else
+        {
+            poll->occurred = (ring_data_length(&conn->serverRing) != 0 ? POLL_READ : 0) |
+                (ring_free_length(&conn->clientRing) >= sizeof(local_packet_header_t) ? POLL_WRITE : 0);
+        }
         return &conn->waitQueue;
     }
     break;

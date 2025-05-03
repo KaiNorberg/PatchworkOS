@@ -39,9 +39,21 @@ typedef struct
 #define RECT_HEIGHT(rect) ((rect)->bottom - (rect)->top)
 #define RECT_AREA(rect) (RECT_WIDTH(rect) * RECT_HEIGHT(rect))
 
+#define RECT_EXPAND_TO_CONTAIN(rect, other) \
+    ({ \
+        (rect)->left = MIN((rect)->left, (other)->left); \
+        (rect)->top = MIN((rect)->top, (other)->top); \
+        (rect)->right = MAX((rect)->right, (other)->right); \
+        (rect)->bottom = MAX((rect)->bottom, (other)->bottom); \
+    })
+
+#define RECT_COMPARE(rect, other) \
+    ((other)->left == (rect)->left && (other)->right == (rect)->right && (other)->top == (rect)->top && \
+        (other)->bottom == (rect)->bottom)
+
 #define RECT_CONTAINS(rect, other) \
-    ((other)->left >= (rect)->left && (other)->right <= (rect)->right && (other)->top >= (rect)->top && \
-        (other)->bottom <= (rect)->bottom)
+    ((other)->left >= (rect)->left && (other)->right < (rect)->right && (other)->top >= (rect)->top && \
+        (other)->bottom < (rect)->bottom)
 
 #define RECT_CONTAINS_POINT(rect, point) \
     ((point)->x >= (rect)->left && (point)->x < (rect)->right && (point)->y >= (rect)->top && (point)->y < (rect)->bottom)

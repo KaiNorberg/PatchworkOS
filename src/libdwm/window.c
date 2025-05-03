@@ -5,7 +5,6 @@
 #include <string.h>
 
 // TODO: this should be stored in some sort of config file, lua? make something custom?
-#define WIN_DEFAULT_FONT "home:/theme/fonts/zap-vga16.psf"
 window_theme_t windowTheme = {
     .edgeWidth = 3,
     .rimWidth = 3,
@@ -49,9 +48,12 @@ static void window_deco_draw_topbar(window_t* win, element_t* elem)
     }
     else
     {
-        element_draw_gradient(elem, &topBar, windowTheme.unSelected, windowTheme.unSelectedHighlight, GRADIENT_HORIZONTAL,
-            false);
+        element_draw_gradient(elem, &topBar, windowTheme.unSelected, windowTheme.unSelectedHighlight, GRADIENT_HORIZONTAL, false);
     }
+
+    topBar.left += windowTheme.paddingWidth * 3;
+    topBar.right -= windowTheme.topbarHeight;
+    element_draw_text(elem, &topBar, NULL, ALIGN_MIN, ALIGN_CENTER, windowTheme.background, 0, win->name);
 }
 
 static uint64_t window_deco_procedure(window_t* win, element_t* elem, const event_t* event)
@@ -60,7 +62,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
 
     switch (event->type)
     {
-    case EVENT_INIT:
+    case LEVENT_INIT:
     {
         private->focused = false;
     }
@@ -112,11 +114,11 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     }
 
     list_entry_init(&win->entry);
+    win->disp = disp;
     win->id = display_gen_id(disp);
     strcpy(win->name, name);
     win->rect = *rect;
     win->type = type;
-    win->disp = disp;
 
     if (flags & WINDOW_DECO)
     {
@@ -133,14 +135,13 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
         }
 
         rect_t decoRect = RECT_INIT_DIM(0, 0, RECT_WIDTH(&win->rect), RECT_HEIGHT(&win->rect));
-        win->root = element_new(NULL, &decoRect, window_deco_procedure, private);
+        win->root = element_new_root(win, WINDOW_DECO_ELEM_ID, &decoRect, window_deco_procedure, private);
         if (win->root == NULL)
         {
             free(private);
             free(win);
             return NULL;
         }
-        win->root->win = win;
 
         rect_t clientRect = {
             .left = windowTheme.edgeWidth,
@@ -148,7 +149,7 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
             .right = windowTheme.edgeWidth + RECT_WIDTH(rect),
             .bottom = windowTheme.edgeWidth + windowTheme.topbarHeight + windowTheme.paddingWidth + RECT_HEIGHT(rect),
         };
-        if (element_new(win->root, &clientRect, procedure, NULL) == NULL)
+        if (element_new(win->root, WINDOW_CLIENT_ELEM_ID, &clientRect, procedure, NULL) == NULL)
         {
             element_free(win->root);
             free(private);
@@ -158,13 +159,12 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     else
     {
         rect_t rootElemRect = RECT_INIT_DIM(0, 0, RECT_WIDTH(rect), RECT_HEIGHT(rect));
-        win->root = element_new(NULL, &rootElemRect, procedure, NULL);
+        win->root = element_new_root(win, WINDOW_CLIENT_ELEM_ID, &rootElemRect, procedure, NULL);
         if (win->root == NULL)
         {
             free(win);
             return NULL;
         }
-        win->root->win = win;
     }
 
     cmd_surface_new_t cmd;
@@ -203,24 +203,46 @@ void window_local_rect(window_t* win, rect_t* rect)
     *rect = RECT_INIT_DIM(0, 0, RECT_WIDTH(&win->rect), RECT_HEIGHT(&win->rect));
 }
 
-uint64_t window_dispatch(window_t* win, event_t* event)
+display_t* window_display(window_t* win)
+{
+    return win->disp;
+}
+
+uint64_t window_dispatch(window_t* win, const event_t* event)
 {
     switch (event->type)
     {
-    case EVENT_INIT:
+    case LEVENT_INIT:
     {
-        if (element_dispatch(win->root, event, true) == ERR)
+        element_t* elem = element_find(win->root, event->lInit.id);
+        if (elem == NULL)
         {
             return ERR;
         }
 
-        event_t redrawEvent = {.type = LEVENT_REDRAW, . target = win->id};
-        display_events_push(win->disp, &redrawEvent);
+        if (element_dispatch(elem, event) == ERR)
+        {
+            return ERR;
+        }
+    }
+    break;
+    case LEVENT_REDRAW:
+    {
+        element_t* elem = element_find(win->root, event->lRedraw.id);
+        if (elem == NULL)
+        {
+            return ERR;
+        }
+
+        if (element_dispatch(elem, event) == ERR)
+        {
+            return ERR;
+        }
     }
     break;
     default:
     {
-        if (element_dispatch(win->root, event, true) == ERR)
+        if (element_dispatch(win->root, event) == ERR)
         {
             return ERR;
         }

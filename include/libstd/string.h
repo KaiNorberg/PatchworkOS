@@ -38,6 +38,10 @@ void* memmove(void* dest, const void* src, size_t count);
 
 char* strerror(int error);
 
+// Note: Technically this should not be here as we are using C11, and this is only available in C23, but its just to useful to
+// leave out.
+char* strdup(const char* src);
+
 #if defined(__cplusplus)
 }
 #endif

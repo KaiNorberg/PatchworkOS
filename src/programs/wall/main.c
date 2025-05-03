@@ -6,13 +6,14 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
     switch (event->type)
     {
-    case EVENT_INIT:
+    case LEVENT_INIT:
     {
         printf("wall: init");
     }
     break;
     case LEVENT_REDRAW:
     {
+        printf("wall: redraw");
         rect_t rect;
         element_content_rect(elem, &rect);
         element_draw_gradient(elem, &rect, 0xFF427F99, 0xFF5FA6C2, GRADIENT_DIAGONAL, true);
@@ -25,7 +26,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
 int main(void)
 {
-    display_t* disp = display_open();
+    display_t* disp = display_new();
 
     rect_t rect;
     display_screen_rect(disp, &rect, 0);
@@ -44,6 +45,6 @@ int main(void)
     }
 
     window_free(win);
-    display_close(disp);
+    display_free(disp);
     return 0;
 }

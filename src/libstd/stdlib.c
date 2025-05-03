@@ -99,7 +99,7 @@ void* realloc(void* ptr, size_t size)
     }
 
     _HeapHeader_t* block = (_HeapHeader_t*)((uint64_t)ptr - sizeof(_HeapHeader_t));
-    if (block->size ==  ROUND_UP(size, _HEAP_ALIGNMENT))
+    if (block->size == ROUND_UP(size, _HEAP_ALIGNMENT))
     {
         return ptr;
     }

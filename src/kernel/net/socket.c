@@ -37,13 +37,18 @@ static wait_queue_t* socket_accept_poll(file_t* file, poll_file_t* poll)
 
 static file_t* socket_accept_open(volume_t* volume, sysobj_t* sysobj)
 {
+    printf("socket_accept_open: test1 %p", sysobj);
+    printf("socket_accept_open: test1 %p", sysobj->dir);
+    printf("socket_accept_open: test1 %p", sysobj->dir->private);
     socket_t* socket = sysobj->dir->private;
     process_t* process = sched_process();
+    printf("socket_accept_open: test1 %p", process);
     if (process->id != socket->creator && !process_is_child(process, socket->creator))
     {
         return ERRPTR(EACCES);
     }
 
+    printf("socket_accept_open: test2");
     socket_t* newSocket = malloc(sizeof(socket_t));
     if (socket == NULL)
     {
@@ -52,12 +57,14 @@ static file_t* socket_accept_open(volume_t* volume, sysobj_t* sysobj)
     newSocket->family = socket->family;
     newSocket->creator = socket->creator;
 
+    printf("socket_accept_open: test3");
     if (socket->family->accept(socket, newSocket) == ERR)
     {
         free(socket);
         return NULL;
     }
 
+    printf("socket_accept_open: test4");
     static file_ops_t fileOps = {
         .read = socket_accept_read,
         .write = socket_accept_write,
@@ -71,6 +78,7 @@ static file_t* socket_accept_open(volume_t* volume, sysobj_t* sysobj)
     }
     file->ops = &fileOps;
     file->private = newSocket;
+    printf("socket_accept_open: test5");
     return file;
 }
 

@@ -6,6 +6,8 @@
 #include <sys/list.h>
 #include <sys/proc.h>
 
+// TODO: Make this code less incomprehensible.
+
 #define WAITSYS_ALL UINT64_MAX
 
 // Blocks untill condition is true, condition will be tested after every call to waitsys_unblock.
@@ -77,6 +79,7 @@
     })
 
 typedef struct thread thread_t;
+typedef struct cpu cpu_t;
 
 typedef struct wait_queue
 {
@@ -84,19 +87,13 @@ typedef struct wait_queue
     list_t entries;
 } wait_queue_t;
 
-typedef enum
-{
-    WAIT_QUEUE_ENTRY_PENDING,
-    WAIT_QUEUE_ENTRY_BLOCKED,
-    WAIT_QUEUE_ENTRY_CANCEL_BLOCK,
-} wait_queue_entry_state_t;
-
 typedef struct wait_queue_entry
 {
     list_entry_t entry;
     thread_t* thread;
     wait_queue_t* waitQueue;
-    _Atomic(wait_queue_entry_state_t) state;
+    bool blocking;
+    bool cancelBlock;
 } wait_queue_entry_t;
 
 typedef enum
@@ -113,12 +110,14 @@ typedef struct
     uint8_t entryAmount;
     block_result_t result;
     nsec_t deadline;
-    lock_t* lock;
+    cpu_t* owner;
 } waitsys_thread_ctx_t;
 
 typedef struct
 {
+    list_t blockedThreads;
     list_t parkedThreads;
+    lock_t lock;
 } waitsys_cpu_ctx_t;
 
 void wait_queue_init(wait_queue_t* waitQueue);
@@ -129,11 +128,11 @@ void waitsys_thread_ctx_init(waitsys_thread_ctx_t* waitsys);
 
 void waitsys_cpu_ctx_init(waitsys_cpu_ctx_t* waitsys);
 
-void waitsys_init(void);
-
 void waitsys_timer_trap(trap_frame_t* trapFrame);
 
 void waitsys_block_trap(trap_frame_t* trapFrame);
+
+void waitsys_unblock(wait_queue_t* waitQueue, uint64_t amount);
 
 block_result_t waitsys_block(wait_queue_t* waitQueue, nsec_t timeout);
 
@@ -141,5 +140,3 @@ block_result_t waitsys_block(wait_queue_t* waitQueue, nsec_t timeout);
 block_result_t waitsys_block_lock(wait_queue_t* waitQueue, nsec_t timeout, lock_t* lock);
 
 block_result_t waitsys_block_many(wait_queue_t** waitQueues, uint64_t amount, nsec_t timeout);
-
-void waitsys_unblock(wait_queue_t* waitQueue, uint64_t amount);

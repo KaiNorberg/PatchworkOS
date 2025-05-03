@@ -23,7 +23,7 @@ typedef struct
     lock_t lock;
 } ipi_queue_t;
 
-typedef struct
+typedef struct cpu
 {
     uint8_t id;
     uint8_t lapicId;

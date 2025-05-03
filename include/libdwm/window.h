@@ -11,6 +11,9 @@ extern "C"
 {
 #endif
 
+#define WINDOW_DECO_ELEM_ID (UINT64_MAX)
+#define WINDOW_CLIENT_ELEM_ID (UINT64_MAX - 1)
+
 typedef struct window window_t;
 
 typedef enum win_flags
@@ -47,7 +50,9 @@ void window_rect(window_t* win, rect_t* rect);
 
 void window_content_rect(window_t* win, rect_t* rect);
 
-uint64_t window_dispatch(window_t* win, event_t* event);
+display_t* window_display(window_t* win);
+
+uint64_t window_dispatch(window_t* win, const event_t* event);
 
 #if defined(__cplusplus)
 }

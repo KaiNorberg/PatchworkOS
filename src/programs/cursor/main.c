@@ -1,5 +1,5 @@
-#include <stdlib.h>
 #include <libdwm/dwm.h>
+#include <stdlib.h>
 
 static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
@@ -27,7 +27,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
 int main(void)
 {
-    display_t* disp = display_open();
+    display_t* disp = display_new();
 
     rect_t screenRect;
     display_screen_rect(disp, &screenRect, 0);
@@ -48,6 +48,6 @@ int main(void)
     }
 
     window_free(win);
-    display_close(disp);
+    display_free(disp);
     return 0;
 }

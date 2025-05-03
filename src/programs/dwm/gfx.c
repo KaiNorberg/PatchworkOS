@@ -42,123 +42,6 @@ gfx_fbmp_t* gfx_fbmp_new(const char* path)
     return image;
 }
 
-static gfx_psf_t* gfx_psf1_load(fd_t file)
-{
-    struct
-    {
-        uint16_t magic;
-        uint8_t mode;
-        uint8_t glyphSize;
-    } header;
-    if (read(file, &header, sizeof(header)) != sizeof(header))
-    {
-        return NULL;
-    }
-
-    if (header.magic != PSF1_MAGIC)
-    {
-        return NULL;
-    }
-
-    uint64_t glyphAmount = header.mode & PSF1_MODE_512 ? 512 : 256;
-    uint64_t glyphBufferSize = glyphAmount * header.glyphSize;
-
-    gfx_psf_t* psf = malloc(sizeof(gfx_psf_t) + glyphBufferSize);
-    if (psf == NULL)
-    {
-        return NULL;
-    }
-
-    psf->width = 8;
-    psf->height = header.glyphSize;
-    psf->glyphSize = header.glyphSize;
-    psf->glyphAmount = glyphAmount;
-    if (read(file, psf->glyphs, glyphBufferSize) != glyphBufferSize)
-    {
-        free(psf);
-        return NULL;
-    }
-
-    return psf;
-}
-
-static gfx_psf_t* gfx_psf2_load(fd_t file)
-{
-    struct
-    {
-        uint32_t magic;
-        uint32_t version;
-        uint32_t headerSize;
-        uint32_t flags;
-        uint32_t glyphAmount;
-        uint32_t glyphSize;
-        uint32_t height;
-        uint32_t width;
-    } header;
-    if (read(file, &header, sizeof(header)) != sizeof(header))
-    {
-        return NULL;
-    }
-
-    if (header.magic != PSF2_MAGIC || header.version != 0 || header.headerSize != sizeof(header))
-    {
-        return NULL;
-    }
-
-    uint64_t glyphBufferSize = header.glyphAmount * header.glyphSize;
-
-    gfx_psf_t* psf = malloc(sizeof(gfx_psf_t) + glyphBufferSize);
-    if (psf == NULL)
-    {
-        return NULL;
-    }
-
-    psf->width = header.width;
-    psf->height = header.height;
-    psf->glyphSize = header.glyphSize;
-    psf->glyphAmount = header.glyphAmount;
-    if (read(file, psf->glyphs, glyphBufferSize) != glyphBufferSize)
-    {
-        free(psf);
-        return NULL;
-    }
-
-    return psf;
-}
-
-gfx_psf_t* gfx_psf_new(const char* path)
-{
-    fd_t file = open(path);
-    if (file == ERR)
-    {
-        return NULL;
-    }
-
-    uint8_t firstByte;
-    if (read(file, &firstByte, sizeof(firstByte)) != sizeof(firstByte))
-    {
-        return NULL;
-    }
-    seek(file, 0, SEEK_SET);
-
-    gfx_psf_t* psf;
-    if (firstByte == 0x36) // Is psf1
-    {
-        psf = gfx_psf1_load(file);
-    }
-    else if (firstByte == 0x72) // Is psf2
-    {
-        psf = gfx_psf2_load(file);
-    }
-    else
-    {
-        psf = NULL;
-    }
-
-    close(file);
-    return psf;
-}
-
 void gfx_fbmp(gfx_t* gfx, const gfx_fbmp_t* fbmp, const point_t* point)
 {
     for (int64_t y = 0; y < fbmp->height; y++)
@@ -187,40 +70,38 @@ void gfx_fbmp_alpha(gfx_t* gfx, const gfx_fbmp_t* fbmp, const point_t* point)
     gfx_invalidate(gfx, &rect);
 }
 
-void gfx_char(gfx_t* gfx, const gfx_psf_t* psf, const point_t* point, uint64_t height, char chr, pixel_t foreground,
-    pixel_t background)
+void gfx_psf(gfx_t* gfx, const psf_t* psf, const point_t* point, char chr, pixel_t foreground, pixel_t background)
 {
-    uint64_t scale = MAX(1, height / psf->height);
     const uint8_t* glyph = psf->glyphs + chr * psf->glyphSize;
 
     if (PIXEL_ALPHA(foreground) == 0xFF && PIXEL_ALPHA(background) == 0xFF)
     {
-        for (uint64_t y = 0; y < psf->height * scale; y++)
+        for (uint64_t y = 0; y < psf->height * psf->scale; y++)
         {
-            for (uint64_t x = 0; x < psf->width * scale; x++)
+            for (uint64_t x = 0; x < psf->width * psf->scale; x++)
             {
-                pixel_t pixel = (glyph[y / scale] & (0b10000000 >> (x / scale))) != 0 ? foreground : background;
+                pixel_t pixel = (glyph[y / psf->scale] & (0b10000000 >> (x / psf->scale))) != 0 ? foreground : background;
                 gfx->buffer[(point->x + x) + (point->y + y) * gfx->stride] = pixel;
             }
         }
     }
     else
     {
-        for (uint64_t y = 0; y < psf->height * scale; y++)
+        for (uint64_t y = 0; y < psf->height * psf->scale; y++)
         {
-            for (uint64_t x = 0; x < psf->width * scale; x++)
+            for (uint64_t x = 0; x < psf->width * psf->scale; x++)
             {
-                pixel_t pixel = (glyph[y / scale] & (0b10000000 >> (x / scale))) != 0 ? foreground : background;
+                pixel_t pixel = (glyph[y / psf->scale] & (0b10000000 >> (x / psf->scale))) != 0 ? foreground : background;
                 PIXEL_BLEND(&gfx->buffer[(point->x + x) + (point->y + y) * gfx->stride], &pixel);
             }
         }
     }
 
-    rect_t rect = RECT_INIT_DIM(point->x, point->y, psf->width * scale, psf->height * scale);
+    rect_t rect = RECT_INIT_DIM(point->x, point->y, psf->width * psf->scale, psf->height * psf->scale);
     gfx_invalidate(gfx, &rect);
 }
 
-void gfx_text(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign, uint64_t height,
+/*void gfx_text(gfx_t* gfx, const psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign, uint64_t height,
     const char* str, pixel_t foreground, pixel_t background)
 {
     if (str == NULL || *str == '\0')
@@ -318,8 +199,8 @@ void gfx_text(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t 
     }
 }
 
-void gfx_text_multiline(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign,
-    uint64_t height, const char* str, pixel_t foreground, pixel_t background)
+void gfx_text_multiline(gfx_t* gfx, const psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign, uint64_t height,
+    const char* str, pixel_t foreground, pixel_t background)
 {
     if (str == NULL || *str == '\0')
     {
@@ -452,7 +333,7 @@ void gfx_text_multiline(gfx_t* gfx, const gfx_psf_t* psf, const rect_t* rect, gf
             chr++;
         }
     }
-}
+}*/
 
 void gfx_rect(gfx_t* gfx, const rect_t* rect, pixel_t pixel)
 {
@@ -764,9 +645,6 @@ void gfx_invalidate(gfx_t* gfx, const rect_t* rect)
     }
     else
     {
-        gfx->invalidRect.left = MIN(gfx->invalidRect.left, rect->left);
-        gfx->invalidRect.top = MIN(gfx->invalidRect.top, rect->top);
-        gfx->invalidRect.right = MAX(gfx->invalidRect.right, rect->right);
-        gfx->invalidRect.bottom = MAX(gfx->invalidRect.bottom, rect->bottom);
+        RECT_EXPAND_TO_CONTAIN(&gfx->invalidRect, rect);
     }
 }

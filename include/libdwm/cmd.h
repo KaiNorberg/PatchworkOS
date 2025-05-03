@@ -1,11 +1,14 @@
 #ifndef DWM_CMD_H
 #define DWM_CMD_H 1
 
+#include "font_id.h"
 #include "pixel.h"
+#include "point.h"
 #include "rect.h"
 #include "surface.h"
 
 #include <stdint.h>
+#include <sys/io.h>
 #include <sys/proc.h>
 
 #if defined(__cplusplus)
@@ -21,6 +24,10 @@ typedef enum
     CMD_DRAW_RECT,
     CMD_DRAW_EDGE,
     CMD_DRAW_GRADIENT,
+    CMD_FONT_NEW,
+    CMD_FONT_FREE,
+    CMD_FONT_INFO,
+    CMD_DRAW_STRING,
     CMD_TYPE_AMOUNT, // Below this are unimplemented cmds.
     CMD_DRAW_LINE,
     CMD_DRAW_POINT,
@@ -38,6 +45,9 @@ typedef enum
         (cmd)->header.type = cmdTypeEnum; \
         (cmd)->header.size = sizeof(cmdType); \
     })
+
+// TODO: Consider way to "disable" the dwm to allow a program to draw directly to the screen via the framebuffers. cmd_enable?
+// cmd_disable? Persmissions?
 
 typedef struct cmd_header
 {
@@ -102,7 +112,38 @@ typedef struct
     bool addNoise;
 } cmd_draw_gradient_t;
 
-#define CMD_BUFFER_MAX_DATA (0x4000)
+typedef struct
+{
+    cmd_header_t header;
+    char name[MAX_NAME];
+    uint64_t desiredHeight;
+} cmd_font_new_t;
+
+typedef struct
+{
+    cmd_header_t header;
+    font_id_t id;
+} cmd_font_free_t;
+
+typedef struct
+{
+    cmd_header_t header;
+    font_id_t id;
+} cmd_font_info_t;
+
+typedef struct
+{
+    cmd_header_t header;
+    surface_id_t target;
+    font_id_t fontId;
+    point_t point;
+    pixel_t foreground;
+    pixel_t background;
+    uint64_t length;
+    char string[];
+} cmd_draw_string_t;
+
+#define CMD_BUFFER_MAX_DATA (0x1000)
 
 #define CMD_BUFFER_FOR_EACH(buffer, cmd) \
     for (uint8_t *_ptr = (buffer)->data, *_end = (uint8_t*)((uint64_t)(buffer) + (buffer)->size); _ptr < _end; \

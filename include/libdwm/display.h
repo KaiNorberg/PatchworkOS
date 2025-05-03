@@ -16,19 +16,19 @@ extern "C"
 
 typedef struct display display_t;
 
-display_t* display_open(void);
+display_t* display_new(void);
 
-void display_close(display_t* disp);
+void display_free(display_t* disp);
 
 surface_id_t display_gen_id(display_t* disp);
 
-void display_screen_rect(display_t* disp, rect_t* rect, uint64_t index);
+uint64_t display_screen_rect(display_t* disp, rect_t* rect, uint64_t index);
 
 bool display_connected(display_t* disp);
 
 bool display_next_event(display_t* disp, event_t* event, nsec_t timeout);
 
-void display_dispatch(display_t* disp, event_t* event);
+void display_dispatch(display_t* disp, const event_t* event);
 
 #if defined(__cplusplus)
 }

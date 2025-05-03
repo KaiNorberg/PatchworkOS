@@ -73,7 +73,6 @@ void kernel_init(boot_info_t* bootInfo)
     process_backend_init();
 
     sched_init();
-    waitsys_init();
 
     acpi_init(bootInfo->rsdp);
     hpet_init();

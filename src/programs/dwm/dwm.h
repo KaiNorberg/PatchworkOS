@@ -6,14 +6,6 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
-typedef struct client
-{
-    list_entry_t entry;
-    fd_t fd;
-    list_t surfaces;
-    cmd_buffer_t cmds;
-} client_t;
-
 typedef struct
 {
     pollfd_t data;
@@ -25,5 +17,13 @@ typedef struct
 void dwm_init(void);
 
 void dwm_deinit(void);
+
+psf_t* dwm_default_font(void);
+
+uint64_t dwm_attach(surface_t* surface);
+
+void dwm_detach(surface_t* surface);
+
+void dwm_focus_set(surface_t* surface);
 
 void dwm_loop(void);

@@ -1,8 +1,17 @@
 #include "internal.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/list.h>
+
+static void display_recieve_event(display_t* disp, event_t* event)
+{
+    if (read(disp->data, event, sizeof(event_t)) != sizeof(event_t))
+    {
+        disp->connected = false;
+    }
+}
 
 static bool display_events_available(display_t* disp)
 {
@@ -15,23 +24,20 @@ static void display_events_pop(display_t* disp, event_t* event)
     disp->events.readIndex = (disp->events.readIndex + 1) % DISPLAY_MAX_EVENT;
 }
 
-static void display_recieve_event(display_t* disp, event_t* event)
+void display_events_push(display_t* disp,surface_id_t target, event_type_t type, void* data, uint64_t size)
 {
-    if (read(disp->data, event, sizeof(event_t)) != sizeof(event_t))
-    {
-        disp->connected = false;
-    }
-}
-
-void display_events_push(display_t* disp, event_t* event)
-{
+    printf("display_next_event push %d", type);
     uint64_t nextWriteIndex = (disp->events.writeIndex + 1) % DISPLAY_MAX_EVENT;
     if (nextWriteIndex == disp->events.readIndex)
     {
         disp->events.readIndex = (disp->events.readIndex + 1) % DISPLAY_MAX_EVENT;
     }
 
-    disp->events.buffer[disp->events.writeIndex] = *event;
+    event_t* event = &disp->events.buffer[disp->events.writeIndex];
+    event->type = type;
+    event->target = target;
+    memcpy(event->raw, data, size);
+
     disp->events.writeIndex = nextWriteIndex;
 }
 
@@ -49,15 +55,36 @@ void display_cmds_push(display_t* disp, const cmd_header_t* cmd)
 
 void display_cmds_flush(display_t* disp)
 {
-    if (write(disp->data, &disp->cmds, disp->cmds.size) != disp->cmds.size)
+    printf("display_cmds_flush");
+    if (disp->connected && disp->cmds.amount != 0)
     {
-        disp->connected = false;
+        if (write(disp->data, &disp->cmds, disp->cmds.size) != disp->cmds.size)
+        {
+            disp->connected = false;
+        }
     }
     disp->cmds.size = offsetof(cmd_buffer_t, data);
     disp->cmds.amount = 0;
 }
 
-display_t* display_open(void)
+static uint64_t display_default_font_init(display_t* disp)
+{
+    cmd_font_info_t cmd;
+    CMD_INIT(&cmd, CMD_FONT_INFO, cmd_font_info_t);
+    cmd.id = FONT_ID_DEFAULT;
+    event_t event;
+    if (display_send_recieve(disp, &cmd.header, &event, EVENT_FONT_INFO) == ERR)
+    {
+        return ERR;
+    }
+
+    disp->defaultFont.id = event.fontInfo.id;
+    disp->defaultFont.width = event.fontInfo.width;
+    disp->defaultFont.height = event.fontInfo.height;
+    return 0;
+}
+
+display_t* display_new(void)
 {
     display_t* disp = malloc(sizeof(display_t));
     if (disp == NULL)
@@ -103,15 +130,32 @@ display_t* display_open(void)
     disp->cmds.amount = 0;
     disp->cmds.size = offsetof(cmd_buffer_t, data);
     list_init(&disp->windows);
+    list_init(&disp->fonts);
     disp->newId = SURFACE_ID_NONE - 1;
+
+    if (display_default_font_init(disp) == ERR)
+    {
+        close(disp->handle);
+        close(disp->data);
+        free(disp);
+        return NULL;
+    }
+
     return disp;
 }
 
-void display_close(display_t* disp)
+void display_free(display_t* disp)
 {
+    font_t* font;
+    font_t* temp1;
+    LIST_FOR_EACH_SAFE(font, temp1, &disp->fonts, entry)
+    {
+        font_free(font);
+    }
+
     window_t* window;
-    window_t* temp;
-    LIST_FOR_EACH_SAFE(window, temp, &disp->windows, entry)
+    window_t* temp2;
+    LIST_FOR_EACH_SAFE(window, temp2, &disp->windows, entry)
     {
         window_free(window);
     }
@@ -126,26 +170,23 @@ surface_id_t display_gen_id(display_t* disp)
     return disp->newId--;
 }
 
-void display_screen_rect(display_t* disp, rect_t* rect, uint64_t index)
+uint64_t display_screen_rect(display_t* disp, rect_t* rect, uint64_t index)
 {
     cmd_screen_info_t cmd;
     CMD_INIT(&cmd, CMD_SCREEN_INFO, cmd_screen_info_t);
     cmd.index = index;
 
     event_t event;
-    if (display_send_recieve_pattern(disp, &cmd.header, &event, EVENT_SCREEN_INFO) == ERR)
+    if (display_send_recieve(disp, &cmd.header, &event, EVENT_SCREEN_INFO) == ERR)
     {
-        rect->left = 0;
-        rect->top = 0;
-        rect->right = 0;
-        rect->bottom = 0;
-        return;
+        return ERR;
     }
 
     rect->left = 0;
     rect->top = 0;
     rect->right = event.screenInfo.width;
     rect->bottom = event.screenInfo.height;
+    return 0;
 }
 
 bool display_connected(display_t* disp)
@@ -157,6 +198,7 @@ bool display_next_event(display_t* disp, event_t* event, nsec_t timeout)
 {
     if (display_events_available(disp))
     {
+        printf("display_next_event pop", event->type);
         display_events_pop(disp, event);
         return true;
     }
@@ -167,10 +209,11 @@ bool display_next_event(display_t* disp, event_t* event, nsec_t timeout)
     }
 
     display_recieve_event(disp, event);
+    printf("display_next_event recieve", event->type);
     return true;
 }
 
-void display_dispatch(display_t* disp, event_t* event)
+void display_dispatch(display_t* disp, const event_t* event)
 {
     if (event->target == SURFACE_ID_NONE)
     {
@@ -185,6 +228,7 @@ void display_dispatch(display_t* disp, event_t* event)
             if (window_dispatch(win, event) == ERR)
             {
                 window_free(win);
+                disp->connected = false;
             }
             break;
         }
@@ -193,7 +237,7 @@ void display_dispatch(display_t* disp, event_t* event)
     display_cmds_flush(disp);
 }
 
-uint64_t display_send_recieve_pattern(display_t* disp, cmd_header_t* cmd, event_t* event, event_type_t expected)
+uint64_t display_send_recieve(display_t* disp, cmd_header_t* cmd, event_t* event, event_type_t expected)
 {
     display_cmds_push(disp, cmd);
     display_cmds_flush(disp);
@@ -204,7 +248,7 @@ uint64_t display_send_recieve_pattern(display_t* disp, cmd_header_t* cmd, event_
 
         if (event->type != expected)
         {
-            display_events_push(disp, event);
+            display_events_push(disp, event->target, event->type, event->raw, EVENT_MAX_DATA);
         }
         else
         {
