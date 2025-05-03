@@ -3,20 +3,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define LABEL_ID 1234
+#define LABEL_HEIGHT (42)
+
 #define NUMPAD_COLUMNS 4
 #define NUMPAD_ROWS 4
 #define NUMPAD_PADDING 6
 #define NUMPAD_BUTTON_WIDTH (64)
 
 #define NUMPAD_COLUMN_TO_WINDOW(column) (NUMPAD_PADDING * ((column) + 1) + NUMPAD_BUTTON_WIDTH * (column))
-#define NUMPAD_ROW_TO_WINDOW(row) (NUMPAD_PADDING * ((row) + 1) + NUMPAD_BUTTON_WIDTH * (row))
+#define NUMPAD_ROW_TO_WINDOW(row) (LABEL_HEIGHT + NUMPAD_PADDING * ((row) + 2) + NUMPAD_BUTTON_WIDTH * (row))
+
+#define LABEL_WIDTH (NUMPAD_COLUMN_TO_WINDOW(NUMPAD_COLUMNS) - NUMPAD_PADDING * 2)
 
 #define WINDOW_WIDTH (NUMPAD_COLUMN_TO_WINDOW(NUMPAD_COLUMNS))
 #define WINDOW_HEIGHT (NUMPAD_ROW_TO_WINDOW(NUMPAD_ROWS))
 
-#define LABEL_ID 1234
-
 static font_t* largeFont;
+static label_t* label;
 
 static void numpad_button_create(window_t* win, element_t* elem, uint64_t column, uint64_t row, const char* label,
     element_id_t id)
@@ -36,7 +40,6 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     {
     case LEVENT_INIT:
     {
-        printf("calc: init");
         input = 0;
         accumulator = 0;
         operation = '=';
@@ -59,67 +62,58 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         numpad_button_create(win, elem, 0, 3, "<", '<');
         numpad_button_create(win, elem, 2, 3, "=", '=');
 
-        /*rect_t labelRect = RECT_INIT_DIM(NUMPAD_PADDING, NUMPAD_PADDING, WINDOW_WIDTH - NUMPAD_PADDING * 2,
-            WINDOW_HEIGHT - NUMPAD_WIDTH - NUMPAD_PADDING * 2);
-
-        wmsg_text_prop_t props = {
-            .height = 32,
-            .foreground = winTheme.dark,
-            .background = winTheme.bright,
-            .xAlign = GFX_MAX,
-            .yAlign = GFX_CENTER,
-        };
-        win_label_new(window, "0", &labelRect, LABEL_ID, &props);*/
+        rect_t labelRect = RECT_INIT_DIM(NUMPAD_PADDING, NUMPAD_PADDING, LABEL_WIDTH, LABEL_HEIGHT);
+        label = label_new(elem, LABEL_ID, &labelRect, largeFont, ALIGN_MAX, ALIGN_CENTER, windowTheme.dark, windowTheme.bright, LABEL_NONE, "0");
     }
     break;
     case LEVENT_ACTION:
     {
-        printf("LEVENT_ACTION %c", event->lAction.source);
-        /*lmsg_command_t* data = (lmsg_command_t*)msg->data;
-        if (data->type == LMSG_COMMAND_RELEASE)
+        if (event->lAction.type != ACTION_RELEASE)
         {
-            if (data->id <= 9)
+            break;
+        }
+
+        if (event->lAction.source <= 9)
+        {
+            input = input * 10 + event->lAction.source;
+        }
+        else if (event->lAction.source == '<')
+        {
+            input /= 10;
+        }
+        else
+        {
+            switch (operation)
             {
-                input = input * 10 + data->id;
-            }
-            else if (data->id == '<')
-            {
-                input /= 10;
-            }
-            else
-            {
-                switch (operation)
+            case '/':
+                if (input == 0)
                 {
-                case '/':
-                    if (input == 0)
-                    {
-                        win_widget_name_set(win_widget(window, LABEL_ID), "DIV BY ZERO");
-                        return 0;
-                    }
-                    accumulator /= input;
-                    break;
-                case '*':
-                    accumulator *= input;
-                    break;
-                case '-':
-                    accumulator -= input;
-                    break;
-                case '+':
-                    accumulator += input;
-                    break;
-                case '=':
-                    accumulator = input;
-                    break;
+                    label_set_text(label, "DIV BY ZERO");
+                    return 0;
                 }
-                input = 0;
-
-                operation = data->id;
+                accumulator /= input;
+                break;
+            case '*':
+                accumulator *= input;
+                break;
+            case '-':
+                accumulator -= input;
+                break;
+            case '+':
+                accumulator += input;
+                break;
+            case '=':
+                accumulator = input;
+                break;
             }
+            input = 0;
 
-            char buffer[32];
-            ulltoa(data->id == '=' ? accumulator : input, buffer, 10);
-            win_widget_name_set(win_widget(window, LABEL_ID), buffer);
-        }*/
+            operation = event->lAction.source;
+        }
+
+        char buffer[32];
+        ulltoa(event->lAction.source == '=' ? accumulator : input, buffer, 10);
+        label_set_text(label, buffer);
     }
     break;
     }

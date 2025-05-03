@@ -52,6 +52,10 @@ void window_content_rect(window_t* win, rect_t* rect);
 
 display_t* window_display(window_t* win);
 
+surface_id_t window_id(window_t* win);
+
+surface_type_t window_type(window_t* win);
+
 uint64_t window_dispatch(window_t* win, const event_t* event);
 
 #if defined(__cplusplus)

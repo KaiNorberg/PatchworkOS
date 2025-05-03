@@ -11,7 +11,13 @@
 #define START_WIDTH 75
 #define START_ID 0
 
-#define TIME_WIDTH 150
+#define CLOCK_WIDTH 150
+
+#define UEVENT_CLOCK (UEVENT_BASE + 1)
+
+#define CLOCK_LABEL_ID 1234
+
+static label_t* clockLabel;
 
 static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
@@ -19,6 +25,9 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     {
     case LEVENT_INIT:
     {
+        rect_t rect;
+        element_content_rect(elem, &rect);
+
         /*rect_t rect =
             RECT_INIT_DIM(TOPBAR_PADDING, TOPBAR_PADDING + winTheme.edgeWidth, START_WIDTH, TOPBAR_HEIGHT - TOPBAR_PADDING * 2);
 
@@ -26,6 +35,20 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         textProp.background = winTheme.background;
 
         widget_t* button = win_button_new(window, "Start", &rect, START_ID, &textProp, WIN_BUTTON_TOGGLE);*/
+
+        rect_t clockRect = RECT_INIT_DIM(RECT_WIDTH(&rect) - TOPBAR_PADDING - CLOCK_WIDTH, TOPBAR_PADDING + windowTheme.edgeWidth,
+            CLOCK_WIDTH, TOPBAR_HEIGHT - TOPBAR_PADDING * 2);
+        clockLabel = label_new(elem, CLOCK_LABEL_ID, &clockRect, NULL, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark, windowTheme.background, LABEL_NONE, "0");
+    }
+    case UEVENT_CLOCK: // Fall trough
+    {
+        time_t epoch = time(NULL);
+        struct tm timeData;
+        localtime_r(&epoch, &timeData);
+        char buffer[MAX_PATH];
+        sprintf(buffer, "%02d:%02d %d-%02d-%02d", timeData.tm_hour, timeData.tm_min, timeData.tm_year + 1900, timeData.tm_mon
+    + 1, timeData.tm_mday);
+        label_set_text(clockLabel, buffer);
     }
     break;
     case LEVENT_REDRAW:
@@ -36,51 +59,24 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         element_draw_rect(elem, &rect, windowTheme.background);
         rect.bottom = rect.top + windowTheme.edgeWidth;
         element_draw_rect(elem, &rect, windowTheme.bright);
-
-        // win_timer_set(window, 0);
     }
     break;
-        /*case LMSG_COMMAND:
+    /*case LMSG_COMMAND:
+    {
+        lmsg_command_t* data = (lmsg_command_t*)msg->data;
+        if (data->id == START_ID)
         {
-            lmsg_command_t* data = (lmsg_command_t*)msg->data;
-            if (data->id == START_ID)
+            if (data->type == LMSG_COMMAND_PRESS)
             {
-                if (data->type == LMSG_COMMAND_PRESS)
-                {
-                    start_menu_open();
-                }
-                else if (data->type == LMSG_COMMAND_RELEASE)
-                {
-                    start_menu_close();
-                }
+                start_menu_open();
+            }
+            else if (data->type == LMSG_COMMAND_RELEASE)
+            {
+                start_menu_close();
             }
         }
-        break;*/
-        /*case LMSG_TIMER:
-        {
-            gfx_t gfx;
-            win_draw_begin(window, &gfx);
-
-            rect_t rect = RECT_INIT_GFX(&gfx);
-
-            rect_t timeRect = RECT_INIT_DIM(RECT_WIDTH(&rect) - TOPBAR_PADDING - TIME_WIDTH, TOPBAR_PADDING + winTheme.edgeWidth,
-                TIME_WIDTH, TOPBAR_HEIGHT - TOPBAR_PADDING * 2);
-            gfx_edge(&gfx, &timeRect, winTheme.edgeWidth, winTheme.shadow, winTheme.highlight);
-            RECT_SHRINK(&timeRect, winTheme.edgeWidth);
-            gfx_rect(&gfx, &timeRect, winTheme.background);
-
-            time_t epoch = time(NULL);
-            struct tm timeData;
-            localtime_r(&epoch, &timeData);
-            char buffer[MAX_PATH];
-            sprintf(buffer, "%02d:%02d %d-%02d-%02d", timeData.tm_hour, timeData.tm_min, timeData.tm_year + 1900, timeData.tm_mon
-        + 1, timeData.tm_mday); gfx_text(&gfx, win_font(window), &timeRect, GFX_CENTER, GFX_CENTER, 16, buffer, winTheme.dark, 0);
-
-            win_draw_end(window, &gfx);
-
-            win_timer_set(window, SEC);
-        }
-        break;*/
+    }
+    break;*/
     }
 
     return 0;
@@ -102,8 +98,14 @@ int main(void)
     event_t event = {0};
     while (display_connected(disp))
     {
-        display_next_event(disp, &event, NEVER);
-        display_dispatch(disp, &event);
+        if (display_next_event(disp, &event, SEC * 60))
+        {
+            display_dispatch(disp, &event);
+        }
+        else
+        {
+            display_emit(disp, window_id(win), UEVENT_CLOCK, NULL, 0);
+        }
     }
 
     window_free(win);

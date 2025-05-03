@@ -9,7 +9,7 @@ typedef struct button
     pixel_t foreground;
     pixel_t background;
     button_flags_t flags;
-    char* label;
+    char* text;
     mouse_buttons_t pressed;
     element_t* elem;
 } button_t;
@@ -38,7 +38,7 @@ static void button_draw(button_t* button, bool redraw)
     if (redraw)
     {
         element_draw_rect(button->elem, &rect, button->background);
-        element_draw_text(button->elem, &rect, button->font, ALIGN_CENTER, ALIGN_CENTER, button->foreground, button->background, button->label);
+        element_draw_text(button->elem, &rect, button->font, ALIGN_CENTER, ALIGN_CENTER, button->foreground, button->background, button->text);
     }
 }
 
@@ -47,8 +47,6 @@ static void button_send_action(button_t* button, action_type_t type)
     levent_action_t event = {.source = button->elem->id, .type = type};
     display_events_push(button->elem->win->disp, button->elem->win->id, LEVENT_ACTION, &event, sizeof(levent_action_t));
 }
-
-#include <stdio.h>
 
 static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* event)
 {
@@ -63,7 +61,7 @@ static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* 
     break;
     case LEVENT_FREE:
     {
-        free(button->label);
+        free(button->text);
         free(button);
     }
     break;
@@ -122,7 +120,7 @@ static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* 
 }
 
 button_t* button_new(element_t* parent, element_id_t id, const rect_t* rect, font_t* font, pixel_t foreground, pixel_t background,
-    button_flags_t flags, const char* label)
+    button_flags_t flags, const char* text)
 {
     button_t* button = malloc(sizeof(button_t));
     if (button == NULL)
@@ -134,8 +132,8 @@ button_t* button_new(element_t* parent, element_id_t id, const rect_t* rect, fon
     button->foreground = foreground;
     button->background = background;
     button->flags = flags;
-    button->label = strdup(label);
-    if (button->label == NULL)
+    button->text = strdup(text);
+    if (button->text == NULL)
     {
         free(button);
         return NULL;
@@ -156,25 +154,6 @@ void button_free(button_t* button)
     element_free(button->elem);
 }
 
-const char* button_label(button_t* button)
-{
-    return button->label;
-}
-
-uint64_t button_set_label(button_t* button, const char* label)
-{
-    char* newLabel = strdup(label);
-    if (newLabel == NULL)
-    {
-        return ERR;
-    }
-    free(button->label);
-    button->label = newLabel;
-
-    element_send_redraw(button->elem);
-    return 0;
-}
-
 font_t* button_font(button_t* button)
 {
     return button->font;
@@ -183,4 +162,57 @@ font_t* button_font(button_t* button)
 void button_set_font(button_t* button, font_t* font)
 {
     button->font = font;
+    element_send_redraw(button->elem);
+}
+
+pixel_t button_foreground(button_t* button)
+{
+    return button->foreground;
+}
+
+void button_set_foreground(button_t* button, pixel_t foreground)
+{
+    button->foreground = foreground;
+    element_send_redraw(button->elem);
+}
+
+pixel_t button_background(button_t* button)
+{
+    return button->background;
+}
+
+void button_set_background(button_t* button, pixel_t background)
+{
+    button->background = background;
+    element_send_redraw(button->elem);
+}
+
+button_flags_t button_flags(button_t* button)
+{
+    return button->flags;
+}
+
+void button_set_flags(button_t* button, button_flags_t flags)
+{
+    button->flags = flags;
+    element_send_redraw(button->elem);
+}
+
+const char* button_text(button_t* button)
+{
+    return button->text;
+}
+
+uint64_t button_set_text(button_t* button, const char* text)
+{
+    char* newText = strdup(text);
+    if (newText == NULL)
+    {
+        return ERR;
+    }
+    free(button->text);
+    button->text = newText;
+
+    element_send_redraw(button->elem);
+    return 0;
 }

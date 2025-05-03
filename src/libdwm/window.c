@@ -123,7 +123,7 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     if (flags & WINDOW_DECO)
     {
         win->rect.left -= windowTheme.edgeWidth;
-        win->rect.top -= windowTheme.edgeWidth + windowTheme.topbarHeight + windowTheme.paddingWidth;
+        win->rect.top -= windowTheme.edgeWidth + windowTheme.topbarHeight;
         win->rect.right += windowTheme.edgeWidth;
         win->rect.bottom += windowTheme.edgeWidth;
 
@@ -145,9 +145,9 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
 
         rect_t clientRect = {
             .left = windowTheme.edgeWidth,
-            .top = windowTheme.edgeWidth + windowTheme.topbarHeight + windowTheme.paddingWidth,
+            .top = windowTheme.edgeWidth + windowTheme.topbarHeight,
             .right = windowTheme.edgeWidth + RECT_WIDTH(rect),
-            .bottom = windowTheme.edgeWidth + windowTheme.topbarHeight + windowTheme.paddingWidth + RECT_HEIGHT(rect),
+            .bottom = windowTheme.edgeWidth + windowTheme.topbarHeight + RECT_HEIGHT(rect),
         };
         if (element_new(win->root, WINDOW_CLIENT_ELEM_ID, &clientRect, procedure, NULL) == NULL)
         {
@@ -206,6 +206,16 @@ void window_local_rect(window_t* win, rect_t* rect)
 display_t* window_display(window_t* win)
 {
     return win->disp;
+}
+
+surface_id_t window_id(window_t* win)
+{
+    return win->id;
+}
+
+surface_type_t window_type(window_t* win)
+{
+    return win->type;
 }
 
 uint64_t window_dispatch(window_t* win, const event_t* event)

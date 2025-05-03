@@ -352,7 +352,7 @@ static uint64_t client_action_draw_string(client_t* client, const cmd_header_t* 
     for (uint64_t i = 0; i < cmd->length; i++)
     {
         gfx_psf(&surface->gfx, font, &point, cmd->string[i], cmd->foreground, cmd->background);
-        point.x += font->width;
+        point.x += font->width * font->scale;
     }
 
     return 0;

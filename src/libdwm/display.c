@@ -24,49 +24,6 @@ static void display_events_pop(display_t* disp, event_t* event)
     disp->events.readIndex = (disp->events.readIndex + 1) % DISPLAY_MAX_EVENT;
 }
 
-void display_events_push(display_t* disp,surface_id_t target, event_type_t type, void* data, uint64_t size)
-{
-    printf("display_next_event push %d", type);
-    uint64_t nextWriteIndex = (disp->events.writeIndex + 1) % DISPLAY_MAX_EVENT;
-    if (nextWriteIndex == disp->events.readIndex)
-    {
-        disp->events.readIndex = (disp->events.readIndex + 1) % DISPLAY_MAX_EVENT;
-    }
-
-    event_t* event = &disp->events.buffer[disp->events.writeIndex];
-    event->type = type;
-    event->target = target;
-    memcpy(event->raw, data, size);
-
-    disp->events.writeIndex = nextWriteIndex;
-}
-
-void display_cmds_push(display_t* disp, const cmd_header_t* cmd)
-{
-    if (disp->cmds.size + cmd->size >= CMD_BUFFER_MAX_DATA - offsetof(cmd_buffer_t, data))
-    {
-        display_cmds_flush(disp);
-    }
-
-    memcpy((void*)((uint64_t)&disp->cmds + disp->cmds.size), cmd, cmd->size);
-    disp->cmds.amount++;
-    disp->cmds.size += cmd->size;
-}
-
-void display_cmds_flush(display_t* disp)
-{
-    printf("display_cmds_flush");
-    if (disp->connected && disp->cmds.amount != 0)
-    {
-        if (write(disp->data, &disp->cmds, disp->cmds.size) != disp->cmds.size)
-        {
-            disp->connected = false;
-        }
-    }
-    disp->cmds.size = offsetof(cmd_buffer_t, data);
-    disp->cmds.amount = 0;
-}
-
 static uint64_t display_default_font_init(display_t* disp)
 {
     cmd_font_info_t cmd;
@@ -205,12 +162,85 @@ bool display_next_event(display_t* disp, event_t* event, nsec_t timeout)
 
     if (timeout != NEVER && poll1(disp->data, POLL_READ, timeout) != POLL_READ)
     {
+        printf("display_next_event timeout %d", timeout);
         return false;
     }
 
     display_recieve_event(disp, event);
     printf("display_next_event recieve", event->type);
     return true;
+}
+
+void display_events_push(display_t* disp,surface_id_t target, event_type_t type, void* data, uint64_t size)
+{
+    printf("display_next_event push %d", type);
+    uint64_t nextWriteIndex = (disp->events.writeIndex + 1) % DISPLAY_MAX_EVENT;
+    if (nextWriteIndex == disp->events.readIndex)
+    {
+        disp->events.readIndex = (disp->events.readIndex + 1) % DISPLAY_MAX_EVENT;
+    }
+
+    event_t* event = &disp->events.buffer[disp->events.writeIndex];
+    event->type = type;
+    event->target = target;
+    memcpy(event->raw, data, size);
+
+    disp->events.writeIndex = nextWriteIndex;
+}
+
+void display_cmds_push(display_t* disp, const cmd_header_t* cmd)
+{
+    if (disp->cmds.size + cmd->size >= CMD_BUFFER_MAX_DATA - offsetof(cmd_buffer_t, data))
+    {
+        display_cmds_flush(disp);
+    }
+
+    memcpy((void*)((uint64_t)&disp->cmds + disp->cmds.size), cmd, cmd->size);
+    disp->cmds.amount++;
+    disp->cmds.size += cmd->size;
+}
+
+void display_cmds_flush(display_t* disp)
+{
+    printf("display_cmds_flush");
+    if (disp->connected && disp->cmds.amount != 0)
+    {
+        if (write(disp->data, &disp->cmds, disp->cmds.size) != disp->cmds.size)
+        {
+            disp->connected = false;
+        }
+    }
+    disp->cmds.size = offsetof(cmd_buffer_t, data);
+    disp->cmds.amount = 0;
+}
+
+uint64_t display_send_recieve(display_t* disp, cmd_header_t* cmd, event_t* event, event_type_t expected)
+{
+    display_cmds_push(disp, cmd);
+    display_cmds_flush(disp);
+
+    while (display_connected(disp))
+    {
+        display_recieve_event(disp, event);
+
+        if (event->type != expected)
+        {
+            display_events_push(disp, event->target, event->type, event->raw, EVENT_MAX_DATA);
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    return ERR;
+}
+
+void display_emit(display_t* disp, surface_id_t target, event_type_t type, void* data, uint64_t size)
+{
+    event_t event = {.target = target, .type = type,};
+    memcpy(event.raw, data, MIN(EVENT_MAX_DATA, size));
+    display_dispatch(disp, &event);
 }
 
 void display_dispatch(display_t* disp, const event_t* event)
@@ -235,26 +265,4 @@ void display_dispatch(display_t* disp, const event_t* event)
     }
 
     display_cmds_flush(disp);
-}
-
-uint64_t display_send_recieve(display_t* disp, cmd_header_t* cmd, event_t* event, event_type_t expected)
-{
-    display_cmds_push(disp, cmd);
-    display_cmds_flush(disp);
-
-    while (display_connected(disp))
-    {
-        display_recieve_event(disp, event);
-
-        if (event->type != expected)
-        {
-            display_events_push(disp, event->target, event->type, event->raw, EVENT_MAX_DATA);
-        }
-        else
-        {
-            return 0;
-        }
-    }
-
-    return ERR;
 }

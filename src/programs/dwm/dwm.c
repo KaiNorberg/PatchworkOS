@@ -399,8 +399,7 @@ static void dwm_mouse_read(void)
 static void dwm_poll(void)
 {
     dwm_poll_ctx_update();
-    while (poll((pollfd_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(pollfd_t) + clientAmount, SEC / 60) == 0 &&
-        !compositor_redraw_needed())
+    while (poll((pollfd_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(pollfd_t) + clientAmount, NEVER) == 0)
     {
         // Do nothing
     }

@@ -58,11 +58,3 @@ typedef struct display
     surface_id_t newId;
     font_t defaultFont;
 } display_t;
-
-void display_events_push(display_t* disp, surface_id_t target, event_type_t type, void* data, uint64_t size);
-
-void display_cmds_push(display_t* disp, const cmd_header_t* cmd);
-
-void display_cmds_flush(display_t* disp);
-
-uint64_t display_send_recieve(display_t* disp, cmd_header_t* cmd, event_t* event, event_type_t expected);

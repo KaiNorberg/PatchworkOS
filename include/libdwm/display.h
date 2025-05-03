@@ -28,6 +28,16 @@ bool display_connected(display_t* disp);
 
 bool display_next_event(display_t* disp, event_t* event, nsec_t timeout);
 
+void display_cmds_push(display_t* disp, const cmd_header_t* cmd);
+
+void display_cmds_flush(display_t* disp);
+
+void display_events_push(display_t* disp, surface_id_t target, event_type_t type, void* data, uint64_t size);
+
+uint64_t display_send_recieve(display_t* disp, cmd_header_t* cmd, event_t* event, event_type_t expected);
+
+void display_emit(display_t* disp, surface_id_t target, event_type_t type, void* data, uint64_t size);
+
 void display_dispatch(display_t* disp, const event_t* event);
 
 #if defined(__cplusplus)
