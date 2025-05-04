@@ -28,17 +28,14 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         rect_t rect;
         element_content_rect(elem, &rect);
 
-        /*rect_t rect =
-            RECT_INIT_DIM(TOPBAR_PADDING, TOPBAR_PADDING + winTheme.edgeWidth, START_WIDTH, TOPBAR_HEIGHT - TOPBAR_PADDING * 2);
+        rect_t startRect = RECT_INIT_DIM(TOPBAR_PADDING, TOPBAR_PADDING + windowTheme.edgeWidth, START_WIDTH,
+            TOPBAR_HEIGHT - TOPBAR_PADDING * 2);
+        button_new(elem, START_ID, &startRect, NULL, windowTheme.dark, windowTheme.background, BUTTON_TOGGLE, "Start");
 
-        win_text_prop_t textProp = WIN_TEXT_PROP_DEFAULT();
-        textProp.background = winTheme.background;
-
-        widget_t* button = win_button_new(window, "Start", &rect, START_ID, &textProp, WIN_BUTTON_TOGGLE);*/
-
-        rect_t clockRect = RECT_INIT_DIM(RECT_WIDTH(&rect) - TOPBAR_PADDING - CLOCK_WIDTH, TOPBAR_PADDING + windowTheme.edgeWidth,
-            CLOCK_WIDTH, TOPBAR_HEIGHT - TOPBAR_PADDING * 2);
-        clockLabel = label_new(elem, CLOCK_LABEL_ID, &clockRect, NULL, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark, windowTheme.background, LABEL_NONE, "0");
+        rect_t clockRect = RECT_INIT_DIM(RECT_WIDTH(&rect) - TOPBAR_PADDING - CLOCK_WIDTH,
+            TOPBAR_PADDING + windowTheme.edgeWidth, CLOCK_WIDTH, TOPBAR_HEIGHT - TOPBAR_PADDING * 2);
+        clockLabel = label_new(elem, CLOCK_LABEL_ID, &clockRect, NULL, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
+            windowTheme.background, LABEL_NONE, "0");
     }
     case UEVENT_CLOCK: // Fall trough
     {
@@ -46,8 +43,8 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         struct tm timeData;
         localtime_r(&epoch, &timeData);
         char buffer[MAX_PATH];
-        sprintf(buffer, "%02d:%02d %d-%02d-%02d", timeData.tm_hour, timeData.tm_min, timeData.tm_year + 1900, timeData.tm_mon
-    + 1, timeData.tm_mday);
+        sprintf(buffer, "%02d:%02d %d-%02d-%02d", timeData.tm_hour, timeData.tm_min, timeData.tm_year + 1900,
+            timeData.tm_mon + 1, timeData.tm_mday);
         label_set_text(clockLabel, buffer);
     }
     break;
@@ -61,22 +58,21 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         element_draw_rect(elem, &rect, windowTheme.bright);
     }
     break;
-    /*case LMSG_COMMAND:
+    case LEVENT_ACTION:
     {
-        lmsg_command_t* data = (lmsg_command_t*)msg->data;
-        if (data->id == START_ID)
+        if (event->lAction.source == START_ID)
         {
-            if (data->type == LMSG_COMMAND_PRESS)
+            if (event->lAction.type == ACTION_PRESS)
             {
                 start_menu_open();
             }
-            else if (data->type == LMSG_COMMAND_RELEASE)
+            else if (event->lAction.type == ACTION_RELEASE)
             {
                 start_menu_close();
             }
         }
     }
-    break;*/
+    break;
     }
 
     return 0;

@@ -309,7 +309,8 @@ block_result_t waitsys_block_lock(wait_queue_t* waitQueue, nsec_t timeout, lock_
     }
 
     ASSERT_PANIC(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
-    ASSERT_PANIC(smp_self_unsafe()->cli.depth == 1); // Only one lock is allowed to be acquired when calling this function.
+    ASSERT_PANIC(
+        smp_self_unsafe()->cli.depth == 1); // Only one lock is allowed to be acquired when calling this function.
 
     thread_t* thread = smp_self_unsafe()->sched.runThread;
     if (waitsys_thread_setup(thread, &waitQueue, 1, timeout) == ERR)

@@ -28,6 +28,7 @@ typedef enum
     CMD_FONT_FREE,
     CMD_FONT_INFO,
     CMD_DRAW_STRING,
+    CMD_SURFACE_MOVE,
     CMD_TYPE_AMOUNT, // Below this are unimplemented cmds.
     CMD_DRAW_LINE,
     CMD_DRAW_POINT,
@@ -39,15 +40,15 @@ typedef enum
 
 #define CMD_MAGIC 0xDEADC0DE
 
-#define CMD_INIT(cmd, cmdTypeEnum, cmdType) \
+#define CMD_INIT(cmd, cmdType, cmdSize) \
     ({ \
         (cmd)->header.magic = CMD_MAGIC; \
-        (cmd)->header.type = cmdTypeEnum; \
-        (cmd)->header.size = sizeof(cmdType); \
+        (cmd)->header.type = cmdType; \
+        (cmd)->header.size = cmdSize; \
     })
 
-// TODO: Consider way to "disable" the dwm to allow a program to draw directly to the screen via the framebuffers. cmd_enable?
-// cmd_disable? Persmissions?
+// TODO: Consider way to "disable" the dwm to allow a program to draw directly to the screen via the framebuffers.
+// cmd_enable? cmd_disable? Persmissions?
 
 typedef struct cmd_header
 {
@@ -142,6 +143,13 @@ typedef struct
     uint64_t length;
     char string[];
 } cmd_draw_string_t;
+
+typedef struct
+{
+    cmd_header_t header;
+    surface_id_t target;
+    rect_t rect;
+} cmd_surface_move_t;
 
 #define CMD_BUFFER_MAX_DATA (0x1000)
 

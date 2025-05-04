@@ -56,7 +56,8 @@ typedef struct
         (other)->bottom < (rect)->bottom)
 
 #define RECT_CONTAINS_POINT(rect, point) \
-    ((point)->x >= (rect)->left && (point)->x < (rect)->right && (point)->y >= (rect)->top && (point)->y < (rect)->bottom)
+    ((point)->x >= (rect)->left && (point)->x < (rect)->right && (point)->y >= (rect)->top && \
+        (point)->y < (rect)->bottom)
 
 #define RECT_OVERLAP(rect, other) \
     (!((rect)->right <= (other)->left || (rect)->left >= (other)->right || (rect)->bottom <= (other)->top || \

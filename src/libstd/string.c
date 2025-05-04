@@ -338,6 +338,7 @@ static char* errorStrings[] = {
     "blocker limit exceeded",
     "try again",
     "operation not defined",
+    "would block",
     "busy",
 };
 

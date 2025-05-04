@@ -35,6 +35,7 @@ typedef struct window
     char name[MAX_NAME];
     rect_t rect;
     surface_type_t type;
+    window_flags_t flags;
     element_t* root;
 } window_t;
 

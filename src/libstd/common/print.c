@@ -680,10 +680,11 @@ static int npf_ftoa_rev(char* buf, npf_format_spec_t const* spec, double f)
             // This if-else statement can be completely optimized at compile time.
             if (NPF_DOUBLE_BIN_BITS > NPF_FTOA_MAN_BITS)
             {
-                man_f = (npf_ftoa_man_t)(bin_f >> ((unsigned)(NPF_DOUBLE_BIN_BITS - NPF_FTOA_MAN_BITS) % NPF_DOUBLE_BIN_BITS));
-                carry =
-                    (uint_fast8_t)((bin_f >> ((unsigned)(NPF_DOUBLE_BIN_BITS - NPF_FTOA_MAN_BITS - 1) % NPF_DOUBLE_BIN_BITS)) &
-                        0x1);
+                man_f = (npf_ftoa_man_t)(bin_f >>
+                    ((unsigned)(NPF_DOUBLE_BIN_BITS - NPF_FTOA_MAN_BITS) % NPF_DOUBLE_BIN_BITS));
+                carry = (uint_fast8_t)((bin_f >> ((unsigned)(NPF_DOUBLE_BIN_BITS - NPF_FTOA_MAN_BITS - 1) %
+                                                     NPF_DOUBLE_BIN_BITS)) &
+                    0x1);
             }
             else
             {
@@ -948,7 +949,8 @@ static int npf_vpprintf(npf_putc pc, void* pc_ctx, char const* _RESTRICT format,
         {
             cbuf = va_arg(args, char*);
 #if NANOPRINTF_USE_PRECISION_FORMAT_SPECIFIERS == 1
-            for (char const* s = cbuf; ((fs.prec_opt == NPF_FMT_SPEC_OPT_NONE) || (cbuf_len < fs.prec)) && *s; ++s, ++cbuf_len)
+            for (char const* s = cbuf; ((fs.prec_opt == NPF_FMT_SPEC_OPT_NONE) || (cbuf_len < fs.prec)) && *s;
+                ++s, ++cbuf_len)
                 ;
 #else
             for (char const* s = cbuf; *s; ++s, ++cbuf_len)
@@ -1050,8 +1052,9 @@ static int npf_vpprintf(npf_putc pc, void* pc_ctx, char const* _RESTRICT format,
             else
 #endif
             {
-                uint_fast8_t const base =
-                    (fs.conv_spec == NPF_FMT_SPEC_CONV_OCTAL) ? 8u : ((fs.conv_spec == NPF_FMT_SPEC_CONV_HEX_INT) ? 16u : 10u);
+                uint_fast8_t const base = (fs.conv_spec == NPF_FMT_SPEC_CONV_OCTAL)
+                    ? 8u
+                    : ((fs.conv_spec == NPF_FMT_SPEC_CONV_HEX_INT) ? 16u : 10u);
                 cbuf_len = npf_utoa_rev(val, cbuf, base, fs.case_adjust);
             }
 

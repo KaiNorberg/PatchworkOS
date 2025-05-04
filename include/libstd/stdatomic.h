@@ -297,7 +297,8 @@ typedef atomic_bool atomic_flag;
 #define ATOMIC_FLAG_INIT ATOMIC_VAR_INIT(0)
 
 #define atomic_flag_clear_explicit(object, order) atomic_store_explicit(object, 0, order)
-#define atomic_flag_test_and_set_explicit(object, order) atomic_compare_exchange_strong_explicit(object, 0, 1, order, order)
+#define atomic_flag_test_and_set_explicit(object, order) \
+    atomic_compare_exchange_strong_explicit(object, 0, 1, order, order)
 
 #define atomic_flag_clear(object) atomic_flag_clear_explicit(object, memory_order_seq_cst)
 #define atomic_flag_test_and_set(object) atomic_flag_test_and_set_explicit(object, memory_order_seq_cst)

@@ -24,7 +24,8 @@ typedef uint32_t pixel_t;
         uint8_t alpha = aAlpha + ((bAlpha * (0xFF - aAlpha)) / 0xFF); \
         if (alpha != 0) \
         { \
-            *dest = PIXEL_ARGB(alpha, (PIXEL_RED(*src) * aAlpha + PIXEL_RED(*dest) * bAlpha * (0xFF - aAlpha) / 0xFF) / alpha, \
+            *dest = PIXEL_ARGB(alpha, \
+                (PIXEL_RED(*src) * aAlpha + PIXEL_RED(*dest) * bAlpha * (0xFF - aAlpha) / 0xFF) / alpha, \
                 (PIXEL_GREEN(*src) * aAlpha + PIXEL_GREEN(*dest) * bAlpha * (0xFF - aAlpha) / 0xFF) / alpha, \
                 (PIXEL_BLUE(*src) * aAlpha + PIXEL_BLUE(*dest) * bAlpha * (0xFF - aAlpha) / 0xFF) / alpha); \
         } \

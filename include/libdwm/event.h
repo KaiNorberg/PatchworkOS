@@ -4,6 +4,7 @@
 #include "element_id.h"
 #include "font_id.h"
 #include "point.h"
+#include "rect.h"
 #include "surface.h"
 
 #include <stdint.h>
@@ -25,6 +26,7 @@ typedef uint16_t event_type_t;
 #define EVENT_FOCUS_OUT 4
 #define EVENT_FONT_NEW 5
 #define EVENT_FONT_INFO 6
+#define EVENT_SURFACE_MOVE 7
 
 typedef struct
 {
@@ -64,6 +66,11 @@ typedef struct
     uint64_t height;
 } event_font_info_t;
 
+typedef struct
+{
+    rect_t rect;
+} event_surface_move_t;
+
 // Library events, sent by libdwm.
 #define LEVENT_BASE (1 << 14)
 #define LEVENT_INIT (LEVENT_BASE + 1)
@@ -79,6 +86,7 @@ typedef struct
 typedef struct
 {
     element_id_t id;
+    uint8_t propagate;
 } levent_redraw_t;
 
 typedef enum
@@ -109,6 +117,7 @@ typedef struct event
         event_mouse_t mouse;
         event_font_new_t fontNew;
         event_font_info_t fontInfo;
+        event_surface_move_t surfaceMove;
         levent_init_t lInit;
         levent_redraw_t lRedraw;
         levent_action_t lAction;

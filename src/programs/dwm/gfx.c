@@ -6,6 +6,10 @@
 #include <sys/io.h>
 #include <sys/math.h>
 
+#define GFX_VALID_RECT(rect, width, height) \
+    ((rect)->left >= 0 && (rect)->top >= 0 && (rect)->right <= (width) && (rect)->bottom <= (height) && \
+        (rect)->left < (rect)->right && (rect)->top < (rect)->bottom)
+
 gfx_fbmp_t* gfx_fbmp_new(const char* path)
 {
     fd_t file = open(path);
@@ -80,7 +84,8 @@ void gfx_psf(gfx_t* gfx, const psf_t* psf, const point_t* point, char chr, pixel
         {
             for (uint64_t x = 0; x < psf->width * psf->scale; x++)
             {
-                pixel_t pixel = (glyph[y / psf->scale] & (0b10000000 >> (x / psf->scale))) != 0 ? foreground : background;
+                pixel_t pixel =
+                    (glyph[y / psf->scale] & (0b10000000 >> (x / psf->scale))) != 0 ? foreground : background;
                 gfx->buffer[(point->x + x) + (point->y + y) * gfx->stride] = pixel;
             }
         }
@@ -91,7 +96,8 @@ void gfx_psf(gfx_t* gfx, const psf_t* psf, const point_t* point, char chr, pixel
         {
             for (uint64_t x = 0; x < psf->width * psf->scale; x++)
             {
-                pixel_t pixel = (glyph[y / psf->scale] & (0b10000000 >> (x / psf->scale))) != 0 ? foreground : background;
+                pixel_t pixel =
+                    (glyph[y / psf->scale] & (0b10000000 >> (x / psf->scale))) != 0 ? foreground : background;
                 PIXEL_BLEND(&gfx->buffer[(point->x + x) + (point->y + y) * gfx->stride], &pixel);
             }
         }
@@ -101,8 +107,8 @@ void gfx_psf(gfx_t* gfx, const psf_t* psf, const point_t* point, char chr, pixel
     gfx_invalidate(gfx, &rect);
 }
 
-/*void gfx_text(gfx_t* gfx, const psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign, uint64_t height,
-    const char* str, pixel_t foreground, pixel_t background)
+/*void gfx_text(gfx_t* gfx, const psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign, uint64_t
+height, const char* str, pixel_t foreground, pixel_t background)
 {
     if (str == NULL || *str == '\0')
     {
@@ -199,8 +205,8 @@ void gfx_psf(gfx_t* gfx, const psf_t* psf, const point_t* point, char chr, pixel
     }
 }
 
-void gfx_text_multiline(gfx_t* gfx, const psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign, uint64_t height,
-    const char* str, pixel_t foreground, pixel_t background)
+void gfx_text_multiline(gfx_t* gfx, const psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign,
+uint64_t height, const char* str, pixel_t foreground, pixel_t background)
 {
     if (str == NULL || *str == '\0')
     {
@@ -337,7 +343,7 @@ void gfx_text_multiline(gfx_t* gfx, const psf_t* psf, const rect_t* rect, gfx_al
 
 void gfx_rect(gfx_t* gfx, const rect_t* rect, pixel_t pixel)
 {
-    if (rect->left < 0 || rect->top < 0 || rect->right > gfx->width || rect->bottom > gfx->height)
+    if (!GFX_VALID_RECT(rect, gfx->width, gfx->height))
     {
         return;
     }
@@ -383,6 +389,11 @@ void gfx_rect(gfx_t* gfx, const rect_t* rect, pixel_t pixel)
 
 void gfx_gradient(gfx_t* gfx, const rect_t* rect, pixel_t start, pixel_t end, gradient_type_t type, bool addNoise)
 {
+    if (!GFX_VALID_RECT(rect, gfx->width, gfx->height))
+    {
+        return;
+    }
+
     int64_t width = rect->right - rect->left;
     int64_t height = rect->bottom - rect->top;
 
@@ -453,6 +464,11 @@ void gfx_gradient(gfx_t* gfx, const rect_t* rect, pixel_t start, pixel_t end, gr
 
 void gfx_edge(gfx_t* gfx, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background)
 {
+    if (!GFX_VALID_RECT(rect, gfx->width, gfx->height))
+    {
+        return;
+    }
+
     rect_t leftRect = (rect_t){
         .left = rect->left,
         .top = rect->top,
@@ -500,6 +516,11 @@ void gfx_edge(gfx_t* gfx, const rect_t* rect, uint64_t width, pixel_t foreground
 
 void gfx_ridge(gfx_t* gfx, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background)
 {
+    if (!GFX_VALID_RECT(rect, gfx->width, gfx->height))
+    {
+        return;
+    }
+
     gfx_edge(gfx, rect, width / 2, background, foreground);
 
     rect_t innerRect = *rect;
@@ -509,6 +530,11 @@ void gfx_ridge(gfx_t* gfx, const rect_t* rect, uint64_t width, pixel_t foregroun
 
 void gfx_scroll(gfx_t* gfx, const rect_t* rect, uint64_t offset, pixel_t background)
 {
+    if (!GFX_VALID_RECT(rect, gfx->width, gfx->height))
+    {
+        return;
+    }
+
     int64_t width = RECT_WIDTH(rect);
     int64_t height = RECT_HEIGHT(rect);
 
@@ -533,6 +559,11 @@ void gfx_scroll(gfx_t* gfx, const rect_t* rect, uint64_t offset, pixel_t backgro
 
 void gfx_rim(gfx_t* gfx, const rect_t* rect, uint64_t width, pixel_t pixel)
 {
+    if (!GFX_VALID_RECT(rect, gfx->width, gfx->height))
+    {
+        return;
+    }
+
     rect_t leftRect = (rect_t){
         .left = rect->left,
         .top = rect->top + width - width / 2,
@@ -579,7 +610,8 @@ void gfx_transfer(gfx_t* dest, const gfx_t* src, const rect_t* destRect, const p
     {
         return;
     }
-    if (destRect->left < 0 || destRect->top < 0 || destRect->left + width > dest->width || destRect->top + height > dest->height)
+    if (destRect->left < 0 || destRect->top < 0 || destRect->left + width > dest->width ||
+        destRect->top + height > dest->height)
     {
         return;
     }
@@ -606,7 +638,8 @@ void gfx_transfer_blend(gfx_t* dest, const gfx_t* src, const rect_t* destRect, c
     {
         return;
     }
-    if (destRect->left < 0 || destRect->top < 0 || destRect->left + width > dest->width || destRect->top + height > dest->height)
+    if (destRect->left < 0 || destRect->top < 0 || destRect->left + width > dest->width ||
+        destRect->top + height > dest->height)
     {
         return;
     }

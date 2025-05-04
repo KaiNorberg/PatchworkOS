@@ -19,7 +19,8 @@ typedef struct window window_t;
 typedef enum win_flags
 {
     WINDOW_NONE = 0,
-    WINDOW_DECO = (1 << 0)
+    WINDOW_DECO = (1 << 0),
+    WINDOW_RESIZABLE = (1 << 1)
 } window_flags_t;
 
 typedef struct win_theme
@@ -55,6 +56,8 @@ display_t* window_display(window_t* win);
 surface_id_t window_id(window_t* win);
 
 surface_type_t window_type(window_t* win);
+
+uint64_t window_move(window_t* win, const rect_t* rect);
 
 uint64_t window_dispatch(window_t* win, const event_t* event);
 

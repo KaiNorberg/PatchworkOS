@@ -19,7 +19,8 @@ static mouse_t* mouse;
 static void ps2_mouse_handle_packet(const ps2_mouse_packet_t* packet)
 {
     mouse_buttons_t buttons = (packet->flags & PS2_PACKET_BUTTON_RIGHT ? MOUSE_RIGHT : 0) |
-        (packet->flags & PS2_PACKET_BUTTON_MIDDLE ? MOUSE_MIDDLE : 0) | (packet->flags & PS2_PACKET_BUTTON_LEFT ? MOUSE_LEFT : 0);
+        (packet->flags & PS2_PACKET_BUTTON_MIDDLE ? MOUSE_MIDDLE : 0) |
+        (packet->flags & PS2_PACKET_BUTTON_LEFT ? MOUSE_LEFT : 0);
 
     mouse_push(mouse, buttons, (int16_t)packet->deltaX - (((int16_t)packet->flags << 4) & 0x100),
         -((int16_t)packet->deltaY - (((int16_t)packet->flags << 3) & 0x100)));

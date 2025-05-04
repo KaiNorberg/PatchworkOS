@@ -328,8 +328,10 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
         printf("thread: CPU=%d IDLE", smp_self_unsafe()->id);
     }
 
-    printf("memory: free=%dKB reserved=%dKB", (pmm_free_amount() * PAGE_SIZE) / 1024, (pmm_reserved_amount() * PAGE_SIZE) / 1024);
-    printf("control regs: cr0=0x%016lx cr2=0x%016lx cr3=0x%016lx cr4=0x%016lx", cr0_read(), cr2_read(), cr3_read(), cr4_read());
+    printf("memory: free=%dKB reserved=%dKB", (pmm_free_amount() * PAGE_SIZE) / 1024,
+        (pmm_reserved_amount() * PAGE_SIZE) / 1024);
+    printf("control regs: cr0=0x%016lx cr2=0x%016lx cr3=0x%016lx cr4=0x%016lx", cr0_read(), cr2_read(), cr3_read(),
+        cr4_read());
 
     if (trapFrame)
     {

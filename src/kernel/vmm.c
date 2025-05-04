@@ -58,8 +58,8 @@ static void vmm_load_memory_map(efi_mem_map_t* memoryMap)
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
         const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
-        uint64_t result =
-            pml_map(kernelPml, desc->virtualStart, desc->physicalStart, desc->amountOfPages, PAGE_WRITE | VMM_KERNEL_PAGES);
+        uint64_t result = pml_map(kernelPml, desc->virtualStart, desc->physicalStart, desc->amountOfPages,
+            PAGE_WRITE | VMM_KERNEL_PAGES);
         if (result == ERR)
         {
             log_panic(NULL, "Failed to map memory descriptor %d", i);
@@ -72,11 +72,11 @@ void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gop
     lock_init(&kernelLock);
     vmm_load_memory_map(memoryMap);
 
-    printf("vmm: kernel phys=[0x%016lx-0x%016lx] virt=[0x%016lx-0x%016lx]", kernel->physStart, kernel->physStart + kernel->length,
-        kernel->virtStart, kernel->virtStart + kernel->length);
+    printf("vmm: kernel phys=[0x%016lx-0x%016lx] virt=[0x%016lx-0x%016lx]", kernel->physStart,
+        kernel->physStart + kernel->length, kernel->virtStart, kernel->virtStart + kernel->length);
 
-    uint64_t result =
-        pml_map(kernelPml, kernel->virtStart, kernel->physStart, SIZE_IN_PAGES(kernel->length), PAGE_WRITE | VMM_KERNEL_PAGES);
+    uint64_t result = pml_map(kernelPml, kernel->virtStart, kernel->physStart, SIZE_IN_PAGES(kernel->length),
+        PAGE_WRITE | VMM_KERNEL_PAGES);
     if (result == ERR)
     {
         log_panic(NULL, "Failed to map kernel");
@@ -127,7 +127,8 @@ void* vmm_kernel_alloc(void* virtAddr, uint64_t length)
         void* addr = (void*)((uint64_t)virtAddr + i * PAGE_SIZE);
         void* page = pmm_alloc();
 
-        if (page == NULL || pml_map(kernelPml, addr, VMM_HIGHER_TO_LOWER(page), 1, PAGE_WRITE | VMM_KERNEL_PAGES) == ERR)
+        if (page == NULL ||
+            pml_map(kernelPml, addr, VMM_HIGHER_TO_LOWER(page), 1, PAGE_WRITE | VMM_KERNEL_PAGES) == ERR)
         {
             if (page != NULL)
             {

@@ -36,8 +36,8 @@ void pml_map_pages(pml_t* pageTable, void* virtAddr, void* physAddr, uint64_t pa
 {
     for (uint64_t page = 0; page < pageAmount; page++)
     {
-        pml_map(pageTable, (void*)((uint64_t)virtAddr + page * EFI_PAGE_SIZE), (void*)((uint64_t)physAddr + page * EFI_PAGE_SIZE),
-            flags);
+        pml_map(pageTable, (void*)((uint64_t)virtAddr + page * EFI_PAGE_SIZE),
+            (void*)((uint64_t)physAddr + page * EFI_PAGE_SIZE), flags);
     }
 }
 

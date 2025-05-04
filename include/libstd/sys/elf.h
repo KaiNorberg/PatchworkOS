@@ -46,8 +46,8 @@ typedef uint32_t elf_phdr_flags_t;
 // Check that elf magic is correct, that the elf file is version 1, 64bit, x86_64 with little endian and System V abi.
 #define ELF_VALID_CHECK(hdr) \
     ((hdr)->ident[0] == 0x7F && (hdr)->ident[1] == 'E' && (hdr)->ident[2] == 'L' && (hdr)->ident[3] == 'F' && \
-        (hdr)->ident[4] == 2 && (hdr)->ident[5] == 1 && (hdr)->ident[7] == 0 && (hdr)->machine == ELF_HDR_MACHINE_X86_64 && \
-        (hdr)->version == ELF_HDR_VERSION_1)
+        (hdr)->ident[4] == 2 && (hdr)->ident[5] == 1 && (hdr)->ident[7] == 0 && \
+        (hdr)->machine == ELF_HDR_MACHINE_X86_64 && (hdr)->version == ELF_HDR_VERSION_1)
 
 typedef struct
 {

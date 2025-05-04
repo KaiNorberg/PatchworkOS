@@ -38,7 +38,8 @@ int* _ErrnoFunc(void);
 #define EBLOCKLIMIT 22 // Blocker limit exceeded
 #define EAGAIN 23      // Try again
 #define ENOOP 24       // Operation not defined
-#define EBUSY 25       // Busy
+#define EWOULDBLOCK 25 // Would block
+#define EBUSY 26       // Busy
 
 // NOTE: Values retrievd from linux
 /*

@@ -332,8 +332,9 @@ void sched_schedule_trap(trap_frame_t* trapFrame)
     }
     else
     {
-        thread_t* next = ctx->runThread->timeEnd < systime_uptime() ? sched_ctx_find_any(ctx)
-                                                                    : sched_ctx_find_higher(ctx, ctx->runThread->priority);
+        thread_t* next = ctx->runThread->timeEnd < systime_uptime()
+            ? sched_ctx_find_any(ctx)
+            : sched_ctx_find_higher(ctx, ctx->runThread->priority);
         if (next != NULL)
         {
             thread_save(ctx->runThread, trapFrame);

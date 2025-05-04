@@ -26,8 +26,8 @@ typedef struct
     button_flags_t flags;
 } button_props_t;
 
-button_t* button_new(element_t* parent, element_id_t id, const rect_t* rect, font_t* font, pixel_t foreground, pixel_t background,
-    button_flags_t flags, const char* text);
+button_t* button_new(element_t* parent, element_id_t id, const rect_t* rect, font_t* font, pixel_t foreground,
+    pixel_t background, button_flags_t flags, const char* text);
 
 void button_free(button_t* button);
 
@@ -54,8 +54,8 @@ typedef enum
     LABEL_FLAT,
 } label_flags_t;
 
-label_t* label_new(element_t* parent, element_id_t id, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign, pixel_t foreground, pixel_t background,
-    label_flags_t flags, const char* text);
+label_t* label_new(element_t* parent, element_id_t id, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign,
+    pixel_t foreground, pixel_t background, label_flags_t flags, const char* text);
 
 font_t* label_font(label_t* label);
 void label_set_font(label_t* label, font_t* font);

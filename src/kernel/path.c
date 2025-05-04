@@ -200,7 +200,8 @@ static uint64_t path_test(const char* cwdStr, const char* testPath, const char* 
     {
         if (expectedResult != NULL)
         {
-            printf("failed: unexpectedly returned error, cwd=\"%s\" path=\"%s\"", cwdStr != NULL ? cwdStr : "NULL", testPath);
+            printf("failed: unexpectedly returned error, cwd=\"%s\" path=\"%s\"", cwdStr != NULL ? cwdStr : "NULL",
+                testPath);
             return ERR;
         }
         return 0;
@@ -210,8 +211,8 @@ static uint64_t path_test(const char* cwdStr, const char* testPath, const char* 
 
     if (strcmp(buffer, expectedResult) != 0)
     {
-        printf("failed: cwd=\"%s\" path=\"%s\" expected=\"%s\" result=\"%s\"", cwdStr != NULL ? cwdStr : "NULL", testPath,
-            expectedResult, buffer);
+        printf("failed: cwd=\"%s\" path=\"%s\" expected=\"%s\" result=\"%s\"", cwdStr != NULL ? cwdStr : "NULL",
+            testPath, expectedResult, buffer);
         return ERR;
     }
 
@@ -233,8 +234,10 @@ TESTING_REGISTER_TEST(path_all_tests)
     result |= path_test("usr:/lib", "sys:/proc", "sys:/proc");
     result |= path_test("usr:/lib", "", "usr:/lib");
     result |= path_test("usr:/lib", "/", "usr:/");
-    result |= path_test("data:/users/admin", "documents///photos//vacation/", "data:/users/admin/documents/photos/vacation");
-    result |= path_test("data:/users/admin", "./downloads/../documents/./reports/../../photos", "data:/users/admin/photos");
+    result |=
+        path_test("data:/users/admin", "documents///photos//vacation/", "data:/users/admin/documents/photos/vacation");
+    result |=
+        path_test("data:/users/admin", "./downloads/../documents/./reports/../../photos", "data:/users/admin/photos");
     result |= path_test("data:/users/admin", "notes/report (2023).txt", "data:/users/admin/notes/report (2023).txt");
     result |= path_test("data:/users/admin", "bad|file?name", NULL);
     result |= path_test(NULL, "relative/path", NULL);
@@ -249,7 +252,8 @@ TESTING_REGISTER_TEST(path_all_tests)
     result |= path_test("dev:/tools", "//multiple//slashes///", "dev:/multiple/slashes");
     result |= path_test("sys:/usr/bin", "/", "sys:/");
     result |= path_test("etc:/config", "home/user/.config/app/./../..", "etc:/config/home/user");
-    result |= path_test("project:/src", "lib/core/utils/string/parser/../../network/http/client/api/v1/../../../../../../tests",
+    result |= path_test("project:/src",
+        "lib/core/utils/string/parser/../../network/http/client/api/v1/../../../../../../tests",
         "project:/src/lib/core/tests");
     result |= path_test("docs:/", "research/paper (draft 2).pdf", "docs:/research/paper (draft 2).pdf");
     result |= path_test("media:/music", "Albums/Rock & Roll/Bands", "media:/music/Albums/Rock & Roll/Bands");

@@ -209,12 +209,12 @@ void dwm_focus_set(surface_t* surface)
 
     if (focus != NULL)
     {
-        client_send_event(focus->client, EVENT_FOCUS_OUT, focus->id, NULL, 0);
+        client_send_event(focus->client, focus->id, EVENT_FOCUS_OUT, NULL, 0);
     }
 
     if (surface != NULL)
     {
-        client_send_event(surface->client, EVENT_FOCUS_IN, surface->id, NULL, 0);
+        client_send_event(surface->client, surface->id, EVENT_FOCUS_IN, NULL, 0);
         focus = surface;
     }
     else
@@ -305,7 +305,7 @@ static void dwm_kbd_read(void)
         event.mods = kbdEvent.mods;
         event.code = kbdEvent.code;
         event.ascii = kbd_ascii(event.code, event.mods);
-        client_send_event(focus->client, EVENT_KBD, focus->id, &event, sizeof(event_kbd_t));
+        client_send_event(focus->client, focus->id, EVENT_KBD, &event, sizeof(event_kbd_t));
     }
 }
 
@@ -326,6 +326,7 @@ static void dwm_handle_mouse_event(const mouse_event_t* mouseEvent)
     cursor->pos.x = CLAMP(cursor->pos.x + mouseEvent->deltaX, 0, (int64_t)screen_width() - 1);
     cursor->pos.y = CLAMP(cursor->pos.y + mouseEvent->deltaY, 0, (int64_t)screen_height() - 1);
 
+    // Dont read event delta to factor in clamping.
     point_t cursorDelta = {.x = cursor->pos.x - oldCursorPos.x, .y = cursor->pos.y - oldCursorPos.y};
     if (cursorDelta.x != 0 || cursorDelta.y != 0)
     {
@@ -340,23 +341,33 @@ static void dwm_handle_mouse_event(const mouse_event_t* mouseEvent)
 
     surface_t* surface = dwm_surface_under_point(&cursor->pos);
 
-    if (pressed != MOUSE_NONE && prevHeld == MOUSE_NONE)
+    if (pressed != MOUSE_NONE)
     {
         dwm_focus_set(surface);
     }
 
-    if (surface != NULL)
+    surface_t* destSurface;
+    if (held != MOUSE_NONE && focus != NULL)
+    {
+        destSurface = focus;
+    }
+    else
+    {
+        destSurface = surface;
+    }
+
+    if (destSurface != NULL)
     {
         event_mouse_t event = {
             .held = held,
             .pressed = pressed,
             .released = released,
-            .pos.x = cursor->pos.x - surface->pos.x,
-            .pos.y = cursor->pos.y - surface->pos.y,
+            .pos.x = cursor->pos.x - destSurface->pos.x,
+            .pos.y = cursor->pos.y - destSurface->pos.y,
             .screenPos = cursor->pos,
             .delta = cursorDelta,
         };
-        client_send_event(surface->client, EVENT_MOUSE, surface->id, &event, sizeof(event_mouse_t));
+        client_send_event(destSurface->client, destSurface->id, EVENT_MOUSE, &event, sizeof(event_mouse_t));
     }
 
     prevHeld = held;
@@ -399,10 +410,7 @@ static void dwm_mouse_read(void)
 static void dwm_poll(void)
 {
     dwm_poll_ctx_update();
-    while (poll((pollfd_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(pollfd_t) + clientAmount, NEVER) == 0)
-    {
-        // Do nothing
-    }
+    poll((pollfd_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(pollfd_t) + clientAmount, NEVER);
 
     if (pollCtx->data.occurred & POLL_READ)
     {

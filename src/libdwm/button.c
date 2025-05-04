@@ -38,7 +38,8 @@ static void button_draw(button_t* button, bool redraw)
     if (redraw)
     {
         element_draw_rect(button->elem, &rect, button->background);
-        element_draw_text(button->elem, &rect, button->font, ALIGN_CENTER, ALIGN_CENTER, button->foreground, button->background, button->text);
+        element_draw_text(button->elem, &rect, button->font, ALIGN_CENTER, ALIGN_CENTER, button->foreground,
+            button->background, button->text);
     }
 }
 
@@ -56,7 +57,6 @@ static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* 
     {
     case LEVENT_INIT:
     {
-
     }
     break;
     case LEVENT_FREE:
@@ -76,12 +76,10 @@ static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* 
 
         rect_t rect;
         element_content_rect(elem, &rect);
-        point_t cursorPos;
-        element_global_to_point(elem, &cursorPos, &event->mouse.pos); // WRONG SPACE
 
         if (button->flags & BUTTON_TOGGLE)
         {
-            if (RECT_CONTAINS_POINT(&rect, &cursorPos) && event->mouse.pressed & MOUSE_LEFT)
+            if (RECT_CONTAINS_POINT(&rect, &event->mouse.pos) && event->mouse.pressed & MOUSE_LEFT)
             {
                 button->pressed = !button->pressed;
                 button_send_action(button, button->pressed ? ACTION_PRESS : ACTION_RELEASE);
@@ -89,7 +87,7 @@ static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* 
         }
         else
         {
-            if (RECT_CONTAINS_POINT(&rect, &cursorPos))
+            if (RECT_CONTAINS_POINT(&rect, &event->mouse.pos))
             {
                 if (event->mouse.pressed & MOUSE_LEFT && !button->pressed)
                 {
@@ -119,8 +117,8 @@ static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* 
     return 0;
 }
 
-button_t* button_new(element_t* parent, element_id_t id, const rect_t* rect, font_t* font, pixel_t foreground, pixel_t background,
-    button_flags_t flags, const char* text)
+button_t* button_new(element_t* parent, element_id_t id, const rect_t* rect, font_t* font, pixel_t foreground,
+    pixel_t background, button_flags_t flags, const char* text)
 {
     button_t* button = malloc(sizeof(button_t));
     if (button == NULL)
@@ -162,7 +160,7 @@ font_t* button_font(button_t* button)
 void button_set_font(button_t* button, font_t* font)
 {
     button->font = font;
-    element_send_redraw(button->elem);
+    element_send_redraw(button->elem, false);
 }
 
 pixel_t button_foreground(button_t* button)
@@ -173,7 +171,7 @@ pixel_t button_foreground(button_t* button)
 void button_set_foreground(button_t* button, pixel_t foreground)
 {
     button->foreground = foreground;
-    element_send_redraw(button->elem);
+    element_send_redraw(button->elem, false);
 }
 
 pixel_t button_background(button_t* button)
@@ -184,7 +182,7 @@ pixel_t button_background(button_t* button)
 void button_set_background(button_t* button, pixel_t background)
 {
     button->background = background;
-    element_send_redraw(button->elem);
+    element_send_redraw(button->elem, false);
 }
 
 button_flags_t button_flags(button_t* button)
@@ -195,7 +193,7 @@ button_flags_t button_flags(button_t* button)
 void button_set_flags(button_t* button, button_flags_t flags)
 {
     button->flags = flags;
-    element_send_redraw(button->elem);
+    element_send_redraw(button->elem, false);
 }
 
 const char* button_text(button_t* button)
@@ -213,6 +211,6 @@ uint64_t button_set_text(button_t* button, const char* text)
     free(button->text);
     button->text = newText;
 
-    element_send_redraw(button->elem);
+    element_send_redraw(button->elem, false);
     return 0;
 }

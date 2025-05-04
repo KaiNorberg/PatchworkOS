@@ -37,4 +37,4 @@ surface_t* surface_new(client_t* client, surface_id_t id, const point_t* point, 
 
 void surface_free(surface_t* surface);
 
-void surface_get_non_panel_rect(surface_t* surface, const rect_t* rect);
+uint64_t surface_resize_buffer(surface_t* surface, uint64_t width, uint64_t height);

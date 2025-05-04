@@ -25,35 +25,70 @@ window_theme_t windowTheme = {
 typedef struct
 {
     bool focused;
+    bool dragging;
+    point_t dragOffset;
 } deco_private_t;
+
+static void window_deco_topbar_rect(window_t* win, element_t* elem, rect_t* rect)
+{
+    rect_t contentRect;
+    element_content_rect(elem, &contentRect);
+
+    *rect = (rect_t){
+        .left = windowTheme.edgeWidth + windowTheme.paddingWidth,
+        .top = windowTheme.edgeWidth + windowTheme.paddingWidth,
+        .right = RECT_WIDTH(&contentRect) - windowTheme.edgeWidth - windowTheme.paddingWidth,
+        .bottom = windowTheme.topbarHeight + windowTheme.edgeWidth - windowTheme.paddingWidth,
+    };
+}
 
 static void window_deco_draw_topbar(window_t* win, element_t* elem)
 {
     deco_private_t* private = element_private(elem);
 
-    rect_t rect;
-    element_content_rect(elem, &rect);
+    rect_t topBar;
+    window_deco_topbar_rect(win, elem, &topBar);
 
-    rect_t topBar = (rect_t){
-        .left = windowTheme.edgeWidth + windowTheme.paddingWidth,
-        .top = windowTheme.edgeWidth + windowTheme.paddingWidth,
-        .right = RECT_WIDTH(&rect) - windowTheme.edgeWidth - windowTheme.paddingWidth,
-        .bottom = windowTheme.topbarHeight + windowTheme.edgeWidth - windowTheme.paddingWidth,
-    };
     element_draw_edge(elem, &topBar, windowTheme.edgeWidth, windowTheme.dark, windowTheme.highlight);
     RECT_SHRINK(&topBar, windowTheme.edgeWidth);
     if (private->focused)
     {
-        element_draw_gradient(elem, &topBar, windowTheme.selected, windowTheme.selectedHighlight, GRADIENT_HORIZONTAL, false);
+        element_draw_gradient(elem, &topBar, windowTheme.selected, windowTheme.selectedHighlight, GRADIENT_HORIZONTAL,
+            false);
     }
     else
     {
-        element_draw_gradient(elem, &topBar, windowTheme.unSelected, windowTheme.unSelectedHighlight, GRADIENT_HORIZONTAL, false);
+        element_draw_gradient(elem, &topBar, windowTheme.unSelected, windowTheme.unSelectedHighlight,
+            GRADIENT_HORIZONTAL, false);
     }
 
     topBar.left += windowTheme.paddingWidth * 3;
     topBar.right -= windowTheme.topbarHeight;
     element_draw_text(elem, &topBar, NULL, ALIGN_MIN, ALIGN_CENTER, windowTheme.background, 0, win->name);
+}
+
+static void window_deco_handle_dragging(window_t* win, element_t* elem, const event_mouse_t* event)
+{
+    deco_private_t* private = element_private(elem);
+
+    rect_t topBar;
+    window_deco_topbar_rect(win, elem, &topBar);
+
+    if (private->dragging)
+    {
+        rect_t rect = RECT_INIT_DIM(event->screenPos.x - private->dragOffset.x, event->screenPos.y - private->dragOffset.y, RECT_WIDTH(&win->rect), RECT_HEIGHT(&win->rect));
+        window_move(win, &rect);
+
+        if (!(event->held & MOUSE_LEFT))
+        {
+            private->dragging = false;
+        }
+    }
+    else if (RECT_CONTAINS_POINT(&topBar, &event->pos) && event->pressed & MOUSE_LEFT)
+    {
+        private->dragOffset = (point_t){.x = event->screenPos.x - win->rect.left, .y = event->screenPos.y - win->rect.top};
+        private->dragging = true;
+    }
 }
 
 static uint64_t window_deco_procedure(window_t* win, element_t* elem, const event_t* event)
@@ -65,11 +100,22 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
     case LEVENT_INIT:
     {
         private->focused = false;
+        private->dragging = false;
     }
     break;
     case LEVENT_FREE:
     {
         free(private);
+    }
+    break;
+    case LEVENT_REDRAW:
+    {
+        rect_t rect;
+        element_content_rect(elem, &rect);
+        element_draw_rect(elem, &rect, windowTheme.background);
+        element_draw_edge(elem, &rect, windowTheme.edgeWidth, windowTheme.bright, windowTheme.dark);
+
+        window_deco_draw_topbar(win, elem);
     }
     break;
     case EVENT_FOCUS_IN:
@@ -84,14 +130,9 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
         window_deco_draw_topbar(win, elem);
     }
     break;
-    case LEVENT_REDRAW:
+    case EVENT_MOUSE:
     {
-        rect_t rect;
-        element_content_rect(elem, &rect);
-        element_draw_rect(elem, &rect, windowTheme.background);
-        element_draw_edge(elem, &rect, windowTheme.edgeWidth, windowTheme.bright, windowTheme.dark);
-
-        window_deco_draw_topbar(win, elem);
+        window_deco_handle_dragging(win, elem, &event->mouse);
     }
     break;
     }
@@ -119,6 +160,7 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     strcpy(win->name, name);
     win->rect = *rect;
     win->type = type;
+    win->flags = flags;
 
     if (flags & WINDOW_DECO)
     {
@@ -168,7 +210,7 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     }
 
     cmd_surface_new_t cmd;
-    CMD_INIT(&cmd, CMD_SURFACE_NEW, cmd_surface_new_t);
+    CMD_INIT(&cmd, CMD_SURFACE_NEW, sizeof(cmd));
     cmd.id = win->id;
     cmd.type = win->type;
     cmd.rect = win->rect;
@@ -184,7 +226,7 @@ void window_free(window_t* win)
     element_free(win->root);
 
     cmd_surface_free_t cmd;
-    CMD_INIT(&cmd, CMD_SURFACE_FREE, cmd_surface_free_t);
+    CMD_INIT(&cmd, CMD_SURFACE_FREE, sizeof(cmd));
     cmd.target = win->id;
     display_cmds_push(win->disp, &cmd.header);
     display_cmds_flush(win->disp);
@@ -218,6 +260,25 @@ surface_type_t window_type(window_t* win)
     return win->type;
 }
 
+uint64_t window_move(window_t* win, const rect_t* rect)
+{
+    bool sizeChange = RECT_WIDTH(&win->rect) != RECT_WIDTH(rect) || RECT_HEIGHT(&win->rect) != RECT_HEIGHT(rect);
+
+    if (sizeChange && !(win->flags & WINDOW_RESIZABLE))
+    {
+        return ERR;
+    }
+
+    cmd_surface_move_t cmd;
+    CMD_INIT(&cmd, CMD_SURFACE_MOVE, sizeof(cmd));
+    cmd.target = win->id;
+    cmd.rect = *rect;
+    display_cmds_push(win->disp, &cmd.header);
+    display_cmds_flush(win->disp);
+
+    return 0;
+}
+
 uint64_t window_dispatch(window_t* win, const event_t* event)
 {
     switch (event->type)
@@ -245,6 +306,23 @@ uint64_t window_dispatch(window_t* win, const event_t* event)
         }
 
         if (element_dispatch(elem, event) == ERR)
+        {
+            return ERR;
+        }
+    }
+    break;
+    case EVENT_SURFACE_MOVE:
+    {
+        if (RECT_WIDTH(&win->rect) != RECT_WIDTH(&event->surfaceMove.rect) || RECT_HEIGHT(&win->rect) != RECT_HEIGHT(&event->surfaceMove.rect))
+        {
+            levent_redraw_t event;
+            event.id = win->root->id;
+            event.propagate = true;
+            display_events_push(win->disp, win->id, LEVENT_REDRAW, &event, sizeof(levent_redraw_t));
+        }
+
+        win->rect = event->surfaceMove.rect;
+        if (element_dispatch(win->root, event) == ERR)
         {
             return ERR;
         }

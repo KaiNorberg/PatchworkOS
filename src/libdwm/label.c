@@ -22,7 +22,6 @@ static uint64_t label_procedure(window_t* win, element_t* elem, const event_t* e
     {
     case LEVENT_INIT:
     {
-
     }
     break;
     case LEVENT_FREE:
@@ -45,8 +44,8 @@ static uint64_t label_procedure(window_t* win, element_t* elem, const event_t* e
             rect.top += windowTheme.edgeWidth;
         }
 
-        element_draw_text(elem, &rect, label->font, label->xAlign, label->yAlign,
-            label->foreground, label->background, label->text);
+        element_draw_text(elem, &rect, label->font, label->xAlign, label->yAlign, label->foreground, label->background,
+            label->text);
     }
     break;
     }
@@ -54,8 +53,8 @@ static uint64_t label_procedure(window_t* win, element_t* elem, const event_t* e
     return 0;
 }
 
-label_t* label_new(element_t* parent, element_id_t id, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign, pixel_t foreground, pixel_t background,
-    label_flags_t flags, const char* text)
+label_t* label_new(element_t* parent, element_id_t id, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign,
+    pixel_t foreground, pixel_t background, label_flags_t flags, const char* text)
 {
     label_t* label = malloc(sizeof(label_t));
     if (label == NULL)
@@ -98,7 +97,7 @@ font_t* label_font(label_t* label)
 void label_set_font(label_t* label, font_t* font)
 {
     label->font = font;
-    element_send_redraw(label->elem);
+    element_send_redraw(label->elem, false);
 }
 
 align_t label_xalign(label_t* label)
@@ -109,7 +108,7 @@ align_t label_xalign(label_t* label)
 void label_set_xalign(label_t* label, align_t xAlign)
 {
     label->xAlign = xAlign;
-    element_send_redraw(label->elem);
+    element_send_redraw(label->elem, false);
 }
 
 align_t label_yalign(label_t* label)
@@ -120,7 +119,7 @@ align_t label_yalign(label_t* label)
 void label_set_yalign(label_t* label, align_t yAlign)
 {
     label->xAlign = yAlign;
-    element_send_redraw(label->elem);
+    element_send_redraw(label->elem, false);
 }
 
 pixel_t label_foreground(label_t* label)
@@ -131,7 +130,7 @@ pixel_t label_foreground(label_t* label)
 void label_set_foreground(label_t* label, pixel_t foreground)
 {
     label->foreground = foreground;
-    element_send_redraw(label->elem);
+    element_send_redraw(label->elem, false);
 }
 
 pixel_t label_background(label_t* label)
@@ -142,7 +141,7 @@ pixel_t label_background(label_t* label)
 void label_set_background(label_t* label, pixel_t background)
 {
     label->background = background;
-    element_send_redraw(label->elem);
+    element_send_redraw(label->elem, false);
 }
 
 label_flags_t label_flags(label_t* label)
@@ -153,7 +152,7 @@ label_flags_t label_flags(label_t* label)
 void label_set_flags(label_t* label, label_flags_t flags)
 {
     label->flags = flags;
-    element_send_redraw(label->elem);
+    element_send_redraw(label->elem, false);
 }
 
 const char* label_text(label_t* label)
@@ -171,6 +170,6 @@ uint64_t label_set_text(label_t* label, const char* text)
     free(label->text);
     label->text = newText;
 
-    element_send_redraw(label->elem);
+    element_send_redraw(label->elem, false);
     return 0;
 }

@@ -196,7 +196,8 @@ uint64_t pml_map(pml_t* table, void* virtAddr, void* physAddr, uint64_t pageAmou
 {
     for (uint64_t i = 0; i < pageAmount; i++)
     {
-        pml_t* level3 = pml_get_or_allocate(table, PML_GET_INDEX(virtAddr, 4), (flags | PAGE_WRITE | PAGE_USER) & ~PAGE_GLOBAL);
+        pml_t* level3 =
+            pml_get_or_allocate(table, PML_GET_INDEX(virtAddr, 4), (flags | PAGE_WRITE | PAGE_USER) & ~PAGE_GLOBAL);
         if (level3 == NULL)
         {
             return ERR;

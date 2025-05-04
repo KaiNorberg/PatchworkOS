@@ -42,7 +42,7 @@ element_t* element_new(element_t* parent, element_id_t id, const rect_t* rect, p
     list_push(&parent->children, &elem->entry);
 
     element_send_init(elem);
-    element_send_redraw(elem);
+    element_send_redraw(elem, false);
     return elem;
 }
 
@@ -57,7 +57,7 @@ element_t* element_new_root(window_t* win, element_id_t id, const rect_t* rect, 
     elem->win = win;
 
     element_send_init(elem);
-    element_send_redraw(elem);
+    element_send_redraw(elem, false);
     return elem;
 }
 
@@ -207,7 +207,7 @@ void element_invalidate(element_t* elem, const rect_t* rect)
 void element_draw_rect(element_t* elem, const rect_t* rect, pixel_t pixel)
 {
     cmd_draw_rect_t cmd;
-    CMD_INIT(&cmd, CMD_DRAW_RECT, cmd_draw_rect_t);
+    CMD_INIT(&cmd, CMD_DRAW_RECT, sizeof(cmd));
     cmd.target = elem->win->id;
     element_rect_to_global(elem, &cmd.rect, rect);
     cmd.pixel = pixel;
@@ -220,7 +220,7 @@ void element_draw_rect(element_t* elem, const rect_t* rect, pixel_t pixel)
 void element_draw_edge(element_t* elem, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background)
 {
     cmd_draw_edge_t cmd;
-    CMD_INIT(&cmd, CMD_DRAW_EDGE, cmd_draw_edge_t);
+    CMD_INIT(&cmd, CMD_DRAW_EDGE, sizeof(cmd));
     cmd.target = elem->win->id;
     element_rect_to_global(elem, &cmd.rect, rect);
     cmd.width = width;
@@ -232,10 +232,11 @@ void element_draw_edge(element_t* elem, const rect_t* rect, uint64_t width, pixe
     element_invalidate(elem, rect);
 }
 
-void element_draw_gradient(element_t* elem, const rect_t* rect, pixel_t start, pixel_t end, gradient_type_t type, bool addNoise)
+void element_draw_gradient(element_t* elem, const rect_t* rect, pixel_t start, pixel_t end, gradient_type_t type,
+    bool addNoise)
 {
     cmd_draw_gradient_t cmd;
-    CMD_INIT(&cmd, CMD_DRAW_GRADIENT, cmd_draw_gradient_t);
+    CMD_INIT(&cmd, CMD_DRAW_GRADIENT, sizeof(cmd));
     cmd.target = elem->win->id;
     element_rect_to_global(elem, &cmd.rect, rect);
     cmd.start = start;
@@ -268,7 +269,7 @@ void element_draw_string(element_t* elem, font_t* font, const point_t* point, pi
         font = font_default(elem->win->disp);
     }
 
-    CMD_INIT(cmd, CMD_DRAW_STRING, cmd_draw_string_t);
+    CMD_INIT(cmd, CMD_DRAW_STRING, sizeof(cmd_draw_string_t));
     cmd->target = elem->win->id;
     cmd->fontId = font->id;
     element_point_to_global(elem, &cmd->point, point);
@@ -323,8 +324,8 @@ void element_draw_rim(element_t* elem, const rect_t* rect, uint64_t width, pixel
     element_draw_rect(elem, &bottomRect, pixel);
 }
 
-void element_draw_text(element_t* elem, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign, pixel_t foreground,
-    pixel_t background, const char* text)
+void element_draw_text(element_t* elem, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign,
+    pixel_t foreground, pixel_t background, const char* text)
 {
     if (text == NULL || *text == '\0')
     {
@@ -413,47 +414,56 @@ void element_draw_text(element_t* elem, const rect_t* rect, font_t* font, align_
     element_draw_string(elem, font, &startPoint, foreground, background, text, textLen);
 }
 
-void element_send_redraw(element_t* elem)
+void element_send_redraw(element_t* elem, bool propagate)
 {
     levent_redraw_t event;
     event.id = elem->id;
+    event.propagate = propagate;
     display_events_push(elem->win->disp, elem->win->id, LEVENT_REDRAW, &event, sizeof(levent_redraw_t));
 }
 
 uint64_t element_dispatch(element_t* elem, const event_t* event)
 {
-    if (elem->proc(elem->win, elem, event) == ERR)
-    {
-        return ERR;
-    }
-
-    if (RECT_AREA(&elem->invalidRect) != 0)
-    {
-        rect_t contentRect;
-        element_content_rect(elem, &contentRect);
-
-        element_t* child;
-        LIST_FOR_EACH(child, &elem->children, entry)
-        {
-            if (RECT_OVERLAP(&contentRect, &child->rect))
-            {
-                element_send_redraw(child);
-            }
-        }
-
-        elem->invalidRect = (rect_t){0};
-    }
-
     switch (event->type)
     {
     case LEVENT_INIT:
     case LEVENT_REDRAW:
     {
-        // Do nothing
+        if (elem->proc(elem->win, elem, event) == ERR)
+        {
+            return ERR;
+        }
+    }
+    break;
+    case EVENT_MOUSE:
+    {
+        // Move mouse pos to be centered around elements origin.
+        event_t movedEvent = *event;
+        movedEvent.mouse.pos.x -= elem->rect.left;
+        movedEvent.mouse.pos.y -= elem->rect.top;
+
+        if (elem->proc(elem->win, elem, &movedEvent) == ERR)
+        {
+            return ERR;
+        }
+
+        element_t* child;
+        LIST_FOR_EACH(child, &elem->children, entry)
+        {
+            if (element_dispatch(child, &movedEvent) == ERR)
+            {
+                return ERR;
+            }
+        }
     }
     break;
     default:
     {
+        if (elem->proc(elem->win, elem, event) == ERR)
+        {
+            return ERR;
+        }
+
         element_t* child;
         LIST_FOR_EACH(child, &elem->children, entry)
         {
@@ -464,6 +474,24 @@ uint64_t element_dispatch(element_t* elem, const event_t* event)
         }
     }
     break;
+    }
+
+    bool shouldProagate = event->type == LEVENT_REDRAW && event->lRedraw.propagate;
+    if (RECT_AREA(&elem->invalidRect) != 0 || shouldProagate)
+    {
+        rect_t contentRect;
+        element_content_rect(elem, &contentRect);
+
+        element_t* child;
+        LIST_FOR_EACH(child, &elem->children, entry)
+        {
+            if (RECT_OVERLAP(&contentRect, &child->rect))
+            {
+                element_send_redraw(child, shouldProagate);
+            }
+        }
+
+        elem->invalidRect = (rect_t){0};
     }
 
     return 0;

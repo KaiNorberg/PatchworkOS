@@ -136,7 +136,8 @@ void waitsys_unblock(wait_queue_t* waitQueue, uint64_t amount);
 
 block_result_t waitsys_block(wait_queue_t* waitQueue, nsec_t timeout);
 
-// Should be called with lock acquired, will release lock after blocking then reacquire it before returning from the function.
+// Should be called with lock acquired, will release lock after blocking then reacquire it before returning from the
+// function.
 block_result_t waitsys_block_lock(wait_queue_t* waitQueue, nsec_t timeout, lock_t* lock);
 
 block_result_t waitsys_block_many(wait_queue_t** waitQueues, uint64_t amount, nsec_t timeout);

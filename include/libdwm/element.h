@@ -57,17 +57,18 @@ void element_draw_rect(element_t* elem, const rect_t* rect, pixel_t pixel);
 
 void element_draw_edge(element_t* elem, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background);
 
-void element_draw_gradient(element_t* elem, const rect_t* rect, pixel_t start, pixel_t end, gradient_type_t type, bool addNoise);
+void element_draw_gradient(element_t* elem, const rect_t* rect, pixel_t start, pixel_t end, gradient_type_t type,
+    bool addNoise);
 
 void element_draw_rim(element_t* elem, const rect_t* rect, uint64_t width, pixel_t pixel);
 
 void element_draw_string(element_t* elem, font_t* font, const point_t* point, pixel_t foreground, pixel_t background,
     const char* string, uint64_t length);
 
-void element_draw_text(element_t* elem, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign, pixel_t foreground,
-    pixel_t background, const char* text);
+void element_draw_text(element_t* elem, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign,
+    pixel_t foreground, pixel_t background, const char* text);
 
-void element_send_redraw(element_t* elem);
+void element_send_redraw(element_t* elem, bool propagate);
 
 uint64_t element_dispatch(element_t* elem, const event_t* event);
 

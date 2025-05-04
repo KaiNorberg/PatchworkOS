@@ -45,42 +45,17 @@ void surface_free(surface_t* surface)
     free(surface);
 }
 
-void surface_get_non_panel_rect(surface_t* surface, const rect_t* rect)
+uint64_t surface_resize_buffer(surface_t* surface, uint64_t width, uint64_t height)
 {
-    /*rect_t newRect = RECT_INIT_DIM(0, 0, backbuffer.width, backbuffer.height);
-
-    window_t* window;
-    LIST_FOR_EACH(window, &windows, entry)
+    void* newBuffer = realloc(surface->gfx.buffer, width * height * sizeof(pixel_t));
+    if (newBuffer == NULL)
     {
-        window->moved = true;
-
-        if (window->type != DWM_PANEL)
-        {
-            continue;
-        }
-
-        uint64_t leftDist = window->pos.x + window->gfx.width;
-        uint64_t topDist = window->pos.y + window->gfx.height;
-        uint64_t rightDist = backbuffer.width - window->pos.x;
-        uint64_t bottomDist = backbuffer.height - window->pos.y;
-
-        if (leftDist <= topDist && leftDist <= rightDist && leftDist <= bottomDist)
-        {
-            newRect.left = MAX(window->pos.x + window->gfx.width, newRect.left);
-        }
-        else if (topDist <= leftDist && topDist <= rightDist && topDist <= bottomDist)
-        {
-            newRect.top = MAX(window->pos.y + window->gfx.height, newRect.top);
-        }
-        else if (rightDist <= leftDist && rightDist <= topDist && rightDist <= bottomDist)
-        {
-            newRect.right = MIN(window->pos.x, newRect.right);
-        }
-        else if (bottomDist <= leftDist && bottomDist <= topDist && bottomDist <= rightDist)
-        {
-            newRect.bottom = MIN(window->pos.y, newRect.bottom);
-        }
+        return ERR;
     }
 
-    clientRect = newRect;*/
+    surface->gfx.width = width;
+    surface->gfx.height = height;
+    surface->gfx.stride = width;
+    surface->gfx.buffer = newBuffer;
+    return 0;
 }

@@ -27,7 +27,7 @@ static void display_events_pop(display_t* disp, event_t* event)
 static uint64_t display_default_font_init(display_t* disp)
 {
     cmd_font_info_t cmd;
-    CMD_INIT(&cmd, CMD_FONT_INFO, cmd_font_info_t);
+    CMD_INIT(&cmd, CMD_FONT_INFO, sizeof(cmd));
     cmd.id = FONT_ID_DEFAULT;
     event_t event;
     if (display_send_recieve(disp, &cmd.header, &event, EVENT_FONT_INFO) == ERR)
@@ -130,7 +130,7 @@ surface_id_t display_gen_id(display_t* disp)
 uint64_t display_screen_rect(display_t* disp, rect_t* rect, uint64_t index)
 {
     cmd_screen_info_t cmd;
-    CMD_INIT(&cmd, CMD_SCREEN_INFO, cmd_screen_info_t);
+    CMD_INIT(&cmd, CMD_SCREEN_INFO, sizeof(cmd));
     cmd.index = index;
 
     event_t event;
@@ -155,25 +155,21 @@ bool display_next_event(display_t* disp, event_t* event, nsec_t timeout)
 {
     if (display_events_available(disp))
     {
-        printf("display_next_event pop", event->type);
         display_events_pop(disp, event);
         return true;
     }
 
-    if (timeout != NEVER && poll1(disp->data, POLL_READ, timeout) != POLL_READ)
+    if (timeout != NEVER && !(poll1(disp->data, POLL_READ, timeout) & POLL_READ))
     {
-        printf("display_next_event timeout %d", timeout);
         return false;
     }
 
     display_recieve_event(disp, event);
-    printf("display_next_event recieve", event->type);
     return true;
 }
 
-void display_events_push(display_t* disp,surface_id_t target, event_type_t type, void* data, uint64_t size)
+void display_events_push(display_t* disp, surface_id_t target, event_type_t type, void* data, uint64_t size)
 {
-    printf("display_next_event push %d", type);
     uint64_t nextWriteIndex = (disp->events.writeIndex + 1) % DISPLAY_MAX_EVENT;
     if (nextWriteIndex == disp->events.readIndex)
     {
@@ -202,7 +198,6 @@ void display_cmds_push(display_t* disp, const cmd_header_t* cmd)
 
 void display_cmds_flush(display_t* disp)
 {
-    printf("display_cmds_flush");
     if (disp->connected && disp->cmds.amount != 0)
     {
         if (write(disp->data, &disp->cmds, disp->cmds.size) != disp->cmds.size)
@@ -238,7 +233,10 @@ uint64_t display_send_recieve(display_t* disp, cmd_header_t* cmd, event_t* event
 
 void display_emit(display_t* disp, surface_id_t target, event_type_t type, void* data, uint64_t size)
 {
-    event_t event = {.target = target, .type = type,};
+    event_t event = {
+        .target = target,
+        .type = type,
+    };
     memcpy(event.raw, data, MIN(EVENT_MAX_DATA, size));
     display_dispatch(disp, &event);
 }
@@ -258,6 +256,7 @@ void display_dispatch(display_t* disp, const event_t* event)
             if (window_dispatch(win, event) == ERR)
             {
                 window_free(win);
+                printf("display_dispatch: connected = false");
                 disp->connected = false;
             }
             break;
