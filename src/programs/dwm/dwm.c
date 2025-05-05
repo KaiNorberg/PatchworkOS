@@ -259,7 +259,7 @@ static surface_t* dwm_surface_under_point(const point_t* point)
     return NULL;
 }
 
-static void dwm_poll_ctx_update()
+static void dwm_poll_ctx_update(void)
 {
     pollCtx = realloc(pollCtx, sizeof(poll_ctx_t) + (sizeof(pollfd_t) * clientAmount));
     pollCtx->data.fd = data;
@@ -281,6 +281,47 @@ static void dwm_poll_ctx_update()
         fd->requested = POLL_READ;
         fd->occurred = 0;
     }
+}
+
+// TODO: Cache this or something
+static surface_t* dwm_next_timer(void)
+{
+    nsec_t deadline = NEVER;
+    surface_t* nextTimer = NULL;
+
+    surface_t* window;
+    LIST_FOR_EACH(window, &windows, dwmEntry)
+    {
+        if (window->timer.deadline < deadline)
+        {
+            deadline = window->timer.deadline;
+            nextTimer = window;
+        }
+    }
+
+    surface_t* panel;
+    LIST_FOR_EACH(panel, &panels, dwmEntry)
+    {
+        if (panel->timer.deadline < deadline)
+        {
+            deadline = panel->timer.deadline;
+            nextTimer = panel;
+        }
+    }
+
+    if (wall != NULL && wall->timer.deadline < deadline)
+    {
+        deadline = wall->timer.deadline;
+        nextTimer = wall;
+    }
+
+    if (cursor != NULL && cursor->timer.deadline < deadline)
+    {
+        deadline = cursor->timer.deadline;
+        nextTimer = cursor;
+    }
+
+    return nextTimer;
 }
 
 static void dwm_kbd_read(void)
@@ -410,7 +451,35 @@ static void dwm_mouse_read(void)
 static void dwm_poll(void)
 {
     dwm_poll_ctx_update();
-    poll((pollfd_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(pollfd_t) + clientAmount, NEVER);
+
+    surface_t* timer = dwm_next_timer();
+    nsec_t timeout = NEVER;
+    if (timer != NULL)
+    {
+        nsec_t time = uptime();
+        timeout = timer->timer.deadline > time ? timer->timer.deadline - time : 0;
+    }
+
+    poll((pollfd_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(pollfd_t) + clientAmount, timeout);
+
+    nsec_t time = uptime();
+    if (timer != NULL && time >= timer->timer.deadline)
+    {
+        if (timer->timer.flags & TIMER_REPEAT)
+        {
+            timer->timer.deadline = time + timer->timer.timeout;
+        }
+        else
+        {
+            timer->timer.deadline = NEVER;
+        }
+        client_send_event(timer->client, timer->id, EVENT_TIMER, NULL, 0);
+    }
+}
+
+static void dwm_update(void)
+{
+    dwm_poll();
 
     if (pollCtx->data.occurred & POLL_READ)
     {
@@ -453,6 +522,6 @@ void dwm_loop(void)
 {
     while (1)
     {
-        dwm_poll();
+        dwm_update();
     }
 }

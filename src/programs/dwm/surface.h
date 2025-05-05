@@ -10,6 +10,13 @@
 
 typedef struct client client_t;
 
+typedef struct timer
+{
+    timer_flags_t flags;
+    nsec_t timeout;
+    nsec_t deadline;
+} timer_t;
+
 typedef struct surface
 {
     list_entry_t dwmEntry;
@@ -19,6 +26,7 @@ typedef struct surface
     gfx_t gfx;
     surface_id_t id;
     surface_type_t type;
+    timer_t timer;
     bool invalid;
     bool moved;
     rect_t prevRect;

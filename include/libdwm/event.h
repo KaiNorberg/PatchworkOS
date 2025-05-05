@@ -27,6 +27,7 @@ typedef uint16_t event_type_t;
 #define EVENT_FONT_NEW 5
 #define EVENT_FONT_INFO 6
 #define EVENT_SURFACE_MOVE 7
+#define EVENT_TIMER 8
 
 typedef struct
 {

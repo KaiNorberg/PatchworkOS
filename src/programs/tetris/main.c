@@ -1,5 +1,3 @@
-#include "sys/gfx.h"
-#include "sys/kbd.h"
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -7,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/proc.h>
-#include <sys/win.h>
+#include <libdwm/dwm.h>
 
 #define BLOCK_SIZE 32
 
@@ -27,17 +25,14 @@
 #define SIDE_PANEL_BOTTOM (FIELD_BOTTOM)
 #define SIDE_PANEL_TEXT_HEIGHT 42
 #define SIDE_PANEL_LABEL_HEIGHT 42
-#define SIDE_PANEL_FONT_SIZE 32
 #define SIDE_PANEL_LABEL_PADDING 40
-
-#define START_SCREEN_FONT_SIZE 64
 
 #define WINDOW_WIDTH ((FIELD_WIDTH) * BLOCK_SIZE + FIELD_PADDING * 2 + SIDE_PANEL_WIDTH)
 #define WINDOW_HEIGHT ((FIELD_HEIGHT) * BLOCK_SIZE + FIELD_PADDING * 2)
 
-#define CURRENT_SCORE_WIDGET_ID 0
-#define COMPLETE_LINES_WIDGET_ID 1
-#define PLAYED_BLOCKS_WIDGET_ID 2
+#define CURRENT_SCORE_LABEL_ID 0
+#define COMPLETE_LINES_LABEL_ID 1
+#define PLAYED_BLOCKS_LABEL_ID 2
 
 #define TICK_SPEED (SEC)
 #define DROPPING_TICK_SPEED (SEC / 12)
@@ -47,6 +42,10 @@
 #define PIECE_AMOUNT 7
 #define PIECE_WIDTH 4
 #define PIECE_HEIGHT 4
+
+static label_t* currentScoreLabel;
+static label_t* completeLinesLabel;
+static label_t* playedBlocksLabel;
 
 typedef enum
 {
@@ -144,6 +143,9 @@ static bool clearingLines;
 static bool started;
 static bool gameover;
 
+static font_t* largeFont;
+static font_t* massiveFont;
+
 static struct
 {
     piece_t piece;
@@ -190,10 +192,10 @@ static const pixel_t shadowColors[] = {
 };
 
 static void current_piece_choose_new(void);
-static void current_piece_clear(gfx_t* gfx);
-static void current_piece_draw(gfx_t* gfx);
+static void current_piece_clear(element_t* elem);
+static void current_piece_draw(element_t* elem);
 
-static void block_draw(gfx_t* gfx, block_t block, int64_t x, int64_t y)
+static void block_draw(element_t* elem, block_t block, int64_t x, int64_t y)
 {
     if (x < 0 || y < 0 || x >= FIELD_WIDTH || y >= FIELD_HEIGHT)
     {
@@ -202,46 +204,48 @@ static void block_draw(gfx_t* gfx, block_t block, int64_t x, int64_t y)
 
     rect_t rect = RECT_INIT_DIM(FIELD_LEFT + x * BLOCK_SIZE, FIELD_TOP + y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
 
-    gfx_edge(gfx, &rect, windowTheme.edgeWidth, highlightColors[block], shadowColors[block]);
+    element_draw_edge(elem, &rect, windowTheme.edgeWidth, highlightColors[block], shadowColors[block]);
     RECT_SHRINK(&rect, windowTheme.edgeWidth);
-    gfx_rect(gfx, &rect, normalColors[block]);
+    element_draw_rect(elem, &rect, normalColors[block]);
     RECT_SHRINK(&rect, 5);
-    gfx_edge(gfx, &rect, windowTheme.edgeWidth, shadowColors[block], highlightColors[block]);
+    element_draw_edge(elem, &rect, windowTheme.edgeWidth, shadowColors[block], highlightColors[block]);
 }
 
-static void side_panel_draw(win_t* window, gfx_t* gfx)
+static void side_panel_draw(window_t* win, element_t* elem)
 {
     rect_t rect = RECT_INIT(SIDE_PANEL_LEFT, SIDE_PANEL_TOP, SIDE_PANEL_RIGHT, SIDE_PANEL_BOTTOM);
 
-    gfx_ridge(gfx, &rect, windowTheme.ridgeWidth, windowTheme.highlight, windowTheme.shadow);
+    element_draw_ridge(elem, &rect, windowTheme.ridgeWidth, windowTheme.highlight, windowTheme.shadow);
 
     rect_t textRect = rect;
     textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
-    gfx_text(gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, SIDE_PANEL_FONT_SIZE, "Score", windowTheme.dark,
-        windowTheme.background);
+    element_draw_text(elem, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
+        windowTheme.background, "Score");
 
     textRect.top = textRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
     textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
-    gfx_text(gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, SIDE_PANEL_FONT_SIZE, "Lines", windowTheme.dark,
-        windowTheme.background);
+    element_draw_text(elem, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
+        windowTheme.background, "Lines");
 
     textRect.top = textRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
     textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
-    gfx_text(gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, SIDE_PANEL_FONT_SIZE, "Pieces", windowTheme.dark,
-        windowTheme.background);
+    element_draw_text(elem, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
+        windowTheme.background, "Pieces");
 
-    textRect.top = rect.bottom - SIDE_PANEL_FONT_SIZE * 7;
+    uint64_t fontHeight = font_height(largeFont);
+
+    textRect.top = rect.bottom - fontHeight * 7;
     textRect.bottom = rect.bottom;
-    gfx_text(gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, SIDE_PANEL_FONT_SIZE, "  ASD - Move", windowTheme.dark,
-        windowTheme.background);
-    textRect.top += SIDE_PANEL_FONT_SIZE;
-    textRect.bottom += SIDE_PANEL_FONT_SIZE;
-    gfx_text(gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, SIDE_PANEL_FONT_SIZE, "SPACE - Drop", windowTheme.dark,
-        windowTheme.background);
-    textRect.top += SIDE_PANEL_FONT_SIZE;
-    textRect.bottom += SIDE_PANEL_FONT_SIZE;
-    gfx_text(gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, SIDE_PANEL_FONT_SIZE, "    R - Spin", windowTheme.dark,
-        windowTheme.background);
+    element_draw_text(elem, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
+        windowTheme.background, "  ASD - Move");
+    textRect.top += fontHeight;
+    textRect.bottom += fontHeight;
+    element_draw_text(elem, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
+        windowTheme.background, "SPACE - Drop");
+    textRect.top += fontHeight;
+    textRect.bottom += fontHeight;
+    element_draw_text(elem, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
+        windowTheme.background, "    R - Spin");
 }
 
 static point_t piece_block_pos_in_field(int64_t pieceX, int64_t pieceY, int64_t blockX, int64_t blockY)
@@ -271,7 +275,7 @@ static bool piece_out_of_bounds(const piece_t* piece, int64_t pieceX, int64_t pi
     return false;
 }
 
-static void piece_clear(gfx_t* gfx, const piece_t* piece, uint64_t pieceX, uint64_t pieceY)
+static void piece_clear(element_t* elem, const piece_t* piece, uint64_t pieceX, uint64_t pieceY)
 {
     for (int64_t blockY = 0; blockY < PIECE_HEIGHT; blockY++)
     {
@@ -283,12 +287,12 @@ static void piece_clear(gfx_t* gfx, const piece_t* piece, uint64_t pieceX, uint6
             }
 
             point_t point = piece_block_pos_in_field(pieceX, pieceY, blockX, blockY);
-            block_draw(gfx, BLOCK_NONE, point.x, point.y);
+            block_draw(elem, BLOCK_NONE, point.x, point.y);
         }
     }
 }
 
-static void piece_outline_draw(gfx_t* gfx, const piece_t* piece, uint64_t pieceX, uint64_t pieceY)
+static void piece_outline_draw(element_t* elem, const piece_t* piece, uint64_t pieceX, uint64_t pieceY)
 {
     for (int64_t blockY = 0; blockY < PIECE_HEIGHT; blockY++)
     {
@@ -300,12 +304,12 @@ static void piece_outline_draw(gfx_t* gfx, const piece_t* piece, uint64_t pieceX
             }
 
             point_t point = piece_block_pos_in_field(pieceX, pieceY, blockX, blockY);
-            block_draw(gfx, BLOCK_OUTLINE, point.x, point.y);
+            block_draw(elem, BLOCK_OUTLINE, point.x, point.y);
         }
     }
 }
 
-static void piece_draw(gfx_t* gfx, const piece_t* piece, uint64_t pieceX, uint64_t pieceY)
+static void piece_draw(element_t* elem, const piece_t* piece, uint64_t pieceX, uint64_t pieceY)
 {
     for (int64_t blockY = 0; blockY < PIECE_HEIGHT; blockY++)
     {
@@ -317,7 +321,7 @@ static void piece_draw(gfx_t* gfx, const piece_t* piece, uint64_t pieceX, uint64
             }
 
             point_t point = piece_block_pos_in_field(pieceX, pieceY, blockX, blockY);
-            block_draw(gfx, (*piece)[blockY][blockX], point.x, point.y);
+            block_draw(elem, (*piece)[blockY][blockX], point.x, point.y);
         }
     }
 }
@@ -337,16 +341,16 @@ static void piece_rotate(piece_t* piece)
     }
 }
 
-static void field_edge_draw(gfx_t* gfx)
+static void field_edge_draw(element_t* elem)
 {
     rect_t fieldRect = RECT_INIT(FIELD_LEFT, FIELD_TOP, FIELD_RIGHT, FIELD_BOTTOM);
     RECT_EXPAND(&fieldRect, FIELD_PADDING);
-    gfx_rim(gfx, &fieldRect, FIELD_PADDING - windowTheme.edgeWidth, windowTheme.background);
+    element_draw_rim(elem, &fieldRect, FIELD_PADDING - windowTheme.edgeWidth, windowTheme.background);
     RECT_SHRINK(&fieldRect, FIELD_PADDING - windowTheme.edgeWidth);
-    gfx_edge(gfx, &fieldRect, windowTheme.edgeWidth, windowTheme.shadow, windowTheme.highlight);
+    element_draw_edge(elem, &fieldRect, windowTheme.edgeWidth, windowTheme.shadow, windowTheme.highlight);
 }
 
-static void field_draw(gfx_t* gfx)
+static void field_draw(element_t* elem)
 {
     for (uint64_t y = 0; y < FIELD_HEIGHT; y++)
     {
@@ -358,7 +362,7 @@ static void field_draw(gfx_t* gfx)
             }
             oldField[y][x] = field[y][x];
 
-            block_draw(gfx, field[y][x], x, y);
+            block_draw(elem, field[y][x], x, y);
         }
     }
 }
@@ -419,9 +423,9 @@ static void field_move_down(uint64_t line)
     }
 }
 
-static void field_clear_lines(gfx_t* gfx)
+static void field_clear_lines(element_t* elem)
 {
-    current_piece_clear(gfx);
+    current_piece_clear(elem);
     bool done = true;
     for (uint64_t y = 0; y < FIELD_HEIGHT; y++)
     {
@@ -452,17 +456,17 @@ static void field_clear_lines(gfx_t* gfx)
 
     if (!done)
     {
-        field_draw(gfx);
+        field_draw(elem);
     }
     else
     {
         clearingLines = false;
     }
 
-    current_piece_draw(gfx);
+    current_piece_draw(elem);
 }
 
-static void field_check_for_lines(gfx_t* gfx)
+static void field_check_for_lines(element_t* elem)
 {
     uint64_t foundLines = 0;
     for (uint64_t y = 0; y < FIELD_HEIGHT; y++)
@@ -513,7 +517,7 @@ static void field_check_for_lines(gfx_t* gfx)
     break;
     }
 
-    field_draw(gfx);
+    field_draw(elem);
 }
 
 static void pause()
@@ -572,7 +576,7 @@ static void current_piece_choose_new(void)
     }
 }
 
-static void current_piece_clear(gfx_t* gfx)
+static void current_piece_clear(element_t* elem)
 {
     int64_t outlineY = currentPiece.y;
     while (!piece_out_of_bounds(&currentPiece.piece, currentPiece.x, outlineY) &&
@@ -582,11 +586,11 @@ static void current_piece_clear(gfx_t* gfx)
     }
     outlineY--;
 
-    piece_clear(gfx, &currentPiece.piece, currentPiece.x, outlineY);
-    piece_clear(gfx, &currentPiece.piece, currentPiece.x, currentPiece.y);
+    piece_clear(elem, &currentPiece.piece, currentPiece.x, outlineY);
+    piece_clear(elem, &currentPiece.piece, currentPiece.x, currentPiece.y);
 }
 
-static void current_piece_draw(gfx_t* gfx)
+static void current_piece_draw(element_t* elem)
 {
     int64_t outlineY = currentPiece.y;
     while (!piece_out_of_bounds(&currentPiece.piece, currentPiece.x, outlineY) &&
@@ -596,29 +600,29 @@ static void current_piece_draw(gfx_t* gfx)
     }
     outlineY--;
 
-    piece_outline_draw(gfx, &currentPiece.piece, currentPiece.x, outlineY);
-    piece_draw(gfx, &currentPiece.piece, currentPiece.x, currentPiece.y);
+    piece_outline_draw(elem, &currentPiece.piece, currentPiece.x, outlineY);
+    piece_draw(elem, &currentPiece.piece, currentPiece.x, currentPiece.y);
 }
 
-static void current_piece_update(gfx_t* gfx)
+static void current_piece_update(element_t* elem)
 {
     if (piece_out_of_bounds(&currentPiece.piece, currentPiece.x, currentPiece.y + 1) ||
         field_collides(&currentPiece.piece, currentPiece.x, currentPiece.y + 1))
     {
         field_add_piece(&currentPiece.piece, currentPiece.x, currentPiece.y);
         current_piece_choose_new();
-        current_piece_draw(gfx);
-        field_check_for_lines(gfx);
+        current_piece_draw(elem);
+        field_check_for_lines(elem);
     }
     else
     {
-        current_piece_clear(gfx);
+        current_piece_clear(elem);
         currentPiece.y++;
-        current_piece_draw(gfx);
+        current_piece_draw(elem);
     }
 }
 
-static void current_piece_move(gfx_t* gfx, keycode_t code)
+static void current_piece_move(element_t* elem, keycode_t code)
 {
     uint64_t newX = currentPiece.x + (code == KEY_D) - (code == KEY_A);
 
@@ -628,14 +632,14 @@ static void current_piece_move(gfx_t* gfx, keycode_t code)
         return;
     }
 
-    current_piece_clear(gfx);
+    current_piece_clear(elem);
     currentPiece.x = newX;
-    current_piece_draw(gfx);
+    current_piece_draw(elem);
 }
 
-static void current_piece_drop(gfx_t* gfx)
+static void current_piece_drop(element_t* elem)
 {
-    current_piece_clear(gfx);
+    current_piece_clear(elem);
 
     while (!piece_out_of_bounds(&currentPiece.piece, currentPiece.x, currentPiece.y) &&
         !field_collides(&currentPiece.piece, currentPiece.x, currentPiece.y))
@@ -644,10 +648,10 @@ static void current_piece_drop(gfx_t* gfx)
     }
     currentPiece.y--;
 
-    current_piece_draw(gfx);
+    current_piece_draw(elem);
 }
 
-static void current_piece_rotate(gfx_t* gfx)
+static void current_piece_rotate(element_t* elem)
 {
     piece_t rotatedPiece;
     memcpy(&rotatedPiece, &currentPiece.piece, sizeof(piece_t));
@@ -659,55 +663,57 @@ static void current_piece_rotate(gfx_t* gfx)
         return;
     }
 
-    current_piece_clear(gfx);
+    current_piece_clear(elem);
     memcpy(&currentPiece.piece, &rotatedPiece, sizeof(piece_t));
-    current_piece_draw(gfx);
+    current_piece_draw(elem);
 }
 
-static void start_tetris_draw(win_t* window, gfx_t* gfx)
+static void start_tetris_draw(window_t* win, element_t* elem)
 {
-    rect_t rect = RECT_INIT((FIELD_RIGHT + FIELD_LEFT) / 2 - (START_SCREEN_FONT_SIZE / 2) * 3, FIELD_TOP,
-        (FIELD_RIGHT + FIELD_LEFT) / 2 - (START_SCREEN_FONT_SIZE / 2) * 2, FIELD_TOP + (FIELD_BOTTOM - FIELD_TOP) / 2);
+    uint64_t fontWidth = font_width(massiveFont);
 
-    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "T", normalColors[BLOCK_RED],
-        windowTheme.dark);
-    rect.left += (START_SCREEN_FONT_SIZE / 2) + 2;
-    rect.right += (START_SCREEN_FONT_SIZE / 2) + 2;
-    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "E", normalColors[BLOCK_ORANGE],
-        windowTheme.dark);
-    rect.left += (START_SCREEN_FONT_SIZE / 2) - 2;
-    rect.right += (START_SCREEN_FONT_SIZE / 2) - 2;
-    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "T", normalColors[BLOCK_YELLOW],
-        windowTheme.dark);
-    rect.left += (START_SCREEN_FONT_SIZE / 2) + 2;
-    rect.right += (START_SCREEN_FONT_SIZE / 2) + 2;
-    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "R", normalColors[BLOCK_GREEN],
-        windowTheme.dark);
-    rect.left += (START_SCREEN_FONT_SIZE / 2) - 2;
-    rect.right += (START_SCREEN_FONT_SIZE / 2) - 2;
-    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "I", normalColors[BLOCK_CYAN],
-        windowTheme.dark);
-    rect.left += (START_SCREEN_FONT_SIZE / 2);
-    rect.right += (START_SCREEN_FONT_SIZE / 2);
-    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "S", normalColors[BLOCK_BLUE],
-        windowTheme.dark);
+    rect_t rect = RECT_INIT((FIELD_RIGHT + FIELD_LEFT) / 2 - fontWidth * 3, FIELD_TOP,
+        (FIELD_RIGHT + FIELD_LEFT) / 2 - fontWidth * 2, FIELD_TOP + (FIELD_BOTTOM - FIELD_TOP) / 2);
+
+    element_draw_text(elem, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_RED],
+        windowTheme.dark, "T");
+    rect.left += fontWidth + 2;
+    rect.right += fontWidth + 2;
+    element_draw_text(elem, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_ORANGE],
+        windowTheme.dark, "E");
+    rect.left += fontWidth - 2;
+    rect.right += fontWidth - 2;
+    element_draw_text(elem, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_YELLOW],
+        windowTheme.dark, "T");
+    rect.left += fontWidth + 2;
+    rect.right += fontWidth + 2;
+    element_draw_text(elem, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_GREEN],
+        windowTheme.dark, "R");
+    rect.left += fontWidth - 2;
+    rect.right += fontWidth - 2;
+    element_draw_text(elem, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_CYAN],
+        windowTheme.dark, "I");
+    rect.left += fontWidth;
+    rect.right += fontWidth;
+    element_draw_text(elem, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_BLUE],
+        windowTheme.dark, "S");
 }
 
-static void start_press_space_draw(win_t* window, gfx_t* gfx)
+static void start_press_space_draw(window_t* win, element_t* elem)
 {
     static bool blink = false;
 
     rect_t rect = RECT_INIT(FIELD_LEFT, (FIELD_TOP + FIELD_BOTTOM) / 2, FIELD_RIGHT, FIELD_BOTTOM);
-    gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE / 2, "PRESS SPACE",
-        blink ? windowTheme.bright : windowTheme.dark, windowTheme.dark);
+    element_draw_text(elem, &rect, largeFont, ALIGN_CENTER, ALIGN_CENTER,
+        blink ? windowTheme.bright : windowTheme.dark, windowTheme.dark, "PRESS SPACE");
     blink = !blink;
 }
 
-static uint64_t procedure(win_t* window, const msg_t* msg)
+static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
-    switch (msg->type)
+    switch (event->type)
     {
-    case LMSG_INIT:
+    case LEVENT_INIT:
     {
         srand(uptime());
 
@@ -715,94 +721,78 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
         completedLines = 0;
         playedBlocks = 0;
 
-        win_text_prop_t prop = {
-            .height = SIDE_PANEL_FONT_SIZE,
-            .foreground = windowTheme.bright,
-            .background = windowTheme.dark,
-            .xAlign = GFX_CENTER,
-            .yAlign = GFX_CENTER,
-        };
-
-        rect_t textRect = RECT_INIT(SIDE_PANEL_LEFT + SIDE_PANEL_LABEL_PADDING, SIDE_PANEL_TOP + SIDE_PANEL_TEXT_HEIGHT,
+        rect_t labelRect = RECT_INIT(SIDE_PANEL_LEFT + SIDE_PANEL_LABEL_PADDING, SIDE_PANEL_TOP + SIDE_PANEL_TEXT_HEIGHT,
             SIDE_PANEL_RIGHT - SIDE_PANEL_LABEL_PADDING, SIDE_PANEL_TOP + SIDE_PANEL_TEXT_HEIGHT + SIDE_PANEL_LABEL_HEIGHT);
-        win_label_new(window, "000000", &textRect, CURRENT_SCORE_WIDGET_ID, &prop);
+        currentScoreLabel = label_new(elem, CURRENT_SCORE_LABEL_ID, &labelRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.bright, windowTheme.dark, LABEL_NONE, "000000");
 
-        textRect.top = textRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
-        textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
-        win_label_new(window, "000000", &textRect, COMPLETE_LINES_WIDGET_ID, &prop);
+        labelRect.top = labelRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
+        labelRect.bottom = labelRect.top + SIDE_PANEL_TEXT_HEIGHT;
+        completeLinesLabel = label_new(elem, COMPLETE_LINES_LABEL_ID, &labelRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.bright, windowTheme.dark, LABEL_NONE, "000000");
 
-        textRect.top = textRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
-        textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
-        win_label_new(window, "000000", &textRect, PLAYED_BLOCKS_WIDGET_ID, &prop);
+        labelRect.top = labelRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
+        labelRect.bottom = labelRect.top + SIDE_PANEL_TEXT_HEIGHT;
+        playedBlocksLabel = label_new(elem, PLAYED_BLOCKS_LABEL_ID, &labelRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.bright, windowTheme.dark, LABEL_NONE, "000000");
 
         pause();
     }
     break;
-    case LMSG_REDRAW:
+    case LEVENT_REDRAW:
     {
-        gfx_t gfx;
-        win_draw_begin(window, &gfx);
-
-        field_edge_draw(&gfx);
-        field_draw(&gfx);
-        side_panel_draw(window, &gfx);
-
-        win_draw_end(window, &gfx);
-        win_timer_set(window, 0);
+        field_edge_draw(elem);
+        field_draw(elem);
+        side_panel_draw(win,elem);
     }
     break;
-    case LMSG_TIMER:
+    /*case LMSG_TIMER:
     {
         if (!started)
         {
             gfx_t gfx;
-            win_draw_begin(window, &gfx);
-            start_tetris_draw(window, &gfx);
-            start_press_space_draw(window, &gfx);
-            win_draw_end(window, &gfx);
-            win_timer_set(window, START_SCREEN_TICK_SPEED);
+            win_draw_begin(win, &gfx);
+            start_tetris_draw(win, &gfx);
+            start_press_space_draw(win, &gfx);
+            win_draw_end(win, &gfx);
+            win_timer_set(win, START_SCREEN_TICK_SPEED);
             break;
         }
         else if (clearingLines)
         {
             gfx_t gfx;
-            win_draw_begin(window, &gfx);
+            win_draw_begin(win, &gfx);
             field_clear_lines(&gfx);
-            win_draw_end(window, &gfx);
-            win_timer_set(window, CLEARING_LINES_TICK_SPEED);
+            win_draw_end(win, &gfx);
+            win_timer_set(win, CLEARING_LINES_TICK_SPEED);
             break;
         }
         else if (currentPiece.dropping)
         {
-            win_timer_set(window, DROPPING_TICK_SPEED);
+            win_timer_set(win, DROPPING_TICK_SPEED);
         }
         else
         {
-            win_timer_set(window, TICK_SPEED);
+            win_timer_set(win, TICK_SPEED);
         }
 
         gfx_t gfx;
-        win_draw_begin(window, &gfx);
+        win_draw_begin(win, &gfx);
         current_piece_update(&gfx);
-        win_draw_end(window, &gfx);
+        win_draw_end(win, &gfx);
 
         if (clearingLines || gameover)
         {
             gameover = false;
-            win_timer_set(window, 0);
+            win_timer_set(win, 0);
         }
     }
-    break;
-    case MSG_KBD:
+    break;*/
+    case EVENT_KBD:
     {
-        msg_kbd_t* data = (msg_kbd_t*)msg->data;
-
         if (!started)
         {
-            if (data->type == KBD_PRESS && data->code == KEY_SPACE)
+            if (event->kbd.type == KBD_PRESS && event->kbd.code == KEY_SPACE)
             {
                 start();
-                win_send(window, LMSG_REDRAW, NULL, 0);
+                display_events_push(window_display(win), window_id(win), LEVENT_REDRAW, NULL, 0);
             }
 
             break;
@@ -813,36 +803,27 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
             break;
         }
 
-        if (data->type == KBD_PRESS && (data->code == KEY_A || data->code == KEY_D))
+        if (event->kbd.type == KBD_PRESS && (event->kbd.code == KEY_A || event->kbd.code == KEY_D))
         {
-            gfx_t gfx;
-            win_draw_begin(window, &gfx);
-            current_piece_move(&gfx, data->code);
-            win_draw_end(window, &gfx);
+            current_piece_move(elem, event->kbd.code);
         }
-        else if (data->type == KBD_PRESS && data->code == KEY_R)
+        else if (event->kbd.type == KBD_PRESS && event->kbd.code == KEY_R)
         {
-            gfx_t gfx;
-            win_draw_begin(window, &gfx);
-            current_piece_rotate(&gfx);
-            win_draw_end(window, &gfx);
+            current_piece_rotate(elem);
         }
-        else if (data->type == KBD_PRESS && data->code == KEY_S)
+        else if (event->kbd.type == KBD_PRESS && event->kbd.code == KEY_S)
         {
-            win_timer_set(window, 0);
+            //win_timer_set(win, 0);
             currentPiece.dropping = true;
         }
-        else if (data->type == KBD_PRESS && data->code == KEY_SPACE)
+        else if (event->kbd.type == KBD_PRESS && event->kbd.code == KEY_SPACE)
         {
-            gfx_t gfx;
-            win_draw_begin(window, &gfx);
-            current_piece_drop(&gfx);
-            win_draw_end(window, &gfx);
-            win_timer_set(window, 0);
+            current_piece_drop(elem);
+            //win_timer_set(win, 0);
         }
-        else if (data->type == KBD_RELEASE && data->code == KEY_S)
+        else if (event->kbd.type == KBD_RELEASE && event->kbd.code == KEY_S)
         {
-            win_timer_set(window, TICK_SPEED);
+            //win_timer_set(win, TICK_SPEED);
             currentPiece.dropping = false;
         }
     }
@@ -853,19 +834,19 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
     {
         char buffer[7];
         sprintf(buffer, "%06d", currentScore);
-        win_widget_name_set(win_widget(window, CURRENT_SCORE_WIDGET_ID), buffer);
+        label_set_text(currentScoreLabel, buffer);
     }
     if (completedLines != oldCompletedLines)
     {
         char buffer[7];
         sprintf(buffer, "%06d", completedLines);
-        win_widget_name_set(win_widget(window, COMPLETE_LINES_WIDGET_ID), buffer);
+        label_set_text(completeLinesLabel, buffer);
     }
     if (playedBlocks != oldPlayedBlocks)
     {
         char buffer[7];
         sprintf(buffer, "%06d", playedBlocks);
-        win_widget_name_set(win_widget(window, PLAYED_BLOCKS_WIDGET_ID), buffer);
+        label_set_text(playedBlocksLabel, buffer);
     }
 
     oldCurrentScore = currentScore;
@@ -875,23 +856,36 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
     return 0;
 }
 
+#include <threads.h>
+
 int main(void)
 {
+    display_t* disp = display_new();
+
+    largeFont = font_new(disp, "zap-vga16", 32);
+    massiveFont = font_new(disp, "zap-vga16", 64);
+
     rect_t rect = RECT_INIT_DIM(500, 200, WINDOW_WIDTH, WINDOW_HEIGHT);
-    win_expand_to_window(&rect, WIN_DECO);
-    win_t* window = win_new("Tetris", &rect, DWM_WINDOW, WIN_DECO, procedure);
-    if (window == NULL)
+    window_t* win = window_new(disp, "Tetris", &rect, SURFACE_WINDOW, WINDOW_DECO, procedure, NULL);
+    if (win == NULL)
     {
-        exit(errno);
+        return EXIT_FAILURE;
     }
 
-    msg_t msg = {0};
-    while (msg.type != LMSG_QUIT)
+    event_t event = {0};
+    while (display_connected(disp))
     {
-        win_receive(window, &msg, NEVER);
-        win_dispatch(window, &msg);
+        printf("%d\n", event.type);
+        struct timespec timespec = {.tv_nsec = SEC};
+        thrd_sleep(&timespec, NULL);
+        display_next_event(disp, &event, NEVER);
+        display_dispatch(disp, &event);
+        printf("end\n");
     }
 
-    win_free(window);
+    window_free(win);
+    font_free(massiveFont);
+    font_free(largeFont);
+    display_free(disp);
     return EXIT_SUCCESS;
 }

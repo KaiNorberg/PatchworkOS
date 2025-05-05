@@ -423,6 +423,26 @@ static uint64_t client_action_draw_transfer(client_t* client, const cmd_header_t
     return 0;
 }
 
+static uint64_t client_action_surface_set_timer(client_t* client, const cmd_header_t* header)
+{
+    if (header->size != sizeof(cmd_surface_set_timer_t))
+    {
+        return ERR;
+    }
+    cmd_surface_set_timer_t* cmd = (cmd_surface_set_timer_t*)header;
+
+    surface_t* surface = client_find_surface(client, cmd->target);
+    if (surface == NULL)
+    {
+        return ERR;
+    }
+
+    surface->timer.flags = cmd->flags;
+    surface->timer.timeout = cmd->timeout;
+    surface->timer.deadline = uptime() + cmd->timeout;
+    return 0;
+}
+
 static uint64_t (*actions[])(client_t*, const cmd_header_t*) = {
     [CMD_SCREEN_INFO] = client_action_screen_info,
     [CMD_SURFACE_NEW] = client_action_surface_new,
@@ -436,6 +456,7 @@ static uint64_t (*actions[])(client_t*, const cmd_header_t*) = {
     [CMD_DRAW_STRING] = client_action_draw_string,
     [CMD_SURFACE_MOVE] = client_action_surface_move,
     [CMD_DRAW_TRANSFER] = client_action_draw_transfer,
+    [CMD_SURFACE_SET_TIMER] = client_action_surface_set_timer,
 };
 
 uint64_t client_recieve_cmds(client_t* client)

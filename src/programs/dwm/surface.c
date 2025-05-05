@@ -33,6 +33,9 @@ surface_t* surface_new(client_t* client, surface_id_t id, const point_t* point, 
     surface->gfx.invalidRect = RECT_INIT_DIM(0, 0, width, height);
     surface->id = id;
     surface->type = type;
+    surface->timer.flags = TIMER_NONE;
+    surface->timer.timeout = NEVER;
+    surface->timer.deadline = NEVER;
     surface->invalid = true;
     surface->moved = false;
     surface->prevRect = RECT_INIT_DIM(surface->pos.x, surface->pos.y, width, height);

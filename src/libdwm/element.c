@@ -295,8 +295,8 @@ void element_draw_transfer(element_t* elem, const rect_t* destRect, const point_
     CMD_INIT(&cmd, CMD_DRAW_TRANSFER, sizeof(cmd));
     cmd.dest = elem->win->id;
     cmd.src = elem->win->id;
-    cmd.destRect = *destRect;
-    cmd.srcPoint = *srcPoint;
+    element_rect_to_global(elem, &cmd.destRect, destRect);
+    element_point_to_global(elem, &cmd.srcPoint, srcPoint);
     display_cmds_push(elem->win->disp, &cmd.header);
 
     element_invalidate(elem, destRect);
@@ -427,6 +427,15 @@ void element_draw_text(element_t* elem, const rect_t* rect, font_t* font, align_
     }
 
     element_draw_string(elem, font, &startPoint, foreground, background, text, textLen);
+}
+
+void element_draw_ridge(element_t* elem, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background)
+{
+    element_draw_edge(elem, rect, width / 2, background, foreground);
+
+    rect_t innerRect = *rect;
+    RECT_SHRINK(&innerRect, width / 2);
+    element_draw_edge(elem, &innerRect, width / 2, foreground, background);
 }
 
 void element_send_redraw(element_t* elem, bool propagate)

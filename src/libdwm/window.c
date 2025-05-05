@@ -335,6 +335,19 @@ uint64_t window_move(window_t* win, const rect_t* rect)
     return 0;
 }
 
+uint64_t window_set_timer(window_t* win, timer_flags_t flags, nsec_t timeout)
+{
+    cmd_surface_set_timer_t cmd;
+    CMD_INIT(&cmd, CMD_SURFACE_SET_TIMER, sizeof(cmd));
+    cmd.target = win->id;
+    cmd.flags = flags;
+    cmd.timeout = timeout;
+    display_cmds_push(win->disp, &cmd.header);
+    display_cmds_flush(win->disp);
+
+    return 0;
+}
+
 uint64_t window_dispatch(window_t* win, const event_t* event)
 {
     switch (event->type)

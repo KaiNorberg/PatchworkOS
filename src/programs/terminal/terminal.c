@@ -52,11 +52,20 @@ static void terminal_scroll(terminal_t* term, element_t* elem)
 {
     term->cursorPos.y -= 1;
 
-    rect_t rect;
-    element_content_rect(elem, &rect);
-    RECT_SHRINK(&rect, windowTheme.edgeWidth);
+    uint64_t fontHeight = font_height(term->font);
 
-    // gfx_scroll(gfx, &rect, win_font(term->win)->height, windowTheme.dark);
+    rect_t destRect;
+    element_content_rect(elem, &destRect);
+    RECT_SHRINK(&destRect, windowTheme.edgeWidth);
+    RECT_SHRINK(&destRect, windowTheme.paddingWidth);
+    destRect.bottom -= fontHeight;
+
+    point_t srcPoint = {.x = destRect.left, .y = destRect.top + fontHeight};
+
+    element_draw_transfer(elem, &destRect, &srcPoint);
+
+    rect_t bottomRect = RECT_INIT(destRect.left, destRect.bottom, destRect.right, destRect.bottom + fontHeight);
+    element_draw_rect(elem, &bottomRect, windowTheme.dark);
 }
 
 static void terminal_draw_char(terminal_t* term, element_t* elem, const point_t* point, char chr)
@@ -123,6 +132,7 @@ static void terminal_write(terminal_t* term, element_t* elem, const char* str)
 
     term->cursorVisible = true;
     terminal_cursor_draw(term, elem);
+    window_set_timer(term->win, TIMER_NONE, BLINK_INTERVAL);
 }
 
 static void terminal_redraw_input(terminal_t* term, element_t* elem, uint64_t prevLength)
@@ -141,6 +151,7 @@ static void terminal_redraw_input(terminal_t* term, element_t* elem, uint64_t pr
 
     term->cursorVisible = true;
     terminal_cursor_draw(term, elem);
+    window_set_timer(term->win, TIMER_NONE, BLINK_INTERVAL);
 }
 
 static void terminal_handle_input(terminal_t* term, element_t* elem, keycode_t key, char ascii, kbd_mods_t mods)
@@ -237,13 +248,20 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
 
     switch (event->type)
     {
+    case LEVENT_INIT:
+    {
+        window_set_timer(win, TIMER_NONE, BLINK_INTERVAL);
+    }
+    break;
     case LEVENT_REDRAW:
     {
         terminal_clear(term, elem);
     }
     break;
-    case UEVENT_TERMINAL_TIMER:
+    case EVENT_TIMER:
     {
+        window_set_timer(win, TIMER_NONE, BLINK_INTERVAL);
+
         term->cursorVisible = !term->cursorVisible;
         terminal_cursor_draw(term, elem);
     }
@@ -335,14 +353,26 @@ void terminal_deinit(terminal_t* term)
     display_free(term->disp);
 }
 
+static void terminal_read_stdout(terminal_t* term)
+{
+    char buffer[MAX_PATH];
+
+    do
+    {
+        uint64_t readCount = read(term->stdout[PIPE_READ], buffer, MAX_PATH - 1);
+        buffer[readCount] = '\0';
+
+        terminal_write(term, window_client_element(term->win), buffer);
+        input_set(&term->input, "");
+    }
+    while (poll1(term->stdout[PIPE_READ], POLL_READ, 0) & POLL_READ);
+}
+
 bool terminal_update(terminal_t* term)
 {
     pollfd_t fds[] = {{.fd = term->stdout[PIPE_READ], .requested = POLL_READ},
         {.fd = display_fd(term->disp), .requested = POLL_READ}};
-    if (poll(fds, 2, BLINK_INTERVAL) == 0)
-    {
-        display_emit(term->disp, window_id(term->win), UEVENT_TERMINAL_TIMER, NULL, 0);
-    }
+    poll(fds, 2, NEVER);
 
     bool shouldQuit = false;
     event_t event = {0};
@@ -357,14 +387,7 @@ bool terminal_update(terminal_t* term)
 
     if (fds[0].occurred & POLL_READ)
     {
-        while (poll1(term->stdout[PIPE_READ], POLL_READ, 0) & POLL_READ)
-        {
-            char buffer[] = {0, '\0'};
-            read(term->stdout[PIPE_READ], buffer, 1);
-            terminal_write(term, window_client_element(term->win), buffer);
-            input_set(&term->input, "");
-        }
-
+        terminal_read_stdout(term);
         display_cmds_flush(term->disp);
     }
 

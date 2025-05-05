@@ -5,14 +5,10 @@
 
 #include <libdwm/dwm.h>
 
-#define UMSG_BLINK (UMSG_BASE + 1)
-
 #define BLINK_INTERVAL (SEC / 2)
 
 #define TERMINAL_WIDTH (80 * 8 + windowTheme.edgeWidth * 2 + windowTheme.paddingWidth * 2)
 #define TERMINAL_HEIGHT (24 * 16 + windowTheme.edgeWidth * 2 + windowTheme.paddingWidth * 2)
-
-#define UEVENT_TERMINAL_TIMER (UEVENT_BASE + 1)
 
 typedef struct
 {
