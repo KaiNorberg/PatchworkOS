@@ -500,18 +500,15 @@ uint64_t element_dispatch(element_t* elem, const event_t* event)
     break;
     }
 
-    bool shouldProagate = event->type == LEVENT_REDRAW && event->lRedraw.propagate;
-    if (RECT_AREA(&elem->invalidRect) != 0 || shouldProagate)
+    bool shouldPropegate = event->type == LEVENT_REDRAW && event->lRedraw.propagate;
+    if (RECT_AREA(&elem->invalidRect) != 0 || shouldPropegate)
     {
-        rect_t contentRect;
-        element_content_rect(elem, &contentRect);
-
         element_t* child;
         LIST_FOR_EACH(child, &elem->children, entry)
         {
-            if (RECT_OVERLAP(&contentRect, &child->rect))
+            if (RECT_OVERLAP(&elem->invalidRect, &child->rect))
             {
-                element_send_redraw(child, shouldProagate);
+                element_send_redraw(child, shouldPropegate);
             }
         }
 

@@ -1,6 +1,7 @@
 #include "internal.h"
 
 #include <stdio.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/list.h>
@@ -266,7 +267,6 @@ void display_dispatch(display_t* disp, const event_t* event)
             if (window_dispatch(win, event) == ERR)
             {
                 window_free(win);
-                printf("display_dispatch: connected = false");
                 disp->connected = false;
             }
             break;

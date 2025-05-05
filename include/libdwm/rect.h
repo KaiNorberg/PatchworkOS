@@ -47,7 +47,7 @@ typedef struct
         (rect)->bottom = MAX((rect)->bottom, (other)->bottom); \
     })
 
-#define RECT_COMPARE(rect, other) \
+#define RECT_EQUAL(rect, other) \
     ((other)->left == (rect)->left && (other)->right == (rect)->right && (other)->top == (rect)->top && \
         (other)->bottom == (rect)->bottom)
 

@@ -736,55 +736,52 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         pause();
     }
     break;
+    case LEVENT_QUIT:
+    {
+        display_disconnect(window_display(win));
+    }
+    break;
     case LEVENT_REDRAW:
     {
         field_edge_draw(elem);
         field_draw(elem);
         side_panel_draw(win,elem);
+        window_set_timer(win, TIMER_NONE, 0);
     }
     break;
-    /*case LMSG_TIMER:
+    case EVENT_TIMER:
     {
         if (!started)
         {
-            gfx_t gfx;
-            win_draw_begin(win, &gfx);
-            start_tetris_draw(win, &gfx);
-            start_press_space_draw(win, &gfx);
-            win_draw_end(win, &gfx);
-            win_timer_set(win, START_SCREEN_TICK_SPEED);
+            start_tetris_draw(win, elem);
+            start_press_space_draw(win, elem);
+            window_set_timer(win, TIMER_NONE, START_SCREEN_TICK_SPEED);
             break;
         }
         else if (clearingLines)
         {
-            gfx_t gfx;
-            win_draw_begin(win, &gfx);
-            field_clear_lines(&gfx);
-            win_draw_end(win, &gfx);
-            win_timer_set(win, CLEARING_LINES_TICK_SPEED);
+            field_clear_lines(elem);
+            window_set_timer(win, TIMER_NONE, CLEARING_LINES_TICK_SPEED);
             break;
         }
         else if (currentPiece.dropping)
         {
-            win_timer_set(win, DROPPING_TICK_SPEED);
+            window_set_timer(win, TIMER_NONE, DROPPING_TICK_SPEED);
         }
         else
         {
-            win_timer_set(win, TICK_SPEED);
+            window_set_timer(win, TIMER_NONE, TICK_SPEED);
         }
 
-        gfx_t gfx;
-        win_draw_begin(win, &gfx);
-        current_piece_update(&gfx);
-        win_draw_end(win, &gfx);
+        current_piece_update(elem);
 
         if (clearingLines || gameover)
         {
             gameover = false;
-            win_timer_set(win, 0);
+            window_set_timer(win, TIMER_NONE, 0);
         }
     }
-    break;*/
+    break;
     case EVENT_KBD:
     {
         if (!started)
@@ -792,7 +789,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             if (event->kbd.type == KBD_PRESS && event->kbd.code == KEY_SPACE)
             {
                 start();
-                display_events_push(window_display(win), window_id(win), LEVENT_REDRAW, NULL, 0);
+                element_send_redraw(elem, false);
             }
 
             break;
@@ -813,18 +810,18 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         }
         else if (event->kbd.type == KBD_PRESS && event->kbd.code == KEY_S)
         {
-            //win_timer_set(win, 0);
             currentPiece.dropping = true;
+            window_set_timer(win, TIMER_NONE, 0);
         }
         else if (event->kbd.type == KBD_PRESS && event->kbd.code == KEY_SPACE)
         {
             current_piece_drop(elem);
-            //win_timer_set(win, 0);
+            window_set_timer(win, TIMER_NONE, 0);
         }
         else if (event->kbd.type == KBD_RELEASE && event->kbd.code == KEY_S)
         {
-            //win_timer_set(win, TICK_SPEED);
             currentPiece.dropping = false;
+            window_set_timer(win, TIMER_NONE, TICK_SPEED);
         }
     }
     break;
@@ -856,8 +853,6 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     return 0;
 }
 
-#include <threads.h>
-
 int main(void)
 {
     display_t* disp = display_new();
@@ -875,12 +870,8 @@ int main(void)
     event_t event = {0};
     while (display_connected(disp))
     {
-        printf("%d\n", event.type);
-        struct timespec timespec = {.tv_nsec = SEC};
-        thrd_sleep(&timespec, NULL);
         display_next_event(disp, &event, NEVER);
         display_dispatch(disp, &event);
-        printf("end\n");
     }
 
     window_free(win);

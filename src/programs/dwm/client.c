@@ -505,7 +505,7 @@ uint64_t client_send_event(client_t* client, surface_id_t target, event_type_t t
     memcpy(&event.raw, data, size);
     if (write(client->fd, &event, sizeof(event_t)) == ERR)
     {
-        // printf("client_send_event: err %s", strerror(errno));
+        //printf("client_send_event: err %s", strerror(errno));
         return ERR;
     }
     return 0;

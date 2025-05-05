@@ -15,6 +15,11 @@
 #define PATH_NAME_IS_DOT(name) ((name)[0] == '.' && PATH_END_OF_NAME((name)[1]))
 #define PATH_NAME_IS_DOT_DOT(name) ((name)[0] == '.' && (name)[1] == '.' && PATH_END_OF_NAME((name)[2]))
 
+typedef enum
+{
+    PATH_NONE = 0,
+} path_flags_t;
+
 typedef struct path
 {
     char volume[MAX_NAME];

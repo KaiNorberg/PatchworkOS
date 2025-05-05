@@ -426,21 +426,22 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
     }
 
     // TODO: This is a temporary solution. Implement file flags, NOBLOCK.
-    LOCK_DEFER(&conn->lock);
+    /*LOCK_DEFER(&conn->lock);
     if (ring_free_length(ring) < count + sizeof(local_packet_header_t))
     {
         return ERROR(EWOULDBLOCK);
-    }
-    /*if (WAITSYS_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
+    }*/
+    if (WAITSYS_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
             ring_free_length(ring) >= count + sizeof(local_packet_header_t) || local_connection_closed(conn)) !=
     BLOCK_NORM)
     {
         lock_release(&conn->lock);
         return 0;
-    }*/
+    }
 
     if (local_connection_closed(conn))
     {
+        lock_release(&conn->lock);
         return 0;
     }
 
@@ -449,6 +450,7 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
     ring_write(ring, buffer, count);
 
     waitsys_unblock(&conn->waitQueue, UINT64_MAX);
+    lock_release(&conn->lock);
     return count;
 }
 
