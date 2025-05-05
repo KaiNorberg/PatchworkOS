@@ -29,6 +29,7 @@ typedef enum
     CMD_FONT_INFO,
     CMD_DRAW_STRING,
     CMD_SURFACE_MOVE,
+    CMD_DRAW_TRANSFER,
     CMD_TYPE_AMOUNT, // Below this are unimplemented cmds.
     CMD_DRAW_LINE,
     CMD_DRAW_POINT,
@@ -150,6 +151,15 @@ typedef struct
     surface_id_t target;
     rect_t rect;
 } cmd_surface_move_t;
+
+typedef struct
+{
+    cmd_header_t header;
+    surface_id_t dest;
+    surface_id_t src;
+    rect_t destRect;
+    point_t srcPoint;
+} cmd_draw_transfer_t;
 
 #define CMD_BUFFER_MAX_DATA (0x1000)
 

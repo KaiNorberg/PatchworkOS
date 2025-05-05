@@ -77,6 +77,7 @@ typedef struct
 #define LEVENT_FREE (LEVENT_BASE + 2) // May be recieved outside of a dispatch call.
 #define LEVENT_REDRAW (LEVENT_BASE + 3)
 #define LEVENT_ACTION (LEVENT_BASE + 4)
+#define LEVENT_QUIT (LEVENT_BASE + 5)
 
 typedef struct
 {

@@ -11,8 +11,8 @@ extern "C"
 {
 #endif
 
-#define WINDOW_DECO_ELEM_ID (UINT64_MAX)
-#define WINDOW_CLIENT_ELEM_ID (UINT64_MAX - 1)
+#define WINDOW_CLIENT_ELEM_ID (UINT64_MAX)
+#define WINDOW_DECO_ELEM_ID (UINT64_MAX - 1)
 
 typedef struct window window_t;
 
@@ -43,7 +43,7 @@ typedef struct win_theme
 extern window_theme_t windowTheme;
 
 window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surface_type_t type, window_flags_t flags,
-    procedure_t procedure);
+    procedure_t procedure, void* private);
 
 void window_free(window_t* win);
 
@@ -56,6 +56,8 @@ display_t* window_display(window_t* win);
 surface_id_t window_id(window_t* win);
 
 surface_type_t window_type(window_t* win);
+
+element_t* window_client_element(window_t* win);
 
 uint64_t window_move(window_t* win, const rect_t* rect);
 

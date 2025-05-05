@@ -37,6 +37,7 @@ typedef struct window
     surface_type_t type;
     window_flags_t flags;
     element_t* root;
+    element_t* clientElement;
 } window_t;
 
 #define DISPLAY_MAX_EVENT 64

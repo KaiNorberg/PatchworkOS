@@ -31,7 +31,7 @@ int main(void)
     rect_t rect;
     display_screen_rect(disp, &rect, 0);
 
-    window_t* win = window_new(disp, "Wallpaper", &rect, SURFACE_WALL, WINDOW_NONE, procedure);
+    window_t* win = window_new(disp, "Wallpaper", &rect, SURFACE_WALL, WINDOW_NONE, procedure, NULL);
     if (win == NULL)
     {
         return EXIT_FAILURE;

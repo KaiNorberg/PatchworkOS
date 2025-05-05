@@ -24,7 +24,11 @@ surface_id_t display_gen_id(display_t* disp);
 
 uint64_t display_screen_rect(display_t* disp, rect_t* rect, uint64_t index);
 
+fd_t display_fd(display_t* disp);
+
 bool display_connected(display_t* disp);
+
+void display_disconnect(display_t* disp);
 
 bool display_next_event(display_t* disp, event_t* event, nsec_t timeout);
 

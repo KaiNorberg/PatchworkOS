@@ -60,6 +60,8 @@ void element_draw_edge(element_t* elem, const rect_t* rect, uint64_t width, pixe
 void element_draw_gradient(element_t* elem, const rect_t* rect, pixel_t start, pixel_t end, gradient_type_t type,
     bool addNoise);
 
+void element_draw_transfer(element_t* elem, const rect_t* destRect, const point_t* srcPoint);
+
 void element_draw_rim(element_t* elem, const rect_t* rect, uint64_t width, pixel_t pixel);
 
 void element_draw_string(element_t* elem, font_t* font, const point_t* point, pixel_t foreground, pixel_t background,

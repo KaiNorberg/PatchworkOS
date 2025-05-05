@@ -22,11 +22,17 @@ window_theme_t windowTheme = {
     .paddingWidth = 2,
 };
 
+#define WINDOW_DECO_CLOSE_BUTTON_INDEX 0
+#define WINDOW_DECO_BUTTON_AMOUNT 1
+
+#define WINDOW_DECO_CLOSE_BUTTON_ID (WINDOW_DECO_ELEM_ID - (1 + WINDOW_DECO_CLOSE_BUTTON_INDEX))
+
 typedef struct
 {
     bool focused;
     bool dragging;
     point_t dragOffset;
+    font_t* bigFont;
 } deco_private_t;
 
 static void window_deco_topbar_rect(window_t* win, element_t* elem, rect_t* rect)
@@ -40,6 +46,14 @@ static void window_deco_topbar_rect(window_t* win, element_t* elem, rect_t* rect
         .right = RECT_WIDTH(&contentRect) - windowTheme.edgeWidth - windowTheme.paddingWidth,
         .bottom = windowTheme.topbarHeight + windowTheme.edgeWidth - windowTheme.paddingWidth,
     };
+}
+
+static void window_deco_button_rect(window_t* win, element_t* elem, rect_t* rect, uint64_t index)
+{
+    window_deco_topbar_rect(win, elem, rect);
+    RECT_SHRINK(rect, windowTheme.edgeWidth);
+    uint64_t size = (rect->bottom - rect->top);
+    rect->left = rect->right - size * (index + 1);
 }
 
 static void window_deco_draw_topbar(window_t* win, element_t* elem)
@@ -71,8 +85,12 @@ static void window_deco_handle_dragging(window_t* win, element_t* elem, const ev
 {
     deco_private_t* private = element_private(elem);
 
-    rect_t topBar;
-    window_deco_topbar_rect(win, elem, &topBar);
+    rect_t lastButton;
+    window_deco_button_rect(win, elem, &lastButton, WINDOW_DECO_BUTTON_AMOUNT - 1);
+
+    rect_t topBarWithoutButtons;
+    window_deco_topbar_rect(win, elem, &topBarWithoutButtons);
+    topBarWithoutButtons.right = lastButton.right;
 
     if (private->dragging)
     {
@@ -84,7 +102,7 @@ static void window_deco_handle_dragging(window_t* win, element_t* elem, const ev
             private->dragging = false;
         }
     }
-    else if (RECT_CONTAINS_POINT(&topBar, &event->pos) && event->pressed & MOUSE_LEFT)
+    else if (RECT_CONTAINS_POINT(&topBarWithoutButtons, &event->pos) && event->pressed & MOUSE_LEFT)
     {
         private->dragOffset = (point_t){.x = event->screenPos.x - win->rect.left, .y = event->screenPos.y - win->rect.top};
         private->dragging = true;
@@ -93,19 +111,37 @@ static void window_deco_handle_dragging(window_t* win, element_t* elem, const ev
 
 static uint64_t window_deco_procedure(window_t* win, element_t* elem, const event_t* event)
 {
-    deco_private_t* private = element_private(elem);
-
     switch (event->type)
     {
     case LEVENT_INIT:
     {
+        deco_private_t* private = malloc(sizeof(deco_private_t));
+        if (private == NULL)
+        {
+            return ERR;
+        }
+
         private->focused = false;
         private->dragging = false;
+        private->bigFont = font_new(window_display(win), "zap-vga16", 32);
+        element_set_private(elem, private);
+
+        rect_t closeButton;
+        window_deco_button_rect(win, elem, &closeButton, WINDOW_DECO_CLOSE_BUTTON_INDEX);
+        if (button_new(elem, WINDOW_DECO_CLOSE_BUTTON_ID, &closeButton, private->bigFont, windowTheme.dark, windowTheme.background, BUTTON_NONE, "x") == NULL)
+        {
+            return ERR;
+        }
     }
     break;
     case LEVENT_FREE:
     {
-        free(private);
+        deco_private_t* private = element_private(elem);
+        if (private != NULL)
+        {
+            font_free(private->bigFont);
+            free(private);
+        }
     }
     break;
     case LEVENT_REDRAW:
@@ -118,14 +154,33 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
         window_deco_draw_topbar(win, elem);
     }
     break;
+    case LEVENT_ACTION:
+    {
+        if (event->lAction.type != ACTION_RELEASE)
+        {
+            break;
+        }
+
+        switch (event->lAction.source)
+        {
+        case WINDOW_DECO_CLOSE_BUTTON_ID:
+        {
+            display_events_push(win->disp, win->id, LEVENT_QUIT, NULL, 0);
+        }
+        break;
+        }
+    }
+    break;
     case EVENT_FOCUS_IN:
     {
+        deco_private_t* private = element_private(elem);
         private->focused = true;
         window_deco_draw_topbar(win, elem);
     }
     break;
     case EVENT_FOCUS_OUT:
     {
+        deco_private_t* private = element_private(elem);
         private->focused = false;
         window_deco_draw_topbar(win, elem);
     }
@@ -141,7 +196,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
 }
 
 window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surface_type_t type, window_flags_t flags,
-    procedure_t procedure)
+    procedure_t procedure, void* private)
 {
     if (strlen(name) >= MAX_NAME)
     {
@@ -169,18 +224,10 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
         win->rect.right += windowTheme.edgeWidth;
         win->rect.bottom += windowTheme.edgeWidth;
 
-        deco_private_t* private = malloc(sizeof(deco_private_t));
-        if (private == NULL)
-        {
-            free(win);
-            return NULL;
-        }
-
         rect_t decoRect = RECT_INIT_DIM(0, 0, RECT_WIDTH(&win->rect), RECT_HEIGHT(&win->rect));
-        win->root = element_new_root(win, WINDOW_DECO_ELEM_ID, &decoRect, window_deco_procedure, private);
+        win->root = element_new_root(win, WINDOW_DECO_ELEM_ID, &decoRect, window_deco_procedure, NULL);
         if (win->root == NULL)
         {
-            free(private);
             free(win);
             return NULL;
         }
@@ -191,22 +238,23 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
             .right = windowTheme.edgeWidth + RECT_WIDTH(rect),
             .bottom = windowTheme.edgeWidth + windowTheme.topbarHeight + RECT_HEIGHT(rect),
         };
-        if (element_new(win->root, WINDOW_CLIENT_ELEM_ID, &clientRect, procedure, NULL) == NULL)
+        win->clientElement = element_new(win->root, WINDOW_CLIENT_ELEM_ID, &clientRect, procedure, private);
+        if (win->clientElement == NULL)
         {
             element_free(win->root);
-            free(private);
             free(win);
         }
     }
     else
     {
         rect_t rootElemRect = RECT_INIT_DIM(0, 0, RECT_WIDTH(rect), RECT_HEIGHT(rect));
-        win->root = element_new_root(win, WINDOW_CLIENT_ELEM_ID, &rootElemRect, procedure, NULL);
+        win->root = element_new_root(win, WINDOW_CLIENT_ELEM_ID, &rootElemRect, procedure, private);
         if (win->root == NULL)
         {
             free(win);
             return NULL;
         }
+        win->clientElement = win->root;
     }
 
     cmd_surface_new_t cmd;
@@ -258,6 +306,11 @@ surface_id_t window_id(window_t* win)
 surface_type_t window_type(window_t* win)
 {
     return win->type;
+}
+
+element_t* window_client_element(window_t* win)
+{
+    return win->clientElement;
 }
 
 uint64_t window_move(window_t* win, const rect_t* rect)

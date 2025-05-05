@@ -1,11 +1,11 @@
 #include "ansi.h"
 
-#include <sys/win.h>
+#include <libdwm/dwm.h>
 
 void ansi_init(ansi_t* ansi)
 {
-    ansi->foreground = winTheme.bright;
-    ansi->background = winTheme.dark;
+    ansi->foreground = windowTheme.bright;
+    ansi->background = windowTheme.dark;
     ansi->bold = false;
     ansi->italic = false;
     ansi->underline = false;

@@ -146,9 +146,19 @@ uint64_t display_screen_rect(display_t* disp, rect_t* rect, uint64_t index)
     return 0;
 }
 
+fd_t display_fd(display_t* disp)
+{
+    return disp->data;
+}
+
 bool display_connected(display_t* disp)
 {
     return disp->connected;
+}
+
+void display_disconnect(display_t* disp)
+{
+    disp->connected = false;
 }
 
 bool display_next_event(display_t* disp, event_t* event, nsec_t timeout)

@@ -79,9 +79,9 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count)
 static wait_queue_t* pipe_poll(file_t* file, poll_file_t* pollFile)
 {
     pipe_private_t* private = file->private;
-
-    pollFile->occurred = (ring_data_length(&private->ring) != 0 || private->writeClosed != 0 ? POLL_READ : 0) |
-        (ring_free_length(&private->ring) != 0 || private->readClosed ? POLL_WRITE : 0);
+    LOCK_DEFER(&private->lock);
+    pollFile->occurred = ((ring_data_length(&private->ring) != 0 || private->writeClosed) ? POLL_READ : 0) |
+        ((ring_free_length(&private->ring) != 0 || private->readClosed) ? POLL_WRITE : 0);
     return &private->waitQueue;
 }
 
@@ -152,15 +152,17 @@ static uint64_t pipe_open2(volume_t* volume, sysobj_t* sysobj, file_t* files[2])
         free(private);
         return ERR;
     }
-    files[0]->ops = &fileOps;
 
     files[1] = file_new(volume);
     if (files[1] == NULL)
     {
+        file_deref(files[0]);
         free(private->buffer);
         free(private);
         return ERR;
     }
+
+    files[0]->ops = &fileOps;
     files[1]->ops = &fileOps;
 
     private->readEnd = files[PIPE_READ];

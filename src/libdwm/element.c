@@ -289,6 +289,21 @@ void element_draw_string(element_t* elem, font_t* font, const point_t* point, pi
     element_invalidate(elem, &rect);
 }
 
+void element_draw_transfer(element_t* elem, const rect_t* destRect, const point_t* srcPoint)
+{
+    cmd_draw_transfer_t cmd;
+    CMD_INIT(&cmd, CMD_DRAW_TRANSFER, sizeof(cmd));
+    cmd.dest = elem->win->id;
+    cmd.src = elem->win->id;
+    cmd.destRect = *destRect;
+    cmd.srcPoint = *srcPoint;
+    display_cmds_push(elem->win->disp, &cmd.header);
+
+    element_invalidate(elem, destRect);
+    rect_t srcRect = RECT_INIT_DIM(srcPoint->x, srcPoint->y, RECT_WIDTH(destRect), RECT_HEIGHT(destRect));
+    element_invalidate(elem, &srcRect);
+}
+
 void element_draw_rim(element_t* elem, const rect_t* rect, uint64_t width, pixel_t pixel)
 {
     rect_t leftRect = (rect_t){

@@ -25,19 +25,19 @@ static void button_draw(widget_t* widget, win_t* window, bool redraw)
 
     if (redraw)
     {
-        gfx_rim(&gfx, &rect, winTheme.rimWidth, winTheme.dark);
+        gfx_rim(&gfx, &rect, windowTheme.rimWidth, windowTheme.dark);
     }
-    RECT_SHRINK(&rect, winTheme.rimWidth);
+    RECT_SHRINK(&rect, windowTheme.rimWidth);
 
     if (button->pressed)
     {
-        gfx_edge(&gfx, &rect, winTheme.edgeWidth, winTheme.shadow, winTheme.highlight);
+        gfx_edge(&gfx, &rect, windowTheme.edgeWidth, windowTheme.shadow, windowTheme.highlight);
     }
     else
     {
-        gfx_edge(&gfx, &rect, winTheme.edgeWidth, winTheme.highlight, winTheme.shadow);
+        gfx_edge(&gfx, &rect, windowTheme.edgeWidth, windowTheme.highlight, windowTheme.shadow);
     }
-    RECT_SHRINK(&rect, winTheme.edgeWidth);
+    RECT_SHRINK(&rect, windowTheme.edgeWidth);
 
     if (redraw)
     {

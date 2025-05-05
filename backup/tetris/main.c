@@ -202,46 +202,46 @@ static void block_draw(gfx_t* gfx, block_t block, int64_t x, int64_t y)
 
     rect_t rect = RECT_INIT_DIM(FIELD_LEFT + x * BLOCK_SIZE, FIELD_TOP + y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
 
-    gfx_edge(gfx, &rect, winTheme.edgeWidth, highlightColors[block], shadowColors[block]);
-    RECT_SHRINK(&rect, winTheme.edgeWidth);
+    gfx_edge(gfx, &rect, windowTheme.edgeWidth, highlightColors[block], shadowColors[block]);
+    RECT_SHRINK(&rect, windowTheme.edgeWidth);
     gfx_rect(gfx, &rect, normalColors[block]);
     RECT_SHRINK(&rect, 5);
-    gfx_edge(gfx, &rect, winTheme.edgeWidth, shadowColors[block], highlightColors[block]);
+    gfx_edge(gfx, &rect, windowTheme.edgeWidth, shadowColors[block], highlightColors[block]);
 }
 
 static void side_panel_draw(win_t* window, gfx_t* gfx)
 {
     rect_t rect = RECT_INIT(SIDE_PANEL_LEFT, SIDE_PANEL_TOP, SIDE_PANEL_RIGHT, SIDE_PANEL_BOTTOM);
 
-    gfx_ridge(gfx, &rect, winTheme.ridgeWidth, winTheme.highlight, winTheme.shadow);
+    gfx_ridge(gfx, &rect, windowTheme.ridgeWidth, windowTheme.highlight, windowTheme.shadow);
 
     rect_t textRect = rect;
     textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
-    gfx_text(gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, SIDE_PANEL_FONT_SIZE, "Score", winTheme.dark,
-        winTheme.background);
+    gfx_text(gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, SIDE_PANEL_FONT_SIZE, "Score", windowTheme.dark,
+        windowTheme.background);
 
     textRect.top = textRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
     textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
-    gfx_text(gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, SIDE_PANEL_FONT_SIZE, "Lines", winTheme.dark,
-        winTheme.background);
+    gfx_text(gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, SIDE_PANEL_FONT_SIZE, "Lines", windowTheme.dark,
+        windowTheme.background);
 
     textRect.top = textRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
     textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
-    gfx_text(gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, SIDE_PANEL_FONT_SIZE, "Pieces", winTheme.dark,
-        winTheme.background);
+    gfx_text(gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, SIDE_PANEL_FONT_SIZE, "Pieces", windowTheme.dark,
+        windowTheme.background);
 
     textRect.top = rect.bottom - SIDE_PANEL_FONT_SIZE * 7;
     textRect.bottom = rect.bottom;
-    gfx_text(gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, SIDE_PANEL_FONT_SIZE, "  ASD - Move", winTheme.dark,
-        winTheme.background);
+    gfx_text(gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, SIDE_PANEL_FONT_SIZE, "  ASD - Move", windowTheme.dark,
+        windowTheme.background);
     textRect.top += SIDE_PANEL_FONT_SIZE;
     textRect.bottom += SIDE_PANEL_FONT_SIZE;
-    gfx_text(gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, SIDE_PANEL_FONT_SIZE, "SPACE - Drop", winTheme.dark,
-        winTheme.background);
+    gfx_text(gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, SIDE_PANEL_FONT_SIZE, "SPACE - Drop", windowTheme.dark,
+        windowTheme.background);
     textRect.top += SIDE_PANEL_FONT_SIZE;
     textRect.bottom += SIDE_PANEL_FONT_SIZE;
-    gfx_text(gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, SIDE_PANEL_FONT_SIZE, "    R - Spin", winTheme.dark,
-        winTheme.background);
+    gfx_text(gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, SIDE_PANEL_FONT_SIZE, "    R - Spin", windowTheme.dark,
+        windowTheme.background);
 }
 
 static point_t piece_block_pos_in_field(int64_t pieceX, int64_t pieceY, int64_t blockX, int64_t blockY)
@@ -341,9 +341,9 @@ static void field_edge_draw(gfx_t* gfx)
 {
     rect_t fieldRect = RECT_INIT(FIELD_LEFT, FIELD_TOP, FIELD_RIGHT, FIELD_BOTTOM);
     RECT_EXPAND(&fieldRect, FIELD_PADDING);
-    gfx_rim(gfx, &fieldRect, FIELD_PADDING - winTheme.edgeWidth, winTheme.background);
-    RECT_SHRINK(&fieldRect, FIELD_PADDING - winTheme.edgeWidth);
-    gfx_edge(gfx, &fieldRect, winTheme.edgeWidth, winTheme.shadow, winTheme.highlight);
+    gfx_rim(gfx, &fieldRect, FIELD_PADDING - windowTheme.edgeWidth, windowTheme.background);
+    RECT_SHRINK(&fieldRect, FIELD_PADDING - windowTheme.edgeWidth);
+    gfx_edge(gfx, &fieldRect, windowTheme.edgeWidth, windowTheme.shadow, windowTheme.highlight);
 }
 
 static void field_draw(gfx_t* gfx)
@@ -670,27 +670,27 @@ static void start_tetris_draw(win_t* window, gfx_t* gfx)
         (FIELD_RIGHT + FIELD_LEFT) / 2 - (START_SCREEN_FONT_SIZE / 2) * 2, FIELD_TOP + (FIELD_BOTTOM - FIELD_TOP) / 2);
 
     gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "T", normalColors[BLOCK_RED],
-        winTheme.dark);
+        windowTheme.dark);
     rect.left += (START_SCREEN_FONT_SIZE / 2) + 2;
     rect.right += (START_SCREEN_FONT_SIZE / 2) + 2;
     gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "E", normalColors[BLOCK_ORANGE],
-        winTheme.dark);
+        windowTheme.dark);
     rect.left += (START_SCREEN_FONT_SIZE / 2) - 2;
     rect.right += (START_SCREEN_FONT_SIZE / 2) - 2;
     gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "T", normalColors[BLOCK_YELLOW],
-        winTheme.dark);
+        windowTheme.dark);
     rect.left += (START_SCREEN_FONT_SIZE / 2) + 2;
     rect.right += (START_SCREEN_FONT_SIZE / 2) + 2;
     gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "R", normalColors[BLOCK_GREEN],
-        winTheme.dark);
+        windowTheme.dark);
     rect.left += (START_SCREEN_FONT_SIZE / 2) - 2;
     rect.right += (START_SCREEN_FONT_SIZE / 2) - 2;
     gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "I", normalColors[BLOCK_CYAN],
-        winTheme.dark);
+        windowTheme.dark);
     rect.left += (START_SCREEN_FONT_SIZE / 2);
     rect.right += (START_SCREEN_FONT_SIZE / 2);
     gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE, "S", normalColors[BLOCK_BLUE],
-        winTheme.dark);
+        windowTheme.dark);
 }
 
 static void start_press_space_draw(win_t* window, gfx_t* gfx)
@@ -699,7 +699,7 @@ static void start_press_space_draw(win_t* window, gfx_t* gfx)
 
     rect_t rect = RECT_INIT(FIELD_LEFT, (FIELD_TOP + FIELD_BOTTOM) / 2, FIELD_RIGHT, FIELD_BOTTOM);
     gfx_text(gfx, win_font(window), &rect, GFX_CENTER, GFX_CENTER, START_SCREEN_FONT_SIZE / 2, "PRESS SPACE",
-        blink ? winTheme.bright : winTheme.dark, winTheme.dark);
+        blink ? windowTheme.bright : windowTheme.dark, windowTheme.dark);
     blink = !blink;
 }
 
@@ -717,8 +717,8 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
 
         win_text_prop_t prop = {
             .height = SIDE_PANEL_FONT_SIZE,
-            .foreground = winTheme.bright,
-            .background = winTheme.dark,
+            .foreground = windowTheme.bright,
+            .background = windowTheme.dark,
             .xAlign = GFX_CENTER,
             .yAlign = GFX_CENTER,
         };

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sys/gfx.h>
+#include <libdwm/dwm.h>
 
 typedef struct
 {

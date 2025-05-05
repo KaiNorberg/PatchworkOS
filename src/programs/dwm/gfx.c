@@ -616,10 +616,21 @@ void gfx_transfer(gfx_t* dest, const gfx_t* src, const rect_t* destRect, const p
         return;
     }
 
-    for (int64_t y = 0; y < RECT_HEIGHT(destRect); y++)
+    if (dest == src)
     {
-        memcpy(&dest->buffer[destRect->left + (y + destRect->top) * dest->stride],
-            &src->buffer[srcPoint->x + (y + srcPoint->y) * src->stride], RECT_WIDTH(destRect) * sizeof(pixel_t));
+        for (int64_t y = 0; y < RECT_HEIGHT(destRect); y++)
+        {
+            memmove(&dest->buffer[destRect->left + (y + destRect->top) * dest->stride],
+                &src->buffer[srcPoint->x + (y + srcPoint->y) * src->stride], RECT_WIDTH(destRect) * sizeof(pixel_t));
+        }
+    }
+    else
+    {
+        for (int64_t y = 0; y < RECT_HEIGHT(destRect); y++)
+        {
+            memcpy(&dest->buffer[destRect->left + (y + destRect->top) * dest->stride],
+                &src->buffer[srcPoint->x + (y + srcPoint->y) * src->stride], RECT_WIDTH(destRect) * sizeof(pixel_t));
+        }
     }
 
     gfx_invalidate(dest, destRect);

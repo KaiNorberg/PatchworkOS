@@ -106,6 +106,8 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             case '=':
                 accumulator = input;
                 break;
+            default:
+                return 0;
             }
             input = 0;
 
@@ -115,6 +117,11 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         char buffer[32];
         ulltoa(event->lAction.source == '=' ? accumulator : input, buffer, 10);
         label_set_text(label, buffer);
+    }
+    break;
+    case LEVENT_QUIT:
+    {
+        display_disconnect(window_display(win));
     }
     break;
     }
@@ -129,7 +136,7 @@ int main(void)
     largeFont = font_new(disp, "zap-vga16", 32);
 
     rect_t rect = RECT_INIT_DIM(500, 200, WINDOW_WIDTH, WINDOW_HEIGHT);
-    window_t* win = window_new(disp, "Calculator", &rect, SURFACE_WINDOW, WINDOW_DECO, procedure);
+    window_t* win = window_new(disp, "Calculator", &rect, SURFACE_WINDOW, WINDOW_DECO, procedure, NULL);
     if (win == NULL)
     {
         return EXIT_FAILURE;

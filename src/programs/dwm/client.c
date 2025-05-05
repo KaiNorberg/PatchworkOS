@@ -356,6 +356,8 @@ static uint64_t client_action_draw_string(client_t* client, const cmd_header_t* 
         point.x += font->width * font->scale;
     }
 
+    surface->invalid = true;
+    compositor_set_redraw_needed();
     return 0;
 }
 
@@ -394,6 +396,33 @@ static uint64_t client_action_surface_move(client_t* client, const cmd_header_t*
     return 0;
 }
 
+static uint64_t client_action_draw_transfer(client_t* client, const cmd_header_t* header)
+{
+    if (header->size != sizeof(cmd_draw_transfer_t))
+    {
+        return ERR;
+    }
+    cmd_draw_transfer_t* cmd = (cmd_draw_transfer_t*)header;
+
+    surface_t* dest = client_find_surface(client, cmd->dest);
+    if (dest == NULL)
+    {
+        return ERR;
+    }
+
+    surface_t* src = cmd->dest == cmd->src ? dest : client_find_surface(client, cmd->src);
+    if (src == NULL)
+    {
+        return ERR;
+    }
+
+    rect_t surfaceRect = SURFACE_CONTENT_RECT(dest);
+    rect_t destRect = cmd->destRect;
+    RECT_FIT(&destRect, &surfaceRect);
+    gfx_transfer(&dest->gfx, &src->gfx, &destRect, &cmd->srcPoint);
+    return 0;
+}
+
 static uint64_t (*actions[])(client_t*, const cmd_header_t*) = {
     [CMD_SCREEN_INFO] = client_action_screen_info,
     [CMD_SURFACE_NEW] = client_action_surface_new,
@@ -406,12 +435,13 @@ static uint64_t (*actions[])(client_t*, const cmd_header_t*) = {
     [CMD_FONT_INFO] = client_action_font_info,
     [CMD_DRAW_STRING] = client_action_draw_string,
     [CMD_SURFACE_MOVE] = client_action_surface_move,
+    [CMD_DRAW_TRANSFER] = client_action_draw_transfer,
 };
 
 uint64_t client_recieve_cmds(client_t* client)
 {
     uint64_t readSize =
-        read(client->fd, &client->cmds, sizeof(cmd_buffer_t) + 1); // Add plus one to check if packet is to big
+        read(client->fd, &client->cmds, sizeof(cmd_buffer_t) + 1);
     if (readSize > sizeof(cmd_buffer_t) || readSize == 0)          // Program wrote to much or end of file
     {
         return ERR;
@@ -455,7 +485,7 @@ uint64_t client_send_event(client_t* client, surface_id_t target, event_type_t t
     memcpy(&event.raw, data, size);
     if (write(client->fd, &event, sizeof(event_t)) == ERR)
     {
-        printf("client_send_event: err %s", strerror(errno));
+        //printf("client_send_event: err %s", strerror(errno));
         return ERR;
     }
     return 0;

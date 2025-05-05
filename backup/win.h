@@ -52,7 +52,7 @@ typedef struct win_theme
     uint8_t padding;
 } win_theme_t;
 
-extern win_theme_t winTheme;
+extern win_theme_t windowTheme;
 
 typedef struct win_text_prop
 {

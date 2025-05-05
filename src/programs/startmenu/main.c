@@ -92,7 +92,7 @@ int main(void)
 
     rect_t rect = RECT_INIT_DIM(0, RECT_HEIGHT(&screenRect) - TOPBAR_HEIGHT - START_MENU_HEIGHT, START_MENU_WIDTH,
         START_MENU_HEIGHT);
-    window_t* win = window_new(disp, "StartMenu", &rect, SURFACE_WINDOW, WINDOW_NONE, procedure);
+    window_t* win = window_new(disp, "StartMenu", &rect, SURFACE_WINDOW, WINDOW_NONE, procedure, NULL);
 
     event_t event = {0};
     while (display_connected(disp))

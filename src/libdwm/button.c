@@ -38,8 +38,8 @@ static void button_draw(button_t* button, bool redraw)
     if (redraw)
     {
         element_draw_rect(button->elem, &rect, button->background);
-        element_draw_text(button->elem, &rect, button->font, ALIGN_CENTER, ALIGN_CENTER, button->foreground,
-            button->background, button->text);
+        element_draw_text(button->elem, &rect, button->font, ALIGN_CENTER, ALIGN_CENTER, button->foreground, 0,
+            button->text);
     }
 }
 

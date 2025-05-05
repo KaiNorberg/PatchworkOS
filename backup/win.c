@@ -55,7 +55,7 @@ typedef struct widget
 
 // TODO: this should be stored in some sort of config file, lua? make something custom?
 #define WIN_DEFAULT_FONT "home:/theme/fonts/zap-vga16.psf"
-win_theme_t winTheme = {
+win_theme_t windowTheme = {
     .edgeWidth = 3,
     .rimWidth = 3,
     .ridgeWidth = 2,
@@ -108,10 +108,10 @@ static inline void win_client_surface(win_t* window, gfx_t* gfx)
 static void win_topbar_rect(win_t* window, rect_t* rect)
 {
     *rect = (rect_t){
-        .left = winTheme.edgeWidth + winTheme.padding,
-        .top = winTheme.edgeWidth + winTheme.padding,
-        .right = window->width - winTheme.edgeWidth - winTheme.padding,
-        .bottom = winTheme.topbarHeight + winTheme.edgeWidth - winTheme.padding,
+        .left = windowTheme.edgeWidth + windowTheme.padding,
+        .top = windowTheme.edgeWidth + windowTheme.padding,
+        .right = window->width - windowTheme.edgeWidth - windowTheme.padding,
+        .bottom = windowTheme.topbarHeight + windowTheme.edgeWidth - windowTheme.padding,
     };
 }
 
@@ -120,28 +120,28 @@ static void win_topbar_draw(win_t* window, gfx_t* gfx)
     rect_t rect;
     win_topbar_rect(window, &rect);
 
-    gfx_edge(gfx, &rect, winTheme.edgeWidth, winTheme.dark, winTheme.highlight);
-    RECT_SHRINK(&rect, winTheme.edgeWidth);
+    gfx_edge(gfx, &rect, windowTheme.edgeWidth, windowTheme.dark, windowTheme.highlight);
+    RECT_SHRINK(&rect, windowTheme.edgeWidth);
     if (window->selected)
     {
-        gfx_gradient(gfx, &rect, winTheme.selected, winTheme.selectedHighlight, GFX_GRADIENT_HORIZONTAL, false);
+        gfx_gradient(gfx, &rect, windowTheme.selected, windowTheme.selectedHighlight, GFX_GRADIENT_HORIZONTAL, false);
     }
     else
     {
-        gfx_gradient(gfx, &rect, winTheme.unSelected, winTheme.unSelectedHighlight, GFX_GRADIENT_HORIZONTAL, false);
+        gfx_gradient(gfx, &rect, windowTheme.unSelected, windowTheme.unSelectedHighlight, GFX_GRADIENT_HORIZONTAL, false);
     }
 
     win_close_button_draw(window, gfx);
 
-    rect.left += winTheme.padding * 3;
-    rect.right -= winTheme.topbarHeight;
-    gfx_text(gfx, window->psf, &rect, GFX_MIN, GFX_CENTER, 16, window->name, winTheme.background, 0);
+    rect.left += windowTheme.padding * 3;
+    rect.right -= windowTheme.topbarHeight;
+    gfx_text(gfx, window->psf, &rect, GFX_MIN, GFX_CENTER, 16, window->name, windowTheme.background, 0);
 }
 
 static void win_close_button_rect(win_t* window, rect_t* rect)
 {
     win_topbar_rect(window, rect);
-    RECT_SHRINK(rect, winTheme.edgeWidth);
+    RECT_SHRINK(rect, windowTheme.edgeWidth);
     rect->left = rect->right - (rect->bottom - rect->top);
 }
 
@@ -150,30 +150,30 @@ static void win_close_button_draw(win_t* window, gfx_t* gfx)
     rect_t rect;
     win_close_button_rect(window, &rect);
 
-    gfx_rim(gfx, &rect, winTheme.rimWidth, winTheme.dark);
-    RECT_SHRINK(&rect, winTheme.rimWidth);
+    gfx_rim(gfx, &rect, windowTheme.rimWidth, windowTheme.dark);
+    RECT_SHRINK(&rect, windowTheme.rimWidth);
 
     if (window->closeButtonPressed)
     {
-        gfx_edge(gfx, &rect, winTheme.edgeWidth, winTheme.shadow, winTheme.highlight);
+        gfx_edge(gfx, &rect, windowTheme.edgeWidth, windowTheme.shadow, windowTheme.highlight);
     }
     else
     {
-        gfx_edge(gfx, &rect, winTheme.edgeWidth, winTheme.highlight, winTheme.shadow);
+        gfx_edge(gfx, &rect, windowTheme.edgeWidth, windowTheme.highlight, windowTheme.shadow);
     }
-    RECT_SHRINK(&rect, winTheme.edgeWidth);
-    gfx_rect(gfx, &rect, winTheme.background);
+    RECT_SHRINK(&rect, windowTheme.edgeWidth);
+    gfx_rect(gfx, &rect, windowTheme.background);
 
     RECT_EXPAND(&rect, 32);
-    gfx_text(gfx, window->psf, &rect, GFX_CENTER, GFX_CENTER, 32, "x", winTheme.shadow, 0);
+    gfx_text(gfx, window->psf, &rect, GFX_CENTER, GFX_CENTER, 32, "x", windowTheme.shadow, 0);
 }
 
 static void win_background_draw(win_t* window, gfx_t* gfx)
 {
     rect_t rect = RECT_INIT_GFX(gfx);
 
-    gfx_rect(gfx, &rect, winTheme.background);
-    gfx_edge(gfx, &rect, winTheme.edgeWidth, winTheme.bright, winTheme.dark);
+    gfx_rect(gfx, &rect, windowTheme.background);
+    gfx_edge(gfx, &rect, windowTheme.edgeWidth, windowTheme.bright, windowTheme.dark);
 }
 
 static void win_handle_drag_and_close_button(win_t* window, gfx_t* gfx, const msg_mouse_t* data)
@@ -755,10 +755,10 @@ void win_expand_to_window(rect_t* clientRect, win_flags_t flags)
 {
     if (flags & WIN_DECO)
     {
-        clientRect->left -= winTheme.edgeWidth;
-        clientRect->top -= winTheme.edgeWidth + winTheme.topbarHeight + winTheme.padding;
-        clientRect->right += winTheme.edgeWidth;
-        clientRect->bottom += winTheme.edgeWidth;
+        clientRect->left -= windowTheme.edgeWidth;
+        clientRect->top -= windowTheme.edgeWidth + windowTheme.topbarHeight + windowTheme.padding;
+        clientRect->right += windowTheme.edgeWidth;
+        clientRect->bottom += windowTheme.edgeWidth;
     }
 }
 
@@ -766,10 +766,10 @@ void win_shrink_to_client(rect_t* windowRect, win_flags_t flags)
 {
     if (flags & WIN_DECO)
     {
-        windowRect->left += winTheme.edgeWidth;
-        windowRect->top += winTheme.edgeWidth + winTheme.topbarHeight + winTheme.padding;
-        windowRect->right -= winTheme.edgeWidth;
-        windowRect->bottom -= winTheme.edgeWidth;
+        windowRect->left += windowTheme.edgeWidth;
+        windowRect->top += windowTheme.edgeWidth + windowTheme.topbarHeight + windowTheme.padding;
+        windowRect->right -= windowTheme.edgeWidth;
+        windowRect->bottom -= windowTheme.edgeWidth;
     }
 }
 
@@ -795,17 +795,17 @@ static uint64_t win_popup_procedure(win_t* window, const msg_t* msg)
             RECT_HEIGHT(&clientRect) - POPUP_BUTTON_AREA_HEIGHT + POPUP_BUTTON_HEIGHT / 2 - 10, POPUP_BUTTON_WIDTH,
             POPUP_BUTTON_HEIGHT);
         rect_t leftButtonRect = middleButtonRect;
-        leftButtonRect.left -= POPUP_BUTTON_WIDTH + winTheme.padding * 3;
-        leftButtonRect.right -= POPUP_BUTTON_WIDTH + winTheme.padding * 3;
+        leftButtonRect.left -= POPUP_BUTTON_WIDTH + windowTheme.padding * 3;
+        leftButtonRect.right -= POPUP_BUTTON_WIDTH + windowTheme.padding * 3;
         rect_t rightButtonRect = middleButtonRect;
-        rightButtonRect.left += POPUP_BUTTON_WIDTH + winTheme.padding * 3;
-        rightButtonRect.right += POPUP_BUTTON_WIDTH + winTheme.padding * 3;
+        rightButtonRect.left += POPUP_BUTTON_WIDTH + windowTheme.padding * 3;
+        rightButtonRect.right += POPUP_BUTTON_WIDTH + windowTheme.padding * 3;
 
         win_text_prop_t buttonTextProps = {.height = 16,
             .xAlign = GFX_CENTER,
             .yAlign = GFX_CENTER,
-            .foreground = winTheme.dark,
-            .background = winTheme.background};
+            .foreground = windowTheme.dark,
+            .background = windowTheme.background};
 
         switch (popupData->type)
         {
@@ -836,12 +836,12 @@ static uint64_t win_popup_procedure(win_t* window, const msg_t* msg)
 
         rect_t textRect = RECT_INIT_GFX(&gfx);
         textRect.bottom -= POPUP_BUTTON_AREA_HEIGHT;
-        gfx_text_multiline(&gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, 16, popupData->text, winTheme.dark,
-            winTheme.background);
+        gfx_text_multiline(&gfx, win_font(window), &textRect, GFX_CENTER, GFX_CENTER, 16, popupData->text, windowTheme.dark,
+            windowTheme.background);
 
         rect_t buttonArea = RECT_INIT_GFX(&gfx);
         buttonArea.top = buttonArea.bottom - POPUP_BUTTON_AREA_HEIGHT;
-        // gfx_rect(&gfx, &buttonArea, winTheme.unSelected);
+        // gfx_rect(&gfx, &buttonArea, windowTheme.unSelected);
 
         win_draw_end(window, &gfx);
     }
