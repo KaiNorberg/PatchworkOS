@@ -440,9 +440,8 @@ static uint64_t (*actions[])(client_t*, const cmd_header_t*) = {
 
 uint64_t client_recieve_cmds(client_t* client)
 {
-    uint64_t readSize =
-        read(client->fd, &client->cmds, sizeof(cmd_buffer_t) + 1);
-    if (readSize > sizeof(cmd_buffer_t) || readSize == 0)          // Program wrote to much or end of file
+    uint64_t readSize = read(client->fd, &client->cmds, sizeof(cmd_buffer_t) + 1);
+    if (readSize > sizeof(cmd_buffer_t) || readSize == 0) // Program wrote to much or end of file
     {
         return ERR;
     }
@@ -485,7 +484,7 @@ uint64_t client_send_event(client_t* client, surface_id_t target, event_type_t t
     memcpy(&event.raw, data, size);
     if (write(client->fd, &event, sizeof(event_t)) == ERR)
     {
-        //printf("client_send_event: err %s", strerror(errno));
+        // printf("client_send_event: err %s", strerror(errno));
         return ERR;
     }
     return 0;

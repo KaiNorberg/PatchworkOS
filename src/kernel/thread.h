@@ -21,7 +21,7 @@ typedef struct thread
     list_entry_t entry;
     process_t* process;
     tid_t id;
-    bool dead;
+    atomic_bool dead;
     nsec_t timeStart;
     nsec_t timeEnd;
     waitsys_thread_ctx_t waitsys;
@@ -39,3 +39,5 @@ void thread_free(thread_t* thread);
 void thread_save(thread_t* thread, const trap_frame_t* trapFrame);
 
 void thread_load(thread_t* thread, trap_frame_t* trapFrame);
+
+bool thread_dead(thread_t* thread);

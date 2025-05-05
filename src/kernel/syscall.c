@@ -491,7 +491,7 @@ void syscall_handler_end(void)
 {
     thread_t* thread = sched_thread();
 
-    if (atomic_load(&thread->process->dead) || thread->dead)
+    if (thread_dead(thread))
     {
         sched_thread_exit();
     }

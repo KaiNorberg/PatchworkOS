@@ -132,11 +132,11 @@ static void waitsys_handle_blocked_threads(trap_frame_t* trapFrame, cpu_t* self)
     LIST_FOR_EACH_SAFE(thread, temp, &self->waitsys.blockedThreads, entry)
     {
         block_result_t result = BLOCK_NORM;
-        if (atomic_load(&thread->process->dead) || thread->dead)
+        if (thread_dead(thread)) // TODO: Oh so many race conditions.
         {
             result = BLOCK_DEAD;
         }
-        else if (systime_uptime() >= thread->waitsys.deadline)
+        else if (systime_uptime() >= thread->waitsys.deadline) // TODO: Sort threads by deadline
         {
             result = BLOCK_TIMEOUT;
         }
@@ -236,11 +236,6 @@ void waitsys_unblock(wait_queue_t* waitQueue, uint64_t amount)
 // Sets up a threads waitsys ctx but does not yet block
 static uint64_t waitsys_thread_setup(thread_t* thread, wait_queue_t** waitQueues, uint64_t amount, nsec_t timeout)
 {
-    if (thread->dead)
-    {
-        return ERROR(EINVAL);
-    }
-
     if (amount > CONFIG_MAX_BLOCKERS_PER_THREAD)
     {
         return ERROR(EBLOCKLIMIT);
@@ -289,6 +284,11 @@ block_result_t waitsys_block(wait_queue_t* waitQueue, nsec_t timeout)
     ASSERT_PANIC(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 
     thread_t* thread = smp_self()->sched.runThread;
+    if (thread_dead(thread))
+    {
+        smp_put();
+        return BLOCK_DEAD;
+    }
     if (waitsys_thread_setup(thread, &waitQueue, 1, timeout) == ERR)
     {
         smp_put();
@@ -309,10 +309,14 @@ block_result_t waitsys_block_lock(wait_queue_t* waitQueue, nsec_t timeout, lock_
     }
 
     ASSERT_PANIC(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
-    ASSERT_PANIC(
-        smp_self_unsafe()->cli.depth == 1); // Only one lock is allowed to be acquired when calling this function.
+    // Only one lock is allowed to be acquired when calling this function.
+    ASSERT_PANIC(smp_self_unsafe()->cli.depth == 1);
 
     thread_t* thread = smp_self_unsafe()->sched.runThread;
+    if (thread_dead(thread))
+    {
+        return BLOCK_DEAD;
+    }
     if (waitsys_thread_setup(thread, &waitQueue, 1, timeout) == ERR)
     {
         return BLOCK_ERROR;
@@ -336,6 +340,11 @@ block_result_t waitsys_block_many(wait_queue_t** waitQueues, uint64_t amount, ns
     ASSERT_PANIC(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 
     thread_t* thread = smp_self()->sched.runThread;
+    if (thread_dead(thread))
+    {
+        smp_put();
+        return BLOCK_DEAD;
+    }
     if (waitsys_thread_setup(thread, waitQueues, amount, timeout) == ERR)
     {
         smp_put();

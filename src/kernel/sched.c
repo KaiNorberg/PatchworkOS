@@ -213,7 +213,7 @@ void sched_process_exit(uint64_t status)
     // TODO: Add handling for status
 
     sched_ctx_t* ctx = &smp_self()->sched;
-    ctx->runThread->dead = true;
+    atomic_store(&ctx->runThread->dead, true);
     atomic_store(&ctx->runThread->process->dead, true);
     printf("sched: process_exit pid=%d", ctx->runThread->process->id);
     smp_put();
@@ -225,7 +225,7 @@ void sched_process_exit(uint64_t status)
 void sched_thread_exit(void)
 {
     sched_ctx_t* ctx = &smp_self()->sched;
-    ctx->runThread->dead = true;
+    atomic_store(&ctx->runThread->dead, true);
     smp_put();
 
     sched_invoke();
@@ -281,7 +281,8 @@ static void sched_update_zombie_threads(trap_frame_t* trapFrame, sched_ctx_t* ct
     }
 
     if (ctx->runThread != NULL &&
-        (ctx->runThread->dead || (atomic_load(&ctx->runThread->process->dead) && trapFrame->cs != GDT_KERNEL_CODE)))
+        (atomic_load(&ctx->runThread->dead) ||
+            (atomic_load(&ctx->runThread->process->dead) && trapFrame->cs != GDT_KERNEL_CODE)))
     {
         list_push(&ctx->zombieThreads, &ctx->runThread->entry);
         ctx->runThread = NULL;

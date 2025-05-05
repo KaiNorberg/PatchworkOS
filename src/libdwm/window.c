@@ -94,7 +94,8 @@ static void window_deco_handle_dragging(window_t* win, element_t* elem, const ev
 
     if (private->dragging)
     {
-        rect_t rect = RECT_INIT_DIM(event->screenPos.x - private->dragOffset.x, event->screenPos.y - private->dragOffset.y, RECT_WIDTH(&win->rect), RECT_HEIGHT(&win->rect));
+        rect_t rect = RECT_INIT_DIM(event->screenPos.x - private->dragOffset.x,
+            event->screenPos.y - private->dragOffset.y, RECT_WIDTH(&win->rect), RECT_HEIGHT(&win->rect));
         window_move(win, &rect);
 
         if (!(event->held & MOUSE_LEFT))
@@ -104,7 +105,8 @@ static void window_deco_handle_dragging(window_t* win, element_t* elem, const ev
     }
     else if (RECT_CONTAINS_POINT(&topBarWithoutButtons, &event->pos) && event->pressed & MOUSE_LEFT)
     {
-        private->dragOffset = (point_t){.x = event->screenPos.x - win->rect.left, .y = event->screenPos.y - win->rect.top};
+        private->dragOffset =
+            (point_t){.x = event->screenPos.x - win->rect.left, .y = event->screenPos.y - win->rect.top};
         private->dragging = true;
     }
 }
@@ -128,7 +130,8 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
 
         rect_t closeButton;
         window_deco_button_rect(win, elem, &closeButton, WINDOW_DECO_CLOSE_BUTTON_INDEX);
-        if (button_new(elem, WINDOW_DECO_CLOSE_BUTTON_ID, &closeButton, private->bigFont, windowTheme.dark, windowTheme.background, BUTTON_NONE, "x") == NULL)
+        if (button_new(elem, WINDOW_DECO_CLOSE_BUTTON_ID, &closeButton, private->bigFont, windowTheme.dark,
+                windowTheme.background, BUTTON_NONE, "x") == NULL)
         {
             return ERR;
         }
@@ -366,7 +369,8 @@ uint64_t window_dispatch(window_t* win, const event_t* event)
     break;
     case EVENT_SURFACE_MOVE:
     {
-        if (RECT_WIDTH(&win->rect) != RECT_WIDTH(&event->surfaceMove.rect) || RECT_HEIGHT(&win->rect) != RECT_HEIGHT(&event->surfaceMove.rect))
+        if (RECT_WIDTH(&win->rect) != RECT_WIDTH(&event->surfaceMove.rect) ||
+            RECT_HEIGHT(&win->rect) != RECT_HEIGHT(&event->surfaceMove.rect))
         {
             levent_redraw_t event;
             event.id = win->root->id;

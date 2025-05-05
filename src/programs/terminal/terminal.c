@@ -56,7 +56,7 @@ static void terminal_scroll(terminal_t* term, element_t* elem)
     element_content_rect(elem, &rect);
     RECT_SHRINK(&rect, windowTheme.edgeWidth);
 
-    //gfx_scroll(gfx, &rect, win_font(term->win)->height, windowTheme.dark);
+    // gfx_scroll(gfx, &rect, win_font(term->win)->height, windowTheme.dark);
 }
 
 static void terminal_draw_char(terminal_t* term, element_t* elem, const point_t* point, char chr)
@@ -337,7 +337,8 @@ void terminal_deinit(terminal_t* term)
 
 bool terminal_update(terminal_t* term)
 {
-    pollfd_t fds[] = {{.fd = term->stdout[PIPE_READ], .requested = POLL_READ}, {.fd = display_fd(term->disp), .requested = POLL_READ}};
+    pollfd_t fds[] = {{.fd = term->stdout[PIPE_READ], .requested = POLL_READ},
+        {.fd = display_fd(term->disp), .requested = POLL_READ}};
     if (poll(fds, 2, BLINK_INTERVAL) == 0)
     {
         display_emit(term->disp, window_id(term->win), UEVENT_TERMINAL_TIMER, NULL, 0);

@@ -32,8 +32,8 @@ static builtin_t builtins[] = {
     {
         .name = "cd",
         .synopsis = "cd [DIRECTORY]",
-        .description =
-            "If DIRECTORY is given, the current working directory will be set to DIRECTORY else it will be set to \"home:/usr\"",
+        .description = "If DIRECTORY is given, the current working directory will be set to DIRECTORY else it will be "
+                       "set to \"home:/usr\"",
         .callback = builtin_cd,
     },
     /*{
@@ -45,8 +45,8 @@ static builtin_t builtins[] = {
     {
         .name = "help",
         .synopsis = "help [builtin]",
-        .description =
-            "If builtin is given, information about builtin will be printed, else a list of available builtins will be printed.",
+        .description = "If builtin is given, information about builtin will be printed, else a list of available "
+                       "builtins will be printed.",
         .callback = builtin_help,
     },
 };
