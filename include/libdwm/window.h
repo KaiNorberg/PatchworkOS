@@ -20,7 +20,8 @@ typedef enum win_flags
 {
     WINDOW_NONE = 0,
     WINDOW_DECO = (1 << 0),
-    WINDOW_RESIZABLE = (1 << 1)
+    WINDOW_RESIZABLE = (1 << 1),
+    WINDOW_NO_CONTROLS = (1 << 2)
 } window_flags_t;
 
 typedef struct win_theme

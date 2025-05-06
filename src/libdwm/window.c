@@ -85,12 +85,14 @@ static void window_deco_handle_dragging(window_t* win, element_t* elem, const ev
 {
     deco_private_t* private = element_private(elem);
 
-    rect_t lastButton;
-    window_deco_button_rect(win, elem, &lastButton, WINDOW_DECO_BUTTON_AMOUNT - 1);
-
     rect_t topBarWithoutButtons;
     window_deco_topbar_rect(win, elem, &topBarWithoutButtons);
-    topBarWithoutButtons.right = lastButton.right;
+    if (!(win->flags & WINDOW_NO_CONTROLS))
+    {
+        rect_t lastButton;
+        window_deco_button_rect(win, elem, &lastButton, WINDOW_DECO_BUTTON_AMOUNT - 1);
+        topBarWithoutButtons.right = lastButton.right;
+    }
 
     if (private->dragging)
     {
@@ -127,6 +129,11 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
         private->dragging = false;
         private->bigFont = font_new(window_display(win), "zap-vga16", 32);
         element_set_private(elem, private);
+
+        if (win->flags & WINDOW_NO_CONTROLS)
+        {
+            break;
+        }
 
         rect_t closeButton;
         window_deco_button_rect(win, elem, &closeButton, WINDOW_DECO_CLOSE_BUTTON_INDEX);

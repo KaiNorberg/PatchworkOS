@@ -473,12 +473,14 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
         return ERR;
     }
 
+    printf("test1");
     if (WAITSYS_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
             ring_data_length(ring) >= sizeof(local_packet_header_t) || local_connection_closed(conn)) != BLOCK_NORM)
     {
         lock_release(&conn->lock);
         return 0;
     }
+    printf("test2");
 
     if (local_connection_closed(conn))
     {

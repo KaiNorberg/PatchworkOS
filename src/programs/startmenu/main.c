@@ -73,7 +73,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
                 char buffer[MAX_PATH];
                 sprintf(buffer, "Failed to spawn (%s)!", entries[event->lAction.source].path);
 
-                // win_popup(buffer, "Error!", POPUP_TYPE_OK, NULL);
+                popup_open(buffer, "Error!", POPUP_OK);
             }
         }
     }

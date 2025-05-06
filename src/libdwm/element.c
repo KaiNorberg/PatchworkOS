@@ -421,12 +421,151 @@ void element_draw_text(element_t* elem, const rect_t* rect, font_t* font, align_
         }
 
         element_draw_string(elem, font, &startPoint, foreground, background, text, maxLen - 3);
-        startPoint.x += maxLen * font->width;
+        startPoint.x += (maxLen - 3) * font->width;
         element_draw_string(elem, font, &startPoint, foreground, background, "...", 3);
         return;
     }
 
     element_draw_string(elem, font, &startPoint, foreground, background, text, textLen);
+}
+
+void element_draw_text_multiline(element_t* elem, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign,
+    pixel_t foreground, pixel_t background, const char* text)
+{
+    if (text == NULL || *text == '\0')
+    {
+        return;
+    }
+
+    if (font == NULL)
+    {
+        font = font_default(elem->win->disp);
+    }
+
+    int64_t fontWidth = font_width(font);
+    int64_t fontHeight = font_height(font);
+
+    int64_t numLines = 1;
+    int64_t maxLineWidth = 0;
+
+    int64_t wordLength = 0;
+    int64_t currentXPos = 0;
+    const char* chr = text;
+    while (true)
+    {
+        if (*chr == ' ' || *chr == '\0')
+        {
+            int64_t wordEndPos = currentXPos + wordLength * fontWidth;
+            if (wordEndPos > RECT_WIDTH(rect))
+            {
+                numLines++;
+                maxLineWidth = MAX(maxLineWidth, currentXPos);
+                currentXPos = wordLength * fontWidth;
+            }
+            else
+            {
+                currentXPos = wordEndPos;
+            }
+            if (*chr == '\0')
+            {
+                maxLineWidth = MAX(maxLineWidth, currentXPos);
+                break;
+            }
+            wordLength = 0;
+            currentXPos += fontWidth;
+        }
+        else
+        {
+            wordLength++;
+        }
+        chr++;
+    }
+
+    point_t startPoint;
+    switch (xAlign)
+    {
+    case ALIGN_CENTER:
+    {
+        startPoint.x = rect->left + (RECT_WIDTH(rect) - maxLineWidth) / 2;
+    }
+    break;
+    case ALIGN_MAX:
+    {
+        startPoint.x = rect->right - maxLineWidth;
+    }
+    break;
+    case ALIGN_MIN:
+    {
+        startPoint.x = rect->left;
+    }
+    break;
+    default:
+    {
+        return;
+    }
+    }
+
+    switch (yAlign)
+    {
+    case ALIGN_CENTER:
+    {
+        int64_t totalTextHeight = fontHeight * numLines;
+        startPoint.y = rect->top + (RECT_HEIGHT(rect) - totalTextHeight) / 2;
+    }
+    break;
+    case ALIGN_MAX:
+    {
+        startPoint.y = MAX(rect->top, rect->bottom - (int64_t)fontHeight * numLines);
+    }
+    break;
+    case ALIGN_MIN:
+    {
+        startPoint.y = rect->top;
+    }
+    break;
+    default:
+    {
+        return;
+    }
+    }
+
+    chr = text;
+    point_t currentPoint = startPoint;
+    while (*chr != '\0')
+    {
+        const char* wordStart = chr;
+        wordLength = 0;
+        while (*chr != ' ' && *chr != '\0')
+        {
+            wordLength++;
+            chr++;
+        }
+
+        int64_t wordWidth = wordLength * fontWidth;
+
+        if (currentPoint.x + wordWidth > rect->right)
+        {
+            currentPoint.y += fontHeight;
+            currentPoint.x = startPoint.x;
+        }
+
+        element_draw_string(elem, font, &currentPoint, foreground, background, wordStart, wordLength);
+        currentPoint.x += wordWidth;
+
+        if (*chr == ' ')
+        {
+            if (currentPoint.x + fontWidth > rect->right)
+            {
+                currentPoint.y += fontHeight;
+            }
+            else
+            {
+                element_draw_string(elem, font, &currentPoint, foreground, background, " ", 1);
+                currentPoint.x += fontWidth;
+            }
+            chr++;
+        }
+    }
 }
 
 void element_draw_ridge(element_t* elem, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background)

@@ -70,6 +70,9 @@ void element_draw_string(element_t* elem, font_t* font, const point_t* point, pi
 void element_draw_text(element_t* elem, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign,
     pixel_t foreground, pixel_t background, const char* text);
 
+void element_draw_text_multiline(element_t* elem, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign,
+    pixel_t foreground, pixel_t background, const char* text);
+
 void element_draw_ridge(element_t* elem, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background);
 
 void element_send_redraw(element_t* elem, bool propagate);

@@ -14,5 +14,6 @@
 #include "surface.h"
 #include "widgets.h"
 #include "window.h"
+#include "popup.h"
 
 #endif

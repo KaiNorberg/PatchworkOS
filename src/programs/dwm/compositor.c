@@ -234,7 +234,7 @@ void compositor_draw(compositor_ctx_t* ctx)
     screen_swap();
 
     nsec_t swapEnd = uptime();
-    printf("draw time: %d microseconds, swap time: %d microseconds", (drawEnd - start) / 1000, (swapEnd - start) / 1000);
+    printf("draw time: %d microseconds, swap time: %d microseconds", (drawEnd - start) / 1000, (swapEnd - start) );
 }
 
 void compositor_set_redraw_needed(void)

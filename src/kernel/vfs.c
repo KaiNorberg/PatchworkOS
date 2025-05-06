@@ -396,11 +396,6 @@ void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
 
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
 {
-    if (amount > CONFIG_MAX_BLOCKERS_PER_THREAD)
-    {
-        return ERROR(EBLOCKLIMIT);
-    }
-
     for (uint64_t i = 0; i < amount; i++)
     {
         if (files[i].file == NULL)
@@ -418,12 +413,18 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
         files[i].occurred = 0;
     }
 
-    wait_queue_t* waitQueues[CONFIG_MAX_BLOCKERS_PER_THREAD];
+    wait_queue_t** waitQueues = malloc(sizeof(wait_queue_t) * amount);
+    if (waitQueues == NULL)
+    {
+        return ERR;
+    }
+
     for (uint64_t i = 0; i < amount; i++)
     {
         waitQueues[i] = files[i].file->ops->poll(files[i].file, &files[i]);
         if (waitQueues[i] == NULL)
         {
+            free(waitQueues);
             return ERR;
         }
     }
@@ -438,11 +439,13 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
         {
             if (files[i].file == NULL || files[i].file->ops == NULL)
             {
+                free(waitQueues);
                 return ERROR(EINVAL);
             }
 
             if (files[i].file->ops->poll(files[i].file, &files[i]) == NULL)
             {
+                free(waitQueues);
                 return ERR;
             }
 
@@ -462,6 +465,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
         currentTime = systime_uptime();
     }
 
+    free(waitQueues);
     return events;
 }
 

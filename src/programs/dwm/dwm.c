@@ -215,6 +215,13 @@ void dwm_focus_set(surface_t* surface)
     if (surface != NULL)
     {
         client_send_event(surface->client, surface->id, EVENT_FOCUS_IN, NULL, 0);
+        if (surface->type == SURFACE_WINDOW)
+        {
+            // Move to end of list
+            list_remove(&surface->dwmEntry);
+            list_push(&windows, &surface->dwmEntry);
+            surface->moved = true;
+        }
         focus = surface;
     }
     else
@@ -257,30 +264,6 @@ static surface_t* dwm_surface_under_point(const point_t* point)
     }
 
     return NULL;
-}
-
-static void dwm_poll_ctx_update(void)
-{
-    pollCtx = realloc(pollCtx, sizeof(poll_ctx_t) + (sizeof(pollfd_t) * clientAmount));
-    pollCtx->data.fd = data;
-    pollCtx->data.requested = POLL_READ;
-    pollCtx->data.occurred = 0;
-    pollCtx->kbd.fd = kbd;
-    pollCtx->kbd.requested = POLL_READ;
-    pollCtx->kbd.occurred = 0;
-    pollCtx->mouse.fd = mouse;
-    pollCtx->mouse.requested = POLL_READ;
-    pollCtx->mouse.occurred = 0;
-
-    uint64_t i = 0;
-    client_t* client;
-    LIST_FOR_EACH(client, &clients, entry)
-    {
-        pollfd_t* fd = &pollCtx->clients[i++];
-        fd->fd = client->fd;
-        fd->requested = POLL_READ;
-        fd->occurred = 0;
-    }
 }
 
 // TODO: Cache this or something
@@ -452,11 +435,33 @@ static void dwm_mouse_read(void)
     dwm_handle_mouse_event(&total);
 }
 
+static void dwm_poll_ctx_update(void)
+{
+    pollCtx = realloc(pollCtx, sizeof(poll_ctx_t) + (sizeof(pollfd_t) * clientAmount));
+    pollCtx->data.fd = data;
+    pollCtx->data.requested = POLL_READ;
+    pollCtx->data.occurred = 0;
+    pollCtx->kbd.fd = kbd;
+    pollCtx->kbd.requested = POLL_READ;
+    pollCtx->kbd.occurred = 0;
+    pollCtx->mouse.fd = mouse;
+    pollCtx->mouse.requested = POLL_READ;
+    pollCtx->mouse.occurred = 0;
+
+    uint64_t i = 0;
+    client_t* client;
+    LIST_FOR_EACH(client, &clients, entry)
+    {
+        pollfd_t* fd = &pollCtx->clients[i++];
+        fd->fd = client->fd;
+        fd->requested = POLL_READ;
+        fd->occurred = 0;
+    }
+}
+
 static void dwm_poll(void)
 {
-    printf("dwm_poll start");
     dwm_poll_ctx_update();
-    printf("dwm_poll end");
 
     surface_t* timer = dwm_next_timer();
     nsec_t timeout = NEVER;
@@ -466,7 +471,9 @@ static void dwm_poll(void)
         timeout = timer->timer.deadline > time ? timer->timer.deadline - time : 0;
     }
 
-    poll((pollfd_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(pollfd_t) + clientAmount, timeout);
+    printf("dwm_poll start");
+    uint64_t events = poll((pollfd_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(pollfd_t) + clientAmount, timeout);
+    printf("dwm_poll end %d %s", events, strerror(errno));
 
     nsec_t time = uptime();
     if (timer != NULL && time >= timer->timer.deadline)
@@ -489,14 +496,17 @@ static void dwm_update(void)
 
     if (pollCtx->data.occurred & POLL_READ)
     {
+        printf("client accept");
         dwm_client_accept();
     }
     if (pollCtx->kbd.occurred & POLL_READ)
     {
+        printf("kbd read");
         dwm_kbd_read();
     }
     if (pollCtx->mouse.occurred & POLL_READ)
     {
+        printf("mouse read");
         dwm_mouse_read();
     }
 
@@ -508,6 +518,7 @@ static void dwm_update(void)
         pollfd_t* fd = &pollCtx->clients[i++];
         if (fd->occurred & POLL_READ)
         {
+            printf("client_recieve_cmds %d", i);
             if (client_recieve_cmds(client) == ERR)
             {
                 dwm_client_disconnect(client);

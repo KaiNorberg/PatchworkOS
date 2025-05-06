@@ -87,14 +87,15 @@ typedef struct wait_queue
     list_t entries;
 } wait_queue_t;
 
-typedef struct wait_queue_entry
+typedef struct wait_entry
 {
-    list_entry_t entry;
+    list_entry_t queueEntry; // Used in wait_queue_t->entries
+    list_entry_t threadEntry; // Used in waitsys_thread_ctx_t->entries
     thread_t* thread;
     wait_queue_t* waitQueue;
     bool blocking;
     bool cancelBlock;
-} wait_queue_entry_t;
+} wait_entry_t;
 
 typedef enum
 {
@@ -106,7 +107,7 @@ typedef enum
 
 typedef struct
 {
-    wait_queue_entry_t* waitEntries[CONFIG_MAX_BLOCKERS_PER_THREAD];
+    list_t entries;
     uint8_t entryAmount;
     block_result_t result;
     nsec_t deadline;
