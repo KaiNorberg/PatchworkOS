@@ -668,19 +668,6 @@ void gfx_transfer_blend(gfx_t* dest, const gfx_t* src, const rect_t* destRect, c
     gfx_invalidate(dest, destRect);
 }
 
-void gfx_swap(gfx_t* dest, const gfx_t* src, const rect_t* rect)
-{
-    for (int64_t y = 0; y < RECT_HEIGHT(rect); y++)
-    {
-        uint64_t offset = (rect->left * sizeof(pixel_t)) + (y + rect->top) * sizeof(pixel_t) * dest->stride;
-
-        memcpy((void*)((uint64_t)dest->buffer + offset), (void*)((uint64_t)src->buffer + offset),
-            RECT_WIDTH(rect) * sizeof(pixel_t));
-    }
-
-    gfx_invalidate(dest, rect);
-}
-
 void gfx_invalidate(gfx_t* gfx, const rect_t* rect)
 {
     if (RECT_AREA(&gfx->invalidRect) == 0)

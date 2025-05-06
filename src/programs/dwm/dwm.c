@@ -329,12 +329,14 @@ static void dwm_kbd_read(void)
     if (poll1(kbd, POLL_READ, 0) == POLL_READ)
     {
         // The kbd_event_t and event_kbd_t naming is a bit weird.
+        printf("dwm_kbd_read start");
         kbd_event_t kbdEvent;
         if (read(kbd, &kbdEvent, sizeof(kbd_event_t)) != sizeof(kbd_event_t))
         {
             printf("dwm error: failed to read kbd event");
             return;
         }
+        printf("dwm_kbd_read start");
 
         if (focus == NULL)
         {
@@ -422,10 +424,12 @@ static void dwm_mouse_read(void)
     bool received = false;
     while (1)
     {
+        printf("dwm_mouse_read start");
         if (poll1(mouse, POLL_READ, 0) != POLL_READ)
         {
             break;
         }
+        printf("dwm_mouse_read end");
 
         mouse_event_t mouseEvent;
         if (read(mouse, &mouseEvent, sizeof(mouse_event_t)) != sizeof(mouse_event_t))
@@ -450,7 +454,9 @@ static void dwm_mouse_read(void)
 
 static void dwm_poll(void)
 {
+    printf("dwm_poll start");
     dwm_poll_ctx_update();
+    printf("dwm_poll end");
 
     surface_t* timer = dwm_next_timer();
     nsec_t timeout = NEVER;

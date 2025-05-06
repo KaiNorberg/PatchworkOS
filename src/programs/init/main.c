@@ -28,7 +28,6 @@ int main(void)
     spawn_program("home:/bin/wall");
     spawn_program("home:/bin/cursor");
     spawn_program("home:/bin/taskbar");
-    spawn_program("home:/usr/bin/calculator");
 
     // spawn_program("home:/bin/cursor");
     // spawn_program("home:/bin/taskbar");

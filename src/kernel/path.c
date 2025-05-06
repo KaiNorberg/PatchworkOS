@@ -56,7 +56,7 @@ static uint64_t path_make_canonical(char* dest, char* out, const char* src)
         }
 
         name = name_next(name);
-        if (name == NULL || name[0] == '\0')
+        if (name == NULL || name[0] == '\0' || name[0] == PATH_FLAGS_SEPARATOR)
         {
             *out = '\3';
             return 0;

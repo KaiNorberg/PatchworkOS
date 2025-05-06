@@ -69,6 +69,4 @@ void gfx_transfer(gfx_t* dest, const gfx_t* src, const rect_t* destRect, const p
 
 void gfx_transfer_blend(gfx_t* dest, const gfx_t* src, const rect_t* destRect, const point_t* srcPoint);
 
-void gfx_swap(gfx_t* dest, const gfx_t* src, const rect_t* rect);
-
 void gfx_invalidate(gfx_t* gfx, const rect_t* rect);

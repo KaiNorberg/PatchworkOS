@@ -12,7 +12,9 @@ static void* frontbuffer;
 
 static gfx_t backbuffer;
 
-static void screen_frontbuffer_init(void)
+static tiles_t tiles;
+
+static void frontbuffer_init(void)
 {
     fd_t fb = open("sys:/fb0");
     if (fb == ERR)
@@ -45,7 +47,7 @@ static void screen_frontbuffer_init(void)
     close(fb);
 }
 
-static void screen_backbuffer_init(void)
+static void backbuffer_init(void)
 {
     backbuffer.buffer = malloc(info.stride * info.height * sizeof(pixel_t));
     if (backbuffer.buffer == NULL)
@@ -59,14 +61,83 @@ static void screen_backbuffer_init(void)
     memset(backbuffer.buffer, 0, info.width * info.height * sizeof(pixel_t));
 }
 
+static void tiles_init(void)
+{
+    tiles.columns = (info.width + TILE_SIZE - 1) / TILE_SIZE;
+    tiles.rows = (info.height + TILE_SIZE - 1) / TILE_SIZE;
+    tiles.totalAmount = tiles.columns * tiles.rows;
+    tiles.invalidAmount = 0;
+
+    tiles.map = calloc(tiles.totalAmount, sizeof(bool));
+    if (tiles.map == NULL)
+    {
+        exit(EXIT_FAILURE);
+    }
+    tiles.indices = calloc(tiles.totalAmount, sizeof(uint64_t));
+    if (tiles.indices == NULL)
+    {
+        exit(EXIT_FAILURE);
+    }
+}
+
+static void tiles_invalidate_rect(const rect_t* rect)
+{
+    uint64_t startColumn = rect->left / TILE_SIZE;
+    uint64_t startRow = rect->top / TILE_SIZE;
+    uint64_t endColumn = (rect->right - 1) / TILE_SIZE;
+    uint64_t endRow = (rect->bottom - 1) / TILE_SIZE;
+
+    startColumn = MIN(startColumn, tiles.columns - 1);
+    startRow = MIN(startRow, tiles.rows - 1);
+    endColumn = MIN(endColumn, tiles.columns - 1);
+    endRow = MIN(endRow, tiles.rows - 1);
+
+    for (uint64_t row = startRow; row <= endRow; row++)
+    {
+        for (uint64_t column = startColumn; column <= endColumn; column++)
+        {
+            uint64_t i = row * tiles.columns + column;
+            if (!tiles.map[i])
+            {
+                tiles.map[i] = true;
+                tiles.indices[tiles.invalidAmount] = i;
+                tiles.invalidAmount++;
+            }
+        }
+    }
+}
+
+static void tiles_index_to_rect(uint64_t index, rect_t* rect)
+{
+    uint64_t column = index % tiles.columns;
+    uint64_t row = index / tiles.columns;
+
+    rect->left = column * TILE_SIZE;
+    rect->top = row * TILE_SIZE;
+    rect->right = MIN((uint64_t)rect->left + TILE_SIZE, info.width);
+    rect->bottom = MIN((uint64_t)rect->top + TILE_SIZE, info.height);
+}
+
+static void tiles_clear(void)
+{
+    for (uint64_t i = 0; i < tiles.invalidAmount; i++)
+    {
+        tiles.map[tiles.indices[i]] = false;
+    }
+    tiles.invalidAmount = 0;
+}
+
 void screen_init(void)
 {
-    screen_frontbuffer_init();
-    screen_backbuffer_init();
+    frontbuffer_init();
+    backbuffer_init();
+    tiles_init();
 }
 
 void screen_deinit(void)
 {
+    free(tiles.map);
+    free(tiles.indices);
     free(backbuffer.buffer);
     munmap(frontbuffer, info.stride * info.height * sizeof(uint32_t));
 }
@@ -78,6 +149,7 @@ void screen_transfer(surface_t* surface, const rect_t* rect)
         .y = MAX(rect->top - surface->pos.y, 0),
     };
     gfx_transfer(&backbuffer, &surface->gfx, rect, &srcPoint);
+    tiles_invalidate_rect(rect);
 }
 
 void screen_transfer_blend(surface_t* surface, const rect_t* rect)
@@ -87,6 +159,7 @@ void screen_transfer_blend(surface_t* surface, const rect_t* rect)
         .y = MAX(rect->top - surface->pos.y, 0),
     };
     gfx_transfer_blend(&backbuffer, &surface->gfx, rect, &srcPoint);
+    tiles_invalidate_rect(rect);
 }
 
 void screen_swap(void)
@@ -95,12 +168,19 @@ void screen_swap(void)
     {
     case FB_ARGB32:
     {
-        gfx_t gfx;
-        gfx.buffer = frontbuffer;
-        gfx.width = info.width;
-        gfx.height = info.height;
-        gfx.stride = info.stride;
-        gfx_swap(&gfx, &backbuffer, &backbuffer.invalidRect);
+        for (uint64_t i = 0; i < tiles.invalidAmount; i++)
+        {
+            rect_t rect;
+            tiles_index_to_rect(tiles.indices[i], &rect);
+
+            for (int64_t y = 0; y < RECT_HEIGHT(&rect); y++)
+            {
+                uint64_t offset = (rect.left * sizeof(pixel_t)) + (y + rect.top) * sizeof(pixel_t) * info.stride;
+
+                memcpy((void*)((uint64_t)frontbuffer + offset), (void*)((uint64_t)backbuffer.buffer + offset),
+                    RECT_WIDTH(&rect) * sizeof(pixel_t));
+            }
+        }
     }
     break;
     default:
@@ -108,7 +188,7 @@ void screen_swap(void)
         exit(EXIT_FAILURE);
     }
     }
-    backbuffer.invalidRect = (rect_t){0};
+    tiles_clear();
 }
 
 uint64_t screen_width(void)

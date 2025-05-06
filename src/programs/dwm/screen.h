@@ -4,6 +4,18 @@
 
 #include "surface.h"
 
+#define TILE_SIZE 32
+
+typedef struct
+{
+    bool* map;
+    uint64_t* indices;
+    uint64_t columns;
+    uint64_t rows;
+    uint64_t totalAmount;
+    uint64_t invalidAmount;
+} tiles_t;
+
 void screen_init(void);
 
 void screen_deinit(void);

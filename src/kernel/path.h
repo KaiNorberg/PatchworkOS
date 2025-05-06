@@ -4,8 +4,12 @@
 #include <sys/io.h>
 #include <sys/node.h>
 
+// TODO: Implement path flags
+
 #define PATH_NAME_SEPARATOR '/'
 #define PATH_LABEL_SEPARATOR ':'
+#define PATH_FLAGS_SEPARATOR '?'
+#define PATH_FLAG_SEPARATOR '&'
 
 #define PATH_VALID_CHAR(ch) (isalnum((ch)) || strchr("_-. ()[]{}~!@#$%^&',;=+", (ch)))
 
@@ -18,6 +22,8 @@
 typedef enum
 {
     PATH_NONE = 0,
+    PATH_NONBLOCK = 1 << 0,
+    PATH_APPEND = 1 << 1
 } path_flags_t;
 
 typedef struct path
