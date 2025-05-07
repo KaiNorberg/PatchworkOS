@@ -192,10 +192,10 @@ static const pixel_t shadowColors[] = {
 };
 
 static void current_piece_choose_new(void);
-static void current_piece_clear(element_t* elem);
-static void current_piece_draw(element_t* elem);
+static void current_piece_clear(element_t* elem, drawable_t* draw);
+static void current_piece_draw(element_t* elem, drawable_t* draw);
 
-static void block_draw(element_t* elem, block_t block, int64_t x, int64_t y)
+static void block_draw(element_t* elem, drawable_t* draw, block_t block, int64_t x, int64_t y)
 {
     if (x < 0 || y < 0 || x >= FIELD_WIDTH || y >= FIELD_HEIGHT)
     {
@@ -204,47 +204,47 @@ static void block_draw(element_t* elem, block_t block, int64_t x, int64_t y)
 
     rect_t rect = RECT_INIT_DIM(FIELD_LEFT + x * BLOCK_SIZE, FIELD_TOP + y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
 
-    element_draw_edge(elem, &rect, windowTheme.edgeWidth, highlightColors[block], shadowColors[block]);
+    draw_edge(draw, &rect, windowTheme.edgeWidth, highlightColors[block], shadowColors[block]);
     RECT_SHRINK(&rect, windowTheme.edgeWidth);
-    element_draw_rect(elem, &rect, normalColors[block]);
+    draw_rect(draw, &rect, normalColors[block]);
     RECT_SHRINK(&rect, 5);
-    element_draw_edge(elem, &rect, windowTheme.edgeWidth, shadowColors[block], highlightColors[block]);
+    draw_edge(draw, &rect, windowTheme.edgeWidth, shadowColors[block], highlightColors[block]);
 }
 
-static void side_panel_draw(window_t* win, element_t* elem)
+static void side_panel_draw(window_t* win, element_t* elem, drawable_t* draw)
 {
     rect_t rect = RECT_INIT(SIDE_PANEL_LEFT, SIDE_PANEL_TOP, SIDE_PANEL_RIGHT, SIDE_PANEL_BOTTOM);
 
-    element_draw_ridge(elem, &rect, windowTheme.ridgeWidth, windowTheme.highlight, windowTheme.shadow);
+    draw_ridge(draw, &rect, windowTheme.ridgeWidth, windowTheme.highlight, windowTheme.shadow);
 
     rect_t textRect = rect;
     textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
-    element_draw_text(elem, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
         windowTheme.background, "Score");
 
     textRect.top = textRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
     textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
-    element_draw_text(elem, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
         windowTheme.background, "Lines");
 
     textRect.top = textRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
     textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
-    element_draw_text(elem, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
         windowTheme.background, "Pieces");
 
     uint64_t fontHeight = font_height(largeFont);
 
     textRect.top = rect.bottom - fontHeight * 7;
     textRect.bottom = rect.bottom;
-    element_draw_text(elem, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
         windowTheme.background, "  ASD - Move");
     textRect.top += fontHeight;
     textRect.bottom += fontHeight;
-    element_draw_text(elem, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
         windowTheme.background, "SPACE - Drop");
     textRect.top += fontHeight;
     textRect.bottom += fontHeight;
-    element_draw_text(elem, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
         windowTheme.background, "    R - Spin");
 }
 
@@ -275,7 +275,7 @@ static bool piece_out_of_bounds(const piece_t* piece, int64_t pieceX, int64_t pi
     return false;
 }
 
-static void piece_clear(element_t* elem, const piece_t* piece, uint64_t pieceX, uint64_t pieceY)
+static void piece_clear(element_t* elem, drawable_t* draw, const piece_t* piece, uint64_t pieceX, uint64_t pieceY)
 {
     for (int64_t blockY = 0; blockY < PIECE_HEIGHT; blockY++)
     {
@@ -287,12 +287,12 @@ static void piece_clear(element_t* elem, const piece_t* piece, uint64_t pieceX, 
             }
 
             point_t point = piece_block_pos_in_field(pieceX, pieceY, blockX, blockY);
-            block_draw(elem, BLOCK_NONE, point.x, point.y);
+            block_draw(elem, draw, BLOCK_NONE, point.x, point.y);
         }
     }
 }
 
-static void piece_outline_draw(element_t* elem, const piece_t* piece, uint64_t pieceX, uint64_t pieceY)
+static void piece_outline_draw(element_t* elem, drawable_t* draw, const piece_t* piece, uint64_t pieceX, uint64_t pieceY)
 {
     for (int64_t blockY = 0; blockY < PIECE_HEIGHT; blockY++)
     {
@@ -304,12 +304,12 @@ static void piece_outline_draw(element_t* elem, const piece_t* piece, uint64_t p
             }
 
             point_t point = piece_block_pos_in_field(pieceX, pieceY, blockX, blockY);
-            block_draw(elem, BLOCK_OUTLINE, point.x, point.y);
+            block_draw(elem, draw, BLOCK_OUTLINE, point.x, point.y);
         }
     }
 }
 
-static void piece_draw(element_t* elem, const piece_t* piece, uint64_t pieceX, uint64_t pieceY)
+static void piece_draw(element_t* elem, drawable_t* draw, const piece_t* piece, uint64_t pieceX, uint64_t pieceY)
 {
     for (int64_t blockY = 0; blockY < PIECE_HEIGHT; blockY++)
     {
@@ -321,7 +321,7 @@ static void piece_draw(element_t* elem, const piece_t* piece, uint64_t pieceX, u
             }
 
             point_t point = piece_block_pos_in_field(pieceX, pieceY, blockX, blockY);
-            block_draw(elem, (*piece)[blockY][blockX], point.x, point.y);
+            block_draw(elem, draw, (*piece)[blockY][blockX], point.x, point.y);
         }
     }
 }
@@ -341,16 +341,16 @@ static void piece_rotate(piece_t* piece)
     }
 }
 
-static void field_edge_draw(element_t* elem)
+static void field_edge_draw(element_t* elem, drawable_t* draw)
 {
     rect_t fieldRect = RECT_INIT(FIELD_LEFT, FIELD_TOP, FIELD_RIGHT, FIELD_BOTTOM);
     RECT_EXPAND(&fieldRect, FIELD_PADDING);
-    element_draw_rim(elem, &fieldRect, FIELD_PADDING - windowTheme.edgeWidth, windowTheme.background);
+    draw_rim(draw, &fieldRect, FIELD_PADDING - windowTheme.edgeWidth, windowTheme.background);
     RECT_SHRINK(&fieldRect, FIELD_PADDING - windowTheme.edgeWidth);
-    element_draw_edge(elem, &fieldRect, windowTheme.edgeWidth, windowTheme.shadow, windowTheme.highlight);
+    draw_edge(draw, &fieldRect, windowTheme.edgeWidth, windowTheme.shadow, windowTheme.highlight);
 }
 
-static void field_draw(element_t* elem)
+static void field_draw(element_t* elem, drawable_t* draw)
 {
     for (uint64_t y = 0; y < FIELD_HEIGHT; y++)
     {
@@ -362,7 +362,7 @@ static void field_draw(element_t* elem)
             }
             oldField[y][x] = field[y][x];
 
-            block_draw(elem, field[y][x], x, y);
+            block_draw(elem, draw, field[y][x], x, y);
         }
     }
 }
@@ -423,9 +423,9 @@ static void field_move_down(uint64_t line)
     }
 }
 
-static void field_clear_lines(element_t* elem)
+static void field_clear_lines(element_t* elem, drawable_t* draw)
 {
-    current_piece_clear(elem);
+    current_piece_clear(elem, draw);
     bool done = true;
     for (uint64_t y = 0; y < FIELD_HEIGHT; y++)
     {
@@ -456,17 +456,17 @@ static void field_clear_lines(element_t* elem)
 
     if (!done)
     {
-        field_draw(elem);
+        field_draw(elem, draw);
     }
     else
     {
         clearingLines = false;
     }
 
-    current_piece_draw(elem);
+    current_piece_draw(elem, draw);
 }
 
-static void field_check_for_lines(element_t* elem)
+static void field_check_for_lines(element_t* elem, drawable_t* draw)
 {
     uint64_t foundLines = 0;
     for (uint64_t y = 0; y < FIELD_HEIGHT; y++)
@@ -517,7 +517,7 @@ static void field_check_for_lines(element_t* elem)
     break;
     }
 
-    field_draw(elem);
+    field_draw(elem, draw);
 }
 
 static void pause()
@@ -576,7 +576,7 @@ static void current_piece_choose_new(void)
     }
 }
 
-static void current_piece_clear(element_t* elem)
+static void current_piece_clear(element_t* elem, drawable_t* draw)
 {
     int64_t outlineY = currentPiece.y;
     while (!piece_out_of_bounds(&currentPiece.piece, currentPiece.x, outlineY) &&
@@ -586,11 +586,11 @@ static void current_piece_clear(element_t* elem)
     }
     outlineY--;
 
-    piece_clear(elem, &currentPiece.piece, currentPiece.x, outlineY);
-    piece_clear(elem, &currentPiece.piece, currentPiece.x, currentPiece.y);
+    piece_clear(elem, draw, &currentPiece.piece, currentPiece.x, outlineY);
+    piece_clear(elem, draw, &currentPiece.piece, currentPiece.x, currentPiece.y);
 }
 
-static void current_piece_draw(element_t* elem)
+static void current_piece_draw(element_t* elem, drawable_t* draw)
 {
     int64_t outlineY = currentPiece.y;
     while (!piece_out_of_bounds(&currentPiece.piece, currentPiece.x, outlineY) &&
@@ -600,29 +600,29 @@ static void current_piece_draw(element_t* elem)
     }
     outlineY--;
 
-    piece_outline_draw(elem, &currentPiece.piece, currentPiece.x, outlineY);
-    piece_draw(elem, &currentPiece.piece, currentPiece.x, currentPiece.y);
+    piece_outline_draw(elem, draw, &currentPiece.piece, currentPiece.x, outlineY);
+    piece_draw(elem, draw, &currentPiece.piece, currentPiece.x, currentPiece.y);
 }
 
-static void current_piece_update(element_t* elem)
+static void current_piece_update(element_t* elem, drawable_t* draw)
 {
     if (piece_out_of_bounds(&currentPiece.piece, currentPiece.x, currentPiece.y + 1) ||
         field_collides(&currentPiece.piece, currentPiece.x, currentPiece.y + 1))
     {
         field_add_piece(&currentPiece.piece, currentPiece.x, currentPiece.y);
         current_piece_choose_new();
-        current_piece_draw(elem);
-        field_check_for_lines(elem);
+        current_piece_draw(elem, draw);
+        field_check_for_lines(elem, draw);
     }
     else
     {
-        current_piece_clear(elem);
+        current_piece_clear(elem, draw);
         currentPiece.y++;
-        current_piece_draw(elem);
+        current_piece_draw(elem, draw);
     }
 }
 
-static void current_piece_move(element_t* elem, keycode_t code)
+static void current_piece_move(element_t* elem, drawable_t* draw, keycode_t code)
 {
     uint64_t newX = currentPiece.x + (code == KEY_D) - (code == KEY_A);
 
@@ -632,14 +632,14 @@ static void current_piece_move(element_t* elem, keycode_t code)
         return;
     }
 
-    current_piece_clear(elem);
+    current_piece_clear(elem, draw);
     currentPiece.x = newX;
-    current_piece_draw(elem);
+    current_piece_draw(elem, draw);
 }
 
-static void current_piece_drop(element_t* elem)
+static void current_piece_drop(element_t* elem, drawable_t* draw)
 {
-    current_piece_clear(elem);
+    current_piece_clear(elem, draw);
 
     while (!piece_out_of_bounds(&currentPiece.piece, currentPiece.x, currentPiece.y) &&
         !field_collides(&currentPiece.piece, currentPiece.x, currentPiece.y))
@@ -648,10 +648,10 @@ static void current_piece_drop(element_t* elem)
     }
     currentPiece.y--;
 
-    current_piece_draw(elem);
+    current_piece_draw(elem, draw);
 }
 
-static void current_piece_rotate(element_t* elem)
+static void current_piece_rotate(element_t* elem, drawable_t* draw)
 {
     piece_t rotatedPiece;
     memcpy(&rotatedPiece, &currentPiece.piece, sizeof(piece_t));
@@ -663,48 +663,48 @@ static void current_piece_rotate(element_t* elem)
         return;
     }
 
-    current_piece_clear(elem);
+    current_piece_clear(elem, draw);
     memcpy(&currentPiece.piece, &rotatedPiece, sizeof(piece_t));
-    current_piece_draw(elem);
+    current_piece_draw(elem, draw);
 }
 
-static void start_tetris_draw(window_t* win, element_t* elem)
+static void start_tetris_draw(window_t* win, element_t* elem, drawable_t* draw)
 {
     uint64_t fontWidth = font_width(massiveFont);
 
     rect_t rect = RECT_INIT((FIELD_RIGHT + FIELD_LEFT) / 2 - fontWidth * 3, FIELD_TOP,
         (FIELD_RIGHT + FIELD_LEFT) / 2 - fontWidth * 2, FIELD_TOP + (FIELD_BOTTOM - FIELD_TOP) / 2);
 
-    element_draw_text(elem, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_RED],
+    draw_text(draw, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_RED],
         windowTheme.dark, "T");
     rect.left += fontWidth + 2;
     rect.right += fontWidth + 2;
-    element_draw_text(elem, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_ORANGE],
+    draw_text(draw, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_ORANGE],
         windowTheme.dark, "E");
     rect.left += fontWidth - 2;
     rect.right += fontWidth - 2;
-    element_draw_text(elem, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_YELLOW],
+    draw_text(draw, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_YELLOW],
         windowTheme.dark, "T");
     rect.left += fontWidth + 2;
     rect.right += fontWidth + 2;
-    element_draw_text(elem, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_GREEN],
+    draw_text(draw, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_GREEN],
         windowTheme.dark, "R");
     rect.left += fontWidth - 2;
     rect.right += fontWidth - 2;
-    element_draw_text(elem, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_CYAN],
+    draw_text(draw, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_CYAN],
         windowTheme.dark, "I");
     rect.left += fontWidth;
     rect.right += fontWidth;
-    element_draw_text(elem, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_BLUE],
+    draw_text(draw, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_BLUE],
         windowTheme.dark, "S");
 }
 
-static void start_press_space_draw(window_t* win, element_t* elem)
+static void start_press_space_draw(window_t* win, element_t* elem, drawable_t* draw)
 {
     static bool blink = false;
 
     rect_t rect = RECT_INIT(FIELD_LEFT, (FIELD_TOP + FIELD_BOTTOM) / 2, FIELD_RIGHT, FIELD_BOTTOM);
-    element_draw_text(elem, &rect, largeFont, ALIGN_CENTER, ALIGN_CENTER,
+    draw_text(draw, &rect, largeFont, ALIGN_CENTER, ALIGN_CENTER,
         blink ? windowTheme.bright : windowTheme.dark, windowTheme.dark, "PRESS SPACE");
     blink = !blink;
 }
@@ -743,24 +743,28 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     break;
     case LEVENT_REDRAW:
     {
-        field_edge_draw(elem);
-        field_draw(elem);
-        side_panel_draw(win,elem);
+        drawable_t* draw = element_draw(elem);
+
+        field_edge_draw(elem, draw);
+        field_draw(elem, draw);
+        side_panel_draw(win, elem, draw);
         window_set_timer(win, TIMER_NONE, 0);
     }
     break;
     case EVENT_TIMER:
     {
+        drawable_t* draw = element_draw(elem);
+
         if (!started)
         {
-            start_tetris_draw(win, elem);
-            start_press_space_draw(win, elem);
+            start_tetris_draw(win, elem, draw);
+            start_press_space_draw(win, elem, draw);
             window_set_timer(win, TIMER_NONE, START_SCREEN_TICK_SPEED);
             break;
         }
         else if (clearingLines)
         {
-            field_clear_lines(elem);
+            field_clear_lines(elem, draw);
             window_set_timer(win, TIMER_NONE, CLEARING_LINES_TICK_SPEED);
             break;
         }
@@ -773,7 +777,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             window_set_timer(win, TIMER_NONE, TICK_SPEED);
         }
 
-        current_piece_update(elem);
+        current_piece_update(elem, draw);
 
         if (clearingLines || gameover)
         {
@@ -784,6 +788,8 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     break;
     case EVENT_KBD:
     {
+        drawable_t* draw = element_draw(elem);
+
         if (!started)
         {
             if (event->kbd.type == KBD_PRESS && event->kbd.code == KEY_SPACE)
@@ -802,11 +808,11 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
         if (event->kbd.type == KBD_PRESS && (event->kbd.code == KEY_A || event->kbd.code == KEY_D))
         {
-            current_piece_move(elem, event->kbd.code);
+            current_piece_move(elem, draw, event->kbd.code);
         }
         else if (event->kbd.type == KBD_PRESS && event->kbd.code == KEY_R)
         {
-            current_piece_rotate(elem);
+            current_piece_rotate(elem, draw);
         }
         else if (event->kbd.type == KBD_PRESS && event->kbd.code == KEY_S)
         {
@@ -815,7 +821,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         }
         else if (event->kbd.type == KBD_PRESS && event->kbd.code == KEY_SPACE)
         {
-            current_piece_drop(elem);
+            current_piece_drop(elem, draw);
             window_set_timer(win, TIMER_NONE, 0);
         }
         else if (event->kbd.type == KBD_RELEASE && event->kbd.code == KEY_S)

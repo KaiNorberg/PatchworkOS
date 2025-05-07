@@ -10,8 +10,8 @@ extern "C"
 {
 #endif
 
-#define POPUP_HEIGHT 150
-#define POPUP_WIDTH 350
+#define POPUP_HEIGHT 125
+#define POPUP_WIDTH 325
 #define POPUP_BUTTON_AREA_HEIGHT 50
 #define POPUP_BUTTON_HEIGHT 32
 #define POPUP_BUTTON_WIDTH 100

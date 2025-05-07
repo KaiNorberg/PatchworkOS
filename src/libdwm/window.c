@@ -56,29 +56,29 @@ static void window_deco_button_rect(window_t* win, element_t* elem, rect_t* rect
     rect->left = rect->right - size * (index + 1);
 }
 
-static void window_deco_draw_topbar(window_t* win, element_t* elem)
+static void window_deco_draw_topbar(window_t* win, element_t* elem, drawable_t* draw)
 {
     deco_private_t* private = element_private(elem);
 
     rect_t topBar;
     window_deco_topbar_rect(win, elem, &topBar);
 
-    element_draw_edge(elem, &topBar, windowTheme.edgeWidth, windowTheme.dark, windowTheme.highlight);
+    draw_edge(draw, &topBar, windowTheme.edgeWidth, windowTheme.dark, windowTheme.highlight);
     RECT_SHRINK(&topBar, windowTheme.edgeWidth);
     if (private->focused)
     {
-        element_draw_gradient(elem, &topBar, windowTheme.selected, windowTheme.selectedHighlight, GRADIENT_HORIZONTAL,
+        draw_gradient(draw, &topBar, windowTheme.selected, windowTheme.selectedHighlight, GRADIENT_HORIZONTAL,
             false);
     }
     else
     {
-        element_draw_gradient(elem, &topBar, windowTheme.unSelected, windowTheme.unSelectedHighlight,
+        draw_gradient(draw, &topBar, windowTheme.unSelected, windowTheme.unSelectedHighlight,
             GRADIENT_HORIZONTAL, false);
     }
 
     topBar.left += windowTheme.paddingWidth * 3;
     topBar.right -= windowTheme.topbarHeight;
-    element_draw_text(elem, &topBar, NULL, ALIGN_MIN, ALIGN_CENTER, windowTheme.background, 0, win->name);
+    draw_text(draw, &topBar, NULL, ALIGN_MIN, ALIGN_CENTER, windowTheme.background, 0, win->name);
 }
 
 static void window_deco_handle_dragging(window_t* win, element_t* elem, const event_mouse_t* event)
@@ -158,10 +158,13 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
     {
         rect_t rect;
         element_content_rect(elem, &rect);
-        element_draw_rect(elem, &rect, windowTheme.background);
-        element_draw_edge(elem, &rect, windowTheme.edgeWidth, windowTheme.bright, windowTheme.dark);
 
-        window_deco_draw_topbar(win, elem);
+        drawable_t* draw = element_draw(elem);
+
+        draw_rect(draw, &rect, windowTheme.background);
+        draw_edge(draw, &rect, windowTheme.edgeWidth, windowTheme.bright, windowTheme.dark);
+
+        window_deco_draw_topbar(win, elem, draw);
     }
     break;
     case LEVENT_ACTION:
@@ -175,7 +178,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
         {
         case WINDOW_DECO_CLOSE_BUTTON_ID:
         {
-            display_events_push(win->disp, win->id, LEVENT_QUIT, NULL, 0);
+            display_events_push(win->disp, win->surface, LEVENT_QUIT, NULL, 0);
         }
         break;
         }
@@ -185,14 +188,16 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
     {
         deco_private_t* private = element_private(elem);
         private->focused = true;
-        window_deco_draw_topbar(win, elem);
+
+        window_deco_draw_topbar(win, elem, element_draw(elem));
     }
     break;
     case EVENT_FOCUS_OUT:
     {
         deco_private_t* private = element_private(elem);
         private->focused = false;
-        window_deco_draw_topbar(win, elem);
+
+        window_deco_draw_topbar(win, elem, element_draw(elem));
     }
     break;
     case EVENT_MOUSE:
@@ -221,7 +226,7 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
 
     list_entry_init(&win->entry);
     win->disp = disp;
-    win->id = display_gen_id(disp);
+    win->surface = display_gen_id(disp);
     strcpy(win->name, name);
     win->rect = *rect;
     win->type = type;
@@ -269,7 +274,7 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
 
     cmd_surface_new_t cmd;
     CMD_INIT(&cmd, CMD_SURFACE_NEW, sizeof(cmd));
-    cmd.id = win->id;
+    cmd.id = win->surface;
     cmd.type = win->type;
     cmd.rect = win->rect;
     display_cmds_push(disp, &cmd.header);
@@ -285,7 +290,7 @@ void window_free(window_t* win)
 
     cmd_surface_free_t cmd;
     CMD_INIT(&cmd, CMD_SURFACE_FREE, sizeof(cmd));
-    cmd.target = win->id;
+    cmd.target = win->surface;
     display_cmds_push(win->disp, &cmd.header);
     display_cmds_flush(win->disp);
 
@@ -310,7 +315,7 @@ display_t* window_display(window_t* win)
 
 surface_id_t window_id(window_t* win)
 {
-    return win->id;
+    return win->surface;
 }
 
 surface_type_t window_type(window_t* win)
@@ -334,7 +339,7 @@ uint64_t window_move(window_t* win, const rect_t* rect)
 
     cmd_surface_move_t cmd;
     CMD_INIT(&cmd, CMD_SURFACE_MOVE, sizeof(cmd));
-    cmd.target = win->id;
+    cmd.target = win->surface;
     cmd.rect = *rect;
     display_cmds_push(win->disp, &cmd.header);
     display_cmds_flush(win->disp);
@@ -346,7 +351,7 @@ uint64_t window_set_timer(window_t* win, timer_flags_t flags, nsec_t timeout)
 {
     cmd_surface_set_timer_t cmd;
     CMD_INIT(&cmd, CMD_SURFACE_SET_TIMER, sizeof(cmd));
-    cmd.target = win->id;
+    cmd.target = win->surface;
     cmd.flags = flags;
     cmd.timeout = timeout;
     display_cmds_push(win->disp, &cmd.header);
@@ -395,7 +400,7 @@ uint64_t window_dispatch(window_t* win, const event_t* event)
             levent_redraw_t event;
             event.id = win->root->id;
             event.propagate = true;
-            display_events_push(win->disp, win->id, LEVENT_REDRAW, &event, sizeof(levent_redraw_t));
+            display_events_push(win->disp, win->surface, LEVENT_REDRAW, &event, sizeof(levent_redraw_t));
         }
 
         win->rect = event->surfaceMove.rect;

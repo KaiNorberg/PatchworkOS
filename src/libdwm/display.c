@@ -262,7 +262,7 @@ void display_dispatch(display_t* disp, const event_t* event)
     window_t* win;
     LIST_FOR_EACH(win, &disp->windows, entry)
     {
-        if (event->target == win->id)
+        if (event->target == win->surface)
         {
             if (window_dispatch(win, event) == ERR)
             {

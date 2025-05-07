@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static void terminal_cursor_draw(terminal_t* term, element_t* elem)
+static void terminal_cursor_draw(terminal_t* term, element_t* elem, drawable_t* draw)
 {
     char cursor = ' ';
     point_t cursorPos = term->cursorPos;
@@ -24,15 +24,15 @@ static void terminal_cursor_draw(terminal_t* term, element_t* elem)
 
     if (term->cursorVisible)
     {
-        element_draw_string(elem, term->font, &point, windowTheme.dark, windowTheme.bright, &cursor, 1);
+        draw_string(draw, term->font, &point, windowTheme.dark, windowTheme.bright, &cursor, 1);
     }
     else
     {
-        element_draw_string(elem, term->font, &point, windowTheme.bright, windowTheme.dark, &cursor, 1);
+        draw_string(draw, term->font, &point, windowTheme.bright, windowTheme.dark, &cursor, 1);
     }
 }
 
-static void terminal_clear(terminal_t* term, element_t* elem)
+static void terminal_clear(terminal_t* term, element_t* elem, drawable_t* draw)
 {
     term->cursorVisible = false;
     term->cursorPos = (point_t){0, 0};
@@ -40,15 +40,15 @@ static void terminal_clear(terminal_t* term, element_t* elem)
     rect_t rect;
     element_content_rect(elem, &rect);
 
-    element_draw_edge(elem, &rect, windowTheme.edgeWidth, windowTheme.shadow, windowTheme.highlight);
+    draw_edge(draw, &rect, windowTheme.edgeWidth, windowTheme.shadow, windowTheme.highlight);
     RECT_SHRINK(&rect, windowTheme.edgeWidth);
-    element_draw_rect(elem, &rect, windowTheme.dark);
+    draw_rect(draw, &rect, windowTheme.dark);
 
     term->cursorVisible = true;
-    terminal_cursor_draw(term, elem);
+    terminal_cursor_draw(term, elem, draw);
 }
 
-static void terminal_scroll(terminal_t* term, element_t* elem)
+static void terminal_scroll(terminal_t* term, element_t* elem, drawable_t* draw)
 {
     term->cursorPos.y -= 1;
 
@@ -62,19 +62,19 @@ static void terminal_scroll(terminal_t* term, element_t* elem)
 
     point_t srcPoint = {.x = destRect.left, .y = destRect.top + fontHeight};
 
-    element_draw_transfer(elem, &destRect, &srcPoint);
+    draw_transfer(draw, draw, &destRect, &srcPoint);
 
     rect_t bottomRect = RECT_INIT(destRect.left, destRect.bottom, destRect.right, destRect.bottom + fontHeight);
-    element_draw_rect(elem, &bottomRect, windowTheme.dark);
+    draw_rect(draw, &bottomRect, windowTheme.dark);
 }
 
-static void terminal_draw_char(terminal_t* term, element_t* elem, const point_t* point, char chr)
+static void terminal_draw_char(terminal_t* term, element_t* elem, drawable_t* draw, const point_t* point, char chr)
 {
     point_t clientPos = CURSOR_POS_TO_CLIENT_POS(point, term->font);
-    element_draw_string(elem, term->font, &clientPos, windowTheme.bright, windowTheme.dark, &chr, 1);
+    draw_string(draw, term->font, &clientPos, windowTheme.bright, windowTheme.dark, &chr, 1);
 }
 
-static void terminal_put(terminal_t* term, element_t* elem, char chr)
+static void terminal_put(terminal_t* term, element_t* elem, drawable_t* draw, char chr)
 {
     rect_t rect;
     element_content_rect(elem, &rect);
@@ -86,7 +86,7 @@ static void terminal_put(terminal_t* term, element_t* elem, char chr)
         if (term->cursorVisible)
         {
             term->cursorVisible = false;
-            terminal_cursor_draw(term, elem);
+            terminal_cursor_draw(term, elem, draw);
         }
 
         term->cursorPos.x = 0;
@@ -94,7 +94,7 @@ static void terminal_put(terminal_t* term, element_t* elem, char chr)
 
         if (CURSOR_POS_Y_OUT_OF_BOUNDS(term->cursorPos.y + 1, term->font))
         {
-            terminal_scroll(term, elem);
+            terminal_scroll(term, elem, draw);
         }
     }
     break;
@@ -108,53 +108,53 @@ static void terminal_put(terminal_t* term, element_t* elem, char chr)
     break;
     default:
     {
-        terminal_draw_char(term, elem, &term->cursorPos, chr);
+        terminal_draw_char(term, elem, draw, &term->cursorPos, chr);
         term->cursorPos.x++;
         term->cursorVisible = false;
 
         if (CURSOR_POS_X_OUT_OF_BOUNDS(term->cursorPos.x + 1, term->font))
         {
-            terminal_put(term, elem, '\n');
+            terminal_put(term, elem, draw, '\n');
         }
     }
     break;
     }
 }
 
-static void terminal_write(terminal_t* term, element_t* elem, const char* str)
+static void terminal_write(terminal_t* term, element_t* elem, drawable_t* draw, const char* str)
 {
     const char* chr = str;
     while (*chr != '\0')
     {
-        terminal_put(term, elem, *chr);
+        terminal_put(term, elem, draw, *chr);
         chr++;
     }
 
     term->cursorVisible = true;
-    terminal_cursor_draw(term, elem);
+    terminal_cursor_draw(term, elem, draw);
     window_set_timer(term->win, TIMER_NONE, BLINK_INTERVAL);
 }
 
-static void terminal_redraw_input(terminal_t* term, element_t* elem, uint64_t prevLength)
+static void terminal_redraw_input(terminal_t* term, element_t* elem, drawable_t* draw, uint64_t prevLength)
 {
     point_t point = term->cursorPos;
     for (uint64_t i = 0; i < term->input.length; i++)
     {
-        terminal_draw_char(term, elem, &point, term->input.buffer[i]);
+        terminal_draw_char(term, elem, draw, &point, term->input.buffer[i]);
         point.x++;
     }
     for (uint64_t i = term->input.length; i < prevLength + 1; i++)
     {
-        terminal_draw_char(term, elem, &point, ' ');
+        terminal_draw_char(term, elem, draw, &point, ' ');
         point.x++;
     }
 
     term->cursorVisible = true;
-    terminal_cursor_draw(term, elem);
+    terminal_cursor_draw(term, elem, draw);
     window_set_timer(term->win, TIMER_NONE, BLINK_INTERVAL);
 }
 
-static void terminal_handle_input(terminal_t* term, element_t* elem, keycode_t key, char ascii, kbd_mods_t mods)
+static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t* draw, keycode_t key, char ascii, kbd_mods_t mods)
 {
     uint64_t prevLength = term->input.length;
 
@@ -171,7 +171,7 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, keycode_t k
         if (prev != NULL)
         {
             input_set(&term->input, prev);
-            terminal_redraw_input(term, elem, prevLength);
+            terminal_redraw_input(term, elem, draw, prevLength);
         }
     }
     break;
@@ -186,14 +186,14 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, keycode_t k
         {
             input_restore(&term->input);
         }
-        terminal_redraw_input(term, elem, prevLength);
+        terminal_redraw_input(term, elem, draw, prevLength);
     }
     break;
     case KEY_LEFT:
     {
         if (input_move(&term->input, -1) != ERR)
         {
-            terminal_redraw_input(term, elem, prevLength);
+            terminal_redraw_input(term, elem, draw, prevLength);
         }
     }
     break;
@@ -201,7 +201,7 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, keycode_t k
     {
         if (input_move(&term->input, +1) != ERR)
         {
-            terminal_redraw_input(term, elem, prevLength);
+            terminal_redraw_input(term, elem, draw, prevLength);
         }
     }
     break;
@@ -210,17 +210,17 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, keycode_t k
         writef(term->stdin[PIPE_WRITE], "%s\n", term->input.buffer);
 
         term->cursorVisible = false;
-        terminal_cursor_draw(term, elem);
+        terminal_cursor_draw(term, elem, draw);
 
         history_push(&term->history, term->input.buffer);
         input_set(&term->input, "");
-        terminal_write(term, elem, "\n");
+        terminal_write(term, elem, draw, "\n");
     }
     break;
     case KEY_BACKSPACE:
     {
         input_backspace(&term->input);
-        terminal_redraw_input(term, elem, prevLength);
+        terminal_redraw_input(term, elem, draw, prevLength);
     }
     break;
     default:
@@ -236,7 +236,7 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, keycode_t k
         }
 
         input_insert(&term->input, ascii);
-        terminal_redraw_input(term, elem, prevLength);
+        terminal_redraw_input(term, elem, draw, prevLength);
     }
     break;
     }
@@ -255,7 +255,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
     break;
     case LEVENT_REDRAW:
     {
-        terminal_clear(term, elem);
+        terminal_clear(term, elem, element_draw(elem));
     }
     break;
     case EVENT_TIMER:
@@ -263,7 +263,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         window_set_timer(win, TIMER_NONE, BLINK_INTERVAL);
 
         term->cursorVisible = !term->cursorVisible;
-        terminal_cursor_draw(term, elem);
+        terminal_cursor_draw(term, elem, element_draw(elem));
     }
     break;
     case EVENT_KBD:
@@ -272,7 +272,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         {
             break;
         }
-        terminal_handle_input(term, elem, event->kbd.code, event->kbd.ascii, event->kbd.mods);
+        terminal_handle_input(term, elem, element_draw(elem), event->kbd.code, event->kbd.ascii, event->kbd.mods);
     }
     break;
     }
@@ -362,7 +362,9 @@ static void terminal_read_stdout(terminal_t* term)
         uint64_t readCount = read(term->stdout[PIPE_READ], buffer, MAX_PATH - 1);
         buffer[readCount] = '\0';
 
-        terminal_write(term, window_client_element(term->win), buffer);
+        element_t* elem = window_client_element(term->win);
+
+        terminal_write(term, elem, element_draw(elem), buffer);
         input_set(&term->input, "");
     }
     while (poll1(term->stdout[PIPE_READ], POLL_READ, 0) & POLL_READ);

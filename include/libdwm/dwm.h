@@ -15,5 +15,6 @@
 #include "widgets.h"
 #include "window.h"
 #include "popup.h"
+#include "drawable.h"
 
 #endif

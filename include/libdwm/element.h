@@ -6,6 +6,7 @@
 #include "font.h"
 #include "procedure.h"
 #include "rect.h"
+#include "drawable.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -15,13 +16,6 @@
 extern "C"
 {
 #endif
-
-typedef enum
-{
-    ALIGN_CENTER = 0,
-    ALIGN_MAX = 1,
-    ALIGN_MIN = 2,
-} align_t;
 
 typedef struct element element_t;
 
@@ -51,29 +45,9 @@ void element_global_to_rect(element_t* elem, rect_t* dest, const rect_t* src);
 
 void element_global_to_point(element_t* elem, point_t* dest, const point_t* src);
 
+drawable_t* element_draw(element_t* elem);
+
 void element_invalidate(element_t* elem, const rect_t* rect);
-
-void element_draw_rect(element_t* elem, const rect_t* rect, pixel_t pixel);
-
-void element_draw_edge(element_t* elem, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background);
-
-void element_draw_gradient(element_t* elem, const rect_t* rect, pixel_t start, pixel_t end, gradient_type_t type,
-    bool addNoise);
-
-void element_draw_transfer(element_t* elem, const rect_t* destRect, const point_t* srcPoint);
-
-void element_draw_rim(element_t* elem, const rect_t* rect, uint64_t width, pixel_t pixel);
-
-void element_draw_string(element_t* elem, font_t* font, const point_t* point, pixel_t foreground, pixel_t background,
-    const char* string, uint64_t length);
-
-void element_draw_text(element_t* elem, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign,
-    pixel_t foreground, pixel_t background, const char* text);
-
-void element_draw_text_multiline(element_t* elem, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign,
-    pixel_t foreground, pixel_t background, const char* text);
-
-void element_draw_ridge(element_t* elem, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background);
 
 void element_send_redraw(element_t* elem, bool propagate);
 

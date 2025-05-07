@@ -19,26 +19,28 @@ static void button_draw(button_t* button, bool redraw)
     rect_t rect;
     element_content_rect(button->elem, &rect);
 
+    drawable_t* draw = element_draw(button->elem);
+
     if (redraw)
     {
-        element_draw_rim(button->elem, &rect, windowTheme.rimWidth, windowTheme.dark);
+        draw_rim(draw, &rect, windowTheme.rimWidth, windowTheme.dark);
     }
     RECT_SHRINK(&rect, windowTheme.rimWidth);
 
     if (button->pressed)
     {
-        element_draw_edge(button->elem, &rect, windowTheme.edgeWidth, windowTheme.shadow, windowTheme.highlight);
+        draw_edge(draw, &rect, windowTheme.edgeWidth, windowTheme.shadow, windowTheme.highlight);
     }
     else
     {
-        element_draw_edge(button->elem, &rect, windowTheme.edgeWidth, windowTheme.highlight, windowTheme.shadow);
+        draw_edge(draw, &rect, windowTheme.edgeWidth, windowTheme.highlight, windowTheme.shadow);
     }
     RECT_SHRINK(&rect, windowTheme.edgeWidth);
 
     if (redraw)
     {
-        element_draw_rect(button->elem, &rect, button->background);
-        element_draw_text(button->elem, &rect, button->font, ALIGN_CENTER, ALIGN_CENTER, button->foreground, 0,
+        draw_rect(draw, &rect, button->background);
+        draw_text(draw, &rect, button->font, ALIGN_CENTER, ALIGN_CENTER, button->foreground, 0,
             button->text);
     }
 }
@@ -46,7 +48,7 @@ static void button_draw(button_t* button, bool redraw)
 static void button_send_action(button_t* button, action_type_t type)
 {
     levent_action_t event = {.source = button->elem->id, .type = type};
-    display_events_push(button->elem->win->disp, button->elem->win->id, LEVENT_ACTION, &event, sizeof(levent_action_t));
+    display_events_push(button->elem->win->disp, button->elem->win->surface, LEVENT_ACTION, &event, sizeof(levent_action_t));
 }
 
 static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* event)

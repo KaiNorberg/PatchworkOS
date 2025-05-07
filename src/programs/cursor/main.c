@@ -17,7 +17,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
         rect_t rect;
         element_content_rect(elem, &rect);
-        element_draw_rect(elem, &rect, UINT32_MAX);
+        draw_rect(element_draw(elem), &rect, UINT32_MAX);
     }
     break;
     }

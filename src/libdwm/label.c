@@ -35,16 +35,18 @@ static uint64_t label_procedure(window_t* win, element_t* elem, const event_t* e
         rect_t rect;
         element_content_rect(elem, &rect);
 
+        drawable_t* draw = element_draw(elem);
+
         if (!(label->flags & LABEL_FLAT))
         {
-            element_draw_edge(elem, &rect, windowTheme.edgeWidth, windowTheme.shadow, windowTheme.highlight);
+            draw_edge(draw, &rect, windowTheme.edgeWidth, windowTheme.shadow, windowTheme.highlight);
             RECT_SHRINK(&rect, windowTheme.edgeWidth);
-            element_draw_rect(elem, &rect, label->background);
+            draw_rect(draw, &rect, label->background);
             RECT_SHRINK(&rect, windowTheme.edgeWidth);
             rect.top += windowTheme.edgeWidth;
         }
 
-        element_draw_text(elem, &rect, label->font, label->xAlign, label->yAlign, label->foreground, label->background,
+        draw_text(draw, &rect, label->font, label->xAlign, label->yAlign, label->foreground, label->background,
             label->text);
     }
     break;

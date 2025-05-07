@@ -58,7 +58,7 @@ static uint64_t popup_procedure(window_t* win, element_t* elem, const event_t* e
         element_content_rect(elem, &rect);
         rect.bottom -= POPUP_BUTTON_AREA_HEIGHT;
 
-        element_draw_text_multiline(elem, &rect, NULL, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
+        draw_text_multiline(element_draw(elem), &rect, NULL, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
             windowTheme.background, popup->text);
     }
     break;

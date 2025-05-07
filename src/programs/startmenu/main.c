@@ -58,9 +58,11 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         rect_t rect;
         element_content_rect(elem, &rect);
 
-        element_draw_edge(elem, &rect, windowTheme.edgeWidth, windowTheme.bright, windowTheme.dark);
+        drawable_t* draw = element_draw(elem);
+
+        draw_edge(draw, &rect, windowTheme.edgeWidth, windowTheme.bright, windowTheme.dark);
         RECT_SHRINK(&rect, windowTheme.edgeWidth);
-        element_draw_rect(elem, &rect, windowTheme.background);
+        draw_rect(draw, &rect, windowTheme.background);
     }
     break;
     case LEVENT_ACTION:

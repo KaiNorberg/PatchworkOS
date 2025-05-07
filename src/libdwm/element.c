@@ -7,7 +7,15 @@ static void element_send_init(element_t* elem)
 {
     levent_init_t event;
     event.id = elem->id;
-    display_events_push(elem->win->disp, elem->win->id, LEVENT_INIT, &event, sizeof(levent_init_t));
+    display_events_push(elem->win->disp, elem->win->surface, LEVENT_INIT, &event, sizeof(levent_init_t));
+}
+
+static void element_drawable_update(element_t* elem)
+{
+    elem->draw.disp = elem->win->disp;
+    elem->draw.surface = elem->win->surface;
+    element_global_rect(elem, &elem->draw.drawArea);
+    elem->draw.invalidRect = (rect_t){0};
 }
 
 static element_t* element_new_raw(element_id_t id, const rect_t* rect, procedure_t procedure, void* private)
@@ -21,11 +29,10 @@ static element_t* element_new_raw(element_id_t id, const rect_t* rect, procedure
     list_init(&elem->children);
     elem->parent = NULL;
     elem->id = id;
-    elem->rect = *rect;
     elem->proc = procedure;
     elem->win = NULL;
     elem->private = private;
-    elem->invalidRect = (rect_t){0};
+    elem->rect = *rect;
     return elem;
 }
 
@@ -40,6 +47,7 @@ element_t* element_new(element_t* parent, element_id_t id, const rect_t* rect, p
     elem->parent = parent;
     elem->win = parent->win;
     list_push(&parent->children, &elem->entry);
+    element_drawable_update(elem);
 
     element_send_init(elem);
     element_send_redraw(elem, false);
@@ -55,6 +63,7 @@ element_t* element_new_root(window_t* win, element_id_t id, const rect_t* rect, 
     }
 
     elem->win = win;
+    element_drawable_update(elem);
 
     element_send_init(elem);
     element_send_redraw(elem, false);
@@ -75,7 +84,7 @@ static void element_free_children(element_t* elem)
 void element_free(element_t* elem)
 {
     // Send fake free event
-    event_t event = {.target = elem->win->id, .type = LEVENT_FREE};
+    event_t event = {.target = elem->win->surface, .type = LEVENT_FREE};
     elem->proc(elem->win, elem, &event);
 
     element_free_children(elem);
@@ -192,389 +201,9 @@ void element_global_to_point(element_t* elem, point_t* dest, const point_t* src)
     };
 }
 
-void element_invalidate(element_t* elem, const rect_t* rect)
+drawable_t* element_draw(element_t* elem)
 {
-    if (RECT_AREA(&elem->invalidRect) == 0)
-    {
-        elem->invalidRect = *rect;
-    }
-    else
-    {
-        RECT_EXPAND_TO_CONTAIN(&elem->invalidRect, rect);
-    }
-}
-
-void element_draw_rect(element_t* elem, const rect_t* rect, pixel_t pixel)
-{
-    cmd_draw_rect_t cmd;
-    CMD_INIT(&cmd, CMD_DRAW_RECT, sizeof(cmd));
-    cmd.target = elem->win->id;
-    element_rect_to_global(elem, &cmd.rect, rect);
-    cmd.pixel = pixel;
-
-    display_cmds_push(elem->win->disp, &cmd.header);
-
-    element_invalidate(elem, rect);
-}
-
-void element_draw_edge(element_t* elem, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background)
-{
-    cmd_draw_edge_t cmd;
-    CMD_INIT(&cmd, CMD_DRAW_EDGE, sizeof(cmd));
-    cmd.target = elem->win->id;
-    element_rect_to_global(elem, &cmd.rect, rect);
-    cmd.width = width;
-    cmd.foreground = foreground;
-    cmd.background = background;
-
-    display_cmds_push(elem->win->disp, &cmd.header);
-
-    element_invalidate(elem, rect);
-}
-
-void element_draw_gradient(element_t* elem, const rect_t* rect, pixel_t start, pixel_t end, gradient_type_t type,
-    bool addNoise)
-{
-    cmd_draw_gradient_t cmd;
-    CMD_INIT(&cmd, CMD_DRAW_GRADIENT, sizeof(cmd));
-    cmd.target = elem->win->id;
-    element_rect_to_global(elem, &cmd.rect, rect);
-    cmd.start = start;
-    cmd.end = end;
-    cmd.type = type;
-    cmd.addNoise = addNoise;
-
-    display_cmds_push(elem->win->disp, &cmd.header);
-
-    element_invalidate(elem, rect);
-}
-
-void element_draw_string(element_t* elem, font_t* font, const point_t* point, pixel_t foreground, pixel_t background,
-    const char* string, uint64_t length)
-{
-    uint8_t buffer[sizeof(cmd_draw_string_t) + MAX_PATH];
-
-    cmd_draw_string_t* cmd;
-    if (length >= MAX_PATH) // If string is small stack allocate memory
-    {
-        cmd = malloc(sizeof(cmd_draw_string_t) + length);
-    }
-    else
-    {
-        cmd = (void*)buffer;
-    }
-
-    if (font == NULL)
-    {
-        font = font_default(elem->win->disp);
-    }
-
-    CMD_INIT(cmd, CMD_DRAW_STRING, sizeof(cmd_draw_string_t));
-    cmd->target = elem->win->id;
-    cmd->fontId = font->id;
-    element_point_to_global(elem, &cmd->point, point);
-    cmd->foreground = foreground;
-    cmd->background = background;
-    cmd->length = length;
-    memcpy(cmd->string, string, length);
-    cmd->header.size += length;
-    display_cmds_push(elem->win->disp, &cmd->header);
-
-    if (length >= MAX_PATH)
-    {
-        free(cmd);
-    }
-
-    rect_t rect = RECT_INIT_DIM(point->x, point->y, font->width * length, font->height);
-    element_invalidate(elem, &rect);
-}
-
-void element_draw_transfer(element_t* elem, const rect_t* destRect, const point_t* srcPoint)
-{
-    cmd_draw_transfer_t cmd;
-    CMD_INIT(&cmd, CMD_DRAW_TRANSFER, sizeof(cmd));
-    cmd.dest = elem->win->id;
-    cmd.src = elem->win->id;
-    element_rect_to_global(elem, &cmd.destRect, destRect);
-    element_point_to_global(elem, &cmd.srcPoint, srcPoint);
-    display_cmds_push(elem->win->disp, &cmd.header);
-
-    element_invalidate(elem, destRect);
-    rect_t srcRect = RECT_INIT_DIM(srcPoint->x, srcPoint->y, RECT_WIDTH(destRect), RECT_HEIGHT(destRect));
-    element_invalidate(elem, &srcRect);
-}
-
-void element_draw_rim(element_t* elem, const rect_t* rect, uint64_t width, pixel_t pixel)
-{
-    rect_t leftRect = (rect_t){
-        .left = rect->left,
-        .top = rect->top + width - width / 2,
-        .right = rect->left + width,
-        .bottom = rect->bottom - width + width / 2,
-    };
-    element_draw_rect(elem, &leftRect, pixel);
-
-    rect_t topRect = (rect_t){
-        .left = rect->left + width - width / 2,
-        .top = rect->top,
-        .right = rect->right - width + width / 2,
-        .bottom = rect->top + width,
-    };
-    element_draw_rect(elem, &topRect, pixel);
-
-    rect_t rightRect = (rect_t){
-        .left = rect->right - width,
-        .top = rect->top + width - width / 2,
-        .right = rect->right,
-        .bottom = rect->bottom - width + width / 2,
-    };
-    element_draw_rect(elem, &rightRect, pixel);
-
-    rect_t bottomRect = (rect_t){
-        .left = rect->left + width - width / 2,
-        .top = rect->bottom - width,
-        .right = rect->right - width + width / 2,
-        .bottom = rect->bottom,
-    };
-    element_draw_rect(elem, &bottomRect, pixel);
-}
-
-void element_draw_text(element_t* elem, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign,
-    pixel_t foreground, pixel_t background, const char* text)
-{
-    if (text == NULL || *text == '\0')
-    {
-        return;
-    }
-
-    if (font == NULL)
-    {
-        font = font_default(elem->win->disp);
-    }
-
-    uint64_t maxWidth = RECT_WIDTH(rect);
-
-    uint64_t textLen = strlen(text);
-    uint64_t maxLen = maxWidth / font->width;
-
-    uint64_t clampedLen = MIN(maxLen, textLen);
-    uint64_t clampedWidth = clampedLen * font->width;
-
-    point_t startPoint;
-    switch (xAlign)
-    {
-    case ALIGN_CENTER:
-    {
-        startPoint.x = (rect->left + rect->right) / 2 - clampedWidth / 2;
-    }
-    break;
-    case ALIGN_MAX:
-    {
-        startPoint.x = rect->right - clampedWidth;
-    }
-    break;
-    case ALIGN_MIN:
-    {
-        startPoint.x = rect->left;
-    }
-    break;
-    default:
-    {
-        return;
-    }
-    }
-
-    switch (yAlign)
-    {
-    case ALIGN_CENTER:
-    {
-        startPoint.y = (rect->top + rect->bottom) / 2 - font->height / 2;
-    }
-    break;
-    case ALIGN_MAX:
-    {
-        startPoint.y = MAX(rect->top, rect->bottom - (int64_t)font->height);
-    }
-    break;
-    case ALIGN_MIN:
-    {
-        startPoint.y = rect->top;
-    }
-    break;
-    default:
-    {
-        return;
-    }
-    }
-
-    if (textLen > maxLen)
-    {
-        if (maxLen == 0)
-        {
-            return;
-        }
-
-        if (maxLen <= 3)
-        {
-            element_draw_string(elem, font, &startPoint, foreground, background, "...", maxLen);
-            return;
-        }
-
-        element_draw_string(elem, font, &startPoint, foreground, background, text, maxLen - 3);
-        startPoint.x += (maxLen - 3) * font->width;
-        element_draw_string(elem, font, &startPoint, foreground, background, "...", 3);
-        return;
-    }
-
-    element_draw_string(elem, font, &startPoint, foreground, background, text, textLen);
-}
-
-void element_draw_text_multiline(element_t* elem, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign,
-    pixel_t foreground, pixel_t background, const char* text)
-{
-    if (text == NULL || *text == '\0')
-    {
-        return;
-    }
-
-    if (font == NULL)
-    {
-        font = font_default(elem->win->disp);
-    }
-
-    int64_t fontWidth = font_width(font);
-    int64_t fontHeight = font_height(font);
-
-    int64_t numLines = 1;
-    int64_t maxLineWidth = 0;
-
-    int64_t wordLength = 0;
-    int64_t currentXPos = 0;
-    const char* chr = text;
-    while (true)
-    {
-        if (*chr == ' ' || *chr == '\0')
-        {
-            int64_t wordEndPos = currentXPos + wordLength * fontWidth;
-            if (wordEndPos > RECT_WIDTH(rect))
-            {
-                numLines++;
-                maxLineWidth = MAX(maxLineWidth, currentXPos);
-                currentXPos = wordLength * fontWidth;
-            }
-            else
-            {
-                currentXPos = wordEndPos;
-            }
-            if (*chr == '\0')
-            {
-                maxLineWidth = MAX(maxLineWidth, currentXPos);
-                break;
-            }
-            wordLength = 0;
-            currentXPos += fontWidth;
-        }
-        else
-        {
-            wordLength++;
-        }
-        chr++;
-    }
-
-    point_t startPoint;
-    switch (xAlign)
-    {
-    case ALIGN_CENTER:
-    {
-        startPoint.x = rect->left + (RECT_WIDTH(rect) - maxLineWidth) / 2;
-    }
-    break;
-    case ALIGN_MAX:
-    {
-        startPoint.x = rect->right - maxLineWidth;
-    }
-    break;
-    case ALIGN_MIN:
-    {
-        startPoint.x = rect->left;
-    }
-    break;
-    default:
-    {
-        return;
-    }
-    }
-
-    switch (yAlign)
-    {
-    case ALIGN_CENTER:
-    {
-        int64_t totalTextHeight = fontHeight * numLines;
-        startPoint.y = rect->top + (RECT_HEIGHT(rect) - totalTextHeight) / 2;
-    }
-    break;
-    case ALIGN_MAX:
-    {
-        startPoint.y = MAX(rect->top, rect->bottom - (int64_t)fontHeight * numLines);
-    }
-    break;
-    case ALIGN_MIN:
-    {
-        startPoint.y = rect->top;
-    }
-    break;
-    default:
-    {
-        return;
-    }
-    }
-
-    chr = text;
-    point_t currentPoint = startPoint;
-    while (*chr != '\0')
-    {
-        const char* wordStart = chr;
-        wordLength = 0;
-        while (*chr != ' ' && *chr != '\0')
-        {
-            wordLength++;
-            chr++;
-        }
-
-        int64_t wordWidth = wordLength * fontWidth;
-
-        if (currentPoint.x + wordWidth > rect->right)
-        {
-            currentPoint.y += fontHeight;
-            currentPoint.x = startPoint.x;
-        }
-
-        element_draw_string(elem, font, &currentPoint, foreground, background, wordStart, wordLength);
-        currentPoint.x += wordWidth;
-
-        if (*chr == ' ')
-        {
-            if (currentPoint.x + fontWidth > rect->right)
-            {
-                currentPoint.y += fontHeight;
-            }
-            else
-            {
-                element_draw_string(elem, font, &currentPoint, foreground, background, " ", 1);
-                currentPoint.x += fontWidth;
-            }
-            chr++;
-        }
-    }
-}
-
-void element_draw_ridge(element_t* elem, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background)
-{
-    element_draw_edge(elem, rect, width / 2, background, foreground);
-
-    rect_t innerRect = *rect;
-    RECT_SHRINK(&innerRect, width / 2);
-    element_draw_edge(elem, &innerRect, width / 2, foreground, background);
+    return &elem->draw;
 }
 
 void element_send_redraw(element_t* elem, bool propagate)
@@ -582,7 +211,7 @@ void element_send_redraw(element_t* elem, bool propagate)
     levent_redraw_t event;
     event.id = elem->id;
     event.propagate = propagate;
-    display_events_push(elem->win->disp, elem->win->id, LEVENT_REDRAW, &event, sizeof(levent_redraw_t));
+    display_events_push(elem->win->disp, elem->win->surface, LEVENT_REDRAW, &event, sizeof(levent_redraw_t));
 }
 
 uint64_t element_dispatch(element_t* elem, const event_t* event)
@@ -640,18 +269,18 @@ uint64_t element_dispatch(element_t* elem, const event_t* event)
     }
 
     bool shouldPropegate = event->type == LEVENT_REDRAW && event->lRedraw.propagate;
-    if (RECT_AREA(&elem->invalidRect) != 0 || shouldPropegate)
+    if (RECT_AREA(&elem->draw.invalidRect) != 0 || shouldPropegate)
     {
         element_t* child;
         LIST_FOR_EACH(child, &elem->children, entry)
         {
-            if (RECT_OVERLAP(&elem->invalidRect, &child->rect))
+            if (RECT_OVERLAP(&elem->draw.invalidRect, &child->rect))
             {
                 element_send_redraw(child, shouldPropegate);
             }
         }
 
-        elem->invalidRect = (rect_t){0};
+        elem->draw.invalidRect = (rect_t){0};
     }
 
     return 0;
