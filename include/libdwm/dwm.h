@@ -16,5 +16,6 @@
 #include "window.h"
 #include "popup.h"
 #include "drawable.h"
+#include "image.h"
 
 #endif

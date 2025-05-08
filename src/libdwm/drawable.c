@@ -111,7 +111,7 @@ void draw_transfer(drawable_t* dest, drawable_t* src, const rect_t* destRect, co
     cmd_draw_transfer_t cmd;
     CMD_INIT(&cmd, CMD_DRAW_TRANSFER, sizeof(cmd));
     cmd.dest = dest->surface;
-    cmd.src = dest->surface;
+    cmd.src = src->surface;
     draw_rect_to_global(dest, &cmd.destRect, destRect);
     draw_point_to_global(src, &cmd.srcPoint, srcPoint);
     display_cmds_push(dest->disp, &cmd.header);
@@ -119,6 +119,25 @@ void draw_transfer(drawable_t* dest, drawable_t* src, const rect_t* destRect, co
     draw_invalidate(dest, destRect);
     rect_t srcRect = RECT_INIT_DIM(srcPoint->x, srcPoint->y, RECT_WIDTH(destRect), RECT_HEIGHT(destRect));
     draw_invalidate(src, &srcRect);
+}
+
+void draw_buffer(drawable_t* draw, pixel_t* buffer, uint64_t index, uint64_t length)
+{
+    uint64_t cmdSize = sizeof(cmd_draw_buffer_t) + length * sizeof(pixel_t);
+
+    cmd_draw_buffer_t* cmd = malloc(cmdSize);
+    CMD_INIT(cmd, CMD_DRAW_BUFFER, cmdSize);
+    cmd->target = draw->surface;
+    cmd->index = index;
+    cmd->length = length;
+    memcpy(cmd->buffer, buffer, length * sizeof(pixel_t));
+    display_cmds_push(draw->disp, &cmd->header);
+    free(cmd);
+}
+
+void draw_image(drawable_t* draw, image_t* image, const rect_t *destRect, const point_t *srcPoint)
+{
+    draw_transfer(draw, image_draw(image), destRect, srcPoint);
 }
 
 void draw_rim(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t pixel)

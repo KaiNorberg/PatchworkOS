@@ -14,6 +14,7 @@ typedef enum
     SURFACE_PANEL,
     SURFACE_CURSOR,
     SURFACE_WALL,
+    SURFACE_HIDDEN,
     SURFACE_TYPE_AMOUNT
 } surface_type_t;
 

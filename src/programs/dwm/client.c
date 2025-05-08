@@ -400,6 +400,8 @@ static uint64_t client_action_draw_transfer(client_t* client, const cmd_header_t
 {
     if (header->size != sizeof(cmd_draw_transfer_t))
     {
+        printf("err1");
+        while(1);
         return ERR;
     }
     cmd_draw_transfer_t* cmd = (cmd_draw_transfer_t*)header;
@@ -407,12 +409,16 @@ static uint64_t client_action_draw_transfer(client_t* client, const cmd_header_t
     surface_t* dest = client_find_surface(client, cmd->dest);
     if (dest == NULL)
     {
+        printf("err2");
+        while(1);
         return ERR;
     }
 
     surface_t* src = cmd->dest == cmd->src ? dest : client_find_surface(client, cmd->src);
     if (src == NULL)
     {
+        printf("err3");
+        while(1);
         return ERR;
     }
 
@@ -443,6 +449,35 @@ static uint64_t client_action_surface_set_timer(client_t* client, const cmd_head
     return 0;
 }
 
+static uint64_t client_action_draw_buffer(client_t* client, const cmd_header_t* header)
+{
+    if (header->size <= sizeof(cmd_draw_buffer_t))
+    {
+        return ERR;
+    }
+    cmd_draw_buffer_t* cmd = (cmd_draw_buffer_t*)header;
+    if (header->size != sizeof(cmd_draw_buffer_t) + cmd->length * sizeof(pixel_t))
+    {
+        return ERR;
+    }
+
+    surface_t* surface = client_find_surface(client, cmd->target);
+    if (surface == NULL)
+    {
+        return ERR;
+    }
+
+    if (cmd->index + cmd->length > surface->gfx.stride * surface->gfx.height)
+    {
+        return ERR;
+    }
+    memcpy(&surface->gfx.buffer[cmd->index], cmd->buffer, cmd->length * sizeof(pixel_t));
+
+    surface->invalid = true;
+    compositor_set_redraw_needed();
+    return 0;
+}
+
 static uint64_t (*actions[])(client_t*, const cmd_header_t*) = {
     [CMD_SCREEN_INFO] = client_action_screen_info,
     [CMD_SURFACE_NEW] = client_action_surface_new,
@@ -457,17 +492,16 @@ static uint64_t (*actions[])(client_t*, const cmd_header_t*) = {
     [CMD_SURFACE_MOVE] = client_action_surface_move,
     [CMD_DRAW_TRANSFER] = client_action_draw_transfer,
     [CMD_SURFACE_SET_TIMER] = client_action_surface_set_timer,
+    [CMD_DRAW_BUFFER] = client_action_draw_buffer,
 };
 
 uint64_t client_recieve_cmds(client_t* client)
 {
-    printf("client_recieve_cmds start");
     uint64_t readSize = read(client->fd, &client->cmds, sizeof(cmd_buffer_t) + 1);
     if (readSize > sizeof(cmd_buffer_t) || readSize == 0) // Program wrote to much or end of file
     {
         return ERR;
     }
-    printf("client_recieve_cmds end");
 
     if (readSize != client->cmds.size || client->cmds.size > CMD_BUFFER_MAX_DATA)
     {
@@ -503,14 +537,11 @@ uint64_t client_recieve_cmds(client_t* client)
 
 uint64_t client_send_event(client_t* client, surface_id_t target, event_type_t type, void* data, uint64_t size)
 {
-    printf("client_send_event start");
     event_t event = {.type = type, .target = target};
     memcpy(&event.raw, data, size);
     if (write(client->fd, &event, sizeof(event_t)) == ERR)
     {
-        printf("client_send_event: err %s", strerror(errno));
         return ERR;
     }
-    printf("client_send_event end");
     return 0;
 }

@@ -1,5 +1,8 @@
 #include <libdwm/dwm.h>
 #include <stdlib.h>
+#include <stdio.h>
+
+static image_t* image;
 
 static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
@@ -15,9 +18,11 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
         win_draw_end(window, &gfx);*/
 
+        printf("cursor: redraw");
         rect_t rect;
         element_content_rect(elem, &rect);
-        draw_rect(element_draw(elem), &rect, UINT32_MAX);
+        point_t srcPoint = {0};
+        draw_image(element_draw(elem), image, &rect, &srcPoint);
     }
     break;
     }
@@ -29,10 +34,16 @@ int main(void)
 {
     display_t* disp = display_new();
 
+    image = image_new(disp, "home:/theme/cursor/arrow.fbmp");
+    if (image == NULL)
+    {
+        return EXIT_FAILURE;
+    }
+
     rect_t screenRect;
     display_screen_rect(disp, &screenRect, 0);
 
-    rect_t rect = RECT_INIT_DIM(RECT_WIDTH(&screenRect) / 2, RECT_HEIGHT(&screenRect) / 2, 32, 32);
+    rect_t rect = RECT_INIT_DIM(RECT_WIDTH(&screenRect) / 2, RECT_HEIGHT(&screenRect) / 2, image_width(image), image_height(image));
 
     window_t* win = window_new(disp, "Cursor", &rect, SURFACE_CURSOR, WINDOW_NONE, procedure, NULL);
     if (win == NULL)
@@ -47,7 +58,9 @@ int main(void)
         display_dispatch(disp, &event);
     }
 
+    printf("cursor exit");
     window_free(win);
+    image_free(image);
     display_free(disp);
     return 0;
 }

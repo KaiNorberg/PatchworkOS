@@ -22,6 +22,7 @@ typedef enum
 } align_t;
 
 typedef struct drawable drawable_t;
+typedef struct image image_t;
 
 void draw_rect(drawable_t* draw, const rect_t* rect, pixel_t pixel);
 
@@ -32,7 +33,12 @@ void draw_edge(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t for
 void draw_gradient(drawable_t* draw, const rect_t* rect, pixel_t start, pixel_t end, gradient_type_t type,
     bool addNoise);
 
+// The destRect is the rectangle that will be filled in the destination, the srcPoint is the starting point in the source to copy from.
 void draw_transfer(drawable_t* dest, drawable_t* src, const rect_t* destRect, const point_t* srcPoint);
+
+void draw_buffer(drawable_t* draw, pixel_t* buffer, uint64_t index, uint64_t length);
+
+void draw_image(drawable_t* draw, image_t* image, const rect_t *destRect, const point_t *srcPoint);
 
 void draw_rim(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t pixel);
 

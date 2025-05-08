@@ -3,6 +3,23 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
+typedef struct drawable
+{
+    display_t* disp;
+    surface_id_t surface;
+    rect_t drawArea; // The area stuff is drawn to, any given to rect or point is relative to this area
+    rect_t invalidRect; // Relative to draw area
+} drawable_t;
+
+typedef struct image
+{
+    display_t* disp;
+    surface_id_t surface;
+    uint64_t width;
+    uint64_t height;
+    drawable_t draw;
+} image_t;
+
 typedef struct font
 {
     list_entry_t entry;
@@ -11,14 +28,6 @@ typedef struct font
     uint64_t width;
     uint64_t height;
 } font_t;
-
-typedef struct drawable
-{
-    display_t* disp;
-    surface_id_t surface;
-    rect_t drawArea; // The area stuff is drawn to, any given to rect or point is relative to this area
-    rect_t invalidRect; // Relative to draw area
-} drawable_t;
 
 typedef struct element
 {

@@ -31,6 +31,7 @@ typedef enum
     CMD_SURFACE_MOVE,
     CMD_DRAW_TRANSFER,
     CMD_SURFACE_SET_TIMER,
+    CMD_DRAW_BUFFER,
     CMD_TYPE_AMOUNT, // Below this are unimplemented cmds.
     CMD_DRAW_LINE,
     CMD_DRAW_POINT,
@@ -175,6 +176,15 @@ typedef struct
     timer_flags_t flags;
     nsec_t timeout;
 } cmd_surface_set_timer_t;
+
+typedef struct
+{
+    cmd_header_t header;
+    surface_id_t target;
+    uint64_t index;
+    uint64_t length;
+    pixel_t buffer[];
+} cmd_draw_buffer_t;
 
 #define CMD_BUFFER_MAX_DATA (0x1000)
 

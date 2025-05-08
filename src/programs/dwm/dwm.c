@@ -151,6 +151,11 @@ uint64_t dwm_attach(surface_t* surface)
         wall = surface;
     }
     break;
+    case SURFACE_HIDDEN:
+    {
+        // Do nothing
+    }
+    break;
     default:
     {
         printf("dwm error: attach (default)");
@@ -184,6 +189,11 @@ void dwm_detach(surface_t* surface)
     case SURFACE_WALL:
     {
         wall = NULL;
+    }
+    break;
+    case SURFACE_HIDDEN:
+    {
+        // Do nothing
     }
     break;
     default:
@@ -312,14 +322,12 @@ static void dwm_kbd_read(void)
     if (poll1(kbd, POLL_READ, 0) == POLL_READ)
     {
         // The kbd_event_t and event_kbd_t naming is a bit weird.
-        printf("dwm_kbd_read start");
         kbd_event_t kbdEvent;
         if (read(kbd, &kbdEvent, sizeof(kbd_event_t)) != sizeof(kbd_event_t))
         {
             printf("dwm error: failed to read kbd event");
             return;
         }
-        printf("dwm_kbd_read start");
 
         if (focus == NULL)
         {
@@ -407,12 +415,10 @@ static void dwm_mouse_read(void)
     bool received = false;
     while (1)
     {
-        printf("dwm_mouse_read start");
         if (poll1(mouse, POLL_READ, 0) != POLL_READ)
         {
             break;
         }
-        printf("dwm_mouse_read end");
 
         mouse_event_t mouseEvent;
         if (read(mouse, &mouseEvent, sizeof(mouse_event_t)) != sizeof(mouse_event_t))
@@ -471,9 +477,7 @@ static void dwm_poll(void)
         timeout = timer->timer.deadline > time ? timer->timer.deadline - time : 0;
     }
 
-    printf("dwm_poll start");
     uint64_t events = poll((pollfd_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(pollfd_t) + clientAmount, timeout);
-    printf("dwm_poll end %d %s", events, strerror(errno));
 
     nsec_t time = uptime();
     if (timer != NULL && time >= timer->timer.deadline)
@@ -496,17 +500,14 @@ static void dwm_update(void)
 
     if (pollCtx->data.occurred & POLL_READ)
     {
-        printf("client accept");
         dwm_client_accept();
     }
     if (pollCtx->kbd.occurred & POLL_READ)
     {
-        printf("kbd read");
         dwm_kbd_read();
     }
     if (pollCtx->mouse.occurred & POLL_READ)
     {
-        printf("mouse read");
         dwm_mouse_read();
     }
 
@@ -518,7 +519,6 @@ static void dwm_update(void)
         pollfd_t* fd = &pollCtx->clients[i++];
         if (fd->occurred & POLL_READ)
         {
-            printf("client_recieve_cmds %d", i);
             if (client_recieve_cmds(client) == ERR)
             {
                 dwm_client_disconnect(client);

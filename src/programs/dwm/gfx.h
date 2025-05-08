@@ -9,16 +9,6 @@
 
 #include "psf.h"
 
-#define FBMP_MAGIC 0x706D6266
-
-typedef struct fbmp
-{
-    uint32_t magic;
-    uint32_t width;
-    uint32_t height;
-    pixel_t data[];
-} gfx_fbmp_t;
-
 typedef struct gfx
 {
     pixel_t* buffer;
@@ -35,12 +25,6 @@ typedef struct gfx
         (gfx)->width, \
         (gfx)->height, \
     };
-
-gfx_fbmp_t* gfx_fbmp_new(const char* path);
-
-void gfx_fbmp(gfx_t* gfx, const gfx_fbmp_t* fbmp, const point_t* point);
-
-void gfx_fbmp_alpha(gfx_t* gfx, const gfx_fbmp_t* fbmp, const point_t* point);
 
 void gfx_psf(gfx_t* gfx, const psf_t* psf, const point_t* point, char chr, pixel_t foreground, pixel_t background);
 

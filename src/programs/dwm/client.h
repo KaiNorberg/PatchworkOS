@@ -14,6 +14,7 @@ typedef struct client
     list_t surfaces;
     list_t fonts;
     cmd_buffer_t cmds;
+    uint64_t newId;
 } client_t;
 
 client_t* client_new(fd_t fd);
