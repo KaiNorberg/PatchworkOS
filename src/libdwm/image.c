@@ -30,12 +30,10 @@ image_t* image_new_blank(display_t* disp, uint64_t width, uint64_t height)
     image->draw.drawArea = RECT_INIT_DIM(0, 0, width, height);
     image->draw.invalidRect = (rect_t){0};
 
-    cmd_surface_new_t cmd;
-    CMD_INIT(&cmd, CMD_SURFACE_NEW, sizeof(cmd));
-    cmd.id = image->surface;
-    cmd.type = SURFACE_HIDDEN;
-    cmd.rect = image->draw.drawArea;
-    display_cmds_push(disp, &cmd.header);
+    cmd_surface_new_t* cmd = display_cmds_push(disp, CMD_SURFACE_NEW, sizeof(cmd_surface_new_t));
+    cmd->id = image->surface;
+    cmd->type = SURFACE_HIDDEN;
+    cmd->rect = image->draw.drawArea;
     display_cmds_flush(disp);
 
     return image;
@@ -77,8 +75,6 @@ fbmp_t* fbmp_new(const char* path)
     return fbmp;
 }
 
-#include <stdio.h>
-
 image_t* image_new(display_t* disp, const char* path)
 {
     fbmp_t* fbmp = fbmp_new(path);
@@ -116,10 +112,8 @@ image_t* image_new(display_t* disp, const char* path)
 
 void image_free(image_t* image)
 {
-    cmd_surface_free_t cmd;
-    CMD_INIT(&cmd, CMD_SURFACE_FREE, sizeof(cmd));
-    cmd.target = image->surface;
-    display_cmds_push(image->disp, &cmd.header);
+    cmd_surface_free_t* cmd = display_cmds_push(image->disp, CMD_SURFACE_FREE, sizeof(cmd_surface_free_t));
+    cmd->target = image->surface;
     display_cmds_flush(image->disp);
 
     free(image);

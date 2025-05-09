@@ -27,11 +27,12 @@ static void display_events_pop(display_t* disp, event_t* event)
 
 static uint64_t display_default_font_init(display_t* disp)
 {
-    cmd_font_info_t cmd;
-    CMD_INIT(&cmd, CMD_FONT_INFO, sizeof(cmd));
-    cmd.id = FONT_ID_DEFAULT;
+    cmd_font_info_t* cmd = display_cmds_push(disp, CMD_FONT_INFO, sizeof(cmd_font_info_t));
+    cmd->id = FONT_ID_DEFAULT;
+    display_cmds_flush(disp);
+
     event_t event;
-    if (display_send_recieve(disp, &cmd.header, &event, EVENT_FONT_INFO) == ERR)
+    if (display_wait_for_event(disp, &event, EVENT_FONT_INFO) == ERR)
     {
         return ERR;
     }
@@ -130,12 +131,12 @@ surface_id_t display_gen_id(display_t* disp)
 
 uint64_t display_screen_rect(display_t* disp, rect_t* rect, uint64_t index)
 {
-    cmd_screen_info_t cmd;
-    CMD_INIT(&cmd, CMD_SCREEN_INFO, sizeof(cmd));
-    cmd.index = index;
+    cmd_screen_info_t* cmd = display_cmds_push(disp, CMD_SCREEN_INFO, sizeof(cmd_screen_info_t));
+    cmd->index = index;
+    display_cmds_flush(disp);
 
     event_t event;
-    if (display_send_recieve(disp, &cmd.header, &event, EVENT_SCREEN_INFO) == ERR)
+    if (display_wait_for_event(disp, &event, EVENT_SCREEN_INFO) == ERR)
     {
         return ERR;
     }
@@ -195,16 +196,26 @@ void display_events_push(display_t* disp, surface_id_t target, event_type_t type
     disp->events.writeIndex = nextWriteIndex;
 }
 
-void display_cmds_push(display_t* disp, const cmd_header_t* cmd)
+void* display_cmds_push(display_t* disp, cmd_type_t type, uint64_t size)
 {
-    if (disp->cmds.size + cmd->size >= CMD_BUFFER_MAX_DATA - offsetof(cmd_buffer_t, data))
+    if (size > CMD_BUFFER_MAX_DATA)
+    {
+        return NULL;
+    }
+
+    if (disp->cmds.size + size >= CMD_BUFFER_MAX_DATA)
     {
         display_cmds_flush(disp);
     }
 
-    memcpy((void*)((uint64_t)&disp->cmds + disp->cmds.size), cmd, cmd->size);
+    cmd_header_t* cmd = (cmd_header_t*)((uint64_t)&disp->cmds + disp->cmds.size);
     disp->cmds.amount++;
-    disp->cmds.size += cmd->size;
+    disp->cmds.size += size;
+
+    cmd->magic = CMD_MAGIC;
+    cmd->type = type;
+    cmd->size = size;
+    return cmd;
 }
 
 void display_cmds_flush(display_t* disp)
@@ -220,11 +231,8 @@ void display_cmds_flush(display_t* disp)
     disp->cmds.amount = 0;
 }
 
-uint64_t display_send_recieve(display_t* disp, cmd_header_t* cmd, event_t* event, event_type_t expected)
+uint64_t display_wait_for_event(display_t* disp, event_t* event, event_type_t expected)
 {
-    display_cmds_push(disp, cmd);
-    display_cmds_flush(disp);
-
     while (display_connected(disp))
     {
         display_recieve_event(disp, event);

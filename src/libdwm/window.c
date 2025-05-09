@@ -272,12 +272,10 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
         win->clientElement = win->root;
     }
 
-    cmd_surface_new_t cmd;
-    CMD_INIT(&cmd, CMD_SURFACE_NEW, sizeof(cmd));
-    cmd.id = win->surface;
-    cmd.type = win->type;
-    cmd.rect = win->rect;
-    display_cmds_push(disp, &cmd.header);
+    cmd_surface_new_t* cmd = display_cmds_push(disp, CMD_SURFACE_NEW, sizeof(cmd_surface_new_t));
+    cmd->id = win->surface;
+    cmd->type = win->type;
+    cmd->rect = win->rect;
     display_cmds_flush(disp);
 
     list_push(&disp->windows, &win->entry);
@@ -288,10 +286,8 @@ void window_free(window_t* win)
 {
     element_free(win->root);
 
-    cmd_surface_free_t cmd;
-    CMD_INIT(&cmd, CMD_SURFACE_FREE, sizeof(cmd));
-    cmd.target = win->surface;
-    display_cmds_push(win->disp, &cmd.header);
+    cmd_surface_free_t* cmd = display_cmds_push(win->disp, CMD_SURFACE_FREE, sizeof(cmd_surface_free_t));
+    cmd->target = win->surface;
     display_cmds_flush(win->disp);
 
     list_remove(&win->entry);
@@ -337,11 +333,9 @@ uint64_t window_move(window_t* win, const rect_t* rect)
         return ERR;
     }
 
-    cmd_surface_move_t cmd;
-    CMD_INIT(&cmd, CMD_SURFACE_MOVE, sizeof(cmd));
-    cmd.target = win->surface;
-    cmd.rect = *rect;
-    display_cmds_push(win->disp, &cmd.header);
+    cmd_surface_move_t* cmd = display_cmds_push(win->disp, CMD_SURFACE_MOVE, sizeof(cmd_surface_move_t));
+    cmd->target = win->surface;
+    cmd->rect = *rect;
     display_cmds_flush(win->disp);
 
     return 0;
@@ -349,12 +343,10 @@ uint64_t window_move(window_t* win, const rect_t* rect)
 
 uint64_t window_set_timer(window_t* win, timer_flags_t flags, nsec_t timeout)
 {
-    cmd_surface_set_timer_t cmd;
-    CMD_INIT(&cmd, CMD_SURFACE_SET_TIMER, sizeof(cmd));
-    cmd.target = win->surface;
-    cmd.flags = flags;
-    cmd.timeout = timeout;
-    display_cmds_push(win->disp, &cmd.header);
+    cmd_surface_set_timer_t* cmd = display_cmds_push(win->disp, CMD_SURFACE_SET_TIMER, sizeof(cmd_surface_set_timer_t));
+    cmd->target = win->surface;
+    cmd->flags = flags;
+    cmd->timeout = timeout;
     display_cmds_flush(win->disp);
 
     return 0;

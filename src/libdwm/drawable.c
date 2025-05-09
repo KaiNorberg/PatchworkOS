@@ -23,28 +23,22 @@ static void draw_point_to_global(drawable_t* draw, point_t* dest, const point_t*
 
 void draw_rect(drawable_t* draw, const rect_t* rect, pixel_t pixel)
 {
-    cmd_draw_rect_t cmd;
-    CMD_INIT(&cmd, CMD_DRAW_RECT, sizeof(cmd));
-    cmd.target = draw->surface;
-    draw_rect_to_global(draw, &cmd.rect, rect);
-    cmd.pixel = pixel;
-
-    display_cmds_push(draw->disp, &cmd.header);
+    cmd_draw_rect_t* cmd = display_cmds_push(draw->disp, CMD_DRAW_RECT, sizeof(cmd_draw_rect_t));
+    cmd->target = draw->surface;
+    draw_rect_to_global(draw, &cmd->rect, rect);
+    cmd->pixel = pixel;
 
     draw_invalidate(draw, rect);
 }
 
 void draw_edge(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background)
 {
-    cmd_draw_edge_t cmd;
-    CMD_INIT(&cmd, CMD_DRAW_EDGE, sizeof(cmd));
-    cmd.target = draw->surface;
-    draw_rect_to_global(draw, &cmd.rect, rect);
-    cmd.width = width;
-    cmd.foreground = foreground;
-    cmd.background = background;
-
-    display_cmds_push(draw->disp, &cmd.header);
+    cmd_draw_edge_t* cmd = display_cmds_push(draw->disp, CMD_DRAW_EDGE, sizeof(cmd_draw_edge_t));
+    cmd->target = draw->surface;
+    draw_rect_to_global(draw, &cmd->rect, rect);
+    cmd->width = width;
+    cmd->foreground = foreground;
+    cmd->background = background;
 
     draw_invalidate(draw, rect);
 }
@@ -52,16 +46,13 @@ void draw_edge(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t for
 void draw_gradient(drawable_t* draw, const rect_t* rect, pixel_t start, pixel_t end, gradient_type_t type,
     bool addNoise)
 {
-    cmd_draw_gradient_t cmd;
-    CMD_INIT(&cmd, CMD_DRAW_GRADIENT, sizeof(cmd));
-    cmd.target = draw->surface;
-    draw_rect_to_global(draw, &cmd.rect, rect);
-    cmd.start = start;
-    cmd.end = end;
-    cmd.type = type;
-    cmd.addNoise = addNoise;
-
-    display_cmds_push(draw->disp, &cmd.header);
+    cmd_draw_gradient_t* cmd = display_cmds_push(draw->disp, CMD_DRAW_GRADIENT, sizeof(cmd_draw_gradient_t));
+    cmd->target = draw->surface;
+    draw_rect_to_global(draw, &cmd->rect, rect);
+    cmd->start = start;
+    cmd->end = end;
+    cmd->type = type;
+    cmd->addNoise = addNoise;
 
     draw_invalidate(draw, rect);
 }
@@ -69,24 +60,12 @@ void draw_gradient(drawable_t* draw, const rect_t* rect, pixel_t start, pixel_t 
 void draw_string(drawable_t* draw, font_t* font, const point_t* point, pixel_t foreground, pixel_t background,
     const char* string, uint64_t length)
 {
-    uint8_t buffer[sizeof(cmd_draw_string_t) + MAX_PATH];
-
-    cmd_draw_string_t* cmd;
-    if (length >= MAX_PATH) // If string is small stack allocate memory
-    {
-        cmd = malloc(sizeof(cmd_draw_string_t) + length);
-    }
-    else
-    {
-        cmd = (void*)buffer;
-    }
-
     if (font == NULL)
     {
         font = font_default(draw->disp);
     }
 
-    CMD_INIT(cmd, CMD_DRAW_STRING, sizeof(cmd_draw_string_t));
+    cmd_draw_string_t* cmd = display_cmds_push(draw->disp, CMD_DRAW_STRING, sizeof(cmd_draw_string_t) + length);
     cmd->target = draw->surface;
     cmd->fontId = font->id;
     draw_point_to_global(draw, &cmd->point, point);
@@ -94,13 +73,6 @@ void draw_string(drawable_t* draw, font_t* font, const point_t* point, pixel_t f
     cmd->background = background;
     cmd->length = length;
     memcpy(cmd->string, string, length);
-    cmd->header.size += length;
-    display_cmds_push(draw->disp, &cmd->header);
-
-    if (length >= MAX_PATH)
-    {
-        free(cmd);
-    }
 
     rect_t rect = RECT_INIT_DIM(point->x, point->y, font->width * length, font->height);
     draw_invalidate(draw, &rect);
@@ -108,13 +80,16 @@ void draw_string(drawable_t* draw, font_t* font, const point_t* point, pixel_t f
 
 void draw_transfer(drawable_t* dest, drawable_t* src, const rect_t* destRect, const point_t* srcPoint)
 {
-    cmd_draw_transfer_t cmd;
-    CMD_INIT(&cmd, CMD_DRAW_TRANSFER, sizeof(cmd));
-    cmd.dest = dest->surface;
-    cmd.src = src->surface;
-    draw_rect_to_global(dest, &cmd.destRect, destRect);
-    draw_point_to_global(src, &cmd.srcPoint, srcPoint);
-    display_cmds_push(dest->disp, &cmd.header);
+    if (dest->disp != src->disp)
+    {
+        return;
+    }
+
+    cmd_draw_transfer_t* cmd = display_cmds_push(dest->disp, CMD_DRAW_TRANSFER, sizeof(cmd_draw_transfer_t));
+    cmd->dest = dest->surface;
+    cmd->src = src->surface;
+    draw_rect_to_global(dest, &cmd->destRect, destRect);
+    draw_point_to_global(src, &cmd->srcPoint, srcPoint);
 
     draw_invalidate(dest, destRect);
     rect_t srcRect = RECT_INIT_DIM(srcPoint->x, srcPoint->y, RECT_WIDTH(destRect), RECT_HEIGHT(destRect));
@@ -125,14 +100,11 @@ void draw_buffer(drawable_t* draw, pixel_t* buffer, uint64_t index, uint64_t len
 {
     uint64_t cmdSize = sizeof(cmd_draw_buffer_t) + length * sizeof(pixel_t);
 
-    cmd_draw_buffer_t* cmd = malloc(cmdSize);
-    CMD_INIT(cmd, CMD_DRAW_BUFFER, cmdSize);
+    cmd_draw_buffer_t* cmd = display_cmds_push(draw->disp, CMD_DRAW_BUFFER, cmdSize);
     cmd->target = draw->surface;
     cmd->index = index;
     cmd->length = length;
     memcpy(cmd->buffer, buffer, length * sizeof(pixel_t));
-    display_cmds_push(draw->disp, &cmd->header);
-    free(cmd);
 }
 
 void draw_image(drawable_t* draw, image_t* image, const rect_t *destRect, const point_t *srcPoint)

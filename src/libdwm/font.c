@@ -23,12 +23,13 @@ font_t* font_new(display_t* disp, const char* name, uint64_t desiredHeight)
     list_entry_init(&font->entry);
     font->disp = disp;
 
-    cmd_font_new_t cmd;
-    CMD_INIT(&cmd, CMD_FONT_NEW, sizeof(cmd));
-    strcpy(cmd.name, name);
-    cmd.desiredHeight = desiredHeight;
+    cmd_font_new_t* cmd = display_cmds_push(disp, CMD_FONT_NEW, sizeof(cmd_font_new_t));
+    strcpy(cmd->name, name);
+    cmd->desiredHeight = desiredHeight;
+    display_cmds_flush(font->disp);
+
     event_t event;
-    if (display_send_recieve(disp, &cmd.header, &event, EVENT_FONT_NEW) == ERR)
+    if (display_wait_for_event(disp, &event, EVENT_FONT_NEW) == ERR)
     {
         free(font);
         return NULL;
@@ -47,10 +48,8 @@ void font_free(font_t* font)
         return;
     }
 
-    cmd_font_free_t cmd;
-    CMD_INIT(&cmd, CMD_FONT_FREE, sizeof(cmd));
-    cmd.id = font->id;
-    display_cmds_push(font->disp, &cmd.header);
+    cmd_font_free_t* cmd = display_cmds_push(font->disp, CMD_FONT_FREE, sizeof(cmd_font_free_t));
+    cmd->id = font->id;
     display_cmds_flush(font->disp);
 
     list_remove(&font->entry);

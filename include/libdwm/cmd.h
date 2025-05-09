@@ -43,13 +43,6 @@ typedef enum
 
 #define CMD_MAGIC 0xDEADC0DE
 
-#define CMD_INIT(cmd, cmdType, cmdSize) \
-    ({ \
-        (cmd)->header.magic = CMD_MAGIC; \
-        (cmd)->header.type = cmdType; \
-        (cmd)->header.size = cmdSize; \
-    })
-
 // TODO: Consider way to "disable" the dwm to allow a program to draw directly to the screen via the framebuffers.
 // cmd_enable? cmd_disable? Persmissions?
 
