@@ -21,4 +21,4 @@ mouse_t* mouse_new(const char* name);
 
 void mouse_free(mouse_t* mouse);
 
-void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, const point_t* delta);
+void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, int64_t deltaX, int64_t deltaY);

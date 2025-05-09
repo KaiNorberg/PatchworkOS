@@ -1,22 +1,28 @@
+#include <libdwm/dwm.h>
 #include <stdlib.h>
-#include <sys/gfx.h>
-#include <sys/win.h>
+#include <stdio.h>
 
-static gfx_fbmp_t* image;
+static image_t* image;
 
-static uint64_t procedure(win_t* window, const msg_t* msg)
+static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
-    switch (msg->type)
+    switch (event->type)
     {
-    case LMSG_REDRAW:
+    case LEVENT_REDRAW:
     {
-        gfx_t gfx;
+        /*gfx_t gfx;
         win_draw_begin(window, &gfx);
 
         point_t point = {0};
         gfx_fbmp(&gfx, image, &point);
 
-        win_draw_end(window, &gfx);
+        win_draw_end(window, &gfx);*/
+
+        printf("cursor: redraw");
+        rect_t rect;
+        element_content_rect(elem, &rect);
+        point_t srcPoint = {0};
+        draw_image(element_draw(elem), image, &rect, &srcPoint);
     }
     break;
     }
@@ -26,25 +32,35 @@ static uint64_t procedure(win_t* window, const msg_t* msg)
 
 int main(void)
 {
-    image = gfx_fbmp_new("home:/theme/cursor/arrow.fbmp");
+    display_t* disp = display_new();
+
+    image = image_new(disp, "home:/theme/cursor/arrow.fbmp");
     if (image == NULL)
     {
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
     rect_t screenRect;
-    win_screen_rect(&screenRect);
-    rect_t rect = RECT_INIT_DIM(RECT_WIDTH(&screenRect) / 2, RECT_HEIGHT(&screenRect) / 2, image->width, image->height);
+    display_screen_rect(disp, &screenRect, 0);
 
-    win_t* window = win_new("Cursor", &rect, DWM_CURSOR, WIN_NONE, procedure);
+    rect_t rect = RECT_INIT_DIM(RECT_WIDTH(&screenRect) / 2, RECT_HEIGHT(&screenRect) / 2, image_width(image), image_height(image));
 
-    msg_t msg = {0};
-    while (msg.type != LMSG_QUIT)
+    window_t* win = window_new(disp, "Cursor", &rect, SURFACE_CURSOR, WINDOW_NONE, procedure, NULL);
+    if (win == NULL)
     {
-        win_receive(window, &msg, NEVER);
-        win_dispatch(window, &msg);
+        return EXIT_FAILURE;
     }
 
-    win_free(window);
+    event_t event = {0};
+    while (display_connected(disp))
+    {
+        display_next_event(disp, &event, NEVER);
+        display_dispatch(disp, &event);
+    }
+
+    printf("cursor exit");
+    window_free(win);
+    image_free(image);
+    display_free(disp);
     return 0;
 }

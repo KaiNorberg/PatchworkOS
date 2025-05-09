@@ -6,9 +6,11 @@
 #include <sys/list.h>
 #include <sys/proc.h>
 
+// TODO: Make this code less incomprehensible.
+
 #define WAITSYS_ALL UINT64_MAX
 
-// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock_all.
+// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock.
 #define WAITSYS_BLOCK(waitQueue, condition) \
     ({ \
         block_result_t result = BLOCK_NORM; \
@@ -19,8 +21,8 @@
         result; \
     })
 
-// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock_all.
-// Will also return after timeout is reached, timeout will be reached even if waitsys_unblock_all is never called.
+// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock.
+// Will also return after timeout is reached, timeout will be reached even if waitsys_unblock is never called.
 #define WAITSYS_BLOCK_TIMEOUT(waitQueue, condition, timeout) \
     ({ \
         block_result_t result = BLOCK_NORM; \
@@ -40,7 +42,7 @@
         result; \
     })
 
-// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock_all.
+// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock.
 // When condition is tested it will also acquire lock, and the macro will always return with lock still acquired.
 #define WAITSYS_BLOCK_LOCK(waitQueue, lock, condition) \
     ({ \
@@ -48,16 +50,14 @@
         lock_acquire(lock); \
         while (!(condition) && result == BLOCK_NORM) \
         { \
-            lock_release(lock); \
-            result = waitsys_block(waitQueue, NEVER); \
-            lock_acquire(lock); \
+            result = waitsys_block_lock(waitQueue, NEVER, lock); \
         } \
         result; \
     })
 
-// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock_all.
+// Blocks untill condition is true, condition will be tested after every call to waitsys_unblock.
 // When condition is tested it will also acquire lock, and the macro will always return with lock still acquired.
-// Will also return after timeout is reached, timeout will be reached even if waitsys_unblock_all is never called.
+// Will also return after timeout is reached, timeout will be reached even if waitsys_unblock is never called.
 #define WAITSYS_BLOCK_LOCK_TIMEOUT(waitQueue, lock, condition, timeout) \
     ({ \
         block_result_t result = BLOCK_NORM; \
@@ -71,16 +71,15 @@
                 result = BLOCK_TIMEOUT; \
                 break; \
             } \
-            lock_release(lock); \
             nsec_t remaining = deadline == NEVER ? NEVER : (deadline > uptime ? deadline - uptime : 0); \
-            result = waitsys_block(waitQueue, remaining); \
+            result = waitsys_block_lock(waitQueue, remaining, lock); \
             uptime = systime_uptime(); \
-            lock_acquire(lock); \
         } \
         result; \
     })
 
 typedef struct thread thread_t;
+typedef struct cpu cpu_t;
 
 typedef struct wait_queue
 {
@@ -88,12 +87,15 @@ typedef struct wait_queue
     list_t entries;
 } wait_queue_t;
 
-typedef struct wait_queue_entry
+typedef struct wait_entry
 {
-    list_entry_t entry;
+    list_entry_t queueEntry; // Used in wait_queue_t->entries
+    list_entry_t threadEntry; // Used in waitsys_thread_ctx_t->entries
     thread_t* thread;
     wait_queue_t* waitQueue;
-} wait_queue_entry_t;
+    bool blocking;
+    bool cancelBlock;
+} wait_entry_t;
 
 typedef enum
 {
@@ -105,27 +107,38 @@ typedef enum
 
 typedef struct
 {
-    wait_queue_entry_t* waitEntries[CONFIG_MAX_BLOCKERS_PER_THREAD];
+    list_t entries;
     uint8_t entryAmount;
     block_result_t result;
     nsec_t deadline;
-    bool blocking;
-} waitsys_ctx_t;
+    cpu_t* owner;
+} waitsys_thread_ctx_t;
+
+typedef struct
+{
+    list_t blockedThreads;
+    list_t parkedThreads;
+    lock_t lock;
+} waitsys_cpu_ctx_t;
 
 void wait_queue_init(wait_queue_t* waitQueue);
 
 void wait_queue_deinit(wait_queue_t* waitQueue);
 
-void waitsys_ctx_init(waitsys_ctx_t* waitsys);
+void waitsys_thread_ctx_init(waitsys_thread_ctx_t* waitsys);
 
-void waitsys_init(void);
+void waitsys_cpu_ctx_init(waitsys_cpu_ctx_t* waitsys);
 
 void waitsys_timer_trap(trap_frame_t* trapFrame);
 
 void waitsys_block_trap(trap_frame_t* trapFrame);
 
+void waitsys_unblock(wait_queue_t* waitQueue, uint64_t amount);
+
 block_result_t waitsys_block(wait_queue_t* waitQueue, nsec_t timeout);
 
-block_result_t waitsys_block_many(wait_queue_t** waitQueues, uint64_t amount, nsec_t timeout);
+// Should be called with lock acquired, will release lock after blocking then reacquire it before returning from the
+// function.
+block_result_t waitsys_block_lock(wait_queue_t* waitQueue, nsec_t timeout, lock_t* lock);
 
-void waitsys_unblock(wait_queue_t* waitQueue, uint64_t amount);
+block_result_t waitsys_block_many(wait_queue_t** waitQueues, uint64_t amount, nsec_t timeout);

@@ -61,6 +61,7 @@ static void cpu_init(cpu_t* cpu, uint8_t id, uint8_t lapicId)
     tss_init(&cpu->tss);
     cli_ctx_init(&cpu->cli);
     sched_ctx_init(&cpu->sched);
+    waitsys_cpu_ctx_init(&cpu->waitsys);
     ipi_queue_init(&cpu->queue);
 }
 

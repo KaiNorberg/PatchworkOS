@@ -404,22 +404,29 @@ uint64_t syscall_stat(const char* path, stat_t* buffer)
     return vfs_stat(path, buffer);
 }
 
-void* syscall_virtual_alloc(void* address, uint64_t length, prot_t prot)
+void* syscall_mmap(fd_t fd, void* address, uint64_t length, prot_t prot)
 {
-    return vmm_alloc(address, length, prot);
+    file_t* file = vfx_ctx_file(&sched_process()->vfsCtx, fd);
+    if (file == NULL)
+    {
+        return NULL;
+    }
+    FILE_DEFER(file);
+
+    return vfs_mmap(file, address, length, prot);
 }
 
-uint64_t syscall_virtual_free(void* address, uint64_t length)
+uint64_t syscall_munmap(void* address, uint64_t length)
 {
     if (!verify_pointer(address, length))
     {
         return ERROR(EFAULT);
     }
 
-    return vmm_free(address, length);
+    return vmm_unmap(address, length);
 }
 
-uint64_t syscall_virtual_protect(void* address, uint64_t length, prot_t prot)
+uint64_t syscall_mprotect(void* address, uint64_t length, prot_t prot)
 {
     if (!verify_pointer(address, length))
     {
@@ -427,28 +434,6 @@ uint64_t syscall_virtual_protect(void* address, uint64_t length, prot_t prot)
     }
 
     return vmm_protect(address, length, prot);
-}
-
-uint64_t syscall_flush(fd_t fd, const pixel_t* buffer, uint64_t size, const rect_t* rect)
-{
-    if (!verify_buffer(buffer, size))
-    {
-        return ERROR(EFAULT);
-    }
-
-    if (!verify_buffer(rect, sizeof(rect_t)))
-    {
-        return ERROR(EFAULT);
-    }
-
-    file_t* file = vfx_ctx_file(&sched_process()->vfsCtx, fd);
-    if (file == NULL)
-    {
-        return ERR;
-    }
-    FILE_DEFER(file);
-
-    return vfs_flush(file, buffer, size, rect);
 }
 
 uint64_t syscall_dir_list(const char* path, dir_entry_t* entries, uint64_t amount)
@@ -506,7 +491,7 @@ void syscall_handler_end(void)
 {
     thread_t* thread = sched_thread();
 
-    if (atomic_load(&thread->process->dead) || thread->dead)
+    if (thread_dead(thread))
     {
         sched_thread_exit();
     }
@@ -534,10 +519,9 @@ void* syscallTable[] = {
     syscall_chdir,
     syscall_poll,
     syscall_stat,
-    syscall_virtual_alloc,
-    syscall_virtual_free,
-    syscall_virtual_protect,
-    syscall_flush,
+    syscall_mmap,
+    syscall_munmap,
+    syscall_mprotect,
     syscall_dir_list,
     syscall_thread_create,
     syscall_yield,

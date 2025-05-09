@@ -3,8 +3,9 @@
 #include "acpi.h"
 #include "apic.h"
 #include "const.h"
-#include "dwm/dwm.h"
+#include "fb.h"
 #include "gdt.h"
+#include "gop.h"
 #include "hpet.h"
 #include "idt.h"
 #include "log.h"
@@ -27,9 +28,9 @@
 #include "waitsys.h"
 
 #include <bootloader/boot_info.h>
+#include <libstd_internal/init.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdlib_internal/init.h>
 #include <string.h>
 #include <sys/argsplit.h>
 
@@ -72,7 +73,6 @@ void kernel_init(boot_info_t* bootInfo)
     process_backend_init();
 
     sched_init();
-    waitsys_init();
 
     acpi_init(bootInfo->rsdp);
     hpet_init();
@@ -92,16 +92,13 @@ void kernel_init(boot_info_t* bootInfo)
     ps2_init();
     net_init();
     pipe_init();
-    dwm_init(&bootInfo->gopBuffer);
+    gop_init(&bootInfo->gopBuffer);
 
     kernel_free_loader_data(&bootInfo->memoryMap);
 
 #ifdef TESTING
     testing_run_tests();
 #endif
-
-    dwm_start();
-    log_disable_screen();
 
     asm volatile("sti");
 }

@@ -3,18 +3,18 @@
 #include "history.h"
 #include "input.h"
 
-#include <sys/win.h>
-
-#define UMSG_BLINK (UMSG_BASE + 1)
+#include <libdwm/dwm.h>
 
 #define BLINK_INTERVAL (SEC / 2)
 
-#define TERMINAL_WIDTH (80 * 8 + winTheme.edgeWidth * 2 + winTheme.padding * 2)
-#define TERMINAL_HEIGHT (24 * 16 + winTheme.edgeWidth * 2 + winTheme.padding * 2)
+#define TERMINAL_WIDTH (80 * 8 + windowTheme.edgeWidth * 2 + windowTheme.paddingWidth * 2)
+#define TERMINAL_HEIGHT (24 * 16 + windowTheme.edgeWidth * 2 + windowTheme.paddingWidth * 2)
 
 typedef struct
 {
-    win_t* win;
+    display_t* disp;
+    window_t* win;
+    font_t* font;
     point_t cursorPos;
     bool cursorVisible;
     fd_t stdin[2];
@@ -26,15 +26,17 @@ typedef struct
 
 #define CURSOR_POS_TO_CLIENT_POS(cursorPos, font) \
     (point_t){ \
-        .x = ((cursorPos)->x * (font)->width) + winTheme.edgeWidth + winTheme.padding, \
-        .y = ((cursorPos)->y * (font)->height) + winTheme.edgeWidth + winTheme.padding, \
+        .x = ((cursorPos)->x * font_width(font)) + windowTheme.edgeWidth + windowTheme.paddingWidth, \
+        .y = ((cursorPos)->y * font_height(font)) + windowTheme.edgeWidth + windowTheme.paddingWidth, \
     };
 
 #define CURSOR_POS_X_OUT_OF_BOUNDS(cursorPosX, font) \
-    ((cursorPosX) * (font)->width > TERMINAL_WIDTH - winTheme.edgeWidth * 2 - winTheme.padding * 2)
+    ((cursorPosX) * (int64_t)font_width(font) > \
+        TERMINAL_WIDTH - windowTheme.edgeWidth * 2 - windowTheme.paddingWidth * 2)
 
 #define CURSOR_POS_Y_OUT_OF_BOUNDS(cursorPosY, font) \
-    ((cursorPosY) * (font)->height > TERMINAL_HEIGHT - winTheme.edgeWidth * 2 - winTheme.padding * 2)
+    ((cursorPosY) * (int64_t)font_height(font) > \
+        TERMINAL_HEIGHT - windowTheme.edgeWidth * 2 - windowTheme.paddingWidth * 2)
 
 void terminal_init(terminal_t* term);
 

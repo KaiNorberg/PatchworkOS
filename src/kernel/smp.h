@@ -23,7 +23,7 @@ typedef struct
     lock_t lock;
 } ipi_queue_t;
 
-typedef struct
+typedef struct cpu
 {
     uint8_t id;
     uint8_t lapicId;
@@ -31,6 +31,7 @@ typedef struct
     tss_t tss;
     cli_ctx_t cli;
     sched_ctx_t sched;
+    waitsys_cpu_ctx_t waitsys;
     ipi_queue_t queue;
     uint8_t idleStack[CPU_IDLE_STACK_SIZE];
 } cpu_t;

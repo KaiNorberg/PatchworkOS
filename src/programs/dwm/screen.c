@@ -1,0 +1,169 @@
+#include "screen.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/fb.h>
+#include <sys/io.h>
+#include <sys/proc.h>
+
+static fb_info_t info;
+static void* frontbuffer;
+
+static gfx_t backbuffer;
+
+static scanline_t* scanlines;
+
+static void frontbuffer_init(void)
+{
+    fd_t fb = open("sys:/fb0");
+    if (fb == ERR)
+    {
+        exit(EXIT_FAILURE);
+    }
+    if (ioctl(fb, IOCTL_FB_INFO, &info, sizeof(fb_info_t)) == ERR)
+    {
+        exit(EXIT_FAILURE);
+    }
+
+    switch (info.format)
+    {
+    case FB_ARGB32:
+    {
+        frontbuffer = mmap(fb, NULL, info.stride * info.height * sizeof(uint32_t), PROT_READ | PROT_WRITE);
+        if (frontbuffer == NULL)
+        {
+            exit(EXIT_FAILURE);
+        }
+        memset(frontbuffer, 0, info.stride * info.height * sizeof(uint32_t));
+    }
+    break;
+    default:
+    {
+        exit(EXIT_FAILURE);
+    }
+    }
+
+    close(fb);
+}
+
+static void backbuffer_init(void)
+{
+    backbuffer.buffer = malloc(info.stride * info.height * sizeof(pixel_t));
+    if (backbuffer.buffer == NULL)
+    {
+        exit(EXIT_FAILURE);
+    }
+    backbuffer.width = info.width;
+    backbuffer.height = info.height;
+    backbuffer.stride = info.stride;
+    backbuffer.invalidRect = (rect_t){0};
+    memset(backbuffer.buffer, 0, info.width * info.height * sizeof(pixel_t));
+}
+
+static void scanlines_clear(void)
+{
+    for (uint64_t i = 0; i < info.height; i++)
+    {
+        scanlines[i].invalid = false;
+        scanlines[i].start = UINT64_MAX;
+        scanlines[i].end = 0;
+    }
+}
+
+static void scanlines_init(void)
+{
+    scanlines = calloc(info.height, sizeof(scanline_t));
+    if (scanlines == NULL)
+    {
+        exit(EXIT_FAILURE);
+    }
+    scanlines_clear();
+}
+
+static void scanlines_invalidate(const rect_t* rect)
+{
+    for (int64_t i = rect->top; i < rect->bottom; i++)
+    {
+        scanlines[i].invalid = true;
+        scanlines[i].start = MIN(scanlines[i].start, rect->left);
+        scanlines[i].end = MAX(scanlines[i].end, rect->right);
+    }
+}
+
+void screen_init(void)
+{
+    frontbuffer_init();
+    backbuffer_init();
+    scanlines_init();
+}
+
+void screen_deinit(void)
+{
+    free(scanlines);
+    free(backbuffer.buffer);
+    munmap(frontbuffer, info.stride * info.height * sizeof(uint32_t));
+}
+
+void screen_transfer(surface_t* surface, const rect_t* rect)
+{
+    point_t srcPoint = {
+        .x = MAX(rect->left - surface->pos.x, 0),
+        .y = MAX(rect->top - surface->pos.y, 0),
+    };
+    gfx_transfer(&backbuffer, &surface->gfx, rect, &srcPoint);
+    scanlines_invalidate(rect);
+}
+
+void screen_transfer_blend(surface_t* surface, const rect_t* rect)
+{
+    point_t srcPoint = {
+        .x = MAX(rect->left - surface->pos.x, 0),
+        .y = MAX(rect->top - surface->pos.y, 0),
+    };
+    gfx_transfer_blend(&backbuffer, &surface->gfx, rect, &srcPoint);
+    scanlines_invalidate(rect);
+}
+
+void screen_swap(void)
+{
+    switch (info.format)
+    {
+    case FB_ARGB32:
+    {
+        for (uint64_t i = 0; i < info.height; i++)
+        {
+            if (!scanlines[i].invalid)
+            {
+                continue;
+            }
+
+            uint64_t offset = (scanlines[i].start * sizeof(uint32_t)) + i * sizeof(uint32_t) * info.stride;
+            uint64_t size = (scanlines[i].end - scanlines[i].start) * sizeof(uint32_t);
+
+            memcpy((void*)((uint64_t)frontbuffer + offset), (void*)((uint64_t)backbuffer.buffer + offset), size);
+        }
+    }
+    break;
+    default:
+    {
+        exit(EXIT_FAILURE);
+    }
+    }
+    scanlines_clear();
+}
+
+uint64_t screen_width(void)
+{
+    return info.width;
+}
+
+uint64_t screen_height(void)
+{
+    return info.height;
+}
+
+void screen_rect(rect_t* rect)
+{
+    *rect = RECT_INIT_DIM(0, 0, info.width, info.height);
+}

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <stdint.h>
-#include <sys/io.h>
 #include <sys/node.h>
 
 #ifndef __BOOTLOADER__

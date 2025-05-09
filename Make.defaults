@@ -33,7 +33,7 @@ CFLAGS := $(OPTIMIZATION) \
     -fno-stack-protector \
     -fno-omit-frame-pointer \
     -nostdlib -nostartfiles -ffreestanding \
-    -Iinclude/stdlib \
+    -Iinclude/libstd \
     -Iinclude \
     -I$(SRCDIR)
 
@@ -43,7 +43,7 @@ CFLAGS_DISABLE_SIMD := -mno-mmx -mno-3dnow \
 	-mno-ssse3 -mno-sse4
 
 ASFLAGS := -f elf64 \
-	-Iinclude/stdlib \
+	-Iinclude/libstd \
 	-Iinclude \
 	-I$(SRCDIR)
 

@@ -8,8 +8,8 @@ void mem_map_init(efi_mem_map_t* memoryMap)
 {
     memset(memoryMap, 0, sizeof(efi_mem_map_t));
 
-    memoryMap->base =
-        LibMemoryMap(&memoryMap->descriptorAmount, &memoryMap->key, &memoryMap->descriptorSize, &memoryMap->descriptorVersion);
+    memoryMap->base = LibMemoryMap(&memoryMap->descriptorAmount, &memoryMap->key, &memoryMap->descriptorSize,
+        &memoryMap->descriptorVersion);
     if (memoryMap->base == NULL)
     {
         Print(L"ERROR: Unable to get memory map!");

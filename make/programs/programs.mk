@@ -2,7 +2,7 @@ include Make.defaults
 
 TARGET := $(BINDIR)/$(PROGRAM)
 
-LDFLAGS += -Lbin/stdlib -lstd
+LDFLAGS += -Lbin/libstd -Lbin/libdwm -lstd -ldwm
 
 all: $(TARGET)
 

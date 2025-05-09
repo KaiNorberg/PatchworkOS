@@ -36,7 +36,6 @@ static inline void lock_acquire(lock_t* lock)
 static inline void lock_release(lock_t* lock)
 {
     atomic_fetch_add_explicit(&lock->nowServing, 1, memory_order_release);
-
     cli_pop();
 }
 

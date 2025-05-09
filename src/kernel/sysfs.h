@@ -72,8 +72,8 @@ typedef struct sysdir
 
 void sysfs_init(void);
 
-// The vfs exposes its volumes in the sysfs, however this creates a circular dependency so we first call sysfs_init() then wait to
-// mount sysfs untill after vfs_init().
+// The vfs exposes its volumes in the sysfs, however this creates a circular dependency so we first call sysfs_init()
+// then wait to mount sysfs untill after vfs_init().
 void sysfs_mount_to_vfs(void);
 
 sysdir_t* sysdir_new(const char* path, const char* dirname, sysdir_on_free_t onFree, void* private);

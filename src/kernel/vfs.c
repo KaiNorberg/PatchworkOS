@@ -91,7 +91,7 @@ void file_deref(file_t* file)
 {
     if (atomic_fetch_sub(&file->ref, 1) <= 1)
     {
-        if (file->volume->ops->cleanup != NULL)
+        if (file->volume->ops != NULL && file->volume->ops->cleanup != NULL)
         {
             file->volume->ops->cleanup(file->volume, file);
         }
@@ -381,26 +381,21 @@ uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
     return file->ops->ioctl(file, request, argp, size);
 }
 
-uint64_t vfs_flush(file_t* file, const void* buffer, uint64_t size, const rect_t* rect)
+void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
 {
     if (file->sysobj != NULL && atomic_load(&file->sysobj->hidden))
     {
-        return ERROR(ENOOBJ);
+        return ERRPTR(ENOOBJ);
     }
-    if (file->ops->flush == NULL)
+    if (file->ops->mmap == NULL)
     {
-        return ERROR(ENOOP);
+        return ERRPTR(ENOOP);
     }
-    return file->ops->flush(file, buffer, size, rect);
+    return file->ops->mmap(file, address, length, prot);
 }
 
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
 {
-    if (amount > CONFIG_MAX_BLOCKERS_PER_THREAD)
-    {
-        return ERROR(EBLOCKLIMIT);
-    }
-
     for (uint64_t i = 0; i < amount; i++)
     {
         if (files[i].file == NULL)
@@ -418,12 +413,18 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
         files[i].occurred = 0;
     }
 
-    wait_queue_t* waitQueues[CONFIG_MAX_BLOCKERS_PER_THREAD];
+    wait_queue_t** waitQueues = malloc(sizeof(wait_queue_t) * amount);
+    if (waitQueues == NULL)
+    {
+        return ERR;
+    }
+
     for (uint64_t i = 0; i < amount; i++)
     {
         waitQueues[i] = files[i].file->ops->poll(files[i].file, &files[i]);
         if (waitQueues[i] == NULL)
         {
+            free(waitQueues);
             return ERR;
         }
     }
@@ -438,11 +439,13 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
         {
             if (files[i].file == NULL || files[i].file->ops == NULL)
             {
+                free(waitQueues);
                 return ERROR(EINVAL);
             }
 
             if (files[i].file->ops->poll(files[i].file, &files[i]) == NULL)
             {
+                free(waitQueues);
                 return ERR;
             }
 
@@ -462,6 +465,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
         currentTime = systime_uptime();
     }
 
+    free(waitQueues);
     return events;
 }
 

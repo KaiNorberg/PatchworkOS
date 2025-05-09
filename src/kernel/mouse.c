@@ -36,10 +36,11 @@ static wait_queue_t* mouse_poll(file_t* file, poll_file_t* pollFile)
     return &mouse->waitQueue;
 }
 
-SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(mouse_open, (file_ops_t){
-    .read = mouse_read,
-    .poll = mouse_poll,
-});
+SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(mouse_open,
+    (file_ops_t){
+        .read = mouse_read,
+        .poll = mouse_poll,
+    });
 
 static void mouse_on_free(sysobj_t* sysobj)
 {
@@ -68,13 +69,14 @@ void mouse_free(mouse_t* mouse)
     sysobj_free(mouse->sysobj);
 }
 
-void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, const point_t* delta)
+void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, int64_t deltaX, int64_t deltaY)
 {
     LOCK_DEFER(&mouse->lock);
     mouse->events[mouse->writeIndex] = (mouse_event_t){
         .time = systime_uptime(),
         .buttons = buttons,
-        .delta = *delta,
+        .deltaX = deltaX,
+        .deltaY = deltaY,
     };
     mouse->writeIndex = (mouse->writeIndex + 1) % MOUSE_MAX_EVENT;
     waitsys_unblock(&mouse->waitQueue, WAITSYS_ALL);

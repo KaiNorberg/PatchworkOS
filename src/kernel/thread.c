@@ -33,10 +33,10 @@ thread_t* thread_new(process_t* process, void* entry, priority_t priority)
     list_entry_init(&thread->entry);
     thread->process = process;
     thread->id = atomic_fetch_add(&thread->process->newTid, 1);
-    thread->dead = false;
+    atomic_init(&thread->dead, false);
     thread->timeStart = 0;
     thread->timeEnd = 0;
-    waitsys_ctx_init(&thread->waitsys);
+    waitsys_thread_ctx_init(&thread->waitsys);
     thread->error = 0;
     thread->priority = MIN(priority, PRIORITY_MAX);
     if (simd_ctx_init(&thread->simd) == ERR)
@@ -100,4 +100,9 @@ void thread_load(thread_t* thread, trap_frame_t* trapFrame)
         tss_stack_load(&self->tss, (void*)((uint64_t)thread->kernelStack + CONFIG_KERNEL_STACK));
         simd_ctx_load(&thread->simd);
     }
+}
+
+bool thread_dead(thread_t* thread)
+{
+    return atomic_load(&thread->dead) || atomic_load(&thread->process->dead);
 }
