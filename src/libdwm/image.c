@@ -95,7 +95,6 @@ image_t* image_new(display_t* disp, const char* path)
     }
 
     uint64_t maxLength = (CMD_BUFFER_MAX_DATA - sizeof(cmd_draw_buffer_t)) / sizeof(pixel_t);
-    printf("%d", fbmp->width * fbmp->height);
     uint64_t index = 0;
     while (1)
     {
@@ -105,7 +104,6 @@ image_t* image_new(display_t* disp, const char* path)
             break;
         }
 
-        printf("%d", length);
         draw_buffer(&image->draw, &fbmp->data[index], index, length);
 
         index += length;
