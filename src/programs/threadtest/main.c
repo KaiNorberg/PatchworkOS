@@ -66,7 +66,7 @@ static int thread_entry(void* arg)
 static void benchmark(uint64_t threadAmount)
 {
     printf("%d threads: starting... ", threadAmount);
-    nsec_t start = uptime();
+    clock_t start = uptime();
 
     atomic_init(&count, 0);
     atomic_init(&next, 0);
@@ -82,8 +82,8 @@ static void benchmark(uint64_t threadAmount)
         thrd_join(threads[i], NULL);
     }
 
-    nsec_t end = uptime();
-    printf("took %d ms to find %d primes\n", (end - start) / (SEC / 1000), atomic_load(&count));
+    clock_t end = uptime();
+    printf("took %d ms to find %d primes\n", (end - start) / (CLOCKS_PER_SEC / 1000), atomic_load(&count));
 }
 
 int main(void)

@@ -229,12 +229,13 @@ void compositor_draw(compositor_ctx_t* ctx)
     compositor_draw_windows_panels(ctx);
     compositor_draw_cursor(ctx);
 
-    //nsec_t drawEnd = uptime();
+    // clock_t drawEnd = uptime();
 
     screen_swap();
 
-    //nsec_t swapEnd = uptime();
-    //printf("draw time: %d microseconds, swap time: %d microseconds", (drawEnd - start) / 1000, (swapEnd - start) / 1000);
+    // clock_t swapEnd = uptime();
+    // printf("draw time: %d microseconds, swap time: %d microseconds", (drawEnd - start) / 1000, (swapEnd - start) /
+    // 1000);
 }
 
 void compositor_set_redraw_needed(void)

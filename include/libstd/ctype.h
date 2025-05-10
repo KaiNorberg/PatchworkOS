@@ -8,12 +8,33 @@ extern "C"
 
 #include "_AUX/config.h"
 
-#define isalnum(ch) (isdigit((ch)) || isalpha((ch)))
-#define isalpha(ch) (((ch) >= 'A' && (ch) <= 'Z') || ((ch) >= 'a' && (ch) <= 'z'))
-#define isdigit(ch) (((ch) >= '0' && (ch) <= '9'))
-#define isspace(ch) ((ch) == ' ' || (ch) == '\t' || (ch) == '\n' || (ch) == '\v' || (ch) == '\f' || (ch) == '\r')
+_PUBLIC int isalnum(int c);
 
-int tolower(int ch);
+_PUBLIC int isalpha(int c);
+
+_PUBLIC int isblank(int c);
+
+_PUBLIC int iscntrl(int c);
+
+_PUBLIC int isdigit(int c);
+
+_PUBLIC int isgraph(int c);
+
+_PUBLIC int islower(int c);
+
+_PUBLIC int isprint(int c);
+
+_PUBLIC int ispunct(int c);
+
+_PUBLIC int isspace(int c);
+
+_PUBLIC int isupper(int c);
+
+_PUBLIC int isxdigit(int c);
+
+_PUBLIC int tolower(int c);
+
+_PUBLIC int toupper(int c);
 
 #if defined(__cplusplus)
 }

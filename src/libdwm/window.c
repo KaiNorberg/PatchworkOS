@@ -67,13 +67,12 @@ static void window_deco_draw_topbar(window_t* win, element_t* elem, drawable_t* 
     RECT_SHRINK(&topBar, windowTheme.edgeWidth);
     if (private->focused)
     {
-        draw_gradient(draw, &topBar, windowTheme.selected, windowTheme.selectedHighlight, GRADIENT_HORIZONTAL,
-            false);
+        draw_gradient(draw, &topBar, windowTheme.selected, windowTheme.selectedHighlight, GRADIENT_HORIZONTAL, false);
     }
     else
     {
-        draw_gradient(draw, &topBar, windowTheme.unSelected, windowTheme.unSelectedHighlight,
-            GRADIENT_HORIZONTAL, false);
+        draw_gradient(draw, &topBar, windowTheme.unSelected, windowTheme.unSelectedHighlight, GRADIENT_HORIZONTAL,
+            false);
     }
 
     topBar.left += windowTheme.paddingWidth * 3;
@@ -341,7 +340,7 @@ uint64_t window_move(window_t* win, const rect_t* rect)
     return 0;
 }
 
-uint64_t window_set_timer(window_t* win, timer_flags_t flags, nsec_t timeout)
+uint64_t window_set_timer(window_t* win, timer_flags_t flags, clock_t timeout)
 {
     cmd_surface_set_timer_t* cmd = display_cmds_push(win->disp, CMD_SURFACE_SET_TIMER, sizeof(cmd_surface_set_timer_t));
     cmd->target = win->surface;

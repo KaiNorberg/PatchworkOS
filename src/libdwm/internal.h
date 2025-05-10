@@ -7,7 +7,7 @@ typedef struct drawable
 {
     display_t* disp;
     surface_id_t surface;
-    rect_t drawArea; // The area stuff is drawn to, any given to rect or point is relative to this area
+    rect_t drawArea;    // The area stuff is drawn to, any given to rect or point is relative to this area
     rect_t invalidRect; // Relative to draw area
 } drawable_t;
 

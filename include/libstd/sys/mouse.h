@@ -8,7 +8,7 @@ extern "C"
 {
 #endif
 
-#include "_AUX/nsec_t.h"
+#include "_AUX/clock_t.h"
 
 typedef enum
 {
@@ -20,7 +20,7 @@ typedef enum
 
 typedef struct mouse_event
 {
-    nsec_t time;
+    clock_t time;
     mouse_buttons_t buttons;
     int64_t deltaX;
     int64_t deltaY;

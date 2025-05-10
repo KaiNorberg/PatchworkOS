@@ -1,0 +1,8 @@
+#include <ctype.h>
+
+#include "common/ascii_table.h"
+
+int toupper(int c)
+{
+    return _AsciiTable[c].upper;
+}

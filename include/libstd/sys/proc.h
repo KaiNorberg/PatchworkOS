@@ -13,9 +13,9 @@ extern "C"
 #include "_AUX/NULL.h"
 #include "_AUX/config.h"
 #include "_AUX/fd_t.h"
-#include "_AUX/nsec_t.h"
 #include "_AUX/pid_t.h"
 #include "_AUX/tid_t.h"
+#include "_AUX/clock_t.h"
 
 #define PAGE_SIZE 0x1000
 #define SIZE_IN_PAGES(size) (((size) + PAGE_SIZE - 1) / PAGE_SIZE)
@@ -53,11 +53,6 @@ typedef enum
 #define FUTEX_LOCKED 1
 #define FUTEX_CONTESTED 2
 
-// Nanoseconds per second.
-#define SEC ((nsec_t)1000000000)
-
-#define NEVER ((nsec_t)UINT64_MAX)
-
 // argv[0] = executable
 pid_t spawn(const char** argv, const spawn_fd_t* fds);
 
@@ -73,9 +68,9 @@ uint64_t mprotect(void* address, uint64_t length, prot_t prot);
 
 // if op == FUTEX_WAIT then wait until *addr != val.
 // if op == FUTEX_WAKE then val = amount of threads to wake.
-uint64_t futex(atomic_uint64* addr, uint64_t val, futex_op_t op, nsec_t timeout);
+uint64_t futex(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t timeout);
 
-nsec_t uptime(void);
+clock_t uptime(void);
 
 #if defined(__cplusplus)
 }

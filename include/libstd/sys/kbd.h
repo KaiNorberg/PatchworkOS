@@ -8,7 +8,7 @@ extern "C"
 {
 #endif
 
-#include "_AUX/nsec_t.h"
+#include "_AUX/clock_t.h"
 
 typedef enum keycode
 {
@@ -282,7 +282,7 @@ typedef enum kbd_mods
 
 typedef struct kbd_event
 {
-    nsec_t time;
+    clock_t time;
     kbd_event_type_t type;
     kbd_mods_t mods;
     keycode_t code;

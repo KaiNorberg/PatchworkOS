@@ -1,3 +1,4 @@
+#define __STDC_WANT_LIB_EXT1__ 1
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -35,7 +36,7 @@ uint64_t args_init(args_t* args, int argc, char** argv)
 
     for (int i = 1; i < argc; i++)
     {
-        if (strnlen(argv[i], MAX_PATH) >= MAX_PATH - 1)
+        if (strnlen_s(argv[i], MAX_PATH) >= MAX_PATH - 1)
         {
             printf("Did you try to cause an overflow on purpose?");
             continue;

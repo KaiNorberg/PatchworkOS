@@ -154,7 +154,8 @@ static void terminal_redraw_input(terminal_t* term, element_t* elem, drawable_t*
     window_set_timer(term->win, TIMER_NONE, BLINK_INTERVAL);
 }
 
-static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t* draw, keycode_t key, char ascii, kbd_mods_t mods)
+static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t* draw, keycode_t key, char ascii,
+    kbd_mods_t mods)
 {
     uint64_t prevLength = term->input.length;
 
@@ -366,15 +367,14 @@ static void terminal_read_stdout(terminal_t* term)
 
         terminal_write(term, elem, element_draw(elem), buffer);
         input_set(&term->input, "");
-    }
-    while (poll1(term->stdout[PIPE_READ], POLL_READ, 0) & POLL_READ);
+    } while (poll1(term->stdout[PIPE_READ], POLL_READ, 0) & POLL_READ);
 }
 
 bool terminal_update(terminal_t* term)
 {
     pollfd_t fds[] = {{.fd = term->stdout[PIPE_READ], .requested = POLL_READ},
         {.fd = display_fd(term->disp), .requested = POLL_READ}};
-    poll(fds, 2, NEVER);
+    poll(fds, 2, CLOCKS_NEVER);
 
     bool shouldQuit = false;
     event_t event = {0};

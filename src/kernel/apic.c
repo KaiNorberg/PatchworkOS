@@ -21,7 +21,7 @@ void apic_timer_init(uint8_t vector, uint64_t hz)
     lapic_write(LAPIC_REG_TIMER_DIVIDER, 0x3);
     lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, 0xFFFFFFFF);
 
-    hpet_sleep(SEC / hz);
+    hpet_sleep(CLOCKS_PER_SEC / hz);
 
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
 

@@ -25,9 +25,13 @@ _HeapHeader_t* _HeapBlockNew(uint64_t size);
 
 void _HeapBlockSplit(_HeapHeader_t* block, uint64_t size);
 
+void _HeapInit(void);
+
 _HeapHeader_t* _HeapFirstBlock(void);
 
-void _HeapInit(void);
+void* _HeapAlloc(uint64_t size);
+
+void _HeapFree(void* ptr);
 
 void _HeapAcquire(void);
 

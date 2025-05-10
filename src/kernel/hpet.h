@@ -46,4 +46,4 @@ void hpet_write(uint64_t reg, uint64_t value);
 
 uint64_t hpet_read(uint64_t reg);
 
-void hpet_sleep(nsec_t nanoseconds);
+void hpet_sleep(clock_t nanoseconds);

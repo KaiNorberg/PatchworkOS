@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <sys/math.h>
 
-static _Atomic(nsec_t) accumulator;
+static _Atomic(clock_t) accumulator;
 static time_t bootEpoch;
 
 static uint8_t cmos_read(uint8_t reg)
@@ -81,21 +81,21 @@ void systime_init(void)
     printf("systime: init epoch=%d", systime_unix_epoch());
 }
 
-nsec_t systime_uptime(void)
+clock_t systime_uptime(void)
 {
     return (atomic_load(&accumulator) + hpet_read_counter()) * hpet_nanoseconds_per_tick();
 }
 
 time_t systime_unix_epoch(void)
 {
-    return bootEpoch + systime_uptime() / SEC;
+    return bootEpoch + systime_uptime() / CLOCKS_PER_SEC;
 }
 
 static void systime_timer_init_ipi(trap_frame_t* trapFrame)
 {
-    nsec_t uptime = systime_uptime();
-    nsec_t interval = (SEC / CONFIG_TIMER_HZ) / smp_cpu_amount();
-    nsec_t offset = ROUND_UP(uptime, interval) - uptime;
+    clock_t uptime = systime_uptime();
+    clock_t interval = (CLOCKS_PER_SEC / CONFIG_TIMER_HZ) / smp_cpu_amount();
+    clock_t offset = ROUND_UP(uptime, interval) - uptime;
     hpet_sleep(offset + interval * smp_self_unsafe()->id);
 
     apic_timer_init(VECTOR_TIMER, CONFIG_TIMER_HZ);

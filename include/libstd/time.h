@@ -8,27 +8,65 @@ extern "C"
 {
 #endif
 
+#include "_AUX/NULL.h"
+#include "_AUX/clock_t.h"
 #include "_AUX/config.h"
+#include "_AUX/size_t.h"
 #include "_AUX/time_t.h"
+#include "_AUX/timespec.h"
+
+#define TIME_UTC 1
 
 struct tm
 {
-    int tm_sec;   /* Seconds.	[0-60] (1 leap second) */
-    int tm_min;   /* Minutes.	[0-59] */
-    int tm_hour;  /* Hours.	[0-23] */
-    int tm_mday;  /* Day.		[1-31] */
-    int tm_mon;   /* Month.	[0-11] */
-    int tm_year;  /* Year	- 1900.  */
-    int tm_wday;  /* Day of week.	[0-6] */
-    int tm_yday;  /* Days in year.[0-365]	*/
-    int tm_isdst; /* DST.		[-1/0/1]*/
+    int tm_sec;
+    int tm_min;
+    int tm_hour;
+    int tm_mday;
+    int tm_mon;
+    int tm_year;
+    int tm_wday;
+    int tm_yday;
+    int tm_isdst;
 };
 
-time_t time(time_t* timePtr);
-time_t mktime(struct tm* timePtr);
+_PUBLIC clock_t clock(void);
 
-struct tm* localtime(const time_t* timer);
-struct tm* localtime_r(const time_t* timer, struct tm* buf);
+_PUBLIC double difftime(time_t time1, time_t time0);
+
+_PUBLIC time_t mktime(struct tm* timeptr);
+
+_PUBLIC time_t time(time_t* timer);
+
+_PUBLIC int timespec_get(struct timespec* ts, int base);
+
+_PUBLIC char* asctime(const struct tm* timeptr);
+
+_PUBLIC char* ctime(const time_t* timer);
+
+_PUBLIC struct tm* gmtime(const time_t* timer);
+
+_PUBLIC struct tm* localtime(const time_t* timer);
+
+_PUBLIC struct tm* localtime_r(const time_t* timer, struct tm* buf);
+
+_PUBLIC size_t strftime(char* _RESTRICT s, size_t maxsize, const char* _RESTRICT format,
+    const struct tm* _RESTRICT timeptr);
+
+#if (__STDC_WANT_LIB_EXT1__ + 0) != 0
+
+#include "_AUX/errno_t.h"
+#include "_AUX/rsize_t.h"
+
+_PUBLIC errno_t asctime_s(char* s, rsize_t maxsize, const struct tm* timeptr);
+
+_PUBLIC errno_t ctime_s(char* s, rsize_t maxsize, const time_t* timer);
+
+_PUBLIC struct tm* gmtime_s(const time_t* _RESTRICT timer, struct tm* _RESTRICT result);
+
+_PUBLIC struct tm* localtime_s(const time_t* _RESTRICT timer, struct tm* _RESTRICT result);
+
+#endif
 
 #if defined(__cplusplus)
 }

@@ -8,13 +8,16 @@ extern "C"
 
 #include "_AUX/ERR.h"
 #include "_AUX/NULL.h"
+#include "_AUX/config.h"
+#include "_AUX/ptrdiff_t.h"
 #include "_AUX/size_t.h"
-
-typedef size_t rsize_t;
-typedef __PTRDIFF_TYPE__ ptrdiff_t;
-typedef __WCHAR_TYPE__ wchar_t;
+#include "_AUX/wchar_t.h"
 
 #define offsetof(type, member) ((size_t)&(((type*)0)->member))
+
+#if _USE_ANNEX_K == 1
+#include "_AUX/rsize_t.h"
+#endif
 
 #if defined(__cplusplus)
 }

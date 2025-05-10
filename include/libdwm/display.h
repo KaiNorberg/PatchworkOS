@@ -30,7 +30,7 @@ bool display_connected(display_t* disp);
 
 void display_disconnect(display_t* disp);
 
-bool display_next_event(display_t* disp, event_t* event, nsec_t timeout);
+bool display_next_event(display_t* disp, event_t* event, clock_t timeout);
 
 void* display_cmds_push(display_t* disp, cmd_type_t type, uint64_t size);
 

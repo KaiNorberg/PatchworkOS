@@ -96,7 +96,7 @@ int main(void)
     event_t event = {0};
     while (display_connected(disp))
     {
-        if (display_next_event(disp, &event, SEC * 60))
+        if (display_next_event(disp, &event, CLOCKS_PER_SEC * 60))
         {
             display_dispatch(disp, &event);
         }

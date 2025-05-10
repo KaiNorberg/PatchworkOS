@@ -49,7 +49,7 @@ static futex_t* futex_ctx_futex(futex_ctx_t* ctx, atomic_uint64* addr)
     return futex;
 }
 
-uint64_t futex_do(atomic_uint64* addr, uint64_t val, futex_op_t op, nsec_t timeout)
+uint64_t futex_do(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t timeout)
 {
     futex_t* futex = futex_ctx_futex(&sched_process()->futexCtx, addr);
 
@@ -62,7 +62,7 @@ uint64_t futex_do(atomic_uint64* addr, uint64_t val, futex_op_t op, nsec_t timeo
             return ERROR(EAGAIN);
         }
 
-        nsec_t start = systime_uptime();
+        clock_t start = systime_uptime();
         block_result_t result = WAITSYS_BLOCK_TIMEOUT(&futex->queue, atomic_load(addr) != val, timeout);
         if (result == BLOCK_TIMEOUT)
         {

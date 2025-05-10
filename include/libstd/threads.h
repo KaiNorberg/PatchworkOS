@@ -15,14 +15,23 @@ extern "C"
 
 #include <stdatomic.h>
 
-enum
+#if __STDC_NO_THREADS__ == 1
+#error __STDC_NO_THREADS__ defined but <threads.h> included. Something is wrong about your setup.
+#endif
+
+#if __STDC_VERSION__ >= 201112L
+#define thread_local _Thread_local
+#endif
+
+#define ONCE_FLAG_INIT 0
+
+#define TSS_DTOR_ITERATIONS 4
+
+// TODO: Implement this
+typedef struct
 {
-    thrd_success = 0,
-    thrd_nomem = 1,
-    thrd_timedout = 2,
-    thrd_busy = 3,
-    thrd_error = 4
-};
+    char todo;
+} cnd_t;
 
 typedef struct _Thread _Thread_t;
 typedef struct
@@ -30,44 +39,88 @@ typedef struct
     _Thread_t* thread;
 } thrd_t;
 
-enum
+// TODO: Implement this
+typedef struct
 {
-    mtx_plain = 0,
-    mtx_recursive = (1 << 0),
-    mtx_timed = (1 << 1),
-};
+    char todo;
+} tss_t;
 
-// TODO: High priority, implement a proper user space mutex, futex?
 typedef struct
 {
     atomic_uint64 state;
 } mtx_t;
 
+typedef void (*tss_dtor_t)(void*);
+
 typedef int (*thrd_start_t)(void*);
 
-int thrd_create(thrd_t* thr, thrd_start_t func, void* arg);
+typedef int once_flag;
 
-int thrd_equal(thrd_t lhs, thrd_t rhs);
+enum
+{
+    mtx_plain,
+    mtx_recursive,
+    mtx_timed
+};
 
-thrd_t thrd_current(void);
+enum
+{
+    thrd_timedout,
+    thrd_success,
+    thrd_busy,
+    thrd_error,
+    thrd_nomem
+};
 
-int thrd_sleep(const struct timespec* duration, struct timespec* remaining);
+_PUBLIC void call_once(once_flag* flag, void (*func)(void));
 
-void thrd_yield(void);
+_PUBLIC int cnd_broadcast(cnd_t* cond);
 
-_NORETURN void thrd_exit(int res);
+_PUBLIC void cnd_destroy(cnd_t* cond);
 
-int thrd_detach(thrd_t thr);
+_PUBLIC int cnd_init(cnd_t* cond);
 
-int thrd_join(thrd_t thr, int* res);
+_PUBLIC int cnd_signal(cnd_t* cond);
 
-int mtx_init(mtx_t* mutex, int type);
+_PUBLIC int cnd_timedwait(cnd_t* _RESTRICT cond, mtx_t* _RESTRICT mtx, const struct timespec* _RESTRICT ts);
 
-void mtx_destory(mtx_t* mutex);
+int cnd_wait(cnd_t* cond, mtx_t* mtx);
 
-int mtx_lock(mtx_t* mutex);
+_PUBLIC void mtx_destroy(mtx_t* mtx);
 
-int mtx_unlock(mtx_t* mutex);
+_PUBLIC int mtx_init(mtx_t* mtx, int type);
+
+_PUBLIC int mtx_lock(mtx_t* mtx);
+
+_PUBLIC int mtx_timedlock(mtx_t* _RESTRICT mtx, const struct timespec* _RESTRICT ts);
+
+_PUBLIC int mtx_trylock(mtx_t* mtx);
+
+_PUBLIC int mtx_unlock(mtx_t* mtx);
+
+_PUBLIC int thrd_create(thrd_t* thr, thrd_start_t func, void* arg);
+
+_PUBLIC thrd_t thrd_current(void);
+
+_PUBLIC int thrd_detach(thrd_t thr);
+
+_PUBLIC int thrd_equal(thrd_t thr0, thrd_t thr1);
+
+_PUBLIC _NORETURN void thrd_exit(int res);
+
+_PUBLIC int thrd_join(thrd_t thr, int* res);
+
+_PUBLIC int thrd_sleep(const struct timespec* duration, struct timespec* remaining);
+
+_PUBLIC void thrd_yield(void);
+
+_PUBLIC int tss_create(tss_t* key, tss_dtor_t dtor);
+
+_PUBLIC void tss_delete(tss_t key);
+
+_PUBLIC void* tss_get(tss_t key);
+
+_PUBLIC int tss_set(tss_t key, void* val);
 
 #if defined(__cplusplus)
 }

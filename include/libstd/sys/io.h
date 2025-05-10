@@ -13,9 +13,10 @@ extern "C"
 #include "_AUX/MAX_NAME.h"
 #include "_AUX/MAX_PATH.h"
 #include "_AUX/NULL.h"
+#include "_AUX/SEEK.h"
 #include "_AUX/config.h"
 #include "_AUX/fd_t.h"
-#include "_AUX/nsec_t.h"
+#include "_AUX/clock_t.h"
 
 #define STDIN_FILENO 0
 #define STDOUT_FILENO 1
@@ -49,12 +50,7 @@ typedef struct stat
     uint64_t size;
 } stat_t;
 
-typedef enum origin
-{
-    SEEK_SET = 0,
-    SEEK_CUR = 1,
-    SEEK_END = 2
-} seek_origin_t;
+typedef uint8_t seek_origin_t;
 
 typedef struct dir_entry
 {
@@ -94,9 +90,9 @@ uint64_t seek(fd_t fd, int64_t offset, seek_origin_t origin);
 
 uint64_t chdir(const char* path);
 
-uint64_t poll(pollfd_t* fds, uint64_t amount, nsec_t timeout);
+uint64_t poll(pollfd_t* fds, uint64_t amount, clock_t timeout);
 
-poll_event_t poll1(fd_t fd, poll_event_t requested, nsec_t timeout);
+poll_event_t poll1(fd_t fd, poll_event_t requested, clock_t timeout);
 
 uint64_t stat(const char* path, stat_t* stat);
 

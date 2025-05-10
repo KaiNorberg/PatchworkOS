@@ -62,7 +62,7 @@ element_t* window_client_element(window_t* win);
 
 uint64_t window_move(window_t* win, const rect_t* rect);
 
-uint64_t window_set_timer(window_t* win, timer_flags_t flags, nsec_t timeout);
+uint64_t window_set_timer(window_t* win, timer_flags_t flags, clock_t timeout);
 
 uint64_t window_dispatch(window_t* win, const event_t* event);
 

@@ -230,7 +230,7 @@ void waitsys_unblock(wait_queue_t* waitQueue, uint64_t amount)
 }
 
 // Sets up a threads waitsys ctx but does not yet block
-static uint64_t waitsys_thread_setup(thread_t* thread, wait_queue_t** waitQueues, uint64_t amount, nsec_t timeout)
+static uint64_t waitsys_thread_setup(thread_t* thread, wait_queue_t** waitQueues, uint64_t amount, clock_t timeout)
 {
     for (uint64_t i = 0; i < amount; i++)
     {
@@ -239,7 +239,8 @@ static uint64_t waitsys_thread_setup(thread_t* thread, wait_queue_t** waitQueues
         {
             while (1)
             {
-                wait_entry_t* other = LIST_CONTAINER_SAFE(list_pop(&thread->waitsys.entries), wait_entry_t, threadEntry);
+                wait_entry_t* other =
+                    LIST_CONTAINER_SAFE(list_pop(&thread->waitsys.entries), wait_entry_t, threadEntry);
                 if (other == NULL)
                 {
                     break;
@@ -260,7 +261,7 @@ static uint64_t waitsys_thread_setup(thread_t* thread, wait_queue_t** waitQueues
 
     thread->waitsys.entryAmount = amount;
     thread->waitsys.result = BLOCK_NORM;
-    thread->waitsys.deadline = timeout == NEVER ? NEVER : systime_uptime() + timeout;
+    thread->waitsys.deadline = timeout == CLOCKS_NEVER ? CLOCKS_NEVER : systime_uptime() + timeout;
     thread->waitsys.owner = NULL;
 
     uint64_t i = 0;
@@ -274,7 +275,7 @@ static uint64_t waitsys_thread_setup(thread_t* thread, wait_queue_t** waitQueues
     return 0;
 }
 
-block_result_t waitsys_block(wait_queue_t* waitQueue, nsec_t timeout)
+block_result_t waitsys_block(wait_queue_t* waitQueue, clock_t timeout)
 {
     if (timeout == 0)
     {
@@ -301,7 +302,7 @@ block_result_t waitsys_block(wait_queue_t* waitQueue, nsec_t timeout)
     return thread->waitsys.result;
 }
 
-block_result_t waitsys_block_lock(wait_queue_t* waitQueue, nsec_t timeout, lock_t* lock)
+block_result_t waitsys_block_lock(wait_queue_t* waitQueue, clock_t timeout, lock_t* lock)
 {
     if (timeout == 0)
     {
@@ -330,7 +331,7 @@ block_result_t waitsys_block_lock(wait_queue_t* waitQueue, nsec_t timeout, lock_
     return thread->waitsys.result;
 }
 
-block_result_t waitsys_block_many(wait_queue_t** waitQueues, uint64_t amount, nsec_t timeout)
+block_result_t waitsys_block_many(wait_queue_t** waitQueues, uint64_t amount, clock_t timeout)
 {
     if (timeout == 0)
     {

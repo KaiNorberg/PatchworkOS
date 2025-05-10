@@ -2,11 +2,11 @@
 #define DWM_ELEMENT_H 1
 
 #include "cmd.h"
+#include "drawable.h"
 #include "element_id.h"
 #include "font.h"
 #include "procedure.h"
 #include "rect.h"
-#include "drawable.h"
 
 #include <stdbool.h>
 #include <stdint.h>

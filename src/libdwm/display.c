@@ -1,7 +1,7 @@
 #include "internal.h"
 
-#include <stdio.h>
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/list.h>
@@ -163,7 +163,7 @@ void display_disconnect(display_t* disp)
     disp->connected = false;
 }
 
-bool display_next_event(display_t* disp, event_t* event, nsec_t timeout)
+bool display_next_event(display_t* disp, event_t* event, clock_t timeout)
 {
     if (display_events_available(disp))
     {
@@ -171,7 +171,7 @@ bool display_next_event(display_t* disp, event_t* event, nsec_t timeout)
         return true;
     }
 
-    if (timeout != NEVER && !(poll1(disp->data, POLL_READ, timeout) & POLL_READ))
+    if (timeout != CLOCKS_NEVER && !(poll1(disp->data, POLL_READ, timeout) & POLL_READ))
     {
         return false;
     }

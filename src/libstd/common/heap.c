@@ -22,16 +22,6 @@ void _HeapBlockSplit(_HeapHeader_t* block, uint64_t size)
     block->next = newBlock;
 }
 
-_HeapHeader_t* _HeapFirstBlock(void)
-{
-    if (firstBlock == NULL)
-    {
-        firstBlock = _HeapBlockNew(PAGE_SIZE - sizeof(_HeapHeader_t));
-    }
-
-    return firstBlock;
-}
-
 _HeapHeader_t* _HeapBlockNew(uint64_t size)
 {
     uint64_t pageAmount = SIZE_IN_PAGES(size + sizeof(_HeapHeader_t));
@@ -54,6 +44,76 @@ void _HeapInit(void)
 {
     _PLATFORM_MUTEX_INIT(&mutex);
     firstBlock = NULL;
+}
+
+_HeapHeader_t* _HeapFirstBlock(void)
+{
+    if (firstBlock == NULL)
+    {
+        firstBlock = _HeapBlockNew(PAGE_SIZE - sizeof(_HeapHeader_t));
+    }
+
+    return firstBlock;
+}
+
+void* _HeapAlloc(uint64_t size)
+{
+    if (size == 0)
+    {
+        return NULL;
+    }
+    size = ROUND_UP(size, _HEAP_ALIGNMENT);
+
+    _HeapHeader_t* currentBlock = _HeapFirstBlock();
+    while (true)
+    {
+        if (!currentBlock->reserved)
+        {
+            if (currentBlock->size == size)
+            {
+                currentBlock->reserved = true;
+
+                return _HEAP_HEADER_GET_START(currentBlock);
+            }
+            else if (currentBlock->size > size + sizeof(_HeapHeader_t) + _HEAP_ALIGNMENT)
+            {
+                currentBlock->reserved = true;
+                _HeapBlockSplit(currentBlock, size);
+
+                return _HEAP_HEADER_GET_START(currentBlock);
+            }
+        }
+
+        if (currentBlock->next != NULL)
+        {
+            currentBlock = currentBlock->next;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    _HeapHeader_t* newBlock = _HeapBlockNew(size);
+    if (newBlock == NULL)
+    {
+        return NULL;
+    }
+
+    if (newBlock->size > size + sizeof(_HeapHeader_t) + _HEAP_ALIGNMENT)
+    {
+        _HeapBlockSplit(newBlock, size);
+    }
+    currentBlock->next = newBlock;
+    newBlock->reserved = true;
+
+    return _HEAP_HEADER_GET_START(newBlock);
+}
+
+void _HeapFree(void* ptr)
+{
+    _HeapHeader_t* block = (_HeapHeader_t*)((uint64_t)ptr - sizeof(_HeapHeader_t));
+    block->reserved = false;
 }
 
 void _HeapAcquire(void)

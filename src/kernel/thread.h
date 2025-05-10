@@ -22,8 +22,8 @@ typedef struct thread
     process_t* process;
     tid_t id;
     atomic_bool dead;
-    nsec_t timeStart;
-    nsec_t timeEnd;
+    clock_t timeStart;
+    clock_t timeEnd;
     waitsys_thread_ctx_t waitsys;
     errno_t error;
     priority_t priority;

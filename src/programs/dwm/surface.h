@@ -13,8 +13,8 @@ typedef struct client client_t;
 typedef struct timer
 {
     timer_flags_t flags;
-    nsec_t timeout;
-    nsec_t deadline;
+    clock_t timeout;
+    clock_t deadline;
 } timer_t;
 
 typedef struct surface

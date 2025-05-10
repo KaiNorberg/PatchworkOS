@@ -279,7 +279,7 @@ static surface_t* dwm_surface_under_point(const point_t* point)
 // TODO: Cache this or something
 static surface_t* dwm_next_timer(void)
 {
-    nsec_t deadline = NEVER;
+    clock_t deadline = CLOCKS_NEVER;
     surface_t* nextTimer = NULL;
 
     surface_t* window;
@@ -470,16 +470,16 @@ static void dwm_poll(void)
     dwm_poll_ctx_update();
 
     surface_t* timer = dwm_next_timer();
-    nsec_t timeout = NEVER;
+    clock_t timeout = CLOCKS_NEVER;
     if (timer != NULL)
     {
-        nsec_t time = uptime();
+        clock_t time = uptime();
         timeout = timer->timer.deadline > time ? timer->timer.deadline - time : 0;
     }
 
     uint64_t events = poll((pollfd_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(pollfd_t) + clientAmount, timeout);
 
-    nsec_t time = uptime();
+    clock_t time = uptime();
     if (timer != NULL && time >= timer->timer.deadline)
     {
         if (timer->timer.flags & TIMER_REPEAT)
@@ -488,7 +488,7 @@ static void dwm_poll(void)
         }
         else
         {
-            timer->timer.deadline = NEVER;
+            timer->timer.deadline = CLOCKS_NEVER;
         }
         client_send_event(timer->client, timer->id, EVENT_TIMER, NULL, 0);
     }

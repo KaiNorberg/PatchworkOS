@@ -401,7 +401,8 @@ static uint64_t client_action_draw_transfer(client_t* client, const cmd_header_t
     if (header->size != sizeof(cmd_draw_transfer_t))
     {
         printf("err1");
-        while(1);
+        while (1)
+            ;
         return ERR;
     }
     cmd_draw_transfer_t* cmd = (cmd_draw_transfer_t*)header;
@@ -410,7 +411,8 @@ static uint64_t client_action_draw_transfer(client_t* client, const cmd_header_t
     if (dest == NULL)
     {
         printf("err2");
-        while(1);
+        while (1)
+            ;
         return ERR;
     }
 
@@ -418,7 +420,8 @@ static uint64_t client_action_draw_transfer(client_t* client, const cmd_header_t
     if (src == NULL)
     {
         printf("err3");
-        while(1);
+        while (1)
+            ;
         return ERR;
     }
 

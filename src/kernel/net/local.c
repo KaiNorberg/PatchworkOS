@@ -433,7 +433,7 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
     }*/
     if (WAITSYS_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
             ring_free_length(ring) >= count + sizeof(local_packet_header_t) || local_connection_closed(conn)) !=
-    BLOCK_NORM)
+        BLOCK_NORM)
     {
         lock_release(&conn->lock);
         return 0;

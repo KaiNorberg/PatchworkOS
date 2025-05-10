@@ -34,19 +34,24 @@ static uint64_t popup_procedure(window_t* win, element_t* elem, const event_t* e
         {
         case POPUP_OK:
         {
-            button_new(elem, POPUP_RES_OK, &rightButtonRect, NULL, windowTheme.dark, windowTheme.background, BUTTON_NONE, "Ok");
+            button_new(elem, POPUP_RES_OK, &rightButtonRect, NULL, windowTheme.dark, windowTheme.background,
+                BUTTON_NONE, "Ok");
         }
         break;
         case POPUP_RETRY_CANCEL:
         {
-            button_new(elem, POPUP_RES_RETRY, &middleButtonRect, NULL, windowTheme.dark, windowTheme.background, BUTTON_NONE, "Retry");
-            button_new(elem, POPUP_RES_CANCEL, &rightButtonRect, NULL, windowTheme.dark, windowTheme.background, BUTTON_NONE, "Cancel");
+            button_new(elem, POPUP_RES_RETRY, &middleButtonRect, NULL, windowTheme.dark, windowTheme.background,
+                BUTTON_NONE, "Retry");
+            button_new(elem, POPUP_RES_CANCEL, &rightButtonRect, NULL, windowTheme.dark, windowTheme.background,
+                BUTTON_NONE, "Cancel");
         }
         break;
         case POPUP_YES_NO:
         {
-            button_new(elem, POPUP_RES_YES, &middleButtonRect, NULL, windowTheme.dark, windowTheme.background, BUTTON_NONE, "Yesy");
-            button_new(elem, POPUP_RES_NO, &rightButtonRect, NULL, windowTheme.dark, windowTheme.background, BUTTON_NONE, "No");
+            button_new(elem, POPUP_RES_YES, &middleButtonRect, NULL, windowTheme.dark, windowTheme.background,
+                BUTTON_NONE, "Yesy");
+            button_new(elem, POPUP_RES_NO, &rightButtonRect, NULL, windowTheme.dark, windowTheme.background,
+                BUTTON_NONE, "No");
         }
         break;
         }
@@ -95,9 +100,10 @@ popup_result_t popup_open(const char* text, const char* title, popup_type_t type
         .type = type,
     };
 
-    rect_t rect = RECT_INIT_DIM(RECT_WIDTH(&screenRect) / 2 - POPUP_WIDTH / 2, RECT_HEIGHT(&screenRect) / 2 - POPUP_HEIGHT / 2,
-        POPUP_WIDTH, POPUP_HEIGHT);
-    window_t* win = window_new(disp, title, &rect, SURFACE_WINDOW, WINDOW_DECO | WINDOW_NO_CONTROLS, popup_procedure, &popup);
+    rect_t rect = RECT_INIT_DIM(RECT_WIDTH(&screenRect) / 2 - POPUP_WIDTH / 2,
+        RECT_HEIGHT(&screenRect) / 2 - POPUP_HEIGHT / 2, POPUP_WIDTH, POPUP_HEIGHT);
+    window_t* win =
+        window_new(disp, title, &rect, SURFACE_WINDOW, WINDOW_DECO | WINDOW_NO_CONTROLS, popup_procedure, &popup);
     if (win == NULL)
     {
         return POPUP_RES_ERROR;
@@ -106,7 +112,7 @@ popup_result_t popup_open(const char* text, const char* title, popup_type_t type
     event_t event = {0};
     while (display_connected(disp))
     {
-        display_next_event(disp, &event, NEVER);
+        display_next_event(disp, &event, CLOCKS_NEVER);
         display_dispatch(disp, &event);
     }
 

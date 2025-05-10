@@ -40,15 +40,15 @@ static void button_draw(button_t* button, bool redraw)
     if (redraw)
     {
         draw_rect(draw, &rect, button->background);
-        draw_text(draw, &rect, button->font, ALIGN_CENTER, ALIGN_CENTER, button->foreground, 0,
-            button->text);
+        draw_text(draw, &rect, button->font, ALIGN_CENTER, ALIGN_CENTER, button->foreground, 0, button->text);
     }
 }
 
 static void button_send_action(button_t* button, action_type_t type)
 {
     levent_action_t event = {.source = button->elem->id, .type = type};
-    display_events_push(button->elem->win->disp, button->elem->win->surface, LEVENT_ACTION, &event, sizeof(levent_action_t));
+    display_events_push(button->elem->win->disp, button->elem->win->surface, LEVENT_ACTION, &event,
+        sizeof(levent_action_t));
 }
 
 static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* event)

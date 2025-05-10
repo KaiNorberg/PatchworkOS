@@ -1,6 +1,6 @@
 #include <libdwm/dwm.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 static image_t* image;
 
@@ -43,7 +43,8 @@ int main(void)
     rect_t screenRect;
     display_screen_rect(disp, &screenRect, 0);
 
-    rect_t rect = RECT_INIT_DIM(RECT_WIDTH(&screenRect) / 2, RECT_HEIGHT(&screenRect) / 2, image_width(image), image_height(image));
+    rect_t rect = RECT_INIT_DIM(RECT_WIDTH(&screenRect) / 2, RECT_HEIGHT(&screenRect) / 2, image_width(image),
+        image_height(image));
 
     window_t* win = window_new(disp, "Cursor", &rect, SURFACE_CURSOR, WINDOW_NONE, procedure, NULL);
     if (win == NULL)
@@ -54,7 +55,7 @@ int main(void)
     event_t event = {0};
     while (display_connected(disp))
     {
-        display_next_event(disp, &event, NEVER);
+        display_next_event(disp, &event, CLOCKS_NEVER);
         display_dispatch(disp, &event);
     }
 

@@ -3,8 +3,8 @@
 
 #include <stdint.h>
 
-#include "element.h"
 #include "drawable.h"
+#include "element.h"
 
 #if defined(__cplusplus)
 extern "C"

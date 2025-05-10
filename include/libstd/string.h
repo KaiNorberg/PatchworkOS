@@ -10,37 +10,82 @@ extern "C"
 #include "_AUX/config.h"
 #include "_AUX/size_t.h"
 
-char* strcpy(char* _RESTRICT dest, const char* _RESTRICT src);
+_PUBLIC void* memcpy(void* _RESTRICT s1, const void* _RESTRICT s2, size_t n);
 
-char* strncpy(char* _RESTRICT dest, const char* _RESTRICT src, size_t count);
+_PUBLIC void* memmove(void* _RESTRICT s1, const void* _RESTRICT s2, size_t n);
 
-char* strcat(char* _RESTRICT dest, const char* _RESTRICT src);
+_PUBLIC char* strcpy(char* _RESTRICT s1, const char* _RESTRICT s2);
 
-size_t strlen(const char* str);
-size_t strnlen(const char* str, size_t max);
+_PUBLIC char* strncpy(char* _RESTRICT s1, const char* _RESTRICT s2, size_t n);
 
-int strcmp(const char* a, const char* b);
-int strncmp(const char* a, const char* b, size_t count);
+_PUBLIC char* strcat(char* _RESTRICT s1, const char* _RESTRICT s2);
 
-char* strchr(const char* str, int ch);
-char* strrchr(const char* str, int ch);
+_PUBLIC char* strncat(char* _RESTRICT s1, const char* _RESTRICT s2, size_t n);
 
-char* strstr(const char* a, const char* b);
+_PUBLIC int memcmp(const void* s1, const void* s2, size_t n);
 
-void* memchr(const void* ptr, int ch, size_t count);
+_PUBLIC int strcmp(const char* s1, const char* s2);
 
-int memcmp(const void* a, const void* b, size_t count);
+_PUBLIC int strcoll(const char* s1, const char* s2);
 
-void* memset(void* dest, int ch, size_t count);
+_PUBLIC int strncmp(const char* s1, const char* s2, size_t n);
 
-void* memcpy(void* _RESTRICT dest, const void* _RESTRICT src, size_t count);
-void* memmove(void* dest, const void* src, size_t count);
+_PUBLIC size_t strxfrm(char* _RESTRICT s1, const char* _RESTRICT s2, size_t n);
 
-char* strerror(int error);
+_PUBLIC void* memchr(const void* s, int c, size_t n);
+
+_PUBLIC char* strchr(const char* s, int c);
+
+_PUBLIC size_t strcspn(const char* s1, const char* s2);
+
+_PUBLIC char* strpbrk(const char* s1, const char* s2);
+
+_PUBLIC char* strrchr(const char* s, int c);
+
+_PUBLIC size_t strspn(const char* s1, const char* s2);
+
+_PUBLIC char* strstr(const char* s1, const char* s2);
+
+_PUBLIC char* strtok(char* _RESTRICT s1, const char* _RESTRICT s2);
+
+_PUBLIC void* memset(void* s, int c, size_t n);
+
+_PUBLIC char* strerror(int errnum);
+
+_PUBLIC size_t strlen(const char* s);
 
 // Note: Technically this should not be here as we are using C11, and this is only available in C23, but its just to
 // useful to leave out.
 char* strdup(const char* src);
+
+#if (__STDC_WANT_LIB_EXT1__ + 0) != 0
+
+#include "_AUX/errno_t.h"
+#include "_AUX/rsize_t.h"
+
+_PUBLIC errno_t memcpy_s(void* _RESTRICT s1, rsize_t s1max, const void* _RESTRICT s2, rsize_t n);
+
+_PUBLIC errno_t memmove_s(void* _RESTRICT s1, rsize_t s1max, const void* _RESTRICT s2, rsize_t n);
+
+_PUBLIC errno_t strcpy_s(char* _RESTRICT s1, rsize_t s1max, const char* _RESTRICT s2);
+
+_PUBLIC errno_t strncpy_s(char* _RESTRICT s1, rsize_t s1max, const char* _RESTRICT s2, rsize_t n);
+
+_PUBLIC errno_t strcat_s(char* _RESTRICT s1, rsize_t s1max, const char* _RESTRICT s2);
+
+_PUBLIC errno_t strncat_s(char* _RESTRICT s1, rsize_t s1max, const char* _RESTRICT s2, rsize_t n);
+
+_PUBLIC char* strtok_s(char* _RESTRICT s1, rsize_t* _RESTRICT s1max, const char* _RESTRICT s2, char** _RESTRICT ptr);
+
+_PUBLIC errno_t memset_s(void* s, rsize_t smax, int c, rsize_t n);
+
+_PUBLIC errno_t strerror_s(char* s, rsize_t maxsize, errno_t errnum);
+
+_PUBLIC size_t strerrorlen_s(errno_t errnum);
+
+_PUBLIC size_t strnlen_s(const char* s, size_t maxsize);
+
+#endif
 
 #if defined(__cplusplus)
 }

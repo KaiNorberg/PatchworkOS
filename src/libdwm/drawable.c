@@ -107,7 +107,7 @@ void draw_buffer(drawable_t* draw, pixel_t* buffer, uint64_t index, uint64_t len
     memcpy(cmd->buffer, buffer, length * sizeof(pixel_t));
 }
 
-void draw_image(drawable_t* draw, image_t* image, const rect_t *destRect, const point_t *srcPoint)
+void draw_image(drawable_t* draw, image_t* image, const rect_t* destRect, const point_t* srcPoint)
 {
     draw_transfer(draw, image_draw(image), destRect, srcPoint);
 }
@@ -147,8 +147,8 @@ void draw_rim(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t pixe
     draw_rect(draw, &bottomRect, pixel);
 }
 
-void draw_text(drawable_t* draw, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign,
-    pixel_t foreground, pixel_t background, const char* text)
+void draw_text(drawable_t* draw, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign, pixel_t foreground,
+    pixel_t background, const char* text)
 {
     if (text == NULL || *text == '\0')
     {

@@ -174,7 +174,7 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds)
     return thread->process->id;
 }
 
-uint64_t syscall_sleep(nsec_t nanoseconds)
+uint64_t syscall_sleep(clock_t nanoseconds)
 {
     return sched_sleep(nanoseconds);
 }
@@ -194,7 +194,7 @@ tid_t syscall_thread_id(void)
     return sched_thread()->id;
 }
 
-nsec_t syscall_uptime(void)
+clock_t syscall_uptime(void)
 {
     return systime_uptime();
 }
@@ -349,7 +349,7 @@ uint64_t syscall_chdir(const char* path)
     return vfs_chdir(path);
 }
 
-uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, nsec_t timeout)
+uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, clock_t timeout)
 {
     if (amount == 0 || amount > CONFIG_MAX_FD)
     {
@@ -480,7 +480,7 @@ fd_t syscall_dup2(fd_t oldFd, fd_t newFd)
     return vfs_ctx_dup2(&sched_process()->vfsCtx, oldFd, newFd);
 }
 
-uint64_t syscall_futex(atomic_uint64* addr, uint64_t val, futex_op_t op, nsec_t timeout)
+uint64_t syscall_futex(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t timeout)
 {
     return futex_do(addr, val, op, timeout);
 }

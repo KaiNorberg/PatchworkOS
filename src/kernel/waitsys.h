@@ -16,7 +16,7 @@
         block_result_t result = BLOCK_NORM; \
         while (!(condition) && result == BLOCK_NORM) \
         { \
-            result = waitsys_block(waitQueue, NEVER); \
+            result = waitsys_block(waitQueue, CLOCKS_NEVER); \
         } \
         result; \
     })
@@ -26,8 +26,8 @@
 #define WAITSYS_BLOCK_TIMEOUT(waitQueue, condition, timeout) \
     ({ \
         block_result_t result = BLOCK_NORM; \
-        nsec_t uptime = systime_uptime(); \
-        nsec_t deadline = (timeout) == NEVER ? NEVER : (timeout) + uptime; \
+        clock_t uptime = systime_uptime(); \
+        clock_t deadline = (timeout) == CLOCKS_NEVER ? CLOCKS_NEVER : (timeout) + uptime; \
         while (!(condition) && result == BLOCK_NORM) \
         { \
             if (deadline <= uptime) \
@@ -35,7 +35,7 @@
                 result = BLOCK_TIMEOUT; \
                 break; \
             } \
-            nsec_t remaining = deadline == NEVER ? NEVER : (deadline > uptime ? deadline - uptime : 0); \
+            clock_t remaining = deadline == CLOCKS_NEVER ? CLOCKS_NEVER : (deadline > uptime ? deadline - uptime : 0); \
             result = waitsys_block(waitQueue, remaining); \
             uptime = systime_uptime(); \
         } \
@@ -50,7 +50,7 @@
         lock_acquire(lock); \
         while (!(condition) && result == BLOCK_NORM) \
         { \
-            result = waitsys_block_lock(waitQueue, NEVER, lock); \
+            result = waitsys_block_lock(waitQueue, CLOCKS_NEVER, lock); \
         } \
         result; \
     })
@@ -61,8 +61,8 @@
 #define WAITSYS_BLOCK_LOCK_TIMEOUT(waitQueue, lock, condition, timeout) \
     ({ \
         block_result_t result = BLOCK_NORM; \
-        nsec_t uptime = systime_uptime(); \
-        nsec_t deadline = (timeout) == NEVER ? NEVER : (timeout) + uptime; \
+        clock_t uptime = systime_uptime(); \
+        clock_t deadline = (timeout) == CLOCKS_NEVER ? CLOCKS_NEVER : (timeout) + uptime; \
         lock_acquire(lock); \
         while (!(condition) && result == BLOCK_NORM) \
         { \
@@ -71,7 +71,7 @@
                 result = BLOCK_TIMEOUT; \
                 break; \
             } \
-            nsec_t remaining = deadline == NEVER ? NEVER : (deadline > uptime ? deadline - uptime : 0); \
+            clock_t remaining = deadline == CLOCKS_NEVER ? CLOCKS_NEVER : (deadline > uptime ? deadline - uptime : 0); \
             result = waitsys_block_lock(waitQueue, remaining, lock); \
             uptime = systime_uptime(); \
         } \
@@ -89,7 +89,7 @@ typedef struct wait_queue
 
 typedef struct wait_entry
 {
-    list_entry_t queueEntry; // Used in wait_queue_t->entries
+    list_entry_t queueEntry;  // Used in wait_queue_t->entries
     list_entry_t threadEntry; // Used in waitsys_thread_ctx_t->entries
     thread_t* thread;
     wait_queue_t* waitQueue;
@@ -110,7 +110,7 @@ typedef struct
     list_t entries;
     uint8_t entryAmount;
     block_result_t result;
-    nsec_t deadline;
+    clock_t deadline;
     cpu_t* owner;
 } waitsys_thread_ctx_t;
 
@@ -135,10 +135,10 @@ void waitsys_block_trap(trap_frame_t* trapFrame);
 
 void waitsys_unblock(wait_queue_t* waitQueue, uint64_t amount);
 
-block_result_t waitsys_block(wait_queue_t* waitQueue, nsec_t timeout);
+block_result_t waitsys_block(wait_queue_t* waitQueue, clock_t timeout);
 
 // Should be called with lock acquired, will release lock after blocking then reacquire it before returning from the
 // function.
-block_result_t waitsys_block_lock(wait_queue_t* waitQueue, nsec_t timeout, lock_t* lock);
+block_result_t waitsys_block_lock(wait_queue_t* waitQueue, clock_t timeout, lock_t* lock);
 
-block_result_t waitsys_block_many(wait_queue_t** waitQueues, uint64_t amount, nsec_t timeout);
+block_result_t waitsys_block_many(wait_queue_t** waitQueues, uint64_t amount, clock_t timeout);

@@ -72,13 +72,13 @@ static uint64_t cpu_start(cpu_t* cpu)
     trampoline_cpu_setup(cpu);
 
     lapic_send_init(cpu->lapicId);
-    hpet_sleep(SEC / 100);
+    hpet_sleep(CLOCKS_PER_SEC / 100);
     lapic_send_sipi(cpu->lapicId, ((uint64_t)TRAMPOLINE_PHYSICAL_START) / PAGE_SIZE);
 
-    nsec_t timeout = SEC * 100;
+    clock_t timeout = CLOCKS_PER_SEC * 100;
     while (!cpuReady)
     {
-        nsec_t sleepDuration = SEC / 1000;
+        clock_t sleepDuration = CLOCKS_PER_SEC / 1000;
         hpet_sleep(sleepDuration);
         timeout -= sleepDuration;
         if (timeout == 0)

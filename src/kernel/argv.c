@@ -25,7 +25,7 @@ uint64_t argv_init(argv_t* argv, const char** src)
     uint64_t size = sizeof(const char*) * (argc + 1);
     for (uint64_t i = 0; i < argc; i++)
     {
-        uint64_t strLen = strnlen(src[i], MAX_PATH + 1);
+        uint64_t strLen = strnlen_s(src[i], MAX_PATH + 1);
         if (strLen >= MAX_PATH + 1)
         {
             return ERR;

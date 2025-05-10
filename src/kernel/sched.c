@@ -171,7 +171,7 @@ void sched_init(void)
     wait_queue_init(&sleepQueue);
 }
 
-block_result_t sched_sleep(nsec_t timeout)
+block_result_t sched_sleep(clock_t timeout)
 {
     return waitsys_block(&sleepQueue, timeout);
 }
@@ -304,9 +304,9 @@ void sched_schedule_trap(trap_frame_t* trapFrame)
         return;
     }
 
-    /*static nsec_t lasttime = 0;
+    /*static clock_t lasttime = 0;
 
-    if (self->id == 0 && systime_uptime() > lasttime + SEC / 10)
+    if (self->id == 0 && systime_uptime() > lasttime + CLOCKS_PER_SEC / 10)
     {
         printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 

@@ -394,7 +394,7 @@ void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
     return file->ops->mmap(file, address, length, prot);
 }
 
-uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
+uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
 {
     for (uint64_t i = 0; i < amount; i++)
     {
@@ -431,7 +431,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
 
     uint64_t events = 0;
     uint64_t currentTime = systime_uptime();
-    uint64_t deadline = timeout == NEVER ? NEVER : currentTime + timeout;
+    uint64_t deadline = timeout == CLOCKS_NEVER ? CLOCKS_NEVER : currentTime + timeout;
     while (true)
     {
         events = 0;
@@ -459,7 +459,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout)
             break;
         }
 
-        nsec_t remainingTime = deadline == NEVER ? NEVER : deadline - currentTime;
+        clock_t remainingTime = deadline == CLOCKS_NEVER ? CLOCKS_NEVER : deadline - currentTime;
         waitsys_block_many(waitQueues, amount, remainingTime);
 
         currentTime = systime_uptime();

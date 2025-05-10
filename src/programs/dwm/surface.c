@@ -34,8 +34,8 @@ surface_t* surface_new(client_t* client, surface_id_t id, const point_t* point, 
     surface->id = id;
     surface->type = type;
     surface->timer.flags = TIMER_NONE;
-    surface->timer.timeout = NEVER;
-    surface->timer.deadline = NEVER;
+    surface->timer.timeout = CLOCKS_NEVER;
+    surface->timer.deadline = CLOCKS_NEVER;
     surface->invalid = true;
     surface->moved = false;
     surface->prevRect = RECT_INIT_DIM(surface->pos.x, surface->pos.y, width, height);

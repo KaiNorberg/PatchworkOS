@@ -167,7 +167,7 @@ typedef struct
     cmd_header_t header;
     surface_id_t target;
     timer_flags_t flags;
-    nsec_t timeout;
+    clock_t timeout;
 } cmd_surface_set_timer_t;
 
 typedef struct

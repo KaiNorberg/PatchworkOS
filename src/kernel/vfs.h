@@ -127,7 +127,7 @@ uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin);
 
 uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size);
 
-uint64_t vfs_poll(poll_file_t* files, uint64_t amount, nsec_t timeout);
+uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout);
 
 void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot);
 
