@@ -211,7 +211,11 @@ static uint64_t log_write(file_t* file, const void* buffer, uint64_t count)
         return ERROR(EINVAL);
     }
     char string[LOG_MAX_LINE];
-    memcpy(string, buffer, count);
+    for (uint64_t i = 0; i < count; i++)
+    {
+        char chr = ((char*)buffer)[i];
+        string[i] = chr != '\n' ? chr : ' ';
+    }
     string[count] = '\0';
     printf(string);
     return count;

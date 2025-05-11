@@ -171,9 +171,18 @@ bool display_next_event(display_t* disp, event_t* event, clock_t timeout)
         return true;
     }
 
-    if (timeout != CLOCKS_NEVER && !(poll1(disp->data, POLL_READ, timeout) & POLL_READ))
+    if (timeout != CLOCKS_NEVER)
     {
-        return false;
+        poll_event_t occurred = poll1(disp->data, POLL_READ, timeout);
+        if (occurred & POLL1_ERR)
+        {
+            disp->connected = false;
+            return false;
+        }
+        else if (!(occurred & POLL_READ))
+        {
+            return false;
+        }
     }
 
     display_recieve_event(disp, event);

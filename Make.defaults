@@ -30,6 +30,7 @@ CFLAGS := $(OPTIMIZATION) \
     -Wno-unused-but-set-variable \
     -Wno-implicit-fallthrough \
     -Wno-deprecated-non-prototype \
+    -Wno-unused-but-set-parameter \
     -Wno-unused-command-line-argument \
     -fno-stack-protector \
     -fno-omit-frame-pointer \

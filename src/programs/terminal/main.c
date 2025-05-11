@@ -6,7 +6,8 @@ int main(void)
     terminal_init(&term);
 
     while (terminal_update(&term))
-        ;
+    {
+    }
 
     terminal_deinit(&term);
     return 0;

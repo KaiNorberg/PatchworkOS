@@ -342,7 +342,7 @@ static uint64_t client_action_draw_string(client_t* client, const cmd_header_t* 
         return ERR;
     }
 
-    rect_t textArea = RECT_INIT_DIM(cmd->point.x, cmd->point.y, font->width * (cmd->length + 1), font->height);
+    rect_t textArea = RECT_INIT_DIM(cmd->point.x, cmd->point.y, font->width * cmd->length, font->height);
     rect_t surfaceRect = SURFACE_CONTENT_RECT(surface);
     if (!RECT_CONTAINS(&surfaceRect, &textArea))
     {
@@ -400,7 +400,6 @@ static uint64_t client_action_draw_transfer(client_t* client, const cmd_header_t
 {
     if (header->size != sizeof(cmd_draw_transfer_t))
     {
-        printf("err1");
         while (1)
             ;
         return ERR;
@@ -410,7 +409,6 @@ static uint64_t client_action_draw_transfer(client_t* client, const cmd_header_t
     surface_t* dest = client_find_surface(client, cmd->dest);
     if (dest == NULL)
     {
-        printf("err2");
         while (1)
             ;
         return ERR;
@@ -419,7 +417,6 @@ static uint64_t client_action_draw_transfer(client_t* client, const cmd_header_t
     surface_t* src = cmd->dest == cmd->src ? dest : client_find_surface(client, cmd->src);
     if (src == NULL)
     {
-        printf("err3");
         while (1)
             ;
         return ERR;

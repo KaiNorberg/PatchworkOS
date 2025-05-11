@@ -21,6 +21,4 @@ void* _PlatformPageAlloc(uint64_t amount);
 
 int* _PlatformErrnoFunc(void);
 
-int _PlatformVprintf(const char* _RESTRICT format, va_list args);
-
 void _PlatformAbort(void);

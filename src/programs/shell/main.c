@@ -13,6 +13,7 @@ void prompt_print(void)
     close(fd);
 
     printf("\n%s\n> ", cwd);
+    fflush(stdout);
 }
 
 bool cmdline_read(char* buffer, uint64_t size)

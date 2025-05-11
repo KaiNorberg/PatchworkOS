@@ -141,7 +141,7 @@ uint64_t vwritef(fd_t fd, const char* _RESTRICT format, va_list args)
         }
         ctx.count = 0;
     }
-    return ctx.error ? ERR : ctx.count;
+    return ctx.error ? ERR : ctx.total;
 }
 
 uint64_t seek(fd_t fd, int64_t offset, seek_origin_t origin)
@@ -162,7 +162,10 @@ uint64_t poll(pollfd_t* fds, uint64_t amount, clock_t timeout)
 poll_event_t poll1(fd_t fd, poll_event_t requested, clock_t timeout)
 {
     pollfd_t pollfd = {.fd = fd, .requested = requested};
-    _SyscallPoll(&pollfd, 1, timeout);
+    if (_SyscallPoll(&pollfd, 1, timeout) == ERR)
+    {
+        return POLL1_ERR;
+    }
     return pollfd.occurred;
 }
 

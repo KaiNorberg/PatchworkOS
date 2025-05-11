@@ -92,7 +92,7 @@ static void terminal_put(terminal_t* term, element_t* elem, drawable_t* draw, ch
         term->cursorPos.x = 0;
         term->cursorPos.y++;
 
-        if (CURSOR_POS_Y_OUT_OF_BOUNDS(term->cursorPos.y + 1, term->font))
+        if (term->cursorPos.y >= TERMINAL_ROWS)
         {
             terminal_scroll(term, elem, draw);
         }
@@ -112,7 +112,7 @@ static void terminal_put(terminal_t* term, element_t* elem, drawable_t* draw, ch
         term->cursorPos.x++;
         term->cursorVisible = false;
 
-        if (CURSOR_POS_X_OUT_OF_BOUNDS(term->cursorPos.x + 1, term->font))
+        if (term->cursorPos.x >= TERMINAL_COLUMNS)
         {
             terminal_put(term, elem, draw, '\n');
         }
@@ -231,7 +231,7 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t*
             break;
         }
 
-        if (CURSOR_POS_X_OUT_OF_BOUNDS(term->cursorPos.x + (int64_t)term->input.length + 2, term->font))
+        if (term->cursorPos.x + (int64_t)term->input.length + 1 >= TERMINAL_COLUMNS)
         {
             break;
         }
@@ -376,15 +376,15 @@ bool terminal_update(terminal_t* term)
         {.fd = display_fd(term->disp), .requested = POLL_READ}};
     poll(fds, 2, CLOCKS_NEVER);
 
-    bool shouldQuit = false;
     event_t event = {0};
-    while (display_next_event(term->disp, &event, 0))
+    while (display_next_event(term->disp, &event, 0) && event.type != LEVENT_QUIT && display_connected(term->disp))
     {
-        if (event.type == LEVENT_QUIT || !display_connected(term->disp))
-        {
-            shouldQuit = true;
-        }
         display_dispatch(term->disp, &event);
+    }
+
+    if (event.type == LEVENT_QUIT || !display_connected(term->disp))
+    {
+        return false;
     }
 
     if (fds[0].occurred & POLL_READ)
@@ -393,5 +393,5 @@ bool terminal_update(terminal_t* term)
         display_cmds_flush(term->disp);
     }
 
-    return !shouldQuit;
+    return true;
 }

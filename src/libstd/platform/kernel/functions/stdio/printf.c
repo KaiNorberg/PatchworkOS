@@ -7,7 +7,7 @@ int printf(const char* _RESTRICT format, ...)
 {
     va_list args;
     va_start(args, format);
-    int result = _PlatformVprintf(format, args);
+    int result = vprintf(format, args);
     va_end(args);
     return result;
 }

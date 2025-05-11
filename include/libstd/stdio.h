@@ -19,16 +19,8 @@ extern "C"
 #define _IOLBF (1u << 1)
 #define _IONBF (1u << 2)
 
-// TODO: Implement streams!
-typedef struct
-{
-    uint8_t todo;
-} fpos_t;
-
-typedef struct
-{
-    uint8_t todo;
-} FILE;
+typedef struct fpos fpos_t;
+typedef struct FILE FILE;
 
 #define EOF (-1)
 #define BUFSIZ 1024

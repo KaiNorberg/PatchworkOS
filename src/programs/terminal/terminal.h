@@ -7,8 +7,11 @@
 
 #define BLINK_INTERVAL (CLOCKS_PER_SEC / 2)
 
-#define TERMINAL_WIDTH (80 * 8 + windowTheme.edgeWidth * 2 + windowTheme.paddingWidth * 2)
-#define TERMINAL_HEIGHT (24 * 16 + windowTheme.edgeWidth * 2 + windowTheme.paddingWidth * 2)
+#define TERMINAL_COLUMNS 80
+#define TERMINAL_ROWS 24
+
+#define TERMINAL_WIDTH (TERMINAL_COLUMNS * 8 + windowTheme.edgeWidth * 2 + windowTheme.paddingWidth * 2)
+#define TERMINAL_HEIGHT (TERMINAL_ROWS * 16 + windowTheme.edgeWidth * 2 + windowTheme.paddingWidth * 2)
 
 typedef struct
 {
@@ -29,14 +32,6 @@ typedef struct
         .x = ((cursorPos)->x * font_width(font)) + windowTheme.edgeWidth + windowTheme.paddingWidth, \
         .y = ((cursorPos)->y * font_height(font)) + windowTheme.edgeWidth + windowTheme.paddingWidth, \
     };
-
-#define CURSOR_POS_X_OUT_OF_BOUNDS(cursorPosX, font) \
-    ((cursorPosX) * (int64_t)font_width(font) > \
-        TERMINAL_WIDTH - windowTheme.edgeWidth * 2 - windowTheme.paddingWidth * 2)
-
-#define CURSOR_POS_Y_OUT_OF_BOUNDS(cursorPosY, font) \
-    ((cursorPosY) * (int64_t)font_height(font) > \
-        TERMINAL_HEIGHT - windowTheme.edgeWidth * 2 - windowTheme.paddingWidth * 2)
 
 void terminal_init(terminal_t* term);
 

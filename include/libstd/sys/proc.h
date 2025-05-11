@@ -11,11 +11,11 @@ extern "C"
 
 #include "_AUX/ERR.h"
 #include "_AUX/NULL.h"
+#include "_AUX/clock_t.h"
 #include "_AUX/config.h"
 #include "_AUX/fd_t.h"
 #include "_AUX/pid_t.h"
 #include "_AUX/tid_t.h"
-#include "_AUX/clock_t.h"
 
 #define PAGE_SIZE 0x1000
 #define SIZE_IN_PAGES(size) (((size) + PAGE_SIZE - 1) / PAGE_SIZE)

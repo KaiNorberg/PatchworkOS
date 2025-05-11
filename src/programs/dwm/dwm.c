@@ -40,7 +40,7 @@ static psf_t* defaultFont;
 
 static client_t* dwm_client_accept(void)
 {
-    printf("dwm client: accept");
+    printf("dwm client: accept\n");
     fd_t fd = openf("sys:/net/local/%s/accept", id);
     if (fd == ERR)
     {
@@ -62,7 +62,7 @@ static client_t* dwm_client_accept(void)
 
 static void dwm_client_disconnect(client_t* client)
 {
-    printf("dwm client: disconnect");
+    printf("dwm client: disconnect\n");
     list_remove(&client->entry);
     client_free(client);
     clientAmount--;
@@ -133,7 +133,7 @@ uint64_t dwm_attach(surface_t* surface)
     {
         if (cursor != NULL)
         {
-            printf("dwm error: attach (cursor != NULL)");
+            printf("dwm error: attach (cursor != NULL)\n");
             return ERR;
         }
 
@@ -144,7 +144,7 @@ uint64_t dwm_attach(surface_t* surface)
     {
         if (wall != NULL)
         {
-            printf("dwm error: attach (wall != NULL)");
+            printf("dwm error: attach (wall != NULL)\n");
             return ERR;
         }
 
@@ -158,7 +158,7 @@ uint64_t dwm_attach(surface_t* surface)
     break;
     default:
     {
-        printf("dwm error: attach (default)");
+        printf("dwm error: attach (default)\n");
         return ERR;
     }
     }
@@ -198,7 +198,7 @@ void dwm_detach(surface_t* surface)
     break;
     default:
     {
-        printf("dwm error: attempt to free invalid surface");
+        printf("dwm error: attempt to free invalid surface\n");
         exit(EXIT_FAILURE);
     }
     }
@@ -325,7 +325,7 @@ static void dwm_kbd_read(void)
         kbd_event_t kbdEvent;
         if (read(kbd, &kbdEvent, sizeof(kbd_event_t)) != sizeof(kbd_event_t))
         {
-            printf("dwm error: failed to read kbd event");
+            printf("dwm error: failed to read kbd event\n");
             return;
         }
 
@@ -423,7 +423,7 @@ static void dwm_mouse_read(void)
         mouse_event_t mouseEvent;
         if (read(mouse, &mouseEvent, sizeof(mouse_event_t)) != sizeof(mouse_event_t))
         {
-            printf("dwm error: failed to read mouse event");
+            printf("dwm error: failed to read mouse event\n");
             return;
         }
 

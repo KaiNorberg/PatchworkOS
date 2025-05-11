@@ -5,6 +5,6 @@
 
 typedef unsigned long long clock_t;
 #define CLOCKS_PER_SEC ((clock_t)1000000000) // Nanoseconds per second
-#define CLOCKS_NEVER (__UINT64_MAX__) // Extension
+#define CLOCKS_NEVER (__UINT64_MAX__)        // Extension
 
 #endif

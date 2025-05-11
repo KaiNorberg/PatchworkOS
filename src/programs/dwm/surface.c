@@ -11,7 +11,7 @@ surface_t* surface_new(client_t* client, surface_id_t id, const point_t* point, 
     surface_t* surface = malloc(sizeof(surface_t));
     if (surface == NULL)
     {
-        printf("dwm surface error: failed to allocate surface");
+        printf("dwm surface error: failed to allocate surface\n");
         return NULL;
     }
 
@@ -23,7 +23,7 @@ surface_t* surface_new(client_t* client, surface_id_t id, const point_t* point, 
     if (surface->gfx.buffer == NULL)
     {
         free(surface);
-        printf("dwm surface error: failed to allocate gfx buffer");
+        printf("dwm surface error: failed to allocate gfx buffer\n");
         return NULL;
     }
     memset(surface->gfx.buffer, 0, width * height * sizeof(pixel_t));

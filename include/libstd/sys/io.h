@@ -14,9 +14,9 @@ extern "C"
 #include "_AUX/MAX_PATH.h"
 #include "_AUX/NULL.h"
 #include "_AUX/SEEK.h"
+#include "_AUX/clock_t.h"
 #include "_AUX/config.h"
 #include "_AUX/fd_t.h"
-#include "_AUX/clock_t.h"
 
 #define STDIN_FILENO 0
 #define STDOUT_FILENO 1
@@ -28,7 +28,8 @@ extern "C"
 typedef enum poll_event
 {
     POLL_READ = (1 << 0),
-    POLL_WRITE = (1 << 1)
+    POLL_WRITE = (1 << 1),
+    POLL1_ERR = (1 << 31)
 } poll_event_t;
 
 typedef struct pollfd

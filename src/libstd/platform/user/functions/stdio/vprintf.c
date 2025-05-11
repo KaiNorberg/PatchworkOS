@@ -5,5 +5,5 @@
 
 int vprintf(const char* _RESTRICT format, va_list args)
 {
-    return _PlatformVprintf(format, args);
+    return vfprintf(stdout, format, args);
 }

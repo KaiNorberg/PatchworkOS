@@ -53,6 +53,11 @@ static inline void list_entry_init(list_entry_t* entry)
     entry->prev = entry;
 }
 
+static inline bool list_entry_in_list(list_entry_t* entry)
+{
+    return entry->next != entry->prev;
+}
+
 static inline void list_init(list_t* list)
 {
     list_entry_init(&list->head);
