@@ -27,7 +27,7 @@ int main(int argc, char** argv)
         FILE* file = fopen(argv[i], "r");
         if (file == NULL)
         {
-            printf("error: can't open %s (%s)\n", argv[i], strerror(errno));
+            fprintf(stderr, "cat: can't open %s (%s)\n", argv[i], strerror(errno));
             continue;
         }
 

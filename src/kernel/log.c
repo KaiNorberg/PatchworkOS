@@ -160,10 +160,12 @@ static void log_draw_char(char chr)
 
         for (uint64_t y = 0; y < FONT_HEIGHT; y++)
         {
-            for (uint64_t x = 0; x < FONT_WIDTH; x++)
+            for (uint64_t x = 0; x < FONT_WIDTH; x += 2)
             {
-                uint32_t pixel = (glyph[y] & (0b10000000 >> x)) > 0 ? 0xFFA3A4A3 : 0;
-                gop.base[(posX + x) + (posY + y) * gop.stride] = pixel;
+                // Draw two pixels at a time.
+                uint64_t pixel1 = (glyph[y] & (0b10000000 >> x)) > 0 ? LOG_TEXT_COLOR : 0;
+                uint64_t pixel2 = (glyph[y] & (0b10000000 >> (x + 1))) > 0 ? LOG_TEXT_COLOR : 0;
+                *((uint64_t*)&gop.base[(posX + x) + (posY + y) * gop.stride]) = (pixel2 << 32 | pixel1);
             }
         }
         posX += FONT_WIDTH;

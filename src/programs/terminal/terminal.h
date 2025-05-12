@@ -21,7 +21,7 @@ typedef struct
     point_t cursorPos;
     bool cursorVisible;
     fd_t stdin[2];
-    fd_t stdout[2];
+    fd_t stdout[2]; // Also does stderr
     input_t input;
     history_t history;
     fd_t shellCtl;

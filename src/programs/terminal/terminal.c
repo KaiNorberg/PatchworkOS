@@ -310,6 +310,7 @@ void terminal_init(terminal_t* term)
     spawn_fd_t fds[] = {
         {.child = STDIN_FILENO, .parent = term->stdin[PIPE_READ]},
         {.child = STDOUT_FILENO, .parent = term->stdout[PIPE_WRITE]},
+        {.child = STDERR_FILENO, .parent = term->stdout[PIPE_WRITE]},
         SPAWN_FD_END,
     };
     pid_t shell = spawn(argv, fds);

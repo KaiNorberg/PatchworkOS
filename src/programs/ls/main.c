@@ -38,7 +38,7 @@ uint64_t args_init(args_t* args, int argc, char** argv)
     {
         if (strnlen_s(argv[i], MAX_PATH) >= MAX_PATH - 1)
         {
-            printf("Did you try to cause an overflow on purpose?");
+            fprintf(stderr, "ls: Did you try to cause an overflow on purpose?\n");
             continue;
         }
 
@@ -90,7 +90,7 @@ uint64_t print_directory(const char* path, flags_t flags, bool forceLabel)
     dir_list_t* dirs = dir_alloc(path);
     if (dirs == NULL)
     {
-        printf("error: %s\n", strerror(errno));
+        fprintf(stderr, "ls: cant open directory %s (%s)\n", path, strerror(errno));
         return ERR;
     }
 
