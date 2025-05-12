@@ -14,8 +14,6 @@ static gfx_t backbuffer;
 
 static scanline_t* scanlines;
 
-static bool acquired;
-
 static void frontbuffer_init(void)
 {
     fd_t fb = open("sys:/fb0");
@@ -104,7 +102,6 @@ void screen_init(void)
     frontbuffer_init();
     backbuffer_init();
     scanlines_init();
-    acquired = false;
 }
 
 void screen_deinit(void)
@@ -136,11 +133,6 @@ void screen_transfer_blend(surface_t* surface, const rect_t* rect)
 
 void screen_swap(void)
 {
-    if (acquired)
-    {
-        return;
-    }
-
     switch (info.format)
     {
     case FB_ARGB32:
@@ -180,32 +172,4 @@ uint64_t screen_height(void)
 void screen_rect(rect_t* rect)
 {
     *rect = RECT_INIT_DIM(0, 0, info.width, info.height);
-}
-
-uint64_t screen_acquire(void)
-{
-    if (acquired)
-    {
-        return ERR;
-    }
-    acquired = true;
-    printf("dwm: screen acquire\n");
-
-    return 0;
-}
-
-uint64_t screen_release(void)
-{
-    if (!acquired)
-    {
-        return ERR;
-    }
-    acquired = false;
-    printf("dwm: screen release\n");
-
-    rect_t rect;
-    screen_rect(&rect);
-    scanlines_invalidate(&rect);
-    screen_swap();
-    return 0;
 }

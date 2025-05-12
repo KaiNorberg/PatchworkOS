@@ -52,18 +52,12 @@ client_t* client_new(fd_t fd)
     client->fd = fd;
     list_init(&client->surfaces);
     list_init(&client->fonts);
-    client->screenAcquired = false;
 
     return client;
 }
 
 void client_free(client_t* client)
 {
-    if (client->screenAcquired)
-    {
-        screen_release();
-    }
-
     surface_t* wall = NULL;
 
     surface_t* surface;
@@ -408,8 +402,6 @@ static uint64_t client_action_draw_transfer(client_t* client, const cmd_header_t
 {
     if (header->size != sizeof(cmd_draw_transfer_t))
     {
-        while (1)
-            ;
         return ERR;
     }
     cmd_draw_transfer_t* cmd = (cmd_draw_transfer_t*)header;
@@ -417,22 +409,25 @@ static uint64_t client_action_draw_transfer(client_t* client, const cmd_header_t
     surface_t* dest = client_find_surface(client, cmd->dest);
     if (dest == NULL)
     {
-        while (1)
-            ;
         return ERR;
     }
 
     surface_t* src = cmd->dest == cmd->src ? dest : client_find_surface(client, cmd->src);
     if (src == NULL)
     {
-        while (1)
-            ;
         return ERR;
     }
 
     rect_t surfaceRect = SURFACE_CONTENT_RECT(dest);
     rect_t destRect = cmd->destRect;
     RECT_FIT(&destRect, &surfaceRect);
+
+    if (cmd->srcPoint.x < 0 || cmd->srcPoint.y < 0 || cmd->srcPoint.x + RECT_WIDTH(&destRect) > src->gfx.width ||
+        cmd->srcPoint.y + RECT_HEIGHT(&destRect) > src->gfx.height)
+    {
+        return ERR;
+    }
+
     gfx_transfer(&dest->gfx, &src->gfx, &destRect, &cmd->srcPoint);
     return 0;
 }

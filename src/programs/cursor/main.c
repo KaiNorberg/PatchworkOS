@@ -10,15 +10,6 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     {
     case LEVENT_REDRAW:
     {
-        /*gfx_t gfx;
-        win_draw_begin(window, &gfx);
-
-        point_t point = {0};
-        gfx_fbmp(&gfx, image, &point);
-
-        win_draw_end(window, &gfx);*/
-
-        printf("cursor: redraw");
         rect_t rect;
         element_content_rect(elem, &rect);
         point_t srcPoint = {0};
@@ -59,7 +50,6 @@ int main(void)
         display_dispatch(disp, &event);
     }
 
-    printf("cursor exit");
     window_free(win);
     image_free(image);
     display_free(disp);

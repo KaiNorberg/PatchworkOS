@@ -98,19 +98,16 @@ void draw_transfer(drawable_t* dest, drawable_t* src, const rect_t* destRect, co
 
 void draw_buffer(drawable_t* draw, pixel_t* buffer, uint64_t index, uint64_t length)
 {
-    // Note: All length measurments are in pixels.
-
     uint64_t width = RECT_WIDTH(&draw->drawArea);
     uint64_t height = RECT_HEIGHT(&draw->drawArea);
 
     uint64_t maxCmdLen = (CMD_BUFFER_MAX_DATA - sizeof(cmd_draw_buffer_t)) / sizeof(pixel_t);
-    uint64_t i = index;
+    uint64_t offset = 0;
     while (1)
     {
-        point_t pos = {.x = i % width, .y = i / width};
+        point_t pos = {.x = (offset + index) % width, .y = (offset + index) / width};
 
-        uint64_t remaining = length - i;
-        uint64_t cmdLen = MIN(maxCmdLen, MIN(remaining, width - pos.x));
+        uint64_t cmdLen = MIN(maxCmdLen, MIN(length - offset, width - pos.x));
         if (cmdLen == 0)
         {
             break;
@@ -119,12 +116,12 @@ void draw_buffer(drawable_t* draw, pixel_t* buffer, uint64_t index, uint64_t len
         cmd_draw_buffer_t* cmd =
             display_cmds_push(draw->disp, CMD_DRAW_BUFFER, sizeof(cmd_draw_buffer_t) + cmdLen * sizeof(pixel_t));
         cmd->target = draw->surface;
-        cmd->invalidate = (i + cmdLen >= index + length);
+        cmd->invalidate = (offset + cmdLen >= length);
         cmd->index = (pos.x + draw->drawArea.left) + (pos.y + draw->drawArea.top) * draw->stride;
         cmd->length = cmdLen;
-        memcpy(cmd->buffer, buffer + (i - index), cmdLen * sizeof(pixel_t));
+        memcpy(cmd->buffer, buffer + offset, cmdLen * sizeof(pixel_t));
 
-        i += cmdLen;
+        offset += cmdLen;
     }
 
     display_cmds_flush(draw->disp);

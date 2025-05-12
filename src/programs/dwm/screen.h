@@ -26,7 +26,3 @@ uint64_t screen_width(void);
 uint64_t screen_height(void);
 
 void screen_rect(rect_t* rect);
-
-uint64_t screen_acquire(void);
-
-uint64_t screen_release(void);

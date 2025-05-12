@@ -99,11 +99,6 @@ void kernel_init(boot_info_t* bootInfo)
 
     kernel_free_loader_data(&bootInfo->memoryMap);
 
-    if (strcasecmp("wap", "wap") == 0)
-    {
-        printf("test");
-    }
-
 #ifdef TESTING
     testing_run_tests();
 #endif
