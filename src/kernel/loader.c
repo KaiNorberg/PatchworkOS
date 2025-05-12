@@ -68,14 +68,13 @@ static void* loader_load_program(thread_t* thread)
             {
                 return NULL;
             }
+            memset((void*)phdr.virtAddr, 0, size);
 
             if (vfs_seek(file, phdr.offset, SEEK_SET) != phdr.offset)
             {
                 return NULL;
             }
-
-            memset((void*)phdr.virtAddr, 0, size);
-            if (vfs_read(file, (void*)phdr.virtAddr, size) != size)
+            if (vfs_read(file, (void*)phdr.virtAddr, phdr.fileSize) != phdr.fileSize)
             {
                 return NULL;
             }

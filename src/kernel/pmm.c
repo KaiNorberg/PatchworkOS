@@ -49,19 +49,17 @@ static void page_stack_init(void)
 
 static void* page_stack_alloc(void)
 {
+    if (stack.last == NULL)
+    {
+        return NULL;
+    }
+
     void* address;
     if (stack.index == 0)
     {
-        if (stack.last == NULL)
-        {
-            return NULL;
-        }
-        else
-        {
-            address = stack.last;
-            stack.last = stack.last->prev;
-            stack.index = PAGE_BUFFER_MAX - 1;
-        }
+        address = stack.last;
+        stack.last = stack.last->prev;
+        stack.index = PAGE_BUFFER_MAX - 1;
     }
     else
     {
@@ -75,8 +73,6 @@ static void* page_stack_alloc(void)
 
 static void page_stack_free(void* address)
 {
-    freePageAmount++;
-
     if (stack.last == NULL)
     {
         stack.last = address;
@@ -94,6 +90,8 @@ static void page_stack_free(void* address)
     {
         stack.last->pages[stack.index++] = address;
     }
+
+    freePageAmount++;
 }
 
 static void page_bitmap_init(void)
@@ -151,7 +149,7 @@ static void* page_bitmap_alloc(uint64_t count, uintptr_t maxAddr, uint64_t align
 
 static void page_bitmap_free(void* address)
 {
-    uint64_t index = ((uint64_t)address - VMM_HIGHER_HALF_BASE) / PAGE_SIZE;
+    uint64_t index = (uint64_t)VMM_HIGHER_TO_LOWER(address) / PAGE_SIZE;
     ASSERT_PANIC(index < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE);
 
     bitmap.map[index / 8] &= ~(1ULL << (index % 8));
@@ -161,13 +159,17 @@ static void page_bitmap_free(void* address)
 
 static void pmm_free_unlocked(void* address)
 {
-    if ((uint64_t)address >= PMM_MAX_SPECIAL_ADDR + VMM_HIGHER_HALF_BASE)
+    if (address >= VMM_LOWER_TO_HIGHER(PMM_MAX_SPECIAL_ADDR))
     {
         page_stack_free(address);
     }
-    else
+    else if (address >= VMM_LOWER_TO_HIGHER(0))
     {
         page_bitmap_free(address);
+    }
+    else
+    {
+        log_panic(NULL, "pmm: attempt to free lower half address %p", address);
     }
 }
 
@@ -202,9 +204,6 @@ static void pmm_load_memory(efi_mem_map_t* memoryMap)
         }
         else
         {
-            printf("pmm: reserve [0x%016lx-0x%016lx] pages=%d type=%s", desc->physicalStart,
-                (uint64_t)desc->physicalStart + desc->amountOfPages * PAGE_SIZE, desc->amountOfPages,
-                efiMemTypeToString[desc->type]);
             printf("pmm: reserve [0x%016lx-0x%016lx] pages=%d type=%s", desc->physicalStart,
                 (uint64_t)desc->physicalStart + desc->amountOfPages * PAGE_SIZE, desc->amountOfPages,
                 efiMemTypeToString[desc->type]);

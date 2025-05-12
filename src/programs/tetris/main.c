@@ -626,7 +626,7 @@ static void current_piece_update(element_t* elem, drawable_t* draw)
 
 static void current_piece_move(element_t* elem, drawable_t* draw, keycode_t code)
 {
-    uint64_t newX = currentPiece.x + (code == KEY_D) - (code == KEY_A);
+    uint64_t newX = currentPiece.x + (code == KBD_D) - (code == KBD_A);
 
     if (piece_out_of_bounds(&currentPiece.piece, newX, currentPiece.y) ||
         field_collides(&currentPiece.piece, newX, currentPiece.y))
@@ -792,7 +792,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
         if (!started)
         {
-            if (event->kbd.type == KBD_PRESS && event->kbd.code == KEY_SPACE)
+            if (event->kbd.type == KBD_PRESS && event->kbd.code == KBD_SPACE)
             {
                 start();
                 element_send_redraw(elem, false);
@@ -806,25 +806,25 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             break;
         }
 
-        if (event->kbd.type == KBD_PRESS && (event->kbd.code == KEY_A || event->kbd.code == KEY_D))
+        if (event->kbd.type == KBD_PRESS && (event->kbd.code == KBD_A || event->kbd.code == KBD_D))
         {
             current_piece_move(elem, draw, event->kbd.code);
         }
-        else if (event->kbd.type == KBD_PRESS && event->kbd.code == KEY_R)
+        else if (event->kbd.type == KBD_PRESS && event->kbd.code == KBD_R)
         {
             current_piece_rotate(elem, draw);
         }
-        else if (event->kbd.type == KBD_PRESS && event->kbd.code == KEY_S)
+        else if (event->kbd.type == KBD_PRESS && event->kbd.code == KBD_S)
         {
             currentPiece.dropping = true;
             window_set_timer(win, TIMER_NONE, 0);
         }
-        else if (event->kbd.type == KBD_PRESS && event->kbd.code == KEY_SPACE)
+        else if (event->kbd.type == KBD_PRESS && event->kbd.code == KBD_SPACE)
         {
             current_piece_drop(elem, draw);
             window_set_timer(win, TIMER_NONE, 0);
         }
-        else if (event->kbd.type == KBD_RELEASE && event->kbd.code == KEY_S)
+        else if (event->kbd.type == KBD_RELEASE && event->kbd.code == KBD_S)
         {
             currentPiece.dropping = false;
             window_set_timer(win, TIMER_NONE, TICK_SPEED);

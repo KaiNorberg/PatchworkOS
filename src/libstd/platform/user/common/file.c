@@ -198,6 +198,28 @@ uint64_t _FileFillBuffer(FILE* stream)
     return 0;
 }
 
+uint64_t _FileSeek(FILE* stream, int64_t offset, int whence)
+{
+    if (whence != SEEK_SET && whence != SEEK_CUR && whence != SEEK_END)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    uint64_t result = seek(stream->fd, offset, whence);
+
+    if (result == ERR)
+    {
+        return ERR;
+    }
+
+    stream->ungetIndex = 0;
+    stream->bufIndex = 0;
+    stream->bufEnd = 0;
+    stream->pos.offset = result;
+    return result;
+}
+
 uint64_t _FilePrepareRead(FILE* stream)
 {
     if ((stream->bufIndex > stream->bufEnd) ||

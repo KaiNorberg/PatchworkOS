@@ -170,5 +170,5 @@ void dir_entry_push(dir_entry_t* entries, uint64_t amount, uint64_t* index, uint
         break; \
         } \
         file->pos = MIN(position, (size)); \
-        position; \
+        file->pos; \
     })

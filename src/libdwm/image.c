@@ -29,6 +29,7 @@ image_t* image_new_blank(display_t* disp, uint64_t width, uint64_t height)
     image->draw.surface = image->surface;
     image->draw.drawArea = RECT_INIT_DIM(0, 0, width, height);
     image->draw.invalidRect = (rect_t){0};
+    image->draw.stride = width;
 
     cmd_surface_new_t* cmd = display_cmds_push(disp, CMD_SURFACE_NEW, sizeof(cmd_surface_new_t));
     cmd->id = image->surface;
@@ -90,21 +91,7 @@ image_t* image_new(display_t* disp, const char* path)
         return NULL;
     }
 
-    uint64_t maxLength = (CMD_BUFFER_MAX_DATA - sizeof(cmd_draw_buffer_t)) / sizeof(pixel_t);
-    uint64_t index = 0;
-    while (1)
-    {
-        uint64_t length = MIN(maxLength, fbmp->width * fbmp->height - index);
-        if (length == 0)
-        {
-            break;
-        }
-
-        draw_buffer(&image->draw, &fbmp->data[index], index, length);
-
-        index += length;
-    }
-    display_cmds_flush(disp);
+    draw_buffer(&image->draw, fbmp->data, 0, fbmp->width * fbmp->height);
 
     free(fbmp);
     return image;

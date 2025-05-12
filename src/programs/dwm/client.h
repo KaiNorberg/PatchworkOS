@@ -15,6 +15,7 @@ typedef struct client
     list_t fonts;
     cmd_buffer_t cmds;
     uint64_t newId;
+    bool screenAcquired;
 } client_t;
 
 client_t* client_new(fd_t fd);

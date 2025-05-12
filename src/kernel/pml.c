@@ -2,6 +2,8 @@
 #include "pmm.h"
 #include "regs.h"
 #include "vmm.h"
+
+#include <stdio.h>
 #include <string.h>
 #include <sys/math.h>
 
@@ -60,6 +62,7 @@ static void pml_free_level(pml_t* table, int64_t level)
             pml_free_level(PAGE_ENTRY_GET_ADDRESS(entry), level - 1);
         }
     }
+
     pmm_free(table);
 }
 

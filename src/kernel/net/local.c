@@ -413,7 +413,7 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
     {
         return ERROR(ENOOP);
     }
-    if (count == 0 || count >= LOCAL_BUFFER_SIZE / 2)
+    if (count == 0 || count >= LOCAL_BUFFER_SIZE - sizeof(local_packet_header_t))
     {
         return ERROR(EINVAL);
     }
@@ -461,7 +461,7 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
     {
         return ERROR(ENOOP);
     }
-    if (count == 0 || count >= LOCAL_BUFFER_SIZE / 2)
+    if (count == 0 || count >= LOCAL_BUFFER_SIZE - sizeof(local_packet_header_t))
     {
         return ERROR(EINVAL);
     }

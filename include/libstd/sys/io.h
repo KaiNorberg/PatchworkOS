@@ -103,6 +103,8 @@ fd_t dup(fd_t oldFd);
 
 fd_t dup2(fd_t oldFd, fd_t newFd);
 
+uint64_t mkdir(const char* path);
+
 #if defined(__cplusplus)
 }
 #endif

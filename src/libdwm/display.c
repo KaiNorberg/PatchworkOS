@@ -148,6 +148,28 @@ uint64_t display_screen_rect(display_t* disp, rect_t* rect, uint64_t index)
     return 0;
 }
 
+uint64_t display_screen_acquire(display_t* disp, uint64_t index)
+{
+    cmd_screen_acquire_t* cmd = display_cmds_push(disp, CMD_SCREEN_ACQUIRE, sizeof(cmd_screen_acquire_t));
+    cmd->index = index;
+    display_cmds_flush(disp);
+
+    event_t event;
+    if (display_wait_for_event(disp, &event, EVENT_SCREEN_ACQUIRE) == ERR)
+    {
+        return ERR;
+    }
+    return 0;
+}
+
+uint64_t display_screen_release(display_t* disp, uint64_t index)
+{
+    cmd_screen_release_t* cmd = display_cmds_push(disp, CMD_SCREEN_RELEASE, sizeof(cmd_screen_release_t));
+    cmd->index = index;
+    display_cmds_flush(disp);
+    return 0;
+}
+
 fd_t display_fd(display_t* disp)
 {
     return disp->data;

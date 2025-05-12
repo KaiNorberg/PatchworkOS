@@ -37,6 +37,7 @@ CFLAGS := $(OPTIMIZATION) \
     -nostdlib -nostartfiles -ffreestanding \
     -Iinclude/libstd \
     -Iinclude \
+    -Ilib \
     -I$(SRCDIR)
 
 CFLAGS_DISABLE_SIMD := -mno-mmx -mno-3dnow \

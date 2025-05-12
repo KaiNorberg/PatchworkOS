@@ -52,12 +52,18 @@ client_t* client_new(fd_t fd)
     client->fd = fd;
     list_init(&client->surfaces);
     list_init(&client->fonts);
+    client->screenAcquired = false;
 
     return client;
 }
 
 void client_free(client_t* client)
 {
+    if (client->screenAcquired)
+    {
+        screen_release();
+    }
+
     surface_t* wall = NULL;
 
     surface_t* surface;
@@ -473,8 +479,70 @@ static uint64_t client_action_draw_buffer(client_t* client, const cmd_header_t* 
     }
     memcpy(&surface->gfx.buffer[cmd->index], cmd->buffer, cmd->length * sizeof(pixel_t));
 
-    surface->invalid = true;
-    compositor_set_redraw_needed();
+    if (cmd->invalidate)
+    {
+        surface->invalid = true;
+        rect_t rect = SURFACE_CONTENT_RECT(surface);
+        gfx_invalidate(&surface->gfx, &rect);
+        compositor_set_redraw_needed();
+    }
+    return 0;
+}
+
+static uint64_t client_action_screen_acquire(client_t* client, const cmd_header_t* header)
+{
+    if (header->size != sizeof(cmd_screen_acquire_t))
+    {
+        return ERR;
+    }
+    cmd_screen_acquire_t* cmd = (cmd_screen_acquire_t*)header;
+
+    if (cmd->index != 0)
+    {
+        return ERR;
+    }
+
+    if (client->screenAcquired)
+    {
+        return ERR;
+    }
+
+    if (screen_acquire() == ERR)
+    {
+        return ERR;
+    }
+
+    event_screen_acquire_t event = {.index = cmd->index};
+    client_send_event(client, SURFACE_ID_NONE, EVENT_SCREEN_ACQUIRE, &event, sizeof(event_screen_acquire_t));
+
+    client->screenAcquired = true;
+    return 0;
+}
+
+static uint64_t client_action_screen_release(client_t* client, const cmd_header_t* header)
+{
+    if (header->size != sizeof(cmd_screen_release_t))
+    {
+        return ERR;
+    }
+    cmd_screen_release_t* cmd = (cmd_screen_release_t*)header;
+
+    if (cmd->index != 0)
+    {
+        return ERR;
+    }
+
+    if (!client->screenAcquired)
+    {
+        return ERR;
+    }
+
+    if (screen_release() == ERR)
+    {
+        return ERR;
+    }
+
+    client->screenAcquired = false;
     return 0;
 }
 
@@ -493,6 +561,8 @@ static uint64_t (*actions[])(client_t*, const cmd_header_t*) = {
     [CMD_DRAW_TRANSFER] = client_action_draw_transfer,
     [CMD_SURFACE_SET_TIMER] = client_action_surface_set_timer,
     [CMD_DRAW_BUFFER] = client_action_draw_buffer,
+    [CMD_SCREEN_ACQUIRE] = client_action_screen_acquire,
+    [CMD_SCREEN_RELEASE] = client_action_screen_release,
 };
 
 uint64_t client_recieve_cmds(client_t* client)

@@ -22,6 +22,7 @@ static start_entry_t entries[] = {
     {.name = "Calculator", .path = "home:/usr/bin/calculator"},
     {.name = "Terminal", .path = "home:/usr/bin/terminal"},
     {.name = "Tetris", .path = "home:/usr/bin/tetris"},
+    {.name = "Doom", .path = "home:/usr/bin/doom"},
     {.name = "Error Test", .path = "this:/is/a/nonsense/file/path"},
 };
 
@@ -69,14 +70,20 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     {
         if (event->lAction.type == ACTION_RELEASE)
         {
+            fd_t klog = open("sys:/klog");
+
             const char* argv[] = {entries[event->lAction.source].path, NULL};
-            if (spawn(argv, NULL) == ERR)
+            spawn_fd_t fds[] = {{.child = STDOUT_FILENO, .parent = klog}, {.child = STDERR_FILENO, .parent = klog},
+                SPAWN_FD_END};
+            if (spawn(argv, fds) == ERR)
             {
                 char buffer[MAX_PATH];
                 sprintf(buffer, "Failed to spawn (%s)!", entries[event->lAction.source].path);
 
                 popup_open(buffer, "Error!", POPUP_OK);
             }
+
+            close(klog);
         }
     }
     break;

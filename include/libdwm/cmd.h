@@ -32,6 +32,8 @@ typedef enum
     CMD_DRAW_TRANSFER,
     CMD_SURFACE_SET_TIMER,
     CMD_DRAW_BUFFER,
+    CMD_SCREEN_ACQUIRE,
+    CMD_SCREEN_RELEASE,
     CMD_TYPE_AMOUNT, // Below this are unimplemented cmds.
     CMD_DRAW_LINE,
     CMD_DRAW_POINT,
@@ -174,10 +176,24 @@ typedef struct
 {
     cmd_header_t header;
     surface_id_t target;
+    bool invalidate;
     uint64_t index;
     uint64_t length;
     pixel_t buffer[];
 } cmd_draw_buffer_t;
+
+// Prevents the dwm from rendering to the specified screen.
+typedef struct
+{
+    cmd_header_t header;
+    uint64_t index;
+} cmd_screen_acquire_t;
+
+typedef struct
+{
+    cmd_header_t header;
+    uint64_t index;
+} cmd_screen_release_t;
 
 #define CMD_BUFFER_MAX_DATA (0x1000)
 

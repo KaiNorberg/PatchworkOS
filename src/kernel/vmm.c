@@ -138,7 +138,7 @@ void* vmm_kernel_alloc(void* virtAddr, uint64_t length)
             for (uint64_t j = 0; j < i; j++)
             {
                 void* otherAddr = (void*)((uint64_t)virtAddr + j * PAGE_SIZE);
-                pmm_free(VMM_LOWER_TO_HIGHER(pml_phys_addr(kernelPml, otherAddr)));
+                pmm_free(pml_phys_addr(kernelPml, otherAddr));
                 pml_unmap(kernelPml, otherAddr, 1);
             }
             return ERRPTR(ENOMEM);
@@ -225,7 +225,7 @@ void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot)
             for (uint64_t j = 0; j < i; j++)
             {
                 void* otherAddr = (void*)((uint64_t)virtAddr + j * PAGE_SIZE);
-                pmm_free(VMM_LOWER_TO_HIGHER(pml_phys_addr(space->pml, otherAddr)));
+                pmm_free(pml_phys_addr(space->pml, otherAddr));
                 pml_unmap(space->pml, otherAddr, 1);
             }
             return ERRPTR(ENOMEM);

@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/argsplit.h>
 
 static void kernel_free_loader_data(efi_mem_map_t* memoryMap)
@@ -48,6 +49,8 @@ static void kernel_free_loader_data(efi_mem_map_t* memoryMap)
         }
     }
 }
+
+static void* buffer[10000];
 
 void kernel_init(boot_info_t* bootInfo)
 {
@@ -95,6 +98,11 @@ void kernel_init(boot_info_t* bootInfo)
     gop_init(&bootInfo->gopBuffer);
 
     kernel_free_loader_data(&bootInfo->memoryMap);
+
+    if (strcasecmp("wap", "wap") == 0)
+    {
+        printf("test");
+    }
 
 #ifdef TESTING
     testing_run_tests();

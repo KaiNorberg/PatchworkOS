@@ -1,10 +1,8 @@
 #include <stdio.h>
-#include <stdlib.h>
 
 #include "platform/user/common/file.h"
-#include "platform/user/common/syscalls.h"
 
-int putc(int c, FILE* stream)
+int puts(const char* _RESTRICT s)
 {
-    return fputc(c, stream);
+    return fputs(s, stdout);
 }

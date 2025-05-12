@@ -1,7 +1,7 @@
 include Make.defaults
 
 MODULES := $(basename $(notdir $(wildcard make/*.mk)))
-PROGRAMS := $(notdir $(wildcard src/programs/*))
+PROGRAMS := $(basename $(notdir $(wildcard make/programs/*.mk)))
 TARGET := bin/PatchworkOS.img
 
 ROOT_PROGRAMS := init wall cursor taskbar startmenu dwm
@@ -13,7 +13,7 @@ $(MODULES): setup
 	$(MAKE) -f make/$@.mk SRCDIR=src/$@ BUILDDIR=build/$@ BINDIR=bin/$@
 
 $(PROGRAMS): $(MODULES)
-	$(MAKE) -f make/programs/programs.mk SRCDIR=src/programs/$@ BUILDDIR=build/programs/$@ BINDIR=bin/programs PROGRAM=$@
+	$(MAKE) -f make/programs/$@.mk SRCDIR=src/programs/$@ BUILDDIR=build/programs/$@ BINDIR=bin/programs PROGRAM=$@
 
 deploy: $(PROGRAMS)
 	dd if=/dev/zero of=$(TARGET) bs=1M count=64
@@ -55,7 +55,7 @@ run:
 	-display sdl \
 	-drive file=$(TARGET) \
 	-m 1G \
-	-smp 8 \
+	-smp 1 \
 	-serial stdio \
 	-no-shutdown -no-reboot \
 	-drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
@@ -71,6 +71,7 @@ run_debug:
 	-m 1G \
 	-smp 8 \
 	-d int \
+	-serial stdio \
 	-no-shutdown -no-reboot \
 	-drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
 	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd \

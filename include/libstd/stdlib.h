@@ -28,9 +28,9 @@ _PUBLIC long long int strtoll(const char* _RESTRICT nptr, char** _RESTRICT endpt
 _PUBLIC unsigned long int strtoul(const char* _RESTRICT nptr, char** _RESTRICT endptr, int base);
 _PUBLIC unsigned long long int strtoull(const char* _RESTRICT nptr, char** _RESTRICT endptr, int base);
 
-_PUBLIC int atoi(const char* nptr);
-_PUBLIC long int atol(const char* nptr);
 _PUBLIC long long int atoll(const char* nptr);
+#define atol(nptr) ((long)atoll(nptr))
+#define atoi(nptr) ((int)atoll(nptr))
 
 #define RAND_MAX 32767
 
@@ -91,6 +91,8 @@ typedef struct
 _PUBLIC div_t div(int numer, int denom);
 _PUBLIC ldiv_t ldiv(long int numer, long int denom);
 _PUBLIC lldiv_t lldiv(long long int numer, long long int denom);
+
+int system(const char* command);
 
 #if _USE_ANNEX_K == 1
 

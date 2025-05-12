@@ -151,6 +151,11 @@ static void log_draw_char(char chr)
 
     if (chr != '\n')
     {
+        if (chr < 0)
+        {
+            chr = ' ';
+        }
+
         const uint8_t* glyph = font_glyphs() + chr * FONT_HEIGHT;
 
         for (uint64_t y = 0; y < FONT_HEIGHT; y++)

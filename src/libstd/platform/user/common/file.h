@@ -68,6 +68,8 @@ uint64_t _FileFlushBuffer(FILE* stream);
 
 uint64_t _FileFillBuffer(FILE* stream);
 
+uint64_t _FileSeek(FILE* stream, int64_t offset, int whence);
+
 uint64_t _FilePrepareRead(FILE* stream);
 
 uint64_t _FilePrepareWrite(FILE* stream);

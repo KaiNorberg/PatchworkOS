@@ -16,6 +16,7 @@ static void element_drawable_update(element_t* elem)
     elem->draw.surface = elem->win->surface;
     element_global_rect(elem, &elem->draw.drawArea);
     elem->draw.invalidRect = (rect_t){0};
+    elem->draw.stride = RECT_WIDTH(&elem->win->rect);
 }
 
 static element_t* element_new_raw(element_id_t id, const rect_t* rect, procedure_t procedure, void* private)

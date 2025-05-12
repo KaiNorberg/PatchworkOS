@@ -12,6 +12,8 @@
 #include "vmm.h"
 #include "waitsys.h"
 
+#include <stdio.h>
+
 void cli_ctx_init(cli_ctx_t* cli)
 {
     cli->intEnable = false;
@@ -45,17 +47,24 @@ void cli_pop(void)
     }
 }
 
-static void exception_handler(const trap_frame_t* trapFrame)
+static void exception_handler(trap_frame_t* trapFrame)
 {
-    if (trapFrame->ss == GDT_USER_DATA && trapFrame->cs == GDT_USER_CODE)
+    if (trapFrame->ss == (GDT_USER_DATA | GDT_RING3) && trapFrame->cs == (GDT_USER_CODE | GDT_RING3))
     {
-        log_panic(trapFrame, "Unhandled User Exception");
+        process_t* process = sched_process();
+        if (process == NULL)
+        {
+            log_panic(trapFrame, "Unhandled User Exception");
+        }
+
+        printf("user exception: process killed due to exception pid=%d vector=0x%x error=%b rip=%p", process->id,
+            trapFrame->vector, trapFrame->errorCode, trapFrame->rip);
+        atomic_store(&process->dead, true);
+        sched_schedule_trap(trapFrame);
     }
     else
     {
-        // TODO: Add handling for user exceptions
         log_panic(trapFrame, "Exception");
-        // sched_process_exit(1);
     }
 }
 
@@ -81,6 +90,7 @@ void trap_handler(trap_frame_t* trapFrame)
     if (trapFrame->vector < VECTOR_IRQ_BASE)
     {
         exception_handler(trapFrame);
+        return;
     }
 
     cpu_t* cpu = smp_self_unsafe();

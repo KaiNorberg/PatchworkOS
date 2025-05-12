@@ -14,7 +14,8 @@ typedef enum
     SURFACE_PANEL,
     SURFACE_CURSOR,
     SURFACE_WALL,
-    SURFACE_HIDDEN,
+    SURFACE_HIDDEN, 
+    // TODO: Implement full screen type, replace screen_acquire, screen_release.
     SURFACE_TYPE_AMOUNT
 } surface_type_t;
 

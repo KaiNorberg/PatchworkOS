@@ -161,7 +161,7 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t*
 
     switch (key)
     {
-    case KEY_UP:
+    case KBD_UP:
     {
         if (term->history.index == term->history.count)
         {
@@ -176,7 +176,7 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t*
         }
     }
     break;
-    case KEY_DOWN:
+    case KBD_DOWN:
     {
         const char* next = history_next(&term->history);
         if (next != NULL)
@@ -190,7 +190,7 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t*
         terminal_redraw_input(term, elem, draw, prevLength);
     }
     break;
-    case KEY_LEFT:
+    case KBD_LEFT:
     {
         if (input_move(&term->input, -1) != ERR)
         {
@@ -198,7 +198,7 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t*
         }
     }
     break;
-    case KEY_RIGHT:
+    case KBD_RIGHT:
     {
         if (input_move(&term->input, +1) != ERR)
         {
@@ -206,7 +206,7 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t*
         }
     }
     break;
-    case KEY_ENTER:
+    case KBD_ENTER:
     {
         writef(term->stdin[PIPE_WRITE], "%s\n", term->input.buffer);
 
@@ -218,7 +218,7 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t*
         terminal_write(term, elem, draw, "\n");
     }
     break;
-    case KEY_BACKSPACE:
+    case KBD_BACKSPACE:
     {
         input_backspace(&term->input);
         terminal_redraw_input(term, elem, draw, prevLength);

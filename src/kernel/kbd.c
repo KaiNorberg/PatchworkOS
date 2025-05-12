@@ -88,23 +88,23 @@ void kbd_push(kbd_t* kbd, kbd_event_type_t type, keycode_t code)
 
     switch (code)
     {
-    case KEY_CAPS_LOCK:
+    case KBD_CAPS_LOCK:
         kbd_update_mod(kbd, type, KBD_MOD_CAPS);
         break;
-    case KEY_LEFT_SHIFT:
-    case KEY_RIGHT_SHIFT:
+    case KBD_LEFT_SHIFT:
+    case KBD_RIGHT_SHIFT:
         kbd_update_mod(kbd, type, KBD_MOD_SHIFT);
         break;
-    case KEY_LEFT_CTRL:
-    case KEY_RIGHT_CTRL:
+    case KBD_LEFT_CTRL:
+    case KBD_RIGHT_CTRL:
         kbd_update_mod(kbd, type, KBD_MOD_CTRL);
         break;
-    case KEY_LEFT_ALT:
-    case KEY_RIGHT_ALT:
+    case KBD_LEFT_ALT:
+    case KBD_RIGHT_ALT:
         kbd_update_mod(kbd, type, KBD_MOD_ALT);
         break;
-    case KEY_LEFT_SUPER:
-    case KEY_RIGHT_SUPER:
+    case KBD_LEFT_SUPER:
+    case KBD_RIGHT_SUPER:
         kbd_update_mod(kbd, type, KBD_MOD_SUPER);
         break;
     default:

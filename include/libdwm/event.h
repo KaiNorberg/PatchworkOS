@@ -28,6 +28,7 @@ typedef uint16_t event_type_t;
 #define EVENT_FONT_INFO 6
 #define EVENT_SURFACE_MOVE 7
 #define EVENT_TIMER 8
+#define EVENT_SCREEN_ACQUIRE 9
 
 typedef struct
 {
@@ -71,6 +72,11 @@ typedef struct
 {
     rect_t rect;
 } event_surface_move_t;
+
+typedef struct
+{
+    uint64_t index;
+} event_screen_acquire_t;
 
 // Library events, sent by libdwm.
 #define LEVENT_BASE (1 << 14)
@@ -120,6 +126,7 @@ typedef struct event
         event_font_new_t fontNew;
         event_font_info_t fontInfo;
         event_surface_move_t surfaceMove;
+        event_screen_acquire_t screenAcquire;
         levent_init_t lInit;
         levent_redraw_t lRedraw;
         levent_action_t lAction;

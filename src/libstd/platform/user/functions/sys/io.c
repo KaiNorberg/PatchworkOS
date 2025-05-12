@@ -188,3 +188,9 @@ fd_t dup2(fd_t oldFd, fd_t newFd)
 {
     return _SyscallDup2(oldFd, newFd);
 }
+
+uint64_t mkdir(const char* path)
+{
+    fprintf(stderr, "mkdir not implemented");
+    return ERR;
+}
