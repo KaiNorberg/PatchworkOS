@@ -225,10 +225,7 @@ void gfx_scroll(gfx_t* gfx, const rect_t* rect, uint64_t offset, pixel_t backgro
     for (int64_t y = height - offset; y < height; y++)
     {
         pixel_t* dest = &gfx->buffer[rect->left + (rect->top + y) * gfx->stride];
-        for (int64_t x = 0; x < width; x++)
-        {
-            dest[x] = background;
-        }
+        memset32(dest, background, width);
     }
 
     gfx_invalidate(gfx, rect);
