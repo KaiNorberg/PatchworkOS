@@ -8,6 +8,7 @@ Patchwork is a 64 bit monolithic hobbyist OS built from scratch in C for the x86
 
 <img src="meta/screenshots/screenshot1.png" style="image-rendering: pixelated;">
 <img src="meta/screenshots/screenshot2.png" style="image-rendering: pixelated;">
+<img src="meta/screenshots/screenshot3.png" style="image-rendering: pixelated;">
 
 ## Differences with Unix
 
