@@ -31,6 +31,7 @@ static list_t windows;
 static list_t panels;
 static surface_t* wall;
 static surface_t* cursor;
+static surface_t* fullscreen;
 
 static surface_t* focus;
 
@@ -91,6 +92,7 @@ void dwm_init(void)
     list_init(&panels);
     wall = NULL;
     cursor = NULL;
+    fullscreen = NULL;
 
     focus = NULL;
 
@@ -156,6 +158,18 @@ uint64_t dwm_attach(surface_t* surface)
         // Do nothing
     }
     break;
+    case SURFACE_FULLSCREEN:
+    {
+        if (fullscreen != NULL)
+        {
+            printf("dwm error: attach (fullscreen != NULL)\n");
+            return ERR;
+        }
+
+        fullscreen = surface;
+        focus = surface;
+    }
+    break;
     default:
     {
         printf("dwm error: attach (default)\n");
@@ -196,15 +210,26 @@ void dwm_detach(surface_t* surface)
         // Do nothing
     }
     break;
+    case SURFACE_FULLSCREEN:
+    {
+        fullscreen = NULL;
+        focus = NULL;
+    }
+    break;
     default:
     {
-        printf("dwm error: attempt to free invalid surface\n");
+        printf("dwm error: attempt to detach invalid surface\n");
         exit(EXIT_FAILURE);
     }
     }
 
     if (wall != NULL)
     {
+        surface_t* panel;
+        LIST_FOR_EACH(panel, &panels, dwmEntry)
+        {
+            panel->moved = true;
+        }
         wall->moved = true;
         compositor_set_redraw_needed();
     }
@@ -212,6 +237,11 @@ void dwm_detach(surface_t* surface)
 
 void dwm_focus_set(surface_t* surface)
 {
+    if (fullscreen != NULL)
+    {
+        return;
+    }
+
     if (surface == focus)
     {
         return;
@@ -242,6 +272,11 @@ void dwm_focus_set(surface_t* surface)
 
 static surface_t* dwm_surface_under_point(const point_t* point)
 {
+    if (fullscreen != NULL)
+    {
+        return fullscreen;
+    }
+
     surface_t* panel;
     LIST_FOR_EACH_REVERSE(panel, &panels, dwmEntry)
     {
@@ -314,6 +349,12 @@ static surface_t* dwm_next_timer(void)
         nextTimer = cursor;
     }
 
+    if (fullscreen != NULL && fullscreen->timer.deadline < deadline)
+    {
+        deadline = fullscreen->timer.deadline;
+        nextTimer = fullscreen;
+    }
+
     return nextTimer;
 }
 
@@ -362,7 +403,7 @@ static void dwm_handle_mouse_event(const mouse_event_t* mouseEvent)
 
     // Dont read event delta to factor in clamping.
     point_t cursorDelta = {.x = cursor->pos.x - oldCursorPos.x, .y = cursor->pos.y - oldCursorPos.y};
-    if (cursorDelta.x != 0 || cursorDelta.y != 0)
+    if (fullscreen == NULL && (cursorDelta.x != 0 || cursorDelta.y != 0))
     {
         compositor_ctx_t ctx = {
             .windows = &windows,
@@ -526,13 +567,16 @@ static void dwm_update(void)
         }
     }
 
-    compositor_ctx_t ctx = {
-        .windows = &windows,
-        .panels = &panels,
-        .wall = wall,
-        .cursor = cursor,
-    };
-    compositor_draw(&ctx);
+    if (fullscreen == NULL)
+    {
+        compositor_ctx_t ctx = {
+            .windows = &windows,
+            .panels = &panels,
+            .wall = wall,
+            .cursor = cursor,
+        };
+        compositor_draw(&ctx);
+    }
 }
 
 void dwm_loop(void)

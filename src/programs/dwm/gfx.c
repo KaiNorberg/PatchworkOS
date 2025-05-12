@@ -56,40 +56,9 @@ void gfx_rect(gfx_t* gfx, const rect_t* rect, pixel_t pixel)
         return;
     }
 
-    uint64_t pixel64 = ((uint64_t)pixel << 32) | pixel;
-
     for (int64_t y = rect->top; y < rect->bottom; y++)
     {
-        uint8_t* ptr = (uint8_t*)&gfx->buffer[rect->left + y * gfx->stride];
-        uint64_t count = (rect->right - rect->left) * sizeof(pixel_t);
-
-        while (count >= 64)
-        {
-            *(uint64_t*)(ptr + 0) = pixel64;
-            *(uint64_t*)(ptr + 8) = pixel64;
-            *(uint64_t*)(ptr + 16) = pixel64;
-            *(uint64_t*)(ptr + 24) = pixel64;
-            *(uint64_t*)(ptr + 32) = pixel64;
-            *(uint64_t*)(ptr + 40) = pixel64;
-            *(uint64_t*)(ptr + 48) = pixel64;
-            *(uint64_t*)(ptr + 56) = pixel64;
-            ptr += 64;
-            count -= 64;
-        }
-
-        while (count >= 8)
-        {
-            *(uint64_t*)ptr = pixel64;
-            ptr += 8;
-            count -= 8;
-        }
-
-        while (count >= sizeof(pixel_t))
-        {
-            *(pixel_t*)ptr = pixel;
-            ptr += sizeof(pixel_t);
-            count -= sizeof(pixel_t);
-        }
+        memset32(&gfx->buffer[rect->left + y * gfx->stride], pixel, RECT_WIDTH(rect));
     }
 
     gfx_invalidate(gfx, rect);

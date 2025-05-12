@@ -277,6 +277,9 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     cmd->rect = win->rect;
     display_cmds_flush(disp);
 
+    event_t event;
+    display_wait_for_event(disp, &event, EVENT_SURFACE_NEW);
+
     list_push(&disp->windows, &win->entry);
     return win;
 }

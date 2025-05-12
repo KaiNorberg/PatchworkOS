@@ -49,6 +49,7 @@ _PUBLIC char* strstr(const char* s1, const char* s2);
 _PUBLIC char* strtok(char* _RESTRICT s1, const char* _RESTRICT s2);
 
 _PUBLIC void* memset(void* s, int c, size_t n);
+_PUBLIC void* memset32(void* s, __UINT32_TYPE__ c, size_t n);
 
 _PUBLIC char* strerror(int errnum);
 

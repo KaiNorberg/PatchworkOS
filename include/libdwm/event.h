@@ -20,15 +20,16 @@ typedef uint16_t event_type_t;
 
 // Dwm events, send by the dwm.
 #define EVENT_SCREEN_INFO 0
-#define EVENT_KBD 1
-#define EVENT_MOUSE 2
-#define EVENT_FOCUS_IN 3
-#define EVENT_FOCUS_OUT 4
-#define EVENT_FONT_NEW 5
-#define EVENT_FONT_INFO 6
-#define EVENT_SURFACE_MOVE 7
-#define EVENT_TIMER 8
-#define EVENT_SCREEN_ACQUIRE 9
+#define EVENT_SURFACE_NEW 1
+#define EVENT_KBD 2
+#define EVENT_MOUSE 3
+#define EVENT_FOCUS_IN 4
+#define EVENT_FOCUS_OUT 5
+#define EVENT_FONT_NEW 6
+#define EVENT_FONT_INFO 7
+#define EVENT_SURFACE_MOVE 8
+#define EVENT_TIMER 9
+#define EVENT_SCREEN_ACQUIRE 10
 
 typedef struct
 {
