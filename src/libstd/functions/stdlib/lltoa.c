@@ -1,5 +1,5 @@
-#include <stdlib.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include "common/digits.h"
 
@@ -11,14 +11,14 @@ char* lltoa(long long int value, char* str, int base)
         str[1] = '\0';
         return str;
     }
-    
+
     bool isNegative = false;
     if (value < 0)
     {
         isNegative = true;
         value = -value;
     }
-    
+
     int i = 0;
     while (value != 0)
     {
@@ -26,14 +26,14 @@ char* lltoa(long long int value, char* str, int base)
         str[i++] = (remainder < 10) ? remainder + '0' : remainder + 'a' - 10;
         value = value / base;
     }
-    
+
     if (isNegative)
     {
         str[i++] = '-';
     }
-    
+
     str[i] = '\0';
-    
+
     int start = 0;
     int end = i - 1;
     while (start < end)
@@ -44,6 +44,6 @@ char* lltoa(long long int value, char* str, int base)
         start++;
         end--;
     }
-    
+
     return str;
 }

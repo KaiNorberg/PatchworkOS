@@ -1,14 +1,13 @@
 #include <stdio.h>
-#include <stdlib.h>
 
+#include "platform/platform.h"
 #include "platform/user/common/file.h"
-#include "platform/user/common/syscalls.h"
 
-int fputc(int c, FILE* stream)
+int ungetc(int c, FILE* stream)
 {
     _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
 
-    int result = _FilePutcUnlocked(stream, c);
+    int result = _FileUngetcUnlocked(stream, c);
 
     _PLATFORM_MUTEX_RELEASE(&stream->mtx);
 

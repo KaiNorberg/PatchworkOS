@@ -12,7 +12,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define OP -
+#if _PLATFORM_HAS_IO == 1
+#include "platform/user/common/file.h"
+#endif
 
 #define _DBL_SIGN(bytes) (((unsigned)bytes[7] & 0x80) >> 7)
 #define _DBL_DEC(bytes) ((_DBL_EXP(bytes) > 0) ? 1 : 0)
@@ -56,7 +58,7 @@
         { \
             if ((ctx)->stream != NULL) \
             { \
-                putc(character, (ctx)->stream); \
+                _FilePutcUnlocked((ctx)->stream, character); \
             } \
             else \
             { \
@@ -133,7 +135,7 @@ static void _PrintHexa(int sign, int exp, int dec, unsigned char const* mant, si
     */
     while (m < ((mant_dig + 3) / 4 - 1))
     {
-        value = *(mant OP((m / 2) + index_offset));
+        value = *(mant -((m / 2) + index_offset));
         mantissa[++m] = (value & 0xf0) >> 4;
         mantissa[++m] = (value & 0x0f);
     }
@@ -868,7 +870,9 @@ const char* _Print(const char* spec, _FormatCtx_t* ctx)
                 uintmax_t value;
                 imaxdiv_t div;
 
-                switch (ctx->flags & (FORMAT_CHAR | FORMAT_SHORT | FORMAT_LONG | FORMAT_LLONG | FORMAT_SIZE | FORMAT_POINTER | FORMAT_INTMAX))
+                switch (ctx->flags &
+                    (FORMAT_CHAR | FORMAT_SHORT | FORMAT_LONG | FORMAT_LLONG | FORMAT_SIZE | FORMAT_POINTER |
+                        FORMAT_INTMAX))
                 {
                 case FORMAT_CHAR:
                     value = (uintmax_t)(unsigned char)va_arg(ctx->arg, int);
