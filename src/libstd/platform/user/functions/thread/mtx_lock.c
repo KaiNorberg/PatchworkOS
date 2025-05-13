@@ -9,9 +9,18 @@
 
 int mtx_lock(mtx_t* mutex)
 {
+    tid_t self = thread_id();
+    if (mutex->owner == self)
+    {
+        mutex->depth++;
+        return thrd_success;
+    }
+
     uint64_t expected = FUTEX_UNLOCKED;
     if (atomic_compare_exchange_strong(&(mutex->state), &expected, FUTEX_LOCKED))
     {
+        mutex->owner = self;
+        mutex->depth = 1;
         return thrd_success;
     }
 
@@ -22,6 +31,8 @@ int mtx_lock(mtx_t* mutex)
             expected = FUTEX_UNLOCKED;
             if (atomic_compare_exchange_strong(&(mutex->state), &expected, FUTEX_LOCKED))
             {
+                mutex->owner = self;
+                mutex->depth = 1;
                 return thrd_success;
             }
         }
@@ -33,6 +44,8 @@ int mtx_lock(mtx_t* mutex)
         expected = FUTEX_UNLOCKED;
         if (atomic_compare_exchange_strong(&(mutex->state), &expected, FUTEX_LOCKED))
         {
+            mutex->owner = self;
+            mutex->depth = 1;
             return thrd_success;
         }
 
@@ -44,6 +57,4 @@ int mtx_lock(mtx_t* mutex)
         }
         futex(&(mutex->state), FUTEX_CONTESTED, FUTEX_WAIT, CLOCKS_NEVER);
     } while (1);
-
-    return thrd_success;
 }

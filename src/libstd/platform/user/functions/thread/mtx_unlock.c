@@ -9,6 +9,19 @@
 
 int mtx_unlock(mtx_t* mutex)
 {
+    tid_t self = thread_id();
+    if (mutex->owner != self)
+    {
+        return thrd_error;
+    }
+
+    mutex->depth--;
+    if (mutex->depth > 0)
+    {
+        return thrd_success;
+    }
+    mutex->owner = ERR;
+
     if (atomic_exchange(&(mutex->state), FUTEX_UNLOCKED) == FUTEX_CONTESTED)
     {
         futex(&(mutex->state), 1, FUTEX_WAKE, CLOCKS_NEVER);

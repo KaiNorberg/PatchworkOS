@@ -48,6 +48,8 @@ typedef struct
 typedef struct
 {
     atomic_uint64 state;
+    tid_t owner;
+    uint64_t depth;
 } mtx_t;
 
 typedef void (*tss_dtor_t)(void*);

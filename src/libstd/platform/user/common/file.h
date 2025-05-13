@@ -74,40 +74,6 @@ uint64_t _FilePrepareRead(FILE* stream);
 
 uint64_t _FilePrepareWrite(FILE* stream);
 
-static inline int _FilePutcUnlocked(FILE* stream, int c)
-{
-    if (_FilePrepareWrite(stream) == ERR)
-    {
-        return EOF;
-    }
-
-    stream->buf[stream->bufIndex++] = (char)c;
-    if ((stream->bufIndex == stream->bufSize) || ((stream->flags & _FILE_LINE_BUFFERED) && ((char)c == '\n')) ||
-        (stream->flags & _FILE_UNBUFFERED))
-    {
-        // buffer filled, unbuffered stream, or end-of-line.
-        c = (_FileFlushBuffer(stream) != ERR) ? c : EOF;
-    }
-
-    return c;
-}
-
-static inline int _FileUngetcUnlocked(FILE* stream, int c)
-{
-    int result;
-
-    if (c == EOF || stream->ungetIndex == _UNGETC_MAX)
-    {
-        result = -1;
-    }
-    else
-    {
-        result = stream->ungetBuf[stream->ungetIndex++] = (unsigned char)c;
-    }
-
-    return result;
-}
-
 void _FilesInit(void);
 
 void _FilesPush(FILE* file);

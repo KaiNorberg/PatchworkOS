@@ -9,12 +9,9 @@
 
 int mtx_init(mtx_t* mutex, int type)
 {
-    if (type != mtx_plain)
-    {
-        return thrd_error;
-    }
-
     atomic_init(&mutex->state, FUTEX_UNLOCKED);
+    mutex->owner = ERR;
+    mutex->depth = 0;
 
     return thrd_success;
 }

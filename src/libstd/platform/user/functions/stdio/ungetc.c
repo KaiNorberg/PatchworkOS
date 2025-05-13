@@ -5,11 +5,20 @@
 
 int ungetc(int c, FILE* stream)
 {
+    int rc;
+
     _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
 
-    int result = _FileUngetcUnlocked(stream, c);
+    if (c == EOF || stream->ungetIndex == _UNGETC_MAX)
+    {
+        rc = -1;
+    }
+    else
+    {
+        rc = stream->ungetBuf[stream->ungetIndex++] = (unsigned char)c;
+    }
 
     _PLATFORM_MUTEX_RELEASE(&stream->mtx);
 
-    return result;
+    return rc;
 }

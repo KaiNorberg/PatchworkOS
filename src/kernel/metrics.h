@@ -1,5 +1,6 @@
 #pragma once
 
+#include "lock.h"
 #include "trap.h"
 
 #include <time.h>
@@ -13,6 +14,7 @@ typedef struct
     clock_t trapClocks;
     clock_t trapBegin;
     clock_t trapEnd;
+    lock_t lock;
 } metrics_cpu_ctx_t;
 
 void metrics_cpu_ctx_init(metrics_cpu_ctx_t* ctx);

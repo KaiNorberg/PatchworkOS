@@ -7,7 +7,7 @@
 #include "platform/user/common/syscalls.h"
 #include "platform/user/common/thread.h"
 
-void mtx_destory(mtx_t* mutex)
+void mtx_destroy(mtx_t* mutex)
 {
     // Do nothing
 }

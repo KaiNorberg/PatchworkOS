@@ -11,7 +11,7 @@ static mtx_t mutex;
 void _ThreadingInit(void)
 {
     list_init(&threads);
-    mtx_init(&mutex, mtx_plain);
+    mtx_init(&mutex, mtx_recursive);
 
     // We cant yet use the heap, so we do this weird stuff
     list_entry_init(&thread0.entry);

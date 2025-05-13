@@ -58,7 +58,7 @@
         { \
             if ((ctx)->stream != NULL) \
             { \
-                _FilePutcUnlocked((ctx)->stream, character); \
+                putc(character, (ctx)->stream); \
             } \
             else \
             { \
@@ -135,7 +135,7 @@ static void _PrintHexa(int sign, int exp, int dec, unsigned char const* mant, si
     */
     while (m < ((mant_dig + 3) / 4 - 1))
     {
-        value = *(mant -((m / 2) + index_offset));
+        value = *(mant - ((m / 2) + index_offset));
         mantissa[++m] = (value & 0xf0) >> 4;
         mantissa[++m] = (value & 0x0f);
     }

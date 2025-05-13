@@ -8,9 +8,21 @@ int fputc(int c, FILE* stream)
 {
     _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
 
-    int result = _FilePutcUnlocked(stream, c);
+    if (_FilePrepareWrite(stream) == ERR)
+    {
+        _PLATFORM_MUTEX_RELEASE(&stream->mtx);
+        return EOF;
+    }
+
+    stream->buf[stream->bufIndex++] = (char)c;
+    if ((stream->bufIndex == stream->bufSize) || ((stream->flags & _FILE_LINE_BUFFERED) && ((char)c == '\n')) ||
+        (stream->flags & _FILE_UNBUFFERED))
+    {
+        // buffer filled, unbuffered stream, or end-of-line.
+        c = (_FileFlushBuffer(stream) != ERR) ? c : EOF;
+    }
 
     _PLATFORM_MUTEX_RELEASE(&stream->mtx);
 
-    return result;
+    return c;
 }

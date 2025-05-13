@@ -52,7 +52,7 @@ static void _ScanUnget(int c, _FormatCtx_t* ctx)
 #if _PLATFORM_HAS_IO == 1
     if (ctx->stream != NULL)
     {
-        _FileUngetcUnlocked(ctx->stream, c); /* TODO: Error? */
+        ungetc(c, ctx->stream); /* TODO: Error? */
     }
     else
     {
