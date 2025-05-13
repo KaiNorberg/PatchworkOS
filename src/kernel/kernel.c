@@ -50,8 +50,6 @@ static void kernel_free_loader_data(efi_mem_map_t* memoryMap)
     }
 }
 
-static void* buffer[10000];
-
 void kernel_init(boot_info_t* bootInfo)
 {
     gdt_init();
@@ -96,6 +94,7 @@ void kernel_init(boot_info_t* bootInfo)
     net_init();
     pipe_init();
     gop_init(&bootInfo->gopBuffer);
+    metrics_init();
 
     kernel_free_loader_data(&bootInfo->memoryMap);
 

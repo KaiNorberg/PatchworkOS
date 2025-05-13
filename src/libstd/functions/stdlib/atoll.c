@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "common/digits.h"
+
 long long int atoll(const char* nptr)
 {
     long long int result = 0;
@@ -24,10 +26,9 @@ long long int atoll(const char* nptr)
     }
 
     const char* x;
-    const char* digits = "0123456789";
-    while ((x = (const char*)memchr(digits, tolower((unsigned char)*(nptr++)), 10)) != NULL)
+    while ((x = (const char*)memchr(_Digits, tolower((unsigned char)*(nptr++)), 10)) != NULL)
     {
-        result = result * 10 + (x - digits);
+        result = result * 10 + (x - _Digits);
     }
 
     return isNegative ? -result : result;

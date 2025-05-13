@@ -236,6 +236,7 @@ SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(klogOps,
 
 void log_expose(void)
 {
+    printf("log: expose");
     sysobj_new("/", "klog", &klogOps, NULL);
 }
 

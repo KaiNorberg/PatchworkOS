@@ -1,25 +1,40 @@
 #include <stdlib.h>
 
-char* ulltoa(unsigned long long number, char* str, int base)
+#include "common/digits.h"
+
+char* ulltoa(unsigned long long value, char* str, int base)
 {
-    char* p = str;
-    unsigned long long i = number;
-
-    long long shifter = i;
-    do
+    if (base < 2 || base > 36)
     {
-        ++p;
-        shifter = shifter / base;
-    } while (shifter);
-
-    *p = '\0';
-    do
+        *str = '\0';
+        return str;
+    }
+    
+    if (value == 0)
     {
-        char digit = i % base;
-
-        *--p = digit < 10 ? '0' + digit : 'A' + digit - 10;
-        i = i / base;
-    } while (i);
-
+        str[0] = '0';
+        str[1] = '\0';
+        return str;
+    }
+        
+    char* ptr = str;
+    char* startPtr = str;
+    
+    while (value > 0)
+    {
+        *ptr++ = _Digits[value % base];
+        value /= base;
+    }
+    
+    *ptr-- = '\0';
+    
+    char temp;
+    while (startPtr < ptr)
+    {
+        temp = *startPtr;
+        *startPtr++ = *ptr;
+        *ptr-- = temp;
+    }
+    
     return str;
 }

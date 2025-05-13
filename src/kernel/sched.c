@@ -166,6 +166,7 @@ static void sched_spawn_boot_thread(void)
 
 void sched_init(void)
 {
+    printf("sched: init");
     sched_spawn_boot_thread();
 
     wait_queue_init(&sleepQueue);
@@ -303,24 +304,6 @@ void sched_schedule_trap(trap_frame_t* trapFrame)
     {
         return;
     }
-
-    /*static clock_t lasttime = 0;
-
-    if (self->id == 0 && systime_uptime() > lasttime + CLOCKS_PER_SEC / 10)
-    {
-        printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-
-        uint64_t cpuAmount = smp_cpu_amount();
-        for (uint64_t i = 0; i < cpuAmount; i++)
-        {
-            cpu_t* cpu = smp_cpu(i);
-
-            uint64_t length = sched_ctx_thread_amount(&cpu->sched);
-            printf("cpu %d: %.*s>", i, length, "==========================================");
-        }
-        printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-        lasttime = systime_uptime();
-    }*/
 
     sched_update_parked_threads(trapFrame, ctx);
     sched_update_zombie_threads(trapFrame, ctx);

@@ -1,6 +1,8 @@
 #pragma once
 
+#include "format.h"
+
 #include <stdarg.h>
 #include <stdint.h>
 
-uint32_t _Print(void (*putFunc)(char, void*), void* context, const char* format, va_list args);
+const char* _Print(const char* spec, _FormatCtx_t* ctx);

@@ -23,8 +23,9 @@ _PUBLIC double strtod(const char* _RESTRICT nptr, char** _RESTRICT endptr);
 _PUBLIC float strtof(const char* _RESTRICT nptr, char** _RESTRICT endptr);
 _PUBLIC long double strtold(const char* _RESTRICT nptr, char** _RESTRICT endptr);
 
-_PUBLIC long int strtol(const char* _RESTRICT nptr, char** _RESTRICT endptr, int base);
 _PUBLIC long long int strtoll(const char* _RESTRICT nptr, char** _RESTRICT endptr, int base);
+#define strtol(nptr, endptr, base) ((long int)strtoll(nptr, endptr, base))
+
 _PUBLIC unsigned long int strtoul(const char* _RESTRICT nptr, char** _RESTRICT endptr, int base);
 _PUBLIC unsigned long long int strtoull(const char* _RESTRICT nptr, char** _RESTRICT endptr, int base);
 

@@ -172,7 +172,6 @@ process_t* process_new(process_t* parent, const char** argv)
     process->id = atomic_fetch_add(&newPid, 1);
     if (argv_init(&process->argv, argv) == ERR)
     {
-        free(process);
         return ERRPTR(ENOMEM);
     }
 
@@ -267,6 +266,7 @@ bool process_is_child(process_t* process, pid_t parentId)
 
 void process_backend_init(void)
 {
+    printf("process_backend: init");
     sysdir_t* selfdir = sysdir_new("/proc", "self", NULL, NULL);
     ASSERT_PANIC(selfdir != NULL);
     ASSERT_PANIC(process_dir_populate(selfdir) != ERR);

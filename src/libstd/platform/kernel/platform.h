@@ -9,3 +9,4 @@ typedef lock_t _PlatformMutex_t;
 #define _PLATFORM_MUTEX_RELEASE(mutex) lock_release(mutex)
 
 #define _PLATFORM_HAS_SSE 0
+#define _PLATFORM_HAS_IO 0

@@ -5,6 +5,7 @@
 #include "irq.h"
 #include "loader.h"
 #include "log.h"
+#include "metrics.h"
 #include "regs.h"
 #include "sched.h"
 #include "smp.h"
@@ -49,7 +50,7 @@ void cli_pop(void)
 
 static void exception_handler(trap_frame_t* trapFrame)
 {
-    if (trapFrame->ss == (GDT_USER_DATA | GDT_RING3) && trapFrame->cs == (GDT_USER_CODE | GDT_RING3))
+    if (TRAP_FRAME_FROM_USER_SPACE(trapFrame))
     {
         process_t* process = sched_process();
         if (process == NULL)
@@ -96,6 +97,8 @@ void trap_handler(trap_frame_t* trapFrame)
     cpu_t* cpu = smp_self_unsafe();
     cpu->trapDepth++;
 
+    metrics_trap_begin(trapFrame, cpu);
+
     if (trapFrame->vector >= VECTOR_IRQ_BASE && trapFrame->vector < VECTOR_IRQ_BASE + IRQ_AMOUNT)
     {
         irq_dispatch(trapFrame);
@@ -122,6 +125,8 @@ void trap_handler(trap_frame_t* trapFrame)
     {
         log_panic(trapFrame, "Unknown vector");
     }
+
+    metrics_trap_end(trapFrame, cpu);
 
     // This is a sanity check to make sure blocking and scheduling is functioning correctly. For instance, a trap should
     // never return with a lock acquired.

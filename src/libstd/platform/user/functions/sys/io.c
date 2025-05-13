@@ -89,59 +89,11 @@ uint64_t writef(fd_t fd, const char* _RESTRICT format, ...)
     return result;
 }
 
-typedef struct
-{
-    fd_t fd;
-    char buffer[MAX_PATH];
-    uint64_t count;
-    uint64_t total;
-    bool error;
-} vwritef_ctx_t;
-
-static void vwritef_put_func(char chr, void* context)
-{
-    vwritef_ctx_t* ctx = (vwritef_ctx_t*)context;
-
-    if (ctx->count >= MAX_PATH)
-    {
-        uint64_t result = _SyscallWrite(ctx->fd, ctx->buffer, ctx->count);
-        if (result == ERR)
-        {
-            ctx->error = true;
-        }
-        else
-        {
-            ctx->total += ctx->count;
-        }
-        ctx->count = 0;
-    }
-    ctx->buffer[ctx->count++] = chr;
-}
-
 uint64_t vwritef(fd_t fd, const char* _RESTRICT format, va_list args)
 {
-    vwritef_ctx_t ctx = {
-        .fd = fd,
-        .count = 0,
-        .total = 0,
-        .error = false,
-    };
-
-    _Print(vwritef_put_func, &ctx, format, args);
-    if (ctx.count > 0)
-    {
-        uint64_t result = _SyscallWrite(ctx.fd, ctx.buffer, ctx.count);
-        if (result == ERR)
-        {
-            ctx.error = true;
-        }
-        else
-        {
-            ctx.total += ctx.count;
-        }
-        ctx.count = 0;
-    }
-    return ctx.error ? ERR : ctx.total;
+    char buffer[MAX_PATH];
+    uint64_t count = vsnprintf(buffer, MAX_PATH, format, args);
+    return write(fd, buffer, count);
 }
 
 uint64_t seek(fd_t fd, int64_t offset, seek_origin_t origin)
