@@ -10,7 +10,7 @@
 #include "sys/io.h"
 #include "sysfs.h"
 #include "vfs.h"
-#include "waitsys.h"
+#include "wait.h"
 
 #include <errno.h>
 #include <stdatomic.h>
@@ -69,7 +69,7 @@ static void local_listener_deref(local_listener_t* listener)
     if (atomic_fetch_sub(&listener->ref, 1) <= 1)
     {
         LOCK_DEFER(&listenersLock);
-        waitsys_unblock(&listener->waitQueue, UINT64_MAX);
+        wait_unblock(&listener->waitQueue, UINT64_MAX);
         list_remove(&listener->entry);
         sysobj_free(listener->obj);
         free(listener);
@@ -210,8 +210,8 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
     local_listener_t* listener = local->listen.listener;
     lock_release(&local->lock);
 
-    if (WAITSYS_BLOCK_LOCK(&listener->waitQueue, &listener->lock,
-            local_listener_conn_avail(listener) || local_listener_closed(listener)) != BLOCK_NORM)
+    if (WAIT_BLOCK_LOCK(&listener->waitQueue, &listener->lock,
+            local_listener_conn_avail(listener) || local_listener_closed(listener)) != WAIT_NORM)
     {
         lock_release(&listener->lock);
         return 0;
@@ -238,7 +238,7 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
     newSocket->private = newLocal;
 
     lock_release(&listener->lock);
-    waitsys_unblock(&conn->waitQueue, UINT64_MAX);
+    wait_unblock(&conn->waitQueue, UINT64_MAX);
     return 0;
 }
 
@@ -262,14 +262,14 @@ static void local_socket_deinit(socket_t* socket)
     case LOCAL_SOCKET_CONNECT:
     {
         local_connection_deref(local->connect.conn);
-        waitsys_unblock(&local->connect.conn->waitQueue, UINT64_MAX);
+        wait_unblock(&local->connect.conn->waitQueue, UINT64_MAX);
         free(local);
     }
     break;
     case LOCAL_SOCKET_ACCEPT:
     {
         local_connection_deref(local->accept.conn);
-        waitsys_unblock(&local->accept.conn->waitQueue, UINT64_MAX);
+        wait_unblock(&local->accept.conn->waitQueue, UINT64_MAX);
         free(local);
     }
     break;
@@ -347,14 +347,14 @@ static uint64_t local_socket_connect(socket_t* socket, const char* address)
         return ERROR(EBUSY);
     }
     local_listener_push(listener, conn);
-    waitsys_unblock(&listener->waitQueue, UINT64_MAX);
+    wait_unblock(&listener->waitQueue, UINT64_MAX);
     lock_release(&listener->lock);
 
     local->connect.conn = conn; // Refernce ends up here
     local->state = LOCAL_SOCKET_CONNECT;
     lock_release(&local->lock);
 
-    if (WAITSYS_BLOCK(&conn->waitQueue, atomic_load(&conn->accepted) || local_connection_closed(conn)) != BLOCK_NORM)
+    if (WAIT_BLOCK(&conn->waitQueue, atomic_load(&conn->accepted) || local_connection_closed(conn)) != WAIT_NORM)
     {
         return ERR;
     }
@@ -431,9 +431,9 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
     {
         return ERROR(EWOULDBLOCK);
     }*/
-    if (WAITSYS_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
+    if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
             ring_free_length(ring) >= count + sizeof(local_packet_header_t) || local_connection_closed(conn)) !=
-        BLOCK_NORM)
+        WAIT_NORM)
     {
         lock_release(&conn->lock);
         return 0;
@@ -449,7 +449,7 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
     ring_write(ring, &header, sizeof(local_packet_header_t));
     ring_write(ring, buffer, count);
 
-    waitsys_unblock(&conn->waitQueue, UINT64_MAX);
+    wait_unblock(&conn->waitQueue, UINT64_MAX);
     lock_release(&conn->lock);
     return count;
 }
@@ -473,8 +473,8 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
         return ERR;
     }
 
-    if (WAITSYS_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
-            ring_data_length(ring) >= sizeof(local_packet_header_t) || local_connection_closed(conn)) != BLOCK_NORM)
+    if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
+            ring_data_length(ring) >= sizeof(local_packet_header_t) || local_connection_closed(conn)) != WAIT_NORM)
     {
         lock_release(&conn->lock);
         return 0;
@@ -501,7 +501,7 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
         *offset = 0;
     }
 
-    waitsys_unblock(&conn->waitQueue, UINT64_MAX);
+    wait_unblock(&conn->waitQueue, UINT64_MAX);
     lock_release(&conn->lock);
     return readCount;
 }

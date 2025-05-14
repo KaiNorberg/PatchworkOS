@@ -112,7 +112,7 @@ static uint64_t process_action_kill(uint64_t argc, const char** argv, void* priv
 static uint64_t process_action_wait(uint64_t argc, const char** argv, void* private)
 {
     process_t* process = private;
-    WAITSYS_BLOCK(&process->queue, atomic_load(&process->dead));
+    WAIT_BLOCK(&process->queue, atomic_load(&process->dead));
     return 0;
 }
 
@@ -240,7 +240,7 @@ void process_free(process_t* process)
     }
 
     vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_on_free
-    waitsys_unblock(&process->queue, WAITSYS_ALL);
+    wait_unblock(&process->queue, WAIT_ALL);
     sysdir_free(process->dir);
 }
 

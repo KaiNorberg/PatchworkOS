@@ -5,7 +5,7 @@
 #include "space.h"
 #include "sysfs.h"
 #include "vfs_ctx.h"
-#include "waitsys.h"
+#include "wait.h"
 
 typedef struct process
 {

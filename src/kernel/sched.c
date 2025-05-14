@@ -172,9 +172,9 @@ void sched_init(void)
     wait_queue_init(&sleepQueue);
 }
 
-block_result_t sched_sleep(clock_t timeout)
+wait_result_t sched_sleep(clock_t timeout)
 {
-    return waitsys_block(&sleepQueue, timeout);
+    return wait_block(&sleepQueue, timeout);
 }
 
 thread_t* sched_thread(void)

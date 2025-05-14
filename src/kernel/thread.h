@@ -4,7 +4,7 @@
 #include "process.h"
 #include "simd.h"
 #include "trap.h"
-#include "waitsys.h"
+#include "wait.h"
 
 #include <errno.h>
 #include <sys/list.h>
@@ -24,7 +24,7 @@ typedef struct thread
     atomic_bool dead;
     clock_t timeStart;
     clock_t timeEnd;
-    waitsys_thread_ctx_t waitsys;
+    wait_thread_ctx_t wait;
     errno_t error;
     priority_t priority;
     simd_ctx_t simd;

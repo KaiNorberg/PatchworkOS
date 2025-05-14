@@ -6,7 +6,7 @@
 #include "ring.h"
 #include "sysfs.h"
 #include "vfs.h"
-#include "waitsys.h"
+#include "wait.h"
 
 #include <stdint.h>
 #include <sys/io.h>

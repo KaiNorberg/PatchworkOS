@@ -13,7 +13,7 @@
 #include "sysfs.h"
 #include "systime.h"
 #include "vfs.h"
-#include "waitsys.h"
+#include "wait.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,7 +36,7 @@ thread_t* thread_new(process_t* process, void* entry, priority_t priority)
     atomic_init(&thread->dead, false);
     thread->timeStart = 0;
     thread->timeEnd = 0;
-    waitsys_thread_ctx_init(&thread->waitsys);
+    wait_thread_ctx_init(&thread->wait);
     thread->error = 0;
     thread->priority = MIN(priority, PRIORITY_MAX);
     if (simd_ctx_init(&thread->simd) == ERR)

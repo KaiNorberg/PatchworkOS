@@ -1,7 +1,7 @@
 #pragma once
 
 #include "sysfs.h"
-#include "waitsys.h"
+#include "wait.h"
 
 #include <stdint.h>
 #include <sys/kbd.h>

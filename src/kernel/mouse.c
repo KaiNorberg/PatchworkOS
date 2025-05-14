@@ -14,7 +14,7 @@ static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count)
     count = ROUND_DOWN(count, sizeof(mouse_event_t));
     for (uint64_t i = 0; i < count / sizeof(mouse_event_t); i++)
     {
-        if (WAITSYS_BLOCK_LOCK(&mouse->waitQueue, &mouse->lock, file->pos != mouse->writeIndex) != BLOCK_NORM)
+        if (WAIT_BLOCK_LOCK(&mouse->waitQueue, &mouse->lock, file->pos != mouse->writeIndex) != WAIT_NORM)
         {
             lock_release(&mouse->lock);
             return i * sizeof(mouse_event_t);
@@ -79,5 +79,5 @@ void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, int64_t deltaX, int64_t
         .deltaY = deltaY,
     };
     mouse->writeIndex = (mouse->writeIndex + 1) % MOUSE_MAX_EVENT;
-    waitsys_unblock(&mouse->waitQueue, WAITSYS_ALL);
+    wait_unblock(&mouse->waitQueue, WAIT_ALL);
 }

@@ -2,7 +2,7 @@
 
 #include "hashmap.h"
 #include "vfs.h"
-#include "waitsys.h"
+#include "wait.h"
 
 #include <sys/proc.h>
 

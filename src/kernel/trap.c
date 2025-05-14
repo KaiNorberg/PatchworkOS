@@ -11,7 +11,7 @@
 #include "smp.h"
 #include "vectors.h"
 #include "vmm.h"
-#include "waitsys.h"
+#include "wait.h"
 
 #include <stdio.h>
 
@@ -109,7 +109,7 @@ void trap_handler(trap_frame_t* trapFrame)
     }
     else if (trapFrame->vector == VECTOR_TIMER)
     {
-        waitsys_timer_trap(trapFrame);
+        wait_timer_trap(trapFrame);
         sched_timer_trap(trapFrame);
         lapic_eoi();
     }
@@ -117,9 +117,9 @@ void trap_handler(trap_frame_t* trapFrame)
     {
         sched_schedule_trap(trapFrame);
     }
-    else if (trapFrame->vector == VECTOR_WAITSYS_BLOCK)
+    else if (trapFrame->vector == VECTOR_WAIT_BLOCK)
     {
-        waitsys_block_trap(trapFrame);
+        wait_block_trap(trapFrame);
     }
     else
     {

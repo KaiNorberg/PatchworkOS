@@ -25,7 +25,7 @@
 #include "testing.h"
 #include "vfs.h"
 #include "vmm.h"
-#include "waitsys.h"
+#include "wait.h"
 
 #include <bootloader/boot_info.h>
 #include <libstd_internal/init.h>

@@ -9,7 +9,7 @@
 #include "sysfs.h"
 #include "systime.h"
 #include "vfs_ctx.h"
-#include "waitsys.h"
+#include "wait.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -460,7 +460,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
         }
 
         clock_t remainingTime = deadline == CLOCKS_NEVER ? CLOCKS_NEVER : deadline - currentTime;
-        waitsys_block_many(waitQueues, amount, remainingTime);
+        wait_block_many(waitQueues, amount, remainingTime);
 
         currentTime = systime_uptime();
     }

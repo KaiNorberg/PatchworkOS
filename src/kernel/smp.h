@@ -7,7 +7,7 @@
 #include "sched.h"
 #include "trap.h"
 #include "tss.h"
-#include "waitsys.h"
+#include "wait.h"
 
 #define CPU_MAX_AMOUNT 255
 #define CPU_IDLE_STACK_SIZE PAGE_SIZE
@@ -32,7 +32,7 @@ typedef struct cpu
     tss_t tss;
     cli_ctx_t cli;
     sched_ctx_t sched;
-    waitsys_cpu_ctx_t waitsys;
+    wait_cpu_ctx_t wait;
     statistics_cpu_ctx_t stat;
     ipi_queue_t queue;
     uint8_t idleStack[CPU_IDLE_STACK_SIZE];

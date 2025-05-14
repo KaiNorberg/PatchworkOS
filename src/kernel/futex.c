@@ -4,7 +4,7 @@
 #include "sched.h"
 #include "systime.h"
 #include "thread.h"
-#include "waitsys.h"
+#include "wait.h"
 
 #include <stdlib.h>
 
@@ -63,8 +63,8 @@ uint64_t futex_do(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t time
         }
 
         clock_t start = systime_uptime();
-        block_result_t result = WAITSYS_BLOCK_TIMEOUT(&futex->queue, atomic_load(addr) != val, timeout);
-        if (result == BLOCK_TIMEOUT)
+        wait_result_t result = WAIT_BLOCK_TIMEOUT(&futex->queue, atomic_load(addr) != val, timeout);
+        if (result == WAIT_TIMEOUT)
         {
             return (systime_uptime() - start);
         }
@@ -72,7 +72,7 @@ uint64_t futex_do(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t time
     break;
     case FUTEX_WAKE:
     {
-        waitsys_unblock(&futex->queue, val);
+        wait_unblock(&futex->queue, val);
     }
     break;
     case FUTEX_TRYLOCK:
