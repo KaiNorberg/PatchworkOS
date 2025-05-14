@@ -19,6 +19,7 @@ void history_deinit(history_t* history)
 
 void history_push(history_t* history, const char* entry)
 {
+    history->index = history->count;
     if (history->count != 0 && strcmp(entry, history->entries[history->count - 1]) == 0)
     {
         return;

@@ -15,7 +15,7 @@ typedef struct
 cpu_statistics_t* cpu_statistics_read(uint64_t* cpuAmount)
 {
     FILE* file = fopen("sys:/stat/cpu", "r");
-    cpu_statistics_t* metrics = NULL;
+    cpu_statistics_t* stat = NULL;
     (*cpuAmount) = 0;
 
     char buffer[256];
@@ -25,9 +25,9 @@ cpu_statistics_t* cpu_statistics_read(uint64_t* cpuAmount)
     while (fgets(buffer, sizeof(buffer), file) != NULL)
     {
         (*cpuAmount)++;
-        metrics = realloc(metrics, sizeof(cpu_statistics_t) * (*cpuAmount));
+        stat = realloc(stat, sizeof(cpu_statistics_t) * (*cpuAmount));
 
-        cpu_statistics_t* current = &metrics[*cpuAmount - 1];
+        cpu_statistics_t* current = &stat[*cpuAmount - 1];
         if (sscanf(buffer, "cpu%d %llu %llu %llu", &current->id, &current->idleClocks, &current->activeClocks,
                 &current->trapClocks) == 0)
         {
@@ -35,7 +35,7 @@ cpu_statistics_t* cpu_statistics_read(uint64_t* cpuAmount)
         }
     }
     fclose(file);
-    return metrics;
+    return stat;
 }
 
 int main(void)
