@@ -10,12 +10,12 @@ typedef struct
     clock_t idleClocks;
     clock_t activeClocks;
     clock_t trapClocks;
-} cpu_metrics_t;
+} cpu_statistics_t;
 
-cpu_metrics_t* cpu_metrics_read(uint64_t* cpuAmount)
+cpu_statistics_t* cpu_statistics_read(uint64_t* cpuAmount)
 {
-    FILE* file = fopen("sys:/metrics/cpu", "r");
-    cpu_metrics_t* metrics = NULL;
+    FILE* file = fopen("sys:/stat/cpu", "r");
+    cpu_statistics_t* metrics = NULL;
     (*cpuAmount) = 0;
 
     char buffer[256];
@@ -25,9 +25,9 @@ cpu_metrics_t* cpu_metrics_read(uint64_t* cpuAmount)
     while (fgets(buffer, sizeof(buffer), file) != NULL)
     {
         (*cpuAmount)++;
-        metrics = realloc(metrics, sizeof(cpu_metrics_t) * (*cpuAmount));
+        metrics = realloc(metrics, sizeof(cpu_statistics_t) * (*cpuAmount));
 
-        cpu_metrics_t* current = &metrics[*cpuAmount - 1];
+        cpu_statistics_t* current = &metrics[*cpuAmount - 1];
         if (sscanf(buffer, "cpu%d %llu %llu %llu", &current->id, &current->idleClocks, &current->activeClocks,
                 &current->trapClocks) == 0)
         {
@@ -41,12 +41,12 @@ cpu_metrics_t* cpu_metrics_read(uint64_t* cpuAmount)
 int main(void)
 {
     uint64_t cpuAmount;
-    cpu_metrics_t* before = cpu_metrics_read(&cpuAmount);
+    cpu_statistics_t* before = cpu_statistics_read(&cpuAmount);
 
     struct timespec timespec = {.tv_sec = 1};
     thrd_sleep(&timespec, NULL);
 
-    cpu_metrics_t* after = cpu_metrics_read(&cpuAmount);
+    cpu_statistics_t* after = cpu_statistics_read(&cpuAmount);
 
     for (uint64_t i = 0; i < cpuAmount; i++)
     {

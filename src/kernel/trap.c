@@ -5,7 +5,7 @@
 #include "irq.h"
 #include "loader.h"
 #include "log.h"
-#include "metrics.h"
+#include "statistics.h"
 #include "regs.h"
 #include "sched.h"
 #include "smp.h"
@@ -97,7 +97,7 @@ void trap_handler(trap_frame_t* trapFrame)
     cpu_t* cpu = smp_self_unsafe();
     cpu->trapDepth++;
 
-    metrics_trap_begin(trapFrame, cpu);
+    statistics_trap_begin(trapFrame, cpu);
 
     if (trapFrame->vector >= VECTOR_IRQ_BASE && trapFrame->vector < VECTOR_IRQ_BASE + IRQ_AMOUNT)
     {
@@ -126,7 +126,7 @@ void trap_handler(trap_frame_t* trapFrame)
         log_panic(trapFrame, "Unknown vector");
     }
 
-    metrics_trap_end(trapFrame, cpu);
+    statistics_trap_end(trapFrame, cpu);
 
     // This is a sanity check to make sure blocking and scheduling is functioning correctly. For instance, a trap should
     // never return with a lock acquired.

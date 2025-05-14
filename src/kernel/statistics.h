@@ -15,12 +15,12 @@ typedef struct
     clock_t trapBegin;
     clock_t trapEnd;
     lock_t lock;
-} metrics_cpu_ctx_t;
+} statistics_cpu_ctx_t;
 
-void metrics_cpu_ctx_init(metrics_cpu_ctx_t* ctx);
+void statistics_cpu_ctx_init(statistics_cpu_ctx_t* ctx);
 
-void metrics_init(void);
+void statistics_init(void);
 
-void metrics_trap_begin(trap_frame_t* trapFrame, cpu_t* cpu);
+void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* cpu);
 
-void metrics_trap_end(trap_frame_t* trapFrame, cpu_t* cpu);
+void statistics_trap_end(trap_frame_t* trapFrame, cpu_t* cpu);

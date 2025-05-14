@@ -94,7 +94,7 @@ void kernel_init(boot_info_t* bootInfo)
     net_init();
     pipe_init();
     gop_init(&bootInfo->gopBuffer);
-    metrics_init();
+    statistics_init();
 
     kernel_free_loader_data(&bootInfo->memoryMap);
 

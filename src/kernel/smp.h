@@ -2,7 +2,7 @@
 
 #include "defs.h"
 #include "futex.h"
-#include "metrics.h"
+#include "statistics.h"
 #include "pmm.h"
 #include "sched.h"
 #include "trap.h"
@@ -33,7 +33,7 @@ typedef struct cpu
     cli_ctx_t cli;
     sched_ctx_t sched;
     waitsys_cpu_ctx_t waitsys;
-    metrics_cpu_ctx_t metrics;
+    statistics_cpu_ctx_t stat;
     ipi_queue_t queue;
     uint8_t idleStack[CPU_IDLE_STACK_SIZE];
 } cpu_t;
