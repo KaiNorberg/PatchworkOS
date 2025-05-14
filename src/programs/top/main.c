@@ -60,7 +60,7 @@ int main(void)
         {
             percentage = ((double)(activeDelta + trapDelta) * 100.0) / (double)totalDelta;
         }
-        printf("cpu%d %d.%3d%% usage\n", before[i].id, (int)percentage, (int)(percentage * 100.0));
+        printf("cpu%d %d.%03d%% usage\n", before[i].id, (int)percentage, (int)(percentage * 100.0));
     }
 
     return 0;
