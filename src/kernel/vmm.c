@@ -48,10 +48,7 @@ static void vmm_load_memory_map(efi_mem_map_t* memoryMap)
 {
     // Kernel pml must be within 32 bit boundry becouse smp trampline loads it as a dword.
     kernelPml = pmm_alloc_bitmap(1, UINT32_MAX, 0);
-    if (kernelPml == NULL)
-    {
-        log_panic(NULL, "Failed to allocate kernel PML");
-    }
+    ASSERT_PANIC(kernelPml != NULL);
 
     memset(kernelPml, 0, PAGE_SIZE);
 

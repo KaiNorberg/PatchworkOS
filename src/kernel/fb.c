@@ -44,7 +44,7 @@ static uint64_t fb_ioctl(file_t* file, uint64_t request, void* argp, uint64_t si
     return 0;
 }
 
-SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(fbOps,
+SYSFS_STANDARD_OPS_DEFINE(fbOps,
     (file_ops_t){
         .mmap = fb_mmap,
         .ioctl = fb_ioctl,

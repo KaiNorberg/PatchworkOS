@@ -4,6 +4,7 @@
 #include "smp.h"
 #include "sysfs.h"
 #include "systime.h"
+#include "view.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -21,7 +22,7 @@ void statistics_cpu_ctx_init(statistics_cpu_ctx_t* ctx)
     lock_init(&ctx->lock);
 }
 
-static uint64_t statistics_cpu_read(file_t* file, void* buffer, uint64_t count)
+static uint64_t statistics_cpu_view_init(file_t* file, view_t* view)
 {
     char* string = malloc(MAX_PATH * (smp_cpu_amount() + 1));
     if (string == NULL)
@@ -40,15 +41,20 @@ static uint64_t statistics_cpu_read(file_t* file, void* buffer, uint64_t count)
             stat->trapClocks, i + 1 != smp_cpu_amount() ? '\n' : '\0');
     }
 
-    uint64_t length = strlen(string);
-    uint64_t result = BUFFER_READ(file, buffer, count, string, length);
-    free(string);
-    return result;
+    view->buffer = string;
+    view->length = strlen(string) + 1;
+    return 0;
 }
 
-SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(cpuOps,
-    (file_ops_t){
-        .read = statistics_cpu_read,
+static void statistics_cpu_view_deinit(view_t* view)
+{
+    free(view->buffer);
+}
+
+VIEW_STANDARD_OPS_DEFINE(cpuOps,
+    (view_ops_t){
+        .init = statistics_cpu_view_init,
+        .deinit = statistics_cpu_view_deinit,
     });
 
 void statistics_init(void)

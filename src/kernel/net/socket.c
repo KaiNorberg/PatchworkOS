@@ -1,5 +1,5 @@
 #include "socket.h"
-#include "actions.h"
+#include "ctl.h"
 #include "defs.h"
 #include "log.h"
 #include "pmm.h"
@@ -132,36 +132,31 @@ static sysobj_ops_t dataOps = {
     .open = socket_data_open,
 };
 
-static uint64_t socket_action_bind(uint64_t argc, const char** argv, void* private)
+static uint64_t socket_ctl_bind(file_t* file, uint64_t argc, const char** argv)
 {
-    socket_t* socket = private;
+    socket_t* socket = file->sysobj->dir->private;
     return socket->family->bind(socket, argv[1]);
 }
 
-static uint64_t socket_action_listen(uint64_t argc, const char** argv, void* private)
+static uint64_t socket_ctl_listen(file_t* file, uint64_t argc, const char** argv)
 {
-    socket_t* socket = private;
+    socket_t* socket = file->sysobj->dir->private;
     return socket->family->listen(socket);
 }
 
-static uint64_t socket_action_connect(uint64_t argc, const char** argv, void* private)
+static uint64_t socket_ctl_connect(file_t* file, uint64_t argc, const char** argv)
 {
-    socket_t* socket = private;
+    socket_t* socket = file->sysobj->dir->private;
     return socket->family->connect(socket, argv[1]);
 }
 
-static actions_t actions = {
-    {"bind", socket_action_bind, 2, 2},
-    {"listen", socket_action_listen, 1, 1},
-    {"connect", socket_action_connect, 2, 2},
-    {0},
-};
-
-static uint64_t socket_ctl_write(file_t* file, const void* buffer, uint64_t count)
-{
-    socket_t* socket = file->sysobj->dir->private;
-    return actions_dispatch(&actions, buffer, count, socket);
-}
+CTL_STANDARD_WRITE_DEFINE(socket_ctl_write,
+    (ctl_array_t){
+        {"bind", socket_ctl_bind, 2, 2},
+        {"listen", socket_ctl_listen, 1, 1},
+        {"connect", socket_ctl_connect, 2, 2},
+        {0},
+    });
 
 static file_t* socket_ctl_open(volume_t* volume, sysobj_t* sysobj)
 {

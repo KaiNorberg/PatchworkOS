@@ -214,7 +214,7 @@ void sysfs_mount_to_vfs(void)
     ASSERT_PANIC(vfs_mount("sys", &sysfs) != ERR);
 }
 
-static node_t* sysfs_traverse_and_allocate(const char* path)
+static node_t* sysfs_traverse_and_alloc(const char* path)
 {
     path_t parsedPath;
     if (path_init(&parsedPath, path, NULL) == ERR)
@@ -267,7 +267,7 @@ sysdir_t* sysdir_new(const char* path, const char* dirname, sysdir_on_free_t onF
 
     RWLOCK_WRITE_DEFER(&lock);
 
-    node_t* parent = sysfs_traverse_and_allocate(path);
+    node_t* parent = sysfs_traverse_and_alloc(path);
     if (parent == NULL)
     {
         return NULL;
@@ -351,7 +351,7 @@ sysobj_t* sysobj_new(const char* path, const char* filename, const sysobj_ops_t*
 
     RWLOCK_WRITE_DEFER(&lock);
 
-    node_t* parent = sysfs_traverse_and_allocate(path);
+    node_t* parent = sysfs_traverse_and_alloc(path);
     if (parent == NULL)
     {
         return NULL;

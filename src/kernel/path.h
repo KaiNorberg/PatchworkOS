@@ -19,6 +19,7 @@
 #define PATH_NAME_IS_DOT(name) ((name)[0] == '.' && PATH_END_OF_NAME((name)[1]))
 #define PATH_NAME_IS_DOT_DOT(name) ((name)[0] == '.' && (name)[1] == '.' && PATH_END_OF_NAME((name)[2]))
 
+// TODO: Implement path flags
 typedef enum
 {
     PATH_NONE = 0,

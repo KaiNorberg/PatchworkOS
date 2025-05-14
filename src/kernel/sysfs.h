@@ -25,7 +25,7 @@
         return file; \
     }
 
-#define SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(name, ...) \
+#define SYSFS_STANDARD_OPS_DEFINE(name, ...) \
     SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(name##_standard_open, __VA_ARGS__) \
     static sysobj_ops_t name = { \
         .open = name##_standard_open, \

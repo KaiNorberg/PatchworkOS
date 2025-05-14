@@ -53,10 +53,14 @@ int main(void)
         clock_t idleDelta = after[i].idleClocks - before[i].idleClocks;
         clock_t activeDelta = after[i].activeClocks - before[i].activeClocks;
         clock_t trapDelta = after[i].trapClocks - before[i].trapClocks;
-        
+
         uint64_t totalDelta = activeDelta + trapDelta + idleDelta;
-        uint64_t percentage = ((activeDelta + trapDelta) * 100) / totalDelta;
-        printf("cpu%d %d.%02d%% usage\n", before[i].id, percentage / 100, percentage % 100);
+        double percentage = 0;
+        if (totalDelta > 0)
+        {
+            percentage = ((double)(activeDelta + trapDelta) * 100.0) / (double)totalDelta;
+        }
+        printf("cpu%d %.2f%% usage\n", before[i].id, percentage);
     }
 
     return 0;

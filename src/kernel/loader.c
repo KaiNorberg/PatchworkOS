@@ -94,7 +94,7 @@ static void* loader_load_program(thread_t* thread)
     return (void*)header.entry;
 }
 
-static void* loader_allocate_stack(thread_t* thread)
+static void* loader_alloc_stack(thread_t* thread)
 {
     uintptr_t base = LOADER_STACK_ADDRESS(thread->id);
     if (vmm_alloc((void*)(base + PAGE_SIZE), CONFIG_USER_STACK, PROT_READ | PROT_WRITE) == NULL)
@@ -122,10 +122,10 @@ static void loader_process_entry(void)
 {
     thread_t* thread = sched_thread();
 
-    void* rsp = loader_allocate_stack(thread);
+    void* rsp = loader_alloc_stack(thread);
     if (rsp == NULL)
     {
-        printf("loader: allocate_stack failure pid=%d", thread->process->id);
+        printf("loader: alloc_stack failure pid=%d", thread->process->id);
         sched_process_exit(EEXEC);
     }
 
@@ -185,7 +185,7 @@ thread_t* loader_thread_create(thread_t* thread, priority_t priority, void* entr
         return NULL;
     }
 
-    void* rsp = loader_allocate_stack(child);
+    void* rsp = loader_alloc_stack(child);
     if (rsp == NULL)
     {
         thread_free(child);

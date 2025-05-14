@@ -24,7 +24,7 @@ static lock_t listenersLock;
 
 static local_connection_t* local_connection_ref(local_connection_t* conn);
 
-SYSFS_STANDARD_SYSOBJ_OPS_DEFINE(listenerOps, (file_ops_t){});
+SYSFS_STANDARD_OPS_DEFINE(listenerOps, (file_ops_t){});
 
 static local_listener_t* local_listener_new(const char* address)
 {

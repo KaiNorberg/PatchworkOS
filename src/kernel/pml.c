@@ -22,7 +22,7 @@ static pml_t* pml_get(pml_t* table, uint64_t index)
     return PAGE_ENTRY_GET_ADDRESS(entry);
 }
 
-static pml_t* pml_get_or_allocate(pml_t* table, uint64_t index, uint64_t flags)
+static pml_t* pml_get_or_alloc(pml_t* table, uint64_t index, uint64_t flags)
 {
     pml_entry_t entry = table->entries[index];
     if (entry & PAGE_PRESENT)
@@ -200,19 +200,19 @@ uint64_t pml_map(pml_t* table, void* virtAddr, void* physAddr, uint64_t pageAmou
     for (uint64_t i = 0; i < pageAmount; i++)
     {
         pml_t* level3 =
-            pml_get_or_allocate(table, PML_GET_INDEX(virtAddr, 4), (flags | PAGE_WRITE | PAGE_USER) & ~PAGE_GLOBAL);
+            pml_get_or_alloc(table, PML_GET_INDEX(virtAddr, 4), (flags | PAGE_WRITE | PAGE_USER) & ~PAGE_GLOBAL);
         if (level3 == NULL)
         {
             return ERR;
         }
 
-        pml_t* level2 = pml_get_or_allocate(level3, PML_GET_INDEX(virtAddr, 3), flags | PAGE_WRITE | PAGE_USER);
+        pml_t* level2 = pml_get_or_alloc(level3, PML_GET_INDEX(virtAddr, 3), flags | PAGE_WRITE | PAGE_USER);
         if (level2 == NULL)
         {
             return ERR;
         }
 
-        pml_t* level1 = pml_get_or_allocate(level2, PML_GET_INDEX(virtAddr, 2), flags | PAGE_WRITE | PAGE_USER);
+        pml_t* level1 = pml_get_or_alloc(level2, PML_GET_INDEX(virtAddr, 2), flags | PAGE_WRITE | PAGE_USER);
         if (level1 == NULL)
         {
             return ERR;

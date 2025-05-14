@@ -2,9 +2,9 @@
 
 #include "defs.h"
 #include "futex.h"
-#include "statistics.h"
 #include "pmm.h"
 #include "sched.h"
+#include "statistics.h"
 #include "trap.h"
 #include "tss.h"
 #include "wait.h"

@@ -1,4 +1,4 @@
-#include "actions.h"
+#include "ctl.h"
 
 #include "defs.h"
 #include "pmm.h"
@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <sys/argsplit.h>
 
-uint64_t actions_dispatch(actions_t* actions, const void* buffer, uint64_t count, void* private)
+uint64_t ctl_dispatch(ctl_t* ctls, file_t* file, const void* buffer, uint64_t count)
 {
     if (count == 0)
     {
@@ -28,24 +28,24 @@ uint64_t actions_dispatch(actions_t* actions, const void* buffer, uint64_t count
         return ERROR(EREQ);
     }
 
-    action_t* action = *actions;
-    while (action->name != NULL)
+    ctl_t* ctl = &ctls[0];
+    while (ctl->name != NULL)
     {
-        if (strcmp(action->name, argv[0]) == 0)
+        if (strcmp(ctl->name, argv[0]) == 0)
         {
-            if (action->argcMin < argc || action->argcMax > argc)
+            if (ctl->argcMin < argc || ctl->argcMax > argc)
             {
                 return ERROR(EREQ);
             }
 
-            if (action->func(argc, argv, private) == ERR)
+            if (ctl->func(file, argc, argv) == ERR)
             {
                 return ERR;
             }
             return count;
         }
 
-        action++;
+        ctl++;
     }
 
     return ERROR(EREQ);

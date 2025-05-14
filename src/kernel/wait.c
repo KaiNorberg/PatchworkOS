@@ -239,8 +239,7 @@ static uint64_t wait_thread_setup(thread_t* thread, wait_queue_t** waitQueues, u
         {
             while (1)
             {
-                wait_entry_t* other =
-                    LIST_CONTAINER_SAFE(list_pop(&thread->wait.entries), wait_entry_t, threadEntry);
+                wait_entry_t* other = LIST_CONTAINER_SAFE(list_pop(&thread->wait.entries), wait_entry_t, threadEntry);
                 if (other == NULL)
                 {
                     break;
