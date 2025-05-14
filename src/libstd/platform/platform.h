@@ -9,6 +9,8 @@
 
 #ifdef __KERNEL__
 #include "kernel/platform.h"
+#elif __BOOTLOADER__
+#include "bootloader/platform.h"
 #else
 #include "user/platform.h"
 #endif

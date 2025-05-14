@@ -40,7 +40,10 @@ static uint64_t process_cmdline_view_init(file_t* file, view_t* view)
     return 0;
 }
 
-VIEW_STANDARD_OPS_DEFINE(cmdlineOps, (view_ops_t){.init = process_cmdline_view_init});
+VIEW_STANDARD_OPS_DEFINE(cmdlineOps,
+    (view_ops_t){
+        .init = process_cmdline_view_init,
+    });
 
 static uint64_t process_cwd_view_init(file_t* file, view_t* view)
 {
