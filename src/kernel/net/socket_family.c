@@ -34,20 +34,25 @@ static file_ops_t familyNewFileOps = {
     .seek = socket_family_new_seek,
 };
 
-static file_t* socket_family_new_open(volume_t* volume, sysobj_t* sysobj)
+static file_t* socket_family_new_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
 {
     socket_family_t* family = sysobj->dir->private;
 
     socket_handle_t* handle = malloc(sizeof(socket_handle_t));
+    if (handle == NULL)
+    {
+        return NULL;
+    }
+
     ulltoa(atomic_fetch_add(&newId, 1), handle->id, 10);
-    handle->dir = socket_create(family, handle->id);
+    handle->dir = socket_create(family, handle->id, path->flags);
     if (handle->dir == NULL)
     {
         free(handle);
         return NULL;
     }
 
-    file_t* file = file_new(volume);
+    file_t* file = file_new(volume, path, PATH_NONBLOCK);
     if (file == NULL)
     {
         sysdir_free(handle->dir);

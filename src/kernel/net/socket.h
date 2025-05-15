@@ -10,6 +10,7 @@ typedef struct socket
     void* private;
     socket_family_t* family;
     pid_t creator;
+    path_flags_t flags;
 } socket_t;
 
-sysdir_t* socket_create(socket_family_t* family, const char* id);
+sysdir_t* socket_create(socket_family_t* family, const char* id, path_flags_t flags);

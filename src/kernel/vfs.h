@@ -80,6 +80,7 @@ typedef struct file
     void* private;
     sysobj_t* sysobj; // Used by sysfs
     const file_ops_t* ops;
+    path_flags_t flags;
     atomic_uint64 ref;
 } file_t;
 
@@ -90,7 +91,7 @@ typedef struct poll_file
     poll_event_t occurred;
 } poll_file_t;
 
-file_t* file_new(volume_t* volume);
+file_t* file_new(volume_t* volume, const path_t* path, path_flags_t supportedFlags);
 
 file_t* file_ref(file_t* file);
 

@@ -228,7 +228,7 @@ static uint64_t log_write(file_t* file, const void* buffer, uint64_t count)
     return count;
 }
 
-SYSFS_STANDARD_OPS_DEFINE(klogOps,
+SYSFS_STANDARD_OPS_DEFINE(klogOps, PATH_NONE,
     (file_ops_t){
         .read = log_read,
         .write = log_write,

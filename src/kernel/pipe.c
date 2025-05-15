@@ -92,7 +92,7 @@ static file_ops_t fileOps = {
     .poll = pipe_poll,
 };
 
-static file_t* pipe_open(volume_t* volume, sysobj_t* sysobj)
+static file_t* pipe_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
 {
     pipe_private_t* private = malloc(sizeof(pipe_private_t));
     if (private == NULL)
@@ -111,7 +111,7 @@ static file_t* pipe_open(volume_t* volume, sysobj_t* sysobj)
     wait_queue_init(&private->waitQueue);
     lock_init(&private->lock);
 
-    file_t* file = file_new(volume);
+    file_t* file = file_new(volume, path, PATH_NONE);
     if (file == NULL)
     {
         free(private->buffer);
@@ -127,7 +127,7 @@ static file_t* pipe_open(volume_t* volume, sysobj_t* sysobj)
     return file;
 }
 
-static uint64_t pipe_open2(volume_t* volume, sysobj_t* sysobj, file_t* files[2])
+static uint64_t pipe_open2(volume_t* volume, const path_t* path, sysobj_t* sysobj, file_t* files[2])
 {
     pipe_private_t* private = malloc(sizeof(pipe_private_t));
     if (private == NULL)
@@ -146,7 +146,7 @@ static uint64_t pipe_open2(volume_t* volume, sysobj_t* sysobj, file_t* files[2])
     wait_queue_init(&private->waitQueue);
     lock_init(&private->lock);
 
-    files[0] = file_new(volume);
+    files[0] = file_new(volume, path, PATH_NONE);
     if (files[0] == NULL)
     {
         free(private->buffer);
@@ -154,7 +154,7 @@ static uint64_t pipe_open2(volume_t* volume, sysobj_t* sysobj, file_t* files[2])
         return ERR;
     }
 
-    files[1] = file_new(volume);
+    files[1] = file_new(volume, path, PATH_NONE);
     if (files[1] == NULL)
     {
         file_deref(files[0]);

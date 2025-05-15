@@ -51,7 +51,7 @@ static void statistics_cpu_view_deinit(view_t* view)
     free(view->buffer);
 }
 
-VIEW_STANDARD_OPS_DEFINE(cpuOps,
+VIEW_STANDARD_OPS_DEFINE(cpuOps, PATH_NONE,
     (view_ops_t){
         .init = statistics_cpu_view_init,
         .deinit = statistics_cpu_view_deinit,

@@ -4,8 +4,6 @@
 #include <sys/io.h>
 #include <sys/node.h>
 
-// TODO: Implement path flags
-
 #define PATH_NAME_SEPARATOR '/'
 #define PATH_LABEL_SEPARATOR ':'
 #define PATH_FLAGS_SEPARATOR '?'
@@ -13,13 +11,13 @@
 
 #define PATH_VALID_CHAR(ch) (isalnum((ch)) || strchr("_-. ()[]{}~!@#$%^&',;=+", (ch)))
 
-#define PATH_END_OF_NAME(ch) ((ch) == PATH_NAME_SEPARATOR || (ch) == '\0')
+#define PATH_END_OF_NAME(ch) ((ch) == PATH_NAME_SEPARATOR || (ch) == PATH_FLAGS_SEPARATOR || (ch) == '\0')
+#define PATH_END_OF_FLAG(ch) ((ch) == PATH_FLAG_SEPARATOR || (ch) == '\0')
 #define PATH_END_OF_LABEL(ch) ((ch) == PATH_LABEL_SEPARATOR || (ch) == '\0')
 
 #define PATH_NAME_IS_DOT(name) ((name)[0] == '.' && PATH_END_OF_NAME((name)[1]))
 #define PATH_NAME_IS_DOT_DOT(name) ((name)[0] == '.' && (name)[1] == '.' && PATH_END_OF_NAME((name)[2]))
 
-// TODO: Implement path flags
 typedef enum
 {
     PATH_NONE = 0,
@@ -29,8 +27,10 @@ typedef enum
 
 typedef struct path
 {
-    char volume[MAX_NAME];
-    char buffer[MAX_PATH]; // Format: [name]\0[name]\0...\0\3
+    char volume[MAX_NAME]; // Just a string
+    char buffer[MAX_PATH + 1]; // [name]\0[name]\0...\0\3
+    uint64_t bufferLength; // Includes \0 but not \3 chars.
+    path_flags_t flags;
 } path_t;
 
 #define PATH_FOR_EACH(name, path) \

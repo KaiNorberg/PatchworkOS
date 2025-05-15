@@ -11,10 +11,10 @@
 
 // TODO: Implement namespace system
 
-#define SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(name, ...) \
-    static file_t* name(volume_t* volume, sysobj_t* sysobj) \
+#define SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(name, supportedFlags, ...) \
+    static file_t* name(volume_t* volume, const path_t* path, sysobj_t* sysobj) \
     { \
-        file_t* file = file_new(volume); \
+        file_t* file = file_new(volume, path, supportedFlags); \
         if (file == NULL) \
         { \
             return NULL; \
@@ -25,8 +25,8 @@
         return file; \
     }
 
-#define SYSFS_STANDARD_OPS_DEFINE(name, ...) \
-    SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(name##_standard_open, __VA_ARGS__) \
+#define SYSFS_STANDARD_OPS_DEFINE(name, supportedFlags, ...) \
+    SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(name##_standard_open, supportedFlags, __VA_ARGS__) \
     static sysobj_ops_t name = { \
         .open = name##_standard_open, \
     };
@@ -37,8 +37,8 @@
 typedef struct sysobj sysobj_t;
 typedef struct sysdir sysdir_t;
 
-typedef file_t* (*sysobj_open_t)(volume_t*, sysobj_t*);
-typedef uint64_t (*sysobj_open2_t)(volume_t*, sysobj_t*, file_t* [2]);
+typedef file_t* (*sysobj_open_t)(volume_t*, const path_t*, sysobj_t*);
+typedef uint64_t (*sysobj_open2_t)(volume_t*, const path_t*, sysobj_t*, file_t* [2]);
 typedef void (*sysobj_cleanup_t)(sysobj_t*, file_t* file);
 typedef void (*sysobj_on_free_t)(sysobj_t*);
 

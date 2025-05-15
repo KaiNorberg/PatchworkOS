@@ -45,6 +45,7 @@ static client_t* dwm_client_accept(void)
     fd_t fd = openf("sys:/net/local/%s/accept", id);
     if (fd == ERR)
     {
+        printf("%s\n", strerror(errno));
         return NULL;
     }
 
@@ -71,7 +72,7 @@ static void dwm_client_disconnect(client_t* client)
 
 void dwm_init(void)
 {
-    fd_t handle = open("sys:/net/local/new");
+    fd_t handle = open("sys:/net/local/new?nonblock");
     read(handle, id, MAX_NAME);
 
     fd_t ctl = openf("sys:/net/local/%s/ctl", id);

@@ -63,8 +63,14 @@ static volume_t* volume_get(const char* label)
     return NULL;
 }
 
-file_t* file_new(volume_t* volume)
+file_t* file_new(volume_t* volume, const path_t* path, path_flags_t supportedFlags)
 {
+    path_flags_t flags = path != NULL ? path->flags : 0;
+    if ((flags & ~supportedFlags) != 0)
+    {
+        return ERRPTR(EINVAL);
+    }
+
     file_t* file = malloc(sizeof(file_t));
     if (file == NULL)
     {
@@ -76,6 +82,7 @@ file_t* file_new(volume_t* volume)
     file->private = NULL;
     file->sysobj = NULL;
     file->ops = NULL;
+    file->flags = flags;
     atomic_init(&file->ref, 1);
 
     return file;
@@ -419,22 +426,13 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
         return ERR;
     }
 
-    for (uint64_t i = 0; i < amount; i++)
-    {
-        waitQueues[i] = files[i].file->ops->poll(files[i].file, &files[i]);
-        if (waitQueues[i] == NULL)
-        {
-            free(waitQueues);
-            return ERR;
-        }
-    }
-
     uint64_t events = 0;
     uint64_t currentTime = systime_uptime();
     uint64_t deadline = timeout == CLOCKS_NEVER ? CLOCKS_NEVER : currentTime + timeout;
     while (true)
     {
         events = 0;
+        bool shouldBlock = true;
         for (uint64_t i = 0; i < amount; i++)
         {
             if (files[i].file == NULL || files[i].file->ops == NULL)
@@ -442,21 +440,33 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
                 free(waitQueues);
                 return ERROR(EINVAL);
             }
-
-            if (files[i].file->ops->poll(files[i].file, &files[i]) == NULL)
+    
+            waitQueues[i] = files[i].file->ops->poll(files[i].file, &files[i]);
+            if (waitQueues[i] == NULL)
             {
                 free(waitQueues);
                 return ERR;
             }
-
+    
             if ((files[i].occurred & files[i].requested) != 0)
             {
                 events++;
+            }
+
+            if (files[i].file->flags & PATH_NONBLOCK)
+            {
+                shouldBlock = false;
             }
         }
         if (events != 0 || currentTime >= deadline)
         {
             break;
+        }
+
+        if (!shouldBlock)
+        {
+            free(waitQueues);
+            return ERROR(EWOULDBLOCK);
         }
 
         clock_t remainingTime = deadline == CLOCKS_NEVER ? CLOCKS_NEVER : deadline - currentTime;

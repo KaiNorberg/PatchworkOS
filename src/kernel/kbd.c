@@ -36,7 +36,7 @@ static wait_queue_t* kbd_poll(file_t* file, poll_file_t* pollFile)
     return &kbd->waitQueue;
 }
 
-SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(kbd_open,
+SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(kbd_open, PATH_NONE,
     (file_ops_t){
         .read = kbd_read,
         .poll = kbd_poll,

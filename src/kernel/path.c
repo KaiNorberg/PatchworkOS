@@ -7,64 +7,161 @@
 #include <stdio.h>
 #include <string.h>
 
-static const char* name_next(const char* path)
+static uint64_t flag_length(const char* flag)
 {
-    const char* base = strchr(path, PATH_NAME_SEPARATOR);
-    return base != NULL ? base + 1 : NULL;
+    for (uint64_t flagLength = 0; flagLength < MAX_NAME; flagLength++)
+    {
+        if (PATH_END_OF_FLAG(flag[flagLength]))
+        {
+            return flagLength;
+        }
+
+        // Dont need to check if chars are valid as they either way wont match.
+    }
+
+    return ERR;
 }
 
-static uint64_t path_make_canonical(char* dest, char* out, const char* src)
+static bool flag_compare(const char* expected, const char* flag, uint64_t flagLength)
+{
+    if (strlen(expected) != flagLength)
+    {
+        return false;
+    }
+
+    for (uint64_t i = 0; i < flagLength; i++)
+    {
+        if (expected[i] != flag[i])
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static uint64_t name_length(const char* name)
+{
+    for (uint64_t nameLength = 0; nameLength < MAX_NAME; nameLength++)
+    {
+        if (PATH_END_OF_NAME(name[nameLength]))
+        {
+            return nameLength;
+        }
+
+        if (!PATH_VALID_CHAR(name[nameLength]))
+        {
+            return ERR;
+        }
+    }
+
+    return ERR;
+}
+
+static const char* path_parse_flags(path_t* path, const char* src)
+{
+    const char* flag = src;
+    while (1)
+    {
+        uint64_t flagLength = flag_length(flag);
+        if (flagLength == ERR)
+        {
+            return ERRPTR(EPATH);
+        }
+
+        if (flag_compare("nonblock", flag, flagLength))
+        {
+            path->flags |= PATH_NONBLOCK;
+        }
+        else if (flag_compare("append", flag, flagLength))
+        {
+            path->flags |= PATH_APPEND;
+        }
+        else
+        {
+            return ERRPTR(EPATH);
+        }        
+        
+        flag += flagLength;
+        if (flag[0] == '\0')
+        {
+            return flag;
+        }
+        else if (flag[0] == PATH_FLAG_SEPARATOR)
+        {
+            flag += 1;
+        }
+        else
+        {
+            return ERRPTR(EPATH);
+        }
+    }    
+}
+
+static const char* path_parse_names(path_t* path, const char* src)
 {
     const char* name = src;
     while (1)
     {
+        uint64_t nameLength = name_length(name);
+        if (nameLength == ERR)
+        {
+            return ERRPTR(EPATH);
+        }
+
         if (PATH_NAME_IS_DOT(name))
         {
             // Do nothing
         }
         else if (PATH_NAME_IS_DOT_DOT(name))
         {
-            if (out == dest)
+            if (path->bufferLength == 0)
             {
-                return ERROR(EPATH);
+                return ERRPTR(EPATH);
             }
 
             do
             {
-                out--;
-            } while (out != dest && *(out - 1) != '\0');
+                path->bufferLength--;
+            } while (path->bufferLength != 0 && path->buffer[path->bufferLength - 1] != '\0');
+        }
+        else if (nameLength != 0)
+        {
+            if (path->bufferLength + nameLength >= MAX_PATH)
+            {
+                return ERRPTR(EPATH);
+            }
+
+            memcpy(&path->buffer[path->bufferLength], name, nameLength);
+            path->bufferLength += nameLength;
+            
+            path->buffer[path->bufferLength] = '\0';
+            path->bufferLength++;
+        }
+
+        name += nameLength;
+        if (name[0] == '\0' || name[0] == PATH_FLAGS_SEPARATOR)
+        {
+            if (path->bufferLength == MAX_PATH)
+            {
+                return ERRPTR(EPATH);
+            }
+        
+            path->buffer[path->bufferLength] = '\3';
+            return name[0] == '\0' ? name : name + 1;
+        }
+        else if (name[0] == PATH_NAME_SEPARATOR)
+        {
+            name += 1;
         }
         else
         {
-            uint64_t i = 0;
-            for (; i < MAX_NAME; i++)
-            {
-                if (PATH_END_OF_NAME(name[i]))
-                {
-                    break;
-                }
-
-                *out = name[i];
-                out++;
-            }
-
-            if (i != 0)
-            {
-                *out = '\0';
-                out++;
-            }
-        }
-
-        name = name_next(name);
-        if (name == NULL || name[0] == '\0' || name[0] == PATH_FLAGS_SEPARATOR)
-        {
-            *out = '\3';
-            return 0;
+            return ERRPTR(EPATH);
         }
     }
 }
 
-uint64_t path_init(path_t* path, const char* string, path_t* cwd)
+static const char* path_determine_type(path_t* path, const char* string, path_t* cwd)
 {
     if (string[0] == PATH_NAME_SEPARATOR) // Root path
     {
@@ -77,7 +174,7 @@ uint64_t path_init(path_t* path, const char* string, path_t* cwd)
             path->volume[0] = '\0';
         }
 
-        return path_make_canonical(path->buffer, path->buffer, string);
+        return string + 1;
     }
 
     bool absolute = false;
@@ -88,7 +185,7 @@ uint64_t path_init(path_t* path, const char* string, path_t* cwd)
         {
             if (!PATH_END_OF_NAME(string[i + 1]))
             {
-                return ERROR(EPATH);
+                return ERRPTR(EPATH);
             }
 
             absolute = true;
@@ -96,7 +193,7 @@ uint64_t path_init(path_t* path, const char* string, path_t* cwd)
         }
         else if (!PATH_VALID_CHAR(string[i]))
         {
-            return ERROR(EPATH);
+            return ERRPTR(EPATH);
         }
     }
 
@@ -106,22 +203,55 @@ uint64_t path_init(path_t* path, const char* string, path_t* cwd)
         memcpy(path->volume, string, volumeLength);
         path->volume[volumeLength] = '\0';
 
-        return path_make_canonical(path->buffer, path->buffer, string + volumeLength + 2);
+        return string + volumeLength + 2;
     }
     else // Relative path
     {
         if (cwd == NULL)
         {
-            return ERROR(EINVAL);
+            return ERRPTR(EINVAL);
         }
 
         strcpy(path->volume, cwd->volume);
 
-        uint64_t cwdLength = ((uint64_t)memchr(cwd->buffer, '\3', MAX_PATH) - (uint64_t)cwd->buffer);
-        memcpy(path->buffer, cwd->buffer, cwdLength + 1);
+        memcpy(path->buffer, cwd->buffer, cwd->bufferLength + 1);
+        path->bufferLength = cwd->bufferLength;
 
-        return path_make_canonical(path->buffer, path->buffer + cwdLength, string);
+        return string;
     }
+}
+
+uint64_t path_init(path_t* path, const char* string, path_t* cwd)
+{
+    path->volume[0] = '\0';
+    path->buffer[0] = '\0';
+    path->bufferLength = 0;
+    path->flags = 0;
+
+    string = path_determine_type(path, string, cwd);
+    if (string == NULL)
+    {
+        return ERR;
+    }
+
+    string = path_parse_names(path, string);
+    if (string == NULL)
+    {
+        return ERR;
+    }
+
+    if (string[0] == '\0')
+    {
+        return 0;
+    }
+
+    string = path_parse_flags(path, string);
+    if (string == NULL)
+    {
+        return ERR;
+    }
+
+    return 0;
 }
 
 void path_to_string(const path_t* path, char* dest)
@@ -187,7 +317,8 @@ static uint64_t path_test(const char* cwdStr, const char* testPath, const char* 
 {
     path_t cwd;
     path_t path;
-    char buffer[MAX_PATH];
+    char parsedPath[MAX_PATH];
+    char parsedCwd[MAX_PATH];
 
     if (cwdStr != NULL)
     {
@@ -202,17 +333,20 @@ static uint64_t path_test(const char* cwdStr, const char* testPath, const char* 
         {
             printf("failed: unexpectedly returned error, cwd=\"%s\" path=\"%s\"", cwdStr != NULL ? cwdStr : "NULL",
                 testPath);
+            while (1);
             return ERR;
         }
         return 0;
     }
 
-    path_to_string(&path, buffer);
+    path_to_string(&path, parsedPath);
+    path_to_string(&cwd, parsedCwd);
 
-    if (strcmp(buffer, expectedResult) != 0)
+    if (strcmp(parsedPath, expectedResult) != 0)
     {
-        printf("failed: cwd=\"%s\" path=\"%s\" expected=\"%s\" result=\"%s\"", cwdStr != NULL ? cwdStr : "NULL",
-            testPath, expectedResult, buffer);
+        printf("failed: cwd=\"%s\" parsed_cwd=\"%s\" path=\"%s\" expected=\"%s\" result=\"%s\"", cwdStr != NULL ? cwdStr : "NULL", parsedCwd,
+            testPath, expectedResult, parsedPath);
+        while (1);
         return ERR;
     }
 
@@ -220,45 +354,56 @@ static uint64_t path_test(const char* cwdStr, const char* testPath, const char* 
 }
 
 TESTING_REGISTER_TEST(path_all_tests)
-{
+{        
     uint64_t result = 0;
-    result |= path_test("sys:/proc", "sys:/kbd/ps2", "sys:/kbd/ps2");
-    result |= path_test("sys:/proc", ".", "sys:/proc");
-    result |= path_test("sys:/proc", "..", "sys:/");
-    result |= path_test("sys:/proc", "../dev/./null", "sys:/dev/null");
-    result |= path_test("sys:/", "home/user", "sys:/home/user");
-    result |= path_test("sys:/usr/local/bin", "../lib", "sys:/usr/local/lib");
-    result |= path_test("sys:/usr/local/bin", "../../../", "sys:/");
-    result |= path_test("sys:/usr/local/bin", "usr:/bin", "usr:/bin");
-    result |= path_test("usr:/lib", "include", "usr:/lib/include");
-    result |= path_test("usr:/lib", "sys:/proc", "sys:/proc");
-    result |= path_test("usr:/lib", "", "usr:/lib");
-    result |= path_test("usr:/lib", "/", "usr:/");
-    result |=
-        path_test("data:/users/admin", "documents///photos//vacation/", "data:/users/admin/documents/photos/vacation");
-    result |=
-        path_test("data:/users/admin", "./downloads/../documents/./reports/../../photos", "data:/users/admin/photos");
-    result |= path_test("data:/users/admin", "notes/report (2023).txt", "data:/users/admin/notes/report (2023).txt");
-    result |= path_test("data:/users/admin", "bad|file?name", NULL);
-    result |= path_test(NULL, "relative/path", NULL);
-    result |= path_test("data:/users/admin", "bad:volume/path", NULL);
-    result |= path_test("app:/games", "rpg/saves/.", "app:/games/rpg/saves");
-    result |= path_test("app:/games", "rpg/saves/..", "app:/games/rpg");
-    result |= path_test("app:/games", "rpg/../../games/shooter", "app:/games/shooter");
-    result |= path_test("temp:/downloads", "log:/system/errors", "log:/system/errors");
-    result |= path_test("temp:/downloads", "temp:/uploads", "temp:/uploads");
-    result |= path_test("root:/", "/", "root:/");
-    result |= path_test("root:/", "/bin", "root:/bin");
-    result |= path_test("dev:/tools", "//multiple//slashes///", "dev:/multiple/slashes");
-    result |= path_test("sys:/usr/bin", "/", "sys:/");
-    result |= path_test("etc:/config", "home/user/.config/app/./../..", "etc:/config/home/user");
-    result |= path_test("project:/src",
-        "lib/core/utils/string/parser/../../network/http/client/api/v1/../../../../../../tests",
-        "project:/src/lib/core/tests");
-    result |= path_test("docs:/", "research/paper (draft 2).pdf", "docs:/research/paper (draft 2).pdf");
-    result |= path_test("media:/music", "Albums/Rock & Roll/Bands", "media:/music/Albums/Rock & Roll/Bands");
-    result |= path_test("backup:/2023", "files_v1.2-beta+build.3", "backup:/2023/files_v1.2-beta+build.3");
 
+    for (uint64_t i = 0; i < 10; i++)
+    {
+        clock_t start = systime_uptime();
+
+        result |= path_test("sys:/proc", "sys:/kbd/ps2", "sys:/kbd/ps2");
+        result |= path_test("sys:/proc", ".", "sys:/proc");
+        result |= path_test("sys:/proc", "..", "sys:/");
+        result |= path_test("sys:/proc", "../dev/./null", "sys:/dev/null");
+        result |= path_test("sys:/", "home/user", "sys:/home/user");
+        result |= path_test("sys:/usr/local/bin", "../lib", "sys:/usr/local/lib");
+        result |= path_test("sys:/usr/local/bin", "../../../", "sys:/");
+        result |= path_test("sys:/usr/local/bin", "usr:/bin", "usr:/bin");
+        result |= path_test("usr:/lib", "include", "usr:/lib/include");
+        result |= path_test("usr:/lib", "sys:/proc", "sys:/proc");
+        result |= path_test("usr:/lib", "", "usr:/lib");
+        result |= path_test("usr:/lib", "/", "usr:/");
+        result |=
+            path_test("data:/users/admin", "documents///photos//vacation/", "data:/users/admin/documents/photos/vacation");
+        result |=
+            path_test("data:/users/admin", "./downloads/../documents/./reports/../../photos", "data:/users/admin/photos");
+        result |= path_test("data:/users/admin", "notes/report (2023).txt", "data:/users/admin/notes/report (2023).txt");
+        result |= path_test("data:/users/admin", "bad|file?name", NULL);
+        result |= path_test(NULL, "relative/path", NULL);
+        result |= path_test("data:/users/admin", "bad:volume/path", NULL);
+        result |= path_test("app:/games", "rpg/saves/.", "app:/games/rpg/saves");
+        result |= path_test("app:/games", "rpg/saves/..", "app:/games/rpg");
+        result |= path_test("app:/games", "rpg/../../games/shooter", "app:/games/shooter");
+        result |= path_test("temp:/downloads", "log:/system/errors", "log:/system/errors");
+        result |= path_test("temp:/downloads", "temp:/uploads", "temp:/uploads");
+        result |= path_test("root:/", "/", "root:/");
+        result |= path_test("root:/", "/bin", "root:/bin");
+        result |= path_test("dev:/tools", "//multiple//slashes///", "dev:/multiple/slashes");
+        result |= path_test("sys:/usr/bin", "/", "sys:/");
+        result |= path_test("etc:/config", "home/user/.config/app/./../..", "etc:/config/home/user");
+        result |= path_test("project:/src",
+            "lib/core/utils/string/parser/../../network/http/client/api/v1/../../../../../../tests",
+            "project:/src/lib/core/tests");
+        result |= path_test("docs:/", "research/paper (draft 2).pdf", "docs:/research/paper (draft 2).pdf");
+        result |= path_test("media:/music", "Albums/Rock & Roll/Bands", "media:/music/Albums/Rock & Roll/Bands");
+        result |= path_test("backup:/2023", "files_v1.2-beta+build.3", "backup:/2023/files_v1.2-beta+build.3");
+        result |= path_test("backup:/2023", "sys:/net/local/new?nonblock", "sys:/net/local/new");
+
+        clock_t end = systime_uptime();
+
+        printf("time taken: %d", (end - start) / 1000);
+    }
+    
     return result;
 }
 

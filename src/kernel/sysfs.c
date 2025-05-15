@@ -87,7 +87,7 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
         return ERRPTR(ENOOP);
     }
 
-    file_t* file = sysobj->ops->open(volume, sysobj);
+    file_t* file = sysobj->ops->open(volume, path, sysobj);
     if (file == NULL)
     {
         sysobj_deref(sysobj);
@@ -112,7 +112,7 @@ static uint64_t sysfs_open2(volume_t* volume, const path_t* path, file_t* files[
         return ERROR(ENOOP);
     }
 
-    if (sysobj->ops->open2(volume, sysobj, files) == ERR)
+    if (sysobj->ops->open2(volume, path, sysobj, files) == ERR)
     {
         sysobj_deref(sysobj);
         return ERR;

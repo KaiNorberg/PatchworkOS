@@ -48,7 +48,7 @@ static file_t* ramfs_open(volume_t* volume, const path_t* path)
     }
     ram_file_t* ramFile = (ram_file_t*)node;
 
-    file_t* file = file_new(volume);
+    file_t* file = file_new(volume, path, PATH_NONE);
     if (file == NULL)
     {
         return NULL;

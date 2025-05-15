@@ -24,7 +24,7 @@ static lock_t listenersLock;
 
 static local_connection_t* local_connection_ref(local_connection_t* conn);
 
-SYSFS_STANDARD_OPS_DEFINE(listenerOps, (file_ops_t){});
+SYSFS_STANDARD_OPS_DEFINE(listenerOps, PATH_NONE, (file_ops_t){});
 
 static local_listener_t* local_listener_new(const char* address)
 {
@@ -210,11 +210,23 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
     local_listener_t* listener = local->listen.listener;
     lock_release(&local->lock);
 
-    if (WAIT_BLOCK_LOCK(&listener->waitQueue, &listener->lock,
-            local_listener_conn_avail(listener) || local_listener_closed(listener)) != WAIT_NORM)
+    if (socket->flags & PATH_NONBLOCK)
     {
-        lock_release(&listener->lock);
-        return 0;
+        lock_acquire(&listener->lock);
+        if (!(local_listener_conn_avail(listener) || local_listener_closed(listener)))
+        {
+            lock_release(&listener->lock);
+            return ERROR(EWOULDBLOCK);
+        }
+    }
+    else
+    {
+        if (WAIT_BLOCK_LOCK(&listener->waitQueue, &listener->lock,
+                local_listener_conn_avail(listener) || local_listener_closed(listener)) != WAIT_NORM)
+        {
+            lock_release(&listener->lock);
+            return 0;
+        }
     }
 
     if (local_listener_closed(listener))
@@ -354,10 +366,21 @@ static uint64_t local_socket_connect(socket_t* socket, const char* address)
     local->state = LOCAL_SOCKET_CONNECT;
     lock_release(&local->lock);
 
-    if (WAIT_BLOCK(&conn->waitQueue, atomic_load(&conn->accepted) || local_connection_closed(conn)) != WAIT_NORM)
+    if (socket->flags & PATH_NONBLOCK)
     {
-        return ERR;
+        if (!(atomic_load(&conn->accepted) || local_connection_closed(conn)))
+        {
+            return ERROR(EWOULDBLOCK);
+        }
     }
+    else
+    {
+        if (WAIT_BLOCK(&conn->waitQueue, atomic_load(&conn->accepted) || local_connection_closed(conn)) != WAIT_NORM)
+        {
+            return ERR;
+        }
+    }
+
     if (local_connection_closed(conn))
     {
         return ERROR(EPIPE);
@@ -425,18 +448,24 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
         return ERR;
     }
 
-    // TODO: This is a temporary solution. Implement file flags, NOBLOCK.
-    /*LOCK_DEFER(&conn->lock);
-    if (ring_free_length(ring) < count + sizeof(local_packet_header_t))
+    if (socket->flags & PATH_NONBLOCK)
     {
-        return ERROR(EWOULDBLOCK);
-    }*/
-    if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
+        lock_acquire(&conn->lock);
+        if (!(ring_free_length(ring) >= count + sizeof(local_packet_header_t) || local_connection_closed(conn)))
+        {
+            lock_release(&conn->lock);
+            return ERROR(EWOULDBLOCK);
+        }
+    }
+    else
+    {
+        if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
             ring_free_length(ring) >= count + sizeof(local_packet_header_t) || local_connection_closed(conn)) !=
         WAIT_NORM)
-    {
-        lock_release(&conn->lock);
-        return 0;
+        {
+            lock_release(&conn->lock);
+            return 0;
+        }
     }
 
     if (local_connection_closed(conn))
@@ -473,11 +502,24 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
         return ERR;
     }
 
-    if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
-            ring_data_length(ring) >= sizeof(local_packet_header_t) || local_connection_closed(conn)) != WAIT_NORM)
+
+    if (socket->flags & PATH_NONBLOCK)
     {
-        lock_release(&conn->lock);
-        return 0;
+        lock_acquire(&conn->lock);
+        if (!(ring_data_length(ring) >= sizeof(local_packet_header_t) || local_connection_closed(conn)))
+        {
+            lock_release(&conn->lock);
+            return ERROR(EWOULDBLOCK);
+        }
+    }
+    else
+    {
+        if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
+            ring_data_length(ring) >= sizeof(local_packet_header_t) || local_connection_closed(conn)) != WAIT_NORM)
+        {
+            lock_release(&conn->lock);
+            return 0;
+        }
     }
 
     if (local_connection_closed(conn))

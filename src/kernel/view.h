@@ -4,7 +4,7 @@
 
 // Note: View files are files that provide a view of system state, for instace sys:/proc/cwd, or sys:/stat/cpu
 
-#define VIEW_STANDARD_OPS_DEFINE(name, ...) \
+#define VIEW_STANDARD_OPS_DEFINE(name, supportedFlags, ...) \
     static view_ops_t name##ops = __VA_ARGS__; \
     static uint64_t name##read(file_t* file, void* buffer, uint64_t count) \
     { \
@@ -34,7 +34,7 @@
         } \
         return result; \
     } \
-    SYSFS_STANDARD_OPS_DEFINE(name, \
+    SYSFS_STANDARD_OPS_DEFINE(name, supportedFlags, \
         (file_ops_t){ \
             .read = name##read, \
             .seek = name##seek, \

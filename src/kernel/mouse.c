@@ -36,7 +36,7 @@ static wait_queue_t* mouse_poll(file_t* file, poll_file_t* pollFile)
     return &mouse->waitQueue;
 }
 
-SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(mouse_open,
+SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(mouse_open, PATH_NONE,
     (file_ops_t){
         .read = mouse_read,
         .poll = mouse_poll,

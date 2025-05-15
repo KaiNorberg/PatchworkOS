@@ -35,7 +35,7 @@ static wait_queue_t* socket_accept_poll(file_t* file, poll_file_t* poll)
     return socket->family->poll(socket, poll);
 }
 
-static file_t* socket_accept_open(volume_t* volume, sysobj_t* sysobj)
+static file_t* socket_accept_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
 {
     socket_t* socket = sysobj->dir->private;
     process_t* process = sched_process();
@@ -63,7 +63,7 @@ static file_t* socket_accept_open(volume_t* volume, sysobj_t* sysobj)
         .write = socket_accept_write,
         .poll = socket_accept_poll,
     };
-    file_t* file = file_new(volume);
+    file_t* file = file_new(volume, path, PATH_NONE);
     if (file == NULL)
     {
         free(socket);
@@ -105,7 +105,7 @@ static wait_queue_t* socket_data_poll(file_t* file, poll_file_t* poll)
     return socket->family->poll(socket, poll);
 }
 
-static file_t* socket_data_open(volume_t* volume, sysobj_t* sysobj)
+static file_t* socket_data_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
 {
     socket_t* socket = sysobj->dir->private;
     process_t* process = sched_process();
@@ -119,7 +119,7 @@ static file_t* socket_data_open(volume_t* volume, sysobj_t* sysobj)
         .write = socket_data_write,
         .poll = socket_data_poll,
     };
-    file_t* file = file_new(volume);
+    file_t* file = file_new(volume, path, PATH_NONE);
     if (file == NULL)
     {
         return NULL;
@@ -158,7 +158,7 @@ CTL_STANDARD_WRITE_DEFINE(socket_ctl_write,
         {0},
     });
 
-static file_t* socket_ctl_open(volume_t* volume, sysobj_t* sysobj)
+static file_t* socket_ctl_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
 {
     socket_t* socket = sysobj->dir->private;
     process_t* process = sched_process();
@@ -170,7 +170,7 @@ static file_t* socket_ctl_open(volume_t* volume, sysobj_t* sysobj)
     static file_ops_t fileOps = {
         .write = socket_ctl_write,
     };
-    file_t* file = file_new(volume);
+    file_t* file = file_new(volume, path, PATH_NONE);
     if (file == NULL)
     {
         return NULL;
@@ -190,7 +190,7 @@ static void socket_on_free(sysdir_t* sysdir)
     free(socket);
 }
 
-sysdir_t* socket_create(socket_family_t* family, const char* id)
+sysdir_t* socket_create(socket_family_t* family, const char* id, path_flags_t flags)
 {
     socket_t* socket = malloc(sizeof(socket_t));
     if (socket == NULL)
@@ -199,6 +199,7 @@ sysdir_t* socket_create(socket_family_t* family, const char* id)
     }
     socket->family = family;
     socket->creator = sched_process()->id;
+    socket->flags = flags;
 
     if (family->init(socket) == ERR)
     {

@@ -40,7 +40,7 @@ static uint64_t process_cmdline_view_init(file_t* file, view_t* view)
     return 0;
 }
 
-VIEW_STANDARD_OPS_DEFINE(cmdlineOps,
+VIEW_STANDARD_OPS_DEFINE(cmdlineOps, PATH_NONE,
     (view_ops_t){
         .init = process_cmdline_view_init,
     });
@@ -73,7 +73,7 @@ static void process_cwd_view_deinit(view_t* view)
     free(view->buffer);
 }
 
-VIEW_STANDARD_OPS_DEFINE(cwdOps,
+VIEW_STANDARD_OPS_DEFINE(cwdOps, PATH_NONE,
     (view_ops_t){
         .init = process_cwd_view_init,
         .deinit = process_cwd_view_deinit,
@@ -103,7 +103,7 @@ static uint64_t process_ctl_wait(file_t* file, uint64_t argc, const char** argv)
     return 0;
 }
 
-CTL_STANDARD_OPS_DEFINE(ctlOps,
+CTL_STANDARD_OPS_DEFINE(ctlOps, PATH_NONE,
     (ctl_array_t){
         {"kill", process_ctl_kill, 1, 1},
         {"wait", process_ctl_wait, 1, 1},
