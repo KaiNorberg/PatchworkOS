@@ -66,6 +66,7 @@ static int thread_entry(void* arg)
 static void benchmark(uint64_t threadAmount)
 {
     printf("%d threads: starting... ", threadAmount);
+    fflush(stdout);
     clock_t start = uptime();
 
     atomic_init(&count, 0);

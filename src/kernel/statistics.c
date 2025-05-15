@@ -37,7 +37,7 @@ static uint64_t statistics_cpu_view_init(file_t* file, view_t* view)
         statistics_cpu_ctx_t* stat = &cpu->stat;
         LOCK_DEFER(&stat->lock);
 
-        sprintf(&string[strlen(string)], "cpu%d %llu %llu %llu%c\n", cpu->id, stat->idleClocks, stat->activeClocks,
+        sprintf(&string[strlen(string)], "cpu%d %llu %llu %llu%c", cpu->id, stat->idleClocks, stat->activeClocks,
             stat->trapClocks, i + 1 != smp_cpu_amount() ? '\n' : '\0');
     }
 

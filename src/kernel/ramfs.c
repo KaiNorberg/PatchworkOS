@@ -49,6 +49,11 @@ static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count)
     LOCK_DEFER(&lock);
     ram_file_t* ramFile = NODE_CONTAINER(file->private, ram_file_t, node);
 
+    if (ramFile->data == NULL)
+    {
+        return 0;
+    }
+
     return BUFFER_READ(file, buffer, count, ramFile->data, ramFile->size);
 }
 

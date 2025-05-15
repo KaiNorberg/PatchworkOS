@@ -18,7 +18,7 @@ static void builtin_cd(uint64_t argc, const char** argv)
 
     if (chdir(argv[1]) == ERR)
     {
-        printf("error: %s", strerror(errno));
+        fprintf(stderr, "cd: %s\n", strerror(errno));
     }
 }
 

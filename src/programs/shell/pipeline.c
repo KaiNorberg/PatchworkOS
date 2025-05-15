@@ -241,7 +241,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
     spawn_fd_t fds[] = {
         {.child = STDIN_FILENO, .parent = STDIN_FILENO},
         {.child = STDOUT_FILENO, .parent = STDOUT_FILENO},
-        {.child = STDERR_FILENO, .parent = STDERR_FILENO},
+        {.child = STDERR_FILENO, .parent = originalStderr},
         SPAWN_FD_END,
     };
     const char** argv = cmd->argv;
@@ -296,7 +296,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
 
         if (!found)
         {
-            printf("error: %s not found\n", argv[0]);
+            fprintf(stderr, "shell: %s not found\n", argv[0]);
             result = ERR;
         }
     }

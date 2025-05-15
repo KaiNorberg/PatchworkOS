@@ -280,18 +280,21 @@ static void sched_update_zombie_threads(trap_frame_t* trapFrame, sched_ctx_t* ct
 
         thread_free(thread);
     }
-
-    if (ctx->runThread != NULL &&
-        (atomic_load(&ctx->runThread->dead) ||
-            (atomic_load(&ctx->runThread->process->dead) && trapFrame->cs != GDT_KERNEL_CODE)))
-    {
-        list_push(&ctx->zombieThreads, &ctx->runThread->entry);
-        ctx->runThread = NULL;
-    }
 }
 
 void sched_timer_trap(trap_frame_t* trapFrame)
-{
+{    
+    cpu_t* self = smp_self_unsafe();
+    sched_ctx_t* ctx = &self->sched;
+
+    if (self->trapDepth > 1)
+    {
+        return;
+    }
+
+    sched_update_parked_threads(trapFrame, ctx);
+    sched_update_zombie_threads(trapFrame, ctx);
+
     sched_schedule_trap(trapFrame);
 }
 
@@ -305,8 +308,13 @@ void sched_schedule_trap(trap_frame_t* trapFrame)
         return;
     }
 
-    sched_update_parked_threads(trapFrame, ctx);
-    sched_update_zombie_threads(trapFrame, ctx);
+    if (ctx->runThread != NULL &&
+        (atomic_load(&ctx->runThread->dead) ||
+            (atomic_load(&ctx->runThread->process->dead) && trapFrame->cs != GDT_KERNEL_CODE)))
+    {
+        list_push(&ctx->zombieThreads, &ctx->runThread->entry);
+        ctx->runThread = NULL;
+    }
 
     if (ctx->runThread == NULL)
     {
