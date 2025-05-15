@@ -32,7 +32,8 @@ typedef uint64_t (*volume_unmount_t)(volume_t*);
 typedef file_t* (*volume_open_t)(volume_t*, const path_t*);
 typedef uint64_t (*volume_open2_t)(volume_t*, const path_t*, file_t* [2]);
 typedef uint64_t (*volume_stat_t)(volume_t*, const path_t*, stat_t*);
-typedef uint64_t (*volume_listdir_t)(volume_t*, const path_t*, dir_entry_t*, uint64_t);
+typedef uint64_t (*volume_rename_t)(volume_t*, const path_t*, const path_t*);
+typedef uint64_t (*volume_remove_t)(volume_t*, const path_t*);
 typedef void (*volume_cleanup_t)(volume_t*, file_t*);
 
 typedef struct volume_ops
@@ -41,7 +42,8 @@ typedef struct volume_ops
     volume_open_t open;
     volume_open2_t open2;
     volume_stat_t stat;
-    volume_listdir_t listdir;
+    volume_rename_t rename;
+    volume_remove_t remove;
     volume_cleanup_t cleanup;
 } volume_ops_t;
 
@@ -62,6 +64,7 @@ typedef uint64_t (*file_seek_t)(file_t*, int64_t, seek_origin_t);
 typedef uint64_t (*file_ioctl_t)(file_t*, uint64_t, void*, uint64_t);
 typedef wait_queue_t* (*file_poll_t)(file_t*, poll_file_t*);
 typedef void* (*file_mmap_t)(file_t*, void*, uint64_t, prot_t);
+typedef uint64_t (*file_readdir_t)(file_t*, stat_t*, uint64_t);
 
 typedef struct file_ops
 {
@@ -71,6 +74,7 @@ typedef struct file_ops
     file_ioctl_t ioctl;
     file_poll_t poll;
     file_mmap_t mmap;
+    file_readdir_t readdir;
 } file_ops_t;
 
 typedef struct file
@@ -118,7 +122,11 @@ uint64_t vfs_open2(const char* path, file_t* files[2]);
 
 uint64_t vfs_stat(const char* path, stat_t* buffer);
 
-uint64_t vfs_listdir(const char* path, dir_entry_t* entries, uint64_t amount);
+uint64_t vfs_rename(const char* oldpath, const char* newpath);
+
+uint64_t vfs_remove(const char* path);
+
+uint64_t vfs_readdir(file_t* file, stat_t* infos, uint64_t amount);
 
 uint64_t vfs_read(file_t* file, void* buffer, uint64_t count);
 
@@ -132,8 +140,8 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout);
 
 void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot);
 
-// Helper function for implementing listdir
-void dir_entry_push(dir_entry_t* entries, uint64_t amount, uint64_t* index, uint64_t* total, dir_entry_t* entry);
+// Helper function for implementing readdir
+void readdir_push(stat_t* infos, uint64_t amount, uint64_t* index, uint64_t* total, stat_t* info);
 
 // Helper macros for implementing file operations dealing with simple buffers
 #define BUFFER_READ(file, buffer, count, src, size) \

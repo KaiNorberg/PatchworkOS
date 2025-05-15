@@ -58,7 +58,7 @@ static void exception_handler(trap_frame_t* trapFrame)
             log_panic(trapFrame, "Unhandled User Exception");
         }
 
-        printf("user exception: process killed due to exception pid=%d vector=0x%x error=%b rip=%p", process->id,
+        printf("user exception: process killed due to exception pid=%d vector=0x%x error=%b rip=%p\n", process->id,
             trapFrame->vector, trapFrame->errorCode, trapFrame->rip);
         atomic_store(&process->dead, true);
         sched_schedule_trap(trapFrame);

@@ -47,27 +47,18 @@ typedef enum stat_type
 
 typedef struct stat
 {
+    char name[MAX_NAME];
     stat_type_t type;
     uint64_t size;
 } stat_t;
 
 typedef uint8_t seek_origin_t;
 
-typedef struct dir_entry
-{
-    char name[MAX_NAME];
-    stat_type_t type;
-} dir_entry_t;
-
-typedef struct dir_list
+typedef struct allocdir
 {
     uint64_t amount;
-    dir_entry_t entries[];
-} dir_list_t;
-
-dir_list_t* dir_alloc(const char* path);
-
-uint64_t dir_list(const char* path, dir_entry_t* entries, uint64_t amount);
+    stat_t infos[];
+} allocdir_t;
 
 fd_t open(const char* path);
 
@@ -102,6 +93,10 @@ uint64_t ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size);
 fd_t dup(fd_t oldFd);
 
 fd_t dup2(fd_t oldFd, fd_t newFd);
+
+allocdir_t* allocdir(fd_t fd);
+
+uint64_t readdir(fd_t fd, stat_t* infos, uint64_t amount);
 
 uint64_t mkdir(const char* path);
 

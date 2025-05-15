@@ -9,7 +9,7 @@
 
 int mtx_unlock(mtx_t* mutex)
 {
-    tid_t self = thread_id();
+    tid_t self = gettid();
     if (mutex->owner != self)
     {
         return thrd_error;

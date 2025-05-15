@@ -1,7 +1,12 @@
 #include <stdio.h>
 
+#include "platform/user/common/syscalls.h"
+
 int remove(const char* pathname)
 {
-    fprintf(stderr, "remove not implmented");
-    return EOF;
+    if (_SyscallRemove(pathname) == ERR)
+    {
+        return EOF;
+    }
+    return 0;
 }

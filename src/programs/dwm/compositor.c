@@ -222,20 +222,20 @@ void compositor_draw(compositor_ctx_t* ctx)
         return;
     }
 
-    //clock_t start = uptime();
+    // clock_t start = uptime();
 
     compositor_compute_client_area(ctx);
     compositor_draw_wall(ctx);
     compositor_draw_windows_panels(ctx);
     compositor_draw_cursor(ctx);
 
-    //clock_t drawEnd = uptime();
+    // clock_t drawEnd = uptime();
 
     screen_swap();
 
-    //clock_t swapEnd = uptime();
-    //printf("draw time: %d microseconds, swap time: %d microseconds\n", (drawEnd - start) / 1000, (swapEnd - drawEnd) /
-    //1000);
+    // clock_t swapEnd = uptime();
+    // printf("draw time: %d microseconds, swap time: %d microseconds\n", (drawEnd - start) / 1000, (swapEnd - drawEnd)
+    // / 1000);
 }
 
 void compositor_set_redraw_needed(void)

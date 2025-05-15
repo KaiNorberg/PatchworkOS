@@ -3,6 +3,27 @@
 #include "platform/user/common/file.h"
 #include "platform/user/common/syscalls.h"
 
+static const char* _FlagsToString(_FileFlags_t flags)
+{
+    switch (flags & (_FILE_READ | _FILE_WRITE | _FILE_APPEND | _FILE_RW))
+    {
+    case _FILE_READ:
+        return "";
+    case _FILE_WRITE:
+        return "?create&trunc";
+    case _FILE_APPEND:
+        return "?append&create";
+    case _FILE_READ | _FILE_RW:
+        return "";
+    case _FILE_WRITE | _FILE_RW:
+        return "?trunc&create";
+    case _FILE_APPEND | _FILE_RW:
+        return "?append&create";
+    default:
+        return "";
+    }
+}
+
 FILE* fopen(const char* _RESTRICT filename, const char* _RESTRICT mode)
 {
     _FileFlags_t flags = _FileFlagsParse(mode);
@@ -11,19 +32,12 @@ FILE* fopen(const char* _RESTRICT filename, const char* _RESTRICT mode)
         return NULL;
     }
 
-    if (flags & _FILE_APPEND)
-    {
-        // TODO: Implement append mode in kernel
-        return NULL;
-    }
-
     if (filename == NULL || filename[0] == '\0')
     {
         return NULL;
     }
 
-    // TODO: Implement append mode in kernel
-    fd_t fd = _SyscallOpen(filename);
+    fd_t fd = openf("%s%s", filename, _FlagsToString(flags));
     if (fd == ERR)
     {
         return NULL;

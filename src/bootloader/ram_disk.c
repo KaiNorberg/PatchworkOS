@@ -26,10 +26,10 @@ static ram_file_t* ram_disk_load_file(EFI_FILE* volume, CHAR16* path)
     return file;
 }
 
-static node_t* ram_disk_load_directory(EFI_FILE* volume, const char* name)
+static ram_dir_t* ram_disk_load_directory(EFI_FILE* volume, const char* name)
 {
-    node_t* node = vm_alloc(sizeof(node_t));
-    node_init(node, name, RAMFS_DIR);
+    ram_dir_t* ramDir = vm_alloc(sizeof(ram_dir_t));
+    node_init(&ramDir->node, name, RAMFS_DIR);
 
     while (1)
     {
@@ -61,8 +61,8 @@ static node_t* ram_disk_load_directory(EFI_FILE* volume, const char* name)
                 char childName[32];
                 char16_to_char(fileInfo->FileName, childName);
 
-                node_t* child = ram_disk_load_directory(childVolume, childName);
-                node_push(node, child);
+                ram_dir_t* child = ram_disk_load_directory(childVolume, childName);
+                node_push(&ramDir->node, &child->node);
 
                 fs_close(childVolume);
             }
@@ -70,13 +70,13 @@ static node_t* ram_disk_load_directory(EFI_FILE* volume, const char* name)
         else
         {
             ram_file_t* file = ram_disk_load_file(volume, fileInfo->FileName);
-            node_push(node, &file->node);
+            node_push(&ramDir->node, &file->node);
         }
 
         FreePool(fileInfo);
     }
 
-    return node;
+    return ramDir;
 }
 
 void ram_disk_load(ram_disk_t* disk, EFI_HANDLE imageHandle)

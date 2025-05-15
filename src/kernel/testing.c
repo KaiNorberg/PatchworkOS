@@ -8,14 +8,14 @@
 void path_all_tests(void);
 void testing_run_tests(void)
 {
-    printf("testing: running tests");
+    printf("testing: running tests\n");
     const uint64_t count = _testsEnd - _testsStart;
     for (uint64_t i = 0; i < count; i++)
     {
-        printf("testing: running %s", _testsStart[i].name);
+        printf("testing: running %s\n", _testsStart[i].name);
         ASSERT_PANIC(_testsStart[i].func() != ERR);
     }
-    printf("testing: finished tests");
+    printf("testing: finished tests\n");
 }
 
 #endif

@@ -78,7 +78,7 @@ void systime_init(void)
     systime_read_cmos_time();
     systime_rtc_init();
 
-    printf("systime: init epoch=%d", systime_unix_epoch());
+    printf("systime: init epoch=%d\n", systime_unix_epoch());
 }
 
 clock_t systime_uptime(void)
@@ -106,5 +106,5 @@ void systime_timer_init(void)
     smp_send_others(systime_timer_init_ipi);
     systime_timer_init_ipi(NULL);
 
-    printf("systime: timer_init hz=%d", CONFIG_TIMER_HZ);
+    printf("systime: timer_init hz=%d\n", CONFIG_TIMER_HZ);
 }

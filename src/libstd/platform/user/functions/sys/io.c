@@ -7,35 +7,6 @@
 #include "platform/platform.h"
 #include "platform/user/common/syscalls.h"
 
-dir_list_t* dir_alloc(const char* path)
-{
-    uint64_t amount = _SyscallDirList(path, NULL, 0);
-    if (amount == ERR)
-    {
-        return NULL;
-    }
-
-    dir_list_t* list = malloc(sizeof(dir_list_t) + sizeof(dir_entry_t) * amount);
-    if (list == NULL)
-    {
-        return NULL;
-    }
-
-    list->amount = amount;
-    if (_SyscallDirList(path, list->entries, amount) == ERR)
-    {
-        free(list);
-        return NULL;
-    }
-
-    return list;
-}
-
-uint64_t dir_list(const char* path, dir_entry_t* entries, uint64_t amount)
-{
-    return _SyscallDirList(path, entries, amount);
-}
-
 fd_t open(const char* path)
 {
     return _SyscallOpen(path);
@@ -141,8 +112,41 @@ fd_t dup2(fd_t oldFd, fd_t newFd)
     return _SyscallDup2(oldFd, newFd);
 }
 
+allocdir_t* allocdir(fd_t fd)
+{
+    uint64_t amount = _SyscallReaddir(fd, NULL, 0);
+    if (amount == ERR)
+    {
+        return NULL;
+    }
+    allocdir_t* dirs = malloc(sizeof(allocdir_t) + sizeof(stat_t) * amount);
+    if (dirs == NULL)
+    {
+        return NULL;
+    }
+
+    dirs->amount = amount;
+    if (_SyscallReaddir(fd, dirs->infos, amount) == ERR)
+    {
+        free(dirs);
+        return NULL;
+    }
+
+    return dirs;
+}
+
+uint64_t readdir(fd_t fd, stat_t* infos, uint64_t amount)
+{
+    return _SyscallReaddir(fd, infos, amount);
+}
+
 uint64_t mkdir(const char* path)
 {
-    fprintf(stderr, "mkdir not implemented");
-    return ERR;
+    fd_t fd = openf("%s?create&directory", path);
+    if (fd == ERR)
+    {
+        return ERR;
+    }
+    close(fd);
+    return 0;
 }

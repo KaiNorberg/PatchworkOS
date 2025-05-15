@@ -460,8 +460,8 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
     else
     {
         if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
-            ring_free_length(ring) >= count + sizeof(local_packet_header_t) || local_connection_closed(conn)) !=
-        WAIT_NORM)
+                ring_free_length(ring) >= count + sizeof(local_packet_header_t) || local_connection_closed(conn)) !=
+            WAIT_NORM)
         {
             lock_release(&conn->lock);
             return 0;
@@ -502,7 +502,6 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
         return ERR;
     }
 
-
     if (socket->flags & PATH_NONBLOCK)
     {
         lock_acquire(&conn->lock);
@@ -515,7 +514,7 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
     else
     {
         if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
-            ring_data_length(ring) >= sizeof(local_packet_header_t) || local_connection_closed(conn)) != WAIT_NORM)
+                ring_data_length(ring) >= sizeof(local_packet_header_t) || local_connection_closed(conn)) != WAIT_NORM)
         {
             lock_release(&conn->lock);
             return 0;

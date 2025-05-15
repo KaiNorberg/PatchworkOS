@@ -184,12 +184,12 @@ errno_t syscall_last_error(void)
     return sched_thread()->error;
 }
 
-pid_t syscall_process_id(void)
+pid_t syscall_getpid(void)
 {
     return sched_process()->id;
 }
 
-tid_t syscall_thread_id(void)
+tid_t syscall_gettid(void)
 {
     return sched_thread()->id;
 }
@@ -436,14 +436,21 @@ uint64_t syscall_mprotect(void* address, uint64_t length, prot_t prot)
     return vmm_protect(address, length, prot);
 }
 
-uint64_t syscall_dir_list(const char* path, dir_entry_t* entries, uint64_t amount)
+uint64_t syscall_readdir(fd_t fd, stat_t* infos, uint64_t amount)
 {
-    if (entries != NULL && !verify_buffer(entries, sizeof(dir_entry_t) * amount))
+    if (!verify_buffer(infos, amount * sizeof(stat_t)))
     {
         return ERROR(EFAULT);
     }
 
-    return vfs_listdir(path, entries, amount);
+    file_t* file = vfx_ctx_file(&sched_process()->vfsCtx, fd);
+    if (file == NULL)
+    {
+        return ERR;
+    }
+    FILE_DEFER(file);
+
+    return vfs_readdir(file, infos, amount);
 }
 
 tid_t syscall_thread_create(void* entry, void* arg)
@@ -485,6 +492,26 @@ uint64_t syscall_futex(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t
     return futex_do(addr, val, op, timeout);
 }
 
+uint64_t syscall_rename(const char* oldpath, const char* newpath)
+{
+    if (!verify_string(oldpath) || !verify_string(newpath))
+    {
+        return ERROR(EFAULT);
+    }
+
+    return vfs_rename(oldpath, newpath);
+}
+
+uint64_t syscall_remove(const char* path)
+{
+    if (!verify_string(path))
+    {
+        return ERROR(EFAULT);
+    }
+
+    return vfs_remove(path);
+}
+
 ///////////////////////////////////////////////////////
 
 void syscall_handler_end(void)
@@ -505,8 +532,8 @@ void* syscallTable[] = {
     syscall_spawn,
     syscall_sleep,
     syscall_last_error,
-    syscall_process_id,
-    syscall_thread_id,
+    syscall_getpid,
+    syscall_gettid,
     syscall_uptime,
     syscall_unix_epoch,
     syscall_open,
@@ -522,10 +549,12 @@ void* syscallTable[] = {
     syscall_mmap,
     syscall_munmap,
     syscall_mprotect,
-    syscall_dir_list,
+    syscall_readdir,
     syscall_thread_create,
     syscall_yield,
     syscall_dup,
     syscall_dup2,
     syscall_futex,
+    syscall_rename,
+    syscall_remove,
 };

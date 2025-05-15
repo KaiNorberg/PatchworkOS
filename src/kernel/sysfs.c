@@ -58,53 +58,110 @@ static void sysobj_deref(sysobj_t* sysobj)
     }
 }
 
-static sysobj_t* sysobj_get(const path_t* path)
+static uint64_t sysfs_readdir(file_t* file, stat_t* infos, uint64_t amount)
+{
+    RWLOCK_READ_DEFER(&lock);
+    sysdir_t* sysdir = file->private;
+
+    uint64_t index = 0;
+    uint64_t total = 0;
+
+    node_t* child;
+    LIST_FOR_EACH(child, &sysdir->node.children, entry)
+    {
+        stat_t info = {0};
+        strcpy(info.name, child->name);
+        info.type = child->type == RAMFS_FILE ? STAT_FILE : STAT_DIR;
+        info.size = 0;
+
+        readdir_push(infos, amount, &index, &total, &info);
+    }
+
+    return total;
+}
+
+static file_ops_t dirOps = {
+    .readdir = sysfs_readdir,
+};
+
+static file_t* sysfs_open(volume_t* volume, const path_t* path)
+{
+    rwlock_read_acquire(&lock);
+    node_t* node = path_traverse_node(path, &root.node);
+    if (node == NULL)
+    {
+        rwlock_read_release(&lock);
+        return ERRPTR(EPATH);
+    }
+
+    if (node->type == SYSFS_OBJ)
+    {
+        if (path->flags & PATH_DIRECTORY)
+        {
+            rwlock_read_release(&lock);
+            return ERRPTR(EISDIR);
+        }
+
+        sysobj_t* sysobj = sysobj_ref(NODE_CONTAINER(node, sysobj_t, node));
+        rwlock_read_release(&lock);
+
+        if (sysobj->ops->open == NULL)
+        {
+            sysobj_deref(sysobj);
+            return ERRPTR(ENOOP);
+        }
+
+        file_t* file = sysobj->ops->open(volume, path, sysobj);
+        if (file == NULL)
+        {
+            sysobj_deref(sysobj);
+            return NULL;
+        }
+
+        file->sysobj = sysobj;
+        return file;
+    }
+    else
+    {
+        if (!(path->flags & PATH_DIRECTORY))
+        {
+            rwlock_read_release(&lock);
+            return ERRPTR(ENOTDIR);
+        }
+
+        sysdir_t* sysdir = sysdir_ref(NODE_CONTAINER(node, sysdir_t, node));
+        rwlock_read_release(&lock);
+
+        file_t* file = file_new(volume, path, PATH_DIRECTORY);
+        if (file == NULL)
+        {
+            sysdir_deref(sysdir);
+            return NULL;
+        }
+        file->private = sysdir;
+        file->ops = &dirOps;
+
+        return file;
+    }
+}
+
+static uint64_t sysfs_open2(volume_t* volume, const path_t* path, file_t* files[2])
 {
     RWLOCK_READ_DEFER(&lock);
     node_t* node = path_traverse_node(path, &root.node);
     if (node == NULL)
     {
-        return ERRPTR(EPATH);
+        return ERROR(EPATH);
     }
     else if (node->type != SYSFS_OBJ)
     {
-        return ERRPTR(EISDIR);
+        return ERROR(EISDIR);
     }
-    return sysobj_ref(NODE_CONTAINER(node, sysobj_t, node));
-}
-
-static file_t* sysfs_open(volume_t* volume, const path_t* path)
-{
-    sysobj_t* sysobj = sysobj_get(path);
-    if (sysobj == NULL)
+    else if (path->flags & PATH_DIRECTORY)
     {
-        return NULL;
+        return ERROR(EINVAL);
     }
-
-    if (sysobj->ops->open == NULL)
-    {
-        sysobj_deref(sysobj);
-        return ERRPTR(ENOOP);
-    }
-
-    file_t* file = sysobj->ops->open(volume, path, sysobj);
-    if (file == NULL)
-    {
-        sysobj_deref(sysobj);
-        return NULL;
-    }
-
-    file->sysobj = sysobj;
-    return file;
-}
-
-static uint64_t sysfs_open2(volume_t* volume, const path_t* path, file_t* files[2])
-{
-    sysobj_t* sysobj = sysobj_get(path); // First ref
-    if (sysobj == NULL)
-    {
-        return ERR;
-    }
+    sysobj_t* sysobj = sysobj_ref(NODE_CONTAINER(node, sysobj_t, node)); // First ref
 
     if (sysobj->ops->open2 == NULL)
     {
@@ -133,57 +190,34 @@ static uint64_t sysfs_stat(volume_t* volume, const path_t* path, stat_t* stat)
         return ERROR(EPATH);
     }
 
-    stat->size = 0;
+    strcpy(stat->name, node->name);
     stat->type = node->type == SYSFS_OBJ ? STAT_FILE : STAT_DIR;
+    stat->size = 0;
 
     return 0;
 }
 
-static uint64_t sysfs_listdir(volume_t* volume, const path_t* path, dir_entry_t* entries, uint64_t amount)
-{
-    RWLOCK_READ_DEFER(&lock);
-
-    node_t* node = path_traverse_node(path, &root.node);
-    if (node == NULL)
-    {
-        return ERROR(EPATH);
-    }
-    else if (node->type == SYSFS_OBJ)
-    {
-        return ERROR(ENOTDIR);
-    }
-
-    uint64_t index = 0;
-    uint64_t total = 0;
-
-    node_t* child;
-    LIST_FOR_EACH(child, &node->children, entry)
-    {
-        dir_entry_t entry = {0};
-        strcpy(entry.name, child->name);
-        entry.type = child->type == SYSFS_OBJ ? STAT_FILE : STAT_DIR;
-
-        dir_entry_push(entries, amount, &index, &total, &entry);
-    }
-
-    return total;
-}
-
 static void sysfs_cleanup(volume_t* volume, file_t* file)
 {
-    if (file->sysobj->ops->cleanup != NULL)
+    if (file->sysobj == NULL) // Is dir
     {
-        file->sysobj->ops->cleanup(file->sysobj, file);
+        sysdir_deref(file->private);
     }
+    else
+    {
+        if (file->sysobj->ops->cleanup != NULL)
+        {
+            file->sysobj->ops->cleanup(file->sysobj, file);
+        }
 
-    sysobj_deref(file->sysobj);
+        sysobj_deref(file->sysobj);
+    }
 }
 
 static volume_ops_t volumeOps = {
     .open = sysfs_open,
     .open2 = sysfs_open2,
     .stat = sysfs_stat,
-    .listdir = sysfs_listdir,
     .cleanup = sysfs_cleanup,
 };
 
@@ -206,7 +240,7 @@ void sysfs_init(void)
 
     rwlock_init(&lock);
 
-    printf("sysfs: init");
+    printf("sysfs: init\n");
 }
 
 void sysfs_mount_to_vfs(void)

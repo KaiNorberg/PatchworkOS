@@ -69,7 +69,7 @@ void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gop
     lock_init(&kernelLock);
     vmm_load_memory_map(memoryMap);
 
-    printf("vmm: kernel phys=[0x%016lx-0x%016lx] virt=[0x%016lx-0x%016lx]", kernel->physStart,
+    printf("vmm: kernel phys=[0x%016lx-0x%016lx] virt=[0x%016lx-0x%016lx]\n", kernel->physStart,
         kernel->physStart + kernel->length, kernel->virtStart, kernel->virtStart + kernel->length);
 
     uint64_t result = pml_map(kernelPml, kernel->virtStart, kernel->physStart, SIZE_IN_PAGES(kernel->length),
@@ -79,9 +79,9 @@ void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gop
         log_panic(NULL, "Failed to map kernel");
     }
 
-    printf("vmm: loading pml 0x%016lx", kernelPml);
+    printf("vmm: loading pml 0x%016lx\n", kernelPml);
     pml_load(kernelPml);
-    printf("vmm: pml loaded");
+    printf("vmm: pml loaded\n");
 
     gopBuffer->base = vmm_kernel_map(NULL, gopBuffer->base, gopBuffer->size);
     if (gopBuffer->base == NULL)
@@ -94,7 +94,7 @@ void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gop
 
 void vmm_cpu_init(void)
 {
-    printf("vmm: global page enable");
+    printf("vmm: global page enable\n");
     cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);
 }
 
@@ -159,19 +159,19 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t length)
     if (virtAddr == NULL)
     {
         virtAddr = VMM_LOWER_TO_HIGHER(physAddr);
-        printf("vmm: map lower [0x%016lx-0x%016lx] to higher", physAddr, ((uintptr_t)physAddr) + length);
+        printf("vmm: map lower [0x%016lx-0x%016lx] to higher\n", physAddr, ((uintptr_t)physAddr) + length);
     }
 
     if (!pml_region_unmapped(kernelPml, virtAddr, SIZE_IN_PAGES(length)))
     {
-        printf("vmm_kernel_map: already mapped");
+        printf("vmm_kernel_map: already mapped\n");
         return ERRPTR(EEXIST);
     }
 
     uint64_t result = pml_map(kernelPml, virtAddr, physAddr, SIZE_IN_PAGES(length), PAGE_WRITE | VMM_KERNEL_PAGES);
     if (result == ERR)
     {
-        printf("vmm: failed to map kernel memory");
+        printf("vmm: failed to map kernel memory\n");
         return NULL;
     }
 

@@ -109,7 +109,7 @@ void smp_init_others(void)
     uint8_t lapicId = lapic_id();
 
     cpus[0]->lapicId = lapicId;
-    printf("cpu %d: bootstrap cpu, ready", (uint64_t)cpus[0]->id);
+    printf("cpu %d: bootstrap cpu, ready\n", (uint64_t)cpus[0]->id);
 
     madt_t* madt = madt_get();
     madt_lapic_t* record;
@@ -147,7 +147,7 @@ void smp_entry(void)
 
     vmm_cpu_init();
 
-    printf("cpu %d: ready", (uint64_t)cpu->id);
+    printf("cpu %d: ready\n", (uint64_t)cpu->id);
     cpuReady = true;
     sched_idle_loop();
 }

@@ -161,12 +161,12 @@ static void sched_spawn_boot_thread(void)
 
     smp_self_unsafe()->sched.runThread = thread;
 
-    printf("sched: spawned boot thread");
+    printf("sched: spawned boot thread\n");
 }
 
 void sched_init(void)
 {
-    printf("sched: init");
+    printf("sched: init\n");
     sched_spawn_boot_thread();
 
     wait_queue_init(&sleepQueue);
@@ -216,7 +216,7 @@ void sched_process_exit(uint64_t status)
     sched_ctx_t* ctx = &smp_self()->sched;
     atomic_store(&ctx->runThread->dead, true);
     atomic_store(&ctx->runThread->process->dead, true);
-    printf("sched: process_exit pid=%d", ctx->runThread->process->id);
+    printf("sched: process_exit pid=%d\n", ctx->runThread->process->id);
     smp_put();
 
     sched_invoke();

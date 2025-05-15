@@ -32,6 +32,8 @@ static uint64_t posY;
 
 static bool screenEnabled;
 static bool timeEnabled;
+static bool lastCharWasNewline;
+
 static atomic_bool panicking;
 
 static lock_t lock;
@@ -172,20 +174,12 @@ static void log_draw_char(char chr)
     }
 }
 
-static void log_draw_string(const char* str)
-{
-    while (*str != '\0')
-    {
-        log_draw_char(*str);
-        str++;
-    }
-}
-
 void log_init(void)
 {
     ring_init(&ring, ringBuffer, LOG_BUFFER_LENGTH);
     screenEnabled = false;
     timeEnabled = false;
+    lastCharWasNewline = false;
     lock_init(&lock);
     atomic_init(&panicking, false);
     gop.base = NULL;
@@ -194,8 +188,8 @@ void log_init(void)
     com_init(COM1);
 #endif
 
-    printf(OS_NAME " - " OS_VERSION "");
-    printf("Licensed under MIT. See home:/usr/license/LICENSE.");
+    printf(OS_NAME " - " OS_VERSION "\n");
+    printf("Licensed under MIT. See home:/usr/license/LICENSE.\n");
 }
 
 static uint64_t log_read(file_t* file, void* buffer, uint64_t count)
@@ -221,7 +215,7 @@ static uint64_t log_write(file_t* file, const void* buffer, uint64_t count)
     for (uint64_t i = 0; i < count; i++)
     {
         char chr = ((char*)buffer)[i];
-        string[i] = chr != '\n' ? chr : ' ';
+        string[i] = chr;
     }
     string[count] = '\0';
     printf(string);
@@ -236,13 +230,13 @@ SYSFS_STANDARD_OPS_DEFINE(klogOps, PATH_NONE,
 
 void log_expose(void)
 {
-    printf("log: expose");
+    printf("log: expose\n");
     sysobj_new("/", "klog", &klogOps, NULL);
 }
 
 void log_enable_screen(gop_buffer_t* gopBuffer)
 {
-    printf("log: enable screen");
+    printf("log: enable screen\n");
     LOCK_DEFER(&lock);
 
     if (gopBuffer != NULL)
@@ -262,7 +256,7 @@ void log_disable_screen(void)
 {
     if (screenEnabled)
     {
-        printf("log: disable screen");
+        printf("log: disable screen\n");
         screenEnabled = false;
     }
 }
@@ -278,6 +272,42 @@ bool log_time_enabled(void)
     return timeEnabled;
 }
 
+static void log_put(char ch)
+{
+    if (lastCharWasNewline)
+    {
+        lastCharWasNewline = false;
+        char buffer[MAX_PATH];
+        clock_t time = log_time_enabled() ? systime_uptime() : 0;
+        clock_t sec = time / CLOCKS_PER_SEC;
+        clock_t ms = (time % CLOCKS_PER_SEC) / (CLOCKS_PER_SEC / 1000);
+        sprintf(buffer, "[%10llu.%03llu] ", sec, ms);
+
+        char* ptr = buffer;
+        while (*ptr != '\0')
+        {
+            log_put(*ptr);
+            ptr++;
+        }
+    }
+
+#if CONFIG_LOG_SERIAL
+    com_write(COM1, ch);
+#endif
+
+    ring_write(&ring, &ch, 1);
+
+    if (ch == '\n')
+    {
+        lastCharWasNewline = true;
+    }
+
+    if (screenEnabled)
+    {
+        log_draw_char(ch);
+    }
+}
+
 void log_print(const char* str)
 {
     ASSERT_PANIC(strlen(str) < LOG_MAX_LINE);
@@ -287,17 +317,8 @@ void log_print(const char* str)
     const char* ptr = str;
     while (*ptr != '\0')
     {
-#if CONFIG_LOG_SERIAL
-        com_write(COM1, *ptr);
-#endif
-
-        ring_write(&ring, ptr, 1);
+        log_put(*ptr);
         ptr++;
-    }
-
-    if (screenEnabled)
-    {
-        log_draw_string(str);
     }
 }
 
@@ -322,64 +343,64 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
     char bigString[MAX_PATH];
     strcpy(bigString, "!!! KERNEL PANIC - ");
     strcat(bigString, string);
-    strcat(bigString, " !!!");
+    strcat(bigString, " !!!\n");
     va_list args;
     va_start(args, string);
     vprintf(bigString, args);
     va_end(args);
 
     // System ctx
-    printf("[SYSTEM STATE]");
+    printf("[SYSTEM STATE]\n");
     thread_t* thread = sched_thread();
     if (thread != NULL)
     {
-        printf("thread: cpu=%d pid=%d tid=%d", smp_self_unsafe()->id, thread->process->id, thread->id);
+        printf("thread: cpu=%d pid=%d tid=%d\n", smp_self_unsafe()->id, thread->process->id, thread->id);
     }
     else
     {
-        printf("thread: CPU=%d IDLE", smp_self_unsafe()->id);
+        printf("thread: CPU=%d IDLE\n", smp_self_unsafe()->id);
     }
 
-    printf("memory: free=%dKB reserved=%dKB", (pmm_free_amount() * PAGE_SIZE) / 1024,
+    printf("memory: free=%dKB reserved=%dKB\n", (pmm_free_amount() * PAGE_SIZE) / 1024,
         (pmm_reserved_amount() * PAGE_SIZE) / 1024);
-    printf("control regs: cr0=0x%016lx cr2=0x%016lx cr3=0x%016lx cr4=0x%016lx", cr0_read(), cr2_read(), cr3_read(),
+    printf("control regs: cr0=0x%016lx cr2=0x%016lx cr3=0x%016lx cr4=0x%016lx\n", cr0_read(), cr2_read(), cr3_read(),
         cr4_read());
 
     if (trapFrame)
     {
-        printf("[TRAP FRAME]");
-        printf("vector=0x%02lx error=0x%016lx", trapFrame->vector, trapFrame->errorCode);
-        printf("rflags=0x%016lx", trapFrame->rflags);
-        printf("rip=0x%016lx cs =%04lx", trapFrame->rip, trapFrame->cs);
-        printf("rsp=0x%016lx ss =%04lx", trapFrame->rsp, trapFrame->ss);
-        printf("rax=0x%016lx rbx=0x%016lx rcx=0x%016lx rdx=0x%016lx", trapFrame->rax, trapFrame->rbx, trapFrame->rcx,
+        printf("[TRAP FRAME]\n");
+        printf("vector=0x%02lx error=0x%016lx\n", trapFrame->vector, trapFrame->errorCode);
+        printf("rflags=0x%016lx\n", trapFrame->rflags);
+        printf("rip=0x%016lx cs =%04lx\n", trapFrame->rip, trapFrame->cs);
+        printf("rsp=0x%016lx ss =%04lx\n", trapFrame->rsp, trapFrame->ss);
+        printf("rax=0x%016lx rbx=0x%016lx rcx=0x%016lx rdx=0x%016lx\n", trapFrame->rax, trapFrame->rbx, trapFrame->rcx,
             trapFrame->rdx);
-        printf("rsi=0x%016lx rdi=0x%016lx rbp=0x%016lx", trapFrame->rsi, trapFrame->rdi, trapFrame->rbp);
-        printf("r8 =0x%016lx r9 =0x%016lx r10=0x%016lx r11=0x%016lx", trapFrame->r8, trapFrame->r9, trapFrame->r10,
+        printf("rsi=0x%016lx rdi=0x%016lx rbp=0x%016lx\n", trapFrame->rsi, trapFrame->rdi, trapFrame->rbp);
+        printf("r8 =0x%016lx r9 =0x%016lx r10=0x%016lx r11=0x%016lx\n", trapFrame->r8, trapFrame->r9, trapFrame->r10,
             trapFrame->r11);
-        printf("r12=0x%016lx r13=0x%016lx r14=0x%016lx r15=0x%016lx", trapFrame->r12, trapFrame->r13, trapFrame->r14,
+        printf("r12=0x%016lx r13=0x%016lx r14=0x%016lx r15=0x%016lx\n", trapFrame->r12, trapFrame->r13, trapFrame->r14,
             trapFrame->r15);
     }
 
-    printf("[STACK TRACE]");
+    printf("[STACK TRACE]\n");
     void* frame = __builtin_frame_address(0);
     uint64_t frameNum = 0;
     while (frame != NULL && frameNum < 64)
     {
         if ((uintptr_t)frame & 0x7)
         {
-            printf("[MISALIGNED FRAME: 0x%016lx]", (uintptr_t)frame);
+            printf("[MISALIGNED FRAME: 0x%016lx]\n", (uintptr_t)frame);
             break;
         }
 
         void* returnAddr = *((void**)frame + 1);
         if (returnAddr != NULL && (returnAddr >= (void*)&_kernelStart && returnAddr < (void*)&_kernelEnd))
         {
-            printf("#%02d: [0x%016lx]", frameNum, returnAddr);
+            printf("#%02d: [0x%016lx]\n", frameNum, returnAddr);
         }
         else
         {
-            printf("[STACK TRACE END: 0x%016lx]", returnAddr);
+            printf("[STACK TRACE END: 0x%016lx]\n", returnAddr);
             break;
         }
 
@@ -387,7 +408,7 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
         frameNum++;
     }
 
-    printf("!!! KERNEL PANIC END - Please restart your machine !!!");
+    printf("!!! KERNEL PANIC END - Please restart your machine !!!\n");
     while (1)
     {
         asm volatile("hlt");

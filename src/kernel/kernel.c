@@ -44,7 +44,7 @@ static void kernel_free_loader_data(efi_mem_map_t* memoryMap)
         if (desc->type == EFI_LOADER_DATA)
         {
             pmm_free_pages(VMM_LOWER_TO_HIGHER(desc->physicalStart), desc->amountOfPages);
-            printf("loader data: free [0x%016lx-0x%016lx]", desc->physicalStart,
+            printf("loader data: free [0x%016lx-0x%016lx]\n", desc->physicalStart,
                 ((uintptr_t)desc->physicalStart) + desc->amountOfPages * PAGE_SIZE);
         }
     }

@@ -51,7 +51,7 @@ uint64_t _SyscallMunmap(void* address, uint64_t length);
 
 uint64_t _SyscallMprotect(void* address, uint64_t length, prot_t prot);
 
-uint64_t _SyscallDirList(const char* path, dir_entry_t* entries, uint64_t amount);
+uint64_t _SyscallReaddir(fd_t, stat_t* infos, uint64_t amount);
 
 tid_t _SyscallThreadCreate(void* entry, void* arg);
 
@@ -62,3 +62,7 @@ fd_t _SyscallDup(fd_t oldFd);
 fd_t _SyscallDup2(fd_t oldFd, fd_t newFd);
 
 uint64_t _SyscallFutex(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t timeout);
+
+uint64_t _SyscallRename(const char* oldpath, const char* newpath);
+
+uint64_t _SyscallRemove(const char* path);

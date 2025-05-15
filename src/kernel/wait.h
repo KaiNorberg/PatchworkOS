@@ -83,7 +83,6 @@ typedef struct cpu cpu_t;
 
 typedef struct wait_queue
 {
-    lock_t lock;
     list_t entries;
 } wait_queue_t;
 
@@ -118,7 +117,6 @@ typedef struct
 {
     list_t blockedThreads;
     list_t parkedThreads;
-    lock_t lock;
 } wait_cpu_ctx_t;
 
 void wait_queue_init(wait_queue_t* waitQueue);

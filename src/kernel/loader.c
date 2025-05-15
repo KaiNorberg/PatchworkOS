@@ -125,14 +125,14 @@ static void loader_process_entry(void)
     void* rsp = loader_alloc_stack(thread);
     if (rsp == NULL)
     {
-        printf("loader: alloc_stack failure pid=%d", thread->process->id);
+        printf("loader: alloc_stack failure pid=%d\n", thread->process->id);
         sched_process_exit(EEXEC);
     }
 
     void* rip = loader_load_program(thread);
     if (rip == NULL)
     {
-        printf("loader: load_program failure pid=%d", thread->process->id);
+        printf("loader: load_program failure pid=%d\n", thread->process->id);
         sched_process_exit(EEXEC);
     }
 
@@ -173,7 +173,7 @@ thread_t* loader_spawn(const char** argv, priority_t priority)
         return NULL;
     }
 
-    printf("loader: spawn path=%s pid=%d", argv[0], thread->process->id);
+    printf("loader: spawn path=%s pid=%d\n", argv[0], thread->process->id);
     return thread;
 }
 

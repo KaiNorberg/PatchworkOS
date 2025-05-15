@@ -38,8 +38,9 @@ int* _ErrnoFunc(void);
 #define ENOOP 24       // Operation not defined
 #define EWOULDBLOCK 25 // Would block
 #define EBUSY 26       // Busy
+#define EXDEV 27       // Cross-device link
 
-#define ERROR_MAX 27
+#define ERROR_MAX 28
 
 #if _USE_ANNEX_K == 1
 #include "_AUX/errno_t.h"

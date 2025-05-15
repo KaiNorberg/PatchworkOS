@@ -5,6 +5,7 @@
 #include "sched.h"
 #include "sysfs.h"
 #include "vfs.h"
+#include "view.h"
 
 #include <bootloader/boot_info.h>
 
@@ -14,97 +15,286 @@
 #include <sys/list.h>
 #include <sys/math.h>
 
-static node_t* root;
+static ram_dir_t* root;
+static lock_t lock;
 
-static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count)
+static uint64_t ramfs_readdir(file_t* file, stat_t* infos, uint64_t amount)
 {
-    ram_file_t* private = file->private;
-
-    return BUFFER_READ(file, buffer, count, private->data, private->size);
-}
-
-static uint64_t ramfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
-{
-    ram_file_t* private = file->private;
-
-    return BUFFER_SEEK(file, offset, origin, private->size);
-}
-
-static file_ops_t fileOps = {
-    .read = ramfs_read,
-    .seek = ramfs_seek,
-};
-
-static file_t* ramfs_open(volume_t* volume, const path_t* path)
-{
-    node_t* node = path_traverse_node(path, root);
-    if (node == NULL)
-    {
-        return ERRPTR(EPATH);
-    }
-    else if (node->type == RAMFS_DIR)
-    {
-        return ERRPTR(EISDIR);
-    }
-    ram_file_t* ramFile = (ram_file_t*)node;
-
-    file_t* file = file_new(volume, path, PATH_NONE);
-    if (file == NULL)
-    {
-        return NULL;
-    }
-    file->ops = &fileOps;
-    file->private = ramFile;
-
-    return file;
-}
-
-static uint64_t ramfs_stat(volume_t* volume, const path_t* path, stat_t* stat)
-{
-    node_t* node = path_traverse_node(path, root);
-    if (node == NULL)
-    {
-        return ERROR(EPATH);
-    }
-
-    stat->size = 0;
-    stat->type = node->type == RAMFS_FILE ? STAT_FILE : STAT_DIR;
-
-    return 0;
-}
-
-static uint64_t ramfs_listdir(volume_t* volume, const path_t* path, dir_entry_t* entries, uint64_t amount)
-{
-    node_t* node = path_traverse_node(path, root);
-    if (node == NULL)
-    {
-        return ERROR(EPATH);
-    }
-    else if (node->type == SYSFS_OBJ)
-    {
-        return ERROR(ENOTDIR);
-    }
+    LOCK_DEFER(&lock);
+    ram_dir_t* ramDir = NODE_CONTAINER(file->private, ram_dir_t, node);
 
     uint64_t index = 0;
     uint64_t total = 0;
 
     node_t* child;
-    LIST_FOR_EACH(child, &node->children, entry)
+    LIST_FOR_EACH(child, &ramDir->node.children, entry)
     {
-        dir_entry_t entry = {0};
-        strcpy(entry.name, child->name);
-        entry.type = child->type == SYSFS_OBJ ? STAT_FILE : STAT_DIR;
+        stat_t info = {0};
+        strcpy(info.name, child->name);
+        info.type = child->type == RAMFS_FILE ? STAT_FILE : STAT_DIR;
+        info.size = 0;
 
-        dir_entry_push(entries, amount, &index, &total, &entry);
+        readdir_push(infos, amount, &index, &total, &info);
     }
 
     return total;
 }
 
+static file_ops_t dirOps = {
+    .readdir = ramfs_readdir,
+};
+
+static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count)
+{
+    LOCK_DEFER(&lock);
+    ram_file_t* ramFile = NODE_CONTAINER(file->private, ram_file_t, node);
+
+    return BUFFER_READ(file, buffer, count, ramFile->data, ramFile->size);
+}
+
+static uint64_t ramfs_write(file_t* file, const void* buffer, uint64_t count)
+{
+    LOCK_DEFER(&lock);
+    ram_file_t* ramFile = NODE_CONTAINER(file->private, ram_file_t, node);
+
+    if (file->flags & PATH_APPEND)
+    {
+        file->pos = ramFile->size;
+    }
+
+    if (file->pos + count >= ramFile->size)
+    {
+        void* newData = realloc(ramFile->data, file->pos + count);
+        if (newData == NULL)
+        {
+            return ERR;
+        }
+        memset(newData + ramFile->size, 0, file->pos + count - ramFile->size);
+        ramFile->data = newData;
+        ramFile->size = file->pos + count;
+    }
+
+    memcpy(ramFile->data + file->pos, buffer, count);
+    file->pos += count;
+    return 0;
+}
+
+static uint64_t ramfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
+{
+    LOCK_DEFER(&lock);
+    ram_file_t* ramFile = NODE_CONTAINER(file->private, ram_file_t, node);
+
+    return BUFFER_SEEK(file, offset, origin, ramFile->size);
+}
+
+static file_ops_t fileOps = {
+    .read = ramfs_read,
+    .write = ramfs_write,
+    .seek = ramfs_seek,
+};
+
+static file_t* ramfs_open(volume_t* volume, const path_t* path)
+{
+    LOCK_DEFER(&lock);
+
+    node_t* node = path_traverse_node(path, &root->node);
+    if (node == NULL)
+    {
+        if (!(path->flags & PATH_CREATE))
+        {
+            return ERRPTR(EPATH);
+        }
+
+        const char* filename = path_last_name(path);
+        if (filename == NULL)
+        {
+            return ERRPTR(EPATH);
+        }
+        node_t* parent = path_traverse_node_parent(path, &root->node);
+        if (parent == NULL)
+        {
+            return ERRPTR(EPATH);
+        }
+
+        if (path->flags & PATH_DIRECTORY)
+        {
+            ram_file_t* ramDir = malloc(sizeof(ram_dir_t));
+            if (ramDir == NULL)
+            {
+                return NULL;
+            }
+            node_init(&ramDir->node, filename, RAMFS_DIR);
+            ramDir->openedAmount = 0;
+            node_push(parent, &ramDir->node);
+
+            node = &ramDir->node;
+        }
+        else
+        {
+            ram_file_t* ramFile = malloc(sizeof(ram_file_t));
+            if (ramFile == NULL)
+            {
+                return NULL;
+            }
+            node_init(&ramFile->node, filename, RAMFS_FILE);
+            ramFile->size = 0;
+            ramFile->data = NULL;
+            ramFile->openedAmount = 0;
+            node_push(parent, &ramFile->node);
+
+            node = &ramFile->node;
+        }
+    }
+    else if ((path->flags & PATH_CREATE) && (path->flags & PATH_EXCLUSIVE))
+    {
+        return ERRPTR(EEXIST);
+    }
+    else if ((path->flags & PATH_DIRECTORY) && node->type != RAMFS_DIR)
+    {
+        return ERRPTR(ENOTDIR);
+    }
+    else if (!(path->flags & PATH_DIRECTORY) && node->type != RAMFS_FILE)
+    {
+        return ERRPTR(EISDIR);
+    }
+
+    file_t* file = file_new(volume, path, PATH_CREATE | PATH_EXCLUSIVE | PATH_APPEND | PATH_TRUNCATE | PATH_DIRECTORY);
+    if (file == NULL)
+    {
+        return NULL;
+    }
+    file->private = node;
+
+    if (node->type == RAMFS_FILE)
+    {
+        ram_file_t* ramFile = NODE_CONTAINER(node, ram_file_t, node);
+        ramFile->openedAmount++;
+
+        file->ops = &fileOps;
+        if (path->flags & PATH_TRUNCATE)
+        {
+            free(ramFile->data);
+            ramFile->data = NULL;
+            ramFile->size = 0;
+        }
+    }
+    else
+    {
+        ram_dir_t* ramDir = NODE_CONTAINER(node, ram_dir_t, node);
+        ramDir->openedAmount++;
+        file->ops = &dirOps;
+    }
+
+    return file;
+}
+
+static void ramfs_cleanup(volume_t* volume, file_t* file)
+{
+    LOCK_DEFER(&lock);
+
+    node_t* node = file->private;
+
+    if (node->type == RAMFS_FILE)
+    {
+        ram_file_t* ramFile = NODE_CONTAINER(node, ram_file_t, node);
+        ramFile->openedAmount--;
+    }
+    else
+    {
+        ram_dir_t* ramDir = NODE_CONTAINER(node, ram_dir_t, node);
+        ramDir->openedAmount--;
+    }
+}
+
+static uint64_t ramfs_stat(volume_t* volume, const path_t* path, stat_t* stat)
+{
+    LOCK_DEFER(&lock);
+
+    node_t* node = path_traverse_node(path, &root->node);
+    if (node == NULL)
+    {
+        return ERROR(EPATH);
+    }
+
+    strcpy(stat->name, node->name);
+    stat->type = node->type == RAMFS_FILE ? STAT_FILE : STAT_DIR;
+    stat->size = 0;
+
+    return 0;
+}
+
+static uint64_t ramfs_rename(volume_t* volume, const path_t* oldpath, const path_t* newpath)
+{
+    LOCK_DEFER(&lock);    
+    
+    node_t* node = path_traverse_node(oldpath, &root->node);
+    if (node == NULL || node == &root->node)
+    {
+        return ERROR(EPATH);
+    }
+
+    node_t* dest = path_traverse_node_parent(newpath, &root->node);
+    if (dest == NULL)
+    {
+        return ERROR(EPATH);
+    }
+    else if (dest->type != RAMFS_DIR)
+    {
+        return ERROR(ENOTDIR);
+    }
+
+    const char* newName = path_last_name(newpath);
+    if (newName == NULL)
+    {
+        return ERROR(EPATH);
+    }
+    strcpy(node->name, newName);
+    node_remove(node);
+    node_push(dest, node);
+    return 0;
+}
+
+static uint64_t ramfs_remove(volume_t* volume, const path_t* path)
+{
+    LOCK_DEFER(&lock);
+
+    node_t* node = path_traverse_node(path, &root->node);
+    if (node == NULL)
+    {
+        return ERROR(EPATH);
+    }
+
+    if (node->type == RAMFS_FILE)
+    {
+        ram_file_t* ramFile = NODE_CONTAINER(node, ram_file_t, node);
+        if (ramFile->openedAmount != 0)
+        {
+            return ERROR(EBUSY);
+        }
+        node_remove(&ramFile->node);
+        free(ramFile->data);
+        free(ramFile);
+    }
+    else
+    {
+        ram_dir_t* ramDir = NODE_CONTAINER(node, ram_dir_t, node);
+        if (ramDir->openedAmount != 0 || ramDir->node.childAmount != 0)
+        {
+            return ERROR(EBUSY);
+        }
+        node_remove(&ramDir->node);
+        free(ramDir);
+    }
+
+    return 0;
+}
+
 static volume_ops_t volumeOps = {
     .open = ramfs_open,
+    .cleanup = ramfs_cleanup,
     .stat = ramfs_stat,
-    .listdir = ramfs_listdir,
+    .rename = ramfs_rename,
+    .remove = ramfs_remove,
 };
 
 static uint64_t ramfs_mount(const char* label)
@@ -117,42 +307,44 @@ static fs_t ramfs = {
     .mount = ramfs_mount,
 };
 
-static node_t* ramfs_load_dir(node_t* in)
+static ram_dir_t* ramfs_load_dir(ram_dir_t* in)
 {
-    node_t* node = malloc(sizeof(node_t));
-    node_init(node, in->name, RAMFS_DIR);
+    ram_dir_t* newDir = malloc(sizeof(ram_dir_t));
+    node_init(&newDir->node, in->node.name, RAMFS_DIR);
+    newDir->openedAmount = 0;
 
-    node_t* inChild;
-    LIST_FOR_EACH(inChild, &in->children, entry)
+    node_t* child;
+    LIST_FOR_EACH(child, &in->node.children, entry)
     {
-        if (inChild->type == RAMFS_DIR)
+        if (child->type == RAMFS_DIR)
         {
-            node_t* inDir = (node_t*)inChild;
+            ram_dir_t* dir = NODE_CONTAINER(child, ram_dir_t, node);
 
-            node_t* outDir = ramfs_load_dir(inDir);
-            node_push(node, outDir);
+            node_push(&newDir->node, &ramfs_load_dir(dir)->node);
         }
-        else if (inChild->type == RAMFS_FILE)
+        else if (child->type == RAMFS_FILE)
         {
-            ram_file_t* inFile = (ram_file_t*)inChild;
+            ram_file_t* file = NODE_CONTAINER(child, ram_file_t, node);
 
-            ram_file_t* outFile = malloc(sizeof(ram_file_t));
-            node_init(&outFile->node, inFile->node.name, RAMFS_FILE);
-            outFile->size = inFile->size;
-            outFile->data = malloc(outFile->size);
-            memcpy(outFile->data, inFile->data, outFile->size);
+            ram_file_t* newFile = malloc(sizeof(ram_file_t));
+            node_init(&newFile->node, file->node.name, RAMFS_FILE);
+            newFile->size = file->size;
+            newFile->data = malloc(newFile->size);
+            memcpy(newFile->data, file->data, newFile->size);
+            newFile->openedAmount = 0;
 
-            node_push(node, &outFile->node);
+            node_push(&newDir->node, &newFile->node);
         }
     }
 
-    return node;
+    return newDir;
 }
 
 void ramfs_init(ram_disk_t* disk)
 {
     root = ramfs_load_dir(disk->root);
     ASSERT_PANIC(vfs_mount("home", &ramfs) != ERR);
+    lock_init(&lock);
 
-    printf("ramfs: init");
+    printf("ramfs: init\n");
 }

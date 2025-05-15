@@ -77,11 +77,27 @@ static const char* path_parse_flags(path_t* path, const char* src)
         {
             path->flags |= PATH_APPEND;
         }
+        else if (flag_compare("create", flag, flagLength))
+        {
+            path->flags |= PATH_CREATE;
+        }
+        else if (flag_compare("excl", flag, flagLength))
+        {
+            path->flags |= PATH_EXCLUSIVE;
+        }
+        else if (flag_compare("trunc", flag, flagLength))
+        {
+            path->flags |= PATH_TRUNCATE;
+        }
+        else if (flag_compare("directory", flag, flagLength))
+        {
+            path->flags |= PATH_DIRECTORY;
+        }
         else
         {
             return ERRPTR(EPATH);
-        }        
-        
+        }
+
         flag += flagLength;
         if (flag[0] == '\0')
         {
@@ -95,7 +111,7 @@ static const char* path_parse_flags(path_t* path, const char* src)
         {
             return ERRPTR(EPATH);
         }
-    }    
+    }
 }
 
 static const char* path_parse_names(path_t* path, const char* src)
@@ -134,7 +150,7 @@ static const char* path_parse_names(path_t* path, const char* src)
 
             memcpy(&path->buffer[path->bufferLength], name, nameLength);
             path->bufferLength += nameLength;
-            
+
             path->buffer[path->bufferLength] = '\0';
             path->bufferLength++;
         }
@@ -146,7 +162,7 @@ static const char* path_parse_names(path_t* path, const char* src)
             {
                 return ERRPTR(EPATH);
             }
-        
+
             path->buffer[path->bufferLength] = '\3';
             return name[0] == '\0' ? name : name + 1;
         }
@@ -203,7 +219,7 @@ static const char* path_determine_type(path_t* path, const char* string, path_t*
         memcpy(path->volume, string, volumeLength);
         path->volume[volumeLength] = '\0';
 
-        return string + volumeLength + 2;
+        return string[volumeLength + 1] == PATH_NAME_SEPARATOR ? string + volumeLength + 2 : string + volumeLength + 1;
     }
     else // Relative path
     {
@@ -224,7 +240,7 @@ static const char* path_determine_type(path_t* path, const char* string, path_t*
 uint64_t path_init(path_t* path, const char* string, path_t* cwd)
 {
     path->volume[0] = '\0';
-    path->buffer[0] = '\0';
+    path->buffer[0] = '\3';
     path->bufferLength = 0;
     path->flags = 0;
 
@@ -232,6 +248,11 @@ uint64_t path_init(path_t* path, const char* string, path_t* cwd)
     if (string == NULL)
     {
         return ERR;
+    }
+
+    if (string[0] == '\0')
+    {
+        return 0;
     }
 
     string = path_parse_names(path, string);
@@ -296,6 +317,35 @@ node_t* path_traverse_node(const path_t* path, node_t* node)
     return node;
 }
 
+node_t* path_traverse_node_parent(const path_t* path, node_t* node)
+{
+    if (path->bufferLength == 0 || path->buffer[0] == '\3')
+    {
+        return NULL;
+    }
+
+    node_t* previous = node;
+    const char* name;
+    PATH_FOR_EACH(name, path)
+    {
+        const char* next = name + strlen(name) + 1;
+        if (next[0] == '\3')
+        {
+            return previous;
+        }
+
+        node_t* child = node_find(previous, name);
+        if (child == NULL)
+        {
+            return NULL;
+        }
+
+        previous = child;
+    }
+
+    return previous;
+}
+
 bool path_valid_name(const char* name)
 {
     const char* chr = name;
@@ -308,6 +358,23 @@ bool path_valid_name(const char* name)
         chr++;
     }
     return true;
+}
+
+char* path_last_name(const path_t* path)
+{
+    if (path->bufferLength == 0 || path->buffer[0] == '\3')
+    {
+        return NULL;
+    }
+
+    char* last = NULL;
+    const char* name;
+    PATH_FOR_EACH(name, path)
+    {
+        last = (char*)name;
+    }
+
+    return last;
 }
 
 #ifdef TESTING
@@ -331,9 +398,10 @@ static uint64_t path_test(const char* cwdStr, const char* testPath, const char* 
     {
         if (expectedResult != NULL)
         {
-            printf("failed: unexpectedly returned error, cwd=\"%s\" path=\"%s\"", cwdStr != NULL ? cwdStr : "NULL",
+            printf("failed: unexpectedly returned error, cwd=\"%s\" path=\"%s\"\n", cwdStr != NULL ? cwdStr : "NULL",
                 testPath);
-            while (1);
+            while (1)
+                ;
             return ERR;
         }
         return 0;
@@ -344,9 +412,10 @@ static uint64_t path_test(const char* cwdStr, const char* testPath, const char* 
 
     if (strcmp(parsedPath, expectedResult) != 0)
     {
-        printf("failed: cwd=\"%s\" parsed_cwd=\"%s\" path=\"%s\" expected=\"%s\" result=\"%s\"", cwdStr != NULL ? cwdStr : "NULL", parsedCwd,
-            testPath, expectedResult, parsedPath);
-        while (1);
+        printf("failed: cwd=\"%s\" parsed_cwd=\"%s\" path=\"%s\" expected=\"%s\" result=\"%s\"\n",
+            cwdStr != NULL ? cwdStr : "NULL", parsedCwd, testPath, expectedResult, parsedPath);
+        while (1)
+            ;
         return ERR;
     }
 
@@ -354,7 +423,7 @@ static uint64_t path_test(const char* cwdStr, const char* testPath, const char* 
 }
 
 TESTING_REGISTER_TEST(path_all_tests)
-{        
+{
     uint64_t result = 0;
 
     for (uint64_t i = 0; i < 10; i++)
@@ -373,11 +442,12 @@ TESTING_REGISTER_TEST(path_all_tests)
         result |= path_test("usr:/lib", "sys:/proc", "sys:/proc");
         result |= path_test("usr:/lib", "", "usr:/lib");
         result |= path_test("usr:/lib", "/", "usr:/");
+        result |= path_test("data:/users/admin", "documents///photos//vacation/",
+            "data:/users/admin/documents/photos/vacation");
+        result |= path_test("data:/users/admin", "./downloads/../documents/./reports/../../photos",
+            "data:/users/admin/photos");
         result |=
-            path_test("data:/users/admin", "documents///photos//vacation/", "data:/users/admin/documents/photos/vacation");
-        result |=
-            path_test("data:/users/admin", "./downloads/../documents/./reports/../../photos", "data:/users/admin/photos");
-        result |= path_test("data:/users/admin", "notes/report (2023).txt", "data:/users/admin/notes/report (2023).txt");
+            path_test("data:/users/admin", "notes/report (2023).txt", "data:/users/admin/notes/report (2023).txt");
         result |= path_test("data:/users/admin", "bad|file?name", NULL);
         result |= path_test(NULL, "relative/path", NULL);
         result |= path_test("data:/users/admin", "bad:volume/path", NULL);
@@ -401,9 +471,9 @@ TESTING_REGISTER_TEST(path_all_tests)
 
         clock_t end = systime_uptime();
 
-        printf("time taken: %d", (end - start) / 1000);
+        printf("time taken: %d\n", (end - start) / 1000);
     }
-    
+
     return result;
 }
 

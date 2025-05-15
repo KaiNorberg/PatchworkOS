@@ -77,12 +77,12 @@ _SyscallError:
 
 global _SyscallProcessId
 _SyscallProcessId:
-    SYSTEM_CALL SYS_PROCESS_ID
+    SYSTEM_CALL SYS_GETPID
     ret
 
 global _SyscallThreadId
 _SyscallThreadId:
-    SYSTEM_CALL SYS_THREAD_ID
+    SYSTEM_CALL SYS_GETTID
     ret
 
 global _SyscallOpen
@@ -150,9 +150,9 @@ _SyscallMprotect:
     SYSTEM_CALL SYS_MPROTECT
     ret
 
-global _SyscallDirList
-_SyscallDirList:
-    SYSTEM_CALL SYS_DIR_LIST
+global _SyscallReaddir
+_SyscallReaddir:
+    SYSTEM_CALL SYS_READDIR
     ret
 
 global _SyscallThreadCreate
@@ -179,3 +179,14 @@ global _SyscallFutex
 _SyscallFutex:
     SYSTEM_CALL SYS_FUTEX
     ret
+
+global _SyscallRename
+_SyscallRename:
+    SYSTEM_CALL SYS_RENAME
+    ret
+
+global _SyscallRemove
+_SyscallRemove:
+    SYSTEM_CALL SYS_REMOVE
+    ret
+

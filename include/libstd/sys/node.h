@@ -18,10 +18,16 @@ typedef struct node
     uint64_t type;
     struct node* parent;
     list_t children;
+    uint64_t childAmount;
     char name[MAX_NAME];
 } node_t;
 
 #define NODE_CONTAINER(ptr, type, member) ((type*)((char*)(ptr) - offsetof(type, member)))
+#define NODE_CONTAINER_SAFE(ptr, type, member) \
+    ({ \
+        node_t* n = ptr; \
+        ((n != NULL) ? NODE_CONTAINER(n, type, member) : NULL); \
+    })
 
 static inline void node_init(node_t* node, const char* name, uint64_t type)
 {
@@ -29,6 +35,7 @@ static inline void node_init(node_t* node, const char* name, uint64_t type)
     node->type = type;
     node->parent = NULL;
     list_init(&node->children);
+    node->childAmount = 0;
     strcpy(node->name, name);
 }
 
@@ -36,6 +43,7 @@ static inline void node_push(node_t* parent, node_t* child)
 {
     child->parent = parent;
     list_push(&parent->children, &child->entry);
+    parent->childAmount++;
 }
 
 static inline uint64_t node_remove(node_t* node)
@@ -47,6 +55,7 @@ static inline uint64_t node_remove(node_t* node)
 
     if (node->parent != NULL)
     {
+        node->parent->childAmount--;
         list_remove(&node->entry);
         node->parent = NULL;
     }

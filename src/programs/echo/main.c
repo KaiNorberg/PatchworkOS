@@ -12,10 +12,19 @@ int main(int argc, char** argv)
     for (int i = 1; i < argc; i++)
     {
         // Important to use write not stdio for actions, for example "kill > sys:/proc/*/ctl".
-        writef(STDOUT_FILENO, argv[i]);
+        if (writef(STDOUT_FILENO, argv[i]) == ERR)
+        {
+            fprintf(stderr, "echo: %s\n", strerror(errno));
+            return EXIT_FAILURE;
+        }
+
         if (i != argc - 1)
         {
-            writef(STDOUT_FILENO, " ");
+            if (writef(STDOUT_FILENO, " ") == ERR)
+            {
+                fprintf(stderr, "echo: %s\n", strerror(errno));
+                return EXIT_FAILURE;
+            }
         }
     }
     return EXIT_SUCCESS;

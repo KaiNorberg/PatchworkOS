@@ -14,15 +14,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// TOOD: There was a race condition in here, so for now we will just use one global lock, il work this out later.
+static lock_t lock;
+
 void wait_queue_init(wait_queue_t* waitQueue)
 {
-    lock_init(&waitQueue->lock);
     list_init(&waitQueue->entries);
 }
 
 void wait_queue_deinit(wait_queue_t* waitQueue)
 {
-    LOCK_DEFER(&waitQueue->lock);
+    LOCK_DEFER(&lock);
 
     if (!list_empty(&waitQueue->entries))
     {
@@ -39,48 +41,10 @@ void wait_thread_ctx_init(wait_thread_ctx_t* wait)
     wait->owner = NULL;
 }
 
-static void wait_thread_ctx_acquire_all(wait_thread_ctx_t* wait, wait_queue_t* acquiredQueue)
-{
-    wait_entry_t* entry;
-    LIST_FOR_EACH(entry, &wait->entries, threadEntry)
-    {
-        if (entry->waitQueue != acquiredQueue)
-        {
-            lock_acquire(&entry->waitQueue->lock);
-        }
-    }
-}
-
-static void wait_thread_ctx_release_all(wait_thread_ctx_t* wait, wait_queue_t* acquiredQueue)
-{
-    wait_entry_t* entry;
-    LIST_FOR_EACH(entry, &wait->entries, threadEntry)
-    {
-        if (entry->waitQueue != acquiredQueue)
-        {
-            lock_release(&entry->waitQueue->lock);
-        }
-    }
-}
-
-static void wait_thread_ctx_release_and_free(wait_thread_ctx_t* wait)
-{
-    wait_entry_t* temp;
-    wait_entry_t* entry;
-    LIST_FOR_EACH_SAFE(entry, temp, &wait->entries, threadEntry)
-    {
-        list_remove(&entry->queueEntry);
-        list_remove(&entry->threadEntry);
-        lock_release(&entry->waitQueue->lock);
-        free(entry);
-    }
-}
-
 void wait_cpu_ctx_init(wait_cpu_ctx_t* wait)
 {
     list_init(&wait->blockedThreads);
     list_init(&wait->parkedThreads);
-    lock_init(&wait->lock);
 }
 
 static void wait_handle_parked_threads(trap_frame_t* trapFrame, cpu_t* self)
@@ -92,8 +56,6 @@ static void wait_handle_parked_threads(trap_frame_t* trapFrame, cpu_t* self)
         {
             break;
         }
-
-        wait_thread_ctx_acquire_all(&thread->wait, NULL);
 
         bool shouldUnblock = false;
         wait_entry_t* entry;
@@ -114,7 +76,14 @@ static void wait_handle_parked_threads(trap_frame_t* trapFrame, cpu_t* self)
         {
             thread->wait.result = WAIT_NORM;
 
-            wait_thread_ctx_release_and_free(&thread->wait);
+            wait_entry_t* temp;
+            wait_entry_t* entry;
+            LIST_FOR_EACH_SAFE(entry, temp, &thread->wait.entries, threadEntry)
+            {
+                list_remove(&entry->queueEntry);
+                list_remove(&entry->threadEntry);
+                free(entry);
+            }
 
             sched_push(thread);
         }
@@ -122,8 +91,6 @@ static void wait_handle_parked_threads(trap_frame_t* trapFrame, cpu_t* self)
         {
             thread->wait.owner = self;
             list_push(&self->wait.blockedThreads, &thread->entry);
-
-            wait_thread_ctx_release_all(&thread->wait, NULL);
         }
     }
 }
@@ -149,12 +116,17 @@ static void wait_handle_blocked_threads(trap_frame_t* trapFrame, cpu_t* self)
             continue;
         }
 
-        wait_thread_ctx_acquire_all(&thread->wait, NULL);
-
         thread->wait.result = result;
         list_remove(&thread->entry);
 
-        wait_thread_ctx_release_and_free(&thread->wait);
+        wait_entry_t* temp;
+        wait_entry_t* entry;
+        LIST_FOR_EACH_SAFE(entry, temp, &thread->wait.entries, threadEntry)
+        {
+            list_remove(&entry->queueEntry);
+            list_remove(&entry->threadEntry);
+            free(entry);
+        }
 
         sched_push(thread);
     }
@@ -162,8 +134,9 @@ static void wait_handle_blocked_threads(trap_frame_t* trapFrame, cpu_t* self)
 
 void wait_timer_trap(trap_frame_t* trapFrame)
 {
+    LOCK_DEFER(&lock);
+
     cpu_t* self = smp_self_unsafe();
-    LOCK_DEFER(&self->wait.lock);
 
     wait_handle_parked_threads(trapFrame, self);
     wait_handle_blocked_threads(trapFrame, self);
@@ -171,6 +144,8 @@ void wait_timer_trap(trap_frame_t* trapFrame)
 
 void wait_block_trap(trap_frame_t* trapFrame)
 {
+    LOCK_DEFER(&lock);
+
     cpu_t* self = smp_self_unsafe();
     sched_ctx_t* sched = &self->sched;
     wait_cpu_ctx_t* cpuCtx = &self->wait;
@@ -186,7 +161,7 @@ void wait_block_trap(trap_frame_t* trapFrame)
 
 void wait_unblock(wait_queue_t* waitQueue, uint64_t amount)
 {
-    LOCK_DEFER(&waitQueue->lock);
+    LOCK_DEFER(&lock);
 
     wait_entry_t* temp1;
     wait_entry_t* waitEntry;
@@ -196,7 +171,8 @@ void wait_unblock(wait_queue_t* waitQueue, uint64_t amount)
         {
             return;
         }
-
+        
+        //printf("wait_unblock: waitEntry=%p, thread=%p\n", waitEntry, waitEntry->thread);
         if (!waitEntry->blocking)
         {
             waitEntry->cancelBlock = true;
@@ -204,12 +180,8 @@ void wait_unblock(wait_queue_t* waitQueue, uint64_t amount)
         }
 
         thread_t* thread = waitEntry->thread;
-        wait_thread_ctx_acquire_all(&thread->wait, waitQueue);
-
         thread->wait.result = WAIT_NORM;
-        lock_acquire(&thread->wait.owner->wait.lock);
         list_remove(&thread->entry);
-        lock_release(&thread->wait.owner->wait.lock);
 
         wait_entry_t* temp2;
         wait_entry_t* entry;
@@ -217,10 +189,6 @@ void wait_unblock(wait_queue_t* waitQueue, uint64_t amount)
         {
             list_remove(&entry->queueEntry);
             list_remove(&entry->threadEntry);
-            if (entry->waitQueue != waitQueue)
-            {
-                lock_release(&entry->waitQueue->lock);
-            }
             free(entry);
         }
 

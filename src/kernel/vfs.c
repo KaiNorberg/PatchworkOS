@@ -119,7 +119,7 @@ static uint64_t vfs_parse_path(path_t* out, const char* path)
 
 void vfs_init(void)
 {
-    printf("vfs: init");
+    printf("vfs: init\n");
 
     list_init(&volumes);
     rwlock_init(&volumesLock);
@@ -311,7 +311,53 @@ uint64_t vfs_stat(const char* path, stat_t* buffer)
     return result;
 }
 
-uint64_t vfs_listdir(const char* path, dir_entry_t* entries, uint64_t amount)
+uint64_t vfs_rename(const char* oldpath, const char* newpath)
+{
+    path_t parsedOldPath;
+    if (vfs_parse_path(&parsedOldPath, oldpath) == ERR)
+    {
+        return ERR;
+    }
+    path_t parsedNewPath;
+    if (vfs_parse_path(&parsedNewPath, newpath) == ERR)
+    {
+        return ERR;
+    }
+
+    volume_t* oldVolume = volume_get(parsedOldPath.volume);
+    if (oldVolume == NULL)
+    {
+        return ERROR(EPATH);
+    }
+
+    volume_t* newVolume = volume_get(parsedNewPath.volume);
+    if (newVolume == NULL)
+    {
+        volume_deref(oldVolume);
+        return ERROR(EPATH);
+    }
+
+    if (oldVolume->ops->rename == NULL)
+    {
+        volume_deref(oldVolume);
+        volume_deref(newVolume);
+        return ERROR(ENOOP);
+    }
+
+    if (oldVolume != newVolume)
+    {
+        volume_deref(oldVolume);
+        volume_deref(newVolume);
+        return ERROR(EXDEV);
+    }
+
+    uint64_t result = oldVolume->ops->rename(oldVolume, &parsedOldPath, &parsedNewPath);
+    volume_deref(oldVolume);
+    volume_deref(newVolume);
+    return result;
+}
+
+uint64_t vfs_remove(const char* path)
 {
     path_t parsedPath;
     if (vfs_parse_path(&parsedPath, path) == ERR)
@@ -325,15 +371,28 @@ uint64_t vfs_listdir(const char* path, dir_entry_t* entries, uint64_t amount)
         return ERROR(EPATH);
     }
 
-    if (volume->ops->listdir == NULL)
+    if (volume->ops->remove == NULL)
     {
         volume_deref(volume);
         return ERROR(ENOOP);
     }
 
-    uint64_t result = volume->ops->listdir(volume, &parsedPath, entries, amount);
+    uint64_t result = volume->ops->remove(volume, &parsedPath);
     volume_deref(volume);
     return result;
+}
+
+uint64_t vfs_readdir(file_t* file, stat_t* infos, uint64_t amount)
+{
+    if (file->sysobj != NULL && atomic_load(&file->sysobj->hidden))
+    {
+        return ERROR(ENOOBJ);
+    }
+    if (file->ops->readdir == NULL)
+    {
+        return ERROR(ENOOP);
+    }
+    return file->ops->readdir(file, infos, amount);
 }
 
 uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
@@ -440,14 +499,14 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
                 free(waitQueues);
                 return ERROR(EINVAL);
             }
-    
+
             waitQueues[i] = files[i].file->ops->poll(files[i].file, &files[i]);
             if (waitQueues[i] == NULL)
             {
                 free(waitQueues);
                 return ERR;
             }
-    
+
             if ((files[i].occurred & files[i].requested) != 0)
             {
                 events++;
@@ -479,11 +538,11 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
     return events;
 }
 
-void dir_entry_push(dir_entry_t* entries, uint64_t amount, uint64_t* index, uint64_t* total, dir_entry_t* entry)
+void readdir_push(stat_t* infos, uint64_t amount, uint64_t* index, uint64_t* total, stat_t* info)
 {
     if (*index < amount)
     {
-        entries[(*index)++] = *entry;
+        infos[(*index)++] = *info;
     }
 
     (*total)++;

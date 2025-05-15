@@ -87,7 +87,9 @@ uint64_t print_directory(const char* path, flags_t flags, bool forceLabel)
         printf("[%s]\n", path);
     }
 
-    dir_list_t* dirs = dir_alloc(path);
+    fd_t fd = openf("%s?directory", path);
+    allocdir_t* dirs = allocdir(fd);
+    close(fd);
     if (dirs == NULL)
     {
         fprintf(stderr, "ls: cant open directory %s (%s)\n", path, strerror(errno));
@@ -96,13 +98,13 @@ uint64_t print_directory(const char* path, flags_t flags, bool forceLabel)
 
     for (uint64_t i = 0; i < dirs->amount; i++)
     {
-        if (dirs->entries[i].type == STAT_FILE)
+        if (dirs->infos[i].type == STAT_FILE)
         {
-            printf("%s ", dirs->entries[i].name);
+            printf("%s ", dirs->infos[i].name);
         }
         else
         {
-            printf("%s/ ", dirs->entries[i].name);
+            printf("%s/ ", dirs->infos[i].name);
         }
     }
     printf("\n");
@@ -111,10 +113,10 @@ uint64_t print_directory(const char* path, flags_t flags, bool forceLabel)
     {
         for (uint64_t i = 0; i < dirs->amount; i++)
         {
-            if (dirs->entries[i].type == STAT_DIR)
+            if (dirs->infos[i].type == STAT_DIR)
             {
                 char buffer[MAX_PATH];
-                snprintf(buffer, MAX_PATH, "%s/%s", path, dirs->entries[i].name);
+                snprintf(buffer, MAX_PATH, "%s/%s", path, dirs->infos[i].name);
 
                 print_directory(buffer, flags, forceLabel);
             }

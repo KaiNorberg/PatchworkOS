@@ -68,11 +68,18 @@ typedef struct ram_file
     node_t node;
     void* data;
     uint64_t size;
+    uint64_t openedAmount;
 } ram_file_t;
+
+typedef struct ram_dir
+{
+    node_t node;
+    uint64_t openedAmount;
+} ram_dir_t;
 
 typedef struct ram_disk
 {
-    node_t* root;
+    ram_dir_t* root;
 } ram_disk_t;
 
 typedef struct boot_info boot_info_t;

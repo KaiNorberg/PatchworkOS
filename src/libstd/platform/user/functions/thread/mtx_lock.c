@@ -9,7 +9,7 @@
 
 int mtx_lock(mtx_t* mutex)
 {
-    tid_t self = thread_id();
+    tid_t self = gettid();
     if (mutex->owner == self)
     {
         mutex->depth++;

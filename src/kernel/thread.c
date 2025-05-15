@@ -58,6 +58,7 @@ thread_t* thread_new(process_t* process, void* entry, priority_t priority)
 
 void thread_free(thread_t* thread)
 {
+    printf("thread: free pid=%d tid=%d\n", thread->process->id, thread->id);
     if (atomic_fetch_sub(&thread->process->threadCount, 1) <= 1)
     {
         process_free(thread->process);

@@ -124,7 +124,7 @@ static uint64_t process_dir_populate(sysdir_t* dir)
 static void process_on_free(sysdir_t* dir)
 {
     process_t* process = dir->private;
-    printf("process: on_free pid=%d", process->id);
+    printf("process: on_free pid=%d\n", process->id);
     // vfs_ctx_deinit() is in process_free
     space_deinit(&process->space);
     argv_deinit(&process->argv);
@@ -238,7 +238,7 @@ bool process_is_child(process_t* process, pid_t parentId)
 
 void process_backend_init(void)
 {
-    printf("process_backend: init");
+    printf("process_backend: init\n");
     sysdir_t* selfdir = sysdir_new("/proc", "self", NULL, NULL);
     ASSERT_PANIC(selfdir != NULL);
     ASSERT_PANIC(process_dir_populate(selfdir) != ERR);

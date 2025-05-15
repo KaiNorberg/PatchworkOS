@@ -9,12 +9,12 @@ pid_t spawn(const char** argv, const spawn_fd_t* fds)
     return _SyscallSpawn(argv, fds);
 }
 
-pid_t process_id(void)
+pid_t getpid(void)
 {
     return _SyscallProcessId();
 }
 
-tid_t thread_id(void)
+tid_t gettid(void)
 {
     return _SyscallThreadId();
 }

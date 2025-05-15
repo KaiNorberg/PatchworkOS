@@ -42,10 +42,10 @@ void acpi_init(xsdp_t* xsdp)
         memcpy(oemId, table->oemId, 6);
         oemId[6] = '\0';
 
-        printf("acpi: %s 0x%016lx 0x%06lx v%02X %-8s", signature, VMM_HIGHER_TO_LOWER(table), table->length,
+        printf("acpi: %s 0x%016lx 0x%06lx v%02X %-8s\n", signature, VMM_HIGHER_TO_LOWER(table), table->length,
             table->revision, oemId);
 
-        ASSERT_PANIC_MSG(acpi_valid_checksum(table, table->length), "acpi: %s, invalid checksum", signature);
+        ASSERT_PANIC_MSG(acpi_valid_checksum(table, table->length), "acpi: %s, invalid checksum\n", signature);
     }
 }
 
