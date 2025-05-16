@@ -21,6 +21,10 @@ void _PlatformEarlyInit(void)
     _StdStreamsInit();
 
     zeroResource = open("sys:/zero");
+    if (zeroResource == ERR)
+    {
+        exit(EXIT_FAILURE);
+    }
 }
 
 void _PlatformLateInit(void)

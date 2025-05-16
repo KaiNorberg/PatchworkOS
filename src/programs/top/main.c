@@ -38,12 +38,33 @@ cpu_statistics_t* cpu_statistics_read(uint64_t* cpuAmount)
     return stat;
 }
 
+typedef struct
+{
+    uint64_t total;
+    uint64_t free;
+    uint64_t reserved;
+} mem_statistics_t;
+
+void mem_statistics_read(mem_statistics_t* stats)
+{
+    FILE* file = fopen("sys:/stat/mem", "r");
+
+    if (fscanf(file, "value kb\ntotal %llu\nfree %llu\nreserved %llu", &stats->total, &stats->free, &stats->reserved) ==
+        EOF)
+    {
+        fprintf(stderr, "failed to read sys:/stat/mem\n");
+    }
+
+    fclose(file);
+}
+
 int main(void)
 {
+
     uint64_t cpuAmount;
     cpu_statistics_t* before = cpu_statistics_read(&cpuAmount);
 
-    struct timespec timespec = {.tv_sec = 1};
+    struct timespec timespec = {.tv_nsec = CLOCKS_PER_SEC / 10};
     thrd_sleep(&timespec, NULL);
 
     cpu_statistics_t* after = cpu_statistics_read(&cpuAmount);
@@ -63,6 +84,17 @@ int main(void)
         printf("cpu%d %d.%03d%% usage\n", before[i].id, (int)percentage,
             (int)((percentage - (int)percentage) * 1000.0));
     }
+
+    free(before);
+    free(after);
+
+    mem_statistics_t stats;
+    mem_statistics_read(&stats);
+
+    printf("total memory %d mb\n", stats.total / 1000);
+    printf("free memory %d mb\n", stats.free / 1000);
+    printf("reserved memory %d mb\n", stats.reserved / 1000);
+    printf("used memory %d%%\n", (stats.reserved * 100) / stats.total);
 
     return 0;
 }

@@ -28,5 +28,5 @@ char* _ErrorStrings[] = {
     "operation not defined",
     "would block",
     "busy",
-    "cross-device link"
+    "cross-device link",
 };

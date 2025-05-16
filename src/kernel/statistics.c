@@ -57,11 +57,39 @@ VIEW_STANDARD_OPS_DEFINE(cpuOps, PATH_NONE,
         .deinit = statistics_cpu_view_deinit,
     });
 
+static uint64_t statistics_mem_view_init(file_t* file, view_t* view)
+{
+    char* string = malloc(MAX_PATH);
+    if (string == NULL)
+    {
+        return ERR;
+    }
+
+    sprintf(string, "value kb\ntotal %d\nfree %d\nreserved %d", pmm_total_amount() * PAGE_SIZE / 4,
+        pmm_free_amount() * PAGE_SIZE / 4, pmm_reserved_amount() * PAGE_SIZE / 4);
+
+    view->buffer = string;
+    view->length = strlen(string) + 1;
+    return 0;
+}
+
+static void statistics_mem_view_deinit(view_t* view)
+{
+    free(view->buffer);
+}
+
+VIEW_STANDARD_OPS_DEFINE(memOps, PATH_NONE,
+    (view_ops_t){
+        .init = statistics_mem_view_init,
+        .deinit = statistics_mem_view_deinit,
+    });
+
 void statistics_init(void)
 {
     sysdir_t* dir = sysdir_new("/", "stat", NULL, NULL);
     ASSERT_PANIC(dir != NULL);
     ASSERT_PANIC(sysdir_add(dir, "cpu", &cpuOps, NULL) != ERR);
+    ASSERT_PANIC(sysdir_add(dir, "mem", &memOps, NULL) != ERR);
 }
 
 void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* cpu)

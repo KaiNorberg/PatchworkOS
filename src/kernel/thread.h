@@ -16,18 +16,31 @@ typedef uint8_t priority_t;
 #define PRIORITY_MIN 0
 #define PRIORITY_MAX (PRIORITY_LEVELS - 1)
 
+typedef enum
+{
+    THREAD_FRESH,
+    THREAD_READY,
+    THREAD_RUNNING,
+    THREAD_DEAD,
+    THREAD_PARKED,
+    THREAD_PRE_BLOCK,
+    THREAD_BLOCKED,
+    THREAD_UNBLOCKING,
+} thread_state_t;
+
 typedef struct thread
 {
     list_entry_t entry;
     process_t* process;
+    list_entry_t processEntry;
     tid_t id;
-    atomic_bool dead;
     clock_t timeStart;
     clock_t timeEnd;
     wait_thread_ctx_t wait;
     errno_t error;
     priority_t priority;
     simd_ctx_t simd;
+    _Atomic(thread_state_t) state;
     trap_frame_t trapFrame;
     uint8_t kernelStack[CONFIG_KERNEL_STACK];
 } thread_t;

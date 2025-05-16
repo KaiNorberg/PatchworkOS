@@ -17,7 +17,7 @@ typedef struct
 {
     thread_queue_t queues[PRIORITY_LEVELS];
     list_t parkedThreads;
-    list_t zombieThreads;
+    list_t deadThreads;
     thread_t* runThread;
 } sched_ctx_t;
 

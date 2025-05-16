@@ -64,7 +64,7 @@ void sched_ctx_init(sched_ctx_t* ctx)
         thread_queue_init(&ctx->queues[i]);
     }
     list_init(&ctx->parkedThreads);
-    list_init(&ctx->zombieThreads);
+    list_init(&ctx->deadThreads);
     ctx->runThread = NULL;
 }
 
@@ -214,8 +214,7 @@ void sched_process_exit(uint64_t status)
     // TODO: Add handling for status
 
     sched_ctx_t* ctx = &smp_self()->sched;
-    atomic_store(&ctx->runThread->dead, true);
-    atomic_store(&ctx->runThread->process->dead, true);
+    process_kill(ctx->runThread->process);
     printf("sched: process_exit pid=%d\n", ctx->runThread->process->id);
     smp_put();
 
@@ -226,7 +225,7 @@ void sched_process_exit(uint64_t status)
 void sched_thread_exit(void)
 {
     sched_ctx_t* ctx = &smp_self()->sched;
-    atomic_store(&ctx->runThread->dead, true);
+    atomic_store(&ctx->runThread->state, THREAD_DEAD);
     smp_put();
 
     sched_invoke();
@@ -235,6 +234,13 @@ void sched_thread_exit(void)
 
 void sched_push(thread_t* thread)
 {
+    if (atomic_load(&thread->state) == THREAD_DEAD)
+    {
+        cpu_t* cpu = smp_self();
+        list_push(&cpu->sched.deadThreads, &thread->entry);
+        smp_put();
+    }
+
     uint64_t cpuAmount = smp_cpu_amount();
 
     uint64_t bestLength = UINT64_MAX;
@@ -251,6 +257,7 @@ void sched_push(thread_t* thread)
         }
     }
 
+    atomic_store(&thread->state, THREAD_READY);
     sched_ctx_push(&best->sched, thread);
 }
 
@@ -268,11 +275,11 @@ static void sched_update_parked_threads(trap_frame_t* trapFrame, sched_ctx_t* ct
     }
 }
 
-static void sched_update_zombie_threads(trap_frame_t* trapFrame, sched_ctx_t* ctx)
+static void sched_update_dead_threads(trap_frame_t* trapFrame, sched_ctx_t* ctx)
 {
     while (1)
     {
-        thread_t* thread = LIST_CONTAINER_SAFE(list_pop(&ctx->zombieThreads), thread_t, entry);
+        thread_t* thread = LIST_CONTAINER_SAFE(list_pop(&ctx->deadThreads), thread_t, entry);
         if (thread == NULL)
         {
             break;
@@ -283,7 +290,7 @@ static void sched_update_zombie_threads(trap_frame_t* trapFrame, sched_ctx_t* ct
 }
 
 void sched_timer_trap(trap_frame_t* trapFrame)
-{    
+{
     cpu_t* self = smp_self_unsafe();
     sched_ctx_t* ctx = &self->sched;
 
@@ -293,7 +300,7 @@ void sched_timer_trap(trap_frame_t* trapFrame)
     }
 
     sched_update_parked_threads(trapFrame, ctx);
-    sched_update_zombie_threads(trapFrame, ctx);
+    sched_update_dead_threads(trapFrame, ctx);
 
     sched_schedule_trap(trapFrame);
 }
@@ -308,30 +315,56 @@ void sched_schedule_trap(trap_frame_t* trapFrame)
         return;
     }
 
+    if (ctx->runThread != NULL)
+    {
+        thread_state_t state = atomic_load(&ctx->runThread->state);
+        if (state == THREAD_DEAD || (atomic_load(&ctx->runThread->process->dead) && trapFrame->cs != GDT_KERNEL_CODE))
+        {
+            list_push(&ctx->deadThreads, &ctx->runThread->entry);
+            ctx->runThread = NULL;
+        }
+        else if (state != THREAD_RUNNING)
+        {
+            return;
+        }
+    }
+
     if (ctx->runThread != NULL &&
-        (atomic_load(&ctx->runThread->dead) ||
+        (atomic_load(&ctx->runThread->state) == THREAD_DEAD ||
             (atomic_load(&ctx->runThread->process->dead) && trapFrame->cs != GDT_KERNEL_CODE)))
     {
-        list_push(&ctx->zombieThreads, &ctx->runThread->entry);
+        list_push(&ctx->deadThreads, &ctx->runThread->entry);
         ctx->runThread = NULL;
     }
 
+    thread_t* next;
     if (ctx->runThread == NULL)
     {
-        thread_t* next = sched_ctx_find_any(ctx);
-        thread_load(next, trapFrame);
-        ctx->runThread = next;
+        next = sched_ctx_find_any(ctx);
+        if (next != NULL)
+        {
+            atomic_store(&next->state, THREAD_RUNNING);
+            thread_load(next, trapFrame);
+            ctx->runThread = next;
+        }
+        else
+        {
+            thread_load(NULL, trapFrame);
+            ctx->runThread = NULL;
+        }
     }
     else
     {
-        thread_t* next = ctx->runThread->timeEnd < systime_uptime()
-            ? sched_ctx_find_any(ctx)
-            : sched_ctx_find_higher(ctx, ctx->runThread->priority);
+        next = ctx->runThread->timeEnd < systime_uptime() ? sched_ctx_find_any(ctx)
+                                                          : sched_ctx_find_higher(ctx, ctx->runThread->priority);
         if (next != NULL)
         {
+            atomic_store(&ctx->runThread->state, THREAD_PARKED);
             thread_save(ctx->runThread, trapFrame);
             list_push(&ctx->parkedThreads, &ctx->runThread->entry);
+            ctx->runThread = NULL;
 
+            atomic_store(&next->state, THREAD_RUNNING);
             thread_load(next, trapFrame);
             ctx->runThread = next;
         }

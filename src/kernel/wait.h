@@ -93,8 +93,6 @@ typedef struct wait_entry
     list_entry_t threadEntry; // Used in wait_thread_ctx_t->entries
     thread_t* thread;
     wait_queue_t* waitQueue;
-    bool blocking;
-    bool cancelBlock;
 } wait_entry_t;
 
 typedef enum
@@ -132,6 +130,8 @@ void wait_cpu_ctx_init(wait_cpu_ctx_t* wait);
 void wait_timer_trap(trap_frame_t* trapFrame);
 
 void wait_block_trap(trap_frame_t* trapFrame);
+
+void wait_unblock_thread(thread_t* thread, wait_result_t result, wait_queue_t* acquiredQueue, bool acquireCpu);
 
 void wait_unblock(wait_queue_t* waitQueue, uint64_t amount);
 

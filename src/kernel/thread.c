@@ -32,8 +32,8 @@ thread_t* thread_new(process_t* process, void* entry, priority_t priority)
     }
     list_entry_init(&thread->entry);
     thread->process = process;
+    list_entry_init(&thread->processEntry);
     thread->id = atomic_fetch_add(&thread->process->newTid, 1);
-    atomic_init(&thread->dead, false);
     thread->timeStart = 0;
     thread->timeEnd = 0;
     wait_thread_ctx_init(&thread->wait);
@@ -45,6 +45,7 @@ thread_t* thread_new(process_t* process, void* entry, priority_t priority)
         free(thread);
         return NULL;
     }
+    atomic_init(&thread->state, THREAD_FRESH);
     memset(&thread->trapFrame, 0, sizeof(trap_frame_t));
     thread->trapFrame.rip = (uint64_t)entry;
     thread->trapFrame.rsp = ((uint64_t)thread->kernelStack) + CONFIG_KERNEL_STACK;
@@ -53,12 +54,21 @@ thread_t* thread_new(process_t* process, void* entry, priority_t priority)
     thread->trapFrame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
     memset(&thread->kernelStack, 0, CONFIG_KERNEL_STACK);
 
+    lock_acquire(&process->threads.lock);
+    list_push(&process->threads.list, &thread->processEntry);
+    lock_release(&process->threads.lock);
+
     return thread;
 }
 
 void thread_free(thread_t* thread)
 {
-    printf("thread: free pid=%d tid=%d\n", thread->process->id, thread->id);
+    printf("thread: free %p pid=%d tid=%d\n", thread, thread->process->id, thread->id);
+
+    lock_acquire(&thread->process->threads.lock);
+    list_remove(&thread->processEntry);
+    lock_release(&thread->process->threads.lock);
+
     if (atomic_fetch_sub(&thread->process->threadCount, 1) <= 1)
     {
         process_free(thread->process);
@@ -105,5 +115,5 @@ void thread_load(thread_t* thread, trap_frame_t* trapFrame)
 
 bool thread_dead(thread_t* thread)
 {
-    return atomic_load(&thread->dead) || atomic_load(&thread->process->dead);
+    return atomic_load(&thread->state) == THREAD_DEAD || atomic_load(&thread->process->dead);
 }

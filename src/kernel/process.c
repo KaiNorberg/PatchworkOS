@@ -87,7 +87,7 @@ static uint64_t process_ctl_kill(file_t* file, uint64_t argc, const char** argv)
         process = sched_process();
     }
 
-    atomic_store(&process->dead, true);
+    process_kill(process);
     return 0;
 }
 
@@ -171,6 +171,8 @@ process_t* process_new(process_t* parent, const char** argv)
     wait_queue_init(&process->queue);
     futex_ctx_init(&process->futexCtx);
     atomic_init(&process->newTid, 0);
+    list_init(&process->threads.list);
+    lock_init(&process->threads.lock);
 
     if (process_dir_populate(process->dir) == ERR)
     {
@@ -234,6 +236,23 @@ bool process_is_child(process_t* process, pid_t parentId)
         }
         parent = parent->parent;
     }
+}
+
+void process_kill(process_t* process)
+{
+    LOCK_DEFER(&process->threads.lock);
+
+    thread_t* thread;
+    LIST_FOR_EACH(thread, &process->threads.list, processEntry)
+    {
+        thread_state_t state = atomic_exchange(&thread->state, THREAD_DEAD);
+        if (state == THREAD_BLOCKED)
+        {
+            wait_unblock_thread(thread, WAIT_DEAD, NULL, true);
+        }
+    }
+
+    atomic_store(&process->dead, true);
 }
 
 void process_backend_init(void)

@@ -123,7 +123,7 @@ static file_t* ramfs_open(volume_t* volume, const path_t* path)
 
         if (path->flags & PATH_DIRECTORY)
         {
-            ram_file_t* ramDir = malloc(sizeof(ram_dir_t));
+            ram_dir_t* ramDir = malloc(sizeof(ram_dir_t));
             if (ramDir == NULL)
             {
                 return NULL;
@@ -230,8 +230,8 @@ static uint64_t ramfs_stat(volume_t* volume, const path_t* path, stat_t* stat)
 
 static uint64_t ramfs_rename(volume_t* volume, const path_t* oldpath, const path_t* newpath)
 {
-    LOCK_DEFER(&lock);    
-    
+    LOCK_DEFER(&lock);
+
     node_t* node = path_traverse_node(oldpath, &root->node);
     if (node == NULL || node == &root->node)
     {

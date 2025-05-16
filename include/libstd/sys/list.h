@@ -119,4 +119,13 @@ static inline list_entry_t* list_first(list_t* list)
     return list->head.next;
 }
 
+static inline list_entry_t* list_last(list_t* list)
+{
+    if (list_empty(list))
+    {
+        return NULL;
+    }
+    return list->head.prev;
+}
+
 #endif

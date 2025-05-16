@@ -39,46 +39,6 @@ void wait_thread_ctx_init(wait_thread_ctx_t* wait)
     wait->owner = NULL;
 }
 
-static void wait_thread_ctx_acquire_all(wait_thread_ctx_t* wait, wait_queue_t* acquiredQueue)
-{
-    wait_entry_t* entry;
-    LIST_FOR_EACH(entry, &wait->entries, threadEntry)
-    {
-        if (entry->waitQueue != acquiredQueue)
-        {
-            lock_acquire(&entry->waitQueue->lock);
-        }
-    }
-}
-
-static void wait_thread_ctx_release_all(wait_thread_ctx_t* wait, wait_queue_t* acquiredQueue)
-{
-    wait_entry_t* entry;
-    LIST_FOR_EACH(entry, &wait->entries, threadEntry)
-    {
-        if (entry->waitQueue != acquiredQueue)
-        {
-            lock_release(&entry->waitQueue->lock);
-        }
-    }
-}
-
-static void wait_thread_ctx_release_and_free(wait_thread_ctx_t* wait, wait_queue_t* acquiredQueue)
-{
-    wait_entry_t* temp;
-    wait_entry_t* entry;
-    LIST_FOR_EACH_SAFE(entry, temp, &wait->entries, threadEntry)
-    {
-        list_remove(&entry->queueEntry);
-        list_remove(&entry->threadEntry);
-        if (entry->waitQueue != acquiredQueue)
-        {
-            lock_release(&entry->waitQueue->lock);
-        }
-        free(entry);
-    }
-}
-
 void wait_cpu_ctx_init(wait_cpu_ctx_t* wait)
 {
     list_init(&wait->blockedThreads);
@@ -88,6 +48,8 @@ void wait_cpu_ctx_init(wait_cpu_ctx_t* wait)
 
 static void wait_handle_parked_threads(trap_frame_t* trapFrame, cpu_t* self)
 {
+    LOCK_DEFER(&self->wait.lock);
+
     while (1)
     {
         thread_t* thread = LIST_CONTAINER_SAFE(list_pop(&self->wait.parkedThreads), thread_t, entry);
@@ -96,76 +58,61 @@ static void wait_handle_parked_threads(trap_frame_t* trapFrame, cpu_t* self)
             break;
         }
 
-        wait_thread_ctx_acquire_all(&thread->wait, NULL);
-
-        bool shouldUnblock = false;
-        wait_entry_t* entry;
-        LIST_FOR_EACH(entry, &thread->wait.entries, threadEntry)
+        // Sort blocked threads by deadline
+        if (thread->wait.deadline == CLOCKS_NEVER || list_empty(&self->wait.blockedThreads) ||
+            LIST_CONTAINER(list_last(&self->wait.blockedThreads), thread_t, entry)->wait.deadline <=
+                thread->wait.deadline)
         {
-            if (entry->cancelBlock)
-            {
-                shouldUnblock = true;
-                break;
-            }
-            else
-            {
-                entry->blocking = true;
-            }
-        }
-
-        if (shouldUnblock)
-        {
-            thread->wait.result = WAIT_NORM;
-
-            wait_thread_ctx_release_and_free(&thread->wait, NULL);
-            sched_push(thread);
+            list_push(&self->wait.blockedThreads, &thread->entry);
         }
         else
         {
-            thread->wait.owner = self;
-            list_push(&self->wait.blockedThreads, &thread->entry);
+            thread_t* other;
+            LIST_FOR_EACH(other, &self->wait.blockedThreads, entry)
+            {
+                if (other->wait.deadline > thread->wait.deadline)
+                {
+                    list_prepend(&other->entry, &thread->entry);
+                    break;
+                }
+            }
+        }
 
-            wait_thread_ctx_release_all(&thread->wait, NULL);
+        _Atomic(thread_state_t) expected = ATOMIC_VAR_INIT(THREAD_PRE_BLOCK);
+        if (!atomic_compare_exchange_strong(&thread->state, &expected, THREAD_BLOCKED))
+        {
+            wait_unblock_thread(thread, WAIT_NORM, NULL, false);
         }
     }
 }
 
 static void wait_handle_blocked_threads(trap_frame_t* trapFrame, cpu_t* self)
 {
-    // TODO: This is O(n)... fix that
-    thread_t* thread;
-    thread_t* temp;
-    LIST_FOR_EACH_SAFE(thread, temp, &self->wait.blockedThreads, entry)
+    LOCK_DEFER(&self->wait.lock);
+
+    thread_t* thread = LIST_CONTAINER_SAFE(list_first(&self->wait.blockedThreads), thread_t, entry);
+    if (thread == NULL)
     {
-        wait_result_t result = WAIT_NORM;
-        if (thread_dead(thread)) // TODO: Oh so many race conditions.
-        {
-            result = WAIT_DEAD;
-        }
-        else if (systime_uptime() >= thread->wait.deadline) // TODO: Sort threads by deadline
-        {
-            result = WAIT_TIMEOUT;
-        }
-        else
-        {
-            continue;
-        }
+        return;
+    }
 
-        wait_thread_ctx_acquire_all(&thread->wait, NULL);
+    if (systime_uptime() < thread->wait.deadline)
+    {
+        return;
+    }
 
-        thread->wait.result = result;
-        list_remove(&thread->entry);
+    list_remove(&thread->entry);
 
-        wait_thread_ctx_release_and_free(&thread->wait, NULL);
-
-        sched_push(thread);
+    _Atomic(thread_state_t) expected = ATOMIC_VAR_INIT(THREAD_BLOCKED);
+    if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
+    {
+        wait_unblock_thread(thread, WAIT_TIMEOUT, NULL, false);
     }
 }
 
 void wait_timer_trap(trap_frame_t* trapFrame)
 {
     cpu_t* self = smp_self_unsafe();
-    LOCK_DEFER(&self->wait.lock);
 
     wait_handle_parked_threads(trapFrame, self);
     wait_handle_blocked_threads(trapFrame, self);
@@ -181,48 +128,80 @@ void wait_block_trap(trap_frame_t* trapFrame)
     sched->runThread = NULL;
 
     thread_save(thread, trapFrame);
+
+    lock_acquire(&cpuCtx->lock);
+    thread->wait.owner = self;
     list_push(&cpuCtx->parkedThreads, &thread->entry);
+    lock_release(&cpuCtx->lock);
 
     sched_schedule_trap(trapFrame);
+}
+
+void wait_unblock_thread(thread_t* thread, wait_result_t result, wait_queue_t* acquiredQueue, bool acquireCpu)
+{
+    thread_state_t state = atomic_load(&thread->state);
+    ASSERT_PANIC(state == THREAD_UNBLOCKING || state == THREAD_DEAD);
+
+    thread->wait.result = result;
+    if (acquireCpu)
+    {
+        lock_acquire(&thread->wait.owner->wait.lock);
+        list_remove(&thread->entry);
+        lock_release(&thread->wait.owner->wait.lock);
+    }
+    else
+    {
+        list_remove(&thread->entry);
+    }
+
+    wait_entry_t* temp;
+    wait_entry_t* entry;
+    LIST_FOR_EACH_SAFE(entry, temp, &thread->wait.entries, threadEntry)
+    {
+        if (entry->waitQueue != acquiredQueue)
+        {
+            lock_acquire(&entry->waitQueue->lock);
+        }
+        list_remove(&entry->queueEntry);
+        list_remove(&entry->threadEntry);
+        if (entry->waitQueue != acquiredQueue)
+        {
+            lock_release(&entry->waitQueue->lock);
+        }
+        free(entry);
+    }
+
+    sched_push(thread);
 }
 
 void wait_unblock(wait_queue_t* waitQueue, uint64_t amount)
 {
     LOCK_DEFER(&waitQueue->lock);
 
-    wait_entry_t* temp1;
+    wait_entry_t* temp;
     wait_entry_t* waitEntry;
-    LIST_FOR_EACH_SAFE(waitEntry, temp1, &waitQueue->entries, queueEntry)
+    LIST_FOR_EACH_SAFE(waitEntry, temp, &waitQueue->entries, queueEntry)
     {
         if (amount == 0)
         {
             return;
         }
 
-        if (!waitEntry->blocking)
-        {
-            waitEntry->cancelBlock = true;
-            continue;
-        }
-
         thread_t* thread = waitEntry->thread;
-        wait_thread_ctx_acquire_all(&thread->wait, waitQueue);
 
-        thread->wait.result = WAIT_NORM;
-        lock_acquire(&thread->wait.owner->wait.lock);
-        list_remove(&thread->entry);
-        lock_release(&thread->wait.owner->wait.lock);
-
-        wait_thread_ctx_release_and_free(&thread->wait, waitQueue);
-
-        sched_push(thread);
-        amount--;
+        if (atomic_exchange(&thread->state, THREAD_UNBLOCKING) == THREAD_BLOCKED)
+        {
+            wait_unblock_thread(thread, WAIT_NORM, waitQueue, true);
+            amount--;
+        }
     }
 }
 
 // Sets up a threads wait ctx but does not yet block
 static uint64_t wait_thread_setup(thread_t* thread, wait_queue_t** waitQueues, uint64_t amount, clock_t timeout)
 {
+    ASSERT_PANIC(atomic_load(&thread->state) == THREAD_RUNNING);
+
     for (uint64_t i = 0; i < amount; i++)
     {
         wait_entry_t* entry = malloc(sizeof(wait_entry_t));
@@ -243,8 +222,6 @@ static uint64_t wait_thread_setup(thread_t* thread, wait_queue_t** waitQueues, u
         list_entry_init(&entry->threadEntry);
         entry->waitQueue = waitQueues[i];
         entry->thread = thread;
-        entry->blocking = false;
-        entry->cancelBlock = false;
 
         list_push(&thread->wait.entries, &entry->threadEntry);
     }
@@ -262,6 +239,7 @@ static uint64_t wait_thread_setup(thread_t* thread, wait_queue_t** waitQueues, u
         i++;
     }
 
+    atomic_store(&thread->state, THREAD_PRE_BLOCK);
     return 0;
 }
 
