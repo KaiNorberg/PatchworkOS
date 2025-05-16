@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include "lock.h"
+#include "sync/lock.h"
 #include "socket_family.h"
 
 typedef struct socket

@@ -1,13 +1,13 @@
 #include "socket.h"
-#include "ctl.h"
+#include "fs/ctl.h"
 #include "defs.h"
-#include "log.h"
-#include "pmm.h"
-#include "process.h"
-#include "sched.h"
+#include "utils/log.h"
+#include "mem/pmm.h"
+#include "proc/process.h"
+#include "sched/sched.h"
 #include "stdbool.h"
-#include "sysfs.h"
-#include "vfs.h"
+#include "fs/sysfs.h"
+#include "fs/vfs.h"
 
 #include <errno.h>
 #include <stdatomic.h>

@@ -1,16 +1,16 @@
 #include "local.h"
 
-#include "lock.h"
-#include "log.h"
-#include "path.h"
-#include "pmm.h"
-#include "ring.h"
-#include "sched.h"
+#include "sync/lock.h"
+#include "utils/log.h"
+#include "fs/path.h"
+#include "mem/pmm.h"
+#include "utils/ring.h"
+#include "sched/sched.h"
 #include "socket.h"
 #include "sys/io.h"
-#include "sysfs.h"
-#include "vfs.h"
-#include "wait.h"
+#include "fs/sysfs.h"
+#include "fs/vfs.h"
+#include "sched/wait.h"
 
 #include <errno.h>
 #include <stdatomic.h>

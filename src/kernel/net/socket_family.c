@@ -1,10 +1,10 @@
 #include "socket_family.h"
 
 #include "defs.h"
-#include "sched.h"
+#include "sched/sched.h"
 #include "socket.h"
-#include "sysfs.h"
-#include "vfs.h"
+#include "fs/sysfs.h"
+#include "fs/vfs.h"
 
 #include <errno.h>
 #include <stdatomic.h>

@@ -3,8 +3,8 @@
 #include "common/print.h"
 #include "platform/platform.h"
 
-#include "log.h"
-#include "systime.h"
+#include "utils/log.h"
+#include "drivers/systime/systime.h"
 
 int vprintf(const char* _RESTRICT format, va_list args)
 {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "sysfs.h"
+#include "fs/sysfs.h"
 
 #include <stdint.h>
 

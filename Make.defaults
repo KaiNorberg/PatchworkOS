@@ -53,5 +53,7 @@ ASFLAGS := -f elf64 \
 LDFLAGS := -nostdlib
 
 SRC = $(wildcard $(SRCDIR)/*.c) $(wildcard $(SRCDIR)/*.s) \
-	$(wildcard $(SRCDIR)/*/*.c) $(wildcard $(SRCDIR)/*/*.s)
+	$(wildcard $(SRCDIR)/*/*.c) $(wildcard $(SRCDIR)/*/*.s) \
+	$(wildcard $(SRCDIR)/*/*/*.c) $(wildcard $(SRCDIR)/*/*/*.s)
+    
 OBJ = $(patsubst src/%, $(BUILDDIR)/%.o, $(SRC))

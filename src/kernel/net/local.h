@@ -2,11 +2,11 @@
 
 // Note: Local sockets always use SOCK_SEQPACKET
 
-#include "lock.h"
-#include "ring.h"
-#include "sysfs.h"
-#include "vfs.h"
-#include "wait.h"
+#include "sync/lock.h"
+#include "utils/ring.h"
+#include "fs/sysfs.h"
+#include "fs/vfs.h"
+#include "sched/wait.h"
 
 #include <stdint.h>
 #include <sys/io.h>
