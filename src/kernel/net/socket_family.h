@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fs/sysfs.h"
+#include "fs/vfs.h"
 
 #include <stdint.h>
 
@@ -29,12 +30,8 @@ typedef struct
     socket_send_t send;
     socket_receive_t receive;
     socket_poll_t poll;
+    sysdir_t dir;
+    sysobj_t newObj;
 } socket_family_t;
 
-typedef struct
-{
-    char id[MAX_NAME];
-    sysdir_t* dir;
-} socket_handle_t;
-
-sysdir_t* socket_family_expose(socket_family_t* family);
+uint64_t socket_family_expose(socket_family_t* family);

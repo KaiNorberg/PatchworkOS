@@ -15,6 +15,8 @@
 #include <stdlib.h>
 #include <sys/math.h>
 
+static atomic_uint64 newId = ATOMIC_VAR_INIT(0);
+
 static uint64_t socket_accept_read(file_t* file, void* buffer, uint64_t count)
 {
     socket_t* socket = file->private;
@@ -37,7 +39,7 @@ static wait_queue_t* socket_accept_poll(file_t* file, poll_file_t* poll)
 
 static file_t* socket_accept_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
 {
-    socket_t* socket = sysobj->dir->private;
+    socket_t* socket = sysobj->private;
     process_t* process = sched_process();
     if (process->id != socket->creator && !process_is_child(process, socket->creator))
     {
@@ -88,26 +90,26 @@ static sysobj_ops_t acceptOps = {
 
 static uint64_t socket_data_read(file_t* file, void* buffer, uint64_t count)
 {
-    socket_t* socket = file->sysobj->dir->private;
+    socket_t* socket = file->private;
     uint64_t readCount = socket->family->receive(socket, buffer, count, &file->pos);
     return readCount;
 }
 
 static uint64_t socket_data_write(file_t* file, const void* buffer, uint64_t count)
 {
-    socket_t* socket = file->sysobj->dir->private;
+    socket_t* socket = file->private;
     return socket->family->send(socket, buffer, count);
 }
 
 static wait_queue_t* socket_data_poll(file_t* file, poll_file_t* poll)
 {
-    socket_t* socket = file->sysobj->dir->private;
+    socket_t* socket = file->private;
     return socket->family->poll(socket, poll);
 }
 
 static file_t* socket_data_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
 {
-    socket_t* socket = sysobj->dir->private;
+    socket_t* socket = sysobj->private;
     process_t* process = sched_process();
     if (process->id != socket->creator && !process_is_child(process, socket->creator))
     {
@@ -125,6 +127,7 @@ static file_t* socket_data_open(volume_t* volume, const path_t* path, sysobj_t* 
         return NULL;
     }
     file->ops = &fileOps;
+    file->private = socket;
     return file;
 }
 
@@ -134,19 +137,19 @@ static sysobj_ops_t dataOps = {
 
 static uint64_t socket_ctl_bind(file_t* file, uint64_t argc, const char** argv)
 {
-    socket_t* socket = file->sysobj->dir->private;
+    socket_t* socket = file->private;
     return socket->family->bind(socket, argv[1]);
 }
 
 static uint64_t socket_ctl_listen(file_t* file, uint64_t argc, const char** argv)
 {
-    socket_t* socket = file->sysobj->dir->private;
+    socket_t* socket = file->private;
     return socket->family->listen(socket);
 }
 
 static uint64_t socket_ctl_connect(file_t* file, uint64_t argc, const char** argv)
 {
-    socket_t* socket = file->sysobj->dir->private;
+    socket_t* socket = file->private;
     return socket->family->connect(socket, argv[1]);
 }
 
@@ -160,7 +163,7 @@ CTL_STANDARD_WRITE_DEFINE(socket_ctl_write,
 
 static file_t* socket_ctl_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
 {
-    socket_t* socket = sysobj->dir->private;
+    socket_t* socket = sysobj->private;
     process_t* process = sched_process();
     if (process->id != socket->creator && !process_is_child(process, socket->creator))
     {
@@ -176,6 +179,7 @@ static file_t* socket_ctl_open(volume_t* volume, const path_t* path, sysobj_t* s
         return NULL;
     }
     file->ops = &fileOps;
+    file->private = socket;
     return file;
 }
 
@@ -183,20 +187,15 @@ static sysobj_ops_t ctlOps = {
     .open = socket_ctl_open,
 };
 
-static void socket_on_free(sysdir_t* sysdir)
-{
-    socket_t* socket = sysdir->private;
-    socket->family->deinit(socket);
-    free(socket);
-}
-
-sysdir_t* socket_create(socket_family_t* family, const char* id, path_flags_t flags)
-{
+socket_t* socket_new(socket_family_t* family, path_flags_t flags)
+{        
     socket_t* socket = malloc(sizeof(socket_t));
     if (socket == NULL)
     {
+        free(socket);
         return NULL;
     }
+    ulltoa(atomic_fetch_add(&newId, 1), socket->id, 10);
     socket->family = family;
     socket->creator = sched_process()->id;
     socket->flags = flags;
@@ -209,20 +208,23 @@ sysdir_t* socket_create(socket_family_t* family, const char* id, path_flags_t fl
 
     char path[MAX_PATH];
     sprintf(path, "/net/%s", family->name);
-    sysdir_t* socketDir = sysdir_new(path, id, socket_on_free, socket);
-    if (socketDir == NULL)
-    {
-        family->deinit(socket);
-        free(socket);
-        return NULL;
-    }
 
-    if (sysdir_add(socketDir, "ctl", &ctlOps, NULL) == ERR || sysdir_add(socketDir, "data", &dataOps, NULL) == ERR ||
-        sysdir_add(socketDir, "accept", &acceptOps, NULL) == ERR)
-    {
-        sysdir_free(socketDir);
-        return NULL;
-    }
+    ASSERT_PANIC(sysdir_init(&socket->dir, path, socket->id, socket) != ERR);
+    ASSERT_PANIC(sysobj_init(&socket->ctlObj, &socket->dir, "ctl", &ctlOps, socket) != ERR);
+    ASSERT_PANIC(sysobj_init(&socket->dataObj, &socket->dir, "data", &dataOps, socket) != ERR);
+    ASSERT_PANIC(sysobj_init(&socket->acceptObj, &socket->dir, "accept", &acceptOps, socket) != ERR);
 
-    return socketDir;
+    return socket;
+}
+
+static void socket_on_free(sysdir_t* sysdir)
+{
+    socket_t* socket = sysdir->private;
+    socket->family->deinit(socket);
+    free(socket);
+}
+
+void socket_free(socket_t* socket)
+{
+    sysdir_deinit(&socket->dir, socket_on_free);    
 }

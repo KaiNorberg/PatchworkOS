@@ -39,6 +39,8 @@ static atomic_bool panicking;
 
 static lock_t lock;
 
+static sysobj_t klog;
+
 extern uint64_t _kernelStart;
 extern uint64_t _kernelEnd;
 
@@ -232,7 +234,7 @@ SYSFS_STANDARD_OPS_DEFINE(klogOps, PATH_NONE,
 void log_expose(void)
 {
     printf("log: expose\n");
-    sysobj_new("/", "klog", &klogOps, NULL);
+    ASSERT_PANIC(sysobj_init_path(&klog, "/", "klog", &klogOps, NULL) != ERR);
 }
 
 void log_enable_screen(gop_buffer_t* gopBuffer)

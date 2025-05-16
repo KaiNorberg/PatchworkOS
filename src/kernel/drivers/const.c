@@ -8,10 +8,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+static sysobj_t oneObj;
+static sysobj_t zeroObj;
+static sysobj_t nullObj;
+
 static uint64_t const_one_read(file_t* file, void* buffer, uint64_t count)
 {
     memset(buffer, -1, count);
-    return 0;
+    return count;
 }
 
 static void* const_one_mmap(file_t* file, void* addr, uint64_t length, prot_t prot)
@@ -35,7 +39,7 @@ SYSFS_STANDARD_OPS_DEFINE(oneOps, PATH_NONE,
 static uint64_t const_zero_read(file_t* file, void* buffer, uint64_t count)
 {
     memset(buffer, 0, count);
-    return 0;
+    return count;
 }
 
 static void* const_zero_mmap(file_t* file, void* addr, uint64_t length, prot_t prot)
@@ -63,7 +67,7 @@ static uint64_t const_null_read(file_t* file, void* buffer, uint64_t count)
 
 static uint64_t const_null_write(file_t* file, const void* buffer, uint64_t count)
 {
-    return 0;
+    return count;
 }
 
 SYSFS_STANDARD_OPS_DEFINE(nullOps, PATH_NONE,
@@ -74,7 +78,7 @@ SYSFS_STANDARD_OPS_DEFINE(nullOps, PATH_NONE,
 
 void const_init(void)
 {
-    ASSERT_PANIC(sysobj_new("/", "one", &oneOps, NULL) != NULL);
-    ASSERT_PANIC(sysobj_new("/", "zero", &zeroOps, NULL) != NULL);
-    ASSERT_PANIC(sysobj_new("/", "null", &nullOps, NULL) != NULL);
+    ASSERT_PANIC(sysobj_init_path(&oneObj, "/", "one", &oneOps, NULL) != ERR);
+    ASSERT_PANIC(sysobj_init_path(&zeroObj, "/", "zero", &zeroOps, NULL) != ERR);
+    ASSERT_PANIC(sysobj_init_path(&nullObj, "/", "null", &nullOps, NULL) != ERR);
 }
