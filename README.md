@@ -65,10 +65,6 @@ There are three ways to run Patchwork.
 2. **Use QEMU:** Download [QEMU](https://www.qemu.org/) and use the ```make run``` command.
 3. **Other Virtual Machine:** Run the created .img file in a virtual machine of your choice.
 
-## Documentation (WIP)
-
-Documentation will eventually be found on the [wiki](https://github.com/Kaj9296/PatchworkOS/wiki) page.
-
 ## Contributing
 
 If you find any bugs, issues or just have a suggestion for something I could do better, then feel free to open an issue or if you feel like it, you may submit a pull request.
