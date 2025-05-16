@@ -6,8 +6,6 @@
 #include <sys/list.h>
 #include <sys/proc.h>
 
-// TODO: Make this code less incomprehensible.
-
 #define WAIT_ALL UINT64_MAX
 
 // Blocks untill condition is true, condition will be tested after every call to wait_unblock.
