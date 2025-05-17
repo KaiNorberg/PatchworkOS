@@ -40,6 +40,16 @@ typedef struct
     for ((elem) = CONTAINER_OF(start, typeof(*elem), member); &(elem)->member != &((list)->head); \
         (elem) = CONTAINER_OF((elem)->member.prev, typeof(*elem), member))
 
+#define LIST_FOR_EACH_TO(elem, end, list, member) \
+    for ((elem) = CONTAINER_OF((list)->head.next, typeof(*elem), member); \
+            &(elem)->member != &((list)->head) && &(elem)->member != (end); \
+            (elem) = CONTAINER_OF((elem)->member.next, typeof(*elem), member))
+
+#define LIST_FOR_EACH_TO_REVERSE(elem, end, list, member) \
+    for ((elem) = CONTAINER_OF((list)->head.prev, typeof(*elem), member); \
+            &(elem)->member != &((list)->head) && &(elem)->member != (end); \
+            (elem) = CONTAINER_OF((elem)->member.prev, typeof(*elem), member))
+
 static inline void list_entry_init(list_entry_t* entry)
 {
     entry->next = entry;

@@ -523,7 +523,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
         {
             return ERROR(EINVAL);
         }
-        if (files[i].file->ops->poll == NULL)
+        if (files[i].file->ops == NULL || files[i].file->ops->poll == NULL)
         {
             return ERROR(ENOOP);
         }

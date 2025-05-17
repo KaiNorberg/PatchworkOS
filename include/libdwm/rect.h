@@ -52,8 +52,10 @@ typedef struct
         (other)->bottom == (rect)->bottom)
 
 #define RECT_CONTAINS(rect, other) \
-    ((other)->left >= (rect)->left && (other)->right < (rect)->right && (other)->top >= (rect)->top && \
-        (other)->bottom < (rect)->bottom)
+    ((rect)->left <= (rect)->right && (rect)->top <= (rect)->bottom && \
+    (other)->left <= (other)->right && (other)->top <= (other)->bottom && \
+    (other)->left >= (rect)->left && (other)->right <= (rect)->right && \
+    (other)->top >= (rect)->top && (other)->bottom <= (rect)->bottom)
 
 #define RECT_CONTAINS_POINT(rect, point) \
     ((point)->x >= (rect)->left && (point)->x < (rect)->right && (point)->y >= (rect)->top && \
@@ -63,6 +65,10 @@ typedef struct
     (!((rect)->right <= (other)->left || (rect)->left >= (other)->right || (rect)->bottom <= (other)->top || \
         (rect)->top >= (other)->bottom))
 
+#define RECT_OVERLAP_STRICT(rect, other) \
+    (!((rect)->right < (other)->left || (rect)->left > (other)->right || (rect)->bottom < (other)->top || \
+        (rect)->top > (other)->bottom))
+    
 #define RECT_FIT(rect, parent) \
     ({ \
         (rect)->left = CLAMP((rect)->left, (parent)->left, (parent)->right); \

@@ -87,27 +87,6 @@ static void compositor_draw_others(compositor_ctx_t* ctx, surface_t* window, con
     }
 }
 
-static void compositor_invalidate_windows_above(compositor_ctx_t* ctx, surface_t* window, const rect_t* rect)
-{
-    surface_t* other;
-    LIST_FOR_EACH_FROM(other, window->dwmEntry.next, ctx->windows, dwmEntry)
-    {
-        rect_t otherRect = SURFACE_RECT(other);
-        if (RECT_OVERLAP(rect, &otherRect))
-        {
-            rect_t invalidRect = *rect;
-            RECT_FIT(&invalidRect, &otherRect);
-            invalidRect.left -= otherRect.left;
-            invalidRect.top -= otherRect.top;
-            invalidRect.right -= otherRect.left;
-            invalidRect.bottom -= otherRect.top;
-
-            other->invalid = true;
-            gfx_invalidate(&other->gfx, &invalidRect);
-        }
-    }
-}
-
 static void compositor_draw_cursor(compositor_ctx_t* ctx)
 {
     if (ctx->cursor == NULL)
@@ -153,6 +132,48 @@ static void compositor_draw_wall(compositor_ctx_t* ctx)
     }
 }
 
+static void compositor_invalidate_windows_above(compositor_ctx_t* ctx, surface_t* window, const rect_t* rect)
+{
+    surface_t* other;
+    LIST_FOR_EACH_REVERSE(other, ctx->windows, dwmEntry)
+    {
+        rect_t otherRect = SURFACE_RECT(other);
+        
+        bool overlap = false;
+        bool contains = false;
+        if (RECT_CONTAINS(&otherRect, rect))
+        {
+            overlap = true;
+            contains = true;
+        }
+        else if (RECT_OVERLAP_STRICT(rect, &otherRect))
+        {
+            overlap = true;
+            contains = false;
+        }
+
+        if (!overlap)
+        {
+            continue;
+        }
+
+        rect_t invalidRect = *rect;
+        RECT_FIT(&invalidRect, &otherRect);
+        invalidRect.left -= otherRect.left;
+        invalidRect.top -= otherRect.top;
+        invalidRect.right -= otherRect.left;
+        invalidRect.bottom -= otherRect.top;
+
+        other->invalid = true;
+        gfx_invalidate(&other->gfx, &invalidRect);
+
+        if (contains)
+        {
+            return;
+        }
+    }
+}
+
 static void compositor_draw_window_panel(compositor_ctx_t* ctx, surface_t* surface)
 {
     rect_t* fitRect = surface->type == SURFACE_WINDOW ? &clientRect : &screenRect;
@@ -168,7 +189,7 @@ static void compositor_draw_window_panel(compositor_ctx_t* ctx, surface_t* surfa
 
         for (uint64_t i = 0; i < subtract.count; i++)
         {
-            compositor_draw_others(ctx, surface, &surface->prevRect);
+            compositor_draw_others(ctx, surface, &subtract.rects[i]);
         }
 
         surface->moved = false;
@@ -187,11 +208,20 @@ static void compositor_draw_window_panel(compositor_ctx_t* ctx, surface_t* surfa
         return;
     }
 
-    screen_transfer(surface, &rect);
     if (surface->type == SURFACE_WINDOW)
     {
+        screen_transfer(surface, &rect);
         compositor_invalidate_windows_above(ctx, surface, &rect);
     }
+    else if (surface->type == SURFACE_PANEL)
+    {
+        screen_transfer(surface, &rect);
+    }
+    else
+    {
+        printf("dwm: compositor_draw_window_panel invalid type\n");
+    }
+
     surface->gfx.invalidRect = (rect_t){0};
 }
 

@@ -41,7 +41,7 @@ static psf_t* defaultFont;
 
 static client_t* dwm_client_accept(void)
 {
-    printf("dwm client: accept\n");
+    printf("dwm: accept\n");
     fd_t fd = openf("sys:/net/local/%s/accept", id);
     if (fd == ERR)
     {
@@ -52,7 +52,7 @@ static client_t* dwm_client_accept(void)
     client_t* client = client_new(fd);
     if (client == NULL)
     {
-        printf("dwm: failed to accept client\n");
+        printf("dwm: failed to accept\n");
         close(fd);
         return NULL;
     }
@@ -64,7 +64,7 @@ static client_t* dwm_client_accept(void)
 
 static void dwm_client_disconnect(client_t* client)
 {
-    printf("dwm client: disconnect\n");
+    printf("dwm: disconnect\n");
     list_remove(&client->entry);
     client_free(client);
     clientAmount--;
@@ -563,6 +563,7 @@ static void dwm_update(void)
         {
             if (client_recieve_cmds(client) == ERR)
             {
+                printf("dwm: client_recieve_cmds failed (%s)\n", strerror(errno));
                 dwm_client_disconnect(client);
             }
         }
