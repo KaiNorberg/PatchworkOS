@@ -12,10 +12,6 @@
 #include <sys/io.h>
 #include <sys/math.h>
 
-static sysdir_t statDir;
-static sysobj_t cpuObj;
-static sysobj_t memObj;
-
 void statistics_cpu_ctx_init(statistics_cpu_ctx_t* ctx)
 {
     ctx->idleClocks = 0;
@@ -90,9 +86,10 @@ VIEW_STANDARD_OPS_DEFINE(memOps, PATH_NONE,
 
 void statistics_init(void)
 {
-    ASSERT_PANIC(sysdir_init(&statDir, "/", "stat", NULL) != ERR);
-    ASSERT_PANIC(sysobj_init(&cpuObj, &statDir, "cpu", &cpuOps, NULL) != ERR);
-    ASSERT_PANIC(sysobj_init(&memObj, &statDir, "mem", &memOps, NULL) != ERR);
+    sysdir_t* dir = sysdir_new("/", "stat", NULL, NULL);
+    ASSERT_PANIC(dir != NULL);
+    ASSERT_PANIC(sysdir_add(dir, "cpu", &cpuOps, NULL) != ERR);
+    ASSERT_PANIC(sysdir_add(dir, "mem", &memOps, NULL) != ERR);
 }
 
 void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* cpu)

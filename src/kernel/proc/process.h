@@ -13,18 +13,11 @@ typedef struct
     lock_t lock;
 } process_threads_t;
 
-typedef struct
-{
-    sysdir_t sysdir;
-    sysobj_t ctlObj;
-    sysobj_t cwdObj;
-    sysobj_t cmdlineObj;
-} process_dir_t;
-
 typedef struct process
 {
     pid_t id;
     argv_t argv;
+    sysdir_t* dir;
     vfs_ctx_t vfsCtx;
     space_t space;
     atomic_bool dead;
@@ -36,7 +29,6 @@ typedef struct process
     list_entry_t entry;
     list_t children;
     struct process* parent;
-    process_dir_t dir;
 } process_t;
 
 process_t* process_new(process_t* parent, const char** argv);

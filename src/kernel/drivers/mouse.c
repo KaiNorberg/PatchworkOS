@@ -2,16 +2,14 @@
 #include "sync/lock.h"
 #include "ps2/mouse.h"
 #include "fs/sysfs.h"
-#include "fs/vfs.h"
 #include "systime/systime.h"
-#include "utils/log.h"
 
 #include <stdlib.h>
 #include <sys/math.h>
 
 static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count)
 {
-    mouse_t* mouse = file->private;
+    mouse_t* mouse = file->sysobj->private;
 
     count = ROUND_DOWN(count, sizeof(mouse_event_t));
     for (uint64_t i = 0; i < count / sizeof(mouse_event_t); i++)
@@ -33,27 +31,16 @@ static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count)
 
 static wait_queue_t* mouse_poll(file_t* file, poll_file_t* pollFile)
 {
-    mouse_t* mouse = file->private;
+    mouse_t* mouse = file->sysobj->private;
     pollFile->occurred = POLL_READ & (mouse->writeIndex != file->pos);
     return &mouse->waitQueue;
 }
 
-SYSFS_STANDARD_OPS_DEFINE(mouseOps, PATH_NONE,
+SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(mouse_open, PATH_NONE,
     (file_ops_t){
         .read = mouse_read,
         .poll = mouse_poll,
     });
-
-mouse_t* mouse_new(const char* name)
-{
-    mouse_t* mouse = malloc(sizeof(mouse_t));
-    mouse->writeIndex = 0;
-    wait_queue_init(&mouse->waitQueue);
-    lock_init(&mouse->lock);
-    ASSERT_PANIC(sysobj_init_path(&mouse->sysobj, "/mouse", name, &mouseOps, mouse) != ERR);
-
-    return mouse;
-}
 
 static void mouse_on_free(sysobj_t* sysobj)
 {
@@ -61,9 +48,25 @@ static void mouse_on_free(sysobj_t* sysobj)
     free(mouse);
 }
 
+static sysobj_ops_t resOps = {
+    .open = mouse_open,
+    .onFree = mouse_on_free,
+};
+
+mouse_t* mouse_new(const char* name)
+{
+    mouse_t* mouse = malloc(sizeof(mouse_t));
+    mouse->writeIndex = 0;
+    mouse->sysobj = sysobj_new("/mouse", name, &resOps, mouse);
+    wait_queue_init(&mouse->waitQueue);
+    lock_init(&mouse->lock);
+
+    return mouse;
+}
+
 void mouse_free(mouse_t* mouse)
 {
-    sysobj_deinit(&mouse->sysobj, mouse_on_free);
+    sysobj_free(mouse->sysobj);
 }
 
 void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, int64_t deltaX, int64_t deltaY)

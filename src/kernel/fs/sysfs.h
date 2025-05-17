@@ -4,16 +4,14 @@
 #include <sys/node.h>
 
 #include "defs.h"
-#include "path.h"
-
-typedef struct volume volume_t;
-typedef struct file file_t;
+#include "sys/list.h"
+#include "vfs.h"
 
 // Note: Avoid code duplication by using the standard functions when possible
 
 // TODO: Implement namespace system
 
-#define SYSFS_STANDARD_OPEN_DEFINE(name, supportedFlags, ...) \
+#define SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(name, supportedFlags, ...) \
     static file_t* name(volume_t* volume, const path_t* path, sysobj_t* sysobj) \
     { \
         file_t* file = file_new(volume, path, supportedFlags); \
@@ -28,7 +26,7 @@ typedef struct file file_t;
     }
 
 #define SYSFS_STANDARD_OPS_DEFINE(name, supportedFlags, ...) \
-    SYSFS_STANDARD_OPEN_DEFINE(name##_standard_open, supportedFlags, __VA_ARGS__) \
+    SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(name##_standard_open, supportedFlags, __VA_ARGS__) \
     static sysobj_ops_t name = { \
         .open = name##_standard_open, \
     };
@@ -42,8 +40,8 @@ typedef struct sysdir sysdir_t;
 typedef file_t* (*sysobj_open_t)(volume_t*, const path_t*, sysobj_t*);
 typedef uint64_t (*sysobj_open2_t)(volume_t*, const path_t*, sysobj_t*, file_t* [2]);
 typedef void (*sysobj_cleanup_t)(sysobj_t*, file_t* file);
-
 typedef void (*sysobj_on_free_t)(sysobj_t*);
+
 typedef void (*sysdir_on_free_t)(sysdir_t*);
 
 typedef struct sysobj_ops
@@ -51,29 +49,25 @@ typedef struct sysobj_ops
     sysobj_open_t open;
     sysobj_open2_t open2;
     sysobj_cleanup_t cleanup;
+    sysobj_on_free_t onFree;
 } sysobj_ops_t;
-
-typedef struct syshdr
-{
-    node_t node;
-    atomic_bool hidden;
-    atomic_uint64 ref;
-} syshdr_t;
 
 typedef struct sysobj
 {
-    syshdr_t header;
+    node_t node;
     void* private;
     const sysobj_ops_t* ops;
+    atomic_uint64 ref;
+    atomic_bool hidden;
     sysdir_t* dir;
-    sysobj_on_free_t onFree;
 } sysobj_t;
 
 typedef struct sysdir
 {
-    syshdr_t header;
+    node_t node;
     void* private;
     sysdir_on_free_t onFree;
+    atomic_uint64 ref;
 } sysdir_t;
 
 void sysfs_init(void);
@@ -82,18 +76,12 @@ void sysfs_init(void);
 // then wait to mount sysfs untill after vfs_init().
 void sysfs_mount_to_vfs(void);
 
-// Called in the vfs before calling any operation on a sysfs file.
-uint64_t sysfs_start_op(file_t* file);
+sysdir_t* sysdir_new(const char* path, const char* dirname, sysdir_on_free_t onFree, void* private);
 
-// Called in the vfs after calling any operation on a sysfs file.
-void sysfs_end_op(file_t* file);
+void sysdir_free(sysdir_t* dir);
 
-uint64_t sysdir_init(sysdir_t* dir, const char* path, const char* dirname, void* private);
+uint64_t sysdir_add(sysdir_t* dir, const char* filename, const sysobj_ops_t* ops, void* private);
 
-void sysdir_deinit(sysdir_t* dir, sysdir_on_free_t onFree);
+sysobj_t* sysobj_new(const char* path, const char* filename, const sysobj_ops_t* ops, void* private);
 
-uint64_t sysobj_init(sysobj_t* sysobj, sysdir_t* dir, const char* filename, const sysobj_ops_t* ops, void* private);
-
-uint64_t sysobj_init_path(sysobj_t* sysobj, const char* path, const char* filename, const sysobj_ops_t* ops, void* private);
-
-void sysobj_deinit(sysobj_t* sysobj, sysobj_on_free_t onFree);
+void sysobj_free(sysobj_t* sysobj);

@@ -10,8 +10,6 @@
 #include <stdlib.h>
 #include <sys/math.h>
 
-static sysobj_t pipeNew;
-
 static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count)
 {
     if (count == 0)
@@ -211,5 +209,5 @@ static sysobj_ops_t resourceOps = {
 
 void pipe_init(void)
 {
-    ASSERT_PANIC(sysobj_init_path(&pipeNew, "/pipe", "new", &resourceOps, NULL) != ERR);
+    sysobj_new("/pipe", "new", &resourceOps, NULL);
 }

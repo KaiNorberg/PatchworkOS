@@ -1,8 +1,8 @@
 #include "ramfs.h"
 
-#include "../utils/log.h"
-#include "../mem/pmm.h"
-#include "../sched/sched.h"
+#include "utils/log.h"
+#include "mem/pmm.h"
+#include "sched/sched.h"
 #include "sysfs.h"
 #include "vfs.h"
 #include "view.h"

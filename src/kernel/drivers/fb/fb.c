@@ -50,10 +50,9 @@ SYSFS_STANDARD_OPS_DEFINE(fbOps, PATH_NONE,
         .ioctl = fb_ioctl,
     });
 
-uint64_t fb_expose(fb_t* fb)
+sysobj_t* fb_expose(fb_t* fb)
 {
     char name[MAX_NAME];
     sprintf(name, "fb%d", atomic_load(&newId));
-    ASSERT_PANIC(sysobj_init_path(&fb->sysobj, "/", name, &fbOps, fb) != ERR);
-    return 0;
+    return sysobj_new("/", name, &fbOps, fb);
 }

@@ -76,6 +76,7 @@ void thread_free(thread_t* thread)
 
     simd_ctx_deinit(&thread->simd);
     free(thread);
+    printf("thread: free end\n");
 }
 
 void thread_save(thread_t* thread, const trap_frame_t* trapFrame)

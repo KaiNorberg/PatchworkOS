@@ -12,9 +12,9 @@ typedef struct
 {
     mouse_event_t events[MOUSE_MAX_EVENT];
     uint64_t writeIndex;
+    sysobj_t* sysobj;
     wait_queue_t waitQueue;
     lock_t lock;
-    sysobj_t sysobj;
 } mouse_t;
 
 mouse_t* mouse_new(const char* name);

@@ -1,9 +1,5 @@
 #pragma once
 
-#include "defs.h"
-#include "path.h"
-#include "sysfs.h"
-
 #include <ctype.h>
 #include <stdatomic.h>
 #include <string.h>
@@ -11,7 +7,13 @@
 #include <sys/list.h>
 #include <sys/proc.h>
 
+#include "defs.h"
+#include "path.h"
+
 #define FILE_DEFER(file) __attribute__((cleanup(file_defer_cleanup))) file_t* CONCAT(f, __COUNTER__) = (file)
+
+typedef struct sysobj sysobj_t;
+typedef struct sysdir sysdir_t;
 
 typedef struct fs fs_t;
 typedef struct volume volume_t;
@@ -50,7 +52,7 @@ typedef struct volume
     list_entry_t entry;
     char label[MAX_NAME];
     const volume_ops_t* ops;
-    sysdir_t sysdir;
+    sysdir_t* dir;
     atomic_uint64 ref;
 } volume_t;
 
@@ -80,7 +82,7 @@ typedef struct file
     volume_t* volume;
     uint64_t pos;
     void* private;
-    syshdr_t* syshdr; // Used by sysfs
+    sysobj_t* sysobj; // Used by sysfs
     const file_ops_t* ops;
     path_flags_t flags;
     atomic_uint64 ref;

@@ -46,7 +46,12 @@ static local_listener_t* local_listener_new(const char* address)
     lock_init(&listener->lock);
     wait_queue_init(&listener->waitQueue);
     atomic_store(&listener->ref, 1);
-    ASSERT_PANIC(sysobj_init_path(&listener->sysobj, "/net/local/listen", address, &listenerOps, NULL) != ERR);
+    listener->obj = sysobj_new("/net/local/listen", address, &listenerOps, NULL);
+    if (listener->obj == NULL)
+    {
+        free(listener);
+        return NULL;
+    }
 
     LOCK_DEFER(&listenersLock);
     list_push(&listeners, &listener->entry);
@@ -66,7 +71,7 @@ static void local_listener_deref(local_listener_t* listener)
         LOCK_DEFER(&listenersLock);
         wait_unblock(&listener->waitQueue, UINT64_MAX);
         list_remove(&listener->entry);
-        sysobj_deinit(&listener->sysobj, NULL);
+        sysobj_free(listener->obj);
         free(listener);
     }
 }
@@ -621,5 +626,5 @@ void net_local_init(void)
     list_init(&listeners);
     lock_init(&listenersLock);
 
-    ASSERT_PANIC(socket_family_expose(&family) != ERR);
+    ASSERT_PANIC(socket_family_expose(&family) != NULL);
 }

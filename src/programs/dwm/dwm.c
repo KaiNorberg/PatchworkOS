@@ -45,14 +45,14 @@ static client_t* dwm_client_accept(void)
     fd_t fd = openf("sys:/net/local/%s/accept", id);
     if (fd == ERR)
     {
-        printf("dwm: %s\n", strerror(errno));
+        printf("%s\n", strerror(errno));
         return NULL;
     }
 
     client_t* client = client_new(fd);
     if (client == NULL)
     {
-        printf("dwm: failed to accept client\n");
+        printf("dwm error: failed to accept client");
         close(fd);
         return NULL;
     }
