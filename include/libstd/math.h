@@ -8,6 +8,8 @@ extern "C"
 
 #include "_AUX/config.h"
 
+double ldexp(double x, int exp);
+
 double fabs(double j);
 
 #if defined(__cplusplus)

@@ -43,5 +43,6 @@ int* _PlatformErrnoFunc(void)
 
 void _PlatformAbort(void)
 {
-    _SyscallProcessExit(EXIT_FAILURE);
+    // raise( SIGABRT );
+    exit(EXIT_FAILURE);
 }

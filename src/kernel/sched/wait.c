@@ -1,14 +1,14 @@
 #include "wait.h"
 
-#include "sync/lock.h"
-#include "utils/log.h"
 #include "cpu/regs.h"
-#include "sched.h"
 #include "cpu/smp.h"
-#include "sys/list.h"
+#include "cpu/vectors.h"
 #include "drivers/systime/systime.h"
 #include "proc/thread.h"
-#include "cpu/vectors.h"
+#include "sched.h"
+#include "sync/lock.h"
+#include "sys/list.h"
+#include "utils/log.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -52,7 +52,7 @@ static void wait_handle_parked_threads(trap_frame_t* trapFrame, cpu_t* self)
 
     while (1)
     {
-        thread_t* thread = LIST_CONTAINER_SAFE(list_pop(&self->wait.parkedThreads), thread_t, entry);
+        thread_t* thread = CONTAINER_OF_SAFE(list_pop(&self->wait.parkedThreads), thread_t, entry);
         if (thread == NULL)
         {
             break;
@@ -60,7 +60,7 @@ static void wait_handle_parked_threads(trap_frame_t* trapFrame, cpu_t* self)
 
         // Sort blocked threads by deadline
         if (thread->wait.deadline == CLOCKS_NEVER || list_empty(&self->wait.blockedThreads) ||
-            LIST_CONTAINER(list_last(&self->wait.blockedThreads), thread_t, entry)->wait.deadline <=
+            CONTAINER_OF(list_last(&self->wait.blockedThreads), thread_t, entry)->wait.deadline <=
                 thread->wait.deadline)
         {
             list_push(&self->wait.blockedThreads, &thread->entry);
@@ -90,7 +90,7 @@ static void wait_handle_blocked_threads(trap_frame_t* trapFrame, cpu_t* self)
 {
     LOCK_DEFER(&self->wait.lock);
 
-    thread_t* thread = LIST_CONTAINER_SAFE(list_first(&self->wait.blockedThreads), thread_t, entry);
+    thread_t* thread = CONTAINER_OF_SAFE(list_first(&self->wait.blockedThreads), thread_t, entry);
     if (thread == NULL)
     {
         return;
@@ -209,7 +209,7 @@ static uint64_t wait_thread_setup(thread_t* thread, wait_queue_t** waitQueues, u
         {
             while (1)
             {
-                wait_entry_t* other = LIST_CONTAINER_SAFE(list_pop(&thread->wait.entries), wait_entry_t, threadEntry);
+                wait_entry_t* other = CONTAINER_OF_SAFE(list_pop(&thread->wait.entries), wait_entry_t, threadEntry);
                 if (other == NULL)
                 {
                     break;

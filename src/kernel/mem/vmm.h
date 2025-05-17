@@ -1,8 +1,8 @@
 #pragma once
 
 #include "defs.h"
-#include "sync/lock.h"
 #include "pml.h"
+#include "sync/lock.h"
 
 #include <bootloader/boot_info.h>
 

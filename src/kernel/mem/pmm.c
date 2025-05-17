@@ -1,10 +1,10 @@
 #include "pmm.h"
 
 #include "config.h"
-#include "sync/lock.h"
-#include "utils/log.h"
 #include "cpu/smp.h"
+#include "sync/lock.h"
 #include "sys/proc.h"
+#include "utils/log.h"
 #include "utils/utils.h"
 #include "vmm.h"
 

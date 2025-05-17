@@ -1,0 +1,1 @@
+We use these scripts as a cheap and dirty alternative to having to compile the entirety of GCC to make a cross-compiler.

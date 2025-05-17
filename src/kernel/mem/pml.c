@@ -1,6 +1,6 @@
 #include "pml.h"
-#include "pmm.h"
 #include "cpu/regs.h"
+#include "pmm.h"
 #include "vmm.h"
 
 #include <stdio.h>

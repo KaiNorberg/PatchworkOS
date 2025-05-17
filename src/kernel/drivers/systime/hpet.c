@@ -1,8 +1,8 @@
 #include "hpet.h"
 
+#include "mem/vmm.h"
 #include "utils/log.h"
 #include "utils/utils.h"
-#include "mem/vmm.h"
 
 static hpet_t* hpet;
 static uintptr_t address;

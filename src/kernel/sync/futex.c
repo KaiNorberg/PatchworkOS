@@ -1,10 +1,10 @@
 #include "futex.h"
-#include "utils/hashmap.h"
-#include "lock.h"
-#include "sched/sched.h"
 #include "drivers/systime/systime.h"
+#include "lock.h"
 #include "proc/thread.h"
+#include "sched/sched.h"
 #include "sched/wait.h"
+#include "utils/hashmap.h"
 
 #include <stdlib.h>
 

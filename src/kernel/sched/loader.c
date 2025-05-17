@@ -4,14 +4,14 @@
 #include <sys/elf.h>
 #include <sys/math.h>
 
-#include "errno.h"
 #include "cpu/gdt.h"
-#include "utils/log.h"
-#include "sched.h"
-#include "stdarg.h"
-#include "proc/thread.h"
+#include "errno.h"
 #include "fs/vfs.h"
 #include "mem/vmm.h"
+#include "proc/thread.h"
+#include "sched.h"
+#include "stdarg.h"
+#include "utils/log.h"
 
 #include <stdio.h>
 
@@ -20,24 +20,29 @@ static void* loader_load_program(thread_t* thread)
     const char* executable = sched_process()->argv.buffer[0];
     if (executable == NULL)
     {
-        return NULL;
+        printf("loader_load_program: executable == NULL (%s) pid=%d\n", strerror(thread->error), thread->process->id);
+        sched_process_exit(EEXEC);
     }
 
     file_t* file = vfs_open(executable);
     if (file == NULL)
     {
-        return NULL;
+        printf("loader_load_program: vfs_open failed (%s) pid=%d\n", strerror(thread->error), thread->process->id);
+        sched_process_exit(EEXEC);
     }
     FILE_DEFER(file);
 
     elf_hdr_t header;
     if (vfs_read(file, &header, sizeof(elf_hdr_t)) != sizeof(elf_hdr_t))
     {
-        return NULL;
+        printf("loader_load_program: vfs_read hdr failed (%s) pid=%d\n", strerror(thread->error), thread->process->id);
+        sched_process_exit(EEXEC);
     }
     if (!ELF_VALID_CHECK(&header))
     {
-        return NULL;
+        printf("loader_load_program: elf valid check failed (%s) pid=%d\n", strerror(thread->error),
+            thread->process->id);
+        sched_process_exit(EEXEC);
     }
 
     uint64_t min = UINT64_MAX;
@@ -47,13 +52,17 @@ static void* loader_load_program(thread_t* thread)
         uint64_t offset = sizeof(elf_hdr_t) + header.phdrSize * i;
         if (vfs_seek(file, offset, SEEK_SET) != offset)
         {
-            return NULL;
+            printf("loader_load_program: vfs_seek to offset failed (%s) pid=%d\n", strerror(thread->error),
+                thread->process->id);
+            sched_process_exit(EEXEC);
         }
 
         elf_phdr_t phdr;
         if (vfs_read(file, &phdr, sizeof(elf_phdr_t)) != sizeof(elf_phdr_t))
         {
-            return NULL;
+            printf("loader_load_program: vfs_read phdr failed (%s) pid=%d\n", strerror(thread->error),
+                thread->process->id);
+            sched_process_exit(EEXEC);
         }
 
         switch (phdr.type)
@@ -62,28 +71,41 @@ static void* loader_load_program(thread_t* thread)
         {
             min = MIN(min, phdr.virtAddr);
             max = MAX(max, phdr.virtAddr + phdr.memorySize);
-            uint64_t size = MAX(phdr.memorySize, phdr.fileSize);
-
-            if (vmm_alloc((void*)phdr.virtAddr, size, PROT_READ | PROT_WRITE) == NULL)
+            if (phdr.memorySize < phdr.fileSize)
             {
-                return NULL;
+                printf("loader_load_program: phdr size check failed (%s) pid=%d\n", strerror(thread->error),
+                    thread->process->id);
+                sched_process_exit(EEXEC);
             }
-            memset((void*)phdr.virtAddr, 0, size);
+
+            if (vmm_alloc((void*)phdr.virtAddr, phdr.memorySize, PROT_READ | PROT_WRITE) == NULL)
+            {
+                printf("loader_load_program: vmm_alloc failed (%s) pid=%d\n", strerror(thread->error),
+                    thread->process->id);
+                sched_process_exit(EEXEC);
+            }
+            memset((void*)phdr.virtAddr, 0, phdr.memorySize);
 
             if (vfs_seek(file, phdr.offset, SEEK_SET) != phdr.offset)
             {
-                return NULL;
+                printf("loader_load_program: vfs_seek failed (%s) pid=%d\n", strerror(thread->error),
+                    thread->process->id);
+                sched_process_exit(EEXEC);
             }
             if (vfs_read(file, (void*)phdr.virtAddr, phdr.fileSize) != phdr.fileSize)
             {
-                return NULL;
+                printf("loader_load_program: vfs_read failed (%s) pid=%d\n", strerror(thread->error),
+                    thread->process->id);
+                sched_process_exit(EEXEC);
             }
 
             if (!(phdr.flags & ELF_PHDR_FLAGS_WRITE))
             {
-                if (vmm_protect((void*)phdr.virtAddr, size, PROT_READ) == ERR)
+                if (vmm_protect((void*)phdr.virtAddr, phdr.memorySize, PROT_READ) == ERR)
                 {
-                    return NULL;
+                    printf("loader_load_program: vmm_protect failed (%s) pid=%d\n", strerror(thread->error),
+                        thread->process->id);
+                    sched_process_exit(EEXEC);
                 }
             }
         }
@@ -99,7 +121,8 @@ static void* loader_alloc_stack(thread_t* thread)
     uintptr_t base = LOADER_STACK_ADDRESS(thread->id);
     if (vmm_alloc((void*)(base + PAGE_SIZE), CONFIG_USER_STACK, PROT_READ | PROT_WRITE) == NULL)
     {
-        return NULL;
+        printf("loader_alloc_stack: vmm_alloc failed (%s) pid=%d\n", strerror(thread->error), thread->process->id);
+        sched_process_exit(EEXEC);
     }
 
     return (void*)(base + PAGE_SIZE + CONFIG_USER_STACK);
@@ -123,19 +146,7 @@ static void loader_process_entry(void)
     thread_t* thread = sched_thread();
 
     void* rsp = loader_alloc_stack(thread);
-    if (rsp == NULL)
-    {
-        printf("loader: alloc_stack failure pid=%d\n", thread->process->id);
-        sched_process_exit(EEXEC);
-    }
-
     void* rip = loader_load_program(thread);
-    if (rip == NULL)
-    {
-        printf("loader: load_program failure pid=%d\n", thread->process->id);
-        sched_process_exit(EEXEC);
-    }
-
     char** argv = loader_setup_argv(thread, rsp);
     rsp = (void*)ROUND_DOWN((uint64_t)argv - 1, 16);
 

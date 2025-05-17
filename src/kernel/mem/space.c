@@ -1,7 +1,7 @@
 #include "space.h"
 
-#include "utils/log.h"
 #include "pmm.h"
+#include "utils/log.h"
 #include "utils/utils.h"
 #include "vmm.h"
 

@@ -1,12 +1,12 @@
 #include "process.h"
 
 #include "fs/ctl.h"
-#include "sync/lock.h"
-#include "utils/log.h"
-#include "sync/rwlock.h"
-#include "sched/sched.h"
 #include "fs/vfs.h"
 #include "fs/view.h"
+#include "sched/sched.h"
+#include "sync/lock.h"
+#include "sync/rwlock.h"
+#include "utils/log.h"
 
 #include <stdio.h>
 #include <stdlib.h>

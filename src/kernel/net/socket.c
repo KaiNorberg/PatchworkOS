@@ -1,13 +1,13 @@
 #include "socket.h"
-#include "fs/ctl.h"
 #include "defs.h"
-#include "utils/log.h"
+#include "fs/ctl.h"
+#include "fs/sysfs.h"
+#include "fs/vfs.h"
 #include "mem/pmm.h"
 #include "proc/process.h"
 #include "sched/sched.h"
 #include "stdbool.h"
-#include "fs/sysfs.h"
-#include "fs/vfs.h"
+#include "utils/log.h"
 
 #include <errno.h>
 #include <stdatomic.h>
@@ -188,7 +188,7 @@ static sysobj_ops_t ctlOps = {
 };
 
 socket_t* socket_new(socket_family_t* family, path_flags_t flags)
-{        
+{
     socket_t* socket = malloc(sizeof(socket_t));
     if (socket == NULL)
     {
@@ -226,5 +226,5 @@ static void socket_on_free(sysdir_t* sysdir)
 
 void socket_free(socket_t* socket)
 {
-    sysdir_deinit(&socket->dir, socket_on_free);    
+    sysdir_deinit(&socket->dir, socket_on_free);
 }

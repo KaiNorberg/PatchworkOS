@@ -1,7 +1,7 @@
 #include "pic.h"
 
-#include "port.h"
 #include "irq.h"
+#include "port.h"
 #include "vectors.h"
 
 void pic_init(void)

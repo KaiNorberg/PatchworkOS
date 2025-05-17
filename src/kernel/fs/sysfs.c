@@ -1,10 +1,10 @@
 #include "sysfs.h"
 
-#include "utils/log.h"
 #include "path.h"
-#include "sync/rwlock.h"
 #include "sched/sched.h"
+#include "sync/rwlock.h"
 #include "sys/node.h"
+#include "utils/log.h"
 #include "vfs.h"
 
 #include <errno.h>
@@ -267,7 +267,6 @@ uint64_t sysfs_start_op(file_t* file)
 
 void sysfs_end_op(file_t* file)
 {
-
 }
 
 static node_t* sysfs_traverse_and_alloc(const char* path)
@@ -387,7 +386,8 @@ uint64_t sysobj_init(sysobj_t* sysobj, sysdir_t* dir, const char* filename, cons
     return 0;
 }
 
-uint64_t sysobj_init_path(sysobj_t* sysobj, const char* path, const char* filename, const sysobj_ops_t* ops, void* private)
+uint64_t sysobj_init_path(sysobj_t* sysobj, const char* path, const char* filename, const sysobj_ops_t* ops,
+    void* private)
 {
     if (!path_valid_name(filename))
     {

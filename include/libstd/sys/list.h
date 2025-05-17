@@ -1,6 +1,7 @@
 #ifndef _SYS_LIST_H
 #define _SYS_LIST_H 1
 
+#include "_AUX/CONTAINER_OF.h"
 #include "_AUX/NULL.h"
 
 #include <stdbool.h>
@@ -17,35 +18,27 @@ typedef struct
     list_entry_t head;
 } list_t;
 
-#define LIST_CONTAINER(ptr, type, member) ((type*)((char*)(ptr) - offsetof(type, member)))
-
-#define LIST_CONTAINER_SAFE(ptr, type, member) \
-    ({ \
-        list_entry_t* e = ptr; \
-        ((e != NULL) ? LIST_CONTAINER(e, type, member) : NULL); \
-    })
-
 #define LIST_FOR_EACH(elem, list, member) \
-    for ((elem) = LIST_CONTAINER((list)->head.next, typeof(*elem), member); &(elem)->member != &((list)->head); \
-        (elem) = LIST_CONTAINER((elem)->member.next, typeof(*elem), member))
+    for ((elem) = CONTAINER_OF((list)->head.next, typeof(*elem), member); &(elem)->member != &((list)->head); \
+        (elem) = CONTAINER_OF((elem)->member.next, typeof(*elem), member))
 
 #define LIST_FOR_EACH_SAFE(elem, temp, list, member) \
-    for ((elem) = LIST_CONTAINER((list)->head.next, typeof(*elem), member), \
-        (temp) = LIST_CONTAINER((elem)->member.next, typeof(*elem), member); \
+    for ((elem) = CONTAINER_OF((list)->head.next, typeof(*elem), member), \
+        (temp) = CONTAINER_OF((elem)->member.next, typeof(*elem), member); \
         &(elem)->member != &((list)->head); \
-        (elem) = (temp), (temp) = LIST_CONTAINER((elem)->member.next, typeof(*elem), member))
+        (elem) = (temp), (temp) = CONTAINER_OF((elem)->member.next, typeof(*elem), member))
 
 #define LIST_FOR_EACH_REVERSE(elem, list, member) \
-    for ((elem) = LIST_CONTAINER((list)->head.prev, typeof(*elem), member); &(elem)->member != &((list)->head); \
-        (elem) = LIST_CONTAINER((elem)->member.prev, typeof(*elem), member))
+    for ((elem) = CONTAINER_OF((list)->head.prev, typeof(*elem), member); &(elem)->member != &((list)->head); \
+        (elem) = CONTAINER_OF((elem)->member.prev, typeof(*elem), member))
 
 #define LIST_FOR_EACH_FROM(elem, start, list, member) \
-    for ((elem) = LIST_CONTAINER(start, typeof(*elem), member); &(elem)->member != &((list)->head); \
-        (elem) = LIST_CONTAINER((elem)->member.next, typeof(*elem), member))
+    for ((elem) = CONTAINER_OF(start, typeof(*elem), member); &(elem)->member != &((list)->head); \
+        (elem) = CONTAINER_OF((elem)->member.next, typeof(*elem), member))
 
 #define LIST_FOR_EACH_FROM_REVERSE(elem, start, list, member) \
-    for ((elem) = LIST_CONTAINER(start, typeof(*elem), member); &(elem)->member != &((list)->head); \
-        (elem) = LIST_CONTAINER((elem)->member.prev, typeof(*elem), member))
+    for ((elem) = CONTAINER_OF(start, typeof(*elem), member); &(elem)->member != &((list)->head); \
+        (elem) = CONTAINER_OF((elem)->member.prev, typeof(*elem), member))
 
 static inline void list_entry_init(list_entry_t* entry)
 {

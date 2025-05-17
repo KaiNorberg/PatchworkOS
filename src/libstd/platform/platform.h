@@ -23,4 +23,4 @@ void* _PlatformPageAlloc(uint64_t amount);
 
 int* _PlatformErrnoFunc(void);
 
-void _PlatformAbort(void);
+_NORETURN void _PlatformAbort(void);

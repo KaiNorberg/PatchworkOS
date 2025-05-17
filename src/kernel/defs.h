@@ -15,8 +15,6 @@
 #define CONCAT(a, b) CONCAT_INNER(a, b)
 #define CONCAT_INNER(a, b) a##b
 
-#define CONTAINER_OF(ptr, type, member) ((type*)((char*)(ptr) - offsetof(type, member)))
-
 #define ERROR(code) \
     ({ \
         thread_t* thread = sched_thread(); \

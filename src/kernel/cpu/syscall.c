@@ -2,15 +2,15 @@
 
 #include "config.h"
 #include "defs.h"
-#include "gdt.h"
-#include "sched/loader.h"
-#include "ipc/pipe.h"
-#include "sched/sched.h"
 #include "drivers/systime/systime.h"
-#include "proc/thread.h"
 #include "fs/vfs.h"
 #include "fs/vfs_ctx.h"
+#include "gdt.h"
+#include "ipc/pipe.h"
 #include "mem/vmm.h"
+#include "proc/thread.h"
+#include "sched/loader.h"
+#include "sched/sched.h"
 
 #include <errno.h>
 #include <stdarg.h>

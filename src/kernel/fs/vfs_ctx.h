@@ -3,8 +3,8 @@
 #include <sys/io.h>
 
 #include "defs.h"
-#include "sync/lock.h"
 #include "path.h"
+#include "sync/lock.h"
 
 typedef struct file file_t;
 

@@ -1,11 +1,11 @@
 #include "pipe.h"
 
+#include "fs/vfs.h"
+#include "mem/pmm.h"
+#include "sched/sched.h"
 #include "sync/lock.h"
 #include "utils/log.h"
-#include "mem/pmm.h"
 #include "utils/ring.h"
-#include "sched/sched.h"
-#include "fs/vfs.h"
 
 #include <stdlib.h>
 #include <sys/math.h>

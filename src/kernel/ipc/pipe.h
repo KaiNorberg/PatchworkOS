@@ -1,9 +1,9 @@
 #pragma once
 
-#include "utils/ring.h"
-#include "sched/sched.h"
 #include "fs/vfs.h"
+#include "sched/sched.h"
 #include "sched/wait.h"
+#include "utils/ring.h"
 
 typedef struct
 {

@@ -1,11 +1,11 @@
 #include "../platform.h"
 #include "common/print.h"
 
-#include "utils/log.h"
-#include "mem/pmm.h"
-#include "sched/sched.h"
 #include "drivers/systime/systime.h"
+#include "mem/pmm.h"
 #include "mem/vmm.h"
+#include "sched/sched.h"
+#include "utils/log.h"
 
 #include <stdio.h>
 #include <sys/math.h>

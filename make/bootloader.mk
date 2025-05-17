@@ -1,3 +1,4 @@
+NOSTDLIB=1
 include Make.defaults
 
 TARGET := $(BINDIR)/bootx64.efi

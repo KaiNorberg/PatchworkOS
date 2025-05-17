@@ -1,11 +1,11 @@
 #pragma once
 
 #include "argv.h"
-#include "sync/futex.h"
-#include "mem/space.h"
 #include "fs/sysfs.h"
 #include "fs/vfs_ctx.h"
+#include "mem/space.h"
 #include "sched/wait.h"
+#include "sync/futex.h"
 
 typedef struct
 {

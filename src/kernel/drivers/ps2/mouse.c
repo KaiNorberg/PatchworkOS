@@ -1,14 +1,14 @@
 #include "mouse.h"
 
-#include "drivers/mouse.h"
-#include "cpu/port.h"
 #include "cpu/irq.h"
-#include "utils/log.h"
+#include "cpu/port.h"
+#include "drivers/mouse.h"
+#include "drivers/systime/systime.h"
+#include "fs/vfs.h"
 #include "ps2.h"
 #include "sched/sched.h"
 #include "stdlib.h"
-#include "drivers/systime/systime.h"
-#include "fs/vfs.h"
+#include "utils/log.h"
 
 #include <stdio.h>
 #include <sys/math.h>

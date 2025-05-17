@@ -1,6 +1,6 @@
 include Make.defaults
 
-MODULES := $(basename $(notdir $(wildcard make/*.mk)))
+MODULES := bootloader kernel libstd libdwm
 PROGRAMS := $(basename $(notdir $(wildcard make/programs/*.mk)))
 TARGET := bin/PatchworkOS.img
 
@@ -39,6 +39,8 @@ clean:
 
 nuke: clean
 	$(MAKE) -C lib/gnu-efi clean
+	rm -rf lib/doomgeneric-patchworkos
+	rm -rf lib/lua-5.4.7
 
 .PHONY: all
 all: setup $(MODULES) $(PROGRAMS) deploy
@@ -49,7 +51,7 @@ compile_commands: clean
 format:
 	find src/ include/ -iname '*.h' -o -iname '*.c' | xargs clang-format -style=file -i
 
-run:
+run: all
 	@qemu-system-x86_64 \
 	-M q35 \
 	-display sdl \
@@ -62,7 +64,7 @@ run:
 	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd \
 	-net none
 
-run_debug:
+run_debug: all
 	@qemu-system-x86_64 \
 	-M q35 \
 	-s \

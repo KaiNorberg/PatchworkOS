@@ -1,11 +1,11 @@
 #include "kbd.h"
 
-#include "sync/lock.h"
-#include "ps2/kbd.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
-#include "utils/log.h"
+#include "ps2/kbd.h"
+#include "sync/lock.h"
 #include "systime/systime.h"
+#include "utils/log.h"
 
 #include <stdlib.h>
 #include <sys/math.h>
@@ -44,7 +44,7 @@ SYSFS_STANDARD_OPS_DEFINE(kbdOps, PATH_NONE,
         .read = kbd_read,
         .poll = kbd_poll,
     });
-    
+
 kbd_t* kbd_new(const char* name)
 {
     kbd_t* kbd = malloc(sizeof(kbd_t));

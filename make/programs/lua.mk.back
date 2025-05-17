@@ -1,0 +1,21 @@
+#include Make.defaults
+
+# We need to implement signals before we can port lua...
+TARGET := $(BINDIR)/$(PROGRAM)
+
+$(TARGET):
+	@if [ ! -d "lib/lua-5.4.7" ]; then \
+	    curl -L -R -o lib/lua-5.4.7.tar.gz https://www.lua.org/ftp/lua-5.4.7.tar.gz; \
+		tar -xzf lib/lua-5.4.7.tar.gz -C lib/; \
+		rm lib/lua-5.4.7.tar.gz; \
+		sed -i 's#CC= gcc -std=gnu99#CC= ./../../../patchwork-gcc -std=gnu99#g' lib/lua-5.4.7/src/Makefile; \
+	fi
+	$(MAKE) -C lib/lua-5.4.7 all test
+	cp lib/lua-5.4.7/src/lua bin/programs/lua
+	cp lib/lua-5.4.7/src/luac bin/programs/luac
+
+#$(MAKE) -C lib/doomgeneric-patchworkos/doomgeneric -f Makefile.patchwork
+
+.PHONY: $(TARGET)
+
+#include Make.rules

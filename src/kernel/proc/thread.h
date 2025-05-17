@@ -1,9 +1,9 @@
 #pragma once
 
 #include "config.h"
-#include "process.h"
 #include "cpu/simd.h"
 #include "cpu/trap.h"
+#include "process.h"
 #include "sched/wait.h"
 
 #include <errno.h>

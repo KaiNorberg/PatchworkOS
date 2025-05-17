@@ -275,7 +275,7 @@ void _FilesClose(void)
     while (1)
     {
         _PLATFORM_MUTEX_ACQUIRE(&filesMtx);
-        void* stream = LIST_CONTAINER_SAFE(list_pop(&files), FILE, entry);
+        void* stream = CONTAINER_OF_SAFE(list_pop(&files), FILE, entry);
         _PLATFORM_MUTEX_RELEASE(&filesMtx);
 
         if (stream != NULL)

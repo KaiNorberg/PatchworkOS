@@ -2,8 +2,8 @@
 
 #include "mem/pml.h"
 #include "mem/pmm.h"
-#include "utils/utils.h"
 #include "mem/vmm.h"
+#include "utils/utils.h"
 
 #include <stdio.h>
 #include <stdlib.h>

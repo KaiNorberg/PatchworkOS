@@ -1,18 +1,18 @@
 #include "smp.h"
 
-#include "apic.h"
-#include "sync/futex.h"
-#include "gdt.h"
-#include "drivers/systime/hpet.h"
-#include "idt.h"
-#include "sync/lock.h"
-#include "utils/log.h"
 #include "acpi/madt.h"
+#include "apic.h"
+#include "drivers/systime/hpet.h"
+#include "gdt.h"
+#include "idt.h"
+#include "mem/vmm.h"
 #include "regs.h"
 #include "sched/sched.h"
+#include "sync/futex.h"
+#include "sync/lock.h"
 #include "trampoline.h"
 #include "trap.h"
-#include "mem/vmm.h"
+#include "utils/log.h"
 
 #include <stdatomic.h>
 #include <stdio.h>

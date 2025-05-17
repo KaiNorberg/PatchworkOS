@@ -1,0 +1,8 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+nasm -f elf64 \
+  -I "$SCRIPT_DIR/../include/" \
+  -I "$SCRIPT_DIR/../include/libstd/" \
+  "$@"

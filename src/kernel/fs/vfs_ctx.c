@@ -1,7 +1,7 @@
 #include "vfs_ctx.h"
 
-#include "utils/log.h"
 #include "sched/sched.h"
+#include "utils/log.h"
 #include "vfs.h"
 
 #include <stdio.h>

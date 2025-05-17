@@ -3,9 +3,9 @@
 #include "ps2.h"
 #include "scanmap.h"
 
-#include "drivers/kbd.h"
-#include "cpu/port.h"
 #include "cpu/irq.h"
+#include "cpu/port.h"
+#include "drivers/kbd.h"
 #include "utils/log.h"
 
 #include <stdio.h>

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "sync/lock.h"
 #include "cpu/trap.h"
+#include "sync/lock.h"
 
 #include <time.h>
 

@@ -1,0 +1,14 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+gcc -march=x86-64 \
+  -nostdlib \
+  -nostdinc \
+  -ffreestanding \
+  -fno-builtin \
+  -isystem "$SCRIPT_DIR/../include" \
+  -isystem "$SCRIPT_DIR/../include/libstd" \
+  -L"$SCRIPT_DIR/../bin/libdwm" \
+  -L"$SCRIPT_DIR/../bin/libstd" \
+  "$@"

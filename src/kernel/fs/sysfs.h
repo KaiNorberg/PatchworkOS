@@ -94,6 +94,7 @@ void sysdir_deinit(sysdir_t* dir, sysdir_on_free_t onFree);
 
 uint64_t sysobj_init(sysobj_t* sysobj, sysdir_t* dir, const char* filename, const sysobj_ops_t* ops, void* private);
 
-uint64_t sysobj_init_path(sysobj_t* sysobj, const char* path, const char* filename, const sysobj_ops_t* ops, void* private);
+uint64_t sysobj_init_path(sysobj_t* sysobj, const char* path, const char* filename, const sysobj_ops_t* ops,
+    void* private);
 
 void sysobj_deinit(sysobj_t* sysobj, sysobj_on_free_t onFree);

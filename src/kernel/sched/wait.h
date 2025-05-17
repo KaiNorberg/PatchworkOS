@@ -1,7 +1,7 @@
 #pragma once
 
-#include "sync/lock.h"
 #include "drivers/systime/systime.h"
+#include "sync/lock.h"
 
 #include <sys/list.h>
 #include <sys/proc.h>

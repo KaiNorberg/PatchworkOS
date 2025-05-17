@@ -1,7 +1,7 @@
 #include "acpi.h"
 
-#include "utils/log.h"
 #include "mem/vmm.h"
+#include "utils/log.h"
 
 #include <stdio.h>
 #include <string.h>

@@ -1,9 +1,9 @@
 #include "fb.h"
 
 #include "defs.h"
-#include "utils/log.h"
-#include "sched/sched.h"
 #include "fs/sysfs.h"
+#include "sched/sched.h"
+#include "utils/log.h"
 
 #include <stdatomic.h>
 #include <stdio.h>

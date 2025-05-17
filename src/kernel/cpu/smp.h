@@ -1,13 +1,13 @@
 #pragma once
 
 #include "defs.h"
-#include "sync/futex.h"
 #include "mem/pmm.h"
 #include "sched/sched.h"
-#include "utils/statistics.h"
+#include "sched/wait.h"
+#include "sync/futex.h"
 #include "trap.h"
 #include "tss.h"
-#include "sched/wait.h"
+#include "utils/statistics.h"
 
 #define CPU_MAX_AMOUNT 255
 #define CPU_IDLE_STACK_SIZE PAGE_SIZE

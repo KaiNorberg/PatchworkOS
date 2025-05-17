@@ -1,0 +1,13 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+ld -m elf_x86_64 \
+  -nostdlib \
+  -L"$SCRIPT_DIR/../bin/libdwm" \
+  -L"$SCRIPT_DIR/../bin/libstd" \
+  "$@" \
+  -lstd \
+  $SCRIPT_DIR/../bin/libstd/crti.o \
+  $SCRIPT_DIR/../bin/libstd/crt0.o \
+  $SCRIPT_DIR/../bin/libstd/crtn.o

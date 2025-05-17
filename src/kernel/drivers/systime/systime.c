@@ -1,10 +1,10 @@
 #include "systime.h"
 #include "cpu/apic.h"
-#include "hpet.h"
-#include "cpu/port.h"
 #include "cpu/irq.h"
+#include "cpu/port.h"
 #include "cpu/smp.h"
 #include "cpu/vectors.h"
+#include "hpet.h"
 
 #include <stdatomic.h>
 #include <stdbool.h>

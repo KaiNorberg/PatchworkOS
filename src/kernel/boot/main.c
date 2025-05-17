@@ -1,8 +1,8 @@
 #include "kernel.h"
 #include "sched/loader.h"
+#include "sched/sched.h"
 #include "utils/log.h"
 #include "utils/ring.h"
-#include "sched/sched.h"
 
 #include <bootloader/boot_info.h>
 #include <stdio.h>

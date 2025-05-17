@@ -1,8 +1,15 @@
 MKCWD = mkdir -p $(@D)
 
-CC := gcc
-AS := nasm
-LD := ld
+ifeq ($(NOSTDLIB),1)
+    CC := ./tools/patchwork-gcc
+    AS := ./tools/patchwork-nasm
+    LD := ./tools/patchwork-nostdlib-ld
+else
+    CC := ./tools/patchwork-gcc
+    AS := ./tools/patchwork-nasm
+    LD := ./tools/patchwork-ld
+endif
+
 OBJCOPY := objcopy
 
 OPTIMIZATION = -O3
@@ -34,8 +41,6 @@ CFLAGS := $(OPTIMIZATION) \
     -Wno-unused-command-line-argument \
     -fno-stack-protector \
     -fno-omit-frame-pointer \
-    -nostdlib -nostartfiles -ffreestanding \
-    -Iinclude/libstd \
     -Iinclude \
     -Ilib \
     -I$(SRCDIR)
@@ -45,12 +50,11 @@ CFLAGS_DISABLE_SIMD := -mno-mmx -mno-3dnow \
 	-mno-sse2 -mno-sse3 \
 	-mno-ssse3 -mno-sse4
 
-ASFLAGS := -f elf64 \
-	-Iinclude/libstd \
+ASFLAGS := \
 	-Iinclude \
 	-I$(SRCDIR)
 
-LDFLAGS := -nostdlib
+LDFLAGS :=
 
 SRC = $(wildcard $(SRCDIR)/*.c) $(wildcard $(SRCDIR)/*.s) \
 	$(wildcard $(SRCDIR)/*/*.c) $(wildcard $(SRCDIR)/*/*.s) \

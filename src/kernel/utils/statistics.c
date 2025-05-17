@@ -1,10 +1,10 @@
 #include "statistics.h"
 
-#include "log.h"
 #include "cpu/smp.h"
-#include "fs/sysfs.h"
 #include "drivers/systime/systime.h"
+#include "fs/sysfs.h"
 #include "fs/view.h"
+#include "log.h"
 
 #include <stdint.h>
 #include <stdio.h>

@@ -1,11 +1,11 @@
 #include "apic.h"
 
-#include "drivers/systime/hpet.h"
 #include "acpi/madt.h"
-#include "regs.h"
+#include "drivers/systime/hpet.h"
 #include "drivers/systime/systime.h"
-#include "utils/utils.h"
 #include "mem/vmm.h"
+#include "regs.h"
+#include "utils/utils.h"
 
 #include <stdio.h>
 

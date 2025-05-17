@@ -1,8 +1,8 @@
 #pragma once
 
 #include "defs.h"
-#include "sync/lock.h"
 #include "proc/thread.h"
+#include "sync/lock.h"
 
 #include <sys/list.h>
 

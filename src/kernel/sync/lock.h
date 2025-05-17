@@ -2,8 +2,8 @@
 
 #include <stdatomic.h>
 
-#include "defs.h"
 #include "cpu/trap.h"
+#include "defs.h"
 
 typedef struct
 {

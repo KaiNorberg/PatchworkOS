@@ -2,9 +2,9 @@
 
 #include "defs.h"
 #include "fb.h"
-#include "utils/log.h"
-#include "sched/sched.h"
 #include "mem/vmm.h"
+#include "sched/sched.h"
+#include "utils/log.h"
 
 #include <errno.h>
 #include <stdio.h>

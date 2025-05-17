@@ -1,8 +1,8 @@
 #include "simd.h"
 #include "cpuid.h"
 #include "mem/pmm.h"
-#include "regs.h"
 #include "mem/vmm.h"
+#include "regs.h"
 
 #include <stdint.h>
 #include <stdio.h>

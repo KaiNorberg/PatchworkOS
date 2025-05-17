@@ -1,9 +1,9 @@
 #include "const.h"
 
-#include "utils/log.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "mem/vmm.h"
+#include "utils/log.h"
 
 #include <stdlib.h>
 #include <string.h>

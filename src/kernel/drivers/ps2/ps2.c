@@ -4,8 +4,8 @@
 #include "mouse.h"
 
 #include "cpu/port.h"
-#include "utils/log.h"
 #include "drivers/systime/systime.h"
+#include "utils/log.h"
 
 void ps2_init(void)
 {

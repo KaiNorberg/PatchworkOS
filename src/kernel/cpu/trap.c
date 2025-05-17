@@ -3,15 +3,15 @@
 #include "apic.h"
 #include "gdt.h"
 #include "irq.h"
-#include "sched/loader.h"
-#include "utils/log.h"
+#include "mem/vmm.h"
 #include "regs.h"
+#include "sched/loader.h"
 #include "sched/sched.h"
+#include "sched/wait.h"
 #include "smp.h"
+#include "utils/log.h"
 #include "utils/statistics.h"
 #include "vectors.h"
-#include "mem/vmm.h"
-#include "sched/wait.h"
 
 #include <stdio.h>
 

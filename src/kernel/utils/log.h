@@ -1,7 +1,7 @@
 #pragma once
 
-#include "defs.h"
 #include "cpu/trap.h"
+#include "defs.h"
 
 #include <bootloader/boot_info.h>
 

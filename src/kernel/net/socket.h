@@ -2,11 +2,11 @@
 
 #include <stdint.h>
 
-#include "sync/lock.h"
 #include "socket_family.h"
+#include "sync/lock.h"
 
 typedef struct socket
-{    
+{
     char id[MAX_NAME];
     void* private;
     socket_family_t* family;

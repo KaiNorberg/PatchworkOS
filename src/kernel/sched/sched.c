@@ -3,17 +3,17 @@
 #include "_AUX/ERR.h"
 #include "cpu/apic.h"
 #include "cpu/gdt.h"
-#include "drivers/systime/hpet.h"
-#include "loader.h"
-#include "sync/lock.h"
-#include "utils/log.h"
 #include "cpu/regs.h"
 #include "cpu/smp.h"
-#include "drivers/systime/systime.h"
-#include "proc/thread.h"
 #include "cpu/trap.h"
 #include "cpu/vectors.h"
+#include "drivers/systime/hpet.h"
+#include "drivers/systime/systime.h"
 #include "fs/vfs.h"
+#include "loader.h"
+#include "proc/thread.h"
+#include "sync/lock.h"
+#include "utils/log.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,7 +48,7 @@ static inline thread_t* thread_queue_pop(thread_queue_t* queue)
     }
 
     queue->length--;
-    return LIST_CONTAINER(list_pop(&queue->list), thread_t, entry);
+    return CONTAINER_OF(list_pop(&queue->list), thread_t, entry);
 }
 
 static inline uint64_t thread_queue_length(thread_queue_t* queue)
@@ -259,7 +259,7 @@ static void sched_update_parked_threads(trap_frame_t* trapFrame, sched_ctx_t* ct
 {
     while (1)
     {
-        thread_t* thread = LIST_CONTAINER_SAFE(list_pop(&ctx->parkedThreads), thread_t, entry);
+        thread_t* thread = CONTAINER_OF_SAFE(list_pop(&ctx->parkedThreads), thread_t, entry);
         if (thread == NULL)
         {
             break;
@@ -273,7 +273,7 @@ static void sched_update_dead_threads(trap_frame_t* trapFrame, sched_ctx_t* ctx)
 {
     while (1)
     {
-        thread_t* thread = LIST_CONTAINER_SAFE(list_pop(&ctx->deadThreads), thread_t, entry);
+        thread_t* thread = CONTAINER_OF_SAFE(list_pop(&ctx->deadThreads), thread_t, entry);
         if (thread == NULL)
         {
             break;

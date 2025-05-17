@@ -1,8 +1,8 @@
 #pragma once
 
-#include "utils/hashmap.h"
 #include "fs/vfs.h"
 #include "sched/wait.h"
+#include "utils/hashmap.h"
 
 #include <sys/proc.h>
 
