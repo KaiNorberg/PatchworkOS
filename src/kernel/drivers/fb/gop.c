@@ -38,5 +38,5 @@ void gop_init(gop_buffer_t* gopBuffer)
     fb.info.format = FB_ARGB32;
     gop = *gopBuffer;
 
-    ASSERT_PANIC(fb_expose(&fb) != NULL);
+    ASSERT_PANIC(fb_expose(&fb) != ERR);
 }

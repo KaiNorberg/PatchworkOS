@@ -1,7 +1,10 @@
 #include "kbd.h"
+
 #include "sync/lock.h"
 #include "ps2/kbd.h"
 #include "fs/sysfs.h"
+#include "fs/vfs.h"
+#include "utils/log.h"
 #include "systime/systime.h"
 
 #include <stdlib.h>
@@ -9,7 +12,7 @@
 
 static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count)
 {
-    kbd_t* kbd = file->sysobj->private;
+    kbd_t* kbd = file->private;
 
     count = ROUND_DOWN(count, sizeof(kbd_event_t));
     for (uint64_t i = 0; i < count / sizeof(kbd_event_t); i++)
@@ -31,16 +34,28 @@ static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count)
 
 static wait_queue_t* kbd_poll(file_t* file, poll_file_t* pollFile)
 {
-    kbd_t* kbd = file->sysobj->private;
+    kbd_t* kbd = file->private;
     pollFile->occurred = POLL_READ & (kbd->writeIndex != file->pos);
     return &kbd->waitQueue;
 }
 
-SYSFS_STANDARD_SYSOBJ_OPEN_DEFINE(kbd_open, PATH_NONE,
+SYSFS_STANDARD_OPS_DEFINE(kbdOps, PATH_NONE,
     (file_ops_t){
         .read = kbd_read,
         .poll = kbd_poll,
     });
+    
+kbd_t* kbd_new(const char* name)
+{
+    kbd_t* kbd = malloc(sizeof(kbd_t));
+    kbd->writeIndex = 0;
+    kbd->mods = KBD_MOD_NONE;
+    wait_queue_init(&kbd->waitQueue);
+    lock_init(&kbd->lock);
+    ASSERT_PANIC(sysobj_init_path(&kbd->sysobj, "/kbd", name, &kbdOps, kbd) != ERR);
+
+    return kbd;
+}
 
 static void kbd_on_free(sysobj_t* sysobj)
 {
@@ -48,26 +63,9 @@ static void kbd_on_free(sysobj_t* sysobj)
     free(kbd);
 }
 
-static sysobj_ops_t resOps = {
-    .open = kbd_open,
-    .onFree = kbd_on_free,
-};
-
-kbd_t* kbd_new(const char* name)
-{
-    kbd_t* kbd = malloc(sizeof(kbd_t));
-    kbd->writeIndex = 0;
-    kbd->mods = KBD_MOD_NONE;
-    kbd->sysobj = sysobj_new("/kbd", name, &resOps, kbd);
-    wait_queue_init(&kbd->waitQueue);
-    lock_init(&kbd->lock);
-
-    return kbd;
-}
-
 void kbd_free(kbd_t* kbd)
 {
-    sysobj_free(kbd->sysobj);
+    sysobj_deinit(&kbd->sysobj, kbd_on_free);
 }
 
 static void kbd_update_mod(kbd_t* kbd, kbd_event_type_t type, kbd_mods_t mod)

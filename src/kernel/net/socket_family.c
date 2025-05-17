@@ -5,13 +5,12 @@
 #include "socket.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
+#include "utils/log.h"
 
 #include <errno.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <sys/math.h>
-
-static atomic_uint64 newId = ATOMIC_VAR_INIT(0);
 
 static uint64_t socket_family_new_read(file_t* file, void* buffer, uint64_t count)
 {
@@ -38,37 +37,27 @@ static file_t* socket_family_new_open(volume_t* volume, const path_t* path, syso
 {
     socket_family_t* family = sysobj->dir->private;
 
-    socket_handle_t* handle = malloc(sizeof(socket_handle_t));
-    if (handle == NULL)
+    socket_t* socket = socket_new(family, path->flags);
+    if (socket == NULL)
     {
-        return NULL;
-    }
-
-    ulltoa(atomic_fetch_add(&newId, 1), handle->id, 10);
-    handle->dir = socket_create(family, handle->id, path->flags);
-    if (handle->dir == NULL)
-    {
-        free(handle);
         return NULL;
     }
 
     file_t* file = file_new(volume, path, PATH_NONBLOCK);
     if (file == NULL)
     {
-        sysdir_free(handle->dir);
-        free(handle);
+        socket_free(socket);
         return NULL;
     }
     file->ops = &familyNewFileOps;
-    file->private = handle;
+    file->private = socket;
     return file;
 }
 
 static void socket_family_new_cleanup(sysobj_t* sysobj, file_t* file)
 {
-    socket_handle_t* handle = file->private;
-    sysdir_free(handle->dir);
-    free(handle);
+    socket_t* socket = file->private;
+    socket_free(socket);
 }
 
 static sysobj_ops_t familyNewObjOps = {
@@ -76,29 +65,15 @@ static sysobj_ops_t familyNewObjOps = {
     .cleanup = socket_family_new_cleanup,
 };
 
-static void socket_family_on_free(sysdir_t* sysdir)
-{
-    // Do nothing
-}
-
-sysdir_t* socket_family_expose(socket_family_t* family)
+uint64_t socket_family_expose(socket_family_t* family)
 {
     if (family->init == NULL || family->deinit == NULL)
     {
-        return ERRPTR(EINVAL);
+        return ERROR(EINVAL);
     }
 
-    sysdir_t* sysdir = sysdir_new("/net", family->name, socket_family_on_free, family);
-    if (sysdir == NULL)
-    {
-        return NULL;
-    }
+    ASSERT_PANIC(sysdir_init(&family->dir, "/net", family->name, family) != ERR);
+    ASSERT_PANIC(sysobj_init(&family->newObj, &family->dir, "new", &familyNewObjOps, NULL) != ERR);
 
-    if (sysdir_add(sysdir, "new", &familyNewObjOps, NULL) == ERR)
-    {
-        sysdir_free(sysdir);
-        return NULL;
-    }
-
-    return sysdir;
+    return 0;
 }

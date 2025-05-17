@@ -19,20 +19,9 @@
 static list_t volumes;
 static rwlock_t volumesLock;
 
-static void volume_on_free(sysdir_t* dir)
-{
-    volume_t* volume = dir->private;
-    free(volume);
-}
-
 static uint64_t volume_expose(volume_t* volume)
 {
-    volume->dir = sysdir_new("/vol", volume->label, volume_on_free, volume);
-    if (volume->dir == NULL)
-    {
-        return ERR;
-    }
-
+    ASSERT_PANIC(sysdir_init(&volume->sysdir, "/vol", volume->label, volume) != ERR);
     return 0;
 }
 
@@ -80,7 +69,7 @@ file_t* file_new(volume_t* volume, const path_t* path, path_flags_t supportedFla
     file->volume = volume;
     file->pos = 0;
     file->private = NULL;
-    file->sysobj = NULL;
+    file->syshdr = NULL;
     file->ops = NULL;
     file->flags = flags;
     atomic_init(&file->ref, 1);
@@ -161,6 +150,12 @@ uint64_t vfs_mount(const char* label, fs_t* fs)
     return fs->mount(label);
 }
 
+static void volume_on_free(sysdir_t* dir)
+{
+    volume_t* volume = dir->private;
+    free(volume);
+}
+
 uint64_t vfs_unmount(const char* label)
 {
     RWLOCK_WRITE_DEFER(&volumesLock);
@@ -197,7 +192,7 @@ uint64_t vfs_unmount(const char* label)
     }
 
     list_remove(&volume->entry);
-    sysdir_free(volume->dir);
+    sysdir_deinit(&volume->sysdir, volume_on_free);
     return 0;
 }
 
@@ -384,80 +379,140 @@ uint64_t vfs_remove(const char* path)
 
 uint64_t vfs_readdir(file_t* file, stat_t* infos, uint64_t amount)
 {
-    if (file->sysobj != NULL && atomic_load(&file->sysobj->hidden))
-    {
-        return ERROR(ENOOBJ);
-    }
     if (file->ops->readdir == NULL)
     {
         return ERROR(ENOOP);
     }
-    return file->ops->readdir(file, infos, amount);
+
+    if (file->syshdr == NULL)
+    {
+        return file->ops->readdir(file, infos, amount);
+    }
+    else
+    {
+        if (sysfs_start_op(file) == ERR)
+        {
+            return ERR;
+        }
+        uint64_t result = file->ops->readdir(file, infos, amount);
+        sysfs_end_op(file);
+        return result;
+    }
 }
 
 uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
 {
-    if (file->sysobj != NULL && atomic_load(&file->sysobj->hidden))
-    {
-        return ERROR(ENOOBJ);
-    }
     if (file->ops->read == NULL)
     {
         return ERROR(ENOOP);
     }
-    return file->ops->read(file, buffer, count);
+
+    if (file->syshdr == NULL)
+    {
+        return file->ops->read(file, buffer, count);
+    }
+    else
+    {
+        if (sysfs_start_op(file) == ERR)
+        {
+            return ERR;
+        }
+        uint64_t result = file->ops->read(file, buffer, count);
+        sysfs_end_op(file);
+        return result;
+    }
 }
 
 uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
 {
-    if (file->sysobj != NULL && atomic_load(&file->sysobj->hidden))
-    {
-        return ERROR(ENOOBJ);
-    }
     if (file->ops->write == NULL)
     {
         return ERROR(ENOOP);
     }
-    return file->ops->write(file, buffer, count);
+
+    if (file->syshdr == NULL)
+    {
+        return file->ops->write(file, buffer, count);
+    }
+    else
+    {
+        if (sysfs_start_op(file) == ERR)
+        {
+            return ERR;
+        }
+        uint64_t result = file->ops->write(file, buffer, count);
+        sysfs_end_op(file);
+        return result;
+    }
 }
 
 uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
 {
-    if (file->sysobj != NULL && atomic_load(&file->sysobj->hidden))
-    {
-        return ERROR(ENOOBJ);
-    }
     if (file->ops->seek == NULL)
     {
         return ERROR(ENOOP);
     }
-    return file->ops->seek(file, offset, origin);
+
+    if (file->syshdr == NULL)
+    {
+        return file->ops->seek(file, offset, origin);
+    }
+    else
+    {
+        if (sysfs_start_op(file) == ERR)
+        {
+            return ERR;
+        }
+        uint64_t result = file->ops->seek(file, offset, origin);
+        sysfs_end_op(file);
+        return result;
+    }
 }
 
 uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
 {
-    if (file->sysobj != NULL && atomic_load(&file->sysobj->hidden))
-    {
-        return ERROR(ENOOBJ);
-    }
     if (file->ops->ioctl == NULL)
     {
         return ERROR(ENOOP);
     }
-    return file->ops->ioctl(file, request, argp, size);
+
+    if (file->syshdr == NULL)
+    {
+        return file->ops->ioctl(file, request, argp, size);
+    }
+    else
+    {
+        if (sysfs_start_op(file) == ERR)
+        {
+            return ERR;
+        }
+        uint64_t result = file->ops->ioctl(file, request, argp, size);
+        sysfs_end_op(file);
+        return result;
+    }
 }
 
 void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
 {
-    if (file->sysobj != NULL && atomic_load(&file->sysobj->hidden))
-    {
-        return ERRPTR(ENOOBJ);
-    }
     if (file->ops->mmap == NULL)
     {
         return ERRPTR(ENOOP);
     }
-    return file->ops->mmap(file, address, length, prot);
+
+    if (file->syshdr == NULL)
+    {
+        return file->ops->mmap(file, address, length, prot);
+    }
+    else
+    {
+        if (sysfs_start_op(file) == ERR)
+        {
+            return NULL;
+        }
+        void* result = file->ops->mmap(file, address, length, prot);
+        sysfs_end_op(file);
+        return result;
+    }
 }
 
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
@@ -467,10 +522,6 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
         if (files[i].file == NULL)
         {
             return ERROR(EINVAL);
-        }
-        if (files[i].file->sysobj != NULL && atomic_load(&files[i].file->sysobj->hidden))
-        {
-            return ERROR(ENOOBJ);
         }
         if (files[i].file->ops->poll == NULL)
         {
@@ -500,7 +551,21 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
                 return ERROR(EINVAL);
             }
 
-            waitQueues[i] = files[i].file->ops->poll(files[i].file, &files[i]);
+            if (files[i].file->syshdr == NULL)
+            {
+                waitQueues[i] = files[i].file->ops->poll(files[i].file, &files[i]);
+            }
+            else
+            {
+                if (sysfs_start_op(files[i].file) == ERR)
+                {
+                    free(waitQueues);
+                    return ERR;
+                }
+                waitQueues[i] = files[i].file->ops->poll(files[i].file, &files[i]);
+                sysfs_end_op(files[i].file);
+            }
+
             if (waitQueues[i] == NULL)
             {
                 free(waitQueues);

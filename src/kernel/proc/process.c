@@ -19,9 +19,11 @@ static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 // Should be acquired whenever a process tree is being read or modified.
 static rwlock_t treeLock;
 
+static process_dir_t self;
+
 static uint64_t process_cmdline_view_init(file_t* file, view_t* view)
 {
-    process_t* process = file->sysobj->dir->private;
+    process_t* process = file->private;
     if (process == NULL)
     {
         process = sched_process();
@@ -47,7 +49,7 @@ VIEW_STANDARD_OPS_DEFINE(cmdlineOps, PATH_NONE,
 
 static uint64_t process_cwd_view_init(file_t* file, view_t* view)
 {
-    process_t* process = file->sysobj->dir->private;
+    process_t* process = file->private;
     if (process == NULL)
     {
         process = sched_process();
@@ -81,7 +83,7 @@ VIEW_STANDARD_OPS_DEFINE(cwdOps, PATH_NONE,
 
 static uint64_t process_ctl_kill(file_t* file, uint64_t argc, const char** argv)
 {
-    process_t* process = file->sysobj->dir->private;
+    process_t* process = file->private;
     if (process == NULL)
     {
         process = sched_process();
@@ -93,7 +95,7 @@ static uint64_t process_ctl_kill(file_t* file, uint64_t argc, const char** argv)
 
 static uint64_t process_ctl_wait(file_t* file, uint64_t argc, const char** argv)
 {
-    process_t* process = file->sysobj->dir->private;
+    process_t* process = file->private;
     if (process == NULL)
     {
         process = sched_process();
@@ -110,27 +112,12 @@ CTL_STANDARD_OPS_DEFINE(ctlOps, PATH_NONE,
         {0},
     });
 
-static uint64_t process_dir_populate(sysdir_t* dir)
+static void process_dir_init(process_dir_t* dir, const char* name, process_t* process)
 {
-    if (sysdir_add(dir, "ctl", &ctlOps, NULL) == ERR || sysdir_add(dir, "cwd", &cwdOps, NULL) == ERR ||
-        sysdir_add(dir, "cmdline", &cmdlineOps, NULL) == ERR)
-    {
-        return ERR;
-    }
-
-    return 0;
-}
-
-static void process_on_free(sysdir_t* dir)
-{
-    process_t* process = dir->private;
-    printf("process: on_free pid=%d\n", process->id);
-    // vfs_ctx_deinit() is in process_free
-    space_deinit(&process->space);
-    argv_deinit(&process->argv);
-    wait_queue_deinit(&process->queue);
-    futex_ctx_deinit(&process->futexCtx);
-    free(process);
+    ASSERT_PANIC(sysdir_init(&dir->sysdir, "/proc", name, process) != ERR);
+    ASSERT_PANIC(sysobj_init(&dir->ctlObj, &dir->sysdir, "ctl", &ctlOps, process) != ERR);
+    ASSERT_PANIC(sysobj_init(&dir->cwdObj, &dir->sysdir, "cwd", &cwdOps, process) != ERR);
+    ASSERT_PANIC(sysobj_init(&dir->cmdlineObj, &dir->sysdir, "cmdline", &cmdlineOps, process) != ERR);
 }
 
 process_t* process_new(process_t* parent, const char** argv)
@@ -146,16 +133,7 @@ process_t* process_new(process_t* parent, const char** argv)
     {
         return ERRPTR(ENOMEM);
     }
-
-    char dirname[MAX_PATH];
-    ulltoa(process->id, dirname, 10);
-    process->dir = sysdir_new("/proc", dirname, process_on_free, process);
-    if (process->dir == NULL)
-    {
-        return NULL;
-    }
     atomic_init(&process->dead, false);
-
     if (parent != NULL)
     {
         LOCK_DEFER(&parent->vfsCtx.lock);
@@ -174,11 +152,9 @@ process_t* process_new(process_t* parent, const char** argv)
     list_init(&process->threads.list);
     lock_init(&process->threads.lock);
 
-    if (process_dir_populate(process->dir) == ERR)
-    {
-        process_free(process);
-        return NULL;
-    }
+    char dirname[MAX_PATH];
+    ulltoa(process->id, dirname, 10);
+    process_dir_init(&process->dir, dirname, process);
 
     list_entry_init(&process->entry);
     list_init(&process->children);
@@ -194,6 +170,18 @@ process_t* process_new(process_t* parent, const char** argv)
     }
 
     return process;
+}
+
+static void process_on_free(sysdir_t* dir)
+{
+    process_t* process = dir->private;
+    printf("process: on_free pid=%d\n", process->id);
+    // vfs_ctx_deinit() is in process_free
+    space_deinit(&process->space);
+    argv_deinit(&process->argv);
+    wait_queue_deinit(&process->queue);
+    futex_ctx_deinit(&process->futexCtx);
+    free(process);
 }
 
 void process_free(process_t* process)
@@ -215,7 +203,7 @@ void process_free(process_t* process)
 
     vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_on_free
     wait_unblock(&process->queue, WAIT_ALL);
-    sysdir_free(process->dir);
+    sysdir_deinit(&process->dir.sysdir, process_on_free);
 }
 
 bool process_is_child(process_t* process, pid_t parentId)
@@ -258,9 +246,8 @@ void process_kill(process_t* process)
 void process_backend_init(void)
 {
     printf("process_backend: init\n");
-    sysdir_t* selfdir = sysdir_new("/proc", "self", NULL, NULL);
-    ASSERT_PANIC(selfdir != NULL);
-    ASSERT_PANIC(process_dir_populate(selfdir) != ERR);
+
+    process_dir_init(&self, "self", NULL);
 
     rwlock_init(&treeLock);
 }
