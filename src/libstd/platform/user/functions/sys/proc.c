@@ -11,12 +11,12 @@ pid_t spawn(const char** argv, const spawn_fd_t* fds)
 
 pid_t getpid(void)
 {
-    return _SyscallProcessId();
+    return _SyscallGetPid();
 }
 
 tid_t gettid(void)
 {
-    return _SyscallThreadId();
+    return _SyscallGetTid();
 }
 
 clock_t uptime(void)

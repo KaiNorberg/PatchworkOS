@@ -52,15 +52,15 @@ static void exception_handler(trap_frame_t* trapFrame)
 {
     if (TRAP_FRAME_FROM_USER_SPACE(trapFrame))
     {
-        process_t* process = sched_process();
-        if (process == NULL)
+        thread_t* thread = sched_thread();
+        if (thread == NULL)
         {
             log_panic(trapFrame, "Unhandled User Exception");
         }
 
-        printf("user exception: process killed due to exception pid=%d vector=0x%x error=%p rip=%p\n", process->id,
-            trapFrame->vector, trapFrame->errorCode, trapFrame->rip);
-        process_kill(process);
+        printf("user exception: process killed due to exception tid=%d pid=%d vector=0x%x error=%p rip=%p cr2=%p\n", thread->id, thread->process->id,
+            trapFrame->vector, trapFrame->errorCode, trapFrame->rip, cr2_read());
+        process_kill(thread->process);
         sched_schedule_trap(trapFrame);
     }
     else

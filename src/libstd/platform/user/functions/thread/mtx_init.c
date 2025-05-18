@@ -9,7 +9,7 @@
 
 int mtx_init(mtx_t* mutex, int type)
 {
-    atomic_init(&mutex->state, FUTEX_UNLOCKED);
+    atomic_init(&mutex->state, _MTX_UNLOCKED);
     mutex->owner = ERR;
     mutex->depth = 0;
 

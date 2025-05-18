@@ -1,7 +1,7 @@
 MKCWD = mkdir -p $(@D)
 
 ifeq ($(NOSTDLIB),1)
-    CC := ./tools/patchwork-gcc
+    CC := ./tools/patchwork-nostdlib-gcc
     AS := ./tools/patchwork-nasm
     LD := ./tools/patchwork-nostdlib-ld
 else

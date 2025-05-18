@@ -19,16 +19,6 @@ FILE* stderr;
 
 static void _StdStreamInit(fd_t fd, FILE* stream, FILE** streamPtr, void* buffer, _FileFlags_t flags)
 {
-    if (write(fd, NULL, 0) == ERR && errno == EBADF)
-    {
-        fd_t nullFd = open("sys:/null");
-        if (nullFd != fd)
-        {
-            dup2(nullFd, fd);
-            close(nullFd);
-        }
-    }
-
     memset(stream, 0, sizeof(FILE));
     list_entry_init(&stream->entry);
 
@@ -36,6 +26,7 @@ static void _StdStreamInit(fd_t fd, FILE* stream, FILE** streamPtr, void* buffer
     {
         exit(EXIT_FAILURE);
     }
+
     _FilesPush(stream);
     *streamPtr = stream;
 }

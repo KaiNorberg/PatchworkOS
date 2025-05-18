@@ -3,9 +3,12 @@
 #include <stdio.h>
 #include <sys/proc.h>
 #include <threads.h>
+#include <stdlib.h>
 
 #include "platform/user/common/syscalls.h"
 #include "platform/user/common/thread.h"
+
+// TODO: Something is wrong with this mutex when using futex(), so for now its just a spin lock while i figure it out...
 
 int mtx_lock(mtx_t* mutex)
 {
@@ -16,45 +19,32 @@ int mtx_lock(mtx_t* mutex)
         return thrd_success;
     }
 
-    uint64_t expected = FUTEX_UNLOCKED;
-    if (atomic_compare_exchange_strong(&(mutex->state), &expected, FUTEX_LOCKED))
+    for (uint64_t i = 0; i < _MTX_SPIN_COUNT; ++i)
     {
-        mutex->owner = self;
-        mutex->depth = 1;
-        return thrd_success;
-    }
-
-    for (int i = 0; i < _MTX_SPIN_COUNT; ++i)
-    {
-        if (atomic_load(&(mutex->state)) == FUTEX_UNLOCKED)
+        uint64_t expected = _MTX_UNLOCKED;
+        if (atomic_compare_exchange_strong(&(mutex->state), &expected, _MTX_LOCKED))
         {
-            expected = FUTEX_UNLOCKED;
-            if (atomic_compare_exchange_strong(&(mutex->state), &expected, FUTEX_LOCKED))
-            {
-                mutex->owner = self;
-                mutex->depth = 1;
-                return thrd_success;
-            }
+            mutex->owner = self;
+            mutex->depth = 1;
+            return thrd_success;
         }
         asm volatile("pause");
     }
 
     do
     {
-        expected = FUTEX_UNLOCKED;
-        if (atomic_compare_exchange_strong(&(mutex->state), &expected, FUTEX_LOCKED))
+        uint64_t expected = _MTX_UNLOCKED;
+        if (atomic_compare_exchange_strong(&(mutex->state), &expected, _MTX_LOCKED))
         {
             mutex->owner = self;
             mutex->depth = 1;
             return thrd_success;
         }
 
-        uint64_t current = atomic_load(&(mutex->state));
-        if (current != FUTEX_CONTESTED)
+        if (expected == _MTX_LOCKED)
         {
-            expected = current;
-            atomic_compare_exchange_strong(&(mutex->state), &expected, FUTEX_CONTESTED);
+            atomic_compare_exchange_strong(&(mutex->state), &expected, _MTX_CONTESTED);
         }
-        futex(&(mutex->state), FUTEX_CONTESTED, FUTEX_WAIT, CLOCKS_NEVER);
+        futex(&(mutex->state), _MTX_CONTESTED, FUTEX_WAIT, CLOCKS_NEVER);
     } while (1);
 }

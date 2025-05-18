@@ -205,9 +205,9 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
     local_listener_t* listener = local->listen.listener;
     lock_release(&local->lock);
 
+    lock_acquire(&listener->lock);
     if (socket->flags & PATH_NONBLOCK)
     {
-        lock_acquire(&listener->lock);
         if (!(local_listener_conn_avail(listener) || local_listener_closed(listener)))
         {
             lock_release(&listener->lock);
@@ -443,9 +443,9 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
         return ERR;
     }
 
+    lock_acquire(&conn->lock);
     if (socket->flags & PATH_NONBLOCK)
     {
-        lock_acquire(&conn->lock);
         if (!(ring_free_length(ring) >= count + sizeof(local_packet_header_t) || local_connection_closed(conn)))
         {
             lock_release(&conn->lock);
@@ -497,9 +497,9 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
         return ERR;
     }
 
+    lock_acquire(&conn->lock);
     if (socket->flags & PATH_NONBLOCK)
     {
-        lock_acquire(&conn->lock);
         if (!(ring_data_length(ring) >= sizeof(local_packet_header_t) || local_connection_closed(conn)))
         {
             lock_release(&conn->lock);

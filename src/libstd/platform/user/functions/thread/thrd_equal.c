@@ -9,5 +9,5 @@
 
 int thrd_equal(thrd_t lhs, thrd_t rhs)
 {
-    return (lhs.thread == rhs.thread);
+    return (lhs.id == rhs.id);
 }

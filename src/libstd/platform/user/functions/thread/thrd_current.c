@@ -9,9 +9,6 @@
 
 thrd_t thrd_current(void)
 {
-    _Thread_t* thread = _ThreadById(_SyscallThreadId());
-    thrd_t thr = {.thread = thread};
-
-    _ThreadUnref(thread);
+    thrd_t thr = (thrd_t){.id = _SyscallGetTid()};
     return thr;
 }

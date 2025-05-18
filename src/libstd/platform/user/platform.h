@@ -11,7 +11,6 @@ typedef mtx_t _PlatformMutex_t;
 #define _PLATFORM_MUTEX_RELEASE(mutex) mtx_unlock(mutex)
 
 #else
-
 typedef uint8_t _PlatformMutex_t;
 
 #define _PLATFORM_MUTEX_INIT(mutex)

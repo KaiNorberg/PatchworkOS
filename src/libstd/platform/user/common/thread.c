@@ -15,18 +15,16 @@ void _ThreadingInit(void)
 
     // We cant yet use the heap, so we do this weird stuff
     list_entry_init(&thread0.entry);
-    atomic_init(&thread0.running, true);
-    atomic_init(&thread0.ref, 1);
-    thread0.id = _SyscallThreadId();
+    atomic_init(&thread0.state, _THREAD_ATTACHED);
+    thread0.id = _SyscallGetTid();
     thread0.result = 0;
     thread0.err = 0;
-    thread0.func = NULL;
-    thread0.arg = NULL;
+    thread0.private = NULL;
 
     list_push(&threads, &thread0.entry);
 }
 
-_Thread_t* _ThreadNew(thrd_start_t func, void* arg)
+_Thread_t* _ThreadNew(_ThreadEntry_t entry, void* private)
 {
     _Thread_t* thread = malloc(sizeof(_Thread_t));
     if (thread == NULL)
@@ -34,17 +32,23 @@ _Thread_t* _ThreadNew(thrd_start_t func, void* arg)
         return NULL;
     }
 
-    list_entry_init(&thread->entry);
-    atomic_init(&thread->running, false);
-    atomic_init(&thread->ref, 1);
-    thread->id = 0;
-    thread->result = 0;
-    thread->err = 0;
-    thread->func = func;
-    thread->arg = arg;
-
     mtx_lock(&mutex);
     list_push(&threads, &thread->entry);
+
+    list_entry_init(&thread->entry);
+    atomic_init(&thread->state, _THREAD_ATTACHED);
+    thread->result = 0;
+    thread->err = 0;
+    thread->private = private;
+
+    thread->id = _SyscallThreadCreate(entry, thread);
+    if (thread->id == ERR)
+    {
+        list_remove(&thread->entry);
+        mtx_unlock(&mutex);
+        free(thread);
+        return NULL;
+    }
     mtx_unlock(&mutex);
 
     return thread;
@@ -54,20 +58,19 @@ void _ThreadFree(_Thread_t* thread)
 {
     mtx_lock(&mutex);
     list_remove(&thread->entry);
+    mtx_unlock(&mutex);
     if (thread != &thread0)
     {
         free(thread);
     }
-    mtx_unlock(&mutex);
 }
 
-_Thread_t* _ThreadById(tid_t id)
+_Thread_t* _ThreadGet(tid_t id)
 {
     mtx_lock(&mutex);
-
     _Thread_t* thread;
     LIST_FOR_EACH(thread, &threads, entry)
-    {
+    {    
         if (thread->id == id)
         {
             mtx_unlock(&mutex);

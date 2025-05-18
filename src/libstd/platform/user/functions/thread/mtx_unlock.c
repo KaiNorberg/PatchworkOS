@@ -22,7 +22,7 @@ int mtx_unlock(mtx_t* mutex)
     }
     mutex->owner = ERR;
 
-    if (atomic_exchange(&(mutex->state), FUTEX_UNLOCKED) == FUTEX_CONTESTED)
+    if (atomic_exchange(&(mutex->state), _MTX_UNLOCKED) == _MTX_CONTESTED)
     {
         futex(&(mutex->state), 1, FUTEX_WAKE, CLOCKS_NEVER);
     }

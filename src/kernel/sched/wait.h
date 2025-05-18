@@ -41,11 +41,10 @@
     })
 
 // Blocks untill condition is true, condition will be tested after every call to wait_unblock.
-// When condition is tested it will also acquire lock, and the macro will always return with lock still acquired.
+// Should be called with lock acquired, will release lock before blocking and return with lock acquired.
 #define WAIT_BLOCK_LOCK(waitQueue, lock, condition) \
     ({ \
         wait_result_t result = WAIT_NORM; \
-        lock_acquire(lock); \
         while (!(condition) && result == WAIT_NORM) \
         { \
             result = wait_block_lock(waitQueue, CLOCKS_NEVER, lock); \
@@ -54,14 +53,13 @@
     })
 
 // Blocks untill condition is true, condition will be tested after every call to wait_unblock.
-// When condition is tested it will also acquire lock, and the macro will always return with lock still acquired.
+// Should be called with lock acquired, will release lock before blocking and return with lock acquired.
 // Will also return after timeout is reached, timeout will be reached even if wait_unblock is never called.
 #define WAIT_BLOCK_LOCK_TIMEOUT(waitQueue, lock, condition, timeout) \
     ({ \
         wait_result_t result = WAIT_NORM; \
         clock_t uptime = systime_uptime(); \
         clock_t deadline = (timeout) == CLOCKS_NEVER ? CLOCKS_NEVER : (timeout) + uptime; \
-        lock_acquire(lock); \
         while (!(condition) && result == WAIT_NORM) \
         { \
             if (deadline <= uptime) \

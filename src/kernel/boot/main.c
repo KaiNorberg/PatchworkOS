@@ -16,6 +16,12 @@ void main(boot_info_t* bootInfo)
     thread_t* initThread = loader_spawn(argv, PRIORITY_MIN + 1);
     ASSERT_PANIC(initThread != NULL);
 
+    // Set klog as stdout for init process
+    file_t* klog = vfs_open("sys:/klog");
+    ASSERT_PANIC(klog != NULL);
+    ASSERT_PANIC(vfs_ctx_openas(&initThread->process->vfsCtx, STDOUT_FILENO, klog) != ERR);
+    file_deref(klog);
+
     sched_push(initThread);
 
     // Exit boot thread

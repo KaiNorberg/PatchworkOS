@@ -17,16 +17,15 @@ static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count)
     count = ROUND_DOWN(count, sizeof(kbd_event_t));
     for (uint64_t i = 0; i < count / sizeof(kbd_event_t); i++)
     {
+        LOCK_DEFER(&kbd->lock);
+
         if (WAIT_BLOCK_LOCK(&kbd->waitQueue, &kbd->lock, file->pos != kbd->writeIndex) != WAIT_NORM)
         {
-            lock_release(&kbd->lock);
             return i * sizeof(kbd_event_t);
         }
 
         ((kbd_event_t*)buffer)[i] = kbd->events[file->pos];
         file->pos = (file->pos + 1) % KBD_MAX_EVENT;
-
-        lock_release(&kbd->lock);
     }
 
     return count;

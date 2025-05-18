@@ -16,16 +16,15 @@ static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count)
     count = ROUND_DOWN(count, sizeof(mouse_event_t));
     for (uint64_t i = 0; i < count / sizeof(mouse_event_t); i++)
     {
+        LOCK_DEFER(&mouse->lock);
+
         if (WAIT_BLOCK_LOCK(&mouse->waitQueue, &mouse->lock, file->pos != mouse->writeIndex) != WAIT_NORM)
         {
-            lock_release(&mouse->lock);
             return i * sizeof(mouse_event_t);
         }
 
         ((mouse_event_t*)buffer)[i] = mouse->events[file->pos];
         file->pos = (file->pos + 1) % MOUSE_MAX_EVENT;
-
-        lock_release(&mouse->lock);
     }
 
     return count;

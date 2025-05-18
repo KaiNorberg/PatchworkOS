@@ -17,9 +17,9 @@ uint64_t _SyscallSleep(clock_t nanoseconds);
 
 errno_t _SyscallLastError(void);
 
-pid_t _SyscallProcessId(void);
+pid_t _SyscallGetPid(void);
 
-tid_t _SyscallThreadId(void);
+tid_t _SyscallGetTid(void);
 
 clock_t _SyscallUptime(void);
 

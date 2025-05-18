@@ -42,12 +42,14 @@ section .text
 global _SyscallProcessExit
 _SyscallProcessExit:
     call _fini
-    SYSTEM_CALL SYS_PROCESS_EXIT
+    mov rax, SYS_PROCESS_EXIT
+    int 0x80
     ud2
 
 global _SyscallThreadExit
 _SyscallThreadExit:
-    SYSTEM_CALL SYS_THREAD_EXIT
+    mov rax, SYS_THREAD_EXIT
+    int 0x80
     ud2
 
 global _SyscallSpawn
@@ -72,17 +74,20 @@ _SyscallUnixEpoch:
 
 global _SyscallLastError
 _SyscallError:
-    SYSTEM_CALL SYS_LAST_ERROR
+    mov rax, SYS_LAST_ERROR
+    int 0x80
     ret
 
-global _SyscallProcessId
-_SyscallProcessId:
-    SYSTEM_CALL SYS_GETPID
+global _SyscallGetPid
+_SyscallGetPid:
+    mov rax, SYS_GETPID
+    int 0x80
     ret
 
-global _SyscallThreadId
-_SyscallThreadId:
-    SYSTEM_CALL SYS_GETTID
+global _SyscallGetTid
+_SyscallGetTid:
+    mov rax, SYS_GETTID
+    int 0x80
     ret
 
 global _SyscallOpen

@@ -44,14 +44,9 @@ typedef enum
 {
     FUTEX_WAIT,
     FUTEX_WAKE,
-    FUTEX_TRYLOCK
 } futex_op_t;
 
 #define FUTEX_ALL UINT64_MAX
-
-#define FUTEX_UNLOCKED 0
-#define FUTEX_LOCKED 1
-#define FUTEX_CONTESTED 2
 
 // argv[0] = executable
 pid_t spawn(const char** argv, const spawn_fd_t* fds);

@@ -226,6 +226,7 @@ void sched_thread_exit(void)
 {
     sched_ctx_t* ctx = &smp_self()->sched;
     atomic_store(&ctx->runThread->state, THREAD_DEAD);
+    printf("sched: thread_exit tid=%d pid=%d\n", ctx->runThread->id, ctx->runThread->process->id);
     smp_put();
 
     sched_invoke();
@@ -234,25 +235,51 @@ void sched_thread_exit(void)
 
 void sched_push(thread_t* thread)
 {
-    uint64_t cpuAmount = smp_cpu_amount();
-
-    uint64_t bestLength = UINT64_MAX;
-    cpu_t* best = NULL;
-    for (uint64_t i = 0; i < cpuAmount; i++)
+    thread_state_t state = atomic_load(&thread->state);
+    switch (state)
     {
-        cpu_t* cpu = smp_cpu(i);
-
-        uint64_t length = sched_ctx_thread_amount(&cpu->sched);
-        if (length < bestLength)
-        {
-            bestLength = length;
-            best = cpu;
-        }
+    case THREAD_DEAD:
+    {
+        cpu_t* self = smp_self();
+        list_push(&self->sched.deadThreads, &thread->entry);
+        smp_put();
     }
+    break;
+    case THREAD_PARKED:
+    {
+        uint64_t cpuAmount = smp_cpu_amount();
 
-    _Atomic(thread_state_t) expected = ATOMIC_VAR_INIT(THREAD_RUNNING);
-    atomic_compare_exchange_strong(&thread->state, &expected, THREAD_READY);
-    sched_ctx_push(&best->sched, thread);
+        uint64_t bestLength = UINT64_MAX;
+        cpu_t* best = NULL;
+        for (uint64_t i = 0; i < cpuAmount; i++)
+        {
+            cpu_t* cpu = smp_cpu(i);
+    
+            uint64_t length = sched_ctx_thread_amount(&cpu->sched);
+            if (length < bestLength)
+            {
+                bestLength = length;
+                best = cpu;
+            }
+        }
+    
+        // Make sure to not overwrite a change to THREAD_DEAD in between checks.
+        thread_state_t expected = THREAD_PARKED;
+        atomic_compare_exchange_strong(&thread->state, &expected, THREAD_READY);
+        sched_ctx_push(&best->sched, thread);
+    }
+    break;
+    case THREAD_READY:
+    case THREAD_PRE_BLOCK:
+    case THREAD_BLOCKED:
+    case THREAD_UNBLOCKING:
+    case THREAD_RUNNING:
+    default:
+    {
+        log_panic(NULL, "sched_push: invalid state (%d)", state);
+    }
+    break;
+    }
 }
 
 static void sched_update_parked_threads(trap_frame_t* trapFrame, sched_ctx_t* ctx)

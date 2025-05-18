@@ -171,6 +171,9 @@ void wait_unblock_thread(thread_t* thread, wait_result_t result, wait_queue_t* a
         free(entry);
     }
 
+    // Make sure to not overwrite a THREAD_DEAD state.
+    thread_state_t expected = THREAD_UNBLOCKING;
+    atomic_compare_exchange_strong(&thread->state, &expected, THREAD_PARKED);
     sched_push(thread);
 }
 

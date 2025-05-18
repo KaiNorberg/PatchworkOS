@@ -7,6 +7,7 @@
 #include "utils/hashmap.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 
 void futex_ctx_init(futex_ctx_t* ctx)
 {
@@ -24,18 +25,16 @@ void futex_ctx_deinit(futex_ctx_t* ctx)
             continue;
         }
 
-        futex_t* futex = HASHMAP_CONTAINER(entry, futex_t, entry);
+        futex_t* futex = CONTAINER_OF(entry, futex_t, entry);
         wait_queue_deinit(&futex->queue);
         free(futex);
     }
     hashmap_deinit(&ctx->futexes);
 }
 
-static futex_t* futex_ctx_futex(futex_ctx_t* ctx, atomic_uint64* addr)
+static futex_t* futex_ctx_get(futex_ctx_t* ctx, atomic_uint64* addr)
 {
-    LOCK_DEFER(&ctx->lock);
-
-    futex_t* futex = HASHMAP_CONTAINER(hashmap_get(&ctx->futexes, (uint64_t)addr), futex_t, entry);
+    futex_t* futex = CONTAINER_OF(hashmap_get(&ctx->futexes, (uint64_t)addr), futex_t, entry);
     if (futex != NULL)
     {
         return futex;
@@ -51,7 +50,10 @@ static futex_t* futex_ctx_futex(futex_ctx_t* ctx, atomic_uint64* addr)
 
 uint64_t futex_do(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t timeout)
 {
-    futex_t* futex = futex_ctx_futex(&sched_process()->futexCtx, addr);
+    futex_ctx_t* ctx = &sched_process()->futexCtx;
+    LOCK_DEFER(&ctx->lock);
+
+    futex_t* futex = futex_ctx_get(ctx, addr);
 
     switch (op)
     {
@@ -63,7 +65,7 @@ uint64_t futex_do(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t time
         }
 
         clock_t start = systime_uptime();
-        wait_result_t result = WAIT_BLOCK_TIMEOUT(&futex->queue, atomic_load(addr) != val, timeout);
+        wait_result_t result = WAIT_BLOCK_LOCK_TIMEOUT(&futex->queue, &ctx->lock, atomic_load(addr) != val, timeout);
         if (result == WAIT_TIMEOUT)
         {
             return (systime_uptime() - start);
@@ -73,15 +75,6 @@ uint64_t futex_do(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t time
     case FUTEX_WAKE:
     {
         wait_unblock(&futex->queue, val);
-    }
-    break;
-    case FUTEX_TRYLOCK:
-    {
-        if (atomic_compare_exchange_strong(addr, &(uint64_t){FUTEX_LOCKED}, FUTEX_UNLOCKED))
-        {
-            return FUTEX_LOCKED;
-        }
-        return FUTEX_UNLOCKED;
     }
     break;
     default:

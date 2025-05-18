@@ -30,17 +30,17 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count)
         return ERROR(EINVAL);
     }
 
+    LOCK_DEFER(&private->lock);
+
     if (WAIT_BLOCK_LOCK(&private->waitQueue, &private->lock,
             ring_data_length(&private->ring) != 0 || private->writeClosed) != WAIT_NORM)
     {
-        lock_release(&private->lock);
         return 0;
     }
 
     count = MIN(count, ring_data_length(&private->ring));
     ASSERT_PANIC(ring_read(&private->ring, buffer, count) != ERR);
 
-    lock_release(&private->lock);
     wait_unblock(&private->waitQueue, WAIT_ALL);
     return count;
 }
@@ -58,23 +58,22 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count)
         return ERROR(EINVAL);
     }
 
+    LOCK_DEFER(&private->lock);
+
     if (WAIT_BLOCK_LOCK(&private->waitQueue, &private->lock,
             ring_free_length(&private->ring) >= count || private->readClosed) != WAIT_NORM)
     {
-        lock_release(&private->lock);
         return 0;
     }
 
     if (private->readClosed)
     {
-        lock_release(&private->lock);
         wait_unblock(&private->waitQueue, WAIT_ALL);
         return ERROR(EPIPE);
     }
 
     ASSERT_PANIC(ring_write(&private->ring, buffer, count) != ERR);
 
-    lock_release(&private->lock);
     wait_unblock(&private->waitQueue, 1);
     return count;
 }

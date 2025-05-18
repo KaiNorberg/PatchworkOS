@@ -33,10 +33,9 @@ typedef struct
     char todo;
 } cnd_t;
 
-typedef struct _Thread _Thread_t;
 typedef struct
 {
-    _Thread_t* thread;
+    tid_t id;
 } thrd_t;
 
 // TODO: Implement this
@@ -44,6 +43,10 @@ typedef struct
 {
     char todo;
 } tss_t;
+
+#define _MTX_UNLOCKED 0
+#define _MTX_LOCKED 1
+#define _MTX_CONTESTED 2
 
 typedef struct
 {

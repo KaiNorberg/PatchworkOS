@@ -45,7 +45,7 @@ thread_t* thread_new(process_t* process, void* entry, priority_t priority)
         free(thread);
         return NULL;
     }
-    atomic_init(&thread->state, THREAD_FRESH);
+    atomic_init(&thread->state, THREAD_PARKED);
     memset(&thread->trapFrame, 0, sizeof(trap_frame_t));
     thread->trapFrame.rip = (uint64_t)entry;
     thread->trapFrame.rsp = ((uint64_t)thread->kernelStack) + CONFIG_KERNEL_STACK;
@@ -63,8 +63,6 @@ thread_t* thread_new(process_t* process, void* entry, priority_t priority)
 
 void thread_free(thread_t* thread)
 {
-    printf("thread: free %p pid=%d tid=%d\n", thread, thread->process->id, thread->id);
-
     lock_acquire(&thread->process->threads.lock);
     list_remove(&thread->processEntry);
     lock_release(&thread->process->threads.lock);

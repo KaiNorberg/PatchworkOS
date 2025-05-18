@@ -9,36 +9,31 @@
 
 #define _MTX_SPIN_COUNT 100
 
+#define _THREAD_ENTRY_ATTRIBUTES __attribute__((noreturn)) __attribute__((force_align_arg_pointer))
+
+typedef struct _Thread _Thread_t;
+
+typedef void (*_ThreadEntry_t)(_Thread_t*);
+
+#define _THREAD_ATTACHED 1
+#define _THREAD_DETACHED 2
+#define _THREAD_JOINING 3
+#define _THREAD_EXITED 4
+
 typedef struct _Thread
 {
     list_entry_t entry;
-    atomic_long ref;
-    atomic_uint64 running;
+    atomic_uint64 state;
     tid_t id;
-    uint8_t result;
+    int64_t result;
     errno_t err;
-    thrd_start_t func;
-    void* arg;
+    void* private;
 } _Thread_t;
 
 void _ThreadingInit(void);
 
-_Thread_t* _ThreadNew(thrd_start_t func, void* arg);
+_Thread_t* _ThreadNew(_ThreadEntry_t entry, void* private);
 
 void _ThreadFree(_Thread_t* thread);
 
-_Thread_t* _ThreadById(tid_t id);
-
-static inline _Thread_t* _ThreadRef(_Thread_t* thread)
-{
-    atomic_fetch_add(&thread->ref, 1);
-    return thread;
-}
-
-static inline void _ThreadUnref(_Thread_t* thread)
-{
-    if (atomic_fetch_sub(&thread->ref, 1) <= 1)
-    {
-        _ThreadFree(thread);
-    }
-}
+_Thread_t* _ThreadGet(tid_t id);

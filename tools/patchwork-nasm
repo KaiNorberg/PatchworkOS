@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
 
 nasm -f elf64 \
   -I "$SCRIPT_DIR/../include/" \

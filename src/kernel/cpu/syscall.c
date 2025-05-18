@@ -461,7 +461,6 @@ tid_t syscall_thread_create(void* entry, void* arg)
     }
 
     thread_t* thread = loader_thread_create(sched_thread(), PRIORITY_MIN, entry, arg);
-
     if (thread == NULL)
     {
         return ERR;

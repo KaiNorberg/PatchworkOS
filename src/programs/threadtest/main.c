@@ -75,12 +75,20 @@ static void benchmark(uint64_t threadAmount)
     thrd_t threads[threadAmount];
     for (uint64_t i = 0; i < threadAmount; i++)
     {
-        thrd_create(&threads[i], thread_entry, NULL);
+        if (thrd_create(&threads[i], thread_entry, NULL) != thrd_success)
+        {
+            printf("(thrd_create error %d) ", i);
+            fflush(stdout);
+        }
     }
 
     for (uint64_t i = 0; i < threadAmount; i++)
-    {
-        thrd_join(threads[i], NULL);
+    {        
+        if (thrd_join(threads[i], NULL) != thrd_success)
+        {
+            printf("(thrd_join error %d) ", i);
+            fflush(stdout);
+        }
     }
 
     clock_t end = uptime();

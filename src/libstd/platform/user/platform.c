@@ -13,9 +13,26 @@
 
 static fd_t zeroResource;
 
-void _PlatformEarlyInit(void)
+static void _PopulateStdDescriptors(void)
 {
+    for (uint64_t i = 0; i <= STDERR_FILENO; i++)
+    {
+        if (write(i, NULL, 0) == ERR && errno == EBADF)
+        {
+            fd_t nullFd = open("sys:/null");
+            if (nullFd != i)
+            {
+                dup2(nullFd, i);
+                close(nullFd);
+            }
+        }
+    }
+}
+
+void _PlatformEarlyInit(void)
+{    
     _ThreadingInit();
+    _PopulateStdDescriptors();
     _ExitStackInit();
     _FilesInit();
     _StdStreamsInit();
@@ -38,7 +55,13 @@ void* _PlatformPageAlloc(uint64_t amount)
 
 int* _PlatformErrnoFunc(void)
 {
-    return &_ThreadById(_SyscallThreadId())->err;
+    static int garbageErrno;
+    _Thread_t* thread = _ThreadGet(_SyscallGetTid());
+    if (thread == NULL)
+    {
+        return &garbageErrno;
+    }
+    return &thread->err;
 }
 
 void _PlatformAbort(void)

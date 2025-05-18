@@ -9,12 +9,32 @@
 
 int thrd_join(thrd_t thr, int* res)
 {
-    _Thread_t* thread = _ThreadRef(thr.thread);
-    futex(&thread->running, true, FUTEX_WAIT, CLOCKS_NEVER);
+    _Thread_t* thread = _ThreadGet(thr.id);
+    if (thread == NULL)
+    {
+        return thrd_error;
+    }
+
+    uint64_t expected = _THREAD_ATTACHED;
+    if (!atomic_compare_exchange_strong(&thread->state, &expected, _THREAD_JOINING))
+    {
+        if (expected == _THREAD_DETACHED)
+        {
+            return thrd_error;
+        }
+    }
+
+    uint64_t state;
+    while ((state = atomic_load(&thread->state)) != _THREAD_EXITED)
+    {
+        futex(&thread->state, state, FUTEX_WAIT, CLOCKS_NEVER);
+    }
+
     if (res != NULL)
     {
         *res = thread->result;
     }
-    _ThreadUnref(thread);
+
+    _ThreadFree(thread);
     return thrd_success;
 }

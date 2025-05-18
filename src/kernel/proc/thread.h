@@ -18,14 +18,13 @@ typedef uint8_t priority_t;
 
 typedef enum
 {
-    THREAD_FRESH,
-    THREAD_READY,
-    THREAD_RUNNING,
-    THREAD_DEAD,
-    THREAD_PARKED,
-    THREAD_PRE_BLOCK,
-    THREAD_BLOCKED,
-    THREAD_UNBLOCKING,
+    THREAD_PARKED, // Is currently doing nothing, not in a queue, not blocking, think of it as "other"
+    THREAD_READY, // Is in a schedulers wait queue
+    THREAD_RUNNING, // Is currently running
+    THREAD_DEAD, // Is waiting to be freed, once this state is set it will never change to anything else
+    THREAD_PRE_BLOCK, // Prepearing to block, can be interrupted
+    THREAD_BLOCKED, // Is blocking,
+    THREAD_UNBLOCKING, // Is unblocking
 } thread_state_t;
 
 typedef struct thread
