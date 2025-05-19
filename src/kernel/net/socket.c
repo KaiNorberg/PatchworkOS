@@ -219,6 +219,7 @@ socket_t* socket_new(socket_family_t* family, path_flags_t flags)
 
 static void socket_on_free(sysdir_t* sysdir)
 {
+    // TODO: URGENT! This is not called when a process is killed via a note.
     socket_t* socket = sysdir->private;
     socket->family->deinit(socket);
     free(socket);

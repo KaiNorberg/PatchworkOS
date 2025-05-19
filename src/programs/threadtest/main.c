@@ -83,7 +83,7 @@ static void benchmark(uint64_t threadAmount)
     }
 
     for (uint64_t i = 0; i < threadAmount; i++)
-    {        
+    {   
         if (thrd_join(threads[i], NULL) != thrd_success)
         {
             printf("(thrd_join error %d) ", i);

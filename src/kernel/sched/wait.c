@@ -78,20 +78,18 @@ static void wait_handle_parked_threads(trap_frame_t* trapFrame, cpu_t* self)
             }
         }
 
-        if (thread_note_pending(thread))
-        {                    
-            thread_state_t expected = THREAD_PRE_BLOCK;
-            if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
-            {
-                wait_unblock_thread(thread, WAIT_NOTE, NULL, true);
-                return;
-            }
-        }
-
         thread_state_t expected = THREAD_PRE_BLOCK;
         if (!atomic_compare_exchange_strong(&thread->state, &expected, THREAD_BLOCKED))
         {
             wait_unblock_thread(thread, WAIT_NORM, NULL, false);
+        }
+        else if (thread_note_pending(thread))
+        {                    
+            thread_state_t expected = THREAD_BLOCKED;
+            if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
+            {
+                wait_unblock_thread(thread, WAIT_NOTE, NULL, false);
+            }
         }
     }
 }

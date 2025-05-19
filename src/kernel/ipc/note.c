@@ -111,6 +111,7 @@ void note_trap_handler(trap_frame_t* trapFrame, cpu_t* self)
         }
         else
         {
+            printf("note: unknown (%s)\n", note.message);
             // TODO: Unknown note, send to userspace
         }
     }

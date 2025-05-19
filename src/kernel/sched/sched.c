@@ -222,7 +222,7 @@ void sched_process_exit(uint64_t status)
         {
             continue;
         }
-        thread_send_note(other, "kill", 4, NOTE_CRITICAL);
+        thread_send_note(other, "kill", 4);
     }
 
     smp_put();
