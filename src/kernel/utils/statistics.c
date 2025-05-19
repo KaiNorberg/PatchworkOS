@@ -95,9 +95,9 @@ void statistics_init(void)
     ASSERT_PANIC(sysobj_init(&memObj, &statDir, "mem", &memOps, NULL) != ERR);
 }
 
-void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* cpu)
+void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* self)
 {
-    statistics_cpu_ctx_t* stat = &cpu->stat;
+    statistics_cpu_ctx_t* stat = &self->stat;
     LOCK_DEFER(&stat->lock);
 
     stat->trapBegin = systime_uptime();
@@ -113,9 +113,9 @@ void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* cpu)
     }
 }
 
-void statistics_trap_end(trap_frame_t* trapFrame, cpu_t* cpu)
+void statistics_trap_end(trap_frame_t* trapFrame, cpu_t* self)
 {
-    statistics_cpu_ctx_t* stat = &cpu->stat;
+    statistics_cpu_ctx_t* stat = &self->stat;
     LOCK_DEFER(&stat->lock);
 
     stat->trapEnd = systime_uptime();

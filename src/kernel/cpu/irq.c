@@ -21,7 +21,6 @@ void irq_dispatch(trap_frame_t* trapFrame)
             break;
         }
     }
-
     // TODO: Replace with io apic
     pic_eoi(irq);
 }

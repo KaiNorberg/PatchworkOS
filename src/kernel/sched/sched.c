@@ -64,7 +64,7 @@ void sched_ctx_init(sched_ctx_t* ctx)
         thread_queue_init(&ctx->queues[i]);
     }
     list_init(&ctx->parkedThreads);
-    list_init(&ctx->deadThreads);
+    list_init(&ctx->zombieThreads);
     ctx->runThread = NULL;
 }
 
@@ -91,12 +91,6 @@ static thread_t* sched_ctx_find_higher(sched_ctx_t* ctx, priority_t priority)
         thread_t* thread = thread_queue_pop(&ctx->queues[i]);
         if (thread != NULL)
         {
-            if (atomic_load(&thread->process->dead) && thread->trapFrame.cs != GDT_KERNEL_CODE)
-            {
-                thread_free(thread);
-                return sched_ctx_find_higher(ctx, priority);
-            }
-
             return thread;
         }
     }
@@ -111,12 +105,6 @@ static thread_t* sched_ctx_find_any_same(sched_ctx_t* ctx)
         thread_t* thread = thread_queue_pop(&ctx->queues[i]);
         if (thread != NULL)
         {
-            if (atomic_load(&thread->process->dead) && thread->trapFrame.cs != GDT_KERNEL_CODE)
-            {
-                thread_free(thread);
-                return sched_ctx_find_any_same(ctx);
-            }
-
             return thread;
         }
     }
@@ -211,75 +199,65 @@ void sched_yield(void)
 
 void sched_process_exit(uint64_t status)
 {
-    // TODO: Add handling for status
-
+    // TODO: Add handling for status, this todo has been here for like literraly a year...
     sched_ctx_t* ctx = &smp_self()->sched;
-    process_kill(ctx->runThread->process);
-    printf("sched: process_exit pid=%d\n", ctx->runThread->process->id);
-    smp_put();
+    thread_t* thread = ctx->runThread;
+    process_t* process = thread->process;
 
-    sched_invoke();
-    log_panic(NULL, "returned from process_exit");
+    atomic_store(&thread->state, THREAD_ZOMBIE);
+
+    LOCK_DEFER(&process->threads.lock);
+    if (process->threads.dying)
+    {
+        smp_put();
+        return;
+    }
+
+    process->threads.dying = true;
+
+    thread_t* other;
+    LIST_FOR_EACH(other, &process->threads.list, processEntry)
+    {
+        if (thread == other)
+        {
+            continue;
+        }
+        thread_send_note(other, "kill", 4, NOTE_CRITICAL);
+    }
+
+    smp_put();
 }
 
 void sched_thread_exit(void)
 {
     sched_ctx_t* ctx = &smp_self()->sched;
-    atomic_store(&ctx->runThread->state, THREAD_DEAD);
-    printf("sched: thread_exit tid=%d pid=%d\n", ctx->runThread->id, ctx->runThread->process->id);
+    thread_t* thread = ctx->runThread;
+    atomic_store(&thread->state, THREAD_ZOMBIE);
     smp_put();
-
-    sched_invoke();
-    log_panic(NULL, "returned from thread_exit");
 }
 
 void sched_push(thread_t* thread)
 {
-    thread_state_t state = atomic_load(&thread->state);
-    switch (state)
-    {
-    case THREAD_DEAD:
-    {
-        cpu_t* self = smp_self();
-        list_push(&self->sched.deadThreads, &thread->entry);
-        smp_put();
-    }
-    break;
-    case THREAD_PARKED:
-    {
-        uint64_t cpuAmount = smp_cpu_amount();
+    ASSERT_PANIC(atomic_load(&thread->state) == THREAD_PARKED);
 
-        uint64_t bestLength = UINT64_MAX;
-        cpu_t* best = NULL;
-        for (uint64_t i = 0; i < cpuAmount; i++)
-        {
-            cpu_t* cpu = smp_cpu(i);
-    
-            uint64_t length = sched_ctx_thread_amount(&cpu->sched);
-            if (length < bestLength)
-            {
-                bestLength = length;
-                best = cpu;
-            }
-        }
-    
-        // Make sure to not overwrite a change to THREAD_DEAD in between checks.
-        thread_state_t expected = THREAD_PARKED;
-        atomic_compare_exchange_strong(&thread->state, &expected, THREAD_READY);
-        sched_ctx_push(&best->sched, thread);
-    }
-    break;
-    case THREAD_READY:
-    case THREAD_PRE_BLOCK:
-    case THREAD_BLOCKED:
-    case THREAD_UNBLOCKING:
-    case THREAD_RUNNING:
-    default:
+    uint64_t cpuAmount = smp_cpu_amount();
+
+    uint64_t bestLength = UINT64_MAX;
+    cpu_t* best = NULL;
+    for (uint64_t i = 0; i < cpuAmount; i++)
     {
-        log_panic(NULL, "sched_push: invalid state (%d)", state);
+        cpu_t* cpu = smp_cpu(i);
+
+        uint64_t length = sched_ctx_thread_amount(&cpu->sched);
+        if (length < bestLength)
+        {
+            bestLength = length;
+            best = cpu;
+        }
     }
-    break;
-    }
+
+    atomic_store(&thread->state, THREAD_READY);
+    sched_ctx_push(&best->sched, thread);
 }
 
 static void sched_update_parked_threads(trap_frame_t* trapFrame, sched_ctx_t* ctx)
@@ -296,11 +274,11 @@ static void sched_update_parked_threads(trap_frame_t* trapFrame, sched_ctx_t* ct
     }
 }
 
-static void sched_update_dead_threads(trap_frame_t* trapFrame, sched_ctx_t* ctx)
+static void sched_update_zombie_threads(trap_frame_t* trapFrame, sched_ctx_t* ctx)
 {
     while (1)
     {
-        thread_t* thread = CONTAINER_OF_SAFE(list_pop(&ctx->deadThreads), thread_t, entry);
+        thread_t* thread = CONTAINER_OF_SAFE(list_pop(&ctx->zombieThreads), thread_t, entry);
         if (thread == NULL)
         {
             break;
@@ -310,9 +288,8 @@ static void sched_update_dead_threads(trap_frame_t* trapFrame, sched_ctx_t* ctx)
     }
 }
 
-void sched_timer_trap(trap_frame_t* trapFrame)
+void sched_timer_trap(trap_frame_t* trapFrame, cpu_t* self)
 {
-    cpu_t* self = smp_self_unsafe();
     sched_ctx_t* ctx = &self->sched;
 
     if (self->trapDepth > 1)
@@ -321,14 +298,13 @@ void sched_timer_trap(trap_frame_t* trapFrame)
     }
 
     sched_update_parked_threads(trapFrame, ctx);
-    sched_update_dead_threads(trapFrame, ctx);
+    sched_update_zombie_threads(trapFrame, ctx);
 
-    sched_schedule_trap(trapFrame);
+    sched_schedule_trap(trapFrame, self);
 }
 
-void sched_schedule_trap(trap_frame_t* trapFrame)
+void sched_schedule_trap(trap_frame_t* trapFrame, cpu_t* self)
 {
-    cpu_t* self = smp_self_unsafe();
     sched_ctx_t* ctx = &self->sched;
 
     if (self->trapDepth > 1)
@@ -339,23 +315,15 @@ void sched_schedule_trap(trap_frame_t* trapFrame)
     if (ctx->runThread != NULL)
     {
         thread_state_t state = atomic_load(&ctx->runThread->state);
-        if (state == THREAD_DEAD || (atomic_load(&ctx->runThread->process->dead) && trapFrame->cs != GDT_KERNEL_CODE))
+        if (state == THREAD_ZOMBIE)
         {
-            list_push(&ctx->deadThreads, &ctx->runThread->entry);
+            list_push(&ctx->zombieThreads, &ctx->runThread->entry);
             ctx->runThread = NULL;
         }
         else if (state != THREAD_RUNNING)
         {
             return;
         }
-    }
-
-    if (ctx->runThread != NULL &&
-        (atomic_load(&ctx->runThread->state) == THREAD_DEAD ||
-            (atomic_load(&ctx->runThread->process->dead) && trapFrame->cs != GDT_KERNEL_CODE)))
-    {
-        list_push(&ctx->deadThreads, &ctx->runThread->entry);
-        ctx->runThread = NULL;
     }
 
     thread_t* next;

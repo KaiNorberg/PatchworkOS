@@ -97,7 +97,7 @@ void dwm_init(void)
 
     focus = NULL;
 
-    pollCtx = malloc(sizeof(poll_ctx_t));
+    pollCtx = NULL;
 
     // TODO: Config file
     defaultFont = psf_new(FONT_DIR "/zap-vga16.psf", 1);

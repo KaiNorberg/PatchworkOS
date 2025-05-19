@@ -22,30 +22,34 @@
 
 thread_t* thread_new(process_t* process, void* entry, priority_t priority)
 {
-    atomic_fetch_add(&process->threadCount, 1);
+    LOCK_DEFER(&process->threads.lock);
+
+    if (process->threads.dying)
+    {
+        return NULL;
+    }
 
     thread_t* thread = malloc(sizeof(thread_t));
     if (thread == NULL)
     {
-        atomic_fetch_sub(&process->threadCount, 1);
         return NULL;
     }
     list_entry_init(&thread->entry);
     thread->process = process;
     list_entry_init(&thread->processEntry);
-    thread->id = atomic_fetch_add(&thread->process->newTid, 1);
+    thread->id = thread->process->threads.newTid++;
     thread->timeStart = 0;
     thread->timeEnd = 0;
-    wait_thread_ctx_init(&thread->wait);
-    thread->error = 0;
     thread->priority = MIN(priority, PRIORITY_MAX);
+    atomic_init(&thread->state, THREAD_PARKED);
+    thread->error = 0;
+    wait_thread_ctx_init(&thread->wait);
     if (simd_ctx_init(&thread->simd) == ERR)
     {
-        atomic_fetch_sub(&process->threadCount, 1);
         free(thread);
         return NULL;
     }
-    atomic_init(&thread->state, THREAD_PARKED);
+    note_queue_init(&thread->notes);
     memset(&thread->trapFrame, 0, sizeof(trap_frame_t));
     thread->trapFrame.rip = (uint64_t)entry;
     thread->trapFrame.rsp = ((uint64_t)thread->kernelStack) + CONFIG_KERNEL_STACK;
@@ -54,10 +58,7 @@ thread_t* thread_new(process_t* process, void* entry, priority_t priority)
     thread->trapFrame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
     memset(&thread->kernelStack, 0, CONFIG_KERNEL_STACK);
 
-    lock_acquire(&process->threads.lock);
     list_push(&process->threads.list, &thread->processEntry);
-    lock_release(&process->threads.lock);
-
     return thread;
 }
 
@@ -65,11 +66,15 @@ void thread_free(thread_t* thread)
 {
     lock_acquire(&thread->process->threads.lock);
     list_remove(&thread->processEntry);
-    lock_release(&thread->process->threads.lock);
 
-    if (atomic_fetch_sub(&thread->process->threadCount, 1) <= 1)
+    if (list_empty(&thread->process->threads.list))
     {
+        lock_release(&thread->process->threads.lock);
         process_free(thread->process);
+    }
+    else
+    {
+        lock_release(&thread->process->threads.lock);
     }
 
     simd_ctx_deinit(&thread->simd);
@@ -111,7 +116,23 @@ void thread_load(thread_t* thread, trap_frame_t* trapFrame)
     }
 }
 
-bool thread_dead(thread_t* thread)
+bool thread_note_pending(thread_t* thread)
 {
-    return atomic_load(&thread->state) == THREAD_DEAD || atomic_load(&thread->process->dead);
+    return note_queue_length(&thread->notes) != 0;
+}
+
+uint64_t thread_send_note(thread_t* thread, const void* message, uint64_t length, note_flags_t flags)
+{
+    if (note_queue_push(&thread->notes, message, length, flags) == ERR)
+    {
+        return ERR;
+    }
+
+    thread_state_t expected = THREAD_BLOCKED;
+    if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
+    {
+        wait_unblock_thread(thread, WAIT_NOTE, NULL, true);
+    }
+
+    return 0;
 }

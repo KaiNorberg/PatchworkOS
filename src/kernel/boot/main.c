@@ -26,4 +26,5 @@ void main(boot_info_t* bootInfo)
 
     // Exit boot thread
     sched_thread_exit();
+    sched_invoke();
 }

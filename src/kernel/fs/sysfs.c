@@ -102,7 +102,7 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
         if (path->flags & PATH_DIRECTORY)
         {
             rwlock_read_release(&lock);
-            return ERRPTR(EISDIR);
+            return ERRPTR(ENOTDIR);
         }
 
         sysobj_t* sysobj = sysobj_ref(CONTAINER_OF(node, sysobj_t, header.node));
@@ -129,7 +129,7 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
         if (!(path->flags & PATH_DIRECTORY))
         {
             rwlock_read_release(&lock);
-            return ERRPTR(ENOTDIR);
+            return ERRPTR(EISDIR);
         }
 
         sysdir_t* sysdir = sysdir_ref(CONTAINER_OF(node, sysdir_t, header.node));

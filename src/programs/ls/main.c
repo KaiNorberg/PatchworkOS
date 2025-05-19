@@ -88,11 +88,16 @@ uint64_t print_directory(const char* path, flags_t flags, bool forceLabel)
     }
 
     fd_t fd = openf("%s?directory", path);
+    if (fd == ERR)
+    {
+        fprintf(stderr, "ls: cant open directory %s (%s)\n", path, strerror(errno));
+        return ERR;
+    }
     allocdir_t* dirs = allocdir(fd);
     close(fd);
     if (dirs == NULL)
     {
-        fprintf(stderr, "ls: cant open directory %s (%s)\n", path, strerror(errno));
+        fprintf(stderr, "ls: cant read directory %s (%s)\n", path, strerror(errno));
         return ERR;
     }
 

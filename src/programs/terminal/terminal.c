@@ -313,20 +313,8 @@ void terminal_init(terminal_t* term)
         {.child = STDERR_FILENO, .parent = term->stdout[PIPE_WRITE]},
         SPAWN_FD_END,
     };
-    pid_t shell = spawn(argv, fds);
-    if (shell == ERR)
-    {
-        close(term->stdin[0]);
-        close(term->stdin[1]);
-        close(term->stdout[0]);
-        close(term->stdout[1]);
-        window_free(term->win);
-        display_free(term->disp);
-        exit(errno);
-    }
-
-    term->shellCtl = openf("sys:/proc/%d/ctl", shell);
-    if (term->shellCtl == ERR)
+    term->shell = spawn(argv, fds);
+    if (term->shell == ERR)
     {
         close(term->stdin[0]);
         close(term->stdin[1]);
@@ -343,8 +331,9 @@ void terminal_deinit(terminal_t* term)
     input_deinit(&term->input);
     history_deinit(&term->history);
 
-    writef(term->shellCtl, "kill");
-    close(term->shellCtl);
+    fd_t shellNote = openf("sys:/proc/%d/note", term->shell);
+    writef(shellNote, "kill");
+    close(shellNote);
 
     close(term->stdin[0]);
     close(term->stdin[1]);

@@ -1,0 +1,117 @@
+#include "note.h"
+
+#include "sched/sched.h"
+#include "utils/log.h"
+#include "cpu/smp.h"
+
+#include <stdio.h>
+
+void note_queue_init(note_queue_t* queue)
+{
+    queue->readIndex = 0;
+    queue->writeIndex = 0;
+    queue->length = 0;
+    lock_init(&queue->lock);
+}
+
+uint64_t note_queue_length(note_queue_t* queue)
+{
+    LOCK_DEFER(&queue->lock);
+    return queue->length;
+}
+
+uint64_t note_queue_push(note_queue_t* queue, const void* message, uint64_t length, note_flags_t flags)
+{
+    if (length >= MAX_PATH)
+    {
+        return ERROR(EINVAL);
+    }
+
+    process_t* sender = sched_process();
+
+    LOCK_DEFER(&queue->lock);
+
+    note_t* note = NULL;
+    if (queue->length == CONFIG_MAX_NOTES)
+    {
+        if (!(flags & NOTE_CRITICAL))
+        {
+            // TODO: Implement blocking
+            return ERROR(EWOULDBLOCK);
+        }
+
+        // Overwrite non critical note.
+        for (uint64_t i = 0; i < CONFIG_MAX_NOTES; i++)
+        {
+            if (!(queue->notes[i].flags & NOTE_CRITICAL))
+            {
+                note = &queue->notes[queue->writeIndex];
+                break;
+            }
+        }
+    }
+    else
+    {
+        note = &queue->notes[queue->writeIndex];
+        queue->writeIndex = (queue->writeIndex + 1) % CONFIG_MAX_NOTES;
+        queue->length++;  
+    }
+
+    ASSERT_PANIC(note != NULL);
+
+    memcpy(note->message, message, length);
+    note->message[length] = '\0';
+    note->sender = sender->id;
+    note->flags = flags;
+    return 0;
+}
+
+static bool note_queue_pop(note_queue_t* queue, note_t* note)
+{
+    LOCK_DEFER(&queue->lock);
+
+    if (queue->length == 0)
+    {
+        return false;
+    }
+
+    (*note) = queue->notes[queue->readIndex];
+    queue->readIndex = (queue->readIndex + 1) % CONFIG_MAX_NOTES;
+    queue->length--;
+    return true;
+}
+
+void note_trap_handler(trap_frame_t* trapFrame, cpu_t* self)
+{
+    // TODO: Implement more notes and implement user space "software interrupts" to recieve notes.
+
+    thread_t* thread = sched_thread();
+    if (thread == NULL)
+    {
+        return;
+    }
+    
+    note_queue_t* queue = &thread->notes;
+
+    while (1)
+    {
+        note_t note;
+        if (!note_queue_pop(queue, &note))
+        {
+            break;
+        }
+
+        if (strcmp(note.message, "kill") == 0)
+        {    
+            printf("note: kill tid=%d pid=%d\n", thread->id, thread->process->id);
+            
+            sched_process_exit(0);
+            sched_schedule_trap(trapFrame, self);
+            return;
+        }
+        else
+        {
+            // TODO: Unknown note, send to userspace
+        }
+    }
+}

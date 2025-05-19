@@ -11,6 +11,7 @@
 #include "proc/thread.h"
 #include "sched/loader.h"
 #include "sched/sched.h"
+#include "utils/log.h"
 
 #include <errno.h>
 #include <stdarg.h>
@@ -90,11 +91,15 @@ static bool verify_string(const char* string)
 NORETURN void syscall_process_exit(uint64_t status)
 {
     sched_process_exit(status);
+    sched_invoke();
+    log_panic(NULL, "returned to syscall_process_exit");
 }
 
 NORETURN void syscall_thread_exit(void)
 {
     sched_thread_exit();
+    sched_invoke();
+    log_panic(NULL, "returned to syscall_thread_exit");
 }
 
 pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds)
@@ -515,13 +520,6 @@ uint64_t syscall_remove(const char* path)
 
 void syscall_handler_end(void)
 {
-    thread_t* thread = sched_thread();
-
-    if (thread_dead(thread))
-    {
-        sched_thread_exit();
-    }
-
     sched_invoke();
 }
 

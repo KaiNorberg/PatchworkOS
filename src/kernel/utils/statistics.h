@@ -21,6 +21,6 @@ void statistics_cpu_ctx_init(statistics_cpu_ctx_t* ctx);
 
 void statistics_init(void);
 
-void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* cpu);
+void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* self);
 
-void statistics_trap_end(trap_frame_t* trapFrame, cpu_t* cpu);
+void statistics_trap_end(trap_frame_t* trapFrame, cpu_t* self);

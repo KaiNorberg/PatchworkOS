@@ -24,7 +24,7 @@ typedef struct
     fd_t stdout[2]; // Also does stderr
     input_t input;
     history_t history;
-    fd_t shellCtl;
+    pid_t shell;
 } terminal_t;
 
 #define CURSOR_POS_TO_CLIENT_POS(cursorPos, font) \

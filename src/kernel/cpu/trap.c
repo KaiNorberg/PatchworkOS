@@ -60,30 +60,14 @@ static void exception_handler(trap_frame_t* trapFrame)
 
         printf("user exception: process killed due to exception tid=%d pid=%d vector=0x%x error=%p rip=%p cr2=%p\n", thread->id, thread->process->id,
             trapFrame->vector, trapFrame->errorCode, trapFrame->rip, cr2_read());
-        process_kill(thread->process);
-        sched_schedule_trap(trapFrame);
+
+        sched_process_exit(0);
+        sched_schedule_trap(trapFrame, smp_self_unsafe());
     }
     else
     {
         log_panic(trapFrame, "Exception");
     }
-}
-
-static void ipi_handler(trap_frame_t* trapFrame)
-{
-    cpu_t* cpu = smp_self_unsafe();
-    while (1)
-    {
-        ipi_t ipi = smp_recieve(cpu);
-        if (ipi == NULL)
-        {
-            break;
-        }
-
-        ipi(trapFrame);
-    }
-
-    lapic_eoi();
 }
 
 void trap_handler(trap_frame_t* trapFrame)
@@ -94,10 +78,10 @@ void trap_handler(trap_frame_t* trapFrame)
         return;
     }
 
-    cpu_t* cpu = smp_self_unsafe();
-    cpu->trapDepth++;
+    cpu_t* self = smp_self_unsafe();
 
-    statistics_trap_begin(trapFrame, cpu);
+    self->trapDepth++;
+    statistics_trap_begin(trapFrame, self);
 
     if (trapFrame->vector >= VECTOR_IRQ_BASE && trapFrame->vector < VECTOR_IRQ_BASE + IRQ_AMOUNT)
     {
@@ -105,28 +89,29 @@ void trap_handler(trap_frame_t* trapFrame)
     }
     else if (trapFrame->vector == VECTOR_IPI)
     {
-        ipi_handler(trapFrame);
+        smp_ipi_recieve(trapFrame, self);
+        lapic_eoi();
     }
     else if (trapFrame->vector == VECTOR_TIMER)
     {
-        wait_timer_trap(trapFrame);
-        sched_timer_trap(trapFrame);
+        wait_timer_trap(trapFrame, self);
+        sched_timer_trap(trapFrame, self);
         lapic_eoi();
     }
     else if (trapFrame->vector == VECTOR_SCHED_SCHEDULE)
     {
-        sched_schedule_trap(trapFrame);
+        sched_schedule_trap(trapFrame, self);
     }
     else if (trapFrame->vector == VECTOR_WAIT_BLOCK)
     {
-        wait_block_trap(trapFrame);
+        wait_block_trap(trapFrame, self);
     }
     else
     {
         log_panic(trapFrame, "Unknown vector");
     }
 
-    statistics_trap_end(trapFrame, cpu);
+    note_trap_handler(trapFrame, self);
 
     // This is a sanity check to make sure blocking and scheduling is functioning correctly. For instance, a trap should
     // never return with a lock acquired.
@@ -134,5 +119,7 @@ void trap_handler(trap_frame_t* trapFrame)
     {
         log_panic(trapFrame, "Returning to frame with interrupts disabled");
     }
-    cpu->trapDepth--;
+
+    statistics_trap_end(trapFrame, self);
+    self->trapDepth--;
 }

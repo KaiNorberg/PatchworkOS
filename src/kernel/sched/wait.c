@@ -78,7 +78,17 @@ static void wait_handle_parked_threads(trap_frame_t* trapFrame, cpu_t* self)
             }
         }
 
-        _Atomic(thread_state_t) expected = ATOMIC_VAR_INIT(THREAD_PRE_BLOCK);
+        if (thread_note_pending(thread))
+        {                    
+            thread_state_t expected = THREAD_PRE_BLOCK;
+            if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
+            {
+                wait_unblock_thread(thread, WAIT_NOTE, NULL, true);
+                return;
+            }
+        }
+
+        thread_state_t expected = THREAD_PRE_BLOCK;
         if (!atomic_compare_exchange_strong(&thread->state, &expected, THREAD_BLOCKED))
         {
             wait_unblock_thread(thread, WAIT_NORM, NULL, false);
@@ -110,17 +120,14 @@ static void wait_handle_blocked_threads(trap_frame_t* trapFrame, cpu_t* self)
     }
 }
 
-void wait_timer_trap(trap_frame_t* trapFrame)
+void wait_timer_trap(trap_frame_t* trapFrame, cpu_t* self)
 {
-    cpu_t* self = smp_self_unsafe();
-
     wait_handle_parked_threads(trapFrame, self);
     wait_handle_blocked_threads(trapFrame, self);
 }
 
-void wait_block_trap(trap_frame_t* trapFrame)
+void wait_block_trap(trap_frame_t* trapFrame, cpu_t* self)
 {
-    cpu_t* self = smp_self_unsafe();
     sched_ctx_t* sched = &self->sched;
     wait_cpu_ctx_t* cpuCtx = &self->wait;
 
@@ -134,13 +141,13 @@ void wait_block_trap(trap_frame_t* trapFrame)
     list_push(&cpuCtx->parkedThreads, &thread->entry);
     lock_release(&cpuCtx->lock);
 
-    sched_schedule_trap(trapFrame);
+    sched_schedule_trap(trapFrame, self);
 }
 
 void wait_unblock_thread(thread_t* thread, wait_result_t result, wait_queue_t* acquiredQueue, bool acquireCpu)
 {
     thread_state_t state = atomic_load(&thread->state);
-    ASSERT_PANIC(state == THREAD_UNBLOCKING || state == THREAD_DEAD);
+    ASSERT_PANIC(state == THREAD_UNBLOCKING);
 
     thread->wait.result = result;
     if (acquireCpu)
@@ -171,7 +178,6 @@ void wait_unblock_thread(thread_t* thread, wait_result_t result, wait_queue_t* a
         free(entry);
     }
 
-    // Make sure to not overwrite a THREAD_DEAD state.
     thread_state_t expected = THREAD_UNBLOCKING;
     atomic_compare_exchange_strong(&thread->state, &expected, THREAD_PARKED);
     sched_push(thread);
@@ -256,11 +262,6 @@ wait_result_t wait_block(wait_queue_t* waitQueue, clock_t timeout)
     ASSERT_PANIC(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 
     thread_t* thread = smp_self()->sched.runThread;
-    if (thread_dead(thread))
-    {
-        smp_put();
-        return WAIT_DEAD;
-    }
     if (wait_thread_setup(thread, &waitQueue, 1, timeout) == ERR)
     {
         smp_put();
@@ -285,10 +286,6 @@ wait_result_t wait_block_lock(wait_queue_t* waitQueue, clock_t timeout, lock_t* 
     ASSERT_PANIC(smp_self_unsafe()->cli.depth == 1);
 
     thread_t* thread = smp_self_unsafe()->sched.runThread;
-    if (thread_dead(thread))
-    {
-        return WAIT_DEAD;
-    }
     if (wait_thread_setup(thread, &waitQueue, 1, timeout) == ERR)
     {
         return WAIT_ERROR;
@@ -312,11 +309,6 @@ wait_result_t wait_block_many(wait_queue_t** waitQueues, uint64_t amount, clock_
     ASSERT_PANIC(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 
     thread_t* thread = smp_self()->sched.runThread;
-    if (thread_dead(thread))
-    {
-        smp_put();
-        return WAIT_DEAD;
-    }
     if (wait_thread_setup(thread, waitQueues, amount, timeout) == ERR)
     {
         smp_put();

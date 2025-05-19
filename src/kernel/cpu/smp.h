@@ -46,7 +46,7 @@ void smp_entry(void);
 
 void smp_halt_others(void);
 
-ipi_t smp_recieve(cpu_t* cpu);
+void smp_ipi_recieve(trap_frame_t* trapFrame, cpu_t* self);
 
 void smp_send(cpu_t* cpu, ipi_t ipi);
 

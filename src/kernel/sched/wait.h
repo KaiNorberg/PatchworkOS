@@ -95,7 +95,7 @@ typedef enum
 {
     WAIT_NORM = 0,
     WAIT_TIMEOUT = 1,
-    WAIT_DEAD = 2,
+    WAIT_NOTE = 2,
     WAIT_ERROR = 3
 } wait_result_t;
 
@@ -123,9 +123,9 @@ void wait_thread_ctx_init(wait_thread_ctx_t* wait);
 
 void wait_cpu_ctx_init(wait_cpu_ctx_t* wait);
 
-void wait_timer_trap(trap_frame_t* trapFrame);
+void wait_timer_trap(trap_frame_t* trapFrame, cpu_t* self);
 
-void wait_block_trap(trap_frame_t* trapFrame);
+void wait_block_trap(trap_frame_t* trapFrame, cpu_t* self);
 
 void wait_unblock_thread(thread_t* thread, wait_result_t result, wait_queue_t* acquiredQueue, bool acquireCpu);
 

@@ -21,7 +21,7 @@ static rwlock_t treeLock;
 
 static process_dir_t self;
 
-static uint64_t process_cmdline_view_init(file_t* file, view_t* view)
+static uint64_t process_ctl_wait(file_t* file, uint64_t argc, const char** argv)
 {
     process_t* process = file->private;
     if (process == NULL)
@@ -29,22 +29,17 @@ static uint64_t process_cmdline_view_init(file_t* file, view_t* view)
         process = sched_process();
     }
 
-    char* first = process->argv.buffer[0];
-    if (first == NULL)
-    {
-        return 0;
-    }
-    char* last = (char*)((uint64_t)process->argv.buffer + process->argv.size);
-    uint64_t length = last - first;
-
-    view->buffer = first;
-    view->length = length;
+    WAIT_BLOCK(&process->queue, ({
+        LOCK_DEFER(&process->threads.lock);
+        process->threads.dying;
+    }));
     return 0;
 }
 
-VIEW_STANDARD_OPS_DEFINE(cmdlineOps, PATH_NONE,
-    (view_ops_t){
-        .init = process_cmdline_view_init,
+CTL_STANDARD_OPS_DEFINE(ctlOps, PATH_NONE,
+    (ctl_array_t){
+        {"wait", process_ctl_wait, 1, 1},
+        {0},
     });
 
 static uint64_t process_cwd_view_init(file_t* file, view_t* view)
@@ -81,7 +76,7 @@ VIEW_STANDARD_OPS_DEFINE(cwdOps, PATH_NONE,
         .deinit = process_cwd_view_deinit,
     });
 
-static uint64_t process_ctl_kill(file_t* file, uint64_t argc, const char** argv)
+static uint64_t process_cmdline_view_init(file_t* file, view_t* view)
 {
     process_t* process = file->private;
     if (process == NULL)
@@ -89,28 +84,46 @@ static uint64_t process_ctl_kill(file_t* file, uint64_t argc, const char** argv)
         process = sched_process();
     }
 
-    process_kill(process);
-    return 0;
-}
-
-static uint64_t process_ctl_wait(file_t* file, uint64_t argc, const char** argv)
-{
-    process_t* process = file->private;
-    if (process == NULL)
+    char* first = process->argv.buffer[0];
+    if (first == NULL)
     {
-        process = sched_process();
+        return 0;
     }
+    char* last = (char*)((uint64_t)process->argv.buffer + process->argv.size);
+    uint64_t length = last - first;
 
-    WAIT_BLOCK(&process->queue, atomic_load(&process->dead));
+    view->buffer = first;
+    view->length = length;
     return 0;
 }
 
-CTL_STANDARD_OPS_DEFINE(ctlOps, PATH_NONE,
-    (ctl_array_t){
-        {"kill", process_ctl_kill, 1, 1},
-        {"wait", process_ctl_wait, 1, 1},
-        {0},
+VIEW_STANDARD_OPS_DEFINE(cmdlineOps, PATH_NONE,
+    (view_ops_t){
+        .init = process_cmdline_view_init,
     });
+
+static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t count)
+{
+    process_t* process = file->private;
+    LOCK_DEFER(&process->threads.lock);
+
+    thread_t* thread = CONTAINER_OF_SAFE(list_first(&process->threads.list), thread_t, processEntry);
+    if (thread == NULL)
+    {
+        return ERROR(EINVAL);
+    }
+
+    if (thread_send_note(thread, buffer, count, NOTE_NONE) == ERR)
+    {
+        return ERR;
+    }
+
+    return count;
+}
+
+SYSFS_STANDARD_OPS_DEFINE(noteOps, PATH_NONE, (file_ops_t){
+    .write = process_note_write,
+})
 
 static void process_dir_init(process_dir_t* dir, const char* name, process_t* process)
 {
@@ -118,6 +131,7 @@ static void process_dir_init(process_dir_t* dir, const char* name, process_t* pr
     ASSERT_PANIC(sysobj_init(&dir->ctlObj, &dir->sysdir, "ctl", &ctlOps, process) != ERR);
     ASSERT_PANIC(sysobj_init(&dir->cwdObj, &dir->sysdir, "cwd", &cwdOps, process) != ERR);
     ASSERT_PANIC(sysobj_init(&dir->cmdlineObj, &dir->sysdir, "cmdline", &cmdlineOps, process) != ERR);
+    ASSERT_PANIC(sysobj_init(&dir->noteObj, &dir->sysdir, "note", &noteOps, process) != ERR);
 }
 
 process_t* process_new(process_t* parent, const char** argv)
@@ -133,7 +147,7 @@ process_t* process_new(process_t* parent, const char** argv)
     {
         return ERRPTR(ENOMEM);
     }
-    atomic_init(&process->dead, false);
+
     if (parent != NULL)
     {
         LOCK_DEFER(&parent->vfsCtx.lock);
@@ -145,10 +159,10 @@ process_t* process_new(process_t* parent, const char** argv)
     }
 
     space_init(&process->space);
-    atomic_init(&process->threadCount, 0);
     wait_queue_init(&process->queue);
     futex_ctx_init(&process->futexCtx);
-    atomic_init(&process->newTid, 0);
+    process->threads.dying = false;
+    process->threads.newTid = 0;
     list_init(&process->threads.list);
     lock_init(&process->threads.lock);
 
@@ -175,6 +189,7 @@ process_t* process_new(process_t* parent, const char** argv)
 static void process_on_free(sysdir_t* dir)
 {
     process_t* process = dir->private;
+    printf("process: on free pid=%d\n", process->id);
     // vfs_ctx_deinit() is in process_free
     space_deinit(&process->space);
     argv_deinit(&process->argv);
@@ -223,23 +238,6 @@ bool process_is_child(process_t* process, pid_t parentId)
         }
         parent = parent->parent;
     }
-}
-
-void process_kill(process_t* process)
-{
-    LOCK_DEFER(&process->threads.lock);
-
-    thread_t* thread;
-    LIST_FOR_EACH(thread, &process->threads.list, processEntry)
-    {
-        thread_state_t state = atomic_exchange(&thread->state, THREAD_DEAD);
-        if (state == THREAD_BLOCKED)
-        {
-            wait_unblock_thread(thread, WAIT_DEAD, NULL, true);
-        }
-    }
-
-    atomic_store(&process->dead, true);
 }
 
 void process_backend_init(void)

@@ -97,6 +97,7 @@ static void benchmark(uint64_t threadAmount)
 
 int main(void)
 {
+    printf("Threading is broken right now so this will probably freeze. Im working on it...\n");
     benchmark(1);
     benchmark(2);
     benchmark(4);

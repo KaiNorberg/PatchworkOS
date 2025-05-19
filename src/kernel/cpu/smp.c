@@ -168,11 +168,19 @@ void smp_halt_others(void)
     smp_send_others(smp_halt_ipi);
 }
 
-ipi_t smp_recieve(cpu_t* cpu)
+void smp_ipi_recieve(trap_frame_t* trapFrame, cpu_t* self)
 {
-    ipi_queue_t* queue = &cpu->queue;
-    ipi_t ipi = ipi_queue_pop(queue);
-    return ipi;
+    ipi_queue_t* queue = &self->queue;
+    while (1)
+    {
+        ipi_t ipi = ipi_queue_pop(queue);
+        if (ipi == NULL)
+        {
+            break;
+        }
+
+        ipi(trapFrame);
+    }
 }
 
 void smp_send(cpu_t* cpu, ipi_t ipi)

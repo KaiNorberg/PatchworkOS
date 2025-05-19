@@ -5,6 +5,7 @@
 #include "cpu/trap.h"
 #include "process.h"
 #include "sched/wait.h"
+#include "ipc/note.h"
 
 #include <errno.h>
 #include <sys/list.h>
@@ -19,27 +20,28 @@ typedef uint8_t priority_t;
 typedef enum
 {
     THREAD_PARKED, // Is currently doing nothing, not in a queue, not blocking, think of it as "other"
-    THREAD_READY, // Is in a schedulers wait queue
-    THREAD_RUNNING, // Is currently running
-    THREAD_DEAD, // Is waiting to be freed, once this state is set it will never change to anything else
-    THREAD_PRE_BLOCK, // Prepearing to block, can be interrupted
-    THREAD_BLOCKED, // Is blocking,
-    THREAD_UNBLOCKING, // Is unblocking
+    THREAD_READY,
+    THREAD_RUNNING,
+    THREAD_ZOMBIE, 
+    THREAD_PRE_BLOCK, 
+    THREAD_BLOCKED, 
+    THREAD_UNBLOCKING, 
 } thread_state_t;
 
 typedef struct thread
 {
     list_entry_t entry;
     process_t* process;
-    list_entry_t processEntry;
+    list_entry_t processEntry; // Used by processes to store threads
     tid_t id;
     clock_t timeStart;
     clock_t timeEnd;
-    wait_thread_ctx_t wait;
-    errno_t error;
     priority_t priority;
-    simd_ctx_t simd;
     _Atomic(thread_state_t) state;
+    errno_t error;
+    wait_thread_ctx_t wait;
+    simd_ctx_t simd;
+    note_queue_t notes;
     trap_frame_t trapFrame;
     uint8_t kernelStack[CONFIG_KERNEL_STACK];
 } thread_t;
@@ -52,4 +54,6 @@ void thread_save(thread_t* thread, const trap_frame_t* trapFrame);
 
 void thread_load(thread_t* thread, trap_frame_t* trapFrame);
 
-bool thread_dead(thread_t* thread);
+bool thread_note_pending(thread_t* thread);
+
+uint64_t thread_send_note(thread_t* thread, const void* message, uint64_t length, note_flags_t flags);
