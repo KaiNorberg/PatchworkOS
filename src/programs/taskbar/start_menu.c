@@ -1,5 +1,6 @@
 #include "start_menu.h"
 
+#include <stdio.h>
 #include <sys/io.h>
 #include <sys/proc.h>
 
@@ -12,16 +13,16 @@ void start_menu_open(void)
 }
 
 void start_menu_close(void)
-{
-    fd_t procFile = openf("sys:/proc/%d/ctl", pid);
-    if (procFile == ERR)
+{        
+    fd_t noteFile = openf("sys:/proc/%d/note", pid);
+    if (noteFile == ERR)
     {
         return;
     }
 
-    writef(procFile, "kill");
+    writef(noteFile, "kill");
 
-    close(procFile);
+    close(noteFile);
 }
 
 bool start_menu_is_open(void)

@@ -56,4 +56,4 @@ void thread_load(thread_t* thread, trap_frame_t* trapFrame);
 
 bool thread_note_pending(thread_t* thread);
 
-uint64_t thread_send_note(thread_t* thread, const void* message, uint64_t length, note_flags_t flags);
+uint64_t thread_send_note(thread_t* thread, const void* message, uint64_t length);

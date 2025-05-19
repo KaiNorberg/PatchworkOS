@@ -113,7 +113,7 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
         return ERROR(EINVAL);
     }
 
-    if (thread_send_note(thread, buffer, count, NOTE_NONE) == ERR)
+    if (thread_send_note(thread, buffer, count) == ERR)
     {
         return ERR;
     }

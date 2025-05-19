@@ -121,8 +121,14 @@ bool thread_note_pending(thread_t* thread)
     return note_queue_length(&thread->notes) != 0;
 }
 
-uint64_t thread_send_note(thread_t* thread, const void* message, uint64_t length, note_flags_t flags)
+uint64_t thread_send_note(thread_t* thread, const void* message, uint64_t length)
 {
+    note_flags_t flags = 0;
+    if (strncmp(message, "kill", length) == 0)
+    {
+        flags |= NOTE_CRITICAL;
+    }
+
     if (note_queue_push(&thread->notes, message, length, flags) == ERR)
     {
         return ERR;

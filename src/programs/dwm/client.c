@@ -508,7 +508,11 @@ uint64_t client_recieve_cmds(client_t* client)
     uint64_t readSize = read(client->fd, &client->cmds, sizeof(cmd_buffer_t) + 1);
     if (readSize == ERR)
     {
-        return ERR;
+        if (errno != EWOULDBLOCK)
+        {
+            return ERR;
+        }
+        return 0;
     }
 
     if (readSize > sizeof(cmd_buffer_t) || readSize == 0) // Program wrote to much or end of file
