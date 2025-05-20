@@ -20,7 +20,6 @@ static atomic_uint64 newId = ATOMIC_VAR_INIT(0);
 static uint64_t socket_accept_read(file_t* file, void* buffer, uint64_t count)
 {
     socket_t* socket = file->private;
-    bool endOfSegment = false;
     uint64_t readCount = socket->family->receive(socket, buffer, count, &file->pos);
     return readCount;
 }
@@ -223,6 +222,7 @@ static void socket_on_free(sysdir_t* sysdir)
     socket_t* socket = sysdir->private;
     socket->family->deinit(socket);
     free(socket);
+    printf("socket_on_free\n");
 }
 
 void socket_free(socket_t* socket)

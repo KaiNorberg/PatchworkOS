@@ -3,9 +3,9 @@
 #include "config.h"
 #include "cpu/simd.h"
 #include "cpu/trap.h"
+#include "ipc/note.h"
 #include "process.h"
 #include "sched/wait.h"
-#include "ipc/note.h"
 
 #include <errno.h>
 #include <sys/list.h>
@@ -22,10 +22,10 @@ typedef enum
     THREAD_PARKED, // Is currently doing nothing, not in a queue, not blocking, think of it as "other"
     THREAD_READY,
     THREAD_RUNNING,
-    THREAD_ZOMBIE, 
-    THREAD_PRE_BLOCK, 
-    THREAD_BLOCKED, 
-    THREAD_UNBLOCKING, 
+    THREAD_ZOMBIE,
+    THREAD_PRE_BLOCK,
+    THREAD_BLOCKED,
+    THREAD_UNBLOCKING,
 } thread_state_t;
 
 typedef struct thread

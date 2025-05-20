@@ -33,11 +33,8 @@ thread_t* sched_thread(void);
 
 process_t* sched_process(void);
 
-void sched_invoke(void);
-
-void sched_yield(void);
-
-// The exit functions only mark a thread and/or process for death. So remmember to call sched_invoke or sched_schedule_trap after any exit function to give the scheduler a chance to schedule.
+// The exit functions only mark a thread and/or process for death. So remmember to call sched_invoke or
+// sched_schedule after any exit function to give the scheduler a chance to schedule.
 void sched_process_exit(uint64_t status);
 void sched_thread_exit(void);
 
@@ -45,4 +42,4 @@ void sched_push(thread_t* thread);
 
 void sched_timer_trap(trap_frame_t* trapFrame, cpu_t* self);
 
-void sched_schedule_trap(trap_frame_t* trapFrame, cpu_t* self);
+void sched_schedule(trap_frame_t* trapFrame, cpu_t* self);

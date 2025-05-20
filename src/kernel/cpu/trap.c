@@ -50,7 +50,7 @@ void cli_pop(void)
 
 static void exception_handler(trap_frame_t* trapFrame)
 {
-    if (TRAP_FRAME_FROM_USER_SPACE(trapFrame))
+    if (TRAP_FRAME_IN_USER_SPACE(trapFrame))
     {
         thread_t* thread = sched_thread();
         if (thread == NULL)
@@ -58,11 +58,11 @@ static void exception_handler(trap_frame_t* trapFrame)
             log_panic(trapFrame, "Unhandled User Exception");
         }
 
-        printf("user exception: process killed due to exception tid=%d pid=%d vector=0x%x error=%p rip=%p cr2=%p\n", thread->id, thread->process->id,
-            trapFrame->vector, trapFrame->errorCode, trapFrame->rip, cr2_read());
+        printf("user exception: process killed due to exception tid=%d pid=%d vector=0x%x error=%p rip=%p cr2=%p\n",
+            thread->id, thread->process->id, trapFrame->vector, trapFrame->errorCode, trapFrame->rip, cr2_read());
 
         sched_process_exit(0);
-        sched_schedule_trap(trapFrame, smp_self_unsafe());
+        sched_schedule(trapFrame, smp_self_unsafe());
     }
     else
     {
@@ -98,10 +98,6 @@ void trap_handler(trap_frame_t* trapFrame)
         sched_timer_trap(trapFrame, self);
         lapic_eoi();
     }
-    else if (trapFrame->vector == VECTOR_SCHED_SCHEDULE)
-    {
-        sched_schedule_trap(trapFrame, self);
-    }
     else if (trapFrame->vector == VECTOR_WAIT_BLOCK)
     {
         wait_block_trap(trapFrame, self);
@@ -111,7 +107,15 @@ void trap_handler(trap_frame_t* trapFrame)
         log_panic(trapFrame, "Unknown vector");
     }
 
-    note_trap_handler(trapFrame, self);
+    sched_schedule(trapFrame, self);
+
+    if (TRAP_FRAME_IN_USER_SPACE(trapFrame))
+    {
+        note_trap_handler(trapFrame, self);
+    }
+
+    statistics_trap_end(trapFrame, self);
+    self->trapDepth--;
 
     // This is a sanity check to make sure blocking and scheduling is functioning correctly. For instance, a trap should
     // never return with a lock acquired.
@@ -119,7 +123,4 @@ void trap_handler(trap_frame_t* trapFrame)
     {
         log_panic(trapFrame, "Returning to frame with interrupts disabled");
     }
-
-    statistics_trap_end(trapFrame, self);
-    self->trapDepth--;
 }

@@ -87,7 +87,7 @@ uint64_t print_directory(const char* path, flags_t flags, bool forceLabel)
         printf("[%s]\n", path);
     }
 
-    fd_t fd = openf("%s?directory", path);
+    fd_t fd = openf("%s?dir", path);
     if (fd == ERR)
     {
         fprintf(stderr, "ls: cant open directory %s (%s)\n", path, strerror(errno));

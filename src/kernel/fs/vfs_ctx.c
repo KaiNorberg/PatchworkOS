@@ -27,11 +27,14 @@ void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd)
 
 void vfs_ctx_deinit(vfs_ctx_t* ctx)
 {
+    LOCK_DEFER(&ctx->lock);
+
     for (uint64_t i = 0; i < CONFIG_MAX_FD; i++)
     {
         if (ctx->files[i] != NULL)
         {
             file_deref(ctx->files[i]);
+            ctx->files[i] = NULL;
         }
     }
 }
@@ -63,9 +66,8 @@ fd_t vfs_ctx_openas(vfs_ctx_t* ctx, fd_t fd, file_t* file)
 
     if (ctx->files[fd] != NULL)
     {
-        file_t* file = ctx->files[fd];
+        file_deref(ctx->files[fd]);
         ctx->files[fd] = NULL;
-        file_deref(file);
     }
 
     ctx->files[fd] = file_ref(file);
@@ -81,13 +83,12 @@ uint64_t vfs_ctx_close(vfs_ctx_t* ctx, fd_t fd)
         return ERROR(EBADF);
     }
 
-    file_t* file = ctx->files[fd];
+    file_deref(ctx->files[fd]);
     ctx->files[fd] = NULL;
-    file_deref(file);
     return 0;
 }
 
-file_t* vfx_ctx_file(vfs_ctx_t* ctx, fd_t fd)
+file_t* vfs_ctx_file(vfs_ctx_t* ctx, fd_t fd)
 {
     LOCK_DEFER(&ctx->lock);
 
@@ -131,9 +132,8 @@ fd_t vfs_ctx_dup2(vfs_ctx_t* ctx, fd_t oldFd, fd_t newFd)
 
     if (ctx->files[newFd] != NULL)
     {
-        file_t* file = ctx->files[newFd];
+        file_deref(ctx->files[newFd]);
         ctx->files[newFd] = NULL;
-        file_deref(file);
     }
 
     ctx->files[newFd] = file_ref(ctx->files[oldFd]);

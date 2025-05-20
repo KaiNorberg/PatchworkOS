@@ -1,6 +1,7 @@
 #include "syscall.h"
 
 #include "config.h"
+#include "cpu/smp.h"
 #include "defs.h"
 #include "drivers/systime/systime.h"
 #include "fs/vfs.h"
@@ -88,18 +89,14 @@ static bool verify_string(const char* string)
 
 ///////////////////////////////////////////////////////
 
-NORETURN void syscall_process_exit(uint64_t status)
+void syscall_process_exit(uint64_t status)
 {
     sched_process_exit(status);
-    sched_invoke();
-    log_panic(NULL, "returned to syscall_process_exit");
 }
 
-NORETURN void syscall_thread_exit(void)
+void syscall_thread_exit(void)
 {
     sched_thread_exit();
-    sched_invoke();
-    log_panic(NULL, "returned to syscall_thread_exit");
 }
 
 pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds)
@@ -160,7 +157,7 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds)
 
     for (uint64_t i = 0; i < fdAmount; i++)
     {
-        file_t* file = vfx_ctx_file(parentVfsCtx, fds[i].parent);
+        file_t* file = vfs_ctx_file(parentVfsCtx, fds[i].parent);
         if (file == NULL)
         {
             thread_free(thread);
@@ -257,14 +254,17 @@ uint64_t syscall_open2(const char* path, fd_t fds[2])
     FILE_DEFER(files[0]);
     FILE_DEFER(files[1]);
 
-    fds[0] = vfs_ctx_open(&sched_process()->vfsCtx, files[0]);
+    process_t* process = sched_process();
+
+    fds[0] = vfs_ctx_open(&process->vfsCtx, files[0]);
     if (fds[0] == ERR)
     {
         return ERR;
     }
-    fds[1] = vfs_ctx_open(&sched_process()->vfsCtx, files[1]);
+    fds[1] = vfs_ctx_open(&process->vfsCtx, files[1]);
     if (fds[1] == ERR)
     {
+        vfs_ctx_close(&process->vfsCtx, fds[0]);
         return ERR;
     }
 
@@ -283,7 +283,7 @@ uint64_t syscall_read(fd_t fd, void* buffer, uint64_t count)
         return ERROR(EFAULT);
     }
 
-    file_t* file = vfx_ctx_file(&sched_process()->vfsCtx, fd);
+    file_t* file = vfs_ctx_file(&sched_process()->vfsCtx, fd);
     if (file == NULL)
     {
         return ERR;
@@ -300,7 +300,7 @@ uint64_t syscall_write(fd_t fd, const void* buffer, uint64_t count)
         return ERROR(EFAULT);
     }
 
-    file_t* file = vfx_ctx_file(&sched_process()->vfsCtx, fd);
+    file_t* file = vfs_ctx_file(&sched_process()->vfsCtx, fd);
     if (file == NULL)
     {
         return ERR;
@@ -312,7 +312,7 @@ uint64_t syscall_write(fd_t fd, const void* buffer, uint64_t count)
 
 uint64_t syscall_seek(fd_t fd, int64_t offset, seek_origin_t origin)
 {
-    file_t* file = vfx_ctx_file(&sched_process()->vfsCtx, fd);
+    file_t* file = vfs_ctx_file(&sched_process()->vfsCtx, fd);
     if (file == NULL)
     {
         return ERR;
@@ -334,7 +334,7 @@ uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
         return ERROR(EFAULT);
     }
 
-    file_t* file = vfx_ctx_file(&sched_process()->vfsCtx, fd);
+    file_t* file = vfs_ctx_file(&sched_process()->vfsCtx, fd);
     if (file == NULL)
     {
         return ERR;
@@ -369,7 +369,7 @@ uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, clock_t timeout)
     poll_file_t files[CONFIG_MAX_FD];
     for (uint64_t i = 0; i < amount; i++)
     {
-        files[i].file = vfx_ctx_file(&sched_process()->vfsCtx, fds[i].fd);
+        files[i].file = vfs_ctx_file(&sched_process()->vfsCtx, fds[i].fd);
         if (files[i].file == NULL)
         {
             for (uint64_t j = 0; j < i; j++)
@@ -411,7 +411,7 @@ uint64_t syscall_stat(const char* path, stat_t* buffer)
 
 void* syscall_mmap(fd_t fd, void* address, uint64_t length, prot_t prot)
 {
-    file_t* file = vfx_ctx_file(&sched_process()->vfsCtx, fd);
+    file_t* file = vfs_ctx_file(&sched_process()->vfsCtx, fd);
     if (file == NULL)
     {
         return NULL;
@@ -448,7 +448,7 @@ uint64_t syscall_readdir(fd_t fd, stat_t* infos, uint64_t amount)
         return ERROR(EFAULT);
     }
 
-    file_t* file = vfx_ctx_file(&sched_process()->vfsCtx, fd);
+    file_t* file = vfs_ctx_file(&sched_process()->vfsCtx, fd);
     if (file == NULL)
     {
         return ERR;
@@ -477,7 +477,9 @@ tid_t syscall_thread_create(void* entry, void* arg)
 
 uint64_t syscall_yield(void)
 {
-    sched_yield();
+    thread_t* thread = smp_self()->sched.runThread;
+    thread->timeEnd = 0;
+    smp_put();
     return 0;
 }
 
@@ -518,11 +520,6 @@ uint64_t syscall_remove(const char* path)
 
 ///////////////////////////////////////////////////////
 
-void syscall_handler_end(void)
-{
-    sched_invoke();
-}
-
 void* syscallTable[] = {
     syscall_process_exit,
     syscall_thread_exit,
@@ -555,3 +552,23 @@ void* syscallTable[] = {
     syscall_rename,
     syscall_remove,
 };
+
+void syscall_handler(trap_frame_t* trapFrame)
+{
+    uint64_t selector = trapFrame->rax;
+    if (selector >= sizeof(syscallTable) / sizeof(syscallTable[0]))
+    {
+        trapFrame->rax = ERR;
+    }
+
+    uint64_t (*syscall)(uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e, uint64_t f) =
+        syscallTable[selector];
+    trapFrame->rax =
+        syscall(trapFrame->rdi, trapFrame->rsi, trapFrame->rdx, trapFrame->rcx, trapFrame->r8, trapFrame->r9);
+
+    asm volatile("cli"); // Disable interrupts
+
+    cpu_t* self = smp_self_unsafe();
+    sched_schedule(trapFrame, self);
+    note_trap_handler(trapFrame, self);
+}

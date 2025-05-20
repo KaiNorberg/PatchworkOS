@@ -18,13 +18,9 @@ typedef struct
 } start_entry_t;
 
 // TODO: Load this from config file.
-static start_entry_t entries[] = {
-    {.name = "Calculator", .path = "home:/usr/bin/calculator"},
-    {.name = "Terminal", .path = "home:/usr/bin/terminal"},
-    {.name = "Tetris", .path = "home:/usr/bin/tetris"},
-    {.name = "Doom", .path = "home:/usr/bin/doom"},
-    {.name = "Error Test", .path = "this:/is/a/nonsense/file/path"}
-};
+static start_entry_t entries[] = {{.name = "Calculator", .path = "home:/usr/bin/calculator"},
+    {.name = "Terminal", .path = "home:/usr/bin/terminal"}, {.name = "Tetris", .path = "home:/usr/bin/tetris"},
+    {.name = "Doom", .path = "home:/usr/bin/doom"}, {.name = "Error Test", .path = "this:/is/a/nonsense/file/path"}};
 
 static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {

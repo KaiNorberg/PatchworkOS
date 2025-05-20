@@ -182,21 +182,6 @@ process_t* sched_process(void)
     return thread->process;
 }
 
-void sched_invoke(void)
-{
-    ASSERT_PANIC(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    asm volatile("int %0" ::"i"(VECTOR_SCHED_SCHEDULE));
-}
-
-void sched_yield(void)
-{
-    thread_t* thread = smp_self()->sched.runThread;
-    thread->timeEnd = 0;
-    smp_put();
-
-    sched_invoke();
-}
-
 void sched_process_exit(uint64_t status)
 {
     // TODO: Add handling for status, this todo has been here for like literraly a year...
@@ -299,11 +284,9 @@ void sched_timer_trap(trap_frame_t* trapFrame, cpu_t* self)
 
     sched_update_parked_threads(trapFrame, ctx);
     sched_update_zombie_threads(trapFrame, ctx);
-
-    sched_schedule_trap(trapFrame, self);
 }
 
-void sched_schedule_trap(trap_frame_t* trapFrame, cpu_t* self)
+void sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
 {
     sched_ctx_t* ctx = &self->sched;
 

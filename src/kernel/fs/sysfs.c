@@ -32,10 +32,8 @@ static sysdir_t* sysdir_ref(sysdir_t* dir)
 }
 
 static void sysdir_deref(sysdir_t* dir)
-{    
-    uint64_t ref = atomic_fetch_sub(&dir->header.ref, 1);
-    //printf("sysdir_deref: %s %d\n", dir->header.node.name, ref);
-    if (ref <= 1)
+{
+    if (atomic_fetch_sub(&dir->header.ref, 1) <= 1)
     {
         if (dir->onFree != NULL)
         {
@@ -52,9 +50,7 @@ static sysobj_t* sysobj_ref(sysobj_t* sysobj)
 
 static void sysobj_deref(sysobj_t* sysobj)
 {
-    uint64_t ref = atomic_fetch_sub(&sysobj->header.ref, 1);
-    //printf("sysobj_deref: %s %d\n", sysobj->header.node.name, ref);
-    if (ref <= 1)
+    if (atomic_fetch_sub(&sysobj->header.ref, 1) <= 1)
     {
         if (sysobj->onFree != NULL)
         {
@@ -125,7 +121,7 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
             return NULL;
         }
 
-        file->syshdr = &sysobj->header;
+        file->syshdr = &sysobj->header; // Reference
         return file;
     }
     else
@@ -147,7 +143,7 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
         }
         file->ops = &dirOps;
 
-        file->syshdr = &sysdir->header;
+        file->syshdr = &sysdir->header; // Reference
         return file;
     }
 }
@@ -262,7 +258,6 @@ uint64_t sysfs_start_op(file_t* file)
     ASSERT_PANIC(file->syshdr != NULL);
     if (atomic_load(&file->syshdr->hidden) == true)
     {
-
         return ERROR(ENOOBJ);
     }
 
@@ -346,7 +341,6 @@ uint64_t sysdir_init(sysdir_t* dir, const char* path, const char* dirname, void*
 
 void sysdir_deinit(sysdir_t* dir, sysdir_on_free_t onFree)
 {
-    printf("sysdir_deinit: start\n");
     dir->onFree = onFree;
 
     rwlock_write_acquire(&lock);
@@ -356,7 +350,6 @@ void sysdir_deinit(sysdir_t* dir, sysdir_on_free_t onFree)
     {
         ASSERT_PANIC(node->type == SYSFS_OBJ);
         sysobj_t* sysobj = CONTAINER_OF(node, sysobj_t, header.node);
-        printf("child: %s %p\n", sysobj->header.node.name, atomic_load(&sysobj->header.ref));
 
         atomic_store(&sysobj->header.hidden, true);
         node_remove(&sysobj->header.node);
@@ -366,7 +359,6 @@ void sysdir_deinit(sysdir_t* dir, sysdir_on_free_t onFree)
     rwlock_write_release(&lock);
 
     sysdir_deref(dir);
-    printf("sysdir_deinit: end\n");
 }
 
 uint64_t sysobj_init(sysobj_t* sysobj, sysdir_t* dir, const char* filename, const sysobj_ops_t* ops, void* private)
@@ -419,8 +411,7 @@ uint64_t sysobj_init_path(sysobj_t* sysobj, const char* path, const char* filena
     sysobj->ops = ops;
     sysobj->dir = sysdir_ref(CONTAINER_OF(parent, sysdir_t, header.node));
 
-    node_push(parent, &sysobj->header.node);
-    sysobj_ref(sysobj);
+    node_push(parent, &sysobj->header.node); // Reference
     return 0;
 }
 

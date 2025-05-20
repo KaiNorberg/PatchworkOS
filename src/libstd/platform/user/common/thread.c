@@ -70,7 +70,7 @@ _Thread_t* _ThreadGet(tid_t id)
     mtx_lock(&mutex);
     _Thread_t* thread;
     LIST_FOR_EACH(thread, &threads, entry)
-    {    
+    {
         if (thread->id == id)
         {
             mtx_unlock(&mutex);

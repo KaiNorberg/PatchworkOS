@@ -251,7 +251,6 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
 
 static void local_socket_deinit(socket_t* socket)
 {
-    printf("local_socket_deinit\n");
     local_socket_t* local = socket->private;
     switch (local->state)
     {

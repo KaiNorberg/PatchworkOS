@@ -5,8 +5,8 @@
 #include "cpu/trap.h"
 #include "sync/lock.h"
 
-#include <sys/proc.h>
 #include <sys/io.h>
+#include <sys/proc.h>
 
 typedef struct cpu cpu_t;
 

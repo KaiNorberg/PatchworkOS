@@ -84,7 +84,7 @@ static void wait_handle_parked_threads(trap_frame_t* trapFrame, cpu_t* self)
             wait_unblock_thread(thread, WAIT_NORM, NULL, false);
         }
         else if (thread_note_pending(thread))
-        {                    
+        {
             thread_state_t expected = THREAD_BLOCKED;
             if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
             {
@@ -139,7 +139,7 @@ void wait_block_trap(trap_frame_t* trapFrame, cpu_t* self)
     list_push(&cpuCtx->parkedThreads, &thread->entry);
     lock_release(&cpuCtx->lock);
 
-    sched_schedule_trap(trapFrame, self);
+    sched_schedule(trapFrame, self);
 }
 
 void wait_unblock_thread(thread_t* thread, wait_result_t result, wait_queue_t* acquiredQueue, bool acquireCpu)

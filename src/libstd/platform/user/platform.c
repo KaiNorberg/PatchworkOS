@@ -30,7 +30,7 @@ static void _PopulateStdDescriptors(void)
 }
 
 void _PlatformEarlyInit(void)
-{    
+{
     _ThreadingInit();
     _PopulateStdDescriptors();
     _ExitStackInit();

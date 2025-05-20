@@ -138,7 +138,7 @@ static void compositor_invalidate_windows_above(compositor_ctx_t* ctx, surface_t
     LIST_FOR_EACH_REVERSE(other, ctx->windows, dwmEntry)
     {
         rect_t otherRect = SURFACE_RECT(other);
-        
+
         bool overlap = false;
         bool contains = false;
         if (RECT_CONTAINS(&otherRect, rect))

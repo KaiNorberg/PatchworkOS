@@ -1,8 +1,8 @@
 #include "note.h"
 
+#include "cpu/smp.h"
 #include "sched/sched.h"
 #include "utils/log.h"
-#include "cpu/smp.h"
 
 #include <stdio.h>
 
@@ -54,7 +54,7 @@ uint64_t note_queue_push(note_queue_t* queue, const void* message, uint64_t leng
     {
         note = &queue->notes[queue->writeIndex];
         queue->writeIndex = (queue->writeIndex + 1) % CONFIG_MAX_NOTES;
-        queue->length++;  
+        queue->length++;
     }
 
     ASSERT_PANIC(note != NULL);
@@ -90,23 +90,18 @@ void note_trap_handler(trap_frame_t* trapFrame, cpu_t* self)
     {
         return;
     }
-    
+
     note_queue_t* queue = &thread->notes;
 
-    while (1)
+    note_t note;
+    while (note_queue_pop(queue, &note))
     {
-        note_t note;
-        if (!note_queue_pop(queue, &note))
-        {
-            break;
-        }
-
         if (strcmp(note.message, "kill") == 0)
-        {    
+        {
             printf("note: kill tid=%d pid=%d\n", thread->id, thread->process->id);
-            
+
             sched_process_exit(0);
-            sched_schedule_trap(trapFrame, self);
+            sched_schedule(trapFrame, self);
             return;
         }
         else

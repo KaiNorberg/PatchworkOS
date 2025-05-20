@@ -89,7 +89,7 @@ static const char* path_parse_flags(path_t* path, const char* src)
         {
             path->flags |= PATH_TRUNCATE;
         }
-        else if (flag_compare("directory", flag, flagLength))
+        else if (flag_compare("dir", flag, flagLength))
         {
             path->flags |= PATH_DIRECTORY;
         }

@@ -1,42 +1,26 @@
+
+%include "cpu/trap.inc"
 %include "kernel/syscalls.inc"
 
-extern syscall_handler_end
-extern syscallTable
+extern syscall_handler
 
 section .text
 
-global syscall_handler
-syscall_handler:
+global syscall_vector
+syscall_vector:
     cmp rax, SYS_TOTAL_AMOUNT
     jae .not_available
 
-    push rdi
-    push rsi
-    push rdx
-    push rcx
-    push r8
-    push r9
-    push r10
-    push r11
-    push rbp
+    push qword 0 ; Push error code (none)
+    push qword SYSCALL_VECTOR ; Push vector
+    TRAP_FRAME_REGS_PUSH
 
     mov rbp, rsp
+    mov rdi, rsp
+    call syscall_handler
 
-    call [syscallTable + rax * 8]
-    push rax
-    call syscall_handler_end
-    pop rax
-
-    pop rbp
-    pop r11
-    pop r10
-    pop r9
-    pop r8
-    pop rcx
-    pop rdx
-    pop rsi
-    pop rdi
-
+    TRAP_FRAME_REGS_POP
+    add rsp, 16
     iretq
 .not_available:
     mov rax, -1

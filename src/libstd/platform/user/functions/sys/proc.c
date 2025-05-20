@@ -43,3 +43,8 @@ uint64_t futex(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t timeout
 {
     return _SyscallFutex(addr, val, op, timeout);
 }
+
+uint64_t sleep(clock_t timeout)
+{
+    return _SyscallSleep(timeout);
+}

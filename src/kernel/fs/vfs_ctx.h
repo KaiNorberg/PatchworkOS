@@ -25,7 +25,7 @@ fd_t vfs_ctx_openas(vfs_ctx_t* ctx, fd_t fd, file_t* file);
 
 uint64_t vfs_ctx_close(vfs_ctx_t* ctx, fd_t fd);
 
-file_t* vfx_ctx_file(vfs_ctx_t* ctx, fd_t fd);
+file_t* vfs_ctx_file(vfs_ctx_t* ctx, fd_t fd);
 
 fd_t vfs_ctx_dup(vfs_ctx_t* ctx, fd_t oldFd);
 

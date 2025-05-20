@@ -1,9 +1,9 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/proc.h>
 #include <threads.h>
-#include <stdlib.h>
 
 #include "platform/user/common/syscalls.h"
 #include "platform/user/common/thread.h"

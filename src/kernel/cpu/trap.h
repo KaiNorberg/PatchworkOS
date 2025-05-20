@@ -30,7 +30,7 @@ typedef struct PACKED
     uint64_t ss;
 } trap_frame_t;
 
-#define TRAP_FRAME_FROM_USER_SPACE(trapFrame) \
+#define TRAP_FRAME_IN_USER_SPACE(trapFrame) \
     ((trapFrame)->ss == (GDT_USER_DATA | GDT_RING3) && (trapFrame)->cs == (GDT_USER_CODE | GDT_RING3))
 
 typedef struct

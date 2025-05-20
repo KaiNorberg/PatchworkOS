@@ -13,7 +13,7 @@ void start_menu_open(void)
 }
 
 void start_menu_close(void)
-{        
+{
     fd_t noteFile = openf("sys:/proc/%d/note", pid);
     if (noteFile == ERR)
     {

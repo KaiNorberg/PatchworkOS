@@ -6,8 +6,8 @@
 #include "sched/wait.h"
 #include "utils/hashmap.h"
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 void futex_ctx_init(futex_ctx_t* ctx)
 {

@@ -67,6 +67,8 @@ uint64_t futex(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t timeout
 
 clock_t uptime(void);
 
+uint64_t sleep(clock_t timeout);
+
 #if defined(__cplusplus)
 }
 #endif

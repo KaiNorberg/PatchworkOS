@@ -9,7 +9,7 @@
 
 typedef struct
 {
-    bool dying; // If the process is dying
+    bool dying;
     tid_t newTid;
     list_t list;
     lock_t lock;

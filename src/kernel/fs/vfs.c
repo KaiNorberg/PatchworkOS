@@ -73,6 +73,7 @@ file_t* file_new(volume_t* volume, const path_t* path, path_flags_t supportedFla
     file->ops = NULL;
     file->flags = flags;
     atomic_init(&file->ref, 1);
+    file->path = *path;
 
     return file;
 }

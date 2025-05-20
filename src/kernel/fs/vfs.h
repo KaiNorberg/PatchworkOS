@@ -84,6 +84,7 @@ typedef struct file
     const file_ops_t* ops;
     path_flags_t flags;
     atomic_uint64 ref;
+    path_t path;
 } file_t;
 
 typedef struct poll_file

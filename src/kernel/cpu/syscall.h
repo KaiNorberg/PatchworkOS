@@ -1,9 +1,7 @@
 #pragma once
 
-#define SYSCALL_VECTOR 0x80
+#include "trap.h"
 
-extern void* syscallTable[];
+extern void syscall_vector(void);
 
-extern void syscall_handler(void);
-
-void syscall_handler_end(void);
+void syscall_handler(trap_frame_t* trapFrame);

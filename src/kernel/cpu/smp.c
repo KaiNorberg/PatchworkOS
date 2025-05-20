@@ -58,6 +58,7 @@ static void cpu_init(cpu_t* cpu, uint8_t id, uint8_t lapicId)
     cpu->id = id;
     cpu->lapicId = lapicId;
     cpu->trapDepth = 0;
+    cpu->inSyscall = false;
     tss_init(&cpu->tss);
     cli_ctx_init(&cpu->cli);
     sched_ctx_init(&cpu->sched);

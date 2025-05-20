@@ -142,7 +142,7 @@ uint64_t readdir(fd_t fd, stat_t* infos, uint64_t amount)
 
 uint64_t mkdir(const char* path)
 {
-    fd_t fd = openf("%s?create&directory", path);
+    fd_t fd = openf("%s?create&dir", path);
     if (fd == ERR)
     {
         return ERR;

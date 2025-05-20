@@ -107,6 +107,8 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
     process_t* process = file->private;
     LOCK_DEFER(&process->threads.lock);
 
+    printf("process_note_write: %d\n", count);
+
     thread_t* thread = CONTAINER_OF_SAFE(list_first(&process->threads.list), thread_t, processEntry);
     if (thread == NULL)
     {
@@ -121,9 +123,10 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
     return count;
 }
 
-SYSFS_STANDARD_OPS_DEFINE(noteOps, PATH_NONE, (file_ops_t){
-    .write = process_note_write,
-})
+SYSFS_STANDARD_OPS_DEFINE(noteOps, PATH_NONE,
+    (file_ops_t){
+        .write = process_note_write,
+    })
 
 static void process_dir_init(process_dir_t* dir, const char* name, process_t* process)
 {
@@ -190,7 +193,6 @@ static void process_on_free(sysdir_t* dir)
 {
     process_t* process = dir->private;
     printf("process: on free pid=%d\n", process->id);
-    // vfs_ctx_deinit() is in process_free
     space_deinit(&process->space);
     argv_deinit(&process->argv);
     wait_queue_deinit(&process->queue);
@@ -200,6 +202,8 @@ static void process_on_free(sysdir_t* dir)
 
 void process_free(process_t* process)
 {
+    ASSERT_PANIC(list_empty(&process->threads.list));
+
     if (process->parent != NULL)
     {
         RWLOCK_WRITE_DEFER(&treeLock);
