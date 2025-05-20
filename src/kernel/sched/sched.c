@@ -277,7 +277,7 @@ void sched_yield(void)
     thread_t* thread = smp_self()->sched.runThread;
     thread->timeEnd = 0;
     smp_put();
-    
+
     sched_invoke();
 }
 

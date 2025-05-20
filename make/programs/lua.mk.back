@@ -8,7 +8,7 @@ $(TARGET):
 	    curl -L -R -o lib/lua-5.4.7.tar.gz https://www.lua.org/ftp/lua-5.4.7.tar.gz; \
 		tar -xzf lib/lua-5.4.7.tar.gz -C lib/; \
 		rm lib/lua-5.4.7.tar.gz; \
-		sed -i 's#CC= gcc -std=gnu99#CC= ./../../../patchwork-gcc -std=gnu99#g' lib/lua-5.4.7/src/Makefile; \
+		sed -i 's#CC= gcc -std=gnu99#CC= ./../../../tools/patchwork-gcc -std=gnu99#g' lib/lua-5.4.7/src/Makefile; \
 	fi
 	$(MAKE) -C lib/lua-5.4.7 all test
 	cp lib/lua-5.4.7/src/lua bin/programs/lua

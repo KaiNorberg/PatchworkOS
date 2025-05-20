@@ -8,7 +8,7 @@ extern "C"
 
 #include "_AUX/config.h"
 
-double ldexp(double x, int exp);
+// I genuinely despise math.h
 
 double fabs(double j);
 

@@ -8,8 +8,6 @@
 #include "platform/user/common/syscalls.h"
 #include "platform/user/common/thread.h"
 
-// TODO: Something is wrong with this mutex when using futex(), so for now its just a spin lock while i figure it out...
-
 int mtx_lock(mtx_t* mutex)
 {
     tid_t self = gettid();
