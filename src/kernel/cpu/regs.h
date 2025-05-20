@@ -11,9 +11,30 @@
 
 #define MSR_LAPIC 0x1B
 #define MSR_CPU_ID 0xC0000103 // IA32_TSC_AUX
+#define MSR_EFER 0xC0000080
+#define MSR_STAR 0xC0000081
+#define MSR_LSTAR 0xC0000082
+#define MSR_SYSCALL_FLAG_MASK 0xC0000084
+#define MSR_GS_BASE 0xC0000101
+#define MSR_KERNEL_GS_BASE 0xc0000102
 
+#define EFER_SYSCALL_ENABLE 1
+
+#define RFLAGS_CARRY (1 << 0)
 #define RFLAGS_ALWAYS_SET (1 << 1)
+#define RFLAGS_PARITY (1 << 2)
+#define RFLAGS_RESERVED1 (1 << 3)
+#define RFLAGS_AUX_CARRY (1 << 4)
+#define RFLAGS_RESERVED2 (1 << 5)
+#define RFLAGS_ZERO (1 << 6)
+#define RFLAGS_SIGN (1 << 7)
+#define RFLAGS_TRAP (1 << 8)
 #define RFLAGS_INTERRUPT_ENABLE (1 << 9)
+#define RFLAGS_DIRECTION (1 << 10)
+#define RFLAGS_OVERFLOW (1 << 11)
+#define RFLAGS_IOPL (1 << 12 | 1 << 13)
+#define RFLAGS_NESTED_TASK (1 << 14)
+#define RFLAGS_MODE (1 << 15)
 
 #define CR0_MONITOR_CO_PROCESSOR (1 << 1)
 #define CR0_EMULATION (1 << 2)

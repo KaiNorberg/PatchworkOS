@@ -83,44 +83,55 @@ void trap_handler(trap_frame_t* trapFrame)
     self->trapDepth++;
     statistics_trap_begin(trapFrame, self);
 
-    if (trapFrame->vector >= VECTOR_IRQ_BASE && trapFrame->vector < VECTOR_IRQ_BASE + IRQ_AMOUNT)
+    switch (trapFrame->vector)
     {
-        irq_dispatch(trapFrame);
+    case VECTOR_SCHED_INVOKE:
+    {
+        // Does nothing
     }
-    else if (trapFrame->vector == VECTOR_IPI)
+    break;
+    case VECTOR_IPI:
     {
         smp_ipi_recieve(trapFrame, self);
         lapic_eoi();
     }
-    else if (trapFrame->vector == VECTOR_TIMER)
+    break;
+    case VECTOR_TIMER:
     {
         wait_timer_trap(trapFrame, self);
         sched_timer_trap(trapFrame, self);
         lapic_eoi();
     }
-    else if (trapFrame->vector == VECTOR_WAIT_BLOCK)
+    break;
+    case VECTOR_WAIT_BLOCK:
     {
         wait_block_trap(trapFrame, self);
     }
-    else
+    break;
+    default:
     {
-        log_panic(trapFrame, "Unknown vector");
+        if (trapFrame->vector < VECTOR_IRQ_BASE + IRQ_AMOUNT)
+        {
+            irq_dispatch(trapFrame);
+        }
+        else
+        {
+            log_panic(trapFrame, "Unknown vector");
+        }
+    }
     }
 
     sched_schedule(trapFrame, self);
 
     if (TRAP_FRAME_IN_USER_SPACE(trapFrame))
     {
-        note_trap_handler(trapFrame, self);
+        note_dispatch(trapFrame, self);
     }
 
     statistics_trap_end(trapFrame, self);
     self->trapDepth--;
 
     // This is a sanity check to make sure blocking and scheduling is functioning correctly. For instance, a trap should
-    // never return with a lock acquired.
-    if (!(trapFrame->rflags & RFLAGS_INTERRUPT_ENABLE))
-    {
-        log_panic(trapFrame, "Returning to frame with interrupts disabled");
-    }
+    // never return with a lock acquired nor should one be called with a lock acquired.
+    ASSERT_PANIC(trapFrame->rflags & RFLAGS_INTERRUPT_ENABLE);
 }

@@ -23,8 +23,8 @@ void gdt_init(void)
     gdt.null = gdt_entry_create(0, 0);
     gdt.kernelCode = gdt_entry_create(0x9A, 0xA);
     gdt.kernelData = gdt_entry_create(0x92, 0xC);
-    gdt.userCode = gdt_entry_create(0xFA, 0xA);
     gdt.userData = gdt_entry_create(0xF2, 0xC);
+    gdt.userCode = gdt_entry_create(0xFA, 0xA);
 
     gdt_load();
 }

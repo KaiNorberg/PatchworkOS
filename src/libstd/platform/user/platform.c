@@ -56,7 +56,7 @@ void* _PlatformPageAlloc(uint64_t amount)
 int* _PlatformErrnoFunc(void)
 {
     static int garbageErrno;
-    _Thread_t* thread = _ThreadGet(_SyscallGetTid());
+    _Thread_t* thread = _ThreadGet(gettid());
     if (thread == NULL)
     {
         return &garbageErrno;

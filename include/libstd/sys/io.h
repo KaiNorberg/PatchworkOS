@@ -94,9 +94,9 @@ fd_t dup(fd_t oldFd);
 
 fd_t dup2(fd_t oldFd, fd_t newFd);
 
-allocdir_t* allocdir(fd_t fd);
-
 uint64_t readdir(fd_t fd, stat_t* infos, uint64_t amount);
+
+allocdir_t* allocdir(fd_t fd);
 
 uint64_t mkdir(const char* path);
 

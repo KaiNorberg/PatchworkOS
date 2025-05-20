@@ -147,6 +147,7 @@ void smp_entry(void)
     simd_init();
 
     vmm_cpu_init();
+    syscall_init();
 
     printf("cpu %d: ready\n", (uint64_t)cpu->id);
     cpuReady = true;

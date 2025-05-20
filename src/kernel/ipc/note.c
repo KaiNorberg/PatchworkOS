@@ -81,7 +81,7 @@ static bool note_queue_pop(note_queue_t* queue, note_t* note)
     return true;
 }
 
-void note_trap_handler(trap_frame_t* trapFrame, cpu_t* self)
+void note_dispatch(trap_frame_t* trapFrame, cpu_t* self)
 {
     // TODO: Implement more notes and implement user space "software interrupts" to recieve notes.
 

@@ -9,7 +9,12 @@
 
 fd_t open(const char* path)
 {
-    return _SyscallOpen(path);
+    fd_t fd = _SyscallOpen(path);
+    if (fd == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return fd;
 }
 
 fd_t openf(const char* _RESTRICT format, ...)
@@ -21,34 +26,54 @@ fd_t openf(const char* _RESTRICT format, ...)
     vsnprintf(path, MAX_PATH, format, args);
     va_end(args);
 
-    return _SyscallOpen(path);
+    return open(path);
 }
 
 fd_t vopenf(const char* _RESTRICT format, va_list args)
 {
     char path[MAX_PATH];
     vsnprintf(path, MAX_PATH, format, args);
-    return _SyscallOpen(path);
+    return open(path);
 }
 
 uint64_t open2(const char* path, fd_t fds[2])
 {
-    return _SyscallOpen2(path, fds);
+    uint64_t result = _SyscallOpen2(path, fds);
+    if (result == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
 }
 
 uint64_t close(fd_t fd)
 {
-    return _SyscallClose(fd);
+    uint64_t result = _SyscallClose(fd);
+    if (result == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
 }
 
 uint64_t read(fd_t fd, void* buffer, uint64_t count)
 {
-    return _SyscallRead(fd, buffer, count);
+    uint64_t result = _SyscallRead(fd, buffer, count);
+    if (result == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
 }
 
 uint64_t write(fd_t fd, const void* buffer, uint64_t count)
 {
-    return _SyscallWrite(fd, buffer, count);
+    uint64_t result = _SyscallWrite(fd, buffer, count);
+    if (result == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
 }
 
 uint64_t writef(fd_t fd, const char* _RESTRICT format, ...)
@@ -69,23 +94,38 @@ uint64_t vwritef(fd_t fd, const char* _RESTRICT format, va_list args)
 
 uint64_t seek(fd_t fd, int64_t offset, seek_origin_t origin)
 {
-    return _SyscallSeek(fd, offset, origin);
+    uint64_t result = _SyscallSeek(fd, offset, origin);
+    if (result == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
 }
 
 uint64_t chdir(const char* path)
 {
-    return _SyscallChdir(path);
+    uint64_t result = _SyscallChdir(path);
+    if (result == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
 }
 
 uint64_t poll(pollfd_t* fds, uint64_t amount, clock_t timeout)
 {
-    return _SyscallPoll(fds, amount, timeout);
+    uint64_t result = _SyscallPoll(fds, amount, timeout);
+    if (result == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
 }
 
 poll_event_t poll1(fd_t fd, poll_event_t requested, clock_t timeout)
 {
     pollfd_t pollfd = {.fd = fd, .requested = requested};
-    if (_SyscallPoll(&pollfd, 1, timeout) == ERR)
+    if (poll(&pollfd, 1, timeout) == ERR)
     {
         return POLL1_ERR;
     }
@@ -94,31 +134,62 @@ poll_event_t poll1(fd_t fd, poll_event_t requested, clock_t timeout)
 
 uint64_t stat(const char* path, stat_t* info)
 {
-    return _SyscallStat(path, info);
+    uint64_t result = _SyscallStat(path, info);
+    if (result == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
 }
 
 uint64_t ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
 {
-    return _SyscallIoctl(fd, request, argp, size);
+    uint64_t result = _SyscallIoctl(fd, request, argp, size);
+    if (result == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
 }
 
 fd_t dup(fd_t oldFd)
 {
-    return _SyscallDup(oldFd);
+    uint64_t result = _SyscallDup(oldFd);
+    if (result == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
 }
 
 fd_t dup2(fd_t oldFd, fd_t newFd)
 {
-    return _SyscallDup2(oldFd, newFd);
+    uint64_t result = _SyscallDup2(oldFd, newFd);
+    if (result == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
+}
+
+uint64_t readdir(fd_t fd, stat_t* infos, uint64_t amount)
+{
+    uint64_t result = _SyscallReaddir(fd, infos, amount);
+    if (result == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
 }
 
 allocdir_t* allocdir(fd_t fd)
 {
-    uint64_t amount = _SyscallReaddir(fd, NULL, 0);
+    uint64_t amount = readdir(fd, NULL, 0);
     if (amount == ERR)
     {
         return NULL;
     }
+
     allocdir_t* dirs = malloc(sizeof(allocdir_t) + sizeof(stat_t) * amount);
     if (dirs == NULL)
     {
@@ -126,18 +197,13 @@ allocdir_t* allocdir(fd_t fd)
     }
 
     dirs->amount = amount;
-    if (_SyscallReaddir(fd, dirs->infos, amount) == ERR)
+    if (readdir(fd, dirs->infos, amount) == ERR)
     {
         free(dirs);
         return NULL;
     }
 
     return dirs;
-}
-
-uint64_t readdir(fd_t fd, stat_t* infos, uint64_t amount)
-{
-    return _SyscallReaddir(fd, infos, amount);
 }
 
 uint64_t mkdir(const char* path)

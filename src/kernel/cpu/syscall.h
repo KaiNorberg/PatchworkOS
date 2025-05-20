@@ -2,6 +2,18 @@
 
 #include "trap.h"
 
-extern void syscall_vector(void);
+typedef struct
+{
+    uint64_t kernelStack;
+    uint64_t userStack;
+} syscall_ctx_t;
+
+extern void syscall_entry(void);
+
+void syscall_ctx_init(syscall_ctx_t* ctx, uint64_t kernelStack);
+
+void syscall_ctx_load(syscall_ctx_t* ctx);
+
+void syscall_init(void);
 
 void syscall_handler(trap_frame_t* trapFrame);

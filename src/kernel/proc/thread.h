@@ -2,6 +2,7 @@
 
 #include "config.h"
 #include "cpu/simd.h"
+#include "cpu/syscall.h"
 #include "cpu/trap.h"
 #include "ipc/note.h"
 #include "process.h"
@@ -42,6 +43,7 @@ typedef struct thread
     wait_thread_ctx_t wait;
     simd_ctx_t simd;
     note_queue_t notes;
+    syscall_ctx_t syscall;
     trap_frame_t trapFrame;
     uint8_t kernelStack[CONFIG_KERNEL_STACK];
 } thread_t;

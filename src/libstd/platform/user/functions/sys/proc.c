@@ -6,45 +6,90 @@
 
 pid_t spawn(const char** argv, const spawn_fd_t* fds)
 {
-    return _SyscallSpawn(argv, fds);
+    pid_t result = _SyscallSpawn(argv, fds);
+    if (result == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
 }
 
 pid_t getpid(void)
 {
-    return _SyscallGetPid();
+    pid_t result = _SyscallGetpid();
+    if (result == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
 }
 
 tid_t gettid(void)
 {
-    return _SyscallGetTid();
+    tid_t result = _SyscallGettid();
+    if (result == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
 }
 
 clock_t uptime(void)
 {
-    return _SyscallUptime();
+    clock_t result = _SyscallUptime();
+    if (result == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
 }
 
 void* mmap(fd_t fd, void* address, uint64_t length, prot_t prot)
 {
-    return _SyscallMmap(fd, address, length, prot);
+    void* result = _SyscallMmap(fd, address, length, prot);
+    if (result == NULL)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
 }
 
 uint64_t munmap(void* address, uint64_t length)
 {
-    return _SyscallMunmap(address, length);
+    uint64_t result = _SyscallMunmap(address, length);
+    if (result == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
 }
 
 uint64_t mprotect(void* address, uint64_t length, prot_t prot)
 {
-    return _SyscallMprotect(address, length, prot);
+    uint64_t result = _SyscallMprotect(address, length, prot);
+    if (result == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
 }
 
 uint64_t futex(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t timeout)
 {
-    return _SyscallFutex(addr, val, op, timeout);
+    uint64_t result = _SyscallFutex(addr, val, op, timeout);
+    if (result == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
 }
 
 uint64_t sleep(clock_t timeout)
 {
-    return _SyscallSleep(timeout);
+    uint64_t result = _SyscallSleep(timeout);
+    if (result == ERR)
+    {
+        errno = _SyscallLastError();
+    }
+    return result;
 }

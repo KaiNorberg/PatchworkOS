@@ -84,9 +84,9 @@ static uint64_t sched_ctx_thread_amount(sched_ctx_t* ctx)
     return length;
 }
 
-static thread_t* sched_ctx_find_higher(sched_ctx_t* ctx, priority_t priority)
+static thread_t* sched_ctx_find(sched_ctx_t* ctx, priority_t minPriority)
 {
-    for (int64_t i = PRIORITY_MAX; i > priority; i--)
+    for (int64_t i = PRIORITY_MAX; i >= minPriority; i--)
     {
         thread_t* thread = thread_queue_pop(&ctx->queues[i]);
         if (thread != NULL)
@@ -98,23 +98,9 @@ static thread_t* sched_ctx_find_higher(sched_ctx_t* ctx, priority_t priority)
     return NULL;
 }
 
-static thread_t* sched_ctx_find_any_same(sched_ctx_t* ctx)
+static thread_t* sched_find(sched_ctx_t* preferred, priority_t minPriority)
 {
-    for (int64_t i = PRIORITY_MAX; i >= PRIORITY_MIN; i--)
-    {
-        thread_t* thread = thread_queue_pop(&ctx->queues[i]);
-        if (thread != NULL)
-        {
-            return thread;
-        }
-    }
-
-    return NULL;
-}
-
-static thread_t* sched_ctx_find_any(sched_ctx_t* ctx)
-{
-    thread_t* thread = sched_ctx_find_any_same(ctx);
+    thread_t* thread = sched_ctx_find(preferred, minPriority);
     if (thread != NULL)
     {
         return thread;
@@ -123,12 +109,12 @@ static thread_t* sched_ctx_find_any(sched_ctx_t* ctx)
     for (uint64_t i = 0; i < smp_cpu_amount(); i++)
     {
         sched_ctx_t* other = &smp_cpu(i)->sched;
-        if (ctx == other)
+        if (preferred == other)
         {
             continue;
         }
 
-        thread_t* thread = sched_ctx_find_any_same(other);
+        thread_t* thread = sched_ctx_find(other, minPriority);
         if (thread != NULL)
         {
             return thread;
@@ -286,6 +272,20 @@ void sched_timer_trap(trap_frame_t* trapFrame, cpu_t* self)
     sched_update_zombie_threads(trapFrame, ctx);
 }
 
+void sched_yield(void)
+{
+    thread_t* thread = smp_self()->sched.runThread;
+    thread->timeEnd = 0;
+    smp_put();
+    
+    sched_invoke();
+}
+
+void sched_invoke(void)
+{
+    asm volatile("int %0" ::"i"(VECTOR_SCHED_INVOKE));
+}
+
 void sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
 {
     sched_ctx_t* ctx = &self->sched;
@@ -312,7 +312,7 @@ void sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
     thread_t* next;
     if (ctx->runThread == NULL)
     {
-        next = sched_ctx_find_any(ctx);
+        next = sched_find(ctx, PRIORITY_MIN);
         if (next != NULL)
         {
             atomic_store(&next->state, THREAD_RUNNING);
@@ -327,8 +327,7 @@ void sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
     }
     else
     {
-        next = ctx->runThread->timeEnd < systime_uptime() ? sched_ctx_find_any(ctx)
-                                                          : sched_ctx_find_higher(ctx, ctx->runThread->priority);
+        next = sched_find(ctx, ctx->runThread->timeEnd < systime_uptime() ? PRIORITY_MIN : ctx->runThread->priority);
         if (next != NULL)
         {
             atomic_store(&ctx->runThread->state, THREAD_PARKED);

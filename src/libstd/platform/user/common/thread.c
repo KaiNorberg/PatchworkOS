@@ -16,7 +16,7 @@ void _ThreadingInit(void)
     // We cant yet use the heap, so we do this weird stuff
     list_entry_init(&thread0.entry);
     atomic_init(&thread0.state, _THREAD_ATTACHED);
-    thread0.id = _SyscallGetTid();
+    thread0.id = gettid();
     thread0.result = 0;
     thread0.err = 0;
     thread0.private = NULL;
@@ -44,6 +44,8 @@ _Thread_t* _ThreadNew(_ThreadEntry_t entry, void* private)
     thread->id = _SyscallThreadCreate(entry, thread);
     if (thread->id == ERR)
     {
+        errno = _SyscallLastError();
+
         list_remove(&thread->entry);
         mtx_unlock(&mutex);
         free(thread);

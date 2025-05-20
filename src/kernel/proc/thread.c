@@ -50,6 +50,7 @@ thread_t* thread_new(process_t* process, void* entry, priority_t priority)
         return NULL;
     }
     note_queue_init(&thread->notes);
+    syscall_ctx_init(&thread->syscall, ((uint64_t)thread->kernelStack) + CONFIG_KERNEL_STACK);
     memset(&thread->trapFrame, 0, sizeof(trap_frame_t));
     thread->trapFrame.rip = (uint64_t)entry;
     thread->trapFrame.rsp = ((uint64_t)thread->kernelStack) + CONFIG_KERNEL_STACK;
@@ -113,6 +114,7 @@ void thread_load(thread_t* thread, trap_frame_t* trapFrame)
         space_load(&thread->process->space);
         tss_stack_load(&self->tss, (void*)((uint64_t)thread->kernelStack + CONFIG_KERNEL_STACK));
         simd_ctx_load(&thread->simd);
+        syscall_ctx_load(&thread->syscall);
     }
 }
 

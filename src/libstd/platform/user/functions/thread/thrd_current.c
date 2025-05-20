@@ -9,6 +9,6 @@
 
 thrd_t thrd_current(void)
 {
-    thrd_t thr = (thrd_t){.id = _SyscallGetTid()};
+    thrd_t thr = (thrd_t){.id = gettid()};
     return thr;
 }

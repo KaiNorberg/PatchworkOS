@@ -10,10 +10,9 @@
 
 void thrd_exit(int res)
 {
-    _Thread_t* thread = _ThreadGet(_SyscallGetTid());
+    _Thread_t* thread = _ThreadGet(gettid());
     if (thread == NULL)
     {
-        printf("abort %d\n", _SyscallGetTid());
         abort();
     }
 

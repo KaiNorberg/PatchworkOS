@@ -89,6 +89,8 @@ void kernel_init(boot_info_t* bootInfo)
     smp_init_others();
     systime_timer_init();
 
+    syscall_init();
+
     const_init();
     ps2_init();
     net_init();

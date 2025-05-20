@@ -1,7 +1,10 @@
 #include "syscall.h"
 
 #include "config.h"
+#include "cpu/gdt.h"
+#include "cpu/regs.h"
 #include "cpu/smp.h"
+#include "cpu/vectors.h"
 #include "defs.h"
 #include "drivers/systime/systime.h"
 #include "fs/vfs.h"
@@ -92,11 +95,15 @@ static bool verify_string(const char* string)
 void syscall_process_exit(uint64_t status)
 {
     sched_process_exit(status);
+    sched_invoke();
+    ASSERT_PANIC(false);
 }
 
 void syscall_thread_exit(void)
 {
     sched_thread_exit();
+    sched_invoke();
+    ASSERT_PANIC(false);
 }
 
 pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds)
@@ -477,9 +484,7 @@ tid_t syscall_thread_create(void* entry, void* arg)
 
 uint64_t syscall_yield(void)
 {
-    thread_t* thread = smp_self()->sched.runThread;
-    thread->timeEnd = 0;
-    smp_put();
+    sched_yield();
     return 0;
 }
 
@@ -520,7 +525,7 @@ uint64_t syscall_remove(const char* path)
 
 ///////////////////////////////////////////////////////
 
-void* syscallTable[] = {
+static void* syscallTable[] = {
     syscall_process_exit,
     syscall_thread_exit,
     syscall_spawn,
@@ -553,6 +558,33 @@ void* syscallTable[] = {
     syscall_remove,
 };
 
+void syscall_init(void)
+{
+    // Read this to understand whats happening https://www.felixcloutier.com/x86/syscall,
+    // https://www.felixcloutier.com/x86/sysret.
+
+    msr_write(MSR_EFER, msr_read(MSR_EFER) | EFER_SYSCALL_ENABLE);
+
+    msr_write(MSR_STAR, ((uint64_t)(GDT_USER_CODE - 16) | GDT_RING3) << 48 | ((uint64_t)(GDT_KERNEL_CODE)) << 32);
+    msr_write(MSR_LSTAR, (uint64_t)syscall_entry);
+
+    msr_write(MSR_SYSCALL_FLAG_MASK,
+        RFLAGS_TRAP | RFLAGS_DIRECTION | RFLAGS_INTERRUPT_ENABLE | RFLAGS_IOPL | RFLAGS_AUX_CARRY | RFLAGS_NESTED_TASK);
+}
+
+void syscall_ctx_init(syscall_ctx_t* ctx, uint64_t kernelStack)
+{
+    ctx->kernelStack = kernelStack;
+    ctx->userStack = 0;
+}
+
+void syscall_ctx_load(syscall_ctx_t* ctx)
+{
+    // We use the gs register to keep track of the kernel stack to switch to and to save the user stack.
+    msr_write(MSR_GS_BASE, (uint64_t)ctx);
+    msr_write(MSR_KERNEL_GS_BASE, (uint64_t)ctx);
+}
+
 void syscall_handler(trap_frame_t* trapFrame)
 {
     uint64_t selector = trapFrame->rax;
@@ -565,11 +597,5 @@ void syscall_handler(trap_frame_t* trapFrame)
     uint64_t (*syscall)(uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e, uint64_t f) =
         syscallTable[selector];
     trapFrame->rax =
-        syscall(trapFrame->rdi, trapFrame->rsi, trapFrame->rdx, trapFrame->rcx, trapFrame->r8, trapFrame->r9);
-
-    asm volatile("cli"); // Disable interrupts
-
-    cpu_t* self = smp_self_unsafe();
-    sched_schedule(trapFrame, self);
-    note_trap_handler(trapFrame, self);
+        syscall(trapFrame->rdi, trapFrame->rsi, trapFrame->rdx, trapFrame->r10, trapFrame->r8, trapFrame->r9);
 }
