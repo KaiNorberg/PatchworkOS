@@ -82,7 +82,7 @@ typedef struct
 // Library events, sent by libdwm.
 #define LEVENT_BASE (1 << 14)
 #define LEVENT_INIT (LEVENT_BASE + 1)
-#define LEVENT_FREE (LEVENT_BASE + 2) // May be recieved outside of a dispatch call.
+#define LEVENT_FREE (LEVENT_BASE + 2) // May be received outside of a dispatch call.
 #define LEVENT_REDRAW (LEVENT_BASE + 3)
 #define LEVENT_ACTION (LEVENT_BASE + 4)
 #define LEVENT_QUIT (LEVENT_BASE + 5)

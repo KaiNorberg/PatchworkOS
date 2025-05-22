@@ -561,9 +561,9 @@ static void dwm_update(void)
         pollfd_t* fd = &pollCtx->clients[i++];
         if (fd->occurred & POLL_READ)
         {
-            if (client_recieve_cmds(client) == ERR)
+            if (client_receive_cmds(client) == ERR)
             {
-                printf("dwm: client_recieve_cmds failed (%s)\n", strerror(errno));
+                printf("dwm: client_receive_cmds failed (%s)\n", strerror(errno));
                 dwm_client_disconnect(client);
             }
         }

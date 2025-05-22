@@ -6,6 +6,8 @@
 
 #include <sys/proc.h>
 
+// TODO: Implement futex support for shared memory.
+
 typedef struct
 {
     hashmap_entry_t entry;

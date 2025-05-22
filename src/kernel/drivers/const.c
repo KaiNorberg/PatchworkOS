@@ -5,6 +5,7 @@
 #include "mem/vmm.h"
 #include "utils/log.h"
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -78,7 +79,7 @@ SYSFS_STANDARD_OPS_DEFINE(nullOps, PATH_NONE,
 
 void const_init(void)
 {
-    ASSERT_PANIC(sysobj_init_path(&oneObj, "/", "one", &oneOps, NULL) != ERR);
-    ASSERT_PANIC(sysobj_init_path(&zeroObj, "/", "zero", &zeroOps, NULL) != ERR);
-    ASSERT_PANIC(sysobj_init_path(&nullObj, "/", "null", &nullOps, NULL) != ERR);
+    assert(sysobj_init_path(&oneObj, "/", "one", &oneOps, NULL) != ERR);
+    assert(sysobj_init_path(&zeroObj, "/", "zero", &zeroOps, NULL) != ERR);
+    assert(sysobj_init_path(&nullObj, "/", "null", &nullOps, NULL) != ERR);
 }

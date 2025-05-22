@@ -6,7 +6,7 @@
 #include <string.h>
 #include <sys/list.h>
 
-static void display_recieve_event(display_t* disp, event_t* event)
+static void display_receive_event(display_t* disp, event_t* event)
 {
     if (read(disp->data, event, sizeof(event_t)) != sizeof(event_t))
     {
@@ -185,7 +185,7 @@ bool display_next_event(display_t* disp, event_t* event, clock_t timeout)
         }
     }
 
-    display_recieve_event(disp, event);
+    display_receive_event(disp, event);
     return true;
 }
 
@@ -244,7 +244,7 @@ uint64_t display_wait_for_event(display_t* disp, event_t* event, event_type_t ex
 {
     while (display_connected(disp))
     {
-        display_recieve_event(disp, event);
+        display_receive_event(disp, event);
 
         if (event->type != expected)
         {

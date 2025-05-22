@@ -7,6 +7,7 @@
 #include "socket.h"
 #include "utils/log.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <stdatomic.h>
 #include <stdlib.h>
@@ -72,8 +73,8 @@ uint64_t socket_family_expose(socket_family_t* family)
         return ERROR(EINVAL);
     }
 
-    ASSERT_PANIC(sysdir_init(&family->dir, "/net", family->name, family) != ERR);
-    ASSERT_PANIC(sysobj_init(&family->newObj, &family->dir, "new", &familyNewObjOps, NULL) != ERR);
+    assert(sysdir_init(&family->dir, "/net", family->name, family) != ERR);
+    assert(sysobj_init(&family->newObj, &family->dir, "new", &familyNewObjOps, NULL) != ERR);
 
     return 0;
 }

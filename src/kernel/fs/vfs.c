@@ -11,6 +11,7 @@
 #include "utils/log.h"
 #include "vfs_ctx.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,7 +22,7 @@ static rwlock_t volumesLock;
 
 static uint64_t volume_expose(volume_t* volume)
 {
-    ASSERT_PANIC(sysdir_init(&volume->sysdir, "/vol", volume->label, volume) != ERR);
+    assert(sysdir_init(&volume->sysdir, "/vol", volume->label, volume) != ERR);
     return 0;
 }
 

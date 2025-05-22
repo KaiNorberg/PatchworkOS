@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/io.h>
 #include <sys/list.h>
 
 surface_t* surface_new(client_t* client, surface_id_t id, const point_t* point, uint64_t width, uint64_t height,
@@ -19,13 +20,25 @@ surface_t* surface_new(client_t* client, surface_id_t id, const point_t* point, 
     list_entry_init(&surface->clientEntry);
     surface->client = client;
     surface->pos = *point;
-    surface->gfx.buffer = malloc(width * height * sizeof(pixel_t));
+
+    fd_t shmem = open("sys:/shmem/new");
+    if (shmem == ERR)
+    {
+        free(surface);
+        printf("dwm surface error: failed to open shmem\n");
+        return NULL;
+    }
+    surface->shmem[read(shmem, surface->shmem, MAX_NAME)] = '\0';
+    surface->gfx.buffer = mmap(shmem, NULL, width * height * sizeof(pixel_t), PROT_READ | PROT_WRITE);
+    close(shmem);
+
     if (surface->gfx.buffer == NULL)
     {
         free(surface);
         printf("dwm surface error: failed to allocate gfx buffer\n");
         return NULL;
     }
+
     memset(surface->gfx.buffer, 0, width * height * sizeof(pixel_t));
     surface->gfx.width = width;
     surface->gfx.height = height;
@@ -44,21 +57,6 @@ surface_t* surface_new(client_t* client, surface_id_t id, const point_t* point, 
 
 void surface_free(surface_t* surface)
 {
-    free(surface->gfx.buffer);
+    munmap(surface->gfx.buffer, surface->gfx.width * surface->gfx.height * sizeof(pixel_t));
     free(surface);
-}
-
-uint64_t surface_resize_buffer(surface_t* surface, uint64_t width, uint64_t height)
-{
-    void* newBuffer = realloc(surface->gfx.buffer, width * height * sizeof(pixel_t));
-    if (newBuffer == NULL)
-    {
-        return ERR;
-    }
-
-    surface->gfx.width = width;
-    surface->gfx.height = height;
-    surface->gfx.stride = width;
-    surface->gfx.buffer = newBuffer;
-    return 0;
 }

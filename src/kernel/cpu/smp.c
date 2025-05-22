@@ -13,14 +13,16 @@
 #include "trampoline.h"
 #include "trap.h"
 #include "utils/log.h"
+#include "boot/kernel.h"
 
+#include <assert.h>
 #include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 static cpu_t bootstrapCpu;
-static cpu_t* cpus[UINT8_MAX];
+static cpu_t* cpus[CPU_MAX_AMOUNT];
 static uint8_t cpuAmount = 0;
 static bool cpuReady = false;
 
@@ -92,17 +94,16 @@ static uint64_t cpu_start(cpu_t* cpu)
     return 0;
 }
 
-void smp_init(void)
+void smp_bootstrap_init(void)
 {
     cpuAmount = 1;
     cpus[0] = &bootstrapCpu;
     cpu_init(cpus[0], 0, 0);
 
     msr_write(MSR_CPU_ID, cpus[0]->id);
-    gdt_load_tss(&cpus[0]->tss);
 }
 
-void smp_init_others(void)
+void smp_others_init(void)
 {
     trampoline_init();
 
@@ -125,9 +126,10 @@ void smp_init_others(void)
         {
             uint8_t id = newId++;
             cpus[id] = malloc(sizeof(cpu_t));
+            assert(cpus[id] != NULL);
             cpu_init(cpus[id], id, record->lapicId);
             cpuAmount++;
-            ASSERT_PANIC(cpu_start(cpus[id]) != ERR);
+            assert(cpu_start(cpus[id]) != ERR);
         }
     }
 
@@ -135,19 +137,11 @@ void smp_init_others(void)
 }
 
 void smp_entry(void)
-{
-    gdt_init();
-    idt_init();
-
+{    
     cpu_t* cpu = smp_self_brute();
     msr_write(MSR_CPU_ID, cpu->id);
-    gdt_load_tss(&cpu->tss);
 
-    lapic_init();
-    simd_init();
-
-    vmm_cpu_init();
-    syscall_init();
+    kernel_other_init();
 
     printf("cpu %d: ready\n", (uint64_t)cpu->id);
     cpuReady = true;
@@ -170,7 +164,7 @@ void smp_halt_others(void)
     smp_send_others(smp_halt_ipi);
 }
 
-void smp_ipi_recieve(trap_frame_t* trapFrame, cpu_t* self)
+void smp_ipi_receive(trap_frame_t* trapFrame, cpu_t* self)
 {
     ipi_queue_t* queue = &self->queue;
     while (1)
@@ -224,14 +218,14 @@ cpu_t* smp_cpu(uint8_t id)
 
 cpu_t* smp_self_unsafe(void)
 {
-    ASSERT_PANIC(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
+    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
     return cpus[msr_read(MSR_CPU_ID)];
 }
 
 cpu_t* smp_self_brute(void)
 {
-    ASSERT_PANIC(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
+    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
     uint8_t lapicId = lapic_id();
     for (uint16_t id = 0; id < cpuAmount; id++)

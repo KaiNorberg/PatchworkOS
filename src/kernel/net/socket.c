@@ -9,6 +9,7 @@
 #include "stdbool.h"
 #include "utils/log.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <stdatomic.h>
 #include <stdio.h>
@@ -208,21 +209,19 @@ socket_t* socket_new(socket_family_t* family, path_flags_t flags)
     char path[MAX_PATH];
     sprintf(path, "/net/%s", family->name);
 
-    ASSERT_PANIC(sysdir_init(&socket->dir, path, socket->id, socket) != ERR);
-    ASSERT_PANIC(sysobj_init(&socket->ctlObj, &socket->dir, "ctl", &ctlOps, socket) != ERR);
-    ASSERT_PANIC(sysobj_init(&socket->dataObj, &socket->dir, "data", &dataOps, socket) != ERR);
-    ASSERT_PANIC(sysobj_init(&socket->acceptObj, &socket->dir, "accept", &acceptOps, socket) != ERR);
+    assert(sysdir_init(&socket->dir, path, socket->id, socket) != ERR);
+    assert(sysobj_init(&socket->ctlObj, &socket->dir, "ctl", &ctlOps, socket) != ERR);
+    assert(sysobj_init(&socket->dataObj, &socket->dir, "data", &dataOps, socket) != ERR);
+    assert(sysobj_init(&socket->acceptObj, &socket->dir, "accept", &acceptOps, socket) != ERR);
 
     return socket;
 }
 
 static void socket_on_free(sysdir_t* sysdir)
 {
-    // TODO: URGENT! This is not called when a process is killed via a note.
     socket_t* socket = sysdir->private;
     socket->family->deinit(socket);
     free(socket);
-    printf("socket_on_free\n");
 }
 
 void socket_free(socket_t* socket)

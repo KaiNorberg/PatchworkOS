@@ -7,6 +7,8 @@
 #include "drivers/systime/systime.h"
 #include "utils/log.h"
 
+#include <assert.h>
+
 void ps2_init(void)
 {
     ps2_cmd(PS2_CMD_KBD_DISABLE);
@@ -18,7 +20,7 @@ void ps2_init(void)
     uint8_t cfg = ps2_read();
 
     ps2_cmd(PS2_CMD_CONTROLLER_TEST);
-    ASSERT_PANIC_MSG(ps2_read() == 0x55, "self test fail");
+    assert(ps2_read() == 0x55 && "self test fail");
 
     cfg = cfg | PS2_CFG_KBD_IRQ | PS2_CFG_AUX_IRQ;
 

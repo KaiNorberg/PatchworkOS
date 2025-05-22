@@ -3,8 +3,8 @@
 #include "argv.h"
 #include "fs/sysfs.h"
 #include "fs/vfs_ctx.h"
-#include "mem/space.h"
 #include "sched/wait.h"
+#include "mem/vmm.h"
 #include "sync/futex.h"
 
 typedef struct

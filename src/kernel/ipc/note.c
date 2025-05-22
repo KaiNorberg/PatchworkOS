@@ -4,6 +4,7 @@
 #include "sched/sched.h"
 #include "utils/log.h"
 
+#include <assert.h>
 #include <stdio.h>
 
 void note_queue_init(note_queue_t* queue)
@@ -57,7 +58,7 @@ uint64_t note_queue_push(note_queue_t* queue, const void* message, uint64_t leng
         queue->length++;
     }
 
-    ASSERT_PANIC(note != NULL);
+    assert(note != NULL);
 
     memcpy(note->message, message, length);
     note->message[length] = '\0';
@@ -83,7 +84,7 @@ static bool note_queue_pop(note_queue_t* queue, note_t* note)
 
 void note_dispatch(trap_frame_t* trapFrame, cpu_t* self)
 {
-    // TODO: Implement more notes and implement user space "software interrupts" to recieve notes.
+    // TODO: Implement more notes and implement user space "software interrupts" to receive notes.
 
     thread_t* thread = sched_thread();
     if (thread == NULL)

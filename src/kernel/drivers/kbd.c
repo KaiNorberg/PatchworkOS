@@ -7,6 +7,7 @@
 #include "systime/systime.h"
 #include "utils/log.h"
 
+#include <assert.h>
 #include <stdlib.h>
 #include <sys/math.h>
 
@@ -51,7 +52,7 @@ kbd_t* kbd_new(const char* name)
     kbd->mods = KBD_MOD_NONE;
     wait_queue_init(&kbd->waitQueue);
     lock_init(&kbd->lock);
-    ASSERT_PANIC(sysobj_init_path(&kbd->sysobj, "/kbd", name, &kbdOps, kbd) != ERR);
+    assert(sysobj_init_path(&kbd->sysobj, "/kbd", name, &kbdOps, kbd) != ERR);
 
     return kbd;
 }

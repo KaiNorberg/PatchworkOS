@@ -7,10 +7,11 @@
 #include "utils/log.h"
 #include "utils/ring.h"
 
+#include <assert.h>
 #include <stdlib.h>
 #include <sys/math.h>
 
-static sysobj_t pipeNew;
+static sysobj_t obj;
 
 static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count)
 {
@@ -39,7 +40,7 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count)
     }
 
     count = MIN(count, ring_data_length(&private->ring));
-    ASSERT_PANIC(ring_read(&private->ring, buffer, count) != ERR);
+    assert(ring_read(&private->ring, buffer, count) != ERR);
 
     wait_unblock(&private->waitQueue, WAIT_ALL);
     return count;
@@ -72,7 +73,7 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count)
         return ERROR(EPIPE);
     }
 
-    ASSERT_PANIC(ring_write(&private->ring, buffer, count) != ERR);
+    assert(ring_write(&private->ring, buffer, count) != ERR);
 
     wait_unblock(&private->waitQueue, 1);
     return count;
@@ -202,7 +203,7 @@ static void pipe_cleanup(sysobj_t* sysobj, file_t* file)
     lock_release(&private->lock);
 }
 
-static sysobj_ops_t resourceOps = {
+static sysobj_ops_t objOps = {
     .open = pipe_open,
     .open2 = pipe_open2,
     .cleanup = pipe_cleanup,
@@ -210,5 +211,5 @@ static sysobj_ops_t resourceOps = {
 
 void pipe_init(void)
 {
-    ASSERT_PANIC(sysobj_init_path(&pipeNew, "/pipe", "new", &resourceOps, NULL) != ERR);
+    assert(sysobj_init_path(&obj, "/pipe", "new", &objOps, NULL) != ERR);
 }

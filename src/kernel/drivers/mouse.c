@@ -6,6 +6,7 @@
 #include "systime/systime.h"
 #include "utils/log.h"
 
+#include <assert.h>
 #include <stdlib.h>
 #include <sys/math.h>
 
@@ -49,7 +50,7 @@ mouse_t* mouse_new(const char* name)
     mouse->writeIndex = 0;
     wait_queue_init(&mouse->waitQueue);
     lock_init(&mouse->lock);
-    ASSERT_PANIC(sysobj_init_path(&mouse->sysobj, "/mouse", name, &mouseOps, mouse) != ERR);
+    assert(sysobj_init_path(&mouse->sysobj, "/mouse", name, &mouseOps, mouse) != ERR);
 
     return mouse;
 }

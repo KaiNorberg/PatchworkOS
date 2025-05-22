@@ -382,10 +382,12 @@ static uint64_t client_action_surface_move(client_t* client, const cmd_header_t*
 
     if (surface->gfx.width != width || surface->gfx.height != height)
     {
-        if (surface_resize_buffer(surface, width, height) == ERR)
+        // TODO: Reimplement resizing
+        return ERR;
+        /*if (surface_resize_buffer(surface, width, height) == ERR)
         {
             return ERR;
-        }
+        }*/
     }
 
     surface->pos = (point_t){.x = cmd->rect.left, .y = cmd->rect.top};
@@ -503,7 +505,7 @@ static uint64_t (*actions[])(client_t*, const cmd_header_t*) = {
     [CMD_DRAW_BUFFER] = client_action_draw_buffer,
 };
 
-uint64_t client_recieve_cmds(client_t* client)
+uint64_t client_receive_cmds(client_t* client)
 {
     uint64_t readSize = read(client->fd, &client->cmds, sizeof(cmd_buffer_t) + 1);
     if (readSize == ERR)

@@ -8,6 +8,7 @@
 #include "sync/rwlock.h"
 #include "utils/log.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/io.h>
@@ -130,11 +131,11 @@ SYSFS_STANDARD_OPS_DEFINE(noteOps, PATH_NONE,
 
 static void process_dir_init(process_dir_t* dir, const char* name, process_t* process)
 {
-    ASSERT_PANIC(sysdir_init(&dir->sysdir, "/proc", name, process) != ERR);
-    ASSERT_PANIC(sysobj_init(&dir->ctlObj, &dir->sysdir, "ctl", &ctlOps, process) != ERR);
-    ASSERT_PANIC(sysobj_init(&dir->cwdObj, &dir->sysdir, "cwd", &cwdOps, process) != ERR);
-    ASSERT_PANIC(sysobj_init(&dir->cmdlineObj, &dir->sysdir, "cmdline", &cmdlineOps, process) != ERR);
-    ASSERT_PANIC(sysobj_init(&dir->noteObj, &dir->sysdir, "note", &noteOps, process) != ERR);
+    assert(sysdir_init(&dir->sysdir, "/proc", name, process) != ERR);
+    assert(sysobj_init(&dir->ctlObj, &dir->sysdir, "ctl", &ctlOps, process) != ERR);
+    assert(sysobj_init(&dir->cwdObj, &dir->sysdir, "cwd", &cwdOps, process) != ERR);
+    assert(sysobj_init(&dir->cmdlineObj, &dir->sysdir, "cmdline", &cmdlineOps, process) != ERR);
+    assert(sysobj_init(&dir->noteObj, &dir->sysdir, "note", &noteOps, process) != ERR);
 }
 
 process_t* process_new(process_t* parent, const char** argv)
@@ -202,7 +203,7 @@ static void process_on_free(sysdir_t* dir)
 
 void process_free(process_t* process)
 {
-    ASSERT_PANIC(list_empty(&process->threads.list));
+    assert(list_empty(&process->threads.list));
 
     if (process->parent != NULL)
     {

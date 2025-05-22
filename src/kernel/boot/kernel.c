@@ -19,6 +19,7 @@
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "ipc/pipe.h"
+#include "ipc/shmem.h"
 #include "mem/pmm.h"
 #include "mem/vmm.h"
 #include "net/net.h"
@@ -54,7 +55,8 @@ void kernel_init(boot_info_t* bootInfo)
 {
     gdt_init();
     idt_init();
-    smp_init();
+    smp_bootstrap_init();
+    gdt_load_tss(&smp_self_unsafe()->tss);
 
     log_init();
 
@@ -86,7 +88,7 @@ void kernel_init(boot_info_t* bootInfo)
     systime_init();
     log_enable_time();
 
-    smp_init_others();
+    smp_others_init();
     systime_timer_init();
 
     syscall_init();
@@ -95,6 +97,7 @@ void kernel_init(boot_info_t* bootInfo)
     ps2_init();
     net_init();
     pipe_init();
+    shmem_init();
     gop_init(&bootInfo->gopBuffer);
     statistics_init();
 
@@ -105,4 +108,18 @@ void kernel_init(boot_info_t* bootInfo)
 #endif
 
     asm volatile("sti");
+}
+
+void kernel_other_init(void)
+{
+    gdt_init();
+    idt_init();
+
+    gdt_load_tss(&smp_self_brute()->tss);
+
+    lapic_init();
+    simd_init();
+
+    vmm_cpu_init();
+    syscall_init();
 }

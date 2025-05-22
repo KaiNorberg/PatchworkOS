@@ -13,6 +13,9 @@
 #include "utils/font.h"
 #include "utils/ring.h"
 
+#include <common/version.h>
+
+#include <assert.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -21,8 +24,6 @@
 #include <sys/io.h>
 #include <sys/math.h>
 #include <sys/proc.h>
-
-#include <common/version.h>
 
 static char ringBuffer[LOG_BUFFER_LENGTH];
 static ring_t ring;
@@ -234,7 +235,7 @@ SYSFS_STANDARD_OPS_DEFINE(klogOps, PATH_NONE,
 void log_expose(void)
 {
     printf("log: expose\n");
-    ASSERT_PANIC(sysobj_init_path(&klog, "/", "klog", &klogOps, NULL) != ERR);
+    assert(sysobj_init_path(&klog, "/", "klog", &klogOps, NULL) != ERR);
 }
 
 void log_enable_screen(gop_buffer_t* gopBuffer)
@@ -313,7 +314,7 @@ static void log_put(char ch)
 
 void log_print(const char* str)
 {
-    ASSERT_PANIC(strlen(str) < LOG_MAX_LINE);
+    assert(strlen(str) < LOG_MAX_LINE);
 
     LOCK_DEFER(&lock);
 

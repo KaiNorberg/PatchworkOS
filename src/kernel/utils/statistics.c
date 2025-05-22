@@ -6,6 +6,7 @@
 #include "fs/view.h"
 #include "log.h"
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -90,9 +91,9 @@ VIEW_STANDARD_OPS_DEFINE(memOps, PATH_NONE,
 
 void statistics_init(void)
 {
-    ASSERT_PANIC(sysdir_init(&statDir, "/", "stat", NULL) != ERR);
-    ASSERT_PANIC(sysobj_init(&cpuObj, &statDir, "cpu", &cpuOps, NULL) != ERR);
-    ASSERT_PANIC(sysobj_init(&memObj, &statDir, "mem", &memOps, NULL) != ERR);
+    assert(sysdir_init(&statDir, "/", "stat", NULL) != ERR);
+    assert(sysobj_init(&cpuObj, &statDir, "cpu", &cpuOps, NULL) != ERR);
+    assert(sysobj_init(&memObj, &statDir, "mem", &memOps, NULL) != ERR);
 }
 
 void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* self)

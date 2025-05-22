@@ -6,10 +6,12 @@
 #include "sys/proc.h"
 #include "utils/log.h"
 #include "utils/utils.h"
+#include "utils/bitmap.h"
 #include "vmm.h"
 
 #include <bootloader/boot_info.h>
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
@@ -33,21 +35,24 @@ static const char* efiMemTypeToString[] = {
     "persistent",
 };
 
-static page_stack_t stack;
-static page_bitmap_t bitmap;
+// Stores the bitmap data
+static uint8_t mapBuffer[BITMAP_BITS_TO_BYTES(PMM_BITMAP_MAX)];
+
+static pmm_stack_t stack;
+static bitmap_t bitmap;
 
 static uint64_t pageAmount;
 static uint64_t freePageAmount;
 
 static lock_t lock;
 
-static void page_stack_init(void)
+static void pmm_stack_init(void)
 {
     stack.last = NULL;
     stack.index = 0;
 }
 
-static void* page_stack_alloc(void)
+static void* pmm_stack_alloc(void)
 {
     if (stack.last == NULL)
     {
@@ -59,7 +64,7 @@ static void* page_stack_alloc(void)
     {
         address = stack.last;
         stack.last = stack.last->prev;
-        stack.index = PAGE_BUFFER_MAX - 1;
+        stack.index = PMM_BUFFER_MAX - 1;
     }
     else
     {
@@ -71,7 +76,7 @@ static void* page_stack_alloc(void)
     return address;
 }
 
-static void page_stack_free(void* address)
+static void pmm_stack_free(void* address)
 {
     if (stack.last == NULL)
     {
@@ -79,7 +84,7 @@ static void page_stack_free(void* address)
         stack.last->prev = NULL;
         stack.index = 0;
     }
-    else if (stack.index == PAGE_BUFFER_MAX)
+    else if (stack.index == PMM_BUFFER_MAX)
     {
         page_buffer_t* next = address;
         next->prev = stack.last;
@@ -94,66 +99,48 @@ static void page_stack_free(void* address)
     freePageAmount++;
 }
 
-static void page_bitmap_init(void)
+static void pmm_bitmap_init(void)
 {
-    memset(bitmap.map, -1, sizeof(page_bitmap_t));
-    bitmap.firstFreeIndex = 0;
+    bitmap_init(&bitmap, mapBuffer, PMM_BITMAP_MAX);
+    memset(mapBuffer, -1, BITMAP_BITS_TO_BYTES(PMM_BITMAP_MAX));
 }
 
-static bool page_bitmap_reserved(uint64_t index)
+static bool pmm_bitmap_reserved(uint64_t index)
 {
-    ASSERT_PANIC(index < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE);
-    return (bitmap.map[(index) / 8] & (1ULL << ((index) % 8)));
+    assert(index < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE);
+
+    return bitmap_get(&bitmap, index);
 }
 
-static void page_bitmap_reserve(uint64_t low, uint64_t high)
+static void pmm_bitmap_reserve(uint64_t low, uint64_t high)
 {
-    ASSERT_PANIC(high < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE);
-    for (uint64_t i = low; i < high; i++)
-    {
-        bitmap.map[i / 8] |= (1ULL << (i % 8));
-    }
+    assert(low <= high);
+    assert(high < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE);
+
+    bitmap_set(&bitmap, low, high);
     freePageAmount -= (high - low);
 }
 
-static void* page_bitmap_alloc(uint64_t count, uintptr_t maxAddr, uint64_t alignment)
+static void* pmm_bitmap_alloc(uint64_t count, uintptr_t maxAddr, uint64_t alignment)
 {
     alignment = MAX(ROUND_UP(alignment, PAGE_SIZE), PAGE_SIZE);
     maxAddr = MIN(maxAddr, PMM_MAX_SPECIAL_ADDR);
 
-    for (uint64_t i = bitmap.firstFreeIndex; i < maxAddr / PAGE_SIZE; i += alignment / PAGE_SIZE)
+    uint64_t index = bitmap_find_clear_region_and_set(&bitmap, count, maxAddr / PAGE_SIZE, alignment / PAGE_SIZE);
+    if (index == ERR)
     {
-        if (!page_bitmap_reserved(i))
-        {
-            uint64_t j = i + 1;
-            for (; j < maxAddr / PAGE_SIZE; j++)
-            {
-                if (j - i == count)
-                {
-                    page_bitmap_reserve(i, j);
-                    return (void*)(i * PAGE_SIZE + VMM_HIGHER_HALF_BASE);
-                }
-
-                if (page_bitmap_reserved(j))
-                {
-                    break;
-                }
-            }
-
-            i = MAX(ROUND_UP(j, alignment / PAGE_SIZE), alignment / PAGE_SIZE) - alignment / PAGE_SIZE;
-        }
+        return NULL;
     }
 
-    return NULL;
+    return (void*)(index * PAGE_SIZE + VMM_HIGHER_HALF_BASE);
 }
 
-static void page_bitmap_free(void* address)
+static void pmm_bitmap_free(void* address)
 {
     uint64_t index = (uint64_t)VMM_HIGHER_TO_LOWER(address) / PAGE_SIZE;
-    ASSERT_PANIC(index < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE);
+    assert(index < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE);
 
-    bitmap.map[index / 8] &= ~(1ULL << (index % 8));
-    bitmap.firstFreeIndex = MIN(bitmap.firstFreeIndex, index);
+    bitmap_clear(&bitmap, index, index + 1);
     freePageAmount++;
 }
 
@@ -161,11 +148,11 @@ static void pmm_free_unlocked(void* address)
 {
     if (address >= VMM_LOWER_TO_HIGHER(PMM_MAX_SPECIAL_ADDR))
     {
-        page_stack_free(address);
+        pmm_stack_free(address);
     }
     else if (address >= VMM_LOWER_TO_HIGHER(0))
     {
-        page_bitmap_free(address);
+        pmm_bitmap_free(address);
     }
     else
     {
@@ -222,8 +209,8 @@ void pmm_init(efi_mem_map_t* memoryMap)
 
     pmm_detect_memory(memoryMap);
 
-    page_stack_init();
-    page_bitmap_init();
+    pmm_stack_init();
+    pmm_bitmap_init();
 
     pmm_load_memory(memoryMap);
 }
@@ -231,14 +218,14 @@ void pmm_init(efi_mem_map_t* memoryMap)
 void* pmm_alloc(void)
 {
     LOCK_DEFER(&lock);
-    void* address = page_stack_alloc();
+    void* address = pmm_stack_alloc();
     return address != NULL ? address : ERRPTR(ENOMEM);
 }
 
 void* pmm_alloc_bitmap(uint64_t count, uintptr_t maxAddr, uint64_t alignment)
 {
     LOCK_DEFER(&lock);
-    void* address = page_bitmap_alloc(count, maxAddr, alignment);
+    void* address = pmm_bitmap_alloc(count, maxAddr, alignment);
     return address != NULL ? address : ERRPTR(ENOMEM);
 }
 

@@ -15,6 +15,7 @@
 #include "sync/lock.h"
 #include "utils/log.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -127,10 +128,10 @@ static thread_t* sched_find(sched_ctx_t* preferred, priority_t minPriority)
 static void sched_spawn_boot_thread(void)
 {
     process_t* process = process_new(NULL, NULL);
-    ASSERT_PANIC_MSG(process != NULL, "failed to create boot process");
+    assert(process != NULL && "failed to create boot process");
 
     thread_t* thread = thread_new(process, NULL, PRIORITY_MAX);
-    ASSERT_PANIC_MSG(thread != NULL, "failed to create boot thread");
+    assert(thread != NULL && "failed to create boot thread");
     thread->timeEnd = UINT64_MAX;
 
     smp_self_unsafe()->sched.runThread = thread;
@@ -209,7 +210,7 @@ void sched_thread_exit(void)
 
 void sched_push(thread_t* thread)
 {
-    ASSERT_PANIC(atomic_load(&thread->state) == THREAD_PARKED);
+    assert(atomic_load(&thread->state) == THREAD_PARKED);
 
     uint64_t cpuAmount = smp_cpu_amount();
 
