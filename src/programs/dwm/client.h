@@ -1,6 +1,5 @@
 #pragma once
 
-#include "psf.h"
 #include "surface.h"
 
 #include <libdwm/event.h>
@@ -12,7 +11,6 @@ typedef struct client
     list_entry_t entry;
     fd_t fd;
     list_t surfaces;
-    list_t fonts;
     cmd_buffer_t cmds;
     uint64_t newId;
 } client_t;

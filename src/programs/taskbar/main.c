@@ -53,11 +53,14 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         rect_t rect;
         element_content_rect(elem, &rect);
 
-        drawable_t* draw = element_draw(elem);
+        drawable_t draw;
+        element_draw_begin(elem, &draw);
 
-        draw_rect(draw, &rect, windowTheme.background);
+        draw_rect(&draw, &rect, windowTheme.background);
         rect.bottom = rect.top + windowTheme.edgeWidth;
-        draw_rect(draw, &rect, windowTheme.bright);
+        draw_rect(&draw, &rect, windowTheme.bright);
+    
+        element_draw_end(elem, &draw);
     }
     break;
     case LEVENT_ACTION:

@@ -14,6 +14,15 @@ extern "C"
 {
 #endif
 
+typedef struct drawable
+{
+    display_t* disp;
+    uint32_t stride;
+    pixel_t* buffer;
+    rect_t contentRect;
+    rect_t invalidRect;
+} drawable_t;
+
 typedef enum
 {
     ALIGN_CENTER = 0,
@@ -24,7 +33,7 @@ typedef enum
 typedef struct drawable drawable_t;
 typedef struct image image_t;
 
-void draw_rect(drawable_t* draw, const rect_t* rect, pixel_t pixel);
+void draw_content_rect(drawable_t* draw, rect_t* dest);
 
 void draw_rect(drawable_t* draw, const rect_t* rect, pixel_t pixel);
 
@@ -36,8 +45,6 @@ void draw_gradient(drawable_t* draw, const rect_t* rect, pixel_t start, pixel_t 
 // The destRect is the rectangle that will be filled in the destination, the srcPoint is the starting point in the
 // source to copy from.
 void draw_transfer(drawable_t* dest, drawable_t* src, const rect_t* destRect, const point_t* srcPoint);
-
-void draw_buffer(drawable_t* draw, pixel_t* buffer, uint64_t index, uint64_t length);
 
 void draw_image(drawable_t* draw, image_t* image, const rect_t* destRect, const point_t* srcPoint);
 

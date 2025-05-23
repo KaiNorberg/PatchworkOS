@@ -14,6 +14,8 @@ extern "C"
 {
 #endif
 
+#define DEFAULT_FONT "home:/theme/fonts/zap-vga16.psf"
+
 typedef struct display display_t;
 
 display_t* display_new(void);

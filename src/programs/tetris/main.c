@@ -743,29 +743,38 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     break;
     case LEVENT_REDRAW:
     {
-        drawable_t* draw = element_draw(elem);
+        drawable_t draw;
+        element_draw_begin(elem, &draw);
 
-        field_edge_draw(elem, draw);
-        field_draw(elem, draw);
-        side_panel_draw(win, elem, draw);
+        field_edge_draw(elem, &draw);
+        field_draw(elem, &draw);
+        side_panel_draw(win, elem, &draw);
+    
+        element_draw_end(elem, &draw);
+
         window_set_timer(win, TIMER_NONE, 0);
     }
     break;
     case EVENT_TIMER:
     {
-        drawable_t* draw = element_draw(elem);
+        drawable_t draw;
+        element_draw_begin(elem, &draw);
 
         if (!started)
         {
-            start_tetris_draw(win, elem, draw);
-            start_press_space_draw(win, elem, draw);
+            start_tetris_draw(win, elem, &draw);
+            start_press_space_draw(win, elem, &draw);
             window_set_timer(win, TIMER_NONE, START_SCREEN_TICK_SPEED);
+
+            element_draw_end(elem, &draw);
             break;
         }
         else if (clearingLines)
         {
-            field_clear_lines(elem, draw);
+            field_clear_lines(elem, &draw);
             window_set_timer(win, TIMER_NONE, CLEARING_LINES_TICK_SPEED);
+            
+            element_draw_end(elem, &draw);
             break;
         }
         else if (currentPiece.dropping)
@@ -777,19 +786,19 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             window_set_timer(win, TIMER_NONE, TICK_SPEED);
         }
 
-        current_piece_update(elem, draw);
+        current_piece_update(elem, &draw);
 
         if (clearingLines || gameover)
         {
             gameover = false;
             window_set_timer(win, TIMER_NONE, 0);
         }
+
+        element_draw_end(elem, &draw);
     }
     break;
     case EVENT_KBD:
     {
-        drawable_t* draw = element_draw(elem);
-
         if (!started)
         {
             if (event->kbd.type == KBD_PRESS && event->kbd.code == KBD_SPACE)
@@ -806,13 +815,16 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             break;
         }
 
+        drawable_t draw;
+        element_draw_begin(elem, &draw);
+
         if (event->kbd.type == KBD_PRESS && (event->kbd.code == KBD_A || event->kbd.code == KBD_D))
         {
-            current_piece_move(elem, draw, event->kbd.code);
+            current_piece_move(elem, &draw, event->kbd.code);
         }
         else if (event->kbd.type == KBD_PRESS && event->kbd.code == KBD_R)
         {
-            current_piece_rotate(elem, draw);
+            current_piece_rotate(elem, &draw);
         }
         else if (event->kbd.type == KBD_PRESS && event->kbd.code == KBD_S)
         {
@@ -821,7 +833,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         }
         else if (event->kbd.type == KBD_PRESS && event->kbd.code == KBD_SPACE)
         {
-            current_piece_drop(elem, draw);
+            current_piece_drop(elem, &draw);
             window_set_timer(win, TIMER_NONE, 0);
         }
         else if (event->kbd.type == KBD_RELEASE && event->kbd.code == KBD_S)
@@ -829,6 +841,8 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             currentPiece.dropping = false;
             window_set_timer(win, TIMER_NONE, TICK_SPEED);
         }
+    
+        element_draw_end(elem, &draw);
     }
     break;
     }
@@ -863,8 +877,8 @@ int main(void)
 {
     display_t* disp = display_new();
 
-    largeFont = font_new(disp, "zap-vga16", 32);
-    massiveFont = font_new(disp, "zap-vga16", 64);
+    largeFont = font_new(disp, DEFAULT_FONT, 32);
+    massiveFont = font_new(disp, DEFAULT_FONT, 64);
 
     rect_t rect = RECT_INIT_DIM(500, 200, WINDOW_WIDTH, WINDOW_HEIGHT);
     window_t* win = window_new(disp, "Tetris", &rect, SURFACE_WINDOW, WINDOW_DECO, procedure, NULL);

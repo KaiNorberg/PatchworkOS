@@ -4,14 +4,6 @@
 
 #define FBMP_MAGIC 0x706D6266
 
-typedef struct fbmp
-{
-    uint32_t magic;
-    uint32_t width;
-    uint32_t height;
-    pixel_t data[];
-} fbmp_t;
-
 image_t* image_new_blank(display_t* disp, uint64_t width, uint64_t height)
 {
     image_t* image = malloc(sizeof(image_t));
@@ -20,27 +12,16 @@ image_t* image_new_blank(display_t* disp, uint64_t width, uint64_t height)
         return NULL;
     }
 
-    image->disp = disp;
-    image->surface = display_gen_id(disp);
-    image->width = width;
-    image->height = height;
-
-    image->draw.disp = image->disp;
-    image->draw.surface = image->surface;
-    image->draw.drawArea = RECT_INIT_DIM(0, 0, width, height);
-    image->draw.invalidRect = (rect_t){0};
+    list_entry_init(&image->entry);
+    image->draw.disp = disp;
     image->draw.stride = width;
-
-    cmd_surface_new_t* cmd = display_cmds_push(disp, CMD_SURFACE_NEW, sizeof(cmd_surface_new_t));
-    cmd->id = image->surface;
-    cmd->type = SURFACE_HIDDEN;
-    cmd->rect = image->draw.drawArea;
-    display_cmds_flush(disp);
-
+    image->draw.buffer = malloc(width * height * sizeof(pixel_t));
+    image->draw.contentRect = RECT_INIT_DIM(0, 0, width, height);
+    image->draw.invalidRect = (rect_t){0};
     return image;
 }
 
-fbmp_t* fbmp_new(const char* path)
+image_t* image_new(display_t* disp, const char* path)
 {
     fd_t file = open(path);
     if (file == ERR)
@@ -48,61 +29,43 @@ fbmp_t* fbmp_new(const char* path)
         return NULL;
     }
 
+    struct 
+    {
+        uint32_t magic;
+        uint32_t width;
+        uint32_t height;
+    } header;
+    if (read(file, &header, sizeof(header)) == ERR)
+    {
+        close(file);
+        return NULL;
+    }
+
     uint64_t fileSize = seek(file, 0, SEEK_END);
     seek(file, 0, SEEK_SET);
 
-    fbmp_t* fbmp = malloc(fileSize);
-    if (fbmp == NULL)
+    if (fileSize - sizeof(header) != header.width * header.height * sizeof(pixel_t) || header.magic != FBMP_MAGIC)
     {
         close(file);
         return NULL;
     }
 
-    if (read(file, fbmp, fileSize) != fileSize)
-    {
-        close(file);
-        free(fbmp);
-        return NULL;
-    }
-
-    close(file);
-
-    if (fbmp->magic != FBMP_MAGIC)
-    {
-        free(fbmp);
-        return NULL;
-    }
-
-    return fbmp;
-}
-
-image_t* image_new(display_t* disp, const char* path)
-{
-    fbmp_t* fbmp = fbmp_new(path);
-    if (fbmp == NULL)
-    {
-        return NULL;
-    }
-
-    image_t* image = image_new_blank(disp, fbmp->width, fbmp->height);
+    image_t* image = image_new_blank(disp, header.width, header.height);
     if (image == NULL)
     {
-        free(fbmp);
+        close(file);
         return NULL;
     }
 
-    draw_buffer(&image->draw, fbmp->data, 0, fbmp->width * fbmp->height);
-
-    free(fbmp);
+    read(file, image->draw.buffer, header.width * header.height * sizeof(pixel_t));
+    close(file);
     return image;
 }
 
 void image_free(image_t* image)
 {
-    cmd_surface_free_t* cmd = display_cmds_push(image->disp, CMD_SURFACE_FREE, sizeof(cmd_surface_free_t));
-    cmd->target = image->surface;
-    display_cmds_flush(image->disp);
-
+    list_remove(&image->entry);
+    free(image->draw.buffer);
     free(image);
 }
 
@@ -113,10 +76,10 @@ drawable_t* image_draw(image_t* image)
 
 uint64_t image_width(image_t* image)
 {
-    return image->width;
+    return RECT_WIDTH(&image->draw.contentRect);
 }
 
 uint64_t image_height(image_t* image)
 {
-    return image->height;
+    return RECT_HEIGHT(&image->draw.contentRect);
 }

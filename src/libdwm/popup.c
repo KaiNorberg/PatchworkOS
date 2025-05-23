@@ -63,8 +63,13 @@ static uint64_t popup_procedure(window_t* win, element_t* elem, const event_t* e
         element_content_rect(elem, &rect);
         rect.bottom -= POPUP_BUTTON_AREA_HEIGHT;
 
-        draw_text_multiline(element_draw(elem), &rect, NULL, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
+        drawable_t draw;
+        element_draw_begin(elem, &draw);
+
+        draw_text_multiline(&draw, &rect, NULL, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
             windowTheme.background, popup->text);
+    
+        element_draw_end(elem, &draw);
     }
     break;
     case LEVENT_ACTION:

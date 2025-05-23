@@ -3,21 +3,9 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
-typedef struct drawable
-{
-    display_t* disp;
-    surface_id_t surface;
-    rect_t drawArea;    // The area stuff is drawn to, any given to rect or point is relative to this area
-    rect_t invalidRect; // Relative to draw area
-    uint64_t stride;
-} drawable_t;
-
 typedef struct image
 {
-    display_t* disp;
-    surface_id_t surface;
-    uint64_t width;
-    uint64_t height;
+    list_entry_t entry;
     drawable_t draw;
 } image_t;
 
@@ -25,9 +13,12 @@ typedef struct font
 {
     list_entry_t entry;
     display_t* disp;
-    font_id_t id;
-    uint64_t width;
-    uint64_t height;
+    uint32_t scale;
+    uint32_t width;
+    uint32_t height;
+    uint32_t glyphSize;
+    uint32_t glyphAmount;
+    uint8_t glyphs[];
 } font_t;
 
 typedef struct element
@@ -40,7 +31,6 @@ typedef struct element
     window_t* win;
     void* private;
     rect_t rect;
-    drawable_t draw;
 } element_t;
 
 element_t* element_new_root(window_t* win, element_id_t id, const rect_t* rect, procedure_t procedure, void* private);
@@ -52,10 +42,13 @@ typedef struct window
     surface_id_t surface;
     char name[MAX_NAME];
     rect_t rect;
+    rect_t invalidRect;
     surface_type_t type;
     window_flags_t flags;
+    char shmem[MAX_NAME];
+    pixel_t* buffer;
     element_t* root;
-    element_t* clientElement;
+    element_t* clientElement;    
 } window_t;
 
 #define DISPLAY_MAX_EVENT 64
@@ -75,6 +68,7 @@ typedef struct display
     } events;
     list_t windows;
     list_t fonts;
+    list_t images;
     surface_id_t newId;
-    font_t defaultFont;
+    font_t* defaultFont;
 } display_t;

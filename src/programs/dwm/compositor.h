@@ -12,6 +12,7 @@ typedef struct
     list_t* panels;
     surface_t* wall;
     surface_t* cursor;
+    surface_t* fullscreen;
 } compositor_ctx_t;
 
 void compositor_init(void);

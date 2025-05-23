@@ -13,7 +13,12 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         rect_t rect;
         element_content_rect(elem, &rect);
         point_t srcPoint = {0};
-        draw_image(element_draw(elem), image, &rect, &srcPoint);
+
+        drawable_t draw;
+        element_draw_begin(elem, &draw);
+
+        draw_image(&draw, image, &rect, &srcPoint);
+        element_draw_end(elem, &draw);
     }
     break;
     }

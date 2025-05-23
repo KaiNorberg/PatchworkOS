@@ -18,8 +18,6 @@ void dwm_init(void);
 
 void dwm_deinit(void);
 
-psf_t* dwm_default_font(void);
-
 uint64_t dwm_attach(surface_t* surface);
 
 void dwm_detach(surface_t* surface);

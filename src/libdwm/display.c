@@ -25,24 +25,6 @@ static void display_events_pop(display_t* disp, event_t* event)
     disp->events.readIndex = (disp->events.readIndex + 1) % DISPLAY_MAX_EVENT;
 }
 
-static uint64_t display_default_font_init(display_t* disp)
-{
-    cmd_font_info_t* cmd = display_cmds_push(disp, CMD_FONT_INFO, sizeof(cmd_font_info_t));
-    cmd->id = FONT_ID_DEFAULT;
-    display_cmds_flush(disp);
-
-    event_t event;
-    if (display_wait_for_event(disp, &event, EVENT_FONT_INFO) == ERR)
-    {
-        return ERR;
-    }
-
-    disp->defaultFont.id = event.fontInfo.id;
-    disp->defaultFont.width = event.fontInfo.width;
-    disp->defaultFont.height = event.fontInfo.height;
-    return 0;
-}
-
 display_t* display_new(void)
 {
     display_t* disp = malloc(sizeof(display_t));
@@ -90,9 +72,10 @@ display_t* display_new(void)
     disp->cmds.size = offsetof(cmd_buffer_t, data);
     list_init(&disp->windows);
     list_init(&disp->fonts);
+    list_init(&disp->images);
     disp->newId = SURFACE_ID_NONE - 1;
-
-    if (display_default_font_init(disp) == ERR)
+    disp->defaultFont = font_new(disp, DEFAULT_FONT, 16);
+    if (disp->defaultFont == NULL)
     {
         close(disp->handle);
         close(disp->data);
@@ -105,18 +88,25 @@ display_t* display_new(void)
 
 void display_free(display_t* disp)
 {
+    window_t* window;
+    window_t* temp1;
+    LIST_FOR_EACH_SAFE(window, temp1, &disp->windows, entry)
+    {
+        window_free(window);
+    }
+
     font_t* font;
-    font_t* temp1;
-    LIST_FOR_EACH_SAFE(font, temp1, &disp->fonts, entry)
+    font_t* temp2;
+    LIST_FOR_EACH_SAFE(font, temp2, &disp->fonts, entry)
     {
         font_free(font);
     }
 
-    window_t* window;
-    window_t* temp2;
-    LIST_FOR_EACH_SAFE(window, temp2, &disp->windows, entry)
+    image_t* image;
+    image_t* temp3;
+    LIST_FOR_EACH_SAFE(image, temp3, &disp->images, entry)
     {
-        window_free(window);
+        image_free(image);
     }
 
     close(disp->handle);
@@ -175,7 +165,7 @@ bool display_next_event(display_t* disp, event_t* event, clock_t timeout)
     {
         poll_event_t occurred = poll1(disp->data, POLL_READ, timeout);
         if (occurred & POLL1_ERR)
-        {
+        {            
             disp->connected = false;
             return false;
         }
