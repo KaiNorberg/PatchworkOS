@@ -8,18 +8,21 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     {
     case LEVENT_INIT:
     {
-        printf("wall: init");
     }
     break;
     case LEVENT_REDRAW:
     {
-        printf("wall: redraw");
+        printf("wall: redraw\n");
+
         rect_t rect;
         element_content_rect(elem, &rect);
 
-        drawable_t* draw = element_draw(elem);
+        drawable_t draw;
+        element_draw_begin(elem, &draw);
 
-        draw_gradient(draw, &rect, 0xFF427F99, 0xFF5FA6C2, GRADIENT_DIAGONAL, true);
+        draw_gradient(&draw, &rect, 0xFF427F99, 0xFF5FA6C2, GRADIENT_DIAGONAL, true);
+    
+        element_draw_end(elem, &draw);
     }
     break;
     }

@@ -2,12 +2,12 @@
 #define DWM_EVENT_H 1
 
 #include "element_id.h"
-#include "font_id.h"
 #include "point.h"
 #include "rect.h"
 #include "surface.h"
 
 #include <stdint.h>
+#include <sys/io.h>
 #include <sys/kbd.h>
 #include <sys/mouse.h>
 
@@ -25,17 +25,19 @@ typedef uint16_t event_type_t;
 #define EVENT_MOUSE 3
 #define EVENT_FOCUS_IN 4
 #define EVENT_FOCUS_OUT 5
-#define EVENT_FONT_NEW 6
-#define EVENT_FONT_INFO 7
-#define EVENT_SURFACE_MOVE 8
-#define EVENT_TIMER 9
-#define EVENT_SCREEN_ACQUIRE 10
+#define EVENT_SURFACE_MOVE 6
+#define EVENT_TIMER 7
 
 typedef struct
 {
     uint64_t width;
     uint64_t height;
 } event_screen_info_t;
+
+typedef struct
+{
+    char shmem[MAX_NAME];
+} event_surface_new_t;
 
 typedef struct
 {
@@ -57,20 +59,6 @@ typedef struct
 
 typedef struct
 {
-    font_id_t id;
-    uint64_t width;
-    uint64_t height;
-} event_font_new_t;
-
-typedef struct
-{
-    font_id_t id;
-    uint64_t width;
-    uint64_t height;
-} event_font_info_t;
-
-typedef struct
-{
     rect_t rect;
 } event_surface_move_t;
 
@@ -82,7 +70,7 @@ typedef struct
 // Library events, sent by libdwm.
 #define LEVENT_BASE (1 << 14)
 #define LEVENT_INIT (LEVENT_BASE + 1)
-#define LEVENT_FREE (LEVENT_BASE + 2) // May be recieved outside of a dispatch call.
+#define LEVENT_FREE (LEVENT_BASE + 2) // May be received outside of a dispatch call.
 #define LEVENT_REDRAW (LEVENT_BASE + 3)
 #define LEVENT_ACTION (LEVENT_BASE + 4)
 #define LEVENT_QUIT (LEVENT_BASE + 5)
@@ -122,10 +110,9 @@ typedef struct event
     surface_id_t target;
     union {
         event_screen_info_t screenInfo;
+        event_surface_new_t surfaceNew;
         event_kbd_t kbd;
         event_mouse_t mouse;
-        event_font_new_t fontNew;
-        event_font_info_t fontInfo;
         event_surface_move_t surfaceMove;
         event_screen_acquire_t screenAcquire;
         levent_init_t lInit;

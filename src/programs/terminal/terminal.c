@@ -255,16 +255,27 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
     }
     break;
     case LEVENT_REDRAW:
-    {
-        terminal_clear(term, elem, element_draw(elem));
+    {        
+        drawable_t draw;
+        element_draw_begin(elem, &draw);
+
+        terminal_clear(term, elem, &draw);    
+
+        element_draw_end(elem, &draw);
     }
     break;
     case EVENT_TIMER:
     {
         window_set_timer(win, TIMER_NONE, BLINK_INTERVAL);
 
-        term->cursorVisible = !term->cursorVisible;
-        terminal_cursor_draw(term, elem, element_draw(elem));
+        term->cursorVisible = !term->cursorVisible;        
+
+        drawable_t draw;
+        element_draw_begin(elem, &draw);
+
+        terminal_cursor_draw(term, elem, &draw);
+
+        element_draw_end(elem, &draw);
     }
     break;
     case EVENT_KBD:
@@ -272,8 +283,14 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         if (event->kbd.type != KBD_PRESS || event->kbd.code == 0)
         {
             break;
-        }
-        terminal_handle_input(term, elem, element_draw(elem), event->kbd.code, event->kbd.ascii, event->kbd.mods);
+        }    
+           
+        drawable_t draw;
+        element_draw_begin(elem, &draw);
+
+        terminal_handle_input(term, elem, &draw, event->kbd.code, event->kbd.ascii, event->kbd.mods);
+
+        element_draw_end(elem, &draw);
     }
     break;
     }
@@ -355,7 +372,14 @@ static void terminal_read_stdout(terminal_t* term)
 
         element_t* elem = window_client_element(term->win);
 
-        terminal_write(term, elem, element_draw(elem), buffer);
+        drawable_t draw;
+        element_draw_begin(elem, &draw);
+
+        terminal_write(term, elem, &draw, buffer);
+
+        element_draw_end(elem, &draw);
+        window_invalidate_flush(term->win);
+
         input_set(&term->input, "");
     } while (poll1(term->stdout[PIPE_READ], POLL_READ, 0) & POLL_READ);
 }

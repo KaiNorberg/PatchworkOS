@@ -17,6 +17,7 @@
 #include "sched/sched.h"
 #include "utils/log.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -96,14 +97,14 @@ void syscall_process_exit(uint64_t status)
 {
     sched_process_exit(status);
     sched_invoke();
-    ASSERT_PANIC(false);
+    assert(false);
 }
 
 void syscall_thread_exit(void)
 {
     sched_thread_exit();
     sched_invoke();
-    ASSERT_PANIC(false);
+    assert(false);
 }
 
 pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds)

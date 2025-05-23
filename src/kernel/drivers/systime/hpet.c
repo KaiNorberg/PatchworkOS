@@ -4,6 +4,8 @@
 #include "utils/log.h"
 #include "utils/utils.h"
 
+#include <assert.h>
+
 static hpet_t* hpet;
 static uintptr_t address;
 static uint64_t period;
@@ -11,7 +13,7 @@ static uint64_t period;
 void hpet_init(void)
 {
     hpet = (hpet_t*)acpi_lookup("HPET");
-    ASSERT_PANIC_MSG(hpet != NULL, "Unable to find hpet, hardware is not compatible");
+    assert(hpet != NULL && "Unable to find hpet, hardware is not compatible");
 
     address = (uintptr_t)vmm_kernel_map(NULL, (void*)hpet->address, PAGE_SIZE);
     period = hpet_read(HPET_GENERAL_CAPABILITIES) >> HPET_COUNTER_CLOCK_OFFSET;

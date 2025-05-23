@@ -10,15 +10,6 @@ static void element_send_init(element_t* elem)
     display_events_push(elem->win->disp, elem->win->surface, LEVENT_INIT, &event, sizeof(levent_init_t));
 }
 
-static void element_drawable_update(element_t* elem)
-{
-    elem->draw.disp = elem->win->disp;
-    elem->draw.surface = elem->win->surface;
-    element_global_rect(elem, &elem->draw.drawArea);
-    elem->draw.invalidRect = (rect_t){0};
-    elem->draw.stride = RECT_WIDTH(&elem->win->rect);
-}
-
 static element_t* element_new_raw(element_id_t id, const rect_t* rect, procedure_t procedure, void* private)
 {
     element_t* elem = malloc(sizeof(element_t));
@@ -48,7 +39,6 @@ element_t* element_new(element_t* parent, element_id_t id, const rect_t* rect, p
     elem->parent = parent;
     elem->win = parent->win;
     list_push(&parent->children, &elem->entry);
-    element_drawable_update(elem);
 
     element_send_init(elem);
     element_send_redraw(elem, false);
@@ -64,7 +54,6 @@ element_t* element_new_root(window_t* win, element_id_t id, const rect_t* rect, 
     }
 
     elem->win = win;
-    element_drawable_update(elem);
 
     element_send_init(elem);
     element_send_redraw(elem, false);
@@ -124,6 +113,11 @@ void element_set_private(element_t* elem, void* private)
 void* element_private(element_t* elem)
 {
     return elem->private;
+}
+
+element_id_t element_id(element_t* elem)
+{
+    return elem->id;
 }
 
 void element_rect(element_t* elem, rect_t* rect)
@@ -202,9 +196,35 @@ void element_global_to_point(element_t* elem, point_t* dest, const point_t* src)
     };
 }
 
-drawable_t* element_draw(element_t* elem)
+void element_draw_begin(element_t* elem, drawable_t* draw)
 {
-    return &elem->draw;
+    rect_t globalRect;
+    element_global_rect(elem, &globalRect);
+
+    draw->disp = elem->win->disp;
+    draw->stride = RECT_WIDTH(&elem->win->rect);
+    draw->buffer = &elem->win->buffer[globalRect.left + globalRect.top * draw->stride];
+    draw->contentRect = RECT_INIT(0, 0, RECT_WIDTH(&elem->rect), RECT_HEIGHT(&elem->rect));
+    draw->invalidRect = (rect_t){0};
+}
+
+void element_draw_end(element_t* elem, drawable_t* draw)
+{
+    rect_t globalInvalid;
+    element_rect_to_global(elem, &globalInvalid, &draw->invalidRect);
+    window_invalidate(elem->win, &globalInvalid);
+
+    if (RECT_AREA(&draw->invalidRect) != 0)
+    {
+        element_t* child;
+        LIST_FOR_EACH(child, &elem->children, entry)
+        {
+            if (RECT_OVERLAP(&draw->invalidRect, &child->rect))
+            {
+                element_send_redraw(child, false);
+            }
+        }
+    }
 }
 
 void element_send_redraw(element_t* elem, bool propagate)
@@ -225,6 +245,15 @@ uint64_t element_dispatch(element_t* elem, const event_t* event)
         if (elem->proc(elem->win, elem, event) == ERR)
         {
             return ERR;
+        }
+
+        if (event->lRedraw.propagate)
+        {
+            element_t* child;
+            LIST_FOR_EACH(child, &elem->children, entry)
+            {
+                element_send_redraw(child, true);
+            }    
         }
     }
     break;
@@ -267,21 +296,6 @@ uint64_t element_dispatch(element_t* elem, const event_t* event)
         }
     }
     break;
-    }
-
-    bool shouldPropegate = event->type == LEVENT_REDRAW && event->lRedraw.propagate;
-    if (RECT_AREA(&elem->draw.invalidRect) != 0 || shouldPropegate)
-    {
-        element_t* child;
-        LIST_FOR_EACH(child, &elem->children, entry)
-        {
-            if (RECT_OVERLAP(&elem->draw.invalidRect, &child->rect))
-            {
-                element_send_redraw(child, shouldPropegate);
-            }
-        }
-
-        elem->draw.invalidRect = (rect_t){0};
     }
 
     return 0;

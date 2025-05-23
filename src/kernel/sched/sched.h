@@ -16,6 +16,7 @@ typedef struct
 typedef struct
 {
     thread_queue_t queues[PRIORITY_LEVELS];
+    // Members below should only be accessed by the cpu this ctx belongs to.
     list_t parkedThreads;
     list_t zombieThreads;
     thread_t* runThread;

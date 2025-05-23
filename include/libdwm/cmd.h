@@ -1,7 +1,6 @@
 #ifndef DWM_CMD_H
 #define DWM_CMD_H 1
 
-#include "font_id.h"
 #include "pixel.h"
 #include "point.h"
 #include "rect.h"
@@ -21,30 +20,13 @@ typedef enum
     CMD_SCREEN_INFO,
     CMD_SURFACE_NEW,
     CMD_SURFACE_FREE,
-    CMD_DRAW_RECT,
-    CMD_DRAW_EDGE,
-    CMD_DRAW_GRADIENT,
-    CMD_FONT_NEW,
-    CMD_FONT_FREE,
-    CMD_FONT_INFO,
-    CMD_DRAW_STRING,
     CMD_SURFACE_MOVE,
-    CMD_DRAW_TRANSFER,
     CMD_SURFACE_SET_TIMER,
-    CMD_DRAW_BUFFER,
-    CMD_TYPE_AMOUNT, // Below this are unimplemented cmds.
-    CMD_DRAW_LINE,
-    CMD_DRAW_POINT,
-    CMD_DRAW_TRIANGLE,
-    CMD_DRAW_CIRCLE,
-    CMD_DRAW_IMAGE,
-    CMD_DRAW_BITMAP
+    CMD_SURFACE_INVALIDATE,
+    CMD_TYPE_AMOUNT, 
 } cmd_type_t;
 
 #define CMD_MAGIC 0xDEADC0DE
-
-// TODO: Consider way to "disable" the dwm to allow a program to draw directly to the screen via the framebuffers.
-// cmd_enable? cmd_disable? Persmissions?
 
 typedef struct cmd_header
 {
@@ -73,24 +55,6 @@ typedef struct
     surface_id_t target;
 } cmd_surface_free_t;
 
-typedef struct
-{
-    cmd_header_t header;
-    surface_id_t target;
-    rect_t rect;
-    pixel_t pixel;
-} cmd_draw_rect_t;
-
-typedef struct
-{
-    cmd_header_t header;
-    surface_id_t target;
-    rect_t rect;
-    uint64_t width;
-    pixel_t foreground;
-    pixel_t background;
-} cmd_draw_edge_t;
-
 typedef enum
 {
     GRADIENT_VERTICAL,
@@ -103,58 +67,7 @@ typedef struct
     cmd_header_t header;
     surface_id_t target;
     rect_t rect;
-    pixel_t start;
-    pixel_t end;
-    gradient_type_t type;
-    bool addNoise;
-} cmd_draw_gradient_t;
-
-typedef struct
-{
-    cmd_header_t header;
-    char name[MAX_NAME];
-    uint64_t desiredHeight;
-} cmd_font_new_t;
-
-typedef struct
-{
-    cmd_header_t header;
-    font_id_t id;
-} cmd_font_free_t;
-
-typedef struct
-{
-    cmd_header_t header;
-    font_id_t id;
-} cmd_font_info_t;
-
-typedef struct
-{
-    cmd_header_t header;
-    surface_id_t target;
-    font_id_t fontId;
-    point_t point;
-    pixel_t foreground;
-    pixel_t background;
-    uint64_t length;
-    char string[];
-} cmd_draw_string_t;
-
-typedef struct
-{
-    cmd_header_t header;
-    surface_id_t target;
-    rect_t rect;
 } cmd_surface_move_t;
-
-typedef struct
-{
-    cmd_header_t header;
-    surface_id_t dest;
-    surface_id_t src;
-    rect_t destRect;
-    point_t srcPoint;
-} cmd_draw_transfer_t;
 
 typedef enum
 {
@@ -174,11 +87,8 @@ typedef struct
 {
     cmd_header_t header;
     surface_id_t target;
-    bool invalidate;
-    uint64_t index;
-    uint64_t length;
-    pixel_t buffer[];
-} cmd_draw_buffer_t;
+    rect_t invalidRect;
+} cmd_surface_invalidate_t;
 
 #define CMD_BUFFER_MAX_DATA (0x1000)
 

@@ -31,6 +31,7 @@ Patchwork is a 64 bit monolithic hobbyist OS built from scratch in C for the x86
 - [Custom image format (.fbmp)](https://github.com/KaiNorberg/fbmp)
 - Fully user space desktop environment
 - Strict adherence to "everything is a file"
+- IPC including pipes, shared memory, sockets and plan9 inspired "signals" called notes.
 - More to be added...
 
 ## Limitations

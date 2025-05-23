@@ -5,6 +5,7 @@
 #include "sched/sched.h"
 #include "utils/log.h"
 
+#include <assert.h>
 #include <stdatomic.h>
 #include <stdio.h>
 #include <sys/atomint.h>
@@ -54,6 +55,6 @@ uint64_t fb_expose(fb_t* fb)
 {
     char name[MAX_NAME];
     sprintf(name, "fb%d", atomic_load(&newId));
-    ASSERT_PANIC(sysobj_init_path(&fb->sysobj, "/", name, &fbOps, fb) != ERR);
+    assert(sysobj_init_path(&fb->sysobj, "/", name, &fbOps, fb) != ERR);
     return 0;
 }

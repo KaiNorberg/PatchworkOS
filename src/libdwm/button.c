@@ -19,29 +19,32 @@ static void button_draw(button_t* button, bool redraw)
     rect_t rect;
     element_content_rect(button->elem, &rect);
 
-    drawable_t* draw = element_draw(button->elem);
+    drawable_t draw;
+    element_draw_begin(button->elem, &draw);
 
     if (redraw)
     {
-        draw_rim(draw, &rect, windowTheme.rimWidth, windowTheme.dark);
+        draw_rim(&draw, &rect, windowTheme.rimWidth, windowTheme.dark);
     }
     RECT_SHRINK(&rect, windowTheme.rimWidth);
 
     if (button->pressed)
     {
-        draw_edge(draw, &rect, windowTheme.edgeWidth, windowTheme.shadow, windowTheme.highlight);
+        draw_edge(&draw, &rect, windowTheme.edgeWidth, windowTheme.shadow, windowTheme.highlight);
     }
     else
     {
-        draw_edge(draw, &rect, windowTheme.edgeWidth, windowTheme.highlight, windowTheme.shadow);
+        draw_edge(&draw, &rect, windowTheme.edgeWidth, windowTheme.highlight, windowTheme.shadow);
     }
     RECT_SHRINK(&rect, windowTheme.edgeWidth);
 
     if (redraw)
     {
-        draw_rect(draw, &rect, button->background);
-        draw_text(draw, &rect, button->font, ALIGN_CENTER, ALIGN_CENTER, button->foreground, 0, button->text);
+        draw_rect(&draw, &rect, button->background);
+        draw_text(&draw, &rect, button->font, ALIGN_CENTER, ALIGN_CENTER, button->foreground, 0, button->text);
     }
+
+    element_draw_end(button->elem, &draw);
 }
 
 static void button_send_action(button_t* button, action_type_t type)

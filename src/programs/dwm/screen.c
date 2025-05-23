@@ -131,6 +131,31 @@ void screen_transfer_blend(surface_t* surface, const rect_t* rect)
     scanlines_invalidate(rect);
 }
 
+void screen_transfer_frontbuffer(surface_t* surface, const rect_t* rect)
+{    
+    point_t srcPoint = {
+        .x = MAX(rect->left - surface->pos.x, 0),
+        .y = MAX(rect->top - surface->pos.y, 0),
+    };
+    switch (info.format)
+    {
+    case FB_ARGB32:
+    {
+        for (int64_t y = 0; y < RECT_HEIGHT(rect); y++)
+        {
+            memcpy(&((pixel_t*)frontbuffer)[rect->left + (y + rect->top) * surface->gfx.stride],
+                &surface->gfx.buffer[srcPoint.x + (y + srcPoint.y) * info.stride], RECT_WIDTH(rect) * sizeof(pixel_t));
+        }
+    }
+    break;
+    default:
+    {
+        exit(EXIT_FAILURE);
+    }
+    }
+    scanlines_clear();
+}
+
 void screen_swap(void)
 {
     switch (info.format)

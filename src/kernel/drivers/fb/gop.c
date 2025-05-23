@@ -6,6 +6,7 @@
 #include "sched/sched.h"
 #include "utils/log.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -17,7 +18,7 @@ static gop_buffer_t gop;
 static void* gop_mmap(fb_t* fb, void* addr, uint64_t length, prot_t prot)
 {
     length = MIN(gop.height * gop.stride * sizeof(uint32_t), length);
-    addr = vmm_map(addr, VMM_HIGHER_TO_LOWER(gop.base), length, prot);
+    addr = vmm_map(addr, gop.base, length, prot, NULL, NULL);
     if (addr == NULL)
     {
         return NULL;
@@ -38,5 +39,5 @@ void gop_init(gop_buffer_t* gopBuffer)
     fb.info.format = FB_ARGB32;
     gop = *gopBuffer;
 
-    ASSERT_PANIC(fb_expose(&fb) != ERR);
+    assert(fb_expose(&fb) != ERR);
 }

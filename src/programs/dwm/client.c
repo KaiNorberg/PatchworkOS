@@ -2,31 +2,12 @@
 
 #include "compositor.h"
 #include "dwm.h"
-#include "psf.h"
 #include "screen.h"
 
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-static psf_t* client_find_font(client_t* client, font_id_t id)
-{
-    if (id == FONT_ID_DEFAULT)
-    {
-        return dwm_default_font();
-    }
-
-    psf_t* font;
-    LIST_FOR_EACH(font, &client->fonts, entry)
-    {
-        if (font->id == id)
-        {
-            return font;
-        }
-    }
-    return NULL;
-}
 
 static surface_t* client_find_surface(client_t* client, surface_id_t id)
 {
@@ -51,7 +32,6 @@ client_t* client_new(fd_t fd)
     list_entry_init(&client->entry);
     client->fd = fd;
     list_init(&client->surfaces);
-    list_init(&client->fonts);
 
     return client;
 }
@@ -137,7 +117,9 @@ static uint64_t client_action_surface_new(client_t* client, const cmd_header_t* 
 
     list_push(&client->surfaces, &surface->clientEntry);
 
-    client_send_event(client, surface->id, EVENT_SURFACE_NEW, NULL, 0);
+    event_surface_new_t event;
+    strcpy(event.shmem, surface->shmem);
+    client_send_event(client, surface->id, EVENT_SURFACE_NEW, &event, sizeof(event));
 
     dwm_focus_set(surface);
     return 0;
@@ -163,206 +145,6 @@ static uint64_t client_action_surface_free(client_t* client, const cmd_header_t*
     return 0;
 }
 
-static uint64_t client_action_draw_rect(client_t* client, const cmd_header_t* header)
-{
-    if (header->size != sizeof(cmd_draw_rect_t))
-    {
-        return ERR;
-    }
-    cmd_draw_rect_t* cmd = (cmd_draw_rect_t*)header;
-
-    surface_t* surface = client_find_surface(client, cmd->target);
-    if (surface == NULL)
-    {
-        return ERR;
-    }
-
-    rect_t surfaceRect = SURFACE_CONTENT_RECT(surface);
-    rect_t rect = cmd->rect;
-    RECT_FIT(&rect, &surfaceRect);
-    gfx_rect(&surface->gfx, &rect, cmd->pixel);
-
-    surface->invalid = true;
-    compositor_set_redraw_needed();
-    return 0;
-}
-
-static uint64_t client_action_draw_edge(client_t* client, const cmd_header_t* header)
-{
-    if (header->size != sizeof(cmd_draw_edge_t))
-    {
-        return ERR;
-    }
-    cmd_draw_edge_t* cmd = (cmd_draw_edge_t*)header;
-
-    surface_t* surface = client_find_surface(client, cmd->target);
-    if (surface == NULL)
-    {
-        return ERR;
-    }
-
-    rect_t surfaceRect = SURFACE_CONTENT_RECT(surface);
-    rect_t rect = cmd->rect;
-    RECT_FIT(&rect, &surfaceRect);
-    gfx_edge(&surface->gfx, &rect, cmd->width, cmd->foreground, cmd->background);
-
-    surface->invalid = true;
-    compositor_set_redraw_needed();
-    return 0;
-}
-
-static uint64_t client_action_draw_gradient(client_t* client, const cmd_header_t* header)
-{
-    if (header->size != sizeof(cmd_draw_gradient_t))
-    {
-        return ERR;
-    }
-    cmd_draw_gradient_t* cmd = (cmd_draw_gradient_t*)header;
-
-    surface_t* surface = client_find_surface(client, cmd->target);
-    if (surface == NULL)
-    {
-        return ERR;
-    }
-
-    rect_t surfaceRect = SURFACE_CONTENT_RECT(surface);
-    rect_t rect = cmd->rect;
-    RECT_FIT(&rect, &surfaceRect);
-    gfx_gradient(&surface->gfx, &rect, cmd->start, cmd->end, cmd->type, cmd->addNoise);
-
-    surface->invalid = true;
-    compositor_set_redraw_needed();
-    return 0;
-}
-
-static uint64_t client_action_font_new(client_t* client, const cmd_header_t* header)
-{
-    if (header->size != sizeof(cmd_font_new_t))
-    {
-        return ERR;
-    }
-    cmd_font_new_t* cmd = (cmd_font_new_t*)header;
-    if (memchr(cmd->name, '\0', MAX_NAME) == NULL)
-    {
-        return ERR;
-    }
-
-    char path[MAX_PATH];
-    sprintf(path, FONT_DIR "/%s.psf", cmd->name);
-
-    psf_t* font = psf_new(path, cmd->desiredHeight);
-    if (font == NULL)
-    {
-        return ERR;
-    }
-
-    event_font_new_t event;
-    event.id = font->id;
-    event.width = font->width * font->scale;
-    event.height = font->height * font->scale;
-    if (client_send_event(client, SURFACE_ID_NONE, EVENT_FONT_NEW, &event, sizeof(event_font_new_t)) == ERR)
-    {
-        psf_free(font);
-        return ERR;
-    }
-
-    list_push(&client->fonts, &font->entry);
-    return 0;
-}
-
-static uint64_t client_action_font_free(client_t* client, const cmd_header_t* header)
-{
-    if (header->size != sizeof(cmd_font_free_t))
-    {
-        return ERR;
-    }
-    cmd_font_free_t* cmd = (cmd_font_free_t*)header;
-
-    if (cmd->id == FONT_ID_DEFAULT)
-    {
-        return ERR;
-    }
-
-    psf_t* font = client_find_font(client, cmd->id);
-    if (font == NULL)
-    {
-        return ERR;
-    }
-
-    list_remove(&font->entry);
-    psf_free(font);
-    return 0;
-}
-
-static uint64_t client_action_font_info(client_t* client, const cmd_header_t* header)
-{
-    if (header->size != sizeof(cmd_font_info_t))
-    {
-        return ERR;
-    }
-    cmd_font_info_t* cmd = (cmd_font_info_t*)header;
-
-    psf_t* font = client_find_font(client, cmd->id);
-    if (font == NULL)
-    {
-        return ERR;
-    }
-
-    event_font_info_t event;
-    event.id = cmd->id;
-    event.width = font->width * font->scale;
-    event.height = font->height * font->scale;
-    if (client_send_event(client, SURFACE_ID_NONE, EVENT_FONT_INFO, &event, sizeof(event_font_info_t)) == ERR)
-    {
-        return ERR;
-    }
-
-    return 0;
-}
-
-static uint64_t client_action_draw_string(client_t* client, const cmd_header_t* header)
-{
-    if (header->size <= sizeof(cmd_draw_string_t))
-    {
-        return ERR;
-    }
-    cmd_draw_string_t* cmd = (cmd_draw_string_t*)header;
-    if (header->size != sizeof(cmd_draw_string_t) + cmd->length)
-    {
-        return ERR;
-    }
-
-    surface_t* surface = client_find_surface(client, cmd->target);
-    if (surface == NULL)
-    {
-        return ERR;
-    }
-
-    psf_t* font = client_find_font(client, cmd->fontId);
-    if (font == NULL)
-    {
-        return ERR;
-    }
-
-    rect_t textArea = RECT_INIT_DIM(cmd->point.x, cmd->point.y, font->width * cmd->length, font->height);
-    rect_t surfaceRect = SURFACE_CONTENT_RECT(surface);
-    if (!RECT_CONTAINS(&surfaceRect, &textArea))
-    {
-        return ERR;
-    }
-
-    point_t point = cmd->point;
-    for (uint64_t i = 0; i < cmd->length; i++)
-    {
-        gfx_psf(&surface->gfx, font, &point, cmd->string[i], cmd->foreground, cmd->background);
-        point.x += font->width * font->scale;
-    }
-
-    surface->invalid = true;
-    compositor_set_redraw_needed();
-    return 0;
-}
-
 static uint64_t client_action_surface_move(client_t* client, const cmd_header_t* header)
 {
     if (header->size != sizeof(cmd_surface_move_t))
@@ -382,10 +164,12 @@ static uint64_t client_action_surface_move(client_t* client, const cmd_header_t*
 
     if (surface->gfx.width != width || surface->gfx.height != height)
     {
-        if (surface_resize_buffer(surface, width, height) == ERR)
+        // TODO: Reimplement resizing
+        return ERR;
+        /*if (surface_resize_buffer(surface, width, height) == ERR)
         {
             return ERR;
-        }
+        }*/
     }
 
     surface->pos = (point_t){.x = cmd->rect.left, .y = cmd->rect.top};
@@ -395,40 +179,6 @@ static uint64_t client_action_surface_move(client_t* client, const cmd_header_t*
     event_surface_move_t event;
     event.rect = cmd->rect;
     client_send_event(surface->client, surface->id, EVENT_SURFACE_MOVE, &event, sizeof(event_surface_move_t));
-    return 0;
-}
-
-static uint64_t client_action_draw_transfer(client_t* client, const cmd_header_t* header)
-{
-    if (header->size != sizeof(cmd_draw_transfer_t))
-    {
-        return ERR;
-    }
-    cmd_draw_transfer_t* cmd = (cmd_draw_transfer_t*)header;
-
-    surface_t* dest = client_find_surface(client, cmd->dest);
-    if (dest == NULL)
-    {
-        return ERR;
-    }
-
-    surface_t* src = cmd->dest == cmd->src ? dest : client_find_surface(client, cmd->src);
-    if (src == NULL)
-    {
-        return ERR;
-    }
-
-    rect_t surfaceRect = SURFACE_CONTENT_RECT(dest);
-    rect_t destRect = cmd->destRect;
-    RECT_FIT(&destRect, &surfaceRect);
-
-    if (cmd->srcPoint.x < 0 || cmd->srcPoint.y < 0 || cmd->srcPoint.x + RECT_WIDTH(&destRect) > src->gfx.width ||
-        cmd->srcPoint.y + RECT_HEIGHT(&destRect) > src->gfx.height)
-    {
-        return ERR;
-    }
-
-    gfx_transfer(&dest->gfx, &src->gfx, &destRect, &cmd->srcPoint);
     return 0;
 }
 
@@ -452,17 +202,13 @@ static uint64_t client_action_surface_set_timer(client_t* client, const cmd_head
     return 0;
 }
 
-static uint64_t client_action_draw_buffer(client_t* client, const cmd_header_t* header)
+static uint64_t client_action_surface_invalidate(client_t* client, const cmd_header_t* header)
 {
-    if (header->size <= sizeof(cmd_draw_buffer_t))
+    if (header->size != sizeof(cmd_surface_invalidate_t))
     {
         return ERR;
     }
-    cmd_draw_buffer_t* cmd = (cmd_draw_buffer_t*)header;
-    if (header->size != sizeof(cmd_draw_buffer_t) + cmd->length * sizeof(pixel_t))
-    {
-        return ERR;
-    }
+    cmd_surface_invalidate_t* cmd = (cmd_surface_invalidate_t*)header;
 
     surface_t* surface = client_find_surface(client, cmd->target);
     if (surface == NULL)
@@ -470,19 +216,12 @@ static uint64_t client_action_draw_buffer(client_t* client, const cmd_header_t* 
         return ERR;
     }
 
-    if (cmd->index + cmd->length > surface->gfx.stride * surface->gfx.height)
-    {
-        return ERR;
-    }
-    memcpy(&surface->gfx.buffer[cmd->index], cmd->buffer, cmd->length * sizeof(pixel_t));
-
-    if (cmd->invalidate)
-    {
-        surface->invalid = true;
-        rect_t rect = SURFACE_CONTENT_RECT(surface);
-        gfx_invalidate(&surface->gfx, &rect);
-        compositor_set_redraw_needed();
-    }
+    rect_t surfaceRect = SURFACE_CONTENT_RECT(surface);
+    rect_t invalidRect = cmd->invalidRect;
+    RECT_FIT(&invalidRect, &surfaceRect);
+    gfx_invalidate(&surface->gfx, &invalidRect);
+    surface->invalid = true;
+    compositor_set_redraw_needed();
     return 0;
 }
 
@@ -490,21 +229,14 @@ static uint64_t (*actions[])(client_t*, const cmd_header_t*) = {
     [CMD_SCREEN_INFO] = client_action_screen_info,
     [CMD_SURFACE_NEW] = client_action_surface_new,
     [CMD_SURFACE_FREE] = client_action_surface_free,
-    [CMD_DRAW_RECT] = client_action_draw_rect,
-    [CMD_DRAW_EDGE] = client_action_draw_edge,
-    [CMD_DRAW_GRADIENT] = client_action_draw_gradient,
-    [CMD_FONT_NEW] = client_action_font_new,
-    [CMD_FONT_FREE] = client_action_font_free,
-    [CMD_FONT_INFO] = client_action_font_info,
-    [CMD_DRAW_STRING] = client_action_draw_string,
     [CMD_SURFACE_MOVE] = client_action_surface_move,
-    [CMD_DRAW_TRANSFER] = client_action_draw_transfer,
     [CMD_SURFACE_SET_TIMER] = client_action_surface_set_timer,
-    [CMD_DRAW_BUFFER] = client_action_draw_buffer,
+    [CMD_SURFACE_INVALIDATE] = client_action_surface_invalidate,
 };
 
-uint64_t client_recieve_cmds(client_t* client)
+uint64_t client_receive_cmds(client_t* client)
 {
+    errno = 0;
     uint64_t readSize = read(client->fd, &client->cmds, sizeof(cmd_buffer_t) + 1);
     if (readSize == ERR)
     {
@@ -515,13 +247,21 @@ uint64_t client_recieve_cmds(client_t* client)
         return 0;
     }
 
-    if (readSize > sizeof(cmd_buffer_t) || readSize == 0) // Program wrote to much or end of file
+    if (readSize == 0)
     {
+        printf("dwm client: end of file\n");
+        return ERR;
+    }
+
+    if (readSize > sizeof(cmd_buffer_t)) // Program wrote to much or end of file
+    {
+        printf("dwm client: wrote to much to socket\n");
         return ERR;
     }
 
     if (readSize != client->cmds.size || client->cmds.size > CMD_BUFFER_MAX_DATA)
-    {
+    {        
+        printf("dwm client: invalid cmd buffer size\n");
         return ERR;
     }
 
@@ -532,19 +272,22 @@ uint64_t client_recieve_cmds(client_t* client)
         amount++;
         if (amount > client->cmds.amount || ((uint64_t)cmd + cmd->size - (uint64_t)&client->cmds) > readSize ||
             cmd->magic != CMD_MAGIC || cmd->type >= CMD_TYPE_AMOUNT)
-        {
+        {        
+            printf("dwm client: corrupt cmd\n");
             return ERR;
         }
     }
     if (amount != client->cmds.amount)
     {
+        printf("dwm client: invalid cmd amount\n");
         return ERR;
     }
 
     CMD_BUFFER_FOR_EACH(&client->cmds, cmd)
     {
         if (actions[cmd->type](client, cmd) == ERR)
-        {
+        {        
+            printf("dwm client: cmd caused error\n");
             return ERR;
         }
     }

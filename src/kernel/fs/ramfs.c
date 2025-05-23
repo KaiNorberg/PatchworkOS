@@ -9,6 +9,7 @@
 
 #include <bootloader/boot_info.h>
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -348,7 +349,7 @@ static ram_dir_t* ramfs_load_dir(ram_dir_t* in)
 void ramfs_init(ram_disk_t* disk)
 {
     root = ramfs_load_dir(disk->root);
-    ASSERT_PANIC(vfs_mount("home", &ramfs) != ERR);
+    assert(vfs_mount("home", &ramfs) != ERR);
     lock_init(&lock);
 
     printf("ramfs: init\n");

@@ -12,6 +12,7 @@
 #include "utils/log.h"
 #include "utils/ring.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <stdatomic.h>
 #include <stdint.h>
@@ -46,7 +47,7 @@ static local_listener_t* local_listener_new(const char* address)
     lock_init(&listener->lock);
     wait_queue_init(&listener->waitQueue);
     atomic_store(&listener->ref, 1);
-    ASSERT_PANIC(sysobj_init_path(&listener->sysobj, "/net/local/listen", address, &listenerOps, NULL) != ERR);
+    assert(sysobj_init_path(&listener->sysobj, "/net/local/listen", address, &listenerOps, NULL) != ERR);
 
     LOCK_DEFER(&listenersLock);
     list_push(&listeners, &listener->entry);
@@ -621,5 +622,5 @@ void net_local_init(void)
     list_init(&listeners);
     lock_init(&listenersLock);
 
-    ASSERT_PANIC(socket_family_expose(&family) != ERR);
+    assert(socket_family_expose(&family) != ERR);
 }

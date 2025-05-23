@@ -29,6 +29,8 @@ void element_set_private(element_t* elem, void* private);
 
 void* element_private(element_t* elem);
 
+element_id_t element_id(element_t* elem);
+
 void element_rect(element_t* elem, rect_t* rect);
 
 void element_content_rect(element_t* elem, rect_t* rect);
@@ -45,9 +47,9 @@ void element_global_to_rect(element_t* elem, rect_t* dest, const rect_t* src);
 
 void element_global_to_point(element_t* elem, point_t* dest, const point_t* src);
 
-drawable_t* element_draw(element_t* elem);
+void element_draw_begin(element_t* elem, drawable_t* draw);
 
-void element_invalidate(element_t* elem, const rect_t* rect);
+void element_draw_end(element_t* elem, drawable_t* draw);
 
 void element_send_redraw(element_t* elem, bool propagate);
 

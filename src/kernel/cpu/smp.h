@@ -40,15 +40,15 @@ typedef struct cpu
     uint8_t idleStack[CPU_IDLE_STACK_SIZE];
 } cpu_t;
 
-void smp_init(void);
+void smp_bootstrap_init(void);
 
-void smp_init_others(void);
+void smp_others_init(void);
 
 void smp_entry(void);
 
 void smp_halt_others(void);
 
-void smp_ipi_recieve(trap_frame_t* trapFrame, cpu_t* self);
+void smp_ipi_receive(trap_frame_t* trapFrame, cpu_t* self);
 
 void smp_send(cpu_t* cpu, ipi_t ipi);
 

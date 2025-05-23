@@ -80,7 +80,7 @@ pml_t* pml_new(void)
 
 void pml_free(pml_t* table)
 {
-    // Will also free any pages mapped in the page table
+    // Will also free any owned pages mapped in the page table
     pml_free_level(table, 4);
 }
 

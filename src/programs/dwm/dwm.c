@@ -37,15 +37,13 @@ static surface_t* focus;
 
 static poll_ctx_t* pollCtx;
 
-static psf_t* defaultFont;
-
 static client_t* dwm_client_accept(void)
 {
     printf("dwm: accept\n");
     fd_t fd = openf("sys:/net/local/%s/accept", id);
     if (fd == ERR)
     {
-        printf("dwm: %s\n", strerror(errno));
+        printf("dwm: failed to open accept (%s)\n", strerror(errno));
         return NULL;
     }
 
@@ -98,9 +96,6 @@ void dwm_init(void)
     focus = NULL;
 
     pollCtx = NULL;
-
-    // TODO: Config file
-    defaultFont = psf_new(FONT_DIR "/zap-vga16.psf", 1);
 }
 
 void dwm_deinit(void)
@@ -111,11 +106,6 @@ void dwm_deinit(void)
     close(data);
 
     free(pollCtx);
-}
-
-psf_t* dwm_default_font(void)
-{
-    return defaultFont;
 }
 
 uint64_t dwm_attach(surface_t* surface)
@@ -152,11 +142,6 @@ uint64_t dwm_attach(surface_t* surface)
         }
 
         wall = surface;
-    }
-    break;
-    case SURFACE_HIDDEN:
-    {
-        // Do nothing
     }
     break;
     case SURFACE_FULLSCREEN:
@@ -204,11 +189,6 @@ void dwm_detach(surface_t* surface)
     case SURFACE_WALL:
     {
         wall = NULL;
-    }
-    break;
-    case SURFACE_HIDDEN:
-    {
-        // Do nothing
     }
     break;
     case SURFACE_FULLSCREEN:
@@ -561,24 +541,22 @@ static void dwm_update(void)
         pollfd_t* fd = &pollCtx->clients[i++];
         if (fd->occurred & POLL_READ)
         {
-            if (client_recieve_cmds(client) == ERR)
+            if (client_receive_cmds(client) == ERR)
             {
-                printf("dwm: client_recieve_cmds failed (%s)\n", strerror(errno));
+                printf("dwm: client_receive_cmds failed (%s)\n", strerror(errno));
                 dwm_client_disconnect(client);
             }
         }
     }
 
-    if (fullscreen == NULL)
-    {
-        compositor_ctx_t ctx = {
-            .windows = &windows,
-            .panels = &panels,
-            .wall = wall,
-            .cursor = cursor,
-        };
-        compositor_draw(&ctx);
-    }
+    compositor_ctx_t ctx = {
+        .windows = &windows,
+        .panels = &panels,
+        .wall = wall,
+        .cursor = cursor,
+        .fullscreen = fullscreen,
+    };
+    compositor_draw(&ctx);
 }
 
 void dwm_loop(void)

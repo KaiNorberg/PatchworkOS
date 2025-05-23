@@ -7,8 +7,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "psf.h"
-
 typedef struct gfx
 {
     pixel_t* buffer;
@@ -25,29 +23,6 @@ typedef struct gfx
         (gfx)->width, \
         (gfx)->height, \
     };
-
-void gfx_psf(gfx_t* gfx, const psf_t* psf, const point_t* point, char chr, pixel_t foreground, pixel_t background);
-
-/*void gfx_char(gfx_t* gfx, const psf_t* psf, const point_t* point, uint64_t height, char chr, pixel_t foreground,
-    pixel_t background);
-
-void gfx_text(gfx_t* gfx, const psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign, uint64_t height,
-    const char* str, pixel_t foreground, pixel_t background);
-
-void gfx_text_multiline(gfx_t* gfx, const psf_t* psf, const rect_t* rect, gfx_align_t xAlign, gfx_align_t yAlign,
-uint64_t height, const char* str, pixel_t foreground, pixel_t background);*/
-
-void gfx_rect(gfx_t* gfx, const rect_t* rect, pixel_t pixel);
-
-void gfx_gradient(gfx_t* gfx, const rect_t* rect, pixel_t start, pixel_t end, gradient_type_t type, bool addNoise);
-
-void gfx_edge(gfx_t* gfx, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background);
-
-void gfx_ridge(gfx_t* gfx, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background);
-
-void gfx_rim(gfx_t* gfx, const rect_t* rect, uint64_t width, pixel_t pixel);
-
-void gfx_scroll(gfx_t* gfx, const rect_t* rect, uint64_t offset, pixel_t background);
 
 void gfx_transfer(gfx_t* dest, const gfx_t* src, const rect_t* destRect, const point_t* srcPoint);
 

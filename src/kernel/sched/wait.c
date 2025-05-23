@@ -10,6 +10,7 @@
 #include "sys/list.h"
 #include "utils/log.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -145,7 +146,7 @@ void wait_block_trap(trap_frame_t* trapFrame, cpu_t* self)
 void wait_unblock_thread(thread_t* thread, wait_result_t result, wait_queue_t* acquiredQueue, bool acquireCpu)
 {
     thread_state_t state = atomic_load(&thread->state);
-    ASSERT_PANIC(state == THREAD_UNBLOCKING);
+    assert(state == THREAD_UNBLOCKING);
 
     thread->wait.result = result;
     if (acquireCpu)
@@ -207,7 +208,7 @@ void wait_unblock(wait_queue_t* waitQueue, uint64_t amount)
 // Sets up a threads wait ctx but does not yet block
 static uint64_t wait_thread_setup(thread_t* thread, wait_queue_t** waitQueues, uint64_t amount, clock_t timeout)
 {
-    ASSERT_PANIC(atomic_load(&thread->state) == THREAD_RUNNING);
+    assert(atomic_load(&thread->state) == THREAD_RUNNING);
 
     for (uint64_t i = 0; i < amount; i++)
     {
@@ -242,7 +243,9 @@ static uint64_t wait_thread_setup(thread_t* thread, wait_queue_t** waitQueues, u
     wait_entry_t* entry;
     LIST_FOR_EACH(entry, &thread->wait.entries, threadEntry)
     {
+        lock_acquire(&waitQueues[i]->lock);
         list_push(&waitQueues[i]->entries, &entry->queueEntry);
+        lock_release(&waitQueues[i]->lock);
         i++;
     }
 
@@ -257,7 +260,7 @@ wait_result_t wait_block(wait_queue_t* waitQueue, clock_t timeout)
         return WAIT_TIMEOUT;
     }
 
-    ASSERT_PANIC(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
+    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 
     thread_t* thread = smp_self()->sched.runThread;
     if (wait_thread_setup(thread, &waitQueue, 1, timeout) == ERR)
@@ -279,9 +282,9 @@ wait_result_t wait_block_lock(wait_queue_t* waitQueue, clock_t timeout, lock_t* 
         return WAIT_TIMEOUT;
     }
 
-    ASSERT_PANIC(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
+    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
     // Only one lock is allowed to be acquired when calling this function.
-    ASSERT_PANIC(smp_self_unsafe()->cli.depth == 1);
+    assert(smp_self_unsafe()->cli.depth == 1);
 
     thread_t* thread = smp_self_unsafe()->sched.runThread;
     if (wait_thread_setup(thread, &waitQueue, 1, timeout) == ERR)
@@ -291,7 +294,7 @@ wait_result_t wait_block_lock(wait_queue_t* waitQueue, clock_t timeout, lock_t* 
 
     lock_release(lock);
     asm volatile("int %0" ::"i"(VECTOR_WAIT_BLOCK));
-    ASSERT_PANIC(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
+    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
     lock_acquire(lock);
 
     return thread->wait.result;
@@ -304,7 +307,7 @@ wait_result_t wait_block_many(wait_queue_t** waitQueues, uint64_t amount, clock_
         return WAIT_TIMEOUT;
     }
 
-    ASSERT_PANIC(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
+    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 
     thread_t* thread = smp_self()->sched.runThread;
     if (wait_thread_setup(thread, waitQueues, amount, timeout) == ERR)

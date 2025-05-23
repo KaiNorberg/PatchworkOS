@@ -126,7 +126,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
 
         private->focused = false;
         private->dragging = false;
-        private->bigFont = font_new(window_display(win), "zap-vga16", 32);
+        private->bigFont = font_new(window_display(win), DEFAULT_FONT, 32);
         element_set_private(elem, private);
 
         if (win->flags & WINDOW_NO_CONTROLS)
@@ -158,12 +158,15 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
         rect_t rect;
         element_content_rect(elem, &rect);
 
-        drawable_t* draw = element_draw(elem);
+        drawable_t draw;
+        element_draw_begin(elem, &draw);
 
-        draw_rect(draw, &rect, windowTheme.background);
-        draw_edge(draw, &rect, windowTheme.edgeWidth, windowTheme.bright, windowTheme.dark);
+        draw_rect(&draw, &rect, windowTheme.background);
+        draw_edge(&draw, &rect, windowTheme.edgeWidth, windowTheme.bright, windowTheme.dark);
 
-        window_deco_draw_topbar(win, elem, draw);
+        window_deco_draw_topbar(win, elem, &draw);
+    
+        element_draw_end(elem, &draw);
     }
     break;
     case LEVENT_ACTION:
@@ -188,7 +191,12 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
         deco_private_t* private = element_private(elem);
         private->focused = true;
 
-        window_deco_draw_topbar(win, elem, element_draw(elem));
+        drawable_t draw;
+        element_draw_begin(elem, &draw);
+
+        window_deco_draw_topbar(win, elem, &draw);
+    
+        element_draw_end(elem, &draw);
     }
     break;
     case EVENT_FOCUS_OUT:
@@ -196,7 +204,12 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
         deco_private_t* private = element_private(elem);
         private->focused = false;
 
-        window_deco_draw_topbar(win, elem, element_draw(elem));
+        drawable_t draw;
+        element_draw_begin(elem, &draw);
+
+        window_deco_draw_topbar(win, elem, &draw);
+
+        element_draw_end(elem, &draw);
     }
     break;
     case EVENT_MOUSE:
@@ -228,6 +241,7 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     win->surface = display_gen_id(disp);
     strcpy(win->name, name);
     win->rect = *rect;
+    win->invalidRect = (rect_t){0};
     win->type = type;
     win->flags = flags;
 
@@ -257,6 +271,7 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
         {
             element_free(win->root);
             free(win);
+            return NULL;
         }
     }
     else
@@ -280,6 +295,25 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     event_t event;
     display_wait_for_event(disp, &event, EVENT_SURFACE_NEW);
 
+    strcpy(win->shmem, event.surfaceNew.shmem);
+    win->buffer = NULL;
+
+    fd_t shmem = openf("sys:/shmem/%s", win->shmem);
+    if (shmem == ERR)
+    {
+        window_free(win);
+        return NULL;
+    }
+
+    win->buffer = mmap(shmem, NULL, RECT_WIDTH(&win->rect) * RECT_HEIGHT(&win->rect) * sizeof(pixel_t), PROT_READ | PROT_WRITE);
+    close(shmem);
+
+    if (win->buffer == NULL)
+    {
+        window_free(win);
+        return NULL;
+    }
+
     list_push(&disp->windows, &win->entry);
     return win;
 }
@@ -291,6 +325,11 @@ void window_free(window_t* win)
     cmd_surface_free_t* cmd = display_cmds_push(win->disp, CMD_SURFACE_FREE, sizeof(cmd_surface_free_t));
     cmd->target = win->surface;
     display_cmds_flush(win->disp);
+
+    if (win->buffer != NULL)
+    {
+        munmap(win->buffer, RECT_WIDTH(&win->rect) * RECT_HEIGHT(&win->rect) * sizeof(pixel_t));
+    }
 
     list_remove(&win->entry);
     free(win);
@@ -354,6 +393,30 @@ uint64_t window_set_timer(window_t* win, timer_flags_t flags, clock_t timeout)
     return 0;
 }
 
+void window_invalidate(window_t* win, const rect_t* rect)
+{
+    if (RECT_AREA(&win->invalidRect) == 0)
+    {
+        win->invalidRect = *rect;
+    }
+    else
+    {
+        RECT_EXPAND_TO_CONTAIN(&win->invalidRect, rect);
+    }    
+}
+
+void window_invalidate_flush(window_t* win)
+{        
+    if (RECT_AREA(&win->invalidRect) != 0)
+    {
+        cmd_surface_invalidate_t* cmd = display_cmds_push(win->disp, CMD_SURFACE_INVALIDATE, sizeof(cmd_surface_invalidate_t));
+        cmd->target = win->surface;
+        cmd->invalidRect = win->invalidRect;
+        
+        win->invalidRect = (rect_t){0};
+    }
+}
+
 uint64_t window_dispatch(window_t* win, const event_t* event)
 {
     switch (event->type)
@@ -413,6 +476,8 @@ uint64_t window_dispatch(window_t* win, const event_t* event)
     }
     break;
     }
+
+    window_invalidate_flush(win);
 
     return 0;
 }

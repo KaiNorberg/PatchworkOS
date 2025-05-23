@@ -7,6 +7,7 @@
 #include "utils/log.h"
 #include "vfs.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdatomic.h>
@@ -250,12 +251,12 @@ void sysfs_init(void)
 
 void sysfs_mount_to_vfs(void)
 {
-    ASSERT_PANIC(vfs_mount("sys", &sysfs) != ERR);
+    assert(vfs_mount("sys", &sysfs) != ERR);
 }
 
 uint64_t sysfs_start_op(file_t* file)
 {
-    ASSERT_PANIC(file->syshdr != NULL);
+    assert(file->syshdr != NULL);
     if (atomic_load(&file->syshdr->hidden) == true)
     {
         return ERROR(ENOOBJ);
@@ -348,7 +349,7 @@ void sysdir_deinit(sysdir_t* dir, sysdir_on_free_t onFree)
     node_t* temp;
     LIST_FOR_EACH_SAFE(node, temp, &dir->header.node.children, entry)
     {
-        ASSERT_PANIC(node->type == SYSFS_OBJ);
+        assert(node->type == SYSFS_OBJ);
         sysobj_t* sysobj = CONTAINER_OF(node, sysobj_t, header.node);
 
         atomic_store(&sysobj->header.hidden, true);

@@ -240,6 +240,31 @@ static void compositor_draw_windows_panels(compositor_ctx_t* ctx)
     }
 }
 
+static void compositor_draw_fullscreen(compositor_ctx_t* ctx)
+{
+    surface_t* fullscreen = ctx->fullscreen;
+    
+    rect_t invalidRect;
+    if (fullscreen->invalid)
+    {
+        invalidRect = SURFACE_INVALID_RECT(fullscreen);
+    }
+    else if (fullscreen->moved)
+    {
+        invalidRect = SURFACE_CONTENT_RECT(fullscreen);
+    }
+    else
+    {
+        return;
+    }
+
+    fullscreen->invalid = false;
+    fullscreen->moved = false;
+
+    RECT_FIT(&invalidRect, &screenRect);
+    screen_transfer_frontbuffer(fullscreen, &invalidRect); // Draw directly to frontbuffer
+}
+
 void compositor_draw(compositor_ctx_t* ctx)
 {
     if (!redrawNeeded)
@@ -252,20 +277,19 @@ void compositor_draw(compositor_ctx_t* ctx)
         return;
     }
 
-    // clock_t start = uptime();
+    if (ctx->fullscreen != NULL)
+    {
+        compositor_draw_fullscreen(ctx);
+    }
+    else
+    {
+        compositor_compute_client_area(ctx);
+        compositor_draw_wall(ctx);
+        compositor_draw_windows_panels(ctx);
+        compositor_draw_cursor(ctx);
 
-    compositor_compute_client_area(ctx);
-    compositor_draw_wall(ctx);
-    compositor_draw_windows_panels(ctx);
-    compositor_draw_cursor(ctx);
-
-    // clock_t drawEnd = uptime();
-
-    screen_swap();
-
-    // clock_t swapEnd = uptime();
-    // printf("draw time: %d microseconds, swap time: %d microseconds\n", (drawEnd - start) / 1000, (swapEnd - drawEnd)
-    // / 1000);
+        screen_swap();
+    }
 }
 
 void compositor_set_redraw_needed(void)

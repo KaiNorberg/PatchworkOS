@@ -13,7 +13,7 @@ void testing_run_tests(void)
     for (uint64_t i = 0; i < count; i++)
     {
         printf("testing: running %s\n", _testsStart[i].name);
-        ASSERT_PANIC(_testsStart[i].func() != ERR);
+        assert(_testsStart[i].func() != ERR);
     }
     printf("testing: finished tests\n");
 }

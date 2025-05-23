@@ -8,6 +8,7 @@
 #include "drivers/kbd.h"
 #include "utils/log.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <sys/kbd.h>
 #include <sys/math.h>
@@ -54,13 +55,13 @@ void ps2_kbd_init(void)
     extended = false;
 
     ps2_cmd(PS2_CMD_KBD_TEST);
-    ASSERT_PANIC_MSG(ps2_read() == 0x0, "ps2 kbd test fail");
+    assert(ps2_read() == 0x0 && "ps2 kbd test fail");
 
     ps2_write(PS2_SET_DEFAULTS);
-    ASSERT_PANIC_MSG(ps2_read() == PS2_ACK, "set defaults fail, ps2 kbd might not exist");
+    assert(ps2_read() == PS2_ACK && "set defaults fail, ps2 kbd might not exist");
 
     ps2_write(PS2_ENABLE_DATA_REPORTING);
-    ASSERT_PANIC_MSG(ps2_read() == PS2_ACK, "data reporting fail");
+    assert(ps2_read() == PS2_ACK && "data reporting fail");
 
     kbd = kbd_new("ps2");
     irq_install(ps2_kbd_irq, IRQ_PS2_KBD);

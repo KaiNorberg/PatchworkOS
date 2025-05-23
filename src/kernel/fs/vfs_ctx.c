@@ -4,6 +4,7 @@
 #include "utils/log.h"
 #include "vfs.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -11,7 +12,7 @@ void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd)
 {
     if (cwd == NULL)
     {
-        ASSERT_PANIC(path_init(&ctx->cwd, "sys:/", NULL) != ERR);
+        assert(path_init(&ctx->cwd, "sys:/", NULL) != ERR);
     }
     else
     {

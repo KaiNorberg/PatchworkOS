@@ -19,19 +19,15 @@ typedef struct page_buffer
     void* pages[];
 } page_buffer_t;
 
-typedef struct page_stack
+#define PMM_BUFFER_MAX ((PAGE_SIZE - sizeof(page_buffer_t)) / sizeof(void*))
+
+typedef struct
 {
     page_buffer_t* last;
     uint64_t index;
-} page_stack_t;
+} pmm_stack_t;
 
-#define PAGE_BUFFER_MAX ((PAGE_SIZE - sizeof(void*)) / sizeof(void*))
-
-typedef struct page_bitmap
-{
-    uint64_t firstFreeIndex;
-    uint8_t map[(PMM_MAX_SPECIAL_ADDR / PAGE_SIZE) / 8];
-} page_bitmap_t;
+#define PMM_BITMAP_MAX (PMM_MAX_SPECIAL_ADDR / PAGE_SIZE)
 
 void pmm_init(efi_mem_map_t* memoryMap);
 
