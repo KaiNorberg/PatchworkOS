@@ -37,6 +37,10 @@ clean:
 	rm -rf build
 	rm -rf bin
 
+clean_programs:
+	rm -rf build_programs
+	rm -rf bin_programs
+
 nuke: clean
 	$(MAKE) -C lib/gnu-efi clean
 	rm -rf lib/doomgeneric-patchworkos

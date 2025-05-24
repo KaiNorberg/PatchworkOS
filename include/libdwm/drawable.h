@@ -50,14 +50,14 @@ void draw_image(drawable_t* draw, image_t* image, const rect_t* destRect, const 
 
 void draw_rim(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t pixel);
 
-void draw_string(drawable_t* draw, font_t* font, const point_t* point, pixel_t foreground, pixel_t background,
-    const char* string, uint64_t length);
+void draw_string(drawable_t* draw, const font_t* font, const point_t* point, pixel_t pixel, const char* string,
+    uint64_t length);
 
-void draw_text(drawable_t* draw, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign, pixel_t foreground,
-    pixel_t background, const char* text);
+void draw_text(drawable_t* draw, const rect_t* rect, const font_t* font, align_t xAlign, align_t yAlign, pixel_t pixel,
+    const char* text);
 
-void draw_text_multiline(drawable_t* draw, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign,
-    pixel_t foreground, pixel_t background, const char* text);
+void draw_text_multiline(drawable_t* draw, const rect_t* rect, const font_t* font, align_t xAlign, align_t yAlign,
+    pixel_t pixel, const char* text);
 
 void draw_ridge(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background);
 

@@ -22,13 +22,31 @@ static void terminal_cursor_draw(terminal_t* term, element_t* elem, drawable_t* 
     }
     point_t point = CURSOR_POS_TO_CLIENT_POS(&cursorPos, term->font);
 
-    if (term->cursorVisible)
+    rect_t cursorRect = RECT_INIT_DIM(point.x, point.y, font_width(term->font, &cursor, 1), font_height(term->font));
+
+    if (cursor != ' ')
     {
-        draw_string(draw, term->font, &point, windowTheme.dark, windowTheme.bright, &cursor, 1);
+        if (term->cursorVisible)
+        {
+            draw_rect(draw, &cursorRect, windowTheme.bright);
+            draw_string(draw, term->font, &point, windowTheme.dark, &cursor, 1);
+        }
+        else
+        {
+            draw_rect(draw, &cursorRect, windowTheme.dark);
+            draw_string(draw, term->font, &point, windowTheme.bright, &cursor, 1);
+        }
     }
     else
     {
-        draw_string(draw, term->font, &point, windowTheme.bright, windowTheme.dark, &cursor, 1);
+        if (term->cursorVisible)
+        {
+            draw_rect(draw, &cursorRect, windowTheme.bright);
+        }
+        else
+        {
+            draw_rect(draw, &cursorRect, windowTheme.dark);
+        }
     }
 }
 
@@ -68,12 +86,6 @@ static void terminal_scroll(terminal_t* term, element_t* elem, drawable_t* draw)
     draw_rect(draw, &bottomRect, windowTheme.dark);
 }
 
-static void terminal_draw_char(terminal_t* term, element_t* elem, drawable_t* draw, const point_t* point, char chr)
-{
-    point_t clientPos = CURSOR_POS_TO_CLIENT_POS(point, term->font);
-    draw_string(draw, term->font, &clientPos, windowTheme.bright, windowTheme.dark, &chr, 1);
-}
-
 static void terminal_put(terminal_t* term, element_t* elem, drawable_t* draw, char chr)
 {
     rect_t rect;
@@ -108,9 +120,13 @@ static void terminal_put(terminal_t* term, element_t* elem, drawable_t* draw, ch
     break;
     default:
     {
-        terminal_draw_char(term, elem, draw, &term->cursorPos, chr);
-        term->cursorPos.x++;
         term->cursorVisible = false;
+        terminal_cursor_draw(term, elem, draw);
+
+        point_t clientPos = CURSOR_POS_TO_CLIENT_POS(&term->cursorPos, term->font);
+        draw_string(draw, term->font, &clientPos, windowTheme.bright, &chr, 1);
+
+        term->cursorPos.x++;
 
         if (term->cursorPos.x >= TERMINAL_COLUMNS)
         {
@@ -137,17 +153,13 @@ static void terminal_write(terminal_t* term, element_t* elem, drawable_t* draw, 
 
 static void terminal_redraw_input(terminal_t* term, element_t* elem, drawable_t* draw, uint64_t prevLength)
 {
-    point_t point = term->cursorPos;
-    for (uint64_t i = 0; i < term->input.length; i++)
-    {
-        terminal_draw_char(term, elem, draw, &point, term->input.buffer[i]);
-        point.x++;
-    }
-    for (uint64_t i = term->input.length; i < prevLength + 1; i++)
-    {
-        terminal_draw_char(term, elem, draw, &point, ' ');
-        point.x++;
-    }
+    // Clear the previous line
+    point_t point = CURSOR_POS_TO_CLIENT_POS(&term->cursorPos, term->font);
+    rect_t previousRect =
+        RECT_INIT_DIM(point.x, point.y, (prevLength + 1) * font_width(term->font, "a", 1), font_height(term->font));
+    draw_rect(draw, &previousRect, windowTheme.dark);
+
+    draw_string(draw, term->font, &point, windowTheme.bright, term->input.buffer, strlen(term->input.buffer));
 
     term->cursorVisible = true;
     terminal_cursor_draw(term, elem, draw);
@@ -255,11 +267,11 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
     }
     break;
     case LEVENT_REDRAW:
-    {        
+    {
         drawable_t draw;
         element_draw_begin(elem, &draw);
 
-        terminal_clear(term, elem, &draw);    
+        terminal_clear(term, elem, &draw);
 
         element_draw_end(elem, &draw);
     }
@@ -268,7 +280,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
     {
         window_set_timer(win, TIMER_NONE, BLINK_INTERVAL);
 
-        term->cursorVisible = !term->cursorVisible;        
+        term->cursorVisible = !term->cursorVisible;
 
         drawable_t draw;
         element_draw_begin(elem, &draw);
@@ -283,8 +295,8 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         if (event->kbd.type != KBD_PRESS || event->kbd.code == 0)
         {
             break;
-        }    
-           
+        }
+
         drawable_t draw;
         element_draw_begin(elem, &draw);
 
@@ -301,8 +313,9 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
 void terminal_init(terminal_t* term)
 {
     term->disp = display_new();
+    term->font = font_new(term->disp, "firacode", "retina", 16);
 
-    rect_t rect = RECT_INIT_DIM(500, 200, TERMINAL_WIDTH, TERMINAL_HEIGHT);
+    rect_t rect = RECT_INIT_DIM(500, 200, TERMINAL_WIDTH(term->font), TERMINAL_HEIGHT(term->font));
     term->win = window_new(term->disp, "Terminal", &rect, SURFACE_WINDOW, WINDOW_DECO, terminal_procedure, term);
     if (term == NULL)
     {
@@ -310,7 +323,6 @@ void terminal_init(terminal_t* term)
         display_free(term->disp);
     }
 
-    term->font = font_default(window_display(term->win));
     term->cursorPos = (point_t){0};
     term->cursorVisible = false;
     input_init(&term->input);

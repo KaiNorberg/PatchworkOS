@@ -4,10 +4,10 @@
 #include "utils/log.h"
 #include "utils/ring.h"
 
+#include <assert.h>
 #include <bootloader/boot_info.h>
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
 
 void main(boot_info_t* bootInfo)
 {

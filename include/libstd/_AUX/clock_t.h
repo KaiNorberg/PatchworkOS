@@ -5,6 +5,6 @@
 
 typedef __UINT64_TYPE__ clock_t;
 #define CLOCKS_PER_SEC ((clock_t)1000000000UL) // Nanoseconds per second
-#define CLOCKS_NEVER ((clock_t)__UINT64_MAX__)        // Extension
+#define CLOCKS_NEVER ((clock_t)__UINT64_MAX__) // Extension
 
 #endif

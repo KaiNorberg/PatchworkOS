@@ -219,33 +219,27 @@ static void side_panel_draw(window_t* win, element_t* elem, drawable_t* draw)
 
     rect_t textRect = rect;
     textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
-    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark, windowTheme.background,
-        "Score");
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark, "Score");
 
     textRect.top = textRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
     textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
-    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark, windowTheme.background,
-        "Lines");
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark, "Lines");
 
     textRect.top = textRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
     textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
-    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark, windowTheme.background,
-        "Pieces");
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark, "Pieces");
 
     uint64_t fontHeight = font_height(largeFont);
 
     textRect.top = rect.bottom - fontHeight * 7;
     textRect.bottom = rect.bottom;
-    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark, windowTheme.background,
-        "  ASD - Move");
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark, "  ASD - Move");
     textRect.top += fontHeight;
     textRect.bottom += fontHeight;
-    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark, windowTheme.background,
-        "SPACE - Drop");
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark, "SPACE - Drop");
     textRect.top += fontHeight;
     textRect.bottom += fontHeight;
-    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark, windowTheme.background,
-        "    R - Spin");
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark, "    R - Spin");
 }
 
 static point_t piece_block_pos_in_field(int64_t pieceX, int64_t pieceY, int64_t blockX, int64_t blockY)
@@ -672,27 +666,32 @@ static void current_piece_rotate(element_t* elem, drawable_t* draw)
 
 static void start_tetris_draw(window_t* win, element_t* elem, drawable_t* draw)
 {
-    uint64_t fontWidth = font_width(massiveFont);
+    uint64_t totalWidth = font_width(massiveFont, "TETRIS", 6);
 
-    rect_t rect = RECT_INIT((FIELD_RIGHT + FIELD_LEFT) / 2 - fontWidth * 3, FIELD_TOP,
-        (FIELD_RIGHT + FIELD_LEFT) / 2 - fontWidth * 2, FIELD_TOP + (FIELD_BOTTOM - FIELD_TOP) / 2);
+    rect_t rect = RECT_INIT((FIELD_RIGHT + FIELD_LEFT) / 2 - totalWidth / 2, FIELD_TOP,
+        (FIELD_RIGHT + FIELD_LEFT) / 2 - totalWidth / 3, FIELD_TOP + (FIELD_BOTTOM - FIELD_TOP) / 2);
 
-    draw_text(draw, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_RED], windowTheme.dark, "T");
-    rect.left += fontWidth + 2;
-    rect.right += fontWidth + 2;
-    draw_text(draw, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_ORANGE], windowTheme.dark, "E");
-    rect.left += fontWidth - 2;
-    rect.right += fontWidth - 2;
-    draw_text(draw, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_YELLOW], windowTheme.dark, "T");
-    rect.left += fontWidth + 2;
-    rect.right += fontWidth + 2;
-    draw_text(draw, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_GREEN], windowTheme.dark, "R");
-    rect.left += fontWidth - 2;
-    rect.right += fontWidth - 2;
-    draw_text(draw, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_CYAN], windowTheme.dark, "I");
-    rect.left += fontWidth;
-    rect.right += fontWidth;
-    draw_text(draw, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_BLUE], windowTheme.dark, "S");
+    draw_text(draw, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_RED], "T");
+    uint64_t width = font_width(massiveFont, "T", 1);
+    rect.left += width;
+    rect.right += width;
+    draw_text(draw, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_ORANGE], "E");
+    width = font_width(massiveFont, "E", 1);
+    rect.left += width;
+    rect.right += width;
+    draw_text(draw, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_YELLOW], "T");
+    width = font_width(massiveFont, "T", 1);
+    rect.left += width;
+    rect.right += width;
+    draw_text(draw, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_GREEN], "R");
+    width = font_width(massiveFont, "R", 1);
+    rect.left += width - 8;
+    rect.right += width - 8;
+    draw_text(draw, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_CYAN], "I");
+    width = font_width(massiveFont, "I", 1);
+    rect.left += width + 8;
+    rect.right += width + 8;
+    draw_text(draw, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_BLUE], "S");
 }
 
 static void start_press_space_draw(window_t* win, element_t* elem, drawable_t* draw)
@@ -700,8 +699,11 @@ static void start_press_space_draw(window_t* win, element_t* elem, drawable_t* d
     static bool blink = false;
 
     rect_t rect = RECT_INIT(FIELD_LEFT, (FIELD_TOP + FIELD_BOTTOM) / 2, FIELD_RIGHT, FIELD_BOTTOM);
-    draw_text(draw, &rect, largeFont, ALIGN_CENTER, ALIGN_CENTER, blink ? windowTheme.bright : windowTheme.dark,
-        windowTheme.dark, "PRESS SPACE");
+    draw_rect(draw, &rect, windowTheme.dark);
+    if (blink)
+    {
+        draw_text(draw, &rect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.bright, "PRESS SPACE");
+    }
     blink = !blink;
 }
 
@@ -749,7 +751,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         field_edge_draw(elem, &draw);
         field_draw(elem, &draw);
         side_panel_draw(win, elem, &draw);
-    
+
         element_draw_end(elem, &draw);
 
         window_set_timer(win, TIMER_NONE, 0);
@@ -773,7 +775,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         {
             field_clear_lines(elem, &draw);
             window_set_timer(win, TIMER_NONE, CLEARING_LINES_TICK_SPEED);
-            
+
             element_draw_end(elem, &draw);
             break;
         }
@@ -841,7 +843,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             currentPiece.dropping = false;
             window_set_timer(win, TIMER_NONE, TICK_SPEED);
         }
-    
+
         element_draw_end(elem, &draw);
     }
     break;
@@ -877,8 +879,8 @@ int main(void)
 {
     display_t* disp = display_new();
 
-    largeFont = font_new(disp, DEFAULT_FONT, 32);
-    massiveFont = font_new(disp, DEFAULT_FONT, 64);
+    largeFont = font_new(disp, "default", "regular", 32);
+    massiveFont = font_new(disp, "default", "regular", 64);
 
     rect_t rect = RECT_INIT_DIM(500, 200, WINDOW_WIDTH, WINDOW_HEIGHT);
     window_t* win = window_new(disp, "Tetris", &rect, SURFACE_WINDOW, WINDOW_DECO, procedure, NULL);

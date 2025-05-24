@@ -6,7 +6,7 @@
 #include <sys/math.h>
 
 typedef struct
-{    
+{
     uint64_t firstZeroIndex;
     uint64_t length;
     uint8_t* buffer;
@@ -36,7 +36,8 @@ static inline void bitmap_set(bitmap_t* map, uint64_t low, uint64_t high)
     }
 }
 
-static inline uint64_t bitmap_find_clear_region_and_set(bitmap_t* map, uint64_t length, uintptr_t maxIndex, uint64_t alignment)
+static inline uint64_t bitmap_find_clear_region_and_set(bitmap_t* map, uint64_t length, uintptr_t maxIndex,
+    uint64_t alignment)
 {
     for (uint64_t i = map->firstZeroIndex; i < maxIndex; i += alignment)
     {
@@ -63,7 +64,7 @@ static inline uint64_t bitmap_find_clear_region_and_set(bitmap_t* map, uint64_t 
 }
 
 static inline void bitmap_clear(bitmap_t* map, uint64_t low, uint64_t high)
-{    
+{
     for (uint64_t i = low; i < high; i++)
     {
         map->buffer[i / 8] &= ~(1ULL << (i % 8));

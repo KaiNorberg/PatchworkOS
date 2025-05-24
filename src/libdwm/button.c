@@ -41,7 +41,7 @@ static void button_draw(button_t* button, bool redraw)
     if (redraw)
     {
         draw_rect(&draw, &rect, button->background);
-        draw_text(&draw, &rect, button->font, ALIGN_CENTER, ALIGN_CENTER, button->foreground, 0, button->text);
+        draw_text(&draw, &rect, button->font, ALIGN_CENTER, ALIGN_CENTER, button->foreground, button->text);
     }
 
     element_draw_end(button->elem, &draw);

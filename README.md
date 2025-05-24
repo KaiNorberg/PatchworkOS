@@ -6,9 +6,8 @@ Patchwork is a 64 bit monolithic hobbyist OS built from scratch in C for the x86
 
 ## Screenshots
 
-<img src="meta/screenshots/screenshot1.png" style="image-rendering: pixelated;">
-<img src="meta/screenshots/screenshot2.png" style="image-rendering: pixelated;">
-<img src="meta/screenshots/screenshot3.png" style="image-rendering: pixelated;">
+<img src="meta/screenshots/desktop.png" style="image-rendering: pixelated;">
+<img src="meta/screenshots/doom.png" style="image-rendering: pixelated;">
 
 ## Differences with Unix
 
@@ -29,6 +28,7 @@ Patchwork is a 64 bit monolithic hobbyist OS built from scratch in C for the x86
 - Custom UEFI bootloader
 - SIMD
 - [Custom image format (.fbmp)](https://github.com/KaiNorberg/fbmp)
+- [Custom font format (.grf)](https://github.com/KaiNorberg/grf)
 - Fully user space desktop environment
 - Strict adherence to "everything is a file"
 - IPC including pipes, shared memory, sockets and plan9 inspired "signals" called notes.

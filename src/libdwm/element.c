@@ -253,7 +253,7 @@ uint64_t element_dispatch(element_t* elem, const event_t* event)
             LIST_FOR_EACH(child, &elem->children, entry)
             {
                 element_send_redraw(child, true);
-            }    
+            }
         }
     }
     break;

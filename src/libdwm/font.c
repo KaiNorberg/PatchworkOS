@@ -2,7 +2,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <stdlib.h>
 #include <sys/io.h>
 
 font_t* font_default(display_t* disp)
@@ -10,127 +9,74 @@ font_t* font_default(display_t* disp)
     return disp->defaultFont;
 }
 
-static font_t* psf1_load(fd_t file, uint32_t desiredHeight)
+font_t* font_new(display_t* disp, const char* family, const char* weight, uint64_t size)
 {
-    struct
+    if (strcmp(family, "default") == 0)
     {
-        uint16_t magic;
-        uint8_t mode;
-        uint8_t glyphSize;
-    } header;
-    if (read(file, &header, sizeof(header)) != sizeof(header))
-    {
-        return NULL;
+        family = FONT_DEFAULT;
     }
 
-    if (header.magic != PSF1_MAGIC)
-    {
-        return NULL;
-    }
-
-    uint64_t glyphAmount = header.mode & PSF1_MODE_512 ? 512 : 256;
-    uint64_t glyphBufferSize = glyphAmount * header.glyphSize;
-
-    font_t* psf = malloc(sizeof(font_t) + glyphBufferSize);
-    if (psf == NULL)
-    {
-        return NULL;
-    }
-    list_entry_init(&psf->entry);
-    psf->scale = MAX(1, desiredHeight / header.glyphSize);
-    psf->width = 8 * psf->scale;
-    psf->height = header.glyphSize * psf->scale;
-    psf->glyphSize = header.glyphSize;
-    psf->glyphAmount = glyphAmount;
-    if (read(file, psf->glyphs, glyphBufferSize) != glyphBufferSize)
-    {
-        free(psf);
-        return NULL;
-    }
-
-    return psf;
-}
-
-static font_t* psf2_load(fd_t file, uint32_t desiredHeight)
-{
-    struct
-    {
-        uint32_t magic;
-        uint32_t version;
-        uint32_t headerSize;
-        uint32_t flags;
-        uint32_t glyphAmount;
-        uint32_t glyphSize;
-        uint32_t height;
-        uint32_t width;
-    } header;
-    if (read(file, &header, sizeof(header)) != sizeof(header))
-    {
-        return NULL;
-    }
-
-    if (header.magic != PSF2_MAGIC || header.version != 0 || header.headerSize != sizeof(header))
-    {
-        return NULL;
-    }
-
-    uint64_t glyphBufferSize = header.glyphAmount * header.glyphSize;
-
-    font_t* psf = malloc(sizeof(font_t) + glyphBufferSize);
-    if (psf == NULL)
-    {
-        return NULL;
-    }
-    list_entry_init(&psf->entry);
-    psf->scale = MAX(1, desiredHeight / header.height);
-    psf->width = header.width * psf->scale;
-    psf->height = header.height * psf->scale;
-    psf->glyphSize = header.glyphSize;
-    psf->glyphAmount = header.glyphAmount;
-    if (read(file, psf->glyphs, glyphBufferSize) != glyphBufferSize)
-    {
-        free(psf);
-        return NULL;
-    }
-
-    return psf;
-}
-
-font_t* font_new(display_t* disp, const char* path, uint64_t desiredHeight)
-{
-    fd_t file = open(path);
+    fd_t file = openf(FONT_DIR"/%s-%s%d.grf", family, weight, size);
     if (file == ERR)
     {
         return NULL;
     }
 
-    uint8_t firstByte;
-    if (read(file, &firstByte, sizeof(firstByte)) != sizeof(firstByte))
-    {
-        return NULL;
-    }
+    uint64_t fileSize = seek(file, 0, SEEK_END);
     seek(file, 0, SEEK_SET);
 
-    font_t* psf;
-    if (firstByte == 0x36) // Is psf1
-    {
-        psf = psf1_load(file, desiredHeight);
-    }
-    else if (firstByte == 0x72) // Is psf2
-    {
-        psf = psf2_load(file, desiredHeight);
-    }
-    else
+    if (fileSize <= sizeof(font_t))
     {
         close(file);
         return NULL;
     }
 
-    close(file);
+    font_t* font = malloc(sizeof(font_t) - sizeof(grf_t) + fileSize);
+    if (font == NULL)
+    {
+        close(file);
+        return NULL;
+    }
 
-    psf->disp = disp;
-    list_push(&disp->fonts, &psf->entry);
-    return psf;
+    grf_t grf;
+    if (read(file, &font->grf, fileSize) != fileSize)
+    {
+        free(font);
+        close(file);
+        return NULL;
+    }
+
+    if (font->grf.magic != GRF_MAGIC)
+    {
+        free(font);
+        close(file);
+        return NULL;
+    }
+
+    for (uint64_t i = 0; i < 256; i++)
+    {
+        if (font->grf.glyphOffsets[i] != GRF_NONE && font->grf.glyphOffsets[i] >= fileSize)
+        {
+            free(font);
+            close(file);
+            return NULL;
+        }
+    }
+
+    for (uint64_t i = 0; i < 256; i++)
+    {
+        if (font->grf.kernOffsets[i] != GRF_NONE && font->grf.kernOffsets[i] >= fileSize)
+        {
+            free(font);
+            close(file);
+            return NULL;
+        }
+    }
+
+    close(file);
+    font->disp = disp;
+    list_push(&disp->fonts, &font->entry);
+    return font;
 }
 
 void font_free(font_t* font)
@@ -139,12 +85,58 @@ void font_free(font_t* font)
     free(font);
 }
 
-uint64_t font_height(font_t* font)
+#include <stdio.h>
+
+int16_t font_kerning_offset(const font_t* font, char firstChar, char secondChar)
 {
-    return font->height;
+    uint32_t offset = font->grf.kernOffsets[(uint8_t)firstChar];
+    if (offset == GRF_NONE)
+    {
+        return 0;
+    }
+
+    grf_kern_block_t* block = (grf_kern_block_t*)(&font->grf.buffer[offset]);
+    
+    for (uint16_t i = 0; i < block->amount; i++)
+    {
+        if (block->entries[i].secondChar == (uint8_t)secondChar)
+        {
+            return block->entries[i].offsetX;
+        }
+
+        if (block->entries[i].secondChar > (uint8_t)secondChar)
+        {
+            break;
+        }
+    }
+
+    return 0;
 }
 
-uint64_t font_width(font_t* font)
+uint64_t font_width(const font_t* font, const char* string, uint64_t length)
 {
-    return font->width;
+    uint64_t width = 0;
+
+    for (uint64_t i = 0; i < length; ++i)
+    {
+        uint32_t offset = font->grf.glyphOffsets[(uint8_t)string[i]];
+        
+        if (offset != GRF_NONE)
+        {    
+            grf_glyph_t* glyph = (grf_glyph_t*)(&font->grf.buffer[offset]);
+            width += glyph->advanceX;
+
+            if (i != length - 1)
+            {
+               width += font_kerning_offset(font, string[i], string[i + 1]);
+            }
+        }
+    }
+
+    return width;
+}
+
+uint64_t font_height(const font_t* font)
+{
+    return font->grf.height;
 }

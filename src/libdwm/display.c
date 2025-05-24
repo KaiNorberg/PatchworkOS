@@ -74,7 +74,7 @@ display_t* display_new(void)
     list_init(&disp->fonts);
     list_init(&disp->images);
     disp->newId = SURFACE_ID_NONE - 1;
-    disp->defaultFont = font_new(disp, DEFAULT_FONT, 16);
+    disp->defaultFont = font_new(disp, "default", "regular", 16);
     if (disp->defaultFont == NULL)
     {
         close(disp->handle);
@@ -165,7 +165,7 @@ bool display_next_event(display_t* disp, event_t* event, clock_t timeout)
     {
         poll_event_t occurred = poll1(disp->data, POLL_READ, timeout);
         if (occurred & POLL1_ERR)
-        {            
+        {
             disp->connected = false;
             return false;
         }

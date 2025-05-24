@@ -243,7 +243,7 @@ static void compositor_draw_windows_panels(compositor_ctx_t* ctx)
 static void compositor_draw_fullscreen(compositor_ctx_t* ctx)
 {
     surface_t* fullscreen = ctx->fullscreen;
-    
+
     rect_t invalidRect;
     if (fullscreen->invalid)
     {

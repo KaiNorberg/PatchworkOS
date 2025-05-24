@@ -3,6 +3,8 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
+#include "grf.h"
+
 typedef struct image
 {
     list_entry_t entry;
@@ -13,12 +15,7 @@ typedef struct font
 {
     list_entry_t entry;
     display_t* disp;
-    uint32_t scale;
-    uint32_t width;
-    uint32_t height;
-    uint32_t glyphSize;
-    uint32_t glyphAmount;
-    uint8_t glyphs[];
+    grf_t grf;
 } font_t;
 
 typedef struct element
@@ -48,7 +45,7 @@ typedef struct window
     char shmem[MAX_NAME];
     pixel_t* buffer;
     element_t* root;
-    element_t* clientElement;    
+    element_t* clientElement;
 } window_t;
 
 #define DISPLAY_MAX_EVENT 64

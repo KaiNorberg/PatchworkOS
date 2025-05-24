@@ -62,13 +62,14 @@ static uint64_t popup_procedure(window_t* win, element_t* elem, const event_t* e
         rect_t rect;
         element_content_rect(elem, &rect);
         rect.bottom -= POPUP_BUTTON_AREA_HEIGHT;
+        rect.left += POPUP_HORIZONTAL_PADDING;
+        rect.right -= POPUP_HORIZONTAL_PADDING;
 
         drawable_t draw;
         element_draw_begin(elem, &draw);
 
-        draw_text_multiline(&draw, &rect, NULL, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark,
-            windowTheme.background, popup->text);
-    
+        draw_text_multiline(&draw, &rect, NULL, ALIGN_MIN, ALIGN_CENTER, windowTheme.dark, popup->text);
+
         element_draw_end(elem, &draw);
     }
     break;

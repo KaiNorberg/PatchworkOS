@@ -21,7 +21,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         element_draw_begin(elem, &draw);
 
         draw_gradient(&draw, &rect, 0xFF427F99, 0xFF5FA6C2, GRADIENT_DIAGONAL, true);
-    
+
         element_draw_end(elem, &draw);
     }
     break;

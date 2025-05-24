@@ -132,7 +132,7 @@ void screen_transfer_blend(surface_t* surface, const rect_t* rect)
 }
 
 void screen_transfer_frontbuffer(surface_t* surface, const rect_t* rect)
-{    
+{
     point_t srcPoint = {
         .x = MAX(rect->left - surface->pos.x, 0),
         .y = MAX(rect->top - surface->pos.y, 0),

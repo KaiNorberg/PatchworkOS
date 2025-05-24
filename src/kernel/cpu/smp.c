@@ -2,6 +2,7 @@
 
 #include "acpi/madt.h"
 #include "apic.h"
+#include "boot/kernel.h"
 #include "drivers/systime/hpet.h"
 #include "gdt.h"
 #include "idt.h"
@@ -13,7 +14,6 @@
 #include "trampoline.h"
 #include "trap.h"
 #include "utils/log.h"
-#include "boot/kernel.h"
 
 #include <assert.h>
 #include <stdatomic.h>
@@ -137,7 +137,7 @@ void smp_others_init(void)
 }
 
 void smp_entry(void)
-{    
+{
     cpu_t* cpu = smp_self_brute();
     msr_write(MSR_CPU_ID, cpu->id);
 

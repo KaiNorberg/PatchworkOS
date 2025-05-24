@@ -46,9 +46,12 @@ static uint64_t label_procedure(window_t* win, element_t* elem, const event_t* e
             RECT_SHRINK(&rect, windowTheme.edgeWidth);
             rect.top += windowTheme.edgeWidth;
         }
+        else
+        {
+            draw_rect(&draw, &rect, label->background);
+        }
 
-        draw_text(&draw, &rect, label->font, label->xAlign, label->yAlign, label->foreground, label->background,
-            label->text);
+        draw_text(&draw, &rect, label->font, label->xAlign, label->yAlign, label->foreground, label->text);
 
         element_draw_end(elem, &draw);
     }

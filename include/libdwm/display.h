@@ -14,7 +14,7 @@ extern "C"
 {
 #endif
 
-#define DEFAULT_FONT "home:/theme/fonts/zap-vga16.psf"
+#define DEFAULT_FONT "home:/theme/fonts/roboto-regular16.grf"
 
 typedef struct display display_t;
 

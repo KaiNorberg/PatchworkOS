@@ -13,7 +13,8 @@ static int exception_type;
 
 int main(void)
 {
-    printf("expected output:\ncalling first\nentering first\ncalling second\nentering second\nsecond failed, exception type: 3; remapping to type 1\nfirst failed, exception type: 1\n\nactual output:\n");
+    printf("expected output:\ncalling first\nentering first\ncalling second\nentering second\nsecond failed, exception "
+           "type: 3; remapping to type 1\nfirst failed, exception type: 1\n\nactual output:\n");
 
     char* volatile mem_buffer = NULL;
 

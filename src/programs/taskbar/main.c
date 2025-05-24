@@ -59,7 +59,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         draw_rect(&draw, &rect, windowTheme.background);
         rect.bottom = rect.top + windowTheme.edgeWidth;
         draw_rect(&draw, &rect, windowTheme.bright);
-    
+
         element_draw_end(elem, &draw);
     }
     break;

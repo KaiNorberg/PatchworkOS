@@ -141,60 +141,71 @@ void draw_gradient(drawable_t* draw, const rect_t* rect, pixel_t start, pixel_t 
     draw_invalidate(draw, &fitRect);
 }
 
-static void draw_psf(drawable_t* draw, const font_t* psf, const point_t* point, char chr, pixel_t foreground, pixel_t background)
+static void draw_grf_char(drawable_t* draw, const font_t* font, const point_t* point, uint8_t chr, pixel_t pixel)
 {
-    if (psf->glyphAmount < (uint32_t)chr)
+    uint32_t offset = font->grf.glyphOffsets[chr];
+    if (offset == GRF_NONE)
     {
+        // TODO: Implement some sort of error char, empty box?
         return;
     }
+    grf_glyph_t* glyph = (grf_glyph_t*)(&font->grf.buffer[offset]);
 
-    const uint8_t* glyph = psf->glyphs + chr * psf->glyphSize;
+    int32_t baselineY = point->y + font->grf.ascender;
 
-    if (PIXEL_ALPHA(foreground) == 0xFF && PIXEL_ALPHA(background) == 0xFF)
+    for (uint16_t y = 0; y < glyph->height; y++)
     {
-        for (uint64_t y = 0; y < psf->height; y++)
+        for (uint16_t x = 0; x < glyph->width; x++)
         {
-            for (uint64_t x = 0; x < psf->width; x++)
+            uint8_t gray = glyph->buffer[y * glyph->width + x];
+
+            if (gray > 0)
             {
-                pixel_t pixel =
-                    (glyph[y / psf->scale] & (0b10000000 >> (x / psf->scale))) != 0 ? foreground : background;
-                draw->buffer[(point->x + x) + (point->y + y) * draw->stride] = pixel;
-            }
-        }
-    }
-    else
-    {
-        for (uint64_t y = 0; y < psf->height; y++)
-        {
-            for (uint64_t x = 0; x < psf->width; x++)
-            {
-                pixel_t pixel =
-                    (glyph[y / psf->scale] & (0b10000000 >> (x / psf->scale))) != 0 ? foreground : background;
-                PIXEL_BLEND(&draw->buffer[(point->x + x) + (point->y + y) * draw->stride], &pixel);
+                int32_t targetX = point->x + glyph->bearingX + x;
+                int32_t targetY = baselineY - glyph->bearingY + y;
+
+                if (targetX < 0 || targetY < 0 || targetX >= RECT_WIDTH(&draw->contentRect) ||
+                    targetY >= RECT_HEIGHT(&draw->contentRect))
+                {
+                    continue;
+                }
+
+                pixel_t output = PIXEL_ARGB(gray, PIXEL_RED(pixel), PIXEL_GREEN(pixel), PIXEL_BLUE(pixel));
+                PIXEL_BLEND(&draw->buffer[targetX + targetY * draw->stride], &output);
             }
         }
     }
 }
 
-void draw_string(drawable_t* draw, font_t* font, const point_t* point, pixel_t foreground, pixel_t background,
-    const char* string, uint64_t length)
+void draw_string(drawable_t* draw, const font_t* font, const point_t* point, pixel_t pixel, const char* string,
+    uint64_t length)
 {
     if (font == NULL)
     {
         font = font_default(draw->disp);
     }
 
-    rect_t textArea = RECT_INIT_DIM(point->x, point->y, font->width * length, font->height);
-    if (!RECT_CONTAINS(&draw->contentRect, &textArea))
-    {
-        return;
-    }
+    uint64_t width = font_width(font, string, length);
+    int32_t visualTextHeight = font->grf.ascender - font->grf.descender;
+    rect_t textArea = RECT_INIT_DIM(point->x, point->y, width, visualTextHeight);
 
     point_t pos = *point;
     for (uint64_t i = 0; i < length; i++)
     {
-        draw_psf(draw, font, &pos, string[i], foreground, background);
-        pos.x += font->width;
+        uint32_t offset = font->grf.glyphOffsets[(uint8_t)string[i]];
+        if (offset == GRF_NONE)
+        {
+            // TODO: Implement some sort of error char, empty box?
+            continue;
+        }
+        grf_glyph_t* glyph = (grf_glyph_t*)(&font->grf.buffer[offset]);
+
+        draw_grf_char(draw, font, &pos, string[i], pixel);
+        pos.x += glyph->advanceX;
+        if (i != length - 1)
+        {
+            pos.x += font_kerning_offset(font, string[i], string[i + 1]);
+        }
     }
 
     draw_invalidate(draw, &textArea);
@@ -209,7 +220,8 @@ void draw_transfer(drawable_t* dest, drawable_t* src, const rect_t* destRect, co
     {
         return;
     }
-    if (srcPoint->x < 0 || srcPoint->y < 0 || srcPoint->x + width > RECT_WIDTH(&src->contentRect) || srcPoint->y + height > RECT_HEIGHT(&src->contentRect))
+    if (srcPoint->x < 0 || srcPoint->y < 0 || srcPoint->x + width > RECT_WIDTH(&src->contentRect) ||
+        srcPoint->y + height > RECT_HEIGHT(&src->contentRect))
     {
         return;
     }
@@ -279,8 +291,47 @@ void draw_rim(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t pixe
     draw_rect(draw, &bottomRect, pixel);
 }
 
-void draw_text(drawable_t* draw, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign, pixel_t foreground,
-    pixel_t background, const char* text)
+static void draw_calculate_aligned_text_pos(const rect_t* rect, const font_t* font, const char* string, uint64_t length,
+    align_t xAlign, align_t yAlign, point_t* aligned)
+{
+    uint64_t width = font_width(font, string, length);
+    int32_t visualTextHeight = font->grf.ascender - font->grf.descender;
+
+    switch (xAlign)
+    {
+    case ALIGN_MIN:
+        aligned->x = rect->left;
+        break;
+    case ALIGN_CENTER:
+        aligned->x = MAX(rect->left + (RECT_WIDTH(rect) / 2) - (width / 2), rect->left);
+        break;
+    case ALIGN_MAX:
+        aligned->x = MAX(rect->left + RECT_WIDTH(rect) - width, rect->left);
+        break;
+    default:
+        aligned->x = rect->left;
+        break;
+    }
+
+    switch (yAlign)
+    {
+    case ALIGN_MIN:
+        aligned->y = rect->top;
+        break;
+    case ALIGN_CENTER:
+        aligned->y = rect->top + (RECT_HEIGHT(rect) / 2) - (visualTextHeight / 2);
+        break;
+    case ALIGN_MAX:
+        aligned->y = rect->top + RECT_HEIGHT(rect) - visualTextHeight;
+        break;
+    default:
+        aligned->y = rect->top;
+        break;
+    }
+}
+
+void draw_text(drawable_t* draw, const rect_t* rect, const font_t* font, align_t xAlign, align_t yAlign, pixel_t pixel,
+    const char* text)
 {
     if (text == NULL || *text == '\0')
     {
@@ -293,84 +344,18 @@ void draw_text(drawable_t* draw, const rect_t* rect, font_t* font, align_t xAlig
     }
 
     uint64_t maxWidth = RECT_WIDTH(rect);
-
     uint64_t textLen = strlen(text);
-    uint64_t maxLen = maxWidth / font->width;
 
-    uint64_t clampedLen = MIN(maxLen, textLen);
-    uint64_t clampedWidth = clampedLen * font->width;
+    uint64_t textWidth = font_width(font, text, textLen);
 
     point_t startPoint;
-    switch (xAlign)
-    {
-    case ALIGN_CENTER:
-    {
-        startPoint.x = (rect->left + rect->right) / 2 - clampedWidth / 2;
-    }
-    break;
-    case ALIGN_MAX:
-    {
-        startPoint.x = rect->right - clampedWidth;
-    }
-    break;
-    case ALIGN_MIN:
-    {
-        startPoint.x = rect->left;
-    }
-    break;
-    default:
-    {
-        return;
-    }
-    }
+    draw_calculate_aligned_text_pos(rect, font, text, textLen, xAlign, yAlign, &startPoint);
 
-    switch (yAlign)
-    {
-    case ALIGN_CENTER:
-    {
-        startPoint.y = (rect->top + rect->bottom) / 2 - font->height / 2;
-    }
-    break;
-    case ALIGN_MAX:
-    {
-        startPoint.y = MAX(rect->top, rect->bottom - (int64_t)font->height);
-    }
-    break;
-    case ALIGN_MIN:
-    {
-        startPoint.y = rect->top;
-    }
-    break;
-    default:
-    {
-        return;
-    }
-    }
-
-    if (textLen > maxLen)
-    {
-        if (maxLen == 0)
-        {
-            return;
-        }
-
-        if (maxLen <= 3)
-        {
-            draw_string(draw, font, &startPoint, foreground, background, "...", maxLen);
-            return;
-        }
-
-        draw_string(draw, font, &startPoint, foreground, background, text, maxLen - 3);
-        startPoint.x += (maxLen - 3) * font->width;
-        draw_string(draw, font, &startPoint, foreground, background, "...", 3);
-        return;
-    }
-
-    draw_string(draw, font, &startPoint, foreground, background, text, textLen);
+    draw_string(draw, font, &startPoint, pixel, text, textLen);
 }
 
-void draw_text_multiline(drawable_t* draw, const rect_t* rect, font_t* font, align_t xAlign, align_t yAlign,
-    pixel_t foreground, pixel_t background, const char* text)
+void draw_text_multiline(drawable_t* draw, const rect_t* rect, const font_t* font, align_t xAlign, align_t yAlign,
+    pixel_t pixel, const char* text)
 {
     if (text == NULL || *text == '\0')
     {
@@ -382,130 +367,171 @@ void draw_text_multiline(drawable_t* draw, const rect_t* rect, font_t* font, ali
         font = font_default(draw->disp);
     }
 
-    int64_t fontWidth = font_width(font);
-    int64_t fontHeight = font_height(font);
+    rect_t fitRect = *rect;
+    RECT_FIT(&fitRect, &draw->contentRect);
 
-    int64_t numLines = 1;
-    int64_t maxLineWidth = 0;
+    int32_t lineHeight = font->grf.ascender - font->grf.descender;
+    int32_t maxWidth = RECT_WIDTH(&fitRect);
 
-    int64_t wordLength = 0;
-    int64_t currentXPos = 0;
-    const char* chr = text;
-    while (true)
+    uint64_t lineCount = 0;
+    const char* textPtr = text;
+
+    while (*textPtr != '\0')
     {
-        if (*chr == ' ' || *chr == '\0')
+        const char* lineStart = textPtr;
+        const char* lineEnd = textPtr;
+        const char* lastSpace = NULL;
+        int32_t currentWidth = 0;
+
+        while (*textPtr != '\0' && *textPtr != '\n')
         {
-            int64_t wordEndPos = currentXPos + wordLength * fontWidth;
-            if (wordEndPos > RECT_WIDTH(rect))
+            if (*textPtr == ' ')
             {
-                numLines++;
-                maxLineWidth = MAX(maxLineWidth, currentXPos);
-                currentXPos = wordLength * fontWidth;
+                lastSpace = textPtr;
             }
-            else
+
+            uint32_t offset = font->grf.glyphOffsets[(uint8_t)*textPtr];
+            if (offset != GRF_NONE)
             {
-                currentXPos = wordEndPos;
+                grf_glyph_t* glyph = (grf_glyph_t*)(&font->grf.buffer[offset]);
+                currentWidth += glyph->advanceX;
+                if (*(textPtr + 1) != '\0' && *(textPtr + 1) != '\n')
+                {
+                    currentWidth += font_kerning_offset(font, *textPtr, *(textPtr + 1));
+                }
+
+                if (currentWidth > maxWidth && lastSpace != NULL)
+                {
+                    lineEnd = lastSpace;
+                    break;
+                }
             }
-            if (*chr == '\0')
-            {
-                maxLineWidth = MAX(maxLineWidth, currentXPos);
-                break;
-            }
-            wordLength = 0;
-            currentXPos += fontWidth;
+
+            textPtr++;
         }
-        else
+
+        if (*textPtr == '\n' || *textPtr == '\0')
         {
-            wordLength++;
+            lineEnd = textPtr;
         }
-        chr++;
+        else if (lastSpace == NULL)
+        {
+            lineEnd = textPtr;
+        }
+
+        lineCount++;
+
+        if (*textPtr == '\n')
+        {
+            textPtr++;
+        }
+        else if (*textPtr != '\0')
+        {
+            textPtr = lineEnd + 1;
+        }
     }
 
-    point_t startPoint;
-    switch (xAlign)
-    {
-    case ALIGN_CENTER:
-    {
-        startPoint.x = rect->left + (RECT_WIDTH(rect) - maxLineWidth) / 2;
-    }
-    break;
-    case ALIGN_MAX:
-    {
-        startPoint.x = rect->right - maxLineWidth;
-    }
-    break;
-    case ALIGN_MIN:
-    {
-        startPoint.x = rect->left;
-    }
-    break;
-    default:
-    {
-        return;
-    }
-    }
+    int32_t totalTextHeight = lineCount * lineHeight;
 
+    int32_t startY;
     switch (yAlign)
     {
-    case ALIGN_CENTER:
-    {
-        int64_t totalTextHeight = fontHeight * numLines;
-        startPoint.y = rect->top + (RECT_HEIGHT(rect) - totalTextHeight) / 2;
-    }
-    break;
-    case ALIGN_MAX:
-    {
-        startPoint.y = MAX(rect->top, rect->bottom - (int64_t)fontHeight * numLines);
-    }
-    break;
     case ALIGN_MIN:
-    {
-        startPoint.y = rect->top;
-    }
-    break;
+        startY = fitRect.top;
+        break;
+    case ALIGN_CENTER:
+        startY = fitRect.top + (RECT_HEIGHT(&fitRect) / 2) - (totalTextHeight / 2);
+        break;
+    case ALIGN_MAX:
+        startY = fitRect.top + RECT_HEIGHT(&fitRect) - totalTextHeight;
+        break;
     default:
+        startY = fitRect.top;
+        break;
+    }
+
+    textPtr = text;
+    int32_t currentY = startY;
+
+    while (*textPtr != '\0' && currentY + lineHeight <= fitRect.bottom)
     {
-        return;
-    }
-    }
+        const char* lineStart = textPtr;
+        const char* lineEnd = textPtr;
+        const char* lastSpace = NULL;
+        int32_t currentWidth = 0;
 
-    chr = text;
-    point_t currentPoint = startPoint;
-    while (*chr != '\0')
-    {
-        const char* wordStart = chr;
-        wordLength = 0;
-        while (*chr != ' ' && *chr != '\0')
+        while (*textPtr != '\0' && *textPtr != '\n')
         {
-            wordLength++;
-            chr++;
-        }
-
-        int64_t wordWidth = wordLength * fontWidth;
-
-        if (currentPoint.x + wordWidth > rect->right)
-        {
-            currentPoint.y += fontHeight;
-            currentPoint.x = startPoint.x;
-        }
-
-        draw_string(draw, font, &currentPoint, foreground, background, wordStart, wordLength);
-        currentPoint.x += wordWidth;
-
-        if (*chr == ' ')
-        {
-            if (currentPoint.x + fontWidth > rect->right)
+            if (*textPtr == ' ')
             {
-                currentPoint.y += fontHeight;
+                lastSpace = textPtr;
             }
-            else
+
+            uint32_t offset = font->grf.glyphOffsets[(uint8_t)*textPtr];
+            if (offset != GRF_NONE)
             {
-                draw_string(draw, font, &currentPoint, foreground, background, " ", 1);
-                currentPoint.x += fontWidth;
+                grf_glyph_t* glyph = (grf_glyph_t*)(&font->grf.buffer[offset]);
+                currentWidth += glyph->advanceX;
+                if (*(textPtr + 1) != '\0' && *(textPtr + 1) != '\n')
+                {
+                    currentWidth += font_kerning_offset(font, *textPtr, *(textPtr + 1));
+                }
+
+                if (currentWidth > maxWidth && lastSpace != NULL)
+                {
+                    lineEnd = lastSpace;
+                    break;
+                }
             }
-            chr++;
+
+            textPtr++;
+        }
+
+        if (*textPtr == '\n' || *textPtr == '\0')
+        {
+            lineEnd = textPtr;
+        }
+        else if (lastSpace == NULL)
+        {
+            lineEnd = textPtr;
+        }
+
+        uint64_t lineLength = lineEnd - lineStart;
+        uint64_t lineWidth = font_width(font, lineStart, lineLength);
+
+        int32_t lineX;
+        switch (xAlign)
+        {
+        case ALIGN_MIN:
+            lineX = fitRect.left;
+            break;
+        case ALIGN_CENTER:
+            lineX = MAX(fitRect.left + (RECT_WIDTH(&fitRect) / 2) - (lineWidth / 2), fitRect.left);
+            break;
+        case ALIGN_MAX:
+            lineX = MAX(fitRect.left + RECT_WIDTH(&fitRect) - lineWidth, fitRect.left);
+            break;
+        default:
+            lineX = fitRect.left;
+            break;
+        }
+
+        point_t linePos = {.x = lineX, .y = currentY};
+        draw_string(draw, font, &linePos, pixel, lineStart, lineLength);
+
+        currentY += lineHeight;
+
+        if (*textPtr == '\n')
+        {
+            textPtr++;
+        }
+        else if (*textPtr != '\0')
+        {
+            textPtr = lineEnd + 1;
         }
     }
+
+    draw_invalidate(draw, &fitRect);
 }
 
 void draw_ridge(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background)

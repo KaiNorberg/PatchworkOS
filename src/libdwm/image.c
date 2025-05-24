@@ -29,7 +29,7 @@ image_t* image_new(display_t* disp, const char* path)
         return NULL;
     }
 
-    struct 
+    struct
     {
         uint32_t magic;
         uint32_t width;

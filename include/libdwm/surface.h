@@ -13,7 +13,7 @@ typedef enum
     SURFACE_WINDOW,
     SURFACE_PANEL,
     SURFACE_CURSOR,
-    SURFACE_WALL, 
+    SURFACE_WALL,
     SURFACE_FULLSCREEN,
     SURFACE_TYPE_AMOUNT
 } surface_type_t;

@@ -32,7 +32,6 @@ typedef struct
     bool focused;
     bool dragging;
     point_t dragOffset;
-    font_t* bigFont;
 } deco_private_t;
 
 static void window_deco_topbar_rect(window_t* win, element_t* elem, rect_t* rect)
@@ -77,7 +76,7 @@ static void window_deco_draw_topbar(window_t* win, element_t* elem, drawable_t* 
 
     topBar.left += windowTheme.paddingWidth * 3;
     topBar.right -= windowTheme.topbarHeight;
-    draw_text(draw, &topBar, NULL, ALIGN_MIN, ALIGN_CENTER, windowTheme.background, 0, win->name);
+    draw_text(draw, &topBar, NULL, ALIGN_MIN, ALIGN_CENTER, windowTheme.background, win->name);
 }
 
 static void window_deco_handle_dragging(window_t* win, element_t* elem, const event_mouse_t* event)
@@ -126,7 +125,6 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
 
         private->focused = false;
         private->dragging = false;
-        private->bigFont = font_new(window_display(win), DEFAULT_FONT, 32);
         element_set_private(elem, private);
 
         if (win->flags & WINDOW_NO_CONTROLS)
@@ -136,8 +134,8 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
 
         rect_t closeButton;
         window_deco_button_rect(win, elem, &closeButton, WINDOW_DECO_CLOSE_BUTTON_INDEX);
-        if (button_new(elem, WINDOW_DECO_CLOSE_BUTTON_ID, &closeButton, private->bigFont, windowTheme.dark,
-                windowTheme.background, BUTTON_NONE, "x") == NULL)
+        if (button_new(elem, WINDOW_DECO_CLOSE_BUTTON_ID, &closeButton, NULL, windowTheme.dark, windowTheme.background,
+                BUTTON_NONE, "") == NULL)
         {
             return ERR;
         }
@@ -148,7 +146,6 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
         deco_private_t* private = element_private(elem);
         if (private != NULL)
         {
-            font_free(private->bigFont);
             free(private);
         }
     }
@@ -165,7 +162,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
         draw_edge(&draw, &rect, windowTheme.edgeWidth, windowTheme.bright, windowTheme.dark);
 
         window_deco_draw_topbar(win, elem, &draw);
-    
+
         element_draw_end(elem, &draw);
     }
     break;
@@ -195,7 +192,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
         element_draw_begin(elem, &draw);
 
         window_deco_draw_topbar(win, elem, &draw);
-    
+
         element_draw_end(elem, &draw);
     }
     break;
@@ -305,7 +302,8 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
         return NULL;
     }
 
-    win->buffer = mmap(shmem, NULL, RECT_WIDTH(&win->rect) * RECT_HEIGHT(&win->rect) * sizeof(pixel_t), PROT_READ | PROT_WRITE);
+    win->buffer =
+        mmap(shmem, NULL, RECT_WIDTH(&win->rect) * RECT_HEIGHT(&win->rect) * sizeof(pixel_t), PROT_READ | PROT_WRITE);
     close(shmem);
 
     if (win->buffer == NULL)
@@ -402,17 +400,18 @@ void window_invalidate(window_t* win, const rect_t* rect)
     else
     {
         RECT_EXPAND_TO_CONTAIN(&win->invalidRect, rect);
-    }    
+    }
 }
 
 void window_invalidate_flush(window_t* win)
-{        
+{
     if (RECT_AREA(&win->invalidRect) != 0)
     {
-        cmd_surface_invalidate_t* cmd = display_cmds_push(win->disp, CMD_SURFACE_INVALIDATE, sizeof(cmd_surface_invalidate_t));
+        cmd_surface_invalidate_t* cmd =
+            display_cmds_push(win->disp, CMD_SURFACE_INVALIDATE, sizeof(cmd_surface_invalidate_t));
         cmd->target = win->surface;
         cmd->invalidRect = win->invalidRect;
-        
+
         win->invalidRect = (rect_t){0};
     }
 }

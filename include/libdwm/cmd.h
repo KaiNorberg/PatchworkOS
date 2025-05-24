@@ -23,7 +23,7 @@ typedef enum
     CMD_SURFACE_MOVE,
     CMD_SURFACE_SET_TIMER,
     CMD_SURFACE_INVALIDATE,
-    CMD_TYPE_AMOUNT, 
+    CMD_TYPE_AMOUNT,
 } cmd_type_t;
 
 #define CMD_MAGIC 0xDEADC0DE

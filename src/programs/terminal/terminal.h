@@ -10,8 +10,10 @@
 #define TERMINAL_COLUMNS 80
 #define TERMINAL_ROWS 24
 
-#define TERMINAL_WIDTH (TERMINAL_COLUMNS * 8 + windowTheme.edgeWidth * 2 + windowTheme.paddingWidth * 2)
-#define TERMINAL_HEIGHT (TERMINAL_ROWS * 16 + windowTheme.edgeWidth * 2 + windowTheme.paddingWidth * 2)
+#define TERMINAL_WIDTH(font) \
+    (TERMINAL_COLUMNS * font_width(font, "a", 1) + windowTheme.edgeWidth * 2 + windowTheme.paddingWidth * 2)
+#define TERMINAL_HEIGHT(font) \
+    (TERMINAL_ROWS * font_height(font) + windowTheme.edgeWidth * 2 + windowTheme.paddingWidth * 2)
 
 typedef struct
 {
@@ -27,9 +29,10 @@ typedef struct
     pid_t shell;
 } terminal_t;
 
+// Note: The terminal always uses a mono font so we can use any char for the width
 #define CURSOR_POS_TO_CLIENT_POS(cursorPos, font) \
     (point_t){ \
-        .x = ((cursorPos)->x * font_width(font)) + windowTheme.edgeWidth + windowTheme.paddingWidth, \
+        .x = ((cursorPos)->x * font_width(font, "a", 1)) + windowTheme.edgeWidth + windowTheme.paddingWidth, \
         .y = ((cursorPos)->y * font_height(font)) + windowTheme.edgeWidth + windowTheme.paddingWidth, \
     };
 

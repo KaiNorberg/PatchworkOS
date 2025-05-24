@@ -133,7 +133,7 @@ int main(void)
 {
     display_t* disp = display_new();
 
-    largeFont = font_new(disp, DEFAULT_FONT, 32);
+    largeFont = font_new(disp, "default", "regular", 32);
 
     rect_t rect = RECT_INIT_DIM(500, 200, WINDOW_WIDTH, WINDOW_HEIGHT);
     window_t* win = window_new(disp, "Calculator", &rect, SURFACE_WINDOW, WINDOW_DECO, procedure, NULL);

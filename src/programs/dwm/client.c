@@ -260,7 +260,7 @@ uint64_t client_receive_cmds(client_t* client)
     }
 
     if (readSize != client->cmds.size || client->cmds.size > CMD_BUFFER_MAX_DATA)
-    {        
+    {
         printf("dwm client: invalid cmd buffer size\n");
         return ERR;
     }
@@ -272,7 +272,7 @@ uint64_t client_receive_cmds(client_t* client)
         amount++;
         if (amount > client->cmds.amount || ((uint64_t)cmd + cmd->size - (uint64_t)&client->cmds) > readSize ||
             cmd->magic != CMD_MAGIC || cmd->type >= CMD_TYPE_AMOUNT)
-        {        
+        {
             printf("dwm client: corrupt cmd\n");
             return ERR;
         }
@@ -286,7 +286,7 @@ uint64_t client_receive_cmds(client_t* client)
     CMD_BUFFER_FOR_EACH(&client->cmds, cmd)
     {
         if (actions[cmd->type](client, cmd) == ERR)
-        {        
+        {
             printf("dwm client: cmd caused error\n");
             return ERR;
         }

@@ -6,11 +6,11 @@
 #include "mem/vmm.h"
 #include "sched/sched.h"
 
-#include <stdio.h>
-#include <string.h>
 #include <assert.h>
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/atomint.h>
 
 static atomic_uint64 newId = ATOMIC_VAR_INIT(0);
@@ -87,7 +87,7 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
 
         segment->pageAmount = pageAmount;
         for (uint64_t i = 0; i < pageAmount; i++)
-        {            
+        {
             segment->pages[i] = pmm_alloc();
             if (segment->pages[i] == NULL)
             {
@@ -100,7 +100,8 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
             }
         }
 
-        void* result = vmm_map_pages(address, segment->pages, segment->pageAmount, prot, shmem_vmm_callback, shmem_ref(shmem));
+        void* result =
+            vmm_map_pages(address, segment->pages, segment->pageAmount, prot, shmem_vmm_callback, shmem_ref(shmem));
         if (result == NULL)
         {
             for (uint64_t i = 0; i < segment->pageAmount; i++)
@@ -130,7 +131,7 @@ static file_ops_t fileOps = (file_ops_t){
 static file_t* shmem_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
 {
     shmem_t* shmem = sysobj->private;
-    
+
     file_t* file = file_new(volume, path, PATH_NONE);
     if (file == NULL)
     {
@@ -147,8 +148,7 @@ static void shmem_cleanup(sysobj_t* sysobj, file_t* file)
     shmem_deref(shmem);
 }
 
-static sysobj_ops_t objOps = 
-{
+static sysobj_ops_t objOps = {
     .open = shmem_open,
     .cleanup = shmem_cleanup,
 };
@@ -178,8 +178,7 @@ static file_t* shmem_new_open(volume_t* volume, const path_t* path, sysobj_t* sy
     return file;
 }
 
-static sysobj_ops_t newOps =
-{
+static sysobj_ops_t newOps = {
     .open = shmem_new_open,
     .cleanup = shmem_cleanup,
 };

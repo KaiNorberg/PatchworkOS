@@ -4,9 +4,9 @@
 #include "cpu/smp.h"
 #include "sync/lock.h"
 #include "sys/proc.h"
+#include "utils/bitmap.h"
 #include "utils/log.h"
 #include "utils/utils.h"
-#include "utils/bitmap.h"
 #include "vmm.h"
 
 #include <bootloader/boot_info.h>
