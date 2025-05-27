@@ -14,7 +14,7 @@
 
 - Monolithic preemptive 64-bit SMP kernel.
 - Kernel level multithreading via a O(1) scheduler.
-- Custom C standard library and system libaries.
+- Custom C standard library and system libraries.
 - SIMD.
 - [Custom image format (.fbmp)](https://github.com/KaiNorberg/fbmp).
 - [Custom font format (.grf)](https://github.com/KaiNorberg/grf).
