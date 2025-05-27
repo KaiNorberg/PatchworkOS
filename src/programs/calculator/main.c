@@ -1,4 +1,4 @@
-#include <libdwm/dwm.h>
+#include <libpatchwork/patchwork.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,14 +20,15 @@
 #define WINDOW_HEIGHT (NUMPAD_ROW_TO_WINDOW(NUMPAD_ROWS))
 
 static font_t* largeFont;
-static label_t* label;
+static element_t* label;
 
 static void numpad_button_create(window_t* win, element_t* elem, uint64_t column, uint64_t row, const char* label,
     element_id_t id)
 {
     rect_t rect = RECT_INIT_DIM(NUMPAD_COLUMN_TO_WINDOW(column), NUMPAD_ROW_TO_WINDOW(row), NUMPAD_BUTTON_WIDTH,
         NUMPAD_BUTTON_WIDTH);
-    button_new(elem, id, &rect, largeFont, windowTheme.dark, windowTheme.background, BUTTON_NONE, label);
+    element_t* button = button_new(elem, id, &rect, label, ELEMENT_NONE);
+    element_text_props_get(button)->font = largeFont;
 }
 
 static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
@@ -63,8 +64,10 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         numpad_button_create(win, elem, 2, 3, "=", '=');
 
         rect_t labelRect = RECT_INIT_DIM(NUMPAD_PADDING, NUMPAD_PADDING, LABEL_WIDTH, LABEL_HEIGHT);
-        label = label_new(elem, LABEL_ID, &labelRect, largeFont, ALIGN_MAX, ALIGN_CENTER, windowTheme.dark,
-            windowTheme.bright, LABEL_NONE, "0");
+        label = label_new(elem, LABEL_ID, &labelRect, "0", ELEMENT_NONE);
+        element_text_props_t* props = element_text_props_get(label);
+        props->font = largeFont;
+        props->xAlign = ALIGN_MAX;
     }
     break;
     case LEVENT_ACTION:
@@ -89,7 +92,8 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             case '/':
                 if (input == 0)
                 {
-                    label_set_text(label, "DIV BY ZERO");
+                    element_text_set(label, "DIV BY ZERO");
+                    element_send_redraw(label, false);
                     return 0;
                 }
                 accumulator /= input;
@@ -116,12 +120,13 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
         char buffer[32];
         ulltoa(event->lAction.source == '=' ? accumulator : input, buffer, 10);
-        label_set_text(label, buffer);
+        element_text_set(label, buffer);
+        element_send_redraw(label, false);
     }
     break;
     case LEVENT_QUIT:
     {
-        display_disconnect(window_display(win));
+        display_disconnect(window_display_get(win));
     }
     break;
     }

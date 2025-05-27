@@ -1,4 +1,4 @@
-#include <libdwm/dwm.h>
+#include <libpatchwork/patchwork.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -11,7 +11,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     case LEVENT_REDRAW:
     {
         rect_t rect;
-        element_content_rect(elem, &rect);
+        element_content_rect_get(elem, &rect);
         point_t srcPoint = {0};
 
         drawable_t draw;
@@ -30,7 +30,7 @@ int main(void)
 {
     display_t* disp = display_new();
 
-    image = image_new(disp, "home:/theme/cursor/arrow.fbmp");
+    image = image_new(disp, theme_string_get(STRING_CURSOR_ARROW, NULL));
     if (image == NULL)
     {
         return EXIT_FAILURE;

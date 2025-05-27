@@ -32,6 +32,7 @@ static list_t panels;
 static surface_t* wall;
 static surface_t* cursor;
 static surface_t* fullscreen;
+static surface_t* prevCursorTarget;
 
 static surface_t* focus;
 
@@ -92,6 +93,7 @@ void dwm_init(void)
     wall = NULL;
     cursor = NULL;
     fullscreen = NULL;
+    prevCursorTarget = NULL;
 
     focus = NULL;
 
@@ -171,6 +173,10 @@ void dwm_detach(surface_t* surface)
     if (surface == focus)
     {
         focus = NULL;
+    }
+    if (surface == prevCursorTarget)
+    {
+        prevCursorTarget = NULL;
     }
 
     switch (surface->type)
@@ -382,7 +388,6 @@ static void dwm_handle_mouse_event(const mouse_event_t* mouseEvent)
     cursor->pos.x = CLAMP(cursor->pos.x + mouseEvent->deltaX, 0, (int64_t)screen_width() - 1);
     cursor->pos.y = CLAMP(cursor->pos.y + mouseEvent->deltaY, 0, (int64_t)screen_height() - 1);
 
-    // Dont read event delta to factor in clamping.
     point_t cursorDelta = {.x = cursor->pos.x - oldCursorPos.x, .y = cursor->pos.y - oldCursorPos.y};
     if (fullscreen == NULL && (cursorDelta.x != 0 || cursorDelta.y != 0))
     {
@@ -396,6 +401,39 @@ static void dwm_handle_mouse_event(const mouse_event_t* mouseEvent)
     }
 
     surface_t* surface = dwm_surface_under_point(&cursor->pos);
+
+    if (surface != prevCursorTarget)
+    {
+        if (prevCursorTarget != NULL)
+        {
+            event_cursor_leave_t event = {
+                .held = held,
+                .pressed = MOUSE_NONE,
+                .released = MOUSE_NONE,
+                .pos.x = cursor->pos.x - prevCursorTarget->pos.x,
+                .pos.y = cursor->pos.y - prevCursorTarget->pos.y,
+                .screenPos = cursor->pos,
+                .delta = cursorDelta,
+            };
+            client_send_event(prevCursorTarget->client, prevCursorTarget->id, EVENT_CURSOR_LEAVE, &event,
+                sizeof(event_cursor_leave_t));
+        }
+
+        if (surface != NULL)
+        {
+            event_cursor_enter_t event = {
+                .held = held,
+                .pressed = MOUSE_NONE,
+                .released = MOUSE_NONE,
+                .pos.x = cursor->pos.x - surface->pos.x,
+                .pos.y = cursor->pos.y - surface->pos.y,
+                .screenPos = cursor->pos,
+                .delta = cursorDelta,
+            };
+            client_send_event(surface->client, surface->id, EVENT_CURSOR_ENTER, &event, sizeof(event_cursor_enter_t));
+        }
+        prevCursorTarget = surface;
+    }
 
     if (pressed != MOUSE_NONE)
     {

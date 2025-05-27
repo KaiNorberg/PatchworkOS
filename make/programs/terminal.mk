@@ -2,7 +2,7 @@ include Make.defaults
 
 TARGET := $(BINDIR)/$(PROGRAM)
 
-LDFLAGS += -Lbin/libdwm -ldwm
+LDFLAGS += -lpatchwork
 
 all: $(TARGET)
 

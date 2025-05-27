@@ -1,6 +1,6 @@
 include Make.defaults
 
-MODULES := bootloader kernel libstd libdwm
+MODULES := bootloader kernel libstd libpatchwork
 PROGRAMS := $(basename $(notdir $(wildcard make/programs/*.mk)))
 TARGET := bin/PatchworkOS.img
 
@@ -16,7 +16,7 @@ $(PROGRAMS): $(MODULES)
 	$(MAKE) -f make/programs/$@.mk SRCDIR=src/programs/$@ BUILDDIR=build/programs/$@ BINDIR=bin/programs PROGRAM=$@
 
 deploy: $(PROGRAMS)
-	dd if=/dev/zero of=$(TARGET) bs=1M count=64
+	dd if=/dev/zero of=$(TARGET) bs=2M count=64
 	mkfs.vfat -F 32 -n "PATCHWORKOS" $(TARGET)
 	mlabel -i $(TARGET) ::PatchworkOS
 	mmd -i $(TARGET) ::/boot

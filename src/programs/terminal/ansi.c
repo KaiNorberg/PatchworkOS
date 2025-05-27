@@ -1,11 +1,11 @@
 #include "ansi.h"
 
-#include <libdwm/dwm.h>
+#include <libpatchwork/patchwork.h>
 
 void ansi_init(ansi_t* ansi)
 {
-    ansi->foreground = windowTheme.bright;
-    ansi->background = windowTheme.dark;
+    ansi->foreground = 0;
+    ansi->background = 0;
     ansi->bold = false;
     ansi->italic = false;
     ansi->underline = false;

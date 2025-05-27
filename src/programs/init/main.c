@@ -1,11 +1,16 @@
+#include <libpatchwork/patchwork.h>
+#include <sys/argsplit.h>
 #include <sys/io.h>
 #include <sys/proc.h>
 #include <threads.h>
 
-// TODO: Add config file to specify programs to start att boot.
-
 void spawn_program(const char* path)
 {
+    if (path == NULL)
+    {
+        return;
+    }
+
     fd_t klog = open("sys:/klog");
     const char* argv[] = {path, NULL};
     spawn_fd_t fds[] = {{.parent = klog, .child = STDOUT_FILENO}, SPAWN_FD_END};
@@ -13,24 +18,40 @@ void spawn_program(const char* path)
     close(klog);
 }
 
+#include <stdio.h>
+
 int main(void)
 {
     chdir("home:/usr");
 
-    spawn_program("home:/bin/dwm");
+    config_t* config = config_open("init", "main");
 
-    stat_t info;
-    while (stat("sys:/net/local/listen/dwm", &info) == ERR)
+    config_array_t* services = config_array_get(config, "startup", "services");
+    for (uint64_t i = 0; i < config_array_length(services); i++)
     {
-        thrd_yield();
+        const char* service = config_array_string_get(services, i, NULL);
+        spawn_program(service);
     }
 
-    spawn_program("home:/bin/wall");
-    spawn_program("home:/bin/cursor");
-    spawn_program("home:/bin/taskbar");
+    config_array_t* serviceFiles = config_array_get(config, "startup", "service_files");
+    for (uint64_t i = 0; i < config_array_length(services); i++)
+    {
+        const char* file = config_array_string_get(serviceFiles, i, "home:/");
 
-    // spawn_program("home:/bin/cursor");
-    // spawn_program("home:/bin/taskbar");
+        stat_t info;
+        while (stat(file, &info) == ERR)
+        {
+            thrd_yield();
+        }
+    }
 
+    config_array_t* programs = config_array_get(config, "startup", "programs");
+    for (uint64_t i = 0; i < config_array_length(programs); i++)
+    {
+        const char* program = config_array_string_get(programs, i, NULL);
+        spawn_program(program);
+    }
+
+    config_close(config);
     return 0;
 }

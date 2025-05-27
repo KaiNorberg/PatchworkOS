@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libdwm/dwm.h>
+#include <libpatchwork/patchwork.h>
 
 typedef struct
 {

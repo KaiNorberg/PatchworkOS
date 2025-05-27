@@ -1,9 +1,9 @@
 #pragma once
 
-#include <libdwm/cmd.h>
-#include <libdwm/pixel.h>
-#include <libdwm/point.h>
-#include <libdwm/rect.h>
+#include <libpatchwork/cmd.h>
+#include <libpatchwork/pixel.h>
+#include <libpatchwork/point.h>
+#include <libpatchwork/rect.h>
 #include <stdbool.h>
 #include <stdint.h>
 

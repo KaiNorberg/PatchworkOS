@@ -2,7 +2,7 @@
 
 #include "surface.h"
 
-#include <libdwm/event.h>
+#include <libpatchwork/event.h>
 #include <sys/io.h>
 #include <sys/list.h>
 

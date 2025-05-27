@@ -1,6 +1,6 @@
 #include Make.defaults
 
-# We need to implement signals before we can port lua...
+# We need to implement math.h before we can port lua...
 TARGET := $(BINDIR)/$(PROGRAM)
 
 $(TARGET):

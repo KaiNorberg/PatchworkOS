@@ -43,7 +43,7 @@ CFLAGS := $(OPTIMIZATION) \
     -fno-omit-frame-pointer \
     -Iinclude \
     -Ilib \
-    -I$(SRCDIR)
+    -I$(SRCDIR) \
 
 CFLAGS_DISABLE_SIMD := -mno-mmx -mno-3dnow \
 	-mno-80387 -mno-sse \

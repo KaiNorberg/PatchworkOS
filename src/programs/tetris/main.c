@@ -1,5 +1,5 @@
 #include <errno.h>
-#include <libdwm/dwm.h>
+#include <libpatchwork/patchwork.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -43,9 +43,9 @@
 #define PIECE_WIDTH 4
 #define PIECE_HEIGHT 4
 
-static label_t* currentScoreLabel;
-static label_t* completeLinesLabel;
-static label_t* playedBlocksLabel;
+static element_t* currentScoreLabel;
+static element_t* completeLinesLabel;
+static element_t* playedBlocksLabel;
 
 typedef enum
 {
@@ -204,42 +204,50 @@ static void block_draw(element_t* elem, drawable_t* draw, block_t block, int64_t
 
     rect_t rect = RECT_INIT_DIM(FIELD_LEFT + x * BLOCK_SIZE, FIELD_TOP + y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
 
-    draw_edge(draw, &rect, windowTheme.edgeWidth, highlightColors[block], shadowColors[block]);
-    RECT_SHRINK(&rect, windowTheme.edgeWidth);
+    int64_t frameSize = element_int_get(elem, INT_FRAME_SIZE);
+
+    draw_frame(draw, &rect, frameSize, highlightColors[block], shadowColors[block]);
+    RECT_SHRINK(&rect, frameSize);
     draw_rect(draw, &rect, normalColors[block]);
     RECT_SHRINK(&rect, 5);
-    draw_edge(draw, &rect, windowTheme.edgeWidth, shadowColors[block], highlightColors[block]);
+    draw_frame(draw, &rect, frameSize, shadowColors[block], highlightColors[block]);
 }
 
 static void side_panel_draw(window_t* win, element_t* elem, drawable_t* draw)
 {
     rect_t rect = RECT_INIT(SIDE_PANEL_LEFT, SIDE_PANEL_TOP, SIDE_PANEL_RIGHT, SIDE_PANEL_BOTTOM);
 
-    draw_ridge(draw, &rect, windowTheme.ridgeWidth, windowTheme.highlight, windowTheme.shadow);
+    int64_t frameSize = element_int_get(elem, INT_FRAME_SIZE);
+    pixel_t shadow = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_SHADOW);
+    pixel_t highlight = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_HIGHLIGHT);
+
+    draw_ridge(draw, &rect, frameSize, highlight, shadow);
+
+    pixel_t foreground = element_color_get(elem, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL);
 
     rect_t textRect = rect;
     textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
-    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark, "Score");
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, foreground, "Score");
 
     textRect.top = textRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
     textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
-    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark, "Lines");
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, foreground, "Lines");
 
     textRect.top = textRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
     textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
-    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark, "Pieces");
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, foreground, "Pieces");
 
     uint64_t fontHeight = font_height(largeFont);
 
     textRect.top = rect.bottom - fontHeight * 7;
     textRect.bottom = rect.bottom;
-    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark, "  ASD - Move");
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, foreground, "  ASD - Move");
     textRect.top += fontHeight;
     textRect.bottom += fontHeight;
-    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark, "SPACE - Drop");
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, foreground, "SPACE - Drop");
     textRect.top += fontHeight;
     textRect.bottom += fontHeight;
-    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.dark, "    R - Spin");
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, foreground, "    R - Spin");
 }
 
 static point_t piece_block_pos_in_field(int64_t pieceX, int64_t pieceY, int64_t blockX, int64_t blockY)
@@ -339,11 +347,16 @@ static void piece_rotate(piece_t* piece)
 
 static void field_edge_draw(element_t* elem, drawable_t* draw)
 {
+    int64_t frameSize = element_int_get(elem, INT_FRAME_SIZE);
+    pixel_t background = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_NORMAL);
+    pixel_t shadow = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_SHADOW);
+    pixel_t highlight = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_HIGHLIGHT);
+
     rect_t fieldRect = RECT_INIT(FIELD_LEFT, FIELD_TOP, FIELD_RIGHT, FIELD_BOTTOM);
     RECT_EXPAND(&fieldRect, FIELD_PADDING);
-    draw_rim(draw, &fieldRect, FIELD_PADDING - windowTheme.edgeWidth, windowTheme.background);
-    RECT_SHRINK(&fieldRect, FIELD_PADDING - windowTheme.edgeWidth);
-    draw_edge(draw, &fieldRect, windowTheme.edgeWidth, windowTheme.shadow, windowTheme.highlight);
+    draw_bezel(draw, &fieldRect, FIELD_PADDING - frameSize, background);
+    RECT_SHRINK(&fieldRect, FIELD_PADDING - frameSize);
+    draw_frame(draw, &fieldRect, frameSize, shadow, highlight);
 }
 
 static void field_draw(element_t* elem, drawable_t* draw)
@@ -699,10 +712,12 @@ static void start_press_space_draw(window_t* win, element_t* elem, drawable_t* d
     static bool blink = false;
 
     rect_t rect = RECT_INIT(FIELD_LEFT, (FIELD_TOP + FIELD_BOTTOM) / 2, FIELD_RIGHT, FIELD_BOTTOM);
-    draw_rect(draw, &rect, windowTheme.dark);
+    draw_rect(draw, &rect, normalColors[BLOCK_NONE]);
     if (blink)
     {
-        draw_text(draw, &rect, largeFont, ALIGN_CENTER, ALIGN_CENTER, windowTheme.bright, "PRESS SPACE");
+        pixel_t foreground = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_FOREGROUND_NORMAL);
+
+        draw_text(draw, &rect, largeFont, ALIGN_CENTER, ALIGN_CENTER, foreground, "PRESS SPACE");
     }
     blink = !blink;
 }
@@ -719,28 +734,37 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         completedLines = 0;
         playedBlocks = 0;
 
+        pixel_t background = element_color_get(elem, COLOR_SET_VIEW, COLOR_ROLE_BACKGROUND_NORMAL);
+        pixel_t foreground = element_color_get(elem, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL);
+
         rect_t labelRect = RECT_INIT(SIDE_PANEL_LEFT + SIDE_PANEL_LABEL_PADDING,
             SIDE_PANEL_TOP + SIDE_PANEL_TEXT_HEIGHT, SIDE_PANEL_RIGHT - SIDE_PANEL_LABEL_PADDING,
             SIDE_PANEL_TOP + SIDE_PANEL_TEXT_HEIGHT + SIDE_PANEL_LABEL_HEIGHT);
-        currentScoreLabel = label_new(elem, CURRENT_SCORE_LABEL_ID, &labelRect, largeFont, ALIGN_CENTER, ALIGN_CENTER,
-            windowTheme.bright, windowTheme.dark, LABEL_NONE, "000000");
+        currentScoreLabel = label_new(elem, CURRENT_SCORE_LABEL_ID, &labelRect, "000000", ELEMENT_NONE);
+        element_text_props_get(currentScoreLabel)->font = largeFont;
+        element_color_set(currentScoreLabel, COLOR_SET_VIEW, COLOR_ROLE_BACKGROUND_NORMAL, foreground);
+        element_color_set(currentScoreLabel, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL, background);
 
         labelRect.top = labelRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
         labelRect.bottom = labelRect.top + SIDE_PANEL_TEXT_HEIGHT;
-        completeLinesLabel = label_new(elem, COMPLETE_LINES_LABEL_ID, &labelRect, largeFont, ALIGN_CENTER, ALIGN_CENTER,
-            windowTheme.bright, windowTheme.dark, LABEL_NONE, "000000");
+        completeLinesLabel = label_new(elem, COMPLETE_LINES_LABEL_ID, &labelRect, "000000", ELEMENT_NONE);
+        element_text_props_get(completeLinesLabel)->font = largeFont;
+        element_color_set(completeLinesLabel, COLOR_SET_VIEW, COLOR_ROLE_BACKGROUND_NORMAL, foreground);
+        element_color_set(completeLinesLabel, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL, background);
 
         labelRect.top = labelRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
         labelRect.bottom = labelRect.top + SIDE_PANEL_TEXT_HEIGHT;
-        playedBlocksLabel = label_new(elem, PLAYED_BLOCKS_LABEL_ID, &labelRect, largeFont, ALIGN_CENTER, ALIGN_CENTER,
-            windowTheme.bright, windowTheme.dark, LABEL_NONE, "000000");
+        playedBlocksLabel = label_new(elem, PLAYED_BLOCKS_LABEL_ID, &labelRect, "000000", ELEMENT_NONE);
+        element_text_props_get(playedBlocksLabel)->font = largeFont;
+        element_color_set(playedBlocksLabel, COLOR_SET_VIEW, COLOR_ROLE_BACKGROUND_NORMAL, foreground);
+        element_color_set(playedBlocksLabel, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL, background);
 
         pause();
     }
     break;
     case LEVENT_QUIT:
     {
-        display_disconnect(window_display(win));
+        display_disconnect(window_display_get(win));
     }
     break;
     case LEVENT_REDRAW:
@@ -754,7 +778,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
         element_draw_end(elem, &draw);
 
-        window_set_timer(win, TIMER_NONE, 0);
+        window_timer_set(win, TIMER_NONE, 0);
     }
     break;
     case EVENT_TIMER:
@@ -766,7 +790,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         {
             start_tetris_draw(win, elem, &draw);
             start_press_space_draw(win, elem, &draw);
-            window_set_timer(win, TIMER_NONE, START_SCREEN_TICK_SPEED);
+            window_timer_set(win, TIMER_NONE, START_SCREEN_TICK_SPEED);
 
             element_draw_end(elem, &draw);
             break;
@@ -774,18 +798,18 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         else if (clearingLines)
         {
             field_clear_lines(elem, &draw);
-            window_set_timer(win, TIMER_NONE, CLEARING_LINES_TICK_SPEED);
+            window_timer_set(win, TIMER_NONE, CLEARING_LINES_TICK_SPEED);
 
             element_draw_end(elem, &draw);
             break;
         }
         else if (currentPiece.dropping)
         {
-            window_set_timer(win, TIMER_NONE, DROPPING_TICK_SPEED);
+            window_timer_set(win, TIMER_NONE, DROPPING_TICK_SPEED);
         }
         else
         {
-            window_set_timer(win, TIMER_NONE, TICK_SPEED);
+            window_timer_set(win, TIMER_NONE, TICK_SPEED);
         }
 
         current_piece_update(elem, &draw);
@@ -793,7 +817,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         if (clearingLines || gameover)
         {
             gameover = false;
-            window_set_timer(win, TIMER_NONE, 0);
+            window_timer_set(win, TIMER_NONE, 0);
         }
 
         element_draw_end(elem, &draw);
@@ -831,17 +855,17 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         else if (event->kbd.type == KBD_PRESS && event->kbd.code == KBD_S)
         {
             currentPiece.dropping = true;
-            window_set_timer(win, TIMER_NONE, 0);
+            window_timer_set(win, TIMER_NONE, 0);
         }
         else if (event->kbd.type == KBD_PRESS && event->kbd.code == KBD_SPACE)
         {
             current_piece_drop(elem, &draw);
-            window_set_timer(win, TIMER_NONE, 0);
+            window_timer_set(win, TIMER_NONE, 0);
         }
         else if (event->kbd.type == KBD_RELEASE && event->kbd.code == KBD_S)
         {
             currentPiece.dropping = false;
-            window_set_timer(win, TIMER_NONE, TICK_SPEED);
+            window_timer_set(win, TIMER_NONE, TICK_SPEED);
         }
 
         element_draw_end(elem, &draw);
@@ -853,19 +877,19 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     {
         char buffer[7];
         sprintf(buffer, "%06d", currentScore);
-        label_set_text(currentScoreLabel, buffer);
+        element_text_set(currentScoreLabel, buffer);
     }
     if (completedLines != oldCompletedLines)
     {
         char buffer[7];
         sprintf(buffer, "%06d", completedLines);
-        label_set_text(completeLinesLabel, buffer);
+        element_text_set(completeLinesLabel, buffer);
     }
     if (playedBlocks != oldPlayedBlocks)
     {
         char buffer[7];
         sprintf(buffer, "%06d", playedBlocks);
-        label_set_text(playedBlocksLabel, buffer);
+        element_text_set(playedBlocksLabel, buffer);
     }
 
     oldCurrentScore = currentScore;

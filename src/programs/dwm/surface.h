@@ -1,8 +1,8 @@
 #pragma once
 
-#include <libdwm/point.h>
-#include <libdwm/rect.h>
-#include <libdwm/surface.h>
+#include <libpatchwork/point.h>
+#include <libpatchwork/rect.h>
+#include <libpatchwork/surface.h>
 #include <sys/io.h>
 #include <sys/list.h>
 

@@ -182,13 +182,13 @@ static uint64_t client_action_surface_move(client_t* client, const cmd_header_t*
     return 0;
 }
 
-static uint64_t client_action_surface_set_timer(client_t* client, const cmd_header_t* header)
+static uint64_t client_action_surface_timer_set(client_t* client, const cmd_header_t* header)
 {
-    if (header->size != sizeof(cmd_surface_set_timer_t))
+    if (header->size != sizeof(cmd_surface_timer_set_t))
     {
         return ERR;
     }
-    cmd_surface_set_timer_t* cmd = (cmd_surface_set_timer_t*)header;
+    cmd_surface_timer_set_t* cmd = (cmd_surface_timer_set_t*)header;
 
     surface_t* surface = client_find_surface(client, cmd->target);
     if (surface == NULL)
@@ -198,7 +198,7 @@ static uint64_t client_action_surface_set_timer(client_t* client, const cmd_head
 
     surface->timer.flags = cmd->flags;
     surface->timer.timeout = cmd->timeout;
-    surface->timer.deadline = uptime() + cmd->timeout;
+    surface->timer.deadline = cmd->timeout == CLOCKS_NEVER ? CLOCKS_NEVER : uptime() + cmd->timeout;
     return 0;
 }
 
@@ -225,13 +225,32 @@ static uint64_t client_action_surface_invalidate(client_t* client, const cmd_hea
     return 0;
 }
 
+static uint64_t client_action_surface_focus_set(client_t* client, const cmd_header_t* header)
+{
+    if (header->size != sizeof(cmd_surface_focus_set_t))
+    {
+        return ERR;
+    }
+    cmd_surface_focus_set_t* cmd = (cmd_surface_focus_set_t*)header;
+
+    surface_t* surface = client_find_surface(client, cmd->target);
+    if (surface == NULL)
+    {
+        return ERR;
+    }
+
+    dwm_focus_set(surface);
+    return 0;
+}
+
 static uint64_t (*actions[])(client_t*, const cmd_header_t*) = {
     [CMD_SCREEN_INFO] = client_action_screen_info,
     [CMD_SURFACE_NEW] = client_action_surface_new,
     [CMD_SURFACE_FREE] = client_action_surface_free,
     [CMD_SURFACE_MOVE] = client_action_surface_move,
-    [CMD_SURFACE_SET_TIMER] = client_action_surface_set_timer,
+    [CMD_SURFACE_TIMER_SET] = client_action_surface_timer_set,
     [CMD_SURFACE_INVALIDATE] = client_action_surface_invalidate,
+    [CMD_SURFACE_FOCUS_SET] = client_action_surface_focus_set,
 };
 
 uint64_t client_receive_cmds(client_t* client)

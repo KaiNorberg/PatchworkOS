@@ -1,6 +1,8 @@
-#include <libdwm/dwm.h>
+#include <libpatchwork/patchwork.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+static image_t* image;
 
 static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
@@ -12,15 +14,21 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     break;
     case LEVENT_REDRAW:
     {
-        printf("wall: redraw\n");
+        if (image == NULL)
+        {
+            printf("wall: image failed to load\n");
+            break;
+        }
 
         rect_t rect;
-        element_content_rect(elem, &rect);
+        element_content_rect_get(elem, &rect);
 
         drawable_t draw;
         element_draw_begin(elem, &draw);
 
-        draw_gradient(&draw, &rect, 0xFF427F99, 0xFF5FA6C2, GRADIENT_DIAGONAL, true);
+        point_t srcPoint = {.x = (image_width(image) - RECT_WIDTH(&rect)) / 2,
+            .y = (image_height(image) - RECT_HEIGHT(&rect)) / 2};
+        draw_image(&draw, image, &rect, &srcPoint);
 
         element_draw_end(elem, &draw);
     }
@@ -36,6 +44,8 @@ int main(void)
 
     rect_t rect;
     display_screen_rect(disp, &rect, 0);
+
+    image = image_new(disp, theme_string_get(STRING_WALLPAPER, NULL));
 
     window_t* win = window_new(disp, "Wallpaper", &rect, SURFACE_WALL, WINDOW_NONE, procedure, NULL);
     if (win == NULL)

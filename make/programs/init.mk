@@ -2,7 +2,7 @@ include Make.defaults
 
 TARGET := $(BINDIR)/$(PROGRAM)
 
-LDFLAGS += 
+LDFLAGS += -lpatchwork
 
 all: $(TARGET)
 
