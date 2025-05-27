@@ -104,17 +104,6 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     break;
     case EVENT_TIMER:
     {
-        if (startMenu->focusOutPending)
-        {
-            clock_t elapsed = uptime() - startMenu->focusOutTime;
-            if (elapsed >= CLOCKS_PER_SEC / 30)
-            {
-                startMenu->focusOutPending = false;
-                start_menu_close(startMenu);
-            }
-            break;
-        }
-
         rect_t screenRect;
         display_screen_rect(window_display_get(win), &screenRect, 0);
 
@@ -178,18 +167,6 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         }
     }
     break;
-    case EVENT_FOCUS_OUT:
-    {
-        // This is a super hacky fix, but basically, if the start menu is opened and then closed by pressing the start button while the start_menu still has focus then
-        // the EVENT_FOCUS_OUT will fire when the button is pressed (shifting focus from start_menu to taskbar), which will close the menu before the ACTION_RELEASE
-        // event can be processed. This means when ACTION_RELEASE finally fires, it sees a closed menu and tries to open it again, causing the menu to briefly close
-        // and immediately reopen. This fixes that.
-        startMenu->focusOutPending = true;
-        startMenu->focusOutTime = uptime();
-        window_timer_set(win, TIMER_REPEAT, CLOCKS_PER_SEC / 60);
-    
-    }
-    break;
     }
 
     return 0;
@@ -210,8 +187,6 @@ void start_menu_init(start_menu_t* startMenu, window_t* taskbar, display_t* disp
     startMenu->taskbar = taskbar;
     startMenu->win = window_new(disp, "StartMenu", &rect, SURFACE_WINDOW, WINDOW_NONE, procedure, startMenu);
     startMenu->state = START_MENU_CLOSED;
-    startMenu->focusOutPending = false;
-    startMenu->focusOutTime = 0;
 }
 
 void start_menu_deinit(start_menu_t* startMenu)

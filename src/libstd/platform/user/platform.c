@@ -64,7 +64,8 @@ int* _PlatformErrnoFunc(void)
     return &thread->err;
 }
 
-void _PlatformAbort(void)
+// Ignore message
+void _PlatformAbort(const char* message)
 {
     // raise( SIGABRT );
     exit(EXIT_FAILURE);

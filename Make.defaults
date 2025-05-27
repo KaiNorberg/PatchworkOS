@@ -39,7 +39,6 @@ CFLAGS := $(OPTIMIZATION) \
     -Wno-deprecated-non-prototype \
     -Wno-unused-but-set-parameter \
     -Wno-unused-command-line-argument \
-    -fno-stack-protector \
     -fno-omit-frame-pointer \
     -Iinclude \
     -Ilib \
@@ -59,5 +58,5 @@ LDFLAGS :=
 SRC = $(wildcard $(SRCDIR)/*.c) $(wildcard $(SRCDIR)/*.s) \
 	$(wildcard $(SRCDIR)/*/*.c) $(wildcard $(SRCDIR)/*/*.s) \
 	$(wildcard $(SRCDIR)/*/*/*.c) $(wildcard $(SRCDIR)/*/*/*.s)
-    
+
 OBJ = $(patsubst src/%, $(BUILDDIR)/%.o, $(SRC))

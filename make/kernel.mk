@@ -9,9 +9,8 @@ SRC += $(wildcard src/libstd/*.c) $(wildcard src/libstd/*.s) \
 	$(wildcard src/libstd/platform/kernel/*.c) $(wildcard src/libstd/platform/kernel/*.s) \
 	$(wildcard src/libstd/platform/kernel/functions/**/*.c) $(wildcard src/libstd/platform/kernel/functions/**/*.s) \
 
-CFLAGS += $(CFLAGS_DISABLE_SIMD) -fno-pic -mcmodel=kernel \
-	-fno-stack-check -mno-red-zone -Wno-array-bounds \
-	-fno-stack-protector \
+CFLAGS += $(CFLAGS_DISABLE_SIMD) -fno-pic -fno-stack-check -mcmodel=kernel \
+	-mno-red-zone -Wno-array-bounds \
 	-Isrc/libstd \
 	-D__KERNEL__ \
 	-D__STDC_WANT_LIB_EXT1__=1

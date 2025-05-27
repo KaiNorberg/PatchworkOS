@@ -23,4 +23,5 @@ void* _PlatformPageAlloc(uint64_t amount);
 
 int* _PlatformErrnoFunc(void);
 
-_NORETURN void _PlatformAbort(void);
+// User platform will ignore message.
+_NORETURN void _PlatformAbort(const char* message);

@@ -40,7 +40,14 @@ int* _PlatformErrnoFunc(void)
     return &sched_thread()->error;
 }
 
-void _PlatformAbort(void)
+void _PlatformAbort(const char* message)
 {
-    log_panic(NULL, "libstd abort");
+    if (message != NULL)
+    {
+        log_panic(NULL, message);
+    }
+    else
+    {
+        log_panic(NULL, "libstd unknown abort");
+    }
 }
