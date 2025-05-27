@@ -25,6 +25,8 @@ typedef struct
     window_t* taskbar;
     clock_t animationStartTime;
     start_menu_state_t state;
+    bool focusOutPending; 
+    clock_t focusOutTime;
 } start_menu_t;
 
 void start_menu_init(start_menu_t* startMenu, window_t* taskbar, display_t* disp);

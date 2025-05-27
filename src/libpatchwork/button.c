@@ -6,7 +6,8 @@
 
 typedef struct button
 {
-    mouse_buttons_t pressed;
+    mouse_buttons_t mouseButtons;
+    bool pressed;
     bool hovered;
     bool focused;
 } button_t;
@@ -273,17 +274,19 @@ static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* 
         {
         case ACTION_PRESS:
         {
-            button->focused = true;
             button->pressed = true;
+            button->focused = true;
         }
         break;
         case ACTION_RELEASE:
         {
             button->pressed = false;
+            button->focused = false;
         }
         break;
         default:
         {
+
         }
         }
         button_draw(elem, button);
@@ -301,7 +304,7 @@ element_t* button_new(element_t* parent, element_id_t id, const rect_t* rect, co
     {
         return NULL;
     }
-    button->pressed = MOUSE_NONE;
+    button->pressed = false;
     button->hovered = false;
     button->focused = false;
 
