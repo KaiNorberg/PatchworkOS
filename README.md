@@ -9,15 +9,6 @@ Patchwork is a 64 bit monolithic hobbyist OS built from scratch in C for the x86
 <img src="meta/screenshots/desktop.png" style="image-rendering: pixelated;">
 <img src="meta/screenshots/doom.png" style="image-rendering: pixelated;">
 
-## Differences with Unix
-
-- Multiroot file system, with labels not letters ```home:/usr/fonts```
-- Replaced ```fork(), exec()``` with ```spawn()```
-- Single-User
-- Non POSIX standard library
-- GUI centric design
-- Lots of other stuff...
-
 ## Features
 
 - Monolithic preemptive 64-bit kernel
@@ -34,10 +25,55 @@ Patchwork is a 64 bit monolithic hobbyist OS built from scratch in C for the x86
 - IPC including pipes, shared memory, sockets and plan9 inspired "signals" called notes.
 - More to be added...
 
+## Differences with Unix
+
+- Multiroot file system, with labels not letters ```home:/usr/fonts```
+- Replaced ```fork(), exec()``` with ```spawn()```
+- Single-User
+- Non POSIX standard library
+- GUI centric design
+- Lots of other stuff...
+
 ## Limitations
 
 - Ram disks only
 - Only x86_64
+
+## Directories
+
+| Name                                                                    | Description                                                                         |
+| :---------------------------------------------------------------------  | :---------------------------------------------------------------------------------- |
+| [include](https://github.com/KaiNorberg/PatchworkOS/tree/main/include)  | Public API.                                                                         |
+| [lib](https://github.com/KaiNorberg/PatchworkOS/tree/main/lib)          | Third party stuff, for example OVMF-bin for QEMU.                                   |
+| [make](https://github.com/KaiNorberg/PatchworkOS/tree/main/make)        | Lots of make files.                                                                 |
+| [meta](https://github.com/KaiNorberg/PatchworkOS/tree/main/meta)        | Meta files for this repo, for example screenshots.                                  |
+| [root](https://github.com/KaiNorberg/PatchworkOS/tree/main/root)        | Stores files that will be copied to the root directory of the generated .iso.          |
+| [src](https://github.com/KaiNorberg/PatchworkOS/tree/main/src)          | Source code.                                                                        |
+| [tools](https://github.com/KaiNorberg/PatchworkOS/tree/main/tools)      | Stores scripts that we use as a hacky alternative to compiling a cross-compiler.    |
+
+## Sections
+
+The project is split into various sections which both the include and src directories are also split into, below is a description of each section.
+
+### bootloader
+
+The UEFI bootloader is intended to be as small as possible and get out of the way as quickly as possible. It is responsible for collecting system info such as the GOP frame buffer and loading the ram disk, finally it loads the kernel directly into the higher half. The address space after the bootloader is done will have all physical memory identity mapped and the kernel mapped. It uses memory type EFI_RESERVED to store the kernel.
+
+### kernel
+
+The monolithic kernel is responsible for pretty much everything. Handles scheduling, hardware, virtual file system, IPC, SMP, etc. 
+
+### libpatchwork
+
+The libpatchwork library is best thought of as a wrapper around user space services and systems, for example it handles windowing via the [Desktop Window Manager](https://github.com/KaiNorberg/PatchworkOS/tree/main/src/programs/dwm)  and provides access to system configuration via a series of configuration files stored at ```home:/cfg```.
+
+### libstd
+
+The libstd library is an extension of the C standard library, in the same way that something like Linux uses the POSIX extension to the C standard library. It contains the expected headers, string.h, stdlib.h etc., along with a few borrowed from POSIX like strings.h and then a bunch of extensions located in the [sys](https://github.com/KaiNorberg/PatchworkOS/tree/main/include/libstd/sys) directory. For instance, `sys/io.h` contains wrappers around the io system calls. The way I think of libstd is that its a wrapper around the kernel and its system calls, while libpatchwork is a wrapper around user space. The kernel and bootloader also has its own version of this library, containing for example memcpy, malloc, printf and similar functions to reduce code duplication while writing the OS. The seperation between the user space, kernel and bootloader versions of the library is handled by having each platform having its own directory within the [platform](https://github.com/KaiNorberg/PatchworkOS/tree/main/src/libstd/platform) directory.
+
+### programs
+
+Finally Patchwork has a series of programs designed for it, including shell utilities like [cat](https://github.com/KaiNorberg/PatchworkOS/tree/main/src/programs/cat) and [echo](https://github.com/KaiNorberg/PatchworkOS/tree/main/src/programs/echo), services like the [Desktop Window Manager](https://github.com/KaiNorberg/PatchworkOS/tree/main/src/programs/dwm) and desktop apps like the [terminal](https://github.com/KaiNorberg/PatchworkOS/tree/main/src/programs/terminal).
 
 ## Setup
 
