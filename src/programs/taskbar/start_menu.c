@@ -19,7 +19,6 @@ static start_entry_t entries[] = {
     {.name = "Terminal", .path = "home:/usr/bin/terminal"},
     {.name = "Tetris", .path = "home:/usr/bin/tetris"},
     {.name = "DOOM", .path = "home:/usr/bin/doom"},
-    {.name = "Error Test", .path = "this:/is/a/nonsense/file/path"},
 };
 
 #define ENTRY_AMOUNT (sizeof(entries) / sizeof(entries[0]))
