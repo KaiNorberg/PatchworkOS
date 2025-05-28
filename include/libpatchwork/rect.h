@@ -11,10 +11,10 @@ extern "C"
 
 typedef struct rect
 {
-    int64_t left;
-    int64_t top;
-    int64_t right;
-    int64_t bottom;
+    int32_t left;
+    int32_t top;
+    int32_t right;
+    int32_t bottom;
 } rect_t;
 
 typedef struct
@@ -38,6 +38,8 @@ typedef struct
 #define RECT_WIDTH(rect) ((rect)->right - (rect)->left)
 #define RECT_HEIGHT(rect) ((rect)->bottom - (rect)->top)
 #define RECT_AREA(rect) (RECT_WIDTH(rect) * RECT_HEIGHT(rect))
+
+#define RECT_HAS_NEGATIVE_DIMS(rect) (RECT_WIDTH(rect) < 0 || RECT_HEIGHT(rect) < 0)
 
 #define RECT_EXPAND_TO_CONTAIN(rect, other) \
     ({ \

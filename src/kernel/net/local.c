@@ -510,7 +510,8 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
     else
     {
         if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
-                ring_data_length(ring) >= sizeof(local_packet_header_t) || local_connection_is_closed(conn)) != WAIT_NORM)
+                ring_data_length(ring) >= sizeof(local_packet_header_t) || local_connection_is_closed(conn)) !=
+            WAIT_NORM)
         {
             lock_release(&conn->lock);
             return 0;

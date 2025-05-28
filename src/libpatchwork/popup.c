@@ -15,8 +15,7 @@ static uint64_t popup_procedure(window_t* win, element_t* elem, const event_t* e
     {
     case LEVENT_INIT:
     {
-        rect_t rect;
-        element_get_content_rect(elem, &rect);
+        rect_t rect = element_get_content_rect(elem);
 
         rect_t middleButtonRect = RECT_INIT_DIM(RECT_WIDTH(&rect) / 2 - POPUP_BUTTON_WIDTH / 2,
             RECT_HEIGHT(&rect) - POPUP_BUTTON_AREA_HEIGHT + POPUP_BUTTON_HEIGHT / 2 - 10, POPUP_BUTTON_WIDTH,
@@ -56,8 +55,7 @@ static uint64_t popup_procedure(window_t* win, element_t* elem, const event_t* e
     break;
     case LEVENT_REDRAW:
     {
-        rect_t rect;
-        element_get_content_rect(elem, &rect);
+        rect_t rect = element_get_content_rect(elem);
         rect.bottom -= POPUP_BUTTON_AREA_HEIGHT;
         rect.left += POPUP_HORIZONTAL_PADDING;
         rect.right -= POPUP_HORIZONTAL_PADDING;

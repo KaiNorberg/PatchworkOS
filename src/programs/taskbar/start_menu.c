@@ -40,8 +40,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     {
     case LEVENT_INIT:
     {
-        rect_t rect;
-        element_get_content_rect(elem, &rect);
+        rect_t rect = element_get_content_rect(elem);
 
         for (uint64_t i = 0; i < ENTRY_AMOUNT; i++)
         {
@@ -56,8 +55,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     break;
     case LEVENT_REDRAW:
     {
-        rect_t rect;
-        element_get_content_rect(elem, &rect);
+        rect_t rect = element_get_content_rect(elem);
 
         drawable_t draw;
         element_draw_begin(elem, &draw);

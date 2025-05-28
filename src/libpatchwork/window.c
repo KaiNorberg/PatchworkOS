@@ -20,8 +20,7 @@ typedef struct
 
 static void window_deco_titlebar_rect(window_t* win, element_t* elem, rect_t* rect)
 {
-    rect_t contentRect;
-    element_get_content_rect(elem, &contentRect);
+    rect_t contentRect = element_get_content_rect(elem);
 
     int64_t frameWidth = element_get_int(elem, INT_FRAME_SIZE);
     int64_t titlebarHeight = element_get_int(elem, INT_TITLEBAR_SIZE);
@@ -159,8 +158,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
     break;
     case LEVENT_REDRAW:
     {
-        rect_t rect;
-        element_get_content_rect(elem, &rect);
+        rect_t rect = element_get_content_rect(elem);
 
         drawable_t draw;
         element_draw_begin(elem, &draw);

@@ -66,7 +66,7 @@ void draw_frame(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t fo
     draw_invalidate(draw, &fitRect);
 }
 
-void draw_outline(drawable_t* draw, const rect_t* rect, pixel_t pixel, uint32_t length, uint32_t width)
+void draw_outline(drawable_t* draw, const rect_t* rect, pixel_t pixel, uint32_t length, int32_t width)
 {
     rect_t fitRect = *rect;
     RECT_FIT(&fitRect, &draw->contentRect);
@@ -78,7 +78,7 @@ void draw_outline(drawable_t* draw, const rect_t* rect, pixel_t pixel, uint32_t 
 
     uint32_t totalLength = length * 2;
 
-    for (uint32_t w = 0; w < width; w++)
+    for (int32_t w = 0; w < width; w++)
     {
         if (fitRect.top + w >= draw->contentRect.top && fitRect.top + w < draw->contentRect.bottom)
         {
@@ -108,7 +108,7 @@ void draw_outline(drawable_t* draw, const rect_t* rect, pixel_t pixel, uint32_t 
         }
     }
 
-    for (uint32_t w = 0; w < width; w++)
+    for (int32_t w = 0; w < width; w++)
     {
         if (fitRect.left + w >= draw->contentRect.left && fitRect.left + w < draw->contentRect.right)
         {

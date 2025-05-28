@@ -6,8 +6,8 @@
 #include "rect.h"
 #include "surface.h"
 
-#include <stdint.h>
 #include <assert.h>
+#include <stdint.h>
 #include <sys/io.h>
 #include <sys/kbd.h>
 #include <sys/mouse.h>

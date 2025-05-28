@@ -138,9 +138,9 @@ element_id_t element_get_id(element_t* elem)
     return elem->id;
 }
 
-void element_get_rect(element_t* elem, rect_t* rect)
+rect_t element_get_rect(element_t* elem)
 {
-    *rect = elem->rect;
+    return elem->rect;
 }
 
 void element_move(element_t* elem, const rect_t* rect)
@@ -148,20 +148,19 @@ void element_move(element_t* elem, const rect_t* rect)
     elem->rect = *rect;
 }
 
-void element_get_content_rect(element_t* elem, rect_t* rect)
+rect_t element_get_content_rect(element_t* elem)
 {
-    *rect = RECT_INIT_DIM(0, 0, RECT_WIDTH(&elem->rect), RECT_HEIGHT(&elem->rect));
+    return RECT_INIT_DIM(0, 0, RECT_WIDTH(&elem->rect), RECT_HEIGHT(&elem->rect));
 }
 
-void element_get_global_rect(element_t* elem, rect_t* rect)
+rect_t element_get_global_rect(element_t* elem)
 {
-    point_t point;
-    element_get_global_point(elem, &point);
+    point_t point = element_get_global_point(elem);
 
-    *rect = RECT_INIT_DIM(point.x, point.y, RECT_WIDTH(&elem->rect), RECT_HEIGHT(&elem->rect));
+    return RECT_INIT_DIM(point.x, point.y, RECT_WIDTH(&elem->rect), RECT_HEIGHT(&elem->rect));
 }
 
-void element_get_global_point(element_t* elem, point_t* point)
+point_t element_get_global_point(element_t* elem)
 {
     point_t offset = {.x = elem->rect.left, .y = elem->rect.top};
     element_t* parent = elem->parent;
@@ -172,14 +171,13 @@ void element_get_global_point(element_t* elem, point_t* point)
         parent = parent->parent;
     }
 
-    *point = offset;
+    return offset;
 }
 
-void element_rect_to_global(element_t* elem, rect_t* dest, const rect_t* src)
+rect_t element_rect_to_global(element_t* elem, const rect_t* src)
 {
-    point_t point;
-    element_get_global_point(elem, &point);
-    *dest = (rect_t){
+    point_t point = element_get_global_point(elem);
+    return (rect_t){
         .left = point.x + src->left,
         .top = point.y + src->top,
         .right = point.x + src->right,
@@ -187,21 +185,19 @@ void element_rect_to_global(element_t* elem, rect_t* dest, const rect_t* src)
     };
 }
 
-void element_point_to_global(element_t* elem, point_t* dest, const point_t* src)
+point_t element_point_to_global(element_t* elem, const point_t* src)
 {
-    point_t point;
-    element_get_global_point(elem, &point);
-    *dest = (point_t){
+    point_t point = element_get_global_point(elem);
+    return (point_t){
         .x = point.x + src->x,
         .y = point.y + src->y,
     };
 }
 
-void element_global_to_rect(element_t* elem, rect_t* dest, const rect_t* src)
+rect_t element_global_to_rect(element_t* elem, const rect_t* src)
 {
-    point_t point;
-    element_get_global_point(elem, &point);
-    *dest = (rect_t){
+    point_t point = element_get_global_point(elem);
+    return (rect_t){
         .left = src->left - point.x,
         .top = src->top - point.y,
         .right = src->right - point.x,
@@ -209,11 +205,10 @@ void element_global_to_rect(element_t* elem, rect_t* dest, const rect_t* src)
     };
 }
 
-void element_global_to_point(element_t* elem, point_t* dest, const point_t* src)
+point_t element_global_to_point(element_t* elem, const point_t* src)
 {
-    point_t point;
-    element_get_global_point(elem, &point);
-    *dest = (point_t){
+    point_t point = element_get_global_point(elem);
+    return (point_t){
         .x = src->x - point.x,
         .y = src->y - point.y,
     };
@@ -221,8 +216,7 @@ void element_global_to_point(element_t* elem, point_t* dest, const point_t* src)
 
 void element_draw_begin(element_t* elem, drawable_t* draw)
 {
-    rect_t globalRect;
-    element_get_global_rect(elem, &globalRect);
+    rect_t globalRect = element_get_global_rect(elem);
 
     draw->disp = elem->win->disp;
     draw->stride = RECT_WIDTH(&elem->win->rect);
@@ -233,8 +227,7 @@ void element_draw_begin(element_t* elem, drawable_t* draw)
 
 void element_draw_end(element_t* elem, drawable_t* draw)
 {
-    rect_t globalInvalid;
-    element_rect_to_global(elem, &globalInvalid, &draw->invalidRect);
+    rect_t globalInvalid = element_rect_to_global(elem, &draw->invalidRect);
     window_invalidate(elem->win, &globalInvalid);
 
     if (RECT_AREA(&draw->invalidRect) != 0)

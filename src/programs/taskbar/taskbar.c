@@ -25,8 +25,7 @@ static rect_t taskbar_get_clock_rect(taskbar_t* taskbar, element_t* elem)
     int64_t smallPadding = element_get_int(elem, INT_SMALL_PADDING);
     int64_t bigPadding = element_get_int(elem, INT_BIG_PADDING);
 
-    rect_t rect;
-    element_get_content_rect(elem, &rect);
+    rect_t rect = element_get_content_rect(elem);
 
     return RECT_INIT_DIM(RECT_WIDTH(&rect) - CLOCK_WIDTH - bigPadding, frameSize + smallPadding, CLOCK_WIDTH,
         panelSize - frameSize - smallPadding * 2);
@@ -131,7 +130,7 @@ static void taskbar_entry_remove(taskbar_t* taskbar, element_t* elem, surface_id
     }
 }
 
-//static void taskbar_entry_find
+// static void taskbar_entry_find
 
 static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
@@ -149,8 +148,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     {
     case LEVENT_INIT:
     {
-        rect_t rect;
-        element_get_content_rect(elem, &rect);
+        rect_t rect = element_get_content_rect(elem);
 
         rect_t startRect = taskbar_get_start_rect(taskbar, elem);
         button_new(elem, START_ID, &startRect, "Start", ELEMENT_TOGGLE | ELEMENT_NO_OUTLINE);
@@ -176,8 +174,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     break;
     case LEVENT_REDRAW:
     {
-        rect_t rect;
-        element_get_content_rect(elem, &rect);
+        rect_t rect = element_get_content_rect(elem);
 
         drawable_t draw;
         element_draw_begin(elem, &draw);
@@ -250,7 +247,6 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     break;
     case EVENT_GLOBAL_REPORT:
     {
-
     }
     case EVENT_GLOBAL_KBD:
     {

@@ -81,8 +81,7 @@ static void terminal_clear(terminal_t* term, element_t* elem, drawable_t* draw)
     term->isCursorVisible = false;
     term->cursorPos = (point_t){0, 0};
 
-    rect_t rect;
-    element_get_content_rect(elem, &rect);
+    rect_t rect = element_get_content_rect(elem);
 
     int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
     pixel_t highlight = element_get_color(elem, COLOR_SET_ELEMENT, COLOR_ROLE_HIGHLIGHT);
@@ -104,8 +103,7 @@ static void terminal_scroll(terminal_t* term, element_t* elem, drawable_t* draw)
     int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
     int64_t smallPadding = element_get_int(elem, INT_SMALL_PADDING);
 
-    rect_t destRect;
-    element_get_content_rect(elem, &destRect);
+    rect_t destRect = element_get_content_rect(elem);
 
     RECT_SHRINK(&destRect, frameSize);
     RECT_SHRINK(&destRect, smallPadding);
@@ -120,8 +118,7 @@ static void terminal_scroll(terminal_t* term, element_t* elem, drawable_t* draw)
 
 static void terminal_put(terminal_t* term, element_t* elem, drawable_t* draw, char chr)
 {
-    rect_t rect;
-    element_get_content_rect(elem, &rect);
+    rect_t rect = element_get_content_rect(elem);
 
     switch (chr)
     {

@@ -17,8 +17,7 @@ static uint64_t label_procedure(window_t* win, element_t* elem, const event_t* e
     {
     case LEVENT_REDRAW:
     {
-        rect_t rect;
-        element_get_content_rect(elem, &rect);
+        rect_t rect = element_get_content_rect(elem);
 
         drawable_t draw;
         element_draw_begin(elem, &draw);

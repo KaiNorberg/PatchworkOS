@@ -67,22 +67,22 @@ void* element_get_private(element_t* elem);
 
 element_id_t element_get_id(element_t* elem);
 
-void element_get_rect(element_t* elem, rect_t* rect);
+rect_t element_get_rect(element_t* elem);
 void element_move(element_t* elem, const rect_t* rect);
 
-void element_get_content_rect(element_t* elem, rect_t* rect);
+rect_t element_get_content_rect(element_t* elem);
 
-void element_get_global_rect(element_t* elem, rect_t* rect);
+rect_t element_get_global_rect(element_t* elem);
 
-void element_get_global_point(element_t* elem, point_t* point);
+point_t element_get_global_point(element_t* elem);
 
-void element_rect_to_global(element_t* elem, rect_t* dest, const rect_t* src);
+rect_t element_rect_to_global(element_t* elem, const rect_t* src);
 
-void element_point_to_global(element_t* elem, point_t* dest, const point_t* src);
+point_t element_point_to_global(element_t* elem, const point_t* src);
 
-void element_global_to_rect(element_t* elem, rect_t* dest, const rect_t* src);
+rect_t element_global_to_rect(element_t* elem, const rect_t* src);
 
-void element_global_to_point(element_t* elem, point_t* dest, const point_t* src);
+point_t element_global_to_point(element_t* elem, const point_t* src);
 
 void element_draw_begin(element_t* elem, drawable_t* draw);
 

@@ -14,8 +14,7 @@ typedef struct button
 
 static void button_draw(element_t* elem, button_t* button)
 {
-    rect_t rect;
-    element_get_content_rect(elem, &rect);
+    rect_t rect = element_get_content_rect(elem);
 
     drawable_t draw;
     element_draw_begin(elem, &draw);
@@ -178,8 +177,7 @@ static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* 
         bool prevIsHovered = button->isHovered;
         bool prevIsFocused = button->isFocused;
 
-        rect_t rect;
-        element_get_content_rect(elem, &rect);
+        rect_t rect = element_get_content_rect(elem);
 
         bool mouseInBounds = RECT_CONTAINS_POINT(&rect, &event->mouse.pos);
         bool leftPressed = (event->mouse.pressed & MOUSE_LEFT) != 0;
@@ -244,7 +242,8 @@ static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* 
             }
         }
 
-        if (button->isPressed != prevIsPressed || button->isHovered != prevIsHovered || button->isFocused != prevIsFocused)
+        if (button->isPressed != prevIsPressed || button->isHovered != prevIsHovered ||
+            button->isFocused != prevIsFocused)
         {
             button_draw(elem, button);
         }

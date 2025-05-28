@@ -3,8 +3,8 @@
 
 #include "rect.h"
 
-#include <stdbool.h>
 #include <assert.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <sys/io.h>
 
@@ -34,7 +34,7 @@ typedef struct
     bool isVisible;
     bool isFocused;
     char name[MAX_NAME];
-    uint8_t reserved[15];
+    uint8_t reserved[35];
 } surface_info_t;
 
 static_assert(sizeof(surface_info_t) == 104, "invalid surface_info_t size");

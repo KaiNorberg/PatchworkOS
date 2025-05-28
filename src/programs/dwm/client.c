@@ -220,6 +220,11 @@ static uint64_t client_action_surface_invalidate(client_t* client, const cmd_hea
     }
     cmd_surface_invalidate_t* cmd = (cmd_surface_invalidate_t*)header;
 
+    if (RECT_HAS_NEGATIVE_DIMS(&cmd->invalidRect))
+    {
+        return ERR;
+    }
+
     surface_t* surface = client_surface_find(client, cmd->target);
     if (surface == NULL)
     {

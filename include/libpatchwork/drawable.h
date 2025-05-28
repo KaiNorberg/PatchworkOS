@@ -44,7 +44,7 @@ void draw_content_rect(drawable_t* draw, rect_t* dest);
 
 void draw_rect(drawable_t* draw, const rect_t* rect, pixel_t pixel);
 
-void draw_outline(drawable_t* draw, const rect_t* rect, pixel_t pixel, uint32_t length, uint32_t width);
+void draw_outline(drawable_t* draw, const rect_t* rect, pixel_t pixel, uint32_t length, int32_t width);
 
 void draw_frame(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background);
 
