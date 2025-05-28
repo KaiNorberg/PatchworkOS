@@ -108,7 +108,7 @@ config_t* config_open(const char* prefix, const char* name)
     }
 
     char path[MAX_PATH];
-    int ret = snprintf(path, sizeof(path), "/cfg/%s-%s.cfg", prefix, name);
+    int ret = snprintf(path, sizeof(path), "home:/cfg/%s-%s.cfg", prefix, name);
     if (ret < 0 || ret >= (int)sizeof(path))
     {
         return NULL;

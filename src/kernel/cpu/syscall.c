@@ -159,7 +159,7 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, s
         }
     }
 
-    thread_t* thread = loader_spawn(argv, PRIORITY_MIN, cwd);
+    thread_t* thread = loader_spawn(argv, PRIORITY_MIN, cwd == NULL ? NULL : PATH(cwd));
     if (thread == NULL)
     {
         return ERR;
@@ -237,7 +237,7 @@ fd_t syscall_open(const char* path)
         return ERROR(EFAULT);
     }
 
-    file_t* file = vfs_open(path);
+    file_t* file = vfs_open(PATH(path));
     if (file == NULL)
     {
         return ERR;
@@ -260,7 +260,7 @@ uint64_t syscall_open2(const char* path, fd_t fds[2])
     }
 
     file_t* files[2];
-    if (vfs_open2(path, files) == ERR)
+    if (vfs_open2(PATH(path), files) == ERR)
     {
         return ERR;
     }
@@ -364,7 +364,7 @@ uint64_t syscall_chdir(const char* path)
         return ERROR(EFAULT);
     }
 
-    return vfs_chdir(path);
+    return vfs_chdir(PATH(path));
 }
 
 uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, clock_t timeout)
@@ -419,7 +419,7 @@ uint64_t syscall_stat(const char* path, stat_t* buffer)
         return ERROR(EFAULT);
     }
 
-    return vfs_stat(path, buffer);
+    return vfs_stat(PATH(path), buffer);
 }
 
 void* syscall_mmap(fd_t fd, void* address, uint64_t length, prot_t prot)
@@ -516,7 +516,7 @@ uint64_t syscall_rename(const char* oldpath, const char* newpath)
         return ERROR(EFAULT);
     }
 
-    return vfs_rename(oldpath, newpath);
+    return vfs_rename(PATH(oldpath), PATH(newpath));
 }
 
 uint64_t syscall_remove(const char* path)
@@ -526,7 +526,7 @@ uint64_t syscall_remove(const char* path)
         return ERROR(EFAULT);
     }
 
-    return vfs_remove(path);
+    return vfs_remove(PATH(path));
 }
 
 ///////////////////////////////////////////////////////

@@ -14,11 +14,11 @@ void main(boot_info_t* bootInfo)
     kernel_init(bootInfo);
 
     const char* argv[] = {"home:/bin/init", NULL};
-    thread_t* initThread = loader_spawn(argv, PRIORITY_MIN + 1);
+    thread_t* initThread = loader_spawn(argv, PRIORITY_MIN + 1, NULL);
     assert(initThread != NULL);
 
     // Set klog as stdout for init process
-    file_t* klog = vfs_open("sys:/klog");
+    file_t* klog = vfs_open(PATH("sys:/klog"));
     assert(klog != NULL);
     assert(vfs_ctx_openas(&initThread->process->vfsCtx, STDOUT_FILENO, klog) != ERR);
     file_deref(klog);

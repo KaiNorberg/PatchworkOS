@@ -3,6 +3,8 @@
 #include <sys/io.h>
 #include <sys/proc.h>
 #include <threads.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 void spawn_program(const char* path)
 {
@@ -14,19 +16,26 @@ void spawn_program(const char* path)
     fd_t klog = open("sys:/klog");
     const char* argv[] = {path, NULL};
     spawn_fd_t fds[] = {{.parent = klog, .child = STDOUT_FILENO}, SPAWN_FD_END};
-    spawn(argv, fds);
+    spawn(argv, fds, "home:/usr", SPAWN_NONE);
     close(klog);
 }
 
-#include <stdio.h>
-
 int main(void)
 {
-    chdir("home:/usr");
-
     config_t* config = config_open("init", "main");
+    if (config == NULL)
+    {
+        printf("init: failed to open config file!\n");
+        return EXIT_FAILURE;    
+    }
 
     config_array_t* services = config_get_array(config, "startup", "services");
+    if (services == NULL)
+    {
+        printf("init: failed to retrieve services from config file!\n");
+        return EXIT_FAILURE;    
+    }
+
     for (uint64_t i = 0; i < config_array_length(services); i++)
     {
         const char* service = config_array_get_string(services, i, NULL);

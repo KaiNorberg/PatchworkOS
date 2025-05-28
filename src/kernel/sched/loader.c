@@ -24,7 +24,7 @@ static void* loader_load_program(thread_t* thread)
         sched_process_exit(EEXEC);
     }
 
-    file_t* file = vfs_open(executable);
+    file_t* file = vfs_open(PATH(executable));
     if (file == NULL)
     {
         printf("loader_load_program: vfs_open failed (%s) pid=%d\n", strerror(thread->error), thread->process->id);
@@ -153,7 +153,7 @@ static void loader_process_entry(void)
     loader_jump_to_user_space(thread->process->argv.amount, argv, rsp, rip);
 }
 
-thread_t* loader_spawn(const char** argv, priority_t priority, const char* cwd)
+thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd)
 {
     if (argv == NULL || argv[0] == NULL)
     {
@@ -161,7 +161,7 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const char* cwd)
     }
 
     stat_t info;
-    if (vfs_stat(argv[0], &info) == ERR)
+    if (vfs_stat(PATH(argv[0]), &info) == ERR)
     {
         return NULL;
     }
@@ -171,9 +171,7 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const char* cwd)
         return ERRPTR(EISDIR);
     }
 
-
-
-    process_t* process = process_new(sched_process(), argv);
+    process_t* process = process_new(sched_process(), argv, cwd);
     if (process == NULL)
     {
         return NULL;

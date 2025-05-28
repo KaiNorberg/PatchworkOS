@@ -18,7 +18,7 @@ typedef struct volume volume_t;
 typedef struct file file_t;
 typedef struct poll_file poll_file_t;
 
-typedef uint64_t (*fs_mount_t)(const char*); // Add arguemnts as they are needed
+typedef uint64_t (*fs_mount_t)(const char*); // Add arguments as they are needed
 
 typedef struct fs
 {
@@ -113,17 +113,17 @@ uint64_t vfs_mount(const char* label, fs_t* fs);
 
 uint64_t vfs_unmount(const char* label);
 
-uint64_t vfs_chdir(const char* path);
+uint64_t vfs_chdir(const path_t* path);
 
-file_t* vfs_open(const char* path);
+file_t* vfs_open(const path_t* path);
 
-uint64_t vfs_open2(const char* path, file_t* files[2]);
+uint64_t vfs_open2(const path_t* path, file_t* files[2]);
 
-uint64_t vfs_stat(const char* path, stat_t* buffer);
+uint64_t vfs_stat(const path_t* path, stat_t* buffer);
 
-uint64_t vfs_rename(const char* oldpath, const char* newpath);
+uint64_t vfs_rename(const path_t* oldpath, const path_t* newpath);
 
-uint64_t vfs_remove(const char* path);
+uint64_t vfs_remove(const path_t* path);
 
 uint64_t vfs_readdir(file_t* file, stat_t* infos, uint64_t amount);
 

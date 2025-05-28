@@ -105,7 +105,8 @@ _NORETURN static inline void _SyscallThreadExit(void)
 
 static inline pid_t _SyscallSpawn(const char** argv, const spawn_fd_t* fds, const char* cwd, spawn_flags_t flags)
 {
-    return _SYSCALL4(pid_t, SYS_SPAWN, const char**, argv, const spawn_fd_t*, fds, const char*, cwd, spawn_flags_t, flags);
+    return _SYSCALL4(pid_t, SYS_SPAWN, const char**, argv, const spawn_fd_t*, fds, const char*, cwd, spawn_flags_t,
+        flags);
 }
 
 static inline uint64_t _SyscallSleep(clock_t nanoseconds)

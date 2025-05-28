@@ -194,7 +194,7 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount)
     {
         if (amount == 0)
         {
-            return;
+            break;
         }
 
         thread_t* thread = waitEntry->thread;

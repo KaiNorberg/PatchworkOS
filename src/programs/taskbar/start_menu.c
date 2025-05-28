@@ -88,7 +88,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             const char* argv[] = {entries[event->lAction.source].path, NULL};
             spawn_fd_t fds[] = {{.child = STDOUT_FILENO, .parent = klog}, {.child = STDERR_FILENO, .parent = klog},
                 SPAWN_FD_END};
-            if (spawn(argv, fds) == ERR)
+            if (spawn(argv, fds, NULL, SPAWN_NONE) == ERR)
             {
                 char buffer[MAX_PATH];
                 sprintf(buffer, "Failed to spawn (%s)!", entries[event->lAction.source].path);

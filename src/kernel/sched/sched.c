@@ -127,7 +127,7 @@ static thread_t* sched_find(sched_ctx_t* preferred, priority_t minPriority)
 
 static void sched_spawn_boot_thread(void)
 {
-    process_t* process = process_new(NULL, NULL);
+    process_t* process = process_new(NULL, NULL, NULL);
     assert(process != NULL && "failed to create boot process");
 
     thread_t* thread = thread_new(process, NULL, PRIORITY_MAX);

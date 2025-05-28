@@ -10,13 +10,13 @@
 
 void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd)
 {
-    if (cwd == NULL)
+    if (cwd != NULL && !cwd->isInvalid)
     {
-        assert(path_init(&ctx->cwd, "sys:/", NULL) != ERR);
+        ctx->cwd = *cwd;
     }
     else
     {
-        ctx->cwd = *cwd;
+        assert(path_init(&ctx->cwd, "sys:/", NULL) != ERR);
     }
 
     for (uint64_t i = 0; i < CONFIG_MAX_FD; i++)

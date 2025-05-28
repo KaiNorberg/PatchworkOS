@@ -261,7 +261,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
         stat_t info;
         if (stat(argv[0], &info) != ERR && info.type == STAT_FILE)
         {
-            result = spawn(argv, fds);
+            result = spawn(argv, fds, NULL, SPAWN_NONE);
         }
         else
         {
@@ -287,7 +287,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
             {
                 const char* temp = argv[0];
                 argv[0] = path;
-                result = spawn(argv, fds);
+                result = spawn(argv, fds, NULL, SPAWN_NONE);
                 argv[0] = temp;
                 isFound = true;
                 break;

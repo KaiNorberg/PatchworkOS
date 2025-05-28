@@ -150,7 +150,11 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd)
         return ERRPTR(ENOMEM);
     }
 
-    if (parent != NULL)
+    if (cwd != NULL)
+    {
+        vfs_ctx_init(&process->vfsCtx, cwd);
+    }
+    else if (parent != NULL)
     {
         LOCK_DEFER(&parent->vfsCtx.lock);
         vfs_ctx_init(&process->vfsCtx, &parent->vfsCtx.cwd);

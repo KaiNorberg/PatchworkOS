@@ -243,10 +243,18 @@ uint64_t path_init(path_t* path, const char* string, path_t* cwd)
     path->buffer[0] = '\3';
     path->bufferLength = 0;
     path->flags = 0;
+    path->isInvalid = false;
+
+    if (string == NULL)
+    {
+        path->isInvalid = true;
+        return ERR;
+    }
 
     string = path_determine_type(path, string, cwd);
     if (string == NULL)
     {
+        path->isInvalid = true;
         return ERR;
     }
 
@@ -258,6 +266,7 @@ uint64_t path_init(path_t* path, const char* string, path_t* cwd)
     string = path_parse_names(path, string);
     if (string == NULL)
     {
+        path->isInvalid = true;
         return ERR;
     }
 
@@ -269,6 +278,7 @@ uint64_t path_init(path_t* path, const char* string, path_t* cwd)
     string = path_parse_flags(path, string);
     if (string == NULL)
     {
+        path->isInvalid = true;
         return ERR;
     }
 

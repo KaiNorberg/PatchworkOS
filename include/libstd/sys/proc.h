@@ -84,8 +84,9 @@ typedef enum prot
 /**
  * @brief Mmap system call.
  *
- * The `mmap` function maps memory to the currently running processes address space from a file, this is the only way to allocate virtual memory from userspace. An
- * example usage would be to map the `sys:/zero` file which would allocate zeroed memory.
+ * The `mmap` function maps memory to the currently running processes address space from a file, this is the only way to
+ * allocate virtual memory from userspace. An example usage would be to map the `sys:/zero` file which would allocate
+ * zeroed memory.
  *
  * @param fd The open file descriptor of the file to be mapped.
  * @param address The desired virtual destination address, if equal to `NULL` the kernel will choose a available
@@ -93,7 +94,8 @@ typedef enum prot
  * @param length The length of the segment to be mapped, note that this length will be rounded up to the nearest page
  * multiple by the kernel factoring in page boundaries.
  * @param prot Protection flags.
- * @return On success, returns the address of the mapped memory, will always be page aligned, on failure returns `ERR` and errno is set.
+ * @return On success, returns the address of the mapped memory, will always be page aligned, on failure returns `ERR`
+ * and errno is set.
  */
 void* mmap(fd_t fd, void* address, uint64_t length, prot_t prot);
 
@@ -101,7 +103,7 @@ void* mmap(fd_t fd, void* address, uint64_t length, prot_t prot);
  * @brief Munmap system call.
  *
  * The `munmap` function unmaps memory from the currently running processes address space.
- * 
+ *
  * @param address The starting virtual address of the memory area to be unmapped.
  * @param length The length of the memory area to be unmapped.
  * @return On success, returns 0, on failure returns `ERR` and errno is set.
@@ -110,9 +112,10 @@ uint64_t munmap(void* address, uint64_t length);
 
 /**
  * @brief Mprotect system call.
- * 
- * The `mprotect` changes the protection flags of a virtual memory area in the currently running processes address space.
- * 
+ *
+ * The `mprotect` changes the protection flags of a virtual memory area in the currently running processes address
+ * space.
+ *
  * @param address  The starting virtual address of the memory area to be modified.
  * @param length The length of the memory area to be modifed.
  * @param prot The new protection flags of the memory area.
@@ -131,13 +134,15 @@ typedef enum
 /**
  * @brief Futex system call.
  *
- * The `futex` function provides a fast user-space syncronization mechanism. It can be used to implement userspace mutexes, conditional variables, etc.
+ * The `futex` function provides a fast user-space syncronization mechanism. It can be used to implement userspace
+ * mutexes, conditional variables, etc.
  *
  * @param addr A pointer to an atomic 64-bit unsigned integer.
  * @param val The value to compare against for `FUTEX_WAIT` or the number of threads to wake for `FUTEX_WAKE`.
  * @param op The futex operation to perform (e.g., `FUTEX_WAIT` or `FUTEX_WAKE`).
  * @param timeout An optional timeout for `FUTEX_WAIT`. If `CLOCKS_NEVER`, it waits forever.
- * @return On success, returns 0, except if using the `FUTEX_WAKE` operation then it returns the number of woken threads. On failure, returns `ERR` and errno is set.
+ * @return On success, returns 0, except if using the `FUTEX_WAKE` operation then it returns the number of woken
+ * threads. On failure, returns `ERR` and errno is set.
  */
 uint64_t futex(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t timeout);
 
@@ -155,7 +160,8 @@ clock_t uptime(void);
  *
  * The `sleep` function suspends the execution of the calling thread for a specified duration.
  *
- * @param timeout The duration in clock ticks for which to sleep, if equal to `CLOCKS_NEVER` then it will sleep forever, not sure why you would want to do that but you can.
+ * @param timeout The duration in clock ticks for which to sleep, if equal to `CLOCKS_NEVER` then it will sleep forever,
+ * not sure why you would want to do that but you can.
  * @return On success, returns 0. On failure, returns `ERR` and errno is set.
  */
 uint64_t sleep(clock_t timeout);

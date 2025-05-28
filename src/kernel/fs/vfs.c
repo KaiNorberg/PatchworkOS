@@ -101,13 +101,6 @@ void file_deref(file_t* file)
     }
 }
 
-static uint64_t vfs_parse_path(path_t* out, const char* path)
-{
-    vfs_ctx_t* ctx = &sched_process()->vfsCtx;
-    LOCK_DEFER(&ctx->lock);
-    return path_init(out, path, &ctx->cwd);
-}
-
 void vfs_init(void)
 {
     printf("vfs: init\n");
@@ -198,8 +191,13 @@ uint64_t vfs_unmount(const char* label)
     return 0;
 }
 
-uint64_t vfs_chdir(const char* path)
+uint64_t vfs_chdir(const path_t* path)
 {
+    if (path == NULL || path->isInvalid)
+    {
+        return ERROR(EPATH);
+    }
+
     stat_t info;
     if (vfs_stat(path, &info) == ERR)
     {
@@ -211,27 +209,20 @@ uint64_t vfs_chdir(const char* path)
         return ERROR(ENOTDIR);
     }
 
-    path_t parsedPath;
-    if (vfs_parse_path(&parsedPath, path) == ERR)
-    {
-        return ERR;
-    }
-
     vfs_ctx_t* ctx = &sched_process()->vfsCtx;
     LOCK_DEFER(&ctx->lock);
-    ctx->cwd = parsedPath;
+    ctx->cwd = *path;
     return 0;
 }
 
-file_t* vfs_open(const char* path)
+file_t* vfs_open(const path_t* path)
 {
-    path_t parsedPath;
-    if (vfs_parse_path(&parsedPath, path) == ERR)
+    if (path == NULL || path->isInvalid)
     {
-        return NULL;
+        return ERRPTR(EPATH);
     }
 
-    volume_t* volume = volume_get(parsedPath.volume);
+    volume_t* volume = volume_get(path->volume);
     if (volume == NULL)
     {
         return ERRPTR(EPATH);
@@ -243,7 +234,7 @@ file_t* vfs_open(const char* path)
         return ERRPTR(ENOOP);
     }
 
-    file_t* file = volume->ops->open(volume, &parsedPath);
+    file_t* file = volume->ops->open(volume, path);
     if (file == NULL)
     {
         volume_deref(volume);
@@ -253,15 +244,14 @@ file_t* vfs_open(const char* path)
     return file;
 }
 
-uint64_t vfs_open2(const char* path, file_t* files[2])
+uint64_t vfs_open2(const path_t* path, file_t* files[2])
 {
-    path_t parsedPath;
-    if (vfs_parse_path(&parsedPath, path) == ERR)
+    if (path == NULL || path->isInvalid)
     {
-        return ERR;
+        return ERROR(EPATH);
     }
 
-    volume_t* volume = volume_get(parsedPath.volume);
+    volume_t* volume = volume_get(path->volume);
     if (volume == NULL)
     {
         return ERROR(EPATH);
@@ -273,7 +263,7 @@ uint64_t vfs_open2(const char* path, file_t* files[2])
         return ERROR(ENOOP);
     }
 
-    uint64_t result = volume->ops->open2(volume, &parsedPath, files);
+    uint64_t result = volume->ops->open2(volume, path, files);
     if (result == ERR)
     {
         volume_deref(volume);
@@ -283,15 +273,14 @@ uint64_t vfs_open2(const char* path, file_t* files[2])
     return result;
 }
 
-uint64_t vfs_stat(const char* path, stat_t* buffer)
+uint64_t vfs_stat(const path_t* path, stat_t* buffer)
 {
-    path_t parsedPath;
-    if (vfs_parse_path(&parsedPath, path) == ERR)
+    if (path == NULL || path->isInvalid)
     {
-        return ERR;
+        return ERROR(EPATH);
     }
 
-    volume_t* volume = volume_get(parsedPath.volume);
+    volume_t* volume = volume_get(path->volume);
     if (volume == NULL)
     {
         return ERROR(EPATH);
@@ -303,66 +292,48 @@ uint64_t vfs_stat(const char* path, stat_t* buffer)
         return ERROR(ENOOP);
     }
 
-    uint64_t result = volume->ops->stat(volume, &parsedPath, buffer);
+    uint64_t result = volume->ops->stat(volume, path, buffer);
     volume_deref(volume);
     return result;
 }
 
-uint64_t vfs_rename(const char* oldpath, const char* newpath)
+uint64_t vfs_rename(const path_t* oldpath, const path_t* newpath)
 {
-    path_t parsedOldPath;
-    if (vfs_parse_path(&parsedOldPath, oldpath) == ERR)
-    {
-        return ERR;
-    }
-    path_t parsedNewPath;
-    if (vfs_parse_path(&parsedNewPath, newpath) == ERR)
-    {
-        return ERR;
-    }
-
-    volume_t* oldVolume = volume_get(parsedOldPath.volume);
-    if (oldVolume == NULL)
+    if (oldpath == NULL || oldpath->isInvalid || newpath == NULL || newpath->isInvalid)
     {
         return ERROR(EPATH);
     }
 
-    volume_t* newVolume = volume_get(parsedNewPath.volume);
-    if (newVolume == NULL)
+    if (strcmp(oldpath->volume, newpath->volume) != 0)
     {
-        volume_deref(oldVolume);
-        return ERROR(EPATH);
-    }
-
-    if (oldVolume->ops->rename == NULL)
-    {
-        volume_deref(oldVolume);
-        volume_deref(newVolume);
-        return ERROR(ENOOP);
-    }
-
-    if (oldVolume != newVolume)
-    {
-        volume_deref(oldVolume);
-        volume_deref(newVolume);
         return ERROR(EXDEV);
     }
 
-    uint64_t result = oldVolume->ops->rename(oldVolume, &parsedOldPath, &parsedNewPath);
-    volume_deref(oldVolume);
-    volume_deref(newVolume);
+    volume_t* volume = volume_get(oldpath->volume);
+    if (volume == NULL)
+    {
+        return ERROR(EPATH);
+    }
+
+    if (volume->ops->rename == NULL)
+    {
+        volume_deref(volume);
+        return ERROR(ENOOP);
+    }
+
+    uint64_t result = volume->ops->rename(volume, oldpath, newpath);
+    volume_deref(volume);
     return result;
 }
 
-uint64_t vfs_remove(const char* path)
+uint64_t vfs_remove(const path_t* path)
 {
-    path_t parsedPath;
-    if (vfs_parse_path(&parsedPath, path) == ERR)
+    if (path == NULL || path->isInvalid)
     {
-        return ERR;
+        return ERROR(EPATH);
     }
 
-    volume_t* volume = volume_get(parsedPath.volume);
+    volume_t* volume = volume_get(path->volume);
     if (volume == NULL)
     {
         return ERROR(EPATH);
@@ -374,7 +345,7 @@ uint64_t vfs_remove(const char* path)
         return ERROR(ENOOP);
     }
 
-    uint64_t result = volume->ops->remove(volume, &parsedPath);
+    uint64_t result = volume->ops->remove(volume, path);
     volume_deref(volume);
     return result;
 }
