@@ -20,7 +20,7 @@ typedef struct
     window_t* win;
     font_t* font;
     point_t cursorPos;
-    bool cursorVisible;
+    bool isCursorVisible;
     fd_t stdin[2];
     fd_t stdout[2]; // Also does stderr
     input_t input;

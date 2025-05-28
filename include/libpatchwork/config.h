@@ -23,23 +23,23 @@ void config_close(config_t* cfg);
 
 uint64_t config_scanf(config_t* cfg, const char* section, const char* key, const char* format, ...);
 
-const char* config_string_get(config_t* cfg, const char* section, const char* key, const char* fallback);
+const char* config_get_string(config_t* cfg, const char* section, const char* key, const char* fallback);
 
-int64_t config_int_get(config_t* cfg, const char* section, const char* key, int64_t fallback);
+int64_t config_get_int(config_t* cfg, const char* section, const char* key, int64_t fallback);
 
-bool config_bool_get(config_t* cfg, const char* section, const char* key, bool fallback);
+bool config_get_bool(config_t* cfg, const char* section, const char* key, bool fallback);
 
-config_array_t* config_array_get(config_t* cfg, const char* section, const char* key);
+config_array_t* config_get_array(config_t* cfg, const char* section, const char* key);
 
 void config_array_free(config_array_t* array);
 
 uint64_t config_array_length(config_array_t* array);
 
-const char* config_array_string_get(config_array_t* array, uint64_t index, const char* fallback);
+const char* config_array_get_string(config_array_t* array, uint64_t index, const char* fallback);
 
-int64_t config_array_int_get(config_array_t* array, uint64_t index, int64_t fallback);
+int64_t config_array_get_int(config_array_t* array, uint64_t index, int64_t fallback);
 
-bool config_array_bool_get(config_array_t* array, uint64_t index, bool fallback);
+bool config_array_get_bool(config_array_t* array, uint64_t index, bool fallback);
 
 #if defined(__cplusplus)
 }

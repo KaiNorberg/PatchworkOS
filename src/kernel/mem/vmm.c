@@ -63,7 +63,7 @@ static void* vmm_find_free_region(space_t* space, uint64_t length)
     uint64_t pageAmount = SIZE_IN_PAGES(length);
     for (uintptr_t addr = space->freeAddress; addr < ROUND_DOWN(UINT64_MAX, 0x1000); addr += pageAmount * PAGE_SIZE)
     {
-        if (pml_region_unmapped(space->pml, (void*)addr, pageAmount))
+        if (pml_is_region_unmapped(space->pml, (void*)addr, pageAmount))
         {
             space->freeAddress = addr + pageAmount * PAGE_SIZE;
             return (void*)addr;
@@ -158,7 +158,7 @@ void* vmm_kernel_alloc(void* virtAddr, uint64_t length)
 
     vmm_align_region(&virtAddr, &length);
 
-    if (!pml_region_unmapped(kernelPml, virtAddr, SIZE_IN_PAGES(length)))
+    if (!pml_is_region_unmapped(kernelPml, virtAddr, SIZE_IN_PAGES(length)))
     {
         return ERRPTR(EEXIST);
     }
@@ -207,7 +207,7 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t length)
     }
     physAddr = VMM_PHYS_TO_LOWER_SAFE(physAddr);
 
-    assert(pml_region_unmapped(kernelPml, virtAddr, SIZE_IN_PAGES(length)));
+    assert(pml_is_region_unmapped(kernelPml, virtAddr, SIZE_IN_PAGES(length)));
     assert(pml_map(kernelPml, virtAddr, physAddr, SIZE_IN_PAGES(length), PAGE_WRITE | VMM_KERNEL_PAGES) != ERR);
 
     return virtAddr;
@@ -237,7 +237,7 @@ void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot)
 
     vmm_align_region(&virtAddr, &length);
 
-    if (!pml_region_unmapped(space->pml, virtAddr, SIZE_IN_PAGES(length)))
+    if (!pml_is_region_unmapped(space->pml, virtAddr, SIZE_IN_PAGES(length)))
     {
         return ERRPTR(EEXIST);
     }
@@ -311,7 +311,7 @@ void* vmm_map(void* virtAddr, void* physAddr, uint64_t length, prot_t prot, vmm_
         bitmap_init(&region->pages, region->bitBuffer, pageAmount);
         memset(region->bitBuffer, 0xFF, BITMAP_BITS_TO_BYTES(pageAmount));
 
-        if (!pml_region_unmapped(space->pml, virtAddr, pageAmount))
+        if (!pml_is_region_unmapped(space->pml, virtAddr, pageAmount))
         {
             free(region);
             return ERRPTR(EEXIST);
@@ -327,7 +327,7 @@ void* vmm_map(void* virtAddr, void* physAddr, uint64_t length, prot_t prot, vmm_
     }
     else
     {
-        if (!pml_region_unmapped(space->pml, virtAddr, pageAmount))
+        if (!pml_is_region_unmapped(space->pml, virtAddr, pageAmount))
         {
             return ERRPTR(EEXIST);
         }
@@ -385,7 +385,7 @@ void* vmm_map_pages(void* virtAddr, void** pages, uint64_t pageAmount, prot_t pr
         bitmap_init(&region->pages, region->bitBuffer, pageAmount);
         memset(region->bitBuffer, 0xFF, BITMAP_BITS_TO_BYTES(pageAmount));
 
-        if (!pml_region_unmapped(space->pml, virtAddr, pageAmount))
+        if (!pml_is_region_unmapped(space->pml, virtAddr, pageAmount))
         {
             free(region);
             return ERRPTR(EEXIST);
@@ -410,7 +410,7 @@ void* vmm_map_pages(void* virtAddr, void** pages, uint64_t pageAmount, prot_t pr
     }
     else
     {
-        if (!pml_region_unmapped(space->pml, virtAddr, pageAmount))
+        if (!pml_is_region_unmapped(space->pml, virtAddr, pageAmount))
         {
             return ERRPTR(EEXIST);
         }
@@ -442,7 +442,7 @@ uint64_t vmm_unmap(void* virtAddr, uint64_t length)
     vmm_align_region(&virtAddr, &length);
     uint64_t pageAmount = SIZE_IN_PAGES(length);
 
-    if (pml_region_unmapped(space->pml, virtAddr, pageAmount))
+    if (pml_is_region_unmapped(space->pml, virtAddr, pageAmount))
     {
         return ERROR(EFAULT);
     }
@@ -492,7 +492,7 @@ uint64_t vmm_protect(void* virtAddr, uint64_t length, prot_t prot)
     vmm_align_region(&virtAddr, &length);
     uint64_t pageAmount = SIZE_IN_PAGES(length);
 
-    if (pml_region_unmapped(space->pml, virtAddr, pageAmount))
+    if (pml_is_region_unmapped(space->pml, virtAddr, pageAmount))
     {
         return ERROR(EFAULT);
     }
@@ -511,5 +511,5 @@ bool vmm_mapped(const void* virtAddr, uint64_t length)
     vmm_align_region((void**)&virtAddr, &length);
     space_t* space = &sched_process()->space;
     LOCK_DEFER(&space->lock);
-    return pml_region_mapped(space->pml, virtAddr, SIZE_IN_PAGES(length));
+    return pml_is_region_mapped(space->pml, virtAddr, SIZE_IN_PAGES(length));
 }

@@ -23,7 +23,7 @@ static inline void bitmap_init(bitmap_t* map, void* buffer, uint64_t length)
     map->buffer = buffer;
 }
 
-static inline bool bitmap_get(bitmap_t* map, uint64_t index)
+static inline bool bitmap_is_set(bitmap_t* map, uint64_t index)
 {
     return (map->buffer[(index) / 8] & (1ULL << ((index) % 8)));
 }
@@ -41,7 +41,7 @@ static inline uint64_t bitmap_find_clear_region_and_set(bitmap_t* map, uint64_t 
 {
     for (uint64_t i = map->firstZeroIndex; i < maxIndex; i += alignment)
     {
-        if (!bitmap_get(map, i))
+        if (!bitmap_is_set(map, i))
         {
             uint64_t j = i + 1;
             for (; j < maxIndex; j++)
@@ -52,7 +52,7 @@ static inline uint64_t bitmap_find_clear_region_and_set(bitmap_t* map, uint64_t 
                     return i;
                 }
 
-                if (bitmap_get(map, j))
+                if (bitmap_is_set(map, j))
                 {
                     i = MAX(ROUND_UP(j, alignment), alignment) - alignment;
                     break;
@@ -77,7 +77,7 @@ static inline uint64_t bitmap_sum(bitmap_t* map, uint64_t low, uint64_t high)
     uint64_t sum = 0;
     for (uint64_t i = low; i < high; i++)
     {
-        if (bitmap_get(map, i))
+        if (bitmap_is_set(map, i))
         {
             sum++;
         }

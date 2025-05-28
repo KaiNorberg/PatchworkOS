@@ -270,7 +270,7 @@ void config_close(config_t* cfg)
 
 uint64_t config_scanf(config_t* cfg, const char* section, const char* key, const char* format, ...)
 {
-    const char* str = config_string_get(cfg, section, key, NULL);
+    const char* str = config_get_string(cfg, section, key, NULL);
     if (str == NULL)
     {
         return ERR;
@@ -283,7 +283,7 @@ uint64_t config_scanf(config_t* cfg, const char* section, const char* key, const
     return result;
 }
 
-const char* config_string_get(config_t* cfg, const char* section, const char* key, const char* fallback)
+const char* config_get_string(config_t* cfg, const char* section, const char* key, const char* fallback)
 {
     if (cfg == NULL || section == NULL || key == NULL)
     {
@@ -297,34 +297,34 @@ const char* config_string_get(config_t* cfg, const char* section, const char* ke
     }
     else
     {
-        bool found = false;
+        bool isFound = false;
         LIST_FOR_EACH(targetSection, &cfg->root->children, entry)
         {
             if (strcasecmp(targetSection->name, section) == 0)
             {
-                found = true;
+                isFound = true;
                 break;
             }
         }
 
-        if (!found)
+        if (!isFound)
         {
             return fallback;
         }
     }
 
-    bool found = false;
+    bool isFound = false;
     config_pair_t* pair = NULL;
     LIST_FOR_EACH(pair, &targetSection->pairs, entry)
     {
         if (strcasecmp(pair->key, key) == 0)
         {
-            found = true;
+            isFound = true;
             break;
         }
     }
 
-    if (!found)
+    if (!isFound)
     {
         return fallback;
     }
@@ -332,14 +332,14 @@ const char* config_string_get(config_t* cfg, const char* section, const char* ke
     return pair->value;
 }
 
-int64_t config_int_get(config_t* cfg, const char* section, const char* key, int64_t fallback)
+int64_t config_get_int(config_t* cfg, const char* section, const char* key, int64_t fallback)
 {
     if (cfg == NULL || section == NULL || key == NULL)
     {
         return fallback;
     }
 
-    const char* str = config_string_get(cfg, section, key, NULL);
+    const char* str = config_get_string(cfg, section, key, NULL);
     if (str == NULL)
     {
         return fallback;
@@ -355,14 +355,14 @@ int64_t config_int_get(config_t* cfg, const char* section, const char* key, int6
     }
 }
 
-bool config_bool_get(config_t* cfg, const char* section, const char* key, bool fallback)
+bool config_get_bool(config_t* cfg, const char* section, const char* key, bool fallback)
 {
     if (cfg == NULL || section == NULL || key == NULL)
     {
         return fallback;
     }
 
-    const char* str = config_string_get(cfg, section, key, NULL);
+    const char* str = config_get_string(cfg, section, key, NULL);
     if (str == NULL)
     {
         return fallback;
@@ -380,9 +380,9 @@ bool config_bool_get(config_t* cfg, const char* section, const char* key, bool f
     return fallback;
 }
 
-config_array_t* config_array_get(config_t* cfg, const char* section, const char* key)
+config_array_t* config_get_array(config_t* cfg, const char* section, const char* key)
 {
-    const char* str = config_string_get(cfg, section, key, NULL);
+    const char* str = config_get_string(cfg, section, key, NULL);
     if (str == NULL)
     {
         return NULL;
@@ -474,7 +474,7 @@ uint64_t config_array_length(config_array_t* array)
     return array->length;
 }
 
-const char* config_array_string_get(config_array_t* array, uint64_t index, const char* fallback)
+const char* config_array_get_string(config_array_t* array, uint64_t index, const char* fallback)
 {
     if (index >= array->length)
     {
@@ -484,7 +484,7 @@ const char* config_array_string_get(config_array_t* array, uint64_t index, const
     return array->strings[index];
 }
 
-int64_t config_array_int_get(config_array_t* array, uint64_t index, int64_t fallback)
+int64_t config_array_get_int(config_array_t* array, uint64_t index, int64_t fallback)
 {
     if (index >= array->length)
     {
@@ -494,7 +494,7 @@ int64_t config_array_int_get(config_array_t* array, uint64_t index, int64_t fall
     return atoll(array->strings[index]);
 }
 
-bool config_array_bool_get(config_array_t* array, uint64_t index, bool fallback)
+bool config_array_get_bool(config_array_t* array, uint64_t index, bool fallback)
 {
     if (index >= array->length)
     {

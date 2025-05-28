@@ -18,7 +18,7 @@
 
 void cli_ctx_init(cli_ctx_t* cli)
 {
-    cli->intEnable = false;
+    cli->oldRflags = 0;
     cli->depth = 0;
 }
 
@@ -29,7 +29,7 @@ void cli_push(void)
     cli_ctx_t* cli = &smp_self_unsafe()->cli;
     if (cli->depth == 0)
     {
-        cli->intEnable = rflags & RFLAGS_INTERRUPT_ENABLE;
+        cli->oldRflags = rflags;
     }
     cli->depth++;
 }
@@ -43,7 +43,7 @@ void cli_pop(void)
     assert(cli->depth != 0);
     cli->depth--;
 
-    if (cli->depth == 0 && cli->intEnable)
+    if (cli->depth == 0 && (cli->oldRflags & RFLAGS_INTERRUPT_ENABLE))
     {
         asm volatile("sti");
     }

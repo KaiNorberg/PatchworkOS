@@ -47,7 +47,7 @@ typedef enum
     COLOR_ROLE_AMOUNT
 } theme_color_role_t;
 
-pixel_t theme_color_get(theme_color_set_t set, theme_color_role_t role, theme_override_t* override);
+pixel_t theme_get_color(theme_color_set_t set, theme_color_role_t role, theme_override_t* override);
 
 typedef enum
 {
@@ -59,7 +59,7 @@ typedef enum
     STRING_AMOUNT,
 } theme_string_t;
 
-const char* theme_string_get(theme_string_t name, theme_override_t* override);
+const char* theme_get_string(theme_string_t name, theme_override_t* override);
 
 typedef enum
 {
@@ -73,18 +73,18 @@ typedef enum
     INT_AMOUNT,
 } theme_int_t;
 
-int64_t theme_int_get(theme_int_t name, theme_override_t* override);
+int64_t theme_get_int(theme_int_t name, theme_override_t* override);
 
 void theme_override_init(theme_override_t* override);
 
 void theme_override_deinit(theme_override_t* override);
 
-uint64_t theme_override_color_set(theme_override_t* override, theme_color_set_t set, theme_color_role_t role,
+uint64_t theme_override_set_color(theme_override_t* override, theme_color_set_t set, theme_color_role_t role,
     pixel_t color);
 
-uint64_t theme_override_string_set(theme_override_t* override, theme_string_t name, const char* string);
+uint64_t theme_override_set_string(theme_override_t* override, theme_string_t name, const char* string);
 
-uint64_t theme_override_int_set(theme_override_t* override, theme_int_t name, int64_t integer);
+uint64_t theme_override_set_int(theme_override_t* override, theme_int_t name, int64_t integer);
 
 #if defined(__cplusplus)
 }

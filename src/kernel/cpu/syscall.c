@@ -27,7 +27,7 @@
 // NOTE: Syscalls should always return a 64 bit value to prevent garbage from remaining in rax.
 
 // TODO: Improve verify funcs, improve multithreading string safety. copy_to_user? copy_from_user?
-static bool verify_pointer(const void* pointer, uint64_t length)
+static bool pointer_is_valid(const void* pointer, uint64_t length)
 {
     if (length == 0)
     {
@@ -47,14 +47,14 @@ static bool verify_pointer(const void* pointer, uint64_t length)
     return true;
 }
 
-static bool verify_buffer(const void* pointer, uint64_t length)
+static bool buffer_is_valid(const void* pointer, uint64_t length)
 {
     if (length == 0)
     {
         return true;
     }
 
-    if (!verify_pointer(pointer, length))
+    if (!pointer_is_valid(pointer, length))
     {
         return false;
     }
@@ -67,9 +67,9 @@ static bool verify_buffer(const void* pointer, uint64_t length)
     return true;
 }
 
-static bool verify_string(const char* string)
+static bool string_is_valid(const char* string)
 {
-    if (!verify_buffer(string, sizeof(const char*)))
+    if (!buffer_is_valid(string, sizeof(const char*)))
     {
         return false;
     }
@@ -77,7 +77,7 @@ static bool verify_string(const char* string)
     const char* chr = string;
     while (true)
     {
-        if (!verify_buffer(chr, sizeof(char)))
+        if (!buffer_is_valid(chr, sizeof(char)))
         {
             return false;
         }
@@ -116,7 +116,7 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds)
         {
             return ERROR(EINVAL);
         }
-        else if (!verify_buffer(&argv[argc], sizeof(const char*)))
+        else if (!buffer_is_valid(&argv[argc], sizeof(const char*)))
         {
             return ERROR(EFAULT);
         }
@@ -124,7 +124,7 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds)
         {
             break;
         }
-        else if (!verify_string(argv[argc]))
+        else if (!string_is_valid(argv[argc]))
         {
             return ERROR(EFAULT);
         }
@@ -141,7 +141,7 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds)
             {
                 return ERROR(EINVAL);
             }
-            else if (!verify_buffer(&fds[fdAmount], sizeof(fd_t)))
+            else if (!buffer_is_valid(&fds[fdAmount], sizeof(fd_t)))
             {
                 return ERROR(EFAULT);
             }
@@ -214,7 +214,7 @@ time_t syscall_unix_epoch(time_t* timePtr)
     time_t epoch = systime_unix_epoch();
     if (timePtr != NULL)
     {
-        if (!verify_pointer(timePtr, sizeof(time_t)))
+        if (!pointer_is_valid(timePtr, sizeof(time_t)))
         {
             return ERROR(EFAULT);
         }
@@ -227,7 +227,7 @@ time_t syscall_unix_epoch(time_t* timePtr)
 
 fd_t syscall_open(const char* path)
 {
-    if (!verify_string(path))
+    if (!string_is_valid(path))
     {
         return ERROR(EFAULT);
     }
@@ -244,12 +244,12 @@ fd_t syscall_open(const char* path)
 
 uint64_t syscall_open2(const char* path, fd_t fds[2])
 {
-    if (!verify_string(path))
+    if (!string_is_valid(path))
     {
         return ERROR(EFAULT);
     }
 
-    if (!verify_buffer(fds, sizeof(fd_t) * 2))
+    if (!buffer_is_valid(fds, sizeof(fd_t) * 2))
     {
         return ERROR(EFAULT);
     }
@@ -286,7 +286,7 @@ uint64_t syscall_close(fd_t fd)
 
 uint64_t syscall_read(fd_t fd, void* buffer, uint64_t count)
 {
-    if (!verify_buffer(buffer, count))
+    if (!buffer_is_valid(buffer, count))
     {
         return ERROR(EFAULT);
     }
@@ -303,7 +303,7 @@ uint64_t syscall_read(fd_t fd, void* buffer, uint64_t count)
 
 uint64_t syscall_write(fd_t fd, const void* buffer, uint64_t count)
 {
-    if (!verify_buffer(buffer, count))
+    if (!buffer_is_valid(buffer, count))
     {
         return ERROR(EFAULT);
     }
@@ -332,7 +332,7 @@ uint64_t syscall_seek(fd_t fd, int64_t offset, seek_origin_t origin)
 
 uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
 {
-    if (argp != NULL && !verify_buffer(argp, size))
+    if (argp != NULL && !buffer_is_valid(argp, size))
     {
         return ERROR(EFAULT);
     }
@@ -354,7 +354,7 @@ uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
 
 uint64_t syscall_chdir(const char* path)
 {
-    if (!verify_string(path))
+    if (!string_is_valid(path))
     {
         return ERROR(EFAULT);
     }
@@ -369,7 +369,7 @@ uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, clock_t timeout)
         return ERROR(EINVAL);
     }
 
-    if (!verify_buffer(fds, sizeof(pollfd_t) * amount))
+    if (!buffer_is_valid(fds, sizeof(pollfd_t) * amount))
     {
         return ERROR(EFAULT);
     }
@@ -404,12 +404,12 @@ uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, clock_t timeout)
 
 uint64_t syscall_stat(const char* path, stat_t* buffer)
 {
-    if (!verify_string(path))
+    if (!string_is_valid(path))
     {
         return ERROR(EFAULT);
     }
 
-    if (!verify_buffer(buffer, sizeof(stat_t)))
+    if (!buffer_is_valid(buffer, sizeof(stat_t)))
     {
         return ERROR(EFAULT);
     }
@@ -431,7 +431,7 @@ void* syscall_mmap(fd_t fd, void* address, uint64_t length, prot_t prot)
 
 uint64_t syscall_munmap(void* address, uint64_t length)
 {
-    if (!verify_pointer(address, length))
+    if (!pointer_is_valid(address, length))
     {
         return ERROR(EFAULT);
     }
@@ -441,7 +441,7 @@ uint64_t syscall_munmap(void* address, uint64_t length)
 
 uint64_t syscall_mprotect(void* address, uint64_t length, prot_t prot)
 {
-    if (!verify_pointer(address, length))
+    if (!pointer_is_valid(address, length))
     {
         return ERROR(EFAULT);
     }
@@ -451,7 +451,7 @@ uint64_t syscall_mprotect(void* address, uint64_t length, prot_t prot)
 
 uint64_t syscall_readdir(fd_t fd, stat_t* infos, uint64_t amount)
 {
-    if (!verify_buffer(infos, amount * sizeof(stat_t)))
+    if (!buffer_is_valid(infos, amount * sizeof(stat_t)))
     {
         return ERROR(EFAULT);
     }
@@ -468,7 +468,7 @@ uint64_t syscall_readdir(fd_t fd, stat_t* infos, uint64_t amount)
 
 tid_t syscall_thread_create(void* entry, void* arg)
 {
-    if (!verify_buffer(entry, sizeof(uint64_t)))
+    if (!buffer_is_valid(entry, sizeof(uint64_t)))
     {
         return ERROR(EFAULT);
     }
@@ -506,7 +506,7 @@ uint64_t syscall_futex(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t
 
 uint64_t syscall_rename(const char* oldpath, const char* newpath)
 {
-    if (!verify_string(oldpath) || !verify_string(newpath))
+    if (!string_is_valid(oldpath) || !string_is_valid(newpath))
     {
         return ERROR(EFAULT);
     }
@@ -516,7 +516,7 @@ uint64_t syscall_rename(const char* oldpath, const char* newpath)
 
 uint64_t syscall_remove(const char* path)
 {
-    if (!verify_string(path))
+    if (!string_is_valid(path))
     {
         return ERROR(EFAULT);
     }

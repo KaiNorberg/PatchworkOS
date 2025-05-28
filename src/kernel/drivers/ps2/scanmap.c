@@ -122,7 +122,7 @@ const keycode_t extendedScanmap[0xFF] = {
     [0x5C] = KBD_RIGHT_SUPER,
 };
 
-keycode_t ps2_scancode_to_keycode(bool extended, uint8_t scancode)
+keycode_t ps2_scancode_to_keycode(bool isExtended, uint8_t scancode)
 {
-    return extended ? extendedScanmap[scancode] : scanmap[scancode];
+    return isExtended ? extendedScanmap[scancode] : scanmap[scancode];
 }

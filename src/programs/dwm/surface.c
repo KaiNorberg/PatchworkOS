@@ -53,10 +53,10 @@ surface_t* surface_new(client_t* client, const char* name, const point_t* point,
     surface->timer.flags = TIMER_NONE;
     surface->timer.timeout = CLOCKS_NEVER;
     surface->timer.deadline = CLOCKS_NEVER;
-    surface->invalid = true;
-    surface->moved = false;
-    surface->visible = true;
-    surface->focused = false;
+    surface->isInvalid = true;
+    surface->hasMoved = false;
+    surface->isVisible = true;
+    surface->isFocused = false;
     surface->prevRect = RECT_INIT_DIM(surface->pos.x, surface->pos.y, width, height);
     strcpy(surface->name, name);
     return surface;
@@ -68,12 +68,12 @@ void surface_free(surface_t* surface)
     free(surface);
 }
 
-void surface_info_get(surface_t* surface, surface_info_t* info)
+void surface_get_info(surface_t* surface, surface_info_t* info)
 {
     info->type = surface->type;
     info->id = surface->id;
     info->rect = SURFACE_RECT(surface);
-    info->visible = surface->visible;
-    info->focused = surface->focused;
+    info->isVisible = surface->isVisible;
+    info->isFocused = surface->isFocused;
     strcpy(info->name, surface->name);
 }

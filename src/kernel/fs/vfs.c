@@ -163,17 +163,17 @@ uint64_t vfs_unmount(const char* label)
     RWLOCK_WRITE_DEFER(&volumesLock);
 
     volume_t* volume;
-    bool found = false;
+    bool isFound = false;
     LIST_FOR_EACH(volume, &volumes, entry)
     {
         if (strcmp(volume->label, label) == 0)
         {
-            found = true;
+            isFound = true;
             break;
         }
     }
 
-    if (!found)
+    if (!isFound)
     {
         return ERROR(EPATH);
     }

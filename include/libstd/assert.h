@@ -27,6 +27,10 @@ _PUBLIC void _Assert89(const char* const);
 #endif
 #endif
 
+#if __STDC_VERSION__ >= 201112L
+#define static_assert _Static_assert
+#endif
+
 #ifdef __cplusplus
 }
 #endif

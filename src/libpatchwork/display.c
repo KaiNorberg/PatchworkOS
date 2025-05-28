@@ -10,11 +10,11 @@ static void display_receive_event(display_t* disp, event_t* event)
 {
     if (read(disp->data, event, sizeof(event_t)) != sizeof(event_t))
     {
-        disp->connected = false;
+        disp->isConnected = false;
     }
 }
 
-static bool display_events_available(display_t* disp)
+static bool display_is_events_avail(display_t* disp)
 {
     return disp->events.readIndex != disp->events.writeIndex;
 }
@@ -65,7 +65,7 @@ display_t* display_new(void)
         free(disp);
     }
 
-    disp->connected = true;
+    disp->isConnected = true;
     disp->events.readIndex = 0;
     disp->events.writeIndex = 0;
     disp->cmds.amount = 0;
@@ -137,19 +137,19 @@ fd_t display_fd(display_t* disp)
     return disp->data;
 }
 
-bool display_connected(display_t* disp)
+bool display_is_connected(display_t* disp)
 {
-    return disp->connected;
+    return disp->isConnected;
 }
 
 void display_disconnect(display_t* disp)
 {
-    disp->connected = false;
+    disp->isConnected = false;
 }
 
 bool display_next_event(display_t* disp, event_t* event, clock_t timeout)
 {
-    if (display_events_available(disp))
+    if (display_is_events_avail(disp))
     {
         display_events_pop(disp, event);
         return true;
@@ -160,7 +160,7 @@ bool display_next_event(display_t* disp, event_t* event, clock_t timeout)
         poll_event_t occurred = poll1(disp->data, POLL_READ, timeout);
         if (occurred & POLL1_ERR)
         {
-            disp->connected = false;
+            disp->isConnected = false;
             return false;
         }
         else if (!(occurred & POLL_READ))
@@ -213,11 +213,11 @@ void* display_cmds_push(display_t* disp, cmd_type_t type, uint64_t size)
 
 void display_cmds_flush(display_t* disp)
 {
-    if (disp->connected && disp->cmds.amount != 0)
+    if (disp->isConnected && disp->cmds.amount != 0)
     {
         if (write(disp->data, &disp->cmds, disp->cmds.size) != disp->cmds.size)
         {
-            disp->connected = false;
+            disp->isConnected = false;
         }
     }
     disp->cmds.size = offsetof(cmd_buffer_t, data);
@@ -226,7 +226,7 @@ void display_cmds_flush(display_t* disp)
 
 uint64_t display_wait_for_event(display_t* disp, event_t* event, event_type_t expected)
 {
-    while (display_connected(disp))
+    while (display_is_connected(disp))
     {
         display_receive_event(disp, event);
 
@@ -264,7 +264,7 @@ void display_dispatch(display_t* disp, const event_t* event)
             if (window_dispatch(win, event) == ERR)
             {
                 window_free(win);
-                disp->connected = false;
+                disp->isConnected = false;
             }
             break;
         }
@@ -287,10 +287,10 @@ void display_unsubscribe(display_t* disp, event_type_t type)
     display_cmds_flush(disp);
 }
 
-void display_surface_info_get(display_t* disp, surface_id_t id, surface_info_t* info)
+void display_get_surface_info(display_t* disp, surface_id_t id, surface_info_t* info)
 {
     cmd_surface_report_t* cmd = display_cmds_push(disp, CMD_SURFACE_REPORT, sizeof(cmd_surface_report_t));
-    cmd->global = true;
+    cmd->isGlobal = true;
     cmd->target = id;
     display_cmds_flush(disp);
 
@@ -299,20 +299,20 @@ void display_surface_info_get(display_t* disp, surface_id_t id, surface_info_t* 
     *info = event.report.info;
 }
 
-void display_surface_focus_set(display_t* disp, surface_id_t id)
+void display_set_visible(display_t* disp, surface_id_t id)
 {
     cmd_surface_focus_set_t* cmd = display_cmds_push(disp, CMD_SURFACE_FOCUS_SET, sizeof(cmd_surface_focus_set_t));
-    cmd->global = true;
+    cmd->isGlobal = true;
     cmd->target = id;
     display_cmds_flush(disp);
 }
 
-void display_surface_visible_set(display_t* disp, surface_id_t id, bool visible)
+void display_set_is_visible(display_t* disp, surface_id_t id, bool isVisible)
 {
-    cmd_surface_visible_set_t* cmd = display_cmds_push(disp, CMD_SURFACE_VISIBLE_SET, sizeof(cmd_surface_visible_set_t));
-    cmd->global = true;
+    cmd_surface_visible_set_t* cmd =
+        display_cmds_push(disp, CMD_SURFACE_VISIBLE_SET, sizeof(cmd_surface_visible_set_t));
+    cmd->isGlobal = true;
     cmd->target = id;
-    cmd->visible = visible;
+    cmd->isVisible = isVisible;
     display_cmds_flush(disp);
-
 }

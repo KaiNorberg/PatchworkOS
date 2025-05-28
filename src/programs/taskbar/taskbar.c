@@ -8,57 +8,57 @@
 
 // The rect_get functions are rather inefficient... but like who cares.
 
-static rect_t taskbar_start_rect_get(taskbar_t* taskbar, element_t* elem)
+static rect_t taskbar_get_start_rect(taskbar_t* taskbar, element_t* elem)
 {
-    int64_t panelSize = element_int_get(elem, INT_PANEL_SIZE);
-    int64_t frameSize = element_int_get(elem, INT_FRAME_SIZE);
-    int64_t smallPadding = element_int_get(elem, INT_SMALL_PADDING);
-    int64_t bigPadding = element_int_get(elem, INT_BIG_PADDING);
+    int64_t panelSize = element_get_int(elem, INT_PANEL_SIZE);
+    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
+    int64_t smallPadding = element_get_int(elem, INT_SMALL_PADDING);
+    int64_t bigPadding = element_get_int(elem, INT_BIG_PADDING);
 
     return RECT_INIT_DIM(bigPadding, frameSize + smallPadding, START_WIDTH, panelSize - frameSize - smallPadding * 2);
 }
 
-static rect_t taskbar_clock_rect_get(taskbar_t* taskbar, element_t* elem)
+static rect_t taskbar_get_clock_rect(taskbar_t* taskbar, element_t* elem)
 {
-    int64_t panelSize = element_int_get(elem, INT_PANEL_SIZE);
-    int64_t frameSize = element_int_get(elem, INT_FRAME_SIZE);
-    int64_t smallPadding = element_int_get(elem, INT_SMALL_PADDING);
-    int64_t bigPadding = element_int_get(elem, INT_BIG_PADDING);
+    int64_t panelSize = element_get_int(elem, INT_PANEL_SIZE);
+    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
+    int64_t smallPadding = element_get_int(elem, INT_SMALL_PADDING);
+    int64_t bigPadding = element_get_int(elem, INT_BIG_PADDING);
 
     rect_t rect;
-    element_content_rect_get(elem, &rect);
+    element_get_content_rect(elem, &rect);
 
     return RECT_INIT_DIM(RECT_WIDTH(&rect) - CLOCK_WIDTH - bigPadding, frameSize + smallPadding, CLOCK_WIDTH,
         panelSize - frameSize - smallPadding * 2);
 }
 
-static rect_t taskbar_left_seperator_rect_get(taskbar_t* taskbar, element_t* elem)
+static rect_t taskbar_get_left_seperator_rect(taskbar_t* taskbar, element_t* elem)
 {
-    rect_t startRect = taskbar_start_rect_get(taskbar, elem);
+    rect_t startRect = taskbar_get_start_rect(taskbar, elem);
 
-    int64_t bigPadding = element_int_get(elem, INT_BIG_PADDING);
-    int64_t seperatorSize = element_int_get(elem, INT_SEPERATOR_SIZE);
+    int64_t bigPadding = element_get_int(elem, INT_BIG_PADDING);
+    int64_t seperatorSize = element_get_int(elem, INT_SEPERATOR_SIZE);
 
     return RECT_INIT_DIM(startRect.right + bigPadding, startRect.top, seperatorSize, RECT_HEIGHT(&startRect));
 }
 
-static rect_t taskbar_right_seperator_rect_get(taskbar_t* taskbar, element_t* elem)
+static rect_t taskbar_get_right_seperator_rect(taskbar_t* taskbar, element_t* elem)
 {
-    rect_t clockRect = taskbar_clock_rect_get(taskbar, elem);
+    rect_t clockRect = taskbar_get_clock_rect(taskbar, elem);
 
-    int64_t bigPadding = element_int_get(elem, INT_BIG_PADDING);
-    int64_t seperatorSize = element_int_get(elem, INT_SEPERATOR_SIZE);
+    int64_t bigPadding = element_get_int(elem, INT_BIG_PADDING);
+    int64_t seperatorSize = element_get_int(elem, INT_SEPERATOR_SIZE);
 
     return RECT_INIT_DIM(clockRect.left - bigPadding - seperatorSize, clockRect.top, seperatorSize,
         RECT_HEIGHT(&clockRect));
 }
 
-static rect_t taskbar_task_button_rect_get(taskbar_t* taskbar, element_t* elem, uint64_t index)
+static rect_t taskbar_get_task_button_rect(taskbar_t* taskbar, element_t* elem, uint64_t index)
 {
-    int64_t bigPadding = element_int_get(elem, INT_BIG_PADDING);
+    int64_t bigPadding = element_get_int(elem, INT_BIG_PADDING);
 
-    rect_t leftSeperator = taskbar_left_seperator_rect_get(taskbar, elem);
-    rect_t rightSeperator = taskbar_right_seperator_rect_get(taskbar, elem);
+    rect_t leftSeperator = taskbar_get_left_seperator_rect(taskbar, elem);
+    rect_t rightSeperator = taskbar_get_right_seperator_rect(taskbar, elem);
 
     uint64_t firstAvailPos = leftSeperator.right + bigPadding;
     uint64_t lastAvailPos = rightSeperator.left - bigPadding;
@@ -77,13 +77,13 @@ static void taskbar_reposition_entires(taskbar_t* taskbar, element_t* elem)
     taskbar_entry_t* entry;
     LIST_FOR_EACH(entry, &taskbar->entries, entry)
     {
-        rect_t rect = taskbar_task_button_rect_get(taskbar, elem, index);
+        rect_t rect = taskbar_get_task_button_rect(taskbar, elem, index);
         element_move(entry->button, &rect);
         index++;
     }
 }
 
-static void taskbar_entry_add(taskbar_t* taskbar, element_t* elem, surface_id_t surface, const char* name)
+static void taskbar_entry_add(taskbar_t* taskbar, element_t* elem, const surface_info_t* info, const char* name)
 {
     taskbar_entry_t* entry = malloc(sizeof(taskbar_entry_t));
     if (entry == NULL)
@@ -91,15 +91,15 @@ static void taskbar_entry_add(taskbar_t* taskbar, element_t* elem, surface_id_t 
         return; // If this fails there isent much we can do so we just ignore it.
     }
     list_entry_init(&entry->entry);
-    entry->surface = surface;
+    entry->info = *info;
     strcpy(entry->name, name);
 
     taskbar->entryAmount++;
 
     element_redraw(elem, true);
 
-    rect_t rect = taskbar_task_button_rect_get(taskbar, elem, taskbar->entryAmount - 1);
-    entry->button = button_new(elem, entry->surface, &rect, entry->name, ELEMENT_TOGGLE);
+    rect_t rect = taskbar_get_task_button_rect(taskbar, elem, taskbar->entryAmount - 1);
+    entry->button = button_new(elem, info->id, &rect, entry->name, ELEMENT_TOGGLE);
     if (entry->button == NULL)
     {
         free(entry);
@@ -118,7 +118,7 @@ static void taskbar_entry_remove(taskbar_t* taskbar, element_t* elem, surface_id
     taskbar_entry_t* entry;
     LIST_FOR_EACH(entry, &taskbar->entries, entry)
     {
-        if (entry->surface == surface)
+        if (entry->info.id == surface)
         {
             element_free(entry->button);
             list_remove(&entry->entry);
@@ -131,32 +131,34 @@ static void taskbar_entry_remove(taskbar_t* taskbar, element_t* elem, surface_id
     }
 }
 
+//static void taskbar_entry_find
+
 static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
-    taskbar_t* taskbar = element_private_get(elem);
+    taskbar_t* taskbar = element_get_private(elem);
 
-    pixel_t background = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_NORMAL);
-    pixel_t highlight = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_HIGHLIGHT);
-    pixel_t shadow = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_SHADOW);
-    int64_t panelSize = element_int_get(elem, INT_PANEL_SIZE);
-    int64_t frameSize = element_int_get(elem, INT_FRAME_SIZE);
-    int64_t smallPadding = element_int_get(elem, INT_SMALL_PADDING);
-    int64_t bigPadding = element_int_get(elem, INT_BIG_PADDING);
+    pixel_t background = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_NORMAL);
+    pixel_t highlight = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_HIGHLIGHT);
+    pixel_t shadow = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_SHADOW);
+    int64_t panelSize = element_get_int(elem, INT_PANEL_SIZE);
+    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
+    int64_t smallPadding = element_get_int(elem, INT_SMALL_PADDING);
+    int64_t bigPadding = element_get_int(elem, INT_BIG_PADDING);
 
     switch (event->type)
     {
     case LEVENT_INIT:
     {
         rect_t rect;
-        element_content_rect_get(elem, &rect);
+        element_get_content_rect(elem, &rect);
 
-        rect_t startRect = taskbar_start_rect_get(taskbar, elem);
+        rect_t startRect = taskbar_get_start_rect(taskbar, elem);
         button_new(elem, START_ID, &startRect, "Start", ELEMENT_TOGGLE | ELEMENT_NO_OUTLINE);
 
-        rect_t clockRect = taskbar_clock_rect_get(taskbar, elem);
+        rect_t clockRect = taskbar_get_clock_rect(taskbar, elem);
         element_t* clockLabel = label_new(elem, CLOCK_LABEL_ID, &clockRect, "0", ELEMENT_NONE);
 
-        window_timer_set(win, TIMER_REPEAT, CLOCKS_PER_SEC * 30);
+        window_set_timer(win, TIMER_REPEAT, CLOCKS_PER_SEC * 30);
     }
     case EVENT_TIMER: // Fall trough
     {
@@ -168,14 +170,14 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             timeData.tm_mon + 1, timeData.tm_mday);
         element_t* clockLabel = element_find(elem, CLOCK_LABEL_ID);
 
-        element_text_set(clockLabel, buffer);
+        element_set_text(clockLabel, buffer);
         element_redraw(clockLabel, false);
     }
     break;
     case LEVENT_REDRAW:
     {
         rect_t rect;
-        element_content_rect_get(elem, &rect);
+        element_get_content_rect(elem, &rect);
 
         drawable_t draw;
         element_draw_begin(elem, &draw);
@@ -185,11 +187,11 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         rect.bottom = rect.top + frameSize;
         draw_rect(&draw, &rect, highlight);
 
-        rect_t startRect = taskbar_start_rect_get(taskbar, elem);
-        rect_t clockRect = taskbar_clock_rect_get(taskbar, elem);
+        rect_t startRect = taskbar_get_start_rect(taskbar, elem);
+        rect_t clockRect = taskbar_get_clock_rect(taskbar, elem);
 
-        rect_t leftSeperator = taskbar_left_seperator_rect_get(taskbar, elem);
-        rect_t rightSeperator = taskbar_right_seperator_rect_get(taskbar, elem);
+        rect_t leftSeperator = taskbar_get_left_seperator_rect(taskbar, elem);
+        rect_t rightSeperator = taskbar_get_right_seperator_rect(taskbar, elem);
 
         draw_separator(&draw, &leftSeperator, highlight, shadow, DIRECTION_HORIZONTAL);
         draw_separator(&draw, &rightSeperator, highlight, shadow, DIRECTION_HORIZONTAL);
@@ -212,15 +214,15 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             break;
         }
 
-        display_t* disp = window_display_get(win);
+        display_t* disp = window_get_display(win);
 
         if (event->lAction.type == ACTION_PRESS)
         {
-            display_surface_visible_set(disp, event->lAction.source, false);
+            display_set_is_visible(disp, event->lAction.source, false);
         }
         else if (event->lAction.type == ACTION_RELEASE)
         {
-            display_surface_visible_set(disp, event->lAction.source, true);
+            display_set_is_visible(disp, event->lAction.source, true);
         }
     }
     break;
@@ -233,21 +235,23 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     break;
     case EVENT_GLOBAL_ATTACH:
     {
-        if (event->globalAttach.surfaceInfo.type != SURFACE_WINDOW ||
-            strcmp(event->globalAttach.surfaceInfo.name, "StartMenu") == 0)
+        if (event->globalAttach.info.type != SURFACE_WINDOW || strcmp(event->globalAttach.info.name, "StartMenu") == 0)
         {
             break;
         }
 
-        taskbar_entry_add(taskbar, elem, event->globalAttach.surfaceInfo.id,
-            event->globalAttach.surfaceInfo.name);
+        taskbar_entry_add(taskbar, elem, &event->globalAttach.info, event->globalAttach.info.name);
     }
     break;
     case EVENT_GLOBAL_DETACH:
     {
-        taskbar_entry_remove(taskbar, elem, event->globalDetach.surfaceInfo.id);
+        taskbar_entry_remove(taskbar, elem, event->globalDetach.info.id);
     }
     break;
+    case EVENT_GLOBAL_REPORT:
+    {
+
+    }
     case EVENT_GLOBAL_KBD:
     {
         if (event->globalKbd.type == KBD_RELEASE && event->globalKbd.code == KBD_LEFT_SUPER)
@@ -274,7 +278,7 @@ void taskbar_init(taskbar_t* taskbar, display_t* disp)
 {
     rect_t rect;
     display_screen_rect(disp, &rect, 0);
-    rect.top = rect.bottom - theme_int_get(INT_PANEL_SIZE, NULL);
+    rect.top = rect.bottom - theme_get_int(INT_PANEL_SIZE, NULL);
 
     display_subscribe(disp, EVENT_GLOBAL_ATTACH);
     display_subscribe(disp, EVENT_GLOBAL_DETACH);

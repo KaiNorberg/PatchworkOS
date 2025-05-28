@@ -24,7 +24,7 @@
 static cpu_t bootstrapCpu;
 static cpu_t* cpus[CPU_MAX_AMOUNT];
 static uint8_t cpuAmount = 0;
-static bool cpuReady = false;
+static bool isReady = false;
 
 atomic_uint8 haltedAmount = ATOMIC_VAR_INIT(0);
 
@@ -60,7 +60,6 @@ static void cpu_init(cpu_t* cpu, uint8_t id, uint8_t lapicId)
     cpu->id = id;
     cpu->lapicId = lapicId;
     cpu->trapDepth = 0;
-    cpu->inSyscall = false;
     tss_init(&cpu->tss);
     cli_ctx_init(&cpu->cli);
     sched_ctx_init(&cpu->sched);
@@ -71,7 +70,7 @@ static void cpu_init(cpu_t* cpu, uint8_t id, uint8_t lapicId)
 
 static uint64_t cpu_start(cpu_t* cpu)
 {
-    cpuReady = false;
+    isReady = false;
 
     trampoline_cpu_setup(cpu);
 
@@ -80,7 +79,7 @@ static uint64_t cpu_start(cpu_t* cpu)
     lapic_send_sipi(cpu->lapicId, ((uint64_t)TRAMPOLINE_PHYSICAL_START) / PAGE_SIZE);
 
     clock_t timeout = CLOCKS_PER_SEC * 100;
-    while (!cpuReady)
+    while (!isReady)
     {
         clock_t sleepDuration = CLOCKS_PER_SEC / 1000;
         hpet_sleep(sleepDuration);
@@ -144,7 +143,7 @@ void smp_entry(void)
     kernel_other_init();
 
     printf("cpu %d: ready\n", (uint64_t)cpu->id);
-    cpuReady = true;
+    isReady = true;
     sched_idle_loop();
 }
 

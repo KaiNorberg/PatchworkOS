@@ -19,7 +19,7 @@ struct tm* localtime_r(const time_t* timer, struct tm* buf)
     int32_t year = 1970;
     while (1)
     {
-        int32_t daysInYear = 365 + (_TimeLeapYear(year) ? 1 : 0);
+        int32_t daysInYear = 365 + (_TimeIsLeapYear(year) ? 1 : 0);
         if (daysElapsed < daysInYear)
         {
             break;

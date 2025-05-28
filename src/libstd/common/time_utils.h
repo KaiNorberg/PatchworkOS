@@ -14,7 +14,7 @@ void _TimeZoneInit(void);
 
 _TimeZone_t* _TimeZone(void);
 
-bool _TimeLeapYear(int32_t year);
+bool _TimeIsLeapYear(int32_t year);
 
 int32_t _TimeDaysInMonth(int32_t month, int32_t year);
 

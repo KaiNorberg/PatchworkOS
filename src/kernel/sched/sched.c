@@ -179,13 +179,13 @@ void sched_process_exit(uint64_t status)
     atomic_store(&thread->state, THREAD_ZOMBIE);
 
     LOCK_DEFER(&process->threads.lock);
-    if (process->threads.dying)
+    if (process->threads.isDying)
     {
         smp_put();
         return;
     }
 
-    process->threads.dying = true;
+    process->threads.isDying = true;
 
     thread_t* other;
     LIST_FOR_EACH(other, &process->threads.list, processEntry)

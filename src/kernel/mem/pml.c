@@ -125,7 +125,7 @@ void* pml_phys_addr(pml_t* table, const void* virtAddr)
     return (void*)(((uint64_t)PAGE_ENTRY_GET_ADDRESS(*entry)) + offset);
 }
 
-bool pml_region_mapped(pml_t* table, const void* virtAddr, uint64_t pageAmount)
+bool pml_is_region_mapped(pml_t* table, const void* virtAddr, uint64_t pageAmount)
 {
     for (uint64_t i = 0; i < pageAmount; i++)
     {
@@ -158,7 +158,7 @@ bool pml_region_mapped(pml_t* table, const void* virtAddr, uint64_t pageAmount)
     return true;
 }
 
-bool pml_region_unmapped(pml_t* table, const void* virtAddr, uint64_t pageAmount)
+bool pml_is_region_unmapped(pml_t* table, const void* virtAddr, uint64_t pageAmount)
 {
     for (uint64_t i = 0; i < pageAmount; i++)
     {

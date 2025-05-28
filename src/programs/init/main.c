@@ -26,17 +26,17 @@ int main(void)
 
     config_t* config = config_open("init", "main");
 
-    config_array_t* services = config_array_get(config, "startup", "services");
+    config_array_t* services = config_get_array(config, "startup", "services");
     for (uint64_t i = 0; i < config_array_length(services); i++)
     {
-        const char* service = config_array_string_get(services, i, NULL);
+        const char* service = config_array_get_string(services, i, NULL);
         spawn_program(service);
     }
 
-    config_array_t* serviceFiles = config_array_get(config, "startup", "service_files");
+    config_array_t* serviceFiles = config_get_array(config, "startup", "service_files");
     for (uint64_t i = 0; i < config_array_length(services); i++)
     {
-        const char* file = config_array_string_get(serviceFiles, i, "home:/");
+        const char* file = config_array_get_string(serviceFiles, i, "home:/");
 
         stat_t info;
         while (stat(file, &info) == ERR)
@@ -45,10 +45,10 @@ int main(void)
         }
     }
 
-    config_array_t* programs = config_array_get(config, "startup", "programs");
+    config_array_t* programs = config_get_array(config, "startup", "programs");
     for (uint64_t i = 0; i < config_array_length(programs); i++)
     {
-        const char* program = config_array_string_get(programs, i, NULL);
+        const char* program = config_array_get_string(programs, i, NULL);
         spawn_program(program);
     }
 

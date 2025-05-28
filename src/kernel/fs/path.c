@@ -22,7 +22,7 @@ static uint64_t flag_length(const char* flag)
     return ERR;
 }
 
-static bool flag_compare(const char* expected, const char* flag, uint64_t flagLength)
+static bool flag_is_equal(const char* expected, const char* flag, uint64_t flagLength)
 {
     if (strlen(expected) != flagLength)
     {
@@ -69,27 +69,27 @@ static const char* path_parse_flags(path_t* path, const char* src)
             return ERRPTR(EPATH);
         }
 
-        if (flag_compare("nonblock", flag, flagLength))
+        if (flag_is_equal("nonblock", flag, flagLength))
         {
             path->flags |= PATH_NONBLOCK;
         }
-        else if (flag_compare("append", flag, flagLength))
+        else if (flag_is_equal("append", flag, flagLength))
         {
             path->flags |= PATH_APPEND;
         }
-        else if (flag_compare("create", flag, flagLength))
+        else if (flag_is_equal("create", flag, flagLength))
         {
             path->flags |= PATH_CREATE;
         }
-        else if (flag_compare("excl", flag, flagLength))
+        else if (flag_is_equal("excl", flag, flagLength))
         {
             path->flags |= PATH_EXCLUSIVE;
         }
-        else if (flag_compare("trunc", flag, flagLength))
+        else if (flag_is_equal("trunc", flag, flagLength))
         {
             path->flags |= PATH_TRUNCATE;
         }
-        else if (flag_compare("dir", flag, flagLength))
+        else if (flag_is_equal("dir", flag, flagLength))
         {
             path->flags |= PATH_DIRECTORY;
         }
@@ -346,7 +346,7 @@ node_t* path_traverse_node_parent(const path_t* path, node_t* node)
     return previous;
 }
 
-bool path_valid_name(const char* name)
+bool path_is_name_valid(const char* name)
 {
     const char* chr = name;
     while (*chr != '\0')

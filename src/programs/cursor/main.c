@@ -11,7 +11,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     case LEVENT_REDRAW:
     {
         rect_t rect;
-        element_content_rect_get(elem, &rect);
+        element_get_content_rect(elem, &rect);
         point_t srcPoint = {0};
 
         drawable_t draw;
@@ -30,7 +30,7 @@ int main(void)
 {
     display_t* disp = display_new();
 
-    image = image_new(disp, theme_string_get(STRING_CURSOR_ARROW, NULL));
+    image = image_new(disp, theme_get_string(STRING_CURSOR_ARROW, NULL));
     if (image == NULL)
     {
         return EXIT_FAILURE;
@@ -49,7 +49,7 @@ int main(void)
     }
 
     event_t event = {0};
-    while (display_connected(disp))
+    while (display_is_connected(disp))
     {
         display_next_event(disp, &event, CLOCKS_NEVER);
         display_dispatch(disp, &event);

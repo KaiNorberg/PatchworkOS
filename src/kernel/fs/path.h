@@ -48,6 +48,6 @@ node_t* path_traverse_node(const path_t* path, node_t* node);
 
 node_t* path_traverse_node_parent(const path_t* path, node_t* node);
 
-bool path_valid_name(const char* name);
+bool path_is_name_valid(const char* name);
 
 char* path_last_name(const path_t* path);

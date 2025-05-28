@@ -9,8 +9,8 @@ typedef struct
 {
     void* buffer;
     ring_t ring;
-    bool readClosed;
-    bool writeClosed;
+    bool isReadClosed;
+    bool isWriteClosed;
     wait_queue_t waitQueue;
     lock_t lock;
     // Note: These pointers are just for checking which end the current file is, they should not be referenced.

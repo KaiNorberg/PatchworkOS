@@ -37,7 +37,7 @@ static inline void node_push(node_t* parent, node_t* child)
 
 static inline uint64_t node_remove(node_t* node)
 {
-    if (!list_empty(&node->children))
+    if (!list_is_empty(&node->children))
     {
         return ERR;
     }

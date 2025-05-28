@@ -10,8 +10,8 @@ extern "C"
 
 typedef struct point
 {
-    int32_t x;
-    int32_t y;
+    int64_t x;
+    int64_t y;
 } point_t;
 
 #if defined(__cplusplus)

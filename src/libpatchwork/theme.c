@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static bool loaded = false;
+static bool isLoaded = false;
 
 typedef struct
 {
@@ -48,31 +48,31 @@ static int64_t integers[INT_AMOUNT];
 
 static void theme_colors_load(config_t* config, const char* section, theme_colors_t* dest)
 {
-    dest->colors[COLOR_ROLE_BACKGROUND_NORMAL] = config_int_get(config, section, "background_normal", COLOR_INVALID);
+    dest->colors[COLOR_ROLE_BACKGROUND_NORMAL] = config_get_int(config, section, "background_normal", COLOR_INVALID);
     dest->colors[COLOR_ROLE_BACKGROUND_SELECTED_START] =
-        config_int_get(config, section, "background_selected_start", COLOR_INVALID);
+        config_get_int(config, section, "background_selected_start", COLOR_INVALID);
     dest->colors[COLOR_ROLE_BACKGROUND_SELECTED_END] =
-        config_int_get(config, section, "background_selected_end", COLOR_INVALID);
+        config_get_int(config, section, "background_selected_end", COLOR_INVALID);
     dest->colors[COLOR_ROLE_BACKGROUND_UNSELECTED_START] =
-        config_int_get(config, section, "background_unselected_start", COLOR_INVALID);
+        config_get_int(config, section, "background_unselected_start", COLOR_INVALID);
     dest->colors[COLOR_ROLE_BACKGROUND_UNSELECTED_END] =
-        config_int_get(config, section, "background_unselected_end", COLOR_INVALID);
+        config_get_int(config, section, "background_unselected_end", COLOR_INVALID);
 
-    dest->colors[COLOR_ROLE_FOREGROUND_NORMAL] = config_int_get(config, section, "foreground_normal", COLOR_INVALID);
+    dest->colors[COLOR_ROLE_FOREGROUND_NORMAL] = config_get_int(config, section, "foreground_normal", COLOR_INVALID);
     dest->colors[COLOR_ROLE_FOREGROUND_INACTIVE] =
-        config_int_get(config, section, "foreground_inactive", COLOR_INVALID);
-    dest->colors[COLOR_ROLE_FOREGROUND_LINK] = config_int_get(config, section, "foreground_link", COLOR_INVALID);
+        config_get_int(config, section, "foreground_inactive", COLOR_INVALID);
+    dest->colors[COLOR_ROLE_FOREGROUND_LINK] = config_get_int(config, section, "foreground_link", COLOR_INVALID);
     dest->colors[COLOR_ROLE_FOREGROUND_SELECTED] =
-        config_int_get(config, section, "foreground_selected", COLOR_INVALID);
+        config_get_int(config, section, "foreground_selected", COLOR_INVALID);
 
-    dest->colors[COLOR_ROLE_BEZEL] = config_int_get(config, section, "bezel", COLOR_INVALID);
-    dest->colors[COLOR_ROLE_HIGHLIGHT] = config_int_get(config, section, "highlight", COLOR_INVALID);
-    dest->colors[COLOR_ROLE_SHADOW] = config_int_get(config, section, "shadow", COLOR_INVALID);
+    dest->colors[COLOR_ROLE_BEZEL] = config_get_int(config, section, "bezel", COLOR_INVALID);
+    dest->colors[COLOR_ROLE_HIGHLIGHT] = config_get_int(config, section, "highlight", COLOR_INVALID);
+    dest->colors[COLOR_ROLE_SHADOW] = config_get_int(config, section, "shadow", COLOR_INVALID);
 }
 
 static void theme_lazy_load(void)
 {
-    if (loaded)
+    if (isLoaded)
     {
         return;
     }
@@ -88,25 +88,25 @@ static void theme_lazy_load(void)
     config_close(colorsConfig);
 
     config_t* varsConfig = config_open("theme", "vars");
-    strings[STRING_WALLPAPER] = config_string_get(varsConfig, "strings", "wallpaper", "");
-    strings[STRING_FONTS_DIR] = config_string_get(varsConfig, "strings", "fonts_dir", "");
-    strings[STRING_CURSOR_ARROW] = config_string_get(varsConfig, "strings", "cursor_arrow", "");
-    strings[STRING_DEFAULT_FONT] = config_string_get(varsConfig, "strings", "default_font", "");
-    strings[STRING_ICON_CLOSE] = config_string_get(varsConfig, "strings", "icon_close", "");
+    strings[STRING_WALLPAPER] = config_get_string(varsConfig, "strings", "wallpaper", "");
+    strings[STRING_FONTS_DIR] = config_get_string(varsConfig, "strings", "fonts_dir", "");
+    strings[STRING_CURSOR_ARROW] = config_get_string(varsConfig, "strings", "cursor_arrow", "");
+    strings[STRING_DEFAULT_FONT] = config_get_string(varsConfig, "strings", "default_font", "");
+    strings[STRING_ICON_CLOSE] = config_get_string(varsConfig, "strings", "icon_close", "");
 
-    integers[INT_FRAME_SIZE] = config_int_get(varsConfig, "integers", "frame_size", 1);
-    integers[INT_BEZEL_SIZE] = config_int_get(varsConfig, "integers", "bezel_size", 1);
-    integers[INT_TITLEBAR_SIZE] = config_int_get(varsConfig, "integers", "titlebar_size", 1);
-    integers[INT_PANEL_SIZE] = config_int_get(varsConfig, "integers", "panel_size", 1);
-    integers[INT_BIG_PADDING] = config_int_get(varsConfig, "integers", "big_padding", 1);
-    integers[INT_SMALL_PADDING] = config_int_get(varsConfig, "integers", "small_padding", 1);
-    integers[INT_SEPERATOR_SIZE] = config_int_get(varsConfig, "integers", "separator_size", 1);
+    integers[INT_FRAME_SIZE] = config_get_int(varsConfig, "integers", "frame_size", 1);
+    integers[INT_BEZEL_SIZE] = config_get_int(varsConfig, "integers", "bezel_size", 1);
+    integers[INT_TITLEBAR_SIZE] = config_get_int(varsConfig, "integers", "titlebar_size", 1);
+    integers[INT_PANEL_SIZE] = config_get_int(varsConfig, "integers", "panel_size", 1);
+    integers[INT_BIG_PADDING] = config_get_int(varsConfig, "integers", "big_padding", 1);
+    integers[INT_SMALL_PADDING] = config_get_int(varsConfig, "integers", "small_padding", 1);
+    integers[INT_SEPERATOR_SIZE] = config_get_int(varsConfig, "integers", "separator_size", 1);
     config_close(varsConfig);
 
-    loaded = true;
+    isLoaded = true;
 }
 
-pixel_t theme_color_get(theme_color_set_t set, theme_color_role_t role, theme_override_t* override)
+pixel_t theme_get_color(theme_color_set_t set, theme_color_role_t role, theme_override_t* override)
 {
     theme_lazy_load();
 
@@ -130,7 +130,7 @@ pixel_t theme_color_get(theme_color_set_t set, theme_color_role_t role, theme_ov
     return sets[set].colors[role];
 }
 
-const char* theme_string_get(theme_string_t name, theme_override_t* override)
+const char* theme_get_string(theme_string_t name, theme_override_t* override)
 {
     theme_lazy_load();
 
@@ -154,7 +154,7 @@ const char* theme_string_get(theme_string_t name, theme_override_t* override)
     return strings[name];
 }
 
-int64_t theme_int_get(theme_int_t name, theme_override_t* override)
+int64_t theme_get_int(theme_int_t name, theme_override_t* override)
 {
     theme_lazy_load();
 
@@ -242,7 +242,7 @@ static uint64_t theme_override_buffer_lazy_alloc(theme_override_t* override)
     return 0;
 }
 
-uint64_t theme_override_color_set(theme_override_t* override, theme_color_set_t set, theme_color_role_t role,
+uint64_t theme_override_set_color(theme_override_t* override, theme_color_set_t set, theme_color_role_t role,
     pixel_t color)
 {
     if (override == NULL)
@@ -278,7 +278,7 @@ uint64_t theme_override_color_set(theme_override_t* override, theme_color_set_t 
     return 0;
 }
 
-uint64_t theme_override_string_set(theme_override_t* override, theme_string_t name, const char* string)
+uint64_t theme_override_set_string(theme_override_t* override, theme_string_t name, const char* string)
 {
     if (override == NULL || string == NULL)
     {
@@ -322,7 +322,7 @@ uint64_t theme_override_string_set(theme_override_t* override, theme_string_t na
     return 0;
 }
 
-uint64_t theme_override_int_set(theme_override_t* override, theme_int_t name, int64_t integer)
+uint64_t theme_override_set_int(theme_override_t* override, theme_int_t name, int64_t integer)
 {
     if (override == NULL)
     {

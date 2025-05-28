@@ -127,7 +127,7 @@ void dwm_report_produce(surface_t* surface, client_t* client, report_flags_t fla
 {
     event_report_t event;
     event.flags = flags;
-    surface_info_get(surface, &event.info);
+    surface_get_info(surface, &event.info);
 
     client_send_event(client, surface->id, EVENT_REPORT, &event, sizeof(event));
 
@@ -227,7 +227,7 @@ uint64_t dwm_attach(surface_t* surface)
     }
 
     event_global_attach_t event;
-    surface_info_get(surface, &event.surfaceInfo);
+    surface_get_info(surface, &event.info);
     dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_ATTACH, &event, sizeof(event));
     return 0;
 }
@@ -244,7 +244,7 @@ void dwm_detach(surface_t* surface)
     }
 
     event_global_detach_t event;
-    surface_info_get(surface, &event.surfaceInfo);
+    surface_get_info(surface, &event.info);
     dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_DETACH, &event, sizeof(event));
 
     switch (surface->type)
@@ -280,7 +280,7 @@ void dwm_detach(surface_t* surface)
 
     if (wall != NULL)
     {
-        compositor_total_redraw_needed_set();
+        compositor_set_total_redraw_needed();
     }
 }
 
@@ -298,19 +298,19 @@ void dwm_focus_set(surface_t* surface)
 
     if (focus != NULL)
     {
-        focus->focused = false;
+        focus->isFocused = false;
         dwm_report_produce(focus, focus->client, REPORT_FOCUSED);
     }
 
     if (surface != NULL)
     {
-        surface->focused = true;
+        surface->isFocused = true;
         if (surface->type == SURFACE_WINDOW)
         {
             // Move to end of list
             list_remove(&surface->dwmEntry);
             list_push(&windows, &surface->dwmEntry);
-            surface->moved = true;
+            surface->hasMoved = true;
         }
         focus = surface;
         dwm_report_produce(focus, focus->client, REPORT_FOCUSED);

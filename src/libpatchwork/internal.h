@@ -62,7 +62,7 @@ typedef struct display
     fd_t handle;
     char id[MAX_NAME];
     fd_t data;
-    bool connected;
+    bool isConnected;
     cmd_buffer_t cmds;
     struct
     {

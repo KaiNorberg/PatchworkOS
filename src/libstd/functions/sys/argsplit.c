@@ -11,8 +11,8 @@ typedef struct
     const char* current;
     uint8_t escaped;
     bool inQuote;
-    bool newArg;
-    bool first;
+    bool isNewArg;
+    bool isFirst;
     uint64_t processedChars;
     uint64_t maxLen;
 } _ArgsplitState_t;
@@ -21,9 +21,9 @@ typedef struct
 
 static bool _ArgsplitStepState(_ArgsplitState_t* state)
 {
-    state->newArg = false;
+    state->isNewArg = false;
 
-    if (!state->first)
+    if (!state->isFirst)
     {
         state->current++;
         state->processedChars++;
@@ -35,9 +35,9 @@ static bool _ArgsplitStepState(_ArgsplitState_t* state)
     }
     else
     {
-        state->newArg = true;
+        state->isNewArg = true;
     }
-    state->first = false;
+    state->isFirst = false;
 
     while (true)
     {
@@ -48,7 +48,7 @@ static bool _ArgsplitStepState(_ArgsplitState_t* state)
 
         if (!state->escaped && !state->inQuote && isspace(*state->current))
         {
-            state->newArg = true;
+            state->isNewArg = true;
             while (isspace(*state->current))
             {
                 state->current++;
@@ -67,7 +67,7 @@ static bool _ArgsplitStepState(_ArgsplitState_t* state)
         else if (*state->current == '"')
         {
             state->inQuote = !state->inQuote;
-            state->newArg = true;
+            state->isNewArg = true;
         }
         else if (*state->current == '\0')
         {
@@ -101,7 +101,7 @@ static uint64_t _ArgsplitCountCharsAndArgs(const char* str, uint64_t* argc, uint
             break;
         }
 
-        if (state.newArg)
+        if (state.isNewArg)
         {
             (*argc)++;
         }
@@ -133,7 +133,7 @@ static const char** _ArgsplitBackend(const char** argv, const char* str, uint64_
             break;
         }
 
-        if (state.newArg)
+        if (state.isNewArg)
         {
             if (out > strings && *(out - 1) != '\0')
             {

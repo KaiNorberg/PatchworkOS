@@ -123,22 +123,22 @@ element_t* element_find(element_t* elem, element_id_t id)
     return NULL;
 }
 
-void element_private_set(element_t* elem, void* private)
+void element_set_private(element_t* elem, void* private)
 {
     elem->private = private;
 }
 
-void* element_private_get(element_t* elem)
+void* element_get_private(element_t* elem)
 {
     return elem->private;
 }
 
-element_id_t element_id_get(element_t* elem)
+element_id_t element_get_id(element_t* elem)
 {
     return elem->id;
 }
 
-void element_rect_get(element_t* elem, rect_t* rect)
+void element_get_rect(element_t* elem, rect_t* rect)
 {
     *rect = elem->rect;
 }
@@ -148,20 +148,20 @@ void element_move(element_t* elem, const rect_t* rect)
     elem->rect = *rect;
 }
 
-void element_content_rect_get(element_t* elem, rect_t* rect)
+void element_get_content_rect(element_t* elem, rect_t* rect)
 {
     *rect = RECT_INIT_DIM(0, 0, RECT_WIDTH(&elem->rect), RECT_HEIGHT(&elem->rect));
 }
 
-void element_global_rect_get(element_t* elem, rect_t* rect)
+void element_get_global_rect(element_t* elem, rect_t* rect)
 {
     point_t point;
-    element_global_point_get(elem, &point);
+    element_get_global_point(elem, &point);
 
     *rect = RECT_INIT_DIM(point.x, point.y, RECT_WIDTH(&elem->rect), RECT_HEIGHT(&elem->rect));
 }
 
-void element_global_point_get(element_t* elem, point_t* point)
+void element_get_global_point(element_t* elem, point_t* point)
 {
     point_t offset = {.x = elem->rect.left, .y = elem->rect.top};
     element_t* parent = elem->parent;
@@ -178,7 +178,7 @@ void element_global_point_get(element_t* elem, point_t* point)
 void element_rect_to_global(element_t* elem, rect_t* dest, const rect_t* src)
 {
     point_t point;
-    element_global_point_get(elem, &point);
+    element_get_global_point(elem, &point);
     *dest = (rect_t){
         .left = point.x + src->left,
         .top = point.y + src->top,
@@ -190,7 +190,7 @@ void element_rect_to_global(element_t* elem, rect_t* dest, const rect_t* src)
 void element_point_to_global(element_t* elem, point_t* dest, const point_t* src)
 {
     point_t point;
-    element_global_point_get(elem, &point);
+    element_get_global_point(elem, &point);
     *dest = (point_t){
         .x = point.x + src->x,
         .y = point.y + src->y,
@@ -200,7 +200,7 @@ void element_point_to_global(element_t* elem, point_t* dest, const point_t* src)
 void element_global_to_rect(element_t* elem, rect_t* dest, const rect_t* src)
 {
     point_t point;
-    element_global_point_get(elem, &point);
+    element_get_global_point(elem, &point);
     *dest = (rect_t){
         .left = src->left - point.x,
         .top = src->top - point.y,
@@ -212,7 +212,7 @@ void element_global_to_rect(element_t* elem, rect_t* dest, const rect_t* src)
 void element_global_to_point(element_t* elem, point_t* dest, const point_t* src)
 {
     point_t point;
-    element_global_point_get(elem, &point);
+    element_get_global_point(elem, &point);
     *dest = (point_t){
         .x = src->x - point.x,
         .y = src->y - point.y,
@@ -222,7 +222,7 @@ void element_global_to_point(element_t* elem, point_t* dest, const point_t* src)
 void element_draw_begin(element_t* elem, drawable_t* draw)
 {
     rect_t globalRect;
-    element_global_rect_get(elem, &globalRect);
+    element_get_global_rect(elem, &globalRect);
 
     draw->disp = elem->win->disp;
     draw->stride = RECT_WIDTH(&elem->win->rect);
@@ -250,11 +250,11 @@ void element_draw_end(element_t* elem, drawable_t* draw)
     }
 }
 
-void element_redraw(element_t* elem, bool propagate)
+void element_redraw(element_t* elem, bool shouldPropagate)
 {
     levent_redraw_t event;
     event.id = elem->id;
-    event.propagate = propagate;
+    event.shouldPropagate = shouldPropagate;
     display_events_push(elem->win->disp, elem->win->surface, LEVENT_REDRAW, &event, sizeof(levent_redraw_t));
 }
 
@@ -263,7 +263,8 @@ void element_force_action(element_t* elem, action_type_t action)
     levent_force_action_t event;
     event.dest = elem->id;
     event.action = action;
-    display_events_push(elem->win->disp, elem->win->surface, LEVENT_FORCE_ACTION, &event, sizeof(levent_force_action_t));
+    display_events_push(elem->win->disp, elem->win->surface, LEVENT_FORCE_ACTION, &event,
+        sizeof(levent_force_action_t));
 }
 
 uint64_t element_dispatch(element_t* elem, const event_t* event)
@@ -278,7 +279,7 @@ uint64_t element_dispatch(element_t* elem, const event_t* event)
             return ERR;
         }
 
-        if (event->lRedraw.propagate)
+        if (event->lRedraw.shouldPropagate)
         {
             element_t* child;
             LIST_FOR_EACH(child, &elem->children, entry)
@@ -347,7 +348,7 @@ element_flags_t element_flags_get(element_t* elem)
     return elem->flags;
 }
 
-void element_flags_set(element_t* elem, element_flags_t flags)
+void element_set_flags(element_t* elem, element_flags_t flags)
 {
     elem->flags = flags;
 }
@@ -357,7 +358,7 @@ const char* element_text_get(element_t* elem)
     return elem->text;
 }
 
-uint64_t element_text_set(element_t* elem, const char* text)
+uint64_t element_set_text(element_t* elem, const char* text)
 {
     char* newText = strdup(text);
     if (newText == NULL)
@@ -370,7 +371,7 @@ uint64_t element_text_set(element_t* elem, const char* text)
     return 0;
 }
 
-element_text_props_t* element_text_props_get(element_t* elem)
+element_text_props_t* element_get_text_props(element_t* elem)
 {
     return &elem->textProps;
 }
@@ -380,7 +381,7 @@ image_t* element_image_get(element_t* elem)
     return elem->image;
 }
 
-void element_image_set(element_t* elem, image_t* image)
+void element_set_image(element_t* elem, image_t* image)
 {
     elem->image = image;
 }
@@ -390,32 +391,32 @@ element_image_props_t* element_image_props_get(element_t* elem)
     return &elem->imageProps;
 }
 
-pixel_t element_color_get(element_t* elem, theme_color_set_t set, theme_color_role_t role)
+pixel_t element_get_color(element_t* elem, theme_color_set_t set, theme_color_role_t role)
 {
-    return theme_color_get(set, role, &elem->theme);
+    return theme_get_color(set, role, &elem->theme);
 }
 
-uint64_t element_color_set(element_t* elem, theme_color_set_t set, theme_color_role_t role, pixel_t color)
+uint64_t element_set_color(element_t* elem, theme_color_set_t set, theme_color_role_t role, pixel_t color)
 {
-    return theme_override_color_set(&elem->theme, set, role, color);
+    return theme_override_set_color(&elem->theme, set, role, color);
 }
 
-const char* element_string_get(element_t* elem, theme_string_t name)
+const char* element_get_string(element_t* elem, theme_string_t name)
 {
-    return theme_string_get(name, &elem->theme);
+    return theme_get_string(name, &elem->theme);
 }
 
-uint64_t element_string_set(element_t* elem, theme_string_t name, const char* string)
+uint64_t element_set_string(element_t* elem, theme_string_t name, const char* string)
 {
-    return theme_override_string_set(&elem->theme, name, string);
+    return theme_override_set_string(&elem->theme, name, string);
 }
 
-int64_t element_int_get(element_t* elem, theme_int_t name)
+int64_t element_get_int(element_t* elem, theme_int_t name)
 {
-    return theme_int_get(name, &elem->theme);
+    return theme_get_int(name, &elem->theme);
 }
 
-uint64_t element_int_set(element_t* elem, theme_int_t name, int64_t integer)
+uint64_t element_set_int(element_t* elem, theme_int_t name, int64_t integer)
 {
-    return theme_override_int_set(&elem->theme, name, integer);
+    return theme_override_set_int(&elem->theme, name, integer);
 }

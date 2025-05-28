@@ -24,7 +24,7 @@ uint64_t display_screen_rect(display_t* disp, rect_t* rect, uint64_t index);
 
 fd_t display_fd(display_t* disp);
 
-bool display_connected(display_t* disp);
+bool display_is_connected(display_t* disp);
 
 void display_disconnect(display_t* disp);
 
@@ -46,11 +46,11 @@ void display_subscribe(display_t* disp, event_type_t type);
 
 void display_unsubscribe(display_t* disp, event_type_t type);
 
-void display_surface_info_get(display_t* disp, surface_id_t id, surface_info_t* info);
+void display_get_surface_info(display_t* disp, surface_id_t id, surface_info_t* info);
 
-void display_surface_focus_set(display_t* disp, surface_id_t id);
+void display_set_focus(display_t* disp, surface_id_t id);
 
-void display_surface_visible_set(display_t* disp, surface_id_t id, bool visible);
+void display_set_is_visible(display_t* disp, surface_id_t id, bool isVisible);
 
 #if defined(__cplusplus)
 }

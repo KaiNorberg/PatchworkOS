@@ -44,9 +44,9 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
         cmd->stdin = STDIN_FILENO;
         cmd->stdout = STDOUT_FILENO;
         cmd->stderr = STDERR_FILENO;
-        cmd->closeStdin = false;
-        cmd->closeStdout = false;
-        cmd->closeStderr = false;
+        cmd->shouldCloseStdin = false;
+        cmd->shouldCloseStdout = false;
+        cmd->shouldCloseStderr = false;
     }
 
     uint64_t currentCmd = 0;
@@ -76,7 +76,7 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
             }
 
             cmd->stdout = pipe[PIPE_WRITE];
-            cmd->closeStdout = true;
+            cmd->shouldCloseStdout = true;
 
             currentCmd++;
             currentArg = 0;
@@ -84,7 +84,7 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
 
             cmd_t* nextCmd = &pipeline->cmds[currentCmd];
             nextCmd->stdin = pipe[PIPE_READ];
-            nextCmd->closeStdin = true;
+            nextCmd->shouldCloseStdin = true;
         }
         else if (strcmp(tokens[i], "<") == 0)
         {
@@ -102,12 +102,12 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
             }
 
             cmd_t* cmd = &pipeline->cmds[currentCmd];
-            if (cmd->closeStdin)
+            if (cmd->shouldCloseStdin)
             {
                 close(cmd->stdin);
             }
             cmd->stdin = fd;
-            cmd->closeStdin = true;
+            cmd->shouldCloseStdin = true;
 
             i++; // Skip file
         }
@@ -127,12 +127,12 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
             }
 
             cmd_t* cmd = &pipeline->cmds[currentCmd];
-            if (cmd->closeStdout)
+            if (cmd->shouldCloseStdout)
             {
                 close(cmd->stdout);
             }
             cmd->stdout = fd;
-            cmd->closeStdout = true;
+            cmd->shouldCloseStdout = true;
 
             i++; // Skip file
         }
@@ -174,15 +174,15 @@ token_parse_error:
     free(currentArgv);
     for (uint64_t j = 0; j < currentCmd; j++)
     {
-        if (pipeline->cmds[j].closeStdin)
+        if (pipeline->cmds[j].shouldCloseStdin)
         {
             close(pipeline->cmds[j].stdin);
         }
-        if (pipeline->cmds[j].closeStdout)
+        if (pipeline->cmds[j].shouldCloseStdout)
         {
             close(pipeline->cmds[j].stdout);
         }
-        if (pipeline->cmds[j].closeStderr)
+        if (pipeline->cmds[j].shouldCloseStderr)
         {
             close(pipeline->cmds[j].stderr);
         }
@@ -197,15 +197,15 @@ void pipeline_deinit(pipeline_t* pipeline)
 {
     for (uint64_t j = 0; j < pipeline->amount; j++)
     {
-        if (pipeline->cmds[j].closeStdin)
+        if (pipeline->cmds[j].shouldCloseStdin)
         {
             close(pipeline->cmds[j].stdin);
         }
-        if (pipeline->cmds[j].closeStdout)
+        if (pipeline->cmds[j].shouldCloseStdout)
         {
             close(pipeline->cmds[j].stdout);
         }
-        if (pipeline->cmds[j].closeStderr)
+        if (pipeline->cmds[j].shouldCloseStderr)
         {
             close(pipeline->cmds[j].stderr);
         }
@@ -271,7 +271,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
     }
     else
     {
-        bool found = false;
+        bool isFound = false;
         for (uint64_t j = 0; j < sizeof(lookupDirs) / sizeof(lookupDirs[0]); j++)
         {
             if (strlen(lookupDirs[j]) + strlen(argv[0]) + 1 >= MAX_PATH)
@@ -289,12 +289,12 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
                 argv[0] = path;
                 result = spawn(argv, fds);
                 argv[0] = temp;
-                found = true;
+                isFound = true;
                 break;
             }
         }
 
-        if (!found)
+        if (!isFound)
         {
             fprintf(stderr, "shell: %s not found\n", argv[0]);
             result = ERR;
@@ -308,15 +308,15 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
     close(originalStdout);
     close(originalStderr);
 
-    if (cmd->closeStdin)
+    if (cmd->shouldCloseStdin)
     {
         close(cmd->stdin);
     }
-    if (cmd->closeStdout)
+    if (cmd->shouldCloseStdout)
     {
         close(cmd->stdout);
     }
-    if (cmd->closeStderr)
+    if (cmd->shouldCloseStderr)
     {
         close(cmd->stderr);
     }

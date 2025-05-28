@@ -6,7 +6,7 @@
 
 typedef struct
 {
-    bool invalid;
+    bool isInvalid;
     int64_t start;
     int64_t end;
 } scanline_t;

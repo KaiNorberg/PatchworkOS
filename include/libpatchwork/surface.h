@@ -3,8 +3,9 @@
 
 #include "rect.h"
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <assert.h>
+#include <stdint.h>
 #include <sys/io.h>
 
 #if defined(__cplusplus)
@@ -30,10 +31,13 @@ typedef struct
     surface_type_t type;
     surface_id_t id;
     rect_t rect;
-    bool visible;
-    bool focused;
+    bool isVisible;
+    bool isFocused;
     char name[MAX_NAME];
+    uint8_t reserved[15];
 } surface_info_t;
+
+static_assert(sizeof(surface_info_t) == 104, "invalid surface_info_t size");
 
 #if defined(__cplusplus)
 }

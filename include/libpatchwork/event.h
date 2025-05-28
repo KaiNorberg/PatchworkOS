@@ -7,6 +7,7 @@
 #include "surface.h"
 
 #include <stdint.h>
+#include <assert.h>
 #include <sys/io.h>
 #include <sys/kbd.h>
 #include <sys/mouse.h>
@@ -96,12 +97,12 @@ typedef struct
 
 typedef struct
 {
-    surface_info_t surfaceInfo;
+    surface_info_t info;
 } event_global_attach_t;
 
 typedef struct
 {
-    surface_info_t surfaceInfo;
+    surface_info_t info;
 } event_global_detach_t;
 
 typedef event_report_t event_global_report_t;
@@ -130,7 +131,7 @@ typedef struct
 typedef struct
 {
     element_id_t id;
-    uint8_t propagate;
+    bool shouldPropagate;
 } levent_redraw_t;
 
 typedef enum
@@ -184,6 +185,8 @@ typedef struct event
         uint8_t raw[EVENT_MAX_DATA];
     };
 } event_t;
+
+static_assert(sizeof(event_t) == 144, "invalid event_t size");
 
 #if defined(__cplusplus)
 }

@@ -31,17 +31,17 @@ static start_entry_t entries[] = {
 
 static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
-    start_menu_t* startMenu = element_private_get(elem);
+    start_menu_t* startMenu = element_get_private(elem);
 
-    int64_t frameSize = element_int_get(elem, INT_FRAME_SIZE);
-    int64_t titlebarSize = element_int_get(elem, INT_TITLEBAR_SIZE);
+    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
+    int64_t titlebarSize = element_get_int(elem, INT_TITLEBAR_SIZE);
 
     switch (event->type)
     {
     case LEVENT_INIT:
     {
         rect_t rect;
-        element_content_rect_get(elem, &rect);
+        element_get_content_rect(elem, &rect);
 
         for (uint64_t i = 0; i < ENTRY_AMOUNT; i++)
         {
@@ -51,23 +51,23 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             button_new(elem, i, &buttonRect, entries[i].name, ELEMENT_FLAT);
         }
 
-        window_timer_set(win, TIMER_REPEAT, CLOCKS_PER_SEC / 60);
+        window_set_timer(win, TIMER_REPEAT, CLOCKS_PER_SEC / 60);
     }
     break;
     case LEVENT_REDRAW:
     {
         rect_t rect;
-        element_content_rect_get(elem, &rect);
+        element_get_content_rect(elem, &rect);
 
         drawable_t draw;
         element_draw_begin(elem, &draw);
 
-        int64_t frameSize = element_int_get(elem, INT_FRAME_SIZE);
-        pixel_t highlight = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_HIGHLIGHT);
-        pixel_t shadow = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_SHADOW);
-        pixel_t background = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_NORMAL);
-        pixel_t selectedStart = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_SELECTED_START);
-        pixel_t selectedEnd = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_SELECTED_END);
+        int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
+        pixel_t highlight = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_HIGHLIGHT);
+        pixel_t shadow = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_SHADOW);
+        pixel_t background = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_NORMAL);
+        pixel_t selectedStart = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_SELECTED_START);
+        pixel_t selectedEnd = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_SELECTED_END);
 
         draw_frame(&draw, &rect, frameSize, highlight, shadow);
         RECT_SHRINK(&rect, frameSize);
@@ -105,10 +105,10 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     case EVENT_TIMER:
     {
         rect_t screenRect;
-        display_screen_rect(window_display_get(win), &screenRect, 0);
+        display_screen_rect(window_get_display(win), &screenRect, 0);
 
-        int64_t panelSize = element_int_get(elem, INT_PANEL_SIZE);
-        int64_t frameSize = element_int_get(elem, INT_FRAME_SIZE);
+        int64_t panelSize = element_get_int(elem, INT_PANEL_SIZE);
+        int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
 
         int32_t startY = START_MENU_YPOS_START(&screenRect, panelSize, frameSize);
         int32_t endY = START_MENU_YPOS_END(&screenRect, panelSize, frameSize);
@@ -117,7 +117,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
         double fraction;
         int64_t currentY = 0;
-        bool animation_complete = false;
+        bool isAnimComplete = false;
 
         if (startMenu->state == START_MENU_OPENING)
         {
@@ -125,7 +125,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             if (fraction >= 1.0)
             {
                 fraction = 1.0;
-                animation_complete = true;
+                isAnimComplete = true;
             }
             currentY = (int64_t)((double)startY + ((double)endY - startY) * fraction);
         }
@@ -135,27 +135,27 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             if (fraction >= 1.0)
             {
                 fraction = 1.0;
-                animation_complete = true;
+                isAnimComplete = true;
             }
             currentY = (int64_t)((double)endY + ((double)startY - endY) * fraction);
         }
         else
         {
 
-            window_timer_set(win, TIMER_NONE, CLOCKS_NEVER);
+            window_set_timer(win, TIMER_NONE, CLOCKS_NEVER);
             return 0;
         }
 
         rect_t rect;
-        window_rect_get(win, &rect);
+        window_get_rect(win, &rect);
         uint64_t height = RECT_HEIGHT(&rect);
         rect.top = currentY;
         rect.bottom = currentY + height;
         window_move(win, &rect);
 
-        if (animation_complete)
+        if (isAnimComplete)
         {
-            window_timer_set(win, TIMER_NONE, CLOCKS_NEVER);
+            window_set_timer(win, TIMER_NONE, CLOCKS_NEVER);
             if (startMenu->state == START_MENU_OPENING)
             {
                 startMenu->state = START_MENU_OPEN;
@@ -174,9 +174,9 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
 void start_menu_init(start_menu_t* startMenu, window_t* taskbar, display_t* disp)
 {
-    int64_t panelSize = theme_int_get(INT_PANEL_SIZE, NULL);
-    int64_t frameSize = theme_int_get(INT_FRAME_SIZE, NULL);
-    int64_t smallPadding = theme_int_get(INT_SMALL_PADDING, NULL);
+    int64_t panelSize = theme_get_int(INT_PANEL_SIZE, NULL);
+    int64_t frameSize = theme_get_int(INT_FRAME_SIZE, NULL);
+    int64_t smallPadding = theme_get_int(INT_SMALL_PADDING, NULL);
 
     rect_t screenRect;
     display_screen_rect(disp, &screenRect, 0);
@@ -203,16 +203,16 @@ void start_menu_open(start_menu_t* startMenu)
 
     rect_t screenRect;
 
-    element_t* elem = window_client_element_get(startMenu->win);
+    element_t* elem = window_get_client_element(startMenu->win);
 
-    display_screen_rect(window_display_get(startMenu->win), &screenRect, 0);
-    int64_t panelSize = element_int_get(elem, INT_PANEL_SIZE);
-    int64_t frameSize = element_int_get(elem, INT_FRAME_SIZE);
+    display_screen_rect(window_get_display(startMenu->win), &screenRect, 0);
+    int64_t panelSize = element_get_int(elem, INT_PANEL_SIZE);
+    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
 
     int32_t startY = START_MENU_YPOS_START(&screenRect, panelSize, frameSize);
 
     rect_t rect;
-    window_rect_get(startMenu->win, &rect);
+    window_get_rect(startMenu->win, &rect);
     uint64_t height = RECT_HEIGHT(&rect);
     rect.top = startY;
     rect.bottom = startY + height;
@@ -220,9 +220,9 @@ void start_menu_open(start_menu_t* startMenu)
 
     startMenu->animationStartTime = uptime();
     startMenu->state = START_MENU_OPENING;
-    window_timer_set(startMenu->win, TIMER_REPEAT, CLOCKS_PER_SEC / 60);
+    window_set_timer(startMenu->win, TIMER_REPEAT, CLOCKS_PER_SEC / 60);
 
-    window_focus_set(startMenu->win);
+    window_set_focus(startMenu->win);
 }
 
 void start_menu_close(start_menu_t* startMenu)
@@ -234,8 +234,8 @@ void start_menu_close(start_menu_t* startMenu)
 
     startMenu->animationStartTime = uptime();
     startMenu->state = START_MENU_CLOSING;
-    window_timer_set(startMenu->win, TIMER_REPEAT, CLOCKS_PER_SEC / 60);
+    window_set_timer(startMenu->win, TIMER_REPEAT, CLOCKS_PER_SEC / 60);
 
-    display_events_push(window_display_get(startMenu->win), window_id_get(startMenu->taskbar), UEVENT_START_MENU_CLOSE,
+    display_events_push(window_get_display(startMenu->win), window_get_id(startMenu->taskbar), UEVENT_START_MENU_CLOSE,
         NULL, 0);
 }

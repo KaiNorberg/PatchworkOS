@@ -32,9 +32,9 @@ static gop_buffer_t gop;
 static uint64_t posX;
 static uint64_t posY;
 
-static bool screenEnabled;
-static bool timeEnabled;
-static bool lastCharWasNewline;
+static bool isScreenEnabled;
+static bool isTimeEnabled;
+static bool isLastCharWasNewline;
 
 static atomic_bool panicking;
 
@@ -181,9 +181,9 @@ static void log_draw_char(char chr)
 void log_init(void)
 {
     ring_init(&ring, ringBuffer, LOG_BUFFER_LENGTH);
-    screenEnabled = false;
-    timeEnabled = false;
-    lastCharWasNewline = false;
+    isScreenEnabled = false;
+    isTimeEnabled = false;
+    isLastCharWasNewline = false;
     lock_init(&lock);
     atomic_init(&panicking, false);
     gop.base = NULL;
@@ -253,36 +253,36 @@ void log_enable_screen(gop_buffer_t* gopBuffer)
     posY = 0;
 
     log_redraw();
-    screenEnabled = true;
+    isScreenEnabled = true;
 }
 
 void log_disable_screen(void)
 {
-    if (screenEnabled)
+    if (isScreenEnabled)
     {
         printf("log: disable screen\n");
-        screenEnabled = false;
+        isScreenEnabled = false;
     }
 }
 
 void log_enable_time(void)
 {
     LOCK_DEFER(&lock);
-    timeEnabled = true;
+    isTimeEnabled = true;
 }
 
-bool log_time_enabled(void)
+bool log_is_time_enabled(void)
 {
-    return timeEnabled;
+    return isTimeEnabled;
 }
 
 static void log_put(char ch)
 {
-    if (lastCharWasNewline)
+    if (isLastCharWasNewline)
     {
-        lastCharWasNewline = false;
+        isLastCharWasNewline = false;
         char buffer[MAX_PATH];
-        clock_t time = log_time_enabled() ? systime_uptime() : 0;
+        clock_t time = log_is_time_enabled() ? systime_uptime() : 0;
         clock_t sec = time / CLOCKS_PER_SEC;
         clock_t ms = (time % CLOCKS_PER_SEC) / (CLOCKS_PER_SEC / 1000);
         sprintf(buffer, "[%10llu.%03llu] ", sec, ms);
@@ -303,10 +303,10 @@ static void log_put(char ch)
 
     if (ch == '\n')
     {
-        lastCharWasNewline = true;
+        isLastCharWasNewline = true;
     }
 
-    if (screenEnabled)
+    if (isScreenEnabled)
     {
         log_draw_char(ch);
     }
@@ -339,7 +339,7 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
     }
 
     smp_halt_others();
-    if (gop.base != NULL && !screenEnabled)
+    if (gop.base != NULL && !isScreenEnabled)
     {
         log_enable_screen(NULL);
     }

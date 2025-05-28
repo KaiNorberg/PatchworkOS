@@ -105,11 +105,11 @@ static void pmm_bitmap_init(void)
     memset(mapBuffer, -1, BITMAP_BITS_TO_BYTES(PMM_BITMAP_MAX));
 }
 
-static bool pmm_bitmap_reserved(uint64_t index)
+static bool pmm_bitmap_is_reserved(uint64_t index)
 {
     assert(index < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE);
 
-    return bitmap_get(&bitmap, index);
+    return bitmap_is_set(&bitmap, index);
 }
 
 static void pmm_bitmap_reserve(uint64_t low, uint64_t high)

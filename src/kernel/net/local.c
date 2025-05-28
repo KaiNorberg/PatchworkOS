@@ -29,7 +29,7 @@ SYSFS_STANDARD_OPS_DEFINE(listenerOps, PATH_NONE, (file_ops_t){});
 
 static local_listener_t* local_listener_new(const char* address)
 {
-    if (!path_valid_name(address))
+    if (!path_is_name_valid(address))
     {
         return NULL;
     }
@@ -74,7 +74,7 @@ static void local_listener_deref(local_listener_t* listener)
 
 static local_listener_t* local_listener_get(const char* address)
 {
-    if (!path_valid_name(address))
+    if (!path_is_name_valid(address))
     {
         return NULL;
     }
@@ -92,12 +92,12 @@ static local_listener_t* local_listener_get(const char* address)
     return NULL;
 }
 
-static bool local_listener_conn_avail(local_listener_t* listener)
+static bool local_listener_is_conn_avail(local_listener_t* listener)
 {
     return listener->length != 0;
 }
 
-static bool local_listener_closed(local_listener_t* listener)
+static bool local_listener_is_closed(local_listener_t* listener)
 {
     return atomic_load(&listener->ref) == 1;
 }
@@ -175,7 +175,7 @@ static void local_connection_deref(local_connection_t* conn)
     }
 }
 
-static bool local_connection_closed(local_connection_t* conn)
+static bool local_connection_is_closed(local_connection_t* conn)
 {
     return atomic_load(&conn->ref) == 1 || atomic_load(&conn->listener->ref) == 1;
 }
@@ -209,7 +209,7 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
     lock_acquire(&listener->lock);
     if (socket->flags & PATH_NONBLOCK)
     {
-        if (!(local_listener_conn_avail(listener) || local_listener_closed(listener)))
+        if (!(local_listener_is_conn_avail(listener) || local_listener_is_closed(listener)))
         {
             lock_release(&listener->lock);
             return ERROR(EWOULDBLOCK);
@@ -218,14 +218,14 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
     else
     {
         if (WAIT_BLOCK_LOCK(&listener->waitQueue, &listener->lock,
-                local_listener_conn_avail(listener) || local_listener_closed(listener)) != WAIT_NORM)
+                local_listener_is_conn_avail(listener) || local_listener_is_closed(listener)) != WAIT_NORM)
         {
             lock_release(&listener->lock);
             return 0;
         }
     }
 
-    if (local_listener_closed(listener))
+    if (local_listener_is_closed(listener))
     {
         lock_release(&listener->lock);
         return ERROR(EINVAL);
@@ -293,7 +293,7 @@ static uint64_t local_socket_bind(socket_t* socket, const char* address)
     {
         return ERROR(ENOOP);
     }
-    if (!path_valid_name(address))
+    if (!path_is_name_valid(address))
     {
         return ERROR(EINVAL);
     }
@@ -325,7 +325,7 @@ static uint64_t local_socket_listen(socket_t* socket)
 
 static uint64_t local_socket_connect(socket_t* socket, const char* address)
 {
-    if (!path_valid_name(address))
+    if (!path_is_name_valid(address))
     {
         return ERROR(EINVAL);
     }
@@ -364,27 +364,27 @@ static uint64_t local_socket_connect(socket_t* socket, const char* address)
 
     if (socket->flags & PATH_NONBLOCK)
     {
-        if (!(atomic_load(&conn->accepted) || local_connection_closed(conn)))
+        if (!(atomic_load(&conn->accepted) || local_connection_is_closed(conn)))
         {
             return ERROR(EWOULDBLOCK);
         }
     }
     else
     {
-        if (WAIT_BLOCK(&conn->waitQueue, atomic_load(&conn->accepted) || local_connection_closed(conn)) != WAIT_NORM)
+        if (WAIT_BLOCK(&conn->waitQueue, atomic_load(&conn->accepted) || local_connection_is_closed(conn)) != WAIT_NORM)
         {
             return ERR;
         }
     }
 
-    if (local_connection_closed(conn))
+    if (local_connection_is_closed(conn))
     {
         return ERROR(EPIPE);
     }
     return 0;
 }
 
-static uint64_t local_socket_get_ring_and_conn(local_socket_t* local, bool sending, ring_t** ring,
+static uint64_t local_socket_get_ring_and_conn(local_socket_t* local, bool isSending, ring_t** ring,
     local_connection_t** conn)
 {
     LOCK_DEFER(&local->lock);
@@ -393,7 +393,7 @@ static uint64_t local_socket_get_ring_and_conn(local_socket_t* local, bool sendi
     {
     case LOCAL_SOCKET_CONNECT:
     {
-        if (sending)
+        if (isSending)
         {
             (*ring) = &local->connect.conn->serverRing;
         }
@@ -406,7 +406,7 @@ static uint64_t local_socket_get_ring_and_conn(local_socket_t* local, bool sendi
     break;
     case LOCAL_SOCKET_ACCEPT:
     {
-        if (sending)
+        if (isSending)
         {
             (*ring) = &local->accept.conn->clientRing;
         }
@@ -447,7 +447,7 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
     lock_acquire(&conn->lock);
     if (socket->flags & PATH_NONBLOCK)
     {
-        if (!(ring_free_length(ring) >= count + sizeof(local_packet_header_t) || local_connection_closed(conn)))
+        if (!(ring_free_length(ring) >= count + sizeof(local_packet_header_t) || local_connection_is_closed(conn)))
         {
             lock_release(&conn->lock);
             return ERROR(EWOULDBLOCK);
@@ -456,7 +456,7 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
     else
     {
         if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
-                ring_free_length(ring) >= count + sizeof(local_packet_header_t) || local_connection_closed(conn)) !=
+                ring_free_length(ring) >= count + sizeof(local_packet_header_t) || local_connection_is_closed(conn)) !=
             WAIT_NORM)
         {
             lock_release(&conn->lock);
@@ -464,7 +464,7 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
         }
     }
 
-    if (local_connection_closed(conn))
+    if (local_connection_is_closed(conn))
     {
         lock_release(&conn->lock);
         return 0;
@@ -501,7 +501,7 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
     lock_acquire(&conn->lock);
     if (socket->flags & PATH_NONBLOCK)
     {
-        if (!(ring_data_length(ring) >= sizeof(local_packet_header_t) || local_connection_closed(conn)))
+        if (!(ring_data_length(ring) >= sizeof(local_packet_header_t) || local_connection_is_closed(conn)))
         {
             lock_release(&conn->lock);
             return ERROR(EWOULDBLOCK);
@@ -510,14 +510,14 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
     else
     {
         if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
-                ring_data_length(ring) >= sizeof(local_packet_header_t) || local_connection_closed(conn)) != WAIT_NORM)
+                ring_data_length(ring) >= sizeof(local_packet_header_t) || local_connection_is_closed(conn)) != WAIT_NORM)
         {
             lock_release(&conn->lock);
             return 0;
         }
     }
 
-    if (local_connection_closed(conn))
+    if (local_connection_is_closed(conn))
     {
         lock_release(&conn->lock);
         return 0;
@@ -554,7 +554,7 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
     {
         local_listener_t* listener = local->listen.listener;
         LOCK_DEFER(&listener->lock);
-        if (local_listener_closed(listener))
+        if (local_listener_is_closed(listener))
         {
             poll->occurred = POLL_READ;
         }
@@ -569,7 +569,7 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
     {
         local_connection_t* conn = local->connect.conn;
         LOCK_DEFER(&conn->lock);
-        if (local_connection_closed(conn))
+        if (local_connection_is_closed(conn))
         {
             poll->occurred = POLL_READ | POLL_WRITE;
         }
@@ -585,7 +585,7 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
     {
         local_connection_t* conn = local->accept.conn;
         LOCK_DEFER(&conn->lock);
-        if (local_connection_closed(conn))
+        if (local_connection_is_closed(conn))
         {
             poll->occurred = POLL_READ | POLL_WRITE;
         }

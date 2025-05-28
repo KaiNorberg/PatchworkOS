@@ -32,7 +32,7 @@ static uint64_t process_ctl_wait(file_t* file, uint64_t argc, const char** argv)
 
     WAIT_BLOCK(&process->queue, ({
         LOCK_DEFER(&process->threads.lock);
-        process->threads.dying;
+        process->threads.isDying;
     }));
     return 0;
 }
@@ -163,7 +163,7 @@ process_t* process_new(process_t* parent, const char** argv)
     space_init(&process->space);
     wait_queue_init(&process->queue);
     futex_ctx_init(&process->futexCtx);
-    process->threads.dying = false;
+    process->threads.isDying = false;
     process->threads.newTid = 0;
     list_init(&process->threads.list);
     lock_init(&process->threads.lock);
@@ -201,7 +201,7 @@ static void process_on_free(sysdir_t* dir)
 
 void process_free(process_t* process)
 {
-    assert(list_empty(&process->threads.list));
+    assert(list_is_empty(&process->threads.list));
 
     if (process->parent != NULL)
     {

@@ -7,34 +7,34 @@
 typedef struct button
 {
     mouse_buttons_t mouseButtons;
-    bool pressed;
-    bool hovered;
-    bool focused;
+    bool isPressed;
+    bool isHovered;
+    bool isFocused;
 } button_t;
 
 static void button_draw(element_t* elem, button_t* button)
 {
     rect_t rect;
-    element_content_rect_get(elem, &rect);
+    element_get_content_rect(elem, &rect);
 
     drawable_t draw;
     element_draw_begin(elem, &draw);
 
-    int64_t bezelSize = element_int_get(elem, INT_BEZEL_SIZE);
-    int64_t frameSize = element_int_get(elem, INT_FRAME_SIZE);
-    pixel_t smallPadding = element_int_get(elem, INT_SMALL_PADDING);
-    pixel_t bezelColor = element_color_get(elem, COLOR_SET_BUTTON, COLOR_ROLE_BEZEL);
-    pixel_t highlight = element_color_get(elem, COLOR_SET_BUTTON, COLOR_ROLE_HIGHLIGHT);
-    pixel_t shadow = element_color_get(elem, COLOR_SET_BUTTON, COLOR_ROLE_SHADOW);
-    pixel_t background = element_color_get(elem, COLOR_SET_BUTTON, COLOR_ROLE_BACKGROUND_NORMAL);
-    pixel_t foreground = element_color_get(elem, COLOR_SET_BUTTON, COLOR_ROLE_FOREGROUND_NORMAL);
-    pixel_t selectedStart = element_color_get(elem, COLOR_SET_BUTTON, COLOR_ROLE_BACKGROUND_SELECTED_START);
-    pixel_t selectedEnd = element_color_get(elem, COLOR_SET_BUTTON, COLOR_ROLE_BACKGROUND_SELECTED_END);
-    pixel_t selectedForeground = element_color_get(elem, COLOR_SET_BUTTON, COLOR_ROLE_FOREGROUND_SELECTED);
+    int64_t bezelSize = element_get_int(elem, INT_BEZEL_SIZE);
+    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
+    pixel_t smallPadding = element_get_int(elem, INT_SMALL_PADDING);
+    pixel_t bezelColor = element_get_color(elem, COLOR_SET_BUTTON, COLOR_ROLE_BEZEL);
+    pixel_t highlight = element_get_color(elem, COLOR_SET_BUTTON, COLOR_ROLE_HIGHLIGHT);
+    pixel_t shadow = element_get_color(elem, COLOR_SET_BUTTON, COLOR_ROLE_SHADOW);
+    pixel_t background = element_get_color(elem, COLOR_SET_BUTTON, COLOR_ROLE_BACKGROUND_NORMAL);
+    pixel_t foreground = element_get_color(elem, COLOR_SET_BUTTON, COLOR_ROLE_FOREGROUND_NORMAL);
+    pixel_t selectedStart = element_get_color(elem, COLOR_SET_BUTTON, COLOR_ROLE_BACKGROUND_SELECTED_START);
+    pixel_t selectedEnd = element_get_color(elem, COLOR_SET_BUTTON, COLOR_ROLE_BACKGROUND_SELECTED_END);
+    pixel_t selectedForeground = element_get_color(elem, COLOR_SET_BUTTON, COLOR_ROLE_FOREGROUND_SELECTED);
 
     if (elem->flags & ELEMENT_FLAT)
     {
-        if (button->pressed || button->hovered)
+        if (button->isPressed || button->isHovered)
         {
             draw_rect(&draw, &rect, selectedEnd);
         }
@@ -51,7 +51,7 @@ static void button_draw(element_t* elem, button_t* button)
             RECT_SHRINK(&rect, bezelSize);
         }
 
-        if (button->pressed)
+        if (button->isPressed)
         {
             draw_frame(&draw, &rect, frameSize, shadow, highlight);
         }
@@ -67,7 +67,7 @@ static void button_draw(element_t* elem, button_t* button)
     if (!(elem->flags & ELEMENT_NO_OUTLINE))
     {
         RECT_SHRINK(&rect, smallPadding);
-        if (button->focused)
+        if (button->isFocused)
         {
             draw_outline(&draw, &rect, bezelColor, 2, 2);
         }
@@ -134,7 +134,7 @@ static void button_draw(element_t* elem, button_t* button)
         draw_image_blend(&draw, elem->image, &imageDestRect, &elem->imageProps.srcOffset);
     }
 
-    if ((elem->flags & ELEMENT_FLAT) && (button->hovered || button->pressed))
+    if ((elem->flags & ELEMENT_FLAT) && (button->isHovered || button->isPressed))
     {
         draw_text(&draw, &rect, elem->textProps.font, ALIGN_CENTER, ALIGN_CENTER, selectedForeground, elem->text);
     }
@@ -154,7 +154,7 @@ static void button_send_action(element_t* elem, button_t* button, action_type_t 
 
 static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* event)
 {
-    button_t* button = element_private_get(elem);
+    button_t* button = element_get_private(elem);
 
     switch (event->type)
     {
@@ -174,12 +174,12 @@ static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* 
     break;
     case EVENT_MOUSE:
     {
-        bool prevPressed = button->pressed;
-        bool prevHovered = button->hovered;
-        bool prevFocused = button->focused;
+        bool prevIsPressed = button->isPressed;
+        bool prevIsHovered = button->isHovered;
+        bool prevIsFocused = button->isFocused;
 
         rect_t rect;
-        element_content_rect_get(elem, &rect);
+        element_get_content_rect(elem, &rect);
 
         bool mouseInBounds = RECT_CONTAINS_POINT(&rect, &event->mouse.pos);
         bool leftPressed = (event->mouse.pressed & MOUSE_LEFT) != 0;
@@ -189,23 +189,23 @@ static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* 
         {
             if (mouseInBounds)
             {
-                button->hovered = true;
+                button->isHovered = true;
 
                 if (leftPressed)
                 {
-                    button->pressed = !button->pressed;
-                    button->focused = true;
+                    button->isPressed = !button->isPressed;
+                    button->isFocused = true;
 
-                    button_send_action(elem, button, button->pressed ? ACTION_PRESS : ACTION_RELEASE);
+                    button_send_action(elem, button, button->isPressed ? ACTION_PRESS : ACTION_RELEASE);
                 }
             }
             else
             {
-                button->hovered = false;
+                button->isHovered = false;
 
                 if (leftPressed)
                 {
-                    button->focused = false;
+                    button->isFocused = false;
                 }
             }
         }
@@ -213,38 +213,38 @@ static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* 
         {
             if (mouseInBounds)
             {
-                button->hovered = true;
+                button->isHovered = true;
 
-                if (leftPressed && !button->pressed)
+                if (leftPressed && !button->isPressed)
                 {
-                    button->pressed = true;
-                    button->focused = true;
+                    button->isPressed = true;
+                    button->isFocused = true;
                     button_send_action(elem, button, ACTION_PRESS);
                 }
-                else if (leftReleased && button->pressed)
+                else if (leftReleased && button->isPressed)
                 {
-                    button->pressed = false;
+                    button->isPressed = false;
                     button_send_action(elem, button, ACTION_RELEASE);
                 }
             }
             else
             {
-                button->hovered = false;
+                button->isHovered = false;
 
-                if (button->pressed)
+                if (button->isPressed)
                 {
-                    button->pressed = false;
+                    button->isPressed = false;
                     button_send_action(elem, button, ACTION_CANCEL);
                 }
 
                 if (leftPressed)
                 {
-                    button->focused = false;
+                    button->isFocused = false;
                 }
             }
         }
 
-        if (button->pressed != prevPressed || button->hovered != prevHovered || button->focused != prevFocused)
+        if (button->isPressed != prevIsPressed || button->isHovered != prevIsHovered || button->isFocused != prevIsFocused)
         {
             button_draw(elem, button);
         }
@@ -252,18 +252,18 @@ static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* 
     break;
     case EVENT_CURSOR_LEAVE:
     {
-        if (button->hovered)
+        if (button->isHovered)
         {
-            button->hovered = false;
+            button->isHovered = false;
             button_draw(elem, button);
         }
     }
     break;
     case EVENT_REPORT:
     {
-        if (!event->report.info.focused && button->focused)
+        if (!event->report.info.isFocused && button->isFocused)
         {
-            button->focused = false;
+            button->isFocused = false;
             button_draw(elem, button);
         }
     }
@@ -274,14 +274,14 @@ static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* 
         {
         case ACTION_PRESS:
         {
-            button->pressed = true;
-            button->focused = true;
+            button->isPressed = true;
+            button->isFocused = true;
         }
         break;
         case ACTION_RELEASE:
         {
-            button->pressed = false;
-            button->focused = false;
+            button->isPressed = false;
+            button->isFocused = false;
         }
         break;
         default:
@@ -303,9 +303,9 @@ element_t* button_new(element_t* parent, element_id_t id, const rect_t* rect, co
     {
         return NULL;
     }
-    button->pressed = false;
-    button->hovered = false;
-    button->focused = false;
+    button->isPressed = false;
+    button->isHovered = false;
+    button->isFocused = false;
 
     element_t* elem = element_new(parent, id, rect, text, flags, button_prodecure, button);
     if (elem == NULL)

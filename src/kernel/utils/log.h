@@ -27,7 +27,7 @@ void log_disable_screen(void);
 
 void log_enable_time(void);
 
-bool log_time_enabled(void);
+bool log_is_time_enabled(void);
 
 void log_print(const char* str);
 

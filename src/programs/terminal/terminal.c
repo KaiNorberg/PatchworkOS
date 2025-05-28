@@ -10,24 +10,24 @@
 
 static uint64_t terminal_width(terminal_t* term)
 {
-    int64_t frameSize = theme_int_get(INT_FRAME_SIZE, NULL);
-    int64_t smallPadding = theme_int_get(INT_SMALL_PADDING, NULL);
+    int64_t frameSize = theme_get_int(INT_FRAME_SIZE, NULL);
+    int64_t smallPadding = theme_get_int(INT_SMALL_PADDING, NULL);
 
     return TERMINAL_COLUMNS * font_width(term->font, "a", 1) + frameSize * 2 + smallPadding * 2;
 }
 
 static uint64_t terminal_height(terminal_t* term)
 {
-    int64_t frameSize = theme_int_get(INT_FRAME_SIZE, NULL);
-    int64_t smallPadding = theme_int_get(INT_SMALL_PADDING, NULL);
+    int64_t frameSize = theme_get_int(INT_FRAME_SIZE, NULL);
+    int64_t smallPadding = theme_get_int(INT_SMALL_PADDING, NULL);
 
     return TERMINAL_ROWS * font_height(term->font) + frameSize * 2 + smallPadding * 2;
 }
 
 static point_t terminal_cursor_pos_to_client_pos(terminal_t* term, element_t* elem, point_t* cursorPos)
 {
-    int64_t frameSize = element_int_get(elem, INT_FRAME_SIZE);
-    int64_t smallPadding = element_int_get(elem, INT_SMALL_PADDING);
+    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
+    int64_t smallPadding = element_get_int(elem, INT_SMALL_PADDING);
     return (point_t){
         .x = ((cursorPos)->x * font_width(term->font, "a", 1)) + frameSize + smallPadding,
         .y = ((cursorPos)->y * font_height(term->font)) + frameSize + smallPadding,
@@ -52,7 +52,7 @@ static void terminal_cursor_draw(terminal_t* term, element_t* elem, drawable_t* 
 
     if (cursor != ' ')
     {
-        if (term->cursorVisible)
+        if (term->isCursorVisible)
         {
             draw_rect(draw, &cursorRect, TERMINAL_FOREGROUND);
             draw_string(draw, term->font, &point, TERMINAL_BACKGROUND, &cursor, 1);
@@ -65,7 +65,7 @@ static void terminal_cursor_draw(terminal_t* term, element_t* elem, drawable_t* 
     }
     else
     {
-        if (term->cursorVisible)
+        if (term->isCursorVisible)
         {
             draw_rect(draw, &cursorRect, TERMINAL_FOREGROUND);
         }
@@ -78,21 +78,21 @@ static void terminal_cursor_draw(terminal_t* term, element_t* elem, drawable_t* 
 
 static void terminal_clear(terminal_t* term, element_t* elem, drawable_t* draw)
 {
-    term->cursorVisible = false;
+    term->isCursorVisible = false;
     term->cursorPos = (point_t){0, 0};
 
     rect_t rect;
-    element_content_rect_get(elem, &rect);
+    element_get_content_rect(elem, &rect);
 
-    int64_t frameSize = element_int_get(elem, INT_FRAME_SIZE);
-    pixel_t highlight = element_color_get(elem, COLOR_SET_ELEMENT, COLOR_ROLE_HIGHLIGHT);
-    pixel_t shadow = element_color_get(elem, COLOR_SET_ELEMENT, COLOR_ROLE_SHADOW);
+    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
+    pixel_t highlight = element_get_color(elem, COLOR_SET_ELEMENT, COLOR_ROLE_HIGHLIGHT);
+    pixel_t shadow = element_get_color(elem, COLOR_SET_ELEMENT, COLOR_ROLE_SHADOW);
 
     draw_frame(draw, &rect, frameSize, shadow, highlight);
     RECT_SHRINK(&rect, frameSize);
     draw_rect(draw, &rect, TERMINAL_BACKGROUND);
 
-    term->cursorVisible = true;
+    term->isCursorVisible = true;
     terminal_cursor_draw(term, elem, draw);
 }
 
@@ -101,11 +101,11 @@ static void terminal_scroll(terminal_t* term, element_t* elem, drawable_t* draw)
     term->cursorPos.y -= 1;
 
     uint64_t fontHeight = font_height(term->font);
-    int64_t frameSize = element_int_get(elem, INT_FRAME_SIZE);
-    int64_t smallPadding = element_int_get(elem, INT_SMALL_PADDING);
+    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
+    int64_t smallPadding = element_get_int(elem, INT_SMALL_PADDING);
 
     rect_t destRect;
-    element_content_rect_get(elem, &destRect);
+    element_get_content_rect(elem, &destRect);
 
     RECT_SHRINK(&destRect, frameSize);
     RECT_SHRINK(&destRect, smallPadding);
@@ -121,15 +121,15 @@ static void terminal_scroll(terminal_t* term, element_t* elem, drawable_t* draw)
 static void terminal_put(terminal_t* term, element_t* elem, drawable_t* draw, char chr)
 {
     rect_t rect;
-    element_content_rect_get(elem, &rect);
+    element_get_content_rect(elem, &rect);
 
     switch (chr)
     {
     case '\n':
     {
-        if (term->cursorVisible)
+        if (term->isCursorVisible)
         {
-            term->cursorVisible = false;
+            term->isCursorVisible = false;
             terminal_cursor_draw(term, elem, draw);
         }
 
@@ -152,7 +152,7 @@ static void terminal_put(terminal_t* term, element_t* elem, drawable_t* draw, ch
     break;
     default:
     {
-        term->cursorVisible = false;
+        term->isCursorVisible = false;
         terminal_cursor_draw(term, elem, draw);
 
         point_t clientPos = terminal_cursor_pos_to_client_pos(term, elem, &term->cursorPos);
@@ -178,9 +178,9 @@ static void terminal_write(terminal_t* term, element_t* elem, drawable_t* draw, 
         chr++;
     }
 
-    term->cursorVisible = true;
+    term->isCursorVisible = true;
     terminal_cursor_draw(term, elem, draw);
-    window_timer_set(term->win, TIMER_NONE, BLINK_INTERVAL);
+    window_set_timer(term->win, TIMER_NONE, BLINK_INTERVAL);
 }
 
 static void terminal_redraw_input(terminal_t* term, element_t* elem, drawable_t* draw, uint64_t prevLength)
@@ -193,9 +193,9 @@ static void terminal_redraw_input(terminal_t* term, element_t* elem, drawable_t*
 
     draw_string(draw, term->font, &point, TERMINAL_FOREGROUND, term->input.buffer, strlen(term->input.buffer));
 
-    term->cursorVisible = true;
+    term->isCursorVisible = true;
     terminal_cursor_draw(term, elem, draw);
-    window_timer_set(term->win, TIMER_NONE, BLINK_INTERVAL);
+    window_set_timer(term->win, TIMER_NONE, BLINK_INTERVAL);
 }
 
 static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t* draw, keycode_t key, char ascii,
@@ -254,7 +254,7 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t*
     {
         writef(term->stdin[PIPE_WRITE], "%s\n", term->input.buffer);
 
-        term->cursorVisible = false;
+        term->isCursorVisible = false;
         terminal_cursor_draw(term, elem, draw);
 
         history_push(&term->history, term->input.buffer);
@@ -289,13 +289,13 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t*
 
 static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t* event)
 {
-    terminal_t* term = element_private_get(elem);
+    terminal_t* term = element_get_private(elem);
 
     switch (event->type)
     {
     case LEVENT_INIT:
     {
-        window_timer_set(win, TIMER_NONE, BLINK_INTERVAL);
+        window_set_timer(win, TIMER_NONE, BLINK_INTERVAL);
     }
     break;
     case LEVENT_REDRAW:
@@ -310,9 +310,9 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
     break;
     case EVENT_TIMER:
     {
-        window_timer_set(win, TIMER_NONE, BLINK_INTERVAL);
+        window_set_timer(win, TIMER_NONE, BLINK_INTERVAL);
 
-        term->cursorVisible = !term->cursorVisible;
+        term->isCursorVisible = !term->isCursorVisible;
 
         drawable_t draw;
         element_draw_begin(elem, &draw);
@@ -356,7 +356,7 @@ void terminal_init(terminal_t* term)
     }
 
     term->cursorPos = (point_t){0};
-    term->cursorVisible = false;
+    term->isCursorVisible = false;
     input_init(&term->input);
     history_init(&term->history);
 
@@ -414,7 +414,7 @@ static void terminal_read_stdout(terminal_t* term)
         uint64_t readCount = read(term->stdout[PIPE_READ], buffer, MAX_PATH - 1);
         buffer[readCount] = '\0';
 
-        element_t* elem = window_client_element_get(term->win);
+        element_t* elem = window_get_client_element(term->win);
 
         drawable_t draw;
         element_draw_begin(elem, &draw);
@@ -435,12 +435,12 @@ bool terminal_update(terminal_t* term)
     poll(fds, 2, CLOCKS_NEVER);
 
     event_t event = {0};
-    while (display_next_event(term->disp, &event, 0) && event.type != LEVENT_QUIT && display_connected(term->disp))
+    while (display_next_event(term->disp, &event, 0) && event.type != LEVENT_QUIT && display_is_connected(term->disp))
     {
         display_dispatch(term->disp, &event);
     }
 
-    if (event.type == LEVENT_QUIT || !display_connected(term->disp))
+    if (event.type == LEVENT_QUIT || !display_is_connected(term->disp))
     {
         return false;
     }

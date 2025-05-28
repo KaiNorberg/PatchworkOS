@@ -35,7 +35,7 @@ typedef struct PACKED
 
 typedef struct
 {
-    bool intEnable;
+    uint64_t oldRflags;
     uint64_t depth;
 } cli_ctx_t;
 

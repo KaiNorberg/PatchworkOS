@@ -20,7 +20,7 @@
 typedef struct
 {
     list_entry_t entry;
-    surface_id_t surface;
+    surface_info_t info;
     char name[MAX_NAME];
     element_t* button;
 } taskbar_entry_t;

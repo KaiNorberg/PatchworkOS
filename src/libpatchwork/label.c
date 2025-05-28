@@ -5,20 +5,20 @@
 
 static uint64_t label_procedure(window_t* win, element_t* elem, const event_t* event)
 {
-    int64_t bezelSize = element_int_get(elem, INT_BEZEL_SIZE);
-    int64_t frameSize = element_int_get(elem, INT_FRAME_SIZE);
-    pixel_t bezelColor = element_color_get(elem, COLOR_SET_VIEW, COLOR_ROLE_BEZEL);
-    pixel_t highlight = element_color_get(elem, COLOR_SET_VIEW, COLOR_ROLE_HIGHLIGHT);
-    pixel_t shadow = element_color_get(elem, COLOR_SET_VIEW, COLOR_ROLE_SHADOW);
-    pixel_t background = element_color_get(elem, COLOR_SET_VIEW, COLOR_ROLE_BACKGROUND_NORMAL);
-    pixel_t foreground = element_color_get(elem, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL);
+    int64_t bezelSize = element_get_int(elem, INT_BEZEL_SIZE);
+    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
+    pixel_t bezelColor = element_get_color(elem, COLOR_SET_VIEW, COLOR_ROLE_BEZEL);
+    pixel_t highlight = element_get_color(elem, COLOR_SET_VIEW, COLOR_ROLE_HIGHLIGHT);
+    pixel_t shadow = element_get_color(elem, COLOR_SET_VIEW, COLOR_ROLE_SHADOW);
+    pixel_t background = element_get_color(elem, COLOR_SET_VIEW, COLOR_ROLE_BACKGROUND_NORMAL);
+    pixel_t foreground = element_get_color(elem, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL);
 
     switch (event->type)
     {
     case LEVENT_REDRAW:
     {
         rect_t rect;
-        element_content_rect_get(elem, &rect);
+        element_get_content_rect(elem, &rect);
 
         drawable_t draw;
         element_draw_begin(elem, &draw);

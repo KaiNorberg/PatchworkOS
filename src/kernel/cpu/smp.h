@@ -30,7 +30,6 @@ typedef struct cpu
     uint8_t id;
     uint8_t lapicId;
     uint64_t trapDepth;
-    bool inSyscall;
     tss_t tss;
     cli_ctx_t cli;
     sched_ctx_t sched;

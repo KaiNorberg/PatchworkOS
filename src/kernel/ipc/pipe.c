@@ -34,7 +34,7 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count)
     LOCK_DEFER(&private->lock);
 
     if (WAIT_BLOCK_LOCK(&private->waitQueue, &private->lock,
-            ring_data_length(&private->ring) != 0 || private->writeClosed) != WAIT_NORM)
+            ring_data_length(&private->ring) != 0 || private->isWriteClosed) != WAIT_NORM)
     {
         return 0;
     }
@@ -62,12 +62,12 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count)
     LOCK_DEFER(&private->lock);
 
     if (WAIT_BLOCK_LOCK(&private->waitQueue, &private->lock,
-            ring_free_length(&private->ring) >= count || private->readClosed) != WAIT_NORM)
+            ring_free_length(&private->ring) >= count || private->isReadClosed) != WAIT_NORM)
     {
         return 0;
     }
 
-    if (private->readClosed)
+    if (private->isReadClosed)
     {
         wait_unblock(&private->waitQueue, WAIT_ALL);
         return ERROR(EPIPE);
@@ -83,8 +83,8 @@ static wait_queue_t* pipe_poll(file_t* file, poll_file_t* pollFile)
 {
     pipe_private_t* private = file->private;
     LOCK_DEFER(&private->lock);
-    pollFile->occurred = ((ring_data_length(&private->ring) != 0 || private->writeClosed) ? POLL_READ : 0) |
-        ((ring_free_length(&private->ring) != 0 || private->readClosed) ? POLL_WRITE : 0);
+    pollFile->occurred = ((ring_data_length(&private->ring) != 0 || private->isWriteClosed) ? POLL_READ : 0) |
+        ((ring_free_length(&private->ring) != 0 || private->isReadClosed) ? POLL_WRITE : 0);
     return &private->waitQueue;
 }
 
@@ -108,8 +108,8 @@ static file_t* pipe_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
         return NULL;
     }
     ring_init(&private->ring, private->buffer, PAGE_SIZE);
-    private->readClosed = false;
-    private->writeClosed = false;
+    private->isReadClosed = false;
+    private->isWriteClosed = false;
     wait_queue_init(&private->waitQueue);
     lock_init(&private->lock);
 
@@ -143,8 +143,8 @@ static uint64_t pipe_open2(volume_t* volume, const path_t* path, sysobj_t* sysob
         return ERR;
     }
     ring_init(&private->ring, private->buffer, PAGE_SIZE);
-    private->readClosed = false;
-    private->writeClosed = false;
+    private->isReadClosed = false;
+    private->isWriteClosed = false;
     wait_queue_init(&private->waitQueue);
     lock_init(&private->lock);
 
@@ -183,15 +183,15 @@ static void pipe_cleanup(sysobj_t* sysobj, file_t* file)
     lock_acquire(&private->lock);
     if (private->readEnd == file)
     {
-        private->readClosed = true;
+        private->isReadClosed = true;
     }
     if (private->writeEnd == file)
     {
-        private->writeClosed = true;
+        private->isWriteClosed = true;
     }
 
     wait_unblock(&private->waitQueue, WAIT_ALL);
-    if (private->writeClosed && private->readClosed)
+    if (private->isWriteClosed && private->isReadClosed)
     {
         lock_release(&private->lock);
         wait_queue_deinit(&private->waitQueue);

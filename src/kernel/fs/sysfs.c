@@ -314,7 +314,7 @@ static node_t* sysfs_traverse_and_alloc(const char* path)
 
 uint64_t sysdir_init(sysdir_t* dir, const char* path, const char* dirname, void* private)
 {
-    if (!path_valid_name(dirname))
+    if (!path_is_name_valid(dirname))
     {
         return ERROR(EINVAL);
     }
@@ -364,7 +364,7 @@ void sysdir_deinit(sysdir_t* dir, sysdir_on_free_t onFree)
 
 uint64_t sysobj_init(sysobj_t* sysobj, sysdir_t* dir, const char* filename, const sysobj_ops_t* ops, void* private)
 {
-    if (!path_valid_name(filename))
+    if (!path_is_name_valid(filename))
     {
         return ERROR(EINVAL);
     }
@@ -389,7 +389,7 @@ uint64_t sysobj_init(sysobj_t* sysobj, sysdir_t* dir, const char* filename, cons
 uint64_t sysobj_init_path(sysobj_t* sysobj, const char* path, const char* filename, const sysobj_ops_t* ops,
     void* private)
 {
-    if (!path_valid_name(filename))
+    if (!path_is_name_valid(filename))
     {
         return ERROR(EINVAL);
     }

@@ -65,7 +65,7 @@ static void scanlines_clear(void)
 {
     for (uint64_t i = 0; i < info.height; i++)
     {
-        scanlines[i].invalid = false;
+        scanlines[i].isInvalid = false;
     }
 }
 
@@ -83,14 +83,14 @@ static void scanlines_invalidate(const rect_t* rect)
 {
     for (int64_t i = rect->top; i < rect->bottom; i++)
     {
-        if (scanlines[i].invalid)
+        if (scanlines[i].isInvalid)
         {
             scanlines[i].start = MIN(scanlines[i].start, rect->left);
             scanlines[i].end = MAX(scanlines[i].end, rect->right);
         }
         else
         {
-            scanlines[i].invalid = true;
+            scanlines[i].isInvalid = true;
             scanlines[i].start = rect->left;
             scanlines[i].end = rect->right;
         }
@@ -164,7 +164,7 @@ void screen_swap(void)
     {
         for (uint64_t i = 0; i < info.height; i++)
         {
-            if (!scanlines[i].invalid)
+            if (!scanlines[i].isInvalid)
             {
                 continue;
             }

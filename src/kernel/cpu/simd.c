@@ -18,11 +18,11 @@ static void simd_xsave_init(void)
 
     xcr0 = xcr0 | XCR0_XSAVE_SAVE_X87 | XCR0_XSAVE_SAVE_SSE;
 
-    if (cpuid_avx_avail())
+    if (cpuid_is_avx_avail())
     {
         xcr0 = xcr0 | XCR0_AVX_ENABLE;
 
-        if (cpuid_avx512_avail())
+        if (cpuid_is_avx512_avail())
         {
             xcr0 = xcr0 | XCR0_AVX512_ENABLE | XCR0_ZMM0_15_ENABLE | XCR0_ZMM16_32_ENABLE;
         }
@@ -39,14 +39,14 @@ void simd_init(void)
 
     cr4_write(cr4_read() | CR4_FXSR_ENABLE | CR4_SIMD_EXCEPTION);
 
-    if (cpuid_xsave_avail())
+    if (cpuid_is_xsave_avail())
     {
         printf("simd: xsave available\n");
         simd_xsave_init();
     }
 
     asm volatile("fninit");
-    if (cpuid_xsave_avail())
+    if (cpuid_is_xsave_avail())
     {
         asm volatile("xsave %0" : : "m"(*initCtx), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
     }
@@ -76,7 +76,7 @@ void simd_ctx_deinit(simd_ctx_t* ctx)
 
 void simd_ctx_save(simd_ctx_t* ctx)
 {
-    if (cpuid_xsave_avail())
+    if (cpuid_is_xsave_avail())
     {
         asm volatile("xsave %0" : : "m"(*ctx->buffer), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
     }
@@ -88,7 +88,7 @@ void simd_ctx_save(simd_ctx_t* ctx)
 
 void simd_ctx_load(simd_ctx_t* ctx)
 {
-    if (cpuid_xsave_avail())
+    if (cpuid_is_xsave_avail())
     {
         asm volatile("xrstor %0" : : "m"(*ctx->buffer), "a"(UINT64_MAX), "d"(UINT64_MAX) : "memory");
     }

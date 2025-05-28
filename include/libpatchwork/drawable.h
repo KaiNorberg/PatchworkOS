@@ -49,7 +49,7 @@ void draw_outline(drawable_t* draw, const rect_t* rect, pixel_t pixel, uint32_t 
 void draw_frame(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background);
 
 void draw_gradient(drawable_t* draw, const rect_t* rect, pixel_t start, pixel_t end, direction_t direction,
-    bool addNoise);
+    bool shouldAddNoise);
 
 // The destRect is the rectangle that will be filled in the destination, the srcPoint is the starting point in the
 // source to copy from.

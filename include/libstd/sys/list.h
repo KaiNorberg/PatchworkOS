@@ -56,17 +56,12 @@ static inline void list_entry_init(list_entry_t* entry)
     entry->prev = entry;
 }
 
-static inline bool list_entry_in_list(list_entry_t* entry)
-{
-    return entry->next != entry->prev;
-}
-
 static inline void list_init(list_t* list)
 {
     list_entry_init(&list->head);
 }
 
-static inline bool list_empty(list_t* list)
+static inline bool list_is_empty(list_t* list)
 {
     return list->head.next == &list->head;
 }
@@ -103,7 +98,7 @@ static inline void list_push(list_t* list, list_entry_t* entry)
 
 static inline list_entry_t* list_pop(list_t* list)
 {
-    if (list_empty(list))
+    if (list_is_empty(list))
     {
         return NULL;
     }
@@ -115,7 +110,7 @@ static inline list_entry_t* list_pop(list_t* list)
 
 static inline list_entry_t* list_first(list_t* list)
 {
-    if (list_empty(list))
+    if (list_is_empty(list))
     {
         return NULL;
     }
@@ -124,7 +119,7 @@ static inline list_entry_t* list_first(list_t* list)
 
 static inline list_entry_t* list_last(list_t* list)
 {
-    if (list_empty(list))
+    if (list_is_empty(list))
     {
         return NULL;
     }

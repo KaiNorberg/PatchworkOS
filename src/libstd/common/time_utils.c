@@ -21,14 +21,14 @@ static const int32_t daysInMonth[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30
 static const int32_t cumulativeDays[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
 static const int32_t cumulativeDaysLeap[] = {0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335};
 
-bool _TimeLeapYear(int32_t year)
+bool _TimeIsLeapYear(int32_t year)
 {
     return (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0));
 }
 
 int32_t _TimeDaysInMonth(int32_t month, int32_t year)
 {
-    if (month == 1 && _TimeLeapYear(year))
+    if (month == 1 && _TimeIsLeapYear(year))
     {
         return 29;
     }
@@ -127,7 +127,7 @@ void _TimeDayOfYear(struct tm* timePtr)
     int32_t day = timePtr->tm_mday - 1;
     int32_t year = timePtr->tm_year + 1900;
 
-    if (_TimeLeapYear(year))
+    if (_TimeIsLeapYear(year))
     {
         timePtr->tm_yday = cumulativeDaysLeap[month] + day;
     }

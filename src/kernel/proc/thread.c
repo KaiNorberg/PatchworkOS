@@ -24,7 +24,7 @@ thread_t* thread_new(process_t* process, void* entry, priority_t priority)
 {
     LOCK_DEFER(&process->threads.lock);
 
-    if (process->threads.dying)
+    if (process->threads.isDying)
     {
         return NULL;
     }
@@ -68,7 +68,7 @@ void thread_free(thread_t* thread)
     lock_acquire(&thread->process->threads.lock);
     list_remove(&thread->processEntry);
 
-    if (list_empty(&thread->process->threads.list))
+    if (list_is_empty(&thread->process->threads.list))
     {
         lock_release(&thread->process->threads.lock);
         process_free(thread->process);
@@ -118,7 +118,7 @@ void thread_load(thread_t* thread, trap_frame_t* trapFrame)
     }
 }
 
-bool thread_note_pending(thread_t* thread)
+bool thread_is_note_pending(thread_t* thread)
 {
     return note_queue_length(&thread->notes) != 0;
 }

@@ -142,7 +142,7 @@ void draw_outline(drawable_t* draw, const rect_t* rect, pixel_t pixel, uint32_t 
 }
 
 void draw_gradient(drawable_t* draw, const rect_t* rect, pixel_t start, pixel_t end, direction_t direction,
-    bool addNoise)
+    bool shouldAddNoise)
 {
     rect_t fitRect = *rect;
     RECT_FIT(&fitRect, &draw->contentRect);
@@ -193,7 +193,7 @@ void draw_gradient(drawable_t* draw, const rect_t* rect, pixel_t start, pixel_t 
             int32_t green = PIXEL_GREEN(start) + ((factorNum * deltaGreen) / factorDenom);
             int32_t blue = PIXEL_BLUE(start) + ((factorNum * deltaBlue) / factorDenom);
 
-            if (addNoise)
+            if (shouldAddNoise)
             {
                 int32_t noiseRed = (rand() % 5) - 2;
                 int32_t noiseGreen = (rand() % 5) - 2;
@@ -523,8 +523,7 @@ void draw_text(drawable_t* draw, const rect_t* rect, const font_t* font, align_t
         }
 
         point_t startPoint;
-        draw_calculate_aligned_text_pos(rect, font, drawText, drawTextLen + 3, xAlign, yAlign,
-            &startPoint);
+        draw_calculate_aligned_text_pos(rect, font, drawText, drawTextLen + 3, xAlign, yAlign, &startPoint);
         draw_string(draw, font, &startPoint, pixel, drawText, drawTextLen);
 
         if (drawEllipsis != NULL)

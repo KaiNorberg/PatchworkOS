@@ -185,8 +185,8 @@ static uint64_t client_action_surface_move(client_t* client, const cmd_header_t*
     }
 
     surface->pos = (point_t){.x = cmd->rect.left, .y = cmd->rect.top};
-    surface->moved = true;
-    compositor_redraw_needed_set();
+    surface->hasMoved = true;
+    compositor_set_redraw_needed();
 
     dwm_report_produce(surface, surface->client, REPORT_RECT);
     return 0;
@@ -230,8 +230,8 @@ static uint64_t client_action_surface_invalidate(client_t* client, const cmd_hea
     rect_t invalidRect = cmd->invalidRect;
     RECT_FIT(&invalidRect, &surfaceRect);
     gfx_invalidate(&surface->gfx, &invalidRect);
-    surface->invalid = true;
-    compositor_redraw_needed_set();
+    surface->isInvalid = true;
+    compositor_set_redraw_needed();
     return 0;
 }
 
@@ -243,10 +243,12 @@ static uint64_t client_action_surface_focus_set(client_t* client, const cmd_head
     }
     cmd_surface_focus_set_t* cmd = (cmd_surface_focus_set_t*)header;
 
-    surface_t* surface = cmd->global ? dwm_surface_find(cmd->target) : client_surface_find(client, cmd->target);
+    surface_t* surface = cmd->isGlobal ? dwm_surface_find(cmd->target) : client_surface_find(client, cmd->target);
     if (surface == NULL)
     {
-        return 0; // In the future some error system needs to be created to notify clients of errors like these, but since this needs to be able to fail we just have to ignore the error for now.
+        return 0; // In the future some error system needs to be created to notify clients of errors like these, but
+                  // since this needs to be able to fail (race conditions dont worry) we just have to ignore the error
+                  // for now.
     }
 
     dwm_focus_set(surface);
@@ -261,16 +263,16 @@ static uint64_t client_action_surface_visible_set(client_t* client, const cmd_he
     }
     cmd_surface_visible_set_t* cmd = (cmd_surface_visible_set_t*)header;
 
-    surface_t* surface = cmd->global ? dwm_surface_find(cmd->target) : client_surface_find(client, cmd->target);
+    surface_t* surface = cmd->isGlobal ? dwm_surface_find(cmd->target) : client_surface_find(client, cmd->target);
     if (surface == NULL)
     {
         return 0; // See client_action_surface_focus_set().
     }
 
-    if (surface->visible != cmd->visible)
+    if (surface->isVisible != cmd->isVisible)
     {
-        surface->visible = cmd->visible;
-        compositor_total_redraw_needed_set();
+        surface->isVisible = cmd->isVisible;
+        compositor_set_total_redraw_needed();
         dwm_report_produce(surface, surface->client, REPORT_VISIBLE);
     }
     return 0;
@@ -284,7 +286,7 @@ static uint64_t client_action_surface_report(client_t* client, const cmd_header_
     }
     cmd_surface_report_t* cmd = (cmd_surface_report_t*)header;
 
-    surface_t* surface = cmd->global ? dwm_surface_find(cmd->target) : client_surface_find(client, cmd->target);
+    surface_t* surface = cmd->isGlobal ? dwm_surface_find(cmd->target) : client_surface_find(client, cmd->target);
     if (surface == NULL)
     {
         return 0; // See client_action_surface_focus_set().

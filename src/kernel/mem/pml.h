@@ -40,10 +40,10 @@ void pml_load(pml_t* table);
 void* pml_phys_addr(pml_t* table, const void* virtAddr);
 
 // Returns if entire region is mapped.
-bool pml_region_mapped(pml_t* table, const void* virtAddr, uint64_t pageAmount);
+bool pml_is_region_mapped(pml_t* table, const void* virtAddr, uint64_t pageAmount);
 
 // Returns if entire region is unmapped.
-bool pml_region_unmapped(pml_t* table, const void* virtAddr, uint64_t pageAmount);
+bool pml_is_region_unmapped(pml_t* table, const void* virtAddr, uint64_t pageAmount);
 
 uint64_t pml_map(pml_t* table, void* virtAddr, void* physAddr, uint64_t pageAmount, uint64_t flags);
 

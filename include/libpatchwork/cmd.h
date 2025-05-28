@@ -16,7 +16,8 @@ extern "C"
 {
 #endif
 
-// Note: Commands will only let you access a surface owned by the client the command is called by unless that command has a "bool global" member and that member is true.
+// Note: Commands will only let you access a surface owned by the client the command is called by unless that command
+// has a "bool isGlobal" member and that member is true.
 
 typedef enum
 {
@@ -94,22 +95,22 @@ typedef struct
 typedef struct
 {
     cmd_header_t header;
-    bool global;
+    bool isGlobal;
     surface_id_t target;
 } cmd_surface_focus_set_t;
 
 typedef struct
 {
     cmd_header_t header;
-    bool global;
+    bool isGlobal;
     surface_id_t target;
-    bool visible;
+    bool isVisible;
 } cmd_surface_visible_set_t;
 
 typedef struct
 {
     cmd_header_t header;
-    bool global;
+    bool isGlobal;
     surface_id_t target;
 } cmd_surface_report_t;
 

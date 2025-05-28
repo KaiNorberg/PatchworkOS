@@ -9,20 +9,20 @@ typedef struct
 
 static uint64_t popup_procedure(window_t* win, element_t* elem, const event_t* event)
 {
-    popup_t* popup = element_private_get(elem);
+    popup_t* popup = element_get_private(elem);
 
     switch (event->type)
     {
     case LEVENT_INIT:
     {
         rect_t rect;
-        element_content_rect_get(elem, &rect);
+        element_get_content_rect(elem, &rect);
 
         rect_t middleButtonRect = RECT_INIT_DIM(RECT_WIDTH(&rect) / 2 - POPUP_BUTTON_WIDTH / 2,
             RECT_HEIGHT(&rect) - POPUP_BUTTON_AREA_HEIGHT + POPUP_BUTTON_HEIGHT / 2 - 10, POPUP_BUTTON_WIDTH,
             POPUP_BUTTON_HEIGHT);
 
-        int64_t bigPadding = element_int_get(elem, INT_BIG_PADDING);
+        int64_t bigPadding = element_get_int(elem, INT_BIG_PADDING);
 
         rect_t leftButtonRect = middleButtonRect;
         leftButtonRect.left -= POPUP_BUTTON_WIDTH + bigPadding;
@@ -57,7 +57,7 @@ static uint64_t popup_procedure(window_t* win, element_t* elem, const event_t* e
     case LEVENT_REDRAW:
     {
         rect_t rect;
-        element_content_rect_get(elem, &rect);
+        element_get_content_rect(elem, &rect);
         rect.bottom -= POPUP_BUTTON_AREA_HEIGHT;
         rect.left += POPUP_HORIZONTAL_PADDING;
         rect.right -= POPUP_HORIZONTAL_PADDING;
@@ -65,8 +65,8 @@ static uint64_t popup_procedure(window_t* win, element_t* elem, const event_t* e
         drawable_t draw;
         element_draw_begin(elem, &draw);
 
-        pixel_t foreground = element_color_get(elem, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL);
-        pixel_t background = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_NORMAL);
+        pixel_t foreground = element_get_color(elem, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL);
+        pixel_t background = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_NORMAL);
         draw_rect(&draw, &rect, background);
         draw_text_multiline(&draw, &rect, NULL, ALIGN_MIN, ALIGN_CENTER, foreground, popup->text);
 
@@ -81,7 +81,7 @@ static uint64_t popup_procedure(window_t* win, element_t* elem, const event_t* e
         }
 
         popup->result = event->lAction.source;
-        display_disconnect(window_display_get(win));
+        display_disconnect(window_get_display(win));
     }
     break;
     }
@@ -116,7 +116,7 @@ popup_result_t popup_open(const char* text, const char* title, popup_type_t type
     }
 
     event_t event = {0};
-    while (display_connected(disp))
+    while (display_is_connected(disp))
     {
         display_next_event(disp, &event, CLOCKS_NEVER);
         display_dispatch(disp, &event);

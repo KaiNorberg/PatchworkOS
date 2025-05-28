@@ -15,7 +15,7 @@
 
 static kbd_t* kbd;
 
-static bool extended;
+static bool isExtended;
 
 static uint64_t ps2_kbd_scan(void)
 {
@@ -39,20 +39,20 @@ static void ps2_kbd_irq(uint8_t irq)
 
     if (scancode == PS2_EXTENDED_CODE)
     {
-        extended = true;
+        isExtended = true;
     }
     else
     {
         kbd_event_type_t type = scancode & SCANCODE_RELEASED ? KBD_RELEASE : KBD_PRESS;
-        keycode_t code = ps2_scancode_to_keycode(extended, scancode & ~SCANCODE_RELEASED);
+        keycode_t code = ps2_scancode_to_keycode(isExtended, scancode & ~SCANCODE_RELEASED);
         kbd_push(kbd, type, code);
-        extended = false;
+        isExtended = false;
     }
 }
 
 void ps2_kbd_init(void)
 {
-    extended = false;
+    isExtended = false;
 
     ps2_cmd(PS2_CMD_KBD_TEST);
     assert(ps2_read() == 0x0 && "ps2 kbd test fail");

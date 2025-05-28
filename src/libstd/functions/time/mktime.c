@@ -18,7 +18,7 @@ time_t mktime(struct tm* timePtr)
 
     for (int32_t y = 1970; y < year; y++)
     {
-        totalDays += 365 + (_TimeLeapYear(y) ? 1 : 0);
+        totalDays += 365 + (_TimeIsLeapYear(y) ? 1 : 0);
     }
 
     totalDays += timePtr->tm_yday;

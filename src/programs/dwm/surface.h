@@ -28,10 +28,10 @@ typedef struct surface
     surface_id_t id;
     surface_type_t type;
     timer_t timer;
-    bool invalid;
-    bool moved;
-    bool visible;
-    bool focused;
+    bool isInvalid;
+    bool hasMoved;
+    bool isVisible;
+    bool isFocused;
     rect_t prevRect;
     char name[MAX_NAME];
 } surface_t;
@@ -49,4 +49,4 @@ surface_t* surface_new(client_t* client, const char* name, const point_t* point,
 
 void surface_free(surface_t* surface);
 
-void surface_info_get(surface_t* surface, surface_info_t* info);
+void surface_get_info(surface_t* surface, surface_info_t* info);

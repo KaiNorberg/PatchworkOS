@@ -25,7 +25,7 @@ void wait_queue_deinit(wait_queue_t* waitQueue)
 {
     LOCK_DEFER(&waitQueue->lock);
 
-    if (!list_empty(&waitQueue->entries))
+    if (!list_is_empty(&waitQueue->entries))
     {
         log_panic(NULL, "Wait queue with pending threads freed");
     }
@@ -60,7 +60,7 @@ static void wait_handle_parked_threads(trap_frame_t* trapFrame, cpu_t* self)
         }
 
         // Sort blocked threads by deadline
-        if (thread->wait.deadline == CLOCKS_NEVER || list_empty(&self->wait.blockedThreads) ||
+        if (thread->wait.deadline == CLOCKS_NEVER || list_is_empty(&self->wait.blockedThreads) ||
             CONTAINER_OF(list_last(&self->wait.blockedThreads), thread_t, entry)->wait.deadline <=
                 thread->wait.deadline)
         {
@@ -84,7 +84,7 @@ static void wait_handle_parked_threads(trap_frame_t* trapFrame, cpu_t* self)
         {
             wait_unblock_thread(thread, WAIT_NORM, NULL, false);
         }
-        else if (thread_note_pending(thread))
+        else if (thread_is_note_pending(thread))
         {
             thread_state_t expected = THREAD_BLOCKED;
             if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))

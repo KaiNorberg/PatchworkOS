@@ -10,9 +10,9 @@ typedef struct
     fd_t stdin;
     fd_t stdout;
     fd_t stderr;
-    bool closeStdin;
-    bool closeStdout;
-    bool closeStderr;
+    bool shouldCloseStdin;
+    bool shouldCloseStdout;
+    bool shouldCloseStderr;
 } cmd_t;
 
 typedef struct

@@ -139,9 +139,9 @@ static uint64_t oldCurrentScore;
 static uint64_t oldCompletedLines;
 static uint64_t oldPlayedBlocks;
 
-static bool clearingLines;
-static bool started;
-static bool gameover;
+static bool isClearingLines;
+static bool isStarted;
+static bool isGameover;
 
 static font_t* largeFont;
 static font_t* massiveFont;
@@ -151,7 +151,7 @@ static struct
     piece_t piece;
     int64_t x;
     int64_t y;
-    bool dropping;
+    bool isDropping;
 } currentPiece;
 
 static const pixel_t normalColors[] = {
@@ -204,7 +204,7 @@ static void block_draw(element_t* elem, drawable_t* draw, block_t block, int64_t
 
     rect_t rect = RECT_INIT_DIM(FIELD_LEFT + x * BLOCK_SIZE, FIELD_TOP + y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
 
-    int64_t frameSize = element_int_get(elem, INT_FRAME_SIZE);
+    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
 
     draw_frame(draw, &rect, frameSize, highlightColors[block], shadowColors[block]);
     RECT_SHRINK(&rect, frameSize);
@@ -217,13 +217,13 @@ static void side_panel_draw(window_t* win, element_t* elem, drawable_t* draw)
 {
     rect_t rect = RECT_INIT(SIDE_PANEL_LEFT, SIDE_PANEL_TOP, SIDE_PANEL_RIGHT, SIDE_PANEL_BOTTOM);
 
-    int64_t frameSize = element_int_get(elem, INT_FRAME_SIZE);
-    pixel_t shadow = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_SHADOW);
-    pixel_t highlight = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_HIGHLIGHT);
+    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
+    pixel_t shadow = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_SHADOW);
+    pixel_t highlight = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_HIGHLIGHT);
 
     draw_ridge(draw, &rect, frameSize, highlight, shadow);
 
-    pixel_t foreground = element_color_get(elem, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL);
+    pixel_t foreground = element_get_color(elem, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL);
 
     rect_t textRect = rect;
     textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
@@ -255,7 +255,7 @@ static point_t piece_block_pos_in_field(int64_t pieceX, int64_t pieceY, int64_t 
     return (point_t){.x = pieceX + blockX - PIECE_WIDTH / 2, .y = pieceY + blockY - PIECE_HEIGHT / 2};
 }
 
-static bool piece_out_of_bounds(const piece_t* piece, int64_t pieceX, int64_t pieceY)
+static bool piece_is_out_of_bounds(const piece_t* piece, int64_t pieceX, int64_t pieceY)
 {
     for (int64_t blockY = 0; blockY < PIECE_HEIGHT; blockY++)
     {
@@ -347,10 +347,10 @@ static void piece_rotate(piece_t* piece)
 
 static void field_edge_draw(element_t* elem, drawable_t* draw)
 {
-    int64_t frameSize = element_int_get(elem, INT_FRAME_SIZE);
-    pixel_t background = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_NORMAL);
-    pixel_t shadow = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_SHADOW);
-    pixel_t highlight = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_HIGHLIGHT);
+    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
+    pixel_t background = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_NORMAL);
+    pixel_t shadow = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_SHADOW);
+    pixel_t highlight = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_HIGHLIGHT);
 
     rect_t fieldRect = RECT_INIT(FIELD_LEFT, FIELD_TOP, FIELD_RIGHT, FIELD_BOTTOM);
     RECT_EXPAND(&fieldRect, FIELD_PADDING);
@@ -435,7 +435,7 @@ static void field_move_down(uint64_t line)
 static void field_clear_lines(element_t* elem, drawable_t* draw)
 {
     current_piece_clear(elem, draw);
-    bool done = true;
+    bool isDone = true;
     for (uint64_t y = 0; y < FIELD_HEIGHT; y++)
     {
         int64_t x = 0;
@@ -460,16 +460,16 @@ static void field_clear_lines(element_t* elem, drawable_t* draw)
             field_move_down(y);
         }
 
-        done = false;
+        isDone = false;
     }
 
-    if (!done)
+    if (!isDone)
     {
         field_draw(elem, draw);
     }
     else
     {
-        clearingLines = false;
+        isClearingLines = false;
     }
 
     current_piece_draw(elem, draw);
@@ -480,23 +480,23 @@ static void field_check_for_lines(element_t* elem, drawable_t* draw)
     uint64_t foundLines = 0;
     for (uint64_t y = 0; y < FIELD_HEIGHT; y++)
     {
-        bool completeLine = true;
+        bool isLineComplete = true;
         for (uint64_t x = 0; x < FIELD_WIDTH; x++)
         {
             if (field[y][x] == BLOCK_NONE)
             {
-                completeLine = false;
+                isLineComplete = false;
                 break;
             }
         }
 
-        if (completeLine)
+        if (isLineComplete)
         {
             for (uint64_t x = 0; x < FIELD_WIDTH; x++)
             {
                 field[y][x] = BLOCK_CLEARING;
             }
-            clearingLines = true;
+            isClearingLines = true;
             completedLines++;
             foundLines++;
         }
@@ -531,7 +531,7 @@ static void field_check_for_lines(element_t* elem, drawable_t* draw)
 
 static void pause()
 {
-    clearingLines = false;
+    isClearingLines = false;
 
     for (int64_t y = 0; y < FIELD_HEIGHT; y++)
     {
@@ -542,8 +542,8 @@ static void pause()
         }
     }
 
-    started = false;
-    gameover = false;
+    isStarted = false;
+    isGameover = false;
 }
 
 static void start()
@@ -552,7 +552,7 @@ static void start()
     completedLines = 0;
     playedBlocks = 0;
 
-    clearingLines = false;
+    isClearingLines = false;
 
     for (int64_t y = 0; y < FIELD_HEIGHT; y++)
     {
@@ -564,10 +564,10 @@ static void start()
     }
 
     current_piece_choose_new();
-    currentPiece.dropping = false;
+    currentPiece.isDropping = false;
 
-    started = true;
-    gameover = false;
+    isStarted = true;
+    isGameover = false;
 }
 
 static void current_piece_choose_new(void)
@@ -581,14 +581,14 @@ static void current_piece_choose_new(void)
     if (field_collides(&currentPiece.piece, currentPiece.x, currentPiece.y))
     {
         pause();
-        gameover = true;
+        isGameover = true;
     }
 }
 
 static void current_piece_clear(element_t* elem, drawable_t* draw)
 {
     int64_t outlineY = currentPiece.y;
-    while (!piece_out_of_bounds(&currentPiece.piece, currentPiece.x, outlineY) &&
+    while (!piece_is_out_of_bounds(&currentPiece.piece, currentPiece.x, outlineY) &&
         !field_collides(&currentPiece.piece, currentPiece.x, outlineY))
     {
         outlineY++;
@@ -602,7 +602,7 @@ static void current_piece_clear(element_t* elem, drawable_t* draw)
 static void current_piece_draw(element_t* elem, drawable_t* draw)
 {
     int64_t outlineY = currentPiece.y;
-    while (!piece_out_of_bounds(&currentPiece.piece, currentPiece.x, outlineY) &&
+    while (!piece_is_out_of_bounds(&currentPiece.piece, currentPiece.x, outlineY) &&
         !field_collides(&currentPiece.piece, currentPiece.x, outlineY))
     {
         outlineY++;
@@ -615,7 +615,7 @@ static void current_piece_draw(element_t* elem, drawable_t* draw)
 
 static void current_piece_update(element_t* elem, drawable_t* draw)
 {
-    if (piece_out_of_bounds(&currentPiece.piece, currentPiece.x, currentPiece.y + 1) ||
+    if (piece_is_out_of_bounds(&currentPiece.piece, currentPiece.x, currentPiece.y + 1) ||
         field_collides(&currentPiece.piece, currentPiece.x, currentPiece.y + 1))
     {
         field_add_piece(&currentPiece.piece, currentPiece.x, currentPiece.y);
@@ -635,7 +635,7 @@ static void current_piece_move(element_t* elem, drawable_t* draw, keycode_t code
 {
     uint64_t newX = currentPiece.x + (code == KBD_D) - (code == KBD_A);
 
-    if (piece_out_of_bounds(&currentPiece.piece, newX, currentPiece.y) ||
+    if (piece_is_out_of_bounds(&currentPiece.piece, newX, currentPiece.y) ||
         field_collides(&currentPiece.piece, newX, currentPiece.y))
     {
         return;
@@ -650,7 +650,7 @@ static void current_piece_drop(element_t* elem, drawable_t* draw)
 {
     current_piece_clear(elem, draw);
 
-    while (!piece_out_of_bounds(&currentPiece.piece, currentPiece.x, currentPiece.y) &&
+    while (!piece_is_out_of_bounds(&currentPiece.piece, currentPiece.x, currentPiece.y) &&
         !field_collides(&currentPiece.piece, currentPiece.x, currentPiece.y))
     {
         currentPiece.y++;
@@ -666,7 +666,7 @@ static void current_piece_rotate(element_t* elem, drawable_t* draw)
     memcpy(&rotatedPiece, &currentPiece.piece, sizeof(piece_t));
     piece_rotate(&rotatedPiece);
 
-    if (piece_out_of_bounds(&rotatedPiece, currentPiece.x, currentPiece.y) ||
+    if (piece_is_out_of_bounds(&rotatedPiece, currentPiece.x, currentPiece.y) ||
         field_collides(&rotatedPiece, currentPiece.x, currentPiece.y))
     {
         return;
@@ -715,7 +715,7 @@ static void start_press_space_draw(window_t* win, element_t* elem, drawable_t* d
     draw_rect(draw, &rect, normalColors[BLOCK_NONE]);
     if (blink)
     {
-        pixel_t foreground = element_color_get(elem, COLOR_SET_DECO, COLOR_ROLE_FOREGROUND_NORMAL);
+        pixel_t foreground = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_FOREGROUND_NORMAL);
 
         draw_text(draw, &rect, largeFont, ALIGN_CENTER, ALIGN_CENTER, foreground, "PRESS SPACE");
     }
@@ -734,37 +734,37 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         completedLines = 0;
         playedBlocks = 0;
 
-        pixel_t background = element_color_get(elem, COLOR_SET_VIEW, COLOR_ROLE_BACKGROUND_NORMAL);
-        pixel_t foreground = element_color_get(elem, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL);
+        pixel_t background = element_get_color(elem, COLOR_SET_VIEW, COLOR_ROLE_BACKGROUND_NORMAL);
+        pixel_t foreground = element_get_color(elem, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL);
 
         rect_t labelRect = RECT_INIT(SIDE_PANEL_LEFT + SIDE_PANEL_LABEL_PADDING,
             SIDE_PANEL_TOP + SIDE_PANEL_TEXT_HEIGHT, SIDE_PANEL_RIGHT - SIDE_PANEL_LABEL_PADDING,
             SIDE_PANEL_TOP + SIDE_PANEL_TEXT_HEIGHT + SIDE_PANEL_LABEL_HEIGHT);
         currentScoreLabel = label_new(elem, CURRENT_SCORE_LABEL_ID, &labelRect, "000000", ELEMENT_NONE);
-        element_text_props_get(currentScoreLabel)->font = largeFont;
-        element_color_set(currentScoreLabel, COLOR_SET_VIEW, COLOR_ROLE_BACKGROUND_NORMAL, foreground);
-        element_color_set(currentScoreLabel, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL, background);
+        element_get_text_props(currentScoreLabel)->font = largeFont;
+        element_set_color(currentScoreLabel, COLOR_SET_VIEW, COLOR_ROLE_BACKGROUND_NORMAL, foreground);
+        element_set_color(currentScoreLabel, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL, background);
 
         labelRect.top = labelRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
         labelRect.bottom = labelRect.top + SIDE_PANEL_TEXT_HEIGHT;
         completeLinesLabel = label_new(elem, COMPLETE_LINES_LABEL_ID, &labelRect, "000000", ELEMENT_NONE);
-        element_text_props_get(completeLinesLabel)->font = largeFont;
-        element_color_set(completeLinesLabel, COLOR_SET_VIEW, COLOR_ROLE_BACKGROUND_NORMAL, foreground);
-        element_color_set(completeLinesLabel, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL, background);
+        element_get_text_props(completeLinesLabel)->font = largeFont;
+        element_set_color(completeLinesLabel, COLOR_SET_VIEW, COLOR_ROLE_BACKGROUND_NORMAL, foreground);
+        element_set_color(completeLinesLabel, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL, background);
 
         labelRect.top = labelRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
         labelRect.bottom = labelRect.top + SIDE_PANEL_TEXT_HEIGHT;
         playedBlocksLabel = label_new(elem, PLAYED_BLOCKS_LABEL_ID, &labelRect, "000000", ELEMENT_NONE);
-        element_text_props_get(playedBlocksLabel)->font = largeFont;
-        element_color_set(playedBlocksLabel, COLOR_SET_VIEW, COLOR_ROLE_BACKGROUND_NORMAL, foreground);
-        element_color_set(playedBlocksLabel, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL, background);
+        element_get_text_props(playedBlocksLabel)->font = largeFont;
+        element_set_color(playedBlocksLabel, COLOR_SET_VIEW, COLOR_ROLE_BACKGROUND_NORMAL, foreground);
+        element_set_color(playedBlocksLabel, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL, background);
 
         pause();
     }
     break;
     case LEVENT_QUIT:
     {
-        display_disconnect(window_display_get(win));
+        display_disconnect(window_get_display(win));
     }
     break;
     case LEVENT_REDRAW:
@@ -778,7 +778,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
         element_draw_end(elem, &draw);
 
-        window_timer_set(win, TIMER_NONE, 0);
+        window_set_timer(win, TIMER_NONE, 0);
     }
     break;
     case EVENT_TIMER:
@@ -786,38 +786,38 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         drawable_t draw;
         element_draw_begin(elem, &draw);
 
-        if (!started)
+        if (!isStarted)
         {
             start_tetris_draw(win, elem, &draw);
             start_press_space_draw(win, elem, &draw);
-            window_timer_set(win, TIMER_NONE, START_SCREEN_TICK_SPEED);
+            window_set_timer(win, TIMER_NONE, START_SCREEN_TICK_SPEED);
 
             element_draw_end(elem, &draw);
             break;
         }
-        else if (clearingLines)
+        else if (isClearingLines)
         {
             field_clear_lines(elem, &draw);
-            window_timer_set(win, TIMER_NONE, CLEARING_LINES_TICK_SPEED);
+            window_set_timer(win, TIMER_NONE, CLEARING_LINES_TICK_SPEED);
 
             element_draw_end(elem, &draw);
             break;
         }
-        else if (currentPiece.dropping)
+        else if (currentPiece.isDropping)
         {
-            window_timer_set(win, TIMER_NONE, DROPPING_TICK_SPEED);
+            window_set_timer(win, TIMER_NONE, DROPPING_TICK_SPEED);
         }
         else
         {
-            window_timer_set(win, TIMER_NONE, TICK_SPEED);
+            window_set_timer(win, TIMER_NONE, TICK_SPEED);
         }
 
         current_piece_update(elem, &draw);
 
-        if (clearingLines || gameover)
+        if (isClearingLines || isGameover)
         {
-            gameover = false;
-            window_timer_set(win, TIMER_NONE, 0);
+            isGameover = false;
+            window_set_timer(win, TIMER_NONE, 0);
         }
 
         element_draw_end(elem, &draw);
@@ -825,7 +825,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     break;
     case EVENT_KBD:
     {
-        if (!started)
+        if (!isStarted)
         {
             if (event->kbd.type == KBD_PRESS && event->kbd.code == KBD_SPACE)
             {
@@ -835,9 +835,9 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
             break;
         }
-        else if (clearingLines)
+        else if (isClearingLines)
         {
-            currentPiece.dropping = false;
+            currentPiece.isDropping = false;
             break;
         }
 
@@ -854,18 +854,18 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         }
         else if (event->kbd.type == KBD_PRESS && event->kbd.code == KBD_S)
         {
-            currentPiece.dropping = true;
-            window_timer_set(win, TIMER_NONE, 0);
+            currentPiece.isDropping = true;
+            window_set_timer(win, TIMER_NONE, 0);
         }
         else if (event->kbd.type == KBD_PRESS && event->kbd.code == KBD_SPACE)
         {
             current_piece_drop(elem, &draw);
-            window_timer_set(win, TIMER_NONE, 0);
+            window_set_timer(win, TIMER_NONE, 0);
         }
         else if (event->kbd.type == KBD_RELEASE && event->kbd.code == KBD_S)
         {
-            currentPiece.dropping = false;
-            window_timer_set(win, TIMER_NONE, TICK_SPEED);
+            currentPiece.isDropping = false;
+            window_set_timer(win, TIMER_NONE, TICK_SPEED);
         }
 
         element_draw_end(elem, &draw);
@@ -877,21 +877,21 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     {
         char buffer[7];
         sprintf(buffer, "%06d", currentScore);
-        element_text_set(currentScoreLabel, buffer);
+        element_set_text(currentScoreLabel, buffer);
         element_redraw(currentScoreLabel, false);
     }
     if (completedLines != oldCompletedLines)
     {
         char buffer[7];
         sprintf(buffer, "%06d", completedLines);
-        element_text_set(completeLinesLabel, buffer);
+        element_set_text(completeLinesLabel, buffer);
         element_redraw(completeLinesLabel, false);
     }
     if (playedBlocks != oldPlayedBlocks)
     {
         char buffer[7];
         sprintf(buffer, "%06d", playedBlocks);
-        element_text_set(playedBlocksLabel, buffer);
+        element_set_text(playedBlocksLabel, buffer);
         element_redraw(playedBlocksLabel, false);
     }
 
@@ -917,7 +917,7 @@ int main(void)
     }
 
     event_t event = {0};
-    while (display_connected(disp))
+    while (display_is_connected(disp))
     {
         display_next_event(disp, &event, CLOCKS_NEVER);
         display_dispatch(disp, &event);

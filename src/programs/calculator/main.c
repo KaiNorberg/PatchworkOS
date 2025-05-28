@@ -28,7 +28,7 @@ static void numpad_button_create(window_t* win, element_t* elem, uint64_t column
     rect_t rect = RECT_INIT_DIM(NUMPAD_COLUMN_TO_WINDOW(column), NUMPAD_ROW_TO_WINDOW(row), NUMPAD_BUTTON_WIDTH,
         NUMPAD_BUTTON_WIDTH);
     element_t* button = button_new(elem, id, &rect, label, ELEMENT_NONE);
-    element_text_props_get(button)->font = largeFont;
+    element_get_text_props(button)->font = largeFont;
 }
 
 static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
@@ -65,7 +65,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
         rect_t labelRect = RECT_INIT_DIM(NUMPAD_PADDING, NUMPAD_PADDING, LABEL_WIDTH, LABEL_HEIGHT);
         label = label_new(elem, LABEL_ID, &labelRect, "0", ELEMENT_NONE);
-        element_text_props_t* props = element_text_props_get(label);
+        element_text_props_t* props = element_get_text_props(label);
         props->font = largeFont;
         props->xAlign = ALIGN_MAX;
     }
@@ -92,7 +92,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             case '/':
                 if (input == 0)
                 {
-                    element_text_set(label, "DIV BY ZERO");
+                    element_set_text(label, "DIV BY ZERO");
                     element_redraw(label, false);
                     return 0;
                 }
@@ -120,13 +120,13 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
         char buffer[32];
         ulltoa(event->lAction.source == '=' ? accumulator : input, buffer, 10);
-        element_text_set(label, buffer);
+        element_set_text(label, buffer);
         element_redraw(label, false);
     }
     break;
     case LEVENT_QUIT:
     {
-        display_disconnect(window_display_get(win));
+        display_disconnect(window_get_display(win));
     }
     break;
     }
@@ -148,7 +148,7 @@ int main(void)
     }
 
     event_t event = {0};
-    while (display_connected(disp))
+    while (display_is_connected(disp))
     {
         display_next_event(disp, &event, CLOCKS_NEVER);
         display_dispatch(disp, &event);
