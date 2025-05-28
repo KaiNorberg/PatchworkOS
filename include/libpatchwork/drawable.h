@@ -30,6 +30,13 @@ typedef enum
     ALIGN_MIN = 2,
 } align_t;
 
+typedef enum
+{
+    DIRECTION_VERTICAL,
+    DIRECTION_HORIZONTAL,
+    DIRECTION_DIAGONAL
+} direction_t;
+
 typedef struct drawable drawable_t;
 typedef struct image image_t;
 
@@ -41,7 +48,7 @@ void draw_outline(drawable_t* draw, const rect_t* rect, pixel_t pixel, uint32_t 
 
 void draw_frame(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background);
 
-void draw_gradient(drawable_t* draw, const rect_t* rect, pixel_t start, pixel_t end, gradient_type_t type,
+void draw_gradient(drawable_t* draw, const rect_t* rect, pixel_t start, pixel_t end, direction_t direction,
     bool addNoise);
 
 // The destRect is the rectangle that will be filled in the destination, the srcPoint is the starting point in the
@@ -66,6 +73,8 @@ void draw_text_multiline(drawable_t* draw, const rect_t* rect, const font_t* fon
     pixel_t pixel, const char* text);
 
 void draw_ridge(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t foreground, pixel_t background);
+
+void draw_separator(drawable_t* draw, const rect_t* rect, pixel_t highlight, pixel_t shadow, direction_t direction);
 
 void draw_invalidate(drawable_t* draw, const rect_t* rect);
 

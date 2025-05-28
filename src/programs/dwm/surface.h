@@ -30,7 +30,10 @@ typedef struct surface
     timer_t timer;
     bool invalid;
     bool moved;
+    bool visible;
+    bool focused;
     rect_t prevRect;
+    char name[MAX_NAME];
 } surface_t;
 
 #define SURFACE_RECT(surface) RECT_INIT_DIM(surface->pos.x, surface->pos.y, surface->gfx.width, surface->gfx.height);
@@ -41,7 +44,9 @@ typedef struct surface
     RECT_INIT_DIM(surface->pos.x + surface->gfx.invalidRect.left, surface->pos.y + surface->gfx.invalidRect.top, \
         RECT_WIDTH(&surface->gfx.invalidRect), RECT_HEIGHT(&surface->gfx.invalidRect));
 
-surface_t* surface_new(client_t* client, surface_id_t id, const point_t* point, uint64_t width, uint64_t height,
+surface_t* surface_new(client_t* client, const char* name, const point_t* point, uint64_t width, uint64_t height,
     surface_type_t type);
 
 void surface_free(surface_t* surface);
+
+void surface_info_get(surface_t* surface, surface_info_t* info);

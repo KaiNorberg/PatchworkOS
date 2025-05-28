@@ -14,15 +14,11 @@ extern "C"
 {
 #endif
 
-#define DEFAULT_FONT "home:/theme/fonts/roboto-regular16.grf"
-
 typedef struct display display_t;
 
 display_t* display_new(void);
 
 void display_free(display_t* disp);
-
-surface_id_t display_gen_id(display_t* disp);
 
 uint64_t display_screen_rect(display_t* disp, rect_t* rect, uint64_t index);
 
@@ -45,6 +41,16 @@ uint64_t display_wait_for_event(display_t* disp, event_t* event, event_type_t ex
 void display_emit(display_t* disp, surface_id_t target, event_type_t type, void* data, uint64_t size);
 
 void display_dispatch(display_t* disp, const event_t* event);
+
+void display_subscribe(display_t* disp, event_type_t type);
+
+void display_unsubscribe(display_t* disp, event_type_t type);
+
+void display_surface_info_get(display_t* disp, surface_id_t id, surface_info_t* info);
+
+void display_surface_focus_set(display_t* disp, surface_id_t id);
+
+void display_surface_visible_set(display_t* disp, surface_id_t id, bool visible);
 
 #if defined(__cplusplus)
 }

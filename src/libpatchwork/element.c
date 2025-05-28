@@ -54,7 +54,7 @@ element_t* element_new(element_t* parent, element_id_t id, const rect_t* rect, c
     list_push(&parent->children, &elem->entry);
 
     element_send_init(elem);
-    element_send_redraw(elem, false);
+    element_redraw(elem, false);
     return elem;
 }
 
@@ -70,7 +70,7 @@ element_t* element_new_root(window_t* win, element_id_t id, const rect_t* rect, 
     elem->win = win;
 
     element_send_init(elem);
-    element_send_redraw(elem, false);
+    element_redraw(elem, false);
     return elem;
 }
 
@@ -90,6 +90,8 @@ void element_free(element_t* elem)
     // Send fake free event
     event_t event = {.target = elem->win->surface, .type = LEVENT_FREE};
     elem->proc(elem->win, elem, &event);
+
+    list_remove(&elem->entry);
 
     element_free_children(elem);
     free(elem->text);
@@ -141,7 +143,7 @@ void element_rect_get(element_t* elem, rect_t* rect)
     *rect = elem->rect;
 }
 
-void element_rect_set(element_t* elem, const rect_t* rect)
+void element_move(element_t* elem, const rect_t* rect)
 {
     elem->rect = *rect;
 }
@@ -242,18 +244,26 @@ void element_draw_end(element_t* elem, drawable_t* draw)
         {
             if (RECT_OVERLAP(&draw->invalidRect, &child->rect))
             {
-                element_send_redraw(child, false);
+                element_redraw(child, false);
             }
         }
     }
 }
 
-void element_send_redraw(element_t* elem, bool propagate)
+void element_redraw(element_t* elem, bool propagate)
 {
     levent_redraw_t event;
     event.id = elem->id;
     event.propagate = propagate;
     display_events_push(elem->win->disp, elem->win->surface, LEVENT_REDRAW, &event, sizeof(levent_redraw_t));
+}
+
+void element_force_action(element_t* elem, action_type_t action)
+{
+    levent_force_action_t event;
+    event.dest = elem->id;
+    event.action = action;
+    display_events_push(elem->win->disp, elem->win->surface, LEVENT_FORCE_ACTION, &event, sizeof(levent_force_action_t));
 }
 
 uint64_t element_dispatch(element_t* elem, const event_t* event)
@@ -273,7 +283,7 @@ uint64_t element_dispatch(element_t* elem, const event_t* event)
             element_t* child;
             LIST_FOR_EACH(child, &elem->children, entry)
             {
-                element_send_redraw(child, true);
+                element_emit(child, event->type, event->raw, EVENT_MAX_DATA);
             }
         }
     }
@@ -322,7 +332,7 @@ uint64_t element_dispatch(element_t* elem, const event_t* event)
     return 0;
 }
 
-uint64_t element_emit(element_t* elem, event_type_t type, void* data, uint64_t size)
+uint64_t element_emit(element_t* elem, event_type_t type, const void* data, uint64_t size)
 {
     event_t event = {
         .target = elem->win->surface,

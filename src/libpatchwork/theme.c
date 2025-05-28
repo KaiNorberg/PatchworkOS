@@ -100,6 +100,7 @@ static void theme_lazy_load(void)
     integers[INT_PANEL_SIZE] = config_int_get(varsConfig, "integers", "panel_size", 1);
     integers[INT_BIG_PADDING] = config_int_get(varsConfig, "integers", "big_padding", 1);
     integers[INT_SMALL_PADDING] = config_int_get(varsConfig, "integers", "small_padding", 1);
+    integers[INT_SEPERATOR_SIZE] = config_int_get(varsConfig, "integers", "separator_size", 1);
     config_close(varsConfig);
 
     loaded = true;

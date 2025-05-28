@@ -1,3 +1,4 @@
+#define __STDC_WANT_LIB_EXT1__ 1
 #include "client.h"
 
 #include "compositor.h"
@@ -9,7 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static surface_t* client_find_surface(client_t* client, surface_id_t id)
+static surface_t* client_surface_find(client_t* client, surface_id_t id)
 {
     surface_t* surface;
     LIST_FOR_EACH(surface, &client->surfaces, clientEntry)
@@ -17,6 +18,12 @@ static surface_t* client_find_surface(client_t* client, surface_id_t id)
         if (surface->id == id)
         {
             return surface;
+        }
+
+        // Surfaces are sorted
+        if (surface->id > id)
+        {
+            return NULL;
         }
     }
     return NULL;
@@ -32,6 +39,10 @@ client_t* client_new(fd_t fd)
     list_entry_init(&client->entry);
     client->fd = fd;
     list_init(&client->surfaces);
+    client->bitmask[0] = UINT64_MAX;
+    client->bitmask[1] = 0;
+    client->bitmask[2] = 0;
+    client->bitmask[3] = 0;
 
     return client;
 }
@@ -97,14 +108,15 @@ static uint64_t client_action_surface_new(client_t* client, const cmd_header_t* 
     {
         return ERR;
     }
-    if (client_find_surface(client, cmd->id) != NULL)
+
+    if (strnlen_s(cmd->name, MAX_NAME + 1) >= MAX_NAME)
     {
         return ERR;
     }
 
     const rect_t* rect = &cmd->rect;
     point_t point = {.x = rect->left, .y = rect->top};
-    surface_t* surface = surface_new(client, cmd->id, &point, RECT_WIDTH(rect), RECT_HEIGHT(rect), cmd->type);
+    surface_t* surface = surface_new(client, cmd->name, &point, RECT_WIDTH(rect), RECT_HEIGHT(rect), cmd->type);
     if (surface == NULL)
     {
         return ERR;
@@ -133,7 +145,7 @@ static uint64_t client_action_surface_free(client_t* client, const cmd_header_t*
     }
     cmd_surface_free_t* cmd = (cmd_surface_free_t*)header;
 
-    surface_t* surface = client_find_surface(client, cmd->target);
+    surface_t* surface = client_surface_find(client, cmd->target);
     if (surface == NULL)
     {
         return ERR;
@@ -153,7 +165,7 @@ static uint64_t client_action_surface_move(client_t* client, const cmd_header_t*
     }
     cmd_surface_move_t* cmd = (cmd_surface_move_t*)header;
 
-    surface_t* surface = client_find_surface(client, cmd->target);
+    surface_t* surface = client_surface_find(client, cmd->target);
     if (surface == NULL)
     {
         return ERR;
@@ -174,11 +186,9 @@ static uint64_t client_action_surface_move(client_t* client, const cmd_header_t*
 
     surface->pos = (point_t){.x = cmd->rect.left, .y = cmd->rect.top};
     surface->moved = true;
-    compositor_set_redraw_needed();
+    compositor_redraw_needed_set();
 
-    event_surface_move_t event;
-    event.rect = cmd->rect;
-    client_send_event(surface->client, surface->id, EVENT_SURFACE_MOVE, &event, sizeof(event_surface_move_t));
+    dwm_report_produce(surface, surface->client, REPORT_RECT);
     return 0;
 }
 
@@ -190,7 +200,7 @@ static uint64_t client_action_surface_timer_set(client_t* client, const cmd_head
     }
     cmd_surface_timer_set_t* cmd = (cmd_surface_timer_set_t*)header;
 
-    surface_t* surface = client_find_surface(client, cmd->target);
+    surface_t* surface = client_surface_find(client, cmd->target);
     if (surface == NULL)
     {
         return ERR;
@@ -210,7 +220,7 @@ static uint64_t client_action_surface_invalidate(client_t* client, const cmd_hea
     }
     cmd_surface_invalidate_t* cmd = (cmd_surface_invalidate_t*)header;
 
-    surface_t* surface = client_find_surface(client, cmd->target);
+    surface_t* surface = client_surface_find(client, cmd->target);
     if (surface == NULL)
     {
         return ERR;
@@ -221,7 +231,7 @@ static uint64_t client_action_surface_invalidate(client_t* client, const cmd_hea
     RECT_FIT(&invalidRect, &surfaceRect);
     gfx_invalidate(&surface->gfx, &invalidRect);
     surface->invalid = true;
-    compositor_set_redraw_needed();
+    compositor_redraw_needed_set();
     return 0;
 }
 
@@ -233,13 +243,88 @@ static uint64_t client_action_surface_focus_set(client_t* client, const cmd_head
     }
     cmd_surface_focus_set_t* cmd = (cmd_surface_focus_set_t*)header;
 
-    surface_t* surface = client_find_surface(client, cmd->target);
+    surface_t* surface = cmd->global ? dwm_surface_find(cmd->target) : client_surface_find(client, cmd->target);
     if (surface == NULL)
+    {
+        return 0; // In the future some error system needs to be created to notify clients of errors like these, but since this needs to be able to fail we just have to ignore the error for now.
+    }
+
+    dwm_focus_set(surface);
+    return 0;
+}
+
+static uint64_t client_action_surface_visible_set(client_t* client, const cmd_header_t* header)
+{
+    if (header->size != sizeof(cmd_surface_visible_set_t))
+    {
+        return ERR;
+    }
+    cmd_surface_visible_set_t* cmd = (cmd_surface_visible_set_t*)header;
+
+    surface_t* surface = cmd->global ? dwm_surface_find(cmd->target) : client_surface_find(client, cmd->target);
+    if (surface == NULL)
+    {
+        return 0; // See client_action_surface_focus_set().
+    }
+
+    if (surface->visible != cmd->visible)
+    {
+        surface->visible = cmd->visible;
+        compositor_total_redraw_needed_set();
+        dwm_report_produce(surface, surface->client, REPORT_VISIBLE);
+    }
+    return 0;
+}
+
+static uint64_t client_action_surface_report(client_t* client, const cmd_header_t* header)
+{
+    if (header->size != sizeof(cmd_surface_report_t))
+    {
+        return ERR;
+    }
+    cmd_surface_report_t* cmd = (cmd_surface_report_t*)header;
+
+    surface_t* surface = cmd->global ? dwm_surface_find(cmd->target) : client_surface_find(client, cmd->target);
+    if (surface == NULL)
+    {
+        return 0; // See client_action_surface_focus_set().
+    }
+
+    dwm_report_produce(surface, client, REPORT_NONE);
+    return 0;
+}
+
+static uint64_t client_action_subscribe(client_t* client, const cmd_header_t* header)
+{
+    if (header->size != sizeof(cmd_subscribe_t))
+    {
+        return ERR;
+    }
+    cmd_subscribe_t* cmd = (cmd_subscribe_t*)header;
+
+    if (cmd->event >= EVENT_MAX)
     {
         return ERR;
     }
 
-    dwm_focus_set(surface);
+    client->bitmask[cmd->event / 64] |= (1ULL << (cmd->event % 64));
+    return 0;
+}
+
+static uint64_t client_action_unsubscribe(client_t* client, const cmd_header_t* header)
+{
+    if (header->size != sizeof(cmd_unsubscribe_t))
+    {
+        return ERR;
+    }
+    cmd_unsubscribe_t* cmd = (cmd_unsubscribe_t*)header;
+
+    if (cmd->event >= EVENT_MAX)
+    {
+        return ERR;
+    }
+
+    client->bitmask[cmd->event / 64] &= ~(1ULL << (cmd->event % 64));
     return 0;
 }
 
@@ -251,6 +336,10 @@ static uint64_t (*actions[])(client_t*, const cmd_header_t*) = {
     [CMD_SURFACE_TIMER_SET] = client_action_surface_timer_set,
     [CMD_SURFACE_INVALIDATE] = client_action_surface_invalidate,
     [CMD_SURFACE_FOCUS_SET] = client_action_surface_focus_set,
+    [CMD_SURFACE_VISIBLE_SET] = client_action_surface_visible_set,
+    [CMD_SURFACE_REPORT] = client_action_surface_report,
+    [CMD_SUBSCRIBE] = client_action_subscribe,
+    [CMD_UNSUBSCRIBE] = client_action_unsubscribe,
 };
 
 uint64_t client_receive_cmds(client_t* client)
@@ -316,11 +405,15 @@ uint64_t client_receive_cmds(client_t* client)
 
 uint64_t client_send_event(client_t* client, surface_id_t target, event_type_t type, void* data, uint64_t size)
 {
-    event_t event = {.type = type, .target = target};
-    memcpy(&event.raw, data, size);
-    if (write(client->fd, &event, sizeof(event_t)) == ERR)
+    if (client->bitmask[type / 64] & (1ULL << (type % 64)))
     {
-        return ERR;
+        event_t event = {.type = type, .target = target};
+        memcpy(&event.raw, data, size);
+        if (write(client->fd, &event, sizeof(event_t)) == ERR)
+        {
+            return ERR;
+        }
     }
+
     return 0;
 }

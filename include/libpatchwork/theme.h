@@ -69,6 +69,7 @@ typedef enum
     INT_PANEL_SIZE,
     INT_BIG_PADDING,
     INT_SMALL_PADDING,
+    INT_SEPERATOR_SIZE,
     INT_AMOUNT,
 } theme_int_t;
 

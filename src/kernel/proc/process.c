@@ -108,8 +108,6 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
     process_t* process = file->private;
     LOCK_DEFER(&process->threads.lock);
 
-    printf("process_note_write: %d\n", count);
-
     thread_t* thread = CONTAINER_OF_SAFE(list_first(&process->threads.list), thread_t, processEntry);
     if (thread == NULL)
     {

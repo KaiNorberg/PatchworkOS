@@ -68,7 +68,7 @@ void* element_private_get(element_t* elem);
 element_id_t element_id_get(element_t* elem);
 
 void element_rect_get(element_t* elem, rect_t* rect);
-void element_rect_set(element_t* elem, const rect_t* rect);
+void element_move(element_t* elem, const rect_t* rect);
 
 void element_content_rect_get(element_t* elem, rect_t* rect);
 
@@ -88,11 +88,13 @@ void element_draw_begin(element_t* elem, drawable_t* draw);
 
 void element_draw_end(element_t* elem, drawable_t* draw);
 
-void element_send_redraw(element_t* elem, bool propagate);
+void element_redraw(element_t* elem, bool propagate);
+
+void element_force_action(element_t* elem, action_type_t action);
 
 uint64_t element_dispatch(element_t* elem, const event_t* event);
 
-uint64_t element_emit(element_t* elem, event_type_t type, void* data, uint64_t size);
+uint64_t element_emit(element_t* elem, event_type_t type, const void* data, uint64_t size);
 
 element_flags_t element_flags_get(element_t* elem);
 void element_flags_set(element_t* elem, element_flags_t flags);

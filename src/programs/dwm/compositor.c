@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 static bool redrawNeeded;
+static bool totalRedrawNeeded;
 
 static rect_t screenRect;
 static rect_t clientRect;
@@ -13,6 +14,7 @@ static rect_t clientRect;
 void compositor_init(void)
 {
     redrawNeeded = false;
+    totalRedrawNeeded = false;
     screenRect = RECT_INIT_DIM(0, 0, screen_width(), screen_height());
     clientRect = screenRect;
 }
@@ -68,6 +70,11 @@ static void compositor_draw_others(compositor_ctx_t* ctx, surface_t* window, con
     surface_t* other;
     LIST_FOR_EACH(other, ctx->windows, dwmEntry)
     {
+        if (!other->visible)
+        {
+            continue;
+        }
+
         if (other == window)
         {
             continue;
@@ -78,6 +85,11 @@ static void compositor_draw_others(compositor_ctx_t* ctx, surface_t* window, con
 
     LIST_FOR_EACH(other, ctx->panels, dwmEntry)
     {
+        if (!other->visible)
+        {
+            continue;
+        }
+
         if (other == window)
         {
             continue;
@@ -89,7 +101,7 @@ static void compositor_draw_others(compositor_ctx_t* ctx, surface_t* window, con
 
 static void compositor_draw_cursor(compositor_ctx_t* ctx)
 {
-    if (ctx->cursor == NULL)
+    if (ctx->cursor == NULL || !ctx->cursor->visible)
     {
         return;
     }
@@ -102,6 +114,11 @@ static void compositor_draw_cursor(compositor_ctx_t* ctx)
 
 void compositor_redraw_cursor(compositor_ctx_t* ctx)
 {
+    if (ctx->cursor == NULL || !ctx->cursor->visible)
+    {
+        return;
+    }
+
     rect_t prevRect = ctx->cursor->prevRect;
     RECT_FIT(&prevRect, &screenRect);
     compositor_draw_others(ctx, NULL, &prevRect);
@@ -114,7 +131,7 @@ void compositor_redraw_cursor(compositor_ctx_t* ctx)
 static void compositor_draw_wall(compositor_ctx_t* ctx)
 {
     surface_t* wall = ctx->wall;
-    if (!wall->invalid && !wall->moved)
+    if (((!wall->invalid && !wall->moved) || !wall->visible) && !totalRedrawNeeded)
     {
         return;
     }
@@ -130,6 +147,15 @@ static void compositor_draw_wall(compositor_ctx_t* ctx)
     {
         window->moved = true;
     }
+
+    if (totalRedrawNeeded)
+    {
+        surface_t* panel;
+        LIST_FOR_EACH(panel, ctx->panels, dwmEntry)
+        {
+            panel->moved = true;
+        }
+    }
 }
 
 static void compositor_invalidate_windows_above(compositor_ctx_t* ctx, surface_t* window, const rect_t* rect)
@@ -137,6 +163,11 @@ static void compositor_invalidate_windows_above(compositor_ctx_t* ctx, surface_t
     surface_t* other;
     LIST_FOR_EACH_REVERSE(other, ctx->windows, dwmEntry)
     {
+        if (!other->visible)
+        {
+            continue;
+        }
+
         rect_t otherRect = SURFACE_RECT(other);
 
         bool overlap = false;
@@ -230,12 +261,22 @@ static void compositor_draw_windows_panels(compositor_ctx_t* ctx)
     surface_t* panel;
     LIST_FOR_EACH(panel, ctx->panels, dwmEntry)
     {
+        if (!panel->visible)
+        {
+            continue;
+        }
+
         compositor_draw_window_panel(ctx, panel);
     }
 
     surface_t* window;
     LIST_FOR_EACH(window, ctx->windows, dwmEntry)
     {
+        if (!window->visible)
+        {
+            continue;
+        }
+
         compositor_draw_window_panel(ctx, window);
     }
 }
@@ -245,7 +286,11 @@ static void compositor_draw_fullscreen(compositor_ctx_t* ctx)
     surface_t* fullscreen = ctx->fullscreen;
 
     rect_t invalidRect;
-    if (fullscreen->invalid)
+    if (!fullscreen->visible)
+    {
+        return;
+    }
+    else if (fullscreen->invalid)
     {
         invalidRect = SURFACE_INVALID_RECT(fullscreen);
     }
@@ -267,12 +312,7 @@ static void compositor_draw_fullscreen(compositor_ctx_t* ctx)
 
 void compositor_draw(compositor_ctx_t* ctx)
 {
-    if (!redrawNeeded)
-    {
-        return;
-    }
-    redrawNeeded = false;
-    if (ctx->wall == NULL)
+    if (!redrawNeeded || ctx->wall == NULL)
     {
         return;
     }
@@ -290,9 +330,18 @@ void compositor_draw(compositor_ctx_t* ctx)
 
         screen_swap();
     }
+
+    redrawNeeded = false;
+    totalRedrawNeeded = false;
 }
 
-void compositor_set_redraw_needed(void)
+void compositor_total_redraw_needed_set(void)
+{
+    redrawNeeded = true;
+    totalRedrawNeeded = true;
+}
+
+void compositor_redraw_needed_set(void)
 {
     redrawNeeded = true;
 }

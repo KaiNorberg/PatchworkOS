@@ -13,6 +13,7 @@ typedef struct client
     list_t surfaces;
     cmd_buffer_t cmds;
     uint64_t newId;
+    event_bitmask_t bitmask;
 } client_t;
 
 client_t* client_new(fd_t fd);

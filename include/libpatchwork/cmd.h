@@ -1,6 +1,7 @@
 #ifndef PATCHWORK_CMD_H
 #define PATCHWORK_CMD_H 1
 
+#include "event.h"
 #include "pixel.h"
 #include "point.h"
 #include "rect.h"
@@ -15,6 +16,8 @@ extern "C"
 {
 #endif
 
+// Note: Commands will only let you access a surface owned by the client the command is called by unless that command has a "bool global" member and that member is true.
+
 typedef enum
 {
     CMD_SCREEN_INFO,
@@ -24,6 +27,10 @@ typedef enum
     CMD_SURFACE_TIMER_SET,
     CMD_SURFACE_INVALIDATE,
     CMD_SURFACE_FOCUS_SET,
+    CMD_SURFACE_VISIBLE_SET,
+    CMD_SURFACE_REPORT, // Force the surface to produce a report.
+    CMD_SUBSCRIBE,
+    CMD_UNSUBSCRIBE,
     CMD_TYPE_AMOUNT,
 } cmd_type_t;
 
@@ -45,9 +52,9 @@ typedef struct
 typedef struct
 {
     cmd_header_t header;
-    surface_id_t id;
     surface_type_t type;
     rect_t rect;
+    char name[MAX_NAME];
 } cmd_surface_new_t;
 
 typedef struct
@@ -55,13 +62,6 @@ typedef struct
     cmd_header_t header;
     surface_id_t target;
 } cmd_surface_free_t;
-
-typedef enum
-{
-    GRADIENT_VERTICAL,
-    GRADIENT_HORIZONTAL,
-    GRADIENT_DIAGONAL
-} gradient_type_t;
 
 typedef struct
 {
@@ -94,8 +94,36 @@ typedef struct
 typedef struct
 {
     cmd_header_t header;
+    bool global;
     surface_id_t target;
 } cmd_surface_focus_set_t;
+
+typedef struct
+{
+    cmd_header_t header;
+    bool global;
+    surface_id_t target;
+    bool visible;
+} cmd_surface_visible_set_t;
+
+typedef struct
+{
+    cmd_header_t header;
+    bool global;
+    surface_id_t target;
+} cmd_surface_report_t;
+
+typedef struct
+{
+    cmd_header_t header;
+    event_type_t event;
+} cmd_subscribe_t;
+
+typedef struct
+{
+    cmd_header_t header;
+    event_type_t event;
+} cmd_unsubscribe_t;
 
 #define CMD_BUFFER_MAX_DATA (0x1000)
 

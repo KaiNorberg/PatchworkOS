@@ -681,8 +681,8 @@ static void start_tetris_draw(window_t* win, element_t* elem, drawable_t* draw)
 {
     uint64_t totalWidth = font_width(massiveFont, "TETRIS", 6);
 
-    rect_t rect = RECT_INIT((FIELD_RIGHT + FIELD_LEFT) / 2 - totalWidth / 2, FIELD_TOP,
-        (FIELD_RIGHT + FIELD_LEFT) / 2 - totalWidth / 3, FIELD_TOP + (FIELD_BOTTOM - FIELD_TOP) / 2);
+    rect_t rect = RECT_INIT((FIELD_RIGHT + FIELD_LEFT) / 2 - totalWidth / 2 - 10, FIELD_TOP,
+        (FIELD_RIGHT + FIELD_LEFT) / 2 - totalWidth / 3 + 10, FIELD_TOP + (FIELD_BOTTOM - FIELD_TOP) / 2);
 
     draw_text(draw, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_RED], "T");
     uint64_t width = font_width(massiveFont, "T", 1);
@@ -830,7 +830,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             if (event->kbd.type == KBD_PRESS && event->kbd.code == KBD_SPACE)
             {
                 start();
-                element_send_redraw(elem, false);
+                element_redraw(elem, false);
             }
 
             break;
@@ -878,18 +878,21 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         char buffer[7];
         sprintf(buffer, "%06d", currentScore);
         element_text_set(currentScoreLabel, buffer);
+        element_redraw(currentScoreLabel, false);
     }
     if (completedLines != oldCompletedLines)
     {
         char buffer[7];
         sprintf(buffer, "%06d", completedLines);
         element_text_set(completeLinesLabel, buffer);
+        element_redraw(completeLinesLabel, false);
     }
     if (playedBlocks != oldPlayedBlocks)
     {
         char buffer[7];
         sprintf(buffer, "%06d", playedBlocks);
         element_text_set(playedBlocksLabel, buffer);
+        element_redraw(playedBlocksLabel, false);
     }
 
     oldCurrentScore = currentScore;

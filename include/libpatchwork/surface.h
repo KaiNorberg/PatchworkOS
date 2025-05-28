@@ -1,7 +1,11 @@
 #ifndef PATCHWORK_SURFACE_H
 #define PATCHWORK_SURFACE_H 1
 
+#include "rect.h"
+
 #include <stdint.h>
+#include <stdbool.h>
+#include <sys/io.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -20,6 +24,16 @@ typedef enum
 
 typedef uint64_t surface_id_t;
 #define SURFACE_ID_NONE (UINT64_MAX)
+
+typedef struct
+{
+    surface_type_t type;
+    surface_id_t id;
+    rect_t rect;
+    bool visible;
+    bool focused;
+    char name[MAX_NAME];
+} surface_info_t;
 
 #if defined(__cplusplus)
 }

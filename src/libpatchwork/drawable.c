@@ -78,10 +78,8 @@ void draw_outline(drawable_t* draw, const rect_t* rect, pixel_t pixel, uint32_t 
 
     uint32_t totalLength = length * 2;
 
-    // Draw top and bottom edges with width
     for (uint32_t w = 0; w < width; w++)
     {
-        // Draw top edge
         if (fitRect.top + w >= draw->contentRect.top && fitRect.top + w < draw->contentRect.bottom)
         {
             int64_t y = fitRect.top + w;
@@ -95,7 +93,6 @@ void draw_outline(drawable_t* draw, const rect_t* rect, pixel_t pixel, uint32_t 
             }
         }
 
-        // Draw bottom edge
         if (fitRect.bottom - 1 - w >= draw->contentRect.top && fitRect.bottom - 1 - w < draw->contentRect.bottom &&
             RECT_HEIGHT(&fitRect) > 1 && fitRect.bottom - 1 - w > fitRect.top + w)
         {
@@ -111,10 +108,8 @@ void draw_outline(drawable_t* draw, const rect_t* rect, pixel_t pixel, uint32_t 
         }
     }
 
-    // Draw left and right edges with width
     for (uint32_t w = 0; w < width; w++)
     {
-        // Draw left edge
         if (fitRect.left + w >= draw->contentRect.left && fitRect.left + w < draw->contentRect.right)
         {
             int64_t x = fitRect.left + w;
@@ -128,7 +123,6 @@ void draw_outline(drawable_t* draw, const rect_t* rect, pixel_t pixel, uint32_t 
             }
         }
 
-        // Draw right edge
         if (fitRect.right - 1 - w >= draw->contentRect.left && fitRect.right - 1 - w < draw->contentRect.right &&
             RECT_WIDTH(&fitRect) > 1 && fitRect.right - 1 - w > fitRect.left + w)
         {
@@ -147,7 +141,7 @@ void draw_outline(drawable_t* draw, const rect_t* rect, pixel_t pixel, uint32_t 
     draw_invalidate(draw, &fitRect);
 }
 
-void draw_gradient(drawable_t* draw, const rect_t* rect, pixel_t start, pixel_t end, gradient_type_t type,
+void draw_gradient(drawable_t* draw, const rect_t* rect, pixel_t start, pixel_t end, direction_t direction,
     bool addNoise)
 {
     rect_t fitRect = *rect;
@@ -163,21 +157,21 @@ void draw_gradient(drawable_t* draw, const rect_t* rect, pixel_t start, pixel_t 
             int32_t factorNum;
             int32_t factorDenom;
 
-            switch (type)
+            switch (direction)
             {
-            case GRADIENT_VERTICAL:
+            case DIRECTION_VERTICAL:
             {
                 factorNum = (y - fitRect.top);
                 factorDenom = height;
             }
             break;
-            case GRADIENT_HORIZONTAL:
+            case DIRECTION_HORIZONTAL:
             {
                 factorNum = (x - fitRect.left);
                 factorDenom = width;
             }
             break;
-            case GRADIENT_DIAGONAL:
+            case DIRECTION_DIAGONAL:
             {
                 factorNum = (x - fitRect.left) + (y - fitRect.top);
                 factorDenom = width + height;
@@ -463,14 +457,83 @@ void draw_text(drawable_t* draw, const rect_t* rect, const font_t* font, align_t
     }
 
     uint64_t maxWidth = RECT_WIDTH(rect);
-    uint64_t textLen = strlen(text);
+    uint64_t originalTextLen = strlen(text);
+    uint64_t textWidth = font_width(font, text, originalTextLen);
 
-    uint64_t textWidth = font_width(font, text, textLen);
+    if (textWidth <= maxWidth)
+    {
+        point_t startPoint;
+        draw_calculate_aligned_text_pos(rect, font, text, originalTextLen, xAlign, yAlign, &startPoint);
+        draw_string(draw, font, &startPoint, pixel, text, originalTextLen);
+    }
+    else
+    {
+        const char* ellipsis = "...";
+        uint64_t ellipsisWidth = font_width(font, ellipsis, 3);
 
-    point_t startPoint;
-    draw_calculate_aligned_text_pos(rect, font, text, textLen, xAlign, yAlign, &startPoint);
+        const char* drawText = text;
+        uint64_t drawTextLen = 0;
+        const char* drawEllipsis = NULL;
 
-    draw_string(draw, font, &startPoint, pixel, text, textLen);
+        if (ellipsisWidth <= maxWidth)
+        {
+            uint64_t currentContentWidth = 0;
+            uint64_t fittedOriginalLen = 0;
+
+            for (uint64_t i = 0; i < originalTextLen; ++i)
+            {
+                uint64_t charWidth = font_width(font, text + i, 1);
+                if (currentContentWidth + charWidth + ellipsisWidth <= maxWidth)
+                {
+                    currentContentWidth += charWidth;
+                    fittedOriginalLen++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            drawText = text;
+            drawTextLen = fittedOriginalLen;
+            drawEllipsis = ellipsis;
+        }
+        else
+        {
+            uint64_t currentContentWidth = 0;
+            uint64_t fittedEllipsisLen = 0;
+
+            for (uint64_t i = 0; i < 3; ++i)
+            {
+                uint64_t charWidth = font_width(font, ellipsis + i, 1);
+                if (currentContentWidth + charWidth <= maxWidth)
+                {
+                    currentContentWidth += charWidth;
+                    fittedEllipsisLen++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            drawText = ellipsis;
+            drawTextLen = fittedEllipsisLen;
+            drawEllipsis = NULL;
+        }
+
+        point_t startPoint;
+        draw_calculate_aligned_text_pos(rect, font, drawText, drawTextLen + 3, xAlign, yAlign,
+            &startPoint);
+        draw_string(draw, font, &startPoint, pixel, drawText, drawTextLen);
+
+        if (drawEllipsis != NULL)
+        {
+            point_t ellipsisStartPoint = {.x = startPoint.x + font_width(font, drawText, drawTextLen),
+                .y = startPoint.y};
+            draw_string(draw, font, &ellipsisStartPoint, pixel, drawEllipsis, 3);
+        }
+    }
 }
 
 void draw_text_multiline(drawable_t* draw, const rect_t* rect, const font_t* font, align_t xAlign, align_t yAlign,
@@ -660,6 +723,55 @@ void draw_ridge(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t fo
     rect_t innerRect = *rect;
     RECT_SHRINK(&innerRect, width / 2);
     draw_frame(draw, &innerRect, width / 2, foreground, background);
+}
+
+void draw_separator(drawable_t* draw, const rect_t* rect, pixel_t highlight, pixel_t shadow, direction_t direction)
+{
+    rect_t fitRect = *rect;
+    RECT_FIT(&fitRect, &draw->contentRect);
+
+    switch (direction)
+    {
+    case DIRECTION_HORIZONTAL:
+    {
+        int64_t width = RECT_WIDTH(&fitRect);
+
+        rect_t leftRect = {.left = fitRect.left,
+            .top = fitRect.top,
+            .right = fitRect.left + width / 2,
+            .bottom = fitRect.bottom};
+        rect_t rightRect = {.left = fitRect.left + width / 2,
+            .top = fitRect.top,
+            .right = fitRect.right,
+            .bottom = fitRect.bottom};
+
+        draw_rect(draw, &leftRect, highlight);
+        draw_rect(draw, &rightRect, shadow);
+    }
+    break;
+    case DIRECTION_VERTICAL:
+    {
+        int64_t height = RECT_HEIGHT(&fitRect);
+
+        rect_t topRect = {.left = fitRect.left,
+            .top = fitRect.top,
+            .right = fitRect.left,
+            .bottom = fitRect.top + height / 2};
+        rect_t bottomRect = {.left = fitRect.left,
+            .top = fitRect.top + height / 2,
+            .right = fitRect.right,
+            .bottom = fitRect.bottom};
+
+        draw_rect(draw, &topRect, highlight);
+        draw_rect(draw, &bottomRect, shadow);
+    }
+    break;
+    default:
+    {
+    }
+    }
+
+    draw_invalidate(draw, &fitRect);
 }
 
 void draw_invalidate(drawable_t* draw, const rect_t* rect)

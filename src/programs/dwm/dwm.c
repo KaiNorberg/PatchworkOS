@@ -69,6 +69,19 @@ static void dwm_client_disconnect(client_t* client)
     clientAmount--;
 }
 
+static void dwm_send_event_to_all(surface_id_t target, event_type_t type, void* data, uint64_t size)
+{
+    client_t* client;
+    client_t* temp;
+    LIST_FOR_EACH_SAFE(client, temp, &clients, entry)
+    {
+        if (client_send_event(client, target, type, data, size) == ERR)
+        {
+            dwm_client_disconnect(client);
+        }
+    }
+}
+
 void dwm_init(void)
 {
     fd_t handle = open("sys:/net/local/new?nonblock");
@@ -108,6 +121,54 @@ void dwm_deinit(void)
     close(data);
 
     free(pollCtx);
+}
+
+void dwm_report_produce(surface_t* surface, client_t* client, report_flags_t flags)
+{
+    event_report_t event;
+    event.flags = flags;
+    surface_info_get(surface, &event.info);
+
+    client_send_event(client, surface->id, EVENT_REPORT, &event, sizeof(event));
+
+    event_global_report_t globalEvent;
+    globalEvent.flags = flags;
+    globalEvent.info = event.info;
+
+    dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_REPORT, &globalEvent, sizeof(globalEvent));
+}
+
+surface_t* dwm_surface_find(surface_id_t id)
+{
+    surface_t* panel;
+    LIST_FOR_EACH_REVERSE(panel, &panels, dwmEntry)
+    {
+        if (panel->id == id)
+        {
+            return panel;
+        }
+    }
+
+    surface_t* window;
+    LIST_FOR_EACH_REVERSE(window, &windows, dwmEntry)
+    {
+        if (window->id == id)
+        {
+            return window;
+        }
+    }
+
+    if (wall != NULL && wall->id == id)
+    {
+        return wall;
+    }
+
+    if (fullscreen != NULL && fullscreen->id == id)
+    {
+        return fullscreen;
+    }
+
+    return NULL;
 }
 
 uint64_t dwm_attach(surface_t* surface)
@@ -165,6 +226,9 @@ uint64_t dwm_attach(surface_t* surface)
     }
     }
 
+    event_global_attach_t event;
+    surface_info_get(surface, &event.surfaceInfo);
+    dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_ATTACH, &event, sizeof(event));
     return 0;
 }
 
@@ -178,6 +242,10 @@ void dwm_detach(surface_t* surface)
     {
         prevCursorTarget = NULL;
     }
+
+    event_global_detach_t event;
+    surface_info_get(surface, &event.surfaceInfo);
+    dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_DETACH, &event, sizeof(event));
 
     switch (surface->type)
     {
@@ -212,13 +280,7 @@ void dwm_detach(surface_t* surface)
 
     if (wall != NULL)
     {
-        surface_t* panel;
-        LIST_FOR_EACH(panel, &panels, dwmEntry)
-        {
-            panel->moved = true;
-        }
-        wall->moved = true;
-        compositor_set_redraw_needed();
+        compositor_total_redraw_needed_set();
     }
 }
 
@@ -236,12 +298,13 @@ void dwm_focus_set(surface_t* surface)
 
     if (focus != NULL)
     {
-        client_send_event(focus->client, focus->id, EVENT_FOCUS_OUT, NULL, 0);
+        focus->focused = false;
+        dwm_report_produce(focus, focus->client, REPORT_FOCUSED);
     }
 
     if (surface != NULL)
     {
-        client_send_event(surface->client, surface->id, EVENT_FOCUS_IN, NULL, 0);
+        surface->focused = true;
         if (surface->type == SURFACE_WINDOW)
         {
             // Move to end of list
@@ -250,6 +313,7 @@ void dwm_focus_set(surface_t* surface)
             surface->moved = true;
         }
         focus = surface;
+        dwm_report_produce(focus, focus->client, REPORT_FOCUSED);
     }
     else
     {
@@ -368,6 +432,9 @@ static void dwm_kbd_read(void)
         event.code = kbdEvent.code;
         event.ascii = kbd_ascii(event.code, event.mods);
         client_send_event(focus->client, focus->id, EVENT_KBD, &event, sizeof(event_kbd_t));
+
+        event_global_kbd_t globalEvent = event;
+        dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_KBD, &globalEvent, sizeof(globalEvent));
     }
 }
 
@@ -462,6 +529,10 @@ static void dwm_handle_mouse_event(const mouse_event_t* mouseEvent)
             .delta = cursorDelta,
         };
         client_send_event(destSurface->client, destSurface->id, EVENT_MOUSE, &event, sizeof(event_mouse_t));
+
+        event_global_mouse_t globalEvent = event;
+        globalEvent.pos = globalEvent.screenPos;
+        dwm_send_event_to_all(SURFACE_ID_NONE, EVENT_GLOBAL_MOUSE, &globalEvent, sizeof(globalEvent));
     }
 
     prevHeld = held;

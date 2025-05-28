@@ -1,12 +1,16 @@
 #include "surface.h"
 
+#include "client.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/io.h>
 #include <sys/list.h>
 
-surface_t* surface_new(client_t* client, surface_id_t id, const point_t* point, uint64_t width, uint64_t height,
+static surface_id_t newId = 0;
+
+surface_t* surface_new(client_t* client, const char* name, const point_t* point, uint64_t width, uint64_t height,
     surface_type_t type)
 {
     surface_t* surface = malloc(sizeof(surface_t));
@@ -44,14 +48,17 @@ surface_t* surface_new(client_t* client, surface_id_t id, const point_t* point, 
     surface->gfx.height = height;
     surface->gfx.stride = width;
     surface->gfx.invalidRect = RECT_INIT_DIM(0, 0, width, height);
-    surface->id = id;
+    surface->id = newId++;
     surface->type = type;
     surface->timer.flags = TIMER_NONE;
     surface->timer.timeout = CLOCKS_NEVER;
     surface->timer.deadline = CLOCKS_NEVER;
     surface->invalid = true;
     surface->moved = false;
+    surface->visible = true;
+    surface->focused = false;
     surface->prevRect = RECT_INIT_DIM(surface->pos.x, surface->pos.y, width, height);
+    strcpy(surface->name, name);
     return surface;
 }
 
@@ -59,4 +66,14 @@ void surface_free(surface_t* surface)
 {
     munmap(surface->gfx.buffer, surface->gfx.width * surface->gfx.height * sizeof(pixel_t));
     free(surface);
+}
+
+void surface_info_get(surface_t* surface, surface_info_t* info)
+{
+    info->type = surface->type;
+    info->id = surface->id;
+    info->rect = SURFACE_RECT(surface);
+    info->visible = surface->visible;
+    info->focused = surface->focused;
+    strcpy(info->name, surface->name);
 }

@@ -53,6 +53,8 @@ uint64_t window_dispatch(window_t* win, const event_t* event);
 
 void window_focus_set(window_t* win);
 
+void window_visible_set(window_t* win, bool visible);
+
 #if defined(__cplusplus)
 }
 #endif

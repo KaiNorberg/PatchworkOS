@@ -1175,7 +1175,7 @@ DevicePathToStr (
         }
 
         //
-        //  Put a path seperator in if needed
+        //  Put a path separator in if needed
         //
 
         if (Str.len  &&  DumpNode != _DevPathEndInstance) {

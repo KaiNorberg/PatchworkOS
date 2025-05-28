@@ -74,7 +74,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         draw_rect(&draw, &rect, background);
 
         rect.right = rect.left + titlebarSize;
-        draw_gradient(&draw, &rect, selectedStart, selectedEnd, GRADIENT_VERTICAL, false);
+        draw_gradient(&draw, &rect, selectedStart, selectedEnd, DIRECTION_VERTICAL, false);
 
         element_draw_end(elem, &draw);
     }

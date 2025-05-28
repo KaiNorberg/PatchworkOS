@@ -118,6 +118,8 @@ const keycode_t extendedScanmap[0xFF] = {
     [0x51] = KBD_PAGE_DOWN,
     [0x52] = KBD_INSERT,
     [0x53] = KBD_DELETE,
+    [0x5B] = KBD_LEFT_SUPER,
+    [0x5C] = KBD_RIGHT_SUPER,
 };
 
 keycode_t ps2_scancode_to_keycode(bool extended, uint8_t scancode)

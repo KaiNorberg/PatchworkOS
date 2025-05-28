@@ -93,7 +93,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
                 if (input == 0)
                 {
                     element_text_set(label, "DIV BY ZERO");
-                    element_send_redraw(label, false);
+                    element_redraw(label, false);
                     return 0;
                 }
                 accumulator /= input;
@@ -121,7 +121,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         char buffer[32];
         ulltoa(event->lAction.source == '=' ? accumulator : input, buffer, 10);
         element_text_set(label, buffer);
-        element_send_redraw(label, false);
+        element_redraw(label, false);
     }
     break;
     case LEVENT_QUIT:

@@ -73,7 +73,6 @@ display_t* display_new(void)
     list_init(&disp->windows);
     list_init(&disp->fonts);
     list_init(&disp->images);
-    disp->newId = SURFACE_ID_NONE - 1;
     disp->defaultFont = font_new(disp, "default", "regular", 16);
     if (disp->defaultFont == NULL)
     {
@@ -112,11 +111,6 @@ void display_free(display_t* disp)
     close(disp->handle);
     close(disp->data);
     free(disp);
-}
-
-surface_id_t display_gen_id(display_t* disp)
-{
-    return disp->newId--;
 }
 
 uint64_t display_screen_rect(display_t* disp, rect_t* rect, uint64_t index)
@@ -261,16 +255,11 @@ void display_emit(display_t* disp, surface_id_t target, event_type_t type, void*
 
 void display_dispatch(display_t* disp, const event_t* event)
 {
-    if (event->target == SURFACE_ID_NONE)
-    {
-        return;
-    }
-
     window_t* win;
     window_t* temp;
     LIST_FOR_EACH_SAFE(win, temp, &disp->windows, entry)
     {
-        if (event->target == win->surface)
+        if (event->target == win->surface || event->target == SURFACE_ID_NONE)
         {
             if (window_dispatch(win, event) == ERR)
             {
@@ -282,4 +271,48 @@ void display_dispatch(display_t* disp, const event_t* event)
     }
 
     display_cmds_flush(disp);
+}
+
+void display_subscribe(display_t* disp, event_type_t type)
+{
+    cmd_subscribe_t* cmd = display_cmds_push(disp, CMD_SUBSCRIBE, sizeof(cmd_subscribe_t));
+    cmd->event = type;
+    display_cmds_flush(disp);
+}
+
+void display_unsubscribe(display_t* disp, event_type_t type)
+{
+    cmd_unsubscribe_t* cmd = display_cmds_push(disp, CMD_UNSUBSCRIBE, sizeof(cmd_unsubscribe_t));
+    cmd->event = type;
+    display_cmds_flush(disp);
+}
+
+void display_surface_info_get(display_t* disp, surface_id_t id, surface_info_t* info)
+{
+    cmd_surface_report_t* cmd = display_cmds_push(disp, CMD_SURFACE_REPORT, sizeof(cmd_surface_report_t));
+    cmd->global = true;
+    cmd->target = id;
+    display_cmds_flush(disp);
+
+    event_t event;
+    display_wait_for_event(disp, &event, EVENT_REPORT);
+    *info = event.report.info;
+}
+
+void display_surface_focus_set(display_t* disp, surface_id_t id)
+{
+    cmd_surface_focus_set_t* cmd = display_cmds_push(disp, CMD_SURFACE_FOCUS_SET, sizeof(cmd_surface_focus_set_t));
+    cmd->global = true;
+    cmd->target = id;
+    display_cmds_flush(disp);
+}
+
+void display_surface_visible_set(display_t* disp, surface_id_t id, bool visible)
+{
+    cmd_surface_visible_set_t* cmd = display_cmds_push(disp, CMD_SURFACE_VISIBLE_SET, sizeof(cmd_surface_visible_set_t));
+    cmd->global = true;
+    cmd->target = id;
+    cmd->visible = visible;
+    display_cmds_flush(disp);
+
 }

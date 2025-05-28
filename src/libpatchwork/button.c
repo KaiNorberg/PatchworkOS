@@ -259,9 +259,9 @@ static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* 
         }
     }
     break;
-    case EVENT_FOCUS_OUT:
+    case EVENT_REPORT:
     {
-        if (button->focused)
+        if (!event->report.info.focused && button->focused)
         {
             button->focused = false;
             button_draw(elem, button);
@@ -286,7 +286,6 @@ static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* 
         break;
         default:
         {
-
         }
         }
         button_draw(elem, button);

@@ -43,13 +43,13 @@ typedef struct window
 {
     list_entry_t entry;
     display_t* disp;
-    surface_id_t surface;
     char name[MAX_NAME];
     rect_t rect;
     rect_t invalidRect;
     surface_type_t type;
     window_flags_t flags;
     char shmem[MAX_NAME];
+    surface_id_t surface;
     pixel_t* buffer;
     element_t* root;
     element_t* clientElement;
@@ -73,6 +73,5 @@ typedef struct display
     list_t windows;
     list_t fonts;
     list_t images;
-    surface_id_t newId;
     font_t* defaultFont;
 } display_t;
