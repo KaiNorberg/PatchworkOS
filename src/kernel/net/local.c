@@ -557,11 +557,11 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
         LOCK_DEFER(&listener->lock);
         if (local_listener_is_closed(listener))
         {
-            poll->occurred = POLL_READ;
+            poll->revents = POLL_READ;
         }
         else
         {
-            poll->occurred = (listener->length != 0) ? POLL_READ : 0;
+            poll->revents = (listener->length != 0) ? POLL_READ : 0;
         }
         return &listener->waitQueue;
     }
@@ -572,11 +572,11 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
         LOCK_DEFER(&conn->lock);
         if (local_connection_is_closed(conn))
         {
-            poll->occurred = POLL_READ | POLL_WRITE;
+            poll->revents = POLL_READ | POLL_WRITE;
         }
         else
         {
-            poll->occurred = (ring_data_length(&conn->clientRing) >= sizeof(local_packet_header_t) ? POLL_READ : 0) |
+            poll->revents = (ring_data_length(&conn->clientRing) >= sizeof(local_packet_header_t) ? POLL_READ : 0) |
                 (ring_free_length(&conn->serverRing) >= sizeof(local_packet_header_t) ? POLL_WRITE : 0);
         }
         return &conn->waitQueue;
@@ -588,11 +588,11 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
         LOCK_DEFER(&conn->lock);
         if (local_connection_is_closed(conn))
         {
-            poll->occurred = POLL_READ | POLL_WRITE;
+            poll->revents = POLL_READ | POLL_WRITE;
         }
         else
         {
-            poll->occurred = (ring_data_length(&conn->serverRing) >= sizeof(local_packet_header_t) ? POLL_READ : 0) |
+            poll->revents = (ring_data_length(&conn->serverRing) >= sizeof(local_packet_header_t) ? POLL_READ : 0) |
                 (ring_free_length(&conn->clientRing) >= sizeof(local_packet_header_t) ? POLL_WRITE : 0);
         }
         return &conn->waitQueue;

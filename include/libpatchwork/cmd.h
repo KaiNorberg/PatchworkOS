@@ -29,7 +29,7 @@ typedef enum
     CMD_SURFACE_INVALIDATE,
     CMD_SURFACE_FOCUS_SET,
     CMD_SURFACE_VISIBLE_SET,
-    CMD_SURFACE_REPORT, // Force the surface to produce a report.
+    CMD_SURFACE_REPORT,
     CMD_SUBSCRIBE,
     CMD_UNSUBSCRIBE,
     CMD_TYPE_AMOUNT,

@@ -122,14 +122,14 @@ uint64_t poll(pollfd_t* fds, uint64_t amount, clock_t timeout)
     return result;
 }
 
-poll_event_t poll1(fd_t fd, poll_event_t requested, clock_t timeout)
+poll_event_t poll1(fd_t fd, poll_event_t events, clock_t timeout)
 {
-    pollfd_t pollfd = {.fd = fd, .requested = requested};
+    pollfd_t pollfd = {.fd = fd, .events = events};
     if (poll(&pollfd, 1, timeout) == ERR)
     {
         return POLL1_ERR;
     }
-    return pollfd.occurred;
+    return pollfd.revents;
 }
 
 uint64_t stat(const char* path, stat_t* info)
@@ -184,26 +184,43 @@ uint64_t readdir(fd_t fd, stat_t* infos, uint64_t amount)
 
 allocdir_t* allocdir(fd_t fd)
 {
-    uint64_t amount = readdir(fd, NULL, 0);
-    if (amount == ERR)
+    while (true)
     {
-        return NULL;
-    }
+        uint64_t amount = readdir(fd, NULL, 0);
+        if (amount == ERR)
+        {
+            return NULL;
+        }
 
-    allocdir_t* dirs = malloc(sizeof(allocdir_t) + sizeof(stat_t) * amount);
-    if (dirs == NULL)
-    {
-        return NULL;
-    }
+        allocdir_t* dirs = malloc(sizeof(allocdir_t) + sizeof(stat_t) * amount);
+        if (dirs == NULL)
+        {
+            return NULL;
+        }
 
-    dirs->amount = amount;
-    if (readdir(fd, dirs->infos, amount) == ERR)
-    {
-        free(dirs);
-        return NULL;
-    }
+        dirs->amount = amount;
+        if (readdir(fd, dirs->infos, amount) == ERR)
+        {
+            free(dirs);
+            return NULL;
+        }
 
-    return dirs;
+        uint64_t newAmount = readdir(fd, NULL, 0);
+        if (newAmount == ERR)
+        {
+            free(dirs);
+            return NULL;
+        }
+
+        if (newAmount == amount)
+        {
+            return dirs;
+        }
+        else
+        {
+            free(dirs);
+        }
+    }
 }
 
 uint64_t mkdir(const char* path)

@@ -299,7 +299,7 @@ void dwm_focus_set(surface_t* surface)
     if (focus != NULL)
     {
         focus->isFocused = false;
-        dwm_report_produce(focus, focus->client, REPORT_FOCUSED);
+        dwm_report_produce(focus, focus->client, REPORT_IS_FOCUSED);
     }
 
     if (surface != NULL)
@@ -313,7 +313,7 @@ void dwm_focus_set(surface_t* surface)
             surface->hasMoved = true;
         }
         focus = surface;
-        dwm_report_produce(focus, focus->client, REPORT_FOCUSED);
+        dwm_report_produce(focus, focus->client, REPORT_IS_FOCUSED);
     }
     else
     {
@@ -576,14 +576,14 @@ static void dwm_poll_ctx_update(void)
 {
     pollCtx = realloc(pollCtx, sizeof(poll_ctx_t) + (sizeof(pollfd_t) * clientAmount));
     pollCtx->data.fd = data;
-    pollCtx->data.requested = POLL_READ;
-    pollCtx->data.occurred = 0;
+    pollCtx->data.events = POLL_READ;
+    pollCtx->data.revents = 0;
     pollCtx->kbd.fd = kbd;
-    pollCtx->kbd.requested = POLL_READ;
-    pollCtx->kbd.occurred = 0;
+    pollCtx->kbd.events = POLL_READ;
+    pollCtx->kbd.revents = 0;
     pollCtx->mouse.fd = mouse;
-    pollCtx->mouse.requested = POLL_READ;
-    pollCtx->mouse.occurred = 0;
+    pollCtx->mouse.events = POLL_READ;
+    pollCtx->mouse.revents = 0;
 
     uint64_t i = 0;
     client_t* client;
@@ -591,8 +591,8 @@ static void dwm_poll_ctx_update(void)
     {
         pollfd_t* fd = &pollCtx->clients[i++];
         fd->fd = client->fd;
-        fd->requested = POLL_READ;
-        fd->occurred = 0;
+        fd->events = POLL_READ;
+        fd->revents = 0;
     }
 }
 
@@ -629,15 +629,15 @@ static void dwm_update(void)
 {
     dwm_poll();
 
-    if (pollCtx->data.occurred & POLL_READ)
+    if (pollCtx->data.revents & POLL_READ)
     {
         dwm_client_accept();
     }
-    if (pollCtx->kbd.occurred & POLL_READ)
+    if (pollCtx->kbd.revents & POLL_READ)
     {
         dwm_kbd_read();
     }
-    if (pollCtx->mouse.occurred & POLL_READ)
+    if (pollCtx->mouse.revents & POLL_READ)
     {
         dwm_mouse_read();
     }
@@ -648,7 +648,7 @@ static void dwm_update(void)
     LIST_FOR_EACH_SAFE(client, temp, &clients, entry)
     {
         pollfd_t* fd = &pollCtx->clients[i++];
-        if (fd->occurred & POLL_READ)
+        if (fd->revents & POLL_READ)
         {
             if (client_receive_cmds(client) == ERR)
             {

@@ -26,7 +26,7 @@ void loader_load_kernel(boot_kernel_t* kernel, CHAR16* path, EFI_HANDLE imageHan
     elf_hdr_t header;
     fs_read(file, sizeof(elf_hdr_t), &header);
 
-    if (!ELF_VALID_CHECK(&header))
+    if (!ELF_IS_VALID(&header))
     {
         Print(L" ERROR: File is corrupt");
 

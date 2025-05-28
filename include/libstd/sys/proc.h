@@ -42,9 +42,9 @@ typedef enum
  * @param argv A NULL-terminated array of strings, where `argv[0]` is the filepath to the desired executable. This array
  * will be pushed to the child stack and the child can find a pointer to this array in its rsi register, along with its
  * length in the rdi register.
- * @param fds A list of file descriptors to be duplicated to the child process. Each `spawn_fd_t` in the list
+ * @param fds A array of file descriptors to be duplicated to the child process. Each `spawn_fd_t` in the array
  * specifies a source file descriptor in the parent (`.parent`) and its destination in the child (`.child`).
- * The list must be terminated by `SPAWN_FD_END`.
+ * The array must be terminated by `SPAWN_FD_END`.
  * @param cwd The working directory for the child process. If `NULL`, the child inherits the parent's current
  * working directory.
  * @param flags Flags to control the spawning behavior, currently no spawn flags are implemented.

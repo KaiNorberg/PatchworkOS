@@ -84,8 +84,8 @@ typedef enum
 {
     REPORT_NONE = 0,
     REPORT_RECT = 1 << 0,
-    REPORT_VISIBLE = 1 << 1,
-    REPORT_FOCUSED = 1 << 2,
+    REPORT_IS_VISIBLE = 1 << 1,
+    REPORT_IS_FOCUSED = 1 << 2,
     REPORT_NAME = 1 << 3,
 } report_flags_t;
 

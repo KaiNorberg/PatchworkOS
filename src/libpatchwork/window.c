@@ -195,7 +195,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
     break;
     case EVENT_REPORT:
     {
-        if (!(event->report.flags & REPORT_FOCUSED))
+        if (!(event->report.flags & REPORT_IS_FOCUSED))
         {
             break;
         }

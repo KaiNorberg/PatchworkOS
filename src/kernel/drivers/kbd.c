@@ -35,7 +35,7 @@ static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count)
 static wait_queue_t* kbd_poll(file_t* file, poll_file_t* pollFile)
 {
     kbd_t* kbd = file->private;
-    pollFile->occurred = POLL_READ & (kbd->writeIndex != file->pos);
+    pollFile->revents = POLL_READ & (kbd->writeIndex != file->pos);
     return &kbd->waitQueue;
 }
 

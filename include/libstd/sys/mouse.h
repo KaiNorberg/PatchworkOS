@@ -18,6 +18,12 @@ typedef enum
     MOUSE_LEFT = (1 << 2)
 } mouse_buttons_t;
 
+/**
+ * @brief Mouse event structure.
+ *
+ * The `mouse_event_t` structure can be read from mouse files, for example `sys:/mouse/ps2`. Mouse files will block
+ * until a mouse event happens, mouse files will never return partial events.
+ */
 typedef struct mouse_event
 {
     clock_t time;

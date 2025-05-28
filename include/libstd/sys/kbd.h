@@ -280,6 +280,12 @@ typedef enum kbd_mods
     KBD_MOD_SUPER = 1 << 4,
 } kbd_mods_t;
 
+/**
+ * @brief Keyboard event structure.
+ *
+ * The `kbd_event_t` structure can be read from keyboard files, for example `sys:/kbd/ps2`. Keyboard files will block
+ * until a key event happens, keyboard files will never return partial events.
+ */
 typedef struct kbd_event
 {
     clock_t time;

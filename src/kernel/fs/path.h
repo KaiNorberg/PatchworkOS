@@ -3,7 +3,7 @@
 #include <alloca.h>
 #include <stdint.h>
 #include <sys/io.h>
-#include <sys/node.h>
+#include <common/node.h>
 
 #define PATH_NAME_SEPARATOR '/'
 #define PATH_LABEL_SEPARATOR ':'
@@ -43,7 +43,8 @@ typedef struct path
     for ((name) = (path)->buffer; (name)[0] != '\3' && (name)[1] != '\3'; (name) += strlen((name)) + 1)
 
 // Used to more easily create paths from strings, yes the alloca call is a bit disgusting but since we are allocating a
-// fixed size it is not a problem. Note that if path_init() fails, the path->isInvalid variable is set. It is very important to note that the lifetime of the returned path variable is limited to the calling function.
+// fixed size it is not a problem. Note that if path_init() fails, the path->isInvalid variable is set. It is very
+// important to note that the lifetime of the returned path variable is limited to the calling function.
 #define PATH(string) \
     ({ \
         path_t* p = alloca(sizeof(path_t)); \

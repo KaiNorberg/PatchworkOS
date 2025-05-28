@@ -38,7 +38,7 @@ static void* loader_load_program(thread_t* thread)
         printf("loader_load_program: vfs_read hdr failed (%s) pid=%d\n", strerror(thread->error), thread->process->id);
         sched_process_exit(EEXEC);
     }
-    if (!ELF_VALID_CHECK(&header))
+    if (!ELF_IS_VALID(&header))
     {
         printf("loader_load_program: elf valid check failed (%s) pid=%d\n", strerror(thread->error),
             thread->process->id);

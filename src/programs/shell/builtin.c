@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/argsplit.h>
 #include <sys/io.h>
 #include <sys/proc.h>
 

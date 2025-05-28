@@ -3,7 +3,6 @@
 #include "path.h"
 #include "sched/sched.h"
 #include "sync/rwlock.h"
-#include "sys/node.h"
 #include "utils/log.h"
 #include "vfs.h"
 

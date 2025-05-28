@@ -1,11 +1,10 @@
 #ifndef _SYS_NODE_H
 #define _SYS_NODE_H 1
 
-#include "_AUX/CONTAINER_OF.h"
-#include "_AUX/MAX_NAME.h"
-
+#include <errno.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/io.h>
 #include <sys/list.h>
 
 typedef struct node

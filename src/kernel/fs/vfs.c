@@ -500,7 +500,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
         {
             return ERROR(ENOOP);
         }
-        files[i].occurred = 0;
+        files[i].revents = 0;
     }
 
     wait_queue_t** waitQueues = malloc(sizeof(wait_queue_t) * amount);
@@ -545,7 +545,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
                 return ERR;
             }
 
-            if ((files[i].occurred & files[i].requested) != 0)
+            if ((files[i].revents & files[i].events) != 0)
             {
                 events++;
             }

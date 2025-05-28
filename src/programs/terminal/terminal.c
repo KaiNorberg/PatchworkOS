@@ -427,8 +427,8 @@ static void terminal_read_stdout(terminal_t* term)
 
 bool terminal_update(terminal_t* term)
 {
-    pollfd_t fds[] = {{.fd = term->stdout[PIPE_READ], .requested = POLL_READ},
-        {.fd = display_fd(term->disp), .requested = POLL_READ}};
+    pollfd_t fds[] = {{.fd = term->stdout[PIPE_READ], .events = POLL_READ},
+        {.fd = display_fd(term->disp), .events = POLL_READ}};
     poll(fds, 2, CLOCKS_NEVER);
 
     event_t event = {0};
@@ -442,7 +442,7 @@ bool terminal_update(terminal_t* term)
         return false;
     }
 
-    if (fds[0].occurred & POLL_READ)
+    if (fds[0].revents & POLL_READ)
     {
         terminal_read_stdout(term);
         display_cmds_flush(term->disp);

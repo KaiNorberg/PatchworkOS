@@ -43,8 +43,16 @@ typedef uint32_t elf_phdr_flags_t;
 #define ELF_PHDR_FLAGS_WRITE (1 << 1)
 #define ELF_PHDR_FLAGS_READ (1 << 2)
 
-// Check that elf magic is correct, that the elf file is version 1, 64bit, x86_64 with little endian and System V abi.
-#define ELF_VALID_CHECK(hdr) \
+/**
+ * @brief Checks the validity of an ELF header.
+ *
+ * Checks that the ELF magic is correct, that the ELF file is version 1, 64-bit, x86_64 with little endian and System V
+ * ABI.
+ *
+ * @param hdr A pointer to the ELF header structure.
+ * @return True if the ELF header is valid, false otherwise.
+ */
+#define ELF_IS_VALID(hdr) \
     ((hdr)->ident[0] == 0x7F && (hdr)->ident[1] == 'E' && (hdr)->ident[2] == 'L' && (hdr)->ident[3] == 'F' && \
         (hdr)->ident[4] == 2 && (hdr)->ident[5] == 1 && (hdr)->ident[7] == 0 && \
         (hdr)->machine == ELF_HDR_MACHINE_X86_64 && (hdr)->version == ELF_HDR_VERSION_1)

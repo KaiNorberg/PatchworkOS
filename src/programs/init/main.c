@@ -1,10 +1,9 @@
 #include <libpatchwork/patchwork.h>
-#include <sys/argsplit.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/io.h>
 #include <sys/proc.h>
 #include <threads.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 void spawn_program(const char* path)
 {
@@ -26,14 +25,14 @@ int main(void)
     if (config == NULL)
     {
         printf("init: failed to open config file!\n");
-        return EXIT_FAILURE;    
+        return EXIT_FAILURE;
     }
 
     config_array_t* services = config_get_array(config, "startup", "services");
     if (services == NULL)
     {
         printf("init: failed to retrieve services from config file!\n");
-        return EXIT_FAILURE;    
+        return EXIT_FAILURE;
     }
 
     for (uint64_t i = 0; i < config_array_length(services); i++)

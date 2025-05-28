@@ -34,7 +34,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <sys/argsplit.h>
 
 static void kernel_free_loader_data(efi_mem_map_t* memoryMap)
 {
