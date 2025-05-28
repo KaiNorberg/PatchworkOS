@@ -129,7 +129,7 @@ void wait_block_trap(trap_frame_t* trapFrame, cpu_t* self);
 
 void wait_unblock_thread(thread_t* thread, wait_result_t result, wait_queue_t* acquiredQueue, bool acquireCpu);
 
-void wait_unblock(wait_queue_t* waitQueue, uint64_t amount);
+uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount);
 
 wait_result_t wait_block(wait_queue_t* waitQueue, clock_t timeout);
 

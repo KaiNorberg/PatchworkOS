@@ -182,8 +182,10 @@ void wait_unblock_thread(thread_t* thread, wait_result_t result, wait_queue_t* a
     sched_push(thread);
 }
 
-void wait_unblock(wait_queue_t* waitQueue, uint64_t amount)
+uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount)
 {
+    uint64_t amountUnblocked = 0;
+
     LOCK_DEFER(&waitQueue->lock);
 
     wait_entry_t* temp;
@@ -200,9 +202,12 @@ void wait_unblock(wait_queue_t* waitQueue, uint64_t amount)
         if (atomic_exchange(&thread->state, THREAD_UNBLOCKING) == THREAD_BLOCKED)
         {
             wait_unblock_thread(thread, WAIT_NORM, waitQueue, true);
+            amountUnblocked++;
             amount--;
         }
     }
+
+    return amountUnblocked;
 }
 
 // Sets up a threads wait ctx but does not yet block

@@ -67,6 +67,6 @@ int* _PlatformErrnoFunc(void)
 // Ignore message
 void _PlatformAbort(const char* message)
 {
-    // raise( SIGABRT );
+    // raise( SIGABRT ); // TODO: Implement signals
     exit(EXIT_FAILURE);
 }

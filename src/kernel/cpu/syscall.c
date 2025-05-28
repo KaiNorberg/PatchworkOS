@@ -107,8 +107,13 @@ void syscall_thread_exit(void)
     assert(false);
 }
 
-pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds)
+pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, spawn_flags_t flags)
 {
+    if (!string_is_valid(cwd) && cwd != NULL)
+    {
+        return ERR;
+    }
+
     uint64_t argc = 0;
     while (1)
     {
@@ -154,7 +159,7 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds)
         }
     }
 
-    thread_t* thread = loader_spawn(argv, PRIORITY_MIN);
+    thread_t* thread = loader_spawn(argv, PRIORITY_MIN, cwd);
     if (thread == NULL)
     {
         return ERR;

@@ -74,7 +74,7 @@ uint64_t futex_do(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t time
     break;
     case FUTEX_WAKE:
     {
-        wait_unblock(&futex->queue, val);
+        return wait_unblock(&futex->queue, val);
     }
     break;
     default:

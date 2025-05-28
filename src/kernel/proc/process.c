@@ -136,7 +136,7 @@ static void process_dir_init(process_dir_t* dir, const char* name, process_t* pr
     assert(sysobj_init(&dir->noteObj, &dir->sysdir, "note", &noteOps, process) != ERR);
 }
 
-process_t* process_new(process_t* parent, const char** argv)
+process_t* process_new(process_t* parent, const char** argv, const path_t* cwd)
 {
     process_t* process = malloc(sizeof(process_t));
     if (process == NULL)

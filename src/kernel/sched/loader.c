@@ -153,7 +153,7 @@ static void loader_process_entry(void)
     loader_jump_to_user_space(thread->process->argv.amount, argv, rsp, rip);
 }
 
-thread_t* loader_spawn(const char** argv, priority_t priority)
+thread_t* loader_spawn(const char** argv, priority_t priority, const char* cwd)
 {
     if (argv == NULL || argv[0] == NULL)
     {
@@ -170,6 +170,8 @@ thread_t* loader_spawn(const char** argv, priority_t priority)
     {
         return ERRPTR(EISDIR);
     }
+
+
 
     process_t* process = process_new(sched_process(), argv);
     if (process == NULL)
