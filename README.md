@@ -91,7 +91,7 @@ Let's take an example of these first two reasons. Say we wanted to implement the
 
 And of course the third and final reason is because I think it's fun, and honestly I think this kind of system is just kinda beautiful due to just how generalized and how strictly it follows the idea that "everything is a file". There are downsides, of course, like the fact that these systems are less self documenting. But that is an argument for another time.
 
-## A bit taste (Documentation)
+## A Big Taste (Documentation)
 
 If you are still interested in knowing more then you can check out the doxygen generated documentation [here](https://kainorberg.github.io/PatchworkOS/html/index.html).
 
