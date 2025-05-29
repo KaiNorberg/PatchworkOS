@@ -91,6 +91,10 @@ Let's take an example of these first two reasons. Say we wanted to implement the
 
 And of course the third and final reason is because I think it's fun, and honestly I think this kind of system is just kinda beautiful due to just how generalized and how strictly it follows the idea that "everything is a file". There are downsides, of course, like the fact that these systems are less self documenting. But that is an argument for another time.
 
+## A bit taste (Documentation)
+
+If you are still interested in knowing more then you can check out the doxygen generated documentation [here](https://kainorberg.github.io/PatchworkOS/html/index.html).
+
 ## Directories
 
 | Name                                                                    | Description                                                                         |
@@ -99,7 +103,7 @@ And of course the third and final reason is because I think it's fun, and honest
 | [lib](https://github.com/KaiNorberg/PatchworkOS/tree/main/lib)          | Third party stuff, for example OVMF-bin for QEMU.                                   |
 | [make](https://github.com/KaiNorberg/PatchworkOS/tree/main/make)        | Lots of make files.                                                                 |
 | [meta](https://github.com/KaiNorberg/PatchworkOS/tree/main/meta)        | Meta files for this repo, for example screenshots.                                  |
-| [root](https://github.com/KaiNorberg/PatchworkOS/tree/main/root)        | Stores files that will be copied to the root directory of the generated .iso.          |
+| [root](https://github.com/KaiNorberg/PatchworkOS/tree/main/root)        | Stores files that will be copied to the root directory of the generated .iso.       |
 | [src](https://github.com/KaiNorberg/PatchworkOS/tree/main/src)          | Source code.                                                                        |
 | [tools](https://github.com/KaiNorberg/PatchworkOS/tree/main/tools)      | Stores scripts that we use as a hacky alternative to compiling a cross-compiler.    |
 
