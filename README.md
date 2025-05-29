@@ -139,7 +139,7 @@ To clone this repository, you can either use the ```Code``` button at the top le
 
 <ins>**2. Building**</ins>
 
-Before building Patchwork, ensure you have make, GCC and NASM installed, you will need to use Linux, other systems like WSL *might* work, but i make to guarantees.
+Before building Patchwork, ensure you have make, GCC, NASM and mtools installed, you will need to use Linux, other systems like WSL *might* work, but i make to guarantees.
 
 Once everything is installed, navigate to the cloned repository and run the ```make all``` command. You should then find a ```PatchworkOS.img``` file in the newly created bin directory.
 
