@@ -90,8 +90,8 @@ typedef struct file
 typedef struct poll_file
 {
     file_t* file;
-    poll_event_t events;
-    poll_event_t revents;
+    poll_events_t events;
+    poll_events_t revents;
 } poll_file_t;
 
 file_t* file_new(volume_t* volume, const path_t* path, path_flags_t supportedFlags);

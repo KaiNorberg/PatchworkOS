@@ -84,4 +84,10 @@ run_debug: all
 	-net none
 
 doxygen:
+	@if [ ! -d "meta/docs/doxygen-awesome-css" ]; then \
+	    git clone https://github.com/jothepro/doxygen-awesome-css.git meta/docs/doxygen-awesome-css; \
+		cd meta/docs/doxy/doxygen-awesome-css; \
+		git checkout v2.3.4; \
+		cd ../../../..; \
+	fi
 	doxygen meta/doxy/Doxyfile

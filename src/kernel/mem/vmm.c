@@ -60,7 +60,7 @@ void space_load(space_t* space)
 
 static void* vmm_find_free_region(space_t* space, uint64_t length)
 {
-    uint64_t pageAmount = SIZE_IN_PAGES(length);
+    uint64_t pageAmount = BYTES_TO_PAGES(length);
     for (uintptr_t addr = space->freeAddress; addr < ROUND_DOWN(UINT64_MAX, 0x1000); addr += pageAmount * PAGE_SIZE)
     {
         if (pml_is_region_unmapped(space->pml, (void*)addr, pageAmount))
@@ -116,7 +116,7 @@ void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gop
     printf("vmm: kernel phys=[0x%016lx-0x%016lx] virt=[0x%016lx-0x%016lx]\n", kernel->physStart,
         kernel->physStart + kernel->length, kernel->virtStart, kernel->virtStart + kernel->length);
 
-    uint64_t result = pml_map(kernelPml, kernel->virtStart, kernel->physStart, SIZE_IN_PAGES(kernel->length),
+    uint64_t result = pml_map(kernelPml, kernel->virtStart, kernel->physStart, BYTES_TO_PAGES(kernel->length),
         PAGE_WRITE | VMM_KERNEL_PAGES);
     if (result == ERR)
     {
@@ -158,12 +158,12 @@ void* vmm_kernel_alloc(void* virtAddr, uint64_t length)
 
     vmm_align_region(&virtAddr, &length);
 
-    if (!pml_is_region_unmapped(kernelPml, virtAddr, SIZE_IN_PAGES(length)))
+    if (!pml_is_region_unmapped(kernelPml, virtAddr, BYTES_TO_PAGES(length)))
     {
         return ERRPTR(EEXIST);
     }
 
-    for (uint64_t i = 0; i < SIZE_IN_PAGES(length); i++)
+    for (uint64_t i = 0; i < BYTES_TO_PAGES(length); i++)
     {
         void* addr = (void*)((uint64_t)virtAddr + i * PAGE_SIZE);
         void* page = pmm_alloc();
@@ -207,8 +207,8 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t length)
     }
     physAddr = VMM_PHYS_TO_LOWER_SAFE(physAddr);
 
-    assert(pml_is_region_unmapped(kernelPml, virtAddr, SIZE_IN_PAGES(length)));
-    assert(pml_map(kernelPml, virtAddr, physAddr, SIZE_IN_PAGES(length), PAGE_WRITE | VMM_KERNEL_PAGES) != ERR);
+    assert(pml_is_region_unmapped(kernelPml, virtAddr, BYTES_TO_PAGES(length)));
+    assert(pml_map(kernelPml, virtAddr, physAddr, BYTES_TO_PAGES(length), PAGE_WRITE | VMM_KERNEL_PAGES) != ERR);
 
     return virtAddr;
 }
@@ -237,12 +237,12 @@ void* vmm_alloc(void* virtAddr, uint64_t length, prot_t prot)
 
     vmm_align_region(&virtAddr, &length);
 
-    if (!pml_is_region_unmapped(space->pml, virtAddr, SIZE_IN_PAGES(length)))
+    if (!pml_is_region_unmapped(space->pml, virtAddr, BYTES_TO_PAGES(length)))
     {
         return ERRPTR(EEXIST);
     }
 
-    for (uint64_t i = 0; i < SIZE_IN_PAGES(length); i++)
+    for (uint64_t i = 0; i < BYTES_TO_PAGES(length); i++)
     {
         void* addr = (void*)((uint64_t)virtAddr + i * PAGE_SIZE);
         void* page = pmm_alloc();
@@ -295,7 +295,7 @@ void* vmm_map(void* virtAddr, void* physAddr, uint64_t length, prot_t prot, vmm_
     physAddr = VMM_PHYS_TO_LOWER_SAFE((void*)ROUND_DOWN(physAddr, PAGE_SIZE));
     vmm_align_region(&virtAddr, &length);
 
-    uint64_t pageAmount = SIZE_IN_PAGES(length);
+    uint64_t pageAmount = BYTES_TO_PAGES(length);
 
     if (callback != NULL)
     {
@@ -440,7 +440,7 @@ uint64_t vmm_unmap(void* virtAddr, uint64_t length)
     LOCK_DEFER(&space->lock);
 
     vmm_align_region(&virtAddr, &length);
-    uint64_t pageAmount = SIZE_IN_PAGES(length);
+    uint64_t pageAmount = BYTES_TO_PAGES(length);
 
     if (pml_is_region_unmapped(space->pml, virtAddr, pageAmount))
     {
@@ -490,7 +490,7 @@ uint64_t vmm_protect(void* virtAddr, uint64_t length, prot_t prot)
     LOCK_DEFER(&space->lock);
 
     vmm_align_region(&virtAddr, &length);
-    uint64_t pageAmount = SIZE_IN_PAGES(length);
+    uint64_t pageAmount = BYTES_TO_PAGES(length);
 
     if (pml_is_region_unmapped(space->pml, virtAddr, pageAmount))
     {
@@ -511,5 +511,5 @@ bool vmm_mapped(const void* virtAddr, uint64_t length)
     vmm_align_region((void**)&virtAddr, &length);
     space_t* space = &sched_process()->space;
     LOCK_DEFER(&space->lock);
-    return pml_is_region_mapped(space->pml, virtAddr, SIZE_IN_PAGES(length));
+    return pml_is_region_mapped(space->pml, virtAddr, BYTES_TO_PAGES(length));
 }

@@ -71,7 +71,7 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
     shmem_t* shmem = file->private;
     LOCK_DEFER(&shmem->lock);
 
-    uint64_t pageAmount = SIZE_IN_PAGES(length);
+    uint64_t pageAmount = BYTES_TO_PAGES(length);
     if (pageAmount == 0)
     {
         return ERRPTR(EINVAL);

@@ -1,15 +1,21 @@
 /**
  * @defgroup libstd libstd
  * @brief The Standard Library.
- * 
+ *
  * The libstd library is an extension of the C standard library, in the same way that something like Linux uses the
- * POSIX extension to the C standard library. It contains the expected headers, `string.h`, `stdlib.h` etc., along with a
- * few borrowed from POSIX like `strings.h` and then a bunch of extensions located in the
- * `sys` sub-directory, for example, `sys/io.h`
- * contains wrappers around the io system calls. The way to think of libstd is that its a wrapper around the kernel and
- * its system calls, while libpatchwork is a wrapper around user space. The kernel and bootloader also has its own
- * version of this library, containing for example `memcpy`, `malloc`, `printf` and similar functions to reduce code
- * duplication while writing the OS. The separation between the user space, kernel and bootloader versions of the
- * library is handled by giving each platform having its own directory within the
- * platform directory.
+ * POSIX extension to the C standard library. It contains the expected headers, `string.h`, `stdlib.h` etc., along with
+ * a few borrowed from POSIX like `strings.h` and then a bunch of extensions located in the `sys` sub-directory, for
+ * example, `sys/io.h` contains wrappers around the io system calls. The way to think of libstd is that its a wrapper
+ * around the kernel and its system calls, while libpatchwork is a wrapper around user space. The kernel and bootloader
+ * also has its own version of this library, containing for example `memcpy()`, `malloc()`, `printf()` and similar functions
+ * to reduce code duplication while writing the OS. The separation between the user space, kernel and bootloader
+ * versions of the library is handled by giving each platform having its own directory within the platform directory.
+ *
+ * The documentation found here is also intended to provide an overview of the underlying kernel and internals. This is
+ * especially true considering that the kernel has its own version of this library as mentioned above.
+ *
+ * Note that there is no documentation for the usual standard library functions for example `memcpy()` as providing
+ * documentation for them would be redundant, they work as expected, the same is true for functions borrowed from POSIX
+ * for example `strcasecmp()`. Only Patchwork specific extensions are documented.
+ *
  */

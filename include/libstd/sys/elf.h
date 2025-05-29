@@ -3,6 +3,16 @@
 
 #include <stdint.h>
 
+/**
+ * @brief Executable and linkable format definitions.
+ * @ingroup libstd
+ * @defgroup libstd_sys_elf Executable and linkable file format
+ *
+ * The `sys/elf.h` header defines structs and constants for ELF files used in Patchwork, note that Patchwork only
+ * supports ELF files.
+ *
+ */
+
 typedef uint16_t elf_hdr_type_t;
 #define ELF_HDR_TYPE_NONE 0x0
 #define ELF_HDR_TYPE_REL 0x1
@@ -45,9 +55,10 @@ typedef uint32_t elf_phdr_flags_t;
 
 /**
  * @brief Checks the validity of an ELF header.
+ * @ingroup libstd_sys_elf
  *
- * Checks that the ELF magic is correct, that the ELF file is version 1, 64-bit, x86_64 with little endian and System V
- * ABI.
+ * The `ELF_IS_VALID()` macro checks that the ELF file header is using version 1, 64-bit, x86_64 with little endian and
+ * System V ABI.
  *
  * @param hdr A pointer to the ELF header structure.
  * @return True if the ELF header is valid, false otherwise.
@@ -59,64 +70,67 @@ typedef uint32_t elf_phdr_flags_t;
 
 /**
  * @brief ELF file header.
+ * @ingroup libstd_sys_elf
  *
  * The `elf_hdr_t` structure stored att the begining of elf files.
  *
  */
 typedef struct
 {
-    uint8_t ident[16];
-    elf_hdr_type_t type;
-    elf_hdr_machine_t machine;
-    elf_hdr_version_t version;
-    uint64_t entry;
-    uint64_t phdrOffset;
-    uint64_t shdrOffset;
-    uint32_t flags;
-    uint16_t headerSize;
-    uint16_t phdrSize;
-    uint16_t phdrAmount;
-    uint16_t shdrSize;
-    uint16_t shdrAmount;
-    uint16_t shdrStringIndex;
+    uint8_t ident[16];         //!< ELF identification bytes
+    elf_hdr_type_t type;       //!< Type of ELF file (e.g., executable, shared object)
+    elf_hdr_machine_t machine; //!< Required architecture (e.g., x86-64)
+    elf_hdr_version_t version; //!< ELF format version
+    uint64_t entry;            //!< Entry point virtual address
+    uint64_t phdrOffset;       //!< Program header table file offset
+    uint64_t shdrOffset;       //!< Section header table file offset
+    uint32_t flags;            //!< Processor-specific flags
+    uint16_t headerSize;       //!< ELF header size in bytes
+    uint16_t phdrSize;         //!< Program header table entry size
+    uint16_t phdrAmount;       //!< Number of program header entries
+    uint16_t shdrSize;         //!< Section header table entry size
+    uint16_t shdrAmount;       //!< Number of section header entries
+    uint16_t shdrStringIndex;  //!< Section header string table index
 } elf_hdr_t;
 
 /**
  * @brief ELF program header.
+ * @ingroup libstd_sys_elf
  *
  * The `elf_phdr_t` structure used in ELF files to store program sections (eg,. text, data, etc).
  *
  */
 typedef struct
 {
-    elf_phdr_type_t type;
-    elf_phdr_flags_t flags;
-    uint64_t offset;
-    uint64_t virtAddr;
-    uint64_t physAddr;
-    uint64_t fileSize;
-    uint64_t memorySize;
-    uint64_t align;
+    elf_phdr_type_t type;   //!< Type of segment
+    elf_phdr_flags_t flags; //!< Segment flags (e.g., executable, writable, readable)
+    uint64_t offset;        //!< Offset of the segment in the file
+    uint64_t virtAddr;      //!< Virtual address where the segment resides
+    uint64_t physAddr;      //!< Physical address (ignored for most files)
+    uint64_t fileSize;      //!< Size of the segment in the file
+    uint64_t memorySize;    //!< Size of the segment in memory
+    uint64_t align;         //!< Alignment of the segment
 } elf_phdr_t;
 
 /**
  * @brief ELF section header.
+ * @ingroup libstd_sys_elf
  *
  * The `elf_shdr_t` structure used in ELF files to store information about a section.
  *
  */
 typedef struct
 {
-    uint32_t name;
-    uint32_t type;
-    uint64_t flags;
-    uint64_t address;
-    uint64_t offset;
-    uint64_t size;
-    uint32_t link;
-    uint32_t info;
-    uint64_t addressAlign;
-    uint64_t entrySize;
+    uint32_t name;         //!< Index into the section header string table
+    uint32_t type;         //!< Type of section
+    uint64_t flags;        //!< Section flags
+    uint64_t address;      //!< Virtual address of the section in memory
+    uint64_t offset;       //!< Offset of the section in the file
+    uint64_t size;         //!< Size of the section in bytes
+    uint32_t link;         //!< Link to another section
+    uint32_t info;         //!< Additional section information
+    uint64_t addressAlign; //!< Alignment constraints for the section
+    uint64_t entrySize;    //!< Size of each entry if section holds a table of fixed-size entries
 } elf_shdr_t;
 
 #endif

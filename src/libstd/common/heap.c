@@ -24,7 +24,7 @@ void _HeapBlockSplit(_HeapHeader_t* block, uint64_t size)
 
 _HeapHeader_t* _HeapBlockNew(uint64_t size)
 {
-    uint64_t pageAmount = SIZE_IN_PAGES(size + sizeof(_HeapHeader_t));
+    uint64_t pageAmount = BYTES_TO_PAGES(size + sizeof(_HeapHeader_t));
 
     _HeapHeader_t* newBlock = _PlatformPageAlloc(pageAmount);
     if (newBlock == NULL)

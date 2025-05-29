@@ -122,7 +122,7 @@ uint64_t poll(pollfd_t* fds, uint64_t amount, clock_t timeout)
     return result;
 }
 
-poll_event_t poll1(fd_t fd, poll_event_t events, clock_t timeout)
+poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout)
 {
     pollfd_t pollfd = {.fd = fd, .events = events};
     if (poll(&pollfd, 1, timeout) == ERR)

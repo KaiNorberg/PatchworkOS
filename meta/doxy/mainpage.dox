@@ -1,0 +1,14 @@
+/**
+ * @mainpage Welcome to PatchworkOS
+ *
+ * Welcome to the documentation for **PatchworkOS**, a 64-bit monolithic hobbyist operating system built from scratch in
+ * C for the x86_64 architecture.
+ *
+ * If you somehow arrived here before reading the README, it can be found in the tree on the right side of the screen
+ * under `PatchworkOS`, and should be read first to get a very high level impression of Patchwork.
+ *  
+ * If you are unsure of where to start the author recommends reading the `libstd` documentation under `Topics`,
+ * the documentation for the standard library should provide a overview of how Patchwork works and its philosophy,
+ * starting with `System IO` as IO defines a significant amount of Patchwork's internals.
+ *
+ */
