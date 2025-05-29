@@ -118,8 +118,6 @@ static void* loader_load_program(thread_t* thread)
 
 static void* loader_alloc_stack(thread_t* thread)
 {
-    printf("tid: %d loader_user_stack_bottom: %p\n", thread->id, LOADER_USER_STACK_BOTTOM(thread->id));
-
     if (vmm_alloc((void*)LOADER_USER_STACK_BOTTOM(thread->id), CONFIG_USER_STACK, PROT_READ | PROT_WRITE) == NULL)
     {
         printf("loader_alloc_stack: vmm_alloc failed (%s) pid=%d\n", strerror(thread->error), thread->process->id);
