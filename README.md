@@ -2,6 +2,8 @@
 
 > **⚠ Warning**<br> Keep in mind that PatchworkOS is currently in a very early stage of development, and may have both known and unknown bugs.
 
+![Licence](https://img.shields.io/badge/License-MIT-green) [![Build and Test](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml/badge.svg)](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml)
+
 **Patchwork** is a 64 bit monolithic hobbyist OS built from scratch in C for the x86_64 architecture, it is intended as an easy-to-modify toy-like Unix-inspired OS (not Unix-like) it takes many ideas from Unix, Plan9, DOS and other places while simplifying them and removing some of the fat. Made entirely for fun.
 
 ## Screenshots
@@ -151,7 +153,13 @@ There are three ways to run Patchwork.
 2. **Use QEMU:** Download [QEMU](https://www.qemu.org/) and use the ```make run``` command.
 3. **Other Virtual Machine:** Run the created .img file in a virtual machine of your choice.
 
-## Tested Hardware Configurations
+## Testing
+
+This repository uses a bit of a hacky way to do testing, we use a github action, as normal, that compiles the operating system then runs it using QEMU, QEMU is then allowed to run for one minute, the kernel will run some tests and then start as normal. If QEMU crashes* then the test fails, if it is still running after one-minute we call it a success. Its a overly simple approach but gets the job done. A lot of the difficulty in performing testing comes from the inherent complexity of testing a OS, which also means that testing is currently very very limited in the kernel.
+
+\* QEMU will crash if a kernel panic occurs due to the use of QEMU's isa-debug-exit in the kernel when make is called with DEBUG=1.
+
+### Tested Hardware Configurations
 
 - Lenovo ThinkPad E495
 - Ryzen 5 3600X | 32GB 3200MHZ Corsair Vengeance
