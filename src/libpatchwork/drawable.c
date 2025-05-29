@@ -407,7 +407,7 @@ void draw_bezel(drawable_t* draw, const rect_t* rect, uint64_t width, pixel_t pi
 static void draw_calculate_aligned_text_pos(const rect_t* rect, const font_t* font, const char* string, uint64_t length,
     align_t xAlign, align_t yAlign, point_t* aligned)
 {
-    uint64_t width = font_width(font, string, length);
+    int64_t width = font_width(font, string, length);
     int32_t visualTextHeight = font->grf.ascender - font->grf.descender;
 
     switch (xAlign)
@@ -677,8 +677,8 @@ void draw_text_multiline(drawable_t* draw, const rect_t* rect, const font_t* fon
             lineEnd = textPtr;
         }
 
-        uint64_t lineLength = lineEnd - lineStart;
-        uint64_t lineWidth = font_width(font, lineStart, lineLength);
+        int64_t lineLength = lineEnd - lineStart;
+        int64_t lineWidth = font_width(font, lineStart, lineLength);
 
         int32_t lineX;
         switch (xAlign)
