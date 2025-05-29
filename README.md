@@ -2,6 +2,9 @@
 
 > **⚠ Warning**<br> Keep in mind that PatchworkOS is currently in a very early stage of development, and may have both known and unknown bugs.
 
+---
+![Licence](https://img.shields.io/badge/License-MIT-green) [![Build and Test](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml/badge.svg)](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml)
+
 **Patchwork** is a 64 bit monolithic hobbyist OS built from scratch in C for the x86_64 architecture, it is intended as an easy-to-modify toy-like Unix-inspired OS (not Unix-like) it takes many ideas from Unix, Plan9, DOS and other places while simplifying them and removing some of the fat. Made entirely for fun.
 
 ## Screenshots
@@ -151,7 +154,11 @@ There are three ways to run Patchwork.
 2. **Use QEMU:** Download [QEMU](https://www.qemu.org/) and use the ```make run``` command.
 3. **Other Virtual Machine:** Run the created .img file in a virtual machine of your choice.
 
-## Tested Hardware Configurations
+## Testing
+
+This repositor
+
+### Tested Hardware Configurations
 
 - Lenovo ThinkPad E495
 - Ryzen 5 3600X | 32GB 3200MHZ Corsair Vengeance
