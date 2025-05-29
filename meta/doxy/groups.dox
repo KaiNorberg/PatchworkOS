@@ -1,0 +1,15 @@
+/**
+ * @defgroup libstd libstd
+ * @brief The Standard Library.
+ * 
+ * The libstd library is an extension of the C standard library, in the same way that something like Linux uses the
+ * POSIX extension to the C standard library. It contains the expected headers, `string.h`, `stdlib.h` etc., along with a
+ * few borrowed from POSIX like `strings.h` and then a bunch of extensions located in the
+ * `sys` sub-directory, for example, `sys/io.h`
+ * contains wrappers around the io system calls. The way to think of libstd is that its a wrapper around the kernel and
+ * its system calls, while libpatchwork is a wrapper around user space. The kernel and bootloader also has its own
+ * version of this library, containing for example `memcpy`, `malloc`, `printf` and similar functions to reduce code
+ * duplication while writing the OS. The separation between the user space, kernel and bootloader versions of the
+ * library is handled by giving each platform having its own directory within the
+ * platform directory.
+ */

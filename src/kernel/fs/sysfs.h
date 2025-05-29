@@ -1,7 +1,7 @@
 #pragma once
 
-#include <stdatomic.h>
 #include <common/node.h>
+#include <stdatomic.h>
 
 #include "defs.h"
 #include "path.h"

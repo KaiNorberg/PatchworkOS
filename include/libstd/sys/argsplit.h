@@ -11,11 +11,21 @@ extern "C"
 #include "_AUX/config.h"
 
 /**
+ * @brief Standardized argument parsing.
+ * @ingroup libstd
+ * @defgroup libstd_sys_argsplit Argument parsing
+ *
+ * The `sys/argsplit.h` header provides a system for standardized argument parsing, allowing arguments to be parsed in
+ * the same way in various parts of the operating system.
+ *
+ */
+
+/**
  * @brief Standardized argument parsing function.
+ * @ingroup libstd_sys_argsplit
  *
  * The `argsplit` function parses a input string and splits it into a NULL-terminated array of strings factoring in
- * escape chars spaces and quotation marks, allowing for standardized argument parsing in various parts of the operating
- * system.
+ * escape chars spaces and quotation marks.
  *
  * @param str The input string to be parsed.
  * @param maxLen The maximum length of the input string.
@@ -26,6 +36,7 @@ const char** argsplit(const char* str, uint64_t maxLen, uint64_t* count);
 
 /**
  * @brief Standardized argument parsing function using a provided buffer.
+ * @ingroup libstd_sys_argsplit
  *
  * The `argsplit_buf` function is similar to `argsplit` but uses a pre-allocated buffer for storing the parsed
  * arguments, useful for memory management.

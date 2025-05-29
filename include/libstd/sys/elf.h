@@ -57,6 +57,12 @@ typedef uint32_t elf_phdr_flags_t;
         (hdr)->ident[4] == 2 && (hdr)->ident[5] == 1 && (hdr)->ident[7] == 0 && \
         (hdr)->machine == ELF_HDR_MACHINE_X86_64 && (hdr)->version == ELF_HDR_VERSION_1)
 
+/**
+ * @brief ELF file header.
+ *
+ * The `elf_hdr_t` structure stored att the begining of elf files.
+ *
+ */
 typedef struct
 {
     uint8_t ident[16];
@@ -75,6 +81,12 @@ typedef struct
     uint16_t shdrStringIndex;
 } elf_hdr_t;
 
+/**
+ * @brief ELF program header.
+ *
+ * The `elf_phdr_t` structure used in ELF files to store program sections (eg,. text, data, etc).
+ *
+ */
 typedef struct
 {
     elf_phdr_type_t type;
@@ -87,6 +99,12 @@ typedef struct
     uint64_t align;
 } elf_phdr_t;
 
+/**
+ * @brief ELF section header.
+ *
+ * The `elf_shdr_t` structure used in ELF files to store information about a section.
+ *
+ */
 typedef struct
 {
     uint32_t name;

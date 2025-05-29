@@ -1,9 +1,9 @@
 #pragma once
 
 #include <alloca.h>
+#include <common/node.h>
 #include <stdint.h>
 #include <sys/io.h>
-#include <common/node.h>
 
 #define PATH_NAME_SEPARATOR '/'
 #define PATH_LABEL_SEPARATOR ':'

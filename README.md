@@ -1,5 +1,4 @@
-
-# PatchworkOS ![](https://img.shields.io/badge/License-MIT-green)
+# PatchworkOS
 
 > **⚠ Warning**<br> Keep in mind that PatchworkOS is currently in a very early stage of development, and may have both known and unknown bugs.
 
@@ -7,8 +6,8 @@
 
 ## Screenshots
 
-<img src="meta/screenshots/desktop.png">
-<img src="meta/screenshots/doom.png"">
+![](meta/screenshots/desktop.png)
+![](meta/screenshots/doom.png)
 
 ## Features
 
