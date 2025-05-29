@@ -14,19 +14,33 @@
 #define ICW4_BUF_MASTER 0x0C // Buffered mode/master
 #define ICW4_SFNM 0x10       // Special fully nested (not)
 
-static inline void port_out(uint16_t port, uint8_t val)
+#define QEMU_ISA_DEBUG_EXIT_PORT 0x501
+
+static inline void port_outb(uint16_t port, uint8_t val)
 {
     asm volatile("outb %0, %1" : : "a"(val), "Nd"(port) : "memory");
 }
 
-static inline uint8_t port_in(uint16_t port)
+static inline uint8_t port_inb(uint16_t port)
 {
     uint8_t ret;
     asm volatile("inb %1, %0" : "=a"(ret) : "Nd"(port) : "memory");
     return ret;
 }
 
+static inline void port_outw(uint16_t port, uint16_t val)
+{
+    asm volatile("outw %0, %1" : : "a"(val), "Nd"(port) : "memory");
+}
+
+static inline uint16_t port_inw(uint16_t port)
+{
+    uint16_t ret;
+    asm volatile("inw %1, %0" : "=a"(ret) : "Nd"(port) : "memory");
+    return ret;
+}
+
 static inline void port_wait(void)
 {
-    port_out(0x80, 0);
+    port_outb(0x80, 0);
 }

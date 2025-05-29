@@ -410,8 +410,6 @@ static uint64_t path_test(const char* cwdStr, const char* testPath, const char* 
         {
             printf("failed: unexpectedly returned error, cwd=\"%s\" path=\"%s\"\n", cwdStr != NULL ? cwdStr : "NULL",
                 testPath);
-            while (1)
-                ;
             return ERR;
         }
         return 0;
@@ -424,8 +422,6 @@ static uint64_t path_test(const char* cwdStr, const char* testPath, const char* 
     {
         printf("failed: cwd=\"%s\" parsed_cwd=\"%s\" path=\"%s\" expected=\"%s\" result=\"%s\"\n",
             cwdStr != NULL ? cwdStr : "NULL", parsedCwd, testPath, expectedResult, parsedPath);
-        while (1)
-            ;
         return ERR;
     }
 
@@ -436,53 +432,44 @@ TESTING_REGISTER_TEST(path_all_tests)
 {
     uint64_t result = 0;
 
-    for (uint64_t i = 0; i < 10; i++)
-    {
-        clock_t start = systime_uptime();
-
-        result |= path_test("sys:/proc", "sys:/kbd/ps2", "sys:/kbd/ps2");
-        result |= path_test("sys:/proc", ".", "sys:/proc");
-        result |= path_test("sys:/proc", "..", "sys:/");
-        result |= path_test("sys:/proc", "../dev/./null", "sys:/dev/null");
-        result |= path_test("sys:/", "home/user", "sys:/home/user");
-        result |= path_test("sys:/usr/local/bin", "../lib", "sys:/usr/local/lib");
-        result |= path_test("sys:/usr/local/bin", "../../../", "sys:/");
-        result |= path_test("sys:/usr/local/bin", "usr:/bin", "usr:/bin");
-        result |= path_test("usr:/lib", "include", "usr:/lib/include");
-        result |= path_test("usr:/lib", "sys:/proc", "sys:/proc");
-        result |= path_test("usr:/lib", "", "usr:/lib");
-        result |= path_test("usr:/lib", "/", "usr:/");
-        result |= path_test("data:/users/admin", "documents///photos//vacation/",
-            "data:/users/admin/documents/photos/vacation");
-        result |= path_test("data:/users/admin", "./downloads/../documents/./reports/../../photos",
-            "data:/users/admin/photos");
-        result |=
-            path_test("data:/users/admin", "notes/report (2023).txt", "data:/users/admin/notes/report (2023).txt");
-        result |= path_test("data:/users/admin", "bad|file?name", NULL);
-        result |= path_test(NULL, "relative/path", NULL);
-        result |= path_test("data:/users/admin", "bad:volume/path", NULL);
-        result |= path_test("app:/games", "rpg/saves/.", "app:/games/rpg/saves");
-        result |= path_test("app:/games", "rpg/saves/..", "app:/games/rpg");
-        result |= path_test("app:/games", "rpg/../../games/shooter", "app:/games/shooter");
-        result |= path_test("temp:/downloads", "log:/system/errors", "log:/system/errors");
-        result |= path_test("temp:/downloads", "temp:/uploads", "temp:/uploads");
-        result |= path_test("root:/", "/", "root:/");
-        result |= path_test("root:/", "/bin", "root:/bin");
-        result |= path_test("dev:/tools", "//multiple//slashes///", "dev:/multiple/slashes");
-        result |= path_test("sys:/usr/bin", "/", "sys:/");
-        result |= path_test("etc:/config", "home/user/.config/app/./../..", "etc:/config/home/user");
-        result |= path_test("project:/src",
-            "lib/core/utils/string/parser/../../network/http/client/api/v1/../../../../../../tests",
-            "project:/src/lib/core/tests");
-        result |= path_test("docs:/", "research/paper (draft 2).pdf", "docs:/research/paper (draft 2).pdf");
-        result |= path_test("media:/music", "Albums/Rock & Roll/Bands", "media:/music/Albums/Rock & Roll/Bands");
-        result |= path_test("backup:/2023", "files_v1.2-beta+build.3", "backup:/2023/files_v1.2-beta+build.3");
-        result |= path_test("backup:/2023", "sys:/net/local/new?nonblock", "sys:/net/local/new");
-
-        clock_t end = systime_uptime();
-
-        printf("time taken: %d\n", (end - start) / 1000);
-    }
+    result |= path_test("sys:/proc", "sys:/kbd/ps2", "sys:/kbd/ps2");
+    result |= path_test("sys:/proc", ".", "sys:/proc");
+    result |= path_test("sys:/proc", "..", "sys:/");
+    result |= path_test("sys:/proc", "../dev/./null", "sys:/dev/null");
+    result |= path_test("sys:/", "home/user", "sys:/home/user");
+    result |= path_test("sys:/usr/local/bin", "../lib", "sys:/usr/local/lib");
+    result |= path_test("sys:/usr/local/bin", "../../../", "sys:/");
+    result |= path_test("sys:/usr/local/bin", "usr:/bin", "usr:/bin");
+    result |= path_test("usr:/lib", "include", "usr:/lib/include");
+    result |= path_test("usr:/lib", "sys:/proc", "sys:/proc");
+    result |= path_test("usr:/lib", "", "usr:/lib");
+    result |= path_test("usr:/lib", "/", "usr:/");
+    result |= path_test("data:/users/admin", "documents///photos//vacation/",
+        "data:/users/admin/documents/photos/vacation");
+    result |= path_test("data:/users/admin", "./downloads/../documents/./reports/../../photos",
+        "data:/users/admin/photos");
+    result |=
+        path_test("data:/users/admin", "notes/report (2023).txt", "data:/users/admin/notes/report (2023).txt");
+    result |= path_test("data:/users/admin", "bad|file?name", NULL);
+    result |= path_test(NULL, "relative/path", NULL);
+    result |= path_test("data:/users/admin", "bad:volume/path", NULL);
+    result |= path_test("app:/games", "rpg/saves/.", "app:/games/rpg/saves");
+    result |= path_test("app:/games", "rpg/saves/..", "app:/games/rpg");
+    result |= path_test("app:/games", "rpg/../../games/shooter", "app:/games/shooter");
+    result |= path_test("temp:/downloads", "log:/system/errors", "log:/system/errors");
+    result |= path_test("temp:/downloads", "temp:/uploads", "temp:/uploads");
+    result |= path_test("root:/", "/", "root:/");
+    result |= path_test("root:/", "/bin", "root:/bin");
+    result |= path_test("dev:/tools", "//multiple//slashes///", "dev:/multiple/slashes");
+    result |= path_test("sys:/usr/bin", "/", "sys:/");
+    result |= path_test("etc:/config", "home/user/.config/app/./../..", "etc:/config/home/user");
+    result |= path_test("project:/src",
+        "lib/core/utils/string/parser/../../network/http/client/api/v1/../../../../../../tests",
+        "project:/src/lib/core/tests");
+    result |= path_test("docs:/", "research/paper (draft 2).pdf", "docs:/research/paper (draft 2).pdf");
+    result |= path_test("media:/music", "Albums/Rock & Roll/Bands", "media:/music/Albums/Rock & Roll/Bands");
+    result |= path_test("backup:/2023", "files_v1.2-beta+build.3", "backup:/2023/files_v1.2-beta+build.3");
+    result |= path_test("backup:/2023", "sys:/net/local/new?nonblock", "sys:/net/local/new");
 
     return result;
 }

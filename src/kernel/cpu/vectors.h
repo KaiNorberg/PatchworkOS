@@ -1,5 +1,7 @@
 #pragma once
 
+#define VECTOR_PAGE_FAULT 0xE
+
 #define VECTOR_IRQ_BASE 0x20
 #define VECTOR_SCHED_INVOKE 0x80
 #define VECTOR_IPI 0x90

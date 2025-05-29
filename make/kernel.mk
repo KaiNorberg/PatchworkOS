@@ -15,6 +15,10 @@ CFLAGS += $(CFLAGS_DISABLE_SIMD) -fno-pic -fno-stack-check -mcmodel=kernel \
 	-D__KERNEL__ \
 	-D__STDC_WANT_LIB_EXT1__=1
 
+ifeq ($(DEBUG),1)
+    CFLAGS += -DQEMU_ISA_DEBUG_EXIT
+endif
+
 ASFLAGS += -D__KERNEL__ -Isrc/libstd
 
 LDFLAGS += -T$(SRCDIR)/linker.lds

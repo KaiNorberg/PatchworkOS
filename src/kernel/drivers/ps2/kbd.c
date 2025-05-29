@@ -19,13 +19,13 @@ static bool isExtended;
 
 static uint64_t ps2_kbd_scan(void)
 {
-    uint8_t status = port_in(PS2_PORT_STATUS);
+    uint8_t status = port_inb(PS2_PORT_STATUS);
     if (!(status & PS2_STATUS_OUT_FULL))
     {
         return ERR;
     }
 
-    uint8_t scanCode = port_in(PS2_PORT_DATA);
+    uint8_t scanCode = port_inb(PS2_PORT_DATA);
     return scanCode;
 }
 

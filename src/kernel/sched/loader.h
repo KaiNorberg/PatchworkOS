@@ -5,9 +5,17 @@
 #include "defs.h"
 #include "proc/thread.h"
 
-#define LOADER_THREAD_MAX_ARGS 4
+#define LOADER_USER_STACK_TOP(tid) \
+    (VMM_LOWER_HALF_MAX - ((CONFIG_USER_STACK + PAGE_SIZE) * (tid)))
 
-#define LOADER_STACK_ADDRESS(tid) (VMM_LOWER_HALF_MAX - (CONFIG_USER_STACK * ((tid) + 1)) - (PAGE_SIZE * ((tid) + 1)))
+#define LOADER_USER_STACK_BOTTOM(tid) \
+    (LOADER_USER_STACK_TOP(tid) - CONFIG_USER_STACK)
+
+#define LOADER_GUARD_PAGE_TOP(tid) \
+    (LOADER_USER_STACK_BOTTOM(tid) - 1)
+
+#define LOADER_GUARD_PAGE_BOTTOM(tid) \
+    (LOADER_GUARD_PAGE_TOP(tid) - PAGE_SIZE)
 
 typedef struct
 {

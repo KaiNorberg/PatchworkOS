@@ -29,13 +29,13 @@ static void ps2_mouse_handle_packet(const ps2_mouse_packet_t* packet)
 
 static uint64_t ps2_mouse_scan(void)
 {
-    uint8_t status = port_in(PS2_PORT_STATUS);
+    uint8_t status = port_inb(PS2_PORT_STATUS);
     if (!(status & PS2_STATUS_OUT_FULL))
     {
         return ERR;
     }
 
-    uint8_t data = port_in(PS2_PORT_DATA);
+    uint8_t data = port_inb(PS2_PORT_DATA);
     return data;
 }
 

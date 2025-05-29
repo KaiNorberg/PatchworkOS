@@ -21,8 +21,11 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y build-essential nasm qemu-system-x86 mtools
 
+    - name: Setup PatchworkOS
+      run: make setup DEBUG=1
+
     - name: Build PatchworkOS
-      run: make all
+      run: make all DEBUG=1
 
     - name: Verify PatchworkOS.img exists
       run: |
@@ -30,8 +33,31 @@ jobs:
           echo "Error: bin/PatchworkOS.img not found after build!"
           exit 1
         fi
+    
+    - name: Run PatchworkOS with QEMU (test launch and graceful timeout)
+      id: qemu_test
+      run: | # We use this cheap trick to check if qemu runs properly, the idea is that we start qemu, and let it run for one minute and it does not crash thats considered a success, if it crashes, well thats bad. If it doesent we shut it down and call it a success, a bit simple but gets the job done.
+        setsid make run DEBUG=1 &
+        QEMU_PID=$!
+        echo "QEMU process started with PID=$QEMU_PID"
+        echo "QEMU_PID=$QEMU_PID" >> $GITHUB_OUTPUT
 
-    - name: Run PatchworkOS with QEMU (test launch)
-      run: make run
-      timeout-minutes: 1
-      continue-on-error: true
+        echo "Leting QEMU run for a bit..."
+        sleep 60
+
+        if ps -p $QEMU_PID > /dev/null
+        then
+          echo "QEMU is still running, indicating no error."
+          echo "Killing QEMU process (PID: $QEMU_PID)..."
+          kill $QEMU_PID
+          
+          if ps -p $QEMU_PID > /dev/null
+          then
+            echo "QEMU process (PID=$QEMU_PID) did not terminate, forcing kill."
+            kill -9 $QEMU_PID
+          fi
+          exit 0
+        else
+          echo "QEMU process (PID=$QEMU_PID) terminated unexpectedly, assuming kernel panicked."
+          exit 1
+        fi

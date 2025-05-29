@@ -3,6 +3,7 @@
 
 #include "log.h"
 
+#include <assert.h>
 #include <stdio.h>
 
 void path_all_tests(void);

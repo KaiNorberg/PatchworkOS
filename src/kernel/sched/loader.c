@@ -118,14 +118,15 @@ static void* loader_load_program(thread_t* thread)
 
 static void* loader_alloc_stack(thread_t* thread)
 {
-    uintptr_t base = LOADER_STACK_ADDRESS(thread->id);
-    if (vmm_alloc((void*)(base + PAGE_SIZE), CONFIG_USER_STACK, PROT_READ | PROT_WRITE) == NULL)
+    printf("tid: %d loader_user_stack_bottom: %p\n", thread->id, LOADER_USER_STACK_BOTTOM(thread->id));
+
+    if (vmm_alloc((void*)LOADER_USER_STACK_BOTTOM(thread->id), CONFIG_USER_STACK, PROT_READ | PROT_WRITE) == NULL)
     {
         printf("loader_alloc_stack: vmm_alloc failed (%s) pid=%d\n", strerror(thread->error), thread->process->id);
         sched_process_exit(EEXEC);
     }
 
-    return (void*)(base + PAGE_SIZE + CONFIG_USER_STACK);
+    return (void*)LOADER_USER_STACK_TOP(thread->id);
 }
 
 static char** loader_setup_argv(thread_t* thread, void* rsp)

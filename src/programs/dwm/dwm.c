@@ -40,13 +40,16 @@ static poll_ctx_t* pollCtx;
 
 static client_t* dwm_client_accept(void)
 {
-    printf("dwm: accept\n");
     fd_t fd = openf("sys:/net/local/%s/accept", id);
     if (fd == ERR)
     {
-        printf("dwm: failed to open accept (%s)\n", strerror(errno));
+        if (errno != EINVAL)
+        {
+            printf("dwm: failed to open accept (%s)\n", strerror(errno));
+        }
         return NULL;
     }
+    printf("dwm: accept\n");
 
     client_t* client = client_new(fd);
     if (client == NULL)

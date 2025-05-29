@@ -12,6 +12,7 @@
 #include "sync/lock.h"
 #include "utils/font.h"
 #include "utils/ring.h"
+#include "cpu/port.h"
 
 #include <common/version.h>
 
@@ -413,6 +414,9 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
     }
 
     printf("!!! KERNEL PANIC END - Please restart your machine !!!\n");
+#ifdef QEMU_ISA_DEBUG_EXIT
+    port_outb(QEMU_ISA_DEBUG_EXIT_PORT, EXIT_FAILURE);
+#endif
     while (1)
     {
         asm volatile("hlt");

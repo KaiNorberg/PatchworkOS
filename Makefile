@@ -55,6 +55,20 @@ compile_commands: clean
 format:
 	find src/ include/ -iname '*.h' -o -iname '*.c' | xargs clang-format -style=file -i
 
+ifeq ($(DEBUG),1)
+run: all
+	@qemu-system-x86_64 \
+	-M q35 \
+	-display sdl \
+	-drive file=$(TARGET) \
+	-m 1G \
+	-smp 8 \
+	-serial stdio \
+	-drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
+	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd \
+	-net none \
+	-device isa-debug-exit
+else
 run: all
 	@qemu-system-x86_64 \
 	-M q35 \
@@ -67,21 +81,7 @@ run: all
 	-drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
 	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd \
 	-net none
-
-run_debug: all
-	@qemu-system-x86_64 \
-	-M q35 \
-	-s \
-	-display sdl \
-	-drive file=$(TARGET) \
-	-m 1G \
-	-smp 8 \
-	-d int \
-	-serial stdio \
-	-no-shutdown -no-reboot \
-	-drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
-	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd \
-	-net none
+endif
 
 doxygen:
 	@if [ ! -d "meta/docs/doxygen-awesome-css" ]; then \

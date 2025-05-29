@@ -17,8 +17,8 @@ static time_t bootEpoch;
 
 static uint8_t cmos_read(uint8_t reg)
 {
-    port_out(CMOS_ADDRESS, reg);
-    return port_in(CMOS_DATA);
+    port_outb(CMOS_ADDRESS, reg);
+    return port_inb(CMOS_DATA);
 }
 
 static uint8_t bcd_to_bin(uint8_t bcd)
@@ -35,21 +35,21 @@ static void systime_accumulate(void)
 static void systime_irq_handler(uint8_t irq)
 {
     systime_accumulate();
-    port_out(CMOS_ADDRESS, 0x0C);
-    port_in(CMOS_DATA);
+    port_outb(CMOS_ADDRESS, 0x0C);
+    port_inb(CMOS_DATA);
 }
 
 static void systime_rtc_init(void)
 {
     irq_install(systime_irq_handler, IRQ_CMOS);
-    port_out(CMOS_ADDRESS, 0x8B);
-    uint8_t temp = port_in(CMOS_DATA);
-    port_out(CMOS_ADDRESS, 0x8B);
-    port_out(CMOS_DATA, temp | 0x40);
-    port_out(CMOS_ADDRESS, 0x8A);
-    temp = port_in(CMOS_DATA);
-    port_out(CMOS_ADDRESS, 0x8A);
-    port_out(CMOS_DATA, (temp & 0xF0) | 15);
+    port_outb(CMOS_ADDRESS, 0x8B);
+    uint8_t temp = port_inb(CMOS_DATA);
+    port_outb(CMOS_ADDRESS, 0x8B);
+    port_outb(CMOS_DATA, temp | 0x40);
+    port_outb(CMOS_ADDRESS, 0x8A);
+    temp = port_inb(CMOS_DATA);
+    port_outb(CMOS_ADDRESS, 0x8A);
+    port_outb(CMOS_DATA, (temp & 0xF0) | 15);
 }
 
 static void systime_read_cmos_time(void)

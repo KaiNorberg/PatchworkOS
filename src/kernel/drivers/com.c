@@ -31,10 +31,10 @@ void com_write(com_port_t port, uint8_t value)
 
 uint8_t com_reg_read(com_port_t port, com_reg_t reg)
 {
-    return port_in(port + reg);
+    return port_inb(port + reg);
 }
 
 void com_reg_write(com_port_t port, com_reg_t reg, uint8_t value)
 {
-    port_out(port + reg, value);
+    port_outb(port + reg, value);
 }

@@ -59,8 +59,29 @@ static void exception_handler(trap_frame_t* trapFrame)
             log_panic(trapFrame, "Unhandled User Exception");
         }
 
-        printf("user exception: process killed due to exception tid=%d pid=%d vector=0x%x error=%p rip=%p cr2=%p\n",
-            thread->id, thread->process->id, trapFrame->vector, trapFrame->errorCode, trapFrame->rip, cr2_read());
+        switch (trapFrame->vector)
+        {
+        case VECTOR_PAGE_FAULT:
+        {
+            uint64_t faultAddress = cr2_read();
+            if (faultAddress >= LOADER_GUARD_PAGE_BOTTOM(thread->id) && faultAddress <= LOADER_GUARD_PAGE_TOP(thread->id))
+            {
+                printf("user exception: process killed due to stack overflow tid=%d pid=%d address=%p\n",
+                    thread->id, thread->process->id, faultAddress);
+            }
+            else
+            {
+                printf("user exception: process killed due to page fault tid=%d pid=%d address=%p\n",
+                    thread->id, thread->process->id, faultAddress);
+            }
+        }
+        break;
+        default:
+        {
+            printf("user exception: process killed due to exception tid=%d pid=%d vector=0x%x error=%p rip=%p cr2=%p\n",
+                thread->id, thread->process->id, trapFrame->vector, trapFrame->errorCode, trapFrame->rip, cr2_read());
+        }
+        }
 
         sched_process_exit(0);
         sched_schedule(trapFrame, smp_self_unsafe());
