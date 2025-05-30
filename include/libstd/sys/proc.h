@@ -28,7 +28,7 @@ extern "C"
  */
 
 /**
- * @brief Stucture used to duplicate fds in `spawn`.
+ * @brief Stucture used to duplicate fds in `spawn()`.
  * @ingroup libstd_sys_proc
  *
  * The `spawn_fd_t` structure is used to inform the kernel of which file descriptors to duplicate when spawning a new

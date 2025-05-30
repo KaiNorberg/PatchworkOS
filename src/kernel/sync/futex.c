@@ -1,7 +1,7 @@
 #include "futex.h"
 #include "drivers/systime/systime.h"
 #include "lock.h"
-#include "proc/thread.h"
+#include "sched/thread.h"
 #include "sched/sched.h"
 #include "sched/wait.h"
 #include "utils/hashmap.h"

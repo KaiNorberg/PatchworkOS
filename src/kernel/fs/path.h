@@ -45,10 +45,10 @@ typedef struct path
 // Used to more easily create paths from strings, yes the alloca call is a bit disgusting but since we are allocating a
 // fixed size it is not a problem. Note that if path_init() fails, the path->isInvalid variable is set. It is very
 // important to note that the lifetime of the returned path variable is limited to the calling function.
-#define PATH(string) \
+#define PATH(process, string) \
     ({ \
         path_t* p = alloca(sizeof(path_t)); \
-        vfs_ctx_t* ctx = &sched_process()->vfsCtx; \
+        vfs_ctx_t* ctx = &process->vfsCtx; \
         LOCK_DEFER(&ctx->lock); \
         path_init(p, string, &ctx->cwd); \
         p; \

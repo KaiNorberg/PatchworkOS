@@ -11,7 +11,7 @@
 #include "drivers/systime/systime.h"
 #include "fs/vfs.h"
 #include "loader.h"
-#include "proc/thread.h"
+#include "sched/thread.h"
 #include "sync/lock.h"
 #include "utils/log.h"
 

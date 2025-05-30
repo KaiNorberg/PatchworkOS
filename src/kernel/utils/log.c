@@ -1,6 +1,7 @@
 #include "log.h"
 
 #include "bootloader/boot_info.h"
+#include "cpu/port.h"
 #include "cpu/regs.h"
 #include "cpu/smp.h"
 #include "defs.h"
@@ -12,7 +13,6 @@
 #include "sync/lock.h"
 #include "utils/font.h"
 #include "utils/ring.h"
-#include "cpu/port.h"
 
 #include <common/version.h>
 

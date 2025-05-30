@@ -1,7 +1,7 @@
 /**
- * @defgroup libstd libstd
  * @brief The Standard Library.
- *
+ * @defgroup libstd libstd
+ * 
  * The libstd library is an extension of the C standard library, in the same way that something like Linux uses the
  * POSIX extension to the C standard library. It contains the expected headers, `string.h`, `stdlib.h` etc., along with
  * a few borrowed from POSIX like `strings.h` and then a bunch of extensions located in the `sys` sub-directory, for
@@ -18,4 +18,21 @@
  * documentation for them would be redundant, they work as expected, the same is true for functions borrowed from POSIX
  * for example `strcasecmp()`. Only Patchwork specific extensions are documented.
  *
+ */
+
+/**
+ * @brief The Patchwork Kernel
+ * @defgroup kernel kernel
+ * 
+ * The kernel for Patchwork.
+ * 
+ */
+
+/**
+ * @brief Scheduling and program loading.
+ * @defgroup kernel_sched sched
+ * @ingroup kernel
+ * 
+ * The sched group handles scheduling and program loading.
+ * 
  */

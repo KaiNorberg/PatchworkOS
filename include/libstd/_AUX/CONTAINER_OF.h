@@ -5,7 +5,8 @@
  * @brief Container of macro
  * @ingroup libstd
  *
- * The `CONTAINER_OF` macro can be used to retrieve the parent structure given a pointer to a member of that structure.
+ * The `CONTAINER_OF()` macro can be used to retrieve the parent structure given a pointer to a member of that
+ * structure.
  *
  * @param ptr The pointer to the structures member.
  * @param type The name of the perent structures type.
@@ -18,7 +19,7 @@
  * @brief Safe container of macro.
  * @ingroup libstd
  *
- * The `CONTAINER_OF_SAFE` macro is the same as the `CONTAINER_OF`, expect that it also handles `NULL` values.
+ * The `CONTAINER_OF_SAFE()` macro is the same as the `CONTAINER_OF()`, expect that it also handles `NULL` values.
  *
  * @param ptr The pointer to the structures member.
  * @param type The name of the perent structures type.

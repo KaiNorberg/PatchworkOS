@@ -5,7 +5,7 @@
 #include "cpu/syscall.h"
 #include "cpu/trap.h"
 #include "ipc/note.h"
-#include "process.h"
+#include "proc/process.h"
 #include "sched/wait.h"
 
 #include <errno.h>

@@ -17,8 +17,10 @@ static gop_buffer_t gop;
 
 static void* gop_mmap(fb_t* fb, void* addr, uint64_t length, prot_t prot)
 {
+    process_t* process = sched_process();
+
     length = MIN(gop.height * gop.stride * sizeof(uint32_t), length);
-    addr = vmm_map(addr, gop.base, length, prot, NULL, NULL);
+    addr = vmm_map(&process->space, addr, gop.base, length, prot, NULL, NULL);
     if (addr == NULL)
     {
         return NULL;

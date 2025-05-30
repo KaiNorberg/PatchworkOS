@@ -14,6 +14,7 @@
 #include "sync/lock.h"
 #include "sys/io.h"
 #include "utils/log.h"
+#include "loader.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -65,17 +66,25 @@ thread_t* thread_new(process_t* process, void* entry, priority_t priority)
 
 void thread_free(thread_t* thread)
 {
-    lock_acquire(&thread->process->threads.lock);
+    process_t* process = thread->process;
+
+    lock_acquire(&process->threads.lock);
     list_remove(&thread->processEntry);
 
-    if (list_is_empty(&thread->process->threads.list))
+    // If the entire process is dying then there is no point in unmaping the stack as all memory will be unmapped anyway.
+    if (!process->threads.isDying)
     {
-        lock_release(&thread->process->threads.lock);
-        process_free(thread->process);
+        vmm_unmap(&process->space, (void*)LOADER_USER_STACK_BOTTOM(thread->id), CONFIG_MAX_USER_STACK_PAGES * PAGE_SIZE); // Ignore failure
+    }
+
+    if (list_is_empty(&process->threads.list))
+    {
+        lock_release(&process->threads.lock);
+        process_free(process);
     }
     else
     {
-        lock_release(&thread->process->threads.lock);
+        lock_release(&process->threads.lock);
     }
 
     simd_ctx_deinit(&thread->simd);

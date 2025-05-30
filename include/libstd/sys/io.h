@@ -417,7 +417,7 @@ fd_t dup2(fd_t oldFd, fd_t newFd);
 uint64_t readdir(fd_t fd, stat_t* infos, uint64_t amount);
 
 /**
- * @brief Allocdir() result type.
+ * @brief Result type from `allocdir()`.
  * @ingroup libstd_sys_io
  *
  * The `allocdir_t` structure stores the result of the `allocdir()` function.
@@ -437,7 +437,8 @@ typedef struct
  *
  * @param fd The file descriptor of the directory to read.
  * @return On success, returns a pointer to an `allocdir_t` structure containing the number of entries and an array of
- * `stat_t` structures. On failure, returns `NULL` and errno is set.
+ * `stat_t` structures, when you are done with the structure make sure to free it using `free()`. On failure, returns
+ * `NULL` and errno is set.
  */
 allocdir_t* allocdir(fd_t fd);
 

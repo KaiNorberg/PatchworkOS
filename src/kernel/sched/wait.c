@@ -4,7 +4,7 @@
 #include "cpu/smp.h"
 #include "cpu/vectors.h"
 #include "drivers/systime/systime.h"
-#include "proc/thread.h"
+#include "sched/thread.h"
 #include "sched.h"
 #include "sync/lock.h"
 #include "sys/list.h"

@@ -2,6 +2,8 @@
 
 #include "defs.h"
 
+#define PAGE_FAULT_PRESENT (1 << 0)
+
 typedef struct PACKED
 {
     uint64_t r15;

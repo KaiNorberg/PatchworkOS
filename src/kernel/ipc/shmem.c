@@ -71,6 +71,9 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
     shmem_t* shmem = file->private;
     LOCK_DEFER(&shmem->lock);
 
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
     uint64_t pageAmount = BYTES_TO_PAGES(length);
     if (pageAmount == 0)
     {
@@ -101,7 +104,7 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
         }
 
         void* result =
-            vmm_map_pages(address, segment->pages, segment->pageAmount, prot, shmem_vmm_callback, shmem_ref(shmem));
+            vmm_map_pages(space, address, segment->pages, segment->pageAmount, prot, shmem_vmm_callback, shmem_ref(shmem));
         if (result == NULL)
         {
             for (uint64_t i = 0; i < segment->pageAmount; i++)
@@ -119,7 +122,7 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
     {
         shmem_segment_t* segment = shmem->segment;
 
-        return vmm_map_pages(address, segment->pages, segment->pageAmount, prot, shmem_vmm_callback, shmem_ref(shmem));
+        return vmm_map_pages(space, address, segment->pages, segment->pageAmount, prot, shmem_vmm_callback, shmem_ref(shmem));
     }
 }
 

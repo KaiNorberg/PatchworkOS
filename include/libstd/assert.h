@@ -19,11 +19,9 @@ _PUBLIC void _Assert89(const char* const);
 #else
 #if __STDC_VERSION__ >= 199901L
 #define assert(expression) \
-    ((expression) ? (void)0 \
-                  : _Assert99("Assertion failed: " #expression " function ", __func__, " file " __FILE__ "."))
+    ((expression) ? (void)0 : _Assert99("Assertion failed: " #expression " function ", __func__, " file " __FILE__ "."))
 #else
-#define assert(expression) \
-    ((expression) ? (void)0 : _Assert89("Assertion failed: " #expression " file " __FILE__ "."))
+#define assert(expression) ((expression) ? (void)0 : _Assert89("Assertion failed: " #expression " file " __FILE__ "."))
 #endif
 #endif
 

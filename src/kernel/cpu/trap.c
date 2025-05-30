@@ -63,17 +63,28 @@ static void exception_handler(trap_frame_t* trapFrame)
         {
         case VECTOR_PAGE_FAULT:
         {
-            uint64_t faultAddress = cr2_read();
-            if (faultAddress >= LOADER_GUARD_PAGE_BOTTOM(thread->id) && faultAddress <= LOADER_GUARD_PAGE_TOP(thread->id))
+            uintptr_t faultAddress = cr2_read();
+            if (faultAddress >= LOADER_GUARD_PAGE_BOTTOM(thread->id) &&
+                faultAddress <= LOADER_GUARD_PAGE_TOP(thread->id)) // Fault in guard page
             {
-                printf("user exception: process killed due to stack overflow tid=%d pid=%d address=%p\n",
-                    thread->id, thread->process->id, faultAddress);
+                printf("user exception: process killed due to stack overflow tid=%d pid=%d address=%p\n", thread->id,
+                    thread->process->id, faultAddress);
+
+                break;
             }
-            else
+            else if (faultAddress >= LOADER_USER_STACK_BOTTOM(thread->id) &&
+            faultAddress <= LOADER_USER_STACK_TOP(thread->id) && !(trapFrame->vector & PAGE_FAULT_PRESENT)) // Fault in user stack region due to non present page
             {
-                printf("user exception: process killed due to page fault tid=%d pid=%d address=%p\n",
-                    thread->id, thread->process->id, faultAddress);
+                uintptr_t pageAddress = ROUND_DOWN(faultAddress, PAGE_SIZE);
+                printf("expanding user stack: %p pid=%d\n", pageAddress, thread->process->id);
+                if (vmm_alloc(&thread->process->space, (void*)pageAddress, PAGE_SIZE, PROT_READ | PROT_WRITE) != NULL)
+                {
+                    return;
+                }
             }
+
+            printf("user exception: process killed due to page fault tid=%d pid=%d address=%p\n", thread->id,
+                thread->process->id, faultAddress);
         }
         break;
         default:

@@ -53,7 +53,7 @@ compile_commands: clean
 	bear -- make all
 
 format:
-	find src/ include/ -iname '*.h' -o -iname '*.c' | xargs clang-format -style=file -i
+	find src/ include/ meta/doxy -iname '*.h' -o -iname '*.c' -iname '*.dox' | xargs clang-format -style=file -i
 
 ifeq ($(DEBUG),1)
 run: all
@@ -91,3 +91,4 @@ doxygen:
 		cd ../../../..; \
 	fi
 	doxygen meta/doxy/Doxyfile
+

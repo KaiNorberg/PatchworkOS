@@ -4,6 +4,7 @@
 #include "fs/vfs.h"
 #include "mem/vmm.h"
 #include "utils/log.h"
+#include "sched/sched.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -21,7 +22,7 @@ static uint64_t const_one_read(file_t* file, void* buffer, uint64_t count)
 
 static void* const_one_mmap(file_t* file, void* addr, uint64_t length, prot_t prot)
 {
-    addr = vmm_alloc(addr, length, prot);
+    addr = vmm_alloc(&sched_process()->space, addr, length, prot);
     if (addr == NULL)
     {
         return NULL;
@@ -45,7 +46,7 @@ static uint64_t const_zero_read(file_t* file, void* buffer, uint64_t count)
 
 static void* const_zero_mmap(file_t* file, void* addr, uint64_t length, prot_t prot)
 {
-    addr = vmm_alloc(addr, length, prot);
+    addr = vmm_alloc(&sched_process()->space, addr, length, prot);
     if (addr == NULL)
     {
         return NULL;

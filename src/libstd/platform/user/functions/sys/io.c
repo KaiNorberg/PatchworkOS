@@ -20,7 +20,7 @@ fd_t open(const char* path)
 fd_t openf(const char* _RESTRICT format, ...)
 {
     char path[MAX_PATH];
-    
+
     va_list args;
     va_start(args, format);
     vsnprintf(path, MAX_PATH, format, args);

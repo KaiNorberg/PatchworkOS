@@ -12,7 +12,7 @@
 #include "gdt.h"
 #include "ipc/pipe.h"
 #include "mem/vmm.h"
-#include "proc/thread.h"
+#include "sched/thread.h"
 #include "sched/loader.h"
 #include "sched/sched.h"
 #include "utils/log.h"
@@ -39,7 +39,15 @@ static bool pointer_is_valid(const void* pointer, uint64_t length)
         return false;
     }
 
-    if ((uint64_t)pointer + length > VMM_LOWER_HALF_MAX)
+    uintptr_t start = (uintptr_t)pointer;
+    uintptr_t end = (uintptr_t)pointer + length;
+
+    if (start > end) // Overflow
+    {
+        return false;
+    }
+
+    if (end > VMM_LOWER_HALF_END || (uintptr_t)start < VMM_LOWER_HALF_START)
     {
         return false;
     }
@@ -47,7 +55,7 @@ static bool pointer_is_valid(const void* pointer, uint64_t length)
     return true;
 }
 
-static bool buffer_is_valid(const void* pointer, uint64_t length)
+static bool buffer_is_valid(space_t* space, const void* pointer, uint64_t length)
 {
     if (length == 0)
     {
@@ -59,7 +67,7 @@ static bool buffer_is_valid(const void* pointer, uint64_t length)
         return false;
     }
 
-    if (!vmm_mapped(pointer, length))
+    if (!vmm_mapped(space, pointer, length))
     {
         return false;
     }
@@ -67,9 +75,9 @@ static bool buffer_is_valid(const void* pointer, uint64_t length)
     return true;
 }
 
-static bool string_is_valid(const char* string)
+static bool string_is_valid(space_t* space, const char* string)
 {
-    if (!buffer_is_valid(string, sizeof(const char*)))
+    if (!buffer_is_valid(space, string, sizeof(const char*)))
     {
         return false;
     }
@@ -77,7 +85,7 @@ static bool string_is_valid(const char* string)
     const char* chr = string;
     while (true)
     {
-        if (!buffer_is_valid(chr, sizeof(char)))
+        if (!buffer_is_valid(space, chr, sizeof(char)))
         {
             return false;
         }
@@ -109,7 +117,10 @@ void syscall_thread_exit(void)
 
 pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, spawn_flags_t flags)
 {
-    if (!string_is_valid(cwd) && cwd != NULL)
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!string_is_valid(space, cwd) && cwd != NULL)
     {
         return ERR;
     }
@@ -117,11 +128,7 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, s
     uint64_t argc = 0;
     while (1)
     {
-        if (argc >= CONFIG_MAX_ARG)
-        {
-            return ERROR(EINVAL);
-        }
-        else if (!buffer_is_valid(&argv[argc], sizeof(const char*)))
+        if (!buffer_is_valid(space, &argv[argc], sizeof(const char*)))
         {
             return ERROR(EFAULT);
         }
@@ -129,7 +136,7 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, s
         {
             break;
         }
-        else if (!string_is_valid(argv[argc]))
+        else if (!string_is_valid(space, argv[argc]))
         {
             return ERROR(EFAULT);
         }
@@ -146,7 +153,7 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, s
             {
                 return ERROR(EINVAL);
             }
-            else if (!buffer_is_valid(&fds[fdAmount], sizeof(fd_t)))
+            else if (!buffer_is_valid(space, &fds[fdAmount], sizeof(fd_t)))
             {
                 return ERROR(EFAULT);
             }
@@ -159,34 +166,34 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, s
         }
     }
 
-    thread_t* thread = loader_spawn(argv, PRIORITY_MIN, cwd == NULL ? NULL : PATH(cwd));
-    if (thread == NULL)
+    thread_t* child = loader_spawn(argv, PRIORITY_MIN, cwd == NULL ? NULL : PATH(process, cwd));
+    if (child == NULL)
     {
         return ERR;
     }
 
-    vfs_ctx_t* parentVfsCtx = &sched_process()->vfsCtx;
-    vfs_ctx_t* childVfsCtx = &thread->process->vfsCtx;
+    vfs_ctx_t* parentVfsCtx = &process->vfsCtx;
+    vfs_ctx_t* childVfsCtx = &child->process->vfsCtx;
 
     for (uint64_t i = 0; i < fdAmount; i++)
     {
         file_t* file = vfs_ctx_file(parentVfsCtx, fds[i].parent);
         if (file == NULL)
         {
-            thread_free(thread);
+            thread_free(child);
             return ERROR(EBADF);
         }
         FILE_DEFER(file);
 
         if (vfs_ctx_openas(childVfsCtx, fds[i].child, file) == ERR)
         {
-            thread_free(thread);
+            thread_free(child);
             return ERROR(EBADF);
         }
     }
 
-    sched_push(thread);
-    return thread->process->id;
+    sched_push(child);
+    return child->process->id;
 }
 
 uint64_t syscall_sleep(clock_t nanoseconds)
@@ -232,42 +239,46 @@ time_t syscall_unix_epoch(time_t* timePtr)
 
 fd_t syscall_open(const char* path)
 {
-    if (!string_is_valid(path))
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!string_is_valid(space, path))
     {
         return ERROR(EFAULT);
     }
 
-    file_t* file = vfs_open(PATH(path));
+    file_t* file = vfs_open(PATH(process, path));
     if (file == NULL)
     {
         return ERR;
     }
     FILE_DEFER(file);
 
-    return vfs_ctx_open(&sched_process()->vfsCtx, file);
+    return vfs_ctx_open(&process->vfsCtx, file);
 }
 
 uint64_t syscall_open2(const char* path, fd_t fds[2])
 {
-    if (!string_is_valid(path))
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!string_is_valid(space, path))
     {
         return ERROR(EFAULT);
     }
 
-    if (!buffer_is_valid(fds, sizeof(fd_t) * 2))
+    if (!buffer_is_valid(space, fds, sizeof(fd_t) * 2))
     {
         return ERROR(EFAULT);
     }
 
     file_t* files[2];
-    if (vfs_open2(PATH(path), files) == ERR)
+    if (vfs_open2(PATH(process, path), files) == ERR)
     {
         return ERR;
     }
     FILE_DEFER(files[0]);
     FILE_DEFER(files[1]);
-
-    process_t* process = sched_process();
 
     fds[0] = vfs_ctx_open(&process->vfsCtx, files[0]);
     if (fds[0] == ERR)
@@ -286,17 +297,22 @@ uint64_t syscall_open2(const char* path, fd_t fds[2])
 
 uint64_t syscall_close(fd_t fd)
 {
-    return vfs_ctx_close(&sched_process()->vfsCtx, fd);
+    process_t* process = sched_process();
+
+    return vfs_ctx_close(&process->vfsCtx, fd);
 }
 
 uint64_t syscall_read(fd_t fd, void* buffer, uint64_t count)
-{
-    if (!buffer_is_valid(buffer, count))
+{    
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!buffer_is_valid(space, buffer, count))
     {
         return ERROR(EFAULT);
     }
 
-    file_t* file = vfs_ctx_file(&sched_process()->vfsCtx, fd);
+    file_t* file = vfs_ctx_file(&process->vfsCtx, fd);
     if (file == NULL)
     {
         return ERR;
@@ -308,12 +324,15 @@ uint64_t syscall_read(fd_t fd, void* buffer, uint64_t count)
 
 uint64_t syscall_write(fd_t fd, const void* buffer, uint64_t count)
 {
-    if (!buffer_is_valid(buffer, count))
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!buffer_is_valid(space, buffer, count))
     {
         return ERROR(EFAULT);
     }
 
-    file_t* file = vfs_ctx_file(&sched_process()->vfsCtx, fd);
+    file_t* file = vfs_ctx_file(&process->vfsCtx, fd);
     if (file == NULL)
     {
         return ERR;
@@ -325,7 +344,9 @@ uint64_t syscall_write(fd_t fd, const void* buffer, uint64_t count)
 
 uint64_t syscall_seek(fd_t fd, int64_t offset, seek_origin_t origin)
 {
-    file_t* file = vfs_ctx_file(&sched_process()->vfsCtx, fd);
+    process_t* process = sched_process();
+    
+    file_t* file = vfs_ctx_file(&process->vfsCtx, fd);
     if (file == NULL)
     {
         return ERR;
@@ -337,7 +358,10 @@ uint64_t syscall_seek(fd_t fd, int64_t offset, seek_origin_t origin)
 
 uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
 {
-    if (argp != NULL && !buffer_is_valid(argp, size))
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (argp != NULL && !buffer_is_valid(space, argp, size))
     {
         return ERROR(EFAULT);
     }
@@ -347,7 +371,7 @@ uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
         return ERROR(EFAULT);
     }
 
-    file_t* file = vfs_ctx_file(&sched_process()->vfsCtx, fd);
+    file_t* file = vfs_ctx_file(&process->vfsCtx, fd);
     if (file == NULL)
     {
         return ERR;
@@ -359,22 +383,28 @@ uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
 
 uint64_t syscall_chdir(const char* path)
 {
-    if (!string_is_valid(path))
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!string_is_valid(space, path))
     {
         return ERROR(EFAULT);
     }
 
-    return vfs_chdir(PATH(path));
+    return vfs_chdir(PATH(process, path));
 }
 
 uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, clock_t timeout)
 {
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
     if (amount == 0 || amount > CONFIG_MAX_FD)
     {
         return ERROR(EINVAL);
     }
 
-    if (!buffer_is_valid(fds, sizeof(pollfd_t) * amount))
+    if (!buffer_is_valid(space, fds, sizeof(pollfd_t) * amount))
     {
         return ERROR(EFAULT);
     }
@@ -382,7 +412,7 @@ uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, clock_t timeout)
     poll_file_t files[CONFIG_MAX_FD];
     for (uint64_t i = 0; i < amount; i++)
     {
-        files[i].file = vfs_ctx_file(&sched_process()->vfsCtx, fds[i].fd);
+        files[i].file = vfs_ctx_file(&process->vfsCtx, fds[i].fd);
         if (files[i].file == NULL)
         {
             for (uint64_t j = 0; j < i; j++)
@@ -409,22 +439,28 @@ uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, clock_t timeout)
 
 uint64_t syscall_stat(const char* path, stat_t* buffer)
 {
-    if (!string_is_valid(path))
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!string_is_valid(space, path))
     {
         return ERROR(EFAULT);
     }
 
-    if (!buffer_is_valid(buffer, sizeof(stat_t)))
+    if (!buffer_is_valid(space, buffer, sizeof(stat_t)))
     {
         return ERROR(EFAULT);
     }
 
-    return vfs_stat(PATH(path), buffer);
+    return vfs_stat(PATH(process, path), buffer);
 }
 
 void* syscall_mmap(fd_t fd, void* address, uint64_t length, prot_t prot)
 {
-    file_t* file = vfs_ctx_file(&sched_process()->vfsCtx, fd);
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    file_t* file = vfs_ctx_file(&process->vfsCtx, fd);
     if (file == NULL)
     {
         return NULL;
@@ -436,32 +472,41 @@ void* syscall_mmap(fd_t fd, void* address, uint64_t length, prot_t prot)
 
 uint64_t syscall_munmap(void* address, uint64_t length)
 {
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
     if (!pointer_is_valid(address, length))
     {
         return ERROR(EFAULT);
     }
 
-    return vmm_unmap(address, length);
+    return vmm_unmap(space, address, length);
 }
 
 uint64_t syscall_mprotect(void* address, uint64_t length, prot_t prot)
 {
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
     if (!pointer_is_valid(address, length))
     {
         return ERROR(EFAULT);
     }
 
-    return vmm_protect(address, length, prot);
+    return vmm_protect(space, address, length, prot);
 }
 
 uint64_t syscall_readdir(fd_t fd, stat_t* infos, uint64_t amount)
 {
-    if (!buffer_is_valid(infos, amount * sizeof(stat_t)))
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!buffer_is_valid(space, infos, amount * sizeof(stat_t)))
     {
         return ERROR(EFAULT);
     }
 
-    file_t* file = vfs_ctx_file(&sched_process()->vfsCtx, fd);
+    file_t* file = vfs_ctx_file(&process->vfsCtx, fd);
     if (file == NULL)
     {
         return ERR;
@@ -473,12 +518,15 @@ uint64_t syscall_readdir(fd_t fd, stat_t* infos, uint64_t amount)
 
 tid_t syscall_thread_create(void* entry, void* arg)
 {
-    if (!buffer_is_valid(entry, sizeof(uint64_t)))
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!buffer_is_valid(space, entry, sizeof(uint64_t)))
     {
         return ERROR(EFAULT);
     }
 
-    thread_t* thread = loader_thread_create(sched_thread(), PRIORITY_MIN, entry, arg);
+    thread_t* thread = loader_thread_create(process, PRIORITY_MIN, entry, arg);
     if (thread == NULL)
     {
         return ERR;
@@ -511,22 +559,28 @@ uint64_t syscall_futex(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t
 
 uint64_t syscall_rename(const char* oldpath, const char* newpath)
 {
-    if (!string_is_valid(oldpath) || !string_is_valid(newpath))
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!string_is_valid(space, oldpath) || !string_is_valid(space, newpath))
     {
         return ERROR(EFAULT);
     }
 
-    return vfs_rename(PATH(oldpath), PATH(newpath));
+    return vfs_rename(PATH(process, oldpath), PATH(process, newpath));
 }
 
 uint64_t syscall_remove(const char* path)
 {
-    if (!string_is_valid(path))
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!string_is_valid(space, path))
     {
         return ERROR(EFAULT);
     }
 
-    return vfs_remove(PATH(path));
+    return vfs_remove(PATH(process, path));
 }
 
 ///////////////////////////////////////////////////////

@@ -132,7 +132,7 @@ static void* pmm_bitmap_alloc(uint64_t count, uintptr_t maxAddr, uint64_t alignm
         return NULL;
     }
 
-    return (void*)(index * PAGE_SIZE + VMM_HIGHER_HALF_BASE);
+    return (void*)(index * PAGE_SIZE + VMM_HIGHER_HALF_START);
 }
 
 static void pmm_bitmap_free(void* address)

@@ -444,12 +444,11 @@ TESTING_REGISTER_TEST(path_all_tests)
     result |= path_test("usr:/lib", "sys:/proc", "sys:/proc");
     result |= path_test("usr:/lib", "", "usr:/lib");
     result |= path_test("usr:/lib", "/", "usr:/");
-    result |= path_test("data:/users/admin", "documents///photos//vacation/",
-        "data:/users/admin/documents/photos/vacation");
-    result |= path_test("data:/users/admin", "./downloads/../documents/./reports/../../photos",
-        "data:/users/admin/photos");
     result |=
-        path_test("data:/users/admin", "notes/report (2023).txt", "data:/users/admin/notes/report (2023).txt");
+        path_test("data:/users/admin", "documents///photos//vacation/", "data:/users/admin/documents/photos/vacation");
+    result |=
+        path_test("data:/users/admin", "./downloads/../documents/./reports/../../photos", "data:/users/admin/photos");
+    result |= path_test("data:/users/admin", "notes/report (2023).txt", "data:/users/admin/notes/report (2023).txt");
     result |= path_test("data:/users/admin", "bad|file?name", NULL);
     result |= path_test(NULL, "relative/path", NULL);
     result |= path_test("data:/users/admin", "bad:volume/path", NULL);

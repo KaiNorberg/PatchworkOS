@@ -1,7 +1,7 @@
 #pragma once
 
 #include "defs.h"
-#include "proc/thread.h"
+#include "sched/thread.h"
 #include "sync/lock.h"
 
 #include <sys/list.h>
