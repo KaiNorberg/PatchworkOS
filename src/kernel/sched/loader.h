@@ -102,8 +102,8 @@ extern NORETURN void loader_jump_to_user_space(int argc, char** argv, void* rsp,
  * @param priority The priority of the main thread within the child process.
  * @param cwd The current working directory for the child process, if `cwd` is equal to null then the child inherits the
  * working directory of the parent.
- * @return On success, returns the main thread of the child process. On failure, returns `NULL` and the currently
- * running threads `error` value is set.
+ * @return On success, returns the main thread of the child process. On failure, returns `NULL` and the
+ * running threads `thread_t::error` member is set.
  */
 thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd);
 
@@ -118,7 +118,7 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
  * @param priority The priority of the new thread.
  * @param entry The entry point address for the new thread.
  * @param arg An argument to pass to the entry point.
- * @return On success, returns the newly created thread. On failure, returns `NULL` and the currently running threads
- * `error` value is set.
+ * @return On success, returns the newly created thread. On failure, returns `NULL` and the running threads
+ * `thread_t::error` member is set.
  */
 thread_t* loader_thread_create(process_t* parent, priority_t priority, void* entry, void* arg);
