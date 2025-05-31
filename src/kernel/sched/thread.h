@@ -16,7 +16,6 @@
  * @brief Thread of execution structure.
  * @ingroup kernel_sched
  * @defgroup kernel_sched_thread Thread
- * @struct thread_t
  *
  */
 
@@ -24,28 +23,13 @@
  * @brief Thread priority type.
  * @ingroup kernel_sched_thread
  *
- * The `priority_t` type is used to store the scheduling priority of a thread. See `sched_schedule()` for more info.
+ * The `priority_t` type is used to store the scheduling priority of a thread, we also define two constants
+ * `PRIORITY_MIN`, which represents the lowest priority a thread can have, and `PRIORITY_MAX` which defines the maximum
+ * value of a threads priority (not inclusive). See `sched_schedule()` for more info.
  *
  */
 typedef uint8_t priority_t;
-
-/**
- * @brief Maximum thread priority constant.
- * @ingroup kernel_sched_thread
- *
- * The `PRIORITY_MAX` constant represents the maximum amount of priority levels for a thread, therefor the hightest
- * priority a thread can have is `PRIORITY_MAX` - 1. See `sched_schedule()` for more info.
- *
- */
 #define PRIORITY_MAX 2
-
-/**
- * @brief Minimum thread priority constant.
- * @ingroup kernel_sched_thread
- *
- * The `PRIORITY_MIN` constant represents the lowest priority a thread can have. See `sched_schedule()` for more info.
- *
- */
 #define PRIORITY_MIN 0
 
 /**
@@ -166,17 +150,6 @@ typedef struct thread
      */
     uint8_t kernelStack[CONFIG_KERNEL_STACK];
 } thread_t;
-
-/**
- * @var thread_t::entry
- * @brief The list entry used by for example the scheduler and wait system to store the thread in
- * linked lists and queues.
- */
-
-/**
- * @var thread_t::process
- * @brief The parent process that the thread is executeing within.
- */
 
 #define THREAD_KERNEL_STACK_TOP(thread) ((uintptr_t)thread->kernelStack + CONFIG_KERNEL_STACK)
 

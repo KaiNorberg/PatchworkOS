@@ -19,7 +19,8 @@
  * @brief Framebuffer format enum.
  * @ingroup libstd_sys_fb
  *
- * The `fb_format_t` enum specified the format of the pixel data in a framebuffer.
+ * The `fb_format_t` enum specified the format of the pixel data in a framebuffer. All byte orders are specified in
+ * little-endian.
  *
  */
 typedef enum

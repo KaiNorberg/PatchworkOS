@@ -72,20 +72,8 @@ extern "C"
  *
  */
 
-/**
- * @brief Standard input file descriptor.
- * @ingroup libstd_sys_io
- */
 #define STDIN_FILENO 0
-/**
- * @brief Standard output file descriptor.
- * @ingroup libstd_sys_io
- */
 #define STDOUT_FILENO 1
-/**
- * @brief Standard error file descriptor.
- * @ingroup libstd_sys_io
- */
 #define STDERR_FILENO 2
 
 /**

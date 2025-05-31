@@ -77,20 +77,20 @@ typedef uint32_t elf_phdr_flags_t;
  */
 typedef struct
 {
-    uint8_t ident[16];         //!< ELF identification bytes
-    elf_hdr_type_t type;       //!< Type of ELF file (e.g., executable, shared object)
-    elf_hdr_machine_t machine; //!< Required architecture (e.g., x86-64)
-    elf_hdr_version_t version; //!< ELF format version
-    uint64_t entry;            //!< Entry point virtual address
-    uint64_t phdrOffset;       //!< Program header table file offset
-    uint64_t shdrOffset;       //!< Section header table file offset
-    uint32_t flags;            //!< Processor-specific flags
-    uint16_t headerSize;       //!< ELF header size in bytes
-    uint16_t phdrSize;         //!< Program header table entry size
-    uint16_t phdrAmount;       //!< Number of program header entries
-    uint16_t shdrSize;         //!< Section header table entry size
-    uint16_t shdrAmount;       //!< Number of section header entries
-    uint16_t shdrStringIndex;  //!< Section header string table index
+    uint8_t ident[16];
+    elf_hdr_type_t type;
+    elf_hdr_machine_t machine;
+    elf_hdr_version_t version;
+    uint64_t entry;
+    uint64_t phdrOffset;
+    uint64_t shdrOffset;
+    uint32_t flags;
+    uint16_t headerSize;
+    uint16_t phdrSize;
+    uint16_t phdrAmount;
+    uint16_t shdrSize;
+    uint16_t shdrAmount;
+    uint16_t shdrStringIndex;
 } elf_hdr_t;
 
 /**
@@ -102,14 +102,14 @@ typedef struct
  */
 typedef struct
 {
-    elf_phdr_type_t type;   //!< Type of segment
-    elf_phdr_flags_t flags; //!< Segment flags (e.g., executable, writable, readable)
-    uint64_t offset;        //!< Offset of the segment in the file
-    uint64_t virtAddr;      //!< Virtual address where the segment resides
-    uint64_t physAddr;      //!< Physical address (ignored for most files)
-    uint64_t fileSize;      //!< Size of the segment in the file
-    uint64_t memorySize;    //!< Size of the segment in memory
-    uint64_t align;         //!< Alignment of the segment
+    elf_phdr_type_t type;
+    elf_phdr_flags_t flags;
+    uint64_t offset;
+    uint64_t virtAddr;
+    uint64_t physAddr;
+    uint64_t fileSize;
+    uint64_t memorySize;
+    uint64_t align;
 } elf_phdr_t;
 
 /**
@@ -121,16 +121,16 @@ typedef struct
  */
 typedef struct
 {
-    uint32_t name;         //!< Index into the section header string table
-    uint32_t type;         //!< Type of section
-    uint64_t flags;        //!< Section flags
-    uint64_t address;      //!< Virtual address of the section in memory
-    uint64_t offset;       //!< Offset of the section in the file
-    uint64_t size;         //!< Size of the section in bytes
-    uint32_t link;         //!< Link to another section
-    uint32_t info;         //!< Additional section information
-    uint64_t addressAlign; //!< Alignment constraints for the section
-    uint64_t entrySize;    //!< Size of each entry if section holds a table of fixed-size entries
+    uint32_t name;
+    uint32_t type;
+    uint64_t flags;
+    uint64_t address;
+    uint64_t offset;
+    uint64_t size;
+    uint32_t link;
+    uint32_t info;
+    uint64_t addressAlign;
+    uint64_t entrySize;
 } elf_shdr_t;
 
 #endif
