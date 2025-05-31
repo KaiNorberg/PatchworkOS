@@ -29,7 +29,7 @@
  */
 
 /**
- * @brief Retrieves the top of a user stack.
+ * @brief Retrieves the top of a threads user stack.
  * @ingroup kernel_sched_loader
  *
  * The `LOADER_USER_STACK_TOP()` macro retrieves the address of the top of a threads user stack given the id of the
@@ -44,7 +44,7 @@
 #define LOADER_USER_STACK_TOP(tid) (VMM_LOWER_HALF_END - (((CONFIG_MAX_USER_STACK_PAGES + 1) * PAGE_SIZE) * (tid)))
 
 /**
- * @brief Retrieves the bottom of a user stack.
+ * @brief Retrieves the bottom of a threads user stack.
  * @ingroup kernel_sched_loader
  *
  * The `LOADER_USER_STACK_BOTTOM()` macro retrieves the address of the bottom of a threads user stack given the id of
