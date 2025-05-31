@@ -21,18 +21,19 @@
 - [Custom font format (.grf)](https://github.com/KaiNorberg/grf).
 - Strict adherence to "everything is a file".
 - IPC including pipes, shared memory, sockets and plan9 inspired "signals" called notes.
+- And much more...
 
 ## Notable Differences with Unix
 
-- Multiroot file system, with labels not letters ```home:/usr/fonts```
-- Replaced ```fork(), exec()``` with ```spawn()```
-- Single-User
-- Non POSIX standard library
+- Multiroot file system, with labels not letters ```home:/usr/bin```.
+- Replaced ```fork(), exec()``` with ```spawn()```.
+- Single-User.
+- Non POSIX standard library.
 
 ## Limitations
 
-- Ram disks only
-- Only x86_64
+- Currently limited to ram disks only.
+- Only support for x86_64.
 
 ## A Small Taste
 

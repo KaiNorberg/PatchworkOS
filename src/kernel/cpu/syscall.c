@@ -632,10 +632,10 @@ void syscall_init(void)
         RFLAGS_TRAP | RFLAGS_DIRECTION | RFLAGS_INTERRUPT_ENABLE | RFLAGS_IOPL | RFLAGS_AUX_CARRY | RFLAGS_NESTED_TASK);
 }
 
-void syscall_ctx_init(syscall_ctx_t* ctx, uint64_t kernelStack)
+void syscall_ctx_init(syscall_ctx_t* ctx, uint64_t kernelRsp)
 {
-    ctx->kernelStack = kernelStack;
-    ctx->userStack = 0;
+    ctx->kernelRsp = kernelRsp;
+    ctx->userRsp = 0;
 }
 
 void syscall_ctx_load(syscall_ctx_t* ctx)

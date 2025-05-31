@@ -283,9 +283,9 @@ typedef enum
  */
 typedef struct
 {
-    fd_t fd;
-    poll_events_t events;
-    poll_events_t revents;
+    fd_t fd;               //!< The file descriptor to poll.
+    poll_events_t events;  //!< The events to wait for.
+    poll_events_t revents; //!< The events that occoured.
 } pollfd_t;
 
 /**
@@ -327,8 +327,8 @@ poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout);
  */
 typedef enum
 {
-    STAT_FILE = 0,
-    STAT_DIR = 1,
+    STAT_FILE = 0, //!< Is a file.
+    STAT_DIR = 1,  //!< Is a directory.
 } stat_type_t;
 
 /**
@@ -340,9 +340,9 @@ typedef enum
  */
 typedef struct
 {
-    char name[MAX_NAME];
-    stat_type_t type;
-    uint64_t size;
+    char name[MAX_NAME]; //!< The name of the entry, not the full filepath.
+    stat_type_t type;    //!< The type of the entry (eg,. STAT_FILE, STAT_DIR, etc).
+    uint64_t size;       //!< The size of the file on disk in bytes.
 } stat_t;
 
 /**
@@ -425,8 +425,8 @@ uint64_t readdir(fd_t fd, stat_t* infos, uint64_t amount);
  */
 typedef struct
 {
-    uint64_t amount;
-    stat_t infos[];
+    uint64_t amount; //!< The amount of `stat_t` structures in `allocdir_t::infos`.
+    stat_t infos[];  //!< The retrieved `stat_t` structures.
 } allocdir_t;
 
 /**

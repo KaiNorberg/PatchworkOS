@@ -41,7 +41,7 @@ thread_t* thread_new(process_t* process, void* entry, priority_t priority)
     thread->id = thread->process->threads.newTid++;
     thread->timeStart = 0;
     thread->timeEnd = 0;
-    thread->priority = MIN(priority, PRIORITY_MAX);
+    thread->priority = MIN(priority, PRIORITY_MAX - 1);
     atomic_init(&thread->state, THREAD_PARKED);
     thread->error = 0;
     wait_thread_ctx_init(&thread->wait);
@@ -51,10 +51,11 @@ thread_t* thread_new(process_t* process, void* entry, priority_t priority)
         return NULL;
     }
     note_queue_init(&thread->notes);
-    syscall_ctx_init(&thread->syscall, ((uint64_t)thread->kernelStack) + CONFIG_KERNEL_STACK);
+    syscall_ctx_init(&thread->syscall, THREAD_KERNEL_STACK_TOP(thread));
     memset(&thread->trapFrame, 0, sizeof(trap_frame_t));
+    thread->canary = THREAD_CANARY;
     thread->trapFrame.rip = (uint64_t)entry;
-    thread->trapFrame.rsp = ((uint64_t)thread->kernelStack) + CONFIG_KERNEL_STACK;
+    thread->trapFrame.rsp = THREAD_KERNEL_STACK_TOP(thread);
     thread->trapFrame.cs = GDT_KERNEL_CODE;
     thread->trapFrame.ss = GDT_KERNEL_DATA;
     thread->trapFrame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;

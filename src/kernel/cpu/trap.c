@@ -164,6 +164,9 @@ void trap_handler(trap_frame_t* trapFrame)
     statistics_trap_end(trapFrame, self);
     self->trapDepth--;
 
+    thread_t* thread = self->sched.runThread;
+    assert(thread == NULL || thread->canary == THREAD_CANARY);
+
     // This is a sanity check to make sure blocking and scheduling is functioning correctly. For instance, a trap should
     // never return with a lock acquired nor should one be called with a lock acquired.
     assert(trapFrame->rflags & RFLAGS_INTERRUPT_ENABLE);

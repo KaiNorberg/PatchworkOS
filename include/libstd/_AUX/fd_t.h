@@ -11,6 +11,14 @@
  */
 typedef __UINT64_TYPE__ fd_t;
 
-#define FD_NONE ((fd_t)__UINT64_MAX__)
+/**
+ * @brief No file descriptor constant.
+ * @ingroup libstd
+ * @def FD_NONE
+ *
+ * The `FD_NONE` value represents no file descriptor.
+ *
+ */
+#define FD_NONE __UINT64_MAX__
 
 #endif

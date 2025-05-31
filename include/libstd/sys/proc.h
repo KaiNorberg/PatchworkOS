@@ -167,7 +167,7 @@ typedef enum
  * @param length The length of the segment to be mapped, note that this length will be rounded up to the nearest page
  * multiple by the kernel factoring in page boundaries.
  * @param prot Protection flags.
- * @return On success, returns the address of the mapped memory, will always be page aligned, on failure returns `ERR`
+ * @return On success, returns the address of the mapped memory, will always be page aligned, on failure returns `NULL`
  * and errno is set.
  */
 void* mmap(fd_t fd, void* address, uint64_t length, prot_t prot);
@@ -207,8 +207,8 @@ uint64_t mprotect(void* address, uint64_t length, prot_t prot);
  */
 typedef enum
 {
-    FUTEX_WAIT,
-    FUTEX_WAKE,
+    FUTEX_WAIT, //!< The futex operating for waiting until the value pointed to by `addr` is not equal to `val`.
+    FUTEX_WAKE, //!< The futex operation for waking up a amount of threads specified by the `val` argument.
 } futex_op_t;
 
 /**

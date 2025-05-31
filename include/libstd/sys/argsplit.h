@@ -11,7 +11,7 @@ extern "C"
 #include "_AUX/config.h"
 
 /**
- * @brief Standardized argument parsing.
+ * @brief Standardized argument parsing
  * @ingroup libstd
  * @defgroup libstd_sys_argsplit Argument parsing
  *

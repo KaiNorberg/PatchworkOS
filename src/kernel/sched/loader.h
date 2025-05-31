@@ -1,9 +1,9 @@
 #pragma once
 
-#include <stdarg.h>
-
 #include "defs.h"
 #include "sched/thread.h"
+
+#include <stdarg.h>
 
 /**
  * @brief Program loading and user stack management.
@@ -69,8 +69,8 @@
  * @brief Retrieves the bottom of a threads guard page.
  * @ingroup kernel_sched_loader
  *
- * The `LOADER_GUARD_PAGE_BOTTOM()` macro retrieves the address of the bottom of a threads guard page given the id of the
- * thread.
+ * The `LOADER_GUARD_PAGE_BOTTOM()` macro retrieves the address of the bottom of a threads guard page given the id of
+ * the thread.
  *
  * @return The address of the bottom of the guard page, this address is inclusive and always page aligned.
  */
@@ -80,7 +80,8 @@
  * @brief Performs the initial jump to userspace.
  * @ingroup kernel_sched_loader
  *
- * The `loader_jump_to_user_space()` function uses the `iretq` instruction to jump to userspace, passing process arguments and setting the stack and program pointers.
+ * The `loader_jump_to_user_space()` function uses the `iretq` instruction to jump to userspace, passing process
+ * arguments and setting the stack and program pointers.
  *
  * @param argc The length of the argument array to pass to userspace.
  * @param argv The argument buffer to pass to userspace.
@@ -96,10 +97,13 @@ extern NORETURN void loader_jump_to_user_space(int argc, char** argv, void* rsp,
  *
  * The `loader_spawn()` function loads and executes a program from the specified path found in `argv[0]`.
  *
- * @param argv A null-terminated array of strings storing the arguments to be passed to usespace and the executable to be loaded in `argv[0]`.
+ * @param argv A null-terminated array of strings storing the arguments to be passed to usespace and the executable to
+ * be loaded in `argv[0]`.
  * @param priority The priority of the main thread within the child process.
- * @param cwd The current working directory for the child process, if `cwd` is equal to null then the child inherits the working directory of the parent.
- * @return On success, returns the main thread of the child process. On failure, returns `NULL` and the currently running threads `error` value is set.
+ * @param cwd The current working directory for the child process, if `cwd` is equal to null then the child inherits the
+ * working directory of the parent.
+ * @return On success, returns the main thread of the child process. On failure, returns `NULL` and the currently
+ * running threads `error` value is set.
  */
 thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd);
 
@@ -107,13 +111,14 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
  * @brief Creates a new thread within an existing process.
  * @ingroup kernel_sched_loader
  *
- * The `loader_thread_create()` function creates a new thread within a specified parent process. This new thread will begin execution at the provided entry point with the given
- * argument as the first argument to the entry point.
+ * The `loader_thread_create()` function creates a new thread within a specified parent process. This new thread will
+ * begin execution at the provided entry point with the given argument as the first argument to the entry point.
  *
  * @param parent The parent process for the new thread.
  * @param priority The priority of the new thread.
  * @param entry The entry point address for the new thread.
  * @param arg An argument to pass to the entry point.
- * @return On success, returns the newly created thread. On failure, returns `NULL` and the currently running threads `error` value is set.
+ * @return On success, returns the newly created thread. On failure, returns `NULL` and the currently running threads
+ * `error` value is set.
  */
 thread_t* loader_thread_create(process_t* parent, priority_t priority, void* entry, void* arg);

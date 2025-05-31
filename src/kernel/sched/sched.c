@@ -60,7 +60,7 @@ static inline uint64_t thread_queue_length(thread_queue_t* queue)
 
 void sched_ctx_init(sched_ctx_t* ctx)
 {
-    for (uint64_t i = PRIORITY_MIN; i <= PRIORITY_MAX; i++)
+    for (uint64_t i = PRIORITY_MIN; i < PRIORITY_MAX; i++)
     {
         thread_queue_init(&ctx->queues[i]);
     }
@@ -77,7 +77,7 @@ static void sched_ctx_push(sched_ctx_t* ctx, thread_t* thread)
 static uint64_t sched_ctx_thread_amount(sched_ctx_t* ctx)
 {
     uint64_t length = (ctx->runThread != NULL);
-    for (int64_t i = PRIORITY_MAX; i >= PRIORITY_MIN; i--)
+    for (int64_t i = PRIORITY_MAX - 1; i >= PRIORITY_MIN; i--)
     {
         length += thread_queue_length(&ctx->queues[i]);
     }
@@ -87,7 +87,7 @@ static uint64_t sched_ctx_thread_amount(sched_ctx_t* ctx)
 
 static thread_t* sched_ctx_find(sched_ctx_t* ctx, priority_t minPriority)
 {
-    for (int64_t i = PRIORITY_MAX; i >= minPriority; i--)
+    for (int64_t i = PRIORITY_MAX - 1; i >= minPriority; i--)
     {
         thread_t* thread = thread_queue_pop(&ctx->queues[i]);
         if (thread != NULL)
@@ -130,7 +130,7 @@ static void sched_spawn_boot_thread(void)
     process_t* process = process_new(NULL, NULL, NULL);
     assert(process != NULL && "failed to create boot process");
 
-    thread_t* thread = thread_new(process, NULL, PRIORITY_MAX);
+    thread_t* thread = thread_new(process, NULL, PRIORITY_MAX - 1);
     assert(thread != NULL && "failed to create boot thread");
     thread->timeEnd = UINT64_MAX;
 

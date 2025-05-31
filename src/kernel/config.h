@@ -28,7 +28,7 @@
  * thread jumps to kernel space.
  *
  */
-#define CONFIG_KERNEL_STACK (0x1000 * 4)
+#define CONFIG_KERNEL_STACK 0x1000
 
 /**
  * @brief User stack configuration.

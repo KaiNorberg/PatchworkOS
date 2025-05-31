@@ -4,13 +4,13 @@
 
 typedef struct
 {
-    uint64_t kernelStack;
-    uint64_t userStack;
+    uint64_t kernelRsp;
+    uint64_t userRsp;
 } syscall_ctx_t;
 
 extern void syscall_entry(void);
 
-void syscall_ctx_init(syscall_ctx_t* ctx, uint64_t kernelStack);
+void syscall_ctx_init(syscall_ctx_t* ctx, uint64_t kernelRsp);
 
 void syscall_ctx_load(syscall_ctx_t* ctx);
 
