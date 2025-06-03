@@ -14,7 +14,7 @@
 ## Features
 
 - Monolithic preemptive 64-bit fully-tickless kernel with SMP.
-- Fully multithreaded [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/src/kernel/sched/sched.h), with dynamic priorities, dynamic time slices, and more.
+- Fully multithreaded [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h), with dynamic priorities, dynamic time slices, and more.
 - Custom C standard library and system libraries.
 - SIMD.
 - [Custom image format (.fbmp)](https://github.com/KaiNorberg/fbmp).
