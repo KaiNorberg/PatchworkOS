@@ -103,10 +103,10 @@ _NORETURN static inline void _SyscallThreadExit(void)
         ;
 }
 
-static inline pid_t _SyscallSpawn(const char** argv, const spawn_fd_t* fds, const char* cwd, spawn_flags_t flags)
+static inline pid_t _SyscallSpawn(const char** argv, const spawn_fd_t* fds, const char* cwd, spawn_attr_t* attr)
 {
-    return _SYSCALL4(pid_t, SYS_SPAWN, const char**, argv, const spawn_fd_t*, fds, const char*, cwd, spawn_flags_t,
-        flags);
+    return _SYSCALL4(pid_t, SYS_SPAWN, const char**, argv, const spawn_fd_t*, fds, const char*, cwd, spawn_attr_t*,
+        attr);
 }
 
 static inline uint64_t _SyscallSleep(clock_t nanoseconds)
@@ -229,9 +229,9 @@ static inline fd_t _SyscallDup2(fd_t oldFd, fd_t newFd)
     return _SYSCALL2(fd_t, SYS_DUP2, fd_t, oldFd, fd_t, newFd);
 }
 
-static inline uint64_t _SyscallFutex(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t timeout)
+static inline uint64_t _SyscallFutex(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout)
 {
-    return _SYSCALL4(uint64_t, SYS_FUTEX, atomic_uint64*, addr, uint64_t, val, futex_op_t, op, clock_t, timeout);
+    return _SYSCALL4(uint64_t, SYS_FUTEX, atomic_uint64_t*, addr, uint64_t, val, futex_op_t, op, clock_t, timeout);
 }
 
 static inline uint64_t _SyscallRename(const char* oldpath, const char* newpath)

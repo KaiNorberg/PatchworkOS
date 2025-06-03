@@ -7,6 +7,7 @@
 #include "regs.h"
 #include "utils/utils.h"
 
+#include <assert.h>
 #include <stdio.h>
 
 static uintptr_t lapicBase;
@@ -14,22 +15,28 @@ static uintptr_t lapicBase;
 void apic_init(void)
 {
     lapicBase = (uintptr_t)vmm_kernel_map(NULL, madt_lapic_address(), PAGE_SIZE);
+    assert((void*)lapicBase != NULL);
 }
 
-void apic_timer_init(uint8_t vector, uint64_t hz)
+void apic_timer_one_shot(uint8_t vector, uint32_t ticks)
 {
-    lapic_write(LAPIC_REG_TIMER_DIVIDER, 0x3);
-    lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, 0xFFFFFFFF);
+    lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
+    lapic_write(LAPIC_REG_LVT_TIMER, ((uint32_t)vector) | APIC_TIMER_ONE_SHOT);
+    lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, ticks);
+}
 
-    hpet_sleep(CLOCKS_PER_SEC / hz);
+uint64_t apic_timer_ticks_per_ns(void)
+{
+    lapic_write(LAPIC_REG_TIMER_DIVIDER, APIC_TIMER_DEFAULT_DIV);
+    lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, UINT32_MAX);
+
+    hpet_sleep(CLOCKS_PER_SEC / 1000);
 
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
 
-    uint32_t ticks = 0xFFFFFFFF - lapic_read(LAPIC_REG_TIMER_CURRENT_COUNT);
+    uint64_t ticks = UINT32_MAX - lapic_read(LAPIC_REG_TIMER_CURRENT_COUNT);
 
-    lapic_write(LAPIC_REG_LVT_TIMER, ((uint32_t)vector) | APIC_TIMER_PERIODIC);
-    lapic_write(LAPIC_REG_TIMER_DIVIDER, 0x3);
-    lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, ticks);
+    return (ticks << APIC_TIMER_TICKS_FIXED_POINT_OFFSET) / 1000000ULL;
 }
 
 void lapic_init(void)
@@ -37,7 +44,7 @@ void lapic_init(void)
     printf("lapic: init\n");
     msr_write(MSR_LAPIC, (msr_read(MSR_LAPIC) | LAPIC_MSR_ENABLE) & ~(1 << 10));
 
-    lapic_write(LAPIC_REG_SPURIOUS, lapic_read(LAPIC_REG_SPURIOUS) | 0x100);
+    lapic_write(LAPIC_REG_SPURIOUS, lapic_read(LAPIC_REG_SPURIOUS) | LAPIC_SPURIOUS_ENABLE);
 }
 
 uint8_t lapic_id(void)

@@ -24,10 +24,12 @@
 #include "mem/vmm.h"
 #include "net/net.h"
 #include "sched/sched.h"
+#include "sched/thread.h"
 #include "sched/wait.h"
 #include "utils/log.h"
 #include "utils/testing.h"
 
+#include <assert.h>
 #include <bootloader/boot_info.h>
 #include <libstd_internal/init.h>
 #include <stdio.h>
@@ -105,8 +107,6 @@ void kernel_init(boot_info_t* bootInfo)
 #ifdef TESTING
     testing_run_tests();
 #endif
-
-    asm volatile("sti");
 }
 
 void kernel_other_init(void)
@@ -121,4 +121,21 @@ void kernel_other_init(void)
 
     vmm_cpu_init();
     syscall_init();
+    systime_timer_init();
+}
+
+bool kernel_checkpoint(trap_frame_t* trapFrame, cpu_t* self)
+{
+    thread_t* oldThread = self->sched.runThread;
+
+    sched_schedule(trapFrame, self);
+
+    if (!self->sched.runThread->syscall.inSyscall)
+    {
+        note_dispatch(trapFrame, self);
+    }
+
+    assert(self->sched.runThread->canary == THREAD_CANARY);
+
+    return oldThread != self->sched.runThread;
 }

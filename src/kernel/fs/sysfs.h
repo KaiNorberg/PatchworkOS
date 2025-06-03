@@ -57,7 +57,7 @@ typedef struct syshdr
 {
     node_t node;
     atomic_bool hidden;
-    atomic_uint64 ref;
+    atomic_uint64_t ref;
 } syshdr_t;
 
 typedef struct sysobj

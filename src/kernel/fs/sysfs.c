@@ -1,7 +1,7 @@
 #include "sysfs.h"
 
 #include "path.h"
-#include "sched/sched.h"
+#include "sched/thread.h"
 #include "sync/rwlock.h"
 #include "utils/log.h"
 #include "vfs.h"
@@ -111,7 +111,7 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
         if (sysobj->ops->open == NULL)
         {
             sysobj_deref(sysobj);
-            return ERRPTR(ENOOP);
+            return ERRPTR(ENOTSUP);
         }
 
         file_t* file = sysobj->ops->open(volume, path, sysobj);
@@ -169,7 +169,7 @@ static uint64_t sysfs_open2(volume_t* volume, const path_t* path, file_t* files[
     if (sysobj->ops->open2 == NULL)
     {
         sysobj_deref(sysobj);
-        return ERROR(ENOOP);
+        return ERROR(ENOTSUP);
     }
 
     if (sysobj->ops->open2(volume, path, sysobj, files) == ERR)

@@ -3,7 +3,7 @@
 #include "defs.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
-#include "sched/sched.h"
+#include "sched/thread.h"
 #include "socket.h"
 #include "utils/log.h"
 
@@ -15,17 +15,17 @@
 
 static uint64_t socket_family_new_read(file_t* file, void* buffer, uint64_t count)
 {
-    const char* id = file->private;
-    uint64_t len = strlen(id);
+    socket_t* socket = file->private;
 
-    return BUFFER_READ(file, buffer, count, id, len + 1); // Include null terminator
+    uint64_t len = strlen(socket->id);
+    return BUFFER_READ(file, buffer, count, socket->id, len + 1); // Include null terminator
 }
 
 static uint64_t socket_family_new_seek(file_t* file, int64_t offset, seek_origin_t origin)
 {
-    const char* id = file->private;
-    uint64_t len = strlen(id);
+    socket_t* socket = file->private;
 
+    uint64_t len = strlen(socket->id);
     return BUFFER_SEEK(file, offset, origin, len + 1); // Include null terminator
 }
 

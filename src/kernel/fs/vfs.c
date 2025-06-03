@@ -2,7 +2,7 @@
 
 #include "drivers/systime/systime.h"
 #include "path.h"
-#include "sched/sched.h"
+#include "sched/thread.h"
 #include "sched/wait.h"
 #include "sync/lock.h"
 #include "sync/rwlock.h"
@@ -120,6 +120,7 @@ uint64_t vfs_attach_simple(const char* label, const volume_ops_t* ops)
     volume_t* volume;
     LIST_FOR_EACH(volume, &volumes, entry)
     {
+        printf("vfs_attach_simple strcmp\n");
         if (strcmp(volume->label, label) == 0)
         {
             return ERROR(EEXIST);
@@ -159,6 +160,7 @@ uint64_t vfs_unmount(const char* label)
     bool isFound = false;
     LIST_FOR_EACH(volume, &volumes, entry)
     {
+        printf("vfs_unmount strcmp\n");
         if (strcmp(volume->label, label) == 0)
         {
             isFound = true;
@@ -178,7 +180,7 @@ uint64_t vfs_unmount(const char* label)
 
     if (volume->ops->unmount == NULL)
     {
-        return ERROR(ENOOP);
+        return ERROR(ENOTSUP);
     }
 
     if (volume->ops->unmount(volume) == ERR)
@@ -231,7 +233,7 @@ file_t* vfs_open(const path_t* path)
     if (volume->ops->open == NULL)
     {
         volume_deref(volume);
-        return ERRPTR(ENOOP);
+        return ERRPTR(ENOTSUP);
     }
 
     file_t* file = volume->ops->open(volume, path);
@@ -260,7 +262,7 @@ uint64_t vfs_open2(const path_t* path, file_t* files[2])
     if (volume->ops->open2 == NULL)
     {
         volume_deref(volume);
-        return ERROR(ENOOP);
+        return ERROR(ENOTSUP);
     }
 
     uint64_t result = volume->ops->open2(volume, path, files);
@@ -289,7 +291,7 @@ uint64_t vfs_stat(const path_t* path, stat_t* buffer)
     if (volume->ops->stat == NULL)
     {
         volume_deref(volume);
-        return ERROR(ENOOP);
+        return ERROR(ENOTSUP);
     }
 
     uint64_t result = volume->ops->stat(volume, path, buffer);
@@ -304,6 +306,7 @@ uint64_t vfs_rename(const path_t* oldpath, const path_t* newpath)
         return ERROR(EPATH);
     }
 
+    printf("vfs_rename strcmp\n");
     if (strcmp(oldpath->volume, newpath->volume) != 0)
     {
         return ERROR(EXDEV);
@@ -318,7 +321,7 @@ uint64_t vfs_rename(const path_t* oldpath, const path_t* newpath)
     if (volume->ops->rename == NULL)
     {
         volume_deref(volume);
-        return ERROR(ENOOP);
+        return ERROR(ENOTSUP);
     }
 
     uint64_t result = volume->ops->rename(volume, oldpath, newpath);
@@ -342,7 +345,7 @@ uint64_t vfs_remove(const path_t* path)
     if (volume->ops->remove == NULL)
     {
         volume_deref(volume);
-        return ERROR(ENOOP);
+        return ERROR(ENOTSUP);
     }
 
     uint64_t result = volume->ops->remove(volume, path);
@@ -354,7 +357,7 @@ uint64_t vfs_readdir(file_t* file, stat_t* infos, uint64_t amount)
 {
     if (file->ops->readdir == NULL)
     {
-        return ERROR(ENOOP);
+        return ERROR(ENOTSUP);
     }
 
     if (file->syshdr == NULL)
@@ -377,7 +380,7 @@ uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
 {
     if (file->ops->read == NULL)
     {
-        return ERROR(ENOOP);
+        return ERROR(ENOTSUP);
     }
 
     if (file->syshdr == NULL)
@@ -400,7 +403,7 @@ uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
 {
     if (file->ops->write == NULL)
     {
-        return ERROR(ENOOP);
+        return ERROR(ENOTSUP);
     }
 
     if (file->syshdr == NULL)
@@ -423,7 +426,7 @@ uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
 {
     if (file->ops->seek == NULL)
     {
-        return ERROR(ENOOP);
+        return ERROR(ENOTSUP);
     }
 
     if (file->syshdr == NULL)
@@ -446,7 +449,7 @@ uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
 {
     if (file->ops->ioctl == NULL)
     {
-        return ERROR(ENOOP);
+        return ERROR(ENOTSUP);
     }
 
     if (file->syshdr == NULL)
@@ -469,7 +472,7 @@ void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
 {
     if (file->ops->mmap == NULL)
     {
-        return ERRPTR(ENOOP);
+        return ERRPTR(ENOTSUP);
     }
 
     if (file->syshdr == NULL)
@@ -498,32 +501,32 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
         }
         if (files[i].file->ops == NULL || files[i].file->ops->poll == NULL)
         {
-            return ERROR(ENOOP);
+            return ERROR(ENOTSUP);
         }
         files[i].revents = 0;
     }
 
-    wait_queue_t** waitQueues = malloc(sizeof(wait_queue_t) * amount);
+    wait_queue_t** waitQueues = malloc(sizeof(wait_queue_t*) * amount);
     if (waitQueues == NULL)
     {
         return ERR;
     }
 
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        waitQueues[i] = NULL;
+    }
+
     uint64_t events = 0;
     uint64_t currentTime = systime_uptime();
     uint64_t deadline = timeout == CLOCKS_NEVER ? CLOCKS_NEVER : currentTime + timeout;
+
     while (true)
     {
         events = 0;
-        bool shouldBlock = true;
+
         for (uint64_t i = 0; i < amount; i++)
         {
-            if (files[i].file == NULL || files[i].file->ops == NULL)
-            {
-                free(waitQueues);
-                return ERROR(EINVAL);
-            }
-
             if (files[i].file->syshdr == NULL)
             {
                 waitQueues[i] = files[i].file->ops->poll(files[i].file, &files[i]);
@@ -549,26 +552,21 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
             {
                 events++;
             }
-
-            if (files[i].file->flags & PATH_NONBLOCK)
-            {
-                shouldBlock = false;
-            }
         }
-        if (events != 0 || currentTime >= deadline)
+
+        if (events > 0)
         {
             break;
         }
 
-        if (!shouldBlock)
+        currentTime = systime_uptime();
+        if (currentTime >= deadline && deadline != CLOCKS_NEVER)
         {
-            free(waitQueues);
-            return ERROR(EWOULDBLOCK);
+            break;
         }
 
         clock_t remainingTime = deadline == CLOCKS_NEVER ? CLOCKS_NEVER : deadline - currentTime;
         wait_block_many(waitQueues, amount, remainingTime);
-
         currentTime = systime_uptime();
     }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defs.h"
+#include "drivers/systime/systime.h"
 #include "mem/pmm.h"
 #include "sched/sched.h"
 #include "sched/wait.h"
@@ -11,32 +12,23 @@
 #include "utils/statistics.h"
 
 #define CPU_MAX_AMOUNT 255
-#define CPU_IDLE_STACK_SIZE PAGE_SIZE
 
 #define IPI_QUEUE_MAX 4
 
-typedef void (*ipi_t)(trap_frame_t*);
-
-typedef struct
-{
-    ipi_t ipis[IPI_QUEUE_MAX];
-    uint8_t readIndex;
-    uint8_t writeIndex;
-    lock_t lock;
-} ipi_queue_t;
+typedef uint8_t cpuid_t;
 
 typedef struct cpu
 {
-    uint8_t id;
+    cpuid_t id;
     uint8_t lapicId;
+    bool isBootstrap;
     uint64_t trapDepth;
     tss_t tss;
     cli_ctx_t cli;
-    sched_ctx_t sched;
+    systime_ctx_t systime;
+    sched_cpu_ctx_t sched;
     wait_cpu_ctx_t wait;
     statistics_cpu_ctx_t stat;
-    ipi_queue_t queue;
-    uint8_t idleStack[CPU_IDLE_STACK_SIZE];
 } cpu_t;
 
 void smp_bootstrap_init(void);
@@ -47,13 +39,15 @@ void smp_entry(void);
 
 void smp_halt_others(void);
 
-void smp_ipi_receive(trap_frame_t* trapFrame, cpu_t* self);
-
-void smp_send(cpu_t* cpu, ipi_t ipi);
-
-void smp_send_all(ipi_t ipi);
-
-void smp_send_others(ipi_t ipi);
+/**
+ * @brief Trigger trap on cpu.
+ *
+ * The `smp_notify()` function, sends an ipi that does nothing to the specified cpu, effectively causing a trap on the
+ * cpu allowing it to for example schedule, etc.
+ *
+ * @param cpu The destination cpu.
+ */
+void smp_notify(cpu_t* cpu);
 
 uint8_t smp_cpu_amount(void);
 

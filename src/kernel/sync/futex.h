@@ -24,4 +24,4 @@ void futex_ctx_init(futex_ctx_t* ctx);
 
 void futex_ctx_deinit(futex_ctx_t* ctx);
 
-uint64_t futex_do(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t timeout);
+uint64_t futex_do(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout);

@@ -1,10 +1,10 @@
 #include "vmm.h"
 #include "cpu/regs.h"
+#include "pml.h"
 #include "pmm.h"
-#include "sched/sched.h"
+#include "sched/thread.h"
 #include "sync/lock.h"
 #include "utils/log.h"
-#include "pml.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -49,14 +49,7 @@ void space_deinit(space_t* space)
 
 void space_load(space_t* space)
 {
-    if (space == NULL)
-    {
-        pml_load(vmm_kernel_pml());
-    }
-    else
-    {
-        pml_load(space->pml);
-    }
+    pml_load(space->pml);
 }
 
 static void* vmm_find_free_region(space_t* space, uint64_t length)
@@ -267,7 +260,8 @@ void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, prot_t prot)
     return virtAddr;
 }
 
-void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, prot_t prot, vmm_callback_t callback, void* private)
+void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, prot_t prot, vmm_callback_t callback,
+    void* private)
 {
     LOCK_DEFER(&space->lock);
 
@@ -340,8 +334,8 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, p
     return virtAddr;
 }
 
-void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageAmount, prot_t prot, vmm_callback_t callback,
-    void* private)
+void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageAmount, prot_t prot,
+    vmm_callback_t callback, void* private)
 {
     LOCK_DEFER(&space->lock);
 

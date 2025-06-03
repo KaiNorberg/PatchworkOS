@@ -37,7 +37,9 @@ typedef struct
     uint8_t reserved[35];
 } surface_info_t;
 
+#ifdef static_assert
 static_assert(sizeof(surface_info_t) == 104, "invalid surface_info_t size");
+#endif
 
 #if defined(__cplusplus)
 }

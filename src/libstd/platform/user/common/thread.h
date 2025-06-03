@@ -23,7 +23,7 @@ typedef void (*_ThreadEntry_t)(_Thread_t*);
 typedef struct _Thread
 {
     list_entry_t entry;
-    atomic_uint64 state;
+    atomic_uint64_t state;
     tid_t id;
     int64_t result;
     errno_t err;

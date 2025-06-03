@@ -2,6 +2,7 @@
 
 #include "config.h"
 #include "cpu/smp.h"
+#include "sched/thread.h"
 #include "sync/lock.h"
 #include "sys/proc.h"
 #include "utils/bitmap.h"

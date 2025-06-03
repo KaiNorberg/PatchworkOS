@@ -1,7 +1,7 @@
 #ifndef _THREADS_H
 #define _THREADS_H 1
 
-#include <sys/atomint.h>
+#include <stdatomic.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -50,7 +50,7 @@ typedef struct
 
 typedef struct
 {
-    atomic_uint64 state;
+    atomic_uint64_t state;
     tid_t owner;
     uint64_t depth;
 } mtx_t;

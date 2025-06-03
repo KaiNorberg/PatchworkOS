@@ -2,7 +2,7 @@
 
 #include "defs.h"
 #include "mem/pmm.h"
-#include "sched/sched.h"
+#include "sched/thread.h"
 
 #include <errno.h>
 #include <stdio.h>

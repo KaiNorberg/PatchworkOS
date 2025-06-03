@@ -9,4 +9,6 @@
     ((((uint64_t)(number) + (uint64_t)(multiple) - 1) / (uint64_t)(multiple)) * (uint64_t)(multiple))
 #define ROUND_DOWN(number, multiple) (((uint64_t)(number) / (uint64_t)(multiple)) * (uint64_t)(multiple))
 
+#define LERP_INT(start, end, t, minT, maxT) (((start) * ((maxT) - (t))) + ((end) * ((t) - (minT)))) / ((maxT) - (minT))
+
 #endif

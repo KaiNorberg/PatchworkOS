@@ -3,6 +3,7 @@
 #include "apic.h"
 #include "gdt.h"
 #include "irq.h"
+#include "kernel.h"
 #include "mem/vmm.h"
 #include "regs.h"
 #include "sched/loader.h"
@@ -56,7 +57,7 @@ static void exception_handler(trap_frame_t* trapFrame)
         thread_t* thread = sched_thread();
         if (thread == NULL)
         {
-            log_panic(trapFrame, "Unhandled User Exception");
+            log_panic(trapFrame, "User exception on NULL thread");
         }
 
         switch (trapFrame->vector)
@@ -73,7 +74,8 @@ static void exception_handler(trap_frame_t* trapFrame)
                 break;
             }
             else if (faultAddress >= LOADER_USER_STACK_BOTTOM(thread->id) &&
-            faultAddress <= LOADER_USER_STACK_TOP(thread->id) && !(trapFrame->vector & PAGE_FAULT_PRESENT)) // Fault in user stack region due to non present page
+                faultAddress <= LOADER_USER_STACK_TOP(thread->id) &&
+                !(trapFrame->vector & PAGE_FAULT_PRESENT)) // Fault in user stack region due to non present page
             {
                 uintptr_t pageAddress = ROUND_DOWN(faultAddress, PAGE_SIZE);
                 printf("expanding user stack: %p pid=%d\n", pageAddress, thread->process->id);
@@ -114,31 +116,33 @@ void trap_handler(trap_frame_t* trapFrame)
     cpu_t* self = smp_self_unsafe();
 
     self->trapDepth++;
+    if (self->trapDepth != 1)
+    {
+        log_panic(trapFrame, "self->trapDepth != 1");
+    }
+
     statistics_trap_begin(trapFrame, self);
 
     switch (trapFrame->vector)
     {
-    case VECTOR_SCHED_INVOKE:
+    case VECTOR_HALT:
     {
-        // Does nothing
+        while (1)
+        {
+            asm volatile("hlt");
+        }
     }
     break;
-    case VECTOR_IPI:
+    case VECTOR_NOTIFY:
     {
-        smp_ipi_receive(trapFrame, self);
         lapic_eoi();
     }
     break;
     case VECTOR_TIMER:
     {
+        systime_timer_trap(trapFrame, self);
         wait_timer_trap(trapFrame, self);
-        sched_timer_trap(trapFrame, self);
         lapic_eoi();
-    }
-    break;
-    case VECTOR_WAIT_BLOCK:
-    {
-        wait_block_trap(trapFrame, self);
     }
     break;
     default:
@@ -154,20 +158,12 @@ void trap_handler(trap_frame_t* trapFrame)
     }
     }
 
-    sched_schedule(trapFrame, self);
-
-    if (TRAP_FRAME_IN_USER_SPACE(trapFrame))
-    {
-        note_dispatch(trapFrame, self);
-    }
+    kernel_checkpoint(trapFrame, self);
 
     statistics_trap_end(trapFrame, self);
     self->trapDepth--;
 
-    thread_t* thread = self->sched.runThread;
-    assert(thread == NULL || thread->canary == THREAD_CANARY);
-
     // This is a sanity check to make sure blocking and scheduling is functioning correctly. For instance, a trap should
-    // never return with a lock acquired nor should one be called with a lock acquired.
+    // never return with a lock acquired nor should one be invoked with a lock acquired.
     assert(trapFrame->rflags & RFLAGS_INTERRUPT_ENABLE);
 }

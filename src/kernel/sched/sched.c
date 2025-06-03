@@ -11,6 +11,8 @@
 #include "drivers/systime/systime.h"
 #include "fs/vfs.h"
 #include "loader.h"
+#include "proc/process.h"
+#include "sched/sched.h"
 #include "sched/thread.h"
 #include "sync/lock.h"
 #include "utils/log.h"
@@ -25,116 +27,98 @@
 
 static wait_queue_t sleepQueue;
 
-static inline void thread_queue_init(thread_queue_t* queue)
+static inline void sched_queues_init(sched_queues_t* queues)
 {
-    queue->length = 0;
-    list_init(&queue->list);
-    lock_init(&queue->lock);
+    queues->length = 0;
+    queues->bitmap = 0;
+    for (uint64_t i = PRIORITY_MIN; i < PRIORITY_MAX; i++)
+    {
+        list_init(&queues->lists[i]);
+    }
 }
 
-static inline void thread_queue_push(thread_queue_t* queue, thread_t* thread)
+static inline void sched_queues_push(sched_queues_t* queues, thread_t* thread)
 {
-    LOCK_DEFER(&queue->lock);
+    assert(thread->sched.actualPriority < PRIORITY_MAX);
 
-    queue->length++;
-    list_push(&queue->list, &thread->entry);
+    queues->length++;
+    queues->bitmap |= (1ULL << thread->sched.actualPriority);
+    list_push(&queues->lists[thread->sched.actualPriority], &thread->entry);
 }
 
-static inline thread_t* thread_queue_pop(thread_queue_t* queue)
+static inline thread_t* sched_queues_pop(sched_queues_t* queues, priority_t minPriority)
 {
-    LOCK_DEFER(&queue->lock);
-    if (queue->length == 0)
+    if (queues->length == 0 || queues->bitmap == 0)
+    {
+        assert(queues->length == 0 && queues->bitmap == 0);
+        return NULL;
+    }
+
+    priority_t highestPriority = PRIORITY_MAX - 1 - __builtin_clzll(queues->bitmap);
+    if (minPriority > highestPriority)
     {
         return NULL;
     }
 
-    queue->length--;
-    return CONTAINER_OF(list_pop(&queue->list), thread_t, entry);
-}
+    queues->length--;
+    thread_t* thread = CONTAINER_OF(list_pop(&queues->lists[highestPriority]), thread_t, entry);
 
-static inline uint64_t thread_queue_length(thread_queue_t* queue)
-{
-    LOCK_DEFER(&queue->lock);
-    return queue->length;
-}
-
-void sched_ctx_init(sched_ctx_t* ctx)
-{
-    for (uint64_t i = PRIORITY_MIN; i < PRIORITY_MAX; i++)
+    if (list_is_empty(&queues->lists[highestPriority]))
     {
-        thread_queue_init(&ctx->queues[i]);
+        queues->bitmap &= ~(1ULL << highestPriority);
     }
-    list_init(&ctx->parkedThreads);
+
+    return thread;
+}
+
+void sched_thread_ctx_init(sched_thread_ctx_t* ctx)
+{
+    ctx->timeSlice = 0;
+    ctx->deadline = 0;
+    ctx->actualPriority = 0;
+    ctx->recentBlockTime = 0;
+    ctx->prevBlockCheck = 0;
+}
+
+void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* cpu)
+{
+    sched_queues_init(&ctx->queues[0]);
+    sched_queues_init(&ctx->queues[1]);
+    ctx->active = &ctx->queues[0];
+    ctx->expired = &ctx->queues[1];
     list_init(&ctx->zombieThreads);
-    ctx->runThread = NULL;
-}
 
-static void sched_ctx_push(sched_ctx_t* ctx, thread_t* thread)
-{
-    thread_queue_push(&ctx->queues[thread->priority], thread);
-}
-
-static uint64_t sched_ctx_thread_amount(sched_ctx_t* ctx)
-{
-    uint64_t length = (ctx->runThread != NULL);
-    for (int64_t i = PRIORITY_MAX - 1; i >= PRIORITY_MIN; i--)
+    // Bootstrap cpu is initalized early so we cant yet create the idle thread, the boot thread on the bootstrap cpu
+    // will become the idle thread.
+    if (cpu->isBootstrap)
     {
-        length += thread_queue_length(&ctx->queues[i]);
+        ctx->idleThread = NULL;
+        ctx->runThread = NULL;
+    }
+    else
+    {
+        ctx->idleThread = thread_new(process_get_kernel(), sched_idle_loop);
+        assert(ctx->idleThread != NULL);
+        ctx->runThread = ctx->idleThread;
+        atomic_store(&ctx->runThread->state, THREAD_RUNNING);
     }
 
-    return length;
+    lock_init(&ctx->lock);
 }
 
-static thread_t* sched_ctx_find(sched_ctx_t* ctx, priority_t minPriority)
+static void sched_init_spawn_boot_thread(void)
 {
-    for (int64_t i = PRIORITY_MAX - 1; i >= minPriority; i--)
-    {
-        thread_t* thread = thread_queue_pop(&ctx->queues[i]);
-        if (thread != NULL)
-        {
-            return thread;
-        }
-    }
+    cpu_t* self = smp_self_unsafe();
+    assert(self->sched.runThread == NULL);
 
-    return NULL;
-}
+    process_t* kernelProcess = process_get_kernel();
+    assert(kernelProcess != NULL);
 
-static thread_t* sched_find(sched_ctx_t* preferred, priority_t minPriority)
-{
-    thread_t* thread = sched_ctx_find(preferred, minPriority);
-    if (thread != NULL)
-    {
-        return thread;
-    }
-
-    for (uint64_t i = 0; i < smp_cpu_amount(); i++)
-    {
-        sched_ctx_t* other = &smp_cpu(i)->sched;
-        if (preferred == other)
-        {
-            continue;
-        }
-
-        thread_t* thread = sched_ctx_find(other, minPriority);
-        if (thread != NULL)
-        {
-            return thread;
-        }
-    }
-
-    return NULL;
-}
-
-static void sched_spawn_boot_thread(void)
-{
-    process_t* process = process_new(NULL, NULL, NULL);
-    assert(process != NULL && "failed to create boot process");
-
-    thread_t* thread = thread_new(process, NULL, PRIORITY_MAX - 1);
+    thread_t* thread = thread_new(kernelProcess, NULL);
     assert(thread != NULL && "failed to create boot thread");
-    thread->timeEnd = UINT64_MAX;
-
-    smp_self_unsafe()->sched.runThread = thread;
+    thread->sched.deadline = UINT64_MAX;
+    atomic_store(&thread->state, THREAD_RUNNING);
+    self->sched.runThread = thread;
 
     printf("sched: spawned boot thread\n");
 }
@@ -142,14 +126,37 @@ static void sched_spawn_boot_thread(void)
 void sched_init(void)
 {
     printf("sched: init\n");
-    sched_spawn_boot_thread();
+    sched_init_spawn_boot_thread();
 
     wait_queue_init(&sleepQueue);
+}
+
+void sched_done_with_boot_thread(void)
+{
+    cpu_t* self = smp_self_unsafe();
+    sched_cpu_ctx_t* ctx = &self->sched;
+
+    assert(self->isBootstrap && ctx->runThread->process == process_get_kernel() && ctx->runThread->id == 0);
+
+    // The boot thread becomes the bootstrap cpus idle thread.
+    ctx->runThread->sched.deadline = 0;
+    ctx->idleThread = ctx->runThread;
+
+    // Will enable interrupts.
+    sched_idle_loop();
 }
 
 wait_result_t sched_sleep(clock_t timeout)
 {
     return wait_block(&sleepQueue, timeout);
+}
+
+bool sched_is_idle(void)
+{
+    sched_cpu_ctx_t* ctx = &smp_self()->sched;
+    bool isIdle = ctx->runThread == ctx->idleThread;
+    smp_put();
+    return isIdle;
 }
 
 thread_t* sched_thread(void)
@@ -161,22 +168,17 @@ thread_t* sched_thread(void)
 
 process_t* sched_process(void)
 {
-    thread_t* thread = sched_thread();
-    if (thread == NULL)
-    {
-        log_panic(NULL, "sched_process called while idle");
-    }
-    return thread->process;
+    return sched_thread()->process;
 }
 
 void sched_process_exit(uint64_t status)
 {
     // TODO: Add handling for status, this todo has been here for like literraly a year...
-    sched_ctx_t* ctx = &smp_self()->sched;
+    sched_cpu_ctx_t* ctx = &smp_self()->sched;
     thread_t* thread = ctx->runThread;
     process_t* process = thread->process;
 
-    atomic_store(&thread->state, THREAD_ZOMBIE);
+    assert(atomic_exchange(&thread->state, THREAD_ZOMBIE) == THREAD_RUNNING);
 
     LOCK_DEFER(&process->threads.lock);
     if (process->threads.isDying)
@@ -202,52 +204,129 @@ void sched_process_exit(uint64_t status)
 
 void sched_thread_exit(void)
 {
-    sched_ctx_t* ctx = &smp_self()->sched;
-    thread_t* thread = ctx->runThread;
-    atomic_store(&thread->state, THREAD_ZOMBIE);
+    sched_cpu_ctx_t* ctx = &smp_self()->sched;
+    assert(atomic_exchange(&ctx->runThread->state, THREAD_ZOMBIE) == THREAD_RUNNING);
     smp_put();
 }
 
-void sched_push(thread_t* thread)
+static void sched_update_recent_idle_time(thread_t* thread, bool wasBlocking)
 {
-    assert(atomic_load(&thread->state) == THREAD_PARKED);
-
-    uint64_t cpuAmount = smp_cpu_amount();
-
-    uint64_t bestLength = UINT64_MAX;
-    cpu_t* best = NULL;
-    for (uint64_t i = 0; i < cpuAmount; i++)
+    clock_t uptime = systime_uptime();
+    clock_t delta = uptime - thread->sched.prevBlockCheck;
+    if (wasBlocking)
     {
-        cpu_t* cpu = smp_cpu(i);
-
-        uint64_t length = sched_ctx_thread_amount(&cpu->sched);
-        if (length < bestLength)
+        thread->sched.recentBlockTime = MIN(thread->sched.recentBlockTime + delta, CONFIG_MAX_RECENT_BLOCK_TIME);
+    }
+    else
+    {
+        if (delta < thread->sched.recentBlockTime)
         {
-            bestLength = length;
-            best = cpu;
+            thread->sched.recentBlockTime -= delta;
+        }
+        else
+        {
+            thread->sched.recentBlockTime = 0;
         }
     }
 
-    atomic_store(&thread->state, THREAD_READY);
-    sched_ctx_push(&best->sched, thread);
+    thread->sched.prevBlockCheck = uptime;
 }
 
-static void sched_update_parked_threads(trap_frame_t* trapFrame, sched_ctx_t* ctx)
+static void sched_compute_time_slice(thread_t* thread, thread_t* parent)
 {
-    while (1)
+    if (parent != NULL)
     {
-        thread_t* thread = CONTAINER_OF_SAFE(list_pop(&ctx->parkedThreads), thread_t, entry);
-        if (thread == NULL)
-        {
-            break;
-        }
+        clock_t uptime = systime_uptime();
+        clock_t remaining = uptime <= parent->sched.deadline ? parent->sched.deadline - uptime : 0;
 
-        sched_push(thread);
+        parent->sched.deadline = uptime + remaining / 2;
+
+        thread->sched.timeSlice = remaining / 2;
+    }
+    else
+    {
+        priority_t basePriority = atomic_load(&thread->process->priority);
+        thread->sched.timeSlice =
+            LERP_INT(CONFIG_MIN_TIME_SLICE, CONFIG_MAX_TIME_SLICE, basePriority, PRIORITY_MIN, PRIORITY_MAX);
     }
 }
 
-static void sched_update_zombie_threads(trap_frame_t* trapFrame, sched_ctx_t* ctx)
+static void sched_compute_actual_priority(thread_t* thread)
 {
+    priority_t basePriority = atomic_load(&thread->process->priority);
+
+    if (thread->sched.recentBlockTime >= CONFIG_MAX_RECENT_BLOCK_TIME / 2)
+    {
+        priority_t boost = MIN(CONFIG_MAX_PRIORITY_BOOST, PRIORITY_MAX - 1 - basePriority);
+        thread->sched.actualPriority = basePriority +
+            LERP_INT(0, boost, thread->sched.recentBlockTime, CONFIG_MAX_RECENT_BLOCK_TIME / 2,
+                CONFIG_MAX_RECENT_BLOCK_TIME);
+    }
+    else
+    {
+        priority_t penalty = MIN(CONFIG_MAX_PRIORITY_PENALTY, basePriority);
+        thread->sched.actualPriority =
+            basePriority - LERP_INT(0, penalty, thread->sched.recentBlockTime, 0, CONFIG_MAX_RECENT_BLOCK_TIME / 2);
+    }
+}
+
+static uint64_t sched_get_load(sched_cpu_ctx_t* ctx)
+{
+    LOCK_DEFER(&ctx->lock);
+    return ctx->active->length + ctx->expired->length + (ctx->runThread != NULL ? 1 : 0);
+}
+
+void sched_push(thread_t* thread, thread_t* parent, cpu_t* target)
+{
+    cpu_t* self = smp_self();
+
+    cpu_t* chosen = target != NULL ? target : self;
+
+    sched_compute_time_slice(thread, parent);
+    sched_compute_actual_priority(thread);
+
+    thread_state_t state = atomic_exchange(&thread->state, THREAD_READY);
+
+    LOCK_DEFER(&chosen->sched.lock);
+
+    if (state == THREAD_PARKED)
+    {
+        sched_queues_push(chosen->sched.active, thread);
+    }
+    else if (state == THREAD_UNBLOCKING)
+    {
+        sched_update_recent_idle_time(thread, true);
+        sched_queues_push(chosen->sched.active, thread);
+    }
+    else
+    {
+        assert(false && "Invalid thread state for sched_push");
+    }
+
+    if (chosen->sched.runThread != chosen->sched.idleThread &&
+        thread->sched.actualPriority > chosen->sched.runThread->sched.actualPriority)
+    {
+        smp_notify(chosen);
+    }
+    else if (chosen->sched.runThread == chosen->sched.idleThread)
+    {
+        smp_notify(chosen);
+    }
+
+    smp_put();
+}
+
+void sched_yield(void)
+{
+    thread_t* thread = smp_self()->sched.runThread;
+    thread->sched.deadline = 0;
+    smp_put();
+}
+
+void sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
+{
+    sched_cpu_ctx_t* ctx = &self->sched;
+
     while (1)
     {
         thread_t* thread = CONTAINER_OF_SAFE(list_pop(&ctx->zombieThreads), thread_t, entry);
@@ -258,87 +337,116 @@ static void sched_update_zombie_threads(trap_frame_t* trapFrame, sched_ctx_t* ct
 
         thread_free(thread);
     }
-}
 
-void sched_timer_trap(trap_frame_t* trapFrame, cpu_t* self)
-{
-    sched_ctx_t* ctx = &self->sched;
+    assert(ctx->runThread != NULL);
 
-    if (self->trapDepth > 1)
+    sched_update_recent_idle_time(ctx->runThread, false);
+
+    thread_state_t state = atomic_load(&ctx->runThread->state);
+    switch (state)
     {
-        return;
+    case THREAD_ZOMBIE:
+    {
+        assert(ctx->runThread != ctx->idleThread);
+
+        // Push zombie thread to a separate list to deal with later to avoid its stack being freed while its still being
+        // used.
+        list_push(&ctx->zombieThreads, &ctx->runThread->entry);
+        ctx->runThread = NULL; // Force a new thread to be loaded
     }
-
-    sched_update_parked_threads(trapFrame, ctx);
-    sched_update_zombie_threads(trapFrame, ctx);
-}
-
-void sched_yield(void)
-{
-    thread_t* thread = smp_self()->sched.runThread;
-    thread->timeEnd = 0;
-    smp_put();
-
-    sched_invoke();
-}
-
-void sched_invoke(void)
-{
-    asm volatile("int %0" ::"i"(VECTOR_SCHED_INVOKE));
-}
-
-void sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
-{
-    sched_ctx_t* ctx = &self->sched;
-
-    if (self->trapDepth > 1)
+    break;
+    case THREAD_PRE_BLOCK:
+    case THREAD_UNBLOCKING:
     {
-        return;
-    }
+        assert(ctx->runThread != ctx->idleThread);
 
-    if (ctx->runThread != NULL)
-    {
-        thread_state_t state = atomic_load(&ctx->runThread->state);
-        if (state == THREAD_ZOMBIE)
+        thread_save(ctx->runThread, trapFrame);
+
+        if (wait_finalize_block(trapFrame, self, ctx->runThread)) // Block finalized
         {
-            list_push(&ctx->zombieThreads, &ctx->runThread->entry);
-            ctx->runThread = NULL;
+            thread_save(ctx->runThread, trapFrame);
+            ctx->runThread = NULL; // Force a new thread to be loaded
         }
-        else if (state != THREAD_RUNNING)
+        else // Early unblock
         {
-            return;
+            atomic_store(&ctx->runThread->state, THREAD_RUNNING);
         }
     }
+    break;
+    case THREAD_RUNNING:
+    {
+        // Do nothing
+    }
+    break;
+    default:
+    {
+        log_panic(NULL, "sched: invalid thread state %d", state);
+    }
+    }
 
-    thread_t* next;
+    LOCK_DEFER(&ctx->lock);
+
+    clock_t uptime = systime_uptime();
+
+    priority_t minPriority;
     if (ctx->runThread == NULL)
     {
-        next = sched_find(ctx, PRIORITY_MIN);
-        if (next != NULL)
+        minPriority = PRIORITY_MIN;
+    }
+    else if (ctx->runThread == ctx->idleThread)
+    {
+        minPriority = PRIORITY_MIN;
+    }
+    else if (ctx->runThread->sched.deadline < uptime)
+    {
+        minPriority = PRIORITY_MIN;
+    }
+    else
+    {
+        minPriority = ctx->runThread->sched.actualPriority;
+    }
+
+    if (ctx->active->length == 0)
+    {
+        sched_queues_t* temp = ctx->active;
+        ctx->active = ctx->expired;
+        ctx->expired = temp;
+    }
+
+    thread_t* next = sched_queues_pop(ctx->active, minPriority);
+
+    if (next == NULL)
+    {
+        if (ctx->runThread == NULL)
         {
-            atomic_store(&next->state, THREAD_RUNNING);
-            thread_load(next, trapFrame);
-            ctx->runThread = next;
-        }
-        else
-        {
-            thread_load(NULL, trapFrame);
-            ctx->runThread = NULL;
+            assert(atomic_exchange(&ctx->idleThread->state, THREAD_RUNNING) == THREAD_READY);
+            thread_load(ctx->idleThread, trapFrame);
+            ctx->runThread = ctx->idleThread;
         }
     }
     else
     {
-        next = sched_find(ctx, ctx->runThread->timeEnd < systime_uptime() ? PRIORITY_MIN : ctx->runThread->priority);
-        if (next != NULL)
+        if (ctx->runThread != NULL)
         {
-            atomic_store(&ctx->runThread->state, THREAD_PARKED);
+            assert(atomic_exchange(&ctx->runThread->state, THREAD_READY) == THREAD_RUNNING);
             thread_save(ctx->runThread, trapFrame);
-            list_push(&ctx->parkedThreads, &ctx->runThread->entry);
-            ctx->runThread = NULL;
 
-            atomic_store(&next->state, THREAD_RUNNING);
-            thread_load(next, trapFrame);
-            ctx->runThread = next;
+            if (ctx->runThread != ctx->idleThread)
+            {
+                sched_compute_time_slice(ctx->runThread, NULL);
+                sched_compute_actual_priority(ctx->runThread);
+                sched_queues_push(ctx->expired, ctx->runThread);
+            }
         }
+
+        next->sched.deadline = uptime + next->sched.timeSlice;
+        assert(atomic_exchange(&next->state, THREAD_RUNNING) == THREAD_READY);
+        thread_load(next, trapFrame);
+        ctx->runThread = next;
+    }
+
+    if (ctx->runThread != ctx->idleThread && ctx->runThread->sched.deadline > uptime)
+    {
+        systime_timer_one_shot(self, uptime, ctx->runThread->sched.deadline - uptime);
     }
 }

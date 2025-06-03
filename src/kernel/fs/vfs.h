@@ -51,7 +51,7 @@ typedef struct volume
     char label[MAX_NAME];
     const volume_ops_t* ops;
     sysdir_t sysdir;
-    atomic_uint64 ref;
+    atomic_uint64_t ref;
 } volume_t;
 
 typedef struct wait_queue wait_queue_t;
@@ -83,7 +83,7 @@ typedef struct file
     syshdr_t* syshdr; // Used by sysfs
     const file_ops_t* ops;
     path_flags_t flags;
-    atomic_uint64 ref;
+    atomic_uint64_t ref;
     path_t path;
 } file_t;
 

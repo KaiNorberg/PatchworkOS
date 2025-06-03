@@ -5,7 +5,7 @@
 #include <sys/proc.h>
 #include <threads.h>
 
-void spawn_program(const char* path)
+void spawn_program(const char* path, priority_t priority)
 {
     if (path == NULL)
     {
@@ -15,7 +15,8 @@ void spawn_program(const char* path)
     fd_t klog = open("sys:/klog");
     const char* argv[] = {path, NULL};
     spawn_fd_t fds[] = {{.parent = klog, .child = STDOUT_FILENO}, SPAWN_FD_END};
-    spawn(argv, fds, "home:/usr", SPAWN_NONE);
+    spawn_attr_t attr = {.priority = priority};
+    spawn(argv, fds, "home:/usr", &attr);
     close(klog);
 }
 
@@ -28,6 +29,9 @@ int main(void)
         return EXIT_FAILURE;
     }
 
+    priority_t servicePriority = config_get_int(config, "startup", "service_priority", 31);
+    priority_t programPriority = config_get_int(config, "startup", "program_priority", 31);
+
     config_array_t* services = config_get_array(config, "startup", "services");
     if (services == NULL)
     {
@@ -38,7 +42,7 @@ int main(void)
     for (uint64_t i = 0; i < config_array_length(services); i++)
     {
         const char* service = config_array_get_string(services, i, NULL);
-        spawn_program(service);
+        spawn_program(service, servicePriority);
     }
 
     config_array_t* serviceFiles = config_get_array(config, "startup", "service_files");
@@ -49,7 +53,9 @@ int main(void)
         stat_t info;
         while (stat(file, &info) == ERR)
         {
+            printf("test1\n");
             thrd_yield();
+            printf("test2\n");
         }
     }
 
@@ -57,7 +63,7 @@ int main(void)
     for (uint64_t i = 0; i < config_array_length(programs); i++)
     {
         const char* program = config_array_get_string(programs, i, NULL);
-        spawn_program(program);
+        spawn_program(program, programPriority);
     }
 
     config_close(config);

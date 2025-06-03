@@ -5,7 +5,7 @@
 #include "fs/vfs.h"
 #include "mem/pmm.h"
 #include "proc/process.h"
-#include "sched/sched.h"
+#include "sched/thread.h"
 #include "stdbool.h"
 #include "utils/log.h"
 
@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #include <sys/math.h>
 
-static atomic_uint64 newId = ATOMIC_VAR_INIT(0);
+static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
 static uint64_t socket_accept_read(file_t* file, void* buffer, uint64_t count)
 {
@@ -47,7 +47,7 @@ static file_t* socket_accept_open(volume_t* volume, const path_t* path, sysobj_t
     }
 
     socket_t* newSocket = malloc(sizeof(socket_t));
-    if (socket == NULL)
+    if (newSocket == NULL)
     {
         return NULL;
     }
@@ -56,7 +56,7 @@ static file_t* socket_accept_open(volume_t* volume, const path_t* path, sysobj_t
 
     if (socket->family->accept(socket, newSocket) == ERR)
     {
-        free(socket);
+        free(newSocket);
         return NULL;
     }
 
@@ -68,7 +68,7 @@ static file_t* socket_accept_open(volume_t* volume, const path_t* path, sysobj_t
     file_t* file = file_new(volume, path, PATH_NONE);
     if (file == NULL)
     {
-        free(socket);
+        free(newSocket);
         return NULL;
     }
     file->ops = &fileOps;

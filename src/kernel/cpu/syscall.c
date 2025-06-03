@@ -11,10 +11,11 @@
 #include "fs/vfs_ctx.h"
 #include "gdt.h"
 #include "ipc/pipe.h"
+#include "kernel.h"
 #include "mem/vmm.h"
-#include "sched/thread.h"
 #include "sched/loader.h"
 #include "sched/sched.h"
+#include "sched/thread.h"
 #include "utils/log.h"
 
 #include <assert.h>
@@ -104,25 +105,42 @@ static bool string_is_valid(space_t* space, const char* string)
 void syscall_process_exit(uint64_t status)
 {
     sched_process_exit(status);
-    sched_invoke();
-    assert(false);
 }
 
 void syscall_thread_exit(void)
 {
     sched_thread_exit();
-    sched_invoke();
-    assert(false);
 }
 
-pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, spawn_flags_t flags)
+pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, spawn_attr_t* attr)
 {
-    process_t* process = sched_process();
+    thread_t* thread = sched_thread();
+    process_t* process = thread->process;
     space_t* space = &process->space;
 
-    if (!string_is_valid(space, cwd) && cwd != NULL)
+    if (cwd != NULL && !string_is_valid(space, cwd))
     {
-        return ERR;
+        return ERROR(EFAULT);
+    }
+
+    if (attr != NULL && !buffer_is_valid(space, attr, sizeof(spawn_attr_t)))
+    {
+        return ERROR(EFAULT);
+    }
+
+    priority_t priority;
+    if (attr == NULL || attr->flags & SPAWN_INHERIT_PRIORITY)
+    {
+        priority = atomic_load(&process->priority);
+    }
+    else
+    {
+        priority = attr->priority;
+    }
+
+    if (priority >= PRIORITY_MAX_USER)
+    {
+        return ERROR(EACCES);
     }
 
     uint64_t argc = 0;
@@ -166,7 +184,7 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, s
         }
     }
 
-    thread_t* child = loader_spawn(argv, PRIORITY_MIN, cwd == NULL ? NULL : PATH(process, cwd));
+    thread_t* child = loader_spawn(argv, priority, cwd == NULL ? NULL : PATH(process, cwd));
     if (child == NULL)
     {
         return ERR;
@@ -192,7 +210,7 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, s
         }
     }
 
-    sched_push(child);
+    sched_push(child, thread, NULL);
     return child->process->id;
 }
 
@@ -303,7 +321,7 @@ uint64_t syscall_close(fd_t fd)
 }
 
 uint64_t syscall_read(fd_t fd, void* buffer, uint64_t count)
-{    
+{
     process_t* process = sched_process();
     space_t* space = &process->space;
 
@@ -345,7 +363,7 @@ uint64_t syscall_write(fd_t fd, const void* buffer, uint64_t count)
 uint64_t syscall_seek(fd_t fd, int64_t offset, seek_origin_t origin)
 {
     process_t* process = sched_process();
-    
+
     file_t* file = vfs_ctx_file(&process->vfsCtx, fd);
     if (file == NULL)
     {
@@ -399,7 +417,7 @@ uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, clock_t timeout)
     process_t* process = sched_process();
     space_t* space = &process->space;
 
-    if (amount == 0 || amount > CONFIG_MAX_FD)
+    if (amount == 0 || amount >= CONFIG_MAX_FD)
     {
         return ERROR(EINVAL);
     }
@@ -518,7 +536,8 @@ uint64_t syscall_readdir(fd_t fd, stat_t* infos, uint64_t amount)
 
 tid_t syscall_thread_create(void* entry, void* arg)
 {
-    process_t* process = sched_process();
+    thread_t* thread = sched_thread();
+    process_t* process = thread->process;
     space_t* space = &process->space;
 
     if (!buffer_is_valid(space, entry, sizeof(uint64_t)))
@@ -526,14 +545,14 @@ tid_t syscall_thread_create(void* entry, void* arg)
         return ERROR(EFAULT);
     }
 
-    thread_t* thread = loader_thread_create(process, PRIORITY_MIN, entry, arg);
-    if (thread == NULL)
+    thread_t* newThread = loader_thread_create(process, entry, arg);
+    if (newThread == NULL)
     {
         return ERR;
     }
 
-    sched_push(thread);
-    return thread->id;
+    sched_push(newThread, thread, NULL);
+    return newThread->id;
 }
 
 uint64_t syscall_yield(void)
@@ -552,7 +571,7 @@ fd_t syscall_dup2(fd_t oldFd, fd_t newFd)
     return vfs_ctx_dup2(&sched_process()->vfsCtx, oldFd, newFd);
 }
 
-uint64_t syscall_futex(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t timeout)
+uint64_t syscall_futex(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout)
 {
     return futex_do(addr, val, op, timeout);
 }
@@ -636,6 +655,7 @@ void syscall_ctx_init(syscall_ctx_t* ctx, uint64_t kernelRsp)
 {
     ctx->kernelRsp = kernelRsp;
     ctx->userRsp = 0;
+    ctx->inSyscall = false;
 }
 
 void syscall_ctx_load(syscall_ctx_t* ctx)
@@ -654,8 +674,15 @@ void syscall_handler(trap_frame_t* trapFrame)
         return;
     }
 
+    thread_t* thread = sched_thread();
+    thread->syscall.inSyscall = true;
+
     uint64_t (*syscall)(uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e, uint64_t f) =
         syscallTable[selector];
     trapFrame->rax =
         syscall(trapFrame->rdi, trapFrame->rsi, trapFrame->rdx, trapFrame->r10, trapFrame->r8, trapFrame->r9);
+
+    thread->syscall.inSyscall = false;
+
+    kernel_checkpoint_invoke();
 }

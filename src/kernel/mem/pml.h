@@ -2,6 +2,8 @@
 
 #include "cpu/regs.h"
 #include "defs.h"
+#include "mem/pmm.h"
+#include "mem/vmm.h"
 
 #define PAGE_PRESENT (1 << 0)
 #define PAGE_WRITE (1 << 1)

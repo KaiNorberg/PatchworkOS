@@ -33,7 +33,7 @@ typedef struct local_connection
     local_listener_t* listener;
     lock_t lock;
     wait_queue_t waitQueue;
-    atomic_uint64 ref;
+    atomic_uint64_t ref;
     atomic_bool accepted;
 } local_connection_t;
 
@@ -47,7 +47,7 @@ typedef struct local_listener
     uint64_t length;
     lock_t lock;
     wait_queue_t waitQueue;
-    atomic_uint64 ref;
+    atomic_uint64_t ref;
     sysobj_t sysobj;
 } local_listener_t;
 

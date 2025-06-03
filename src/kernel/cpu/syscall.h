@@ -6,6 +6,7 @@ typedef struct
 {
     uint64_t kernelRsp;
     uint64_t userRsp;
+    bool inSyscall;
 } syscall_ctx_t;
 
 extern void syscall_entry(void);

@@ -91,20 +91,40 @@ time_t systime_unix_epoch(void)
     return bootEpoch + systime_uptime() / CLOCKS_PER_SEC;
 }
 
-static void systime_timer_init_ipi(trap_frame_t* trapFrame)
-{
-    clock_t uptime = systime_uptime();
-    clock_t interval = (CLOCKS_PER_SEC / CONFIG_TIMER_HZ) / smp_cpu_amount();
-    clock_t offset = ROUND_UP(uptime, interval) - uptime;
-    hpet_sleep(offset + interval * smp_self_unsafe()->id);
-
-    apic_timer_init(VECTOR_TIMER, CONFIG_TIMER_HZ);
-}
-
 void systime_timer_init(void)
 {
-    smp_send_others(systime_timer_init_ipi);
-    systime_timer_init_ipi(NULL);
+    cpu_t* self = smp_self_unsafe();
+    self->systime.apicTicksPerNs = apic_timer_ticks_per_ns();
+    self->systime.nextDeadline = CLOCKS_NEVER;
+    printf("systime: timer init apic_ticks_per_ns=%d\n", self->systime.apicTicksPerNs);
+}
 
-    printf("systime: timer_init hz=%d\n", CONFIG_TIMER_HZ);
+void systime_timer_trap(trap_frame_t* trapFrame, cpu_t* self)
+{
+    self->systime.nextDeadline = CLOCKS_NEVER;
+}
+
+void systime_timer_one_shot(cpu_t* self, clock_t uptime, clock_t timeout)
+{
+    if (timeout == CLOCKS_NEVER)
+    {
+        return;
+    }
+
+    clock_t deadline = uptime + timeout;
+    if (deadline < self->systime.nextDeadline)
+    {
+        uint64_t ticks = (timeout * self->systime.apicTicksPerNs) >> APIC_TIMER_TICKS_FIXED_POINT_OFFSET;
+        if (ticks > UINT32_MAX)
+        {
+            ticks = UINT32_MAX;
+        }
+        else if (ticks == 0)
+        {
+            ticks = 1;
+        }
+
+        self->systime.nextDeadline = deadline;
+        apic_timer_one_shot(VECTOR_TIMER, (uint32_t)ticks);
+    }
 }

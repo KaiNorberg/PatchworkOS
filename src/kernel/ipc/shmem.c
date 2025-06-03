@@ -4,16 +4,16 @@
 #include "fs/vfs.h"
 #include "mem/pmm.h"
 #include "mem/vmm.h"
-#include "sched/sched.h"
+#include "sched/thread.h"
 
 #include <assert.h>
 #include <errno.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/atomint.h>
 
-static atomic_uint64 newId = ATOMIC_VAR_INIT(0);
+static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
 static sysdir_t dir;
 static sysobj_t new;
@@ -103,8 +103,8 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
             }
         }
 
-        void* result =
-            vmm_map_pages(space, address, segment->pages, segment->pageAmount, prot, shmem_vmm_callback, shmem_ref(shmem));
+        void* result = vmm_map_pages(space, address, segment->pages, segment->pageAmount, prot, shmem_vmm_callback,
+            shmem_ref(shmem));
         if (result == NULL)
         {
             for (uint64_t i = 0; i < segment->pageAmount; i++)
@@ -122,7 +122,8 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
     {
         shmem_segment_t* segment = shmem->segment;
 
-        return vmm_map_pages(space, address, segment->pages, segment->pageAmount, prot, shmem_vmm_callback, shmem_ref(shmem));
+        return vmm_map_pages(space, address, segment->pages, segment->pageAmount, prot, shmem_vmm_callback,
+            shmem_ref(shmem));
     }
 }
 

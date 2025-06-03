@@ -1,8 +1,8 @@
 #ifndef _SYS_PROC_H
 #define _SYS_PROC_H 1
 
+#include <stdatomic.h>
 #include <stdint.h>
-#include <sys/atomint.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -28,6 +28,22 @@ extern "C"
  */
 
 /**
+ * @brief Priority type.
+ * @ingroup libstd_sys_proc
+ * @typedef priority_t
+ *
+ * The `priority_t` type is used to store the scheduling priority of a process, we also define three constants
+ * `PRIORITY_MIN`, which represents the lowest priority a process can have, `PRIORITY_MAX` which defines the maximum
+ * value of a process priority (not inclusive) and `PRIORITY_MAX_USER` which defines the maximum value that user space
+ * is allowed to specify for a process (not inclusive). See the kernel `sched_schedule()` function for more info.
+ *
+ */
+typedef uint8_t priority_t;
+#define PRIORITY_MAX 64
+#define PRIORITY_MAX_USER 32
+#define PRIORITY_MIN 0
+
+/**
  * @brief Stucture used to duplicate fds in `spawn()`.
  * @ingroup libstd_sys_proc
  *
@@ -46,14 +62,20 @@ typedef struct
  * @brief Spawn behaviour flags.
  * @ingroup libstd_sys_proc
  *
- * The `spawn_flags_t` enum is used to modify the behaviour when spawning a new process, for more information check the
- * `spawn()` function.
+ * The `spawn_flags_t` type is used to modify the behaviour when spawning a new process or provide additional
+ * information. We use a 64 bit integer to allow more flags to be implemented. For more information check the `spawn()`
+ * function.
+ *
+ * Available flags:
+ *
+ * - `SPAWN_NONE` - None
+ * - `SPAWN_INHERIT_PRIORITY` - Causes the new process to inherit the priority of the parent, the spawn_attr_t::priority
+ * field is ignored.
  *
  */
-typedef enum
-{
-    SPAWN_NONE, //!< None
-} spawn_flags_t;
+typedef uint64_t spawn_flags_t;
+#define SPAWN_NONE 0
+#define SPAWN_INHERIT_PRIORITY (1 << 0)
 
 /**
  * @brief Spawn fds termination constant.
@@ -67,6 +89,17 @@ typedef enum
     { \
         .child = FD_NONE, .parent = FD_NONE \
     }
+
+typedef struct
+{
+    spawn_flags_t flags;
+    priority_t priority;
+    uint8_t _padding[128 - sizeof(priority_t) - sizeof(spawn_flags_t)];
+} spawn_attr_t;
+
+#ifdef static_assert
+static_assert(sizeof(spawn_attr_t) == 128);
+#endif
 
 /**
  * @brief System call for creating child processes.
@@ -82,10 +115,11 @@ typedef enum
  * The array must be terminated by `SPAWN_FD_END`.
  * @param cwd The working directory for the child process. If `NULL`, the child inherits the parent's current
  * working directory.
- * @param flags Flags to control the spawning behavior, currently no spawn flags are implemented.
+ * @param attr The spawn attributes, allows for specifying additional information for the new process, if equal to NULL
+ * then use defaults.
  * @return On success, returns the childs pid, on failure returns `ERR` and errno is set.
  */
-pid_t spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, spawn_flags_t flags);
+pid_t spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, spawn_attr_t* attr);
 
 /**
  * @brief System call to retrieve the current pid.
@@ -235,7 +269,7 @@ typedef enum
  * @return On success, returns 0, except if using the `FUTEX_WAKE` operation then it returns the number of woken
  * threads. On failure, returns `ERR` and errno is set.
  */
-uint64_t futex(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t timeout);
+uint64_t futex(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout);
 
 /**
  * @brief System call for retreving the time since boot.

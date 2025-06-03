@@ -30,7 +30,7 @@ extern "C"
  * @param str The input string to be parsed.
  * @param maxLen The maximum length of the input string.
  * @param count A pointer to a `uint64_t` where the number of parsed arguments will be stored.
- * @return On success, returns a NULL-terminated array of strings (the parsed arguments). On failure, returns `NULL`.
+ * @return On success, returns a `NULL`-terminated array of strings (the parsed arguments). On failure, returns `NULL`.
  */
 const char** argsplit(const char* str, uint64_t maxLen, uint64_t* count);
 
@@ -38,7 +38,7 @@ const char** argsplit(const char* str, uint64_t maxLen, uint64_t* count);
  * @brief Standardized argument parsing function using a provided buffer.
  * @ingroup libstd_sys_argsplit
  *
- * The `argsplit_buf()` function is similar to `argsplit` but uses a pre-allocated buffer for storing the parsed
+ * The `argsplit_buf()` function is similar to `argsplit()` but uses a pre-allocated buffer for storing the parsed
  * arguments, useful for memory management.
  *
  * @param buf A pointer to the buffer to be used for storing the parsed arguments.
@@ -46,7 +46,7 @@ const char** argsplit(const char* str, uint64_t maxLen, uint64_t* count);
  * @param str The input string to be parsed.
  * @param maxLen The maximum length of the input string.
  * @param count A pointer to a `uint64_t` where the number of parsed arguments will be stored.
- * @return On success, returns a NULL-terminated array of strings (the parsed arguments) stored within the provided
+ * @return On success, returns a `NULL`-terminated array of strings (the parsed arguments) stored within the provided
  * buffer. On failure, returns `NULL`.
  */
 const char** argsplit_buf(void* buf, uint64_t size, const char* str, uint64_t maxLen, uint64_t* count);

@@ -6,6 +6,7 @@
 #include "cpu/trap.h"
 #include "ipc/note.h"
 #include "proc/process.h"
+#include "sched/sched.h"
 #include "sched/wait.h"
 
 #include <errno.h>
@@ -20,25 +21,12 @@
  */
 
 /**
- * @brief Thread priority type.
- * @ingroup kernel_sched_thread
- *
- * The `priority_t` type is used to store the scheduling priority of a thread, we also define two constants
- * `PRIORITY_MIN`, which represents the lowest priority a thread can have, and `PRIORITY_MAX` which defines the maximum
- * value of a threads priority (not inclusive). See `sched_schedule()` for more info.
- *
- */
-typedef uint8_t priority_t;
-#define PRIORITY_MAX 2
-#define PRIORITY_MIN 0
-
-/**
  * @brief Magic number to check for kernel stack overflow.
  * @ingroup kernel_sched_thread
+ * @def THREAD_CANARY
  *
  * The `THREAD_CANARY` constant is a magic number stored att the bottom of a threads kernel stack, if the kernel stack
- * were to overflow this value would be modified, therefor we check the value of the canary in the
- * `trap_handler()` to verify that hasent happened.
+ * were to overflow this value would be modified, therefor we check the value of the canary in the every now and then.
  *
  * Note that this kind of check is not fool proof, for example if a very large stack overflow were occur we would get
  * unpredictable behaviour as this would result in other modifications to the `thread_t` structure, however adding the
@@ -51,6 +39,7 @@ typedef uint8_t priority_t;
 /**
  * @brief Thread state enum.
  * @ingroup kernel_sched_thread
+ * @enum thread_state_t
  *
  * The `thread_state_t` enum is used to prevent race conditions, reduce the need for locks by having the `thread_t`
  * structures state member be atomic, and to make debugging easier.
@@ -58,14 +47,15 @@ typedef uint8_t priority_t;
  */
 typedef enum
 {
-    THREAD_PARKED,     //!< Is doing nothing, not in a queue, not blocking, think of it as "other".
-    THREAD_READY,      //!< Is ready to run and waiting to be scheduled.
-    THREAD_RUNNING,    //!< Is currently running on a cpu.
-    THREAD_ZOMBIE,     //!< Has exited and is waiting to be freed.
-    THREAD_PRE_BLOCK,  //!< Has started the process of blocking put has not yet been given to a owner cpu, used to
-                       //!< prevent race conditions when blocking on a lock.
-    THREAD_BLOCKED,    //!< Is blocking and waiting in one or multiple wait queues.
-    THREAD_UNBLOCKING, //!< Has started unblocking, used to prevent the same thread being unblocked multiple times.
+    THREAD_PARKED = 1 << 0,    //!< Is doing nothing, not in a queue, not blocking, think of it as "other".
+    THREAD_READY = 1 << 1,     //!< Is ready to run and waiting to be scheduled.
+    THREAD_RUNNING = 1 << 2,   //!< Is currently running on a cpu.
+    THREAD_ZOMBIE = 1 << 3,    //!< Has exited and is waiting to be freed.
+    THREAD_PRE_BLOCK = 1 << 4, //!< Has started the process of blocking put has not yet been given to a owner cpu, used
+                               //!< to prevent race conditions when blocking on a lock.
+    THREAD_BLOCKED = 1 << 5,   //!< Is blocking and waiting in one or multiple wait queues.
+    THREAD_UNBLOCKING =
+        1 << 6, //!< Has started unblocking, used to prevent the same thread being unblocked multiple times.
 } thread_state_t;
 
 /**
@@ -100,18 +90,6 @@ typedef struct thread
      */
     tid_t id;
     /**
-     * @brief The time in clock cycles that the threads current time slice started.
-     */
-    clock_t timeStart;
-    /**
-     * @brief The time in clock cycles that the threads current time slice will end.
-     */
-    clock_t timeEnd;
-    /**
-     * @brief The scheduling priority of the thread.
-     */
-    priority_t priority;
-    /**
      * @brief The current state of the thread, used to prevent race conditions and make debugging easier.
      */
     _Atomic(thread_state_t) state;
@@ -119,6 +97,10 @@ typedef struct thread
      * @brief The last error that occoured while the thread was running, specified using errno codes.
      */
     errno_t error;
+    /**
+     * @brief The threads sched context, for more info check the type description.
+     */
+    sched_thread_ctx_t sched;
     /**
      * @brief The threads wait context, for more info check the type description.
      */
@@ -154,6 +136,7 @@ typedef struct thread
 /**
  * @brief Retrieves the top of a threads kernel stack.
  * @ingroup kernel_sched_thread
+ * @def THREAD_KERNEL_STACK_TOP
  *
  * The `THREAD_KERNEL_STACK_TOP()` macro retrieves the address of the top of a threads kernel stack.
  *
@@ -168,6 +151,7 @@ typedef struct thread
 /**
  * @brief Retrieves the bottom of a threads kernel stack.
  * @ingroup kernel_sched_thread
+ * @def THREAD_KERNEL_STACK_BOTTOM
  *
  * The `THREAD_KERNEL_STACK_BOTTOM()` macro retrieves the address of the bottom of a threads kernel.
  *
@@ -188,7 +172,7 @@ typedef struct thread
  * @return On success, returns the newly created thread. On failure, returns `NULL` and the
  * running threads `thread_t::error` member is set.
  */
-thread_t* thread_new(process_t* process, void* entry, priority_t priority);
+thread_t* thread_new(process_t* process, void* entry);
 
 /**
  * @brief Frees a thread structure.
@@ -219,7 +203,7 @@ void thread_save(thread_t* thread, const trap_frame_t* trapFrame);
  * The `thread_load()` function loads state information from a `thread_t` structure, including but not limited to, the
  * trap frame, SIMD context, address space, and task state segment.
  *
- * @param thread The source threads to load state from, if equal to `NULL` then a special idle thread will be loaded.
+ * @param thread The source thread to load state from.
  * @param trapFrame The destination trap frame to load register state.
  */
 void thread_load(thread_t* thread, trap_frame_t* trapFrame);
@@ -238,7 +222,7 @@ bool thread_is_note_pending(thread_t* thread);
  * @ingroup kernel_sched_thread
  *
  * The `thread_send_note()` function sends a note to a thread using the `note_queue_push()` function, this function
- * should always be used over the `note_queue_push()` function, as it perfroms additional checks, like deciding how
+ * should always be used over the `note_queue_push()` function, as it performs additional checks, like deciding how
  * critical the sent note is and unblocking the thread to notify it of the received note.
  *
  * @param thread The destination thread.

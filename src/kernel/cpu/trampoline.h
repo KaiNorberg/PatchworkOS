@@ -12,6 +12,6 @@ extern void trampoline_virtual_start(void);
 
 void trampoline_init(void);
 
-void trampoline_cpu_setup(cpu_t* cpu);
+void trampoline_cpu_setup(uint64_t rsp);
 
 void trampoline_deinit(void);

@@ -4,6 +4,7 @@
 #include "fs/sysfs.h"
 #include "fs/vfs_ctx.h"
 #include "mem/vmm.h"
+#include "sched/sched.h"
 #include "sched/wait.h"
 #include "sync/futex.h"
 
@@ -27,6 +28,7 @@ typedef struct
 typedef struct process
 {
     pid_t id;
+    _Atomic(priority_t) priority;
     argv_t argv;
     vfs_ctx_t vfsCtx;
     space_t space;
@@ -39,10 +41,12 @@ typedef struct process
     process_dir_t dir;
 } process_t;
 
-process_t* process_new(process_t* parent, const char** argv, const path_t* cwd);
+process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, priority_t priority);
 
 void process_free(process_t* process);
 
 bool process_is_child(process_t* process, pid_t parentId);
 
 void process_backend_init(void);
+
+process_t* process_get_kernel(void);

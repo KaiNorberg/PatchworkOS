@@ -1,7 +1,7 @@
 #include "note.h"
 
 #include "cpu/smp.h"
-#include "sched/sched.h"
+#include "sched/thread.h"
 #include "utils/log.h"
 
 #include <assert.h>
@@ -87,17 +87,12 @@ void note_dispatch(trap_frame_t* trapFrame, cpu_t* self)
     // TODO: Implement more notes and implement user space "software interrupts" to receive notes.
 
     thread_t* thread = sched_thread();
-    if (thread == NULL)
-    {
-        return;
-    }
-
     note_queue_t* queue = &thread->notes;
 
     note_t note;
     while (note_queue_pop(queue, &note))
     {
-        if (strcmp(note.message, "kill") == 0)
+        if (strcmp(note.message, "kill") == 0) // TODO: Fix bug.
         {
             printf("note: kill tid=%d pid=%d\n", thread->id, thread->process->id);
 
@@ -107,7 +102,7 @@ void note_dispatch(trap_frame_t* trapFrame, cpu_t* self)
         }
         else
         {
-            printf("note: unknown (%s)\n", note.message);
+            printf("note: unknown (%s) tid=%d pid=%d\n", note.message, thread->id, thread->process->id);
             // TODO: Unknown note, send to userspace
         }
     }

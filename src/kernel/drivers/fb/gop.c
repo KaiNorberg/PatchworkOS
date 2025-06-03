@@ -3,6 +3,7 @@
 #include "defs.h"
 #include "fb.h"
 #include "mem/vmm.h"
+#include "proc/process.h"
 #include "sched/sched.h"
 #include "utils/log.h"
 

@@ -9,7 +9,7 @@
 #include "drivers/systime/systime.h"
 #include "font.h"
 #include "mem/pmm.h"
-#include "sched/sched.h"
+#include "sched/thread.h"
 #include "sync/lock.h"
 #include "utils/font.h"
 #include "utils/ring.h"
@@ -37,7 +37,7 @@ static bool isScreenEnabled;
 static bool isTimeEnabled;
 static bool isLastCharWasNewline;
 
-static atomic_bool panicking;
+static atomic_bool panicing;
 
 static lock_t lock;
 
@@ -186,7 +186,7 @@ void log_init(void)
     isTimeEnabled = false;
     isLastCharWasNewline = false;
     lock_init(&lock);
-    atomic_init(&panicking, false);
+    atomic_init(&panicing, false);
     gop.base = NULL;
 
 #if CONFIG_LOG_SERIAL
@@ -327,11 +327,92 @@ void log_print(const char* str)
     }
 }
 
+static void log_trap_frame_stack_trace(const trap_frame_t* trapFrame)
+{
+    printf("[TRAP FRAME STACK TRACE]\n");
+
+    uint64_t* frame = (uint64_t*)trapFrame->rsp;
+    uint64_t frameNum = 0;
+
+    printf("RSP: 0x%016lx\n", trapFrame->rsp);
+
+    uint64_t* rbp = (uint64_t*)trapFrame->rbp;
+    while (rbp != NULL && frameNum < 64)
+    {
+
+        if ((uintptr_t)rbp < PAGE_SIZE || (uintptr_t)rbp >= VMM_HIGHER_HALF_END ||
+            ((uintptr_t)rbp > VMM_LOWER_HALF_END && (uintptr_t)rbp < VMM_LOWER_HALF_START))
+        {
+            printf("[INVALID USER FRAME: 0x%016lx]\n", (uintptr_t)rbp);
+            break;
+        }
+
+        if ((uintptr_t)rbp & 0x7)
+        {
+            printf("[MISALIGNED USER FRAME: 0x%016lx]\n", (uintptr_t)rbp);
+            break;
+        }
+
+        uint64_t returnAddr = 0;
+        uint64_t nextFrame = 0;
+
+        returnAddr = rbp[1];
+        nextFrame = rbp[0];
+
+        if (returnAddr != 0)
+        {
+            printf("#%02d: [0x%016lx]\n", frameNum, returnAddr);
+        }
+        else
+        {
+            printf("[TRAP FRAME STACK TRACE END]\n");
+            break;
+        }
+
+        rbp = (uint64_t*)nextFrame;
+        frameNum++;
+    }
+
+    if (frameNum == 0)
+    {
+        printf("No user frames found\n");
+    }
+}
+
+static void log_direct_stack_trace(void)
+{
+    printf("[DIRECT STACK TRACE]\n");
+    void* frame = __builtin_frame_address(0);
+    uint64_t frameNum = 0;
+    while (frame != NULL && frameNum < 64)
+    {
+        if ((uintptr_t)frame & 0x7)
+        {
+            printf("[MISALIGNED FRAME: 0x%016lx]\n", (uintptr_t)frame);
+            break;
+        }
+
+        void* returnAddr = *((void**)frame + 1);
+        if (returnAddr != NULL && (returnAddr >= (void*)&_kernelStart && returnAddr < (void*)&_kernelEnd))
+        {
+            printf("#%02d: [0x%016lx]\n", frameNum, returnAddr);
+        }
+        else
+        {
+            printf("[DIRECT STACK TRACE END: 0x%016lx]\n", returnAddr);
+            break;
+        }
+
+        frame = *((void**)frame);
+        frameNum++;
+    }
+}
+
 NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
 {
     asm volatile("cli");
 
-    if (atomic_exchange(&panicking, true))
+    if (atomic_exchange(&panicing, true))
     {
         while (true)
         {
@@ -354,16 +435,22 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
     vprintf(bigString, args);
     va_end(args);
 
+    cpu_t* self = smp_self_unsafe();
+
     // System ctx
     printf("[SYSTEM STATE]\n");
-    thread_t* thread = sched_thread();
-    if (thread != NULL)
+    thread_t* thread = self->sched.idleThread;
+    if (thread == NULL)
     {
-        printf("thread: cpu=%d pid=%d tid=%d\n", smp_self_unsafe()->id, thread->process->id, thread->id);
+        printf("thread: cpu=%d NULL THREAD\n");
+    }
+    else if (thread == self->sched.idleThread)
+    {
+        printf("thread: CPU=%d IDLE\n", self->id);
     }
     else
     {
-        printf("thread: CPU=%d IDLE\n", smp_self_unsafe()->id);
+        printf("thread: cpu=%d pid=%d tid=%d\n", self->id, thread->process->id, thread->id);
     }
 
     printf("memory: free=%dKB reserved=%dKB\n", (pmm_free_amount() * PAGE_SIZE) / 1024,
@@ -387,30 +474,13 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
             trapFrame->r15);
     }
 
-    printf("[STACK TRACE]\n");
-    void* frame = __builtin_frame_address(0);
-    uint64_t frameNum = 0;
-    while (frame != NULL && frameNum < 64)
+    if (trapFrame != NULL)
     {
-        if ((uintptr_t)frame & 0x7)
-        {
-            printf("[MISALIGNED FRAME: 0x%016lx]\n", (uintptr_t)frame);
-            break;
-        }
-
-        void* returnAddr = *((void**)frame + 1);
-        if (returnAddr != NULL && (returnAddr >= (void*)&_kernelStart && returnAddr < (void*)&_kernelEnd))
-        {
-            printf("#%02d: [0x%016lx]\n", frameNum, returnAddr);
-        }
-        else
-        {
-            printf("[STACK TRACE END: 0x%016lx]\n", returnAddr);
-            break;
-        }
-
-        frame = *((void**)frame);
-        frameNum++;
+        log_trap_frame_stack_trace(trapFrame);
+    }
+    else
+    {
+        log_direct_stack_trace();
     }
 
     printf("!!! KERNEL PANIC END - Please restart your machine !!!\n");

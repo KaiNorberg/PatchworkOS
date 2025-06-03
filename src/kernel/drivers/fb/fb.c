@@ -2,16 +2,15 @@
 
 #include "defs.h"
 #include "fs/sysfs.h"
-#include "sched/sched.h"
+#include "sched/thread.h"
 #include "utils/log.h"
 
 #include <assert.h>
 #include <stdatomic.h>
 #include <stdio.h>
-#include <sys/atomint.h>
 #include <sys/fb.h>
 
-static atomic_uint64 newId = ATOMIC_VAR_INIT(0);
+static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
 static void* fb_mmap(file_t* file, void* addr, uint64_t length, prot_t prot)
 {

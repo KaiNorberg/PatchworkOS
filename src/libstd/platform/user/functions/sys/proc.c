@@ -4,9 +4,9 @@
 #include "platform/platform.h"
 #include "platform/user/common/syscalls.h"
 
-pid_t spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, spawn_flags_t flags)
+pid_t spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, spawn_attr_t* attr)
 {
-    pid_t result = _SyscallSpawn(argv, fds, cwd, flags);
+    pid_t result = _SyscallSpawn(argv, fds, cwd, attr);
     if (result == ERR)
     {
         errno = _SyscallLastError();
@@ -74,7 +74,7 @@ uint64_t mprotect(void* address, uint64_t length, prot_t prot)
     return result;
 }
 
-uint64_t futex(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t timeout)
+uint64_t futex(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout)
 {
     uint64_t result = _SyscallFutex(addr, val, op, timeout);
     if (result == ERR)

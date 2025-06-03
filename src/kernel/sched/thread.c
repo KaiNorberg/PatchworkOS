@@ -8,20 +8,20 @@
 #include "fs/path.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
+#include "sched/loader.h"
 #include "sched/sched.h"
 #include "sched/wait.h"
 #include "sync/futex.h"
 #include "sync/lock.h"
 #include "sys/io.h"
 #include "utils/log.h"
-#include "loader.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/math.h>
 
-thread_t* thread_new(process_t* process, void* entry, priority_t priority)
+thread_t* thread_new(process_t* process, void* entry)
 {
     LOCK_DEFER(&process->threads.lock);
 
@@ -39,9 +39,7 @@ thread_t* thread_new(process_t* process, void* entry, priority_t priority)
     thread->process = process;
     list_entry_init(&thread->processEntry);
     thread->id = thread->process->threads.newTid++;
-    thread->timeStart = 0;
-    thread->timeEnd = 0;
-    thread->priority = MIN(priority, PRIORITY_MAX - 1);
+    sched_thread_ctx_init(&thread->sched);
     atomic_init(&thread->state, THREAD_PARKED);
     thread->error = 0;
     wait_thread_ctx_init(&thread->wait);
@@ -72,10 +70,12 @@ void thread_free(thread_t* thread)
     lock_acquire(&process->threads.lock);
     list_remove(&thread->processEntry);
 
-    // If the entire process is dying then there is no point in unmaping the stack as all memory will be unmapped anyway.
+    // If the entire process is dying then there is no point in unmaping the stack as all memory will be unmapped
+    // anyway.
     if (!process->threads.isDying)
     {
-        vmm_unmap(&process->space, (void*)LOADER_USER_STACK_BOTTOM(thread->id), CONFIG_MAX_USER_STACK_PAGES * PAGE_SIZE); // Ignore failure
+        vmm_unmap(&process->space, (void*)LOADER_USER_STACK_BOTTOM(thread->id),
+            CONFIG_MAX_USER_STACK_PAGES * PAGE_SIZE); // Ignore failure
     }
 
     if (list_is_empty(&process->threads.list))
@@ -102,30 +102,12 @@ void thread_load(thread_t* thread, trap_frame_t* trapFrame)
 {
     cpu_t* self = smp_self_unsafe();
 
-    if (thread == NULL)
-    {
-        memset(trapFrame, 0, sizeof(trap_frame_t));
-        trapFrame->rip = (uint64_t)sched_idle_loop;
-        trapFrame->cs = GDT_KERNEL_CODE;
-        trapFrame->ss = GDT_KERNEL_DATA;
-        trapFrame->rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
-        trapFrame->rsp = (uint64_t)self->idleStack + CPU_IDLE_STACK_SIZE;
+    *trapFrame = thread->trapFrame;
 
-        space_load(NULL);
-        tss_stack_load(&self->tss, NULL);
-    }
-    else
-    {
-        thread->timeStart = systime_uptime();
-        thread->timeEnd = thread->timeStart + CONFIG_TIME_SLICE;
-
-        *trapFrame = thread->trapFrame;
-
-        space_load(&thread->process->space);
-        tss_stack_load(&self->tss, (void*)((uint64_t)thread->kernelStack + CONFIG_KERNEL_STACK));
-        simd_ctx_load(&thread->simd);
-        syscall_ctx_load(&thread->syscall);
-    }
+    space_load(&thread->process->space);
+    tss_stack_load(&self->tss, (void*)THREAD_KERNEL_STACK_TOP(thread));
+    simd_ctx_load(&thread->simd);
+    syscall_ctx_load(&thread->syscall);
 }
 
 bool thread_is_note_pending(thread_t* thread)
@@ -149,7 +131,7 @@ uint64_t thread_send_note(thread_t* thread, const void* message, uint64_t length
     thread_state_t expected = THREAD_BLOCKED;
     if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
     {
-        wait_unblock_thread(thread, WAIT_NOTE, NULL, true);
+        wait_unblock_thread(thread, WAIT_NOTE);
     }
 
     return 0;

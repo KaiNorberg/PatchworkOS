@@ -14,7 +14,7 @@ void main(boot_info_t* bootInfo)
     kernel_init(bootInfo);
 
     const char* argv[] = {"home:/bin/init", NULL};
-    thread_t* initThread = loader_spawn(argv, PRIORITY_MIN + 1, NULL);
+    thread_t* initThread = loader_spawn(argv, PRIORITY_MAX_USER - 2, NULL);
     assert(initThread != NULL);
 
     // Set klog as stdout for init process
@@ -23,10 +23,7 @@ void main(boot_info_t* bootInfo)
     assert(vfs_ctx_openas(&initThread->process->vfsCtx, STDOUT_FILENO, klog) != ERR);
     file_deref(klog);
 
-    sched_push(initThread);
+    sched_push(initThread, NULL, NULL);
 
-    // Exit boot thread
-    sched_thread_exit();
-    while (1)
-        ;
+    sched_done_with_boot_thread();
 }

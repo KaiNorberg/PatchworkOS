@@ -41,6 +41,9 @@ int main(void)
 {
     display_t* disp = display_new();
 
+    display_unsubscribe(disp, EVENT_KBD);
+    display_unsubscribe(disp, EVENT_MOUSE);
+
     rect_t rect;
     display_screen_rect(disp, &rect, 0);
 

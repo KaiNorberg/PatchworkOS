@@ -4,7 +4,7 @@
 #include "drivers/systime/systime.h"
 #include "mem/pmm.h"
 #include "mem/vmm.h"
-#include "sched/sched.h"
+#include "sched/thread.h"
 #include "utils/log.h"
 
 #include <stdio.h>

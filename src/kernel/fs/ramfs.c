@@ -1,9 +1,9 @@
 #include "ramfs.h"
 
-#include "../mem/pmm.h"
-#include "../sched/sched.h"
-#include "../utils/log.h"
+#include "mem/pmm.h"
+#include "sched/thread.h"
 #include "sysfs.h"
+#include "utils/log.h"
 #include "vfs.h"
 #include "view.h"
 

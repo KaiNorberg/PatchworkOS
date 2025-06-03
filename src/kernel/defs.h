@@ -5,7 +5,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <sys/atomint.h>
 
 #define ALIGNED(alignment) __attribute__((aligned(alignment)))
 #define PACKED __attribute__((packed))
@@ -17,20 +16,12 @@
 
 #define ERROR(code) \
     ({ \
-        thread_t* thread = sched_thread(); \
-        if (thread != NULL) \
-        { \
-            thread->error = code; \
-        } \
+        sched_thread()->error = code; \
         ERR; \
     })
 
 #define ERRPTR(code) \
     ({ \
-        thread_t* thread = sched_thread(); \
-        if (thread != NULL) \
-        { \
-            thread->error = code; \
-        } \
+        sched_thread()->error = code; \
         NULL; \
     })

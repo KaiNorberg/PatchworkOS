@@ -1,6 +1,6 @@
 #include "vfs_ctx.h"
 
-#include "sched/sched.h"
+#include "sched/thread.h"
 #include "utils/log.h"
 #include "vfs.h"
 

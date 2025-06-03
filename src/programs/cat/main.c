@@ -4,45 +4,55 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <threads.h>
+#include <sys/io.h>
+
+#define BUFFER_SIZE 1024
+
+static int cat(fd_t fd, const char* name)
+{
+    while (1)
+    {
+        char buffer[BUFFER_SIZE];
+        uint64_t count = read(fd, buffer, BUFFER_SIZE - 1);
+        if (count == ERR)
+        {
+            printf("cat: failed to read %s (%s)\n", name, strerror(errno));
+            close(fd);
+            return EXIT_FAILURE;
+        }
+        if (count == 0)
+        {
+            break;
+        }
+
+        write(STDOUT_FILENO, buffer, count);
+    }
+
+    return EXIT_SUCCESS;
+}
 
 int main(int argc, char** argv)
 {
     if (argc == 1)
     {
-        while (1)
-        {
-            char chr = getchar();
-            if (chr == EOF)
-            {
-                break;
-            }
-
-            putchar(chr);
-        }
+        return cat(STDIN_FILENO, "stdin");
     }
 
     for (int i = 1; i < argc; i++)
     {
-        FILE* file = fopen(argv[i], "r");
-        if (file == NULL)
+        fd_t fd = open(argv[i]);
+        if (fd == ERR)
         {
-            fprintf(stderr, "cat: can't open %s (%s)\n", argv[i], strerror(errno));
+            printf("cat: failed to open %s (%s)\n", argv[i], strerror(errno));
             continue;
         }
 
-        while (1)
+        if (cat(fd, argv[i]) == EXIT_FAILURE)
         {
-            char chr = fgetc(file);
-            if (chr == EOF)
-            {
-                break;
-            }
-
-            putchar(chr);
+            return EXIT_FAILURE;
         }
 
-        fclose(file);
+        close(fd);
     }
 
     return EXIT_SUCCESS;

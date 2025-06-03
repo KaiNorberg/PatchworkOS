@@ -104,7 +104,7 @@ void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* self)
     stat->trapBegin = systime_uptime();
 
     clock_t timeBetweenTraps = stat->trapBegin - stat->trapEnd;
-    if (sched_thread() == NULL)
+    if (sched_is_idle())
     {
         stat->idleClocks += timeBetweenTraps;
     }

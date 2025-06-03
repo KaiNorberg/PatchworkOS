@@ -303,4 +303,18 @@ typedef atomic_bool atomic_flag;
 #define atomic_flag_clear(object) atomic_flag_clear_explicit(object, memory_order_seq_cst)
 #define atomic_flag_test_and_set(object) atomic_flag_test_and_set_explicit(object, memory_order_seq_cst)
 
+/*
+ * Atomic integers for C11
+ */
+
+typedef _Atomic(uint64_t) atomic_uint64_t;
+typedef _Atomic(uint32_t) atomic_uint32_t;
+typedef _Atomic(uint16_t) atomic_uint16_t;
+typedef _Atomic(uint8_t) atomic_uint8_t;
+
+typedef _Atomic(int64_t) atomic_int64_t;
+typedef _Atomic(int32_t) atomic_int32_t;
+typedef _Atomic(int16_t) atomic_int16_t;
+typedef _Atomic(int8_t) atomic_int8_t;
+
 #endif /* !_STDATOMIC_H_ */

@@ -23,9 +23,9 @@ void trampoline_init(void)
     WRITE_64(TRAMPOLINE_ENTRY_ADDRESS, smp_entry);
 }
 
-void trampoline_cpu_setup(cpu_t* cpu)
+void trampoline_cpu_setup(uint64_t rsp)
 {
-    WRITE_64(TRAMPOLINE_STACK_TOP_ADDRESS, (uint64_t)cpu->idleStack + CPU_IDLE_STACK_SIZE);
+    WRITE_64(TRAMPOLINE_STACK_TOP_ADDRESS, rsp);
 }
 
 void trampoline_deinit(void)

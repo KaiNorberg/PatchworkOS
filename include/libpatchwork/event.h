@@ -186,7 +186,9 @@ typedef struct event
     };
 } event_t;
 
+#ifdef static_assert
 static_assert(sizeof(event_t) == 144, "invalid event_t size");
+#endif
 
 #if defined(__cplusplus)
 }

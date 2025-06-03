@@ -3,7 +3,7 @@
 #include "fs/ctl.h"
 #include "fs/vfs.h"
 #include "fs/view.h"
-#include "sched/sched.h"
+#include "sched/thread.h"
 #include "sync/lock.h"
 #include "sync/rwlock.h"
 #include "utils/log.h"
@@ -15,6 +15,8 @@
 #include <sys/list.h>
 #include <sys/math.h>
 
+static process_t* kernelProcess = NULL;
+
 static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 
 // Should be acquired whenever a process tree is being read or modified.
@@ -22,12 +24,28 @@ static rwlock_t treeLock;
 
 static process_dir_t self;
 
-static uint64_t process_ctl_wait(file_t* file, uint64_t argc, const char** argv)
+static process_t* process_file_get_process(file_t* file)
 {
     process_t* process = file->private;
     if (process == NULL)
     {
         process = sched_process();
+    }
+
+    if (process == kernelProcess)
+    {
+        return ERRPTR(EACCES);
+    }
+
+    return process;
+}
+
+static uint64_t process_ctl_wait(file_t* file, uint64_t argc, const char** argv)
+{
+    process_t* process = process_file_get_process(file);
+    if (process == NULL)
+    {
+        return ERR;
     }
 
     WAIT_BLOCK(&process->queue, ({
@@ -37,18 +55,30 @@ static uint64_t process_ctl_wait(file_t* file, uint64_t argc, const char** argv)
     return 0;
 }
 
+static uint64_t process_ctl_prio(file_t* file, uint64_t argc, const char** argv)
+{
+    process_t* process = process_file_get_process(file);
+    if (process == NULL)
+    {
+        return ERR;
+    }
+
+    return 0;
+}
+
 CTL_STANDARD_OPS_DEFINE(ctlOps, PATH_NONE,
     (ctl_array_t){
         {"wait", process_ctl_wait, 1, 1},
+        {"prio", process_ctl_prio, 2, 2},
         {0},
     });
 
 static uint64_t process_cwd_view_init(file_t* file, view_t* view)
 {
-    process_t* process = file->private;
+    process_t* process = process_file_get_process(file);
     if (process == NULL)
     {
-        process = sched_process();
+        return ERR;
     }
 
     char* cwd = malloc(MAX_PATH);
@@ -79,10 +109,10 @@ VIEW_STANDARD_OPS_DEFINE(cwdOps, PATH_NONE,
 
 static uint64_t process_cmdline_view_init(file_t* file, view_t* view)
 {
-    process_t* process = file->private;
+    process_t* process = process_file_get_process(file);
     if (process == NULL)
     {
-        process = sched_process();
+        return ERR;
     }
 
     char* first = process->argv.buffer[0];
@@ -105,7 +135,12 @@ VIEW_STANDARD_OPS_DEFINE(cmdlineOps, PATH_NONE,
 
 static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t count)
 {
-    process_t* process = file->private;
+    process_t* process = process_file_get_process(file);
+    if (process == NULL)
+    {
+        return ERR;
+    }
+
     LOCK_DEFER(&process->threads.lock);
 
     thread_t* thread = CONTAINER_OF_SAFE(list_first(&process->threads.list), thread_t, processEntry);
@@ -136,7 +171,7 @@ static void process_dir_init(process_dir_t* dir, const char* name, process_t* pr
     assert(sysobj_init(&dir->noteObj, &dir->sysdir, "note", &noteOps, process) != ERR);
 }
 
-process_t* process_new(process_t* parent, const char** argv, const path_t* cwd)
+process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, priority_t priority)
 {
     process_t* process = malloc(sizeof(process_t));
     if (process == NULL)
@@ -145,6 +180,7 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd)
     }
 
     process->id = atomic_fetch_add(&newPid, 1);
+    atomic_init(&process->priority, priority);
     if (argv_init(&process->argv, argv) == ERR)
     {
         return ERRPTR(ENOMEM);
@@ -249,9 +285,17 @@ bool process_is_child(process_t* process, pid_t parentId)
 
 void process_backend_init(void)
 {
-    printf("process_backend: init\n");
+    rwlock_init(&treeLock);
 
+    printf("process: init self dir\n");
     process_dir_init(&self, "self", NULL);
 
-    rwlock_init(&treeLock);
+    printf("process: create kernel process\n");
+    kernelProcess = process_new(NULL, NULL, NULL, PRIORITY_MAX - 1);
+    assert(kernelProcess != NULL);
+}
+
+process_t* process_get_kernel(void)
+{
+    return kernelProcess;
 }

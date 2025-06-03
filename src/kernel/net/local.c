@@ -4,7 +4,7 @@
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "mem/pmm.h"
-#include "sched/sched.h"
+#include "sched/thread.h"
 #include "sched/wait.h"
 #include "socket.h"
 #include "sync/lock.h"
@@ -201,7 +201,7 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
     if (local->state != LOCAL_SOCKET_LISTEN)
     {
         lock_release(&local->lock);
-        return ERROR(ENOOP);
+        return ERROR(ENOTSUP);
     }
     local_listener_t* listener = local->listen.listener;
     lock_release(&local->lock);
@@ -291,7 +291,7 @@ static uint64_t local_socket_bind(socket_t* socket, const char* address)
 
     if (local->state != LOCAL_SOCKET_BLANK)
     {
-        return ERROR(ENOOP);
+        return ERROR(ENOTSUP);
     }
     if (!path_is_name_valid(address))
     {
@@ -310,7 +310,7 @@ static uint64_t local_socket_listen(socket_t* socket)
 
     if (local->state != LOCAL_SOCKET_BOUND)
     {
-        return ERROR(ENOOP);
+        return ERROR(ENOTSUP);
     }
     local_listener_t* listener = local_listener_new(local->bind.address);
     if (listener == NULL)
@@ -335,7 +335,7 @@ static uint64_t local_socket_connect(socket_t* socket, const char* address)
     if (local->state != LOCAL_SOCKET_BLANK)
     {
         lock_release(&local->lock);
-        return ERROR(ENOOP);
+        return ERROR(ENOTSUP);
     }
 
     local_connection_t* conn = local_connection_new(address); // Reference from here
@@ -401,7 +401,7 @@ static uint64_t local_socket_get_ring_and_conn(local_socket_t* local, bool isSen
         {
             (*ring) = &local->connect.conn->clientRing;
         }
-        (*conn) = local->accept.conn;
+        (*conn) = local->connect.conn;
     }
     break;
     case LOCAL_SOCKET_ACCEPT:
@@ -419,7 +419,7 @@ static uint64_t local_socket_get_ring_and_conn(local_socket_t* local, bool isSen
     break;
     default:
     {
-        return ERROR(ENOOP);
+        return ERROR(ENOTSUP);
     }
     }
     return 0;
@@ -430,7 +430,7 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
     local_socket_t* local = socket->private;
     if (local->state != LOCAL_SOCKET_CONNECT && local->state != LOCAL_SOCKET_ACCEPT)
     {
-        return ERROR(ENOOP);
+        return ERROR(ENOTSUP);
     }
     if (count == 0 || count >= LOCAL_BUFFER_SIZE - sizeof(local_packet_header_t))
     {
@@ -484,7 +484,7 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
     local_socket_t* local = socket->private;
     if (local->state != LOCAL_SOCKET_CONNECT && local->state != LOCAL_SOCKET_ACCEPT)
     {
-        return ERROR(ENOOP);
+        return ERROR(ENOTSUP);
     }
     if (count == 0 || count >= LOCAL_BUFFER_SIZE - sizeof(local_packet_header_t))
     {
@@ -533,7 +533,7 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
         ring_read_at(ring, sizeof(local_packet_header_t) + *offset, buffer, readCount);
     }
 
-    if (sizeof(local_packet_header_t) + *offset + count >= readCount)
+    if (*offset + readCount >= readCount)
     {
         ring_move_read_forward(ring, sizeof(local_packet_header_t) + header.size);
         *offset = 0;
@@ -555,14 +555,7 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
     {
         local_listener_t* listener = local->listen.listener;
         LOCK_DEFER(&listener->lock);
-        if (local_listener_is_closed(listener))
-        {
-            poll->revents = POLL_READ;
-        }
-        else
-        {
-            poll->revents = (listener->length != 0) ? POLL_READ : 0;
-        }
+        poll->revents = (listener->length != 0) ? POLL_READ : 0;
         return &listener->waitQueue;
     }
     break;
@@ -600,7 +593,7 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
     break;
     default:
     {
-        return ERRPTR(ENOOP);
+        return ERRPTR(ENOTSUP);
     }
     }
 }

@@ -35,7 +35,7 @@ int* _ErrnoFunc(void);
 #define EPIPE 21       // Broken pipe
 #define EBLOCKLIMIT 22 // Blocker limit exceeded
 #define EAGAIN 23      // Try again
-#define ENOOP 24       // Operation not defined
+#define ENOTSUP 24     // Operation not supported
 #define EWOULDBLOCK 25 // Would block
 #define EBUSY 26       // Busy
 #define EXDEV 27       // Cross-device link

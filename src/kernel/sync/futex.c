@@ -1,8 +1,8 @@
 #include "futex.h"
 #include "drivers/systime/systime.h"
 #include "lock.h"
-#include "sched/thread.h"
 #include "sched/sched.h"
+#include "sched/thread.h"
 #include "sched/wait.h"
 #include "utils/hashmap.h"
 
@@ -32,7 +32,7 @@ void futex_ctx_deinit(futex_ctx_t* ctx)
     hashmap_deinit(&ctx->futexes);
 }
 
-static futex_t* futex_ctx_get(futex_ctx_t* ctx, atomic_uint64* addr)
+static futex_t* futex_ctx_get(futex_ctx_t* ctx, atomic_uint64_t* addr)
 {
     futex_t* futex = CONTAINER_OF(hashmap_get(&ctx->futexes, (uint64_t)addr), futex_t, entry);
     if (futex != NULL)
@@ -48,7 +48,7 @@ static futex_t* futex_ctx_get(futex_ctx_t* ctx, atomic_uint64* addr)
     return futex;
 }
 
-uint64_t futex_do(atomic_uint64* addr, uint64_t val, futex_op_t op, clock_t timeout)
+uint64_t futex_do(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout)
 {
     futex_ctx_t* ctx = &sched_process()->futexCtx;
     LOCK_DEFER(&ctx->lock);

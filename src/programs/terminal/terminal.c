@@ -371,7 +371,7 @@ void terminal_init(terminal_t* term)
         {.child = STDERR_FILENO, .parent = term->stdout[PIPE_WRITE]},
         SPAWN_FD_END,
     };
-    term->shell = spawn(argv, fds, NULL, SPAWN_NONE);
+    term->shell = spawn(argv, fds, NULL, NULL);
     if (term->shell == ERR)
     {
         close(term->stdin[0]);

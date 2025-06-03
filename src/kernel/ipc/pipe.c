@@ -2,7 +2,7 @@
 
 #include "fs/vfs.h"
 #include "mem/pmm.h"
-#include "sched/sched.h"
+#include "sched/thread.h"
 #include "sync/lock.h"
 #include "utils/log.h"
 #include "utils/ring.h"
@@ -23,7 +23,7 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count)
     pipe_private_t* private = file->private;
     if (private->readEnd != file)
     {
-        return ERROR(ENOOP);
+        return ERROR(ENOTSUP);
     }
 
     if (count >= PAGE_SIZE)
@@ -51,7 +51,7 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count)
     pipe_private_t* private = file->private;
     if (private->writeEnd != file)
     {
-        return ERROR(ENOOP);
+        return ERROR(ENOTSUP);
     }
 
     if (count >= PAGE_SIZE)

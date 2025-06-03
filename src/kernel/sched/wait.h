@@ -1,6 +1,5 @@
 #pragma once
 
-#include "drivers/systime/systime.h"
 #include "sync/lock.h"
 
 #include <sys/list.h>
@@ -111,7 +110,6 @@ typedef struct
 typedef struct
 {
     list_t blockedThreads;
-    list_t parkedThreads;
     lock_t lock;
 } wait_cpu_ctx_t;
 
@@ -123,11 +121,13 @@ void wait_thread_ctx_init(wait_thread_ctx_t* wait);
 
 void wait_cpu_ctx_init(wait_cpu_ctx_t* wait);
 
+clock_t wait_next_deadline(trap_frame_t* trapFrame, cpu_t* self);
+
 void wait_timer_trap(trap_frame_t* trapFrame, cpu_t* self);
 
-void wait_block_trap(trap_frame_t* trapFrame, cpu_t* self);
+bool wait_finalize_block(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread);
 
-void wait_unblock_thread(thread_t* thread, wait_result_t result, wait_queue_t* acquiredQueue, bool acquireCpu);
+void wait_unblock_thread(thread_t* thread, wait_result_t result);
 
 uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount);
 

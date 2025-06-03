@@ -31,6 +31,7 @@
 /**
  * @brief Retrieves the top of a threads user stack.
  * @ingroup kernel_sched_loader
+ * @def LOADER_USER_STACK_TOP
  *
  * The `LOADER_USER_STACK_TOP()` macro retrieves the address of the top of a threads user stack given the id of the
  * thread.
@@ -46,6 +47,7 @@
 /**
  * @brief Retrieves the bottom of a threads user stack.
  * @ingroup kernel_sched_loader
+ * @def LOADER_USER_STACK_BOTTOM
  *
  * The `LOADER_USER_STACK_BOTTOM()` macro retrieves the address of the bottom of a threads user stack given the id of
  * the thread.
@@ -57,6 +59,7 @@
 /**
  * @brief Retrieves the top of a threads guard page.
  * @ingroup kernel_sched_loader
+ * @def LOADER_GUARD_PAGE_TOP
  *
  * The `LOADER_GUARD_PAGE_TOP()` macro retrieves the address of the top of a threads guard page given the id of the
  * thread.
@@ -68,6 +71,7 @@
 /**
  * @brief Retrieves the bottom of a threads guard page.
  * @ingroup kernel_sched_loader
+ * @def LOADER_GUARD_PAGE_BOTTOM
  *
  * The `LOADER_GUARD_PAGE_BOTTOM()` macro retrieves the address of the bottom of a threads guard page given the id of
  * the thread.
@@ -112,7 +116,8 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
  * @ingroup kernel_sched_loader
  *
  * The `loader_thread_create()` function creates a new thread within a specified parent process. This new thread will
- * begin execution at the provided entry point with the given argument as the first argument to the entry point.
+ * begin executing at the provided entry point with the given argument as the first argument to the entry point (System
+ * V ABI).
  *
  * @param parent The parent process for the new thread.
  * @param priority The priority of the new thread.
@@ -121,4 +126,4 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
  * @return On success, returns the newly created thread. On failure, returns `NULL` and the running threads
  * `thread_t::error` member is set.
  */
-thread_t* loader_thread_create(process_t* parent, priority_t priority, void* entry, void* arg);
+thread_t* loader_thread_create(process_t* parent, void* entry, void* arg);

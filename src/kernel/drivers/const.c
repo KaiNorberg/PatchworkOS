@@ -3,8 +3,9 @@
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "mem/vmm.h"
-#include "utils/log.h"
+#include "proc/process.h"
 #include "sched/sched.h"
+#include "utils/log.h"
 
 #include <assert.h>
 #include <stdlib.h>

@@ -53,29 +53,33 @@ compile_commands: clean
 	bear -- make all
 
 format:
-	find src/ include/ meta/doxy -iname '*.h' -o -iname '*.c' -iname '*.dox' | xargs clang-format -style=file -i
+	find src/ include/ meta/doxy -iname '*.h' -o -iname '*.c' -o -iname '*.dox' | xargs clang-format -style=file -i
+
+ifndef SMP
+SMP := 8
+endif
 
 ifeq ($(DEBUG),1)
-run: all
-	@qemu-system-x86_64 \
+QEMU_FLAGS = \
 	-M q35 \
 	-display sdl \
 	-drive file=$(TARGET) \
 	-m 1G \
-	-smp 8 \
+	-smp $(SMP) \
 	-serial stdio \
 	-drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
 	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd \
-	-net none \
-	-device isa-debug-exit
+	-net none
+ifneq ($(GDB),1)
+QEMU_FLAGS += -device isa-debug-exit
+endif
 else
-run: all
-	@qemu-system-x86_64 \
+QEMU_FLAGS = \
 	-M q35 \
 	-display sdl \
 	-drive file=$(TARGET) \
 	-m 1G \
-	-smp 8 \
+	-smp $(SMP) \
 	-serial stdio \
 	-no-shutdown -no-reboot \
 	-drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
@@ -83,8 +87,15 @@ run: all
 	-net none
 endif
 
+ifeq ($(GDB),1)
+QEMU_FLAGS += -s -S
+endif
+
+run: all
+	qemu-system-x86_64 $(QEMU_FLAGS)
+
 doxygen:
-	@if [ ! -d "meta/docs/doxygen-awesome-css" ]; then \
+	if [ ! -d "meta/docs/doxygen-awesome-css" ]; then \
 	    git clone https://github.com/jothepro/doxygen-awesome-css.git meta/docs/doxygen-awesome-css; \
 		cd meta/docs/doxy/doxygen-awesome-css; \
 		git checkout v2.3.4; \
