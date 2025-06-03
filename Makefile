@@ -17,7 +17,7 @@ $(PROGRAMS): $(MODULES)
 
 deploy: $(PROGRAMS)
 	dd if=/dev/zero of=$(TARGET) bs=2M count=64
-	mkfs.vfat -F 32 -n "PATCHWORKOS" $(TARGET)
+	mformat -F -C -t 256 -h 16 -s 63 -v "PATCHWORKOS" -i $(TARGET) ::
 	mlabel -i $(TARGET) ::PatchworkOS
 	mmd -i $(TARGET) ::/boot
 	mmd -i $(TARGET) ::/bin
