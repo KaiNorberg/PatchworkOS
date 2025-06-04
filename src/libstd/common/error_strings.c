@@ -23,10 +23,10 @@ char* _ErrorStrings[] = {
     "is a directory",
     "no such sysobj",
     "broken pipe",
-    "blocker limit exceeded",
     "try again",
     "operation not defined",
     "would block",
     "busy",
+    "interrupted system call",
     "cross-device link",
 };

@@ -6,6 +6,7 @@
 #include "sync/lock.h"
 #include "systime/systime.h"
 #include "utils/log.h"
+#include "sched/thread.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -22,7 +23,7 @@ static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count)
 
         if (WAIT_BLOCK_LOCK(&kbd->waitQueue, &kbd->lock, file->pos != kbd->writeIndex) != WAIT_NORM)
         {
-            return i * sizeof(kbd_event_t);
+            return ERROR(EINTR);
         }
 
         ((kbd_event_t*)buffer)[i] = kbd->events[file->pos];

@@ -335,6 +335,11 @@ static void sched_load_balance(cpu_t* self)
 {
     // The self->sched.lock should already be acquired.
 
+    if (smp_cpu_amount() == 1) // Cant load balance only one cpu.
+    {
+        return;
+    }
+
     // Get the higher neighbor, the last cpu wraps around and gets the first.
     cpu_t* neighbor = self->id != smp_cpu_amount() - 1 ? smp_cpu(self->id + 1) : smp_cpu(0);
     LOCK_DEFER(&neighbor->sched.lock);

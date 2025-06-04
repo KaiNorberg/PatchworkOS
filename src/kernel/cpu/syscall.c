@@ -689,5 +689,5 @@ void syscall_handler(trap_frame_t* trapFrame)
 
     thread->syscall.inSyscall = false;
 
-    // No need to invoke scheduler due to tickless system.
+    note_dispatch_invoke();
 }

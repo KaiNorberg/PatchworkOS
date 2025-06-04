@@ -38,7 +38,6 @@ typedef struct
     sched_queues_t queues[2];
     sched_queues_t* active;
     sched_queues_t* expired;
-
     /**
      * @brief The currently running thread, accessing the run thread can be a bit weird, if the run thread is accessed
      * by the currently running thread, then there is no need for a lock as it will always se the same value, itself.
@@ -88,9 +87,8 @@ thread_t* sched_thread(void);
 
 process_t* sched_process(void);
 
-// The exit functions only mark a thread and/or process for death. So remmember to call sched_invoke or
-// sched_schedule after any exit function to give the scheduler a chance to schedule.
 void sched_process_exit(uint64_t status);
+
 void sched_thread_exit(void);
 
 void sched_yield(void);

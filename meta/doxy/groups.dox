@@ -45,3 +45,12 @@
  *
  *
  */
+
+
+/**
+ * @brief Inter Process Communication
+ * @defgroup kernel_ipc ipc
+ * @ingroup kernel
+ *
+ *
+ */

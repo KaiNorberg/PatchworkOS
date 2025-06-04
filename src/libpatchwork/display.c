@@ -8,10 +8,24 @@
 
 static void display_receive_event(display_t* disp, event_t* event)
 {
-    if (read(disp->data, event, sizeof(event_t)) != sizeof(event_t))
+    uint64_t result = read(disp->data, event, sizeof(event_t));
+    if (result == sizeof(event_t))
     {
-        disp->isConnected = false;
+        return;
     }
+
+    if (result == ERR)
+    {
+        writef(open("sys:/klog"), "test1 %d\n", errno);
+        if (errno == EINTR)
+        {
+            errno = 0;
+            writef(open("sys:/klog"), "test2\n");
+            return display_receive_event(disp, event);
+        }
+    }
+    disp->isConnected = false;
+    return;
 }
 
 static bool display_is_events_avail(display_t* disp)

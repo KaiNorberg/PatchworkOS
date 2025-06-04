@@ -158,12 +158,12 @@ void trap_handler(trap_frame_t* trapFrame)
     }
     }
 
-    sched_schedule(trapFrame, self);
-
     if (!self->sched.runThread->syscall.inSyscall)
     {
         note_dispatch(trapFrame, self);
     }
+
+    sched_schedule(trapFrame, self);
 
     assert(self->sched.runThread->canary == THREAD_CANARY);
 

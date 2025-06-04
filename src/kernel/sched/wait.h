@@ -94,7 +94,7 @@ typedef enum
 {
     WAIT_NORM = 0,
     WAIT_TIMEOUT = 1,
-    WAIT_NOTE = 2,
+    WAIT_INTERRUPTED = 2,
     WAIT_ERROR = 3
 } wait_result_t;
 

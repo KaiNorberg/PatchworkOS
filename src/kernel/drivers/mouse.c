@@ -5,6 +5,7 @@
 #include "sync/lock.h"
 #include "systime/systime.h"
 #include "utils/log.h"
+#include "sched/thread.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -21,7 +22,7 @@ static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count)
 
         if (WAIT_BLOCK_LOCK(&mouse->waitQueue, &mouse->lock, file->pos != mouse->writeIndex) != WAIT_NORM)
         {
-            return i * sizeof(mouse_event_t);
+            return ERROR(EINTR);
         }
 
         ((mouse_event_t*)buffer)[i] = mouse->events[file->pos];

@@ -131,7 +131,7 @@ uint64_t thread_send_note(thread_t* thread, const void* message, uint64_t length
     thread_state_t expected = THREAD_BLOCKED;
     if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
     {
-        wait_unblock_thread(thread, WAIT_NOTE);
+        wait_unblock_thread(thread, WAIT_INTERRUPTED);
     }
 
     return 0;

@@ -158,7 +158,7 @@ bool wait_finalize_block(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread)
         thread_state_t expected = THREAD_BLOCKED;
         if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
         {
-            wait_cleanup_block(thread, WAIT_NOTE, NULL, false);
+            wait_cleanup_block(thread, WAIT_INTERRUPTED, NULL, false);
             return false;
         }
     }

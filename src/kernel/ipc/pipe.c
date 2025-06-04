@@ -36,7 +36,7 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count)
     if (WAIT_BLOCK_LOCK(&private->waitQueue, &private->lock,
             ring_data_length(&private->ring) != 0 || private->isWriteClosed) != WAIT_NORM)
     {
-        return 0;
+        return ERROR(EINTR);
     }
 
     count = MIN(count, ring_data_length(&private->ring));
@@ -63,8 +63,8 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count)
 
     if (WAIT_BLOCK_LOCK(&private->waitQueue, &private->lock,
             ring_free_length(&private->ring) >= count || private->isReadClosed) != WAIT_NORM)
-    {
-        return 0;
+    {        
+        return ERROR(EINTR);
     }
 
     if (private->isReadClosed)

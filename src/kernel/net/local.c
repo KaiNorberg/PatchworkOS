@@ -221,7 +221,7 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
                 local_listener_is_conn_avail(listener) || local_listener_is_closed(listener)) != WAIT_NORM)
         {
             lock_release(&listener->lock);
-            return 0;
+            return ERROR(EINTR);
         }
     }
 
@@ -373,7 +373,7 @@ static uint64_t local_socket_connect(socket_t* socket, const char* address)
     {
         if (WAIT_BLOCK(&conn->waitQueue, atomic_load(&conn->accepted) || local_connection_is_closed(conn)) != WAIT_NORM)
         {
-            return ERR;
+            return ERROR(EINTR);
         }
     }
 
@@ -460,7 +460,7 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
             WAIT_NORM)
         {
             lock_release(&conn->lock);
-            return 0;
+            return ERROR(EINTR);
         }
     }
 
@@ -514,7 +514,7 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
             WAIT_NORM)
         {
             lock_release(&conn->lock);
-            return 0;
+            return ERROR(EINTR);
         }
     }
 
