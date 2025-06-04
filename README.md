@@ -181,8 +181,9 @@ This repository uses a bit of a hacky way to do testing, we use a github action,
 
 \* QEMU will crash if a kernel panic occurs due to the use of QEMU's isa-debug-exit in the kernel when make is called with DEBUG=1.
 
-### Tested Hardware Configurations
+### Tested Configurations
 
+- QEMU emulator version 9.2.3 (qemu-9.2.3-1.fc42)
 - Lenovo ThinkPad E495
 - Ryzen 5 3600X | 32GB 3200MHZ Corsair Vengeance
 
