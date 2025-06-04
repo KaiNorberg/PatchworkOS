@@ -71,7 +71,7 @@ endif
 QEMU_FLAGS = \
 	-M q35 \
 	-display sdl \
-	-drive file=$(TARGET) \
+	-drive format=raw,file=$(TARGET) \
 	-m 1G \
 	-smp $(SMP) \
 	-serial stdio \
