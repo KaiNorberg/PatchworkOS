@@ -175,6 +175,8 @@ There are three ways to run Patchwork.
 2. **Use QEMU:** Download [QEMU](https://www.qemu.org/) and use the ```make run``` command.
 3. **Other Virtual Machine:** Run the created .img file in a virtual machine of your choice.
 
+**OBS!** If QEMU fails to start then check the version of qemu you are using with the ```qemu-system-x86_64 --version``` command, as it is currently known that QEMU version 10.0.0 fails to load the kernels page tables and gets stuck in a boot loop. You find versions of QEMU that are known to work in the **Tested Configurations** section of this readme. It is unclear if the issue is with QEMU of Patchwork.
+
 ## Testing
 
 This repository uses a bit of a hacky way to do testing, we use a github action, as normal, that compiles the operating system then runs it using QEMU, QEMU is then allowed to run for one minute, the kernel will run some tests and then start as normal. If QEMU crashes* then the test fails, if it is still running after one-minute we call it a success. Its a overly simple approach but gets the job done. A lot of the difficulty in performing testing comes from the inherent complexity of testing a OS, which also means that testing is currently very very limited in the kernel.
