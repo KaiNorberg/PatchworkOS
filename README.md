@@ -175,7 +175,7 @@ There are three ways to run Patchwork.
 2. **Use QEMU:** Download [QEMU](https://www.qemu.org/) and use the ```make run``` command.
 3. **Other Virtual Machine:** Run the created .img file in a virtual machine of your choice.
 
-**OBS!** If QEMU fails to start then check the version of qemu you are using with the ```qemu-system-x86_64 --version``` command, as it is currently known that QEMU version 10.0.0 fails to load the kernels page tables and gets stuck in a boot loop. You find versions of QEMU that are known to work in the **Tested Configurations** section of this readme. It is unclear if the issue is with QEMU of Patchwork.
+**OBS!** If QEMU fails to start then check the version of qemu you are using with the ```qemu-system-x86_64 --version``` command, as it is currently known that QEMU version 10.0.0 fails to load the kernels page tables and gets stuck in a boot loop. You can find versions of QEMU that are known to work in the **Tested Configurations** section of this readme. It is unclear if the issue is with QEMU of Patchwork.
 
 ## Testing
 
