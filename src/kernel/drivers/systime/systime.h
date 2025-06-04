@@ -28,7 +28,15 @@ typedef struct cpu cpu_t;
  */
 typedef struct
 {
+    /**
+     * @brief The amount of ticks in the owner cpus apic timer that occur every nanosecond, stored using fixed point
+     * arithmetic, see `apic_timer_ticks_per_ns()` for more info.
+     */
     uint64_t apicTicksPerNs;
+    /**
+     * @brief The next time the owner cpus apic timer will fire, specified in nanoseconds since boot, used in
+     * `systime_timer_one_shot()`.
+     */
     clock_t nextDeadline;
 } systime_ctx_t;
 
@@ -82,7 +90,9 @@ void systime_timer_trap(trap_frame_t* trapFrame, cpu_t* self);
  *
  * The idea is that every system that wants timer traps calls the `systime_timer_one_shot()` function with their desired
  * timeout and then when the timer trap occurs they check if their desired time has been reached, if it has they do what
- * they need to do, or they call the function once more respecifying their desired timeout.
+ * they need to do, else they call the function once more respecifying their desired timeout, and we repeat the process.
+ * This does technically result in some uneeded checks but its a very simply way of effectively eliminating the need to
+ * care about timer related race conditions.
  *
  * @param self The currently running cpu.
  * @param uptime The time since boot, we need to specify this as an argument to avoid inconsistency in the

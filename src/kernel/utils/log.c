@@ -439,7 +439,7 @@ NORETURN void log_panic(const trap_frame_t* trapFrame, const char* string, ...)
 
     // System ctx
     printf("[SYSTEM STATE]\n");
-    thread_t* thread = self->sched.idleThread;
+    thread_t* thread = self->sched.runThread;
     if (thread == NULL)
     {
         printf("thread: cpu=%d NULL THREAD\n");

@@ -105,11 +105,15 @@ static bool string_is_valid(space_t* space, const char* string)
 void syscall_process_exit(uint64_t status)
 {
     sched_process_exit(status);
+    sched_invoke();
+    assert(false);
 }
 
 void syscall_thread_exit(void)
 {
     sched_thread_exit();
+    sched_invoke();
+    assert(false);
 }
 
 pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, spawn_attr_t* attr)
@@ -558,6 +562,7 @@ tid_t syscall_thread_create(void* entry, void* arg)
 uint64_t syscall_yield(void)
 {
     sched_yield();
+    sched_invoke();
     return 0;
 }
 
@@ -684,5 +689,5 @@ void syscall_handler(trap_frame_t* trapFrame)
 
     thread->syscall.inSyscall = false;
 
-    kernel_checkpoint_invoke();
+    // No need to invoke scheduler due to tickless system.
 }

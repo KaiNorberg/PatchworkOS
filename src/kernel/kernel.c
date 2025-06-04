@@ -123,19 +123,3 @@ void kernel_other_init(void)
     syscall_init();
     systime_timer_init();
 }
-
-bool kernel_checkpoint(trap_frame_t* trapFrame, cpu_t* self)
-{
-    thread_t* oldThread = self->sched.runThread;
-
-    sched_schedule(trapFrame, self);
-
-    if (!self->sched.runThread->syscall.inSyscall)
-    {
-        note_dispatch(trapFrame, self);
-    }
-
-    assert(self->sched.runThread->canary == THREAD_CANARY);
-
-    return oldThread != self->sched.runThread;
-}

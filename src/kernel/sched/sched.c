@@ -204,9 +204,7 @@ void sched_process_exit(uint64_t status)
 
 void sched_thread_exit(void)
 {
-    sched_cpu_ctx_t* ctx = &smp_self()->sched;
-    assert(atomic_exchange(&ctx->runThread->state, THREAD_ZOMBIE) == THREAD_RUNNING);
-    smp_put();
+    assert(atomic_exchange(&sched_thread()->state, THREAD_ZOMBIE) == THREAD_RUNNING);
 }
 
 static void sched_update_recent_idle_time(thread_t* thread, bool wasBlocking)
@@ -270,10 +268,29 @@ static void sched_compute_actual_priority(thread_t* thread)
     }
 }
 
-static uint64_t sched_get_load(sched_cpu_ctx_t* ctx)
+void sched_yield(void)
 {
-    LOCK_DEFER(&ctx->lock);
-    return ctx->active->length + ctx->expired->length + (ctx->runThread != NULL ? 1 : 0);
+    thread_t* thread = smp_self()->sched.runThread;
+    thread->sched.deadline = 0;
+    smp_put();
+}
+
+static bool sched_should_notify(cpu_t* self, cpu_t* chosen, priority_t priority)
+{
+    if (chosen != self)
+    {
+        if (chosen->sched.runThread != chosen->sched.idleThread &&
+            priority > chosen->sched.runThread->sched.actualPriority)
+        {
+            return true;
+        }
+        else if (chosen->sched.runThread == chosen->sched.idleThread)
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void sched_push(thread_t* thread, thread_t* parent, cpu_t* target)
@@ -281,14 +298,9 @@ void sched_push(thread_t* thread, thread_t* parent, cpu_t* target)
     cpu_t* self = smp_self();
 
     cpu_t* chosen = target != NULL ? target : self;
-
-    sched_compute_time_slice(thread, parent);
-    sched_compute_actual_priority(thread);
-
-    thread_state_t state = atomic_exchange(&thread->state, THREAD_READY);
-
     LOCK_DEFER(&chosen->sched.lock);
 
+    thread_state_t state = atomic_exchange(&thread->state, THREAD_READY);
     if (state == THREAD_PARKED)
     {
         sched_queues_push(chosen->sched.active, thread);
@@ -303,12 +315,10 @@ void sched_push(thread_t* thread, thread_t* parent, cpu_t* target)
         assert(false && "Invalid thread state for sched_push");
     }
 
-    if (chosen->sched.runThread != chosen->sched.idleThread &&
-        thread->sched.actualPriority > chosen->sched.runThread->sched.actualPriority)
-    {
-        smp_notify(chosen);
-    }
-    else if (chosen->sched.runThread == chosen->sched.idleThread)
+    sched_compute_time_slice(thread, parent);
+    sched_compute_actual_priority(thread);
+
+    if (sched_should_notify(self, chosen, thread->sched.actualPriority))
     {
         smp_notify(chosen);
     }
@@ -316,14 +326,53 @@ void sched_push(thread_t* thread, thread_t* parent, cpu_t* target)
     smp_put();
 }
 
-void sched_yield(void)
+static uint64_t sched_get_load(sched_cpu_ctx_t* ctx)
 {
-    thread_t* thread = smp_self()->sched.runThread;
-    thread->sched.deadline = 0;
-    smp_put();
+    return ctx->active->length + ctx->expired->length + (ctx->runThread != NULL ? 1 : 0);
 }
 
-void sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
+static void sched_load_balance(cpu_t* self)
+{
+    // The self->sched.lock should already be acquired.
+
+    // Get the higher neighbor, the last cpu wraps around and gets the first.
+    cpu_t* neighbor = self->id != smp_cpu_amount() - 1 ? smp_cpu(self->id + 1) : smp_cpu(0);
+    LOCK_DEFER(&neighbor->sched.lock);
+
+    uint64_t selfLoad = sched_get_load(&self->sched);
+    uint64_t neighborLoad = sched_get_load(&neighbor->sched);
+
+    if (selfLoad <= neighborLoad + CONFIG_LOAD_BALANCE_BIAS)
+    {
+        return;
+    }
+
+    bool shouldNotifyNeighbor = false;
+    while (selfLoad != neighborLoad)
+    {
+        thread_t* thread = sched_queues_pop(self->sched.active, PRIORITY_MIN);
+        if (thread == NULL)
+        {
+            break;
+        }
+
+        if (sched_should_notify(self, neighbor, thread->sched.actualPriority))
+        {
+            shouldNotifyNeighbor = true;
+        }
+
+        sched_queues_push(neighbor->sched.expired, thread);
+        selfLoad--;
+        neighborLoad++;
+    }
+
+    if (shouldNotifyNeighbor)
+    {
+        smp_notify(neighbor);
+    }
+}
+
+bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
 {
     sched_cpu_ctx_t* ctx = &self->sched;
 
@@ -338,7 +387,12 @@ void sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
         thread_free(thread);
     }
 
+    LOCK_DEFER(&self->sched.lock);
+
+    thread_t* oldThread = ctx->runThread;
     assert(ctx->runThread != NULL);
+
+    sched_load_balance(self);
 
     sched_update_recent_idle_time(ctx->runThread, false);
 
@@ -383,8 +437,6 @@ void sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
         log_panic(NULL, "sched: invalid thread state %d", state);
     }
     }
-
-    LOCK_DEFER(&ctx->lock);
 
     clock_t uptime = systime_uptime();
 
@@ -449,4 +501,6 @@ void sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
     {
         systime_timer_one_shot(self, uptime, ctx->runThread->sched.deadline - uptime);
     }
+
+    return oldThread != ctx->runThread;
 }

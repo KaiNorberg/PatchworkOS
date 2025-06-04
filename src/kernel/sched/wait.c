@@ -268,7 +268,7 @@ wait_result_t wait_block(wait_queue_t* waitQueue, clock_t timeout)
     }
     smp_put();
 
-    kernel_checkpoint_invoke();
+    sched_invoke();
 
     return thread->wait.result;
 }
@@ -291,7 +291,7 @@ wait_result_t wait_block_lock(wait_queue_t* waitQueue, clock_t timeout, lock_t* 
     }
 
     lock_release(lock);
-    kernel_checkpoint_invoke();
+    sched_invoke();
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
     lock_acquire(lock);
 
@@ -315,7 +315,7 @@ wait_result_t wait_block_many(wait_queue_t** waitQueues, uint64_t amount, clock_
     }
     smp_put();
 
-    kernel_checkpoint_invoke();
+    sched_invoke();
 
     return thread->wait.result;
 }

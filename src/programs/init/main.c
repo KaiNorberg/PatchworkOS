@@ -53,9 +53,7 @@ int main(void)
         stat_t info;
         while (stat(file, &info) == ERR)
         {
-            printf("test1\n");
             thrd_yield();
-            printf("test2\n");
         }
     }
 

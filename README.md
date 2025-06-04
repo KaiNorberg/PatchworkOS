@@ -11,10 +11,17 @@
 ![](meta/screenshots/desktop.png)
 ![](meta/screenshots/doom.png)
 
+## Monolithic Preemptive 64-bit Fully Tickless Kernel with SMP
+Patchwork has full SMP (Symmetric Multi Processing) support, and is fully preemptive, meaning that the scheduler is allowed to preempt a running thread even while that thread is in kernel space, resulting in significant improvements to latency.
+
+Additionally, it is completely tickless. Many kernels rely on timer interrupts that occur at a regular rate to allow the kernel more opportunities to schedule, these timer interrupts are usually called ticks, it's also common for the kernel to be given a chance to schedule at the end of a system call. This system is quite inefficient and not often used in modern kernels, instead of their timers having a fixed regular rate, they can change the amount of time between each timer interrupt this is referred to as a kernel being tickless. 
+
+Say we know that the current thread's time slice expires in 100 ms and a thread needs to unblock in 50 ms, and that's all that needs to happen, then we can just set a timer for the lowest of the two values (50 ms) and perform the needed work when the timer arrives, instead of constantly checking if work needs to be done at regular intervals using ticks. This means that in a tickless kernel when there is no work to be done there is truly nothing happening a "true" 0% CPU usage, unlike in a tick based kernel where even when idle the CPU is still performing checks in its regular timer interrupt. A tickless kernel can also have faster system calls as they no longer have to provide an opportunity for the kernel to schedule, the scheduling will always happen exactly when needed due to the dynamic timers. There are also additional considerations for SMP, like how to notify an idle CPU of available threads, but i have a tendency to ramble so we will leave it there.
+
 ## Features
 
-- Monolithic preemptive 64-bit fully-tickless kernel with SMP.
-- Fully multithreaded [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h), with dynamic priorities, dynamic time slices, and more.
+- Kernel level multithreading with a [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h), supporting dynamic priorities, dynamic time slices, and more.
+- *Mostly* constant-time virtual memory allocation.
 - Custom C standard library and system libraries.
 - SIMD.
 - [Custom image format (.fbmp)](https://github.com/KaiNorberg/fbmp).
@@ -34,6 +41,14 @@
 
 - Currently limited to ram disks only.
 - Only support for x86_64.
+
+## Notable Future Plans
+
+The following are some of the bigger things to be implemented in the not too distant future.
+
+- Software interrupts for notes (signals).
+- Lua port.
+- Capability based security model (currently has no well-defined security model).
 
 ## A Small Taste
 

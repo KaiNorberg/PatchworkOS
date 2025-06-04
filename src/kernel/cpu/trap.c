@@ -158,7 +158,14 @@ void trap_handler(trap_frame_t* trapFrame)
     }
     }
 
-    kernel_checkpoint(trapFrame, self);
+    sched_schedule(trapFrame, self);
+
+    if (!self->sched.runThread->syscall.inSyscall)
+    {
+        note_dispatch(trapFrame, self);
+    }
+
+    assert(self->sched.runThread->canary == THREAD_CANARY);
 
     statistics_trap_end(trapFrame, self);
     self->trapDepth--;
