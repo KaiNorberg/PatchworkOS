@@ -18,10 +18,16 @@ Additionally, it is completely tickless. Many kernels rely on timer interrupts t
 
 Say we know that the current thread's time slice expires in 100 ms and a thread needs to unblock in 50 ms, and that's all that needs to happen, then we can just set a timer for the lowest of the two values (50 ms) and perform the needed work when the timer arrives, instead of constantly checking if work needs to be done at regular intervals using ticks. This means that in a tickless kernel when there is no work to be done there is truly nothing happening a "true" 0% CPU usage, unlike in a tick based kernel where even when idle the CPU is still performing checks in its regular timer interrupt. A tickless kernel can also have faster system calls as they no longer have to provide an opportunity for the kernel to schedule, the scheduling will always happen exactly when needed due to the dynamic timers. There are also additional considerations for SMP, like how to notify an idle CPU of available threads, but i have a tendency to ramble so we will leave it there.
 
-## Features
+## *Mostly* Constant-Time Memory Management
+Rather than maintaining separate data structures for virtual memory management, Patchwork embeds metadata directly into the page table structure itself. Since page tables are essentially just arrays, accessing any element is constant time, allowing virtual memory operations to also be performed in constant-time, with the huge asterisk that it's constant time *per page*. Allocating n pages is still O(n).
+
+The physical memory manager uses a constant-time free stack for most allocations, along with a bitmap allocator for more special allocations, and virtual memory allocation typically runs in constant time by allocating regions sequentially above the previous allocation. When user space specifies a preferred address for allocation, this also runs in constant time. The system becomes non-constant only when searching for free regions in a fragmented address space. There is also a system for mapping memory with a callback that will be called when all the memory that was mapped in the initial call is unmapped, this is for example used to implement reference counting for shared memory, the system for checking callbacks is also not constant-time.
+
+So yes a few asterisks, but in the most common cases of expanding a process's user heap by one page, mapping a page to an arbitrary address or similar, it will always be constant-time.
+
+## Other Features
 
 - Kernel level multithreading with a [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h), supporting dynamic priorities, dynamic time slices, and more.
-- *Mostly* constant-time virtual memory allocation.
 - Custom C standard library and system libraries.
 - SIMD.
 - [Custom image format (.fbmp)](https://github.com/KaiNorberg/fbmp).
