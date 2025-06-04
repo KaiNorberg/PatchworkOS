@@ -10,7 +10,7 @@ SRC += $(wildcard src/libstd/*.c) $(wildcard src/libstd/*.s) \
 	$(wildcard src/libstd/platform/kernel/functions/**/*.c) $(wildcard src/libstd/platform/kernel/functions/**/*.s) \
 
 CFLAGS += $(CFLAGS_DISABLE_SIMD) -fno-pic -fno-stack-check -mcmodel=kernel \
-	-mno-red-zone -Wno-array-bounds \
+	-mno-red-zone \
 	-Isrc/libstd \
 	-D__KERNEL__ \
 	-D__STDC_WANT_LIB_EXT1__=1
@@ -21,7 +21,7 @@ endif
 
 ASFLAGS += -D__KERNEL__ -Isrc/libstd
 
-LDFLAGS += -T$(SRCDIR)/linker.lds
+LDFLAGS += -T$(SRCDIR)/linker.lds -z max-page-size=0x1000 -z norelro
 
 all: $(TARGET)
 
