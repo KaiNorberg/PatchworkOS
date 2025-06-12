@@ -5,7 +5,7 @@
 
 char* strerror(int errnum)
 {
-    if (errnum >= ERROR_MAX || errnum < 0)
+    if (errnum >= ERR_MAX || errnum < 0)
     {
         return "unknown error";
     }

@@ -24,14 +24,14 @@ static void* loader_load_program(thread_t* thread)
     if (executable == NULL)
     {
         printf("loader_load_program: executable == NULL (%s) pid=%d\n", strerror(thread->error), process->id);
-        sched_process_exit(EEXEC);
+        sched_process_exit(ESPAWNFAIL);
     }
 
     file_t* file = vfs_open(PATH(process, executable));
     if (file == NULL)
     {
         printf("loader_load_program: vfs_open failed (%s) pid=%d\n", strerror(thread->error), process->id);
-        sched_process_exit(EEXEC);
+        sched_process_exit(ESPAWNFAIL);
     }
     FILE_DEFER(file);
 
@@ -39,12 +39,12 @@ static void* loader_load_program(thread_t* thread)
     if (vfs_read(file, &header, sizeof(elf_hdr_t)) != sizeof(elf_hdr_t))
     {
         printf("loader_load_program: vfs_read hdr failed (%s) pid=%d\n", strerror(thread->error), process->id);
-        sched_process_exit(EEXEC);
+        sched_process_exit(ESPAWNFAIL);
     }
     if (!ELF_IS_VALID(&header))
     {
         printf("loader_load_program: elf valid check failed (%s) pid=%d\n", strerror(thread->error), process->id);
-        sched_process_exit(EEXEC);
+        sched_process_exit(ESPAWNFAIL);
     }
 
     uint64_t min = UINT64_MAX;
@@ -56,14 +56,14 @@ static void* loader_load_program(thread_t* thread)
         {
             printf("loader_load_program: vfs_seek to offset failed (%s) pid=%d\n", strerror(thread->error),
                 process->id);
-            sched_process_exit(EEXEC);
+            sched_process_exit(ESPAWNFAIL);
         }
 
         elf_phdr_t phdr;
         if (vfs_read(file, &phdr, sizeof(elf_phdr_t)) != sizeof(elf_phdr_t))
         {
             printf("loader_load_program: vfs_read phdr failed (%s) pid=%d\n", strerror(thread->error), process->id);
-            sched_process_exit(EEXEC);
+            sched_process_exit(ESPAWNFAIL);
         }
 
         switch (phdr.type)
@@ -76,25 +76,25 @@ static void* loader_load_program(thread_t* thread)
             {
                 printf("loader_load_program: phdr size check failed (%s) pid=%d\n", strerror(thread->error),
                     process->id);
-                sched_process_exit(EEXEC);
+                sched_process_exit(ESPAWNFAIL);
             }
 
             if (vmm_alloc(space, (void*)phdr.virtAddr, phdr.memorySize, PROT_READ | PROT_WRITE) == NULL)
             {
                 printf("loader_load_program: vmm_alloc failed (%s) pid=%d\n", strerror(thread->error), process->id);
-                sched_process_exit(EEXEC);
+                sched_process_exit(ESPAWNFAIL);
             }
             memset((void*)phdr.virtAddr, 0, phdr.memorySize);
 
             if (vfs_seek(file, phdr.offset, SEEK_SET) != phdr.offset)
             {
                 printf("loader_load_program: vfs_seek failed (%s) pid=%d\n", strerror(thread->error), process->id);
-                sched_process_exit(EEXEC);
+                sched_process_exit(ESPAWNFAIL);
             }
             if (vfs_read(file, (void*)phdr.virtAddr, phdr.fileSize) != phdr.fileSize)
             {
                 printf("loader_load_program: vfs_read failed (%s) pid=%d\n", strerror(thread->error), process->id);
-                sched_process_exit(EEXEC);
+                sched_process_exit(ESPAWNFAIL);
             }
 
             if (!(phdr.flags & ELF_PHDR_FLAGS_WRITE))
@@ -103,7 +103,7 @@ static void* loader_load_program(thread_t* thread)
                 {
                     printf("loader_load_program: vmm_protect failed (%s) pid=%d\n", strerror(thread->error),
                         process->id);
-                    sched_process_exit(EEXEC);
+                    sched_process_exit(ESPAWNFAIL);
                 }
             }
         }
@@ -121,7 +121,7 @@ static void* loader_alloc_user_stack(thread_t* thread)
     if (vmm_alloc(&thread->process->space, (void*)(stackTop - PAGE_SIZE), PAGE_SIZE, PROT_READ | PROT_WRITE) == NULL)
     {
         printf("loader_alloc_user_stack: vmm_alloc failed (%s) pid=%d\n", strerror(thread->error), thread->process->id);
-        sched_process_exit(EEXEC);
+        sched_process_exit(ESPAWNFAIL);
     }
 
     return (void*)stackTop;
@@ -131,7 +131,7 @@ static char** loader_setup_argv(thread_t* thread, void* rsp)
 {
     if (thread->process->argv.size >= PAGE_SIZE)
     {
-        sched_process_exit(EEXEC);
+        sched_process_exit(ESPAWNFAIL);
     }
 
     char** argv = memcpy(rsp - sizeof(uint64_t) - thread->process->argv.size, thread->process->argv.buffer,

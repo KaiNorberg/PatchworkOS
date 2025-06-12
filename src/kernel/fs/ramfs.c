@@ -108,18 +108,18 @@ static file_t* ramfs_open(volume_t* volume, const path_t* path)
     {
         if (!(path->flags & PATH_CREATE))
         {
-            return ERRPTR(EPATH);
+            return ERRPTR(ENOENT);
         }
 
         const char* filename = path_last_name(path);
         if (filename == NULL)
         {
-            return ERRPTR(EPATH);
+            return ERRPTR(EINVAL);
         }
         node_t* parent = path_traverse_node_parent(path, &root->node);
         if (parent == NULL)
         {
-            return ERRPTR(EPATH);
+            return ERRPTR(ENOENT);
         }
 
         if (path->flags & PATH_DIRECTORY)
@@ -219,7 +219,7 @@ static uint64_t ramfs_stat(volume_t* volume, const path_t* path, stat_t* stat)
     node_t* node = path_traverse_node(path, &root->node);
     if (node == NULL)
     {
-        return ERROR(EPATH);
+        return ERROR(ENOENT);
     }
 
     strcpy(stat->name, node->name);
@@ -236,13 +236,13 @@ static uint64_t ramfs_rename(volume_t* volume, const path_t* oldpath, const path
     node_t* node = path_traverse_node(oldpath, &root->node);
     if (node == NULL || node == &root->node)
     {
-        return ERROR(EPATH);
+        return ERROR(ENOENT);
     }
 
     node_t* dest = path_traverse_node_parent(newpath, &root->node);
     if (dest == NULL)
     {
-        return ERROR(EPATH);
+        return ERROR(ENOENT);
     }
     else if (dest->type != RAMFS_DIR)
     {
@@ -252,7 +252,7 @@ static uint64_t ramfs_rename(volume_t* volume, const path_t* oldpath, const path
     const char* newName = path_last_name(newpath);
     if (newName == NULL)
     {
-        return ERROR(EPATH);
+        return ERROR(EINVAL);
     }
     strcpy(node->name, newName);
     node_remove(node);
@@ -267,7 +267,7 @@ static uint64_t ramfs_remove(volume_t* volume, const path_t* path)
     node_t* node = path_traverse_node(path, &root->node);
     if (node == NULL)
     {
-        return ERROR(EPATH);
+        return ERROR(ENOENT);
     }
 
     if (node->type == RAMFS_FILE)

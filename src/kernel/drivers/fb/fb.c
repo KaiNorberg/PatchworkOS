@@ -37,7 +37,7 @@ static uint64_t fb_ioctl(file_t* file, uint64_t request, void* argp, uint64_t si
     break;
     default:
     {
-        return ERROR(EREQ);
+        return ERROR(EINVAL);
     }
     }
 

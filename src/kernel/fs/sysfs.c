@@ -94,7 +94,7 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
     if (node == NULL)
     {
         rwlock_read_release(&lock);
-        return ERRPTR(EPATH);
+        return ERRPTR(ENOENT);
     }
 
     if (node->type == SYSFS_OBJ)
@@ -102,7 +102,7 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
         if (path->flags & PATH_DIRECTORY)
         {
             rwlock_read_release(&lock);
-            return ERRPTR(ENOTDIR);
+            return ERRPTR(EISDIR);
         }
 
         sysobj_t* sysobj = sysobj_ref(CONTAINER_OF(node, sysobj_t, header.node));
@@ -111,7 +111,7 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
         if (sysobj->ops->open == NULL)
         {
             sysobj_deref(sysobj);
-            return ERRPTR(ENOTSUP);
+            return ERRPTR(ENOSYS);
         }
 
         file_t* file = sysobj->ops->open(volume, path, sysobj);
@@ -129,7 +129,7 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
         if (!(path->flags & PATH_DIRECTORY))
         {
             rwlock_read_release(&lock);
-            return ERRPTR(EISDIR);
+            return ERRPTR(ENOTDIR);
         }
 
         sysdir_t* sysdir = sysdir_ref(CONTAINER_OF(node, sysdir_t, header.node));
@@ -154,7 +154,7 @@ static uint64_t sysfs_open2(volume_t* volume, const path_t* path, file_t* files[
     node_t* node = path_traverse_node(path, &root.header.node);
     if (node == NULL)
     {
-        return ERROR(EPATH);
+        return ERROR(ENOENT);
     }
     else if (node->type != SYSFS_OBJ)
     {
@@ -162,14 +162,14 @@ static uint64_t sysfs_open2(volume_t* volume, const path_t* path, file_t* files[
     }
     else if (path->flags & PATH_DIRECTORY)
     {
-        return ERROR(EINVAL);
+        return ERROR(EISDIR);
     }
     sysobj_t* sysobj = sysobj_ref(CONTAINER_OF(node, sysobj_t, header.node)); // First ref
 
     if (sysobj->ops->open2 == NULL)
     {
         sysobj_deref(sysobj);
-        return ERROR(ENOTSUP);
+        return ERROR(ENOSYS);
     }
 
     if (sysobj->ops->open2(volume, path, sysobj, files) == ERR)
@@ -190,7 +190,7 @@ static uint64_t sysfs_stat(volume_t* volume, const path_t* path, stat_t* stat)
     node_t* node = path_traverse_node(path, &root.header.node);
     if (node == NULL)
     {
-        return ERROR(EPATH);
+        return ERROR(ENOENT);
     }
 
     strcpy(stat->name, node->name);
@@ -258,7 +258,7 @@ uint64_t sysfs_start_op(file_t* file)
     assert(file->syshdr != NULL);
     if (atomic_load(&file->syshdr->hidden) == true)
     {
-        return ERROR(ENOOBJ);
+        return ERROR(EDISCONNECTED);
     }
 
     return 0;

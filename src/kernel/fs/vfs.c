@@ -113,7 +113,7 @@ uint64_t vfs_attach_simple(const char* label, const volume_ops_t* ops)
 {
     if (strlen(label) >= MAX_NAME)
     {
-        return ERROR(EINVAL);
+        return ERROR(ENAMETOOLONG);
     }
     RWLOCK_WRITE_DEFER(&volumesLock);
 
@@ -170,7 +170,7 @@ uint64_t vfs_unmount(const char* label)
 
     if (!isFound)
     {
-        return ERROR(EPATH);
+        return ERROR(ENOENT);
     }
 
     if (atomic_load(&volume->ref) != 1)
@@ -180,7 +180,7 @@ uint64_t vfs_unmount(const char* label)
 
     if (volume->ops->unmount == NULL)
     {
-        return ERROR(ENOTSUP);
+        return ERROR(ENOSYS);
     }
 
     if (volume->ops->unmount(volume) == ERR)
@@ -197,7 +197,7 @@ uint64_t vfs_chdir(const path_t* path)
 {
     if (path == NULL || path->isInvalid)
     {
-        return ERROR(EPATH);
+        return ERROR(EINVAL);
     }
 
     stat_t info;
@@ -221,19 +221,19 @@ file_t* vfs_open(const path_t* path)
 {
     if (path == NULL || path->isInvalid)
     {
-        return ERRPTR(EPATH);
+        return ERRPTR(EINVAL);
     }
 
     volume_t* volume = volume_get(path->volume);
     if (volume == NULL)
     {
-        return ERRPTR(EPATH);
+        return ERRPTR(ENODEV);
     }
 
     if (volume->ops->open == NULL)
     {
         volume_deref(volume);
-        return ERRPTR(ENOTSUP);
+        return ERRPTR(ENOSYS);
     }
 
     file_t* file = volume->ops->open(volume, path);
@@ -250,19 +250,19 @@ uint64_t vfs_open2(const path_t* path, file_t* files[2])
 {
     if (path == NULL || path->isInvalid)
     {
-        return ERROR(EPATH);
+        return ERROR(EINVAL);
     }
 
     volume_t* volume = volume_get(path->volume);
     if (volume == NULL)
     {
-        return ERROR(EPATH);
+        return ERROR(ENODEV);
     }
 
     if (volume->ops->open2 == NULL)
     {
         volume_deref(volume);
-        return ERROR(ENOTSUP);
+        return ERROR(ENOSYS);
     }
 
     uint64_t result = volume->ops->open2(volume, path, files);
@@ -279,19 +279,19 @@ uint64_t vfs_stat(const path_t* path, stat_t* buffer)
 {
     if (path == NULL || path->isInvalid)
     {
-        return ERROR(EPATH);
+        return ERROR(EINVAL);
     }
 
     volume_t* volume = volume_get(path->volume);
     if (volume == NULL)
     {
-        return ERROR(EPATH);
+        return ERROR(ENODEV);
     }
 
     if (volume->ops->stat == NULL)
     {
         volume_deref(volume);
-        return ERROR(ENOTSUP);
+        return ERROR(ENOSYS);
     }
 
     uint64_t result = volume->ops->stat(volume, path, buffer);
@@ -303,7 +303,7 @@ uint64_t vfs_rename(const path_t* oldpath, const path_t* newpath)
 {
     if (oldpath == NULL || oldpath->isInvalid || newpath == NULL || newpath->isInvalid)
     {
-        return ERROR(EPATH);
+        return ERROR(EINVAL);
     }
 
     printf("vfs_rename strcmp\n");
@@ -315,13 +315,13 @@ uint64_t vfs_rename(const path_t* oldpath, const path_t* newpath)
     volume_t* volume = volume_get(oldpath->volume);
     if (volume == NULL)
     {
-        return ERROR(EPATH);
+        return ERROR(ENODEV);
     }
 
     if (volume->ops->rename == NULL)
     {
         volume_deref(volume);
-        return ERROR(ENOTSUP);
+        return ERROR(ENOSYS);
     }
 
     uint64_t result = volume->ops->rename(volume, oldpath, newpath);
@@ -333,19 +333,19 @@ uint64_t vfs_remove(const path_t* path)
 {
     if (path == NULL || path->isInvalid)
     {
-        return ERROR(EPATH);
+        return ERROR(EINVAL);
     }
 
     volume_t* volume = volume_get(path->volume);
     if (volume == NULL)
     {
-        return ERROR(EPATH);
+        return ERROR(ENODEV);
     }
 
     if (volume->ops->remove == NULL)
     {
         volume_deref(volume);
-        return ERROR(ENOTSUP);
+        return ERROR(ENOSYS);
     }
 
     uint64_t result = volume->ops->remove(volume, path);
@@ -357,7 +357,7 @@ uint64_t vfs_readdir(file_t* file, stat_t* infos, uint64_t amount)
 {
     if (file->ops->readdir == NULL)
     {
-        return ERROR(ENOTSUP);
+        return ERROR(ENOSYS);
     }
 
     if (file->syshdr == NULL)
@@ -380,7 +380,7 @@ uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
 {
     if (file->ops->read == NULL)
     {
-        return ERROR(ENOTSUP);
+        return ERROR(ENOSYS);
     }
 
     if (file->syshdr == NULL)
@@ -403,7 +403,7 @@ uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
 {
     if (file->ops->write == NULL)
     {
-        return ERROR(ENOTSUP);
+        return ERROR(ENOSYS);
     }
 
     if (file->syshdr == NULL)
@@ -426,7 +426,7 @@ uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
 {
     if (file->ops->seek == NULL)
     {
-        return ERROR(ENOTSUP);
+        return ERROR(ENOSYS);
     }
 
     if (file->syshdr == NULL)
@@ -449,7 +449,7 @@ uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
 {
     if (file->ops->ioctl == NULL)
     {
-        return ERROR(ENOTSUP);
+        return ERROR(ENOSYS);
     }
 
     if (file->syshdr == NULL)
@@ -472,7 +472,7 @@ void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
 {
     if (file->ops->mmap == NULL)
     {
-        return ERRPTR(ENOTSUP);
+        return ERRPTR(ENOSYS);
     }
 
     if (file->syshdr == NULL)
@@ -501,7 +501,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
         }
         if (files[i].file->ops == NULL || files[i].file->ops->poll == NULL)
         {
-            return ERROR(ENOTSUP);
+            return ERROR(ENOSYS);
         }
         files[i].revents = 0;
     }

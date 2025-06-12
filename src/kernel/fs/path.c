@@ -66,7 +66,7 @@ static const char* path_parse_flags(path_t* path, const char* src)
         uint64_t flagLength = flag_length(flag);
         if (flagLength == ERR)
         {
-            return ERRPTR(EPATH);
+            return ERRPTR(EBADFLAG);
         }
 
         if (flag_is_equal("nonblock", flag, flagLength))
@@ -95,7 +95,7 @@ static const char* path_parse_flags(path_t* path, const char* src)
         }
         else
         {
-            return ERRPTR(EPATH);
+            return ERRPTR(EBADFLAG);
         }
 
         flag += flagLength;
@@ -109,7 +109,7 @@ static const char* path_parse_flags(path_t* path, const char* src)
         }
         else
         {
-            return ERRPTR(EPATH);
+            return ERRPTR(EBADPATH);
         }
     }
 }
@@ -122,7 +122,7 @@ static const char* path_parse_names(path_t* path, const char* src)
         uint64_t nameLength = name_length(name);
         if (nameLength == ERR)
         {
-            return ERRPTR(EPATH);
+            return ERRPTR(EBADPATH);
         }
 
         if (PATH_NAME_IS_DOT(name))
@@ -133,7 +133,7 @@ static const char* path_parse_names(path_t* path, const char* src)
         {
             if (path->bufferLength == 0)
             {
-                return ERRPTR(EPATH);
+                return ERRPTR(EINVAL);
             }
 
             do
@@ -145,7 +145,7 @@ static const char* path_parse_names(path_t* path, const char* src)
         {
             if (path->bufferLength + nameLength >= MAX_PATH)
             {
-                return ERRPTR(EPATH);
+                return ERRPTR(ENAMETOOLONG);
             }
 
             memcpy(&path->buffer[path->bufferLength], name, nameLength);
@@ -160,7 +160,7 @@ static const char* path_parse_names(path_t* path, const char* src)
         {
             if (path->bufferLength == MAX_PATH)
             {
-                return ERRPTR(EPATH);
+                return ERRPTR(ENAMETOOLONG);
             }
 
             path->buffer[path->bufferLength] = '\3';
@@ -172,7 +172,7 @@ static const char* path_parse_names(path_t* path, const char* src)
         }
         else
         {
-            return ERRPTR(EPATH);
+            return ERRPTR(EBADPATH);
         }
     }
 }
@@ -201,7 +201,7 @@ static const char* path_determine_type(path_t* path, const char* string, path_t*
         {
             if (!PATH_END_OF_NAME(string[i + 1]))
             {
-                return ERRPTR(EPATH);
+                return ERRPTR(EBADPATH);
             }
 
             absolute = true;
@@ -209,7 +209,7 @@ static const char* path_determine_type(path_t* path, const char* string, path_t*
         }
         else if (!PATH_VALID_CHAR(string[i]))
         {
-            return ERRPTR(EPATH);
+            return ERRPTR(EBADPATH);
         }
     }
 
