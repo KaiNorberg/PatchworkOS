@@ -33,14 +33,15 @@ int* _ErrnoFunc(void);
 #define EISDIR 19      // Is a directory
 #define ENOOBJ 20      // No such object
 #define EPIPE 21       // Broken pipe
-#define EBLOCKLIMIT 22 // Blocker limit exceeded
-#define EAGAIN 23      // Try again
-#define ENOTSUP 24     // Operation not supported
-#define EWOULDBLOCK 25 // Would block
-#define EBUSY 26       // Busy
-#define EXDEV 27       // Cross-device link
+#define EAGAIN 22      // Try again
+#define ENOTSUP 23     // Operation not supported
+#define EWOULDBLOCK 24 // Would block
+#define EBUSY 25       // Busy
+#define EINTR 26       // Interrupted system call
+#define ENOSPC 27      // No space left on device
+#define EXDEV 28       // Cross-device link
 
-#define ERROR_MAX 28
+#define ERROR_MAX 29
 
 #if _USE_ANNEX_K == 1
 #include "_AUX/errno_t.h"

@@ -96,7 +96,7 @@ void systime_timer_init(void)
     cpu_t* self = smp_self_unsafe();
     self->systime.apicTicksPerNs = apic_timer_ticks_per_ns();
     self->systime.nextDeadline = CLOCKS_NEVER;
-    printf("systime: timer init apic_ticks_per_ns=%d\n", self->systime.apicTicksPerNs);
+    printf("systime: timer init\n");
 }
 
 void systime_timer_trap(trap_frame_t* trapFrame, cpu_t* self)

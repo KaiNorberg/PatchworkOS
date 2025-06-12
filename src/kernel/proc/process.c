@@ -63,6 +63,17 @@ static uint64_t process_ctl_prio(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
+    int prio = atoi(argv[1]);
+    if (prio < 0)
+    {
+        return ERROR(EINVAL);
+    }
+    if (prio >= PRIORITY_MAX_USER)
+    {
+        return ERROR(EACCES);
+    }
+
+    atomic_store(&process->priority, prio);
     return 0;
 }
 
@@ -135,6 +146,11 @@ VIEW_STANDARD_OPS_DEFINE(cmdlineOps, PATH_NONE,
 
 static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t count)
 {
+    if (count == 0)
+    {
+        return 0;
+    }
+
     process_t* process = process_file_get_process(file);
     if (process == NULL)
     {

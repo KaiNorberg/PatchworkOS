@@ -2,6 +2,7 @@
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "ps2/mouse.h"
+#include "sched/thread.h"
 #include "sync/lock.h"
 #include "systime/systime.h"
 #include "utils/log.h"
