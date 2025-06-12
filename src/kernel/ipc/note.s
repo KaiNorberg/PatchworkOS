@@ -4,17 +4,11 @@
 
 section .text
 
-extern sched_schedule
+extern note_dispatch
 extern smp_self_unsafe
 
-global sched_idle_loop
-sched_idle_loop:
-    sti
-    hlt
-    jmp sched_idle_loop
-
-global sched_invoke
-sched_invoke:
+global note_dispatch_invoke
+note_dispatch_invoke:
     TRAP_FRAME_CONSTRUCT
 
     cli
@@ -24,14 +18,14 @@ sched_invoke:
 
     mov rbp, rsp
     mov rdi, rsp
-    call sched_schedule
+    call note_dispatch
     cmp rax, 0
-    jnz .scheduling_occoured
+    jnz .trap_frame_modified
 
     sti
     add rsp, 176 ; Pop the entire trap frame and discard
     ret
-.scheduling_occoured:
+.trap_frame_modified:
     TRAP_FRAME_REGS_POP
     add rsp, 16
     iretq ; Original rflags are loaded here so the lack of a "sti" operation does not matter.

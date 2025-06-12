@@ -35,6 +35,7 @@ static void shmem_on_free(sysobj_t* sysobj)
         }
         free(shmem->segment);
     }
+    printf("free shmem %s\n", shmem->id);
     free(shmem);
 }
 

@@ -37,7 +37,7 @@ static const char* efiMemTypeToString[] = {
 };
 
 // Stores the bitmap data
-static uint8_t mapBuffer[BITMAP_BITS_TO_BYTES(PMM_BITMAP_MAX)];
+static uint64_t mapBuffer[BITMAP_BITS_TO_QWORDS(PMM_BITMAP_MAX)];
 
 static pmm_stack_t stack;
 static bitmap_t bitmap;
@@ -133,12 +133,12 @@ static void* pmm_bitmap_alloc(uint64_t count, uintptr_t maxAddr, uint64_t alignm
         return NULL;
     }
 
-    return (void*)(index * PAGE_SIZE + VMM_HIGHER_HALF_START);
+    return (void*)(index * PAGE_SIZE + PML_HIGHER_HALF_START);
 }
 
 static void pmm_bitmap_free(void* address)
 {
-    uint64_t index = (uint64_t)VMM_HIGHER_TO_LOWER(address) / PAGE_SIZE;
+    uint64_t index = (uint64_t)PML_HIGHER_TO_LOWER(address) / PAGE_SIZE;
     assert(index < PMM_MAX_SPECIAL_ADDR / PAGE_SIZE);
 
     bitmap_clear(&bitmap, index, index + 1);
@@ -147,11 +147,11 @@ static void pmm_bitmap_free(void* address)
 
 static void pmm_free_unlocked(void* address)
 {
-    if (address >= VMM_LOWER_TO_HIGHER(PMM_MAX_SPECIAL_ADDR))
+    if (address >= PML_LOWER_TO_HIGHER(PMM_MAX_SPECIAL_ADDR))
     {
         pmm_stack_free(address);
     }
-    else if (address >= VMM_LOWER_TO_HIGHER(0))
+    else if (address >= PML_LOWER_TO_HIGHER(0))
     {
         pmm_bitmap_free(address);
     }
@@ -188,7 +188,7 @@ static void pmm_load_memory(efi_mem_map_t* memoryMap)
 
         if (PMM_IS_MEMORY_AVAIL(desc->type))
         {
-            pmm_free_pages_unlocked(VMM_LOWER_TO_HIGHER(desc->physicalStart), desc->amountOfPages);
+            pmm_free_pages_unlocked(PML_LOWER_TO_HIGHER(desc->physicalStart), desc->amountOfPages);
         }
         else
         {
