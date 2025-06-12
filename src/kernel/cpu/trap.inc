@@ -33,29 +33,3 @@
     pop rbx
     pop rax
 %endmacro
-
-; Constructs a trap frame from current cpu state
-%macro TRAP_FRAME_CONSTRUCT 0
-    xor rax, rax ; Set to zero to prevent weirdness with the ss and cs registers.
-    mov r8, [rsp] ; Get the return address.
-    ; Store the stack pointer from before this function was called
-    mov r9, rsp
-    add r9, 8
-
-    ; Construct trap frame
-    mov ax, ss
-    push rax
-    push r9
-    pushfq
-    mov ax, cs
-    push rax
-    push r8
-
-    ; Ignore vector and error code.
-    push qword 0
-    push qword 0
-
-    TRAP_FRAME_REGS_PUSH
-%endmacro
-
-

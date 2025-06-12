@@ -168,6 +168,7 @@ typedef struct thread
  *
  * @param process The parent process that the thread will execute within.
  * @param entry The inital value of the threads rip register, defines where the thread will start executing code.
+ * @param priority The scheduler priority of the created thread.
  * @return On success, returns the newly created thread. On failure, returns `NULL` and the
  * running threads `thread_t::error` member is set.
  */

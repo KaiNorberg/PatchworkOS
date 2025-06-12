@@ -4,14 +4,12 @@
 
 ![Licence](https://img.shields.io/badge/License-MIT-green) [![Build and Test](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml/badge.svg)](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml)
 
-**Patchwork** is a 64 bit monolithic hobbyist OS built from scratch in C for the x86_64 architecture. Its intended as an easy-to-modify toy-like non POSIX OS that takes many ideas from Unix, Plan9, DOS and other places while simplifying them and removing some of the fat. Made entirely for fun.
+**Patchwork** is a 64 bit monolithic hobbyist OS built from scratch in C for the x86_64 architecture, it is intended as an easy-to-modify toy-like Unix-inspired OS (not Unix-like) it takes many ideas from Unix, Plan9, DOS and other places while simplifying them and removing some of the fat. Made entirely for fun.
 
 ## Screenshots
 
 ![](meta/screenshots/desktop.png)
 ![](meta/screenshots/doom.png)
-
----
 
 ## Monolithic Preemptive 64-bit Fully Tickless Kernel with SMP
 Patchwork has full SMP (Symmetric Multi Processing) support, and is fully preemptive, meaning that the scheduler is allowed to preempt a running thread even while that thread is in kernel space, resulting in significant improvements to latency.
@@ -20,26 +18,12 @@ Additionally, it is completely tickless. Many kernels rely on timer interrupts t
 
 Say we know that the current thread's time slice expires in 100 ms and a thread needs to unblock in 50 ms, and that's all that needs to happen, then we can just set a timer for the lowest of the two values (50 ms) and perform the needed work when the timer arrives, instead of constantly checking if work needs to be done at regular intervals using ticks. This means that in a tickless kernel when there is no work to be done there is truly nothing happening a "true" 0% CPU usage, unlike in a tick based kernel where even when idle the CPU is still performing checks in its regular timer interrupt. A tickless kernel can also have faster system calls as they no longer have to provide an opportunity for the kernel to schedule, the scheduling will always happen exactly when needed due to the dynamic timers. There are also additional considerations for SMP, like how to notify an idle CPU of available threads, but i have a tendency to ramble so we will leave it there.
 
----
-
 ## *Mostly* Constant-Time Memory Management
-Memory management in the kernel used by Patchwork is designed to run in constant time *per page*, from the physical memory manager to the virtual memory manager.
+Rather than maintaining separate data structures for virtual memory management, Patchwork embeds metadata directly into the page table structure itself. Since page tables are essentially just arrays, accessing any element is constant time, allowing virtual memory operations to also be performed in constant-time, with the huge asterisk that it's constant time *per page*. Allocating n pages is still O(n).
 
-### Physical Memory manager
-When user space wants to allocate memory, it is first allocated from the PMM (Physical Memory Manager), which uses a simple constant-time free stack for most allocations. There is also a non-constant time bitmap allocator for more special allocations that need specific alignment or where the allocated address needs to be within a range of addresses, but this is almost never used. In short, all allocations that matter run in constant-time.
+The physical memory manager uses a constant-time free stack for most allocations, along with a bitmap allocator for more special allocations, and virtual memory allocation typically runs in constant time by allocating regions sequentially above the previous allocation. When user space specifies a preferred address for allocation, this also runs in constant time. The system becomes non-constant only when searching for free regions in a fragmented address space. There is also a system for mapping memory with a callback that will be called when all the memory that was mapped in the initial call is unmapped, this is for example used to implement reference counting for shared memory, the system for checking callbacks is also not constant-time.
 
-### Virtual Memory Manager
-Then after being allocated from the PMM the VMM (Virtual Memory Manager) maps it to the processes address space, this also runs in constant time. It does this by instead of maintaining separate data structures for virtual memory management, Patchwork embeds metadata directly into the page table structure itself. Since page tables are essentially just arrays, accessing any element runs in constant time, allowing virtual memory operations to also be performed in constant-time, with the huge asterisk that it's constant time *per page*. Mapping n pages is still O(n). Note that if user space does not specify a desired address for the mapping then the kernel needs to find a free region for the mapping, this is done by storing the previously mapped address and mapping the new memory above it, or iterating from there until a free region is found. In short, the VMM runs in constant-time for all allocations and mapping, unless the address space is fragmented because then finding a free region will require iterating to find a free region.
-
-### Callbacks
-For more advanced concepts like shared memory there is a system for mapping memory with a callback, such that the callback will be called when all the pages have been unmapped or the address space is freed (the process is killed). This is used to for example implement reference counting in a separate shared memory system. Updating these callbacks is also constant-time per page, but the callback system will scale with O(n) where n is the amount of callbacks within an unmapped region (not the entire address space), note that updating a callback is as simple as decrementing a number storing the amount of pages mapped with the callback, so this is hardly a big concern.
-
-### An Example
-The callback system is also a good example to use to explain how metadata is stored in the page tables. In x86_64, each table has a set of bits within each entry that is available for use by the kernel to store whatever it wants. This is where we put our metadata, in the case of the callback system we reserve 8 of the bits to store a "callback ID". This is the index into an array of callback structures stored by each address space, each of these structures stores for example the amount of pages associated with the callback and the callback function. When we unmap pages we count how many pages within the region we are unmapping have each used callback ID, then we simply decrement the amount of pages associated with each callback by the amount of pages found in the region with its callback ID, when that number reaches 0, we call the callback, note that all lookups are done via an array to avoid lookups. There are also additional optimizations like using a bitmap to store which callback IDs are currently being used. The system's big limitation is that we are limited in the number of IDs we can have as we are only using 8 bits and each PML entry has a limited number of bits available for us to use, there are bits left over, so the value could be increased, but those bits might be needed in the future.
-
-So in short, yes there are a few asterisks, but in the most common cases of expanding a process's user heap by one page, mapping a page to an arbitrary address or similar, memory management will always be constant-time.
-
----
+So yes a few asterisks, but in the most common cases of expanding a process's user heap by one page, mapping a page to an arbitrary address or similar, it will always be constant-time.
 
 ## Other Features
 
@@ -61,7 +45,7 @@ So in short, yes there are a few asterisks, but in the most common cases of expa
 
 ## Limitations
 
-- Currently limited to RAM disks only.
+- Currently limited to ram disks only.
 - Only support for x86_64.
 
 ## Notable Future Plans
@@ -71,8 +55,6 @@ The following are some of the bigger things to be implemented in the not too dis
 - Software interrupts for notes (signals).
 - Lua port.
 - Capability based security model (currently has no well-defined security model).
-
----
 
 ## A Small Taste
 
@@ -137,8 +119,6 @@ And of course the third and final reason is because I think it's fun, and honest
 
 If you are still interested in knowing more then you can check out the doxygen generated documentation [here](https://kainorberg.github.io/PatchworkOS/html/index.html).
 
----
-
 ## Directories
 
 | Name                                                                    | Description                                                                         |
@@ -161,7 +141,7 @@ The UEFI bootloader is intended to be as small as possible and get out of the wa
 
 ### kernel
 
-The monolithic kernel is responsible for pretty much everything. Handles scheduling, hardware, virtual file system, IPC, SMP, etc. The kernel is fully preemptive and multithreaded.
+The monolithic kernel is responsible for pretty much everything. Handles scheduling, hardware, virtual file system, IPC, SMP, etc. The kernel is fully premptive and multithreaded.
 
 ### libpatchwork
 
@@ -174,8 +154,6 @@ The libstd library is an extension of the C standard library, in the same way th
 ### programs
 
 Finally Patchwork has a series of programs designed for it, including shell utilities like [cat](https://github.com/KaiNorberg/PatchworkOS/tree/main/src/programs/cat) and [echo](https://github.com/KaiNorberg/PatchworkOS/tree/main/src/programs/echo), services like the [Desktop Window Manager](https://github.com/KaiNorberg/PatchworkOS/tree/main/src/programs/dwm) and desktop apps like the [terminal](https://github.com/KaiNorberg/PatchworkOS/tree/main/src/programs/terminal).
-
----
 
 ## Setup
 
@@ -201,7 +179,7 @@ There are three ways to run Patchwork.
 
 ## Testing
 
-This repository uses a bit of a hacky way to do testing, we use a github action, as normal, that compiles the operating system then runs it using QEMU, QEMU is then allowed to run for one minute, the kernel will run some tests and then start as normal. If QEMU crashes* then the test fails, if it is still running after one-minute we call it a success. Its an overly simple approach but gets the job done. A lot of the difficulty in performing testing comes from the inherent complexity of testing a OS, which also means that testing is currently very very limited in the kernel.
+This repository uses a bit of a hacky way to do testing, we use a github action, as normal, that compiles the operating system then runs it using QEMU, QEMU is then allowed to run for one minute, the kernel will run some tests and then start as normal. If QEMU crashes* then the test fails, if it is still running after one-minute we call it a success. Its a overly simple approach but gets the job done. A lot of the difficulty in performing testing comes from the inherent complexity of testing a OS, which also means that testing is currently very very limited in the kernel.
 
 \* QEMU will crash if a kernel panic occurs due to the use of QEMU's isa-debug-exit in the kernel when make is called with DEBUG=1.
 
@@ -212,8 +190,6 @@ This repository uses a bit of a hacky way to do testing, we use a github action,
 - Ryzen 5 3600X | 32GB 3200MHZ Corsair Vengeance
 
 Currently untested on Intel hardware. Let me know if you have different hardware, and it runs (or doesn't) for you!
-
----
 
 ## Contributing
 

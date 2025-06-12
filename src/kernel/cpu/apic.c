@@ -14,7 +14,7 @@ static uintptr_t lapicBase;
 
 void apic_init(void)
 {
-    lapicBase = (uintptr_t)vmm_kernel_map(NULL, madt_lapic_address(), 1, PML_WRITE);
+    lapicBase = (uintptr_t)vmm_kernel_map(NULL, madt_lapic_address(), PAGE_SIZE);
     assert((void*)lapicBase != NULL);
 }
 

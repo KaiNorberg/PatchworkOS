@@ -333,11 +333,6 @@ static uint64_t sched_get_load(sched_cpu_ctx_t* ctx)
 
 static void sched_load_balance(cpu_t* self)
 {
-    if (smp_cpu_amount() == 1)
-    {
-        return;
-    }
-
     // The self->sched.lock should already be acquired.
 
     // Get the higher neighbor, the last cpu wraps around and gets the first.

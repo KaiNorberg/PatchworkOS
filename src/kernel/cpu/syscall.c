@@ -48,7 +48,7 @@ static bool pointer_is_valid(const void* pointer, uint64_t length)
         return false;
     }
 
-    if (end > PML_LOWER_HALF_END || (uintptr_t)start < PML_LOWER_HALF_START)
+    if (end > VMM_LOWER_HALF_END || (uintptr_t)start < VMM_LOWER_HALF_START)
     {
         return false;
     }
@@ -681,16 +681,13 @@ void syscall_handler(trap_frame_t* trapFrame)
 
     thread_t* thread = sched_thread();
     thread->syscall.inSyscall = true;
-    //printf("syscall: start %d pid=%d\n", selector, thread->process->id);
 
     uint64_t (*syscall)(uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e, uint64_t f) =
         syscallTable[selector];
     trapFrame->rax =
         syscall(trapFrame->rdi, trapFrame->rsi, trapFrame->rdx, trapFrame->r10, trapFrame->r8, trapFrame->r9);
 
-    //printf("syscall: end %d pid=%d result=%d\n", selector, thread->process->id, trapFrame->rax);
     thread->syscall.inSyscall = false;
 
     // No need to invoke scheduler due to tickless system.
-    note_dispatch_invoke();
 }

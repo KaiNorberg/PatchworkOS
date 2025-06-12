@@ -21,7 +21,7 @@ void kernel_init(boot_info_t* bootInfo);
  * @brief Kernel other cpu initialization.
  * @ingroup kernel
  *
- * The `kernel_other_init()` function calls all the needed initialization functions to initialize the calling
+ * The `kernel_other_init()` function calls all the needed initialization functions needed to initialize the calling
  * cpu, should not be called on the bootstrap cpu.
  *
  */

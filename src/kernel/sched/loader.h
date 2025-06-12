@@ -42,7 +42,7 @@
  *
  * @return The address of the top of the user stack, this address is not inclusive and always page aligned.
  */
-#define LOADER_USER_STACK_TOP(tid) (PML_LOWER_HALF_END - (((CONFIG_MAX_USER_STACK_PAGES + 1) * PAGE_SIZE) * (tid)))
+#define LOADER_USER_STACK_TOP(tid) (VMM_LOWER_HALF_END - (((CONFIG_MAX_USER_STACK_PAGES + 1) * PAGE_SIZE) * (tid)))
 
 /**
  * @brief Retrieves the bottom of a threads user stack.
@@ -91,6 +91,7 @@
  * @param argv The argument buffer to pass to userspace.
  * @param rsp The new stack pointer.
  * @param rip The new instruction pointer.
+ * @return NORETURN
  */
 extern NORETURN void loader_jump_to_user_space(int argc, char** argv, void* rsp, void* rip);
 
@@ -119,6 +120,7 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
  * V ABI).
  *
  * @param parent The parent process for the new thread.
+ * @param priority The priority of the new thread.
  * @param entry The entry point address for the new thread.
  * @param arg An argument to pass to the entry point.
  * @return On success, returns the newly created thread. On failure, returns `NULL` and the running threads

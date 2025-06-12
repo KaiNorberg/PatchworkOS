@@ -15,7 +15,7 @@ void hpet_init(void)
     hpet = (hpet_t*)acpi_lookup("HPET");
     assert(hpet != NULL && "Unable to find hpet, hardware is not compatible");
 
-    address = (uintptr_t)vmm_kernel_map(NULL, (void*)hpet->address, 1, PML_WRITE);
+    address = (uintptr_t)vmm_kernel_map(NULL, (void*)hpet->address, PAGE_SIZE);
     period = hpet_read(HPET_GENERAL_CAPABILITIES) >> HPET_COUNTER_CLOCK_OFFSET;
 
     hpet_reset_counter();
