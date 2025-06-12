@@ -234,14 +234,14 @@ void pmm_free(void* address)
 {
     address = (void*)ROUND_DOWN(address, PAGE_SIZE);
     LOCK_DEFER(&lock);
-    //pmm_free_unlocked(address);
+    pmm_free_unlocked(address);
 }
 
 void pmm_free_pages(void* address, uint64_t count)
 {
     address = (void*)ROUND_DOWN(address, PAGE_SIZE);
     LOCK_DEFER(&lock);
-    //pmm_free_pages_unlocked(address, count);
+    pmm_free_pages_unlocked(address, count);
 }
 
 uint64_t pmm_total_amount(void)

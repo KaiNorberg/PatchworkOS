@@ -16,7 +16,6 @@ note_dispatch_invoke:
     call smp_self_unsafe
     mov rsi, rax
 
-    mov rbp, rsp
     mov rdi, rsp
     call note_dispatch
     cmp rax, 0

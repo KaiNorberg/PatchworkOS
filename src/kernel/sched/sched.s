@@ -22,7 +22,6 @@ sched_invoke:
     call smp_self_unsafe
     mov rsi, rax
 
-    mov rbp, rsp
     mov rdi, rsp
     call sched_schedule
     cmp rax, 0

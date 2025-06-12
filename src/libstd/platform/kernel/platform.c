@@ -49,7 +49,7 @@ void* _PlatformPageAlloc(uint64_t amount)
             }
 
             // Page table will free the previously allocated pages as they are owned by the Page table.
-            vmm_kernel_unmap(addr, i);
+            vmm_kernel_unmap(startAddr, i);
             return ERRPTR(ENOMEM);
         }
     }
