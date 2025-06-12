@@ -340,16 +340,16 @@ static void log_trap_frame_stack_trace(const trap_frame_t* trapFrame)
     while (rbp != NULL && frameNum < 64)
     {
 
-        if ((uintptr_t)rbp < PAGE_SIZE || (uintptr_t)rbp >= VMM_HIGHER_HALF_END ||
-            ((uintptr_t)rbp > VMM_LOWER_HALF_END && (uintptr_t)rbp < VMM_LOWER_HALF_START))
+        if ((uintptr_t)rbp < PAGE_SIZE || (uintptr_t)rbp >= PML_HIGHER_HALF_END ||
+            ((uintptr_t)rbp > PML_LOWER_HALF_END && (uintptr_t)rbp < PML_LOWER_HALF_START))
         {
-            printf("[INVALID USER FRAME: 0x%016lx]\n", (uintptr_t)rbp);
+            printf("[INVALID FRAME: 0x%016lx]\n", (uintptr_t)rbp);
             break;
         }
 
         if ((uintptr_t)rbp & 0x7)
         {
-            printf("[MISALIGNED USER FRAME: 0x%016lx]\n", (uintptr_t)rbp);
+            printf("[MISALIGNED FRAME: 0x%016lx]\n", (uintptr_t)rbp);
             break;
         }
 
@@ -371,11 +371,6 @@ static void log_trap_frame_stack_trace(const trap_frame_t* trapFrame)
 
         rbp = (uint64_t*)nextFrame;
         frameNum++;
-    }
-
-    if (frameNum == 0)
-    {
-        printf("No user frames found\n");
     }
 }
 

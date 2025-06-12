@@ -30,17 +30,24 @@
  */
 
 /**
- * @brief Scheduling and program loading.
- * @defgroup kernel_sched sched
+ * @brief Cpu and multiprocessing.
+ * @defgroup kernel_cpu cpu
  * @ingroup kernel
  *
- * The sched group handles scheduling and program loading.
  *
  */
 
 /**
- * @brief Cpu and multiprocessing.
- * @defgroup kernel_cpu cpu
+ * @brief Inter Process Communication.
+ * @defgroup kernel_ipc ipc
+ * @ingroup kernel
+ *
+ *
+ */
+
+/**
+ * @brief Memory managment.
+ * @defgroup kernel_mem mem
  * @ingroup kernel
  *
  *

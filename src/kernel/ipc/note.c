@@ -82,13 +82,14 @@ static bool note_queue_pop(note_queue_t* queue, note_t* note)
     return true;
 }
 
-void note_dispatch(trap_frame_t* trapFrame, cpu_t* self)
+bool note_dispatch(trap_frame_t* trapFrame, cpu_t* self)
 {
     // TODO: Implement more notes and implement user space "software interrupts" to receive notes.
 
     thread_t* thread = sched_thread();
     note_queue_t* queue = &thread->notes;
-
+    //printf("note_dispatch: %p %p\n", thread, queue);
+    
     note_t note;
     while (note_queue_pop(queue, &note))
     {
@@ -98,7 +99,7 @@ void note_dispatch(trap_frame_t* trapFrame, cpu_t* self)
 
             sched_process_exit(0);
             sched_schedule(trapFrame, self);
-            return;
+            return true;
         }
         else
         {
@@ -106,4 +107,6 @@ void note_dispatch(trap_frame_t* trapFrame, cpu_t* self)
             // TODO: Unknown note, send to userspace
         }
     }
+
+    return false;
 }
