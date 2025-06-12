@@ -4,7 +4,7 @@
 
 ![Licence](https://img.shields.io/badge/License-MIT-green) [![Build and Test](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml/badge.svg)](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml)
 
-**Patchwork** is a 64 bit monolithic hobbyist OS built from scratch in C for the x86_64 architecture. Its intended as an easy-to-modify toy-like non POSIX OS that takes many ideas from Unix, Plan9, DOS and other places while simplifying them and removing some of the fat. Made entirely for fun.
+**Patchwork** is a 64 bit monolithic hobbyist OS built from scratch in C for the x86_64 architecture. Its intended as an easy-to-modify toy-like NON-POSIX OS that takes many ideas from Unix, Plan9, DOS and other places while simplifying them and removing some of the fat. Made entirely for fun.
 
 ## Screenshots
 
