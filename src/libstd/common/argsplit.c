@@ -1,25 +1,6 @@
-#include <ctype.h>
-#include <errno.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/argsplit.h>
+#include "argsplit.h"
 
-typedef struct
-{
-    const char* current;
-    uint8_t escaped;
-    bool inQuote;
-    bool isNewArg;
-    bool isFirst;
-    uint64_t processedChars;
-    uint64_t maxLen;
-} _ArgsplitState_t;
-
-#define _ARGSPLIT_CREATE(str, maxLen) {str, 0, false, false, true, 0, maxLen}
-
-static bool _ArgsplitStepState(_ArgsplitState_t* state)
+bool _ArgsplitStepState(_ArgsplitState_t* state)
 {
     state->isNewArg = false;
 
@@ -88,7 +69,7 @@ static bool _ArgsplitStepState(_ArgsplitState_t* state)
     }
 }
 
-static uint64_t _ArgsplitCountCharsAndArgs(const char* str, uint64_t* argc, uint64_t* totalChars, uint64_t maxLen)
+uint64_t _ArgsplitCountCharsAndArgs(const char* str, uint64_t* argc, uint64_t* totalChars, uint64_t maxLen)
 {
     *argc = 0;
     *totalChars = 0;
@@ -116,7 +97,7 @@ static uint64_t _ArgsplitCountCharsAndArgs(const char* str, uint64_t* argc, uint
     return 0;
 }
 
-static const char** _ArgsplitBackend(const char** argv, const char* str, uint64_t argc, uint64_t maxLen)
+const char** _ArgsplitBackend(const char** argv, const char* str, uint64_t argc, uint64_t maxLen)
 {
     uint64_t argvSize = sizeof(char*) * (argc + 1);
     char* strings = (char*)((uintptr_t)argv + argvSize);
@@ -155,80 +136,4 @@ static const char** _ArgsplitBackend(const char** argv, const char* str, uint64_
     }
 
     return (const char**)argv;
-}
-
-const char** argsplit(const char* str, uint64_t maxLen, uint64_t* count)
-{
-    uint64_t skipped = 0;
-    while (isspace(*str) && (maxLen == 0 || skipped < maxLen))
-    {
-        str++;
-        skipped++;
-    }
-    maxLen = (maxLen == 0) ? 0 : (maxLen > skipped ? maxLen - skipped : 0);
-
-    uint64_t argc;
-    uint64_t totalChars;
-    if (_ArgsplitCountCharsAndArgs(str, &argc, &totalChars, maxLen) == UINT64_MAX)
-    {
-        return NULL;
-    }
-
-    uint64_t argvSize = sizeof(char*) * (argc + 1);
-    uint64_t stringsSize = totalChars + argc;
-
-    const char** argv = malloc(argvSize + stringsSize);
-    if (argv == NULL)
-    {
-        return NULL;
-    }
-    if (count != NULL)
-    {
-        *count = argc;
-    }
-    if (argc == 0)
-    {
-        argv[0] = NULL;
-        return argv;
-    }
-
-    return _ArgsplitBackend(argv, str, argc, maxLen);
-}
-
-const char** argsplit_buf(void* buf, uint64_t size, const char* str, uint64_t maxLen, uint64_t* count)
-{
-    uint64_t skipped = 0;
-    while (isspace(*str) && (maxLen == 0 || skipped < maxLen))
-    {
-        str++;
-        skipped++;
-    }
-    maxLen = (maxLen == 0) ? 0 : (maxLen > skipped ? maxLen - skipped : 0);
-
-    uint64_t argc;
-    uint64_t totalChars;
-    if (_ArgsplitCountCharsAndArgs(str, &argc, &totalChars, maxLen) == UINT64_MAX)
-    {
-        return NULL;
-    }
-
-    uint64_t argvSize = sizeof(char*) * (argc + 1);
-    uint64_t stringsSize = totalChars + argc;
-
-    const char** argv = buf;
-    if (size < argvSize + stringsSize)
-    {
-        return NULL;
-    }
-    if (count != NULL)
-    {
-        *count = argc;
-    }
-    if (argc == 0)
-    {
-        argv[0] = NULL;
-        return argv;
-    }
-
-    return _ArgsplitBackend(buf, str, argc, maxLen);
 }

@@ -88,8 +88,8 @@ bool note_dispatch(trap_frame_t* trapFrame, cpu_t* self)
 
     thread_t* thread = sched_thread();
     note_queue_t* queue = &thread->notes;
-    //printf("note_dispatch: %p %p\n", thread, queue);
-    
+    // printf("note_dispatch: %p %p\n", thread, queue);
+
     note_t note;
     while (note_queue_pop(queue, &note))
     {

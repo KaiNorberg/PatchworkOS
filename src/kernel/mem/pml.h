@@ -40,14 +40,14 @@ typedef enum
 #define PML_HIGHER_TO_LOWER(address) ((void*)((uint64_t)(address) - PML_HIGHER_HALF_START))
 #define PML_LOWER_TO_HIGHER(address) ((void*)((uint64_t)(address) + PML_HIGHER_HALF_START))
 
-// Allows a physical address to be specified in either the upper or lower half
-#define PML_PHYS_TO_LOWER_SAFE(address) \
+// Allows a address to be specified in either the upper or lower half
+#define PML_ENSURE_LOWER_HALF(address) \
     (address >= (void*)PML_HIGHER_HALF_START ? PML_HIGHER_TO_LOWER(address) : address)
 
 #define PML_GET_INDEX(address, level) (((uint64_t)(address) >> (((level) - 1) * 9 + 12)) & 0x1FF)
 
-#define PML_MAX_CALLBACK (UINT8_MAX)
-#define PML_CALLBACK_NONE (UINT8_MAX)
+#define PML_MAX_CALLBACK (1 << 7)
+#define PML_CALLBACK_NONE (1 << 7)
 
 typedef uint8_t pml_callback_id_t;
 
@@ -69,13 +69,14 @@ typedef union {
          * page is unmapped.
          */
         uint64_t owned : 1;
-        uint64_t reserved1 : 2;
+        uint64_t available1 : 2;
         uint64_t address : 40;
         /**
          * @brief Defined by Patchwork. Specifies the id of the associated callback of the page.
          */
-        uint64_t callbackId : 8;
-        uint64_t reserved2 : 4;
+        uint64_t callbackId : 7;
+        uint64_t protection : 4;
+        uint64_t noExecute : 1;
     };
 } pml_entry_t;
 

@@ -2,7 +2,7 @@
 #include <string.h>
 #include <sys/math.h>
 
-#include "common/heap.h"
+#include "platform/user/common/heap.h"
 
 void* realloc(void* ptr, size_t size)
 {

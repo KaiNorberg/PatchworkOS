@@ -3,6 +3,7 @@
 #include "fs/path.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
+#include "mem/kalloc.h"
 #include "mem/pmm.h"
 #include "sched/thread.h"
 #include "sched/wait.h"
@@ -34,7 +35,7 @@ static local_listener_t* local_listener_new(const char* address)
         return NULL;
     }
 
-    local_listener_t* listener = malloc(sizeof(local_listener_t));
+    local_listener_t* listener = kmalloc(sizeof(local_listener_t), KALLOC_NONE);
     if (listener == NULL)
     {
         return NULL;
@@ -68,7 +69,7 @@ static void local_listener_deref(local_listener_t* listener)
         wait_unblock(&listener->waitQueue, UINT64_MAX);
         list_remove(&listener->entry);
         sysobj_deinit(&listener->sysobj, NULL);
-        free(listener);
+        kfree(listener);
     }
 }
 
@@ -119,24 +120,24 @@ static local_connection_t* local_listener_pop(local_listener_t* listener)
 
 static local_connection_t* local_connection_new(const char* address)
 {
-    local_connection_t* conn = malloc(sizeof(local_connection_t));
+    local_connection_t* conn = kmalloc(sizeof(local_connection_t), KALLOC_NONE);
     if (conn == NULL)
     {
         return NULL;
     }
 
-    void* serverBuffer = malloc(LOCAL_BUFFER_SIZE);
+    void* serverBuffer = kmalloc(LOCAL_BUFFER_SIZE, KALLOC_VMM);
     if (serverBuffer == NULL)
     {
-        free(conn);
+        kfree(conn);
         return NULL;
     }
     ring_init(&conn->serverRing, serverBuffer, LOCAL_BUFFER_SIZE);
-    void* clientBuffer = malloc(LOCAL_BUFFER_SIZE);
+    void* clientBuffer = kmalloc(LOCAL_BUFFER_SIZE, KALLOC_VMM);
     if (clientBuffer == NULL)
     {
-        free(serverBuffer);
-        free(conn);
+        kfree(serverBuffer);
+        kfree(conn);
         return NULL;
     }
     ring_init(&conn->clientRing, clientBuffer, LOCAL_BUFFER_SIZE);
@@ -144,9 +145,9 @@ static local_connection_t* local_connection_new(const char* address)
     conn->listener = local_listener_get(address);
     if (conn->listener == NULL)
     {
-        free(serverBuffer);
-        free(clientBuffer);
-        free(conn);
+        kfree(serverBuffer);
+        kfree(clientBuffer);
+        kfree(conn);
         return NULL;
     }
     lock_init(&conn->lock);
@@ -167,11 +168,11 @@ static void local_connection_deref(local_connection_t* conn)
 {
     if (atomic_fetch_sub(&conn->ref, 1) <= 1)
     {
-        free(conn->serverRing.buffer);
-        free(conn->clientRing.buffer);
+        kfree(conn->serverRing.buffer);
+        kfree(conn->clientRing.buffer);
         local_listener_deref(conn->listener);
         wait_queue_deinit(&conn->waitQueue);
-        free(conn);
+        kfree(conn);
     }
 }
 
@@ -182,7 +183,7 @@ static bool local_connection_is_closed(local_connection_t* conn)
 
 static uint64_t local_socket_init(socket_t* socket)
 {
-    local_socket_t* local = malloc(sizeof(local_socket_t));
+    local_socket_t* local = kmalloc(sizeof(local_socket_t), KALLOC_NONE);
     if (local == NULL)
     {
         return ERR;
@@ -231,7 +232,7 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
         return ERROR(EINVAL);
     }
 
-    local_socket_t* newLocal = malloc(sizeof(local_socket_t));
+    local_socket_t* newLocal = kmalloc(sizeof(local_socket_t), KALLOC_NONE);
     if (newLocal == NULL)
     {
         lock_release(&listener->lock);
@@ -258,27 +259,27 @@ static void local_socket_deinit(socket_t* socket)
     case LOCAL_SOCKET_BLANK:
     case LOCAL_SOCKET_BOUND:
     {
-        free(local);
+        kfree(local);
     }
     break;
     case LOCAL_SOCKET_LISTEN:
     {
         local_listener_deref(local->listen.listener);
-        free(local);
+        kfree(local);
     }
     break;
     case LOCAL_SOCKET_CONNECT:
     {
         local_connection_deref(local->connect.conn);
         wait_unblock(&local->connect.conn->waitQueue, UINT64_MAX);
-        free(local);
+        kfree(local);
     }
     break;
     case LOCAL_SOCKET_ACCEPT:
     {
         local_connection_deref(local->accept.conn);
         wait_unblock(&local->accept.conn->waitQueue, UINT64_MAX);
-        free(local);
+        kfree(local);
     }
     break;
     }

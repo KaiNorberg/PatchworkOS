@@ -20,6 +20,7 @@
 #include "fs/vfs.h"
 #include "ipc/pipe.h"
 #include "ipc/shmem.h"
+#include "mem/kalloc.h"
 #include "mem/pmm.h"
 #include "mem/vmm.h"
 #include "net/net.h"
@@ -63,6 +64,7 @@ void kernel_init(boot_info_t* bootInfo)
 
     pmm_init(&bootInfo->memoryMap);
     vmm_init(&bootInfo->memoryMap, &bootInfo->kernel, &bootInfo->gopBuffer);
+    kalloc_init();
 
     log_enable_screen(&bootInfo->gopBuffer);
 

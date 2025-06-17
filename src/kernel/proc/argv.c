@@ -1,5 +1,7 @@
 #include "argv.h"
 
+#include "mem/kalloc.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <sys/io.h>
@@ -8,7 +10,7 @@ uint64_t argv_init(argv_t* argv, const char** src)
 {
     if (src == NULL)
     {
-        argv->buffer = malloc(sizeof(const char*));
+        argv->buffer = kmalloc(sizeof(const char*), KALLOC_NONE);
         argv->size = sizeof(const char*);
         argv->amount = 1;
 
@@ -33,7 +35,7 @@ uint64_t argv_init(argv_t* argv, const char** src)
         size += strLen + 1;
     }
 
-    char** dest = malloc(size);
+    char** dest = kmalloc(size, KALLOC_NONE);
     if (dest == NULL)
     {
         return ERR;
@@ -57,5 +59,5 @@ uint64_t argv_init(argv_t* argv, const char** src)
 
 void argv_deinit(argv_t* argv)
 {
-    free(argv->buffer);
+    kfree(argv->buffer);
 }

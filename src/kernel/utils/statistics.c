@@ -5,6 +5,7 @@
 #include "fs/sysfs.h"
 #include "fs/view.h"
 #include "log.h"
+#include "mem/kalloc.h"
 
 #include <assert.h>
 #include <stdint.h>
@@ -29,7 +30,7 @@ void statistics_cpu_ctx_init(statistics_cpu_ctx_t* ctx)
 
 static uint64_t statistics_cpu_view_init(file_t* file, view_t* view)
 {
-    char* string = malloc(MAX_PATH * (smp_cpu_amount() + 1));
+    char* string = kmalloc(MAX_PATH * (smp_cpu_amount() + 1), KALLOC_NONE);
     if (string == NULL)
     {
         return ERR;
@@ -53,7 +54,7 @@ static uint64_t statistics_cpu_view_init(file_t* file, view_t* view)
 
 static void statistics_cpu_view_deinit(view_t* view)
 {
-    free(view->buffer);
+    kfree(view->buffer);
 }
 
 VIEW_STANDARD_OPS_DEFINE(cpuOps, PATH_NONE,
@@ -64,7 +65,7 @@ VIEW_STANDARD_OPS_DEFINE(cpuOps, PATH_NONE,
 
 static uint64_t statistics_mem_view_init(file_t* file, view_t* view)
 {
-    char* string = malloc(MAX_PATH);
+    char* string = kmalloc(MAX_PATH, KALLOC_NONE);
     if (string == NULL)
     {
         return ERR;
@@ -80,7 +81,7 @@ static uint64_t statistics_mem_view_init(file_t* file, view_t* view)
 
 static void statistics_mem_view_deinit(view_t* view)
 {
-    free(view->buffer);
+    kfree(view->buffer);
 }
 
 VIEW_STANDARD_OPS_DEFINE(memOps, PATH_NONE,

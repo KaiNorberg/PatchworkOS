@@ -6,6 +6,7 @@
 #include "gdt.h"
 #include "idt.h"
 #include "kernel.h"
+#include "mem/kalloc.h"
 #include "mem/vmm.h"
 #include "regs.h"
 #include "sched/thread.h"
@@ -99,7 +100,7 @@ void smp_others_init(void)
         if (record->flags & MADT_LAPIC_INITABLE && lapicId != record->lapicId)
         {
             cpuid_t id = newId++;
-            cpus[id] = malloc(sizeof(cpu_t));
+            cpus[id] = kmalloc(sizeof(cpu_t), KALLOC_NONE);
             assert(cpus[id] != NULL);
             cpu_init(cpus[id], id, record->lapicId, false);
             cpuAmount++;

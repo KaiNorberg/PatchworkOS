@@ -8,6 +8,7 @@
 #include "fs/path.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
+#include "mem/kalloc.h"
 #include "sched/loader.h"
 #include "sched/sched.h"
 #include "sched/wait.h"
@@ -30,7 +31,7 @@ thread_t* thread_new(process_t* process, void* entry)
         return NULL;
     }
 
-    thread_t* thread = malloc(sizeof(thread_t));
+    thread_t* thread = kmalloc(sizeof(thread_t), KALLOC_NONE);
     if (thread == NULL)
     {
         return NULL;
@@ -45,7 +46,7 @@ thread_t* thread_new(process_t* process, void* entry)
     wait_thread_ctx_init(&thread->wait);
     if (simd_ctx_init(&thread->simd) == ERR)
     {
-        free(thread);
+        kfree(thread);
         return NULL;
     }
     note_queue_init(&thread->notes);
@@ -89,7 +90,7 @@ void thread_free(thread_t* thread)
     }
 
     simd_ctx_deinit(&thread->simd);
-    free(thread);
+    kfree(thread);
 }
 
 void thread_save(thread_t* thread, const trap_frame_t* trapFrame)

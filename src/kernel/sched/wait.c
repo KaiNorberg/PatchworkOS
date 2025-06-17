@@ -5,6 +5,7 @@
 #include "cpu/vectors.h"
 #include "drivers/systime/systime.h"
 #include "kernel.h"
+#include "mem/kalloc.h"
 #include "sched.h"
 #include "sched/thread.h"
 #include "sync/lock.h"
@@ -77,7 +78,7 @@ static void wait_cleanup_block(thread_t* thread, wait_result_t result, wait_queu
         {
             lock_release(&entry->waitQueue->lock);
         }
-        free(entry);
+        kfree(entry);
     }
 }
 
@@ -214,7 +215,7 @@ static uint64_t wait_setup_block(thread_t* thread, wait_queue_t** waitQueues, ui
 
     for (uint64_t i = 0; i < amount; i++)
     {
-        wait_entry_t* entry = malloc(sizeof(wait_entry_t));
+        wait_entry_t* entry = kmalloc(sizeof(wait_entry_t), KALLOC_NONE);
         if (entry == NULL)
         {
             while (1)
@@ -224,7 +225,7 @@ static uint64_t wait_setup_block(thread_t* thread, wait_queue_t** waitQueues, ui
                 {
                     break;
                 }
-                free(other);
+                kfree(other);
             }
             return ERROR(ENOMEM);
         }

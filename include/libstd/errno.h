@@ -13,15 +13,15 @@ extern "C"
  * @brief Error values.
  * @ingroup libstd
  * @defgroup libstd_errno
- *    
+ *
  * The errno values in Patchwork are taken from POSIX.
- * 
+ *
  */
 
 /**
  * @brief Retrives pointer to per thread errno value.
- * 
- * @return int* 
+ *
+ * @return int*
  */
 int* _ErrnoFunc(void);
 #define errno (*_ErrnoFunc())
@@ -30,241 +30,241 @@ int* _ErrnoFunc(void);
  * @brief Operation not permitted
  * @ingroup libstd_errno
  */
-#define EPERM            1
+#define EPERM 1
 
 /**
  * @brief No such file or directory
  * @ingroup libstd_errno
  */
-#define ENOENT           2
+#define ENOENT 2
 
 /**
  * @brief No such process
  * @ingroup libstd_errno
  */
-#define ESRCH            3
+#define ESRCH 3
 
 /**
  * @brief Interrupted system call
  * @ingroup libstd_errno
  */
-#define EINTR            4
+#define EINTR 4
 
 /**
  * @brief I/O error
  * @ingroup libstd_errno
  */
-#define EIO              5
+#define EIO 5
 
 /**
  * @brief No such device or address
  * @ingroup libstd_errno
  */
-#define ENXIO            6
+#define ENXIO 6
 
 /**
  * @brief Argument list too long
  * @ingroup libstd_errno
  */
-#define E2BIG            7
+#define E2BIG 7
 
 /**
  * @brief Exec format error
  * @ingroup libstd_errno
  */
-#define ENOEXEC          8
+#define ENOEXEC 8
 
 /**
  * @brief Bad file number
  * @ingroup libstd_errno
  */
-#define EBADF            9
+#define EBADF 9
 
 /**
  * @brief No child processes
  * @ingroup libstd_errno
  */
-#define ECHILD          10
+#define ECHILD 10
 
 /**
  * @brief Try again
  * @ingroup libstd_errno
  */
-#define EAGAIN          11
+#define EAGAIN 11
 
 /**
  * @brief Out of memory
  * @ingroup libstd_errno
  */
-#define ENOMEM          12
+#define ENOMEM 12
 
 /**
  * @brief Permission denied
  * @ingroup libstd_errno
  */
-#define EACCES          13
+#define EACCES 13
 
 /**
  * @brief Bad address
  * @ingroup libstd_errno
  */
-#define EFAULT          14
+#define EFAULT 14
 
 /**
  * @brief Block device required
  * @ingroup libstd_errno
  */
-#define ENOTBLK         15
+#define ENOTBLK 15
 
 /**
  * @brief Device or resource busy
  * @ingroup libstd_errno
  */
-#define EBUSY           16
+#define EBUSY 16
 
 /**
  * @brief File exists
  * @ingroup libstd_errno
  */
-#define EEXIST          17
+#define EEXIST 17
 
 /**
  * @brief Cross-device link
  * @ingroup libstd_errno
  */
-#define EXDEV           18
+#define EXDEV 18
 
 /**
  * @brief No such device
  * @ingroup libstd_errno
  */
-#define ENODEV          19
+#define ENODEV 19
 
 /**
  * @brief Not a directory
  * @ingroup libstd_errno
  */
-#define ENOTDIR         20
+#define ENOTDIR 20
 
 /**
  * @brief Is a directory
  * @ingroup libstd_errno
  */
-#define EISDIR          21
+#define EISDIR 21
 
 /**
  * @brief Invalid argument
  * @ingroup libstd_errno
  */
-#define EINVAL          22
+#define EINVAL 22
 
 /**
  * @brief File table overflow
  * @ingroup libstd_errno
  */
-#define ENFILE          23
+#define ENFILE 23
 
 /**
  * @brief Too many open files
  * @ingroup libstd_errno
  */
-#define EMFILE          24
+#define EMFILE 24
 
 /**
  * @brief Not a typewriter
  * @ingroup libstd_errno
  */
-#define ENOTTY          25
+#define ENOTTY 25
 
 /**
  * @brief Text file busy
  * @ingroup libstd_errno
  */
-#define ETXTBSY         26
+#define ETXTBSY 26
 
 /**
  * @brief File too large
  * @ingroup libstd_errno
  */
-#define EFBIG           27
+#define EFBIG 27
 
 /**
  * @brief No space left on device
  * @ingroup libstd_errno
  */
-#define ENOSPC          28
+#define ENOSPC 28
 
 /**
  * @brief Illegal seek
  * @ingroup libstd_errno
  */
-#define ESPIPE          29
+#define ESPIPE 29
 
 /**
  * @brief Read-only file system
  * @ingroup libstd_errno
  */
-#define EROFS           30
+#define EROFS 30
 
 /**
  * @brief Too many links
  * @ingroup libstd_errno
  */
-#define EMLINK          31
+#define EMLINK 31
 
 /**
  * @brief Broken pipe
  * @ingroup libstd_errno
  */
-#define EPIPE           32
+#define EPIPE 32
 
 /**
  * @brief Math argument out of domain of func
  * @ingroup libstd_errno
  */
-#define EDOM            33
+#define EDOM 33
 
 /**
  * @brief Math result not representable
  * @ingroup libstd_errno
  */
-#define ERANGE          34
+#define ERANGE 34
 
 /**
  * @brief Resource deadlock would occur
  * @ingroup libstd_errno
  */
-#define EDEADLK     35
+#define EDEADLK 35
 
 /**
  * @brief File name too long
  * @ingroup libstd_errno
  */
-#define ENAMETOOLONG    36
+#define ENAMETOOLONG 36
 
 /**
  * @brief No record locks available
  * @ingroup libstd_errno
  */
-#define ENOLCK      37
+#define ENOLCK 37
 
 /**
  * @brief Function not implemented
  * @ingroup libstd_errno
  */
-#define ENOSYS      38
+#define ENOSYS 38
 
 /**
  * @brief Directory not empty
  * @ingroup libstd_errno
  */
-#define ENOTEMPTY   39
+#define ENOTEMPTY 39
 
 /**
  * @brief Too many symbolic links encountered
  * @ingroup libstd_errno
  */
-#define ELOOP       40
+#define ELOOP 40
 
 /**
  * @brief Operation would block
@@ -276,295 +276,295 @@ int* _ErrnoFunc(void);
  * @brief No message of desired type
  * @ingroup libstd_errno
  */
-#define ENOMSG      42
+#define ENOMSG 42
 
 /**
  * @brief Identifier removed
  * @ingroup libstd_errno
  */
-#define EIDRM       43
+#define EIDRM 43
 
 /**
  * @brief Channel number out of range
  * @ingroup libstd_errno
  */
-#define ECHRNG      44
+#define ECHRNG 44
 
 /**
  * @brief Level 2 not synchronized
  * @ingroup libstd_errno
  */
-#define EL2NSYNC    45
+#define EL2NSYNC 45
 
 /**
  * @brief Level 3 halted
  * @ingroup libstd_errno
  */
-#define EL3HLT      46
+#define EL3HLT 46
 
 /**
  * @brief Level 3 reset
  * @ingroup libstd_errno
  */
-#define EL3RST      47
+#define EL3RST 47
 
 /**
  * @brief Link number out of range
  * @ingroup libstd_errno
  */
-#define ELNRNG      48
+#define ELNRNG 48
 
 /**
  * @brief Protocol driver not attached
  * @ingroup libstd_errno
  */
-#define EUNATCH     49
+#define EUNATCH 49
 
 /**
  * @brief No CSI structure available
  * @ingroup libstd_errno
  */
-#define ENOCSI      50
+#define ENOCSI 50
 
 /**
  * @brief Level 2 halted
  * @ingroup libstd_errno
  */
-#define EL2HLT      51
+#define EL2HLT 51
 
 /**
  * @brief Invalid exchange
  * @ingroup libstd_errno
  */
-#define EBADE       52
+#define EBADE 52
 
 /**
  * @brief Invalid request descriptor
  * @ingroup libstd_errno
  */
-#define EBADR       53
+#define EBADR 53
 
 /**
  * @brief Exchange full
  * @ingroup libstd_errno
  */
-#define EXFULL      54
+#define EXFULL 54
 
 /**
  * @brief No anode
  * @ingroup libstd_errno
  */
-#define ENOANO      55
+#define ENOANO 55
 
 /**
  * @brief Invalid request code
  * @ingroup libstd_errno
  */
-#define EBADRQC     56
+#define EBADRQC 56
 
 /**
  * @brief Invalid slot
  * @ingroup libstd_errno
  */
-#define EBADSLT     57
+#define EBADSLT 57
 
 /**
  * @brief Bad font file format
  * @ingroup libstd_errno
  */
-#define EBFONT      59
+#define EBFONT 59
 
 /**
  * @brief Device not a stream
  * @ingroup libstd_errno
  */
-#define ENOSTR      60
+#define ENOSTR 60
 
 /**
  * @brief No data available
  * @ingroup libstd_errno
  */
-#define ENODATA     61
+#define ENODATA 61
 
 /**
  * @brief Timer expired
  * @ingroup libstd_errno
  */
-#define ETIME       62
+#define ETIME 62
 
 /**
  * @brief Out of streams resources
  * @ingroup libstd_errno
  */
-#define ENOSR       63
+#define ENOSR 63
 
 /**
  * @brief Machine is not on the network
  * @ingroup libstd_errno
  */
-#define ENONET      64
+#define ENONET 64
 
 /**
  * @brief Package not installed
  * @ingroup libstd_errno
  */
-#define ENOPKG      65
+#define ENOPKG 65
 
 /**
  * @brief Object is remote
  * @ingroup libstd_errno
  */
-#define EREMOTE     66
+#define EREMOTE 66
 
 /**
  * @brief Link has been severed
  * @ingroup libstd_errno
  */
-#define ENOLINK     67
+#define ENOLINK 67
 
 /**
  * @brief Advertise error
  * @ingroup libstd_errno
  */
-#define EADV        68
+#define EADV 68
 
 /**
  * @brief Srmount error
  * @ingroup libstd_errno
  */
-#define ESRMNT      69
+#define ESRMNT 69
 
 /**
  * @brief Communication error on send
  * @ingroup libstd_errno
  */
-#define ECOMM       70
+#define ECOMM 70
 
 /**
  * @brief Protocol error
  * @ingroup libstd_errno
  */
-#define EPROTO      71
+#define EPROTO 71
 
 /**
  * @brief Multihop attempted
  * @ingroup libstd_errno
  */
-#define EMULTIHOP   72
+#define EMULTIHOP 72
 
 /**
  * @brief RFS specific error
  * @ingroup libstd_errno
  */
-#define EDOTDOT     73
+#define EDOTDOT 73
 
 /**
  * @brief Not a data message
  * @ingroup libstd_errno
  */
-#define EBADMSG     74
+#define EBADMSG 74
 
 /**
  * @brief Value too large for defined data type
  * @ingroup libstd_errno
  */
-#define EOVERFLOW   75
+#define EOVERFLOW 75
 
 /**
  * @brief Name not unique on network
  * @ingroup libstd_errno
  */
-#define ENOTUNIQ    76
+#define ENOTUNIQ 76
 
 /**
  * @brief File descriptor in bad state
  * @ingroup libstd_errno
  */
-#define EBADFD      77
+#define EBADFD 77
 
 /**
  * @brief Remote address changed
  * @ingroup libstd_errno
  */
-#define EREMCHG     78
+#define EREMCHG 78
 
 /**
  * @brief Can not access a needed shared library
  * @ingroup libstd_errno
  */
-#define ELIBACC     79
+#define ELIBACC 79
 
 /**
  * @brief Accessing a corrupted shared library
  * @ingroup libstd_errno
  */
-#define ELIBBAD     80
+#define ELIBBAD 80
 
 /**
  * @brief .lib section in a.out corrupted
  * @ingroup libstd_errno
  */
-#define ELIBSCN     81
+#define ELIBSCN 81
 
 /**
  * @brief Attempting to link in too many shared libraries
  * @ingroup libstd_errno
  */
-#define ELIBMAX     82
+#define ELIBMAX 82
 
 /**
  * @brief Cannot exec a shared library directly
  * @ingroup libstd_errno
  */
-#define ELIBEXEC    83
+#define ELIBEXEC 83
 
 /**
  * @brief Illegal byte sequence
  * @ingroup libstd_errno
  */
-#define EILSEQ      84
+#define EILSEQ 84
 
 /**
  * @brief Interrupted system call should be restarted
  * @ingroup libstd_errno
  */
-#define ERESTART    85
+#define ERESTART 85
 
 /**
  * @brief Streams pipe error
  * @ingroup libstd_errno
  */
-#define ESTRPIPE    86
+#define ESTRPIPE 86
 
 /**
  * @brief Too many users
  * @ingroup libstd_errno
  */
-#define EUSERS      87
+#define EUSERS 87
 
 /**
  * @brief Socket operation on non-socket
  * @ingroup libstd_errno
  */
-#define ENOTSOCK    88
+#define ENOTSOCK 88
 
 /**
  * @brief Destination address required
  * @ingroup libstd_errno
  */
-#define EDESTADDRREQ    89
+#define EDESTADDRREQ 89
 
 /**
  * @brief Message too long
  * @ingroup libstd_errno
  */
-#define EMSGSIZE    90
+#define EMSGSIZE 90
 
 /**
  * @brief Protocol wrong type for socket
  * @ingroup libstd_errno
  */
-#define EPROTOTYPE  91
+#define EPROTOTYPE 91
 
 /**
  * @brief Protocol not available
@@ -588,37 +588,37 @@ int* _ErrnoFunc(void);
  * @brief Operation not supported on transport endpoint
  * @ingroup libstd_errno
  */
-#define EOPNOTSUPP  95
+#define EOPNOTSUPP 95
 
 /**
  * @brief Protocol family not supported
  * @ingroup libstd_errno
  */
-#define EPFNOSUPPORT    96
+#define EPFNOSUPPORT 96
 
 /**
  * @brief Address family not supported by protocol
  * @ingroup libstd_errno
  */
-#define EAFNOSUPPORT    97
+#define EAFNOSUPPORT 97
 
 /**
  * @brief Address already in use
  * @ingroup libstd_errno
  */
-#define EADDRINUSE  98
+#define EADDRINUSE 98
 
 /**
  * @brief Cannot assign requested address
  * @ingroup libstd_errno
  */
-#define EADDRNOTAVAIL   99
+#define EADDRNOTAVAIL 99
 
 /**
  * @brief Network is down
  * @ingroup libstd_errno
  */
-#define ENETDOWN    100
+#define ENETDOWN 100
 
 /**
  * @brief Network is unreachable
@@ -630,79 +630,79 @@ int* _ErrnoFunc(void);
  * @brief Network dropped connection because of reset
  * @ingroup libstd_errno
  */
-#define ENETRESET   102
+#define ENETRESET 102
 
 /**
  * @brief Software caused connection abort
  * @ingroup libstd_errno
  */
-#define ECONNABORTED    103
+#define ECONNABORTED 103
 
 /**
  * @brief Connection reset by peer
  * @ingroup libstd_errno
  */
-#define ECONNRESET  104
+#define ECONNRESET 104
 
 /**
  * @brief No buffer space available
  * @ingroup libstd_errno
  */
-#define ENOBUFS     105
+#define ENOBUFS 105
 
 /**
  * @brief Transport endpoint is already connected
  * @ingroup libstd_errno
  */
-#define EISCONN     106
+#define EISCONN 106
 
 /**
  * @brief Transport endpoint is not connected
  * @ingroup libstd_errno
  */
-#define ENOTCONN    107
+#define ENOTCONN 107
 
 /**
  * @brief Cannot send after transport endpoint shutdown
  * @ingroup libstd_errno
  */
-#define ESHUTDOWN   108
+#define ESHUTDOWN 108
 
 /**
  * @brief Too many references: cannot splice
  * @ingroup libstd_errno
  */
-#define ETOOMANYREFS    109
+#define ETOOMANYREFS 109
 
 /**
  * @brief Connection timed out
  * @ingroup libstd_errno
  */
-#define ETIMEDOUT   110
+#define ETIMEDOUT 110
 
 /**
  * @brief Connection refused
  * @ingroup libstd_errno
  */
-#define ECONNREFUSED    111
+#define ECONNREFUSED 111
 
 /**
  * @brief Host is down
  * @ingroup libstd_errno
  */
-#define EHOSTDOWN   112
+#define EHOSTDOWN 112
 
 /**
  * @brief No route to host
  * @ingroup libstd_errno
  */
-#define EHOSTUNREACH    113
+#define EHOSTUNREACH 113
 
 /**
  * @brief Operation already in progress
  * @ingroup libstd_errno
  */
-#define EALREADY    114
+#define EALREADY 114
 
 /**
  * @brief Operation now in progress
@@ -714,49 +714,49 @@ int* _ErrnoFunc(void);
  * @brief Stale NFS file handle
  * @ingroup libstd_errno
  */
-#define ESTALE      116
+#define ESTALE 116
 
 /**
  * @brief Structure needs cleaning
  * @ingroup libstd_errno
  */
-#define EUCLEAN     117
+#define EUCLEAN 117
 
 /**
  * @brief Not a XENIX named type file
  * @ingroup libstd_errno
  */
-#define ENOTNAM     118
+#define ENOTNAM 118
 
 /**
  * @brief No XENIX semaphores available
  * @ingroup libstd_errno
  */
-#define ENAVAIL     119
+#define ENAVAIL 119
 
 /**
  * @brief Is a named type file
  * @ingroup libstd_errno
  */
-#define EISNAM      120
+#define EISNAM 120
 
 /**
  * @brief Remote I/O error
  * @ingroup libstd_errno
  */
-#define EREMOTEIO   121
+#define EREMOTEIO 121
 
 /**
  * @brief Quota exceeded
  * @ingroup libstd_errno
  */
-#define EDQUOT      122
+#define EDQUOT 122
 
 /**
  * @brief No medium found
  * @ingroup libstd_errno
  */
-#define ENOMEDIUM   123
+#define ENOMEDIUM 123
 
 /**
  * @brief Wrong medium type
@@ -768,13 +768,13 @@ int* _ErrnoFunc(void);
  * @brief Operation Canceled
  * @ingroup libstd_errno
  */
-#define ECANCELED   125
+#define ECANCELED 125
 
 /**
  * @brief Required key not available
  * @ingroup libstd_errno
  */
-#define ENOKEY      126
+#define ENOKEY 126
 
 /**
  * @brief Key has expired
@@ -792,13 +792,13 @@ int* _ErrnoFunc(void);
  * @brief Key was rejected by service
  * @ingroup libstd_errno
  */
-#define EKEYREJECTED    129
+#define EKEYREJECTED 129
 
 /**
  * @brief Owner died
  * @ingroup libstd_errno
  */
-#define EOWNERDEAD  130
+#define EOWNERDEAD 130
 
 /**
  * @brief State not recoverable
@@ -810,7 +810,7 @@ int* _ErrnoFunc(void);
  * @brief Operation not possible due to RF-kill
  * @ingroup libstd_errno
  */
-#define ERFKILL     132
+#define ERFKILL 132
 
 /**
  * @brief Maximum value for posix error codes (not inclusive)
@@ -828,19 +828,19 @@ int* _ErrnoFunc(void);
  * @brief Invalid path format
  * @ingroup libstd_errno
  */
-#define EBADPATH    134
+#define EBADPATH 134
 
 /**
  * @brief Invalid path flag
  * @ingroup libstd_errno
  */
-#define EBADFLAG    135
+#define EBADFLAG 135
 
 /**
  * @brief Operation not supported
  * @ingroup libstd_errno
  */
-#define ENOTSUP     136
+#define ENOTSUP 136
 
 /**
  * @brief Resource disconnected or freed
@@ -852,13 +852,13 @@ int* _ErrnoFunc(void);
  * @brief Process spawn failed
  * @ingroup libstd_errno
  */
-#define ESPAWNFAIL  138
+#define ESPAWNFAIL 138
 
 /**
  * @brief No such label
  * @ingroup libstd_errno
  */
-#define ENOLABEL  139
+#define ENOLABEL 139
 
 /**
  * @brief Maximum value for all error codes (not inclusive)

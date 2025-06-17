@@ -1,5 +1,7 @@
 #include "hashmap.h"
 
+#include "mem/kalloc.h"
+
 #include <stdlib.h>
 
 static uint64_t hash_uint64(uint64_t key)
@@ -50,7 +52,7 @@ static uint64_t hashmap_grow(hashmap_t* map)
         return ERR;
     }
 
-    hashmap_entry_t** newEntries = calloc(newCapacity, sizeof(hashmap_entry_t*));
+    hashmap_entry_t** newEntries = kcalloc(newCapacity, sizeof(hashmap_entry_t*), KALLOC_NONE);
     if (newEntries == NULL)
     {
         return false;
@@ -70,7 +72,7 @@ static uint64_t hashmap_grow(hashmap_t* map)
         {
             if (hashmap_insert_no_grow(map, entry->key, entry) == ERR)
             {
-                free(newEntries);
+                kfree(newEntries);
                 map->capacity = oldCapacity;
                 map->entries = oldEntries;
                 map->length = 0;
@@ -80,7 +82,7 @@ static uint64_t hashmap_grow(hashmap_t* map)
         }
     }
 
-    free(oldEntries);
+    kfree(oldEntries);
     return true;
 }
 
@@ -89,7 +91,7 @@ uint64_t hashmap_init(hashmap_t* map)
     map->length = 0;
     map->capacity = HASHMAP_INITIAL_CAPACITY;
 
-    map->entries = calloc(map->capacity, sizeof(hashmap_entry_t*));
+    map->entries = kcalloc(map->capacity, sizeof(hashmap_entry_t*), KALLOC_NONE);
     if (map->entries == NULL)
     {
         return ERR;
@@ -100,7 +102,7 @@ uint64_t hashmap_init(hashmap_t* map)
 
 void hashmap_deinit(hashmap_t* map)
 {
-    free(map->entries);
+    kfree(map->entries);
     map->entries = NULL;
     map->length = 0;
     map->capacity = 0;

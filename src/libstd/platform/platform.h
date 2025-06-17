@@ -19,8 +19,6 @@ void _PlatformEarlyInit(void);
 
 void _PlatformLateInit(void);
 
-void* _PlatformPageAlloc(uint64_t amount);
-
 int* _PlatformErrnoFunc(void);
 
 // User platform will ignore message.

@@ -13,8 +13,45 @@
 #include <string.h>
 #include <sys/math.h>
 
+extern uint64_t _kernelEnd;
+
 static lock_t kernelLock;
 static pml_t* kernelPml;
+static uintptr_t kernelFreeAddress;
+
+static void* vmm_kernel_find_free_region(uint64_t pageAmount)
+{
+    uintptr_t addr = kernelFreeAddress;
+
+    while (addr + pageAmount * PAGE_SIZE <= PML_HIGHER_HALF_END)
+    {
+        void* firstMappedPage =
+            pml_find_first_mapped_page(kernelPml, (void*)addr, (void*)(addr + pageAmount * PAGE_SIZE));
+
+        if (firstMappedPage == NULL)
+        {
+            // Found a free region
+            kernelFreeAddress = addr + pageAmount * PAGE_SIZE;
+            return (void*)addr;
+        }
+
+        // Skip to after the mapped page and continue searching
+        addr = (uintptr_t)firstMappedPage + PAGE_SIZE;
+    }
+
+    return NULL;
+}
+
+static void vmm_kernel_update_free_address(uintptr_t virtAddr, uint64_t pageAmount)
+{
+    if (virtAddr >= ((uintptr_t)&_kernelEnd) && virtAddr < PML_HIGHER_HALF_END)
+    {
+        if (virtAddr <= kernelFreeAddress && kernelFreeAddress < virtAddr + pageAmount * PAGE_SIZE)
+        {
+            kernelFreeAddress = virtAddr + pageAmount * PAGE_SIZE;
+        }
+    }
+}
 
 void space_init(space_t* space)
 {
@@ -35,18 +72,18 @@ void space_init(space_t* space)
 
 void space_deinit(space_t* space)
 {
+    uint64_t index;
+    BITMAP_FOR_EACH_SET(&index, &space->callbackBitmap)
+    {
+        space->callbacks[index].func(space->callbacks[index].private);
+    }
+
     for (uint64_t i = PML_ENTRY_AMOUNT / 2; i < PML_ENTRY_AMOUNT; i++)
     {
         space->pml->entries[i] = (pml_entry_t){0};
     }
 
     pml_free(space->pml);
-
-    uint64_t index;
-    BITMAP_FOR_EACH_SET(&index, &space->callbackBitmap)
-    {
-        space->callbacks[index].func(space->callbacks[index].private);
-    }
 }
 
 void space_load(space_t* space)
@@ -168,7 +205,7 @@ static uint64_t vmm_mapping_prepare(vmm_mapping_info_t* info, space_t* space, vo
     info->virtAddr = virtAddr;
     if (info->physAddr != NULL)
     {
-        info->physAddr = PML_PHYS_TO_LOWER_SAFE((void*)ROUND_DOWN(physAddr, PAGE_SIZE));
+        info->physAddr = PML_ENSURE_LOWER_HALF((void*)ROUND_DOWN(physAddr, PAGE_SIZE));
     }
     else
     {
@@ -202,6 +239,8 @@ void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gop
 {
     lock_init(&kernelLock);
     vmm_load_memory_map(memoryMap);
+
+    kernelFreeAddress = ROUND_UP((uintptr_t)&_kernelEnd, PAGE_SIZE);
 
     printf("vmm: kernel phys=[0x%016lx-0x%016lx] virt=[0x%016lx-0x%016lx]\n", kernel->physStart,
         kernel->physStart + kernel->length, kernel->virtStart, kernel->virtStart + kernel->length);
@@ -241,28 +280,71 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t pageAmount, pml_fl
 {
     LOCK_DEFER(&kernelLock);
 
-    physAddr = PML_PHYS_TO_LOWER_SAFE(physAddr);
-    if (virtAddr == NULL)
-    {
-        virtAddr = PML_LOWER_TO_HIGHER(physAddr);
-        printf("vmm: map lower [0x%016lx-0x%016lx] to higher\n", physAddr,
-            (uintptr_t)physAddr + pageAmount * PAGE_SIZE);
-    }
-
-    // Sanity checks, if the kernel specifies weird values we assume some corruption or fundamental failure has taken
-    // place.
-    assert((uintptr_t)virtAddr % 0x1000 == 0);
-    assert((uintptr_t)physAddr % 0x1000 == 0);
+    // Sanity checks, if the kernel specifies weird values we assume some corruption or fundamental failure has
+    // taken place.
+    assert((uintptr_t)virtAddr % PAGE_SIZE == 0);
+    assert((uintptr_t)physAddr % PAGE_SIZE == 0);
     assert(pageAmount != 0);
 
-    if (!pml_is_unmapped(kernelPml, virtAddr, pageAmount))
+    if (physAddr == NULL)
     {
-        return ERRPTR(EEXIST);
-    }
+        if (virtAddr == NULL)
+        {
+            virtAddr = vmm_kernel_find_free_region(pageAmount);
+            if (virtAddr == NULL)
+            {
+                return ERRPTR(ENOMEM);
+            }
+        }
+        else
+        {
+            if (!pml_is_unmapped(kernelPml, virtAddr, pageAmount))
+            {
+                return ERRPTR(EEXIST);
+            }
+        }
 
-    if (pml_map(kernelPml, virtAddr, physAddr, pageAmount, flags | VMM_KERNEL_PML_FLAGS, PML_CALLBACK_NONE) == ERR)
+        for (uint64_t i = 0; i < pageAmount; i++)
+        {
+            void* page = pmm_alloc();
+            void* vaddr = (void*)((uint64_t)virtAddr + i * PAGE_SIZE);
+
+            if (page == NULL ||
+                pml_map(kernelPml, vaddr, PML_HIGHER_TO_LOWER(page), 1, flags | VMM_KERNEL_PML_FLAGS | PML_OWNED,
+                    PML_CALLBACK_NONE) == ERR)
+            {
+                if (page != NULL)
+                {
+                    pmm_free(page);
+                }
+
+                // Page table will free the previously allocated pages as they are owned by the Page table.
+                pml_unmap(kernelPml, virtAddr, i);
+                return ERRPTR(ENOMEM);
+            }
+        }
+
+        vmm_kernel_update_free_address((uintptr_t)virtAddr, pageAmount);
+    }
+    else
     {
-        return ERRPTR(ENOMEM);
+        physAddr = PML_ENSURE_LOWER_HALF(physAddr);
+        if (virtAddr == NULL)
+        {
+            virtAddr = PML_LOWER_TO_HIGHER(physAddr);
+            printf("vmm: map lower [0x%016lx-0x%016lx] to higher\n", physAddr,
+                (uintptr_t)physAddr + pageAmount * PAGE_SIZE);
+        }
+
+        if (!pml_is_unmapped(kernelPml, virtAddr, pageAmount))
+        {
+            return ERRPTR(EEXIST);
+        }
+
+        if (pml_map(kernelPml, virtAddr, physAddr, pageAmount, flags | VMM_KERNEL_PML_FLAGS, PML_CALLBACK_NONE) == ERR)
+        {
+            return ERRPTR(ENOMEM);
+        }
     }
 
     return virtAddr;
@@ -372,7 +454,7 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
 
     for (uint64_t i = 0; i < info.pageAmount; i++)
     {
-        void* physAddr = PML_PHYS_TO_LOWER_SAFE(pages[i]);
+        void* physAddr = PML_ENSURE_LOWER_HALF(pages[i]);
 
         if (pml_map(space->pml, (void*)((uint64_t)info.virtAddr + i * PAGE_SIZE), physAddr, 1, info.flags,
                 callbackId) == ERR)
@@ -380,6 +462,11 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
             for (uint64_t j = 0; j < i; j++)
             {
                 pml_unmap(space->pml, (void*)((uint64_t)info.virtAddr + j * PAGE_SIZE), 1);
+            }
+
+            if (callbackId != PML_CALLBACK_NONE)
+            {
+                space_remove_callback(space, callbackId);
             }
 
             return ERRPTR(ENOMEM);

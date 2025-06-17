@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common/heap.h"
+#include "platform/user/common/heap.h"
 
 void* calloc(size_t nmemb, size_t size)
 {

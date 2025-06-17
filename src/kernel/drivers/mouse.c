@@ -1,6 +1,7 @@
 #include "mouse.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
+#include "mem/kalloc.h"
 #include "ps2/mouse.h"
 #include "sched/thread.h"
 #include "sync/lock.h"
@@ -47,7 +48,7 @@ SYSFS_STANDARD_OPS_DEFINE(mouseOps, PATH_NONE,
 
 mouse_t* mouse_new(const char* name)
 {
-    mouse_t* mouse = malloc(sizeof(mouse_t));
+    mouse_t* mouse = kmalloc(sizeof(mouse_t), KALLOC_NONE);
     mouse->writeIndex = 0;
     wait_queue_init(&mouse->waitQueue);
     lock_init(&mouse->lock);
@@ -59,7 +60,7 @@ mouse_t* mouse_new(const char* name)
 static void mouse_on_free(sysobj_t* sysobj)
 {
     mouse_t* mouse = sysobj->private;
-    free(mouse);
+    kfree(mouse);
 }
 
 void mouse_free(mouse_t* mouse)

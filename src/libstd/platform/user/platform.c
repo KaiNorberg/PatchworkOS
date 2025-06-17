@@ -4,14 +4,13 @@
 #include "common/std_streams.h"
 #include "common/syscalls.h"
 #include "common/thread.h"
+#include "platform/user/common/heap.h"
 
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/io.h>
 #include <sys/proc.h>
-
-static fd_t zeroResource;
 
 static void _PopulateStdDescriptors(void)
 {
@@ -36,21 +35,11 @@ void _PlatformEarlyInit(void)
     _ExitStackInit();
     _FilesInit();
     _StdStreamsInit();
-
-    zeroResource = open("sys:/zero");
-    if (zeroResource == ERR)
-    {
-        exit(EXIT_FAILURE);
-    }
+    _HeapInit();
 }
 
 void _PlatformLateInit(void)
 {
-}
-
-void* _PlatformPageAlloc(uint64_t amount)
-{
-    return mmap(zeroResource, NULL, amount * PAGE_SIZE, PROT_READ | PROT_WRITE);
 }
 
 int* _PlatformErrnoFunc(void)

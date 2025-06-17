@@ -135,7 +135,7 @@ char* _ErrorStrings[] = {
     [EOWNERDEAD] = "owner died",
     [ENOTRECOVERABLE] = "state not recoverable",
     [ERFKILL] = "operation not possible due to rf-kill",
-    
+
     // PatchworkOS specific error codes
     [EUNKNOWNCTL] = "invalid or unknown control request",
     [EBADPATH] = "invalid path format",
@@ -143,5 +143,4 @@ char* _ErrorStrings[] = {
     [ENOTSUP] = "operation not supported",
     [EDISCONNECTED] = "resource disconnected or freed",
     [ESPAWNFAIL] = "process spawn failed",
-    [ENOLABEL] = "no such label"
-};
+    [ENOLABEL] = "no such label"};

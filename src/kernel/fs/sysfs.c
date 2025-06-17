@@ -1,5 +1,6 @@
 #include "sysfs.h"
 
+#include "mem/kalloc.h"
 #include "path.h"
 #include "sched/thread.h"
 #include "sync/rwlock.h"
@@ -287,7 +288,7 @@ static node_t* sysfs_traverse_and_alloc(const char* path)
         node_t* child = node_find(parent, name);
         if (child == NULL)
         {
-            sysdir_t* dir = malloc(sizeof(sysdir_t));
+            sysdir_t* dir = kmalloc(sizeof(sysdir_t), KALLOC_NONE);
             if (dir == NULL)
             {
                 return NULL;

@@ -1,5 +1,6 @@
 #include "ramfs.h"
 
+#include "mem/kalloc.h"
 #include "mem/pmm.h"
 #include "sched/thread.h"
 #include "sysfs.h"
@@ -70,7 +71,7 @@ static uint64_t ramfs_write(file_t* file, const void* buffer, uint64_t count)
 
     if (file->pos + count >= ramFile->size)
     {
-        void* newData = realloc(ramFile->data, file->pos + count);
+        void* newData = krealloc(ramFile->data, file->pos + count, KALLOC_VMM);
         if (newData == NULL)
         {
             return ERR;
@@ -124,7 +125,7 @@ static file_t* ramfs_open(volume_t* volume, const path_t* path)
 
         if (path->flags & PATH_DIRECTORY)
         {
-            ram_dir_t* ramDir = malloc(sizeof(ram_dir_t));
+            ram_dir_t* ramDir = kmalloc(sizeof(ram_dir_t), KALLOC_NONE);
             if (ramDir == NULL)
             {
                 return NULL;
@@ -137,7 +138,7 @@ static file_t* ramfs_open(volume_t* volume, const path_t* path)
         }
         else
         {
-            ram_file_t* ramFile = malloc(sizeof(ram_file_t));
+            ram_file_t* ramFile = kmalloc(sizeof(ram_file_t), KALLOC_NONE);
             if (ramFile == NULL)
             {
                 return NULL;
@@ -179,7 +180,7 @@ static file_t* ramfs_open(volume_t* volume, const path_t* path)
         file->ops = &fileOps;
         if (path->flags & PATH_TRUNCATE)
         {
-            free(ramFile->data);
+            kfree(ramFile->data);
             ramFile->data = NULL;
             ramFile->size = 0;
         }
@@ -278,8 +279,8 @@ static uint64_t ramfs_remove(volume_t* volume, const path_t* path)
             return ERROR(EBUSY);
         }
         node_remove(&ramFile->node);
-        free(ramFile->data);
-        free(ramFile);
+        kfree(ramFile->data);
+        kfree(ramFile);
     }
     else
     {
@@ -289,7 +290,7 @@ static uint64_t ramfs_remove(volume_t* volume, const path_t* path)
             return ERROR(EBUSY);
         }
         node_remove(&ramDir->node);
-        free(ramDir);
+        kfree(ramDir);
     }
 
     return 0;
@@ -315,7 +316,8 @@ static fs_t ramfs = {
 
 static ram_dir_t* ramfs_load_dir(ram_dir_t* in)
 {
-    ram_dir_t* newDir = malloc(sizeof(ram_dir_t));
+    ram_dir_t* newDir = kmalloc(sizeof(ram_dir_t), KALLOC_NONE);
+    assert(newDir != NULL);
     node_init(&newDir->node, in->node.name, RAMFS_DIR);
     newDir->openedAmount = 0;
 
@@ -332,10 +334,11 @@ static ram_dir_t* ramfs_load_dir(ram_dir_t* in)
         {
             ram_file_t* file = CONTAINER_OF(child, ram_file_t, node);
 
-            ram_file_t* newFile = malloc(sizeof(ram_file_t));
+            ram_file_t* newFile = kmalloc(sizeof(ram_file_t), KALLOC_NONE);
+            assert(newFile != NULL);
             node_init(&newFile->node, file->node.name, RAMFS_FILE);
             newFile->size = file->size;
-            newFile->data = malloc(newFile->size);
+            newFile->data = kmalloc(newFile->size, KALLOC_VMM);
             memcpy(newFile->data, file->data, newFile->size);
             newFile->openedAmount = 0;
 

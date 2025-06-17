@@ -1,6 +1,7 @@
 #include "vfs.h"
 
 #include "drivers/systime/systime.h"
+#include "mem/kalloc.h"
 #include "path.h"
 #include "sched/thread.h"
 #include "sched/wait.h"
@@ -61,7 +62,7 @@ file_t* file_new(volume_t* volume, const path_t* path, path_flags_t supportedFla
         return ERRPTR(EINVAL);
     }
 
-    file_t* file = malloc(sizeof(file_t));
+    file_t* file = kmalloc(sizeof(file_t), KALLOC_NONE);
     if (file == NULL)
     {
         return NULL;
@@ -97,7 +98,7 @@ void file_deref(file_t* file)
         {
             volume_deref(file->volume);
         }
-        free(file);
+        kfree(file);
     }
 }
 
@@ -127,14 +128,14 @@ uint64_t vfs_attach_simple(const char* label, const volume_ops_t* ops)
         }
     }
 
-    volume = malloc(sizeof(volume_t));
+    volume = kmalloc(sizeof(volume_t), KALLOC_NONE);
     list_entry_init(&volume->entry);
     strcpy(volume->label, label);
     volume->ops = ops;
     atomic_init(&volume->ref, 1);
     if (volume_expose(volume) == ERR)
     {
-        free(volume);
+        kfree(volume);
         return ERR;
     }
     list_push(&volumes, &volume->entry);
@@ -149,7 +150,7 @@ uint64_t vfs_mount(const char* label, fs_t* fs)
 static void volume_on_free(sysdir_t* dir)
 {
     volume_t* volume = dir->private;
-    free(volume);
+    kfree(volume);
 }
 
 uint64_t vfs_unmount(const char* label)
@@ -506,7 +507,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
         files[i].revents = 0;
     }
 
-    wait_queue_t** waitQueues = malloc(sizeof(wait_queue_t*) * amount);
+    wait_queue_t** waitQueues = kmalloc(sizeof(wait_queue_t*) * amount, KALLOC_VMM);
     if (waitQueues == NULL)
     {
         return ERR;
@@ -535,7 +536,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
             {
                 if (sysfs_start_op(files[i].file) == ERR)
                 {
-                    free(waitQueues);
+                    kfree(waitQueues);
                     return ERR;
                 }
                 waitQueues[i] = files[i].file->ops->poll(files[i].file, &files[i]);
@@ -544,7 +545,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
 
             if (waitQueues[i] == NULL)
             {
-                free(waitQueues);
+                kfree(waitQueues);
                 return ERR;
             }
 
@@ -570,7 +571,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
         currentTime = systime_uptime();
     }
 
-    free(waitQueues);
+    kfree(waitQueues);
     return events;
 }
 

@@ -1,6 +1,7 @@
 #include "futex.h"
 #include "drivers/systime/systime.h"
 #include "lock.h"
+#include "mem/kalloc.h"
 #include "sched/sched.h"
 #include "sched/thread.h"
 #include "sched/wait.h"
@@ -27,7 +28,7 @@ void futex_ctx_deinit(futex_ctx_t* ctx)
 
         futex_t* futex = CONTAINER_OF(entry, futex_t, entry);
         wait_queue_deinit(&futex->queue);
-        free(futex);
+        kfree(futex);
     }
     hashmap_deinit(&ctx->futexes);
 }
@@ -40,7 +41,7 @@ static futex_t* futex_ctx_get(futex_ctx_t* ctx, atomic_uint64_t* addr)
         return futex;
     }
 
-    futex = malloc(sizeof(futex_t));
+    futex = kmalloc(sizeof(futex_t), KALLOC_NONE);
     hashmap_entry_init(&futex->entry);
     wait_queue_init(&futex->queue);
 

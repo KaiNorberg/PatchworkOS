@@ -168,8 +168,7 @@ typedef struct thread
  *
  * @param process The parent process that the thread will execute within.
  * @param entry The inital value of the threads rip register, defines where the thread will start executing code.
- * @return On success, returns the newly created thread. On failure, returns `NULL` and the
- * running threads `thread_t::error` member is set.
+ * @return On success, returns the newly created thread. On failure, returns `NULL`.
  */
 thread_t* thread_new(process_t* process, void* entry);
 
@@ -227,7 +226,6 @@ bool thread_is_note_pending(thread_t* thread);
  * @param thread The destination thread.
  * @param message The string of text to send to the thread, does not need to be NULL-terminated.
  * @param length The length of the string.
- * @return On success, returns 0. On failure, returns `ERR` and the
- * running threads `thread_t::error` member is set.
+ * @return On success, returns 0. On failure, returns `ERR`.
  */
 uint64_t thread_send_note(thread_t* thread, const void* message, uint64_t length);

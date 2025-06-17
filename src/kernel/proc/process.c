@@ -7,6 +7,7 @@
 #include "sync/lock.h"
 #include "sync/rwlock.h"
 #include "utils/log.h"
+#include "mem/kalloc.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -92,7 +93,7 @@ static uint64_t process_cwd_view_init(file_t* file, view_t* view)
         return ERR;
     }
 
-    char* cwd = malloc(MAX_PATH);
+    char* cwd = kmalloc(MAX_PATH, KALLOC_NONE);
     if (cwd == NULL)
     {
         return ERR;
@@ -109,7 +110,7 @@ static uint64_t process_cwd_view_init(file_t* file, view_t* view)
 
 static void process_cwd_view_deinit(view_t* view)
 {
-    free(view->buffer);
+    kfree(view->buffer);
 }
 
 VIEW_STANDARD_OPS_DEFINE(cwdOps, PATH_NONE,
@@ -189,7 +190,7 @@ static void process_dir_init(process_dir_t* dir, const char* name, process_t* pr
 
 process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, priority_t priority)
 {
-    process_t* process = malloc(sizeof(process_t));
+    process_t* process = kmalloc(sizeof(process_t), KALLOC_NONE);
     if (process == NULL)
     {
         return ERRPTR(ENOMEM);
@@ -252,7 +253,7 @@ static void process_on_free(sysdir_t* dir)
     argv_deinit(&process->argv);
     wait_queue_deinit(&process->queue);
     futex_ctx_deinit(&process->futexCtx);
-    free(process);
+    kfree(process);
 }
 
 void process_free(process_t* process)

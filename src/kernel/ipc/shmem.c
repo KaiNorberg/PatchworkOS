@@ -2,6 +2,7 @@
 
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
+#include "mem/kalloc.h"
 #include "mem/pmm.h"
 #include "mem/vmm.h"
 #include "sched/thread.h"
@@ -33,10 +34,10 @@ static void shmem_on_free(sysobj_t* sysobj)
         {
             pmm_free(shmem->segment->pages[i]);
         }
-        free(shmem->segment);
+        kfree(shmem->segment);
     }
     printf("free shmem %s\n", shmem->id);
-    free(shmem);
+    kfree(shmem);
 }
 
 static void shmem_deref(shmem_t* shmem)
@@ -83,7 +84,7 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
 
     if (shmem->segment == NULL) // First call to mmap()
     {
-        shmem_segment_t* segment = malloc(sizeof(shmem_segment_t) + sizeof(void*) * pageAmount);
+        shmem_segment_t* segment = kmalloc(sizeof(shmem_segment_t) + sizeof(void*) * pageAmount, KALLOC_NONE);
         if (segment == NULL)
         {
             return NULL;
@@ -99,7 +100,7 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
                 {
                     pmm_free(segment->pages[i]);
                 }
-                free(segment);
+                kfree(segment);
                 return NULL;
             }
         }
@@ -112,7 +113,7 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
             {
                 pmm_free(segment->pages[i]);
             }
-            free(segment);
+            kfree(segment);
             return NULL;
         }
 
@@ -160,7 +161,7 @@ static sysobj_ops_t objOps = {
 
 static file_t* shmem_new_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
 {
-    shmem_t* shmem = malloc(sizeof(shmem_t));
+    shmem_t* shmem = kmalloc(sizeof(shmem_t), KALLOC_NONE);
     if (shmem == NULL)
     {
         return NULL;
@@ -169,7 +170,7 @@ static file_t* shmem_new_open(volume_t* volume, const path_t* path, sysobj_t* sy
     file_t* file = file_new(volume, path, PATH_NONE);
     if (file == NULL)
     {
-        free(shmem);
+        kfree(shmem);
         return NULL;
     }
     file->ops = &fileOps;

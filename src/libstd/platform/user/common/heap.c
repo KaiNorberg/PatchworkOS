@@ -1,7 +1,8 @@
 #include "heap.h"
 
-#include "../platform/platform.h"
+#include "platform/platform.h"
 
+#include <stdlib.h>
 #include <sys/io.h>
 #include <sys/math.h>
 #include <sys/proc.h>
@@ -9,6 +10,13 @@
 static _PlatformMutex_t mutex;
 
 static _HeapHeader_t* firstBlock;
+
+static fd_t zeroResource;
+
+static void* _HeapPageAlloc(uint64_t amount)
+{
+    return mmap(zeroResource, NULL, amount * PAGE_SIZE, PROT_READ | PROT_WRITE);
+}
 
 void _HeapBlockSplit(_HeapHeader_t* block, uint64_t size)
 {
@@ -26,7 +34,7 @@ _HeapHeader_t* _HeapBlockNew(uint64_t size)
 {
     uint64_t pageAmount = BYTES_TO_PAGES(size + sizeof(_HeapHeader_t));
 
-    _HeapHeader_t* newBlock = _PlatformPageAlloc(pageAmount);
+    _HeapHeader_t* newBlock = _HeapPageAlloc(pageAmount);
     if (newBlock == NULL)
     {
         return NULL;
@@ -44,6 +52,12 @@ void _HeapInit(void)
 {
     _PLATFORM_MUTEX_INIT(&mutex);
     firstBlock = NULL;
+
+    zeroResource = open("sys:/zero");
+    if (zeroResource == ERR)
+    {
+        exit(EXIT_FAILURE);
+    }
 }
 
 _HeapHeader_t* _HeapFirstBlock(void)

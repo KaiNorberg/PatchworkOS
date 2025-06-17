@@ -147,20 +147,21 @@ void vmm_cpu_init(void);
 pml_t* vmm_kernel_pml(void);
 
 /**
- * @brief Maps physical memory to virtual memory in the kernel space.
+ * @brief Maps physical memory to kernel space virtual memory.
  * @ingroup kernel_mem_vmm
  *
  * @param virtAddr The desired virtual address to map to, must be page aligned, if `NULL` then we use the virtual
  * address `physAddr` + `PML_HIGHER_HALF_START`.
- * @param physAddr The physical address to map from, must be page aligned.
+ * @param physAddr The physical address to map from, must be page aligned, if `NULL` then allocate pages using the pmm
+ * and OR page table flags with PML_OWNED.
  * @param pageAmount The amount of pages to map, must not be 0.
- * @param flags The page table flags of the mapped pages, will be or'd with `VMM_KERNEL_PML_FLAGS`.
+ * @param flags The page table flags of the mapped pages, will OR with `VMM_KERNEL_PML_FLAGS`.
  * @return On success, returns the virtual address where the memory was mapped. On failure, returns `NULL`.
  */
 void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t pageAmount, pml_flags_t flags);
 
 /**
- * @brief Unmaps virtual memory from the kernel space.
+ * @brief Unmaps virtual memory from kernel space.
  * @ingroup kernel_mem_vmm
  *
  * @param virtAddr The virtual address of the memory region.

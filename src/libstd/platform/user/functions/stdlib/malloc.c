@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-#include "common/heap.h"
+#include "platform/user/common/heap.h"
 
 void* malloc(size_t size)
 {
