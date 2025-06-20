@@ -22,47 +22,18 @@ make run  # Requires QEMU
 
 See [Setup](#Setup) for more.
 
----
+## Features
 
-## Monolithic Preemptive 64-bit Fully Tickless Kernel with SMP
-
-Patchwork has full SMP (Symmetric Multi Processing) support, and is fully preemptive, meaning that the scheduler is allowed to preempt a running thread even while that thread is in kernel space, resulting in significant improvements to latency.
-
-Additionally, it is completely tickless. Many kernels rely on timer interrupts that occur at a regular rate to allow the kernel more opportunities to schedule, these timer interrupts are usually called ticks, it's also common for the kernel to be given a chance to schedule at the end of a system call. This system is quite inefficient and not often used in modern kernels, instead of their timers having a fixed regular rate, they can change the amount of time between each timer interrupt this is referred to as a kernel being tickless.
-
-Say we know that the current thread's time slice expires in 100 ms and a thread needs to unblock in 50 ms, and that's all that needs to happen, then we can just set a timer for the lowest of the two values (50 ms) and perform the needed work when the timer arrives, instead of constantly checking if work needs to be done at regular intervals using ticks. This means that in a tickless kernel when there is no work to be done there is truly nothing happening a "true" 0% CPU usage, unlike in a tick based kernel where even when idle the CPU is still performing checks in its regular timer interrupt. A tickless kernel can also have faster system calls as they no longer have to provide an opportunity for the kernel to schedule, the scheduling will always happen exactly when needed due to the dynamic timers. There are also additional considerations for SMP, like how to notify an idle CPU of available threads, but I have a tendency to ramble, so we will leave it there.
-
-## *Mostly* Constant-Time Memory Management
-
-Memory management in the kernel used by Patchwork is designed to run in constant time *per page*, from the physical memory manager to the virtual memory manager.
-
-### Physical Memory manager
-
-When user space wants to allocate memory, it is first allocated from the PMM (Physical Memory Manager), which uses a simple constant-time free stack for most allocations. There is also a non-constant time bitmap allocator for more special allocations that need specific alignment or where the allocated address needs to be within a range of addresses, but this is almost never used. In short, all allocations that matter run in constant-time.
-
-### Virtual Memory Manager
-
-Then after being allocated from the PMM the VMM (Virtual Memory Manager) maps the memory to the processes address space, this also runs in constant time. It does this by embedding metadata directly into the page table structure itself. Since page tables are essentially just arrays, accessing any element runs in constant time, allowing virtual memory operations to also be performed in constant-time, with the asterisk that it's constant time *per page*. Mapping n pages is still O(n). Note that if user space does not specify a desired address for the mapping then the kernel needs to find a free region for the mapping, this is done by storing the previously mapped address and mapping the new memory above it, or iterating from there until a free region is found. In short, the VMM runs in constant-time for all allocations and mapping, unless the address space is fragmented because then finding a free region will require iterating to find a free region.
-
-### Callbacks
-
-For more advanced concepts like shared memory there is a system for mapping memory with a callback, such that the callback will be called when all the pages have been unmapped or the address space is freed (the process is killed). This is used to for example to implement reference counting in a separate shared memory system. Updating these callbacks is also constant-time per page, but the callback system will scale with O(n) where n is the amount of callbacks within an unmapped region (not the entire address space), note that updating a callback is as simple as decrementing a number storing the amount of pages mapped with the callback, so this is hardly a big concern.
-
-### An Example
-
-The callback system is also a good example to use to explain how metadata is stored in the page tables. In x86_64, each table has a set of bits within each entry that is available for use by the kernel to store whatever it wants. This is where we put our metadata, in the case of the callback system we reserve 8 of the bits to store a "callback ID". This is the index into an array of callback structures stored by each address space, each of these structures stores for example the amount of pages associated with the callback and the callback function. When we unmap pages we count how many pages within the region we are unmapping have each used callback ID, then we simply decrement the amount of pages associated with each callback by the amount of pages found in the region with its callback ID, when that number reaches 0, we call the callback, note that all lookups are done via an array to avoid lookups. There are also additional optimizations like using a bitmap to store which callback IDs are currently being used. The system's big limitation is that we are limited in the number of IDs we can have as we have a limited amount of bits in each PML entry.
-
-Finally, the kernel uses a combination of slab allocators and direct virtual memory allocation to allocate memory for itself. So in short, yes there are a few asterisks, but in the most common cases of expanding a process's user heap, mapping to an arbitrary address or similar or allocating memory for a kernel structure, memory management will always be constant-time per page.
-
-## Other Features
-
-- Kernel level multithreading with a [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h), supporting dynamic priorities, dynamic time slices, and more.
+- Kernel level multithreading with a [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h).
+- Fully preemptive and tickless kernel.
+- Symmetric Multi Processing (SMP).
+- Kernel memory management is designed for constant-time operations per page, including both the physical and virtual memory managers.
 - Custom C standard library and system libraries.
 - SIMD.
 - [Custom image format (.fbmp)](https://github.com/KaiNorberg/fbmp).
 - [Custom font format (.grf)](https://github.com/KaiNorberg/grf).
 - Strict adherence to "everything is a file".
-- IPC including pipes, shared memory, sockets and plan9 inspired "signals" called notes.
+- IPC including pipes, shared memory, sockets and Plan9 inspired "signals" called notes.
 - And much more...
 
 ## Notable Differences with Unix
@@ -74,7 +45,7 @@ Finally, the kernel uses a combination of slab allocators and direct virtual mem
 
 ## Limitations
 
-- Currently limited to RAM disks only, might remain that way for quite some time because being able to run the OS on real hardware is very important to me meaning that simple I/O devices like floppy disks can't be used as I do not live in the 80s, instead the optimal plan would be to allow for USB storage devices something I am currently not willing/able to work on.
+- Currently limited to RAM disks only.
 - Only support for x86_64.
 
 ## Notable Short Term Future Plans
@@ -82,8 +53,6 @@ Finally, the kernel uses a combination of slab allocators and direct virtual mem
 - Software interrupts for notes (signals).
 - Lua port.
 - Capability based security model (currently has no well-defined security model).
-
----
 
 ## A Small Taste
 
@@ -158,45 +127,25 @@ And of course the third and final reason is because I think it's fun, and honest
 
 If you are still interested in knowing more, then you can check out the Doxygen generated [documentation](https://kainorberg.github.io/PatchworkOS/html/index.html).
 
----
-
 ## Directories
 
-| Name                                                                    | Description                                                                         |
-| :---------------------------------------------------------------------  | :---------------------------------------------------------------------------------- |
-| [include](https://github.com/KaiNorberg/PatchworkOS/tree/main/include)  | Public API.                                                                         |
-| [lib](https://github.com/KaiNorberg/PatchworkOS/tree/main/lib)          | Third party stuff, for example OVMF-bin for QEMU.                                   |
-| [make](https://github.com/KaiNorberg/PatchworkOS/tree/main/make)        | Lots of make files.                                                                 |
-| [meta](https://github.com/KaiNorberg/PatchworkOS/tree/main/meta)        | Meta files for this repo, for example screenshots.                                  |
-| [root](https://github.com/KaiNorberg/PatchworkOS/tree/main/root)        | Stores files that will be copied to the root directory of the generated .iso.       |
-| [src](https://github.com/KaiNorberg/PatchworkOS/tree/main/src)          | Source code.                                                                        |
-| [tools](https://github.com/KaiNorberg/PatchworkOS/tree/main/tools)      | Stores scripts that we use as a hacky alternative to compiling a cross-compiler.    |
+| Directory | Description |
+| :-------- | :---------- |
+| [include](https://github.com/KaiNorberg/PatchworkOS/tree/main/include) | Public API |
+| [src](https://github.com/KaiNorberg/PatchworkOS/tree/main/src) | Source code |
+| [root](https://github.com/KaiNorberg/PatchworkOS/tree/main/root) | Files copied to the root directory of the generated .iso |
+| [tools](https://github.com/KaiNorberg/PatchworkOS/tree/main/tools) | Build scripts (hacky alternative to cross-compiler) |
+| [make](https://github.com/KaiNorberg/PatchworkOS/tree/main/make) | Make files |
+| [lib](https://github.com/KaiNorberg/PatchworkOS/tree/main/lib) | Third party dependencies |
+| [meta](https://github.com/KaiNorberg/PatchworkOS/tree/main/meta) | Screenshots and repo metadata |
 
-## Sections
+### Sections
 
-The project is split into various sections which both the include and src directories are also split into, below is a description of each section.
-
-### bootloader
-
-The UEFI bootloader is intended to be as small as possible and get out of the way as quickly as possible. It is responsible for collecting system info such as the GOP frame buffer and loading the ram disk, finally it loads the kernel directly into the higher half. The address space after the bootloader is done will have all physical memory identity mapped and the kernel mapped. It uses memory type EFI_RESERVED to store the kernel.
-
-### kernel
-
-The monolithic kernel is responsible for pretty much everything. Handles scheduling, hardware, virtual file system, IPC, SMP, etc. The kernel is fully preemptive and multithreaded.
-
-### libpatchwork
-
-The libpatchwork library is best thought of as a wrapper around user space services and systems, for example it handles windowing via the [Desktop Window Manager](https://github.com/KaiNorberg/PatchworkOS/tree/main/src/programs/dwm)  and provides access to system configuration via a series of configuration files stored at ```home:/cfg```.
-
-### libstd
-
-The libstd library is an extension of the C standard library, in the same way that something like Linux uses the POSIX extension to the C standard library. It contains the expected headers, string.h, stdlib.h etc., along with a few borrowed from POSIX like strings.h and then a bunch of extensions located in the [sys](https://github.com/KaiNorberg/PatchworkOS/tree/main/include/libstd/sys) directory. For instance, `sys/io.h` contains wrappers around the io system calls. The way I think of libstd is that its a wrapper around the kernel and its system calls, while libpatchwork is a wrapper around user space. The kernel and bootloader also has its own version of this library, containing for example memcpy, malloc, printf and similar functions to reduce code duplication while writing the OS. The seperation between the user space, kernel and bootloader versions of the library is handled by giving each platform having its own directory within the [platform](https://github.com/KaiNorberg/PatchworkOS/tree/main/src/libstd/platform) directory.
-
-### programs
-
-Finally Patchwork has a series of programs designed for it, including shell utilities like [cat](https://github.com/KaiNorberg/PatchworkOS/tree/main/src/programs/cat) and [echo](https://github.com/KaiNorberg/PatchworkOS/tree/main/src/programs/echo), services like the [Desktop Window Manager](https://github.com/KaiNorberg/PatchworkOS/tree/main/src/programs/dwm) and desktop apps like the [terminal](https://github.com/KaiNorberg/PatchworkOS/tree/main/src/programs/terminal).
-
----
+- **boot**: Minimal UEFI bootloader that collects system info and loads the kernel
+- **kernel**: The monolithic kernel handling everything from scheduling to IPC
+- **libstd**: C standard library extension with system call wrappers
+- **libpatchwork**: Higher-level library for windowing and user space services
+- **programs**: Shell utilities, services, and desktop applications
 
 ## Setup
 
@@ -232,7 +181,7 @@ make run
 
 ## Testing
 
-This repository uses a bit of a hacky way to do testing, we use a github action, as normal, that compiles the operating system then runs it using QEMU, QEMU is then allowed to run for one minute, the kernel will run some tests and then start as normal. If QEMU crashes* then the test fails, if it is still running after one-minute we call it a success. Its an overly simple approach but gets the job done. A lot of the difficulty in performing testing comes from the inherent complexity of testing a OS, which also means that testing is currently very very limited in the kernel.
+This repository uses a bit of a hacky way to do testing, we use a github action, as normal, that compiles the operating system then runs it using QEMU. QEMU is then allowed to run for one minute, the kernel will run some tests and then start as normal. If QEMU crashes* then the test fails, if it is still running after one-minute we call it a success. Its an overly simple approach but gets the job done. A lot of the difficulty in performing testing comes from the inherent complexity of testing a OS, which also means that testing is currently very very limited in the kernel.
 
 \* QEMU will crash if a kernel panic occurs due to the use of QEMU's isa-debug-exit in the kernel when make is called with DEBUG=1.
 
@@ -244,8 +193,6 @@ This repository uses a bit of a hacky way to do testing, we use a github action,
 
 Currently untested on Intel hardware. Let me know if you have different hardware, and it runs (or doesn't) for you!
 
----
-
 ## Contributing
 
-If you find any bugs, issues or just have a suggestion for something I could do better, then feel free to open an issue or if you feel like it, you may submit a pull request.
+If you find any bugs, issues or just have a suggestion for something I could do better, then feel free to open an issue or if you feel like it, you may submit a pull request!
