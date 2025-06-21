@@ -6,7 +6,7 @@ extern "C"
 {
 #endif
 
-#include "_AUX/config.h"
+#include "_internal/config.h"
 
 /* TODO: Defined to 1 as multibyte characters are not supported yet. */
 #define MB_LEN_MAX 1

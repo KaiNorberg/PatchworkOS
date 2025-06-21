@@ -5,14 +5,14 @@
 #include "sync/lock.h"
 #include "utils/bitmap.h"
 
-#include <bootloader/boot_info.h>
+#include <boot/boot_info.h>
 
 #include <sys/list.h>
 #include <sys/proc.h>
 
 /**
  * @brief Virtual Memory Manager (VMM).
- * @defgroup kernel_mem_vmm Virtual Memory Manager
+ * @defgroup kernel_mem_vmm VMM
  * @ingroup kernel_mem
  *
  * The virtual memory manager in patchwork is intended to run in constant-time, for more information refer to the

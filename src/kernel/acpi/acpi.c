@@ -1,10 +1,9 @@
 #include "acpi.h"
 
+#include "log/log.h"
 #include "mem/vmm.h"
-#include "utils/log.h"
 
 #include <assert.h>
-#include <stdio.h>
 #include <string.h>
 
 static uint64_t tableAmount;
@@ -43,8 +42,8 @@ void acpi_init(xsdp_t* xsdp)
         memcpy(oemId, table->oemId, 6);
         oemId[6] = '\0';
 
-        printf("acpi: %s 0x%016lx 0x%06lx v%02X %-8s\n", signature, PML_HIGHER_TO_LOWER(table), table->length,
-            table->revision, oemId);
+        log_print(LOG_INFO, "acpi: %s 0x%016lx 0x%06lx v%02X %-8s\n", signature, PML_HIGHER_TO_LOWER(table),
+            table->length, table->revision, oemId);
 
         if (!acpi_is_checksum_valid(table, table->length))
         {

@@ -20,20 +20,19 @@
 #include "fs/vfs.h"
 #include "ipc/pipe.h"
 #include "ipc/shmem.h"
-#include "mem/kalloc.h"
+#include "log/log.h"
+#include "mem/heap.h"
 #include "mem/pmm.h"
 #include "mem/vmm.h"
 #include "net/net.h"
 #include "sched/sched.h"
 #include "sched/thread.h"
 #include "sched/wait.h"
-#include "utils/log.h"
 #include "utils/testing.h"
 
 #include <assert.h>
-#include <bootloader/boot_info.h>
-#include <libstd_internal/init.h>
-#include <stdio.h>
+#include <boot/boot_info.h>
+#include <libstd/_internal/init.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
@@ -47,7 +46,7 @@ static void kernel_free_loader_data(efi_mem_map_t* memoryMap)
         if (desc->type == EFI_LOADER_DATA)
         {
             pmm_free_pages(PML_LOWER_TO_HIGHER(desc->physicalStart), desc->amountOfPages);
-            printf("loader data: free [0x%016lx-0x%016lx]\n", desc->physicalStart,
+            log_print(LOG_INFO, "loader data: free [0x%016lx-0x%016lx]\n", desc->physicalStart,
                 ((uintptr_t)desc->physicalStart) + desc->amountOfPages * PAGE_SIZE);
         }
     }
@@ -57,6 +56,7 @@ void kernel_init(boot_info_t* bootInfo)
 {
     gdt_init();
     idt_init();
+
     smp_bootstrap_init();
     gdt_load_tss(&smp_self_unsafe()->tss);
 
@@ -64,9 +64,9 @@ void kernel_init(boot_info_t* bootInfo)
 
     pmm_init(&bootInfo->memoryMap);
     vmm_init(&bootInfo->memoryMap, &bootInfo->kernel, &bootInfo->gopBuffer);
-    kalloc_init();
+    heap_init();
 
-    log_enable_screen(&bootInfo->gopBuffer);
+    log_screen_enable(&bootInfo->gopBuffer);
 
     _StdInit();
 
@@ -75,7 +75,7 @@ void kernel_init(boot_info_t* bootInfo)
     sysfs_mount_to_vfs();
     ramfs_init(&bootInfo->ramDisk);
 
-    log_expose();
+    log_obj_expose();
     process_backend_init();
 
     sched_init();

@@ -5,16 +5,15 @@
 #include "cpu/vectors.h"
 #include "drivers/systime/systime.h"
 #include "kernel.h"
-#include "mem/kalloc.h"
+#include "log/log.h"
+#include "mem/heap.h"
 #include "sched.h"
 #include "sched/thread.h"
 #include "sync/lock.h"
 #include "sys/list.h"
-#include "utils/log.h"
 
 #include <assert.h>
 #include <errno.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 void wait_queue_init(wait_queue_t* waitQueue)
@@ -78,7 +77,7 @@ static void wait_cleanup_block(thread_t* thread, wait_result_t result, wait_queu
         {
             lock_release(&entry->waitQueue->lock);
         }
-        kfree(entry);
+        heap_free(entry);
     }
 }
 
@@ -145,7 +144,7 @@ bool wait_finalize_block(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread)
     thread_state_t state = atomic_load(&thread->state);
     if (state != THREAD_PRE_BLOCK && state != THREAD_UNBLOCKING)
     {
-        printf("thread state is THREAD_BLOCKING here state=%d\n", state);
+        log_print(LOG_INFO, "thread state is THREAD_BLOCKING here state=%d\n", state);
     }
 
     thread_state_t expected = THREAD_PRE_BLOCK;
@@ -215,7 +214,7 @@ static uint64_t wait_setup_block(thread_t* thread, wait_queue_t** waitQueues, ui
 
     for (uint64_t i = 0; i < amount; i++)
     {
-        wait_entry_t* entry = kmalloc(sizeof(wait_entry_t), KALLOC_NONE);
+        wait_entry_t* entry = heap_alloc(sizeof(wait_entry_t), HEAP_NONE);
         if (entry == NULL)
         {
             while (1)
@@ -225,7 +224,7 @@ static uint64_t wait_setup_block(thread_t* thread, wait_queue_t** waitQueues, ui
                 {
                     break;
                 }
-                kfree(other);
+                heap_free(other);
             }
             return ERROR(ENOMEM);
         }

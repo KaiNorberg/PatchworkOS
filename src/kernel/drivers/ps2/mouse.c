@@ -5,13 +5,12 @@
 #include "drivers/mouse.h"
 #include "drivers/systime/systime.h"
 #include "fs/vfs.h"
+#include "log/log.h"
 #include "ps2.h"
 #include "sched/sched.h"
 #include "stdlib.h"
-#include "utils/log.h"
 
 #include <assert.h>
-#include <stdio.h>
 #include <sys/math.h>
 #include <sys/mouse.h>
 
@@ -92,5 +91,5 @@ void ps2_mouse_init(void)
 
     mouse = mouse_new("ps2");
     irq_install(ps2_mouse_irq, IRQ_PS2_AUX);
-    printf("ps2: mouse\n");
+    log_print(LOG_INFO, "ps2: mouse\n");
 }

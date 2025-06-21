@@ -2,7 +2,7 @@
 
 #include "defs.h"
 
-#include <bootloader/boot_info.h>
+#include <boot/boot_info.h>
 
 #include <sys/proc.h>
 
@@ -11,12 +11,16 @@
  * @defgroup kernel_mem_pmm PMM
  * @ingroup kernel_mem
  *
- * The Physical Memory Manager (PMM) is responsible for managing physical memory pages. It uses a free stack for allocating single pages in constant-time and for more specialized allocations for instance requiring a specific address range or alignment a bitmap allocator is used. The bitmap allocator should only be used when no other option is available.
- * 
- * All physical memory is identity mapped to the begining of the higher half of the address space. This means that for example `NULL` is always a invalid address and that the PMM returns addresses in the higher half.
- * 
- * The free stack provides some advnatages over for instance a free list, mainly due to cache improvements. 
- * 
+ * The Physical Memory Manager (PMM) is responsible for managing physical memory pages. It uses a free stack for
+ * allocating single pages in constant-time and for more specialized allocations for instance requiring a specific
+ * address range or alignment a bitmap allocator is used. The bitmap allocator should only be used when no other option
+ * is available.
+ *
+ * All physical memory is identity mapped to the begining of the higher half of the address space. This means that for
+ * example `NULL` is always a invalid address and that the PMM returns addresses in the higher half.
+ *
+ * The free stack provides some advnatages over for instance a free list, mainly due to cache improvements.
+ *
  */
 
 /**
@@ -107,7 +111,8 @@ void* pmm_alloc_bitmap(uint64_t count, uintptr_t maxAddr, uint64_t alignment);
  * @brief Frees a single physical page.
  * @ingroup kernel_mem_pmm
  *
- * The `pmm_free` function frees a page returning ownership of it to the PMM, the PMM will determine based of the address if its owned by the bitmap or the stack allocator.
+ * The `pmm_free` function frees a page returning ownership of it to the PMM, the PMM will determine based of the
+ * address if its owned by the bitmap or the stack allocator.
  *
  * @param address The higher half physical address of the page to free.
  */
@@ -116,9 +121,10 @@ void pmm_free(void* address);
 /**
  * @brief Frees a contiguous region of physical pages.
  * @ingroup kernel_mem_pmm
- * 
- * The `pmm_free` function frees a contiguous block of `count` physical pages, returning ownership of them to the PMM, the PMM will determine based of the address if its owned by the bitmap or the stack allocator.
- * 
+ *
+ * The `pmm_free` function frees a contiguous block of `count` physical pages, returning ownership of them to the PMM,
+ * the PMM will determine based of the address if its owned by the bitmap or the stack allocator.
+ *
  * @param address The higher half physical address of the first page in the region to free.
  * @param count The number of pages to free.
  */

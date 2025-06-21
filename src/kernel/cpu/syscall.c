@@ -12,16 +12,15 @@
 #include "gdt.h"
 #include "ipc/pipe.h"
 #include "kernel.h"
+#include "log/log.h"
 #include "mem/vmm.h"
 #include "sched/loader.h"
 #include "sched/sched.h"
 #include "sched/thread.h"
-#include "utils/log.h"
 
 #include <assert.h>
 #include <errno.h>
 #include <stdarg.h>
-#include <stdio.h>
 #include <string.h>
 #include <time.h>
 
@@ -681,14 +680,14 @@ void syscall_handler(trap_frame_t* trapFrame)
 
     thread_t* thread = sched_thread();
     thread->syscall.inSyscall = true;
-    // printf("syscall: start %d pid=%d\n", selector, thread->process->id);
+    // log_print(LOG_INFO, "syscall: start %d pid=%d\n", selector, thread->process->id);
 
     uint64_t (*syscall)(uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e, uint64_t f) =
         syscallTable[selector];
     trapFrame->rax =
         syscall(trapFrame->rdi, trapFrame->rsi, trapFrame->rdx, trapFrame->r10, trapFrame->r8, trapFrame->r9);
 
-    // printf("syscall: end %d pid=%d result=%d\n", selector, thread->process->id, trapFrame->rax);
+    // log_print(LOG_INFO, "syscall: end %d pid=%d result=%d\n", selector, thread->process->id, trapFrame->rax);
     thread->syscall.inSyscall = false;
 
     // No need to invoke scheduler due to tickless system.

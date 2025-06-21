@@ -8,12 +8,12 @@ extern "C"
 {
 #endif
 
-#include "_AUX/NULL.h"
-#include "_AUX/clock_t.h"
-#include "_AUX/config.h"
-#include "_AUX/size_t.h"
-#include "_AUX/time_t.h"
-#include "_AUX/timespec.h"
+#include "_internal/NULL.h"
+#include "_internal/clock_t.h"
+#include "_internal/config.h"
+#include "_internal/size_t.h"
+#include "_internal/time_t.h"
+#include "_internal/timespec.h"
 
 #define TIME_UTC 1
 
@@ -55,8 +55,8 @@ _PUBLIC size_t strftime(char* _RESTRICT s, size_t maxsize, const char* _RESTRICT
 
 #if (__STDC_WANT_LIB_EXT1__ + 0) != 0
 
-#include "_AUX/errno_t.h"
-#include "_AUX/rsize_t.h"
+#include "_internal/errno_t.h"
+#include "_internal/rsize_t.h"
 
 _PUBLIC errno_t asctime_s(char* s, rsize_t maxsize, const struct tm* timeptr);
 

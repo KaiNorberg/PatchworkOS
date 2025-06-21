@@ -2,12 +2,12 @@
 
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
-#include "mem/kalloc.h"
+#include "log/log.h"
+#include "mem/heap.h"
 #include "ps2/kbd.h"
 #include "sched/thread.h"
 #include "sync/lock.h"
 #include "systime/systime.h"
-#include "utils/log.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -49,7 +49,7 @@ SYSFS_STANDARD_OPS_DEFINE(kbdOps, PATH_NONE,
 
 kbd_t* kbd_new(const char* name)
 {
-    kbd_t* kbd = kmalloc(sizeof(kbd_t), KALLOC_NONE);
+    kbd_t* kbd = heap_alloc(sizeof(kbd_t), HEAP_NONE);
     kbd->writeIndex = 0;
     kbd->mods = KBD_MOD_NONE;
     wait_queue_init(&kbd->waitQueue);
@@ -62,7 +62,7 @@ kbd_t* kbd_new(const char* name)
 static void kbd_on_free(sysobj_t* sysobj)
 {
     kbd_t* kbd = sysobj->private;
-    kfree(kbd);
+    heap_free(kbd);
 }
 
 void kbd_free(kbd_t* kbd)

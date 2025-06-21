@@ -1,11 +1,10 @@
 #include "vfs_ctx.h"
 
+#include "log/log.h"
 #include "sched/thread.h"
-#include "utils/log.h"
 #include "vfs.h"
 
 #include <assert.h>
-#include <stdio.h>
 #include <string.h>
 
 void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd)

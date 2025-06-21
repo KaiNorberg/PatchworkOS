@@ -8,7 +8,7 @@ extern "C"
 {
 #endif
 
-#include "_AUX/clock_t.h"
+#include "_internal/clock_t.h"
 
 /**
  * @brief Mouse device header.

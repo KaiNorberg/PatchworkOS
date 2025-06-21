@@ -6,7 +6,7 @@ extern "C"
 {
 #endif
 
-#include "_AUX/config.h"
+#include "_internal/config.h"
 
 typedef __INTMAX_TYPE__ intmax_t;
 typedef __UINTMAX_TYPE__ uintmax_t;

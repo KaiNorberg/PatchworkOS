@@ -1,17 +1,16 @@
 #include "sysfs.h"
 
-#include "mem/kalloc.h"
+#include "log/log.h"
+#include "mem/heap.h"
 #include "path.h"
 #include "sched/thread.h"
 #include "sync/rwlock.h"
-#include "utils/log.h"
 #include "vfs.h"
 
 #include <assert.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdatomic.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/list.h>
@@ -246,7 +245,7 @@ void sysfs_init(void)
 
     rwlock_init(&lock);
 
-    printf("sysfs: init\n");
+    log_print(LOG_INFO, "sysfs: init\n");
 }
 
 void sysfs_mount_to_vfs(void)
@@ -288,7 +287,7 @@ static node_t* sysfs_traverse_and_alloc(const char* path)
         node_t* child = node_find(parent, name);
         if (child == NULL)
         {
-            sysdir_t* dir = kmalloc(sizeof(sysdir_t), KALLOC_NONE);
+            sysdir_t* dir = heap_alloc(sizeof(sysdir_t), HEAP_NONE);
             if (dir == NULL)
             {
                 return NULL;

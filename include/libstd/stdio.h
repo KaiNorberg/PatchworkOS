@@ -8,12 +8,12 @@ extern "C"
 {
 #endif
 
-#include "_AUX/MAX_PATH.h"
-#include "_AUX/NULL.h"
-#include "_AUX/SEEK.h"
-#include "_AUX/config.h"
-#include "_AUX/fd_t.h"
-#include "_AUX/size_t.h"
+#include "_internal/MAX_PATH.h"
+#include "_internal/NULL.h"
+#include "_internal/SEEK.h"
+#include "_internal/config.h"
+#include "_internal/fd_t.h"
+#include "_internal/size_t.h"
 
 #define _IOFBF (1u << 0)
 #define _IOLBF (1u << 1)
@@ -129,8 +129,8 @@ _PUBLIC void perror(const char* s);
 #define L_tmpnam_s L_tmpnam
 #define TMP_MAX_S TMP_MAX
 
-#include "_AUX/errno_t.h"
-#include "_AUX/rsize_t.h"
+#include "_internal/errno_t.h"
+#include "_internal/rsize_t.h"
 
 _PUBLIC errno_t tmpfile_s(FILE* _RESTRICT* _RESTRICT streamptr);
 

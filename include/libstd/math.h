@@ -6,7 +6,7 @@ extern "C"
 {
 #endif
 
-#include "_AUX/config.h"
+#include "_internal/config.h"
 
 // I genuinely despise math.h
 

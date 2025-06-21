@@ -6,9 +6,9 @@ extern "C"
 {
 #endif
 
-#include "_AUX/NULL.h"
-#include "_AUX/config.h"
-#include "_AUX/size_t.h"
+#include "_internal/NULL.h"
+#include "_internal/config.h"
+#include "_internal/size_t.h"
 
 _PUBLIC void* memcpy(void* _RESTRICT s1, const void* _RESTRICT s2, size_t n);
 
@@ -61,8 +61,8 @@ char* strdup(const char* src);
 
 #if (__STDC_WANT_LIB_EXT1__ + 0) != 0
 
-#include "_AUX/errno_t.h"
-#include "_AUX/rsize_t.h"
+#include "_internal/errno_t.h"
+#include "_internal/rsize_t.h"
 
 _PUBLIC errno_t memcpy_s(void* _RESTRICT s1, rsize_t s1max, const void* _RESTRICT s2, rsize_t n);
 

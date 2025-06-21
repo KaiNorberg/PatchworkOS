@@ -6,17 +6,17 @@ extern "C"
 {
 #endif
 
-#include "_AUX/ERR.h"
-#include "_AUX/NULL.h"
-#include "_AUX/config.h"
-#include "_AUX/ptrdiff_t.h"
-#include "_AUX/size_t.h"
-#include "_AUX/wchar_t.h"
+#include "_internal/ERR.h"
+#include "_internal/NULL.h"
+#include "_internal/config.h"
+#include "_internal/ptrdiff_t.h"
+#include "_internal/size_t.h"
+#include "_internal/wchar_t.h"
 
 #define offsetof(type, member) ((size_t)&(((type*)0)->member))
 
 #if _USE_ANNEX_K == 1
-#include "_AUX/rsize_t.h"
+#include "_internal/rsize_t.h"
 #endif
 
 #if defined(__cplusplus)

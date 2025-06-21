@@ -6,9 +6,9 @@ extern "C"
 {
 #endif
 
-#include "_AUX/NULL.h"
-#include "_AUX/config.h"
-#include "_AUX/size_t.h"
+#include "_internal/NULL.h"
+#include "_internal/config.h"
+#include "_internal/size_t.h"
 
 _PUBLIC char* lltoa(long long number, char* str, int base);
 #define ltoa(number, str, base) lltoa(number, str, base)
@@ -97,8 +97,8 @@ int system(const char* command);
 
 #if _USE_ANNEX_K == 1
 
-#include "_AUX/errno_t.h"
-#include "_AUX/rsize_t.h"
+#include "_internal/errno_t.h"
+#include "_internal/rsize_t.h"
 
 typedef void (*constraint_handler_t)(const char* _RESTRICT msg, void* _RESTRICT ptr, errno_t err);
 

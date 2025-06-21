@@ -8,7 +8,7 @@ extern "C"
 {
 #endif
 
-#include "_AUX/config.h"
+#include "_internal/config.h"
 
 /**
  * @brief Standardized argument parsing

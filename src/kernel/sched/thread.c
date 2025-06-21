@@ -8,16 +8,15 @@
 #include "fs/path.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
-#include "mem/kalloc.h"
+#include "log/log.h"
+#include "mem/heap.h"
 #include "sched/loader.h"
 #include "sched/sched.h"
 #include "sched/wait.h"
 #include "sync/futex.h"
 #include "sync/lock.h"
 #include "sys/io.h"
-#include "utils/log.h"
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/math.h>
@@ -31,7 +30,7 @@ thread_t* thread_new(process_t* process, void* entry)
         return NULL;
     }
 
-    thread_t* thread = kmalloc(sizeof(thread_t), KALLOC_NONE);
+    thread_t* thread = heap_alloc(sizeof(thread_t), HEAP_NONE);
     if (thread == NULL)
     {
         return NULL;
@@ -46,7 +45,7 @@ thread_t* thread_new(process_t* process, void* entry)
     wait_thread_ctx_init(&thread->wait);
     if (simd_ctx_init(&thread->simd) == ERR)
     {
-        kfree(thread);
+        heap_free(thread);
         return NULL;
     }
     note_queue_init(&thread->notes);
@@ -90,7 +89,7 @@ void thread_free(thread_t* thread)
     }
 
     simd_ctx_deinit(&thread->simd);
-    kfree(thread);
+    heap_free(thread);
 }
 
 void thread_save(thread_t* thread, const trap_frame_t* trapFrame)

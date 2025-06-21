@@ -1,7 +1,7 @@
 #include "irq.h"
 
+#include "log/log.h"
 #include "pic.h"
-#include "utils/log.h"
 #include "vectors.h"
 
 static irq_handler_t handlers[IRQ_AMOUNT][IRQ_MAX_HANDLER];

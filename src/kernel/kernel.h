@@ -1,6 +1,6 @@
 #pragma once
 
-#include <bootloader/boot_info.h>
+#include <boot/boot_info.h>
 
 #include "cpu/smp.h"
 #include "cpu/trap.h"

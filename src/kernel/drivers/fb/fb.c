@@ -2,8 +2,8 @@
 
 #include "defs.h"
 #include "fs/sysfs.h"
+#include "log/log.h"
 #include "sched/thread.h"
-#include "utils/log.h"
 
 #include <assert.h>
 #include <stdatomic.h>

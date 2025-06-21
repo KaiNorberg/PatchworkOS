@@ -4,18 +4,17 @@
 #include "gdt.h"
 #include "irq.h"
 #include "kernel.h"
+#include "log/log.h"
 #include "mem/vmm.h"
 #include "regs.h"
 #include "sched/loader.h"
 #include "sched/sched.h"
 #include "sched/wait.h"
 #include "smp.h"
-#include "utils/log.h"
 #include "utils/statistics.h"
 #include "vectors.h"
 
 #include <assert.h>
-#include <stdio.h>
 
 void cli_ctx_init(cli_ctx_t* cli)
 {
@@ -68,8 +67,8 @@ static void exception_handler(trap_frame_t* trapFrame)
             if (faultAddress >= LOADER_GUARD_PAGE_BOTTOM(thread->id) &&
                 faultAddress <= LOADER_GUARD_PAGE_TOP(thread->id)) // Fault in guard page
             {
-                printf("user exception: process killed due to stack overflow tid=%d pid=%d address=%p\n", thread->id,
-                    thread->process->id, faultAddress);
+                log_print(LOG_INFO, "user exception: process killed due to stack overflow tid=%d pid=%d address=%p\n",
+                    thread->id, thread->process->id, faultAddress);
 
                 break;
             }
@@ -78,20 +77,21 @@ static void exception_handler(trap_frame_t* trapFrame)
                 !(trapFrame->vector & PAGE_FAULT_PRESENT)) // Fault in user stack region due to non present page
             {
                 uintptr_t pageAddress = ROUND_DOWN(faultAddress, PAGE_SIZE);
-                printf("expanding user stack: %p pid=%d\n", pageAddress, thread->process->id);
+                log_print(LOG_INFO, "expanding user stack: %p pid=%d\n", pageAddress, thread->process->id);
                 if (vmm_alloc(&thread->process->space, (void*)pageAddress, PAGE_SIZE, PROT_READ | PROT_WRITE) != NULL)
                 {
                     return;
                 }
             }
 
-            printf("user exception: process killed due to page fault tid=%d pid=%d address=%p\n", thread->id,
-                thread->process->id, faultAddress);
+            log_print(LOG_INFO, "user exception: process killed due to page fault tid=%d pid=%d address=%p\n",
+                thread->id, thread->process->id, faultAddress);
         }
         break;
         default:
         {
-            printf("user exception: process killed due to exception tid=%d pid=%d vector=0x%x error=%p rip=%p cr2=%p\n",
+            log_print(LOG_INFO,
+                "user exception: process killed due to exception tid=%d pid=%d vector=0x%x error=%p rip=%p cr2=%p\n",
                 thread->id, thread->process->id, trapFrame->vector, trapFrame->errorCode, trapFrame->rip, cr2_read());
         }
         }

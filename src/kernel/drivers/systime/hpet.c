@@ -1,7 +1,7 @@
 #include "hpet.h"
 
+#include "log/log.h"
 #include "mem/vmm.h"
-#include "utils/log.h"
 #include "utils/utils.h"
 
 #include <assert.h>

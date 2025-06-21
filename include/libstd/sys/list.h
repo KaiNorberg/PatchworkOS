@@ -1,8 +1,8 @@
 #ifndef _SYS_LIST_H
 #define _SYS_LIST_H 1
 
-#include "_AUX/CONTAINER_OF.h"
-#include "_AUX/NULL.h"
+#include "_internal/CONTAINER_OF.h"
+#include "_internal/NULL.h"
 
 #include <stdbool.h>
 #include <stddef.h>

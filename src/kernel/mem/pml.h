@@ -9,7 +9,7 @@
 
 /**
  * @brief Page Tables.
- * @defgroup kernel_mem_pml pml
+ * @defgroup kernel_mem_pml PML
  * @ingroup kernel_mem
  *
  * The `pml.h` file stores functions for manipulating page tables.

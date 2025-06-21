@@ -6,8 +6,8 @@ extern "C"
 {
 #endif
 
-#include "_AUX/ERR.h"
-#include "_AUX/config.h"
+#include "_internal/ERR.h"
+#include "_internal/config.h"
 
 /**
  * @brief Error values.
@@ -867,7 +867,7 @@ int* _ErrnoFunc(void);
 #define ERR_MAX 140
 
 #if _USE_ANNEX_K == 1
-#include "_AUX/errno_t.h"
+#include "_internal/errno_t.h"
 #endif
 
 #if defined(__cplusplus)

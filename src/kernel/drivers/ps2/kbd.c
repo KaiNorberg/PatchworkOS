@@ -6,10 +6,9 @@
 #include "cpu/irq.h"
 #include "cpu/port.h"
 #include "drivers/kbd.h"
-#include "utils/log.h"
+#include "log/log.h"
 
 #include <assert.h>
-#include <stdio.h>
 #include <sys/kbd.h>
 #include <sys/math.h>
 
@@ -65,5 +64,5 @@ void ps2_kbd_init(void)
 
     kbd = kbd_new("ps2");
     irq_install(ps2_kbd_irq, IRQ_PS2_KBD);
-    printf("ps2: kbd\n");
+    log_print(LOG_INFO, "ps2: kbd\n");
 }

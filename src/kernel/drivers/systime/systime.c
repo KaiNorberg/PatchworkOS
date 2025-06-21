@@ -5,6 +5,7 @@
 #include "cpu/smp.h"
 #include "cpu/vectors.h"
 #include "hpet.h"
+#include "log/log.h"
 
 #include <stdatomic.h>
 #include <stdbool.h>
@@ -78,7 +79,7 @@ void systime_init(void)
     systime_read_cmos_time();
     systime_rtc_init();
 
-    printf("systime: init epoch=%d\n", systime_unix_epoch());
+    log_print(LOG_INFO, "systime: init epoch=%d\n", systime_unix_epoch());
 }
 
 clock_t systime_uptime(void)
@@ -96,7 +97,7 @@ void systime_timer_init(void)
     cpu_t* self = smp_self_unsafe();
     self->systime.apicTicksPerNs = apic_timer_ticks_per_ns();
     self->systime.nextDeadline = CLOCKS_NEVER;
-    printf("systime: timer init\n");
+    log_print(LOG_INFO, "systime: timer init\n");
 }
 
 void systime_timer_trap(trap_frame_t* trapFrame, cpu_t* self)

@@ -3,12 +3,11 @@
 #include "fs/ctl.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
-#include "mem/kalloc.h"
+#include "log/log.h"
+#include "mem/heap.h"
 #include "mem/pmm.h"
 #include "proc/process.h"
 #include "sched/thread.h"
-#include "stdbool.h"
-#include "utils/log.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -47,7 +46,7 @@ static file_t* socket_accept_open(volume_t* volume, const path_t* path, sysobj_t
         return ERRPTR(EACCES);
     }
 
-    socket_t* newSocket = kmalloc(sizeof(socket_t), KALLOC_NONE);
+    socket_t* newSocket = heap_alloc(sizeof(socket_t), HEAP_NONE);
     if (newSocket == NULL)
     {
         return NULL;
@@ -57,7 +56,7 @@ static file_t* socket_accept_open(volume_t* volume, const path_t* path, sysobj_t
 
     if (socket->family->accept(socket, newSocket) == ERR)
     {
-        kfree(newSocket);
+        heap_free(newSocket);
         return NULL;
     }
 
@@ -69,7 +68,7 @@ static file_t* socket_accept_open(volume_t* volume, const path_t* path, sysobj_t
     file_t* file = file_new(volume, path, PATH_NONE);
     if (file == NULL)
     {
-        kfree(newSocket);
+        heap_free(newSocket);
         return NULL;
     }
     file->ops = &fileOps;
@@ -81,7 +80,7 @@ static void socket_accept_cleanup(sysobj_t* sysobj, file_t* file)
 {
     socket_t* socket = file->private;
     socket->family->deinit(socket);
-    kfree(socket);
+    heap_free(socket);
 }
 
 static sysobj_ops_t acceptOps = {
@@ -190,10 +189,10 @@ static sysobj_ops_t ctlOps = {
 
 socket_t* socket_new(socket_family_t* family, path_flags_t flags)
 {
-    socket_t* socket = kmalloc(sizeof(socket_t), KALLOC_NONE);
+    socket_t* socket = heap_alloc(sizeof(socket_t), HEAP_NONE);
     if (socket == NULL)
     {
-        kfree(socket);
+        heap_free(socket);
         return NULL;
     }
     ulltoa(atomic_fetch_add(&newId, 1), socket->id, 10);
@@ -203,7 +202,7 @@ socket_t* socket_new(socket_family_t* family, path_flags_t flags)
 
     if (family->init(socket) == ERR)
     {
-        kfree(socket);
+        heap_free(socket);
         return NULL;
     }
 
@@ -222,7 +221,7 @@ static void socket_on_free(sysdir_t* sysdir)
 {
     socket_t* socket = sysdir->private;
     socket->family->deinit(socket);
-    kfree(socket);
+    heap_free(socket);
 }
 
 void socket_free(socket_t* socket)

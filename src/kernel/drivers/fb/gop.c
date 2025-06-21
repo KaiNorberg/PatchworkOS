@@ -2,14 +2,13 @@
 
 #include "defs.h"
 #include "fb.h"
+#include "log/log.h"
 #include "mem/vmm.h"
 #include "proc/process.h"
 #include "sched/sched.h"
-#include "utils/log.h"
 
 #include <assert.h>
 #include <errno.h>
-#include <stdio.h>
 #include <string.h>
 #include <sys/fb.h>
 #include <sys/math.h>

@@ -1,7 +1,7 @@
 #ifndef _FLOAT_H
 #define _FLOAT_H 1
 
-#include "_AUX/config.h"
+#include "_internal/config.h"
 
 #define FLT_ROUNDS -1
 #define FLT_EVAL_METHOD __FLT_EVAL_METHOD__

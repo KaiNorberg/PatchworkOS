@@ -3,21 +3,20 @@
 #include "fs/path.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
-#include "mem/kalloc.h"
+#include "log/log.h"
+#include "mem/heap.h"
 #include "mem/pmm.h"
 #include "sched/thread.h"
 #include "sched/wait.h"
 #include "socket.h"
 #include "sync/lock.h"
 #include "sys/io.h"
-#include "utils/log.h"
 #include "utils/ring.h"
 
 #include <assert.h>
 #include <errno.h>
 #include <stdatomic.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <sys/math.h>
 
@@ -35,7 +34,7 @@ static local_listener_t* local_listener_new(const char* address)
         return NULL;
     }
 
-    local_listener_t* listener = kmalloc(sizeof(local_listener_t), KALLOC_NONE);
+    local_listener_t* listener = heap_alloc(sizeof(local_listener_t), HEAP_NONE);
     if (listener == NULL)
     {
         return NULL;
@@ -69,7 +68,7 @@ static void local_listener_deref(local_listener_t* listener)
         wait_unblock(&listener->waitQueue, UINT64_MAX);
         list_remove(&listener->entry);
         sysobj_deinit(&listener->sysobj, NULL);
-        kfree(listener);
+        heap_free(listener);
     }
 }
 
@@ -120,24 +119,24 @@ static local_connection_t* local_listener_pop(local_listener_t* listener)
 
 static local_connection_t* local_connection_new(const char* address)
 {
-    local_connection_t* conn = kmalloc(sizeof(local_connection_t), KALLOC_NONE);
+    local_connection_t* conn = heap_alloc(sizeof(local_connection_t), HEAP_NONE);
     if (conn == NULL)
     {
         return NULL;
     }
 
-    void* serverBuffer = kmalloc(LOCAL_BUFFER_SIZE, KALLOC_VMM);
+    void* serverBuffer = heap_alloc(LOCAL_BUFFER_SIZE, HEAP_VMM);
     if (serverBuffer == NULL)
     {
-        kfree(conn);
+        heap_free(conn);
         return NULL;
     }
     ring_init(&conn->serverRing, serverBuffer, LOCAL_BUFFER_SIZE);
-    void* clientBuffer = kmalloc(LOCAL_BUFFER_SIZE, KALLOC_VMM);
+    void* clientBuffer = heap_alloc(LOCAL_BUFFER_SIZE, HEAP_VMM);
     if (clientBuffer == NULL)
     {
-        kfree(serverBuffer);
-        kfree(conn);
+        heap_free(serverBuffer);
+        heap_free(conn);
         return NULL;
     }
     ring_init(&conn->clientRing, clientBuffer, LOCAL_BUFFER_SIZE);
@@ -145,9 +144,9 @@ static local_connection_t* local_connection_new(const char* address)
     conn->listener = local_listener_get(address);
     if (conn->listener == NULL)
     {
-        kfree(serverBuffer);
-        kfree(clientBuffer);
-        kfree(conn);
+        heap_free(serverBuffer);
+        heap_free(clientBuffer);
+        heap_free(conn);
         return NULL;
     }
     lock_init(&conn->lock);
@@ -168,11 +167,11 @@ static void local_connection_deref(local_connection_t* conn)
 {
     if (atomic_fetch_sub(&conn->ref, 1) <= 1)
     {
-        kfree(conn->serverRing.buffer);
-        kfree(conn->clientRing.buffer);
+        heap_free(conn->serverRing.buffer);
+        heap_free(conn->clientRing.buffer);
         local_listener_deref(conn->listener);
         wait_queue_deinit(&conn->waitQueue);
-        kfree(conn);
+        heap_free(conn);
     }
 }
 
@@ -183,7 +182,7 @@ static bool local_connection_is_closed(local_connection_t* conn)
 
 static uint64_t local_socket_init(socket_t* socket)
 {
-    local_socket_t* local = kmalloc(sizeof(local_socket_t), KALLOC_NONE);
+    local_socket_t* local = heap_alloc(sizeof(local_socket_t), HEAP_NONE);
     if (local == NULL)
     {
         return ERR;
@@ -232,7 +231,7 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
         return ERROR(EINVAL);
     }
 
-    local_socket_t* newLocal = kmalloc(sizeof(local_socket_t), KALLOC_NONE);
+    local_socket_t* newLocal = heap_alloc(sizeof(local_socket_t), HEAP_NONE);
     if (newLocal == NULL)
     {
         lock_release(&listener->lock);
@@ -259,27 +258,27 @@ static void local_socket_deinit(socket_t* socket)
     case LOCAL_SOCKET_BLANK:
     case LOCAL_SOCKET_BOUND:
     {
-        kfree(local);
+        heap_free(local);
     }
     break;
     case LOCAL_SOCKET_LISTEN:
     {
         local_listener_deref(local->listen.listener);
-        kfree(local);
+        heap_free(local);
     }
     break;
     case LOCAL_SOCKET_CONNECT:
     {
         local_connection_deref(local->connect.conn);
         wait_unblock(&local->connect.conn->waitQueue, UINT64_MAX);
-        kfree(local);
+        heap_free(local);
     }
     break;
     case LOCAL_SOCKET_ACCEPT:
     {
         local_connection_deref(local->accept.conn);
         wait_unblock(&local->accept.conn->waitQueue, UINT64_MAX);
-        kfree(local);
+        heap_free(local);
     }
     break;
     }

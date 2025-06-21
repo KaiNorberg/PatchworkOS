@@ -3,9 +3,9 @@
 #include "defs.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
+#include "log/log.h"
 #include "sched/thread.h"
 #include "socket.h"
-#include "utils/log.h"
 
 #include <assert.h>
 #include <errno.h>

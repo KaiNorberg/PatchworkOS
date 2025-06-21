@@ -6,7 +6,8 @@
 #include "gdt.h"
 #include "idt.h"
 #include "kernel.h"
-#include "mem/kalloc.h"
+#include "log/log.h"
+#include "mem/heap.h"
 #include "mem/vmm.h"
 #include "regs.h"
 #include "sched/thread.h"
@@ -14,11 +15,9 @@
 #include "sync/lock.h"
 #include "trampoline.h"
 #include "trap.h"
-#include "utils/log.h"
 
 #include <assert.h>
 #include <stdatomic.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -86,7 +85,7 @@ void smp_others_init(void)
     uint8_t lapicId = lapic_id();
 
     cpus[0]->lapicId = lapicId;
-    printf("cpu %d: bootstrap cpu, ready\n", (uint64_t)cpus[0]->id);
+    log_print(LOG_INFO, "cpu %d: bootstrap cpu, ready\n", (uint64_t)cpus[0]->id);
 
     madt_t* madt = madt_get();
     madt_lapic_t* record;
@@ -100,7 +99,7 @@ void smp_others_init(void)
         if (record->flags & MADT_LAPIC_INITABLE && lapicId != record->lapicId)
         {
             cpuid_t id = newId++;
-            cpus[id] = kmalloc(sizeof(cpu_t), KALLOC_NONE);
+            cpus[id] = heap_alloc(sizeof(cpu_t), HEAP_NONE);
             assert(cpus[id] != NULL);
             cpu_init(cpus[id], id, record->lapicId, false);
             cpuAmount++;
@@ -118,7 +117,7 @@ void smp_entry(void)
 
     kernel_other_init();
 
-    printf("cpu %d: ready\n", (uint64_t)cpu->id);
+    log_print(LOG_INFO, "cpu %d: ready\n", (uint64_t)cpu->id);
     isReady = true;
 
     sched_idle_loop();

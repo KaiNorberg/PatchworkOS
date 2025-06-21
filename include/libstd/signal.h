@@ -1,7 +1,7 @@
 #ifndef _SIGNAL_H
 #define _SIGNAL_H 1
 
-#include "_AUX/config.h"
+#include "_internal/config.h"
 
 // TODO: Implement signals
 

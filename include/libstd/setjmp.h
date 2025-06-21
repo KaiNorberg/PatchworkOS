@@ -6,7 +6,7 @@ extern "C"
 {
 #endif
 
-#include "_AUX/config.h"
+#include "_internal/config.h"
 
 // TODO: Add signal handling and 100 other things
 

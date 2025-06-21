@@ -1,7 +1,8 @@
 #include "vfs.h"
 
 #include "drivers/systime/systime.h"
-#include "mem/kalloc.h"
+#include "log/log.h"
+#include "mem/heap.h"
 #include "path.h"
 #include "sched/thread.h"
 #include "sched/wait.h"
@@ -9,12 +10,10 @@
 #include "sync/rwlock.h"
 #include "sys/list.h"
 #include "sysfs.h"
-#include "utils/log.h"
 #include "vfs_ctx.h"
 
 #include <assert.h>
 #include <errno.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -62,7 +61,7 @@ file_t* file_new(volume_t* volume, const path_t* path, path_flags_t supportedFla
         return ERRPTR(EINVAL);
     }
 
-    file_t* file = kmalloc(sizeof(file_t), KALLOC_NONE);
+    file_t* file = heap_alloc(sizeof(file_t), HEAP_NONE);
     if (file == NULL)
     {
         return NULL;
@@ -98,13 +97,13 @@ void file_deref(file_t* file)
         {
             volume_deref(file->volume);
         }
-        kfree(file);
+        heap_free(file);
     }
 }
 
 void vfs_init(void)
 {
-    printf("vfs: init\n");
+    log_print(LOG_INFO, "vfs: init\n");
 
     list_init(&volumes);
     rwlock_init(&volumesLock);
@@ -121,21 +120,21 @@ uint64_t vfs_attach_simple(const char* label, const volume_ops_t* ops)
     volume_t* volume;
     LIST_FOR_EACH(volume, &volumes, entry)
     {
-        printf("vfs_attach_simple strcmp\n");
+        log_print(LOG_INFO, "vfs_attach_simple strcmp\n");
         if (strcmp(volume->label, label) == 0)
         {
             return ERROR(EEXIST);
         }
     }
 
-    volume = kmalloc(sizeof(volume_t), KALLOC_NONE);
+    volume = heap_alloc(sizeof(volume_t), HEAP_NONE);
     list_entry_init(&volume->entry);
     strcpy(volume->label, label);
     volume->ops = ops;
     atomic_init(&volume->ref, 1);
     if (volume_expose(volume) == ERR)
     {
-        kfree(volume);
+        heap_free(volume);
         return ERR;
     }
     list_push(&volumes, &volume->entry);
@@ -150,7 +149,7 @@ uint64_t vfs_mount(const char* label, fs_t* fs)
 static void volume_on_free(sysdir_t* dir)
 {
     volume_t* volume = dir->private;
-    kfree(volume);
+    heap_free(volume);
 }
 
 uint64_t vfs_unmount(const char* label)
@@ -161,7 +160,7 @@ uint64_t vfs_unmount(const char* label)
     bool isFound = false;
     LIST_FOR_EACH(volume, &volumes, entry)
     {
-        printf("vfs_unmount strcmp\n");
+        log_print(LOG_INFO, "vfs_unmount strcmp\n");
         if (strcmp(volume->label, label) == 0)
         {
             isFound = true;
@@ -307,7 +306,7 @@ uint64_t vfs_rename(const path_t* oldpath, const path_t* newpath)
         return ERROR(EINVAL);
     }
 
-    printf("vfs_rename strcmp\n");
+    log_print(LOG_INFO, "vfs_rename strcmp\n");
     if (strcmp(oldpath->volume, newpath->volume) != 0)
     {
         return ERROR(EXDEV);
@@ -507,7 +506,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
         files[i].revents = 0;
     }
 
-    wait_queue_t** waitQueues = kmalloc(sizeof(wait_queue_t*) * amount, KALLOC_VMM);
+    wait_queue_t** waitQueues = heap_alloc(sizeof(wait_queue_t*) * amount, HEAP_VMM);
     if (waitQueues == NULL)
     {
         return ERR;
@@ -536,7 +535,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
             {
                 if (sysfs_start_op(files[i].file) == ERR)
                 {
-                    kfree(waitQueues);
+                    heap_free(waitQueues);
                     return ERR;
                 }
                 waitQueues[i] = files[i].file->ops->poll(files[i].file, &files[i]);
@@ -545,7 +544,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
 
             if (waitQueues[i] == NULL)
             {
-                kfree(waitQueues);
+                heap_free(waitQueues);
                 return ERR;
             }
 
@@ -571,7 +570,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
         currentTime = systime_uptime();
     }
 
-    kfree(waitQueues);
+    heap_free(waitQueues);
     return events;
 }
 

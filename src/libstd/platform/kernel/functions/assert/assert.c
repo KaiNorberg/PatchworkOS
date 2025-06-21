@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "utils/log.h"
+#include "log/log.h"
 
 void _Assert99(const char* const message1, const char* const function, const char* const message2)
 {

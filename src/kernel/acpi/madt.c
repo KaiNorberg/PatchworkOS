@@ -1,6 +1,6 @@
 #include "madt.h"
 
-#include "utils/log.h"
+#include "log/log.h"
 
 #include <assert.h>
 

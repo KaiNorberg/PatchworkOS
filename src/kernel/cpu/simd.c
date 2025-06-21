@@ -1,11 +1,11 @@
 #include "simd.h"
 #include "cpuid.h"
+#include "log/log.h"
 #include "mem/pmm.h"
 #include "mem/vmm.h"
 #include "regs.h"
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 static uint8_t initCtx[PAGE_SIZE] ALIGNED(64);
@@ -33,7 +33,7 @@ static void simd_xsave_init(void)
 
 void simd_init(void)
 {
-    printf("simd: init\n");
+    log_print(LOG_INFO, "simd: init\n");
     cr0_write(cr0_read() & ~((uint64_t)CR0_EMULATION));
     cr0_write(cr0_read() | CR0_MONITOR_CO_PROCESSOR | CR0_NUMERIC_ERROR_ENABLE);
 
@@ -41,7 +41,7 @@ void simd_init(void)
 
     if (cpuid_is_xsave_avail())
     {
-        printf("simd: xsave available\n");
+        log_print(LOG_INFO, "simd: xsave available\n");
         simd_xsave_init();
     }
 

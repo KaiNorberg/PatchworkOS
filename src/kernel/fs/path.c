@@ -4,7 +4,6 @@
 #include "sched/thread.h"
 #include "vfs.h"
 
-#include <stdio.h>
 #include <string.h>
 
 static uint64_t flag_length(const char* flag)
@@ -408,8 +407,8 @@ static uint64_t path_test(const char* cwdStr, const char* testPath, const char* 
     {
         if (expectedResult != NULL)
         {
-            printf("failed: unexpectedly returned error, cwd=\"%s\" path=\"%s\"\n", cwdStr != NULL ? cwdStr : "NULL",
-                testPath);
+            log_print(LOG_INFO, "failed: unexpectedly returned error, cwd=\"%s\" path=\"%s\"\n",
+                cwdStr != NULL ? cwdStr : "NULL", testPath);
             return ERR;
         }
         return 0;
@@ -420,7 +419,7 @@ static uint64_t path_test(const char* cwdStr, const char* testPath, const char* 
 
     if (strcmp(parsedPath, expectedResult) != 0)
     {
-        printf("failed: cwd=\"%s\" parsed_cwd=\"%s\" path=\"%s\" expected=\"%s\" result=\"%s\"\n",
+        log_print(LOG_INFO, "failed: cwd=\"%s\" parsed_cwd=\"%s\" path=\"%s\" expected=\"%s\" result=\"%s\"\n",
             cwdStr != NULL ? cwdStr : "NULL", parsedCwd, testPath, expectedResult, parsedPath);
         return ERR;
     }

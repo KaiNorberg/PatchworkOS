@@ -2,7 +2,8 @@
 
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
-#include "mem/kalloc.h"
+#include "log/log.h"
+#include "mem/heap.h"
 #include "mem/pmm.h"
 #include "mem/vmm.h"
 #include "sched/thread.h"
@@ -10,7 +11,6 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdatomic.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -34,10 +34,9 @@ static void shmem_on_free(sysobj_t* sysobj)
         {
             pmm_free(shmem->segment->pages[i]);
         }
-        kfree(shmem->segment);
+        heap_free(shmem->segment);
     }
-    printf("free shmem %s\n", shmem->id);
-    kfree(shmem);
+    heap_free(shmem);
 }
 
 static void shmem_deref(shmem_t* shmem)
@@ -84,7 +83,7 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
 
     if (shmem->segment == NULL) // First call to mmap()
     {
-        shmem_segment_t* segment = kmalloc(sizeof(shmem_segment_t) + sizeof(void*) * pageAmount, KALLOC_NONE);
+        shmem_segment_t* segment = heap_alloc(sizeof(shmem_segment_t) + sizeof(void*) * pageAmount, HEAP_NONE);
         if (segment == NULL)
         {
             return NULL;
@@ -100,7 +99,7 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
                 {
                     pmm_free(segment->pages[i]);
                 }
-                kfree(segment);
+                heap_free(segment);
                 return NULL;
             }
         }
@@ -113,7 +112,7 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
             {
                 pmm_free(segment->pages[i]);
             }
-            kfree(segment);
+            heap_free(segment);
             return NULL;
         }
 
@@ -161,7 +160,7 @@ static sysobj_ops_t objOps = {
 
 static file_t* shmem_new_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
 {
-    shmem_t* shmem = kmalloc(sizeof(shmem_t), KALLOC_NONE);
+    shmem_t* shmem = heap_alloc(sizeof(shmem_t), HEAP_NONE);
     if (shmem == NULL)
     {
         return NULL;
@@ -170,7 +169,7 @@ static file_t* shmem_new_open(volume_t* volume, const path_t* path, sysobj_t* sy
     file_t* file = file_new(volume, path, PATH_NONE);
     if (file == NULL)
     {
-        kfree(shmem);
+        heap_free(shmem);
         return NULL;
     }
     file->ops = &fileOps;

@@ -6,7 +6,7 @@ extern "C"
 {
 #endif
 
-#include "_AUX/config.h"
+#include "_internal/config.h"
 
 _PUBLIC void _Assert99(const char* const, const char* const, const char* const);
 _PUBLIC void _Assert89(const char* const);

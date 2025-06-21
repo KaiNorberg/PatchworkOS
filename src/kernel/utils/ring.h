@@ -2,6 +2,7 @@
 
 #include "defs.h"
 
+#include <errno.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -23,12 +24,12 @@ static inline void ring_init(ring_t* ring, void* buffer, uint64_t size)
     ring->dataLength = 0;
 }
 
-static inline uint64_t ring_data_length(ring_t* ring)
+static inline uint64_t ring_data_length(const ring_t* ring)
 {
     return ring->dataLength;
 }
 
-static inline uint64_t ring_free_length(ring_t* ring)
+static inline uint64_t ring_free_length(const ring_t* ring)
 {
     return ring->size - ring->dataLength;
 }
@@ -123,4 +124,16 @@ static void ring_move_read_forward(ring_t* ring, uint64_t offset)
 
     ring->readIndex = (ring->readIndex + offset) % ring->size;
     ring->dataLength -= offset;
+}
+
+static inline uint64_t ring_get_byte(const ring_t* ring, uint64_t offset, uint8_t* byte)
+{
+    if (offset >= ring->dataLength)
+    {
+        return ERR;
+    }
+
+    uint64_t byteIndex = (ring->readIndex + offset) % ring->size;
+    *byte = ((uint8_t*)ring->buffer)[byteIndex];
+    return 0;
 }

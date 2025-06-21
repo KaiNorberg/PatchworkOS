@@ -3,14 +3,13 @@
 #include "fs/ctl.h"
 #include "fs/vfs.h"
 #include "fs/view.h"
+#include "log/log.h"
+#include "mem/heap.h"
 #include "sched/thread.h"
 #include "sync/lock.h"
 #include "sync/rwlock.h"
-#include "utils/log.h"
-#include "mem/kalloc.h"
 
 #include <assert.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <sys/io.h>
 #include <sys/list.h>
@@ -93,7 +92,7 @@ static uint64_t process_cwd_view_init(file_t* file, view_t* view)
         return ERR;
     }
 
-    char* cwd = kmalloc(MAX_PATH, KALLOC_NONE);
+    char* cwd = heap_alloc(MAX_PATH, HEAP_NONE);
     if (cwd == NULL)
     {
         return ERR;
@@ -110,7 +109,7 @@ static uint64_t process_cwd_view_init(file_t* file, view_t* view)
 
 static void process_cwd_view_deinit(view_t* view)
 {
-    kfree(view->buffer);
+    heap_free(view->buffer);
 }
 
 VIEW_STANDARD_OPS_DEFINE(cwdOps, PATH_NONE,
@@ -190,7 +189,7 @@ static void process_dir_init(process_dir_t* dir, const char* name, process_t* pr
 
 process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, priority_t priority)
 {
-    process_t* process = kmalloc(sizeof(process_t), KALLOC_NONE);
+    process_t* process = heap_alloc(sizeof(process_t), HEAP_NONE);
     if (process == NULL)
     {
         return ERRPTR(ENOMEM);
@@ -248,12 +247,12 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
 static void process_on_free(sysdir_t* dir)
 {
     process_t* process = dir->private;
-    printf("process: on free pid=%d\n", process->id);
+    log_print(LOG_INFO, "process: on free pid=%d\n", process->id);
     space_deinit(&process->space);
     argv_deinit(&process->argv);
     wait_queue_deinit(&process->queue);
     futex_ctx_deinit(&process->futexCtx);
-    kfree(process);
+    heap_free(process);
 }
 
 void process_free(process_t* process)
@@ -304,10 +303,10 @@ void process_backend_init(void)
 {
     rwlock_init(&treeLock);
 
-    printf("process: init self dir\n");
+    log_print(LOG_INFO, "process: init self dir\n");
     process_dir_init(&self, "self", NULL);
 
-    printf("process: create kernel process\n");
+    log_print(LOG_INFO, "process: create kernel process\n");
     kernelProcess = process_new(NULL, NULL, NULL, PRIORITY_MAX - 1);
     assert(kernelProcess != NULL);
 }

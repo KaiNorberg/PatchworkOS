@@ -4,8 +4,8 @@
 #include "drivers/systime/systime.h"
 #include "fs/sysfs.h"
 #include "fs/view.h"
-#include "log.h"
-#include "mem/kalloc.h"
+#include "log/log.h"
+#include "mem/heap.h"
 
 #include <assert.h>
 #include <stdint.h>
@@ -30,7 +30,7 @@ void statistics_cpu_ctx_init(statistics_cpu_ctx_t* ctx)
 
 static uint64_t statistics_cpu_view_init(file_t* file, view_t* view)
 {
-    char* string = kmalloc(MAX_PATH * (smp_cpu_amount() + 1), KALLOC_NONE);
+    char* string = heap_alloc(MAX_PATH * (smp_cpu_amount() + 1), HEAP_NONE);
     if (string == NULL)
     {
         return ERR;
@@ -54,7 +54,7 @@ static uint64_t statistics_cpu_view_init(file_t* file, view_t* view)
 
 static void statistics_cpu_view_deinit(view_t* view)
 {
-    kfree(view->buffer);
+    heap_free(view->buffer);
 }
 
 VIEW_STANDARD_OPS_DEFINE(cpuOps, PATH_NONE,
@@ -65,7 +65,7 @@ VIEW_STANDARD_OPS_DEFINE(cpuOps, PATH_NONE,
 
 static uint64_t statistics_mem_view_init(file_t* file, view_t* view)
 {
-    char* string = kmalloc(MAX_PATH, KALLOC_NONE);
+    char* string = heap_alloc(MAX_PATH, HEAP_NONE);
     if (string == NULL)
     {
         return ERR;
@@ -81,7 +81,7 @@ static uint64_t statistics_mem_view_init(file_t* file, view_t* view)
 
 static void statistics_mem_view_deinit(view_t* view)
 {
-    kfree(view->buffer);
+    heap_free(view->buffer);
 }
 
 VIEW_STANDARD_OPS_DEFINE(memOps, PATH_NONE,

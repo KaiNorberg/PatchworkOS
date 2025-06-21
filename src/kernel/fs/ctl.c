@@ -5,7 +5,6 @@
 #include "sched/thread.h"
 
 #include <errno.h>
-#include <stdio.h>
 #include <sys/argsplit.h>
 
 uint64_t ctl_dispatch(ctl_t* ctls, file_t* file, const void* buffer, uint64_t count)

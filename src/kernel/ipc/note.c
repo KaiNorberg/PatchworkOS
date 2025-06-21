@@ -1,11 +1,10 @@
 #include "note.h"
 
 #include "cpu/smp.h"
+#include "log/log.h"
 #include "sched/thread.h"
-#include "utils/log.h"
 
 #include <assert.h>
-#include <stdio.h>
 
 void note_queue_init(note_queue_t* queue)
 {
@@ -88,14 +87,14 @@ bool note_dispatch(trap_frame_t* trapFrame, cpu_t* self)
 
     thread_t* thread = sched_thread();
     note_queue_t* queue = &thread->notes;
-    // printf("note_dispatch: %p %p\n", thread, queue);
+    // log_print(LOG_INFO, "note_dispatch: %p %p\n", thread, queue);
 
     note_t note;
     while (note_queue_pop(queue, &note))
     {
         if (strcmp(note.message, "kill") == 0) // TODO: Fix bug.
         {
-            printf("note: kill tid=%d pid=%d\n", thread->id, thread->process->id);
+            log_print(LOG_INFO, "note: kill tid=%d pid=%d\n", thread->id, thread->process->id);
 
             sched_process_exit(0);
             sched_schedule(trapFrame, self);
@@ -103,7 +102,7 @@ bool note_dispatch(trap_frame_t* trapFrame, cpu_t* self)
         }
         else
         {
-            printf("note: unknown (%s) tid=%d pid=%d\n", note.message, thread->id, thread->process->id);
+            log_print(LOG_INFO, "note: unknown (%s) tid=%d pid=%d\n", note.message, thread->id, thread->process->id);
             // TODO: Unknown note, send to userspace
         }
     }

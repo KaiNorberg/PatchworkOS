@@ -5,7 +5,7 @@
 
 #include "cpu/port.h"
 #include "drivers/systime/systime.h"
-#include "utils/log.h"
+#include "log/log.h"
 
 #include <assert.h>
 

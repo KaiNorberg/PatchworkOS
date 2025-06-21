@@ -1,6 +1,6 @@
 include Make.defaults
 
-MODULES := bootloader kernel libstd libpatchwork
+MODULES := boot kernel libstd libpatchwork
 PROGRAMS := $(basename $(notdir $(wildcard make/programs/*.mk)))
 TARGET := bin/PatchworkOS.img
 
@@ -27,7 +27,7 @@ deploy: $(PROGRAMS)
 	mmd -i $(TARGET) ::/usr/bin
 	mmd -i $(TARGET) ::/usr/license
 	mcopy -i $(TARGET) -s root/* ::
-	mcopy -i $(TARGET) -s bin/bootloader/bootx64.efi ::/efi/boot
+	mcopy -i $(TARGET) -s bin/boot/bootx64.efi ::/efi/boot
 	mcopy -i $(TARGET) -s bin/kernel/kernel ::/boot
 	$(foreach prog,$(ROOT_PROGRAMS),mcopy -i $(TARGET) -s bin/programs/$(prog) ::/bin;)
 	$(foreach prog,$(filter-out $(ROOT_PROGRAMS),$(PROGRAMS)),mcopy -i $(TARGET) -s bin/programs/$(prog) ::/usr/bin;)
@@ -53,7 +53,7 @@ compile_commands: clean
 	bear -- make all
 
 format:
-	find src/ include/ meta/doxy -iname '*.h' -o -iname '*.c' -o -iname '*.dox' | xargs clang-format -style=file -i
+	find src/ include/ meta/doxy tools/ -iname '*.h' -o -iname '*.c' -o -iname '*.dox' | xargs clang-format -style=file -i
 
 doxygen:
 	if [ ! -d "meta/docs/doxygen-awesome-css" ]; then \
@@ -64,35 +64,35 @@ doxygen:
 	fi
 	doxygen meta/doxy/Doxyfile
 
-ifndef SMP
-SMP := 8
-endif
+# ==============================================================================
+#                                      QEMU
+# ==============================================================================
+
+QEMU_MEMORY ?= 1G
+QEMU_CPUS ?= $(shell nproc 2>/dev/null || echo 8)
+QEMU_MACHINE ?= q35
 
 QEMU_FLAGS = \
-	-M q35 \
+	-M $(QEMU_MACHINE) \
 	-display sdl \
+	-serial stdio \
 	-drive format=raw,file=$(TARGET) \
 	-m 1G \
-	-smp $(SMP) \
-	-serial stdio \
+	-smp $(QEMU_CPUS) \
+	-cpu qemu64 \
 	-drive if=pflash,format=raw,unit=0,file=lib/OVMFbin/OVMF_CODE-pure-efi.fd,readonly=on \
 	-drive if=pflash,format=raw,unit=1,file=lib/OVMFbin/OVMF_VARS-pure-efi.fd \
-	-net none \
-	-cpu qemu64
 
 ifeq ($(DEBUG),1)
-
-ifneq ($(GDB),1)
-QEMU_FLAGS += -device isa-debug-exit
-endif
-
+	ifneq ($(GDB),1)
+		QEMU_FLAGS += -device isa-debug-exit
+	endif
 else
-QEMU_FLAGS += \
-	-no-shutdown -no-reboot
+	QEMU_FLAGS += -no-shutdown -no-reboot
 endif
 
 ifeq ($(GDB),1)
-QEMU_FLAGS += -s -S
+	QEMU_FLAGS += -s -S
 endif
 
 run: all

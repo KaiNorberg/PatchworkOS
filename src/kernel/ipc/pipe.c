@@ -1,11 +1,11 @@
 #include "pipe.h"
 
 #include "fs/vfs.h"
-#include "mem/kalloc.h"
+#include "log/log.h"
+#include "mem/heap.h"
 #include "mem/pmm.h"
 #include "sched/thread.h"
 #include "sync/lock.h"
-#include "utils/log.h"
 #include "utils/ring.h"
 
 #include <assert.h>
@@ -97,7 +97,7 @@ static file_ops_t fileOps = {
 
 static file_t* pipe_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
 {
-    pipe_private_t* private = kmalloc(sizeof(pipe_private_t), KALLOC_NONE);
+    pipe_private_t* private = heap_alloc(sizeof(pipe_private_t), HEAP_NONE);
     if (private == NULL)
     {
         return NULL;
@@ -105,7 +105,7 @@ static file_t* pipe_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
     private->buffer = pmm_alloc();
     if (private->buffer == NULL)
     {
-        kfree(private);
+        heap_free(private);
         return NULL;
     }
     ring_init(&private->ring, private->buffer, PAGE_SIZE);
@@ -117,8 +117,8 @@ static file_t* pipe_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
     file_t* file = file_new(volume, path, PATH_NONE);
     if (file == NULL)
     {
-        kfree(private->buffer);
-        kfree(private);
+        heap_free(private->buffer);
+        heap_free(private);
         return NULL;
     }
     file->ops = &fileOps;
@@ -132,7 +132,7 @@ static file_t* pipe_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
 
 static uint64_t pipe_open2(volume_t* volume, const path_t* path, sysobj_t* sysobj, file_t* files[2])
 {
-    pipe_private_t* private = kmalloc(sizeof(pipe_private_t), KALLOC_NONE);
+    pipe_private_t* private = heap_alloc(sizeof(pipe_private_t), HEAP_NONE);
     if (private == NULL)
     {
         return ERR;
@@ -140,7 +140,7 @@ static uint64_t pipe_open2(volume_t* volume, const path_t* path, sysobj_t* sysob
     private->buffer = pmm_alloc();
     if (private->buffer == NULL)
     {
-        kfree(private);
+        heap_free(private);
         return ERR;
     }
     ring_init(&private->ring, private->buffer, PAGE_SIZE);
@@ -152,8 +152,8 @@ static uint64_t pipe_open2(volume_t* volume, const path_t* path, sysobj_t* sysob
     files[0] = file_new(volume, path, PATH_NONE);
     if (files[0] == NULL)
     {
-        kfree(private->buffer);
-        kfree(private);
+        heap_free(private->buffer);
+        heap_free(private);
         return ERR;
     }
 
@@ -161,8 +161,8 @@ static uint64_t pipe_open2(volume_t* volume, const path_t* path, sysobj_t* sysob
     if (files[1] == NULL)
     {
         file_deref(files[0]);
-        kfree(private->buffer);
-        kfree(private);
+        heap_free(private->buffer);
+        heap_free(private);
         return ERR;
     }
 
@@ -196,8 +196,8 @@ static void pipe_cleanup(sysobj_t* sysobj, file_t* file)
     {
         lock_release(&private->lock);
         wait_queue_deinit(&private->waitQueue);
-        kfree(private->buffer);
-        kfree(private);
+        heap_free(private->buffer);
+        heap_free(private);
         return;
     }
 

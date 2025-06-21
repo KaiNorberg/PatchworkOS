@@ -9,13 +9,13 @@ extern "C"
 {
 #endif
 
-#include "_AUX/ERR.h"
-#include "_AUX/NULL.h"
-#include "_AUX/clock_t.h"
-#include "_AUX/config.h"
-#include "_AUX/fd_t.h"
-#include "_AUX/pid_t.h"
-#include "_AUX/tid_t.h"
+#include "_internal/ERR.h"
+#include "_internal/NULL.h"
+#include "_internal/clock_t.h"
+#include "_internal/config.h"
+#include "_internal/fd_t.h"
+#include "_internal/pid_t.h"
+#include "_internal/tid_t.h"
 
 /**
  * @brief Process management header.

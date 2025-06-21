@@ -9,14 +9,14 @@ extern "C"
 {
 #endif
 
-#include "_AUX/ERR.h"
-#include "_AUX/MAX_NAME.h"
-#include "_AUX/MAX_PATH.h"
-#include "_AUX/NULL.h"
-#include "_AUX/SEEK.h"
-#include "_AUX/clock_t.h"
-#include "_AUX/config.h"
-#include "_AUX/fd_t.h"
+#include "_internal/ERR.h"
+#include "_internal/MAX_NAME.h"
+#include "_internal/MAX_PATH.h"
+#include "_internal/NULL.h"
+#include "_internal/SEEK.h"
+#include "_internal/clock_t.h"
+#include "_internal/config.h"
+#include "_internal/fd_t.h"
 
 /**
  * @brief System IO header.

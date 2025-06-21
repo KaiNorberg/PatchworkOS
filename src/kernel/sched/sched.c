@@ -1,6 +1,6 @@
 #include "sched.h"
 
-#include "_AUX/ERR.h"
+#include "_internal/ERR.h"
 #include "cpu/apic.h"
 #include "cpu/gdt.h"
 #include "cpu/regs.h"
@@ -11,14 +11,13 @@
 #include "drivers/systime/systime.h"
 #include "fs/vfs.h"
 #include "loader.h"
+#include "log/log.h"
 #include "proc/process.h"
 #include "sched/sched.h"
 #include "sched/thread.h"
 #include "sync/lock.h"
-#include "utils/log.h"
 
 #include <assert.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/list.h>
@@ -120,12 +119,12 @@ static void sched_init_spawn_boot_thread(void)
     atomic_store(&thread->state, THREAD_RUNNING);
     self->sched.runThread = thread;
 
-    printf("sched: spawned boot thread\n");
+    log_print(LOG_INFO, "sched: spawned boot thread\n");
 }
 
 void sched_init(void)
 {
-    printf("sched: init\n");
+    log_print(LOG_INFO, "sched: init\n");
     sched_init_spawn_boot_thread();
 
     wait_queue_init(&sleepQueue);
