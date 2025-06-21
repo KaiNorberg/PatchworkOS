@@ -54,16 +54,62 @@
  */
 #define CONFIG_MAX_NOTES 8
 
-#define CONFIG_IDLE_TIME_SLICE ((CLOCKS_PER_SEC / 100))
+/**
+ * @brief Maximum time slice configuration.
+ * @ingroup kernel
+ * @def CONFIG_MAX_TIME_SLICE
+ *
+ * The `CONFIG_MAX_TIME_SLICE` constant defines the maximum time slice a thread can have based on its priority.
+ *
+ */
+#define CONFIG_MAX_TIME_SLICE ((CLOCKS_PER_SEC / 1000) * 50)
 
-#define CONFIG_MAX_TIME_SLICE ((CLOCKS_PER_SEC / 1000) * 500)
+/**
+ * @brief Minimum time slice configuration.
+ * @ingroup kernel
+ * @def CONFIG_MIN_TIME_SLICE
+ *
+ * The `CONFIG_MIN_TIME_SLICE` constant defines the minimum time slice a thread can have based on its priority.
+ *
+ */
+#define CONFIG_MIN_TIME_SLICE ((CLOCKS_PER_SEC / 1000) * 1)
 
-#define CONFIG_MIN_TIME_SLICE ((CLOCKS_PER_SEC / 1000) * 5)
-
+/**
+ * @brief Maximum recent block time configuration.
+ * @ingroup kernel
+ * @def CONFIG_MAX_RECENT_BLOCK_TIME
+ *
+ * The `CONFIG_MAX_RECENT_BLOCK_TIME` constant defines the length of time considered when deciding if a thread is I/O or CPU bound.
+ *
+ */
 #define CONFIG_MAX_RECENT_BLOCK_TIME ((CLOCKS_PER_SEC / 1000) * 10)
 
-#define CONFIG_MAX_PRIORITY_BOOST 5
+/**
+ * @brief Maximum priority boost configuration.
+ * @ingroup kernel
+ * @def CONFIG_MAX_PRIORITY_BOOST
+ *
+ * The `CONFIG_MAX_PRIORITY_BOOST` constant defines the maximum priority boost a thread can receive from being I/O bound.
+ *
+ */
+#define CONFIG_MAX_PRIORITY_BOOST 8
 
-#define CONFIG_MAX_PRIORITY_PENALTY 5
+/**
+ * @brief Maximum priority penalty configuration.
+ * @ingroup kernel
+ * @def CONFIG_MAX_PRIORITY_PENALTY
+ *
+ * The `CONFIG_MAX_PRIORITY_PENALTY` constant defines the maximum priority penalty a thread can receive from being CPU bound.
+ *
+ */
+#define CONFIG_MAX_PRIORITY_PENALTY 8
 
+/**
+ * @brief Load balance bias configuration.
+ * @ingroup kernel
+ * @def CONFIG_LOAD_BALANCE_BIAS
+ *
+ * The `CONFIG_LOAD_BALANCE_BIAS` constant defines the bias used the minimum inbalance required for load balancing to occur.
+ *
+ */
 #define CONFIG_LOAD_BALANCE_BIAS 2
