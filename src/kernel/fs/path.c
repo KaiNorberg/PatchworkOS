@@ -2,6 +2,7 @@
 
 #include "defs.h"
 #include "sched/thread.h"
+#include "log/log.h"
 #include "vfs.h"
 
 #include <string.h>
