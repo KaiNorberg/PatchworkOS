@@ -12,11 +12,11 @@ typedef struct
 {
     thrd_start_t func;
     void* arg;
-} _EntryCtx_t;
+} _entry_ctx_t;
 
-_THREAD_ENTRY_ATTRIBUTES static void _ThreadEntry(_Thread_t* thread)
+_THREAD_ENTRY_ATTRIBUTES static void _thread_entry(_thread_t* thread)
 {
-    _EntryCtx_t* ctx = thread->private;
+    _entry_ctx_t* ctx = thread->private;
     thrd_start_t func = ctx->func;
     void* arg = ctx->arg;
 
@@ -27,7 +27,7 @@ _THREAD_ENTRY_ATTRIBUTES static void _ThreadEntry(_Thread_t* thread)
 
 int thrd_create(thrd_t* thr, thrd_start_t func, void* arg)
 {
-    _EntryCtx_t* ctx = malloc(sizeof(_EntryCtx_t));
+    _entry_ctx_t* ctx = malloc(sizeof(_entry_ctx_t));
     if (ctx == NULL)
     {
         return thrd_error;
@@ -35,7 +35,7 @@ int thrd_create(thrd_t* thr, thrd_start_t func, void* arg)
     ctx->func = func;
     ctx->arg = arg;
 
-    _Thread_t* thread = _ThreadNew(_ThreadEntry, ctx);
+    _thread_t* thread = _thread_new(_thread_entry, ctx);
     if (thread == NULL)
     {
         free(ctx);

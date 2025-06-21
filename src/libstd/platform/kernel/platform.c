@@ -11,20 +11,20 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
-void _PlatformEarlyInit(void)
+void _platform_early_init(void)
 {
 }
 
-void _PlatformLateInit(void)
+void _platform_late_init(void)
 {
 }
 
-int* _PlatformErrnoFunc(void)
+int* _platform_errno_get(void)
 {
     return &sched_thread()->error;
 }
 
-void _PlatformAbort(const char* message)
+void _platform_abort(const char* message)
 {
     if (message != NULL)
     {

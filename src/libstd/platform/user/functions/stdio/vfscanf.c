@@ -8,7 +8,7 @@
 int vfscanf(FILE* _RESTRICT stream, const char* _RESTRICT format, va_list arg)
 {
     /* TODO: This function should interpret format as multibyte characters.  */
-    _FormatCtx_t ctx;
+    _format_ctx_t ctx;
     ctx.base = 0;
     ctx.flags = 0;
     ctx.maxChars = 0;
@@ -21,7 +21,7 @@ int vfscanf(FILE* _RESTRICT stream, const char* _RESTRICT format, va_list arg)
 
     _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
 
-    if (_FilePrepareRead(stream) == ERR || _FILE_CHECK_AVAIL(stream) == ERR)
+    if (_file_prepare_read(stream) == ERR || _FILE_CHECK_AVAIL(stream) == ERR)
     {
         _PLATFORM_MUTEX_RELEASE(&stream->mtx);
         return EOF;
@@ -33,7 +33,7 @@ int vfscanf(FILE* _RESTRICT stream, const char* _RESTRICT format, va_list arg)
     {
         const char* rc;
 
-        if ((*format != '%') || ((rc = _Scan(format, &ctx)) == format))
+        if ((*format != '%') || ((rc = _scan(format, &ctx)) == format))
         {
             int c;
 

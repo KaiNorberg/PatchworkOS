@@ -22,7 +22,7 @@ char* ulltoa(unsigned long long value, char* str, int base)
 
     while (value > 0)
     {
-        *ptr++ = _Digits[value % base];
+        *ptr++ = _digits[value % base];
         value /= base;
     }
 

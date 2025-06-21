@@ -9,12 +9,12 @@ int fflush(FILE* stream)
     uint64_t result = 0;
     if (stream == NULL)
     {
-        result = _FilesFlush();
+        result = _files_flush();
     }
     else
     {
         _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
-        result = _FileFlushBuffer(stream);
+        result = _file_flush_buffer(stream);
         _PLATFORM_MUTEX_RELEASE(&stream->mtx);
     }
 

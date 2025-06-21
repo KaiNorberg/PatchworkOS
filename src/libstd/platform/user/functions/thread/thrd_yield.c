@@ -9,5 +9,5 @@
 
 void thrd_yield(void)
 {
-    _SyscallYield();
+    _syscall_yield();
 }

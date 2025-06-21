@@ -8,7 +8,7 @@ int fputc(int c, FILE* stream)
 {
     _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
 
-    if (_FilePrepareWrite(stream) == ERR)
+    if (_file_prepare_write(stream) == ERR)
     {
         _PLATFORM_MUTEX_RELEASE(&stream->mtx);
         return EOF;
@@ -19,7 +19,7 @@ int fputc(int c, FILE* stream)
         (stream->flags & _FILE_UNBUFFERED))
     {
         // buffer filled, unbuffered stream, or end-of-line.
-        c = (_FileFlushBuffer(stream) != ERR) ? c : EOF;
+        c = (_file_flush_buffer(stream) != ERR) ? c : EOF;
     }
 
     _PLATFORM_MUTEX_RELEASE(&stream->mtx);

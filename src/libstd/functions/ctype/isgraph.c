@@ -4,5 +4,5 @@
 
 int isgraph(int c)
 {
-    return (_AsciiTable[c].flags & _ASCII_GRAPH);
+    return (_ascii_table[c].flags & _ASCII_GRAPH);
 }

@@ -9,10 +9,10 @@
 
 uint64_t seek(fd_t fd, int64_t offset, seek_origin_t origin)
 {
-    uint64_t result = _SyscallSeek(fd, offset, origin);
+    uint64_t result = _syscall_seek(fd, offset, origin);
     if (result == ERR)
     {
-        errno = _SyscallLastError();
+        errno = _syscall_last_error();
     }
     return result;
 }

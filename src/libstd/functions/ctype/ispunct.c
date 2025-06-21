@@ -4,5 +4,5 @@
 
 int ispunct(int c)
 {
-    return (_AsciiTable[c].flags & _ASCII_PUNCT);
+    return (_ascii_table[c].flags & _ASCII_PUNCT);
 }

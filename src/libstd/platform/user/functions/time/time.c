@@ -4,7 +4,7 @@
 
 time_t time(time_t* timePtr)
 {
-    time_t time = _SyscallUnixEpoch();
+    time_t time = _syscall_unix_epoch();
     if (timePtr != NULL)
     {
         *timePtr = time;

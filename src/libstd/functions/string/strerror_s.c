@@ -13,7 +13,7 @@ errno_t strerror_s(char* s, rsize_t maxsize, errno_t errnum)
 
     if (s == NULL || maxsize > RSIZE_MAX || maxsize == 0)
     {
-        _ConstraintHandler(_CONSTRAINT_VIOLATION(EINVAL));
+        _constraintHandler(_CONSTRAINT_VIOLATION(EINVAL));
         return EINVAL;
     }
 

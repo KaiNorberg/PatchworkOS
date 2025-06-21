@@ -1,5 +1,5 @@
 #pragma once
 
-extern const char _Digits[];
+extern const char _digits[];
 
-extern const char _XDigits[];
+extern const char _xdigits[];

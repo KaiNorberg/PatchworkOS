@@ -9,7 +9,7 @@ size_t fwrite(const void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTR
 {
     _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
 
-    if (_FilePrepareWrite(stream) == ERR)
+    if (_file_prepare_write(stream) == ERR)
     {
         _PLATFORM_MUTEX_RELEASE(&stream->mtx);
         return 0;
@@ -33,7 +33,7 @@ size_t fwrite(const void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTR
 
             if (stream->bufIndex == stream->bufSize)
             {
-                if (_FileFlushBuffer(stream) == ERR)
+                if (_file_flush_buffer(stream) == ERR)
                 {
                     _PLATFORM_MUTEX_RELEASE(&stream->mtx);
                     return n;
@@ -46,7 +46,7 @@ size_t fwrite(const void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTR
 
     if (stream->flags & _FILE_UNBUFFERED)
     {
-        if (_FileFlushBuffer(stream) == ERR)
+        if (_file_flush_buffer(stream) == ERR)
         {
             /* We are in a pinch here. We have an error, which requires a
                return value < nmemb. On the other hand, all objects have
@@ -66,7 +66,7 @@ size_t fwrite(const void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTR
             size_t bufIndex = stream->bufIndex;
             stream->bufIndex = newLineOffset;
 
-            if (_FileFlushBuffer(stream) == ERR)
+            if (_file_flush_buffer(stream) == ERR)
             {
                 /* See comment above. */
                 stream->bufIndex = bufIndex;

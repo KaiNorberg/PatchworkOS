@@ -7,12 +7,12 @@
 #include <errno.h>
 #include <sys/io.h>
 
-void _StdInit(void)
+void _std_init(void)
 {
-    _PlatformEarlyInit();
+    _platform_early_init();
 
-    _ConstraintHandlerInit();
-    _TimeZoneInit();
+    _constraint_handler_init();
+    _time_zone_init();
 
-    _PlatformLateInit();
+    _platform_late_init();
 }

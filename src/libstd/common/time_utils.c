@@ -1,16 +1,16 @@
 #include "time_utils.h"
 
-_TimeZone_t timeZone;
+_time_zone_t timeZone;
 
-void _TimeZoneInit(void)
+void _time_zone_init(void)
 {
     // TODO: Load this from a file or something
-    timeZone = (_TimeZone_t){
+    timeZone = (_time_zone_t){
         .secondsOffset = 3600 // Swedish time zone for now
     };
 }
 
-_TimeZone_t* _TimeZone(void)
+_time_zone_t* _time_zone(void)
 {
     return &timeZone;
 }
@@ -21,21 +21,21 @@ static const int32_t daysInMonth[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30
 static const int32_t cumulativeDays[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
 static const int32_t cumulativeDaysLeap[] = {0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335};
 
-bool _TimeIsLeapYear(int32_t year)
+bool _time_is_leap_year(int32_t year)
 {
     return (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0));
 }
 
-int32_t _TimeDaysInMonth(int32_t month, int32_t year)
+int32_t _time_days_in_month(int32_t month, int32_t year)
 {
-    if (month == 1 && _TimeIsLeapYear(year))
+    if (month == 1 && _time_is_leap_year(year))
     {
         return 29;
     }
     return daysInMonth[month];
 }
 
-void _TimeNormalize(struct tm* timePtr)
+void _time_normalize(struct tm* timePtr)
 {
     int32_t carry = timePtr->tm_sec / 60;
     timePtr->tm_sec %= 60;
@@ -73,7 +73,7 @@ void _TimeNormalize(struct tm* timePtr)
 
     while (1)
     {
-        int32_t maxDays = _TimeDaysInMonth(timePtr->tm_mon, timePtr->tm_year + 1900);
+        int32_t maxDays = _time_days_in_month(timePtr->tm_mon, timePtr->tm_year + 1900);
 
         if (timePtr->tm_mday > maxDays)
         {
@@ -93,7 +93,7 @@ void _TimeNormalize(struct tm* timePtr)
                 timePtr->tm_mon = 11;
                 timePtr->tm_year--;
             }
-            timePtr->tm_mday += _TimeDaysInMonth(timePtr->tm_mon, timePtr->tm_year + 1900);
+            timePtr->tm_mday += _time_days_in_month(timePtr->tm_mon, timePtr->tm_year + 1900);
         }
         else
         {
@@ -102,7 +102,7 @@ void _TimeNormalize(struct tm* timePtr)
     }
 }
 
-void _TimeDayOfWeek(struct tm* timePtr)
+void _time_day_of_week(struct tm* timePtr)
 {
     int32_t y = timePtr->tm_year + 1900;
     int32_t m = timePtr->tm_mon + 1;
@@ -121,13 +121,13 @@ void _TimeDayOfWeek(struct tm* timePtr)
     timePtr->tm_wday = (h + 6) % 7;
 }
 
-void _TimeDayOfYear(struct tm* timePtr)
+void _time_day_of_year(struct tm* timePtr)
 {
     int32_t month = timePtr->tm_mon;
     int32_t day = timePtr->tm_mday - 1;
     int32_t year = timePtr->tm_year + 1900;
 
-    if (_TimeIsLeapYear(year))
+    if (_time_is_leap_year(year))
     {
         timePtr->tm_yday = cumulativeDaysLeap[month] + day;
     }

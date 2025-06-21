@@ -2,4 +2,4 @@
 
 #include "format.h"
 
-const char* _Scan(const char* spec, _FormatCtx_t* ctx);
+const char* _scan(const char* spec, _format_ctx_t* ctx);

@@ -6,10 +6,10 @@
 
 uint64_t sleep(clock_t timeout)
 {
-    uint64_t result = _SyscallSleep(timeout);
+    uint64_t result = _syscall_sleep(timeout);
     if (result == ERR)
     {
-        errno = _SyscallLastError();
+        errno = _syscall_last_error();
     }
     return result;
 }

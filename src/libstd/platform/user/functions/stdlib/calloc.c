@@ -5,9 +5,9 @@
 
 void* calloc(size_t nmemb, size_t size)
 {
-    _HeapAcquire();
-    void* ptr = _HeapAlloc(nmemb * size);
-    _HeapRelease();
+    _heap_acquire();
+    void* ptr = _heap_alloc(nmemb * size);
+    _heap_release();
     memset(ptr, 0, nmemb * size);
     return ptr;
 }

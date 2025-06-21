@@ -10,7 +10,7 @@
 
 void thrd_exit(int res)
 {
-    _Thread_t* thread = _ThreadGet(gettid());
+    _thread_t* thread = _thread_get(gettid());
     if (thread == NULL)
     {
         abort();
@@ -21,12 +21,12 @@ void thrd_exit(int res)
     uint64_t state = atomic_exchange(&thread->state, _THREAD_EXITED);
     if (state == _THREAD_DETACHED)
     {
-        _ThreadFree(thread);
+        _thread_free(thread);
     }
     else
     {
         futex(&thread->state, FUTEX_ALL, FUTEX_WAKE, CLOCKS_NEVER);
     }
 
-    _SyscallThreadExit();
+    _syscall_thread_exit();
 }

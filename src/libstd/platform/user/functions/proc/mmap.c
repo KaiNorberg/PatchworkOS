@@ -6,10 +6,10 @@
 
 void* mmap(fd_t fd, void* address, uint64_t length, prot_t prot)
 {
-    void* result = _SyscallMmap(fd, address, length, prot);
+    void* result = _syscall_mmap(fd, address, length, prot);
     if (result == NULL)
     {
-        errno = _SyscallLastError();
+        errno = _syscall_last_error();
     }
     return result;
 }

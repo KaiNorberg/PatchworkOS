@@ -7,21 +7,21 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
-static _PlatformMutex_t mutex;
+static _platform_mutex_t mutex;
 
-static _HeapHeader_t* firstBlock;
+static _heap_header_t* firstBlock;
 
 static fd_t zeroResource;
 
-static void* _HeapPageAlloc(uint64_t amount)
+static void* _heap_page_alloc(uint64_t amount)
 {
     return mmap(zeroResource, NULL, amount * PAGE_SIZE, PROT_READ | PROT_WRITE);
 }
 
-void _HeapBlockSplit(_HeapHeader_t* block, uint64_t size)
+void _heap_block_split(_heap_header_t* block, uint64_t size)
 {
-    _HeapHeader_t* newBlock = (_HeapHeader_t*)((uint64_t)block + sizeof(_HeapHeader_t) + size);
-    newBlock->size = block->size - sizeof(_HeapHeader_t) - size;
+    _heap_header_t* newBlock = (_heap_header_t*)((uint64_t)block + sizeof(_heap_header_t) + size);
+    newBlock->size = block->size - sizeof(_heap_header_t) - size;
     newBlock->next = block->next;
     newBlock->reserved = false;
     newBlock->magic = _HEAP_HEADER_MAGIC;
@@ -30,17 +30,17 @@ void _HeapBlockSplit(_HeapHeader_t* block, uint64_t size)
     block->next = newBlock;
 }
 
-_HeapHeader_t* _HeapBlockNew(uint64_t size)
+_heap_header_t* _heap_block_new(uint64_t size)
 {
-    uint64_t pageAmount = BYTES_TO_PAGES(size + sizeof(_HeapHeader_t));
+    uint64_t pageAmount = BYTES_TO_PAGES(size + sizeof(_heap_header_t));
 
-    _HeapHeader_t* newBlock = _HeapPageAlloc(pageAmount);
+    _heap_header_t* newBlock = _heap_page_alloc(pageAmount);
     if (newBlock == NULL)
     {
         return NULL;
     }
 
-    newBlock->size = pageAmount * PAGE_SIZE - sizeof(_HeapHeader_t);
+    newBlock->size = pageAmount * PAGE_SIZE - sizeof(_heap_header_t);
     newBlock->next = NULL;
     newBlock->reserved = false;
     newBlock->magic = _HEAP_HEADER_MAGIC;
@@ -48,7 +48,7 @@ _HeapHeader_t* _HeapBlockNew(uint64_t size)
     return newBlock;
 }
 
-void _HeapInit(void)
+void _heap_init(void)
 {
     _PLATFORM_MUTEX_INIT(&mutex);
     firstBlock = NULL;
@@ -60,17 +60,17 @@ void _HeapInit(void)
     }
 }
 
-_HeapHeader_t* _HeapFirstBlock(void)
+_heap_header_t* _heap_first_block(void)
 {
     if (firstBlock == NULL)
     {
-        firstBlock = _HeapBlockNew(PAGE_SIZE - sizeof(_HeapHeader_t));
+        firstBlock = _heap_block_new(PAGE_SIZE - sizeof(_heap_header_t));
     }
 
     return firstBlock;
 }
 
-void* _HeapAlloc(uint64_t size)
+void* _heap_alloc(uint64_t size)
 {
     if (size == 0)
     {
@@ -78,7 +78,7 @@ void* _HeapAlloc(uint64_t size)
     }
     size = ROUND_UP(size, _HEAP_ALIGNMENT);
 
-    _HeapHeader_t* currentBlock = _HeapFirstBlock();
+    _heap_header_t* currentBlock = _heap_first_block();
     while (true)
     {
         if (!currentBlock->reserved)
@@ -89,10 +89,10 @@ void* _HeapAlloc(uint64_t size)
 
                 return _HEAP_HEADER_GET_START(currentBlock);
             }
-            else if (currentBlock->size > size + sizeof(_HeapHeader_t) + _HEAP_ALIGNMENT)
+            else if (currentBlock->size > size + sizeof(_heap_header_t) + _HEAP_ALIGNMENT)
             {
                 currentBlock->reserved = true;
-                _HeapBlockSplit(currentBlock, size);
+                _heap_block_split(currentBlock, size);
 
                 return _HEAP_HEADER_GET_START(currentBlock);
             }
@@ -108,15 +108,15 @@ void* _HeapAlloc(uint64_t size)
         }
     }
 
-    _HeapHeader_t* newBlock = _HeapBlockNew(size);
+    _heap_header_t* newBlock = _heap_block_new(size);
     if (newBlock == NULL)
     {
         return NULL;
     }
 
-    if (newBlock->size > size + sizeof(_HeapHeader_t) + _HEAP_ALIGNMENT)
+    if (newBlock->size > size + sizeof(_heap_header_t) + _HEAP_ALIGNMENT)
     {
-        _HeapBlockSplit(newBlock, size);
+        _heap_block_split(newBlock, size);
     }
     currentBlock->next = newBlock;
     newBlock->reserved = true;
@@ -124,18 +124,18 @@ void* _HeapAlloc(uint64_t size)
     return _HEAP_HEADER_GET_START(newBlock);
 }
 
-void _HeapFree(void* ptr)
+void _heap_free(void* ptr)
 {
-    _HeapHeader_t* block = (_HeapHeader_t*)((uint64_t)ptr - sizeof(_HeapHeader_t));
+    _heap_header_t* block = (_heap_header_t*)((uint64_t)ptr - sizeof(_heap_header_t));
     block->reserved = false;
 }
 
-void _HeapAcquire(void)
+void _heap_acquire(void)
 {
     _PLATFORM_MUTEX_ACQUIRE(&mutex);
 }
 
-void _HeapRelease(void)
+void _heap_release(void)
 {
     _PLATFORM_MUTEX_RELEASE(&mutex);
 }

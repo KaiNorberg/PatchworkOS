@@ -9,7 +9,7 @@ int fseek(FILE* stream, long offset, int whence)
 
     if (stream->flags & _FILE_WRITE)
     {
-        if (_FileFlushBuffer(stream) == ERR)
+        if (_file_flush_buffer(stream) == ERR)
         {
             _PLATFORM_MUTEX_RELEASE(&stream->mtx);
             return EOF;
@@ -28,7 +28,7 @@ int fseek(FILE* stream, long offset, int whence)
         offset -= (((int)stream->bufEnd - (int)stream->bufIndex) + stream->ungetIndex);
     }
 
-    uint64_t result = (_FileSeek(stream, offset, whence) != ERR) ? 0 : EOF;
+    uint64_t result = (_file_seek(stream, offset, whence) != ERR) ? 0 : EOF;
     _PLATFORM_MUTEX_RELEASE(&stream->mtx);
     return result;
 }

@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-_AsciiEntry_t _AsciiTable[UINT8_MAX + 1] = {
+_ascii_entry_t _ascii_table[UINT8_MAX + 1] = {
     {/* NUL */ _ASCII_CNTRL, 0x00, 0x00},
     {/* SOH */ _ASCII_CNTRL, 0x01, 0x01},
     {/* STX */ _ASCII_CNTRL, 0x02, 0x02},

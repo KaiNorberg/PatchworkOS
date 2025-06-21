@@ -4,5 +4,5 @@
 
 int isdigit(int c)
 {
-    return _AsciiTable[c].flags & _ASCII_DIGIT;
+    return _ascii_table[c].flags & _ASCII_DIGIT;
 }

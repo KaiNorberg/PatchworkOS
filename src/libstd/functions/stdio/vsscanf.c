@@ -7,7 +7,7 @@
 int vsscanf(const char* _RESTRICT s, const char* _RESTRICT format, va_list arg)
 {
     /* TODO: This function should interpret format as multibyte characters.  */
-    _FormatCtx_t ctx;
+    _format_ctx_t ctx;
     ctx.base = 0;
     ctx.flags = 0;
     ctx.maxChars = 0;
@@ -23,7 +23,7 @@ int vsscanf(const char* _RESTRICT s, const char* _RESTRICT format, va_list arg)
     {
         const char* rc;
 
-        if ((*format != '%') || ((rc = _Scan(format, &ctx)) == format))
+        if ((*format != '%') || ((rc = _scan(format, &ctx)) == format))
         {
             /* No conversion specifier, match verbatim */
             if (isspace((unsigned char)*format))

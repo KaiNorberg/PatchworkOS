@@ -4,5 +4,5 @@
 
 int tolower(int c)
 {
-    return _AsciiTable[c].lower;
+    return _ascii_table[c].lower;
 }

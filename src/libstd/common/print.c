@@ -84,7 +84,7 @@
 
 #if _PLATFORM_HAS_SSE == 1
 
-static void _PrintHexa(int sign, int exp, int dec, unsigned char const* mant, size_t mant_dig, _FormatCtx_t* ctx)
+static void _print_hexa(int sign, int exp, int dec, unsigned char const* mant, size_t mant_dig, _format_ctx_t* ctx)
 {
     size_t excess_bits;
     char value = '\0';
@@ -97,7 +97,7 @@ static void _PrintHexa(int sign, int exp, int dec, unsigned char const* mant, si
 
     size_t i;
 
-    char const* digit_chars = (ctx->flags & FORMAT_LOWER) ? _Digits : _XDigits;
+    char const* digit_chars = (ctx->flags & FORMAT_LOWER) ? _digits : _xdigits;
 
     int index_offset = 0;
 
@@ -268,7 +268,7 @@ exp:      INT_MAX - infinity, INT_MIN - Not a Number
 mant:     MSB of the mantissa
 mant_dig: base FLT_RADIX digits in the mantissa, including the decimal
 */
-static void _PrintFp(int sign, int exp, int dec, unsigned char const* mant, size_t mant_dig, _FormatCtx_t* ctx)
+static void _print_fp(int sign, int exp, int dec, unsigned char const* mant, size_t mant_dig, _format_ctx_t* ctx)
 {
     /* Turning sign bit into sign character. */
     if (sign)
@@ -321,7 +321,7 @@ static void _PrintFp(int sign, int exp, int dec, unsigned char const* mant, size
     switch (ctx->flags & (FORMAT_DECIMAL | FORMAT_EXPONENT | FORMAT_GENERIC | FORMAT_HEXA))
     {
     case FORMAT_HEXA:
-        _PrintHexa(sign, exp, dec, mant, mant_dig, ctx);
+        _print_hexa(sign, exp, dec, mant, mant_dig, ctx);
         break;
     case FORMAT_DECIMAL:
     case FORMAT_EXPONENT:
@@ -331,7 +331,7 @@ static void _PrintFp(int sign, int exp, int dec, unsigned char const* mant, size
     }
 }
 
-static void _PrintDouble(double value, _FormatCtx_t* ctx)
+static void _print_double(double value, _format_ctx_t* ctx)
 {
     unsigned char bytes[sizeof(double)];
     int exp;
@@ -344,10 +344,10 @@ static void _PrintDouble(double value, _FormatCtx_t* ctx)
         exp = (value != value) ? INT_MIN : INT_MAX;
     }
 
-    _PrintFp(_DBL_SIGN(bytes), exp, _DBL_DEC(bytes), _DBL_MANT_START(bytes), __DBL_MANT_DIG__, ctx);
+    _print_fp(_DBL_SIGN(bytes), exp, _DBL_DEC(bytes), _DBL_MANT_START(bytes), __DBL_MANT_DIG__, ctx);
 }
 
-static void _PrintLdouble(long double value, _FormatCtx_t* ctx)
+static void _print_ldouble(long double value, _format_ctx_t* ctx)
 {
     unsigned char bytes[sizeof(long double)];
     int exp;
@@ -360,12 +360,12 @@ static void _PrintLdouble(long double value, _FormatCtx_t* ctx)
         exp = (value != value) ? INT_MIN : INT_MAX;
     }
 
-    _PrintFp(_LDBL_SIGN(bytes), exp, _LDBL_DEC(bytes), _LDBL_MANT_START(bytes), __LDBL_MANT_DIG__, ctx);
+    _print_fp(_LDBL_SIGN(bytes), exp, _LDBL_DEC(bytes), _LDBL_MANT_START(bytes), __LDBL_MANT_DIG__, ctx);
 }
 
 #endif
 
-static void _IntFormat(intmax_t value, _FormatCtx_t* ctx)
+static void _int_format(intmax_t value, _format_ctx_t* ctx)
 {
     /* At worst, we need two prefix characters (hex prefix). */
     char preface[3] = "\0";
@@ -471,11 +471,11 @@ static void _IntFormat(intmax_t value, _FormatCtx_t* ctx)
     }
 }
 
-static void _PrintInteger(imaxdiv_t div, _FormatCtx_t* ctx)
+static void _print_integer(imaxdiv_t div, _format_ctx_t* ctx)
 {
     if (ctx->currentChars == 0 && div.quot == 0 && div.rem == 0 && ctx->precision == 0)
     {
-        _IntFormat(0, ctx);
+        _int_format(0, ctx);
     }
     else
     {
@@ -483,11 +483,11 @@ static void _PrintInteger(imaxdiv_t div, _FormatCtx_t* ctx)
 
         if (div.quot != 0)
         {
-            _PrintInteger(imaxdiv(div.quot, ctx->base), ctx);
+            _print_integer(imaxdiv(div.quot, ctx->base), ctx);
         }
         else
         {
-            _IntFormat(div.rem, ctx);
+            _int_format(div.rem, ctx);
         }
 
         if (div.rem < 0)
@@ -497,16 +497,16 @@ static void _PrintInteger(imaxdiv_t div, _FormatCtx_t* ctx)
 
         if (ctx->flags & FORMAT_LOWER)
         {
-            _PRINT_PUT(ctx, _Digits[div.rem]);
+            _PRINT_PUT(ctx, _digits[div.rem]);
         }
         else
         {
-            _PRINT_PUT(ctx, _XDigits[div.rem]);
+            _PRINT_PUT(ctx, _xdigits[div.rem]);
         }
     }
 }
 
-static void _PrintString(const char* s, _FormatCtx_t* ctx)
+static void _print_string(const char* s, _format_ctx_t* ctx)
 {
     if (ctx->flags & FORMAT_CHAR)
     {
@@ -559,7 +559,7 @@ static void _PrintString(const char* s, _FormatCtx_t* ctx)
     }
 }
 
-const char* _Print(const char* spec, _FormatCtx_t* ctx)
+const char* _print(const char* spec, _format_ctx_t* ctx)
 {
     const char* orig_spec = spec;
 
@@ -816,13 +816,13 @@ const char* _Print(const char* spec, _FormatCtx_t* ctx)
             char c[1];
             c[0] = (char)va_arg(ctx->arg, int);
             ctx->flags |= FORMAT_CHAR;
-            _PrintString(c, ctx);
+            _print_string(c, ctx);
             return ++spec;
         }
 
     case 's':
         /* TODO: wide chars. */
-        _PrintString(va_arg(ctx->arg, char*), ctx);
+        _print_string(va_arg(ctx->arg, char*), ctx);
         return ++spec;
 
     case 'p':
@@ -853,12 +853,12 @@ const char* _Print(const char* spec, _FormatCtx_t* ctx)
             if (ctx->flags & FORMAT_LDOUBLE)
             {
                 long double value = va_arg(ctx->arg, long double);
-                _PrintLdouble(value, ctx);
+                _print_ldouble(value, ctx);
             }
             else
             {
                 double value = va_arg(ctx->arg, double);
-                _PrintDouble(value, ctx);
+                _print_double(value, ctx);
             }
 #endif
         }
@@ -913,7 +913,7 @@ const char* _Print(const char* spec, _FormatCtx_t* ctx)
 
                 div.quot = value / ctx->base;
                 div.rem = value % ctx->base;
-                _PrintInteger(div, ctx);
+                _print_integer(div, ctx);
             }
             else
             {
@@ -955,7 +955,7 @@ const char* _Print(const char* spec, _FormatCtx_t* ctx)
                     return NULL;
                 }
 
-                _PrintInteger(imaxdiv(value, ctx->base), ctx);
+                _print_integer(imaxdiv(value, ctx->base), ctx);
             }
         }
 

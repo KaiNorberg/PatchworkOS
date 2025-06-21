@@ -4,9 +4,9 @@
 
 int rename(const char* oldpath, const char* newpath)
 {
-    if (_SyscallRename(oldpath, newpath) == ERR)
+    if (_syscall_rename(oldpath, newpath) == ERR)
     {
-        errno = _SyscallLastError();
+        errno = _syscall_last_error();
         return EOF;
     }
     return 0;

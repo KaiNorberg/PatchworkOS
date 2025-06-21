@@ -1,3 +1,3 @@
 #pragma once
 
-void _StdInit(void);
+void _std_init(void);

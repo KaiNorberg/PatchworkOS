@@ -1,6 +1,6 @@
 #include "argsplit.h"
 
-bool _ArgsplitStepState(_ArgsplitState_t* state)
+bool _argsplit_step_state(_argsplit_state_t* state)
 {
     state->isNewArg = false;
 
@@ -69,15 +69,15 @@ bool _ArgsplitStepState(_ArgsplitState_t* state)
     }
 }
 
-uint64_t _ArgsplitCountCharsAndArgs(const char* str, uint64_t* argc, uint64_t* totalChars, uint64_t maxLen)
+uint64_t _argsplit_count_chars_and_args(const char* str, uint64_t* argc, uint64_t* totalChars, uint64_t maxLen)
 {
     *argc = 0;
     *totalChars = 0;
 
-    _ArgsplitState_t state = _ARGSPLIT_CREATE(str, maxLen);
+    _argsplit_state_t state = _ARGSPLIT_CREATE(str, maxLen);
     while (true)
     {
-        if (!_ArgsplitStepState(&state))
+        if (!_argsplit_step_state(&state))
         {
             break;
         }
@@ -97,19 +97,19 @@ uint64_t _ArgsplitCountCharsAndArgs(const char* str, uint64_t* argc, uint64_t* t
     return 0;
 }
 
-const char** _ArgsplitBackend(const char** argv, const char* str, uint64_t argc, uint64_t maxLen)
+const char** _argsplit_backend(const char** argv, const char* str, uint64_t argc, uint64_t maxLen)
 {
     uint64_t argvSize = sizeof(char*) * (argc + 1);
     char* strings = (char*)((uintptr_t)argv + argvSize);
     argv[0] = strings;
     argv[argc] = NULL;
 
-    _ArgsplitState_t state = _ARGSPLIT_CREATE(str, maxLen);
+    _argsplit_state_t state = _ARGSPLIT_CREATE(str, maxLen);
     uint64_t stringIndex = 0;
     char* out = strings;
     while (true)
     {
-        if (!_ArgsplitStepState(&state))
+        if (!_argsplit_step_state(&state))
         {
             break;
         }

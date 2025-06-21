@@ -34,6 +34,6 @@ runtime_constraint_violation:
         s1[0] = '\0';
     }
 
-    _ConstraintHandler(_CONSTRAINT_VIOLATION(EINVAL));
+    _constraintHandler(_CONSTRAINT_VIOLATION(EINVAL));
     return EINVAL;
 }

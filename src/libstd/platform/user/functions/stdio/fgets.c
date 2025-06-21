@@ -20,7 +20,7 @@ char* fgets(char* _RESTRICT s, int size, FILE* _RESTRICT stream)
 
     _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
 
-    if (_FilePrepareRead(stream) != ERR)
+    if (_file_prepare_read(stream) != ERR)
     {
         do
         {

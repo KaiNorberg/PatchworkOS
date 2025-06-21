@@ -18,7 +18,7 @@ errno_t memmove_s(void* s1, rsize_t s1max, const void* s2, rsize_t n)
             memset(s1, 0, s1max);
         }
 
-        _ConstraintHandler(_CONSTRAINT_VIOLATION(EINVAL));
+        _constraintHandler(_CONSTRAINT_VIOLATION(EINVAL));
         return EINVAL;
     }
 

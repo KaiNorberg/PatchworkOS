@@ -11,7 +11,7 @@ char* strtok_s(char* _RESTRICT s1, rsize_t* _RESTRICT s1max, const char* _RESTRI
 
     if (s1max == NULL || s2 == NULL || ptr == NULL || (s1 == NULL && *ptr == NULL) || *s1max > RSIZE_MAX)
     {
-        _ConstraintHandler(_CONSTRAINT_VIOLATION(EINVAL));
+        _constraintHandler(_CONSTRAINT_VIOLATION(EINVAL));
         return NULL;
     }
 
@@ -40,7 +40,7 @@ char* strtok_s(char* _RESTRICT s1, rsize_t* _RESTRICT s1max, const char* _RESTRI
             /* found separator; skip and start over */
             if (*s1max == 0)
             {
-                _ConstraintHandler(_CONSTRAINT_VIOLATION(EINVAL));
+                _constraintHandler(_CONSTRAINT_VIOLATION(EINVAL));
                 return NULL;
             }
 
@@ -74,7 +74,7 @@ char* strtok_s(char* _RESTRICT s1, rsize_t* _RESTRICT s1max, const char* _RESTRI
                 /* found separator; overwrite with '\0', position *ptr, return */
                 if (*s1max == 0)
                 {
-                    _ConstraintHandler(_CONSTRAINT_VIOLATION(EINVAL));
+                    _constraintHandler(_CONSTRAINT_VIOLATION(EINVAL));
                     return NULL;
                 }
 
@@ -86,7 +86,7 @@ char* strtok_s(char* _RESTRICT s1, rsize_t* _RESTRICT s1max, const char* _RESTRI
 
         if (*s1max == 0)
         {
-            _ConstraintHandler(_CONSTRAINT_VIOLATION(EINVAL));
+            _constraintHandler(_CONSTRAINT_VIOLATION(EINVAL));
             return NULL;
         }
 

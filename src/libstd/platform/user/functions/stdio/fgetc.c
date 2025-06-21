@@ -10,7 +10,7 @@ int fgetc(FILE* stream)
 
     _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
 
-    if (_FilePrepareRead(stream) != ERR)
+    if (_file_prepare_read(stream) != ERR)
     {
         if (_FILE_CHECK_AVAIL(stream) != ERR)
         {

@@ -4,5 +4,5 @@
 
 void abort(void)
 {
-    _PlatformAbort("libstd abort");
+    _platform_abort("libstd abort");
 }

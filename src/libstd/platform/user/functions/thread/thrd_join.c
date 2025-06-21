@@ -9,7 +9,7 @@
 
 int thrd_join(thrd_t thr, int* res)
 {
-    _Thread_t* thread = _ThreadGet(thr.id); // WHHHYYY DOES THIS FREEZE, IT DOESENT MAKE ANY SENSE
+    _thread_t* thread = _thread_get(thr.id); // WHHHYYY DOES THIS FREEZE, IT DOESENT MAKE ANY SENSE
     if (thread == NULL)
     {
         return thrd_error;
@@ -35,6 +35,6 @@ int thrd_join(thrd_t thr, int* res)
         *res = thread->result;
     }
 
-    _ThreadFree(thread);
+    _thread_free(thread);
     return thrd_success;
 }

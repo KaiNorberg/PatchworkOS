@@ -14,13 +14,13 @@ typedef enum
     _ASCII_SPACE = (1 << 7),
     _ASCII_LOWER = (1 << 8),
     _ASCII_UPPER = (1 << 9),
-} _AsciiFlags_t;
+} _ascii_flags_t;
 
 typedef struct
 {
-    _AsciiFlags_t flags;
+    _ascii_flags_t flags;
     unsigned char upper;
     unsigned char lower;
-} _AsciiEntry_t;
+} _ascii_entry_t;
 
-extern _AsciiEntry_t _AsciiTable[];
+extern _ascii_entry_t _ascii_table[];

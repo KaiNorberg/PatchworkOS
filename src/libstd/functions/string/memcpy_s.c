@@ -33,6 +33,6 @@ runtime_constraint_violation:
         memset(s1, 0, s1max);
     }
 
-    _ConstraintHandler(_CONSTRAINT_VIOLATION(EINVAL));
+    _constraintHandler(_CONSTRAINT_VIOLATION(EINVAL));
     return EINVAL;
 }

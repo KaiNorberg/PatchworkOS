@@ -6,10 +6,10 @@
 
 pid_t getpid(void)
 {
-    pid_t result = _SyscallGetpid();
+    pid_t result = _syscall_getpid();
     if (result == ERR)
     {
-        errno = _SyscallLastError();
+        errno = _syscall_last_error();
     }
     return result;
 }

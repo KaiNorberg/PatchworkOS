@@ -6,10 +6,10 @@
 
 tid_t gettid(void)
 {
-    tid_t result = _SyscallGettid();
+    tid_t result = _syscall_gettid();
     if (result == ERR)
     {
-        errno = _SyscallLastError();
+        errno = _syscall_last_error();
     }
     return result;
 }

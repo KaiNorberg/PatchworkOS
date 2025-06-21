@@ -4,5 +4,5 @@
 
 int iscntrl(int c)
 {
-    return (_AsciiTable[c].flags & _ASCII_CNTRL);
+    return (_ascii_table[c].flags & _ASCII_CNTRL);
 }

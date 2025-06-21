@@ -6,16 +6,16 @@
 #include <sys/io.h>
 
 static list_t files;
-static _PlatformMutex_t filesMtx;
+static _platform_mutex_t filesMtx;
 
-_FileFlags_t _FileFlagsParse(const char* mode)
+_file_flags_t _file_flags_parse(const char* mode)
 {
     if (mode == NULL)
     {
         return 0;
     }
 
-    _FileFlags_t files = 0;
+    _file_flags_t files = 0;
 
     switch (mode[0])
     {
@@ -78,7 +78,7 @@ _FileFlags_t _FileFlagsParse(const char* mode)
 
 // TODO: Slab allocator?
 
-FILE* _FileNew(void)
+FILE* _file_new(void)
 {
     FILE* stream = calloc(1, sizeof(FILE));
     list_entry_init(&stream->entry);
@@ -86,7 +86,7 @@ FILE* _FileNew(void)
     return stream;
 }
 
-void _FileFree(FILE* stream)
+void _file_free(FILE* stream)
 {
     if (stream != stdin && stream != stdout && stream != stderr)
     {
@@ -94,7 +94,7 @@ void _FileFree(FILE* stream)
     }
 }
 
-uint64_t _FileInit(FILE* stream, fd_t fd, _FileFlags_t flags, void* buffer, uint64_t bufferSize)
+uint64_t _file_init(FILE* stream, fd_t fd, _file_flags_t flags, void* buffer, uint64_t bufferSize)
 {
     if (buffer == NULL)
     {
@@ -142,7 +142,7 @@ uint64_t _FileInit(FILE* stream, fd_t fd, _FileFlags_t flags, void* buffer, uint
     return 0;
 }
 
-void _FileDeinit(FILE* stream)
+void _file_deinit(FILE* stream)
 {
     if (stream->flags & _FILE_OWNS_BUFFER)
     {
@@ -154,7 +154,7 @@ void _FileDeinit(FILE* stream)
     _PLATFORM_MUTEX_DESTROY(&stream->mtx);
 }
 
-uint64_t _FileFlushBuffer(FILE* stream)
+uint64_t _file_flush_buffer(FILE* stream)
 {
     if (!(stream->flags & _FILE_BIN))
     {
@@ -173,7 +173,7 @@ uint64_t _FileFlushBuffer(FILE* stream)
     return 0;
 }
 
-uint64_t _FileFillBuffer(FILE* stream)
+uint64_t _file_fill_buffer(FILE* stream)
 {
     uint64_t count = read(stream->fd, stream->buf, stream->bufSize);
     if (count == ERR)
@@ -198,7 +198,7 @@ uint64_t _FileFillBuffer(FILE* stream)
     return 0;
 }
 
-uint64_t _FileSeek(FILE* stream, int64_t offset, int whence)
+uint64_t _file_seek(FILE* stream, int64_t offset, int whence)
 {
     if (whence != SEEK_SET && whence != SEEK_CUR && whence != SEEK_END)
     {
@@ -220,7 +220,7 @@ uint64_t _FileSeek(FILE* stream, int64_t offset, int whence)
     return result;
 }
 
-uint64_t _FilePrepareRead(FILE* stream)
+uint64_t _file_prepare_read(FILE* stream)
 {
     if ((stream->bufIndex > stream->bufEnd) ||
         (stream->flags & (_FILE_WRITE | _FILE_APPEND | _FILE_ERROR | _FILE_WIDESTREAM | _FILE_EOF)) ||
@@ -235,7 +235,7 @@ uint64_t _FilePrepareRead(FILE* stream)
     return 0;
 }
 
-uint64_t _FilePrepareWrite(FILE* stream)
+uint64_t _file_prepare_write(FILE* stream)
 {
     if ((stream->bufIndex < stream->bufEnd) || (stream->ungetIndex > 0) ||
         (stream->flags & (_FILE_READ | _FILE_ERROR | _FILE_WIDESTREAM | _FILE_EOF)) ||
@@ -250,27 +250,27 @@ uint64_t _FilePrepareWrite(FILE* stream)
     return 0;
 }
 
-void _FilesInit(void)
+void _files_init(void)
 {
     list_init(&files);
     _PLATFORM_MUTEX_INIT(&filesMtx);
 }
 
-void _FilesPush(FILE* file)
+void _files_push(FILE* file)
 {
     _PLATFORM_MUTEX_ACQUIRE(&filesMtx);
     list_push(&files, &file->entry);
     _PLATFORM_MUTEX_RELEASE(&filesMtx);
 }
 
-void _FilesRemove(FILE* file)
+void _files_remove(FILE* file)
 {
     _PLATFORM_MUTEX_ACQUIRE(&filesMtx);
     list_remove(&file->entry);
     _PLATFORM_MUTEX_RELEASE(&filesMtx);
 }
 
-void _FilesClose(void)
+void _files_close(void)
 {
     while (1)
     {
@@ -289,7 +289,7 @@ void _FilesClose(void)
     }
 }
 
-uint64_t _FilesFlush(void)
+uint64_t _files_flush(void)
 {
     uint64_t result = 0;
     _PLATFORM_MUTEX_ACQUIRE(&filesMtx);

@@ -4,9 +4,9 @@
 
 int remove(const char* pathname)
 {
-    if (_SyscallRemove(pathname) == ERR)
+    if (_syscall_remove(pathname) == ERR)
     {
-        errno = _SyscallLastError();
+        errno = _syscall_last_error();
         return EOF;
     }
     return 0;

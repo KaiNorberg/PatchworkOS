@@ -3,7 +3,7 @@
 #include "platform/user/common/file.h"
 #include "platform/user/common/syscalls.h"
 
-static const char* _FlagsToString(_FileFlags_t flags)
+static const char* _flags_to_string(_file_flags_t flags)
 {
     switch (flags & (_FILE_READ | _FILE_WRITE | _FILE_APPEND | _FILE_RW))
     {
@@ -26,7 +26,7 @@ static const char* _FlagsToString(_FileFlags_t flags)
 
 FILE* fopen(const char* _RESTRICT filename, const char* _RESTRICT mode)
 {
-    _FileFlags_t flags = _FileFlagsParse(mode);
+    _file_flags_t flags = _file_flags_parse(mode);
     if (flags == 0)
     {
         return NULL;
@@ -37,25 +37,25 @@ FILE* fopen(const char* _RESTRICT filename, const char* _RESTRICT mode)
         return NULL;
     }
 
-    fd_t fd = openf("%s%s", filename, _FlagsToString(flags));
+    fd_t fd = openf("%s%s", filename, _flags_to_string(flags));
     if (fd == ERR)
     {
         return NULL;
     }
 
-    FILE* stream = _FileNew();
+    FILE* stream = _file_new();
     if (stream == NULL)
     {
         return NULL;
     }
 
-    if (_FileInit(stream, fd, flags | _FILE_FULLY_BUFFERED, NULL, BUFSIZ) == ERR)
+    if (_file_init(stream, fd, flags | _FILE_FULLY_BUFFERED, NULL, BUFSIZ) == ERR)
     {
         close(fd);
-        _FileFree(stream);
+        _file_free(stream);
         return NULL;
     }
 
-    _FilesPush(stream);
+    _files_push(stream);
     return stream;
 }

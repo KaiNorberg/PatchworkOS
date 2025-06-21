@@ -1,7 +1,7 @@
 extern main
 extern exit
 extern _init
-extern _StdInit
+extern _std_init
 
 section .text
 global _start:function (_start.end - _start)
@@ -16,7 +16,7 @@ _start:
 
     call _init
 
-    call _StdInit
+    call _std_init
 
     pop rdi
     pop rsi

@@ -2,7 +2,7 @@
 
 #include "platform/platform.h"
 
-int* _ErrnoFunc(void)
+int* _errno_get(void)
 {
-    return _PlatformErrnoFunc();
+    return _platform_errno_get();
 }

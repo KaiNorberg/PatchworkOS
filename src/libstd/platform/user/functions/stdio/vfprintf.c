@@ -7,7 +7,7 @@
 
 int vfprintf(FILE* _RESTRICT stream, const char* _RESTRICT format, va_list arg)
 {
-    _FormatCtx_t ctx;
+    _format_ctx_t ctx;
     ctx.base = 0;
     ctx.flags = 0;
     ctx.maxChars = SIZE_MAX;
@@ -20,7 +20,7 @@ int vfprintf(FILE* _RESTRICT stream, const char* _RESTRICT format, va_list arg)
 
     _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
 
-    if (_FilePrepareWrite(stream) == ERR)
+    if (_file_prepare_write(stream) == ERR)
     {
         _PLATFORM_MUTEX_RELEASE(&stream->mtx);
         return EOF;
@@ -32,7 +32,7 @@ int vfprintf(FILE* _RESTRICT stream, const char* _RESTRICT format, va_list arg)
     {
         const char* rc;
 
-        if ((*format != '%') || ((rc = _Print(format, &ctx)) == format))
+        if ((*format != '%') || ((rc = _print(format, &ctx)) == format))
         {
             /* No conversion specifier, print verbatim */
             stream->buf[stream->bufIndex++] = *format;
@@ -40,7 +40,7 @@ int vfprintf(FILE* _RESTRICT stream, const char* _RESTRICT format, va_list arg)
             if ((stream->bufIndex == stream->bufSize) || ((stream->flags & _FILE_LINE_BUFFERED) && (*format == '\n')) ||
                 (stream->flags & _FILE_UNBUFFERED))
             {
-                if (_FileFlushBuffer(stream) == ERR)
+                if (_file_flush_buffer(stream) == ERR)
                 {
                     _PLATFORM_MUTEX_RELEASE(&stream->mtx);
                     return EOF;

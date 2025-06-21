@@ -11,16 +11,16 @@
 
 #define _THREAD_ENTRY_ATTRIBUTES __attribute__((noreturn)) __attribute__((force_align_arg_pointer))
 
-typedef struct _Thread _Thread_t;
+typedef struct _thread _thread_t;
 
-typedef void (*_ThreadEntry_t)(_Thread_t*);
+typedef void (*_thread_entry_t)(_thread_t*);
 
 #define _THREAD_ATTACHED 1
 #define _THREAD_DETACHED 2
 #define _THREAD_JOINING 3
 #define _THREAD_EXITED 4
 
-typedef struct _Thread
+typedef struct _thread
 {
     list_entry_t entry;
     atomic_uint64_t state;
@@ -28,12 +28,12 @@ typedef struct _Thread
     int64_t result;
     errno_t err;
     void* private;
-} _Thread_t;
+} _thread_t;
 
-void _ThreadingInit(void);
+void _threading_init(void);
 
-_Thread_t* _ThreadNew(_ThreadEntry_t entry, void* private);
+_thread_t* _thread_new(_thread_entry_t entry, void* private);
 
-void _ThreadFree(_Thread_t* thread);
+void _thread_free(_thread_t* thread);
 
-_Thread_t* _ThreadGet(tid_t id);
+_thread_t* _thread_get(tid_t id);

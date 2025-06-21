@@ -6,7 +6,7 @@ int fputs(const char* _RESTRICT s, FILE* _RESTRICT stream)
 {
     _PLATFORM_MUTEX_ACQUIRE(&stream->mtx);
 
-    if (_FilePrepareWrite(stream) == ERR)
+    if (_file_prepare_write(stream) == ERR)
     {
         _PLATFORM_MUTEX_RELEASE(&stream->mtx);
         return EOF;
@@ -18,7 +18,7 @@ int fputs(const char* _RESTRICT s, FILE* _RESTRICT stream)
 
         if ((stream->bufIndex == stream->bufSize) || ((stream->flags & _FILE_LINE_BUFFERED) && *s == '\n'))
         {
-            if (_FileFlushBuffer(stream) == ERR)
+            if (_file_flush_buffer(stream) == ERR)
             {
                 _PLATFORM_MUTEX_RELEASE(&stream->mtx);
                 return EOF;
@@ -30,7 +30,7 @@ int fputs(const char* _RESTRICT s, FILE* _RESTRICT stream)
 
     if (stream->flags & _FILE_UNBUFFERED)
     {
-        if (_FileFlushBuffer(stream) == ERR)
+        if (_file_flush_buffer(stream) == ERR)
         {
             _PLATFORM_MUTEX_RELEASE(&stream->mtx);
             return EOF;

@@ -8,18 +8,18 @@
 typedef struct
 {
     int64_t secondsOffset;
-} _TimeZone_t;
+} _time_zone_t;
 
-void _TimeZoneInit(void);
+void _time_zone_init(void);
 
-_TimeZone_t* _TimeZone(void);
+_time_zone_t* _time_zone(void);
 
-bool _TimeIsLeapYear(int32_t year);
+bool _time_is_leap_year(int32_t year);
 
-int32_t _TimeDaysInMonth(int32_t month, int32_t year);
+int32_t _time_days_in_month(int32_t month, int32_t year);
 
-void _TimeNormalize(struct tm* timePtr);
+void _time_normalize(struct tm* timePtr);
 
-void _TimeDayOfWeek(struct tm* timePtr);
+void _time_day_of_week(struct tm* timePtr);
 
-void _TimeDayOfYear(struct tm* timePtr);
+void _time_day_of_year(struct tm* timePtr);

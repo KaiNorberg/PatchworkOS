@@ -9,10 +9,10 @@
 
 fd_t open(const char* path)
 {
-    fd_t fd = _SyscallOpen(path);
+    fd_t fd = _syscall_open(path);
     if (fd == ERR)
     {
-        errno = _SyscallLastError();
+        errno = _syscall_last_error();
     }
     return fd;
 }

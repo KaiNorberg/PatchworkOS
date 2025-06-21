@@ -11,23 +11,23 @@ void* realloc(void* ptr, size_t size)
         return malloc(size);
     }
 
-    _HeapAcquire();
-    _HeapHeader_t* block = (_HeapHeader_t*)((uint64_t)ptr - sizeof(_HeapHeader_t));
+    _heap_acquire();
+    _heap_header_t* block = (_heap_header_t*)((uint64_t)ptr - sizeof(_heap_header_t));
     if (block->size == ROUND_UP(size, _HEAP_ALIGNMENT))
     {
-        _HeapRelease();
+        _heap_release();
         return ptr;
     }
 
-    void* newPtr = _HeapAlloc(size);
+    void* newPtr = _heap_alloc(size);
     if (newPtr == NULL)
     {
-        _HeapRelease();
+        _heap_release();
         return NULL;
     }
     memcpy(newPtr, ptr, MIN(size, block->size));
-    _HeapFree(ptr);
+    _heap_free(ptr);
 
-    _HeapRelease();
+    _heap_release();
     return newPtr;
 }

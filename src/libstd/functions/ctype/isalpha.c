@@ -4,5 +4,5 @@
 
 int isalpha(int c)
 {
-    return (_AsciiTable[c].flags & _ASCII_ALPHA);
+    return (_ascii_table[c].flags & _ASCII_ALPHA);
 }

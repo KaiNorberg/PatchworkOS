@@ -9,7 +9,7 @@ void free(void* ptr)
         return;
     }
 
-    _HeapAcquire();
-    _HeapFree(ptr);
-    _HeapRelease();
+    _heap_acquire();
+    _heap_free(ptr);
+    _heap_release();
 }

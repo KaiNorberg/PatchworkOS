@@ -9,10 +9,10 @@
 
 uint64_t readdir(fd_t fd, stat_t* infos, uint64_t amount)
 {
-    uint64_t result = _SyscallReaddir(fd, infos, amount);
+    uint64_t result = _syscall_readdir(fd, infos, amount);
     if (result == ERR)
     {
-        errno = _SyscallLastError();
+        errno = _syscall_last_error();
     }
     return result;
 }

@@ -4,5 +4,5 @@
 
 int isalnum(int c)
 {
-    return _AsciiTable[c].flags & (_ASCII_ALPHA | _ASCII_DIGIT);
+    return _ascii_table[c].flags & (_ASCII_ALPHA | _ASCII_DIGIT);
 }

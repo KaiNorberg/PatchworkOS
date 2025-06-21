@@ -13,5 +13,5 @@ uintptr_t __stack_chk_guard = STACK_CHK_GUARD;
 
 _NORETURN void __stack_chk_fail(void)
 {
-    _PlatformAbort("libstd __stack_chk_fail");
+    _platform_abort("libstd __stack_chk_fail");
 }

@@ -5,7 +5,7 @@
 
 int vsnprintf(char* _RESTRICT s, size_t n, const char* _RESTRICT format, va_list arg)
 {
-    _FormatCtx_t ctx;
+    _format_ctx_t ctx;
     ctx.base = 0;
     ctx.flags = 0;
     ctx.maxChars = n;
@@ -21,7 +21,7 @@ int vsnprintf(char* _RESTRICT s, size_t n, const char* _RESTRICT format, va_list
     {
         const char* rc;
 
-        if ((*format != '%') || ((rc = _Print(format, &ctx)) == format))
+        if ((*format != '%') || ((rc = _print(format, &ctx)) == format))
         {
             if (ctx.totalChars < n)
             {

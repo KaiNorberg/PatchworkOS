@@ -12,7 +12,7 @@
 #include <sys/io.h>
 #include <sys/proc.h>
 
-static void _PopulateStdDescriptors(void)
+static void _populate_std_descriptors(void)
 {
     for (uint64_t i = 0; i <= STDERR_FILENO; i++)
     {
@@ -28,24 +28,24 @@ static void _PopulateStdDescriptors(void)
     }
 }
 
-void _PlatformEarlyInit(void)
+void _platform_early_init(void)
 {
-    _ThreadingInit();
-    _PopulateStdDescriptors();
-    _ExitStackInit();
-    _FilesInit();
-    _StdStreamsInit();
-    _HeapInit();
+    _threading_init();
+    _populate_std_descriptors();
+    _exit_stack_init();
+    _files_init();
+    _std_streams_init();
+    _heap_init();
 }
 
-void _PlatformLateInit(void)
+void _platform_late_init(void)
 {
 }
 
-int* _PlatformErrnoFunc(void)
+int* _platform_errno_get(void)
 {
     static int garbageErrno;
-    _Thread_t* thread = _ThreadGet(gettid());
+    _thread_t* thread = _thread_get(gettid());
     if (thread == NULL)
     {
         return &garbageErrno;
@@ -54,7 +54,7 @@ int* _PlatformErrnoFunc(void)
 }
 
 // Ignore message
-void _PlatformAbort(const char* message)
+void _platform_abort(const char* message)
 {
     // raise( SIGABRT ); // TODO: Implement signals
     exit(EXIT_FAILURE);

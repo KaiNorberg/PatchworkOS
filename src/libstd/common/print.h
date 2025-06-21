@@ -13,4 +13,4 @@
 #define _PRINT_TEST(format, ...)
 #endif
 
-const char* _Print(const char* spec, _FormatCtx_t* ctx);
+const char* _print(const char* spec, _format_ctx_t* ctx);

@@ -29,12 +29,12 @@ typedef enum
     FORMAT_EXPONENT = (1 << 19),
     FORMAT_GENERIC = (1 << 20),
     FORMAT_HEXA = (1 << 21)
-} _FormatFlags_t;
+} _format_flags_t;
 
 typedef struct
 {
     int32_t base;
-    _FormatFlags_t flags;
+    _format_flags_t flags;
     uint64_t maxChars;
     uint64_t totalChars;
     uint64_t currentChars;
@@ -43,4 +43,4 @@ typedef struct
     int64_t precision;
     FILE* stream;
     va_list arg;
-} _FormatCtx_t;
+} _format_ctx_t;

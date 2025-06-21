@@ -10,7 +10,7 @@ size_t fread(void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTRICT str
 
     uint64_t n = 0;
 
-    if (_FilePrepareRead(stream) != ERR)
+    if (_file_prepare_read(stream) != ERR)
     {
         for (; n < nmemb; n++)
         {

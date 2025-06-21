@@ -26,9 +26,9 @@ long long int atoll(const char* nptr)
     }
 
     const char* x;
-    while ((x = (const char*)memchr(_Digits, tolower((unsigned char)*(nptr++)), 10)) != NULL)
+    while ((x = (const char*)memchr(_digits, tolower((unsigned char)*(nptr++)), 10)) != NULL)
     {
-        result = result * 10 + (x - _Digits);
+        result = result * 10 + (x - _digits);
     }
 
     return isNegative ? -result : result;

@@ -9,16 +9,16 @@ time_t mktime(struct tm* timePtr)
         return (time_t)(-1);
     }
 
-    _TimeNormalize(timePtr);
-    _TimeDayOfWeek(timePtr);
-    _TimeDayOfYear(timePtr);
+    _time_normalize(timePtr);
+    _time_day_of_week(timePtr);
+    _time_day_of_year(timePtr);
 
     int64_t totalDays = 0;
     int32_t year = timePtr->tm_year + 1900;
 
     for (int32_t y = 1970; y < year; y++)
     {
-        totalDays += 365 + (_TimeIsLeapYear(y) ? 1 : 0);
+        totalDays += 365 + (_time_is_leap_year(y) ? 1 : 0);
     }
 
     totalDays += timePtr->tm_yday;

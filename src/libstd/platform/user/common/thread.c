@@ -3,12 +3,12 @@
 
 #include <stdlib.h>
 
-static _Thread_t thread0;
+static _thread_t thread0;
 
 static list_t threads;
 static mtx_t mutex;
 
-void _ThreadingInit(void)
+void _threading_init(void)
 {
     list_init(&threads);
     mtx_init(&mutex, mtx_recursive);
@@ -24,9 +24,9 @@ void _ThreadingInit(void)
     list_push(&threads, &thread0.entry);
 }
 
-_Thread_t* _ThreadNew(_ThreadEntry_t entry, void* private)
+_thread_t* _thread_new(_thread_entry_t entry, void* private)
 {
-    _Thread_t* thread = malloc(sizeof(_Thread_t));
+    _thread_t* thread = malloc(sizeof(_thread_t));
     if (thread == NULL)
     {
         return NULL;
@@ -41,10 +41,10 @@ _Thread_t* _ThreadNew(_ThreadEntry_t entry, void* private)
     thread->err = 0;
     thread->private = private;
 
-    thread->id = _SyscallThreadCreate(entry, thread);
+    thread->id = _syscall_thread_create(entry, thread);
     if (thread->id == ERR)
     {
-        errno = _SyscallLastError();
+        errno = _syscall_last_error();
 
         list_remove(&thread->entry);
         mtx_unlock(&mutex);
@@ -56,7 +56,7 @@ _Thread_t* _ThreadNew(_ThreadEntry_t entry, void* private)
     return thread;
 }
 
-void _ThreadFree(_Thread_t* thread)
+void _thread_free(_thread_t* thread)
 {
     mtx_lock(&mutex);
     list_remove(&thread->entry);
@@ -67,10 +67,10 @@ void _ThreadFree(_Thread_t* thread)
     }
 }
 
-_Thread_t* _ThreadGet(tid_t id)
+_thread_t* _thread_get(tid_t id)
 {
     mtx_lock(&mutex);
-    _Thread_t* thread;
+    _thread_t* thread;
     LIST_FOR_EACH(thread, &threads, entry)
     {
         if (thread->id == id)

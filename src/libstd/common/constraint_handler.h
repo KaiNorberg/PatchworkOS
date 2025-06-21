@@ -4,8 +4,8 @@
 
 #include "error_strings.h"
 
-extern constraint_handler_t _ConstraintHandler;
+extern constraint_handler_t _constraintHandler;
 
-#define _CONSTRAINT_VIOLATION(e) _ErrorStrings[e], NULL, e
+#define _CONSTRAINT_VIOLATION(e) _error_strings[e], NULL, e
 
-void _ConstraintHandlerInit(void);
+void _constraint_handler_init(void);

@@ -19,12 +19,12 @@ extern "C"
  */
 
 /**
- * @brief Retrives pointer to per thread errno value.
+ * @brief Retrieves pointer to per thread errno value.
  *
  * @return int*
  */
-int* _ErrnoFunc(void);
-#define errno (*_ErrnoFunc())
+int* _errno_get(void);
+#define errno (*_errno_get())
 
 /**
  * @brief Operation not permitted

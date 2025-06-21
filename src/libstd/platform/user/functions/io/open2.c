@@ -9,10 +9,10 @@
 
 uint64_t open2(const char* path, fd_t fds[2])
 {
-    uint64_t result = _SyscallOpen2(path, fds);
+    uint64_t result = _syscall_open2(path, fds);
     if (result == ERR)
     {
-        errno = _SyscallLastError();
+        errno = _syscall_last_error();
     }
     return result;
 }

@@ -12,7 +12,7 @@
 #include "platform/user/common/file.h"
 #endif
 
-static int _ScanGet(_FormatCtx_t* ctx)
+static int _scan_get(_format_ctx_t* ctx)
 {
     int rc = EOF;
 
@@ -47,7 +47,7 @@ static int _ScanGet(_FormatCtx_t* ctx)
 /* Helper function to put a read character back into the string or stream,
    whatever is used for input.
 */
-static void _ScanUnget(int c, _FormatCtx_t* ctx)
+static void _scan_unget(int c, _format_ctx_t* ctx)
 {
 #if _PLATFORM_HAS_IO == 1
     if (ctx->stream != NULL)
@@ -70,7 +70,7 @@ static void _ScanUnget(int c, _FormatCtx_t* ctx)
 }
 
 /* Helper function to check if a character is part of a given scanset */
-static int _ScanInScanset(const char* scanlist, const char* end_scanlist, int rc)
+static int _scan_in_scanset(const char* scanlist, const char* end_scanlist, int rc)
 {
     /* SOLAR */
     int previous = -1;
@@ -111,7 +111,7 @@ static int _ScanInScanset(const char* scanlist, const char* end_scanlist, int rc
     return 0;
 }
 
-const char* _Scan(const char* spec, _FormatCtx_t* ctx)
+const char* _scan(const char* spec, _format_ctx_t* ctx)
 {
     /* generic input character */
     int rc;
@@ -122,7 +122,7 @@ const char* _Scan(const char* spec, _FormatCtx_t* ctx)
     if (*(++spec) == '%')
     {
         /* %% -> match single '%' */
-        rc = _ScanGet(ctx);
+        rc = _scan_get(ctx);
 
         switch (rc)
         {
@@ -140,7 +140,7 @@ const char* _Scan(const char* spec, _FormatCtx_t* ctx)
             return ++spec;
 
         default:
-            _ScanUnget(rc, ctx);
+            _scan_unget(rc, ctx);
             break;
         }
     }
@@ -289,7 +289,7 @@ const char* _Scan(const char* spec, _FormatCtx_t* ctx)
         }
 
         /* reading until width reached or input exhausted */
-        while ((ctx->currentChars < ctx->width) && ((rc = _ScanGet(ctx)) != EOF))
+        while ((ctx->currentChars < ctx->width) && ((rc = _scan_get(ctx)) != EOF))
         {
             if (c != NULL)
             {
@@ -330,11 +330,11 @@ const char* _Scan(const char* spec, _FormatCtx_t* ctx)
             c = va_arg(ctx->arg, char*);
         }
 
-        while ((ctx->currentChars < ctx->width) && ((rc = _ScanGet(ctx)) != EOF))
+        while ((ctx->currentChars < ctx->width) && ((rc = _scan_get(ctx)) != EOF))
         {
             if (isspace((unsigned char)rc))
             {
-                _ScanUnget(rc, ctx);
+                _scan_unget(rc, ctx);
 
                 if (value_parsed)
                 {
@@ -414,21 +414,21 @@ const char* _Scan(const char* spec, _FormatCtx_t* ctx)
         } while (*endspec != ']');
 
         /* read according to scanlist, equiv. to %buffer above */
-        while ((ctx->currentChars < ctx->width) && ((rc = _ScanGet(ctx)) != EOF))
+        while ((ctx->currentChars < ctx->width) && ((rc = _scan_get(ctx)) != EOF))
         {
             if (negative_scanlist)
             {
-                if (_ScanInScanset(spec, endspec, rc))
+                if (_scan_in_scanset(spec, endspec, rc))
                 {
-                    _ScanUnget(rc, ctx);
+                    _scan_unget(rc, ctx);
                     break;
                 }
             }
             else
             {
-                if (!_ScanInScanset(spec, endspec, rc))
+                if (!_scan_in_scanset(spec, endspec, rc))
                 {
-                    _ScanUnget(rc, ctx);
+                    _scan_unget(rc, ctx);
                     break;
                 }
             }
@@ -491,14 +491,14 @@ const char* _Scan(const char* spec, _FormatCtx_t* ctx)
         int prefix_parsed = 0;
         int sign = 0;
 
-        while ((ctx->currentChars < ctx->width) && ((rc = _ScanGet(ctx)) != EOF))
+        while ((ctx->currentChars < ctx->width) && ((rc = _scan_get(ctx)) != EOF))
         {
             if (isspace((unsigned char)rc))
             {
                 if (sign)
                 {
                     /* matching sequence terminated by whitespace */
-                    _ScanUnget(rc, ctx);
+                    _scan_unget(rc, ctx);
                     break;
                 }
                 else
@@ -525,7 +525,7 @@ const char* _Scan(const char* spec, _FormatCtx_t* ctx)
                     default:
                         /* not a sign; put back character */
                         sign = 1;
-                        _ScanUnget(rc, ctx);
+                        _scan_unget(rc, ctx);
                         break;
                     }
                 }
@@ -544,13 +544,13 @@ const char* _Scan(const char* spec, _FormatCtx_t* ctx)
                                 ctx->base = 10;
                             }
 
-                            _ScanUnget(rc, ctx);
+                            _scan_unget(rc, ctx);
                         }
                         else
                         {
                             /* starts with zero, so it might be a prefix. */
                             /* check what follows next (might be 0x...) */
-                            if ((ctx->currentChars < ctx->width) && ((rc = _ScanGet(ctx)) != EOF))
+                            if ((ctx->currentChars < ctx->width) && ((rc = _scan_get(ctx)) != EOF))
                             {
                                 if (tolower((unsigned char)rc) == 'x')
                                 {
@@ -562,14 +562,14 @@ const char* _Scan(const char* spec, _FormatCtx_t* ctx)
                                     else
                                     {
                                         /* ...unless already set to other value */
-                                        _ScanUnget(rc, ctx);
+                                        _scan_unget(rc, ctx);
                                         value_parsed = 1;
                                     }
                                 }
                                 else
                                 {
                                     /* 0... but not 0x.... would be octal prefix */
-                                    _ScanUnget(rc, ctx);
+                                    _scan_unget(rc, ctx);
 
                                     if (ctx->base == 0)
                                     {
@@ -590,17 +590,17 @@ const char* _Scan(const char* spec, _FormatCtx_t* ctx)
                     }
                     else
                     {
-                        char* digitptr = (char*)memchr(_Digits, tolower((unsigned char)rc), ctx->base);
+                        char* digitptr = (char*)memchr(_digits, tolower((unsigned char)rc), ctx->base);
 
                         if (digitptr == NULL)
                         {
                             /* end of input item */
-                            _ScanUnget(rc, ctx);
+                            _scan_unget(rc, ctx);
                             break;
                         }
 
                         value *= ctx->base;
-                        value += digitptr - _Digits;
+                        value += digitptr - _digits;
                         value_parsed = 1;
                     }
                 }

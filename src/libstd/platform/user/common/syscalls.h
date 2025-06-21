@@ -87,7 +87,7 @@
         ret; \
     })
 
-_NORETURN static inline void _SyscallProcessExit(uint64_t status)
+_NORETURN static inline void _syscall_process_exit(uint64_t status)
 {
     _SYSCALL1(uint64_t, SYS_PROCESS_EXIT, uint64_t, status);
     asm volatile("ud2");
@@ -95,7 +95,7 @@ _NORETURN static inline void _SyscallProcessExit(uint64_t status)
         ;
 }
 
-_NORETURN static inline void _SyscallThreadExit(void)
+_NORETURN static inline void _syscall_thread_exit(void)
 {
     _SYSCALL0(uint64_t, SYS_THREAD_EXIT);
     asm volatile("ud2");
@@ -103,143 +103,143 @@ _NORETURN static inline void _SyscallThreadExit(void)
         ;
 }
 
-static inline pid_t _SyscallSpawn(const char** argv, const spawn_fd_t* fds, const char* cwd, spawn_attr_t* attr)
+static inline pid_t _syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, spawn_attr_t* attr)
 {
     return _SYSCALL4(pid_t, SYS_SPAWN, const char**, argv, const spawn_fd_t*, fds, const char*, cwd, spawn_attr_t*,
         attr);
 }
 
-static inline uint64_t _SyscallSleep(clock_t nanoseconds)
+static inline uint64_t _syscall_sleep(clock_t nanoseconds)
 {
     return _SYSCALL1(uint64_t, SYS_SLEEP, clock_t, nanoseconds);
 }
 
-static inline errno_t _SyscallLastError(void)
+static inline errno_t _syscall_last_error(void)
 {
     return _SYSCALL0(errno_t, SYS_LAST_ERROR);
 }
 
-static inline pid_t _SyscallGetpid(void)
+static inline pid_t _syscall_getpid(void)
 {
     return _SYSCALL0(pid_t, SYS_GETPID);
 }
 
-static inline tid_t _SyscallGettid(void)
+static inline tid_t _syscall_gettid(void)
 {
     return _SYSCALL0(tid_t, SYS_GETTID);
 }
 
-static inline clock_t _SyscallUptime(void)
+static inline clock_t _syscall_uptime(void)
 {
     return _SYSCALL0(clock_t, SYS_UPTIME);
 }
 
-static inline time_t _SyscallUnixEpoch(void)
+static inline time_t _syscall_unix_epoch(void)
 {
     return _SYSCALL0(time_t, SYS_UNIX_EPOCH);
 }
 
-static inline fd_t _SyscallOpen(const char* path)
+static inline fd_t _syscall_open(const char* path)
 {
     return _SYSCALL1(fd_t, SYS_OPEN, const char*, path);
 }
 
-static inline uint64_t _SyscallOpen2(const char* path, fd_t fds[2])
+static inline uint64_t _syscall_open2(const char* path, fd_t fds[2])
 {
     return _SYSCALL2(uint64_t, SYS_OPEN2, const char*, path, fd_t*, fds);
 }
 
-static inline uint64_t _SyscallClose(fd_t fd)
+static inline uint64_t _syscall_close(fd_t fd)
 {
     return _SYSCALL1(uint64_t, SYS_CLOSE, fd_t, fd);
 }
 
-static inline uint64_t _SyscallRead(fd_t fd, void* buffer, uint64_t count)
+static inline uint64_t _syscall_read(fd_t fd, void* buffer, uint64_t count)
 {
     return _SYSCALL3(uint64_t, SYS_READ, fd_t, fd, void*, buffer, uint64_t, count);
 }
 
-static inline uint64_t _SyscallWrite(fd_t fd, const void* buffer, uint64_t count)
+static inline uint64_t _syscall_write(fd_t fd, const void* buffer, uint64_t count)
 {
     return _SYSCALL3(uint64_t, SYS_WRITE, fd_t, fd, const void*, buffer, uint64_t, count);
 }
 
-static inline uint64_t _SyscallSeek(fd_t fd, int64_t offset, seek_origin_t origin)
+static inline uint64_t _syscall_seek(fd_t fd, int64_t offset, seek_origin_t origin)
 {
     return _SYSCALL3(uint64_t, SYS_SEEK, fd_t, fd, int64_t, offset, seek_origin_t, origin);
 }
 
-static inline uint64_t _SyscallIoctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
+static inline uint64_t _syscall_ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
 {
     return _SYSCALL4(uint64_t, SYS_IOCTL, fd_t, fd, uint64_t, request, void*, argp, uint64_t, size);
 }
 
-static inline uint64_t _SyscallChdir(const char* path)
+static inline uint64_t _syscall_chdir(const char* path)
 {
     return _SYSCALL1(uint64_t, SYS_CHDIR, const char*, path);
 }
 
-static inline uint64_t _SyscallPoll(pollfd_t* fds, uint64_t amount, clock_t timeout)
+static inline uint64_t _syscall_poll(pollfd_t* fds, uint64_t amount, clock_t timeout)
 {
     return _SYSCALL3(uint64_t, SYS_POLL, pollfd_t*, fds, uint64_t, amount, clock_t, timeout);
 }
 
-static inline uint64_t _SyscallStat(const char* path, stat_t* info)
+static inline uint64_t _syscall_stat(const char* path, stat_t* info)
 {
     return _SYSCALL2(uint64_t, SYS_STAT, const char*, path, stat_t*, info);
 }
 
-static inline void* _SyscallMmap(fd_t fd, void* address, uint64_t length, prot_t prot)
+static inline void* _syscall_mmap(fd_t fd, void* address, uint64_t length, prot_t prot)
 {
     return _SYSCALL4(void*, SYS_MMAP, fd_t, fd, void*, address, uint64_t, length, prot_t, prot);
 }
 
-static inline uint64_t _SyscallMunmap(void* address, uint64_t length)
+static inline uint64_t _syscall_munmap(void* address, uint64_t length)
 {
     return _SYSCALL2(uint64_t, SYS_MUNMAP, void*, address, uint64_t, length);
 }
 
-static inline uint64_t _SyscallMprotect(void* address, uint64_t length, prot_t prot)
+static inline uint64_t _syscall_mprotect(void* address, uint64_t length, prot_t prot)
 {
     return _SYSCALL3(uint64_t, SYS_MPROTECT, void*, address, uint64_t, length, prot_t, prot);
 }
 
-static inline uint64_t _SyscallReaddir(fd_t fd, stat_t* infos, uint64_t amount)
+static inline uint64_t _syscall_readdir(fd_t fd, stat_t* infos, uint64_t amount)
 {
     return _SYSCALL3(uint64_t, SYS_READDIR, fd_t, fd, stat_t*, infos, uint64_t, amount);
 }
 
-static inline tid_t _SyscallThreadCreate(void* entry, void* arg)
+static inline tid_t _syscall_thread_create(void* entry, void* arg)
 {
     return _SYSCALL2(tid_t, SYS_THREAD_CREATE, void*, entry, void*, arg);
 }
 
-static inline void _SyscallYield(void)
+static inline void _syscall_yield(void)
 {
     _SYSCALL0(uint64_t, SYS_YIELD);
 }
 
-static inline fd_t _SyscallDup(fd_t oldFd)
+static inline fd_t _syscall_dup(fd_t oldFd)
 {
     return _SYSCALL1(fd_t, SYS_DUP, fd_t, oldFd);
 }
 
-static inline fd_t _SyscallDup2(fd_t oldFd, fd_t newFd)
+static inline fd_t _syscall_dup2(fd_t oldFd, fd_t newFd)
 {
     return _SYSCALL2(fd_t, SYS_DUP2, fd_t, oldFd, fd_t, newFd);
 }
 
-static inline uint64_t _SyscallFutex(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout)
+static inline uint64_t _syscall_futex(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout)
 {
     return _SYSCALL4(uint64_t, SYS_FUTEX, atomic_uint64_t*, addr, uint64_t, val, futex_op_t, op, clock_t, timeout);
 }
 
-static inline uint64_t _SyscallRename(const char* oldpath, const char* newpath)
+static inline uint64_t _syscall_rename(const char* oldpath, const char* newpath)
 {
     return _SYSCALL2(uint64_t, SYS_RENAME, const char*, oldpath, const char*, newpath);
 }
 
-static inline uint64_t _SyscallRemove(const char* path)
+static inline uint64_t _syscall_remove(const char* path)
 {
     return _SYSCALL1(uint64_t, SYS_REMOVE, const char*, path);
 }

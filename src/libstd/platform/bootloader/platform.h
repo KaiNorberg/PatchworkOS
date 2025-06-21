@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-typedef uint8_t _PlatformMutex_t;
+typedef uint8_t _platform_mutex_t;
 
 #define _PLATFORM_MUTEX_INIT(mutex)
 #define _PLATFORM_MUTEX_DESTROY(mutex)

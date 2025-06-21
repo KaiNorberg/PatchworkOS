@@ -2,4 +2,4 @@
 
 #include "file.h"
 
-void _StdStreamsInit(void);
+void _std_streams_init(void);

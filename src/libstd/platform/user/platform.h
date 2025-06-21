@@ -3,7 +3,7 @@
 #ifndef __STDC_NO_THREADS__
 #include <threads.h>
 
-typedef mtx_t _PlatformMutex_t;
+typedef mtx_t _platform_mutex_t;
 
 #define _PLATFORM_MUTEX_INIT(mutex) mtx_init(mutex, mtx_recursive)
 #define _PLATFORM_MUTEX_DESTROY(mutex) mtx_destroy(mutex)
@@ -11,7 +11,7 @@ typedef mtx_t _PlatformMutex_t;
 #define _PLATFORM_MUTEX_RELEASE(mutex) mtx_unlock(mutex)
 
 #else
-typedef uint8_t _PlatformMutex_t;
+typedef uint8_t _platform_mutex_t;
 
 #define _PLATFORM_MUTEX_INIT(mutex)
 #define _PLATFORM_MUTEX_DESTROY(mutex)

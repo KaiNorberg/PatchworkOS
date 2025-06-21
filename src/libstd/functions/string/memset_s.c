@@ -17,7 +17,7 @@ errno_t memset_s(void* s, rsize_t smax, int c, rsize_t n)
             memset(s, c, smax);
         }
 
-        _ConstraintHandler(_CONSTRAINT_VIOLATION(EINVAL));
+        _constraintHandler(_CONSTRAINT_VIOLATION(EINVAL));
         return EINVAL;
     }
 

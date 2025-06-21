@@ -2,7 +2,7 @@
 
 #include <errno.h>
 
-char* _ErrorStrings[] = {
+char* _error_strings[] = {
     // POSIX standard error codes
     [0] = "success",
     [EPERM] = "operation not permitted",

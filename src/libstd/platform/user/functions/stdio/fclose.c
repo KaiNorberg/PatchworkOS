@@ -10,7 +10,7 @@ int fclose(struct FILE* stream)
 
     if (stream->flags & _FILE_WRITE)
     {
-        if (_FileFlushBuffer(stream) == ERR)
+        if (_file_flush_buffer(stream) == ERR)
         {
             _PLATFORM_MUTEX_RELEASE(&stream->mtx);
             return EOF;
@@ -19,8 +19,8 @@ int fclose(struct FILE* stream)
 
     _PLATFORM_MUTEX_RELEASE(&stream->mtx);
 
-    _FilesRemove(stream);
-    _FileDeinit(stream);
-    _FileFree(stream);
+    _files_remove(stream);
+    _file_deinit(stream);
+    _file_free(stream);
     return 0;
 }

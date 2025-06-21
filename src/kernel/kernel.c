@@ -68,7 +68,7 @@ void kernel_init(boot_info_t* bootInfo)
 
     log_screen_enable(&bootInfo->gopBuffer);
 
-    _StdInit();
+    _std_init();
 
     sysfs_init();
     vfs_init();

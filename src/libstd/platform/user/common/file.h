@@ -23,7 +23,7 @@ typedef enum
     _FILE_BYTESTREAM = (1 << 12),
     _FILE_DELETE_ON_CLOSE = (1 << 13),
     _FILE_EOF = (1 << 14)
-} _FileFlags_t;
+} _file_flags_t;
 
 typedef struct fpos
 {
@@ -43,8 +43,8 @@ typedef struct FILE
     fpos_t pos;
     unsigned char ungetBuf[_UNGETC_MAX];
     uint64_t ungetIndex;
-    _FileFlags_t flags;
-    _PlatformMutex_t mtx;
+    _file_flags_t flags;
+    _platform_mutex_t mtx;
     char filename[MAX_PATH];
 } FILE;
 
@@ -52,34 +52,34 @@ typedef struct FILE
     (((stream)->ungetIndex == 0) ? (unsigned char)(stream)->buf[(stream)->bufIndex++] \
                                  : (unsigned char)(stream)->ungetBuf[--(stream)->ungetIndex])
 
-#define _FILE_CHECK_AVAIL(fh) (((fh->bufIndex == fh->bufEnd) && (fh->ungetIndex == 0)) ? _FileFillBuffer(fh) : 0)
+#define _FILE_CHECK_AVAIL(fh) (((fh->bufIndex == fh->bufEnd) && (fh->ungetIndex == 0)) ? _file_fill_buffer(fh) : 0)
 
-_FileFlags_t _FileFlagsParse(const char* mode);
+_file_flags_t _file_flags_parse(const char* mode);
 
-FILE* _FileNew(void);
+FILE* _file_new(void);
 
-void _FileFree(FILE* stream);
+void _file_free(FILE* stream);
 
-uint64_t _FileInit(FILE* stream, fd_t fd, _FileFlags_t flags, void* buffer, uint64_t bufferSize);
+uint64_t _file_init(FILE* stream, fd_t fd, _file_flags_t flags, void* buffer, uint64_t bufferSize);
 
-void _FileDeinit(FILE* stream);
+void _file_deinit(FILE* stream);
 
-uint64_t _FileFlushBuffer(FILE* stream);
+uint64_t _file_flush_buffer(FILE* stream);
 
-uint64_t _FileFillBuffer(FILE* stream);
+uint64_t _file_fill_buffer(FILE* stream);
 
-uint64_t _FileSeek(FILE* stream, int64_t offset, int whence);
+uint64_t _file_seek(FILE* stream, int64_t offset, int whence);
 
-uint64_t _FilePrepareRead(FILE* stream);
+uint64_t _file_prepare_read(FILE* stream);
 
-uint64_t _FilePrepareWrite(FILE* stream);
+uint64_t _file_prepare_write(FILE* stream);
 
-void _FilesInit(void);
+void _files_init(void);
 
-void _FilesPush(FILE* file);
+void _files_push(FILE* file);
 
-void _FilesRemove(FILE* file);
+void _files_remove(FILE* file);
 
-void _FilesClose(void);
+void _files_close(void);
 
-uint64_t _FilesFlush(void);
+uint64_t _files_flush(void);

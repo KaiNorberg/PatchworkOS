@@ -4,5 +4,5 @@
 
 int islower(int c)
 {
-    return (_AsciiTable[c].flags & _ASCII_LOWER);
+    return (_ascii_table[c].flags & _ASCII_LOWER);
 }

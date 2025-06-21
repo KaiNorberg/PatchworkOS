@@ -6,7 +6,7 @@ int puts(const char* _RESTRICT s)
 {
     _PLATFORM_MUTEX_ACQUIRE(&stdout->mtx);
 
-    if (_FilePrepareWrite(stdout) == ERR)
+    if (_file_prepare_write(stdout) == ERR)
     {
         _PLATFORM_MUTEX_RELEASE(&stdout->mtx);
         return EOF;
@@ -18,7 +18,7 @@ int puts(const char* _RESTRICT s)
 
         if (stdout->bufIndex == stdout->bufSize)
         {
-            if (_FileFlushBuffer(stdout) == ERR)
+            if (_file_flush_buffer(stdout) == ERR)
             {
                 _PLATFORM_MUTEX_RELEASE(&stdout->mtx);
                 return EOF;
@@ -30,7 +30,7 @@ int puts(const char* _RESTRICT s)
 
     if ((stdout->bufIndex == stdout->bufSize) || (stdout->flags & (_FILE_LINE_BUFFERED | _FILE_UNBUFFERED)))
     {
-        uint64_t result = _FileFlushBuffer(stdout);
+        uint64_t result = _file_flush_buffer(stdout);
         _PLATFORM_MUTEX_RELEASE(&stdout->mtx);
         return result == ERR ? EOF : 0;
     }

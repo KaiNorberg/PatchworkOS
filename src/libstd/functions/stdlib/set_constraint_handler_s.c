@@ -5,15 +5,15 @@
 
 constraint_handler_t set_constraint_handler_s(constraint_handler_t handler)
 {
-    constraint_handler_t previous = _ConstraintHandler;
+    constraint_handler_t previous = _constraintHandler;
 
     if (handler == NULL)
     {
-        _ConstraintHandler = abort_handler_s;
+        _constraintHandler = abort_handler_s;
     }
     else
     {
-        _ConstraintHandler = handler;
+        _constraintHandler = handler;
     }
 
     return previous;

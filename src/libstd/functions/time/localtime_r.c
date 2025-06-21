@@ -10,7 +10,7 @@ struct tm* localtime_r(const time_t* timer, struct tm* buf)
         return NULL;
     }
 
-    _TimeZone_t* timeZone = _TimeZone();
+    _time_zone_t* timeZone = _time_zone();
 
     time_t seconds = *timer + timeZone->secondsOffset;
     int64_t daysElapsed = seconds / 86400;
@@ -19,7 +19,7 @@ struct tm* localtime_r(const time_t* timer, struct tm* buf)
     int32_t year = 1970;
     while (1)
     {
-        int32_t daysInYear = 365 + (_TimeIsLeapYear(year) ? 1 : 0);
+        int32_t daysInYear = 365 + (_time_is_leap_year(year) ? 1 : 0);
         if (daysElapsed < daysInYear)
         {
             break;
@@ -32,9 +32,9 @@ struct tm* localtime_r(const time_t* timer, struct tm* buf)
     buf->tm_yday = daysElapsed;
 
     int32_t month = 0;
-    while (daysElapsed >= _TimeDaysInMonth(month, year))
+    while (daysElapsed >= _time_days_in_month(month, year))
     {
-        daysElapsed -= _TimeDaysInMonth(month, year);
+        daysElapsed -= _time_days_in_month(month, year);
         month++;
     }
 

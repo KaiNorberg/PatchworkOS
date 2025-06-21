@@ -4,5 +4,5 @@
 
 int toupper(int c)
 {
-    return _AsciiTable[c].upper;
+    return _ascii_table[c].upper;
 }

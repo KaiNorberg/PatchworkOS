@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void _Assert99(const char* const message1, const char* const function, const char* const message2)
+void _assert_99(const char* const message1, const char* const function, const char* const message2)
 {
     fputs(message1, stderr);
     fputs(function, stderr);
@@ -10,7 +10,7 @@ void _Assert99(const char* const message1, const char* const function, const cha
     abort();
 }
 
-void _Assert89(const char* const message)
+void _assert_89(const char* const message)
 {
     fputs(message, stderr);
     abort();

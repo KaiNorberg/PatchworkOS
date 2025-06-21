@@ -3,31 +3,31 @@
 #include <errno.h>
 #include <stdint.h>
 
-static void (*_Stack[_EXIT_STACK_SIZE])(void);
-static uint64_t _Length = 0;
+static void (*_stack[_EXIT_STACK_SIZE])(void);
+static uint64_t _length = 0;
 
-void _ExitStackInit(void)
+void _exit_stack_init(void)
 {
-    _Length = 0;
+    _length = 0;
 }
 
-uint64_t _ExitStackPush(void (*func)(void))
+uint64_t _exit_stack_push(void (*func)(void))
 {
-    if (_Length == _EXIT_STACK_SIZE)
+    if (_length == _EXIT_STACK_SIZE)
     {
         return ERR;
     }
     else
     {
-        _Stack[_Length++] = func;
+        _stack[_length++] = func;
         return 0;
     }
 }
 
-void _ExitStackDispatch(void)
+void _exit_stack_dispatch(void)
 {
-    while (_Length != 0)
+    while (_length != 0)
     {
-        _Stack[--_Length]();
+        _stack[--_length]();
     }
 }

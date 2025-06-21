@@ -4,5 +4,5 @@
 
 int isspace(int c)
 {
-    return (_AsciiTable[c].flags & _ASCII_SPACE);
+    return (_ascii_table[c].flags & _ASCII_SPACE);
 }

@@ -6,10 +6,10 @@
 
 uint64_t munmap(void* address, uint64_t length)
 {
-    uint64_t result = _SyscallMunmap(address, length);
+    uint64_t result = _syscall_munmap(address, length);
     if (result == ERR)
     {
-        errno = _SyscallLastError();
+        errno = _syscall_last_error();
     }
     return result;
 }

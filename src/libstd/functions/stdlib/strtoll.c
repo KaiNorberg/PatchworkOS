@@ -7,7 +7,7 @@
 
 #include "common/digits.h"
 
-static const char* _StrtollPrelim(const char* p, char* sign, int* base)
+static const char* _strtoll_prelim(const char* p, char* sign, int* base)
 {
     /* skipping leading whitespace */
     while (isspace((unsigned char)*p))
@@ -40,7 +40,7 @@ static const char* _StrtollPrelim(const char* p, char* sign, int* base)
                We have to "rewind" the parsing; having the base set to 16 if it
                was zero previously does not hurt, as the result is zero anyway.
             */
-            if (memchr(_Digits, tolower((unsigned char)*p), *base) == NULL)
+            if (memchr(_digits, tolower((unsigned char)*p), *base) == NULL)
             {
                 p -= 2;
             }
@@ -67,16 +67,16 @@ static const char* _StrtollPrelim(const char* p, char* sign, int* base)
     return ((*base >= 2) && (*base <= 36)) ? p : NULL;
 }
 
-static uintmax_t _StrtollMain(const char** p, unsigned int base, uintmax_t error, uintmax_t limval, int limdigit,
+static uintmax_t _strtoll_main(const char** p, unsigned int base, uintmax_t error, uintmax_t limval, int limdigit,
     char* sign)
 {
     uintmax_t rc = 0;
     int digit = -1;
     const char* x;
 
-    while ((x = (const char*)memchr(_Digits, tolower((unsigned char)**p), base)) != NULL)
+    while ((x = (const char*)memchr(_digits, tolower((unsigned char)**p), base)) != NULL)
     {
-        digit = x - _Digits;
+        digit = x - _digits;
 
         if ((rc < limval) || ((rc == limval) && (digit <= limdigit)))
         {
@@ -89,7 +89,7 @@ static uintmax_t _StrtollMain(const char** p, unsigned int base, uintmax_t error
 
             /* TODO: Only if endptr != NULL - but do we really want *another* parameter? */
             /* TODO: Earlier version was missing tolower() here but was not caught by tests */
-            while (memchr(_Digits, tolower((unsigned char)**p), base) != NULL)
+            while (memchr(_digits, tolower((unsigned char)**p), base) != NULL)
             {
                 ++(*p);
             }
@@ -113,7 +113,7 @@ long long int strtoll(const char* s, char** endptr, int base)
 {
     long long int rc;
     char sign = '+';
-    const char* p = _StrtollPrelim(s, &sign, &base);
+    const char* p = _strtoll_prelim(s, &sign, &base);
 
     if (base < 2 || base > 36)
     {
@@ -122,12 +122,12 @@ long long int strtoll(const char* s, char** endptr, int base)
 
     if (sign == '+')
     {
-        rc = (long long int)_StrtollMain(&p, (unsigned)base, (uintmax_t)LLONG_MAX, (uintmax_t)(LLONG_MAX / base),
+        rc = (long long int)_strtoll_main(&p, (unsigned)base, (uintmax_t)LLONG_MAX, (uintmax_t)(LLONG_MAX / base),
             (int)(LLONG_MAX % base), &sign);
     }
     else
     {
-        rc = (long long int)_StrtollMain(&p, (unsigned)base, (uintmax_t)LLONG_MIN, (uintmax_t)(LLONG_MIN / -base),
+        rc = (long long int)_strtoll_main(&p, (unsigned)base, (uintmax_t)LLONG_MIN, (uintmax_t)(LLONG_MIN / -base),
             (int)(-(LLONG_MIN % base)), &sign);
     }
 

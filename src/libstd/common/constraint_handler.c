@@ -1,8 +1,8 @@
 #include "constraint_handler.h"
 
-constraint_handler_t _ConstraintHandler;
+constraint_handler_t _constraintHandler;
 
-void _ConstraintHandlerInit(void)
+void _constraint_handler_init(void)
 {
-    _ConstraintHandler = abort_handler_s;
+    _constraintHandler = abort_handler_s;
 }

@@ -12,7 +12,7 @@ const char** argsplit_buf(void* buf, uint64_t size, const char* str, uint64_t ma
 
     uint64_t argc;
     uint64_t totalChars;
-    if (_ArgsplitCountCharsAndArgs(str, &argc, &totalChars, maxLen) == UINT64_MAX)
+    if (_argsplit_count_chars_and_args(str, &argc, &totalChars, maxLen) == UINT64_MAX)
     {
         return NULL;
     }
@@ -35,5 +35,5 @@ const char** argsplit_buf(void* buf, uint64_t size, const char* str, uint64_t ma
         return argv;
     }
 
-    return _ArgsplitBackend(buf, str, argc, maxLen);
+    return _argsplit_backend(buf, str, argc, maxLen);
 }

@@ -5,5 +5,5 @@
 int isprint(int c)
 {
     /* FIXME: Space as of current locale charset, not source charset. */
-    return (_AsciiTable[c].flags & _ASCII_GRAPH) || (c == ' ');
+    return (_ascii_table[c].flags & _ASCII_GRAPH) || (c == ' ');
 }
