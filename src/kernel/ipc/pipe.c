@@ -196,7 +196,7 @@ static void pipe_cleanup(sysobj_t* sysobj, file_t* file)
     {
         lock_release(&private->lock);
         wait_queue_deinit(&private->waitQueue);
-        heap_free(private->buffer);
+        pmm_free(private->buffer);
         heap_free(private);
         return;
     }

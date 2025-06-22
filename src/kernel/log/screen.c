@@ -214,7 +214,7 @@ void screen_enable(screen_t* screen, const ring_t* ring)
     screen->cursor.y = 0;
 
     uint64_t i = 0;
-    for (; i < ring_data_length(ring) && (totalLineAmount - screen->cursor.y) > screen->buffer.height; i++)
+    for (; i < ring_data_length(ring) && (totalLineAmount - screen->cursor.y) > screen->buffer.height - 1; i++)
     {
         uint8_t chr;
         ring_get_byte(ring, i, &chr);

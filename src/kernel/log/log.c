@@ -37,7 +37,7 @@ void log_init(void)
 {
     lock_init(&lock);
 
-    atomic_init(&state.panicking, false);
+    atomic_init(&state.panickingCpuId, LOG_NO_PANIC_CPU_ID);
     state.config.isTimeEnabled = false;
     state.config.outputs = LOG_OUTPUT_SERIAL; // Serial will only do anything if CONFIG_LOG_SERIAL is true.
 #ifdef DEBUG
@@ -325,8 +325,18 @@ void log_panic(const trap_frame_t* trapFrame, const char* format, ...)
 {
     asm volatile("cli");
 
-    if (atomic_exchange(&state.panicking, true))
+    cpu_t* self = smp_self_unsafe();
+
+    uint32_t expectedCpuId = LOG_NO_PANIC_CPU_ID;
+    if (!atomic_compare_exchange_strong(&state.panickingCpuId, &expectedCpuId, self->id))
     {
+        if (expectedCpuId == self->id)
+        {
+            // Double panic on the same CPU
+            const char* message = "!!! KERNEL DOUBLE PANIC ON SAME CPU !!!\n";
+            log_print_to_outputs(message, strlen(message));
+        }
+
         while (true)
         {
             asm volatile("hlt");
@@ -347,9 +357,6 @@ void log_panic(const trap_frame_t* trapFrame, const char* format, ...)
     va_end(args);
 
     log_print(LOG_PANIC, "!!! KERNEL PANIC - %s !!!\n", state.panicBuffer);
-
-    cpu_t* self = smp_self_unsafe();
-
     log_print(LOG_PANIC, "[SYSTEM STATE]\n");
 
     thread_t* currentThread = self->sched.runThread;

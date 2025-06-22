@@ -13,6 +13,8 @@
 
 #define LOG_MAX_STACK_FRAMES 64
 
+#define LOG_NO_PANIC_CPU_ID UINT32_MAX
+
 typedef enum
 {
     LOG_OUTPUT_SERIAL = 1 << 0,
@@ -50,7 +52,7 @@ typedef struct
     char panicBuffer[LOG_MAX_BUFFER];
     char timestampBuffer[LOG_MAX_TIMESTAMP_BUFFER];
     log_config_t config;
-    atomic_bool panicking;
+    atomic_uint32_t panickingCpuId;
     bool isLastCharNewline;
 } log_state_t;
 
