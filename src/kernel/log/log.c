@@ -54,8 +54,8 @@ void log_init(void)
     com_init(COM1);
 #endif
 
-    log_print(LOG_INFO, "%s - %s\n", OS_NAME, OS_VERSION);
-    log_print(LOG_INFO, "Licensed under MIT. See home:/usr/license/LICENSE.\n");
+    log_print(LOG_INFO, "Booting %s %s (Built %s %s)\n", OS_NAME, OS_VERSION, __DATE__, __TIME__);
+    log_print(LOG_INFO, "Copyright (C) 2025 PatchworkOS Project. MIT Licensed. See home:/usr/license/LICENSE for details.\n");
 }
 
 void log_enable_time(void)

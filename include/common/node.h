@@ -1,5 +1,4 @@
-#ifndef _SYS_NODE_H
-#define _SYS_NODE_H 1
+#pragma once
 
 #include <errno.h>
 #include <stdint.h>
@@ -64,5 +63,3 @@ static inline node_t* node_find(node_t* node, const char* name)
 
     return NULL;
 }
-
-#endif
