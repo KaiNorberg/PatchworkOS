@@ -3847,5 +3847,5 @@ static const glyph_cache_t cache = {
 
 const glyph_cache_t* glyph_cache_get(void)
 {
-     return &cache;
+    return &cache;
 }

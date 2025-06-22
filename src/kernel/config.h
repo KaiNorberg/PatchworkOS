@@ -79,7 +79,8 @@
  * @ingroup kernel
  * @def CONFIG_MAX_RECENT_BLOCK_TIME
  *
- * The `CONFIG_MAX_RECENT_BLOCK_TIME` constant defines the length of time considered when deciding if a thread is I/O or CPU bound.
+ * The `CONFIG_MAX_RECENT_BLOCK_TIME` constant defines the length of time considered when deciding if a thread is I/O or
+ * CPU bound.
  *
  */
 #define CONFIG_MAX_RECENT_BLOCK_TIME ((CLOCKS_PER_SEC / 1000) * 10)
@@ -89,7 +90,8 @@
  * @ingroup kernel
  * @def CONFIG_MAX_PRIORITY_BOOST
  *
- * The `CONFIG_MAX_PRIORITY_BOOST` constant defines the maximum priority boost a thread can receive from being I/O bound.
+ * The `CONFIG_MAX_PRIORITY_BOOST` constant defines the maximum priority boost a thread can receive from being I/O
+ * bound.
  *
  */
 #define CONFIG_MAX_PRIORITY_BOOST 8
@@ -99,7 +101,8 @@
  * @ingroup kernel
  * @def CONFIG_MAX_PRIORITY_PENALTY
  *
- * The `CONFIG_MAX_PRIORITY_PENALTY` constant defines the maximum priority penalty a thread can receive from being CPU bound.
+ * The `CONFIG_MAX_PRIORITY_PENALTY` constant defines the maximum priority penalty a thread can receive from being CPU
+ * bound.
  *
  */
 #define CONFIG_MAX_PRIORITY_PENALTY 8
@@ -109,7 +112,8 @@
  * @ingroup kernel
  * @def CONFIG_LOAD_BALANCE_BIAS
  *
- * The `CONFIG_LOAD_BALANCE_BIAS` constant defines the bias used the minimum inbalance required for load balancing to occur.
+ * The `CONFIG_LOAD_BALANCE_BIAS` constant defines the bias used the minimum inbalance required for load balancing to
+ * occur.
  *
  */
 #define CONFIG_LOAD_BALANCE_BIAS 2

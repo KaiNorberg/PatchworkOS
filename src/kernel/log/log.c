@@ -156,21 +156,22 @@ static void log_print_header(log_level_t level)
     }
 
     static const char* levelNames[] = {
-        [LOG_DEBUG] = "DEBUG",
-        [LOG_USER] = "USER ",
-        [LOG_INFO] = "INFO ",
-        [LOG_WARN] = "WARN ",
-        [LOG_ERR] = "ERR  ",
+        [LOG_DEBUG] = "DBUG",
+        [LOG_USER] = "USER",
+        [LOG_INFO] = "INFO",
+        [LOG_WARN] = "WARN",
+        [LOG_ERR] = "ERR ",
     };
 
-    clock_t uptime = state.config.isTimeEnabled ? systime_uptime() : 0;
+    uint64_t uptime = state.config.isTimeEnabled ? systime_uptime() : 0;
+
     uint64_t seconds = uptime / CLOCKS_PER_SEC;
     uint64_t milliseconds = (uptime % CLOCKS_PER_SEC) / (CLOCKS_PER_SEC / 1000);
 
     cpu_t* self = smp_self_unsafe();
 
     int length =
-        sprintf(state.timestampBuffer, "[%8llu.%03llu-CPU%3d-%s] ", seconds, milliseconds, self->id, levelNames[level]);
+        sprintf(state.timestampBuffer, "[%8llu.%03llu-%03d-%s] ", seconds, milliseconds, self->id, levelNames[level]);
 
     log_print_to_outputs(state.timestampBuffer, length);
 }
