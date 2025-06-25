@@ -188,9 +188,8 @@ static uint64_t heap_test_multiple(uint64_t numAllocs, uint64_t size, uint8_t pa
         {
             if (((uint8_t*)ptrs[i])[j] != pattern)
             {
-                log_print(LOG_INFO,
-                    "heap_test_multiple: Memory corruption detected at offset %lu for allocation %lu, size %lu\n", j, i,
-                    size);
+                LOG_INFO("heap_test_multiple: Memory corruption detected at offset %lu for allocation %lu, size %lu\n",
+                    j, i, size);
                 for (uint64_t k = 0; k < numAllocs; k++)
                 {
                     heap_free(ptrs[k]);

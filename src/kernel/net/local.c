@@ -44,7 +44,7 @@ static local_listener_t* local_listener_new(const char* address)
     }
 
     list_entry_init(&listener->entry);
-    strncpy(listener->address, address, MAX_NAME - 1); 
+    strncpy(listener->address, address, MAX_NAME - 1);
     listener->address[MAX_NAME - 1] = '\0';
     listener->backlog.readIndex = 0;
     listener->backlog.writeIndex = 0;
@@ -81,7 +81,7 @@ static void local_listener_deref(local_listener_t* listener)
         lock_release(&listenersLock);
 
         wait_unblock(&listener->waitQueue, UINT64_MAX);
-        
+
         lock_acquire(&listener->lock);
         while (listener->backlog.count > 0)
         {
@@ -93,7 +93,7 @@ static void local_listener_deref(local_listener_t* listener)
             }
         }
         lock_release(&listener->lock);
-        
+
         wait_queue_deinit(&listener->waitQueue);
         sysobj_deinit(&listener->sysobj, NULL);
         heap_free(listener);
@@ -378,7 +378,7 @@ static uint64_t local_socket_connect(socket_t* socket, const char* address)
     {
         bool isAccepted = atomic_load(&conn->isAccepted);
         bool isClosed = local_connection_is_closed(conn);
-        
+
         if (!isAccepted && !isClosed)
         {
             return ERROR(EINPROGRESS);
@@ -636,7 +636,7 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
         LOCK_DEFER(&conn->lock);
         if (local_connection_is_closed(conn))
         {
-            poll->revents = POLL_READ | POLL_ERR | POLL_HUP; 
+            poll->revents = POLL_READ | POLL_ERR | POLL_HUP;
         }
         else
         {
@@ -660,7 +660,7 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
         LOCK_DEFER(&conn->lock);
         if (local_connection_is_closed(conn))
         {
-            poll->revents = POLL_READ | POLL_ERR | POLL_HUP; 
+            poll->revents = POLL_READ | POLL_ERR | POLL_HUP;
         }
         else
         {

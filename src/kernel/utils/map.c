@@ -54,21 +54,24 @@ uint64_t hash_string(const char* str)
 
 bool map_key_is_equal(const map_key_t* a, const map_key_t* b)
 {
-    if (a->type != b->type) {
+    if (a->type != b->type)
+    {
         return false;
     }
 
-    if (a->hash != b->hash) {
+    if (a->hash != b->hash)
+    {
         return false;
     }
 
-    switch (a->type) {
-        case MAP_KEY_UINT64:
-            return a->data.uint64 == b->data.uint64;
-        case MAP_KEY_STRING:
-            return strcmp(a->data.str, b->data.str) == 0;
-        default:
-            return false;
+    switch (a->type)
+    {
+    case MAP_KEY_UINT64:
+        return a->data.uint64 == b->data.uint64;
+    case MAP_KEY_STRING:
+        return strcmp(a->data.str, b->data.str) == 0;
+    default:
+        return false;
     }
 }
 
@@ -212,7 +215,8 @@ uint64_t map_insert(map_t* map, const map_key_t* key, map_entry_t* entry)
         return ERR;
     }
 
-    if (map->entries[index] != NULL && map->entries[index] != MAP_TOMBSTONE && map_key_is_equal(&map->entries[index]->key, key))
+    if (map->entries[index] != NULL && map->entries[index] != MAP_TOMBSTONE &&
+        map_key_is_equal(&map->entries[index]->key, key))
     {
         return ERR;
     }
@@ -243,7 +247,8 @@ map_entry_t* map_get(map_t* map, const map_key_t* key)
         return NULL;
     }
 
-    if (map_key_is_equal(&entry->key, key)) {
+    if (map_key_is_equal(&entry->key, key))
+    {
         return entry;
     }
 
