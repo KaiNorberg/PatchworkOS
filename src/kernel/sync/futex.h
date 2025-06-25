@@ -2,7 +2,7 @@
 
 #include "fs/vfs.h"
 #include "sched/wait.h"
-#include "utils/hashmap.h"
+#include "utils/map.h"
 
 #include <sys/proc.h>
 
@@ -10,13 +10,13 @@
 
 typedef struct
 {
-    hashmap_entry_t entry;
+    map_entry_t entry;
     wait_queue_t queue;
 } futex_t;
 
 typedef struct
 {
-    hashmap_t futexes;
+    map_t futexes;
     lock_t lock;
 } futex_ctx_t;
 

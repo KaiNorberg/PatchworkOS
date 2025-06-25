@@ -258,7 +258,8 @@ typedef enum
 {
     POLL_READ = (1 << 0),  //!< File descriptor is/should be ready to read.
     POLL_WRITE = (1 << 1), //!< File descriptor is/should be ready to write.
-    POLL1_ERR = (1 << 31), //!< An error occurred in `poll1()`.
+    POLL_ERR = (1 << 2),   //!< File descriptor caused an error.
+    POLL_HUP = (1 << 3),   //!< Stream socket peer closed connection, or shut down writing of connection.
 } poll_events_t;
 
 /**
@@ -301,7 +302,7 @@ uint64_t poll(pollfd_t* fds, uint64_t amount, clock_t timeout);
  * @param fd The file descriptor to poll.
  * @param events The events to wait for (e.g., `POLL_READ`, `POLL_WRITE`).
  * @param timeout The maximum time (in clock ticks) to wait for an event. If `CLOCKS_NEVER`, it waits forever.
- * @return On success, returns the events that revents. On timeout, returns 0. On failure, the `POLL1_ERR` event bit is
+ * @return On success, returns the events that revents. On timeout, returns 0. On failure, the `POLL_ERR` event bit is
  * set and errno is set.
  */
 poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout);

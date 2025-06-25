@@ -21,15 +21,14 @@ static void* loader_load_program(thread_t* thread)
     const char* executable = process->argv.buffer[0];
     if (executable == NULL)
     {
-        log_print(LOG_INFO, "loader_load_program: executable == NULL (%s) pid=%d\n", strerror(thread->error),
-            process->id);
+        LOG_INFO("loader_load_program: executable == NULL (%s) pid=%d\n", strerror(thread->error), process->id);
         sched_process_exit(ESPAWNFAIL);
     }
 
     file_t* file = vfs_open(PATH(process, executable));
     if (file == NULL)
     {
-        log_print(LOG_INFO, "loader_load_program: vfs_open failed (%s) pid=%d\n", strerror(thread->error), process->id);
+        LOG_INFO("loader_load_program: vfs_open failed (%s) pid=%d\n", strerror(thread->error), process->id);
         sched_process_exit(ESPAWNFAIL);
     }
     FILE_DEFER(file);
@@ -37,14 +36,12 @@ static void* loader_load_program(thread_t* thread)
     elf_hdr_t header;
     if (vfs_read(file, &header, sizeof(elf_hdr_t)) != sizeof(elf_hdr_t))
     {
-        log_print(LOG_INFO, "loader_load_program: vfs_read hdr failed (%s) pid=%d\n", strerror(thread->error),
-            process->id);
+        LOG_INFO("loader_load_program: vfs_read hdr failed (%s) pid=%d\n", strerror(thread->error), process->id);
         sched_process_exit(ESPAWNFAIL);
     }
     if (!ELF_IS_VALID(&header))
     {
-        log_print(LOG_INFO, "loader_load_program: elf valid check failed (%s) pid=%d\n", strerror(thread->error),
-            process->id);
+        LOG_INFO("loader_load_program: elf valid check failed (%s) pid=%d\n", strerror(thread->error), process->id);
         sched_process_exit(ESPAWNFAIL);
     }
 
@@ -55,7 +52,7 @@ static void* loader_load_program(thread_t* thread)
         uint64_t offset = sizeof(elf_hdr_t) + header.phdrSize * i;
         if (vfs_seek(file, offset, SEEK_SET) != offset)
         {
-            log_print(LOG_INFO, "loader_load_program: vfs_seek to offset failed (%s) pid=%d\n", strerror(thread->error),
+            LOG_INFO("loader_load_program: vfs_seek to offset failed (%s) pid=%d\n", strerror(thread->error),
                 process->id);
             sched_process_exit(ESPAWNFAIL);
         }
@@ -63,8 +60,7 @@ static void* loader_load_program(thread_t* thread)
         elf_phdr_t phdr;
         if (vfs_read(file, &phdr, sizeof(elf_phdr_t)) != sizeof(elf_phdr_t))
         {
-            log_print(LOG_INFO, "loader_load_program: vfs_read phdr failed (%s) pid=%d\n", strerror(thread->error),
-                process->id);
+            LOG_INFO("loader_load_program: vfs_read phdr failed (%s) pid=%d\n", strerror(thread->error), process->id);
             sched_process_exit(ESPAWNFAIL);
         }
 
@@ -76,29 +72,26 @@ static void* loader_load_program(thread_t* thread)
             max = MAX(max, phdr.virtAddr + phdr.memorySize);
             if (phdr.memorySize < phdr.fileSize)
             {
-                log_print(LOG_INFO, "loader_load_program: phdr size check failed (%s) pid=%d\n",
-                    strerror(thread->error), process->id);
+                LOG_INFO("loader_load_program: phdr size check failed (%s) pid=%d\n", strerror(thread->error),
+                    process->id);
                 sched_process_exit(ESPAWNFAIL);
             }
 
             if (vmm_alloc(space, (void*)phdr.virtAddr, phdr.memorySize, PROT_READ | PROT_WRITE) == NULL)
             {
-                log_print(LOG_INFO, "loader_load_program: vmm_alloc failed (%s) pid=%d\n", strerror(thread->error),
-                    process->id);
+                LOG_INFO("loader_load_program: vmm_alloc failed (%s) pid=%d\n", strerror(thread->error), process->id);
                 sched_process_exit(ESPAWNFAIL);
             }
             memset((void*)phdr.virtAddr, 0, phdr.memorySize);
 
             if (vfs_seek(file, phdr.offset, SEEK_SET) != phdr.offset)
             {
-                log_print(LOG_INFO, "loader_load_program: vfs_seek failed (%s) pid=%d\n", strerror(thread->error),
-                    process->id);
+                LOG_INFO("loader_load_program: vfs_seek failed (%s) pid=%d\n", strerror(thread->error), process->id);
                 sched_process_exit(ESPAWNFAIL);
             }
             if (vfs_read(file, (void*)phdr.virtAddr, phdr.fileSize) != phdr.fileSize)
             {
-                log_print(LOG_INFO, "loader_load_program: vfs_read failed (%s) pid=%d\n", strerror(thread->error),
-                    process->id);
+                LOG_INFO("loader_load_program: vfs_read failed (%s) pid=%d\n", strerror(thread->error), process->id);
                 sched_process_exit(ESPAWNFAIL);
             }
 
@@ -106,8 +99,8 @@ static void* loader_load_program(thread_t* thread)
             {
                 if (vmm_protect(space, (void*)phdr.virtAddr, phdr.memorySize, PROT_READ) == ERR)
                 {
-                    log_print(LOG_INFO, "loader_load_program: vmm_protect failed (%s) pid=%d\n",
-                        strerror(thread->error), process->id);
+                    LOG_INFO("loader_load_program: vmm_protect failed (%s) pid=%d\n", strerror(thread->error),
+                        process->id);
                     sched_process_exit(ESPAWNFAIL);
                 }
             }
@@ -125,7 +118,7 @@ static void* loader_alloc_user_stack(thread_t* thread)
 
     if (vmm_alloc(&thread->process->space, (void*)(stackTop - PAGE_SIZE), PAGE_SIZE, PROT_READ | PROT_WRITE) == NULL)
     {
-        log_print(LOG_INFO, "loader_alloc_user_stack: vmm_alloc failed (%s) pid=%d\n", strerror(thread->error),
+        LOG_INFO("loader_alloc_user_stack: vmm_alloc failed (%s) pid=%d\n", strerror(thread->error),
             thread->process->id);
         sched_process_exit(ESPAWNFAIL);
     }
@@ -196,7 +189,7 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
         return NULL;
     }
 
-    log_print(LOG_INFO, "loader: spawn path=%s pid=%d\n", argv[0], child->id);
+    LOG_INFO("loader: spawn path=%s pid=%d\n", argv[0], child->id);
     return childThread;
 }
 

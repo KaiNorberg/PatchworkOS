@@ -213,7 +213,7 @@ static void pmm_free_pages_unlocked(void* address, uint64_t count)
 
 static void pmm_detect_memory(efi_mem_map_t* memoryMap)
 {
-    log_print(LOG_INFO, "UEFI-provided memory map\n");
+    LOG_INFO("UEFI-provided memory map\n");
 
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
     {
@@ -235,13 +235,13 @@ static void pmm_load_memory(efi_mem_map_t* memoryMap)
         }
         else
         {
-            log_print(LOG_INFO, "pmm: reserve [0x%016lx-0x%016lx] pages=%d type=%s\n", desc->physicalStart,
+            LOG_INFO("pmm: reserve [0x%016lx-0x%016lx] pages=%d type=%s\n", desc->physicalStart,
                 (uint64_t)desc->physicalStart + desc->amountOfPages * PAGE_SIZE, desc->amountOfPages,
                 efiMemTypeToString[desc->type]);
         }
     }
 
-    log_print(LOG_INFO, "pmm: memory %llu MB (usable %llu MB reserved %llu MB)\n", (pageAmount * PAGE_SIZE) / 1000000,
+    LOG_INFO("pmm: memory %llu MB (usable %llu MB reserved %llu MB)\n", (pageAmount * PAGE_SIZE) / 1000000,
         (freePageAmount * PAGE_SIZE) / 1000000, ((pageAmount - freePageAmount) * PAGE_SIZE) / 1000000);
 }
 

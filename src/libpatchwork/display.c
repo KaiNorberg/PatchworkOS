@@ -172,7 +172,7 @@ bool display_next_event(display_t* disp, event_t* event, clock_t timeout)
     if (timeout != CLOCKS_NEVER)
     {
         poll_events_t revents = poll1(disp->data, POLL_READ, timeout);
-        if (revents & POLL1_ERR)
+        if (revents & POLL_ERR)
         {
             disp->isConnected = false;
             return false;

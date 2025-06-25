@@ -651,7 +651,11 @@ static void dwm_update(void)
     LIST_FOR_EACH_SAFE(client, temp, &clients, entry)
     {
         pollfd_t* fd = &pollCtx->clients[i++];
-        if (fd->revents & POLL_READ)
+        if ((fd->revents & POLL_HUP) || (fd->revents & POLL_ERR))
+        {
+            dwm_client_disconnect(client);
+        }
+        else if (fd->revents & POLL_READ)
         {
             if (client_receive_cmds(client) == ERR)
             {

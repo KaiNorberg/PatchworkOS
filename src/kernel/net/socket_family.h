@@ -34,4 +34,4 @@ typedef struct
     sysobj_t newObj;
 } socket_family_t;
 
-uint64_t socket_family_expose(socket_family_t* family);
+uint64_t socket_family_register(socket_family_t* family);

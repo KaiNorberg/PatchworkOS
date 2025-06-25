@@ -79,7 +79,7 @@ void systime_init(void)
     systime_read_cmos_time();
     systime_rtc_init();
 
-    log_print(LOG_INFO, "systime: init epoch=%d\n", systime_unix_epoch());
+    LOG_INFO("systime: init epoch=%d\n", systime_unix_epoch());
 }
 
 clock_t systime_uptime(void)
@@ -97,7 +97,7 @@ void systime_timer_init(void)
     cpu_t* self = smp_self_unsafe();
     self->systime.apicTicksPerNs = apic_timer_ticks_per_ns();
     self->systime.nextDeadline = CLOCKS_NEVER;
-    log_print(LOG_INFO, "systime: timer init\n");
+    LOG_INFO("systime: timer init\n");
 }
 
 void systime_timer_trap(trap_frame_t* trapFrame, cpu_t* self)

@@ -64,5 +64,5 @@ void ps2_kbd_init(void)
 
     kbd = kbd_new("ps2");
     irq_install(ps2_kbd_irq, IRQ_PS2_KBD);
-    log_print(LOG_INFO, "ps2: kbd\n");
+    LOG_INFO("ps2: kbd\n");
 }

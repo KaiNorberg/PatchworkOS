@@ -247,7 +247,7 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
 static void process_on_free(sysdir_t* dir)
 {
     process_t* process = dir->private;
-    log_print(LOG_INFO, "process: on free pid=%d\n", process->id);
+    LOG_INFO("process: on free pid=%d\n", process->id);
     space_deinit(&process->space);
     argv_deinit(&process->argv);
     wait_queue_deinit(&process->queue);
@@ -303,10 +303,10 @@ void process_backend_init(void)
 {
     rwlock_init(&treeLock);
 
-    log_print(LOG_INFO, "process: init self dir\n");
+    LOG_INFO("process: init self dir\n");
     process_dir_init(&self, "self", NULL);
 
-    log_print(LOG_INFO, "process: create kernel process\n");
+    LOG_INFO("process: create kernel process\n");
     kernelProcess = process_new(NULL, NULL, NULL, PRIORITY_MAX - 1);
     assert(kernelProcess != NULL);
 }

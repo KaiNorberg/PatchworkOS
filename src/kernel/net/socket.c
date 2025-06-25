@@ -16,7 +16,12 @@
 #include <stdlib.h>
 #include <sys/math.h>
 
-static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
+static atomic_uint64_t nextSocketId = ATOMIC_VAR_INIT(0);
+
+static bool socket_has_access(socket_t* socket, process_t* process)
+{
+    return process->id == socket->creator || process_is_child(process, socket->creator);
+}
 
 static uint64_t socket_accept_read(file_t* file, void* buffer, uint64_t count)
 {
@@ -40,8 +45,7 @@ static wait_queue_t* socket_accept_poll(file_t* file, poll_file_t* poll)
 static file_t* socket_accept_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
 {
     socket_t* socket = sysobj->private;
-    process_t* process = sched_process();
-    if (process->id != socket->creator && !process_is_child(process, socket->creator))
+    if (!socket_has_access(socket, sched_process()))
     {
         return ERRPTR(EACCES);
     }
@@ -53,6 +57,8 @@ static file_t* socket_accept_open(volume_t* volume, const path_t* path, sysobj_t
     }
     newSocket->family = socket->family;
     newSocket->creator = socket->creator;
+    newSocket->flags = socket->flags;
+    newSocket->private = NULL;
 
     if (socket->family->accept(socket, newSocket) == ERR)
     {
@@ -60,17 +66,18 @@ static file_t* socket_accept_open(volume_t* volume, const path_t* path, sysobj_t
         return NULL;
     }
 
-    static file_ops_t fileOps = {
+    file_t* file = file_new(volume, path, PATH_NONE);
+    if (file == NULL)
+    {
+        newSocket->family->deinit(newSocket);
+        heap_free(newSocket);
+        return NULL;
+    }
+    static const file_ops_t fileOps = {
         .read = socket_accept_read,
         .write = socket_accept_write,
         .poll = socket_accept_poll,
     };
-    file_t* file = file_new(volume, path, PATH_NONE);
-    if (file == NULL)
-    {
-        heap_free(newSocket);
-        return NULL;
-    }
     file->ops = &fileOps;
     file->private = newSocket;
     return file;
@@ -79,8 +86,11 @@ static file_t* socket_accept_open(volume_t* volume, const path_t* path, sysobj_t
 static void socket_accept_cleanup(sysobj_t* sysobj, file_t* file)
 {
     socket_t* socket = file->private;
-    socket->family->deinit(socket);
-    heap_free(socket);
+    if (socket != NULL)
+    {
+        socket->family->deinit(socket);
+        heap_free(socket);
+    }
 }
 
 static sysobj_ops_t acceptOps = {
@@ -110,22 +120,21 @@ static wait_queue_t* socket_data_poll(file_t* file, poll_file_t* poll)
 static file_t* socket_data_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
 {
     socket_t* socket = sysobj->private;
-    process_t* process = sched_process();
-    if (process->id != socket->creator && !process_is_child(process, socket->creator))
+    if (!socket_has_access(socket, sched_process()))
     {
         return ERRPTR(EACCES);
     }
 
-    static file_ops_t fileOps = {
-        .read = socket_data_read,
-        .write = socket_data_write,
-        .poll = socket_data_poll,
-    };
     file_t* file = file_new(volume, path, PATH_NONE);
     if (file == NULL)
     {
         return NULL;
     }
+    static const file_ops_t fileOps = {
+        .read = socket_data_read,
+        .write = socket_data_write,
+        .poll = socket_data_poll,
+    };
     file->ops = &fileOps;
     file->private = socket;
     return file;
@@ -164,20 +173,19 @@ CTL_STANDARD_WRITE_DEFINE(socket_ctl_write,
 static file_t* socket_ctl_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
 {
     socket_t* socket = sysobj->private;
-    process_t* process = sched_process();
-    if (process->id != socket->creator && !process_is_child(process, socket->creator))
+    if (!socket_has_access(socket, sched_process()))
     {
         return ERRPTR(EACCES);
     }
 
-    static file_ops_t fileOps = {
-        .write = socket_ctl_write,
-    };
     file_t* file = file_new(volume, path, PATH_NONE);
     if (file == NULL)
     {
         return NULL;
     }
+    static const file_ops_t fileOps = {
+        .write = socket_ctl_write,
+    };
     file->ops = &fileOps;
     file->private = socket;
     return file;
@@ -192,13 +200,16 @@ socket_t* socket_new(socket_family_t* family, path_flags_t flags)
     socket_t* socket = heap_alloc(sizeof(socket_t), HEAP_NONE);
     if (socket == NULL)
     {
-        heap_free(socket);
         return NULL;
     }
-    ulltoa(atomic_fetch_add(&newId, 1), socket->id, 10);
+
+    uint64_t id = atomic_fetch_add(&nextSocketId, 1);
+    snprintf(socket->id, sizeof(socket->id), "%llu", id);
+
     socket->family = family;
     socket->creator = sched_process()->id;
     socket->flags = flags;
+    socket->private = NULL;
 
     if (family->init(socket) == ERR)
     {
@@ -207,12 +218,23 @@ socket_t* socket_new(socket_family_t* family, path_flags_t flags)
     }
 
     char path[MAX_PATH];
-    sprintf(path, "/net/%s", family->name);
+    snprintf(path, sizeof(path), "/net/%s", family->name);
 
-    assert(sysdir_init(&socket->dir, path, socket->id, socket) != ERR);
-    assert(sysobj_init(&socket->ctlObj, &socket->dir, "ctl", &ctlOps, socket) != ERR);
-    assert(sysobj_init(&socket->dataObj, &socket->dir, "data", &dataOps, socket) != ERR);
-    assert(sysobj_init(&socket->acceptObj, &socket->dir, "accept", &acceptOps, socket) != ERR);
+    if (sysdir_init(&socket->dir, path, socket->id, socket) == ERR)
+    {
+        family->deinit(socket);
+        heap_free(socket);
+        return NULL;
+    }
+
+    if (sysobj_init(&socket->ctlObj, &socket->dir, "ctl", &ctlOps, socket) == ERR ||
+        sysobj_init(&socket->dataObj, &socket->dir, "data", &dataOps, socket) == ERR ||
+        sysobj_init(&socket->acceptObj, &socket->dir, "accept", &acceptOps, socket) == ERR)
+    {
+        sysdir_deinit(&socket->dir, NULL);
+        family->deinit(socket);
+        heap_free(socket);
+    }
 
     return socket;
 }
@@ -220,8 +242,11 @@ socket_t* socket_new(socket_family_t* family, path_flags_t flags)
 static void socket_on_free(sysdir_t* sysdir)
 {
     socket_t* socket = sysdir->private;
-    socket->family->deinit(socket);
-    heap_free(socket);
+    if (socket != NULL)
+    {
+        socket->family->deinit(socket);
+        heap_free(socket);
+    }
 }
 
 void socket_free(socket_t* socket)

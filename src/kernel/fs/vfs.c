@@ -103,7 +103,7 @@ void file_deref(file_t* file)
 
 void vfs_init(void)
 {
-    log_print(LOG_INFO, "vfs: init\n");
+    LOG_INFO("vfs: init\n");
 
     list_init(&volumes);
     rwlock_init(&volumesLock);
@@ -120,7 +120,7 @@ uint64_t vfs_attach_simple(const char* label, const volume_ops_t* ops)
     volume_t* volume;
     LIST_FOR_EACH(volume, &volumes, entry)
     {
-        log_print(LOG_INFO, "vfs_attach_simple strcmp\n");
+        LOG_INFO("vfs_attach_simple strcmp\n");
         if (strcmp(volume->label, label) == 0)
         {
             return ERROR(EEXIST);
@@ -160,7 +160,7 @@ uint64_t vfs_unmount(const char* label)
     bool isFound = false;
     LIST_FOR_EACH(volume, &volumes, entry)
     {
-        log_print(LOG_INFO, "vfs_unmount strcmp\n");
+        LOG_INFO("vfs_unmount strcmp\n");
         if (strcmp(volume->label, label) == 0)
         {
             isFound = true;
@@ -306,7 +306,7 @@ uint64_t vfs_rename(const path_t* oldpath, const path_t* newpath)
         return ERROR(EINVAL);
     }
 
-    log_print(LOG_INFO, "vfs_rename strcmp\n");
+    LOG_INFO("vfs_rename strcmp\n");
     if (strcmp(oldpath->volume, newpath->volume) != 0)
     {
         return ERROR(EXDEV);

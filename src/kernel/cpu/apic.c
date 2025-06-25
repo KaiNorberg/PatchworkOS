@@ -41,7 +41,7 @@ uint64_t apic_timer_ticks_per_ns(void)
 
 void lapic_init(void)
 {
-    log_print(LOG_INFO, "lapic: init\n");
+    LOG_INFO("lapic: init\n");
     msr_write(MSR_LAPIC, (msr_read(MSR_LAPIC) | LAPIC_MSR_ENABLE) & ~(1 << 10));
 
     lapic_write(LAPIC_REG_SPURIOUS, lapic_read(LAPIC_REG_SPURIOUS) | LAPIC_SPURIOUS_ENABLE);

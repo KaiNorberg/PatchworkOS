@@ -24,12 +24,12 @@ typedef enum
 
 typedef enum
 {
-    LOG_DEBUG,
-    LOG_USER,
-    LOG_INFO,
-    LOG_WARN,
-    LOG_ERR,
-    LOG_PANIC,
+    LOG_LEVEL_DEBUG,
+    LOG_LEVEL_USER,
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_WARN,
+    LOG_LEVEL_ERR,
+    LOG_LEVEL_PANIC,
 } log_level_t;
 
 typedef struct
@@ -71,3 +71,8 @@ uint64_t log_print(log_level_t level, const char* format, ...);
 uint64_t log_vprint(log_level_t level, const char* format, va_list args);
 
 NORETURN void log_panic(const trap_frame_t* trapFrame, const char* format, ...);
+
+#define LOG_DEBUG(format, ...) log_print(LOG_LEVEL_DEBUG, format __VA_OPT__(, ) __VA_ARGS__)
+#define LOG_INFO(format, ...) log_print(LOG_LEVEL_INFO, format __VA_OPT__(, ) __VA_ARGS__)
+#define LOG_WARN(format, ...) log_print(LOG_LEVEL_WARN, format __VA_OPT__(, ) __VA_ARGS__)
+#define LOG_ERR(format, ...) log_print(LOG_LEVEL_ERR, format __VA_OPT__(, ) __VA_ARGS__)

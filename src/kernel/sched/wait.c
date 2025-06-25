@@ -144,7 +144,7 @@ bool wait_finalize_block(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread)
     thread_state_t state = atomic_load(&thread->state);
     if (state != THREAD_PRE_BLOCK && state != THREAD_UNBLOCKING)
     {
-        log_print(LOG_INFO, "thread state is THREAD_BLOCKING here state=%d\n", state);
+        LOG_INFO("thread state is THREAD_BLOCKING here state=%d\n", state);
     }
 
     thread_state_t expected = THREAD_PRE_BLOCK;

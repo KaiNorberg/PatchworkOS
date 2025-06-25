@@ -241,7 +241,7 @@ void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gop
 
     kernelFreeAddress = ROUND_UP((uintptr_t)&_kernelEnd, PAGE_SIZE);
 
-    log_print(LOG_INFO, "vmm: kernel phys=[0x%016lx-0x%016lx] virt=[0x%016lx-0x%016lx]\n", kernel->physStart,
+    LOG_INFO("vmm: kernel phys=[0x%016lx-0x%016lx] virt=[0x%016lx-0x%016lx]\n", kernel->physStart,
         kernel->physStart + kernel->length, kernel->virtStart, kernel->virtStart + kernel->length);
 
     uint64_t result = pml_map(kernelPml, kernel->virtStart, kernel->physStart, BYTES_TO_PAGES(kernel->length),
@@ -251,9 +251,9 @@ void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gop
         log_panic(NULL, "Failed to map kernel");
     }
 
-    log_print(LOG_INFO, "vmm: loading pml 0x%016lx\n", kernelPml);
+    LOG_INFO("vmm: loading pml 0x%016lx\n", kernelPml);
     pml_load(kernelPml);
-    log_print(LOG_INFO, "vmm: pml loaded\n");
+    LOG_INFO("vmm: pml loaded\n");
 
     gopBuffer->base = vmm_kernel_map(NULL, gopBuffer->base, BYTES_TO_PAGES(gopBuffer->size), PML_WRITE);
     if (gopBuffer->base == NULL)
@@ -266,7 +266,7 @@ void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gop
 
 void vmm_cpu_init(void)
 {
-    log_print(LOG_INFO, "vmm: global page enable\n");
+    LOG_INFO("vmm: global page enable\n");
     cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);
 }
 
@@ -331,7 +331,7 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t pageAmount, pml_fl
         if (virtAddr == NULL)
         {
             virtAddr = PML_LOWER_TO_HIGHER(physAddr);
-            log_print(LOG_INFO, "vmm: map lower [0x%016lx-0x%016lx] to higher\n", physAddr,
+            LOG_INFO("vmm: map lower [0x%016lx-0x%016lx] to higher\n", physAddr,
                 (uintptr_t)physAddr + pageAmount * PAGE_SIZE);
         }
 

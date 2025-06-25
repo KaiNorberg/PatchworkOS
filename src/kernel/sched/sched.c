@@ -119,12 +119,12 @@ static void sched_init_spawn_boot_thread(void)
     atomic_store(&thread->state, THREAD_RUNNING);
     self->sched.runThread = thread;
 
-    log_print(LOG_INFO, "sched: spawned boot thread\n");
+    LOG_INFO("sched: spawned boot thread\n");
 }
 
 void sched_init(void)
 {
-    log_print(LOG_INFO, "sched: init\n");
+    LOG_INFO("sched: init\n");
     sched_init_spawn_boot_thread();
 
     wait_queue_init(&sleepQueue);

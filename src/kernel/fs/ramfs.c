@@ -354,5 +354,5 @@ void ramfs_init(ram_disk_t* disk)
     assert(vfs_mount("home", &ramfs) != ERR);
     lock_init(&lock);
 
-    log_print(LOG_INFO, "ramfs: init\n");
+    LOG_INFO("ramfs: init\n");
 }

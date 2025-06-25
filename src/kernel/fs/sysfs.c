@@ -245,7 +245,7 @@ void sysfs_init(void)
 
     rwlock_init(&lock);
 
-    log_print(LOG_INFO, "sysfs: init\n");
+    LOG_INFO("sysfs: init\n");
 }
 
 void sysfs_mount_to_vfs(void)

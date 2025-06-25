@@ -5,13 +5,13 @@
 #include "sched/sched.h"
 #include "sched/thread.h"
 #include "sched/wait.h"
-#include "utils/hashmap.h"
+#include "utils/map.h"
 
 #include <stdlib.h>
 
 void futex_ctx_init(futex_ctx_t* ctx)
 {
-    hashmap_init(&ctx->futexes);
+    map_init(&ctx->futexes);
     lock_init(&ctx->lock);
 }
 
@@ -19,7 +19,7 @@ void futex_ctx_deinit(futex_ctx_t* ctx)
 {
     for (uint64_t i = 0; i < ctx->futexes.capacity; i++)
     {
-        hashmap_entry_t* entry = ctx->futexes.entries[i];
+        map_entry_t* entry = ctx->futexes.entries[i];
         if (entry == NULL)
         {
             continue;
@@ -29,22 +29,23 @@ void futex_ctx_deinit(futex_ctx_t* ctx)
         wait_queue_deinit(&futex->queue);
         heap_free(futex);
     }
-    hashmap_deinit(&ctx->futexes);
+    map_deinit(&ctx->futexes);
 }
 
-static futex_t* futex_ctx_get(futex_ctx_t* ctx, atomic_uint64_t* addr)
+static futex_t* futex_ctx_get(futex_ctx_t* ctx, void* addr)
 {
-    futex_t* futex = CONTAINER_OF(hashmap_get(&ctx->futexes, (uint64_t)addr), futex_t, entry);
+    map_key_t key = map_key_uint64((uint64_t)addr);
+    futex_t* futex = CONTAINER_OF(map_get(&ctx->futexes, &key), futex_t, entry);
     if (futex != NULL)
     {
         return futex;
     }
 
     futex = heap_alloc(sizeof(futex_t), HEAP_NONE);
-    hashmap_entry_init(&futex->entry);
+    map_entry_init(&futex->entry);
     wait_queue_init(&futex->queue);
 
-    hashmap_insert(&ctx->futexes, (uint64_t)addr, &futex->entry);
+    map_insert(&ctx->futexes, &key, &futex->entry);
     return futex;
 }
 

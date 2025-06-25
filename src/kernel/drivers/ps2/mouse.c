@@ -91,5 +91,5 @@ void ps2_mouse_init(void)
 
     mouse = mouse_new("ps2");
     irq_install(ps2_mouse_irq, IRQ_PS2_AUX);
-    log_print(LOG_INFO, "ps2: mouse\n");
+    LOG_INFO("ps2: mouse\n");
 }

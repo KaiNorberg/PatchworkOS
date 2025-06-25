@@ -12,8 +12,8 @@
 #include <sys/io.h>
 
 #define LOCAL_BACKLOG_MAX 32
-
 #define LOCAL_BUFFER_SIZE (0x4000)
+#define LOCAL_MAX_PACKET_SIZE (LOCAL_BUFFER_SIZE - sizeof(local_packet_header_t))
 
 typedef enum
 {
@@ -24,39 +24,44 @@ typedef enum
     LOCAL_SOCKET_ACCEPT,
 } local_socket_state_t;
 
+typedef struct
+{
+    uint64_t size;
+} local_packet_header_t;
+
 typedef struct local_listener local_listener_t;
 
-typedef struct local_connection
+typedef struct
 {
-    ring_t serverRing;
-    ring_t clientRing;
+    ring_t serverToClient;
+    ring_t clientToServer;
     local_listener_t* listener;
     lock_t lock;
     wait_queue_t waitQueue;
     atomic_uint64_t ref;
-    atomic_bool accepted;
+    atomic_bool isAccepted;
 } local_connection_t;
+
+typedef struct
+{
+    local_connection_t* buffer[LOCAL_BACKLOG_MAX];
+    uint64_t readIndex;
+    uint64_t writeIndex;
+    uint64_t count;
+} local_backlog_t;
 
 typedef struct local_listener
 {
     list_entry_t entry;
     char address[MAX_NAME];
-    local_connection_t* backlog[LOCAL_BACKLOG_MAX];
-    uint64_t readIndex;
-    uint64_t writeIndex;
-    uint64_t length;
+    local_backlog_t backlog;
     lock_t lock;
     wait_queue_t waitQueue;
     atomic_uint64_t ref;
     sysobj_t sysobj;
 } local_listener_t;
 
-typedef struct local_packet_header
-{
-    uint64_t size; // Size not including header
-} local_packet_header_t;
-
-typedef struct local_socket
+typedef struct
 {
     local_socket_state_t state;
     union {
