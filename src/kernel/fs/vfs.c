@@ -163,6 +163,8 @@ filesystem_t* vfs_get_filesystem(const char* name)
 
 inode_t* vfs_get_inode(superblock_t* superblock, inode_id_t id)
 {
+    return ERROR(ENOSYS);
+    /*
     if (superblock == NULL)
     {
         return NULL;
@@ -200,9 +202,10 @@ inode_t* vfs_get_inode(superblock_t* superblock, inode_id_t id)
     map_insert(&inodeCache.map, &key, &inode->mapEntry);
     rwlock_write_release(&inodeCache.lock);
     return inode; // This is the inital reference.
+    */
 }
 
-dentry_t* vfs_lookup_component(dentry_t* parent, const char* name)
+dentry_t* vfs_get_dentry(dentry_t* parent, const char* name)
 {
     if (parent == NULL || name == NULL)
     {
@@ -249,24 +252,39 @@ dentry_t* vfs_lookup_component(dentry_t* parent, const char* name)
     return dentry;
 }
 
-uint64_t vfs_parse_flags(const char* pathname, path_flags_t* outFlags)
+uint64_t vfs_parse_pathname(parsed_pathname_t* dest, const char* pathname)
 {
     const char* flags = NULL;
 
     const char* p = pathname;
     while (*p != '\0')
     {
+        uint64_t len = p - pathname;
+        if (len >= MAX_PATH)
+        {
+            return ERROR(ENAMETOOLONG);
+        }
+
         if (*p == '?')
         {
-            if (flags != NULL) // Invalid formatting
+            if (flags != NULL) // There should only be one ? char in the path.
             {
                 return ERROR(EBADFLAG);
             }
             flags = p + 1;
         }
+        if (flags == NULL) // If we have not yet encountered a ? char then we are not parsing the flags.
+        {
+            dest->pathname[len] = *p;
+        }
+
+        p++;
     }
 
-    *outFlags = PATH_NONE;
+    uint64_t len = flags - pathname;
+    dest->pathname[len] = '\0';
+
+    dest->flags = PATH_NONE;
 
     while (true)
     {
@@ -298,7 +316,7 @@ uint64_t vfs_parse_flags(const char* pathname, path_flags_t* outFlags)
         {
             return ERROR(EBADFLAG);
         }
-        *outFlags |= flag->flag;
+        dest->flags |= flag->flag;
     }
 }
 
@@ -392,7 +410,7 @@ static uint64_t vfs_traverse_component(path_t* current, const char* component)
     }
     lock_release(&current->dentry->lock);
 
-    dentry_t* next = vfs_lookup_component(current->dentry, component);
+    dentry_t* next = vfs_get_dentry(current->dentry, component);
     if (next == NULL)
     {
         return ERR;
@@ -404,7 +422,7 @@ static uint64_t vfs_traverse_component(path_t* current, const char* component)
     return 0;
 }
 
-uint64_t vfs_path_walk(path_t* outPath, const char* pathname, vfs_lookup_flags_t flags, const path_t* start)
+uint64_t vfs_path_walk(path_t* outPath, const char* pathname, const path_t* start)
 {
     if (pathname == NULL)
     {
@@ -452,18 +470,19 @@ uint64_t vfs_path_walk(path_t* outPath, const char* pathname, vfs_lookup_flags_t
             p++;
         }
 
-        if (*p == '\0' || *p == '?')
+        if (*p == '\0')
         {
-            if ((flags & LOOKUP_NO_FLAGS) && *p == '?')
-            {
-                path_put(&current);
-                return ERROR(EBADFLAG);
-            }
             break;
         }
 
+        if (*p == '?')
+        {
+            path_put(&current);
+            return ERROR(EBADFLAG);
+        }
+
         const char* componentStart = p;
-        while (*p != '\0' && *p != '/' && *p != '?')
+        while (*p != '\0' && *p != '/')
         {
             if (!VFS_VALID_CHAR(*p))
             {
@@ -510,7 +529,7 @@ uint64_t vfs_path_walk(path_t* outPath, const char* pathname, vfs_lookup_flags_t
     return 0;
 }
 
-uint64_t vfs_path_walk_parent(path_t* outPath, const char* pathname, vfs_lookup_flags_t flags, const path_t* start, char* outLastName)
+uint64_t vfs_path_walk_parent(path_t* outPath, const char* pathname, const path_t* start, char* outLastName)
 {
     if (pathname == NULL || outLastName == NULL)
     {
@@ -533,7 +552,7 @@ uint64_t vfs_path_walk_parent(path_t* outPath, const char* pathname, vfs_lookup_
     {
         RWLOCK_READ_DEFER(&root.lock);
         outPath->dentry = dentry_ref(root.mount->superblock->root);
-        outPath->mount = dentry_ref(root.mount);
+        outPath->mount = mount_ref(root.mount);
         return 0;
     }
 
@@ -543,25 +562,25 @@ uint64_t vfs_path_walk_parent(path_t* outPath, const char* pathname, vfs_lookup_
     memcpy(parentPath, pathname, parentLen);
     parentPath[parentLen] = '\0';
 
-    return vfs_path_walk(outPath, parentPath, flags, start);
+    return vfs_path_walk(outPath, parentPath, start);
 }
 
-uint64_t vfs_lookup(path_t* outPath, const char* pathname, vfs_lookup_flags_t flags)
+uint64_t vfs_lookup(path_t* outPath, const char* pathname)
 {
     path_t cwd;
     vfs_ctx_get_cwd(&sched_process()->vfsCtx, &cwd);
     PATH_DEFER(&cwd);
 
-    return vfs_path_walk(outPath, pathname, flags, &cwd);
+    return vfs_path_walk(outPath, pathname, &cwd);
 }
 
-uint64_t vfs_lookup_parent(path_t* outPath, const char* pathname, vfs_lookup_flags_t flags, char* outLastName)
+uint64_t vfs_lookup_parent(path_t* outPath, const char* pathname, char* outLastName)
 {
     path_t cwd;
     vfs_ctx_get_cwd(&sched_process()->vfsCtx, &cwd);
     PATH_DEFER(&cwd);
 
-    return vfs_path_walk_parent(outPath, pathname, flags, &cwd, outLastName);
+    return vfs_path_walk_parent(outPath, pathname, &cwd, outLastName);
 }
 
 uint64_t vfs_mount(const char* deviceName, const char* mountpoint, const char* fsName, superblock_flags_t flags,
@@ -585,50 +604,44 @@ uint64_t vfs_mount(const char* deviceName, const char* mountpoint, const char* f
     }
     SUPER_DEFER(superblock);
 
-    mount_t* mount = mount_new();
-    if (mount == NULL)
-    {
-        return ERR;
-    }
-    MOUNT_DEFER(mount);
-
-    if (root.mount == NULL) // Special handling for mounting inital file system, since this can only happen during boot there is no need for the lock before the if statement.
+    if (root.mount == NULL) // Special handling for mounting inital file system, since this can only happen during boot there is no need for the lock before the if statement.§
     {
         rwlock_write_acquire(&root.lock);
-
-        mount->superblock = superblock_ref(superblock);
-        mount->mountpoint = NULL; // Not mounted to anything.
-        mount->parent = NULL;
-        root.mount = mount_ref(mount);
-
+        root.mount = mount_new(superblock, NULL);
+        assert(root.mount != NULL); // Only happens during boot, must not fail.
         rwlock_write_release(&root.lock);
         return 0;
     }
 
-    path_t mountPath;
-    if (vfs_lookup(&mountPath, mountpoint, LOOKUP_NO_FLAGS) == ERR)
+    path_t path;
+    if (vfs_lookup(&path, mountpoint) == ERR)
     {
         return ERR;
     }
-    PATH_DEFER(&mountPath);
+    PATH_DEFER(&path);
 
-    lock_acquire(&mountPath.dentry->lock);
-    if (mountPath.dentry->flags & DENTRY_MOUNTPOINT)
+    lock_acquire(&path.dentry->lock);
+    if (path.dentry->flags & DENTRY_MOUNTPOINT)
     {
-        lock_release(&mountPath.dentry->lock);
+        lock_release(&path.dentry->lock);
         return ERROR(EBUSY);
     }
 
-    mount->superblock = superblock_ref(superblock);
-    mount->mountpoint = dentry_ref(mountPath.dentry);
-    mount->parent = mount_ref(mountPath.mount);
-    mountPath.dentry->flags |= DENTRY_MOUNTPOINT;
 
-    map_key_t key = mount_key(mountPath.mount->id, mountPath.dentry->id);
+    mount_t* mount = mount_new(superblock, &path);
+    if (mount == NULL)
+    {
+        lock_release(&path.dentry->lock);
+        return ERR;
+    }
+
+    path.dentry->flags |= DENTRY_MOUNTPOINT;
+
+    map_key_t key = mount_key(path.mount->id, path.dentry->id);
     rwlock_write_acquire(&mountCache.lock);
     map_insert(&mountCache.map, &key, &mount_ref(mount)->mapEntry);
     rwlock_write_release(&mountCache.lock);
-    lock_release(&mountPath.dentry->lock);
+    lock_release(&path.dentry->lock);
 
     // superblock_expose(superblock); // TODO: Expose the sysdir for the superblock
 
@@ -644,7 +657,7 @@ uint64_t vfs_unmount(const char* mountpoint)
     }
 
     path_t path;
-    if (vfs_lookup(&path, mountpoint, LOOKUP_NO_FLAGS) == ERR)
+    if (vfs_lookup(&path, mountpoint) == ERR)
     {
         return ERR;
     }
@@ -681,6 +694,8 @@ uint64_t vfs_unmount(const char* mountpoint)
     map_remove(&mountCache.map, &key);
     mount_deref(mount); // Remove reference in cache.
 
+    path.dentry->flags &= ~DENTRY_MOUNTPOINT;
+
     LOG_INFO("vfs: unmounted %s\n", mountpoint);
     return 0;
 }
@@ -692,11 +707,97 @@ file_t* vfs_open(const char* pathname)
         return ERRPTR(EINVAL);
     }
 
+    parsed_pathname_t parsed;
+    if (vfs_parse_pathname(&parsed, pathname) == ERR)
+    {
+        return NULL;
+    }
+
     dentry_t* dentry = NULL;
-    return ERRPTR(ENOSYS);
+    if (parsed.flags & PATH_CREATE)
+    {
+        char lastComponent[MAX_NAME];
+        path_t parent;
+        if (vfs_lookup_parent(&parent, parsed.pathname, lastComponent) == ERR)
+        {
+            return NULL;
+        }
+        PATH_DEFER(&parent);
+
+        dentry = vfs_get_dentry(parent.dentry, lastComponent);
+        if (dentry == NULL)
+        {
+            if (parent.dentry->inode == NULL || parent.dentry->inode->ops == NULL || parent.dentry->inode->ops->create == NULL)
+            {
+                return ERRPTR(ENOSYS);
+            }
+
+            inode_t* inode = parent.dentry->inode->ops->create(parent.dentry->inode, lastComponent, INODE_NONE);
+            if (inode == NULL)
+            {
+                return NULL;
+            }
+
+            INODE_DEFER(inode);
+
+            dentry = dentry_new(parent.dentry, lastComponent, inode);
+            if (dentry == NULL)
+            {
+                return NULL;
+            }
+
+            map_key_t key = dentry_key(parent.dentry->id, lastComponent);
+            rwlock_write_acquire(&dentryCache.lock);
+            map_insert(&dentryCache.map, &key, &dentry->mapEntry);
+            rwlock_write_release(&dentryCache.lock);
+        }
+        else if (parsed.flags & PATH_EXCLUSIVE)
+        {
+            dentry_deref(dentry);
+            return ERROR(EEXIST);
+        }
+    }
+    else // Dont create dentry
+    {
+        path_t path;
+        if (vfs_lookup(&path, pathname) == ERR)
+        {
+            return NULL;
+        }
+
+        dentry = dentry_ref(path.dentry);
+        path_put(&path);
+    }
+
+    DENTRY_DEFER(dentry);
+
+    file_t* file = file_new(dentry, parsed.flags);
+    if (file == NULL)
+    {
+        return NULL;
+    }
+
+    if ((parsed.flags & PATH_TRUNCATE) && dentry->inode->type == INODE_FILE)
+    {
+        dentry->inode->size = 0;
+        dentry->inode->modifyTime = systime_uptime();
+        inode_sync(dentry->inode);
+    }
+
+    if (file->ops != NULL && file->ops->open != NULL)
+    {
+        uint64_t result = file->ops->open(dentry->inode, file);
+        if (result == ERR)
+        {
+            file_deref(file);
+            return NULL;
+        }
+    }
+
+    return file;
 }
 
-superblock_t* superblock_new(void)
+superblock_t* superblock_new(const char* deviceName, const char* fsName, super_ops_t* ops, dentry_ops_t* dentryOps)
 {
     superblock_t* superblock = heap_alloc(sizeof(superblock_t), HEAP_NONE);
     if (superblock == NULL)
@@ -712,9 +813,12 @@ superblock_t* superblock_new(void)
     superblock->flags = SUPER_NONE;
     superblock->private = NULL;
     superblock->root = NULL;
-    superblock->ops = NULL;
-    memset(superblock->deviceName, 0, MAX_NAME);
-    memset(superblock->fsName, 0, MAX_NAME);
+    superblock->ops = ops;
+    superblock->ops = dentryOps;
+    strncpy(superblock->deviceName, deviceName, MAX_NAME - 1);
+    superblock->deviceName[MAX_NAME - 1] = '\0';
+    strncpy(superblock->fsName, fsName, MAX_NAME - 1);
+    superblock->fsName[MAX_NAME - 1] = '\0';
     // superblock::sysdir is exposed in vfs_mount
     return superblock;
 }
@@ -759,7 +863,7 @@ void superblock_deref(superblock_t* superblock)
     }
 }
 
-inode_t* inode_new(superblock_t* superblock)
+inode_t* inode_new(superblock_t* superblock, inode_type_t type, inode_ops_t* ops, file_ops_t* fileOps)
 {
     if (superblock == NULL)
     {
@@ -779,7 +883,8 @@ inode_t* inode_new(superblock_t* superblock)
     map_entry_init(&inode->mapEntry);
     inode->id = 0;
     atomic_init(&inode->ref, 1);
-    inode->type = INODE_FILE;
+    inode->type = type;
+    inode->mode = INODE_NONE;
     inode->size = 0;
     inode->blocks = 0;
     inode->blockSize = superblock->blockSize;
@@ -789,8 +894,8 @@ inode_t* inode_new(superblock_t* superblock)
     inode->linkCount = 1;
     inode->private = NULL;
     inode->superblock = superblock_ref(superblock);
-    inode->ops = NULL;
-    inode->fileOps = NULL;
+    inode->ops = ops;
+    inode->fileOps = fileOps;
 
     return inode;
 }
@@ -854,7 +959,7 @@ uint64_t inode_sync(inode_t* inode)
     return 0;
 }
 
-dentry_t* dentry_new(const char* name)
+dentry_t* dentry_new(dentry_t* parent, const char* name, inode_t* inode)
 {
     if (strnlen_s(name, MAX_NAME) >= MAX_NAME)
     {
@@ -871,9 +976,10 @@ dentry_t* dentry_new(const char* name)
     dentry->id = atomic_fetch_add(&newVfsId, 1);
     atomic_init(&dentry->ref, 1);
     strcpy(dentry->name, name);
-    dentry->inode = NULL;
-    dentry->parent = dentry; // Starts off as root before its asigned a parent.
-    dentry->superblock = NULL;
+    dentry->inode = inode;
+    dentry->parent = parent != NULL ? dentry_ref(parent) : dentry; // If a parent is not assigned then the dentry becomes a root entry.
+    dentry->superblock = parent != NULL ? superblock_ref(parent->superblock) : NULL; // If this is a root entry then superblock must be set by the caller.
+    dentry->ops = dentry->superblock != NULL ? dentry->superblock->dentryOps : NULL;
     dentry->private = NULL;
     dentry->flags = DENTRY_NONE;
     lock_init(&dentry->lock);
@@ -893,7 +999,7 @@ void dentry_free(dentry_t* dentry)
         inode_deref(dentry->inode);
     }
 
-    if (dentry->parent != NULL)
+    if (dentry->parent != NULL && !DETNRY_IS_ROOT(dentry))
     {
         dentry_deref(dentry->parent);
     }
@@ -920,7 +1026,7 @@ void dentry_deref(dentry_t* dentry)
     if (dentry != NULL && atomic_fetch_sub(&dentry->ref, 1) <= 1)
     {
         rwlock_write_acquire(&dentryCache.lock);
-        map_key_t key = dentry_key(dentry->parent, dentry->name);
+        map_key_t key = dentry_key(dentry->parent->id, dentry->name);
         map_remove(&dentryCache.map, &key);
         rwlock_write_release(&dentryCache.lock);
 
@@ -928,7 +1034,7 @@ void dentry_deref(dentry_t* dentry)
     }
 }
 
-file_t* file_new(void)
+file_t* file_new(dentry_t* dentry, path_flags_t flags)
 {
     file_t* file = heap_alloc(sizeof(file_t), HEAP_NONE);
     if (file == NULL)
@@ -938,9 +1044,9 @@ file_t* file_new(void)
 
     atomic_init(&file->ref, 1);
     file->pos = 0;
-    file->flags = 0;
-    file->dentry = NULL;
-    file->ops = NULL;
+    file->flags = flags;
+    file->dentry = dentry_ref(dentry);
+    file->ops = dentry->inode->fileOps;
     file->private = NULL;
 
     return file;
@@ -982,7 +1088,7 @@ void file_deref(file_t* file)
     }
 }
 
-mount_t* mount_new(void)
+mount_t* mount_new(superblock_t* superblock, path_t* mountpoint)
 {
     mount_t* mount = heap_alloc(sizeof(mount_t), HEAP_NONE);
     if (mount == NULL)
@@ -993,9 +1099,9 @@ mount_t* mount_new(void)
     map_entry_init(&mount->mapEntry);
     mount->id = atomic_fetch_add(&newVfsId, 1);
     atomic_init(&mount->ref, 1);
-    mount->superblock = NULL;
-    mount->mountpoint = NULL;
-    mount->parent = NULL;
+    mount->superblock = superblock_ref(superblock);
+    mount->mountpoint = mountpoint != NULL ? dentry_ref(mountpoint->dentry) : NULL;
+    mount->parent = mountpoint != NULL ? mount_ref(mountpoint->mount) : NULL;
 
     return mount;
 }
@@ -1015,6 +1121,11 @@ void mount_free(mount_t* mount)
     if (mount->mountpoint != NULL)
     {
         dentry_deref(mount->mountpoint);
+    }
+
+    if (mount->parent != NULL)
+    {
+        mount_deref(mount->parent);
     }
 
     heap_free(mount);

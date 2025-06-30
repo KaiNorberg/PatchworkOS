@@ -53,6 +53,14 @@ void vfs_ctx_get_cwd(vfs_ctx_t* ctx, path_t* outCwd)
     path_copy(outCwd, &ctx->cwd);
 }
 
+uint64_t vfs_ctx_set_cwd(vfs_ctx_t* ctx, const path_t* cwd)
+{
+    LOCK_DEFER(&ctx->lock);
+
+    path_put(&ctx->cwd);
+    path_copy(&ctx->cwd, cwd);
+}
+
 fd_t vfs_ctx_open(vfs_ctx_t* ctx, file_t* file)
 {
     LOCK_DEFER(&ctx->lock);

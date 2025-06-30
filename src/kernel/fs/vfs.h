@@ -4,6 +4,7 @@
 #include "sync/rwlock.h"
 #include "sysfs.h"
 #include "utils/map.h"
+#include "sync/lock.h"
 
 #include <ctype.h>
 #include <stdatomic.h>
@@ -11,6 +12,10 @@
 #include <sys/io.h>
 #include <sys/list.h>
 #include <sys/proc.h>
+
+// TODO: Implement improved caching, LRU. Let the map_t handle static buffer + wrapper?
+// TODO: Implement per-process namespaces.
+// TODO: Implement literally everything else.
 
 #define VFS_HANDLE_DOTDOT_MAX_ITER 1000
 
@@ -68,6 +73,11 @@ typedef enum
     PATH_DIRECTORY = 1 << 5
 } path_flags_t;
 
+typedef enum
+{
+    INODE_NONE = 0,
+} inode_mode_t;
+
 typedef struct
 {
     map_entry_t entry;
@@ -98,6 +108,7 @@ typedef struct superblock
     void* private;
     dentry_t* root;
     const super_ops_t* ops;
+    const dentry_ops_t* dentryOps;
     char deviceName[MAX_NAME];
     char fsName[MAX_NAME];
     sysdir_t sysdir;
@@ -109,6 +120,7 @@ typedef struct inode
     inode_id_t id;
     atomic_uint64_t ref;
     inode_type_t type;
+    inode_mode_t mode;
     uint64_t size;
     uint64_t blocks;
     uint64_t blockSize;
@@ -177,6 +189,7 @@ typedef struct superblock_ops
 typedef struct inode_ops
 {
     dentry_t* (*lookup)(inode_t* dir, const char* name);
+    inode_t* (*create)(inode_t* dir, const char* name, inode_mode_t mode);
 } inode_ops_t;
 
 typedef struct dentry_ops
@@ -185,7 +198,8 @@ typedef struct dentry_ops
 } dentry_ops_t;
 
 typedef struct file_ops
-{
+{    
+    uint64_t (*open)(inode_t* inode, file_t* file);
     void (*free)(file_t* file);
 } file_ops_t;
 
@@ -220,50 +234,67 @@ uint64_t vfs_unregister_fs(filesystem_t* fs);
 filesystem_t* vfs_get_filesystem(const char* name);
 
 inode_t* vfs_get_inode(superblock_t* superblock, inode_id_t id);
-dentry_t* vfs_lookup_component(dentry_t* parent, const char* name);
+dentry_t* vfs_get_dentry(dentry_t* parent, const char* name);
 
-typedef enum
+typedef struct
 {
-    LOOKUP_NONE = 0,
-    LOOKUP_NO_FLAGS = 1 << 0,
-} vfs_lookup_flags_t;
+    char pathname[MAX_PATH];
+    path_flags_t flags;
+} parsed_pathname_t;
 
-uint64_t vfs_parse_flags(const char* pathname, path_flags_t* outFlags);
+uint64_t vfs_parse_pathname(parsed_pathname_t* dest, const char* pathname);
 
-uint64_t vfs_path_walk(path_t* outPath, const char* pathname, vfs_lookup_flags_t flags, const path_t* start);
-uint64_t vfs_path_walk_parent(path_t* outPath, const char* pathname, vfs_lookup_flags_t flags, const path_t* start, char* outLastName);
+uint64_t vfs_path_walk(path_t* outPath, const char* pathname, const path_t* start);
+uint64_t vfs_path_walk_parent(path_t* outPath, const char* pathname, const path_t* start, char* outLastName);
 
-uint64_t vfs_lookup(path_t* outPath, const char* pathname, vfs_lookup_flags_t flags);
-uint64_t vfs_lookup_parent(path_t* outPath, const char* pathname, vfs_lookup_flags_t flags, char* outLastName);
+uint64_t vfs_lookup(path_t* outPath, const char* pathname);
+uint64_t vfs_lookup_parent(path_t* outPath, const char* pathname, char* outLastName);
 
 uint64_t vfs_mount(const char* deviceName, const char* mountpoint, const char* fsName, superblock_flags_t flags,
     const void* data);
 uint64_t vfs_unmount(const char* mountpoint);
 
 file_t* vfs_open(const char* pathname);
+uint64_t vfs_open2(const char* pathname, file_t* files[2]);
+uint64_t vfs_read(file_t* file, void* buffer, uint64_t count);
+uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count);
+uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin);
+uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size);
+void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot);
+uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout);
 
-superblock_t* superblock_new(void);
+uint64_t vfs_readdir(file_t* file, stat_t* infos, uint64_t amount);
+uint64_t vfs_mkdir(const char* pathname, uint64_t mode);
+uint64_t vfs_rmdir(const char* pathname);
+
+uint64_t vfs_stat(const char* pathname, stat_t* buffer);
+uint64_t vfs_link(const char* oldpath, const char* newpath);
+uint64_t vfs_unlink(const char* pathname);
+uint64_t vfs_rename(const char* oldpath, const char* newpath);
+uint64_t vfs_remove(const char* pathname);
+
+superblock_t* superblock_new(const char* deviceName, const char* fsName, super_ops_t* ops, dentry_ops_t* dentryOps);
 void superblock_free(superblock_t* superblock);
 superblock_t* superblock_ref(superblock_t* superblock);
 void superblock_deref(superblock_t* superblock);
 
-inode_t* inode_new(superblock_t* superblock);
+inode_t* inode_new(superblock_t* superblock, inode_type_t type, inode_ops_t* ops, file_ops_t* fileOps);
 void inode_free(inode_t* inode);
 inode_t* inode_ref(inode_t* inode);
 void inode_deref(inode_t* inode);
 uint64_t inode_sync(inode_t* inode);
 
-dentry_t* dentry_new(const char* name);
+dentry_t* dentry_new(dentry_t* parent, const char* name, inode_t* inode);
 void dentry_free(dentry_t* dentry);
 dentry_t* dentry_ref(dentry_t* dentry);
 void dentry_deref(dentry_t* dentry);
 
-file_t* file_new(void);
+file_t* file_new(dentry_t* dentry, path_flags_t flags);
 void file_free(file_t* file);
 file_t* file_ref(file_t* file);
 void file_deref(file_t* file);
 
-mount_t* mount_new(void);
+mount_t* mount_new(superblock_t* superblock, path_t* mountpoint);
 void mount_free(mount_t* mount);
 mount_t* mount_ref(mount_t* mount);
 void mount_deref(mount_t* mount);
