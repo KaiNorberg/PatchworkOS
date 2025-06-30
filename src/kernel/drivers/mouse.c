@@ -14,7 +14,7 @@
 
 static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count)
 {
-    mouse_t* mouse = file->private;
+    mouse_t* mouse = file->dentry->inode->private;
 
     count = ROUND_DOWN(count, sizeof(mouse_event_t));
     for (uint64_t i = 0; i < count / sizeof(mouse_event_t); i++)
@@ -35,16 +35,16 @@ static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count)
 
 static wait_queue_t* mouse_poll(file_t* file, poll_file_t* pollFile)
 {
-    mouse_t* mouse = file->private;
+    mouse_t* mouse = file->dentry->inode->private;
     pollFile->revents = POLL_READ & (mouse->writeIndex != file->pos);
     return &mouse->waitQueue;
 }
 
-SYSFS_STANDARD_OPS_DEFINE(mouseOps, PATH_NONE,
-    (file_ops_t){
-        .read = mouse_read,
-        .poll = mouse_poll,
-    });
+static file_ops_t mouseOps =
+{
+    .read = mouse_read,
+    .poll = mouse_poll,
+};
 
 mouse_t* mouse_new(const char* name)
 {

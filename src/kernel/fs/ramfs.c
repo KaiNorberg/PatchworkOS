@@ -16,7 +16,7 @@
 #include <sys/list.h>
 #include <sys/math.h>
 
-static ram_dir_t* root;
+/*static ram_dir_t* root;
 static lock_t lock;
 
 static uint64_t ramfs_readdir(file_t* file, stat_t* infos, uint64_t amount)
@@ -346,13 +346,13 @@ static ram_dir_t* ramfs_load_dir(ram_dir_t* in)
     }
 
     return newDir;
-}
+}*/
 
 void ramfs_init(ram_disk_t* disk)
 {
-    root = ramfs_load_dir(disk->root);
+    /*root = ramfs_load_dir(disk->root);
     assert(vfs_mount("home", &ramfs) != ERR);
     lock_init(&lock);
 
-    LOG_INFO("ramfs: init\n");
+    LOG_INFO("ramfs: init\n");*/
 }

@@ -13,10 +13,9 @@
 
 #define CTL_STANDARD_OPS_DEFINE(name, supportedFlags, ...) \
     CTL_STANDARD_WRITE_DEFINE(name##write, __VA_ARGS__) \
-    SYSFS_STANDARD_OPS_DEFINE(name, supportedFlags, \
-        (file_ops_t){ \
-            .write = name##write, \
-        });
+    file_ops_t name = (file_ops_t){ \
+        .write = name##write, \
+    };
 
 typedef uint64_t (*ctl_func_t)(file_t* file, uint64_t, const char**);
 

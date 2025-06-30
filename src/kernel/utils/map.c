@@ -37,7 +37,7 @@ uint64_t hash_buffer(const void* buffer, uint64_t length)
 
     for (uint64_t i = 0; i < length; ++i)
     {
-        hash ^= (uint64_t)str[i];
+        hash ^= (uint64_t)((uint8_t*)buffer)[i];
         hash *= prime;
     }
 

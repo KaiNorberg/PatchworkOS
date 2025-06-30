@@ -86,7 +86,7 @@ void log_disable_screen(void)
     state.config.outputs &= ~LOG_OUTPUT_SCREEN;
 }
 
-static uint64_t log_obj_read(file_t* file, void* buffer, uint64_t count)
+static uint64_t klog_read(file_t* file, void* buffer, uint64_t count)
 {
     LOCK_DEFER(&lock);
 
@@ -95,7 +95,7 @@ static uint64_t log_obj_read(file_t* file, void* buffer, uint64_t count)
     return result;
 }
 
-static uint64_t log_obj_write(file_t* file, const void* buffer, uint64_t count)
+static uint64_t klog_write(file_t* file, const void* buffer, uint64_t count)
 {
     if (count == 0)
     {
@@ -112,17 +112,17 @@ static uint64_t log_obj_write(file_t* file, const void* buffer, uint64_t count)
     return count;
 }
 
-SYSFS_STANDARD_OPS_DEFINE(ops, PATH_NONE,
-    (file_ops_t){
-        .read = log_obj_read,
-        .write = log_obj_write,
-    });
+static file_ops_t klogOps =
+{
+    .read = klog_read,
+    .write = klog_write,
+};
 
 void log_obj_expose(void)
 {
     LOCK_DEFER(&lock);
 
-    assert(sysobj_init_path(&obj.obj, "/", "klog", &ops, NULL) != ERR);
+    assert(sysobj_init_path(&obj.obj, "/", "klog", &klogOps, NULL) != ERR);
 }
 
 static void log_print_to_outputs(const char* string, uint64_t length)

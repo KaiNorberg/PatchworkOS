@@ -2,7 +2,6 @@
 
 #include "log/log.h"
 #include "mem/heap.h"
-#include "path.h"
 #include "sched/thread.h"
 #include "sync/rwlock.h"
 #include "vfs.h"
@@ -61,7 +60,7 @@ static void sysobj_deref(sysobj_t* sysobj)
     }
 }
 
-static uint64_t sysfs_readdir(file_t* file, stat_t* infos, uint64_t amount)
+/*static uint64_t sysfs_readdir(file_t* file, stat_t* infos, uint64_t amount)
 {
     RWLOCK_READ_DEFER(&lock);
     sysdir_t* sysdir = CONTAINER_OF(file->syshdr, sysdir_t, header);
@@ -235,6 +234,61 @@ static uint64_t sysfs_mount(const char* label)
 static fs_t sysfs = {
     .name = "sysfs",
     .mount = sysfs_mount,
+};*/
+
+static inode_ops_t inodeOps =
+{
+
+};
+
+static dentry_ops_t dentryOps =
+{
+
+};
+
+static uint64_t ramfs_sync_inode(superblock_t* superblock, inode_t* inode)
+{
+    return ERROR(ENOSYS);
+}
+
+static super_ops_t superOps =
+{
+
+};
+
+static superblock_t* sysfs_mount(const char* deviceName, superblock_flags_t flags, const void* data)
+{
+    superblock_t* superblock = superblock_new(deviceName, SYSFS_NAME, &superOps, &dentryOps);
+    if (superblock == NULL)
+    {
+        return NULL;
+    }
+
+    superblock->blockSize = 0;
+    superblock->maxFileSize = UINT64_MAX;
+
+    inode_t* rootInode = inode_new(superblock, INODE_DIR, &inodeOps, NULL);
+    if (rootInode == NULL)
+    {
+        superblock_deref(superblock);
+        return NULL;
+    }
+
+    superblock->root = dentry_new(NULL, VFS_ROOT_ENTRY_NAME, rootInode);
+    if (superblock->root == NULL)
+    {
+        inode_deref(rootInode);
+        superblock_deref(superblock);
+        return NULL;
+    }
+
+    return superblock;
+}
+
+static filesystem_t sysfs =
+{
+    .name = SYSFS_NAME,
+    .mount = sysfs_mount,
 };
 
 void sysfs_init(void)
@@ -248,18 +302,19 @@ void sysfs_init(void)
     LOG_INFO("sysfs: init\n");
 }
 
-void sysfs_mount_to_vfs(void)
+void syfs_after_vfs_init(void)
 {
-    assert(vfs_mount("sys", &sysfs) != ERR);
+    assert(vfs_register_fs(&sysfs) != ERR);
+    assert(vfs_mount(VFS_DEVICE_NAME_NONE, "/", SYSFS_NAME, SUPER_NONE, NULL) != ERR);
 }
 
 uint64_t sysfs_start_op(file_t* file)
 {
-    assert(file->syshdr != NULL);
+    /*assert(file->syshdr != NULL);
     if (atomic_load(&file->syshdr->hidden) == true)
     {
         return ERROR(EDISCONNECTED);
-    }
+    }*/
 
     return 0;
 }
@@ -268,23 +323,43 @@ void sysfs_end_op(file_t* file)
 {
 }
 
-static node_t* sysfs_traverse_and_alloc(const char* path)
+static node_t* sysfs_traverse(const char* path)
 {
-    path_t parsedPath;
-    if (path_init(&parsedPath, path, NULL) == ERR)
-    {
-        return NULL;
-    }
-    if (parsedPath.volume[0] != '\0')
-    {
-        return NULL;
-    }
-
+    char component[MAX_NAME];
+    const char* p = path;
     node_t* parent = &root.header.node;
-    const char* name;
-    PATH_FOR_EACH(name, &parsedPath)
+    while (*p != '\0')
     {
-        node_t* child = node_find(parent, name);
+        while (*p == '/')
+        {
+            p++;
+        }
+
+        if (*p == '\0')
+        {
+            break;
+        }
+
+        const char* componentStart = p;
+        while (*p != '\0' && *p != '/')
+        {
+            if (!VFS_VALID_CHAR(*p))
+            {
+                return ERRPTR(EINVAL);
+            }
+            p++;
+        }
+
+        uint64_t len = p - componentStart;
+        if (len >= MAX_NAME)
+        {
+            return ERRPTR(ENAMETOOLONG);
+        }
+
+        memcpy(component, componentStart, len);
+        component[len] = '\0';
+
+        node_t* child = node_find(parent, component);
         if (child == NULL)
         {
             sysdir_t* dir = heap_alloc(sizeof(sysdir_t), HEAP_NONE);
@@ -293,13 +368,14 @@ static node_t* sysfs_traverse_and_alloc(const char* path)
                 return NULL;
             }
 
-            syshdr_init(&dir->header, name, SYSFS_DIR);
+            syshdr_init(&dir->header, component, SYSFS_DIR);
             dir->private = NULL;
             dir->onFree = NULL;
             node_push(parent, &dir->header.node);
 
             child = &dir->header.node;
         }
+
         if (child->type != SYSFS_DIR)
         {
             return ERRPTR(ENOTDIR);
@@ -313,14 +389,9 @@ static node_t* sysfs_traverse_and_alloc(const char* path)
 
 uint64_t sysdir_init(sysdir_t* dir, const char* path, const char* dirname, void* private)
 {
-    if (!path_is_name_valid(dirname))
-    {
-        return ERROR(EINVAL);
-    }
-
     RWLOCK_WRITE_DEFER(&lock);
 
-    node_t* parent = sysfs_traverse_and_alloc(path);
+    node_t* parent = sysfs_traverse(path);
     if (parent == NULL)
     {
         return ERR;
@@ -361,9 +432,9 @@ void sysdir_deinit(sysdir_t* dir, sysdir_on_free_t onFree)
     sysdir_deref(dir);
 }
 
-uint64_t sysobj_init(sysobj_t* sysobj, sysdir_t* dir, const char* filename, const sysobj_ops_t* ops, void* private)
-{
-    if (!path_is_name_valid(filename))
+uint64_t sysobj_init(sysobj_t* sysobj, sysdir_t* dir, const char* filename, const file_ops_t* ops, void* private)
+{    
+    if (!vfs_is_name_valid(filename))
     {
         return ERROR(EINVAL);
     }
@@ -385,17 +456,17 @@ uint64_t sysobj_init(sysobj_t* sysobj, sysdir_t* dir, const char* filename, cons
     return 0;
 }
 
-uint64_t sysobj_init_path(sysobj_t* sysobj, const char* path, const char* filename, const sysobj_ops_t* ops,
+uint64_t sysobj_init_path(sysobj_t* sysobj, const char* path, const char* filename, const file_ops_t* ops,
     void* private)
-{
-    if (!path_is_name_valid(filename))
+{    
+    if (!vfs_is_name_valid(filename))
     {
         return ERROR(EINVAL);
     }
 
     RWLOCK_WRITE_DEFER(&lock);
 
-    node_t* parent = sysfs_traverse_and_alloc(path);
+    node_t* parent = sysfs_traverse(path);
     if (parent == NULL)
     {
         return ERR;

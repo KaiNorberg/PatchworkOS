@@ -27,16 +27,16 @@ extern "C"
  * following the philosophy that **everything is a file**. This means interacting with physical devices,
  * inter-process communication (like shared memory), and much more is handled via files.
  *
- * ### File Paths and Flags
+ * ### Flags
  *
- * PatchworkOS has a multiroot file system using labels not letters. You may also notice that functions like `open()` do
+ * You may notice that functions like `open()` do
  * not have a specific argument for flags, instead the filepath itself contains the flags. This is done by appending a
  * '?' char to the end of a file path and then separating flags using the '&' char, like a web link. This system makes
  * using a shell far simpler and powerful as you can add flags to your filepath directly without any additional handling
  * by the shell, for example there is no need for a "truncate" redirect (>>) instead you can just add the "trunc" flag
  * to the filepath and use a normal redirect (>).
  *
- * Here is an example filepath: `this:/is/a/path?with&some&flags`.
+ * Here is an example filepath: `/this/is/a/path?with&some&flags`.
  *
  * #### Flags
  *
@@ -51,14 +51,6 @@ extern "C"
  * occurs.
  * - `trunc` - If the file already exists then truncate its length to 0.
  * - `dir` - Should be used when opening a directory.
- *
- * ### Default Volumes
- *
- * There are two volumes mounted by default.
- * - `home:/` - Stores the bootloader, kernel, programs and other user data, it's the equivalent to the C: drive in
- * DOS-like systems.
- * - `sys:/` - Stores system resources, for example `sys:/kbd/ps2`, it's the equivalent of the `dev`, `proc` and `sys`
- * folders on Unix-like systems.
  *
  * ### What really is a file? A small note about Plan9.
  *

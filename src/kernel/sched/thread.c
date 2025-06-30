@@ -5,7 +5,6 @@
 #include "cpu/smp.h"
 #include "defs.h"
 #include "drivers/systime/systime.h"
-#include "fs/path.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "log/log.h"

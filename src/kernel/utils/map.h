@@ -4,6 +4,7 @@
 
 #include <assert.h>
 #include <stdint.h>
+#include <string.h>
 #include <sys/io.h>
 
 #define MAP_INITIAL_CAPACITY 16
@@ -37,12 +38,6 @@ typedef struct
     map_entry_t* current;
 } map_iter_t;
 
-#define MAP_ENTRY_CREATE() \
-    (map_entry_t) \
-    { \
-        .key = {0} \
-    }
-
 uint64_t hash_buffer(const void* buffer, uint64_t length);
 
 static inline map_key_t map_key_buffer(const void* buffer, uint64_t length)
@@ -52,6 +47,15 @@ static inline map_key_t map_key_buffer(const void* buffer, uint64_t length)
     memcpy(key.key, buffer, length);
     key.len = length;
     key.hash = hash_buffer(buffer, length);
+    return key;
+}
+
+static inline map_key_t map_key_uint64(uint64_t uint64)
+{
+    map_key_t key;
+    memcpy(key.key, &uint64, sizeof(uint64_t));
+    key.len = sizeof(uint64_t);
+    key.hash = hash_buffer(&uint64, sizeof(uint64_t));
     return key;
 }
 

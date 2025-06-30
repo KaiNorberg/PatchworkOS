@@ -9,7 +9,14 @@
 
 void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd)
 {
-    path_copy(&ctx->cwd, cwd);
+    if (cwd == NULL)
+    {
+        path_get_root(&ctx->cwd);
+    }
+    else
+    {
+        path_copy(&ctx->cwd, cwd);
+    }
 
     for (uint64_t i = 0; i < CONFIG_MAX_FD; i++)
     {
@@ -59,6 +66,8 @@ uint64_t vfs_ctx_set_cwd(vfs_ctx_t* ctx, const path_t* cwd)
 
     path_put(&ctx->cwd);
     path_copy(&ctx->cwd, cwd);
+
+    return 0;
 }
 
 fd_t vfs_ctx_open(vfs_ctx_t* ctx, file_t* file)

@@ -13,6 +13,8 @@
 #include <sys/list.h>
 #include <sys/proc.h>
 
+typedef struct wait_queue wait_queue_t;
+
 // TODO: Implement improved caching, LRU. Let the map_t handle static buffer + wrapper?
 // TODO: Implement per-process namespaces.
 // TODO: Implement literally everything else.
@@ -20,6 +22,8 @@
 #define VFS_HANDLE_DOTDOT_MAX_ITER 1000
 
 #define VFS_ROOT_ENTRY_NAME "__root__"
+
+#define VFS_DEVICE_NAME_NONE "__none__"
 
 #define VFS_VALID_CHAR(ch) (isalnum((ch)) || strchr("_-. ()[]{}~!@#$%^&',;=+", (ch)))
 
@@ -180,10 +184,10 @@ typedef struct poll_file
 
 typedef struct superblock_ops
 {
-    inode_t* (*allocItem)(superblock_t* superblock);
-    void (*freeItem)(superblock_t* superblock, inode_t* inode);
-    uint64_t (*writeInode)(superblock_t* superblock, inode_t* inode);
-    void (*free)(superblock_t* superblock);
+    inode_t* (*allocInode)(superblock_t* superblock);
+    void (*freeInode)(superblock_t* superblock, inode_t* inode);
+    uint64_t (*syncInode)(superblock_t* superblock, inode_t* inode);
+    void (*cleanup)(superblock_t* superblock);
 } super_ops_t;
 
 typedef struct inode_ops
@@ -194,13 +198,21 @@ typedef struct inode_ops
 
 typedef struct dentry_ops
 {
-    void (*free)(dentry_t* entry);
+    void (*cleanup)(dentry_t* entry);
 } dentry_ops_t;
 
 typedef struct file_ops
 {    
     uint64_t (*open)(inode_t* inode, file_t* file);
-    void (*free)(file_t* file);
+    uint64_t (*open2)(inode_t* inode, file_t* files[2]);
+    void (*cleanup)(file_t* file);
+    uint64_t (*read)(file_t* file, void* buffer, uint64_t count);
+    uint64_t (*write)(file_t* file, const void* buffer, uint64_t count);
+    uint64_t (*seek)(file_t* file, int64_t offset, seek_origin_t origin);
+    uint64_t (*ioctl)(file_t* file, uint64_t request, void* argp, uint64_t size);
+    wait_queue_t* (*poll)(file_t* file, poll_file_t* pollFile);
+    void* (*mmap)(file_t* file, void* address, uint64_t length, prot_t prot);
+    uint64_t (*readdir)(file_t* file, stat_t* infos, uint64_t amount);
 } file_ops_t;
 
 typedef struct
@@ -272,6 +284,8 @@ uint64_t vfs_link(const char* oldpath, const char* newpath);
 uint64_t vfs_unlink(const char* pathname);
 uint64_t vfs_rename(const char* oldpath, const char* newpath);
 uint64_t vfs_remove(const char* pathname);
+
+bool vfs_is_name_valid(const char* name);
 
 superblock_t* superblock_new(const char* deviceName, const char* fsName, super_ops_t* ops, dentry_ops_t* dentryOps);
 void superblock_free(superblock_t* superblock);

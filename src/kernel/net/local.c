@@ -1,6 +1,5 @@
 #include "local.h"
 
-#include "fs/path.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "log/log.h"
@@ -28,13 +27,16 @@ static void local_connection_deref(local_connection_t* conn);
 
 static local_connection_t* local_listener_pop(local_listener_t* listener);
 
-SYSFS_STANDARD_OPS_DEFINE(listenerOps, PATH_NONE, (file_ops_t){});
+static file_ops_t listenerOps =
+{
+    // None
+};
 
 static local_listener_t* local_listener_new(const char* address)
-{
-    if (!path_is_name_valid(address))
+{    
+    if (!vfs_is_name_valid(address))
     {
-        return NULL;
+        return ERRPTR(EINVAL);
     }
 
     local_listener_t* listener = heap_alloc(sizeof(local_listener_t), HEAP_NONE);
@@ -102,10 +104,6 @@ static void local_listener_deref(local_listener_t* listener)
 
 static local_listener_t* local_listener_find(const char* address)
 {
-    if (!path_is_name_valid(address))
-    {
-        return NULL;
-    }
     LOCK_DEFER(&listenersLock);
 
     local_listener_t* listener;
@@ -302,7 +300,7 @@ static uint64_t local_socket_bind(socket_t* socket, const char* address)
     {
         return ERROR(ENOTSUP);
     }
-    if (!path_is_name_valid(address))
+    if (!vfs_is_name_valid(address))
     {
         return ERROR(EINVAL);
     }
@@ -336,7 +334,7 @@ static uint64_t local_socket_listen(socket_t* socket)
 
 static uint64_t local_socket_connect(socket_t* socket, const char* address)
 {
-    if (!path_is_name_valid(address))
+    if (!vfs_is_name_valid(address))
     {
         return ERROR(EINVAL);
     }

@@ -15,7 +15,7 @@
 
 static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count)
 {
-    kbd_t* kbd = file->private;
+    kbd_t* kbd = file->dentry->inode->private;
 
     count = ROUND_DOWN(count, sizeof(kbd_event_t));
     for (uint64_t i = 0; i < count / sizeof(kbd_event_t); i++)
@@ -36,16 +36,16 @@ static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count)
 
 static wait_queue_t* kbd_poll(file_t* file, poll_file_t* pollFile)
 {
-    kbd_t* kbd = file->private;
+    kbd_t* kbd = file->dentry->inode->private;
     pollFile->revents = POLL_READ & (kbd->writeIndex != file->pos);
     return &kbd->waitQueue;
 }
 
-SYSFS_STANDARD_OPS_DEFINE(kbdOps, PATH_NONE,
-    (file_ops_t){
-        .read = kbd_read,
-        .poll = kbd_poll,
-    });
+static file_ops_t kbdOps = 
+{
+    .read = kbd_read,
+    .poll = kbd_poll,
+};
 
 kbd_t* kbd_new(const char* name)
 {

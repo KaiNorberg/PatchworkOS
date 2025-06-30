@@ -42,18 +42,18 @@ static wait_queue_t* socket_accept_poll(file_t* file, poll_file_t* poll)
     return socket->family->poll(socket, poll);
 }
 
-static file_t* socket_accept_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
+static uint64_t socket_accept_open(inode_t* inode, file_t* file)
 {
-    socket_t* socket = sysobj->private;
+    socket_t* socket = inode->private;
     if (!socket_has_access(socket, sched_process()))
     {
-        return ERRPTR(EACCES);
+        return ERROR(EACCES);
     }
 
     socket_t* newSocket = heap_alloc(sizeof(socket_t), HEAP_NONE);
     if (newSocket == NULL)
     {
-        return NULL;
+        return ERR;
     }
     newSocket->family = socket->family;
     newSocket->creator = socket->creator;
@@ -63,27 +63,14 @@ static file_t* socket_accept_open(volume_t* volume, const path_t* path, sysobj_t
     if (socket->family->accept(socket, newSocket) == ERR)
     {
         heap_free(newSocket);
-        return NULL;
+        return ERR;
     }
 
-    file_t* file = file_new(volume, path, PATH_NONE);
-    if (file == NULL)
-    {
-        newSocket->family->deinit(newSocket);
-        heap_free(newSocket);
-        return NULL;
-    }
-    static const file_ops_t fileOps = {
-        .read = socket_accept_read,
-        .write = socket_accept_write,
-        .poll = socket_accept_poll,
-    };
-    file->ops = &fileOps;
     file->private = newSocket;
-    return file;
+    return 0;
 }
 
-static void socket_accept_cleanup(sysobj_t* sysobj, file_t* file)
+static void socket_accept_cleanup(file_t* file)
 {
     socket_t* socket = file->private;
     if (socket != NULL)
@@ -93,8 +80,11 @@ static void socket_accept_cleanup(sysobj_t* sysobj, file_t* file)
     }
 }
 
-static sysobj_ops_t acceptOps = {
+static file_ops_t acceptOps = {
     .open = socket_accept_open,
+    .read = socket_accept_read,
+    .write = socket_accept_write,
+    .poll = socket_accept_poll,
     .cleanup = socket_accept_cleanup,
 };
 
@@ -117,31 +107,23 @@ static wait_queue_t* socket_data_poll(file_t* file, poll_file_t* poll)
     return socket->family->poll(socket, poll);
 }
 
-static file_t* socket_data_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
+static uint64_t socket_data_open(inode_t* inode, file_t* file)
 {
-    socket_t* socket = sysobj->private;
+    socket_t* socket = inode->private;
     if (!socket_has_access(socket, sched_process()))
     {
-        return ERRPTR(EACCES);
+        return ERROR(EACCES);
     }
 
-    file_t* file = file_new(volume, path, PATH_NONE);
-    if (file == NULL)
-    {
-        return NULL;
-    }
-    static const file_ops_t fileOps = {
-        .read = socket_data_read,
-        .write = socket_data_write,
-        .poll = socket_data_poll,
-    };
-    file->ops = &fileOps;
     file->private = socket;
-    return file;
+    return 0;
 }
 
-static sysobj_ops_t dataOps = {
+static file_ops_t dataOps = {
     .open = socket_data_open,
+    .read = socket_data_read,
+    .write = socket_data_write,
+    .poll = socket_data_poll,
 };
 
 static uint64_t socket_ctl_bind(file_t* file, uint64_t argc, const char** argv)
@@ -170,29 +152,21 @@ CTL_STANDARD_WRITE_DEFINE(socket_ctl_write,
         {0},
     });
 
-static file_t* socket_ctl_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
+static uint64_t socket_ctl_open(inode_t* inode, file_t* file)
 {
-    socket_t* socket = sysobj->private;
+    socket_t* socket = inode->private;
     if (!socket_has_access(socket, sched_process()))
     {
-        return ERRPTR(EACCES);
+        return ERROR(EACCES);
     }
 
-    file_t* file = file_new(volume, path, PATH_NONE);
-    if (file == NULL)
-    {
-        return NULL;
-    }
-    static const file_ops_t fileOps = {
-        .write = socket_ctl_write,
-    };
-    file->ops = &fileOps;
     file->private = socket;
-    return file;
+    return 0;
 }
 
-static sysobj_ops_t ctlOps = {
+static file_ops_t ctlOps = {
     .open = socket_ctl_open,
+    .write = socket_ctl_write,
 };
 
 socket_t* socket_new(socket_family_t* family, path_flags_t flags)

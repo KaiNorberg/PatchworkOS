@@ -2,7 +2,6 @@
 
 #include "fs/ctl.h"
 #include "fs/vfs.h"
-#include "fs/view.h"
 #include "log/log.h"
 #include "mem/heap.h"
 #include "sched/thread.h"
@@ -14,6 +13,8 @@
 #include <sys/io.h>
 #include <sys/list.h>
 #include <sys/math.h>
+
+// TODO: Reimplement without view_t.
 
 static process_t* kernelProcess = NULL;
 
@@ -84,7 +85,7 @@ CTL_STANDARD_OPS_DEFINE(ctlOps, PATH_NONE,
         {0},
     });
 
-static uint64_t process_cwd_view_init(file_t* file, view_t* view)
+/*static uint64_t process_cwd_view_init(file_t* file, view_t* view)
 {
     process_t* process = process_file_get_process(file);
     if (process == NULL)
@@ -97,9 +98,10 @@ static uint64_t process_cwd_view_init(file_t* file, view_t* view)
     {
         return ERR;
     }
+    cwd[0] = '\0';
 
     lock_acquire(&process->vfsCtx.lock);
-    path_to_string(&process->vfsCtx.cwd, cwd);
+    //path_to_string(&process->vfsCtx.cwd, cwd); // TODO: Implement path to string conversion.
     lock_release(&process->vfsCtx.lock);
 
     view->length = strlen(cwd) + 1;
@@ -110,15 +112,14 @@ static uint64_t process_cwd_view_init(file_t* file, view_t* view)
 static void process_cwd_view_deinit(view_t* view)
 {
     heap_free(view->buffer);
-}
+}*/
 
-VIEW_STANDARD_OPS_DEFINE(cwdOps, PATH_NONE,
-    (view_ops_t){
-        .init = process_cwd_view_init,
-        .deinit = process_cwd_view_deinit,
-    });
+static file_ops_t cwdOps =
+{
 
-static uint64_t process_cmdline_view_init(file_t* file, view_t* view)
+};
+
+/*static uint64_t process_cmdline_view_init(file_t* file, view_t* view)
 {
     process_t* process = process_file_get_process(file);
     if (process == NULL)
@@ -137,12 +138,12 @@ static uint64_t process_cmdline_view_init(file_t* file, view_t* view)
     view->buffer = first;
     view->length = length;
     return 0;
-}
+}*/
 
-VIEW_STANDARD_OPS_DEFINE(cmdlineOps, PATH_NONE,
-    (view_ops_t){
-        .init = process_cmdline_view_init,
-    });
+static file_ops_t cmdlineOps =
+{
+
+};
 
 static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t count)
 {
@@ -173,10 +174,10 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
     return count;
 }
 
-SYSFS_STANDARD_OPS_DEFINE(noteOps, PATH_NONE,
-    (file_ops_t){
-        .write = process_note_write,
-    })
+static file_ops_t noteOps =
+{
+    .write = process_note_write,
+};
 
 static void process_dir_init(process_dir_t* dir, const char* name, process_t* process)
 {
@@ -187,7 +188,7 @@ static void process_dir_init(process_dir_t* dir, const char* name, process_t* pr
     assert(sysobj_init(&dir->noteObj, &dir->sysdir, "note", &noteOps, process) != ERR);
 }
 
-process_t* process_new(process_t* parent, const char** argv, dir_entry_t* cwd, priority_t priority)
+process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, priority_t priority)
 {
     process_t* process = heap_alloc(sizeof(process_t), HEAP_NONE);
     if (process == NULL)
@@ -208,8 +209,12 @@ process_t* process_new(process_t* parent, const char** argv, dir_entry_t* cwd, p
     }
     else if (parent != NULL)
     {
-        LOCK_DEFER(&parent->vfsCtx.lock);
-        vfs_ctx_init(&process->vfsCtx, parent->vfsCtx.cwd);
+        path_t parentCwd;
+        vfs_ctx_get_cwd(&parent->vfsCtx, &parentCwd);
+
+        vfs_ctx_init(&process->vfsCtx, &parentCwd);
+
+        path_put(&parentCwd);
     }
     else
     {

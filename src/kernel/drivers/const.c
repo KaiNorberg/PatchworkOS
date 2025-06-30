@@ -33,11 +33,11 @@ static void* const_one_mmap(file_t* file, void* addr, uint64_t length, prot_t pr
     return addr;
 }
 
-SYSFS_STANDARD_OPS_DEFINE(oneOps, PATH_NONE,
-    (file_ops_t){
-        .read = const_one_read,
-        .mmap = const_one_mmap,
-    });
+static file_ops_t oneOps =
+{
+    .read = const_one_read,
+    .mmap = const_one_mmap,
+};
 
 static uint64_t const_zero_read(file_t* file, void* buffer, uint64_t count)
 {
@@ -57,11 +57,11 @@ static void* const_zero_mmap(file_t* file, void* addr, uint64_t length, prot_t p
     return addr;
 }
 
-SYSFS_STANDARD_OPS_DEFINE(zeroOps, PATH_NONE,
-    (file_ops_t){
-        .read = const_zero_read,
-        .mmap = const_zero_mmap,
-    });
+static file_ops_t zeroOps =
+{
+    .read = const_zero_read,
+    .mmap = const_zero_mmap,
+};
 
 static uint64_t const_null_read(file_t* file, void* buffer, uint64_t count)
 {
@@ -73,11 +73,11 @@ static uint64_t const_null_write(file_t* file, const void* buffer, uint64_t coun
     return count;
 }
 
-SYSFS_STANDARD_OPS_DEFINE(nullOps, PATH_NONE,
-    (file_ops_t){
-        .read = const_null_read,
-        .write = const_null_write,
-    });
+static file_ops_t nullOps =
+{
+    .read = const_null_read,
+    .write = const_null_write,
+};
 
 void const_init(void)
 {

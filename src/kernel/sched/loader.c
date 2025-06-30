@@ -25,7 +25,7 @@ static void* loader_load_program(thread_t* thread)
         sched_process_exit(ESPAWNFAIL);
     }
 
-    file_t* file = vfs_open(PATH(process, executable));
+    file_t* file = vfs_open(executable);
     if (file == NULL)
     {
         LOG_INFO("loader_load_program: vfs_open failed (%s) pid=%d\n", strerror(thread->error), process->id);
@@ -166,7 +166,7 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
     }
 
     stat_t info;
-    if (vfs_stat(PATH(process, argv[0]), &info) == ERR)
+    if (vfs_stat(argv[0], &info) == ERR)
     {
         return NULL;
     }

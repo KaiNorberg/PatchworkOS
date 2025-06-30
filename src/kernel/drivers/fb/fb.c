@@ -44,11 +44,11 @@ static uint64_t fb_ioctl(file_t* file, uint64_t request, void* argp, uint64_t si
     return 0;
 }
 
-SYSFS_STANDARD_OPS_DEFINE(fbOps, PATH_NONE,
-    (file_ops_t){
-        .mmap = fb_mmap,
-        .ioctl = fb_ioctl,
-    });
+static file_ops_t fbOps = 
+{
+    .mmap = fb_mmap,
+    .ioctl = fb_ioctl,
+};
 
 uint64_t fb_expose(fb_t* fb)
 {

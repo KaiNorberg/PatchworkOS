@@ -89,48 +89,33 @@ static wait_queue_t* pipe_poll(file_t* file, poll_file_t* pollFile)
     return &private->waitQueue;
 }
 
-static file_ops_t fileOps = {
-    .read = pipe_read,
-    .write = pipe_write,
-    .poll = pipe_poll,
-};
-
-static file_t* pipe_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
+static uint64_t pipe_open(inode_t* inode, file_t* file)
 {
     pipe_private_t* private = heap_alloc(sizeof(pipe_private_t), HEAP_NONE);
     if (private == NULL)
     {
-        return NULL;
+        return ERR;
     }
     private->buffer = pmm_alloc();
     if (private->buffer == NULL)
     {
         heap_free(private);
-        return NULL;
+        return ERR;
     }
     ring_init(&private->ring, private->buffer, PAGE_SIZE);
     private->isReadClosed = false;
     private->isWriteClosed = false;
     wait_queue_init(&private->waitQueue);
     lock_init(&private->lock);
-
-    file_t* file = file_new(volume, path, PATH_NONE);
-    if (file == NULL)
-    {
-        heap_free(private->buffer);
-        heap_free(private);
-        return NULL;
-    }
-    file->ops = &fileOps;
 
     private->readEnd = file;
     private->writeEnd = file;
 
     file->private = private;
-    return file;
+    return 0;
 }
 
-static uint64_t pipe_open2(volume_t* volume, const path_t* path, sysobj_t* sysobj, file_t* files[2])
+static uint64_t pipe_open2(inode_t* inode, file_t* files[2])
 {
     pipe_private_t* private = heap_alloc(sizeof(pipe_private_t), HEAP_NONE);
     if (private == NULL)
@@ -148,37 +133,16 @@ static uint64_t pipe_open2(volume_t* volume, const path_t* path, sysobj_t* sysob
     private->isWriteClosed = false;
     wait_queue_init(&private->waitQueue);
     lock_init(&private->lock);
-
-    files[0] = file_new(volume, path, PATH_NONE);
-    if (files[0] == NULL)
-    {
-        heap_free(private->buffer);
-        heap_free(private);
-        return ERR;
-    }
-
-    files[1] = file_new(volume, path, PATH_NONE);
-    if (files[1] == NULL)
-    {
-        file_deref(files[0]);
-        heap_free(private->buffer);
-        heap_free(private);
-        return ERR;
-    }
-
-    files[0]->ops = &fileOps;
-    files[1]->ops = &fileOps;
 
     private->readEnd = files[PIPE_READ];
     private->writeEnd = files[PIPE_WRITE];
 
     files[0]->private = private;
     files[1]->private = private;
-
     return 0;
 }
 
-static void pipe_cleanup(sysobj_t* sysobj, file_t* file)
+static void pipe_cleanup(file_t* file)
 {
     pipe_private_t* private = file->private;
     lock_acquire(&private->lock);
@@ -204,13 +168,16 @@ static void pipe_cleanup(sysobj_t* sysobj, file_t* file)
     lock_release(&private->lock);
 }
 
-static sysobj_ops_t objOps = {
+static file_ops_t fileOps = {
     .open = pipe_open,
     .open2 = pipe_open2,
+    .read = pipe_read,
+    .write = pipe_write,
+    .poll = pipe_poll,
     .cleanup = pipe_cleanup,
 };
 
 void pipe_init(void)
 {
-    assert(sysobj_init_path(&obj, "/pipe", "new", &objOps, NULL) != ERR);
+    assert(sysobj_init_path(&obj, "/pipe", "new", &fileOps, NULL) != ERR);
 }

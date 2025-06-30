@@ -14,6 +14,7 @@ void main(boot_info_t* bootInfo)
 {
     kernel_init(bootInfo);
 
+    LOG_INFO("looping\n");
     while (1)
         ;
 
@@ -22,7 +23,7 @@ void main(boot_info_t* bootInfo)
     assert(initThread != NULL);
 
     // Set klog as stdout for init process
-    file_t* klog = vfs_open(PATH(sched_process(), "sys:/klog"));
+    file_t* klog = vfs_open("sys:/klog");
     assert(klog != NULL);
     assert(vfs_ctx_openas(&initThread->process->vfsCtx, STDOUT_FILENO, klog) != ERR);
     file_deref(klog);

@@ -3,7 +3,6 @@
 #include "cpu/smp.h"
 #include "drivers/systime/systime.h"
 #include "fs/sysfs.h"
-#include "fs/view.h"
 #include "log/log.h"
 #include "mem/heap.h"
 
@@ -13,6 +12,8 @@
 #include <stdlib.h>
 #include <sys/io.h>
 #include <sys/math.h>
+
+// TODO: Reimplement without view_t.
 
 static sysdir_t statDir;
 static sysobj_t cpuObj;
@@ -28,7 +29,7 @@ void statistics_cpu_ctx_init(statistics_cpu_ctx_t* ctx)
     lock_init(&ctx->lock);
 }
 
-static uint64_t statistics_cpu_view_init(file_t* file, view_t* view)
+/*static uint64_t statistics_cpu_view_init(file_t* file, view_t* view)
 {
     char* string = heap_alloc(MAX_PATH * (smp_cpu_amount() + 1), HEAP_NONE);
     if (string == NULL)
@@ -55,15 +56,14 @@ static uint64_t statistics_cpu_view_init(file_t* file, view_t* view)
 static void statistics_cpu_view_deinit(view_t* view)
 {
     heap_free(view->buffer);
-}
+}*/
 
-VIEW_STANDARD_OPS_DEFINE(cpuOps, PATH_NONE,
-    (view_ops_t){
-        .init = statistics_cpu_view_init,
-        .deinit = statistics_cpu_view_deinit,
-    });
+static file_ops_t cpuOps =
+{
 
-static uint64_t statistics_mem_view_init(file_t* file, view_t* view)
+};
+
+/*static uint64_t statistics_mem_view_init(file_t* file, view_t* view)
 {
     char* string = heap_alloc(MAX_PATH, HEAP_NONE);
     if (string == NULL)
@@ -82,13 +82,12 @@ static uint64_t statistics_mem_view_init(file_t* file, view_t* view)
 static void statistics_mem_view_deinit(view_t* view)
 {
     heap_free(view->buffer);
-}
+}*/
 
-VIEW_STANDARD_OPS_DEFINE(memOps, PATH_NONE,
-    (view_ops_t){
-        .init = statistics_mem_view_init,
-        .deinit = statistics_mem_view_deinit,
-    });
+static file_ops_t memOps =
+{
+
+};
 
 void statistics_init(void)
 {

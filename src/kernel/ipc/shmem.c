@@ -128,62 +128,46 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
     }
 }
 
-static file_ops_t fileOps = (file_ops_t){
-    .read = shmem_read,
-    .mmap = shmem_mmap,
-};
-
-static file_t* shmem_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
+static uint64_t shmem_open(inode_t* inode, file_t* file)
 {
-    shmem_t* shmem = sysobj->private;
-
-    file_t* file = file_new(volume, path, PATH_NONE);
-    if (file == NULL)
-    {
-        return NULL;
-    }
-    file->ops = &fileOps;
+    shmem_t* shmem = file->private;
     file->private = shmem_ref(shmem);
-    return file;
+    return 0;
 }
 
-static void shmem_cleanup(sysobj_t* sysobj, file_t* file)
+static void shmem_cleanup(file_t* file)
 {
     shmem_t* shmem = file->private;
     shmem_deref(shmem);
 }
 
-static sysobj_ops_t objOps = {
+static file_ops_t normalOps = {
     .open = shmem_open,
+    .read = shmem_read,
+    .mmap = shmem_mmap,
     .cleanup = shmem_cleanup,
 };
 
-static file_t* shmem_new_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
+static uint64_t shmem_new_open(inode_t* inode, file_t* file)
 {
     shmem_t* shmem = heap_alloc(sizeof(shmem_t), HEAP_NONE);
     if (shmem == NULL)
     {
-        return NULL;
+        return ERR;
     }
 
-    file_t* file = file_new(volume, path, PATH_NONE);
-    if (file == NULL)
-    {
-        heap_free(shmem);
-        return NULL;
-    }
-    file->ops = &fileOps;
+    file->ops = &normalOps;
     file->private = shmem;
 
     atomic_init(&shmem->ref, 1);
     lock_init(&shmem->lock);
     ulltoa(atomic_fetch_add(&newId, 1), shmem->id, 10);
     shmem->segment = NULL;
-    assert(sysobj_init(&shmem->obj, &dir, shmem->id, &objOps, shmem) != ERR);
-    return file;
+    assert(sysobj_init(&shmem->obj, &dir, shmem->id, &normalOps, shmem) != ERR);
+    return 0;
 }
 
-static sysobj_ops_t newOps = {
+static file_ops_t newOps = {
     .open = shmem_new_open,
     .cleanup = shmem_cleanup,
 };
