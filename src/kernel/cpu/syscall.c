@@ -187,7 +187,24 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, s
         }
     }
 
-    thread_t* child = loader_spawn(argv, priority, cwd == NULL ? NULL : PATH(process, cwd));
+    thread_t* child;
+    if (cwd == NULL)
+    {
+        child = loader_spawn(argv, priority, NULL);
+    }
+    else
+    {
+        path_t cwdPath;
+        if (vfs_lookup(&cwdPath, cwd, LOOKUP_NO_FLAGS) == ERR)
+        {
+            return ERR;
+        }
+
+        child = loader_spawn(argv, priority, &cwdPath);
+
+        path_put(&cwdPath);
+    }
+
     if (child == NULL)
     {
         return ERR;
@@ -198,7 +215,7 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, s
 
     for (uint64_t i = 0; i < fdAmount; i++)
     {
-        file_t* file = vfs_ctx_file(parentVfsCtx, fds[i].parent);
+        file_t* file = vfs_ctx_get_file(parentVfsCtx, fds[i].parent);
         if (file == NULL)
         {
             thread_free(child);
@@ -268,7 +285,7 @@ fd_t syscall_open(const char* path)
         return ERROR(EFAULT);
     }
 
-    file_t* file = vfs_open(PATH(process, path));
+    file_t* file = vfs_open(path);
     if (file == NULL)
     {
         return ERR;
@@ -333,7 +350,7 @@ uint64_t syscall_read(fd_t fd, void* buffer, uint64_t count)
         return ERROR(EFAULT);
     }
 
-    file_t* file = vfs_ctx_file(&process->vfsCtx, fd);
+    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
     if (file == NULL)
     {
         return ERR;
@@ -353,7 +370,7 @@ uint64_t syscall_write(fd_t fd, const void* buffer, uint64_t count)
         return ERROR(EFAULT);
     }
 
-    file_t* file = vfs_ctx_file(&process->vfsCtx, fd);
+    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
     if (file == NULL)
     {
         return ERR;
@@ -367,7 +384,7 @@ uint64_t syscall_seek(fd_t fd, int64_t offset, seek_origin_t origin)
 {
     process_t* process = sched_process();
 
-    file_t* file = vfs_ctx_file(&process->vfsCtx, fd);
+    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
     if (file == NULL)
     {
         return ERR;
@@ -392,7 +409,7 @@ uint64_t syscall_ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size)
         return ERROR(EFAULT);
     }
 
-    file_t* file = vfs_ctx_file(&process->vfsCtx, fd);
+    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
     if (file == NULL)
     {
         return ERR;
@@ -433,7 +450,7 @@ uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, clock_t timeout)
     poll_file_t files[CONFIG_MAX_FD];
     for (uint64_t i = 0; i < amount; i++)
     {
-        files[i].file = vfs_ctx_file(&process->vfsCtx, fds[i].fd);
+        files[i].file = vfs_ctx_get_file(&process->vfsCtx, fds[i].fd);
         if (files[i].file == NULL)
         {
             for (uint64_t j = 0; j < i; j++)
@@ -481,7 +498,7 @@ void* syscall_mmap(fd_t fd, void* address, uint64_t length, prot_t prot)
     process_t* process = sched_process();
     space_t* space = &process->space;
 
-    file_t* file = vfs_ctx_file(&process->vfsCtx, fd);
+    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
     if (file == NULL)
     {
         return NULL;
@@ -527,7 +544,7 @@ uint64_t syscall_readdir(fd_t fd, stat_t* infos, uint64_t amount)
         return ERROR(EFAULT);
     }
 
-    file_t* file = vfs_ctx_file(&process->vfsCtx, fd);
+    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
     if (file == NULL)
     {
         return ERR;

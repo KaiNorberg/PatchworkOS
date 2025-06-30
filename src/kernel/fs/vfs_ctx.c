@@ -7,9 +7,9 @@
 #include <assert.h>
 #include <string.h>
 
-void vfs_ctx_init(vfs_ctx_t* ctx, dir_entry_t* cwd)
+void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd)
 {
-    ctx->cwd = dir_entry_ref(cwd);
+    path_copy(&ctx->cwd, cwd);
 
     for (uint64_t i = 0; i < CONFIG_MAX_FD; i++)
     {
@@ -22,8 +22,8 @@ void vfs_ctx_deinit(vfs_ctx_t* ctx)
 {
     LOCK_DEFER(&ctx->lock);
 
-    dir_entry_deref(ctx->cwd);
-
+    path_put(&ctx->cwd);
+    
     for (uint64_t i = 0; i < CONFIG_MAX_FD; i++)
     {
         if (ctx->files[i] != NULL)
@@ -32,6 +32,25 @@ void vfs_ctx_deinit(vfs_ctx_t* ctx)
             ctx->files[i] = NULL;
         }
     }
+}
+
+file_t* vfs_ctx_get_file(vfs_ctx_t* ctx, fd_t fd)
+{
+    LOCK_DEFER(&ctx->lock);
+
+    if (fd >= CONFIG_MAX_FD || ctx->files[fd] == NULL)
+    {
+        return ERRPTR(EBADF);
+    }
+
+    return file_ref(ctx->files[fd]);
+}
+
+void vfs_ctx_get_cwd(vfs_ctx_t* ctx, path_t* outCwd)
+{
+    LOCK_DEFER(&ctx->lock);
+
+    path_copy(outCwd, &ctx->cwd);
 }
 
 fd_t vfs_ctx_open(vfs_ctx_t* ctx, file_t* file)
@@ -81,18 +100,6 @@ uint64_t vfs_ctx_close(vfs_ctx_t* ctx, fd_t fd)
     file_deref(ctx->files[fd]);
     ctx->files[fd] = NULL;
     return 0;
-}
-
-file_t* vfs_ctx_file(vfs_ctx_t* ctx, fd_t fd)
-{
-    LOCK_DEFER(&ctx->lock);
-
-    if (fd >= CONFIG_MAX_FD || ctx->files[fd] == NULL)
-    {
-        return ERRPTR(EBADF);
-    }
-
-    return file_ref(ctx->files[fd]);
 }
 
 fd_t vfs_ctx_dup(vfs_ctx_t* ctx, fd_t oldFd)

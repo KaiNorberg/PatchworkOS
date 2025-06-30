@@ -24,6 +24,7 @@
 #define DENTRY_DEFER(entry) __attribute__((cleanup(dentry_defer_cleanup))) dentry_t* CONCAT(i, __COUNTER__) = (entry)
 #define FILE_DEFER(file) __attribute__((cleanup(file_defer_cleanup))) file_t* CONCAT(i, __COUNTER__) = (file)
 #define MOUNT_DEFER(mount) __attribute__((cleanup(mount_defer_cleanup))) mount_t* CONCAT(i, __COUNTER__) = (mount)
+#define PATH_DEFER(path) __attribute__((cleanup(path_defer_cleanup))) path_t* CONCAT(i, __COUNTER__) = (path)
 
 typedef struct filesystem filesystem_t;
 typedef struct superblock superblock_t;
@@ -228,11 +229,12 @@ typedef enum
 } vfs_lookup_flags_t;
 
 uint64_t vfs_parse_flags(const char* pathname, path_flags_t* outFlags);
-dentry_t* vfs_path_walk(const char* pathname, vfs_lookup_flags_t flags, const path_t* start);
-dentry_t* vfs_path_walk_parent(const char* pathname, vfs_lookup_flags_t flags, const path_t* start, char* outLastName);
 
-dentry_t* vfs_lookup(const char* pathname, vfs_lookup_flags_t flags);
-dentry_t* vfs_lookup_parent(const char* pathname, vfs_lookup_flags_t flags, char* outLastName);
+uint64_t vfs_path_walk(path_t* outPath, const char* pathname, vfs_lookup_flags_t flags, const path_t* start);
+uint64_t vfs_path_walk_parent(path_t* outPath, const char* pathname, vfs_lookup_flags_t flags, const path_t* start, char* outLastName);
+
+uint64_t vfs_lookup(path_t* outPath, const char* pathname, vfs_lookup_flags_t flags);
+uint64_t vfs_lookup_parent(path_t* outPath, const char* pathname, vfs_lookup_flags_t flags, char* outLastName);
 
 uint64_t vfs_mount(const char* deviceName, const char* mountpoint, const char* fsName, superblock_flags_t flags,
     const void* data);
@@ -267,7 +269,8 @@ mount_t* mount_ref(mount_t* mount);
 void mount_deref(mount_t* mount);
 
 uint64_t path_get_root(path_t* outPath);
-void path_deref(path_t* path);
+void path_copy(path_t* dest, const path_t* src);
+void path_put(path_t* path);
 
 static inline void superblock_defer_cleanup(superblock_t** superblock)
 {
@@ -306,6 +309,14 @@ static inline void mount_defer_cleanup(mount_t** mount)
     if (*mount != NULL)
     {
         mount_deref(*mount);
+    }
+}
+
+static inline void path_defer_cleanup(path_t** path)
+{
+    if (*path != NULL)
+    {
+        path_put(*path);
     }
 }
 
