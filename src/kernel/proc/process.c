@@ -187,7 +187,7 @@ static void process_dir_init(process_dir_t* dir, const char* name, process_t* pr
     assert(sysobj_init(&dir->noteObj, &dir->sysdir, "note", &noteOps, process) != ERR);
 }
 
-process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, priority_t priority)
+process_t* process_new(process_t* parent, const char** argv, dir_entry_t* cwd, priority_t priority)
 {
     process_t* process = heap_alloc(sizeof(process_t), HEAP_NONE);
     if (process == NULL)
@@ -209,7 +209,7 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
     else if (parent != NULL)
     {
         LOCK_DEFER(&parent->vfsCtx.lock);
-        vfs_ctx_init(&process->vfsCtx, &parent->vfsCtx.cwd);
+        vfs_ctx_init(&process->vfsCtx, parent->vfsCtx.cwd);
     }
     else
     {

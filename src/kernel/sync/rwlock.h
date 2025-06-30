@@ -59,6 +59,31 @@ static inline void rwlock_read_release(rwlock_t* lock)
     cli_pop();
 }
 
+static inline void rwlock_upgrade_read_to_write(rwlock_t* lock)
+{
+    atomic_fetch_sub(&lock->activeReaders, 1);
+    atomic_fetch_add(&lock->readServe, 1);
+
+    uint_fast16_t writeTicket = atomic_fetch_add(&lock->writeTicket, 1);
+
+    while (atomic_load(&lock->writeServe) != writeTicket)
+    {
+        asm volatile("pause");
+    }
+
+    while (atomic_load(&lock->activeReaders) > 0)
+    {
+        asm volatile("pause");
+    }
+
+    bool expected = false;
+    while (!atomic_compare_exchange_weak(&lock->activeWriter, &expected, true))
+    {
+        expected = false;
+        asm volatile("pause");
+    }
+}
+
 static inline void rwlock_write_acquire(rwlock_t* lock)
 {
     cli_push();

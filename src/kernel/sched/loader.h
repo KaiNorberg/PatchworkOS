@@ -108,7 +108,7 @@ extern NORETURN void loader_jump_to_user_space(int argc, char** argv, void* rsp,
  * @return On success, returns the main thread of the child process. On failure, returns `NULL` and the
  * running threads `thread_t::error` member is set.
  */
-thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd);
+thread_t* loader_spawn(const char** argv, priority_t priority, dir_entry_t* cwd);
 
 /**
  * @brief Creates a new thread within an existing process.

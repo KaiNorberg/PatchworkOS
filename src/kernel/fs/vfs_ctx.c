@@ -7,16 +7,9 @@
 #include <assert.h>
 #include <string.h>
 
-void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd)
+void vfs_ctx_init(vfs_ctx_t* ctx, dir_entry_t* cwd)
 {
-    if (cwd != NULL && !cwd->isInvalid)
-    {
-        ctx->cwd = *cwd;
-    }
-    else
-    {
-        assert(path_init(&ctx->cwd, "sys:/", NULL) != ERR);
-    }
+    ctx->cwd = dir_entry_ref(cwd);
 
     for (uint64_t i = 0; i < CONFIG_MAX_FD; i++)
     {
@@ -28,6 +21,8 @@ void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd)
 void vfs_ctx_deinit(vfs_ctx_t* ctx)
 {
     LOCK_DEFER(&ctx->lock);
+
+    dir_entry_deref(ctx->cwd);
 
     for (uint64_t i = 0; i < CONFIG_MAX_FD; i++)
     {
@@ -123,6 +118,11 @@ fd_t vfs_ctx_dup(vfs_ctx_t* ctx, fd_t oldFd)
 
 fd_t vfs_ctx_dup2(vfs_ctx_t* ctx, fd_t oldFd, fd_t newFd)
 {
+    if (oldFd == newFd)
+    {
+        return newFd;
+    }
+
     LOCK_DEFER(&ctx->lock);
 
     if (oldFd >= CONFIG_MAX_FD || newFd >= CONFIG_MAX_FD || ctx->files[oldFd] == NULL)

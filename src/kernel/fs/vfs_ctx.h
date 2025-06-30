@@ -3,19 +3,19 @@
 #include <sys/io.h>
 
 #include "defs.h"
-#include "path.h"
 #include "sync/lock.h"
 
 typedef struct file file_t;
+typedef struct dir_entry dir_entry_t;
 
 typedef struct
 {
-    path_t cwd;
+    dir_entry_t* cwd;
     file_t* files[CONFIG_MAX_FD];
-    lock_t lock;
+    lock_t lock; // TODO: Make this a rwlock.
 } vfs_ctx_t;
 
-void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd);
+void vfs_ctx_init(vfs_ctx_t* ctx, dir_entry_t* cwd);
 
 void vfs_ctx_deinit(vfs_ctx_t* ctx);
 

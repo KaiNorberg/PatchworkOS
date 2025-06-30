@@ -256,10 +256,10 @@ uint64_t chdir(const char* path);
  */
 typedef enum
 {
-    POLL_READ = (1 << 0),  //!< File descriptor is/should be ready to read.
-    POLL_WRITE = (1 << 1), //!< File descriptor is/should be ready to write.
-    POLL_ERR = (1 << 2),   //!< File descriptor caused an error.
-    POLL_HUP = (1 << 3),   //!< Stream socket peer closed connection, or shut down writing of connection.
+    POLL_READ = (1 << 0),   //!< File descriptor is/should be ready to read.
+    POLL_WRITE = (1 << 1),  //!< File descriptor is/should be ready to write.
+    POLL_ERR = (1 << 2),    //!< File descriptor caused an error.
+    POLL_HANGUP = (1 << 3), //!< Stream socket peer closed connection, or shut down writing of connection.
 } poll_events_t;
 
 /**

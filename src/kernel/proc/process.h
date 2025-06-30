@@ -41,7 +41,7 @@ typedef struct process
     process_dir_t dir;
 } process_t;
 
-process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, priority_t priority);
+process_t* process_new(process_t* parent, const char** argv, dir_entry_t* cwd, priority_t priority);
 
 void process_free(process_t* process);
 

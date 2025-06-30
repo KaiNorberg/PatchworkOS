@@ -636,7 +636,7 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
         LOCK_DEFER(&conn->lock);
         if (local_connection_is_closed(conn))
         {
-            poll->revents = POLL_READ | POLL_ERR | POLL_HUP;
+            poll->revents = POLL_READ | POLL_ERR | POLL_HANGUP;
         }
         else
         {
@@ -660,7 +660,7 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
         LOCK_DEFER(&conn->lock);
         if (local_connection_is_closed(conn))
         {
-            poll->revents = POLL_READ | POLL_ERR | POLL_HUP;
+            poll->revents = POLL_READ | POLL_ERR | POLL_HANGUP;
         }
         else
         {

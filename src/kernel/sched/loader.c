@@ -156,7 +156,7 @@ static void loader_process_entry(void)
     loader_jump_to_user_space(thread->process->argv.amount, argv, rsp, rip);
 }
 
-thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd)
+thread_t* loader_spawn(const char** argv, priority_t priority, dir_entry_t* cwd)
 {
     process_t* process = sched_process();
 

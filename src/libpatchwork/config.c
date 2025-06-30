@@ -414,7 +414,7 @@ config_array_t* config_get_array(config_t* cfg, const char* section, const char*
     }
     strcpy(temp, str);
 
-    char* token = strtok(temp, ",");
+    char* token = strtok(temp, ","); // TODO: NOT THREAD SAFE FIX
     while (token != NULL)
     {
         while (isspace(*token))

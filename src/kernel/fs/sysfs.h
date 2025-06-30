@@ -4,7 +4,6 @@
 #include <stdatomic.h>
 
 #include "defs.h"
-#include "path.h"
 
 typedef struct volume volume_t;
 typedef struct file file_t;
@@ -39,8 +38,8 @@ typedef struct file file_t;
 typedef struct sysobj sysobj_t;
 typedef struct sysdir sysdir_t;
 
-typedef file_t* (*sysobj_open_t)(volume_t*, const path_t*, sysobj_t*);
-typedef uint64_t (*sysobj_open2_t)(volume_t*, const path_t*, sysobj_t*, file_t* [2]);
+typedef file_t* (*sysobj_open_t)(volume_t*, const char*, sysobj_t*);
+typedef uint64_t (*sysobj_open2_t)(volume_t*, const char*, sysobj_t*, file_t* [2]);
 typedef void (*sysobj_cleanup_t)(sysobj_t*, file_t* file);
 
 typedef void (*sysobj_on_free_t)(sysobj_t*);

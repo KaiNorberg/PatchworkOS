@@ -14,6 +14,9 @@ void main(boot_info_t* bootInfo)
 {
     kernel_init(bootInfo);
 
+    while (1)
+        ;
+
     const char* argv[] = {"home:/bin/init", NULL};
     thread_t* initThread = loader_spawn(argv, PRIORITY_MAX_USER - 2, NULL);
     assert(initThread != NULL);

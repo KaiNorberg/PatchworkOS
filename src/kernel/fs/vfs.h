@@ -1,8 +1,9 @@
 #pragma once
 
 #include "defs.h"
-#include "path.h"
+#include "sync/rwlock.h"
 #include "sysfs.h"
+#include "utils/map.h"
 
 #include <ctype.h>
 #include <stdatomic.h>
@@ -11,81 +12,151 @@
 #include <sys/list.h>
 #include <sys/proc.h>
 
-#define FILE_DEFER(file) __attribute__((cleanup(file_defer_cleanup))) file_t* CONCAT(f, __COUNTER__) = (file)
+#define VFS_HANDLE_DOTDOT_MAX_ITER 1000
 
-typedef struct fs fs_t;
-typedef struct volume volume_t;
+#define VFS_ROOT_ENTRY_NAME "__root__"
+
+#define VFS_VALID_CHAR(ch) (isalnum((ch)) || strchr("_-. ()[]{}~!@#$%^&',;=+", (ch)))
+
+#define SUPER_DEFER(superblock) \
+    __attribute__((cleanup(superblock_defer_cleanup))) superblock_t* CONCAT(i, __COUNTER__) = (superblock)
+#define INODE_DEFER(inode) __attribute__((cleanup(inode_defer_cleanup))) inode_t* CONCAT(i, __COUNTER__) = (inode)
+#define DENTRY_DEFER(entry) __attribute__((cleanup(dentry_defer_cleanup))) dentry_t* CONCAT(i, __COUNTER__) = (entry)
+#define FILE_DEFER(file) __attribute__((cleanup(file_defer_cleanup))) file_t* CONCAT(i, __COUNTER__) = (file)
+#define MOUNT_DEFER(mount) __attribute__((cleanup(mount_defer_cleanup))) mount_t* CONCAT(i, __COUNTER__) = (mount)
+
+typedef struct filesystem filesystem_t;
+typedef struct superblock superblock_t;
+typedef struct inode inode_t;
+typedef struct dentry dentry_t;
 typedef struct file file_t;
+typedef struct mount mount_t;
 typedef struct poll_file poll_file_t;
 
-typedef uint64_t (*fs_mount_t)(const char*); // Add arguments as they are needed
+typedef struct inode_ops inode_ops_t;
+typedef struct dentry_ops dentry_ops_t;
+typedef struct superblock_ops super_ops_t;
+typedef struct file_ops file_ops_t;
 
-typedef struct fs
+typedef uint64_t superblock_id_t;
+typedef uint64_t inode_id_t;
+typedef uint64_t dentry_id_t;
+typedef uint64_t mount_id_t;
+
+typedef enum
 {
-    char* name;
-    fs_mount_t mount;
-} fs_t;
+    INODE_FILE,
+    INODE_DIR,
+    INODE_OBJ,
+} inode_type_t;
 
-typedef uint64_t (*volume_unmount_t)(volume_t*);
-typedef file_t* (*volume_open_t)(volume_t*, const path_t*);
-typedef uint64_t (*volume_open2_t)(volume_t*, const path_t*, file_t* [2]);
-typedef uint64_t (*volume_stat_t)(volume_t*, const path_t*, stat_t*);
-typedef uint64_t (*volume_rename_t)(volume_t*, const path_t*, const path_t*);
-typedef uint64_t (*volume_remove_t)(volume_t*, const path_t*);
-typedef void (*volume_cleanup_t)(volume_t*, file_t*);
-
-typedef struct volume_ops
+typedef enum
 {
-    volume_unmount_t unmount;
-    volume_open_t open;
-    volume_open2_t open2;
-    volume_stat_t stat;
-    volume_rename_t rename;
-    volume_remove_t remove;
-    volume_cleanup_t cleanup;
-} volume_ops_t;
+    DENTRY_NONE = 0,
+    DENTRY_MOUNTPOINT = 1 << 0,
+} dentry_flags_t;
 
-typedef struct volume
+typedef enum
+{
+    PATH_NONE = 0,
+    PATH_NONBLOCK = 1 << 0,
+    PATH_APPEND = 1 << 1,
+    PATH_CREATE = 1 << 2,
+    PATH_EXCLUSIVE = 1 << 3,
+    PATH_TRUNCATE = 1 << 4,
+    PATH_DIRECTORY = 1 << 5
+} path_flags_t;
+
+typedef struct
+{
+    map_entry_t entry;
+    path_flags_t flag;
+    const char* name;
+} path_flag_entry_t;
+
+typedef enum
+{
+    SUPER_NONE = 0,
+} superblock_flags_t;
+
+typedef struct filesystem
 {
     list_entry_t entry;
-    char label[MAX_NAME];
-    const volume_ops_t* ops;
-    sysdir_t sysdir;
-    atomic_uint64_t ref;
-} volume_t;
+    const char* name;
+    superblock_t* (*mount)(const char* deviceName, superblock_flags_t flags, const void* data);
+} filesystem_t;
 
-typedef struct wait_queue wait_queue_t;
-
-typedef uint64_t (*file_read_t)(file_t*, void*, uint64_t);
-typedef uint64_t (*file_write_t)(file_t*, const void*, uint64_t);
-typedef uint64_t (*file_seek_t)(file_t*, int64_t, seek_origin_t);
-typedef uint64_t (*file_ioctl_t)(file_t*, uint64_t, void*, uint64_t);
-typedef wait_queue_t* (*file_poll_t)(file_t*, poll_file_t*);
-typedef void* (*file_mmap_t)(file_t*, void*, uint64_t, prot_t);
-typedef uint64_t (*file_readdir_t)(file_t*, stat_t*, uint64_t);
-
-typedef struct file_ops
+typedef struct superblock
 {
-    file_read_t read;
-    file_write_t write;
-    file_seek_t seek;
-    file_ioctl_t ioctl;
-    file_poll_t poll;
-    file_mmap_t mmap;
-    file_readdir_t readdir;
-} file_ops_t;
+    list_entry_t entry;
+    superblock_id_t id;
+    atomic_uint64_t ref;
+    uint64_t blockSize;
+    uint64_t maxFileSize;
+    superblock_flags_t flags;
+    void* private;
+    dentry_t* root;
+    const super_ops_t* ops;
+    char deviceName[MAX_NAME];
+    char fsName[MAX_NAME];
+    sysdir_t sysdir;
+} superblock_t;
+
+typedef struct inode
+{
+    map_entry_t mapEntry;
+    inode_id_t id;
+    atomic_uint64_t ref;
+    inode_type_t type;
+    uint64_t size;
+    uint64_t blocks;
+    uint64_t blockSize;
+    clock_t accessTime;
+    clock_t modifyTime;
+    clock_t changeTime;
+    uint64_t linkCount;
+    void* private;
+    superblock_t* superblock;
+    const inode_ops_t* ops;
+    const file_ops_t* fileOps;
+} inode_t;
+
+#define DETNRY_IS_ROOT(dentry) (dentry == dentry->parent)
+
+typedef struct dentry
+{
+    map_entry_t mapEntry;
+    dentry_id_t id;
+    atomic_uint64_t ref;
+    char name[MAX_NAME];
+    inode_t* inode;
+    dentry_t* parent;
+    superblock_t* superblock;
+    const dentry_ops_t* ops;
+    void* private;
+    dentry_flags_t flags; // Protected by ::lock
+    lock_t lock;
+} dentry_t;
 
 typedef struct file
 {
-    volume_t* volume;
-    uint64_t pos;
-    void* private;
-    syshdr_t* syshdr; // Used by sysfs
-    const file_ops_t* ops;
-    path_flags_t flags;
     atomic_uint64_t ref;
-    path_t path;
+    uint64_t pos;
+    path_flags_t flags;
+    dentry_t* dentry;
+    const file_ops_t* ops;
+    void* private;
 } file_t;
+
+typedef struct mount
+{
+    map_entry_t mapEntry;
+    mount_id_t id;
+    atomic_uint64_t ref;
+    superblock_t* superblock;
+    dentry_t* mountpoint;
+    mount_t* parent;
+} mount_t;
 
 typedef struct poll_file
 {
@@ -94,53 +165,149 @@ typedef struct poll_file
     poll_events_t revents;
 } poll_file_t;
 
-file_t* file_new(volume_t* volume, const path_t* path, path_flags_t supportedFlags);
-
-file_t* file_ref(file_t* file);
-
-void file_deref(file_t* file);
-
-static inline void file_defer_cleanup(file_t** file)
+typedef struct superblock_ops
 {
-    file_deref(*file);
-}
+    inode_t* (*allocItem)(superblock_t* superblock);
+    void (*freeItem)(superblock_t* superblock, inode_t* inode);
+    uint64_t (*writeInode)(superblock_t* superblock, inode_t* inode);
+    void (*free)(superblock_t* superblock);
+} super_ops_t;
+
+typedef struct inode_ops
+{
+    dentry_t* (*lookup)(inode_t* dir, const char* name);
+} inode_ops_t;
+
+typedef struct dentry_ops
+{
+    void (*free)(dentry_t* entry);
+} dentry_ops_t;
+
+typedef struct file_ops
+{
+    void (*free)(file_t* file);
+} file_ops_t;
+
+typedef struct
+{
+    mount_t* mount;
+    dentry_t* dentry;
+} path_t;
+
+typedef struct
+{
+    list_t list;
+    rwlock_t lock;
+} vfs_list_t;
+
+typedef struct
+{
+    map_t map;
+    rwlock_t lock;
+} vfs_map_t;
+
+typedef struct
+{
+    mount_t* mount;
+    rwlock_t lock;
+} vfs_root_t;
 
 void vfs_init(void);
 
-uint64_t vfs_attach_simple(const char* label, const volume_ops_t* ops);
+uint64_t vfs_register_fs(filesystem_t* fs);
+uint64_t vfs_unregister_fs(filesystem_t* fs);
+filesystem_t* vfs_get_filesystem(const char* name);
 
-uint64_t vfs_mount(const char* label, fs_t* fs);
+inode_t* vfs_get_inode(superblock_t* superblock, inode_id_t id);
+dentry_t* vfs_lookup_component(dentry_t* parent, const char* name);
 
-uint64_t vfs_unmount(const char* label);
+typedef enum
+{
+    LOOKUP_NONE = 0,
+    LOOKUP_NO_FLAGS = 1 << 0,
+} vfs_lookup_flags_t;
 
-uint64_t vfs_chdir(const path_t* path);
+uint64_t vfs_parse_flags(const char* pathname, path_flags_t* outFlags);
+dentry_t* vfs_path_walk(const char* pathname, vfs_lookup_flags_t flags, const path_t* start);
+dentry_t* vfs_path_walk_parent(const char* pathname, vfs_lookup_flags_t flags, const path_t* start, char* outLastName);
 
-file_t* vfs_open(const path_t* path);
+dentry_t* vfs_lookup(const char* pathname, vfs_lookup_flags_t flags);
+dentry_t* vfs_lookup_parent(const char* pathname, vfs_lookup_flags_t flags, char* outLastName);
 
-uint64_t vfs_open2(const path_t* path, file_t* files[2]);
+uint64_t vfs_mount(const char* deviceName, const char* mountpoint, const char* fsName, superblock_flags_t flags,
+    const void* data);
+uint64_t vfs_unmount(const char* mountpoint);
 
-uint64_t vfs_stat(const path_t* path, stat_t* buffer);
+file_t* vfs_open(const char* pathname);
 
-uint64_t vfs_rename(const path_t* oldpath, const path_t* newpath);
+superblock_t* superblock_new(void);
+void superblock_free(superblock_t* superblock);
+superblock_t* superblock_ref(superblock_t* superblock);
+void superblock_deref(superblock_t* superblock);
 
-uint64_t vfs_remove(const path_t* path);
+inode_t* inode_new(superblock_t* superblock);
+void inode_free(inode_t* inode);
+inode_t* inode_ref(inode_t* inode);
+void inode_deref(inode_t* inode);
+uint64_t inode_sync(inode_t* inode);
 
-uint64_t vfs_readdir(file_t* file, stat_t* infos, uint64_t amount);
+dentry_t* dentry_new(const char* name);
+void dentry_free(dentry_t* dentry);
+dentry_t* dentry_ref(dentry_t* dentry);
+void dentry_deref(dentry_t* dentry);
 
-uint64_t vfs_read(file_t* file, void* buffer, uint64_t count);
+file_t* file_new(void);
+void file_free(file_t* file);
+file_t* file_ref(file_t* file);
+void file_deref(file_t* file);
 
-uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count);
+mount_t* mount_new(void);
+void mount_free(mount_t* mount);
+mount_t* mount_ref(mount_t* mount);
+void mount_deref(mount_t* mount);
 
-uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin);
+uint64_t path_get_root(path_t* outPath);
+void path_deref(path_t* path);
 
-uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size);
+static inline void superblock_defer_cleanup(superblock_t** superblock)
+{
+    if (*superblock != NULL)
+    {
+        superblock_deref(*superblock);
+    }
+}
 
-uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout);
+static inline void inode_defer_cleanup(inode_t** inode)
+{
+    if (*inode != NULL)
+    {
+        inode_deref(*inode);
+    }
+}
 
-void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot);
+static inline void dentry_defer_cleanup(dentry_t** entry)
+{
+    if (*entry != NULL)
+    {
+        dentry_deref(*entry);
+    }
+}
 
-// Helper function for implementing readdir
-void readdir_push(stat_t* infos, uint64_t amount, uint64_t* index, uint64_t* total, stat_t* info);
+static inline void file_defer_cleanup(file_t** file)
+{
+    if (*file != NULL)
+    {
+        file_deref(*file);
+    }
+}
+
+static inline void mount_defer_cleanup(mount_t** mount)
+{
+    if (*mount != NULL)
+    {
+        mount_deref(*mount);
+    }
+}
 
 // Helper macros for implementing file operations dealing with simple buffers
 #define BUFFER_READ(file, buffer, count, src, size) \
