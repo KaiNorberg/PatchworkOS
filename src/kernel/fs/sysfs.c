@@ -93,7 +93,7 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
     if (node == NULL)
     {
         rwlock_read_release(&lock);
-        return ERRPTR(ENOENT);
+        errno = ENOENT; return NULL;
     }
 
     if (node->type == SYSFS_OBJ)
@@ -101,7 +101,7 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
         if (path->flags & PATH_DIRECTORY)
         {
             rwlock_read_release(&lock);
-            return ERRPTR(EISDIR);
+            errno = EISDIR; return NULL;
         }
 
         sysobj_t* sysobj = sysobj_ref(CONTAINER_OF(node, sysobj_t, header.node));
@@ -110,7 +110,7 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
         if (sysobj->ops->open == NULL)
         {
             sysobj_deref(sysobj);
-            return ERRPTR(ENOSYS);
+            errno = ENOSYS; return NULL;
         }
 
         file_t* file = sysobj->ops->open(volume, path, sysobj);
@@ -128,7 +128,7 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
         if (!(path->flags & PATH_DIRECTORY))
         {
             rwlock_read_release(&lock);
-            return ERRPTR(ENOTDIR);
+            errno = ENOTDIR; return NULL;
         }
 
         sysdir_t* sysdir = sysdir_ref(CONTAINER_OF(node, sysdir_t, header.node));
@@ -153,22 +153,22 @@ static uint64_t sysfs_open2(volume_t* volume, const path_t* path, file_t* files[
     node_t* node = path_traverse_node(path, &root.header.node);
     if (node == NULL)
     {
-        return ERROR(ENOENT);
+        errno = ENOENT; return ERR;
     }
     else if (node->type != SYSFS_OBJ)
     {
-        return ERROR(EISDIR);
+        errno = EISDIR; return ERR;
     }
     else if (path->flags & PATH_DIRECTORY)
     {
-        return ERROR(EISDIR);
+        errno = EISDIR; return ERR;
     }
     sysobj_t* sysobj = sysobj_ref(CONTAINER_OF(node, sysobj_t, header.node)); // First ref
 
     if (sysobj->ops->open2 == NULL)
     {
         sysobj_deref(sysobj);
-        return ERROR(ENOSYS);
+        errno = ENOSYS; return ERR;
     }
 
     if (sysobj->ops->open2(volume, path, sysobj, files) == ERR)
@@ -189,7 +189,7 @@ static uint64_t sysfs_stat(volume_t* volume, const path_t* path, stat_t* stat)
     node_t* node = path_traverse_node(path, &root.header.node);
     if (node == NULL)
     {
-        return ERROR(ENOENT);
+        errno = ENOENT; return ERR;
     }
 
     strcpy(stat->name, node->name);
@@ -250,7 +250,7 @@ static superblock_ops_t superOps = {
 
 /*static superblock_t* sysfs_mount(const char* deviceName, superblock_flags_t flags, const void* data)
 {
-    return ERRPTR(ENOSYS);
+    errno = ENOSYS; return NULL;
     superblock_t* superblock = superblock_new(deviceName, SYSFS_NAME, &superOps, &dentryOps);
     if (superblock == NULL)
     {
@@ -296,8 +296,8 @@ void sysfs_init(void)
 
 void syfs_after_vfs_init(void)
 {
-    //assert(vfs_register_fs(&sysfs) != ERR);
-    //assert(vfs_mount(VFS_DEVICE_NAME_NONE, "/", SYSFS_NAME, SUPER_NONE, NULL) != ERR);
+    // assert(vfs_register_fs(&sysfs) != ERR);
+    // assert(vfs_mount(VFS_DEVICE_NAME_NONE, "/", SYSFS_NAME, SUPER_NONE, NULL) != ERR);
 }
 
 uint64_t sysfs_start_op(file_t* file)
@@ -305,7 +305,7 @@ uint64_t sysfs_start_op(file_t* file)
     /*assert(file->syshdr != NULL);
     if (atomic_load(&file->syshdr->hidden) == true)
     {
-        return ERROR(EDISCONNECTED);
+        errno = EDISCONNECTED; return ERR;
     }*/
 
     return 0;
@@ -337,7 +337,8 @@ static node_t* sysfs_traverse(const char* path)
         {
             if (!PATH_VALID_CHAR(*p))
             {
-                return ERRPTR(EINVAL);
+                errno = EINVAL;
+                return NULL;
             }
             p++;
         }
@@ -345,7 +346,8 @@ static node_t* sysfs_traverse(const char* path)
         uint64_t len = p - componentStart;
         if (len >= MAX_NAME)
         {
-            return ERRPTR(ENAMETOOLONG);
+            errno = ENAMETOOLONG;
+            return NULL;
         }
 
         memcpy(component, componentStart, len);
@@ -370,7 +372,8 @@ static node_t* sysfs_traverse(const char* path)
 
         if (child->type != SYSFS_DIR)
         {
-            return ERRPTR(ENOTDIR);
+            errno = ENOTDIR;
+            return NULL;
         }
 
         parent = child;
@@ -391,7 +394,8 @@ uint64_t sysdir_init(sysdir_t* dir, const char* path, const char* dirname, void*
 
     if (node_find(parent, dirname) != NULL)
     {
-        return ERROR(EEXIST);
+        errno = EEXIST;
+        return ERR;
     }
 
     syshdr_init(&dir->header, dirname, SYSFS_DIR);
@@ -428,14 +432,16 @@ uint64_t sysobj_init(sysobj_t* sysobj, sysdir_t* dir, const char* filename, cons
 {
     if (!vfs_is_name_valid(filename))
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     RWLOCK_WRITE_DEFER(&lock);
 
     if (node_find(&dir->header.node, filename) != NULL)
     {
-        return ERROR(EEXIST);
+        errno = EEXIST;
+        return ERR;
     }
 
     syshdr_init(&sysobj->header, filename, SYSFS_OBJ);
@@ -453,7 +459,8 @@ uint64_t sysobj_init_path(sysobj_t* sysobj, const char* path, const char* filena
 {
     if (!vfs_is_name_valid(filename))
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     RWLOCK_WRITE_DEFER(&lock);
@@ -466,7 +473,8 @@ uint64_t sysobj_init_path(sysobj_t* sysobj, const char* path, const char* filena
 
     if (node_find(parent, filename) != NULL)
     {
-        return ERROR(EEXIST);
+        errno = EEXIST;
+        return ERR;
     }
 
     syshdr_init(&sysobj->header, filename, SYSFS_OBJ);

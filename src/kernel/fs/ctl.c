@@ -24,7 +24,8 @@ uint64_t ctl_dispatch(ctl_t* ctls, file_t* file, const void* buffer, uint64_t co
     }
     if (argc == 0)
     {
-        return ERROR(EUNKNOWNCTL);
+        errno = EUNKNOWNCTL;
+        return ERR;
     }
 
     ctl_t* ctl = &ctls[0];
@@ -34,7 +35,8 @@ uint64_t ctl_dispatch(ctl_t* ctls, file_t* file, const void* buffer, uint64_t co
         {
             if (ctl->argcMin < argc || ctl->argcMax > argc)
             {
-                return ERROR(EUNKNOWNCTL);
+                errno = EUNKNOWNCTL;
+                return ERR;
             }
 
             if (ctl->func(file, argc, argv) == ERR)
@@ -47,5 +49,6 @@ uint64_t ctl_dispatch(ctl_t* ctls, file_t* file, const void* buffer, uint64_t co
         ctl++;
     }
 
-    return ERROR(EUNKNOWNCTL);
+    errno = EUNKNOWNCTL;
+    return ERR;
 }

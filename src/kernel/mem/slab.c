@@ -97,7 +97,8 @@ object_t* slab_alloc(slab_t* slab)
         cache = cache_new(slab, slab->objectSize, slab->optimalCacheSize);
         if (cache == NULL)
         {
-            return ERRPTR(ENOMEM);
+            errno = ENOMEM;
+            return NULL;
         }
         newCacheCreated = true;
     }

@@ -1,8 +1,8 @@
 #include "file.h"
 
-#include "vfs.h"
 #include "mem/heap.h"
 #include "sched/thread.h"
+#include "vfs.h"
 
 file_t* file_new(dentry_t* dentry, path_flags_t flags)
 {
@@ -60,7 +60,7 @@ void file_deref(file_t* file)
 }
 
 uint64_t file_default_seek(file_t* file, int64_t offset, seek_origin_t origin)
-{    
+{
     LOCK_DEFER(&file->dentry->inode->lock);
     uint64_t newPos;
     switch (origin)
@@ -75,7 +75,8 @@ uint64_t file_default_seek(file_t* file, int64_t offset, seek_origin_t origin)
         newPos = file->dentry->inode->size + offset;
         break;
     default:
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     file->pos = newPos;

@@ -226,7 +226,8 @@ static uint64_t wait_setup_block(thread_t* thread, wait_queue_t** waitQueues, ui
                 }
                 heap_free(other);
             }
-            return ERROR(ENOMEM);
+            errno = ENOMEM;
+            return ERR;
         }
         list_entry_init(&entry->queueEntry);
         list_entry_init(&entry->threadEntry);

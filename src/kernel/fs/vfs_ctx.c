@@ -47,7 +47,8 @@ file_t* vfs_ctx_get_file(vfs_ctx_t* ctx, fd_t fd)
 
     if (fd >= CONFIG_MAX_FD || ctx->files[fd] == NULL)
     {
-        return ERRPTR(EBADF);
+        errno = EBADF;
+        return NULL;
     }
 
     return file_ref(ctx->files[fd]);
@@ -83,7 +84,8 @@ fd_t vfs_ctx_open(vfs_ctx_t* ctx, file_t* file)
         }
     }
 
-    return ERROR(EMFILE);
+    errno = EMFILE;
+    return ERR;
 }
 
 fd_t vfs_ctx_openas(vfs_ctx_t* ctx, fd_t fd, file_t* file)
@@ -92,7 +94,8 @@ fd_t vfs_ctx_openas(vfs_ctx_t* ctx, fd_t fd, file_t* file)
 
     if (fd >= CONFIG_MAX_FD)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     if (ctx->files[fd] != NULL)
@@ -111,7 +114,8 @@ uint64_t vfs_ctx_close(vfs_ctx_t* ctx, fd_t fd)
 
     if (fd >= CONFIG_MAX_FD || ctx->files[fd] == NULL)
     {
-        return ERROR(EBADF);
+        errno = EBADF;
+        return ERR;
     }
 
     file_deref(ctx->files[fd]);
@@ -125,7 +129,8 @@ fd_t vfs_ctx_dup(vfs_ctx_t* ctx, fd_t oldFd)
 
     if (oldFd >= CONFIG_MAX_FD || ctx->files[oldFd] == NULL)
     {
-        return ERROR(EBADF);
+        errno = EBADF;
+        return ERR;
     }
 
     for (fd_t fd = 0; fd < CONFIG_MAX_FD; fd++)
@@ -137,7 +142,8 @@ fd_t vfs_ctx_dup(vfs_ctx_t* ctx, fd_t oldFd)
         }
     }
 
-    return ERROR(EMFILE);
+    errno = EMFILE;
+    return ERR;
 }
 
 fd_t vfs_ctx_dup2(vfs_ctx_t* ctx, fd_t oldFd, fd_t newFd)
@@ -151,7 +157,8 @@ fd_t vfs_ctx_dup2(vfs_ctx_t* ctx, fd_t oldFd, fd_t newFd)
 
     if (oldFd >= CONFIG_MAX_FD || newFd >= CONFIG_MAX_FD || ctx->files[oldFd] == NULL)
     {
-        return ERROR(EBADF);
+        errno = EBADF;
+        return ERR;
     }
 
     if (ctx->files[newFd] != NULL)

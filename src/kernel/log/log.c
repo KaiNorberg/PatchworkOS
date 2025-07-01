@@ -103,7 +103,8 @@ static uint64_t klog_write(file_t* file, const void* buffer, uint64_t count, uin
     }
     if (count >= MAX_PATH)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
     char string[MAX_PATH];
     memcpy(string, buffer, count);
@@ -215,7 +216,8 @@ uint64_t log_vprint(log_level_t level, const char* format, va_list args)
     int length = vsnprintf(state.lineBuffer, LOG_MAX_BUFFER, format, args);
     if (length < 0)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     if (length >= LOG_MAX_BUFFER)

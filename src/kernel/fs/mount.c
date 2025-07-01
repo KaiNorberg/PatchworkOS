@@ -1,7 +1,7 @@
 #include "mount.h"
 
-#include "vfs.h"
 #include "mem/heap.h"
+#include "vfs.h"
 
 mount_t* mount_new(superblock_t* superblock, path_t* mountpoint)
 {

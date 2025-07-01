@@ -5,7 +5,8 @@
 
 #include "defs.h"
 
-// TODO: Overhaul sysfs. Implement seperate /dev, /proc folders. Currently there is no way to set the inode size and similar.
+// TODO: Overhaul sysfs. Implement seperate /dev, /proc folders. Currently there is no way to set the inode size and
+// similar.
 
 typedef struct file file_t;
 typedef struct file_ops file_ops_t;

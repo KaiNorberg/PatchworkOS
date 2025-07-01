@@ -8,7 +8,8 @@ dentry_t* dentry_new(superblock_t* superblock, const char* name, inode_t* inode)
 {
     if (strnlen_s(name, MAX_NAME) >= MAX_NAME)
     {
-        return ERRPTR(EINVAL);
+        errno = EINVAL;
+        return NULL;
     }
 
     dentry_t* dentry = heap_alloc(sizeof(dentry_t), HEAP_NONE);

@@ -35,7 +35,8 @@ static process_t* process_file_get_process(file_t* file)
 
     if (process == kernelProcess)
     {
-        return ERRPTR(EACCES);
+        errno = EACCES;
+        return NULL;
     }
 
     return process;
@@ -67,11 +68,13 @@ static uint64_t process_ctl_prio(file_t* file, uint64_t argc, const char** argv)
     int prio = atoi(argv[1]);
     if (prio < 0)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
     if (prio >= PRIORITY_MAX_USER)
     {
-        return ERROR(EACCES);
+        errno = EACCES;
+        return ERR;
     }
 
     atomic_store(&process->priority, prio);
@@ -161,7 +164,8 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
     thread_t* thread = CONTAINER_OF_SAFE(list_first(&process->threads.list), thread_t, processEntry);
     if (thread == NULL)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     if (thread_send_note(thread, buffer, count) == ERR)
@@ -190,14 +194,16 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
     process_t* process = heap_alloc(sizeof(process_t), HEAP_NONE);
     if (process == NULL)
     {
-        return ERRPTR(ENOMEM);
+        errno = ENOMEM;
+        return NULL;
     }
 
     process->id = atomic_fetch_add(&newPid, 1);
     atomic_init(&process->priority, priority);
     if (argv_init(&process->argv, argv) == ERR)
     {
-        return ERRPTR(ENOMEM);
+        errno = ENOMEM;
+        return NULL;
     }
 
     if (cwd != NULL)

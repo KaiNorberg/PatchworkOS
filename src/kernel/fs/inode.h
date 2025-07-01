@@ -1,16 +1,17 @@
 #pragma once
 
-#include "utils/map.h"
-#include "sync/lock.h"
 #include "path.h"
+#include "sync/lock.h"
+#include "utils/map.h"
 
 #include <stdatomic.h>
 #include <stdint.h>
-#include <time.h>
 #include <sys/io.h>
 #include <sys/proc.h>
+#include <time.h>
 
-// TODO: Implement actually writing/syncing dirty inodes, for now inodes should be marked as dirty as appropriate but they will never actuall be "cleaned."
+// TODO: Implement actually writing/syncing dirty inodes, for now inodes should be marked as dirty as appropriate but
+// they will never actuall be "cleaned."
 
 typedef struct inode inode_t;
 typedef struct inode_ops inode_ops_t;
@@ -28,7 +29,7 @@ typedef enum
 
 typedef struct inode
 {
-    map_entry_t mapEntry; //!< Protected by the inodeCache lock.
+    map_entry_t mapEntry;  //!< Protected by the inodeCache lock.
     inode_number_t number; //!< Constant after creation.
     atomic_uint64_t ref;
     inode_type_t type; //!< Constant after creation.
@@ -39,11 +40,12 @@ typedef struct inode
     time_t accessTime; //!< Unix time stamp for the last inode access.
     time_t modifyTime; //!< Unix time stamp for last file content alteration.
     time_t changeTime; //!< Unix time stamp for the last file metadata alternation.
-    void* private; 
-    superblock_t* superblock; //!< Constant after creation.
-    const inode_ops_t* ops; //!< Constant after creation.
+    void* private;
+    superblock_t* superblock;  //!< Constant after creation.
+    const inode_ops_t* ops;    //!< Constant after creation.
     const file_ops_t* fileOps; //!< Constant after creation.
-    lock_t lock; //!< Lock for the mutable members of the inode, also used to sync the position of files inside the inode.
+    lock_t
+        lock; //!< Lock for the mutable members of the inode, also used to sync the position of files inside the inode.
 } inode_t;
 
 typedef struct inode_ops
@@ -53,7 +55,8 @@ typedef struct inode_ops
     void (*truncate)(inode_t* inode);
 } inode_ops_t;
 
-inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, inode_ops_t* ops, file_ops_t* fileOps);
+inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, inode_ops_t* ops,
+    file_ops_t* fileOps);
 
 void inode_free(inode_t* inode);
 

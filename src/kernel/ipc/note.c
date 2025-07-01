@@ -24,7 +24,8 @@ uint64_t note_queue_push(note_queue_t* queue, const void* message, uint64_t leng
 {
     if (length >= MAX_PATH)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     process_t* sender = sched_process();
@@ -37,7 +38,8 @@ uint64_t note_queue_push(note_queue_t* queue, const void* message, uint64_t leng
         if (!(flags & NOTE_CRITICAL))
         {
             // TODO: Implement blocking
-            return ERROR(EWOULDBLOCK);
+            errno = EWOULDBLOCK;
+            return ERR;
         }
 
         // Overwrite non critical note.

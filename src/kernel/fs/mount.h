@@ -2,8 +2,8 @@
 
 #include "utils/map.h"
 
-#include <stdint.h>
 #include <stdatomic.h>
+#include <stdint.h>
 
 typedef struct mount mount_t;
 typedef struct superblock superblock_t;

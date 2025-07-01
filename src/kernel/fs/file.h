@@ -59,7 +59,7 @@ void file_deref(file_t* file);
 /**
  * @brief Helper function for basic seeking.
  * @ingroup kernel_vfs
- * 
+ *
  */
 uint64_t file_default_seek(file_t* file, int64_t offset, seek_origin_t origin);
 

@@ -12,7 +12,6 @@
 
 static void print_directory(const char* path)
 {
-
 }
 
 void main(boot_info_t* bootInfo)
@@ -26,9 +25,10 @@ void main(boot_info_t* bootInfo)
     }
     else
     {
-        LOG_INFO("Number: %u\nType: %u\nFlags: %u\nSize: %lu\nBlocks: %lu\nLink Amount: %lu\nAccess Time: %u\nModify Time: %u\nChange Time: %u\nName: %s\n",
-            stat.number, stat.type, stat.flags, stat.size, stat.blocks, stat.linkAmount,
-            stat.accessTime, stat.modifyTime, stat.changeTime, stat.name);
+        LOG_INFO("Number: %u\nType: %u\nFlags: %u\nSize: %lu\nBlocks: %lu\nLink Amount: %lu\nAccess Time: %u\nModify "
+                 "Time: %u\nChange Time: %u\nName: %s\n",
+            stat.number, stat.type, stat.flags, stat.size, stat.blocks, stat.linkAmount, stat.accessTime,
+            stat.modifyTime, stat.changeTime, stat.name);
     }
 
     LOG_INFO("looping\n");

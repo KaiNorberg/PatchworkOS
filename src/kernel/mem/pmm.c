@@ -259,14 +259,24 @@ void* pmm_alloc(void)
 {
     LOCK_DEFER(&lock);
     void* address = pmm_stack_alloc();
-    return address != NULL ? address : ERRPTR(ENOMEM);
+    if (address == NULL)
+    {
+        errno = ENOMEM;
+        return NULL;
+    }
+    return address;
 }
 
 void* pmm_alloc_bitmap(uint64_t count, uintptr_t maxAddr, uint64_t alignment)
 {
     LOCK_DEFER(&lock);
     void* address = pmm_bitmap_alloc(count, maxAddr, alignment);
-    return address != NULL ? address : ERRPTR(ENOMEM);
+    if (address == NULL)
+    {
+        errno = ENOMEM;
+        return NULL;
+    }
+    return address;
 }
 
 void pmm_free(void* address)

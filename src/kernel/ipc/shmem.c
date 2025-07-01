@@ -71,7 +71,8 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
     uint64_t pageAmount = BYTES_TO_PAGES(length);
     if (pageAmount == 0)
     {
-        return ERRPTR(EINVAL);
+        errno = EINVAL;
+        return NULL;
     }
 
     if (shmem->segment == NULL) // First call to mmap()

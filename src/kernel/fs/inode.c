@@ -5,7 +5,8 @@
 #include "sched/thread.h"
 #include "vfs.h"
 
-inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, inode_ops_t* ops, file_ops_t* fileOps)
+inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, inode_ops_t* ops,
+    file_ops_t* fileOps)
 {
     if (superblock == NULL)
     {
@@ -87,7 +88,8 @@ uint64_t inode_sync(inode_t* inode)
 {
     if (inode == NULL)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     if (inode->superblock->ops != NULL && inode->superblock->ops->writeInode != NULL)
@@ -104,9 +106,8 @@ void inode_access_time_update(inode_t* inode)
 
     // TODO: Unsure if this is correct, investigate further.
     time_t now = systime_unix_epoch();
-    if (inode->accessTime < inode->modifyTime ||
-        inode->accessTime < inode->changeTime ||
-        (now - inode->accessTime) > (24 * 60 * 60)) 
+    if (inode->accessTime < inode->modifyTime || inode->accessTime < inode->changeTime ||
+        (now - inode->accessTime) > (24 * 60 * 60))
     {
         inode->accessTime = now;
     }

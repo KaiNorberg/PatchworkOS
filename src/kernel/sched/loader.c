@@ -162,7 +162,8 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
 
     if (argv == NULL || argv[0] == NULL)
     {
-        return ERRPTR(EINVAL);
+        errno = EINVAL;
+        return NULL;
     }
 
     stat_t info;
@@ -173,7 +174,8 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
 
     if (info.type != INODE_FILE)
     {
-        return ERRPTR(EISDIR);
+        errno = EISDIR;
+        return NULL;
     }
 
     process_t* child = process_new(process, argv, cwd, priority);

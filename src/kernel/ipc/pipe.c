@@ -24,12 +24,14 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count, uint64_t* 
     pipe_private_t* private = file->private;
     if (private->readEnd != file)
     {
-        return ERROR(ENOTSUP);
+        errno = ENOTSUP;
+        return ERR;
     }
 
     if (count >= PAGE_SIZE)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     LOCK_DEFER(&private->lock);
@@ -54,12 +56,14 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uin
     pipe_private_t* private = file->private;
     if (private->writeEnd != file)
     {
-        return ERROR(ENOTSUP);
+        errno = ENOTSUP;
+        return ERR;
     }
 
     if (count >= PAGE_SIZE)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     LOCK_DEFER(&private->lock);
@@ -67,13 +71,15 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uin
     if (WAIT_BLOCK_LOCK(&private->waitQueue, &private->lock,
             ring_free_length(&private->ring) >= count || private->isReadClosed) != WAIT_NORM)
     {
-        return ERROR(EINTR);
+        errno = EINTR;
+        return ERR;
     }
 
     if (private->isReadClosed)
     {
         wait_unblock(&private->waitQueue, WAIT_ALL);
-        return ERROR(EPIPE);
+        errno = EPIPE;
+        return ERR;
     }
 
     assert(ring_write(&private->ring, buffer, count) != ERR);

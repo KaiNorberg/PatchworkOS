@@ -62,7 +62,8 @@ uint64_t futex_do(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t ti
     {
         if (atomic_load(addr) != val)
         {
-            return ERROR(EAGAIN);
+            errno = EAGAIN;
+            return ERR;
         }
 
         clock_t start = systime_uptime();
@@ -80,7 +81,8 @@ uint64_t futex_do(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t ti
     break;
     default:
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
     }
 

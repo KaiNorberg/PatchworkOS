@@ -36,7 +36,8 @@ void* heap_alloc(uint64_t size, heap_flags_t flags)
         object_t* object = vmm_kernel_map(NULL, NULL, pageAmount, PML_WRITE);
         if (object == NULL)
         {
-            return ERRPTR(ENOMEM);
+            errno = ENOMEM;
+            return NULL;
         }
         list_entry_init(&object->entry);
         object->cache = NULL;

@@ -28,7 +28,8 @@ uint64_t path_parse_pathname(parsed_pathname_t* dest, const char* pathname)
 {
     if (dest == NULL || pathname == NULL)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     const char* flags = NULL;
@@ -39,14 +40,16 @@ uint64_t path_parse_pathname(parsed_pathname_t* dest, const char* pathname)
         uint64_t len = p - pathname;
         if (len >= MAX_PATH)
         {
-            return ERROR(ENAMETOOLONG);
+            errno = ENAMETOOLONG;
+            return ERR;
         }
 
         if (*p == '?')
         {
             if (flags != NULL) // There should only be one ? char in the path.
             {
-                return ERROR(EBADFLAG);
+                errno = EBADFLAG;
+                return ERR;
             }
             flags = p + 1;
         }
@@ -91,14 +94,16 @@ uint64_t path_parse_pathname(parsed_pathname_t* dest, const char* pathname)
         uint64_t len = p - start;
         if (len >= MAX_NAME)
         {
-            return ERROR(ENAMETOOLONG);
+            errno = ENAMETOOLONG;
+            return ERR;
         }
 
         map_key_t key = map_key_buffer(start, len);
         path_flag_entry_t* flag = CONTAINER_OF_SAFE(map_get(&flagMap, &key), path_flag_entry_t, entry);
         if (flag == NULL)
         {
-            return ERROR(EBADFLAG);
+            errno = EBADFLAG;
+            return ERR;
         }
         dest->flags |= flag->flag;
     }
@@ -132,7 +137,8 @@ static uint64_t path_handle_dotdot(path_t* current)
 
         if (iter >= PATH_HANDLE_DOTDOT_MAX_ITER)
         {
-            return ERROR(ELOOP);
+            errno = ELOOP;
+            return ERR;
         }
 
         if (current->dentry != current->mount->superblock->root)
@@ -140,7 +146,8 @@ static uint64_t path_handle_dotdot(path_t* current)
             dentry_t* parent = current->dentry->parent;
             if (parent == NULL)
             {
-                return ERROR(ENOENT);
+                errno = ENOENT;
+                return ERR;
             }
 
             dentry_t* new_parent = dentry_ref(parent);
@@ -196,12 +203,14 @@ uint64_t path_walk(path_t* outPath, const char* pathname, const path_t* start)
 {
     if (pathname == NULL)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     if (pathname[0] == '\0')
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     path_t current = {0};
@@ -219,7 +228,8 @@ uint64_t path_walk(path_t* outPath, const char* pathname, const path_t* start)
     {
         if (start == NULL)
         {
-            return ERROR(EINVAL);
+            errno = EINVAL;
+            return ERR;
         }
         current.dentry = dentry_ref(start->dentry);
         current.mount = mount_ref(start->mount);
@@ -248,7 +258,8 @@ uint64_t path_walk(path_t* outPath, const char* pathname, const path_t* start)
         if (*p == '?')
         {
             path_put(&current);
-            return ERROR(EBADFLAG);
+            errno = EBADFLAG;
+            return ERR;
         }
 
         const char* componentStart = p;
@@ -257,7 +268,8 @@ uint64_t path_walk(path_t* outPath, const char* pathname, const path_t* start)
             if (!PATH_VALID_CHAR(*p))
             {
                 path_put(&current);
-                return ERROR(EINVAL);
+                errno = EINVAL;
+                return ERR;
             }
             p++;
         }
@@ -266,7 +278,8 @@ uint64_t path_walk(path_t* outPath, const char* pathname, const path_t* start)
         if (len >= MAX_NAME)
         {
             path_put(&current);
-            return ERROR(ENAMETOOLONG);
+            errno = ENAMETOOLONG;
+            return ERR;
         }
 
         memcpy(component, componentStart, len);

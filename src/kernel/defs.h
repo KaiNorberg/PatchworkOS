@@ -33,17 +33,3 @@
 
 #define CONCAT(a, b) CONCAT_INNER(a, b)
 #define CONCAT_INNER(a, b) a##b
-
-// TODO: Remove usage of ERROR and ERRPTR macros, they may cause confusion, instead start using errno like error setting.
-
-#define ERROR(code) \
-    ({ \
-        sched_thread()->error = code; \
-        ERR; \
-    })
-
-#define ERRPTR(code) \
-    ({ \
-        sched_thread()->error = code; \
-        NULL; \
-    })

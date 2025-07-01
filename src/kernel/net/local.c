@@ -35,7 +35,8 @@ static local_listener_t* local_listener_new(const char* address)
 {
     if (!vfs_is_name_valid(address))
     {
-        return ERRPTR(EINVAL);
+        errno = EINVAL;
+        return NULL;
     }
 
     local_listener_t* listener = heap_alloc(sizeof(local_listener_t), HEAP_NONE);
@@ -297,11 +298,13 @@ static uint64_t local_socket_bind(socket_t* socket, const char* address)
 
     if (local->state != LOCAL_SOCKET_BLANK)
     {
-        return ERROR(ENOTSUP);
+        errno = ENOTSUP;
+        return ERR;
     }
     if (!vfs_is_name_valid(address))
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     strncpy(local->bind.address, address, MAX_NAME - 1);
@@ -317,7 +320,8 @@ static uint64_t local_socket_listen(socket_t* socket)
 
     if (local->state != LOCAL_SOCKET_BOUND)
     {
-        return ERROR(ENOTSUP);
+        errno = ENOTSUP;
+        return ERR;
     }
 
     LOG_INFO("%s\n", local->bind.address);
@@ -335,7 +339,8 @@ static uint64_t local_socket_connect(socket_t* socket, const char* address)
 {
     if (!vfs_is_name_valid(address))
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     local_socket_t* local = socket->private;
@@ -343,7 +348,8 @@ static uint64_t local_socket_connect(socket_t* socket, const char* address)
     if (local->state != LOCAL_SOCKET_BLANK)
     {
         lock_release(&local->lock);
-        return ERROR(ENOTSUP);
+        errno = ENOTSUP;
+        return ERR;
     }
 
     local_connection_t* conn = local_connection_new(address); // Reference from here
@@ -360,7 +366,8 @@ static uint64_t local_socket_connect(socket_t* socket, const char* address)
         lock_release(&local->lock);
         lock_release(&listener->lock);
         local_connection_deref(conn);
-        return ERROR(ECONNREFUSED);
+        errno = ECONNREFUSED;
+        return ERR;
     }
 
     local_listener_push(listener, conn);
@@ -378,11 +385,13 @@ static uint64_t local_socket_connect(socket_t* socket, const char* address)
 
         if (!isAccepted && !isClosed)
         {
-            return ERROR(EINPROGRESS);
+            errno = EINPROGRESS;
+            return ERR;
         }
         if (isClosed)
         {
-            return ERROR(ECONNREFUSED);
+            errno = ECONNREFUSED;
+            return ERR;
         }
     }
     else
@@ -390,11 +399,18 @@ static uint64_t local_socket_connect(socket_t* socket, const char* address)
         if (WAIT_BLOCK(&conn->waitQueue, atomic_load(&conn->isAccepted) || local_connection_is_closed(conn)) !=
             WAIT_NORM)
         {
-            return ERROR(EINTR);
+            errno = EINTR;
+            return ERR;
         }
     }
 
-    return local_connection_is_closed(conn) ? ERROR(ECONNREFUSED) : 0;
+    if (local_connection_is_closed(conn))
+    {
+        errno = ECONNREFUSED;
+        return ERR;
+    }
+
+    return 0;
 }
 
 static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
@@ -405,7 +421,8 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
     if (local->state != LOCAL_SOCKET_LISTEN)
     {
         lock_release(&local->lock);
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
     local_listener_t* listener = local->listen.listener;
     lock_release(&local->lock);
@@ -417,7 +434,8 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
         if (!(local_listener_is_conn_avail(listener) || local_listener_is_closed(listener)))
         {
             lock_release(&listener->lock);
-            return ERROR(EWOULDBLOCK);
+            errno = EWOULDBLOCK;
+            return ERR;
         }
     }
     else
@@ -426,21 +444,24 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
                 local_listener_is_conn_avail(listener) || local_listener_is_closed(listener)) != WAIT_NORM)
         {
             lock_release(&listener->lock);
-            return ERROR(EINTR);
+            errno = EINTR;
+            return ERR;
         }
     }
 
     if (local_listener_is_closed(listener))
     {
         lock_release(&listener->lock);
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     local_socket_t* newLocal = heap_alloc(sizeof(local_socket_t), HEAP_NONE);
     if (newLocal == NULL)
     {
         lock_release(&listener->lock);
-        return ERROR(ENOMEM);
+        errno = ENOMEM;
+        return ERR;
     }
     newLocal->state = LOCAL_SOCKET_ACCEPT;
     lock_init(&newLocal->lock);
@@ -450,7 +471,8 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
     {
         heap_free(newLocal);
         lock_release(&listener->lock);
-        return ERROR(EAGAIN);
+        errno = EAGAIN;
+        return ERR;
     }
 
     atomic_store(&conn->isAccepted, true);
@@ -466,7 +488,8 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
 {
     if (buffer == NULL)
     {
-        return ERROR(EFAULT);
+        errno = EFAULT;
+        return ERR;
     }
     if (count == 0)
     {
@@ -474,13 +497,15 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
     }
     if (count > LOCAL_MAX_PACKET_SIZE)
     {
-        return ERROR(EMSGSIZE);
+        errno = EMSGSIZE;
+        return ERR;
     }
 
     local_socket_t* local = socket->private;
     if (local->state != LOCAL_SOCKET_CONNECT && local->state != LOCAL_SOCKET_ACCEPT)
     {
-        return ERROR(ENOTCONN);
+        errno = ENOTCONN;
+        return ERR;
     }
 
     ring_t* ring = local_socket_get_send_ring(local);
@@ -488,7 +513,8 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
 
     if (ring == NULL || conn == NULL)
     {
-        return ERROR(ENOTCONN);
+        errno = ENOTCONN;
+        return ERR;
     }
 
     uint64_t requiredLength = count + sizeof(local_packet_header_t);
@@ -500,7 +526,8 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
         if (!(ring_free_length(ring) >= requiredLength || local_connection_is_closed(conn)))
         {
             lock_release(&conn->lock);
-            return ERROR(EWOULDBLOCK);
+            errno = EWOULDBLOCK;
+            return ERR;
         }
     }
     else
@@ -509,14 +536,16 @@ static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t
                 ring_free_length(ring) >= requiredLength || local_connection_is_closed(conn)) != WAIT_NORM)
         {
             lock_release(&conn->lock);
-            return ERROR(EINTR);
+            errno = EINTR;
+            return ERR;
         }
     }
 
     if (local_connection_is_closed(conn))
     {
         lock_release(&conn->lock);
-        return ERROR(EPIPE);
+        errno = EPIPE;
+        return ERR;
     }
 
     local_packet_header_t header = {.size = count};
@@ -532,7 +561,8 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
 {
     if (buffer == NULL)
     {
-        return ERROR(EFAULT);
+        errno = EFAULT;
+        return ERR;
     }
     if (count == 0)
     {
@@ -542,7 +572,8 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
     local_socket_t* local = socket->private;
     if (local->state != LOCAL_SOCKET_CONNECT && local->state != LOCAL_SOCKET_ACCEPT)
     {
-        return ERROR(ENOTCONN);
+        errno = ENOTCONN;
+        return ERR;
     }
 
     ring_t* ring = local_socket_get_receive_ring(local);
@@ -550,7 +581,8 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
 
     if (ring == NULL || conn == NULL)
     {
-        return ERROR(ENOTCONN);
+        errno = ENOTCONN;
+        return ERR;
     }
 
     lock_acquire(&conn->lock);
@@ -560,7 +592,8 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
         if (!(ring_data_length(ring) >= sizeof(local_packet_header_t) || local_connection_is_closed(conn)))
         {
             lock_release(&conn->lock);
-            return ERROR(EWOULDBLOCK);
+            errno = EWOULDBLOCK;
+            return ERR;
         }
     }
     else
@@ -570,7 +603,8 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
             WAIT_NORM)
         {
             lock_release(&conn->lock);
-            return ERROR(EINTR);
+            errno = EINTR;
+            return ERR;
         }
     }
 
@@ -588,7 +622,8 @@ static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t co
         ring_move_read_forward(ring, sizeof(local_packet_header_t) + header.size);
         wait_unblock(&conn->waitQueue, UINT64_MAX);
         lock_release(&conn->lock);
-        return ERROR(EMSGSIZE);
+        errno = EMSGSIZE;
+        return ERR;
     }
 
     uint64_t readCount = header.size;
@@ -678,7 +713,8 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
     default:
     {
         poll->revents = POLL_ERR;
-        return ERRPTR(ENOTSUP);
+        errno = ENOTSUP;
+        return NULL;
     }
     }
 }

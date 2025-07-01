@@ -292,14 +292,16 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t pageAmount, pml_fl
             virtAddr = vmm_kernel_find_free_region(pageAmount);
             if (virtAddr == NULL)
             {
-                return ERRPTR(ENOMEM);
+                errno = ENOMEM;
+                return NULL;
             }
         }
         else
         {
             if (!pml_is_unmapped(kernelPml, virtAddr, pageAmount))
             {
-                return ERRPTR(EEXIST);
+                errno = EEXIST;
+                return NULL;
             }
         }
 
@@ -319,7 +321,8 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t pageAmount, pml_fl
 
                 // Page table will free the previously allocated pages as they are owned by the Page table.
                 pml_unmap(kernelPml, virtAddr, i);
-                return ERRPTR(ENOMEM);
+                errno = ENOMEM;
+                return NULL;
             }
         }
 
@@ -337,12 +340,14 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t pageAmount, pml_fl
 
         if (!pml_is_unmapped(kernelPml, virtAddr, pageAmount))
         {
-            return ERRPTR(EEXIST);
+            errno = EEXIST;
+            return NULL;
         }
 
         if (pml_map(kernelPml, virtAddr, physAddr, pageAmount, flags | VMM_KERNEL_PML_FLAGS, PML_CALLBACK_NONE) == ERR)
         {
-            return ERRPTR(ENOMEM);
+            errno = ENOMEM;
+            return NULL;
         }
     }
 
@@ -368,7 +373,8 @@ void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, prot_t prot)
     vmm_mapping_info_t info;
     if (vmm_mapping_prepare(&info, space, virtAddr, NULL, length, prot) == ERR)
     {
-        return ERRPTR(EINVAL);
+        errno = EINVAL;
+        return NULL;
     }
 
     for (uint64_t i = 0; i < info.pageAmount; i++)
@@ -386,7 +392,8 @@ void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, prot_t prot)
 
             // Page table will free the previously allocated pages as they are owned by the Page table.
             pml_unmap(space->pml, info.virtAddr, i);
-            return ERRPTR(ENOMEM);
+            errno = ENOMEM;
+            return NULL;
         }
     }
 
@@ -403,7 +410,8 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, p
     vmm_mapping_info_t info;
     if (vmm_mapping_prepare(&info, space, virtAddr, physAddr, length, prot) == ERR)
     {
-        return ERRPTR(EINVAL);
+        errno = EINVAL;
+        return NULL;
     }
 
     pml_callback_id_t callbackId = PML_CALLBACK_NONE;
@@ -412,7 +420,8 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, p
         callbackId = space_add_callback(space, info.pageAmount, func, private);
         if (callbackId == PML_MAX_CALLBACK)
         {
-            return ERRPTR(ENOSPC);
+            errno = ENOSPC;
+            return NULL;
         }
     }
 
@@ -422,7 +431,8 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, p
         {
             space_remove_callback(space, callbackId);
         }
-        return ERRPTR(ENOMEM);
+        errno = ENOMEM;
+        return NULL;
     }
 
     space_update_free_address(space, (uintptr_t)info.virtAddr, info.pageAmount);
@@ -438,7 +448,8 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
     vmm_mapping_info_t info;
     if (vmm_mapping_prepare(&info, space, virtAddr, NULL, pageAmount * PAGE_SIZE, prot) == ERR)
     {
-        return ERRPTR(EINVAL);
+        errno = EINVAL;
+        return NULL;
     }
 
     pml_callback_id_t callbackId = PML_CALLBACK_NONE;
@@ -447,7 +458,8 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
         callbackId = space_add_callback(space, pageAmount, func, private);
         if (callbackId == PML_MAX_CALLBACK)
         {
-            return ERRPTR(ENOSPC);
+            errno = ENOSPC;
+            return NULL;
         }
     }
 
@@ -468,7 +480,8 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
                 space_remove_callback(space, callbackId);
             }
 
-            return ERRPTR(ENOMEM);
+            errno = ENOMEM;
+            return NULL;
         }
     }
 
@@ -486,7 +499,8 @@ uint64_t vmm_unmap(space_t* space, void* virtAddr, uint64_t length)
 
     if (pml_is_unmapped(space->pml, virtAddr, pageAmount))
     {
-        return ERROR(EFAULT);
+        errno = EFAULT;
+        return ERR;
     }
 
     uint64_t callbacks[PML_MAX_CALLBACK]; // Stores the amount of pages that have each callback id within the region.
@@ -517,7 +531,8 @@ uint64_t vmm_protect(space_t* space, void* virtAddr, uint64_t length, prot_t pro
     pml_flags_t flags;
     if (vmm_prot_to_flags(prot, &flags) == ERR)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     LOCK_DEFER(&space->lock);
@@ -527,13 +542,15 @@ uint64_t vmm_protect(space_t* space, void* virtAddr, uint64_t length, prot_t pro
 
     if (pml_is_unmapped(space->pml, virtAddr, pageAmount))
     {
-        return ERROR(EFAULT);
+        errno = EFAULT;
+        return ERR;
     }
 
     uint64_t result = pml_set_flags(space->pml, virtAddr, pageAmount, flags);
     if (result == ERR)
     {
-        return ERROR(ENOMEM);
+        errno = ENOMEM;
+        return ERR;
     }
 
     return 0;

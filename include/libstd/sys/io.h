@@ -283,17 +283,17 @@ poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout);
 typedef enum
 {
     INODE_FILE, //!< Is a file.
-    INODE_DIR, //!< Is a directory.
+    INODE_DIR,  //!< Is a directory.
 } inode_type_t;
 
 /**
  * @brief Dentry flag enum.
  * @ingroup libstd_sys_io
- * 
+ *
  */
 typedef enum
 {
-    DENTRY_NONE = 0, //!< None
+    DENTRY_NONE = 0,            //!< None
     DENTRY_MOUNTPOINT = 1 << 0, //!< Is a mount point.
 } dentry_flags_t;
 
@@ -314,16 +314,16 @@ typedef uint64_t inode_number_t;
 typedef struct
 {
     inode_number_t number; //!< The number of the entries inode.
-    inode_type_t type;    //!< The type of the entries inode (eg,. STAT_FILE, STAT_DIR, etc).
-    dentry_flags_t flags; //!< The flags of the dentry.
-    uint64_t size;       //!< The size of the file that is visible outside the filesystem.
-    uint64_t blocks; //!< The amount of blocks used on disk to store the file.
-    uint64_t linkAmount; //!< The amount of times the inode appears in dentries.
-    time_t accessTime; //!< Unix time stamp for the last inode access.
-    time_t modifyTime; //!< Unix time stamp for last file content alteration.
-    time_t changeTime; //!< Unix time stamp for the last file metadata alteration.
-    char name[MAX_NAME]; //!< The name of the entry, not the full filepath.
-    uint8_t padding[64]; //!< Padding to leave space for future expansion.
+    inode_type_t type;     //!< The type of the entries inode (eg,. STAT_FILE, STAT_DIR, etc).
+    dentry_flags_t flags;  //!< The flags of the dentry.
+    uint64_t size;         //!< The size of the file that is visible outside the filesystem.
+    uint64_t blocks;       //!< The amount of blocks used on disk to store the file.
+    uint64_t linkAmount;   //!< The amount of times the inode appears in dentries.
+    time_t accessTime;     //!< Unix time stamp for the last inode access.
+    time_t modifyTime;     //!< Unix time stamp for last file content alteration.
+    time_t changeTime;     //!< Unix time stamp for the last file metadata alteration.
+    char name[MAX_NAME];   //!< The name of the entry, not the full filepath.
+    uint8_t padding[64];   //!< Padding to leave space for future expansion.
 } stat_t;
 
 #ifdef static_assert

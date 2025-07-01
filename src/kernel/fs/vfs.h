@@ -9,9 +9,9 @@
 #include "dentry.h"
 #include "file.h"
 #include "inode.h"
+#include "mount.h"
 #include "path.h"
 #include "superblock.h"
-#include "mount.h"
 
 #include <ctype.h>
 #include <stdatomic.h>
@@ -28,7 +28,7 @@
  * @brief Virtual File System.
  * @ingroup kernel
  * @defgroup kernel_vfs
- * 
+ *
  */
 
 #define VFS_ROOT_ENTRY_NAME "__root__"
@@ -116,4 +116,3 @@ uint64_t vfs_remove(const char* pathname);
         *(offset) += readCount; \
         readCount; \
     })
-    

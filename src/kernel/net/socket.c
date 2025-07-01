@@ -48,7 +48,8 @@ static uint64_t socket_accept_open(inode_t* inode, file_t* file)
     socket_t* socket = inode->private;
     if (!socket_has_access(socket, sched_process()))
     {
-        return ERROR(EACCES);
+        errno = EACCES;
+        return ERR;
     }
 
     socket_t* newSocket = heap_alloc(sizeof(socket_t), HEAP_NONE);
@@ -112,7 +113,8 @@ static uint64_t socket_data_open(inode_t* inode, file_t* file)
     socket_t* socket = inode->private;
     if (!socket_has_access(socket, sched_process()))
     {
-        return ERROR(EACCES);
+        errno = EACCES;
+        return ERR;
     }
 
     file->private = socket;
@@ -157,7 +159,8 @@ static uint64_t socket_ctl_open(inode_t* inode, file_t* file)
     socket_t* socket = inode->private;
     if (!socket_has_access(socket, sched_process()))
     {
-        return ERROR(EACCES);
+        errno = EACCES;
+        return ERR;
     }
 
     file->private = socket;

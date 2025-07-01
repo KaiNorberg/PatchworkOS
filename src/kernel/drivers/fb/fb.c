@@ -29,7 +29,8 @@ static uint64_t fb_ioctl(file_t* file, uint64_t request, void* argp, uint64_t si
     {
         if (size < sizeof(fb_info_t))
         {
-            return ERROR(EINVAL);
+            errno = EINVAL;
+            return ERR;
         }
 
         memcpy(argp, &fb->info, sizeof(fb_info_t));
@@ -37,7 +38,8 @@ static uint64_t fb_ioctl(file_t* file, uint64_t request, void* argp, uint64_t si
     break;
     default:
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
     }
 

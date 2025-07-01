@@ -55,14 +55,16 @@ uint64_t socket_family_register(socket_family_t* family)
     if (!family || !family->name)
     {
         LOG_ERR("socket_family_register: invalid family\n");
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     if (!family->init || !family->deinit || !family->bind || !family->listen || !family->accept || !family->connect ||
         !family->send || !family->receive || !family->poll)
     {
         LOG_ERR("socket_family_register: '%s' has unimplemented operations\n", family->name);
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     if (sysdir_init(&family->dir, "/net", family->name, family) == ERR)

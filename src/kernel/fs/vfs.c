@@ -93,7 +93,8 @@ uint64_t vfs_register_fs(filesystem_t* fs)
 {
     if (fs == NULL || strnlen_s(fs->name, MAX_NAME) > MAX_NAME)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     RWLOCK_WRITE_DEFER(&filesystems.lock);
@@ -103,7 +104,8 @@ uint64_t vfs_register_fs(filesystem_t* fs)
     {
         if (strcmp(existing->name, fs->name) == 0)
         {
-            return ERROR(EEXIST);
+            errno = EEXIST;
+            return ERR;
         }
     }
 
@@ -115,7 +117,8 @@ uint64_t vfs_unregister_fs(filesystem_t* fs)
 {
     if (fs == NULL)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     RWLOCK_WRITE_DEFER(&filesystems.lock);
@@ -126,7 +129,8 @@ uint64_t vfs_unregister_fs(filesystem_t* fs)
     {
         if (strcmp(superblock->fsName, fs->name) == 0)
         {
-            return ERROR(EBUSY);
+            errno = EBUSY;
+            return ERR;
         }
     }
 
@@ -157,7 +161,8 @@ uint64_t vfs_get_global_root(path_t* outPath)
     if (root.mount == NULL || root.mount->superblock->root == NULL)
     {
         rwlock_read_release(&root.lock);
-        return ERROR(ENOENT);
+        errno = ENOENT;
+        return ERR;
     }
 
     outPath->mount = mount_ref(root.mount);
@@ -176,13 +181,15 @@ uint64_t vfs_mountpoint_to_mount_root(path_t* outRoot, const path_t* mountpoint)
     if (mount == NULL)
     {
         rwlock_read_release(&mountCache.lock);
-        return ERROR(ENOENT);
+        errno = ENOENT;
+        return ERR;
     }
 
     if (mount->superblock == NULL || mount->superblock->root == NULL)
     {
         rwlock_read_release(&mountCache.lock);
-        return ERROR(ESTALE);
+        errno = ESTALE;
+        return ERR;
     }
 
     outRoot->mount = mount_ref(mount);
@@ -193,7 +200,8 @@ uint64_t vfs_mountpoint_to_mount_root(path_t* outRoot, const path_t* mountpoint)
 
 inode_t* vfs_get_inode(superblock_t* superblock, inode_number_t number)
 {
-    return ERRPTR(ENOSYS);
+    errno = ENOSYS;
+    return NULL;
     /*
     if (superblock == NULL)
     {
@@ -239,7 +247,8 @@ dentry_t* vfs_get_dentry(dentry_t* parent, const char* name)
 {
     if (parent == NULL || name == NULL)
     {
-        return ERRPTR(EINVAL);
+        errno = EINVAL;
+        return NULL;
     }
 
     map_key_t key = dentry_key(parent->id, name);
@@ -343,13 +352,15 @@ uint64_t vfs_mount(const char* deviceName, const char* mountpoint, const char* f
 {
     if (deviceName == NULL || mountpoint == NULL || fsName == NULL)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     filesystem_t* fs = vfs_get_fs(fsName);
     if (fs == NULL)
     {
-        return ERROR(ENODEV);
+        errno = ENODEV;
+        return ERR;
     }
 
     superblock_t* superblock = fs->mount(fs, deviceName, flags, private);
@@ -382,7 +393,8 @@ uint64_t vfs_mount(const char* deviceName, const char* mountpoint, const char* f
     if (path.dentry->flags & DENTRY_MOUNTPOINT)
     {
         lock_release(&path.dentry->lock);
-        return ERROR(EBUSY);
+        errno = EBUSY;
+        return ERR;
     }
 
     mount_t* mount = mount_new(superblock, &path);
@@ -410,7 +422,8 @@ uint64_t vfs_unmount(const char* mountpoint)
 {
     if (mountpoint == NULL)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     path_t path;
@@ -426,7 +439,8 @@ uint64_t vfs_unmount(const char* mountpoint)
 
     if (!(path.dentry->flags & DENTRY_MOUNTPOINT))
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     map_key_t key = mount_key(path.mount->id, path.dentry->id);
@@ -440,12 +454,14 @@ uint64_t vfs_unmount(const char* mountpoint)
 
     if (mount == root.mount)
     {
-        return ERROR(EBUSY);
+        errno = EBUSY;
+        return ERR;
     }
 
     if (atomic_load(&mount->superblock->ref) > 1)
     {
-        return ERROR(EBUSY);
+        errno = EBUSY;
+        return ERR;
     }
 
     map_remove(&mountCache.map, &key);
@@ -499,7 +515,8 @@ static dentry_t* vfs_open_lookup(const char* pathname, path_flags_t* outFlags)
             if (parent.dentry->inode == NULL || parent.dentry->inode->ops == NULL ||
                 parent.dentry->inode->ops->create == NULL)
             {
-                return ERRPTR(ENOSYS);
+                errno = ENOSYS;
+                return NULL;
             }
 
             inode_t* inode = parent.dentry->inode->ops->create(parent.dentry->inode, lastComponent, parsed.flags);
@@ -525,7 +542,8 @@ static dentry_t* vfs_open_lookup(const char* pathname, path_flags_t* outFlags)
         else if (parsed.flags & PATH_EXCLUSIVE)
         {
             dentry_deref(dentry);
-            return ERRPTR(EEXIST);
+            errno = EEXIST;
+            return NULL;
         }
     }
     else // Dont create dentry
@@ -543,13 +561,15 @@ static dentry_t* vfs_open_lookup(const char* pathname, path_flags_t* outFlags)
     if ((parsed.flags & PATH_DIRECTORY) && dentry->inode->type != INODE_DIR)
     {
         dentry_deref(dentry);
-        return ERRPTR(ENOTDIR);
+        errno = ENOTDIR;
+        return NULL;
     }
 
     if (!(parsed.flags & PATH_DIRECTORY) && dentry->inode->type != INODE_FILE)
     {
         dentry_deref(dentry);
-        return ERRPTR(EISDIR);
+        errno = EISDIR;
+        return NULL;
     }
 
     *outFlags = parsed.flags;
@@ -560,7 +580,8 @@ file_t* vfs_open(const char* pathname)
 {
     if (pathname == NULL)
     {
-        return ERRPTR(EINVAL);
+        errno = EINVAL;
+        return NULL;
     }
 
     path_flags_t flags;
@@ -581,7 +602,8 @@ file_t* vfs_open(const char* pathname)
     {
         if (dentry->inode->ops == NULL || dentry->inode->ops->truncate == NULL)
         {
-            return ERRPTR(ENOSYS);   
+            errno = ENOSYS;
+            return NULL;
         }
 
         dentry->inode->ops->truncate(dentry->inode);
@@ -604,7 +626,8 @@ uint64_t vfs_open2(const char* pathname, file_t* files[2])
 {
     if (pathname == NULL || files == NULL)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     path_flags_t flags;
@@ -633,7 +656,8 @@ uint64_t vfs_open2(const char* pathname, file_t* files[2])
     {
         if (dentry->inode->ops == NULL || dentry->inode->ops->truncate == NULL)
         {
-            return ERROR(ENOSYS);   
+            errno = ENOSYS;
+            return ERR;
         }
 
         dentry->inode->ops->truncate(dentry->inode);
@@ -655,12 +679,14 @@ uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
 {
     if (file == NULL || buffer == NULL)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     if (file->ops == NULL || file->ops->read == NULL)
     {
-        return ERROR(ENOSYS);
+        errno = ENOSYS;
+        return ERR;
     }
 
     uint64_t offset = file->pos;
@@ -682,19 +708,21 @@ uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
 {
     if (file == NULL || buffer == NULL)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     if (file->ops == NULL || file->ops->write == NULL)
     {
-        return ERROR(ENOSYS);
+        errno = ENOSYS;
+        return ERR;
     }
 
     uint64_t offset = file->pos;
     uint64_t result = file->ops->write(file, buffer, count, &offset);
     file->pos = offset;
     if (result != ERR)
-    {        
+    {
         inode_t* inode = file->dentry->inode;
 
         LOCK_DEFER(&inode->lock);
@@ -710,7 +738,8 @@ uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
 {
     if (file == NULL)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     if (file->ops != NULL && file->ops->seek != NULL)
@@ -718,44 +747,52 @@ uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
         return file->ops->seek(file, offset, origin);
     }
 
-    return ERROR(ESPIPE);
+    errno = ESPIPE;
+    return ERR;
 }
 
 uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
 {
-    return ERROR(ENOSYS);
+    errno = ENOSYS;
+    return ERR;
 }
 
 void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
 {
-    return ERRPTR(ENOSYS);
+    errno = ENOSYS;
+    return NULL;
 }
 
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
 {
-    return ERROR(ENOSYS);
+    errno = ENOSYS;
+    return ERR;
 }
 
 uint64_t vfs_readdir(file_t* file, stat_t* infos, uint64_t amount)
 {
-    return ERROR(ENOSYS);
+    errno = ENOSYS;
+    return ERR;
 }
 
 uint64_t vfs_mkdir(const char* pathname, uint64_t flags)
 {
-    return ERROR(ENOSYS);
+    errno = ENOSYS;
+    return ERR;
 }
 
 uint64_t vfs_rmdir(const char* pathname)
 {
-    return ERROR(ENOSYS);
+    errno = ENOSYS;
+    return ERR;
 }
 
 uint64_t vfs_stat(const char* pathname, stat_t* buffer)
 {
     if (pathname == NULL || buffer == NULL)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     parsed_pathname_t parsed;
@@ -766,7 +803,8 @@ uint64_t vfs_stat(const char* pathname, stat_t* buffer)
 
     if (parsed.flags != PATH_NONE)
     {
-        return ERROR(EBADFLAG);
+        errno = EBADFLAG;
+        return ERR;
     }
 
     path_t path;
@@ -798,20 +836,24 @@ uint64_t vfs_stat(const char* pathname, stat_t* buffer)
 
 uint64_t vfs_link(const char* oldpath, const char* newpath)
 {
-    return ERROR(ENOSYS);
+    errno = ENOSYS;
+    return ERR;
 }
 
 uint64_t vfs_unlink(const char* pathname)
 {
-    return ERROR(ENOSYS);
+    errno = ENOSYS;
+    return ERR;
 }
 
 uint64_t vfs_rename(const char* oldpath, const char* newpath)
 {
-    return ERROR(ENOSYS);
+    errno = ENOSYS;
+    return ERR;
 }
 
 uint64_t vfs_remove(const char* pathname)
 {
-    return ERROR(ENOSYS);
+    errno = ENOSYS;
+    return ERR;
 }

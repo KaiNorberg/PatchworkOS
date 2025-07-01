@@ -19,7 +19,8 @@ static ramfs_inode_t* root;
 
 static _Atomic(inode_number_t) newNumber = ATOMIC_VAR_INIT(0);
 
-static ramfs_inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, const char* name, void* data, uint64_t size);
+static ramfs_inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, const char* name, void* data,
+    uint64_t size);
 static ramfs_inode_t* ramfs_load_dir(superblock_t* superblock, const ram_dir_t* in);
 
 /*static uint64_t ramfs_readdir(file_t* file, stat_t* infos, uint64_t amount)
@@ -111,18 +112,18 @@ static file_t* ramfs_open(volume_t* volume, const path_t* path)
     {
         if (!(path->flags & PATH_CREATE))
         {
-            return ERRPTR(ENOENT);
+            errno = ENOENT; return NULL;
         }
 
         const char* filename = path_last_name(path);
         if (filename == NULL)
         {
-            return ERRPTR(EINVAL);
+            errno = EINVAL; return NULL;
         }
         node_t* parent = path_traverse_node_parent(path, &root->node);
         if (parent == NULL)
         {
-            return ERRPTR(ENOENT);
+            errno = ENOENT; return NULL;
         }
 
         if (path->flags & PATH_DIRECTORY)
@@ -156,15 +157,15 @@ static file_t* ramfs_open(volume_t* volume, const path_t* path)
     }
     else if ((path->flags & PATH_CREATE) && (path->flags & PATH_EXCLUSIVE))
     {
-        return ERRPTR(EEXIST);
+        errno = EEXIST; return NULL;
     }
     else if ((path->flags & PATH_DIRECTORY) && node->type != RAMFS_DIR)
     {
-        return ERRPTR(ENOTDIR);
+        errno = ENOTDIR; return NULL;
     }
     else if (!(path->flags & PATH_DIRECTORY) && node->type != RAMFS_FILE)
     {
-        return ERRPTR(EISDIR);
+        errno = EISDIR; return NULL;
     }
 
     file_t* file = file_new(volume, path, PATH_CREATE | PATH_EXCLUSIVE | PATH_APPEND | PATH_TRUNCATE | PATH_DIRECTORY);
@@ -222,7 +223,7 @@ static uint64_t ramfs_stat(volume_t* volume, const path_t* path, stat_t* stat)
     node_t* node = path_traverse_node(path, &root->node);
     if (node == NULL)
     {
-        return ERROR(ENOENT);
+        errno = ENOENT; return ERR;
     }
 
     strcpy(stat->name, node->name);
@@ -239,23 +240,23 @@ static uint64_t ramfs_rename(volume_t* volume, const path_t* oldpath, const path
     node_t* node = path_traverse_node(oldpath, &root->node);
     if (node == NULL || node == &root->node)
     {
-        return ERROR(ENOENT);
+        errno = ENOENT; return ERR;
     }
 
     node_t* dest = path_traverse_node_parent(newpath, &root->node);
     if (dest == NULL)
     {
-        return ERROR(ENOENT);
+        errno = ENOENT; return ERR;
     }
     else if (dest->type != RAMFS_DIR)
     {
-        return ERROR(ENOTDIR);
+        errno = ENOTDIR; return ERR;
     }
 
     const char* newName = path_last_name(newpath);
     if (newName == NULL)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL; return ERR;
     }
     strcpy(node->name, newName);
     node_remove(node);
@@ -270,7 +271,7 @@ static uint64_t ramfs_remove(volume_t* volume, const path_t* path)
     node_t* node = path_traverse_node(path, &root->node);
     if (node == NULL)
     {
-        return ERROR(ENOENT);
+        errno = ENOENT; return ERR;
     }
 
     if (node->type == RAMFS_FILE)
@@ -278,7 +279,7 @@ static uint64_t ramfs_remove(volume_t* volume, const path_t* path)
         ram_file_t* ramFile = CONTAINER_OF(node, ram_file_t, node);
         if (ramFile->openedAmount != 0)
         {
-            return ERROR(EBUSY);
+            errno = EBUSY; return ERR;
         }
         node_remove(&ramFile->node);
         heap_free(ramFile->data);
@@ -289,7 +290,7 @@ static uint64_t ramfs_remove(volume_t* volume, const path_t* path)
         ram_dir_t* ramDir = CONTAINER_OF(node, ram_dir_t, node);
         if (ramDir->openedAmount != 0 || ramDir->node.childAmount != 0)
         {
-            return ERROR(EBUSY);
+            errno = EBUSY; return ERR;
         }
         node_remove(&ramDir->node);
         heap_free(ramDir);
@@ -327,17 +328,18 @@ static dentry_t* ramfs_lookup(inode_t* parent, const char* name)
     if (parent->type != INODE_DIR)
     {
         LOG_WARN("ramfs_lookup: called using a non-directory inode.\n");
-        return ERRPTR(EINVAL);
+        errno = EINVAL;
+        return NULL;
     }
 
     ramfs_inode_t* inode = CONTAINER_OF(parent, ramfs_inode_t, inode);
-    
+
     ramfs_inode_t* child;
-    LIST_FOR_EACH(child, &inode->children, entry) 
+    LIST_FOR_EACH(child, &inode->children, entry)
     {
         LOCK_DEFER(&child->inode.lock);
-        if (strcmp(child->name, name) != 0) 
-        {   
+        if (strcmp(child->name, name) != 0)
+        {
             continue;
         }
 
@@ -350,12 +352,11 @@ static dentry_t* ramfs_lookup(inode_t* parent, const char* name)
         return dentry;
     }
 
-    return ERRPTR(ENOENT);
+    errno = ENOENT;
+    return NULL;
 }
 
-static inode_ops_t inodeOps = {
-    .lookup = ramfs_lookup
-};
+static inode_ops_t inodeOps = {.lookup = ramfs_lookup};
 
 static dentry_ops_t dentryOps = {
 
@@ -382,7 +383,8 @@ static superblock_ops_t superOps = {
     .cleanup = ramfs_superblock_cleanup,
 };
 
-static superblock_t* ramfs_mount(filesystem_t* fs, const char* deviceName, superblock_flags_t flags, const void* private)
+static superblock_t* ramfs_mount(filesystem_t* fs, const char* deviceName, superblock_flags_t flags,
+    const void* private)
 {
     superblock_t* superblock = superblock_new(deviceName, SYSFS_NAME, &superOps, &dentryOps);
     if (superblock == NULL)
@@ -412,8 +414,7 @@ static superblock_t* ramfs_mount(filesystem_t* fs, const char* deviceName, super
     return superblock;
 }
 
-static filesystem_t ramfs =
-{
+static filesystem_t ramfs = {
     .name = RAMFS_NAME,
     .mount = ramfs_mount,
 };
@@ -446,7 +447,8 @@ static ramfs_inode_t* ramfs_load_dir(superblock_t* superblock, const ram_dir_t* 
     return inode;
 }
 
-static ramfs_inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, const char* name, void* data, uint64_t size)
+static ramfs_inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, const char* name, void* data,
+    uint64_t size)
 {
     // Becouse of the ramfs_alloc_inode function, this allocated inode is actually a ramfs_inode_t.
     inode_t* inode = inode_new(superblock, atomic_fetch_add(&newNumber, 1), type, &inodeOps, &fileOps);
