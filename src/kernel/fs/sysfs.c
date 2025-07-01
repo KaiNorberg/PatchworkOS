@@ -250,7 +250,8 @@ static superblock_ops_t superOps = {
 
 static superblock_t* sysfs_mount(const char* deviceName, superblock_flags_t flags, const void* data)
 {
-    superblock_t* superblock = superblock_new(deviceName, SYSFS_NAME, &superOps, &dentryOps);
+    return ERRPTR(ENOSYS);
+    /*superblock_t* superblock = superblock_new(deviceName, SYSFS_NAME, &superOps, &dentryOps);
     if (superblock == NULL)
     {
         return NULL;
@@ -274,7 +275,7 @@ static superblock_t* sysfs_mount(const char* deviceName, superblock_flags_t flag
         return NULL;
     }
 
-    return superblock;
+    return superblock;*/
 }
 
 static filesystem_t sysfs = {

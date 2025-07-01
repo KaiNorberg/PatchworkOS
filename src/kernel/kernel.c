@@ -70,6 +70,11 @@ void kernel_init(boot_info_t* bootInfo)
 
     _std_init();
 
+    acpi_init(bootInfo->rsdp);
+    hpet_init();
+    systime_init();
+    log_enable_time();
+
     sysfs_init();
     vfs_init();
     ramfs_init(&bootInfo->ramDisk);
@@ -80,16 +85,12 @@ void kernel_init(boot_info_t* bootInfo)
 
     sched_init();
 
-    acpi_init(bootInfo->rsdp);
-    hpet_init();
     madt_init();
     apic_init();
     lapic_init();
 
     pic_init();
     simd_init();
-    systime_init();
-    log_enable_time();
 
     smp_others_init();
     systime_timer_init();

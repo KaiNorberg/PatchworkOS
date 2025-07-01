@@ -27,9 +27,9 @@ static vfs_map_t mountCache;
 
 static vfs_root_t root;
 
-static map_key_t inode_key(superblock_id_t superblockId, inode_id_t inodeId)
+static map_key_t inode_key(superblock_id_t superblockId, inode_number_t number)
 {
-    uint64_t buffer[2] = {(uint64_t)superblockId, (uint64_t)inodeId};
+    uint64_t buffer[2] = {(uint64_t)superblockId, (uint64_t)number};
 
     return map_key_buffer(buffer, sizeof(buffer));
 }
@@ -194,7 +194,7 @@ uint64_t vfs_mountpoint_to_mount_root(path_t* outRoot, const path_t* mountpoint)
     return 0;
 }
 
-inode_t* vfs_get_inode(superblock_t* superblock, inode_id_t id)
+inode_t* vfs_get_inode(superblock_t* superblock, inode_number_t number)
 {
     return ERRPTR(ENOSYS);
     /*
@@ -305,7 +305,7 @@ void vfs_remove_inode(inode_t* inode)
     }
 
     rwlock_write_acquire(&inodeCache.lock);
-    map_key_t key = inode_key(inode->superblock->id, inode->id);
+    map_key_t key = inode_key(inode->superblock->id, inode->number);
     map_remove(&inodeCache.map, &key);
     rwlock_write_release(&inodeCache.lock);
 }

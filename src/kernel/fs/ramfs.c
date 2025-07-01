@@ -18,6 +18,8 @@
 static ram_dir_t* root;
 static lock_t lock;
 
+static _Atomic(inode_number_t) newNumber = ATOMIC_VAR_INIT(0);
+
 /*static uint64_t ramfs_readdir(file_t* file, stat_t* infos, uint64_t amount)
 {
     LOCK_DEFER(&lock);
@@ -310,6 +312,93 @@ static uint64_t ramfs_mount(const char* label)
 static fs_t ramfs = {
     .name = "ramfs",
     .mount = ramfs_mount,
+};*/
+
+static file_ops_t fileOps = {
+
+};
+
+static dentry_t* ramfs_lookup(inode_t* dir, const char* name)
+{
+    return ERRPTR(ENOSYS);
+    /*if (dir->type != INODE_DIR)
+    {
+        LOG_WARN("ramfs_lookup: called using a non-directory inode.\n");
+        return ERRPTR(EINVAL);
+    }
+
+    LOCK_DEFER(&lock);
+    ram_dir_t* private = dir->private;
+    
+    node_t* node = node_find(&private->node, name);
+    if (node == NULL)
+    {
+        return ERRPTR(ENOENT);
+    }
+
+    if (node->type == RAMFS_FILE)
+    {
+        ram_file_t* child = 
+    }*/
+
+}
+
+static inode_ops_t inodeOps = {
+    .lookup = ramfs_lookup
+};
+
+static dentry_ops_t dentryOps = {
+
+};
+
+static void ramfs_superblock_cleanup(superblock_t* superblock)
+{
+    log_panic(NULL, "ramfs unmounted\n");
+}
+
+static superblock_ops_t superOps = {
+    .cleanup = ramfs_superblock_cleanup
+};
+
+static superblock_t* ramfs_mount(const char* deviceName, superblock_flags_t flags, const void* data)
+{
+    LOCK_DEFER(&lock);
+
+    superblock_t* superblock = superblock_new(deviceName, SYSFS_NAME, &superOps, &dentryOps);
+    if (superblock == NULL)
+    {
+        return NULL;
+    }
+
+    superblock->blockSize = 0;
+    superblock->maxFileSize = UINT64_MAX;
+    superblock->flags = flags;
+
+    inode_t* rootInode = inode_new(superblock, atomic_fetch_add(&newNumber, 1), INODE_DIR, &inodeOps, NULL);
+    if (rootInode == NULL)
+    {
+        superblock_deref(superblock);
+        return NULL;
+    }
+
+    rootInode->size = 0;
+    rootInode->private = root;
+
+    superblock->root = dentry_new(NULL, VFS_ROOT_ENTRY_NAME, rootInode);
+    if (superblock->root == NULL)
+    {
+        inode_deref(rootInode);
+        superblock_deref(superblock);
+        return NULL;
+    }
+
+    return superblock;
+}
+
+static filesystem_t ramfs =
+{
+    .name = RAMFS_NAME,
+    .mount = ramfs_mount,
 };
 
 static ram_dir_t* ramfs_load_dir(ram_dir_t* in)
@@ -345,66 +434,15 @@ static ram_dir_t* ramfs_load_dir(ram_dir_t* in)
     }
 
     return newDir;
-}*/
-
-static file_ops_t fileOps = {
-
-};
-
-static inode_ops_t inodeOps = {
-
-};
-
-static dentry_ops_t dentryOps = {
-
-};
-
-static superblock_ops_t superOps = {
-
-};
-
-static superblock_t* ramfs_mount(const char* deviceName, superblock_flags_t flags, const void* data)
-{
-    superblock_t* superblock = superblock_new(deviceName, SYSFS_NAME, &superOps, &dentryOps);
-    if (superblock == NULL)
-    {
-        return NULL;
-    }
-
-    superblock->blockSize = 0;
-    superblock->maxFileSize = UINT64_MAX;
-
-    inode_t* rootInode = inode_new(superblock, INODE_DIR, &inodeOps, NULL);
-    if (rootInode == NULL)
-    {
-        superblock_deref(superblock);
-        return NULL;
-    }
-
-    superblock->root = dentry_new(NULL, VFS_ROOT_ENTRY_NAME, rootInode);
-    if (superblock->root == NULL)
-    {
-        inode_deref(rootInode);
-        superblock_deref(superblock);
-        return NULL;
-    }
-
-    return superblock;
 }
-
-static filesystem_t ramfs =
-{
-    .name = RAMFS_NAME,
-    .mount = ramfs_mount,
-};
 
 void ramfs_init(ram_disk_t* disk)
 {
+    LOG_INFO("ramfs: init\n");
+
     root = ramfs_load_dir(disk->root);
     lock_init(&lock);
 
     assert(vfs_register_fs(&ramfs) != ERR);
     assert(vfs_mount(VFS_DEVICE_NAME_NONE, "/", RAMFS_NAME, SUPER_NONE, NULL) != ERR);
-
-    LOG_INFO("ramfs: init\n");
 }

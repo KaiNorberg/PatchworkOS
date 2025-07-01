@@ -71,7 +71,7 @@ filesystem_t* vfs_get_fs(const char* name);
 uint64_t vfs_get_global_root(path_t* outRoot);
 uint64_t vfs_mountpoint_to_mount_root(path_t* outRoot, const path_t* mountpoint);
 
-inode_t* vfs_get_inode(superblock_t* superblock, inode_id_t id);
+inode_t* vfs_get_inode(superblock_t* superblock, inode_number_t number);
 dentry_t* vfs_get_dentry(dentry_t* parent, const char* name);
 
 void vfs_remove_superblock(superblock_t* superblock);

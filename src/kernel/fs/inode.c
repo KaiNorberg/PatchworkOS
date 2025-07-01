@@ -5,7 +5,7 @@
 #include "sched/thread.h"
 #include "vfs.h"
 
-inode_t* inode_new(superblock_t* superblock, inode_type_t type, inode_ops_t* ops, file_ops_t* fileOps)
+inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, inode_ops_t* ops, file_ops_t* fileOps)
 {
     if (superblock == NULL)
     {
@@ -23,14 +23,13 @@ inode_t* inode_new(superblock_t* superblock, inode_type_t type, inode_ops_t* ops
     }
 
     map_entry_init(&inode->mapEntry);
-    inode->id = 0;
+    inode->number = number;
     atomic_init(&inode->ref, 1);
     inode->type = type;
     inode->flags = INODE_NONE;
     atomic_init(&inode->linkCount, 1);
     inode->size = 0;
     inode->blocks = 0;
-    inode->blockSize = superblock->blockSize;
     inode->accessTime = systime_unix_epoch();
     inode->modifyTime = inode->accessTime;
     inode->changeTime = inode->accessTime;
