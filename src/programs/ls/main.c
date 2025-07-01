@@ -103,7 +103,7 @@ uint64_t print_directory(const char* path, flags_t flags, bool forceLabel)
 
     for (uint64_t i = 0; i < dirs->amount; i++)
     {
-        if (dirs->infos[i].type == STAT_FILE)
+        if (dirs->infos[i].type == INODE_FILE)
         {
             printf("%s ", dirs->infos[i].name);
         }
@@ -118,7 +118,7 @@ uint64_t print_directory(const char* path, flags_t flags, bool forceLabel)
     {
         for (uint64_t i = 0; i < dirs->amount; i++)
         {
-            if (dirs->infos[i].type == STAT_DIR)
+            if (dirs->infos[i].type == INODE_DIR)
             {
                 char buffer[MAX_PATH];
                 snprintf(buffer, MAX_PATH, "%s/%s", path, dirs->infos[i].name);

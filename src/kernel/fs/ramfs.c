@@ -15,10 +15,12 @@
 #include <sys/list.h>
 #include <sys/math.h>
 
-static ram_dir_t* root;
-static lock_t lock;
+static ramfs_inode_t* root;
 
 static _Atomic(inode_number_t) newNumber = ATOMIC_VAR_INIT(0);
+
+static ramfs_inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, const char* name, void* data, uint64_t size);
+static ramfs_inode_t* ramfs_load_dir(superblock_t* superblock, const ram_dir_t* in);
 
 /*static uint64_t ramfs_readdir(file_t* file, stat_t* infos, uint64_t amount)
 {
@@ -318,29 +320,37 @@ static file_ops_t fileOps = {
 
 };
 
-static dentry_t* ramfs_lookup(inode_t* dir, const char* name)
+static dentry_t* ramfs_lookup(inode_t* parent, const char* name)
 {
-    return ERRPTR(ENOSYS);
-    /*if (dir->type != INODE_DIR)
+    LOCK_DEFER(&parent->lock);
+
+    if (parent->type != INODE_DIR)
     {
         LOG_WARN("ramfs_lookup: called using a non-directory inode.\n");
         return ERRPTR(EINVAL);
     }
 
-    LOCK_DEFER(&lock);
-    ram_dir_t* private = dir->private;
+    ramfs_inode_t* inode = CONTAINER_OF(parent, ramfs_inode_t, inode);
     
-    node_t* node = node_find(&private->node, name);
-    if (node == NULL)
+    ramfs_inode_t* child;
+    LIST_FOR_EACH(child, &inode->children, entry) 
     {
-        return ERRPTR(ENOENT);
+        LOCK_DEFER(&child->inode.lock);
+        if (strcmp(child->name, name) != 0) 
+        {   
+            continue;
+        }
+
+        dentry_t* dentry = dentry_new(parent->superblock, name, &child->inode);
+        if (dentry == NULL)
+        {
+            return NULL;
+        }
+
+        return dentry;
     }
 
-    if (node->type == RAMFS_FILE)
-    {
-        ram_file_t* child = 
-    }*/
-
+    return ERRPTR(ENOENT);
 }
 
 static inode_ops_t inodeOps = {
@@ -351,19 +361,29 @@ static dentry_ops_t dentryOps = {
 
 };
 
+static inode_t* ramfs_alloc_inode(superblock_t* superblock)
+{
+    return heap_alloc(sizeof(ramfs_inode_t), HEAP_NONE);
+}
+
+static void ramfs_free_inode(superblock_t* superblock, inode_t* inode)
+{
+    heap_free(CONTAINER_OF(inode, ramfs_inode_t, inode));
+}
+
 static void ramfs_superblock_cleanup(superblock_t* superblock)
 {
     log_panic(NULL, "ramfs unmounted\n");
 }
 
 static superblock_ops_t superOps = {
-    .cleanup = ramfs_superblock_cleanup
+    .allocInode = ramfs_alloc_inode,
+    .freeInode = ramfs_free_inode,
+    .cleanup = ramfs_superblock_cleanup,
 };
 
-static superblock_t* ramfs_mount(const char* deviceName, superblock_flags_t flags, const void* data)
+static superblock_t* ramfs_mount(filesystem_t* fs, const char* deviceName, superblock_flags_t flags, const void* private)
 {
-    LOCK_DEFER(&lock);
-
     superblock_t* superblock = superblock_new(deviceName, SYSFS_NAME, &superOps, &dentryOps);
     if (superblock == NULL)
     {
@@ -374,20 +394,17 @@ static superblock_t* ramfs_mount(const char* deviceName, superblock_flags_t flag
     superblock->maxFileSize = UINT64_MAX;
     superblock->flags = flags;
 
-    inode_t* rootInode = inode_new(superblock, atomic_fetch_add(&newNumber, 1), INODE_DIR, &inodeOps, NULL);
-    if (rootInode == NULL)
+    ramfs_inode_t* inode = ramfs_load_dir(superblock, private);
+    if (inode == NULL)
     {
         superblock_deref(superblock);
         return NULL;
     }
 
-    rootInode->size = 0;
-    rootInode->private = root;
-
-    superblock->root = dentry_new(NULL, VFS_ROOT_ENTRY_NAME, rootInode);
+    superblock->root = dentry_new(NULL, VFS_ROOT_ENTRY_NAME, &inode->inode);
     if (superblock->root == NULL)
     {
-        inode_deref(rootInode);
+        inode_deref(&inode->inode);
         superblock_deref(superblock);
         return NULL;
     }
@@ -401,12 +418,10 @@ static filesystem_t ramfs =
     .mount = ramfs_mount,
 };
 
-static ram_dir_t* ramfs_load_dir(ram_dir_t* in)
+static ramfs_inode_t* ramfs_load_dir(superblock_t* superblock, const ram_dir_t* in)
 {
-    ram_dir_t* newDir = heap_alloc(sizeof(ram_dir_t), HEAP_NONE);
-    assert(newDir != NULL);
-    node_init(&newDir->node, in->node.name, RAMFS_DIR);
-    newDir->openedAmount = 0;
+    ramfs_inode_t* inode = ramfs_inode_new(superblock, INODE_DIR, in->node.name, NULL, 0);
+    assert(inode != NULL);
 
     node_t* child;
     LIST_FOR_EACH(child, &in->node.children, entry)
@@ -415,34 +430,62 @@ static ram_dir_t* ramfs_load_dir(ram_dir_t* in)
         {
             ram_dir_t* dir = CONTAINER_OF(child, ram_dir_t, node);
 
-            node_push(&newDir->node, &ramfs_load_dir(dir)->node);
+            list_push(&inode->children, &ramfs_load_dir(superblock, dir)->entry);
         }
         else if (child->type == RAMFS_FILE)
         {
             ram_file_t* file = CONTAINER_OF(child, ram_file_t, node);
 
-            ram_file_t* newFile = heap_alloc(sizeof(ram_file_t), HEAP_NONE);
-            assert(newFile != NULL);
-            node_init(&newFile->node, file->node.name, RAMFS_FILE);
-            newFile->size = file->size;
-            newFile->data = heap_alloc(newFile->size, HEAP_VMM);
-            memcpy(newFile->data, file->data, newFile->size);
-            newFile->openedAmount = 0;
+            ramfs_inode_t* fileInode = ramfs_inode_new(superblock, INODE_FILE, file->node.name, file->data, file->size);
+            assert(inode != NULL);
 
-            node_push(&newDir->node, &newFile->node);
+            list_push(&inode->children, &fileInode->entry);
         }
     }
 
-    return newDir;
+    return inode;
+}
+
+static ramfs_inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, const char* name, void* data, uint64_t size)
+{
+    // Becouse of the ramfs_alloc_inode function, this allocated inode is actually a ramfs_inode_t.
+    inode_t* inode = inode_new(superblock, atomic_fetch_add(&newNumber, 1), type, &inodeOps, &fileOps);
+    if (inode == NULL)
+    {
+        return NULL;
+    }
+
+    inode->blocks = 0;
+    inode->size = size;
+
+    ramfs_inode_t* ramfsInode = CONTAINER_OF(inode, ramfs_inode_t, inode);
+    list_entry_init(&ramfsInode->entry);
+    list_init(&ramfsInode->children);
+    ramfsInode->openedAmount = 0;
+    strncpy(ramfsInode->name, name, MAX_NAME - 1);
+    ramfsInode->name[MAX_NAME - 1] = '\0';
+
+    if (data == NULL)
+    {
+        assert(size == 0); // Sanity check.
+        ramfsInode->data = NULL;
+        return ramfsInode;
+    }
+
+    ramfsInode->data = heap_alloc(size, HEAP_VMM);
+    if (ramfsInode->data == NULL)
+    {
+        heap_free(ramfsInode);
+        return NULL;
+    }
+    memcpy(ramfsInode->data, data, size);
+    return ramfsInode;
 }
 
 void ramfs_init(ram_disk_t* disk)
 {
     LOG_INFO("ramfs: init\n");
 
-    root = ramfs_load_dir(disk->root);
-    lock_init(&lock);
-
     assert(vfs_register_fs(&ramfs) != ERR);
-    assert(vfs_mount(VFS_DEVICE_NAME_NONE, "/", RAMFS_NAME, SUPER_NONE, NULL) != ERR);
+    assert(vfs_mount(VFS_DEVICE_NAME_NONE, "/", RAMFS_NAME, SUPER_NONE, disk->root) != ERR);
 }

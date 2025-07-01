@@ -272,7 +272,7 @@ static uint64_t heap_test_realloc(uint64_t initialSize, uint64_t newSize, uint8_
     return 0;
 }
 
-TESTING_REGISTER_TEST(HEAP_all_tests)
+TESTING_REGISTER_TEST(heap_all_tests)
 {
     uint64_t result = 0;
 

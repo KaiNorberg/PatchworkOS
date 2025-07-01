@@ -259,7 +259,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
     else if (argv[0][0] == '.' && argv[0][0] == '/')
     {
         stat_t info;
-        if (stat(argv[0], &info) != ERR && info.type == STAT_FILE)
+        if (stat(argv[0], &info) != ERR && info.type != INODE_DIR)
         {
             result = spawn(argv, fds, NULL, SPAWN_NONE);
         }
@@ -283,7 +283,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
             sprintf(path, "%s/%s", lookupDirs[j], argv[0]);
 
             stat_t info;
-            if (stat(path, &info) != ERR && info.type == STAT_FILE)
+            if (stat(path, &info) != ERR && info.type != INODE_DIR)
             {
                 const char* temp = argv[0];
                 argv[0] = path;

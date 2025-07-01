@@ -171,7 +171,7 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
         return NULL;
     }
 
-    if (info.type != STAT_FILE)
+    if (info.type != INODE_FILE)
     {
         return ERRPTR(EISDIR);
     }

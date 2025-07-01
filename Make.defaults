@@ -1,14 +1,8 @@
 MKCWD = mkdir -p $(@D)
 
-ifeq ($(NOSTDLIB),1)
-    CC := ./tools/patchwork-nostdlib-gcc
-    AS := ./tools/patchwork-nasm
-    LD := ./tools/patchwork-nostdlib-ld
-else
-    CC := ./tools/patchwork-gcc
-    AS := ./tools/patchwork-nasm
-    LD := ./tools/patchwork-ld
-endif
+GC = gcc
+AS = nasm
+LD = ld
 
 OBJCOPY := objcopy
 
@@ -25,6 +19,14 @@ endif
 CFLAGS := $(OPTIMIZATION) \
     $(DEBUG_SYMBOLS) \
     $(TESTING) \
+    -nostdlib \
+    -nostdinc \
+    -ffreestanding \
+    -fno-builtin \
+    -isystem "include" \
+    -isystem "include/libstd" \
+    -L"bin/libstd" \
+    -L"bin/libpatchwork" \
     -std=gnu11 \
     -Wall \
     -Wextra \
@@ -49,11 +51,24 @@ CFLAGS_DISABLE_SIMD := -mno-mmx -mno-3dnow \
 	-mno-sse2 -mno-sse3 \
 	-mno-ssse3 -mno-sse4
 
-ASFLAGS := \
+ASFLAGS := -f elf64 \
 	-Iinclude \
+	-Iinclude/libstd \
 	-I$(SRCDIR)
 
-LDFLAGS :=
+LDFLAGS := -m elf_x86_64 \
+  -nostdlib \
+  -L"bin/libstd" \
+  -L"bin/libpatchwork" \
+
+ifeq ($(NOSTDLIB),1)
+    LDSTDLIB :=
+else
+    LDSTDLIB := -lstd \
+        bin/libstd/crti.o \
+        bin/libstd/crt0.o \
+        bin/libstd/crtn.o
+endif
 
 SRC = $(wildcard $(SRCDIR)/*.c) $(wildcard $(SRCDIR)/*.s) \
 	$(wildcard $(SRCDIR)/*/*.c) $(wildcard $(SRCDIR)/*/*.s) \

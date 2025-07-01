@@ -2,6 +2,7 @@
 
 #include "utils/map.h"
 #include "sync/lock.h"
+#include "path.h"
 
 #include <stdatomic.h>
 #include <stdint.h>
@@ -19,16 +20,6 @@ typedef struct dentry dentry_t;
 
 #define INODE_DEFER(inode) __attribute__((cleanup(inode_defer_cleanup))) inode_t* CONCAT(i, __COUNTER__) = (inode)
 
-typedef uint64_t inode_number_t;
-
-typedef enum
-{
-    INODE_FILE,
-    INODE_DIR,
-    INODE_LINK,
-    INODE_OBJ,
-} inode_type_t;
-
 typedef enum
 {
     INODE_NONE = 0,
@@ -42,7 +33,7 @@ typedef struct inode
     atomic_uint64_t ref;
     inode_type_t type; //!< Constant after creation.
     inode_flags_t flags;
-    atomic_uint64_t linkCount;
+    uint64_t linkCount;
     uint64_t size;
     uint64_t blocks;
     time_t accessTime; //!< Unix time stamp for the last inode access.
@@ -57,8 +48,8 @@ typedef struct inode
 
 typedef struct inode_ops
 {
-    dentry_t* (*lookup)(inode_t* dir, const char* name);
-    inode_t* (*create)(inode_t* dir, const char* name, inode_flags_t flags);
+    dentry_t* (*lookup)(inode_t* parent, const char* name);
+    inode_t* (*create)(inode_t* parent, const char* name, path_flags_t flags);
     void (*truncate)(inode_t* inode);
 } inode_ops_t;
 

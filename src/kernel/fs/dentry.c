@@ -4,7 +4,7 @@
 #include "sched/thread.h"
 #include "vfs.h"
 
-dentry_t* dentry_new(dentry_t* parent, const char* name, inode_t* inode)
+dentry_t* dentry_new(superblock_t* superblock, const char* name, inode_t* inode)
 {
     if (strnlen_s(name, MAX_NAME) >= MAX_NAME)
     {
@@ -21,11 +21,9 @@ dentry_t* dentry_new(dentry_t* parent, const char* name, inode_t* inode)
     dentry->id = vfs_get_new_id();
     atomic_init(&dentry->ref, 1);
     strcpy(dentry->name, name);
-    dentry->inode = inode;
-    dentry->parent = parent != NULL ? dentry_ref(parent)
-                                    : dentry; // If a parent is not assigned then the dentry becomes a root entry.
-    dentry->superblock = parent != NULL ? superblock_ref(parent->superblock)
-                                        : NULL; // If this is a root entry then superblock must be set by the caller.
+    dentry->inode = inode_ref(inode);
+    dentry->parent = NULL;
+    dentry->superblock = superblock_ref(superblock);
     dentry->ops = dentry->superblock != NULL ? dentry->superblock->dentryOps : NULL;
     dentry->private = NULL;
     dentry->flags = DENTRY_NONE;

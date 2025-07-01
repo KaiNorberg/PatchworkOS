@@ -27,7 +27,7 @@ inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t
     atomic_init(&inode->ref, 1);
     inode->type = type;
     inode->flags = INODE_NONE;
-    atomic_init(&inode->linkCount, 1);
+    inode->linkCount = 1;
     inode->size = 0;
     inode->blocks = 0;
     inode->accessTime = systime_unix_epoch();

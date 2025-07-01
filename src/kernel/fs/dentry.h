@@ -18,12 +18,6 @@ typedef uint64_t dentry_id_t;
 
 #define DETNRY_IS_ROOT(dentry) (dentry == dentry->parent)
 
-typedef enum
-{
-    DENTRY_NONE = 0,
-    DENTRY_MOUNTPOINT = 1 << 0,
-} dentry_flags_t;
-
 typedef struct dentry
 {
     map_entry_t mapEntry;
@@ -44,7 +38,7 @@ typedef struct dentry_ops
     void (*cleanup)(dentry_t* entry);
 } dentry_ops_t;
 
-dentry_t* dentry_new(dentry_t* parent, const char* name, inode_t* inode);
+dentry_t* dentry_new(superblock_t* superblock, const char* name, inode_t* inode);
 
 void dentry_free(dentry_t* dentry);
 

@@ -35,11 +35,13 @@
 
 #define VFS_DEVICE_NAME_NONE "__none__"
 
+typedef struct filesystem filesystem_t;
+
 typedef struct filesystem
 {
     list_entry_t entry;
     const char* name;
-    superblock_t* (*mount)(const char* deviceName, superblock_flags_t flags, const void* data);
+    superblock_t* (*mount)(filesystem_t* fs, const char* deviceName, superblock_flags_t flags, const void* private);
 } filesystem_t;
 
 typedef struct
@@ -82,7 +84,7 @@ uint64_t vfs_lookup(path_t* outPath, const char* pathname);
 uint64_t vfs_lookup_parent(path_t* outPath, const char* pathname, char* outLastName);
 
 uint64_t vfs_mount(const char* deviceName, const char* mountpoint, const char* fsName, superblock_flags_t flags,
-    const void* data);
+    const void* private);
 uint64_t vfs_unmount(const char* mountpoint);
 
 bool vfs_is_name_valid(const char* name);
