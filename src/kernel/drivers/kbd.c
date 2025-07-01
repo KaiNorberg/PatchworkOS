@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <sys/math.h>
 
-static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count)
+static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     kbd_t* kbd = file->dentry->inode->private;
 
@@ -22,13 +22,13 @@ static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count)
     {
         LOCK_DEFER(&kbd->lock);
 
-        if (WAIT_BLOCK_LOCK(&kbd->waitQueue, &kbd->lock, file->pos != kbd->writeIndex) != WAIT_NORM)
+        if (WAIT_BLOCK_LOCK(&kbd->waitQueue, &kbd->lock, *offset != kbd->writeIndex) != WAIT_NORM)
         {
             return i * sizeof(kbd_event_t);
         }
 
-        ((kbd_event_t*)buffer)[i] = kbd->events[file->pos];
-        file->pos = (file->pos + 1) % KBD_MAX_EVENT;
+        ((kbd_event_t*)buffer)[i] = kbd->events[*offset];
+        *offset = (*offset + 1) % KBD_MAX_EVENT;
     }
 
     return count;
@@ -41,8 +41,7 @@ static wait_queue_t* kbd_poll(file_t* file, poll_file_t* pollFile)
     return &kbd->waitQueue;
 }
 
-static file_ops_t kbdOps = 
-{
+static file_ops_t kbdOps = {
     .read = kbd_read,
     .poll = kbd_poll,
 };

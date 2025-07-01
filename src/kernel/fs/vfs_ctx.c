@@ -11,7 +11,7 @@ void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd)
 {
     if (cwd == NULL)
     {
-        path_get_root(&ctx->cwd);
+        vfs_get_global_root(&ctx->cwd);
     }
     else
     {
@@ -30,7 +30,7 @@ void vfs_ctx_deinit(vfs_ctx_t* ctx)
     LOCK_DEFER(&ctx->lock);
 
     path_put(&ctx->cwd);
-    
+
     for (uint64_t i = 0; i < CONFIG_MAX_FD; i++)
     {
         if (ctx->files[i] != NULL)

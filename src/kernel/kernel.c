@@ -72,8 +72,8 @@ void kernel_init(boot_info_t* bootInfo)
 
     sysfs_init();
     vfs_init();
-    syfs_after_vfs_init();
     ramfs_init(&bootInfo->ramDisk);
+    syfs_after_vfs_init();
 
     log_obj_expose();
     process_backend_init();

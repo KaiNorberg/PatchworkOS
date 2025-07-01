@@ -6,7 +6,6 @@
 #include "sched/thread.h"
 #include "sysfs.h"
 #include "vfs.h"
-#include "view.h"
 
 #include <boot/boot_info.h>
 
@@ -16,10 +15,10 @@
 #include <sys/list.h>
 #include <sys/math.h>
 
-/*static ram_dir_t* root;
+static ram_dir_t* root;
 static lock_t lock;
 
-static uint64_t ramfs_readdir(file_t* file, stat_t* infos, uint64_t amount)
+/*static uint64_t ramfs_readdir(file_t* file, stat_t* infos, uint64_t amount)
 {
     LOCK_DEFER(&lock);
     ram_dir_t* ramDir = CONTAINER_OF(file->private, ram_dir_t, node);
@@ -348,11 +347,64 @@ static ram_dir_t* ramfs_load_dir(ram_dir_t* in)
     return newDir;
 }*/
 
+static file_ops_t fileOps = {
+
+};
+
+static inode_ops_t inodeOps = {
+
+};
+
+static dentry_ops_t dentryOps = {
+
+};
+
+static superblock_ops_t superOps = {
+
+};
+
+static superblock_t* ramfs_mount(const char* deviceName, superblock_flags_t flags, const void* data)
+{
+    superblock_t* superblock = superblock_new(deviceName, SYSFS_NAME, &superOps, &dentryOps);
+    if (superblock == NULL)
+    {
+        return NULL;
+    }
+
+    superblock->blockSize = 0;
+    superblock->maxFileSize = UINT64_MAX;
+
+    inode_t* rootInode = inode_new(superblock, INODE_DIR, &inodeOps, NULL);
+    if (rootInode == NULL)
+    {
+        superblock_deref(superblock);
+        return NULL;
+    }
+
+    superblock->root = dentry_new(NULL, VFS_ROOT_ENTRY_NAME, rootInode);
+    if (superblock->root == NULL)
+    {
+        inode_deref(rootInode);
+        superblock_deref(superblock);
+        return NULL;
+    }
+
+    return superblock;
+}
+
+static filesystem_t ramfs =
+{
+    .name = RAMFS_NAME,
+    .mount = ramfs_mount,
+};
+
 void ramfs_init(ram_disk_t* disk)
 {
-    /*root = ramfs_load_dir(disk->root);
-    assert(vfs_mount("home", &ramfs) != ERR);
+    root = ramfs_load_dir(disk->root);
     lock_init(&lock);
 
-    LOG_INFO("ramfs: init\n");*/
+    assert(vfs_register_fs(&ramfs) != ERR);
+    assert(vfs_mount(VFS_DEVICE_NAME_NONE, "/", RAMFS_NAME, SUPER_NONE, NULL) != ERR);
+
+    LOG_INFO("ramfs: init\n");
 }

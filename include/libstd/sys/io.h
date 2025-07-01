@@ -29,38 +29,13 @@ extern "C"
  *
  * ### Flags
  *
- * You may notice that functions like `open()` do
- * not have a specific argument for flags, instead the filepath itself contains the flags. This is done by appending a
- * '?' char to the end of a file path and then separating flags using the '&' char, like a web link. This system makes
- * using a shell far simpler and powerful as you can add flags to your filepath directly without any additional handling
- * by the shell, for example there is no need for a "truncate" redirect (>>) instead you can just add the "trunc" flag
- * to the filepath and use a normal redirect (>).
+ * Functions like `open()` do not have a specific argument for flags, instead the filepath itself contains the flags.
+ * This means that for example there is no need for a special "truncate" redirect in a shell (>>) instead you can just
+ * add the "trunc" flag to the filepath and use a normal redirect (>).
  *
  * Here is an example filepath: `/this/is/a/path?with&some&flags`.
  *
- * #### Flags
- *
- * Below are all the currently implemented flags. Note that not all files will have all flags implemented.
- *
- * - `nonblock` - Prevents the file from blocking, if a block is supposed to occur a error will take place and errno is
- * set to EWOULDBLOCK.
- * - `append` - Causes the file to move its offset to the end of the file before each write atomically.
- * - `create` - If the filepath does not exist, create it. Without this attempting to open a non existent filepath will
- * return an error.
- * - `excl` - If used with `create` then it guarantees that a file will be created, if a file already exists an error
- * occurs.
- * - `trunc` - If the file already exists then truncate its length to 0.
- * - `dir` - Should be used when opening a directory.
- *
- * ### What really is a file? A small note about Plan9.
- *
- * PatchworkOS uses a broader definition of what a file is then what Plan9 appears to use. Plan9, as far as the author
- * is aware att the time of writing, considers all its system files to be "text files", so all systems are interacted
- * with via strings. For example you can draw a rectangle to the screen using just a text command written to a file. For
- * Patchwork this is very resrictive and results in nonsensical apis (for example consider memory mapped files), thus
- * when it is said that "PatchworkOS follows the everything is a file philosophy", consider that files are defined
- * to be an entry in a hierarchical file system that are interacted with "like a file", a admittedly rather vague
- * definition, but this widens the definition of a file to include files that store binary data instead of just text.
+ * Check the 'src/kernel/fs/path.h' file for a list of available flags.
  *
  */
 
@@ -129,7 +104,7 @@ fd_t vopenf(const char* _RESTRICT format, va_list args);
 
  * The `open2()` function opens a file and returns two file descriptors. This is intended as a more generic
  implementation
- * of system calls like pipe() in for example Linux. One example use case of this system call is as expected pipes, if
+ * of system calls like pipe() in for example Linux. One example use case of this system call is pipes, if
  * `open2` is called on `sys:/pipe/new` then `fd[0]` will store the read end of the pipe and `fd[1]` will store the
  write
  * end of the pipe. But if `open()` is called on `sys:/pipe/new` then the returned file descriptor would be both

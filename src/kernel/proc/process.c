@@ -114,8 +114,7 @@ static void process_cwd_view_deinit(view_t* view)
     heap_free(view->buffer);
 }*/
 
-static file_ops_t cwdOps =
-{
+static file_ops_t cwdOps = {
 
 };
 
@@ -140,12 +139,11 @@ static file_ops_t cwdOps =
     return 0;
 }*/
 
-static file_ops_t cmdlineOps =
-{
+static file_ops_t cmdlineOps = {
 
 };
 
-static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t count)
+static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
     if (count == 0)
     {
@@ -174,8 +172,7 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
     return count;
 }
 
-static file_ops_t noteOps =
-{
+static file_ops_t noteOps = {
     .write = process_note_write,
 };
 

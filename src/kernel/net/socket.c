@@ -23,17 +23,18 @@ static bool socket_has_access(socket_t* socket, process_t* process)
     return process->id == socket->creator || process_is_child(process, socket->creator);
 }
 
-static uint64_t socket_accept_read(file_t* file, void* buffer, uint64_t count)
+static uint64_t socket_accept_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     socket_t* socket = file->private;
-    uint64_t readCount = socket->family->receive(socket, buffer, count, &file->pos);
+    uint64_t readCount = socket->family->receive(socket, buffer, count, offset);
     return readCount;
 }
 
-static uint64_t socket_accept_write(file_t* file, const void* buffer, uint64_t count)
+static uint64_t socket_accept_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
     socket_t* socket = file->private;
-    return socket->family->send(socket, buffer, count);
+    uint64_t result = socket->family->send(socket, buffer, count, offset);
+    return result;
 }
 
 static wait_queue_t* socket_accept_poll(file_t* file, poll_file_t* poll)
@@ -88,17 +89,16 @@ static file_ops_t acceptOps = {
     .cleanup = socket_accept_cleanup,
 };
 
-static uint64_t socket_data_read(file_t* file, void* buffer, uint64_t count)
+static uint64_t socket_data_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     socket_t* socket = file->private;
-    uint64_t readCount = socket->family->receive(socket, buffer, count, &file->pos);
-    return readCount;
+    return socket->family->receive(socket, buffer, count, offset);
 }
 
-static uint64_t socket_data_write(file_t* file, const void* buffer, uint64_t count)
+static uint64_t socket_data_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
     socket_t* socket = file->private;
-    return socket->family->send(socket, buffer, count);
+    return socket->family->send(socket, buffer, count, offset);
 }
 
 static wait_queue_t* socket_data_poll(file_t* file, poll_file_t* poll)

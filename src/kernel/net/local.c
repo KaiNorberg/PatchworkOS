@@ -27,13 +27,12 @@ static void local_connection_deref(local_connection_t* conn);
 
 static local_connection_t* local_listener_pop(local_listener_t* listener);
 
-static file_ops_t listenerOps =
-{
+static file_ops_t listenerOps = {
     // None
 };
 
 static local_listener_t* local_listener_new(const char* address)
-{    
+{
     if (!vfs_is_name_valid(address))
     {
         return ERRPTR(EINVAL);
@@ -463,7 +462,7 @@ static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket)
     return 0;
 }
 
-static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t count)
+static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t count, uint64_t* offset)
 {
     if (buffer == NULL)
     {

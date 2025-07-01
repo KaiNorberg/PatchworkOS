@@ -13,20 +13,12 @@
 #include <stdlib.h>
 #include <sys/math.h>
 
-static uint64_t socket_family_new_read(file_t* file, void* buffer, uint64_t count)
+static uint64_t socket_family_new_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     socket_t* socket = file->private;
 
     uint64_t len = strlen(socket->id);
-    return BUFFER_READ(file, buffer, count, socket->id, len + 1); // Include null terminator
-}
-
-static uint64_t socket_family_new_seek(file_t* file, int64_t offset, seek_origin_t origin)
-{
-    socket_t* socket = file->private;
-
-    uint64_t len = strlen(socket->id);
-    return BUFFER_SEEK(file, offset, origin, len + 1); // Include null terminator
+    return BUFFER_READ(buffer, count, offset, socket->id, len + 1); // Include null terminator
 }
 
 static uint64_t socket_family_new_open(inode_t* inode, file_t* file)
@@ -55,7 +47,6 @@ static void socket_family_new_cleanup(file_t* file)
 static file_ops_t newOps = {
     .open = socket_family_new_open,
     .read = socket_family_new_read,
-    .seek = socket_family_new_seek,
     .cleanup = socket_family_new_cleanup,
 };
 

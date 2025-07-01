@@ -47,18 +47,11 @@ static void shmem_deref(shmem_t* shmem)
     }
 }
 
-static uint64_t shmem_read(file_t* file, void* buffer, uint64_t count)
+static uint64_t shmem_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     shmem_t* shmem = file->private;
     uint64_t size = strlen(shmem->id) + 1;
-    return BUFFER_READ(file, buffer, count, shmem->id, size);
-}
-
-static uint64_t shmem_seek(file_t* file, int64_t offset, seek_origin_t origin)
-{
-    shmem_t* shmem = file->private;
-    uint64_t size = strlen(shmem->id) + 1;
-    return BUFFER_SEEK(file, offset, origin, size);
+    return BUFFER_READ(buffer, count, offset, shmem->id, size);
 }
 
 static void shmem_vmm_callback(void* private)

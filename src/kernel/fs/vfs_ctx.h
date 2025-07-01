@@ -3,8 +3,8 @@
 #include <sys/io.h>
 
 #include "defs.h"
-#include "vfs.h"
 #include "sync/lock.h"
+#include "vfs.h"
 
 typedef struct file file_t;
 typedef struct dir_entry dir_entry_t;

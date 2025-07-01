@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <sys/math.h>
 
-static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count)
+static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     mouse_t* mouse = file->dentry->inode->private;
 
@@ -21,13 +21,13 @@ static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count)
     {
         LOCK_DEFER(&mouse->lock);
 
-        if (WAIT_BLOCK_LOCK(&mouse->waitQueue, &mouse->lock, file->pos != mouse->writeIndex) != WAIT_NORM)
+        if (WAIT_BLOCK_LOCK(&mouse->waitQueue, &mouse->lock, *offset != mouse->writeIndex) != WAIT_NORM)
         {
             return i * sizeof(mouse_event_t);
         }
 
-        ((mouse_event_t*)buffer)[i] = mouse->events[file->pos];
-        file->pos = (file->pos + 1) % MOUSE_MAX_EVENT;
+        ((mouse_event_t*)buffer)[i] = mouse->events[*offset];
+        *offset = (*offset + 1) % MOUSE_MAX_EVENT;
     }
 
     return count;
@@ -40,8 +40,7 @@ static wait_queue_t* mouse_poll(file_t* file, poll_file_t* pollFile)
     return &mouse->waitQueue;
 }
 
-static file_ops_t mouseOps =
-{
+static file_ops_t mouseOps = {
     .read = mouse_read,
     .poll = mouse_poll,
 };

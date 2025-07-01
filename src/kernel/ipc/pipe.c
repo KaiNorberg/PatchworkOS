@@ -14,7 +14,7 @@
 
 static sysobj_t obj;
 
-static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count)
+static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     if (count == 0)
     {
@@ -44,10 +44,12 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count)
     assert(ring_read(&private->ring, buffer, count) != ERR);
 
     wait_unblock(&private->waitQueue, WAIT_ALL);
+
+    *offset += count;
     return count;
 }
 
-static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count)
+static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
     pipe_private_t* private = file->private;
     if (private->writeEnd != file)
@@ -77,6 +79,8 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count)
     assert(ring_write(&private->ring, buffer, count) != ERR);
 
     wait_unblock(&private->waitQueue, 1);
+
+    *offset += count;
     return count;
 }
 

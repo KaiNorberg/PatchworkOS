@@ -236,23 +236,15 @@ static fs_t sysfs = {
     .mount = sysfs_mount,
 };*/
 
-static inode_ops_t inodeOps =
-{
+static inode_ops_t inodeOps = {
 
 };
 
-static dentry_ops_t dentryOps =
-{
+static dentry_ops_t dentryOps = {
 
 };
 
-static uint64_t ramfs_sync_inode(superblock_t* superblock, inode_t* inode)
-{
-    return ERROR(ENOSYS);
-}
-
-static super_ops_t superOps =
-{
+static superblock_ops_t superOps = {
 
 };
 
@@ -285,8 +277,7 @@ static superblock_t* sysfs_mount(const char* deviceName, superblock_flags_t flag
     return superblock;
 }
 
-static filesystem_t sysfs =
-{
+static filesystem_t sysfs = {
     .name = SYSFS_NAME,
     .mount = sysfs_mount,
 };
@@ -304,8 +295,8 @@ void sysfs_init(void)
 
 void syfs_after_vfs_init(void)
 {
-    assert(vfs_register_fs(&sysfs) != ERR);
-    assert(vfs_mount(VFS_DEVICE_NAME_NONE, "/", SYSFS_NAME, SUPER_NONE, NULL) != ERR);
+    //assert(vfs_register_fs(&sysfs) != ERR);
+    //assert(vfs_mount(VFS_DEVICE_NAME_NONE, "/", SYSFS_NAME, SUPER_NONE, NULL) != ERR);
 }
 
 uint64_t sysfs_start_op(file_t* file)
@@ -343,7 +334,7 @@ static node_t* sysfs_traverse(const char* path)
         const char* componentStart = p;
         while (*p != '\0' && *p != '/')
         {
-            if (!VFS_VALID_CHAR(*p))
+            if (!PATH_VALID_CHAR(*p))
             {
                 return ERRPTR(EINVAL);
             }
@@ -433,7 +424,7 @@ void sysdir_deinit(sysdir_t* dir, sysdir_on_free_t onFree)
 }
 
 uint64_t sysobj_init(sysobj_t* sysobj, sysdir_t* dir, const char* filename, const file_ops_t* ops, void* private)
-{    
+{
     if (!vfs_is_name_valid(filename))
     {
         return ERROR(EINVAL);
@@ -458,7 +449,7 @@ uint64_t sysobj_init(sysobj_t* sysobj, sysdir_t* dir, const char* filename, cons
 
 uint64_t sysobj_init_path(sysobj_t* sysobj, const char* path, const char* filename, const file_ops_t* ops,
     void* private)
-{    
+{
     if (!vfs_is_name_valid(filename))
     {
         return ERROR(EINVAL);

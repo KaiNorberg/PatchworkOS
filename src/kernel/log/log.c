@@ -86,16 +86,16 @@ void log_disable_screen(void)
     state.config.outputs &= ~LOG_OUTPUT_SCREEN;
 }
 
-static uint64_t klog_read(file_t* file, void* buffer, uint64_t count)
+static uint64_t klog_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     LOCK_DEFER(&lock);
 
-    uint64_t result = ring_read_at(&obj.ring, file->pos, buffer, count);
-    file->pos += result;
+    uint64_t result = ring_read_at(&obj.ring, *offset, buffer, count);
+    *offset += result;
     return result;
 }
 
-static uint64_t klog_write(file_t* file, const void* buffer, uint64_t count)
+static uint64_t klog_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
     if (count == 0)
     {
@@ -109,11 +109,12 @@ static uint64_t klog_write(file_t* file, const void* buffer, uint64_t count)
     memcpy(string, buffer, count);
     string[count] = '\0';
     log_print(LOG_LEVEL_USER, "%s", string);
+
+    *offset += count;
     return count;
 }
 
-static file_ops_t klogOps =
-{
+static file_ops_t klogOps = {
     .read = klog_read,
     .write = klog_write,
 };

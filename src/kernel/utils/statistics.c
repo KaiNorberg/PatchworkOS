@@ -58,8 +58,7 @@ static void statistics_cpu_view_deinit(view_t* view)
     heap_free(view->buffer);
 }*/
 
-static file_ops_t cpuOps =
-{
+static file_ops_t cpuOps = {
 
 };
 
@@ -84,8 +83,7 @@ static void statistics_mem_view_deinit(view_t* view)
     heap_free(view->buffer);
 }*/
 
-static file_ops_t memOps =
-{
+static file_ops_t memOps = {
 
 };
 

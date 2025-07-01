@@ -15,9 +15,10 @@ static sysobj_t oneObj;
 static sysobj_t zeroObj;
 static sysobj_t nullObj;
 
-static uint64_t const_one_read(file_t* file, void* buffer, uint64_t count)
+static uint64_t const_one_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     memset(buffer, -1, count);
+    *offset += count;
     return count;
 }
 
@@ -33,15 +34,15 @@ static void* const_one_mmap(file_t* file, void* addr, uint64_t length, prot_t pr
     return addr;
 }
 
-static file_ops_t oneOps =
-{
+static file_ops_t oneOps = {
     .read = const_one_read,
     .mmap = const_one_mmap,
 };
 
-static uint64_t const_zero_read(file_t* file, void* buffer, uint64_t count)
+static uint64_t const_zero_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     memset(buffer, 0, count);
+    *offset += count;
     return count;
 }
 
@@ -57,24 +58,24 @@ static void* const_zero_mmap(file_t* file, void* addr, uint64_t length, prot_t p
     return addr;
 }
 
-static file_ops_t zeroOps =
-{
+static file_ops_t zeroOps = {
     .read = const_zero_read,
     .mmap = const_zero_mmap,
 };
 
-static uint64_t const_null_read(file_t* file, void* buffer, uint64_t count)
+static uint64_t const_null_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
+    *offset += count;
     return 0;
 }
 
-static uint64_t const_null_write(file_t* file, const void* buffer, uint64_t count)
+static uint64_t const_null_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
+    *offset += count;
     return count;
 }
 
-static file_ops_t nullOps =
-{
+static file_ops_t nullOps = {
     .read = const_null_read,
     .write = const_null_write,
 };
