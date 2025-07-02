@@ -99,32 +99,3 @@ uint64_t inode_sync(inode_t* inode)
 
     return 0;
 }
-
-void inode_access_time_update(inode_t* inode)
-{
-    LOCK_DEFER(&inode->lock);
-
-    // TODO: Unsure if this is correct, investigate further.
-    time_t now = systime_unix_epoch();
-    if (inode->accessTime < inode->modifyTime || inode->accessTime < inode->changeTime ||
-        (now - inode->accessTime) > (24 * 60 * 60))
-    {
-        inode->accessTime = now;
-    }
-}
-
-void inode_modify_time_update(inode_t* inode)
-{
-    LOCK_DEFER(&inode->lock);
-
-    inode->modifyTime = systime_unix_epoch();
-    inode->changeTime = inode->modifyTime;
-    inode->accessTime = inode->modifyTime;
-}
-
-void inode_change_time_update(inode_t* inode)
-{
-    LOCK_DEFER(&inode->lock);
-
-    inode->changeTime = systime_unix_epoch();
-}

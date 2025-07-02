@@ -204,9 +204,9 @@ static inline uint64_t _syscall_mprotect(void* address, uint64_t length, prot_t 
     return _SYSCALL3(uint64_t, SYS_MPROTECT, void*, address, uint64_t, length, prot_t, prot);
 }
 
-static inline uint64_t _syscall_readdir(fd_t fd, stat_t* infos, uint64_t amount)
+static inline uint64_t _syscall_getdirent(fd_t fd, dirent_t* buffer, uint64_t amount)
 {
-    return _SYSCALL3(uint64_t, SYS_READDIR, fd_t, fd, stat_t*, infos, uint64_t, amount);
+    return _SYSCALL3(uint64_t, SYS_GETDIRENT, fd_t, fd, dirent_t*, buffer, uint64_t, amount);
 }
 
 static inline tid_t _syscall_thread_create(void* entry, void* arg)

@@ -45,7 +45,7 @@ void dentry_free(dentry_t* dentry)
         inode_deref(dentry->inode);
     }
 
-    if (dentry->parent != NULL && !DETNRY_IS_ROOT(dentry))
+    if (dentry->parent != NULL)
     {
         dentry_deref(dentry->parent);
     }

@@ -60,7 +60,7 @@ static void sysobj_deref(sysobj_t* sysobj)
     }
 }
 
-/*static uint64_t sysfs_readdir(file_t* file, stat_t* infos, uint64_t amount)
+/*static uint64_t sysfs_getdirent(file_t* file, stat_t* infos, uint64_t amount)
 {
     RWLOCK_READ_DEFER(&lock);
     sysdir_t* sysdir = CONTAINER_OF(file->syshdr, sysdir_t, header);
@@ -76,14 +76,14 @@ static void sysobj_deref(sysobj_t* sysobj)
         info.type = child->type == SYSFS_OBJ ? STAT_FILE : STAT_DIR;
         info.size = 0;
 
-        readdir_push(infos, amount, &index, &total, &info);
+        getdirent_push(infos, amount, &index, &total, &info);
     }
 
     return total;
 }
 
 static file_ops_t dirOps = {
-    .readdir = sysfs_readdir,
+    .getdirent = sysfs_getdirent,
 };
 
 static file_t* sysfs_open(volume_t* volume, const path_t* path)

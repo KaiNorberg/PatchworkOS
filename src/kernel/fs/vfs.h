@@ -89,6 +89,17 @@ uint64_t vfs_unmount(const char* mountpoint);
 
 bool vfs_is_name_valid(const char* name);
 
+/**
+ * @brief Fills a `stat_t` struct.
+ * @ingroup kernel_vfs
+ *
+ * @param buffer The destination buffer.
+ * @param inode The inode whose information will fill the buffer. This function does NOT acquire the inodes lock.
+ * @param flags
+ * @param name
+ */
+uint64_t vfs_fill_stat_buffer(stat_t* buffer, inode_t* inode, dentry_flags_t flags, const char* name);
+
 file_t* vfs_open(const char* pathname);
 uint64_t vfs_open2(const char* pathname, file_t* files[2]);
 uint64_t vfs_read(file_t* file, void* buffer, uint64_t count);
@@ -98,7 +109,7 @@ uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size);
 void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot);
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout);
 
-uint64_t vfs_readdir(file_t* file, stat_t* infos, uint64_t amount);
+uint64_t vfs_getdirent(file_t* file, dirent_t* buffer, uint64_t amount);
 uint64_t vfs_mkdir(const char* pathname, uint64_t flags);
 uint64_t vfs_rmdir(const char* pathname);
 
@@ -107,6 +118,32 @@ uint64_t vfs_link(const char* oldpath, const char* newpath);
 uint64_t vfs_unlink(const char* pathname);
 uint64_t vfs_rename(const char* oldpath, const char* newpath);
 uint64_t vfs_remove(const char* pathname);
+
+/**
+ * @brief Helper struct for implemeting 'getdirent()'.
+ * @ingroup kernel_vfs
+ *
+ */
+typedef struct
+{
+    uint64_t index; //!< The current index into the destination buffer.
+    uint64_t total; //!< The total number of entries written to the destination buffer, is also the result of the
+                    //! `getdirent()` function.
+} getdirent_ctx_t;
+
+/**
+ * @brief Helper function for implemeting 'getdirent()'.
+ * @ingroup kernel_vfs
+ *
+ * @param ctx The getdirent context, should be zero initialized.
+ * @param buffer The destination buffer.
+ * @param amount The amount of `dirent_t` that will fitt in `buffer`.
+ * @param number The inode number to be written to the `buffer`.
+ * @param type The inode type to be written to the `buffer`.
+ * @param name The name to be written to the `buffer`.
+ */
+void getdirent_write(getdirent_ctx_t* ctx, dirent_t* buffer, uint64_t amount, inode_number_t number, inode_type_t type,
+    const char* name);
 
 // Helper macros for implementing file operations dealing with simple buffers
 #define BUFFER_READ(buffer, count, offset, src, size) \

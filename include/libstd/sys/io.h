@@ -314,7 +314,7 @@ typedef uint64_t inode_number_t;
 typedef struct
 {
     inode_number_t number; //!< The number of the entries inode.
-    inode_type_t type;     //!< The type of the entries inode (eg,. STAT_FILE, STAT_DIR, etc).
+    inode_type_t type;     //!< The type of the entries inode.
     dentry_flags_t flags;  //!< The flags of the dentry.
     uint64_t size;         //!< The size of the file that is visible outside the filesystem.
     uint64_t blocks;       //!< The amount of blocks used on disk to store the file.
@@ -327,7 +327,7 @@ typedef struct
 } stat_t;
 
 #ifdef static_assert
-static_assert(sizeof(stat_t) == 160, "invalid event_t size");
+static_assert(sizeof(stat_t) == 160, "invalid stat_t size");
 #endif
 
 /**
@@ -384,22 +384,35 @@ fd_t dup(fd_t oldFd);
 fd_t dup2(fd_t oldFd, fd_t newFd);
 
 /**
+ * @brief Directory entry struct.
+ * @ingroup libstd_sys_io
+ *
+ * The `dirent_t` structue is used in the `getdirent()` function to retrive the contents of a directory.
+ *
+ */
+typedef struct
+{
+    inode_number_t number; //!< The number of the entries inode.
+    inode_type_t type;     //!< The type of the entries inode.
+    char name[MAX_NAME];   //!< The name of the entry, not the full file path.
+} dirent_t;
+
+/**
  * @brief System call for reading directory entires.
  * @ingroup libstd_sys_io
  *
- * The `readdir()` function reads information about every entry in a directory from a directory file descriptor. Think
- * of it like calling `stat()` on everything in the directory. The intention is to call `readdir()` twice once to get
- * the total number of entires in the directory allowing you to allocate a buffer of the correct size, then again to
- * read the entires, ideally this would be done in a loop to make sure the amount of entires does not change between
- * calls to `readdir()`.
+ * The `getdirent()` function reads information about every entry in a directory from a directory file descriptor. The
+ * intention is to call `getdirent()` twice once to get the total number of entires in the directory allowing you to
+ * allocate a buffer of the correct size, then again to read the entires, ideally this would be done in a loop to make
+ * sure the amount of entires does not change between calls to `getdirent()`.
  *
  * @param fd The file descriptor of the directory to read.
- * @param infos A pointer to an array of `stat_t` structures where the directory entry information will be stored.
- * @param amount The amount of `stat_t` structures that fit in the infos array.
+ * @param buffer The destination buffer.
+ * @param amount The amount of `dirent_t` structures that fit in `buffer`.
  * @return On success, returns the total number of entries that exists, NOT the amount of entires read. On failure,
  * returns `ERR` and errno is set.
  */
-uint64_t readdir(fd_t fd, stat_t* infos, uint64_t amount);
+uint64_t getdirent(fd_t fd, dirent_t* buffer, uint64_t amount);
 
 /**
  * @brief Result type from `allocdir()`.
@@ -410,8 +423,8 @@ uint64_t readdir(fd_t fd, stat_t* infos, uint64_t amount);
  */
 typedef struct
 {
-    uint64_t amount; //!< The amount of `stat_t` structures in `allocdir_t::infos`.
-    stat_t infos[];  //!< The retrieved `stat_t` structures.
+    uint64_t amount;   //!< The amount of `dirent_t` structures in `buffer`.
+    dirent_t buffer[]; //!< The retrieved `dirent_t` structures.
 } allocdir_t;
 
 /**

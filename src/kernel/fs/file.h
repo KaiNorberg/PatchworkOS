@@ -38,7 +38,7 @@ typedef struct file_ops
     uint64_t (*ioctl)(file_t* file, uint64_t request, void* argp, uint64_t size);
     wait_queue_t* (*poll)(file_t* file, poll_file_t* pollFile); // TODO: Overhaul polling.
     void* (*mmap)(file_t* file, void* address, uint64_t length, prot_t prot);
-    uint64_t (*readdir)(file_t* file, stat_t* infos, uint64_t amount);
+    uint64_t (*getdirent)(file_t* file, dirent_t* buffer, uint64_t amount);
 } file_ops_t;
 
 typedef struct poll_file

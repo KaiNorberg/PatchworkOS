@@ -22,7 +22,7 @@
 #define SYS_MMAP 19
 #define SYS_MUNMAP 20
 #define SYS_MPROTECT 21
-#define SYS_READDIR 22
+#define SYS_GETDIRENT 22
 #define SYS_THREAD_CREATE 23
 #define SYS_YIELD 24
 #define SYS_DUP 25

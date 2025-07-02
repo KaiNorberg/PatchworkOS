@@ -11,7 +11,7 @@
 #include <time.h>
 
 // TODO: Implement actually writing/syncing dirty inodes, for now inodes should be marked as dirty as appropriate but
-// they will never actuall be "cleaned."
+// they will never actually be "cleaned."
 
 typedef struct inode inode_t;
 typedef struct inode_ops inode_ops_t;

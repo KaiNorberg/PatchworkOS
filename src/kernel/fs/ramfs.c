@@ -23,7 +23,7 @@ static ramfs_inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t typ
     uint64_t size);
 static ramfs_inode_t* ramfs_load_dir(superblock_t* superblock, const ram_dir_t* in);
 
-/*static uint64_t ramfs_readdir(file_t* file, stat_t* infos, uint64_t amount)
+/*static uint64_t ramfs_getdirent(file_t* file, stat_t* infos, uint64_t amount)
 {
     LOCK_DEFER(&lock);
     ram_dir_t* ramDir = CONTAINER_OF(file->private, ram_dir_t, node);
@@ -39,14 +39,14 @@ static ramfs_inode_t* ramfs_load_dir(superblock_t* superblock, const ram_dir_t* 
         info.type = child->type == RAMFS_FILE ? STAT_FILE : STAT_DIR;
         info.size = 0;
 
-        readdir_push(infos, amount, &index, &total, &info);
+        getdirent_push(infos, amount, &index, &total, &info);
     }
 
     return total;
 }
 
 static file_ops_t dirOps = {
-    .readdir = ramfs_readdir,
+    .getdirent = ramfs_getdirent,
 };
 
 static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count)
@@ -317,8 +317,25 @@ static fs_t ramfs = {
     .mount = ramfs_mount,
 };*/
 
-static file_ops_t fileOps = {
+static uint64_t file_getdirent(file_t* file, dirent_t* buffer, uint64_t amount)
+{
+    ramfs_inode_t* inode = CONTAINER_OF(file->dentry->inode, ramfs_inode_t, inode);
+    LOCK_DEFER(&inode->inode.lock);
 
+    getdirent_ctx_t ctx = {0};
+
+    ramfs_inode_t* child;
+    LIST_FOR_EACH(child, &inode->children, entry)
+    {
+        LOCK_DEFER(&child->inode.lock);
+        getdirent_write(&ctx, buffer, amount, child->inode.number, child->inode.type, child->name);
+    }
+
+    return ctx.total;
+}
+
+static file_ops_t fileOps = {
+    .getdirent = file_getdirent,
 };
 
 static dentry_t* ramfs_lookup(inode_t* parent, const char* name)
@@ -356,7 +373,9 @@ static dentry_t* ramfs_lookup(inode_t* parent, const char* name)
     return NULL;
 }
 
-static inode_ops_t inodeOps = {.lookup = ramfs_lookup};
+static inode_ops_t inodeOps = {
+    .lookup = ramfs_lookup,
+};
 
 static dentry_ops_t dentryOps = {
 

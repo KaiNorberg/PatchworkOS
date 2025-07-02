@@ -257,7 +257,7 @@ dentry_t* vfs_get_dentry(dentry_t* parent, const char* name)
     dentry_t* dentry = CONTAINER_OF_SAFE(map_get(&dentryCache.map, &key), dentry_t, mapEntry);
     if (dentry != NULL)
     {
-        dentry = dentry_ref(dentry);
+        dentry_ref(dentry);
         rwlock_read_release(&dentryCache.lock);
         return dentry;
     }
@@ -268,7 +268,7 @@ dentry_t* vfs_get_dentry(dentry_t* parent, const char* name)
     dentry = CONTAINER_OF_SAFE(map_get(&dentryCache.map, &key), dentry_t, mapEntry);
     if (dentry != NULL) // Check if the the dentry was added while the lock was released above.
     {
-        dentry = dentry_ref(dentry);
+        dentry_ref(dentry);
         rwlock_write_release(&dentryCache.lock);
         return dentry;
     }
@@ -492,6 +492,8 @@ bool vfs_is_name_valid(const char* name)
 
 static dentry_t* vfs_open_lookup(const char* pathname, path_flags_t* outFlags)
 {
+    // Note: This function techincally has a Time-of-Check-to-Time-of-Use race condition, but aslong as file creation is atomic in each filesystem then its not an issue.
+
     parsed_pathname_t parsed;
     if (path_parse_pathname(&parsed, pathname) == ERR)
     {
@@ -524,7 +526,6 @@ static dentry_t* vfs_open_lookup(const char* pathname, path_flags_t* outFlags)
             {
                 return NULL;
             }
-
             INODE_DEFER(inode);
 
             dentry = dentry_new(parent.dentry->superblock, lastComponent, inode);
@@ -549,7 +550,7 @@ static dentry_t* vfs_open_lookup(const char* pathname, path_flags_t* outFlags)
     else // Dont create dentry
     {
         path_t path;
-        if (vfs_lookup(&path, pathname) == ERR)
+        if (vfs_lookup(&path, parsed.pathname) == ERR)
         {
             return NULL;
         }
@@ -683,6 +684,12 @@ uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
         return ERR;
     }
 
+    if (file->dentry->inode->type == INODE_DIR)
+    {
+        errno = EISDIR;
+        return ERR;
+    }
+
     if (file->ops == NULL || file->ops->read == NULL)
     {
         errno = ENOSYS;
@@ -709,6 +716,12 @@ uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
     if (file == NULL || buffer == NULL)
     {
         errno = EINVAL;
+        return ERR;
+    }
+
+    if (file->dentry->inode->type == INODE_DIR)
+    {
+        errno = EISDIR;
         return ERR;
     }
 
@@ -742,6 +755,12 @@ uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
         return ERR;
     }
 
+    if (file->dentry->inode->type == INODE_DIR)
+    {
+        errno = EISDIR;
+        return ERR;
+    }
+
     if (file->ops != NULL && file->ops->seek != NULL)
     {
         return file->ops->seek(file, offset, origin);
@@ -753,14 +772,34 @@ uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
 
 uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
 {
-    errno = ENOSYS;
-    return ERR;
+    if (file == NULL)
+    {
+        errno = EINVAL; 
+        return ERR;
+    }
+
+    if (file->ops == NULL || file->ops->ioctl == NULL)
+    {
+        errno = ENOTTY; 
+        return ERR;
+    }
+
+    return file->ops->ioctl(file, request, argp, size);
 }
 
 void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
 {
-    errno = ENOSYS;
-    return NULL;
+    if (file == NULL)
+    {
+        return NULL;
+    }
+
+    if (file->ops == NULL || file->ops->mmap == NULL)
+    {
+        return NULL;
+    }
+
+    return file->ops->mmap(file, address, length, prot);
 }
 
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
@@ -769,10 +808,33 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
     return ERR;
 }
 
-uint64_t vfs_readdir(file_t* file, stat_t* infos, uint64_t amount)
+uint64_t vfs_getdirent(file_t* file, dirent_t* buffer, uint64_t amount)
 {
-    errno = ENOSYS;
-    return ERR;
+    if (file == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (buffer == NULL && amount != 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (file->dentry->inode->type != INODE_DIR)
+    {
+        errno = ENOTDIR;
+        return ERR;
+    }
+
+    if (file->ops == NULL || file->ops->getdirent == NULL)
+    {
+        errno = ENOSYS;
+        return ERR;
+    }
+
+    return file->ops->getdirent(file, buffer, amount);
 }
 
 uint64_t vfs_mkdir(const char* pathname, uint64_t flags)
@@ -857,3 +919,18 @@ uint64_t vfs_remove(const char* pathname)
     errno = ENOSYS;
     return ERR;
 }
+
+void getdirent_write(getdirent_ctx_t* ctx, dirent_t* buffer, uint64_t amount, inode_number_t number, inode_type_t type,
+    const char* name)
+{
+    if (ctx->index < amount)
+    {
+        dirent_t* dirent = &buffer[ctx->index++];
+        dirent->number = number;
+        dirent->type = type;
+        strncpy(dirent->name, name, MAX_NAME - 1);
+        dirent->name[MAX_NAME - 1] = '\0';
+    }
+
+    ctx->total++;
+};

@@ -565,12 +565,12 @@ uint64_t syscall_mprotect(void* address, uint64_t length, prot_t prot)
     return vmm_protect(space, address, length, prot);
 }
 
-uint64_t syscall_readdir(fd_t fd, stat_t* infos, uint64_t amount)
+uint64_t syscall_getdirent(fd_t fd, dirent_t* buffer, uint64_t amount)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
 
-    if (!buffer_is_valid(space, infos, amount * sizeof(stat_t)))
+    if (!buffer_is_valid(space, buffer, amount * sizeof(dirent_t)))
     {
         errno = EFAULT;
         return ERR;
@@ -583,7 +583,7 @@ uint64_t syscall_readdir(fd_t fd, stat_t* infos, uint64_t amount)
     }
     FILE_DEFER(file);
 
-    return vfs_readdir(file, infos, amount);
+    return vfs_getdirent(file, buffer, amount);
 }
 
 tid_t syscall_thread_create(void* entry, void* arg)
@@ -683,7 +683,7 @@ static void* syscallTable[] = {
     syscall_mmap,
     syscall_munmap,
     syscall_mprotect,
-    syscall_readdir,
+    syscall_getdirent,
     syscall_thread_create,
     syscall_yield,
     syscall_dup,

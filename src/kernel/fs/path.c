@@ -1,6 +1,11 @@
 #include "path.h"
 
-#include "sched/thread.h"
+#include "log/log.h"
+
+#include "vfs.h"
+
+#include <string.h>
+#include <errno.h>
 
 static map_t flagMap;
 static path_flag_entry_t flagEntries[] = {
@@ -27,84 +32,97 @@ void path_flags_init(void)
 uint64_t path_parse_pathname(parsed_pathname_t* dest, const char* pathname)
 {
     if (dest == NULL || pathname == NULL)
-    {
+    {        
         errno = EINVAL;
         return ERR;
     }
 
-    const char* flags = NULL;
-
-    const char* p = pathname;
-    while (*p != '\0')
-    {
-        uint64_t len = p - pathname;
-        if (len >= MAX_PATH)
-        {
-            errno = ENAMETOOLONG;
-            return ERR;
-        }
-
-        if (*p == '?')
-        {
-            if (flags != NULL) // There should only be one ? char in the path.
-            {
-                errno = EBADFLAG;
-                return ERR;
-            }
-            flags = p + 1;
-        }
-        if (flags == NULL) // If we have not yet encountered a ? char then we are not parsing the flags.
-        {
-            dest->pathname[len] = *p;
-        }
-
-        p++;
-    }
-
+    memset(dest->pathname, 0, MAX_NAME);
     dest->flags = PATH_NONE;
 
-    if (flags == NULL)
+    uint64_t length = strnlen_s(pathname, MAX_PATH);
+    if (length >= MAX_PATH)
+    {            
+        errno = ENAMETOOLONG;
+        return ERR;
+    }
+
+    uint64_t index = 0;
+    uint64_t currentNameLength = 0;
+    while (pathname[index] != '\0' && pathname[index] != '?')
     {
-        uint64_t len = p - pathname;
-        dest->pathname[len] = '\0';
+        if (pathname[index] == '/')
+        {
+            currentNameLength = 0;
+        }
+        else
+        {        
+            if (!PATH_VALID_CHAR(pathname[index]))
+            {
+                errno = EBADPATH;
+                return ERR;
+            }
+            currentNameLength++;
+            if (currentNameLength >= MAX_NAME)
+            {        
+                errno = ENAMETOOLONG;
+                return ERR;
+            }
+        }
+
+        dest->pathname[index] = pathname[index];
+        index++;
+    }
+
+    dest->pathname[index] = '\0';
+
+    if (pathname[index] != '?')
+    {                
         return 0;
     }
 
-    uint64_t len = flags - pathname;
-    dest->pathname[len] = '\0';
+    index++; // Skip '?'.
+    const char* flags = &pathname[index];
 
     while (true)
     {
-        while (*p == '&')
+        while (pathname[index] == '&')
         {
-            p++;
-        }
-
-        if (*p == '\0')
+            index++;
+        }        
+        
+        if (pathname[index] == '\0') 
         {
             break;
         }
 
-        const char* start = p;
-        while (*p != '\0' && *p != '&')
+        const char* token = &pathname[index];
+        while (pathname[index] != '\0' && pathname[index] != '&')
         {
-            p++;
+            if (!isalnum(pathname[index]))
+            {            
+                errno = EBADFLAG;
+                return ERR;
+            }
+            index++;
         }
 
-        uint64_t len = p - start;
-        if (len >= MAX_NAME)
-        {
+        uint64_t tokenLength = &pathname[index] - token;        
+        if (tokenLength >= MAX_NAME) 
+        {    
             errno = ENAMETOOLONG;
             return ERR;
         }
 
-        map_key_t key = map_key_buffer(start, len);
-        path_flag_entry_t* flag = CONTAINER_OF_SAFE(map_get(&flagMap, &key), path_flag_entry_t, entry);
-        if (flag == NULL)
+        map_key_t key = map_key_buffer(token, tokenLength);
+        path_flag_entry_t* flag = CONTAINER_OF_SAFE(map_get(&flagMap, &key), 
+                                                   path_flag_entry_t, entry);
+        if (flag == NULL) 
         {
             errno = EBADFLAG;
             return ERR;
         }
+        
         dest->flags |= flag->flag;
     }
 

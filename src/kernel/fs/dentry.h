@@ -16,8 +16,6 @@ typedef struct superblock superblock_t;
 
 typedef uint64_t dentry_id_t;
 
-#define DETNRY_IS_ROOT(dentry) (dentry == dentry->parent)
-
 typedef struct dentry
 {
     map_entry_t mapEntry;
