@@ -653,11 +653,11 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
 
         if (local_listener_is_closed(listener))
         {
-            poll->revents = POLL_ERR;
+            poll->occoured = POLL_ERR;
         }
         else
         {
-            poll->revents = local_listener_is_conn_avail(listener) ? POLL_READ : 0;
+            poll->occoured = local_listener_is_conn_avail(listener) ? POLL_READ : 0;
         }
         return &listener->waitQueue;
     }
@@ -668,7 +668,7 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
         LOCK_DEFER(&conn->lock);
         if (local_connection_is_closed(conn))
         {
-            poll->revents = POLL_READ | POLL_ERR | POLL_HANGUP;
+            poll->occoured = POLL_READ | POLL_ERR | POLL_HANGUP;
         }
         else
         {
@@ -681,7 +681,7 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
             {
                 events |= POLL_WRITE;
             }
-            poll->revents = events;
+            poll->occoured = events;
         }
         return &conn->waitQueue;
     }
@@ -692,7 +692,7 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
         LOCK_DEFER(&conn->lock);
         if (local_connection_is_closed(conn))
         {
-            poll->revents = POLL_READ | POLL_ERR | POLL_HANGUP;
+            poll->occoured = POLL_READ | POLL_ERR | POLL_HANGUP;
         }
         else
         {
@@ -705,14 +705,14 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
             {
                 events |= POLL_WRITE;
             }
-            poll->revents = events;
+            poll->occoured = events;
         }
         return &conn->waitQueue;
     }
     break;
     default:
     {
-        poll->revents = POLL_ERR;
+        poll->occoured = POLL_ERR;
         errno = ENOTSUP;
         return NULL;
     }

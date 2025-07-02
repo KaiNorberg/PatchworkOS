@@ -45,7 +45,7 @@ typedef struct poll_file
 {
     file_t* file;
     poll_events_t events;
-    poll_events_t revents;
+    poll_events_t occoured;
 } poll_file_t;
 
 file_t* file_new(dentry_t* dentry, path_flags_t flags);

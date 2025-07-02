@@ -442,7 +442,7 @@ bool terminal_update(terminal_t* term)
         return false;
     }
 
-    if (fds[0].revents & POLL_READ)
+    if (fds[0].occoured & POLL_READ)
     {
         terminal_read_stdout(term);
         display_cmds_flush(term->disp);

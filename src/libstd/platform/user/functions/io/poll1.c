@@ -14,5 +14,5 @@ poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout)
     {
         return POLL_ERR;
     }
-    return pollfd.revents;
+    return pollfd.occoured;
 }

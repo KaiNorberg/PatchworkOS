@@ -94,7 +94,7 @@ static wait_queue_t* pipe_poll(file_t* file, poll_file_t* pollFile)
 {
     pipe_private_t* private = file->private;
     LOCK_DEFER(&private->lock);
-    pollFile->revents = ((ring_data_length(&private->ring) != 0 || private->isWriteClosed) ? POLL_READ : 0) |
+    pollFile->occoured = ((ring_data_length(&private->ring) != 0 || private->isWriteClosed) ? POLL_READ : 0) |
         ((ring_free_length(&private->ring) != 0 || private->isReadClosed) ? POLL_WRITE : 0);
     return &private->waitQueue;
 }

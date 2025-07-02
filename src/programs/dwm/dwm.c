@@ -580,13 +580,13 @@ static void dwm_poll_ctx_update(void)
     pollCtx = realloc(pollCtx, sizeof(poll_ctx_t) + (sizeof(pollfd_t) * clientAmount));
     pollCtx->data.fd = data;
     pollCtx->data.events = POLL_READ;
-    pollCtx->data.revents = 0;
+    pollCtx->data.occoured = 0;
     pollCtx->kbd.fd = kbd;
     pollCtx->kbd.events = POLL_READ;
-    pollCtx->kbd.revents = 0;
+    pollCtx->kbd.occoured = 0;
     pollCtx->mouse.fd = mouse;
     pollCtx->mouse.events = POLL_READ;
-    pollCtx->mouse.revents = 0;
+    pollCtx->mouse.occoured = 0;
 
     uint64_t i = 0;
     client_t* client;
@@ -595,7 +595,7 @@ static void dwm_poll_ctx_update(void)
         pollfd_t* fd = &pollCtx->clients[i++];
         fd->fd = client->fd;
         fd->events = POLL_READ;
-        fd->revents = 0;
+        fd->occoured = 0;
     }
 }
 
@@ -632,15 +632,15 @@ static void dwm_update(void)
 {
     dwm_poll();
 
-    if (pollCtx->data.revents & POLL_READ)
+    if (pollCtx->data.occoured & POLL_READ)
     {
         dwm_client_accept();
     }
-    if (pollCtx->kbd.revents & POLL_READ)
+    if (pollCtx->kbd.occoured & POLL_READ)
     {
         dwm_kbd_read();
     }
-    if (pollCtx->mouse.revents & POLL_READ)
+    if (pollCtx->mouse.occoured & POLL_READ)
     {
         dwm_mouse_read();
     }
@@ -651,11 +651,11 @@ static void dwm_update(void)
     LIST_FOR_EACH_SAFE(client, temp, &clients, entry)
     {
         pollfd_t* fd = &pollCtx->clients[i++];
-        if ((fd->revents & POLL_HANGUP) || (fd->revents & POLL_ERR))
+        if ((fd->occoured & POLL_HANGUP) || (fd->occoured & POLL_ERR))
         {
             dwm_client_disconnect(client);
         }
-        else if (fd->revents & POLL_READ)
+        else if (fd->occoured & POLL_READ)
         {
             if (client_receive_cmds(client) == ERR)
             {

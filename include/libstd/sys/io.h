@@ -224,6 +224,7 @@ uint64_t chdir(const char* path);
  */
 typedef enum
 {
+    POLL_NONE = 0,          //!< None
     POLL_READ = (1 << 0),   //!< File descriptor is/should be ready to read.
     POLL_WRITE = (1 << 1),  //!< File descriptor is/should be ready to write.
     POLL_ERR = (1 << 2),    //!< File descriptor caused an error.
@@ -240,9 +241,9 @@ typedef enum
  */
 typedef struct
 {
-    fd_t fd;               //!< The file descriptor to poll.
-    poll_events_t events;  //!< The events to wait for.
-    poll_events_t revents; //!< The events that occoured.
+    fd_t fd;                //!< The file descriptor to poll.
+    poll_events_t events;   //!< The events to wait for.
+    poll_events_t occoured; //!< The events that occoured.
 } pollfd_t;
 
 /**
@@ -270,7 +271,7 @@ uint64_t poll(pollfd_t* fds, uint64_t amount, clock_t timeout);
  * @param fd The file descriptor to poll.
  * @param events The events to wait for (e.g., `POLL_READ`, `POLL_WRITE`).
  * @param timeout The maximum time (in clock ticks) to wait for an event. If `CLOCKS_NEVER`, it waits forever.
- * @return On success, returns the events that revents. On timeout, returns 0. On failure, the `POLL_ERR` event bit is
+ * @return On success, returns the events that occoured. On timeout, returns 0. On failure, the `POLL_ERR` event bit is
  * set and errno is set.
  */
 poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout);

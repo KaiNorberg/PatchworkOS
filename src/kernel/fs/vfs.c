@@ -279,7 +279,12 @@ dentry_t* vfs_get_dentry(dentry_t* parent, const char* name)
         if (dentry != NULL)
         {
             dentry->parent = dentry_ref(parent);
-            map_insert(&dentryCache.map, &key, &dentry->mapEntry);
+            if (map_insert(&dentryCache.map, &key, &dentry->mapEntry) == ERR)
+            {
+                dentry_deref(dentry);
+                rwlock_write_release(&dentryCache.lock);
+                return NULL;
+            }
         }
     }
     else
@@ -408,7 +413,13 @@ uint64_t vfs_mount(const char* deviceName, const char* mountpoint, const char* f
 
     map_key_t key = mount_key(path.mount->id, path.dentry->id);
     rwlock_write_acquire(&mountCache.lock);
-    map_insert(&mountCache.map, &key, &mount_ref(mount)->mapEntry);
+    if (map_insert(&mountCache.map, &key, &mount_ref(mount)->mapEntry) == ERR)
+    {
+        mount_deref(mount);
+        rwlock_write_release(&mountCache.lock);
+        lock_release(&path.dentry->lock);
+        return ERR;
+    }
     rwlock_write_release(&mountCache.lock);
     lock_release(&path.dentry->lock);
 
@@ -492,7 +503,8 @@ bool vfs_is_name_valid(const char* name)
 
 static dentry_t* vfs_open_lookup(const char* pathname, path_flags_t* outFlags)
 {
-    // Note: This function techincally has a Time-of-Check-to-Time-of-Use race condition, but aslong as file creation is atomic in each filesystem then its not an issue.
+    // Note: This function techincally has a Time-of-Check-to-Time-of-Use race condition, but aslong as file creation is
+    // atomic in each filesystem then its not an issue.
 
     parsed_pathname_t parsed;
     if (path_parse_pathname(&parsed, pathname) == ERR)
@@ -537,7 +549,12 @@ static dentry_t* vfs_open_lookup(const char* pathname, path_flags_t* outFlags)
 
             map_key_t key = dentry_key(parent.dentry->id, lastComponent);
             rwlock_write_acquire(&dentryCache.lock);
-            map_insert(&dentryCache.map, &key, &dentry->mapEntry);
+            if (map_insert(&dentryCache.map, &key, &dentry->mapEntry) == ERR)
+            {
+                dentry_deref(dentry);
+                rwlock_write_release(&dentryCache.lock);
+                return NULL;
+            }
             rwlock_write_release(&dentryCache.lock);
         }
         else if (parsed.flags & PATH_EXCLUSIVE)
@@ -673,6 +690,8 @@ uint64_t vfs_open2(const char* pathname, file_t* files[2])
         }
     }
 
+    file_ref(files[0]);
+    file_ref(files[1]);
     return 0;
 }
 
@@ -774,13 +793,13 @@ uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
 {
     if (file == NULL)
     {
-        errno = EINVAL; 
+        errno = EINVAL;
         return ERR;
     }
 
     if (file->ops == NULL || file->ops->ioctl == NULL)
     {
-        errno = ENOTTY; 
+        errno = ENOTTY;
         return ERR;
     }
 
@@ -804,8 +823,79 @@ void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
 
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
 {
-    errno = ENOSYS;
-    return ERR;
+    if (files == NULL || amount == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        if (files[i].file == NULL)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+        if (files[i].file->ops == NULL || files[i].file->ops->poll == NULL)
+        {
+            errno = ENOSYS;
+            return ERR;
+        }
+        files[i].occoured = POLL_NONE;
+    }
+
+    wait_queue_t** waitQueues = heap_alloc(sizeof(wait_queue_t*) * amount, HEAP_VMM);
+    if (waitQueues == NULL)
+    {
+        return ERR;
+    }
+
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        waitQueues[i] = NULL;
+    }
+
+    clock_t uptime = systime_uptime();
+    clock_t deadline = timeout == CLOCKS_NEVER ? CLOCKS_NEVER : uptime + timeout;
+
+    uint64_t readyCount = 0;
+    while (true)
+    {
+        readyCount = 0;
+
+        for (uint64_t i = 0; i < amount; i++)
+        {
+            waitQueues[i] = files[i].file->ops->poll(files[i].file, &files[i]);
+            if (waitQueues[i] == NULL)
+            {
+                heap_free(waitQueues);
+                return ERR;
+            }
+
+            if ((files[i].occoured & files[i].events) != 0)
+            {
+                readyCount++;
+            }
+        }
+
+        if (readyCount > 0)
+        {
+            break;
+        }
+
+        uptime = systime_uptime();
+        if (uptime >= deadline)
+        {
+            break;
+        }
+
+        clock_t remaining = deadline == CLOCKS_NEVER ? CLOCKS_NEVER : deadline - uptime;
+        wait_block_many(waitQueues, amount, remaining);
+        uptime = systime_uptime();
+    }
+
+    heap_free(waitQueues);
+    return readyCount;
 }
 
 uint64_t vfs_getdirent(file_t* file, dirent_t* buffer, uint64_t amount)
@@ -835,18 +925,6 @@ uint64_t vfs_getdirent(file_t* file, dirent_t* buffer, uint64_t amount)
     }
 
     return file->ops->getdirent(file, buffer, amount);
-}
-
-uint64_t vfs_mkdir(const char* pathname, uint64_t flags)
-{
-    errno = ENOSYS;
-    return ERR;
-}
-
-uint64_t vfs_rmdir(const char* pathname)
-{
-    errno = ENOSYS;
-    return ERR;
 }
 
 uint64_t vfs_stat(const char* pathname, stat_t* buffer)
@@ -896,8 +974,72 @@ uint64_t vfs_stat(const char* pathname, stat_t* buffer)
     return 0;
 }
 
-uint64_t vfs_link(const char* oldpath, const char* newpath)
+uint64_t vfs_link(const char* oldPathname, const char* newPathname)
 {
+    if (oldPathname == NULL || newPathname == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    parsed_pathname_t oldParsed;
+    if (path_parse_pathname(&oldParsed, oldPathname) == ERR)
+    {
+        return ERR;
+    }
+
+    parsed_pathname_t newParsed;
+    if (path_parse_pathname(&newParsed, newPathname) == ERR)
+    {
+        return ERR;
+    }
+
+    if (oldParsed.flags != PATH_NONE || newParsed.flags != PATH_NONE)
+    {
+        errno = EBADFLAG;
+        return ERR;
+    }
+
+    path_t oldPath;
+    if (vfs_lookup(&oldPath, oldParsed.pathname) == ERR)
+    {
+        return ERR;
+    }
+    PATH_DEFER(&oldPath);
+
+    if (oldPath.dentry->inode->type == INODE_DIR) 
+    {
+        errno = EPERM;
+        return ERR;
+    }
+
+    char newLastName[MAX_NAME];
+    path_t newParentPath;
+    if (vfs_lookup_parent(&newParentPath, newParsed.pathname, newLastName) == ERR) 
+    {
+        return ERR;
+    }
+    PATH_DEFER(&newParentPath); 
+
+    if (oldPath.dentry->superblock->id != newParentPath.dentry->superblock->id) {
+        errno = EXDEV;
+        return ERR;
+    }
+
+    if (newParentPath.dentry->inode == NULL || newParentPath.dentry->inode->ops == NULL ||
+        newParentPath.dentry->inode->ops->link == NULL) 
+    {
+        errno = ENOSYS;
+        return ERR;
+    }
+
+    uint64_t result = newParentPath.dentry->inode->ops->link(
+        newParentPath.dentry->inode, oldPath.dentry, newLastName);
+    if (result == ERR) 
+    {
+        return ERR;
+    }
+
     errno = ENOSYS;
     return ERR;
 }
@@ -908,7 +1050,7 @@ uint64_t vfs_unlink(const char* pathname)
     return ERR;
 }
 
-uint64_t vfs_rename(const char* oldpath, const char* newpath)
+uint64_t vfs_rename(const char* oldPathname, const char* newPathname)
 {
     errno = ENOSYS;
     return ERR;

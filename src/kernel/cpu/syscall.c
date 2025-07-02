@@ -488,14 +488,14 @@ uint64_t syscall_poll(pollfd_t* fds, uint64_t amount, clock_t timeout)
         }
 
         files[i].events = fds[i].events;
-        files[i].revents = 0;
+        files[i].occoured = 0;
     }
 
     uint64_t result = vfs_poll(files, amount, timeout);
 
     for (uint64_t i = 0; i < amount; i++)
     {
-        fds[i].revents = files[i].revents;
+        fds[i].occoured = files[i].occoured;
         file_deref(files[i].file);
     }
 

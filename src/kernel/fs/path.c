@@ -4,8 +4,8 @@
 
 #include "vfs.h"
 
-#include <string.h>
 #include <errno.h>
+#include <string.h>
 
 static map_t flagMap;
 static path_flag_entry_t flagEntries[] = {
@@ -32,7 +32,7 @@ void path_flags_init(void)
 uint64_t path_parse_pathname(parsed_pathname_t* dest, const char* pathname)
 {
     if (dest == NULL || pathname == NULL)
-    {        
+    {
         errno = EINVAL;
         return ERR;
     }
@@ -42,7 +42,7 @@ uint64_t path_parse_pathname(parsed_pathname_t* dest, const char* pathname)
 
     uint64_t length = strnlen_s(pathname, MAX_PATH);
     if (length >= MAX_PATH)
-    {            
+    {
         errno = ENAMETOOLONG;
         return ERR;
     }
@@ -56,7 +56,7 @@ uint64_t path_parse_pathname(parsed_pathname_t* dest, const char* pathname)
             currentNameLength = 0;
         }
         else
-        {        
+        {
             if (!PATH_VALID_CHAR(pathname[index]))
             {
                 errno = EBADPATH;
@@ -64,7 +64,7 @@ uint64_t path_parse_pathname(parsed_pathname_t* dest, const char* pathname)
             }
             currentNameLength++;
             if (currentNameLength >= MAX_NAME)
-            {        
+            {
                 errno = ENAMETOOLONG;
                 return ERR;
             }
@@ -77,7 +77,7 @@ uint64_t path_parse_pathname(parsed_pathname_t* dest, const char* pathname)
     dest->pathname[index] = '\0';
 
     if (pathname[index] != '?')
-    {                
+    {
         return 0;
     }
 
@@ -89,9 +89,9 @@ uint64_t path_parse_pathname(parsed_pathname_t* dest, const char* pathname)
         while (pathname[index] == '&')
         {
             index++;
-        }        
-        
-        if (pathname[index] == '\0') 
+        }
+
+        if (pathname[index] == '\0')
         {
             break;
         }
@@ -100,29 +100,28 @@ uint64_t path_parse_pathname(parsed_pathname_t* dest, const char* pathname)
         while (pathname[index] != '\0' && pathname[index] != '&')
         {
             if (!isalnum(pathname[index]))
-            {            
+            {
                 errno = EBADFLAG;
                 return ERR;
             }
             index++;
         }
 
-        uint64_t tokenLength = &pathname[index] - token;        
-        if (tokenLength >= MAX_NAME) 
-        {    
+        uint64_t tokenLength = &pathname[index] - token;
+        if (tokenLength >= MAX_NAME)
+        {
             errno = ENAMETOOLONG;
             return ERR;
         }
 
         map_key_t key = map_key_buffer(token, tokenLength);
-        path_flag_entry_t* flag = CONTAINER_OF_SAFE(map_get(&flagMap, &key), 
-                                                   path_flag_entry_t, entry);
-        if (flag == NULL) 
+        path_flag_entry_t* flag = CONTAINER_OF_SAFE(map_get(&flagMap, &key), path_flag_entry_t, entry);
+        if (flag == NULL)
         {
             errno = EBADFLAG;
             return ERR;
         }
-        
+
         dest->flags |= flag->flag;
     }
 

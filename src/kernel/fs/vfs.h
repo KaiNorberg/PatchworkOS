@@ -110,13 +110,9 @@ void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot);
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout);
 
 uint64_t vfs_getdirent(file_t* file, dirent_t* buffer, uint64_t amount);
-uint64_t vfs_mkdir(const char* pathname, uint64_t flags);
-uint64_t vfs_rmdir(const char* pathname);
-
 uint64_t vfs_stat(const char* pathname, stat_t* buffer);
-uint64_t vfs_link(const char* oldpath, const char* newpath);
-uint64_t vfs_unlink(const char* pathname);
-uint64_t vfs_rename(const char* oldpath, const char* newpath);
+uint64_t vfs_link(const char* oldPathname, const char* newPathname);
+uint64_t vfs_rename(const char* oldPathname, const char* newPathname);
 uint64_t vfs_remove(const char* pathname);
 
 /**

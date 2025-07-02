@@ -53,6 +53,7 @@ typedef struct inode_ops
     dentry_t* (*lookup)(inode_t* parent, const char* name);
     inode_t* (*create)(inode_t* parent, const char* name, path_flags_t flags);
     void (*truncate)(inode_t* inode);
+    dentry_t* (*link)(inode_t* old, inode_t* newParent, const char* name);
 } inode_ops_t;
 
 inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, inode_ops_t* ops,
