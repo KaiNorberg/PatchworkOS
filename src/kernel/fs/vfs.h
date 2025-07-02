@@ -89,17 +89,6 @@ uint64_t vfs_unmount(const char* mountpoint);
 
 bool vfs_is_name_valid(const char* name);
 
-/**
- * @brief Fills a `stat_t` struct.
- * @ingroup kernel_vfs
- *
- * @param buffer The destination buffer.
- * @param inode The inode whose information will fill the buffer. This function does NOT acquire the inodes lock.
- * @param flags
- * @param name
- */
-uint64_t vfs_fill_stat_buffer(stat_t* buffer, inode_t* inode, dentry_flags_t flags, const char* name);
-
 file_t* vfs_open(const char* pathname);
 uint64_t vfs_open2(const char* pathname, file_t* files[2]);
 uint64_t vfs_read(file_t* file, void* buffer, uint64_t count);

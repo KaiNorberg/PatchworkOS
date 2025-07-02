@@ -30,5 +30,6 @@
 #define SYS_FUTEX 27
 #define SYS_RENAME 28
 #define SYS_REMOVE 29
+#define SYS_IINK 30
 
-#define SYS_TOTAL_AMOUNT 30
+#define SYS_TOTAL_AMOUNT 31

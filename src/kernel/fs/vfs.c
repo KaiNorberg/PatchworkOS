@@ -27,14 +27,14 @@ static vfs_map_t mountCache;
 
 static vfs_root_t root;
 
-static map_key_t inode_key(superblock_id_t superblockId, inode_number_t number)
+static map_key_t inode_cache_key(superblock_id_t superblockId, inode_number_t number)
 {
     uint64_t buffer[2] = {(uint64_t)superblockId, (uint64_t)number};
 
     return map_key_buffer(buffer, sizeof(buffer));
 }
 
-static map_key_t dentry_key(dentry_id_t parentId, const char* name)
+static map_key_t dentry_cache_key(dentry_id_t parentId, const char* name)
 {
     char buffer[MAX_PATH] = {0};
     memcpy(buffer, &parentId, sizeof(dentry_id_t));
@@ -48,7 +48,7 @@ static map_key_t dentry_key(dentry_id_t parentId, const char* name)
     return map_key_buffer(buffer, offset);
 }
 
-static map_key_t mount_key(mount_id_t parentId, dentry_id_t mountpointId)
+static map_key_t mount_cache_key(mount_id_t parentId, dentry_id_t mountpointId)
 {
     uint64_t buffer[2] = {(uint64_t)parentId, (uint64_t)mountpointId};
 
@@ -174,7 +174,7 @@ uint64_t vfs_get_global_root(path_t* outPath)
 
 uint64_t vfs_mountpoint_to_mount_root(path_t* outRoot, const path_t* mountpoint)
 {
-    map_key_t mountKey = mount_key(mountpoint->mount->id, mountpoint->dentry->id);
+    map_key_t mountKey = mount_cache_key(mountpoint->mount->id, mountpoint->dentry->id);
 
     rwlock_read_acquire(&mountCache.lock);
     mount_t* mount = CONTAINER_OF_SAFE(map_get(&mountCache.map, &mountKey), mount_t, mapEntry);
@@ -200,17 +200,14 @@ uint64_t vfs_mountpoint_to_mount_root(path_t* outRoot, const path_t* mountpoint)
 
 inode_t* vfs_get_inode(superblock_t* superblock, inode_number_t number)
 {
-    errno = ENOSYS;
-    return NULL;
-    /*
     if (superblock == NULL)
     {
         return NULL;
     }
 
-    rwlock_read_acquire(&inodeCache.lock);
+    map_key_t key = inode_cache_key(superblock->id, number);
 
-    map_key_t key = inode_key(superblock->id, id);
+    rwlock_read_acquire(&inodeCache.lock);
     inode_t* inode = CONTAINER_OF_SAFE(map_get(&inodeCache.map, &key), inode_t, mapEntry);
     if (inode != NULL)
     {
@@ -220,27 +217,7 @@ inode_t* vfs_get_inode(superblock_t* superblock, inode_number_t number)
     }
     rwlock_read_release(&inodeCache.lock);
 
-    rwlock_write_acquire(&inodeCache.lock);
-    inode_t* inode = CONTAINER_OF_SAFE(map_get(&inodeCache.map, &key), inode_t, mapEntry);
-    if (inode != NULL) // Check if the the inode was added while the lock was released above.
-    {
-        inode = inode_ref(inode);
-        rwlock_write_release(&inodeCache.lock);
-        return inode;
-    }
-
-    inode = inode_new(superblock); // TODO: How to pass arguments for creating a new inode?
-    if (inode == NULL)
-    {
-        rwlock_write_release(&inodeCache.lock);
-        return NULL;
-    }
-
-    inode->id = id;
-    map_insert(&inodeCache.map, &key, &inode->mapEntry);
-    rwlock_write_release(&inodeCache.lock);
-    return inode; // This is the inital reference.
-    */
+    return 0;
 }
 
 dentry_t* vfs_get_dentry(dentry_t* parent, const char* name)
@@ -251,7 +228,7 @@ dentry_t* vfs_get_dentry(dentry_t* parent, const char* name)
         return NULL;
     }
 
-    map_key_t key = dentry_key(parent->id, name);
+    map_key_t key = dentry_cache_key(parent->id, name);
 
     rwlock_read_acquire(&dentryCache.lock);
     dentry_t* dentry = CONTAINER_OF_SAFE(map_get(&dentryCache.map, &key), dentry_t, mapEntry);
@@ -316,7 +293,7 @@ void vfs_remove_inode(inode_t* inode)
     }
 
     rwlock_write_acquire(&inodeCache.lock);
-    map_key_t key = inode_key(inode->superblock->id, inode->number);
+    map_key_t key = inode_cache_key(inode->superblock->id, inode->number);
     map_remove(&inodeCache.map, &key);
     rwlock_write_release(&inodeCache.lock);
 }
@@ -329,7 +306,7 @@ void vfs_remove_dentry(dentry_t* dentry)
     }
 
     rwlock_write_acquire(&dentryCache.lock);
-    map_key_t key = dentry_key(dentry->parent->id, dentry->name);
+    map_key_t key = dentry_cache_key(dentry->parent->id, dentry->name);
     map_remove(&dentryCache.map, &key);
     rwlock_write_release(&dentryCache.lock);
 }
@@ -411,7 +388,7 @@ uint64_t vfs_mount(const char* deviceName, const char* mountpoint, const char* f
 
     path.dentry->flags |= DENTRY_MOUNTPOINT;
 
-    map_key_t key = mount_key(path.mount->id, path.dentry->id);
+    map_key_t key = mount_cache_key(path.mount->id, path.dentry->id);
     rwlock_write_acquire(&mountCache.lock);
     if (map_insert(&mountCache.map, &key, &mount_ref(mount)->mapEntry) == ERR)
     {
@@ -454,7 +431,7 @@ uint64_t vfs_unmount(const char* mountpoint)
         return ERR;
     }
 
-    map_key_t key = mount_key(path.mount->id, path.dentry->id);
+    map_key_t key = mount_cache_key(path.mount->id, path.dentry->id);
     mount_t* mount = CONTAINER_OF_SAFE(map_get(&mountCache.map, &key), mount_t, mapEntry);
     if (mount == NULL)
     {
@@ -503,9 +480,6 @@ bool vfs_is_name_valid(const char* name)
 
 static dentry_t* vfs_open_lookup(const char* pathname, path_flags_t* outFlags)
 {
-    // Note: This function techincally has a Time-of-Check-to-Time-of-Use race condition, but aslong as file creation is
-    // atomic in each filesystem then its not an issue.
-
     parsed_pathname_t parsed;
     if (path_parse_pathname(&parsed, pathname) == ERR)
     {
@@ -547,7 +521,7 @@ static dentry_t* vfs_open_lookup(const char* pathname, path_flags_t* outFlags)
             }
             dentry->parent = dentry_ref(parent.dentry);
 
-            map_key_t key = dentry_key(parent.dentry->id, lastComponent);
+            map_key_t key = dentry_cache_key(parent.dentry->id, lastComponent);
             rwlock_write_acquire(&dentryCache.lock);
             if (map_insert(&dentryCache.map, &key, &dentry->mapEntry) == ERR)
             {
@@ -615,6 +589,7 @@ file_t* vfs_open(const char* pathname)
     {
         return NULL;
     }
+    FILE_DEFER(file);
 
     if ((flags & PATH_TRUNCATE) && dentry->inode->type == INODE_FILE)
     {
@@ -632,12 +607,11 @@ file_t* vfs_open(const char* pathname)
         uint64_t result = file->ops->open(dentry->inode, file);
         if (result == ERR)
         {
-            file_deref(file);
             return NULL;
         }
     }
 
-    return file;
+    return file_ref(file);
 }
 
 uint64_t vfs_open2(const char* pathname, file_t* files[2])
@@ -1007,7 +981,7 @@ uint64_t vfs_link(const char* oldPathname, const char* newPathname)
     }
     PATH_DEFER(&oldPath);
 
-    if (oldPath.dentry->inode->type == INODE_DIR) 
+    if (oldPath.dentry->inode->type == INODE_DIR)
     {
         errno = EPERM;
         return ERR;
@@ -1015,51 +989,256 @@ uint64_t vfs_link(const char* oldPathname, const char* newPathname)
 
     char newLastName[MAX_NAME];
     path_t newParentPath;
-    if (vfs_lookup_parent(&newParentPath, newParsed.pathname, newLastName) == ERR) 
+    if (vfs_lookup_parent(&newParentPath, newParsed.pathname, newLastName) == ERR)
     {
         return ERR;
     }
-    PATH_DEFER(&newParentPath); 
+    PATH_DEFER(&newParentPath);
 
-    if (oldPath.dentry->superblock->id != newParentPath.dentry->superblock->id) {
+    if (!vfs_is_name_valid(newLastName))
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (oldPath.dentry->superblock->id != newParentPath.dentry->superblock->id)
+    {
         errno = EXDEV;
         return ERR;
     }
 
     if (newParentPath.dentry->inode == NULL || newParentPath.dentry->inode->ops == NULL ||
-        newParentPath.dentry->inode->ops->link == NULL) 
+        newParentPath.dentry->inode->ops->link == NULL)
     {
         errno = ENOSYS;
         return ERR;
     }
 
-    uint64_t result = newParentPath.dentry->inode->ops->link(
-        newParentPath.dentry->inode, oldPath.dentry, newLastName);
-    if (result == ERR) 
+    dentry_t* newDentry =
+        newParentPath.dentry->inode->ops->link(oldPath.dentry->inode, newParentPath.dentry->inode, newLastName);
+    if (newDentry == NULL)
     {
         return ERR;
     }
+    newDentry->parent = dentry_ref(newParentPath.dentry);
 
-    errno = ENOSYS;
-    return ERR;
-}
+    map_key_t newDentryKey = dentry_cache_key(newParentPath.dentry->id, newLastName);
+    rwlock_write_acquire(&dentryCache.lock);
+    if (map_insert(&dentryCache.map, &newDentryKey, &newDentry->mapEntry) == ERR)
+    {
+        dentry_deref(newDentry);
+        rwlock_write_release(&dentryCache.lock);
+        return ERR;
+    }
+    rwlock_write_release(&dentryCache.lock);
 
-uint64_t vfs_unlink(const char* pathname)
-{
-    errno = ENOSYS;
-    return ERR;
+    lock_acquire(&oldPath.dentry->inode->lock);
+    oldPath.dentry->inode->changeTime = systime_unix_epoch();
+    oldPath.dentry->inode->flags |= INODE_DIRTY;
+    lock_release(&oldPath.dentry->inode->lock);
+
+    lock_acquire(&newParentPath.dentry->inode->lock);
+    newParentPath.dentry->inode->modifyTime = systime_unix_epoch();
+    newParentPath.dentry->inode->changeTime = newParentPath.dentry->inode->modifyTime;
+    newParentPath.dentry->inode->flags |= INODE_DIRTY;
+    lock_release(&newParentPath.dentry->inode->lock);
+
+    return 0;
 }
 
 uint64_t vfs_rename(const char* oldPathname, const char* newPathname)
 {
-    errno = ENOSYS;
-    return ERR;
+    if (oldPathname == NULL || newPathname == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    parsed_pathname_t oldParsed;
+    if (path_parse_pathname(&oldParsed, oldPathname) == ERR)
+    {
+        return ERR;
+    }
+
+    parsed_pathname_t newParsed;
+    if (path_parse_pathname(&newParsed, newPathname) == ERR)
+    {
+        return ERR;
+    }
+
+    if (oldParsed.flags != PATH_NONE || newParsed.flags != PATH_NONE)
+    {
+        errno = EBADFLAG;
+        return ERR;
+    }
+
+    char oldLastName[MAX_NAME];
+    path_t oldParentPath;
+    if (vfs_lookup_parent(&oldParentPath, oldParsed.pathname, oldLastName) == ERR)
+    {
+        return ERR;
+    }
+    PATH_DEFER(&oldParentPath);
+
+    dentry_t* oldDentry = vfs_get_dentry(oldParentPath.dentry, oldLastName);
+    if (oldDentry == NULL)
+    {
+        errno = ENOENT;
+        return ERR;
+    }
+    DENTRY_DEFER(oldDentry);
+
+    char newLastName[MAX_NAME];
+    path_t newParentPath;
+    if (vfs_lookup_parent(&newParentPath, newParsed.pathname, newLastName) == ERR)
+    {
+        return ERR;
+    }
+    PATH_DEFER(&newParentPath);
+
+    if (!vfs_is_name_valid(newLastName))
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (oldParentPath.dentry->superblock->id != newParentPath.dentry->superblock->id)
+    {
+        errno = EXDEV;
+        return ERR;
+    }
+
+    dentry_t* existingDentry = vfs_get_dentry(newParentPath.dentry, newLastName);
+    if (existingDentry != NULL)
+    {
+        DENTRY_DEFER(existingDentry);
+
+        if (oldDentry->inode->type == INODE_FILE && existingDentry->inode->type == INODE_DIR) {
+            errno = EISDIR;
+            return ERR;
+        }
+        if (oldDentry->inode->type == INODE_DIR && existingDentry->inode->type == INODE_FILE) {
+            errno = ENOTDIR;
+            return ERR;
+        }
+    }
+
+    if (oldParentPath.dentry->inode == NULL || oldParentPath.dentry->inode->ops == NULL ||
+        oldParentPath.dentry->inode->ops->rename == NULL) {
+
+        errno = ENOSYS;
+        return ERR;
+    }
+
+    dentry_t* newDentry = oldParentPath.dentry->inode->ops->rename(oldParentPath.dentry->inode, oldDentry, newParentPath.dentry, newLastName);
+    if (newDentry == NULL)
+    {
+        return ERR;
+    }
+    newDentry->parent = dentry_ref(newParentPath.dentry);
+
+    map_key_t oldDentryKey = dentry_cache_key(oldParentPath.dentry->id, oldLastName);
+    map_key_t newDentryKey = dentry_cache_key(newParentPath.dentry->id, newLastName);
+
+    rwlock_write_acquire(&dentryCache.lock);
+    map_remove(&dentryCache.map, &oldDentryKey);
+    if (map_insert(&dentryCache.map, &newDentryKey, &newDentry->mapEntry) == ERR)
+    {
+        dentry_deref(newDentry);
+        rwlock_write_release(&dentryCache.lock);
+        return ERR;
+    }
+    rwlock_write_release(&dentryCache.lock);
+
+    lock_acquire(&oldParentPath.dentry->inode->lock);
+    oldParentPath.dentry->inode->modifyTime = systime_unix_epoch();
+    oldParentPath.dentry->inode->changeTime = oldParentPath.dentry->inode->modifyTime;
+    oldParentPath.dentry->inode->flags |= INODE_DIRTY;
+    lock_release(&oldParentPath.dentry->inode->lock);
+
+    if (newParentPath.dentry->inode->number != oldParentPath.dentry->inode->number ||
+        newParentPath.dentry->superblock->id != oldParentPath.dentry->superblock->id)
+    {
+        LOCK_DEFER(&newParentPath.dentry->inode->lock);
+        newParentPath.dentry->inode->modifyTime = systime_unix_epoch();
+        newParentPath.dentry->inode->changeTime = newParentPath.dentry->inode->modifyTime;
+        newParentPath.dentry->inode->flags |= INODE_DIRTY;
+    }
+
+    lock_acquire(&oldDentry->inode->lock);
+    oldDentry->inode->changeTime = systime_unix_epoch();
+    oldDentry->inode->flags |= INODE_DIRTY;
+    lock_release(&oldDentry->inode->lock);
+
+    return 0;
 }
 
 uint64_t vfs_remove(const char* pathname)
 {
-    errno = ENOSYS;
-    return ERR;
+    if (pathname == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    parsed_pathname_t parsed;
+    if (path_parse_pathname(&parsed, pathname) == ERR)
+    {
+        return ERR;
+    }
+
+    if (parsed.flags != PATH_NONE)
+    {
+        errno = EBADFLAG;
+        return ERR;
+    }
+
+    char lastName[MAX_NAME];
+    path_t parentPath;
+    if (vfs_lookup_parent(&parentPath, parsed.pathname, lastName) == ERR)
+    {
+        return ERR;
+    }
+    PATH_DEFER(&parentPath);
+
+    dentry_t* target = vfs_get_dentry(parentPath.dentry, lastName);
+    if (target == NULL)
+    {
+        errno = ENOENT;
+        return ERR;
+    }
+    DENTRY_DEFER(target);
+
+    if (parentPath.dentry->inode == NULL || parentPath.dentry->inode->ops == NULL ||
+        parentPath.dentry->inode->ops->remove == NULL)
+    {
+        errno = ENOSYS;
+        return ERR;
+    }
+
+    uint64_t result = parentPath.dentry->inode->ops->remove(parentPath.dentry->inode, target);
+    if (result == ERR)
+    {
+        return ERR;
+    }
+
+    map_key_t key = dentry_cache_key(parentPath.dentry->id, lastName);
+    rwlock_write_acquire(&dentryCache.lock);
+    map_remove(&dentryCache.map, &key);
+    rwlock_write_release(&dentryCache.lock);
+
+    lock_acquire(&parentPath.dentry->inode->lock);
+    parentPath.dentry->inode->modifyTime = systime_unix_epoch();
+    parentPath.dentry->inode->changeTime = parentPath.dentry->inode->modifyTime;
+    parentPath.dentry->inode->flags |= INODE_DIRTY;
+    lock_release(&parentPath.dentry->inode->lock);
+
+    lock_acquire(&target->inode->lock);
+    target->inode->changeTime = systime_unix_epoch();
+    target->inode->flags |= INODE_DIRTY;
+    lock_release(&target->inode->lock);
+
+    return 0;
 }
 
 void getdirent_write(getdirent_ctx_t* ctx, dirent_t* buffer, uint64_t amount, inode_number_t number, inode_type_t type,

@@ -658,6 +658,20 @@ uint64_t syscall_remove(const char* pathname)
     return vfs_remove(pathname);
 }
 
+uint64_t syscall_link(const char* oldPathname, const char* newPathname)
+{
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!string_is_valid(space, oldPathname) || !string_is_valid(space, newPathname))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    return vfs_link(oldPathname, newPathname);
+}
+
 ///////////////////////////////////////////////////////
 
 static void* syscallTable[] = {
@@ -691,6 +705,7 @@ static void* syscallTable[] = {
     syscall_futex,
     syscall_rename,
     syscall_remove,
+    syscall_link,
 };
 
 void syscall_init(void)
@@ -716,7 +731,6 @@ void syscall_ctx_init(syscall_ctx_t* ctx, uint64_t kernelRsp)
 
 void syscall_ctx_load(syscall_ctx_t* ctx)
 {
-    // We use the gs register to keep track of the kernel stack to switch to and to save the user stack.
     msr_write(MSR_GS_BASE, (uint64_t)ctx);
     msr_write(MSR_KERNEL_GS_BASE, (uint64_t)ctx);
 }
@@ -739,9 +753,8 @@ void syscall_handler(trap_frame_t* trapFrame)
     trapFrame->rax =
         syscall(trapFrame->rdi, trapFrame->rsi, trapFrame->rdx, trapFrame->r10, trapFrame->r8, trapFrame->r9);
 
-    // LOG_INFO("syscall: end %d pid=%d result=%d\n", selector, thread->process->id, trapFrame->rax);
     thread->syscall.inSyscall = false;
 
-    // No need to invoke scheduler due to tickless system.
+    // No need to invoke scheduler due to tickless kernel.
     note_dispatch_invoke();
 }
