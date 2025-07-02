@@ -238,38 +238,41 @@ dentry_t* vfs_get_dentry(dentry_t* parent, const char* name)
         rwlock_read_release(&dentryCache.lock);
         return dentry;
     }
-
     rwlock_read_release(&dentryCache.lock);
 
-    rwlock_write_acquire(&dentryCache.lock);
+    RWLOCK_WRITE_DEFER(&dentryCache.lock);
     dentry = CONTAINER_OF_SAFE(map_get(&dentryCache.map, &key), dentry_t, mapEntry);
     if (dentry != NULL) // Check if the the dentry was added while the lock was released above.
     {
-        dentry_ref(dentry);
-        rwlock_write_release(&dentryCache.lock);
-        return dentry;
+        return dentry_ref(dentry);
     }
 
-    if (parent->inode != NULL && parent->inode->ops != NULL && parent->inode->ops->lookup != NULL)
+    if (parent->inode == NULL || parent->inode->ops == NULL || parent->inode->ops->lookup == NULL)
     {
-        dentry = parent->inode->ops->lookup(parent->inode, name);
-        if (dentry != NULL)
-        {
-            dentry->parent = dentry_ref(parent);
-            if (map_insert(&dentryCache.map, &key, &dentry->mapEntry) == ERR)
-            {
-                dentry_deref(dentry);
-                rwlock_write_release(&dentryCache.lock);
-                return NULL;
-            }
-        }
-    }
-    else
-    {
-        dentry = NULL;
+        errno = ENOSYS;
+        return NULL;
     }
 
-    rwlock_write_release(&dentryCache.lock);
+    inode_t* inode = parent->inode->ops->lookup(parent->inode, name);
+    if (inode == NULL)
+    {
+        return NULL;
+    }
+    INODE_DEFER(inode);
+
+    dentry = dentry_new(parent->superblock, name, inode);
+    if (dentry == NULL)
+    {
+        return NULL;
+    }
+    dentry->parent = dentry_ref(parent);
+
+    if (map_insert(&dentryCache.map, &key, &dentry->mapEntry) == ERR)
+    {
+        dentry_deref(dentry);
+        return NULL;
+    }
+
     return dentry;
 }
 
@@ -1014,8 +1017,15 @@ uint64_t vfs_link(const char* oldPathname, const char* newPathname)
         return ERR;
     }
 
-    dentry_t* newDentry =
-        newParentPath.dentry->inode->ops->link(oldPath.dentry->inode, newParentPath.dentry->inode, newLastName);
+    inode_t* newInode =
+        newParentPath.dentry->inode->ops->link(oldPath.dentry, newParentPath.dentry->inode, newLastName);
+    if (newInode == NULL)
+    {
+        return ERR;
+    }
+    INODE_DEFER(newInode);
+
+    dentry_t* newDentry = dentry_new(oldPath.dentry->superblock, newLastName, newInode);
     if (newDentry == NULL)
     {
         return ERR;
@@ -1130,7 +1140,14 @@ uint64_t vfs_rename(const char* oldPathname, const char* newPathname)
         return ERR;
     }
 
-    dentry_t* newDentry = oldParentPath.dentry->inode->ops->rename(oldParentPath.dentry->inode, oldDentry, newParentPath.dentry, newLastName);
+    inode_t* newInode = oldParentPath.dentry->inode->ops->rename(oldParentPath.dentry->inode, oldDentry, newParentPath.dentry->inode, newLastName);
+    if (newInode == NULL)
+    {
+        return ERR;
+    }
+    INODE_DEFER(newInode);
+
+    dentry_t* newDentry = dentry_new(oldParentPath.dentry->superblock, newLastName, newInode);
     if (newDentry == NULL)
     {
         return ERR;

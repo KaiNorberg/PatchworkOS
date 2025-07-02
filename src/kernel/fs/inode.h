@@ -50,12 +50,12 @@ typedef struct inode
 
 typedef struct inode_ops
 {
-    dentry_t* (*lookup)(inode_t* parent, const char* name);
-    dentry_t* (*create)(inode_t* parent, const char* name, path_flags_t flags); //!< Handles both directories and files.
+    inode_t* (*lookup)(inode_t* parent, const char* name);
+    inode_t* (*create)(inode_t* parent, const char* name, path_flags_t flags); //!< Handles both directories and files.
     void (*truncate)(inode_t* target);
-    dentry_t* (*link)(dentry_t* old, inode_t* newParent, const char* name);
+    inode_t* (*link)(dentry_t* old, inode_t* newParent, const char* name);
     uint64_t (*remove)(inode_t* parent, dentry_t* target); //!< Handles both directories and files.
-    dentry_t* (*rename)(inode_t* oldParent, dentry_t* old, inode_t* newParent, const char* name);
+    inode_t* (*rename)(inode_t* oldParent, dentry_t* old, inode_t* newParent, const char* name);
 } inode_ops_t;
 
 inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, inode_ops_t* ops,

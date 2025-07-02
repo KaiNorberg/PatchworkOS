@@ -338,7 +338,7 @@ static file_ops_t fileOps = {
     .getdirent = file_getdirent,
 };
 
-static dentry_t* ramfs_lookup(inode_t* parent, const char* name)
+static inode_t* ramfs_lookup(inode_t* parent, const char* name)
 {
     LOCK_DEFER(&parent->lock);
 
@@ -355,18 +355,10 @@ static dentry_t* ramfs_lookup(inode_t* parent, const char* name)
     LIST_FOR_EACH(child, &inode->children, entry)
     {
         LOCK_DEFER(&child->inode.lock);
-        if (strcmp(child->name, name) != 0)
+        if (strcmp(child->name, name) == 0)
         {
-            continue;
+            return &child->inode;
         }
-
-        dentry_t* dentry = dentry_new(parent->superblock, name, &child->inode);
-        if (dentry == NULL)
-        {
-            return NULL;
-        }
-
-        return dentry;
     }
 
     errno = ENOENT;
