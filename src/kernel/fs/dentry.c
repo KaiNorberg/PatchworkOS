@@ -23,7 +23,8 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     map_entry_init(&dentry->mapEntry);
     dentry->id = vfs_get_new_id();
     atomic_init(&dentry->ref, 1);
-    strcpy(dentry->name, name);
+    strncpy(dentry->name, name, MAX_NAME - 1);
+    dentry->name[MAX_NAME - 1] = '\0';
     dentry->inode = NULL;
     dentry->parent = parent != NULL ? dentry_ref(parent) : dentry;
     list_entry_init(&dentry->siblingEntry);
@@ -59,7 +60,7 @@ void dentry_make_positive(dentry_t* dentry, inode_t* inode)
     }    
     dentry->flags &= ~DENTRY_LOOKUP_PENDING;
     
-    wait_queue_wake_all(&dentry->lookupWaitQueue);
+    wait_unblock(&dentry->lookupWaitQueue, UINT64_MAX);
 }
 
 void dentry_free(dentry_t* dentry)

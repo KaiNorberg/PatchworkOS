@@ -59,7 +59,7 @@ uint64_t path_parse_pathname(parsed_pathname_t* dest, const char* pathname)
         {
             if (!PATH_VALID_CHAR(pathname[index]))
             {
-                errno = EBADPATH;
+                errno = EINVAL;
                 return ERR;
             }
             currentNameLength++;
@@ -209,6 +209,16 @@ static uint64_t path_traverse_component(path_t* current, const char* component)
     {
         return ERR;
     }
+
+    lock_acquire(&next->lock);
+    if (next->flags & DENTRY_NEGATIVE)
+    {
+        dentry_deref(next);
+        lock_release(&next->lock);
+        errno = ENOENT;
+        return ERR;
+    }
+    lock_release(&next->lock);
 
     dentry_deref(current->dentry);
     current->dentry = next;
@@ -363,7 +373,7 @@ uint64_t path_walk_parent(path_t* outPath, const char* pathname, const path_t* s
     if (!vfs_is_name_valid(outLastName))
     {
         errno = EINVAL;
-        return NULL;
+        return ERR;
     }
 
     return path_walk(outPath, parentPath, start);

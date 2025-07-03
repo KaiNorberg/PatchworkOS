@@ -281,7 +281,7 @@ dentry_t* vfs_get_or_lookup_dentry(dentry_t* parent, const char* name)
     // Dentry was not found.
 
     rwlock_write_acquire(&dentryCache.lock);    
-    dentry_t* dentry = CONTAINER_OF_SAFE(map_get(&dentryCache.map, &key), dentry_t, mapEntry);
+    dentry = CONTAINER_OF_SAFE(map_get(&dentryCache.map, &key), dentry_t, mapEntry);
     if (dentry != NULL) // Check if the the dentry was added while the lock was released above.
     {
         dentry = dentry_ref(dentry);
@@ -317,11 +317,11 @@ dentry_t* vfs_get_or_lookup_dentry(dentry_t* parent, const char* name)
     {
         rwlock_write_release(&dentryCache.lock);
         return NULL;
-    }    
+    }
+    DENTRY_DEFER(dentry);
     
     if (map_insert(&dentryCache.map, &key, &dentry->mapEntry) == ERR)
     {
-        dentry_deref(dentry);
         rwlock_write_release(&dentryCache.lock);
         return NULL;
     }
@@ -331,10 +331,10 @@ dentry_t* vfs_get_or_lookup_dentry(dentry_t* parent, const char* name)
     if (parent->inode->ops->lookup(parent->inode, dentry) == ERR)
     {
         dentry_make_positive(dentry, NULL); // No longer pending but still negative.
-        dentry_deref(dentry);
-        errno = ENOENT;
-        return NULL;
+        return dentry_ref(dentry);
     }
+
+    return dentry_ref(dentry);
 }
 
 void vfs_remove_superblock(superblock_t* superblock)
@@ -394,7 +394,7 @@ uint64_t vfs_walk_parent(path_t* outPath, const char* pathname, char* outLastNam
 }
 
 uint64_t vfs_mount(const char* deviceName, const char* mountpoint, const char* fsName, superblock_flags_t flags,
-    const void* private)
+    void* private)
 {
     if (deviceName == NULL || mountpoint == NULL || fsName == NULL)
     {
@@ -409,60 +409,72 @@ uint64_t vfs_mount(const char* deviceName, const char* mountpoint, const char* f
         return ERR;
     }
 
-    superblock_t* superblock = fs->mount(fs, deviceName, flags, private);
-    if (superblock == NULL)
+    dentry_t* dentry = fs->mount(fs, flags, deviceName, private);
+    if (dentry == NULL)
     {
         return ERR;
     }
-    SUPER_DEFER(superblock);
+    DENTRY_DEFER(dentry);
+
+    lock_acquire(&dentry->lock);
+    if (dentry->flags & DENTRY_NEGATIVE)
+    {
+        lock_release(&dentry->lock);
+        errno = EIO;
+        return ERR;
+    }
+    lock_release(&dentry->lock);
 
     if (root.mount == NULL) // Special handling for mounting inital file system, since this can only happen during boot
-                            // there is no need for the lock before the if statement.§
+                            // there is no need for the lock before the if statement.
     {
         assert(strcmp(mountpoint, "/") == 0); // Sanity check.
 
         rwlock_write_acquire(&root.lock);
-        root.mount = mount_new(superblock, NULL);
+        root.mount = mount_new(dentry->superblock, NULL);
         assert(root.mount != NULL); // Only happens during boot, must not fail.
         rwlock_write_release(&root.lock);
         return 0;
     }
 
-    path_t path;
-    if (vfs_walk(&path, mountpoint) == ERR)
+    path_t mountPath;
+    if (vfs_walk(&mountPath, mountpoint) == ERR)
     {
         return ERR;
     }
-    PATH_DEFER(&path);
+    PATH_DEFER(&mountPath);
 
-    lock_acquire(&path.dentry->lock);
-    if (path.dentry->flags & DENTRY_MOUNTPOINT)
+    LOCK_DEFER(&mountPath.dentry->lock);
+
+    if (mountPath.dentry->flags & DENTRY_MOUNTPOINT)
     {
-        lock_release(&path.dentry->lock);
         errno = EBUSY;
         return ERR;
     }
 
-    mount_t* mount = mount_new(superblock, &path);
-    if (mount == NULL)
+    if (mountPath.dentry->flags & DENTRY_NEGATIVE)
     {
-        lock_release(&path.dentry->lock);
+        errno = ENOENT;
         return ERR;
     }
 
-    path.dentry->flags |= DENTRY_MOUNTPOINT;
+    mount_t* mount = mount_new(dentry->superblock, &mountPath);
+    if (mount == NULL)
+    {
+        return ERR;
+    }
 
-    map_key_t key = mount_cache_key(path.mount->id, path.dentry->id);
+    mountPath.dentry->flags |= DENTRY_MOUNTPOINT;
+
+    map_key_t key = mount_cache_key(mountPath.mount->id, mountPath.dentry->id);
     rwlock_write_acquire(&mountCache.lock);
     if (map_insert(&mountCache.map, &key, &mount_ref(mount)->mapEntry) == ERR)
     {
         mount_deref(mount);
         rwlock_write_release(&mountCache.lock);
-        lock_release(&path.dentry->lock);
         return ERR;
     }
     rwlock_write_release(&mountCache.lock);
-    lock_release(&path.dentry->lock);
 
     // superblock_expose(superblock); // TODO: Expose the sysdir for the superblock
 
@@ -573,25 +585,35 @@ static dentry_t* vfs_open_lookup(const char* pathname, path_flags_t* outFlags)
             return NULL;
         }
 
-        dentry_t* existing = vfs_get_dentry(parent.dentry, lastComponent);
-        if (existing != NULL)
+        // If the file/dir does not exist it will return a negative dentry.
+        dentry = vfs_get_or_lookup_dentry(parent.dentry, lastComponent);
+        if (dentry == NULL)
         {
-            // File already exists
-            DENTRY_DEFER(existing);
-            
-            if (parsed.flags & PATH_EXCLUSIVE)
-            {
-                errno = EEXIST;
-                return NULL;
-            }
-            
-            dentry = dentry_ref(existing);
+            return NULL;
         }
-        else
+        DENTRY_DEFER(dentry);
+
+        if (parent.dentry->inode->ops->create(parent.dentry->inode, dentry, parsed.flags) == ERR)
         {
-            dentry = vfs_get_or_lookup_dentry(parent.dentry, lastComponent);
-            if (dentry != NULL)
+            return NULL;
         }
+
+        if (dentry->flags & DENTRY_NEGATIVE)
+        {
+            errno = EIO; 
+            return NULL;
+        }
+
+        map_key_t key = dentry_cache_key(parent.dentry->id, lastComponent);
+        rwlock_write_acquire(&dentryCache.lock);
+        if (map_insert(&dentryCache.map, &key, &dentry->mapEntry) == ERR)
+        {
+            rwlock_write_release(&dentryCache.lock);
+            return NULL;
+        }
+        rwlock_write_release(&dentryCache.lock);
+        
+        dentry = dentry_ref(dentry);
     }
     else // Dont create dentry
     {
@@ -604,23 +626,28 @@ static dentry_t* vfs_open_lookup(const char* pathname, path_flags_t* outFlags)
         dentry = dentry_ref(path.dentry);
         path_put(&path);
     }
+    DENTRY_DEFER(dentry);
+    
+    if (dentry->inode == NULL)
+    {
+        errno = ENOENT;
+        return NULL;
+    }
 
     if ((parsed.flags & PATH_DIRECTORY) && dentry->inode->type != INODE_DIR)
     {
-        dentry_deref(dentry);
         errno = ENOTDIR;
         return NULL;
     }
 
     if (!(parsed.flags & PATH_DIRECTORY) && dentry->inode->type != INODE_FILE)
     {
-        dentry_deref(dentry);
         errno = EISDIR;
         return NULL;
     }
 
     *outFlags = parsed.flags;
-    return dentry;
+    return dentry_ref(dentry);
 }
 
 file_t* vfs_open(const char* pathname)

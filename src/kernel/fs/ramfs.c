@@ -104,19 +104,21 @@ static file_ops_t fileOps = {
     .getdirent = ramfs_getdirent,*/
 };
 
-static dentry_t* ramfs_lookup(dentry_t* parent, const char* name)
+static uint64_t ramfs_lookup(inode_t* dir, dentry_t* target)
 {
-    LOCK_DEFER(&parent->lock);
+    LOCK_DEFER(&dir->lock);
 
     // All ramfs entires should always be in the cache, if lookup is called then the file/dir does not exist.
     errno = ENOENT;
-    return NULL;
+    return ERR;
 }
 
-static dentry_t* ramfs_create(dentry_t* parent, const char* name, path_flags_t flags)
-{    
-    ramfs_inode_t* inode = CONTAINER_OF(parent->inode, ramfs_inode_t, inode);
+static uint64_t ramfs_create(inode_t* dir, dentry_t* target, path_flags_t flags)
+{   
+    errno = ENOSYS;
+    return ERR; 
 
+    /*ramfs_inode_t* inode = CONTAINER_OF(dir, ramfs_inode_t, inode);
     LOCK_DEFER(&inode->inode.lock);
 
     if (inode->inode.type != INODE_DIR)
@@ -126,7 +128,7 @@ static dentry_t* ramfs_create(dentry_t* parent, const char* name, path_flags_t f
         return NULL;
     }
 
-    dentry_t* existing = vfs_get_dentry(parent, name);
+    dentry_t* existing = vfs_get_dentry(target->parent, target->name);
     if (existing != NULL)
     {
         if (flags & PATH_EXCLUSIVE)
@@ -152,7 +154,7 @@ static dentry_t* ramfs_create(dentry_t* parent, const char* name, path_flags_t f
         return NULL;
     }
 
-    return newDentry;
+    return newDentry;*/
 }
 
 static void ramfs_truncate(inode_t* inode)
@@ -239,7 +241,7 @@ static dentry_t* ramfs_mount(filesystem_t* fs, superblock_flags_t flags, const c
 {
     //return vfs_mount_nodev();
 
-    superblock_t* superblock = superblock_new(fs, NULL, &superOps, &dentryOps);
+    superblock_t* superblock = superblock_new(fs, VFS_DEVICE_NAME_NONE, &superOps, &dentryOps);
     if (superblock == NULL)
     {
         return NULL;
@@ -257,12 +259,13 @@ static dentry_t* ramfs_mount(filesystem_t* fs, superblock_flags_t flags, const c
     } 
     INODE_DEFER(&inode->inode);
 
-    superblock->root = dentry_new(superblock, NULL, VFS_ROOT_ENTRY_NAME, &inode->inode);
+    superblock->root = dentry_new(superblock, NULL, VFS_ROOT_ENTRY_NAME);
     if (superblock->root == NULL)
     {
         return NULL;
     }
 
+    dentry_make_positive(superblock->root, &inode->inode);
     return dentry_ref(superblock->root);
 }
 
@@ -336,5 +339,5 @@ void ramfs_init(ram_disk_t* disk)
     LOG_INFO("ramfs: init\n");
 
     assert(vfs_register_fs(&ramfs) != ERR);
-    assert(vfs_mount(NULL, "/", RAMFS_NAME, SUPER_NONE, disk->root) != ERR);
+    assert(vfs_mount(VFS_DEVICE_NAME_NONE, "/", RAMFS_NAME, SUPER_NONE, disk->root) != ERR);
 }

@@ -2,6 +2,7 @@
 
 #include "sync/lock.h"
 #include "utils/map.h"
+#include "sched/wait.h"
 
 #include <stdatomic.h>
 #include <stdint.h>

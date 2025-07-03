@@ -33,6 +33,8 @@
 
 #define VFS_ROOT_ENTRY_NAME "__root__"
 
+#define VFS_DEVICE_NAME_NONE "__none__"
+
 typedef struct filesystem filesystem_t;
 
 typedef struct filesystem
@@ -84,7 +86,7 @@ uint64_t vfs_walk(path_t* outPath, const char* pathname);
 uint64_t vfs_walk_parent(path_t* outPath, const char* pathname, char* outLastName);
 
 uint64_t vfs_mount(const char* deviceName, const char* mountpoint, const char* fsName, superblock_flags_t flags,
-    const void* private);
+    void* private);
 uint64_t vfs_unmount(const char* mountpoint);
 
 bool vfs_is_name_valid(const char* name);

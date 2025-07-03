@@ -82,10 +82,10 @@ void main(boot_info_t* bootInfo)
     }
     else
     {
-        LOG_INFO("##Stat Output##\nNumber: %u\nType: %u\nFlags: %u\nSize: %lu\nBlocks: %lu\nLink Amount: %lu\nAccess "
+        LOG_INFO("##Stat Output##\nNumber: %u\nType: %u\nSize: %lu\nBlocks: %lu\nLink Amount: %lu\nAccess "
                  "Time: %u\nModify "
                  "Time: %u\nChange Time: %u\nName: %s\n\n",
-            stat.number, stat.type, stat.flags, stat.size, stat.blocks, stat.linkAmount, stat.accessTime,
+            stat.number, stat.type, stat.size, stat.blocks, stat.linkAmount, stat.accessTime,
             stat.modifyTime, stat.changeTime, stat.name);
     }
 
