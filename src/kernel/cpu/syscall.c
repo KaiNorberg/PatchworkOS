@@ -202,7 +202,7 @@ pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, s
     else
     {
         path_t cwdPath;
-        if (vfs_lookup(&cwdPath, cwd) == ERR)
+        if (vfs_walk(&cwdPath, cwd) == ERR)
         {
             return ERR;
         }
@@ -250,7 +250,7 @@ uint64_t syscall_sleep(clock_t nanoseconds)
 
 errno_t syscall_last_error(void)
 {
-    return sched_thread()->error;
+    return errno;
 }
 
 pid_t syscall_getpid(void)
@@ -448,7 +448,7 @@ uint64_t syscall_chdir(const char* pathname)
     }
 
     path_t path;
-    if (vfs_lookup(&path, pathname) == ERR)
+    if (vfs_walk(&path, pathname) == ERR)
     {
         return ERR;
     }

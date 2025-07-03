@@ -204,7 +204,7 @@ static uint64_t path_traverse_component(path_t* current, const char* component)
     }
     lock_release(&current->dentry->lock);
 
-    dentry_t* next = vfs_get_dentry(current->dentry, component);
+    dentry_t* next = vfs_get_or_lookup_dentry(current->dentry, component);
     if (next == NULL)
     {
         return ERR;
@@ -359,6 +359,12 @@ uint64_t path_walk_parent(path_t* outPath, const char* pathname, const path_t* s
 
     memcpy(parentPath, pathname, parentLen);
     parentPath[parentLen] = '\0';
+
+    if (!vfs_is_name_valid(outLastName))
+    {
+        errno = EINVAL;
+        return NULL;
+    }
 
     return path_walk(outPath, parentPath, start);
 }

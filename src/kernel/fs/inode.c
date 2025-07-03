@@ -50,6 +50,11 @@ void inode_free(inode_t* inode)
         return;
     }
 
+    if (inode->ops != NULL && inode->ops->cleanup != NULL)
+    {
+        inode->ops->cleanup(inode);
+    }
+
     if (inode->superblock != NULL)
     {
         if (inode->superblock->ops != NULL && inode->superblock->ops->freeInode != NULL)

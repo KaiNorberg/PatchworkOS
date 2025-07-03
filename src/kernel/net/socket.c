@@ -43,9 +43,9 @@ static wait_queue_t* socket_accept_poll(file_t* file, poll_file_t* poll)
     return socket->family->poll(socket, poll);
 }
 
-static uint64_t socket_accept_open(inode_t* inode, file_t* file)
+static uint64_t socket_accept_open(file_t* file)
 {
-    socket_t* socket = inode->private;
+    socket_t* socket = file->dentry->inode->private;
     if (!socket_has_access(socket, sched_process()))
     {
         errno = EACCES;
@@ -108,9 +108,9 @@ static wait_queue_t* socket_data_poll(file_t* file, poll_file_t* poll)
     return socket->family->poll(socket, poll);
 }
 
-static uint64_t socket_data_open(inode_t* inode, file_t* file)
+static uint64_t socket_data_open(file_t* file)
 {
-    socket_t* socket = inode->private;
+    socket_t* socket = file->dentry->inode->private;
     if (!socket_has_access(socket, sched_process()))
     {
         errno = EACCES;
@@ -154,9 +154,9 @@ CTL_STANDARD_WRITE_DEFINE(socket_ctl_write,
         {0},
     });
 
-static uint64_t socket_ctl_open(inode_t* inode, file_t* file)
+static uint64_t socket_ctl_open(file_t* file)
 {
-    socket_t* socket = inode->private;
+    socket_t* socket = file->dentry->inode->private;
     if (!socket_has_access(socket, sched_process()))
     {
         errno = EACCES;

@@ -122,14 +122,14 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
     }
 }
 
-static uint64_t shmem_open(inode_t* inode, file_t* file)
+static uint64_t shmem_open(file_t* file)
 {
     shmem_t* shmem = file->private;
     file->private = shmem_ref(shmem);
     return 0;
 }
 
-static void shmem_cleanup(file_t* file)
+static void shmem_file_cleanup(file_t* file)
 {
     shmem_t* shmem = file->private;
     shmem_deref(shmem);
@@ -139,10 +139,10 @@ static file_ops_t normalOps = {
     .open = shmem_open,
     .read = shmem_read,
     .mmap = shmem_mmap,
-    .cleanup = shmem_cleanup,
+    .cleanup = shmem_file_cleanup,
 };
 
-static uint64_t shmem_new_open(inode_t* inode, file_t* file)
+static uint64_t shmem_new_open(file_t* file)
 {
     shmem_t* shmem = heap_alloc(sizeof(shmem_t), HEAP_NONE);
     if (shmem == NULL)
@@ -163,7 +163,7 @@ static uint64_t shmem_new_open(inode_t* inode, file_t* file)
 
 static file_ops_t newOps = {
     .open = shmem_new_open,
-    .cleanup = shmem_cleanup,
+    .cleanup = shmem_file_cleanup,
 };
 
 void shmem_init(void)

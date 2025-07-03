@@ -6,6 +6,7 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
+typedef struct filesystem filesystem_t;
 typedef struct superblock superblock_t;
 typedef struct superblock_ops superblock_ops_t;
 typedef struct dentry_ops dentry_ops_t;
@@ -34,8 +35,8 @@ typedef struct superblock
     dentry_t* root;
     const superblock_ops_t* ops;
     const dentry_ops_t* dentryOps;
+    filesystem_t* fs;
     char deviceName[MAX_NAME];
-    char fsName[MAX_NAME];
     sysdir_t sysdir;
 } superblock_t;
 
@@ -47,7 +48,7 @@ typedef struct superblock_ops
     void (*cleanup)(superblock_t* superblock);
 } superblock_ops_t;
 
-superblock_t* superblock_new(const char* deviceName, const char* fsName, superblock_ops_t* ops,
+superblock_t* superblock_new(filesystem_t* fs, const char* deviceName, superblock_ops_t* ops,
     dentry_ops_t* dentryOps);
 void superblock_free(superblock_t* superblock);
 superblock_t* superblock_ref(superblock_t* superblock);

@@ -20,7 +20,7 @@ typedef struct poll_file poll_file_t;
 typedef struct file
 {
     atomic_uint64_t ref;
-    uint64_t pos; // TODO: Race condition. Make atomic? Spinlock?
+    uint64_t pos;
     path_flags_t flags;
     dentry_t* dentry;
     const file_ops_t* ops;
@@ -29,8 +29,8 @@ typedef struct file
 
 typedef struct file_ops
 {
-    uint64_t (*open)(inode_t* inode, file_t* file);
-    uint64_t (*open2)(inode_t* inode, file_t* files[2]);
+    uint64_t (*open)(file_t* file);
+    uint64_t (*open2)(file_t* files[2]);
     void (*cleanup)(file_t* file);
     uint64_t (*read)(file_t* file, void* buffer, uint64_t count, uint64_t* offset);
     uint64_t (*write)(file_t* file, const void* buffer, uint64_t count, uint64_t* offset);
@@ -61,7 +61,7 @@ void file_deref(file_t* file);
  * @ingroup kernel_vfs
  *
  */
-uint64_t file_default_seek(file_t* file, int64_t offset, seek_origin_t origin);
+uint64_t file_generic_seek(file_t* file, int64_t offset, seek_origin_t origin);
 
 static inline void file_defer_cleanup(file_t** file)
 {

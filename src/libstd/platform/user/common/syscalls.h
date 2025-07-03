@@ -243,3 +243,8 @@ static inline uint64_t _syscall_remove(const char* path)
 {
     return _SYSCALL1(uint64_t, SYS_REMOVE, const char*, path);
 }
+
+static inline uint64_t _syscall_link(const char* oldPath, const char* newPath)
+{
+    return _SYSCALL2(uint64_t, SYS_LINK, const char*, oldPath, const char*, newPath);
+}

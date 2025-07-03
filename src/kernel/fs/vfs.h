@@ -33,15 +33,13 @@
 
 #define VFS_ROOT_ENTRY_NAME "__root__"
 
-#define VFS_DEVICE_NAME_NONE "__none__"
-
 typedef struct filesystem filesystem_t;
 
 typedef struct filesystem
 {
     list_entry_t entry;
     const char* name;
-    superblock_t* (*mount)(filesystem_t* fs, const char* deviceName, superblock_flags_t flags, const void* private);
+    dentry_t* (*mount)(filesystem_t* fs, superblock_flags_t flags, const char* devName, void* private);
 } filesystem_t;
 
 typedef struct
@@ -74,14 +72,16 @@ uint64_t vfs_get_global_root(path_t* outRoot);
 uint64_t vfs_mountpoint_to_mount_root(path_t* outRoot, const path_t* mountpoint);
 
 inode_t* vfs_get_inode(superblock_t* superblock, inode_number_t number);
+
 dentry_t* vfs_get_dentry(dentry_t* parent, const char* name);
+dentry_t* vfs_get_or_lookup_dentry(dentry_t* parent, const char* name);
 
 void vfs_remove_superblock(superblock_t* superblock);
 void vfs_remove_inode(inode_t* inode);
 void vfs_remove_dentry(dentry_t* dentry);
 
-uint64_t vfs_lookup(path_t* outPath, const char* pathname);
-uint64_t vfs_lookup_parent(path_t* outPath, const char* pathname, char* outLastName);
+uint64_t vfs_walk(path_t* outPath, const char* pathname);
+uint64_t vfs_walk_parent(path_t* outPath, const char* pathname, char* outLastName);
 
 uint64_t vfs_mount(const char* deviceName, const char* mountpoint, const char* fsName, superblock_flags_t flags,
     const void* private);

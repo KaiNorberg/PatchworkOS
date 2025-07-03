@@ -21,9 +21,9 @@ static uint64_t socket_family_new_read(file_t* file, void* buffer, uint64_t coun
     return BUFFER_READ(buffer, count, offset, socket->id, len + 1); // Include null terminator
 }
 
-static uint64_t socket_family_new_open(inode_t* inode, file_t* file)
+static uint64_t socket_family_new_open(file_t* file)
 {
-    socket_family_t* family = inode->private;
+    socket_family_t* family = file->dentry->inode->private;
 
     socket_t* socket = socket_new(family, file->flags);
     if (socket == NULL)

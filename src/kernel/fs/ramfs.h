@@ -11,10 +11,6 @@
 typedef struct
 {
     inode_t inode;
-    list_entry_t entry;
-    list_t children;
-    char name[MAX_NAME];
-    uint64_t openedAmount;
     void* data;
 } ramfs_inode_t;
 

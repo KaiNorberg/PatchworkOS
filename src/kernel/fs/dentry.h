@@ -5,6 +5,7 @@
 
 #include <stdatomic.h>
 #include <stdint.h>
+#include <sys/list.h>
 #include <sys/io.h>
 
 typedef struct dentry dentry_t;
@@ -16,6 +17,14 @@ typedef struct superblock superblock_t;
 
 typedef uint64_t dentry_id_t;
 
+typedef enum
+{
+    DENTRY_NONE = 0,
+    DENTRY_MOUNTPOINT = 1 << 0,
+    DENTRY_NEGATIVE = 1 << 1,
+    DENTRY_LOOKUP_PENDING = 1 << 2,
+} dentry_flags_t;
+
 typedef struct dentry
 {
     map_entry_t mapEntry;
@@ -24,11 +33,14 @@ typedef struct dentry
     char name[MAX_NAME];
     inode_t* inode;
     dentry_t* parent;
+    list_entry_t siblingEntry;
+    list_t children;
     superblock_t* superblock;
     const dentry_ops_t* ops;
     void* private;
-    dentry_flags_t flags; // Protected by ::lock
+    dentry_flags_t flags;
     lock_t lock;
+    wait_queue_t lookupWaitQueue;
 } dentry_t;
 
 typedef struct dentry_ops
@@ -36,7 +48,9 @@ typedef struct dentry_ops
     void (*cleanup)(dentry_t* entry);
 } dentry_ops_t;
 
-dentry_t* dentry_new(superblock_t* superblock, const char* name, inode_t* inode);
+dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* name);
+
+void dentry_make_positive(dentry_t* dentry, inode_t* inode);
 
 void dentry_free(dentry_t* dentry);
 

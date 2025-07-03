@@ -288,17 +288,6 @@ typedef enum
 } inode_type_t;
 
 /**
- * @brief Dentry flag enum.
- * @ingroup libstd_sys_io
- *
- */
-typedef enum
-{
-    DENTRY_NONE = 0,            //!< None
-    DENTRY_MOUNTPOINT = 1 << 0, //!< Is a mount point.
-} dentry_flags_t;
-
-/**
  * @brief Inode number enum.
  * @ingroup libstd_sys_io
  *
@@ -316,7 +305,6 @@ typedef struct
 {
     inode_number_t number; //!< The number of the entries inode.
     inode_type_t type;     //!< The type of the entries inode.
-    dentry_flags_t flags;  //!< The flags of the dentry.
     uint64_t size;         //!< The size of the file that is visible outside the filesystem.
     uint64_t blocks;       //!< The amount of blocks used on disk to store the file.
     uint64_t linkAmount;   //!< The amount of times the inode appears in dentries.
@@ -451,6 +439,17 @@ allocdir_t* allocdir(fd_t fd);
  * @return On success, returns 0. On failure, returns `ERR` and errno is set.
  */
 uint64_t mkdir(const char* path);
+
+/**
+ * @brief Creates a hardlink.
+ * 
+ * The `link()` function creates a hardlink between the old location and the new one. 
+ * 
+ * @param oldPath 
+ * @param newPath 
+ * @return On success, returns 0. On failure, returns `ERR` and errno is set.
+ */
+uint64_t link(const char* oldPath, const char* newPath);
 
 #if defined(__cplusplus)
 }

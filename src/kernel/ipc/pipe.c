@@ -99,7 +99,7 @@ static wait_queue_t* pipe_poll(file_t* file, poll_file_t* pollFile)
     return &private->waitQueue;
 }
 
-static uint64_t pipe_open(inode_t* inode, file_t* file)
+static uint64_t pipe_open(file_t* file)
 {
     pipe_private_t* private = heap_alloc(sizeof(pipe_private_t), HEAP_NONE);
     if (private == NULL)
@@ -125,7 +125,7 @@ static uint64_t pipe_open(inode_t* inode, file_t* file)
     return 0;
 }
 
-static uint64_t pipe_open2(inode_t* inode, file_t* files[2])
+static uint64_t pipe_open2(file_t* files[2])
 {
     pipe_private_t* private = heap_alloc(sizeof(pipe_private_t), HEAP_NONE);
     if (private == NULL)
