@@ -40,7 +40,7 @@ static poll_ctx_t* pollCtx;
 
 static client_t* dwm_client_accept(void)
 {
-    fd_t fd = openf("sys:/net/local/%s/accept", id);
+    fd_t fd = openf("/dev/net/local/%s/accept", id);
     if (fd == ERR)
     {
         if (errno != EINVAL)
@@ -87,19 +87,19 @@ static void dwm_send_event_to_all(surface_id_t target, event_type_t type, void* 
 
 void dwm_init(void)
 {
-    fd_t handle = open("sys:/net/local/new?nonblock");
+    fd_t handle = open("/dev/net/local/new?nonblock");
     read(handle, id, MAX_NAME);
 
-    fd_t ctl = openf("sys:/net/local/%s/ctl", id);
+    fd_t ctl = openf("/dev/net/local/%s/ctl", id);
     writef(ctl, "bind dwm");
     writef(ctl, "listen");
     close(ctl);
 
-    data = openf("sys:/net/local/%s/data", id);
+    data = openf("/dev/net/local/%s/data", id);
 
     // TODO: Add system for choosing device
-    kbd = open("sys:/kbd/ps2");
-    mouse = open("sys:/mouse/ps2");
+    kbd = open("/dev/kbd/ps2");
+    mouse = open("/dev/mouse/ps2");
 
     list_init(&clients);
     clientAmount = 0;

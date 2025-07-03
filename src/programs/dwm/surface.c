@@ -25,7 +25,7 @@ surface_t* surface_new(client_t* client, const char* name, const point_t* point,
     surface->client = client;
     surface->pos = *point;
 
-    fd_t shmem = open("sys:/shmem/new");
+    fd_t shmem = open("/dev/shmem/new");
     if (shmem == ERR)
     {
         free(surface);

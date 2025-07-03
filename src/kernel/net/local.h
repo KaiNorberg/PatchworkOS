@@ -58,7 +58,7 @@ typedef struct local_listener
     lock_t lock;
     wait_queue_t waitQueue;
     atomic_uint64_t ref;
-    sysobj_t sysobj;
+    sysfile_t sysfile;
 } local_listener_t;
 
 typedef struct

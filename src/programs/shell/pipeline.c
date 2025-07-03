@@ -69,7 +69,7 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
             cmd->argc = currentArg;
 
             fd_t pipe[2];
-            if (open2("sys:/pipe/new", pipe) == ERR)
+            if (open2("/dev/pipe/new", pipe) == ERR)
             {
                 printf("error: unable to open pipe (%s)\n", strerror(errno));
                 goto token_parse_error;
@@ -342,7 +342,7 @@ void pipeline_execute(pipeline_t* pipeline)
     {
         if (pids[i] != ERR)
         {
-            fd_t child = openf("sys:/proc/%d/ctl", pids[i]);
+            fd_t child = openf("/proc/%d/ctl", pids[i]);
             writef(child, "wait");
             close(child);
         }

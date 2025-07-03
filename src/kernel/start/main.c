@@ -135,7 +135,7 @@ void main(boot_info_t* bootInfo)
     assert(initThread != NULL);
 
     // Set klog as stdout for init process
-    file_t* klog = vfs_open("sys:/klog");
+    file_t* klog = vfs_open("/dev/klog");
     assert(klog != NULL);
     assert(vfs_ctx_openas(&initThread->process->vfsCtx, STDOUT_FILENO, klog) != ERR);
     file_deref(klog);

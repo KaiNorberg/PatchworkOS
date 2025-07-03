@@ -124,7 +124,7 @@ void log_obj_expose(void)
 {
     LOCK_DEFER(&lock);
 
-    assert(sysobj_init_path(&obj.obj, "/", "klog", &klogOps, NULL) != ERR);
+    assert(sysfile_init_path(&obj.obj, "/", "klog", &klogOps, NULL) != ERR);
 }
 
 static void log_print_to_outputs(const char* string, uint64_t length)

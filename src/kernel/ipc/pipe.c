@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <sys/math.h>
 
-static sysobj_t obj;
+static sysfile_t obj;
 
 static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
@@ -189,5 +189,5 @@ static file_ops_t fileOps = {
 
 void pipe_init(void)
 {
-    assert(sysobj_init_path(&obj, "/pipe", "new", &fileOps, NULL) != ERR);
+    assert(sysfile_init_path(&obj, "/pipe", "new", &fileOps, NULL) != ERR);
 }

@@ -12,7 +12,7 @@ void spawn_program(const char* path, priority_t priority)
         return;
     }
 
-    fd_t klog = open("sys:/klog");
+    fd_t klog = open("/dev/klog");
     const char* argv[] = {path, NULL};
     spawn_fd_t fds[] = {{.parent = klog, .child = STDOUT_FILENO}, SPAWN_FD_END};
     spawn_attr_t attr = {.priority = priority};

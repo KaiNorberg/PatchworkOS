@@ -51,20 +51,20 @@ mouse_t* mouse_new(const char* name)
     mouse->writeIndex = 0;
     wait_queue_init(&mouse->waitQueue);
     lock_init(&mouse->lock);
-    assert(sysobj_init_path(&mouse->sysobj, "/mouse", name, &mouseOps, mouse) != ERR);
+    assert(sysfile_init_path(&mouse->sysfile, "/mouse", name, &mouseOps, mouse) != ERR);
 
     return mouse;
 }
 
-static void mouse_on_free(sysobj_t* sysobj)
+static void mouse_on_free(sysfile_t* sysfile)
 {
-    mouse_t* mouse = sysobj->private;
+    mouse_t* mouse = sysfile->private;
     heap_free(mouse);
 }
 
 void mouse_free(mouse_t* mouse)
 {
-    sysobj_deinit(&mouse->sysobj, mouse_on_free);
+    sysfile_deinit(&mouse->sysfile, mouse_on_free);
 }
 
 void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, int64_t deltaX, int64_t deltaY)

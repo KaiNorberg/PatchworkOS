@@ -55,6 +55,6 @@ uint64_t fb_expose(fb_t* fb)
 {
     char name[MAX_NAME];
     sprintf(name, "fb%d", atomic_load(&newId));
-    assert(sysobj_init_path(&fb->sysobj, "/", name, &fbOps, fb) != ERR);
+    assert(sysfile_init_path(&fb->sysfile, "/", name, &fbOps, fb) != ERR);
     return 0;
 }

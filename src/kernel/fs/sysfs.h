@@ -16,54 +16,49 @@ typedef struct file_ops file_ops_t;
 #define SYSFS_OBJ 0
 #define SYSFS_DIR 1
 
-typedef struct sysobj sysobj_t;
+typedef struct sysfile sysfile_t;
 typedef struct sysdir sysdir_t;
 
-typedef void (*sysobj_on_free_t)(sysobj_t*);
+typedef void (*sysfile_on_free_t)(sysfile_t*);
 typedef void (*sysdir_on_free_t)(sysdir_t*);
 
-typedef struct syshdr
+typedef struct sysfile
 {
-    node_t node;
-    atomic_bool hidden;
-    atomic_uint64_t ref;
-} syshdr_t;
-
-typedef struct sysobj
-{
-    syshdr_t header;
+    dentry_t* dentry;
     void* private;
-    const file_ops_t* ops;
-    sysdir_t* dir;
-    sysobj_on_free_t onFree;
-} sysobj_t;
+    sysfile_on_free_t onFree;
+} sysfile_t;
 
 typedef struct sysdir
 {
-    syshdr_t header;
+    dentry_t* dentry;
     void* private;
     sysdir_on_free_t onFree;
 } sysdir_t;
 
+typedef struct sysfs_namespace
+{
+    sysdir_t root;
+    char name[MAX_NAME];
+} sysfs_namespace_t;
+
 void sysfs_init(void);
 
-// The vfs exposes its volumes in the sysfs, however this creates a circular dependency so we first call sysfs_init()
+// The vfs may be exposing its structues using sysfs, this creates a circular dependency so we first call sysfs_init()
 // then wait to mount sysfs untill after vfs_init().
 void syfs_after_vfs_init(void);
 
-// Called in the vfs before calling any operation on a sysfs file.
-uint64_t sysfs_start_op(file_t* file);
+uint64_t sysfs_namespace_init(sysfs_namespace_t* namespace, const char* name);
+void sysfs_namespace_deinit(sysfs_namespace_t* namespace);
+uint64_t sysfs_namespace_mount(sysfs_namespace_t* namespace, const char* parent);
+void sysfs_namespace_unmount(sysfs_namespace_t* namespace);
 
-// Called in the vfs after calling any operation on a sysfs file.
-void sysfs_end_op(file_t* file);
+uint64_t sysdir_init(sysdir_t* sysdir, const char* name, void* private);
+void sysdir_deinit(sysdir_t* sysdir, sysdir_on_free_t callback);
+uint64_t sysdir_add_dir(sysdir_t* parent, sysdir_t* child);
+uint64_t sysdir_add_file(sysdir_t* parent, sysfile_t* sysfile);
+void sysdir_remove_dir(sysdir_t* parent, sysdir_t* child);
+void sysdir_remove_file(sysdir_t* parent, sysfile_t* sysfile);
 
-uint64_t sysdir_init(sysdir_t* dir, const char* path, const char* dirname, void* private);
-
-void sysdir_deinit(sysdir_t* dir, sysdir_on_free_t onFree);
-
-uint64_t sysobj_init(sysobj_t* sysobj, sysdir_t* dir, const char* filename, const file_ops_t* ops, void* private);
-
-uint64_t sysobj_init_path(sysobj_t* sysobj, const char* path, const char* filename, const file_ops_t* ops,
-    void* private);
-
-void sysobj_deinit(sysobj_t* sysobj, sysobj_on_free_t onFree);
+uint64_t sysfile_init(sysfile_t* sysfile, const char* name, const file_ops_t* ops, void* private);
+void sysfile_deinit(sysfile_t* sysfile,  sysdir_on_free_t callback);

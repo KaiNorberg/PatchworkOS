@@ -31,7 +31,7 @@ typedef struct
     socket_receive_t receive;
     socket_poll_t poll;
     sysdir_t dir;
-    sysobj_t newObj;
+    sysfile_t newFile;
 } socket_family_t;
 
 uint64_t socket_family_register(socket_family_t* family);

@@ -357,7 +357,7 @@ void terminal_init(terminal_t* term)
     input_init(&term->input);
     history_init(&term->history);
 
-    if (open2("sys:/pipe/new", term->stdin) == ERR || open2("sys:/pipe/new", term->stdout) == ERR)
+    if (open2("/dev/pipe/new", term->stdin) == ERR || open2("/dev/pipe/new", term->stdout) == ERR)
     {
         window_free(term->win);
         display_free(term->disp);
@@ -389,7 +389,7 @@ void terminal_deinit(terminal_t* term)
     input_deinit(&term->input);
     history_deinit(&term->history);
 
-    fd_t shellNote = openf("sys:/proc/%d/note", term->shell);
+    fd_t shellNote = openf("/proc/%d/note", term->shell);
     writef(shellNote, "kill");
     close(shellNote);
 

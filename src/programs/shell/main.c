@@ -8,7 +8,7 @@
 void prompt_print(void)
 {
     char cwd[MAX_PATH];
-    fd_t fd = open("sys:/proc/self/cwd");
+    fd_t fd = open("/proc/self/cwd");
     read(fd, cwd, MAX_PATH);
     close(fd);
 

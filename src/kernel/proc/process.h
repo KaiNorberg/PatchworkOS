@@ -19,10 +19,10 @@ typedef struct
 typedef struct
 {
     sysdir_t sysdir;
-    sysobj_t ctlObj;
-    sysobj_t cwdObj;
-    sysobj_t cmdlineObj;
-    sysobj_t noteObj;
+    sysfile_t ctlFile;
+    sysfile_t cwdFile;
+    sysfile_t cmdlineFile;
+    sysfile_t noteFile;
 } process_dir_t;
 
 typedef struct process

@@ -16,7 +16,7 @@ static scanline_t* scanlines;
 
 static void frontbuffer_init(void)
 {
-    fd_t fb = open("sys:/fb0");
+    fd_t fb = open("/dev/fb0");
     if (fb == ERR)
     {
         exit(EXIT_FAILURE);

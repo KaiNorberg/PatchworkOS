@@ -48,7 +48,7 @@ extern "C"
  * @brief Pipe read end.
  * @ingroup libstd_sys_io
  *
- * The `PIPE_READ` constant defines which file descriptor in `fd` from a `open2` call on the `sys:/pipe/new` file will
+ * The `PIPE_READ` constant defines which file descriptor in `fd` from a `open2` call on the `/dev/pipe/new` file will
  * be the read end of the pipe.
  *
  */
@@ -57,7 +57,7 @@ extern "C"
  * @brief Pipe write end.
  * @ingroup libstd_sys_io
  *
- * The `PIPE_WRITE` constant defines which file descriptor in `fd` from a `open2` call on the `sys:/pipe/new` file will
+ * The `PIPE_WRITE` constant defines which file descriptor in `fd` from a `open2` call on the `/dev/pipe/new` file will
  * be the write end of the pipe.
  *
  */
@@ -106,9 +106,9 @@ fd_t vopenf(const char* _RESTRICT format, va_list args);
  * The `open2()` function opens a file and returns two file descriptors. This is intended as a more generic
  implementation
  * of system calls like pipe() in for example Linux. One example use case of this system call is pipes, if
- * `open2` is called on `sys:/pipe/new` then `fd[0]` will store the read end of the pipe and `fd[1]` will store the
+ * `open2` is called on `/dev/pipe/new` then `fd[0]` will store the read end of the pipe and `fd[1]` will store the
  write
- * end of the pipe. But if `open()` is called on `sys:/pipe/new` then the returned file descriptor would be both
+ * end of the pipe. But if `open()` is called on `/dev/pipe/new` then the returned file descriptor would be both
  * ends.
  *
  * @param path The path to the desired file.

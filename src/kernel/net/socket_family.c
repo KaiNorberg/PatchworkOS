@@ -69,10 +69,10 @@ uint64_t socket_family_register(socket_family_t* family)
 
     if (sysdir_init(&family->dir, "/net", family->name, family) == ERR)
     {
-        LOG_ERR("socket_family_register: failed to create directory sys:/net/%s\n", family->name);
+        LOG_ERR("socket_family_register: failed to create directory /dev/net/%s\n", family->name);
         return ERR;
     }
-    if (sysobj_init(&family->newObj, &family->dir, "new", &newOps, NULL) == ERR)
+    if (sysfile_init(&family->newFile, &family->dir, "new", &newOps, NULL) == ERR)
     {
         sysdir_deinit(&family->dir, NULL);
         LOG_ERR("socket_family_register: failed to create 'new' object for family '%s'\n", family->name);

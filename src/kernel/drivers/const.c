@@ -11,9 +11,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-static sysobj_t oneObj;
-static sysobj_t zeroObj;
-static sysobj_t nullObj;
+static sysfile_t oneFile;
+static sysfile_t zeroFile;
+static sysfile_t nullFile;
 
 static uint64_t const_one_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
@@ -82,7 +82,7 @@ static file_ops_t nullOps = {
 
 void const_init(void)
 {
-    assert(sysobj_init_path(&oneObj, "/", "one", &oneOps, NULL) != ERR);
-    assert(sysobj_init_path(&zeroObj, "/", "zero", &zeroOps, NULL) != ERR);
-    assert(sysobj_init_path(&nullObj, "/", "null", &nullOps, NULL) != ERR);
+    assert(sysfile_init_path(&oneFile, "/", "one", &oneOps, NULL) != ERR);
+    assert(sysfile_init_path(&zeroFile, "/", "zero", &zeroOps, NULL) != ERR);
+    assert(sysfile_init_path(&nullFile, "/", "null", &nullOps, NULL) != ERR);
 }

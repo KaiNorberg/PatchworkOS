@@ -15,7 +15,7 @@ typedef struct
     kbd_mods_t mods;
     wait_queue_t waitQueue;
     lock_t lock;
-    sysobj_t sysobj;
+    sysfile_t sysfile;
 } kbd_t;
 
 kbd_t* kbd_new(const char* name);

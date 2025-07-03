@@ -83,7 +83,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         {
             start_menu_close(startMenu);
 
-            fd_t klog = open("sys:/klog");
+            fd_t klog = open("/dev/klog");
 
             const char* argv[] = {entries[event->lAction.source].path, NULL};
             spawn_fd_t fds[] = {{.child = STDOUT_FILENO, .parent = klog}, {.child = STDERR_FILENO, .parent = klog},

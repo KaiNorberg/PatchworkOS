@@ -204,9 +204,9 @@ socket_t* socket_new(socket_family_t* family, path_flags_t flags)
         return NULL;
     }
 
-    if (sysobj_init(&socket->ctlObj, &socket->dir, "ctl", &ctlOps, socket) == ERR ||
-        sysobj_init(&socket->dataObj, &socket->dir, "data", &dataOps, socket) == ERR ||
-        sysobj_init(&socket->acceptObj, &socket->dir, "accept", &acceptOps, socket) == ERR)
+    if (sysfile_init(&socket->ctlFile, &socket->dir, "ctl", &ctlOps, socket) == ERR ||
+        sysfile_init(&socket->dataFile, &socket->dir, "data", &dataOps, socket) == ERR ||
+        sysfile_init(&socket->acceptFile, &socket->dir, "accept", &acceptOps, socket) == ERR)
     {
         sysdir_deinit(&socket->dir, NULL);
         family->deinit(socket);

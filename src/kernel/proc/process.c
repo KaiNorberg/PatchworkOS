@@ -183,10 +183,10 @@ static file_ops_t noteOps = {
 static void process_dir_init(process_dir_t* dir, const char* name, process_t* process)
 {
     assert(sysdir_init(&dir->sysdir, "/proc", name, process) != ERR);
-    assert(sysobj_init(&dir->ctlObj, &dir->sysdir, "ctl", &ctlOps, process) != ERR);
-    assert(sysobj_init(&dir->cwdObj, &dir->sysdir, "cwd", &cwdOps, process) != ERR);
-    assert(sysobj_init(&dir->cmdlineObj, &dir->sysdir, "cmdline", &cmdlineOps, process) != ERR);
-    assert(sysobj_init(&dir->noteObj, &dir->sysdir, "note", &noteOps, process) != ERR);
+    assert(sysfile_init(&dir->ctlFile, &dir->sysdir, "ctl", &ctlOps, process) != ERR);
+    assert(sysfile_init(&dir->cwdFile, &dir->sysdir, "cwd", &cwdOps, process) != ERR);
+    assert(sysfile_init(&dir->cmdlineFile, &dir->sysdir, "cmdline", &cmdlineOps, process) != ERR);
+    assert(sysfile_init(&dir->noteFile, &dir->sysdir, "note", &noteOps, process) != ERR);
 }
 
 process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, priority_t priority)

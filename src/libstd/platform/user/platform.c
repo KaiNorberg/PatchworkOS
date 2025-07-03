@@ -18,7 +18,7 @@ static void _populate_std_descriptors(void)
     {
         if (write(i, NULL, 0) == ERR && errno == EBADF)
         {
-            fd_t nullFd = open("sys:/null");
+            fd_t nullFd = open("/dev/null");
             if (nullFd != i)
             {
                 dup2(nullFd, i);

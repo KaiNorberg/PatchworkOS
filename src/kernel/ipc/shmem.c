@@ -17,7 +17,7 @@
 static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
 static sysdir_t dir;
-static sysobj_t new;
+static sysfile_t new;
 
 static shmem_t* shmem_ref(shmem_t* shmem)
 {
@@ -25,9 +25,9 @@ static shmem_t* shmem_ref(shmem_t* shmem)
     return shmem;
 }
 
-static void shmem_on_free(sysobj_t* sysobj)
+static void shmem_on_free(sysfile_t* sysfile)
 {
-    shmem_t* shmem = sysobj->private;
+    shmem_t* shmem = sysfile->private;
     if (shmem->segment != NULL)
     {
         for (uint64_t i = 0; i < shmem->segment->pageAmount; i++)
@@ -43,7 +43,7 @@ static void shmem_deref(shmem_t* shmem)
 {
     if (atomic_fetch_sub(&shmem->ref, 1) <= 1)
     {
-        sysobj_deinit(&shmem->obj, shmem_on_free);
+        sysfile_deinit(&shmem->obj, shmem_on_free);
     }
 }
 
@@ -157,7 +157,7 @@ static uint64_t shmem_new_open(file_t* file)
     lock_init(&shmem->lock);
     ulltoa(atomic_fetch_add(&newId, 1), shmem->id, 10);
     shmem->segment = NULL;
-    assert(sysobj_init(&shmem->obj, &dir, shmem->id, &normalOps, shmem) != ERR);
+    assert(sysfile_init(&shmem->obj, &dir, shmem->id, &normalOps, shmem) != ERR);
     return 0;
 }
 
@@ -169,5 +169,5 @@ static file_ops_t newOps = {
 void shmem_init(void)
 {
     assert(sysdir_init(&dir, "/", "shmem", NULL) != ERR);
-    assert(sysobj_init(&new, &dir, "new", &newOps, NULL) != ERR);
+    assert(sysfile_init(&new, &dir, "new", &newOps, NULL) != ERR);
 }

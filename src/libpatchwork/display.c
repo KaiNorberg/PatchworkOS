@@ -46,7 +46,7 @@ display_t* display_new(void)
         return NULL;
     }
 
-    disp->handle = open("sys:/net/local/new");
+    disp->handle = open("/dev/net/local/new");
     if (disp->handle == ERR)
     {
         free(disp);
@@ -54,7 +54,7 @@ display_t* display_new(void)
     }
     read(disp->handle, disp->id, MAX_NAME);
 
-    fd_t ctl = openf("sys:/net/local/%s/ctl", disp->id);
+    fd_t ctl = openf("/dev/net/local/%s/ctl", disp->id);
     if (ctl == ERR)
     {
         close(disp->handle);
@@ -70,7 +70,7 @@ display_t* display_new(void)
     }
     close(ctl);
 
-    disp->data = openf("sys:/net/local/%s/data", disp->id);
+    disp->data = openf("/dev/net/local/%s/data", disp->id);
     if (disp->data == ERR)
     {
         close(disp->handle);

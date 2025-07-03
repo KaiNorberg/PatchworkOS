@@ -4,23 +4,12 @@
 
 ![License](https://img.shields.io/badge/License-MIT-green) [![Build and Test](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml/badge.svg)](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml)
 
-**Patchwork** is a 64 bit monolithic hobbyist OS built from scratch in C for the x86_64 architecture. It's intended as an easy-to-modify toy-like NON-POSIX OS that takes many ideas from Unix, Plan9, DOS and other places while simplifying them and removing some fat. Made entirely for fun.
+**Patchwork** is a 64 bit monolithic hobbyist OS built from scratch in C for the x86_64 architecture. It's intended as an easy-to-modify toy-like NON-POSIX OS that takes many ideas from Unix, Plan9, DOS and other places while simplifying them and removing some fat. Made entirely for fun and as an educational resource.
 
 ## Screenshots
 
 ![Desktop Screenshot](meta/screenshots/desktop.png)
 ![Doom Screenshot](meta/screenshots/doom.png)
-
-## Quick Start
-
-```bash
-git clone --recursive https://github.com/KaiNorberg/PatchworkOS
-cd PatchworkOS
-make all
-make run  # Requires QEMU
-```
-
-See [Setup](#Setup) for more.
 
 ## Features
 
@@ -28,6 +17,7 @@ See [Setup](#Setup) for more.
 - Fully preemptive and tickless kernel.
 - Symmetric Multi Processing (SMP).
 - Kernel memory management is designed for constant-time operations per page, including both the physical and virtual memory managers.
+- Linux-style VFS with dentry+inode caching, negative dentrys, mountpoints, hardlinks, etc.
 - Custom C standard library and system libraries.
 - SIMD.
 - [Custom image format (.fbmp)](https://github.com/KaiNorberg/fbmp).
@@ -38,7 +28,6 @@ See [Setup](#Setup) for more.
 
 ## Notable Differences with Unix
 
-- Multiroot file system, with labels not letters ```/usr/bin```.
 - Replaced ```fork(), exec()``` with ```spawn()```.
 - Single-User.
 - Non POSIX standard library.
@@ -48,7 +37,7 @@ See [Setup](#Setup) for more.
 - Currently limited to RAM disks only.
 - Only support for x86_64.
 
-## Notable Short Term Future Plans
+## Notable Future Plans
 
 - Software interrupts for notes (signals).
 - Lua port.
@@ -60,24 +49,24 @@ Patchwork strictly follows the "everything is a file" philosophy in a way simila
 
 ### Sockets
 
-In order to create a local socket, you open the ```sys:/net/local/new``` file, which will return a file that acts as the handle for your socket. Reading from this file will return the ID of your created socket so, for example, you can do
+In order to create a local socket, you open the ```/dev/net/local/new``` file, which will return a file that acts as the handle for your socket. Reading from this file will return the ID of your created socket so, for example, you can do
 
 ```c
-    fd_t handle = open("sys:/net/local/new");
+    fd_t handle = open("/dev/net/local/new");
     char id[32];
     read(handle, id, 32);
 ```
 
-Note that when the handle is closed, the socket is also freed. The ID that the handle returns is the name of a directory that has been created in the "sys:/net/local" directory, in which there are three files, these include:
+Note that when the handle is closed, the socket is also freed. The ID that the handle returns is the name of a directory that has been created in the "/dev/net/local" directory, in which there are three files, these include:
 
 - ```data``` - used to send and retrieve data.
 - ```ctl``` - used to send commands.
 - ```accept``` - used to accept incoming connections.
 
-So, for example, the sockets data file is located at ```sys:/net/local/[id]/data```. Note that only the process that created the socket or its children can open these files. Now say we want to make our socket into a server, we would then use the bind and listen commands, for example
+So, for example, the sockets data file is located at ```/dev/net/local/[id]/data```. Note that only the process that created the socket or its children can open these files. Now say we want to make our socket into a server, we would then use the bind and listen commands, for example
 
 ```c
-    fd_t ctl = openf("sys:/net/local/%s/ctl", id);
+    fd_t ctl = openf("/dev/net/local/%s/ctl", id);
     writef(ctl, "bind myserver");
     writef(ctl, "listen");
     close(ctl);
@@ -86,17 +75,17 @@ So, for example, the sockets data file is located at ```sys:/net/local/[id]/data
 Note the use of openf() which allows us to open files via a formatted path and that we name our server myserver. If we wanted to accept a connection using our newly created server, we just open its accept file, like this
 
 ```c
-    fd_t fd = openf("sys:/net/local/%s/accept", id);
+    fd_t fd = openf("/dev/net/local/%s/accept", id);
 ```
 
 The returned file descriptor can be used to send and receive data, just like when calling accept() in for example Linux or other POSIX operating systems. This is practically true of the entire socket API, apart from using these weird files everything (should) work as expected. For the sake of completeness, if we wanted to connect to this server, we can do something like this
 
 ```c
-    fd_t handle = open("sys:/net/local/new");
+    fd_t handle = open("/dev/net/local/new");
     char id[32];
     read(handle, id, 32);
 
-    fd_t ctl = openf("sys:/net/local/%s/ctl", id);
+    fd_t ctl = openf("/dev/net/local/%s/ctl", id);
     writef(ctl, "connect myserver");
     close(ctl);
 ```
@@ -106,7 +95,7 @@ The returned file descriptor can be used to send and receive data, just like whe
 You may have noticed that, in the above section, the open() function does not take in a flags argument or anything similar. This is because flags are part of the file path directly so if you wanted to create a non-blocking socket, you would use
 
 ```c
-    fd_t handle = open("sys:/net/local/new?nonblock");
+    fd_t handle = open("/dev/net/local/new?nonblock");
 ```
 
 Multiple flags can be separated with the ```&``` character, like an internet link. However, there are no read and/or write flags, all files are both read and write.
@@ -119,7 +108,7 @@ The first is that I want Patchwork to be easy to expand upon, for that sake I wa
 
 The second reason is that it makes using the shell far more interesting, there is no need for special functions or any other magic keywords to for instance use sockets, all it takes is opening and reading from files.
 
-Let's take an example of these first two reasons. Say we wanted to implement the ability to wait for a process to die via a normal system. First we need to implement the kernel behavior to do that, then the appropriate system call, then add in handling for that system call in the standard library, then the actual function itself in the standard library and finally probably create some program that could be used in the shell. That's a lot of work for something as simple as a waiting for a process to die. Meanwhile, if waiting for a processes death is done via just writing to that processes "ctl" file then it's as simple as adding a "wait" action to it and calling it a day, you can now easily use that behavior via the standard library and via the shell by something like ```echo wait > sys:/proc/[pid]/ctl``` without any additional work.
+Let's take an example of these first two reasons. Say we wanted to implement the ability to wait for a process to die via a normal system. First we need to implement the kernel behavior to do that, then the appropriate system call, then add in handling for that system call in the standard library, then the actual function itself in the standard library and finally probably create some program that could be used in the shell. That's a lot of work for something as simple as a waiting for a process to die. Meanwhile, if waiting for a processes death is done via just writing to that processes "ctl" file then it's as simple as adding a "wait" action to it and calling it a day, you can now easily use that behavior via the standard library and via the shell by something like ```echo wait > /proc/[pid]/ctl``` without any additional work.
 
 And of course the third and final reason is because I think it's fun, and honestly I think this kind of system is just kinda beautiful due to just how generalized and how strictly it follows the idea that "everything is a file". There are downsides, of course, like the fact that these systems are less self documenting. But that is an argument for another time.
 
@@ -151,7 +140,7 @@ If you are still interested in knowing more, then you can check out the Doxygen 
 
 ### Requirements
 
-- **OS:** Linux, WSL appears to work, but I make no guarantees
+- **OS:** Linux (WSL might work, but I make no guarantees)
 - **Tools:** GCC, make, NASM, mtools, QEMU (optional)
 
 ### Build and Run
@@ -168,15 +157,14 @@ make all
 make run
 ```
 
-### Alternative Runtimes
+### If you don't wanna use QEMU
 
 - **Real Hardware:** Flash `PatchworkOS.img` to USB with tools like [balenaEtcher](https://etcher.balena.io/)
 - **Other VMs:** Import the `.img` file into VirtualBox, VMware, etc.
 
 ### Troubleshooting
 
-- **QEMU boot failure** Avoid QEMU 10.0.0 try using version 9.2.3.
-- **Build fails?** Ensure all dependencies are installed.
+- **QEMU boot failure** Check if you are using QEMU version 10.0.0, as that version is known to not work correctly, try using version 9.2.3.
 - **Any other errors?** If an error not listed here occurs or is not resolvable, please open an issue in the GitHub.
 
 ## Testing
