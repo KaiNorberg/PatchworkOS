@@ -11,7 +11,7 @@ static void builtin_cd(uint64_t argc, const char** argv)
 {
     if (argc < 2)
     {
-        chdir("home:/usr");
+        chdir("/usr");
         return;
     }
 
@@ -32,7 +32,7 @@ static builtin_t builtins[] = {
         .name = "cd",
         .synopsis = "cd [DIRECTORY]",
         .description = "If DIRECTORY is given, the current working directory will be set to DIRECTORY else it will be "
-                       "set to \"home:/usr\"",
+                       "set to \"/usr\"",
         .callback = builtin_cd,
     },
     /*{
@@ -59,7 +59,7 @@ static void builtin_help(uint64_t argc, const char** argv)
         {
             printf("%s ", builtins[i].name);
         }
-        printf("./[BINARY IN CWD] [BINARY IN home:/bin OR home:/bin/usr/]");
+        printf("./[BINARY IN CWD] [BINARY IN /bin OR /bin/usr/]");
     }
     else
     {

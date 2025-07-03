@@ -76,7 +76,20 @@ uint64_t vfs_mountpoint_to_mount_root(path_t* outRoot, const path_t* mountpoint)
 inode_t* vfs_get_inode(superblock_t* superblock, inode_number_t number);
 
 dentry_t* vfs_get_dentry(dentry_t* parent, const char* name);
+
+/**
+ * @brief Retrive or lookup a dentry.
+ * @ingroup kernel_vfs
+ * 
+ * The `vfs_get_or_lookup_dentry()` function will first try to retrive the specified dentry from the cache. If it does not exist in the cache it will attempt to look up the dentry in its filesystem, if it does not exist then a negative dentry is returned.
+ * 
+ * @param parent The parent of the dentry.
+ * @param name The name of the dentry.
+ * @return On success, the retrived or lookedup dentry, possibly a negative dentry. On failure, returns ERR and errno is set.
+ */
 dentry_t* vfs_get_or_lookup_dentry(dentry_t* parent, const char* name);
+
+uint64_t vfs_add_dentry(dentry_t* dentry);
 
 void vfs_remove_superblock(superblock_t* superblock);
 void vfs_remove_inode(inode_t* inode);

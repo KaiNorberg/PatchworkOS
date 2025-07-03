@@ -55,7 +55,7 @@ void log_init(void)
 #endif
 
     LOG_INFO("Booting %s %s (Built %s %s)\n", OS_NAME, OS_VERSION, __DATE__, __TIME__);
-    LOG_INFO("Copyright (C) 2025 PatchworkOS Project. MIT Licensed. See home:/usr/license/LICENSE for details.\n");
+    LOG_INFO("Copyright (C) 2025 PatchworkOS Project. MIT Licensed. See /usr/license/LICENSE for details.\n");
 }
 
 void log_enable_time(void)

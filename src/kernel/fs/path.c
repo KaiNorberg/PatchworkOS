@@ -161,7 +161,7 @@ static uint64_t path_handle_dotdot(path_t* current)
         if (current->dentry != current->mount->superblock->root)
         {
             dentry_t* parent = current->dentry->parent;
-            if (parent == NULL)
+            if (parent == NULL || parent == current->dentry)
             {
                 errno = ENOENT;
                 return ERR;

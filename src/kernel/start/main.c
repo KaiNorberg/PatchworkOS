@@ -48,7 +48,7 @@ void print_tree(file_t* file, const char* path, uint64_t depth)
         }
         LOG_INFO("├── %s\n", entries[i].name);
 
-        if (entries[i].type == INODE_DIR)
+        if (entries[i].type == INODE_DIR && strcmp(entries[i].name, ".") != 0 && strcmp(entries[i].name, "..") != 0)
         {
             char next[MAX_PATH];
             snprintf(next, MAX_PATH, "%s/%s", path, entries[i].name);
@@ -62,7 +62,7 @@ void print_tree(file_t* file, const char* path, uint64_t depth)
             }
             else
             {
-                print_tree(nextFile, next, depth + 1);
+                print_tree(nextFile, next, depth + 1);                
                 file_deref(nextFile);
             }
         }
@@ -102,11 +102,35 @@ void main(boot_info_t* bootInfo)
         LOG_INFO("\n");
     }
 
+    file_t* file = vfs_open("/cfg/init-main.cfg");
+    if (file == NULL)
+    {
+        LOG_ERR("main: failed to open test file (%s)\n", strerror(errno));
+    }
+    else
+    {
+        LOG_INFO("##Test File##\n");
+        
+        while (1)
+        {
+            char buffer[MAX_PATH];
+            uint64_t readCount = vfs_read(file, buffer, MAX_PATH);
+            if (readCount == 0)
+            {
+                break;
+            }
+
+            buffer[readCount] = '\0';
+            LOG_INFO(buffer);
+        }
+        LOG_INFO("\n");
+    }
+
     LOG_INFO("looping\n");
     while (1)
         ;
 
-    const char* argv[] = {"home:/bin/init", NULL};
+    const char* argv[] = {"/bin/init", NULL};
     thread_t* initThread = loader_spawn(argv, PRIORITY_MAX_USER - 2, NULL);
     assert(initThread != NULL);
 

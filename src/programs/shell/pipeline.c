@@ -10,8 +10,8 @@
 #include <sys/proc.h>
 
 static const char* lookupDirs[] = {
-    "home:/bin",
-    "home:/usr/bin",
+    "/bin",
+    "/usr/bin",
 };
 
 uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)

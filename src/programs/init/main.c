@@ -16,7 +16,7 @@ void spawn_program(const char* path, priority_t priority)
     const char* argv[] = {path, NULL};
     spawn_fd_t fds[] = {{.parent = klog, .child = STDOUT_FILENO}, SPAWN_FD_END};
     spawn_attr_t attr = {.priority = priority};
-    spawn(argv, fds, "home:/usr", &attr);
+    spawn(argv, fds, "/usr", &attr);
     close(klog);
 }
 
@@ -48,7 +48,7 @@ int main(void)
     config_array_t* serviceFiles = config_get_array(config, "startup", "service_files");
     for (uint64_t i = 0; i < config_array_length(services); i++)
     {
-        const char* file = config_array_get_string(serviceFiles, i, "home:/");
+        const char* file = config_array_get_string(serviceFiles, i, "/");
 
         stat_t info;
         while (stat(file, &info) == ERR)

@@ -2,6 +2,7 @@
 
 #include "mem/heap.h"
 #include "sched/thread.h"
+#include "log/log.h"
 #include "vfs.h"
 
 dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* name)
@@ -33,6 +34,7 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     dentry->ops = dentry->superblock != NULL ? dentry->superblock->dentryOps : NULL;
     dentry->private = NULL;
     dentry->flags = DENTRY_NEGATIVE | DENTRY_LOOKUP_PENDING;
+    lock_init(&dentry->lock);
     wait_queue_init(&dentry->lookupWaitQueue);
 
     if (dentry->parent != NULL && dentry->parent != dentry)

@@ -15,10 +15,10 @@ typedef struct
 
 // TODO: Load this from config file.
 static start_entry_t entries[] = {
-    {.name = "Calculator", .path = "home:/usr/bin/calculator"},
-    {.name = "Terminal", .path = "home:/usr/bin/terminal"},
-    {.name = "Tetris", .path = "home:/usr/bin/tetris"},
-    {.name = "DOOM", .path = "home:/usr/bin/doom"},
+    {.name = "Calculator", .path = "/usr/bin/calculator"},
+    {.name = "Terminal", .path = "/usr/bin/terminal"},
+    {.name = "Tetris", .path = "/usr/bin/tetris"},
+    {.name = "DOOM", .path = "/usr/bin/doom"},
 };
 
 #define ENTRY_AMOUNT (sizeof(entries) / sizeof(entries[0]))

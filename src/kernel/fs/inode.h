@@ -48,9 +48,16 @@ typedef struct inode
         lock; //!< Lock for the mutable members of the inode, also used to sync the position of files inside the inode.
 } inode_t;
 
+typedef enum
+{
+    LOOKUP_FOUND,
+    LOOKUP_NO_ENTRY,
+    LOOKUP_ERROR,
+} lookup_result_t;  
+
 typedef struct inode_ops
 {
-    uint64_t (*lookup)(inode_t* dir, dentry_t* target);
+    lookup_result_t (*lookup)(inode_t* dir, dentry_t* target);
     uint64_t (*create)(inode_t* dir, dentry_t* target, path_flags_t flags); //!< Handles both directories and files.
     void (*truncate)(inode_t* target);
     inode_t* (*link)(dentry_t* old, inode_t* newParent, const char* name);

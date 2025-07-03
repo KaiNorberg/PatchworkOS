@@ -38,7 +38,7 @@ See [Setup](#Setup) for more.
 
 ## Notable Differences with Unix
 
-- Multiroot file system, with labels not letters ```home:/usr/bin```.
+- Multiroot file system, with labels not letters ```/usr/bin```.
 - Replaced ```fork(), exec()``` with ```spawn()```.
 - Single-User.
 - Non POSIX standard library.

@@ -16,11 +16,9 @@ static void display_receive_event(display_t* disp, event_t* event)
 
     if (result == ERR)
     {
-        writef(open("sys:/klog"), "test1 %d\n", errno);
         if (errno == EINTR)
         {
             errno = 0;
-            writef(open("sys:/klog"), "test2\n");
             return display_receive_event(disp, event);
         }
     }

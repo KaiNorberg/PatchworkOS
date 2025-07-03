@@ -21,22 +21,6 @@ static _Atomic(inode_number_t) newNumber = ATOMIC_VAR_INIT(0);
 
 static ramfs_inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, void* data,
     uint64_t size);
-static ramfs_inode_t* ramfs_load_dir(superblock_t* superblock, const ram_dir_t* in);
-
-/*static uint64_t ramfs_open(file_t* file)
-{
-    ramfs_inode_t* ramfsInode = CONTAINER_OF(file->dentry->inode, ramfs_inode_t, inode);
-    LOCK_DEFER(&ramfsInode->inode.lock);
-    ramfsInode->openedAmount++;
-    return 0;
-}
-
-static void ramfs_file_cleanup(file_t* file)
-{
-    ramfs_inode_t* ramfsInode = CONTAINER_OF(file->dentry->inode, ramfs_inode_t, inode);
-    LOCK_DEFER(&ramfsInode->inode.lock);
-    ramfsInode->openedAmount--;
-}
 
 static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {    
@@ -78,39 +62,16 @@ static uint64_t ramfs_write(file_t* file, const void* buffer, uint64_t count, ui
     return count;
 }
 
-static uint64_t ramfs_getdirent(file_t* file, dirent_t* buffer, uint64_t amount)
-{
-    ramfs_inode_t* ramfsInode = CONTAINER_OF(file->dentry->inode, ramfs_inode_t, inode);
-    LOCK_DEFER(&ramfsInode->inode.lock);
-
-    getdirent_ctx_t ctx = {0};
-
-    ramfs_inode_t* child;
-    LIST_FOR_EACH(child, &ramfsInode->children, entry)
-    {
-        LOCK_DEFER(&child->inode.lock);
-        getdirent_write(&ctx, buffer, amount, child->inode.number, child->inode.type, child->name);
-    }
-
-    return ctx.total;
-}*/
-
 static file_ops_t fileOps = {
-    /*.open = ramfs_open,
-    .cleanup = ramfs_file_cleanup,
     .read = ramfs_read,
     .write = ramfs_write,
     .seek = file_generic_seek,
-    .getdirent = ramfs_getdirent,*/
 };
 
-static uint64_t ramfs_lookup(inode_t* dir, dentry_t* target)
+static lookup_result_t ramfs_lookup(inode_t* dir, dentry_t* target)
 {
-    LOCK_DEFER(&dir->lock);
-
     // All ramfs entires should always be in the cache, if lookup is called then the file/dir does not exist.
-    errno = ENOENT;
-    return ERR;
+    return LOOKUP_NO_ENTRY;
 }
 
 static uint64_t ramfs_create(inode_t* dir, dentry_t* target, path_flags_t flags)
@@ -237,10 +198,48 @@ static superblock_ops_t superOps = {
     .cleanup = ramfs_superblock_cleanup,
 };
 
+static dentry_t* ramfs_load_dir(superblock_t* superblock, dentry_t* parent, const char* name, const ram_dir_t* in)
+{
+    // We dont dereference the dentries such that they stay in memory.
+
+    dentry_t* dentry = dentry_new(superblock, parent, name);
+    assert(dentry != NULL);
+
+    ramfs_inode_t* inode = ramfs_inode_new(superblock, INODE_DIR, NULL, 0);
+    assert(inode != NULL);
+
+    dentry_make_positive(dentry, &inode->inode);
+    vfs_add_dentry(dentry);
+
+    node_t* child;
+    LIST_FOR_EACH(child, &in->node.children, entry)
+    {
+        if (child->type == RAMFS_DIR)
+        {
+            ram_dir_t* dir = CONTAINER_OF(child, ram_dir_t, node);
+
+            ramfs_load_dir(superblock, dentry, dir->node.name, dir);
+        }
+        else if (child->type == RAMFS_FILE)
+        {
+            ram_file_t* file = CONTAINER_OF(child, ram_file_t, node);
+
+            dentry_t* fileDentry = dentry_new(superblock, dentry, file->node.name);
+            assert(dentry != NULL);
+
+            ramfs_inode_t* fileInode = ramfs_inode_new(superblock, INODE_FILE, file->data, file->size);
+            assert(inode != NULL);
+
+            dentry_make_positive(fileDentry, &fileInode->inode);
+            vfs_add_dentry(fileDentry);
+        }
+    }
+
+    return dentry;
+}
+
 static dentry_t* ramfs_mount(filesystem_t* fs, superblock_flags_t flags, const char* devName, void* private)
 {
-    //return vfs_mount_nodev();
-
     superblock_t* superblock = superblock_new(fs, VFS_DEVICE_NAME_NONE, &superOps, &dentryOps);
     if (superblock == NULL)
     {
@@ -259,13 +258,12 @@ static dentry_t* ramfs_mount(filesystem_t* fs, superblock_flags_t flags, const c
     } 
     INODE_DEFER(&inode->inode);
 
-    superblock->root = dentry_new(superblock, NULL, VFS_ROOT_ENTRY_NAME);
+    superblock->root = ramfs_load_dir(superblock, NULL, VFS_ROOT_ENTRY_NAME, private);
     if (superblock->root == NULL)
     {
         return NULL;
     }
 
-    dentry_make_positive(superblock->root, &inode->inode);
     return dentry_ref(superblock->root);
 }
 
@@ -273,34 +271,6 @@ static filesystem_t ramfs = {
     .name = RAMFS_NAME,
     .mount = ramfs_mount,
 };
-
-/*static ramfs_inode_t* ramfs_load_dir(superblock_t* superblock, const ram_dir_t* in)
-{
-    ramfs_inode_t* inode = ramfs_inode_new(superblock, INODE_DIR, in->node.name, NULL, 0);
-    assert(inode != NULL);
-
-    node_t* child;
-    LIST_FOR_EACH(child, &in->node.children, entry)
-    {
-        if (child->type == RAMFS_DIR)
-        {
-            ram_dir_t* dir = CONTAINER_OF(child, ram_dir_t, node);
-
-            list_push(&inode->children, &ramfs_load_dir(superblock, dir)->entry);
-        }
-        else if (child->type == RAMFS_FILE)
-        {
-            ram_file_t* file = CONTAINER_OF(child, ram_file_t, node);
-
-            ramfs_inode_t* fileInode = ramfs_inode_new(superblock, INODE_FILE, file->node.name, file->data, file->size);
-            assert(inode != NULL);
-
-            list_push(&inode->children, &fileInode->entry);
-        }
-    }
-
-    return inode;
-}*/
 
 static ramfs_inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, void* data,
     uint64_t size)
