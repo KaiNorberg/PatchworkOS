@@ -496,7 +496,7 @@ uint64_t vfs_mount(const char* deviceName, const char* mountpoint, const char* f
     }
     rwlock_write_release(&mountCache.lock);
 
-    // superblock_expose(superblock); // TODO: Expose the sysdir for the superblock
+    // superblock_expose(superblock); // TODO: Expose the sysfs_dir for the superblock
 
     LOG_INFO("vfs: mounted %s on %s (type %s)\n", deviceName, mountpoint, fsName);
     return 0;

@@ -15,9 +15,9 @@
 
 // TODO: Reimplement without view_t.
 
-static sysdir_t statDir;
-static sysfile_t cpuFile;
-static sysfile_t memFile;
+static sysfs_dir_t statDir;
+static sysfs_file_t cpuFile;
+static sysfs_file_t memFile;
 
 void statistics_cpu_ctx_init(statistics_cpu_ctx_t* ctx)
 {
@@ -89,9 +89,9 @@ static file_ops_t memOps = {
 
 void statistics_init(void)
 {
-    assert(sysdir_init(&statDir, "/", "stat", NULL) != ERR);
-    assert(sysfile_init(&cpuFile, &statDir, "cpu", &cpuOps, NULL) != ERR);
-    assert(sysfile_init(&memFile, &statDir, "mem", &memOps, NULL) != ERR);
+    assert(sysfs_dir_init(&statDir, "/", "stat", NULL) != ERR);
+    assert(sysfs_file_init(&cpuFile, &statDir, "cpu", &cpuOps, NULL) != ERR);
+    assert(sysfs_file_init(&memFile, &statDir, "mem", &memOps, NULL) != ERR);
 }
 
 void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* self)

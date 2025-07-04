@@ -11,9 +11,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-static sysfile_t oneFile;
-static sysfile_t zeroFile;
-static sysfile_t nullFile;
+static sysfs_file_t oneFile;
+static sysfs_file_t zeroFile;
+static sysfs_file_t nullFile;
 
 static uint64_t const_one_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
@@ -82,7 +82,7 @@ static file_ops_t nullOps = {
 
 void const_init(void)
 {
-    assert(sysfile_init_path(&oneFile, "/", "one", &oneOps, NULL) != ERR);
-    assert(sysfile_init_path(&zeroFile, "/", "zero", &zeroOps, NULL) != ERR);
-    assert(sysfile_init_path(&nullFile, "/", "null", &nullOps, NULL) != ERR);
+    assert(sysfs_file_init_path(&oneFile, "/", "one", &oneOps, NULL) != ERR);
+    assert(sysfs_file_init_path(&zeroFile, "/", "zero", &zeroOps, NULL) != ERR);
+    assert(sysfs_file_init_path(&nullFile, "/", "null", &nullOps, NULL) != ERR);
 }

@@ -18,11 +18,11 @@ typedef struct
 
 typedef struct
 {
-    sysdir_t sysdir;
-    sysfile_t ctlFile;
-    sysfile_t cwdFile;
-    sysfile_t cmdlineFile;
-    sysfile_t noteFile;
+    sysfs_dir_t sysfs_dir;
+    sysfs_file_t ctlFile;
+    sysfs_file_t cwdFile;
+    sysfs_file_t cmdlineFile;
+    sysfs_file_t noteFile;
 } process_dir_t;
 
 typedef struct process

@@ -14,7 +14,7 @@ typedef struct
     uint64_t writeIndex;
     wait_queue_t waitQueue;
     lock_t lock;
-    sysfile_t sysfile;
+    sysfs_file_t sysfs_file;
 } mouse_t;
 
 mouse_t* mouse_new(const char* name);

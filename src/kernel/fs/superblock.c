@@ -25,7 +25,7 @@ superblock_t* superblock_new(filesystem_t* fs, const char* deviceName, superbloc
     strncpy(superblock->deviceName, deviceName, MAX_NAME - 1);
     superblock->deviceName[MAX_NAME - 1] = '\0';
     superblock->fs = fs;
-    // superblock::sysdir is exposed in vfs_mount
+    // superblock::sysfs_dir is exposed in vfs_mount
     return superblock;
 }
 

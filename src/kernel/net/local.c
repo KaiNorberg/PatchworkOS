@@ -54,7 +54,7 @@ static local_listener_t* local_listener_new(const char* address)
     lock_init(&listener->lock);
     atomic_store(&listener->ref, 1);
 
-    if (sysfile_init_path(&listener->sysfile, "/net/local/listen", address, &listenerOps, NULL) != 0)
+    if (sysfs_file_init_path(&listener->sysfs_file, "/net/local/listen", address, &listenerOps, NULL) != 0)
     {
         heap_free(listener);
         return NULL;
@@ -97,7 +97,7 @@ static void local_listener_deref(local_listener_t* listener)
         lock_release(&listener->lock);
 
         wait_queue_deinit(&listener->waitQueue);
-        sysfile_deinit(&listener->sysfile, NULL);
+        sysfs_file_deinit(&listener->sysfs_file, NULL);
         heap_free(listener);
     }
 }

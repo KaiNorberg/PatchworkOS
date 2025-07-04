@@ -30,8 +30,8 @@ typedef struct
     socket_send_t send;
     socket_receive_t receive;
     socket_poll_t poll;
-    sysdir_t dir;
-    sysfile_t newFile;
+    sysfs_dir_t dir;
+    sysfs_file_t newFile;
 } socket_family_t;
 
 uint64_t socket_family_register(socket_family_t* family);

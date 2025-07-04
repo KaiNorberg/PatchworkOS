@@ -42,6 +42,8 @@ deploy: $(PROGRAMS)
 	mmd -i $(TARGET) ::/usr
 	mmd -i $(TARGET) ::/usr/bin
 	mmd -i $(TARGET) ::/usr/license
+	mmd -i $(TARGET) ::/dev
+	mmd -i $(TARGET) ::/proc
 	mcopy -i $(TARGET) -s root/* ::
 	mcopy -i $(TARGET) -s bin/boot/bootx64.efi ::/efi/boot
 	mcopy -i $(TARGET) -s bin/kernel/kernel ::/boot

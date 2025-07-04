@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <sys/list.h>
 
-/*static sysdir_t root;
+/*static sysfs_dir_t root;
 static rwlock_t lock;
 
 static void syshdr_init(syshdr_t* header, const char* name, uint64_t type)
@@ -25,13 +25,13 @@ static void syshdr_init(syshdr_t* header, const char* name, uint64_t type)
     atomic_init(&header->ref, 1);
 }
 
-static sysdir_t* sysdir_ref(sysdir_t* dir)
+static sysfs_dir_t* sysfs_dir_ref(sysfs_dir_t* dir)
 {
     atomic_fetch_add(&dir->header.ref, 1);
     return dir;
 }
 
-static void sysdir_deref(sysdir_t* dir)
+static void sysfs_dir_deref(sysfs_dir_t* dir)
 {
     if (atomic_fetch_sub(&dir->header.ref, 1) <= 1)
     {
@@ -42,35 +42,35 @@ static void sysdir_deref(sysdir_t* dir)
     }
 }
 
-static sysfile_t* sysfile_ref(sysfile_t* sysfile)
+static sysfs_file_t* sysfs_file_ref(sysfs_file_t* sysfs_file)
 {
-    atomic_fetch_add(&sysfile->header.ref, 1);
-    return sysfile;
+    atomic_fetch_add(&sysfs_file->header.ref, 1);
+    return sysfs_file;
 }
 
-static void sysfile_deref(sysfile_t* sysfile)
+static void sysfs_file_deref(sysfs_file_t* sysfs_file)
 {
-    if (atomic_fetch_sub(&sysfile->header.ref, 1) <= 1)
+    if (atomic_fetch_sub(&sysfs_file->header.ref, 1) <= 1)
     {
-        if (sysfile->onFree != NULL)
+        if (sysfs_file->onFree != NULL)
         {
-            sysfile->onFree(sysfile);
+            sysfs_file->onFree(sysfs_file);
         }
 
-        sysdir_deref(sysfile->dir);
+        sysfs_dir_deref(sysfs_file->dir);
     }
 }
 
 static uint64_t sysfs_getdirent(file_t* file, stat_t* infos, uint64_t amount)
 {
     RWLOCK_READ_DEFER(&lock);
-    sysdir_t* sysdir = CONTAINER_OF(file->syshdr, sysdir_t, header);
+    sysfs_dir_t* sysfs_dir = CONTAINER_OF(file->syshdr, sysfs_dir_t, header);
 
     uint64_t index = 0;
     uint64_t total = 0;
 
     node_t* child;
-    LIST_FOR_EACH(child, &sysdir->header.node.children, entry)
+    LIST_FOR_EACH(child, &sysfs_dir->header.node.children, entry)
     {
         stat_t info = {0};
         strcpy(info.name, child->name);
@@ -105,23 +105,23 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
             errno = EISDIR; return NULL;
         }
 
-        sysfile_t* sysfile = sysfile_ref(CONTAINER_OF(node, sysfile_t, header.node));
+        sysfs_file_t* sysfs_file = sysfs_file_ref(CONTAINER_OF(node, sysfs_file_t, header.node));
         rwlock_read_release(&lock);
 
-        if (sysfile->ops->open == NULL)
+        if (sysfs_file->ops->open == NULL)
         {
-            sysfile_deref(sysfile);
+            sysfs_file_deref(sysfs_file);
             errno = ENOSYS; return NULL;
         }
 
-        file_t* file = sysfile->ops->open(volume, path, sysfile);
+        file_t* file = sysfs_file->ops->open(volume, path, sysfs_file);
         if (file == NULL)
         {
-            sysfile_deref(sysfile);
+            sysfs_file_deref(sysfs_file);
             return NULL;
         }
 
-        file->syshdr = &sysfile->header; // Reference
+        file->syshdr = &sysfs_file->header; // Reference
         return file;
     }
     else
@@ -132,18 +132,18 @@ static file_t* sysfs_open(volume_t* volume, const path_t* path)
             errno = ENOTDIR; return NULL;
         }
 
-        sysdir_t* sysdir = sysdir_ref(CONTAINER_OF(node, sysdir_t, header.node));
+        sysfs_dir_t* sysfs_dir = sysfs_dir_ref(CONTAINER_OF(node, sysfs_dir_t, header.node));
         rwlock_read_release(&lock);
 
         file_t* file = file_new(volume, path, PATH_DIRECTORY);
         if (file == NULL)
         {
-            sysdir_deref(sysdir);
+            sysfs_dir_deref(sysfs_dir);
             return NULL;
         }
         file->ops = &dirOps;
 
-        file->syshdr = &sysdir->header; // Reference
+        file->syshdr = &sysfs_dir->header; // Reference
         return file;
     }
 }
@@ -164,22 +164,22 @@ static uint64_t sysfs_open2(volume_t* volume, const path_t* path, file_t* files[
     {
         errno = EISDIR; return ERR;
     }
-    sysfile_t* sysfile = sysfile_ref(CONTAINER_OF(node, sysfile_t, header.node)); // First ref
+    sysfs_file_t* sysfs_file = sysfs_file_ref(CONTAINER_OF(node, sysfs_file_t, header.node)); // First ref
 
-    if (sysfile->ops->open2 == NULL)
+    if (sysfs_file->ops->open2 == NULL)
     {
-        sysfile_deref(sysfile);
+        sysfs_file_deref(sysfs_file);
         errno = ENOSYS; return ERR;
     }
 
-    if (sysfile->ops->open2(volume, path, sysfile, files) == ERR)
+    if (sysfs_file->ops->open2(volume, path, sysfs_file, files) == ERR)
     {
-        sysfile_deref(sysfile);
+        sysfs_file_deref(sysfs_file);
         return ERR;
     }
 
-    files[0]->syshdr = &sysfile->header; // First ref
-    files[1]->syshdr = &sysfile_ref(sysfile)->header;
+    files[0]->syshdr = &sysfs_file->header; // First ref
+    files[1]->syshdr = &sysfs_file_ref(sysfs_file)->header;
     return 0;
 }
 
@@ -204,19 +204,19 @@ static void sysfs_cleanup(volume_t* volume, file_t* file)
 {
     if (file->syshdr->node.type == SYSFS_DIR)
     {
-        sysdir_t* dir = CONTAINER_OF(file->syshdr, sysdir_t, header);
-        sysdir_deref(dir);
+        sysfs_dir_t* dir = CONTAINER_OF(file->syshdr, sysfs_dir_t, header);
+        sysfs_dir_deref(dir);
     }
     else
     {
-        sysfile_t* sysfile = CONTAINER_OF(file->syshdr, sysfile_t, header);
+        sysfs_file_t* sysfs_file = CONTAINER_OF(file->syshdr, sysfs_file_t, header);
 
-        if (sysfile->ops->cleanup != NULL)
+        if (sysfs_file->ops->cleanup != NULL)
         {
-            sysfile->ops->cleanup(sysfile, file);
+            sysfs_file->ops->cleanup(sysfs_file, file);
         }
 
-        sysfile_deref(sysfile);
+        sysfs_file_deref(sysfs_file);
     }
 }
 
@@ -237,7 +237,7 @@ static fs_t sysfs = {
     .mount = sysfs_mount,
 };*/
 
-static sysfs_namespace_t dev;
+static sysfs_group_t dev;
 
 static inode_ops_t inodeOps = {
 
@@ -290,56 +290,63 @@ void sysfs_init(void)
 {
     LOG_INFO("sysfs: init\n");
 
-    assert(sysfs_namespace_init(&dev, "dev") != ERR);
+    assert(sysfs_group_init(&dev) != ERR);
 }
 
 void syfs_after_vfs_init(void)
 {
     assert(vfs_register_fs(&sysfs) != ERR);
-    assert(sysfs_namespace_mount(&dev, "/") != ERR);
+    assert(sysfs_group_mount(&dev, "/dev") != ERR);
     // assert(vfs_mount(VFS_DEVICE_NAME_NONE, "/", SYSFS_NAME, SUPER_NONE, NULL) != ERR);
 }
 
-uint64_t sysfs_namespace_init(sysfs_namespace_t* namespace, const char* name)
+uint64_t sysfs_group_init(sysfs_group_t* ns)
 {
-    if (namespace == NULL || name == NULL)
+    if (ns == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    if (sysdir_init(&namespace->root, name, NULL) == ERR)
+    if (sysfs_dir_init(&ns->root, "", NULL) == ERR)
     {
         return ERR;
     }
+
+    memset(ns->mountpoint, 0, MAX_PATH);
 }
 
-void sysfs_namespace_deinit(sysfs_namespace_t* namespace)
+void sysfs_group_deinit(sysfs_group_t* ns)
 {
-    if (namespace == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    sysdir_deinit(&namespace->root, NULL);
-}
-
-uint64_t sysfs_namespace_mount(sysfs_namespace_t* namespace, const char* parent)
-{
-    if (namespace == NULL || parent == NULL)
+    if (ns == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    char mountpoint[MAX_PATH];
-    snprintf(mountpoint, MAX_PATH - 1, "%s%s", parent, namespace->name);
-
-    vfs_mount(VFS_DEVICE_NAME_NONE, )
+    sysfs_dir_deinit(&ns->root, NULL);
 }
 
-void sysfs_namespace_unmount(sysfs_namespace_t* namespace)
+uint64_t sysfs_group_mount(sysfs_group_t* ns, const char* mountpoint)
 {
+    if (ns == NULL || mountpoint == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
 
+    strncpy(ns->mountpoint, mountpoint, MAX_PATH - 1);
+    ns->mountpoint[MAX_PATH - 1] = '\0';
+
+    if (vfs_mount(VFS_DEVICE_NAME_NONE, ns->mountpoint, SYSFS_NAME, SUPER_NONE, ns) == ERR)
+    {
+        return ERR;
+    }
+
+    return 0;
+}
+
+uint64_t sysfs_group_unmount(sysfs_group_t* ns)
+{
+    return vfs_unmount(ns->mountpoint);
 }

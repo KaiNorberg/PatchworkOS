@@ -197,18 +197,18 @@ socket_t* socket_new(socket_family_t* family, path_flags_t flags)
     char path[MAX_PATH];
     snprintf(path, sizeof(path), "/net/%s", family->name);
 
-    if (sysdir_init(&socket->dir, path, socket->id, socket) == ERR)
+    if (sysfs_dir_init(&socket->dir, path, socket->id, socket) == ERR)
     {
         family->deinit(socket);
         heap_free(socket);
         return NULL;
     }
 
-    if (sysfile_init(&socket->ctlFile, &socket->dir, "ctl", &ctlOps, socket) == ERR ||
-        sysfile_init(&socket->dataFile, &socket->dir, "data", &dataOps, socket) == ERR ||
-        sysfile_init(&socket->acceptFile, &socket->dir, "accept", &acceptOps, socket) == ERR)
+    if (sysfs_file_init(&socket->ctlFile, &socket->dir, "ctl", &ctlOps, socket) == ERR ||
+        sysfs_file_init(&socket->dataFile, &socket->dir, "data", &dataOps, socket) == ERR ||
+        sysfs_file_init(&socket->acceptFile, &socket->dir, "accept", &acceptOps, socket) == ERR)
     {
-        sysdir_deinit(&socket->dir, NULL);
+        sysfs_dir_deinit(&socket->dir, NULL);
         family->deinit(socket);
         heap_free(socket);
     }
@@ -216,9 +216,9 @@ socket_t* socket_new(socket_family_t* family, path_flags_t flags)
     return socket;
 }
 
-static void socket_on_free(sysdir_t* sysdir)
+static void socket_on_free(sysfs_dir_t* sysfs_dir)
 {
-    socket_t* socket = sysdir->private;
+    socket_t* socket = sysfs_dir->private;
     if (socket != NULL)
     {
         socket->family->deinit(socket);
@@ -228,5 +228,5 @@ static void socket_on_free(sysdir_t* sysdir)
 
 void socket_free(socket_t* socket)
 {
-    sysdir_deinit(&socket->dir, socket_on_free);
+    sysfs_dir_deinit(&socket->dir, socket_on_free);
 }

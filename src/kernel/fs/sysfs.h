@@ -4,43 +4,38 @@
 #include <stdatomic.h>
 
 #include "defs.h"
-
-// TODO: Overhaul sysfs. Implement seperate /dev, /proc folders. Currently there is no way to set the inode size and
-// similar.
+#include "dentry.h"
 
 typedef struct file file_t;
 typedef struct file_ops file_ops_t;
 
 #define SYSFS_NAME "sysfs"
 
-#define SYSFS_OBJ 0
-#define SYSFS_DIR 1
+typedef struct sysfs_file sysfs_file_t;
+typedef struct sysfs_dir sysfs_dir_t;
 
-typedef struct sysfile sysfile_t;
-typedef struct sysdir sysdir_t;
+typedef void (*sysfs_file_on_free_t)(sysfs_file_t*);
+typedef void (*sysfs_dir_on_free_t)(sysfs_dir_t*);
 
-typedef void (*sysfile_on_free_t)(sysfile_t*);
-typedef void (*sysdir_on_free_t)(sysdir_t*);
-
-typedef struct sysfile
+typedef struct sysfs_file
 {
     dentry_t* dentry;
     void* private;
-    sysfile_on_free_t onFree;
-} sysfile_t;
+    sysfs_file_on_free_t onFree;
+} sysfs_file_t;
 
-typedef struct sysdir
+typedef struct sysfs_dir
 {
     dentry_t* dentry;
     void* private;
-    sysdir_on_free_t onFree;
-} sysdir_t;
+    sysfs_dir_on_free_t onFree;
+} sysfs_dir_t;
 
-typedef struct sysfs_namespace
+typedef struct sysfs_group
 {
-    sysdir_t root;
-    char name[MAX_NAME];
-} sysfs_namespace_t;
+    sysfs_dir_t root;
+    char mountpoint[MAX_PATH];
+} sysfs_group_t;
 
 void sysfs_init(void);
 
@@ -48,17 +43,19 @@ void sysfs_init(void);
 // then wait to mount sysfs untill after vfs_init().
 void syfs_after_vfs_init(void);
 
-uint64_t sysfs_namespace_init(sysfs_namespace_t* namespace, const char* name);
-void sysfs_namespace_deinit(sysfs_namespace_t* namespace);
-uint64_t sysfs_namespace_mount(sysfs_namespace_t* namespace, const char* parent);
-void sysfs_namespace_unmount(sysfs_namespace_t* namespace);
+sysfs_group_t* sysfs_default_ns(void);
 
-uint64_t sysdir_init(sysdir_t* sysdir, const char* name, void* private);
-void sysdir_deinit(sysdir_t* sysdir, sysdir_on_free_t callback);
-uint64_t sysdir_add_dir(sysdir_t* parent, sysdir_t* child);
-uint64_t sysdir_add_file(sysdir_t* parent, sysfile_t* sysfile);
-void sysdir_remove_dir(sysdir_t* parent, sysdir_t* child);
-void sysdir_remove_file(sysdir_t* parent, sysfile_t* sysfile);
+uint64_t sysfs_group_init(sysfs_group_t* ns);
+void sysfs_group_deinit(sysfs_group_t* ns);
+uint64_t sysfs_group_mount(sysfs_group_t* ns, const char* mountpoint);
+uint64_t sysfs_group_unmount(sysfs_group_t* ns);
 
-uint64_t sysfile_init(sysfile_t* sysfile, const char* name, const file_ops_t* ops, void* private);
-void sysfile_deinit(sysfile_t* sysfile,  sysdir_on_free_t callback);
+uint64_t sysfs_dir_init(sysfs_dir_t* sysfs_dir, const char* name, void* private);
+void sysfs_dir_deinit(sysfs_dir_t* sysfs_dir, sysfs_dir_on_free_t callback);
+uint64_t sysfs_dir_add_dir(sysfs_dir_t* parent, sysfs_dir_t* child);
+uint64_t sysfs_dir_add_file(sysfs_dir_t* parent, sysfs_file_t* sysfs_file);
+void sysfs_dir_remove_dir(sysfs_dir_t* parent, sysfs_dir_t* child);
+void sysfs_dir_remove_file(sysfs_dir_t* parent, sysfs_file_t* sysfs_file);
+
+uint64_t sysfs_file_init(sysfs_file_t* sysfs_file, const char* name, const file_ops_t* ops, void* private);
+void sysfs_file_deinit(sysfs_file_t* sysfs_file,  sysfs_dir_on_free_t callback);

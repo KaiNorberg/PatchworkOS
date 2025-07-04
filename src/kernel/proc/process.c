@@ -182,11 +182,11 @@ static file_ops_t noteOps = {
 
 static void process_dir_init(process_dir_t* dir, const char* name, process_t* process)
 {
-    assert(sysdir_init(&dir->sysdir, "/proc", name, process) != ERR);
-    assert(sysfile_init(&dir->ctlFile, &dir->sysdir, "ctl", &ctlOps, process) != ERR);
-    assert(sysfile_init(&dir->cwdFile, &dir->sysdir, "cwd", &cwdOps, process) != ERR);
-    assert(sysfile_init(&dir->cmdlineFile, &dir->sysdir, "cmdline", &cmdlineOps, process) != ERR);
-    assert(sysfile_init(&dir->noteFile, &dir->sysdir, "note", &noteOps, process) != ERR);
+    assert(sysfs_dir_init(&dir->sysfs_dir, "/proc", name, process) != ERR);
+    assert(sysfs_file_init(&dir->ctlFile, &dir->sysfs_dir, "ctl", &ctlOps, process) != ERR);
+    assert(sysfs_file_init(&dir->cwdFile, &dir->sysfs_dir, "cwd", &cwdOps, process) != ERR);
+    assert(sysfs_file_init(&dir->cmdlineFile, &dir->sysfs_dir, "cmdline", &cmdlineOps, process) != ERR);
+    assert(sysfs_file_init(&dir->noteFile, &dir->sysfs_dir, "note", &noteOps, process) != ERR);
 }
 
 process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, priority_t priority)
@@ -252,7 +252,7 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
     return process;
 }
 
-static void process_on_free(sysdir_t* dir)
+static void process_on_free(sysfs_dir_t* dir)
 {
     process_t* process = dir->private;
     LOG_INFO("process: on free pid=%d\n", process->id);
@@ -284,7 +284,7 @@ void process_free(process_t* process)
 
     vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_on_free
     wait_unblock(&process->queue, WAIT_ALL);
-    sysdir_deinit(&process->dir.sysdir, process_on_free);
+    sysfs_dir_deinit(&process->dir.sysfs_dir, process_on_free);
 }
 
 bool process_is_child(process_t* process, pid_t parentId)

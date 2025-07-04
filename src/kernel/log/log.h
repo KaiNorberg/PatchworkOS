@@ -43,7 +43,7 @@ typedef struct
 {
     ring_t ring;
     char buffer[LOG_MAX_BUFFER];
-    sysfile_t obj;
+    sysfs_file_t obj;
 } log_obj_t;
 
 typedef struct

@@ -53,20 +53,20 @@ kbd_t* kbd_new(const char* name)
     kbd->mods = KBD_MOD_NONE;
     wait_queue_init(&kbd->waitQueue);
     lock_init(&kbd->lock);
-    assert(sysfile_init_path(&kbd->sysfile, "/kbd", name, &kbdOps, kbd) != ERR);
+    assert(sysfs_file_init_path(&kbd->sysfs_file, "/kbd", name, &kbdOps, kbd) != ERR);
 
     return kbd;
 }
 
-static void kbd_on_free(sysfile_t* sysfile)
+static void kbd_on_free(sysfs_file_t* sysfs_file)
 {
-    kbd_t* kbd = sysfile->private;
+    kbd_t* kbd = sysfs_file->private;
     heap_free(kbd);
 }
 
 void kbd_free(kbd_t* kbd)
 {
-    sysfile_deinit(&kbd->sysfile, kbd_on_free);
+    sysfs_file_deinit(&kbd->sysfs_file, kbd_on_free);
 }
 
 static void kbd_update_mod(kbd_t* kbd, kbd_event_type_t type, kbd_mods_t mod)
