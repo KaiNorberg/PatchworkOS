@@ -157,10 +157,24 @@ make all
 make run
 ```
 
-### If you don't wanna use QEMU
+### Grub Loopback
 
-- **Real Hardware:** Flash `PatchworkOS.img` to USB with tools like [balenaEtcher](https://etcher.balena.io/)
-- **Other VMs:** Import the `.img` file into VirtualBox, VMware, etc.
+For frequent testing, it might be inconvenient to frequently flash to a USB. You can instead set up the `.img` file as a loopback device in GRUB.
+
+Add this entry to the `/etc/grub.d/40_custom` file:
+```bash
+menuentry "Patchwork OS" {
+        set root="[The grub identifer for the drive. Can be retrived using: sudo grub2-probe --target=drive /boot]"
+        loopback loop0 /PatchworkOS.img # Might need to be modified based on your setup.
+        set root=(loop0)
+        chainloader /efi/boot/bootx64.efi
+}
+```
+Regenerate grub configuration using `sudo grub2-mkconfig -o /boot/grub2/grub.cfg`.
+
+Finally copy the generated `.img` file to your `/boot` directory.
+
+You should now see a new entry in your GRUB boot menu allowing you to boot into the OS, like dual booting, but without the need to create a partition.
 
 ### Troubleshooting
 
