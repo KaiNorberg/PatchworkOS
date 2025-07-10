@@ -3,9 +3,9 @@
 #include <sys/io.h>
 
 #include "config.h"
+#include "fs/path.h"
 #include "sync/lock.h"
 #include "utils/bitmap.h"
-#include "fs/path.h"
 
 typedef struct file file_t;
 typedef struct dir_entry dir_entry_t;

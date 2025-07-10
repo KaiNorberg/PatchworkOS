@@ -46,7 +46,7 @@ typedef struct inode
     const file_ops_t* fileOps; //!< Constant after creation.
     lock_t
         lock; //!< Lock for the mutable members of the inode, also used to sync the position of files inside the inode.
-    map_entry_t mapEntry;  //!< Protected by the inodeCache lock.
+    map_entry_t mapEntry; //!< Protected by the inodeCache lock.
 } inode_t;
 
 typedef enum

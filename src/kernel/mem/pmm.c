@@ -3,6 +3,7 @@
 #include "config.h"
 #include "cpu/smp.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "sched/thread.h"
 #include "sync/lock.h"
 #include "sys/proc.h"
@@ -172,7 +173,7 @@ static void pmm_free_unlocked(void* address)
     }
     else
     {
-        log_panic(NULL, "pmm: attempt to free lower half address %p", address);
+        panic(NULL, "pmm: attempt to free lower half address %p", address);
     }
 }
 
@@ -274,8 +275,8 @@ void* pmm_alloc_bitmap(uint64_t count, uintptr_t maxAddr, uint64_t alignment)
     void* address = pmm_bitmap_alloc(count, maxAddr, alignment);
     if (address == NULL)
     {
-        LOG_WARN("pmm: failed to allocate %llu pages from bitmap, free=%llu pages, maxAddr=0x%lx\n", 
-                count, freePageAmount, maxAddr);
+        LOG_WARN("pmm: failed to allocate %llu pages from bitmap, free=%llu pages, maxAddr=0x%lx\n", count,
+            freePageAmount, maxAddr);
         errno = ENOMEM;
         return NULL;
     }

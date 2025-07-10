@@ -1,6 +1,7 @@
 #include "acpi.h"
 
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/vmm.h"
 
 #include <assert.h>
@@ -47,7 +48,7 @@ void acpi_init(xsdp_t* xsdp)
 
         if (!acpi_is_checksum_valid(table, table->length))
         {
-            log_panic(NULL, "acpi: %s, invalid checksum", signature);
+            panic(NULL, "acpi: %s, invalid checksum", signature);
         }
     }
 }

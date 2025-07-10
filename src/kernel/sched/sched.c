@@ -12,6 +12,7 @@
 #include "fs/vfs.h"
 #include "loader.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "proc/process.h"
 #include "sched/sched.h"
 #include "sched/thread.h"
@@ -119,8 +120,7 @@ static void sched_init_spawn_boot_thread(void)
     atomic_store(&thread->state, THREAD_RUNNING);
     self->sched.runThread = thread;
 
-    LOG_INFO("sched: spawned boot thread pid=%d tid=%d\n",
-             thread->process->id, thread->id);
+    LOG_INFO("sched: spawned boot thread pid=%d tid=%d\n", thread->process->id, thread->id);
 }
 
 void sched_init(void)
@@ -184,8 +184,7 @@ void sched_process_exit(uint64_t status)
     thread_t* thread = ctx->runThread;
     process_t* process = thread->process;
 
-    LOG_DEBUG("sched: process exit pid=%d tid=%d status=%llu\n",
-            process->id, thread->id, status);
+    LOG_DEBUG("sched: process exit pid=%d tid=%d status=%llu\n", process->id, thread->id, status);
 
     assert(atomic_exchange(&thread->state, THREAD_ZOMBIE) == THREAD_RUNNING);
 
@@ -212,8 +211,7 @@ void sched_process_exit(uint64_t status)
 
     if (killCount > 0)
     {
-        LOG_DEBUG("sched: sent kill note to %llu threads in process pid=%d\n",
-                killCount, process->id);
+        LOG_DEBUG("sched: sent kill note to %llu threads in process pid=%d\n", killCount, process->id);
     }
 
     smp_put();
@@ -456,8 +454,8 @@ bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
     break;
     default:
     {
-        log_panic(NULL, "sched: invalid thread state %d (pid=%d tid=%d)",
-                state, ctx->runThread->process->id, ctx->runThread->id);
+        panic(NULL, "sched: invalid thread state %d (pid=%d tid=%d)", state, ctx->runThread->process->id,
+            ctx->runThread->id);
     }
     }
 

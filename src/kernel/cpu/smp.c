@@ -7,6 +7,7 @@
 #include "idt.h"
 #include "kernel.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/heap.h"
 #include "mem/vmm.h"
 #include "regs.h"
@@ -181,7 +182,7 @@ cpu_t* smp_self_brute(void)
         }
     }
 
-    log_panic(NULL, "Unable to find cpu");
+    panic(NULL, "Unable to find cpu");
 }
 
 cpu_t* smp_self(void)

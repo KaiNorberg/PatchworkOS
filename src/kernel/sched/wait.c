@@ -6,6 +6,7 @@
 #include "drivers/systime/systime.h"
 #include "kernel.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/heap.h"
 #include "sched.h"
 #include "sched/thread.h"
@@ -28,7 +29,7 @@ void wait_queue_deinit(wait_queue_t* waitQueue)
 
     if (!list_is_empty(&waitQueue->entries))
     {
-        log_panic(NULL, "Wait queue freed with pending threads");
+        panic(NULL, "Wait queue freed with pending threads");
     }
 }
 
@@ -145,8 +146,8 @@ bool wait_finalize_block(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread)
     thread_state_t state = atomic_load(&thread->state);
     if (state != THREAD_PRE_BLOCK && state != THREAD_UNBLOCKING)
     {
-        LOG_DEBUG("unexpected thread state during block tid=%d pid=%d state=%d\n",
-                thread->id, thread->process->id, state);
+        LOG_DEBUG("unexpected thread state during block tid=%d pid=%d state=%d\n", thread->id, thread->process->id,
+            state);
     }
 
     thread_state_t expected = THREAD_PRE_BLOCK;

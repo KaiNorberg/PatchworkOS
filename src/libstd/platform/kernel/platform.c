@@ -3,6 +3,7 @@
 
 #include "drivers/systime/systime.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/pmm.h"
 #include "mem/vmm.h"
 #include "sched/thread.h"
@@ -35,10 +36,10 @@ void _platform_abort(const char* message)
 {
     if (message != NULL)
     {
-        log_panic(NULL, message);
+        panic(NULL, message);
     }
     else
     {
-        log_panic(NULL, "libstd unknown abort");
+        panic(NULL, "libstd unknown abort");
     }
 }

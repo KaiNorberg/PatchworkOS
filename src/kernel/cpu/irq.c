@@ -1,6 +1,7 @@
 #include "irq.h"
 
 #include "log/log.h"
+#include "log/panic.h"
 #include "pic.h"
 #include "vectors.h"
 
@@ -46,5 +47,5 @@ void irq_install(irq_handler_t handler, uint8_t irq)
         }
     }
 
-    log_panic(NULL, "IRQ handler limit exceeded for irq=%d\n", irq);
+    panic(NULL, "IRQ handler limit exceeded for irq=%d\n", irq);
 }

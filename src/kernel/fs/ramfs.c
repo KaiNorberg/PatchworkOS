@@ -3,6 +3,7 @@
 #include "fs/mount.h"
 #include "fs/path.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/heap.h"
 #include "sync/lock.h"
 #include "sysfs.h"
@@ -188,7 +189,7 @@ static void ramfs_free_inode(superblock_t* superblock, inode_t* inode)
 
 static void ramfs_superblock_cleanup(superblock_t* superblock)
 {
-    log_panic(NULL, "ramfs unmounted\n");
+    panic(NULL, "ramfs unmounted\n");
 }
 
 static superblock_ops_t superOps = {

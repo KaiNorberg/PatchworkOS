@@ -477,8 +477,8 @@ uint64_t vfs_mount(const char* deviceName, const pathname_t* mountpoint, const c
     }
     lock_release(&root->lock);
 
-    if (globalRoot.mount == NULL) // Special handling for mounting inital file system, since this can only happen during boot
-                            // there is no need for the lock before the if statement.
+    if (globalRoot.mount == NULL) // Special handling for mounting inital file system, since this can only happen during
+                                  // boot there is no need for the lock before the if statement.
     {
         assert(mountpoint == NULL); // Sanity check.
 

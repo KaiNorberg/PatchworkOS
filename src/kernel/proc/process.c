@@ -287,8 +287,8 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
         process->parent = NULL;
     }
 
-    LOG_INFO("process: new process created pid=%d parent=%d priority=%d\n",
-             process->id, parent ? parent->id : 0, priority);
+    LOG_INFO("process: new process created pid=%d parent=%d priority=%d\n", process->id, parent ? parent->id : 0,
+        priority);
     return process;
 }
 

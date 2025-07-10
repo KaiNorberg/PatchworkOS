@@ -5,6 +5,7 @@
 #include "irq.h"
 #include "kernel.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/vmm.h"
 #include "regs.h"
 #include "sched/loader.h"
@@ -56,7 +57,7 @@ static void exception_handler(trap_frame_t* trapFrame)
         thread_t* thread = sched_thread();
         if (thread == NULL)
         {
-            log_panic(trapFrame, "User exception on NULL thread");
+            panic(trapFrame, "User exception on NULL thread");
         }
 
         switch (trapFrame->vector)
@@ -77,7 +78,8 @@ static void exception_handler(trap_frame_t* trapFrame)
                 !(trapFrame->vector & PAGE_FAULT_PRESENT)) // Fault in user stack region due to non present page
             {
                 uintptr_t pageAddress = ROUND_DOWN(faultAddress, PAGE_SIZE);
-                LOG_DEBUG("trap: expanding user stack %p pid=%d tid=%d\n", pageAddress, thread->process->id, thread->id);
+                LOG_DEBUG("trap: expanding user stack %p pid=%d tid=%d\n", pageAddress, thread->process->id,
+                    thread->id);
                 if (vmm_alloc(&thread->process->space, (void*)pageAddress, PAGE_SIZE, PROT_READ | PROT_WRITE) != NULL)
                 {
                     return;
@@ -90,8 +92,7 @@ static void exception_handler(trap_frame_t* trapFrame)
         break;
         default:
         {
-            LOG_WARN(
-                "trap: process killed due to exception tid=%d pid=%d vector=0x%x error=%p rip=%p cr2=%p\n",
+            LOG_WARN("trap: process killed due to exception tid=%d pid=%d vector=0x%x error=%p rip=%p cr2=%p\n",
                 thread->id, thread->process->id, trapFrame->vector, trapFrame->errorCode, trapFrame->rip, cr2_read());
         }
         }
@@ -101,7 +102,7 @@ static void exception_handler(trap_frame_t* trapFrame)
     }
     else
     {
-        log_panic(trapFrame, "Exception");
+        panic(trapFrame, "Exception");
     }
 }
 
@@ -118,7 +119,7 @@ void trap_handler(trap_frame_t* trapFrame)
     self->trapDepth++;
     if (self->trapDepth != 1)
     {
-        log_panic(trapFrame, "self->trapDepth != 1");
+        panic(trapFrame, "self->trapDepth != 1");
     }
 
     statistics_trap_begin(trapFrame, self);
@@ -153,7 +154,7 @@ void trap_handler(trap_frame_t* trapFrame)
         }
         else
         {
-            log_panic(trapFrame, "Unknown vector");
+            panic(trapFrame, "Unknown vector");
         }
     }
     }
