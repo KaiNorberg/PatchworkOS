@@ -1,19 +1,12 @@
 #include "socket.h"
-#include "defs.h"
 #include "fs/ctl.h"
 #include "fs/sysfs.h"
-#include "fs/vfs.h"
-#include "log/log.h"
 #include "mem/heap.h"
-#include "mem/pmm.h"
 #include "proc/process.h"
-#include "sched/thread.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <stdatomic.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <sys/math.h>
 
 static atomic_uint64_t nextSocketId = ATOMIC_VAR_INIT(0);
@@ -45,7 +38,7 @@ static wait_queue_t* socket_accept_poll(file_t* file, poll_file_t* poll)
 
 static uint64_t socket_accept_open(file_t* file)
 {
-    socket_t* socket = file->dentry->inode->private;
+    socket_t* socket = file->inode->private;
     if (!socket_has_access(socket, sched_process()))
     {
         errno = EACCES;
@@ -110,7 +103,7 @@ static wait_queue_t* socket_data_poll(file_t* file, poll_file_t* poll)
 
 static uint64_t socket_data_open(file_t* file)
 {
-    socket_t* socket = file->dentry->inode->private;
+    socket_t* socket = file->inode->private;
     if (!socket_has_access(socket, sched_process()))
     {
         errno = EACCES;
@@ -156,7 +149,7 @@ CTL_STANDARD_WRITE_DEFINE(socket_ctl_write,
 
 static uint64_t socket_ctl_open(file_t* file)
 {
-    socket_t* socket = file->dentry->inode->private;
+    socket_t* socket = file->inode->private;
     if (!socket_has_access(socket, sched_process()))
     {
         errno = EACCES;
@@ -170,6 +163,20 @@ static uint64_t socket_ctl_open(file_t* file)
 static file_ops_t ctlOps = {
     .open = socket_ctl_open,
     .write = socket_ctl_write,
+};
+
+static void socket_inode_cleanup(inode_t* inode)
+{
+    socket_t* socket = inode->private;
+    if (socket != NULL)
+    {
+        socket->family->deinit(socket);
+        heap_free(socket);
+    }
+}
+
+static inode_ops_t dirInodeOps = {
+    .cleanup = socket_inode_cleanup,
 };
 
 socket_t* socket_new(socket_family_t* family, path_flags_t flags)
@@ -194,21 +201,18 @@ socket_t* socket_new(socket_family_t* family, path_flags_t flags)
         return NULL;
     }
 
-    char path[MAX_PATH];
-    snprintf(path, sizeof(path), "/net/%s", family->name);
-
-    if (sysfs_dir_init(&socket->dir, path, socket->id, socket) == ERR)
+    if (sysfs_dir_init(&socket->dir, &family->dir, socket->id, &dirInodeOps, socket) == ERR)
     {
         family->deinit(socket);
         heap_free(socket);
         return NULL;
     }
 
-    if (sysfs_file_init(&socket->ctlFile, &socket->dir, "ctl", &ctlOps, socket) == ERR ||
-        sysfs_file_init(&socket->dataFile, &socket->dir, "data", &dataOps, socket) == ERR ||
-        sysfs_file_init(&socket->acceptFile, &socket->dir, "accept", &acceptOps, socket) == ERR)
+    if (sysfs_file_init(&socket->ctlFile, &socket->dir, "ctl", NULL, &ctlOps, socket) == ERR ||
+        sysfs_file_init(&socket->dataFile, &socket->dir, "data", NULL, &dataOps, socket) == ERR ||
+        sysfs_file_init(&socket->acceptFile, &socket->dir, "accept", NULL, &acceptOps, socket) == ERR)
     {
-        sysfs_dir_deinit(&socket->dir, NULL);
+        sysfs_dir_deinit(&socket->dir);
         family->deinit(socket);
         heap_free(socket);
     }
@@ -216,17 +220,7 @@ socket_t* socket_new(socket_family_t* family, path_flags_t flags)
     return socket;
 }
 
-static void socket_on_free(sysfs_dir_t* sysfs_dir)
-{
-    socket_t* socket = sysfs_dir->private;
-    if (socket != NULL)
-    {
-        socket->family->deinit(socket);
-        heap_free(socket);
-    }
-}
-
 void socket_free(socket_t* socket)
 {
-    sysfs_dir_deinit(&socket->dir, socket_on_free);
+    sysfs_dir_deinit(&socket->dir);
 }

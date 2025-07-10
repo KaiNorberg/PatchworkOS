@@ -18,7 +18,7 @@ typedef struct
 
 typedef struct
 {
-    sysfs_dir_t sysfs_dir;
+    sysfs_dir_t dir;
     sysfs_file_t ctlFile;
     sysfs_file_t cwdFile;
     sysfs_file_t cmdlineFile;

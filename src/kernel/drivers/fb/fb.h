@@ -14,7 +14,7 @@ typedef struct fb
 {
     fb_info_t info;
     fb_mmap_t mmap;
-    sysfs_file_t sysfs_file;
+    sysfs_file_t file;
 } fb_t;
 
 uint64_t fb_expose(fb_t* fb);

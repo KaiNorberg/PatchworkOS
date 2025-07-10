@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fs/vfs.h"
+#include "fs/inode.h"
 
 #include <boot/boot_info.h>
 

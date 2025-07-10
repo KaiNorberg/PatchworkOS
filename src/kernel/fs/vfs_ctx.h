@@ -2,9 +2,10 @@
 
 #include <sys/io.h>
 
-#include "defs.h"
+#include "config.h"
 #include "sync/lock.h"
-#include "vfs.h"
+#include "utils/bitmap.h"
+#include "fs/path.h"
 
 typedef struct file file_t;
 typedef struct dir_entry dir_entry_t;
@@ -13,6 +14,8 @@ typedef struct
 {
     path_t cwd;
     file_t* files[CONFIG_MAX_FD];
+    bitmap_t bitmap;
+    uint8_t bitmapBuffer[BITMAP_BITS_TO_BYTES(CONFIG_MAX_FD)];
     lock_t lock;
 } vfs_ctx_t;
 

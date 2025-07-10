@@ -5,8 +5,8 @@
 #include "sched/thread.h"
 #include "vfs.h"
 
-inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, inode_ops_t* ops,
-    file_ops_t* fileOps)
+inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, const inode_ops_t* ops,
+    const file_ops_t* fileOps)
 {
     if (superblock == NULL)
     {

@@ -13,9 +13,11 @@
 #include <stdlib.h>
 #include <sys/math.h>
 
+static sysfs_dir_t kbdDir = {0};
+
 static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    kbd_t* kbd = file->dentry->inode->private;
+    kbd_t* kbd = file->inode->private;
 
     count = ROUND_DOWN(count, sizeof(kbd_event_t));
     for (uint64_t i = 0; i < count / sizeof(kbd_event_t); i++)
@@ -36,37 +38,55 @@ static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count, uint64_t* o
 
 static wait_queue_t* kbd_poll(file_t* file, poll_file_t* pollFile)
 {
-    kbd_t* kbd = file->dentry->inode->private;
+    kbd_t* kbd = file->inode->private;
     pollFile->occoured = POLL_READ & (kbd->writeIndex != file->pos);
     return &kbd->waitQueue;
 }
 
-static file_ops_t kbdOps = {
+static file_ops_t fileOps = {
     .read = kbd_read,
     .poll = kbd_poll,
 };
 
+static void kbd_inode_cleanup(inode_t* inode)
+{
+    kbd_t* kbd = inode->private;
+    wait_queue_deinit(&kbd->waitQueue);
+    heap_free(kbd);
+}
+
+static inode_ops_t inodeOps = {
+    .cleanup = kbd_inode_cleanup,
+};
+
 kbd_t* kbd_new(const char* name)
 {
+    if (kbdDir.dentry == NULL)
+    {
+        if (sysfs_dir_init(&kbdDir, sysfs_get_default(), "kbd", NULL, NULL) == ERR)
+        {
+            return NULL;
+        }
+    }
+
     kbd_t* kbd = heap_alloc(sizeof(kbd_t), HEAP_NONE);
     kbd->writeIndex = 0;
     kbd->mods = KBD_MOD_NONE;
     wait_queue_init(&kbd->waitQueue);
     lock_init(&kbd->lock);
-    assert(sysfs_file_init_path(&kbd->sysfs_file, "/kbd", name, &kbdOps, kbd) != ERR);
+    if (sysfs_file_init(&kbd->file, &kbdDir, name, &inodeOps, &fileOps, kbd) == ERR)
+    {
+        wait_queue_deinit(&kbd->waitQueue);
+        heap_free(kbd);
+        return NULL;
+    }
 
     return kbd;
 }
 
-static void kbd_on_free(sysfs_file_t* sysfs_file)
-{
-    kbd_t* kbd = sysfs_file->private;
-    heap_free(kbd);
-}
-
 void kbd_free(kbd_t* kbd)
 {
-    sysfs_file_deinit(&kbd->sysfs_file, kbd_on_free);
+    sysfs_file_deinit(&kbd->file);
 }
 
 static void kbd_update_mod(kbd_t* kbd, kbd_event_type_t type, kbd_mods_t mod)

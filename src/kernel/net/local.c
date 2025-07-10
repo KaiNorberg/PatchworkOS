@@ -1,5 +1,6 @@
 #include "local.h"
 
+#include "fs/dentry.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "log/log.h"
@@ -12,6 +13,7 @@
 #include "sys/io.h"
 #include "utils/ring.h"
 
+#include <_internal/CONTAINER_OF.h>
 #include <assert.h>
 #include <errno.h>
 #include <stdatomic.h>
@@ -19,17 +21,36 @@
 #include <stdlib.h>
 #include <sys/math.h>
 
-static list_t listeners;
-static lock_t listenersLock;
+static uint64_t local_socket_init(socket_t* socket);
+static void local_socket_deinit(socket_t* socket);
+static uint64_t local_socket_bind(socket_t* socket, const char* address);
+static uint64_t local_socket_listen(socket_t* socket);
+static uint64_t local_socket_accept(socket_t* socket, socket_t* newSocket);
+static uint64_t local_socket_connect(socket_t* socket, const char* address);
+static uint64_t local_socket_send(socket_t* socket, const void* buffer, uint64_t count, uint64_t* offset);
+static uint64_t local_socket_receive(socket_t* socket, void* buffer, uint64_t count, uint64_t* offset);
+static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll);
+
+static socket_family_t family = {
+    .name = "local",
+    .init = local_socket_init,
+    .deinit = local_socket_deinit,
+    .bind = local_socket_bind,
+    .listen = local_socket_listen,
+    .accept = local_socket_accept,
+    .connect = local_socket_connect,
+    .send = local_socket_send,
+    .receive = local_socket_receive,
+    .poll = local_socket_poll,
+};
+
+static sysfs_dir_t listenDir;
+static lock_t listenersLock = LOCK_CREATE();
 
 static local_connection_t* local_connection_ref(local_connection_t* conn);
 static void local_connection_deref(local_connection_t* conn);
 
 static local_connection_t* local_listener_pop(local_listener_t* listener);
-
-static file_ops_t listenerOps = {
-    // None
-};
 
 static local_listener_t* local_listener_new(const char* address)
 {
@@ -45,26 +66,20 @@ static local_listener_t* local_listener_new(const char* address)
         return NULL;
     }
 
-    list_entry_init(&listener->entry);
-    strncpy(listener->address, address, MAX_NAME - 1);
-    listener->address[MAX_NAME - 1] = '\0';
     listener->backlog.readIndex = 0;
     listener->backlog.writeIndex = 0;
     listener->backlog.count = 0;
     lock_init(&listener->lock);
     atomic_store(&listener->ref, 1);
+    wait_queue_init(&listener->waitQueue);
 
-    if (sysfs_file_init_path(&listener->sysfs_file, "/net/local/listen", address, &listenerOps, NULL) != 0)
+    if (sysfs_file_init(&listener->file, &listenDir, address, NULL, NULL, NULL) != 0)
     {
+        wait_queue_deinit(&listener->waitQueue);
         heap_free(listener);
         return NULL;
     }
 
-    wait_queue_init(&listener->waitQueue);
-
-    lock_acquire(&listenersLock);
-    list_push(&listeners, &listener->entry);
-    lock_release(&listenersLock);
     return listener;
 }
 
@@ -78,9 +93,7 @@ static void local_listener_deref(local_listener_t* listener)
 {
     if (atomic_fetch_sub(&listener->ref, 1) <= 1)
     {
-        lock_acquire(&listenersLock);
-        list_remove(&listener->entry);
-        lock_release(&listenersLock);
+        LOCK_DEFER(&listenersLock);
 
         wait_unblock(&listener->waitQueue, UINT64_MAX);
 
@@ -97,7 +110,7 @@ static void local_listener_deref(local_listener_t* listener)
         lock_release(&listener->lock);
 
         wait_queue_deinit(&listener->waitQueue);
-        sysfs_file_deinit(&listener->sysfs_file, NULL);
+        sysfs_file_deinit(&listener->file);
         heap_free(listener);
     }
 }
@@ -106,16 +119,16 @@ static local_listener_t* local_listener_find(const char* address)
 {
     LOCK_DEFER(&listenersLock);
 
-    local_listener_t* listener;
-    LIST_FOR_EACH(listener, &listeners, entry)
+    dentry_t* dentry = vfs_get_dentry(listenDir.dentry, address);
+    if (dentry == NULL)
     {
-        if (strcmp(address, listener->address) == 0)
-        {
-            return local_listener_ref(listener);
-        }
+        return NULL;
     }
+    DENTRY_DEFER(dentry);
 
-    return NULL;
+    sysfs_file_t* listenerFile = dentry->private;
+
+    return local_listener_ref(CONTAINER_OF(listenerFile, local_listener_t, file));
 }
 
 static bool local_listener_is_conn_avail(local_listener_t* listener)
@@ -719,23 +732,8 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
     }
 }
 
-static socket_family_t family = {
-    .name = "local",
-    .init = local_socket_init,
-    .deinit = local_socket_deinit,
-    .bind = local_socket_bind,
-    .listen = local_socket_listen,
-    .accept = local_socket_accept,
-    .connect = local_socket_connect,
-    .send = local_socket_send,
-    .receive = local_socket_receive,
-    .poll = local_socket_poll,
-};
-
 void net_local_init(void)
 {
-    list_init(&listeners);
-    lock_init(&listenersLock);
-
     assert(socket_family_register(&family) != ERR);
+    assert(sysfs_dir_init(&listenDir, &family.dir, "listen", NULL, NULL) != ERR);
 }

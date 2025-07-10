@@ -1,3 +1,5 @@
+#include "fs/path.h"
+#include "fs/vfs.h"
 #include "kernel.h"
 #include "log/log.h"
 #include "mem/heap.h"
@@ -6,6 +8,7 @@
 #include "sched/sched.h"
 #include "utils/ring.h"
 
+#include <_internal/MAX_PATH.h>
 #include <assert.h>
 #include <boot/boot_info.h>
 #include <stdio.h>
@@ -55,14 +58,14 @@ void print_tree(file_t* file, const char* path, uint64_t depth)
             char nextWithFlags[MAX_PATH];
             snprintf(nextWithFlags, MAX_PATH, "%s/%s?dir", path, entries[i].name);
 
-            file_t* nextFile = vfs_open(nextWithFlags);
+            file_t* nextFile = vfs_open(PATHNAME(nextWithFlags));
             if (nextFile == NULL)
             {
                 LOG_ERR("print_tree: error opening file (%s)\n", next);
             }
             else
             {
-                print_tree(nextFile, next, depth + 1);                
+                print_tree(nextFile, next, depth + 1);
                 file_deref(nextFile);
             }
         }
@@ -76,7 +79,7 @@ void main(boot_info_t* bootInfo)
     kernel_init(bootInfo);
 
     stat_t stat;
-    if (vfs_stat("/startup.nsh", &stat) == ERR)
+    if (vfs_stat(PATHNAME("/startup.nsh"), &stat) == ERR)
     {
         LOG_ERR("main: stat err %s\n", strerror(errno));
     }
@@ -85,11 +88,11 @@ void main(boot_info_t* bootInfo)
         LOG_INFO("##Stat Output##\nNumber: %u\nType: %u\nSize: %lu\nBlocks: %lu\nLink Amount: %lu\nAccess "
                  "Time: %u\nModify "
                  "Time: %u\nChange Time: %u\nName: %s\n\n",
-            stat.number, stat.type, stat.size, stat.blocks, stat.linkAmount, stat.accessTime,
-            stat.modifyTime, stat.changeTime, stat.name);
+            stat.number, stat.type, stat.size, stat.blocks, stat.linkAmount, stat.accessTime, stat.modifyTime,
+            stat.changeTime, stat.name);
     }
 
-    file_t* rootDir = vfs_open("/?dir");
+    file_t* rootDir = vfs_open(PATHNAME("/?dir"));
     if (rootDir == NULL)
     {
         LOG_ERR("main: failed to open root (%s)\n", strerror(errno));
@@ -102,7 +105,7 @@ void main(boot_info_t* bootInfo)
         LOG_INFO("\n");
     }
 
-    file_t* file = vfs_open("/cfg/init-main.cfg");
+    file_t* file = vfs_open(PATHNAME("/cfg/init-main.cfg"));
     if (file == NULL)
     {
         LOG_ERR("main: failed to open test file (%s)\n", strerror(errno));
@@ -110,7 +113,7 @@ void main(boot_info_t* bootInfo)
     else
     {
         LOG_INFO("##Test File##\n");
-        
+
         while (1)
         {
             char buffer[MAX_PATH];
@@ -126,16 +129,30 @@ void main(boot_info_t* bootInfo)
         LOG_INFO("\n");
     }
 
-    LOG_INFO("looping\n");
-    while (1)
-        ;
+    path_t path = PATH_EMPTY;
+    if (vfs_walk(&path, PATHNAME("/theme/fonts/firacode-retina16.grf")) == ERR)
+    {
+        LOG_ERR("main: failed to open deep file (%s)\n", strerror(errno));
+    }
+    else
+    {
+        pathname_t pathname[MAX_PATH];
+        if (path_to_name(&path, pathname) == ERR)
+        {
+            LOG_ERR("main: failed to get deep file path (%s)\n", strerror(errno));
+        }
+        else
+        {
+            LOG_INFO("Deep file path: %s\n", pathname->string);
+        }
+    }
 
     const char* argv[] = {"/bin/init", NULL};
     thread_t* initThread = loader_spawn(argv, PRIORITY_MAX_USER - 2, NULL);
     assert(initThread != NULL);
 
     // Set klog as stdout for init process
-    file_t* klog = vfs_open("/dev/klog");
+    file_t* klog = vfs_open(PATHNAME("/dev/klog"));
     assert(klog != NULL);
     assert(vfs_ctx_openas(&initThread->process->vfsCtx, STDOUT_FILENO, klog) != ERR);
     file_deref(klog);

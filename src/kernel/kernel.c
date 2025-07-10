@@ -6,11 +6,9 @@
 #include "cpu/gdt.h"
 #include "cpu/idt.h"
 #include "cpu/pic.h"
-#include "cpu/regs.h"
 #include "cpu/simd.h"
 #include "cpu/smp.h"
 #include "drivers/const.h"
-#include "drivers/fb/fb.h"
 #include "drivers/fb/gop.h"
 #include "drivers/ps2/ps2.h"
 #include "drivers/systime/hpet.h"
@@ -25,16 +23,16 @@
 #include "mem/pmm.h"
 #include "mem/vmm.h"
 #include "net/net.h"
+#include "proc/process.h"
 #include "sched/sched.h"
-#include "sched/thread.h"
 #include "sched/wait.h"
-#include "utils/testing.h"
 
-#include <assert.h>
+#ifdef TESTING
+#include "utils/testing.h"
+#endif
+
 #include <boot/boot_info.h>
 #include <libstd/_internal/init.h>
-#include <stdlib.h>
-#include <string.h>
 #include <strings.h>
 
 static void kernel_free_loader_data(efi_mem_map_t* memoryMap)
@@ -75,12 +73,11 @@ void kernel_init(boot_info_t* bootInfo)
     systime_init();
     log_enable_time();
 
-    sysfs_init();
     vfs_init();
     ramfs_init(&bootInfo->ramDisk);
-    syfs_after_vfs_init();
+    sysfs_init();
 
-    log_obj_expose();
+    log_file_expose();
     process_backend_init();
 
     sched_init();

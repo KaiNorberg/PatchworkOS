@@ -1,7 +1,5 @@
 #pragma once
 
-#include "defs.h"
-#include "sync/lock.h"
 #include "sync/rwlock.h"
 #include "sysfs.h"
 #include "utils/map.h"
@@ -13,9 +11,6 @@
 #include "path.h"
 #include "superblock.h"
 
-#include <ctype.h>
-#include <stdatomic.h>
-#include <string.h>
 #include <sys/io.h>
 #include <sys/list.h>
 #include <sys/proc.h>
@@ -27,13 +22,13 @@
 /**
  * @brief Virtual File System.
  * @ingroup kernel
- * @defgroup kernel_vfs
+ * @defgroup kernel_fs_vfs
  *
  */
 
 #define VFS_ROOT_ENTRY_NAME "__root__"
 
-#define VFS_DEVICE_NAME_NONE "__none__"
+#define VFS_DEVICE_NAME_NONE "__no_device__"
 
 typedef struct filesystem filesystem_t;
 
@@ -75,19 +70,15 @@ uint64_t vfs_mountpoint_to_mount_root(path_t* outRoot, const path_t* mountpoint)
 
 inode_t* vfs_get_inode(superblock_t* superblock, inode_number_t number);
 
-dentry_t* vfs_get_dentry(dentry_t* parent, const char* name);
-
+dentry_t* vfs_get_dentry(const dentry_t* parent, const char* name);
 /**
- * @brief Retrive or lookup a dentry.
- * @ingroup kernel_vfs
- * 
- * The `vfs_get_or_lookup_dentry()` function will first try to retrive the specified dentry from the cache. If it does not exist in the cache it will attempt to look up the dentry in its filesystem, if it does not exist then a negative dentry is returned.
- * 
- * @param parent The parent of the dentry.
+ * @brief Get or lookup a dentry for the given name. Will NOT traverse mountpoints.
+ *
+ * @param parent The parent path.
  * @param name The name of the dentry.
- * @return On success, the retrived or lookedup dentry, possibly a negative dentry. On failure, returns ERR and errno is set.
+ * @return On success, the dentry. On failure, returns NULL and errno is set.
  */
-dentry_t* vfs_get_or_lookup_dentry(dentry_t* parent, const char* name);
+dentry_t* vfs_get_or_lookup_dentry(const path_t* parent, const char* name);
 
 uint64_t vfs_add_dentry(dentry_t* dentry);
 
@@ -95,17 +86,17 @@ void vfs_remove_superblock(superblock_t* superblock);
 void vfs_remove_inode(inode_t* inode);
 void vfs_remove_dentry(dentry_t* dentry);
 
-uint64_t vfs_walk(path_t* outPath, const char* pathname);
-uint64_t vfs_walk_parent(path_t* outPath, const char* pathname, char* outLastName);
+uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname);
+uint64_t vfs_walk_parent(path_t* outPath, const pathname_t* pathname, char* outLastName);
 
-uint64_t vfs_mount(const char* deviceName, const char* mountpoint, const char* fsName, superblock_flags_t flags,
+uint64_t vfs_mount(const char* deviceName, const pathname_t* mountpoint, const char* fsName, superblock_flags_t flags,
     void* private);
-uint64_t vfs_unmount(const char* mountpoint);
+uint64_t vfs_unmount(const pathname_t* mountpoint);
 
 bool vfs_is_name_valid(const char* name);
 
-file_t* vfs_open(const char* pathname);
-uint64_t vfs_open2(const char* pathname, file_t* files[2]);
+file_t* vfs_open(const pathname_t* pathname);
+uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2]);
 uint64_t vfs_read(file_t* file, void* buffer, uint64_t count);
 uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count);
 uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin);
@@ -114,10 +105,10 @@ void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot);
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout);
 
 uint64_t vfs_getdirent(file_t* file, dirent_t* buffer, uint64_t amount);
-uint64_t vfs_stat(const char* pathname, stat_t* buffer);
-uint64_t vfs_link(const char* oldPathname, const char* newPathname);
-uint64_t vfs_rename(const char* oldPathname, const char* newPathname);
-uint64_t vfs_remove(const char* pathname);
+uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer);
+uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname);
+uint64_t vfs_rename(const pathname_t* oldPathname, const pathname_t* newPathname);
+uint64_t vfs_remove(const pathname_t* pathname);
 
 /**
  * @brief Helper struct for implemeting 'getdirent()'.

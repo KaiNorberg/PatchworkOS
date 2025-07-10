@@ -1,9 +1,12 @@
 #include "path.h"
 
+#include "fs/dentry.h"
 #include "log/log.h"
 
 #include "vfs.h"
 
+#include <_internal/MAX_NAME.h>
+#include <_internal/MAX_PATH.h>
 #include <errno.h>
 #include <string.h>
 
@@ -29,18 +32,25 @@ void path_flags_init(void)
     }
 }
 
-uint64_t path_parse_pathname(parsed_pathname_t* dest, const char* pathname)
+uint64_t pathname_init(pathname_t* pathname, const char* string)
 {
-    if (dest == NULL || pathname == NULL)
+    if (pathname == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    memset(dest->pathname, 0, MAX_NAME);
-    dest->flags = PATH_NONE;
+    memset(pathname->string, 0, MAX_NAME);
+    pathname->flags = PATH_NONE;
+    pathname->isValid = false;
 
-    uint64_t length = strnlen_s(pathname, MAX_PATH);
+    if (string == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    uint64_t length = strnlen_s(string, MAX_PATH);
     if (length >= MAX_PATH)
     {
         errno = ENAMETOOLONG;
@@ -49,15 +59,15 @@ uint64_t path_parse_pathname(parsed_pathname_t* dest, const char* pathname)
 
     uint64_t index = 0;
     uint64_t currentNameLength = 0;
-    while (pathname[index] != '\0' && pathname[index] != '?')
+    while (string[index] != '\0' && string[index] != '?')
     {
-        if (pathname[index] == '/')
+        if (string[index] == '/')
         {
             currentNameLength = 0;
         }
         else
         {
-            if (!PATH_VALID_CHAR(pathname[index]))
+            if (!PATH_VALID_CHAR(string[index]))
             {
                 errno = EINVAL;
                 return ERR;
@@ -70,36 +80,37 @@ uint64_t path_parse_pathname(parsed_pathname_t* dest, const char* pathname)
             }
         }
 
-        dest->pathname[index] = pathname[index];
+        pathname->string[index] = string[index];
         index++;
     }
 
-    dest->pathname[index] = '\0';
+    pathname->string[index] = '\0';
 
-    if (pathname[index] != '?')
+    if (string[index] != '?')
     {
+        pathname->isValid = true;
         return 0;
     }
 
     index++; // Skip '?'.
-    const char* flags = &pathname[index];
+    const char* flags = &string[index];
 
     while (true)
     {
-        while (pathname[index] == '&')
+        while (string[index] == '&')
         {
             index++;
         }
 
-        if (pathname[index] == '\0')
+        if (string[index] == '\0')
         {
             break;
         }
 
-        const char* token = &pathname[index];
-        while (pathname[index] != '\0' && pathname[index] != '&')
+        const char* token = &string[index];
+        while (string[index] != '\0' && string[index] != '&')
         {
-            if (!isalnum(pathname[index]))
+            if (!isalnum(string[index]))
             {
                 errno = EBADFLAG;
                 return ERR;
@@ -107,7 +118,7 @@ uint64_t path_parse_pathname(parsed_pathname_t* dest, const char* pathname)
             index++;
         }
 
-        uint64_t tokenLength = &pathname[index] - token;
+        uint64_t tokenLength = &string[index] - token;
         if (tokenLength >= MAX_NAME)
         {
             errno = ENAMETOOLONG;
@@ -122,10 +133,76 @@ uint64_t path_parse_pathname(parsed_pathname_t* dest, const char* pathname)
             return ERR;
         }
 
-        dest->flags |= flag->flag;
+        pathname->flags |= flag->flag;
     }
 
+    pathname->isValid = true;
     return 0;
+}
+
+void path_set(path_t* path, mount_t* mount, dentry_t* dentry)
+{
+    if (path->dentry != NULL)
+    {
+        dentry_deref(path->dentry);
+        path->dentry = NULL;
+    }
+
+    if (path->mount != NULL)
+    {
+        mount_deref(path->mount);
+        path->mount = NULL;
+    }
+
+    if (dentry != NULL)
+    {
+        path->dentry = dentry_ref(dentry);
+    }
+
+    if (mount != NULL)
+    {
+        path->mount = mount_ref(mount);
+    }
+}
+
+void path_copy(path_t* dest, const path_t* src)
+{
+    if (dest->dentry != NULL)
+    {
+        dentry_deref(dest->dentry);
+        dest->dentry = NULL;
+    }
+
+    if (dest->mount != NULL)
+    {
+        mount_deref(dest->mount);
+        dest->mount = NULL;
+    }
+
+    if (src->dentry != NULL)
+    {
+        dest->dentry = dentry_ref(src->dentry);
+    }
+
+    if (src->mount != NULL)
+    {
+        dest->mount = mount_ref(src->mount);
+    }
+}
+
+void path_put(path_t* path)
+{
+    if (path->dentry != NULL)
+    {
+        dentry_deref(path->dentry);
+        path->dentry = NULL;
+    }
+
+    if (path->mount != NULL)
+    {
+        mount_deref(path->mount);
+        path->mount = NULL;
+    }
 }
 
 static uint64_t path_handle_dotdot(path_t* current)
@@ -185,26 +262,38 @@ static uint64_t path_handle_dotdot(path_t* current)
     }
 }
 
-static uint64_t path_traverse_component(path_t* current, const char* component)
+uint64_t path_traverse(path_t* outPath, const path_t* parent, const char* component)
 {
-    lock_acquire(&current->dentry->lock);
-    if (current->dentry->flags & DENTRY_MOUNTPOINT)
+    if (!vfs_is_name_valid(component))
     {
-        path_t nextRoot;
-        if (vfs_mountpoint_to_mount_root(&nextRoot, current) == ERR)
+        errno = EINVAL;
+        return ERR;
+    }
+
+    path_t current = PATH_EMPTY;
+    path_copy(&current, parent);
+    PATH_DEFER(&current);
+
+    lock_acquire(&current.dentry->lock);
+    if (current.dentry->flags & DENTRY_MOUNTPOINT)
+    {
+        path_t nextRoot = PATH_EMPTY;
+        if (vfs_mountpoint_to_mount_root(&nextRoot, &current) == ERR)
         {
-            lock_release(&current->dentry->lock);
+            lock_release(&current.dentry->lock);
             return ERR;
         }
+        PATH_DEFER(&nextRoot);
 
-        path_put(current);
-        path_copy(current, &nextRoot);
-        path_put(&nextRoot);
-        return 0;
+        lock_release(&current.dentry->lock);
+        path_copy(&current, &nextRoot);
     }
-    lock_release(&current->dentry->lock);
+    else
+    {
+        lock_release(&current.dentry->lock);
+    }
 
-    dentry_t* next = vfs_get_or_lookup_dentry(current->dentry, component);
+    dentry_t* next = vfs_get_or_lookup_dentry(&current, component);
     if (next == NULL)
     {
         return ERR;
@@ -220,30 +309,28 @@ static uint64_t path_traverse_component(path_t* current, const char* component)
     }
     lock_release(&next->lock);
 
-    dentry_deref(current->dentry);
-    current->dentry = next;
-
+    path_set(outPath, current.mount, next);
     return 0;
 }
 
-uint64_t path_walk(path_t* outPath, const char* pathname, const path_t* start)
+uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* start)
 {
-    if (pathname == NULL)
+    if (pathname == NULL || !pathname->isValid)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    if (pathname[0] == '\0')
+    if (pathname->string[0] == '\0')
     {
         errno = EINVAL;
         return ERR;
     }
 
-    path_t current = {0};
-    const char* p = pathname;
+    path_t current = PATH_EMPTY;
+    const char* p = pathname->string;
 
-    if (pathname[0] == '/')
+    if (pathname->string[0] == '/')
     {
         if (vfs_get_global_root(&current) == ERR)
         {
@@ -258,14 +345,14 @@ uint64_t path_walk(path_t* outPath, const char* pathname, const path_t* start)
             errno = EINVAL;
             return ERR;
         }
-        current.dentry = dentry_ref(start->dentry);
-        current.mount = mount_ref(start->mount);
+        path_copy(&current, start);
     }
+
+    PATH_DEFER(&current);
 
     if (*p == '\0')
     {
         path_copy(outPath, &current);
-        path_put(&current);
         return 0;
     }
 
@@ -284,7 +371,6 @@ uint64_t path_walk(path_t* outPath, const char* pathname, const path_t* start)
 
         if (*p == '?')
         {
-            path_put(&current);
             errno = EBADFLAG;
             return ERR;
         }
@@ -294,7 +380,6 @@ uint64_t path_walk(path_t* outPath, const char* pathname, const path_t* start)
         {
             if (!PATH_VALID_CHAR(*p))
             {
-                path_put(&current);
                 errno = EINVAL;
                 return ERR;
             }
@@ -304,7 +389,6 @@ uint64_t path_walk(path_t* outPath, const char* pathname, const path_t* start)
         uint64_t len = p - componentStart;
         if (len >= MAX_NAME)
         {
-            path_put(&current);
             errno = ENAMETOOLONG;
             return ERR;
         }
@@ -321,54 +405,56 @@ uint64_t path_walk(path_t* outPath, const char* pathname, const path_t* start)
         {
             if (path_handle_dotdot(&current) == ERR)
             {
-                path_put(&current);
                 return ERR;
             }
             continue;
         }
 
-        if (path_traverse_component(&current, component) == ERR)
+        path_t next = PATH_EMPTY;
+        if (path_traverse(&next, &current, component) == ERR)
         {
-            path_put(&current);
             return ERR;
         }
+        PATH_DEFER(&next);
+
+        path_copy(&current, &next);
     }
 
     path_copy(outPath, &current);
-    path_put(&current);
     return 0;
 }
 
-uint64_t path_walk_parent(path_t* outPath, const char* pathname, const path_t* start, char* outLastName)
+uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* start, char* outLastName)
 {
-    if (pathname == NULL || outLastName == NULL)
+    if (pathname == NULL || !pathname->isValid || outLastName == NULL)
     {
         return ERR;
     }
 
     memset(outLastName, 0, MAX_NAME);
 
-    const char* lastSlash = strrchr(pathname, '/');
+    const char* lastSlash = strrchr(pathname->string, '/');
     if (lastSlash == NULL)
     {
-        strcpy(outLastName, pathname);
+        strcpy(outLastName, pathname->string);
         path_copy(outPath, start);
         return 0;
     }
 
     strcpy(outLastName, lastSlash + 1);
 
-    if (lastSlash == pathname)
+    if (lastSlash == pathname->string)
     {
         vfs_get_global_root(outPath);
         return 0;
     }
 
-    uint64_t parentLen = lastSlash - pathname;
-    char parentPath[MAX_PATH];
+    uint64_t parentLen = lastSlash - pathname->string;
+    pathname_t parentPath = {0};
 
-    memcpy(parentPath, pathname, parentLen);
-    parentPath[parentLen] = '\0';
+    memcpy(parentPath.string, pathname, parentLen);
+    parentPath.string[parentLen] = '\0';
+    parentPath.flags = PATH_NONE;
 
     if (!vfs_is_name_valid(outLastName))
     {
@@ -376,36 +462,62 @@ uint64_t path_walk_parent(path_t* outPath, const char* pathname, const path_t* s
         return ERR;
     }
 
-    return path_walk(outPath, parentPath, start);
+    return path_walk(outPath, &parentPath, start);
 }
 
-void path_copy(path_t* dest, const path_t* src)
+uint64_t path_to_name(const path_t* path, pathname_t* pathname)
 {
-    dest->dentry = NULL;
-    dest->mount = NULL;
-
-    if (src->dentry != NULL)
+    if (path == NULL || path->dentry == NULL || path->mount == NULL || pathname == NULL)
     {
-        dest->dentry = dentry_ref(src->dentry);
+        errno = EINVAL;
+        return ERR;
     }
 
-    if (src->mount != NULL)
-    {
-        dest->mount = mount_ref(src->mount);
-    }
-}
+    memset(pathname->string, 0, MAX_PATH);
+    pathname->flags = PATH_NONE;
+    pathname->isValid = false;
 
-void path_put(path_t* path)
-{
-    if (path->dentry != NULL)
+    path_t current = PATH_EMPTY;
+    path_copy(&current, path);
+    PATH_DEFER(&current);
+
+    uint64_t index = MAX_PATH - 1;
+    pathname->string[index] = '\0';
+
+    while (true)
     {
-        dentry_deref(path->dentry);
-        path->dentry = NULL;
+        if (DENTRY_IS_ROOT(current.dentry))
+        {
+            if (current.mount->parent == NULL)
+            {
+                pathname->string[index] = '/';
+                break;
+            }
+            path_set(&current, current.mount->parent, current.mount->mountpoint);
+            continue;
+        }
+
+        uint64_t nameLength = strnlen_s(current.dentry->name, MAX_NAME);
+
+        if (index < nameLength + 1)
+        {
+            errno = ENAMETOOLONG;
+            return ERR;
+        }
+
+        if (nameLength != 0)
+        {
+            index -= nameLength;
+            memcpy(pathname->string + index, current.dentry->name, nameLength);
+
+            index--;
+            pathname->string[index] = '/';
+        }
+
+        path_set(&current, current.mount, current.dentry->parent);
     }
 
-    if (path->mount != NULL)
-    {
-        mount_deref(path->mount);
-        path->mount = NULL;
-    }
+    memmove(pathname->string, pathname->string + index, MAX_PATH - index);
+    pathname->isValid = true;
+    return 0;
 }

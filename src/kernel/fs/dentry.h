@@ -1,22 +1,24 @@
 #pragma once
 
+#include "sched/wait.h"
 #include "sync/lock.h"
 #include "utils/map.h"
-#include "sched/wait.h"
 
 #include <stdatomic.h>
 #include <stdint.h>
-#include <sys/list.h>
 #include <sys/io.h>
+#include <sys/list.h>
 
 typedef struct dentry dentry_t;
 typedef struct dentry_ops dentry_ops_t;
 typedef struct inode inode_t;
 typedef struct superblock superblock_t;
 
-#define DENTRY_DEFER(entry) __attribute__((cleanup(dentry_defer_cleanup))) dentry_t* CONCAT(i, __COUNTER__) = (entry)
+#define DENTRY_DEFER(dentry) __attribute__((cleanup(dentry_defer_cleanup))) dentry_t* CONCAT(i, __COUNTER__) = (dentry)
 
 typedef uint64_t dentry_id_t;
+
+#define DENTRY_IS_ROOT(dentry) (dentry->parent == dentry)
 
 typedef enum
 {
@@ -28,7 +30,6 @@ typedef enum
 
 typedef struct dentry
 {
-    map_entry_t mapEntry;
     dentry_id_t id;
     atomic_uint64_t ref;
     char name[MAX_NAME];
@@ -42,10 +43,12 @@ typedef struct dentry
     dentry_flags_t flags;
     lock_t lock;
     wait_queue_t lookupWaitQueue;
+    map_entry_t mapEntry;
 } dentry_t;
 
 typedef struct dentry_ops
 {
+    uint64_t (*getdirent)(dentry_t* dentry, dirent_t* buffer, uint64_t amount);
     void (*cleanup)(dentry_t* entry);
 } dentry_ops_t;
 
@@ -64,5 +67,13 @@ static inline void dentry_defer_cleanup(dentry_t** entry)
     if (*entry != NULL)
     {
         dentry_deref(*entry);
+        *entry = NULL;
     }
 }
+
+/**
+ * @brief Helper function for a basic getdirent.
+ * @ingroup kernel_vfs
+ *
+ */
+uint64_t dentry_generic_getdirent(dentry_t* dentry, dirent_t* buffer, uint64_t amount);

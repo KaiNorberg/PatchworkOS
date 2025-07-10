@@ -52,13 +52,11 @@ typedef struct
 
 typedef struct local_listener
 {
-    list_entry_t entry;
-    char address[MAX_NAME];
     local_backlog_t backlog;
     lock_t lock;
     wait_queue_t waitQueue;
     atomic_uint64_t ref;
-    sysfs_file_t sysfs_file;
+    sysfs_file_t file;
 } local_listener_t;
 
 typedef struct

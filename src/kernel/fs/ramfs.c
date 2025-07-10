@@ -1,16 +1,16 @@
 #include "ramfs.h"
 
+#include "fs/mount.h"
+#include "fs/path.h"
 #include "log/log.h"
 #include "mem/heap.h"
-#include "mem/pmm.h"
-#include "sched/thread.h"
+#include "sync/lock.h"
 #include "sysfs.h"
 #include "vfs.h"
 
 #include <boot/boot_info.h>
 
 #include <assert.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/list.h>
 #include <sys/math.h>
@@ -19,12 +19,11 @@ static ramfs_inode_t* root;
 
 static _Atomic(inode_number_t) newNumber = ATOMIC_VAR_INIT(0);
 
-static ramfs_inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, void* data,
-    uint64_t size);
+static ramfs_inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, void* data, uint64_t size);
 
 static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
-{    
-    ramfs_inode_t* ramfsInode = CONTAINER_OF(file->dentry->inode, ramfs_inode_t, inode);
+{
+    ramfs_inode_t* ramfsInode = CONTAINER_OF(file->inode, ramfs_inode_t, inode);
     LOCK_DEFER(&ramfsInode->inode.lock);
 
     if (ramfsInode->data == NULL)
@@ -37,7 +36,7 @@ static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count, uint64_t*
 
 static uint64_t ramfs_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
-    ramfs_inode_t* ramfsInode = CONTAINER_OF(file->dentry->inode, ramfs_inode_t, inode);
+    ramfs_inode_t* ramfsInode = CONTAINER_OF(file->inode, ramfs_inode_t, inode);
     LOCK_DEFER(&ramfsInode->inode.lock);
 
     if (file->flags & PATH_APPEND)
@@ -75,9 +74,9 @@ static lookup_result_t ramfs_lookup(inode_t* dir, dentry_t* target)
 }
 
 static uint64_t ramfs_create(inode_t* dir, dentry_t* target, path_flags_t flags)
-{   
+{
     errno = ENOSYS;
-    return ERR; 
+    return ERR;
 
     /*ramfs_inode_t* inode = CONTAINER_OF(dir, ramfs_inode_t, inode);
     LOCK_DEFER(&inode->inode.lock);
@@ -102,8 +101,8 @@ static uint64_t ramfs_create(inode_t* dir, dentry_t* target, path_flags_t flags)
         return existing;
     }
 
-    ramfs_inode_t* newInode = ramfs_inode_new(parent->superblock, flags & PATH_DIRECTORY ? INODE_DIR : INODE_FILE, NULL, 0);
-    if (newInode == NULL)
+    ramfs_inode_t* newInode = ramfs_inode_new(parent->superblock, flags & PATH_DIRECTORY ? INODE_DIR : INODE_FILE, NULL,
+    0); if (newInode == NULL)
     {
         return NULL;
     }
@@ -154,7 +153,7 @@ static inode_t* ramfs_rename(inode_t* oldParent, dentry_t* old, inode_t* newPare
 }
 
 static void ramfs_inode_cleanup(inode_t* inode)
-{    
+{
     ramfs_inode_t* ramfsInode = CONTAINER_OF(inode, ramfs_inode_t, inode);
 
     if (ramfsInode->data != NULL)
@@ -174,7 +173,7 @@ static inode_ops_t inodeOps = {
 };
 
 static dentry_ops_t dentryOps = {
-
+    .getdirent = dentry_generic_getdirent,
 };
 
 static inode_t* ramfs_alloc_inode(superblock_t* superblock)
@@ -255,7 +254,7 @@ static dentry_t* ramfs_mount(filesystem_t* fs, superblock_flags_t flags, const c
     if (inode == NULL)
     {
         return NULL;
-    } 
+    }
     INODE_DEFER(&inode->inode);
 
     superblock->root = ramfs_load_dir(superblock, NULL, VFS_ROOT_ENTRY_NAME, private);
@@ -272,8 +271,7 @@ static filesystem_t ramfs = {
     .mount = ramfs_mount,
 };
 
-static ramfs_inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, void* data,
-    uint64_t size)
+static ramfs_inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, void* data, uint64_t size)
 {
     // Becouse of the ramfs_alloc_inode function, this allocated inode is actually a ramfs_inode_t.
     inode_t* inode = inode_new(superblock, atomic_fetch_add(&newNumber, 1), type, &inodeOps, &fileOps);
@@ -309,5 +307,5 @@ void ramfs_init(ram_disk_t* disk)
     LOG_INFO("ramfs: init\n");
 
     assert(vfs_register_fs(&ramfs) != ERR);
-    assert(vfs_mount(VFS_DEVICE_NAME_NONE, "/", RAMFS_NAME, SUPER_NONE, disk->root) != ERR);
+    assert(vfs_mount(VFS_DEVICE_NAME_NONE, NULL, RAMFS_NAME, SUPER_NONE, disk->root) != ERR);
 }

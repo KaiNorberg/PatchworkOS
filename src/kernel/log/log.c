@@ -25,10 +25,19 @@
 #include <sys/proc.h>
 
 static log_state_t state = {0};
-static log_obj_t obj = {0};
+static log_file_t klog = {0};
 static screen_t screen = {0};
 
 static lock_t lock;
+
+static const char* levelNames[] = {
+    [LOG_LEVEL_DEBUG] = "DBUG",
+    [LOG_LEVEL_USER] = "USER",
+    [LOG_LEVEL_INFO] = "INFO",
+    [LOG_LEVEL_WARN] = "WARN",
+    [LOG_LEVEL_ERR] = "ERR ",
+};
+
 
 extern uint64_t _kernelStart;
 extern uint64_t _kernelEnd;
@@ -39,23 +48,34 @@ void log_init(void)
 
     atomic_init(&state.panickingCpuId, LOG_NO_PANIC_CPU_ID);
     state.config.isTimeEnabled = false;
+
+#if CONFIG_LOG_SERIAL
     state.config.outputs = LOG_OUTPUT_SERIAL; // Serial will only do anything if CONFIG_LOG_SERIAL is true.
+#else
+    state.config.outputs = 0;
+#endif
+
 #ifdef DEBUG
     state.config.minLevel = LOG_LEVEL_DEBUG;
 #else
     state.config.minLevel = LOG_LEVEL_USER;
 #endif
+
     state.isLastCharNewline = true;
 
-    ring_init(&obj.ring, obj.buffer, LOG_MAX_BUFFER);
-    state.config.outputs |= LOG_OUTPUT_OBJ;
+    ring_init(&klog.ring, klog.buffer, LOG_MAX_BUFFER);
+    state.config.outputs |= LOG_OUTPUT_FILE;
 
 #if CONFIG_LOG_SERIAL
     com_init(COM1);
 #endif
 
-    LOG_INFO("Booting %s %s (Built %s %s)\n", OS_NAME, OS_VERSION, __DATE__, __TIME__);
-    LOG_INFO("Copyright (C) 2025 PatchworkOS Project. MIT Licensed. See /usr/license/LICENSE for details.\n");
+    LOG_INFO("Booting %s-kernel %s (Built %s %s)\n", OS_NAME, OS_VERSION, __DATE__, __TIME__);
+    LOG_INFO("Copyright (C) 2025 Kai Norberg. MIT Licensed. See /usr/license/LICENSE for details.\n");
+    LOG_INFO("log: min_level=%s outputs=%s%s%s\n", levelNames[state.config.minLevel],
+        (state.config.outputs & LOG_OUTPUT_SERIAL) ? "serial " : "",
+        (state.config.outputs & LOG_OUTPUT_SCREEN) ? "screen " : "",
+        (state.config.outputs & LOG_OUTPUT_FILE) ? "file " : "");
 }
 
 void log_enable_time(void)
@@ -74,7 +94,7 @@ void log_screen_enable(gop_buffer_t* framebuffer)
         assert(screen_init(&screen, framebuffer) != ERR);
     }
 
-    screen_enable(&screen, &obj.ring);
+    screen_enable(&screen, &klog.ring);
     state.config.outputs |= LOG_OUTPUT_SCREEN;
 }
 
@@ -90,7 +110,7 @@ static uint64_t klog_read(file_t* file, void* buffer, uint64_t count, uint64_t* 
 {
     LOCK_DEFER(&lock);
 
-    uint64_t result = ring_read_at(&obj.ring, *offset, buffer, count);
+    uint64_t result = ring_read_at(&klog.ring, *offset, buffer, count);
     *offset += result;
     return result;
 }
@@ -120,21 +140,20 @@ static file_ops_t klogOps = {
     .write = klog_write,
 };
 
-void log_obj_expose(void)
+void log_file_expose(void)
 {
     LOCK_DEFER(&lock);
 
-    assert(sysfs_file_init_path(&obj.obj, "/", "klog", &klogOps, NULL) != ERR);
+    assert(sysfs_file_init(&klog.file, sysfs_get_default(), "klog", NULL, &klogOps, NULL) != ERR);
 }
 
 static void log_print_to_outputs(const char* string, uint64_t length)
 {
-    if (state.config.outputs & LOG_OUTPUT_OBJ)
+    if (state.config.outputs & LOG_OUTPUT_FILE)
     {
-        ring_write(&obj.ring, string, length);
+        ring_write(&klog.ring, string, length);
     }
 
-#if CONFIG_LOG_SERIAL
     if (state.config.outputs & LOG_OUTPUT_SERIAL)
     {
         for (uint64_t i = 0; i < length; i++)
@@ -142,7 +161,6 @@ static void log_print_to_outputs(const char* string, uint64_t length)
             com_write(COM1, string[i]);
         }
     }
-#endif
 
     if (state.config.outputs & LOG_OUTPUT_SCREEN)
     {
@@ -156,14 +174,6 @@ static void log_print_header(log_level_t level)
     {
         return;
     }
-
-    static const char* levelNames[] = {
-        [LOG_LEVEL_DEBUG] = "DBUG",
-        [LOG_LEVEL_USER] = "USER",
-        [LOG_LEVEL_INFO] = "INFO",
-        [LOG_LEVEL_WARN] = "WARN",
-        [LOG_LEVEL_ERR] = "ERR ",
-    };
 
     uint64_t uptime = state.config.isTimeEnabled ? systime_uptime() : 0;
 

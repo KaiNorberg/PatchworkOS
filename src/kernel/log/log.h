@@ -8,6 +8,9 @@
 
 #include <stdatomic.h>
 
+// TODO: Make the logging system common between the bootloader and kernel. Perhaps a shared "logging context" passed via
+// bootinfo?
+
 #define LOG_MAX_BUFFER 0x1000
 #define LOG_MAX_TIMESTAMP_BUFFER 32
 
@@ -19,7 +22,7 @@ typedef enum
 {
     LOG_OUTPUT_SERIAL = 1 << 0,
     LOG_OUTPUT_SCREEN = 1 << 1,
-    LOG_OUTPUT_OBJ = 1 << 2
+    LOG_OUTPUT_FILE = 1 << 2
 } log_output_t;
 
 typedef enum
@@ -43,8 +46,8 @@ typedef struct
 {
     ring_t ring;
     char buffer[LOG_MAX_BUFFER];
-    sysfs_file_t obj;
-} log_obj_t;
+    sysfs_file_t file;
+} log_file_t;
 
 typedef struct
 {
@@ -64,7 +67,7 @@ void log_screen_enable(gop_buffer_t* framebuffer);
 
 void log_disable_screen(void);
 
-void log_obj_expose(void);
+void log_file_expose(void);
 
 uint64_t log_print(log_level_t level, const char* format, ...);
 

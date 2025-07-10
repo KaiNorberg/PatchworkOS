@@ -82,7 +82,7 @@ static file_ops_t nullOps = {
 
 void const_init(void)
 {
-    assert(sysfs_file_init_path(&oneFile, "/", "one", &oneOps, NULL) != ERR);
-    assert(sysfs_file_init_path(&zeroFile, "/", "zero", &zeroOps, NULL) != ERR);
-    assert(sysfs_file_init_path(&nullFile, "/", "null", &nullOps, NULL) != ERR);
+    assert(sysfs_file_init(&oneFile, sysfs_get_default(), "one", NULL, &oneOps, NULL) != ERR);
+    assert(sysfs_file_init(&zeroFile, sysfs_get_default(), "zero", NULL, &zeroOps, NULL) != ERR);
+    assert(sysfs_file_init(&nullFile, sysfs_get_default(), "null", NULL, &nullOps, NULL) != ERR);
 }

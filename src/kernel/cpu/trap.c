@@ -67,8 +67,8 @@ static void exception_handler(trap_frame_t* trapFrame)
             if (faultAddress >= LOADER_GUARD_PAGE_BOTTOM(thread->id) &&
                 faultAddress <= LOADER_GUARD_PAGE_TOP(thread->id)) // Fault in guard page
             {
-                LOG_INFO("user exception: process killed due to stack overflow tid=%d pid=%d address=%p\n", thread->id,
-                    thread->process->id, faultAddress);
+                LOG_WARN("trap: process killed due to stack overflow tid=%d pid=%d address=%p rip=%p\n", thread->id,
+                    thread->process->id, faultAddress, trapFrame->rip);
 
                 break;
             }
@@ -77,21 +77,21 @@ static void exception_handler(trap_frame_t* trapFrame)
                 !(trapFrame->vector & PAGE_FAULT_PRESENT)) // Fault in user stack region due to non present page
             {
                 uintptr_t pageAddress = ROUND_DOWN(faultAddress, PAGE_SIZE);
-                LOG_INFO("expanding user stack: %p pid=%d\n", pageAddress, thread->process->id);
+                LOG_DEBUG("trap: expanding user stack %p pid=%d tid=%d\n", pageAddress, thread->process->id, thread->id);
                 if (vmm_alloc(&thread->process->space, (void*)pageAddress, PAGE_SIZE, PROT_READ | PROT_WRITE) != NULL)
                 {
                     return;
                 }
             }
 
-            LOG_INFO("user exception: process killed due to page fault tid=%d pid=%d address=%p\n", thread->id,
-                thread->process->id, faultAddress);
+            LOG_WARN("trap: process killed due to page fault tid=%d pid=%d address=%p rip=%p error=0x%x\n", thread->id,
+                thread->process->id, faultAddress, trapFrame->rip, trapFrame->errorCode);
         }
         break;
         default:
         {
-            LOG_INFO(
-                "user exception: process killed due to exception tid=%d pid=%d vector=0x%x error=%p rip=%p cr2=%p\n",
+            LOG_WARN(
+                "trap: process killed due to exception tid=%d pid=%d vector=0x%x error=%p rip=%p cr2=%p\n",
                 thread->id, thread->process->id, trapFrame->vector, trapFrame->errorCode, trapFrame->rip, cr2_read());
         }
         }

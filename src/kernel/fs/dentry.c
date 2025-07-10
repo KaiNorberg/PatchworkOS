@@ -1,8 +1,8 @@
 #include "dentry.h"
 
+#include "log/log.h"
 #include "mem/heap.h"
 #include "sched/thread.h"
-#include "log/log.h"
 #include "vfs.h"
 
 dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* name)
@@ -37,6 +37,24 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     lock_init(&dentry->lock);
     wait_queue_init(&dentry->lookupWaitQueue);
 
+    return dentry;
+}
+
+void dentry_make_positive(dentry_t* dentry, inode_t* inode)
+{
+    LOCK_DEFER(&dentry->lock);
+
+    // Sanity checks.
+    assert(dentry->flags & DENTRY_NEGATIVE);
+    assert(dentry->inode == NULL);
+
+    if (inode != NULL)
+    {
+        dentry->inode = inode_ref(inode);
+        dentry->flags &= ~DENTRY_NEGATIVE;
+    }
+    dentry->flags &= ~DENTRY_LOOKUP_PENDING;
+
     if (dentry->parent != NULL && dentry->parent != dentry)
     {
         lock_acquire(&dentry->parent->lock);
@@ -44,24 +62,6 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
         lock_release(&dentry->parent->lock);
     }
 
-    return dentry;
-}
-
-void dentry_make_positive(dentry_t* dentry, inode_t* inode)
-{
-    LOCK_DEFER(&dentry->lock);
-    
-    // Sanity checks.
-    assert(dentry->flags & DENTRY_NEGATIVE);
-    assert(dentry->inode == NULL);
-    
-    if (inode != NULL) 
-    {
-        dentry->inode = inode_ref(inode);
-        dentry->flags &= ~DENTRY_NEGATIVE;
-    }    
-    dentry->flags &= ~DENTRY_LOOKUP_PENDING;
-    
     wait_unblock(&dentry->lookupWaitQueue, UINT64_MAX);
 }
 
@@ -86,6 +86,7 @@ void dentry_free(dentry_t* dentry)
         lock_release(&dentry->parent->lock);
 
         dentry_deref(dentry->parent);
+        dentry->parent = NULL;
     }
 
     if (dentry->ops != NULL && dentry->ops->cleanup != NULL)
@@ -111,4 +112,23 @@ void dentry_deref(dentry_t* dentry)
     {
         dentry_free(dentry);
     }
+}
+
+uint64_t dentry_generic_getdirent(dentry_t* dentry, dirent_t* buffer, uint64_t amount)
+{
+    getdirent_ctx_t ctx = {0};
+
+    getdirent_write(&ctx, buffer, amount, dentry->inode->number, dentry->inode->type, ".");
+    getdirent_write(&ctx, buffer, amount, dentry->parent->inode->number, dentry->parent->inode->type, "..");
+
+    LOCK_DEFER(&dentry->lock);
+
+    dentry_t* child;
+    LIST_FOR_EACH(child, &dentry->children, siblingEntry)
+    {
+        LOCK_DEFER(&child->lock);
+        getdirent_write(&ctx, buffer, amount, child->inode->number, child->inode->type, child->name);
+    }
+
+    return ctx.total;
 }

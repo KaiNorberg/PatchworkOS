@@ -48,8 +48,7 @@ typedef struct superblock_ops
     void (*cleanup)(superblock_t* superblock);
 } superblock_ops_t;
 
-superblock_t* superblock_new(filesystem_t* fs, const char* deviceName, superblock_ops_t* ops,
-    dentry_ops_t* dentryOps);
+superblock_t* superblock_new(filesystem_t* fs, const char* deviceName, superblock_ops_t* ops, dentry_ops_t* dentryOps);
 void superblock_free(superblock_t* superblock);
 superblock_t* superblock_ref(superblock_t* superblock);
 void superblock_deref(superblock_t* superblock);

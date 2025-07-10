@@ -1,6 +1,9 @@
 #include "process.h"
 
 #include "fs/ctl.h"
+#include "fs/file.h"
+#include "fs/path.h"
+#include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "log/log.h"
 #include "mem/heap.h"
@@ -8,7 +11,9 @@
 #include "sync/lock.h"
 #include "sync/rwlock.h"
 
+#include <_internal/MAX_PATH.h>
 #include <assert.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <sys/io.h>
 #include <sys/list.h>
@@ -24,6 +29,8 @@ static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 static rwlock_t treeLock;
 
 static process_dir_t self;
+
+static sysfs_group_t procGroup;
 
 static process_t* process_file_get_process(file_t* file)
 {
@@ -88,7 +95,7 @@ CTL_STANDARD_OPS_DEFINE(ctlOps, PATH_NONE,
         {0},
     });
 
-/*static uint64_t process_cwd_view_init(file_t* file, view_t* view)
+static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     process_t* process = process_file_get_process(file);
     if (process == NULL)
@@ -96,32 +103,25 @@ CTL_STANDARD_OPS_DEFINE(ctlOps, PATH_NONE,
         return ERR;
     }
 
-    char* cwd = heap_alloc(MAX_PATH, HEAP_NONE);
-    if (cwd == NULL)
-    {
-        return ERR;
-    }
-    cwd[0] = '\0';
+    pathname_t cwd;
 
     lock_acquire(&process->vfsCtx.lock);
-    //path_to_string(&process->vfsCtx.cwd, cwd); // TODO: Implement path to string conversion.
+    if (path_to_name(&process->vfsCtx.cwd, &cwd) == ERR)
+    {
+        lock_release(&process->vfsCtx.lock);
+        return ERR;
+    }
     lock_release(&process->vfsCtx.lock);
 
-    view->length = strlen(cwd) + 1;
-    view->buffer = cwd;
-    return 0;
+    uint64_t length = strlen(cwd.string);
+    return BUFFER_READ(buffer, count, offset, cwd.string, length);
 }
 
-static void process_cwd_view_deinit(view_t* view)
-{
-    heap_free(view->buffer);
-}*/
-
 static file_ops_t cwdOps = {
-
+    .read = process_cwd_read,
 };
 
-/*static uint64_t process_cmdline_view_init(file_t* file, view_t* view)
+static uint64_t process_cmdline_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     process_t* process = process_file_get_process(file);
     if (process == NULL)
@@ -134,16 +134,14 @@ static file_ops_t cwdOps = {
     {
         return 0;
     }
+
     char* last = (char*)((uint64_t)process->argv.buffer + process->argv.size);
     uint64_t length = last - first;
-
-    view->buffer = first;
-    view->length = length;
-    return 0;
-}*/
+    return BUFFER_READ(buffer, count, offset, last, length);
+}
 
 static file_ops_t cmdlineOps = {
-
+    .read = process_cmdline_read,
 };
 
 static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
@@ -180,13 +178,53 @@ static file_ops_t noteOps = {
     .write = process_note_write,
 };
 
-static void process_dir_init(process_dir_t* dir, const char* name, process_t* process)
+static void process_inode_cleanup(inode_t* inode)
 {
-    assert(sysfs_dir_init(&dir->sysfs_dir, "/proc", name, process) != ERR);
-    assert(sysfs_file_init(&dir->ctlFile, &dir->sysfs_dir, "ctl", &ctlOps, process) != ERR);
-    assert(sysfs_file_init(&dir->cwdFile, &dir->sysfs_dir, "cwd", &cwdOps, process) != ERR);
-    assert(sysfs_file_init(&dir->cmdlineFile, &dir->sysfs_dir, "cmdline", &cmdlineOps, process) != ERR);
-    assert(sysfs_file_init(&dir->noteFile, &dir->sysfs_dir, "note", &noteOps, process) != ERR);
+    process_t* process = inode->private;
+    LOG_DEBUG("process: cleanup pid=%d\n", process->id);
+    space_deinit(&process->space);
+    argv_deinit(&process->argv);
+    wait_queue_deinit(&process->queue);
+    futex_ctx_deinit(&process->futexCtx);
+    heap_free(process);
+}
+
+static inode_ops_t processInodeOps = {
+    .cleanup = process_inode_cleanup,
+};
+
+static uint64_t process_dir_init(process_dir_t* dir, const char* name, process_t* process)
+{
+    if (sysfs_dir_init(&dir->dir, &procGroup.root, name, &processInodeOps, process) == ERR)
+    {
+        return ERR;
+    }
+
+    if (sysfs_file_init(&dir->ctlFile, &dir->dir, "ctl", NULL, &ctlOps, process) == ERR)
+    {
+        sysfs_dir_deinit(&dir->dir);
+        return ERR;
+    }
+
+    if (sysfs_file_init(&dir->cwdFile, &dir->dir, "cwd", NULL, &cwdOps, process) == ERR)
+    {
+        sysfs_dir_deinit(&dir->dir);
+        return ERR;
+    }
+
+    if (sysfs_file_init(&dir->cmdlineFile, &dir->dir, "cmdline", NULL, &cmdlineOps, process) == ERR)
+    {
+        sysfs_dir_deinit(&dir->dir);
+        return ERR;
+    }
+
+    if (sysfs_file_init(&dir->noteFile, &dir->dir, "note", NULL, &noteOps, process) == ERR)
+    {
+        sysfs_dir_deinit(&dir->dir);
+        return ERR;
+    }
+
+    return 0;
 }
 
 process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, priority_t priority)
@@ -212,7 +250,7 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
     }
     else if (parent != NULL)
     {
-        path_t parentCwd;
+        path_t parentCwd = PATH_EMPTY;
         vfs_ctx_get_cwd(&parent->vfsCtx, &parentCwd);
 
         vfs_ctx_init(&process->vfsCtx, &parentCwd);
@@ -249,18 +287,9 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
         process->parent = NULL;
     }
 
+    LOG_INFO("process: new process created pid=%d parent=%d priority=%d\n",
+             process->id, parent ? parent->id : 0, priority);
     return process;
-}
-
-static void process_on_free(sysfs_dir_t* dir)
-{
-    process_t* process = dir->private;
-    LOG_INFO("process: on free pid=%d\n", process->id);
-    space_deinit(&process->space);
-    argv_deinit(&process->argv);
-    wait_queue_deinit(&process->queue);
-    futex_ctx_deinit(&process->futexCtx);
-    heap_free(process);
 }
 
 void process_free(process_t* process)
@@ -282,9 +311,9 @@ void process_free(process_t* process)
         process->parent = NULL;
     }
 
-    vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_on_free
+    vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_cleanup
     wait_unblock(&process->queue, WAIT_ALL);
-    sysfs_dir_deinit(&process->dir.sysfs_dir, process_on_free);
+    sysfs_dir_deinit(&process->dir.dir);
 }
 
 bool process_is_child(process_t* process, pid_t parentId)
@@ -311,8 +340,10 @@ void process_backend_init(void)
 {
     rwlock_init(&treeLock);
 
-    LOG_INFO("process: init self dir\n");
-    process_dir_init(&self, "self", NULL);
+    LOG_INFO("process: init\n");
+
+    assert(sysfs_group_init(&procGroup, PATHNAME("/proc")) != ERR);
+    assert(process_dir_init(&self, "self", NULL) != ERR);
 
     LOG_INFO("process: create kernel process\n");
     kernelProcess = process_new(NULL, NULL, NULL, PRIORITY_MAX - 1);

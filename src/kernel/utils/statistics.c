@@ -89,9 +89,9 @@ static file_ops_t memOps = {
 
 void statistics_init(void)
 {
-    assert(sysfs_dir_init(&statDir, "/", "stat", NULL) != ERR);
-    assert(sysfs_file_init(&cpuFile, &statDir, "cpu", &cpuOps, NULL) != ERR);
-    assert(sysfs_file_init(&memFile, &statDir, "mem", &memOps, NULL) != ERR);
+    assert(sysfs_dir_init(&statDir, sysfs_get_default(), "stat", NULL, NULL) != ERR);
+    assert(sysfs_file_init(&cpuFile, &statDir, "cpu", NULL, &cpuOps, NULL) != ERR);
+    assert(sysfs_file_init(&memFile, &statDir, "mem", NULL, &memOps, NULL) != ERR);
 }
 
 void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* self)

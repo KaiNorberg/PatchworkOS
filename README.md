@@ -49,24 +49,24 @@ Patchwork strictly follows the "everything is a file" philosophy in a way simila
 
 ### Sockets
 
-In order to create a local socket, you open the ```/dev/net/local/new``` file, which will return a file that acts as the handle for your socket. Reading from this file will return the ID of your created socket so, for example, you can do
+In order to create a local socket, you open the ```/net/local/new``` file, which will return a file that acts as the handle for your socket. Reading from this file will return the ID of your created socket so, for example, you can do
 
 ```c
-    fd_t handle = open("/dev/net/local/new");
+    fd_t handle = open("/net/local/new");
     char id[32];
     read(handle, id, 32);
 ```
 
-Note that when the handle is closed, the socket is also freed. The ID that the handle returns is the name of a directory that has been created in the "/dev/net/local" directory, in which there are three files, these include:
+Note that when the handle is closed, the socket is also freed. The ID that the handle returns is the name of a directory that has been created in the "/net/local" directory, in which there are three files, these include:
 
 - ```data``` - used to send and retrieve data.
 - ```ctl``` - used to send commands.
 - ```accept``` - used to accept incoming connections.
 
-So, for example, the sockets data file is located at ```/dev/net/local/[id]/data```. Note that only the process that created the socket or its children can open these files. Now say we want to make our socket into a server, we would then use the bind and listen commands, for example
+So, for example, the sockets data file is located at ```/net/local/[id]/data```. Note that only the process that created the socket or its children can open these files. Now say we want to make our socket into a server, we would then use the bind and listen commands, for example
 
 ```c
-    fd_t ctl = openf("/dev/net/local/%s/ctl", id);
+    fd_t ctl = openf("/net/local/%s/ctl", id);
     writef(ctl, "bind myserver");
     writef(ctl, "listen");
     close(ctl);
@@ -75,17 +75,17 @@ So, for example, the sockets data file is located at ```/dev/net/local/[id]/data
 Note the use of openf() which allows us to open files via a formatted path and that we name our server myserver. If we wanted to accept a connection using our newly created server, we just open its accept file, like this
 
 ```c
-    fd_t fd = openf("/dev/net/local/%s/accept", id);
+    fd_t fd = openf("/net/local/%s/accept", id);
 ```
 
 The returned file descriptor can be used to send and receive data, just like when calling accept() in for example Linux or other POSIX operating systems. This is practically true of the entire socket API, apart from using these weird files everything (should) work as expected. For the sake of completeness, if we wanted to connect to this server, we can do something like this
 
 ```c
-    fd_t handle = open("/dev/net/local/new");
+    fd_t handle = open("/net/local/new");
     char id[32];
     read(handle, id, 32);
 
-    fd_t ctl = openf("/dev/net/local/%s/ctl", id);
+    fd_t ctl = openf("/net/local/%s/ctl", id);
     writef(ctl, "connect myserver");
     close(ctl);
 ```
@@ -95,7 +95,7 @@ The returned file descriptor can be used to send and receive data, just like whe
 You may have noticed that, in the above section, the open() function does not take in a flags argument or anything similar. This is because flags are part of the file path directly so if you wanted to create a non-blocking socket, you would use
 
 ```c
-    fd_t handle = open("/dev/net/local/new?nonblock");
+    fd_t handle = open("/net/local/new?nonblock");
 ```
 
 Multiple flags can be separated with the ```&``` character, like an internet link. However, there are no read and/or write flags, all files are both read and write.
@@ -172,7 +172,7 @@ menuentry "Patchwork OS" {
 ```
 Regenerate grub configuration using `sudo grub2-mkconfig -o /boot/grub2/grub.cfg`.
 
-Finally copy the generated `.img` file to your `/boot` directory.
+Finally copy the generated `.img` file to your `/boot` directory, this can also be done with `make grub_loopback`.
 
 You should now see a new entry in your GRUB boot menu allowing you to boot into the OS, like dual booting, but without the need to create a partition.
 

@@ -119,7 +119,8 @@ static void sched_init_spawn_boot_thread(void)
     atomic_store(&thread->state, THREAD_RUNNING);
     self->sched.runThread = thread;
 
-    LOG_INFO("sched: spawned boot thread\n");
+    LOG_INFO("sched: spawned boot thread pid=%d tid=%d\n",
+             thread->process->id, thread->id);
 }
 
 void sched_init(void)
@@ -167,7 +168,13 @@ thread_t* sched_thread(void)
 
 process_t* sched_process(void)
 {
-    return sched_thread()->process;
+    thread_t* thread = sched_thread();
+    if (thread == NULL)
+    {
+        return NULL;
+    }
+
+    return thread->process;
 }
 
 void sched_process_exit(uint64_t status)
@@ -176,6 +183,9 @@ void sched_process_exit(uint64_t status)
     sched_cpu_ctx_t* ctx = &smp_self()->sched;
     thread_t* thread = ctx->runThread;
     process_t* process = thread->process;
+
+    LOG_DEBUG("sched: process exit pid=%d tid=%d status=%llu\n",
+            process->id, thread->id, status);
 
     assert(atomic_exchange(&thread->state, THREAD_ZOMBIE) == THREAD_RUNNING);
 
@@ -188,6 +198,7 @@ void sched_process_exit(uint64_t status)
 
     process->threads.isDying = true;
 
+    uint64_t killCount = 0;
     thread_t* other;
     LIST_FOR_EACH(other, &process->threads.list, processEntry)
     {
@@ -196,6 +207,13 @@ void sched_process_exit(uint64_t status)
             continue;
         }
         thread_send_note(other, "kill", 4);
+        killCount++;
+    }
+
+    if (killCount > 0)
+    {
+        LOG_DEBUG("sched: sent kill note to %llu threads in process pid=%d\n",
+                killCount, process->id);
     }
 
     smp_put();
@@ -438,7 +456,8 @@ bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
     break;
     default:
     {
-        log_panic(NULL, "sched: invalid thread state %d", state);
+        log_panic(NULL, "sched: invalid thread state %d (pid=%d tid=%d)",
+                state, ctx->runThread->process->id, ctx->runThread->id);
     }
     }
 

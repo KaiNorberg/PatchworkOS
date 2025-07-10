@@ -442,11 +442,11 @@ uint64_t mkdir(const char* path);
 
 /**
  * @brief Creates a hardlink.
- * 
- * The `link()` function creates a hardlink between the old location and the new one. 
- * 
- * @param oldPath 
- * @param newPath 
+ *
+ * The `link()` function creates a hardlink between the old location and the new one.
+ *
+ * @param oldPath
+ * @param newPath
  * @return On success, returns 0. On failure, returns `ERR` and errno is set.
  */
 uint64_t link(const char* oldPath, const char* newPath);

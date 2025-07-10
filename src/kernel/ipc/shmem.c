@@ -16,8 +16,8 @@
 
 static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
-static sysfs_dir_t dir;
-static sysfs_file_t new;
+static sysfs_dir_t shmemDir;
+static sysfs_file_t newFile;
 
 static shmem_t* shmem_ref(shmem_t* shmem)
 {
@@ -25,25 +25,11 @@ static shmem_t* shmem_ref(shmem_t* shmem)
     return shmem;
 }
 
-static void shmem_on_free(sysfs_file_t* sysfs_file)
-{
-    shmem_t* shmem = sysfs_file->private;
-    if (shmem->segment != NULL)
-    {
-        for (uint64_t i = 0; i < shmem->segment->pageAmount; i++)
-        {
-            pmm_free(shmem->segment->pages[i]);
-        }
-        heap_free(shmem->segment);
-    }
-    heap_free(shmem);
-}
-
 static void shmem_deref(shmem_t* shmem)
 {
     if (atomic_fetch_sub(&shmem->ref, 1) <= 1)
     {
-        sysfs_file_deinit(&shmem->obj, shmem_on_free);
+        sysfs_file_deinit(&shmem->obj);
     }
 }
 
@@ -132,14 +118,40 @@ static uint64_t shmem_open(file_t* file)
 static void shmem_file_cleanup(file_t* file)
 {
     shmem_t* shmem = file->private;
-    shmem_deref(shmem);
+    if (shmem != NULL)
+    {
+        shmem_deref(shmem);
+    }
 }
 
-static file_ops_t normalOps = {
+static file_ops_t normalFileOps = {
     .open = shmem_open,
     .read = shmem_read,
     .mmap = shmem_mmap,
     .cleanup = shmem_file_cleanup,
+};
+
+static void shmem_inode_cleanup(inode_t* inode)
+{
+    shmem_t* shmem = inode->private;
+    if (shmem == NULL)
+    {
+        return;
+    }
+
+    if (shmem->segment != NULL)
+    {
+        for (uint64_t i = 0; i < shmem->segment->pageAmount; i++)
+        {
+            pmm_free(shmem->segment->pages[i]);
+        }
+        heap_free(shmem->segment);
+    }
+    heap_free(shmem);
+}
+
+static inode_ops_t inodeOps = {
+    .cleanup = shmem_inode_cleanup,
 };
 
 static uint64_t shmem_new_open(file_t* file)
@@ -150,24 +162,28 @@ static uint64_t shmem_new_open(file_t* file)
         return ERR;
     }
 
-    file->ops = &normalOps;
-    file->private = shmem;
-
     atomic_init(&shmem->ref, 1);
     lock_init(&shmem->lock);
     ulltoa(atomic_fetch_add(&newId, 1), shmem->id, 10);
     shmem->segment = NULL;
-    assert(sysfs_file_init(&shmem->obj, &dir, shmem->id, &normalOps, shmem) != ERR);
+    if (sysfs_file_init(&shmem->obj, &shmemDir, shmem->id, &inodeOps, &normalFileOps, shmem) == ERR)
+    {
+        heap_free(shmem);
+        return ERR;
+    }
+
+    file->ops = &normalFileOps;
+    file->private = shmem;
     return 0;
 }
 
-static file_ops_t newOps = {
+static file_ops_t newFileOps = {
     .open = shmem_new_open,
     .cleanup = shmem_file_cleanup,
 };
 
 void shmem_init(void)
 {
-    assert(sysfs_dir_init(&dir, "/", "shmem", NULL) != ERR);
-    assert(sysfs_file_init(&new, &dir, "new", &newOps, NULL) != ERR);
+    assert(sysfs_dir_init(&shmemDir, sysfs_get_default(), "shmem", NULL, NULL) != ERR);
+    assert(sysfs_file_init(&newFile, &shmemDir, "new", NULL, &newFileOps, NULL) != ERR);
 }

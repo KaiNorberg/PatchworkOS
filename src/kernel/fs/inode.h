@@ -23,13 +23,13 @@ typedef struct dentry dentry_t;
 
 typedef enum
 {
-    INODE_NONE = 0,
-    INODE_DIRTY = 1 << 0,
+    INODE_NONE = 0,        //!< None
+    INODE_DIRTY = 1 << 0,  //!< TODO: Dirty system not fully implemented.
+    INODE_INVALID = 1 << 1 //!< TODO: Implement helper system for invalidating inodes.
 } inode_flags_t;
 
 typedef struct inode
 {
-    map_entry_t mapEntry;  //!< Protected by the inodeCache lock.
     inode_number_t number; //!< Constant after creation.
     atomic_uint64_t ref;
     inode_type_t type; //!< Constant after creation.
@@ -39,13 +39,14 @@ typedef struct inode
     uint64_t blocks;
     time_t accessTime; //!< Unix time stamp for the last inode access.
     time_t modifyTime; //!< Unix time stamp for last file content alteration.
-    time_t changeTime; //!< Unix time stamp for the last file metadata alternation.
+    time_t changeTime; //!< Unix time stamp for the last file metadata alteration.
     void* private;
     superblock_t* superblock;  //!< Constant after creation.
     const inode_ops_t* ops;    //!< Constant after creation.
     const file_ops_t* fileOps; //!< Constant after creation.
     lock_t
         lock; //!< Lock for the mutable members of the inode, also used to sync the position of files inside the inode.
+    map_entry_t mapEntry;  //!< Protected by the inodeCache lock.
 } inode_t;
 
 typedef enum
@@ -53,7 +54,7 @@ typedef enum
     LOOKUP_FOUND,
     LOOKUP_NO_ENTRY,
     LOOKUP_ERROR,
-} lookup_result_t;  
+} lookup_result_t;
 
 typedef struct inode_ops
 {
@@ -66,8 +67,8 @@ typedef struct inode_ops
     void (*cleanup)(inode_t* inode);
 } inode_ops_t;
 
-inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, inode_ops_t* ops,
-    file_ops_t* fileOps);
+inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, const inode_ops_t* ops,
+    const file_ops_t* fileOps);
 
 void inode_free(inode_t* inode);
 

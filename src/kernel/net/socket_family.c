@@ -1,16 +1,12 @@
 #include "socket_family.h"
 
-#include "defs.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "log/log.h"
-#include "sched/thread.h"
+#include "net/net.h"
 #include "socket.h"
 
-#include <assert.h>
 #include <errno.h>
-#include <stdatomic.h>
-#include <stdlib.h>
 #include <sys/math.h>
 
 static uint64_t socket_family_new_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
@@ -23,7 +19,7 @@ static uint64_t socket_family_new_read(file_t* file, void* buffer, uint64_t coun
 
 static uint64_t socket_family_new_open(file_t* file)
 {
-    socket_family_t* family = file->dentry->inode->private;
+    socket_family_t* family = file->inode->private;
 
     socket_t* socket = socket_new(family, file->flags);
     if (socket == NULL)
@@ -67,14 +63,14 @@ uint64_t socket_family_register(socket_family_t* family)
         return ERR;
     }
 
-    if (sysfs_dir_init(&family->dir, "/net", family->name, family) == ERR)
+    if (sysfs_dir_init(&family->dir, net_get_dir(), family->name, NULL, family) == ERR)
     {
-        LOG_ERR("socket_family_register: failed to create directory /dev/net/%s\n", family->name);
+        LOG_ERR("socket_family_register: failed to create directory /net/%s\n", family->name);
         return ERR;
     }
-    if (sysfs_file_init(&family->newFile, &family->dir, "new", &newOps, NULL) == ERR)
+    if (sysfs_file_init(&family->newFile, &family->dir, "new", NULL, &newOps, family) == ERR)
     {
-        sysfs_dir_deinit(&family->dir, NULL);
+        sysfs_dir_deinit(&family->dir);
         LOG_ERR("socket_family_register: failed to create 'new' object for family '%s'\n", family->name);
         return ERR;
     }

@@ -229,7 +229,10 @@ static void vmm_load_memory_map(efi_mem_map_t* memoryMap)
             PML_WRITE | VMM_KERNEL_PML_FLAGS, PML_CALLBACK_NONE);
         if (result == ERR)
         {
-            log_panic(NULL, "Failed to map memory descriptor %d", i);
+            const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
+            log_panic(NULL, "Failed to map memory descriptor %d (phys=0x%016lx-0x%016lx virt=0x%016lx)",
+                i, desc->physicalStart, desc->physicalStart + desc->amountOfPages * PAGE_SIZE,
+                desc->virtualStart);
         }
     }
 }
@@ -248,17 +251,20 @@ void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gop
         PML_WRITE | VMM_KERNEL_PML_FLAGS, PML_CALLBACK_NONE);
     if (result == ERR)
     {
-        log_panic(NULL, "Failed to map kernel");
+        log_panic(NULL, "Failed to map kernel (phys=0x%016lx-0x%016lx virt=0x%016lx)",
+            kernel->physStart, kernel->physStart + kernel->length,
+            kernel->virtStart);
     }
 
-    LOG_INFO("vmm: loading pml 0x%016lx\n", kernelPml);
+    LOG_INFO("vmm: loading kernel pml 0x%016lx\n", kernelPml);
     pml_load(kernelPml);
-    LOG_INFO("vmm: pml loaded\n");
+    LOG_INFO("vmm: kernel pml loaded\n");
 
     gopBuffer->base = vmm_kernel_map(NULL, gopBuffer->base, BYTES_TO_PAGES(gopBuffer->size), PML_WRITE);
     if (gopBuffer->base == NULL)
     {
-        log_panic(NULL, "Failed to map GOP buffer");
+        log_panic(NULL, "Failed to map GOP buffer (phys=0x%016lx size=%llu)\n",
+            (uintptr_t)gopBuffer->base, gopBuffer->size);
     }
 
     vmm_cpu_init();
@@ -321,6 +327,8 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t pageAmount, pml_fl
 
                 // Page table will free the previously allocated pages as they are owned by the Page table.
                 pml_unmap(kernelPml, virtAddr, i);
+                LOG_WARN("vmm: failed to map kernel page at virt=0x%016lx (attempt %llu/%llu)\n",
+                    (uintptr_t)vaddr, i + 1, pageAmount);
                 errno = ENOMEM;
                 return NULL;
             }
@@ -334,7 +342,7 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t pageAmount, pml_fl
         if (virtAddr == NULL)
         {
             virtAddr = PML_LOWER_TO_HIGHER(physAddr);
-            LOG_INFO("vmm: map lower [0x%016lx-0x%016lx] to higher\n", physAddr,
+            LOG_DEBUG("vmm: map lower [0x%016lx-0x%016lx] to higher\n", physAddr,
                 (uintptr_t)physAddr + pageAmount * PAGE_SIZE);
         }
 
@@ -392,6 +400,8 @@ void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, prot_t prot)
 
             // Page table will free the previously allocated pages as they are owned by the Page table.
             pml_unmap(space->pml, info.virtAddr, i);
+            LOG_WARN("vmm: failed to map user page at virt=0x%016lx (attempt %llu/%llu)\n",
+                (uintptr_t)addr, i + 1, info.pageAmount);
             errno = ENOMEM;
             return NULL;
         }
@@ -431,6 +441,8 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, p
         {
             space_remove_callback(space, callbackId);
         }
+        LOG_WARN("vmm: failed to map user range virt=0x%016lx phys=0x%016lx pages=%llu\n",
+            (uintptr_t)info.virtAddr, (uintptr_t)info.physAddr, info.pageAmount);
         errno = ENOMEM;
         return NULL;
     }
@@ -468,7 +480,7 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
         void* physAddr = PML_ENSURE_LOWER_HALF(pages[i]);
 
         if (pml_map(space->pml, (void*)((uint64_t)info.virtAddr + i * PAGE_SIZE), physAddr, 1, info.flags,
-                callbackId) == ERR)
+            callbackId) == ERR)
         {
             for (uint64_t j = 0; j < i; j++)
             {
@@ -480,6 +492,8 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
                 space_remove_callback(space, callbackId);
             }
 
+            LOG_WARN("vmm: failed to map user page at virt=0x%016lx phys=0x%016lx (attempt %llu/%llu)\n",
+                (uintptr_t)info.virtAddr + i * PAGE_SIZE, (uintptr_t)physAddr, i + 1, info.pageAmount);
             errno = ENOMEM;
             return NULL;
         }

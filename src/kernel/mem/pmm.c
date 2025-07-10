@@ -261,6 +261,7 @@ void* pmm_alloc(void)
     void* address = pmm_stack_alloc();
     if (address == NULL)
     {
+        LOG_WARN("pmm: failed to allocate single page, free=%llu pages\n", freePageAmount);
         errno = ENOMEM;
         return NULL;
     }
@@ -273,6 +274,8 @@ void* pmm_alloc_bitmap(uint64_t count, uintptr_t maxAddr, uint64_t alignment)
     void* address = pmm_bitmap_alloc(count, maxAddr, alignment);
     if (address == NULL)
     {
+        LOG_WARN("pmm: failed to allocate %llu pages from bitmap, free=%llu pages, maxAddr=0x%lx\n", 
+                count, freePageAmount, maxAddr);
         errno = ENOMEM;
         return NULL;
     }
