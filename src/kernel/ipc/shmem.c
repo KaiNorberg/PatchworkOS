@@ -110,7 +110,7 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
 
 static uint64_t shmem_open(file_t* file)
 {
-    shmem_t* shmem = file->private;
+    shmem_t* shmem = file->inode->private;
     file->private = shmem_ref(shmem);
     return 0;
 }

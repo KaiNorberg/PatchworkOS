@@ -16,13 +16,13 @@ static void* fb_mmap(file_t* file, void* addr, uint64_t length, prot_t prot)
 {
     log_disable_screen();
 
-    fb_t* fb = file->private;
+    fb_t* fb = file->inode->private;
     return fb->mmap(fb, addr, length, prot);
 }
 
 static uint64_t fb_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
 {
-    fb_t* fb = file->private;
+    fb_t* fb = file->inode->private;
     switch (request)
     {
     case IOCTL_FB_INFO:

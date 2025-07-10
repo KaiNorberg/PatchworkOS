@@ -118,28 +118,28 @@ static const char* panic_get_exception_name(uint64_t vector)
 
 static void panic_registers(const trap_frame_t* trapFrame)
 {
-    log_print(LOG_LEVEL_PANIC, "rip: %04llx:%016llx ", trapFrame->cs, trapFrame->rip);
+    log_print(LOG_LEVEL_PANIC, "rip: %04llx:0x%016llx ", trapFrame->cs, trapFrame->rip);
 
     uintptr_t offset;
     const char* symbol = panic_resolve_symbol(trapFrame->rip, &offset);
     if (symbol)
     {
-        log_print(LOG_LEVEL_PANIC, "%s+0x%llx", symbol, offset);
+        log_print(LOG_LEVEL_PANIC, "0x%s+0x%llx", symbol, offset);
     }
     log_print(LOG_LEVEL_PANIC, "\n");
 
-    log_print(LOG_LEVEL_PANIC, "rsp: %04llx:%016llx rflags: %08llx\n", trapFrame->ss, trapFrame->rsp,
+    log_print(LOG_LEVEL_PANIC, "rsp: %04llx:0x%016llx rflags: 0x%08llx\n", trapFrame->ss, trapFrame->rsp,
         trapFrame->rflags & 0xFFFFFFFF);
 
-    log_print(LOG_LEVEL_PANIC, "rax: %016llx rbx: %016llx rcx: %016llx\n", trapFrame->rax, trapFrame->rbx,
+    log_print(LOG_LEVEL_PANIC, "rax: 0x%016llx rbx: 0x%016llx rcx: 0x%016llx\n", trapFrame->rax, trapFrame->rbx,
         trapFrame->rcx);
-    log_print(LOG_LEVEL_PANIC, "rdx: %016llx rsi: %016llx rdi: %016llx\n", trapFrame->rdx, trapFrame->rsi,
+    log_print(LOG_LEVEL_PANIC, "rdx: 0x%016llx rsi: 0x%016llx rdi: 0x%016llx\n", trapFrame->rdx, trapFrame->rsi,
         trapFrame->rdi);
-    log_print(LOG_LEVEL_PANIC, "rbp: %016llx r08: %016llx r09: %016llx\n", trapFrame->rbp, trapFrame->r8,
+    log_print(LOG_LEVEL_PANIC, "rbp: 0x%016llx r08: 0x%016llx r09: 0x%016llx\n", trapFrame->rbp, trapFrame->r8,
         trapFrame->r9);
-    log_print(LOG_LEVEL_PANIC, "r10: %016llx r11: %016llx r12: %016llx\n", trapFrame->r10, trapFrame->r11,
+    log_print(LOG_LEVEL_PANIC, "r10: 0x%016llx r11: 0x%016llx r12: 0x%016llx\n", trapFrame->r10, trapFrame->r11,
         trapFrame->r12);
-    log_print(LOG_LEVEL_PANIC, "r13: %016llx r14: %016llx r15: %016llx\n", trapFrame->r13, trapFrame->r14,
+    log_print(LOG_LEVEL_PANIC, "r13: 0x%016llx r14: 0x%016llx r15: 0x%016llx\n", trapFrame->r13, trapFrame->r14,
         trapFrame->r15);
 }
 
@@ -154,11 +154,11 @@ static void panic_stack_trace(const trap_frame_t* trapFrame)
     const char* symbol = panic_resolve_symbol(trapFrame->rip, &offset);
     if (symbol)
     {
-        log_print(LOG_LEVEL_PANIC, " [%016llx] %s+0x%llx\n", trapFrame->rip, symbol, offset);
+        log_print(LOG_LEVEL_PANIC, " [0x%016llx] %s+0x%llx\n", trapFrame->rip, symbol, offset);
     }
     else
     {
-        log_print(LOG_LEVEL_PANIC, " [%016llx]\n", trapFrame->rip);
+        log_print(LOG_LEVEL_PANIC, " [0x%016llx]\n", trapFrame->rip);
     }
 
     while (rbp != NULL && rbp != prevFrame)
@@ -184,11 +184,11 @@ static void panic_stack_trace(const trap_frame_t* trapFrame)
             symbol = panic_resolve_symbol(returnAddress, &offset);
             if (symbol)
             {
-                log_print(LOG_LEVEL_PANIC, " [%016llx] %s+0x%llx\n", returnAddress, symbol, offset);
+                log_print(LOG_LEVEL_PANIC, " [0x%016llx] %s+0x%llx\n", returnAddress, symbol, offset);
             }
             else
             {
-                log_print(LOG_LEVEL_PANIC, " [%016llx]\n", returnAddress);
+                log_print(LOG_LEVEL_PANIC, " [0x%016llx]\n", returnAddress);
             }
         }
 
@@ -223,11 +223,11 @@ static void panic_direct_stack_trace(void)
             const char* symbol = panic_resolve_symbol((uintptr_t)returnAddress, &offset);
             if (symbol)
             {
-                log_print(LOG_LEVEL_PANIC, " [%016llx] %s+0x%llx\n", (uintptr_t)returnAddress, symbol, offset);
+                log_print(LOG_LEVEL_PANIC, " [0x%016llx] %s+0x%llx\n", (uintptr_t)returnAddress, symbol, offset);
             }
             else
             {
-                log_print(LOG_LEVEL_PANIC, " [%016llx]\n", (uintptr_t)returnAddress);
+                log_print(LOG_LEVEL_PANIC, " [0x%016llx]\n", (uintptr_t)returnAddress);
             }
         }
 

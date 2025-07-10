@@ -3,6 +3,7 @@
 #include "fs/sysfs.h"
 #include "mem/heap.h"
 #include "proc/process.h"
+#include "log/log.h"
 
 #include <errno.h>
 #include <stdatomic.h>
@@ -222,5 +223,6 @@ socket_t* socket_new(socket_family_t* family, path_flags_t flags)
 
 void socket_free(socket_t* socket)
 {
+    LOG_DEBUG("socket: freeing socket %s\n", socket->id);
     sysfs_dir_deinit(&socket->dir);
 }
