@@ -57,9 +57,16 @@ mount_t* mount_ref(mount_t* mount)
 
 void mount_deref(mount_t* mount)
 {
-    if (mount != NULL && atomic_fetch_sub_explicit(&mount->ref, 1, memory_order_relaxed) <= 1)
+    if (mount == NULL)
+    {
+        return;
+    }
+
+    uint64_t ref = atomic_fetch_sub_explicit(&mount->ref, 1, memory_order_relaxed);
+    if (ref <= 1)
     {
         atomic_thread_fence(memory_order_acquire);
+        assert(ref == 1); // Check for double free.
         mount_free(mount);
     }
 }

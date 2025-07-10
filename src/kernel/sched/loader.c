@@ -300,7 +300,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
         }
 
         path_t cwdPath = PATH_EMPTY;
-        if (vfs_walk(&cwdPath, &cwdPathname) == ERR)
+        if (vfs_walk(&cwdPath, &cwdPathname, WALK_NONE) == ERR)
         {
             return ERR;
         }

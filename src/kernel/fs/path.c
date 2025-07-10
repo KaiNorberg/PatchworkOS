@@ -266,7 +266,7 @@ static uint64_t path_handle_dotdot(path_t* current)
     }
 }
 
-uint64_t path_traverse(path_t* outPath, const path_t* parent, const char* component)
+uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char* component, walk_flags_t flags)
 {
     if (!vfs_is_name_valid(component))
     {
@@ -302,12 +302,17 @@ uint64_t path_traverse(path_t* outPath, const path_t* parent, const char* compon
     {
         return ERR;
     }
+    DENTRY_DEFER(next);
 
     lock_acquire(&next->lock);
     if (next->flags & DENTRY_NEGATIVE)
     {
-        dentry_deref(next);
         lock_release(&next->lock);
+        if (flags & WALK_NEGATIVE_IS_OK)
+        {
+            path_set(outPath, current.mount, next);
+            return 0;
+        }
         errno = ENOENT;
         return ERR;
     }
@@ -317,7 +322,7 @@ uint64_t path_traverse(path_t* outPath, const path_t* parent, const char* compon
     return 0;
 }
 
-uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* start)
+uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* start, walk_flags_t flags)
 {
     if (pathname == NULL || !pathname->isValid)
     {
@@ -415,20 +420,29 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* st
         }
 
         path_t next = PATH_EMPTY;
-        if (path_traverse(&next, &current, component) == ERR)
+        if (path_walk_single_step(&next, &current, component, flags) == ERR)
         {
             return ERR;
         }
         PATH_DEFER(&next);
 
         path_copy(&current, &next);
+
+        lock_acquire(&current.dentry->lock);
+        if (current.dentry->flags & DENTRY_NEGATIVE)
+        {
+            lock_release(&current.dentry->lock);
+            assert(flags & WALK_NEGATIVE_IS_OK);
+            break;
+        }
+        lock_release(&current.dentry->lock);
     }
 
     path_copy(outPath, &current);
     return 0;
 }
 
-uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* start, char* outLastName)
+uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* start, char* outLastName, walk_flags_t flags)
 {
     if (pathname == NULL || !pathname->isValid || outLastName == NULL)
     {
@@ -466,7 +480,7 @@ uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const pat
         return ERR;
     }
 
-    return path_walk(outPath, &parentPath, start);
+    return path_walk(outPath, &parentPath, start, flags);
 }
 
 uint64_t path_to_name(const path_t* path, pathname_t* pathname)

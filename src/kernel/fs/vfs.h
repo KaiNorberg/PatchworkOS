@@ -70,13 +70,23 @@ uint64_t vfs_mountpoint_to_mount_root(path_t* outRoot, const path_t* mountpoint)
 
 inode_t* vfs_get_inode(superblock_t* superblock, inode_number_t number);
 
-dentry_t* vfs_get_dentry(const dentry_t* parent, const char* name);
 /**
- * @brief Get or lookup a dentry for the given name. Will NOT traverse mountpoints.
+ * @brief Get a dentry for the given name. Will NOT traverse mountpoints.
+ * @ingroup kernel_vfs
  *
  * @param parent The parent path.
  * @param name The name of the dentry.
- * @return On success, the dentry. On failure, returns NULL and errno is set.
+ * @return On success, the dentry, might be negative. On failure, returns NULL and errno is set.
+ */
+dentry_t* vfs_get_dentry(const dentry_t* parent, const char* name);
+
+/**
+ * @brief Get or lookup a dentry for the given name. Will NOT traverse mountpoints.
+ * @ingroup kernel_vfs
+ *
+ * @param parent The parent path.
+ * @param name The name of the dentry.
+ * @return On success, the dentry, might be negative. On failure, returns NULL and errno is set.
  */
 dentry_t* vfs_get_or_lookup_dentry(const path_t* parent, const char* name);
 
@@ -86,8 +96,8 @@ void vfs_remove_superblock(superblock_t* superblock);
 void vfs_remove_inode(inode_t* inode);
 void vfs_remove_dentry(dentry_t* dentry);
 
-uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname);
-uint64_t vfs_walk_parent(path_t* outPath, const pathname_t* pathname, char* outLastName);
+uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname, walk_flags_t flags);
+uint64_t vfs_walk_parent(path_t* outPath, const pathname_t* pathname, char* outLastName, walk_flags_t flags);
 
 uint64_t vfs_mount(const char* deviceName, const pathname_t* mountpoint, const char* fsName, superblock_flags_t flags,
     void* private);

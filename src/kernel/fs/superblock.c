@@ -60,9 +60,16 @@ superblock_t* superblock_ref(superblock_t* superblock)
 
 void superblock_deref(superblock_t* superblock)
 {
-    if (superblock != NULL && atomic_fetch_sub_explicit(&superblock->ref, 1, memory_order_relaxed) <= 1)
+    if (superblock == NULL)
+    {
+        return;
+    }
+
+    uint64_t ref = atomic_fetch_sub_explicit(&superblock->ref, 1, memory_order_relaxed);
+    if (ref <= 1)
     {
         atomic_thread_fence(memory_order_acquire);
+        assert(ref == 1); // Check for double free.
         vfs_remove_superblock(superblock);
         superblock_free(superblock);
     }

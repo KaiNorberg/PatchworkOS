@@ -244,12 +244,6 @@ static dentry_t* vfs_get_dentry_internal(map_key_t* key)
         return NULL;
     }
 
-    if (dentry->flags & DENTRY_NEGATIVE)
-    {
-        errno = ENOENT;
-        return NULL;
-    }
-
     return dentry_ref(dentry);
 }
 
@@ -294,12 +288,6 @@ dentry_t* vfs_get_or_lookup_dentry(const path_t* parent, const char* name)
             WAIT_NORM)
         {
             errno = EINTR;
-            return NULL;
-        }
-
-        if (dentry->flags & DENTRY_NEGATIVE)
-        {
-            errno = ENOENT;
             return NULL;
         }
 
@@ -411,7 +399,7 @@ static void vfs_get_cwd(path_t* outPath)
     vfs_ctx_get_cwd(&process->vfsCtx, outPath);
 }
 
-uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname)
+uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname, walk_flags_t flags)
 {
     if (outPath == NULL || pathname == NULL || !pathname->isValid)
     {
@@ -423,10 +411,10 @@ uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname)
     vfs_get_cwd(&cwd);
     PATH_DEFER(&cwd);
 
-    return path_walk(outPath, pathname, &cwd);
+    return path_walk(outPath, pathname, &cwd, flags);
 }
 
-uint64_t vfs_walk_parent(path_t* outPath, const pathname_t* pathname, char* outLastName)
+uint64_t vfs_walk_parent(path_t* outPath, const pathname_t* pathname, char* outLastName, walk_flags_t flags)
 {
     if (outPath == NULL || pathname == NULL)
     {
@@ -438,7 +426,7 @@ uint64_t vfs_walk_parent(path_t* outPath, const pathname_t* pathname, char* outL
     vfs_get_cwd(&cwd);
     PATH_DEFER(&cwd);
 
-    return path_walk_parent(outPath, pathname, &cwd, outLastName);
+    return path_walk_parent(outPath, pathname, &cwd, outLastName, flags);
 }
 
 uint64_t vfs_mount(const char* deviceName, const pathname_t* mountpoint, const char* fsName, superblock_flags_t flags,
@@ -492,7 +480,7 @@ uint64_t vfs_mount(const char* deviceName, const pathname_t* mountpoint, const c
     }
 
     path_t mountPath = PATH_EMPTY;
-    if (vfs_walk(&mountPath, mountpoint) == ERR)
+    if (vfs_walk(&mountPath, mountpoint, WALK_NONE) == ERR)
     {
         return ERR;
     }
@@ -503,12 +491,6 @@ uint64_t vfs_mount(const char* deviceName, const pathname_t* mountpoint, const c
     if (mountPath.dentry->flags & DENTRY_MOUNTPOINT)
     {
         errno = EBUSY;
-        return ERR;
-    }
-
-    if (mountPath.dentry->flags & DENTRY_NEGATIVE)
-    {
-        errno = ENOENT;
         return ERR;
     }
 
@@ -545,7 +527,7 @@ uint64_t vfs_unmount(const pathname_t* mountpoint)
     }
 
     path_t path = PATH_EMPTY;
-    if (vfs_walk(&path, mountpoint) == ERR)
+    if (vfs_walk(&path, mountpoint, WALK_NONE) == ERR)
     {
         return ERR;
     }
@@ -620,7 +602,7 @@ static uint64_t vfs_open_lookup(path_t* outPath, const pathname_t* pathname)
     {
         char lastComponent[MAX_NAME];
         path_t parent = PATH_EMPTY;
-        if (vfs_walk_parent(&parent, pathname, lastComponent) == ERR)
+        if (vfs_walk_parent(&parent, pathname, lastComponent, WALK_NONE) == ERR)
         {
             return ERR;
         }
@@ -638,9 +620,8 @@ static uint64_t vfs_open_lookup(path_t* outPath, const pathname_t* pathname)
             return ERR;
         }
 
-        // If the file/dir does not exist it will return a negative dentry.
         path_t path = PATH_EMPTY;
-        if (path_traverse(&path, &parent, lastComponent) == ERR)
+        if (path_walk_single_step(&path, &parent, lastComponent, WALK_NEGATIVE_IS_OK) == ERR)
         {
             return ERR;
         }
@@ -661,27 +642,29 @@ static uint64_t vfs_open_lookup(path_t* outPath, const pathname_t* pathname)
     }
     else // Dont create dentry
     {
-        if (vfs_walk(outPath, pathname) == ERR)
+        if (vfs_walk(outPath, pathname, WALK_NONE) == ERR)
         {
             return ERR;
         }
     }
-    DENTRY_DEFER(outPath->dentry);
 
     if (outPath->dentry->inode == NULL)
     {
+        path_put(outPath);
         errno = ENOENT;
         return ERR;
     }
 
     if ((pathname->flags & PATH_DIRECTORY) && outPath->dentry->inode->type != INODE_DIR)
     {
+        path_put(outPath);
         errno = ENOTDIR;
         return ERR;
     }
 
     if (!(pathname->flags & PATH_DIRECTORY) && outPath->dentry->inode->type != INODE_FILE)
     {
+        path_put(outPath);
         errno = EISDIR;
         return ERR;
     }
@@ -1314,7 +1297,7 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer)
     }
 
     path_t path = PATH_EMPTY;
-    if (vfs_walk(&path, pathname) == ERR)
+    if (vfs_walk(&path, pathname, WALK_NONE) == ERR)
     {
         return ERR;
     }
@@ -1777,7 +1760,7 @@ SYSCALL_DEFINE(SYS_CHDIR, uint64_t, const char* pathString)
     }
 
     path_t path = PATH_EMPTY;
-    if (vfs_walk(&path, &pathname) == ERR)
+    if (vfs_walk(&path, &pathname, WALK_NONE) == ERR)
     {
         return ERR;
     }

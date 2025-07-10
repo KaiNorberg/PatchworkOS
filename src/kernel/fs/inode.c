@@ -82,9 +82,16 @@ inode_t* inode_ref(inode_t* inode)
 
 void inode_deref(inode_t* inode)
 {
-    if (inode != NULL && atomic_fetch_sub_explicit(&inode->ref, 1, memory_order_relaxed) <= 1)
+    if (inode == NULL)
+    {
+        return;
+    }
+
+    uint64_t ref = atomic_fetch_sub_explicit(&inode->ref, 1, memory_order_relaxed);
+    if (ref <= 1)
     {
         atomic_thread_fence(memory_order_acquire);
+        assert(ref == 1); // Check for double free.
         vfs_remove_inode(inode);
         inode_free(inode);
     }

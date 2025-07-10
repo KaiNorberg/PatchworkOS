@@ -72,6 +72,8 @@ void dentry_free(dentry_t* dentry)
         return;
     }
 
+    assert(dentry->parent != NULL);
+
     vfs_remove_dentry(dentry);
 
     if (dentry->inode != NULL)
@@ -79,7 +81,7 @@ void dentry_free(dentry_t* dentry)
         inode_deref(dentry->inode);
     }
 
-    if (dentry->parent != NULL && dentry->parent != dentry)
+    if (dentry->parent != dentry)
     {
         lock_acquire(&dentry->parent->lock);
         list_remove(&dentry->siblingEntry);
@@ -108,9 +110,11 @@ dentry_t* dentry_ref(dentry_t* dentry)
 
 void dentry_deref(dentry_t* dentry)
 {
-    if (dentry != NULL && atomic_fetch_sub_explicit(&dentry->ref, 1, memory_order_relaxed) <= 1)
+    uint64_t ref = atomic_fetch_sub_explicit(&dentry->ref, 1, memory_order_relaxed);
+    if (dentry != NULL && ref <= 1)
     {
         atomic_thread_fence(memory_order_acquire);
+        assert(ref == 1); // Check for double free.
         dentry_free(dentry);
     }
 }

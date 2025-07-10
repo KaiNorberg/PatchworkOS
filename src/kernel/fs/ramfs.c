@@ -1,5 +1,6 @@
 #include "ramfs.h"
 
+#include "fs/dentry.h"
 #include "fs/mount.h"
 #include "fs/path.h"
 #include "log/log.h"
@@ -76,46 +77,38 @@ static lookup_result_t ramfs_lookup(inode_t* dir, dentry_t* target)
 
 static uint64_t ramfs_create(inode_t* dir, dentry_t* target, path_flags_t flags)
 {
-    errno = ENOSYS;
-    return ERR;
-
-    /*ramfs_inode_t* inode = CONTAINER_OF(dir, ramfs_inode_t, inode);
+    ramfs_inode_t* inode = CONTAINER_OF(dir, ramfs_inode_t, inode);
     LOCK_DEFER(&inode->inode.lock);
+    LOCK_DEFER(&target->lock);
 
     if (inode->inode.type != INODE_DIR)
     {
         LOG_ERR("ramfs_create: called using a non-directory inode.\n");
         errno = EINVAL;
-        return NULL;
+        return ERR;
     }
 
-    dentry_t* existing = vfs_get_dentry(target->parent, target->name);
-    if (existing != NULL)
+    if (!(target->flags & DENTRY_NEGATIVE))
     {
         if (flags & PATH_EXCLUSIVE)
         {
-            dentry_deref(existing);
             errno = EEXIST;
-            return NULL;
+            return ERR;
         }
 
-        return existing;
+        return 0;
     }
 
-    ramfs_inode_t* newInode = ramfs_inode_new(parent->superblock, flags & PATH_DIRECTORY ? INODE_DIR : INODE_FILE, NULL,
-    0); if (newInode == NULL)
+    ramfs_inode_t* newInode = ramfs_inode_new(inode->inode.superblock, flags & PATH_DIRECTORY ? INODE_DIR : INODE_FILE, NULL,
+    0);
+    if (newInode == NULL)
     {
-        return NULL;
+        return ERR;
     }
     INODE_DEFER(&newInode->inode);
 
-    dentry_t* newDentry = dentry_new(parent->superblock, parent, name, newInode);
-    if (newDentry == NULL)
-    {
-        return NULL;
-    }
-
-    return newDentry;*/
+    dentry_make_positive(target, &newInode->inode);
+    return 0;
 }
 
 static void ramfs_truncate(inode_t* inode)

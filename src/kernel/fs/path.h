@@ -29,6 +29,12 @@ typedef enum
     PATH_DIRECTORY = 1 << 5
 } path_flags_t;
 
+typedef enum
+{
+    WALK_NONE = 0,
+    WALK_NEGATIVE_IS_OK = 1 << 0, //!< If a negative dentry is ok, if not specified then it is considered an error.
+} walk_flags_t;
+
 typedef struct path_flag_entry
 {
     map_entry_t entry;
@@ -86,10 +92,19 @@ void path_copy(path_t* dest, const path_t* src);
 
 void path_put(path_t* path);
 
-uint64_t path_traverse(path_t* outPath, const path_t* parent, const char* name);
+/**
+ * @brief Traverse a single component of a path from a parent path.
+ * @ingroup kernel_vfs
+ *
+ * @param outPath The output path, even on success it might contain a negative dentry, always check.
+ * @param parent The parent path.
+ * @param name The name of the child dentry.
+ * @return On success, 0. On error, ERR and errno is set.
+ */
+uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char* name, walk_flags_t flags);
 
-uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* start);
-uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* start, char* outLastName);
+uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* start, walk_flags_t flags);
+uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* start, char* outLastName, walk_flags_t flags);
 
 uint64_t path_to_name(const path_t* path, pathname_t* pathname);
 
