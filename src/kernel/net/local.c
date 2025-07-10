@@ -4,6 +4,7 @@
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/heap.h"
 #include "mem/pmm.h"
 #include "sched/thread.h"
@@ -734,6 +735,12 @@ static wait_queue_t* local_socket_poll(socket_t* socket, poll_file_t* poll)
 
 void net_local_init(void)
 {
-    assert(socket_family_register(&family) != ERR);
-    assert(sysfs_dir_init(&listenDir, &family.dir, "listen", NULL, NULL) != ERR);
+    if (socket_family_register(&family) == ERR)
+    {
+        panic(NULL, "Failed to register local socket family");
+    }
+    if (sysfs_dir_init(&listenDir, &family.dir, "listen", NULL, NULL) == ERR)
+    {
+        panic(NULL, "Failed to initialize local socket listen directory");
+    }
 }

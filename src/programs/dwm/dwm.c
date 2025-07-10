@@ -612,7 +612,6 @@ static void dwm_poll(void)
     }
 
     uint64_t events = poll((pollfd_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(pollfd_t) + clientAmount, timeout);
-
     clock_t time = uptime();
     if (timer != NULL && time >= timer->timer.deadline)
     {

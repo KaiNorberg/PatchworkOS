@@ -6,6 +6,7 @@
 #include "mem/heap.h"
 #include "mem/pmm.h"
 #include "mem/vmm.h"
+#include "log/panic.h"
 #include "sched/thread.h"
 
 #include <assert.h>
@@ -184,6 +185,12 @@ static file_ops_t newFileOps = {
 
 void shmem_init(void)
 {
-    assert(sysfs_dir_init(&shmemDir, sysfs_get_default(), "shmem", NULL, NULL) != ERR);
-    assert(sysfs_file_init(&newFile, &shmemDir, "new", NULL, &newFileOps, NULL) != ERR);
+    if (sysfs_dir_init(&shmemDir, sysfs_get_default(), "shmem", NULL, NULL) == ERR)
+    {
+        panic(NULL, "Failed to initialize shmem directory");
+    }
+    if (sysfs_file_init(&newFile, &shmemDir, "new", NULL, &newFileOps, NULL) == ERR)
+    {
+        panic(NULL, "Failed to initialize shmem file");
+    }
 }

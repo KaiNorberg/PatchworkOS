@@ -29,16 +29,23 @@ SECTIONS
         *(.bss)
     }
 
-    .tests :
+    .trampoline : ALIGN(4K)
+    {
+        *(.trampoline)
+    }
+
+    .syscall_table : ALIGN(4K)
+    {
+        _syscallTableStart = .;
+        KEEP(*(.syscall_table))
+        _syscallsTableEnd = .;
+    }
+
+    .tests : ALIGN(4K)
     {
         _testsStart = .;
         KEEP(*(.tests))
         _testsEnd = .;
-    }
-
-    .trampoline : ALIGN(4K)
-    {
-        *(.trampoline)
     }
 
     _kernelEnd = .;

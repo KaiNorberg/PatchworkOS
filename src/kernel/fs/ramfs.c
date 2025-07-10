@@ -203,10 +203,16 @@ static dentry_t* ramfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
     // We dont dereference the dentries such that they stay in memory.
 
     dentry_t* dentry = dentry_new(superblock, parent, name);
-    assert(dentry != NULL);
+    if (dentry == NULL)
+    {
+        panic(NULL, "Failed to create ramfs dentry");
+    }
 
     ramfs_inode_t* inode = ramfs_inode_new(superblock, INODE_DIR, NULL, 0);
-    assert(inode != NULL);
+    if (inode == NULL)
+    {
+        panic(NULL, "Failed to create ramfs inode");
+    }
 
     dentry_make_positive(dentry, &inode->inode);
     vfs_add_dentry(dentry);
@@ -225,10 +231,16 @@ static dentry_t* ramfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
             ram_file_t* file = CONTAINER_OF(child, ram_file_t, node);
 
             dentry_t* fileDentry = dentry_new(superblock, dentry, file->node.name);
-            assert(dentry != NULL);
+            if (fileDentry == NULL)
+            {
+                panic(NULL, "Failed to create ramfs file dentry");
+            }
 
             ramfs_inode_t* fileInode = ramfs_inode_new(superblock, INODE_FILE, file->data, file->size);
-            assert(inode != NULL);
+            if (fileInode == NULL)
+            {
+                panic(NULL, "Failed to create ramfs file inode");
+            }
 
             dentry_make_positive(fileDentry, &fileInode->inode);
             vfs_add_dentry(fileDentry);
@@ -307,6 +319,12 @@ void ramfs_init(ram_disk_t* disk)
 {
     LOG_INFO("ramfs: init\n");
 
-    assert(vfs_register_fs(&ramfs) != ERR);
-    assert(vfs_mount(VFS_DEVICE_NAME_NONE, NULL, RAMFS_NAME, SUPER_NONE, disk->root) != ERR);
+    if (vfs_register_fs(&ramfs) == ERR)
+    {
+        panic(NULL, "Failed to register ramfs");
+    }
+    if (vfs_mount(VFS_DEVICE_NAME_NONE, NULL, RAMFS_NAME, SUPER_NONE, disk->root) == ERR)
+    {
+        panic(NULL, "Failed to mount ramfs");
+    }
 }

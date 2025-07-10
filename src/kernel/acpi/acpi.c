@@ -25,8 +25,15 @@ void acpi_init(xsdp_t* xsdp)
 {
     xsdp = PML_LOWER_TO_HIGHER(xsdp);
 
-    assert(xsdp->revision == ACPI_REVISION_2_0);
-    assert(acpi_is_checksum_valid(xsdp, xsdp->length));
+    if (xsdp->revision != ACPI_REVISION_2_0)
+    {
+        panic(NULL, "Unsupported acpi revision");
+    }
+
+    if (!acpi_is_checksum_valid(xsdp, xsdp->length))
+    {
+        panic(NULL, "Invalid acpi checksum %.4s", xsdp->signature);
+    }
 
     xsdt = PML_LOWER_TO_HIGHER((void*)xsdp->xsdtAddress);
     tableAmount = (xsdt->header.length - sizeof(sdt_t)) / sizeof(void*);

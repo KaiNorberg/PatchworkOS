@@ -75,15 +75,16 @@ inode_t* inode_ref(inode_t* inode)
 {
     if (inode != NULL)
     {
-        atomic_fetch_add(&inode->ref, 1);
+        atomic_fetch_add_explicit(&inode->ref, 1, memory_order_relaxed);
     }
     return inode;
 }
 
 void inode_deref(inode_t* inode)
 {
-    if (inode != NULL && atomic_fetch_sub(&inode->ref, 1) <= 1)
+    if (inode != NULL && atomic_fetch_sub_explicit(&inode->ref, 1, memory_order_relaxed) <= 1)
     {
+        atomic_thread_fence(memory_order_acquire);
         vfs_remove_inode(inode);
         inode_free(inode);
     }

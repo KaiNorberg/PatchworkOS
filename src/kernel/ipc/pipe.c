@@ -2,6 +2,7 @@
 
 #include "fs/vfs.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/heap.h"
 #include "mem/pmm.h"
 #include "sched/thread.h"
@@ -44,7 +45,10 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count, uint64_t* 
     }
 
     count = MIN(count, ring_data_length(&private->ring));
-    assert(ring_read(&private->ring, buffer, count) != ERR);
+    if (ring_read(&private->ring, buffer, count) == ERR)
+    {
+        panic(NULL, "Failed to read from pipe");
+    }
 
     wait_unblock(&private->waitQueue, WAIT_ALL);
 
@@ -83,7 +87,10 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uin
         return ERR;
     }
 
-    assert(ring_write(&private->ring, buffer, count) != ERR);
+    if (ring_write(&private->ring, buffer, count) == ERR)
+    {
+        panic(NULL, "Failed to write to pipe");
+    }
 
     wait_unblock(&private->waitQueue, 1);
 
@@ -177,6 +184,7 @@ static void pipe_cleanup(file_t* file)
     }
 
     lock_release(&private->lock);
+    LOG_DEBUG("pipe: cleanup\n");
 }
 
 static file_ops_t fileOps = {
@@ -190,6 +198,12 @@ static file_ops_t fileOps = {
 
 void pipe_init(void)
 {
-    assert(sysfs_dir_init(&pipeDir, sysfs_get_default(), "pipe", NULL, NULL) != ERR);
-    assert(sysfs_file_init(&newFile, &pipeDir, "new", NULL, &fileOps, NULL) != ERR);
+    if (sysfs_dir_init(&pipeDir, sysfs_get_default(), "pipe", NULL, NULL) == ERR)
+    {
+        panic(NULL, "Failed to initialize pipe directory");
+    }
+    if (sysfs_file_init(&newFile, &pipeDir, "new", NULL, &fileOps, NULL) == ERR)
+    {
+        panic(NULL, "Failed to initialize pipe file");
+    }
 }

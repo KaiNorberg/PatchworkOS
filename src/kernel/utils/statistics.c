@@ -4,6 +4,7 @@
 #include "drivers/systime/systime.h"
 #include "fs/sysfs.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/heap.h"
 
 #include <assert.h>
@@ -89,9 +90,18 @@ static file_ops_t memOps = {
 
 void statistics_init(void)
 {
-    assert(sysfs_dir_init(&statDir, sysfs_get_default(), "stat", NULL, NULL) != ERR);
-    assert(sysfs_file_init(&cpuFile, &statDir, "cpu", NULL, &cpuOps, NULL) != ERR);
-    assert(sysfs_file_init(&memFile, &statDir, "mem", NULL, &memOps, NULL) != ERR);
+    if (sysfs_dir_init(&statDir, sysfs_get_default(), "stat", NULL, NULL) == ERR)
+    {
+        panic(NULL, "Failed to initialize statistics directory");
+    }
+    if (sysfs_file_init(&cpuFile, &statDir, "cpu", NULL, &cpuOps, NULL) == ERR)
+    {
+        panic(NULL, "Failed to initialize CPU statistics file");
+    }
+    if (sysfs_file_init(&memFile, &statDir, "mem", NULL, &memOps, NULL) == ERR)
+    {
+        panic(NULL, "Failed to initialize memory statistics file");
+    }
 }
 
 void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* self)

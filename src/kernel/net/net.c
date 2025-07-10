@@ -3,6 +3,7 @@
 #include "fs/sysfs.h"
 #include "local.h"
 #include "log/log.h"
+#include "log/panic.h"
 
 static sysfs_group_t group;
 
@@ -10,7 +11,10 @@ void net_init(void)
 {
     LOG_INFO("net: init\n");
 
-    assert(sysfs_group_init(&group, PATHNAME("/net")) != ERR);
+    if (sysfs_group_init(&group, PATHNAME("/net")) == ERR)
+    {
+        panic(NULL, "Failed to initialize network sysfs group");
+    }
 
     net_local_init();
 }

@@ -101,10 +101,16 @@ void smp_others_init(void)
         {
             cpuid_t id = newId++;
             cpus[id] = heap_alloc(sizeof(cpu_t), HEAP_NONE);
-            assert(cpus[id] != NULL);
+            if (cpus[id] == NULL)
+            {
+                panic(NULL, "Failed to allocate memory for cpu\n");
+            }
             cpu_init(cpus[id], id, record->lapicId, false);
             cpuAmount++;
-            assert(cpu_start(cpus[id]) != ERR);
+            if (cpu_start(cpus[id]) == ERR)
+            {
+                panic(NULL, "Failed to start cpu\n");
+            }
         }
     }
 

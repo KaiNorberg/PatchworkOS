@@ -1,6 +1,7 @@
 #include "hpet.h"
 
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/vmm.h"
 #include "utils/utils.h"
 
@@ -13,7 +14,10 @@ static uint64_t period;
 void hpet_init(void)
 {
     hpet = (hpet_t*)acpi_lookup("HPET");
-    assert(hpet != NULL && "Unable to find hpet, hardware is not compatible");
+    if (hpet == NULL)
+    {
+        panic(NULL, "Unable to find hpet, hardware is not compatible");
+    }
 
     address = (uintptr_t)vmm_kernel_map(NULL, (void*)hpet->address, 1, PML_WRITE);
     period = hpet_read(HPET_GENERAL_CAPABILITIES) >> HPET_COUNTER_CLOCK_OFFSET;

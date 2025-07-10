@@ -14,6 +14,7 @@
 #include "ipc/pipe.h"
 #include "kernel.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/vmm.h"
 #include "sched/loader.h"
 #include "sched/sched.h"
@@ -106,14 +107,14 @@ void syscall_process_exit(uint64_t status)
 {
     sched_process_exit(status);
     sched_invoke();
-    assert(false);
+    panic(NULL, "Return to syscall_process_exit");
 }
 
 void syscall_thread_exit(void)
 {
     sched_thread_exit();
     sched_invoke();
-    assert(false);
+    panic(NULL, "Return to syscall_thread_exit");
 }
 
 pid_t syscall_spawn(const char** argv, const spawn_fd_t* fds, const char* cwdString, spawn_attr_t* attr)

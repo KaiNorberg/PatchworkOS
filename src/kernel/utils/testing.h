@@ -1,5 +1,5 @@
 #pragma once
-#ifdef TESTING
+#ifdef DEBUG
 
 // TODO: Add more tests
 

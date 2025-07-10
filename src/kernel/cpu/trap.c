@@ -166,7 +166,10 @@ void trap_handler(trap_frame_t* trapFrame)
         note_dispatch(trapFrame, self);
     }
 
-    assert(self->sched.runThread->canary == THREAD_CANARY);
+    if (self->sched.runThread->canary != THREAD_CANARY)
+    {
+        panic(trapFrame, "self->sched.runThread->canary != THREAD_CANARY");
+    }
 
     statistics_trap_end(trapFrame, self);
     self->trapDepth--;

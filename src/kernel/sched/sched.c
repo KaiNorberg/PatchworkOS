@@ -98,7 +98,10 @@ void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* cpu)
     else
     {
         ctx->idleThread = thread_new(process_get_kernel(), sched_idle_loop);
-        assert(ctx->idleThread != NULL);
+        if (ctx->idleThread == NULL)
+        {
+            panic(NULL, "Failed to create idle thread");
+        }
         ctx->runThread = ctx->idleThread;
         atomic_store(&ctx->runThread->state, THREAD_RUNNING);
     }
@@ -115,7 +118,10 @@ static void sched_init_spawn_boot_thread(void)
     assert(kernelProcess != NULL);
 
     thread_t* thread = thread_new(kernelProcess, NULL);
-    assert(thread != NULL && "failed to create boot thread");
+    if (thread == NULL)
+    {
+        panic(NULL, "Failed to create boot thread");
+    }
     thread->sched.deadline = UINT64_MAX;
     atomic_store(&thread->state, THREAD_RUNNING);
     self->sched.runThread = thread;
@@ -186,7 +192,10 @@ void sched_process_exit(uint64_t status)
 
     LOG_DEBUG("sched: process exit pid=%d tid=%d status=%llu\n", process->id, thread->id, status);
 
-    assert(atomic_exchange(&thread->state, THREAD_ZOMBIE) == THREAD_RUNNING);
+    if (atomic_exchange(&thread->state, THREAD_ZOMBIE) != THREAD_RUNNING)
+    {
+        panic(NULL, "Invalid state while exiting process");
+    }
 
     LOCK_DEFER(&process->threads.lock);
     if (process->threads.isDying)
@@ -219,7 +228,10 @@ void sched_process_exit(uint64_t status)
 
 void sched_thread_exit(void)
 {
-    assert(atomic_exchange(&sched_thread()->state, THREAD_ZOMBIE) == THREAD_RUNNING);
+    if (atomic_exchange(&sched_thread()->state, THREAD_ZOMBIE) != THREAD_RUNNING)
+    {
+        panic(NULL, "Invalid state while exiting thread");
+    }
 }
 
 static void sched_update_recent_idle_time(thread_t* thread, bool wasBlocking)
@@ -327,7 +339,7 @@ void sched_push(thread_t* thread, thread_t* parent, cpu_t* target)
     }
     else
     {
-        assert(false && "Invalid thread state for sched_push");
+        panic(NULL, "Invalid thread state for sched_push");
     }
 
     sched_compute_time_slice(thread, parent);
@@ -454,7 +466,7 @@ bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
     break;
     default:
     {
-        panic(NULL, "sched: invalid thread state %d (pid=%d tid=%d)", state, ctx->runThread->process->id,
+        panic(NULL, "Invalid thread state %d (pid=%d tid=%d)", state, ctx->runThread->process->id,
             ctx->runThread->id);
     }
     }
@@ -492,7 +504,8 @@ bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
     {
         if (ctx->runThread == NULL)
         {
-            assert(atomic_exchange(&ctx->idleThread->state, THREAD_RUNNING) == THREAD_READY);
+            thread_state_t oldState = atomic_exchange(&ctx->idleThread->state, THREAD_RUNNING);
+            assert(oldState == THREAD_READY);
             thread_load(ctx->idleThread, trapFrame);
             ctx->runThread = ctx->idleThread;
         }
@@ -501,7 +514,8 @@ bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
     {
         if (ctx->runThread != NULL)
         {
-            assert(atomic_exchange(&ctx->runThread->state, THREAD_READY) == THREAD_RUNNING);
+            thread_state_t oldState = atomic_exchange(&ctx->runThread->state, THREAD_READY);
+            assert(oldState == THREAD_RUNNING);
             thread_save(ctx->runThread, trapFrame);
 
             if (ctx->runThread != ctx->idleThread)
@@ -513,7 +527,8 @@ bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
         }
 
         next->sched.deadline = uptime + next->sched.timeSlice;
-        assert(atomic_exchange(&next->state, THREAD_RUNNING) == THREAD_READY);
+        thread_state_t oldState = atomic_exchange(&next->state, THREAD_RUNNING);
+        assert(oldState == THREAD_READY);
         thread_load(next, trapFrame);
         ctx->runThread = next;
     }

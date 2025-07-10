@@ -53,15 +53,16 @@ superblock_t* superblock_ref(superblock_t* superblock)
 {
     if (superblock != NULL)
     {
-        atomic_fetch_add(&superblock->ref, 1);
+        atomic_fetch_add_explicit(&superblock->ref, 1, memory_order_relaxed);
     }
     return superblock;
 }
 
 void superblock_deref(superblock_t* superblock)
 {
-    if (superblock != NULL && atomic_fetch_sub(&superblock->ref, 1) <= 1)
+    if (superblock != NULL && atomic_fetch_sub_explicit(&superblock->ref, 1, memory_order_relaxed) <= 1)
     {
+        atomic_thread_fence(memory_order_acquire);
         vfs_remove_superblock(superblock);
         superblock_free(superblock);
     }

@@ -3,11 +3,11 @@
 #include "fs/dentry.h"
 #include "log/log.h"
 #include "vfs.h"
+#include "log/panic.h"
 
 #include <assert.h>
 #include <errno.h>
 #include <stdatomic.h>
-#include <string.h>
 #include <sys/list.h>
 
 static _Atomic(inode_number_t) newNumber = ATOMIC_VAR_INIT(0);
@@ -68,8 +68,14 @@ void sysfs_init(void)
 {
     LOG_INFO("sysfs: init\n");
 
-    assert(vfs_register_fs(&sysfs) != ERR);
-    assert(sysfs_group_init(&defaultGroup, PATHNAME("/dev")) != ERR);
+    if (vfs_register_fs(&sysfs) == ERR)
+    {
+        panic(NULL, "Failed to register sysfs");
+    }
+    if (sysfs_group_init(&defaultGroup, PATHNAME("/dev")) == ERR)
+    {
+        panic(NULL, "Failed to initialize default sysfs group");
+    }
 }
 
 sysfs_dir_t* sysfs_get_default(void)

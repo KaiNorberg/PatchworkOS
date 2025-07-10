@@ -9,7 +9,8 @@ void prompt_print(void)
 {
     char cwd[MAX_PATH];
     fd_t fd = open("/proc/self/cwd");
-    read(fd, cwd, MAX_PATH);
+    uint64_t length = read(fd, cwd, MAX_PATH);
+    cwd[length] = '\0';
     close(fd);
 
     printf("\n%s\n> ", cwd);

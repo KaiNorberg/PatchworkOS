@@ -46,15 +46,16 @@ file_t* file_ref(file_t* file)
 {
     if (file != NULL)
     {
-        atomic_fetch_add(&file->ref, 1);
+        atomic_fetch_add_explicit(&file->ref, 1, memory_order_relaxed);
     }
     return file;
 }
 
 void file_deref(file_t* file)
 {
-    if (file != NULL && atomic_fetch_sub(&file->ref, 1) <= 1)
+    if (file != NULL && atomic_fetch_sub_explicit(&file->ref, 1, memory_order_relaxed) <= 1)
     {
+        atomic_thread_fence(memory_order_acquire);
         file_free(file);
     }
 }

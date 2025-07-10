@@ -21,7 +21,10 @@ void ps2_init(void)
     uint8_t cfg = ps2_read();
 
     ps2_cmd(PS2_CMD_CONTROLLER_TEST);
-    assert(ps2_read() == 0x55 && "self test fail");
+    if (ps2_read() != 0x55)
+    {
+        panic(NULL, "ps2 self test fail");
+    }
 
     cfg = cfg | PS2_CFG_KBD_IRQ | PS2_CFG_AUX_IRQ;
 

@@ -2,6 +2,7 @@
 
 #include "fs/dentry.h"
 #include "log/log.h"
+#include "log/panic.h"
 
 #include "vfs.h"
 
@@ -28,7 +29,10 @@ void path_flags_init(void)
     {
         map_entry_init(&flagEntries[i].entry);
         map_key_t key = map_key_string(flagEntries[i].name);
-        assert(map_insert(&flagMap, &key, &flagEntries[i].entry) != ERR);
+        if (map_insert(&flagMap, &key, &flagEntries[i].entry) == ERR)
+        {
+            panic(NULL, "Failed to init flag map");
+        }
     }
 }
 
@@ -517,7 +521,9 @@ uint64_t path_to_name(const path_t* path, pathname_t* pathname)
         path_set(&current, current.mount, current.dentry->parent);
     }
 
-    memmove(pathname->string, pathname->string + index, MAX_PATH - index);
+    uint64_t length = MAX_PATH - index;
+    memmove(pathname->string, pathname->string + index, length);
+    pathname->string[length] = '\0';
     pathname->isValid = true;
     return 0;
 }

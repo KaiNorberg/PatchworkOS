@@ -6,6 +6,7 @@
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/heap.h"
 #include "sched/thread.h"
 #include "sync/lock.h"
@@ -57,10 +58,20 @@ static uint64_t process_ctl_wait(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
+    process_t* self = sched_process();
+
+    if (process == self)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    LOG_INFO("Process %d waiting for process %d\n", sched_process()->id, process->id);
     WAIT_BLOCK(&process->queue, ({
         LOCK_DEFER(&process->threads.lock);
         process->threads.isDying;
     }));
+    LOG_INFO("Process %d waiting for process %d done\n", sched_process()->id, process->id);
     return 0;
 }
 
@@ -103,18 +114,18 @@ static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count, uin
         return ERR;
     }
 
-    pathname_t cwd;
+    path_t cwd = PATH_EMPTY;
+    vfs_ctx_get_cwd(&process->vfsCtx, &cwd);
+    PATH_DEFER(&cwd);
 
-    lock_acquire(&process->vfsCtx.lock);
-    if (path_to_name(&process->vfsCtx.cwd, &cwd) == ERR)
+    pathname_t cwdName;
+    if (path_to_name(&process->vfsCtx.cwd, &cwdName) == ERR)
     {
-        lock_release(&process->vfsCtx.lock);
         return ERR;
     }
-    lock_release(&process->vfsCtx.lock);
 
-    uint64_t length = strlen(cwd.string);
-    return BUFFER_READ(buffer, count, offset, cwd.string, length);
+    uint64_t length = strlen(cwdName.string);
+    return BUFFER_READ(buffer, count, offset, cwdName.string, length);
 }
 
 static file_ops_t cwdOps = {
@@ -227,6 +238,15 @@ static uint64_t process_dir_init(process_dir_t* dir, const char* name, process_t
     return 0;
 }
 
+static void process_dir_deinit(process_dir_t* dir)
+{
+    sysfs_file_deinit(&dir->ctlFile);
+    sysfs_file_deinit(&dir->cwdFile);
+    sysfs_file_deinit(&dir->cmdlineFile);
+    sysfs_file_deinit(&dir->noteFile);
+    sysfs_dir_deinit(&dir->dir);
+}
+
 process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, priority_t priority)
 {
     process_t* process = heap_alloc(sizeof(process_t), HEAP_NONE);
@@ -287,13 +307,14 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
         process->parent = NULL;
     }
 
-    LOG_INFO("process: new process created pid=%d parent=%d priority=%d\n", process->id, parent ? parent->id : 0,
+    LOG_INFO("process: created pid=%d parent=%d priority=%d\n", process->id, parent ? parent->id : 0,
         priority);
     return process;
 }
 
 void process_free(process_t* process)
 {
+    LOG_DEBUG("process: free pid=%d\n", process->id);
     assert(list_is_empty(&process->threads.list));
 
     if (process->parent != NULL)
@@ -313,7 +334,7 @@ void process_free(process_t* process)
 
     vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_cleanup
     wait_unblock(&process->queue, WAIT_ALL);
-    sysfs_dir_deinit(&process->dir.dir);
+    process_dir_deinit(&process->dir);
 }
 
 bool process_is_child(process_t* process, pid_t parentId)
@@ -342,12 +363,21 @@ void process_backend_init(void)
 
     LOG_INFO("process: init\n");
 
-    assert(sysfs_group_init(&procGroup, PATHNAME("/proc")) != ERR);
-    assert(process_dir_init(&self, "self", NULL) != ERR);
+    if (sysfs_group_init(&procGroup, PATHNAME("/proc")) == ERR)
+    {
+        panic(NULL, "Failed to initialize process sysfs group");
+    }
+    if (process_dir_init(&self, "self", NULL) == ERR)
+    {
+        panic(NULL, "Failed to initialize process sysfs directory");
+    }
 
     LOG_INFO("process: create kernel process\n");
     kernelProcess = process_new(NULL, NULL, NULL, PRIORITY_MAX - 1);
-    assert(kernelProcess != NULL);
+    if (kernelProcess == NULL)
+    {
+        panic(NULL, "Failed to create kernel process");
+    }
 }
 
 process_t* process_get_kernel(void)

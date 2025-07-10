@@ -219,7 +219,10 @@ static void vmm_load_memory_map(efi_mem_map_t* memoryMap)
 {
     // Kernel pml must be within 32 bit boundary because smp trampoline loads it as a dword.
     kernelPml = pmm_alloc_bitmap(1, UINT32_MAX, 0);
-    assert(kernelPml != NULL);
+    if (kernelPml == NULL)
+    {
+        panic(NULL, "Failed to allocate kernel PML");
+    }
     memset(kernelPml, 0, PAGE_SIZE);
 
     for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)

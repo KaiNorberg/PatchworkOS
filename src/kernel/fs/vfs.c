@@ -275,7 +275,7 @@ dentry_t* vfs_get_or_lookup_dentry(const path_t* parent, const char* name)
     dentry_t* dentry = vfs_get_dentry_internal(&key);
     if (dentry != NULL)
     {
-        return dentry_ref(dentry);
+        return dentry;
     }
 
     rwlock_write_acquire(&dentryCache.lock);

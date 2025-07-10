@@ -94,6 +94,7 @@ void dentry_free(dentry_t* dentry)
         dentry->ops->cleanup(dentry);
     }
 
+    LOG_DEBUG("dentry: freeing dentry %s\n", dentry->name);
     heap_free(dentry);
 }
 
@@ -101,15 +102,16 @@ dentry_t* dentry_ref(dentry_t* dentry)
 {
     if (dentry != NULL)
     {
-        atomic_fetch_add(&dentry->ref, 1);
+        atomic_fetch_add_explicit(&dentry->ref, 1, memory_order_relaxed);
     }
     return dentry;
 }
 
 void dentry_deref(dentry_t* dentry)
 {
-    if (dentry != NULL && atomic_fetch_sub(&dentry->ref, 1) <= 1)
+    if (dentry != NULL && atomic_fetch_sub_explicit(&dentry->ref, 1, memory_order_relaxed) <= 1)
     {
+        atomic_thread_fence(memory_order_acquire);
         dentry_free(dentry);
     }
 }

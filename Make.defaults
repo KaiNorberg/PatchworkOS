@@ -8,17 +8,13 @@ OBJCOPY := objcopy
 
 OPTIMIZATION = -O3
 DEBUG_SYMBOLS =
-TESTING =
-
 ifeq ($(DEBUG),1)
     OPTIMIZATION = -O0
     DEBUG_SYMBOLS = -ggdb
-    TESTING = -DTESTING
 endif
 
 CFLAGS := $(OPTIMIZATION) \
     $(DEBUG_SYMBOLS) \
-    $(TESTING) \
     -nostdlib \
     -nostdinc \
     -ffreestanding \

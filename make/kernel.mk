@@ -16,7 +16,9 @@ CFLAGS += $(CFLAGS_DISABLE_SIMD) -fno-pic -fno-stack-check -mcmodel=kernel \
 	-D__STDC_WANT_LIB_EXT1__=1
 
 ifeq ($(DEBUG),1)
-    CFLAGS += -DQEMU_ISA_DEBUG_EXIT
+    CFLAGS += -DQEMU_ISA_DEBUG_EXIT -DDEBUG=1
+else
+    CFLAGS += -DNDEBUG
 endif
 
 ASFLAGS += -D__KERNEL__ -Isrc/libstd

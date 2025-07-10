@@ -4,6 +4,7 @@
 #include "drivers/systime/hpet.h"
 #include "drivers/systime/systime.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/vmm.h"
 #include "regs.h"
 #include "utils/utils.h"
@@ -16,7 +17,11 @@ void apic_init(void)
 {
     void* lapicPhysAddr = madt_lapic_address();
     lapicBase = (uintptr_t)vmm_kernel_map(NULL, lapicPhysAddr, 1, PML_WRITE);
-    assert((void*)lapicBase != NULL);
+    if ((void*)lapicBase == NULL)
+    {
+        panic(NULL, "Unable to map lapic, hardware is not compatible");
+    }
+
     LOG_INFO("apic: init lapic_base=0x%016lx phys=0x%016lx\n", lapicBase, lapicPhysAddr);
 }
 

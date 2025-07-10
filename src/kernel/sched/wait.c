@@ -29,7 +29,7 @@ void wait_queue_deinit(wait_queue_t* waitQueue)
 
     if (!list_is_empty(&waitQueue->entries))
     {
-        panic(NULL, "Wait queue freed with pending threads");
+        panic(NULL, "Wait queue with pending threads freed");
     }
 }
 
@@ -106,8 +106,7 @@ void wait_timer_trap(trap_frame_t* trapFrame, cpu_t* self)
         thread_state_t expected = THREAD_BLOCKED;
         if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
         {
-            LOG_DEBUG("wait: timeout unblock tid=%d pid=%d\n", thread->id, thread->process->id);
-            wait_cleanup_block(thread, WAIT_NORM, NULL, false);
+            wait_cleanup_block(thread, WAIT_TIMEOUT, NULL, false);
             sched_push(thread, NULL, thread->wait.owner);
         }
     }
@@ -146,8 +145,7 @@ bool wait_finalize_block(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread)
     thread_state_t state = atomic_load(&thread->state);
     if (state != THREAD_PRE_BLOCK && state != THREAD_UNBLOCKING)
     {
-        LOG_DEBUG("unexpected thread state during block tid=%d pid=%d state=%d\n", thread->id, thread->process->id,
-            state);
+        LOG_INFO("thread state is THREAD_BLOCKING here state=%d\n", state);
     }
 
     thread_state_t expected = THREAD_PRE_BLOCK;
@@ -195,7 +193,6 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount)
 
         if (atomic_exchange(&thread->state, THREAD_UNBLOCKING) == THREAD_BLOCKED)
         {
-            LOG_DEBUG("wait: unblocking tid=%d pid=%d from queue\n", thread->id, thread->process->id);
             wait_cleanup_block(thread, WAIT_NORM, waitQueue, true);
             sched_push(thread, NULL, thread->wait.owner);
             amountUnblocked++;
@@ -230,7 +227,6 @@ static uint64_t wait_setup_block(thread_t* thread, wait_queue_t** waitQueues, ui
                 }
                 heap_free(other);
             }
-            errno = ENOMEM;
             return ERR;
         }
         list_entry_init(&entry->queueEntry);

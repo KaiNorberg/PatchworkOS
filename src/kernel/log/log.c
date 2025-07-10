@@ -1,6 +1,5 @@
 #include "log.h"
 
-#include "cpu/regs.h"
 #include "cpu/smp.h"
 #include "drivers/com.h"
 #include "drivers/systime/systime.h"
@@ -8,6 +7,7 @@
 #include "sched/thread.h"
 #include "sync/lock.h"
 #include "utils/ring.h"
+#include "log/panic.h"
 
 #include <boot/boot_info.h>
 #include <common/version.h>
@@ -18,7 +18,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/io.h>
-#include <sys/math.h>
 #include <sys/proc.h>
 
 static log_state_t state = {0};
@@ -80,11 +79,15 @@ void log_enable_time(void)
 
 void log_screen_enable(gop_buffer_t* framebuffer)
 {
+    LOG_INFO("log: screen enable\n");
     LOCK_DEFER(&lock);
 
     if (!screen.initialized)
     {
-        assert(screen_init(&screen, framebuffer) != ERR);
+        if (screen_init(&screen, framebuffer) == ERR)
+        {
+            panic(NULL, "Failed to initialize screen");
+        }
     }
 
     screen_enable(&screen, &klog.ring);
@@ -147,7 +150,10 @@ void log_file_expose(void)
 {
     LOCK_DEFER(&lock);
 
-    assert(sysfs_file_init(&klog.file, sysfs_get_default(), "klog", NULL, &klogOps, NULL) != ERR);
+    if (sysfs_file_init(&klog.file, sysfs_get_default(), "klog", NULL, &klogOps, NULL) == ERR)
+    {
+        panic(NULL, "Failed to expose log file");
+    }
 }
 
 void log_write(const char* string, uint64_t length)
