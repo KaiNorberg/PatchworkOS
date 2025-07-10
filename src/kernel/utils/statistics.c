@@ -14,8 +14,6 @@
 #include <sys/io.h>
 #include <sys/math.h>
 
-// TODO: Reimplement without view_t.
-
 static sysfs_dir_t statDir;
 static sysfs_file_t cpuFile;
 static sysfs_file_t memFile;
@@ -30,9 +28,9 @@ void statistics_cpu_ctx_init(statistics_cpu_ctx_t* ctx)
     lock_init(&ctx->lock);
 }
 
-/*static uint64_t statistics_cpu_view_init(file_t* file, view_t* view)
+static uint64_t statistics_cpu_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    char* string = heap_alloc(MAX_PATH * (smp_cpu_amount() + 1), HEAP_NONE);
+    char* string = heap_alloc(MAX_PATH * (smp_cpu_amount() + 1), HEAP_VMM);
     if (string == NULL)
     {
         return ERR;
@@ -49,23 +47,19 @@ void statistics_cpu_ctx_init(statistics_cpu_ctx_t* ctx)
             stat->trapClocks, i + 1 != smp_cpu_amount() ? '\n' : '\0');
     }
 
-    view->buffer = string;
-    view->length = strlen(string) + 1;
-    return 0;
+    uint64_t length = strlen(string);
+    uint64_t readCount = BUFFER_READ(buffer, count, offset, string, length);
+    heap_free(string);
+    return readCount;
 }
 
-static void statistics_cpu_view_deinit(view_t* view)
-{
-    heap_free(view->buffer);
-}*/
-
 static file_ops_t cpuOps = {
-
+    .read = statistics_cpu_read,
 };
 
-/*static uint64_t statistics_mem_view_init(file_t* file, view_t* view)
+static uint64_t statistics_mem_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    char* string = heap_alloc(MAX_PATH, HEAP_NONE);
+    char* string = heap_alloc(MAX_PATH, HEAP_VMM);
     if (string == NULL)
     {
         return ERR;
@@ -74,18 +68,14 @@ static file_ops_t cpuOps = {
     sprintf(string, "value kb\ntotal %d\nfree %d\nreserved %d", pmm_total_amount() * PAGE_SIZE / 4,
         pmm_free_amount() * PAGE_SIZE / 4, pmm_reserved_amount() * PAGE_SIZE / 4);
 
-    view->buffer = string;
-    view->length = strlen(string) + 1;
-    return 0;
+    uint64_t length = strlen(string);
+    uint64_t readCount = BUFFER_READ(buffer, count, offset, string, length);
+    heap_free(string);
+    return readCount;
 }
 
-static void statistics_mem_view_deinit(view_t* view)
-{
-    heap_free(view->buffer);
-}*/
-
 static file_ops_t memOps = {
-
+    .read = statistics_mem_read,
 };
 
 void statistics_init(void)

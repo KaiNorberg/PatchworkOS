@@ -94,7 +94,6 @@ void dentry_free(dentry_t* dentry)
         dentry->ops->cleanup(dentry);
     }
 
-    LOG_DEBUG("dentry: freeing dentry %s\n", dentry->name);
     heap_free(dentry);
 }
 

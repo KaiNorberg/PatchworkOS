@@ -35,7 +35,7 @@ static sysfs_group_t procGroup;
 
 static process_t* process_file_get_process(file_t* file)
 {
-    process_t* process = file->private;
+    process_t* process = file->inode->private;
     if (process == NULL)
     {
         process = sched_process();
@@ -66,12 +66,10 @@ static uint64_t process_ctl_wait(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    LOG_INFO("Process %d waiting for process %d\n", sched_process()->id, process->id);
     WAIT_BLOCK(&process->queue, ({
         LOCK_DEFER(&process->threads.lock);
         process->threads.isDying;
     }));
-    LOG_INFO("Process %d waiting for process %d done\n", sched_process()->id, process->id);
     return 0;
 }
 
