@@ -542,6 +542,20 @@ uint64_t vmm_unmap(space_t* space, void* virtAddr, uint64_t length)
     return 0;
 }
 
+SYSCALL_DEFINE(SYS_MUNMAP, uint64_t, void* address, uint64_t length)
+{
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!syscall_is_pointer_valid(address, length))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    return vmm_unmap(space, address, length);
+}
+
 uint64_t vmm_protect(space_t* space, void* virtAddr, uint64_t length, prot_t prot)
 {
     pml_flags_t flags;
@@ -570,6 +584,20 @@ uint64_t vmm_protect(space_t* space, void* virtAddr, uint64_t length, prot_t pro
     }
 
     return 0;
+}
+
+SYSCALL_DEFINE(SYS_MPROTECT, uint64_t, void* address, uint64_t length, prot_t prot)
+{
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!syscall_is_pointer_valid(address, length))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    return vmm_protect(space, address, length, prot);
 }
 
 bool vmm_mapped(space_t* space, const void* virtAddr, uint64_t length)

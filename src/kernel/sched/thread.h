@@ -2,7 +2,7 @@
 
 #include "config.h"
 #include "cpu/simd.h"
-#include "cpu/syscall.h"
+#include "cpu/syscalls.h"
 #include "cpu/trap.h"
 #include "ipc/note.h"
 #include "proc/process.h"

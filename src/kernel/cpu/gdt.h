@@ -58,8 +58,8 @@ typedef struct PACKED
 
 extern void gdt_load_descriptor(gdt_desc_t* descriptor);
 
-void gdt_init(void);
+void gdt_cpu_init(void);
 
 void gdt_load(void);
 
-void gdt_load_tss(tss_t* tss);
+void gd_cpu_load_tss(tss_t* tss);

@@ -137,3 +137,13 @@ uint64_t thread_send_note(thread_t* thread, const void* message, uint64_t length
 
     return 0;
 }
+
+SYSCALL_DEFINE(SYS_LAST_ERROR, errno_t)
+{
+    return errno;
+}
+
+SYSCALL_DEFINE(SYS_GETTID, tid_t)
+{
+    return sched_thread()->id;
+}

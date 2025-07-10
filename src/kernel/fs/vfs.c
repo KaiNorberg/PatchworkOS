@@ -12,12 +12,14 @@
 #include "sync/lock.h"
 #include "sync/rwlock.h"
 #include "sys/list.h"
+#include "cpu/syscalls.h"
 #include "sysfs.h"
 #include "vfs_ctx.h"
 
 #include <assert.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/io.h>
 
 static _Atomic(uint64_t) newVfsId = ATOMIC_VAR_INIT(0);
 
@@ -732,6 +734,33 @@ file_t* vfs_open(const pathname_t* pathname)
     return file_ref(file);
 }
 
+SYSCALL_DEFINE(SYS_OPEN, fd_t, const char* pathString)
+{
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!syscall_is_string_valid(space, pathString))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    pathname_t pathname;
+    if (pathname_init(&pathname, pathString) == ERR)
+    {
+        return ERR;
+    }
+
+    file_t* file = vfs_open(&pathname);
+    if (file == NULL)
+    {
+        return ERR;
+    }
+    FILE_DEFER(file);
+
+    return vfs_ctx_open(&process->vfsCtx, file);
+}
+
 uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2])
 {
     if (pathname == NULL || files == NULL)
@@ -789,6 +818,52 @@ uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2])
     return 0;
 }
 
+SYSCALL_DEFINE(SYS_OPEN2, uint64_t, const char* pathString, fd_t fds[2])
+{
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!syscall_is_string_valid(space, pathString))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    if (!syscall_is_buffer_valid(space, fds, sizeof(fd_t) * 2))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    pathname_t pathname;
+    if (pathname_init(&pathname, pathString) == ERR)
+    {
+        return ERR;
+    }
+
+    file_t* files[2];
+    if (vfs_open2(&pathname, files) == ERR)
+    {
+        return ERR;
+    }
+    FILE_DEFER(files[0]);
+    FILE_DEFER(files[1]);
+
+    fds[0] = vfs_ctx_open(&process->vfsCtx, files[0]);
+    if (fds[0] == ERR)
+    {
+        return ERR;
+    }
+    fds[1] = vfs_ctx_open(&process->vfsCtx, files[1]);
+    if (fds[1] == ERR)
+    {
+        vfs_ctx_close(&process->vfsCtx, fds[0]);
+        return ERR;
+    }
+
+    return 0;
+}
+
 uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
 {
     if (file == NULL || buffer == NULL)
@@ -822,6 +897,27 @@ uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
     }
 
     return result;
+}
+
+SYSCALL_DEFINE(SYS_READ, uint64_t, fd_t fd, void* buffer, uint64_t count)
+{
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!syscall_is_buffer_valid(space, buffer, count))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
+    if (file == NULL)
+    {
+        return ERR;
+    }
+    FILE_DEFER(file);
+
+    return vfs_read(file, buffer, count);
 }
 
 uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
@@ -860,6 +956,27 @@ uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
     return result;
 }
 
+SYSCALL_DEFINE(SYS_WRITE, uint64_t, fd_t fd, const void* buffer, uint64_t count)
+{
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!syscall_is_buffer_valid(space, buffer, count))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
+    if (file == NULL)
+    {
+        return ERR;
+    }
+    FILE_DEFER(file);
+
+    return vfs_write(file, buffer, count);
+}
+
 uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
 {
     if (file == NULL)
@@ -881,6 +998,20 @@ uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
 
     errno = ESPIPE;
     return ERR;
+}
+
+SYSCALL_DEFINE(SYS_SEEK, uint64_t, fd_t fd, int64_t offset, seek_origin_t origin)
+{
+    process_t* process = sched_process();
+
+    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
+    if (file == NULL)
+    {
+        return ERR;
+    }
+    FILE_DEFER(file);
+
+    return vfs_seek(file, offset, origin);
 }
 
 uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
@@ -906,6 +1037,33 @@ uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
     return file->ops->ioctl(file, request, argp, size);
 }
 
+SYSCALL_DEFINE(SYS_IOCTL, uint64_t, fd_t fd, uint64_t request, void* argp, uint64_t size)
+{
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (argp != NULL && !syscall_is_buffer_valid(space, argp, size))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    if (argp == NULL && size != 0)
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
+    if (file == NULL)
+    {
+        return ERR;
+    }
+    FILE_DEFER(file);
+
+    return vfs_ioctl(file, request, argp, size);
+}
+
 void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
 {
     if (file == NULL)
@@ -925,6 +1083,21 @@ void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
     }
 
     return file->ops->mmap(file, address, length, prot);
+}
+
+SYSCALL_DEFINE(SYS_MMAP, void*, fd_t fd, void* address, uint64_t length, prot_t prot)
+{
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
+    if (file == NULL)
+    {
+        return NULL;
+    }
+    FILE_DEFER(file);
+
+    return vfs_mmap(file, address, length, prot);
 }
 
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
@@ -1009,6 +1182,51 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
     return readyCount;
 }
 
+SYSCALL_DEFINE(SYS_POLL, uint64_t, pollfd_t* fds, uint64_t amount, clock_t timeout)
+{
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (amount == 0 || amount >= CONFIG_MAX_FD)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (!syscall_is_buffer_valid(space, fds, sizeof(pollfd_t) * amount))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    poll_file_t files[CONFIG_MAX_FD];
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        files[i].file = vfs_ctx_get_file(&process->vfsCtx, fds[i].fd);
+        if (files[i].file == NULL)
+        {
+            for (uint64_t j = 0; j < i; j++)
+            {
+                file_deref(files[j].file);
+            }
+            return ERR;
+        }
+
+        files[i].events = fds[i].events;
+        files[i].occoured = 0;
+    }
+
+    uint64_t result = vfs_poll(files, amount, timeout);
+
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        fds[i].occoured = files[i].occoured;
+        file_deref(files[i].file);
+    }
+
+    return result;
+}
+
 uint64_t vfs_getdirent(file_t* file, dirent_t* buffer, uint64_t amount)
 {
     if (file == NULL || (buffer == NULL && amount > 0))
@@ -1060,6 +1278,27 @@ uint64_t vfs_getdirent(file_t* file, dirent_t* buffer, uint64_t amount)
     return dentry->ops->getdirent(dentry, buffer, amount);
 }
 
+SYSCALL_DEFINE(SYS_GETDIRENT, uint64_t, fd_t fd, dirent_t* buffer, uint64_t amount)
+{
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!syscall_is_buffer_valid(space, buffer, amount * sizeof(dirent_t)))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    file_t* file = vfs_ctx_get_file(&process->vfsCtx, fd);
+    if (file == NULL)
+    {
+        return ERR;
+    }
+    FILE_DEFER(file);
+
+    return vfs_getdirent(file, buffer, amount);
+}
+
 uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer)
 {
     if (pathname == NULL || buffer == NULL)
@@ -1098,6 +1337,32 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer)
     buffer->name[MAX_NAME - 1] = '\0';
 
     return 0;
+}
+
+SYSCALL_DEFINE(SYS_STAT, uint64_t, const char* pathString, stat_t* buffer)
+{
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!syscall_is_string_valid(space, pathString))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    if (!syscall_is_buffer_valid(space, buffer, sizeof(stat_t)))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    pathname_t pathname;
+    if (pathname_init(&pathname, pathString) == ERR)
+    {
+        return ERR;
+    }
+
+    return vfs_stat(&pathname, buffer);
 }
 
 uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname)
@@ -1203,6 +1468,32 @@ uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname)
     lock_release(&newParentPath.dentry->inode->lock);*/
 
     return 0;
+}
+
+SYSCALL_DEFINE(SYS_LINK, uint64_t, const char* oldPathString, const char* newPathString)
+{
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!syscall_is_string_valid(space, oldPathString) || !syscall_is_string_valid(space, newPathString))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    pathname_t oldPathname;
+    if (pathname_init(&oldPathname, oldPathString) == ERR)
+    {
+        return ERR;
+    }
+
+    pathname_t newPathname;
+    if (pathname_init(&newPathname, newPathString) == ERR)
+    {
+        return ERR;
+    }
+
+    return vfs_link(&oldPathname, &newPathname);
 }
 
 uint64_t vfs_rename(const pathname_t* oldPathname, const pathname_t* newPathname)
@@ -1339,6 +1630,32 @@ uint64_t vfs_rename(const pathname_t* oldPathname, const pathname_t* newPathname
     return 0;
 }
 
+SYSCALL_DEFINE(SYS_RENAME, uint64_t, const char* oldPathString, const char* newPathString)
+{
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!syscall_is_string_valid(space, oldPathString) || !syscall_is_string_valid(space, newPathString))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    pathname_t oldPathname;
+    if (pathname_init(&oldPathname, oldPathString) == ERR)
+    {
+        return ERR;
+    }
+
+    pathname_t newPathname;
+    if (pathname_init(&newPathname, newPathString) == ERR)
+    {
+        return ERR;
+    }
+
+    return vfs_rename(&oldPathname, &newPathname);
+}
+
 uint64_t vfs_remove(const pathname_t* pathname)
 {
     /*if (pathname == NULL)
@@ -1407,6 +1724,26 @@ uint64_t vfs_remove(const pathname_t* pathname)
     return 0;
 }
 
+SYSCALL_DEFINE(SYS_REMOVE, uint64_t, const char* pathString)
+{
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!syscall_is_string_valid(space, pathString))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    pathname_t pathname;
+    if (pathname_init(&pathname, pathString) == ERR)
+    {
+        return ERR;
+    }
+
+    return vfs_remove(&pathname);
+}
+
 void getdirent_write(getdirent_ctx_t* ctx, dirent_t* buffer, uint64_t amount, inode_number_t number, inode_type_t type,
     const char* name)
 {
@@ -1420,4 +1757,31 @@ void getdirent_write(getdirent_ctx_t* ctx, dirent_t* buffer, uint64_t amount, in
     }
 
     ctx->total++;
+}
+
+SYSCALL_DEFINE(SYS_CHDIR, uint64_t, const char* pathString)
+{
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!syscall_is_string_valid(space, pathString))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    pathname_t pathname;
+    if (pathname_init(&pathname, pathString) == ERR)
+    {
+        return ERR;
+    }
+
+    path_t path = PATH_EMPTY;
+    if (vfs_walk(&path, &pathname) == ERR)
+    {
+        return ERR;
+    }
+    PATH_DEFER(&path);
+
+    return vfs_ctx_set_cwd(&process->vfsCtx, &path);
 }

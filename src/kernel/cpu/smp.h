@@ -6,7 +6,7 @@
 #include "sched/sched.h"
 #include "sched/wait.h"
 #include "sync/futex.h"
-#include "syscall.h"
+#include "syscalls.h"
 #include "trap.h"
 #include "tss.h"
 #include "utils/statistics.h"

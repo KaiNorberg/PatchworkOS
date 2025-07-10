@@ -88,3 +88,8 @@ uint64_t futex_do(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t ti
 
     return 0;
 }
+
+SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout)
+{
+    return futex_do(addr, val, op, timeout);
+}

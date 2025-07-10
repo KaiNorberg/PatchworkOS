@@ -31,7 +31,7 @@ static void simd_xsave_init(void)
     xcr0_write(0, xcr0);
 }
 
-void simd_init(void)
+void simd_cpu_init(void)
 {
     LOG_INFO("simd: init\n");
     cr0_write(cr0_read() & ~((uint64_t)CR0_EMULATION));

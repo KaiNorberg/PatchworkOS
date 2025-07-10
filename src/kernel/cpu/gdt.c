@@ -18,7 +18,7 @@ static gdt_entry_t gdt_entry_create(uint8_t access, uint8_t flags)
     return entry;
 }
 
-void gdt_init(void)
+void gdt_cpu_init(void)
 {
     gdt.null = gdt_entry_create(0, 0);
     gdt.kernelCode = gdt_entry_create(0x9A, 0xA);
@@ -37,7 +37,7 @@ void gdt_load(void)
     gdt_load_descriptor(&gdtDesc);
 }
 
-void gdt_load_tss(tss_t* tss)
+void gd_cpu_load_tss(tss_t* tss)
 {
     gdt.tssDesc.limitLow = sizeof(tss_t);
     gdt.tssDesc.baseLow = (uint16_t)((uint64_t)tss);

@@ -92,7 +92,7 @@ time_t systime_unix_epoch(void)
     return bootEpoch + systime_uptime() / CLOCKS_PER_SEC;
 }
 
-void systime_timer_init(void)
+void systime_cpu_timer_init(void)
 {
     cpu_t* self = smp_self_unsafe();
     self->systime.apicTicksPerNs = apic_timer_ticks_per_ns();
@@ -128,4 +128,26 @@ void systime_timer_one_shot(cpu_t* self, clock_t uptime, clock_t timeout)
         self->systime.nextDeadline = deadline;
         apic_timer_one_shot(VECTOR_TIMER, (uint32_t)ticks);
     }
+}
+
+SYSCALL_DEFINE(SYS_UPTIME, clock_t)
+{
+    return systime_uptime();
+}
+
+SYSCALL_DEFINE(SYS_UNIX_EPOCH, time_t, time_t* timePtr)
+{
+    time_t epoch = systime_unix_epoch();
+    if (timePtr != NULL)
+    {
+        if (!syscall_is_pointer_valid(timePtr, sizeof(time_t)))
+        {
+            errno = EFAULT;
+            return ERR;
+        }
+
+        *timePtr = epoch;
+    }
+
+    return epoch;
 }

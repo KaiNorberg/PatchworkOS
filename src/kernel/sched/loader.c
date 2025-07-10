@@ -206,3 +206,159 @@ thread_t* loader_thread_create(process_t* parent, void* entry, void* arg)
     child->trapFrame.rdi = (uint64_t)arg;
     return child;
 }
+
+SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const char* cwdString, spawn_attr_t* attr)
+{
+    thread_t* thread = sched_thread();
+    process_t* process = thread->process;
+    space_t* space = &process->space;
+
+    if (cwdString != NULL && !syscall_is_string_valid(space, cwdString))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    if (attr != NULL && !syscall_is_buffer_valid(space, attr, sizeof(spawn_attr_t)))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    priority_t priority;
+    if (attr == NULL || attr->flags & SPAWN_INHERIT_PRIORITY)
+    {
+        priority = atomic_load(&process->priority);
+    }
+    else
+    {
+        priority = attr->priority;
+    }
+
+    if (priority >= PRIORITY_MAX_USER)
+    {
+        errno = EACCES;
+        return ERR;
+    }
+
+    uint64_t argc = 0;
+    while (1)
+    {
+        if (!syscall_is_buffer_valid(space, &argv[argc], sizeof(const char*)))
+        {
+            errno = EFAULT;
+            return ERR;
+        }
+        else if (argv[argc] == NULL)
+        {
+            break;
+        }
+        else if (!syscall_is_string_valid(space, argv[argc]))
+        {
+            errno = EFAULT;
+            return ERR;
+        }
+
+        argc++;
+    }
+
+    uint64_t fdAmount = 0;
+    if (fds != NULL)
+    {
+        while (1)
+        {
+            if (fdAmount >= CONFIG_MAX_FD)
+            {
+                errno = EINVAL;
+                return ERR;
+            }
+            else if (!syscall_is_buffer_valid(space, &fds[fdAmount], sizeof(fd_t)))
+            {
+                errno = EFAULT;
+                return ERR;
+            }
+            else if (fds[fdAmount].child == FD_NONE || fds[fdAmount].parent == FD_NONE)
+            {
+                break;
+            }
+
+            fdAmount++;
+        }
+    }
+
+    thread_t* child;
+    if (cwdString == NULL)
+    {
+        child = loader_spawn(argv, priority, NULL);
+    }
+    else
+    {
+        pathname_t cwdPathname;
+        if (pathname_init(&cwdPathname, cwdString) == ERR)
+        {
+            return ERR;
+        }
+
+        path_t cwdPath = PATH_EMPTY;
+        if (vfs_walk(&cwdPath, &cwdPathname) == ERR)
+        {
+            return ERR;
+        }
+
+        child = loader_spawn(argv, priority, &cwdPath);
+
+        path_put(&cwdPath);
+    }
+
+    if (child == NULL)
+    {
+        return ERR;
+    }
+
+    vfs_ctx_t* parentVfsCtx = &process->vfsCtx;
+    vfs_ctx_t* childVfsCtx = &child->process->vfsCtx;
+
+    for (uint64_t i = 0; i < fdAmount; i++)
+    {
+        file_t* file = vfs_ctx_get_file(parentVfsCtx, fds[i].parent);
+        if (file == NULL)
+        {
+            thread_free(child);
+            errno = EBADF;
+            return ERR;
+        }
+        FILE_DEFER(file);
+
+        if (vfs_ctx_openas(childVfsCtx, fds[i].child, file) == ERR)
+        {
+            thread_free(child);
+            errno = EBADF;
+            return ERR;
+        }
+    }
+
+    sched_push(child, thread, NULL);
+    return child->process->id;
+}
+
+SYSCALL_DEFINE(SYS_THREAD_CREATE, tid_t, void* entry, void* arg)
+{
+    thread_t* thread = sched_thread();
+    process_t* process = thread->process;
+    space_t* space = &process->space;
+
+    if (!syscall_is_buffer_valid(space, entry, sizeof(uint64_t)))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    thread_t* newThread = loader_thread_create(process, entry, arg);
+    if (newThread == NULL)
+    {
+        return ERR;
+    }
+
+    sched_push(newThread, thread, NULL);
+    return newThread->id;
+}

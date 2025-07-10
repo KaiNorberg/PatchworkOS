@@ -48,7 +48,7 @@ uint64_t apic_timer_ticks_per_ns(void)
     return ticksPerNs;
 }
 
-void lapic_init(void)
+void lapic_cpu_init(void)
 {
     uint64_t lapicMsr = msr_read(MSR_LAPIC);
     LOG_INFO("lapic: init id=%d msr=0x%016lx\n", lapic_id(), lapicMsr);

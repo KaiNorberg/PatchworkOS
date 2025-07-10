@@ -3,10 +3,10 @@
 #include "_internal/ERR.h"
 #include "cpu/apic.h"
 #include "cpu/gdt.h"
-#include "cpu/regs.h"
 #include "cpu/smp.h"
+#include "cpu/syscalls.h"
 #include "cpu/trap.h"
-#include "cpu/vectors.h"
+
 #include "drivers/systime/hpet.h"
 #include "drivers/systime/systime.h"
 #include "fs/vfs.h"
@@ -157,6 +157,11 @@ wait_result_t sched_sleep(clock_t timeout)
     return wait_block(&sleepQueue, timeout);
 }
 
+SYSCALL_DEFINE(SYS_SLEEP, uint64_t, clock_t nanoseconds)
+{
+    return sched_sleep(nanoseconds);
+}
+
 bool sched_is_idle(void)
 {
     sched_cpu_ctx_t* ctx = &smp_self()->sched;
@@ -226,12 +231,26 @@ void sched_process_exit(uint64_t status)
     smp_put();
 }
 
+SYSCALL_DEFINE(SYS_PROCESS_EXIT, void, uint64_t status)
+{
+    sched_process_exit(status);
+    sched_invoke();
+    panic(NULL, "Return to syscall_process_exit");
+}
+
 void sched_thread_exit(void)
 {
     if (atomic_exchange(&sched_thread()->state, THREAD_ZOMBIE) != THREAD_RUNNING)
     {
         panic(NULL, "Invalid state while exiting thread");
     }
+}
+
+SYSCALL_DEFINE(SYS_THREAD_EXIT, void)
+{
+    sched_thread_exit();
+    sched_invoke();
+    panic(NULL, "Return to syscall_thread_exit");
 }
 
 static void sched_update_recent_idle_time(thread_t* thread, bool wasBlocking)
@@ -300,6 +319,13 @@ void sched_yield(void)
     thread_t* thread = smp_self()->sched.runThread;
     thread->sched.deadline = 0;
     smp_put();
+}
+
+SYSCALL_DEFINE(SYS_YIELD, uint64_t)
+{
+    sched_yield();
+    sched_invoke();
+    return 0;
 }
 
 static bool sched_should_notify(cpu_t* self, cpu_t* chosen, priority_t priority)

@@ -7,7 +7,7 @@ typedef struct
     uint8_t* buffer;
 } simd_ctx_t;
 
-void simd_init(void);
+void simd_cpu_init(void);
 
 uint64_t simd_ctx_init(simd_ctx_t* ctx);
 

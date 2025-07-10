@@ -384,3 +384,8 @@ process_t* process_get_kernel(void)
 {
     return kernelProcess;
 }
+
+SYSCALL_DEFINE(SYS_GETPID, pid_t)
+{
+    return sched_process()->id;
+}

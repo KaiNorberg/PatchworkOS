@@ -123,6 +123,13 @@ uint64_t vfs_ctx_close(vfs_ctx_t* ctx, fd_t fd)
     return 0;
 }
 
+SYSCALL_DEFINE(SYS_CLOSE, uint64_t, fd_t fd)
+{
+    process_t* process = sched_process();
+
+    return vfs_ctx_close(&process->vfsCtx, fd);
+}
+
 fd_t vfs_ctx_dup(vfs_ctx_t* ctx, fd_t oldFd)
 {
     LOCK_DEFER(&ctx->lock);
@@ -144,6 +151,11 @@ fd_t vfs_ctx_dup(vfs_ctx_t* ctx, fd_t oldFd)
 
     errno = EMFILE;
     return ERR;
+}
+
+SYSCALL_DEFINE(SYS_DUP, uint64_t, fd_t oldFd)
+{
+    return vfs_ctx_dup(&sched_process()->vfsCtx, oldFd);
 }
 
 fd_t vfs_ctx_dup2(vfs_ctx_t* ctx, fd_t oldFd, fd_t newFd)
@@ -170,4 +182,9 @@ fd_t vfs_ctx_dup2(vfs_ctx_t* ctx, fd_t oldFd, fd_t newFd)
     ctx->files[newFd] = file_ref(ctx->files[oldFd]);
 
     return newFd;
+}
+
+SYSCALL_DEFINE(SYS_DUP2, uint64_t, fd_t oldFd, fd_t newFd)
+{
+    return vfs_ctx_dup2(&sched_process()->vfsCtx, oldFd, newFd);
 }

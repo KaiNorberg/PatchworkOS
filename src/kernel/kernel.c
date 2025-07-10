@@ -52,11 +52,11 @@ static void kernel_free_loader_data(efi_mem_map_t* memoryMap)
 
 void kernel_init(boot_info_t* bootInfo)
 {
-    gdt_init();
-    idt_init();
+    gdt_cpu_init();
+    idt_cpu_init();
 
     smp_bootstrap_init();
-    gdt_load_tss(&smp_self_unsafe()->tss);
+    gd_cpu_load_tss(&smp_self_unsafe()->tss);
 
     log_init();
 
@@ -84,15 +84,16 @@ void kernel_init(boot_info_t* bootInfo)
 
     madt_init();
     apic_init();
-    lapic_init();
+    lapic_cpu_init();
 
     pic_init();
-    simd_init();
+    simd_cpu_init();
 
     smp_others_init();
-    systime_timer_init();
+    systime_cpu_timer_init();
 
-    syscall_init();
+    syscall_table_init();
+    syscalls_cpu_init();
 
     const_init();
     ps2_init();
@@ -111,15 +112,15 @@ void kernel_init(boot_info_t* bootInfo)
 
 void kernel_other_init(void)
 {
-    gdt_init();
-    idt_init();
+    gdt_cpu_init();
+    idt_cpu_init();
 
-    gdt_load_tss(&smp_self_brute()->tss);
+    gd_cpu_load_tss(&smp_self_brute()->tss);
 
-    lapic_init();
-    simd_init();
+    lapic_cpu_init();
+    simd_cpu_init();
 
     vmm_cpu_init();
-    syscall_init();
-    systime_timer_init();
+    syscalls_cpu_init();
+    systime_cpu_timer_init();
 }

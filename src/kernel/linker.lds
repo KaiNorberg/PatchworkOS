@@ -38,7 +38,7 @@ SECTIONS
     {
         _syscallTableStart = .;
         KEEP(*(.syscall_table))
-        _syscallsTableEnd = .;
+        _syscallTableEnd = .;
     }
 
     .tests : ALIGN(4K)
