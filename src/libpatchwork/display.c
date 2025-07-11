@@ -52,7 +52,8 @@ display_t* display_new(void)
         free(disp);
         return NULL;
     }
-    read(disp->handle, disp->id, MAX_NAME);
+    memset(disp->id, 0, MAX_NAME);
+    read(disp->handle, disp->id, MAX_NAME - 1);
 
     fd_t ctl = openf("/net/local/%s/ctl", disp->id);
     if (ctl == ERR)

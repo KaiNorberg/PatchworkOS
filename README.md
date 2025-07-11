@@ -49,11 +49,11 @@ Patchwork strictly follows the "everything is a file" philosophy in a way simila
 
 ### Sockets
 
-In order to create a local socket, you open the ```/net/local/new``` file, which will return a file that acts as the handle for your socket. Reading from this file will return the ID of your created socket so, for example, you can do
+In order to create a local seqstream socket, you open the ```/net/local/seqstream``` file, which will return a file that acts as the handle for your socket. Reading from this file will return the ID of your created socket so, for example, you can do
 
 ```c
-    fd_t handle = open("/net/local/new");
-    char id[32];
+    fd_t handle = open("/net/local/seqstream");
+    char id[32] = {0};
     read(handle, id, 32);
 ```
 
@@ -81,8 +81,8 @@ Note the use of openf() which allows us to open files via a formatted path and t
 The returned file descriptor can be used to send and receive data, just like when calling accept() in for example Linux or other POSIX operating systems. This is practically true of the entire socket API, apart from using these weird files everything (should) work as expected. For the sake of completeness, if we wanted to connect to this server, we can do something like this
 
 ```c
-    fd_t handle = open("/net/local/new");
-    char id[32];
+    fd_t handle = open("/net/local/seqstream");
+    char id[32] = {0};
     read(handle, id, 32);
 
     fd_t ctl = openf("/net/local/%s/ctl", id);
@@ -95,7 +95,7 @@ The returned file descriptor can be used to send and receive data, just like whe
 You may have noticed that, in the above section, the open() function does not take in a flags argument or anything similar. This is because flags are part of the file path directly so if you wanted to create a non-blocking socket, you would use
 
 ```c
-    fd_t handle = open("/net/local/new?nonblock");
+    fd_t handle = open("/net/local/seqstream?nonblock");
 ```
 
 Multiple flags can be separated with the ```&``` character, like an internet link. However, there are no read and/or write flags, all files are both read and write.

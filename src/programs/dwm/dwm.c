@@ -88,7 +88,8 @@ static void dwm_send_event_to_all(surface_id_t target, event_type_t type, void* 
 void dwm_init(void)
 {
     fd_t handle = open("/net/local/new?nonblock");
-    read(handle, id, MAX_NAME);
+    memset(id, 0, MAX_NAME);
+    read(handle, id, MAX_NAME - 1);
 
     fd_t ctl = openf("/net/local/%s/ctl", id);
     writef(ctl, "bind dwm");

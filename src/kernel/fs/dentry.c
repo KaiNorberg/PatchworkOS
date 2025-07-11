@@ -74,6 +74,11 @@ void dentry_free(dentry_t* dentry)
 
     assert(dentry->parent != NULL);
 
+    if (dentry->ops != NULL && dentry->ops->cleanup != NULL)
+    {
+        dentry->ops->cleanup(dentry);
+    }
+
     vfs_remove_dentry(dentry);
 
     if (dentry->inode != NULL)
@@ -89,11 +94,6 @@ void dentry_free(dentry_t* dentry)
 
         dentry_deref(dentry->parent);
         dentry->parent = NULL;
-    }
-
-    if (dentry->ops != NULL && dentry->ops->cleanup != NULL)
-    {
-        dentry->ops->cleanup(dentry);
     }
 
     heap_free(dentry);

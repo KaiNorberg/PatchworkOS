@@ -598,6 +598,10 @@ bool vfs_is_name_valid(const char* name)
 static uint64_t vfs_open_lookup(path_t* outPath, const pathname_t* pathname)
 {
     *outPath = PATH_EMPTY;
+
+    path_t path = PATH_EMPTY;
+    PATH_DEFER(&path);
+
     if (pathname->flags & PATH_CREATE)
     {
         char lastComponent[MAX_NAME];
@@ -620,12 +624,10 @@ static uint64_t vfs_open_lookup(path_t* outPath, const pathname_t* pathname)
             return ERR;
         }
 
-        path_t path = PATH_EMPTY;
         if (path_walk_single_step(&path, &parent, lastComponent, WALK_NEGATIVE_IS_OK) == ERR)
         {
             return ERR;
         }
-        PATH_DEFER(&path);
 
         if (parent.dentry->inode->ops->create(parent.dentry->inode, path.dentry, pathname->flags) == ERR)
         {
@@ -637,38 +639,34 @@ static uint64_t vfs_open_lookup(path_t* outPath, const pathname_t* pathname)
             errno = EIO;
             return ERR;
         }
-
-        path_copy(outPath, &path);
     }
     else // Dont create dentry
     {
-        if (vfs_walk(outPath, pathname, WALK_NONE) == ERR)
+        if (vfs_walk(&path, pathname, WALK_NONE) == ERR)
         {
             return ERR;
         }
     }
 
-    if (outPath->dentry->inode == NULL)
+    if (path.dentry->inode == NULL)
     {
-        path_put(outPath);
         errno = ENOENT;
         return ERR;
     }
 
-    if ((pathname->flags & PATH_DIRECTORY) && outPath->dentry->inode->type != INODE_DIR)
+    if ((pathname->flags & PATH_DIRECTORY) && path.dentry->inode->type != INODE_DIR)
     {
-        path_put(outPath);
         errno = ENOTDIR;
         return ERR;
     }
 
-    if (!(pathname->flags & PATH_DIRECTORY) && outPath->dentry->inode->type != INODE_FILE)
+    if (!(pathname->flags & PATH_DIRECTORY) && path.dentry->inode->type != INODE_FILE)
     {
-        path_put(outPath);
         errno = EISDIR;
         return ERR;
     }
 
+    path_copy(outPath, &path);
     return 0;
 }
 
