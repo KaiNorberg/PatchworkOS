@@ -37,7 +37,6 @@ typedef struct socket_family
     socket_ops_t ops;
     atomic_uint64_t newId; //!< Internal.
     sysfs_dir_t dir; //!< Internal.
-    sysfs_file_t newFile; //!< Internal.
     list_t constructors; //!< Internal.
 } socket_family_t;
 

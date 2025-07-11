@@ -5,6 +5,7 @@
 #include "net/socket.h"
 #include "log/log.h"
 #include "net/net.h"
+#include <sys/list.h>
 
 static uint64_t socket_family_new_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
@@ -76,11 +77,20 @@ uint64_t socket_family_register(socket_family_t* family)
         return ERR;
     }
 
-    if (sysfs_file_init(&family->newFile, &family->dir, "new", NULL, &newFileOps, family) == ERR)
+    for (uint64_t i = 0; i < SOCKET_TYPE_AMOUNT; i++)
     {
-        LOG_ERR("socket: failed to create sysfs file for family %s\n", family->name);
-        sysfs_dir_deinit(&family->dir);
-        return ERR;
+        socket_type_t type = (1 << i);
+        if (!(type & family->supportedTypes))
+        {
+            continue;
+        }
+
+        if (sysfs_file_init(&family->newFile, &family->dir, "new", NULL, &newFileOps, family) == ERR)
+        {
+            LOG_ERR("socket: failed to create sysfs file for family %s\n", family->name);
+            sysfs_dir_deinit(&family->dir);
+            return ERR;
+        }
     }
 
     LOG_INFO("socket: registered family %s\n", family->name);
