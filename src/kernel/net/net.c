@@ -1,7 +1,7 @@
 #include "net.h"
 
 #include "fs/sysfs.h"
-#include "local.h"
+#include "net/local/local.h"
 #include "log/log.h"
 #include "log/panic.h"
 

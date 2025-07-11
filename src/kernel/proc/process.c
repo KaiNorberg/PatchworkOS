@@ -217,18 +217,24 @@ static uint64_t process_dir_init(process_dir_t* dir, const char* name, process_t
 
     if (sysfs_file_init(&dir->cwdFile, &dir->dir, "cwd", NULL, &cwdOps, process) == ERR)
     {
+        sysfs_file_deinit(&dir->ctlFile);
         sysfs_dir_deinit(&dir->dir);
         return ERR;
     }
 
     if (sysfs_file_init(&dir->cmdlineFile, &dir->dir, "cmdline", NULL, &cmdlineOps, process) == ERR)
     {
+        sysfs_file_deinit(&dir->ctlFile);
+        sysfs_file_deinit(&dir->cwdFile);
         sysfs_dir_deinit(&dir->dir);
         return ERR;
     }
 
     if (sysfs_file_init(&dir->noteFile, &dir->dir, "note", NULL, &noteOps, process) == ERR)
     {
+        sysfs_file_deinit(&dir->ctlFile);
+        sysfs_file_deinit(&dir->cwdFile);
+        sysfs_file_deinit(&dir->cmdlineFile);
         sysfs_dir_deinit(&dir->dir);
         return ERR;
     }

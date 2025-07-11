@@ -3,11 +3,12 @@
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "net/socket.h"
+#include "mem/heap.h"
 #include "log/log.h"
 #include "net/net.h"
 #include <sys/list.h>
 
-static uint64_t socket_family_new_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t socket_factory_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     socket_t* sock = file->private;
 
@@ -15,32 +16,21 @@ static uint64_t socket_family_new_read(file_t* file, void* buffer, uint64_t coun
     return BUFFER_READ(buffer, count, offset, sock->id, length); // Include null terminator
 }
 
-static uint64_t socket_family_new_open(file_t* file)
+static uint64_t socket_factory_open(file_t* file)
 {
-    socket_family_t* family = file->inode->private;
+    socket_factory_t* factory = file->inode->private;
 
-    socket_t* socket = socket_new(family, path->flags);
+    socket_t* socket = socket_new(factory->family, factory->type, file->flags);
     if (socket == NULL)
     {
         return NULL;
     }
 
-    file_t* file = file_new(volume, path, PATH_NONBLOCK);
-    if (file == NULL)
-    {
-        socket_free(socket);
-        return NULL;
-    }
-    static file_ops_t fileOps = {
-        .read = socket_family_new_read,
-        .seek = socket_family_new_seek,
-    };
-    file->ops = &fileOps;
     file->private = socket;
-    return file;
+    return 0;
 }
 
-static void socket_family_new_cleanup(file_t* file)
+static void socket_factory_cleanup(file_t* file)
 {
     socket_t* socket = file->private;
     if (socket != NULL)
@@ -49,10 +39,10 @@ static void socket_family_new_cleanup(file_t* file)
     }
 }
 
-static file_ops_t newFileOps = {
-    .read = socket_family_new_read,
-    .open = socket_family_new_open,
-    .cleanup = socket_family_new_cleanup,
+static file_ops_t factoryOps = {
+    .read = socket_factory_read,
+    .open = socket_factory_open,
+    .cleanup = socket_factory_cleanup,
 };
 
 uint64_t socket_family_register(socket_family_t* family)
@@ -62,18 +52,17 @@ uint64_t socket_family_register(socket_family_t* family)
         return ERR;
     }
 
-    if (family->ops.init == NULL || family->ops.deinit == NULL)
+    if (family->init == NULL || family->deinit == NULL)
     {
-        LOG_ERR("socket: family %s missing required operations\n", family->name);
         errno = EINVAL;
         return ERR;
     }
 
     atomic_init(&family->newId, 0);
+    list_init(&family->factories);
 
     if (sysfs_dir_init(&family->dir, net_get_dir(), family->name, NULL, family) == ERR)
     {
-        LOG_ERR("socket: failed to create sysfs dir for family %s\n", family->name);
         return ERR;
     }
 
@@ -85,16 +74,39 @@ uint64_t socket_family_register(socket_family_t* family)
             continue;
         }
 
-        if (sysfs_file_init(&family->newFile, &family->dir, "new", NULL, &newFileOps, family) == ERR)
+        socket_factory_t* factory = heap_alloc(sizeof(socket_factory_t), HEAP_NONE);
+        if (factory == NULL)
         {
-            LOG_ERR("socket: failed to create sysfs file for family %s\n", family->name);
-            sysfs_dir_deinit(&family->dir);
-            return ERR;
+            goto error;
         }
+        list_entry_init(&factory->entry);
+        factory->type = type;
+        factory->family = family;
+
+        const char* string = socket_type_to_string(type);
+        if (sysfs_file_init(&factory->file, &family->dir, string, NULL, &factoryOps, family) == ERR)
+        {
+            heap_free(factory);
+            goto error;
+        }
+
+        list_push(&family->factories, &factory->entry);
     }
 
     LOG_INFO("socket: registered family %s\n", family->name);
     return 0;
+
+error:;
+
+    socket_factory_t* factory;
+    LIST_FOR_EACH(factory, &family->factories, entry)
+    {
+        sysfs_file_deinit(&factory->file);
+        heap_free(factory);
+    }
+
+    sysfs_dir_deinit(&family->dir);
+    return ERR;
 }
 
 void socket_family_unregister(socket_family_t* family)

@@ -2,6 +2,7 @@
 
 #include "fs/dentry.h"
 #include "log/log.h"
+#include "sync/lock.h"
 #include "vfs.h"
 #include "log/panic.h"
 
@@ -151,7 +152,7 @@ uint64_t sysfs_dir_init(sysfs_dir_t* dir, sysfs_dir_t* parent, const char* name,
 
 void sysfs_dir_deinit(sysfs_dir_t* dir)
 {
-    if (dir == NULL)
+    if (dir == NULL || dir->dentry == NULL)
     {
         return;
     }
