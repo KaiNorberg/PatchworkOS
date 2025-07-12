@@ -36,7 +36,7 @@ static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count, uint64_t* 
         return ERR;
     }
 
-    LOCK_DEFER(&private->lock);
+    LOCK_SCOPE(&private->lock);
 
     if (WAIT_BLOCK_LOCK(&private->waitQueue, &private->lock,
             ring_data_length(&private->ring) != 0 || private->isWriteClosed) != WAIT_NORM)
@@ -71,7 +71,7 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uin
         return ERR;
     }
 
-    LOCK_DEFER(&private->lock);
+    LOCK_SCOPE(&private->lock);
 
     if (WAIT_BLOCK_LOCK(&private->waitQueue, &private->lock,
             ring_free_length(&private->ring) >= count || private->isReadClosed) != WAIT_NORM)
@@ -101,7 +101,7 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uin
 static wait_queue_t* pipe_poll(file_t* file, poll_file_t* pollFile)
 {
     pipe_private_t* private = file->private;
-    LOCK_DEFER(&private->lock);
+    LOCK_SCOPE(&private->lock);
     pollFile->occoured = ((ring_data_length(&private->ring) != 0 || private->isWriteClosed) ? POLL_READ : 0) |
         ((ring_free_length(&private->ring) != 0 || private->isReadClosed) ? POLL_WRITE : 0);
     return &private->waitQueue;

@@ -41,7 +41,7 @@ static uint64_t statistics_cpu_read(file_t* file, void* buffer, uint64_t count, 
     {
         cpu_t* cpu = smp_cpu(i);
         statistics_cpu_ctx_t* stat = &cpu->stat;
-        LOCK_DEFER(&stat->lock);
+        LOCK_SCOPE(&stat->lock);
 
         sprintf(&string[strlen(string)], "cpu%d %llu %llu %llu%c", cpu->id, stat->idleClocks, stat->activeClocks,
             stat->trapClocks, i + 1 != smp_cpu_amount() ? '\n' : '\0');
@@ -97,7 +97,7 @@ void statistics_init(void)
 void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* self)
 {
     statistics_cpu_ctx_t* stat = &self->stat;
-    LOCK_DEFER(&stat->lock);
+    LOCK_SCOPE(&stat->lock);
 
     stat->trapBegin = systime_uptime();
 
@@ -115,7 +115,7 @@ void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* self)
 void statistics_trap_end(trap_frame_t* trapFrame, cpu_t* self)
 {
     statistics_cpu_ctx_t* stat = &self->stat;
-    LOCK_DEFER(&stat->lock);
+    LOCK_SCOPE(&stat->lock);
 
     stat->trapEnd = systime_uptime();
     stat->trapClocks += stat->trapEnd - stat->trapBegin;

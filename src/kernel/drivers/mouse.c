@@ -21,7 +21,7 @@ static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count, uint64_t*
     count = ROUND_DOWN(count, sizeof(mouse_event_t));
     for (uint64_t i = 0; i < count / sizeof(mouse_event_t); i++)
     {
-        LOCK_DEFER(&mouse->lock);
+        LOCK_SCOPE(&mouse->lock);
 
         if (WAIT_BLOCK_LOCK(&mouse->waitQueue, &mouse->lock, *offset != mouse->writeIndex) != WAIT_NORM)
         {
@@ -89,7 +89,7 @@ void mouse_free(mouse_t* mouse)
 
 void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, int64_t deltaX, int64_t deltaY)
 {
-    LOCK_DEFER(&mouse->lock);
+    LOCK_SCOPE(&mouse->lock);
     mouse->events[mouse->writeIndex] = (mouse_event_t){
         .time = systime_uptime(),
         .buttons = buttons,

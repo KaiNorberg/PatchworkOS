@@ -22,7 +22,7 @@
 
 thread_t* thread_new(process_t* process, void* entry)
 {
-    LOCK_DEFER(&process->threads.lock);
+    LOCK_SCOPE(&process->threads.lock);
 
     if (process->threads.isDying)
     {

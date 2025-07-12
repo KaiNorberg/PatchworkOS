@@ -52,7 +52,7 @@ static futex_t* futex_ctx_get(futex_ctx_t* ctx, void* addr)
 uint64_t futex_do(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout)
 {
     futex_ctx_t* ctx = &sched_process()->futexCtx;
-    LOCK_DEFER(&ctx->lock);
+    LOCK_SCOPE(&ctx->lock);
 
     futex_t* futex = futex_ctx_get(ctx, addr);
 

@@ -26,7 +26,7 @@ static ramfs_inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t typ
 static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     ramfs_inode_t* ramfsInode = CONTAINER_OF(file->inode, ramfs_inode_t, inode);
-    LOCK_DEFER(&ramfsInode->inode.lock);
+    LOCK_SCOPE(&ramfsInode->inode.lock);
 
     if (ramfsInode->data == NULL)
     {
@@ -39,7 +39,7 @@ static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count, uint64_t*
 static uint64_t ramfs_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
     ramfs_inode_t* ramfsInode = CONTAINER_OF(file->inode, ramfs_inode_t, inode);
-    LOCK_DEFER(&ramfsInode->inode.lock);
+    LOCK_SCOPE(&ramfsInode->inode.lock);
 
     if (file->flags & PATH_APPEND)
     {
@@ -78,8 +78,8 @@ static lookup_result_t ramfs_lookup(inode_t* dir, dentry_t* target)
 static uint64_t ramfs_create(inode_t* dir, dentry_t* target, path_flags_t flags)
 {
     ramfs_inode_t* inode = CONTAINER_OF(dir, ramfs_inode_t, inode);
-    LOCK_DEFER(&inode->inode.lock);
-    LOCK_DEFER(&target->lock);
+    LOCK_SCOPE(&inode->inode.lock);
+    LOCK_SCOPE(&target->lock);
 
     if (inode->inode.type != INODE_DIR)
     {
@@ -113,7 +113,7 @@ static uint64_t ramfs_create(inode_t* dir, dentry_t* target, path_flags_t flags)
 
 static void ramfs_truncate(inode_t* inode)
 {
-    LOCK_DEFER(&inode->lock);
+    LOCK_SCOPE(&inode->lock);
 
     if (inode->type != INODE_FILE)
     {

@@ -258,7 +258,7 @@ void pmm_init(efi_mem_map_t* memoryMap)
 
 void* pmm_alloc(void)
 {
-    LOCK_DEFER(&lock);
+    LOCK_SCOPE(&lock);
     void* address = pmm_stack_alloc();
     if (address == NULL)
     {
@@ -271,7 +271,7 @@ void* pmm_alloc(void)
 
 void* pmm_alloc_bitmap(uint64_t count, uintptr_t maxAddr, uint64_t alignment)
 {
-    LOCK_DEFER(&lock);
+    LOCK_SCOPE(&lock);
     void* address = pmm_bitmap_alloc(count, maxAddr, alignment);
     if (address == NULL)
     {
@@ -286,31 +286,31 @@ void* pmm_alloc_bitmap(uint64_t count, uintptr_t maxAddr, uint64_t alignment)
 void pmm_free(void* address)
 {
     address = (void*)ROUND_DOWN(address, PAGE_SIZE);
-    LOCK_DEFER(&lock);
+    LOCK_SCOPE(&lock);
     pmm_free_unlocked(address);
 }
 
 void pmm_free_pages(void* address, uint64_t count)
 {
     address = (void*)ROUND_DOWN(address, PAGE_SIZE);
-    LOCK_DEFER(&lock);
+    LOCK_SCOPE(&lock);
     pmm_free_pages_unlocked(address, count);
 }
 
 uint64_t pmm_total_amount(void)
 {
-    LOCK_DEFER(&lock);
+    LOCK_SCOPE(&lock);
     return pageAmount;
 }
 
 uint64_t pmm_free_amount(void)
 {
-    LOCK_DEFER(&lock);
+    LOCK_SCOPE(&lock);
     return freePageAmount;
 }
 
 uint64_t pmm_reserved_amount(void)
 {
-    LOCK_DEFER(&lock);
+    LOCK_SCOPE(&lock);
     return pageAmount - freePageAmount;
 }

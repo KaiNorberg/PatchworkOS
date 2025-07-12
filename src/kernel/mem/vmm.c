@@ -62,7 +62,7 @@ void space_init(space_t* space)
     bitmap_init(&space->callbackBitmap, space->bitmapBuffer, PML_MAX_CALLBACK);
     lock_init(&space->lock);
 
-    LOCK_DEFER(&kernelLock);
+    LOCK_SCOPE(&kernelLock);
     pml_t* kernelPml = vmm_kernel_pml();
     for (uint64_t i = PML_ENTRY_AMOUNT / 2; i < PML_ENTRY_AMOUNT; i++)
     {
@@ -285,7 +285,7 @@ pml_t* vmm_kernel_pml(void)
 
 void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t pageAmount, pml_flags_t flags)
 {
-    LOCK_DEFER(&kernelLock);
+    LOCK_SCOPE(&kernelLock);
 
     // Sanity checks, if the kernel specifies weird values we assume some corruption or fundamental failure has
     // taken place.
@@ -366,7 +366,7 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t pageAmount, pml_fl
 
 void vmm_kernel_unmap(void* virtAddr, uint64_t pageAmount)
 {
-    LOCK_DEFER(&kernelLock);
+    LOCK_SCOPE(&kernelLock);
 
     // Sanity checks, if the kernel specifies weird values we assume some corruption or fundamental failure has taken
     // place.
@@ -378,7 +378,7 @@ void vmm_kernel_unmap(void* virtAddr, uint64_t pageAmount)
 
 void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, prot_t prot)
 {
-    LOCK_DEFER(&space->lock);
+    LOCK_SCOPE(&space->lock);
 
     vmm_mapping_info_t info;
     if (vmm_mapping_prepare(&info, space, virtAddr, NULL, length, prot) == ERR)
@@ -417,7 +417,7 @@ void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, prot_t prot)
 void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, prot_t prot, vmm_callback_func_t func,
     void* private)
 {
-    LOCK_DEFER(&space->lock);
+    LOCK_SCOPE(&space->lock);
 
     vmm_mapping_info_t info;
     if (vmm_mapping_prepare(&info, space, virtAddr, physAddr, length, prot) == ERR)
@@ -457,7 +457,7 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, p
 void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageAmount, prot_t prot,
     vmm_callback_func_t func, void* private)
 {
-    LOCK_DEFER(&space->lock);
+    LOCK_SCOPE(&space->lock);
 
     vmm_mapping_info_t info;
     if (vmm_mapping_prepare(&info, space, virtAddr, NULL, pageAmount * PAGE_SIZE, prot) == ERR)
@@ -508,7 +508,7 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
 
 uint64_t vmm_unmap(space_t* space, void* virtAddr, uint64_t length)
 {
-    LOCK_DEFER(&space->lock);
+    LOCK_SCOPE(&space->lock);
 
     vmm_align_region(&virtAddr, &length);
     uint64_t pageAmount = BYTES_TO_PAGES(length);
@@ -565,7 +565,7 @@ uint64_t vmm_protect(space_t* space, void* virtAddr, uint64_t length, prot_t pro
         return ERR;
     }
 
-    LOCK_DEFER(&space->lock);
+    LOCK_SCOPE(&space->lock);
 
     vmm_align_region(&virtAddr, &length);
     uint64_t pageAmount = BYTES_TO_PAGES(length);
@@ -603,6 +603,6 @@ SYSCALL_DEFINE(SYS_MPROTECT, uint64_t, void* address, uint64_t length, prot_t pr
 bool vmm_mapped(space_t* space, const void* virtAddr, uint64_t length)
 {
     vmm_align_region((void**)&virtAddr, &length);
-    LOCK_DEFER(&space->lock);
+    LOCK_SCOPE(&space->lock);
     return pml_is_mapped(space->pml, virtAddr, BYTES_TO_PAGES(length));
 }

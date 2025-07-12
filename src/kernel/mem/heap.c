@@ -24,7 +24,7 @@ void heap_init(void)
 
 void* heap_alloc(uint64_t size, heap_flags_t flags)
 {
-    LOCK_DEFER(&lock);
+    LOCK_SCOPE(&lock);
 
     size = ROUND_UP(size, HEAP_ALIGN);
 
@@ -124,7 +124,7 @@ void heap_free(void* ptr)
 {
     assert(ptr > (void*)&_kernelEnd);
 
-    LOCK_DEFER(&lock);
+    LOCK_SCOPE(&lock);
 
     object_t* object = CONTAINER_OF(ptr, object_t, data);
 

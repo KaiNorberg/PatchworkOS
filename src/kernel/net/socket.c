@@ -8,6 +8,8 @@
 #include "sched/wait.h"
 #include "socket_family.h"
 #include "sync/lock.h"
+#include "sync/mutex.h"
+#include "sync/rwmutex.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -22,16 +24,31 @@ static uint64_t socket_data_read(file_t* file, void* buf, size_t count, uint64_t
         return ERR;
     }
 
-    lock_acquire(&sock->lock);
+    if (sock->flags & PATH_NONBLOCK)
+    {
+        if (rwmutex_read_try_acquire(&sock->mutex) == ERR)
+        {
+            return ERR;
+        }
+    }
+    else
+    {
+        if (rwmutex_read_acquire(&sock->mutex) == ERR)
+        {
+            return ERR;
+        }
+    }
+
     if (sock->currentState != SOCKET_CONNECTED)
     {
-        lock_release(&sock->lock);
+        rwmutex_read_release(&sock->mutex);
         errno = ENOTCONN;
         return ERR;
     }
-    lock_release(&sock->lock);
 
-    return sock->family->recv(sock, buf, count, offset);
+    uint64_t result = sock->family->recv(sock, buf, count, offset);
+    rwmutex_read_release(&sock->mutex);
+    return result;
 }
 
 static uint64_t socket_data_write(file_t* file, const void* buf, size_t count, uint64_t* offset)
@@ -43,16 +60,31 @@ static uint64_t socket_data_write(file_t* file, const void* buf, size_t count, u
         return ERR;
     }
 
-    lock_acquire(&sock->lock);
+    if (sock->flags & PATH_NONBLOCK)
+    {
+        if (rwmutex_read_try_acquire(&sock->mutex) == ERR)
+        {
+            return ERR;
+        }
+    }
+    else
+    {
+        if (rwmutex_read_acquire(&sock->mutex) == ERR)
+        {
+            return ERR;
+        }
+    }
+
     if (sock->currentState != SOCKET_CONNECTED)
     {
-        lock_release(&sock->lock);
+        rwmutex_read_release(&sock->mutex);
         errno = ENOTCONN;
         return ERR;
     }
-    lock_release(&sock->lock);
 
-    return sock->family->send(sock, buf, count, offset);
+    uint64_t result =  sock->family->send(sock, buf, count, offset);
+    rwmutex_read_release(&sock->mutex);
+    return result;
 }
 
 static wait_queue_t* socket_data_poll(file_t* file, poll_events_t events, poll_events_t* occoured)
@@ -183,23 +215,38 @@ static uint64_t socket_accept_open(file_t* file)
         return ERR;
     }
 
-    lock_acquire(&sock->lock);
+    if (sock->flags & PATH_NONBLOCK)
+    {
+        if (rwmutex_read_try_acquire(&sock->mutex) == ERR)
+        {
+            return ERR;
+        }
+    }
+    else
+    {
+        if (rwmutex_read_acquire(&sock->mutex) == ERR)
+        {
+            return ERR;
+        }
+    }
+
     if (sock->currentState != SOCKET_LISTENING)
     {
-        lock_release(&sock->lock);
+        rwmutex_read_release(&sock->mutex);
         errno = EINVAL;
         return ERR;
     }
-    lock_release(&sock->lock);
 
     socket_t* newSock = socket_new(sock->family, sock->type, file->flags);
     if (newSock == NULL)
     {
+        rwmutex_read_release(&sock->mutex);
         return ERR;
     }
 
     if (socket_start_transition(newSock, SOCKET_CONNECTING) == ERR)
     {
+        rwmutex_read_release(&sock->mutex);
         return ERR;
     }
 
@@ -207,6 +254,7 @@ static uint64_t socket_accept_open(file_t* file)
     {
         socket_end_transition(newSock, ERR);
         socket_free(newSock);
+        rwmutex_read_release(&sock->mutex);
         return ERR;
     }
 
@@ -214,6 +262,7 @@ static uint64_t socket_accept_open(file_t* file)
 
     socket_end_transition(newSock, 0);
     file->private = newSock;
+    rwmutex_read_release(&sock->mutex);
     return 0;
 }
 
@@ -233,7 +282,7 @@ static void socket_inode_cleanup(inode_t* inode)
         sock->family->deinit(sock);
     }
 
-    wait_queue_deinit(&sock->waitQueue);
+    rwmutex_deinit(&sock->mutex);
     heap_free(sock);
 }
 
@@ -264,25 +313,20 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
     sock->flags = flags;
     sock->creator = sched_process()->id;
     sock->private = NULL;
-    wait_queue_init(&sock->waitQueue);
+    rwmutex_init(&sock->mutex);
     sock->currentState = SOCKET_NEW;
     sock->nextState = SOCKET_NEW;
-    sock->isTransitioning = false;
-    lock_init(&sock->lock);
 
     if (family->init(sock) == ERR)
     {
-        wait_queue_deinit(&sock->waitQueue);
+        rwmutex_deinit(&sock->mutex);
         heap_free(sock);
         return NULL;
     }
 
     if (sysfs_dir_init(&sock->dir, &family->dir, sock->id, &dirInodeOps, sock) == ERR)
     {
-        family->deinit(sock);
-        wait_queue_deinit(&sock->waitQueue);
-        heap_free(sock);
-        return NULL;
+        goto error;
     }
 
     if (sysfs_file_init(&sock->ctlFile, &sock->dir, "ctl", NULL, &ctlOps, sock) == ERR)
@@ -290,7 +334,7 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
         goto error;
     }
 
-    if (sysfs_file_init(&sock->dataFile, &sock->dir, "data", NULL, &dataOps, sock))
+    if (sysfs_file_init(&sock->dataFile, &sock->dir, "data", NULL, &dataOps, sock) == ERR)
     {
         sysfs_file_deinit(&sock->ctlFile);
         goto error;
@@ -308,7 +352,6 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
 error:
     family->deinit(sock);
     sysfs_dir_deinit(&sock->dir);
-    wait_queue_deinit(&sock->waitQueue);
     heap_free(sock);
     return NULL;
 }
@@ -372,30 +415,19 @@ uint64_t socket_start_transition(socket_t* sock, socket_state_t state)
         return ERR;
     }
 
-    LOCK_DEFER(&sock->lock);
-
-    if (!socket_can_transition(sock->currentState, state))
+    if (sock->flags & PATH_NONBLOCK)
     {
-        errno = EINVAL;
-        return ERR;
+        if (rwmutex_write_try_acquire(&sock->mutex) == ERR)
+        {
+            return ERR;
+        }
     }
-
-    if (sock->currentState == state)
+    else
     {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (sock->flags & PATH_NONBLOCK && sock->isTransitioning)
-    {
-        errno = EWOULDBLOCK;
-        return ERR;
-    }
-
-    if (WAIT_BLOCK_LOCK(&sock->waitQueue, &sock->lock, !sock->isTransitioning) != WAIT_NORM)
-    {
-        errno = EINTR;
-        return ERR;
+        if (rwmutex_write_acquire(&sock->mutex) == ERR)
+        {
+            return ERR;
+        }
     }
 
     // We cant check nextState before the block as that would cause a race condition, we have to double check after instead.
@@ -412,18 +444,14 @@ uint64_t socket_start_transition(socket_t* sock, socket_state_t state)
     }
 
     sock->nextState = state;
-    sock->isTransitioning = true;
 
     return 0;
 }
 
 void socket_continue_transition(socket_t* sock, socket_state_t state)
 {
-    LOCK_DEFER(&sock->lock);
-
     sock->currentState = sock->nextState;
 
-    assert(sock->isTransitioning);
     assert(socket_can_transition(sock->currentState, state)); // This should always pass.
 
     sock->nextState = state;
@@ -431,14 +459,12 @@ void socket_continue_transition(socket_t* sock, socket_state_t state)
 
 void socket_end_transition(socket_t* sock, uint64_t result)
 {
-    LOCK_DEFER(&sock->lock);
-
     if (result != ERR)
     {
         sock->currentState = sock->nextState;
     }
 
-    sock->isTransitioning = false;
     sock->nextState = sock->currentState;
-    wait_unblock(&sock->waitQueue, WAIT_ALL);
+
+    rwmutex_write_release(&sock->mutex);
 }

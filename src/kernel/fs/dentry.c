@@ -42,7 +42,7 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
 
 void dentry_make_positive(dentry_t* dentry, inode_t* inode)
 {
-    LOCK_DEFER(&dentry->lock);
+    LOCK_SCOPE(&dentry->lock);
 
     // Sanity checks.
     assert(dentry->flags & DENTRY_NEGATIVE);
@@ -126,12 +126,12 @@ uint64_t dentry_generic_getdirent(dentry_t* dentry, dirent_t* buffer, uint64_t a
     getdirent_write(&ctx, buffer, amount, dentry->inode->number, dentry->inode->type, ".");
     getdirent_write(&ctx, buffer, amount, dentry->parent->inode->number, dentry->parent->inode->type, "..");
 
-    LOCK_DEFER(&dentry->lock);
+    LOCK_SCOPE(&dentry->lock);
 
     dentry_t* child;
     LIST_FOR_EACH(child, &dentry->children, siblingEntry)
     {
-        LOCK_DEFER(&child->lock);
+        LOCK_SCOPE(&child->lock);
         getdirent_write(&ctx, buffer, amount, child->inode->number, child->inode->type, child->name);
     }
 

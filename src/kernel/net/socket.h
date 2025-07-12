@@ -2,11 +2,9 @@
 
 #include "fs/path.h"
 #include "fs/sysfs.h"
-#include "sync/lock.h"
-#include "sched/wait.h"
 #include "socket_type.h"
+#include "sync/rwmutex.h"
 
-#include <stdatomic.h>
 #include <sys/io.h>
 
 typedef struct socket_family socket_family_t;
@@ -32,11 +30,9 @@ typedef struct socket
     path_flags_t flags;
     pid_t creator;
     void* private;
-    wait_queue_t waitQueue;
     socket_state_t currentState;
     socket_state_t nextState;
-    bool isTransitioning;
-    lock_t lock;
+    rwmutex_t mutex;
     sysfs_dir_t dir;
     sysfs_file_t ctlFile;
     sysfs_file_t dataFile;

@@ -76,7 +76,7 @@ void slab_init(slab_t* slab, uint64_t objectSize)
 
 object_t* slab_alloc(slab_t* slab)
 {
-    LOCK_DEFER(&slab->lock);
+    LOCK_SCOPE(&slab->lock);
 
     cache_t* cache;
     bool newCacheCreated = false;
@@ -124,7 +124,7 @@ object_t* slab_alloc(slab_t* slab)
 
 void slab_free(slab_t* slab, object_t* object)
 {
-    LOCK_DEFER(&slab->lock);
+    LOCK_SCOPE(&slab->lock);
 
     assert(object->magic == SLAB_MAGIC && "magic number mismatch");
     assert(!object->freed && "double free");

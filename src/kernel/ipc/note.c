@@ -16,7 +16,7 @@ void note_queue_init(note_queue_t* queue)
 
 uint64_t note_queue_length(note_queue_t* queue)
 {
-    LOCK_DEFER(&queue->lock);
+    LOCK_SCOPE(&queue->lock);
     return queue->length;
 }
 
@@ -30,7 +30,7 @@ uint64_t note_queue_push(note_queue_t* queue, const void* message, uint64_t leng
 
     process_t* sender = sched_process();
 
-    LOCK_DEFER(&queue->lock);
+    LOCK_SCOPE(&queue->lock);
 
     note_t* note = NULL;
     if (queue->length == CONFIG_MAX_NOTES)
@@ -70,7 +70,7 @@ uint64_t note_queue_push(note_queue_t* queue, const void* message, uint64_t leng
 
 static bool note_queue_pop(note_queue_t* queue, note_t* note)
 {
-    LOCK_DEFER(&queue->lock);
+    LOCK_SCOPE(&queue->lock);
 
     if (queue->length == 0)
     {

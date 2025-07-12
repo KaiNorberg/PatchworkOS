@@ -202,7 +202,7 @@ void sched_process_exit(uint64_t status)
         panic(NULL, "Invalid state while exiting process");
     }
 
-    LOCK_DEFER(&process->threads.lock);
+    LOCK_SCOPE(&process->threads.lock);
     if (process->threads.isDying)
     {
         smp_put();
@@ -351,7 +351,7 @@ void sched_push(thread_t* thread, thread_t* parent, cpu_t* target)
     cpu_t* self = smp_self();
 
     cpu_t* chosen = target != NULL ? target : self;
-    LOCK_DEFER(&chosen->sched.lock);
+    LOCK_SCOPE(&chosen->sched.lock);
 
     thread_state_t state = atomic_exchange(&thread->state, THREAD_READY);
     if (state == THREAD_PARKED)
@@ -395,7 +395,7 @@ static void sched_load_balance(cpu_t* self)
 
     // Get the higher neighbor, the last cpu wraps around and gets the first.
     cpu_t* neighbor = self->id != smp_cpu_amount() - 1 ? smp_cpu(self->id + 1) : smp_cpu(0);
-    LOCK_DEFER(&neighbor->sched.lock);
+    LOCK_SCOPE(&neighbor->sched.lock);
 
     uint64_t selfLoad = sched_get_load(&self->sched);
     uint64_t neighborLoad = sched_get_load(&neighbor->sched);
@@ -445,7 +445,7 @@ bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
         thread_free(thread);
     }
 
-    LOCK_DEFER(&self->sched.lock);
+    LOCK_SCOPE(&self->sched.lock);
 
     thread_t* oldThread = ctx->runThread;
     assert(ctx->runThread != NULL);

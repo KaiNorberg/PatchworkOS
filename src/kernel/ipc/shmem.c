@@ -50,7 +50,7 @@ static void shmem_vmm_callback(void* private)
 static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
 {
     shmem_t* shmem = file->private;
-    LOCK_DEFER(&shmem->lock);
+    LOCK_SCOPE(&shmem->lock);
 
     process_t* process = sched_process();
     space_t* space = &process->space;

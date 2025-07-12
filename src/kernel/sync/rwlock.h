@@ -14,11 +14,11 @@ typedef struct
     atomic_bool activeWriter;
 } rwlock_t;
 
-#define RWLOCK_READ_DEFER(lock) \
+#define RWLOCK_READ_SCOPE(lock) \
     __attribute__((cleanup(rwlock_read_cleanup))) rwlock_t* CONCAT(rl, __COUNTER__) = (lock); \
     rwlock_read_acquire((lock))
 
-#define RWLOCK_WRITE_DEFER(lock) \
+#define RWLOCK_WRITE_SCOPE(lock) \
     __attribute__((cleanup(rwlock_write_cleanup))) rwlock_t* CONCAT(wl, __COUNTER__) = (lock); \
     rwlock_write_acquire((lock))
 

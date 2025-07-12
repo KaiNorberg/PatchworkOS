@@ -81,7 +81,7 @@ static uint64_t local_socket_bind(socket_t* sock, const char* address)
     }
     local_socket_data_t* data = sock->private;
 
-    LOCK_DEFER(&data->lock);
+    LOCK_SCOPE(&data->lock);
 
     strncpy(data->bound.address, address, MAX_NAME);
     data->bound.address[MAX_NAME - 1] = '\0';
@@ -98,7 +98,7 @@ static uint64_t local_socket_listen(socket_t* sock, uint32_t backlog)
     }
     local_socket_data_t* data = sock->private;
 
-    LOCK_DEFER(&data->lock);
+    LOCK_SCOPE(&data->lock);
 
     local_listen_t* listen = local_listen_new(data->bound.address, backlog);
     if (listen == NULL)
@@ -119,7 +119,7 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock)
     }
     local_socket_data_t* data = sock->private;
 
-    LOCK_DEFER(&data->lock);
+    LOCK_SCOPE(&data->lock);
 
     local_listen_t* listen = data->listen.listen;
     if (listen == NULL)
@@ -131,7 +131,7 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock)
     local_conn_t* conn = NULL;
     while (true)
     {
-        LOCK_DEFER(&listen->lock);
+        LOCK_SCOPE(&listen->lock);
 
         if (atomic_load(&listen->isClosed))
         {

@@ -72,7 +72,7 @@ void log_init(void)
 
 void log_enable_time(void)
 {
-    LOCK_DEFER(&lock);
+    LOCK_SCOPE(&lock);
 
     state.config.isTimeEnabled = true;
 }
@@ -80,7 +80,7 @@ void log_enable_time(void)
 void log_screen_enable(gop_buffer_t* framebuffer)
 {
     LOG_INFO("log: screen enable\n");
-    LOCK_DEFER(&lock);
+    LOCK_SCOPE(&lock);
 
     if (!screen.initialized)
     {
@@ -96,7 +96,7 @@ void log_screen_enable(gop_buffer_t* framebuffer)
 
 void log_disable_screen(void)
 {
-    LOCK_DEFER(&lock);
+    LOCK_SCOPE(&lock);
 
     screen_disable(&screen);
     state.config.outputs &= ~LOG_OUTPUT_SCREEN;
@@ -114,7 +114,7 @@ log_state_t* log_get_state(void)
 
 static uint64_t klog_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    LOCK_DEFER(&lock);
+    LOCK_SCOPE(&lock);
 
     uint64_t result = ring_read_at(&klog.ring, *offset, buffer, count);
     *offset += result;
@@ -148,7 +148,7 @@ static file_ops_t klogOps = {
 
 void log_file_expose(void)
 {
-    LOCK_DEFER(&lock);
+    LOCK_SCOPE(&lock);
 
     if (sysfs_file_init(&klog.file, sysfs_get_default(), "klog", NULL, &klogOps, NULL) == ERR)
     {
@@ -225,7 +225,7 @@ uint64_t log_print(log_level_t level, const char* format, ...)
 
 uint64_t log_vprint(log_level_t level, const char* format, va_list args)
 {
-    LOCK_DEFER(&lock);
+    LOCK_SCOPE(&lock);
 
     if (level < state.config.minLevel)
     {

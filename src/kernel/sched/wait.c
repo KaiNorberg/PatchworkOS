@@ -25,7 +25,7 @@ void wait_queue_init(wait_queue_t* waitQueue)
 
 void wait_queue_deinit(wait_queue_t* waitQueue)
 {
-    LOCK_DEFER(&waitQueue->lock);
+    LOCK_SCOPE(&waitQueue->lock);
 
     if (!list_is_empty(&waitQueue->entries))
     {
@@ -84,7 +84,7 @@ static void wait_cleanup_block(thread_t* thread, wait_result_t result, wait_queu
 
 void wait_timer_trap(trap_frame_t* trapFrame, cpu_t* self)
 {
-    LOCK_DEFER(&self->wait.lock);
+    LOCK_SCOPE(&self->wait.lock);
 
     while (1)
     {
@@ -115,7 +115,7 @@ void wait_timer_trap(trap_frame_t* trapFrame, cpu_t* self)
 bool wait_finalize_block(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread)
 {
     wait_cpu_ctx_t* cpuCtx = &self->wait;
-    LOCK_DEFER(&self->wait.lock);
+    LOCK_SCOPE(&self->wait.lock);
 
     thread->wait.owner = self;
 
@@ -178,7 +178,7 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount)
 {
     uint64_t amountUnblocked = 0;
 
-    LOCK_DEFER(&waitQueue->lock);
+    LOCK_SCOPE(&waitQueue->lock);
 
     wait_entry_t* temp;
     wait_entry_t* waitEntry;

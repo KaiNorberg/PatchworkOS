@@ -11,7 +11,7 @@ typedef struct
     atomic_uint_fast16_t nowServing;
 } lock_t;
 
-#define LOCK_DEFER(lock) \
+#define LOCK_SCOPE(lock) \
     __attribute__((cleanup(lock_cleanup))) lock_t* CONCAT(l, __COUNTER__) = (lock); \
     lock_acquire((lock))
 

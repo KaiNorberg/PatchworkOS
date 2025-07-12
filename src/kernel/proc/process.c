@@ -67,7 +67,7 @@ static uint64_t process_ctl_wait(file_t* file, uint64_t argc, const char** argv)
     }
 
     WAIT_BLOCK(&process->queue, ({
-        LOCK_DEFER(&process->threads.lock);
+        LOCK_SCOPE(&process->threads.lock);
         process->threads.isDying;
     }));
     return 0;
@@ -166,7 +166,7 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
         return ERR;
     }
 
-    LOCK_DEFER(&process->threads.lock);
+    LOCK_SCOPE(&process->threads.lock);
 
     thread_t* thread = CONTAINER_OF_SAFE(list_first(&process->threads.list), thread_t, processEntry);
     if (thread == NULL)
@@ -302,7 +302,7 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
     list_init(&process->children);
     if (parent != NULL)
     {
-        RWLOCK_WRITE_DEFER(&treeLock);
+        RWLOCK_WRITE_SCOPE(&treeLock);
         list_push(&parent->children, &process->entry);
         process->parent = parent;
     }
@@ -323,7 +323,7 @@ void process_free(process_t* process)
 
     if (process->parent != NULL)
     {
-        RWLOCK_WRITE_DEFER(&treeLock);
+        RWLOCK_WRITE_SCOPE(&treeLock);
         list_remove(&process->entry);
 
         process_t* child;
@@ -343,7 +343,7 @@ void process_free(process_t* process)
 
 bool process_is_child(process_t* process, pid_t parentId)
 {
-    RWLOCK_READ_DEFER(&treeLock);
+    RWLOCK_READ_SCOPE(&treeLock);
 
     process_t* parent = process->parent;
     while (1)

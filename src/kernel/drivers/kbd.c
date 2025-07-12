@@ -22,7 +22,7 @@ static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count, uint64_t* o
     count = ROUND_DOWN(count, sizeof(kbd_event_t));
     for (uint64_t i = 0; i < count / sizeof(kbd_event_t); i++)
     {
-        LOCK_DEFER(&kbd->lock);
+        LOCK_SCOPE(&kbd->lock);
 
         if (WAIT_BLOCK_LOCK(&kbd->waitQueue, &kbd->lock, *offset != kbd->writeIndex) != WAIT_NORM)
         {
@@ -103,7 +103,7 @@ static void kbd_update_mod(kbd_t* kbd, kbd_event_type_t type, kbd_mods_t mod)
 
 void kbd_push(kbd_t* kbd, kbd_event_type_t type, keycode_t code)
 {
-    LOCK_DEFER(&kbd->lock);
+    LOCK_SCOPE(&kbd->lock);
 
     switch (code)
     {

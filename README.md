@@ -24,6 +24,7 @@
 - [Custom font format (.grf)](https://github.com/KaiNorberg/grf).
 - Strict adherence to "everything is a file".
 - IPC including pipes, shared memory, sockets and Plan9 inspired "signals" called notes.
+- Synchronization primitives including, mutexes, read-write locks+mutexes and a futex-like system call.
 - And much more...
 
 ## Notable Differences with Unix

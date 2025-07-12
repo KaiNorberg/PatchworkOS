@@ -71,7 +71,7 @@ void file_deref(file_t* file)
 
 uint64_t file_generic_seek(file_t* file, int64_t offset, seek_origin_t origin)
 {
-    LOCK_DEFER(&file->inode->lock);
+    LOCK_SCOPE(&file->inode->lock);
     uint64_t newPos;
     switch (origin)
     {

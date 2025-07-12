@@ -102,7 +102,7 @@ uint64_t vfs_register_fs(filesystem_t* fs)
         return ERR;
     }
 
-    RWLOCK_WRITE_DEFER(&filesystems.lock);
+    RWLOCK_WRITE_SCOPE(&filesystems.lock);
 
     filesystem_t* existing;
     LIST_FOR_EACH(existing, &filesystems.list, entry)
@@ -126,8 +126,8 @@ uint64_t vfs_unregister_fs(filesystem_t* fs)
         return ERR;
     }
 
-    RWLOCK_WRITE_DEFER(&filesystems.lock);
-    RWLOCK_READ_DEFER(&superblocks.lock);
+    RWLOCK_WRITE_SCOPE(&filesystems.lock);
+    RWLOCK_READ_SCOPE(&superblocks.lock);
 
     superblock_t* superblock;
     LIST_FOR_EACH(superblock, &superblocks.list, entry)
@@ -145,7 +145,7 @@ uint64_t vfs_unregister_fs(filesystem_t* fs)
 
 filesystem_t* vfs_get_fs(const char* name)
 {
-    RWLOCK_READ_DEFER(&filesystems.lock);
+    RWLOCK_READ_SCOPE(&filesystems.lock);
 
     filesystem_t* fs;
     LIST_FOR_EACH(fs, &filesystems.list, entry)
@@ -236,7 +236,7 @@ static dentry_t* vfs_get_dentry_internal(map_key_t* key)
     rwlock_read_release(&dentryCache.lock);
     DENTRY_DEFER(dentry);
 
-    LOCK_DEFER(&dentry->lock);
+    LOCK_SCOPE(&dentry->lock);
 
     if (WAIT_BLOCK_LOCK(&dentry->lookupWaitQueue, &dentry->lock, !(dentry->flags & DENTRY_LOOKUP_PENDING)) != WAIT_NORM)
     {
@@ -282,7 +282,7 @@ dentry_t* vfs_get_or_lookup_dentry(const path_t* parent, const char* name)
         rwlock_write_release(&dentryCache.lock);
         DENTRY_DEFER(dentry);
 
-        LOCK_DEFER(&dentry->lock);
+        LOCK_SCOPE(&dentry->lock);
 
         if (WAIT_BLOCK_LOCK(&dentry->lookupWaitQueue, &dentry->lock, !(dentry->flags & DENTRY_LOOKUP_PENDING)) !=
             WAIT_NORM)
@@ -338,7 +338,7 @@ uint64_t vfs_add_dentry(dentry_t* dentry)
 {
     map_key_t key = dentry_cache_key(dentry->parent->id, dentry->name);
 
-    RWLOCK_WRITE_DEFER(&dentryCache.lock);
+    RWLOCK_WRITE_SCOPE(&dentryCache.lock);
     if (map_insert(&dentryCache.map, &key, &dentry->mapEntry) == ERR)
     {
         return ERR;
@@ -390,7 +390,7 @@ static void vfs_get_cwd(path_t* outPath)
     process_t* process = sched_process();
     if (process == NULL)
     {
-        RWLOCK_READ_DEFER(&globalRoot.lock);
+        RWLOCK_READ_SCOPE(&globalRoot.lock);
         outPath->dentry = dentry_ref(globalRoot.mount->mountpoint);
         outPath->mount = mount_ref(globalRoot.mount);
         return;
@@ -486,7 +486,7 @@ uint64_t vfs_mount(const char* deviceName, const pathname_t* mountpoint, const c
     }
     PATH_DEFER(&mountPath);
 
-    LOCK_DEFER(&mountPath.dentry->lock);
+    LOCK_SCOPE(&mountPath.dentry->lock);
 
     if (mountPath.dentry->flags & DENTRY_MOUNTPOINT)
     {
@@ -533,9 +533,9 @@ uint64_t vfs_unmount(const pathname_t* mountpoint)
     }
     PATH_DEFER(&path);
 
-    RWLOCK_READ_DEFER(&globalRoot.lock);
-    RWLOCK_WRITE_DEFER(&mountCache.lock);
-    LOCK_DEFER(&path.dentry->lock);
+    RWLOCK_READ_SCOPE(&globalRoot.lock);
+    RWLOCK_WRITE_SCOPE(&mountCache.lock);
+    LOCK_SCOPE(&path.dentry->lock);
 
     if (!(path.dentry->flags & DENTRY_MOUNTPOINT))
     {
@@ -872,7 +872,7 @@ uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
     {
         inode_t* inode = file->inode;
 
-        LOCK_DEFER(&inode->lock);
+        LOCK_SCOPE(&inode->lock);
         inode->accessTime = systime_unix_epoch();
         inode->flags |= INODE_DIRTY;
     }
@@ -928,7 +928,7 @@ uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
     {
         inode_t* inode = file->inode;
 
-        LOCK_DEFER(&inode->lock);
+        LOCK_SCOPE(&inode->lock);
         inode->modifyTime = systime_unix_epoch();
         inode->changeTime = inode->modifyTime;
         inode->flags |= INODE_DIRTY;
@@ -1303,8 +1303,8 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer)
 
     memset(buffer, 0, sizeof(stat_t));
 
-    LOCK_DEFER(&path.dentry->lock);
-    LOCK_DEFER(&path.dentry->inode->lock);
+    LOCK_SCOPE(&path.dentry->lock);
+    LOCK_SCOPE(&path.dentry->inode->lock);
 
     buffer->number = path.dentry->inode->number;
     buffer->type = path.dentry->inode->type;
@@ -1597,7 +1597,7 @@ uint64_t vfs_rename(const pathname_t* oldPathname, const pathname_t* newPathname
     if (newParentPath.dentry->inode->number != oldParentPath.dentry->inode->number ||
         newParentPath.dentry->superblock->id != oldParentPath.dentry->superblock->id)
     {
-        LOCK_DEFER(&newParentPath.dentry->inode->lock);
+        LOCK_SCOPE(&newParentPath.dentry->inode->lock);
         newParentPath.dentry->inode->modifyTime = systime_unix_epoch();
         newParentPath.dentry->inode->changeTime = newParentPath.dentry->inode->modifyTime;
         newParentPath.dentry->inode->flags |= INODE_DIRTY;

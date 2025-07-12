@@ -27,7 +27,7 @@ void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd)
 
 void vfs_ctx_deinit(vfs_ctx_t* ctx)
 {
-    LOCK_DEFER(&ctx->lock);
+    LOCK_SCOPE(&ctx->lock);
 
     path_put(&ctx->cwd);
 
@@ -43,7 +43,7 @@ void vfs_ctx_deinit(vfs_ctx_t* ctx)
 
 file_t* vfs_ctx_get_file(vfs_ctx_t* ctx, fd_t fd)
 {
-    LOCK_DEFER(&ctx->lock);
+    LOCK_SCOPE(&ctx->lock);
 
     if (fd >= CONFIG_MAX_FD || ctx->files[fd] == NULL)
     {
@@ -56,14 +56,14 @@ file_t* vfs_ctx_get_file(vfs_ctx_t* ctx, fd_t fd)
 
 void vfs_ctx_get_cwd(vfs_ctx_t* ctx, path_t* outCwd)
 {
-    LOCK_DEFER(&ctx->lock);
+    LOCK_SCOPE(&ctx->lock);
 
     path_copy(outCwd, &ctx->cwd);
 }
 
 uint64_t vfs_ctx_set_cwd(vfs_ctx_t* ctx, const path_t* cwd)
 {
-    LOCK_DEFER(&ctx->lock);
+    LOCK_SCOPE(&ctx->lock);
 
     path_put(&ctx->cwd);
     path_copy(&ctx->cwd, cwd);
@@ -73,7 +73,7 @@ uint64_t vfs_ctx_set_cwd(vfs_ctx_t* ctx, const path_t* cwd)
 
 fd_t vfs_ctx_open(vfs_ctx_t* ctx, file_t* file)
 {
-    LOCK_DEFER(&ctx->lock);
+    LOCK_SCOPE(&ctx->lock);
 
     for (fd_t fd = 0; fd < CONFIG_MAX_FD; fd++)
     {
@@ -90,7 +90,7 @@ fd_t vfs_ctx_open(vfs_ctx_t* ctx, file_t* file)
 
 fd_t vfs_ctx_openas(vfs_ctx_t* ctx, fd_t fd, file_t* file)
 {
-    LOCK_DEFER(&ctx->lock);
+    LOCK_SCOPE(&ctx->lock);
 
     if (fd >= CONFIG_MAX_FD)
     {
@@ -110,7 +110,7 @@ fd_t vfs_ctx_openas(vfs_ctx_t* ctx, fd_t fd, file_t* file)
 
 uint64_t vfs_ctx_close(vfs_ctx_t* ctx, fd_t fd)
 {
-    LOCK_DEFER(&ctx->lock);
+    LOCK_SCOPE(&ctx->lock);
 
     if (fd >= CONFIG_MAX_FD || ctx->files[fd] == NULL)
     {
@@ -132,7 +132,7 @@ SYSCALL_DEFINE(SYS_CLOSE, uint64_t, fd_t fd)
 
 fd_t vfs_ctx_dup(vfs_ctx_t* ctx, fd_t oldFd)
 {
-    LOCK_DEFER(&ctx->lock);
+    LOCK_SCOPE(&ctx->lock);
 
     if (oldFd >= CONFIG_MAX_FD || ctx->files[oldFd] == NULL)
     {
@@ -165,7 +165,7 @@ fd_t vfs_ctx_dup2(vfs_ctx_t* ctx, fd_t oldFd, fd_t newFd)
         return newFd;
     }
 
-    LOCK_DEFER(&ctx->lock);
+    LOCK_SCOPE(&ctx->lock);
 
     if (oldFd >= CONFIG_MAX_FD || newFd >= CONFIG_MAX_FD || ctx->files[oldFd] == NULL)
     {
