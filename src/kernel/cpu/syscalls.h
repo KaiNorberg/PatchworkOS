@@ -1,7 +1,7 @@
 #pragma once
 
-#include "trap.h"
 #include "mem/vmm.h"
+#include "trap.h"
 
 #include <assert.h>
 #include <kernel/syscalls.h>
@@ -13,7 +13,8 @@ typedef struct
     bool inSyscall;
 } syscall_ctx_t;
 
-typedef struct {
+typedef struct
+{
     uint32_t number;
     void* handler;
 } syscall_descriptor_t;
@@ -23,8 +24,7 @@ extern syscall_descriptor_t _syscallTableEnd[];
 
 #define SYSCALL_DEFINE(num, returnType, ...) \
     returnType syscall_handler_##num(__VA_ARGS__); \
-    const syscall_descriptor_t __syscall_##num \
-    __attribute__((section(".syscall_table"))) = { \
+    const syscall_descriptor_t __syscall_##num __attribute__((section(".syscall_table"))) = { \
         .number = (num), \
         .handler = (void*)syscall_handler_##num, \
     }; \

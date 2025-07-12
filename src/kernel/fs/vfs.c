@@ -1,5 +1,6 @@
 #include "vfs.h"
 
+#include "cpu/syscalls.h"
 #include "drivers/systime/systime.h"
 #include "fs/dentry.h"
 #include "fs/mount.h"
@@ -12,7 +13,6 @@
 #include "sync/lock.h"
 #include "sync/rwlock.h"
 #include "sys/list.h"
-#include "cpu/syscalls.h"
 #include "sysfs.h"
 #include "vfs_ctx.h"
 
@@ -324,7 +324,7 @@ dentry_t* vfs_get_or_lookup_dentry(const path_t* parent, const char* name)
         parent->dentry->inode->ops->lookup == NULL)
     {
         rwlock_write_release(&dentryCache.lock);
-        errno = ENOSYS;
+        errno = ENOENT;
         return NULL;
     }
 
@@ -1145,7 +1145,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
             errno = ENOSYS;
             return ERR;
         }
-        files[i].occoured = POLL_NONE;
+        files[i].revents = POLLNONE;
     }
 
     wait_queue_t** waitQueues = heap_alloc(sizeof(wait_queue_t*) * amount, HEAP_VMM);
@@ -1169,14 +1169,14 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
 
         for (uint64_t i = 0; i < amount; i++)
         {
-            waitQueues[i] = files[i].file->ops->poll(files[i].file, &files[i]);
+            waitQueues[i] = files[i].file->ops->poll(files[i].file, files[i].events, &files[i].revents);
             if (waitQueues[i] == NULL)
             {
                 heap_free(waitQueues);
                 return ERR;
             }
 
-            if ((files[i].occoured & files[i].events) != 0)
+            if ((files[i].revents & files[i].events) != 0)
             {
                 readyCount++;
             }
@@ -1233,14 +1233,14 @@ SYSCALL_DEFINE(SYS_POLL, uint64_t, pollfd_t* fds, uint64_t amount, clock_t timeo
         }
 
         files[i].events = fds[i].events;
-        files[i].occoured = 0;
+        files[i].revents = 0;
     }
 
     uint64_t result = vfs_poll(files, amount, timeout);
 
     for (uint64_t i = 0; i < amount; i++)
     {
-        fds[i].occoured = files[i].occoured;
+        fds[i].revents = files[i].revents;
         file_deref(files[i].file);
     }
 

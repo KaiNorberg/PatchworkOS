@@ -22,7 +22,7 @@
  *
  * When a thread is first created only the page att the very top of the user stack is mapped, and when pagefaults due to
  * non present pages occur within the threads user stack additional pages will be mapped to where the page fault
- * occoured, check the `trap_handler()` for more information.
+ * occurred, check the `trap_handler()` for more information.
  *
  * When a thread is freed, its entire user stack will also be unmapped.
  *

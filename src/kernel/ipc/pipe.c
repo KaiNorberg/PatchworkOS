@@ -98,12 +98,12 @@ static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uin
     return count;
 }
 
-static wait_queue_t* pipe_poll(file_t* file, poll_file_t* pollFile)
+static wait_queue_t* pipe_poll(file_t* file, poll_events_t events, poll_events_t* revents)
 {
     pipe_private_t* private = file->private;
     LOCK_SCOPE(&private->lock);
-    pollFile->occoured = ((ring_data_length(&private->ring) != 0 || private->isWriteClosed) ? POLL_READ : 0) |
-        ((ring_free_length(&private->ring) != 0 || private->isReadClosed) ? POLL_WRITE : 0);
+    *revents = ((ring_data_length(&private->ring) != 0 || private->isWriteClosed) ? POLLIN : 0) |
+        ((ring_free_length(&private->ring) != 0 || private->isReadClosed) ? POLLOUT : 0);
     return &private->waitQueue;
 }
 

@@ -2,9 +2,9 @@
 
 #include "fs/dentry.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "sync/lock.h"
 #include "vfs.h"
-#include "log/panic.h"
 
 #include <assert.h>
 #include <errno.h>

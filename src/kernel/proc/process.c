@@ -97,7 +97,7 @@ static uint64_t process_ctl_prio(file_t* file, uint64_t argc, const char** argv)
     return 0;
 }
 
-CTL_STANDARD_OPS_DEFINE(ctlOps, PATH_NONE,
+CTL_STANDARD_OPS_DEFINE(ctlOps,
     (ctl_array_t){
         {"wait", process_ctl_wait, 1, 1},
         {"prio", process_ctl_prio, 2, 2},
@@ -311,8 +311,7 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
         process->parent = NULL;
     }
 
-    LOG_INFO("process: created pid=%d parent=%d priority=%d\n", process->id, parent ? parent->id : 0,
-        priority);
+    LOG_INFO("process: created pid=%d parent=%d priority=%d\n", process->id, parent ? parent->id : 0, priority);
     return process;
 }
 

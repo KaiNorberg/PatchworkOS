@@ -1,7 +1,7 @@
 #pragma once
 
-#include "sync/lock.h"
 #include "sched/wait.h"
+#include "sync/lock.h"
 #include <stdint.h>
 
 // We cant use defer macros for mutexes as acquiring one might fail.

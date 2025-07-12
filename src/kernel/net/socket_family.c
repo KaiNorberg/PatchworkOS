@@ -2,10 +2,10 @@
 
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
-#include "net/socket.h"
-#include "mem/heap.h"
 #include "log/log.h"
+#include "mem/heap.h"
 #include "net/net.h"
+#include "net/socket.h"
 #include <sys/list.h>
 
 static uint64_t socket_factory_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
@@ -23,7 +23,7 @@ static uint64_t socket_factory_open(file_t* file)
     socket_t* socket = socket_new(factory->family, factory->type, file->flags);
     if (socket == NULL)
     {
-        return NULL;
+        return ERR;
     }
 
     file->private = socket;
@@ -47,7 +47,8 @@ static file_ops_t factoryOps = {
 
 uint64_t socket_family_register(socket_family_t* family)
 {
-    if (family == NULL || family->name == NULL) {
+    if (family == NULL || family->name == NULL)
+    {
         errno = EINVAL;
         return ERR;
     }
@@ -84,7 +85,7 @@ uint64_t socket_family_register(socket_family_t* family)
         factory->family = family;
 
         const char* string = socket_type_to_string(type);
-        if (sysfs_file_init(&factory->file, &family->dir, string, NULL, &factoryOps, family) == ERR)
+        if (sysfs_file_init(&factory->file, &family->dir, string, NULL, &factoryOps, factory) == ERR)
         {
             heap_free(factory);
             goto error;

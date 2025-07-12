@@ -3,8 +3,8 @@
 #include "sched/wait.h"
 #include "sync/lock.h"
 
-#include <errno.h>
 #include <assert.h>
+#include <errno.h>
 
 void mutex_init(mutex_t* mtx)
 {

@@ -3,8 +3,8 @@
 #include "fs/ctl.h"
 #include "fs/path.h"
 #include "mem/heap.h"
-#include "sched/sched.h"
 #include "proc/process.h"
+#include "sched/sched.h"
 #include "sched/wait.h"
 #include "socket_family.h"
 #include "sync/lock.h"
@@ -14,10 +14,11 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/io.h>
 
 static uint64_t socket_data_read(file_t* file, void* buf, size_t count, uint64_t* offset)
 {
-    socket_t* sock = file->private;
+    socket_t* sock = file->inode->private;
     if (sock == NULL || sock->family == NULL)
     {
         errno = EINVAL;
@@ -59,7 +60,7 @@ static uint64_t socket_data_read(file_t* file, void* buf, size_t count, uint64_t
 
 static uint64_t socket_data_write(file_t* file, const void* buf, size_t count, uint64_t* offset)
 {
-    socket_t* sock = file->private;
+    socket_t* sock = file->inode->private;
     if (sock == NULL || sock->family == NULL)
     {
         errno = EINVAL;
@@ -94,27 +95,27 @@ static uint64_t socket_data_write(file_t* file, const void* buf, size_t count, u
         return ERR;
     }
 
-    uint64_t result =  sock->family->send(sock, buf, count, offset);
+    uint64_t result = sock->family->send(sock, buf, count, offset);
     rwmutex_read_release(&sock->mutex);
     return result;
 }
 
-static wait_queue_t* socket_data_poll(file_t* file, poll_events_t* occoured)
+static wait_queue_t* socket_data_poll(file_t* file, poll_events_t events, poll_events_t* revents)
 {
-    socket_t* sock = file->private;
+    socket_t* sock = file->inode->private;
     if (sock == NULL || sock->family == NULL)
     {
         errno = EINVAL;
-        return ERR;
+        return NULL;
     }
 
     if (sock->family->poll == NULL)
     {
         errno = ENOSYS;
-        return ERR;
+        return NULL;
     }
 
-    return sock->family->poll(sock, occoured);
+    return sock->family->poll(sock, events, revents);
 }
 
 static file_ops_t dataOps = {
@@ -125,7 +126,7 @@ static file_ops_t dataOps = {
 
 static uint64_t socket_ctl_bind(file_t* file, uint64_t argc, const char** argv)
 {
-    socket_t* sock = file->private;
+    socket_t* sock = file->inode->private;
     if (sock == NULL || sock->family == NULL)
     {
         errno = EINVAL;
@@ -150,7 +151,7 @@ static uint64_t socket_ctl_bind(file_t* file, uint64_t argc, const char** argv)
 
 static uint64_t socket_ctl_listen(file_t* file, uint64_t argc, const char** argv)
 {
-    socket_t* sock = file->private;
+    socket_t* sock = file->inode->private;
     if (sock == NULL || sock->family == NULL)
     {
         errno = EINVAL;
@@ -181,7 +182,7 @@ static uint64_t socket_ctl_listen(file_t* file, uint64_t argc, const char** argv
 
 static uint64_t socket_ctl_connect(file_t* file, uint64_t argc, const char** argv)
 {
-    socket_t* sock = file->private;
+    socket_t* sock = file->inode->private;
     if (sock == NULL || sock->family == NULL)
     {
         errno = EINVAL;
@@ -212,10 +213,8 @@ static uint64_t socket_ctl_connect(file_t* file, uint64_t argc, const char** arg
         return result;
     }
 
-    // TODO: I am unsure of this logic, currently i dont have any trully blocking sockets, TPC, etc, so further testing is needed.
-
     bool notFinished = (sock->flags & PATH_NONBLOCK) && (result == ERR && errno == EINPROGRESS);
-    if (notFinished) // Non blocking and not yet connected, check this stuff again later.
+    if (notFinished) // Non blocking and not yet connected.
     {
         socket_end_transition(sock, 0);
 
@@ -230,17 +229,13 @@ static uint64_t socket_ctl_connect(file_t* file, uint64_t argc, const char** arg
     return 0;
 }
 
-CTL_STANDARD_WRITE_DEFINE(socket_ctl_write,
+CTL_STANDARD_OPS_DEFINE(ctlOps,
     (ctl_array_t){
         {"bind", socket_ctl_bind, 2, 2},
         {"listen", socket_ctl_listen, 1, 2},
         {"connect", socket_ctl_connect, 2, 2},
         {0},
     });
-
-static file_ops_t ctlOps = {
-    .write = socket_ctl_write,
-};
 
 static uint64_t socket_accept_open(file_t* file)
 {
@@ -416,32 +411,37 @@ void socket_free(socket_t* sock)
 }
 
 static const bool validTransitions[SOCKET_STATE_AMOUNT][SOCKET_STATE_AMOUNT] = {
-    [SOCKET_NEW] = {
-        [SOCKET_BOUND] = true,
-        [SOCKET_CONNECTING] = true,
-        [SOCKET_CLOSED] = true,
-    },
-    [SOCKET_BOUND] = {
-        [SOCKET_LISTENING] = true,
-        [SOCKET_CONNECTING] = true,
-        [SOCKET_CONNECTED] = true,
-        [SOCKET_CLOSED] = true,
-    },
-    [SOCKET_LISTENING] = {
-        [SOCKET_CONNECTED] = true,
-        [SOCKET_CLOSED] = true,
-    },
-    [SOCKET_CONNECTING] = {
-        [SOCKET_CONNECTED] = true,
-    },
-    [SOCKET_CONNECTED] = {
-        [SOCKET_CLOSING] = true,
-    },
-    [SOCKET_CLOSING] = {
-        [SOCKET_CLOSED] = true,
-    },
-    [SOCKET_CLOSED] = {
-    }
+    [SOCKET_NEW] =
+        {
+            [SOCKET_BOUND] = true,
+            [SOCKET_CONNECTING] = true,
+            [SOCKET_CLOSED] = true,
+        },
+    [SOCKET_BOUND] =
+        {
+            [SOCKET_LISTENING] = true,
+            [SOCKET_CONNECTING] = true,
+            [SOCKET_CONNECTED] = true,
+            [SOCKET_CLOSED] = true,
+        },
+    [SOCKET_LISTENING] =
+        {
+            [SOCKET_CONNECTED] = true,
+            [SOCKET_CLOSED] = true,
+        },
+    [SOCKET_CONNECTING] =
+        {
+            [SOCKET_CONNECTED] = true,
+        },
+    [SOCKET_CONNECTED] =
+        {
+            [SOCKET_CLOSING] = true,
+        },
+    [SOCKET_CLOSING] =
+        {
+            [SOCKET_CLOSED] = true,
+        },
+    [SOCKET_CLOSED] = {},
 };
 
 bool socket_can_transition(socket_state_t from, socket_state_t to)

@@ -27,13 +27,13 @@ typedef struct ref
 
 #define REF_DEFER(ptr) __attribute__((cleanup(ref_defer_cleanup))) void* CONCAT(p, __COUNTER__) = (ptr)
 
-void ref_init(ref_t* ref, void (*free)(void*));
+void ref_init(ref_t* ref, void* free);
 
-void* ref_ref(void* ptr);
+void* ref_inc(void* ptr);
 
-void ref_deref(void* ptr);
+void ref_dec(void* ptr);
 
 static inline void ref_defer_cleanup(void** ptr)
 {
-    ref_deref(*ptr);
+    ref_dec(*ptr);
 }

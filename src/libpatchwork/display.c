@@ -42,11 +42,10 @@ display_t* display_new(void)
     display_t* disp = malloc(sizeof(display_t));
     if (disp == NULL)
     {
-
         return NULL;
     }
 
-    disp->handle = open("/net/local/new");
+    disp->handle = open("/net/local/seqpacket");
     if (disp->handle == ERR)
     {
         free(disp);
@@ -170,13 +169,13 @@ bool display_next_event(display_t* disp, event_t* event, clock_t timeout)
 
     if (timeout != CLOCKS_NEVER)
     {
-        poll_events_t occoured = poll1(disp->data, POLL_READ, timeout);
-        if (occoured & POLL_ERR)
+        poll_events_t revents = poll1(disp->data, POLLIN, timeout);
+        if (revents & POLLERR)
         {
             disp->isConnected = false;
             return false;
         }
-        else if (!(occoured & POLL_READ))
+        else if (!(revents & POLLIN))
         {
             return false;
         }
@@ -204,8 +203,9 @@ void display_events_push(display_t* disp, surface_id_t target, event_type_t type
 
 void* display_cmds_push(display_t* disp, cmd_type_t type, uint64_t size)
 {
-    if (size > CMD_BUFFER_MAX_DATA)
+    if (disp == NULL || size > CMD_BUFFER_MAX_DATA)
     {
+        errno = EINVAL;
         return NULL;
     }
 

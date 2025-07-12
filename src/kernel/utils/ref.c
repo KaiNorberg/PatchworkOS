@@ -1,9 +1,9 @@
 #include "ref.h"
 
-#include <stdatomic.h>
 #include <assert.h>
+#include <stdatomic.h>
 
-void ref_init(ref_t* ref, void (*free)(void*))
+void ref_init(ref_t* ref, void* free)
 {
 #ifndef NDEBUG
     ref->magic = REF_MAGIC;
@@ -12,7 +12,7 @@ void ref_init(ref_t* ref, void (*free)(void*))
     ref->free = free;
 }
 
-void* ref_ref(void* ptr)
+void* ref_inc(void* ptr)
 {
     ref_t* ref = (ref_t*)ptr;
     if (ref == NULL)
@@ -25,7 +25,7 @@ void* ref_ref(void* ptr)
     return ptr;
 }
 
-void ref_deref(void* ptr)
+void ref_dec(void* ptr)
 {
     ref_t* ref = (ref_t*)ptr;
     if (ref == NULL)

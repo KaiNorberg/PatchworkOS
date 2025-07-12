@@ -1,7 +1,7 @@
 #pragma once
 
-#include "sync/lock.h"
 #include "sched/wait.h"
+#include "sync/lock.h"
 
 #include <stdbool.h>
 

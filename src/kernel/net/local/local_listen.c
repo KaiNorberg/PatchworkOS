@@ -3,23 +3,36 @@
 #include "local_conn.h"
 
 #include "fs/sysfs.h"
+#include "log/panic.h"
 #include "mem/heap.h"
 #include "net/local/local.h"
+#include "net/socket_family.h"
 #include "sched/wait.h"
-#include "log/panic.h"
 #include "sync/lock.h"
+#include "sync/rwlock.h"
+#include "utils/map.h"
 
 #include <_internal/MAX_NAME.h>
 #include <sys/list.h>
 
 static sysfs_dir_t listenDir;
 
-void local_listen_dir_init(void)
+static map_t listeners;
+static rwlock_t listenersLock;
+
+void local_listen_dir_init(socket_family_t* family)
 {
-    if (sysfs_dir_init(&listenDir, &listenDir, "listen", NULL, NULL) == ERR)
+    if (sysfs_dir_init(&listenDir, &family->dir, "listen", NULL, NULL) == ERR)
     {
         panic(NULL, "Failed to create local listen dir");
     }
+
+    if (map_init(&listeners) == ERR)
+    {
+        panic(NULL, "Failed to initialize listeners map");
+    }
+
+    rwlock_init(&listenersLock);
 }
 
 local_listen_t* local_listen_new(const char* address)
@@ -36,18 +49,41 @@ local_listen_t* local_listen_new(const char* address)
         return NULL;
     }
 
-    list_entry_init(&listen->entry);
+    ref_init(&listen->ref, local_listen_free);
+    map_entry_init(&listen->entry);
     strncpy(listen->address, address, MAX_NAME);
     listen->address[MAX_NAME - 1] = '\0';
     list_init(&listen->backlog);
     listen->maxBacklog = LOCAL_MAX_BACKLOG;
-    atomic_init(&listen->ref, 1);
+    listen->pendingAmount = 0;
     atomic_init(&listen->isClosed, true);
     lock_init(&listen->lock);
     wait_queue_init(&listen->waitQueue);
 
     if (sysfs_file_init(&listen->file, &listenDir, listen->address, NULL, NULL, listen) == ERR)
     {
+        wait_queue_deinit(&listen->waitQueue);
+        heap_free(listen);
+        return NULL;
+    }
+
+    RWLOCK_WRITE_SCOPE(&listenersLock);
+
+    map_key_t key = map_key_string(listen->address);
+
+    if (map_get(&listeners, &key) != NULL)
+    {
+        sysfs_file_deinit(&listen->file);
+        wait_queue_deinit(&listen->waitQueue);
+        heap_free(listen);
+
+        errno = EADDRINUSE;
+        return NULL;
+    }
+
+    if (map_insert(&listeners, &key, &listen->entry) == ERR)
+    {
+        sysfs_file_deinit(&listen->file);
         wait_queue_deinit(&listen->waitQueue);
         heap_free(listen);
         return NULL;
@@ -65,6 +101,11 @@ void local_listen_free(local_listen_t* listen)
 
     lock_acquire(&listen->lock);
 
+    rwlock_write_acquire(&listenersLock);
+    map_key_t key = map_key_string(listen->address);
+    map_remove(&listeners, &key);
+    rwlock_write_release(&listenersLock);
+
     sysfs_file_deinit(&listen->file);
 
     local_conn_t* temp;
@@ -73,7 +114,9 @@ void local_listen_free(local_listen_t* listen)
     {
         atomic_store(&conn->isClosed, true);
         wait_unblock(&conn->waitQueue, WAIT_ALL);
+        ref_dec(conn);
     }
+    list_init(&listen->backlog); // Reset list.
 
     wait_queue_deinit(&listen->waitQueue);
 
@@ -81,40 +124,17 @@ void local_listen_free(local_listen_t* listen)
     heap_free(listen);
 }
 
-local_listen_t* local_listen_ref(local_listen_t* listen)
-{
-    if (listen != NULL)
-    {
-        atomic_fetch_add_explicit(&listen->ref, 1, memory_order_relaxed);
-    }
-    return listen;
-}
-
-void local_listen_deref(local_listen_t* listen)
-{
-    if (listen == NULL)
-    {
-        return;
-    }
-
-    uint64_t ref = atomic_fetch_sub_explicit(&listen->ref, 1, memory_order_relaxed);
-    if (ref <= 1)
-    {
-        atomic_thread_fence(memory_order_acquire);
-        assert(ref == 1); // Check for double free.
-        local_listen_free(listen);
-    }
-}
-
 local_listen_t* local_listen_find(const char* address)
 {
-    char path[MAX_PATH];
-    snprintf(path, MAX_PATH, "/net/local/listen/%s", address);
+    RWLOCK_READ_SCOPE(&listenersLock);
 
-    file_t* listenFile = vfs_open(path);
-    if (listenFile == NULL)
+    map_key_t key = map_key_string(address);
+    map_entry_t* entry = map_get(&listeners, &key);
+    if (entry == NULL)
     {
-        return ERR;
+        return NULL;
     }
 
+    local_listen_t* listen = CONTAINER_OF(entry, local_listen_t, entry);
+    return ref_inc(listen);
 }

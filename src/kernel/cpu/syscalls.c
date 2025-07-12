@@ -7,8 +7,8 @@
 #include "sched/thread.h"
 
 #include <assert.h>
-#include <stdlib.h>
 #include <errno.h>
+#include <stdlib.h>
 
 int syscall_descriptor_cmp(const void* a, const void* b)
 {
@@ -22,7 +22,8 @@ void syscall_table_init(void)
     LOG_INFO("syscalls: sorting syscall table\n");
 
     // Syscalls are not inserted into the table by the linker in the correct order so we sort them.
-    const uint64_t syscallsInTable = (((uint64_t)_syscallTableEnd - (uint64_t)_syscallTableStart) / sizeof(syscall_descriptor_t));
+    const uint64_t syscallsInTable =
+        (((uint64_t)_syscallTableEnd - (uint64_t)_syscallTableStart) / sizeof(syscall_descriptor_t));
     assert(syscallsInTable == SYS_TOTAL_AMOUNT);
 
     qsort(_syscallTableStart, syscallsInTable, sizeof(syscall_descriptor_t), syscall_descriptor_cmp);
@@ -86,10 +87,7 @@ void syscall_handler(trap_frame_t* trapFrame)
     thread_t* thread = sched_thread();
     thread->syscall.inSyscall = true;
 
-    uint64_t args[6] = {
-        trapFrame->rdi, trapFrame->rsi, trapFrame->rdx,
-        trapFrame->r10, trapFrame->r8, trapFrame->r9
-    };
+    uint64_t args[6] = {trapFrame->rdi, trapFrame->rsi, trapFrame->rdx, trapFrame->r10, trapFrame->r8, trapFrame->r9};
 
     uint64_t (*handler)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t) = desc->handler;
     trapFrame->rax = handler(args[0], args[1], args[2], args[3], args[4], args[5]);

@@ -99,8 +99,8 @@ static uint64_t ramfs_create(inode_t* dir, dentry_t* target, path_flags_t flags)
         return 0;
     }
 
-    ramfs_inode_t* newInode = ramfs_inode_new(inode->inode.superblock, flags & PATH_DIRECTORY ? INODE_DIR : INODE_FILE, NULL,
-    0);
+    ramfs_inode_t* newInode =
+        ramfs_inode_new(inode->inode.superblock, flags & PATH_DIRECTORY ? INODE_DIR : INODE_FILE, NULL, 0);
     if (newInode == NULL)
     {
         return ERR;

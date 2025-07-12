@@ -1,9 +1,9 @@
 #include "net.h"
 
 #include "fs/sysfs.h"
-#include "net/local/local.h"
 #include "log/log.h"
 #include "log/panic.h"
+#include "net/local/local.h"
 
 static sysfs_group_t group;
 

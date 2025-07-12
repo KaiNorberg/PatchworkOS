@@ -87,20 +87,57 @@ static void dwm_send_event_to_all(surface_id_t target, event_type_t type, void* 
 
 void dwm_init(void)
 {
-    fd_t handle = open("/net/local/new?nonblock");
+    fd_t handle = open("/net/local/seqpacket?nonblock");
+    if (handle == ERR)
+    {
+        printf("dwm: failed to create socket (%s)\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
     memset(id, 0, MAX_NAME);
-    read(handle, id, MAX_NAME - 1);
+    if (read(handle, id, MAX_NAME - 1) == ERR)
+    {
+        printf("dwm: failed to read id (%s)\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
 
     fd_t ctl = openf("/net/local/%s/ctl", id);
-    writef(ctl, "bind dwm");
-    writef(ctl, "listen");
+    if (ctl == ERR)
+    {
+        printf("dwm: failed to open control file (%s)\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+    if (writef(ctl, "bind dwm") == ERR)
+    {
+        printf("dwm: failed to bind socket (%s)\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+    if (writef(ctl, "listen") == ERR)
+    {
+        printf("dwm: failed to listen (%s)\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
     close(ctl);
 
     data = openf("/net/local/%s/data", id);
+    if (data == ERR)
+    {
+        printf("dwm: failed to open data file (%s)\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
 
     // TODO: Add system for choosing device
     kbd = open("/dev/kbd/ps2");
+    if (kbd == ERR)
+    {
+        printf("dwm: failed to open keyboard (%s)\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
     mouse = open("/dev/mouse/ps2");
+    if (mouse == ERR)
+    {
+        printf("dwm: failed to open mouse (%s)\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
 
     list_init(&clients);
     clientAmount = 0;
@@ -415,7 +452,7 @@ static surface_t* dwm_next_timer(void)
 
 static void dwm_kbd_read(void)
 {
-    if (poll1(kbd, POLL_READ, 0) == POLL_READ)
+    if (poll1(kbd, POLLIN, 0) == POLLIN)
     {
         // The kbd_event_t and event_kbd_t naming is a bit weird.
         kbd_event_t kbdEvent;
@@ -550,7 +587,7 @@ static void dwm_mouse_read(void)
     bool received = false;
     while (1)
     {
-        if (poll1(mouse, POLL_READ, 0) != POLL_READ)
+        if (poll1(mouse, POLLIN, 0) != POLLIN)
         {
             break;
         }
@@ -580,14 +617,14 @@ static void dwm_poll_ctx_update(void)
 {
     pollCtx = realloc(pollCtx, sizeof(poll_ctx_t) + (sizeof(pollfd_t) * clientAmount));
     pollCtx->data.fd = data;
-    pollCtx->data.events = POLL_READ;
-    pollCtx->data.occoured = 0;
+    pollCtx->data.events = POLLIN;
+    pollCtx->data.revents = 0;
     pollCtx->kbd.fd = kbd;
-    pollCtx->kbd.events = POLL_READ;
-    pollCtx->kbd.occoured = 0;
+    pollCtx->kbd.events = POLLIN;
+    pollCtx->kbd.revents = 0;
     pollCtx->mouse.fd = mouse;
-    pollCtx->mouse.events = POLL_READ;
-    pollCtx->mouse.occoured = 0;
+    pollCtx->mouse.events = POLLIN;
+    pollCtx->mouse.revents = 0;
 
     uint64_t i = 0;
     client_t* client;
@@ -595,8 +632,8 @@ static void dwm_poll_ctx_update(void)
     {
         pollfd_t* fd = &pollCtx->clients[i++];
         fd->fd = client->fd;
-        fd->events = POLL_READ;
-        fd->occoured = 0;
+        fd->events = POLLIN;
+        fd->revents = 0;
     }
 }
 
@@ -613,6 +650,12 @@ static void dwm_poll(void)
     }
 
     uint64_t events = poll((pollfd_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(pollfd_t) + clientAmount, timeout);
+    if (events == ERR)
+    {
+        printf("dwm: poll failed (%s)\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
     clock_t time = uptime();
     if (timer != NULL && time >= timer->timer.deadline)
     {
@@ -630,18 +673,22 @@ static void dwm_poll(void)
 
 static void dwm_update(void)
 {
+    printf("dwm_update\n");
     dwm_poll();
 
-    if (pollCtx->data.occoured & POLL_READ)
+    if (pollCtx->data.revents & POLLIN)
     {
+        printf("dwm_client_accept\n");
         dwm_client_accept();
     }
-    if (pollCtx->kbd.occoured & POLL_READ)
+    if (pollCtx->kbd.revents & POLLIN)
     {
+        printf("dwm_kbd_read\n");
         dwm_kbd_read();
     }
-    if (pollCtx->mouse.occoured & POLL_READ)
+    if (pollCtx->mouse.revents & POLLIN)
     {
+        printf("dwm_mouse_read\n");
         dwm_mouse_read();
     }
 
@@ -651,17 +698,23 @@ static void dwm_update(void)
     LIST_FOR_EACH_SAFE(client, temp, &clients, entry)
     {
         pollfd_t* fd = &pollCtx->clients[i++];
-        if ((fd->occoured & POLL_HANGUP) || (fd->occoured & POLL_ERR))
+        if ((fd->revents & POLLHUP) || (fd->revents & POLLERR))
         {
+            printf("dwm_client_disconnect\n");
             dwm_client_disconnect(client);
         }
-        else if (fd->occoured & POLL_READ)
+        else if (fd->revents & POLLIN)
         {
+            printf("client_receive_cmds\n");
             if (client_receive_cmds(client) == ERR)
             {
                 printf("dwm: client_receive_cmds failed (%s)\n", strerror(errno));
                 dwm_client_disconnect(client);
             }
+        }
+        else if (fd->revents & POLLOUT)
+        {
+            printf("POLLOUT\n");
         }
     }
 

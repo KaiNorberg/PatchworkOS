@@ -224,26 +224,26 @@ uint64_t chdir(const char* path);
  */
 typedef enum
 {
-    POLL_NONE = 0,          //!< None
-    POLL_READ = (1 << 0),   //!< File descriptor is/should be ready to read.
-    POLL_WRITE = (1 << 1),  //!< File descriptor is/should be ready to write.
-    POLL_ERR = (1 << 2),    //!< File descriptor caused an error.
-    POLL_HANGUP = (1 << 3), //!< Stream socket peer closed connection, or shut down writing of connection.
+    POLLNONE = 0,       //!< None
+    POLLIN = (1 << 0),  //!< File descriptor is ready to read.
+    POLLOUT = (1 << 1), //!< File descriptor is ready to write.
+    POLLERR = (1 << 2), //!< File descriptor caused an error.
+    POLLHUP = (1 << 3), //!< Stream socket peer closed connection, or shut down writing of connection.
 } poll_events_t;
 
 /**
  * @brief Poll file descriptor structure.
  * @ingroup libstd_sys_io
  *
- * The `pollfd_t` type is used in `poll()` to specify which file descriptors to poll and which events to wait for, and
- * to return what events happened.
+ * The `pollfd_t` structure is used in `poll()` to specify which file descriptors to poll and which events to wait for,
+ * and to return what events happened.
  *
  */
-typedef struct
+typedef struct pollfd
 {
-    fd_t fd;                //!< The file descriptor to poll.
-    poll_events_t events;   //!< The events to wait for.
-    poll_events_t occoured; //!< The events that occoured.
+    fd_t fd;               //!< The file descriptor to poll.
+    poll_events_t events;  //!< The events to wait for.
+    poll_events_t revents; //!< The events that occurred.
 } pollfd_t;
 
 /**
@@ -269,9 +269,9 @@ uint64_t poll(pollfd_t* fds, uint64_t amount, clock_t timeout);
  * simply for convenience.
  *
  * @param fd The file descriptor to poll.
- * @param events The events to wait for (e.g., `POLL_READ`, `POLL_WRITE`).
+ * @param events The events to wait for (e.g., `POLLIN`, `POLLOUT`).
  * @param timeout The maximum time (in clock ticks) to wait for an event. If `CLOCKS_NEVER`, it waits forever.
- * @return On success, returns the events that occoured. On timeout, returns 0. On failure, the `POLL_ERR` event bit is
+ * @return On success, returns the events that occurred. On timeout, returns 0. On failure, the `POLLERR` event bit is
  * set and errno is set.
  */
 poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout);

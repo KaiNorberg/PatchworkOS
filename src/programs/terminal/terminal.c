@@ -422,13 +422,13 @@ static void terminal_read_stdout(terminal_t* term)
         window_invalidate_flush(term->win);
 
         input_set(&term->input, "");
-    } while (poll1(term->stdout[PIPE_READ], POLL_READ, 0) & POLL_READ);
+    } while (poll1(term->stdout[PIPE_READ], POLLIN, 0) & POLLIN);
 }
 
 bool terminal_update(terminal_t* term)
 {
-    pollfd_t fds[] = {{.fd = term->stdout[PIPE_READ], .events = POLL_READ},
-        {.fd = display_fd(term->disp), .events = POLL_READ}};
+    pollfd_t fds[] = {{.fd = term->stdout[PIPE_READ], .events = POLLIN},
+        {.fd = display_fd(term->disp), .events = POLLIN}};
     poll(fds, 2, CLOCKS_NEVER);
 
     event_t event = {0};
@@ -442,7 +442,7 @@ bool terminal_update(terminal_t* term)
         return false;
     }
 
-    if (fds[0].occoured & POLL_READ)
+    if (fds[0].revents & POLLIN)
     {
         terminal_read_stdout(term);
         display_cmds_flush(term->disp);

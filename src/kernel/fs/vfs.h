@@ -13,8 +13,8 @@
 
 #include <sys/io.h>
 #include <sys/list.h>
-#include <sys/proc.h>
 #include <sys/math.h>
+#include <sys/proc.h>
 
 // TODO: Implement improved caching, LRU. Let the map_t handle static buffer + wrapper?
 // TODO: Implement per-process namespaces.

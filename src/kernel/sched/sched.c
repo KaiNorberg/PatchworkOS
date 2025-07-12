@@ -492,8 +492,7 @@ bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
     break;
     default:
     {
-        panic(NULL, "Invalid thread state %d (pid=%d tid=%d)", state, ctx->runThread->process->id,
-            ctx->runThread->id);
+        panic(NULL, "Invalid thread state %d (pid=%d tid=%d)", state, ctx->runThread->process->id, ctx->runThread->id);
     }
     }
 

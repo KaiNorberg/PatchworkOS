@@ -3,10 +3,10 @@
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/vmm.h"
 #include "proc/process.h"
 #include "sched/sched.h"
-#include "log/panic.h"
 
 #include <assert.h>
 #include <stdlib.h>

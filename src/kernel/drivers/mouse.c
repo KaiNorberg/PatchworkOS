@@ -35,10 +35,10 @@ static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count, uint64_t*
     return count;
 }
 
-static wait_queue_t* mouse_poll(file_t* file, poll_file_t* pollFile)
+static wait_queue_t* mouse_poll(file_t* file, poll_events_t events, poll_events_t* revents)
 {
     mouse_t* mouse = file->inode->private;
-    pollFile->occoured = POLL_READ & (mouse->writeIndex != file->pos);
+    *revents = POLLIN & (mouse->writeIndex != file->pos);
     return &mouse->waitQueue;
 }
 

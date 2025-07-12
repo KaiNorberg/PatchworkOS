@@ -11,9 +11,9 @@
         return ctl_dispatch(name##ctls, file, buffer, count); \
     }
 
-#define CTL_STANDARD_OPS_DEFINE(name, supportedFlags, ...) \
+#define CTL_STANDARD_OPS_DEFINE(name, ...) \
     CTL_STANDARD_WRITE_DEFINE(name##write, __VA_ARGS__) \
-    file_ops_t name = (file_ops_t){ \
+    static file_ops_t name = (file_ops_t){ \
         .write = name##write, \
     };
 

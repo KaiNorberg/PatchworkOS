@@ -104,7 +104,8 @@ void path_put(path_t* path);
 uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char* name, walk_flags_t flags);
 
 uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* start, walk_flags_t flags);
-uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* start, char* outLastName, walk_flags_t flags);
+uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* start, char* outLastName,
+    walk_flags_t flags);
 
 uint64_t path_to_name(const path_t* path, pathname_t* pathname);
 

@@ -1,5 +1,5 @@
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 /* This implementation is taken from Paul Edward's PDPCLIB.
 
@@ -9,14 +9,15 @@
    All code is still Public Domain.
 */
 
-static _INLINE void memswp( char * i, char * j, size_t size )
+static _INLINE void memswp(char* i, char* j, size_t size)
 {
-    char tmp; \
-    do { \
-        tmp = *i; \
-        *i++ = *j; \
-        *j++ = tmp; \
-    } while ( --size );
+    char tmp;
+    do
+    {
+        tmp = *i;
+        *i++ = *j;
+        *j++ = tmp;
+    } while (--size);
 }
 
 /* For small sets, insertion sort is faster than quicksort.
@@ -26,27 +27,35 @@ static _INLINE void memswp( char * i, char * j, size_t size )
 #define T 7
 
 /* Macros for handling the QSort stack */
-#define PREPARE_STACK char * stack[STACKSIZE]; char ** stackptr = stack
-#define PUSH( base, limit ) stackptr[0] = base; stackptr[1] = limit; stackptr += 2
-#define POP( base, limit ) stackptr -= 2; base = stackptr[0]; limit = stackptr[1]
+#define PREPARE_STACK \
+    char* stack[STACKSIZE]; \
+    char** stackptr = stack
+#define PUSH(base, limit) \
+    stackptr[0] = base; \
+    stackptr[1] = limit; \
+    stackptr += 2
+#define POP(base, limit) \
+    stackptr -= 2; \
+    base = stackptr[0]; \
+    limit = stackptr[1]
 /* TODO: Stack usage is log2( nmemb ) (minus what T shaves off the worst case).
          Worst-case nmemb is platform dependent and should probably be
          configured through _PDCLIB_config.h.
 */
 #define STACKSIZE 64
 
-void qsort( void * base, size_t nmemb, size_t size, int ( *compar )( const void *, const void * ) )
+void qsort(void* base, size_t nmemb, size_t size, int (*compar)(const void*, const void*))
 {
-    char * i;
-    char * j;
+    char* i;
+    char* j;
     uint64_t thresh = T * size;
-    char * base_          = ( char * )base;
-    char * limit          = base_ + nmemb * size;
+    char* base_ = (char*)base;
+    char* limit = base_ + nmemb * size;
     PREPARE_STACK;
 
-    for ( ;; )
+    for (;;)
     {
-        if ( ( size_t )( limit - base_ ) > thresh ) /* QSort for more than T elements. */
+        if ((size_t)(limit - base_) > thresh) /* QSort for more than T elements. */
         {
             /* We work from second to last - first will be pivot element. */
             i = base_ + size;
@@ -56,85 +65,85 @@ void qsort( void * base, size_t nmemb, size_t size, int ( *compar )( const void 
                of the three - avoiding pathological pivots.
                TODO: Instead of middle element, chose one randomly.
             */
-            memswp( ( ( ( ( size_t )( limit - base_ ) ) / size ) / 2 ) * size + base_, base_, size );
+            memswp(((((size_t)(limit - base_)) / size) / 2) * size + base_, base_, size);
 
-            if ( compar( i, j ) > 0 )
+            if (compar(i, j) > 0)
             {
-                memswp( i, j, size );
+                memswp(i, j, size);
             }
 
-            if ( compar( base_, j ) > 0 )
+            if (compar(base_, j) > 0)
             {
-                memswp( base_, j, size );
+                memswp(base_, j, size);
             }
 
-            if ( compar( i, base_ ) > 0 )
+            if (compar(i, base_) > 0)
             {
-                memswp( i, base_, size );
+                memswp(i, base_, size);
             }
 
             /* Now we have the median for pivot element, entering main Quicksort. */
-            for ( ;; )
+            for (;;)
             {
                 do
                 {
                     /* move i right until *i >= pivot */
                     i += size;
-                } while ( compar( i, base_ ) < 0 );
+                } while (compar(i, base_) < 0);
 
                 do
                 {
                     /* move j left until *j <= pivot */
                     j -= size;
-                } while ( compar( j, base_ ) > 0 );
+                } while (compar(j, base_) > 0);
 
-                if ( i > j )
+                if (i > j)
                 {
                     /* break loop if pointers crossed */
                     break;
                 }
 
                 /* else swap elements, keep scanning */
-                memswp( i, j, size );
+                memswp(i, j, size);
             }
 
             /* move pivot into correct place */
-            memswp( base_, j, size );
+            memswp(base_, j, size);
 
             /* larger subfile base / limit to stack, sort smaller */
-            if ( j - base_ > limit - i )
+            if (j - base_ > limit - i)
             {
                 /* left is larger */
-                PUSH( base_, j );
+                PUSH(base_, j);
                 base_ = i;
             }
             else
             {
                 /* right is larger */
-                PUSH( i, limit );
+                PUSH(i, limit);
                 limit = j;
             }
         }
         else /* insertion sort for less than T elements              */
         {
-            for ( j = base_, i = j + size; i < limit; j = i, i += size )
+            for (j = base_, i = j + size; i < limit; j = i, i += size)
             {
-                for ( ; compar( j, j + size ) > 0; j -= size )
+                for (; compar(j, j + size) > 0; j -= size)
                 {
-                    memswp( j, j + size, size );
+                    memswp(j, j + size, size);
 
-                    if ( j == base_ )
+                    if (j == base_)
                     {
                         break;
                     }
                 }
             }
 
-            if ( stackptr != stack )           /* if any entries on stack  */
+            if (stackptr != stack) /* if any entries on stack  */
             {
-                POP( base_, limit );
+                POP(base_, limit);
             }
-            else                       /* else stack empty, done   */
+            else /* else stack empty, done   */
             {
                 break;
             }

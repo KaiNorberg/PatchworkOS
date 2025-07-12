@@ -321,10 +321,8 @@ void panic(const trap_frame_t* trapFrame, const char* format, ...)
     uint64_t totalPages = freePages + reservedPages;
 
     log_print(LOG_LEVEL_PANIC, "memory: %lluK/%lluK available (%lluK kernel code/data, %lluK reserved)\n",
-        (freePages * PAGE_SIZE) / 1024,
-        (totalPages * PAGE_SIZE) / 1024,
-        (((uintptr_t)&_kernelEnd - (uintptr_t)&_kernelStart) / 1024),
-        (reservedPages * PAGE_SIZE) / 1024);
+        (freePages * PAGE_SIZE) / 1024, (totalPages * PAGE_SIZE) / 1024,
+        (((uintptr_t)&_kernelEnd - (uintptr_t)&_kernelStart) / 1024), (reservedPages * PAGE_SIZE) / 1024);
 
     uint64_t cr0 = cr0_read();
     uint64_t cr2 = cr2_read();

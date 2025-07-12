@@ -3,11 +3,11 @@
 #include "cpu/smp.h"
 #include "drivers/com.h"
 #include "drivers/systime/systime.h"
+#include "log/panic.h"
 #include "mem/pmm.h"
 #include "sched/thread.h"
 #include "sync/lock.h"
 #include "utils/ring.h"
-#include "log/panic.h"
 
 #include <boot/boot_info.h>
 #include <common/version.h>

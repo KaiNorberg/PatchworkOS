@@ -23,8 +23,7 @@ typedef struct local_conn local_conn_t;
 
 typedef struct
 {
-    union
-    {
+    union {
         struct
         {
             local_listen_t* listen;

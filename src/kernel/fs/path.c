@@ -442,7 +442,8 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* st
     return 0;
 }
 
-uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* start, char* outLastName, walk_flags_t flags)
+uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* start, char* outLastName,
+    walk_flags_t flags)
 {
     if (pathname == NULL || !pathname->isValid || outLastName == NULL)
     {

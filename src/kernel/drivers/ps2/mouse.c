@@ -6,10 +6,10 @@
 #include "drivers/systime/systime.h"
 #include "fs/vfs.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "ps2.h"
 #include "sched/sched.h"
 #include "stdlib.h"
-#include "log/panic.h"
 
 #include <assert.h>
 #include <sys/math.h>
