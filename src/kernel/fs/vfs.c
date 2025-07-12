@@ -189,6 +189,13 @@ uint64_t vfs_mountpoint_to_mount_root(path_t* outRoot, const path_t* mountpoint)
         return ERR;
     }
 
+    if (atomic_load(&mount->ref) == 0) // Is currently being removed
+    {
+        rwlock_read_release(&mountCache.lock);
+        errno = ESTALE;
+        return ERR;
+    }
+
     if (mount->superblock == NULL || mount->superblock->root == NULL)
     {
         rwlock_read_release(&mountCache.lock);
@@ -210,17 +217,21 @@ inode_t* vfs_get_inode(superblock_t* superblock, inode_number_t number)
 
     map_key_t key = inode_cache_key(superblock->id, number);
 
-    rwlock_read_acquire(&inodeCache.lock);
-    inode_t* inode = CONTAINER_OF_SAFE(map_get(&inodeCache.map, &key), inode_t, mapEntry);
-    if (inode != NULL)
-    {
-        inode = inode_ref(inode);
-        rwlock_read_release(&inodeCache.lock);
-        return inode;
-    }
-    rwlock_read_release(&inodeCache.lock);
+    RWLOCK_READ_SCOPE(&inodeCache.lock);
 
-    return 0;
+    inode_t* inode = CONTAINER_OF_SAFE(map_get(&inodeCache.map, &key), inode_t, mapEntry);
+    if (inode == NULL)
+    {
+        return NULL;
+    }
+
+    if (atomic_load(&inode->ref) == 0) // Is currently being removed
+    {
+        errno = ESTALE;
+        return NULL;
+    }
+
+    return inode_ref(inode);
 }
 
 static dentry_t* vfs_get_dentry_internal(map_key_t* key)
@@ -232,9 +243,17 @@ static dentry_t* vfs_get_dentry_internal(map_key_t* key)
         rwlock_read_release(&dentryCache.lock);
         return NULL;
     }
+
+    if (atomic_load(&dentry->ref) == 0) // Is currently being removed
+    {
+        errno = ESTALE;
+        return NULL;
+    }
+
     dentry = dentry_ref(dentry);
-    rwlock_read_release(&dentryCache.lock);
     DENTRY_DEFER(dentry);
+
+    rwlock_read_release(&dentryCache.lock);
 
     LOCK_SCOPE(&dentry->lock);
 
@@ -278,9 +297,16 @@ dentry_t* vfs_get_or_lookup_dentry(const path_t* parent, const char* name)
     dentry = CONTAINER_OF_SAFE(map_get(&dentryCache.map, &key), dentry_t, mapEntry);
     if (dentry != NULL) // Check if the the dentry was added while the lock was released above.
     {
+        if (atomic_load(&dentry->ref) == 0) // Is currently being removed
+        {
+            errno = ESTALE;
+            return NULL;
+        }
+
         dentry = dentry_ref(dentry);
-        rwlock_write_release(&dentryCache.lock);
         DENTRY_DEFER(dentry);
+
+        rwlock_write_release(&dentryCache.lock);
 
         LOCK_SCOPE(&dentry->lock);
 
@@ -383,6 +409,19 @@ void vfs_remove_dentry(dentry_t* dentry)
     map_key_t key = dentry_cache_key(dentry->parent->id, dentry->name);
     map_remove(&dentryCache.map, &key);
     rwlock_write_release(&dentryCache.lock);
+}
+
+void vfs_remove_mount(mount_t* mount)
+{
+    if (mount == NULL)
+    {
+        return;
+    }
+
+    rwlock_write_acquire(&mountCache.lock);
+    map_key_t key = mount_cache_key(mount->parent->id, mount->mountpoint->id);
+    map_remove(&mountCache.map, &key);
+    rwlock_write_release(&mountCache.lock);
 }
 
 static void vfs_get_cwd(path_t* outPath)

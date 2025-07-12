@@ -18,6 +18,12 @@
 static uint64_t socket_data_read(file_t* file, void* buf, size_t count, uint64_t* offset)
 {
     socket_t* sock = file->private;
+    if (sock == NULL || sock->family == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     if (sock->family->recv == NULL)
     {
         errno = ENOSYS;
@@ -54,6 +60,12 @@ static uint64_t socket_data_read(file_t* file, void* buf, size_t count, uint64_t
 static uint64_t socket_data_write(file_t* file, const void* buf, size_t count, uint64_t* offset)
 {
     socket_t* sock = file->private;
+    if (sock == NULL || sock->family == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     if (sock->family->send == NULL)
     {
         errno = ENOSYS;
@@ -87,16 +99,22 @@ static uint64_t socket_data_write(file_t* file, const void* buf, size_t count, u
     return result;
 }
 
-static wait_queue_t* socket_data_poll(file_t* file, poll_events_t events, poll_events_t* occoured)
+static wait_queue_t* socket_data_poll(file_t* file, poll_events_t* occoured)
 {
     socket_t* sock = file->private;
+    if (sock == NULL || sock->family == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     if (sock->family->poll == NULL)
     {
         errno = ENOSYS;
         return ERR;
     }
 
-    return sock->family->poll(sock, events, occoured);
+    return sock->family->poll(sock, occoured);
 }
 
 static file_ops_t dataOps = {
@@ -108,6 +126,12 @@ static file_ops_t dataOps = {
 static uint64_t socket_ctl_bind(file_t* file, uint64_t argc, const char** argv)
 {
     socket_t* sock = file->private;
+    if (sock == NULL || sock->family == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     if (sock->family->bind == NULL)
     {
         errno = ENOSYS;
@@ -127,6 +151,12 @@ static uint64_t socket_ctl_bind(file_t* file, uint64_t argc, const char** argv)
 static uint64_t socket_ctl_listen(file_t* file, uint64_t argc, const char** argv)
 {
     socket_t* sock = file->private;
+    if (sock == NULL || sock->family == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     if (sock->family->listen == NULL)
     {
         errno = ENOSYS;
@@ -152,6 +182,12 @@ static uint64_t socket_ctl_listen(file_t* file, uint64_t argc, const char** argv
 static uint64_t socket_ctl_connect(file_t* file, uint64_t argc, const char** argv)
 {
     socket_t* sock = file->private;
+    if (sock == NULL || sock->family == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     if (sock->family->connect == NULL)
     {
         errno = ENOSYS;
@@ -209,6 +245,12 @@ static file_ops_t ctlOps = {
 static uint64_t socket_accept_open(file_t* file)
 {
     socket_t* sock = file->inode->private;
+    if (sock == NULL || sock->family == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
     if (sock->family->accept == NULL)
     {
         errno = ENOSYS;
@@ -276,6 +318,10 @@ static file_ops_t acceptOps = {
 static void socket_inode_cleanup(inode_t* inode)
 {
     socket_t* sock = inode->private;
+    if (sock == NULL)
+    {
+        return;
+    }
 
     if (sock->family != NULL && sock->family->deinit != NULL)
     {
@@ -430,21 +476,21 @@ uint64_t socket_start_transition(socket_t* sock, socket_state_t state)
         }
     }
 
-    // We cant check nextState before the block as that would cause a race condition, we have to double check after instead.
     if (!socket_can_transition(sock->currentState, state))
     {
+        rwmutex_write_release(&sock->mutex);
         errno = EINVAL;
         return ERR;
     }
 
     if (sock->currentState == state)
     {
+        rwmutex_write_release(&sock->mutex);
         errno = EINVAL;
         return ERR;
     }
 
     sock->nextState = state;
-
     return 0;
 }
 

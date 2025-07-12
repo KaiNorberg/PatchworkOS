@@ -98,12 +98,14 @@ uint64_t socket_family_register(socket_family_t* family)
 
 error:;
 
+    socket_factory_t* temp;
     socket_factory_t* factory;
-    LIST_FOR_EACH(factory, &family->factories, entry)
+    LIST_FOR_EACH_SAFE(factory, temp, &family->factories, entry)
     {
         sysfs_file_deinit(&factory->file);
         heap_free(factory);
     }
+    list_init(&family->factories); // Reset the list
 
     sysfs_dir_deinit(&family->dir);
     return ERR;

@@ -3,6 +3,7 @@
 #include "sched/wait.h"
 #include "sync/lock.h"
 
+#include <assert.h>
 #include <errno.h>
 
 void rwmutex_init(rwmutex_t* mtx)
@@ -17,6 +18,9 @@ void rwmutex_init(rwmutex_t* mtx)
 
 void rwmutex_deinit(rwmutex_t* mtx)
 {
+    assert(mtx->activeReaders == 0);
+    assert(mtx->waitingWriters == 0);
+    assert(!mtx->isWriterActive);
     wait_queue_deinit(&mtx->readerQueue);
     wait_queue_deinit(&mtx->writerQueue);
 }

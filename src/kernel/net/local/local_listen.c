@@ -4,6 +4,7 @@
 
 #include "fs/sysfs.h"
 #include "mem/heap.h"
+#include "net/local/local.h"
 #include "sched/wait.h"
 #include "log/panic.h"
 #include "sync/lock.h"
@@ -21,9 +22,9 @@ void local_listen_dir_init(void)
     }
 }
 
-local_listen_t* local_listen_new(const char* address, uint32_t maxBacklog)
+local_listen_t* local_listen_new(const char* address)
 {
-    if (address == NULL || maxBacklog == 0)
+    if (address == NULL)
     {
         errno = EINVAL;
         return NULL;
@@ -39,9 +40,9 @@ local_listen_t* local_listen_new(const char* address, uint32_t maxBacklog)
     strncpy(listen->address, address, MAX_NAME);
     listen->address[MAX_NAME - 1] = '\0';
     list_init(&listen->backlog);
-    listen->maxBacklog = maxBacklog;
+    listen->maxBacklog = LOCAL_MAX_BACKLOG;
     atomic_init(&listen->ref, 1);
-    atomic_init(&listen->isClosed, false);
+    atomic_init(&listen->isClosed, true);
     lock_init(&listen->lock);
     wait_queue_init(&listen->waitQueue);
 
@@ -103,4 +104,17 @@ void local_listen_deref(local_listen_t* listen)
         assert(ref == 1); // Check for double free.
         local_listen_free(listen);
     }
+}
+
+local_listen_t* local_listen_find(const char* address)
+{
+    char path[MAX_PATH];
+    snprintf(path, MAX_PATH, "/net/local/listen/%s", address);
+
+    file_t* listenFile = vfs_open(path);
+    if (listenFile == NULL)
+    {
+        return ERR;
+    }
+
 }

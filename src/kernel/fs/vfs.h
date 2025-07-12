@@ -96,6 +96,7 @@ uint64_t vfs_add_dentry(dentry_t* dentry);
 void vfs_remove_superblock(superblock_t* superblock);
 void vfs_remove_inode(inode_t* inode);
 void vfs_remove_dentry(dentry_t* dentry);
+void vfs_remove_mount(mount_t* mount);
 
 uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname, walk_flags_t flags);
 uint64_t vfs_walk_parent(path_t* outPath, const pathname_t* pathname, char* outLastName, walk_flags_t flags);

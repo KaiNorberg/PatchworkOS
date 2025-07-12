@@ -11,10 +11,12 @@
 #include "net/local/local_conn.h"
 #include "net/local/local_listen.h"
 #include "sync/lock.h"
+#include "fs/vfs.h"
 
 #include <_internal/CONTAINER_OF.h>
 #include <_internal/MAX_NAME.h>
 #include <string.h>
+#include <stdio.h>
 #include <sys/list.h>
 
 static uint64_t local_socket_init(socket_t* sock)
@@ -38,7 +40,6 @@ static void local_socket_deinit(socket_t* sock)
         return;
     }
 
-    lock_acquire(&sock->lock);
     lock_acquire(&data->lock);
 
     switch (sock->currentState)
@@ -66,7 +67,6 @@ static void local_socket_deinit(socket_t* sock)
     }
 
     lock_release(&data->lock);
-    lock_release(&sock->lock);
 
     heap_free(data);
     sock->private = NULL;
@@ -80,11 +80,15 @@ static uint64_t local_socket_bind(socket_t* sock, const char* address)
         return ERR;
     }
     local_socket_data_t* data = sock->private;
-
     LOCK_SCOPE(&data->lock);
 
-    strncpy(data->bound.address, address, MAX_NAME);
-    data->bound.address[MAX_NAME - 1] = '\0';
+    local_listen_t* listen = local_listen_new(address);
+    if (listen == NULL)
+    {
+        return ERR;
+    }
+
+    data->listen.listen = listen;
 
     return 0;
 }
@@ -96,18 +100,49 @@ static uint64_t local_socket_listen(socket_t* sock, uint32_t backlog)
         errno = EINVAL;
         return ERR;
     }
-    local_socket_data_t* data = sock->private;
 
+    local_socket_data_t* data = sock->private;
+    if (data == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
     LOCK_SCOPE(&data->lock);
 
-    local_listen_t* listen = local_listen_new(data->bound.address, backlog);
+    local_listen_t* listen = data->listen.listen;
     if (listen == NULL)
     {
+        errno = EINVAL;
+        return ERR;
+    }
+    LOCK_SCOPE(&listen->lock);
+
+    if (backlog < LOCAL_MAX_BACKLOG)
+    {
+        listen->maxBacklog = backlog;
+    }
+
+    atomic_store(&listen->isClosed, false);
+
+    return 0;
+}
+
+static uint64_t local_socket_connect(socket_t* sock, const char* address)
+{
+    if (sock == NULL || address == NULL || address[0] == '\0')
+    {
+        errno = EINVAL;
         return ERR;
     }
 
-    data->listen.listen = listen;
-    return 0;
+    local_socket_data_t* data = sock->private;
+    if (data == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+    LOCK_SCOPE(&data->lock);
+
 }
 
 static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock)

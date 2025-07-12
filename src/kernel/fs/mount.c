@@ -28,6 +28,8 @@ void mount_free(mount_t* mount)
         return;
     }
 
+    vfs_remove_mount(mount);
+
     if (mount->superblock != NULL)
     {
         superblock_deref(mount->superblock);

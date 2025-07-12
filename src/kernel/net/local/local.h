@@ -27,10 +27,6 @@ typedef struct
     {
         struct
         {
-            char address[MAX_NAME];
-        } bound;
-        struct
-        {
             local_listen_t* listen;
         } listen;
         struct

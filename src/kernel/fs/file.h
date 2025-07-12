@@ -37,7 +37,7 @@ typedef struct file_ops
     uint64_t (*write)(file_t* file, const void* buffer, uint64_t count, uint64_t* offset);
     uint64_t (*seek)(file_t* file, int64_t offset, seek_origin_t origin);
     uint64_t (*ioctl)(file_t* file, uint64_t request, void* argp, uint64_t size);
-    wait_queue_t* (*poll)(file_t* file, poll_events_t events, poll_events_t* occoured);
+    wait_queue_t* (*poll)(file_t* file, poll_events_t* occoured);
     void* (*mmap)(file_t* file, void* address, uint64_t length, prot_t prot);
 } file_ops_t;
 

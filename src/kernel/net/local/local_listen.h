@@ -23,8 +23,10 @@ typedef struct local_listen
 
 void local_listen_dir_init(void);
 
-local_listen_t* local_listen_new(const char* address, uint32_t maxBacklog);
+local_listen_t* local_listen_new(const char* address);
 void local_listen_free(local_listen_t* listen);
 
 local_listen_t* local_listen_ref(local_listen_t* listen);
 void local_listen_deref(local_listen_t* listen);
+
+local_listen_t* local_listen_find(const char* address);

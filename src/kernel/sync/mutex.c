@@ -4,6 +4,7 @@
 #include "sync/lock.h"
 
 #include <errno.h>
+#include <assert.h>
 
 void mutex_init(mutex_t* mtx)
 {
@@ -14,6 +15,7 @@ void mutex_init(mutex_t* mtx)
 
 void mutex_deinit(mutex_t* mtx)
 {
+    assert(!mtx->isAcquired);
     wait_queue_deinit(&mtx->waitQueue);
 }
 
