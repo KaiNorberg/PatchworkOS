@@ -36,6 +36,8 @@ void superblock_free(superblock_t* superblock)
         return;
     }
 
+    vfs_remove_superblock(superblock);
+
     if (superblock->root != NULL)
     {
         dentry_deref(superblock->root);
@@ -70,7 +72,6 @@ void superblock_deref(superblock_t* superblock)
     {
         atomic_thread_fence(memory_order_acquire);
         assert(ref == 1); // Check for double free.
-        vfs_remove_superblock(superblock);
         superblock_free(superblock);
     }
 }

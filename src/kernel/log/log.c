@@ -47,7 +47,7 @@ void log_init(void)
     state.config.outputs = 0;
 #endif
 
-#ifdef DEBUG
+#ifndef NDEBUG
     state.config.minLevel = LOG_LEVEL_DEBUG;
 #else
     state.config.minLevel = LOG_LEVEL_USER;

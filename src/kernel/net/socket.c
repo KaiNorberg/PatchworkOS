@@ -195,12 +195,6 @@ static uint64_t socket_ctl_connect(file_t* file, uint64_t argc, const char** arg
         return ERR;
     }
 
-    if (argc != 2)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
     if (socket_start_transition(sock, SOCKET_CONNECTING) == ERR)
     {
         return ERR;

@@ -10,7 +10,7 @@ OPTIMIZATION = -O3
 DEBUG_SYMBOLS =
 ifeq ($(DEBUG),1)
     OPTIMIZATION = -O0
-    DEBUG_SYMBOLS = -ggdb
+    DEBUG_SYMBOLS = -g3 -ggdb -fno-omit-frame-pointer -fno-inline
 endif
 
 CFLAGS := $(OPTIMIZATION) \

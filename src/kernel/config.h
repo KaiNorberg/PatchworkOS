@@ -10,7 +10,7 @@
  * thread jumps to kernel space.
  *
  */
-#define CONFIG_KERNEL_STACK 0x4000
+#define CONFIG_KERNEL_STACK 0x8000
 
 /**
  * @brief User stack configuration.

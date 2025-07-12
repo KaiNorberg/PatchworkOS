@@ -96,8 +96,9 @@ static uint64_t local_socket_bind(socket_t* sock, const char* address)
     {
         return ERR;
     }
+    REF_DEFER(listen);
 
-    data->listen.listen = listen; // Reference ends up here
+    data->listen.listen = ref_inc(listen);
     return 0;
 }
 
@@ -246,7 +247,7 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock)
         return ERR;
     }
     lock_acquire(&newData->lock);
-    newData->conn.conn = conn;
+    newData->conn.conn = ref_inc(conn);
     newData->conn.isServer = true;
     lock_release(&newData->lock);
 
@@ -261,14 +262,17 @@ static inline uint64_t local_socket_send(socket_t* sock, const void* buffer, uin
         errno = EINVAL;
         return ERR;
     }
-    LOCK_SCOPE(&data->lock);
 
-    local_conn_t* conn = data->conn.conn;
-    if (conn == NULL)
+    lock_acquire(&data->lock);
+    if (data->conn.conn == NULL)
     {
+        lock_release(&data->lock);
         errno = ECONNRESET;
         return ERR;
     }
+    local_conn_t* conn = ref_inc(data->conn.conn);
+    lock_release(&data->lock);
+    REF_DEFER(conn);
     LOCK_SCOPE(&conn->lock);
 
     if (atomic_load(&conn->isClosed))
@@ -329,18 +333,20 @@ static inline uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t 
         errno = EINVAL;
         return ERR;
     }
-    LOCK_SCOPE(&data->lock);
 
-    local_conn_t* conn = data->conn.conn;
-    if (conn == NULL)
+    lock_acquire(&data->lock);
+    if (data->conn.conn == NULL)
     {
+        lock_release(&data->lock);
         errno = ECONNRESET;
         return ERR;
     }
+    local_conn_t* conn = ref_inc(data->conn.conn);
+    lock_release(&data->lock);
+    REF_DEFER(conn);
+    LOCK_SCOPE(&conn->lock);
 
     ring_t* ring = data->conn.isServer ? &conn->clientToServer : &conn->serverToClient;
-
-    LOCK_SCOPE(&conn->lock);
 
     if (atomic_load(&conn->isClosed))
     {

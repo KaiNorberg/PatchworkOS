@@ -1148,19 +1148,59 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
         files[i].revents = POLLNONE;
     }
 
-    wait_queue_t** waitQueues = heap_alloc(sizeof(wait_queue_t*) * amount, HEAP_VMM);
-    if (waitQueues == NULL)
+    // Only allocate memory once.
+    void* buffer = heap_alloc(sizeof(wait_queue_t*) * amount + sizeof(uint64_t) * amount, HEAP_VMM);
+    if (buffer == NULL)
     {
         return ERR;
     }
+    wait_queue_t** waitQueues = buffer;
+    uint64_t* waitQueuesLookup = buffer + sizeof(wait_queue_t*) * amount;
 
+    uint64_t uniqueCount = 0;
     for (uint64_t i = 0; i < amount; i++)
     {
-        waitQueues[i] = NULL;
+        wait_queue_t* queue = files[i].file->ops->poll(files[i].file, files[i].events, &files[i].revents);
+        if (queue == NULL)
+        {
+            heap_free(buffer);
+            errno = EIO;
+            return ERR;
+        }
+
+        bool found = false;
+        for (uint64_t j = 0; j < uniqueCount; j++)
+        {
+            if (waitQueues[j] == queue)
+            {
+                found = true;
+                waitQueuesLookup[i] = j;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            waitQueues[uniqueCount] = queue;
+            waitQueuesLookup[i] = uniqueCount;
+            uniqueCount++;
+        }
     }
 
     clock_t uptime = systime_uptime();
-    clock_t deadline = timeout == CLOCKS_NEVER ? CLOCKS_NEVER : uptime + timeout;
+    clock_t deadline;
+    if (timeout == CLOCKS_NEVER)
+    {
+        deadline = CLOCKS_NEVER;
+    }
+    else if (timeout > CLOCKS_NEVER - uptime)
+    {
+        deadline = CLOCKS_NEVER;
+    }
+    else
+    {
+        deadline = uptime + timeout;
+    }
 
     uint64_t readyCount = 0;
     while (true)
@@ -1169,10 +1209,18 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
 
         for (uint64_t i = 0; i < amount; i++)
         {
-            waitQueues[i] = files[i].file->ops->poll(files[i].file, files[i].events, &files[i].revents);
-            if (waitQueues[i] == NULL)
+            wait_queue_t* queue = files[i].file->ops->poll(files[i].file, files[i].events, &files[i].revents);
+            if (queue == NULL)
             {
-                heap_free(waitQueues);
+                heap_free(buffer);
+                errno = EIO;
+                return ERR;
+            }
+
+            if (queue != waitQueues[waitQueuesLookup[i]])
+            {
+                heap_free(buffer);
+                errno = EIO;
                 return ERR;
             }
 
@@ -1188,17 +1236,16 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
         }
 
         uptime = systime_uptime();
-        if (uptime >= deadline)
+        if (deadline != CLOCKS_NEVER && uptime >= deadline)
         {
             break;
         }
 
-        clock_t remaining = deadline == CLOCKS_NEVER ? CLOCKS_NEVER : deadline - uptime;
-        wait_block_many(waitQueues, amount, remaining);
-        uptime = systime_uptime();
+        clock_t remaining = (deadline == CLOCKS_NEVER) ? CLOCKS_NEVER : deadline - uptime;
+        wait_block_many(waitQueues, uniqueCount, remaining);
     }
 
-    heap_free(waitQueues);
+    heap_free(buffer);
     return readyCount;
 }
 

@@ -1,5 +1,5 @@
 #include "testing.h"
-#ifdef DEBUG
+#ifndef NDEBUG
 
 #include "log/log.h"
 

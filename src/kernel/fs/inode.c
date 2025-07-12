@@ -50,6 +50,8 @@ void inode_free(inode_t* inode)
         return;
     }
 
+    //vfs_remove_inode(inode);
+
     if (inode->ops != NULL && inode->ops->cleanup != NULL)
     {
         inode->ops->cleanup(inode);
@@ -92,7 +94,6 @@ void inode_deref(inode_t* inode)
     {
         atomic_thread_fence(memory_order_acquire);
         assert(ref == 1); // Check for double free.
-        vfs_remove_inode(inode);
         inode_free(inode);
     }
 }

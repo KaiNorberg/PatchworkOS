@@ -47,6 +47,7 @@ local_conn_t* local_conn_new(local_listen_t* listen)
     conn->listen = ref_inc(listen);
     atomic_init(&conn->isClosed, false);
     lock_init(&conn->lock);
+    wait_queue_init(&conn->waitQueue);
     return conn;
 }
 

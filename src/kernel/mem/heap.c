@@ -135,10 +135,14 @@ void heap_free(void* ptr)
         return;
     }
 
+#ifndef NDEBUG
+    memset32(object->data, HEAP_POISON, object->dataSize);
+#endif
+
     slab_free(object->cache->slab, object);
 }
 
-#ifdef DEBUG
+#ifndef NDEBUG
 #include "utils/testing.h"
 
 static uint64_t heap_test_single(uint64_t size, uint8_t pattern)

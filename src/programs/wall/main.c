@@ -1,6 +1,9 @@
 #include <libpatchwork/patchwork.h>
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 
 static image_t* image;
 
@@ -16,7 +19,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     {
         if (image == NULL)
         {
-            printf("wall: image failed to load\n");
+            printf("wall: image failed to load (%s)\n", strerror(errno));
             break;
         }
 
@@ -40,6 +43,11 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 int main(void)
 {
     display_t* disp = display_new();
+    if (disp == NULL)
+    {
+        fprintf(stderr, "wall: failed to create display (%s)\n", strerror(errno));
+        return EXIT_FAILURE;
+    }
 
     display_unsubscribe(disp, EVENT_KBD);
     display_unsubscribe(disp, EVENT_MOUSE);
@@ -48,10 +56,19 @@ int main(void)
     display_screen_rect(disp, &rect, 0);
 
     image = image_new(disp, theme_get_string(STRING_WALLPAPER, NULL));
+    if (image == NULL)
+    {
+        fprintf(stderr, "wall: failed to load image (%s)\n", strerror(errno));
+        display_free(disp);
+        return EXIT_FAILURE;
+    }
 
     window_t* win = window_new(disp, "Wallpaper", &rect, SURFACE_WALL, WINDOW_NONE, procedure, NULL);
     if (win == NULL)
     {
+        fprintf(stderr, "wall: failed to create window (%s)\n", strerror(errno));
+        image_free(image);
+        display_free(disp);
         return EXIT_FAILURE;
     }
 
@@ -63,6 +80,7 @@ int main(void)
     }
 
     window_free(win);
+    image_free(image);
     display_free(disp);
     return 0;
 }

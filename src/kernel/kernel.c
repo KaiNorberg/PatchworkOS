@@ -27,7 +27,7 @@
 #include "sched/sched.h"
 #include "sched/wait.h"
 
-#ifdef DEBUG
+#ifndef NDEBUG
 #include "utils/testing.h"
 #endif
 
@@ -105,7 +105,7 @@ void kernel_init(boot_info_t* bootInfo)
 
     kernel_free_loader_data(&bootInfo->memoryMap);
 
-#ifdef DEBUG
+#ifndef NDEBUG
     testing_run_tests();
 #endif
 }

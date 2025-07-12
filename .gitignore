@@ -57,6 +57,7 @@ build
 .cache
 .xmake
 .vscode
+.zed
 compile_commands.json
 lib/OVMFbin/OVMF_VARS-pure-efi.fd
 lib/doomgeneric-patchworkos

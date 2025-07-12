@@ -227,6 +227,11 @@ static uint64_t wait_setup_block(thread_t* thread, wait_queue_t** waitQueues, ui
                 }
                 heap_free(other);
             }
+
+            for (uint64_t j = 0; j < amount; j++)
+            {
+                lock_release(&waitQueues[j]->lock);
+            }
             return ERR;
         }
         list_entry_init(&entry->queueEntry);
