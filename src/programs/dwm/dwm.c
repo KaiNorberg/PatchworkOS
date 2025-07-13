@@ -40,7 +40,7 @@ static poll_ctx_t* pollCtx;
 
 static client_t* dwm_client_accept(void)
 {
-    fd_t fd = openf("/net/local/%s/accept", id);
+    fd_t fd = openf("/net/local/%s/accept?nonblock", id);
     if (fd == ERR)
     {
         if (errno != EINVAL)
@@ -673,22 +673,18 @@ static void dwm_poll(void)
 
 static void dwm_update(void)
 {
-    printf("dwm_update\n");
     dwm_poll();
 
     if (pollCtx->data.revents & POLLIN)
     {
-        printf("dwm_client_accept\n");
         dwm_client_accept();
     }
     if (pollCtx->kbd.revents & POLLIN)
     {
-        printf("dwm_kbd_read\n");
         dwm_kbd_read();
     }
     if (pollCtx->mouse.revents & POLLIN)
     {
-        printf("dwm_mouse_read\n");
         dwm_mouse_read();
     }
 
@@ -700,21 +696,15 @@ static void dwm_update(void)
         pollfd_t* fd = &pollCtx->clients[i++];
         if ((fd->revents & POLLHUP) || (fd->revents & POLLERR))
         {
-            printf("dwm_client_disconnect\n");
             dwm_client_disconnect(client);
         }
         else if (fd->revents & POLLIN)
         {
-            printf("client_receive_cmds\n");
             if (client_receive_cmds(client) == ERR)
             {
                 printf("dwm: client_receive_cmds failed (%s)\n", strerror(errno));
                 dwm_client_disconnect(client);
             }
-        }
-        else if (fd->revents & POLLOUT)
-        {
-            printf("POLLOUT\n");
         }
     }
 

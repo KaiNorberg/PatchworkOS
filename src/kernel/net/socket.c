@@ -16,9 +16,22 @@
 #include <stdlib.h>
 #include <sys/io.h>
 
-static uint64_t socket_data_read(file_t* file, void* buf, size_t count, uint64_t* offset)
+static uint64_t socket_data_open(file_t* file)
 {
     socket_t* sock = file->inode->private;
+    if (sock == NULL || sock->family == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    file->private = sock;
+    return 0;
+}
+
+static uint64_t socket_data_read(file_t* file, void* buf, size_t count, uint64_t* offset)
+{
+    socket_t* sock = file->private;
     if (sock == NULL || sock->family == NULL)
     {
         errno = EINVAL;
@@ -60,7 +73,7 @@ static uint64_t socket_data_read(file_t* file, void* buf, size_t count, uint64_t
 
 static uint64_t socket_data_write(file_t* file, const void* buf, size_t count, uint64_t* offset)
 {
-    socket_t* sock = file->inode->private;
+    socket_t* sock = file->private;
     if (sock == NULL || sock->family == NULL)
     {
         errno = EINVAL;
@@ -102,7 +115,7 @@ static uint64_t socket_data_write(file_t* file, const void* buf, size_t count, u
 
 static wait_queue_t* socket_data_poll(file_t* file, poll_events_t events, poll_events_t* revents)
 {
-    socket_t* sock = file->inode->private;
+    socket_t* sock = file->private;
     if (sock == NULL || sock->family == NULL)
     {
         errno = EINVAL;
@@ -119,6 +132,7 @@ static wait_queue_t* socket_data_poll(file_t* file, poll_events_t events, poll_e
 }
 
 static file_ops_t dataOps = {
+    .open = socket_data_open,
     .read = socket_data_read,
     .write = socket_data_write,
     .poll = socket_data_poll,

@@ -283,7 +283,7 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock)
     return 0;
 }
 
-static inline uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t count, uint64_t* offset)
 {
     local_socket_data_t* data = sock->private;
     if (data == NULL)
@@ -351,7 +351,7 @@ static inline uint64_t local_socket_send(socket_t* sock, const void* buffer, uin
     return count;
 }
 
-static inline uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, uint64_t* offset)
+static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, uint64_t* offset)
 {
     local_socket_data_t* data = sock->private;
     if (data == NULL)

@@ -1144,7 +1144,6 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
             errno = ENOSYS;
             return ERR;
         }
-        files[i].revents = POLLNONE;
     }
 
     // Only allocate memory once.
@@ -1159,11 +1158,11 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
     uint64_t uniqueCount = 0;
     for (uint64_t i = 0; i < amount; i++)
     {
+        files[i].revents = POLLNONE;
         wait_queue_t* queue = files[i].file->ops->poll(files[i].file, files[i].events, &files[i].revents);
         if (queue == NULL)
         {
             heap_free(buffer);
-            errno = EIO;
             return ERR;
         }
 
@@ -1208,11 +1207,11 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
 
         for (uint64_t i = 0; i < amount; i++)
         {
+            files[i].revents = POLLNONE;
             wait_queue_t* queue = files[i].file->ops->poll(files[i].file, files[i].events, &files[i].revents);
             if (queue == NULL)
             {
                 heap_free(buffer);
-                errno = EIO;
                 return ERR;
             }
 
@@ -1279,14 +1278,21 @@ SYSCALL_DEFINE(SYS_POLL, uint64_t, pollfd_t* fds, uint64_t amount, clock_t timeo
         }
 
         files[i].events = fds[i].events;
-        files[i].revents = 0;
+        files[i].revents = POLLNONE;
     }
 
     uint64_t result = vfs_poll(files, amount, timeout);
 
+    if (result != ERR)
+    {
+        for (uint64_t i = 0; i < amount; i++)
+        {
+            fds[i].revents = files[i].revents;
+        }
+    }
+
     for (uint64_t i = 0; i < amount; i++)
     {
-        fds[i].revents = files[i].revents;
         DEREF(files[i].file);
     }
 
