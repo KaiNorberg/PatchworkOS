@@ -1,6 +1,7 @@
 #pragma once
 
 #include "sysfs.h"
+#include "utils/ref.h"
 
 #include <stdint.h>
 #include <sys/io.h>
@@ -13,9 +14,6 @@ typedef struct dentry_ops dentry_ops_t;
 typedef struct inode inode_t;
 typedef struct dentry dentry_t;
 
-#define SUPER_DEFER(superblock) \
-    __attribute__((cleanup(superblock_defer_cleanup))) superblock_t* CONCAT(i, __COUNTER__) = (superblock)
-
 typedef uint64_t superblock_id_t;
 
 typedef enum
@@ -25,9 +23,9 @@ typedef enum
 
 typedef struct superblock
 {
+    ref_t ref;
     list_entry_t entry;
     superblock_id_t id;
-    atomic_uint64_t ref;
     uint64_t blockSize;
     uint64_t maxFileSize;
     superblock_flags_t flags;
@@ -50,13 +48,3 @@ typedef struct superblock_ops
 
 superblock_t* superblock_new(filesystem_t* fs, const char* deviceName, superblock_ops_t* ops, dentry_ops_t* dentryOps);
 void superblock_free(superblock_t* superblock);
-superblock_t* superblock_ref(superblock_t* superblock);
-void superblock_deref(superblock_t* superblock);
-
-static inline void superblock_defer_cleanup(superblock_t** superblock)
-{
-    if (*superblock != NULL)
-    {
-        superblock_deref(*superblock);
-    }
-}

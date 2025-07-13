@@ -11,6 +11,10 @@ uint64_t argv_init(argv_t* argv, const char** src)
     if (src == NULL)
     {
         argv->buffer = heap_alloc(sizeof(const char*), HEAP_NONE);
+        if (argv->buffer == NULL)
+        {
+            return ERR;
+        }
         argv->size = sizeof(const char*);
         argv->amount = 1;
 

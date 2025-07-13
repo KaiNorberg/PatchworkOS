@@ -1,6 +1,7 @@
 #pragma once
 
 #include "path.h"
+#include "utils/ref.h"
 
 #include <stdatomic.h>
 #include <stdint.h>
@@ -15,11 +16,9 @@ typedef struct dentry dentry_t;
 typedef struct inode inode_t;
 typedef struct poll_file poll_file_t;
 
-#define FILE_DEFER(file) __attribute__((cleanup(file_defer_cleanup))) file_t* CONCAT(i, __COUNTER__) = (file)
-
 typedef struct file
 {
-    atomic_uint64_t ref;
+    ref_t ref;
     uint64_t pos;
     path_flags_t flags;
     inode_t* inode;
@@ -52,21 +51,9 @@ file_t* file_new(inode_t* inode, const path_t* path, path_flags_t flags);
 
 void file_free(file_t* file);
 
-file_t* file_ref(file_t* file);
-
-void file_deref(file_t* file);
-
 /**
  * @brief Helper function for basic seeking.
  * @ingroup kernel_vfs
  *
  */
 uint64_t file_generic_seek(file_t* file, int64_t offset, seek_origin_t origin);
-
-static inline void file_defer_cleanup(file_t** file)
-{
-    if (*file != NULL)
-    {
-        file_deref(*file);
-    }
-}

@@ -2,6 +2,7 @@
 
 #include "fs/sysfs.h"
 #include "sync/lock.h"
+#include "utils/ref.h"
 
 #include <sys/io.h>
 
@@ -13,7 +14,7 @@ typedef struct
 
 typedef struct
 {
-    atomic_uint64_t ref;
+    ref_t ref;
     char id[MAX_NAME];
     sysfs_file_t obj;
     lock_t lock; // Lock only protects segment, other member are const, expect ref which is atomic.

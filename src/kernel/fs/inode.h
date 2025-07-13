@@ -3,6 +3,7 @@
 #include "path.h"
 #include "sync/lock.h"
 #include "utils/map.h"
+#include "utils/ref.h"
 
 #include <stdatomic.h>
 #include <stdint.h>
@@ -19,8 +20,6 @@ typedef struct superblock superblock_t;
 typedef struct file_ops file_ops_t;
 typedef struct dentry dentry_t;
 
-#define INODE_DEFER(inode) __attribute__((cleanup(inode_defer_cleanup))) inode_t* CONCAT(i, __COUNTER__) = (inode)
-
 typedef enum
 {
     INODE_NONE = 0,        //!< None
@@ -30,8 +29,8 @@ typedef enum
 
 typedef struct inode
 {
+    ref_t ref;
     inode_number_t number; //!< Constant after creation.
-    atomic_uint64_t ref;
     inode_type_t type; //!< Constant after creation.
     inode_flags_t flags;
     uint64_t linkCount;
@@ -69,19 +68,6 @@ typedef struct inode_ops
 
 inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, const inode_ops_t* ops,
     const file_ops_t* fileOps);
-
 void inode_free(inode_t* inode);
 
-inode_t* inode_ref(inode_t* inode);
-
-void inode_deref(inode_t* inode);
-
 uint64_t inode_sync(inode_t* inode);
-
-static inline void inode_defer_cleanup(inode_t** inode)
-{
-    if (*inode != NULL)
-    {
-        inode_deref(*inode);
-    }
-}

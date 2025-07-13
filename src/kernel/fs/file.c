@@ -13,10 +13,10 @@ file_t* file_new(inode_t* inode, const path_t* path, path_flags_t flags)
         return NULL;
     }
 
-    atomic_init(&file->ref, 1);
+    ref_init(&file->ref, file_free);
     file->pos = 0;
     file->flags = flags;
-    file->inode = inode_ref(inode);
+    file->inode = REF(inode);
     file->path = PATH_EMPTY;
     path_copy(&file->path, path);
     file->ops = inode->fileOps;
@@ -37,36 +37,11 @@ void file_free(file_t* file)
         file->ops->cleanup(file);
     }
 
-    inode_deref(file->inode);
+    DEREF(file->inode);
     file->inode = NULL;
     path_put(&file->path);
 
     heap_free(file);
-}
-
-file_t* file_ref(file_t* file)
-{
-    if (file != NULL)
-    {
-        atomic_fetch_add_explicit(&file->ref, 1, memory_order_relaxed);
-    }
-    return file;
-}
-
-void file_deref(file_t* file)
-{
-    if (file == NULL)
-    {
-        return;
-    }
-
-    uint64_t ref = atomic_fetch_sub_explicit(&file->ref, 1, memory_order_relaxed);
-    if (ref <= 1)
-    {
-        atomic_thread_fence(memory_order_acquire);
-        assert(ref == 1); // Check for double free.
-        file_free(file);
-    }
 }
 
 uint64_t file_generic_seek(file_t* file, int64_t offset, seek_origin_t origin)

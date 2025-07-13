@@ -105,7 +105,7 @@ static uint64_t ramfs_create(inode_t* dir, dentry_t* target, path_flags_t flags)
     {
         return ERR;
     }
-    INODE_DEFER(&newInode->inode);
+    REF_DEFER(&newInode->inode);
 
     dentry_make_positive(target, &newInode->inode);
     return 0;
@@ -250,18 +250,11 @@ static dentry_t* ramfs_mount(filesystem_t* fs, superblock_flags_t flags, const c
     {
         return NULL;
     }
-    SUPER_DEFER(superblock);
+    REF_DEFER(superblock);
 
     superblock->blockSize = 0;
     superblock->maxFileSize = UINT64_MAX;
     superblock->flags = flags;
-
-    ramfs_inode_t* inode = ramfs_inode_new(superblock, INODE_DIR, NULL, 0);
-    if (inode == NULL)
-    {
-        return NULL;
-    }
-    INODE_DEFER(&inode->inode);
 
     superblock->root = ramfs_load_dir(superblock, NULL, VFS_ROOT_ENTRY_NAME, private);
     if (superblock->root == NULL)
@@ -269,7 +262,7 @@ static dentry_t* ramfs_mount(filesystem_t* fs, superblock_flags_t flags, const c
         return NULL;
     }
 
-    return dentry_ref(superblock->root);
+    return REF(superblock->root);
 }
 
 static filesystem_t ramfs = {
@@ -301,7 +294,7 @@ static ramfs_inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t typ
     ramfsInode->data = heap_alloc(size, HEAP_VMM);
     if (ramfsInode->data == NULL)
     {
-        inode_deref(&ramfsInode->inode);
+        DEREF(&ramfsInode->inode);
         return NULL;
     }
     memcpy(ramfsInode->data, data, size);

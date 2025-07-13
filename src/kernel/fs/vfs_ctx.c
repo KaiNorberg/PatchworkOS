@@ -9,6 +9,8 @@
 
 void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd)
 {
+    ctx->cwd = PATH_EMPTY;
+
     if (cwd == NULL)
     {
         vfs_get_global_root(&ctx->cwd);
@@ -35,7 +37,7 @@ void vfs_ctx_deinit(vfs_ctx_t* ctx)
     {
         if (ctx->files[i] != NULL)
         {
-            file_deref(ctx->files[i]);
+            DEREF(ctx->files[i]);
             ctx->files[i] = NULL;
         }
     }
@@ -51,7 +53,7 @@ file_t* vfs_ctx_get_file(vfs_ctx_t* ctx, fd_t fd)
         return NULL;
     }
 
-    return file_ref(ctx->files[fd]);
+    return REF(ctx->files[fd]);
 }
 
 void vfs_ctx_get_cwd(vfs_ctx_t* ctx, path_t* outCwd)
@@ -79,7 +81,7 @@ fd_t vfs_ctx_open(vfs_ctx_t* ctx, file_t* file)
     {
         if (ctx->files[fd] == NULL)
         {
-            ctx->files[fd] = file_ref(file);
+            ctx->files[fd] = REF(file);
             return fd;
         }
     }
@@ -100,11 +102,11 @@ fd_t vfs_ctx_openas(vfs_ctx_t* ctx, fd_t fd, file_t* file)
 
     if (ctx->files[fd] != NULL)
     {
-        file_deref(ctx->files[fd]);
+        DEREF(ctx->files[fd]);
         ctx->files[fd] = NULL;
     }
 
-    ctx->files[fd] = file_ref(file);
+    ctx->files[fd] = REF(file);
     return fd;
 }
 
@@ -118,7 +120,7 @@ uint64_t vfs_ctx_close(vfs_ctx_t* ctx, fd_t fd)
         return ERR;
     }
 
-    file_deref(ctx->files[fd]);
+    DEREF(ctx->files[fd]);
     ctx->files[fd] = NULL;
     return 0;
 }
@@ -144,7 +146,7 @@ fd_t vfs_ctx_dup(vfs_ctx_t* ctx, fd_t oldFd)
     {
         if (ctx->files[fd] == NULL)
         {
-            ctx->files[fd] = file_ref(ctx->files[oldFd]);
+            ctx->files[fd] = REF(ctx->files[oldFd]);
             return fd;
         }
     }
@@ -175,11 +177,11 @@ fd_t vfs_ctx_dup2(vfs_ctx_t* ctx, fd_t oldFd, fd_t newFd)
 
     if (ctx->files[newFd] != NULL)
     {
-        file_deref(ctx->files[newFd]);
+        DEREF(ctx->files[newFd]);
         ctx->files[newFd] = NULL;
     }
 
-    ctx->files[newFd] = file_ref(ctx->files[oldFd]);
+    ctx->files[newFd] = REF(ctx->files[oldFd]);
 
     return newFd;
 }

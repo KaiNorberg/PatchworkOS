@@ -84,7 +84,7 @@ uint64_t pathname_init(pathname_t* pathname, const char* string);
 #define PATH_CREATE(inMount, inDentry) \
     (path_t) \
     { \
-        .mount = mount_ref(inMount), .dentry = dentry_ref(inDentry), \
+        .mount = REF(inMount), .dentry = REF(inDentry), \
     }
 
 void path_set(path_t* path, mount_t* mount, dentry_t* dentry);

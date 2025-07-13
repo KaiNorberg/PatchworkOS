@@ -22,6 +22,30 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
+static local_listen_t* local_socket_data_get_listen(local_socket_data_t* data)
+{
+    LOCK_SCOPE(&data->lock);
+
+    if (data->listen.listen == NULL)
+    {
+        return NULL;
+    }
+
+    return REF(data->listen.listen);
+}
+
+static local_conn_t* local_socket_data_get_conn(local_socket_data_t* data)
+{
+    LOCK_SCOPE(&data->lock);
+
+    if (data->conn.conn == NULL)
+    {
+        return NULL;
+    }
+
+    return REF(data->conn.conn);
+}
+
 static uint64_t local_socket_init(socket_t* sock)
 {
     local_socket_data_t* data = heap_alloc(sizeof(local_socket_data_t), HEAP_NONE);
@@ -52,7 +76,7 @@ static void local_socket_deinit(socket_t* sock)
         {
             atomic_store(&data->listen.listen->isClosed, true);
             wait_unblock(&data->listen.listen->waitQueue, WAIT_ALL);
-            ref_dec(data->listen.listen);
+            DEREF(data->listen.listen);
             data->listen.listen = NULL;
         }
         break;
@@ -61,7 +85,7 @@ static void local_socket_deinit(socket_t* sock)
         {
             atomic_store(&data->conn.conn->isClosed, true);
             wait_unblock(&data->conn.conn->waitQueue, WAIT_ALL);
-            ref_dec(data->conn.conn);
+            DEREF(data->conn.conn);
             data->conn.conn = NULL;
         }
         break;
@@ -98,7 +122,7 @@ static uint64_t local_socket_bind(socket_t* sock, const char* address)
     }
     REF_DEFER(listen);
 
-    data->listen.listen = ref_inc(listen);
+    data->listen.listen = REF(listen);
     return 0;
 }
 
@@ -185,7 +209,7 @@ static uint64_t local_socket_connect(socket_t* sock, const char* address)
 
     wait_unblock(&listen->waitQueue, WAIT_ALL);
 
-    data->conn.conn = ref_inc(conn);
+    data->conn.conn = REF(conn);
     data->conn.isServer = false;
     return 0;
 }
@@ -198,14 +222,14 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock)
         errno = EINVAL;
         return ERR;
     }
-    LOCK_SCOPE(&data->lock);
 
-    local_listen_t* listen = data->listen.listen;
+    local_listen_t* listen = local_socket_data_get_listen(data);
     if (listen == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
+    REF_DEFER(listen);
 
     local_conn_t* conn = NULL;
     while (true)
@@ -220,7 +244,10 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock)
 
         if (!list_is_empty(&listen->backlog))
         {
-            conn = ref_inc(CONTAINER_OF(list_pop(&listen->backlog), local_conn_t, entry));
+            list_entry_t* entry = list_first(&listen->backlog);
+            local_conn_t* container = CONTAINER_OF(entry, local_conn_t, entry);
+            list_remove(entry);
+            conn = REF(container);
             listen->pendingAmount--;
             break;
         }
@@ -240,6 +267,8 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock)
     }
     REF_DEFER(conn);
 
+    assert(conn != NULL);
+
     local_socket_data_t* newData = newSock->private;
     if (newData == NULL)
     {
@@ -247,7 +276,7 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock)
         return ERR;
     }
     lock_acquire(&newData->lock);
-    newData->conn.conn = ref_inc(conn);
+    newData->conn.conn = REF(conn);
     newData->conn.isServer = true;
     lock_release(&newData->lock);
 
@@ -263,15 +292,12 @@ static inline uint64_t local_socket_send(socket_t* sock, const void* buffer, uin
         return ERR;
     }
 
-    lock_acquire(&data->lock);
-    if (data->conn.conn == NULL)
+    local_conn_t* conn = local_socket_data_get_conn(data);
+    if (conn == NULL)
     {
-        lock_release(&data->lock);
         errno = ECONNRESET;
         return ERR;
     }
-    local_conn_t* conn = ref_inc(data->conn.conn);
-    lock_release(&data->lock);
     REF_DEFER(conn);
     LOCK_SCOPE(&conn->lock);
 
@@ -334,15 +360,12 @@ static inline uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t 
         return ERR;
     }
 
-    lock_acquire(&data->lock);
-    if (data->conn.conn == NULL)
+    local_conn_t* conn = local_socket_data_get_conn(data);
+    if (conn == NULL)
     {
-        lock_release(&data->lock);
         errno = ECONNRESET;
         return ERR;
     }
-    local_conn_t* conn = ref_inc(data->conn.conn);
-    lock_release(&data->lock);
     REF_DEFER(conn);
     LOCK_SCOPE(&conn->lock);
 

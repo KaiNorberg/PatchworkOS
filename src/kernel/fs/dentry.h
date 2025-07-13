@@ -3,6 +3,7 @@
 #include "sched/wait.h"
 #include "sync/lock.h"
 #include "utils/map.h"
+#include "utils/ref.h"
 
 #include <stdatomic.h>
 #include <stdint.h>
@@ -13,8 +14,6 @@ typedef struct dentry dentry_t;
 typedef struct dentry_ops dentry_ops_t;
 typedef struct inode inode_t;
 typedef struct superblock superblock_t;
-
-#define DENTRY_DEFER(dentry) __attribute__((cleanup(dentry_defer_cleanup))) dentry_t* CONCAT(i, __COUNTER__) = (dentry)
 
 typedef uint64_t dentry_id_t;
 
@@ -30,8 +29,8 @@ typedef enum
 
 typedef struct dentry
 {
+    ref_t ref;
     dentry_id_t id;
-    atomic_uint64_t ref;
     char name[MAX_NAME];
     inode_t* inode;
     dentry_t* parent;
@@ -53,23 +52,9 @@ typedef struct dentry_ops
 } dentry_ops_t;
 
 dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* name);
-
-void dentry_make_positive(dentry_t* dentry, inode_t* inode);
-
 void dentry_free(dentry_t* dentry);
 
-dentry_t* dentry_ref(dentry_t* dentry);
-
-void dentry_deref(dentry_t* dentry);
-
-static inline void dentry_defer_cleanup(dentry_t** entry)
-{
-    if (*entry != NULL)
-    {
-        dentry_deref(*entry);
-        *entry = NULL;
-    }
-}
+void dentry_make_positive(dentry_t* dentry, inode_t* inode);
 
 /**
  * @brief Helper function for a basic getdirent.

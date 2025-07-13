@@ -42,7 +42,7 @@ void* heap_alloc(uint64_t size, heap_flags_t flags)
         list_entry_init(&object->entry);
         object->cache = NULL;
         object->magic = SLAB_MAGIC;
-        object->freed = true;
+        object->freed = false;
         object->dataSize = size;
         return object->data;
     }
@@ -56,7 +56,17 @@ void* heap_alloc(uint64_t size, heap_flags_t flags)
         slab_init(&slabs[slabIndex], size);
     }
 
-    return slab_alloc(&slabs[lookupTable[size / HEAP_ALIGN]])->data;
+    object_t* object = slab_alloc(&slabs[lookupTable[size / HEAP_ALIGN]]);
+    if (object == NULL)
+    {
+        return NULL;
+    }
+
+#ifndef NDEBUG
+    memset32(object->data, HEAP_ALLOC_POISON, object->dataSize / sizeof(uint32_t));
+#endif
+
+    return object->data;
 }
 
 void* heap_realloc(void* oldPtr, uint64_t newSize, heap_flags_t flags)
@@ -136,7 +146,7 @@ void heap_free(void* ptr)
     }
 
 #ifndef NDEBUG
-    memset32(object->data, HEAP_POISON, object->dataSize);
+    memset32(object->data, HEAP_FREE_POISON, object->dataSize / sizeof(uint32_t));
 #endif
 
     slab_free(object->cache->slab, object);

@@ -32,8 +32,8 @@
  */
 typedef struct list_entry
 {
-    struct list_entry* prev; //!< The next entry in the list
-    struct list_entry* next; //!< The previous entry in the list
+    struct list_entry* prev; //!< The previous entry in the list
+    struct list_entry* next; //!< The next entry in the list
 } list_entry_t;
 
 /**

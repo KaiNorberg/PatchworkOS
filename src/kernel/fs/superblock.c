@@ -12,9 +12,9 @@ superblock_t* superblock_new(filesystem_t* fs, const char* deviceName, superbloc
         return NULL;
     }
 
+    ref_init(&superblock->ref, superblock_free);
     list_entry_init(&superblock->entry);
     superblock->id = vfs_get_new_id();
-    atomic_init(&superblock->ref, 1);
     superblock->blockSize = PAGE_SIZE;
     superblock->maxFileSize = UINT64_MAX;
     superblock->flags = SUPER_NONE;
@@ -40,7 +40,7 @@ void superblock_free(superblock_t* superblock)
 
     if (superblock->root != NULL)
     {
-        dentry_deref(superblock->root);
+        DEREF(superblock->root);
     }
 
     if (superblock->ops != NULL && superblock->ops->cleanup != NULL)
@@ -49,29 +49,4 @@ void superblock_free(superblock_t* superblock)
     }
 
     heap_free(superblock);
-}
-
-superblock_t* superblock_ref(superblock_t* superblock)
-{
-    if (superblock != NULL)
-    {
-        atomic_fetch_add_explicit(&superblock->ref, 1, memory_order_relaxed);
-    }
-    return superblock;
-}
-
-void superblock_deref(superblock_t* superblock)
-{
-    if (superblock == NULL)
-    {
-        return;
-    }
-
-    uint64_t ref = atomic_fetch_sub_explicit(&superblock->ref, 1, memory_order_relaxed);
-    if (ref <= 1)
-    {
-        atomic_thread_fence(memory_order_acquire);
-        assert(ref == 1); // Check for double free.
-        superblock_free(superblock);
-    }
 }

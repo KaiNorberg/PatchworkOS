@@ -20,18 +20,10 @@ static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 static sysfs_dir_t shmemDir;
 static sysfs_file_t newFile;
 
-static shmem_t* shmem_ref(shmem_t* shmem)
-{
-    atomic_fetch_add(&shmem->ref, 1);
-    return shmem;
-}
 
-static void shmem_deref(shmem_t* shmem)
+static void shmem_free(shmem_t* shmem)
 {
-    if (atomic_fetch_sub(&shmem->ref, 1) <= 1)
-    {
-        sysfs_file_deinit(&shmem->obj);
-    }
+    sysfs_file_deinit(&shmem->obj);
 }
 
 static uint64_t shmem_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
@@ -44,7 +36,7 @@ static uint64_t shmem_read(file_t* file, void* buffer, uint64_t count, uint64_t*
 static void shmem_vmm_callback(void* private)
 {
     shmem_t* shmem = private;
-    shmem_deref(shmem);
+    DEREF(shmem);
 }
 
 static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
@@ -86,7 +78,7 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
         }
 
         void* result = vmm_map_pages(space, address, segment->pages, segment->pageAmount, prot, shmem_vmm_callback,
-            shmem_ref(shmem));
+            REF(shmem));
         if (result == NULL)
         {
             for (uint64_t i = 0; i < segment->pageAmount; i++)
@@ -105,14 +97,14 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
         shmem_segment_t* segment = shmem->segment;
 
         return vmm_map_pages(space, address, segment->pages, segment->pageAmount, prot, shmem_vmm_callback,
-            shmem_ref(shmem));
+            REF(shmem));
     }
 }
 
 static uint64_t shmem_open(file_t* file)
 {
     shmem_t* shmem = file->inode->private;
-    file->private = shmem_ref(shmem);
+    file->private = REF(shmem);
     return 0;
 }
 
@@ -121,7 +113,7 @@ static void shmem_file_cleanup(file_t* file)
     shmem_t* shmem = file->private;
     if (shmem != NULL)
     {
-        shmem_deref(shmem);
+        DEREF(shmem);
     }
 }
 
@@ -163,7 +155,7 @@ static uint64_t shmem_new_open(file_t* file)
         return ERR;
     }
 
-    atomic_init(&shmem->ref, 1);
+    ref_init(&shmem->ref, shmem_free);
     lock_init(&shmem->lock);
     ulltoa(atomic_fetch_add(&newId, 1), shmem->id, 10);
     shmem->segment = NULL;

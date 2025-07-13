@@ -71,13 +71,10 @@ void slab_init(slab_t* slab, uint64_t objectSize)
     slab->objectSize = objectSize;
     slab->optimalCacheSize = slab_find_optimal_cache_size(objectSize,
         ROUND_UP(CACHE_MIN_LENGTH * objectSize, PAGE_SIZE), ROUND_UP(CACHE_MAX_LENGTH * objectSize, PAGE_SIZE));
-    lock_init(&slab->lock);
 }
 
 object_t* slab_alloc(slab_t* slab)
 {
-    LOCK_SCOPE(&slab->lock);
-
     cache_t* cache;
     bool newCacheCreated = false;
 
@@ -124,8 +121,6 @@ object_t* slab_alloc(slab_t* slab)
 
 void slab_free(slab_t* slab, object_t* object)
 {
-    LOCK_SCOPE(&slab->lock);
-
     assert(object->magic == SLAB_MAGIC && "magic number mismatch");
     assert(!object->freed && "double free");
 

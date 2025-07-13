@@ -148,24 +148,24 @@ void path_set(path_t* path, mount_t* mount, dentry_t* dentry)
 {
     if (path->dentry != NULL)
     {
-        dentry_deref(path->dentry);
+        DEREF(path->dentry);
         path->dentry = NULL;
     }
 
     if (path->mount != NULL)
     {
-        mount_deref(path->mount);
+        DEREF(path->mount);
         path->mount = NULL;
     }
 
     if (dentry != NULL)
     {
-        path->dentry = dentry_ref(dentry);
+        path->dentry = REF(dentry);
     }
 
     if (mount != NULL)
     {
-        path->mount = mount_ref(mount);
+        path->mount = REF(mount);
     }
 }
 
@@ -173,24 +173,24 @@ void path_copy(path_t* dest, const path_t* src)
 {
     if (dest->dentry != NULL)
     {
-        dentry_deref(dest->dentry);
+        DEREF(dest->dentry);
         dest->dentry = NULL;
     }
 
     if (dest->mount != NULL)
     {
-        mount_deref(dest->mount);
+        DEREF(dest->mount);
         dest->mount = NULL;
     }
 
     if (src->dentry != NULL)
     {
-        dest->dentry = dentry_ref(src->dentry);
+        dest->dentry = REF(src->dentry);
     }
 
     if (src->mount != NULL)
     {
-        dest->mount = mount_ref(src->mount);
+        dest->mount = REF(src->mount);
     }
 }
 
@@ -198,13 +198,13 @@ void path_put(path_t* path)
 {
     if (path->dentry != NULL)
     {
-        dentry_deref(path->dentry);
+        DEREF(path->dentry);
         path->dentry = NULL;
     }
 
     if (path->mount != NULL)
     {
-        mount_deref(path->mount);
+        DEREF(path->mount);
         path->mount = NULL;
     }
 }
@@ -222,12 +222,12 @@ static uint64_t path_handle_dotdot(path_t* current)
                 return 0;
             }
 
-            mount_t* newMount = mount_ref(current->mount->parent);
-            dentry_t* newDentry = dentry_ref(current->mount->mountpoint);
+            mount_t* newMount = REF(current->mount->parent);
+            dentry_t* newDentry = REF(current->mount->mountpoint);
 
-            mount_deref(current->mount);
+            DEREF(current->mount);
             current->mount = newMount;
-            dentry_deref(current->dentry);
+            DEREF(current->dentry);
             current->dentry = newDentry;
 
             iter++;
@@ -248,8 +248,8 @@ static uint64_t path_handle_dotdot(path_t* current)
                 return ERR;
             }
 
-            dentry_t* new_parent = dentry_ref(parent);
-            dentry_deref(current->dentry);
+            dentry_t* new_parent = REF(parent);
+            DEREF(current->dentry);
             current->dentry = new_parent;
         }
 
@@ -258,8 +258,8 @@ static uint64_t path_handle_dotdot(path_t* current)
     else
     {
         assert(current->dentry->parent != NULL); // This can only happen if the filesystem is corrupt.
-        dentry_t* parent = dentry_ref(current->dentry->parent);
-        dentry_deref(current->dentry);
+        dentry_t* parent = REF(current->dentry->parent);
+        DEREF(current->dentry);
         current->dentry = parent;
 
         return 0;
@@ -302,7 +302,7 @@ uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char
     {
         return ERR;
     }
-    DENTRY_DEFER(next);
+    REF_DEFER(next);
 
     lock_acquire(&next->lock);
     if (next->flags & DENTRY_NEGATIVE)

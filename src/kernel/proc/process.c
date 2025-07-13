@@ -256,7 +256,6 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
     process_t* process = heap_alloc(sizeof(process_t), HEAP_NONE);
     if (process == NULL)
     {
-        errno = ENOMEM;
         return NULL;
     }
 
@@ -264,7 +263,6 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
     atomic_init(&process->priority, priority);
     if (argv_init(&process->argv, argv) == ERR)
     {
-        errno = ENOMEM;
         return NULL;
     }
 

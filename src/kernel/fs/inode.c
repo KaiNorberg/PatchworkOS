@@ -23,9 +23,9 @@ inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t
         inode = heap_alloc(sizeof(inode_t), HEAP_NONE);
     }
 
+    ref_init(&inode->ref, inode_free);
     map_entry_init(&inode->mapEntry);
     inode->number = number;
-    atomic_init(&inode->ref, 1);
     inode->type = type;
     inode->flags = INODE_NONE;
     inode->linkCount = 1;
@@ -35,7 +35,7 @@ inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t
     inode->modifyTime = inode->accessTime;
     inode->changeTime = inode->accessTime;
     inode->private = NULL;
-    inode->superblock = superblock_ref(superblock);
+    inode->superblock = REF(superblock);
     inode->ops = ops;
     inode->fileOps = fileOps;
     lock_init(&inode->lock);
@@ -50,7 +50,7 @@ void inode_free(inode_t* inode)
         return;
     }
 
-    //vfs_remove_inode(inode);
+    vfs_remove_inode(inode);
 
     if (inode->ops != NULL && inode->ops->cleanup != NULL)
     {
@@ -63,38 +63,13 @@ void inode_free(inode_t* inode)
         {
             inode->superblock->ops->freeInode(inode->superblock, inode);
         }
-        superblock_deref(inode->superblock);
+        DEREF(inode->superblock);
     }
 
     // If freeInode was not called cleanup manually.
     if (inode->superblock == NULL || inode->superblock->ops == NULL || inode->superblock->ops->freeInode == NULL)
     {
         heap_free(inode);
-    }
-}
-
-inode_t* inode_ref(inode_t* inode)
-{
-    if (inode != NULL)
-    {
-        atomic_fetch_add_explicit(&inode->ref, 1, memory_order_relaxed);
-    }
-    return inode;
-}
-
-void inode_deref(inode_t* inode)
-{
-    if (inode == NULL)
-    {
-        return;
-    }
-
-    uint64_t ref = atomic_fetch_sub_explicit(&inode->ref, 1, memory_order_relaxed);
-    if (ref <= 1)
-    {
-        atomic_thread_fence(memory_order_acquire);
-        assert(ref == 1); // Check for double free.
-        inode_free(inode);
     }
 }
 

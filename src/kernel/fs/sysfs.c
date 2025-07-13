@@ -32,7 +32,7 @@ static dentry_t* sysfs_mount(filesystem_t* fs, superblock_flags_t flags, const c
     {
         return NULL;
     }
-    SUPER_DEFER(superblock);
+    REF_DEFER(superblock);
 
     superblock->blockSize = 0;
     superblock->maxFileSize = UINT64_MAX;
@@ -43,21 +43,21 @@ static dentry_t* sysfs_mount(filesystem_t* fs, superblock_flags_t flags, const c
     {
         return NULL;
     }
-    INODE_DEFER(inode);
+    REF_DEFER(inode);
 
     dentry_t* dentry = dentry_new(superblock, NULL, VFS_ROOT_ENTRY_NAME);
     if (dentry == NULL)
     {
         return NULL;
     }
-    DENTRY_DEFER(dentry);
+    REF_DEFER(dentry);
 
     dentry->private = &group->root;
     dentry_make_positive(dentry, inode);
 
-    superblock->root = dentry_ref(dentry);
-    group->root.dentry = dentry_ref(dentry);
-    return dentry_ref(superblock->root);
+    superblock->root = REF(dentry);
+    group->root.dentry = REF(dentry);
+    return REF(superblock->root);
 }
 
 static filesystem_t sysfs = {
@@ -129,7 +129,7 @@ uint64_t sysfs_dir_init(sysfs_dir_t* dir, sysfs_dir_t* parent, const char* name,
     {
         return ERR;
     }
-    DENTRY_DEFER(dentry);
+    REF_DEFER(dentry);
     dentry->private = dir;
 
     inode_t* inode = inode_new(parent->dentry->superblock, atomic_fetch_add(&newNumber, 1), INODE_DIR, inodeOps, NULL);
@@ -137,7 +137,7 @@ uint64_t sysfs_dir_init(sysfs_dir_t* dir, sysfs_dir_t* parent, const char* name,
     {
         return ERR;
     }
-    INODE_DEFER(inode);
+    REF_DEFER(inode);
     inode->private = private;
 
     if (vfs_add_dentry(dentry) == ERR)
@@ -146,7 +146,7 @@ uint64_t sysfs_dir_init(sysfs_dir_t* dir, sysfs_dir_t* parent, const char* name,
     }
     dentry_make_positive(dentry, inode);
 
-    dir->dentry = dentry_ref(dentry);
+    dir->dentry = REF(dentry);
     return 0;
 }
 
@@ -157,7 +157,7 @@ void sysfs_dir_deinit(sysfs_dir_t* dir)
         return;
     }
 
-    dentry_deref(dir->dentry);
+    DEREF(dir->dentry);
     dir->dentry = NULL;
 }
 
@@ -175,7 +175,7 @@ uint64_t sysfs_file_init(sysfs_file_t* file, sysfs_dir_t* parent, const char* na
     {
         return ERR;
     }
-    DENTRY_DEFER(dentry);
+    REF_DEFER(dentry);
     dentry->private = file;
 
     inode_t* inode =
@@ -184,7 +184,7 @@ uint64_t sysfs_file_init(sysfs_file_t* file, sysfs_dir_t* parent, const char* na
     {
         return ERR;
     }
-    INODE_DEFER(inode);
+    REF_DEFER(inode);
     inode->private = private;
 
     if (vfs_add_dentry(dentry) == ERR)
@@ -193,7 +193,7 @@ uint64_t sysfs_file_init(sysfs_file_t* file, sysfs_dir_t* parent, const char* na
     }
     dentry_make_positive(dentry, inode);
 
-    file->dentry = dentry_ref(dentry);
+    file->dentry = REF(dentry);
     return 0;
 }
 
@@ -204,6 +204,6 @@ void sysfs_file_deinit(sysfs_file_t* file)
         return;
     }
 
-    dentry_deref(file->dentry);
+    DEREF(file->dentry);
     file->dentry = NULL;
 }

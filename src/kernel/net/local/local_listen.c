@@ -54,8 +54,8 @@ local_listen_t* local_listen_new(const char* address)
     strncpy(listen->address, address, MAX_NAME);
     listen->address[MAX_NAME - 1] = '\0';
     list_init(&listen->backlog);
-    listen->maxBacklog = LOCAL_MAX_BACKLOG;
     listen->pendingAmount = 0;
+    listen->maxBacklog = LOCAL_MAX_BACKLOG;
     atomic_init(&listen->isClosed, true);
     lock_init(&listen->lock);
     wait_queue_init(&listen->waitQueue);
@@ -114,7 +114,7 @@ void local_listen_free(local_listen_t* listen)
     {
         atomic_store(&conn->isClosed, true);
         wait_unblock(&conn->waitQueue, WAIT_ALL);
-        ref_dec(conn);
+        DEREF(conn);
     }
     list_init(&listen->backlog); // Reset list.
 
@@ -136,5 +136,5 @@ local_listen_t* local_listen_find(const char* address)
     }
 
     local_listen_t* listen = CONTAINER_OF(entry, local_listen_t, entry);
-    return ref_inc(listen);
+    return REF(listen);
 }

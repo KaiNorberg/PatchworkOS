@@ -35,7 +35,7 @@ void main(boot_info_t* bootInfo)
     {
         panic(NULL, "Failed to set klog as stdout for init process");
     }
-    file_deref(klog);
+    DEREF(klog);
 
     sched_push(initThread, NULL, NULL);
 

@@ -29,7 +29,7 @@ static void* loader_load_program(thread_t* thread)
     {
         sched_process_exit(ESPAWNFAIL);
     }
-    FILE_DEFER(file);
+    REF_DEFER(file);
 
     elf_hdr_t header;
     if (vfs_read(file, &header, sizeof(elf_hdr_t)) != sizeof(elf_hdr_t))
@@ -328,7 +328,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
             errno = EBADF;
             return ERR;
         }
-        FILE_DEFER(file);
+        REF_DEFER(file);
 
         if (vfs_ctx_openas(childVfsCtx, fds[i].child, file) == ERR)
         {
