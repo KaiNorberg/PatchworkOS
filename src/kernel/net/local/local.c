@@ -75,7 +75,6 @@ static void local_socket_deinit(socket_t* sock)
     case SOCKET_LISTENING:
         if (data->listen.listen != NULL)
         {
-            LOG_INFO("local socket: SOCKET_LISTENING\n");
             lock_acquire(&data->listen.listen->lock);
             data->listen.listen->isClosed = true;
             wait_unblock(&data->listen.listen->waitQueue, WAIT_ALL);
@@ -88,7 +87,6 @@ static void local_socket_deinit(socket_t* sock)
     case SOCKET_CONNECTED:
         if (data->conn.conn != NULL)
         {
-            LOG_INFO("local socket: SOCKET_CONNECTED\n");
             lock_acquire(&data->conn.conn->lock);
             data->conn.conn->isClosed = true;
             wait_unblock(&data->conn.conn->waitQueue, WAIT_ALL);

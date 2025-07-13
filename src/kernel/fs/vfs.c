@@ -1179,12 +1179,7 @@ static uint64_t vfs_poll_ctx_check_events(vfs_poll_ctx_t* ctx, poll_file_t* file
             return ERR;
         }
 
-        files[i].revents = (revents & (files[i].events | POLLERR | POLLHUP));
-
-        if (files[i].revents & POLLERR)
-        {
-            return ERR;
-        }
+        files[i].revents = (revents & (files[i].events | POLL_SPECIAL));
 
         // Make sure the queue hasn't changed, just for debugging.
         if (queue != ctx->queues[ctx->lookupTable[i]])
@@ -1193,7 +1188,7 @@ static uint64_t vfs_poll_ctx_check_events(vfs_poll_ctx_t* ctx, poll_file_t* file
             return ERR;
         }
 
-        if ((files[i].revents & files[i].events) != 0)
+        if ((files[i].revents & (files[i].events | POLL_SPECIAL)) != 0)
         {
             readyCount++;
         }
@@ -1318,6 +1313,10 @@ SYSCALL_DEFINE(SYS_POLL, uint64_t, pollfd_t* fds, uint64_t amount, clock_t timeo
             for (uint64_t j = 0; j < i; j++)
             {
                 DEREF(files[j].file);
+            }
+            if (errno == EBADF)
+            {
+                files[i].revents = POLLNVAL;
             }
             return ERR;
         }

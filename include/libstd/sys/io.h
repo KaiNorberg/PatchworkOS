@@ -229,7 +229,14 @@ typedef enum
     POLLOUT = (1 << 1), //!< File descriptor is ready to write.
     POLLERR = (1 << 2), //!< File descriptor caused an error.
     POLLHUP = (1 << 3), //!< Stream socket peer closed connection, or shut down writing of connection.
+    POLLNVAL = (1 << 4), //!< Invalid file descriptor.
 } poll_events_t;
+
+/**
+ * @brief Poll event values that will always be checked and included even if not specified.
+ * @ingroup libstd_sys_io
+ */
+#define POLL_SPECIAL (POLLERR | POLLHUP | POLLNVAL)
 
 /**
  * @brief Poll file descriptor structure.
