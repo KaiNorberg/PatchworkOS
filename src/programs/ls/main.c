@@ -109,6 +109,10 @@ uint64_t print_directory(const char* path, flags_t flags, bool forceLabel)
         }
         else
         {
+            if (!(flags & FLAG_ALL) && dirs->buffer[i].name[0] == '.')
+            {
+                continue;
+            }
             printf("%s/ ", dirs->buffer[i].name);
         }
     }

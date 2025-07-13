@@ -309,13 +309,13 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
         process->parent = NULL;
     }
 
-    LOG_INFO("process: created pid=%d parent=%d priority=%d\n", process->id, parent ? parent->id : 0, priority);
+    LOG_INFO("process: new pid=%d parent=%d priority=%d\n", process->id, parent ? parent->id : 0, priority);
     return process;
 }
 
 void process_free(process_t* process)
 {
-    LOG_DEBUG("process: free pid=%d\n", process->id);
+    LOG_INFO("process: free pid=%d\n", process->id);
     assert(list_is_empty(&process->threads.list));
 
     if (process->parent != NULL)
@@ -362,7 +362,7 @@ void process_backend_init(void)
 {
     rwlock_init(&treeLock);
 
-    LOG_INFO("process: init\n");
+    LOG_INFO("process backend: init\n");
 
     if (sysfs_group_init(&procGroup, PATHNAME("/proc")) == ERR)
     {
@@ -373,7 +373,7 @@ void process_backend_init(void)
         panic(NULL, "Failed to initialize process sysfs directory");
     }
 
-    LOG_INFO("process: create kernel process\n");
+    LOG_INFO("process backend: create kernel process\n");
     kernelProcess = process_new(NULL, NULL, NULL, PRIORITY_MAX - 1);
     if (kernelProcess == NULL)
     {

@@ -20,22 +20,28 @@ static uint64_t socket_factory_open(file_t* file)
 {
     socket_factory_t* factory = file->inode->private;
 
-    socket_t* socket = socket_new(factory->family, factory->type, file->flags);
-    if (socket == NULL)
+    socket_t* sock = socket_new(factory->family, factory->type, file->flags);
+    if (sock == NULL)
     {
         return ERR;
     }
 
-    file->private = socket;
+    if (socket_expose(sock) == ERR)
+    {
+        socket_free(sock);
+        return ERR;
+    }
+
+    file->private = sock;
     return 0;
 }
 
 static void socket_factory_cleanup(file_t* file)
 {
-    socket_t* socket = file->private;
-    if (socket != NULL)
+    socket_t* sock = file->private;
+    if (sock != NULL)
     {
-        socket_free(socket);
+        socket_free(sock);
     }
 }
 
@@ -94,7 +100,7 @@ uint64_t socket_family_register(socket_family_t* family)
         list_push(&family->factories, &factory->entry);
     }
 
-    LOG_INFO("socket: registered family %s\n", family->name);
+    LOG_INFO("sock: registered family %s\n", family->name);
     return 0;
 
 error:;
@@ -115,6 +121,6 @@ error:;
 void socket_family_unregister(socket_family_t* family)
 {
     sysfs_dir_deinit(&family->dir);
-    LOG_INFO("socket: unregistered family %s\n", family->name);
+    LOG_INFO("sock: unregistered family %s\n", family->name);
     return;
 }

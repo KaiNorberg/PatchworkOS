@@ -1172,12 +1172,14 @@ static uint64_t vfs_poll_ctx_check_events(vfs_poll_ctx_t* ctx, poll_file_t* file
 
     for (uint64_t i = 0; i < amount; i++)
     {
-        files[i].revents = POLLNONE;
-        wait_queue_t* queue = files[i].file->ops->poll(files[i].file, &files[i].revents);
+        poll_events_t revents = POLLNONE;
+        wait_queue_t* queue = files[i].file->ops->poll(files[i].file, &revents);
         if (queue == NULL)
         {
             return ERR;
         }
+
+        files[i].revents = (revents & (files[i].events | POLLERR | POLLHUP));
 
         if (files[i].revents & POLLERR)
         {

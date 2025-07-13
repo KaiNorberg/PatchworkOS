@@ -311,8 +311,20 @@ static uint64_t socket_accept_open(file_t* file)
     return 0;
 }
 
+static void socket_accept_cleanup(file_t* file)
+{
+    socket_t* sock = file->private;
+    if (sock == NULL)
+    {
+        return;
+    }
+
+    socket_free(sock);
+}
+
 static file_ops_t acceptOps = {
     .open = socket_accept_open,
+    .cleanup = socket_accept_cleanup,
     .read = socket_data_read,
     .write = socket_data_write,
     .poll = socket_data_poll,
@@ -363,6 +375,7 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
     sock->creator = sched_process()->id;
     sock->private = NULL;
     rwmutex_init(&sock->mutex);
+    sock->isExposed = false;
     sock->currentState = SOCKET_NEW;
     sock->nextState = SOCKET_NEW;
 
@@ -373,36 +386,7 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
         return NULL;
     }
 
-    if (sysfs_dir_init(&sock->dir, &family->dir, sock->id, &dirInodeOps, sock) == ERR)
-    {
-        goto error;
-    }
-
-    if (sysfs_file_init(&sock->ctlFile, &sock->dir, "ctl", NULL, &ctlOps, sock) == ERR)
-    {
-        goto error;
-    }
-
-    if (sysfs_file_init(&sock->dataFile, &sock->dir, "data", NULL, &dataOps, sock) == ERR)
-    {
-        sysfs_file_deinit(&sock->ctlFile);
-        goto error;
-    }
-
-    if (sysfs_file_init(&sock->acceptFile, &sock->dir, "accept", NULL, &acceptOps, sock) == ERR)
-    {
-        sysfs_file_deinit(&sock->ctlFile);
-        sysfs_file_deinit(&sock->dataFile);
-        goto error;
-    }
-
     return sock;
-
-error:
-    family->deinit(sock);
-    sysfs_dir_deinit(&sock->dir);
-    heap_free(sock);
-    return NULL;
 }
 
 void socket_free(socket_t* sock)
@@ -412,10 +396,58 @@ void socket_free(socket_t* sock)
         return;
     }
 
-    sysfs_file_deinit(&sock->ctlFile);
-    sysfs_file_deinit(&sock->dataFile);
-    sysfs_file_deinit(&sock->acceptFile);
-    sysfs_dir_deinit(&sock->dir);
+    if (sock->isExposed)
+    {
+        sysfs_file_deinit(&sock->ctlFile);
+        sysfs_file_deinit(&sock->dataFile);
+        sysfs_file_deinit(&sock->acceptFile);
+        sysfs_dir_deinit(&sock->dir);
+        // Socket itself is freed in socket_inode_cleanup().
+        return;
+    }
+
+    if (sock->family != NULL && sock->family->deinit != NULL)
+    {
+        sock->family->deinit(sock);
+    }
+
+    rwmutex_deinit(&sock->mutex);
+    heap_free(sock);
+}
+
+uint64_t socket_expose(socket_t* sock)
+{
+    if (sock == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (sysfs_dir_init(&sock->dir, &sock->family->dir, sock->id, &dirInodeOps, sock) == ERR)
+    {
+        return ERR;
+    }
+
+    if (sysfs_file_init(&sock->ctlFile, &sock->dir, "ctl", NULL, &ctlOps, sock) == ERR)
+    {
+        return ERR;
+    }
+
+    if (sysfs_file_init(&sock->dataFile, &sock->dir, "data", NULL, &dataOps, sock) == ERR)
+    {
+        sysfs_file_deinit(&sock->ctlFile);
+        return ERR;
+    }
+
+    if (sysfs_file_init(&sock->acceptFile, &sock->dir, "accept", NULL, &acceptOps, sock) == ERR)
+    {
+        sysfs_file_deinit(&sock->ctlFile);
+        sysfs_file_deinit(&sock->dataFile);
+        return ERR;
+    }
+
+    sock->isExposed = true;
+    return 0;
 }
 
 static const bool validTransitions[SOCKET_STATE_AMOUNT][SOCKET_STATE_AMOUNT] = {

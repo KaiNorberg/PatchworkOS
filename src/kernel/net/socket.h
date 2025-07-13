@@ -33,6 +33,7 @@ typedef struct socket
     socket_state_t currentState;
     socket_state_t nextState;
     rwmutex_t mutex;
+    bool isExposed;
     sysfs_dir_t dir;
     sysfs_file_t ctlFile;
     sysfs_file_t dataFile;
@@ -41,6 +42,8 @@ typedef struct socket
 
 socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t flags);
 void socket_free(socket_t* sock);
+
+uint64_t socket_expose(socket_t* sock);
 
 uint64_t socket_start_transition(socket_t* sock, socket_state_t state);
 
