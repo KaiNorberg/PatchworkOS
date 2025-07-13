@@ -1,8 +1,7 @@
 #include "local.h"
 
 #include "fs/path.h"
-#include "fs/sysfs.h"
-#include "fs/vfs.h"
+#include "log/log.h"
 #include "log/panic.h"
 #include "mem/heap.h"
 #include "net/local/local_conn.h"
@@ -74,8 +73,11 @@ static void local_socket_deinit(socket_t* sock)
     case SOCKET_LISTENING:
         if (data->listen.listen != NULL)
         {
-            atomic_store(&data->listen.listen->isClosed, true);
+            lock_acquire(&data->listen.listen->lock);
+            data->listen.listen->isClosed = true;
             wait_unblock(&data->listen.listen->waitQueue, WAIT_ALL);
+            lock_release(&data->listen.listen->lock);
+
             DEREF(data->listen.listen);
             data->listen.listen = NULL;
         }
@@ -83,8 +85,11 @@ static void local_socket_deinit(socket_t* sock)
     case SOCKET_CONNECTED:
         if (data->conn.conn != NULL)
         {
-            atomic_store(&data->conn.conn->isClosed, true);
+            lock_acquire(&data->conn.conn->lock);
+            data->conn.conn->isClosed = true;
             wait_unblock(&data->conn.conn->waitQueue, WAIT_ALL);
+            lock_release(&data->conn.conn->lock);
+
             DEREF(data->conn.conn);
             data->conn.conn = NULL;
         }
@@ -155,7 +160,7 @@ static uint64_t local_socket_listen(socket_t* sock, uint32_t backlog)
         listen->maxBacklog = backlog;
     }
 
-    atomic_store(&listen->isClosed, false);
+    listen->isClosed = false;
     return 0;
 }
 
@@ -192,7 +197,7 @@ static uint64_t local_socket_connect(socket_t* sock, const char* address)
 
     LOCK_SCOPE(&listen->lock);
 
-    if (atomic_load(&listen->isClosed))
+    if (listen->isClosed)
     {
         errno = ECONNREFUSED;
         return ERR;
@@ -236,7 +241,7 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock)
     {
         LOCK_SCOPE(&listen->lock);
 
-        if (atomic_load(&listen->isClosed))
+        if (listen->isClosed)
         {
             errno = ECONNABORTED;
             return ERR;
@@ -258,8 +263,8 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock)
             return ERR;
         }
 
-        if (WAIT_BLOCK_LOCK(&listen->waitQueue, &listen->lock,
-                atomic_load(&listen->isClosed) || !list_is_empty(&listen->backlog)) != WAIT_NORM)
+        if (WAIT_BLOCK_LOCK(&listen->waitQueue, &listen->lock, listen->isClosed || !list_is_empty(&listen->backlog)) !=
+            WAIT_NORM)
         {
             errno = EINTR;
             return ERR;
@@ -301,7 +306,7 @@ static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t c
     REF_DEFER(conn);
     LOCK_SCOPE(&conn->lock);
 
-    if (atomic_load(&conn->isClosed))
+    if (conn->isClosed)
     {
         errno = ECONNRESET;
         return ERR;
@@ -326,14 +331,14 @@ static uint64_t local_socket_send(socket_t* sock, const void* buffer, uint64_t c
             return ERR;
         }
 
-        if (atomic_load(&conn->isClosed))
+        if (conn->isClosed)
         {
             errno = ECONNRESET;
             return ERR;
         }
 
-        if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
-                atomic_load(&conn->isClosed) || ring_free_length(ring) >= totalSize) != WAIT_NORM)
+        if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock, conn->isClosed || ring_free_length(ring) >= totalSize) !=
+            WAIT_NORM)
         {
             errno = EINTR;
             return ERR;
@@ -371,7 +376,7 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
 
     ring_t* ring = data->conn.isServer ? &conn->clientToServer : &conn->serverToClient;
 
-    if (atomic_load(&conn->isClosed))
+    if (conn->isClosed)
     {
         return 0; // EOF
     }
@@ -385,7 +390,7 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
         }
 
         if (WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
-                atomic_load(&conn->isClosed) || ring_data_length(ring) >= sizeof(local_packet_header_t)) != WAIT_NORM)
+                conn->isClosed || ring_data_length(ring) >= sizeof(local_packet_header_t)) != WAIT_NORM)
         {
             errno = EINTR;
             return ERR;
@@ -425,7 +430,7 @@ static uint64_t local_socket_recv(socket_t* sock, void* buffer, uint64_t count, 
     return readCount;
 }
 
-static wait_queue_t* local_socket_poll(socket_t* sock, poll_events_t events, poll_events_t* revents)
+static wait_queue_t* local_socket_poll(socket_t* sock, poll_events_t* revents)
 {
     local_socket_data_t* data = sock->private;
     if (data == NULL)
@@ -447,7 +452,7 @@ static wait_queue_t* local_socket_poll(socket_t* sock, poll_events_t events, pol
         }
 
         LOCK_SCOPE(&listen->lock);
-        if (atomic_load(&listen->isClosed))
+        if (listen->isClosed)
         {
             *revents |= POLLERR;
         }
@@ -468,7 +473,7 @@ static wait_queue_t* local_socket_poll(socket_t* sock, poll_events_t events, pol
         }
 
         LOCK_SCOPE(&conn->lock);
-        if (atomic_load(&conn->isClosed))
+        if (conn->isClosed)
         {
             *revents |= POLLHUP;
         }
@@ -477,20 +482,14 @@ static wait_queue_t* local_socket_poll(socket_t* sock, poll_events_t events, pol
             ring_t* readRing = data->conn.isServer ? &conn->clientToServer : &conn->serverToClient;
             ring_t* writeRing = data->conn.isServer ? &conn->serverToClient : &conn->clientToServer;
 
-            if (events & POLLIN)
+            if (ring_data_length(readRing) >= sizeof(local_packet_header_t))
             {
-                if (ring_data_length(readRing) >= sizeof(local_packet_header_t))
-                {
-                    *revents |= POLLIN;
-                }
+                *revents |= POLLIN;
             }
 
-            if (events & POLLOUT)
+            if (ring_free_length(writeRing) >= sizeof(local_packet_header_t) + 1)
             {
-                if (ring_free_length(writeRing) >= sizeof(local_packet_header_t) + 1)
-                {
-                    *revents |= POLLOUT;
-                }
+                *revents |= POLLOUT;
             }
         }
 

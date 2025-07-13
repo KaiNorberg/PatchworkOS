@@ -113,7 +113,7 @@ static uint64_t socket_data_write(file_t* file, const void* buf, size_t count, u
     return result;
 }
 
-static wait_queue_t* socket_data_poll(file_t* file, poll_events_t events, poll_events_t* revents)
+static wait_queue_t* socket_data_poll(file_t* file, poll_events_t* revents)
 {
     socket_t* sock = file->private;
     if (sock == NULL || sock->family == NULL)
@@ -128,7 +128,7 @@ static wait_queue_t* socket_data_poll(file_t* file, poll_events_t events, poll_e
         return NULL;
     }
 
-    return sock->family->poll(sock, events, revents);
+    return sock->family->poll(sock, revents);
 }
 
 static file_ops_t dataOps = {

@@ -34,11 +34,12 @@ typedef struct ref
  * @param ptr Pointer to the struct containing the `ref_t` type.
  * @return Pointer to the struct.
  */
-#define REF(ptr) ({ \
-    ref_t* ref = (ref_t*)ptr; \
-    ref_inc(ref); \
-    ptr; \
-})
+#define REF(ptr) \
+    ({ \
+        ref_t* ref = (ref_t*)ptr; \
+        ref_inc(ref); \
+        ptr; \
+    })
 
 /**
  * @brief Type safe wrapper for reference counter decrement.
@@ -47,11 +48,12 @@ typedef struct ref
  * @param ptr Pointer to the struct containing the `ref_t` type.
  * @return Pointer to the struct.
  */
-#define DEREF(ptr) ({ \
-    ref_t* ref = (ref_t*)ptr; \
-    ref_dec(ref); \
-    ptr; \
-})
+#define DEREF(ptr) \
+    ({ \
+        ref_t* ref = (ref_t*)ptr; \
+        ref_dec(ref); \
+        ptr; \
+    })
 
 void ref_init(ref_t* ref, void* free);
 

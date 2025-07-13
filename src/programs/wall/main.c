@@ -1,9 +1,9 @@
 #include <libpatchwork/patchwork.h>
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 
 static image_t* image;
 
@@ -45,7 +45,7 @@ int main(void)
     display_t* disp = display_new();
     if (disp == NULL)
     {
-        fprintf(stderr, "wall: failed to create display (%s)\n", strerror(errno));
+        printf("wall: failed to create display (%s)\n", strerror(errno));
         return EXIT_FAILURE;
     }
 
@@ -58,7 +58,7 @@ int main(void)
     image = image_new(disp, theme_get_string(STRING_WALLPAPER, NULL));
     if (image == NULL)
     {
-        fprintf(stderr, "wall: failed to load image (%s)\n", strerror(errno));
+        printf("wall: failed to load image (%s)\n", strerror(errno));
         display_free(disp);
         return EXIT_FAILURE;
     }
@@ -66,7 +66,7 @@ int main(void)
     window_t* win = window_new(disp, "Wallpaper", &rect, SURFACE_WALL, WINDOW_NONE, procedure, NULL);
     if (win == NULL)
     {
-        fprintf(stderr, "wall: failed to create window (%s)\n", strerror(errno));
+        printf("wall: failed to create window (%s)\n", strerror(errno));
         image_free(image);
         display_free(disp);
         return EXIT_FAILURE;

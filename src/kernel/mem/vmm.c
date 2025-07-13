@@ -115,7 +115,7 @@ static pml_callback_id_t space_add_callback(space_t* space, uint64_t pageAmount,
         return PML_MAX_CALLBACK;
     }
 
-    bitmap_set(&space->callbackBitmap, callbackId, callbackId + 1);
+    bitmap_set(&space->callbackBitmap, callbackId);
     vmm_callback_t* callback = &space->callbacks[callbackId];
     callback->func = func;
     callback->private = private;

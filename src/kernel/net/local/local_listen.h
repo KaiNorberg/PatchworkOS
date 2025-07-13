@@ -20,7 +20,7 @@ typedef struct local_listen
     list_t backlog;
     uint32_t pendingAmount;
     uint32_t maxBacklog;
-    atomic_bool isClosed;
+    bool isClosed;
     lock_t lock;
     wait_queue_t waitQueue;
     sysfs_file_t file;

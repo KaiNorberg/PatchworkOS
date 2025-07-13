@@ -20,7 +20,6 @@ static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 static sysfs_dir_t shmemDir;
 static sysfs_file_t newFile;
 
-
 static void shmem_free(shmem_t* shmem)
 {
     sysfs_file_deinit(&shmem->obj);
@@ -77,8 +76,8 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
             }
         }
 
-        void* result = vmm_map_pages(space, address, segment->pages, segment->pageAmount, prot, shmem_vmm_callback,
-            REF(shmem));
+        void* result =
+            vmm_map_pages(space, address, segment->pages, segment->pageAmount, prot, shmem_vmm_callback, REF(shmem));
         if (result == NULL)
         {
             for (uint64_t i = 0; i < segment->pageAmount; i++)
@@ -96,8 +95,7 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
     {
         shmem_segment_t* segment = shmem->segment;
 
-        return vmm_map_pages(space, address, segment->pages, segment->pageAmount, prot, shmem_vmm_callback,
-            REF(shmem));
+        return vmm_map_pages(space, address, segment->pages, segment->pageAmount, prot, shmem_vmm_callback, REF(shmem));
     }
 }
 

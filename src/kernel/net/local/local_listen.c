@@ -56,7 +56,7 @@ local_listen_t* local_listen_new(const char* address)
     list_init(&listen->backlog);
     listen->pendingAmount = 0;
     listen->maxBacklog = LOCAL_MAX_BACKLOG;
-    atomic_init(&listen->isClosed, true);
+    listen->isClosed = false;
     lock_init(&listen->lock);
     wait_queue_init(&listen->waitQueue);
 
@@ -112,8 +112,10 @@ void local_listen_free(local_listen_t* listen)
     local_conn_t* conn;
     LIST_FOR_EACH_SAFE(conn, temp, &listen->backlog, entry)
     {
-        atomic_store(&conn->isClosed, true);
+        lock_acquire(&conn->lock);
+        conn->isClosed = true;
         wait_unblock(&conn->waitQueue, WAIT_ALL);
+        lock_release(&conn->lock);
         DEREF(conn);
     }
     list_init(&listen->backlog); // Reset list.

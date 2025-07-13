@@ -31,7 +31,7 @@ typedef struct inode
 {
     ref_t ref;
     inode_number_t number; //!< Constant after creation.
-    inode_type_t type; //!< Constant after creation.
+    inode_type_t type;     //!< Constant after creation.
     inode_flags_t flags;
     uint64_t linkCount;
     uint64_t size;

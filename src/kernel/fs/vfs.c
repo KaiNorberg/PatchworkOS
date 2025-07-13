@@ -1,11 +1,14 @@
 #include "vfs.h"
 
+#include "cpu/smp.h"
 #include "cpu/syscalls.h"
+#include "cpu/trap.h"
 #include "drivers/systime/systime.h"
 #include "fs/dentry.h"
 #include "fs/mount.h"
 #include "fs/path.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/heap.h"
 #include "proc/process.h"
 #include "sched/sched.h"
@@ -15,7 +18,6 @@
 #include "sys/list.h"
 #include "sysfs.h"
 #include "vfs_ctx.h"
-#include "log/panic.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -1119,9 +1121,88 @@ SYSCALL_DEFINE(SYS_MMAP, void*, fd_t fd, void* address, uint64_t length, prot_t 
     return vfs_mmap(file, address, length, prot);
 }
 
+typedef struct
+{
+    wait_queue_t* queues[CONFIG_MAX_FD];
+    uint16_t lookupTable[CONFIG_MAX_FD];
+    uint16_t queueAmount;
+} vfs_poll_ctx_t;
+
+static uint64_t vfs_poll_ctx_init(vfs_poll_ctx_t* ctx, poll_file_t* files, uint64_t amount)
+{
+    memset(ctx->queues, 0, sizeof(wait_queue_t*) * CONFIG_MAX_FD);
+    memset(ctx->lookupTable, 0, sizeof(uint16_t) * CONFIG_MAX_FD);
+    ctx->queueAmount = 0;
+
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        files[i].revents = POLLNONE;
+        wait_queue_t* queue = files[i].file->ops->poll(files[i].file, &files[i].revents);
+        if (queue == NULL)
+        {
+            return ERR;
+        }
+
+        // Avoid duplicate queues.
+        bool found = false;
+        for (uint16_t j = 0; j < ctx->queueAmount; j++)
+        {
+            if (ctx->queues[j] == queue)
+            {
+                found = true;
+                ctx->lookupTable[i] = j;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            ctx->queues[ctx->queueAmount] = queue;
+            ctx->lookupTable[i] = ctx->queueAmount;
+            ctx->queueAmount++;
+        }
+    }
+
+    return 0;
+}
+
+static uint64_t vfs_poll_ctx_check_events(vfs_poll_ctx_t* ctx, poll_file_t* files, uint64_t amount)
+{
+    uint64_t readyCount = 0;
+
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        files[i].revents = POLLNONE;
+        wait_queue_t* queue = files[i].file->ops->poll(files[i].file, &files[i].revents);
+        if (queue == NULL)
+        {
+            return ERR;
+        }
+
+        if (files[i].revents & POLLERR)
+        {
+            return ERR;
+        }
+
+        // Make sure the queue hasn't changed, just for debugging.
+        if (queue != ctx->queues[ctx->lookupTable[i]])
+        {
+            errno = EIO;
+            return ERR;
+        }
+
+        if ((files[i].revents & files[i].events) != 0)
+        {
+            readyCount++;
+        }
+    }
+
+    return readyCount;
+}
+
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
 {
-    if (files == NULL || amount == 0)
+    if (files == NULL || amount == 0 || amount > CONFIG_MAX_FD)
     {
         errno = EINVAL;
         return ERR;
@@ -1134,11 +1215,13 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
             errno = EINVAL;
             return ERR;
         }
+
         if (files[i].file->inode->type == INODE_DIR)
         {
             errno = EISDIR;
             return ERR;
         }
+
         if (files[i].file->ops == NULL || files[i].file->ops->poll == NULL)
         {
             errno = ENOSYS;
@@ -1146,46 +1229,14 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
         }
     }
 
-    // Only allocate memory once.
-    void* buffer = heap_alloc(sizeof(wait_queue_t*) * amount + sizeof(uint64_t) * amount, HEAP_VMM);
-    if (buffer == NULL)
+    vfs_poll_ctx_t ctx;
+    if (vfs_poll_ctx_init(&ctx, files, amount) == ERR)
     {
         return ERR;
     }
-    wait_queue_t** waitQueues = buffer;
-    uint64_t* waitQueuesLookup = buffer + sizeof(wait_queue_t*) * amount;
-
-    uint64_t uniqueCount = 0;
-    for (uint64_t i = 0; i < amount; i++)
-    {
-        files[i].revents = POLLNONE;
-        wait_queue_t* queue = files[i].file->ops->poll(files[i].file, files[i].events, &files[i].revents);
-        if (queue == NULL)
-        {
-            heap_free(buffer);
-            return ERR;
-        }
-
-        bool found = false;
-        for (uint64_t j = 0; j < uniqueCount; j++)
-        {
-            if (waitQueues[j] == queue)
-            {
-                found = true;
-                waitQueuesLookup[i] = j;
-                break;
-            }
-        }
-
-        if (!found)
-        {
-            waitQueues[uniqueCount] = queue;
-            waitQueuesLookup[i] = uniqueCount;
-            uniqueCount++;
-        }
-    }
 
     clock_t uptime = systime_uptime();
+
     clock_t deadline;
     if (timeout == CLOCKS_NEVER)
     {
@@ -1203,47 +1254,39 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
     uint64_t readyCount = 0;
     while (true)
     {
-        readyCount = 0;
-
-        for (uint64_t i = 0; i < amount; i++)
-        {
-            files[i].revents = POLLNONE;
-            wait_queue_t* queue = files[i].file->ops->poll(files[i].file, files[i].events, &files[i].revents);
-            if (queue == NULL)
-            {
-                heap_free(buffer);
-                return ERR;
-            }
-
-            if (queue != waitQueues[waitQueuesLookup[i]])
-            {
-                heap_free(buffer);
-                errno = EIO;
-                return ERR;
-            }
-
-            if ((files[i].revents & files[i].events) != 0)
-            {
-                readyCount++;
-            }
-        }
-
-        if (readyCount > 0)
-        {
-            break;
-        }
-
         uptime = systime_uptime();
-        if (deadline != CLOCKS_NEVER && uptime >= deadline)
+        clock_t remaining = (deadline == CLOCKS_NEVER) ? CLOCKS_NEVER : deadline - uptime;
+
+        if (wait_block_setup(ctx.queues, ctx.queueAmount, remaining) == ERR)
         {
+            return ERR;
+        }
+
+        readyCount = vfs_poll_ctx_check_events(&ctx, files, amount);
+        if (readyCount == ERR)
+        {
+            wait_block_cancel(WAIT_ERROR);
+            return ERR;
+        }
+
+        if (readyCount > 0 || uptime >= deadline)
+        {
+            wait_block_cancel(WAIT_NORM);
             break;
         }
 
-        clock_t remaining = (deadline == CLOCKS_NEVER) ? CLOCKS_NEVER : deadline - uptime;
-        wait_block_many(waitQueues, uniqueCount, remaining);
+        wait_result_t result = wait_block_do();
+        if (result == WAIT_TIMEOUT)
+        {
+            break;
+        }
+        else if (result == WAIT_ERROR || result == WAIT_NOTE)
+        {
+            errno = EINTR;
+            return ERR;
+        }
     }
 
-    heap_free(buffer);
     return readyCount;
 }
 

@@ -11,6 +11,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <sys/io.h>
 #include <sys/math.h>
 
 static sysfs_dir_t kbdDir = {0};
@@ -36,10 +37,14 @@ static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count, uint64_t* o
     return count;
 }
 
-static wait_queue_t* kbd_poll(file_t* file, poll_events_t events, poll_events_t* revents)
+static wait_queue_t* kbd_poll(file_t* file, poll_events_t* revents)
 {
     kbd_t* kbd = file->inode->private;
-    *revents = POLLIN & (kbd->writeIndex != file->pos);
+    LOCK_SCOPE(&kbd->lock);
+    if (kbd->writeIndex != file->pos)
+    {
+        *revents |= POLLIN;
+    }
     return &kbd->waitQueue;
 }
 

@@ -17,6 +17,7 @@ typedef struct thread thread_t;
  *
  * The scheduler used in Patchwork is loosely based of the Linux O(1) scheduler, so knowing how that scheduler works
  * could be useful, here is an article about it https://litux.nl/mirror/kerneldevelopment/0672327201/ch04lev1sec2.html.
+ *
  */
 
 /**
@@ -35,11 +36,11 @@ typedef struct
      */
     uint64_t length;
     /**
-     * @brief A bitmap indicating which priority lists have threads in them.
+     * @brief A bitmap indicating which of the lists have threads in them.
      */
     uint64_t bitmap;
     /**
-     * @brief An array of lists that store threads, one for each priority.
+     * @brief An array of lists that store threads, one for each priority, used in a round robin fashion.
      */
     list_t lists[PRIORITY_MAX];
 } sched_queues_t;
@@ -59,7 +60,7 @@ typedef struct
      */
     clock_t timeSlice;
     /**
-     * @brief The time when the time slice will actually expire, only valid while its running.
+     * @brief The time when the time slice will actually expire, only valid while the thread is running.
      */
     clock_t deadline;
     /**
@@ -141,8 +142,6 @@ typedef struct
  * @brief Initializes a thread's scheduling context.
  * @ingroup kernel_sched
  *
- * The `sched_thread_ctx_init()` function initializes the `sched_thread_ctx_t` structure for a new thread.
- *
  * @param ctx The `sched_thread_ctx_t` structure to initialize.
  */
 void sched_thread_ctx_init(sched_thread_ctx_t* ctx);
@@ -150,8 +149,6 @@ void sched_thread_ctx_init(sched_thread_ctx_t* ctx);
 /**
  * @brief Initializes a CPU's scheduling context.
  * @ingroup kernel_sched
- *
- * The `sched_cpu_ctx_init()` function initializes the `sched_cpu_ctx_t` structure for a CPU.
  *
  * @param ctx The `sched_cpu_ctx_t` structure to initialize.
  * @param cpu The `cpu_t` structure associated with this scheduling context.
@@ -162,7 +159,7 @@ void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* cpu);
  * @brief The idle loop for a CPU.
  * @ingroup kernel_sched
  *
- * The `sched_idle_loop()` function is the main loop where idle threads execute.
+ * The `sched_idle_loop()` function is the main loop where idle threads execute. The boot thread will eventually end up here to.
  *
  */
 NORETURN extern void sched_idle_loop(void);
@@ -204,7 +201,7 @@ NORETURN void sched_done_with_boot_thread(void);
  * The `sched_sleep()` function causes the currently running thread to block, for a specified length of time.
  *
  * @param timeout The maximum time to sleep. If `CLOCKS_NEVER`, it sleeps forever.
- * @return A `wait_result_t` indicating why the thread woke up (e.g., timeout, signal).
+ * @return Check 'wait_result_t' definition for more.
  */
 wait_result_t sched_sleep(clock_t timeout);
 
@@ -243,7 +240,7 @@ process_t* sched_process(void);
  * @ingroup kernel_sched
  *
  * The `sched_process_exit()` function terminates the currently executing process and all its threads. Note that this
- * does not actually schedule and the thread will only actually die, when it is scheduled.
+ * does not actually schedule and the thread will only actually die when the scheduler is invoked.
  *
  * @param status The exit status of the process. (Not implemented, i will get around to it... maybe)
  */
@@ -254,7 +251,7 @@ void sched_process_exit(uint64_t status);
  * @ingroup kernel_sched
  *
  * The `sched_thread_exit()` function terminates the currently executing thread. Note that this does not actually
- * schedule and the thread will only actually die, when it is scheduled.
+ * schedule and the thread will only actually die when the scheduler is invoked.
  *
  */
 void sched_thread_exit(void);
@@ -263,7 +260,7 @@ void sched_thread_exit(void);
  * @brief Yields the CPU to another thread.
  * @ingroup kernel_sched
  *
- * The `sched_yield()` function voluntarily relinquishes the currently running threads time slice.
+ * The `sched_yield()` function voluntarily relinquishes the currently running threads time slice. Note that this does not actually schedule.
  *
  */
 void sched_yield(void);
@@ -283,9 +280,6 @@ void sched_push(thread_t* thread, thread_t* parent, cpu_t* target);
 /**
  * @brief Performs the core scheduling logic.
  * @ingroup kernel_sched
- *
- * The `sched_schedule()` function is the heart of the scheduler, responsible for selecting the next
- * thread to run and performing the context switch.
  *
  * @param trapFrame The current trap frame.
  * @param self The currently running cpu

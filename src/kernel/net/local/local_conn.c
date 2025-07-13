@@ -46,7 +46,7 @@ local_conn_t* local_conn_new(local_listen_t* listen)
     ring_init(&conn->serverToClient, conn->serverToClientBuffer, LOCAL_BUFFER_SIZE);
     ring_init(&conn->clientToServer, conn->clientToServerBuffer, LOCAL_BUFFER_SIZE);
     conn->listen = REF(listen);
-    atomic_init(&conn->isClosed, false);
+    conn->isClosed = false;
     lock_init(&conn->lock);
     wait_queue_init(&conn->waitQueue);
     return conn;

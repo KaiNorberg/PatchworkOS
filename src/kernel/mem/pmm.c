@@ -134,7 +134,7 @@ static void pmm_bitmap_reserve(uint64_t low, uint64_t high)
     assert(low <= high);
     assert(high < PMM_BITMAP_MAX_ADDR / PAGE_SIZE);
 
-    bitmap_set(&bitmap, low, high);
+    bitmap_set_range(&bitmap, low, high);
     freePageAmount -= (high - low);
 }
 

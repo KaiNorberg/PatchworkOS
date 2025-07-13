@@ -16,6 +16,7 @@
 #include "proc/process.h"
 #include "sched/sched.h"
 #include "sched/thread.h"
+#include "sched/wait.h"
 #include "sync/lock.h"
 
 #include <assert.h>
@@ -154,7 +155,7 @@ void sched_done_with_boot_thread(void)
 
 wait_result_t sched_sleep(clock_t timeout)
 {
-    return wait_block(&sleepQueue, timeout);
+    return WAIT_BLOCK_TIMEOUT(&sleepQueue, false, timeout);
 }
 
 SYSCALL_DEFINE(SYS_SLEEP, uint64_t, clock_t nanoseconds)
@@ -474,7 +475,7 @@ bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
 
         thread_save(ctx->runThread, trapFrame);
 
-        if (wait_finalize_block(trapFrame, self, ctx->runThread)) // Block finalized
+        if (wait_block_finalize(trapFrame, self, ctx->runThread)) // Block finalized
         {
             thread_save(ctx->runThread, trapFrame);
             ctx->runThread = NULL; // Force a new thread to be loaded

@@ -14,7 +14,8 @@ void spawn_program(const char* path, priority_t priority)
 
     fd_t klog = open("/dev/klog");
     const char* argv[] = {path, NULL};
-    spawn_fd_t fds[] = {{.parent = klog, .child = STDOUT_FILENO}, {.parent = klog, .child = STDERR_FILENO}, SPAWN_FD_END};
+    spawn_fd_t fds[] = {{.parent = klog, .child = STDOUT_FILENO}, {.parent = klog, .child = STDERR_FILENO},
+        SPAWN_FD_END};
     spawn_attr_t attr = {.priority = priority};
     spawn(argv, fds, "/usr", &attr);
     close(klog);

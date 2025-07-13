@@ -45,28 +45,28 @@ static client_t* dwm_client_accept(void)
     {
         if (errno != EINVAL)
         {
-            printf("dwm: failed to open accept (%s)\n", strerror(errno));
+            printf("dwm: failed to open accept file (%s)\n", strerror(errno));
         }
         return NULL;
     }
-    printf("dwm: accept\n");
 
     client_t* client = client_new(fd);
     if (client == NULL)
     {
-        printf("dwm: failed to accept\n");
+        printf("dwm: failed to accept client (%s)\n", strerror(errno));
         close(fd);
         return NULL;
     }
 
     list_push(&clients, &client->entry);
     clientAmount++;
+    printf("dwm: accepted client %d total %lu\n", client->fd, clientAmount);
     return client;
 }
 
 static void dwm_client_disconnect(client_t* client)
 {
-    printf("dwm: disconnect\n");
+    printf("dwm: disconnect client %d\n", client->fd);
     list_remove(&client->entry);
     client_free(client);
     clientAmount--;
@@ -678,6 +678,7 @@ static void dwm_update(void)
     if (pollCtx->data.revents & POLLIN)
     {
         dwm_client_accept();
+        return; // The clients array is now invalid, so we have to update it.
     }
     if (pollCtx->kbd.revents & POLLIN)
     {
@@ -694,15 +695,21 @@ static void dwm_update(void)
     LIST_FOR_EACH_SAFE(client, temp, &clients, entry)
     {
         pollfd_t* fd = &pollCtx->clients[i++];
-        if ((fd->revents & POLLHUP) || (fd->revents & POLLERR))
+        if (fd->revents & POLLHUP)
         {
+            printf("dwm: client %d hung up\n", client->fd);
+            dwm_client_disconnect(client);
+        }
+        else if (fd->revents & POLLERR)
+        {
+            printf("dwm: client %d error\n", client->fd);
             dwm_client_disconnect(client);
         }
         else if (fd->revents & POLLIN)
         {
             if (client_receive_cmds(client) == ERR)
             {
-                printf("dwm: client_receive_cmds failed (%s)\n", strerror(errno));
+                printf("dwm: client %d receive commands failed (%s)\n", client->fd, strerror(errno));
                 dwm_client_disconnect(client);
             }
         }

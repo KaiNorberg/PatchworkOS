@@ -35,10 +35,14 @@ static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count, uint64_t*
     return count;
 }
 
-static wait_queue_t* mouse_poll(file_t* file, poll_events_t events, poll_events_t* revents)
+static wait_queue_t* mouse_poll(file_t* file, poll_events_t* revents)
 {
     mouse_t* mouse = file->inode->private;
-    *revents = POLLIN & (mouse->writeIndex != file->pos);
+    LOCK_SCOPE(&mouse->lock);
+    if (mouse->writeIndex != file->pos)
+    {
+        *revents |= POLLIN;
+    }
     return &mouse->waitQueue;
 }
 

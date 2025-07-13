@@ -19,7 +19,7 @@ typedef struct local_conn
     ring_t serverToClient;
     void* serverToClientBuffer;
     local_listen_t* listen;
-    atomic_bool isClosed;
+    bool isClosed;
     lock_t lock;
     wait_queue_t waitQueue;
 } local_conn_t;
