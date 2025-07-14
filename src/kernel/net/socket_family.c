@@ -36,19 +36,20 @@ static uint64_t socket_factory_open(file_t* file)
     return 0;
 }
 
-static void socket_factory_cleanup(file_t* file)
+static void socket_factory_close(file_t* file)
 {
     socket_t* sock = file->private;
     if (sock != NULL)
     {
-        socket_free(sock);
+        socket_hide(sock);
+        DEREF(sock);
     }
 }
 
 static file_ops_t factoryOps = {
     .read = socket_factory_read,
     .open = socket_factory_open,
-    .cleanup = socket_factory_cleanup,
+    .close = socket_factory_close,
 };
 
 uint64_t socket_family_register(socket_family_t* family)

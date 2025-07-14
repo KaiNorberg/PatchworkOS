@@ -3,6 +3,7 @@
 #include "fs/path.h"
 #include "fs/sysfs.h"
 #include "socket_type.h"
+#include "utils/ref.h"
 #include "sync/rwmutex.h"
 
 #include <sys/io.h>
@@ -23,6 +24,7 @@ typedef enum
 
 typedef struct socket
 {
+    ref_t ref;
     char id[MAX_NAME];
     char address[MAX_NAME];
     socket_family_t* family;
@@ -44,9 +46,8 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
 void socket_free(socket_t* sock);
 
 uint64_t socket_expose(socket_t* sock);
+void socket_hide(socket_t* sock);
 
 uint64_t socket_start_transition(socket_t* sock, socket_state_t state);
-
 void socket_continue_transition(socket_t* sock, socket_state_t state);
-
 void socket_end_transition(socket_t* sock, uint64_t result);

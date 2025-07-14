@@ -138,7 +138,7 @@ uint64_t thread_send_note(thread_t* thread, const void* message, uint64_t length
     return 0;
 }
 
-SYSCALL_DEFINE(SYS_LAST_ERROR, errno_t)
+SYSCALL_DEFINE(SYS_ERRNO, errno_t)
 {
     return errno;
 }

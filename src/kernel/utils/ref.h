@@ -46,13 +46,11 @@ typedef struct ref
  * @ingroup kernel_utils_ref
  *
  * @param ptr Pointer to the struct containing the `ref_t` type.
- * @return Pointer to the struct.
  */
 #define DEREF(ptr) \
     ({ \
         ref_t* ref = (ref_t*)ptr; \
         ref_dec(ref); \
-        ptr; \
     })
 
 void ref_init(ref_t* ref, void* free);

@@ -106,7 +106,7 @@ static uint64_t shmem_open(file_t* file)
     return 0;
 }
 
-static void shmem_file_cleanup(file_t* file)
+static void shmem_close(file_t* file)
 {
     shmem_t* shmem = file->private;
     if (shmem != NULL)
@@ -119,7 +119,7 @@ static file_ops_t normalFileOps = {
     .open = shmem_open,
     .read = shmem_read,
     .mmap = shmem_mmap,
-    .cleanup = shmem_file_cleanup,
+    .close = shmem_close,
 };
 
 static void shmem_inode_cleanup(inode_t* inode)
@@ -170,7 +170,7 @@ static uint64_t shmem_new_open(file_t* file)
 
 static file_ops_t newFileOps = {
     .open = shmem_new_open,
-    .cleanup = shmem_file_cleanup,
+    .close = shmem_close,
 };
 
 void shmem_init(void)

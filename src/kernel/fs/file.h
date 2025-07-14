@@ -31,7 +31,7 @@ typedef struct file_ops
 {
     uint64_t (*open)(file_t* file);
     uint64_t (*open2)(file_t* files[2]);
-    void (*cleanup)(file_t* file);
+    void (*close)(file_t* file);
     uint64_t (*read)(file_t* file, void* buffer, uint64_t count, uint64_t* offset);
     uint64_t (*write)(file_t* file, const void* buffer, uint64_t count, uint64_t* offset);
     uint64_t (*seek)(file_t* file, int64_t offset, seek_origin_t origin);

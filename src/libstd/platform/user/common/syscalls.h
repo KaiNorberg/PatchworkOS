@@ -109,14 +109,14 @@ static inline pid_t _syscall_spawn(const char** argv, const spawn_fd_t* fds, con
         attr);
 }
 
-static inline uint64_t _syscall_sleep(clock_t nanoseconds)
+static inline uint64_t _syscall_nanosleep(clock_t nanoseconds)
 {
-    return _SYSCALL1(uint64_t, SYS_SLEEP, clock_t, nanoseconds);
+    return _SYSCALL1(uint64_t, SYS_NANOSLEEP, clock_t, nanoseconds);
 }
 
-static inline errno_t _syscall_last_error(void)
+static inline errno_t _syscall_errno(void)
 {
-    return _SYSCALL0(errno_t, SYS_LAST_ERROR);
+    return _SYSCALL0(errno_t, SYS_ERRNO);
 }
 
 static inline pid_t _syscall_getpid(void)
@@ -204,9 +204,9 @@ static inline uint64_t _syscall_mprotect(void* address, uint64_t length, prot_t 
     return _SYSCALL3(uint64_t, SYS_MPROTECT, void*, address, uint64_t, length, prot_t, prot);
 }
 
-static inline uint64_t _syscall_getdirent(fd_t fd, dirent_t* buffer, uint64_t amount)
+static inline uint64_t _syscall_getdents(fd_t fd, dirent_t* buffer, uint64_t count)
 {
-    return _SYSCALL3(uint64_t, SYS_GETDIRENT, fd_t, fd, dirent_t*, buffer, uint64_t, amount);
+    return _SYSCALL3(uint64_t, SYS_GETDENTS, fd_t, fd, dirent_t*, buffer, uint64_t, count);
 }
 
 static inline tid_t _syscall_thread_create(void* entry, void* arg)
@@ -239,9 +239,14 @@ static inline uint64_t _syscall_rename(const char* oldpath, const char* newpath)
     return _SYSCALL2(uint64_t, SYS_RENAME, const char*, oldpath, const char*, newpath);
 }
 
-static inline uint64_t _syscall_remove(const char* path)
+static inline uint64_t _syscall_unlink(const char* path)
 {
-    return _SYSCALL1(uint64_t, SYS_REMOVE, const char*, path);
+    return _SYSCALL1(uint64_t, SYS_UNLINK, const char*, path);
+}
+
+static inline uint64_t _syscall_rmdir(const char* path)
+{
+    return _SYSCALL1(uint64_t, SYS_RMDIR, const char*, path);
 }
 
 static inline uint64_t _syscall_link(const char* oldPath, const char* newPath)

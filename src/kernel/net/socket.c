@@ -25,8 +25,19 @@ static uint64_t socket_data_open(file_t* file)
         return ERR;
     }
 
-    file->private = sock;
+    file->private = REF(sock);
     return 0;
+}
+
+static void socket_data_close(file_t* file)
+{
+    socket_t* sock = file->private;
+    if (sock == NULL)
+    {
+        return;
+    }
+
+    DEREF(sock);
 }
 
 static uint64_t socket_data_read(file_t* file, void* buf, size_t count, uint64_t* offset)
@@ -44,28 +55,15 @@ static uint64_t socket_data_read(file_t* file, void* buf, size_t count, uint64_t
         return ERR;
     }
 
-    if (sock->flags & PATH_NONBLOCK)
-    {
-        if (rwmutex_read_try_acquire(&sock->mutex) == ERR)
-        {
-            return ERR;
-        }
-    }
-    else
-    {
-        rwmutex_read_acquire(&sock->mutex);
-    }
+    RWMUTEX_READ_SCOPE(&sock->mutex);
 
     if (sock->currentState != SOCKET_CONNECTED)
     {
-        rwmutex_read_release(&sock->mutex);
         errno = ENOTCONN;
         return ERR;
     }
 
-    uint64_t result = sock->family->recv(sock, buf, count, offset);
-    rwmutex_read_release(&sock->mutex);
-    return result;
+    return sock->family->recv(sock, buf, count, offset);
 }
 
 static uint64_t socket_data_write(file_t* file, const void* buf, size_t count, uint64_t* offset)
@@ -83,28 +81,15 @@ static uint64_t socket_data_write(file_t* file, const void* buf, size_t count, u
         return ERR;
     }
 
-    if (sock->flags & PATH_NONBLOCK)
-    {
-        if (rwmutex_read_try_acquire(&sock->mutex) == ERR)
-        {
-            return ERR;
-        }
-    }
-    else
-    {
-        rwmutex_read_acquire(&sock->mutex);
-    }
+    RWMUTEX_READ_SCOPE(&sock->mutex);
 
     if (sock->currentState != SOCKET_CONNECTED)
     {
-        rwmutex_read_release(&sock->mutex);
         errno = ENOTCONN;
         return ERR;
     }
 
-    uint64_t result = sock->family->send(sock, buf, count, offset);
-    rwmutex_read_release(&sock->mutex);
-    return result;
+    return sock->family->send(sock, buf, count, offset);
 }
 
 static wait_queue_t* socket_data_poll(file_t* file, poll_events_t* revents)
@@ -127,6 +112,7 @@ static wait_queue_t* socket_data_poll(file_t* file, poll_events_t* revents)
 
 static file_ops_t dataOps = {
     .open = socket_data_open,
+    .close = socket_data_close,
     .read = socket_data_read,
     .write = socket_data_write,
     .poll = socket_data_poll,
@@ -215,6 +201,8 @@ static uint64_t socket_ctl_connect(file_t* file, uint64_t argc, const char** arg
         return result;
     }
 
+    // TODO: Needs more verification.
+
     bool notFinished = (sock->flags & PATH_NONBLOCK) && (result == ERR && errno == EINPROGRESS);
     if (notFinished) // Non blocking and not yet connected.
     {
@@ -254,21 +242,10 @@ static uint64_t socket_accept_open(file_t* file)
         return ERR;
     }
 
-    if (sock->flags & PATH_NONBLOCK)
-    {
-        if (rwmutex_read_try_acquire(&sock->mutex) == ERR)
-        {
-            return ERR;
-        }
-    }
-    else
-    {
-        rwmutex_read_acquire(&sock->mutex);
-    }
+    RWMUTEX_READ_SCOPE(&sock->mutex);
 
     if (sock->currentState != SOCKET_LISTENING)
     {
-        rwmutex_read_release(&sock->mutex);
         errno = EINVAL;
         return ERR;
     }
@@ -276,13 +253,11 @@ static uint64_t socket_accept_open(file_t* file)
     socket_t* newSock = socket_new(sock->family, sock->type, file->flags);
     if (newSock == NULL)
     {
-        rwmutex_read_release(&sock->mutex);
         return ERR;
     }
 
     if (socket_start_transition(newSock, SOCKET_CONNECTING) == ERR)
     {
-        rwmutex_read_release(&sock->mutex);
         return ERR;
     }
 
@@ -290,7 +265,6 @@ static uint64_t socket_accept_open(file_t* file)
     {
         socket_end_transition(newSock, ERR);
         socket_free(newSock);
-        rwmutex_read_release(&sock->mutex);
         return ERR;
     }
 
@@ -298,11 +272,10 @@ static uint64_t socket_accept_open(file_t* file)
 
     socket_end_transition(newSock, 0);
     file->private = newSock;
-    rwmutex_read_release(&sock->mutex);
     return 0;
 }
 
-static void socket_accept_cleanup(file_t* file)
+static void socket_accept_close(file_t* file)
 {
     socket_t* sock = file->private;
     if (sock == NULL)
@@ -310,12 +283,12 @@ static void socket_accept_cleanup(file_t* file)
         return;
     }
 
-    socket_free(sock);
+    DEREF(sock);
 }
 
 static file_ops_t acceptOps = {
     .open = socket_accept_open,
-    .cleanup = socket_accept_cleanup,
+    .close = socket_accept_close,
     .read = socket_data_read,
     .write = socket_data_write,
     .poll = socket_data_poll,
@@ -329,16 +302,10 @@ static void socket_inode_cleanup(inode_t* inode)
         return;
     }
 
-    if (sock->family != NULL && sock->family->deinit != NULL)
-    {
-        sock->family->deinit(sock);
-    }
-
-    rwmutex_deinit(&sock->mutex);
-    heap_free(sock);
+    DEREF(sock);
 }
 
-static inode_ops_t dirInodeOps = {
+static inode_ops_t inodeOps = {
     .cleanup = socket_inode_cleanup,
 };
 
@@ -357,6 +324,7 @@ socket_t* socket_new(socket_family_t* family, socket_type_t type, path_flags_t f
         return NULL;
     }
 
+    ref_init(&sock->ref, socket_free);
     uint64_t id = atomic_fetch_add(&family->newId, 1);
     snprintf(sock->id, sizeof(sock->id), "%llu", id);
     memset(sock->address, 0, MAX_NAME);
@@ -387,16 +355,6 @@ void socket_free(socket_t* sock)
         return;
     }
 
-    if (sock->isExposed)
-    {
-        sysfs_file_deinit(&sock->ctlFile);
-        sysfs_file_deinit(&sock->dataFile);
-        sysfs_file_deinit(&sock->acceptFile);
-        sysfs_dir_deinit(&sock->dir);
-        // Socket itself is freed in socket_inode_cleanup().
-        return;
-    }
-
     if (sock->family != NULL && sock->family->deinit != NULL)
     {
         sock->family->deinit(sock);
@@ -414,24 +372,34 @@ uint64_t socket_expose(socket_t* sock)
         return ERR;
     }
 
-    if (sysfs_dir_init(&sock->dir, &sock->family->dir, sock->id, &dirInodeOps, sock) == ERR)
+    if (sysfs_dir_init(&sock->dir, &sock->family->dir, sock->id, &inodeOps, REF(sock)) == ERR)
     {
+        DEREF(sock);
         return ERR;
     }
 
-    if (sysfs_file_init(&sock->ctlFile, &sock->dir, "ctl", NULL, &ctlOps, sock) == ERR)
+    if (sysfs_file_init(&sock->ctlFile, &sock->dir, "ctl", &inodeOps, &ctlOps, REF(sock)) == ERR)
     {
+        DEREF(sock);
+        DEREF(sock);
         return ERR;
     }
 
-    if (sysfs_file_init(&sock->dataFile, &sock->dir, "data", NULL, &dataOps, sock) == ERR)
+    if (sysfs_file_init(&sock->dataFile, &sock->dir, "data", &inodeOps, &dataOps, REF(sock)) == ERR)
     {
+        DEREF(sock);
+        DEREF(sock);
+        DEREF(sock);
         sysfs_file_deinit(&sock->ctlFile);
         return ERR;
     }
 
-    if (sysfs_file_init(&sock->acceptFile, &sock->dir, "accept", NULL, &acceptOps, sock) == ERR)
+    if (sysfs_file_init(&sock->acceptFile, &sock->dir, "accept", &inodeOps, &acceptOps, REF(sock)) == ERR)
     {
+        DEREF(sock);
+        DEREF(sock);
+        DEREF(sock);
+        DEREF(sock);
         sysfs_file_deinit(&sock->ctlFile);
         sysfs_file_deinit(&sock->dataFile);
         return ERR;
@@ -439,6 +407,20 @@ uint64_t socket_expose(socket_t* sock)
 
     sock->isExposed = true;
     return 0;
+}
+
+void socket_hide(socket_t* sock)
+{
+    if (!sock->isExposed)
+    {
+        return;
+    }
+
+    sysfs_file_deinit(&sock->ctlFile);
+    sysfs_file_deinit(&sock->dataFile);
+    sysfs_file_deinit(&sock->acceptFile);
+    sysfs_dir_deinit(&sock->dir);
+    sock->isExposed = false;
 }
 
 static const bool validTransitions[SOCKET_STATE_AMOUNT][SOCKET_STATE_AMOUNT] = {
@@ -492,17 +474,7 @@ uint64_t socket_start_transition(socket_t* sock, socket_state_t state)
         return ERR;
     }
 
-    if (sock->flags & PATH_NONBLOCK)
-    {
-        if (rwmutex_write_try_acquire(&sock->mutex) == ERR)
-        {
-            return ERR;
-        }
-    }
-    else
-    {
-        rwmutex_read_acquire(&sock->mutex);
-    }
+    rwmutex_write_acquire(&sock->mutex);
 
     if (!socket_can_transition(sock->currentState, state))
     {

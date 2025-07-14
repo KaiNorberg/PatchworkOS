@@ -199,12 +199,12 @@ NORETURN void sched_done_with_boot_thread(void);
  * @brief Puts the current thread to sleep.
  * @ingroup kernel_sched
  *
- * The `sched_sleep()` function causes the currently running thread to block, for a specified length of time.
+ * The `sched_nanosleep()` function causes the currently running thread to block, for a specified length of time.
  *
  * @param timeout The maximum time to sleep. If `CLOCKS_NEVER`, it sleeps forever.
  * @return Check 'wait_result_t' definition for more.
  */
-wait_result_t sched_sleep(clock_t timeout);
+wait_result_t sched_nanosleep(clock_t timeout);
 
 /**
  * @brief Checks if the current CPU is idle.

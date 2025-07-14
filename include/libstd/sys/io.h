@@ -88,10 +88,8 @@ fd_t open(const char* path);
 fd_t openf(const char* _RESTRICT format, ...);
 
 /**
- * @brief Wrapper for opening files with a formatted path, using va_list.
+ * @brief Wrapper for opening files with a formatted path, using a `va_list`.
  * @ingroup libstd_sys_io
- *
- * The `vopenf()` function is similar to `openf()` but takes a `va_list` for the arguments.
  *
  * @param format The format string specifying the path to the desired file.
  * @param args A `va_list` containing the arguments to be formatted into the path string.
@@ -103,7 +101,7 @@ fd_t vopenf(const char* _RESTRICT format, va_list args);
  * @brief System call for opening 2 file descriptors from one file.
  * @ingroup libstd_sys_io
 
- * The `open2()` function opens a file and returns two file descriptors. This is intended as a more generic
+ * This is intended as a more generic
  implementation
  * of system calls like pipe() in for example Linux. One example use case of this system call is pipes, if
  * `open2` is called on `/dev/pipe/new` then `fd[0]` will store the read end of the pipe and `fd[1]` will store the
@@ -120,8 +118,6 @@ uint64_t open2(const char* path, fd_t fd[2]);
 /**
  * @brief System call for closing files.
  * @ingroup libstd_sys_io
-
- * The `close()` function closes an open file descriptor.
  *
  * @param fd The file descriptor to close.
  * @return On success, returns 0, on failure returns `ERR` and errno is set.
@@ -131,8 +127,6 @@ uint64_t close(fd_t fd);
 /**
  * @brief  System call for reading from files.
  * @ingroup libstd_sys_io
-
- * The `read()` function reads data from a file descriptor into a buffer.
  *
  * @param fd The file descriptor to read from.
  * @param buffer A pointer to the buffer where the data will be stored.
@@ -146,8 +140,6 @@ uint64_t read(fd_t fd, void* buffer, uint64_t count);
  * @brief System call for writing to files.
  * @ingroup libstd_sys_io
  *
- * The `write()` function writes data from a buffer to a file descriptor.
- *
  * @param fd The file descriptor to write to.
  * @param buffer A pointer to the buffer containing the data to write.
  * @param count The number of bytes to write.
@@ -159,8 +151,6 @@ uint64_t write(fd_t fd, const void* buffer, uint64_t count);
  * @brief Wrapper for writing a formatted string to a file.
  * @ingroup libstd_sys_io
  *
- * The `writef()` function writes formatted output to a file descriptor.
- *
  * @param fd The file descriptor to write to.
  * @param format The format string.
  * @param ... Variable arguments to be formatted.
@@ -169,10 +159,8 @@ uint64_t write(fd_t fd, const void* buffer, uint64_t count);
 uint64_t writef(fd_t fd, const char* _RESTRICT format, ...);
 
 /**
- * @brief Write formatted with va_list system call.
+* @brief Wrapper for writing a formatted string to a file with a `va_list`.
  * @ingroup libstd_sys_io
- *
- * The `vwritef()` function is similar to `writef()` but takes a `va_list` for the arguments.
  *
  * @param fd The file descriptor to write to.
  * @param format The format string.
@@ -182,10 +170,8 @@ uint64_t writef(fd_t fd, const char* _RESTRICT format, ...);
 uint64_t vwritef(fd_t fd, const char* _RESTRICT format, va_list args);
 
 /**
- * @brief Type for the `seek` origin argument.
+ * @brief Type for the `seek()` origin argument.
  * @ingroup libstd_sys_io
- *
- * The `seek_origin_t` type is used in the `seek` function to specify the origin.
  *
  */
 typedef uint8_t seek_origin_t;
@@ -193,8 +179,6 @@ typedef uint8_t seek_origin_t;
 /**
  * @brief System call for changing the file offset.
  * @ingroup libstd_sys_io
- *
- * The `seek()` function moves the offset of the open file associated with the file descriptor `fd`.
  *
  * @param fd The file descriptor.
  * @param offset The offset to move the file pointer.
@@ -208,8 +192,6 @@ uint64_t seek(fd_t fd, int64_t offset, seek_origin_t origin);
  * @brief System call for changing the cwd.
  * @ingroup libstd_sys_io
  *
- * The `chdir()` function changes the current working directory of the calling process.
- *
  * @param path The path to the new directory.
  * @return On success, returns 0. On failure, returns `ERR` and errno is set.
  */
@@ -218,8 +200,6 @@ uint64_t chdir(const char* path);
 /**
  * @brief Poll events type.
  * @ingroup libstd_sys_io
- *
- * The `poll_event_t` enum is used to store events in the `pollfd_t` structure.
  *
  */
 typedef enum
@@ -242,9 +222,6 @@ typedef enum
  * @brief Poll file descriptor structure.
  * @ingroup libstd_sys_io
  *
- * The `pollfd_t` structure is used in `poll()` to specify which file descriptors to poll and which events to wait for,
- * and to return what events happened.
- *
  */
 typedef struct pollfd
 {
@@ -256,8 +233,6 @@ typedef struct pollfd
 /**
  * @brief System call for polling files.
  * @ingroup libstd_sys_io
- *
- * The `poll()` function waits for one of a set of file descriptors to become ready to perform I/O.
  *
  * @param fds An array of `pollfd_t` structures, each specifying a file descriptor to poll in pollfd_t::fd and the
  * events to wait for in pollfd_t::events.
@@ -305,8 +280,6 @@ typedef uint64_t inode_number_t;
  * @brief Stat type.
  * @ingroup libstd_sys_io
  *
- * The `stat_t` structure is used to to store retrieved information about a entry in the file system.
- *
  */
 typedef struct
 {
@@ -329,8 +302,6 @@ static_assert(sizeof(stat_t) == 160, "invalid stat_t size");
 /**
  * @brief System call for retrieving info about a file or directory.
  * @ingroup libstd_sys_io
- *
- * The `stat()` function retrieves information about a file or directory.
  *
  * @param path The path to the file or directory.
  * @param stat A pointer to a `stat_t` structure where the file information will be stored.
@@ -358,9 +329,6 @@ uint64_t ioctl(fd_t fd, uint64_t request, void* argp, uint64_t size);
  * @brief System call for duplicating file descriptors.
  * @ingroup libstd_sys_io
  *
- * The `dup()` function duplicates an open file descriptor. The new file descriptor refers to the same open file
- * description as the old file descriptor.
- *
  * @param oldFd The open file descriptor to duplicate.
  * @return On success, returns the new file descriptor. On failure, returns `ERR` and errno is set.
  */
@@ -369,9 +337,6 @@ fd_t dup(fd_t oldFd);
 /**
  * @brief System call for duplicating file descriptors, with a destination.
  * @ingroup libstd_sys_io
- *
- * The `dup2()` function duplicates an open file descriptor to a specified new file descriptor. If `newFd` is already
- * open, it will be closed atomically.
  *
  * @param oldFd The open file descriptor to duplicate.
  * @param newFd The desired new file descriptor.
@@ -382,8 +347,6 @@ fd_t dup2(fd_t oldFd, fd_t newFd);
 /**
  * @brief Directory entry struct.
  * @ingroup libstd_sys_io
- *
- * The `dirent_t` structue is used in the `getdirent()` function to retrive the contents of a directory.
  *
  */
 typedef struct
@@ -397,50 +360,17 @@ typedef struct
  * @brief System call for reading directory entires.
  * @ingroup libstd_sys_io
  *
- * The `getdirent()` function reads information about every entry in a directory from a directory file descriptor. The
- * intention is to call `getdirent()` twice once to get the total number of entires in the directory allowing you to
- * allocate a buffer of the correct size, then again to read the entires, ideally this would be done in a loop to make
- * sure the amount of entires does not change between calls to `getdirent()`.
- *
  * @param fd The file descriptor of the directory to read.
  * @param buffer The destination buffer.
- * @param amount The amount of `dirent_t` structures that fit in `buffer`.
- * @return On success, returns the total number of entries that exists, NOT the amount of entires read. On failure,
+ * @param count The size of the buffer in bytes.
+ * @return On success, returns the total number of bytes written to the buffer. On failure,
  * returns `ERR` and errno is set.
  */
-uint64_t getdirent(fd_t fd, dirent_t* buffer, uint64_t amount);
-
-/**
- * @brief Result type from `allocdir()`.
- * @ingroup libstd_sys_io
- *
- * The `allocdir_t` structure stores the result of the `allocdir()` function.
- *
- */
-typedef struct
-{
-    uint64_t amount;   //!< The amount of `dirent_t` structures in `buffer`.
-    dirent_t buffer[]; //!< The retrieved `dirent_t` structures.
-} allocdir_t;
-
-/**
- * @brief Wrapper for easily reading directory entries.
- * @ingroup libstd_sys_io
- *
- * The `allocdir()` function reads all directory entries from a directory file descriptor and allocates memory for them.
- *
- * @param fd The file descriptor of the directory to read.
- * @return On success, returns a pointer to an `allocdir_t` structure containing the number of entries and an array of
- * `stat_t` structures, when you are done with the structure make sure to free it using `free()`. On failure, returns
- * `NULL` and errno is set.
- */
-allocdir_t* allocdir(fd_t fd);
+uint64_t getdents(fd_t fd, dirent_t* buffer, uint64_t count);
 
 /**
  * @brief Wrapper for creating a directory.
  * @ingroup libstd_sys_io
- *
- * The `mkdir()` function creates a new directory.
  *
  * @param path The path of the directory to create.
  * @return On success, returns 0. On failure, returns `ERR` and errno is set.
@@ -448,9 +378,25 @@ allocdir_t* allocdir(fd_t fd);
 uint64_t mkdir(const char* path);
 
 /**
- * @brief Creates a hardlink.
+ * @brief System call for removing a file.
+ * @ingroup libstd_sys_io
  *
- * The `link()` function creates a hardlink between the old location and the new one.
+ * @param path The path of the file to remove.
+ * @return On success, returns 0. On failure, returns `ERR` and errno is set.
+ */
+uint64_t unlink(const char* path);
+
+/**
+ * @brief System call for removing a directory.
+ * @ingroup libstd_sys_io
+ *
+ * @param path The path of the directory to remove.
+ * @return On success, returns 0. On failure, returns `ERR` and errno is set.
+ */
+uint64_t rmdir(const char* path);
+
+/**
+ * @brief System call for creating a hardlink.
  *
  * @param oldPath
  * @param newPath

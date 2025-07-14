@@ -100,21 +100,68 @@ void dentry_make_positive(dentry_t* dentry, inode_t* inode)
     wait_unblock(&dentry->lookupWaitQueue, WAIT_ALL);
 }
 
-uint64_t dentry_generic_getdirent(dentry_t* dentry, dirent_t* buffer, uint64_t amount)
+typedef struct
 {
-    getdirent_ctx_t ctx = {0};
+    uint64_t index;
+    uint64_t total;
+    dirent_t* buffer;
+    uint64_t count;
+    uint64_t* offset;
+} getdents_ctx_t;
 
-    getdirent_write(&ctx, buffer, amount, dentry->inode->number, dentry->inode->type, ".");
-    getdirent_write(&ctx, buffer, amount, dentry->parent->inode->number, dentry->parent->inode->type, "..");
+static void getdents_write(getdents_ctx_t* ctx, inode_number_t number, inode_type_t type, const char* name)
+{
+    uint64_t start = *ctx->offset / sizeof(dirent_t);
+    uint64_t amount = ctx->count / sizeof(dirent_t);
+
+    if (ctx->index >= start && ctx->index < start + amount)
+    {
+        dirent_t* dirent = &ctx->buffer[ctx->index - start];
+        dirent->number = number;
+        dirent->type = type;
+        strncpy(dirent->name, name, MAX_NAME - 1);
+        dirent->name[MAX_NAME - 1] = '\0';
+    }
+    ctx->index++;
+    ctx->total++;
+}
+
+uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset)
+{
+    getdents_ctx_t ctx = {
+        .index = 0,
+        .total = 0,
+        .buffer = buffer,
+        .count = count,
+        .offset = offset
+    };
 
     LOCK_SCOPE(&dentry->lock);
+    LOCK_SCOPE(&dentry->inode->lock);
+
+    getdents_write(&ctx, dentry->inode->number, dentry->inode->type, ".");
+    getdents_write(&ctx, dentry->parent->inode->number, dentry->parent->inode->type, "..");
 
     dentry_t* child;
     LIST_FOR_EACH(child, &dentry->children, siblingEntry)
     {
         LOCK_SCOPE(&child->lock);
-        getdirent_write(&ctx, buffer, amount, child->inode->number, child->inode->type, child->name);
+        getdents_write(&ctx, child->inode->number, child->inode->type, child->name);
     }
 
-    return ctx.total;
+    dentry->inode->size = sizeof(dirent_t) * ctx.total;
+
+    uint64_t start = *offset / sizeof(dirent_t);
+    uint64_t max = count / sizeof(dirent_t);
+
+    if (start >= ctx.total)
+    {
+        return 0;
+    }
+
+    uint64_t entriesWritten = MIN(ctx.total - start, max);
+    uint64_t bytesWritten = entriesWritten * sizeof(dirent_t);
+
+    *offset += bytesWritten;
+    return bytesWritten;
 }

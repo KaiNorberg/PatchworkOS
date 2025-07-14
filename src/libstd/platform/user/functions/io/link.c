@@ -12,7 +12,7 @@ uint64_t link(const char* oldPath, const char* newPath)
     uint64_t result = _syscall_link(oldPath, newPath);
     if (result == ERR)
     {
-        errno = _syscall_last_error();
+        errno = _syscall_errno();
     }
     return result;
 }

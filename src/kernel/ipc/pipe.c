@@ -71,7 +71,7 @@ static uint64_t pipe_open2(file_t* files[2])
     return 0;
 }
 
-static void pipe_cleanup(file_t* file)
+static void pipe_close(file_t* file)
 {
     pipe_private_t* private = file->private;
     lock_acquire(&private->lock);
@@ -200,7 +200,7 @@ static wait_queue_t* pipe_poll(file_t* file, poll_events_t* revents)
 static file_ops_t fileOps = {
     .open = pipe_open,
     .open2 = pipe_open2,
-    .cleanup = pipe_cleanup,
+    .close = pipe_close,
     .read = pipe_read,
     .write = pipe_write,
     .poll = pipe_poll,

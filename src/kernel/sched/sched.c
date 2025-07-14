@@ -152,14 +152,14 @@ void sched_done_with_boot_thread(void)
     sched_idle_loop();
 }
 
-wait_result_t sched_sleep(clock_t timeout)
+wait_result_t sched_nanosleep(clock_t timeout)
 {
     return WAIT_BLOCK_TIMEOUT(&sleepQueue, false, timeout);
 }
 
-SYSCALL_DEFINE(SYS_SLEEP, uint64_t, clock_t nanoseconds)
+SYSCALL_DEFINE(SYS_NANOSLEEP, uint64_t, clock_t nanoseconds)
 {
-    return sched_sleep(nanoseconds);
+    return sched_nanosleep(nanoseconds);
 }
 
 bool sched_is_idle(void)

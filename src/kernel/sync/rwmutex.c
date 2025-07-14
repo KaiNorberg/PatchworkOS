@@ -18,6 +18,7 @@ void rwmutex_init(rwmutex_t* mtx)
 
 void rwmutex_deinit(rwmutex_t* mtx)
 {
+    LOCK_SCOPE(&mtx->lock);
     assert(mtx->activeReaders == 0);
     assert(mtx->waitingWriters == 0);
     assert(!mtx->isWriterActive);

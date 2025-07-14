@@ -294,6 +294,8 @@ dentry_t* vfs_get_or_lookup_dentry(const path_t* parent, const char* name)
         return dentry;
     }
 
+    // TODO: The lookup operation needs further verification.
+
     rwlock_write_acquire(&dentryCache.lock);
     dentry = CONTAINER_OF_SAFE(map_get(&dentryCache.map, &key), dentry_t, mapEntry);
     if (dentry != NULL) // Check if the the dentry was added while the lock was released above.
@@ -660,7 +662,7 @@ static uint64_t vfs_open_lookup(path_t* outPath, const pathname_t* pathname)
             return ERR;
         }
 
-        if (path_walk_single_step(&target, &parent, lastComponent, WALK_NEGATIVE_IS_OK) == ERR)
+        if (path_walk_single_step(&target, &parent, lastComponent, WALK_NEGATIVE_IS_OK | WALK_MOUNTPOINT_TO_ROOT) == ERR)
         {
             return ERR;
         }
@@ -679,7 +681,7 @@ static uint64_t vfs_open_lookup(path_t* outPath, const pathname_t* pathname)
     }
     else // Dont create dentry
     {
-        if (vfs_walk(&target, pathname, WALK_NONE) == ERR)
+        if (vfs_walk(&target, pathname, WALK_MOUNTPOINT_TO_ROOT) == ERR)
         {
             return ERR;
         }
@@ -1006,12 +1008,6 @@ uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
     if (file == NULL)
     {
         errno = EINVAL;
-        return ERR;
-    }
-
-    if (file->inode->type == INODE_DIR)
-    {
-        errno = EISDIR;
         return ERR;
     }
 
@@ -1349,9 +1345,9 @@ SYSCALL_DEFINE(SYS_POLL, uint64_t, pollfd_t* fds, uint64_t amount, clock_t timeo
     return result;
 }
 
-uint64_t vfs_getdirent(file_t* file, dirent_t* buffer, uint64_t amount)
+uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count)
 {
-    if (file == NULL || (buffer == NULL && amount > 0))
+    if (file == NULL || (buffer == NULL && count > 0))
     {
         errno = EINVAL;
         return ERR;
@@ -1363,49 +1359,31 @@ uint64_t vfs_getdirent(file_t* file, dirent_t* buffer, uint64_t amount)
         return ERR;
     }
 
-    lock_acquire(&file->path.dentry->lock);
-    dentry_t* dentry = NULL;
-    if (file->path.dentry->flags & DENTRY_MOUNTPOINT)
-    {
-        path_t newRoot = PATH_EMPTY;
-        if (vfs_mountpoint_to_fs_root(&newRoot, &file->path) == ERR)
-        {
-            return ERR;
-        }
-        PATH_DEFER(&newRoot);
-
-        lock_release(&file->path.dentry->lock);
-        dentry = REF(newRoot.dentry);
-    }
-    else
-    {
-        lock_release(&file->path.dentry->lock);
-        dentry = REF(file->path.dentry);
-    }
-    REF_DEFER(dentry);
-
-    if (dentry->parent == NULL)
+    if (file->path.dentry == NULL || file->path.dentry->parent == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    if (dentry->ops == NULL || dentry->ops->getdirent == NULL)
+    if (file->path.dentry->ops == NULL || file->path.dentry->ops->getdents == NULL)
     {
         errno = ENOSYS;
         return ERR;
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    return dentry->ops->getdirent(dentry, buffer, amount);
+    uint64_t offset = file->pos;
+    uint64_t result = file->path.dentry->ops->getdents(file->path.dentry, buffer, count, &offset);
+    file->pos = offset;
+    return result;
 }
 
-SYSCALL_DEFINE(SYS_GETDIRENT, uint64_t, fd_t fd, dirent_t* buffer, uint64_t amount)
+SYSCALL_DEFINE(SYS_GETDENTS, uint64_t, fd_t fd, dirent_t* buffer, uint64_t count)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
 
-    if (!syscall_is_buffer_valid(space, buffer, amount * sizeof(dirent_t)))
+    if (!syscall_is_buffer_valid(space, buffer, count))
     {
         errno = EFAULT;
         return ERR;
@@ -1418,7 +1396,7 @@ SYSCALL_DEFINE(SYS_GETDIRENT, uint64_t, fd_t fd, dirent_t* buffer, uint64_t amou
     }
     REF_DEFER(file);
 
-    return vfs_getdirent(file, buffer, amount);
+    return vfs_getdents(file, buffer, count);
 }
 
 uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer)
@@ -1778,9 +1756,11 @@ SYSCALL_DEFINE(SYS_RENAME, uint64_t, const char* oldPathString, const char* newP
     return vfs_rename(&oldPathname, &newPathname);
 }
 
-uint64_t vfs_remove(const pathname_t* pathname)
+uint64_t vfs_unlink(const pathname_t* pathname)
 {
-    if (pathname == NULL)
+    errno = ENOSYS;
+    return ERR;
+    /*if (pathname == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -1846,10 +1826,10 @@ error:
     lock_acquire(&target.dentry->lock);
     target.dentry->flags &= ~(DENTRY_NEGATIVE | DENTRY_DONT_MOUNT);
     lock_release(&target.dentry->lock);
-    return ERR;
+    return ERR;*/
 }
 
-SYSCALL_DEFINE(SYS_REMOVE, uint64_t, const char* pathString)
+SYSCALL_DEFINE(SYS_UNLINK, uint64_t, const char* pathString)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
@@ -1866,20 +1846,31 @@ SYSCALL_DEFINE(SYS_REMOVE, uint64_t, const char* pathString)
         return ERR;
     }
 
-    return vfs_remove(&pathname);
+    return vfs_unlink(&pathname);
 }
 
-void getdirent_write(getdirent_ctx_t* ctx, dirent_t* buffer, uint64_t amount, inode_number_t number, inode_type_t type,
-    const char* name)
+uint64_t vfs_rmdir(const pathname_t* pathname)
 {
-    if (ctx->index < amount)
+    errno = ENOSYS;
+    return ERR;
+}
+
+SYSCALL_DEFINE(SYS_RMDIR, uint64_t, const char* pathString)
+{
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!syscall_is_string_valid(space, pathString))
     {
-        dirent_t* dirent = &buffer[ctx->index++];
-        dirent->number = number;
-        dirent->type = type;
-        strncpy(dirent->name, name, MAX_NAME - 1);
-        dirent->name[MAX_NAME - 1] = '\0';
+        errno = EFAULT;
+        return ERR;
     }
 
-    ctx->total++;
+    pathname_t pathname;
+    if (pathname_init(&pathname, pathString) == ERR)
+    {
+        return ERR;
+    }
+
+    return vfs_rmdir(&pathname);
 }

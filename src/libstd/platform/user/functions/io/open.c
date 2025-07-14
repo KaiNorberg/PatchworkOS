@@ -12,7 +12,7 @@ fd_t open(const char* path)
     fd_t fd = _syscall_open(path);
     if (fd == ERR)
     {
-        errno = _syscall_last_error();
+        errno = _syscall_errno();
     }
     return fd;
 }

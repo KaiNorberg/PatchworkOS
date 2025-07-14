@@ -48,7 +48,7 @@ typedef struct dentry
 
 typedef struct dentry_ops
 {
-    uint64_t (*getdirent)(dentry_t* dentry, dirent_t* buffer, uint64_t amount);
+    uint64_t (*getdents)(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset);
     void (*cleanup)(dentry_t* entry);
 } dentry_ops_t;
 
@@ -58,8 +58,8 @@ void dentry_free(dentry_t* dentry);
 void dentry_make_positive(dentry_t* dentry, inode_t* inode);
 
 /**
- * @brief Helper function for a basic getdirent.
+ * @brief Helper function for a basic getdents.
  * @ingroup kernel_vfs
  *
  */
-uint64_t dentry_generic_getdirent(dentry_t* dentry, dirent_t* buffer, uint64_t amount);
+ uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset);

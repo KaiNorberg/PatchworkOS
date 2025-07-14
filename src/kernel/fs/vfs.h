@@ -116,37 +116,12 @@ uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size);
 void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot);
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout);
 
-uint64_t vfs_getdirent(file_t* file, dirent_t* buffer, uint64_t amount);
+uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count);
 uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer);
 uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname);
 uint64_t vfs_rename(const pathname_t* oldPathname, const pathname_t* newPathname);
-uint64_t vfs_remove(const pathname_t* pathname);
-
-/**
- * @brief Helper struct for implemeting 'getdirent()'.
- * @ingroup kernel_vfs
- *
- */
-typedef struct
-{
-    uint64_t index; //!< The current index into the destination buffer.
-    uint64_t total; //!< The total number of entries written to the destination buffer, is also the result of the
-                    //! `getdirent()` function.
-} getdirent_ctx_t;
-
-/**
- * @brief Helper function for implemeting 'getdirent()'.
- * @ingroup kernel_vfs
- *
- * @param ctx The getdirent context, should be zero initialized.
- * @param buffer The destination buffer.
- * @param amount The amount of `dirent_t` that will fitt in `buffer`.
- * @param number The inode number to be written to the `buffer`.
- * @param type The inode type to be written to the `buffer`.
- * @param name The name to be written to the `buffer`.
- */
-void getdirent_write(getdirent_ctx_t* ctx, dirent_t* buffer, uint64_t amount, inode_number_t number, inode_type_t type,
-    const char* name);
+uint64_t vfs_unlink(const pathname_t* pathname);
+uint64_t vfs_rmdir(const pathname_t* pathname);
 
 // Helper macros for implementing file operations dealing with simple buffers
 #define BUFFER_READ(buffer, count, offset, src, size) \

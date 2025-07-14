@@ -4,12 +4,12 @@
 #include "platform/platform.h"
 #include "platform/user/common/syscalls.h"
 
-uint64_t sleep(clock_t timeout)
+uint64_t nanosleep(clock_t timeout)
 {
-    uint64_t result = _syscall_sleep(timeout);
+    uint64_t result = _syscall_nanosleep(timeout);
     if (result == ERR)
     {
-        errno = _syscall_last_error();
+        errno = _syscall_errno();
     }
     return result;
 }

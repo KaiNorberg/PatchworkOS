@@ -161,13 +161,12 @@ static inode_ops_t inodeOps = {
     .create = ramfs_create,
     .truncate = ramfs_truncate,
     .link = ramfs_link,
-    .remove = ramfs_remove,
     .rename = ramfs_rename,
     .cleanup = ramfs_inode_cleanup,
 };
 
 static dentry_ops_t dentryOps = {
-    .getdirent = dentry_generic_getdirent,
+    .getdents = dentry_generic_getdents,
 };
 
 static inode_t* ramfs_alloc_inode(superblock_t* superblock)

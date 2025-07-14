@@ -10,11 +10,13 @@ OPTIMIZATION = -O3
 DEBUG_SYMBOLS =
 ifeq ($(DEBUG),1)
     OPTIMIZATION = -O0
-    DEBUG_SYMBOLS = -g3 -ggdb -fno-omit-frame-pointer -fno-inline
+    DEBUG_FLAGS = -g3 -ggdb -fno-omit-frame-pointer -fno-inline
+else
+    DEBUG_FLAGS = -DNDEBUG
 endif
 
 CFLAGS := $(OPTIMIZATION) \
-    $(DEBUG_SYMBOLS) \
+    $(DEBUG_FLAGS) \
     -nostdlib \
     -nostdinc \
     -ffreestanding \

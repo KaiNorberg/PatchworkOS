@@ -93,41 +93,68 @@ uint64_t print_directory(const char* path, flags_t flags, bool forceLabel)
         fprintf(stderr, "ls: cant open directory %s (%s)\n", path, strerror(errno));
         return ERR;
     }
-    allocdir_t* dirs = allocdir(fd);
-    close(fd);
-    if (dirs == NULL)
-    {
-        fprintf(stderr, "ls: cant read directory %s (%s)\n", path, strerror(errno));
-        return ERR;
-    }
 
-    for (uint64_t i = 0; i < dirs->amount; i++)
+    dirent_t dirs[64];
+    uint64_t bytesRead;
+    while ((bytesRead = getdents(fd, dirs, 64)) > 0)
     {
-        if (dirs->buffer[i].type == INODE_FILE)
+        if (bytesRead == ERR)
         {
-            printf("%s ", dirs->buffer[i].name);
+            fprintf(stderr, "ls: cant read directory %s (%s)\n", path, strerror(errno));
+            return ERR;
         }
-        else
+
+        uint64_t amount = bytesRead / sizeof(dirent_t);
+
+        for (uint64_t i = 0; i < amount; i++)
         {
-            if (!(flags & FLAG_ALL) && dirs->buffer[i].name[0] == '.')
+            if (!(flags & FLAG_ALL) && dirs[i].name[0] == '.')
             {
                 continue;
             }
-            printf("%s/ ", dirs->buffer[i].name);
+
+            if (dirs[i].type == INODE_FILE)
+            {
+                printf("%s ", dirs[i].name);
+            }
+            else
+            {
+                printf("%s/ ", dirs[i].name);
+            }
         }
     }
     printf("\n");
 
     if (flags & FLAG_RECURSIVE)
     {
-        for (uint64_t i = 0; i < dirs->amount; i++)
+        if (seek(fd, 0, SEEK_SET) == ERR)
         {
-            if (dirs->buffer[i].type == INODE_DIR)
+            fprintf(stderr, "ls: cant seek directory %s (%s)\n", path, strerror(errno));
+            return ERR;
+        }
+        while ((bytesRead = getdents(fd, dirs, 64)) > 0)
+        {
+            if (bytesRead == ERR)
             {
-                char buffer[MAX_PATH];
-                snprintf(buffer, MAX_PATH, "%s/%s", path, dirs->buffer[i].name);
+                fprintf(stderr, "ls: cant read directory %s (%s)\n", path, strerror(errno));
+                return ERR;
+            }
 
-                print_directory(buffer, flags, forceLabel);
+            uint64_t amount = bytesRead / sizeof(dirent_t);
+
+            for (uint64_t i = 0; i < amount; i++)
+            {
+                if (dirs[i].name[0] == '.')
+                {
+                    continue;
+                }
+                if (dirs[i].type == INODE_DIR)
+                {
+                    char buffer[MAX_PATH];
+                    snprintf(buffer, MAX_PATH, "%s/%s", path, dirs[i].name);
+
+                    print_directory(buffer, flags, forceLabel);
+                }
             }
         }
     }

@@ -32,9 +32,9 @@ void file_free(file_t* file)
         return;
     }
 
-    if (file->ops != NULL && file->ops->cleanup != NULL)
+    if (file->ops != NULL && file->ops->close != NULL)
     {
-        file->ops->cleanup(file);
+        file->ops->close(file);
     }
 
     DEREF(file->inode);

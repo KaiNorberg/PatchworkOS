@@ -14,7 +14,7 @@ int thrd_sleep(const struct timespec* duration, struct timespec* remaining)
     if (remaining != NULL)
     {
         clock_t start = uptime();
-        sleep(nanoseconds);
+        nanosleep(nanoseconds);
         clock_t end = uptime();
 
         clock_t timeTaken = end - start;
@@ -23,7 +23,7 @@ int thrd_sleep(const struct timespec* duration, struct timespec* remaining)
     }
     else
     {
-        sleep(nanoseconds);
+        nanosleep(nanoseconds);
     }
 
     return 0;

@@ -63,7 +63,7 @@ void log_init(void)
     com_init(COM1);
 #endif
 
-#ifndef NDEBUG
+#ifdef NDEBUG
     LOG_INFO("Booting %s-kernel %s (Built %s %s)\n", OS_NAME, OS_VERSION, __DATE__, __TIME__);
 #else
     LOG_INFO("Booting %s-kernel DEBUG %s (Built %s %s)\n", OS_NAME, OS_VERSION, __DATE__, __TIME__);
@@ -143,26 +143,7 @@ static uint64_t klog_write(file_t* file, const void* buffer, uint64_t count, uin
     memcpy(string, buffer, count);
     string[count] = '\0';
 
-    const char* prefixEnd = strchr(string, ':');
-    if (prefixEnd == NULL)
-    {
-        log_print(LOG_LEVEL_USER, "user_space", string);
-        *offset += count;
-        return count;
-    }
-
-    uint64_t prefixLen = prefixEnd - string;
-    if (prefixLen >= MAX_PATH - 1)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    char prefix[MAX_PATH];
-    memcpy(prefix, string, prefixLen);
-    prefix[prefixLen] = '\0';
-
-    log_print(LOG_LEVEL_USER, prefix, string);
+    log_print(LOG_LEVEL_USER, "user_space", string);
     *offset += count;
     return count;
 }

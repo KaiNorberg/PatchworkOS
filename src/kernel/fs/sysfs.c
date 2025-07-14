@@ -15,8 +15,12 @@ static _Atomic(inode_number_t) newNumber = ATOMIC_VAR_INIT(0);
 
 static sysfs_group_t defaultGroup;
 
+static file_ops_t dirOps = {
+    .seek = file_generic_seek,
+};
+
 static dentry_ops_t dentryOps = {
-    .getdirent = dentry_generic_getdirent,
+    .getdents = dentry_generic_getdents,
 };
 
 static superblock_ops_t superOps = {
@@ -38,7 +42,7 @@ static dentry_t* sysfs_mount(filesystem_t* fs, superblock_flags_t flags, const c
     superblock->maxFileSize = UINT64_MAX;
     superblock->flags = flags;
 
-    inode_t* inode = inode_new(superblock, atomic_fetch_add(&newNumber, 1), INODE_DIR, NULL, NULL);
+    inode_t* inode = inode_new(superblock, atomic_fetch_add(&newNumber, 1), INODE_DIR, NULL, &dirOps);
     if (inode == NULL)
     {
         return NULL;
@@ -132,7 +136,7 @@ uint64_t sysfs_dir_init(sysfs_dir_t* dir, sysfs_dir_t* parent, const char* name,
     REF_DEFER(dentry);
     dentry->private = dir;
 
-    inode_t* inode = inode_new(parent->dentry->superblock, atomic_fetch_add(&newNumber, 1), INODE_DIR, inodeOps, NULL);
+    inode_t* inode = inode_new(parent->dentry->superblock, atomic_fetch_add(&newNumber, 1), INODE_DIR, inodeOps, &dirOps);
     if (inode == NULL)
     {
         return ERR;

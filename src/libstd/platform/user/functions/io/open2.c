@@ -12,7 +12,7 @@ uint64_t open2(const char* path, fd_t fds[2])
     uint64_t result = _syscall_open2(path, fds);
     if (result == ERR)
     {
-        errno = _syscall_last_error();
+        errno = _syscall_errno();
     }
     return result;
 }

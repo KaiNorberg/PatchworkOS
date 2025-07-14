@@ -41,7 +41,7 @@ void ref_dec(void* ptr)
     }
 
     atomic_thread_fence(memory_order_acquire);
-    assert(count == 1);
+    assert(count == 1); // Count is now zero, if it was zero before then we have a double free.
     if (ref->free == NULL)
     {
         return;
