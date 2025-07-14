@@ -178,6 +178,7 @@ static uint64_t ramfs_unlink(inode_t* parent, dentry_t* target)
     inode_t* inode = REF(target->inode);
     REF_DEFER(inode);
 
+    LOCK_SCOPE(&target->lock);
     MUTEX_SCOPE(&inode->mutex);
 
     inode->linkCount--;
@@ -187,8 +188,20 @@ static uint64_t ramfs_unlink(inode_t* parent, dentry_t* target)
 
 static uint64_t ramfs_rmdir(inode_t* parent, dentry_t* target)
 {
-    errno = ENOSYS;
-    return ERR;
+    inode_t* inode = REF(target->inode);
+    REF_DEFER(inode);
+
+    LOCK_SCOPE(&target->lock);
+    MUTEX_SCOPE(&inode->mutex);
+
+    if (!list_is_empty(&target->children))
+    {
+        errno = ENOTEMPTY;
+        return ERR;
+    }
+
+    ramfs_dentry_deinit(target);
+    return 0;
 }
 
 static inode_t* ramfs_rename(inode_t* oldParent, dentry_t* old, inode_t* newParent, const char* name)

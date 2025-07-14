@@ -101,6 +101,7 @@ void vfs_remove_mount(mount_t* mount);
 
 uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname, walk_flags_t flags);
 uint64_t vfs_walk_parent(path_t* outPath, const pathname_t* pathname, char* outLastName, walk_flags_t flags);
+uint64_t vfs_walk_parent_and_child(path_t* outParent, path_t* outChild, const pathname_t* pathname, walk_flags_t flags);
 
 uint64_t vfs_mount(const char* deviceName, const pathname_t* mountpoint, const char* fsName, superblock_flags_t flags,
     void* private);

@@ -471,6 +471,7 @@ uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const pat
 {
     if (pathname == NULL || !pathname->isValid || outLastName == NULL)
     {
+        errno = EINVAL;
         return ERR;
     }
 
@@ -498,6 +499,7 @@ uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const pat
     memcpy(parentPath.string, pathname, parentLen);
     parentPath.string[parentLen] = '\0';
     parentPath.flags = PATH_NONE;
+    parentPath.isValid = true;
 
     if (!vfs_is_name_valid(outLastName))
     {

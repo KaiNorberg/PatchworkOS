@@ -472,7 +472,7 @@ uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname, walk_flags_t flag
 
 uint64_t vfs_walk_parent(path_t* outPath, const pathname_t* pathname, char* outLastName, walk_flags_t flags)
 {
-    if (outPath == NULL || pathname == NULL)
+    if (outPath == NULL || pathname == NULL || !pathname->isValid)
     {
         errno = EINVAL;
         return ERR;
@@ -483,6 +483,28 @@ uint64_t vfs_walk_parent(path_t* outPath, const pathname_t* pathname, char* outL
     PATH_DEFER(&cwd);
 
     return path_walk_parent(outPath, pathname, &cwd, outLastName, flags);
+}
+
+uint64_t vfs_walk_parent_and_child(path_t* outParent, path_t* outChild, const pathname_t* pathname, walk_flags_t flags)
+{
+    char lastName[MAX_NAME];
+    path_t parent = PATH_EMPTY;
+    if (vfs_walk_parent(&parent, pathname, lastName, WALK_MOUNTPOINT_TO_ROOT) == ERR)
+    {
+        return ERR;
+    }
+    PATH_DEFER(&parent);
+
+    path_t child = PATH_EMPTY;
+    if (path_walk_single_step(&child, &parent, lastName, flags) == ERR)
+    {
+        return ERR;
+    }
+    PATH_DEFER(&child);
+
+    path_copy(outParent, &parent);
+    path_copy(outChild, &child);
+    return 0;
 }
 
 uint64_t vfs_mount(const char* deviceName, const pathname_t* mountpoint, const char* fsName, superblock_flags_t flags,
@@ -672,7 +694,7 @@ static uint64_t vfs_open_lookup(path_t* outPath, const pathname_t* pathname)
     {
         char lastComponent[MAX_NAME];
         path_t parent = PATH_EMPTY;
-        if (vfs_walk_parent(&parent, pathname, lastComponent, WALK_NONE) == ERR)
+        if (vfs_walk_parent_and_child(&parent, &target, pathname, WALK_NEGATIVE_IS_OK | WALK_MOUNTPOINT_TO_ROOT) == ERR)
         {
             return ERR;
         }
@@ -687,11 +709,6 @@ static uint64_t vfs_open_lookup(path_t* outPath, const pathname_t* pathname)
         if (parent.dentry->inode->ops == NULL || parent.dentry->inode->ops->create == NULL)
         {
             errno = ENOSYS;
-            return ERR;
-        }
-
-        if (path_walk_single_step(&target, &parent, lastComponent, WALK_NEGATIVE_IS_OK | WALK_MOUNTPOINT_TO_ROOT) == ERR)
-        {
             return ERR;
         }
 
@@ -739,7 +756,7 @@ static uint64_t vfs_open_lookup(path_t* outPath, const pathname_t* pathname)
 
 file_t* vfs_open(const pathname_t* pathname)
 {
-    if (pathname == NULL)
+    if (pathname == NULL || !pathname->isValid)
     {
         errno = EINVAL;
         return NULL;
@@ -814,7 +831,7 @@ SYSCALL_DEFINE(SYS_OPEN, fd_t, const char* pathString)
 
 uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2])
 {
-    if (pathname == NULL || files == NULL)
+    if (pathname == NULL || !pathname->isValid || files == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -1431,7 +1448,7 @@ SYSCALL_DEFINE(SYS_GETDENTS, uint64_t, fd_t fd, dirent_t* buffer, uint64_t count
 
 uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer)
 {
-    if (pathname == NULL || buffer == NULL)
+    if (pathname == NULL || !pathname->isValid || buffer == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -1496,7 +1513,7 @@ SYSCALL_DEFINE(SYS_STAT, uint64_t, const char* pathString, stat_t* buffer)
 
 uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname)
 {
-    /*if (oldPathname == NULL || newPathname == NULL)
+    /*if (oldpathname == NULL || !pathname->isValid || newpathname == NULL || !pathname->isValid)
     {
         errno = EINVAL;
         return ERR;
@@ -1627,7 +1644,7 @@ SYSCALL_DEFINE(SYS_LINK, uint64_t, const char* oldPathString, const char* newPat
 
 uint64_t vfs_rename(const pathname_t* oldPathname, const pathname_t* newPathname)
 {
-    /*if (oldPathname == NULL || newPathname == NULL)
+    /*if (oldpathname == NULL || !pathname->isValid || newpathname == NULL || !pathname->isValid)
     {
         errno = EINVAL;
         return ERR;
@@ -1787,7 +1804,7 @@ SYSCALL_DEFINE(SYS_RENAME, uint64_t, const char* oldPathString, const char* newP
 
 uint64_t vfs_unlink(const pathname_t* pathname)
 {
-    if (pathname == NULL)
+    if (pathname == NULL || !pathname->isValid)
     {
         errno = EINVAL;
         return ERR;
@@ -1799,19 +1816,13 @@ uint64_t vfs_unlink(const pathname_t* pathname)
         return ERR;
     }
 
-    char lastName[MAX_NAME];
     path_t parent = PATH_EMPTY;
-    if (vfs_walk_parent(&parent, pathname, lastName, WALK_MOUNTPOINT_TO_ROOT) == ERR)
+    path_t target = PATH_EMPTY;
+    if (vfs_walk_parent_and_child(&parent, &target, pathname, WALK_NONE) == ERR)
     {
         return ERR;
     }
     PATH_DEFER(&parent);
-
-    path_t target = PATH_EMPTY;
-    if (path_walk_single_step(&target, &parent, lastName, WALK_NONE) == ERR)
-    {
-        return ERR;
-    }
     PATH_DEFER(&target);
 
     if (target.dentry->inode->type == INODE_DIR)
@@ -1866,8 +1877,55 @@ SYSCALL_DEFINE(SYS_UNLINK, uint64_t, const char* pathString)
 
 uint64_t vfs_rmdir(const pathname_t* pathname)
 {
-    errno = ENOSYS;
-    return ERR;
+    if (pathname == NULL || !pathname->isValid)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (pathname->flags != PATH_NONE)
+    {
+        errno = EBADFLAG;
+        return ERR;
+    }
+
+    path_t parent = PATH_EMPTY;
+    path_t target = PATH_EMPTY;
+    if (vfs_walk_parent_and_child(&parent, &target, pathname, WALK_NONE) == ERR)
+    {
+        return ERR;
+    }
+    PATH_DEFER(&parent);
+    PATH_DEFER(&target);
+
+    if (target.dentry->inode->type != INODE_DIR)
+    {
+        errno = ENOTDIR;
+        return ERR;
+    }
+
+    inode_t* dir = parent.dentry->inode;
+    if (dir->ops == NULL || dir->ops->rmdir == NULL)
+    {
+        errno = EPERM;
+        return ERR;
+    }
+
+    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
+    if (dir->ops->rmdir(dir, target.dentry) == ERR)
+    {
+        mutex_release(&target.dentry->inode->mutex);
+        return ERR;
+    }
+
+    map_key_t targetKey = dentry_cache_key(target.dentry->id, target.dentry->name);
+    rwlock_write_acquire(&dentryCache.lock);
+    map_remove(&dentryCache.map, &targetKey);
+    rwlock_write_release(&dentryCache.lock);
+
+    inode_notify_change(target.dentry->inode);
+
+    return 0;
 }
 
 SYSCALL_DEFINE(SYS_RMDIR, uint64_t, const char* pathString)
