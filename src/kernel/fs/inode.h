@@ -1,7 +1,7 @@
 #pragma once
 
 #include "path.h"
-#include "sync/lock.h"
+#include "sync/mutex.h"
 #include "utils/map.h"
 #include "utils/ref.h"
 
@@ -23,8 +23,6 @@ typedef struct dentry dentry_t;
 typedef enum
 {
     INODE_NONE = 0,        //!< None
-    INODE_DIRTY = 1 << 0,  //!< TODO: Dirty system not fully implemented.
-    INODE_INVALID = 1 << 1 //!< TODO: Implement helper system for invalidating inodes.
 } inode_flags_t;
 
 typedef struct inode
@@ -43,8 +41,7 @@ typedef struct inode
     superblock_t* superblock;  //!< Constant after creation.
     const inode_ops_t* ops;    //!< Constant after creation.
     const file_ops_t* fileOps; //!< Constant after creation.
-    lock_t
-        lock; //!< Lock for the mutable members of the inode, also used to sync the position of files inside the inode.
+    mutex_t mutex;
     map_entry_t mapEntry; //!< Protected by the inodeCache lock.
 } inode_t;
 
@@ -70,3 +67,9 @@ typedef struct inode_ops
 inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, const inode_ops_t* ops,
     const file_ops_t* fileOps);
 void inode_free(inode_t* inode);
+
+void inode_notify_access(inode_t* inode);
+
+void inode_notify_modify(inode_t* inode);
+
+void inode_notify_change(inode_t* inode);

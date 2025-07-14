@@ -3,6 +3,7 @@
 #include "fs/path.h"
 #include "mem/heap.h"
 #include "sched/thread.h"
+#include "sync/mutex.h"
 #include "vfs.h"
 
 file_t* file_new(inode_t* inode, const path_t* path, path_flags_t flags)
@@ -46,7 +47,8 @@ void file_free(file_t* file)
 
 uint64_t file_generic_seek(file_t* file, int64_t offset, seek_origin_t origin)
 {
-    LOCK_SCOPE(&file->inode->lock);
+    MUTEX_SCOPE(&file->inode->mutex);
+
     uint64_t newPos;
     switch (origin)
     {

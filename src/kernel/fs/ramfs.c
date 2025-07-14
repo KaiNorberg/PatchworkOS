@@ -7,6 +7,7 @@
 #include "log/panic.h"
 #include "mem/heap.h"
 #include "sync/lock.h"
+#include "sync/mutex.h"
 #include "sysfs.h"
 #include "utils/ref.h"
 #include "vfs.h"
@@ -60,7 +61,7 @@ static void ramfs_dentry_deinit(dentry_t* dentry)
 
 static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    LOCK_SCOPE(&file->inode->lock);
+    MUTEX_SCOPE(&file->inode->mutex);
 
     if (file->inode->private == NULL)
     {
@@ -72,7 +73,7 @@ static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count, uint64_t*
 
 static uint64_t ramfs_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
-    LOCK_SCOPE(&file->inode->lock);
+    MUTEX_SCOPE(&file->inode->mutex);
 
     if (file->flags & PATH_APPEND)
     {
@@ -110,7 +111,7 @@ static lookup_result_t ramfs_lookup(inode_t* dir, dentry_t* target)
 
 static uint64_t ramfs_create(inode_t* dir, dentry_t* target, path_flags_t flags)
 {
-    LOCK_SCOPE(&dir->lock);
+    MUTEX_SCOPE(&dir->mutex);
 
     if (dir->type != INODE_DIR)
     {
@@ -150,7 +151,7 @@ static uint64_t ramfs_create(inode_t* dir, dentry_t* target, path_flags_t flags)
 
 static void ramfs_truncate(inode_t* inode)
 {
-    LOCK_SCOPE(&inode->lock);
+    MUTEX_SCOPE(&inode->mutex);
 
     if (inode->type != INODE_FILE)
     {
@@ -177,7 +178,8 @@ static uint64_t ramfs_unlink(inode_t* parent, dentry_t* target)
     inode_t* inode = REF(target->inode);
     REF_DEFER(inode);
 
-    LOCK_SCOPE(&inode->lock);
+    MUTEX_SCOPE(&inode->mutex);
+
     inode->linkCount--;
     ramfs_dentry_deinit(target);
     return 0;

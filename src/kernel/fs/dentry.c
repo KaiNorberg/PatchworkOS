@@ -136,7 +136,8 @@ uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t co
     };
 
     LOCK_SCOPE(&dentry->lock);
-    LOCK_SCOPE(&dentry->inode->lock);
+
+    MUTEX_SCOPE(&dentry->inode->mutex);
 
     getdents_write(&ctx, dentry->inode->number, dentry->inode->type, ".");
     getdents_write(&ctx, dentry->parent->inode->number, dentry->parent->inode->type, "..");

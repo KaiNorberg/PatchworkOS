@@ -38,7 +38,7 @@ inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t
     inode->superblock = REF(superblock);
     inode->ops = ops;
     inode->fileOps = fileOps;
-    lock_init(&inode->lock);
+    mutex_init(&inode->mutex);
 
     vfs_add_inode(inode);
 
@@ -73,4 +73,42 @@ void inode_free(inode_t* inode)
     {
         heap_free(inode);
     }
+}
+
+void inode_notify_access(inode_t* inode)
+{
+    if (inode == NULL)
+    {
+        return;
+    }
+
+    MUTEX_SCOPE(&inode->mutex);
+
+    inode->accessTime = systime_unix_epoch();
+    // TODO: Sync to disk.
+}
+
+void inode_notify_modify(inode_t* inode)
+{
+    if (inode == NULL)
+    {
+        return;
+    }
+
+    MUTEX_SCOPE(&inode->mutex);
+    inode->modifyTime = systime_unix_epoch();
+    inode->changeTime = inode->modifyTime;
+    // TODO: Sync to disk.
+}
+
+void inode_notify_change(inode_t* inode)
+{
+    if (inode == NULL)
+    {
+        return;
+    }
+
+    MUTEX_SCOPE(&inode->mutex);
+    inode->changeTime = systime_unix_epoch();
+    // TODO: Sync to disk.
 }

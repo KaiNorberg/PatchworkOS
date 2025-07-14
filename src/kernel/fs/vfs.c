@@ -5,6 +5,7 @@
 #include "cpu/trap.h"
 #include "drivers/systime/systime.h"
 #include "fs/dentry.h"
+#include "fs/inode.h"
 #include "fs/mount.h"
 #include "fs/path.h"
 #include "log/log.h"
@@ -15,6 +16,7 @@
 #include "sched/sched.h"
 #include "sched/wait.h"
 #include "sync/lock.h"
+#include "sync/mutex.h"
 #include "sync/rwlock.h"
 #include "sys/list.h"
 #include "sysfs.h"
@@ -779,6 +781,7 @@ file_t* vfs_open(const pathname_t* pathname)
         }
     }
 
+    inode_notify_access(file->inode);
     return REF(file);
 }
 
@@ -863,6 +866,7 @@ uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2])
         return ERR;
     }
 
+    inode_notify_access(files[0]->inode);
     REF(files[0]);
     REF(files[1]);
     return 0;
@@ -940,11 +944,7 @@ uint64_t vfs_read(file_t* file, void* buffer, uint64_t count)
     file->pos = offset;
     if (result != ERR)
     {
-        inode_t* inode = file->inode;
-
-        LOCK_SCOPE(&inode->lock);
-        inode->accessTime = systime_unix_epoch();
-        inode->flags |= INODE_DIRTY;
+        inode_notify_access(file->inode);
     }
 
     return result;
@@ -997,12 +997,7 @@ uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count)
     file->pos = offset;
     if (result != ERR)
     {
-        inode_t* inode = file->inode;
-
-        LOCK_SCOPE(&inode->lock);
-        inode->modifyTime = systime_unix_epoch();
-        inode->changeTime = inode->modifyTime;
-        inode->flags |= INODE_DIRTY;
+        inode_notify_modify(file->inode);
     }
 
     return result;
@@ -1131,7 +1126,12 @@ void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    return file->ops->mmap(file, address, length, prot);
+    void* result = file->ops->mmap(file, address, length, prot);
+    if (result != NULL)
+    {
+        inode_notify_access(file->inode);
+    }
+    return result;
 }
 
 SYSCALL_DEFINE(SYS_MMAP, void*, fd_t fd, void* address, uint64_t length, prot_t prot)
@@ -1401,6 +1401,10 @@ uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count)
     uint64_t offset = file->pos;
     uint64_t result = file->path.dentry->ops->getdents(file->path.dentry, buffer, count, &offset);
     file->pos = offset;
+    if (result != ERR)
+    {
+        inode_notify_access(file->inode);
+    }
     return result;
 }
 
@@ -1449,8 +1453,7 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer)
     memset(buffer, 0, sizeof(stat_t));
 
     LOCK_SCOPE(&path.dentry->lock);
-    LOCK_SCOPE(&path.dentry->inode->lock);
-
+    MUTEX_SCOPE(&path.dentry->inode->mutex);
     buffer->number = path.dentry->inode->number;
     buffer->type = path.dentry->inode->type;
     buffer->size = path.dentry->inode->size;
@@ -1827,6 +1830,7 @@ uint64_t vfs_unlink(const pathname_t* pathname)
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
     if (dir->ops->unlink(dir, target.dentry) == ERR)
     {
+        mutex_release(&target.dentry->inode->mutex);
         return ERR;
     }
 
@@ -1835,11 +1839,7 @@ uint64_t vfs_unlink(const pathname_t* pathname)
     map_remove(&dentryCache.map, &targetKey);
     rwlock_write_release(&dentryCache.lock);
 
-    lock_acquire(&parent.dentry->inode->lock);
-    parent.dentry->inode->modifyTime = systime_unix_epoch();
-    parent.dentry->inode->changeTime = target.dentry->inode->modifyTime;
-    parent.dentry->inode->flags |= INODE_DIRTY;
-    lock_release(&parent.dentry->inode->lock);
+    inode_notify_change(target.dentry->inode);
 
     return 0;
 }
