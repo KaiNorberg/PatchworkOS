@@ -63,7 +63,11 @@ void log_init(void)
     com_init(COM1);
 #endif
 
+#ifndef NDEBUG
     LOG_INFO("Booting %s-kernel %s (Built %s %s)\n", OS_NAME, OS_VERSION, __DATE__, __TIME__);
+#else
+    LOG_INFO("Booting %s-kernel DEBUG %s (Built %s %s)\n", OS_NAME, OS_VERSION, __DATE__, __TIME__);
+#endif
     LOG_INFO("Copyright (C) 2025 Kai Norberg. MIT Licensed. See /usr/license/LICENSE for details.\n");
     LOG_INFO("min_level=%s outputs=%s%s%s\n", levelNames[state.config.minLevel],
         (state.config.outputs & LOG_OUTPUT_SERIAL) ? "serial " : "",
@@ -213,7 +217,7 @@ static void log_print_header(log_level_t level, const char* prefix)
 
     cpu_t* self = smp_self_unsafe();
 
-    int length = sprintf(state.timestampBuffer, "[%8llu.%03llu-%03d-%s-%-13s] ", seconds, milliseconds, self->id,
+    int length = sprintf(state.timestampBuffer, "[%5llu.%03llu-%03d-%s-%-13s] ", seconds, milliseconds, self->id,
         levelNames[level], prefix != NULL ? prefix : "unknown");
 
     log_write(state.timestampBuffer, length);

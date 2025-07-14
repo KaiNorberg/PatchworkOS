@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <sys/io.h>
 
 void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd)
 {
@@ -66,6 +67,18 @@ void vfs_ctx_get_cwd(vfs_ctx_t* ctx, path_t* outCwd)
 uint64_t vfs_ctx_set_cwd(vfs_ctx_t* ctx, const path_t* cwd)
 {
     LOCK_SCOPE(&ctx->lock);
+
+    if (cwd == NULL || cwd->dentry == NULL || cwd->dentry->inode == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (cwd->dentry->inode->type != INODE_DIR)
+    {
+        errno = ENOTDIR;
+        return ERR;
+    }
 
     path_put(&ctx->cwd);
     path_copy(&ctx->cwd, cwd);
