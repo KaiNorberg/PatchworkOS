@@ -70,5 +70,3 @@ typedef struct inode_ops
 inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, const inode_ops_t* ops,
     const file_ops_t* fileOps);
 void inode_free(inode_t* inode);
-
-uint64_t inode_sync(inode_t* inode);

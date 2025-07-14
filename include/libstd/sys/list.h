@@ -247,6 +247,7 @@ static inline void list_remove(list_entry_t* entry)
  */
 static inline void list_push(list_t* list, list_entry_t* entry)
 {
+    assert(entry->next == entry && entry->prev == entry);
     list_add(list->head.prev, &list->head, entry);
 }
 

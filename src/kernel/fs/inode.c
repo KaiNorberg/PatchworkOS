@@ -40,6 +40,8 @@ inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t
     inode->fileOps = fileOps;
     lock_init(&inode->lock);
 
+    vfs_add_inode(inode);
+
     return inode;
 }
 
@@ -71,20 +73,4 @@ void inode_free(inode_t* inode)
     {
         heap_free(inode);
     }
-}
-
-uint64_t inode_sync(inode_t* inode)
-{
-    if (inode == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (inode->superblock->ops != NULL && inode->superblock->ops->writeInode != NULL)
-    {
-        return inode->superblock->ops->writeInode(inode->superblock, inode);
-    }
-
-    return 0;
 }

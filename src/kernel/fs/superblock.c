@@ -38,14 +38,14 @@ void superblock_free(superblock_t* superblock)
 
     vfs_remove_superblock(superblock);
 
-    if (superblock->root != NULL)
-    {
-        DEREF(superblock->root);
-    }
-
     if (superblock->ops != NULL && superblock->ops->cleanup != NULL)
     {
         superblock->ops->cleanup(superblock);
+    }
+
+    if (superblock->root != NULL)
+    {
+        DEREF(superblock->root);
     }
 
     heap_free(superblock);

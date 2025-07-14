@@ -91,6 +91,7 @@ dentry_t* vfs_get_dentry(const dentry_t* parent, const char* name);
  */
 dentry_t* vfs_get_or_lookup_dentry(const path_t* parent, const char* name);
 
+uint64_t vfs_add_inode(inode_t* inode);
 uint64_t vfs_add_dentry(dentry_t* dentry);
 
 void vfs_remove_superblock(superblock_t* superblock);

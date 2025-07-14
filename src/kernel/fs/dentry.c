@@ -87,15 +87,14 @@ void dentry_make_positive(dentry_t* dentry, inode_t* inode)
     {
         dentry->inode = REF(inode);
         dentry->flags &= ~DENTRY_NEGATIVE;
+
+        if (dentry->parent != NULL && dentry->parent != dentry)
+        {
+            LOCK_SCOPE(&dentry->parent->lock);
+            list_push(&dentry->parent->children, &dentry->siblingEntry);
+        }
     }
     dentry->flags &= ~DENTRY_LOOKUP_PENDING;
-
-    if (dentry->parent != NULL && dentry->parent != dentry)
-    {
-        LOCK_SCOPE(&dentry->parent->lock);
-        list_remove(&dentry->siblingEntry);
-        list_push(&dentry->parent->children, &dentry->siblingEntry);
-    }
 
     wait_unblock(&dentry->lookupWaitQueue, WAIT_ALL);
 }

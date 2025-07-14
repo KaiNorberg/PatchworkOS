@@ -18,6 +18,7 @@
 #include "sync/rwlock.h"
 #include "sys/list.h"
 #include "sysfs.h"
+#include "utils/ref.h"
 #include "vfs_ctx.h"
 
 #include <assert.h>
@@ -121,6 +122,7 @@ uint64_t vfs_register_fs(filesystem_t* fs)
         }
     }
 
+    list_entry_init(&fs->entry);
     list_push(&filesystems.list, &fs->entry);
     return 0;
 }
@@ -364,6 +366,19 @@ dentry_t* vfs_get_or_lookup_dentry(const path_t* parent, const char* name)
     }
 }
 
+uint64_t vfs_add_inode(inode_t* inode)
+{
+    map_key_t key = inode_cache_key(inode->superblock->id, inode->number);
+
+    RWLOCK_WRITE_SCOPE(&inodeCache.lock);
+    if (map_insert(&inodeCache.map, &key, &inode->mapEntry) == ERR)
+    {
+        return ERR;
+    }
+
+    return 0;
+}
+
 uint64_t vfs_add_dentry(dentry_t* dentry)
 {
     map_key_t key = dentry_cache_key(dentry->parent->id, dentry->name);
@@ -578,6 +593,17 @@ uint64_t vfs_unmount(const pathname_t* mountpoint)
     if (!(path.dentry->flags & DENTRY_MOUNTPOINT))
     {
         errno = EINVAL;
+        return ERR;
+    }
+
+    if (path.dentry->superblock->ops->unmount == NULL)
+    {
+        errno = EPERM;
+        return ERR;
+    }
+
+    if (path.dentry->superblock->ops->unmount(path.dentry->superblock) == ERR)
+    {
         return ERR;
     }
 
@@ -1758,9 +1784,7 @@ SYSCALL_DEFINE(SYS_RENAME, uint64_t, const char* oldPathString, const char* newP
 
 uint64_t vfs_unlink(const pathname_t* pathname)
 {
-    errno = ENOSYS;
-    return ERR;
-    /*if (pathname == NULL)
+    if (pathname == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -1787,46 +1811,37 @@ uint64_t vfs_unlink(const pathname_t* pathname)
     }
     PATH_DEFER(&target);
 
-    lock_acquire(&target.dentry->lock);
-    if (target.dentry->flags & DENTRY_MOUNTPOINT)
+    if (target.dentry->inode->type == INODE_DIR)
     {
-        lock_release(&target.dentry->lock);
-        errno = EBUSY;
+        errno = EISDIR;
         return ERR;
     }
-    target.dentry->flags |= DENTRY_NEGATIVE | DENTRY_DONT_MOUNT;
-    lock_release(&target.dentry->lock);
 
-    if (parent.dentry->inode == NULL || parent.dentry->inode->ops == NULL || parent.dentry->inode->ops->remove == NULL)
+    inode_t* dir = parent.dentry->inode;
+    if (dir->ops == NULL || dir->ops->unlink == NULL)
     {
         errno = EPERM;
-        goto error;
+        return ERR;
     }
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    if (parent.dentry->inode->ops->remove(parent.dentry->inode, target.dentry) == ERR)
+    if (dir->ops->unlink(dir, target.dentry) == ERR)
     {
-        goto error;
+        return ERR;
     }
 
-    map_key_t targetKey = dentry_cache_key(parent.dentry->id, lastName);
+    map_key_t targetKey = dentry_cache_key(target.dentry->id, target.dentry->name);
     rwlock_write_acquire(&dentryCache.lock);
     map_remove(&dentryCache.map, &targetKey);
     rwlock_write_release(&dentryCache.lock);
 
     lock_acquire(&parent.dentry->inode->lock);
     parent.dentry->inode->modifyTime = systime_unix_epoch();
-    parent.dentry->inode->changeTime = parent.dentry->inode->modifyTime;
+    parent.dentry->inode->changeTime = target.dentry->inode->modifyTime;
     parent.dentry->inode->flags |= INODE_DIRTY;
     lock_release(&parent.dentry->inode->lock);
 
     return 0;
-
-error:
-    lock_acquire(&target.dentry->lock);
-    target.dentry->flags &= ~(DENTRY_NEGATIVE | DENTRY_DONT_MOUNT);
-    lock_release(&target.dentry->lock);
-    return ERR;*/
 }
 
 SYSCALL_DEFINE(SYS_UNLINK, uint64_t, const char* pathString)

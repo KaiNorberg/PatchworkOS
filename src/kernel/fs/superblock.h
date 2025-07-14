@@ -42,8 +42,8 @@ typedef struct superblock_ops
 {
     inode_t* (*allocInode)(superblock_t* superblock);
     void (*freeInode)(superblock_t* superblock, inode_t* inode);
-    uint64_t (*writeInode)(superblock_t* superblock, inode_t* inode);
     void (*cleanup)(superblock_t* superblock);
+    uint64_t (*unmount)(superblock_t* superblock);
 } superblock_ops_t;
 
 superblock_t* superblock_new(filesystem_t* fs, const char* deviceName, superblock_ops_t* ops, dentry_ops_t* dentryOps);
