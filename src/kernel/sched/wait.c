@@ -56,7 +56,8 @@ typedef enum
     WAIT_CLEANUP_REMOVE_FROM_LIST = 1 << 1,
 } wait_cleanup_flags_t;
 
-static void wait_block_cleanup(thread_t* thread, wait_result_t result, wait_queue_t* acquiredQueue, wait_cleanup_flags_t flags)
+static void wait_block_cleanup(thread_t* thread, wait_result_t result, wait_queue_t* acquiredQueue,
+    wait_cleanup_flags_t flags)
 {
     assert(atomic_load(&thread->state) == THREAD_UNBLOCKING);
 
@@ -203,7 +204,8 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount)
 
         if (atomic_exchange(&thread->state, THREAD_UNBLOCKING) == THREAD_BLOCKED)
         {
-            wait_block_cleanup(thread, WAIT_NORM, waitQueue, WAIT_CLEANUP_REMOVE_FROM_LIST | WAIT_CLEANUP_ACQUIRE_OWNER);
+            wait_block_cleanup(thread, WAIT_NORM, waitQueue,
+                WAIT_CLEANUP_REMOVE_FROM_LIST | WAIT_CLEANUP_ACQUIRE_OWNER);
             sched_push(thread, NULL, thread->wait.owner);
             amountUnblocked++;
             amount--;

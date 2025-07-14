@@ -17,8 +17,6 @@
 #include <sys/list.h>
 #include <sys/math.h>
 
-static ramfs_inode_t* root;
-
 static _Atomic(inode_number_t) newNumber = ATOMIC_VAR_INIT(0);
 
 static ramfs_inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, void* data, uint64_t size);
@@ -79,11 +77,10 @@ static uint64_t ramfs_create(inode_t* dir, dentry_t* target, path_flags_t flags)
 {
     ramfs_inode_t* inode = CONTAINER_OF(dir, ramfs_inode_t, inode);
     LOCK_SCOPE(&inode->inode.lock);
-    LOCK_SCOPE(&target->lock);
 
     if (inode->inode.type != INODE_DIR)
     {
-        LOG_ERR("ramfs_create: called using a non-directory inode.\n");
+        LOG_ERR("ramfs_create called using a non-directory inode.\n");
         errno = EINVAL;
         return ERR;
     }
@@ -108,6 +105,9 @@ static uint64_t ramfs_create(inode_t* dir, dentry_t* target, path_flags_t flags)
     REF_DEFER(&newInode->inode);
 
     dentry_make_positive(target, &newInode->inode);
+
+    // Grab a reference so the dentry stays in memory.
+    REF(target);
     return 0;
 }
 
@@ -117,7 +117,7 @@ static void ramfs_truncate(inode_t* inode)
 
     if (inode->type != INODE_FILE)
     {
-        LOG_ERR("ramfs_truncate: called using a non-file inode.\n");
+        LOG_ERR("ramfs_truncate called using a non-file inode.\n");
         return;
     }
 
@@ -136,8 +136,8 @@ static inode_t* ramfs_link(dentry_t* old, inode_t* newParent, const char* name)
 
 static uint64_t ramfs_remove(inode_t* parent, dentry_t* target)
 {
-    errno = ENOSYS;
-    return ERR;
+    DEREF(target); // Remove the extra reference we have.
+    return 0;
 }
 
 static inode_t* ramfs_rename(inode_t* oldParent, dentry_t* old, inode_t* newParent, const char* name)
@@ -303,14 +303,15 @@ static ramfs_inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t typ
 
 void ramfs_init(ram_disk_t* disk)
 {
-    LOG_INFO("ramfs: init\n");
-
+    LOG_INFO("registering ramfs\n");
     if (vfs_register_fs(&ramfs) == ERR)
     {
         panic(NULL, "Failed to register ramfs");
     }
+    LOG_INFO("mounting ramfs\n");
     if (vfs_mount(VFS_DEVICE_NAME_NONE, NULL, RAMFS_NAME, SUPER_NONE, disk->root) == ERR)
     {
         panic(NULL, "Failed to mount ramfs");
     }
+    LOG_INFO("ramfs initialized\n");
 }

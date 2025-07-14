@@ -67,8 +67,7 @@ static filesystem_t sysfs = {
 
 void sysfs_init(void)
 {
-    LOG_INFO("sysfs: init\n");
-
+    LOG_INFO("registering sysfs\n");
     if (vfs_register_fs(&sysfs) == ERR)
     {
         panic(NULL, "Failed to register sysfs");
@@ -77,6 +76,7 @@ void sysfs_init(void)
     {
         panic(NULL, "Failed to initialize default sysfs group");
     }
+    LOG_INFO("sysfs initialized\n");
 }
 
 sysfs_dir_t* sysfs_get_default(void)

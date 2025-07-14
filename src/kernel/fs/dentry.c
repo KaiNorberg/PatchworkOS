@@ -93,10 +93,11 @@ void dentry_make_positive(dentry_t* dentry, inode_t* inode)
     if (dentry->parent != NULL && dentry->parent != dentry)
     {
         LOCK_SCOPE(&dentry->parent->lock);
+        list_remove(&dentry->siblingEntry);
         list_push(&dentry->parent->children, &dentry->siblingEntry);
     }
 
-    wait_unblock(&dentry->lookupWaitQueue, UINT64_MAX);
+    wait_unblock(&dentry->lookupWaitQueue, WAIT_ALL);
 }
 
 uint64_t dentry_generic_getdirent(dentry_t* dentry, dirent_t* buffer, uint64_t amount)

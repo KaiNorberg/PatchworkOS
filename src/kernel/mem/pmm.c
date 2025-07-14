@@ -236,13 +236,13 @@ static void pmm_load_memory(efi_mem_map_t* memoryMap)
         }
         else
         {
-            LOG_INFO("pmm: reserve [0x%016lx-0x%016lx] pages=%d type=%s\n", desc->physicalStart,
+            LOG_INFO("reserve [0x%016lx-0x%016lx] pages=%d type=%s\n", desc->physicalStart,
                 (uint64_t)desc->physicalStart + desc->amountOfPages * PAGE_SIZE, desc->amountOfPages,
                 efiMemTypeToString[desc->type]);
         }
     }
 
-    LOG_INFO("pmm: memory %llu MB (usable %llu MB reserved %llu MB)\n", (pageAmount * PAGE_SIZE) / 1000000,
+    LOG_INFO("memory %llu MB (usable %llu MB reserved %llu MB)\n", (pageAmount * PAGE_SIZE) / 1000000,
         (freePageAmount * PAGE_SIZE) / 1000000, ((pageAmount - freePageAmount) * PAGE_SIZE) / 1000000);
 }
 
@@ -262,7 +262,7 @@ void* pmm_alloc(void)
     void* address = pmm_stack_alloc();
     if (address == NULL)
     {
-        LOG_WARN("pmm: failed to allocate single page, free=%llu pages\n", freePageAmount);
+        LOG_WARN("failed to allocate single page, free=%llu pages\n", freePageAmount);
         errno = ENOMEM;
         return NULL;
     }
@@ -275,8 +275,8 @@ void* pmm_alloc_bitmap(uint64_t count, uintptr_t maxAddr, uint64_t alignment)
     void* address = pmm_bitmap_alloc(count, maxAddr, alignment);
     if (address == NULL)
     {
-        LOG_WARN("pmm: failed to allocate %llu pages from bitmap, free=%llu pages, maxAddr=0x%lx\n", count,
-            freePageAmount, maxAddr);
+        LOG_WARN("failed to allocate %llu pages from bitmap, free=%llu pages, maxAddr=0x%lx\n", count, freePageAmount,
+            maxAddr);
         errno = ENOMEM;
         return NULL;
     }

@@ -19,18 +19,16 @@ void mutex_deinit(mutex_t* mtx)
     wait_queue_deinit(&mtx->waitQueue);
 }
 
-uint64_t mutex_acquire(mutex_t* mtx)
+void mutex_acquire(mutex_t* mtx)
 {
     LOCK_SCOPE(&mtx->lock);
 
-    if (WAIT_BLOCK_LOCK(&mtx->waitQueue, &mtx->lock, !mtx->isAcquired) != WAIT_NORM)
+    while (WAIT_BLOCK_LOCK(&mtx->waitQueue, &mtx->lock, !mtx->isAcquired) != WAIT_NORM)
     {
-        errno = EINTR;
-        return ERR;
+        // Do nothing.
     }
 
     mtx->isAcquired = true;
-    return 0;
 }
 
 void mutex_release(mutex_t* mtx)

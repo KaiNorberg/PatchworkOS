@@ -25,6 +25,7 @@ typedef enum
     DENTRY_MOUNTPOINT = 1 << 0,
     DENTRY_NEGATIVE = 1 << 1,
     DENTRY_LOOKUP_PENDING = 1 << 2,
+    DENTRY_DONT_MOUNT = 1 << 3, //!< Is being removed meaning it should not be mounted.
 } dentry_flags_t;
 
 typedef struct dentry

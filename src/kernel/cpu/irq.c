@@ -27,7 +27,7 @@ void irq_dispatch(trap_frame_t* trapFrame)
 
     if (!handled)
     {
-        LOG_WARN("irq: unhandled interrupt %llu (vector=0x%x)\n", irq, trapFrame->vector);
+        LOG_WARN("unhandled interrupt %llu (vector=0x%x)\n", irq, trapFrame->vector);
     }
 
     // TODO: Replace with io apic
@@ -42,7 +42,7 @@ void irq_install(irq_handler_t handler, uint8_t irq)
         {
             handlers[irq][i] = handler;
             pic_clear_mask(irq);
-            LOG_INFO("irq: installed handler for irq=%d slot=%llu\n", irq, i);
+            LOG_INFO("installed handler for irq=%d slot=%llu\n", irq, i);
             return;
         }
     }

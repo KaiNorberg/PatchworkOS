@@ -15,6 +15,7 @@
 
 static _Atomic(clock_t) accumulator;
 static time_t bootEpoch;
+static bool initialized = false;
 
 static uint8_t cmos_read(uint8_t reg)
 {
@@ -79,16 +80,27 @@ void systime_init(void)
     systime_read_cmos_time();
     systime_rtc_init();
 
-    LOG_INFO("systime: init epoch=%d\n", systime_unix_epoch());
+    initialized = true;
+    LOG_INFO("systime initialized epoch=%d\n", systime_unix_epoch());
 }
 
 clock_t systime_uptime(void)
 {
+    if (!initialized)
+    {
+        return 0;
+    }
+
     return (atomic_load(&accumulator) + hpet_read_counter()) * hpet_nanoseconds_per_tick();
 }
 
 time_t systime_unix_epoch(void)
 {
+    if (!initialized)
+    {
+        return 0;
+    }
+
     return bootEpoch + systime_uptime() / CLOCKS_PER_SEC;
 }
 
@@ -97,7 +109,7 @@ void systime_cpu_timer_init(void)
     cpu_t* self = smp_self_unsafe();
     self->systime.apicTicksPerNs = apic_timer_ticks_per_ns();
     self->systime.nextDeadline = CLOCKS_NEVER;
-    LOG_INFO("systime: timer init\n");
+    LOG_INFO("cpu apic timer initialized ticksPerNs=%lu\n", self->systime.apicTicksPerNs);
 }
 
 void systime_timer_trap(trap_frame_t* trapFrame, cpu_t* self)

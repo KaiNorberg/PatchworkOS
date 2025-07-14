@@ -137,7 +137,7 @@ static void loader_process_entry(void)
     char** argv = loader_setup_argv(thread, rsp);
     rsp = (void*)ROUND_DOWN((uint64_t)argv - 1, 16);
 
-    LOG_DEBUG("loader: jump to user space path=%s pid=%d\n", thread->process->argv.buffer[0], thread->process->id);
+    LOG_DEBUG("jump to user space path=%s pid=%d\n", thread->process->argv.buffer[0], thread->process->id);
     loader_jump_to_user_space(thread->process->argv.amount, argv, rsp, rip);
 }
 
@@ -182,7 +182,7 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
         return NULL;
     }
 
-    LOG_INFO("loader: spawn path=%s pid=%d\n", argv[0], child->id);
+    LOG_INFO("spawn path=%s pid=%d\n", argv[0], child->id);
     return childThread;
 }
 

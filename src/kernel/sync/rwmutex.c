@@ -25,24 +25,22 @@ void rwmutex_deinit(rwmutex_t* mtx)
     wait_queue_deinit(&mtx->writerQueue);
 }
 
-uint64_t rwmutex_read_acquire(rwmutex_t* mtx)
+void rwmutex_read_acquire(rwmutex_t* mtx)
 {
     if (mtx == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return;
     }
 
     LOCK_SCOPE(&mtx->lock);
 
-    if (WAIT_BLOCK_LOCK(&mtx->readerQueue, &mtx->lock, !(mtx->isWriterActive || mtx->waitingWriters > 0)) != WAIT_NORM)
+    while (
+        WAIT_BLOCK_LOCK(&mtx->readerQueue, &mtx->lock, !(mtx->isWriterActive || mtx->waitingWriters > 0)) != WAIT_NORM)
     {
-        errno = EINTR;
-        return ERR;
+        // Do nothing.
     }
 
     mtx->activeReaders++;
-    return 0;
 }
 
 uint64_t rwmutex_read_try_acquire(rwmutex_t* mtx)
@@ -82,27 +80,25 @@ void rwmutex_read_release(rwmutex_t* mtx)
     }
 }
 
-uint64_t rwmutex_write_acquire(rwmutex_t* mtx)
+void rwmutex_write_acquire(rwmutex_t* mtx)
 {
     if (mtx == NULL)
     {
-        errno = EINVAL;
-        return ERR;
+        return;
     }
 
     LOCK_SCOPE(&mtx->lock);
 
     mtx->waitingWriters++;
 
-    if (WAIT_BLOCK_LOCK(&mtx->writerQueue, &mtx->lock, !(mtx->activeReaders > 0 || mtx->isWriterActive)) != WAIT_NORM)
+    while (
+        WAIT_BLOCK_LOCK(&mtx->writerQueue, &mtx->lock, !(mtx->activeReaders > 0 || mtx->isWriterActive)) != WAIT_NORM)
     {
-        errno = EINTR;
-        return ERR;
+        // Do nothing.
     }
 
     mtx->waitingWriters--;
     mtx->isWriterActive = true;
-    return 0;
 }
 
 uint64_t rwmutex_write_try_acquire(rwmutex_t* mtx)

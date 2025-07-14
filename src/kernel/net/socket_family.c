@@ -100,7 +100,7 @@ uint64_t socket_family_register(socket_family_t* family)
         list_push(&family->factories, &factory->entry);
     }
 
-    LOG_INFO("sock: registered family %s\n", family->name);
+    LOG_INFO("registered family %s\n", family->name);
     return 0;
 
 error:;
@@ -121,6 +121,6 @@ error:;
 void socket_family_unregister(socket_family_t* family)
 {
     sysfs_dir_deinit(&family->dir);
-    LOG_INFO("sock: unregistered family %s\n", family->name);
+    LOG_INFO("unregistered family %s\n", family->name);
     return;
 }

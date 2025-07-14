@@ -190,7 +190,7 @@ static file_ops_t noteOps = {
 static void process_inode_cleanup(inode_t* inode)
 {
     process_t* process = inode->private;
-    LOG_DEBUG("process: cleanup pid=%d\n", process->id);
+    LOG_DEBUG("cleaning up process pid=%d\n", process->id);
     space_deinit(&process->space);
     argv_deinit(&process->argv);
     wait_queue_deinit(&process->queue);
@@ -309,13 +309,13 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
         process->parent = NULL;
     }
 
-    LOG_INFO("process: new pid=%d parent=%d priority=%d\n", process->id, parent ? parent->id : 0, priority);
+    LOG_INFO("new pid=%d parent=%d priority=%d\n", process->id, parent ? parent->id : 0, priority);
     return process;
 }
 
 void process_free(process_t* process)
 {
-    LOG_INFO("process: free pid=%d\n", process->id);
+    LOG_INFO("freeing process pid=%d\n", process->id);
     assert(list_is_empty(&process->threads.list));
 
     if (process->parent != NULL)
@@ -333,7 +333,7 @@ void process_free(process_t* process)
         process->parent = NULL;
     }
 
-    vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_cleanup
+    vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_inode_cleanup
     wait_unblock(&process->queue, WAIT_ALL);
     process_dir_deinit(&process->dir);
 }
@@ -362,8 +362,6 @@ void process_backend_init(void)
 {
     rwlock_init(&treeLock);
 
-    LOG_INFO("process backend: init\n");
-
     if (sysfs_group_init(&procGroup, PATHNAME("/proc")) == ERR)
     {
         panic(NULL, "Failed to initialize process sysfs group");
@@ -373,12 +371,12 @@ void process_backend_init(void)
         panic(NULL, "Failed to initialize process sysfs directory");
     }
 
-    LOG_INFO("process backend: create kernel process\n");
     kernelProcess = process_new(NULL, NULL, NULL, PRIORITY_MAX - 1);
     if (kernelProcess == NULL)
     {
         panic(NULL, "Failed to create kernel process");
     }
+    LOG_INFO("kernel process created with pid=%d\n", kernelProcess->id);
 }
 
 process_t* process_get_kernel(void)

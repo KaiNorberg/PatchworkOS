@@ -73,6 +73,33 @@ uint64_t vfs_ctx_set_cwd(vfs_ctx_t* ctx, const path_t* cwd)
     return 0;
 }
 
+SYSCALL_DEFINE(SYS_CHDIR, uint64_t, const char* pathString)
+{
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+
+    if (!syscall_is_string_valid(space, pathString))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    pathname_t pathname;
+    if (pathname_init(&pathname, pathString) == ERR)
+    {
+        return ERR;
+    }
+
+    path_t path = PATH_EMPTY;
+    if (vfs_walk(&path, &pathname, WALK_NONE) == ERR)
+    {
+        return ERR;
+    }
+    PATH_DEFER(&path);
+
+    return vfs_ctx_set_cwd(&process->vfsCtx, &path);
+}
+
 fd_t vfs_ctx_open(vfs_ctx_t* ctx, file_t* file)
 {
     LOCK_SCOPE(&ctx->lock);

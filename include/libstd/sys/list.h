@@ -6,6 +6,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <assert.h>
 
 /**
  * @brief Doubly linked list header.

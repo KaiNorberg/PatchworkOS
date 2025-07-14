@@ -17,7 +17,7 @@ void main(boot_info_t* bootInfo)
 {
     kernel_init(bootInfo);
 
-    LOG_INFO("main: spawning init thread\n");
+    LOG_INFO("spawning init thread\n");
     const char* argv[] = {"/bin/init", NULL};
     thread_t* initThread = loader_spawn(argv, PRIORITY_MAX_USER - 2, NULL);
     if (initThread == NULL)
@@ -39,6 +39,6 @@ void main(boot_info_t* bootInfo)
 
     sched_push(initThread, NULL, NULL);
 
-    LOG_INFO("main: done\n");
+    LOG_INFO("done with boot thread\n");
     sched_done_with_boot_thread();
 }

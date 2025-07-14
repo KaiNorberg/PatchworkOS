@@ -1,5 +1,10 @@
 #include "rwlock.h"
 
+#ifndef NDEBUG
+#include "drivers/systime/systime.h"
+#include "log/panic.h"
+#endif
+
 void rwlock_init(rwlock_t* lock)
 {
     atomic_init(&lock->readTicket, 0);
@@ -14,15 +19,33 @@ void rwlock_read_acquire(rwlock_t* lock)
 {
     cli_push();
 
+#ifndef NDEBUG
+    clock_t start = systime_uptime();
+#endif
+
     uint_fast16_t ticket = atomic_fetch_add(&lock->readTicket, 1);
 
     while (atomic_load(&lock->readServe) != ticket)
     {
         asm volatile("pause");
+#ifndef NDEBUG
+        clock_t now = systime_uptime();
+        if (start != 0 && now - start > RWLOCK_DEADLOCK_TIMEOUT)
+        {
+            panic(NULL, "Deadlock in rwlock_read_acquire detected");
+        }
+#endif
     }
 
     while (atomic_load(&lock->writeServe) != atomic_load(&lock->writeTicket))
     {
+#ifndef NDEBUG
+        clock_t now = systime_uptime();
+        if (start != 0 && now - start > RWLOCK_DEADLOCK_TIMEOUT)
+        {
+            panic(NULL, "Deadlock in rwlock_read_acquire detected");
+        }
+#endif
         asm volatile("pause");
     }
 
@@ -37,50 +60,50 @@ void rwlock_read_release(rwlock_t* lock)
     cli_pop();
 }
 
-void rwlock_upgrade_read_to_write(rwlock_t* lock)
-{
-    atomic_fetch_sub(&lock->activeReaders, 1);
-    atomic_fetch_add(&lock->readServe, 1);
-
-    uint_fast16_t writeTicket = atomic_fetch_add(&lock->writeTicket, 1);
-
-    while (atomic_load(&lock->writeServe) != writeTicket)
-    {
-        asm volatile("pause");
-    }
-
-    while (atomic_load(&lock->activeReaders) > 0)
-    {
-        asm volatile("pause");
-    }
-
-    bool expected = false;
-    while (!atomic_compare_exchange_weak(&lock->activeWriter, &expected, true))
-    {
-        expected = false;
-        asm volatile("pause");
-    }
-}
-
 void rwlock_write_acquire(rwlock_t* lock)
 {
     cli_push();
+
+#ifndef NDEBUG
+    clock_t start = systime_uptime();
+#endif
 
     uint_fast16_t ticket = atomic_fetch_add(&lock->writeTicket, 1);
 
     while (atomic_load(&lock->writeServe) != ticket)
     {
+#ifndef NDEBUG
+        clock_t now = systime_uptime();
+        if (start != 0 && now - start > RWLOCK_DEADLOCK_TIMEOUT)
+        {
+            panic(NULL, "Deadlock in rwlock_write_acquire detected");
+        }
+#endif
         asm volatile("pause");
     }
 
     while (atomic_load(&lock->activeReaders) > 0)
     {
+#ifndef NDEBUG
+        clock_t now = systime_uptime();
+        if (start != 0 && now - start > RWLOCK_DEADLOCK_TIMEOUT)
+        {
+            panic(NULL, "Deadlock in rwlock_write_acquire detected");
+        }
+#endif
         asm volatile("pause");
     }
 
     bool expected = false;
     while (!atomic_compare_exchange_weak(&lock->activeWriter, &expected, true))
     {
+#ifndef NDEBUG
+        clock_t now = systime_uptime();
+        if (start != 0 && now - start > RWLOCK_DEADLOCK_TIMEOUT)
+        {
+            panic(NULL, "Deadlock in rwlock_write_acquire detected");
+        }
+#endif
         expected = false;
         asm volatile("pause");
     }

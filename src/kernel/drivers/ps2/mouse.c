@@ -100,6 +100,11 @@ void ps2_mouse_init(void)
     }
 
     mouse = mouse_new("ps2");
+    if (mouse == NULL)
+    {
+        panic(NULL, "failed to create ps2 mouse");
+    }
+
     irq_install(ps2_mouse_irq, IRQ_PS2_AUX);
-    LOG_INFO("ps2: mouse\n");
+    LOG_INFO("ps2 mouse initialized\n");
 }

@@ -9,14 +9,14 @@ static sysfs_group_t group;
 
 void net_init(void)
 {
-    LOG_INFO("net: init\n");
-
     if (sysfs_group_init(&group, PATHNAME("/net")) == ERR)
     {
         panic(NULL, "Failed to initialize network sysfs group");
     }
 
     net_local_init();
+
+    LOG_INFO("networking initialized\n");
 }
 
 sysfs_dir_t* net_get_dir(void)

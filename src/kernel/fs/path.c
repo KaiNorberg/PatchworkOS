@@ -282,7 +282,7 @@ uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char
     if (current.dentry->flags & DENTRY_MOUNTPOINT)
     {
         path_t nextRoot = PATH_EMPTY;
-        if (vfs_mountpoint_to_mount_root(&nextRoot, &current) == ERR)
+        if (vfs_mountpoint_to_fs_root(&nextRoot, &current) == ERR)
         {
             lock_release(&current.dentry->lock);
             return ERR;
@@ -436,6 +436,30 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* st
             break;
         }
         lock_release(&current.dentry->lock);
+    }
+
+    if (flags & WALK_MOUNTPOINT_TO_ROOT)
+    {
+        // Avoid race condition between check of dentry flag and fs root retrival by just calling
+        // vfs_mountpoint_to_fs_root() and checking for the error.
+        path_t outRoot = PATH_EMPTY;
+        uint64_t result = vfs_mountpoint_to_fs_root(&outRoot, &current);
+        if (result == ERR)
+        {
+            if (errno == ENOENT) // Is not a mountpoint.
+            {
+                path_copy(outPath, &current);
+                return 0;
+            }
+            else // Other error.
+            {
+                return ERR;
+            }
+        }
+        PATH_DEFER(&outRoot);
+
+        path_copy(outPath, &outRoot);
+        return 0;
     }
 
     path_copy(outPath, &current);

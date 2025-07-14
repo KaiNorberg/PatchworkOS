@@ -127,12 +127,11 @@ static void sched_init_spawn_boot_thread(void)
     atomic_store(&thread->state, THREAD_RUNNING);
     self->sched.runThread = thread;
 
-    LOG_INFO("sched: spawned boot thread pid=%d tid=%d\n", thread->process->id, thread->id);
+    LOG_INFO("spawned boot thread pid=%d tid=%d\n", thread->process->id, thread->id);
 }
 
 void sched_init(void)
 {
-    LOG_INFO("sched: init\n");
     sched_init_spawn_boot_thread();
 
     wait_queue_init(&sleepQueue);
@@ -196,7 +195,7 @@ void sched_process_exit(uint64_t status)
     thread_t* thread = ctx->runThread;
     process_t* process = thread->process;
 
-    LOG_DEBUG("sched: process exit pid=%d tid=%d status=%llu\n", process->id, thread->id, status);
+    LOG_DEBUG("process exit pid=%d tid=%d status=%llu\n", process->id, thread->id, status);
 
     if (atomic_exchange(&thread->state, THREAD_ZOMBIE) != THREAD_RUNNING)
     {
@@ -226,7 +225,7 @@ void sched_process_exit(uint64_t status)
 
     if (killCount > 0)
     {
-        LOG_DEBUG("sched: sent kill note to %llu threads in process pid=%d\n", killCount, process->id);
+        LOG_DEBUG("sent kill note to %llu threads in process pid=%d\n", killCount, process->id);
     }
 
     smp_put();

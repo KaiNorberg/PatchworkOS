@@ -50,7 +50,7 @@ void acpi_init(xsdp_t* xsdp)
         memcpy(oemId, table->oemId, 6);
         oemId[6] = '\0';
 
-        LOG_INFO("acpi: %s 0x%016lx 0x%06lx v%02X %-8s\n", signature, PML_HIGHER_TO_LOWER(table), table->length,
+        LOG_INFO("%s 0x%016lx 0x%06lx v%02X %-8s\n", signature, PML_HIGHER_TO_LOWER(table), table->length,
             table->revision, oemId);
 
         if (!acpi_is_checksum_valid(table, table->length))

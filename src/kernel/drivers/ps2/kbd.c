@@ -73,6 +73,11 @@ void ps2_kbd_init(void)
     }
 
     kbd = kbd_new("ps2");
+    if (kbd == NULL)
+    {
+        panic(NULL, "failed to create ps2 kbd");
+    }
+
     irq_install(ps2_kbd_irq, IRQ_PS2_KBD);
-    LOG_INFO("ps2: kbd\n");
+    LOG_INFO("ps2 kbd initialized\n");
 }

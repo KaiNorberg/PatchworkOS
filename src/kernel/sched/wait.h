@@ -1,7 +1,7 @@
 #pragma once
 
-#include "sync/lock.h"
 #include "cpu/regs.h"
+#include "sync/lock.h"
 
 #include <sys/list.h>
 #include <sys/proc.h>
@@ -161,10 +161,10 @@ typedef struct wait_entry
 
 typedef enum
 {
-    WAIT_NORM = 0, //!< Normal wait result
+    WAIT_NORM = 0,    //!< Normal wait result
     WAIT_TIMEOUT = 1, //!< Wait timed out
-    WAIT_NOTE = 2, //!< Wait was interrupted by a note
-    WAIT_ERROR = 3 //!< Wait encountered an error
+    WAIT_NOTE = 2,    //!< Wait was interrupted by a note
+    WAIT_ERROR = 3    //!< Wait encountered an error
 } wait_result_t;
 
 typedef struct
@@ -204,7 +204,8 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount);
  * @ingroup kernel_sched_wait
  *
  * The `wait_block_setup()` function adds the currently running thread to the provided wait queues, sets the threads
- * state and disables interrupts. But it does not yet actually block, the thread will continue executing code and will return from the function.
+ * state and disables interrupts. But it does not yet actually block, the thread will continue executing code and will
+ * return from the function.
  *
  * @param waitQueues Array of wait queues to add the thread to.
  * @param amount Number of wait queues to add the thread to.
@@ -217,8 +218,9 @@ uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t ti
  * @brief Cancel blocking.
  * @ingroup kernel_sched_wait
  *
- * The `wait_block_cancel()` function cancels the blocking of the currently running thread. Should only be called after `wait_block_setup()` has been called.
- * It removes the thread from the wait queues and sets the threads state to `THREAD_RUNNING`. It also always enables interrupts.
+ * The `wait_block_cancel()` function cancels the blocking of the currently running thread. Should only be called after
+ * `wait_block_setup()` has been called. It removes the thread from the wait queues and sets the threads state to
+ * `THREAD_RUNNING`. It also always enables interrupts.
  *
  */
 void wait_block_cancel(wait_result_t result);
@@ -227,8 +229,9 @@ void wait_block_cancel(wait_result_t result);
  * @brief Block the currently running thread.
  * @ingroup kernel_sched_wait
  *
- * The `wait_block_do()` function blocks the currently running thread. Should only be called after `wait_block_setup()` has been called.
- * It removes the thread from the wait queues and sets the threads state to `THREAD_BLOCKED`. When the thread is rescheduled interrupts will be enabled.
+ * The `wait_block_do()` function blocks the currently running thread. Should only be called after `wait_block_setup()`
+ * has been called. It removes the thread from the wait queues and sets the threads state to `THREAD_BLOCKED`. When the
+ * thread is rescheduled interrupts will be enabled.
  *
  * @return wait_result_t Check 'wait_result_t' definition for more.
  */

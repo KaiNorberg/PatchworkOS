@@ -4,6 +4,8 @@
 
 #include "cpu/trap.h"
 
+#define RWLOCK_DEADLOCK_TIMEOUT (CLOCKS_PER_SEC / 10)
+
 typedef struct
 {
     atomic_uint_fast16_t readTicket;

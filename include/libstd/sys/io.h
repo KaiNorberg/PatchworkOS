@@ -224,11 +224,11 @@ uint64_t chdir(const char* path);
  */
 typedef enum
 {
-    POLLNONE = 0,       //!< None
-    POLLIN = (1 << 0),  //!< File descriptor is ready to read.
-    POLLOUT = (1 << 1), //!< File descriptor is ready to write.
-    POLLERR = (1 << 2), //!< File descriptor caused an error.
-    POLLHUP = (1 << 3), //!< Stream socket peer closed connection, or shut down writing of connection.
+    POLLNONE = 0,        //!< None
+    POLLIN = (1 << 0),   //!< File descriptor is ready to read.
+    POLLOUT = (1 << 1),  //!< File descriptor is ready to write.
+    POLLERR = (1 << 2),  //!< File descriptor caused an error.
+    POLLHUP = (1 << 3),  //!< Stream socket peer closed connection, or shut down writing of connection.
     POLLNVAL = (1 << 4), //!< Invalid file descriptor.
 } poll_events_t;
 

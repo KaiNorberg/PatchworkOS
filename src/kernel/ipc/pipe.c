@@ -95,7 +95,7 @@ static void pipe_cleanup(file_t* file)
     }
 
     lock_release(&private->lock);
-    LOG_DEBUG("pipe: cleanup\n");
+    LOG_DEBUG("cleanup\n");
 }
 
 static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)

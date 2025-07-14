@@ -3,7 +3,13 @@
 #include <stdatomic.h>
 
 #include "cpu/trap.h"
+#ifndef NDEBUG
+#include "drivers/systime/systime.h"
+#include "log/panic.h"
+#endif
 #include "defs.h"
+
+#define LOCK_DEADLOCK_TIMEOUT (CLOCKS_PER_SEC / 10)
 
 typedef struct
 {
@@ -31,11 +37,23 @@ static inline void lock_acquire(lock_t* lock)
 {
     cli_push();
 
+#ifndef NDEBUG
+    clock_t start = systime_uptime();
+#endif
+
     // Overflow does not matter
     uint_fast16_t ticket = atomic_fetch_add_explicit(&lock->nextTicket, 1, memory_order_relaxed);
     while (atomic_load_explicit(&lock->nowServing, memory_order_acquire) != ticket)
     {
         asm volatile("pause");
+
+#ifndef NDEBUG
+        clock_t now = systime_uptime();
+        if (start != 0 && now - start > LOCK_DEADLOCK_TIMEOUT)
+        {
+            panic(NULL, "Deadlock in lock_acquire detected");
+        }
+#endif
     }
 }
 

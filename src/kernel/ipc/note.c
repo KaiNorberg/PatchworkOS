@@ -89,14 +89,14 @@ bool note_dispatch(trap_frame_t* trapFrame, cpu_t* self)
 
     thread_t* thread = sched_thread();
     note_queue_t* queue = &thread->notes;
-    // LOG_INFO("note_dispatch: %p %p\n", thread, queue);
+    // LOG_INFO("%p %p\n", thread, queue);
 
     note_t note;
     while (note_queue_pop(queue, &note))
     {
         if (strcmp(note.message, "kill") == 0) // TODO: Fix bug.
         {
-            LOG_INFO("note: kill note received tid=%d pid=%d\n", thread->id, thread->process->id);
+            LOG_INFO("kill note received tid=%d pid=%d\n", thread->id, thread->process->id);
 
             sched_process_exit(0);
             sched_schedule(trapFrame, self);
@@ -104,7 +104,7 @@ bool note_dispatch(trap_frame_t* trapFrame, cpu_t* self)
         }
         else
         {
-            LOG_WARN("note: unknown note type '%s' tid=%d pid=%d\n", note.message, thread->id, thread->process->id);
+            LOG_WARN("unknown note type '%s' tid=%d pid=%d\n", note.message, thread->id, thread->process->id);
             // TODO: Unknown note, send to userspace
         }
     }

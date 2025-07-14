@@ -33,6 +33,8 @@ typedef enum
 {
     WALK_NONE = 0,
     WALK_NEGATIVE_IS_OK = 1 << 0, //!< If a negative dentry is ok, if not specified then it is considered an error.
+    WALK_MOUNTPOINT_TO_ROOT =
+        1 << 1, //!< If the pathname points to a mountpoint, return the root of the mounted filesystem.
 } walk_flags_t;
 
 typedef struct path_flag_entry
@@ -96,13 +98,23 @@ void path_put(path_t* path);
  * @brief Traverse a single component of a path from a parent path.
  * @ingroup kernel_vfs
  *
- * @param outPath The output path, even on success it might contain a negative dentry, always check.
+ * @param outPath The output path.
  * @param parent The parent path.
  * @param name The name of the child dentry.
  * @return On success, 0. On error, ERR and errno is set.
  */
 uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char* name, walk_flags_t flags);
 
+/**
+ * @brief Traverse a path from a specified starting path.
+ * @ingroup kernel_vfs
+ *
+ * @param outPath The output path.
+ * @param pathname The patname to traverse to.
+ * @param start The path to start at.
+ * @param flags Flags for the path walk.
+ * @return On success, 0. On error, ERR and errno is set.
+ */
 uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* start, walk_flags_t flags);
 uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* start, char* outLastName,
     walk_flags_t flags);

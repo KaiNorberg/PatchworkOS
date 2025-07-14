@@ -16,7 +16,7 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
-// TODO: Implement improved caching, LRU. Let the map_t handle static buffer + wrapper?
+// TODO: Implement improved caching, LRU.
 // TODO: Implement per-process namespaces.
 // TODO: Implement literally everything else.
 
@@ -67,7 +67,7 @@ uint64_t vfs_unregister_fs(filesystem_t* fs);
 filesystem_t* vfs_get_fs(const char* name);
 
 uint64_t vfs_get_global_root(path_t* outRoot);
-uint64_t vfs_mountpoint_to_mount_root(path_t* outRoot, const path_t* mountpoint);
+uint64_t vfs_mountpoint_to_fs_root(path_t* outRoot, const path_t* mountpoint);
 
 inode_t* vfs_get_inode(superblock_t* superblock, inode_number_t number);
 

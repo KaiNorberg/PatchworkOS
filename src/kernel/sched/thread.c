@@ -59,13 +59,13 @@ thread_t* thread_new(process_t* process, void* entry)
     memset(&thread->kernelStack, 0, CONFIG_KERNEL_STACK);
 
     list_push(&process->threads.list, &thread->processEntry);
-    LOG_DEBUG("thread: created tid=%d pid=%d entry=%p\n", thread->id, process->id, entry);
+    LOG_DEBUG("created tid=%d pid=%d entry=%p\n", thread->id, process->id, entry);
     return thread;
 }
 
 void thread_free(thread_t* thread)
 {
-    LOG_DEBUG("thread: freeing tid=%d pid=%d\n", thread->id, thread->process->id);
+    LOG_DEBUG("freeing tid=%d pid=%d\n", thread->id, thread->process->id);
     process_t* process = thread->process;
 
     lock_acquire(&process->threads.lock);

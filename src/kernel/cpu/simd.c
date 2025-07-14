@@ -33,7 +33,7 @@ static void simd_xsave_init(void)
 
 void simd_cpu_init(void)
 {
-    LOG_INFO("simd: init\n");
+    LOG_INFO("cpu simd initialized\n");
     cr0_write(cr0_read() & ~((uint64_t)CR0_EMULATION));
     cr0_write(cr0_read() | CR0_MONITOR_CO_PROCESSOR | CR0_NUMERIC_ERROR_ENABLE);
 
@@ -41,7 +41,7 @@ void simd_cpu_init(void)
 
     if (cpuid_is_xsave_avail())
     {
-        LOG_INFO("simd: xsave available\n");
+        LOG_INFO("xsave available\n");
         simd_xsave_init();
     }
 

@@ -66,7 +66,7 @@ static void local_socket_deinit(socket_t* sock)
         return;
     }
 
-    LOG_INFO("local socket: deinit\n");
+    LOG_INFO("deinit\n");
 
     lock_acquire(&data->lock);
 

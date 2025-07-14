@@ -53,10 +53,7 @@ static uint64_t socket_data_read(file_t* file, void* buf, size_t count, uint64_t
     }
     else
     {
-        if (rwmutex_read_acquire(&sock->mutex) == ERR)
-        {
-            return ERR;
-        }
+        rwmutex_read_acquire(&sock->mutex);
     }
 
     if (sock->currentState != SOCKET_CONNECTED)
@@ -95,10 +92,7 @@ static uint64_t socket_data_write(file_t* file, const void* buf, size_t count, u
     }
     else
     {
-        if (rwmutex_read_acquire(&sock->mutex) == ERR)
-        {
-            return ERR;
-        }
+        rwmutex_read_acquire(&sock->mutex);
     }
 
     if (sock->currentState != SOCKET_CONNECTED)
@@ -269,10 +263,7 @@ static uint64_t socket_accept_open(file_t* file)
     }
     else
     {
-        if (rwmutex_read_acquire(&sock->mutex) == ERR)
-        {
-            return ERR;
-        }
+        rwmutex_read_acquire(&sock->mutex);
     }
 
     if (sock->currentState != SOCKET_LISTENING)
@@ -510,10 +501,7 @@ uint64_t socket_start_transition(socket_t* sock, socket_state_t state)
     }
     else
     {
-        if (rwmutex_write_acquire(&sock->mutex) == ERR)
-        {
-            return ERR;
-        }
+        rwmutex_read_acquire(&sock->mutex);
     }
 
     if (!socket_can_transition(sock->currentState, state))

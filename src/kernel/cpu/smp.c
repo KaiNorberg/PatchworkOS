@@ -86,7 +86,7 @@ void smp_others_init(void)
     uint8_t lapicId = lapic_id();
 
     cpus[0]->lapicId = lapicId;
-    LOG_INFO("cpu %d: bootstrap cpu, ready\n", (uint64_t)cpus[0]->id);
+    LOG_INFO("bootstrap cpu, ready\n", (uint64_t)cpus[0]->id);
 
     madt_t* madt = madt_get();
     madt_lapic_t* record;
@@ -124,7 +124,7 @@ void smp_entry(void)
 
     kernel_other_init();
 
-    LOG_INFO("cpu %d: ready\n", (uint64_t)cpu->id);
+    LOG_INFO("ready\n", (uint64_t)cpu->id);
     isReady = true;
 
     sched_idle_loop();

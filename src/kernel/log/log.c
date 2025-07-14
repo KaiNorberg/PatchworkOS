@@ -31,7 +31,8 @@ static const char* levelNames[] = {
     [LOG_LEVEL_USER] = "USER",
     [LOG_LEVEL_INFO] = "INFO",
     [LOG_LEVEL_WARN] = "WARN",
-    [LOG_LEVEL_ERR] = "ERR ",
+    [LOG_LEVEL_ERR] = "EROR",
+    [LOG_LEVEL_PANIC] = "PANC",
 };
 
 void log_init(void)
@@ -64,7 +65,7 @@ void log_init(void)
 
     LOG_INFO("Booting %s-kernel %s (Built %s %s)\n", OS_NAME, OS_VERSION, __DATE__, __TIME__);
     LOG_INFO("Copyright (C) 2025 Kai Norberg. MIT Licensed. See /usr/license/LICENSE for details.\n");
-    LOG_INFO("log: min_level=%s outputs=%s%s%s\n", levelNames[state.config.minLevel],
+    LOG_INFO("min_level=%s outputs=%s%s%s\n", levelNames[state.config.minLevel],
         (state.config.outputs & LOG_OUTPUT_SERIAL) ? "serial " : "",
         (state.config.outputs & LOG_OUTPUT_SCREEN) ? "screen " : "",
         (state.config.outputs & LOG_OUTPUT_FILE) ? "file " : "");
@@ -79,7 +80,7 @@ void log_enable_time(void)
 
 void log_screen_enable(gop_buffer_t* framebuffer)
 {
-    LOG_INFO("log: screen enable\n");
+    LOG_INFO("screen enable\n");
     LOCK_SCOPE(&lock);
 
     if (!screen.initialized)
@@ -123,20 +124,41 @@ static uint64_t klog_read(file_t* file, void* buffer, uint64_t count, uint64_t* 
 
 static uint64_t klog_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
-    if (count == 0)
+    if (count == 0 || buffer == NULL || offset == NULL)
     {
         return 0;
     }
-    if (count >= MAX_PATH)
+
+    if (count > MAX_PATH)
     {
         errno = EINVAL;
         return ERR;
     }
+
     char string[MAX_PATH];
     memcpy(string, buffer, count);
     string[count] = '\0';
-    log_print(LOG_LEVEL_USER, "%s", string);
 
+    const char* prefixEnd = strchr(string, ':');
+    if (prefixEnd == NULL)
+    {
+        log_print(LOG_LEVEL_USER, "user_space", string);
+        *offset += count;
+        return count;
+    }
+
+    uint64_t prefixLen = prefixEnd - string;
+    if (prefixLen >= MAX_PATH - 1)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    char prefix[MAX_PATH];
+    memcpy(prefix, string, prefixLen);
+    prefix[prefixLen] = '\0';
+
+    log_print(LOG_LEVEL_USER, prefix, string);
     *offset += count;
     return count;
 }
@@ -177,7 +199,7 @@ void log_write(const char* string, uint64_t length)
     }
 }
 
-static void log_print_header(log_level_t level)
+static void log_print_header(log_level_t level, const char* prefix)
 {
     if (level == LOG_LEVEL_PANIC)
     {
@@ -191,19 +213,19 @@ static void log_print_header(log_level_t level)
 
     cpu_t* self = smp_self_unsafe();
 
-    int length =
-        sprintf(state.timestampBuffer, "[%8llu.%03llu-%03d-%s] ", seconds, milliseconds, self->id, levelNames[level]);
+    int length = sprintf(state.timestampBuffer, "[%8llu.%03llu-%03d-%s-%-13s] ", seconds, milliseconds, self->id,
+        levelNames[level], prefix != NULL ? prefix : "unknown");
 
     log_write(state.timestampBuffer, length);
 }
 
-static void log_handle_char(log_level_t level, char chr)
+static void log_handle_char(log_level_t level, const char* prefix, char chr)
 {
     if (state.isLastCharNewline && chr != '\n')
     {
         state.isLastCharNewline = false;
 
-        log_print_header(level);
+        log_print_header(level, prefix);
     }
 
     if (chr == '\n')
@@ -214,16 +236,16 @@ static void log_handle_char(log_level_t level, char chr)
     log_write(&chr, 1);
 }
 
-uint64_t log_print(log_level_t level, const char* format, ...)
+uint64_t log_print(log_level_t level, const char* prefix, const char* format, ...)
 {
     va_list args;
     va_start(args, format);
-    uint64_t result = log_vprint(level, format, args);
+    uint64_t result = log_vprint(level, prefix, format, args);
     va_end(args);
     return result;
 }
 
-uint64_t log_vprint(log_level_t level, const char* format, va_list args)
+uint64_t log_vprint(log_level_t level, const char* prefix, const char* format, va_list args)
 {
     LOCK_SCOPE(&lock);
 
@@ -247,7 +269,7 @@ uint64_t log_vprint(log_level_t level, const char* format, va_list args)
 
     for (int i = 0; i < length; i++)
     {
-        log_handle_char(level, state.lineBuffer[i]);
+        log_handle_char(level, prefix, state.lineBuffer[i]);
     }
 
     return 0;

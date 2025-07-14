@@ -75,11 +75,12 @@ void log_file_expose(void);
 
 void log_write(const char* string, uint64_t length);
 
-uint64_t log_print(log_level_t level, const char* format, ...);
+uint64_t log_print(log_level_t level, const char* prefix, const char* format, ...);
 
-uint64_t log_vprint(log_level_t level, const char* format, va_list args);
+uint64_t log_vprint(log_level_t level, const char* prefix, const char* format, va_list args);
 
-#define LOG_DEBUG(format, ...) log_print(LOG_LEVEL_DEBUG, format __VA_OPT__(, ) __VA_ARGS__)
-#define LOG_INFO(format, ...) log_print(LOG_LEVEL_INFO, format __VA_OPT__(, ) __VA_ARGS__)
-#define LOG_WARN(format, ...) log_print(LOG_LEVEL_WARN, format __VA_OPT__(, ) __VA_ARGS__)
-#define LOG_ERR(format, ...) log_print(LOG_LEVEL_ERR, format __VA_OPT__(, ) __VA_ARGS__)
+#define LOG_DEBUG(format, ...) log_print(LOG_LEVEL_DEBUG, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)
+#define LOG_INFO(format, ...) log_print(LOG_LEVEL_INFO, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)
+#define LOG_WARN(format, ...) log_print(LOG_LEVEL_WARN, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)
+#define LOG_ERR(format, ...) log_print(LOG_LEVEL_ERR, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)
+#define LOG_PANIC(format, ...) log_print(LOG_LEVEL_PANIC, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)

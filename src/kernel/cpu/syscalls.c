@@ -19,7 +19,7 @@ int syscall_descriptor_cmp(const void* a, const void* b)
 
 void syscall_table_init(void)
 {
-    LOG_INFO("syscalls: sorting syscall table\n");
+    LOG_INFO("sorting syscall table\n");
 
     // Syscalls are not inserted into the table by the linker in the correct order so we sort them.
     const uint64_t syscallsInTable =
