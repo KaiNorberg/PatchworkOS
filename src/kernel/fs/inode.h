@@ -11,8 +11,8 @@
 #include <sys/proc.h>
 #include <time.h>
 
-// TODO: Implement actually writing/syncing dirty inodes, for now inodes should be marked as dirty as appropriate but
-// they will never actually be "cleaned."
+// TODO: Implement actually writing/syncing dirty inodes, for now inodes should use the notify functions but they will
+// never actually be "cleaned."
 
 typedef struct inode inode_t;
 typedef struct inode_ops inode_ops_t;
@@ -70,7 +70,6 @@ typedef struct inode_ops
      * @brief Handles both directories and files.
      */
     uint64_t (*delete)(inode_t* parent, dentry_t* target, path_flags_t flags);
-    inode_t* (*rename)(inode_t* oldParent, dentry_t* old, inode_t* newParent, const char* name);
     void (*cleanup)(inode_t* inode);
 } inode_ops_t;
 

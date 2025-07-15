@@ -121,7 +121,6 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout);
 uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count);
 uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer);
 uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname);
-uint64_t vfs_rename(const pathname_t* oldPathname, const pathname_t* newPathname);
 uint64_t vfs_delete(const pathname_t* pathname);
 
 // Helper macros for implementing file operations dealing with simple buffers

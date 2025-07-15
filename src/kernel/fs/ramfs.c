@@ -12,6 +12,7 @@
 #include "utils/ref.h"
 #include "vfs.h"
 
+#include <_internal/ERR.h>
 #include <boot/boot_info.h>
 
 #include <assert.h>
@@ -135,8 +136,15 @@ static void ramfs_truncate(inode_t* inode)
 
 static uint64_t ramfs_link(dentry_t* old, inode_t* dir, dentry_t* target)
 {
-    errno = ENOSYS;
-    return ERR;
+    if (ramfs_dentry_init(target) == ERR)
+    {
+        return ERR;
+    }
+
+    old->inode->linkCount++;
+    dentry_make_positive(target, old->inode);
+
+    return 0;
 }
 
 static uint64_t ramfs_delete_file(inode_t* parent, dentry_t* target)
@@ -184,12 +192,6 @@ static uint64_t ramfs_delete(inode_t* parent, dentry_t* target, path_flags_t fla
     return 0;
 }
 
-static inode_t* ramfs_rename(inode_t* oldParent, dentry_t* old, inode_t* newParent, const char* name)
-{
-    errno = ENOSYS;
-    return NULL;
-}
-
 static void ramfs_inode_cleanup(inode_t* inode)
 {
     if (inode->private != NULL)
@@ -204,7 +206,6 @@ static inode_ops_t inodeOps = {
     .truncate = ramfs_truncate,
     .link = ramfs_link,
     .delete = ramfs_delete,
-    .rename = ramfs_rename,
     .cleanup = ramfs_inode_cleanup,
 };
 

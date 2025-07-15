@@ -28,8 +28,7 @@
 #define SYS_DUP 25
 #define SYS_DUP2 26
 #define SYS_FUTEX 27
-#define SYS_RENAME 28
-#define SYS_DELETE 29
-#define SYS_LINK 30
+#define SYS_DELETE 28
+#define SYS_LINK 29
 
-#define SYS_TOTAL_AMOUNT 31
+#define SYS_TOTAL_AMOUNT 30

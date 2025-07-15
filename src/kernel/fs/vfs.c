@@ -570,6 +570,7 @@ uint64_t vfs_unmount(const pathname_t* mountpoint)
     errno = ENOSYS;
     return ERR;
 
+    // TODO: Reimplement unmount.
     /*if (mountpoint == NULL || !mountpoint->isValid)
     {
         errno = EINVAL;
@@ -1526,105 +1527,78 @@ SYSCALL_DEFINE(SYS_STAT, uint64_t, const char* pathString, stat_t* buffer)
 
 uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname)
 {
-    /*if (oldpathname == NULL || !pathname->isValid || newpathname == NULL || !pathname->isValid)
+    if (oldPathname == NULL || !oldPathname->isValid || newPathname == NULL || !newPathname->isValid)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    parsed_pathname_t oldParsed;
-    if (path_parse_pathname(&oldParsed, oldPathname) == ERR)
-    {
-        return ERR;
-    }
-
-    parsed_pathname_t newParsed;
-    if (path_parse_pathname(&newParsed, newPathname) == ERR)
-    {
-        return ERR;
-    }
-
-    if (oldParsed.flags != PATH_NONE || newParsed.flags != PATH_NONE)
+    if (oldPathname->flags != PATH_NONE || newPathname->flags != PATH_NONE)
     {
         errno = EBADFLAG;
         return ERR;
     }
 
-    path_t oldPath;
-    if (vfs_walk(&oldPath, oldParsed.pathname) == ERR)
+    path_t oldParent = PATH_EMPTY;
+    path_t old = PATH_EMPTY;
+    if (vfs_walk_parent_and_child(&oldParent, &old, oldPathname, WALK_NONE) == ERR)
     {
         return ERR;
     }
-    PATH_DEFER(&oldPath);
+    PATH_DEFER(&oldParent);
+    PATH_DEFER(&old);
 
-    if (oldPath.dentry->inode->type == INODE_DIR)
-    {
-        errno = EPERM;
-        return ERR;
-    }
-
-    char newLastName[MAX_NAME];
-    path_t newParentPath;
-    if (vfs_walk_parent(&newParentPath, newParsed.pathname, newLastName) == ERR)
+    path_t newParent = PATH_EMPTY;
+    path_t target = PATH_EMPTY;
+    if (vfs_walk_parent_and_child(&newParent, &target, newPathname, WALK_NEGATIVE_IS_OK) == ERR)
     {
         return ERR;
     }
-    PATH_DEFER(&newParentPath);
+    PATH_DEFER(&newParent);
+    PATH_DEFER(&target);
 
-    if (!vfs_is_name_valid(newLastName))
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (oldPath.dentry->superblock->id != newParentPath.dentry->superblock->id)
+    if (oldParent.dentry->superblock->id != newParent.dentry->superblock->id)
     {
         errno = EXDEV;
         return ERR;
     }
 
-    if (newParentPath.dentry->inode == NULL || newParentPath.dentry->inode->ops == NULL ||
-        newParentPath.dentry->inode->ops->link == NULL)
+    if (oldParent.dentry->inode == NULL || oldParent.dentry->inode->ops == NULL ||
+        oldParent.dentry->inode->ops->link == NULL)
     {
+
         errno = ENOSYS;
         return ERR;
     }
 
-    inode_t* newInode =
-        newParentPath.dentry->inode->ops->link(oldPath.dentry, newParentPath.dentry->inode, newLastName);
-    if (newInode == NULL)
+    mutex_acquire(&old.dentry->inode->mutex);
+    mutex_acquire(&newParent.dentry->inode->mutex);
+
+    MUTEX_SCOPE(&target.dentry->mutex);
+
+    uint64_t result = 0;
+    if (!(target.dentry->flags & DENTRY_NEGATIVE))
+    {
+        errno = EEXIST;
+        result = ERR;
+    }
+
+    if (result != ERR)
+    {
+        assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
+        result = newParent.dentry->inode->ops->link(old.dentry, newParent.dentry->inode, target.dentry);
+    }
+
+    mutex_release(&newParent.dentry->inode->mutex);
+    mutex_release(&old.dentry->inode->mutex);
+
+    if (result == ERR)
     {
         return ERR;
     }
-    REF_DEFER(newInode);
 
-    dentry_t* newDentry = dentry_new(oldPath.dentry->superblock, newLastName, newInode);
-    if (newDentry == NULL)
-    {
-        return ERR;
-    }
-    newDentry->parent = REF(newParentPath.dentry);
-
-    map_key_t newDentryKey = dentry_cache_key(newParentPath.dentry->id, newLastName);
-    rwlock_write_acquire(&dentryCache.lock);
-    if (map_insert(&dentryCache.map, &newDentryKey, &newDentry->mapEntry) == ERR)
-    {
-        DEREF(newDentry);
-        rwlock_write_release(&dentryCache.lock);
-        return ERR;
-    }
-    rwlock_write_release(&dentryCache.lock);
-
-    lock_acquire(&oldPath.dentry->inode->lock);
-    oldPath.dentry->inode->changeTime = systime_unix_epoch();
-    oldPath.dentry->inode->flags |= INODE_DIRTY;
-    lock_release(&oldPath.dentry->inode->lock);
-
-    lock_acquire(&newParentPath.dentry->inode->lock);
-    newParentPath.dentry->inode->modifyTime = systime_unix_epoch();
-    newParentPath.dentry->inode->changeTime = newParentPath.dentry->inode->modifyTime;
-    newParentPath.dentry->inode->flags |= INODE_DIRTY;
-    lock_release(&newParentPath.dentry->inode->lock);*/
+    inode_notify_modify(newParent.dentry->inode);
+    inode_notify_change(old.dentry->inode);
 
     return 0;
 }
@@ -1653,166 +1627,6 @@ SYSCALL_DEFINE(SYS_LINK, uint64_t, const char* oldPathString, const char* newPat
     }
 
     return vfs_link(&oldPathname, &newPathname);
-}
-
-uint64_t vfs_rename(const pathname_t* oldPathname, const pathname_t* newPathname)
-{
-    /*if (oldpathname == NULL || !pathname->isValid || newpathname == NULL || !pathname->isValid)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    parsed_pathname_t oldParsed;
-    if (path_parse_pathname(&oldParsed, oldPathname) == ERR)
-    {
-        return ERR;
-    }
-
-    parsed_pathname_t newParsed;
-    if (path_parse_pathname(&newParsed, newPathname) == ERR)
-    {
-        return ERR;
-    }
-
-    if (oldParsed.flags != PATH_NONE || newParsed.flags != PATH_NONE)
-    {
-        errno = EBADFLAG;
-        return ERR;
-    }
-
-    char oldLastName[MAX_NAME];
-    path_t oldParentPath;
-    if (vfs_walk_parent(&oldParentPath, oldParsed.pathname, oldLastName) == ERR)
-    {
-        return ERR;
-    }
-    PATH_DEFER(&oldParentPath);
-
-    dentry_t* oldDentry = vfs_get_or_lookup_dentry(oldParentPath.dentry, oldLastName);
-    if (oldDentry == NULL)
-    {
-        errno = ENOENT;
-        return ERR;
-    }
-    REF_DEFER(oldDentry);
-
-    char newLastName[MAX_NAME];
-    path_t newParentPath;
-    if (vfs_walk_parent(&newParentPath, newParsed.pathname, newLastName) == ERR)
-    {
-        return ERR;
-    }
-    PATH_DEFER(&newParentPath);
-
-    if (!vfs_is_name_valid(newLastName))
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (oldParentPath.dentry->superblock->id != newParentPath.dentry->superblock->id)
-    {
-        errno = EXDEV;
-        return ERR;
-    }
-
-    dentry_t* existingDentry = vfs_get_or_lookup_dentry(newParentPath.dentry, newLastName);
-    if (existingDentry != NULL)
-    {
-        REF_DEFER(existingDentry);
-
-        if (oldDentry->inode->type == INODE_FILE && existingDentry->inode->type == INODE_DIR) {
-            errno = EISDIR;
-            return ERR;
-        }
-        if (oldDentry->inode->type == INODE_DIR && existingDentry->inode->type == INODE_FILE) {
-            errno = ENOTDIR;
-            return ERR;
-        }
-    }
-
-    if (oldParentPath.dentry->inode == NULL || oldParentPath.dentry->inode->ops == NULL ||
-        oldParentPath.dentry->inode->ops->rename == NULL) {
-
-        errno = ENOSYS;
-        return ERR;
-    }
-
-    inode_t* newInode = oldParentPath.dentry->inode->ops->rename(oldParentPath.dentry->inode, oldDentry,
-    newParentPath.dentry->inode, newLastName); if (newInode == NULL)
-    {
-        return ERR;
-    }
-    REF_DEFER(newInode);
-
-    dentry_t* newDentry = dentry_new(oldParentPath.dentry->superblock, newLastName, newInode);
-    if (newDentry == NULL)
-    {
-        return ERR;
-    }
-    newDentry->parent = REF(newParentPath.dentry);
-
-    map_key_t oldDentryKey = dentry_cache_key(oldParentPath.dentry->id, oldLastName);
-    map_key_t newDentryKey = dentry_cache_key(newParentPath.dentry->id, newLastName);
-
-    rwlock_write_acquire(&dentryCache.lock);
-    map_remove(&dentryCache.map, &oldDentryKey);
-    if (map_insert(&dentryCache.map, &newDentryKey, &newDentry->mapEntry) == ERR)
-    {
-        DEREF(newDentry);
-        rwlock_write_release(&dentryCache.lock);
-        return ERR;
-    }
-    rwlock_write_release(&dentryCache.lock);
-
-    lock_acquire(&oldParentPath.dentry->inode->lock);
-    oldParentPath.dentry->inode->modifyTime = systime_unix_epoch();
-    oldParentPath.dentry->inode->changeTime = oldParentPath.dentry->inode->modifyTime;
-    oldParentPath.dentry->inode->flags |= INODE_DIRTY;
-    lock_release(&oldParentPath.dentry->inode->lock);
-
-    if (newParentPath.dentry->inode->number != oldParentPath.dentry->inode->number ||
-        newParentPath.dentry->superblock->id != oldParentPath.dentry->superblock->id)
-    {
-        LOCK_SCOPE(&newParentPath.dentry->inode->lock);
-        newParentPath.dentry->inode->modifyTime = systime_unix_epoch();
-        newParentPath.dentry->inode->changeTime = newParentPath.dentry->inode->modifyTime;
-        newParentPath.dentry->inode->flags |= INODE_DIRTY;
-    }
-
-    lock_acquire(&oldDentry->inode->lock);
-    oldDentry->inode->changeTime = systime_unix_epoch();
-    oldDentry->inode->flags |= INODE_DIRTY;
-    lock_release(&oldDentry->inode->lock);*/
-
-    return 0;
-}
-
-SYSCALL_DEFINE(SYS_RENAME, uint64_t, const char* oldPathString, const char* newPathString)
-{
-    process_t* process = sched_process();
-    space_t* space = &process->space;
-
-    if (!syscall_is_string_valid(space, oldPathString) || !syscall_is_string_valid(space, newPathString))
-    {
-        errno = EFAULT;
-        return ERR;
-    }
-
-    pathname_t oldPathname;
-    if (pathname_init(&oldPathname, oldPathString) == ERR)
-    {
-        return ERR;
-    }
-
-    pathname_t newPathname;
-    if (pathname_init(&newPathname, newPathString) == ERR)
-    {
-        return ERR;
-    }
-
-    return vfs_rename(&oldPathname, &newPathname);
 }
 
 uint64_t vfs_delete(const pathname_t* pathname)

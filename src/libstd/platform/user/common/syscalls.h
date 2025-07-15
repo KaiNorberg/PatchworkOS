@@ -234,11 +234,6 @@ static inline uint64_t _syscall_futex(atomic_uint64_t* addr, uint64_t val, futex
     return _SYSCALL4(uint64_t, SYS_FUTEX, atomic_uint64_t*, addr, uint64_t, val, futex_op_t, op, clock_t, timeout);
 }
 
-static inline uint64_t _syscall_rename(const char* oldpath, const char* newpath)
-{
-    return _SYSCALL2(uint64_t, SYS_RENAME, const char*, oldpath, const char*, newpath);
-}
-
 static inline uint64_t _syscall_delete(const char* path)
 {
     return _SYSCALL1(uint64_t, SYS_DELETE, const char*, path);

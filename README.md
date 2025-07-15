@@ -53,7 +53,7 @@
 
 Patchwork includes its own shell utilities designed around its [file flags](#file-flags) system. Here is a brief overview with some usage examples.
 
-**open** - Similar to `touch` it opens a file path and then immediately closes it. Intended for creating files/directories.
+**open** - Opens a file path and then immediately closes it. Intended as a replacement for `touch`.
 ```bash
 open file.txt:create:excl           # Creates the file.txt file only if it does not exist.
 open mydir:create:dir               # Creates the mydir directory.
@@ -83,6 +83,8 @@ dir mydir:recur                     # Recursively print the contents of mydir.
 delete file.txt                     # Deletes file.txt.
 delete mydir:recur                  # Recursively deletes mydir and its contents.
 ```
+
+There are other utils available that work as expected, for example `move` and `link`.
 
 ## Everything is a File
 

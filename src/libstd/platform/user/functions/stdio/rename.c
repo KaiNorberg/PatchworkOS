@@ -4,7 +4,12 @@
 
 int rename(const char* oldpath, const char* newpath)
 {
-    if (_syscall_rename(oldpath, newpath) == ERR)
+    if (_syscall_link(oldpath, newpath) == ERR)
+    {
+        errno = _syscall_errno();
+        return EOF;
+    }
+    if (_syscall_delete(oldpath) == ERR)
     {
         errno = _syscall_errno();
         return EOF;
