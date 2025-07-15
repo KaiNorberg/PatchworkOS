@@ -131,16 +131,11 @@ static void panic_registers(const trap_frame_t* trapFrame)
     LOG_PANIC("rsp: %04llx:0x%016llx rflags: 0x%08llx\n", trapFrame->ss, trapFrame->rsp,
         trapFrame->rflags & 0xFFFFFFFF);
 
-    LOG_PANIC("rax: 0x%016llx rbx: 0x%016llx rcx: 0x%016llx\n", trapFrame->rax, trapFrame->rbx,
-        trapFrame->rcx);
-    LOG_PANIC("rdx: 0x%016llx rsi: 0x%016llx rdi: 0x%016llx\n", trapFrame->rdx, trapFrame->rsi,
-        trapFrame->rdi);
-    LOG_PANIC("rbp: 0x%016llx r08: 0x%016llx r09: 0x%016llx\n", trapFrame->rbp, trapFrame->r8,
-        trapFrame->r9);
-    LOG_PANIC("r10: 0x%016llx r11: 0x%016llx r12: 0x%016llx\n", trapFrame->r10, trapFrame->r11,
-        trapFrame->r12);
-    LOG_PANIC("r13: 0x%016llx r14: 0x%016llx r15: 0x%016llx\n", trapFrame->r13, trapFrame->r14,
-        trapFrame->r15);
+    LOG_PANIC("rax: 0x%016llx rbx: 0x%016llx rcx: 0x%016llx\n", trapFrame->rax, trapFrame->rbx, trapFrame->rcx);
+    LOG_PANIC("rdx: 0x%016llx rsi: 0x%016llx rdi: 0x%016llx\n", trapFrame->rdx, trapFrame->rsi, trapFrame->rdi);
+    LOG_PANIC("rbp: 0x%016llx r08: 0x%016llx r09: 0x%016llx\n", trapFrame->rbp, trapFrame->r8, trapFrame->r9);
+    LOG_PANIC("r10: 0x%016llx r11: 0x%016llx r12: 0x%016llx\n", trapFrame->r10, trapFrame->r11, trapFrame->r12);
+    LOG_PANIC("r13: 0x%016llx r14: 0x%016llx r15: 0x%016llx\n", trapFrame->r13, trapFrame->r14, trapFrame->r15);
 }
 
 static void panic_stack_trace(const trap_frame_t* trapFrame)
@@ -312,8 +307,7 @@ void panic(const trap_frame_t* trapFrame, const char* format, ...)
     }
     else
     {
-        LOG_PANIC("thread: cpu=%d pid=%d tid=%d\n", self->id, currentThread->process->id,
-            currentThread->id);
+        LOG_PANIC("thread: cpu=%d pid=%d tid=%d\n", self->id, currentThread->process->id, currentThread->id);
     }
 
     uint64_t freePages = pmm_free_amount();
@@ -329,8 +323,7 @@ void panic(const trap_frame_t* trapFrame, const char* format, ...)
     uint64_t cr3 = cr3_read();
     uint64_t cr4 = cr4_read();
 
-    LOG_PANIC("control regs: CR0=0x%016llx CR2=0x%016llx CR3=0x%016llx CR4=0x%016llx\n", cr0,
-        cr2, cr3, cr4);
+    LOG_PANIC("control regs: CR0=0x%016llx CR2=0x%016llx CR3=0x%016llx CR4=0x%016llx\n", cr0, cr2, cr3, cr4);
 
     LOG_PANIC("cr0 flags:");
     if (cr0 & (1 << 0))
@@ -381,8 +374,7 @@ void panic(const trap_frame_t* trapFrame, const char* format, ...)
 
     if (trapFrame != NULL && trapFrame->vector == VECTOR_PAGE_FAULT)
     {
-        LOG_PANIC("page fault: %s %s %s%s\n",
-            (trapFrame->errorCode & 1) ? "protection violation" : "page not present",
+        LOG_PANIC("page fault: %s %s %s%s\n", (trapFrame->errorCode & 1) ? "protection violation" : "page not present",
             (trapFrame->errorCode & 2) ? "write" : "read", (trapFrame->errorCode & 4) ? "user" : "kernel",
             (trapFrame->errorCode & 8) ? " reserved bit violation" : "");
     }

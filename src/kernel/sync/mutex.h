@@ -5,6 +5,8 @@
 
 #include <stdbool.h>
 
+typedef struct thread thread_t;
+
 #define MUTEX_SCOPE(mutex) \
     __attribute__((cleanup(mutex_cleanup))) mutex_t* CONCAT(m, __COUNTER__) = (mutex); \
     mutex_acquire((mutex))
@@ -12,7 +14,7 @@
 typedef struct
 {
     wait_queue_t waitQueue;
-    bool isAcquired;
+    thread_t* owner;
     lock_t lock;
 } mutex_t;
 

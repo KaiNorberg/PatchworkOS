@@ -159,7 +159,7 @@ uint64_t write(fd_t fd, const void* buffer, uint64_t count);
 uint64_t writef(fd_t fd, const char* _RESTRICT format, ...);
 
 /**
-* @brief Wrapper for writing a formatted string to a file with a `va_list`.
+ * @brief Wrapper for writing a formatted string to a file with a `va_list`.
  * @ingroup libstd_sys_io
  *
  * @param fd The file descriptor to write to.

@@ -47,6 +47,8 @@ void process_free(process_t* process);
 
 bool process_is_child(process_t* process, pid_t parentId);
 
-void process_backend_init(void);
+void process_kernel_init(void);
+
+void process_procfs_init(void);
 
 process_t* process_get_kernel(void);

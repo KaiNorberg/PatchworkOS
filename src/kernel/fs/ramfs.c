@@ -75,11 +75,6 @@ static uint64_t ramfs_write(file_t* file, const void* buffer, uint64_t count, ui
 {
     MUTEX_SCOPE(&file->inode->mutex);
 
-    if (file->flags & PATH_APPEND)
-    {
-        *offset = file->inode->size;
-    }
-
     if (*offset + count > file->inode->size)
     {
         void* newData = heap_realloc(file->inode->private, *offset + count, HEAP_VMM);
@@ -103,36 +98,15 @@ static file_ops_t fileOps = {
     .seek = file_generic_seek,
 };
 
-static lookup_result_t ramfs_lookup(inode_t* dir, dentry_t* target)
+static uint64_t ramfs_lookup(inode_t* dir, dentry_t* target)
 {
     // All ramfs dentrys should always be in the cache, if lookup is called then the file/dir does not exist.
-    return LOOKUP_NO_ENTRY;
+    return 0;
 }
 
 static uint64_t ramfs_create(inode_t* dir, dentry_t* target, path_flags_t flags)
 {
-    MUTEX_SCOPE(&dir->mutex);
-
-    if (dir->type != INODE_DIR)
-    {
-        LOG_ERR("ramfs_create called using a non-directory inode.\n");
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (!(target->flags & DENTRY_NEGATIVE))
-    {
-        if (flags & PATH_EXCLUSIVE)
-        {
-            errno = EEXIST;
-            return ERR;
-        }
-
-        return 0;
-    }
-
-    inode_t* newInode =
-        ramfs_inode_new(dir->superblock, flags & PATH_DIRECTORY ? INODE_DIR : INODE_FILE, NULL, 0);
+    inode_t* newInode = ramfs_inode_new(dir->superblock, flags & PATH_DIRECTORY ? INODE_DIR : INODE_FILE, NULL, 0);
     if (newInode == NULL)
     {
         return ERR;
@@ -151,55 +125,29 @@ static uint64_t ramfs_create(inode_t* dir, dentry_t* target, path_flags_t flags)
 
 static void ramfs_truncate(inode_t* inode)
 {
-    MUTEX_SCOPE(&inode->mutex);
-
-    if (inode->type != INODE_FILE)
-    {
-        LOG_ERR("ramfs_truncate called using a non-file inode.\n");
-        return;
-    }
-
     if (inode->private != NULL)
     {
         heap_free(inode->private);
         inode->private = NULL;
-        inode->size = 0;
     }
+    inode->size = 0;
 }
 
-static inode_t* ramfs_link(dentry_t* old, inode_t* newParent, const char* name)
+static uint64_t ramfs_link(dentry_t* old, inode_t* dir, dentry_t* target)
 {
     errno = ENOSYS;
-    return NULL;
+    return ERR;
 }
 
 static uint64_t ramfs_unlink(inode_t* parent, dentry_t* target)
 {
-    inode_t* inode = REF(target->inode);
-    REF_DEFER(inode);
-
-    LOCK_SCOPE(&target->lock);
-    MUTEX_SCOPE(&inode->mutex);
-
-    inode->linkCount--;
+    target->inode->linkCount--;
     ramfs_dentry_deinit(target);
     return 0;
 }
 
 static uint64_t ramfs_rmdir(inode_t* parent, dentry_t* target)
 {
-    inode_t* inode = REF(target->inode);
-    REF_DEFER(inode);
-
-    LOCK_SCOPE(&target->lock);
-    MUTEX_SCOPE(&inode->mutex);
-
-    if (!list_is_empty(&target->children))
-    {
-        errno = ENOTEMPTY;
-        return ERR;
-    }
-
     ramfs_dentry_deinit(target);
     return 0;
 }
@@ -228,6 +176,11 @@ static inode_ops_t inodeOps = {
     .rename = ramfs_rename,
     .cleanup = ramfs_inode_cleanup,
 };
+
+static bool ramfs_removable(dentry_t* dentry)
+{
+    return !list_is_empty(&dentry->children);
+}
 
 static dentry_ops_t dentryOps = {
     .getdents = dentry_generic_getdents,

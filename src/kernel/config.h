@@ -117,3 +117,14 @@
  *
  */
 #define CONFIG_LOAD_BALANCE_BIAS 2
+
+/**
+ * @brief Maximum mutex slow spin configuration.
+ * @ingroup kernel
+ * @def CONFIG_MUTEX_MAX_SLOW_SPIN
+ *
+ * The `CONFIG_MUTEX_MAX_SLOW_SPIN` constant defines the maximum number of iterations a thread will spin before blocking
+ * on a mutex.
+ *
+ */
+#define CONFIG_MUTEX_MAX_SLOW_SPIN 1000

@@ -27,6 +27,17 @@ typedef struct file
     void* private;
 } file_t;
 
+/**
+ * @brief File operations structure.
+ * @ingroup kernel_vfs
+ *
+ * Note that unlike inode or dentry ops, the files inode mutex will NOT be acquired by the vfs and that the filesystem
+ * is responsible for synchronization. To understand why consider a pipe, a pipe needs to be able to block when there is
+ * no data available and then wake up when there is data available, this is only possible if the multiple threads can
+ * access the pipe without blocking each other.
+ *
+ *
+ */
 typedef struct file_ops
 {
     uint64_t (*open)(file_t* file);

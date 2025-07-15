@@ -112,3 +112,18 @@ void inode_notify_change(inode_t* inode)
     inode->changeTime = systime_unix_epoch();
     // TODO: Sync to disk.
 }
+
+void inode_truncate(inode_t* inode)
+{
+    if (inode == NULL)
+    {
+        return;
+    }
+
+    if (inode->ops != NULL && inode->ops->truncate != NULL)
+    {
+        MUTEX_SCOPE(&inode->mutex);
+        assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
+        inode->ops->truncate(inode);
+    }
+}

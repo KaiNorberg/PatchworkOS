@@ -42,6 +42,7 @@ deploy: $(PROGRAMS)
 	mmd -i $(TARGET) ::/usr
 	mmd -i $(TARGET) ::/usr/bin
 	mmd -i $(TARGET) ::/usr/license
+	mmd -i $(TARGET) ::/home
 	mmd -i $(TARGET) ::/dev
 	mmd -i $(TARGET) ::/net
 	mmd -i $(TARGET) ::/proc

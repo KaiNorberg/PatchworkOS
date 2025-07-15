@@ -4,6 +4,7 @@
 #include "log/log.h"
 #include "log/panic.h"
 
+#include "sync/mutex.h"
 #include "vfs.h"
 
 #include <_internal/MAX_NAME.h>
@@ -278,23 +279,23 @@ uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char
     path_copy(&current, parent);
     PATH_DEFER(&current);
 
-    lock_acquire(&current.dentry->lock);
+    mutex_acquire(&current.dentry->mutex);
     if (current.dentry->flags & DENTRY_MOUNTPOINT)
     {
         path_t nextRoot = PATH_EMPTY;
         if (vfs_mountpoint_to_fs_root(&nextRoot, &current) == ERR)
         {
-            lock_release(&current.dentry->lock);
+            mutex_release(&current.dentry->mutex);
             return ERR;
         }
         PATH_DEFER(&nextRoot);
 
-        lock_release(&current.dentry->lock);
+        mutex_release(&current.dentry->mutex);
         path_copy(&current, &nextRoot);
     }
     else
     {
-        lock_release(&current.dentry->lock);
+        mutex_release(&current.dentry->mutex);
     }
 
     dentry_t* next = vfs_get_or_lookup_dentry(&current, component);
@@ -304,10 +305,10 @@ uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char
     }
     REF_DEFER(next);
 
-    lock_acquire(&next->lock);
+    mutex_acquire(&next->mutex);
     if (next->flags & DENTRY_NEGATIVE)
     {
-        lock_release(&next->lock);
+        mutex_release(&next->mutex);
         if (flags & WALK_NEGATIVE_IS_OK)
         {
             path_set(outPath, current.mount, next);
@@ -316,7 +317,7 @@ uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char
         errno = ENOENT;
         return ERR;
     }
-    lock_release(&next->lock);
+    mutex_release(&next->mutex);
 
     path_set(outPath, current.mount, next);
     return 0;
@@ -428,14 +429,17 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* st
 
         path_copy(&current, &next);
 
-        lock_acquire(&current.dentry->lock);
+        MUTEX_SCOPE(&current.dentry->mutex);
         if (current.dentry->flags & DENTRY_NEGATIVE)
         {
-            lock_release(&current.dentry->lock);
-            assert(flags & WALK_NEGATIVE_IS_OK);
-            break;
+            if (flags & WALK_NEGATIVE_IS_OK)
+            {
+                break;
+            }
+
+            errno = ENOENT;
+            return ERR;
         }
-        lock_release(&current.dentry->lock);
     }
 
     if (flags & WALK_MOUNTPOINT_TO_ROOT)

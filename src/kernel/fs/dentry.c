@@ -4,6 +4,7 @@
 #include "mem/heap.h"
 #include "sched/thread.h"
 #include "sync/lock.h"
+#include "sync/mutex.h"
 #include "vfs.h"
 
 dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* name)
@@ -34,9 +35,8 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     dentry->superblock = REF(superblock);
     dentry->ops = dentry->superblock != NULL ? dentry->superblock->dentryOps : NULL;
     dentry->private = NULL;
-    dentry->flags = DENTRY_NEGATIVE | DENTRY_LOOKUP_PENDING;
-    lock_init(&dentry->lock);
-    wait_queue_init(&dentry->lookupWaitQueue);
+    dentry->flags = DENTRY_NEGATIVE;
+    mutex_init(&dentry->mutex);
 
     return dentry;
 }
@@ -64,9 +64,9 @@ void dentry_free(dentry_t* dentry)
 
     if (dentry->parent != dentry)
     {
-        lock_acquire(&dentry->parent->lock);
+        mutex_acquire(&dentry->parent->mutex);
         list_remove(&dentry->siblingEntry);
-        lock_release(&dentry->parent->lock);
+        mutex_release(&dentry->parent->mutex);
 
         DEREF(dentry->parent);
         dentry->parent = NULL;
@@ -77,26 +77,23 @@ void dentry_free(dentry_t* dentry)
 
 void dentry_make_positive(dentry_t* dentry, inode_t* inode)
 {
-    LOCK_SCOPE(&dentry->lock);
+    if (dentry == NULL || inode == NULL)
+    {
+        return;
+    }
 
     // Sanity checks.
     assert(dentry->flags & DENTRY_NEGATIVE);
     assert(dentry->inode == NULL);
 
-    if (inode != NULL)
+    dentry->inode = REF(inode);
+    dentry->flags &= ~DENTRY_NEGATIVE;
+
+    if (dentry->parent != NULL && !DENTRY_IS_ROOT(dentry))
     {
-        dentry->inode = REF(inode);
-        dentry->flags &= ~DENTRY_NEGATIVE;
-
-        if (dentry->parent != NULL && dentry->parent != dentry)
-        {
-            LOCK_SCOPE(&dentry->parent->lock);
-            list_push(&dentry->parent->children, &dentry->siblingEntry);
-        }
+        MUTEX_SCOPE(&dentry->parent->mutex);
+        list_push(&dentry->parent->children, &dentry->siblingEntry);
     }
-    dentry->flags &= ~DENTRY_LOOKUP_PENDING;
-
-    wait_unblock(&dentry->lookupWaitQueue, WAIT_ALL);
 }
 
 typedef struct
@@ -127,17 +124,7 @@ static void getdents_write(getdents_ctx_t* ctx, inode_number_t number, inode_typ
 
 uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset)
 {
-    getdents_ctx_t ctx = {
-        .index = 0,
-        .total = 0,
-        .buffer = buffer,
-        .count = count,
-        .offset = offset
-    };
-
-    LOCK_SCOPE(&dentry->lock);
-
-    MUTEX_SCOPE(&dentry->inode->mutex);
+    getdents_ctx_t ctx = {.index = 0, .total = 0, .buffer = buffer, .count = count, .offset = offset};
 
     getdents_write(&ctx, dentry->inode->number, dentry->inode->type, ".");
     getdents_write(&ctx, dentry->parent->inode->number, dentry->parent->inode->type, "..");
@@ -145,7 +132,7 @@ uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t co
     dentry_t* child;
     LIST_FOR_EACH(child, &dentry->children, siblingEntry)
     {
-        LOCK_SCOPE(&child->lock);
+        MUTEX_SCOPE(&child->mutex);
         getdents_write(&ctx, child->inode->number, child->inode->type, child->name);
     }
 

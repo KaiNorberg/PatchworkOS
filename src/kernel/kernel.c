@@ -73,14 +73,15 @@ void kernel_init(boot_info_t* bootInfo)
     systime_init();
     log_enable_time();
 
+    process_kernel_init();
+    sched_init();
+
     vfs_init();
     ramfs_init(&bootInfo->ramDisk);
     sysfs_init();
 
     log_file_expose();
-    process_backend_init();
-
-    sched_init();
+    process_procfs_init();
 
     madt_init();
     apic_init();

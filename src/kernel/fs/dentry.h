@@ -1,7 +1,7 @@
 #pragma once
 
 #include "sched/wait.h"
-#include "sync/lock.h"
+#include "sync/mutex.h"
 #include "utils/map.h"
 #include "utils/ref.h"
 
@@ -24,8 +24,6 @@ typedef enum
     DENTRY_NONE = 0,
     DENTRY_MOUNTPOINT = 1 << 0,
     DENTRY_NEGATIVE = 1 << 1,
-    DENTRY_LOOKUP_PENDING = 1 << 2,
-    DENTRY_DONT_MOUNT = 1 << 3, //!< Is being removed meaning it should not be mounted.
 } dentry_flags_t;
 
 typedef struct dentry
@@ -41,14 +39,21 @@ typedef struct dentry
     const dentry_ops_t* ops;
     void* private;
     dentry_flags_t flags;
-    lock_t lock;
-    wait_queue_t lookupWaitQueue;
+    mutex_t mutex;
     map_entry_t mapEntry;
 } dentry_t;
 
+/**
+ * Dentry operations structure.
+ * @ingroup kernel_vfs
+ *
+ * Note that the dentrys mutex will be acquired by the vfs.
+ *
+ */
 typedef struct dentry_ops
 {
     uint64_t (*getdents)(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset);
+    bool (*removable)(dentry_t* dir);
     void (*cleanup)(dentry_t* entry);
 } dentry_ops_t;
 
@@ -62,4 +67,4 @@ void dentry_make_positive(dentry_t* dentry, inode_t* inode);
  * @ingroup kernel_vfs
  *
  */
- uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset);
+uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset);

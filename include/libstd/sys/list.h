@@ -4,9 +4,9 @@
 #include "_internal/CONTAINER_OF.h"
 #include "_internal/NULL.h"
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <assert.h>
 
 /**
  * @brief Doubly linked list header.

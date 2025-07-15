@@ -32,6 +32,7 @@
 - Replaced ```fork(), exec()``` with ```spawn()```.
 - Single-User.
 - Non POSIX standard library.
+- Custom [shell utilities](#shell-utilities).
 
 ## Limitations
 
@@ -46,6 +47,8 @@
 - Software interrupts for notes (signals).
 - Lua port.
 - Capability based security model (currently has no well-defined security model).
+
+## Shell Utilities
 
 ## A Small Taste
 

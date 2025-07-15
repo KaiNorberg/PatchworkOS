@@ -24,6 +24,13 @@ typedef struct
     __attribute__((cleanup(rwlock_write_cleanup))) rwlock_t* CONCAT(wl, __COUNTER__) = (lock); \
     rwlock_write_acquire((lock))
 
+#define RWLOCK_CREATE() \
+    (rwlock_t) \
+    { \
+        .readTicket = ATOMIC_VAR_INIT(0), .readServe = ATOMIC_VAR_INIT(0), .writeTicket = ATOMIC_VAR_INIT(0), \
+        .writeServe = ATOMIC_VAR_INIT(0), .activeReaders = ATOMIC_VAR_INIT(0), .activeWriter = ATOMIC_VAR_INIT(false), \
+    }
+
 void rwlock_init(rwlock_t* lock);
 
 void rwlock_read_acquire(rwlock_t* lock);

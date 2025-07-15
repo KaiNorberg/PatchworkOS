@@ -22,7 +22,7 @@ typedef struct dentry dentry_t;
 
 typedef enum
 {
-    INODE_NONE = 0,        //!< None
+    INODE_NONE = 0, //!< None
 } inode_flags_t;
 
 typedef struct inode
@@ -45,19 +45,27 @@ typedef struct inode
     map_entry_t mapEntry; //!< Protected by the inodeCache lock.
 } inode_t;
 
-typedef enum
-{
-    LOOKUP_FOUND,
-    LOOKUP_NO_ENTRY,
-    LOOKUP_ERROR,
-} lookup_result_t;
-
+/**
+ * Inode operations structure.
+ * @ingroup kernel_vfs
+ *
+ * Note that the inodes mutex will be acquired by the vfs.
+ *
+ */
 typedef struct inode_ops
 {
-    lookup_result_t (*lookup)(inode_t* dir, dentry_t* target);
-    uint64_t (*create)(inode_t* dir, dentry_t* target, path_flags_t flags); //!< Handles both directories and files.
+    /**
+     * @brief Should set the target dentry to be positive (give it an inode), if the entry does not exist the operation
+     * should still return success and leave the dentry as negative, if other errors occur it should return ERR and set
+     * errno.
+     */
+    uint64_t (*lookup)(inode_t* dir, dentry_t* target);
+    /**
+     * @brief Handles both directories and files, works the same as lookup.
+     */
+    uint64_t (*create)(inode_t* dir, dentry_t* target, path_flags_t flags);
     void (*truncate)(inode_t* target);
-    inode_t* (*link)(dentry_t* old, inode_t* newParent, const char* name);
+    uint64_t (*link)(dentry_t* old, inode_t* dir, dentry_t* target);
     uint64_t (*unlink)(inode_t* parent, dentry_t* target);
     uint64_t (*rmdir)(inode_t* parent, dentry_t* target);
     inode_t* (*rename)(inode_t* oldParent, dentry_t* old, inode_t* newParent, const char* name);
@@ -73,3 +81,5 @@ void inode_notify_access(inode_t* inode);
 void inode_notify_modify(inode_t* inode);
 
 void inode_notify_change(inode_t* inode);
+
+void inode_truncate(inode_t* inode);

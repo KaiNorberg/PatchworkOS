@@ -136,7 +136,8 @@ uint64_t sysfs_dir_init(sysfs_dir_t* dir, sysfs_dir_t* parent, const char* name,
     REF_DEFER(dentry);
     dentry->private = dir;
 
-    inode_t* inode = inode_new(parent->dentry->superblock, atomic_fetch_add(&newNumber, 1), INODE_DIR, inodeOps, &dirOps);
+    inode_t* inode =
+        inode_new(parent->dentry->superblock, atomic_fetch_add(&newNumber, 1), INODE_DIR, inodeOps, &dirOps);
     if (inode == NULL)
     {
         return ERR;

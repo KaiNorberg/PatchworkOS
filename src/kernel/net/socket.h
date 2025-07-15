@@ -3,8 +3,8 @@
 #include "fs/path.h"
 #include "fs/sysfs.h"
 #include "socket_type.h"
-#include "utils/ref.h"
 #include "sync/rwmutex.h"
+#include "utils/ref.h"
 
 #include <sys/io.h>
 
