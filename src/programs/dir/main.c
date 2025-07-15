@@ -9,24 +9,7 @@
 
 static uint64_t print_dir(const char* path)
 {
-    fd_t fd;
-    const char* flags = strchr(path, '?');
-    if (flags != NULL)
-    {
-        if (strstr(flags, "dir") != NULL)
-        {
-            fd = open(path);
-        }
-        else
-        {
-            fd = openf("%s&dir", path);
-        }
-    }
-    else
-    {
-        fd = openf("%s?dir", path);
-    }
-
+    fd_t fd = openf("%s:dir", path);
     if (fd == ERR)
     {
         fprintf(stderr, "dir: can't open directory %s (%s)\n", path, strerror(errno));

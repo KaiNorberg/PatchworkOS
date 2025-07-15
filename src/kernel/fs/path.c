@@ -116,7 +116,7 @@ uint64_t pathname_init(pathname_t* pathname, const char* string)
 
     uint64_t index = 0;
     uint64_t currentNameLength = 0;
-    while (string[index] != '\0' && string[index] != '?')
+    while (string[index] != '\0' && string[index] != ':')
     {
         if (string[index] == '/')
         {
@@ -143,18 +143,18 @@ uint64_t pathname_init(pathname_t* pathname, const char* string)
 
     pathname->string[index] = '\0';
 
-    if (string[index] != '?')
+    if (string[index] != ':')
     {
         pathname->isValid = true;
         return 0;
     }
 
-    index++; // Skip '?'.
+    index++; // Skip ':'.
     const char* flags = &string[index];
 
     while (true)
     {
-        while (string[index] == '&')
+        while (string[index] == ':')
         {
             index++;
         }
@@ -165,7 +165,7 @@ uint64_t pathname_init(pathname_t* pathname, const char* string)
         }
 
         const char* token = &string[index];
-        while (string[index] != '\0' && string[index] != '&')
+        while (string[index] != '\0' && string[index] != ':')
         {
             if (!isalnum(string[index]))
             {
@@ -430,7 +430,7 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* st
             break;
         }
 
-        if (*p == '?')
+        if (*p == ':')
         {
             errno = EBADFLAG;
             return ERR;

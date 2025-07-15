@@ -4,5 +4,5 @@
 
 uint64_t unlink(const char* path)
 {
-    return delete (path);
+    return delete(path);
 }

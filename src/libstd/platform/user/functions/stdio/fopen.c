@@ -10,15 +10,15 @@ static const char* _flags_to_string(_file_flags_t flags)
     case _FILE_READ:
         return "";
     case _FILE_WRITE:
-        return "?create&trunc";
+        return ":create:trunc";
     case _FILE_APPEND:
-        return "?append&create";
+        return ":append:create";
     case _FILE_READ | _FILE_RW:
         return "";
     case _FILE_WRITE | _FILE_RW:
-        return "?trunc&create";
+        return ":trunc:create";
     case _FILE_APPEND | _FILE_RW:
-        return "?append&create";
+        return ":append:create";
     default:
         return "";
     }

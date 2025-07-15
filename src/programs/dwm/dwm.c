@@ -40,7 +40,7 @@ static poll_ctx_t* pollCtx;
 
 static client_t* dwm_client_accept(void)
 {
-    fd_t fd = openf("/net/local/%s/accept?nonblock", id);
+    fd_t fd = openf("/net/local/%s/accept:nonblock", id);
     if (fd == ERR)
     {
         if (errno != EINVAL)
@@ -87,7 +87,7 @@ static void dwm_send_event_to_all(surface_id_t target, event_type_t type, void* 
 
 void dwm_init(void)
 {
-    fd_t handle = open("/net/local/seqpacket?nonblock");
+    fd_t handle = open("/net/local/seqpacket:nonblock");
     if (handle == ERR)
     {
         printf("dwm: failed to create socket (%s)\n", strerror(errno));

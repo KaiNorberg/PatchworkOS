@@ -55,33 +55,33 @@ Patchwork includes its own shell utilities designed around its [file flags](#fil
 
 **open** - Similar to `touch` it opens a file path and then immediately closes it. Intended for creating files/directories.
 ```bash
-open file.txt?create&excl           # Creates the file.txt file only if it does not exist.
-open mydir?create&dir               # Creates the mydir directory.
+open file.txt:create:excl           # Creates the file.txt file only if it does not exist.
+open mydir:create:dir               # Creates the mydir directory.
 ```
 
 **read** - Reads from stdin or provided files and outputs to stdout. Intended as a replacement for `cat`.
 ```bash
 read file1.txt file2.txt            # Read the contents of file1.txt and file2.txt.
 read < file.txt                     # Read the contents of file.txt.
-read < file.txt > dest.txt?create   # Copy contents of file.txt to dest.txt and creates it.
+read < file.txt > dest.txt:create   # Copy contents of file.txt to dest.txt and creates it.
 ```
 
 **write** - Writes to stdout. Intended as a replacement for `echo`.
 ```bash
 write "..." > file.txt              # Write to file.txt.
-write "..." > file.txt?append       # Append to file.txt, makes ">>" unneeded.
+write "..." > file.txt:append       # Append to file.txt, makes ">>" unneeded.
 ```
 
 **dir** - Reads the contents of a directory to stdout. Intended as a replacement for `ls`.
 ```bash
 dir mydir                           # Prints the contents of mydir.
-dir mydir?recur                     # Recursively print the contents of mydir.
+dir mydir:recur                     # Recursively print the contents of mydir.
 ```
 
 **delete** - Deletes a file or directory. Intended as a replacement for `rm`, `unlink` and `rmdir`.
 ```bash
 delete file.txt                     # Deletes file.txt.
-delete mydir?recur                  # Recursively deletes mydir and its contents.
+delete mydir:recur                  # Recursively deletes mydir and its contents.
 ```
 
 ## Everything is a File
@@ -136,10 +136,10 @@ The returned file descriptor can be used to send and receive data, just like whe
 You may have noticed that, in the above section, the open() function does not take in a flags argument. This is because flags are part of the file path directly so if you wanted to create a non-blocking socket, you would use
 
 ```c
-    fd_t handle = open("/net/local/seqpacket?nonblock");
+    fd_t handle = open("/net/local/seqpacket:nonblock");
 ```
 
-Multiple flags can be separated with the `&` character, like a URL, it is also possible to just specify the first letter of a flag, so intead of `?nonblock` you can use `?n`. However, there are no read or write flags, all files are both read and write.
+Multiple flags are allowed, just seperate them with the `:` character, this means flags can be easily appended to a path using the `openf()` function. It is also possible to just specify the first letter of a flag, so instead of `:nonblock` you can use `:n`. Note that duplicate flags are ignored and that there are no read or write flags, all files are both read and write.
 
 ### The Why
 

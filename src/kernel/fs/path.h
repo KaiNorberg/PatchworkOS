@@ -14,7 +14,7 @@ typedef struct dentry dentry_t;
 
 #define PATH_DEFER(path) __attribute__((cleanup(path_defer_cleanup))) path_t* CONCAT(i, __COUNTER__) = (path)
 
-#define PATH_VALID_CHAR(ch) (isalnum((ch)) || strchr("_-. ()[]{}~!@#$%^&',;=+", (ch)))
+#define PATH_VALID_CHAR(ch) (isalnum((ch)) || strchr("_-. ()[]{}~!@#$%^&?',;=+", (ch)))
 
 #define PATH_HANDLE_DOTDOT_MAX_ITER 1000
 

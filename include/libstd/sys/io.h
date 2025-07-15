@@ -34,7 +34,7 @@ extern "C"
  * This means that for example there is no need for a special "truncate" redirect in a shell (>>) instead you can just
  * add the "trunc" flag to the filepath and use a normal redirect (>).
  *
- * Here is an example filepath: `/this/is/a/path?with&some&flags`.
+ * Here is an example filepath: `/this/is/a/path:with:some:flags`.
  *
  * Check the 'src/kernel/fs/path.h' file for a list of available flags.
  *
