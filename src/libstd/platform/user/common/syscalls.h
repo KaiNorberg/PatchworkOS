@@ -239,14 +239,9 @@ static inline uint64_t _syscall_rename(const char* oldpath, const char* newpath)
     return _SYSCALL2(uint64_t, SYS_RENAME, const char*, oldpath, const char*, newpath);
 }
 
-static inline uint64_t _syscall_unlink(const char* path)
+static inline uint64_t _syscall_delete(const char* path)
 {
-    return _SYSCALL1(uint64_t, SYS_UNLINK, const char*, path);
-}
-
-static inline uint64_t _syscall_rmdir(const char* path)
-{
-    return _SYSCALL1(uint64_t, SYS_RMDIR, const char*, path);
+    return _SYSCALL1(uint64_t, SYS_DELETE, const char*, path);
 }
 
 static inline uint64_t _syscall_link(const char* oldPath, const char* newPath)

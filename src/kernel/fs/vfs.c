@@ -1427,9 +1427,10 @@ uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count)
         return ERR;
     }
 
-    MUTEX_SCOPE(&file->path.dentry->mutex);
+    mutex_acquire(&file->path.dentry->mutex);
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    uint64_t result = file->path.dentry->ops->getdents(file->path.dentry, buffer, count, &file->pos);
+    uint64_t result = file->path.dentry->ops->getdents(file->path.dentry, buffer, count, &file->pos, file->flags);
+    mutex_release(&file->path.dentry->mutex);
     if (result != ERR)
     {
         inode_notify_access(file->inode);
@@ -1814,17 +1815,11 @@ SYSCALL_DEFINE(SYS_RENAME, uint64_t, const char* oldPathString, const char* newP
     return vfs_rename(&oldPathname, &newPathname);
 }
 
-uint64_t vfs_unlink(const pathname_t* pathname)
+uint64_t vfs_delete(const pathname_t* pathname)
 {
     if (pathname == NULL || !pathname->isValid)
     {
         errno = EINVAL;
-        return ERR;
-    }
-
-    if (pathname->flags != PATH_NONE)
-    {
-        errno = EBADFLAG;
         return ERR;
     }
 
@@ -1837,14 +1832,20 @@ uint64_t vfs_unlink(const pathname_t* pathname)
     PATH_DEFER(&parent);
     PATH_DEFER(&target);
 
-    if (target.dentry->inode->type == INODE_DIR)
+    if ((pathname->flags & PATH_DIRECTORY) && target.dentry->inode->type != INODE_DIR)
+    {
+        errno = ENOTDIR;
+        return ERR;
+    }
+
+    if (!(pathname->flags & PATH_DIRECTORY) && target.dentry->inode->type != INODE_FILE)
     {
         errno = EISDIR;
         return ERR;
     }
 
     inode_t* dir = parent.dentry->inode;
-    if (dir->ops == NULL || dir->ops->unlink == NULL)
+    if (dir->ops == NULL || dir->ops->delete == NULL)
     {
         errno = EPERM;
         return ERR;
@@ -1854,7 +1855,7 @@ uint64_t vfs_unlink(const pathname_t* pathname)
     mutex_acquire(&target.dentry->mutex);
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    uint64_t result = dir->ops->unlink(dir, target.dentry);
+    uint64_t result = dir->ops->delete(dir, target.dentry, pathname->flags);
     if (result != ERR)
     {
         vfs_remove_dentry(target.dentry);
@@ -1868,7 +1869,7 @@ uint64_t vfs_unlink(const pathname_t* pathname)
     return result;
 }
 
-SYSCALL_DEFINE(SYS_UNLINK, uint64_t, const char* pathString)
+SYSCALL_DEFINE(SYS_DELETE, uint64_t, const char* pathString)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
@@ -1885,94 +1886,5 @@ SYSCALL_DEFINE(SYS_UNLINK, uint64_t, const char* pathString)
         return ERR;
     }
 
-    return vfs_unlink(&pathname);
-}
-
-uint64_t vfs_rmdir(const pathname_t* pathname)
-{
-    if (pathname == NULL || !pathname->isValid)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (pathname->flags != PATH_NONE)
-    {
-        errno = EBADFLAG;
-        return ERR;
-    }
-
-    path_t parent = PATH_EMPTY;
-    path_t target = PATH_EMPTY;
-    if (vfs_walk_parent_and_child(&parent, &target, pathname, WALK_NONE) == ERR)
-    {
-        return ERR;
-    }
-    PATH_DEFER(&parent);
-    PATH_DEFER(&target);
-
-    if (target.dentry->inode->type != INODE_DIR)
-    {
-        errno = ENOTDIR;
-        return ERR;
-    }
-
-    inode_t* dir = parent.dentry->inode;
-    if (dir->ops == NULL || dir->ops->rmdir == NULL)
-    {
-        errno = EPERM;
-        return ERR;
-    }
-
-    if (target.dentry->ops == NULL || target.dentry->ops->removable == NULL)
-    {
-        errno = EPERM;
-        return ERR;
-    }
-
-    mutex_acquire(&dir->mutex);
-    mutex_acquire(&target.dentry->mutex);
-
-    uint64_t result = 0;
-    if (target.dentry->ops->removable(target.dentry))
-    {
-        assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-        result = dir->ops->rmdir(dir, target.dentry);
-        if (result != ERR)
-        {
-            vfs_remove_dentry(target.dentry);
-        }
-    }
-    else
-    {
-        errno = ENOTEMPTY;
-        result = ERR;
-    }
-
-    mutex_release(&target.dentry->mutex);
-    mutex_release(&dir->mutex);
-
-    inode_notify_change(target.dentry->inode);
-
-    return result;
-}
-
-SYSCALL_DEFINE(SYS_RMDIR, uint64_t, const char* pathString)
-{
-    process_t* process = sched_process();
-    space_t* space = &process->space;
-
-    if (!syscall_is_string_valid(space, pathString))
-    {
-        errno = EFAULT;
-        return ERR;
-    }
-
-    pathname_t pathname;
-    if (pathname_init(&pathname, pathString) == ERR)
-    {
-        return ERR;
-    }
-
-    return vfs_rmdir(&pathname);
+    return vfs_delete(&pathname);
 }

@@ -8,9 +8,9 @@ int main(int argc, char** argv)
 {
     for (int i = 1; i < argc; i++)
     {
-        if (rmdir(argv[i]) == ERR)
+        if (delete(argv[i]) == ERR)
         {
-            fprintf(stderr, "rmdir: %s\n", strerror(errno));
+            fprintf(stderr, "delete: %s\n", strerror(errno));
             return EXIT_FAILURE;
         }
     }

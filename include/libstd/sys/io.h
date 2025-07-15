@@ -353,7 +353,7 @@ typedef struct
 {
     inode_number_t number; //!< The number of the entries inode.
     inode_type_t type;     //!< The type of the entries inode.
-    char name[MAX_NAME];   //!< The name of the entry, not the full file path.
+    char name[MAX_PATH];   //!< The relative name of the directory.
 } dirent_t;
 
 /**
@@ -378,7 +378,26 @@ uint64_t getdents(fd_t fd, dirent_t* buffer, uint64_t count);
 uint64_t mkdir(const char* path);
 
 /**
- * @brief System call for removing a file.
+ * @brief System call for deleting a filesystem entry.
+ * @ingroup libstd_sys_io
+ *
+ * @param path The path of the entry to delete.
+ * @return On success, returns 0. On failure, returns `ERR` and errno is set.
+ */
+uint64_t delete(const char* path);
+
+/**
+ * @brief Wrapper for deleting a filesystem entry.
+ * @ingroup libstd_sys_io
+ *
+ * @param format The formatted path of the entry to delete.
+ * @param ... Arguments for the formatted path.
+ * @return On success, returns 0. On failure, returns `ERR` and errno is set.
+ */
+uint64_t deletef(const char* format, ...);
+
+/**
+ * @brief Wrapper for removing a file.
  * @ingroup libstd_sys_io
  *
  * @param path The path of the file to remove.
@@ -387,7 +406,7 @@ uint64_t mkdir(const char* path);
 uint64_t unlink(const char* path);
 
 /**
- * @brief System call for removing a directory.
+ * @brief Wrapper for removing a directory.
  * @ingroup libstd_sys_io
  *
  * @param path The path of the directory to remove.

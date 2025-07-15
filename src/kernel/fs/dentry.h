@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fs/path.h"
 #include "sched/wait.h"
 #include "sync/mutex.h"
 #include "utils/map.h"
@@ -52,8 +53,7 @@ typedef struct dentry
  */
 typedef struct dentry_ops
 {
-    uint64_t (*getdents)(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset);
-    bool (*removable)(dentry_t* dir);
+    uint64_t (*getdents)(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset, path_flags_t flags);
     void (*cleanup)(dentry_t* entry);
 } dentry_ops_t;
 
@@ -67,4 +67,5 @@ void dentry_make_positive(dentry_t* dentry, inode_t* inode);
  * @ingroup kernel_vfs
  *
  */
-uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset);
+uint64_t dentry_generic_getdents(dentry_t* dentry, dirent_t* buffer, uint64_t count, uint64_t* offset,
+    path_flags_t flags);

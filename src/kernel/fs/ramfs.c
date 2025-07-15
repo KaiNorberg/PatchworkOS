@@ -139,16 +139,48 @@ static uint64_t ramfs_link(dentry_t* old, inode_t* dir, dentry_t* target)
     return ERR;
 }
 
-static uint64_t ramfs_unlink(inode_t* parent, dentry_t* target)
+static uint64_t ramfs_delete_file(inode_t* parent, dentry_t* target)
 {
     target->inode->linkCount--;
     ramfs_dentry_deinit(target);
     return 0;
 }
 
-static uint64_t ramfs_rmdir(inode_t* parent, dentry_t* target)
+static uint64_t ramfs_delete_directory(inode_t* parent, dentry_t* target)
 {
     ramfs_dentry_deinit(target);
+    return 0;
+}
+
+static uint64_t ramfs_delete(inode_t* parent, dentry_t* target, path_flags_t flags)
+{
+    if (target->inode->type == INODE_FILE)
+    {
+        ramfs_delete_file(parent, target);
+    }
+    else if (target->inode->type == INODE_DIR)
+    {
+        if (flags & PATH_RECURSIVE)
+        {
+            dentry_t* temp = NULL;
+            dentry_t* child = NULL;
+            LIST_FOR_EACH_SAFE(child, temp, &target->children, siblingEntry)
+            {
+                REF(child);
+                ramfs_delete(target->inode, child, flags);
+                DEREF(child);
+            }
+        }
+        else
+        {
+            if (!list_is_empty(&target->children))
+            {
+                errno = ENOTEMPTY;
+                return ERR;
+            }
+        }
+        ramfs_delete_directory(parent, target);
+    }
     return 0;
 }
 
@@ -171,16 +203,10 @@ static inode_ops_t inodeOps = {
     .create = ramfs_create,
     .truncate = ramfs_truncate,
     .link = ramfs_link,
-    .unlink = ramfs_unlink,
-    .rmdir = ramfs_rmdir,
+    .delete = ramfs_delete,
     .rename = ramfs_rename,
     .cleanup = ramfs_inode_cleanup,
 };
-
-static bool ramfs_removable(dentry_t* dentry)
-{
-    return !list_is_empty(&dentry->children);
-}
 
 static dentry_ops_t dentryOps = {
     .getdents = dentry_generic_getdents,

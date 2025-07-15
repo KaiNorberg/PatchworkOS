@@ -66,8 +66,10 @@ typedef struct inode_ops
     uint64_t (*create)(inode_t* dir, dentry_t* target, path_flags_t flags);
     void (*truncate)(inode_t* target);
     uint64_t (*link)(dentry_t* old, inode_t* dir, dentry_t* target);
-    uint64_t (*unlink)(inode_t* parent, dentry_t* target);
-    uint64_t (*rmdir)(inode_t* parent, dentry_t* target);
+    /**
+     * @brief Handles both directories and files.
+     */
+    uint64_t (*delete)(inode_t* parent, dentry_t* target, path_flags_t flags);
     inode_t* (*rename)(inode_t* oldParent, dentry_t* old, inode_t* newParent, const char* name);
     void (*cleanup)(inode_t* inode);
 } inode_ops_t;

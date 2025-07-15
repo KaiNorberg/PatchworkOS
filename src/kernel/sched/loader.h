@@ -33,9 +33,6 @@
  * @ingroup kernel_sched_loader
  * @def LOADER_USER_STACK_TOP
  *
- * The `LOADER_USER_STACK_TOP()` macro retrieves the address of the top of a threads user stack given the id of the
- * thread.
- *
  * Note that in x86 the push operation moves the stack pointer first and then writes to the location of the stack
  * pointer, that means that even if this address is not inclusive the stack pointer of a thread should be initalized to
  * the result of the `LOADER_USER_STACK_TOP()` macro.
@@ -49,9 +46,7 @@
  * @ingroup kernel_sched_loader
  * @def LOADER_USER_STACK_BOTTOM
  *
- * The `LOADER_USER_STACK_BOTTOM()` macro retrieves the address of the bottom of a threads user stack given the id of
- * the thread.
- *
+ * @param tid The id of the thread.
  * @return The address of the bottom of the user stack, this address is inclusive and always page aligned.
  */
 #define LOADER_USER_STACK_BOTTOM(tid) (LOADER_USER_STACK_TOP(tid) - (CONFIG_MAX_USER_STACK_PAGES * PAGE_SIZE))
@@ -61,9 +56,7 @@
  * @ingroup kernel_sched_loader
  * @def LOADER_GUARD_PAGE_TOP
  *
- * The `LOADER_GUARD_PAGE_TOP()` macro retrieves the address of the top of a threads guard page given the id of the
- * thread.
- *
+ * @param tid The id of the thread.
  * @return The address of the top of the guard page, this address is not inclusive and always page aligned.
  */
 #define LOADER_GUARD_PAGE_TOP(tid) (LOADER_USER_STACK_BOTTOM(tid) - 1)
@@ -73,9 +66,7 @@
  * @ingroup kernel_sched_loader
  * @def LOADER_GUARD_PAGE_BOTTOM
  *
- * The `LOADER_GUARD_PAGE_BOTTOM()` macro retrieves the address of the bottom of a threads guard page given the id of
- * the thread.
- *
+ * @param tid The id of the thread.
  * @return The address of the bottom of the guard page, this address is inclusive and always page aligned.
  */
 #define LOADER_GUARD_PAGE_BOTTOM(tid) (LOADER_GUARD_PAGE_TOP(tid) - PAGE_SIZE)
@@ -83,9 +74,6 @@
 /**
  * @brief Performs the initial jump to userspace.
  * @ingroup kernel_sched_loader
- *
- * The `loader_jump_to_user_space()` function uses the `iretq` instruction to jump to userspace, passing process
- * arguments and setting the stack and program pointers.
  *
  * @param argc The length of the argument array to pass to userspace.
  * @param argv The argument buffer to pass to userspace.
@@ -98,15 +86,12 @@ extern NORETURN void loader_jump_to_user_space(int argc, char** argv, void* rsp,
  * @brief Spawns a child process from an executable file.
  * @ingroup kernel_sched_loader
  *
- * The `loader_spawn()` function loads and executes a program from the specified path found in `argv[0]`.
- *
  * @param argv A null-terminated array of strings storing the arguments to be passed to usespace and the executable to
  * be loaded in `argv[0]`.
- * @param priority The priority of the main thread within the child process.
- * @param cwd The current working directory for the child process, if `cwd` is equal to null then the child inherits the
+ * @param priority The priority of the first thread within the child process.
+ * @param cwd The current working directory for the child process, if `cwd` is null then the child inherits the
  * working directory of the parent.
- * @return On success, returns the main thread of the child process. On failure, returns `NULL` and the
- * running threads `thread_t::error` member is set.
+ * @return On success, returns the main thread of the child process. On failure, returns `NULL` and errno is set.
  */
 thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd);
 
@@ -114,14 +99,9 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
  * @brief Creates a new thread within an existing process.
  * @ingroup kernel_sched_loader
  *
- * The `loader_thread_create()` function creates a new thread within a specified parent process. This new thread will
- * begin executing at the provided entry point with the given argument as the first argument to the entry point (System
- * V ABI).
- *
  * @param parent The parent process for the new thread.
  * @param entry The entry point address for the new thread.
  * @param arg An argument to pass to the entry point.
- * @return On success, returns the newly created thread. On failure, returns `NULL` and the running threads
- * `thread_t::error` member is set.
+ * @return On success, returns the newly created thread. On failure, returns `NULL` and errno is set.
  */
 thread_t* loader_thread_create(process_t* parent, void* entry, void* arg);

@@ -1,10 +1,11 @@
+
 # PatchworkOS
 
 > **⚠ Warning**<br> Keep in mind that PatchworkOS is currently in a very early stage of development, and may have both known and unknown bugs.
 
 ![License](https://img.shields.io/badge/License-MIT-green) [![Build and Test](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml/badge.svg)](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml)
 
-**Patchwork** is a 64-bit monolithic NON-POSIX operating system for the x86_64 architecture that rigorously follows a "everything is a file" philospohy. Built from scratch in C it takes many ideas from Unix, Plan9, DOS and others while simplifying them and removing some fat.
+**Patchwork** is a 64-bit monolithic NON-POSIX operating system for the x86_64 architecture that rigorously follows a "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9, DOS and others while simplifying them and removing some fat.
 
 ## Screenshots
 
@@ -50,7 +51,40 @@
 
 ## Shell Utilities
 
-## A Small Taste
+Patchwork includes its own shell utilities designed around its [file flags](#file-flags) system. Here is a brief overview with some usage examples.
+
+**open** - Similar to `touch` it opens a file path and then immediately closes it. Intended for creating files/directories.
+```bash
+open file.txt?create&excl           # Creates the file.txt file only if it does not exist.
+open mydir?create&dir               # Creates the mydir directory.
+```
+
+**read** - Reads from stdin or provided files and outputs to stdout. Intended as a replacement for `cat`.
+```bash
+read file1.txt file2.txt            # Read the contents of file1.txt and file2.txt.
+read < file.txt                     # Read the contents of file.txt.
+read < file.txt > dest.txt?create   # Copy contents of file.txt to dest.txt and creates it.
+```
+
+**write** - Writes to stdout. Intended as a replacement for `echo`.
+```bash
+write "..." > file.txt              # Write to file.txt.
+write "..." > file.txt?append       # Append to file.txt, makes ">>" unneeded.
+```
+
+**dir** - Reads the contents of a directory to stdout. Intended as a replacement for `ls`.
+```bash
+dir mydir                           # Prints the contents of mydir.
+dir mydir?recur                     # Recursively print the contents of mydir.
+```
+
+**delete** - Deletes a file or directory. Intended as a replacement for `rm`, `unlink` and `rmdir`.
+```bash
+delete file.txt                     # Deletes file.txt.
+delete mydir?recur                  # Recursively deletes mydir and its contents.
+```
+
+## Everything is a File
 
 Patchwork strictly follows the "everything is a file" philosophy in a way similar to Plan9, this can often result in unorthodox APIs or could just straight up seem overly complicated, but it has its advantages. I will give some examples and then after I will explain why this is not a complete waste of time. Let's start with sockets.
 
@@ -99,13 +133,13 @@ The returned file descriptor can be used to send and receive data, just like whe
 
 ### File Flags?
 
-You may have noticed that, in the above section, the open() function does not take in a flags argument or anything similar. This is because flags are part of the file path directly so if you wanted to create a non-blocking socket, you would use
+You may have noticed that, in the above section, the open() function does not take in a flags argument. This is because flags are part of the file path directly so if you wanted to create a non-blocking socket, you would use
 
 ```c
     fd_t handle = open("/net/local/seqpacket?nonblock");
 ```
 
-Multiple flags can be separated with the ```&``` character, like an internet link. However, there are no read and/or write flags, all files are both read and write.
+Multiple flags can be separated with the `&` character, like a URL, it is also possible to just specify the first letter of a flag, so intead of `?nonblock` you can use `?n`. However, there are no read or write flags, all files are both read and write.
 
 ### The Why
 
@@ -115,11 +149,11 @@ The first is that I want Patchwork to be easy to expand upon, for that sake I wa
 
 The second reason is that it makes using the shell far more interesting, there is no need for special functions or any other magic keywords to for instance use sockets, all it takes is opening and reading from files.
 
-Let's take an example of these first two reasons. Say we wanted to implement the ability to wait for a process to die via a normal system. First we need to implement the kernel behavior to do that, then the appropriate system call, then add in handling for that system call in the standard library, then the actual function itself in the standard library and finally probably create some program that could be used in the shell. That's a lot of work for something as simple as a waiting for a process to die. Meanwhile, if waiting for a processes death is done via just writing to that processes "ctl" file then it's as simple as adding a "wait" action to it and calling it a day, you can now easily use that behavior via the standard library and via the shell by something like ```echo wait > /proc/[pid]/ctl``` without any additional work.
+Let's take an example of these first two reasons. Say we wanted to implement the ability to wait for a process to die via a normal system. First we need to implement the kernel behavior to do that, then the appropriate system call, then add in handling for that system call in the standard library, then the actual function itself in the standard library and finally probably create some program that could be used in the shell. That's a lot of work for something as simple as a waiting for a process to die. Meanwhile, if waiting for a processes death is done via just writing to that processes "ctl" file then it's as simple as adding a "wait" action to it and calling it a day, you can now easily use that behavior via the standard library and via the shell by something like ```write wait > /proc/[pid]/ctl``` without any additional work.
 
 And of course the third and final reason is because I think it's fun, and honestly I think this kind of system is just kinda beautiful due to just how generalized and how strictly it follows the idea that "everything is a file". There are downsides, of course, like the fact that these systems are less self documenting. But that is an argument for another time.
 
-## A Big Taste (Documentation)
+## Documentation
 
 If you are still interested in knowing more, then you can check out the Doxygen generated [documentation](https://kainorberg.github.io/PatchworkOS/html/index.html).
 

@@ -8,7 +8,7 @@
 
 #define BUFFER_SIZE 1024
 
-static int cat(fd_t fd, const char* name)
+static uint64_t read_fd(fd_t fd, const char* name)
 {
     while (1)
     {
@@ -16,9 +16,9 @@ static int cat(fd_t fd, const char* name)
         uint64_t count = read(fd, buffer, BUFFER_SIZE - 1);
         if (count == ERR)
         {
-            printf("cat: failed to read %s (%s)\n", name, strerror(errno));
+            printf("read: failed to read %s (%s)\n", name, strerror(errno));
             close(fd);
-            return EXIT_FAILURE;
+            return ERR;
         }
         if (count == 0)
         {
@@ -28,14 +28,14 @@ static int cat(fd_t fd, const char* name)
         write(STDOUT_FILENO, buffer, count);
     }
 
-    return EXIT_SUCCESS;
+    return 0;
 }
 
 int main(int argc, char** argv)
 {
     if (argc == 1)
     {
-        return cat(STDIN_FILENO, "stdin");
+        return read_fd(STDIN_FILENO, "stdin");
     }
 
     for (int i = 1; i < argc; i++)
@@ -43,11 +43,11 @@ int main(int argc, char** argv)
         fd_t fd = open(argv[i]);
         if (fd == ERR)
         {
-            printf("cat: failed to open %s (%s)\n", argv[i], strerror(errno));
-            continue;
+            printf("read: failed to open %s (%s)\n", argv[i], strerror(errno));
+            return EXIT_FAILURE;
         }
 
-        if (cat(fd, argv[i]) == EXIT_FAILURE)
+        if (read_fd(fd, argv[i]) == ERR)
         {
             return EXIT_FAILURE;
         }

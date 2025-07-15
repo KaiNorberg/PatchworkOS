@@ -13,26 +13,78 @@
 #include <string.h>
 
 static map_t flagMap;
+static map_t flagShortMap;
+
 static path_flag_entry_t flagEntries[] = {
     {.flag = PATH_NONBLOCK, .name = "nonblock"},
     {.flag = PATH_APPEND, .name = "append"},
     {.flag = PATH_CREATE, .name = "create"},
-    {.flag = PATH_EXCLUSIVE, .name = "exclusive"},
+    {.flag = PATH_EXCLUSIVE, .name = "excl"},
     {.flag = PATH_TRUNCATE, .name = "trunc"},
     {.flag = PATH_DIRECTORY, .name = "dir"},
+    {.flag = PATH_RECURSIVE, .name = "recur"},
 };
+
+static path_flag_entry_t* path_flags_get(const char* flag, uint64_t length)
+{
+    if (flag == NULL || length == 0)
+    {
+        return NULL;
+    }
+
+    assert(sizeof(flagEntries) / sizeof(flagEntries[0]) == PATH_FLAGS_AMOUNT);
+
+    map_key_t key = map_key_buffer(flag, length);
+    if (length == 1)
+    {
+        path_flag_entry_t* entry = CONTAINER_OF_SAFE(map_get(&flagShortMap, &key), path_flag_entry_t, shortEntry);
+        if (entry == NULL)
+        {
+            return NULL;
+        }
+
+        return entry;
+    }
+
+    path_flag_entry_t* entry = CONTAINER_OF_SAFE(map_get(&flagMap, &key), path_flag_entry_t, entry);
+    if (entry == NULL)
+    {
+        return NULL;
+    }
+
+    return entry;
+}
 
 void path_flags_init(void)
 {
     map_init(&flagMap);
+    map_init(&flagShortMap);
 
-    for (uint64_t i = 0; i < sizeof(flagEntries) / sizeof(flagEntries[0]); i++)
+    for (uint64_t i = 0; i < PATH_FLAGS_AMOUNT; i++)
     {
         map_entry_init(&flagEntries[i].entry);
+        map_entry_init(&flagEntries[i].shortEntry);
+
+#ifndef NDEBUG
+        for (uint64_t j = 0; j < PATH_FLAGS_AMOUNT; j++)
+        {
+            if (i != j && flagEntries[i].name[0] == flagEntries[j].name[0])
+            {
+                panic(NULL, "Flag name collision");
+            }
+        }
+#endif
+
         map_key_t key = map_key_string(flagEntries[i].name);
         if (map_insert(&flagMap, &key, &flagEntries[i].entry) == ERR)
         {
             panic(NULL, "Failed to init flag map");
+        }
+
+        map_key_t shortKey = map_key_buffer(flagEntries[i].name, 1);
+        if (map_insert(&flagShortMap, &shortKey, &flagEntries[i].shortEntry) == ERR)
+        {
+            panic(NULL, "Failed to init short flag map");
         }
     }
 }
@@ -130,8 +182,7 @@ uint64_t pathname_init(pathname_t* pathname, const char* string)
             return ERR;
         }
 
-        map_key_t key = map_key_buffer(token, tokenLength);
-        path_flag_entry_t* flag = CONTAINER_OF_SAFE(map_get(&flagMap, &key), path_flag_entry_t, entry);
+        path_flag_entry_t* flag = path_flags_get(token, tokenLength);
         if (flag == NULL)
         {
             errno = EBADFLAG;

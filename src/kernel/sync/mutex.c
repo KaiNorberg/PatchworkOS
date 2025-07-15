@@ -12,6 +12,7 @@ void mutex_init(mutex_t* mtx)
 {
     wait_queue_init(&mtx->waitQueue);
     mtx->owner = NULL;
+    mtx->depth = 0;
     lock_init(&mtx->lock);
 }
 
@@ -19,6 +20,24 @@ void mutex_deinit(mutex_t* mtx)
 {
     assert(mtx->owner == NULL);
     wait_queue_deinit(&mtx->waitQueue);
+}
+
+void mutex_acquire_recursive(mutex_t* mtx)
+{
+    assert(mtx != NULL);
+    thread_t* self = sched_thread();
+    assert(self != NULL);
+
+    lock_acquire(&mtx->lock);
+    if (mtx->owner == self)
+    {
+        mtx->depth++;
+        lock_release(&mtx->lock);
+        return;
+    }
+    lock_release(&mtx->lock);
+
+    mutex_acquire(mtx);
 }
 
 void mutex_acquire(mutex_t* mtx)
@@ -36,6 +55,7 @@ void mutex_acquire(mutex_t* mtx)
         if (mtx->owner == NULL)
         {
             mtx->owner = self;
+            mtx->depth = 1;
             lock_release(&mtx->lock);
             return;
         }
@@ -55,17 +75,22 @@ void mutex_acquire(mutex_t* mtx)
     }
 
     mtx->owner = self;
+    mtx->depth = 1;
     lock_release(&mtx->lock);
 }
 
 void mutex_release(mutex_t* mtx)
 {
     assert(mtx != NULL);
-    assert(mtx->owner == sched_thread());
-
     LOCK_SCOPE(&mtx->lock);
 
-    mtx->owner = NULL;
+    assert(mtx->owner == sched_thread());
+    assert(mtx->depth > 0);
 
-    wait_unblock(&mtx->waitQueue, 1);
+    mtx->depth--;
+    if (mtx->depth == 0)
+    {
+        mtx->owner = NULL;
+        wait_unblock(&mtx->waitQueue, 1);
+    }
 }

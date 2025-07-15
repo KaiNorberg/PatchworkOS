@@ -26,20 +26,22 @@ typedef enum
     PATH_CREATE = 1 << 2,
     PATH_EXCLUSIVE = 1 << 3,
     PATH_TRUNCATE = 1 << 4,
-    PATH_DIRECTORY = 1 << 5
+    PATH_DIRECTORY = 1 << 5,
+    PATH_RECURSIVE = 1 << 6,
+    PATH_FLAGS_AMOUNT = 7
 } path_flags_t;
 
 typedef enum
 {
     WALK_NONE = 0,
-    WALK_NEGATIVE_IS_OK = 1 << 0, //!< If a negative dentry is ok, if not specified then it is considered an error.
-    WALK_MOUNTPOINT_TO_ROOT =
-        1 << 1, //!< If the pathname points to a mountpoint, return the root of the mounted filesystem.
+    WALK_NEGATIVE_IS_OK = 1 << 0,     //!< If a negative dentry is ok, if not specified then it is considered an error.
+    WALK_MOUNTPOINT_TO_ROOT = 1 << 1, //!< If the pathname points to a mountpoint, return the root of the filesystem.
 } walk_flags_t;
 
 typedef struct path_flag_entry
 {
     map_entry_t entry;
+    map_entry_t shortEntry;
     path_flags_t flag;
     const char* name;
 } path_flag_entry_t;
