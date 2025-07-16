@@ -2,6 +2,8 @@
 #include "dwm.h"
 #include "screen.h"
 
+#include <stdio.h>
+
 int main(void)
 {
     dwm_init();

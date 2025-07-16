@@ -6,6 +6,7 @@
 #include "cpu/port.h"
 #include "drivers/systime/systime.h"
 #include "log/log.h"
+#include "log/panic.h"
 
 #include <assert.h>
 
@@ -20,7 +21,10 @@ void ps2_init(void)
     uint8_t cfg = ps2_read();
 
     ps2_cmd(PS2_CMD_CONTROLLER_TEST);
-    assert(ps2_read() == 0x55 && "self test fail");
+    if (ps2_read() != 0x55)
+    {
+        panic(NULL, "ps2 self test fail");
+    }
 
     cfg = cfg | PS2_CFG_KBD_IRQ | PS2_CFG_AUX_IRQ;
 
@@ -48,7 +52,7 @@ uint8_t ps2_read(void)
         }
     }
 
-    log_panic(NULL, "PS2 Timeout");
+    panic(NULL, "PS2 Timeout");
 }
 
 void ps2_write(uint8_t data)
@@ -74,7 +78,7 @@ void ps2_wait(void)
         }
     }
 
-    log_panic(NULL, "PS2 Timeout");
+    panic(NULL, "PS2 Timeout");
 }
 
 void ps2_cmd(uint8_t command)

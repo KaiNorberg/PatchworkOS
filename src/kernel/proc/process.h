@@ -18,11 +18,11 @@ typedef struct
 
 typedef struct
 {
-    sysdir_t sysdir;
-    sysobj_t ctlObj;
-    sysobj_t cwdObj;
-    sysobj_t cmdlineObj;
-    sysobj_t noteObj;
+    sysfs_dir_t dir;
+    sysfs_file_t ctlFile;
+    sysfs_file_t cwdFile;
+    sysfs_file_t cmdlineFile;
+    sysfs_file_t noteFile;
 } process_dir_t;
 
 typedef struct process
@@ -47,6 +47,8 @@ void process_free(process_t* process);
 
 bool process_is_child(process_t* process, pid_t parentId);
 
-void process_backend_init(void);
+void process_kernel_init(void);
+
+void process_procfs_init(void);
 
 process_t* process_get_kernel(void);

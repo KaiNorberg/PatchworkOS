@@ -81,8 +81,6 @@ typedef uint64_t spawn_flags_t;
  * @brief Spawn fds termination constant.
  * @ingroup libstd_sys_proc
  *
- * The `SPAWN_FD_END` constant is used to terminate the `fds` array used in the `spawn()` function.
- *
  */
 #define SPAWN_FD_END \
     (spawn_fd_t) \
@@ -104,8 +102,6 @@ static_assert(sizeof(spawn_attr_t) == 128);
 /**
  * @brief System call for creating child processes.
  * @ingroup libstd_sys_proc
- *
- * The `spawn()` function creates and executes a new process.
  *
  * @param argv A NULL-terminated array of strings, where `argv[0]` is the filepath to the desired executable. This array
  * will be pushed to the child stack and the child can find a pointer to this array in its rsi register, along with its
@@ -192,7 +188,7 @@ typedef enum
  * @ingroup libstd_sys_proc
  *
  * The `mmap()` function maps memory to the currently running processes address space from a file, this is the only way
- * to allocate virtual memory from userspace. An example usage would be to map the `sys:/zero` file which would allocate
+ * to allocate virtual memory from userspace. An example usage would be to map the `/dev/zero` file which would allocate
  * zeroed memory.
  *
  * @param fd The open file descriptor of the file to be mapped.
@@ -285,13 +281,13 @@ clock_t uptime(void);
  * @brief System call for sleeping.
  * @ingroup libstd_sys_proc
  *
- * The `sleep()` function suspends the execution of the calling thread for a specified duration.
+ * The `nanosleep()` function suspends the execution of the calling thread for a specified duration.
  *
- * @param timeout The duration in clock ticks for which to sleep, if equal to `CLOCKS_NEVER` then it will sleep forever,
+ * @param timeout The duration in nanoseconds for which to sleep, if equal to `CLOCKS_NEVER` then it will sleep forever,
  * not sure why you would want to do that but you can.
  * @return On success, returns 0. On failure, returns `ERR` and errno is set.
  */
-uint64_t sleep(clock_t timeout);
+uint64_t nanosleep(clock_t timeout);
 
 #if defined(__cplusplus)
 }

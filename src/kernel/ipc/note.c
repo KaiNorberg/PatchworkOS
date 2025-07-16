@@ -16,7 +16,7 @@ void note_queue_init(note_queue_t* queue)
 
 uint64_t note_queue_length(note_queue_t* queue)
 {
-    LOCK_DEFER(&queue->lock);
+    LOCK_SCOPE(&queue->lock);
     return queue->length;
 }
 
@@ -24,12 +24,13 @@ uint64_t note_queue_push(note_queue_t* queue, const void* message, uint64_t leng
 {
     if (length >= MAX_PATH)
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
 
     process_t* sender = sched_process();
 
-    LOCK_DEFER(&queue->lock);
+    LOCK_SCOPE(&queue->lock);
 
     note_t* note = NULL;
     if (queue->length == CONFIG_MAX_NOTES)
@@ -37,7 +38,8 @@ uint64_t note_queue_push(note_queue_t* queue, const void* message, uint64_t leng
         if (!(flags & NOTE_CRITICAL))
         {
             // TODO: Implement blocking
-            return ERROR(EWOULDBLOCK);
+            errno = EWOULDBLOCK;
+            return ERR;
         }
 
         // Overwrite non critical note.
@@ -68,7 +70,7 @@ uint64_t note_queue_push(note_queue_t* queue, const void* message, uint64_t leng
 
 static bool note_queue_pop(note_queue_t* queue, note_t* note)
 {
-    LOCK_DEFER(&queue->lock);
+    LOCK_SCOPE(&queue->lock);
 
     if (queue->length == 0)
     {
@@ -87,14 +89,14 @@ bool note_dispatch(trap_frame_t* trapFrame, cpu_t* self)
 
     thread_t* thread = sched_thread();
     note_queue_t* queue = &thread->notes;
-    // LOG_INFO("note_dispatch: %p %p\n", thread, queue);
+    // LOG_INFO("%p %p\n", thread, queue);
 
     note_t note;
     while (note_queue_pop(queue, &note))
     {
         if (strcmp(note.message, "kill") == 0) // TODO: Fix bug.
         {
-            LOG_INFO("note: kill tid=%d pid=%d\n", thread->id, thread->process->id);
+            LOG_INFO("kill note received tid=%d pid=%d\n", thread->id, thread->process->id);
 
             sched_process_exit(0);
             sched_schedule(trapFrame, self);
@@ -102,7 +104,7 @@ bool note_dispatch(trap_frame_t* trapFrame, cpu_t* self)
         }
         else
         {
-            LOG_INFO("note: unknown (%s) tid=%d pid=%d\n", note.message, thread->id, thread->process->id);
+            LOG_WARN("unknown note type '%s' tid=%d pid=%d\n", note.message, thread->id, thread->process->id);
             // TODO: Unknown note, send to userspace
         }
     }

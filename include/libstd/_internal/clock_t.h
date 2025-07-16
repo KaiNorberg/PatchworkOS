@@ -5,7 +5,7 @@
  * @brief A nanosecond time.
  * @ingroup libstd
  *
- * The `clock_t` type is extended in Patchwork to respresent any nanosecond time. The special value `CLOCKS_PER_SECOND`
+ * The `clock_t` type is extended in Patchwork to respresent any nanosecond time. The special value `CLOCKS_PER_SEC`
  * is inherited from the C standard library but Patchwork also defines the special value `CLOCKS_NEVER` that all
  * functions and system calls that take in a timeout are expected to handle.
  *

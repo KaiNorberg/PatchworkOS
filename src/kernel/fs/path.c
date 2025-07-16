@@ -1,476 +1,645 @@
 #include "path.h"
 
-#include "defs.h"
+#include "fs/dentry.h"
 #include "log/log.h"
-#include "sched/thread.h"
+#include "log/panic.h"
+
+#include "sync/mutex.h"
 #include "vfs.h"
 
+#include <_internal/MAX_NAME.h>
+#include <_internal/MAX_PATH.h>
+#include <errno.h>
 #include <string.h>
 
-static uint64_t flag_length(const char* flag)
-{
-    for (uint64_t flagLength = 0; flagLength < MAX_NAME; flagLength++)
-    {
-        if (PATH_END_OF_FLAG(flag[flagLength]))
-        {
-            return flagLength;
-        }
+static map_t flagMap;
+static map_t flagShortMap;
 
-        // Dont need to check if chars are valid as they either way wont match.
+static path_flag_entry_t flagEntries[] = {
+    {.flag = PATH_NONBLOCK, .name = "nonblock"},
+    {.flag = PATH_APPEND, .name = "append"},
+    {.flag = PATH_CREATE, .name = "create"},
+    {.flag = PATH_EXCLUSIVE, .name = "excl"},
+    {.flag = PATH_TRUNCATE, .name = "trunc"},
+    {.flag = PATH_DIRECTORY, .name = "dir"},
+    {.flag = PATH_RECURSIVE, .name = "recur"},
+};
+
+static path_flag_entry_t* path_flags_get(const char* flag, uint64_t length)
+{
+    if (flag == NULL || length == 0)
+    {
+        return NULL;
     }
 
-    return ERR;
+    assert(sizeof(flagEntries) / sizeof(flagEntries[0]) == PATH_FLAGS_AMOUNT);
+
+    map_key_t key = map_key_buffer(flag, length);
+    if (length == 1)
+    {
+        path_flag_entry_t* entry = CONTAINER_OF_SAFE(map_get(&flagShortMap, &key), path_flag_entry_t, shortEntry);
+        if (entry == NULL)
+        {
+            return NULL;
+        }
+
+        return entry;
+    }
+
+    path_flag_entry_t* entry = CONTAINER_OF_SAFE(map_get(&flagMap, &key), path_flag_entry_t, entry);
+    if (entry == NULL)
+    {
+        return NULL;
+    }
+
+    return entry;
 }
 
-static bool flag_is_equal(const char* expected, const char* flag, uint64_t flagLength)
+void path_flags_init(void)
 {
-    if (strlen(expected) != flagLength)
-    {
-        return false;
-    }
+    map_init(&flagMap);
+    map_init(&flagShortMap);
 
-    for (uint64_t i = 0; i < flagLength; i++)
+    for (uint64_t i = 0; i < PATH_FLAGS_AMOUNT; i++)
     {
-        if (expected[i] != flag[i])
+        map_entry_init(&flagEntries[i].entry);
+        map_entry_init(&flagEntries[i].shortEntry);
+
+#ifndef NDEBUG
+        for (uint64_t j = 0; j < PATH_FLAGS_AMOUNT; j++)
         {
-            return false;
+            if (i != j && flagEntries[i].name[0] == flagEntries[j].name[0])
+            {
+                panic(NULL, "Flag name collision");
+            }
+        }
+#endif
+
+        map_key_t key = map_key_string(flagEntries[i].name);
+        if (map_insert(&flagMap, &key, &flagEntries[i].entry) == ERR)
+        {
+            panic(NULL, "Failed to init flag map");
+        }
+
+        map_key_t shortKey = map_key_buffer(flagEntries[i].name, 1);
+        if (map_insert(&flagShortMap, &shortKey, &flagEntries[i].shortEntry) == ERR)
+        {
+            panic(NULL, "Failed to init short flag map");
         }
     }
-
-    return true;
 }
 
-static uint64_t name_length(const char* name)
+uint64_t pathname_init(pathname_t* pathname, const char* string)
 {
-    for (uint64_t nameLength = 0; nameLength < MAX_NAME; nameLength++)
+    if (pathname == NULL)
     {
-        if (PATH_END_OF_NAME(name[nameLength]))
-        {
-            return nameLength;
-        }
-
-        if (!PATH_VALID_CHAR(name[nameLength]))
-        {
-            return ERR;
-        }
+        errno = EINVAL;
+        return ERR;
     }
 
-    return ERR;
-}
+    memset(pathname->string, 0, MAX_NAME);
+    pathname->flags = PATH_NONE;
+    pathname->isValid = false;
 
-static const char* path_parse_flags(path_t* path, const char* src)
-{
-    const char* flag = src;
-    while (1)
+    if (string == NULL)
     {
-        uint64_t flagLength = flag_length(flag);
-        if (flagLength == ERR)
-        {
-            return ERRPTR(EBADFLAG);
-        }
+        errno = EINVAL;
+        return ERR;
+    }
 
-        if (flag_is_equal("nonblock", flag, flagLength))
+    uint64_t length = strnlen_s(string, MAX_PATH);
+    if (length >= MAX_PATH)
+    {
+        errno = ENAMETOOLONG;
+        return ERR;
+    }
+
+    uint64_t index = 0;
+    uint64_t currentNameLength = 0;
+    while (string[index] != '\0' && string[index] != ':')
+    {
+        if (string[index] == '/')
         {
-            path->flags |= PATH_NONBLOCK;
-        }
-        else if (flag_is_equal("append", flag, flagLength))
-        {
-            path->flags |= PATH_APPEND;
-        }
-        else if (flag_is_equal("create", flag, flagLength))
-        {
-            path->flags |= PATH_CREATE;
-        }
-        else if (flag_is_equal("excl", flag, flagLength))
-        {
-            path->flags |= PATH_EXCLUSIVE;
-        }
-        else if (flag_is_equal("trunc", flag, flagLength))
-        {
-            path->flags |= PATH_TRUNCATE;
-        }
-        else if (flag_is_equal("dir", flag, flagLength))
-        {
-            path->flags |= PATH_DIRECTORY;
+            currentNameLength = 0;
         }
         else
         {
-            return ERRPTR(EBADFLAG);
-        }
-
-        flag += flagLength;
-        if (flag[0] == '\0')
-        {
-            return flag;
-        }
-        else if (flag[0] == PATH_FLAG_SEPARATOR)
-        {
-            flag += 1;
-        }
-        else
-        {
-            return ERRPTR(EBADPATH);
-        }
-    }
-}
-
-static const char* path_parse_names(path_t* path, const char* src)
-{
-    const char* name = src;
-    while (1)
-    {
-        uint64_t nameLength = name_length(name);
-        if (nameLength == ERR)
-        {
-            return ERRPTR(EBADPATH);
-        }
-
-        if (PATH_NAME_IS_DOT(name))
-        {
-            // Do nothing
-        }
-        else if (PATH_NAME_IS_DOT_DOT(name))
-        {
-            if (path->bufferLength == 0)
+            if (!PATH_VALID_CHAR(string[index]))
             {
-                return ERRPTR(EINVAL);
+                errno = EINVAL;
+                return ERR;
             }
-
-            do
+            currentNameLength++;
+            if (currentNameLength >= MAX_NAME)
             {
-                path->bufferLength--;
-            } while (path->bufferLength != 0 && path->buffer[path->bufferLength - 1] != '\0');
-        }
-        else if (nameLength != 0)
-        {
-            if (path->bufferLength + nameLength >= MAX_PATH)
-            {
-                return ERRPTR(ENAMETOOLONG);
+                errno = ENAMETOOLONG;
+                return ERR;
             }
-
-            memcpy(&path->buffer[path->bufferLength], name, nameLength);
-            path->bufferLength += nameLength;
-
-            path->buffer[path->bufferLength] = '\0';
-            path->bufferLength++;
         }
 
-        name += nameLength;
-        if (name[0] == '\0' || name[0] == PATH_FLAGS_SEPARATOR)
-        {
-            if (path->bufferLength == MAX_PATH)
-            {
-                return ERRPTR(ENAMETOOLONG);
-            }
-
-            path->buffer[path->bufferLength] = '\3';
-            return name[0] == '\0' ? name : name + 1;
-        }
-        else if (name[0] == PATH_NAME_SEPARATOR)
-        {
-            name += 1;
-        }
-        else
-        {
-            return ERRPTR(EBADPATH);
-        }
-    }
-}
-
-static const char* path_determine_type(path_t* path, const char* string, path_t* cwd)
-{
-    if (string[0] == PATH_NAME_SEPARATOR) // Root path
-    {
-        if (cwd != NULL)
-        {
-            strcpy(path->volume, cwd->volume);
-        }
-        else
-        {
-            path->volume[0] = '\0';
-        }
-
-        return string + 1;
+        pathname->string[index] = string[index];
+        index++;
     }
 
-    bool absolute = false;
-    uint64_t i = 0;
-    for (; !PATH_END_OF_NAME(string[i]); i++)
-    {
-        if (string[i] == PATH_LABEL_SEPARATOR)
-        {
-            if (!PATH_END_OF_NAME(string[i + 1]))
-            {
-                return ERRPTR(EBADPATH);
-            }
+    pathname->string[index] = '\0';
 
-            absolute = true;
+    if (string[index] != ':')
+    {
+        pathname->isValid = true;
+        return 0;
+    }
+
+    index++; // Skip ':'.
+    const char* flags = &string[index];
+
+    while (true)
+    {
+        while (string[index] == ':')
+        {
+            index++;
+        }
+
+        if (string[index] == '\0')
+        {
             break;
         }
-        else if (!PATH_VALID_CHAR(string[i]))
-        {
-            return ERRPTR(EBADPATH);
-        }
-    }
 
-    if (absolute) // Absolute path
-    {
-        uint64_t volumeLength = i;
-        memcpy(path->volume, string, volumeLength);
-        path->volume[volumeLength] = '\0';
-
-        return string[volumeLength + 1] == PATH_NAME_SEPARATOR ? string + volumeLength + 2 : string + volumeLength + 1;
-    }
-    else // Relative path
-    {
-        if (cwd == NULL)
+        const char* token = &string[index];
+        while (string[index] != '\0' && string[index] != ':')
         {
-            return ERRPTR(EINVAL);
+            if (!isalnum(string[index]))
+            {
+                errno = EBADFLAG;
+                return ERR;
+            }
+            index++;
         }
 
-        strcpy(path->volume, cwd->volume);
-
-        memcpy(path->buffer, cwd->buffer, cwd->bufferLength + 1);
-        path->bufferLength = cwd->bufferLength;
-
-        return string;
-    }
-}
-
-uint64_t path_init(path_t* path, const char* string, path_t* cwd)
-{
-    path->volume[0] = '\0';
-    path->buffer[0] = '\3';
-    path->bufferLength = 0;
-    path->flags = 0;
-    path->isInvalid = false;
-
-    if (string == NULL)
-    {
-        path->isInvalid = true;
-        return ERR;
-    }
-
-    string = path_determine_type(path, string, cwd);
-    if (string == NULL)
-    {
-        path->isInvalid = true;
-        return ERR;
-    }
-
-    if (string[0] == '\0')
-    {
-        return 0;
-    }
-
-    string = path_parse_names(path, string);
-    if (string == NULL)
-    {
-        path->isInvalid = true;
-        return ERR;
-    }
-
-    if (string[0] == '\0')
-    {
-        return 0;
-    }
-
-    string = path_parse_flags(path, string);
-    if (string == NULL)
-    {
-        path->isInvalid = true;
-        return ERR;
-    }
-
-    return 0;
-}
-
-void path_to_string(const path_t* path, char* dest)
-{
-    dest[0] = '\0';
-    if (path->volume[0] != '\0')
-    {
-        strcpy(dest, path->volume);
-        strcat(dest, ":");
-    }
-
-    uint64_t nameAmount = 0;
-
-    const char* name;
-    PATH_FOR_EACH(name, path)
-    {
-        strcat(dest, "/");
-        strcat(dest, name);
-        nameAmount++;
-    }
-
-    if (nameAmount == 0)
-    {
-        strcat(dest, "/");
-    }
-}
-
-node_t* path_traverse_node(const path_t* path, node_t* node)
-{
-    const char* name;
-    PATH_FOR_EACH(name, path)
-    {
-        node_t* child = node_find(node, name);
-        if (child == NULL)
+        uint64_t tokenLength = &string[index] - token;
+        if (tokenLength >= MAX_NAME)
         {
-            return NULL;
-        }
-
-        node = child;
-    }
-
-    return node;
-}
-
-node_t* path_traverse_node_parent(const path_t* path, node_t* node)
-{
-    if (path->bufferLength == 0 || path->buffer[0] == '\3')
-    {
-        return NULL;
-    }
-
-    node_t* previous = node;
-    const char* name;
-    PATH_FOR_EACH(name, path)
-    {
-        const char* next = name + strlen(name) + 1;
-        if (next[0] == '\3')
-        {
-            return previous;
-        }
-
-        node_t* child = node_find(previous, name);
-        if (child == NULL)
-        {
-            return NULL;
-        }
-
-        previous = child;
-    }
-
-    return previous;
-}
-
-bool path_is_name_valid(const char* name)
-{
-    const char* chr = name;
-    while (*chr != '\0')
-    {
-        if (!PATH_VALID_CHAR(*chr))
-        {
-            return false;
-        }
-        chr++;
-    }
-    return true;
-}
-
-char* path_last_name(const path_t* path)
-{
-    if (path->bufferLength == 0 || path->buffer[0] == '\3')
-    {
-        return NULL;
-    }
-
-    char* last = NULL;
-    const char* name;
-    PATH_FOR_EACH(name, path)
-    {
-        last = (char*)name;
-    }
-
-    return last;
-}
-
-#ifdef TESTING
-#include "utils/testing.h"
-
-static uint64_t path_test(const char* cwdStr, const char* testPath, const char* expectedResult)
-{
-    path_t cwd;
-    path_t path;
-    char parsedPath[MAX_PATH];
-    char parsedCwd[MAX_PATH];
-
-    if (cwdStr != NULL)
-    {
-        path_init(&cwd, cwdStr, NULL);
-    }
-
-    uint64_t result = path_init(&path, testPath, cwdStr != NULL ? &cwd : NULL);
-
-    if (result == ERR)
-    {
-        if (expectedResult != NULL)
-        {
-            LOG_INFO("failed: unexpectedly returned error, cwd=\"%s\" path=\"%s\"\n", cwdStr != NULL ? cwdStr : "NULL",
-                testPath);
+            errno = ENAMETOOLONG;
             return ERR;
         }
-        return 0;
+
+        path_flag_entry_t* flag = path_flags_get(token, tokenLength);
+        if (flag == NULL)
+        {
+            errno = EBADFLAG;
+            return ERR;
+        }
+
+        pathname->flags |= flag->flag;
     }
 
-    path_to_string(&path, parsedPath);
-    path_to_string(&cwd, parsedCwd);
-
-    if (strcmp(parsedPath, expectedResult) != 0)
-    {
-        LOG_INFO("failed: cwd=\"%s\" parsed_cwd=\"%s\" path=\"%s\" expected=\"%s\" result=\"%s\"\n",
-            cwdStr != NULL ? cwdStr : "NULL", parsedCwd, testPath, expectedResult, parsedPath);
-        return ERR;
-    }
-
+    pathname->isValid = true;
     return 0;
 }
 
-TESTING_REGISTER_TEST(path_all_tests)
+void path_set(path_t* path, mount_t* mount, dentry_t* dentry)
 {
-    uint64_t result = 0;
+    if (path->dentry != NULL)
+    {
+        DEREF(path->dentry);
+        path->dentry = NULL;
+    }
 
-    result |= path_test("sys:/proc", "sys:/kbd/ps2", "sys:/kbd/ps2");
-    result |= path_test("sys:/proc", ".", "sys:/proc");
-    result |= path_test("sys:/proc", "..", "sys:/");
-    result |= path_test("sys:/proc", "../dev/./null", "sys:/dev/null");
-    result |= path_test("sys:/", "home/user", "sys:/home/user");
-    result |= path_test("sys:/usr/local/bin", "../lib", "sys:/usr/local/lib");
-    result |= path_test("sys:/usr/local/bin", "../../../", "sys:/");
-    result |= path_test("sys:/usr/local/bin", "usr:/bin", "usr:/bin");
-    result |= path_test("usr:/lib", "include", "usr:/lib/include");
-    result |= path_test("usr:/lib", "sys:/proc", "sys:/proc");
-    result |= path_test("usr:/lib", "", "usr:/lib");
-    result |= path_test("usr:/lib", "/", "usr:/");
-    result |=
-        path_test("data:/users/admin", "documents///photos//vacation/", "data:/users/admin/documents/photos/vacation");
-    result |=
-        path_test("data:/users/admin", "./downloads/../documents/./reports/../../photos", "data:/users/admin/photos");
-    result |= path_test("data:/users/admin", "notes/report (2023).txt", "data:/users/admin/notes/report (2023).txt");
-    result |= path_test("data:/users/admin", "bad|file?name", NULL);
-    result |= path_test(NULL, "relative/path", NULL);
-    result |= path_test("data:/users/admin", "bad:volume/path", NULL);
-    result |= path_test("app:/games", "rpg/saves/.", "app:/games/rpg/saves");
-    result |= path_test("app:/games", "rpg/saves/..", "app:/games/rpg");
-    result |= path_test("app:/games", "rpg/../../games/shooter", "app:/games/shooter");
-    result |= path_test("temp:/downloads", "log:/system/errors", "log:/system/errors");
-    result |= path_test("temp:/downloads", "temp:/uploads", "temp:/uploads");
-    result |= path_test("root:/", "/", "root:/");
-    result |= path_test("root:/", "/bin", "root:/bin");
-    result |= path_test("dev:/tools", "//multiple//slashes///", "dev:/multiple/slashes");
-    result |= path_test("sys:/usr/bin", "/", "sys:/");
-    result |= path_test("etc:/config", "home/user/.config/app/./../..", "etc:/config/home/user");
-    result |= path_test("project:/src",
-        "lib/core/utils/string/parser/../../network/http/client/api/v1/../../../../../../tests",
-        "project:/src/lib/core/tests");
-    result |= path_test("docs:/", "research/paper (draft 2).pdf", "docs:/research/paper (draft 2).pdf");
-    result |= path_test("media:/music", "Albums/Rock & Roll/Bands", "media:/music/Albums/Rock & Roll/Bands");
-    result |= path_test("backup:/2023", "files_v1.2-beta+build.3", "backup:/2023/files_v1.2-beta+build.3");
-    result |= path_test("backup:/2023", "sys:/net/local/new?nonblock", "sys:/net/local/new");
+    if (path->mount != NULL)
+    {
+        DEREF(path->mount);
+        path->mount = NULL;
+    }
 
-    return result;
+    if (dentry != NULL)
+    {
+        path->dentry = REF(dentry);
+    }
+
+    if (mount != NULL)
+    {
+        path->mount = REF(mount);
+    }
 }
 
-#endif
+void path_copy(path_t* dest, const path_t* src)
+{
+    if (dest->dentry != NULL)
+    {
+        DEREF(dest->dentry);
+        dest->dentry = NULL;
+    }
+
+    if (dest->mount != NULL)
+    {
+        DEREF(dest->mount);
+        dest->mount = NULL;
+    }
+
+    if (src->dentry != NULL)
+    {
+        dest->dentry = REF(src->dentry);
+    }
+
+    if (src->mount != NULL)
+    {
+        dest->mount = REF(src->mount);
+    }
+}
+
+void path_put(path_t* path)
+{
+    if (path->dentry != NULL)
+    {
+        DEREF(path->dentry);
+        path->dentry = NULL;
+    }
+
+    if (path->mount != NULL)
+    {
+        DEREF(path->mount);
+        path->mount = NULL;
+    }
+}
+
+static uint64_t path_handle_dotdot(path_t* current)
+{
+    if (current->dentry == current->mount->superblock->root)
+    {
+        uint64_t iter = 0;
+
+        while (current->dentry == current->mount->superblock->root && iter < PATH_HANDLE_DOTDOT_MAX_ITER)
+        {
+            if (current->mount->parent == NULL || current->mount->mountpoint == NULL)
+            {
+                return 0;
+            }
+
+            mount_t* newMount = REF(current->mount->parent);
+            dentry_t* newDentry = REF(current->mount->mountpoint);
+
+            DEREF(current->mount);
+            current->mount = newMount;
+            DEREF(current->dentry);
+            current->dentry = newDentry;
+
+            iter++;
+        }
+
+        if (iter >= PATH_HANDLE_DOTDOT_MAX_ITER)
+        {
+            errno = ELOOP;
+            return ERR;
+        }
+
+        if (current->dentry != current->mount->superblock->root)
+        {
+            dentry_t* parent = current->dentry->parent;
+            if (parent == NULL || parent == current->dentry)
+            {
+                errno = ENOENT;
+                return ERR;
+            }
+
+            dentry_t* new_parent = REF(parent);
+            DEREF(current->dentry);
+            current->dentry = new_parent;
+        }
+
+        return 0;
+    }
+    else
+    {
+        assert(current->dentry->parent != NULL); // This can only happen if the filesystem is corrupt.
+        dentry_t* parent = REF(current->dentry->parent);
+        DEREF(current->dentry);
+        current->dentry = parent;
+
+        return 0;
+    }
+}
+
+uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char* component, walk_flags_t flags)
+{
+    if (!vfs_is_name_valid(component))
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    path_t current = PATH_EMPTY;
+    path_copy(&current, parent);
+    PATH_DEFER(&current);
+
+    mutex_acquire(&current.dentry->mutex);
+    if (current.dentry->flags & DENTRY_MOUNTPOINT)
+    {
+        path_t nextRoot = PATH_EMPTY;
+        if (vfs_mountpoint_to_fs_root(&nextRoot, &current) == ERR)
+        {
+            mutex_release(&current.dentry->mutex);
+            return ERR;
+        }
+        PATH_DEFER(&nextRoot);
+
+        mutex_release(&current.dentry->mutex);
+        path_copy(&current, &nextRoot);
+    }
+    else
+    {
+        mutex_release(&current.dentry->mutex);
+    }
+
+    dentry_t* next = vfs_get_or_lookup_dentry(&current, component);
+    if (next == NULL)
+    {
+        return ERR;
+    }
+    REF_DEFER(next);
+
+    mutex_acquire(&next->mutex);
+    if (next->flags & DENTRY_NEGATIVE)
+    {
+        mutex_release(&next->mutex);
+        if (flags & WALK_NEGATIVE_IS_OK)
+        {
+            path_set(outPath, current.mount, next);
+            return 0;
+        }
+        errno = ENOENT;
+        return ERR;
+    }
+    mutex_release(&next->mutex);
+
+    path_set(outPath, current.mount, next);
+    return 0;
+}
+
+uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* start, walk_flags_t flags)
+{
+    if (pathname == NULL || !pathname->isValid)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (pathname->string[0] == '\0')
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    path_t current = PATH_EMPTY;
+    const char* p = pathname->string;
+
+    if (pathname->string[0] == '/')
+    {
+        if (vfs_get_global_root(&current) == ERR)
+        {
+            return ERR;
+        }
+        p++;
+    }
+    else
+    {
+        if (start == NULL || start->dentry == NULL || start->mount == NULL)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+        path_copy(&current, start);
+    }
+
+    assert(current.dentry != NULL && current.mount != NULL);
+
+    PATH_DEFER(&current);
+
+    if (*p == '\0')
+    {
+        path_copy(outPath, &current);
+        return 0;
+    }
+
+    char component[MAX_NAME];
+    while (*p != '\0')
+    {
+        while (*p == '/')
+        {
+            p++;
+        }
+
+        if (*p == '\0')
+        {
+            break;
+        }
+
+        if (*p == ':')
+        {
+            errno = EBADFLAG;
+            return ERR;
+        }
+
+        const char* componentStart = p;
+        while (*p != '\0' && *p != '/')
+        {
+            if (!PATH_VALID_CHAR(*p))
+            {
+                errno = EINVAL;
+                return ERR;
+            }
+            p++;
+        }
+
+        uint64_t len = p - componentStart;
+        if (len >= MAX_NAME)
+        {
+            errno = ENAMETOOLONG;
+            return ERR;
+        }
+
+        memcpy(component, componentStart, len);
+        component[len] = '\0';
+
+        if (strcmp(component, ".") == 0)
+        {
+            continue;
+        }
+
+        if (strcmp(component, "..") == 0)
+        {
+            if (path_handle_dotdot(&current) == ERR)
+            {
+                return ERR;
+            }
+            continue;
+        }
+
+        path_t next = PATH_EMPTY;
+        if (path_walk_single_step(&next, &current, component, flags) == ERR)
+        {
+            return ERR;
+        }
+        PATH_DEFER(&next);
+
+        path_copy(&current, &next);
+
+        MUTEX_SCOPE(&current.dentry->mutex);
+        if (current.dentry->flags & DENTRY_NEGATIVE)
+        {
+            if (flags & WALK_NEGATIVE_IS_OK)
+            {
+                break;
+            }
+
+            errno = ENOENT;
+            return ERR;
+        }
+    }
+
+    MUTEX_SCOPE(&current.dentry->mutex);
+
+    if (flags & WALK_MOUNTPOINT_TO_ROOT && current.dentry->flags & DENTRY_MOUNTPOINT)
+    {
+        path_t root = PATH_EMPTY;
+        if (vfs_mountpoint_to_fs_root(&root, &current) == ERR)
+        {
+            return ERR;
+        }
+        PATH_DEFER(&root);
+
+        path_copy(&current, &root);
+    }
+
+    path_copy(outPath, &current);
+    return 0;
+}
+
+uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* start, char* outLastName,
+    walk_flags_t flags)
+{
+    if (pathname == NULL || !pathname->isValid || outPath == NULL || outLastName == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (pathname->string[0] == '\0')
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    memset(outLastName, 0, MAX_NAME);
+
+    if (strcmp(pathname->string, "/") == 0)
+    {
+        errno = ENOENT;
+        return ERR;
+    }
+
+    char string[MAX_PATH];
+    strncpy(string, pathname->string, MAX_PATH - 1);
+    string[MAX_PATH - 1] = '\0';
+
+    uint64_t len = strnlen_s(string, MAX_PATH);
+    while (len > 1 && string[len - 1] == '/')
+    {
+        string[len - 1] = '\0';
+        len--;
+    }
+
+    char* lastSlash = strrchr(string, '/');
+    if (lastSlash == NULL)
+    {
+        if (start == NULL)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+
+        strncpy(outLastName, string, MAX_NAME - 1);
+        outLastName[MAX_NAME - 1] = '\0';
+
+        path_copy(outPath, start);
+        return 0;
+    }
+
+    char* lastComponent = lastSlash + 1;
+    strncpy(outLastName, lastComponent, MAX_NAME - 1);
+    outLastName[MAX_NAME - 1] = '\0';
+
+    if (lastSlash == string)
+    {
+        string[1] = '\0';
+    }
+    else
+    {
+        *lastSlash = '\0';
+    }
+
+    pathname_t parentPathname;
+    if (pathname_init(&parentPathname, string) == ERR)
+    {
+        return ERR;
+    }
+
+    return path_walk(outPath, &parentPathname, start, flags);
+}
+
+uint64_t path_to_name(const path_t* path, pathname_t* pathname)
+{
+    if (path == NULL || path->dentry == NULL || path->mount == NULL || pathname == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    memset(pathname->string, 0, MAX_PATH);
+    pathname->flags = PATH_NONE;
+    pathname->isValid = false;
+
+    path_t current = PATH_EMPTY;
+    path_copy(&current, path);
+    PATH_DEFER(&current);
+
+    uint64_t index = MAX_PATH - 1;
+    pathname->string[index] = '\0';
+
+    while (true)
+    {
+        if (DENTRY_IS_ROOT(current.dentry))
+        {
+            if (current.mount->parent == NULL)
+            {
+                pathname->string[index] = '/';
+                break;
+            }
+            path_set(&current, current.mount->parent, current.mount->mountpoint);
+            continue;
+        }
+
+        uint64_t nameLength = strnlen_s(current.dentry->name, MAX_NAME);
+
+        if (index < nameLength + 1)
+        {
+            errno = ENAMETOOLONG;
+            return ERR;
+        }
+
+        if (nameLength != 0)
+        {
+            index -= nameLength;
+            memcpy(pathname->string + index, current.dentry->name, nameLength);
+
+            index--;
+            pathname->string[index] = '/';
+        }
+
+        path_set(&current, current.mount, current.dentry->parent);
+    }
+
+    uint64_t length = MAX_PATH - index;
+    memmove(pathname->string, pathname->string + index, length);
+    pathname->string[length] = '\0';
+    pathname->isValid = true;
+    return 0;
+}

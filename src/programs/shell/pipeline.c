@@ -10,8 +10,8 @@
 #include <sys/proc.h>
 
 static const char* lookupDirs[] = {
-    "home:/bin",
-    "home:/usr/bin",
+    "/bin",
+    "/usr/bin",
 };
 
 uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
@@ -69,7 +69,7 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
             cmd->argc = currentArg;
 
             fd_t pipe[2];
-            if (open2("sys:/pipe/new", pipe) == ERR)
+            if (open2("/dev/pipe/new", pipe) == ERR)
             {
                 printf("error: unable to open pipe (%s)\n", strerror(errno));
                 goto token_parse_error;
@@ -259,9 +259,9 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
     else if (argv[0][0] == '.' && argv[0][0] == '/')
     {
         stat_t info;
-        if (stat(argv[0], &info) != ERR && info.type == STAT_FILE)
+        if (stat(argv[0], &info) != ERR && info.type != INODE_DIR)
         {
-            result = spawn(argv, fds, NULL, SPAWN_NONE);
+            result = spawn(argv, fds, NULL, NULL);
         }
         else
         {
@@ -283,7 +283,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
             sprintf(path, "%s/%s", lookupDirs[j], argv[0]);
 
             stat_t info;
-            if (stat(path, &info) != ERR && info.type == STAT_FILE)
+            if (stat(path, &info) != ERR && info.type != INODE_DIR)
             {
                 const char* temp = argv[0];
                 argv[0] = path;
@@ -342,7 +342,7 @@ void pipeline_execute(pipeline_t* pipeline)
     {
         if (pids[i] != ERR)
         {
-            fd_t child = openf("sys:/proc/%d/ctl", pids[i]);
+            fd_t child = openf("/proc/%d/ctl", pids[i]);
             writef(child, "wait");
             close(child);
         }

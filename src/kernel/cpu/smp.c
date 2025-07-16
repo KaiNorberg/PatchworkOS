@@ -7,6 +7,7 @@
 #include "idt.h"
 #include "kernel.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/heap.h"
 #include "mem/vmm.h"
 #include "regs.h"
@@ -85,7 +86,7 @@ void smp_others_init(void)
     uint8_t lapicId = lapic_id();
 
     cpus[0]->lapicId = lapicId;
-    LOG_INFO("cpu %d: bootstrap cpu, ready\n", (uint64_t)cpus[0]->id);
+    LOG_INFO("bootstrap cpu, ready\n", (uint64_t)cpus[0]->id);
 
     madt_t* madt = madt_get();
     madt_lapic_t* record;
@@ -100,10 +101,16 @@ void smp_others_init(void)
         {
             cpuid_t id = newId++;
             cpus[id] = heap_alloc(sizeof(cpu_t), HEAP_NONE);
-            assert(cpus[id] != NULL);
+            if (cpus[id] == NULL)
+            {
+                panic(NULL, "Failed to allocate memory for cpu\n");
+            }
             cpu_init(cpus[id], id, record->lapicId, false);
             cpuAmount++;
-            assert(cpu_start(cpus[id]) != ERR);
+            if (cpu_start(cpus[id]) == ERR)
+            {
+                panic(NULL, "Failed to start cpu\n");
+            }
         }
     }
 
@@ -117,7 +124,7 @@ void smp_entry(void)
 
     kernel_other_init();
 
-    LOG_INFO("cpu %d: ready\n", (uint64_t)cpu->id);
+    LOG_INFO("ready\n", (uint64_t)cpu->id);
     isReady = true;
 
     sched_idle_loop();
@@ -181,7 +188,7 @@ cpu_t* smp_self_brute(void)
         }
     }
 
-    log_panic(NULL, "Unable to find cpu");
+    panic(NULL, "Unable to find cpu");
 }
 
 cpu_t* smp_self(void)

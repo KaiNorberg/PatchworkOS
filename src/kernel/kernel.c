@@ -6,11 +6,9 @@
 #include "cpu/gdt.h"
 #include "cpu/idt.h"
 #include "cpu/pic.h"
-#include "cpu/regs.h"
 #include "cpu/simd.h"
 #include "cpu/smp.h"
 #include "drivers/const.h"
-#include "drivers/fb/fb.h"
 #include "drivers/fb/gop.h"
 #include "drivers/ps2/ps2.h"
 #include "drivers/systime/hpet.h"
@@ -25,16 +23,16 @@
 #include "mem/pmm.h"
 #include "mem/vmm.h"
 #include "net/net.h"
+#include "proc/process.h"
 #include "sched/sched.h"
-#include "sched/thread.h"
 #include "sched/wait.h"
-#include "utils/testing.h"
 
-#include <assert.h>
+#ifndef NDEBUG
+#include "utils/testing.h"
+#endif
+
 #include <boot/boot_info.h>
 #include <libstd/_internal/init.h>
-#include <stdlib.h>
-#include <string.h>
 #include <strings.h>
 
 static void kernel_free_loader_data(efi_mem_map_t* memoryMap)
@@ -46,7 +44,7 @@ static void kernel_free_loader_data(efi_mem_map_t* memoryMap)
         if (desc->type == EFI_LOADER_DATA)
         {
             pmm_free_pages(PML_LOWER_TO_HIGHER(desc->physicalStart), desc->amountOfPages);
-            LOG_INFO("loader data: free [0x%016lx-0x%016lx]\n", desc->physicalStart,
+            LOG_INFO("free boot memory [0x%016lx-0x%016lx]\n", desc->physicalStart,
                 ((uintptr_t)desc->physicalStart) + desc->amountOfPages * PAGE_SIZE);
         }
     }
@@ -54,11 +52,11 @@ static void kernel_free_loader_data(efi_mem_map_t* memoryMap)
 
 void kernel_init(boot_info_t* bootInfo)
 {
-    gdt_init();
-    idt_init();
+    gdt_cpu_init();
+    idt_cpu_init();
 
     smp_bootstrap_init();
-    gdt_load_tss(&smp_self_unsafe()->tss);
+    gd_cpu_load_tss(&smp_self_unsafe()->tss);
 
     log_init();
 
@@ -70,31 +68,33 @@ void kernel_init(boot_info_t* bootInfo)
 
     _std_init();
 
-    sysfs_init();
-    vfs_init();
-    sysfs_mount_to_vfs();
-    ramfs_init(&bootInfo->ramDisk);
-
-    log_obj_expose();
-    process_backend_init();
-
-    sched_init();
-
     acpi_init(bootInfo->rsdp);
     hpet_init();
-    madt_init();
-    apic_init();
-    lapic_init();
-
-    pic_init();
-    simd_init();
     systime_init();
     log_enable_time();
 
-    smp_others_init();
-    systime_timer_init();
+    process_kernel_init();
+    sched_init();
 
-    syscall_init();
+    vfs_init();
+    ramfs_init(&bootInfo->ramDisk);
+    sysfs_init();
+
+    log_file_expose();
+    process_procfs_init();
+
+    madt_init();
+    apic_init();
+    lapic_cpu_init();
+
+    pic_init();
+    simd_cpu_init();
+
+    smp_others_init();
+    systime_cpu_timer_init();
+
+    syscall_table_init();
+    syscalls_cpu_init();
 
     const_init();
     ps2_init();
@@ -106,22 +106,22 @@ void kernel_init(boot_info_t* bootInfo)
 
     kernel_free_loader_data(&bootInfo->memoryMap);
 
-#ifdef TESTING
+#ifndef NDEBUG
     testing_run_tests();
 #endif
 }
 
 void kernel_other_init(void)
 {
-    gdt_init();
-    idt_init();
+    gdt_cpu_init();
+    idt_cpu_init();
 
-    gdt_load_tss(&smp_self_brute()->tss);
+    gd_cpu_load_tss(&smp_self_brute()->tss);
 
-    lapic_init();
-    simd_init();
+    lapic_cpu_init();
+    simd_cpu_init();
 
     vmm_cpu_init();
-    syscall_init();
-    systime_timer_init();
+    syscalls_cpu_init();
+    systime_cpu_timer_init();
 }

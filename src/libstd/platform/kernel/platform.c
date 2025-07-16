@@ -3,6 +3,7 @@
 
 #include "drivers/systime/systime.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/pmm.h"
 #include "mem/vmm.h"
 #include "sched/thread.h"
@@ -21,17 +22,24 @@ void _platform_late_init(void)
 
 int* _platform_errno_get(void)
 {
-    return &sched_thread()->error;
+    thread_t* thread = sched_thread();
+    if (thread == NULL)
+    {
+        static int garbage;
+        return &garbage;
+    }
+
+    return &thread->error;
 }
 
 void _platform_abort(const char* message)
 {
     if (message != NULL)
     {
-        log_panic(NULL, message);
+        panic(NULL, message);
     }
     else
     {
-        log_panic(NULL, "libstd unknown abort");
+        panic(NULL, "libstd unknown abort");
     }
 }

@@ -1,428 +1,214 @@
 #include "sysfs.h"
 
+#include "fs/dentry.h"
 #include "log/log.h"
-#include "mem/heap.h"
-#include "path.h"
-#include "sched/thread.h"
-#include "sync/rwlock.h"
+#include "log/panic.h"
+#include "sync/lock.h"
 #include "vfs.h"
 
 #include <assert.h>
 #include <errno.h>
-#include <stdarg.h>
 #include <stdatomic.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/list.h>
 
-static sysdir_t root;
-static rwlock_t lock;
+static _Atomic(inode_number_t) newNumber = ATOMIC_VAR_INIT(0);
 
-static void syshdr_init(syshdr_t* header, const char* name, uint64_t type)
-{
-    node_init(&header->node, name, type);
-    atomic_init(&header->hidden, false);
-    atomic_init(&header->ref, 1);
-}
-
-static sysdir_t* sysdir_ref(sysdir_t* dir)
-{
-    atomic_fetch_add(&dir->header.ref, 1);
-    return dir;
-}
-
-static void sysdir_deref(sysdir_t* dir)
-{
-    if (atomic_fetch_sub(&dir->header.ref, 1) <= 1)
-    {
-        if (dir->onFree != NULL)
-        {
-            dir->onFree(dir);
-        }
-    }
-}
-
-static sysobj_t* sysobj_ref(sysobj_t* sysobj)
-{
-    atomic_fetch_add(&sysobj->header.ref, 1);
-    return sysobj;
-}
-
-static void sysobj_deref(sysobj_t* sysobj)
-{
-    if (atomic_fetch_sub(&sysobj->header.ref, 1) <= 1)
-    {
-        if (sysobj->onFree != NULL)
-        {
-            sysobj->onFree(sysobj);
-        }
-
-        sysdir_deref(sysobj->dir);
-    }
-}
-
-static uint64_t sysfs_readdir(file_t* file, stat_t* infos, uint64_t amount)
-{
-    RWLOCK_READ_DEFER(&lock);
-    sysdir_t* sysdir = CONTAINER_OF(file->syshdr, sysdir_t, header);
-
-    uint64_t index = 0;
-    uint64_t total = 0;
-
-    node_t* child;
-    LIST_FOR_EACH(child, &sysdir->header.node.children, entry)
-    {
-        stat_t info = {0};
-        strcpy(info.name, child->name);
-        info.type = child->type == SYSFS_OBJ ? STAT_FILE : STAT_DIR;
-        info.size = 0;
-
-        readdir_push(infos, amount, &index, &total, &info);
-    }
-
-    return total;
-}
+static sysfs_group_t defaultGroup;
 
 static file_ops_t dirOps = {
-    .readdir = sysfs_readdir,
+    .seek = file_generic_seek,
 };
 
-static file_t* sysfs_open(volume_t* volume, const path_t* path)
-{
-    rwlock_read_acquire(&lock);
-    node_t* node = path_traverse_node(path, &root.header.node);
-    if (node == NULL)
-    {
-        rwlock_read_release(&lock);
-        return ERRPTR(ENOENT);
-    }
-
-    if (node->type == SYSFS_OBJ)
-    {
-        if (path->flags & PATH_DIRECTORY)
-        {
-            rwlock_read_release(&lock);
-            return ERRPTR(EISDIR);
-        }
-
-        sysobj_t* sysobj = sysobj_ref(CONTAINER_OF(node, sysobj_t, header.node));
-        rwlock_read_release(&lock);
-
-        if (sysobj->ops->open == NULL)
-        {
-            sysobj_deref(sysobj);
-            return ERRPTR(ENOSYS);
-        }
-
-        file_t* file = sysobj->ops->open(volume, path, sysobj);
-        if (file == NULL)
-        {
-            sysobj_deref(sysobj);
-            return NULL;
-        }
-
-        file->syshdr = &sysobj->header; // Reference
-        return file;
-    }
-    else
-    {
-        if (!(path->flags & PATH_DIRECTORY))
-        {
-            rwlock_read_release(&lock);
-            return ERRPTR(ENOTDIR);
-        }
-
-        sysdir_t* sysdir = sysdir_ref(CONTAINER_OF(node, sysdir_t, header.node));
-        rwlock_read_release(&lock);
-
-        file_t* file = file_new(volume, path, PATH_DIRECTORY);
-        if (file == NULL)
-        {
-            sysdir_deref(sysdir);
-            return NULL;
-        }
-        file->ops = &dirOps;
-
-        file->syshdr = &sysdir->header; // Reference
-        return file;
-    }
-}
-
-static uint64_t sysfs_open2(volume_t* volume, const path_t* path, file_t* files[2])
-{
-    RWLOCK_READ_DEFER(&lock);
-    node_t* node = path_traverse_node(path, &root.header.node);
-    if (node == NULL)
-    {
-        return ERROR(ENOENT);
-    }
-    else if (node->type != SYSFS_OBJ)
-    {
-        return ERROR(EISDIR);
-    }
-    else if (path->flags & PATH_DIRECTORY)
-    {
-        return ERROR(EISDIR);
-    }
-    sysobj_t* sysobj = sysobj_ref(CONTAINER_OF(node, sysobj_t, header.node)); // First ref
-
-    if (sysobj->ops->open2 == NULL)
-    {
-        sysobj_deref(sysobj);
-        return ERROR(ENOSYS);
-    }
-
-    if (sysobj->ops->open2(volume, path, sysobj, files) == ERR)
-    {
-        sysobj_deref(sysobj);
-        return ERR;
-    }
-
-    files[0]->syshdr = &sysobj->header; // First ref
-    files[1]->syshdr = &sysobj_ref(sysobj)->header;
-    return 0;
-}
-
-static uint64_t sysfs_stat(volume_t* volume, const path_t* path, stat_t* stat)
-{
-    RWLOCK_READ_DEFER(&lock);
-
-    node_t* node = path_traverse_node(path, &root.header.node);
-    if (node == NULL)
-    {
-        return ERROR(ENOENT);
-    }
-
-    strcpy(stat->name, node->name);
-    stat->type = node->type == SYSFS_OBJ ? STAT_FILE : STAT_DIR;
-    stat->size = 0;
-
-    return 0;
-}
-
-static void sysfs_cleanup(volume_t* volume, file_t* file)
-{
-    if (file->syshdr->node.type == SYSFS_DIR)
-    {
-        sysdir_t* dir = CONTAINER_OF(file->syshdr, sysdir_t, header);
-        sysdir_deref(dir);
-    }
-    else
-    {
-        sysobj_t* sysobj = CONTAINER_OF(file->syshdr, sysobj_t, header);
-
-        if (sysobj->ops->cleanup != NULL)
-        {
-            sysobj->ops->cleanup(sysobj, file);
-        }
-
-        sysobj_deref(sysobj);
-    }
-}
-
-static volume_ops_t volumeOps = {
-    .open = sysfs_open,
-    .open2 = sysfs_open2,
-    .stat = sysfs_stat,
-    .cleanup = sysfs_cleanup,
+static dentry_ops_t dentryOps = {
+    .getdents = dentry_generic_getdents,
 };
 
-static uint64_t sysfs_mount(const char* label)
+static superblock_ops_t superOps = {
+
+};
+
+static dentry_t* sysfs_mount(filesystem_t* fs, superblock_flags_t flags, const char* devName, void* private)
 {
-    return vfs_attach_simple(label, &volumeOps);
+    sysfs_group_t* group = private;
+
+    superblock_t* superblock = superblock_new(fs, VFS_DEVICE_NAME_NONE, &superOps, &dentryOps);
+    if (superblock == NULL)
+    {
+        return NULL;
+    }
+    REF_DEFER(superblock);
+
+    superblock->blockSize = 0;
+    superblock->maxFileSize = UINT64_MAX;
+    superblock->flags = flags;
+
+    inode_t* inode = inode_new(superblock, atomic_fetch_add(&newNumber, 1), INODE_DIR, NULL, &dirOps);
+    if (inode == NULL)
+    {
+        return NULL;
+    }
+    REF_DEFER(inode);
+
+    dentry_t* dentry = dentry_new(superblock, NULL, VFS_ROOT_ENTRY_NAME);
+    if (dentry == NULL)
+    {
+        return NULL;
+    }
+    REF_DEFER(dentry);
+
+    dentry->private = &group->root;
+    dentry_make_positive(dentry, inode);
+
+    superblock->root = REF(dentry);
+    group->root.dentry = REF(dentry);
+    return REF(superblock->root);
 }
 
-static fs_t sysfs = {
-    .name = "sysfs",
+static filesystem_t sysfs = {
+    .name = SYSFS_NAME,
     .mount = sysfs_mount,
 };
 
 void sysfs_init(void)
 {
-    syshdr_init(&root.header, "root", SYSFS_DIR);
-    root.private = NULL;
-    root.onFree = NULL;
-
-    rwlock_init(&lock);
-
-    LOG_INFO("sysfs: init\n");
+    LOG_INFO("registering sysfs\n");
+    if (vfs_register_fs(&sysfs) == ERR)
+    {
+        panic(NULL, "Failed to register sysfs");
+    }
+    if (sysfs_group_init(&defaultGroup, PATHNAME("/dev")) == ERR)
+    {
+        panic(NULL, "Failed to initialize default sysfs group");
+    }
+    LOG_INFO("sysfs initialized\n");
 }
 
-void sysfs_mount_to_vfs(void)
+sysfs_dir_t* sysfs_get_default(void)
 {
-    assert(vfs_mount("sys", &sysfs) != ERR);
+    return &defaultGroup.root;
 }
 
-uint64_t sysfs_start_op(file_t* file)
+uint64_t sysfs_group_init(sysfs_group_t* group, const pathname_t* mountpoint)
 {
-    assert(file->syshdr != NULL);
-    if (atomic_load(&file->syshdr->hidden) == true)
+    if (group == NULL || mountpoint == NULL || !mountpoint->isValid)
     {
-        return ERROR(EDISCONNECTED);
+        errno = EINVAL;
+        return ERR;
     }
 
-    return 0;
-}
+    group->mountpoint = *mountpoint;
 
-void sysfs_end_op(file_t* file)
-{
-}
-
-static node_t* sysfs_traverse_and_alloc(const char* path)
-{
-    path_t parsedPath;
-    if (path_init(&parsedPath, path, NULL) == ERR)
-    {
-        return NULL;
-    }
-    if (parsedPath.volume[0] != '\0')
-    {
-        return NULL;
-    }
-
-    node_t* parent = &root.header.node;
-    const char* name;
-    PATH_FOR_EACH(name, &parsedPath)
-    {
-        node_t* child = node_find(parent, name);
-        if (child == NULL)
-        {
-            sysdir_t* dir = heap_alloc(sizeof(sysdir_t), HEAP_NONE);
-            if (dir == NULL)
-            {
-                return NULL;
-            }
-
-            syshdr_init(&dir->header, name, SYSFS_DIR);
-            dir->private = NULL;
-            dir->onFree = NULL;
-            node_push(parent, &dir->header.node);
-
-            child = &dir->header.node;
-        }
-        if (child->type != SYSFS_DIR)
-        {
-            return ERRPTR(ENOTDIR);
-        }
-
-        parent = child;
-    }
-
-    return parent;
-}
-
-uint64_t sysdir_init(sysdir_t* dir, const char* path, const char* dirname, void* private)
-{
-    if (!path_is_name_valid(dirname))
-    {
-        return ERROR(EINVAL);
-    }
-
-    RWLOCK_WRITE_DEFER(&lock);
-
-    node_t* parent = sysfs_traverse_and_alloc(path);
-    if (parent == NULL)
+    // group->root.dentry is set in the mount function.
+    if (vfs_mount(VFS_DEVICE_NAME_NONE, &group->mountpoint, SYSFS_NAME, SUPER_NONE, group) == ERR)
     {
         return ERR;
     }
 
-    if (node_find(parent, dirname) != NULL)
-    {
-        return ERROR(EEXIST);
-    }
-
-    syshdr_init(&dir->header, dirname, SYSFS_DIR);
-    dir->private = private;
-    dir->onFree = NULL;
-    node_push(parent, &dir->header.node);
-
+    assert(group->root.dentry != NULL);
     return 0;
 }
 
-void sysdir_deinit(sysdir_t* dir, sysdir_on_free_t onFree)
+uint64_t sysfs_group_deinit(sysfs_group_t* group)
 {
-    dir->onFree = onFree;
-
-    rwlock_write_acquire(&lock);
-    node_t* node;
-    node_t* temp;
-    LIST_FOR_EACH_SAFE(node, temp, &dir->header.node.children, entry)
+    if (group == NULL)
     {
-        assert(node->type == SYSFS_OBJ);
-        sysobj_t* sysobj = CONTAINER_OF(node, sysobj_t, header.node);
-
-        atomic_store(&sysobj->header.hidden, true);
-        node_remove(&sysobj->header.node);
-        sysobj_deref(sysobj);
+        errno = EINVAL;
+        return ERR;
     }
-    node_remove(&dir->header.node);
-    rwlock_write_release(&lock);
 
-    sysdir_deref(dir);
+    return vfs_unmount(&group->mountpoint);
 }
 
-uint64_t sysobj_init(sysobj_t* sysobj, sysdir_t* dir, const char* filename, const sysobj_ops_t* ops, void* private)
-{
-    if (!path_is_name_valid(filename))
-    {
-        return ERROR(EINVAL);
-    }
-
-    RWLOCK_WRITE_DEFER(&lock);
-
-    if (node_find(&dir->header.node, filename) != NULL)
-    {
-        return ERROR(EEXIST);
-    }
-
-    syshdr_init(&sysobj->header, filename, SYSFS_OBJ);
-    sysobj->private = private;
-    sysobj->ops = ops;
-    sysobj->onFree = NULL;
-    sysobj->dir = sysdir_ref(dir);
-
-    node_push(&dir->header.node, &sysobj->header.node); // Reference
-    return 0;
-}
-
-uint64_t sysobj_init_path(sysobj_t* sysobj, const char* path, const char* filename, const sysobj_ops_t* ops,
+uint64_t sysfs_dir_init(sysfs_dir_t* dir, sysfs_dir_t* parent, const char* name, const inode_ops_t* inodeOps,
     void* private)
 {
-    if (!path_is_name_valid(filename))
+    if (dir == NULL || parent == NULL || name == NULL)
     {
-        return ERROR(EINVAL);
-    }
-
-    RWLOCK_WRITE_DEFER(&lock);
-
-    node_t* parent = sysfs_traverse_and_alloc(path);
-    if (parent == NULL)
-    {
+        errno = EINVAL;
         return ERR;
     }
 
-    if (node_find(parent, filename) != NULL)
+    dentry_t* dentry = dentry_new(parent->dentry->superblock, parent->dentry, name);
+    if (dentry == NULL)
     {
-        return ERROR(EEXIST);
+        return ERR;
     }
+    REF_DEFER(dentry);
+    dentry->private = dir;
 
-    syshdr_init(&sysobj->header, filename, SYSFS_OBJ);
-    sysobj->private = private;
-    sysobj->ops = ops;
-    sysobj->dir = sysdir_ref(CONTAINER_OF(parent, sysdir_t, header.node));
+    inode_t* inode =
+        inode_new(parent->dentry->superblock, atomic_fetch_add(&newNumber, 1), INODE_DIR, inodeOps, &dirOps);
+    if (inode == NULL)
+    {
+        return ERR;
+    }
+    REF_DEFER(inode);
+    inode->private = private;
 
-    node_push(parent, &sysobj->header.node); // Reference
+    if (vfs_add_dentry(dentry) == ERR)
+    {
+        return ERR;
+    }
+    dentry_make_positive(dentry, inode);
+
+    dir->dentry = REF(dentry);
     return 0;
 }
 
-void sysobj_deinit(sysobj_t* sysobj, sysobj_on_free_t onFree)
+void sysfs_dir_deinit(sysfs_dir_t* dir)
 {
-    sysobj->onFree = onFree;
+    if (dir == NULL || dir->dentry == NULL)
+    {
+        return;
+    }
 
-    rwlock_write_acquire(&lock);
-    atomic_store(&sysobj->header.hidden, true);
-    node_remove(&sysobj->header.node);
-    rwlock_write_release(&lock);
+    DEREF(dir->dentry);
+    dir->dentry = NULL;
+}
 
-    sysobj_deref(sysobj);
+uint64_t sysfs_file_init(sysfs_file_t* file, sysfs_dir_t* parent, const char* name, const inode_ops_t* inodeOps,
+    const file_ops_t* fileOps, void* private)
+{
+    if (file == NULL || parent == NULL || name == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    dentry_t* dentry = dentry_new(parent->dentry->superblock, parent->dentry, name);
+    if (dentry == NULL)
+    {
+        return ERR;
+    }
+    REF_DEFER(dentry);
+    dentry->private = file;
+
+    inode_t* inode =
+        inode_new(parent->dentry->superblock, atomic_fetch_add(&newNumber, 1), INODE_FILE, inodeOps, fileOps);
+    if (inode == NULL)
+    {
+        return ERR;
+    }
+    REF_DEFER(inode);
+    inode->private = private;
+
+    if (vfs_add_dentry(dentry) == ERR)
+    {
+        return ERR;
+    }
+    dentry_make_positive(dentry, inode);
+
+    file->dentry = REF(dentry);
+    return 0;
+}
+
+void sysfs_file_deinit(sysfs_file_t* file)
+{
+    if (file == NULL)
+    {
+        return;
+    }
+
+    DEREF(file->dentry);
+    file->dentry = NULL;
 }

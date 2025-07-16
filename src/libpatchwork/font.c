@@ -9,6 +9,8 @@ font_t* font_default(display_t* disp)
     return disp->defaultFont;
 }
 
+#include <stdio.h>
+
 font_t* font_new(display_t* disp, const char* family, const char* weight, uint64_t size)
 {
     if (strcmp(family, "default") == 0)
@@ -75,6 +77,7 @@ font_t* font_new(display_t* disp, const char* family, const char* weight, uint64
 
     close(file);
     font->disp = disp;
+    list_entry_init(&font->entry);
     list_push(&disp->fonts, &font->entry);
     return font;
 }

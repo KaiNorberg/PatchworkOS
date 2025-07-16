@@ -44,7 +44,7 @@ _thread_t* _thread_new(_thread_entry_t entry, void* private)
     thread->id = _syscall_thread_create(entry, thread);
     if (thread->id == ERR)
     {
-        errno = _syscall_last_error();
+        errno = _syscall_errno();
 
         list_remove(&thread->entry);
         mtx_unlock(&mutex);

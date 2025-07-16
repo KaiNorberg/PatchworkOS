@@ -9,7 +9,7 @@ clock_t uptime(void)
     clock_t result = _syscall_uptime();
     if (result == ERR)
     {
-        errno = _syscall_last_error();
+        errno = _syscall_errno();
     }
     return result;
 }

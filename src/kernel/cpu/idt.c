@@ -1,6 +1,6 @@
 #include "idt.h"
 
-#include "syscall.h"
+#include "syscalls.h"
 
 #include <sys/proc.h>
 
@@ -21,7 +21,7 @@ static void idt_set_vector(uint8_t vector, void* isr, uint8_t privilegeLevel, ui
     descriptor->reserved = 0;
 }
 
-void idt_init(void)
+void idt_cpu_init(void)
 {
     for (uint16_t vector = 0; vector < VECTOR_AMOUNT; vector++)
     {

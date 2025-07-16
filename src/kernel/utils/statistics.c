@@ -3,8 +3,8 @@
 #include "cpu/smp.h"
 #include "drivers/systime/systime.h"
 #include "fs/sysfs.h"
-#include "fs/view.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/heap.h"
 
 #include <assert.h>
@@ -14,9 +14,9 @@
 #include <sys/io.h>
 #include <sys/math.h>
 
-static sysdir_t statDir;
-static sysobj_t cpuObj;
-static sysobj_t memObj;
+static sysfs_dir_t statDir;
+static sysfs_file_t cpuFile;
+static sysfs_file_t memFile;
 
 void statistics_cpu_ctx_init(statistics_cpu_ctx_t* ctx)
 {
@@ -28,9 +28,9 @@ void statistics_cpu_ctx_init(statistics_cpu_ctx_t* ctx)
     lock_init(&ctx->lock);
 }
 
-static uint64_t statistics_cpu_view_init(file_t* file, view_t* view)
+static uint64_t statistics_cpu_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    char* string = heap_alloc(MAX_PATH * (smp_cpu_amount() + 1), HEAP_NONE);
+    char* string = heap_alloc(MAX_PATH * (smp_cpu_amount() + 1), HEAP_VMM);
     if (string == NULL)
     {
         return ERR;
@@ -41,66 +41,63 @@ static uint64_t statistics_cpu_view_init(file_t* file, view_t* view)
     {
         cpu_t* cpu = smp_cpu(i);
         statistics_cpu_ctx_t* stat = &cpu->stat;
-        LOCK_DEFER(&stat->lock);
+        LOCK_SCOPE(&stat->lock);
 
         sprintf(&string[strlen(string)], "cpu%d %llu %llu %llu%c", cpu->id, stat->idleClocks, stat->activeClocks,
             stat->trapClocks, i + 1 != smp_cpu_amount() ? '\n' : '\0');
     }
 
-    view->buffer = string;
-    view->length = strlen(string) + 1;
-    return 0;
+    uint64_t length = strlen(string);
+    uint64_t readCount = BUFFER_READ(buffer, count, offset, string, length);
+    heap_free(string);
+    return readCount;
 }
 
-static void statistics_cpu_view_deinit(view_t* view)
-{
-    heap_free(view->buffer);
-}
+static file_ops_t cpuOps = {
+    .read = statistics_cpu_read,
+};
 
-VIEW_STANDARD_OPS_DEFINE(cpuOps, PATH_NONE,
-    (view_ops_t){
-        .init = statistics_cpu_view_init,
-        .deinit = statistics_cpu_view_deinit,
-    });
-
-static uint64_t statistics_mem_view_init(file_t* file, view_t* view)
+static uint64_t statistics_mem_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    char* string = heap_alloc(MAX_PATH, HEAP_NONE);
+    char* string = heap_alloc(MAX_PATH, HEAP_VMM);
     if (string == NULL)
     {
         return ERR;
     }
 
-    sprintf(string, "value kb\ntotal %d\nfree %d\nreserved %d", pmm_total_amount() * PAGE_SIZE / 4,
+    sprintf(string, "value kb\ntotal %llu\nfree %llu\nreserved %llu", pmm_total_amount() * PAGE_SIZE / 4,
         pmm_free_amount() * PAGE_SIZE / 4, pmm_reserved_amount() * PAGE_SIZE / 4);
 
-    view->buffer = string;
-    view->length = strlen(string) + 1;
-    return 0;
+    uint64_t length = strlen(string);
+    uint64_t readCount = BUFFER_READ(buffer, count, offset, string, length);
+    heap_free(string);
+    return readCount;
 }
 
-static void statistics_mem_view_deinit(view_t* view)
-{
-    heap_free(view->buffer);
-}
-
-VIEW_STANDARD_OPS_DEFINE(memOps, PATH_NONE,
-    (view_ops_t){
-        .init = statistics_mem_view_init,
-        .deinit = statistics_mem_view_deinit,
-    });
+static file_ops_t memOps = {
+    .read = statistics_mem_read,
+};
 
 void statistics_init(void)
 {
-    assert(sysdir_init(&statDir, "/", "stat", NULL) != ERR);
-    assert(sysobj_init(&cpuObj, &statDir, "cpu", &cpuOps, NULL) != ERR);
-    assert(sysobj_init(&memObj, &statDir, "mem", &memOps, NULL) != ERR);
+    if (sysfs_dir_init(&statDir, sysfs_get_default(), "stat", NULL, NULL) == ERR)
+    {
+        panic(NULL, "Failed to initialize statistics directory");
+    }
+    if (sysfs_file_init(&cpuFile, &statDir, "cpu", NULL, &cpuOps, NULL) == ERR)
+    {
+        panic(NULL, "Failed to initialize CPU statistics file");
+    }
+    if (sysfs_file_init(&memFile, &statDir, "mem", NULL, &memOps, NULL) == ERR)
+    {
+        panic(NULL, "Failed to initialize memory statistics file");
+    }
 }
 
 void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* self)
 {
     statistics_cpu_ctx_t* stat = &self->stat;
-    LOCK_DEFER(&stat->lock);
+    LOCK_SCOPE(&stat->lock);
 
     stat->trapBegin = systime_uptime();
 
@@ -118,7 +115,7 @@ void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* self)
 void statistics_trap_end(trap_frame_t* trapFrame, cpu_t* self)
 {
     statistics_cpu_ctx_t* stat = &self->stat;
-    LOCK_DEFER(&stat->lock);
+    LOCK_SCOPE(&stat->lock);
 
     stat->trapEnd = systime_uptime();
     stat->trapClocks += stat->trapEnd - stat->trapBegin;

@@ -2,7 +2,7 @@
 
 #include "config.h"
 #include "cpu/simd.h"
-#include "cpu/syscall.h"
+#include "cpu/syscalls.h"
 #include "cpu/trap.h"
 #include "ipc/note.h"
 #include "proc/process.h"
@@ -94,7 +94,7 @@ typedef struct thread
      */
     _Atomic(thread_state_t) state;
     /**
-     * @brief The last error that occoured while the thread was running, specified using errno codes.
+     * @brief The last error that occurred while the thread was running, specified using errno codes.
      */
     errno_t error;
     /**

@@ -4,7 +4,7 @@ MODULES := boot kernel libstd libpatchwork
 PROGRAMS := $(basename $(notdir $(wildcard make/programs/*.mk)))
 TARGET := bin/PatchworkOS.img
 
-ROOT_PROGRAMS := init wall cursor taskbar startmenu dwm
+ROOT_PROGRAMS := init wall cursor taskbar startmenu dwm shell delete dir link move open read write
 
 VERSION_HEADER := include/common/version.h
 
@@ -42,12 +42,20 @@ deploy: $(PROGRAMS)
 	mmd -i $(TARGET) ::/usr
 	mmd -i $(TARGET) ::/usr/bin
 	mmd -i $(TARGET) ::/usr/license
+	mmd -i $(TARGET) ::/home
+	mmd -i $(TARGET) ::/dev
+	mmd -i $(TARGET) ::/net
+	mmd -i $(TARGET) ::/proc
 	mcopy -i $(TARGET) -s root/* ::
 	mcopy -i $(TARGET) -s bin/boot/bootx64.efi ::/efi/boot
 	mcopy -i $(TARGET) -s bin/kernel/kernel ::/boot
 	$(foreach prog,$(ROOT_PROGRAMS),mcopy -i $(TARGET) -s bin/programs/$(prog) ::/bin;)
 	$(foreach prog,$(filter-out $(ROOT_PROGRAMS),$(PROGRAMS)),mcopy -i $(TARGET) -s bin/programs/$(prog) ::/usr/bin;)
 	mcopy -i $(TARGET) -s LICENSE ::/usr/license
+
+# This will only work if you have setup a grub loopback entry as described in the README.md file.
+grub_loopback:
+	cp $(TARGET) /data/PatchworkOS.img
 
 clean:
 	rm -rf build
@@ -113,4 +121,3 @@ endif
 
 run: all
 	qemu-system-x86_64 $(QEMU_FLAGS)
-

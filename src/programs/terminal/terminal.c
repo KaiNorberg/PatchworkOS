@@ -357,14 +357,14 @@ void terminal_init(terminal_t* term)
     input_init(&term->input);
     history_init(&term->history);
 
-    if (open2("sys:/pipe/new", term->stdin) == ERR || open2("sys:/pipe/new", term->stdout) == ERR)
+    if (open2("/dev/pipe/new", term->stdin) == ERR || open2("/dev/pipe/new", term->stdout) == ERR)
     {
         window_free(term->win);
         display_free(term->disp);
         exit(errno);
     }
 
-    const char* argv[] = {"home:/usr/bin/shell", NULL};
+    const char* argv[] = {"/bin/shell", NULL};
     spawn_fd_t fds[] = {
         {.child = STDIN_FILENO, .parent = term->stdin[PIPE_READ]},
         {.child = STDOUT_FILENO, .parent = term->stdout[PIPE_WRITE]},
@@ -389,7 +389,7 @@ void terminal_deinit(terminal_t* term)
     input_deinit(&term->input);
     history_deinit(&term->history);
 
-    fd_t shellNote = openf("sys:/proc/%d/note", term->shell);
+    fd_t shellNote = openf("/proc/%d/note", term->shell);
     writef(shellNote, "kill");
     close(shellNote);
 
@@ -422,13 +422,13 @@ static void terminal_read_stdout(terminal_t* term)
         window_invalidate_flush(term->win);
 
         input_set(&term->input, "");
-    } while (poll1(term->stdout[PIPE_READ], POLL_READ, 0) & POLL_READ);
+    } while (poll1(term->stdout[PIPE_READ], POLLIN, 0) & POLLIN);
 }
 
 bool terminal_update(terminal_t* term)
 {
-    pollfd_t fds[] = {{.fd = term->stdout[PIPE_READ], .events = POLL_READ},
-        {.fd = display_fd(term->disp), .events = POLL_READ}};
+    pollfd_t fds[] = {{.fd = term->stdout[PIPE_READ], .events = POLLIN},
+        {.fd = display_fd(term->disp), .events = POLLIN}};
     poll(fds, 2, CLOCKS_NEVER);
 
     event_t event = {0};
@@ -442,7 +442,7 @@ bool terminal_update(terminal_t* term)
         return false;
     }
 
-    if (fds[0].revents & POLL_READ)
+    if (fds[0].revents & POLLIN)
     {
         terminal_read_stdout(term);
         display_cmds_flush(term->disp);

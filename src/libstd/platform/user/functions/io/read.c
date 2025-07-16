@@ -12,7 +12,7 @@ uint64_t read(fd_t fd, void* buffer, uint64_t count)
     uint64_t result = _syscall_read(fd, buffer, count);
     if (result == ERR)
     {
-        errno = _syscall_last_error();
+        errno = _syscall_errno();
     }
     return result;
 }

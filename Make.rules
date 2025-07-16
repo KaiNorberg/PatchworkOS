@@ -1,6 +1,6 @@
 $(BUILDDIR)/%.c.o: src/%.c
 	$(MKCWD)
-	$(CC) $(CFLAGS) -c -o $@ $^
+	$(CC) $(CFLAGS) -DFILE_BASENAME=\"$(basename $(notdir $<))\" -c -o $@ $^
 
 $(BUILDDIR)/%.s.o: src/%.s
 	$(MKCWD)
@@ -8,11 +8,11 @@ $(BUILDDIR)/%.s.o: src/%.s
 
 $(BINDIR)/%.a: $(OBJ)
 	$(MKCWD)
-	$(LD) $(LDFLAGS) -r -o $@ $^
+	$(LD) $(LDFLAGS) -r -o $@ $^ $(LDSTDLIB)
 
 $(BINDIR)/%: $(OBJ)
 	$(MKCWD)
-	$(LD) $(LDFLAGS) -o $@ $^
+	$(LD) $(LDFLAGS) -o $@ $^ $(LDSTDLIB)
 
 # This has to use ld, there is a way to do it using clang but... whatever
 $(BINDIR)/%.efi: $(OBJ)

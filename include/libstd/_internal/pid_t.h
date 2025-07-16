@@ -5,7 +5,7 @@
  * @brief Process Identifier.
  * @ingroup libstd
  *
- * The `pid_t` type is used to store process identifiers, valid id's will map to folders found in `sys:/proc`.
+ * The `pid_t` type is used to store process identifiers, valid id's will map to folders found in `/proc`.
  *
  */
 typedef __UINT64_TYPE__ pid_t;

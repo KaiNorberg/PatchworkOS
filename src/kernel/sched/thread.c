@@ -5,7 +5,6 @@
 #include "cpu/smp.h"
 #include "defs.h"
 #include "drivers/systime/systime.h"
-#include "fs/path.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "log/log.h"
@@ -23,7 +22,7 @@
 
 thread_t* thread_new(process_t* process, void* entry)
 {
-    LOCK_DEFER(&process->threads.lock);
+    LOCK_SCOPE(&process->threads.lock);
 
     if (process->threads.isDying)
     {
@@ -60,11 +59,13 @@ thread_t* thread_new(process_t* process, void* entry)
     memset(&thread->kernelStack, 0, CONFIG_KERNEL_STACK);
 
     list_push(&process->threads.list, &thread->processEntry);
+    LOG_DEBUG("created tid=%d pid=%d entry=%p\n", thread->id, process->id, entry);
     return thread;
 }
 
 void thread_free(thread_t* thread)
 {
+    LOG_DEBUG("freeing tid=%d pid=%d\n", thread->id, thread->process->id);
     process_t* process = thread->process;
 
     lock_acquire(&process->threads.lock);
@@ -135,4 +136,14 @@ uint64_t thread_send_note(thread_t* thread, const void* message, uint64_t length
     }
 
     return 0;
+}
+
+SYSCALL_DEFINE(SYS_ERRNO, errno_t)
+{
+    return errno;
+}
+
+SYSCALL_DEFINE(SYS_GETTID, tid_t)
+{
+    return sched_thread()->id;
 }

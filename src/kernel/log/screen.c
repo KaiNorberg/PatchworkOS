@@ -123,7 +123,8 @@ uint64_t screen_init(screen_t* screen, const gop_buffer_t* framebuffer)
 
     if (screen_buffer_init(&screen->buffer, framebuffer->width, framebuffer->height) == ERR)
     {
-        return ERROR(ENOMEM);
+        errno = ENOMEM;
+        return ERR;
     }
 
     return 0;

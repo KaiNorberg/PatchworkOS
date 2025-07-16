@@ -4,6 +4,7 @@
 #include "drivers/systime/hpet.h"
 #include "drivers/systime/systime.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/vmm.h"
 #include "regs.h"
 #include "utils/utils.h"
@@ -14,8 +15,14 @@ static uintptr_t lapicBase;
 
 void apic_init(void)
 {
-    lapicBase = (uintptr_t)vmm_kernel_map(NULL, madt_lapic_address(), 1, PML_WRITE);
-    assert((void*)lapicBase != NULL);
+    void* lapicPhysAddr = madt_lapic_address();
+    lapicBase = (uintptr_t)vmm_kernel_map(NULL, lapicPhysAddr, 1, PML_WRITE);
+    if ((void*)lapicBase == NULL)
+    {
+        panic(NULL, "Unable to map lapic, hardware is not compatible");
+    }
+
+    LOG_INFO("apic initialized lapic_base=0x%016lx phys=0x%016lx\n", lapicBase, lapicPhysAddr);
 }
 
 void apic_timer_one_shot(uint8_t vector, uint32_t ticks)
@@ -35,14 +42,17 @@ uint64_t apic_timer_ticks_per_ns(void)
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
 
     uint64_t ticks = UINT32_MAX - lapic_read(LAPIC_REG_TIMER_CURRENT_COUNT);
+    uint64_t ticksPerNs = (ticks << APIC_TIMER_TICKS_FIXED_POINT_OFFSET) / 1000000ULL;
 
-    return (ticks << APIC_TIMER_TICKS_FIXED_POINT_OFFSET) / 1000000ULL;
+    LOG_DEBUG("timer calibration ticks=%llu ticks_per_ns=%llu\n", ticks, ticksPerNs);
+    return ticksPerNs;
 }
 
-void lapic_init(void)
+void lapic_cpu_init(void)
 {
-    LOG_INFO("lapic: init\n");
-    msr_write(MSR_LAPIC, (msr_read(MSR_LAPIC) | LAPIC_MSR_ENABLE) & ~(1 << 10));
+    uint64_t lapicMsr = msr_read(MSR_LAPIC);
+    LOG_INFO("local apic initialized id=%d msr=0x%016lx\n", lapic_id(), lapicMsr);
+    msr_write(MSR_LAPIC, (lapicMsr | LAPIC_MSR_ENABLE) & ~(1 << 10));
 
     lapic_write(LAPIC_REG_SPURIOUS, lapic_read(LAPIC_REG_SPURIOUS) | LAPIC_SPURIOUS_ENABLE);
 }

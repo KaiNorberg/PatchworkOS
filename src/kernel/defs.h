@@ -33,15 +33,3 @@
 
 #define CONCAT(a, b) CONCAT_INNER(a, b)
 #define CONCAT_INNER(a, b) a##b
-
-#define ERROR(code) \
-    ({ \
-        sched_thread()->error = code; \
-        ERR; \
-    })
-
-#define ERRPTR(code) \
-    ({ \
-        sched_thread()->error = code; \
-        NULL; \
-    })

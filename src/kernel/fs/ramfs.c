@@ -1,324 +1,279 @@
 #include "ramfs.h"
 
+#include "fs/dentry.h"
+#include "fs/mount.h"
+#include "fs/path.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/heap.h"
-#include "mem/pmm.h"
-#include "sched/thread.h"
+#include "sync/lock.h"
+#include "sync/mutex.h"
 #include "sysfs.h"
+#include "utils/ref.h"
 #include "vfs.h"
-#include "view.h"
 
+#include <_internal/ERR.h>
 #include <boot/boot_info.h>
 
 #include <assert.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/list.h>
 #include <sys/math.h>
 
-static ram_dir_t* root;
-static lock_t lock;
+static _Atomic(inode_number_t) newNumber = ATOMIC_VAR_INIT(1);
 
-static uint64_t ramfs_readdir(file_t* file, stat_t* infos, uint64_t amount)
+static inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, void* buffer, uint64_t size);
+
+static uint64_t ramfs_dentry_init(dentry_t* dentry)
 {
-    LOCK_DEFER(&lock);
-    ram_dir_t* ramDir = CONTAINER_OF(file->private, ram_dir_t, node);
+    ramfs_superblock_data_t* superData = dentry->superblock->private;
 
-    uint64_t index = 0;
-    uint64_t total = 0;
-
-    node_t* child;
-    LIST_FOR_EACH(child, &ramDir->node.children, entry)
+    ramfs_dentry_data_t* dentryData = heap_alloc(sizeof(ramfs_dentry_data_t), HEAP_NONE);
+    if (dentryData == NULL)
     {
-        stat_t info = {0};
-        strcpy(info.name, child->name);
-        info.type = child->type == RAMFS_FILE ? STAT_FILE : STAT_DIR;
-        info.size = 0;
-
-        readdir_push(infos, amount, &index, &total, &info);
+        return ERR;
     }
+    list_entry_init(&dentryData->entry);
+    dentryData->dentry = REF(dentry);
+    dentry->private = dentryData;
 
-    return total;
+    lock_acquire(&superData->lock);
+    list_push(&superData->dentrys, &dentryData->entry);
+    lock_release(&superData->lock);
+    return 0;
 }
 
-static file_ops_t dirOps = {
-    .readdir = ramfs_readdir,
-};
-
-static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count)
+static void ramfs_dentry_deinit(dentry_t* dentry)
 {
-    LOCK_DEFER(&lock);
-    ram_file_t* ramFile = CONTAINER_OF(file->private, ram_file_t, node);
+    ramfs_superblock_data_t* superData = dentry->superblock->private;
 
-    if (ramFile->data == NULL)
+    ramfs_dentry_data_t* dentryData = dentry->private;
+    assert(dentryData != NULL);
+
+    DEREF(dentryData->dentry);
+    dentryData->dentry = NULL;
+
+    lock_acquire(&superData->lock);
+    list_remove(&dentryData->entry);
+    lock_release(&superData->lock);
+
+    heap_free(dentryData);
+}
+
+static uint64_t ramfs_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    MUTEX_SCOPE(&file->inode->mutex);
+
+    if (file->inode->private == NULL)
     {
         return 0;
     }
 
-    return BUFFER_READ(file, buffer, count, ramFile->data, ramFile->size);
+    return BUFFER_READ(buffer, count, offset, file->inode->private, file->inode->size);
 }
 
-static uint64_t ramfs_write(file_t* file, const void* buffer, uint64_t count)
+static uint64_t ramfs_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
-    LOCK_DEFER(&lock);
-    ram_file_t* ramFile = CONTAINER_OF(file->private, ram_file_t, node);
+    MUTEX_SCOPE(&file->inode->mutex);
 
-    if (file->flags & PATH_APPEND)
+    if (*offset + count > file->inode->size)
     {
-        file->pos = ramFile->size;
-    }
-
-    if (file->pos + count >= ramFile->size)
-    {
-        void* newData = heap_realloc(ramFile->data, file->pos + count, HEAP_VMM);
+        void* newData = heap_realloc(file->inode->private, *offset + count, HEAP_VMM);
         if (newData == NULL)
         {
             return ERR;
         }
-        memset(newData + ramFile->size, 0, file->pos + count - ramFile->size);
-        ramFile->data = newData;
-        ramFile->size = file->pos + count;
+        memset(newData + file->inode->size, 0, *offset + count - file->inode->size);
+        file->inode->private = newData;
+        file->inode->size = *offset + count;
     }
 
-    memcpy(ramFile->data + file->pos, buffer, count);
-    file->pos += count;
-    return 0;
-}
-
-static uint64_t ramfs_seek(file_t* file, int64_t offset, seek_origin_t origin)
-{
-    LOCK_DEFER(&lock);
-    ram_file_t* ramFile = CONTAINER_OF(file->private, ram_file_t, node);
-
-    return BUFFER_SEEK(file, offset, origin, ramFile->size);
+    memcpy(file->inode->private + *offset, buffer, count);
+    *offset += count;
+    return count;
 }
 
 static file_ops_t fileOps = {
     .read = ramfs_read,
     .write = ramfs_write,
-    .seek = ramfs_seek,
+    .seek = file_generic_seek,
 };
 
-static file_t* ramfs_open(volume_t* volume, const path_t* path)
+static uint64_t ramfs_lookup(inode_t* dir, dentry_t* target)
 {
-    LOCK_DEFER(&lock);
+    // All ramfs dentrys should always be in the cache, if lookup is called then the file/dir does not exist.
+    return 0;
+}
 
-    node_t* node = path_traverse_node(path, &root->node);
-    if (node == NULL)
+static uint64_t ramfs_create(inode_t* dir, dentry_t* target, path_flags_t flags)
+{
+    inode_t* newInode = ramfs_inode_new(dir->superblock, flags & PATH_DIRECTORY ? INODE_DIR : INODE_FILE, NULL, 0);
+    if (newInode == NULL)
     {
-        if (!(path->flags & PATH_CREATE))
-        {
-            return ERRPTR(ENOENT);
-        }
+        return ERR;
+    }
+    REF_DEFER(newInode);
 
-        const char* filename = path_last_name(path);
-        if (filename == NULL)
-        {
-            return ERRPTR(EINVAL);
-        }
-        node_t* parent = path_traverse_node_parent(path, &root->node);
-        if (parent == NULL)
-        {
-            return ERRPTR(ENOENT);
-        }
+    if (ramfs_dentry_init(target) == ERR)
+    {
+        return ERR;
+    }
 
-        if (path->flags & PATH_DIRECTORY)
+    dentry_make_positive(target, newInode);
+
+    return 0;
+}
+
+static void ramfs_truncate(inode_t* inode)
+{
+    if (inode->private != NULL)
+    {
+        heap_free(inode->private);
+        inode->private = NULL;
+    }
+    inode->size = 0;
+}
+
+static uint64_t ramfs_link(dentry_t* old, inode_t* dir, dentry_t* target)
+{
+    if (ramfs_dentry_init(target) == ERR)
+    {
+        return ERR;
+    }
+
+    old->inode->linkCount++;
+    dentry_make_positive(target, old->inode);
+
+    return 0;
+}
+
+static uint64_t ramfs_delete_file(inode_t* parent, dentry_t* target)
+{
+    target->inode->linkCount--;
+    ramfs_dentry_deinit(target);
+    return 0;
+}
+
+static uint64_t ramfs_delete_directory(inode_t* parent, dentry_t* target)
+{
+    ramfs_dentry_deinit(target);
+    return 0;
+}
+
+static uint64_t ramfs_delete(inode_t* parent, dentry_t* target, path_flags_t flags)
+{
+    if (target->inode->type == INODE_FILE)
+    {
+        ramfs_delete_file(parent, target);
+    }
+    else if (target->inode->type == INODE_DIR)
+    {
+        if (flags & PATH_RECURSIVE)
         {
-            ram_dir_t* ramDir = heap_alloc(sizeof(ram_dir_t), HEAP_NONE);
-            if (ramDir == NULL)
+            dentry_t* temp = NULL;
+            dentry_t* child = NULL;
+            LIST_FOR_EACH_SAFE(child, temp, &target->children, siblingEntry)
             {
-                return NULL;
+                REF(child);
+                ramfs_delete(target->inode, child, flags);
+                DEREF(child);
             }
-            node_init(&ramDir->node, filename, RAMFS_DIR);
-            ramDir->openedAmount = 0;
-            node_push(parent, &ramDir->node);
-
-            node = &ramDir->node;
         }
         else
         {
-            ram_file_t* ramFile = heap_alloc(sizeof(ram_file_t), HEAP_NONE);
-            if (ramFile == NULL)
+            if (!list_is_empty(&target->children))
             {
-                return NULL;
+                errno = ENOTEMPTY;
+                return ERR;
             }
-            node_init(&ramFile->node, filename, RAMFS_FILE);
-            ramFile->size = 0;
-            ramFile->data = NULL;
-            ramFile->openedAmount = 0;
-            node_push(parent, &ramFile->node);
-
-            node = &ramFile->node;
         }
+        ramfs_delete_directory(parent, target);
     }
-    else if ((path->flags & PATH_CREATE) && (path->flags & PATH_EXCLUSIVE))
-    {
-        return ERRPTR(EEXIST);
-    }
-    else if ((path->flags & PATH_DIRECTORY) && node->type != RAMFS_DIR)
-    {
-        return ERRPTR(ENOTDIR);
-    }
-    else if (!(path->flags & PATH_DIRECTORY) && node->type != RAMFS_FILE)
-    {
-        return ERRPTR(EISDIR);
-    }
-
-    file_t* file = file_new(volume, path, PATH_CREATE | PATH_EXCLUSIVE | PATH_APPEND | PATH_TRUNCATE | PATH_DIRECTORY);
-    if (file == NULL)
-    {
-        return NULL;
-    }
-    file->private = node;
-
-    if (node->type == RAMFS_FILE)
-    {
-        ram_file_t* ramFile = CONTAINER_OF(node, ram_file_t, node);
-        ramFile->openedAmount++;
-
-        file->ops = &fileOps;
-        if (path->flags & PATH_TRUNCATE)
-        {
-            heap_free(ramFile->data);
-            ramFile->data = NULL;
-            ramFile->size = 0;
-        }
-    }
-    else
-    {
-        ram_dir_t* ramDir = CONTAINER_OF(node, ram_dir_t, node);
-        ramDir->openedAmount++;
-        file->ops = &dirOps;
-    }
-
-    return file;
-}
-
-static void ramfs_cleanup(volume_t* volume, file_t* file)
-{
-    LOCK_DEFER(&lock);
-
-    node_t* node = file->private;
-
-    if (node->type == RAMFS_FILE)
-    {
-        ram_file_t* ramFile = CONTAINER_OF(node, ram_file_t, node);
-        ramFile->openedAmount--;
-    }
-    else
-    {
-        ram_dir_t* ramDir = CONTAINER_OF(node, ram_dir_t, node);
-        ramDir->openedAmount--;
-    }
-}
-
-static uint64_t ramfs_stat(volume_t* volume, const path_t* path, stat_t* stat)
-{
-    LOCK_DEFER(&lock);
-
-    node_t* node = path_traverse_node(path, &root->node);
-    if (node == NULL)
-    {
-        return ERROR(ENOENT);
-    }
-
-    strcpy(stat->name, node->name);
-    stat->type = node->type == RAMFS_FILE ? STAT_FILE : STAT_DIR;
-    stat->size = 0;
-
     return 0;
 }
 
-static uint64_t ramfs_rename(volume_t* volume, const path_t* oldpath, const path_t* newpath)
+static void ramfs_inode_cleanup(inode_t* inode)
 {
-    LOCK_DEFER(&lock);
-
-    node_t* node = path_traverse_node(oldpath, &root->node);
-    if (node == NULL || node == &root->node)
+    if (inode->private != NULL)
     {
-        return ERROR(ENOENT);
+        heap_free(inode->private);
     }
-
-    node_t* dest = path_traverse_node_parent(newpath, &root->node);
-    if (dest == NULL)
-    {
-        return ERROR(ENOENT);
-    }
-    else if (dest->type != RAMFS_DIR)
-    {
-        return ERROR(ENOTDIR);
-    }
-
-    const char* newName = path_last_name(newpath);
-    if (newName == NULL)
-    {
-        return ERROR(EINVAL);
-    }
-    strcpy(node->name, newName);
-    node_remove(node);
-    node_push(dest, node);
-    return 0;
 }
 
-static uint64_t ramfs_remove(volume_t* volume, const path_t* path)
-{
-    LOCK_DEFER(&lock);
-
-    node_t* node = path_traverse_node(path, &root->node);
-    if (node == NULL)
-    {
-        return ERROR(ENOENT);
-    }
-
-    if (node->type == RAMFS_FILE)
-    {
-        ram_file_t* ramFile = CONTAINER_OF(node, ram_file_t, node);
-        if (ramFile->openedAmount != 0)
-        {
-            return ERROR(EBUSY);
-        }
-        node_remove(&ramFile->node);
-        heap_free(ramFile->data);
-        heap_free(ramFile);
-    }
-    else
-    {
-        ram_dir_t* ramDir = CONTAINER_OF(node, ram_dir_t, node);
-        if (ramDir->openedAmount != 0 || ramDir->node.childAmount != 0)
-        {
-            return ERROR(EBUSY);
-        }
-        node_remove(&ramDir->node);
-        heap_free(ramDir);
-    }
-
-    return 0;
-}
-
-static volume_ops_t volumeOps = {
-    .open = ramfs_open,
-    .cleanup = ramfs_cleanup,
-    .stat = ramfs_stat,
-    .rename = ramfs_rename,
-    .remove = ramfs_remove,
+static inode_ops_t inodeOps = {
+    .lookup = ramfs_lookup,
+    .create = ramfs_create,
+    .truncate = ramfs_truncate,
+    .link = ramfs_link,
+    .delete = ramfs_delete,
+    .cleanup = ramfs_inode_cleanup,
 };
 
-static uint64_t ramfs_mount(const char* label)
-{
-    return vfs_attach_simple(label, &volumeOps);
-}
-
-static fs_t ramfs = {
-    .name = "ramfs",
-    .mount = ramfs_mount,
+static dentry_ops_t dentryOps = {
+    .getdents = dentry_generic_getdents,
 };
 
-static ram_dir_t* ramfs_load_dir(ram_dir_t* in)
+static void ramfs_superblock_cleanup(superblock_t* superblock)
 {
-    ram_dir_t* newDir = heap_alloc(sizeof(ram_dir_t), HEAP_NONE);
-    assert(newDir != NULL);
-    node_init(&newDir->node, in->node.name, RAMFS_DIR);
-    newDir->openedAmount = 0;
+    panic(NULL, "ramfs unmounted\n");
+}
+
+static superblock_ops_t superOps = {
+    .cleanup = ramfs_superblock_cleanup,
+};
+
+static dentry_t* ramfs_load_file(superblock_t* superblock, dentry_t* parent, const char* name, const ram_file_t* in)
+{
+    dentry_t* dentry = dentry_new(superblock, parent, name);
+    if (dentry == NULL)
+    {
+        panic(NULL, "Failed to create ramfs file dentry");
+    }
+    REF_DEFER(dentry);
+
+    if (ramfs_dentry_init(dentry) == ERR)
+    {
+        panic(NULL, "Failed to initialize ramfs dentry");
+    }
+
+    inode_t* inode = ramfs_inode_new(superblock, INODE_FILE, in->data, in->size);
+    if (inode == NULL)
+    {
+        panic(NULL, "Failed to create ramfs file inode");
+    }
+    REF_DEFER(inode);
+
+    dentry_make_positive(dentry, inode);
+    vfs_add_dentry(dentry);
+
+    return REF(dentry);
+}
+
+static dentry_t* ramfs_load_dir(superblock_t* superblock, dentry_t* parent, const char* name, const ram_dir_t* in)
+{
+    ramfs_superblock_data_t* superData = superblock->private;
+
+    dentry_t* dentry = dentry_new(superblock, parent, name);
+    if (dentry == NULL)
+    {
+        panic(NULL, "Failed to create ramfs dentry");
+    }
+    REF_DEFER(dentry);
+
+    if (ramfs_dentry_init(dentry) == ERR)
+    {
+        panic(NULL, "Failed to initialize ramfs dentry");
+    }
+
+    inode_t* inode = ramfs_inode_new(superblock, INODE_DIR, NULL, 0);
+    if (inode == NULL)
+    {
+        panic(NULL, "Failed to create ramfs inode");
+    }
+    REF_DEFER(inode);
+
+    dentry_make_positive(dentry, inode);
+    vfs_add_dentry(dentry);
 
     node_t* child;
     LIST_FOR_EACH(child, &in->node.children, entry)
@@ -327,32 +282,96 @@ static ram_dir_t* ramfs_load_dir(ram_dir_t* in)
         {
             ram_dir_t* dir = CONTAINER_OF(child, ram_dir_t, node);
 
-            node_push(&newDir->node, &ramfs_load_dir(dir)->node);
+            DEREF(ramfs_load_dir(superblock, dentry, dir->node.name, dir));
         }
         else if (child->type == RAMFS_FILE)
         {
             ram_file_t* file = CONTAINER_OF(child, ram_file_t, node);
 
-            ram_file_t* newFile = heap_alloc(sizeof(ram_file_t), HEAP_NONE);
-            assert(newFile != NULL);
-            node_init(&newFile->node, file->node.name, RAMFS_FILE);
-            newFile->size = file->size;
-            newFile->data = heap_alloc(newFile->size, HEAP_VMM);
-            memcpy(newFile->data, file->data, newFile->size);
-            newFile->openedAmount = 0;
-
-            node_push(&newDir->node, &newFile->node);
+            DEREF(ramfs_load_file(superblock, dentry, file->node.name, file));
         }
     }
 
-    return newDir;
+    return REF(dentry);
 }
+
+static dentry_t* ramfs_mount(filesystem_t* fs, superblock_flags_t flags, const char* devName, void* private)
+{
+    superblock_t* superblock = superblock_new(fs, VFS_DEVICE_NAME_NONE, &superOps, &dentryOps);
+    if (superblock == NULL)
+    {
+        return NULL;
+    }
+    REF_DEFER(superblock);
+
+    superblock->blockSize = 0;
+    superblock->maxFileSize = UINT64_MAX;
+    superblock->flags = flags;
+
+    ramfs_superblock_data_t* data = heap_alloc(sizeof(ramfs_superblock_data_t), HEAP_NONE);
+    if (data == NULL)
+    {
+        return NULL;
+    }
+    list_init(&data->dentrys);
+    lock_init(&data->lock);
+    superblock->private = data;
+
+    superblock->root = ramfs_load_dir(superblock, NULL, VFS_ROOT_ENTRY_NAME, private);
+    if (superblock->root == NULL)
+    {
+        return NULL;
+    }
+
+    return REF(superblock->root);
+}
+
+static inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, void* buffer, uint64_t size)
+{
+    inode_t* inode = inode_new(superblock, atomic_fetch_add(&newNumber, 1), type, &inodeOps, &fileOps);
+    if (inode == NULL)
+    {
+        return NULL;
+    }
+    REF_DEFER(inode);
+
+    inode->blocks = 0;
+    inode->size = size;
+
+    if (buffer != NULL)
+    {
+        inode->private = heap_alloc(size, HEAP_VMM);
+        if (inode->private == NULL)
+        {
+            return NULL;
+        }
+        memcpy(inode->private, buffer, size);
+    }
+    else
+    {
+        inode->private = NULL;
+        inode->size = 0;
+    }
+
+    return REF(inode);
+}
+
+static filesystem_t ramfs = {
+    .name = RAMFS_NAME,
+    .mount = ramfs_mount,
+};
 
 void ramfs_init(ram_disk_t* disk)
 {
-    root = ramfs_load_dir(disk->root);
-    assert(vfs_mount("home", &ramfs) != ERR);
-    lock_init(&lock);
-
-    LOG_INFO("ramfs: init\n");
+    LOG_INFO("registering ramfs\n");
+    if (vfs_register_fs(&ramfs) == ERR)
+    {
+        panic(NULL, "Failed to register ramfs");
+    }
+    LOG_INFO("mounting ramfs\n");
+    if (vfs_mount(VFS_DEVICE_NAME_NONE, NULL, RAMFS_NAME, SUPER_NONE, disk->root) == ERR)
+    {
+        panic(NULL, "Failed to mount ramfs");
+    }
+    LOG_INFO("ramfs initialized\n");
 }

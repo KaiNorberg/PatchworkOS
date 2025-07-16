@@ -15,14 +15,14 @@ static cache_t* cache_new(slab_t* slab, uint64_t objectSize, uint64_t size)
     cache->slab = slab;
 
     uint64_t availSize = size - sizeof(cache_t);
-    uint64_t totalObjectSize = sizeof(object_t) + objectSize;
-    uint64_t maxObjects = availSize / totalObjectSize;
+    uint64_t totalFileectSize = sizeof(object_t) + objectSize;
+    uint64_t maxFileects = availSize / totalFileectSize;
 
-    cache->objectCount = maxObjects;
-    cache->freeCount = maxObjects;
+    cache->objectCount = maxFileects;
+    cache->freeCount = maxFileects;
 
     uint8_t* ptr = cache->buffer;
-    for (uint64_t i = 0; i < maxObjects; i++)
+    for (uint64_t i = 0; i < maxFileects; i++)
     {
         object_t* object = (object_t*)ptr;
         list_entry_init(&object->entry);
@@ -32,7 +32,7 @@ static cache_t* cache_new(slab_t* slab, uint64_t objectSize, uint64_t size)
         object->dataSize = objectSize;
 
         list_push(&cache->freeList, &object->entry);
-        ptr += totalObjectSize;
+        ptr += totalFileectSize;
     }
 
     return cache;
@@ -48,8 +48,8 @@ static uint64_t slab_find_optimal_cache_size(uint64_t objectSize, uint64_t minSi
     for (uint64_t size = minSize; size <= maxSize; size += PAGE_SIZE)
     {
         uint64_t availSize = size - sizeof(cache_t);
-        uint64_t maxObjects = availSize / objectStructSize;
-        uint64_t usedBytes = maxObjects * objectStructSize + sizeof(cache_t);
+        uint64_t maxFileects = availSize / objectStructSize;
+        uint64_t usedBytes = maxFileects * objectStructSize + sizeof(cache_t);
 
         if (usedBytes * bestEfficiencyDenominator > bestEfficiencyNumerator * size)
         {
@@ -71,13 +71,10 @@ void slab_init(slab_t* slab, uint64_t objectSize)
     slab->objectSize = objectSize;
     slab->optimalCacheSize = slab_find_optimal_cache_size(objectSize,
         ROUND_UP(CACHE_MIN_LENGTH * objectSize, PAGE_SIZE), ROUND_UP(CACHE_MAX_LENGTH * objectSize, PAGE_SIZE));
-    lock_init(&slab->lock);
 }
 
 object_t* slab_alloc(slab_t* slab)
 {
-    LOCK_DEFER(&slab->lock);
-
     cache_t* cache;
     bool newCacheCreated = false;
 
@@ -97,7 +94,8 @@ object_t* slab_alloc(slab_t* slab)
         cache = cache_new(slab, slab->objectSize, slab->optimalCacheSize);
         if (cache == NULL)
         {
-            return ERRPTR(ENOMEM);
+            errno = ENOMEM;
+            return NULL;
         }
         newCacheCreated = true;
     }
@@ -123,8 +121,6 @@ object_t* slab_alloc(slab_t* slab)
 
 void slab_free(slab_t* slab, object_t* object)
 {
-    LOCK_DEFER(&slab->lock);
-
     assert(object->magic == SLAB_MAGIC && "magic number mismatch");
     assert(!object->freed && "double free");
 

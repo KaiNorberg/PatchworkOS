@@ -9,6 +9,9 @@
 
 #define HEAP_LOOKUP_NONE UINT8_MAX
 
+#define HEAP_ALLOC_POISON 0xBAADF00D
+#define HEAP_FREE_POISON 0xDEADC0DE
+
 typedef enum
 {
     HEAP_NONE = 0,

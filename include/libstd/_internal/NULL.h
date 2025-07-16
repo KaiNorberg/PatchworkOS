@@ -16,7 +16,7 @@
  * @ingroup libstd
  *
  * The `NULL` value respresents a invalid pointer, just as expected in the C standard library, but system calls that
- * return pointers will also return `NULL` when an error has occurred, when that happens the `SYS_LAST_ERROR` system
+ * return pointers will also return `NULL` when an error has occurred, when that happens the `SYS_ERRNO` system
  * call can be used to retrieve the errno code for the error that occurred.
  *
  */

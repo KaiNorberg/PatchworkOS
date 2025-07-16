@@ -33,6 +33,6 @@ typedef struct PACKED
     idt_entry_t entries[VECTOR_AMOUNT];
 } idt_t;
 
-void idt_init(void);
+void idt_cpu_init(void);
 
 void idt_load(void);

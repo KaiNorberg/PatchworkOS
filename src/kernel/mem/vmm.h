@@ -10,6 +10,8 @@
 #include <sys/list.h>
 #include <sys/proc.h>
 
+// TODO: Implement buffer pinning for system calls.
+
 /**
  * @brief Virtual Memory Manager (VMM).
  * @defgroup kernel_mem_vmm VMM

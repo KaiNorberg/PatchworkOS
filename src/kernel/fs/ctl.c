@@ -9,9 +9,16 @@
 
 uint64_t ctl_dispatch(ctl_t* ctls, file_t* file, const void* buffer, uint64_t count)
 {
-    if (count == 0)
+    if (ctls == NULL || file == NULL || buffer == NULL || count == 0)
     {
-        return 0;
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (count > MAX_PATH)
+    {
+        errno = E2BIG;
+        return ERR;
     }
 
     uint8_t argBuffer[MAX_PATH];
@@ -24,7 +31,8 @@ uint64_t ctl_dispatch(ctl_t* ctls, file_t* file, const void* buffer, uint64_t co
     }
     if (argc == 0)
     {
-        return ERROR(EUNKNOWNCTL);
+        errno = EUNKNOWNCTL;
+        return ERR;
     }
 
     ctl_t* ctl = &ctls[0];
@@ -32,9 +40,10 @@ uint64_t ctl_dispatch(ctl_t* ctls, file_t* file, const void* buffer, uint64_t co
     {
         if (strcmp(ctl->name, argv[0]) == 0)
         {
-            if (ctl->argcMin < argc || ctl->argcMax > argc)
+            if (argc < ctl->argcMin || argc > ctl->argcMax)
             {
-                return ERROR(EUNKNOWNCTL);
+                errno = EUNKNOWNCTL;
+                return ERR;
             }
 
             if (ctl->func(file, argc, argv) == ERR)
@@ -47,5 +56,6 @@ uint64_t ctl_dispatch(ctl_t* ctls, file_t* file, const void* buffer, uint64_t co
         ctl++;
     }
 
-    return ERROR(EUNKNOWNCTL);
+    errno = ENOENT;
+    return ERR;
 }

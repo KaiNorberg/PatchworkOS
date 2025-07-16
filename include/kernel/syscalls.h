@@ -3,8 +3,8 @@
 #define SYS_PROCESS_EXIT 0
 #define SYS_THREAD_EXIT 1
 #define SYS_SPAWN 2
-#define SYS_SLEEP 3
-#define SYS_LAST_ERROR 4
+#define SYS_NANOSLEEP 3
+#define SYS_ERRNO 4
 #define SYS_GETPID 5
 #define SYS_GETTID 6
 #define SYS_UPTIME 7
@@ -22,13 +22,13 @@
 #define SYS_MMAP 19
 #define SYS_MUNMAP 20
 #define SYS_MPROTECT 21
-#define SYS_READDIR 22
+#define SYS_GETDENTS 22
 #define SYS_THREAD_CREATE 23
 #define SYS_YIELD 24
 #define SYS_DUP 25
 #define SYS_DUP2 26
 #define SYS_FUTEX 27
-#define SYS_RENAME 28
-#define SYS_REMOVE 29
+#define SYS_DELETE 28
+#define SYS_LINK 29
 
 #define SYS_TOTAL_AMOUNT 30

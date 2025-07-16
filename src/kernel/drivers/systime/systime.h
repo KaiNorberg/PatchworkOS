@@ -69,7 +69,7 @@ time_t systime_unix_epoch(void);
  * @brief Initialize per-CPU timer.
  * @ingroup kernel_systime
  */
-void systime_timer_init(void);
+void systime_cpu_timer_init(void);
 
 /**
  * @brief Handle timer trap.

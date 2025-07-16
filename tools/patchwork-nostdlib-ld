@@ -1,7 +1,0 @@
-#!/bin/bash
-
-SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
-
-ld -m elf_x86_64 \
-  -nostdlib \
-  "$@"

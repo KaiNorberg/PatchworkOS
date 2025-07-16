@@ -1,182 +1,133 @@
 #pragma once
 
-#include "defs.h"
-#include "path.h"
+#include "sync/rwlock.h"
 #include "sysfs.h"
+#include "utils/map.h"
 
-#include <ctype.h>
-#include <stdatomic.h>
-#include <string.h>
+#include "dentry.h"
+#include "file.h"
+#include "inode.h"
+#include "mount.h"
+#include "path.h"
+#include "superblock.h"
+
 #include <sys/io.h>
 #include <sys/list.h>
+#include <sys/math.h>
 #include <sys/proc.h>
 
-#define FILE_DEFER(file) __attribute__((cleanup(file_defer_cleanup))) file_t* CONCAT(f, __COUNTER__) = (file)
+// TODO: Implement improved caching, LRU.
+// TODO: Implement per-process namespaces.
+// TODO: Implement literally everything else.
 
-typedef struct fs fs_t;
-typedef struct volume volume_t;
-typedef struct file file_t;
-typedef struct poll_file poll_file_t;
+/**
+ * @brief Virtual File System.
+ * @ingroup kernel
+ * @defgroup kernel_fs_vfs
+ *
+ */
 
-typedef uint64_t (*fs_mount_t)(const char*); // Add arguments as they are needed
+#define VFS_ROOT_ENTRY_NAME "__root__"
 
-typedef struct fs
-{
-    char* name;
-    fs_mount_t mount;
-} fs_t;
+#define VFS_DEVICE_NAME_NONE "__no_device__"
 
-typedef uint64_t (*volume_unmount_t)(volume_t*);
-typedef file_t* (*volume_open_t)(volume_t*, const path_t*);
-typedef uint64_t (*volume_open2_t)(volume_t*, const path_t*, file_t* [2]);
-typedef uint64_t (*volume_stat_t)(volume_t*, const path_t*, stat_t*);
-typedef uint64_t (*volume_rename_t)(volume_t*, const path_t*, const path_t*);
-typedef uint64_t (*volume_remove_t)(volume_t*, const path_t*);
-typedef void (*volume_cleanup_t)(volume_t*, file_t*);
+typedef struct filesystem filesystem_t;
 
-typedef struct volume_ops
-{
-    volume_unmount_t unmount;
-    volume_open_t open;
-    volume_open2_t open2;
-    volume_stat_t stat;
-    volume_rename_t rename;
-    volume_remove_t remove;
-    volume_cleanup_t cleanup;
-} volume_ops_t;
-
-typedef struct volume
+typedef struct filesystem
 {
     list_entry_t entry;
-    char label[MAX_NAME];
-    const volume_ops_t* ops;
-    sysdir_t sysdir;
-    atomic_uint64_t ref;
-} volume_t;
+    const char* name;
+    dentry_t* (*mount)(filesystem_t* fs, superblock_flags_t flags, const char* devName, void* private);
+} filesystem_t;
 
-typedef struct wait_queue wait_queue_t;
-
-typedef uint64_t (*file_read_t)(file_t*, void*, uint64_t);
-typedef uint64_t (*file_write_t)(file_t*, const void*, uint64_t);
-typedef uint64_t (*file_seek_t)(file_t*, int64_t, seek_origin_t);
-typedef uint64_t (*file_ioctl_t)(file_t*, uint64_t, void*, uint64_t);
-typedef wait_queue_t* (*file_poll_t)(file_t*, poll_file_t*);
-typedef void* (*file_mmap_t)(file_t*, void*, uint64_t, prot_t);
-typedef uint64_t (*file_readdir_t)(file_t*, stat_t*, uint64_t);
-
-typedef struct file_ops
+typedef struct
 {
-    file_read_t read;
-    file_write_t write;
-    file_seek_t seek;
-    file_ioctl_t ioctl;
-    file_poll_t poll;
-    file_mmap_t mmap;
-    file_readdir_t readdir;
-} file_ops_t;
+    list_t list;
+    rwlock_t lock;
+} vfs_list_t;
 
-typedef struct file
+typedef struct
 {
-    volume_t* volume;
-    uint64_t pos;
-    void* private;
-    syshdr_t* syshdr; // Used by sysfs
-    const file_ops_t* ops;
-    path_flags_t flags;
-    atomic_uint64_t ref;
-    path_t path;
-} file_t;
+    map_t map;
+    rwlock_t lock;
+} vfs_map_t;
 
-typedef struct poll_file
+typedef struct
 {
-    file_t* file;
-    poll_events_t events;
-    poll_events_t revents;
-} poll_file_t;
-
-file_t* file_new(volume_t* volume, const path_t* path, path_flags_t supportedFlags);
-
-file_t* file_ref(file_t* file);
-
-void file_deref(file_t* file);
-
-static inline void file_defer_cleanup(file_t** file)
-{
-    file_deref(*file);
-}
+    mount_t* mount;
+    rwlock_t lock;
+} vfs_root_t;
 
 void vfs_init(void);
 
-uint64_t vfs_attach_simple(const char* label, const volume_ops_t* ops);
+uint64_t vfs_get_new_id(void);
 
-uint64_t vfs_mount(const char* label, fs_t* fs);
+uint64_t vfs_register_fs(filesystem_t* fs);
+uint64_t vfs_unregister_fs(filesystem_t* fs);
+filesystem_t* vfs_get_fs(const char* name);
 
-uint64_t vfs_unmount(const char* label);
+uint64_t vfs_get_global_root(path_t* outRoot);
+uint64_t vfs_mountpoint_to_fs_root(path_t* outRoot, const path_t* mountpoint);
 
-uint64_t vfs_chdir(const path_t* path);
+inode_t* vfs_get_inode(superblock_t* superblock, inode_number_t number);
 
-file_t* vfs_open(const path_t* path);
+/**
+ * @brief Get a dentry for the given name. Will NOT traverse mountpoints.
+ * @ingroup kernel_vfs
+ *
+ * @param parent The parent path.
+ * @param name The name of the dentry.
+ * @return On success, the dentry, might be negative. On failure, returns NULL and errno is set.
+ */
+dentry_t* vfs_get_dentry(const dentry_t* parent, const char* name);
 
-uint64_t vfs_open2(const path_t* path, file_t* files[2]);
+/**
+ * @brief Get or lookup a dentry for the given name. Will NOT traverse mountpoints.
+ * @ingroup kernel_vfs
+ *
+ * @param parent The parent path.
+ * @param name The name of the dentry.
+ * @return On success, the dentry, might be negative. On failure, returns NULL and errno is set.
+ */
+dentry_t* vfs_get_or_lookup_dentry(const path_t* parent, const char* name);
 
-uint64_t vfs_stat(const path_t* path, stat_t* buffer);
+uint64_t vfs_add_inode(inode_t* inode);
+uint64_t vfs_add_dentry(dentry_t* dentry);
 
-uint64_t vfs_rename(const path_t* oldpath, const path_t* newpath);
+void vfs_remove_superblock(superblock_t* superblock);
+void vfs_remove_inode(inode_t* inode);
+void vfs_remove_dentry(dentry_t* dentry);
+void vfs_remove_mount(mount_t* mount);
 
-uint64_t vfs_remove(const path_t* path);
+uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname, walk_flags_t flags);
+uint64_t vfs_walk_parent(path_t* outPath, const pathname_t* pathname, char* outLastName, walk_flags_t flags);
+uint64_t vfs_walk_parent_and_child(path_t* outParent, path_t* outChild, const pathname_t* pathname, walk_flags_t flags);
 
-uint64_t vfs_readdir(file_t* file, stat_t* infos, uint64_t amount);
+uint64_t vfs_mount(const char* deviceName, const pathname_t* mountpoint, const char* fsName, superblock_flags_t flags,
+    void* private);
+uint64_t vfs_unmount(const pathname_t* mountpoint);
 
+bool vfs_is_name_valid(const char* name);
+
+file_t* vfs_open(const pathname_t* pathname);
+uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2]);
 uint64_t vfs_read(file_t* file, void* buffer, uint64_t count);
-
 uint64_t vfs_write(file_t* file, const void* buffer, uint64_t count);
-
 uint64_t vfs_seek(file_t* file, int64_t offset, seek_origin_t origin);
-
 uint64_t vfs_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size);
-
+void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot);
 uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout);
 
-void* vfs_mmap(file_t* file, void* address, uint64_t length, prot_t prot);
-
-// Helper function for implementing readdir
-void readdir_push(stat_t* infos, uint64_t amount, uint64_t* index, uint64_t* total, stat_t* info);
+uint64_t vfs_getdents(file_t* file, dirent_t* buffer, uint64_t count);
+uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer);
+uint64_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname);
+uint64_t vfs_delete(const pathname_t* pathname);
 
 // Helper macros for implementing file operations dealing with simple buffers
-#define BUFFER_READ(file, buffer, count, src, size) \
+#define BUFFER_READ(buffer, count, offset, src, size) \
     ({ \
-        uint64_t readCount = (file->pos <= (size)) ? MIN((count), (size) - file->pos) : 0; \
-        memcpy((buffer), (src) + file->pos, readCount); \
-        file->pos += readCount; \
+        uint64_t readCount = (*(offset) <= (size)) ? MIN((count), (size) - *(offset)) : 0; \
+        memcpy((buffer), (src) + *(offset), readCount); \
+        *(offset) += readCount; \
         readCount; \
-    })
-
-#define BUFFER_SEEK(file, offset, origin, size) \
-    ({ \
-        uint64_t position; \
-        switch (origin) \
-        { \
-        case SEEK_SET: \
-        { \
-            position = offset; \
-        } \
-        break; \
-        case SEEK_CUR: \
-        { \
-            position = file->pos + (offset); \
-        } \
-        break; \
-        case SEEK_END: \
-        { \
-            position = (size) - (offset); \
-        } \
-        break; \
-        default: \
-        { \
-            position = 0; \
-        } \
-        break; \
-        } \
-        file->pos = MIN(position, (size)); \
-        file->pos; \
     })

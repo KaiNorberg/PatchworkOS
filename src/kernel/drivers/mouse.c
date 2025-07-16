@@ -12,65 +12,88 @@
 #include <stdlib.h>
 #include <sys/math.h>
 
-static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count)
+static sysfs_dir_t mouseDir = {0};
+
+static uint64_t mouse_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    mouse_t* mouse = file->private;
+    mouse_t* mouse = file->inode->private;
 
     count = ROUND_DOWN(count, sizeof(mouse_event_t));
     for (uint64_t i = 0; i < count / sizeof(mouse_event_t); i++)
     {
-        LOCK_DEFER(&mouse->lock);
+        LOCK_SCOPE(&mouse->lock);
 
-        if (WAIT_BLOCK_LOCK(&mouse->waitQueue, &mouse->lock, file->pos != mouse->writeIndex) != WAIT_NORM)
+        if (WAIT_BLOCK_LOCK(&mouse->waitQueue, &mouse->lock, *offset != mouse->writeIndex) != WAIT_NORM)
         {
             return i * sizeof(mouse_event_t);
         }
 
-        ((mouse_event_t*)buffer)[i] = mouse->events[file->pos];
-        file->pos = (file->pos + 1) % MOUSE_MAX_EVENT;
+        ((mouse_event_t*)buffer)[i] = mouse->events[*offset];
+        *offset = (*offset + 1) % MOUSE_MAX_EVENT;
     }
 
     return count;
 }
 
-static wait_queue_t* mouse_poll(file_t* file, poll_file_t* pollFile)
+static wait_queue_t* mouse_poll(file_t* file, poll_events_t* revents)
 {
-    mouse_t* mouse = file->private;
-    pollFile->revents = POLL_READ & (mouse->writeIndex != file->pos);
+    mouse_t* mouse = file->inode->private;
+    LOCK_SCOPE(&mouse->lock);
+    if (mouse->writeIndex != file->pos)
+    {
+        *revents |= POLLIN;
+    }
     return &mouse->waitQueue;
 }
 
-SYSFS_STANDARD_OPS_DEFINE(mouseOps, PATH_NONE,
-    (file_ops_t){
-        .read = mouse_read,
-        .poll = mouse_poll,
-    });
+static file_ops_t fileOps = {
+    .read = mouse_read,
+    .poll = mouse_poll,
+};
+
+static void mouse_inode_cleanup(inode_t* inode)
+{
+    mouse_t* mouse = inode->private;
+    wait_queue_deinit(&mouse->waitQueue);
+    heap_free(mouse);
+}
+
+static inode_ops_t inodeOps = {
+    .cleanup = mouse_inode_cleanup,
+};
 
 mouse_t* mouse_new(const char* name)
 {
+    if (mouseDir.dentry == NULL)
+    {
+        if (sysfs_dir_init(&mouseDir, sysfs_get_default(), "mouse", NULL, NULL) == ERR)
+        {
+            return NULL;
+        }
+    }
+
     mouse_t* mouse = heap_alloc(sizeof(mouse_t), HEAP_NONE);
     mouse->writeIndex = 0;
     wait_queue_init(&mouse->waitQueue);
     lock_init(&mouse->lock);
-    assert(sysobj_init_path(&mouse->sysobj, "/mouse", name, &mouseOps, mouse) != ERR);
+    if (sysfs_file_init(&mouse->file, &mouseDir, name, &inodeOps, &fileOps, mouse) == ERR)
+    {
+        wait_queue_deinit(&mouse->waitQueue);
+        heap_free(mouse);
+        return NULL;
+    }
 
     return mouse;
 }
 
-static void mouse_on_free(sysobj_t* sysobj)
-{
-    mouse_t* mouse = sysobj->private;
-    heap_free(mouse);
-}
-
 void mouse_free(mouse_t* mouse)
 {
-    sysobj_deinit(&mouse->sysobj, mouse_on_free);
+    sysfs_file_deinit(&mouse->file);
 }
 
 void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, int64_t deltaX, int64_t deltaY)
 {
-    LOCK_DEFER(&mouse->lock);
+    LOCK_SCOPE(&mouse->lock);
     mouse->events[mouse->writeIndex] = (mouse_event_t){
         .time = systime_uptime(),
         .buttons = buttons,

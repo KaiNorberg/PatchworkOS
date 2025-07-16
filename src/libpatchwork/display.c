@@ -16,11 +16,9 @@ static void display_receive_event(display_t* disp, event_t* event)
 
     if (result == ERR)
     {
-        writef(open("sys:/klog"), "test1 %d\n", errno);
         if (errno == EINTR)
         {
             errno = 0;
-            writef(open("sys:/klog"), "test2\n");
             return display_receive_event(disp, event);
         }
     }
@@ -44,19 +42,24 @@ display_t* display_new(void)
     display_t* disp = malloc(sizeof(display_t));
     if (disp == NULL)
     {
-
         return NULL;
     }
 
-    disp->handle = open("sys:/net/local/new");
+    disp->handle = open("/net/local/seqpacket");
     if (disp->handle == ERR)
     {
         free(disp);
         return NULL;
     }
-    read(disp->handle, disp->id, MAX_NAME);
+    memset(disp->id, 0, MAX_NAME);
+    if (read(disp->handle, disp->id, MAX_NAME - 1) == ERR)
+    {
+        close(disp->handle);
+        free(disp);
+        return NULL;
+    }
 
-    fd_t ctl = openf("sys:/net/local/%s/ctl", disp->id);
+    fd_t ctl = openf("/net/local/%s/ctl", disp->id);
     if (ctl == ERR)
     {
         close(disp->handle);
@@ -72,7 +75,7 @@ display_t* display_new(void)
     }
     close(ctl);
 
-    disp->data = openf("sys:/net/local/%s/data", disp->id);
+    disp->data = openf("/net/local/%s/data", disp->id);
     if (disp->data == ERR)
     {
         close(disp->handle);
@@ -171,13 +174,13 @@ bool display_next_event(display_t* disp, event_t* event, clock_t timeout)
 
     if (timeout != CLOCKS_NEVER)
     {
-        poll_events_t revents = poll1(disp->data, POLL_READ, timeout);
-        if (revents & POLL_ERR)
+        poll_events_t revents = poll1(disp->data, POLLIN, timeout);
+        if (revents & POLLERR)
         {
             disp->isConnected = false;
             return false;
         }
-        else if (!(revents & POLL_READ))
+        else if (!(revents & POLLIN))
         {
             return false;
         }
@@ -205,8 +208,9 @@ void display_events_push(display_t* disp, surface_id_t target, event_type_t type
 
 void* display_cmds_push(display_t* disp, cmd_type_t type, uint64_t size)
 {
-    if (size > CMD_BUFFER_MAX_DATA)
+    if (disp == NULL || size > CMD_BUFFER_MAX_DATA)
     {
+        errno = EINVAL;
         return NULL;
     }
 

@@ -1,13 +1,19 @@
 #include <stdio.h>
-
-#include "platform/user/common/syscalls.h"
+#include <sys/io.h>
 
 int remove(const char* pathname)
 {
-    if (_syscall_remove(pathname) == ERR)
+    uint64_t result = unlink(pathname);
+    if (result != ERR)
     {
-        errno = _syscall_last_error();
-        return EOF;
+        return result;
     }
-    return 0;
+
+    result = rmdir(pathname);
+    if (result != ERR)
+    {
+        return result;
+    }
+
+    return EOF;
 }

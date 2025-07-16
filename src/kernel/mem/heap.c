@@ -18,13 +18,13 @@ extern uint64_t _kernelEnd;
 
 void heap_init(void)
 {
-    LOG_INFO("heap: init\n");
     memset(lookupTable, HEAP_LOOKUP_NONE, sizeof(lookupTable));
+    LOG_INFO("heap initialized\n");
 }
 
 void* heap_alloc(uint64_t size, heap_flags_t flags)
 {
-    LOCK_DEFER(&lock);
+    LOCK_SCOPE(&lock);
 
     size = ROUND_UP(size, HEAP_ALIGN);
 
@@ -36,12 +36,13 @@ void* heap_alloc(uint64_t size, heap_flags_t flags)
         object_t* object = vmm_kernel_map(NULL, NULL, pageAmount, PML_WRITE);
         if (object == NULL)
         {
-            return ERRPTR(ENOMEM);
+            errno = ENOMEM;
+            return NULL;
         }
         list_entry_init(&object->entry);
         object->cache = NULL;
         object->magic = SLAB_MAGIC;
-        object->freed = true;
+        object->freed = false;
         object->dataSize = size;
         return object->data;
     }
@@ -55,7 +56,17 @@ void* heap_alloc(uint64_t size, heap_flags_t flags)
         slab_init(&slabs[slabIndex], size);
     }
 
-    return slab_alloc(&slabs[lookupTable[size / HEAP_ALIGN]])->data;
+    object_t* object = slab_alloc(&slabs[lookupTable[size / HEAP_ALIGN]]);
+    if (object == NULL)
+    {
+        return NULL;
+    }
+
+#ifndef NDEBUG
+    memset32(object->data, HEAP_ALLOC_POISON, object->dataSize / sizeof(uint32_t));
+#endif
+
+    return object->data;
 }
 
 void* heap_realloc(void* oldPtr, uint64_t newSize, heap_flags_t flags)
@@ -123,7 +134,7 @@ void heap_free(void* ptr)
 {
     assert(ptr > (void*)&_kernelEnd);
 
-    LOCK_DEFER(&lock);
+    LOCK_SCOPE(&lock);
 
     object_t* object = CONTAINER_OF(ptr, object_t, data);
 
@@ -134,10 +145,14 @@ void heap_free(void* ptr)
         return;
     }
 
+#ifndef NDEBUG
+    memset32(object->data, HEAP_FREE_POISON, object->dataSize / sizeof(uint32_t));
+#endif
+
     slab_free(object->cache->slab, object);
 }
 
-#ifdef TESTING
+#ifndef NDEBUG
 #include "utils/testing.h"
 
 static uint64_t heap_test_single(uint64_t size, uint8_t pattern)
@@ -145,7 +160,7 @@ static uint64_t heap_test_single(uint64_t size, uint8_t pattern)
     void* ptr = heap_alloc(size, HEAP_NONE);
     if (ptr == NULL)
     {
-        LOG_INFO("heap_test_single: Failed to allocate %lu bytes\n", size);
+        LOG_ERR("Failed to allocate %lu bytes\n", size);
         return ERR;
     }
 
@@ -154,7 +169,7 @@ static uint64_t heap_test_single(uint64_t size, uint8_t pattern)
     {
         if (((uint8_t*)ptr)[i] != pattern)
         {
-            LOG_INFO("heap_test_single: Memory corruption detected at offset %lu for size %lu\n", i, size);
+            LOG_ERR("Memory corruption detected at offset %lu for size %lu\n", i, size);
             heap_free(ptr);
             return ERR;
         }
@@ -172,7 +187,7 @@ static uint64_t heap_test_multiple(uint64_t numAllocs, uint64_t size, uint8_t pa
         ptrs[i] = heap_alloc(size, HEAP_NONE);
         if (ptrs[i] == NULL)
         {
-            LOG_INFO("heap_test_multiple: Failed to allocate %lu bytes for allocation %lu\n", size, i);
+            LOG_ERR("Failed to allocate %lu bytes for allocation %lu\n", size, i);
             for (uint64_t j = 0; j < i; j++)
             {
                 heap_free(ptrs[j]);
@@ -188,8 +203,7 @@ static uint64_t heap_test_multiple(uint64_t numAllocs, uint64_t size, uint8_t pa
         {
             if (((uint8_t*)ptrs[i])[j] != pattern)
             {
-                LOG_INFO("heap_test_multiple: Memory corruption detected at offset %lu for allocation %lu, size %lu\n",
-                    j, i, size);
+                LOG_ERR("Memory corruption detected at offset %lu for allocation %lu, size %lu\n", j, i, size);
                 for (uint64_t k = 0; k < numAllocs; k++)
                 {
                     heap_free(ptrs[k]);
@@ -208,7 +222,7 @@ static uint64_t heap_test_calloc(uint64_t num, uint64_t size)
     void* ptr = heap_calloc(num, size, HEAP_NONE);
     if (ptr == NULL)
     {
-        LOG_INFO("heap_test_calloc: Failed to allocate %lu bytes with heap_calloc\n", totalSize);
+        LOG_ERR("Failed to allocate %lu bytes with heap_calloc\n", totalSize);
         return ERR;
     }
 
@@ -216,7 +230,7 @@ static uint64_t heap_test_calloc(uint64_t num, uint64_t size)
     {
         if (((uint8_t*)ptr)[i] != 0)
         {
-            LOG_INFO("heap_test_calloc: Memory not zero-initialized at offset %lu\n", i);
+            LOG_ERR("Memory not zero-initialized at offset %lu\n", i);
             heap_free(ptr);
             return ERR;
         }
@@ -230,7 +244,7 @@ static uint64_t heap_test_realloc(uint64_t initialSize, uint64_t newSize, uint8_
     void* ptr = heap_alloc(initialSize, HEAP_NONE);
     if (ptr == NULL)
     {
-        LOG_INFO("heap_test_realloc: Failed to allocate initial %lu bytes\n", initialSize);
+        LOG_ERR("Failed to allocate initial %lu bytes\n", initialSize);
         return ERR;
     }
     memset(ptr, pattern, initialSize);
@@ -238,7 +252,7 @@ static uint64_t heap_test_realloc(uint64_t initialSize, uint64_t newSize, uint8_
     void* newPtr = heap_realloc(ptr, newSize, HEAP_NONE);
     if (newPtr == NULL)
     {
-        LOG_INFO("heap_test_realloc: Failed to reallocate to %lu bytes\n", newSize);
+        LOG_ERR("Failed to reallocate to %lu bytes\n", newSize);
         heap_free(ptr);
         return ERR;
     }
@@ -248,7 +262,7 @@ static uint64_t heap_test_realloc(uint64_t initialSize, uint64_t newSize, uint8_
     {
         if (((uint8_t*)newPtr)[i] != pattern)
         {
-            LOG_INFO("heap_test_realloc: Memory corruption after realloc at offset %lu\n", i);
+            LOG_ERR("Memory corruption after realloc at offset %lu\n", i);
             heap_free(newPtr);
             return ERR;
         }
@@ -261,7 +275,7 @@ static uint64_t heap_test_realloc(uint64_t initialSize, uint64_t newSize, uint8_
         {
             if (((uint8_t*)newPtr)[i] != pattern + 1)
             {
-                LOG_INFO("heap_test_realloc: New memory not filled correctly at offset %lu\n", i);
+                LOG_ERR("New memory not filled correctly at offset %lu\n", i);
                 heap_free(newPtr);
                 return ERR;
             }
@@ -272,7 +286,7 @@ static uint64_t heap_test_realloc(uint64_t initialSize, uint64_t newSize, uint8_
     return 0;
 }
 
-TESTING_REGISTER_TEST(HEAP_all_tests)
+TESTING_REGISTER_TEST(heap_all_tests)
 {
     uint64_t result = 0;
 

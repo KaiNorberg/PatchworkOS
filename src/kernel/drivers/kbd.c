@@ -11,63 +11,87 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <sys/io.h>
 #include <sys/math.h>
 
-static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count)
+static sysfs_dir_t kbdDir = {0};
+
+static uint64_t kbd_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    kbd_t* kbd = file->private;
+    kbd_t* kbd = file->inode->private;
 
     count = ROUND_DOWN(count, sizeof(kbd_event_t));
     for (uint64_t i = 0; i < count / sizeof(kbd_event_t); i++)
     {
-        LOCK_DEFER(&kbd->lock);
+        LOCK_SCOPE(&kbd->lock);
 
-        if (WAIT_BLOCK_LOCK(&kbd->waitQueue, &kbd->lock, file->pos != kbd->writeIndex) != WAIT_NORM)
+        if (WAIT_BLOCK_LOCK(&kbd->waitQueue, &kbd->lock, *offset != kbd->writeIndex) != WAIT_NORM)
         {
             return i * sizeof(kbd_event_t);
         }
 
-        ((kbd_event_t*)buffer)[i] = kbd->events[file->pos];
-        file->pos = (file->pos + 1) % KBD_MAX_EVENT;
+        ((kbd_event_t*)buffer)[i] = kbd->events[*offset];
+        *offset = (*offset + 1) % KBD_MAX_EVENT;
     }
 
     return count;
 }
 
-static wait_queue_t* kbd_poll(file_t* file, poll_file_t* pollFile)
+static wait_queue_t* kbd_poll(file_t* file, poll_events_t* revents)
 {
-    kbd_t* kbd = file->private;
-    pollFile->revents = POLL_READ & (kbd->writeIndex != file->pos);
+    kbd_t* kbd = file->inode->private;
+    LOCK_SCOPE(&kbd->lock);
+    if (kbd->writeIndex != file->pos)
+    {
+        *revents |= POLLIN;
+    }
     return &kbd->waitQueue;
 }
 
-SYSFS_STANDARD_OPS_DEFINE(kbdOps, PATH_NONE,
-    (file_ops_t){
-        .read = kbd_read,
-        .poll = kbd_poll,
-    });
+static file_ops_t fileOps = {
+    .read = kbd_read,
+    .poll = kbd_poll,
+};
+
+static void kbd_inode_cleanup(inode_t* inode)
+{
+    kbd_t* kbd = inode->private;
+    wait_queue_deinit(&kbd->waitQueue);
+    heap_free(kbd);
+}
+
+static inode_ops_t inodeOps = {
+    .cleanup = kbd_inode_cleanup,
+};
 
 kbd_t* kbd_new(const char* name)
 {
+    if (kbdDir.dentry == NULL)
+    {
+        if (sysfs_dir_init(&kbdDir, sysfs_get_default(), "kbd", NULL, NULL) == ERR)
+        {
+            return NULL;
+        }
+    }
+
     kbd_t* kbd = heap_alloc(sizeof(kbd_t), HEAP_NONE);
     kbd->writeIndex = 0;
     kbd->mods = KBD_MOD_NONE;
     wait_queue_init(&kbd->waitQueue);
     lock_init(&kbd->lock);
-    assert(sysobj_init_path(&kbd->sysobj, "/kbd", name, &kbdOps, kbd) != ERR);
+    if (sysfs_file_init(&kbd->file, &kbdDir, name, &inodeOps, &fileOps, kbd) == ERR)
+    {
+        wait_queue_deinit(&kbd->waitQueue);
+        heap_free(kbd);
+        return NULL;
+    }
 
     return kbd;
 }
 
-static void kbd_on_free(sysobj_t* sysobj)
-{
-    kbd_t* kbd = sysobj->private;
-    heap_free(kbd);
-}
-
 void kbd_free(kbd_t* kbd)
 {
-    sysobj_deinit(&kbd->sysobj, kbd_on_free);
+    sysfs_file_deinit(&kbd->file);
 }
 
 static void kbd_update_mod(kbd_t* kbd, kbd_event_type_t type, kbd_mods_t mod)
@@ -84,7 +108,7 @@ static void kbd_update_mod(kbd_t* kbd, kbd_event_type_t type, kbd_mods_t mod)
 
 void kbd_push(kbd_t* kbd, kbd_event_type_t type, keycode_t code)
 {
-    LOCK_DEFER(&kbd->lock);
+    LOCK_SCOPE(&kbd->lock);
 
     switch (code)
     {

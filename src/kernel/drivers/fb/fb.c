@@ -16,20 +16,21 @@ static void* fb_mmap(file_t* file, void* addr, uint64_t length, prot_t prot)
 {
     log_disable_screen();
 
-    fb_t* fb = file->private;
+    fb_t* fb = file->inode->private;
     return fb->mmap(fb, addr, length, prot);
 }
 
 static uint64_t fb_ioctl(file_t* file, uint64_t request, void* argp, uint64_t size)
 {
-    fb_t* fb = file->private;
+    fb_t* fb = file->inode->private;
     switch (request)
     {
     case IOCTL_FB_INFO:
     {
         if (size < sizeof(fb_info_t))
         {
-            return ERROR(EINVAL);
+            errno = EINVAL;
+            return ERR;
         }
 
         memcpy(argp, &fb->info, sizeof(fb_info_t));
@@ -37,23 +38,26 @@ static uint64_t fb_ioctl(file_t* file, uint64_t request, void* argp, uint64_t si
     break;
     default:
     {
-        return ERROR(EINVAL);
+        errno = EINVAL;
+        return ERR;
     }
     }
 
     return 0;
 }
 
-SYSFS_STANDARD_OPS_DEFINE(fbOps, PATH_NONE,
-    (file_ops_t){
-        .mmap = fb_mmap,
-        .ioctl = fb_ioctl,
-    });
+static file_ops_t fbOps = {
+    .mmap = fb_mmap,
+    .ioctl = fb_ioctl,
+};
 
 uint64_t fb_expose(fb_t* fb)
 {
     char name[MAX_NAME];
     sprintf(name, "fb%d", atomic_load(&newId));
-    assert(sysobj_init_path(&fb->sysobj, "/", name, &fbOps, fb) != ERR);
+    if (sysfs_file_init(&fb->file, sysfs_get_default(), name, NULL, &fbOps, fb) == ERR)
+    {
+        return ERR;
+    }
     return 0;
 }

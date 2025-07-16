@@ -1,37 +1,42 @@
 #pragma once
 
 #include "fs/sysfs.h"
-#include "fs/vfs.h"
+#include "socket_type.h"
 
 #include <stdint.h>
+#include <sys/io.h>
+#include <sys/list.h>
 
 typedef struct socket socket_t;
+typedef struct socket_family socket_family_t;
 
-typedef uint64_t (*socket_init_t)(socket_t*);
-typedef void (*socket_deinit_t)(socket_t*);
-typedef uint64_t (*socket_bind_t)(socket_t*, const char*);
-typedef uint64_t (*socket_listen_t)(socket_t*);
-typedef uint64_t (*socket_accept_t)(socket_t*, socket_t*);
-typedef uint64_t (*socket_connect_t)(socket_t*, const char*);
-typedef uint64_t (*socket_send_t)(socket_t*, const void*, uint64_t);
-typedef uint64_t (*socket_receive_t)(socket_t*, void*, uint64_t, uint64_t*);
-typedef wait_queue_t* (*socket_poll_t)(socket_t*, poll_file_t*);
+typedef struct socket_factory
+{
+    list_entry_t entry;
+    socket_type_t type;
+    socket_family_t* family;
+    sysfs_file_t file;
+} socket_factory_t;
 
-// Note: All functions must be implemented.
-typedef struct
+typedef struct socket_family
 {
     const char* name;
-    socket_init_t init;
-    socket_deinit_t deinit;
-    socket_bind_t bind;
-    socket_listen_t listen;
-    socket_connect_t connect;
-    socket_accept_t accept;
-    socket_send_t send;
-    socket_receive_t receive;
-    socket_poll_t poll;
-    sysdir_t dir;
-    sysobj_t newObj;
+    socket_type_t supportedTypes;
+    uint64_t (*init)(socket_t* sock);
+    void (*deinit)(socket_t* sock);
+    uint64_t (*bind)(socket_t* sock, const char* address);
+    uint64_t (*listen)(socket_t* sock, uint32_t backlog);
+    uint64_t (*connect)(socket_t* sock, const char* address);
+    uint64_t (*accept)(socket_t* sock, socket_t* newSock);
+    uint64_t (*send)(socket_t* sock, const void* buffer, uint64_t count, uint64_t* offset);
+    uint64_t (*recv)(socket_t* sock, void* buffer, uint64_t count, uint64_t* offset);
+    wait_queue_t* (*poll)(socket_t* sock, poll_events_t* revents);
+    uint64_t (*shutdown)(socket_t* socket, uint32_t how); // TODO: This is not used nor implemented, implement it.
+    atomic_uint64_t newId;                                //!< Internal.
+    sysfs_dir_t dir;                                      //!< Internal.
+    list_t factories;                                     //!< Internal.
 } socket_family_t;
 
 uint64_t socket_family_register(socket_family_t* family);
+
+void socket_family_unregister(socket_family_t* family);

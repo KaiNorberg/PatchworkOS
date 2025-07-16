@@ -269,7 +269,7 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     strcpy(win->shmem, event.surfaceNew.shmem);
     win->surface = event.target;
 
-    fd_t shmem = openf("sys:/shmem/%s", win->shmem);
+    fd_t shmem = openf("/dev/shmem/%s", win->shmem);
     if (shmem == ERR)
     {
         window_free(win);

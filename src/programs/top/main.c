@@ -14,7 +14,7 @@ typedef struct
 
 cpu_statistics_t* cpu_statistics_read(uint64_t* cpuAmount)
 {
-    FILE* file = fopen("sys:/stat/cpu", "r");
+    FILE* file = fopen("/dev/stat/cpu", "r");
     cpu_statistics_t* stat = NULL;
     (*cpuAmount) = 0;
 
@@ -47,12 +47,12 @@ typedef struct
 
 void mem_statistics_read(mem_statistics_t* stats)
 {
-    FILE* file = fopen("sys:/stat/mem", "r");
+    FILE* file = fopen("/dev/stat/mem", "r");
 
     if (fscanf(file, "value kb\ntotal %llu\nfree %llu\nreserved %llu", &stats->total, &stats->free, &stats->reserved) ==
         EOF)
     {
-        fprintf(stderr, "failed to read sys:/stat/mem\n");
+        fprintf(stderr, "failed to read /dev/stat/mem\n");
     }
 
     fclose(file);

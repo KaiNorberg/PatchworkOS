@@ -108,7 +108,7 @@ config_t* config_open(const char* prefix, const char* name)
     }
 
     char path[MAX_PATH];
-    int ret = snprintf(path, sizeof(path), "home:/cfg/%s-%s.cfg", prefix, name);
+    int ret = snprintf(path, sizeof(path), "/cfg/%s-%s.cfg", prefix, name);
     if (ret < 0 || ret >= (int)sizeof(path))
     {
         return NULL;
@@ -157,6 +157,7 @@ config_t* config_open(const char* prefix, const char* name)
         }
 
         uint64_t lineLen = strlen(line);
+
         if (lineLen == 0)
         {
             continue; // Skip empty lines
@@ -200,6 +201,7 @@ config_t* config_open(const char* prefix, const char* name)
             char* keyStart = line;
             char* keyEnd = equals - 1;
 
+            // Trim whitespace from key
             while (keyEnd >= keyStart && isspace((unsigned char)*keyEnd))
             {
                 keyEnd--;
@@ -217,6 +219,7 @@ config_t* config_open(const char* prefix, const char* name)
 
             char* valueStart = equals + 1;
 
+            // Trim leading whitespace from value
             while (isspace((unsigned char)*valueStart))
             {
                 valueStart++;
@@ -285,7 +288,7 @@ uint64_t config_scanf(config_t* cfg, const char* section, const char* key, const
 
 const char* config_get_string(config_t* cfg, const char* section, const char* key, const char* fallback)
 {
-    if (cfg == NULL || section == NULL || key == NULL)
+    if (cfg == NULL || key == NULL)
     {
         return fallback;
     }
@@ -334,7 +337,7 @@ const char* config_get_string(config_t* cfg, const char* section, const char* ke
 
 int64_t config_get_int(config_t* cfg, const char* section, const char* key, int64_t fallback)
 {
-    if (cfg == NULL || section == NULL || key == NULL)
+    if (cfg == NULL || key == NULL)
     {
         return fallback;
     }
@@ -357,7 +360,7 @@ int64_t config_get_int(config_t* cfg, const char* section, const char* key, int6
 
 bool config_get_bool(config_t* cfg, const char* section, const char* key, bool fallback)
 {
-    if (cfg == NULL || section == NULL || key == NULL)
+    if (cfg == NULL || key == NULL)
     {
         return fallback;
     }
@@ -414,7 +417,7 @@ config_array_t* config_get_array(config_t* cfg, const char* section, const char*
     }
     strcpy(temp, str);
 
-    char* token = strtok(temp, ",");
+    char* token = strtok(temp, ","); // TODO: NOT THREAD SAFE FIX
     while (token != NULL)
     {
         while (isspace(*token))

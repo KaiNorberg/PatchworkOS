@@ -55,7 +55,7 @@ void apic_timer_one_shot(uint8_t vector, uint32_t ticks);
  */
 uint64_t apic_timer_ticks_per_ns(void);
 
-void lapic_init(void);
+void lapic_cpu_init(void);
 
 uint8_t lapic_id(void);
 

@@ -15,7 +15,7 @@ extern "C"
  * @ingroup libstd
  * @defgroup libstd_sys_kbd Keyboard device
  *
- * The `sys/kbd.h` header defines structs and constants used by keyboard devices for example `sys:/kbd/ps2`. The primary
+ * The `sys/kbd.h` header defines structs and constants used by keyboard devices for example `/dev/kbd/ps2`. The primary
  * way to use a keyboard device is to open it and then read from it to retrieve `kbd_event_t` structures.
  *
  */
@@ -316,7 +316,7 @@ typedef enum // TODO: Replace this with userspace processing (dwm).
  * @brief Keyboard event structure.
  * @ingroup libstd_sys_kbd
  *
- * The `kbd_event_t` structure can be read from keyboard files, for example `sys:/kbd/ps2`. Keyboard files will block
+ * The `kbd_event_t` structure can be read from keyboard files, for example `/dev/kbd/ps2`. Keyboard files will block
  * until a key event happens, keyboard files will never return partial events.
  */
 typedef struct

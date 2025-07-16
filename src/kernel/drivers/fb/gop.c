@@ -3,6 +3,7 @@
 #include "defs.h"
 #include "fb.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/vmm.h"
 #include "proc/process.h"
 #include "sched/sched.h"
@@ -41,5 +42,8 @@ void gop_init(gop_buffer_t* gopBuffer)
     fb.info.format = FB_ARGB32;
     gop = *gopBuffer;
 
-    assert(fb_expose(&fb) != ERR);
+    if (fb_expose(&fb) == ERR)
+    {
+        panic(NULL, "Failed to expose gop framebuffer");
+    }
 }

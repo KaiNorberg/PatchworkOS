@@ -30,22 +30,14 @@ static uint64_t next_power_of_two(uint64_t n)
     return power;
 }
 
-uint64_t hash_uint64(uint64_t key)
-{
-    key = (key ^ (key >> 33)) * 0xff51afd7ed558ccd;
-    key = (key ^ (key >> 33)) * 0xc4ceb9fe1a85ec53;
-    key = key ^ (key >> 33);
-    return key;
-}
-
-uint64_t hash_string(const char* str)
+uint64_t hash_buffer(const void* buffer, uint64_t length)
 {
     uint64_t hash = 0xcbf29ce484222325ULL;
     const uint64_t prime = 0x100000001b3ULL;
 
-    while (*str)
+    for (uint64_t i = 0; i < length; ++i)
     {
-        hash ^= (uint64_t)*str++;
+        hash ^= (uint64_t)((uint8_t*)buffer)[i];
         hash *= prime;
     }
 
@@ -54,31 +46,23 @@ uint64_t hash_string(const char* str)
 
 bool map_key_is_equal(const map_key_t* a, const map_key_t* b)
 {
-    if (a->type != b->type)
-    {
-        return false;
-    }
-
     if (a->hash != b->hash)
     {
         return false;
     }
 
-    switch (a->type)
+    if (a->len != b->len)
     {
-    case MAP_KEY_UINT64:
-        return a->data.uint64 == b->data.uint64;
-    case MAP_KEY_STRING:
-        return strcmp(a->data.str, b->data.str) == 0;
-    default:
         return false;
     }
+
+    return memcmp(a->key, b->key, a->len) == 0;
 }
 
 void map_entry_init(map_entry_t* entry)
 {
-    entry->key.type = MAP_KEY_NONE;
-    entry->key.data.raw = ERR;
+    memset(entry->key.key, 0, sizeof(entry->key.key));
+    entry->key.len = 0;
     entry->key.hash = 0;
 }
 

@@ -57,9 +57,11 @@ build
 .cache
 .xmake
 .vscode
+.zed
 compile_commands.json
 lib/OVMFbin/OVMF_VARS-pure-efi.fd
 lib/doomgeneric-patchworkos
 lib/lua*
 meta/docs
 meta/doxy/doxygen-awesome-css
+include/common/version.h

@@ -38,13 +38,18 @@ static inline bool bitmap_is_set(bitmap_t* map, uint64_t idx)
     return (map->buffer[qwordIdx] & (1ULL << bitInQword));
 }
 
-static inline void bitmap_set(bitmap_t* map, uint64_t low, uint64_t high)
+static inline void bitmap_set(bitmap_t* map, uint64_t index)
+{
+    uint64_t qwordIdx = index / 64;
+    uint64_t bitInQword = index % 64;
+    map->buffer[qwordIdx] |= (1ULL << bitInQword);
+}
+
+static inline void bitmap_set_range(bitmap_t* map, uint64_t low, uint64_t high)
 {
     for (uint64_t i = low; i < high; i++)
     {
-        uint64_t qwordIdx = i / 64;
-        uint64_t bitInQword = i % 64;
-        map->buffer[qwordIdx] |= (1ULL << bitInQword);
+        bitmap_set(map, i);
     }
 }
 
@@ -60,7 +65,7 @@ static inline uint64_t bitmap_find_clear_region_and_set(bitmap_t* map, uint64_t 
             {
                 if (j - i == length)
                 {
-                    bitmap_set(map, i, j);
+                    bitmap_set_range(map, i, j);
                     return i;
                 }
 

@@ -53,7 +53,7 @@ void _heap_init(void)
     _PLATFORM_MUTEX_INIT(&mutex);
     firstBlock = NULL;
 
-    zeroResource = open("sys:/zero");
+    zeroResource = open("/dev/zero");
     if (zeroResource == ERR)
     {
         exit(EXIT_FAILURE);

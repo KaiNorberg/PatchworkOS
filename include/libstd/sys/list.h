@@ -4,6 +4,7 @@
 #include "_internal/CONTAINER_OF.h"
 #include "_internal/NULL.h"
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -32,8 +33,8 @@
  */
 typedef struct list_entry
 {
-    struct list_entry* prev; //!< The next entry in the list
-    struct list_entry* next; //!< The previous entry in the list
+    struct list_entry* prev; //!< The previous entry in the list
+    struct list_entry* next; //!< The next entry in the list
 } list_entry_t;
 
 /**
@@ -246,6 +247,7 @@ static inline void list_remove(list_entry_t* entry)
  */
 static inline void list_push(list_t* list, list_entry_t* entry)
 {
+    assert(entry->next == entry && entry->prev == entry);
     list_add(list->head.prev, &list->head, entry);
 }
 

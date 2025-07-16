@@ -36,6 +36,7 @@
 #define RFLAGS_NESTED_TASK (1 << 14)
 #define RFLAGS_MODE (1 << 15)
 
+#define CR0_PROTECTED_MODE_ENABLE (1 << 0)
 #define CR0_MONITOR_CO_PROCESSOR (1 << 1)
 #define CR0_EMULATION (1 << 2)
 #define CR0_NUMERIC_ERROR_ENABLE (1 << 5)

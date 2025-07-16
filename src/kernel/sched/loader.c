@@ -21,27 +21,23 @@ static void* loader_load_program(thread_t* thread)
     const char* executable = process->argv.buffer[0];
     if (executable == NULL)
     {
-        LOG_INFO("loader_load_program: executable == NULL (%s) pid=%d\n", strerror(thread->error), process->id);
         sched_process_exit(ESPAWNFAIL);
     }
 
-    file_t* file = vfs_open(PATH(process, executable));
+    file_t* file = vfs_open(PATHNAME(executable));
     if (file == NULL)
     {
-        LOG_INFO("loader_load_program: vfs_open failed (%s) pid=%d\n", strerror(thread->error), process->id);
         sched_process_exit(ESPAWNFAIL);
     }
-    FILE_DEFER(file);
+    REF_DEFER(file);
 
     elf_hdr_t header;
     if (vfs_read(file, &header, sizeof(elf_hdr_t)) != sizeof(elf_hdr_t))
     {
-        LOG_INFO("loader_load_program: vfs_read hdr failed (%s) pid=%d\n", strerror(thread->error), process->id);
         sched_process_exit(ESPAWNFAIL);
     }
     if (!ELF_IS_VALID(&header))
     {
-        LOG_INFO("loader_load_program: elf valid check failed (%s) pid=%d\n", strerror(thread->error), process->id);
         sched_process_exit(ESPAWNFAIL);
     }
 
@@ -52,15 +48,12 @@ static void* loader_load_program(thread_t* thread)
         uint64_t offset = sizeof(elf_hdr_t) + header.phdrSize * i;
         if (vfs_seek(file, offset, SEEK_SET) != offset)
         {
-            LOG_INFO("loader_load_program: vfs_seek to offset failed (%s) pid=%d\n", strerror(thread->error),
-                process->id);
             sched_process_exit(ESPAWNFAIL);
         }
 
         elf_phdr_t phdr;
         if (vfs_read(file, &phdr, sizeof(elf_phdr_t)) != sizeof(elf_phdr_t))
         {
-            LOG_INFO("loader_load_program: vfs_read phdr failed (%s) pid=%d\n", strerror(thread->error), process->id);
             sched_process_exit(ESPAWNFAIL);
         }
 
@@ -72,26 +65,21 @@ static void* loader_load_program(thread_t* thread)
             max = MAX(max, phdr.virtAddr + phdr.memorySize);
             if (phdr.memorySize < phdr.fileSize)
             {
-                LOG_INFO("loader_load_program: phdr size check failed (%s) pid=%d\n", strerror(thread->error),
-                    process->id);
                 sched_process_exit(ESPAWNFAIL);
             }
 
             if (vmm_alloc(space, (void*)phdr.virtAddr, phdr.memorySize, PROT_READ | PROT_WRITE) == NULL)
             {
-                LOG_INFO("loader_load_program: vmm_alloc failed (%s) pid=%d\n", strerror(thread->error), process->id);
                 sched_process_exit(ESPAWNFAIL);
             }
             memset((void*)phdr.virtAddr, 0, phdr.memorySize);
 
             if (vfs_seek(file, phdr.offset, SEEK_SET) != phdr.offset)
             {
-                LOG_INFO("loader_load_program: vfs_seek failed (%s) pid=%d\n", strerror(thread->error), process->id);
                 sched_process_exit(ESPAWNFAIL);
             }
             if (vfs_read(file, (void*)phdr.virtAddr, phdr.fileSize) != phdr.fileSize)
             {
-                LOG_INFO("loader_load_program: vfs_read failed (%s) pid=%d\n", strerror(thread->error), process->id);
                 sched_process_exit(ESPAWNFAIL);
             }
 
@@ -99,8 +87,6 @@ static void* loader_load_program(thread_t* thread)
             {
                 if (vmm_protect(space, (void*)phdr.virtAddr, phdr.memorySize, PROT_READ) == ERR)
                 {
-                    LOG_INFO("loader_load_program: vmm_protect failed (%s) pid=%d\n", strerror(thread->error),
-                        process->id);
                     sched_process_exit(ESPAWNFAIL);
                 }
             }
@@ -118,8 +104,6 @@ static void* loader_alloc_user_stack(thread_t* thread)
 
     if (vmm_alloc(&thread->process->space, (void*)(stackTop - PAGE_SIZE), PAGE_SIZE, PROT_READ | PROT_WRITE) == NULL)
     {
-        LOG_INFO("loader_alloc_user_stack: vmm_alloc failed (%s) pid=%d\n", strerror(thread->error),
-            thread->process->id);
         sched_process_exit(ESPAWNFAIL);
     }
 
@@ -153,6 +137,7 @@ static void loader_process_entry(void)
     char** argv = loader_setup_argv(thread, rsp);
     rsp = (void*)ROUND_DOWN((uint64_t)argv - 1, 16);
 
+    LOG_DEBUG("jump to user space path=%s pid=%d\n", thread->process->argv.buffer[0], thread->process->id);
     loader_jump_to_user_space(thread->process->argv.amount, argv, rsp, rip);
 }
 
@@ -162,18 +147,26 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
 
     if (argv == NULL || argv[0] == NULL)
     {
-        return ERRPTR(EINVAL);
+        errno = EINVAL;
+        return NULL;
     }
 
-    stat_t info;
-    if (vfs_stat(PATH(process, argv[0]), &info) == ERR)
+    pathname_t executable;
+    if (pathname_init(&executable, argv[0]) == ERR)
     {
         return NULL;
     }
 
-    if (info.type != STAT_FILE)
+    stat_t info;
+    if (vfs_stat(&executable, &info) == ERR)
     {
-        return ERRPTR(EISDIR);
+        return NULL;
+    }
+
+    if (info.type != INODE_FILE)
+    {
+        errno = EISDIR;
+        return NULL;
     }
 
     process_t* child = process_new(process, argv, cwd, priority);
@@ -189,7 +182,7 @@ thread_t* loader_spawn(const char** argv, priority_t priority, const path_t* cwd
         return NULL;
     }
 
-    LOG_INFO("loader: spawn path=%s pid=%d\n", argv[0], child->id);
+    LOG_INFO("spawn path=%s pid=%d\n", argv[0], child->id);
     return childThread;
 }
 
@@ -213,4 +206,160 @@ thread_t* loader_thread_create(process_t* parent, void* entry, void* arg)
     child->trapFrame.rsp = (uint64_t)rsp;
     child->trapFrame.rdi = (uint64_t)arg;
     return child;
+}
+
+SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const char* cwdString, spawn_attr_t* attr)
+{
+    thread_t* thread = sched_thread();
+    process_t* process = thread->process;
+    space_t* space = &process->space;
+
+    if (cwdString != NULL && !syscall_is_string_valid(space, cwdString))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    if (attr != NULL && !syscall_is_buffer_valid(space, attr, sizeof(spawn_attr_t)))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    priority_t priority;
+    if (attr == NULL || attr->flags & SPAWN_INHERIT_PRIORITY)
+    {
+        priority = atomic_load(&process->priority);
+    }
+    else
+    {
+        priority = attr->priority;
+    }
+
+    if (priority >= PRIORITY_MAX_USER)
+    {
+        errno = EACCES;
+        return ERR;
+    }
+
+    uint64_t argc = 0;
+    while (1)
+    {
+        if (!syscall_is_buffer_valid(space, &argv[argc], sizeof(const char*)))
+        {
+            errno = EFAULT;
+            return ERR;
+        }
+        else if (argv[argc] == NULL)
+        {
+            break;
+        }
+        else if (!syscall_is_string_valid(space, argv[argc]))
+        {
+            errno = EFAULT;
+            return ERR;
+        }
+
+        argc++;
+    }
+
+    uint64_t fdAmount = 0;
+    if (fds != NULL)
+    {
+        while (1)
+        {
+            if (fdAmount >= CONFIG_MAX_FD)
+            {
+                errno = EINVAL;
+                return ERR;
+            }
+            else if (!syscall_is_buffer_valid(space, &fds[fdAmount], sizeof(fd_t)))
+            {
+                errno = EFAULT;
+                return ERR;
+            }
+            else if (fds[fdAmount].child == FD_NONE || fds[fdAmount].parent == FD_NONE)
+            {
+                break;
+            }
+
+            fdAmount++;
+        }
+    }
+
+    thread_t* child;
+    if (cwdString == NULL)
+    {
+        child = loader_spawn(argv, priority, NULL);
+    }
+    else
+    {
+        pathname_t cwdPathname;
+        if (pathname_init(&cwdPathname, cwdString) == ERR)
+        {
+            return ERR;
+        }
+
+        path_t cwdPath = PATH_EMPTY;
+        if (vfs_walk(&cwdPath, &cwdPathname, WALK_NONE) == ERR)
+        {
+            return ERR;
+        }
+
+        child = loader_spawn(argv, priority, &cwdPath);
+
+        path_put(&cwdPath);
+    }
+
+    if (child == NULL)
+    {
+        return ERR;
+    }
+
+    vfs_ctx_t* parentVfsCtx = &process->vfsCtx;
+    vfs_ctx_t* childVfsCtx = &child->process->vfsCtx;
+
+    for (uint64_t i = 0; i < fdAmount; i++)
+    {
+        file_t* file = vfs_ctx_get_file(parentVfsCtx, fds[i].parent);
+        if (file == NULL)
+        {
+            thread_free(child);
+            errno = EBADF;
+            return ERR;
+        }
+        REF_DEFER(file);
+
+        if (vfs_ctx_openas(childVfsCtx, fds[i].child, file) == ERR)
+        {
+            thread_free(child);
+            errno = EBADF;
+            return ERR;
+        }
+    }
+
+    sched_push(child, thread, NULL);
+    return child->process->id;
+}
+
+SYSCALL_DEFINE(SYS_THREAD_CREATE, tid_t, void* entry, void* arg)
+{
+    thread_t* thread = sched_thread();
+    process_t* process = thread->process;
+    space_t* space = &process->space;
+
+    if (!syscall_is_buffer_valid(space, entry, sizeof(uint64_t)))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
+    thread_t* newThread = loader_thread_create(process, entry, arg);
+    if (newThread == NULL)
+    {
+        return ERR;
+    }
+
+    sched_push(newThread, thread, NULL);
+    return newThread->id;
 }

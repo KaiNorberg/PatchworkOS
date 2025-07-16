@@ -1,7 +1,9 @@
 #include "pipe.h"
 
+#include "fs/file.h"
 #include "fs/vfs.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/heap.h"
 #include "mem/pmm.h"
 #include "sched/thread.h"
@@ -10,127 +12,39 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <sys/io.h>
 #include <sys/math.h>
 
-static sysobj_t obj;
+static sysfs_dir_t pipeDir;
+static sysfs_file_t newFile;
 
-static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count)
-{
-    if (count == 0)
-    {
-        return 0;
-    }
-
-    pipe_private_t* private = file->private;
-    if (private->readEnd != file)
-    {
-        return ERROR(ENOTSUP);
-    }
-
-    if (count >= PAGE_SIZE)
-    {
-        return ERROR(EINVAL);
-    }
-
-    LOCK_DEFER(&private->lock);
-
-    if (WAIT_BLOCK_LOCK(&private->waitQueue, &private->lock,
-            ring_data_length(&private->ring) != 0 || private->isWriteClosed) != WAIT_NORM)
-    {
-        return 0;
-    }
-
-    count = MIN(count, ring_data_length(&private->ring));
-    assert(ring_read(&private->ring, buffer, count) != ERR);
-
-    wait_unblock(&private->waitQueue, WAIT_ALL);
-    return count;
-}
-
-static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count)
-{
-    pipe_private_t* private = file->private;
-    if (private->writeEnd != file)
-    {
-        return ERROR(ENOTSUP);
-    }
-
-    if (count >= PAGE_SIZE)
-    {
-        return ERROR(EINVAL);
-    }
-
-    LOCK_DEFER(&private->lock);
-
-    if (WAIT_BLOCK_LOCK(&private->waitQueue, &private->lock,
-            ring_free_length(&private->ring) >= count || private->isReadClosed) != WAIT_NORM)
-    {
-        return ERROR(EINTR);
-    }
-
-    if (private->isReadClosed)
-    {
-        wait_unblock(&private->waitQueue, WAIT_ALL);
-        return ERROR(EPIPE);
-    }
-
-    assert(ring_write(&private->ring, buffer, count) != ERR);
-
-    wait_unblock(&private->waitQueue, 1);
-    return count;
-}
-
-static wait_queue_t* pipe_poll(file_t* file, poll_file_t* pollFile)
-{
-    pipe_private_t* private = file->private;
-    LOCK_DEFER(&private->lock);
-    pollFile->revents = ((ring_data_length(&private->ring) != 0 || private->isWriteClosed) ? POLL_READ : 0) |
-        ((ring_free_length(&private->ring) != 0 || private->isReadClosed) ? POLL_WRITE : 0);
-    return &private->waitQueue;
-}
-
-static file_ops_t fileOps = {
-    .read = pipe_read,
-    .write = pipe_write,
-    .poll = pipe_poll,
-};
-
-static file_t* pipe_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
+static uint64_t pipe_open(file_t* file)
 {
     pipe_private_t* private = heap_alloc(sizeof(pipe_private_t), HEAP_NONE);
     if (private == NULL)
     {
-        return NULL;
+        return ERR;
     }
     private->buffer = pmm_alloc();
     if (private->buffer == NULL)
     {
         heap_free(private);
-        return NULL;
+        return ERR;
     }
     ring_init(&private->ring, private->buffer, PAGE_SIZE);
     private->isReadClosed = false;
     private->isWriteClosed = false;
     wait_queue_init(&private->waitQueue);
     lock_init(&private->lock);
-
-    file_t* file = file_new(volume, path, PATH_NONE);
-    if (file == NULL)
-    {
-        heap_free(private->buffer);
-        heap_free(private);
-        return NULL;
-    }
-    file->ops = &fileOps;
 
     private->readEnd = file;
     private->writeEnd = file;
 
     file->private = private;
-    return file;
+    return 0;
 }
 
-static uint64_t pipe_open2(volume_t* volume, const path_t* path, sysobj_t* sysobj, file_t* files[2])
+static uint64_t pipe_open2(file_t* files[2])
 {
     pipe_private_t* private = heap_alloc(sizeof(pipe_private_t), HEAP_NONE);
     if (private == NULL)
@@ -148,37 +62,16 @@ static uint64_t pipe_open2(volume_t* volume, const path_t* path, sysobj_t* sysob
     private->isWriteClosed = false;
     wait_queue_init(&private->waitQueue);
     lock_init(&private->lock);
-
-    files[0] = file_new(volume, path, PATH_NONE);
-    if (files[0] == NULL)
-    {
-        heap_free(private->buffer);
-        heap_free(private);
-        return ERR;
-    }
-
-    files[1] = file_new(volume, path, PATH_NONE);
-    if (files[1] == NULL)
-    {
-        file_deref(files[0]);
-        heap_free(private->buffer);
-        heap_free(private);
-        return ERR;
-    }
-
-    files[0]->ops = &fileOps;
-    files[1]->ops = &fileOps;
 
     private->readEnd = files[PIPE_READ];
     private->writeEnd = files[PIPE_WRITE];
 
     files[0]->private = private;
     files[1]->private = private;
-
     return 0;
 }
 
-static void pipe_cleanup(sysobj_t* sysobj, file_t* file)
+static void pipe_close(file_t* file)
 {
     pipe_private_t* private = file->private;
     lock_acquire(&private->lock);
@@ -202,15 +95,125 @@ static void pipe_cleanup(sysobj_t* sysobj, file_t* file)
     }
 
     lock_release(&private->lock);
+    LOG_DEBUG("cleanup\n");
 }
 
-static sysobj_ops_t objOps = {
+static uint64_t pipe_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    if (count == 0)
+    {
+        return 0;
+    }
+
+    pipe_private_t* private = file->private;
+    if (private->readEnd != file)
+    {
+        errno = ENOTSUP;
+        return ERR;
+    }
+
+    if (count >= PAGE_SIZE)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    LOCK_SCOPE(&private->lock);
+
+    if (WAIT_BLOCK_LOCK(&private->waitQueue, &private->lock,
+            ring_data_length(&private->ring) != 0 || private->isWriteClosed) != WAIT_NORM)
+    {
+        return 0;
+    }
+
+    count = MIN(count, ring_data_length(&private->ring));
+    if (ring_read(&private->ring, buffer, count) == ERR)
+    {
+        panic(NULL, "Failed to read from pipe");
+    }
+
+    wait_unblock(&private->waitQueue, WAIT_ALL);
+
+    *offset += count;
+    return count;
+}
+
+static uint64_t pipe_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+{
+    pipe_private_t* private = file->private;
+    if (private->writeEnd != file)
+    {
+        errno = ENOTSUP;
+        return ERR;
+    }
+
+    if (count >= PAGE_SIZE)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    LOCK_SCOPE(&private->lock);
+
+    if (WAIT_BLOCK_LOCK(&private->waitQueue, &private->lock,
+            ring_free_length(&private->ring) >= count || private->isReadClosed) != WAIT_NORM)
+    {
+        errno = EINTR;
+        return ERR;
+    }
+
+    if (private->isReadClosed)
+    {
+        wait_unblock(&private->waitQueue, WAIT_ALL);
+        errno = EPIPE;
+        return ERR;
+    }
+
+    if (ring_write(&private->ring, buffer, count) == ERR)
+    {
+        panic(NULL, "Failed to write to pipe");
+    }
+
+    wait_unblock(&private->waitQueue, 1);
+
+    *offset += count;
+    return count;
+}
+
+static wait_queue_t* pipe_poll(file_t* file, poll_events_t* revents)
+{
+    pipe_private_t* private = file->private;
+    LOCK_SCOPE(&private->lock);
+
+    if (ring_data_length(&private->ring) != 0 || private->isWriteClosed)
+    {
+        *revents |= POLLIN;
+    }
+    if (ring_free_length(&private->ring) != 0 || private->isReadClosed)
+    {
+        *revents |= POLLOUT;
+    }
+
+    return &private->waitQueue;
+}
+
+static file_ops_t fileOps = {
     .open = pipe_open,
     .open2 = pipe_open2,
-    .cleanup = pipe_cleanup,
+    .close = pipe_close,
+    .read = pipe_read,
+    .write = pipe_write,
+    .poll = pipe_poll,
 };
 
 void pipe_init(void)
 {
-    assert(sysobj_init_path(&obj, "/pipe", "new", &objOps, NULL) != ERR);
+    if (sysfs_dir_init(&pipeDir, sysfs_get_default(), "pipe", NULL, NULL) == ERR)
+    {
+        panic(NULL, "Failed to initialize pipe directory");
+    }
+    if (sysfs_file_init(&newFile, &pipeDir, "new", NULL, &fileOps, NULL) == ERR)
+    {
+        panic(NULL, "Failed to initialize pipe file");
+    }
 }

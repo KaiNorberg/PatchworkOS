@@ -1,99 +1,127 @@
 #include "socket_family.h"
 
-#include "defs.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "log/log.h"
-#include "sched/thread.h"
-#include "socket.h"
+#include "mem/heap.h"
+#include "net/net.h"
+#include "net/socket.h"
+#include <sys/list.h>
 
-#include <assert.h>
-#include <errno.h>
-#include <stdatomic.h>
-#include <stdlib.h>
-#include <sys/math.h>
-
-static uint64_t socket_family_new_read(file_t* file, void* buffer, uint64_t count)
+static uint64_t socket_factory_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
-    socket_t* socket = file->private;
+    socket_t* sock = file->private;
 
-    uint64_t len = strlen(socket->id);
-    return BUFFER_READ(file, buffer, count, socket->id, len + 1); // Include null terminator
+    uint64_t length = strlen(sock->id);
+    return BUFFER_READ(buffer, count, offset, sock->id, length); // Include null terminator
 }
 
-static uint64_t socket_family_new_seek(file_t* file, int64_t offset, seek_origin_t origin)
+static uint64_t socket_factory_open(file_t* file)
 {
-    socket_t* socket = file->private;
+    socket_factory_t* factory = file->inode->private;
 
-    uint64_t len = strlen(socket->id);
-    return BUFFER_SEEK(file, offset, origin, len + 1); // Include null terminator
-}
-
-static file_t* socket_family_new_open(volume_t* volume, const path_t* path, sysobj_t* sysobj)
-{
-    socket_family_t* family = sysobj->dir->private;
-
-    socket_t* socket = socket_new(family, path->flags);
-    if (socket == NULL)
+    socket_t* sock = socket_new(factory->family, factory->type, file->flags);
+    if (sock == NULL)
     {
-        return NULL;
+        return ERR;
     }
 
-    file_t* file = file_new(volume, path, PATH_NONBLOCK);
-    if (file == NULL)
+    if (socket_expose(sock) == ERR)
     {
-        socket_free(socket);
-        return NULL;
+        socket_free(sock);
+        return ERR;
     }
-    static file_ops_t fileOps = {
-        .read = socket_family_new_read,
-        .seek = socket_family_new_seek,
-    };
-    file->ops = &fileOps;
-    file->private = socket;
-    return file;
+
+    file->private = sock;
+    return 0;
 }
 
-static void socket_family_new_cleanup(sysobj_t* sysobj, file_t* file)
+static void socket_factory_close(file_t* file)
 {
-    socket_t* socket = file->private;
-    if (socket != NULL)
+    socket_t* sock = file->private;
+    if (sock != NULL)
     {
-        socket_free(socket);
+        socket_hide(sock);
+        DEREF(sock);
     }
 }
 
-static sysobj_ops_t newSocketObjOps = {
-    .open = socket_family_new_open,
-    .cleanup = socket_family_new_cleanup,
+static file_ops_t factoryOps = {
+    .read = socket_factory_read,
+    .open = socket_factory_open,
+    .close = socket_factory_close,
 };
 
 uint64_t socket_family_register(socket_family_t* family)
 {
-    if (!family || !family->name)
+    if (family == NULL || family->name == NULL)
     {
-        LOG_ERR("socket_family_register: invalid family\n");
-        return ERROR(EINVAL);
-    }
-
-    if (!family->init || !family->deinit || !family->bind || !family->listen || !family->accept || !family->connect ||
-        !family->send || !family->receive || !family->poll)
-    {
-        LOG_ERR("socket_family_register: '%s' has unimplemented operations\n", family->name);
-        return ERROR(EINVAL);
-    }
-
-    if (sysdir_init(&family->dir, "/net", family->name, family) == ERR)
-    {
-        LOG_ERR("socket_family_register: failed to create directory sys:/net/%s\n", family->name);
-        return ERR;
-    }
-    if (sysobj_init(&family->newObj, &family->dir, "new", &newSocketObjOps, NULL) == ERR)
-    {
-        sysdir_deinit(&family->dir, NULL);
-        LOG_ERR("socket_family_register: failed to create 'new' object for family '%s'\n", family->name);
+        errno = EINVAL;
         return ERR;
     }
 
+    if (family->init == NULL || family->deinit == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    atomic_init(&family->newId, 0);
+    list_init(&family->factories);
+
+    if (sysfs_dir_init(&family->dir, net_get_dir(), family->name, NULL, family) == ERR)
+    {
+        return ERR;
+    }
+
+    for (uint64_t i = 0; i < SOCKET_TYPE_AMOUNT; i++)
+    {
+        socket_type_t type = (1 << i);
+        if (!(type & family->supportedTypes))
+        {
+            continue;
+        }
+
+        socket_factory_t* factory = heap_alloc(sizeof(socket_factory_t), HEAP_NONE);
+        if (factory == NULL)
+        {
+            goto error;
+        }
+        list_entry_init(&factory->entry);
+        factory->type = type;
+        factory->family = family;
+
+        const char* string = socket_type_to_string(type);
+        if (sysfs_file_init(&factory->file, &family->dir, string, NULL, &factoryOps, factory) == ERR)
+        {
+            heap_free(factory);
+            goto error;
+        }
+
+        list_push(&family->factories, &factory->entry);
+    }
+
+    LOG_INFO("registered family %s\n", family->name);
     return 0;
+
+error:;
+
+    socket_factory_t* temp;
+    socket_factory_t* factory;
+    LIST_FOR_EACH_SAFE(factory, temp, &family->factories, entry)
+    {
+        sysfs_file_deinit(&factory->file);
+        heap_free(factory);
+    }
+    list_init(&family->factories); // Reset the list
+
+    sysfs_dir_deinit(&family->dir);
+    return ERR;
+}
+
+void socket_family_unregister(socket_family_t* family)
+{
+    sysfs_dir_deinit(&family->dir);
+    LOG_INFO("unregistered family %s\n", family->name);
+    return;
 }

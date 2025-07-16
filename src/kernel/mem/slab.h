@@ -12,7 +12,7 @@
 
 #define SLAB_MAX_EMPTY_CACHES 2
 
-#define SLAB_MAGIC 0xDEADC0DE
+#define SLAB_MAGIC 0x3996609D
 
 typedef struct cache cache_t;
 typedef struct slab slab_t;
@@ -45,7 +45,6 @@ typedef struct slab
     uint64_t emptyCacheCount;
     uint64_t objectSize;
     uint64_t optimalCacheSize;
-    lock_t lock;
 } slab_t;
 
 void slab_init(slab_t* slab, uint64_t objectSize);

@@ -8,6 +8,9 @@
 
 #include <stdatomic.h>
 
+// TODO: Make the logging system common between the bootloader and kernel. Perhaps a shared "logging context" passed via
+// bootinfo?
+
 #define LOG_MAX_BUFFER 0x1000
 #define LOG_MAX_TIMESTAMP_BUFFER 32
 
@@ -19,7 +22,7 @@ typedef enum
 {
     LOG_OUTPUT_SERIAL = 1 << 0,
     LOG_OUTPUT_SCREEN = 1 << 1,
-    LOG_OUTPUT_OBJ = 1 << 2
+    LOG_OUTPUT_FILE = 1 << 2
 } log_output_t;
 
 typedef enum
@@ -43,8 +46,8 @@ typedef struct
 {
     ring_t ring;
     char buffer[LOG_MAX_BUFFER];
-    sysobj_t obj;
-} log_obj_t;
+    sysfs_file_t file;
+} log_file_t;
 
 typedef struct
 {
@@ -64,15 +67,20 @@ void log_screen_enable(gop_buffer_t* framebuffer);
 
 void log_disable_screen(void);
 
-void log_obj_expose(void);
+screen_t* log_get_screen(void);
 
-uint64_t log_print(log_level_t level, const char* format, ...);
+log_state_t* log_get_state(void);
 
-uint64_t log_vprint(log_level_t level, const char* format, va_list args);
+void log_file_expose(void);
 
-NORETURN void log_panic(const trap_frame_t* trapFrame, const char* format, ...);
+void log_write(const char* string, uint64_t length);
 
-#define LOG_DEBUG(format, ...) log_print(LOG_LEVEL_DEBUG, format __VA_OPT__(, ) __VA_ARGS__)
-#define LOG_INFO(format, ...) log_print(LOG_LEVEL_INFO, format __VA_OPT__(, ) __VA_ARGS__)
-#define LOG_WARN(format, ...) log_print(LOG_LEVEL_WARN, format __VA_OPT__(, ) __VA_ARGS__)
-#define LOG_ERR(format, ...) log_print(LOG_LEVEL_ERR, format __VA_OPT__(, ) __VA_ARGS__)
+uint64_t log_print(log_level_t level, const char* prefix, const char* format, ...);
+
+uint64_t log_vprint(log_level_t level, const char* prefix, const char* format, va_list args);
+
+#define LOG_DEBUG(format, ...) log_print(LOG_LEVEL_DEBUG, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)
+#define LOG_INFO(format, ...) log_print(LOG_LEVEL_INFO, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)
+#define LOG_WARN(format, ...) log_print(LOG_LEVEL_WARN, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)
+#define LOG_ERR(format, ...) log_print(LOG_LEVEL_ERR, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)
+#define LOG_PANIC(format, ...) log_print(LOG_LEVEL_PANIC, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)

@@ -8,7 +8,7 @@
  * @ingroup libstd
  * @defgroup libstd_sys_fb Framebuffer device
  *
- * The `sys/fb.h` header defines structs and constants used by framebuffer devices, for example `sys:/fb0`. The primary
+ * The `sys/fb.h` header defines structs and constants used by framebuffer devices, for example `/dev/fb0`. The primary
  * way to use a framebuffer device is to first use `IOCTL_FB_INFO` to retrieve its width and height, then factoring in
  * its format to get the total size in bytes of the framebuffer and finally using `mmap` to map it to the currently
  * running processes address space.
@@ -48,7 +48,7 @@ typedef struct
  * @ingroup libstd_sys_fb
  *
  * The `IOCTL_FB_INFO` macro defines the ioctl request id for retrieving information about a framebuffer device, for
- * example `sys:/fb0`, should be used like `ioctl(fb, IOCTL_FB_INFO, &info, sizeof(fb_info_t))`.
+ * example `/dev/fb0`, should be used like `ioctl(fb, IOCTL_FB_INFO, &info, sizeof(fb_info_t))`.
  *
  * @return On success, returns 0, on failure, returns `ERR`.
  */

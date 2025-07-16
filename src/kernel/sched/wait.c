@@ -6,6 +6,7 @@
 #include "drivers/systime/systime.h"
 #include "kernel.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/heap.h"
 #include "sched.h"
 #include "sched/thread.h"
@@ -14,6 +15,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 
 void wait_queue_init(wait_queue_t* waitQueue)
@@ -24,11 +26,11 @@ void wait_queue_init(wait_queue_t* waitQueue)
 
 void wait_queue_deinit(wait_queue_t* waitQueue)
 {
-    LOCK_DEFER(&waitQueue->lock);
+    LOCK_SCOPE(&waitQueue->lock);
 
     if (!list_is_empty(&waitQueue->entries))
     {
-        log_panic(NULL, "Wait queue with pending threads freed");
+        panic(NULL, "Wait queue with pending threads freed");
     }
 }
 
@@ -47,20 +49,33 @@ void wait_cpu_ctx_init(wait_cpu_ctx_t* wait)
     lock_init(&wait->lock);
 }
 
-static void wait_cleanup_block(thread_t* thread, wait_result_t result, wait_queue_t* acquiredQueue, bool acquireCpu)
+typedef enum
+{
+    WAIT_CLEANUP_NONE = 0,
+    WAIT_CLEANUP_ACQUIRE_OWNER = 1 << 0,
+    WAIT_CLEANUP_REMOVE_FROM_LIST = 1 << 1,
+} wait_cleanup_flags_t;
+
+static void wait_block_cleanup(thread_t* thread, wait_result_t result, wait_queue_t* acquiredQueue,
+    wait_cleanup_flags_t flags)
 {
     assert(atomic_load(&thread->state) == THREAD_UNBLOCKING);
 
     thread->wait.result = result;
-    if (acquireCpu)
+
+    if (flags & WAIT_CLEANUP_REMOVE_FROM_LIST)
     {
-        lock_acquire(&thread->wait.owner->wait.lock);
-        list_remove(&thread->entry);
-        lock_release(&thread->wait.owner->wait.lock);
-    }
-    else
-    {
-        list_remove(&thread->entry);
+        if (flags & WAIT_CLEANUP_ACQUIRE_OWNER)
+        {
+            assert(thread->wait.owner != NULL);
+            lock_acquire(&thread->wait.owner->wait.lock);
+            list_remove(&thread->entry);
+            lock_release(&thread->wait.owner->wait.lock);
+        }
+        else
+        {
+            list_remove(&thread->entry);
+        }
     }
 
     wait_entry_t* temp;
@@ -83,7 +98,7 @@ static void wait_cleanup_block(thread_t* thread, wait_result_t result, wait_queu
 
 void wait_timer_trap(trap_frame_t* trapFrame, cpu_t* self)
 {
-    LOCK_DEFER(&self->wait.lock);
+    LOCK_SCOPE(&self->wait.lock);
 
     while (1)
     {
@@ -105,16 +120,16 @@ void wait_timer_trap(trap_frame_t* trapFrame, cpu_t* self)
         thread_state_t expected = THREAD_BLOCKED;
         if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
         {
-            wait_cleanup_block(thread, WAIT_TIMEOUT, NULL, false);
+            wait_block_cleanup(thread, WAIT_TIMEOUT, NULL, false);
             sched_push(thread, NULL, thread->wait.owner);
         }
     }
 }
 
-bool wait_finalize_block(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread)
+bool wait_block_finalize(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread)
 {
     wait_cpu_ctx_t* cpuCtx = &self->wait;
-    LOCK_DEFER(&self->wait.lock);
+    LOCK_SCOPE(&self->wait.lock);
 
     thread->wait.owner = self;
 
@@ -141,16 +156,10 @@ bool wait_finalize_block(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread)
         }
     }
 
-    thread_state_t state = atomic_load(&thread->state);
-    if (state != THREAD_PRE_BLOCK && state != THREAD_UNBLOCKING)
-    {
-        LOG_INFO("thread state is THREAD_BLOCKING here state=%d\n", state);
-    }
-
     thread_state_t expected = THREAD_PRE_BLOCK;
     if (!atomic_compare_exchange_strong(&thread->state, &expected, THREAD_BLOCKED))
     {
-        wait_cleanup_block(thread, WAIT_NORM, NULL, false);
+        wait_block_cleanup(thread, WAIT_NORM, NULL, WAIT_CLEANUP_REMOVE_FROM_LIST);
         return false;
     }
     else if (thread_is_note_pending(thread))
@@ -158,7 +167,7 @@ bool wait_finalize_block(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread)
         thread_state_t expected = THREAD_BLOCKED;
         if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
         {
-            wait_cleanup_block(thread, WAIT_NOTE, NULL, false);
+            wait_block_cleanup(thread, WAIT_NOTE, NULL, WAIT_CLEANUP_REMOVE_FROM_LIST);
             return false;
         }
     }
@@ -169,15 +178,18 @@ bool wait_finalize_block(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread)
 
 void wait_unblock_thread(thread_t* thread, wait_result_t result)
 {
-    wait_cleanup_block(thread, result, NULL, true);
-    sched_push(thread, NULL, thread->wait.owner);
+    if (atomic_exchange(&thread->state, THREAD_UNBLOCKING) == THREAD_BLOCKED)
+    {
+        wait_block_cleanup(thread, result, NULL, WAIT_CLEANUP_REMOVE_FROM_LIST | WAIT_CLEANUP_ACQUIRE_OWNER);
+        sched_push(thread, NULL, thread->wait.owner);
+    }
 }
 
 uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount)
 {
     uint64_t amountUnblocked = 0;
 
-    LOCK_DEFER(&waitQueue->lock);
+    LOCK_SCOPE(&waitQueue->lock);
 
     wait_entry_t* temp;
     wait_entry_t* waitEntry;
@@ -192,7 +204,8 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount)
 
         if (atomic_exchange(&thread->state, THREAD_UNBLOCKING) == THREAD_BLOCKED)
         {
-            wait_cleanup_block(thread, WAIT_NORM, waitQueue, true);
+            wait_block_cleanup(thread, WAIT_NORM, waitQueue,
+                WAIT_CLEANUP_REMOVE_FROM_LIST | WAIT_CLEANUP_ACQUIRE_OWNER);
             sched_push(thread, NULL, thread->wait.owner);
             amountUnblocked++;
             amount--;
@@ -202,9 +215,18 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount)
     return amountUnblocked;
 }
 
-// Sets up a threads wait ctx but does not yet block
-static uint64_t wait_setup_block(thread_t* thread, wait_queue_t** waitQueues, uint64_t amount, clock_t timeout)
+uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t timeout)
 {
+    if (waitQueues == NULL || amount == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    // Disable interrupts and retrive thread.
+    thread_t* thread = smp_self()->sched.runThread;
+
+    assert(thread != NULL);
     assert(atomic_load(&thread->state) == THREAD_RUNNING);
 
     for (uint64_t i = 0; i < amount; i++)
@@ -226,7 +248,14 @@ static uint64_t wait_setup_block(thread_t* thread, wait_queue_t** waitQueues, ui
                 }
                 heap_free(other);
             }
-            return ERROR(ENOMEM);
+
+            for (uint64_t j = 0; j < amount; j++)
+            {
+                lock_release(&waitQueues[j]->lock);
+            }
+
+            smp_put(); // Interrupts enable.
+            return ERR;
         }
         list_entry_init(&entry->queueEntry);
         list_entry_init(&entry->threadEntry);
@@ -251,71 +280,34 @@ static uint64_t wait_setup_block(thread_t* thread, wait_queue_t** waitQueues, ui
     return 0;
 }
 
-wait_result_t wait_block(wait_queue_t* waitQueue, clock_t timeout)
+void wait_block_cancel(wait_result_t result)
 {
-    if (timeout == 0)
-    {
-        return WAIT_TIMEOUT;
-    }
-
-    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-
-    thread_t* thread = smp_self()->sched.runThread;
-    if (wait_setup_block(thread, &waitQueue, 1, timeout) == ERR)
-    {
-        smp_put();
-        return WAIT_ERROR;
-    }
-    smp_put();
-
-    sched_invoke();
-
-    return thread->wait.result;
-}
-
-wait_result_t wait_block_lock(wait_queue_t* waitQueue, clock_t timeout, lock_t* lock)
-{
-    if (timeout == 0)
-    {
-        return WAIT_TIMEOUT;
-    }
-
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
-    // Only one lock is allowed to be acquired when calling this function.
-    assert(smp_self_unsafe()->cli.depth == 1);
 
     thread_t* thread = smp_self_unsafe()->sched.runThread;
-    if (wait_setup_block(thread, &waitQueue, 1, timeout) == ERR)
-    {
-        return WAIT_ERROR;
-    }
+    assert(thread != NULL);
 
-    lock_release(lock);
-    sched_invoke();
+    thread_state_t state = atomic_exchange(&thread->state, THREAD_UNBLOCKING);
+
+    // State might already be unblocking if the thread unblocked prematurely.
+    assert(state == THREAD_PRE_BLOCK || state == THREAD_UNBLOCKING);
+
+    wait_block_cleanup(thread, result, NULL, WAIT_CLEANUP_NONE);
+
+    thread_state_t newState = atomic_exchange(&thread->state, THREAD_RUNNING);
+    assert(newState == THREAD_UNBLOCKING); // Make sure state did not change.
+
+    smp_put(); // Release cpu from wait_block_setup().
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    lock_acquire(lock);
-
-    return thread->wait.result;
 }
 
-wait_result_t wait_block_many(wait_queue_t** waitQueues, uint64_t amount, clock_t timeout)
+wait_result_t wait_block_do(void)
 {
-    if (timeout == 0)
-    {
-        return WAIT_TIMEOUT;
-    }
+    thread_t* thread = smp_self_unsafe()->sched.runThread;
 
+    smp_put(); // Release cpu from wait_block_setup().
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-
-    thread_t* thread = smp_self()->sched.runThread;
-    if (wait_setup_block(thread, waitQueues, amount, timeout) == ERR)
-    {
-        smp_put();
-        return WAIT_ERROR;
-    }
-    smp_put();
-
     sched_invoke();
-
+    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
     return thread->wait.result;
 }
