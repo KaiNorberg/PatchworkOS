@@ -261,7 +261,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
         stat_t info;
         if (stat(argv[0], &info) != ERR && info.type != INODE_DIR)
         {
-            result = spawn(argv, fds, NULL, SPAWN_NONE);
+            result = spawn(argv, fds, NULL, NULL);
         }
         else
         {

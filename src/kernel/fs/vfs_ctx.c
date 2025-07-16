@@ -12,11 +12,7 @@ void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd)
 {
     ctx->cwd = PATH_EMPTY;
 
-    if (cwd == NULL)
-    {
-        vfs_get_global_root(&ctx->cwd);
-    }
-    else
+    if (cwd != NULL)
     {
         path_copy(&ctx->cwd, cwd);
     }
@@ -60,6 +56,12 @@ file_t* vfs_ctx_get_file(vfs_ctx_t* ctx, fd_t fd)
 void vfs_ctx_get_cwd(vfs_ctx_t* ctx, path_t* outCwd)
 {
     LOCK_SCOPE(&ctx->lock);
+
+    if (ctx->cwd.dentry == NULL || ctx->cwd.mount == NULL)
+    {
+        assert(ctx->cwd.dentry == NULL && ctx->cwd.mount == NULL);
+        vfs_get_global_root(&ctx->cwd);
+    }
 
     path_copy(outCwd, &ctx->cwd);
 }

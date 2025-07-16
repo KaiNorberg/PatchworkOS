@@ -51,7 +51,7 @@
 
 ## Shell Utilities
 
-Patchwork includes its own shell utilities designed around its [file flags](#file-flags) system. Here is a brief overview with some usage examples.
+Patchwork includes its own shell utilities designed around its [file flags](#file-flags) system. Included is a brief overview with some usage examples. For convenience the init program will create hardlinks for each shell utility to their unix equivalents, this can be configured in the [init cfg](https://github.com/KaiNorberg/PatchworkOS/tree/main/root/cfg/init-main.cfg).
 
 **open** - Opens a file path and then immediately closes it. Intended as a replacement for `touch`.
 ```bash
@@ -63,7 +63,7 @@ open mydir:create:dir               # Creates the mydir directory.
 ```bash
 read file1.txt file2.txt            # Read the contents of file1.txt and file2.txt.
 read < file.txt                     # Read the contents of file.txt.
-read < file.txt > dest.txt:create   # Copy contents of file.txt to dest.txt and creates it.
+read < file.txt > dest.txt:create   # Copy contents of file.txt to dest.txt and create it.
 ```
 
 **write** - Writes to stdout. Intended as a replacement for `echo`.
@@ -84,7 +84,7 @@ delete file.txt                     # Deletes file.txt.
 delete mydir:recur                  # Recursively deletes mydir and its contents.
 ```
 
-There are other utils available that work as expected, for example `move` and `link`.
+There are other utils available that work as expected, for example `stat` and `link`.
 
 ## Everything is a File
 
@@ -147,13 +147,13 @@ Multiple flags are allowed, just seperate them with the `:` character, this mean
 
 So, finally, I can explain why I've decided to do this. It does seem overly complicated at first glance. There are three reasons in total.
 
-The first is that I want Patchwork to be easy to expand upon, for that sake I want its interfaces to be highly generalized. Normally, to just implement a single system call is quite a lot of work. You'd need to implement its behavior, register the system call handler, then you'd need to create it in the standard library, and you'd need to make whatever software to actually use that system call, that is a surprisingly large amount of stuff that needs to be changed just for a single small system call. Meanwhile with this system, when sockets were implemented the only thing that needed to be done was implementing the sockets, the rest of the operating system could remain the same.
+The first is that I want Patchwork to be easy to expand upon. Normally, to just implement a single system call is quite a lot of work. You'd need to implement its behavior, create the system call handler, create a function for it in the standard library, and you'd need to make whatever software or shell utility to actually use that system call, that is a surprisingly large amount of work for just a single small system call. Meanwhile with this system, when something as significant as sockets were implemented the only thing that needed to be done was implementing the sockets, the rest of the operating system could remain unchanged.
 
 The second reason is that it makes using the shell far more interesting, there is no need for special functions or any other magic keywords to for instance use sockets, all it takes is opening and reading from files.
 
-Let's take an example of these first two reasons. Say we wanted to implement the ability to wait for a process to die via a normal system. First we need to implement the kernel behavior to do that, then the appropriate system call, then add in handling for that system call in the standard library, then the actual function itself in the standard library and finally probably create some program that could be used in the shell. That's a lot of work for something as simple as a waiting for a process to die. Meanwhile, if waiting for a processes death is done via just writing to that processes "ctl" file then it's as simple as adding a "wait" action to it and calling it a day, you can now easily use that behavior via the standard library and via the shell by something like ```write wait > /proc/[pid]/ctl``` without any additional work.
+Let's take an example of these first two reasons. Say we wanted to implement `waitpid()`. First we need to implement the kernel behavior itself, then the appropriate system call, then add in handling for that system call in the standard library, then the actual function itself in the standard library and finally create some `waitpid` shell utility. That's a lot of work for something as simple as a waiting for a process to die. Meanwhile, if `waitpid()` is done via just writing to that processes `ctl` file then it's as simple as adding a `wait` action to it and calling it a day, you can now easily use that behavior in a standarized and familiar way via the standard library and the shell via something like `write wait > /proc/[pid]/ctl` without any additional work.
 
-And of course the third and final reason is because I think it's fun, and honestly I think this kind of system is just kinda beautiful due to just how generalized and how strictly it follows the idea that "everything is a file". There are downsides, of course, like the fact that these systems are less self documenting. But that is an argument for another time.
+And of course the third and final reason is because I think it's fun, and honestly I think this kind of system is just kinda beautiful. There are downsides, of course, like the fact that these systems are less self documenting. But that is an argument for another time.
 
 ## Documentation
 

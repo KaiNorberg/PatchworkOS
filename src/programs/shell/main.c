@@ -12,7 +12,6 @@ void prompt_print(void)
     uint64_t length = read(fd, cwd, MAX_PATH);
     cwd[length] = '\0';
     close(fd);
-
     printf("\n%s\n> ", cwd);
     fflush(stdout);
 }
@@ -33,7 +32,6 @@ bool cmdline_read(char* buffer, uint64_t size)
             buffer[index] = '\0';
             return true;
         }
-
         if (index + 1 < size)
         {
             buffer[index++] = chr;
@@ -41,7 +39,40 @@ bool cmdline_read(char* buffer, uint64_t size)
     }
 }
 
-int main(void)
+void join_args(char* buffer, uint64_t size, int argc, char* argv[])
+{
+    buffer[0] = '\0';
+    uint64_t pos = 0;
+
+    for (int i = 1; i < argc && pos < size - 1; i++)
+    {
+        if (i > 1 && pos < size - 1)
+        {
+            buffer[pos++] = ' ';
+        }
+
+        char* arg = argv[i];
+        while (*arg && pos < size - 1)
+        {
+            buffer[pos++] = *arg++;
+        }
+    }
+
+    buffer[pos] = '\0';
+}
+
+uint64_t execute_command(const char* cmdline)
+{
+    pipeline_t pipeline;
+    if (pipeline_init(&pipeline, cmdline) == ERR)
+    {
+        return ERR;
+    }
+    pipeline_execute(&pipeline);
+    return 0;
+}
+
+void run_interactive_shell(void)
 {
     printf("Welcome to the Shell (Very WIP)\n");
     printf("Type help for a list of commands\n");
@@ -49,20 +80,27 @@ int main(void)
     while (1)
     {
         prompt_print();
-
         char cmdline[MAX_PATH];
         if (!cmdline_read(cmdline, MAX_PATH - 2))
         {
             break;
         }
+        execute_command(cmdline);
+    }
+}
 
-        pipeline_t pipeline;
-        if (pipeline_init(&pipeline, cmdline) == ERR)
-        {
-            continue;
-        }
-
-        pipeline_execute(&pipeline);
+int main(int argc, char* argv[])
+{
+    if (argc > 1)
+    {
+        char cmdline[MAX_PATH];
+        join_args(cmdline, MAX_PATH, argc, argv);
+        return execute_command(cmdline);
+    }
+    else
+    {
+        run_interactive_shell();
+        return 0;
     }
     return 0;
 }

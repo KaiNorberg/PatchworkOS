@@ -1493,6 +1493,7 @@ uint64_t vfs_stat(const pathname_t* pathname, stat_t* buffer)
     buffer->accessTime = path.dentry->inode->accessTime;
     buffer->modifyTime = path.dentry->inode->modifyTime;
     buffer->changeTime = path.dentry->inode->changeTime;
+    buffer->createTime = path.dentry->inode->createTime;
     strncpy(buffer->name, path.dentry->name, MAX_NAME - 1);
     buffer->name[MAX_NAME - 1] = '\0';
 

@@ -37,6 +37,7 @@ typedef struct inode
     time_t accessTime; //!< Unix time stamp for the last inode access.
     time_t modifyTime; //!< Unix time stamp for last file content alteration.
     time_t changeTime; //!< Unix time stamp for the last file metadata alteration.
+    time_t createTime; //!< Unix time stamp for the inode creation.
     void* private;
     superblock_t* superblock;  //!< Constant after creation.
     const inode_ops_t* ops;    //!< Constant after creation.

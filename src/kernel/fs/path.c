@@ -401,13 +401,15 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* st
     }
     else
     {
-        if (start == NULL)
+        if (start == NULL || start->dentry == NULL || start->mount == NULL)
         {
             errno = EINVAL;
             return ERR;
         }
         path_copy(&current, start);
     }
+
+    assert(current.dentry != NULL && current.mount != NULL);
 
     PATH_DEFER(&current);
 
@@ -514,7 +516,13 @@ uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* st
 uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* start, char* outLastName,
     walk_flags_t flags)
 {
-    if (pathname == NULL || !pathname->isValid || outLastName == NULL)
+    if (pathname == NULL || !pathname->isValid || outPath == NULL || outLastName == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (pathname->string[0] == '\0')
     {
         errno = EINVAL;
         return ERR;
@@ -522,37 +530,59 @@ uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const pat
 
     memset(outLastName, 0, MAX_NAME);
 
-    const char* lastSlash = strrchr(pathname->string, '/');
+    if (strcmp(pathname->string, "/") == 0)
+    {
+        errno = ENOENT;
+        return ERR;
+    }
+
+    char string[MAX_PATH];
+    strncpy(string, pathname->string, MAX_PATH - 1);
+    string[MAX_PATH - 1] = '\0';
+
+    uint64_t len = strnlen_s(string, MAX_PATH);
+    while (len > 1 && string[len - 1] == '/')
+    {
+        string[len - 1] = '\0';
+        len--;
+    }
+
+    char* lastSlash = strrchr(string, '/');
     if (lastSlash == NULL)
     {
-        strcpy(outLastName, pathname->string);
+        if (start == NULL)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+
+        strncpy(outLastName, string, MAX_NAME - 1);
+        outLastName[MAX_NAME - 1] = '\0';
+
         path_copy(outPath, start);
         return 0;
     }
 
-    strcpy(outLastName, lastSlash + 1);
+    char* lastComponent = lastSlash + 1;
+    strncpy(outLastName, lastComponent, MAX_NAME - 1);
+    outLastName[MAX_NAME - 1] = '\0';
 
-    if (lastSlash == pathname->string)
+    if (lastSlash == string)
     {
-        vfs_get_global_root(outPath);
-        return 0;
+        string[1] = '\0';
+    }
+    else
+    {
+        *lastSlash = '\0';
     }
 
-    uint64_t parentLen = lastSlash - pathname->string;
-    pathname_t parentPath = {0};
-
-    memcpy(parentPath.string, pathname, parentLen);
-    parentPath.string[parentLen] = '\0';
-    parentPath.flags = PATH_NONE;
-    parentPath.isValid = true;
-
-    if (!vfs_is_name_valid(outLastName))
+    pathname_t parentPathname;
+    if (pathname_init(&parentPathname, string) == ERR)
     {
-        errno = EINVAL;
         return ERR;
     }
 
-    return path_walk(outPath, &parentPath, start, flags);
+    return path_walk(outPath, &parentPathname, start, flags);
 }
 
 uint64_t path_to_name(const path_t* path, pathname_t* pathname)

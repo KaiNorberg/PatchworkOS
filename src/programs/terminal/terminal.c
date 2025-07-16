@@ -364,7 +364,7 @@ void terminal_init(terminal_t* term)
         exit(errno);
     }
 
-    const char* argv[] = {"/usr/bin/shell", NULL};
+    const char* argv[] = {"/bin/shell", NULL};
     spawn_fd_t fds[] = {
         {.child = STDIN_FILENO, .parent = term->stdin[PIPE_READ]},
         {.child = STDOUT_FILENO, .parent = term->stdout[PIPE_WRITE]},

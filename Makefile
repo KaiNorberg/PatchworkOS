@@ -4,7 +4,7 @@ MODULES := boot kernel libstd libpatchwork
 PROGRAMS := $(basename $(notdir $(wildcard make/programs/*.mk)))
 TARGET := bin/PatchworkOS.img
 
-ROOT_PROGRAMS := init wall cursor taskbar startmenu dwm
+ROOT_PROGRAMS := init wall cursor taskbar startmenu dwm shell delete dir link move open read write
 
 VERSION_HEADER := include/common/version.h
 

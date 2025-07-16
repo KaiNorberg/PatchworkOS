@@ -34,6 +34,7 @@ inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t
     inode->accessTime = systime_unix_epoch();
     inode->modifyTime = inode->accessTime;
     inode->changeTime = inode->accessTime;
+    inode->createTime = inode->accessTime;
     inode->private = NULL;
     inode->superblock = REF(superblock);
     inode->ops = ops;
