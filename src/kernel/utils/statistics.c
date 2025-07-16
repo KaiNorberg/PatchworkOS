@@ -65,7 +65,7 @@ static uint64_t statistics_mem_read(file_t* file, void* buffer, uint64_t count, 
         return ERR;
     }
 
-    sprintf(string, "value kb\ntotal %d\nfree %d\nreserved %d", pmm_total_amount() * PAGE_SIZE / 4,
+    sprintf(string, "value kb\ntotal %llu\nfree %llu\nreserved %llu", pmm_total_amount() * PAGE_SIZE / 4,
         pmm_free_amount() * PAGE_SIZE / 4, pmm_reserved_amount() * PAGE_SIZE / 4);
 
     uint64_t length = strlen(string);
