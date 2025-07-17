@@ -80,13 +80,18 @@ static inline uint64_t bitmap_find_clear_region_and_set(bitmap_t* map, uint64_t 
     return ERR;
 }
 
-static inline void bitmap_clear(bitmap_t* map, uint64_t low, uint64_t high)
+static inline void bitmap_clear(bitmap_t* map, uint64_t index)
+{
+    uint64_t qwordIdx = index / 64;
+    uint64_t bitInQword = index % 64;
+    map->buffer[qwordIdx] &= ~(1ULL << bitInQword);
+}
+
+static inline void bitmap_clear_range(bitmap_t* map, uint64_t low, uint64_t high)
 {
     for (uint64_t i = low; i < high; i++)
     {
-        uint64_t qwordIdx = i / 64;
-        uint64_t bitInQword = i % 64;
-        map->buffer[qwordIdx] &= ~(1ULL << bitInQword);
+        bitmap_clear(map, i);
     }
     map->firstZeroIdx = MIN(map->firstZeroIdx, low);
 }

@@ -14,7 +14,7 @@
 /**
  * @brief Symmetric multi processing.
  * @ingroup kernel_cpu
- * @defgroup kernel_cpu_smp
+ * @defgroup kernel_cpu_smp SMP
  *
  */
 

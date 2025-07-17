@@ -1,11 +1,10 @@
-
 # PatchworkOS
 
 > **⚠ Warning**<br> Keep in mind that PatchworkOS is currently in a very early stage of development, and may have both known and unknown bugs.
 
 ![License](https://img.shields.io/badge/License-MIT-green) [![Build and Test](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml/badge.svg)](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml)
 
-**Patchwork** is a 64-bit monolithic NON-POSIX operating system for the x86_64 architecture that rigorously follows a "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9, DOS and others while simplifying them and removing some fat.
+**Patchwork** is a 64-bit monolithic NON-POSIX operating system for the x86_64 architecture that rigorously follows a "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9, DOS and others while simplifying them and sprinkling in some new ideas of its own.
 
 ## Screenshots
 
@@ -14,71 +13,97 @@
 
 ## Features
 
-- Kernel level multithreading with a [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h).
-- Fully preemptive and tickless kernel.
-- Symmetric Multi Processing (SMP).
-- Kernel memory management is designed for constant-time operations per page, including both the physical and virtual memory managers.
-- Linux-style VFS with dentry+inode caching, negative dentrys, mountpoints, hardlinks, etc.
-- Custom C standard library and system libraries.
-- SIMD.
-- [Custom image format (.fbmp)](https://github.com/KaiNorberg/fbmp).
-- [Custom font format (.grf)](https://github.com/KaiNorberg/grf).
-- Strict adherence to "everything is a file".
-- IPC including pipes, shared memory, sockets and Plan9 inspired "signals" called notes.
-- Synchronization primitives including, mutexes, read-write locks+mutexes and a futex-like system call.
-- And much more...
+### Kernel
+
+* Multithreading with a [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h).
+* Fully preemptive and tickless.
+* Symmetric Multi Processing.
+* Constant-time per page memory management, including both the physical and virtual memory managers.
+* IPC including pipes, shared memory, sockets and Plan9 inspired "signals" called notes.
+* Synchronization primitives including, mutexes, read-write locks+mutexes and a futex-like system call.
+* SIMD.
+
+### File System
+
+* Linux-style VFS with dentry+inode caching, negative dentrys, mountpoints, hardlinks, etc.
+* Strict adherence to "everything is a file".
+* [Custom image format (.fbmp)](https://github.com/KaiNorberg/fbmp).
+* [Custom font format (.grf)](https://github.com/KaiNorberg/grf).
+
+### User space
+
+* Custom C standard library and system libraries.
+* Shared memory based window manager.
+* Theming via [configuration files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg).
+
+And much more...
 
 ## Notable Differences with Unix
 
-- Replaced ```fork(), exec()``` with ```spawn()```.
-- Single-User.
-- Non POSIX standard library.
-- Custom [shell utilities](#shell-utilities).
+* Replaced `fork(), exec()` with `spawn()`.
+* Single-User.
+* Non POSIX standard library.
+* Custom [shell utilities](#shell-utilities).
 
 ## Limitations
 
-- Currently limited to RAM disks only.
-- Only support for x86_64.
+* Currently limited to RAM disks only.
+* Only support for x86_64.
 
 ## Notable Future Plans
 
-- Bootloader overhaul.
-- Modular kernel.
-- Shared libraries.
-- Software interrupts for notes (signals).
-- Lua port.
-- Capability based security model (currently has no well-defined security model).
+* Bootloader overhaul.
+* Modular kernel.
+* Shared libraries.
+* Software interrupts for notes (signals).
+* Lua port.
+* Capability based security model (currently has no well-defined security model).
 
 ## Shell Utilities
 
 Patchwork includes its own shell utilities designed around its [file flags](#file-flags) system. Included is a brief overview with some usage examples. For convenience the init program will create hardlinks for each shell utility to their unix equivalents, this can be configured in the [init cfg](https://github.com/KaiNorberg/PatchworkOS/tree/main/root/cfg/init-main.cfg).
 
-**open** - Opens a file path and then immediately closes it. Intended as a replacement for `touch`.
+### `open`
+
+Opens a file path and then immediately closes it. Intended as a replacement for `touch`.
+
 ```bash
 open file.txt:create:excl           # Creates the file.txt file only if it does not exist.
 open mydir:create:dir               # Creates the mydir directory.
-```
+````
 
-**read** - Reads from stdin or provided files and outputs to stdout. Intended as a replacement for `cat`.
+### `read`
+
+Reads from stdin or provided files and outputs to stdout. Intended as a replacement for `cat`.
+
 ```bash
 read file1.txt file2.txt            # Read the contents of file1.txt and file2.txt.
 read < file.txt                     # Read the contents of file.txt.
 read < file.txt > dest.txt:create   # Copy contents of file.txt to dest.txt and create it.
 ```
 
-**write** - Writes to stdout. Intended as a replacement for `echo`.
+### `write`
+
+Writes to stdout. Intended as a replacement for `echo`.
+
 ```bash
 write "..." > file.txt              # Write to file.txt.
 write "..." > file.txt:append       # Append to file.txt, makes ">>" unneeded.
 ```
 
-**dir** - Reads the contents of a directory to stdout. Intended as a replacement for `ls`.
+### `dir`
+
+Reads the contents of a directory to stdout. Intended as a replacement for `ls`.
+
 ```bash
 dir mydir                           # Prints the contents of mydir.
 dir mydir:recur                     # Recursively print the contents of mydir.
 ```
 
-**delete** - Deletes a file or directory. Intended as a replacement for `rm`, `unlink` and `rmdir`.
+### `delete`
+
+Deletes a file or directory. Intended as a replacement for `rm`, `unlink` and `rmdir`.
+
 ```bash
 delete file.txt                     # Deletes file.txt.
 delete mydir:recur                  # Recursively deletes mydir and its contents.
@@ -92,7 +117,7 @@ Patchwork strictly follows the "everything is a file" philosophy in a way simila
 
 ### Sockets
 
-In order to create a local seqpacket socket, you open the ```/net/local/seqpacket``` file, which will return a file that acts as the handle for your socket. Reading from this file will return the ID of your created socket so, for example, you can do
+In order to create a local seqpacket socket, you open the `/net/local/seqpacket` file, which will return a file that acts as the handle for your socket. Reading from this file will return the ID of your created socket so, for example, you can do
 
 ```c
     fd_t handle = open("/net/local/seqpacket");
@@ -102,11 +127,11 @@ In order to create a local seqpacket socket, you open the ```/net/local/seqpacke
 
 Note that when the handle is closed, the socket is also freed. The ID that the handle returns is the name of a directory that has been created in the "/net/local" directory, in which there are three files, these include:
 
-- ```data``` - used to send and retrieve data.
-- ```ctl``` - used to send commands.
-- ```accept``` - used to accept incoming connections.
+  - `data` - used to send and retrieve data.
+  - `ctl` - used to send commands.
+  - `accept` - used to accept incoming connections.
 
-So, for example, the sockets data file is located at ```/net/local/[id]/data```. Note that only the process that created the socket or its children can open these files. Now say we want to make our socket into a server, we would then use the bind and listen commands, for example
+So, for example, the sockets data file is located at `/net/local/[id]/data`. Note that only the process that created the socket or its children can open these files. Now say we want to make our socket into a server, we would then use the bind and listen commands, for example
 
 ```c
     fd_t ctl = openf("/net/local/%s/ctl", id);
@@ -115,13 +140,13 @@ So, for example, the sockets data file is located at ```/net/local/[id]/data```.
     close(ctl);
 ```
 
-Note the use of openf() which allows us to open files via a formatted path and that we name our server myserver. If we wanted to accept a connection using our newly created server, we just open its accept file, like this
+Note the use of `openf()` which allows us to open files via a formatted path and that we name our server `myserver`. If we wanted to accept a connection using our newly created server, we just open its accept file, like this
 
 ```c
     fd_t fd = openf("/net/local/%s/accept", id);
 ```
 
-The returned file descriptor can be used to send and receive data, just like when calling accept() in for example Linux or other POSIX operating systems. This is practically true of the entire socket API, apart from using these weird files everything (should) work as expected. For the sake of completeness, if we wanted to connect to this server, we can do something like this
+The returned file descriptor can be used to send and receive data, just like when calling `accept()` in for example Linux or other POSIX operating systems. This is practically true of the entire socket API, apart from using these weird files everything (should) work as expected. For the sake of completeness, if we wanted to connect to this server, we can do something like this
 
 ```c
     fd_t handle = open("/net/local/seqpacket");
@@ -135,7 +160,7 @@ The returned file descriptor can be used to send and receive data, just like whe
 
 ### File Flags?
 
-You may have noticed that, in the above section, the open() function does not take in a flags argument. This is because flags are part of the file path directly so if you wanted to create a non-blocking socket, you would use
+You may have noticed that, in the above section, the `open()` function does not take in a flags argument. This is because flags are part of the file path directly so if you wanted to create a non-blocking socket, you would use
 
 ```c
     fd_t handle = open("/net/local/seqpacket:nonblock");
@@ -163,34 +188,34 @@ If you are still interested in knowing more, then you can check out the Doxygen 
 
 | Directory | Description |
 | :-------- | :---------- |
-| [include](https://github.com/KaiNorberg/PatchworkOS/tree/main/include) | Public API |
-| [src](https://github.com/KaiNorberg/PatchworkOS/tree/main/src) | Source code |
-| [root](https://github.com/KaiNorberg/PatchworkOS/tree/main/root) | Files copied to the root directory of the generated .iso |
-| [tools](https://github.com/KaiNorberg/PatchworkOS/tree/main/tools) | Build scripts (hacky alternative to cross-compiler) |
-| [make](https://github.com/KaiNorberg/PatchworkOS/tree/main/make) | Make files |
-| [lib](https://github.com/KaiNorberg/PatchworkOS/tree/main/lib) | Third party dependencies |
-| [meta](https://github.com/KaiNorberg/PatchworkOS/tree/main/meta) | Screenshots and repo metadata |
+| `include` | Public API |
+| `src` | Source code |
+| `root` | Files copied to the root directory of the generated .iso |
+| `tools` | Build scripts (hacky alternative to cross-compiler) |
+| `make` | Make files |
+| `lib` | Third party dependencies |
+| `meta` | Screenshots and repo metadata |
 
 ### Sections
 
-- **boot**: Minimal UEFI bootloader that collects system info and loads the kernel
-- **kernel**: The monolithic kernel handling everything from scheduling to IPC
-- **libstd**: C standard library extension with system call wrappers
-- **libpatchwork**: Higher-level library for windowing and user space services
-- **programs**: Shell utilities, services, and desktop applications
+  * **boot**: Minimal UEFI bootloader that collects system info and loads the kernel
+  * **kernel**: The monolithic kernel handling everything from scheduling to IPC
+  * **libstd**: C standard library extension with system call wrappers
+  * **libpatchwork**: Higher-level library for windowing and user space services
+  * **programs**: Shell utilities, services, and desktop applications
 
 ## Setup
 
 ### Requirements
 
-- **OS:** Linux (WSL might work, but I make no guarantees)
-- **Tools:** GCC, make, NASM, mtools, QEMU (optional)
+  * **OS**: Linux (WSL might work, but I make no guarantees)
+  * **Tools**: GCC, make, NASM, mtools, QEMU (optional)
 
 ### Build and Run
 
 ```bash
 # Clone this repository, you can also use the green Code button at the top of the Github.
-git clone --recursive https://github.com/KaiNorberg/PatchworkOS
+git clone --recursive [https://github.com/KaiNorberg/PatchworkOS](https://github.com/KaiNorberg/PatchworkOS)
 cd PatchworkOS
 
 # Build (creates PatchworkOS.img in bin/)
@@ -205,6 +230,7 @@ make run
 For frequent testing, it might be inconvenient to frequently flash to a USB. You can instead set up the `.img` file as a loopback device in GRUB.
 
 Add this entry to the `/etc/grub.d/40_custom` file:
+
 ```bash
 menuentry "Patchwork OS" {
         set root="[The grub identifer for the drive. Can be retrived using: sudo grub2-probe --target=drive /boot]"
@@ -213,6 +239,7 @@ menuentry "Patchwork OS" {
         chainloader /efi/boot/bootx64.efi
 }
 ```
+
 Regenerate grub configuration using `sudo grub2-mkconfig -o /boot/grub2/grub.cfg`.
 
 Finally copy the generated `.img` file to your `/boot` directory, this can also be done with `make grub_loopback`.
@@ -221,8 +248,8 @@ You should now see a new entry in your GRUB boot menu allowing you to boot into 
 
 ### Troubleshooting
 
-- **QEMU boot failure** Check if you are using QEMU version 10.0.0, as that version is known to not work correctly, try using version 9.2.3.
-- **Any other errors?** If an error not listed here occurs or is not resolvable, please open an issue in the GitHub.
+  * **QEMU boot failure**: Check if you are using QEMU version 10.0.0, as that version is known to not work correctly, try using version 9.2.3.
+  * **Any other errors?**: If an error not listed here occurs or is not resolvable, please open an issue in the GitHub.
 
 ## Testing
 
@@ -230,9 +257,9 @@ This repository uses a bit of a hacky way to do testing, we use a github action,
 
 ### Tested Configurations
 
-- QEMU emulator version 9.2.3 (qemu-9.2.3-1.fc42)
-- Lenovo ThinkPad E495
-- Ryzen 5 3600X | 32GB 3200MHZ Corsair Vengeance
+  * QEMU emulator version 9.2.3 (qemu-9.2.3-1.fc42)
+  * Lenovo ThinkPad E495
+  * Ryzen 5 3600X | 32GB 3200MHZ Corsair Vengeance
 
 Currently untested on Intel hardware. Let me know if you have different hardware, and it runs (or doesn't) for you!
 

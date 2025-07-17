@@ -22,8 +22,6 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
-// TODO: Reimplement without view_t.
-
 static process_t kernelProcess;
 
 static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
@@ -262,6 +260,11 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
         return ERR;
     }
 
+    if (space_init(&process->space) == ERR)
+    {
+        return ERR;
+    }
+
     if (cwd != NULL)
     {
         vfs_ctx_init(&process->vfsCtx, cwd);
@@ -280,7 +283,6 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
         vfs_ctx_init(&process->vfsCtx, NULL);
     }
 
-    space_init(&process->space);
     wait_queue_init(&process->queue);
     futex_ctx_init(&process->futexCtx);
     process->threads.isDying = false;

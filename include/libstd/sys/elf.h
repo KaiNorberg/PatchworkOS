@@ -6,7 +6,7 @@
 /**
  * @brief Executable and linkable format definitions.
  * @ingroup libstd
- * @defgroup libstd_sys_elf Executable and linkable file format
+ * @defgroup libstd_sys_elf ELF file
  *
  * The `sys/elf.h` header defines structs and constants for ELF files used in Patchwork, note that Patchwork only
  * supports ELF files.

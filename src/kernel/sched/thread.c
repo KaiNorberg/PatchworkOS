@@ -75,7 +75,7 @@ void thread_free(thread_t* thread)
     // anyway.
     if (!process->threads.isDying)
     {
-        vmm_unmap(&process->space, (void*)LOADER_USER_STACK_BOTTOM(thread->id),
+        space_unmap(&process->space, (void*)LOADER_USER_STACK_BOTTOM(thread->id),
             CONFIG_MAX_USER_STACK_PAGES * PAGE_SIZE); // Ignore failure
     }
 

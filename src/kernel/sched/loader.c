@@ -85,7 +85,7 @@ static void* loader_load_program(thread_t* thread)
 
             if (!(phdr.flags & ELF_PHDR_FLAGS_WRITE))
             {
-                if (vmm_protect(space, (void*)phdr.virtAddr, phdr.memorySize, PROT_READ) == ERR)
+                if (space_protect(&thread->process->space, (void*)phdr.virtAddr, phdr.memorySize, PROT_READ) == ERR)
                 {
                     sched_process_exit(ESPAWNFAIL);
                 }
@@ -213,6 +213,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
     thread_t* thread = sched_thread();
     process_t* process = thread->process;
     space_t* space = &process->space;
+    RWMUTEX_READ_SCOPE(&space->mutex);
 
     if (cwdString != NULL && !syscall_is_string_valid(space, cwdString))
     {

@@ -8,7 +8,7 @@
 /**
  * @brief Filesystem for exposing kernel resources.
  * @ingroup kernel
- * @defgroup kernel_fs_sysfs
+ * @defgroup kernel_fs_sysfs SysFS
  *
  *
  */

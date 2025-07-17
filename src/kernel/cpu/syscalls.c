@@ -136,7 +136,7 @@ bool syscall_is_buffer_valid(space_t* space, const void* pointer, uint64_t lengt
         return false;
     }
 
-    if (!vmm_mapped(space, pointer, length))
+    if (!space_is_mapped(space, pointer, length))
     {
         return false;
     }

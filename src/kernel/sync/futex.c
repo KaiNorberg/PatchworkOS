@@ -1,4 +1,5 @@
 #include "futex.h"
+#include "cpu/syscalls.h"
 #include "drivers/systime/systime.h"
 #include "lock.h"
 #include "mem/heap.h"
@@ -91,5 +92,15 @@ uint64_t futex_do(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t ti
 
 SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout)
 {
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+    RWMUTEX_READ_SCOPE(&space->mutex);
+
+    if (!syscall_is_pointer_valid(addr, sizeof(atomic_uint64_t)))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
     return futex_do(addr, val, op, timeout);
 }

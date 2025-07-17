@@ -157,7 +157,7 @@ static void pmm_bitmap_free(void* address)
     uint64_t index = (uint64_t)PML_HIGHER_TO_LOWER(address) / PAGE_SIZE;
     assert(index < PMM_BITMAP_MAX_ADDR / PAGE_SIZE);
 
-    bitmap_clear(&bitmap, index, index + 1);
+    bitmap_clear(&bitmap, index);
     freePageAmount++;
 }
 
@@ -186,7 +186,7 @@ static void pmm_free_pages_unlocked(void* address, uint64_t count)
     {
         uint64_t startIndex = physStart / PAGE_SIZE;
 
-        bitmap_clear(&bitmap, startIndex, startIndex + count);
+        bitmap_clear_range(&bitmap, startIndex, startIndex + count);
         freePageAmount += count;
     }
     else if (physStart < PMM_BITMAP_MAX_ADDR)
@@ -194,7 +194,7 @@ static void pmm_free_pages_unlocked(void* address, uint64_t count)
         uint64_t bitmapPageCount = (PMM_BITMAP_MAX_ADDR - physStart) / PAGE_SIZE;
         uint64_t startIndex = physStart / PAGE_SIZE;
 
-        bitmap_clear(&bitmap, startIndex, startIndex + bitmapPageCount);
+        bitmap_clear_range(&bitmap, startIndex, startIndex + bitmapPageCount);
         freePageAmount += bitmapPageCount;
 
         void* stackAddr = PML_LOWER_TO_HIGHER(PMM_BITMAP_MAX_ADDR);
