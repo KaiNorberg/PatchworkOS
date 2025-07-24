@@ -102,6 +102,8 @@ void vmm_init(boot_memory_t* memory, boot_gop_t* gop, boot_kernel_t* kernel)
     LOG_INFO("loading kernel page table... ");
     page_table_load(&kernelPageTable);
     LOG_INFO("done!\n");
+
+    // TODO: The lower half currently remains mapped in the table, this is wasting a few kb of memory, fix it.
 }
 
 void vmm_cpu_init(void)

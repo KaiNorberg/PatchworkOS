@@ -2,6 +2,7 @@
 
 #include "config.h"
 #include "cpu/smp.h"
+#include "gnu-efi/inc/efidef.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "sched/thread.h"
@@ -47,16 +48,35 @@ static uint64_t freePageAmount = 0;
 
 static lock_t lock = LOCK_CREATE();
 
-static bool pmm_is_efi_mem_available(uint32_t type)
+static bool pmm_is_efi_mem_available(EFI_MEMORY_TYPE type)
 {
     switch (type)
     {
     case EfiConventionalMemory:
     case EfiLoaderCode:
+    // EfiLoaderData is intentionally not included here as it's freed later in `kernel_init()`.
     case EfiBootServicesCode:
     case EfiBootServicesData:
         return true;
-    // EFI_LOADER_DATA is intentionally not included here as it's freed later in `kernel_init()`.
+    default:
+        return false;
+    }
+}
+
+static bool pmm_is_efi_mem_ram(EFI_MEMORY_TYPE type)
+{
+    switch (type)
+    {
+    case EfiConventionalMemory:
+    case EfiLoaderCode:
+    case EfiLoaderData:
+    case EfiBootServicesCode:
+    case EfiBootServicesData:
+    case EfiRuntimeServicesCode:
+    case EfiRuntimeServicesData:
+    case EfiACPIReclaimMemory:
+    case EfiACPIMemoryNVS:
+        return true;
     default:
         return false;
     }
@@ -219,7 +239,10 @@ static void pmm_detect_memory(boot_memory_map_t* memoryMap)
     {
         const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
 
-        pageAmount += desc->NumberOfPages;
+        if (pmm_is_efi_mem_ram(desc->Type))
+        {
+            pageAmount += desc->NumberOfPages;
+        }
     }
 }
 

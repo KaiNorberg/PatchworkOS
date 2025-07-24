@@ -6,5 +6,5 @@
  */
 
 #define OS_NAME "PatchworkOS"
-#define OS_VERSION "53508f2e-dirty"
+#define OS_VERSION "0a214aff-dirty"
 
