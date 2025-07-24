@@ -1,27 +1,21 @@
 #include "panic.h"
 
 #include "cpu/port.h"
-#include "cpu/regs.h"
 #include "cpu/smp.h"
 #include "cpu/vectors.h"
-#include "defs.h"
-#include "drivers/com.h"
 #include "drivers/systime/systime.h"
 #include "log/log.h"
 #include "log/screen.h"
 #include "mem/pmm.h"
 #include "sched/thread.h"
-#include "sync/lock.h"
-#include "utils/ring.h"
 
 #include <boot/boot_info.h>
+#include <common/regs.h>
 #include <common/version.h>
 
-#include <assert.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/io.h>
 #include <sys/math.h>
@@ -285,7 +279,7 @@ void panic(const trap_frame_t* trapFrame, const char* format, ...)
 
     if (screen->initialized && !(state->config.outputs & LOG_OUTPUT_SCREEN))
     {
-        log_screen_enable(NULL);
+        log_screen_enable();
         state->config.outputs |= LOG_OUTPUT_SCREEN;
     }
 

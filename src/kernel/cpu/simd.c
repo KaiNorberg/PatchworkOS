@@ -3,7 +3,8 @@
 #include "log/log.h"
 #include "mem/pmm.h"
 #include "mem/vmm.h"
-#include "regs.h"
+
+#include <common/defs.h>
 
 #include <stdint.h>
 #include <string.h>

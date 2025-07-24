@@ -1,6 +1,6 @@
 #pragma once
 
-#include "defs.h"
+#include <stdint.h>
 
 #define PAGE_FAULT_PRESENT (1 << 0)
 

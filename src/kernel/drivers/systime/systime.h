@@ -1,7 +1,6 @@
 #pragma once
 
 #include "cpu/trap.h"
-#include "defs.h"
 
 #include <sys/proc.h>
 #include <time.h>

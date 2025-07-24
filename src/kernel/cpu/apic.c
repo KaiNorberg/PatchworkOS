@@ -6,8 +6,9 @@
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/vmm.h"
-#include "regs.h"
 #include "utils/utils.h"
+
+#include <common/defs.h>
 
 #include <assert.h>
 

@@ -4,6 +4,8 @@
 
 #include <boot/boot_info.h>
 
+#include "config.h"
+#include "log/glyphs.h"
 #include "utils/ring.h"
 
 #define SCREEN_WRAP_INDENT 4
@@ -17,7 +19,7 @@ typedef struct
 typedef struct
 {
     uint64_t length;
-    uint32_t pixels[];
+    uint32_t pixels[GLYPH_HEIGHT * MAX_PATH];
 } screen_line_t;
 
 typedef struct
@@ -25,23 +27,21 @@ typedef struct
     uint64_t width;
     uint64_t height;
     uint64_t stride;
-    uint64_t lineSize;
     uint64_t firstLineIndex;
     screen_pos_t invalidStart;
     screen_pos_t invalidEnd;
-    screen_line_t** lines;
-    uint8_t* storage;
+    screen_line_t lines[CONFIG_SCREEN_MAX_LINES];
 } screen_buffer_t;
 
 typedef struct
 {
     bool initialized;
-    gop_buffer_t framebuffer;
+    boot_gop_t gop;
     screen_pos_t cursor;
     screen_buffer_t buffer;
 } screen_t;
 
-uint64_t screen_init(screen_t* screen, const gop_buffer_t* framebuffer);
+void screen_init(screen_t* screen, const boot_gop_t* gop);
 
 void screen_enable(screen_t* screen, const ring_t* ring);
 

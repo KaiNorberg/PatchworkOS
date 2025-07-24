@@ -1,22 +1,17 @@
 #include "wait.h"
 
-#include "cpu/regs.h"
 #include "cpu/smp.h"
-#include "cpu/vectors.h"
 #include "drivers/systime/systime.h"
-#include "kernel.h"
-#include "log/log.h"
 #include "log/panic.h"
 #include "mem/heap.h"
 #include "sched.h"
 #include "sched/thread.h"
 #include "sync/lock.h"
-#include "sys/list.h"
 
 #include <assert.h>
 #include <errno.h>
 #include <stdatomic.h>
-#include <stdlib.h>
+#include <sys/list.h>
 
 void wait_queue_init(wait_queue_t* waitQueue)
 {

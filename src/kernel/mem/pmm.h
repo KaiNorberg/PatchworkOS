@@ -1,7 +1,5 @@
 #pragma once
 
-#include "defs.h"
-
 #include <boot/boot_info.h>
 
 #include <sys/proc.h>
@@ -82,7 +80,7 @@ typedef struct
  *
  * @param memoryMap The EFI memory map provided by the bootloader.
  */
-void pmm_init(efi_mem_map_t* memoryMap);
+void pmm_init(boot_memory_map_t* memoryMap);
 
 /**
  * @brief Allocates a single physical page.

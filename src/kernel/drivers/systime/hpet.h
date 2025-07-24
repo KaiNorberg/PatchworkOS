@@ -3,7 +3,6 @@
 #include <sys/proc.h>
 
 #include "acpi/acpi.h"
-#include "defs.h"
 
 #define HPET_COUNTER_CLOCK_OFFSET 0x20
 

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "defs.h"
-
 #define READ_8(address) (*((volatile uint8_t*)(address)))
 #define WRITE_8(address, value) (*((volatile uint8_t*)(address)) = (uint8_t)value)
 

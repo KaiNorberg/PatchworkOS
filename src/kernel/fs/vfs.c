@@ -1,9 +1,6 @@
 #include "vfs.h"
 
-#include "cpu/regs.h"
-#include "cpu/smp.h"
 #include "cpu/syscalls.h"
-#include "cpu/trap.h"
 #include "drivers/systime/systime.h"
 #include "fs/dentry.h"
 #include "fs/inode.h"
@@ -11,11 +8,9 @@
 #include "fs/path.h"
 #include "log/log.h"
 #include "log/panic.h"
-#include "mem/heap.h"
 #include "proc/process.h"
 #include "sched/sched.h"
 #include "sched/wait.h"
-#include "sync/lock.h"
 #include "sync/mutex.h"
 #include "sync/rwlock.h"
 #include "sync/rwmutex.h"
@@ -24,8 +19,11 @@
 #include "utils/ref.h"
 #include "vfs_ctx.h"
 
+#include <common/regs.h>
+
 #include <assert.h>
 #include <errno.h>
+#include <stdint.h>
 #include <string.h>
 #include <sys/io.h>
 

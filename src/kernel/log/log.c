@@ -4,15 +4,13 @@
 #include "drivers/com.h"
 #include "drivers/systime/systime.h"
 #include "log/panic.h"
-#include "mem/pmm.h"
-#include "sched/thread.h"
 #include "sync/lock.h"
 #include "utils/ring.h"
 
+#include <_internal/MAX_PATH.h>
 #include <boot/boot_info.h>
 #include <common/version.h>
 
-#include <assert.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -35,34 +33,8 @@ static const char* levelNames[] = {
     [LOG_LEVEL_PANIC] = "PANC",
 };
 
-void log_init(void)
+static void log_splash_screen(void)
 {
-    lock_init(&lock);
-
-    atomic_init(&state.panickingCpuId, LOG_NO_PANIC_CPU_ID);
-    state.config.isTimeEnabled = false;
-
-#if CONFIG_LOG_SERIAL
-    state.config.outputs = LOG_OUTPUT_SERIAL;
-#else
-    state.config.outputs = 0;
-#endif
-
-#ifndef NDEBUG
-    state.config.minLevel = LOG_LEVEL_DEBUG;
-#else
-    state.config.minLevel = LOG_LEVEL_USER;
-#endif
-
-    state.isLastCharNewline = true;
-
-    ring_init(&klog.ring, klog.buffer, LOG_MAX_BUFFER);
-    state.config.outputs |= LOG_OUTPUT_FILE;
-
-#if CONFIG_LOG_SERIAL
-    com_init(COM1);
-#endif
-
 #ifdef NDEBUG
     LOG_INFO("Booting %s-kernel %s (Built %s %s)\n", OS_NAME, OS_VERSION, __DATE__, __TIME__);
 #else
@@ -75,25 +47,37 @@ void log_init(void)
         (state.config.outputs & LOG_OUTPUT_FILE) ? "file " : "");
 }
 
-void log_enable_time(void)
+void log_init(boot_gop_t* gop)
 {
-    LOCK_SCOPE(&lock);
+    lock_init(&lock);
 
-    state.config.isTimeEnabled = true;
+    state.config.outputs = 0;
+#ifndef NDEBUG
+    state.config.minLevel = LOG_LEVEL_DEBUG;
+#else
+    state.config.minLevel = LOG_LEVEL_USER;
+#endif
+    atomic_init(&state.panickingCpuId, LOG_NO_PANIC_CPU_ID);
+    state.isLastCharNewline = true;
+
+    screen_init(&screen, gop);
+    state.config.outputs |= LOG_OUTPUT_SCREEN;
+
+    ring_init(&klog.ring, klog.buffer, LOG_MAX_BUFFER);
+    state.config.outputs |= LOG_OUTPUT_FILE;
+
+#if CONFIG_LOG_SERIAL
+    com_init(COM1);
+    state.config.outputs |= LOG_OUTPUT_SERIAL;
+#endif
+
+    log_splash_screen();
 }
 
-void log_screen_enable(gop_buffer_t* framebuffer)
+void log_screen_enable()
 {
     LOG_INFO("screen enable\n");
     LOCK_SCOPE(&lock);
-
-    if (!screen.initialized)
-    {
-        if (screen_init(&screen, framebuffer) == ERR)
-        {
-            panic(NULL, "Failed to initialize screen");
-        }
-    }
 
     screen_enable(&screen, &klog.ring);
     state.config.outputs |= LOG_OUTPUT_SCREEN;
@@ -191,17 +175,17 @@ static void log_print_header(log_level_t level, const char* prefix)
         return;
     }
 
-    uint64_t uptime = state.config.isTimeEnabled ? systime_uptime() : 0;
-
+    uint64_t uptime = systime_uptime();
     uint64_t seconds = uptime / CLOCKS_PER_SEC;
     uint64_t milliseconds = (uptime % CLOCKS_PER_SEC) / (CLOCKS_PER_SEC / 1000);
 
     cpu_t* self = smp_self_unsafe();
 
-    int length = sprintf(state.timestampBuffer, "[%5llu.%03llu-%03d-%s-%-13s] ", seconds, milliseconds, self->id,
+    char timestampBuffer[MAX_PATH];
+    int length = sprintf(timestampBuffer, "[%5llu.%03llu-%03d-%s-%-13s] ", seconds, milliseconds, self->id,
         levelNames[level], prefix != NULL ? prefix : "unknown");
 
-    log_write(state.timestampBuffer, length);
+    log_write(timestampBuffer, length);
 }
 
 static void log_handle_char(log_level_t level, const char* prefix, char chr)

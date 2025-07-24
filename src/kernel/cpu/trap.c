@@ -7,13 +7,14 @@
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/vmm.h"
-#include "regs.h"
 #include "sched/loader.h"
 #include "sched/sched.h"
 #include "sched/wait.h"
 #include "smp.h"
 #include "utils/statistics.h"
 #include "vectors.h"
+
+#include <common/regs.h>
 
 #include <assert.h>
 

@@ -16,6 +16,7 @@
 #include "fs/ramfs.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
+#include "gnu-efi/inc/efidef.h"
 #include "ipc/pipe.h"
 #include "ipc/shmem.h"
 #include "log/log.h"
@@ -35,17 +36,17 @@
 #include <libstd/_internal/init.h>
 #include <strings.h>
 
-static void kernel_free_loader_data(efi_mem_map_t* memoryMap)
+static void kernel_free_loader_data(boot_memory_map_t* map)
 {
-    for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
+    for (uint64_t i = 0; i < map->length; i++)
     {
-        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
+        const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, i);
 
-        if (desc->type == EFI_LOADER_DATA)
+        if (desc->Type == EfiLoaderData)
         {
-            pmm_free_pages(PML_LOWER_TO_HIGHER(desc->physicalStart), desc->amountOfPages);
-            LOG_INFO("free boot memory [0x%016lx-0x%016lx]\n", desc->physicalStart,
-                ((uintptr_t)desc->physicalStart) + desc->amountOfPages * PAGE_SIZE);
+            pmm_free_pages(PML_LOWER_TO_HIGHER(desc->PhysicalStart), desc->NumberOfPages);
+            LOG_INFO("free boot memory [0x%016lx-0x%016lx]\n", desc->PhysicalStart,
+                ((uintptr_t)desc->PhysicalStart) + desc->NumberOfPages * PAGE_SIZE);
         }
     }
 }
@@ -56,28 +57,25 @@ void kernel_init(boot_info_t* bootInfo)
     idt_cpu_init();
 
     smp_bootstrap_init();
-    gd_cpu_load_tss(&smp_self_unsafe()->tss);
+    gdt_cpu_load_tss(&smp_self_unsafe()->tss);
 
-    log_init();
+    log_init(&bootInfo->gop);
 
-    pmm_init(&bootInfo->memoryMap);
-    vmm_init(&bootInfo->memoryMap, &bootInfo->kernel, &bootInfo->gopBuffer);
+    pmm_init(&bootInfo->memory.map);
+    vmm_init(&bootInfo->memory, &bootInfo->gop, &bootInfo->kernel);
     heap_init();
-
-    log_screen_enable(&bootInfo->gopBuffer);
 
     _std_init();
 
     acpi_init(bootInfo->rsdp);
     hpet_init();
     systime_init();
-    log_enable_time();
 
     process_kernel_init();
     sched_init();
 
     vfs_init();
-    ramfs_init(&bootInfo->ramDisk);
+    ramfs_init(&bootInfo->disk);
     sysfs_init();
 
     log_file_expose();
@@ -101,10 +99,10 @@ void kernel_init(boot_info_t* bootInfo)
     net_init();
     pipe_init();
     shmem_init();
-    gop_init(&bootInfo->gopBuffer);
+    gop_init(&bootInfo->gop);
     statistics_init();
 
-    kernel_free_loader_data(&bootInfo->memoryMap);
+    kernel_free_loader_data(&bootInfo->memory.map);
 
 #ifndef NDEBUG
     testing_run_tests();
@@ -116,7 +114,7 @@ void kernel_other_init(void)
     gdt_cpu_init();
     idt_cpu_init();
 
-    gd_cpu_load_tss(&smp_self_brute()->tss);
+    gdt_cpu_load_tss(&smp_self_brute()->tss);
 
     lapic_cpu_init();
     simd_cpu_init();

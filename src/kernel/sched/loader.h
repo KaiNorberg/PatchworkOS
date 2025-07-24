@@ -1,6 +1,5 @@
 #pragma once
 
-#include "defs.h"
 #include "sched/thread.h"
 
 #include <stdarg.h>

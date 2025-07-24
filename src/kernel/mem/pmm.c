@@ -51,11 +51,10 @@ static bool pmm_is_efi_mem_available(uint32_t type)
 {
     switch (type)
     {
-    case EFI_CONVENTIONAL_MEMORY:
-    case EFI_PERSISTENT_MEMORY:
-    case EFI_LOADER_CODE:
-    case EFI_BOOT_SERVICES_CODE:
-    case EFI_BOOT_SERVICES_DATA:
+    case EfiConventionalMemory:
+    case EfiLoaderCode:
+    case EfiBootServicesCode:
+    case EfiBootServicesData:
         return true;
     // EFI_LOADER_DATA is intentionally not included here as it's freed later in `kernel_init()`.
     default:
@@ -212,33 +211,33 @@ static void pmm_free_pages_unlocked(void* address, uint64_t count)
     }
 }
 
-static void pmm_detect_memory(efi_mem_map_t* memoryMap)
+static void pmm_detect_memory(boot_memory_map_t* memoryMap)
 {
     LOG_INFO("UEFI-provided memory map\n");
 
-    for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
+    for (uint64_t i = 0; i < memoryMap->length; i++)
     {
-        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
+        const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
 
-        pageAmount += desc->amountOfPages;
+        pageAmount += desc->NumberOfPages;
     }
 }
 
-static void pmm_load_memory(efi_mem_map_t* memoryMap)
+static void pmm_load_memory(boot_memory_map_t* memoryMap)
 {
-    for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
+    for (uint64_t i = 0; i < memoryMap->length; i++)
     {
-        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
+        const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
 
-        if (pmm_is_efi_mem_available(desc->type))
+        if (pmm_is_efi_mem_available(desc->Type))
         {
-            pmm_free_pages_unlocked(PML_LOWER_TO_HIGHER(desc->physicalStart), desc->amountOfPages);
+            pmm_free_pages_unlocked(PML_LOWER_TO_HIGHER(desc->PhysicalStart), desc->NumberOfPages);
         }
         else
         {
-            LOG_INFO("reserve [0x%016lx-0x%016lx] pages=%d type=%s\n", desc->physicalStart,
-                (uint64_t)desc->physicalStart + desc->amountOfPages * PAGE_SIZE, desc->amountOfPages,
-                efiMemTypeToString[desc->type]);
+            LOG_INFO("reserve [0x%016lx-0x%016lx] pages=%d type=%s\n", desc->PhysicalStart,
+                (uint64_t)desc->PhysicalStart + desc->NumberOfPages * PAGE_SIZE, desc->NumberOfPages,
+                efiMemTypeToString[desc->Type]);
         }
     }
 
@@ -246,7 +245,7 @@ static void pmm_load_memory(efi_mem_map_t* memoryMap)
         (freePageAmount * PAGE_SIZE) / 1000000, ((pageAmount - freePageAmount) * PAGE_SIZE) / 1000000);
 }
 
-void pmm_init(efi_mem_map_t* memoryMap)
+void pmm_init(boot_memory_map_t* memoryMap)
 {
     pmm_detect_memory(memoryMap);
 

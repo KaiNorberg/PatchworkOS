@@ -1,22 +1,15 @@
 #include "thread.h"
 
 #include "cpu/gdt.h"
-#include "cpu/regs.h"
 #include "cpu/smp.h"
-#include "defs.h"
 #include "drivers/systime/systime.h"
-#include "fs/sysfs.h"
-#include "fs/vfs.h"
 #include "log/log.h"
 #include "mem/heap.h"
 #include "sched/loader.h"
 #include "sched/sched.h"
 #include "sched/wait.h"
-#include "sync/futex.h"
 #include "sync/lock.h"
-#include "sys/io.h"
 
-#include <stdlib.h>
 #include <string.h>
 #include <sys/math.h>
 

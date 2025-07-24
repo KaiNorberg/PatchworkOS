@@ -1,7 +1,6 @@
 #pragma once
 
 #include "acpi.h"
-#include "defs.h"
 
 #define MADT_LAPIC 0
 

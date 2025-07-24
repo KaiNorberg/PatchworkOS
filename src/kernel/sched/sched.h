@@ -1,8 +1,9 @@
 #pragma once
 
-#include "defs.h"
 #include "sched/wait.h"
 #include "sync/lock.h"
+
+#include <common/defs.h>
 
 #include <sys/list.h>
 #include <sys/proc.h>

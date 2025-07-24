@@ -1,10 +1,11 @@
 #include "syscalls.h"
 
 #include "cpu/gdt.h"
-#include "cpu/regs.h"
 #include "gdt.h"
 #include "sched/sched.h"
 #include "sched/thread.h"
+
+#include <common/defs.h>
 
 #include <assert.h>
 #include <errno.h>

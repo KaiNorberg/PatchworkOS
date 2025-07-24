@@ -1,19 +1,17 @@
 #include "vmm.h"
 
-#include "cpu/regs.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/space.h"
 #include "pmm.h"
-#include "sched/thread.h"
 #include "sync/lock.h"
 
+#include <boot/boot_info.h>
 #include <common/paging.h>
+#include <common/regs.h>
 
 #include <assert.h>
 #include <errno.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/math.h>
 #include <sys/proc.h>
 
@@ -29,17 +27,13 @@ static void* vmm_kernel_find_free_region(uint64_t pageAmount)
 
     while (addr + pageAmount * PAGE_SIZE <= PML_HIGHER_HALF_END)
     {
-        void* firstMappedPage =
-            page_table_find_first_mapped_page(&kernelPageTable, (void*)addr, (void*)(addr + pageAmount * PAGE_SIZE));
-
-        if (firstMappedPage == NULL)
+        void* firstMappedPage;
+        if (page_table_find_first_mapped_page(&kernelPageTable, (void*)addr, (void*)(addr + pageAmount * PAGE_SIZE), &firstMappedPage) == ERR)
         {
-            // Found a free region
             kernelFreeAddress = addr + pageAmount * PAGE_SIZE;
             return (void*)addr;
         }
 
-        // Skip to after the mapped page and continue searching
         addr = (uintptr_t)firstMappedPage + PAGE_SIZE;
     }
 
@@ -57,7 +51,7 @@ static void vmm_kernel_update_free_address(uintptr_t virtAddr, uint64_t pageAmou
     }
 }
 
-static void vmm_load_memory_map(efi_mem_map_t* memoryMap)
+static void vmm_load_page_table(boot_memory_map_t* map, boot_gop_t* gop, boot_kernel_t* kernel)
 {
     // Kernel pml must be within 32 bit boundary because smp trampoline loads it as a dword.
     kernelPageTable.pml4 = pmm_alloc_bitmap(1, UINT32_MAX, 0);
@@ -65,52 +59,46 @@ static void vmm_load_memory_map(efi_mem_map_t* memoryMap)
     {
         panic(NULL, "Failed to allocate kernel PML");
     }
+    memset(kernelPageTable.pml4, 0, sizeof(pml_t));
     kernelPageTable.allocPage = pmm_alloc;
     kernelPageTable.freePage = pmm_free;
 
-    for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
+    for (uint64_t i = 0; i < map->length; i++)
     {
-        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
-
-        uint64_t result = page_table_map(&kernelPageTable, desc->virtualStart, desc->physicalStart, desc->amountOfPages,
-            PML_WRITE | VMM_KERNEL_PML_FLAGS, PML_CALLBACK_NONE);
-        if (result == ERR)
+        const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, i);
+        if (page_table_map(&kernelPageTable, (void*)desc->VirtualStart, (void*)desc->PhysicalStart, desc->NumberOfPages, PML_WRITE,
+                PML_CALLBACK_NONE) == ERR)
         {
-            const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
-            panic(NULL, "Failed to map memory descriptor %d (phys=0x%016lx-0x%016lx virt=0x%016lx)", i,
-                desc->physicalStart, desc->physicalStart + desc->amountOfPages * PAGE_SIZE, desc->virtualStart);
+            panic(NULL, "Failed to map memory descriptor %d (phys=0x%016lx-0x%016lx virt=0x%016lx)", i, desc->PhysicalStart,
+                desc->PhysicalStart + desc->NumberOfPages * PAGE_SIZE, desc->VirtualStart);
         }
     }
+
+    LOG_INFO("kernel virt=[0x%016lx-0x%016lx] phys=[0x%016lx-0x%016lx]\n", kernel->virtStart, kernel->virtStart + kernel->size, kernel->physStart, kernel->physStart + kernel->size);
+    if (page_table_map(&kernelPageTable, (void*)kernel->virtStart, (void*)kernel->physStart, BYTES_TO_PAGES(kernel->size), PML_WRITE,
+            PML_CALLBACK_NONE) == ERR)
+    {
+        panic(NULL, "Failed to map kernel memory");
+    }
+
+    LOG_INFO("   GOP virt=[0x%016lx-0x%016lx] phys=[0x%016lx-0x%016lx]\n", gop->virtAddr, gop->virtAddr + gop->size, gop->physAddr, gop->physAddr + gop->size);
+    if (page_table_map(&kernelPageTable, (void*)gop->virtAddr, (void*)gop->physAddr, BYTES_TO_PAGES(gop->size), PML_WRITE,
+            PML_CALLBACK_NONE) == ERR)
+    {
+        panic(NULL, "Failed to map GOP memory");
+    }
+
+    LOG_INFO("loading kernel page table... ");
+    page_table_load(&kernelPageTable);
+    LOG_INFO("done!\n");
 }
 
-void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gopBuffer)
+void vmm_init(boot_memory_t* memory, boot_gop_t* gop, boot_kernel_t* kernel)
 {
-    lock_init(&kernelLock);
-    vmm_load_memory_map(memoryMap);
-
     kernelFreeAddress = ROUND_UP((uintptr_t)&_kernelEnd, PAGE_SIZE);
 
-    LOG_INFO("kernel phys=[0x%016lx-0x%016lx] virt=[0x%016lx-0x%016lx]\n", kernel->physStart,
-        kernel->physStart + kernel->length, kernel->virtStart, kernel->virtStart + kernel->length);
-
-    uint64_t result = page_table_map(&kernelPageTable, kernel->virtStart, kernel->physStart,
-        BYTES_TO_PAGES(kernel->length), PML_WRITE | VMM_KERNEL_PML_FLAGS, PML_CALLBACK_NONE);
-    if (result == ERR)
-    {
-        panic(NULL, "Failed to map kernel (phys=0x%016lx-0x%016lx virt=0x%016lx)", kernel->physStart,
-            kernel->physStart + kernel->length, kernel->virtStart);
-    }
-
-    LOG_INFO("loading kernel pml 0x%016lx\n", kernelPageTable.pml4);
-    page_table_load(&kernelPageTable);
-    LOG_INFO("kernel pml loaded\n");
-
-    gopBuffer->base = vmm_kernel_map(NULL, gopBuffer->base, BYTES_TO_PAGES(gopBuffer->size), PML_WRITE);
-    if (gopBuffer->base == NULL)
-    {
-        panic(NULL, "Failed to map GOP buffer (phys=0x%016lx size=%llu)\n", (uintptr_t)gopBuffer->base,
-            gopBuffer->size);
-    }
+    lock_init(&kernelLock);
+    vmm_load_page_table(&memory->map, gop, kernel);
 
     vmm_cpu_init();
 }
@@ -163,7 +151,7 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t pageAmount, pml_fl
 
             if (page == NULL ||
                 page_table_map(&kernelPageTable, vaddr, PML_HIGHER_TO_LOWER(page), 1,
-                    flags | VMM_KERNEL_PML_FLAGS | PML_OWNED, PML_CALLBACK_NONE) == ERR)
+                    flags | PML_KERNEL_FLAGS | PML_OWNED, PML_CALLBACK_NONE) == ERR)
             {
                 if (page != NULL)
                 {
@@ -197,7 +185,7 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t pageAmount, pml_fl
             return NULL;
         }
 
-        if (page_table_map(&kernelPageTable, virtAddr, physAddr, pageAmount, flags | VMM_KERNEL_PML_FLAGS,
+        if (page_table_map(&kernelPageTable, virtAddr, physAddr, pageAmount, flags | PML_KERNEL_FLAGS,
                 PML_CALLBACK_NONE) == ERR)
         {
             errno = ENOMEM;
@@ -241,8 +229,8 @@ void* vmm_alloc(space_t* space, void* virtAddr, uint64_t length, prot_t prot)
         void* page = pmm_alloc();
 
         if (page == NULL ||
-            page_table_map(&space->pageTable, addr, PML_HIGHER_TO_LOWER(page), 1, mapping.flags | PML_OWNED, PML_CALLBACK_NONE) ==
-                ERR)
+            page_table_map(&space->pageTable, addr, PML_HIGHER_TO_LOWER(page), 1, mapping.flags | PML_OWNED,
+                PML_CALLBACK_NONE) == ERR)
         {
             if (page != NULL)
             {
@@ -277,7 +265,8 @@ void* vmm_map(space_t* space, void* virtAddr, void* physAddr, uint64_t length, p
         }
     }
 
-    if (page_table_map(&space->pageTable, mapping.virtAddr, mapping.physAddr, mapping.pageAmount, mapping.flags, callbackId) == ERR)
+    if (page_table_map(&space->pageTable, mapping.virtAddr, mapping.physAddr, mapping.pageAmount, mapping.flags,
+            callbackId) == ERR)
     {
         if (callbackId != PML_CALLBACK_NONE)
         {
@@ -313,8 +302,8 @@ void* vmm_map_pages(space_t* space, void* virtAddr, void** pages, uint64_t pageA
     {
         void* physAddr = PML_ENSURE_LOWER_HALF(pages[i]);
 
-        if (page_table_map(&space->pageTable, (void*)((uint64_t)mapping.virtAddr + i * PAGE_SIZE), physAddr, 1, mapping.flags,
-                callbackId) == ERR)
+        if (page_table_map(&space->pageTable, (void*)((uint64_t)mapping.virtAddr + i * PAGE_SIZE), physAddr, 1,
+                mapping.flags, callbackId) == ERR)
         {
             for (uint64_t j = 0; j < i; j++)
             {

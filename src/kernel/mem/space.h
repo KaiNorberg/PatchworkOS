@@ -113,8 +113,8 @@ typedef struct
  * @param mapping Will be filled with parsed information about the mapping.
  * @return On success, returns 0. On failure, returns `ERR`.
  */
-uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, void* physAddr,
-    uint64_t length, prot_t prot);
+uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, void* physAddr, uint64_t length,
+    prot_t prot);
 
 /**
  * @brief Allocate a callback.
@@ -126,8 +126,7 @@ uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* vir
  * @param private Private data to pass to the callback function.
  * @return On success, returns the callback ID. On failure, returns `PML_MAX_CALLBACK`.
  */
-pml_callback_id_t space_alloc_callback(space_t* space, uint64_t pageAmount, space_callback_func_t func,
-    void* private);
+pml_callback_id_t space_alloc_callback(space_t* space, uint64_t pageAmount, space_callback_func_t func, void* private);
 
 /**
  * @brief Free a callback.

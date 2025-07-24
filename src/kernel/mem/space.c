@@ -1,12 +1,11 @@
 #include "space.h"
 
-#include "sync/rwmutex.h"
-#include "vmm.h"
+#include "cpu/syscalls.h"
 #include "mem/space.h"
 #include "pmm.h"
-#include "sync/lock.h"
-#include "cpu/syscalls.h"
 #include "proc/process.h"
+#include "sync/rwmutex.h"
+#include "vmm.h"
 
 #include <common/paging.h>
 
@@ -93,9 +92,8 @@ static void* space_find_free_region(space_t* space, uint64_t pageAmount)
     uintptr_t addr = space->freeAddress;
     while (addr < PML_LOWER_HALF_END)
     {
-        void* firstMappedPage =
-            page_table_find_first_mapped_page(&space->pageTable, (void*)addr, (void*)(addr + pageAmount * PAGE_SIZE));
-        if (firstMappedPage != NULL)
+        void* firstMappedPage;
+        if (page_table_find_first_mapped_page(&space->pageTable, (void*)addr, (void*)(addr + pageAmount * PAGE_SIZE), &firstMappedPage) != ERR)
         {
             addr = (uintptr_t)firstMappedPage + PAGE_SIZE;
             continue;
@@ -108,8 +106,8 @@ static void* space_find_free_region(space_t* space, uint64_t pageAmount)
     return NULL;
 }
 
-uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, void* physAddr,
-    uint64_t length, prot_t prot)
+uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* virtAddr, void* physAddr, uint64_t length,
+    prot_t prot)
 {
     if (space == NULL || mapping == NULL || length == 0)
     {
@@ -156,8 +154,7 @@ uint64_t space_mapping_start(space_t* space, space_mapping_t* mapping, void* vir
     return 0; // We return with the mutex still acquired.
 }
 
-pml_callback_id_t space_alloc_callback(space_t* space, uint64_t pageAmount, space_callback_func_t func,
-    void* private)
+pml_callback_id_t space_alloc_callback(space_t* space, uint64_t pageAmount, space_callback_func_t func, void* private)
 {
     if (space == NULL)
     {
@@ -234,7 +231,8 @@ uint64_t space_unmap(space_t* space, void* virtAddr, uint64_t length)
         return ERR;
     }
 
-    uint64_t callbacks[PML_MAX_CALLBACK] = {0}; // Stores the amount of pages that have each callback id within the region.
+    uint64_t callbacks[PML_MAX_CALLBACK] = {
+        0}; // Stores the amount of pages that have each callback id within the region.
     page_table_collect_callbacks(&space->pageTable, virtAddr, pageAmount, callbacks);
 
     page_table_unmap(&space->pageTable, virtAddr, pageAmount);

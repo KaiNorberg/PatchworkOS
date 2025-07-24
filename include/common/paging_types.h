@@ -1,10 +1,7 @@
 #pragma once
 
-#include "cpu/regs.h"
-#include "defs.h"
-#include "mem/pmm.h"
-
 #include <assert.h>
+#include <stdint.h>
 #include <sys/math.h>
 
 /**
@@ -30,6 +27,8 @@ typedef enum
     PML_GLOBAL = (1 << 8),
     PML_OWNED = (1 << 9)
 } pml_flags_t;
+
+#define PML_KERNEL_FLAGS (PML_GLOBAL)
 
 #define PML_ENTRY_AMOUNT 512
 

@@ -1,6 +1,7 @@
 #pragma once
 
-#include "defs.h"
+#include <stdbool.h>
+#include <stdint.h>
 
 #define CPUID_FEATURE_ID 0x1
 #define CPUID_FEATURE_EXTENDED_ID 0x7

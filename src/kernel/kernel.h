@@ -4,7 +4,6 @@
 
 #include "cpu/smp.h"
 #include "cpu/trap.h"
-#include "defs.h"
 
 /**
  * @brief Kernel initialization.

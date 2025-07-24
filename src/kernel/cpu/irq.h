@@ -1,6 +1,5 @@
 #pragma once
 
-#include "defs.h"
 #include "trap.h"
 
 #define IRQ_PIT 0x0

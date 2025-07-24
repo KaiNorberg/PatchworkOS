@@ -4,4 +4,4 @@
 #include <efi.h>
 #include <efilib.h>
 
-void ram_disk_load(ram_disk_t* disk, EFI_HANDLE imageHandle);
+EFI_STATUS disk_load(boot_disk_t* disk, EFI_HANDLE imageHandle);

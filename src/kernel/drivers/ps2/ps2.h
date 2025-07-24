@@ -1,6 +1,6 @@
 #pragma once
 
-#include "defs.h"
+#include <stdint.h>
 
 #define PS2_BUFFER_LENGTH 32
 

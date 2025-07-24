@@ -2,25 +2,22 @@
 
 #include "acpi/madt.h"
 #include "apic.h"
+#include "cpu/vectors.h"
 #include "drivers/systime/hpet.h"
-#include "gdt.h"
-#include "idt.h"
 #include "kernel.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/heap.h"
-#include "mem/vmm.h"
-#include "regs.h"
 #include "sched/thread.h"
-#include "sync/futex.h"
-#include "sync/lock.h"
 #include "trampoline.h"
 #include "trap.h"
 
+#include <common/defs.h>
+#include <common/regs.h>
+
 #include <assert.h>
 #include <stdatomic.h>
-#include <stdlib.h>
-#include <string.h>
+#include <stdint.h>
 
 static cpu_t bootstrapCpu;
 static cpu_t* cpus[CPU_MAX_AMOUNT];

@@ -1,6 +1,5 @@
 #include "ctl.h"
 
-#include "defs.h"
 #include "mem/pmm.h"
 #include "sched/thread.h"
 

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "defs.h"
 #include "drivers/systime/systime.h"
 #include "mem/pmm.h"
 #include "sched/sched.h"

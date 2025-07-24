@@ -1,10 +1,13 @@
 #pragma once
 
 #include "paging_types.h"
+#include "regs.h"
 
 #include <assert.h>
-#include <errno.h>
-#include <sys/math.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/proc.h>
 
 static inline void page_invalidate(void* virtAddr)
 {
@@ -29,19 +32,30 @@ static inline pml_entry_t pml_entry_create(void* physAddr, pml_flags_t flags, pm
     return entry;
 }
 
-static inline pml_t* pml_new(pml_alloc_page_t allocPage)
+static inline uintptr_t pml_entry_address(pml_entry_t entry)
+{
+#ifdef __BOOTLOADER__
+    return (uintptr_t)(entry.address << 12);
+#elif __KERNEL__
+    return (uintptr_t)PML_LOWER_TO_HIGHER(entry.address << 12);
+#else
+#error
+#endif
+}
+
+static inline uint64_t pml_new(pml_alloc_page_t allocPage, pml_t** outPml)
 {
     pml_t* pml = (pml_t*)allocPage();
     if (pml == NULL)
     {
-        errno = ENOMEM;
-        return NULL;
+        return ERR;
     }
     memset(pml, 0, PAGE_SIZE);
-    return pml;
+    *outPml = pml;
+    return 0;
 }
 
-static inline void pml_free(pml_t* pml, int64_t level, pml_free_page_t freePage)
+static inline void pml_free(page_table_t* table, pml_t* pml, int64_t level, pml_free_page_t freePage)
 {
     if (level < 0)
     {
@@ -56,9 +70,13 @@ static inline void pml_free(pml_t* pml, int64_t level, pml_free_page_t freePage)
             continue;
         }
 
-        if (level != 1 || entry.owned)
+        if (level > 1)
         {
-            pml_free(PML_LOWER_TO_HIGHER((uint64_t)(entry.address << 12)), level - 1, freePage);
+            pml_free(table, (void*)pml_entry_address(entry), level - 1, freePage);
+        }
+        else if (entry.owned)
+        {
+            freePage((void*)pml_entry_address(entry));
         }
     }
 
@@ -67,11 +85,10 @@ static inline void pml_free(pml_t* pml, int64_t level, pml_free_page_t freePage)
 
 static inline uint64_t page_table_init(page_table_t* table, pml_alloc_page_t allocPage, pml_free_page_t freePage)
 {
-    table->pml4 = pml_new(allocPage);
-    if (table->pml4 == NULL)
+    uint64_t result = pml_new(allocPage, &table->pml4);
+    if (result == ERR)
     {
-        errno = ENOMEM;
-        return ERR;
+        return result;
     }
     table->allocPage = allocPage;
     table->freePage = freePage;
@@ -80,38 +97,47 @@ static inline uint64_t page_table_init(page_table_t* table, pml_alloc_page_t all
 
 static inline void page_table_deinit(page_table_t* table)
 {
-    pml_free(table->pml4, 4, table->freePage);
+    pml_free(table, table->pml4, 4, table->freePage);
 }
 
 static inline void page_table_load(page_table_t* table)
 {
+#ifdef __BOOTLOADER__
+    uint64_t cr3 = (uint64_t)table->pml4;
+#elif __KERNEL__
     uint64_t cr3 = (uint64_t)PML_HIGHER_TO_LOWER(table->pml4);
-    if (cr3_read() != cr3)
+#else
+#error
+#endif
+    if (cr3 != cr3_read())
     {
         cr3_write(cr3);
     }
 }
 
-static inline pml_t* page_table_get_pml(page_table_t* table, pml_t* level, uint64_t index, pml_flags_t flags,
-    pml_callback_id_t callbackId, bool shouldAllocate)
+static inline uint64_t page_table_get_pml(page_table_t* table, pml_t* level, uint64_t index, pml_flags_t flags,
+    pml_callback_id_t callbackId, bool shouldAllocate, pml_t** outPml)
 {
     pml_entry_t entry = level->entries[index];
     if (entry.present)
     {
-        return PML_LOWER_TO_HIGHER((uint64_t)(entry.address << 12));
+        *outPml = (pml_t*)pml_entry_address(entry);
+        return 0;
     }
     else if (shouldAllocate)
     {
-        pml_t* pml = pml_new(table->allocPage);
-        if (pml == NULL)
+        pml_t* pml;
+        uint64_t result = pml_new(table->allocPage, &pml);
+        if (result == ERR)
         {
-            return NULL;
+            return result;
         }
-        level->entries[index] = pml_entry_create(PML_HIGHER_TO_LOWER(pml), flags, callbackId);
-        return pml;
+        level->entries[index] = pml_entry_create(PML_ENSURE_LOWER_HALF((void*)pml), flags, callbackId);
+        *outPml = pml;
+        return 0;
     }
 
-    return NULL;
+    return ERR;
 }
 
 typedef struct
@@ -137,93 +163,45 @@ typedef struct
 static inline bool page_table_traverse(page_table_t* table, page_table_traverse_t* traverse, const void* virtAddr,
     bool shouldAllocate, pml_flags_t flags)
 {
-    // Lazy initialize traversal.
-    if (traverse->pml3 == NULL || traverse->pml2 == NULL || traverse->pml1 == NULL)
+    uint64_t newIdx3 = PML_GET_INDEX(virtAddr, 4);
+    if (traverse->pml3 == NULL || traverse->oldIdx3 != newIdx3)
     {
-        traverse->oldIdx3 = PML_GET_INDEX(virtAddr, 4);
-        traverse->pml3 = page_table_get_pml(table, table->pml4, traverse->oldIdx3,
-            (flags | PML_WRITE | PML_USER) & ~PML_GLOBAL, PML_CALLBACK_NONE, shouldAllocate);
-        if (traverse->pml3 == NULL)
+        if (page_table_get_pml(table, table->pml4, newIdx3, (flags | PML_WRITE | PML_USER) & ~PML_GLOBAL,
+                PML_CALLBACK_NONE, shouldAllocate, &traverse->pml3) == ERR)
         {
             return false;
         }
+        traverse->oldIdx3 = newIdx3;
+        traverse->pml2 = NULL; // Invalidate cache for lower levels
+    }
 
-        traverse->oldIdx2 = PML_GET_INDEX(virtAddr, 3);
-        traverse->pml2 = page_table_get_pml(table, traverse->pml3, traverse->oldIdx2, flags | PML_WRITE | PML_USER,
-            PML_CALLBACK_NONE, shouldAllocate);
-        if (traverse->pml2 == NULL)
+    uint64_t newIdx2 = PML_GET_INDEX(virtAddr, 3);
+    if (traverse->pml2 == NULL || traverse->oldIdx2 != newIdx2)
+    {
+        if (page_table_get_pml(table, traverse->pml3, newIdx2, flags | PML_WRITE | PML_USER, PML_CALLBACK_NONE,
+                shouldAllocate, &traverse->pml2) == ERR)
         {
             return false;
         }
-
-        traverse->oldIdx1 = PML_GET_INDEX(virtAddr, 2);
-        traverse->pml1 = page_table_get_pml(table, traverse->pml2, traverse->oldIdx1, flags | PML_WRITE | PML_USER,
-            PML_CALLBACK_NONE, shouldAllocate);
-        if (traverse->pml1 == NULL)
-        {
-            return false;
-        }
-
-        return true;
+        traverse->oldIdx2 = newIdx2;
+        traverse->pml1 = NULL; // Invalidate cache for lower levels
     }
 
     uint64_t newIdx1 = PML_GET_INDEX(virtAddr, 2);
-    if (traverse->oldIdx1 == newIdx1)
+    if (traverse->pml1 == NULL || traverse->oldIdx1 != newIdx1)
     {
-        return true;
-    }
-
-    traverse->oldIdx1 = newIdx1;
-
-    uint64_t newIdx2 = PML_GET_INDEX(virtAddr, 3);
-
-    if (traverse->oldIdx2 == newIdx2)
-    {
-        traverse->pml1 = page_table_get_pml(table, traverse->pml2, newIdx1, flags | PML_WRITE | PML_USER,
-            PML_CALLBACK_NONE, shouldAllocate);
-        return traverse->pml1 != NULL;
-    }
-
-    traverse->oldIdx2 = newIdx2;
-
-    uint64_t newIdx3 = PML_GET_INDEX(virtAddr, 4);
-
-    if (traverse->oldIdx3 == newIdx3)
-    {
-        traverse->pml2 = page_table_get_pml(table, traverse->pml3, newIdx2, flags | PML_WRITE | PML_USER,
-            PML_CALLBACK_NONE, shouldAllocate);
-        if (traverse->pml2 == NULL)
+        if (page_table_get_pml(table, traverse->pml2, newIdx1, flags | PML_WRITE | PML_USER, PML_CALLBACK_NONE,
+                shouldAllocate, &traverse->pml1) == ERR)
         {
             return false;
         }
-
-        traverse->pml1 = page_table_get_pml(table, traverse->pml2, newIdx1, flags | PML_WRITE | PML_USER,
-            PML_CALLBACK_NONE, shouldAllocate);
-        return traverse->pml1 != NULL;
+        traverse->oldIdx1 = newIdx1;
     }
 
-    traverse->oldIdx3 = newIdx3;
-
-    traverse->pml3 = page_table_get_pml(table, table->pml4, newIdx3, (flags | PML_WRITE | PML_USER) & ~PML_GLOBAL,
-        PML_CALLBACK_NONE, shouldAllocate);
-    if (traverse->pml3 == NULL)
-    {
-        return false;
-    }
-
-    traverse->pml2 = page_table_get_pml(table, traverse->pml3, newIdx2, flags | PML_WRITE | PML_USER, PML_CALLBACK_NONE,
-        shouldAllocate);
-    if (traverse->pml2 == NULL)
-    {
-        return false;
-    }
-
-    traverse->pml1 = page_table_get_pml(table, traverse->pml2, newIdx1, flags | PML_WRITE | PML_USER, PML_CALLBACK_NONE,
-        shouldAllocate);
-    return traverse->pml1 != NULL;
+    return true;
 }
 
-static inline void* page_table_get_phys_addr(page_table_t* table, const void* virtAddr)
+static inline uint64_t page_table_get_phys_addr(page_table_t* table, const void* virtAddr, void** outPhysAddr)
 {
     uint64_t offset = ((uint64_t)virtAddr) % PAGE_SIZE;
     virtAddr = (void*)ROUND_DOWN(virtAddr, PAGE_SIZE);
@@ -231,16 +209,17 @@ static inline void* page_table_get_phys_addr(page_table_t* table, const void* vi
     page_table_traverse_t traverse = {0};
     if (!page_table_traverse(table, &traverse, virtAddr, false, PML_NONE))
     {
-        return NULL;
+        return ERR;
     }
 
     pml_entry_t entry = traverse.pml1->entries[PML_GET_INDEX(virtAddr, 1)];
     if (!entry.present)
     {
-        return NULL;
+        return ERR;
     }
 
-    return (void*)((entry.address << 12) + offset);
+    *outPhysAddr = (void*)((entry.address << 12) + offset);
+    return 0;
 }
 
 static inline bool page_table_is_mapped(page_table_t* table, const void* virtAddr, uint64_t pageAmount)
@@ -298,15 +277,13 @@ static inline uint64_t page_table_map(page_table_t* table, void* virtAddr, void*
     {
         if (!page_table_traverse(table, &traverse, virtAddr, true, flags))
         {
-            errno = ENOMEM;
             return ERR;
         }
 
         uint64_t idx0 = PML_GET_INDEX((uintptr_t)virtAddr, 1);
-        assert(!traverse.pml1->entries[idx0].present); // If this happens the vmm is broken.
         traverse.pml1->entries[idx0] = pml_entry_create(physAddr, flags, callbackId);
 
-        physAddr = (void*)((uint64_t)physAddr + PAGE_SIZE);
+        physAddr = (void*)((uintptr_t)physAddr + PAGE_SIZE);
         virtAddr = (void*)((uintptr_t)virtAddr + PAGE_SIZE);
     }
 
@@ -328,7 +305,7 @@ static inline void page_table_unmap(page_table_t* table, void* virtAddr, uint64_
         pml_entry_t entry = traverse.pml1->entries[idx0];
         if (entry.owned)
         {
-            pmm_free(PML_LOWER_TO_HIGHER((uint64_t)(entry.address << 12)));
+            table->freePage((void*)pml_entry_address(entry));
         }
 
         traverse.pml1->entries[idx0].raw = 0;
@@ -376,7 +353,6 @@ static inline uint64_t page_table_set_flags(page_table_t* table, void* virtAddr,
         pml_entry_t entry = traverse.pml1->entries[idx0];
         if (!entry.present)
         {
-            errno = ENOENT;
             return ERR;
         }
 
@@ -397,7 +373,7 @@ static inline uint64_t page_table_set_flags(page_table_t* table, void* virtAddr,
     return 0;
 }
 
-static inline void* page_table_find_first_mapped_page(page_table_t* table, void* startAddr, void* endAddr)
+static inline uint64_t page_table_find_first_mapped_page(page_table_t* table, void* startAddr, void* endAddr, void** outAddr)
 {
     void* currentAddr = (void*)ROUND_DOWN((uintptr_t)startAddr, PAGE_SIZE);
 
@@ -410,12 +386,13 @@ static inline void* page_table_find_first_mapped_page(page_table_t* table, void*
             uint64_t pml1Idx = PML_GET_INDEX(currentAddr, 1);
             if (traverse.pml1->entries[pml1Idx].present)
             {
-                return currentAddr;
+                *outAddr = currentAddr;
+                return 0;
             }
         }
 
         currentAddr = (void*)((uintptr_t)currentAddr + PAGE_SIZE);
     }
 
-    return NULL;
+    return ERR;
 }

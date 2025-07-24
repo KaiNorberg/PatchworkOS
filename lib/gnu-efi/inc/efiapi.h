@@ -74,13 +74,14 @@ EFI_STATUS
     OUT VOID                        **Buffer
     );
 
+
 typedef
 EFI_STATUS
 (EFIAPI *EFI_FREE_POOL) (
     IN VOID                         *Buffer
     );
 
-typedef 
+typedef
 EFI_STATUS
 (EFIAPI *EFI_SET_VIRTUAL_ADDRESS_MAP) (
     IN UINTN                        MemoryMapSize,
@@ -95,7 +96,7 @@ EFI_STATUS
 #define EFI_INTERNAL_PTR            0x00000004      // Pointer to internal runtime data
 
 
-typedef 
+typedef
 EFI_STATUS
 (EFIAPI *EFI_CONVERT_POINTER) (
     IN UINTN                        DebugDisposition,
@@ -169,7 +170,7 @@ EFI_STATUS
     IN EFI_EVENT                Event
     );
 
-typedef 
+typedef
 EFI_STATUS
 (EFIAPI *EFI_WAIT_FOR_EVENT) (
     IN UINTN                    NumberOfEvents,
@@ -364,14 +365,14 @@ EFI_STATUS
 
 // Image Entry prototype
 
-typedef 
+typedef
 EFI_STATUS
 (EFIAPI *EFI_IMAGE_ENTRY_POINT) (
     IN EFI_HANDLE                   ImageHandle,
     IN struct _EFI_SYSTEM_TABLE     *SystemTable
     );
 
-typedef 
+typedef
 EFI_STATUS
 (EFIAPI *EFI_IMAGE_LOAD) (
     IN BOOLEAN                      BootPolicy,
@@ -382,7 +383,7 @@ EFI_STATUS
     OUT EFI_HANDLE                  *ImageHandle
     );
 
-typedef 
+typedef
 EFI_STATUS
 (EFIAPI *EFI_IMAGE_START) (
     IN EFI_HANDLE                   ImageHandle,
@@ -716,7 +717,7 @@ EFI_STATUS
     );
 
 typedef
-EFI_STATUS 
+EFI_STATUS
 (EFIAPI *EFI_REGISTER_PROTOCOL_NOTIFY) (
     IN EFI_GUID                 *Protocol,
     IN EFI_EVENT                Event,
@@ -986,4 +987,3 @@ typedef struct _EFI_SYSTEM_TABLE {
 } EFI_SYSTEM_TABLE;
 
 #endif
-

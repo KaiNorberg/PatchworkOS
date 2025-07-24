@@ -1,6 +1,5 @@
 #include "gop.h"
 
-#include "defs.h"
 #include "fb.h"
 #include "log/log.h"
 #include "log/panic.h"
@@ -14,14 +13,14 @@
 #include <sys/fb.h>
 #include <sys/math.h>
 
-static gop_buffer_t gop;
+static boot_gop_t gop;
 
 static void* gop_mmap(fb_t* fb, void* addr, uint64_t length, prot_t prot)
 {
     process_t* process = sched_process();
 
     length = MIN(gop.height * gop.stride * sizeof(uint32_t), length);
-    addr = vmm_map(&process->space, addr, gop.base, length, prot, NULL, NULL);
+    addr = vmm_map(&process->space, addr, gop.physAddr, length, prot, NULL, NULL);
     if (addr == NULL)
     {
         return NULL;
@@ -34,13 +33,13 @@ static fb_t fb = {
     .mmap = gop_mmap,
 };
 
-void gop_init(gop_buffer_t* gopBuffer)
+void gop_init(boot_gop_t* in)
 {
-    fb.info.width = gopBuffer->width;
-    fb.info.height = gopBuffer->height;
-    fb.info.stride = gopBuffer->stride;
+    fb.info.width = in->width;
+    fb.info.height = in->height;
+    fb.info.stride = in->stride;
     fb.info.format = FB_ARGB32;
-    gop = *gopBuffer;
+    gop = *in;
 
     if (fb_expose(&fb) == ERR)
     {

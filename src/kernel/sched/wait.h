@@ -1,7 +1,8 @@
 #pragma once
 
-#include "cpu/regs.h"
 #include "sync/lock.h"
+
+#include <common/regs.h>
 
 #include <sys/list.h>
 #include <sys/proc.h>

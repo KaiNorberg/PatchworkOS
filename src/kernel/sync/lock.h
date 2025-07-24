@@ -1,13 +1,13 @@
 #pragma once
 
-#include <stdatomic.h>
-
 #include "cpu/trap.h"
 #ifndef NDEBUG
 #include "drivers/systime/systime.h"
 #include "log/panic.h"
 #endif
-#include "defs.h"
+
+#include <common/defs.h>
+#include <stdatomic.h>
 
 #define LOCK_DEADLOCK_TIMEOUT (CLOCKS_PER_SEC / 10)
 

@@ -3,9 +3,8 @@
 
 // TODO: Add more tests
 
-#include "defs.h"
-
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef uint64_t (*test_func_t)(void);
 

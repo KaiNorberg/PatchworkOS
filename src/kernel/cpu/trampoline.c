@@ -13,7 +13,8 @@ static void* backupBuffer;
 
 void trampoline_init(void)
 {
-    page_table_map(vmm_kernel_pml(), TRAMPOLINE_PHYSICAL_START, TRAMPOLINE_PHYSICAL_START, 1, PML_WRITE, PML_CALLBACK_NONE);
+    page_table_map(vmm_kernel_pml(), TRAMPOLINE_PHYSICAL_START, TRAMPOLINE_PHYSICAL_START, 1, PML_WRITE,
+        PML_CALLBACK_NONE);
 
     backupBuffer = pmm_alloc();
     memcpy(backupBuffer, TRAMPOLINE_PHYSICAL_START, PAGE_SIZE);

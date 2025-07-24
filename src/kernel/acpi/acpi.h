@@ -1,6 +1,8 @@
 #pragma once
 
-#include "defs.h"
+#include <common/defs.h>
+
+#include <stdint.h>
 
 #define ACPI_REVISION_1_0 0
 #define ACPI_REVISION_2_0 2

@@ -22,24 +22,14 @@
  */
 
 /**
- * @brief Kernel pml flags.
- * @ingroup kernel_mem_vmm
- *
- * The `VMM_KERNEL_PML_FLAGS` constant defines the flags that all pages allocated in kernel space will have.
- *
- */
-#define VMM_KERNEL_PML_FLAGS (PML_GLOBAL)
-
-/**
  * @brief Initializes the Virtual Memory Manager.
  * @ingroup kernel_mem_vmm
  *
- * @param memoryMap The EFI memory map provided by the bootloader.
+ * @param memory The memory information provided by the bootloader.
+ * @param gop The graphics output protocol provided by the bootloader.
  * @param kernel The structure provided by the bootloader specifying for example the addresses of the kernel.
- * @param gopBuffer The gop framebuffer provided by the bootloader, which will need to be remapped when the kernel
- * isloaded, should probably be replaced.
  */
-void vmm_init(efi_mem_map_t* memoryMap, boot_kernel_t* kernel, gop_buffer_t* gopBuffer);
+void vmm_init(boot_memory_t* memory, boot_gop_t* gop, boot_kernel_t* kernel);
 
 /**
  * @brief Initializes VMM for a CPU.

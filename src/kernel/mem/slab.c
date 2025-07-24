@@ -1,6 +1,5 @@
 #include "slab.h"
 
-#include "defs.h"
 #include "sched/thread.h"
 
 static cache_t* cache_new(slab_t* slab, uint64_t objectSize, uint64_t size)

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "defs.h"
 #include "smp.h"
 
 #define TRAMPOLINE_PHYSICAL_START ((void*)0x8000)
