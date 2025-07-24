@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 
-void main(boot_info_t* bootInfo)
+void kmain(boot_info_t* bootInfo)
 {
     kernel_init(bootInfo);
 

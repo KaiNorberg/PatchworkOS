@@ -51,8 +51,11 @@ static void vmm_kernel_update_free_address(uintptr_t virtAddr, uint64_t pageAmou
     }
 }
 
-static void vmm_load_page_table(boot_memory_map_t* map, boot_gop_t* gop, boot_kernel_t* kernel)
+void vmm_init(boot_memory_t* memory, boot_gop_t* gop, boot_kernel_t* kernel)
 {
+    kernelFreeAddress = ROUND_UP((uintptr_t)&_kernelEnd, PAGE_SIZE);
+    lock_init(&kernelLock);
+
     // Kernel pml must be within 32 bit boundary because smp trampoline loads it as a dword.
     kernelPageTable.pml4 = pmm_alloc_bitmap(1, UINT32_MAX, 0);
     if (kernelPageTable.pml4 == NULL)
@@ -63,9 +66,15 @@ static void vmm_load_page_table(boot_memory_map_t* map, boot_gop_t* gop, boot_ke
     kernelPageTable.allocPage = pmm_alloc;
     kernelPageTable.freePage = pmm_free;
 
-    for (uint64_t i = 0; i < map->length; i++)
+    for (uint64_t i = 0; i < memory->map.length; i++)
     {
-        const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, i);
+        const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(&memory->map, i);
+        if (page_table_map(&kernelPageTable, (void*)desc->PhysicalStart, (void*)desc->PhysicalStart, desc->NumberOfPages, PML_WRITE,
+                PML_CALLBACK_NONE) == ERR)
+        {
+            panic(NULL, "Failed to map memory descriptor %d (phys=0x%016lx-0x%016lx virt=0x%016lx)", i, desc->PhysicalStart,
+                desc->PhysicalStart + desc->NumberOfPages * PAGE_SIZE, desc->VirtualStart);
+        }
         if (page_table_map(&kernelPageTable, (void*)desc->VirtualStart, (void*)desc->PhysicalStart, desc->NumberOfPages, PML_WRITE,
                 PML_CALLBACK_NONE) == ERR)
         {
@@ -88,19 +97,11 @@ static void vmm_load_page_table(boot_memory_map_t* map, boot_gop_t* gop, boot_ke
         panic(NULL, "Failed to map GOP memory");
     }
 
+    vmm_cpu_init();
+
     LOG_INFO("loading kernel page table... ");
     page_table_load(&kernelPageTable);
     LOG_INFO("done!\n");
-}
-
-void vmm_init(boot_memory_t* memory, boot_gop_t* gop, boot_kernel_t* kernel)
-{
-    kernelFreeAddress = ROUND_UP((uintptr_t)&_kernelEnd, PAGE_SIZE);
-
-    lock_init(&kernelLock);
-    vmm_load_page_table(&memory->map, gop, kernel);
-
-    vmm_cpu_init();
 }
 
 void vmm_cpu_init(void)

@@ -1,16 +1,19 @@
 [bits 64]
 
-extern main
+extern kmain
 
 section .text
 
 global _start
 _start:
     cli
+    cld
+
     mov rsp, kernel_stack_top
+    and rsp, ~0xF
     xor rbp, rbp
 
-    call main
+    call kmain
 .halt:
     hlt
     jmp .halt

@@ -23,6 +23,7 @@ static bool acpi_is_checksum_valid(void* table, uint64_t length)
 
 void acpi_init(xsdp_t* xsdp)
 {
+    LOG_INFO("Loading ACPI tables\n");
     xsdp = PML_LOWER_TO_HIGHER(xsdp);
 
     if (xsdp->revision != ACPI_REVISION_2_0)

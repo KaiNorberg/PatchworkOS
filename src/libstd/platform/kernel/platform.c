@@ -14,10 +14,12 @@
 
 void _platform_early_init(void)
 {
+    LOG_DEBUG("kernel stdlib early init\n");
 }
 
 void _platform_late_init(void)
 {
+    LOG_DEBUG("kernel stdlib late init\n");
 }
 
 int* _platform_errno_get(void)
