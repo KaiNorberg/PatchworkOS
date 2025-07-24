@@ -2,6 +2,8 @@
 
 #include "trap.h"
 
+#include <stdbool.h>
+
 #define IRQ_PIT 0x0
 #define IRQ_PS2_KBD 0x1
 #define IRQ_CASCADE 0x2
@@ -20,10 +22,18 @@
 #define IRQ_SECONDARY_ATA_HARD_DRIVE 0xF
 #define IRQ_AMOUNT 0x10
 
-#define IRQ_MAX_HANDLER 16
+#define IRQ_MAX_CALLBACK 16
 
-typedef void (*irq_handler_t)(uint8_t irq);
+typedef void (*irq_callback_t)(uint8_t irq);
+
+typedef struct
+{
+    irq_callback_t callbacks[IRQ_MAX_CALLBACK];
+    uint32_t callbackAmount;
+    bool redirected;
+} irq_handler_t;
 
 void irq_dispatch(trap_frame_t* trapFrame);
 
-void irq_install(irq_handler_t handler, uint8_t irq);
+void irq_install(irq_callback_t callback, uint8_t irq);
+void irq_uninstall(irq_callback_t callback, uint8_t irq);

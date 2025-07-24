@@ -5,6 +5,8 @@
 #include <sys/proc.h>
 #include <time.h>
 
+// TODO: Switch to subscription based timers.
+
 /**
  * @brief System time and timers.
  * @defgroup kernel_systime systime

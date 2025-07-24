@@ -3,14 +3,14 @@
 #include "cpu/smp.h"
 #include "drivers/systime/systime.h"
 #include "fs/sysfs.h"
-#include "log/log.h"
+#include "fs/file.h"
+#include "fs/vfs.h"
+#include "mem/pmm.h"
 #include "log/panic.h"
 #include "mem/heap.h"
 
-#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <sys/io.h>
 #include <sys/math.h>
 

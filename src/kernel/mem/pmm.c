@@ -231,13 +231,13 @@ static void pmm_free_pages_unlocked(void* address, uint64_t count)
     }
 }
 
-static void pmm_detect_memory(boot_memory_map_t* memoryMap)
+static void pmm_detect_memory(boot_memory_map_t* map)
 {
     LOG_INFO("UEFI-provided memory map\n");
 
-    for (uint64_t i = 0; i < memoryMap->length; i++)
+    for (uint64_t i = 0; i < map->length; i++)
     {
-        const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
+        const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, i);
 
         if (pmm_is_efi_mem_ram(desc->Type))
         {
@@ -246,11 +246,11 @@ static void pmm_detect_memory(boot_memory_map_t* memoryMap)
     }
 }
 
-static void pmm_load_memory(boot_memory_map_t* memoryMap)
+static void pmm_load_memory(boot_memory_map_t* map)
 {
-    for (uint64_t i = 0; i < memoryMap->length; i++)
+    for (uint64_t i = 0; i < map->length; i++)
     {
-        const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
+        const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, i);
 
         if (pmm_is_efi_mem_available(desc->Type))
         {
@@ -268,14 +268,14 @@ static void pmm_load_memory(boot_memory_map_t* memoryMap)
         (freePageAmount * PAGE_SIZE) / 1000000, ((pageAmount - freePageAmount) * PAGE_SIZE) / 1000000);
 }
 
-void pmm_init(boot_memory_map_t* memoryMap)
+void pmm_init(boot_memory_map_t* map)
 {
-    pmm_detect_memory(memoryMap);
+    pmm_detect_memory(map);
 
     pmm_stack_init();
     pmm_bitmap_init();
 
-    pmm_load_memory(memoryMap);
+    pmm_load_memory(map);
 }
 
 void* pmm_alloc(void)

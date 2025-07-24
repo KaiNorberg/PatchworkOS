@@ -5,7 +5,7 @@
 #include "cpu/apic.h"
 #include "cpu/gdt.h"
 #include "cpu/idt.h"
-#include "cpu/pic.h"
+#include "cpu/syscalls.h"
 #include "cpu/simd.h"
 #include "cpu/smp.h"
 #include "drivers/const.h"
@@ -67,9 +67,17 @@ void kernel_init(boot_info_t* bootInfo)
 
     _std_init();
 
+    while (1)
+    {
+        LOG_INFO("Test\n");
+    }
+
     acpi_init(bootInfo->rsdp, &bootInfo->memory.map);
     hpet_init();
-    systime_init();
+    madt_init();
+    apic_init();
+    lapic_cpu_init();
+    systime_init();    
 
     process_kernel_init();
     sched_init();
@@ -81,11 +89,6 @@ void kernel_init(boot_info_t* bootInfo)
     log_file_expose();
     process_procfs_init();
 
-    madt_init();
-    apic_init();
-    lapic_cpu_init();
-
-    pic_init();
     simd_cpu_init();
 
     smp_others_init();
@@ -103,6 +106,7 @@ void kernel_init(boot_info_t* bootInfo)
     statistics_init();
 
     kernel_free_loader_data(&bootInfo->memory.map);
+    vmm_unmap_lower_half();
 
 #ifndef NDEBUG
     testing_run_tests();

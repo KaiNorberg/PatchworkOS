@@ -69,17 +69,17 @@ void vmm_init(boot_memory_t* memory, boot_gop_t* gop, boot_kernel_t* kernel)
     kernelPageTable.allocPage = pmm_alloc;
     kernelPageTable.freePage = pmm_free;
 
-    LOG_INFO("kernel pml4 initialized at 0x%lx\n", kernelPageTable.pml4);
+    LOG_INFO("kernel pml4 allocated at 0x%lx\n", kernelPageTable.pml4);
+
+    // Keep using the bootloaders memory mappings during initialization.
+    for (uint64_t i = 0; i < PML_ENTRY_AMOUNT / 2; i++)
+    {
+        kernelPageTable.pml4->entries[i] = memory->table.pml4->entries[i];
+    }
 
     for (uint64_t i = 0; i < memory->map.length; i++)
     {
         const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(&memory->map, i);
-        if (page_table_map(&kernelPageTable, (void*)desc->PhysicalStart, (void*)desc->PhysicalStart,
-                desc->NumberOfPages, PML_WRITE, PML_CALLBACK_NONE) == ERR)
-        {
-            panic(NULL, "Failed to map memory descriptor %d (phys=0x%016lx-0x%016lx virt=0x%016lx)", i,
-                desc->PhysicalStart, desc->PhysicalStart + desc->NumberOfPages * PAGE_SIZE, desc->VirtualStart);
-        }
         if (page_table_map(&kernelPageTable, (void*)desc->VirtualStart, (void*)desc->PhysicalStart, desc->NumberOfPages,
                 PML_WRITE, PML_CALLBACK_NONE) == ERR)
         {
@@ -111,6 +111,14 @@ void vmm_init(boot_memory_t* memory, boot_gop_t* gop, boot_kernel_t* kernel)
     LOG_INFO("done!\n");
 
     // TODO: The lower half currently remains mapped in the table, this is wasting a few kb of memory, fix it.
+}
+
+void vmm_unmap_lower_half(void)
+{
+    for (uint64_t i = 0; i < PML_ENTRY_AMOUNT / 2; i++)
+    {
+        kernelPageTable.pml4->entries[i].raw = 0;
+    }
 }
 
 void vmm_cpu_init(void)

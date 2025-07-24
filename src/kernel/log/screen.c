@@ -1,11 +1,7 @@
 #include "screen.h"
 
 #include "glyphs.h"
-#include "mem/heap.h"
-#include "sched/thread.h"
 
-#include <assert.h>
-#include <errno.h>
 #include <sys/math.h>
 
 static screen_line_t* screen_buffer_get_line(screen_buffer_t* buffer, uint64_t y)
@@ -59,7 +55,8 @@ static void screen_buffer_flush(screen_buffer_t* buffer, boot_gop_t* gop)
 
         for (uint64_t pixelY = 0; pixelY < GLYPH_HEIGHT; pixelY++)
         {
-            memcpy(&gop->virtAddr[buffer->invalidStart.x * GLYPH_WIDTH + (pixelY + y * GLYPH_HEIGHT) * gop->stride],
+            memcpy(&gop->virtAddr[buffer->invalidStart.x * GLYPH_WIDTH + (y * GLYPH_HEIGHT + pixelY) * gop->stride]
+,
                 &line->pixels[buffer->invalidStart.x * GLYPH_WIDTH + pixelY * buffer->stride],
                 (buffer->invalidEnd.x - buffer->invalidStart.x) * GLYPH_WIDTH * sizeof(uint32_t));
         }

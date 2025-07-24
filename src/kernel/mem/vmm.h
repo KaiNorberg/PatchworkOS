@@ -8,16 +8,10 @@
 #include <sys/list.h>
 #include <sys/proc.h>
 
-// TODO: Implement buffer pinning for system calls.
-
 /**
  * @brief Virtual Memory Manager (VMM).
  * @defgroup kernel_mem_vmm VMM
  * @ingroup kernel_mem
- *
- * The virtual memory manager in patchwork is intended to run in constant-time, for more information refer to the
- * "*Mostly* Constant-Time Memory Management" section of the README, this file will assume you have read it to avoid
- * duplicate information.
  *
  */
 
@@ -30,6 +24,13 @@
  * @param kernel The structure provided by the bootloader specifying for example the addresses of the kernel.
  */
 void vmm_init(boot_memory_t* memory, boot_gop_t* gop, boot_kernel_t* kernel);
+
+/**
+ * @brief Unmaps the lower half of the address space after kernel initialization.
+ * @ingroup kernel_mem_vmm
+ * 
+ */
+void vmm_unmap_lower_half(void);
 
 /**
  * @brief Initializes VMM for a CPU.

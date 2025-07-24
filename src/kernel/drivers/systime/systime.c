@@ -6,11 +6,11 @@
 #include "cpu/vectors.h"
 #include "hpet.h"
 #include "log/log.h"
+#include "cpu/syscalls.h"
 
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <sys/math.h>
 
 static _Atomic(clock_t) accumulator;

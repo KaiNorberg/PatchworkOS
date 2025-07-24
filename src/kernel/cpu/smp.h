@@ -1,14 +1,13 @@
 #pragma once
 
 #include "drivers/systime/systime.h"
-#include "mem/pmm.h"
 #include "sched/sched.h"
 #include "sched/wait.h"
-#include "sync/futex.h"
-#include "syscalls.h"
 #include "trap.h"
 #include "tss.h"
 #include "utils/statistics.h"
+
+#include <stdint.h>
 
 /**
  * @brief Symmetric multi processing.
@@ -17,7 +16,7 @@
  *
  */
 
-#define CPU_MAX_AMOUNT 255
+#define SMP_CPU_MAX UINT8_MAX
 
 #define IPI_QUEUE_MAX 4
 

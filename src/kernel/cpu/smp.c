@@ -20,7 +20,7 @@
 #include <stdint.h>
 
 static cpu_t bootstrapCpu;
-static cpu_t* cpus[CPU_MAX_AMOUNT];
+static cpu_t* cpus[SMP_CPU_MAX];
 static uint16_t cpuAmount = 0;
 static bool isReady = false;
 
@@ -80,21 +80,20 @@ void smp_others_init(void)
     trampoline_init();
 
     cpuid_t newId = 1;
-    uint8_t lapicId = lapic_id();
+    uint8_t lapicId = lapic_self_id();
 
     cpus[0]->lapicId = lapicId;
     LOG_INFO("bootstrap cpu, ready\n", (uint64_t)cpus[0]->id);
 
-    madt_t* madt = madt_get();
     madt_lapic_t* record;
-    MADT_FOR_EACH(madt, record)
+    MADT_FOR_EACH(madt_get(), record)
     {
         if (record->header.type != MADT_LAPIC)
         {
             continue;
         }
 
-        if (record->flags & MADT_LAPIC_INITABLE && lapicId != record->lapicId)
+        if (record->flags & MADT_LAPIC_ENABLED && lapicId != record->id)
         {
             cpuid_t id = newId++;
             cpus[id] = heap_alloc(sizeof(cpu_t), HEAP_NONE);
@@ -102,7 +101,7 @@ void smp_others_init(void)
             {
                 panic(NULL, "Failed to allocate memory for cpu\n");
             }
-            cpu_init(cpus[id], id, record->lapicId, false);
+            cpu_init(cpus[id], id, record->id, false);
             cpuAmount++;
             if (cpu_start(cpus[id]) == ERR)
             {
@@ -176,7 +175,7 @@ cpu_t* smp_self_brute(void)
 {
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
-    uint8_t lapicId = lapic_id();
+    uint8_t lapicId = lapic_self_id();
     for (uint16_t id = 0; id < cpuAmount; id++)
     {
         if (cpus[id]->lapicId == lapicId)

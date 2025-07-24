@@ -95,7 +95,6 @@ static bool acpi_is_xsdt_valid(xsdt_t* xsdt)
 static void acpi_load_tables(void)
 {
     tableAmount = (xsdt->header.length - sizeof(sdt_t)) / sizeof(sdt_t*);
-    LOG_INFO("found %lu tables\n", tableAmount);
 
     cachedTables = heap_alloc(tableAmount * sizeof(sdt_t*), HEAP_NONE);
     if (cachedTables == NULL)
@@ -132,7 +131,7 @@ static void acpi_load_tables(void)
         char oemId[7] = {0};
         memcpy(oemId, table->oemId, 6);
 
-        LOG_INFO("ACPI: %s 0x%016lx 0x%06x v%02X %s\n", signature, table, table->length, table->revision, oemId);
+        LOG_INFO("%s 0x%016lx 0x%06x v%02X %s\n", signature, table, table->length, table->revision, oemId);
     }
 }
 
