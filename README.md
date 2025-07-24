@@ -34,7 +34,7 @@
 
 * Custom C standard library and system libraries.
 * Shared memory based window manager.
-* Theming via [configuration files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg).
+* Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg).
 
 And much more...
 
