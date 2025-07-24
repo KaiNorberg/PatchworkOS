@@ -22,7 +22,8 @@ EFI_STATUS mem_init(void)
 {
     Print(L"Initializing basic allocator... ");
 
-    EFI_STATUS status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, MEM_BASIC_ALLOCATOR_MAX_PAGES, &basicAllocator.buffer);
+    EFI_STATUS status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData,
+        MEM_BASIC_ALLOCATOR_MAX_PAGES, &basicAllocator.buffer);
     if (EFI_ERROR(status))
     {
         Print(L"failed to allocate buffer (0x%lx)!\n", status);
@@ -67,8 +68,7 @@ NORETURN static void panic_without_boot_services(void)
 {
     // Getting here would be bad, we have exited boot services so we cant print to the screen, and are out of
     // memory.
-    memset32(basicAllocator.gop->physAddr, 0xFF0000,
-        basicAllocator.gop->size / sizeof(uint32_t));
+    memset32(basicAllocator.gop->physAddr, 0xFF0000, basicAllocator.gop->size / sizeof(uint32_t));
     for (;;)
     {
         asm("cli; hlt");
@@ -102,8 +102,8 @@ void mem_page_table_init(page_table_t* table, boot_memory_map_t* map, boot_gop_t
         }
     }
 
-    if (page_table_map(table, (void*)kernel->virtStart, (void*)kernel->physStart, BYTES_TO_PAGES(kernel->size), PML_WRITE,
-            PML_CALLBACK_NONE) == ERR)
+    if (page_table_map(table, (void*)kernel->virtStart, (void*)kernel->physStart, BYTES_TO_PAGES(kernel->size),
+            PML_WRITE, PML_CALLBACK_NONE) == ERR)
     {
         panic_without_boot_services();
     }

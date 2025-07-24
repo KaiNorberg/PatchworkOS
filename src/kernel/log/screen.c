@@ -88,8 +88,7 @@ static void screen_clear(screen_t* screen)
 
     for (uint64_t y = 0; y < screen->gop.height; y++)
     {
-        memset(&screen->gop.virtAddr[y * screen->gop.stride], 0,
-            screen->gop.width * sizeof(uint32_t));
+        memset(&screen->gop.virtAddr[y * screen->gop.stride], 0, screen->gop.width * sizeof(uint32_t));
     }
 }
 

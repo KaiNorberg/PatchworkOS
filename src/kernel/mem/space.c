@@ -93,7 +93,8 @@ static void* space_find_free_region(space_t* space, uint64_t pageAmount)
     while (addr < PML_LOWER_HALF_END)
     {
         void* firstMappedPage;
-        if (page_table_find_first_mapped_page(&space->pageTable, (void*)addr, (void*)(addr + pageAmount * PAGE_SIZE), &firstMappedPage) != ERR)
+        if (page_table_find_first_mapped_page(&space->pageTable, (void*)addr, (void*)(addr + pageAmount * PAGE_SIZE),
+                &firstMappedPage) != ERR)
         {
             addr = (uintptr_t)firstMappedPage + PAGE_SIZE;
             continue;

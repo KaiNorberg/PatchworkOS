@@ -1,5 +1,6 @@
 #pragma once
 
+#include <boot/boot_info.h>
 #include <common/defs.h>
 
 #include <stdint.h>
@@ -39,6 +40,6 @@ typedef struct PACKED
     sdt_t* tables[];
 } xsdt_t;
 
-void acpi_init(xsdp_t* xsdp);
+void acpi_init(xsdp_t* xsdp, boot_memory_map_t* map);
 
 sdt_t* acpi_lookup(const char* signature);

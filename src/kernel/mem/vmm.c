@@ -28,7 +28,8 @@ static void* vmm_kernel_find_free_region(uint64_t pageAmount)
     while (addr + pageAmount * PAGE_SIZE <= PML_HIGHER_HALF_END)
     {
         void* firstMappedPage;
-        if (page_table_find_first_mapped_page(&kernelPageTable, (void*)addr, (void*)(addr + pageAmount * PAGE_SIZE), &firstMappedPage) == ERR)
+        if (page_table_find_first_mapped_page(&kernelPageTable, (void*)addr, (void*)(addr + pageAmount * PAGE_SIZE),
+                &firstMappedPage) == ERR)
         {
             kernelFreeAddress = addr + pageAmount * PAGE_SIZE;
             return (void*)addr;
@@ -56,6 +57,8 @@ void vmm_init(boot_memory_t* memory, boot_gop_t* gop, boot_kernel_t* kernel)
     kernelFreeAddress = ROUND_UP((uintptr_t)&_kernelEnd, PAGE_SIZE);
     lock_init(&kernelLock);
 
+    LOG_INFO("linker shows first free address 0x%lx\n", kernelFreeAddress);
+
     // Kernel pml must be within 32 bit boundary because smp trampoline loads it as a dword.
     kernelPageTable.pml4 = pmm_alloc_bitmap(1, UINT32_MAX, 0);
     if (kernelPageTable.pml4 == NULL)
@@ -66,33 +69,37 @@ void vmm_init(boot_memory_t* memory, boot_gop_t* gop, boot_kernel_t* kernel)
     kernelPageTable.allocPage = pmm_alloc;
     kernelPageTable.freePage = pmm_free;
 
+    LOG_INFO("kernel pml4 initialized at 0x%lx\n", kernelPageTable.pml4);
+
     for (uint64_t i = 0; i < memory->map.length; i++)
     {
         const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(&memory->map, i);
-        if (page_table_map(&kernelPageTable, (void*)desc->PhysicalStart, (void*)desc->PhysicalStart, desc->NumberOfPages, PML_WRITE,
-                PML_CALLBACK_NONE) == ERR)
+        if (page_table_map(&kernelPageTable, (void*)desc->PhysicalStart, (void*)desc->PhysicalStart,
+                desc->NumberOfPages, PML_WRITE, PML_CALLBACK_NONE) == ERR)
         {
-            panic(NULL, "Failed to map memory descriptor %d (phys=0x%016lx-0x%016lx virt=0x%016lx)", i, desc->PhysicalStart,
-                desc->PhysicalStart + desc->NumberOfPages * PAGE_SIZE, desc->VirtualStart);
+            panic(NULL, "Failed to map memory descriptor %d (phys=0x%016lx-0x%016lx virt=0x%016lx)", i,
+                desc->PhysicalStart, desc->PhysicalStart + desc->NumberOfPages * PAGE_SIZE, desc->VirtualStart);
         }
-        if (page_table_map(&kernelPageTable, (void*)desc->VirtualStart, (void*)desc->PhysicalStart, desc->NumberOfPages, PML_WRITE,
-                PML_CALLBACK_NONE) == ERR)
+        if (page_table_map(&kernelPageTable, (void*)desc->VirtualStart, (void*)desc->PhysicalStart, desc->NumberOfPages,
+                PML_WRITE, PML_CALLBACK_NONE) == ERR)
         {
-            panic(NULL, "Failed to map memory descriptor %d (phys=0x%016lx-0x%016lx virt=0x%016lx)", i, desc->PhysicalStart,
-                desc->PhysicalStart + desc->NumberOfPages * PAGE_SIZE, desc->VirtualStart);
+            panic(NULL, "Failed to map memory descriptor %d (phys=0x%016lx-0x%016lx virt=0x%016lx)", i,
+                desc->PhysicalStart, desc->PhysicalStart + desc->NumberOfPages * PAGE_SIZE, desc->VirtualStart);
         }
     }
 
-    LOG_INFO("kernel virt=[0x%016lx-0x%016lx] phys=[0x%016lx-0x%016lx]\n", kernel->virtStart, kernel->virtStart + kernel->size, kernel->physStart, kernel->physStart + kernel->size);
-    if (page_table_map(&kernelPageTable, (void*)kernel->virtStart, (void*)kernel->physStart, BYTES_TO_PAGES(kernel->size), PML_WRITE,
-            PML_CALLBACK_NONE) == ERR)
+    LOG_INFO("kernel virt=[0x%016lx-0x%016lx] phys=[0x%016lx-0x%016lx]\n", kernel->virtStart,
+        kernel->virtStart + kernel->size, kernel->physStart, kernel->physStart + kernel->size);
+    if (page_table_map(&kernelPageTable, (void*)kernel->virtStart, (void*)kernel->physStart,
+            BYTES_TO_PAGES(kernel->size), PML_WRITE, PML_CALLBACK_NONE) == ERR)
     {
         panic(NULL, "Failed to map kernel memory");
     }
 
-    LOG_INFO("   GOP virt=[0x%016lx-0x%016lx] phys=[0x%016lx-0x%016lx]\n", gop->virtAddr, gop->virtAddr + gop->size, gop->physAddr, gop->physAddr + gop->size);
-    if (page_table_map(&kernelPageTable, (void*)gop->virtAddr, (void*)gop->physAddr, BYTES_TO_PAGES(gop->size), PML_WRITE,
-            PML_CALLBACK_NONE) == ERR)
+    LOG_INFO("   GOP virt=[0x%016lx-0x%016lx] phys=[0x%016lx-0x%016lx]\n", gop->virtAddr, gop->virtAddr + gop->size,
+        gop->physAddr, gop->physAddr + gop->size);
+    if (page_table_map(&kernelPageTable, (void*)gop->virtAddr, (void*)gop->physAddr, BYTES_TO_PAGES(gop->size),
+            PML_WRITE, PML_CALLBACK_NONE) == ERR)
     {
         panic(NULL, "Failed to map GOP memory");
     }

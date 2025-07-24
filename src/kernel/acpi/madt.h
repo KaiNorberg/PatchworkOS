@@ -7,8 +7,11 @@
 #define MADT_LAPIC_INITABLE (1 << 0)
 
 #define MADT_FOR_EACH(madt, record) \
-    for (record = (typeof(record))madt->records; (uint64_t)record < (uint64_t)madt + madt->header.length; \
-        record = (typeof(record))((uint64_t)record + record->header.length))
+    for (record = (typeof(record))madt->records; \
+        (uint8_t*)record < (uint8_t*)madt + madt->header.length && \
+        (uint8_t*)record + sizeof(madt_header_t) <= (uint8_t*)madt + madt->header.length && \
+        (uint8_t*)record + record->header.length <= (uint8_t*)madt + madt->header.length; \
+        record = (typeof(record))((uint8_t*)record + record->header.length))
 
 typedef struct PACKED
 {

@@ -373,7 +373,8 @@ static inline uint64_t page_table_set_flags(page_table_t* table, void* virtAddr,
     return 0;
 }
 
-static inline uint64_t page_table_find_first_mapped_page(page_table_t* table, void* startAddr, void* endAddr, void** outAddr)
+static inline uint64_t page_table_find_first_mapped_page(page_table_t* table, void* startAddr, void* endAddr,
+    void** outAddr)
 {
     void* currentAddr = (void*)ROUND_DOWN((uintptr_t)startAddr, PAGE_SIZE);
 

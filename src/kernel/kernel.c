@@ -67,7 +67,7 @@ void kernel_init(boot_info_t* bootInfo)
 
     _std_init();
 
-    acpi_init(bootInfo->rsdp);
+    acpi_init(bootInfo->rsdp, &bootInfo->memory.map);
     hpet_init();
     systime_init();
 

@@ -62,8 +62,9 @@ static EFI_STATUS determine_kernel_bounds(const elf_phdr_t* phdrs, const elf_hdr
     return EFI_SUCCESS;
 }
 
-static EFI_STATUS load_kernel_segments(EFI_FILE* file, uintptr_t physStart, uintptr_t virtStart, uint64_t kernelPageAmount,
-    const elf_phdr_t* phdrs, const elf_hdr_t* header, uint64_t phdrTableSize, uint64_t fileSize)
+static EFI_STATUS load_kernel_segments(EFI_FILE* file, uintptr_t physStart, uintptr_t virtStart,
+    uint64_t kernelPageAmount, const elf_phdr_t* phdrs, const elf_hdr_t* header, uint64_t phdrTableSize,
+    uint64_t fileSize)
 {
     if (file == NULL || phdrs == NULL || header == NULL)
     {
@@ -238,8 +239,8 @@ EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_HANDLE imageHandle)
     kernelPageAmount = BYTES_TO_PAGES(kernelSize);
 
     uintptr_t physStart;
-    status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiReservedMemoryType, kernelPageAmount,
-        &physStart);
+    status =
+        uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiReservedMemoryType, kernelPageAmount, &physStart);
     if (EFI_ERROR(status))
     {
         Print(L"failed to allocate %llu pages for kernel (0x%x)!\n", kernelPageAmount, status);
@@ -253,8 +254,8 @@ EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_HANDLE imageHandle)
 
     Print(L"phys=0x%llx virt=0x%llx size=%llu KB... ", kernel->physStart, kernel->virtStart, kernel->size / 1024);
 
-    status = load_kernel_segments(file, (uintptr_t)kernel->physStart, kernel->virtStart, kernelPageAmount, phdrs, &header, phdrTableSize,
-        fileSize);
+    status = load_kernel_segments(file, (uintptr_t)kernel->physStart, kernel->virtStart, kernelPageAmount, phdrs,
+        &header, phdrTableSize, fileSize);
     if (EFI_ERROR(status))
     {
         Print(L"failed to load kernel segments (0x%x)!\n", status);
