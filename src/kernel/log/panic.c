@@ -320,47 +320,47 @@ void panic(const trap_frame_t* trapFrame, const char* format, ...)
     LOG_PANIC("control regs: CR0=0x%016llx CR2=0x%016llx CR3=0x%016llx CR4=0x%016llx\n", cr0, cr2, cr3, cr4);
 
     LOG_PANIC("cr0 flags:");
-    if (cr0 & (1 << 0))
+    if (cr0 & CR0_PROTECTED_MODE_ENABLE)
     {
         LOG_PANIC(" pe");
     }
-    if (cr0 & (1 << 1))
+    if (cr0 & CR0_MONITOR_CO_PROCESSOR)
     {
         LOG_PANIC(" mp");
     }
-    if (cr0 & (1 << 2))
+    if (cr0 & CR0_EMULATION)
     {
         LOG_PANIC(" em");
     }
-    if (cr0 & (1 << 3))
+    if (cr0 & CR0_TASK_SWITCHED)
     {
         LOG_PANIC(" ts");
     }
-    if (cr0 & (1 << 4))
+    if (cr0 & CR0_EXTENSION_TYPE)
     {
         LOG_PANIC(" et");
     }
-    if (cr0 & (1 << 5))
+    if (cr0 & CR0_NUMERIC_ERROR_ENABLE)
     {
         LOG_PANIC(" ne");
     }
-    if (cr0 & (1 << 16))
+    if (cr0 & CR0_WRITE_PROTECT)
     {
         LOG_PANIC(" wp");
     }
-    if (cr0 & (1 << 18))
+    if (cr0 & CR0_ALIGNMENT_MASK)
     {
         LOG_PANIC(" am");
     }
-    if (cr0 & (1 << 29))
+    if (cr0 & CR0_NOT_WRITE_THROUGH)
     {
         LOG_PANIC(" nw");
     }
-    if (cr0 & (1 << 30))
+    if (cr0 & CR0_CACHE_DISABLE)
     {
         LOG_PANIC(" cd");
     }
-    if (cr0 & (1 << 31))
+    if (cr0 & CR0_PAGING_ENABLE)
     {
         LOG_PANIC(" pg");
     }

@@ -95,6 +95,7 @@ doxygen:
 QEMU_MEMORY ?= 1G
 QEMU_CPUS ?= $(shell nproc 2>/dev/null || echo 8)
 QEMU_MACHINE ?= q35
+QEMU_ARGS ?=
 
 QEMU_FLAGS = \
 	-M $(QEMU_MACHINE) \
@@ -120,4 +121,4 @@ ifeq ($(GDB),1)
 endif
 
 run: all
-	qemu-system-x86_64 $(QEMU_FLAGS)
+	qemu-system-x86_64 $(QEMU_FLAGS) $(QEMU_ARGS)

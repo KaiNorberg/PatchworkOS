@@ -34,6 +34,7 @@
 
 * Custom C standard library and system libraries.
 * Shared memory based window manager.
+* Highly modular window manager, the taskbar, wallpaper and cursor are just windows, and can do anything a window can.
 * Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg).
 
 And much more...

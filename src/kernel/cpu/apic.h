@@ -68,6 +68,7 @@ typedef struct cpu cpu_t;
 #define LAPIC_ICR_NMI (4 << 8)
 #define LAPIC_ICR_INIT (5 << 8)
 #define LAPIC_ICR_STARTUP (6 << 8)
+#define LAPIC_ICR_CLEAR_INIT_LEVEL (1 << 14)
 
 #define IOAPIC_REG_SELECT 0x00
 #define IOAPIC_REG_DATA 0x10
@@ -150,8 +151,6 @@ typedef struct
 typedef uint32_t ioapic_id_t;
 typedef uint32_t lapic_id_t;
 
-void apic_init(void);
-
 void apic_timer_one_shot(uint8_t vector, uint32_t ticks);
 
 /**
@@ -166,6 +165,8 @@ void apic_timer_one_shot(uint8_t vector, uint32_t ticks);
  */
 uint64_t apic_timer_ticks_per_ns(void);
 
+void lapic_init(void);
+
 void lapic_cpu_init(void);
 
 uint8_t lapic_self_id(void);
@@ -176,11 +177,13 @@ uint32_t lapic_read(uint32_t reg);
 
 void lapic_send_init(uint32_t apicId);
 
-void lapic_send_sipi(uint32_t apicId, uint32_t page);
+void lapic_send_sipi(uint32_t apicId, void* entryPoint);
 
 void lapic_send_ipi(uint32_t apicId, uint8_t vector);
 
 void lapic_eoi(void);
+
+void ioapic_all_init(void);
 
 void ioapic_set_redirect(uint8_t vector, uint32_t gsi, ioapic_delivery_mode_t deliveryMode, ioapic_polarity_t polarity,
     ioapic_trigger_mode_t triggerMode, cpu_t* cpu, bool enable);

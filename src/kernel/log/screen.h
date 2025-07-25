@@ -21,7 +21,7 @@ typedef struct
 
 typedef struct
 {
-    uint64_t length; //!< The distance from the start of the line to the furthest away char, in chars.
+    uint64_t length; //!< The distance from the start of the line to the end of the furthest away char, in chars.
     uint32_t pixels[GLYPH_HEIGHT * SCREEN_LINE_STRIDE];
 } screen_line_t;
 

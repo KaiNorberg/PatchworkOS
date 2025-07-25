@@ -384,18 +384,12 @@ static uint64_t sched_get_load(sched_cpu_ctx_t* ctx)
     return ctx->active->length + ctx->expired->length + (ctx->runThread != NULL ? 1 : 0);
 }
 
-static void sched_load_balance(cpu_t* self)
+static void sched_load_balance(cpu_t* self, cpu_t* neighbor)
 {
     if (smp_cpu_amount() == 1)
     {
         return;
     }
-
-    // The self->sched.lock should already be acquired.
-
-    // Get the higher neighbor, the last cpu wraps around and gets the first.
-    cpu_t* neighbor = self->id != smp_cpu_amount() - 1 ? smp_cpu(self->id + 1) : smp_cpu(0);
-    LOCK_SCOPE(&neighbor->sched.lock);
 
     uint64_t selfLoad = sched_get_load(&self->sched);
     uint64_t neighborLoad = sched_get_load(&neighbor->sched);
@@ -430,6 +424,17 @@ static void sched_load_balance(cpu_t* self)
     }
 }
 
+static cpu_t* sched_get_neighbor(cpu_t* self)
+{
+    if (smp_cpu_amount() == 1)
+    {
+        return NULL;
+    }
+
+    // Get the higher neighbor, the last cpu wraps around and gets the first.
+    return self->id != smp_cpu_amount() - 1 ? smp_cpu(self->id + 1) : smp_cpu(0);
+}
+
 bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
 {
     sched_cpu_ctx_t* ctx = &self->sched;
@@ -445,12 +450,31 @@ bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
         thread_free(thread);
     }
 
-    LOCK_SCOPE(&self->sched.lock);
+    cpu_t* neighbor = sched_get_neighbor(self);
+    // Always use consistent lock ordering to avoid race conditions.
+    if (neighbor == NULL)
+    {
+        lock_acquire(&self->sched.lock);
+    }
+    else if (neighbor->id > self->id)
+    {
+        lock_acquire(&self->sched.lock);
+        lock_acquire(&neighbor->sched.lock);
+
+        sched_load_balance(self, neighbor);
+        lock_release(&neighbor->sched.lock);
+    }
+    else
+    {
+        lock_acquire(&neighbor->sched.lock);
+        lock_acquire(&self->sched.lock);
+
+        sched_load_balance(self, neighbor);
+        lock_release(&neighbor->sched.lock);
+    }
 
     thread_t* oldThread = ctx->runThread;
     assert(ctx->runThread != NULL);
-
-    sched_load_balance(self);
 
     sched_update_recent_idle_time(ctx->runThread, false);
 
@@ -563,5 +587,6 @@ bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
         systime_timer_one_shot(self, uptime, ctx->runThread->sched.deadline - uptime);
     }
 
+    lock_release(&self->sched.lock);
     return oldThread != ctx->runThread;
 }

@@ -49,9 +49,9 @@ static uint64_t cpu_start(cpu_t* cpu)
 
     lapic_send_init(cpu->lapicId);
     hpet_sleep(CLOCKS_PER_SEC / 100);
-    lapic_send_sipi(cpu->lapicId, ((uint64_t)TRAMPOLINE_PHYSICAL_START) / PAGE_SIZE);
+    lapic_send_sipi(cpu->lapicId, TRAMPOLINE_PHYSICAL_START);
 
-    clock_t timeout = CLOCKS_PER_SEC * 100;
+    clock_t timeout = CLOCKS_PER_SEC;
     while (!isReady)
     {
         clock_t sleepDuration = CLOCKS_PER_SEC / 1000;
@@ -80,32 +80,32 @@ void smp_others_init(void)
     trampoline_init();
 
     cpuid_t newId = 1;
-    uint8_t lapicId = lapic_self_id();
 
-    cpus[0]->lapicId = lapicId;
-    LOG_INFO("bootstrap cpu, ready\n", (uint64_t)cpus[0]->id);
+    cpus[0]->lapicId = lapic_self_id();
+    LOG_INFO("bootstrap cpu %u with lapicid %u, ready\n", (uint64_t)cpus[0]->id, (uint64_t)cpus[0]->lapicId);
 
-    madt_lapic_t* record;
-    MADT_FOR_EACH(madt_get(), record)
+    madt_lapic_t* lapic;
+    MADT_FOR_EACH(madt_get(), lapic)
     {
-        if (record->header.type != MADT_LAPIC)
+        if (lapic->header.type != MADT_LAPIC)
         {
             continue;
         }
 
-        if (record->flags & MADT_LAPIC_ENABLED && lapicId != record->id)
+        if (lapic->flags & MADT_LAPIC_ENABLED && cpus[0]->lapicId != lapic->id)
         {
             cpuid_t id = newId++;
             cpus[id] = heap_alloc(sizeof(cpu_t), HEAP_NONE);
             if (cpus[id] == NULL)
             {
-                panic(NULL, "Failed to allocate memory for cpu\n");
+                panic(NULL, "Failed to allocate memory for cpu");
             }
-            cpu_init(cpus[id], id, record->id, false);
+            cpu_init(cpus[id], id, lapic->id, false);
             cpuAmount++;
             if (cpu_start(cpus[id]) == ERR)
             {
-                panic(NULL, "Failed to start cpu\n");
+                panic(NULL, "Timeout while starting cpu %d with lapicid %d", (uint64_t)cpus[id]->id,
+                    (uint64_t)cpus[id]->lapicId);
             }
         }
     }

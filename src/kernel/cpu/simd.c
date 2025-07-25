@@ -34,7 +34,6 @@ static void simd_xsave_init(void)
 
 void simd_cpu_init(void)
 {
-    LOG_INFO("cpu simd initialized\n");
     cr0_write(cr0_read() & ~((uint64_t)CR0_EMULATION));
     cr0_write(cr0_read() | CR0_MONITOR_CO_PROCESSOR | CR0_NUMERIC_ERROR_ENABLE);
 
@@ -55,6 +54,8 @@ void simd_cpu_init(void)
     {
         asm volatile("fxsave (%0)" : : "r"(initCtx));
     }
+
+    LOG_INFO("cpu simd initialized\n");
 }
 
 uint64_t simd_ctx_init(simd_ctx_t* ctx)

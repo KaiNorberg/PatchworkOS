@@ -67,17 +67,13 @@ void kernel_init(boot_info_t* bootInfo)
 
     _std_init();
 
-    while (1)
-    {
-        LOG_INFO("Test\n");
-    }
-
     acpi_init(bootInfo->rsdp, &bootInfo->memory.map);
     hpet_init();
     madt_init();
-    apic_init();
+
+    lapic_init();
     lapic_cpu_init();
-    systime_init();
+    ioapic_all_init();
 
     process_kernel_init();
     sched_init();
@@ -91,7 +87,7 @@ void kernel_init(boot_info_t* bootInfo)
 
     simd_cpu_init();
 
-    smp_others_init();
+    systime_init();
     systime_cpu_timer_init();
 
     syscall_table_init();
@@ -104,6 +100,8 @@ void kernel_init(boot_info_t* bootInfo)
     shmem_init();
     gop_init(&bootInfo->gop);
     statistics_init();
+
+    smp_others_init();
 
     kernel_free_loader_data(&bootInfo->memory.map);
     vmm_unmap_lower_half();
