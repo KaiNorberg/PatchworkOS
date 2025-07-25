@@ -62,12 +62,12 @@ typedef struct cpu cpu_t;
 #define LAPIC_SPURIOUS_ENABLE (1 << 8)
 #define LAPIC_LVT_MASKED (1 << 16)
 
-#define LAPIC_ICR_FIXED             (0 << 8)
-#define LAPIC_ICR_LOWEST_PRIORITY   (1 << 8)
-#define LAPIC_ICR_SMI               (2 << 8)
-#define LAPIC_ICR_NMI               (4 << 8)
-#define LAPIC_ICR_INIT              (5 << 8)
-#define LAPIC_ICR_STARTUP           (6 << 8)
+#define LAPIC_ICR_FIXED (0 << 8)
+#define LAPIC_ICR_LOWEST_PRIORITY (1 << 8)
+#define LAPIC_ICR_SMI (2 << 8)
+#define LAPIC_ICR_NMI (4 << 8)
+#define LAPIC_ICR_INIT (5 << 8)
+#define LAPIC_ICR_STARTUP (6 << 8)
 
 #define IOAPIC_REG_SELECT 0x00
 #define IOAPIC_REG_DATA 0x10

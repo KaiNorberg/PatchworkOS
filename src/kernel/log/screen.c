@@ -10,7 +10,27 @@ static screen_line_t* screen_buffer_get_line(screen_buffer_t* buffer, uint64_t y
     return &buffer->lines[index];
 }
 
-static void screen_buffer_draw(screen_buffer_t* buffer, const screen_pos_t* cursor, char chr)
+static void screen_buffer_invalidate(screen_buffer_t* buffer, const screen_pos_t* pos)
+{
+    if (buffer->invalidStart.x == 0 && buffer->invalidStart.y == 0 && buffer->invalidEnd.x == 0 &&
+        buffer->invalidEnd.y == 0)
+    {
+        buffer->invalidStart = *pos;
+        buffer->invalidEnd = (screen_pos_t){pos->x + 1, pos->y + 1};
+    }
+    else
+    {
+        buffer->invalidStart.x = MIN(buffer->invalidStart.x, pos->x);
+        buffer->invalidStart.y = MIN(buffer->invalidStart.y, pos->y);
+        buffer->invalidEnd.x = MAX(buffer->invalidEnd.x, pos->x + 1);
+        buffer->invalidEnd.y = MAX(buffer->invalidEnd.y, pos->y + 1);
+    }
+
+    buffer->invalidEnd.x = MIN(buffer->invalidEnd.x, buffer->width);
+    buffer->invalidEnd.y = MIN(buffer->invalidEnd.y, buffer->height);
+}
+
+static void screen_buffer_put(screen_buffer_t* buffer, const screen_pos_t* pos, char chr)
 {
     if (chr == '\n' || chr < ' ')
     {
@@ -20,31 +40,17 @@ static void screen_buffer_draw(screen_buffer_t* buffer, const screen_pos_t* curs
     const glyph_cache_t* cache = glyph_cache_get();
     const glyph_t* glyph = &cache->glyphs[(uint8_t)chr];
 
-    screen_line_t* line = screen_buffer_get_line(buffer, cursor->y);
+    screen_line_t* line = screen_buffer_get_line(buffer, pos->y);
 
-    uint64_t pixelX = cursor->x * GLYPH_WIDTH;
-
+    uint64_t pixelX = pos->x * GLYPH_WIDTH;
     for (uint64_t y = 0; y < GLYPH_HEIGHT; y++)
     {
-        memcpy(&line->pixels[pixelX + y * buffer->stride], &glyph->pixels[y * GLYPH_WIDTH],
+        memcpy(&line->pixels[pixelX + y * SCREEN_LINE_STRIDE], &glyph->pixels[y * GLYPH_WIDTH],
             sizeof(uint32_t) * GLYPH_WIDTH);
     }
 
-    if (buffer->invalidStart.x == 0 && buffer->invalidStart.y == 0 && buffer->invalidEnd.x == 0 &&
-        buffer->invalidEnd.y == 0)
-    {
-        buffer->invalidStart = *cursor;
-        buffer->invalidEnd = (screen_pos_t){cursor->x + 1, cursor->y + 1};
-    }
-    else
-    {
-        buffer->invalidStart.x = MIN(buffer->invalidStart.x, cursor->x);
-        buffer->invalidStart.y = MIN(buffer->invalidStart.y, cursor->y);
-        buffer->invalidEnd.x = MAX(buffer->invalidEnd.x, cursor->x + 1);
-        buffer->invalidEnd.y = MAX(buffer->invalidEnd.y, cursor->y + 1);
-    }
-
-    line->length = MAX(line->length, cursor->x + 1);
+    line->length = MAX(line->length, pos->x + 1);
+    screen_buffer_invalidate(buffer, pos);
 }
 
 static void screen_buffer_flush(screen_buffer_t* buffer, boot_gop_t* gop)
@@ -55,9 +61,8 @@ static void screen_buffer_flush(screen_buffer_t* buffer, boot_gop_t* gop)
 
         for (uint64_t pixelY = 0; pixelY < GLYPH_HEIGHT; pixelY++)
         {
-            memcpy(&gop->virtAddr[buffer->invalidStart.x * GLYPH_WIDTH + (y * GLYPH_HEIGHT + pixelY) * gop->stride]
-,
-                &line->pixels[buffer->invalidStart.x * GLYPH_WIDTH + pixelY * buffer->stride],
+            memcpy(&gop->virtAddr[buffer->invalidStart.x * GLYPH_WIDTH + (y * GLYPH_HEIGHT + pixelY) * gop->stride],
+                &line->pixels[buffer->invalidStart.x * GLYPH_WIDTH + pixelY * SCREEN_LINE_STRIDE],
                 (buffer->invalidEnd.x - buffer->invalidStart.x) * GLYPH_WIDTH * sizeof(uint32_t));
         }
     }
@@ -97,7 +102,6 @@ void screen_init(screen_t* screen, const boot_gop_t* gop)
 
     screen->buffer.width = MIN(gop->width / GLYPH_WIDTH, MAX_PATH);
     screen->buffer.height = MIN(gop->height / GLYPH_HEIGHT, CONFIG_SCREEN_MAX_LINES);
-    screen->buffer.stride = screen->buffer.width * GLYPH_WIDTH;
 
     screen_clear(screen);
 }
@@ -112,7 +116,7 @@ static void screen_scroll(screen_t* screen)
     screen_line_t* current = screen_buffer_get_line(&screen->buffer, screen->cursor.y);
     for (uint64_t pixelY = 0; pixelY < GLYPH_HEIGHT; pixelY++)
     {
-        memset(&current->pixels[pixelY * screen->buffer.stride], 0, screen->buffer.stride * sizeof(uint32_t));
+        memset(&current->pixels[pixelY * SCREEN_LINE_STRIDE], 0, SCREEN_LINE_STRIDE * sizeof(uint32_t));
     }
 
     uint64_t prevLength = current->length;
@@ -122,10 +126,10 @@ static void screen_scroll(screen_t* screen)
 
         uint64_t lengthToRedraw = MAX(prevLength, line->length);
 
-        for (uint64_t pixelY = 0; pixelY < GLYPH_HEIGHT; pixelY++)
+        for (uint64_t offsetY = 0; offsetY < GLYPH_HEIGHT; offsetY++)
         {
-            memcpy(&screen->gop.virtAddr[(pixelY + y * GLYPH_HEIGHT) * screen->gop.stride],
-                &line->pixels[pixelY * screen->buffer.stride], lengthToRedraw * GLYPH_WIDTH * sizeof(uint32_t));
+            memcpy(&screen->gop.virtAddr[(offsetY + y * GLYPH_HEIGHT) * screen->gop.stride],
+                &line->pixels[offsetY * SCREEN_LINE_STRIDE], lengthToRedraw * GLYPH_WIDTH * sizeof(uint32_t));
         }
 
         prevLength = line->length;
@@ -204,7 +208,7 @@ void screen_enable(screen_t* screen, const ring_t* ring)
         uint8_t chr;
         ring_get_byte(ring, i, &chr);
 
-        screen_buffer_draw(&screen->buffer, &screen->cursor, chr);
+        screen_buffer_put(&screen->buffer, &screen->cursor, chr);
         screen_advance_cursor(screen, chr, false);
     }
 
@@ -223,7 +227,7 @@ void screen_write(screen_t* screen, const char* string, uint64_t length)
     for (uint64_t i = 0; i < length; i++)
     {
         char chr = string[i];
-        screen_buffer_draw(&screen->buffer, &screen->cursor, chr);
+        screen_buffer_put(&screen->buffer, &screen->cursor, chr);
         screen_advance_cursor(screen, chr, true);
     }
 

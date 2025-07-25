@@ -16,17 +16,19 @@ typedef struct
     uint64_t y;
 } screen_pos_t;
 
+#define SCREEN_LINE_MAX_LENGTH (256)
+#define SCREEN_LINE_STRIDE (SCREEN_LINE_MAX_LENGTH * GLYPH_WIDTH)
+
 typedef struct
 {
-    uint64_t length;
-    uint32_t pixels[GLYPH_HEIGHT * MAX_PATH];
+    uint64_t length; //!< The distance from the start of the line to the furthest away char, in chars.
+    uint32_t pixels[GLYPH_HEIGHT * SCREEN_LINE_STRIDE];
 } screen_line_t;
 
 typedef struct
 {
-    uint64_t width;
-    uint64_t height;
-    uint64_t stride;
+    uint64_t width;  //!< The width of the buffer in chars.
+    uint64_t height; //!< The height of the buffer in chars.
     uint64_t firstLineIndex;
     screen_pos_t invalidStart;
     screen_pos_t invalidEnd;

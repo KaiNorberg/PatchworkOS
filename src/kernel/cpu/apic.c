@@ -90,11 +90,11 @@ static void ioapic_init_all(void)
         }
 
         ioapic_id_t id = ioapicCount++;
-    
+
         ioapics[id].base = (uintptr_t)virtAddr;
         ioapics[id].gsiBase = record->gsiBase;
         ioapics[id].maxRedirs = ioapic_get_version(id).maxRedirs;
-    
+
         // Mask all interrupts.
         for (uint32_t i = 0; i < ioapics[id].maxRedirs; i++)
         {
@@ -103,9 +103,8 @@ static void ioapic_init_all(void)
             ioapic_write(id, IOAPIC_REG_REDIRECTION(i, 1), maskedEntry.raw.high);
         }
 
-        LOG_INFO("io apic initialized id=%u base=0x%016lx gsiBase=%u maxRedirs=%u\n",
-                 id, ioapics[id].base, ioapics[id].gsiBase, ioapics[id].maxRedirs);
-    
+        LOG_INFO("io apic initialized id=%u base=0x%016lx gsiBase=%u maxRedirs=%u\n", id, ioapics[id].base,
+            ioapics[id].gsiBase, ioapics[id].maxRedirs);
     }
 }
 
@@ -187,7 +186,7 @@ uint32_t lapic_read(uint32_t reg)
 void lapic_send_init(uint32_t id)
 {
     lapic_write(LAPIC_REG_ICR1, id << LAPIC_ID_OFFSET);
-    lapic_write(LAPIC_REG_ICR0, LAPIC_ICR_INIT);    
+    lapic_write(LAPIC_REG_ICR0, LAPIC_ICR_INIT);
 }
 
 void lapic_send_sipi(uint32_t id, uint32_t page)

@@ -5,9 +5,9 @@
 #include "cpu/apic.h"
 #include "cpu/gdt.h"
 #include "cpu/idt.h"
-#include "cpu/syscalls.h"
 #include "cpu/simd.h"
 #include "cpu/smp.h"
+#include "cpu/syscalls.h"
 #include "drivers/const.h"
 #include "drivers/fb/gop.h"
 #include "drivers/ps2/ps2.h"
@@ -77,7 +77,7 @@ void kernel_init(boot_info_t* bootInfo)
     madt_init();
     apic_init();
     lapic_cpu_init();
-    systime_init();    
+    systime_init();
 
     process_kernel_init();
     sched_init();

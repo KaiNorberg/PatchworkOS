@@ -3,10 +3,10 @@
 #include "cpu/irq.h"
 #include "cpu/port.h"
 #include "cpu/smp.h"
+#include "cpu/syscalls.h"
 #include "cpu/vectors.h"
 #include "hpet.h"
 #include "log/log.h"
-#include "cpu/syscalls.h"
 
 #include <stdatomic.h>
 #include <stdbool.h>

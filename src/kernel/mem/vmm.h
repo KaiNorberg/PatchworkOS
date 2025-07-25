@@ -28,7 +28,7 @@ void vmm_init(boot_memory_t* memory, boot_gop_t* gop, boot_kernel_t* kernel);
 /**
  * @brief Unmaps the lower half of the address space after kernel initialization.
  * @ingroup kernel_mem_vmm
- * 
+ *
  */
 void vmm_unmap_lower_half(void);
 

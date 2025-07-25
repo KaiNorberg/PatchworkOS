@@ -3,9 +3,9 @@
 #include "cpu/smp.h"
 #include "drivers/com.h"
 #include "drivers/systime/systime.h"
+#include "fs/file.h"
 #include "log/panic.h"
 #include "sync/lock.h"
-#include "fs/file.h"
 #include "utils/ring.h"
 
 #include <_internal/MAX_PATH.h>

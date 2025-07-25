@@ -1,10 +1,10 @@
 #include "irq.h"
 
+#include "cpu/apic.h"
 #include "cpu/smp.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "sync/rwlock.h"
-#include "cpu/apic.h"
 #include "vectors.h"
 
 static rwlock_t lock = RWLOCK_CREATE();
@@ -47,7 +47,8 @@ void irq_install(irq_callback_t callback, uint8_t irq)
     handlers[irq].callbackAmount++;
     if (!handlers[irq].redirected)
     {
-        ioapic_set_redirect(VECTOR_IRQ_BASE + irq, irq, IOAPIC_DELIVERY_NORMAL, IOAPIC_POLARITY_HIGH, IOAPIC_TRIGGER_EDGE, smp_self_unsafe(), true);
+        ioapic_set_redirect(VECTOR_IRQ_BASE + irq, irq, IOAPIC_DELIVERY_NORMAL, IOAPIC_POLARITY_HIGH,
+            IOAPIC_TRIGGER_EDGE, smp_self_unsafe(), true);
     }
 
     LOG_INFO("installed handler for irq=%d slot=%u\n", irq, handlers[irq].callbackAmount - 1);

@@ -87,7 +87,10 @@ static void* basic_allocator_alloc(void)
 
 void mem_page_table_init(page_table_t* table, boot_memory_map_t* map, boot_gop_t* gop, boot_kernel_t* kernel)
 {
-    // TODO: There appears to be weird issues with paging in the bootloader as loading the page table appears to freeze (probably a triple fault). Currently those issues are seemingly fixed, but i have been unable to determine the actual cause of those previous issues so it might reccur, in the future the root cause will need to be determined, for now just dont touch anything.
+    // TODO: There appears to be weird issues with paging in the bootloader as loading the page table appears to freeze
+    // (probably a triple fault). Currently those issues are seemingly fixed, but i have been unable to determine the
+    // actual cause of those previous issues so it might reccur, in the future the root cause will need to be
+    // determined, for now just dont touch anything.
 
     if (page_table_init(table, basic_allocator_alloc, NULL) == ERR)
     {
@@ -104,8 +107,8 @@ void mem_page_table_init(page_table_t* table, boot_memory_map_t* map, boot_gop_t
     for (uint64_t i = 0; i < map->length; i++)
     {
         const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, i);
-        if (page_table_map(table, PML_LOWER_TO_HIGHER(desc->PhysicalStart), (void*)desc->PhysicalStart, desc->NumberOfPages, PML_WRITE,
-                PML_CALLBACK_NONE) == ERR)
+        if (page_table_map(table, PML_LOWER_TO_HIGHER(desc->PhysicalStart), (void*)desc->PhysicalStart,
+                desc->NumberOfPages, PML_WRITE, PML_CALLBACK_NONE) == ERR)
         {
             panic_without_boot_services();
         }
