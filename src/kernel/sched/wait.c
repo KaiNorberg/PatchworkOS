@@ -116,7 +116,7 @@ void wait_timer_trap(trap_frame_t* trapFrame, cpu_t* self)
         if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
         {
             wait_block_cleanup(thread, WAIT_TIMEOUT, NULL, false);
-            sched_push(thread, NULL, thread->wait.owner);
+            sched_push(thread, thread->wait.owner);
         }
     }
 }
@@ -176,7 +176,7 @@ void wait_unblock_thread(thread_t* thread, wait_result_t result)
     if (atomic_exchange(&thread->state, THREAD_UNBLOCKING) == THREAD_BLOCKED)
     {
         wait_block_cleanup(thread, result, NULL, WAIT_CLEANUP_REMOVE_FROM_LIST | WAIT_CLEANUP_ACQUIRE_OWNER);
-        sched_push(thread, NULL, thread->wait.owner);
+        sched_push(thread, thread->wait.owner);
     }
 }
 
@@ -201,7 +201,7 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount)
         {
             wait_block_cleanup(thread, WAIT_NORM, waitQueue,
                 WAIT_CLEANUP_REMOVE_FROM_LIST | WAIT_CLEANUP_ACQUIRE_OWNER);
-            sched_push(thread, NULL, thread->wait.owner);
+            sched_push(thread, thread->wait.owner);
             amountUnblocked++;
             amount--;
         }

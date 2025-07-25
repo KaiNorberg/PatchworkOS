@@ -272,13 +272,19 @@ void sched_yield(void);
  * @brief Pushes a thread onto a scheduling queue.
  * @ingroup kernel_sched
  *
- * The `sched_push()` function adds a thread to the appropriate scheduling queue, making it runnable.
- *
  * @param thread The thread to be pushed.
- * @param parent The parent thread (can be `NULL`).
  * @param target The target cpu that the thread should run on (can be `NULL` to specify the currently running cpu).
  */
-void sched_push(thread_t* thread, thread_t* parent, cpu_t* target);
+void sched_push(thread_t* thread, cpu_t* target);
+
+/**
+ * @brief Pushes a newly created thread onto the scheduling queue.
+ * @ingroup kernel_sched
+ *
+ * @param thread The thread to be pushed.
+ * @param parent The parent thread.
+ */
+void sched_push_new_thread(thread_t* thread, thread_t* parent);
 
 /**
  * @brief Performs the core scheduling logic.

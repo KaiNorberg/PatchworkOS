@@ -70,7 +70,12 @@ uint64_t log_print(log_level_t level, const char* prefix, const char* format, ..
 
 uint64_t log_vprint(log_level_t level, const char* prefix, const char* format, va_list args);
 
+#ifndef NDEBUG
 #define LOG_DEBUG(format, ...) log_print(LOG_LEVEL_DEBUG, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)
+#else
+#define LOG_DEBUG(format, ...) ((void)0)
+#endif
+
 #define LOG_INFO(format, ...) log_print(LOG_LEVEL_INFO, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)
 #define LOG_WARN(format, ...) log_print(LOG_LEVEL_WARN, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)
 #define LOG_ERR(format, ...) log_print(LOG_LEVEL_ERR, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)

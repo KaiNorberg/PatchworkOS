@@ -37,7 +37,7 @@ void kmain(boot_info_t* bootInfo)
     }
     DEREF(klog);
 
-    sched_push(initThread, NULL, NULL);
+    sched_push(initThread, NULL);
 
     LOG_INFO("done with boot thread\n");
     sched_done_with_boot_thread();

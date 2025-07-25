@@ -52,7 +52,7 @@ EFI_STATUS mem_page_table_init(page_table_t* table)
 
     pml_t* cr3;
     asm volatile("mov %%cr3, %0" : "=r"(cr3));
-    for (uint64_t i = 0; i < 256; i++)
+    for (uint64_t i = 0; i < PML_ENTRY_AMOUNT / 2; i++)
     {
         table->pml4->entries[i] = cr3->entries[i];
     }
@@ -60,7 +60,7 @@ EFI_STATUS mem_page_table_init(page_table_t* table)
     for (uint64_t i = 0; i < map.length; i++)
     {
         const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(&map, i);
-        if (page_table_map(table, PML_LOWER_TO_HIGHER(desc->PhysicalStart), (void*)desc->PhysicalStart,
+        if (page_table_map(table, (void*)desc->VirtualStart, (void*)desc->PhysicalStart,
                 desc->NumberOfPages, PML_WRITE, PML_CALLBACK_NONE) == ERR)
         {
             Print(L"failed to map memory region (0x%x)!\n", status);

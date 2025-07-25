@@ -352,7 +352,8 @@ void process_free(process_t* process)
         process->parent = NULL;
     }
 
-    vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_inode_cleanup
+    process->threads.isDying = true; // Isent really needed as the scheduler also sets it.
+    vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_inode_cleanup.
     wait_unblock(&process->queue, WAIT_ALL);
     process_dir_deinit(&process->dir);
 }

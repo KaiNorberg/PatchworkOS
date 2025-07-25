@@ -328,16 +328,16 @@ SYSCALL_DEFINE(SYS_YIELD, uint64_t)
     return 0;
 }
 
-static bool sched_should_notify(cpu_t* self, cpu_t* chosen, priority_t priority)
+static bool sched_should_notify(cpu_t* self, cpu_t* target, priority_t priority)
 {
-    if (chosen != self)
+    if (target != self)
     {
-        if (chosen->sched.runThread != chosen->sched.idleThread &&
-            priority > chosen->sched.runThread->sched.actualPriority)
+        if (target->sched.runThread != target->sched.idleThread &&
+            priority > target->sched.runThread->sched.actualPriority)
         {
             return true;
         }
-        else if (chosen->sched.runThread == chosen->sched.idleThread)
+        else if (target->sched.runThread == target->sched.idleThread)
         {
             return true;
         }
@@ -346,22 +346,103 @@ static bool sched_should_notify(cpu_t* self, cpu_t* chosen, priority_t priority)
     return false;
 }
 
-void sched_push(thread_t* thread, thread_t* parent, cpu_t* target)
+void sched_push(thread_t* thread, cpu_t* target)
 {
     cpu_t* self = smp_self();
+    
+    if (target == NULL)
+    {
+        target = self;
+    }
 
-    cpu_t* chosen = target != NULL ? target : self;
-    LOCK_SCOPE(&chosen->sched.lock);
+    LOCK_SCOPE(&target->sched.lock);
 
     thread_state_t state = atomic_exchange(&thread->state, THREAD_READY);
     if (state == THREAD_PARKED)
     {
-        sched_queues_push(chosen->sched.active, thread);
+        sched_queues_push(target->sched.active, thread);
     }
     else if (state == THREAD_UNBLOCKING)
     {
         sched_update_recent_idle_time(thread, true);
-        sched_queues_push(chosen->sched.active, thread);
+        sched_queues_push(target->sched.active, thread);
+    }
+    else
+    {
+        panic(NULL, "Invalid thread state for sched_push");
+    }
+
+    sched_compute_time_slice(thread, NULL);
+    sched_compute_actual_priority(thread);
+
+    if (sched_should_notify(self, target, thread->sched.actualPriority))
+    {
+        smp_notify(target);
+    }
+
+    smp_put();
+}
+
+static uint64_t sched_get_load(sched_cpu_ctx_t* ctx)
+{
+    return ctx->active->length + ctx->expired->length + (ctx->runThread != NULL ? 1 : 0);
+}
+
+static cpu_t* sched_find_least_loaded_cpu(cpu_t* exclude)
+{
+    if (smp_cpu_amount() == 1)
+    {
+        return smp_cpu(0);
+    }
+
+    cpu_t* bestCpu = NULL;
+    uint64_t bestLoad = UINT64_MAX;
+    
+    // Find the cpu with the best load ;)
+    for (uint64_t i = 0; i < smp_cpu_amount(); i++)
+    {
+        cpu_t* cpu = smp_cpu(i);
+        if (cpu == exclude)
+        {
+            continue;
+        }
+        
+        uint64_t load = sched_get_load(&cpu->sched);
+        
+        if (load < bestLoad)
+        {
+            bestLoad = load;
+            bestCpu = cpu;
+        }
+    }
+
+    // If given no choice then use the excluded cpu.
+    if (bestCpu == NULL)
+    {
+        bestCpu = exclude;
+    }
+    
+    return bestCpu;
+}
+
+void sched_push_new_thread(thread_t* thread, thread_t* parent)
+{
+    cpu_t* self = smp_self();
+
+    cpu_t* target = sched_find_least_loaded_cpu(NULL);
+    assert(target != NULL);
+
+    LOCK_SCOPE(&target->sched.lock);
+
+    thread_state_t state = atomic_exchange(&thread->state, THREAD_READY);
+    if (state == THREAD_PARKED)
+    {
+        sched_queues_push(target->sched.active, thread);
+    }
+    else if (state == THREAD_UNBLOCKING)
+    {
+        sched_update_recent_idle_time(thread, true);
+        sched_queues_push(target->sched.active, thread);
     }
     else
     {
@@ -371,17 +452,12 @@ void sched_push(thread_t* thread, thread_t* parent, cpu_t* target)
     sched_compute_time_slice(thread, parent);
     sched_compute_actual_priority(thread);
 
-    if (sched_should_notify(self, chosen, thread->sched.actualPriority))
+    if (sched_should_notify(self, target, thread->sched.actualPriority))
     {
-        smp_notify(chosen);
+        smp_notify(target);
     }
 
     smp_put();
-}
-
-static uint64_t sched_get_load(sched_cpu_ctx_t* ctx)
-{
-    return ctx->active->length + ctx->expired->length + (ctx->runThread != NULL ? 1 : 0);
 }
 
 static void sched_load_balance(cpu_t* self, cpu_t* neighbor)

@@ -58,19 +58,11 @@ thread_t* thread_new(process_t* process, void* entry)
 
 void thread_free(thread_t* thread)
 {
-    LOG_DEBUG("freeing tid=%d pid=%d\n", thread->id, thread->process->id);
+    LOG_DEBUG("freeing thread tid=%d pid=%d\n", thread->id);
     process_t* process = thread->process;
 
     lock_acquire(&process->threads.lock);
     list_remove(&thread->processEntry);
-
-    // If the entire process is dying then there is no point in unmaping the stack as all memory will be unmapped
-    // anyway.
-    if (!process->threads.isDying)
-    {
-        space_unmap(&process->space, (void*)LOADER_USER_STACK_BOTTOM(thread->id),
-            CONFIG_MAX_USER_STACK_PAGES * PAGE_SIZE); // Ignore failure
-    }
 
     if (list_is_empty(&process->threads.list))
     {

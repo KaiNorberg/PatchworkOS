@@ -339,7 +339,7 @@ SYSCALL_DEFINE(SYS_SPAWN, pid_t, const char** argv, const spawn_fd_t* fds, const
         }
     }
 
-    sched_push(child, thread, NULL);
+    sched_push_new_thread(child, thread);
     return child->process->id;
 }
 
@@ -361,6 +361,6 @@ SYSCALL_DEFINE(SYS_THREAD_CREATE, tid_t, void* entry, void* arg)
         return ERR;
     }
 
-    sched_push(newThread, thread, NULL);
+    sched_push_new_thread(newThread, thread);
     return newThread->id;
 }

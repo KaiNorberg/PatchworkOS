@@ -9,7 +9,7 @@
 
 int thrd_join(thrd_t thr, int* res)
 {
-    _thread_t* thread = _thread_get(thr.id); // WHHHYYY DOES THIS FREEZE, IT DOESENT MAKE ANY SENSE
+    _thread_t* thread = _thread_get(thr.id);
     if (thread == NULL)
     {
         return thrd_error;

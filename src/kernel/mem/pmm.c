@@ -48,21 +48,6 @@ static uint64_t freePageAmount = 0;
 
 static lock_t lock = LOCK_CREATE();
 
-static bool pmm_is_efi_mem_available(EFI_MEMORY_TYPE type)
-{
-    switch (type)
-    {
-    case EfiConventionalMemory:
-    case EfiLoaderCode:
-    // EfiLoaderData is intentionally not included here as it's freed later in `kernel_init()`.
-    case EfiBootServicesCode:
-    case EfiBootServicesData:
-        return true;
-    default:
-        return false;
-    }
-}
-
 static bool pmm_is_efi_mem_ram(EFI_MEMORY_TYPE type)
 {
     switch (type)
@@ -76,6 +61,26 @@ static bool pmm_is_efi_mem_ram(EFI_MEMORY_TYPE type)
     case EfiRuntimeServicesData:
     case EfiACPIReclaimMemory:
     case EfiACPIMemoryNVS:
+        return true;
+    default:
+        return false;
+    }
+}
+
+static bool pmm_is_efi_mem_available(EFI_MEMORY_TYPE type)
+{
+    if (!pmm_is_efi_mem_ram(type))
+    {
+        return false;
+    }
+    
+    switch (type)
+    {
+    case EfiConventionalMemory:
+    case EfiLoaderCode:
+    // EfiLoaderData is intentionally not included here as it's freed later in `kernel_init()`.
+    case EfiBootServicesCode:
+    case EfiBootServicesData:
         return true;
     default:
         return false;
