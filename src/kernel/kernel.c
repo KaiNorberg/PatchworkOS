@@ -116,7 +116,7 @@ void kernel_other_init(void)
     gdt_cpu_init();
     idt_cpu_init();
 
-    gdt_cpu_load_tss(&smp_self_brute()->tss);
+    gdt_cpu_load_tss(&smp_self_unsafe()->tss);
 
     lapic_cpu_init();
     simd_cpu_init();

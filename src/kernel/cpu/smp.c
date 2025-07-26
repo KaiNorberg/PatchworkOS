@@ -41,26 +41,22 @@ static void cpu_init(cpu_t* cpu, uint8_t id, uint8_t lapicId, bool isBootstrap)
 
 static uint64_t cpu_start(cpu_t* cpu)
 {
-    isReady = false;
-
     assert(cpu->sched.idleThread != NULL);
 
-    trampoline_cpu_setup(THREAD_KERNEL_STACK_TOP(cpu->sched.idleThread));
+    if (trampoline_cpu_setup(cpu->id, THREAD_KERNEL_STACK_TOP(cpu->sched.idleThread), smp_entry) != 0)
+    {
+        LOG_ERR("failed to setup trampoline for cpu %u\n", cpu->id);
+        return -1;
+    }
 
     lapic_send_init(cpu->lapicId);
     hpet_sleep(CLOCKS_PER_SEC / 100);
-    lapic_send_sipi(cpu->lapicId, TRAMPOLINE_PHYSICAL_START);
+    lapic_send_sipi(cpu->lapicId, (void*)TRAMPOLINE_BASE_ADDR);
 
-    clock_t timeout = CLOCKS_PER_SEC;
-    while (!isReady)
+    if (trampoline_wait_ready(cpu->id, CLOCKS_PER_SEC) != 0)
     {
-        clock_t sleepDuration = CLOCKS_PER_SEC / 1000;
-        hpet_sleep(sleepDuration);
-        timeout -= sleepDuration;
-        if (timeout == 0)
-        {
-            return ERR;
-        }
+        LOG_ERR("cpu %d timed out\n", cpu->id);
+        return -1;
     }
 
     return 0;
@@ -79,8 +75,6 @@ void smp_others_init(void)
 {
     trampoline_init();
 
-    cpuid_t newId = 1;
-
     cpus[0]->lapicId = lapic_self_id();
     LOG_INFO("bootstrap cpu %u with lapicid %u, ready\n", (uint64_t)cpus[0]->id, (uint64_t)cpus[0]->lapicId);
 
@@ -94,17 +88,19 @@ void smp_others_init(void)
 
         if (lapic->flags & MADT_LAPIC_ENABLED && cpus[0]->lapicId != lapic->id)
         {
-            cpuid_t id = newId++;
+            cpuid_t id = cpuAmount++;
+
             cpus[id] = heap_alloc(sizeof(cpu_t), HEAP_NONE);
             if (cpus[id] == NULL)
             {
                 panic(NULL, "Failed to allocate memory for cpu");
             }
+
             cpu_init(cpus[id], id, lapic->id, false);
-            cpuAmount++;
+
             if (cpu_start(cpus[id]) == ERR)
             {
-                panic(NULL, "Timeout while starting cpu %d with lapicid %d", (uint64_t)cpus[id]->id,
+                panic(NULL, "Failed to start cpu %d with lapicid %d", (uint64_t)cpus[id]->id,
                     (uint64_t)cpus[id]->lapicId);
             }
         }
@@ -113,16 +109,17 @@ void smp_others_init(void)
     trampoline_deinit();
 }
 
-void smp_entry(void)
+void smp_entry(cpuid_t id)
 {
-    cpu_t* cpu = smp_self_brute();
-    msr_write(MSR_CPU_ID, cpu->id);
+    msr_write(MSR_CPU_ID, id);
+    cpu_t* cpu = smp_self_unsafe();
+    assert(cpu->id == id);
 
     kernel_other_init();
 
-    LOG_INFO("ready\n", (uint64_t)cpu->id);
-    isReady = true;
+    trampoline_signal_ready(cpu->id);
 
+    LOG_DEBUG("cpu %u with lapicid %u now idling\n", (uint64_t)cpu->id, (uint64_t)cpu->lapicId);
     sched_idle_loop();
 }
 
@@ -169,22 +166,6 @@ cpu_t* smp_self_unsafe(void)
     assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
 
     return cpus[msr_read(MSR_CPU_ID)];
-}
-
-cpu_t* smp_self_brute(void)
-{
-    assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE));
-
-    uint8_t lapicId = lapic_self_id();
-    for (uint16_t id = 0; id < cpuAmount; id++)
-    {
-        if (cpus[id]->lapicId == lapicId)
-        {
-            return cpus[id];
-        }
-    }
-
-    panic(NULL, "Unable to find cpu");
 }
 
 cpu_t* smp_self(void)

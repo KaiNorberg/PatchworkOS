@@ -40,7 +40,7 @@ void smp_bootstrap_init(void);
 
 void smp_others_init(void);
 
-void smp_entry(void);
+void smp_entry(cpuid_t id);
 
 void smp_halt_others(void);
 
@@ -60,8 +60,6 @@ uint8_t smp_cpu_amount(void) PURE_FUNC;
 cpu_t* smp_cpu(uint8_t id) PURE_FUNC;
 
 cpu_t* smp_self_unsafe(void) PURE_FUNC;
-
-cpu_t* smp_self_brute(void) PURE_FUNC;
 
 // Must have a corresponding call to smp_put()
 cpu_t* smp_self(void);
