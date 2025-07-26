@@ -5,8 +5,6 @@
 
 int system(const char* command)
 {
-    // TODO: Implement process status return.
-
     spawn_fd_t fds[] = {
         {.child = STDIN_FILENO, .parent = STDIN_FILENO},
         {.child = STDOUT_FILENO, .parent = STDOUT_FILENO},
@@ -20,19 +18,19 @@ int system(const char* command)
         return -1;
     }
 
-    fd_t ctl = openf("/proc/%d/ctl", shell);
-    if (ctl == ERR)
-    {
-        return -1;
-    }
-    if (writef(ctl, "wait") == ERR)
-    {
-        return -1;
-    }
-    if (close(ctl) == ERR)
+    fd_t status = openf("/proc/%d/status", shell);
+    if (status == ERR)
     {
         return -1;
     }
 
-    return 0;
+    char buf[MAX_PATH];
+    if (read(status, buf, MAX_PATH) == ERR)
+    {
+        close(status);
+        return -1;
+    }
+
+    close(status);
+    return atoi(buf);
 }

@@ -18,7 +18,7 @@ static void* page_table_alloc_page(void)
     {
         return NULL;
     }
-    
+
     return (void*)address;
 }
 
@@ -60,8 +60,8 @@ EFI_STATUS mem_page_table_init(page_table_t* table)
     for (uint64_t i = 0; i < map.length; i++)
     {
         const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(&map, i);
-        if (page_table_map(table, (void*)desc->VirtualStart, (void*)desc->PhysicalStart,
-                desc->NumberOfPages, PML_WRITE, PML_CALLBACK_NONE) == ERR)
+        if (page_table_map(table, (void*)desc->VirtualStart, (void*)desc->PhysicalStart, desc->NumberOfPages, PML_WRITE,
+                PML_CALLBACK_NONE) == ERR)
         {
             Print(L"failed to map memory region (0x%x)!\n", status);
             mem_map_deinit(&map);
@@ -100,7 +100,8 @@ void mem_map_deinit(boot_memory_map_t* map)
     map->length = 0;
 }
 
-EFI_STATUS mem_page_table_map_gop_kernel(page_table_t* table, boot_memory_map_t* map, boot_gop_t* gop, boot_kernel_t* kernel)
+EFI_STATUS mem_page_table_map_gop_kernel(page_table_t* table, boot_memory_map_t* map, boot_gop_t* gop,
+    boot_kernel_t* kernel)
 {
     Print(L"Mapping GOP and kernel memory... ");
 

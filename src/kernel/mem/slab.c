@@ -75,7 +75,7 @@ void slab_init(slab_t* slab, uint64_t objectSize)
 }
 
 object_t* slab_alloc(slab_t* slab)
-{    
+{
     cache_t* cache;
 
     if (!list_is_empty(&slab->partialCaches))
@@ -102,17 +102,17 @@ object_t* slab_alloc(slab_t* slab)
 
     list_entry_t* entry = list_pop(&cache->freeList);
     assert(entry != NULL);
-    
+
     object_t* object = CONTAINER_OF(entry, object_t, entry);
     cache->freeCount--;
-    
+
     assert(object->magic == SLAB_MAGIC);
     assert(object->freed == true);
     assert(object->cache == cache);
     assert(object->dataSize == slab->objectSize);
-    
+
     object->freed = false;
-    
+
     if (cache->freeCount == 0)
     {
         list_push(&slab->fullCaches, &cache->entry);
@@ -149,7 +149,7 @@ void slab_free(slab_t* slab, object_t* object)
 
     list_push(&cache->freeList, &object->entry);
     cache->freeCount++;
-    
+
     assert(cache->freeCount <= cache->objectCount);
     assert(list_length(&cache->freeList) == cache->freeCount);
 

@@ -186,6 +186,29 @@ static file_ops_t noteOps = {
     .write = process_note_write,
 };
 
+static uint64_t process_status_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    process_t* process = process_file_get_process(file);
+    if (process == NULL)
+    {
+        return ERR;
+    }
+
+    WAIT_BLOCK(&process->queue, ({
+        LOCK_SCOPE(&process->threads.lock);
+        process->threads.isDying;
+    }));
+
+    char status[MAX_PATH];
+    snprintf(status, sizeof(status), "%llu", atomic_load(&process->status));
+
+    return BUFFER_READ(buffer, count, offset, status, strlen(status));
+}
+
+static file_ops_t statusOps = {
+    .read = process_status_read,
+};
+
 static void process_inode_cleanup(inode_t* inode)
 {
     process_t* process = inode->private;
@@ -238,6 +261,16 @@ static uint64_t process_dir_init(process_dir_t* dir, const char* name, process_t
         return ERR;
     }
 
+    if (sysfs_file_init(&dir->statusFile, &dir->dir, "status", NULL, &statusOps, process) == ERR)
+    {
+        sysfs_file_deinit(&dir->noteFile);
+        sysfs_file_deinit(&dir->ctlFile);
+        sysfs_file_deinit(&dir->cwdFile);
+        sysfs_file_deinit(&dir->cmdlineFile);
+        sysfs_dir_deinit(&dir->dir);
+        return ERR;
+    }
+
     return 0;
 }
 
@@ -247,6 +280,7 @@ static void process_dir_deinit(process_dir_t* dir)
     sysfs_file_deinit(&dir->cwdFile);
     sysfs_file_deinit(&dir->cmdlineFile);
     sysfs_file_deinit(&dir->noteFile);
+    sysfs_file_deinit(&dir->statusFile);
     sysfs_dir_deinit(&dir->dir);
 }
 
@@ -255,6 +289,7 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
 {
     process->id = atomic_fetch_add(&newPid, 1);
     atomic_init(&process->priority, priority);
+    atomic_init(&process->status, EXIT_SUCCESS);
     if (argv_init(&process->argv, argv) == ERR)
     {
         return ERR;
@@ -352,7 +387,7 @@ void process_free(process_t* process)
         process->parent = NULL;
     }
 
-    process->threads.isDying = true; // Isent really needed as the scheduler also sets it.
+    process->threads.isDying = true;  // Isent really needed as the scheduler also sets it.
     vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_inode_cleanup.
     wait_unblock(&process->queue, WAIT_ALL);
     process_dir_deinit(&process->dir);

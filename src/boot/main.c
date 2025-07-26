@@ -123,7 +123,7 @@ EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
         Print(L"Failed to initialize memory (0x%x)!\n", status);
         return status;
     }
-    
+
     page_table_load(&bootInfo->memory.table);
 
     status = boot_info_populate(imageHandle, systemTable, bootInfo);
@@ -133,7 +133,8 @@ EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
         return status;
     }
 
-    status = mem_page_table_map_gop_kernel(&bootInfo->memory.table, &bootInfo->memory.map, &bootInfo->gop, &bootInfo->kernel);
+    status = mem_page_table_map_gop_kernel(&bootInfo->memory.table, &bootInfo->memory.map, &bootInfo->gop,
+        &bootInfo->kernel);
     if (EFI_ERROR(status))
     {
         Print(L"Failed to map GOP and kernel memory (0x%x)!\n", status);

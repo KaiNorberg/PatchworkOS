@@ -11,7 +11,6 @@
 #include "mem/vmm.h"
 #include "sched.h"
 #include "sched/thread.h"
-#include "stdarg.h"
 
 static void* loader_load_program(thread_t* thread)
 {

@@ -244,7 +244,7 @@ process_t* sched_process(void);
  * The `sched_process_exit()` function terminates the currently executing process and all its threads. Note that this
  * does not actually schedule and the thread will only actually die when the scheduler is invoked.
  *
- * @param status The exit status of the process. (Not implemented, i will get around to it... maybe)
+ * @param status The exit status of the process.
  */
 void sched_process_exit(uint64_t status);
 

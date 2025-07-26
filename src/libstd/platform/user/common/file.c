@@ -281,7 +281,7 @@ void _files_close(void)
     {
         fclose(stream);
     }
-    
+
     _PLATFORM_MUTEX_RELEASE(&filesMtx);
 }
 

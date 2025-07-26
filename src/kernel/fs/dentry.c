@@ -31,7 +31,9 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     strncpy(dentry->name, name, MAX_NAME - 1);
     dentry->name[MAX_NAME - 1] = '\0';
     dentry->inode = NULL;
-    dentry->parent = parent != NULL ? REF(parent) : dentry; // We set its parent now but its only added to its list when it is made positive.
+    dentry->parent = parent != NULL
+        ? REF(parent)
+        : dentry; // We set its parent now but its only added to its list when it is made positive.
     list_entry_init(&dentry->siblingEntry);
     list_init(&dentry->children);
     dentry->superblock = REF(superblock);
@@ -71,7 +73,7 @@ void dentry_free(dentry_t* dentry)
             mutex_acquire_recursive(&dentry->parent->mutex);
             list_remove(&dentry->parent->children, &dentry->siblingEntry);
             mutex_release(&dentry->parent->mutex);
-        }   
+        }
 
         DEREF(dentry->parent);
         dentry->parent = NULL;

@@ -73,7 +73,7 @@ static bool pmm_is_efi_mem_available(EFI_MEMORY_TYPE type)
     {
         return false;
     }
-    
+
     switch (type)
     {
     case EfiConventionalMemory:

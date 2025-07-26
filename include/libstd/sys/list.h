@@ -37,7 +37,7 @@ typedef struct list_entry
 {
     struct list_entry* prev; //!< The previous entry in the list
     struct list_entry* next; //!< The next entry in the list
-    list_t* list; //!< The list this entry belongs to.
+    list_t* list;            //!< The list this entry belongs to.
 } list_entry_t;
 
 /**
@@ -48,9 +48,9 @@ typedef struct list_entry
  */
 typedef struct list
 {
-    list_entry_t head;  //!< The head of the list, where head::prev is the last entry of the list and head::next is the
-                        //!< first entry of the list.
-    uint64_t length;    //!< The number of elements in the list (excluding the head).
+    list_entry_t head; //!< The head of the list, where head::prev is the last entry of the list and head::next is the
+                       //!< first entry of the list.
+    uint64_t length;   //!< The number of elements in the list (excluding the head).
 } list_t;
 
 /**
@@ -295,12 +295,17 @@ static inline void list_prepend(list_t* list, list_entry_t* head, list_entry_t* 
  */
 static inline void list_remove(list_t* list, list_entry_t* entry)
 {
+    if (entry->list == NULL)
+    {
+        return;
+    }
+
     assert(list != NULL);
     assert(entry != NULL);
     assert(list->length > 0);
     assert(entry != &list->head);
     assert(entry->list == list);
-    
+
     entry->prev->next = entry->next;
     entry->next->prev = entry->prev;
     list_entry_init(entry);
@@ -321,7 +326,7 @@ static inline void list_push(list_t* list, list_entry_t* entry)
     assert(list != NULL);
     assert(entry != NULL);
     assert(entry->next == entry && entry->prev == entry);
-    
+
     list_add(list, list->head.prev, &list->head, entry);
 }
 
@@ -335,7 +340,7 @@ static inline void list_push(list_t* list, list_entry_t* entry)
 static inline list_entry_t* list_pop(list_t* list)
 {
     assert(list != NULL);
-    
+
     if (list_is_empty(list))
     {
         return NULL;
@@ -356,7 +361,7 @@ static inline list_entry_t* list_pop(list_t* list)
 static inline list_entry_t* list_first(list_t* list)
 {
     assert(list != NULL);
-    
+
     if (list_is_empty(list))
     {
         return NULL;
@@ -374,7 +379,7 @@ static inline list_entry_t* list_first(list_t* list)
 static inline list_entry_t* list_last(list_t* list)
 {
     assert(list != NULL);
-    
+
     if (list_is_empty(list))
     {
         return NULL;

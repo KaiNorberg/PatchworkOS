@@ -291,6 +291,10 @@ void dwm_detach(surface_t* surface)
     switch (surface->type)
     {
     case SURFACE_WINDOW:
+    {
+        list_remove(&windows, &surface->dwmEntry);
+    }
+    break;
     case SURFACE_PANEL:
     {
         list_remove(&panels, &surface->dwmEntry);

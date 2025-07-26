@@ -20,8 +20,11 @@ static void spawn_program(const char* path, priority_t priority)
     }
 
     const char* argv[] = {path, NULL};
-    spawn_fd_t fds[] = {{.parent = klog, .child = STDOUT_FILENO}, {.parent = klog, .child = STDERR_FILENO},
-        SPAWN_FD_END};
+    spawn_fd_t fds[] = {
+        {.parent = klog, .child = STDOUT_FILENO},
+        {.parent = klog, .child = STDERR_FILENO},
+        SPAWN_FD_END,
+    };
     spawn_attr_t attr = {.priority = priority};
     if (spawn(argv, fds, "/usr", &attr) == ERR)
     {

@@ -190,7 +190,6 @@ process_t* sched_process(void)
 
 void sched_process_exit(uint64_t status)
 {
-    // TODO: Add handling for status, this todo has been here for like literraly a year...
     sched_cpu_ctx_t* ctx = &smp_self()->sched;
     thread_t* thread = ctx->runThread;
     process_t* process = thread->process;
@@ -209,6 +208,7 @@ void sched_process_exit(uint64_t status)
         return;
     }
 
+    atomic_store(&process->status, status);
     process->threads.isDying = true;
 
     uint64_t killCount = 0;
@@ -349,7 +349,7 @@ static bool sched_should_notify(cpu_t* self, cpu_t* target, priority_t priority)
 void sched_push(thread_t* thread, cpu_t* target)
 {
     cpu_t* self = smp_self();
-    
+
     if (target == NULL)
     {
         target = self;
@@ -397,7 +397,7 @@ static cpu_t* sched_find_least_loaded_cpu(cpu_t* exclude)
 
     cpu_t* bestCpu = NULL;
     uint64_t bestLoad = UINT64_MAX;
-    
+
     // Find the cpu with the best load ;)
     for (uint64_t i = 0; i < smp_cpu_amount(); i++)
     {
@@ -406,9 +406,9 @@ static cpu_t* sched_find_least_loaded_cpu(cpu_t* exclude)
         {
             continue;
         }
-        
+
         uint64_t load = sched_get_load(&cpu->sched);
-        
+
         if (load < bestLoad)
         {
             bestLoad = load;
@@ -421,7 +421,7 @@ static cpu_t* sched_find_least_loaded_cpu(cpu_t* exclude)
     {
         bestCpu = exclude;
     }
-    
+
     return bestCpu;
 }
 
