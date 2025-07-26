@@ -54,7 +54,7 @@ static void ramfs_dentry_deinit(dentry_t* dentry)
     dentryData->dentry = NULL;
 
     lock_acquire(&superData->lock);
-    list_remove(&dentryData->entry);
+    list_remove(&superData->dentrys, &dentryData->entry);
     lock_release(&superData->lock);
 
     heap_free(dentryData);

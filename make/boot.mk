@@ -3,11 +3,11 @@ include Make.defaults
 
 TARGET := $(BINDIR)/bootx64.efi
 
-SRC += $(wildcard src/libstd/functions/string/*)
+SRC += $(wildcard src/libstd/functions/string/*) src/libstd/platform/boot/functions/assert/assert.c
 
 CFLAGS += $(CFLAGS_DISABLE_SIMD) -fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args \
-	-D__BOOTLOADER__ \
-	-Iinclude/bootloader -Ilib/gnu-efi/inc \
+	-D__BOOT__ \
+	-Iinclude/boot -Ilib/gnu-efi/inc \
 	-Isrc/libstd
 
 LDFLAGS += --gc-sections

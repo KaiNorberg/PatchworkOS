@@ -70,22 +70,23 @@ void slab_init(slab_t* slab, uint64_t objectSize)
     slab->objectSize = objectSize;
     slab->optimalCacheSize = slab_find_optimal_cache_size(objectSize,
         ROUND_UP(CACHE_MIN_LENGTH * objectSize, PAGE_SIZE), ROUND_UP(CACHE_MAX_LENGTH * objectSize, PAGE_SIZE));
+
+    assert(slab->optimalCacheSize >= PAGE_SIZE);
 }
 
 object_t* slab_alloc(slab_t* slab)
-{
+{    
     cache_t* cache;
-    bool newCacheCreated = false;
 
     if (!list_is_empty(&slab->partialCaches))
     {
         cache = CONTAINER_OF(list_first(&slab->partialCaches), cache_t, entry);
-        list_remove(&cache->entry);
+        list_remove(&slab->partialCaches, &cache->entry);
     }
     else if (!list_is_empty(&slab->emptyCaches))
     {
         cache = CONTAINER_OF(list_first(&slab->emptyCaches), cache_t, entry);
-        list_remove(&cache->entry);
+        list_remove(&slab->emptyCaches, &cache->entry);
         slab->emptyCacheCount--;
     }
     else
@@ -96,23 +97,32 @@ object_t* slab_alloc(slab_t* slab)
             errno = ENOMEM;
             return NULL;
         }
-        newCacheCreated = true;
+        assert(cache->freeCount == cache->objectCount);
     }
 
-    object_t* object = CONTAINER_OF(list_pop(&cache->freeList), object_t, entry);
+    list_entry_t* entry = list_pop(&cache->freeList);
+    assert(entry != NULL);
+    
+    object_t* object = CONTAINER_OF(entry, object_t, entry);
     cache->freeCount--;
-
-    object->magic = SLAB_MAGIC;
+    
+    assert(object->magic == SLAB_MAGIC);
+    assert(object->freed == true);
+    assert(object->cache == cache);
+    assert(object->dataSize == slab->objectSize);
+    
     object->freed = false;
-
+    
     if (cache->freeCount == 0)
     {
-        list_remove(&cache->entry);
         list_push(&slab->fullCaches, &cache->entry);
+        assert(list_is_empty(&cache->freeList));
     }
     else
     {
         list_push(&slab->partialCaches, &cache->entry);
+        assert(!list_is_empty(&cache->freeList));
+        assert(list_length(&cache->freeList) == cache->freeCount);
     }
 
     return object;
@@ -126,26 +136,40 @@ void slab_free(slab_t* slab, object_t* object)
     object->freed = true;
 
     cache_t* cache = object->cache;
-
-    list_remove(&cache->entry);
+    if (cache->freeCount == 0)
+    {
+        assert(list_contains_entry(&slab->fullCaches, &cache->entry));
+        list_remove(&slab->fullCaches, &cache->entry);
+    }
+    else
+    {
+        assert(list_contains_entry(&slab->partialCaches, &cache->entry));
+        list_remove(&slab->partialCaches, &cache->entry);
+    }
 
     list_push(&cache->freeList, &object->entry);
     cache->freeCount++;
+    
+    assert(cache->freeCount <= cache->objectCount);
+    assert(list_length(&cache->freeList) == cache->freeCount);
 
     if (cache->freeCount == cache->objectCount)
     {
         if (slab->emptyCacheCount >= SLAB_MAX_EMPTY_CACHES)
         {
+            assert(list_length(&cache->freeList) == cache->objectCount);
             vmm_kernel_unmap(cache, BYTES_TO_PAGES(slab->optimalCacheSize));
         }
         else
         {
             list_push(&slab->emptyCaches, &cache->entry);
             slab->emptyCacheCount++;
+            assert(slab->emptyCacheCount == list_length(&slab->emptyCaches));
         }
     }
     else
     {
         list_push(&slab->partialCaches, &cache->entry);
+        assert(cache->freeCount > 0 && cache->freeCount < cache->objectCount);
     }
 }

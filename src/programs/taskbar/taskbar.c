@@ -120,7 +120,7 @@ static void taskbar_entry_remove(taskbar_t* taskbar, element_t* elem, surface_id
         if (entry->info.id == surface)
         {
             element_free(entry->button);
-            list_remove(&entry->entry);
+            list_remove(&taskbar->entries, &entry->entry);
             free(entry);
 
             taskbar->entryAmount--;

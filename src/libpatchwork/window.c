@@ -344,7 +344,7 @@ void window_free(window_t* win)
         munmap(win->buffer, RECT_WIDTH(&win->rect) * RECT_HEIGHT(&win->rect) * sizeof(pixel_t));
     }
 
-    list_remove(&win->entry);
+    list_remove(&win->disp->windows, &win->entry);
     free(win);
 }
 

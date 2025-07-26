@@ -59,7 +59,7 @@ _thread_t* _thread_new(_thread_entry_t entry, void* private)
 void _thread_free(_thread_t* thread)
 {
     mtx_lock(&mutex);
-    list_remove(&thread->entry);
+    list_remove(&threads, &thread->entry);
     mtx_unlock(&mutex);
     if (thread != &thread0)
     {

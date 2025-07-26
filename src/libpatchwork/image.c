@@ -18,6 +18,8 @@ image_t* image_new_blank(display_t* disp, uint64_t width, uint64_t height)
     image->draw.buffer = malloc(width * height * sizeof(pixel_t));
     image->draw.contentRect = RECT_INIT_DIM(0, 0, width, height);
     image->draw.invalidRect = (rect_t){0};
+
+    list_push(&disp->images, &image->entry);
     return image;
 }
 
@@ -65,7 +67,8 @@ image_t* image_new(display_t* disp, const char* path)
 
 void image_free(image_t* image)
 {
-    list_remove(&image->entry);
+    list_remove(&image->draw.disp->images, &image->entry);
+
     free(image->draw.buffer);
     free(image);
 }

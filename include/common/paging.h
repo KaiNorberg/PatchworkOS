@@ -34,7 +34,7 @@ static inline pml_entry_t pml_entry_create(void* physAddr, pml_flags_t flags, pm
 
 static inline uintptr_t pml_entry_address(pml_entry_t entry)
 {
-#ifdef __BOOTLOADER__
+#ifdef __BOOT__
     return (uintptr_t)(entry.address << 12);
 #elif __KERNEL__
     return (uintptr_t)PML_LOWER_TO_HIGHER(entry.address << 12);
@@ -102,7 +102,7 @@ static inline void page_table_deinit(page_table_t* table)
 
 static inline void page_table_load(page_table_t* table)
 {
-#ifdef __BOOTLOADER__
+#ifdef __BOOT__
     uint64_t cr3 = (uint64_t)table->pml4;
 #elif __KERNEL__
     uint64_t cr3 = (uint64_t)PML_HIGHER_TO_LOWER(table->pml4);

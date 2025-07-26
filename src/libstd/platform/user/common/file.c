@@ -2,6 +2,7 @@
 
 #include <errno.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <sys/io.h>
 
@@ -266,27 +267,22 @@ void _files_push(FILE* file)
 void _files_remove(FILE* file)
 {
     _PLATFORM_MUTEX_ACQUIRE(&filesMtx);
-    list_remove(&file->entry);
+    list_remove(&files, &file->entry);
     _PLATFORM_MUTEX_RELEASE(&filesMtx);
 }
 
 void _files_close(void)
 {
-    while (1)
-    {
-        _PLATFORM_MUTEX_ACQUIRE(&filesMtx);
-        void* stream = CONTAINER_OF_SAFE(list_pop(&files), FILE, entry);
-        _PLATFORM_MUTEX_RELEASE(&filesMtx);
+    _PLATFORM_MUTEX_ACQUIRE(&filesMtx);
 
-        if (stream != NULL)
-        {
-            fclose(stream);
-        }
-        else
-        {
-            break;
-        }
+    FILE* temp;
+    FILE* stream;
+    LIST_FOR_EACH_SAFE(stream, temp, &files, entry)
+    {
+        fclose(stream);
     }
+    
+    _PLATFORM_MUTEX_RELEASE(&filesMtx);
 }
 
 uint64_t _files_flush(void)

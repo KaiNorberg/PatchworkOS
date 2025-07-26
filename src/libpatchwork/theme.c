@@ -200,14 +200,14 @@ void theme_override_deinit(theme_override_t* override)
     theme_override_color_t* color;
     LIST_FOR_EACH_SAFE(color, temp, &override->buffer->colors, entry)
     {
-        list_remove(&color->entry);
+        list_remove(&override->buffer->colors, &color->entry);
         free(color);
     }
 
     theme_override_string_t* string;
     LIST_FOR_EACH_SAFE(string, temp, &override->buffer->strings, entry)
     {
-        list_remove(&string->entry);
+        list_remove(&override->buffer->strings, &string->entry);
         free(string->string);
         free(string);
     }
@@ -215,7 +215,7 @@ void theme_override_deinit(theme_override_t* override)
     theme_override_int_t* integer;
     LIST_FOR_EACH_SAFE(integer, temp, &override->buffer->integers, entry)
     {
-        list_remove(&integer->entry);
+        list_remove(&override->buffer->integers, &integer->entry);
         free(integer);
     }
 

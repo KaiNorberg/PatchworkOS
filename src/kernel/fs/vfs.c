@@ -149,7 +149,7 @@ uint64_t vfs_unregister_fs(filesystem_t* fs)
         }
     }
 
-    list_remove(&fs->entry);
+    list_remove(&filesystems.list, &fs->entry);
     return 0;
 }
 
@@ -373,7 +373,7 @@ void vfs_remove_superblock(superblock_t* superblock)
     }
 
     RWLOCK_WRITE_SCOPE(&superblocks.lock);
-    list_remove(&superblock->entry);
+    list_remove(&superblocks.list, &superblock->entry);
 }
 
 void vfs_remove_inode(inode_t* inode)

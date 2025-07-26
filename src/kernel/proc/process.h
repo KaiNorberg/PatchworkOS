@@ -6,6 +6,7 @@
 #include "sched/sched.h"
 #include "sched/wait.h"
 #include "sync/futex.h"
+#include "mem/space.h"
 
 typedef struct
 {

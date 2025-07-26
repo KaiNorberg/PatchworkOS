@@ -58,11 +58,11 @@ thread_t* thread_new(process_t* process, void* entry)
 
 void thread_free(thread_t* thread)
 {
-    LOG_DEBUG("freeing thread tid=%d pid=%d\n", thread->id);
+    LOG_DEBUG("freeing thread tid=%d pid=%d\n", thread->id, thread->process->id);
     process_t* process = thread->process;
 
     lock_acquire(&process->threads.lock);
-    list_remove(&thread->processEntry);
+    list_remove(&process->threads.list, &thread->processEntry);
 
     if (list_is_empty(&process->threads.list))
     {

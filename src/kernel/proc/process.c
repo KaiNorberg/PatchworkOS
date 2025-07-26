@@ -340,13 +340,13 @@ void process_free(process_t* process)
     if (process->parent != NULL)
     {
         RWLOCK_WRITE_SCOPE(&treeLock);
-        list_remove(&process->entry);
+        list_remove(&process->parent->children, &process->entry);
 
         process_t* child;
         process_t* temp;
         LIST_FOR_EACH_SAFE(child, temp, &process->children, entry)
         {
-            list_remove(&child->entry);
+            list_remove(&process->children, &child->entry);
             child->parent = NULL;
         }
         process->parent = NULL;

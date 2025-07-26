@@ -10,7 +10,7 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
-// TODO: Implement recursive sections.
+typedef struct config_section config_section_t;
 
 typedef struct
 {
@@ -19,12 +19,13 @@ typedef struct
     char value[MAX_PATH];
 } config_pair_t;
 
-typedef struct
+typedef struct config_section
 {
     list_entry_t entry;
     list_t children;
     list_t pairs;
     char name[MAX_PATH];
+    config_section_t* parent;
 } config_section_t;
 
 typedef struct config
@@ -55,7 +56,7 @@ static config_pair_t* config_pair_new(const char* key, const char* value)
     return pair;
 }
 
-static config_section_t* config_section_new(void)
+static config_section_t* config_section_new(config_section_t* parent)
 {
     config_section_t* section = malloc(sizeof(config_section_t));
     if (section == NULL)
@@ -66,6 +67,7 @@ static config_section_t* config_section_new(void)
     list_init(&section->children);
     list_init(&section->pairs);
     section->name[0] = '\0';
+    section->parent = parent;
     return section;
 }
 
@@ -87,11 +89,14 @@ static void config_section_free(config_section_t* section)
     config_pair_t* temp2;
     LIST_FOR_EACH_SAFE(pair, temp2, &section->pairs, entry)
     {
-        list_remove(&pair->entry);
+        list_remove(&section->pairs, &pair->entry);
         free(pair);
     }
 
-    list_remove(&section->entry);
+    if (section->parent != NULL)
+    {
+        list_remove(&section->parent->children, &section->entry);
+    }
     free(section);
 }
 
@@ -127,7 +132,7 @@ config_t* config_open(const char* prefix, const char* name)
         return NULL;
     }
 
-    cfg->root = config_section_new();
+    cfg->root = config_section_new(NULL);
     if (cfg->root == NULL)
     {
         free(cfg);
@@ -181,7 +186,7 @@ config_t* config_open(const char* prefix, const char* name)
             memcpy(section, line + 1, sectionLen);
             section[sectionLen] = '\0';
 
-            config_section_t* newSection = config_section_new();
+            config_section_t* newSection = config_section_new(cfg->root);
             if (newSection == NULL)
             {
                 goto error;

@@ -31,7 +31,7 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     strncpy(dentry->name, name, MAX_NAME - 1);
     dentry->name[MAX_NAME - 1] = '\0';
     dentry->inode = NULL;
-    dentry->parent = parent != NULL ? REF(parent) : dentry;
+    dentry->parent = parent != NULL ? REF(parent) : dentry; // We set its parent now but its only added to its list when it is made positive.
     list_entry_init(&dentry->siblingEntry);
     list_init(&dentry->children);
     dentry->superblock = REF(superblock);
@@ -64,11 +64,14 @@ void dentry_free(dentry_t* dentry)
         DEREF(dentry->inode);
     }
 
-    if (dentry->parent != dentry)
+    if (!DENTRY_IS_ROOT(dentry))
     {
-        mutex_acquire_recursive(&dentry->parent->mutex);
-        list_remove(&dentry->siblingEntry);
-        mutex_release(&dentry->parent->mutex);
+        if (!(dentry->flags & DENTRY_NEGATIVE))
+        {
+            mutex_acquire_recursive(&dentry->parent->mutex);
+            list_remove(&dentry->parent->children, &dentry->siblingEntry);
+            mutex_release(&dentry->parent->mutex);
+        }   
 
         DEREF(dentry->parent);
         dentry->parent = NULL;
@@ -93,7 +96,7 @@ void dentry_make_positive(dentry_t* dentry, inode_t* inode)
     dentry->inode = REF(inode);
     dentry->flags &= ~DENTRY_NEGATIVE;
 
-    if (dentry->parent != NULL && !DENTRY_IS_ROOT(dentry))
+    if (!DENTRY_IS_ROOT(dentry))
     {
         MUTEX_RECURSIVE_SCOPE(&dentry->parent->mutex);
         list_push(&dentry->parent->children, &dentry->siblingEntry);

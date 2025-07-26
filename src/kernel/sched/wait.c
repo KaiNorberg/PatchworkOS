@@ -64,12 +64,12 @@ static void wait_block_cleanup(thread_t* thread, wait_result_t result, wait_queu
         {
             assert(thread->wait.owner != NULL);
             lock_acquire(&thread->wait.owner->wait.lock);
-            list_remove(&thread->entry);
+            list_remove(&thread->wait.owner->wait.blockedThreads, &thread->entry);
             lock_release(&thread->wait.owner->wait.lock);
         }
         else
         {
-            list_remove(&thread->entry);
+            list_remove(&thread->wait.owner->wait.blockedThreads, &thread->entry);
         }
     }
 
@@ -81,8 +81,8 @@ static void wait_block_cleanup(thread_t* thread, wait_result_t result, wait_queu
         {
             lock_acquire(&entry->waitQueue->lock);
         }
-        list_remove(&entry->queueEntry);
-        list_remove(&entry->threadEntry);
+        list_remove(&entry->waitQueue->entries, &entry->queueEntry);
+        list_remove(&entry->thread->wait.entries, &entry->threadEntry);
         if (entry->waitQueue != acquiredQueue)
         {
             lock_release(&entry->waitQueue->lock);
@@ -110,7 +110,7 @@ void wait_timer_trap(trap_frame_t* trapFrame, cpu_t* self)
             return;
         }
 
-        list_remove(&thread->entry);
+        list_remove(&self->wait.blockedThreads, &thread->entry);
 
         thread_state_t expected = THREAD_BLOCKED;
         if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
@@ -145,7 +145,7 @@ bool wait_block_finalize(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread)
         {
             if (other->wait.deadline > thread->wait.deadline)
             {
-                list_prepend(&other->entry, &thread->entry);
+                list_prepend(&self->wait.blockedThreads, &other->entry, &thread->entry);
                 break;
             }
         }
