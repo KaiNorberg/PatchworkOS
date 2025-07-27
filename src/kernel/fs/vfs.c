@@ -1,7 +1,6 @@
 #include "vfs.h"
 
 #include "cpu/syscalls.h"
-#include "sched/timer.h"
 #include "fs/dentry.h"
 #include "fs/inode.h"
 #include "fs/mount.h"
@@ -10,6 +9,7 @@
 #include "log/panic.h"
 #include "proc/process.h"
 #include "sched/sched.h"
+#include "sched/timer.h"
 #include "sched/wait.h"
 #include "sync/mutex.h"
 #include "sync/rwlock.h"

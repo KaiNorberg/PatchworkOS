@@ -2,9 +2,9 @@
 
 #include "cpu/smp.h"
 #include "drivers/com.h"
-#include "sched/timer.h"
 #include "fs/file.h"
 #include "log/panic.h"
+#include "sched/timer.h"
 #include "sync/lock.h"
 #include "utils/ring.h"
 

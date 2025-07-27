@@ -1,13 +1,13 @@
 #include "statistics.h"
 
 #include "cpu/smp.h"
-#include "sched/timer.h"
 #include "fs/file.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
 #include "log/panic.h"
 #include "mem/heap.h"
 #include "mem/pmm.h"
+#include "sched/timer.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -65,8 +65,8 @@ static uint64_t statistics_mem_read(file_t* file, void* buffer, uint64_t count, 
         return ERR;
     }
 
-    sprintf(string, "value kb\ntotal %llu\nfree %llu\nreserved %llu", pmm_total_amount() * PAGE_SIZE / 4,
-        pmm_free_amount() * PAGE_SIZE / 4, pmm_reserved_amount() * PAGE_SIZE / 4);
+    sprintf(string, "value kb\ntotal %llu\nfree %llu\nreserved %llu", pmm_total_amount() * PAGE_SIZE / 1024,
+        pmm_free_amount() * PAGE_SIZE / 1024, pmm_reserved_amount() * PAGE_SIZE/ 1024);
 
     uint64_t length = strlen(string);
     uint64_t readCount = BUFFER_READ(buffer, count, offset, string, length);

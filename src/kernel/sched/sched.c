@@ -1,15 +1,15 @@
 #include "sched.h"
 
-#include "drivers/apic.h"
 #include "cpu/smp.h"
 #include "cpu/syscalls.h"
 #include "cpu/trap.h"
-#include "sched/timer.h"
+#include "drivers/apic.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "proc/process.h"
 #include "sched/sched.h"
 #include "sched/thread.h"
+#include "sched/timer.h"
 #include "sched/wait.h"
 #include "sync/lock.h"
 
@@ -125,7 +125,7 @@ static void sched_init_spawn_boot_thread(void)
 void sched_init(void)
 {
     sched_init_spawn_boot_thread();
-    
+
     wait_queue_init(&sleepQueue);
 }
 

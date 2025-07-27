@@ -2,8 +2,8 @@
 
 #include "cpu/trap.h"
 #ifndef NDEBUG
-#include "sched/timer.h"
 #include "log/panic.h"
+#include "sched/timer.h"
 #endif
 
 #include <common/defs.h>

@@ -101,6 +101,8 @@ static EFI_STATUS exit_boot_services(EFI_HANDLE imageHandle, boot_info_t* bootIn
         }
     } while (status == EFI_INVALID_PARAMETER && retries < EXIT_BOOT_SERVICES_MAX_RETRY);
 
+    mem_page_table_init(&bootInfo->memory.table, &bootInfo->memory.map, &bootInfo->gop, &bootInfo->kernel);
+
     return EFI_SUCCESS;
 }
 
@@ -110,6 +112,13 @@ EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
 
     splash_screen();
 
+    EFI_STATUS status = mem_init();
+    if (EFI_ERROR(status))
+    {
+        Print(L"Failed to initialize memory (0x%x)!\n", status);
+        return status;
+    }
+
     boot_info_t* bootInfo = AllocatePool(sizeof(boot_info_t));
     if (bootInfo == NULL)
     {
@@ -117,27 +126,10 @@ EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
         return EFI_OUT_OF_RESOURCES;
     }
 
-    EFI_STATUS status = mem_page_table_init(&bootInfo->memory.table);
-    if (EFI_ERROR(status))
-    {
-        Print(L"Failed to initialize memory (0x%x)!\n", status);
-        return status;
-    }
-
-    page_table_load(&bootInfo->memory.table);
-
     status = boot_info_populate(imageHandle, systemTable, bootInfo);
     if (EFI_ERROR(status))
     {
         Print(L"Failed to populate boot info (0x%x)!\n", status);
-        return status;
-    }
-
-    status = mem_page_table_map_gop_kernel(&bootInfo->memory.table, &bootInfo->memory.map, &bootInfo->gop,
-        &bootInfo->kernel);
-    if (EFI_ERROR(status))
-    {
-        Print(L"Failed to map GOP and kernel memory (0x%x)!\n", status);
         return status;
     }
 
@@ -148,6 +140,7 @@ EFI_STATUS efi_main(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* systemTable)
         return status;
     }
 
+    page_table_load(&bootInfo->memory.table);
     bootInfo->kernel.entry(bootInfo);
 
     // We should never end up back here.

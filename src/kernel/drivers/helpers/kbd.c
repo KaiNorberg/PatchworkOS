@@ -1,11 +1,11 @@
 #include "kbd.h"
 
-#include "fs/sysfs.h"
-#include "mem/heap.h"
 #include "drivers/helpers/kbd.h"
 #include "fs/file.h"
-#include "sync/lock.h"
+#include "fs/sysfs.h"
+#include "mem/heap.h"
 #include "sched/timer.h"
+#include "sync/lock.h"
 
 #include <sys/io.h>
 #include <sys/math.h>

@@ -1,8 +1,8 @@
 #include "pic.h"
 
-#include "log/log.h"
 #include "cpu/port.h"
 #include "cpu/vectors.h"
+#include "log/log.h"
 
 void pic_disable(void)
 {

@@ -1,8 +1,8 @@
 #include "smp.h"
 
 #include "acpi/madt.h"
-#include "drivers/apic.h"
 #include "cpu/vectors.h"
+#include "drivers/apic.h"
 #include "drivers/time/hpet.h"
 #include "kernel.h"
 #include "log/log.h"
@@ -49,7 +49,7 @@ static void smp_entry(cpuid_t id)
 
     trampoline_signal_ready(cpu->id);
 
-    LOG_DEBUG("cpu %u with lapicid %u now idling\n", (uint64_t)cpu->id, (uint64_t)cpu->lapicId);
+    LOG_INFO("cpu %u with lapicid %u now idling\n", (uint64_t)cpu->id, (uint64_t)cpu->lapicId);
     sched_idle_loop();
 }
 

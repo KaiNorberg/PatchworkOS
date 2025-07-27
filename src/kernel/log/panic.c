@@ -3,11 +3,11 @@
 #include "cpu/port.h"
 #include "cpu/smp.h"
 #include "cpu/vectors.h"
-#include "sched/timer.h"
 #include "log/log.h"
 #include "log/screen.h"
 #include "mem/pmm.h"
 #include "sched/thread.h"
+#include "sched/timer.h"
 
 #include <boot/boot_info.h>
 #include <common/regs.h>

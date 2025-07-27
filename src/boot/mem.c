@@ -1,6 +1,5 @@
 #include "mem.h"
 #include "efidef.h"
-#include "efierr.h"
 
 #include <common/defs.h>
 #include <common/paging_types.h>
@@ -10,66 +9,31 @@
 #include <common/paging.h>
 #include <sys/proc.h>
 
-static void* page_table_alloc_page(void)
+// We cant use the normal memory allocator after exiting boot services so we use this basic one instead.
+struct
 {
-    EFI_PHYSICAL_ADDRESS address;
-    EFI_STATUS status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiBootServicesData, 1, &address);
+    EFI_PHYSICAL_ADDRESS buffer;
+    uint64_t pagesAllocated;
+    boot_gop_t* gop;
+    boot_memory_map_t* map;
+} basicAllocator;
+
+EFI_STATUS mem_init(void)
+{
+    Print(L"Initializing basic allocator... ");
+
+    EFI_STATUS status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData,
+        MEM_BASIC_ALLOCATOR_MAX_PAGES, &basicAllocator.buffer);
     if (EFI_ERROR(status))
     {
-        return NULL;
-    }
-
-    return (void*)address;
-}
-
-static void page_table_free_page(void* page)
-{
-    if (page == NULL)
-    {
-        return;
-    }
-
-    uefi_call_wrapper(BS->FreePages, 1, (EFI_PHYSICAL_ADDRESS)page, 1);
-}
-
-EFI_STATUS mem_page_table_init(page_table_t* table)
-{
-    Print(L"Initializing page table... ");
-
-    if (page_table_init(table, page_table_alloc_page, page_table_free_page) == ERR)
-    {
-        Print(L"failed to initialize page table!\n");
-        return EFI_OUT_OF_RESOURCES;
-    }
-
-    boot_memory_map_t map;
-    EFI_STATUS status = mem_map_init(&map);
-    if (status != EFI_SUCCESS)
-    {
-        Print(L"failed to initialize memory map (0x%x)!\n", status);
+        Print(L"failed to allocate buffer (0x%lx)!\n", status);
         return status;
     }
 
-    pml_t* cr3;
-    asm volatile("mov %%cr3, %0" : "=r"(cr3));
-    for (uint64_t i = 0; i < PML_ENTRY_AMOUNT / 2; i++)
-    {
-        table->pml4->entries[i] = cr3->entries[i];
-    }
+    basicAllocator.pagesAllocated = 0;
+    basicAllocator.gop = NULL;
+    basicAllocator.map = NULL;
 
-    for (uint64_t i = 0; i < map.length; i++)
-    {
-        const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(&map, i);
-        if (page_table_map(table, (void*)desc->VirtualStart, (void*)desc->PhysicalStart, desc->NumberOfPages, PML_WRITE,
-                PML_CALLBACK_NONE) == ERR)
-        {
-            Print(L"failed to map memory region (0x%x)!\n", status);
-            mem_map_deinit(&map);
-            return EFI_OUT_OF_RESOURCES;
-        }
-    }
-
-    mem_map_deinit(&map);
     Print(L"done!\n");
     return EFI_SUCCESS;
 }
@@ -100,25 +64,77 @@ void mem_map_deinit(boot_memory_map_t* map)
     map->length = 0;
 }
 
-EFI_STATUS mem_page_table_map_gop_kernel(page_table_t* table, boot_memory_map_t* map, boot_gop_t* gop,
-    boot_kernel_t* kernel)
+NORETURN static void panic_without_boot_services(uint8_t red, uint8_t green, uint8_t blue)
 {
-    Print(L"Mapping GOP and kernel memory... ");
+    // Getting here would be bad, we have exited boot services so we cant print to the screen, and are out of
+    // memory. A better solution might be to implement a very basic logging system, but for now we just fill the screen
+    // with a color and halt the CPU.
+    memset32(basicAllocator.gop->physAddr, 0xFF000000 | (red << 16) | (green << 8) | (blue),
+        basicAllocator.gop->size / sizeof(uint32_t));
+    for (;;)
+    {
+        asm("cli; hlt");
+    }
+}
+
+static void* basic_allocator_alloc(void)
+{
+    if (basicAllocator.pagesAllocated == MEM_BASIC_ALLOCATOR_MAX_PAGES)
+    {
+        panic_without_boot_services(0xFF, 0x00, 0x00);
+    }
+
+    return (void*)((uintptr_t)basicAllocator.buffer + (basicAllocator.pagesAllocated++) * EFI_PAGE_SIZE);
+}
+
+void mem_page_table_init(page_table_t* table, boot_memory_map_t* map, boot_gop_t* gop, boot_kernel_t* kernel)
+{
+    basicAllocator.gop = gop;
+    basicAllocator.map = map;
+
+    if (page_table_init(table, basic_allocator_alloc, NULL) == ERR)
+    {
+        panic_without_boot_services(0x00, 0xFF, 0x00);
+    }
+
+    uintptr_t maxAddress = 0;
+    for (uint64_t i = 0; i < map->length; i++)
+    {
+        const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, i);
+        maxAddress = MAX(maxAddress, desc->PhysicalStart + desc->NumberOfPages * PAGE_SIZE);
+    }
+
+    // NOTE: I have no idea why its not enough to just identity map everything in the memory map, but this seems to be
+    // required for paging to work properly on all platforms.
+    if (page_table_map(table, 0, 0, BYTES_TO_PAGES(maxAddress), PML_WRITE, PML_CALLBACK_NONE) == ERR)
+    {
+        panic_without_boot_services(0xFF, 0xFF, 0x00);
+    }
+
+    for (uint64_t i = 0; i < map->length; i++)
+    {
+        const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, i);
+        if (desc->VirtualStart <= PML_LOWER_HALF_END)
+        {
+            panic_without_boot_services(0x00, 0x00, 0xFF);
+        }
+
+        if (page_table_map(table, (void*)desc->VirtualStart, (void*)desc->PhysicalStart, desc->NumberOfPages, PML_WRITE,
+                PML_CALLBACK_NONE) == ERR)
+        {
+            panic_without_boot_services(0xFF, 0x00, 0xFF);
+        }
+    }
 
     if (page_table_map(table, (void*)kernel->virtStart, (void*)kernel->physStart, BYTES_TO_PAGES(kernel->size),
             PML_WRITE, PML_CALLBACK_NONE) == ERR)
     {
-        Print(L"failed to map kernel memory!\n");
-        return EFI_OUT_OF_RESOURCES;
+        panic_without_boot_services(0x00, 0xFF, 0xFF);
     }
 
     if (page_table_map(table, (void*)gop->virtAddr, (void*)gop->physAddr, BYTES_TO_PAGES(gop->size), PML_WRITE,
             PML_CALLBACK_NONE) == ERR)
     {
-        Print(L"failed to map gop memory!\n");
-        return EFI_OUT_OF_RESOURCES;
+        panic_without_boot_services(0xFF, 0xFF, 0xFF);
     }
-
-    Print(L"done!\n");
-    return EFI_SUCCESS;
 }

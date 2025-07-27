@@ -1,7 +1,7 @@
 #include "irq.h"
 
-#include "drivers/apic.h"
 #include "cpu/smp.h"
+#include "drivers/apic.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "sync/rwlock.h"

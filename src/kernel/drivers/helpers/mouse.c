@@ -1,10 +1,10 @@
 #include "mouse.h"
-#include "fs/sysfs.h"
-#include "fs/file.h"
-#include "mem/heap.h"
 #include "drivers/helpers/mouse.h"
-#include "sync/lock.h"
+#include "fs/file.h"
+#include "fs/sysfs.h"
+#include "mem/heap.h"
 #include "sched/timer.h"
+#include "sync/lock.h"
 
 #include <sys/math.h>
 

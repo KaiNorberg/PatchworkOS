@@ -259,12 +259,12 @@ static void pmm_load_memory(boot_memory_map_t* map)
 
         if (pmm_is_efi_mem_available(desc->Type))
         {
-            pmm_free_pages_unlocked(PML_LOWER_TO_HIGHER(desc->PhysicalStart), desc->NumberOfPages);
+            pmm_free_pages_unlocked((void*)desc->VirtualStart, desc->NumberOfPages);
         }
         else
         {
-            LOG_INFO("reserve [0x%016lx-0x%016lx] pages=%d type=%s\n", desc->PhysicalStart,
-                (uint64_t)desc->PhysicalStart + desc->NumberOfPages * PAGE_SIZE, desc->NumberOfPages,
+            LOG_INFO("reserve [0x%016lx-0x%016lx] pages=%d type=%s\n", desc->VirtualStart,
+                (uint64_t)desc->VirtualStart + desc->NumberOfPages * PAGE_SIZE, desc->NumberOfPages,
                 efiMemTypeToString[desc->Type]);
         }
     }

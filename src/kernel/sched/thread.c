@@ -2,10 +2,10 @@
 
 #include "cpu/gdt.h"
 #include "cpu/smp.h"
-#include "sched/timer.h"
 #include "log/log.h"
 #include "mem/heap.h"
 #include "sched/sched.h"
+#include "sched/timer.h"
 #include "sched/wait.h"
 #include "sync/lock.h"
 

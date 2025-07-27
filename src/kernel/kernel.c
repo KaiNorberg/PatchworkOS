@@ -2,18 +2,17 @@
 
 #include "acpi/acpi.h"
 #include "acpi/madt.h"
-#include "drivers/apic.h"
 #include "cpu/gdt.h"
 #include "cpu/idt.h"
 #include "cpu/simd.h"
 #include "cpu/smp.h"
 #include "cpu/syscalls.h"
+#include "drivers/apic.h"
 #include "drivers/const.h"
 #include "drivers/fb/gop.h"
 #include "drivers/ps2/ps2.h"
 #include "drivers/time/hpet.h"
 #include "drivers/time/rtc.h"
-#include "sched/timer.h"
 #include "fs/ramfs.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
@@ -27,6 +26,7 @@
 #include "net/net.h"
 #include "proc/process.h"
 #include "sched/sched.h"
+#include "sched/timer.h"
 #include "sched/wait.h"
 
 #ifndef NDEBUG
@@ -50,6 +50,8 @@ static void kernel_free_loader_data(boot_memory_map_t* map)
                 ((uintptr_t)desc->PhysicalStart) + desc->NumberOfPages * PAGE_SIZE);
         }
     }
+
+    LOG_INFO("kernel initalized using %llu kb of memory\n", pmm_reserved_amount() * PAGE_SIZE / 1024);
 }
 
 void kernel_init(boot_info_t* bootInfo)

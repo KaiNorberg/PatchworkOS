@@ -1,8 +1,8 @@
 #include "rwlock.h"
 
 #ifndef NDEBUG
-#include "sched/timer.h"
 #include "log/panic.h"
+#include "sched/timer.h"
 #endif
 
 void rwlock_init(rwlock_t* lock)

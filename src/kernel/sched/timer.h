@@ -26,7 +26,7 @@ typedef struct cpu cpu_t;
  * @brief Timer callback function type.
  * @ingroup kernel_timer
  */
-typedef void(*timer_callback_t)(trap_frame_t* trapFrame, cpu_t* self);
+typedef void (*timer_callback_t)(trap_frame_t* trapFrame, cpu_t* self);
 
 /**
  * @brief Per-CPU system time context.

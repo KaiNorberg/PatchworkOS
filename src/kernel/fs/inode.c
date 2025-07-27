@@ -1,8 +1,8 @@
 #include "inode.h"
 
-#include "sched/timer.h"
 #include "mem/heap.h"
 #include "sched/thread.h"
+#include "sched/timer.h"
 #include "vfs.h"
 
 inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, const inode_ops_t* ops,

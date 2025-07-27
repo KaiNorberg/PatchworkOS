@@ -1,7 +1,7 @@
 #pragma once
 
-#include "sched/timer.h"
 #include "sched/sched.h"
+#include "sched/timer.h"
 #include "sched/wait.h"
 #include "trap.h"
 #include "tss.h"

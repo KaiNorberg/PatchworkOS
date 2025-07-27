@@ -1,12 +1,12 @@
 #include "timer.h"
-#include "drivers/apic.h"
-#include "log/panic.h"
 #include "cpu/smp.h"
 #include "cpu/syscalls.h"
 #include "cpu/vectors.h"
+#include "drivers/apic.h"
 #include "drivers/time/hpet.h"
-#include "log/log.h"
 #include "drivers/time/rtc.h"
+#include "log/log.h"
+#include "log/panic.h"
 
 #include <stdatomic.h>
 #include <stdbool.h>
@@ -29,7 +29,7 @@ static void timer_accumulate(void)
 void timer_init(void)
 {
     timer_accumulate();
-    
+
     struct tm time;
     rtc_read(&time);
     bootEpoch = mktime(&time);
@@ -114,7 +114,7 @@ void timer_unsubscribe(timer_callback_t callback)
             return;
         }
     }
-    
+
     panic(NULL, "Failed to unsubscribe timer callback, not found");
 }
 

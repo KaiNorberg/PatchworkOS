@@ -4,8 +4,8 @@
 #include "mouse.h"
 
 #include "cpu/port.h"
-#include "sched/timer.h"
 #include "log/panic.h"
+#include "sched/timer.h"
 
 void ps2_init(void)
 {
