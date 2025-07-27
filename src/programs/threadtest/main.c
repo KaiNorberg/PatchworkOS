@@ -1,8 +1,6 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/proc.h>
 #include <threads.h>
 
@@ -11,7 +9,7 @@
 static atomic_long count;
 static atomic_long next;
 
-bool is_prime(int n)
+bool is_prime(uint64_t n)
 {
     if (n <= 1)
     {
@@ -26,7 +24,7 @@ bool is_prime(int n)
         return false;
     }
 
-    for (int i = 5; i * i <= n; i += 6)
+    for (uint64_t i = 5; i * i <= n; i += 6)
     {
         if (n % i == 0 || n % (i + 2) == 0)
         {
@@ -43,7 +41,7 @@ static void count_primes(uint64_t start, uint64_t end)
     {
         if (is_prime(i))
         {
-            atomic_fetch_add_explicit(&count, 1, __ATOMIC_RELAXED);
+            atomic_fetch_add(&count, 1);
         }
     }
 }
@@ -51,13 +49,14 @@ static void count_primes(uint64_t start, uint64_t end)
 static int thread_entry(void* arg)
 {
     uint64_t start;
-    while ((start = atomic_fetch_add_explicit(&next, 1000, __ATOMIC_RELAXED)) < PRIME_MAX)
+    while ((start = atomic_fetch_add(&next, 1000)) < PRIME_MAX)
     {
         uint64_t end = start + 1000;
         if (end > PRIME_MAX)
         {
             end = PRIME_MAX;
         }
+
         count_primes(start, end);
     }
     return thrd_success;
@@ -100,7 +99,7 @@ int main(void)
     benchmark(1);
     benchmark(2);
     benchmark(4);
-    benchmark(8);
 
+    printf("Testing complete.\n");
     return 0;
 }

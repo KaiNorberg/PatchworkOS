@@ -15,8 +15,7 @@
 #include <sys/io.h>
 #include <sys/math.h>
 
-static sysfs_dir_t pipeDir;
-static sysfs_file_t newFile;
+static sysfs_file_t pipeFile;
 
 static uint64_t pipe_open(file_t* file)
 {
@@ -208,11 +207,7 @@ static file_ops_t fileOps = {
 
 void pipe_init(void)
 {
-    if (sysfs_dir_init(&pipeDir, sysfs_get_default(), "pipe", NULL, NULL) == ERR)
-    {
-        panic(NULL, "Failed to initialize pipe directory");
-    }
-    if (sysfs_file_init(&newFile, &pipeDir, "new", NULL, &fileOps, NULL) == ERR)
+    if (sysfs_file_init(&pipeFile, sysfs_get_default(), "pipe", NULL, &fileOps, NULL) == ERR)
     {
         panic(NULL, "Failed to initialize pipe file");
     }
