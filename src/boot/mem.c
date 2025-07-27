@@ -35,7 +35,7 @@ EFI_STATUS mem_init(void)
     for (size_t i = 0; i < map.length; i++)
     {
         EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(&map, i);
-        if (boot_is_mem_ram(desc->Type))
+        if (desc->Type == EfiConventionalMemory)
         {
             availPages += desc->NumberOfPages;
         }
