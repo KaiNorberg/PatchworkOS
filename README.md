@@ -59,7 +59,7 @@ And much more...
 
 ## Notable Future Plans
 
-* Bootloader overhaul.
+* Replace futexes with file based api.
 * Modular kernel.
 * Shared libraries.
 * Software interrupts for notes (signals).
