@@ -21,7 +21,7 @@
 
 /**
  * @brief Virtual File System.
- * @ingroup kernel
+ * @ingroup kernel_fs
  * @defgroup kernel_fs_vfs VFS
  *
  */

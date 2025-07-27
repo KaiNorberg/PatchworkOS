@@ -5,7 +5,7 @@
 
 /**
  * @brief Filesystem for exposing kernel resources.
- * @ingroup kernel
+ * @ingroup kernel_fs
  * @defgroup kernel_fs_sysfs SysFS
  *
  *

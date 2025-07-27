@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include "vfs.h"
+#include "fs/file.h"
 
 #define CTL_STANDARD_WRITE_DEFINE(name, ...) \
     static ctl_t name##ctls[] = __VA_ARGS__; \

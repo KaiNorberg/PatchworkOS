@@ -9,7 +9,7 @@
 
 /**
  * @brief Wait queue implementation.
- * @defgroup kernel_sched_wait wait
+ * @defgroup kernel_sched_wait Wait
  * @ingroup kernel_sched
  *
  */

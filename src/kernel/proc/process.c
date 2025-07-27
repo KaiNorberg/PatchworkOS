@@ -49,29 +49,6 @@ static process_t* process_file_get_process(file_t* file)
     return process;
 }
 
-static uint64_t process_ctl_wait(file_t* file, uint64_t argc, const char** argv)
-{
-    process_t* process = process_file_get_process(file);
-    if (process == NULL)
-    {
-        return ERR;
-    }
-
-    process_t* self = sched_process();
-
-    if (process == self)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    WAIT_BLOCK(&process->queue, ({
-        LOCK_SCOPE(&process->threads.lock);
-        process->threads.isDying;
-    }));
-    return 0;
-}
-
 static uint64_t process_ctl_prio(file_t* file, uint64_t argc, const char** argv)
 {
     process_t* process = process_file_get_process(file);
@@ -98,7 +75,6 @@ static uint64_t process_ctl_prio(file_t* file, uint64_t argc, const char** argv)
 
 CTL_STANDARD_OPS_DEFINE(ctlOps,
     (ctl_array_t){
-        {"wait", process_ctl_wait, 1, 1},
         {"prio", process_ctl_prio, 2, 2},
         {0},
     });

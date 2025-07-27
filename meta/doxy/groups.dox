@@ -68,3 +68,28 @@
  *
  *
  */
+
+/**
+ * @brief File system.
+ * @defgroup kernel_fs fs
+ * @ingroup kernel
+ *
+ *
+ */
+
+
+/**
+ * @brief Drivers.
+ * @defgroup kernel_drivers drivers
+ * @ingroup kernel
+ *
+ *
+ */
+
+/**
+ * @brief Syncronization Primitives.
+ * @defgroup kernel_sync sync
+ * @ingroup kernel
+ *
+ *
+ */
