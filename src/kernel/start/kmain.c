@@ -6,6 +6,7 @@
 #include "mem/heap.h"
 #include "sched/loader.h"
 #include "sched/sched.h"
+#include "utils/ref.h"
 
 #include <_internal/MAX_PATH.h>
 #include <assert.h>
@@ -35,7 +36,7 @@ void kmain(boot_info_t* bootInfo)
     {
         panic(NULL, "Failed to set klog as stdout for init process");
     }
-    DEREF(klog);
+    ref_dec(klog);
 
     sched_push(initThread, NULL);
 

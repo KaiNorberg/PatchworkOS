@@ -45,9 +45,9 @@ static void kernel_free_loader_data(boot_memory_map_t* map)
 
         if (desc->Type == EfiLoaderData)
         {
-            pmm_free_pages(PML_LOWER_TO_HIGHER(desc->PhysicalStart), desc->NumberOfPages);
-            LOG_INFO("free boot memory [0x%016lx-0x%016lx]\n", desc->PhysicalStart,
-                ((uintptr_t)desc->PhysicalStart) + desc->NumberOfPages * PAGE_SIZE);
+            pmm_free_pages((void*)desc->VirtualStart, desc->NumberOfPages);
+            LOG_INFO("free boot memory [0x%016lx-0x%016lx]\n", desc->VirtualStart,
+                ((uintptr_t)desc->VirtualStart) + desc->NumberOfPages * PAGE_SIZE);
         }
     }
 

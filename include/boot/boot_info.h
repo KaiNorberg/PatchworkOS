@@ -9,6 +9,24 @@
 #include <sys/io.h>
 #include <sys/list.h>
 
+static bool boot_is_mem_ram(EFI_MEMORY_TYPE type)
+{
+    switch (type)
+    {
+    case EfiConventionalMemory:
+    case EfiLoaderCode:
+    case EfiLoaderData:
+    case EfiBootServicesCode:
+    case EfiBootServicesData:
+    case EfiRuntimeServicesCode:
+    case EfiRuntimeServicesData:
+    case EfiACPIReclaimMemory:
+    case EfiACPIMemoryNVS:
+        return true;
+    default:
+        return false;
+    }
+}
 typedef struct
 {
     uint32_t* physAddr;

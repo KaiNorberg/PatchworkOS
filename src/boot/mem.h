@@ -5,7 +5,8 @@
 #include <boot/boot_info.h>
 #include <common/paging_types.h>
 
-#define MEM_BASIC_ALLOCATOR_MAX_PAGES 8192
+#define MEM_BASIC_ALLOCATOR_MIN_PAGES 8192
+#define MEM_BASIC_ALLOCATOR_RESERVE_PERCENTAGE 5
 
 EFI_STATUS mem_init(void);
 

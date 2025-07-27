@@ -2,6 +2,8 @@
 
 #include "mem/vmm.h"
 
+#include <errno.h>
+
 static cache_t* cache_new(slab_t* slab, uint64_t objectSize, uint64_t size)
 {
     cache_t* cache = vmm_kernel_map(NULL, NULL, BYTES_TO_PAGES(size), PML_WRITE);

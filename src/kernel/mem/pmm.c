@@ -48,28 +48,9 @@ static uint64_t freePageAmount = 0;
 
 static lock_t lock = LOCK_CREATE();
 
-static bool pmm_is_efi_mem_ram(EFI_MEMORY_TYPE type)
-{
-    switch (type)
-    {
-    case EfiConventionalMemory:
-    case EfiLoaderCode:
-    case EfiLoaderData:
-    case EfiBootServicesCode:
-    case EfiBootServicesData:
-    case EfiRuntimeServicesCode:
-    case EfiRuntimeServicesData:
-    case EfiACPIReclaimMemory:
-    case EfiACPIMemoryNVS:
-        return true;
-    default:
-        return false;
-    }
-}
-
 static bool pmm_is_efi_mem_available(EFI_MEMORY_TYPE type)
 {
-    if (!pmm_is_efi_mem_ram(type))
+    if (!boot_is_mem_ram(type))
     {
         return false;
     }
@@ -244,7 +225,7 @@ static void pmm_detect_memory(boot_memory_map_t* map)
     {
         const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, i);
 
-        if (pmm_is_efi_mem_ram(desc->Type))
+        if (boot_is_mem_ram(desc->Type))
         {
             pageAmount += desc->NumberOfPages;
         }

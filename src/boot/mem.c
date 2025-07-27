@@ -13,6 +13,7 @@
 struct
 {
     EFI_PHYSICAL_ADDRESS buffer;
+    uint64_t maxPages;
     uint64_t pagesAllocated;
     boot_gop_t* gop;
     boot_memory_map_t* map;
@@ -22,8 +23,29 @@ EFI_STATUS mem_init(void)
 {
     Print(L"Initializing basic allocator... ");
 
-    EFI_STATUS status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData,
-        MEM_BASIC_ALLOCATOR_MAX_PAGES, &basicAllocator.buffer);
+    boot_memory_map_t map;
+    EFI_STATUS status = mem_map_init(&map);
+    if (EFI_ERROR(status))
+    {
+        Print(L"failed to initialize memory map (0x%lx)!\n", status);
+        return status;
+    }
+
+    uint64_t availPages = 0;
+    for (size_t i = 0; i < map.length; i++)
+    {
+        EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(&map, i);
+        if (boot_is_mem_ram(desc->Type))
+        {
+            availPages += desc->NumberOfPages;
+        }
+    }
+
+    basicAllocator.maxPages = MAX(availPages * MEM_BASIC_ALLOCATOR_RESERVE_PERCENTAGE / 100, MEM_BASIC_ALLOCATOR_MIN_PAGES);
+    Print(L"basic alloc using %llu pages... ", basicAllocator.maxPages);
+
+    status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData,
+        basicAllocator.maxPages, &basicAllocator.buffer);
     if (EFI_ERROR(status))
     {
         Print(L"failed to allocate buffer (0x%lx)!\n", status);
@@ -79,7 +101,7 @@ NORETURN static void panic_without_boot_services(uint8_t red, uint8_t green, uin
 
 static void* basic_allocator_alloc(void)
 {
-    if (basicAllocator.pagesAllocated == MEM_BASIC_ALLOCATOR_MAX_PAGES)
+    if (basicAllocator.pagesAllocated == basicAllocator.maxPages)
     {
         panic_without_boot_services(0xFF, 0x00, 0x00);
     }
