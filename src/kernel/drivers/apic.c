@@ -2,12 +2,12 @@
 
 #include "acpi/madt.h"
 #include "cpu/smp.h"
-#include "drivers/systime/hpet.h"
-#include "drivers/systime/systime.h"
+#include "drivers/time/hpet.h"
+#include "sched/timer.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/vmm.h"
-#include "pic.h"
+#include "drivers/pic.h"
 #include "utils/utils.h"
 
 #include <assert.h>

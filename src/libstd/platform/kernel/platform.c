@@ -1,14 +1,9 @@
 #include "../platform.h"
-#include "common/print.h"
 
-#include "drivers/systime/systime.h"
 #include "log/log.h"
 #include "log/panic.h"
-#include "mem/pmm.h"
-#include "mem/vmm.h"
 #include "sched/thread.h"
 
-#include <stdio.h>
 #include <sys/math.h>
 #include <sys/proc.h>
 

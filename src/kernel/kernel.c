@@ -2,7 +2,7 @@
 
 #include "acpi/acpi.h"
 #include "acpi/madt.h"
-#include "cpu/apic.h"
+#include "drivers/apic.h"
 #include "cpu/gdt.h"
 #include "cpu/idt.h"
 #include "cpu/simd.h"
@@ -11,8 +11,9 @@
 #include "drivers/const.h"
 #include "drivers/fb/gop.h"
 #include "drivers/ps2/ps2.h"
-#include "drivers/systime/hpet.h"
-#include "drivers/systime/systime.h"
+#include "drivers/time/hpet.h"
+#include "drivers/time/rtc.h"
+#include "sched/timer.h"
 #include "fs/ramfs.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
@@ -75,8 +76,14 @@ void kernel_init(boot_info_t* bootInfo)
     lapic_cpu_init();
     ioapic_all_init();
 
+    rtc_init();
+
+    timer_init();
+    timer_cpu_init();
+
     process_kernel_init();
     sched_init();
+    wait_init();
 
     vfs_init();
     ramfs_init(&bootInfo->disk);
@@ -86,9 +93,6 @@ void kernel_init(boot_info_t* bootInfo)
     process_procfs_init();
 
     simd_cpu_init();
-
-    systime_init();
-    systime_cpu_timer_init();
 
     syscall_table_init();
     syscalls_cpu_init();
@@ -123,5 +127,5 @@ void kernel_other_init(void)
 
     vmm_cpu_init();
     syscalls_cpu_init();
-    systime_cpu_timer_init();
+    timer_cpu_init();
 }

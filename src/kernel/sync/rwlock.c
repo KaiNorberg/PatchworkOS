@@ -1,7 +1,7 @@
 #include "rwlock.h"
 
 #ifndef NDEBUG
-#include "drivers/systime/systime.h"
+#include "sched/timer.h"
 #include "log/panic.h"
 #endif
 
@@ -20,7 +20,7 @@ void rwlock_read_acquire(rwlock_t* lock)
     cli_push();
 
 #ifndef NDEBUG
-    clock_t start = systime_uptime();
+    clock_t start = timer_uptime();
 #endif
 
     uint_fast16_t ticket = atomic_fetch_add(&lock->readTicket, 1);
@@ -29,7 +29,7 @@ void rwlock_read_acquire(rwlock_t* lock)
     {
         asm volatile("pause");
 #ifndef NDEBUG
-        clock_t now = systime_uptime();
+        clock_t now = timer_uptime();
         if (start != 0 && now - start > RWLOCK_DEADLOCK_TIMEOUT)
         {
             panic(NULL, "Deadlock in rwlock_read_acquire detected");
@@ -40,7 +40,7 @@ void rwlock_read_acquire(rwlock_t* lock)
     while (atomic_load(&lock->writeServe) != atomic_load(&lock->writeTicket))
     {
 #ifndef NDEBUG
-        clock_t now = systime_uptime();
+        clock_t now = timer_uptime();
         if (start != 0 && now - start > RWLOCK_DEADLOCK_TIMEOUT)
         {
             panic(NULL, "Deadlock in rwlock_read_acquire detected");
@@ -65,7 +65,7 @@ void rwlock_write_acquire(rwlock_t* lock)
     cli_push();
 
 #ifndef NDEBUG
-    clock_t start = systime_uptime();
+    clock_t start = timer_uptime();
 #endif
 
     uint_fast16_t ticket = atomic_fetch_add(&lock->writeTicket, 1);
@@ -73,7 +73,7 @@ void rwlock_write_acquire(rwlock_t* lock)
     while (atomic_load(&lock->writeServe) != ticket)
     {
 #ifndef NDEBUG
-        clock_t now = systime_uptime();
+        clock_t now = timer_uptime();
         if (start != 0 && now - start > RWLOCK_DEADLOCK_TIMEOUT)
         {
             panic(NULL, "Deadlock in rwlock_write_acquire detected");
@@ -85,7 +85,7 @@ void rwlock_write_acquire(rwlock_t* lock)
     while (atomic_load(&lock->activeReaders) > 0)
     {
 #ifndef NDEBUG
-        clock_t now = systime_uptime();
+        clock_t now = timer_uptime();
         if (start != 0 && now - start > RWLOCK_DEADLOCK_TIMEOUT)
         {
             panic(NULL, "Deadlock in rwlock_write_acquire detected");
@@ -98,7 +98,7 @@ void rwlock_write_acquire(rwlock_t* lock)
     while (!atomic_compare_exchange_weak(&lock->activeWriter, &expected, true))
     {
 #ifndef NDEBUG
-        clock_t now = systime_uptime();
+        clock_t now = timer_uptime();
         if (start != 0 && now - start > RWLOCK_DEADLOCK_TIMEOUT)
         {
             panic(NULL, "Deadlock in rwlock_write_acquire detected");

@@ -3,7 +3,7 @@
 #include "cpu/port.h"
 #include "cpu/smp.h"
 #include "cpu/vectors.h"
-#include "drivers/systime/systime.h"
+#include "sched/timer.h"
 #include "log/log.h"
 #include "log/screen.h"
 #include "mem/pmm.h"

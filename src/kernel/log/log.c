@@ -2,7 +2,7 @@
 
 #include "cpu/smp.h"
 #include "drivers/com.h"
-#include "drivers/systime/systime.h"
+#include "sched/timer.h"
 #include "fs/file.h"
 #include "log/panic.h"
 #include "sync/lock.h"
@@ -176,7 +176,7 @@ static void log_print_header(log_level_t level, const char* prefix)
         return;
     }
 
-    uint64_t uptime = systime_uptime();
+    uint64_t uptime = timer_uptime();
     uint64_t seconds = uptime / CLOCKS_PER_SEC;
     uint64_t milliseconds = (uptime % CLOCKS_PER_SEC) / (CLOCKS_PER_SEC / 1000);
 

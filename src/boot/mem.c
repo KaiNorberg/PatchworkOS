@@ -119,5 +119,6 @@ EFI_STATUS mem_page_table_map_gop_kernel(page_table_t* table, boot_memory_map_t*
         return EFI_OUT_OF_RESOURCES;
     }
 
+    Print(L"done!\n");
     return EFI_SUCCESS;
 }

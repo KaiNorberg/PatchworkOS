@@ -1,7 +1,6 @@
 #include "trampoline.h"
 
-#include "drivers/systime/hpet.h"
-#include "drivers/systime/systime.h"
+#include "drivers/time/hpet.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/pmm.h"
@@ -56,7 +55,7 @@ uint64_t trampoline_wait_ready(cpuid_t cpuId, clock_t timeout)
     {
         if (atomic_load(&cpuReadyFlags[cpuId]))
         {
-            LOG_DEBUG("CPU %u ready after %u ms\n", cpuId, elapsed / (CLOCKS_PER_SEC / 1000));
+            LOG_INFO("cpu %u ready after %u ms\n", cpuId, elapsed / (CLOCKS_PER_SEC / 1000));
             return 0;
         }
 

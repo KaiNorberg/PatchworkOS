@@ -1,6 +1,6 @@
 #pragma once
 
-#include "drivers/systime/systime.h"
+#include "sched/timer.h"
 #include "sched/sched.h"
 #include "sched/wait.h"
 #include "trap.h"
@@ -30,7 +30,7 @@ typedef struct cpu
     uint64_t trapDepth;
     tss_t tss;
     cli_ctx_t cli;
-    systime_ctx_t systime;
+    timer_ctx_t timer;
     sched_cpu_ctx_t sched;
     wait_cpu_ctx_t wait;
     statistics_cpu_ctx_t stat;
@@ -40,20 +40,7 @@ void smp_bootstrap_init(void);
 
 void smp_others_init(void);
 
-void smp_entry(cpuid_t id);
-
 void smp_halt_others(void);
-
-/**
- * @brief Trigger trap on cpu.
- * @ingroup kernel_cpu_smp
- *
- * The `smp_notify()` function, sends an ipi that does nothing to the specified cpu, effectively causing a trap on the
- * cpu allowing it to for example schedule, etc.
- *
- * @param cpu The destination cpu.
- */
-void smp_notify(cpu_t* cpu);
 
 uint8_t smp_cpu_amount(void) PURE_FUNC;
 

@@ -1,16 +1,10 @@
 #include "sched.h"
 
-#include "_internal/ERR.h"
-#include "cpu/apic.h"
-#include "cpu/gdt.h"
+#include "drivers/apic.h"
 #include "cpu/smp.h"
 #include "cpu/syscalls.h"
 #include "cpu/trap.h"
-
-#include "drivers/systime/hpet.h"
-#include "drivers/systime/systime.h"
-#include "fs/vfs.h"
-#include "loader.h"
+#include "sched/timer.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "proc/process.h"
@@ -20,8 +14,6 @@
 #include "sync/lock.h"
 
 #include <assert.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/proc.h>
@@ -133,7 +125,7 @@ static void sched_init_spawn_boot_thread(void)
 void sched_init(void)
 {
     sched_init_spawn_boot_thread();
-
+    
     wait_queue_init(&sleepQueue);
 }
 
@@ -147,6 +139,8 @@ void sched_done_with_boot_thread(void)
     // The boot thread becomes the bootstrap cpus idle thread.
     ctx->runThread->sched.deadline = 0;
     ctx->idleThread = ctx->runThread;
+
+    timer_notify(self);
 
     // Will enable interrupts.
     sched_idle_loop();
@@ -255,7 +249,7 @@ SYSCALL_DEFINE(SYS_THREAD_EXIT, void)
 
 static void sched_update_recent_idle_time(thread_t* thread, bool wasBlocking)
 {
-    clock_t uptime = systime_uptime();
+    clock_t uptime = timer_uptime();
     clock_t delta = uptime - thread->sched.prevBlockCheck;
     if (wasBlocking)
     {
@@ -280,7 +274,7 @@ static void sched_compute_time_slice(thread_t* thread, thread_t* parent)
 {
     if (parent != NULL)
     {
-        clock_t uptime = systime_uptime();
+        clock_t uptime = timer_uptime();
         clock_t remaining = uptime <= parent->sched.deadline ? parent->sched.deadline - uptime : 0;
 
         parent->sched.deadline = uptime + remaining / 2;
@@ -332,12 +326,11 @@ static bool sched_should_notify(cpu_t* self, cpu_t* target, priority_t priority)
 {
     if (target != self)
     {
-        if (target->sched.runThread != target->sched.idleThread &&
-            priority > target->sched.runThread->sched.actualPriority)
+        if (target->sched.runThread == target->sched.idleThread)
         {
             return true;
         }
-        else if (target->sched.runThread == target->sched.idleThread)
+        if (priority > target->sched.runThread->sched.actualPriority)
         {
             return true;
         }
@@ -377,7 +370,7 @@ void sched_push(thread_t* thread, cpu_t* target)
 
     if (sched_should_notify(self, target, thread->sched.actualPriority))
     {
-        smp_notify(target);
+        timer_notify(target);
     }
 
     smp_put();
@@ -454,7 +447,7 @@ void sched_push_new_thread(thread_t* thread, thread_t* parent)
 
     if (sched_should_notify(self, target, thread->sched.actualPriority))
     {
-        smp_notify(target);
+        timer_notify(target);
     }
 
     smp_put();
@@ -496,7 +489,7 @@ static void sched_load_balance(cpu_t* self, cpu_t* neighbor)
 
     if (shouldNotifyNeighbor)
     {
-        smp_notify(neighbor);
+        timer_notify(neighbor);
     }
 }
 
@@ -596,7 +589,7 @@ bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
     }
     }
 
-    clock_t uptime = systime_uptime();
+    clock_t uptime = timer_uptime();
 
     priority_t minPriority;
     if (ctx->runThread == NULL)
@@ -660,7 +653,7 @@ bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self)
 
     if (ctx->runThread != ctx->idleThread && ctx->runThread->sched.deadline > uptime)
     {
-        systime_timer_one_shot(self, uptime, ctx->runThread->sched.deadline - uptime);
+        timer_one_shot(self, uptime, ctx->runThread->sched.deadline - uptime);
     }
 
     lock_release(&self->sched.lock);

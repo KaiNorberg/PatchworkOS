@@ -1,7 +1,7 @@
 #include "vfs.h"
 
 #include "cpu/syscalls.h"
-#include "drivers/systime/systime.h"
+#include "sched/timer.h"
 #include "fs/dentry.h"
 #include "fs/inode.h"
 #include "fs/mount.h"
@@ -1295,7 +1295,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
         return ERR;
     }
 
-    clock_t uptime = systime_uptime();
+    clock_t uptime = timer_uptime();
 
     clock_t deadline;
     if (timeout == CLOCKS_NEVER)
@@ -1314,7 +1314,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
     uint64_t readyCount = 0;
     while (true)
     {
-        uptime = systime_uptime();
+        uptime = timer_uptime();
         clock_t remaining = (deadline == CLOCKS_NEVER) ? CLOCKS_NEVER : deadline - uptime;
 
         if (wait_block_setup(ctx.queues, ctx.queueAmount, remaining) == ERR)

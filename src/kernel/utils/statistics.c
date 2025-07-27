@@ -1,7 +1,7 @@
 #include "statistics.h"
 
 #include "cpu/smp.h"
-#include "drivers/systime/systime.h"
+#include "sched/timer.h"
 #include "fs/file.h"
 #include "fs/sysfs.h"
 #include "fs/vfs.h"
@@ -99,7 +99,7 @@ void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* self)
     statistics_cpu_ctx_t* stat = &self->stat;
     LOCK_SCOPE(&stat->lock);
 
-    stat->trapBegin = systime_uptime();
+    stat->trapBegin = timer_uptime();
 
     clock_t timeBetweenTraps = stat->trapBegin - stat->trapEnd;
     if (sched_is_idle())
@@ -117,6 +117,6 @@ void statistics_trap_end(trap_frame_t* trapFrame, cpu_t* self)
     statistics_cpu_ctx_t* stat = &self->stat;
     LOCK_SCOPE(&stat->lock);
 
-    stat->trapEnd = systime_uptime();
+    stat->trapEnd = timer_uptime();
     stat->trapClocks += stat->trapEnd - stat->trapBegin;
 }

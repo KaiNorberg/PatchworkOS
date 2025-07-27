@@ -1,9 +1,9 @@
 #include "smp.h"
 
 #include "acpi/madt.h"
-#include "apic.h"
+#include "drivers/apic.h"
 #include "cpu/vectors.h"
-#include "drivers/systime/hpet.h"
+#include "drivers/time/hpet.h"
 #include "kernel.h"
 #include "log/log.h"
 #include "log/panic.h"
@@ -37,6 +37,20 @@ static void cpu_init(cpu_t* cpu, uint8_t id, uint8_t lapicId, bool isBootstrap)
     sched_cpu_ctx_init(&cpu->sched, cpu);
     wait_cpu_ctx_init(&cpu->wait);
     statistics_cpu_ctx_init(&cpu->stat);
+}
+
+static void smp_entry(cpuid_t id)
+{
+    msr_write(MSR_CPU_ID, id);
+    cpu_t* cpu = smp_self_unsafe();
+    assert(cpu->id == id);
+
+    kernel_other_init();
+
+    trampoline_signal_ready(cpu->id);
+
+    LOG_DEBUG("cpu %u with lapicid %u now idling\n", (uint64_t)cpu->id, (uint64_t)cpu->lapicId);
+    sched_idle_loop();
 }
 
 static uint64_t cpu_start(cpu_t* cpu)
@@ -109,20 +123,6 @@ void smp_others_init(void)
     trampoline_deinit();
 }
 
-void smp_entry(cpuid_t id)
-{
-    msr_write(MSR_CPU_ID, id);
-    cpu_t* cpu = smp_self_unsafe();
-    assert(cpu->id == id);
-
-    kernel_other_init();
-
-    trampoline_signal_ready(cpu->id);
-
-    LOG_DEBUG("cpu %u with lapicid %u now idling\n", (uint64_t)cpu->id, (uint64_t)cpu->lapicId);
-    sched_idle_loop();
-}
-
 static void smp_halt_ipi(trap_frame_t* trapFrame)
 {
     atomic_fetch_add(&haltedAmount, 1);
@@ -144,11 +144,6 @@ void smp_halt_others(void)
             lapic_send_ipi(cpus[id]->lapicId, VECTOR_HALT);
         }
     }
-}
-
-void smp_notify(cpu_t* cpu)
-{
-    lapic_send_ipi(cpu->lapicId, VECTOR_NOTIFY);
 }
 
 uint8_t smp_cpu_amount(void)

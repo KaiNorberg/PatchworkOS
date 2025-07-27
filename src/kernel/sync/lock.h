@@ -2,7 +2,7 @@
 
 #include "cpu/trap.h"
 #ifndef NDEBUG
-#include "drivers/systime/systime.h"
+#include "sched/timer.h"
 #include "log/panic.h"
 #endif
 
@@ -38,7 +38,7 @@ static inline void lock_acquire(lock_t* lock)
     cli_push();
 
 #ifndef NDEBUG
-    clock_t start = systime_uptime();
+    clock_t start = timer_uptime();
 #endif
 
     // Overflow does not matter
@@ -48,7 +48,7 @@ static inline void lock_acquire(lock_t* lock)
         asm volatile("pause");
 
 #ifndef NDEBUG
-        clock_t now = systime_uptime();
+        clock_t now = timer_uptime();
         if (start != 0 && now - start > LOCK_DEADLOCK_TIMEOUT)
         {
             panic(NULL, "Deadlock in lock_acquire detected");

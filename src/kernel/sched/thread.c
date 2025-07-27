@@ -2,10 +2,9 @@
 
 #include "cpu/gdt.h"
 #include "cpu/smp.h"
-#include "drivers/systime/systime.h"
+#include "sched/timer.h"
 #include "log/log.h"
 #include "mem/heap.h"
-#include "sched/loader.h"
 #include "sched/sched.h"
 #include "sched/wait.h"
 #include "sync/lock.h"

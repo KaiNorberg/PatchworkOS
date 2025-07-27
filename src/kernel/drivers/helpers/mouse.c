@@ -1,15 +1,11 @@
 #include "mouse.h"
 #include "fs/sysfs.h"
-#include "fs/vfs.h"
-#include "log/log.h"
+#include "fs/file.h"
 #include "mem/heap.h"
-#include "ps2/mouse.h"
-#include "sched/thread.h"
+#include "drivers/helpers/mouse.h"
 #include "sync/lock.h"
-#include "systime/systime.h"
+#include "sched/timer.h"
 
-#include <assert.h>
-#include <stdlib.h>
 #include <sys/math.h>
 
 static sysfs_dir_t mouseDir = {0};
@@ -95,7 +91,7 @@ void mouse_push(mouse_t* mouse, mouse_buttons_t buttons, int64_t deltaX, int64_t
 {
     LOCK_SCOPE(&mouse->lock);
     mouse->events[mouse->writeIndex] = (mouse_event_t){
-        .time = systime_uptime(),
+        .time = timer_uptime(),
         .buttons = buttons,
         .deltaX = deltaX,
         .deltaY = deltaY,

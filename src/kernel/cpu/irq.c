@@ -1,6 +1,6 @@
 #include "irq.h"
 
-#include "cpu/apic.h"
+#include "drivers/apic.h"
 #include "cpu/smp.h"
 #include "log/log.h"
 #include "log/panic.h"

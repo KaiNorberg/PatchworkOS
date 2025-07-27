@@ -20,13 +20,12 @@ int syscall_descriptor_cmp(const void* a, const void* b)
 
 void syscall_table_init(void)
 {
-    LOG_INFO("sorting syscall table\n");
-
     // Syscalls are not inserted into the table by the linker in the correct order so we sort them.
     const uint64_t syscallsInTable =
         (((uint64_t)_syscallTableEnd - (uint64_t)_syscallTableStart) / sizeof(syscall_descriptor_t));
     assert(syscallsInTable == SYS_TOTAL_AMOUNT);
 
+    LOG_INFO("sorting syscall table, total system calls %d\n", SYS_TOTAL_AMOUNT);
     qsort(_syscallTableStart, syscallsInTable, sizeof(syscall_descriptor_t), syscall_descriptor_cmp);
 
     for (uint64_t i = 0; i < syscallsInTable; i++)

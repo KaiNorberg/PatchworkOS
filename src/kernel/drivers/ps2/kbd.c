@@ -5,11 +5,10 @@
 
 #include "cpu/irq.h"
 #include "cpu/port.h"
-#include "drivers/kbd.h"
+#include "drivers/helpers/kbd.h"
 #include "log/log.h"
 #include "log/panic.h"
 
-#include <assert.h>
 #include <sys/kbd.h>
 #include <sys/math.h>
 
