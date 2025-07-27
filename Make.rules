@@ -1,6 +1,6 @@
 $(BUILDDIR)/%.c.o: src/%.c
 	$(MKCWD)
-	$(CC) $(CFLAGS) -DFILE_BASENAME=\"$(basename $(notdir $<))\" -c -o $@ $^
+	$(GC) $(CFLAGS) -DFILE_BASENAME=\"$(basename $(notdir $<))\" -MMD -MP -MF $(BUILDDIR)/$*.c.d -c -o $@ $<
 
 $(BUILDDIR)/%.s.o: src/%.s
 	$(MKCWD)

@@ -3,73 +3,84 @@ MKCWD = mkdir -p $(@D)
 GC = gcc
 AS = nasm
 LD = ld
-
 OBJCOPY := objcopy
 
-OPTIMIZATION = -O3
-DEBUG_SYMBOLS =
 ifeq ($(DEBUG),1)
-    OPTIMIZATION = -O0
-    DEBUG_FLAGS = -g3 -ggdb -fno-omit-frame-pointer -fno-inline
+	CFLAGS_OPTIMIZATION = -O0
+	CFLAGS_DEBUG = -g3 -ggdb -fno-omit-frame-pointer -fno-inline
+	LDFLAGS_DEBUG = -g
 else
-    DEBUG_FLAGS = -DNDEBUG
+	CFLAGS_OPTIMIZATION = -O3
+	CFLAGS_DEBUG = -DNDEBUG
+	LDFLAGS_DEBUG =
 endif
 
-CFLAGS := $(OPTIMIZATION) \
-    $(DEBUG_FLAGS) \
-    -nostdlib \
-    -nostdinc \
-    -ffreestanding \
-    -fno-builtin \
-    -isystem "include" \
-    -isystem "include/libstd" \
-    -L"bin/libstd" \
-    -L"bin/libpatchwork" \
-    -std=gnu11 \
-    -Wall \
-    -Wextra \
-    -Werror \
-    -Wno-deprecated-pragma \
-    -Wno-unused-function \
-    -Wno-unused-variable \
-    -Wno-ignored-qualifiers \
-    -Wno-unused-parameter \
-    -Wno-unused-but-set-variable \
-    -Wno-implicit-fallthrough \
-    -Wno-deprecated-non-prototype \
-    -Wno-unused-but-set-parameter \
-    -Wno-unused-command-line-argument \
-    -fno-omit-frame-pointer \
-    -Iinclude \
-    -Ilib \
-    -I$(SRCDIR) \
+CFLAGS := \
+	$(CFLAGS_OPTIMIZATION) \
+	$(CFLAGS_DEBUG) \
+	-std=gnu11 \
+	-Wall \
+	-Wextra \
+	-Werror \
+	-Wno-deprecated-pragma \
+	-Wno-unused-function \
+	-Wno-unused-variable \
+	-Wno-ignored-qualifiers \
+	-Wno-unused-parameter \
+	-Wno-unused-but-set-variable \
+	-Wno-implicit-fallthrough \
+	-Wno-deprecated-non-prototype \
+	-Wno-unused-but-set-parameter \
+	-Wno-unused-command-line-argument \
+	-nostdlib \
+	-nostdinc \
+	-ffreestanding \
+	-fno-builtin \
+	-fno-omit-frame-pointer \
+	-isystem include \
+	-isystem include/libstd \
+	-Lbin/libstd \
+	-Lbin/libpatchwork \
+	-Iinclude \
+	-Ilib \
+	-I$(SRCDIR)
 
-CFLAGS_DISABLE_SIMD := -mno-mmx -mno-3dnow \
+CFLAGS_DISABLE_SIMD := \
+	-mno-mmx -mno-3dnow \
 	-mno-80387 -mno-sse \
 	-mno-sse2 -mno-sse3 \
 	-mno-ssse3 -mno-sse4
 
-ASFLAGS := -f elf64 \
+ASFLAGS := \
+	-f elf64 \
 	-Iinclude \
 	-Iinclude/libstd \
 	-I$(SRCDIR)
 
-LDFLAGS := -m elf_x86_64 \
+LDFLAGS := \
+	-m elf_x86_64 \
   -nostdlib \
-  -L"bin/libstd" \
-  -L"bin/libpatchwork" \
+  -Lbin/libstd \
+  -Lbin/libpatchwork
 
 ifeq ($(NOSTDLIB),1)
-    LDSTDLIB :=
+	LDSTDLIB :=
 else
-    LDSTDLIB := -lstd \
-        bin/libstd/crti.o \
-        bin/libstd/crt0.o \
-        bin/libstd/crtn.o
+	LDSTDLIB := \
+		-lstd \
+		bin/libstd/crti.o \
+		bin/libstd/crt0.o \
+		bin/libstd/crtn.o
 endif
 
-SRC = $(wildcard $(SRCDIR)/*.c) $(wildcard $(SRCDIR)/*.s) \
-	$(wildcard $(SRCDIR)/*/*.c) $(wildcard $(SRCDIR)/*/*.s) \
-	$(wildcard $(SRCDIR)/*/*/*.c) $(wildcard $(SRCDIR)/*/*/*.s)
+define find_sources
+$(shell find $(1) -name "*.c" -o -name "*.s")
+endef
+
+SRC = $(call find_sources,$(SRCDIR))
 
 OBJ = $(patsubst src/%, $(BUILDDIR)/%.o, $(SRC))
+
+DEP = $(OBJ:.o=.d)
+
+-include $(DEP)
