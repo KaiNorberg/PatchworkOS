@@ -1,8 +1,8 @@
 #include "inode.h"
 
-#include "drivers/systime/systime.h"
 #include "mem/heap.h"
 #include "sched/thread.h"
+#include "sched/timer.h"
 #include "vfs.h"
 
 inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t type, const inode_ops_t* ops,
@@ -31,7 +31,7 @@ inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t
     inode->linkCount = 1;
     inode->size = 0;
     inode->blocks = 0;
-    inode->accessTime = systime_unix_epoch();
+    inode->accessTime = timer_unix_epoch();
     inode->modifyTime = inode->accessTime;
     inode->changeTime = inode->accessTime;
     inode->createTime = inode->accessTime;
@@ -85,7 +85,7 @@ void inode_notify_access(inode_t* inode)
 
     MUTEX_SCOPE(&inode->mutex);
 
-    inode->accessTime = systime_unix_epoch();
+    inode->accessTime = timer_unix_epoch();
     // TODO: Sync to disk.
 }
 
@@ -97,7 +97,7 @@ void inode_notify_modify(inode_t* inode)
     }
 
     MUTEX_SCOPE(&inode->mutex);
-    inode->modifyTime = systime_unix_epoch();
+    inode->modifyTime = timer_unix_epoch();
     inode->changeTime = inode->modifyTime;
     // TODO: Sync to disk.
 }
@@ -110,7 +110,7 @@ void inode_notify_change(inode_t* inode)
     }
 
     MUTEX_SCOPE(&inode->mutex);
-    inode->changeTime = systime_unix_epoch();
+    inode->changeTime = timer_unix_epoch();
     // TODO: Sync to disk.
 }
 

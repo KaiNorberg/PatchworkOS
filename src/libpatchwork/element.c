@@ -80,7 +80,7 @@ static void element_free_children(element_t* elem)
     element_t* temp;
     LIST_FOR_EACH_SAFE(child, temp, &elem->children, entry)
     {
-        list_remove(&child->entry);
+        list_remove(&elem->children, &child->entry);
         element_free(child);
     }
 }
@@ -91,7 +91,11 @@ void element_free(element_t* elem)
     event_t event = {.target = elem->win->surface, .type = LEVENT_FREE};
     elem->proc(elem->win, elem, &event);
 
-    list_remove(&elem->entry);
+    if (elem->parent != NULL)
+    {
+        list_remove(&elem->parent->children, &elem->entry);
+        elem->parent = NULL;
+    }
 
     element_free_children(elem);
     free(elem->text);

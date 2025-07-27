@@ -1,30 +1,29 @@
 #include "vfs.h"
 
-#include "cpu/regs.h"
-#include "cpu/smp.h"
 #include "cpu/syscalls.h"
-#include "cpu/trap.h"
-#include "drivers/systime/systime.h"
 #include "fs/dentry.h"
 #include "fs/inode.h"
 #include "fs/mount.h"
 #include "fs/path.h"
 #include "log/log.h"
 #include "log/panic.h"
-#include "mem/heap.h"
 #include "proc/process.h"
 #include "sched/sched.h"
+#include "sched/timer.h"
 #include "sched/wait.h"
-#include "sync/lock.h"
 #include "sync/mutex.h"
 #include "sync/rwlock.h"
+#include "sync/rwmutex.h"
 #include "sys/list.h"
 #include "sysfs.h"
 #include "utils/ref.h"
 #include "vfs_ctx.h"
 
+#include <common/regs.h>
+
 #include <assert.h>
 #include <errno.h>
+#include <stdint.h>
 #include <string.h>
 #include <sys/io.h>
 
@@ -150,7 +149,7 @@ uint64_t vfs_unregister_fs(filesystem_t* fs)
         }
     }
 
-    list_remove(&fs->entry);
+    list_remove(&filesystems.list, &fs->entry);
     return 0;
 }
 
@@ -374,7 +373,7 @@ void vfs_remove_superblock(superblock_t* superblock)
     }
 
     RWLOCK_WRITE_SCOPE(&superblocks.lock);
-    list_remove(&superblock->entry);
+    list_remove(&superblocks.list, &superblock->entry);
 }
 
 void vfs_remove_inode(inode_t* inode)
@@ -815,6 +814,7 @@ SYSCALL_DEFINE(SYS_OPEN, fd_t, const char* pathString)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
+    RWMUTEX_READ_SCOPE(&space->mutex);
 
     if (!syscall_is_string_valid(space, pathString))
     {
@@ -895,6 +895,7 @@ SYSCALL_DEFINE(SYS_OPEN2, uint64_t, const char* pathString, fd_t fds[2])
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
+    RWMUTEX_READ_SCOPE(&space->mutex);
 
     if (!syscall_is_string_valid(space, pathString))
     {
@@ -974,6 +975,7 @@ SYSCALL_DEFINE(SYS_READ, uint64_t, fd_t fd, void* buffer, uint64_t count)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
+    RWMUTEX_READ_SCOPE(&space->mutex);
 
     if (!syscall_is_buffer_valid(space, buffer, count))
     {
@@ -1033,6 +1035,7 @@ SYSCALL_DEFINE(SYS_WRITE, uint64_t, fd_t fd, const void* buffer, uint64_t count)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
+    RWMUTEX_READ_SCOPE(&space->mutex);
 
     if (!syscall_is_buffer_valid(space, buffer, count))
     {
@@ -1115,6 +1118,7 @@ SYSCALL_DEFINE(SYS_IOCTL, uint64_t, fd_t fd, uint64_t request, void* argp, uint6
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
+    RWMUTEX_READ_SCOPE(&space->mutex);
 
     if (argp != NULL && !syscall_is_buffer_valid(space, argp, size))
     {
@@ -1291,7 +1295,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
         return ERR;
     }
 
-    clock_t uptime = systime_uptime();
+    clock_t uptime = timer_uptime();
 
     clock_t deadline;
     if (timeout == CLOCKS_NEVER)
@@ -1310,7 +1314,7 @@ uint64_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout)
     uint64_t readyCount = 0;
     while (true)
     {
-        uptime = systime_uptime();
+        uptime = timer_uptime();
         clock_t remaining = (deadline == CLOCKS_NEVER) ? CLOCKS_NEVER : deadline - uptime;
 
         if (wait_block_setup(ctx.queues, ctx.queueAmount, remaining) == ERR)
@@ -1350,6 +1354,7 @@ SYSCALL_DEFINE(SYS_POLL, uint64_t, pollfd_t* fds, uint64_t amount, clock_t timeo
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
+    RWMUTEX_READ_SCOPE(&space->mutex);
 
     if (amount == 0 || amount >= CONFIG_MAX_FD)
     {
@@ -1443,6 +1448,7 @@ SYSCALL_DEFINE(SYS_GETDENTS, uint64_t, fd_t fd, dirent_t* buffer, uint64_t count
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
+    RWMUTEX_READ_SCOPE(&space->mutex);
 
     if (!syscall_is_buffer_valid(space, buffer, count))
     {
@@ -1504,6 +1510,7 @@ SYSCALL_DEFINE(SYS_STAT, uint64_t, const char* pathString, stat_t* buffer)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
+    RWMUTEX_READ_SCOPE(&space->mutex);
 
     if (!syscall_is_string_valid(space, pathString))
     {
@@ -1608,6 +1615,7 @@ SYSCALL_DEFINE(SYS_LINK, uint64_t, const char* oldPathString, const char* newPat
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
+    RWMUTEX_READ_SCOPE(&space->mutex);
 
     if (!syscall_is_string_valid(space, oldPathString) || !syscall_is_string_valid(space, newPathString))
     {
@@ -1688,6 +1696,7 @@ SYSCALL_DEFINE(SYS_DELETE, uint64_t, const char* pathString)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
+    RWMUTEX_READ_SCOPE(&space->mutex);
 
     if (!syscall_is_string_valid(space, pathString))
     {

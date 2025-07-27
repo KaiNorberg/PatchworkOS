@@ -1,7 +1,8 @@
 #include "slab.h"
 
-#include "defs.h"
-#include "sched/thread.h"
+#include "mem/vmm.h"
+
+#include <errno.h>
 
 static cache_t* cache_new(slab_t* slab, uint64_t objectSize, uint64_t size)
 {
@@ -15,14 +16,14 @@ static cache_t* cache_new(slab_t* slab, uint64_t objectSize, uint64_t size)
     cache->slab = slab;
 
     uint64_t availSize = size - sizeof(cache_t);
-    uint64_t totalFileectSize = sizeof(object_t) + objectSize;
-    uint64_t maxFileects = availSize / totalFileectSize;
+    uint64_t totalObjectSize = sizeof(object_t) + objectSize;
+    uint64_t maxObjects = availSize / totalObjectSize;
 
-    cache->objectCount = maxFileects;
-    cache->freeCount = maxFileects;
+    cache->objectCount = maxObjects;
+    cache->freeCount = maxObjects;
 
     uint8_t* ptr = cache->buffer;
-    for (uint64_t i = 0; i < maxFileects; i++)
+    for (uint64_t i = 0; i < maxObjects; i++)
     {
         object_t* object = (object_t*)ptr;
         list_entry_init(&object->entry);
@@ -32,7 +33,7 @@ static cache_t* cache_new(slab_t* slab, uint64_t objectSize, uint64_t size)
         object->dataSize = objectSize;
 
         list_push(&cache->freeList, &object->entry);
-        ptr += totalFileectSize;
+        ptr += totalObjectSize;
     }
 
     return cache;
@@ -48,8 +49,8 @@ static uint64_t slab_find_optimal_cache_size(uint64_t objectSize, uint64_t minSi
     for (uint64_t size = minSize; size <= maxSize; size += PAGE_SIZE)
     {
         uint64_t availSize = size - sizeof(cache_t);
-        uint64_t maxFileects = availSize / objectStructSize;
-        uint64_t usedBytes = maxFileects * objectStructSize + sizeof(cache_t);
+        uint64_t maxObjects = availSize / objectStructSize;
+        uint64_t usedBytes = maxObjects * objectStructSize + sizeof(cache_t);
 
         if (usedBytes * bestEfficiencyDenominator > bestEfficiencyNumerator * size)
         {
@@ -71,22 +72,23 @@ void slab_init(slab_t* slab, uint64_t objectSize)
     slab->objectSize = objectSize;
     slab->optimalCacheSize = slab_find_optimal_cache_size(objectSize,
         ROUND_UP(CACHE_MIN_LENGTH * objectSize, PAGE_SIZE), ROUND_UP(CACHE_MAX_LENGTH * objectSize, PAGE_SIZE));
+
+    assert(slab->optimalCacheSize >= PAGE_SIZE);
 }
 
 object_t* slab_alloc(slab_t* slab)
 {
     cache_t* cache;
-    bool newCacheCreated = false;
 
     if (!list_is_empty(&slab->partialCaches))
     {
         cache = CONTAINER_OF(list_first(&slab->partialCaches), cache_t, entry);
-        list_remove(&cache->entry);
+        list_remove(&slab->partialCaches, &cache->entry);
     }
     else if (!list_is_empty(&slab->emptyCaches))
     {
         cache = CONTAINER_OF(list_first(&slab->emptyCaches), cache_t, entry);
-        list_remove(&cache->entry);
+        list_remove(&slab->emptyCaches, &cache->entry);
         slab->emptyCacheCount--;
     }
     else
@@ -97,23 +99,32 @@ object_t* slab_alloc(slab_t* slab)
             errno = ENOMEM;
             return NULL;
         }
-        newCacheCreated = true;
+        assert(cache->freeCount == cache->objectCount);
     }
 
-    object_t* object = CONTAINER_OF(list_pop(&cache->freeList), object_t, entry);
+    list_entry_t* entry = list_pop(&cache->freeList);
+    assert(entry != NULL);
+
+    object_t* object = CONTAINER_OF(entry, object_t, entry);
     cache->freeCount--;
 
-    object->magic = SLAB_MAGIC;
+    assert(object->magic == SLAB_MAGIC);
+    assert(object->freed == true);
+    assert(object->cache == cache);
+    assert(object->dataSize == slab->objectSize);
+
     object->freed = false;
 
     if (cache->freeCount == 0)
     {
-        list_remove(&cache->entry);
         list_push(&slab->fullCaches, &cache->entry);
+        assert(list_is_empty(&cache->freeList));
     }
     else
     {
         list_push(&slab->partialCaches, &cache->entry);
+        assert(!list_is_empty(&cache->freeList));
+        assert(list_length(&cache->freeList) == cache->freeCount);
     }
 
     return object;
@@ -127,26 +138,40 @@ void slab_free(slab_t* slab, object_t* object)
     object->freed = true;
 
     cache_t* cache = object->cache;
-
-    list_remove(&cache->entry);
+    if (cache->freeCount == 0)
+    {
+        assert(list_contains_entry(&slab->fullCaches, &cache->entry));
+        list_remove(&slab->fullCaches, &cache->entry);
+    }
+    else
+    {
+        assert(list_contains_entry(&slab->partialCaches, &cache->entry));
+        list_remove(&slab->partialCaches, &cache->entry);
+    }
 
     list_push(&cache->freeList, &object->entry);
     cache->freeCount++;
+
+    assert(cache->freeCount <= cache->objectCount);
+    assert(list_length(&cache->freeList) == cache->freeCount);
 
     if (cache->freeCount == cache->objectCount)
     {
         if (slab->emptyCacheCount >= SLAB_MAX_EMPTY_CACHES)
         {
+            assert(list_length(&cache->freeList) == cache->objectCount);
             vmm_kernel_unmap(cache, BYTES_TO_PAGES(slab->optimalCacheSize));
         }
         else
         {
             list_push(&slab->emptyCaches, &cache->entry);
             slab->emptyCacheCount++;
+            assert(slab->emptyCacheCount == list_length(&slab->emptyCaches));
         }
     }
     else
     {
         list_push(&slab->partialCaches, &cache->entry);
+        assert(cache->freeCount > 0 && cache->freeCount < cache->objectCount);
     }
 }

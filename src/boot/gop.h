@@ -8,4 +8,4 @@
 #define GOP_HEIGHT 1080
 #define GOP_USE_DEFAULT_RES 1
 
-void gop_buffer_init(gop_buffer_t* buffer);
+EFI_STATUS gop_buffer_init(boot_gop_t* buffer);

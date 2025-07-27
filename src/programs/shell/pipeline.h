@@ -26,4 +26,4 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline);
 
 void pipeline_deinit(pipeline_t* pipeline);
 
-void pipeline_execute(pipeline_t* pipeline);
+uint64_t pipeline_execute(pipeline_t* pipeline);

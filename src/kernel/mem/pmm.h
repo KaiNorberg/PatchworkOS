@@ -1,7 +1,5 @@
 #pragma once
 
-#include "defs.h"
-
 #include <boot/boot_info.h>
 
 #include <sys/proc.h>
@@ -80,9 +78,9 @@ typedef struct
  * @brief Initializes the Physical Memory Manager.
  * @ingroup kernel_mem_pmm
  *
- * @param memoryMap The EFI memory map provided by the bootloader.
+ * @param map The EFI memory map provided by the bootloader.
  */
-void pmm_init(efi_mem_map_t* memoryMap);
+void pmm_init(boot_memory_map_t* map);
 
 /**
  * @brief Allocates a single physical page.

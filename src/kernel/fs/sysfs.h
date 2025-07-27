@@ -1,14 +1,12 @@
 #pragma once
 
-#include <common/node.h>
-
 #include "dentry.h"
 #include "inode.h"
 
 /**
  * @brief Filesystem for exposing kernel resources.
  * @ingroup kernel
- * @defgroup kernel_fs_sysfs
+ * @defgroup kernel_fs_sysfs SysFS
  *
  *
  */

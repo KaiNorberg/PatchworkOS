@@ -2,6 +2,7 @@
 
 // Note: This is effectively our "signal" system but inspired by plan9's note system.
 
+#include "config.h"
 #include "cpu/trap.h"
 #include "sync/lock.h"
 

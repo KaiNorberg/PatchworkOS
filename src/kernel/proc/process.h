@@ -3,7 +3,7 @@
 #include "argv.h"
 #include "fs/sysfs.h"
 #include "fs/vfs_ctx.h"
-#include "mem/vmm.h"
+#include "mem/space.h"
 #include "sched/sched.h"
 #include "sched/wait.h"
 #include "sync/futex.h"
@@ -23,12 +23,14 @@ typedef struct
     sysfs_file_t cwdFile;
     sysfs_file_t cmdlineFile;
     sysfs_file_t noteFile;
+    sysfs_file_t statusFile;
 } process_dir_t;
 
 typedef struct process
 {
     pid_t id;
     _Atomic(priority_t) priority;
+    _Atomic(uint64_t) status;
     argv_t argv;
     vfs_ctx_t vfsCtx;
     space_t space;

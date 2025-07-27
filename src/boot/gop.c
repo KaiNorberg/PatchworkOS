@@ -1,7 +1,11 @@
 #include "gop.h"
+#include "mem.h"
 
+#include <boot/boot_info.h>
+#include <common/paging_types.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/proc.h>
 
 static void gop_select_mode(EFI_GRAPHICS_OUTPUT_PROTOCOL* gop, int64_t width, int64_t height)
 {
@@ -27,36 +31,29 @@ static void gop_select_mode(EFI_GRAPHICS_OUTPUT_PROTOCOL* gop, int64_t width, in
     uefi_call_wrapper(gop->SetMode, 2, gop, bestMatch);
 }
 
-void gop_buffer_init(gop_buffer_t* buffer)
+EFI_STATUS gop_buffer_init(boot_gop_t* buffer)
 {
+    Print(L"Locating GOP... ");
     EFI_GRAPHICS_OUTPUT_PROTOCOL* gop;
     EFI_GUID guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
-    EFI_STATUS status = uefi_call_wrapper(gBS->LocateProtocol, 3, &guid, 0, (void**)&gop);
-
+    EFI_STATUS status = uefi_call_wrapper(BS->LocateProtocol, 3, &guid, 0, (void**)&gop);
     if (EFI_ERROR(status))
     {
-        Print(L"ERROR: Failed to locate GOP!\n\r");
-
-        while (1)
-        {
-            asm volatile("hlt");
-        }
+        Print(L"failed to locate GOP!\n");
+        return status;
     }
 
 #if !(GOP_USE_DEFAULT_RES)
     gop_select_mode(gop, GOP_WIDTH, GOP_HEIGHT);
 #endif
-    buffer->base = (uint32_t*)gop->Mode->FrameBufferBase;
+    buffer->physAddr = (uint32_t*)gop->Mode->FrameBufferBase;
+    buffer->virtAddr = PML_LOWER_TO_HIGHER(buffer->physAddr);
     buffer->size = gop->Mode->FrameBufferSize;
     buffer->width = gop->Mode->Info->HorizontalResolution;
     buffer->height = gop->Mode->Info->VerticalResolution;
     buffer->stride = gop->Mode->Info->PixelsPerScanLine;
+    Print(L"located buffer width=%d, height=%d, stride=%d... ", buffer->width, buffer->height, buffer->stride);
 
-    Print(L"GOP BUFFER INFO\n\r");
-    Print(L"Base: 0x%lx\n\r", buffer->base);
-    Print(L"Size: 0x%lx\n\r", buffer->size);
-    Print(L"Width: %d\n\r", buffer->width);
-    Print(L"Height: %d\n\r", buffer->height);
-    Print(L"PixelsPerScanline: %d\n\r", buffer->stride);
-    Print(L"GOP BUFFER INFO END\n\r");
+    Print(L"done!\n");
+    return EFI_SUCCESS;
 }

@@ -84,7 +84,7 @@ font_t* font_new(display_t* disp, const char* family, const char* weight, uint64
 
 void font_free(font_t* font)
 {
-    list_remove(&font->entry);
+    list_remove(&font->disp->fonts, &font->entry);
     free(font);
 }
 

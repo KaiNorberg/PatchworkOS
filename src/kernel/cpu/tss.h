@@ -1,6 +1,8 @@
 #pragma once
 
-#include "defs.h"
+#include <common/defs.h>
+
+#include <stdint.h>
 
 typedef struct PACKED
 {

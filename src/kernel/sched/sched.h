@@ -1,8 +1,9 @@
 #pragma once
 
-#include "defs.h"
 #include "sched/wait.h"
 #include "sync/lock.h"
+
+#include <common/defs.h>
 
 #include <sys/list.h>
 #include <sys/proc.h>
@@ -243,7 +244,7 @@ process_t* sched_process(void);
  * The `sched_process_exit()` function terminates the currently executing process and all its threads. Note that this
  * does not actually schedule and the thread will only actually die when the scheduler is invoked.
  *
- * @param status The exit status of the process. (Not implemented, i will get around to it... maybe)
+ * @param status The exit status of the process.
  */
 void sched_process_exit(uint64_t status);
 
@@ -271,13 +272,19 @@ void sched_yield(void);
  * @brief Pushes a thread onto a scheduling queue.
  * @ingroup kernel_sched
  *
- * The `sched_push()` function adds a thread to the appropriate scheduling queue, making it runnable.
- *
  * @param thread The thread to be pushed.
- * @param parent The parent thread (can be `NULL`).
  * @param target The target cpu that the thread should run on (can be `NULL` to specify the currently running cpu).
  */
-void sched_push(thread_t* thread, thread_t* parent, cpu_t* target);
+void sched_push(thread_t* thread, cpu_t* target);
+
+/**
+ * @brief Pushes a newly created thread onto the scheduling queue.
+ * @ingroup kernel_sched
+ *
+ * @param thread The thread to be pushed.
+ * @param parent The parent thread.
+ */
+void sched_push_new_thread(thread_t* thread, thread_t* parent);
 
 /**
  * @brief Performs the core scheduling logic.

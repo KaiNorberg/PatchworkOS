@@ -5,7 +5,7 @@
 /**
  * @brief Reference counting.
  * @ingroup kernel
- * @defgroup kernel_utils_ref
+ * @defgroup kernel_utils_ref Reference counting
  */
 
 #define REF_MAGIC 0x26CB6E4C

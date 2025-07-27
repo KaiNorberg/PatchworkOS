@@ -33,6 +33,12 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
     }
 
     pipeline->cmds = malloc(sizeof(cmd_t) * tokenAmount);
+    if (pipeline->cmds == NULL)
+    {
+        free(tokens);
+        return ERR;
+    }
+
     pipeline->capacity = tokenAmount;
     pipeline->amount = 0;
 
@@ -52,6 +58,13 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
     uint64_t currentCmd = 0;
     uint64_t currentArg = 0;
     const char** currentArgv = malloc(sizeof(char*) * (tokenAmount + 1));
+    if (currentArgv == NULL)
+    {
+        free(pipeline->cmds);
+        free(tokens);
+        return ERR;
+    }
+
     for (uint64_t i = 0; i < tokenAmount; i++)
     {
         if (strcmp(tokens[i], "|") == 0)
@@ -69,7 +82,7 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
             cmd->argc = currentArg;
 
             fd_t pipe[2];
-            if (open2("/dev/pipe/new", pipe) == ERR)
+            if (open2("/dev/pipe", pipe) == ERR)
             {
                 printf("error: unable to open pipe (%s)\n", strerror(errno));
                 goto token_parse_error;
@@ -136,17 +149,30 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline)
 
             i++; // Skip file
         }
-        else if (strcmp(tokens[i], ">>") == 0)
-        {
-            // TODO: Implement this
-            printf("error: not implemented");
-            goto token_parse_error;
-        }
         else if (strcmp(tokens[i], "2>") == 0)
         {
-            // TODO: Implement this
-            printf("error: not implemented");
-            goto token_parse_error;
+            if (i + 1 >= tokenAmount)
+            {
+                printf("error: missing filename after 2>\n");
+                goto token_parse_error;
+            }
+
+            fd_t fd = open(tokens[i + 1]);
+            if (fd == ERR)
+            {
+                printf("error: unable to open %s (%s)\n", tokens[i + 1], strerror(errno));
+                goto token_parse_error;
+            }
+
+            cmd_t* cmd = &pipeline->cmds[currentCmd];
+            if (cmd->shouldCloseStderr)
+            {
+                close(cmd->stderr);
+            }
+            cmd->stderr = fd;
+            cmd->shouldCloseStderr = true;
+
+            i++; // Skip file
         }
         else
         {
@@ -219,11 +245,28 @@ void pipeline_deinit(pipeline_t* pipeline)
 
 static pid_t pipeline_execute_cmd(cmd_t* cmd)
 {
-    pid_t result;
+    pid_t result = ERR;
 
     fd_t originalStdin = dup(STDIN_FILENO);
     fd_t originalStdout = dup(STDOUT_FILENO);
     fd_t originalStderr = dup(STDERR_FILENO);
+
+    if (originalStdin == ERR || originalStdout == ERR || originalStderr == ERR)
+    {
+        if (originalStdin != ERR)
+        {
+            close(originalStdin);
+        }
+        if (originalStdout != ERR)
+        {
+            close(originalStdout);
+        }
+        if (originalStderr != ERR)
+        {
+            close(originalStderr);
+        }
+        return ERR;
+    }
 
     if (cmd->stdin != STDIN_FILENO)
     {
@@ -241,7 +284,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
     spawn_fd_t fds[] = {
         {.child = STDIN_FILENO, .parent = STDIN_FILENO},
         {.child = STDOUT_FILENO, .parent = STDOUT_FILENO},
-        {.child = STDERR_FILENO, .parent = originalStderr},
+        {.child = STDERR_FILENO, .parent = STDERR_FILENO},
         SPAWN_FD_END,
     };
     const char** argv = cmd->argv;
@@ -253,10 +296,9 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
 
     if (builtin_exists(argv[0]))
     {
-        builtin_execute(argc, argv);
-        result = ERR;
+        return builtin_execute(argc, argv) == ERR ? ERR : 0;
     }
-    else if (argv[0][0] == '.' && argv[0][0] == '/')
+    else if (argv[0][0] == '.' && argv[0][1] == '/')
     {
         stat_t info;
         if (stat(argv[0], &info) != ERR && info.type != INODE_DIR)
@@ -311,42 +353,80 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
     if (cmd->shouldCloseStdin)
     {
         close(cmd->stdin);
+        cmd->shouldCloseStdin = false;
     }
     if (cmd->shouldCloseStdout)
     {
         close(cmd->stdout);
+        cmd->shouldCloseStdout = false;
     }
     if (cmd->shouldCloseStderr)
     {
         close(cmd->stderr);
+        cmd->shouldCloseStderr = false;
     }
 
     return result;
 }
 
-void pipeline_execute(pipeline_t* pipeline)
+uint64_t pipeline_execute(pipeline_t* pipeline)
 {
     if (pipeline->amount == 0)
     {
-        return;
+        return 0;
     }
 
     pid_t* pids = malloc(sizeof(pid_t) * pipeline->amount);
+    if (pids == NULL)
+    {
+        return ERR;
+    }
 
     for (uint64_t i = 0; i < pipeline->amount; i++)
     {
         pids[i] = pipeline_execute_cmd(&pipeline->cmds[i]);
     }
 
+    bool error = false;
     for (uint64_t i = 0; i < pipeline->amount; i++)
     {
-        if (pids[i] != ERR)
+        if (pids[i] == ERR)
         {
-            fd_t child = openf("/proc/%d/ctl", pids[i]);
-            writef(child, "wait");
-            close(child);
+            error = true;
+            continue;
+        }
+
+        // Skip builtin commands
+        if (pids[i] == 0)
+        {
+            continue;
+        }
+
+        fd_t status = openf("/proc/%d/status", pids[i]);
+        if (status == ERR)
+        {
+            error = true;
+            continue;
+        }
+
+        char buf[64];
+        uint64_t readCount = read(status, buf, sizeof(buf) - 1);
+        close(status);
+
+        if (readCount == ERR)
+        {
+            error = true;
+            continue;
+        }
+
+        buf[readCount] = '\0';
+        int exitStatus = atoi(buf);
+        if (exitStatus != 0)
+        {
+            error = true;
         }
     }
 
     free(pids);
+    return error ? ERR : 0;
 }

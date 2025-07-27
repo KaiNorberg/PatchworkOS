@@ -1,19 +1,18 @@
 #include "trap.h"
 
-#include "apic.h"
-#include "gdt.h"
+#include "drivers/apic.h"
 #include "irq.h"
-#include "kernel.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/vmm.h"
-#include "regs.h"
 #include "sched/loader.h"
 #include "sched/sched.h"
 #include "sched/wait.h"
 #include "smp.h"
 #include "utils/statistics.h"
 #include "vectors.h"
+
+#include <common/regs.h>
 
 #include <assert.h>
 
@@ -133,15 +132,9 @@ void trap_handler(trap_frame_t* trapFrame)
         }
     }
     break;
-    case VECTOR_NOTIFY:
-    {
-        lapic_eoi();
-    }
-    break;
     case VECTOR_TIMER:
     {
-        systime_timer_trap(trapFrame, self);
-        wait_timer_trap(trapFrame, self);
+        timer_trap_handler(trapFrame, self);
         lapic_eoi();
     }
     break;

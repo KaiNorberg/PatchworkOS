@@ -14,9 +14,39 @@ $(BINDIR)/%: $(OBJ)
 	$(MKCWD)
 	$(LD) $(LDFLAGS) -o $@ $^ $(LDSTDLIB)
 
-# This has to use ld, there is a way to do it using clang but... whatever
+# Black magic, good luck.
 $(BINDIR)/%.efi: $(OBJ)
 	$(MKCWD)
-	ld -shared -Bsymbolic -Llib/gnu-efi/x86_64/lib -Llib/gnu-efi/x86_64/gnuefi -Tlib/gnu-efi/gnuefi/elf_x86_64_efi.lds lib/gnu-efi/x86_64/gnuefi/crt0-efi-x86_64.o $^ -o $(BINDIR)/temp.so -lgnuefi -lefi
-	$(OBJCOPY) -j .text -j .sdata -j .data -j .dynamic -j .dynsym  -j .rel -j .rela -j .rel.* -j .rela.* -j .reloc --target efi-app-x86_64 --subsystem=10 $(BINDIR)/temp.so $@
-	@rm $(BINDIR)/temp.so
+
+	gcc -shared -nostdlib -nostartfiles -fPIC -fno-stack-protector \
+		$(DEBUG_LDFLAGS) \
+		-Wl,-shared,-Bsymbolic \
+		-Wl,-T,lib/gnu-efi/gnuefi/elf_x86_64_efi.lds \
+		-Llib/gnu-efi/x86_64/lib \
+		-Llib/gnu-efi/x86_64/gnuefi \
+		lib/gnu-efi/x86_64/gnuefi/crt0-efi-x86_64.o $^ \
+		-o $(BINDIR)/temp.so \
+		-lgnuefi -lefi
+
+ifeq ($(DEBUG),1)
+	$(OBJCOPY) --only-keep-debug $(BINDIR)/temp.so $(BINDIR)/$*.debug
+
+	$(OBJCOPY) \
+		-j .text -j .sdata -j .data -j .dynamic -j .dynsym \
+		-j .rel -j .rela -j .rel.* -j .rela.* -j .reloc -j .eh_frame \
+		--target efi-app-x86_64 \
+		--subsystem=10 \
+		--add-gnu-debuglink=$(BINDIR)/$*.debug \
+		$(BINDIR)/temp.so $@
+
+	$(OBJCOPY) --strip-debug $@
+else
+	$(OBJCOPY) \
+		-j .text -j .sdata -j .data -j .dynamic -j .dynsym \
+		-j .rel -j .rela -j .rel.* -j .rela.* -j .reloc -j .eh_frame \
+		--target efi-app-x86_64 \
+		--subsystem=10 \
+		$(BINDIR)/temp.so $@
+endif
+
+	rm -f $(BINDIR)/temp.so

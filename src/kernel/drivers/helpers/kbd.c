@@ -1,16 +1,12 @@
 #include "kbd.h"
 
+#include "drivers/helpers/kbd.h"
+#include "fs/file.h"
 #include "fs/sysfs.h"
-#include "fs/vfs.h"
-#include "log/log.h"
 #include "mem/heap.h"
-#include "ps2/kbd.h"
-#include "sched/thread.h"
+#include "sched/timer.h"
 #include "sync/lock.h"
-#include "systime/systime.h"
 
-#include <assert.h>
-#include <stdlib.h>
 #include <sys/io.h>
 #include <sys/math.h>
 
@@ -136,7 +132,7 @@ void kbd_push(kbd_t* kbd, kbd_event_type_t type, keycode_t code)
     }
 
     kbd->events[kbd->writeIndex] = (kbd_event_t){
-        .time = systime_uptime(),
+        .time = timer_uptime(),
         .code = code,
         .mods = kbd->mods,
         .type = type,

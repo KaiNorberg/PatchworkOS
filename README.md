@@ -34,7 +34,14 @@
 
 * Custom C standard library and system libraries.
 * Shared memory based window manager.
+* Highly modular window manager, the taskbar, wallpaper and cursor are just windows, and can do anything a window can.
 * Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg).
+
+### Performance
+
+* Uses ~50-130 mb of ram with the desktop environment and a few applications running.
+* Responsive desktop environment even att 100% CPU usage. DOOM is fully playable while running a stress test.
+* Idle CPU usage with the desktop environment running and a few applications open is ~0.1% on a Lenovo ThinkPad E495.
 
 And much more...
 

@@ -91,9 +91,9 @@ int main(void)
     mem_statistics_t stats;
     mem_statistics_read(&stats);
 
-    printf("total memory %d mb\n", stats.total / 1000);
-    printf("free memory %d mb\n", stats.free / 1000);
-    printf("reserved memory %d mb\n", stats.reserved / 1000);
+    printf("total memory %d mb\n", stats.total / 1024);
+    printf("free memory %d mb\n", stats.free / 1024);
+    printf("reserved memory %d mb\n", stats.reserved / 1024);
     printf("used memory %d%%\n", (stats.reserved * 100) / stats.total);
 
     return 0;

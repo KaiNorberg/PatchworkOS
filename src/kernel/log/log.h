@@ -1,18 +1,13 @@
 #pragma once
 
 #include "cpu/trap.h"
-#include "defs.h"
 #include "fs/sysfs.h"
 #include "screen.h"
 #include "utils/ring.h"
 
 #include <stdatomic.h>
 
-// TODO: Make the logging system common between the bootloader and kernel. Perhaps a shared "logging context" passed via
-// bootinfo?
-
 #define LOG_MAX_BUFFER 0x1000
-#define LOG_MAX_TIMESTAMP_BUFFER 32
 
 #define LOG_MAX_STACK_FRAMES 64
 
@@ -37,7 +32,6 @@ typedef enum
 
 typedef struct
 {
-    bool isTimeEnabled;
     log_output_t outputs;
     log_level_t minLevel;
 } log_config_t;
@@ -53,17 +47,14 @@ typedef struct
 {
     char lineBuffer[LOG_MAX_BUFFER];
     char panicBuffer[LOG_MAX_BUFFER];
-    char timestampBuffer[LOG_MAX_TIMESTAMP_BUFFER];
     log_config_t config;
     atomic_uint32_t panickingCpuId;
     bool isLastCharNewline;
 } log_state_t;
 
-void log_init(void);
+void log_init(boot_gop_t* gop);
 
-void log_enable_time(void);
-
-void log_screen_enable(gop_buffer_t* framebuffer);
+void log_screen_enable(void);
 
 void log_disable_screen(void);
 
@@ -79,7 +70,12 @@ uint64_t log_print(log_level_t level, const char* prefix, const char* format, ..
 
 uint64_t log_vprint(log_level_t level, const char* prefix, const char* format, va_list args);
 
+#ifndef NDEBUG
 #define LOG_DEBUG(format, ...) log_print(LOG_LEVEL_DEBUG, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)
+#else
+#define LOG_DEBUG(format, ...) ((void)0)
+#endif
+
 #define LOG_INFO(format, ...) log_print(LOG_LEVEL_INFO, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)
 #define LOG_WARN(format, ...) log_print(LOG_LEVEL_WARN, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)
 #define LOG_ERR(format, ...) log_print(LOG_LEVEL_ERR, FILE_BASENAME, format __VA_OPT__(, ) __VA_ARGS__)

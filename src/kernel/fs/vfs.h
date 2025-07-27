@@ -18,12 +18,11 @@
 
 // TODO: Implement improved caching, LRU.
 // TODO: Implement per-process namespaces.
-// TODO: Implement literally everything else.
 
 /**
  * @brief Virtual File System.
  * @ingroup kernel
- * @defgroup kernel_fs_vfs
+ * @defgroup kernel_fs_vfs VFS
  *
  */
 

@@ -54,7 +54,7 @@ static void ramfs_dentry_deinit(dentry_t* dentry)
     dentryData->dentry = NULL;
 
     lock_acquire(&superData->lock);
-    list_remove(&dentryData->entry);
+    list_remove(&superData->dentrys, &dentryData->entry);
     lock_release(&superData->lock);
 
     heap_free(dentryData);
@@ -222,7 +222,7 @@ static superblock_ops_t superOps = {
     .cleanup = ramfs_superblock_cleanup,
 };
 
-static dentry_t* ramfs_load_file(superblock_t* superblock, dentry_t* parent, const char* name, const ram_file_t* in)
+static dentry_t* ramfs_load_file(superblock_t* superblock, dentry_t* parent, const char* name, const boot_file_t* in)
 {
     dentry_t* dentry = dentry_new(superblock, parent, name);
     if (dentry == NULL)
@@ -249,7 +249,7 @@ static dentry_t* ramfs_load_file(superblock_t* superblock, dentry_t* parent, con
     return REF(dentry);
 }
 
-static dentry_t* ramfs_load_dir(superblock_t* superblock, dentry_t* parent, const char* name, const ram_dir_t* in)
+static dentry_t* ramfs_load_dir(superblock_t* superblock, dentry_t* parent, const char* name, const boot_dir_t* in)
 {
     ramfs_superblock_data_t* superData = superblock->private;
 
@@ -275,21 +275,16 @@ static dentry_t* ramfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
     dentry_make_positive(dentry, inode);
     vfs_add_dentry(dentry);
 
-    node_t* child;
-    LIST_FOR_EACH(child, &in->node.children, entry)
+    boot_file_t* file;
+    LIST_FOR_EACH(file, &in->files, entry)
     {
-        if (child->type == RAMFS_DIR)
-        {
-            ram_dir_t* dir = CONTAINER_OF(child, ram_dir_t, node);
+        DEREF(ramfs_load_file(superblock, dentry, file->name, file));
+    }
 
-            DEREF(ramfs_load_dir(superblock, dentry, dir->node.name, dir));
-        }
-        else if (child->type == RAMFS_FILE)
-        {
-            ram_file_t* file = CONTAINER_OF(child, ram_file_t, node);
-
-            DEREF(ramfs_load_file(superblock, dentry, file->node.name, file));
-        }
+    boot_dir_t* child;
+    LIST_FOR_EACH(child, &in->children, entry)
+    {
+        DEREF(ramfs_load_dir(superblock, dentry, child->name, child));
     }
 
     return REF(dentry);
@@ -317,7 +312,9 @@ static dentry_t* ramfs_mount(filesystem_t* fs, superblock_flags_t flags, const c
     lock_init(&data->lock);
     superblock->private = data;
 
-    superblock->root = ramfs_load_dir(superblock, NULL, VFS_ROOT_ENTRY_NAME, private);
+    boot_disk_t* disk = private;
+
+    superblock->root = ramfs_load_dir(superblock, NULL, VFS_ROOT_ENTRY_NAME, disk->root);
     if (superblock->root == NULL)
     {
         return NULL;
@@ -361,7 +358,7 @@ static filesystem_t ramfs = {
     .mount = ramfs_mount,
 };
 
-void ramfs_init(ram_disk_t* disk)
+void ramfs_init(boot_disk_t* disk)
 {
     LOG_INFO("registering ramfs\n");
     if (vfs_register_fs(&ramfs) == ERR)
@@ -369,7 +366,7 @@ void ramfs_init(ram_disk_t* disk)
         panic(NULL, "Failed to register ramfs");
     }
     LOG_INFO("mounting ramfs\n");
-    if (vfs_mount(VFS_DEVICE_NAME_NONE, NULL, RAMFS_NAME, SUPER_NONE, disk->root) == ERR)
+    if (vfs_mount(VFS_DEVICE_NAME_NONE, NULL, RAMFS_NAME, SUPER_NONE, disk) == ERR)
     {
         panic(NULL, "Failed to mount ramfs");
     }

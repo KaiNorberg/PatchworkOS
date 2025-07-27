@@ -22,8 +22,6 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
-// TODO: Reimplement without view_t.
-
 static process_t kernelProcess;
 
 static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
@@ -188,6 +186,29 @@ static file_ops_t noteOps = {
     .write = process_note_write,
 };
 
+static uint64_t process_status_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    process_t* process = process_file_get_process(file);
+    if (process == NULL)
+    {
+        return ERR;
+    }
+
+    WAIT_BLOCK(&process->queue, ({
+        LOCK_SCOPE(&process->threads.lock);
+        process->threads.isDying;
+    }));
+
+    char status[MAX_PATH];
+    snprintf(status, sizeof(status), "%llu", atomic_load(&process->status));
+
+    return BUFFER_READ(buffer, count, offset, status, strlen(status));
+}
+
+static file_ops_t statusOps = {
+    .read = process_status_read,
+};
+
 static void process_inode_cleanup(inode_t* inode)
 {
     process_t* process = inode->private;
@@ -240,6 +261,16 @@ static uint64_t process_dir_init(process_dir_t* dir, const char* name, process_t
         return ERR;
     }
 
+    if (sysfs_file_init(&dir->statusFile, &dir->dir, "status", NULL, &statusOps, process) == ERR)
+    {
+        sysfs_file_deinit(&dir->noteFile);
+        sysfs_file_deinit(&dir->ctlFile);
+        sysfs_file_deinit(&dir->cwdFile);
+        sysfs_file_deinit(&dir->cmdlineFile);
+        sysfs_dir_deinit(&dir->dir);
+        return ERR;
+    }
+
     return 0;
 }
 
@@ -249,6 +280,7 @@ static void process_dir_deinit(process_dir_t* dir)
     sysfs_file_deinit(&dir->cwdFile);
     sysfs_file_deinit(&dir->cmdlineFile);
     sysfs_file_deinit(&dir->noteFile);
+    sysfs_file_deinit(&dir->statusFile);
     sysfs_dir_deinit(&dir->dir);
 }
 
@@ -257,7 +289,13 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
 {
     process->id = atomic_fetch_add(&newPid, 1);
     atomic_init(&process->priority, priority);
+    atomic_init(&process->status, EXIT_SUCCESS);
     if (argv_init(&process->argv, argv) == ERR)
+    {
+        return ERR;
+    }
+
+    if (space_init(&process->space) == ERR)
     {
         return ERR;
     }
@@ -280,7 +318,6 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
         vfs_ctx_init(&process->vfsCtx, NULL);
     }
 
-    space_init(&process->space);
     wait_queue_init(&process->queue);
     futex_ctx_init(&process->futexCtx);
     process->threads.isDying = false;
@@ -338,19 +375,20 @@ void process_free(process_t* process)
     if (process->parent != NULL)
     {
         RWLOCK_WRITE_SCOPE(&treeLock);
-        list_remove(&process->entry);
+        list_remove(&process->parent->children, &process->entry);
 
         process_t* child;
         process_t* temp;
         LIST_FOR_EACH_SAFE(child, temp, &process->children, entry)
         {
-            list_remove(&child->entry);
+            list_remove(&process->children, &child->entry);
             child->parent = NULL;
         }
         process->parent = NULL;
     }
 
-    vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_inode_cleanup
+    process->threads.isDying = true;  // Isent really needed as the scheduler also sets it.
+    vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_inode_cleanup.
     wait_unblock(&process->queue, WAIT_ALL);
     process_dir_deinit(&process->dir);
 }

@@ -1,9 +1,10 @@
 #include "simd.h"
+#include "cpu/smp.h"
 #include "cpuid.h"
 #include "log/log.h"
 #include "mem/pmm.h"
-#include "mem/vmm.h"
-#include "regs.h"
+
+#include <common/defs.h>
 
 #include <stdint.h>
 #include <string.h>
@@ -33,7 +34,6 @@ static void simd_xsave_init(void)
 
 void simd_cpu_init(void)
 {
-    LOG_INFO("cpu simd initialized\n");
     cr0_write(cr0_read() & ~((uint64_t)CR0_EMULATION));
     cr0_write(cr0_read() | CR0_MONITOR_CO_PROCESSOR | CR0_NUMERIC_ERROR_ENABLE);
 
@@ -41,7 +41,6 @@ void simd_cpu_init(void)
 
     if (cpuid_is_xsave_avail())
     {
-        LOG_INFO("xsave available\n");
         simd_xsave_init();
     }
 
@@ -54,6 +53,21 @@ void simd_cpu_init(void)
     {
         asm volatile("fxsave (%0)" : : "r"(initCtx));
     }
+
+    LOG_INFO("simd on cpu %d ", smp_self_unsafe()->id);
+    if (cpuid_is_xsave_avail())
+    {
+        LOG_INFO("xsave ");
+    }
+    if (cpuid_is_avx_avail())
+    {
+        LOG_INFO("avx ");
+    }
+    if (cpuid_is_avx512_avail())
+    {
+        LOG_INFO("avx512 ");
+    }
+    LOG_INFO("\n");
 }
 
 uint64_t simd_ctx_init(simd_ctx_t* ctx)

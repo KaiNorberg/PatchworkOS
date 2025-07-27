@@ -1,13 +1,13 @@
 #pragma once
 
-#include <stdatomic.h>
-
 #include "cpu/trap.h"
 #ifndef NDEBUG
-#include "drivers/systime/systime.h"
 #include "log/panic.h"
+#include "sched/timer.h"
 #endif
-#include "defs.h"
+
+#include <common/defs.h>
+#include <stdatomic.h>
 
 #define LOCK_DEADLOCK_TIMEOUT (CLOCKS_PER_SEC / 10)
 
@@ -38,7 +38,7 @@ static inline void lock_acquire(lock_t* lock)
     cli_push();
 
 #ifndef NDEBUG
-    clock_t start = systime_uptime();
+    clock_t start = timer_uptime();
 #endif
 
     // Overflow does not matter
@@ -48,7 +48,7 @@ static inline void lock_acquire(lock_t* lock)
         asm volatile("pause");
 
 #ifndef NDEBUG
-        clock_t now = systime_uptime();
+        clock_t now = timer_uptime();
         if (start != 0 && now - start > LOCK_DEADLOCK_TIMEOUT)
         {
             panic(NULL, "Deadlock in lock_acquire detected");

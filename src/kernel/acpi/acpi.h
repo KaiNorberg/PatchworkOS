@@ -1,6 +1,9 @@
 #pragma once
 
-#include "defs.h"
+#include <boot/boot_info.h>
+#include <common/defs.h>
+
+#include <stdint.h>
 
 #define ACPI_REVISION_1_0 0
 #define ACPI_REVISION_2_0 2
@@ -37,6 +40,6 @@ typedef struct PACKED
     sdt_t* tables[];
 } xsdt_t;
 
-void acpi_init(xsdp_t* xsdp);
+void acpi_init(xsdp_t* xsdp, boot_memory_map_t* map);
 
 sdt_t* acpi_lookup(const char* signature);

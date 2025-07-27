@@ -92,6 +92,7 @@ SYSCALL_DEFINE(SYS_CHDIR, uint64_t, const char* pathString)
 {
     process_t* process = sched_process();
     space_t* space = &process->space;
+    RWMUTEX_READ_SCOPE(&space->mutex);
 
     if (!syscall_is_string_valid(space, pathString))
     {

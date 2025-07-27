@@ -2,6 +2,7 @@
 
 #include "config.h"
 #include "cpu/smp.h"
+#include "gnu-efi/inc/efidef.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "sched/thread.h"
@@ -47,17 +48,21 @@ static uint64_t freePageAmount = 0;
 
 static lock_t lock = LOCK_CREATE();
 
-static bool pmm_is_efi_mem_available(uint32_t type)
+static bool pmm_is_efi_mem_available(EFI_MEMORY_TYPE type)
 {
+    if (!boot_is_mem_ram(type))
+    {
+        return false;
+    }
+
     switch (type)
     {
-    case EFI_CONVENTIONAL_MEMORY:
-    case EFI_PERSISTENT_MEMORY:
-    case EFI_LOADER_CODE:
-    case EFI_BOOT_SERVICES_CODE:
-    case EFI_BOOT_SERVICES_DATA:
+    case EfiConventionalMemory:
+    case EfiLoaderCode:
+    // EfiLoaderData is intentionally not included here as it's freed later in `kernel_init()`.
+    case EfiBootServicesCode:
+    case EfiBootServicesData:
         return true;
-    // EFI_LOADER_DATA is intentionally not included here as it's freed later in `kernel_init()`.
     default:
         return false;
     }
@@ -157,7 +162,7 @@ static void pmm_bitmap_free(void* address)
     uint64_t index = (uint64_t)PML_HIGHER_TO_LOWER(address) / PAGE_SIZE;
     assert(index < PMM_BITMAP_MAX_ADDR / PAGE_SIZE);
 
-    bitmap_clear(&bitmap, index, index + 1);
+    bitmap_clear(&bitmap, index);
     freePageAmount++;
 }
 
@@ -186,7 +191,7 @@ static void pmm_free_pages_unlocked(void* address, uint64_t count)
     {
         uint64_t startIndex = physStart / PAGE_SIZE;
 
-        bitmap_clear(&bitmap, startIndex, startIndex + count);
+        bitmap_clear_range(&bitmap, startIndex, startIndex + count);
         freePageAmount += count;
     }
     else if (physStart < PMM_BITMAP_MAX_ADDR)
@@ -194,7 +199,7 @@ static void pmm_free_pages_unlocked(void* address, uint64_t count)
         uint64_t bitmapPageCount = (PMM_BITMAP_MAX_ADDR - physStart) / PAGE_SIZE;
         uint64_t startIndex = physStart / PAGE_SIZE;
 
-        bitmap_clear(&bitmap, startIndex, startIndex + bitmapPageCount);
+        bitmap_clear_range(&bitmap, startIndex, startIndex + bitmapPageCount);
         freePageAmount += bitmapPageCount;
 
         void* stackAddr = PML_LOWER_TO_HIGHER(PMM_BITMAP_MAX_ADDR);
@@ -212,33 +217,36 @@ static void pmm_free_pages_unlocked(void* address, uint64_t count)
     }
 }
 
-static void pmm_detect_memory(efi_mem_map_t* memoryMap)
+static void pmm_detect_memory(boot_memory_map_t* map)
 {
     LOG_INFO("UEFI-provided memory map\n");
 
-    for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
+    for (uint64_t i = 0; i < map->length; i++)
     {
-        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
+        const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, i);
 
-        pageAmount += desc->amountOfPages;
+        if (boot_is_mem_ram(desc->Type))
+        {
+            pageAmount += desc->NumberOfPages;
+        }
     }
 }
 
-static void pmm_load_memory(efi_mem_map_t* memoryMap)
+static void pmm_load_memory(boot_memory_map_t* map)
 {
-    for (uint64_t i = 0; i < memoryMap->descriptorAmount; i++)
+    for (uint64_t i = 0; i < map->length; i++)
     {
-        const efi_mem_desc_t* desc = EFI_MEMORY_MAP_GET_DESCRIPTOR(memoryMap, i);
+        const EFI_MEMORY_DESCRIPTOR* desc = BOOT_MEMORY_MAP_GET_DESCRIPTOR(map, i);
 
-        if (pmm_is_efi_mem_available(desc->type))
+        if (pmm_is_efi_mem_available(desc->Type))
         {
-            pmm_free_pages_unlocked(PML_LOWER_TO_HIGHER(desc->physicalStart), desc->amountOfPages);
+            pmm_free_pages_unlocked((void*)desc->VirtualStart, desc->NumberOfPages);
         }
         else
         {
-            LOG_INFO("reserve [0x%016lx-0x%016lx] pages=%d type=%s\n", desc->physicalStart,
-                (uint64_t)desc->physicalStart + desc->amountOfPages * PAGE_SIZE, desc->amountOfPages,
-                efiMemTypeToString[desc->type]);
+            LOG_INFO("reserve [0x%016lx-0x%016lx] pages=%d type=%s\n", desc->VirtualStart,
+                (uint64_t)desc->VirtualStart + desc->NumberOfPages * PAGE_SIZE, desc->NumberOfPages,
+                efiMemTypeToString[desc->Type]);
         }
     }
 
@@ -246,14 +254,14 @@ static void pmm_load_memory(efi_mem_map_t* memoryMap)
         (freePageAmount * PAGE_SIZE) / 1000000, ((pageAmount - freePageAmount) * PAGE_SIZE) / 1000000);
 }
 
-void pmm_init(efi_mem_map_t* memoryMap)
+void pmm_init(boot_memory_map_t* map)
 {
-    pmm_detect_memory(memoryMap);
+    pmm_detect_memory(map);
 
     pmm_stack_init();
     pmm_bitmap_init();
 
-    pmm_load_memory(memoryMap);
+    pmm_load_memory(map);
 }
 
 void* pmm_alloc(void)

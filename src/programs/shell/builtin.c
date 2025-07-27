@@ -7,25 +7,29 @@
 #include <sys/io.h>
 #include <sys/proc.h>
 
-static void builtin_cd(uint64_t argc, const char** argv)
+static uint64_t builtin_cd(uint64_t argc, const char** argv)
 {
     if (argc < 2)
     {
         chdir("/usr");
-        return;
+        return 0;
     }
 
     if (chdir(argv[1]) == ERR)
     {
         fprintf(stderr, "cd: %s\n", strerror(errno));
+        return ERR;
     }
+
+    return 0;
 }
 
-static void builtin_clear(uint64_t argc, const char** argv)
+static uint64_t builtin_clear(uint64_t argc, const char** argv)
 {
+    return ERR;
 }
 
-static void builtin_help(uint64_t argc, const char** argv);
+static uint64_t builtin_help(uint64_t argc, const char** argv);
 
 static builtin_t builtins[] = {
     {
@@ -50,7 +54,7 @@ static builtin_t builtins[] = {
     },
 };
 
-static void builtin_help(uint64_t argc, const char** argv)
+static uint64_t builtin_help(uint64_t argc, const char** argv)
 {
     if (argc < 2)
     {
@@ -75,7 +79,7 @@ static void builtin_help(uint64_t argc, const char** argv)
         if (builtin == NULL)
         {
             printf("error: builtin not found");
-            return;
+            return ERR;
         }
 
         printf("NAME\n  ");
@@ -87,6 +91,8 @@ static void builtin_help(uint64_t argc, const char** argv)
         printf("\nDESCRIPTION\n  ");
         printf(builtin->description);
     }
+
+    return 0;
 }
 
 bool builtin_exists(const char* name)
@@ -102,11 +108,11 @@ bool builtin_exists(const char* name)
     return false;
 }
 
-void builtin_execute(uint64_t argc, const char** argv)
+uint64_t builtin_execute(uint64_t argc, const char** argv)
 {
     if (argc == 0)
     {
-        return;
+        return 0;
     }
 
     for (uint64_t i = 0; i < sizeof(builtins) / sizeof(builtins[0]); i++)
@@ -114,7 +120,9 @@ void builtin_execute(uint64_t argc, const char** argv)
         if (strcmp(argv[0], builtins[i].name) == 0)
         {
             builtins[i].callback(argc, argv);
-            return;
+            return 0;
         }
     }
+
+    return ERR;
 }

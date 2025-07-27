@@ -1,22 +1,14 @@
 #include "thread.h"
 
 #include "cpu/gdt.h"
-#include "cpu/regs.h"
 #include "cpu/smp.h"
-#include "defs.h"
-#include "drivers/systime/systime.h"
-#include "fs/sysfs.h"
-#include "fs/vfs.h"
 #include "log/log.h"
 #include "mem/heap.h"
-#include "sched/loader.h"
 #include "sched/sched.h"
+#include "sched/timer.h"
 #include "sched/wait.h"
-#include "sync/futex.h"
 #include "sync/lock.h"
-#include "sys/io.h"
 
-#include <stdlib.h>
 #include <string.h>
 #include <sys/math.h>
 
@@ -65,20 +57,12 @@ thread_t* thread_new(process_t* process, void* entry)
 
 void thread_free(thread_t* thread)
 {
-    LOG_DEBUG("freeing tid=%d pid=%d\n", thread->id, thread->process->id);
     process_t* process = thread->process;
 
     lock_acquire(&process->threads.lock);
-    list_remove(&thread->processEntry);
+    list_remove(&process->threads.list, &thread->processEntry);
 
-    // If the entire process is dying then there is no point in unmaping the stack as all memory will be unmapped
-    // anyway.
-    if (!process->threads.isDying)
-    {
-        vmm_unmap(&process->space, (void*)LOADER_USER_STACK_BOTTOM(thread->id),
-            CONFIG_MAX_USER_STACK_PAGES * PAGE_SIZE); // Ignore failure
-    }
-
+    LOG_DEBUG("freeing thread tid=%d pid=%d with %d threads left\n", thread->id, thread->process->id, list_length(&process->threads.list));
     if (list_is_empty(&process->threads.list))
     {
         lock_release(&process->threads.lock);

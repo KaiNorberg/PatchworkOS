@@ -37,7 +37,7 @@ void gdt_load(void)
     gdt_load_descriptor(&gdtDesc);
 }
 
-void gd_cpu_load_tss(tss_t* tss)
+void gdt_cpu_load_tss(tss_t* tss)
 {
     gdt.tssDesc.limitLow = sizeof(tss_t);
     gdt.tssDesc.baseLow = (uint16_t)((uint64_t)tss);

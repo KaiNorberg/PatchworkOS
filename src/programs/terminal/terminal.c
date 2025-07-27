@@ -357,7 +357,7 @@ void terminal_init(terminal_t* term)
     input_init(&term->input);
     history_init(&term->history);
 
-    if (open2("/dev/pipe/new", term->stdin) == ERR || open2("/dev/pipe/new", term->stdout) == ERR)
+    if (open2("/dev/pipe", term->stdin) == ERR || open2("/dev/pipe", term->stdout) == ERR)
     {
         window_free(term->win);
         display_free(term->disp);

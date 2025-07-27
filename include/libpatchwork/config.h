@@ -10,9 +10,6 @@ extern "C"
 {
 #endif
 
-// Note: Config files always fail safely (apart from arrays and scanf but shhh), the idea being that an attempt to read
-// from a config file that failed to open will always return the fallback values.
-
 typedef struct config config_t;
 
 typedef struct config_array config_array_t;

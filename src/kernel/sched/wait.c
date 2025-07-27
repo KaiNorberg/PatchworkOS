@@ -1,22 +1,99 @@
 #include "wait.h"
 
-#include "cpu/regs.h"
 #include "cpu/smp.h"
-#include "cpu/vectors.h"
-#include "drivers/systime/systime.h"
-#include "kernel.h"
-#include "log/log.h"
 #include "log/panic.h"
 #include "mem/heap.h"
 #include "sched.h"
 #include "sched/thread.h"
+#include "sched/timer.h"
 #include "sync/lock.h"
-#include "sys/list.h"
 
 #include <assert.h>
 #include <errno.h>
 #include <stdatomic.h>
-#include <stdlib.h>
+#include <sys/list.h>
+
+typedef enum
+{
+    WAIT_CLEANUP_NONE = 0,
+    WAIT_CLEANUP_ACQUIRE_OWNER = 1 << 0,
+    WAIT_CLEANUP_REMOVE_FROM_LIST = 1 << 1,
+} wait_cleanup_flags_t;
+
+static void wait_block_cleanup(thread_t* thread, wait_result_t result, wait_queue_t* acquiredQueue,
+    wait_cleanup_flags_t flags)
+{
+    assert(atomic_load(&thread->state) == THREAD_UNBLOCKING);
+
+    thread->wait.result = result;
+
+    if (flags & WAIT_CLEANUP_REMOVE_FROM_LIST)
+    {
+        if (flags & WAIT_CLEANUP_ACQUIRE_OWNER)
+        {
+            assert(thread->wait.owner != NULL);
+            lock_acquire(&thread->wait.owner->wait.lock);
+            list_remove(&thread->wait.owner->wait.blockedThreads, &thread->entry);
+            lock_release(&thread->wait.owner->wait.lock);
+        }
+        else
+        {
+            list_remove(&thread->wait.owner->wait.blockedThreads, &thread->entry);
+        }
+    }
+
+    wait_entry_t* temp;
+    wait_entry_t* entry;
+    LIST_FOR_EACH_SAFE(entry, temp, &thread->wait.entries, threadEntry)
+    {
+        if (entry->waitQueue != acquiredQueue)
+        {
+            lock_acquire(&entry->waitQueue->lock);
+        }
+        list_remove(&entry->waitQueue->entries, &entry->queueEntry);
+        list_remove(&entry->thread->wait.entries, &entry->threadEntry);
+        if (entry->waitQueue != acquiredQueue)
+        {
+            lock_release(&entry->waitQueue->lock);
+        }
+        heap_free(entry);
+    }
+}
+
+static void wait_timer_handler(trap_frame_t* trapFrame, cpu_t* self)
+{
+    LOCK_SCOPE(&self->wait.lock);
+
+    while (1)
+    {
+        thread_t* thread = CONTAINER_OF_SAFE(list_first(&self->wait.blockedThreads), thread_t, entry);
+        if (thread == NULL)
+        {
+            return;
+        }
+
+        clock_t uptime = timer_uptime();
+        if (thread->wait.deadline > uptime)
+        {
+            timer_one_shot(self, uptime, thread->wait.deadline - uptime);
+            return;
+        }
+
+        list_remove(&self->wait.blockedThreads, &thread->entry);
+
+        thread_state_t expected = THREAD_BLOCKED;
+        if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
+        {
+            wait_block_cleanup(thread, WAIT_TIMEOUT, NULL, WAIT_CLEANUP_NONE);
+            sched_push(thread, thread->wait.owner);
+        }
+    }
+}
+
+void wait_init(void)
+{
+    timer_subscribe(wait_timer_handler);
+}
 
 void wait_queue_init(wait_queue_t* waitQueue)
 {
@@ -49,83 +126,6 @@ void wait_cpu_ctx_init(wait_cpu_ctx_t* wait)
     lock_init(&wait->lock);
 }
 
-typedef enum
-{
-    WAIT_CLEANUP_NONE = 0,
-    WAIT_CLEANUP_ACQUIRE_OWNER = 1 << 0,
-    WAIT_CLEANUP_REMOVE_FROM_LIST = 1 << 1,
-} wait_cleanup_flags_t;
-
-static void wait_block_cleanup(thread_t* thread, wait_result_t result, wait_queue_t* acquiredQueue,
-    wait_cleanup_flags_t flags)
-{
-    assert(atomic_load(&thread->state) == THREAD_UNBLOCKING);
-
-    thread->wait.result = result;
-
-    if (flags & WAIT_CLEANUP_REMOVE_FROM_LIST)
-    {
-        if (flags & WAIT_CLEANUP_ACQUIRE_OWNER)
-        {
-            assert(thread->wait.owner != NULL);
-            lock_acquire(&thread->wait.owner->wait.lock);
-            list_remove(&thread->entry);
-            lock_release(&thread->wait.owner->wait.lock);
-        }
-        else
-        {
-            list_remove(&thread->entry);
-        }
-    }
-
-    wait_entry_t* temp;
-    wait_entry_t* entry;
-    LIST_FOR_EACH_SAFE(entry, temp, &thread->wait.entries, threadEntry)
-    {
-        if (entry->waitQueue != acquiredQueue)
-        {
-            lock_acquire(&entry->waitQueue->lock);
-        }
-        list_remove(&entry->queueEntry);
-        list_remove(&entry->threadEntry);
-        if (entry->waitQueue != acquiredQueue)
-        {
-            lock_release(&entry->waitQueue->lock);
-        }
-        heap_free(entry);
-    }
-}
-
-void wait_timer_trap(trap_frame_t* trapFrame, cpu_t* self)
-{
-    LOCK_SCOPE(&self->wait.lock);
-
-    while (1)
-    {
-        thread_t* thread = CONTAINER_OF_SAFE(list_first(&self->wait.blockedThreads), thread_t, entry);
-        if (thread == NULL)
-        {
-            return;
-        }
-
-        clock_t uptime = systime_uptime();
-        if (thread->wait.deadline > uptime)
-        {
-            systime_timer_one_shot(self, uptime, thread->wait.deadline - uptime);
-            return;
-        }
-
-        list_remove(&thread->entry);
-
-        thread_state_t expected = THREAD_BLOCKED;
-        if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
-        {
-            wait_block_cleanup(thread, WAIT_TIMEOUT, NULL, false);
-            sched_push(thread, NULL, thread->wait.owner);
-        }
-    }
-}
-
 bool wait_block_finalize(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread)
 {
     wait_cpu_ctx_t* cpuCtx = &self->wait;
@@ -133,7 +133,7 @@ bool wait_block_finalize(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread)
 
     thread->wait.owner = self;
 
-    clock_t uptime = systime_uptime();
+    clock_t uptime = timer_uptime();
 
     thread_t* lastThread = (CONTAINER_OF(list_last(&self->wait.blockedThreads), thread_t, entry));
 
@@ -150,7 +150,7 @@ bool wait_block_finalize(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread)
         {
             if (other->wait.deadline > thread->wait.deadline)
             {
-                list_prepend(&other->entry, &thread->entry);
+                list_prepend(&self->wait.blockedThreads, &other->entry, &thread->entry);
                 break;
             }
         }
@@ -172,7 +172,7 @@ bool wait_block_finalize(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread)
         }
     }
 
-    systime_timer_one_shot(self, uptime, thread->wait.deadline > uptime ? thread->wait.deadline - uptime : 0);
+    timer_one_shot(self, uptime, thread->wait.deadline > uptime ? thread->wait.deadline - uptime : 0);
     return true;
 }
 
@@ -181,7 +181,7 @@ void wait_unblock_thread(thread_t* thread, wait_result_t result)
     if (atomic_exchange(&thread->state, THREAD_UNBLOCKING) == THREAD_BLOCKED)
     {
         wait_block_cleanup(thread, result, NULL, WAIT_CLEANUP_REMOVE_FROM_LIST | WAIT_CLEANUP_ACQUIRE_OWNER);
-        sched_push(thread, NULL, thread->wait.owner);
+        sched_push(thread, thread->wait.owner);
     }
 }
 
@@ -206,7 +206,7 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount)
         {
             wait_block_cleanup(thread, WAIT_NORM, waitQueue,
                 WAIT_CLEANUP_REMOVE_FROM_LIST | WAIT_CLEANUP_ACQUIRE_OWNER);
-            sched_push(thread, NULL, thread->wait.owner);
+            sched_push(thread, thread->wait.owner);
             amountUnblocked++;
             amount--;
         }
@@ -268,7 +268,7 @@ uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t ti
 
     thread->wait.entryAmount = amount;
     thread->wait.result = WAIT_NORM;
-    thread->wait.deadline = timeout == CLOCKS_NEVER ? CLOCKS_NEVER : systime_uptime() + timeout;
+    thread->wait.deadline = timeout == CLOCKS_NEVER ? CLOCKS_NEVER : timer_uptime() + timeout;
     thread->wait.owner = NULL;
 
     for (uint64_t i = 0; i < amount; i++)

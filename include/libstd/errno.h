@@ -12,7 +12,7 @@ extern "C"
 /**
  * @brief Error values.
  * @ingroup libstd
- * @defgroup libstd_errno
+ * @defgroup libstd_errno Errno
  *
  * The errno values in Patchwork are taken from POSIX.
  *

@@ -4,11 +4,8 @@
 #include "mouse.h"
 
 #include "cpu/port.h"
-#include "drivers/systime/systime.h"
-#include "log/log.h"
 #include "log/panic.h"
-
-#include <assert.h>
+#include "sched/timer.h"
 
 void ps2_init(void)
 {
@@ -40,9 +37,9 @@ void ps2_init(void)
 
 uint8_t ps2_read(void)
 {
-    uint64_t time = systime_uptime();
+    uint64_t time = timer_uptime();
 
-    while (time + CLOCKS_PER_SEC > systime_uptime())
+    while (time + CLOCKS_PER_SEC > timer_uptime())
     {
         uint8_t status = port_inb(PS2_PORT_STATUS);
         if (status & PS2_STATUS_OUT_FULL)
@@ -63,9 +60,9 @@ void ps2_write(uint8_t data)
 
 void ps2_wait(void)
 {
-    uint64_t time = systime_uptime();
+    uint64_t time = timer_uptime();
 
-    while (time + CLOCKS_PER_SEC > systime_uptime())
+    while (time + CLOCKS_PER_SEC > timer_uptime())
     {
         uint8_t status = port_inb(PS2_PORT_STATUS);
         if (status & PS2_STATUS_OUT_FULL)

@@ -251,7 +251,7 @@ static uint64_t local_socket_accept(socket_t* sock, socket_t* newSock)
         {
             list_entry_t* entry = list_first(&listen->backlog);
             local_conn_t* container = CONTAINER_OF(entry, local_conn_t, entry);
-            list_remove(entry);
+            list_remove(&listen->backlog, entry);
             conn = REF(container);
             listen->pendingAmount--;
             break;

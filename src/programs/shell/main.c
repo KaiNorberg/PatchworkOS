@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/io.h>
 #include <sys/proc.h>
 
@@ -61,15 +62,14 @@ void join_args(char* buffer, uint64_t size, int argc, char* argv[])
     buffer[pos] = '\0';
 }
 
-uint64_t execute_command(const char* cmdline)
+int execute_command(const char* cmdline)
 {
     pipeline_t pipeline;
     if (pipeline_init(&pipeline, cmdline) == ERR)
     {
-        return ERR;
+        return EXIT_FAILURE;
     }
-    pipeline_execute(&pipeline);
-    return 0;
+    return pipeline_execute(&pipeline) == ERR ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
 void run_interactive_shell(void)

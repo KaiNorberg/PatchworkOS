@@ -2,16 +2,11 @@
 
 #include "cpu/irq.h"
 #include "cpu/port.h"
-#include "drivers/mouse.h"
-#include "drivers/systime/systime.h"
-#include "fs/vfs.h"
+#include "drivers/helpers/mouse.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "ps2.h"
-#include "sched/sched.h"
-#include "stdlib.h"
 
-#include <assert.h>
 #include <sys/math.h>
 #include <sys/mouse.h>
 

@@ -1,16 +1,16 @@
 #include "statistics.h"
 
 #include "cpu/smp.h"
-#include "drivers/systime/systime.h"
+#include "fs/file.h"
 #include "fs/sysfs.h"
-#include "log/log.h"
+#include "fs/vfs.h"
 #include "log/panic.h"
 #include "mem/heap.h"
+#include "mem/pmm.h"
+#include "sched/timer.h"
 
-#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <sys/io.h>
 #include <sys/math.h>
 
@@ -65,8 +65,8 @@ static uint64_t statistics_mem_read(file_t* file, void* buffer, uint64_t count, 
         return ERR;
     }
 
-    sprintf(string, "value kb\ntotal %llu\nfree %llu\nreserved %llu", pmm_total_amount() * PAGE_SIZE / 4,
-        pmm_free_amount() * PAGE_SIZE / 4, pmm_reserved_amount() * PAGE_SIZE / 4);
+    sprintf(string, "value kb\ntotal %llu\nfree %llu\nreserved %llu", pmm_total_amount() * PAGE_SIZE / 1024,
+        pmm_free_amount() * PAGE_SIZE / 1024, pmm_reserved_amount() * PAGE_SIZE/ 1024);
 
     uint64_t length = strlen(string);
     uint64_t readCount = BUFFER_READ(buffer, count, offset, string, length);
@@ -99,7 +99,7 @@ void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* self)
     statistics_cpu_ctx_t* stat = &self->stat;
     LOCK_SCOPE(&stat->lock);
 
-    stat->trapBegin = systime_uptime();
+    stat->trapBegin = timer_uptime();
 
     clock_t timeBetweenTraps = stat->trapBegin - stat->trapEnd;
     if (sched_is_idle())
@@ -117,6 +117,6 @@ void statistics_trap_end(trap_frame_t* trapFrame, cpu_t* self)
     statistics_cpu_ctx_t* stat = &self->stat;
     LOCK_SCOPE(&stat->lock);
 
-    stat->trapEnd = systime_uptime();
+    stat->trapEnd = timer_uptime();
     stat->trapClocks += stat->trapEnd - stat->trapBegin;
 }

@@ -128,3 +128,13 @@
  *
  */
 #define CONFIG_MUTEX_MAX_SLOW_SPIN 1000
+
+/**
+ * @brief Maximum screen lines configuration.
+ * @ingroup kernel
+ * @def CONFIG_SCREEN_MAX_LINES
+ *
+ * The `CONFIG_SCREEN_MAX_LINES` constant defines the maximum number of lines that the logging system will display.
+ *
+ */
+#define CONFIG_SCREEN_MAX_LINES 256

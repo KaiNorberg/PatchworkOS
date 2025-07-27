@@ -33,7 +33,6 @@ _thread_t* _thread_new(_thread_entry_t entry, void* private)
     }
 
     mtx_lock(&mutex);
-    list_push(&threads, &thread->entry);
 
     list_entry_init(&thread->entry);
     atomic_init(&thread->state, _THREAD_ATTACHED);
@@ -46,11 +45,12 @@ _thread_t* _thread_new(_thread_entry_t entry, void* private)
     {
         errno = _syscall_errno();
 
-        list_remove(&thread->entry);
         mtx_unlock(&mutex);
         free(thread);
         return NULL;
     }
+
+    list_push(&threads, &thread->entry);
     mtx_unlock(&mutex);
 
     return thread;
@@ -59,7 +59,7 @@ _thread_t* _thread_new(_thread_entry_t entry, void* private)
 void _thread_free(_thread_t* thread)
 {
     mtx_lock(&mutex);
-    list_remove(&thread->entry);
+    list_remove(&threads, &thread->entry);
     mtx_unlock(&mutex);
     if (thread != &thread0)
     {

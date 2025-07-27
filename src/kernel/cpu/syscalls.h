@@ -42,7 +42,6 @@ void syscalls_cpu_init(void);
 
 void syscall_handler(trap_frame_t* trapFrame);
 
-// TODO: Improve verify funcs, improve multithreading string safety. copy_to_user? copy_from_user?
 bool syscall_is_pointer_valid(const void* pointer, uint64_t length);
 bool syscall_is_buffer_valid(space_t* space, const void* pointer, uint64_t length);
 bool syscall_is_string_valid(space_t* space, const char* string);

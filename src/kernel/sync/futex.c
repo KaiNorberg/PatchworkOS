@@ -1,13 +1,14 @@
 #include "futex.h"
-#include "drivers/systime/systime.h"
+#include "cpu/syscalls.h"
 #include "lock.h"
 #include "mem/heap.h"
+#include "proc/process.h"
 #include "sched/sched.h"
-#include "sched/thread.h"
+#include "sched/timer.h"
 #include "sched/wait.h"
 #include "utils/map.h"
 
-#include <stdlib.h>
+#include <errno.h>
 
 void futex_ctx_init(futex_ctx_t* ctx)
 {
@@ -66,11 +67,11 @@ uint64_t futex_do(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t ti
             return ERR;
         }
 
-        clock_t start = systime_uptime();
+        clock_t start = timer_uptime();
         wait_result_t result = WAIT_BLOCK_LOCK_TIMEOUT(&futex->queue, &ctx->lock, atomic_load(addr) != val, timeout);
         if (result == WAIT_TIMEOUT)
         {
-            return (systime_uptime() - start);
+            return (timer_uptime() - start);
         }
     }
     break;
@@ -91,5 +92,15 @@ uint64_t futex_do(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t ti
 
 SYSCALL_DEFINE(SYS_FUTEX, uint64_t, atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeout)
 {
+    process_t* process = sched_process();
+    space_t* space = &process->space;
+    RWMUTEX_READ_SCOPE(&space->mutex);
+
+    if (!syscall_is_pointer_valid(addr, sizeof(atomic_uint64_t)))
+    {
+        errno = EFAULT;
+        return ERR;
+    }
+
     return futex_do(addr, val, op, timeout);
 }

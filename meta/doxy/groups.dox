@@ -22,6 +22,22 @@
  */
 
 /**
+ * @brief The Patchwork Bootloader
+ * @defgroup bootloader bootloader
+ *
+ * The bootloader for Patchwork.
+ *
+ */
+
+/**
+ * @brief Common
+ * @defgroup common common
+ *
+ * Common functions or utilities used by the bootloader and kernel.
+ *
+ */
+
+/**
  * @brief The Patchwork Kernel
  * @defgroup kernel kernel
  *

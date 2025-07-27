@@ -1,7 +1,8 @@
 #pragma once
 
-#include "cpu/regs.h"
 #include "sync/lock.h"
+
+#include <common/regs.h>
 
 #include <sys/list.h>
 #include <sys/proc.h>
@@ -53,7 +54,7 @@
     ({ \
         assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE); \
         wait_result_t result = WAIT_NORM; \
-        clock_t uptime = systime_uptime(); \
+        clock_t uptime = timer_uptime(); \
         clock_t deadline = (timeout) == CLOCKS_NEVER ? CLOCKS_NEVER : (timeout) + uptime; \
         while (!(condition) && result == WAIT_NORM) \
         { \
@@ -70,7 +71,7 @@
                 break; \
             } \
             result = wait_block_do(); \
-            uptime = systime_uptime(); \
+            uptime = timer_uptime(); \
         } \
         result; \
     })
@@ -117,7 +118,7 @@
 #define WAIT_BLOCK_LOCK_TIMEOUT(waitQueue, lock, condition, timeout) \
     ({ \
         wait_result_t result = WAIT_NORM; \
-        clock_t uptime = systime_uptime(); \
+        clock_t uptime = timer_uptime(); \
         clock_t deadline = (timeout) == CLOCKS_NEVER ? CLOCKS_NEVER : (timeout) + uptime; \
         while (!(condition) && result == WAIT_NORM) \
         { \
@@ -137,7 +138,7 @@
             result = wait_block_do(); \
             assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE); \
             lock_acquire(lock); \
-            uptime = systime_uptime(); \
+            uptime = timer_uptime(); \
         } \
         result; \
     })
@@ -182,6 +183,8 @@ typedef struct
     lock_t lock;
 } wait_cpu_ctx_t;
 
+void wait_init(void);
+
 void wait_queue_init(wait_queue_t* waitQueue);
 void wait_queue_deinit(wait_queue_t* waitQueue);
 
@@ -190,8 +193,6 @@ void wait_thread_ctx_init(wait_thread_ctx_t* wait);
 void wait_cpu_ctx_init(wait_cpu_ctx_t* wait);
 
 clock_t wait_next_deadline(trap_frame_t* trapFrame, cpu_t* self);
-
-void wait_timer_trap(trap_frame_t* trapFrame, cpu_t* self);
 
 bool wait_block_finalize(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread);
 

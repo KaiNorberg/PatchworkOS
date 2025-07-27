@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdint.h>
 
 // Glyph data generated using tools/generate_glyph_cache.

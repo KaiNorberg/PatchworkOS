@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <sys/io.h>
+#include <time.h>
 
 static const char* type_to_string(inode_type_t type)
 {

@@ -1,7 +1,10 @@
 #pragma once
 
-#include "defs.h"
 #include "tss.h"
+
+#include <common/defs.h>
+
+#include <stdint.h>
 
 // Note: The fliped order of user data and user code is needed to the sysret instruction, i have no idea why its
 // designed that way.
@@ -62,4 +65,4 @@ void gdt_cpu_init(void);
 
 void gdt_load(void);
 
-void gd_cpu_load_tss(tss_t* tss);
+void gdt_cpu_load_tss(tss_t* tss);

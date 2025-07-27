@@ -55,7 +55,7 @@ void client_free(client_t* client)
     surface_t* temp;
     LIST_FOR_EACH_SAFE(surface, temp, &client->surfaces, clientEntry)
     {
-        list_remove(&surface->clientEntry);
+        list_remove(&client->surfaces, &surface->clientEntry);
         dwm_detach(surface);
         surface_free(surface);
     }
@@ -151,7 +151,7 @@ static uint64_t client_action_surface_free(client_t* client, const cmd_header_t*
         return ERR;
     }
 
-    list_remove(&surface->clientEntry);
+    list_remove(&client->surfaces, &surface->clientEntry);
     dwm_detach(surface);
     surface_free(surface);
     return 0;

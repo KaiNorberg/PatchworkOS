@@ -23,4 +23,4 @@ typedef struct
     dentry_t* dentry;
 } ramfs_dentry_data_t;
 
-void ramfs_init(ram_disk_t* disk);
+void ramfs_init(boot_disk_t* disk);
