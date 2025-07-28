@@ -7,12 +7,13 @@
 #include "sched/sched.h"
 #include "sched/wait.h"
 #include "sync/futex.h"
+#include <stdatomic.h>
 
 typedef struct
 {
-    bool isDying;
     tid_t newTid;
-    list_t list;
+    list_t aliveThreads;
+    list_t zombieThreads;
     lock_t lock;
 } process_threads_t;
 
@@ -34,8 +35,9 @@ typedef struct process
     argv_t argv;
     vfs_ctx_t vfsCtx;
     space_t space;
-    wait_queue_t queue;
     futex_ctx_t futexCtx;
+    wait_queue_t dyingWaitQueue;
+    atomic_bool isDying;
     process_threads_t threads;
     list_entry_t entry;
     list_t children;
@@ -46,6 +48,8 @@ typedef struct process
 process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, priority_t priority);
 
 void process_free(process_t* process);
+
+void process_kill(process_t* process, uint64_t status);
 
 bool process_is_child(process_t* process, pid_t parentId);
 

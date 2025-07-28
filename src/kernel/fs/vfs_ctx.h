@@ -17,6 +17,7 @@ typedef struct
     path_t cwd;
     file_t* files[CONFIG_MAX_FD];
     lock_t lock;
+    bool initalized;
 } vfs_ctx_t;
 
 void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd);
@@ -27,7 +28,7 @@ file_t* vfs_ctx_get_file(vfs_ctx_t* ctx, fd_t fd);
 
 uint64_t vfs_ctx_set_cwd(vfs_ctx_t* ctx, const path_t* cwd);
 
-void vfs_ctx_get_cwd(vfs_ctx_t* ctx, path_t* outCwd);
+uint64_t vfs_ctx_get_cwd(vfs_ctx_t* ctx, path_t* outCwd);
 
 fd_t vfs_ctx_open(vfs_ctx_t* ctx, file_t* file);
 

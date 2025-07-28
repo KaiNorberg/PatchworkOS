@@ -41,18 +41,14 @@
  * @ingroup kernel_sched_thread
  * @enum thread_state_t
  *
- * The `thread_state_t` enum is used to prevent race conditions, reduce the need for locks by having the `thread_t`
- * structures state member be atomic, and to make debugging easier.
- *
  */
 typedef enum
 {
     THREAD_PARKED = 1 << 0,    //!< Is doing nothing, not in a queue, not blocking, think of it as "other".
     THREAD_READY = 1 << 1,     //!< Is ready to run and waiting to be scheduled.
     THREAD_RUNNING = 1 << 2,   //!< Is currently running on a cpu.
-    THREAD_ZOMBIE = 1 << 3,    //!< Has exited and is waiting to be freed.
-    THREAD_PRE_BLOCK = 1 << 4, //!< Has started the process of blocking put has not yet been given to a owner cpu, used
-                               //!< to prevent race conditions when blocking on a lock.
+    THREAD_ZOMBIE = 1 << 3,    //!< Has exited and is waiting to be freed and might still be executing.
+    THREAD_PRE_BLOCK = 1 << 4, //!< Has started the process of blocking but has not yet been given to a owner cpu.
     THREAD_BLOCKED = 1 << 5,   //!< Is blocking and waiting in one or multiple wait queues.
     THREAD_UNBLOCKING =
         1 << 6, //!< Has started unblocking, used to prevent the same thread being unblocked multiple times.
@@ -63,30 +59,25 @@ typedef enum
  * @ingroup kernel_sched_thread
  * @struct thread_t
  *
- * The `thread_t` structure stores information like a trap frame, kernel stack, and scheduling information amongst other
- * things, it is the fundamental unit of execution managed by the kernel's scheduler, meaning that it encapsulates all
- * the necessary context for the kernel to save, restore, and schedule the thread for execution on a CPU. Each
- * `thread_t` represents an independent thread of execution within a `process_t`.
+ * A `thread_t` represents an independent thread of execution within a `process_t`.
  *
  */
 typedef struct thread
 {
     /**
-     * @brief The list entry used by for example the scheduler and wait system to store the thread in
-     * linked lists and queues.
+     * @brief The list entry used by for example the scheduler and wait system.
      */
     list_entry_t entry;
     /**
-     * @brief The parent process that the thread is executeing within.
+     * @brief The parent process.
      */
     process_t* process;
     /**
-     * @brief The list entry used by the parent process to store the thread.
+     * @brief The list entry used by the parent process.
      */
     list_entry_t processEntry;
     /**
-     * @brief A identifier that is unique to every thread in a process, separate processes may contain threads that
-     * overlap.
+     * @brief The thread id, unique within a `process_t`.
      */
     tid_t id;
     /**
@@ -118,7 +109,7 @@ typedef struct thread
      */
     syscall_ctx_t syscall;
     /**
-     * @brief The threads trap frame is used to save the value in various CPU registers such that the
+     * @brief The threads trap frame is used to save the values in the CPU registers such that the
      * scheduler can continue executing the thread later on.
      */
     trap_frame_t trapFrame;
@@ -163,8 +154,7 @@ typedef struct thread
  * @brief Creates a new thread structure.
  * @ingroup kernel_sched_thread
  *
- * The `thread_new()` function allocates and initializes a `thread_t` structure, it does not push the created thread to
- * the scheduler or similar, merely handling allocation and initialization.
+ * Does not push the created thread to the scheduler or similar, merely handling allocation and initialization.
  *
  * @param process The parent process that the thread will execute within.
  * @param entry The inital value of the threads rip register, defines where the thread will start executing code.
@@ -176,18 +166,23 @@ thread_t* thread_new(process_t* process, void* entry);
  * @brief Frees a thread structure.
  * @ingroup kernel_sched_thread
  *
- * The `thread_free()` function deinitializes a `thread_t` structure and frees it.
- *
  * @param thread The thread to be freed.
  */
 void thread_free(thread_t* thread);
 
 /**
+ * @brief Signals to a thread that it is dying.
+ * @ingroup kernel_sched_thread
+ * 
+ * Does not perform free the thread and the thread will continue executing as a zombie after this function.
+ * 
+ * @param thread The thread to be killed.
+ */
+void thread_kill(thread_t* thread);
+
+/**
  * @brief Save state to thread.
  * @ingroup kernel_sched_thread
- *
- * The `thread_save()` function saves current CPU state and trap frame to the `thread_t` structure allowing it to be
- * rescheduled later on. Examples of CPU state that is saved is the SIMD context.
  *
  * @param thread The destination thread where the state will be saved.
  * @param trapFrame The source trapframe storing register state.
@@ -197,9 +192,6 @@ void thread_save(thread_t* thread, const trap_frame_t* trapFrame);
 /**
  * @brief Load state from thread.
  * @ingroup kernel_sched_thread
- *
- * The `thread_load()` function loads state information from a `thread_t` structure, including but not limited to, the
- * trap frame, SIMD context, address space, and task state segment.
  *
  * @param thread The source thread to load state from.
  * @param trapFrame The destination trap frame to load register state.
@@ -219,8 +211,7 @@ bool thread_is_note_pending(thread_t* thread);
  * @brief Send a note to a thread.
  * @ingroup kernel_sched_thread
  *
- * The `thread_send_note()` function sends a note to a thread using the `note_queue_push()` function, this function
- * should always be used over the `note_queue_push()` function, as it performs additional checks, like deciding how
+ * This function should always be used over the `note_queue_push()` function, as it performs additional checks, like deciding how
  * critical the sent note is and unblocking the thread to notify it of the received note.
  *
  * @param thread The destination thread.

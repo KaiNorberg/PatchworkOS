@@ -9,11 +9,13 @@
 #include "log/panic.h"
 #include "mem/heap.h"
 #include "sched/thread.h"
+#include "sched/wait.h"
 #include "sync/lock.h"
 #include "sync/rwlock.h"
 
 #include <_internal/MAX_PATH.h>
 #include <assert.h>
+#include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -88,7 +90,10 @@ static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count, uin
     }
 
     path_t cwd = PATH_EMPTY;
-    vfs_ctx_get_cwd(&process->vfsCtx, &cwd);
+    if (vfs_ctx_get_cwd(&process->vfsCtx, &cwd) == ERR)
+    {
+        return ERR;
+    }
     PATH_DEFER(&cwd);
 
     pathname_t cwdName;
@@ -143,7 +148,7 @@ static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t co
 
     LOCK_SCOPE(&process->threads.lock);
 
-    thread_t* thread = CONTAINER_OF_SAFE(list_first(&process->threads.list), thread_t, processEntry);
+    thread_t* thread = CONTAINER_OF_SAFE(list_first(&process->threads.aliveThreads), thread_t, processEntry);
     if (thread == NULL)
     {
         errno = EINVAL;
@@ -170,10 +175,7 @@ static uint64_t process_status_read(file_t* file, void* buffer, uint64_t count, 
         return ERR;
     }
 
-    WAIT_BLOCK(&process->queue, ({
-        LOCK_SCOPE(&process->threads.lock);
-        process->threads.isDying;
-    }));
+    WAIT_BLOCK(&process->dyingWaitQueue, atomic_load(&process->isDying));
 
     char status[MAX_PATH];
     snprintf(status, sizeof(status), "%llu", atomic_load(&process->status));
@@ -191,7 +193,7 @@ static void process_inode_cleanup(inode_t* inode)
     LOG_DEBUG("cleaning up process pid=%d\n", process->id);
     space_deinit(&process->space);
     argv_deinit(&process->argv);
-    wait_queue_deinit(&process->queue);
+    wait_queue_deinit(&process->dyingWaitQueue);
     futex_ctx_deinit(&process->futexCtx);
     heap_free(process);
 }
@@ -283,7 +285,10 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
     else if (parent != NULL)
     {
         path_t parentCwd = PATH_EMPTY;
-        vfs_ctx_get_cwd(&parent->vfsCtx, &parentCwd);
+        if (vfs_ctx_get_cwd(&parent->vfsCtx, &parentCwd) == ERR)
+        {
+            return ERR;
+        }
 
         vfs_ctx_init(&process->vfsCtx, &parentCwd);
 
@@ -294,11 +299,12 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
         vfs_ctx_init(&process->vfsCtx, NULL);
     }
 
-    wait_queue_init(&process->queue);
     futex_ctx_init(&process->futexCtx);
-    process->threads.isDying = false;
+    wait_queue_init(&process->dyingWaitQueue);
+    atomic_init(&process->isDying, false);
     process->threads.newTid = 0;
-    list_init(&process->threads.list);
+    list_init(&process->threads.aliveThreads);
+    list_init(&process->threads.zombieThreads);
     lock_init(&process->threads.lock);
 
     list_entry_init(&process->entry);
@@ -346,7 +352,9 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
 void process_free(process_t* process)
 {
     LOG_INFO("freeing process pid=%d\n", process->id);
-    assert(list_is_empty(&process->threads.list));
+    assert(list_is_empty(&process->threads.aliveThreads));
+    assert(list_is_empty(&process->threads.zombieThreads));
+    assert(atomic_load(&process->isDying));
 
     if (process->parent != NULL)
     {
@@ -363,10 +371,35 @@ void process_free(process_t* process)
         process->parent = NULL;
     }
 
-    process->threads.isDying = true;  // Isent really needed as the scheduler also sets it.
-    vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_inode_cleanup.
-    wait_unblock(&process->queue, WAIT_ALL);
     process_dir_deinit(&process->dir);
+}
+
+void process_kill(process_t* process, uint64_t status)
+{
+    LOCK_SCOPE(&process->threads.lock);
+
+    if (atomic_exchange(&process->isDying, true))
+    {
+        return;
+    }
+    
+    uint64_t killCount = 0;
+    thread_t* thread;
+    LIST_FOR_EACH(thread, &process->threads.aliveThreads, processEntry)
+    {
+        const char* note = "kill";
+        uint64_t noteLen = 4;
+        thread_send_note(thread, note, noteLen);
+        killCount++;
+    }
+
+    if (killCount > 0)
+    {
+        LOG_DEBUG("sent kill note to %llu threads in process pid=%d\n", killCount, process->id);
+    }
+
+    vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_inode_cleanup, makes sure that files close immediately to notify blocking threads.
+    wait_unblock(&process->dyingWaitQueue, WAIT_ALL);
 }
 
 bool process_is_child(process_t* process, pid_t parentId)

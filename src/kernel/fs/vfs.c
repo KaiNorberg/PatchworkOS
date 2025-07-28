@@ -412,7 +412,7 @@ void vfs_remove_mount(mount_t* mount)
     map_remove(&mountCache.map, &key);
 }
 
-static void vfs_get_cwd(path_t* outPath)
+static uint64_t vfs_get_cwd(path_t* outPath)
 {
     process_t* process = sched_process();
     if (process == NULL)
@@ -420,10 +420,10 @@ static void vfs_get_cwd(path_t* outPath)
         RWLOCK_READ_SCOPE(&globalRoot.lock);
         outPath->dentry = REF(globalRoot.mount->mountpoint);
         outPath->mount = REF(globalRoot.mount);
-        return;
+        return 0;
     }
 
-    vfs_ctx_get_cwd(&process->vfsCtx, outPath);
+    return vfs_ctx_get_cwd(&process->vfsCtx, outPath);
 }
 
 uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname, walk_flags_t flags)
@@ -435,7 +435,10 @@ uint64_t vfs_walk(path_t* outPath, const pathname_t* pathname, walk_flags_t flag
     }
 
     path_t cwd = PATH_EMPTY;
-    vfs_get_cwd(&cwd);
+    if (vfs_get_cwd(&cwd) == ERR)
+    {
+        return ERR;
+    }
     PATH_DEFER(&cwd);
 
     return path_walk(outPath, pathname, &cwd, flags);

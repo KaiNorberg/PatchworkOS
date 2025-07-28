@@ -4,19 +4,22 @@
 #include "cpu/smp.h"
 #include "log/log.h"
 #include "mem/heap.h"
+#include "log/panic.h"
 #include "sched/sched.h"
 #include "sched/timer.h"
 #include "sched/wait.h"
 #include "sync/lock.h"
 
+#include <stdlib.h>
 #include <string.h>
+#include <sys/list.h>
 #include <sys/math.h>
 
 thread_t* thread_new(process_t* process, void* entry)
 {
     LOCK_SCOPE(&process->threads.lock);
 
-    if (process->threads.isDying)
+    if (atomic_load(&process->isDying))
     {
         return NULL;
     }
@@ -50,7 +53,7 @@ thread_t* thread_new(process_t* process, void* entry)
     thread->trapFrame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
     memset(&thread->kernelStack, 0, CONFIG_KERNEL_STACK);
 
-    list_push(&process->threads.list, &thread->processEntry);
+    list_push(&process->threads.aliveThreads, &thread->processEntry);
     LOG_DEBUG("created tid=%d pid=%d entry=%p\n", thread->id, process->id, entry);
     return thread;
 }
@@ -59,11 +62,12 @@ void thread_free(thread_t* thread)
 {
     process_t* process = thread->process;
 
-    lock_acquire(&process->threads.lock);
-    list_remove(&process->threads.list, &thread->processEntry);
+    assert(atomic_load(&thread->state) == THREAD_ZOMBIE);
 
-    LOG_DEBUG("freeing thread tid=%d pid=%d with %d threads left\n", thread->id, thread->process->id, list_length(&process->threads.list));
-    if (list_is_empty(&process->threads.list))
+    lock_acquire(&process->threads.lock);
+    list_remove(&process->threads.zombieThreads, &thread->processEntry);
+
+    if (list_is_empty(&process->threads.aliveThreads) && list_is_empty(&process->threads.zombieThreads))
     {
         lock_release(&process->threads.lock);
         process_free(process);
@@ -75,6 +79,32 @@ void thread_free(thread_t* thread)
 
     simd_ctx_deinit(&thread->simd);
     heap_free(thread);
+}
+
+void thread_kill(thread_t* thread)
+{
+    lock_acquire(&thread->process->threads.lock);
+
+    if (atomic_exchange(&thread->state, THREAD_ZOMBIE) != THREAD_RUNNING)
+    {
+        panic(NULL, "Invalid state while killing thread");
+    }
+
+    list_remove(&thread->process->threads.aliveThreads, &thread->processEntry);
+    list_push(&thread->process->threads.zombieThreads, &thread->processEntry);
+
+    if (list_is_empty(&thread->process->threads.aliveThreads))
+    {
+        // We cant create more alive threads if there are no alive threads, so there is no race condition.
+        lock_release(&thread->process->threads.lock);
+
+        // We lose the ability to signal exit status of all threads are killed separately, this appears to be posix behaviour.
+        process_kill(thread->process, EXIT_SUCCESS);
+    }
+    else
+    {
+        lock_release(&thread->process->threads.lock);
+    }
 }
 
 void thread_save(thread_t* thread, const trap_frame_t* trapFrame)

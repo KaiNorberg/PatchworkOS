@@ -22,6 +22,7 @@ void vfs_ctx_init(vfs_ctx_t* ctx, const path_t* cwd)
         ctx->files[i] = NULL;
     }
     lock_init(&ctx->lock);
+    ctx->initalized = true;
 }
 
 void vfs_ctx_deinit(vfs_ctx_t* ctx)
@@ -38,11 +39,19 @@ void vfs_ctx_deinit(vfs_ctx_t* ctx)
             ctx->files[i] = NULL;
         }
     }
+
+    ctx->initalized = false;
 }
 
 file_t* vfs_ctx_get_file(vfs_ctx_t* ctx, fd_t fd)
 {
     LOCK_SCOPE(&ctx->lock);
+
+    if (!ctx->initalized)
+    {
+        errno = EBUSY;
+        return NULL;
+    }
 
     if (fd >= CONFIG_MAX_FD || ctx->files[fd] == NULL)
     {
@@ -53,22 +62,38 @@ file_t* vfs_ctx_get_file(vfs_ctx_t* ctx, fd_t fd)
     return REF(ctx->files[fd]);
 }
 
-void vfs_ctx_get_cwd(vfs_ctx_t* ctx, path_t* outCwd)
+uint64_t vfs_ctx_get_cwd(vfs_ctx_t* ctx, path_t* outCwd)
 {
     LOCK_SCOPE(&ctx->lock);
+
+    if (!ctx->initalized)
+    {
+        errno = EBUSY;
+        return ERR;
+    }
 
     if (ctx->cwd.dentry == NULL || ctx->cwd.mount == NULL)
     {
         assert(ctx->cwd.dentry == NULL && ctx->cwd.mount == NULL);
-        vfs_get_global_root(&ctx->cwd);
+        if (vfs_get_global_root(&ctx->cwd) == ERR)
+        {
+            return ERR;
+        }
     }
 
     path_copy(outCwd, &ctx->cwd);
+    return 0;
 }
 
 uint64_t vfs_ctx_set_cwd(vfs_ctx_t* ctx, const path_t* cwd)
 {
     LOCK_SCOPE(&ctx->lock);
+
+    if (!ctx->initalized)
+    {
+        errno = EBUSY;
+        return ERR;
+    }
 
     if (cwd == NULL || cwd->dentry == NULL || cwd->dentry->inode == NULL)
     {
@@ -120,6 +145,12 @@ fd_t vfs_ctx_open(vfs_ctx_t* ctx, file_t* file)
 {
     LOCK_SCOPE(&ctx->lock);
 
+    if (!ctx->initalized)
+    {
+        errno = EBUSY;
+        return ERR;
+    }
+
     for (fd_t fd = 0; fd < CONFIG_MAX_FD; fd++)
     {
         if (ctx->files[fd] == NULL)
@@ -136,6 +167,12 @@ fd_t vfs_ctx_open(vfs_ctx_t* ctx, file_t* file)
 fd_t vfs_ctx_openas(vfs_ctx_t* ctx, fd_t fd, file_t* file)
 {
     LOCK_SCOPE(&ctx->lock);
+
+    if (!ctx->initalized)
+    {
+        errno = EBUSY;
+        return ERR;
+    }
 
     if (fd >= CONFIG_MAX_FD)
     {
@@ -156,6 +193,12 @@ fd_t vfs_ctx_openas(vfs_ctx_t* ctx, fd_t fd, file_t* file)
 uint64_t vfs_ctx_close(vfs_ctx_t* ctx, fd_t fd)
 {
     LOCK_SCOPE(&ctx->lock);
+
+    if (!ctx->initalized)
+    {
+        errno = EBUSY;
+        return ERR;
+    }
 
     if (fd >= CONFIG_MAX_FD || ctx->files[fd] == NULL)
     {
@@ -178,6 +221,12 @@ SYSCALL_DEFINE(SYS_CLOSE, uint64_t, fd_t fd)
 fd_t vfs_ctx_dup(vfs_ctx_t* ctx, fd_t oldFd)
 {
     LOCK_SCOPE(&ctx->lock);
+
+    if (!ctx->initalized)
+    {
+        errno = EBUSY;
+        return ERR;
+    }
 
     if (oldFd >= CONFIG_MAX_FD || ctx->files[oldFd] == NULL)
     {
@@ -211,6 +260,12 @@ fd_t vfs_ctx_dup2(vfs_ctx_t* ctx, fd_t oldFd, fd_t newFd)
     }
 
     LOCK_SCOPE(&ctx->lock);
+
+    if (!ctx->initalized)
+    {
+        errno = EBUSY;
+        return ERR;
+    }
 
     if (oldFd >= CONFIG_MAX_FD || newFd >= CONFIG_MAX_FD || ctx->files[oldFd] == NULL)
     {

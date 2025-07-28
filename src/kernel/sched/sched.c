@@ -184,45 +184,11 @@ process_t* sched_process(void)
 
 void sched_process_exit(uint64_t status)
 {
-    sched_cpu_ctx_t* ctx = &smp_self()->sched;
-    thread_t* thread = ctx->runThread;
-    process_t* process = thread->process;
+    thread_t* thread = sched_thread();
+    process_t* process = sched_process();
 
-    LOG_DEBUG("process exit pid=%d tid=%d status=%llu\n", process->id, thread->id, status);
-
-    if (atomic_exchange(&thread->state, THREAD_ZOMBIE) != THREAD_RUNNING)
-    {
-        panic(NULL, "Invalid state while exiting process");
-    }
-
-    LOCK_SCOPE(&process->threads.lock);
-    if (!process->threads.isDying)
-    {
-        smp_put();
-        return;
-    }
-
-    atomic_store(&process->status, status);
-    process->threads.isDying = true;
-
-    uint64_t killCount = 0;
-    thread_t* other;
-    LIST_FOR_EACH(other, &process->threads.list, processEntry)
-    {
-        if (thread == other)
-        {
-            continue;
-        }
-        thread_send_note(other, "kill", 4);
-        killCount++;
-    }
-
-    if (killCount > 0)
-    {
-        LOG_DEBUG("sent kill note to %llu threads in process pid=%d\n", killCount, process->id);
-    }
-
-    smp_put();
+    thread_kill(thread);
+    process_kill(process, status);
 }
 
 SYSCALL_DEFINE(SYS_PROCESS_EXIT, void, uint64_t status)
@@ -234,10 +200,7 @@ SYSCALL_DEFINE(SYS_PROCESS_EXIT, void, uint64_t status)
 
 void sched_thread_exit(void)
 {
-    if (atomic_exchange(&sched_thread()->state, THREAD_ZOMBIE) != THREAD_RUNNING)
-    {
-        panic(NULL, "Invalid state while exiting thread");
-    }
+    thread_kill(sched_thread());
 }
 
 SYSCALL_DEFINE(SYS_THREAD_EXIT, void)
