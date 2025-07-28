@@ -24,7 +24,7 @@ static void print_stat(const char* path)
     stat_t st;
     if (stat(path, &st) == ERR)
     {
-        printf("stat: failed to st %s (%s)\n", path, strerror(errno));
+        printf("stat: failed to stat %s (%s)\n", path, strerror(errno));
         return;
     }
 

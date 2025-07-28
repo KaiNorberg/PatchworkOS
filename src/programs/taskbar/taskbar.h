@@ -31,7 +31,6 @@ typedef struct
     display_t* disp;
     start_menu_t startMenu;
     list_t entries;
-    uint64_t entryAmount;
 } taskbar_t;
 
 void taskbar_init(taskbar_t* taskbar, display_t* disp);

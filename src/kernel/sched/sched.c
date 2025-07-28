@@ -196,7 +196,7 @@ void sched_process_exit(uint64_t status)
     }
 
     LOCK_SCOPE(&process->threads.lock);
-    if (process->threads.isDying)
+    if (!process->threads.isDying)
     {
         smp_put();
         return;

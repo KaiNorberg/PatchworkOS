@@ -1,5 +1,6 @@
 #include "internal.h"
 
+#include <libpatchwork/theme.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -93,6 +94,7 @@ static void theme_lazy_load(void)
     strings[STRING_CURSOR_ARROW] = config_get_string(varsConfig, "strings", "cursor_arrow", "");
     strings[STRING_DEFAULT_FONT] = config_get_string(varsConfig, "strings", "default_font", "");
     strings[STRING_ICON_CLOSE] = config_get_string(varsConfig, "strings", "icon_close", "");
+    strings[STRING_ICON_MINIMIZE] = config_get_string(varsConfig, "strings", "icon_minimize", "");
 
     integers[INT_FRAME_SIZE] = config_get_int(varsConfig, "integers", "frame_size", 1);
     integers[INT_BEZEL_SIZE] = config_get_int(varsConfig, "integers", "bezel_size", 1);
@@ -100,7 +102,7 @@ static void theme_lazy_load(void)
     integers[INT_PANEL_SIZE] = config_get_int(varsConfig, "integers", "panel_size", 1);
     integers[INT_BIG_PADDING] = config_get_int(varsConfig, "integers", "big_padding", 1);
     integers[INT_SMALL_PADDING] = config_get_int(varsConfig, "integers", "small_padding", 1);
-    integers[INT_SEPERATOR_SIZE] = config_get_int(varsConfig, "integers", "separator_size", 1);
+    integers[INT_SEPARATOR_SIZE] = config_get_int(varsConfig, "integers", "separator_size", 1);
     config_close(varsConfig);
 
     isLoaded = true;

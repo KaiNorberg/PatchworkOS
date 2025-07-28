@@ -109,7 +109,7 @@ static uint64_t client_action_surface_new(client_t* client, const cmd_header_t* 
         return ERR;
     }
 
-    if (strnlen_s(cmd->name, MAX_NAME + 1) >= MAX_NAME)
+    if (strnlen_s(cmd->name, MAX_NAME) >= MAX_NAME)
     {
         return ERR;
     }

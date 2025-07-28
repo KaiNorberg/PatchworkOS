@@ -56,6 +56,7 @@ typedef enum
     STRING_CURSOR_ARROW,
     STRING_DEFAULT_FONT,
     STRING_ICON_CLOSE,
+    STRING_ICON_MINIMIZE,
     STRING_AMOUNT,
 } theme_string_t;
 
@@ -69,7 +70,7 @@ typedef enum
     INT_PANEL_SIZE,
     INT_BIG_PADDING,
     INT_SMALL_PADDING,
-    INT_SEPERATOR_SIZE,
+    INT_SEPARATOR_SIZE,
     INT_AMOUNT,
 } theme_int_t;
 

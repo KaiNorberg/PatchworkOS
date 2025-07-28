@@ -1,3 +1,5 @@
+#include <libpatchwork/display.h>
+#include <libpatchwork/image.h>
 #define __STDC_WANT_LIB_EXT1__ 1
 #include "internal.h"
 
@@ -6,16 +8,20 @@
 #include <string.h>
 
 #define WINDOW_DECO_CLOSE_BUTTON_INDEX 0
-#define WINDOW_DECO_BUTTON_AMOUNT 1
+#define WINDOW_DECO_MINIMIZE_BUTTON_INDEX 1
+#define WINDOW_DECO_BUTTON_AMOUNT 2
 
 #define WINDOW_DECO_CLOSE_BUTTON_ID (WINDOW_DECO_ELEM_ID - (1 + WINDOW_DECO_CLOSE_BUTTON_INDEX))
+#define WINDOW_DECO_MINIMIZE_BUTTON_ID (WINDOW_DECO_ELEM_ID - (1 + WINDOW_DECO_MINIMIZE_BUTTON_INDEX))
 
 typedef struct
 {
     bool isFocused;
+    bool isVisible;
     bool isDragging;
     point_t dragOffset;
     image_t* closeIcon;
+    image_t* minimizeIcon;
 } deco_private_t;
 
 static void window_deco_titlebar_rect(window_t* win, element_t* elem, rect_t* rect)
@@ -39,7 +45,8 @@ static void window_deco_button_rect(window_t* win, element_t* elem, rect_t* rect
     window_deco_titlebar_rect(win, elem, rect);
     RECT_SHRINK(rect, element_get_int(elem, INT_FRAME_SIZE));
     uint64_t size = (rect->bottom - rect->top);
-    rect->left = rect->right - size * (index + 1);
+    rect->right -= size * index;
+    rect->left = rect->right - size;
 }
 
 static void window_deco_draw_titlebar(window_t* win, element_t* elem, drawable_t* draw)
@@ -122,11 +129,14 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
         }
 
         private->isFocused = false;
+        private->isVisible = true;
         private->isDragging = false;
-        element_set_private(elem, private);
+        private->minimizeIcon = NULL;
+        private->closeIcon = NULL;
 
         if (win->flags & WINDOW_NO_CONTROLS)
         {
+            element_set_private(elem, private);
             break;
         }
 
@@ -135,12 +145,43 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
         element_t* closeButton = button_new(elem, WINDOW_DECO_CLOSE_BUTTON_ID, &closeRect, "", ELEMENT_NO_OUTLINE);
         if (closeButton == NULL)
         {
+            free(private);
             return ERR;
         }
 
-        // Note: element_set_image failes safely here
+        rect_t minimizeRect;
+        window_deco_button_rect(win, elem, &minimizeRect, WINDOW_DECO_MINIMIZE_BUTTON_INDEX);
+        element_t* minimizeButton = button_new(elem, WINDOW_DECO_MINIMIZE_BUTTON_ID, &minimizeRect, "", ELEMENT_NO_OUTLINE);
+        if (closeButton == NULL)
+        {
+            element_free(closeButton);
+            free(private);
+            return ERR;
+        }
+
         private->closeIcon = image_new(window_get_display(win), element_get_string(elem, STRING_ICON_CLOSE));
+        if (private->closeIcon == NULL)
+        {
+            element_free(closeButton);
+            element_free(minimizeButton);
+            free(private);
+            return ERR;
+        }
+
+        private->minimizeIcon = image_new(window_get_display(win), element_get_string(elem, STRING_ICON_MINIMIZE));
+        if (private->minimizeIcon == NULL)
+        {
+            image_free(private->closeIcon);
+            element_free(closeButton);
+            element_free(minimizeButton);
+            free(private);
+            return ERR;
+        }
+
         element_set_image(closeButton, private->closeIcon);
+        element_set_image(minimizeButton, private->minimizeIcon);
+
+        element_set_private(elem, private);
     }
     break;
     case LEVENT_FREE:
@@ -151,6 +192,10 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
             if (private->closeIcon != NULL)
             {
                 image_free(private->closeIcon);
+            }
+            if (private->minimizeIcon != NULL)
+            {
+                image_free(private->minimizeIcon);
             }
             free(private);
         }
@@ -190,6 +235,11 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
             display_events_push(win->disp, win->surface, LEVENT_QUIT, NULL, 0);
         }
         break;
+        case WINDOW_DECO_MINIMIZE_BUTTON_ID:
+        {
+            display_set_is_visible(win->disp, win->surface, false);
+        }
+        break;
         }
     }
     break;
@@ -202,6 +252,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
 
         deco_private_t* private = element_get_private(elem);
         private->isFocused = event->report.info.isFocused;
+        private->isVisible = event->report.info.isVisible;
 
         drawable_t draw;
         element_draw_begin(elem, &draw);

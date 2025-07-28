@@ -151,7 +151,7 @@ static void button_send_action(element_t* elem, button_t* button, action_type_t 
     display_events_push(elem->win->disp, elem->win->surface, LEVENT_ACTION, &event, sizeof(levent_action_t));
 }
 
-static uint64_t button_prodecure(window_t* win, element_t* elem, const event_t* event)
+static uint64_t button_procedure(window_t* win, element_t* elem, const event_t* event)
 {
     button_t* button = element_get_private(elem);
 
@@ -306,7 +306,7 @@ element_t* button_new(element_t* parent, element_id_t id, const rect_t* rect, co
     button->isHovered = false;
     button->isFocused = false;
 
-    element_t* elem = element_new(parent, id, rect, text, flags, button_prodecure, button);
+    element_t* elem = element_new(parent, id, rect, text, flags, button_procedure, button);
     if (elem == NULL)
     {
         free(button);

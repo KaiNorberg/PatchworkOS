@@ -317,7 +317,7 @@ void display_get_surface_info(display_t* disp, surface_id_t id, surface_info_t* 
     *info = event.report.info;
 }
 
-void display_set_visible(display_t* disp, surface_id_t id)
+void display_set_focus(display_t* disp, surface_id_t id)
 {
     cmd_surface_focus_set_t* cmd = display_cmds_push(disp, CMD_SURFACE_FOCUS_SET, sizeof(cmd_surface_focus_set_t));
     cmd->isGlobal = true;
