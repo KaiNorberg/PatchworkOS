@@ -34,6 +34,7 @@ client_t* client_new(fd_t fd)
     client_t* client = malloc(sizeof(client_t));
     if (client == NULL)
     {
+        errno = ENOMEM;
         return NULL;
     }
     list_entry_init(&client->entry);
@@ -68,20 +69,18 @@ static uint64_t client_action_screen_info(client_t* client, const cmd_header_t* 
 {
     if (header->size != sizeof(cmd_screen_info_t))
     {
+        errno = EINVAL;
         return ERR;
     }
     cmd_screen_info_t* cmd = (cmd_screen_info_t*)header;
-
-    if (cmd->index != 0)
-    {
-        return ERR;
-    }
 
     event_screen_info_t event;
     if (cmd->index != 0)
     {
         event.width = 0;
         event.height = 0;
+        errno = EINVAL;
+        return ERR;
     }
     else
     {
@@ -96,27 +95,31 @@ static uint64_t client_action_surface_new(client_t* client, const cmd_header_t* 
 {
     if (header->size != sizeof(cmd_surface_new_t))
     {
+        errno = EINVAL;
         return ERR;
     }
     cmd_surface_new_t* cmd = (cmd_surface_new_t*)header;
 
     if (cmd->type < 0 || cmd->type >= SURFACE_TYPE_AMOUNT)
     {
+        errno = EINVAL;
         return ERR;
     }
     if (RECT_WIDTH(&cmd->rect) <= 0 || RECT_HEIGHT(&cmd->rect) <= 0)
     {
+        errno = EINVAL;
         return ERR;
     }
 
     if (strnlen_s(cmd->name, MAX_NAME) >= MAX_NAME)
     {
+        errno = ENAMETOOLONG;
         return ERR;
     }
 
     const rect_t* rect = &cmd->rect;
     point_t point = {.x = rect->left, .y = rect->top};
-    surface_t* surface = surface_new(client, cmd->name, &point, RECT_WIDTH(rect), RECT_HEIGHT(rect), cmd->type);
+    surface_t* surface = surface_new(client, cmd->owner, cmd->name, &point, RECT_WIDTH(rect), RECT_HEIGHT(rect), cmd->type);
     if (surface == NULL)
     {
         return ERR;
@@ -125,12 +128,13 @@ static uint64_t client_action_surface_new(client_t* client, const cmd_header_t* 
     if (dwm_attach(surface) == ERR)
     {
         surface_free(surface);
+        return ERR;
     }
 
     list_push(&client->surfaces, &surface->clientEntry);
 
     event_surface_new_t event;
-    strcpy(event.shmem, surface->shmem);
+    strcpy_s(event.shmem, MAX_NAME, surface->shmem);
     client_send_event(client, surface->id, EVENT_SURFACE_NEW, &event, sizeof(event));
 
     dwm_focus_set(surface);
@@ -141,6 +145,7 @@ static uint64_t client_action_surface_free(client_t* client, const cmd_header_t*
 {
     if (header->size != sizeof(cmd_surface_free_t))
     {
+        errno = EINVAL;
         return ERR;
     }
     cmd_surface_free_t* cmd = (cmd_surface_free_t*)header;
@@ -148,6 +153,7 @@ static uint64_t client_action_surface_free(client_t* client, const cmd_header_t*
     surface_t* surface = client_surface_find(client, cmd->target);
     if (surface == NULL)
     {
+        errno = ENOENT;
         return ERR;
     }
 
@@ -161,6 +167,7 @@ static uint64_t client_action_surface_move(client_t* client, const cmd_header_t*
 {
     if (header->size != sizeof(cmd_surface_move_t))
     {
+        errno = EINVAL;
         return ERR;
     }
     cmd_surface_move_t* cmd = (cmd_surface_move_t*)header;
@@ -168,6 +175,7 @@ static uint64_t client_action_surface_move(client_t* client, const cmd_header_t*
     surface_t* surface = client_surface_find(client, cmd->target);
     if (surface == NULL)
     {
+        errno = ENOENT;
         return ERR;
     }
 
@@ -177,11 +185,8 @@ static uint64_t client_action_surface_move(client_t* client, const cmd_header_t*
     if (surface->gfx.width != width || surface->gfx.height != height)
     {
         // TODO: Reimplement resizing
+        errno = ENOSYS;
         return ERR;
-        /*if (surface_resize_buffer(surface, width, height) == ERR)
-        {
-            return ERR;
-        }*/
     }
 
     surface->pos = (point_t){.x = cmd->rect.left, .y = cmd->rect.top};
@@ -196,6 +201,7 @@ static uint64_t client_action_surface_timer_set(client_t* client, const cmd_head
 {
     if (header->size != sizeof(cmd_surface_timer_set_t))
     {
+        errno = EINVAL;
         return ERR;
     }
     cmd_surface_timer_set_t* cmd = (cmd_surface_timer_set_t*)header;
@@ -203,6 +209,7 @@ static uint64_t client_action_surface_timer_set(client_t* client, const cmd_head
     surface_t* surface = client_surface_find(client, cmd->target);
     if (surface == NULL)
     {
+        errno = ENOENT;
         return ERR;
     }
 
@@ -216,18 +223,21 @@ static uint64_t client_action_surface_invalidate(client_t* client, const cmd_hea
 {
     if (header->size != sizeof(cmd_surface_invalidate_t))
     {
+        errno = EINVAL;
         return ERR;
     }
     cmd_surface_invalidate_t* cmd = (cmd_surface_invalidate_t*)header;
 
     if (RECT_HAS_NEGATIVE_DIMS(&cmd->invalidRect))
     {
+        errno = EINVAL;
         return ERR;
     }
 
     surface_t* surface = client_surface_find(client, cmd->target);
     if (surface == NULL)
     {
+        errno = ENOENT; // No such surface
         return ERR;
     }
 
@@ -305,12 +315,14 @@ static uint64_t client_action_subscribe(client_t* client, const cmd_header_t* he
 {
     if (header->size != sizeof(cmd_subscribe_t))
     {
+        errno = EINVAL;
         return ERR;
     }
     cmd_subscribe_t* cmd = (cmd_subscribe_t*)header;
 
     if (cmd->event >= EVENT_MAX)
     {
+        errno = EINVAL;
         return ERR;
     }
 
@@ -322,12 +334,14 @@ static uint64_t client_action_unsubscribe(client_t* client, const cmd_header_t* 
 {
     if (header->size != sizeof(cmd_unsubscribe_t))
     {
+        errno = EINVAL;
         return ERR;
     }
     cmd_unsubscribe_t* cmd = (cmd_unsubscribe_t*)header;
 
     if (cmd->event >= EVENT_MAX)
     {
+        errno = EINVAL;
         return ERR;
     }
 
@@ -357,6 +371,7 @@ uint64_t client_receive_cmds(client_t* client)
     {
         if (errno != EWOULDBLOCK)
         {
+            perror("dwm client: read error");
             return ERR;
         }
         return 0;
@@ -368,15 +383,17 @@ uint64_t client_receive_cmds(client_t* client)
         return ERR;
     }
 
-    if (readSize > sizeof(cmd_buffer_t)) // Program wrote to much or end of file
+    if (readSize > sizeof(cmd_buffer_t))
     {
-        printf("dwm client: wrote to much to socket\n");
+        printf("dwm client: buffer overflow detected, client sent too much data\n");
+        errno = EMSGSIZE;
         return ERR;
     }
 
     if (readSize != client->cmds.size || client->cmds.size > CMD_BUFFER_MAX_DATA)
     {
-        printf("dwm client: invalid cmd buffer size\n");
+        printf("dwm client: invalid command buffer size, expected %lu, got %lu\n", client->cmds.size, readSize);
+        errno = EPROTO;
         return ERR;
     }
 
@@ -388,13 +405,15 @@ uint64_t client_receive_cmds(client_t* client)
         if (amount > client->cmds.amount || ((uint64_t)cmd + cmd->size - (uint64_t)&client->cmds) > readSize ||
             cmd->magic != CMD_MAGIC || cmd->type >= CMD_TYPE_AMOUNT)
         {
-            printf("dwm client: corrupt cmd\n");
+            printf("dwm client: corrupt command detected (amount: %lu, size: %lu, magic: %x, type: %u)\n", amount, cmd->size, cmd->magic, cmd->type);
+            errno = EPROTO;
             return ERR;
         }
     }
     if (amount != client->cmds.amount)
     {
-        printf("dwm client: invalid cmd amount\n");
+        printf("dwm client: invalid command amount, expected %lu, got %lu\n", client->cmds.amount, amount);
+        errno = EPROTO;
         return ERR;
     }
 
@@ -402,7 +421,7 @@ uint64_t client_receive_cmds(client_t* client)
     {
         if (actions[cmd->type](client, cmd) == ERR)
         {
-            printf("dwm client: cmd caused error\n");
+            printf("dwm client: command type %u caused error\n", cmd->type);
             return ERR;
         }
     }
@@ -418,6 +437,7 @@ uint64_t client_send_event(client_t* client, surface_id_t target, event_type_t t
         memcpy(&event.raw, data, size);
         if (write(client->fd, &event, sizeof(event_t)) == ERR)
         {
+            perror("dwm client: write error");
             return ERR;
         }
     }

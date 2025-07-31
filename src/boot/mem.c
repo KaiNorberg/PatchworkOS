@@ -41,11 +41,12 @@ EFI_STATUS mem_init(void)
         }
     }
 
-    basicAllocator.maxPages = MAX(availPages * MEM_BASIC_ALLOCATOR_RESERVE_PERCENTAGE / 100, MEM_BASIC_ALLOCATOR_MIN_PAGES);
+    basicAllocator.maxPages =
+        MAX(availPages * MEM_BASIC_ALLOCATOR_RESERVE_PERCENTAGE / 100, MEM_BASIC_ALLOCATOR_MIN_PAGES);
     Print(L"basic alloc using %llu pages... ", basicAllocator.maxPages);
 
-    status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData,
-        basicAllocator.maxPages, &basicAllocator.buffer);
+    status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, basicAllocator.maxPages,
+        &basicAllocator.buffer);
     if (EFI_ERROR(status))
     {
         Print(L"failed to allocate buffer (0x%lx)!\n", status);

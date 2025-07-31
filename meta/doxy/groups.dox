@@ -77,7 +77,6 @@
  *
  */
 
-
 /**
  * @brief Drivers.
  * @defgroup kernel_drivers drivers
@@ -89,6 +88,14 @@
 /**
  * @brief Syncronization Primitives.
  * @defgroup kernel_sync sync
+ * @ingroup kernel
+ *
+ *
+ */
+
+/**
+ * @brief Inter Process Communication.
+ * @defgroup kernel_ipc ipc
  * @ingroup kernel
  *
  *

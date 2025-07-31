@@ -289,6 +289,20 @@ clock_t uptime(void);
  */
 uint64_t nanosleep(clock_t timeout);
 
+/**
+ * @brief Synchronization object.
+ * @ingroup libstd_sys_proc
+ *
+ * The `sync_t` structure is used to implement user space synchronization primitives. Its the object mapped when calling
+ * 'mmap()' on a opened sync file. For more information check the `sync.h` header.
+ *
+ * @see sync.h
+ */
+typedef struct
+{
+    atomic_uint64_t value; //!< The value of the sync object.
+} sync_t;
+
 #if defined(__cplusplus)
 }
 #endif

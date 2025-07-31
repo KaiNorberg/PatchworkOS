@@ -382,7 +382,7 @@ void process_kill(process_t* process, uint64_t status)
     {
         return;
     }
-    
+
     uint64_t killCount = 0;
     thread_t* thread;
     LIST_FOR_EACH(thread, &process->threads.aliveThreads, processEntry)
@@ -398,7 +398,8 @@ void process_kill(process_t* process, uint64_t status)
         LOG_DEBUG("sent kill note to %llu threads in process pid=%d\n", killCount, process->id);
     }
 
-    vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_inode_cleanup, makes sure that files close immediately to notify blocking threads.
+    vfs_ctx_deinit(&process->vfsCtx); // Here instead of in process_inode_cleanup, makes sure that files close
+                                      // immediately to notify blocking threads.
     wait_unblock(&process->dyingWaitQueue, WAIT_ALL);
 }
 

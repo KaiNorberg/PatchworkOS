@@ -151,7 +151,8 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
 
         rect_t minimizeRect;
         window_deco_button_rect(win, elem, &minimizeRect, WINDOW_DECO_MINIMIZE_BUTTON_INDEX);
-        element_t* minimizeButton = button_new(elem, WINDOW_DECO_MINIMIZE_BUTTON_ID, &minimizeRect, "", ELEMENT_NO_OUTLINE);
+        element_t* minimizeButton =
+            button_new(elem, WINDOW_DECO_MINIMIZE_BUTTON_ID, &minimizeRect, "", ELEMENT_NO_OUTLINE);
         if (closeButton == NULL)
         {
             element_free(closeButton);
@@ -277,12 +278,14 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
 {
     if (strnlen_s(name, MAX_NAME + 1) >= MAX_NAME)
     {
+        errno = EINVAL;
         return NULL;
     }
 
     window_t* win = malloc(sizeof(window_t));
     if (win == NULL)
     {
+        errno = ENOMEM;
         return NULL;
     }
 
@@ -312,6 +315,7 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     cmd_surface_new_t* cmd = display_cmds_push(disp, CMD_SURFACE_NEW, sizeof(cmd_surface_new_t));
     cmd->type = win->type;
     cmd->rect = win->rect;
+    cmd->owner = getpid();
     strcpy(cmd->name, win->name);
     display_cmds_flush(disp);
 
@@ -329,7 +333,6 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     win->buffer =
         mmap(shmem, NULL, RECT_WIDTH(&win->rect) * RECT_HEIGHT(&win->rect) * sizeof(pixel_t), PROT_READ | PROT_WRITE);
     close(shmem);
-
     if (win->buffer == NULL)
     {
         window_free(win);

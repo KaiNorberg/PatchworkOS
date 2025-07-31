@@ -3,8 +3,8 @@
 #include "cpu/gdt.h"
 #include "cpu/smp.h"
 #include "log/log.h"
-#include "mem/heap.h"
 #include "log/panic.h"
+#include "mem/heap.h"
 #include "sched/sched.h"
 #include "sched/timer.h"
 #include "sched/wait.h"
@@ -98,7 +98,8 @@ void thread_kill(thread_t* thread)
         // We cant create more alive threads if there are no alive threads, so there is no race condition.
         lock_release(&thread->process->threads.lock);
 
-        // We lose the ability to signal exit status of all threads are killed separately, this appears to be posix behaviour.
+        // We lose the ability to signal exit status of all threads are killed separately, this appears to be posix
+        // behaviour.
         process_kill(thread->process, EXIT_SUCCESS);
     }
     else

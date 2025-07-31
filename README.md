@@ -19,8 +19,8 @@
 * Fully preemptive and tickless.
 * Symmetric Multi Processing.
 * Constant-time per page memory management, including both the physical and virtual memory managers.
-* IPC including pipes, shared memory, sockets and Plan9 inspired "signals" called notes.
-* Synchronization primitives including, mutexes, read-write locks+mutexes and a futex-like system call.
+* File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/note.h).
+* Synchronization primitives including, mutexes, read-write locks+mutexes and file-based futex-like [user space synchronization](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sync/sync.h).
 * SIMD.
 
 ### File System
@@ -59,7 +59,6 @@ And much more...
 
 ## Notable Future Plans
 
-* Replace futexes with file based api.
 * Modular kernel.
 * Shared libraries.
 * Software interrupts for notes (signals).

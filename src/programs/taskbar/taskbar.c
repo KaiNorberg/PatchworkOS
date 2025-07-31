@@ -69,8 +69,8 @@ static rect_t taskbar_get_task_button_rect(taskbar_t* taskbar, element_t* elem, 
     uint64_t availLength = lastAvailPos - firstAvailPos;
 
     uint64_t entryCount = list_length(&taskbar->entries);
-    
-    if (entryCount == 0) 
+
+    if (entryCount == 0)
     {
         return RECT_INIT_DIM(firstAvailPos, leftSeparator.top, 0, RECT_HEIGHT(&leftSeparator));
     }
@@ -112,7 +112,7 @@ static void taskbar_entry_add(taskbar_t* taskbar, element_t* elem, const surface
     rect_t rect = taskbar_get_task_button_rect(taskbar, elem, list_length(&taskbar->entries) - 1);
     entry->button = button_new(elem, info->id, &rect, entry->name, ELEMENT_TOGGLE);
     if (entry->button == NULL)
-    {        
+    {
         list_remove(&taskbar->entries, &entry->entry);
         free(entry);
         return; // Same here

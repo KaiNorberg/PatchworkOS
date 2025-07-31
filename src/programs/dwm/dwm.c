@@ -231,6 +231,7 @@ uint64_t dwm_attach(surface_t* surface)
         if (cursor != NULL)
         {
             printf("dwm error: attach (cursor != NULL)\n");
+            errno = EALREADY;
             return ERR;
         }
 
@@ -242,6 +243,7 @@ uint64_t dwm_attach(surface_t* surface)
         if (wall != NULL)
         {
             printf("dwm error: attach (wall != NULL)\n");
+            errno = EALREADY;
             return ERR;
         }
 
@@ -253,6 +255,7 @@ uint64_t dwm_attach(surface_t* surface)
         if (fullscreen != NULL)
         {
             printf("dwm error: attach (fullscreen != NULL)\n");
+            errno = EALREADY;
             return ERR;
         }
 
@@ -263,6 +266,7 @@ uint64_t dwm_attach(surface_t* surface)
     default:
     {
         printf("dwm error: attach (default)\n");
+        errno = EINVAL;
         return ERR;
     }
     }

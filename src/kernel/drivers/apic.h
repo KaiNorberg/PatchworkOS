@@ -7,9 +7,9 @@
 typedef struct cpu cpu_t;
 
 /**
- * @brief APIC.
- * @ingroup kernel_cpu
- * @defgroup kernel_cpu_apic
+ * @brief Advanced Programmable Interrupt Controller.
+ * @ingroup kernel_drivers
+ * @defgroup kernel_drivers_apic APIC
  */
 
 #define APIC_TIMER_MASKED 0x10000
@@ -155,7 +155,7 @@ void apic_timer_one_shot(uint8_t vector, uint32_t ticks);
 
 /**
  * @brief Apic timer ticks per nanosecond.
- * @ingroup kernel_cpu_apic
+ * @ingroup kernel_drivers_apic
  *
  * The `apic_timer_ticks_per_ns()` function retrieves the ticks that occur every nanosecond in the apic timer on the
  * caller cpu. Due to the fact that this amount of ticks is very small, most likely less then 1, we used fixed point

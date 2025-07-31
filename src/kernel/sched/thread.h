@@ -173,9 +173,9 @@ void thread_free(thread_t* thread);
 /**
  * @brief Signals to a thread that it is dying.
  * @ingroup kernel_sched_thread
- * 
+ *
  * Does not perform free the thread and the thread will continue executing as a zombie after this function.
- * 
+ *
  * @param thread The thread to be killed.
  */
 void thread_kill(thread_t* thread);
@@ -211,8 +211,8 @@ bool thread_is_note_pending(thread_t* thread);
  * @brief Send a note to a thread.
  * @ingroup kernel_sched_thread
  *
- * This function should always be used over the `note_queue_push()` function, as it performs additional checks, like deciding how
- * critical the sent note is and unblocking the thread to notify it of the received note.
+ * This function should always be used over the `note_queue_push()` function, as it performs additional checks, like
+ * deciding how critical the sent note is and unblocking the thread to notify it of the received note.
  *
  * @param thread The destination thread.
  * @param message The string of text to send to the thread, does not need to be NULL-terminated.
