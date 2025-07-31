@@ -10,7 +10,7 @@
 /**
  * @brief Shared Memory
  * @ingroup kernel_ipc
- * @defgroup kernel_ipc_shmem shmem
+ * @defgroup kernel_ipc_shmem Shared Memory
  *
  * Patchwork implements shared memory via the `/dev/shmem` folder.
  *

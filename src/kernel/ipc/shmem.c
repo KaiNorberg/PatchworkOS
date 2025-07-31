@@ -21,6 +21,10 @@ static sysfs_dir_t shmemDir;
 static sysfs_file_t newFile;
 
 static shmem_object_t* shmem_object_new(void);
+static void shmem_object_free(shmem_object_t* shmem);
+static bool shmem_object_is_access_allowed(shmem_object_t* shmem, process_t* proccess);
+static void* shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t pageAmount, space_t* space, void* address,
+    prot_t prot);
 
 static void shmem_vmm_callback(void* private)
 {
@@ -31,80 +35,6 @@ static void shmem_vmm_callback(void* private)
     }
 
     DEREF(shmem);
-}
-
-static void shmem_object_free(shmem_object_t* shmem)
-{
-    if (shmem == NULL)
-    {
-        return;
-    }
-
-    sysfs_file_deinit(&shmem->file);
-}
-
-static bool shmem_object_is_access_allowed(shmem_object_t* shmem, process_t* proccess)
-{
-    if (proccess->id == shmem->owner || process_is_child(proccess, shmem->owner))
-    {
-        return true;
-    }
-
-    shmem_allowed_process_t* allowed;
-    LIST_FOR_EACH(allowed, &shmem->allowedProcesses, entry)
-    {
-        if (allowed->pid == proccess->id)
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-static void* shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t pageAmount, space_t* space, void* address,
-    prot_t prot)
-{
-    shmem->pages = heap_alloc(sizeof(void*) * pageAmount, HEAP_VMM);
-    if (shmem->pages == NULL)
-    {
-        return NULL;
-    }
-    shmem->pageAmount = pageAmount;
-
-    for (uint64_t i = 0; i < pageAmount; i++)
-    {
-        shmem->pages[i] = pmm_alloc();
-        if (shmem->pages[i] == NULL)
-        {
-            for (uint64_t j = 0; j < i; j++)
-            {
-                pmm_free(shmem->pages[j]);
-            }
-
-            heap_free(shmem->pages);
-            shmem->pages = NULL;
-            shmem->pageAmount = 0;
-            return NULL;
-        }
-    }
-
-    void* virtAddr =
-        vmm_map_pages(space, address, shmem->pages, shmem->pageAmount, prot, shmem_vmm_callback, REF(shmem));
-    if (virtAddr == NULL)
-    {
-        for (uint64_t i = 0; i < shmem->pageAmount; i++)
-        {
-            pmm_free(shmem->pages[i]);
-        }
-
-        heap_free(shmem->pages);
-        shmem->pages = NULL;
-        shmem->pageAmount = 0;
-        return NULL;
-    }
-
-    return virtAddr;
 }
 
 static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t prot)
@@ -332,6 +262,80 @@ static shmem_object_t* shmem_object_new(void)
     }
 
     return shmem;
+}
+
+static void shmem_object_free(shmem_object_t* shmem)
+{
+    if (shmem == NULL)
+    {
+        return;
+    }
+
+    sysfs_file_deinit(&shmem->file);
+}
+
+static bool shmem_object_is_access_allowed(shmem_object_t* shmem, process_t* proccess)
+{
+    if (proccess->id == shmem->owner || process_is_child(proccess, shmem->owner))
+    {
+        return true;
+    }
+
+    shmem_allowed_process_t* allowed;
+    LIST_FOR_EACH(allowed, &shmem->allowedProcesses, entry)
+    {
+        if (allowed->pid == proccess->id)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static void* shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t pageAmount, space_t* space, void* address,
+    prot_t prot)
+{
+    shmem->pages = heap_alloc(sizeof(void*) * pageAmount, HEAP_VMM);
+    if (shmem->pages == NULL)
+    {
+        return NULL;
+    }
+    shmem->pageAmount = pageAmount;
+
+    for (uint64_t i = 0; i < pageAmount; i++)
+    {
+        shmem->pages[i] = pmm_alloc();
+        if (shmem->pages[i] == NULL)
+        {
+            for (uint64_t j = 0; j < i; j++)
+            {
+                pmm_free(shmem->pages[j]);
+            }
+
+            heap_free(shmem->pages);
+            shmem->pages = NULL;
+            shmem->pageAmount = 0;
+            return NULL;
+        }
+    }
+
+    void* virtAddr =
+        vmm_map_pages(space, address, shmem->pages, shmem->pageAmount, prot, shmem_vmm_callback, REF(shmem));
+    if (virtAddr == NULL)
+    {
+        for (uint64_t i = 0; i < shmem->pageAmount; i++)
+        {
+            pmm_free(shmem->pages[i]);
+        }
+
+        heap_free(shmem->pages);
+        shmem->pages = NULL;
+        shmem->pageAmount = 0;
+        return NULL;
+    }
+
+    return virtAddr;
 }
 
 static uint64_t shmem_new_open(file_t* file)

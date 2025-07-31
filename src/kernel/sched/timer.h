@@ -9,7 +9,7 @@ typedef struct cpu cpu_t;
 
 /**
  * @brief System time and timers.
- * @defgroup kernel_timer timer
+ * @defgroup kernel_timer Timer
  * @ingroup kernel_sched
  *
  * The timer subsystem provides kernel time management.
