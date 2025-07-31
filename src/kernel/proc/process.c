@@ -354,7 +354,6 @@ void process_free(process_t* process)
     LOG_INFO("freeing process pid=%d\n", process->id);
     assert(list_is_empty(&process->threads.aliveThreads));
     assert(list_is_empty(&process->threads.zombieThreads));
-    assert(atomic_load(&process->isDying));
 
     if (process->parent != NULL)
     {
