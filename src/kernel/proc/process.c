@@ -1,6 +1,5 @@
 #include "process.h"
 
-#include "fs/ctl.h"
 #include "fs/file.h"
 #include "fs/path.h"
 #include "fs/sysfs.h"
@@ -51,7 +50,7 @@ static process_t* process_file_get_process(file_t* file)
     return process;
 }
 
-static uint64_t process_ctl_prio(file_t* file, uint64_t argc, const char** argv)
+static uint64_t process_prio_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     process_t* process = process_file_get_process(file);
     if (process == NULL)
@@ -59,7 +58,32 @@ static uint64_t process_ctl_prio(file_t* file, uint64_t argc, const char** argv)
         return ERR;
     }
 
-    int prio = atoi(argv[1]);
+    priority_t priority = atomic_load(&process->priority);
+
+    char prioStr[MAX_NAME];
+    uint32_t length = snprintf(prioStr, MAX_NAME, "%llu", priority);
+    return BUFFER_READ(buffer, count, offset, prioStr, length);
+}
+
+static uint64_t process_prio_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
+{
+    process_t* process = process_file_get_process(file);
+    if (process == NULL)
+    {
+        return ERR;
+    }
+
+    char prioStr[MAX_NAME];
+    if (count >= MAX_NAME)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+    
+    memcpy(prioStr, buffer, count);
+    prioStr[count] = '\0';
+
+    long long int prio = atoll(prioStr);
     if (prio < 0)
     {
         errno = EINVAL;
@@ -72,14 +96,13 @@ static uint64_t process_ctl_prio(file_t* file, uint64_t argc, const char** argv)
     }
 
     atomic_store(&process->priority, prio);
-    return 0;
+    return count;
 }
 
-CTL_STANDARD_OPS_DEFINE(ctlOps,
-    (ctl_array_t){
-        {"prio", process_ctl_prio, 2, 2},
-        {0},
-    });
+static file_ops_t prioOps = {
+    .read = process_prio_read,
+    .write = process_prio_write,
+};
 
 static uint64_t process_cwd_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
@@ -209,7 +232,7 @@ static uint64_t process_dir_init(process_dir_t* dir, const char* name, process_t
         return ERR;
     }
 
-    if (sysfs_file_init(&dir->ctlFile, &dir->dir, "ctl", NULL, &ctlOps, process) == ERR)
+    if (sysfs_file_init(&dir->prioFile, &dir->dir, "prio", NULL, &prioOps, process) == ERR)
     {
         sysfs_dir_deinit(&dir->dir);
         return ERR;
@@ -217,14 +240,14 @@ static uint64_t process_dir_init(process_dir_t* dir, const char* name, process_t
 
     if (sysfs_file_init(&dir->cwdFile, &dir->dir, "cwd", NULL, &cwdOps, process) == ERR)
     {
-        sysfs_file_deinit(&dir->ctlFile);
+        sysfs_file_deinit(&dir->prioFile);
         sysfs_dir_deinit(&dir->dir);
         return ERR;
     }
 
     if (sysfs_file_init(&dir->cmdlineFile, &dir->dir, "cmdline", NULL, &cmdlineOps, process) == ERR)
     {
-        sysfs_file_deinit(&dir->ctlFile);
+        sysfs_file_deinit(&dir->prioFile);
         sysfs_file_deinit(&dir->cwdFile);
         sysfs_dir_deinit(&dir->dir);
         return ERR;
@@ -232,7 +255,7 @@ static uint64_t process_dir_init(process_dir_t* dir, const char* name, process_t
 
     if (sysfs_file_init(&dir->noteFile, &dir->dir, "note", NULL, &noteOps, process) == ERR)
     {
-        sysfs_file_deinit(&dir->ctlFile);
+        sysfs_file_deinit(&dir->prioFile);
         sysfs_file_deinit(&dir->cwdFile);
         sysfs_file_deinit(&dir->cmdlineFile);
         sysfs_dir_deinit(&dir->dir);
@@ -242,7 +265,7 @@ static uint64_t process_dir_init(process_dir_t* dir, const char* name, process_t
     if (sysfs_file_init(&dir->statusFile, &dir->dir, "status", NULL, &statusOps, process) == ERR)
     {
         sysfs_file_deinit(&dir->noteFile);
-        sysfs_file_deinit(&dir->ctlFile);
+        sysfs_file_deinit(&dir->prioFile);
         sysfs_file_deinit(&dir->cwdFile);
         sysfs_file_deinit(&dir->cmdlineFile);
         sysfs_dir_deinit(&dir->dir);
@@ -254,7 +277,7 @@ static uint64_t process_dir_init(process_dir_t* dir, const char* name, process_t
 
 static void process_dir_deinit(process_dir_t* dir)
 {
-    sysfs_file_deinit(&dir->ctlFile);
+    sysfs_file_deinit(&dir->prioFile);
     sysfs_file_deinit(&dir->cwdFile);
     sysfs_file_deinit(&dir->cmdlineFile);
     sysfs_file_deinit(&dir->noteFile);
