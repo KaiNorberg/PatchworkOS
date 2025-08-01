@@ -20,7 +20,7 @@
 * Symmetric Multi Processing.
 * Constant-time per page memory management, including both the physical and virtual memory managers.
 * File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/note.h).
-* Synchronization primitives including, mutexes, read-write locks+mutexes and [futexes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sync/sync.h).
+* Synchronization primitives including, mutexes, read-write locks+mutexes and [futexes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sync/futex.h).
 * SIMD.
 
 ### File System
