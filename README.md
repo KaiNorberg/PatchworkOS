@@ -172,7 +172,7 @@ You may have noticed that, in the above section, the `open()` function does not 
     fd_t handle = open("/net/local/seqpacket:nonblock");
 ```
 
-Multiple flags are allowed, just seperate them with the `:` character, this means flags can be easily appended to a path using the `openf()` function. It is also possible to just specify the first letter of a flag, so instead of `:nonblock` you can use `:n`. Note that duplicate flags are ignored and that there are no read or write flags, all files are both read and write.
+Multiple flags are allowed, just separate them with the `:` character, this means flags can be easily appended to a path using the `openf()` function. It is also possible to just specify the first letter of a flag, so instead of `:nonblock` you can use `:n`. Note that duplicate flags are ignored and that there are no read or write flags, all files are both read and write.
 
 ### The Why
 
