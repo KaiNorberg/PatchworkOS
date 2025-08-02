@@ -10,14 +10,13 @@
  * @ingroup kernel_mem
  *
  * The Physical Memory Manager (PMM) is responsible for managing physical memory pages. It uses a free stack for
- * allocating single pages in constant-time and for more specialized allocations for instance requiring a specific
- * address range or alignment a bitmap allocator is used. The bitmap allocator should only be used when no other option
- * is available.
+ * allocating single pages in constant-time, and for more specialized allocations (requiring a specific address range 
+ * or alignment) a bitmap allocator is used. The bitmap allocator should only be used when no other option is available.
  *
- * All physical memory is identity mapped to the begining of the higher half of the address space. This means that for
- * example `NULL` is always a invalid address and that the PMM returns addresses in the higher half.
+ * All physical memory is identity mapped to the beginning of the higher half of the address space. This means that for
+ * example `NULL` is always an invalid address and that the PMM returns addresses in the higher half.
  *
- * The free stack provides some advnatages over for instance a free list, mainly due to cache improvements.
+ * The free stack provides some advantages over for instance a free list, mainly due to cache improvements.
  *
  */
 
@@ -70,7 +69,7 @@ typedef struct
 } pmm_stack_t;
 
 /**
- * @brief The number of pages that are be managed by the PMM bitmap.
+ * @brief The number of pages that are managed by the PMM bitmap.
  */
 #define PMM_BITMAP_MAX (PMM_BITMAP_MAX_ADDR / PAGE_SIZE)
 
@@ -86,7 +85,7 @@ void pmm_init(boot_memory_map_t* map);
  * @brief Allocates a single physical page.
  * @ingroup kernel_mem_pmm
  *
- * @return On success, returns the higher half physical address of the allocated page. On failure, returns `NULL.
+ * @return On success, returns the higher half physical address of the allocated page. On failure, returns `NULL`.
  */
 void* pmm_alloc(void);
 
@@ -109,8 +108,8 @@ void* pmm_alloc_bitmap(uint64_t count, uintptr_t maxAddr, uint64_t alignment);
  * @brief Frees a single physical page.
  * @ingroup kernel_mem_pmm
  *
- * The `pmm_free` function frees a page returning ownership of it to the PMM, the PMM will determine based of the
- * address if its owned by the bitmap or the stack allocator.
+ * The `pmm_free` function frees a page returning ownership of it to the PMM. The PMM will determine based on the
+ * address if it's owned by the bitmap or the stack allocator.
  *
  * @param address The higher half physical address of the page to free.
  */
@@ -120,8 +119,8 @@ void pmm_free(void* address);
  * @brief Frees a contiguous region of physical pages.
  * @ingroup kernel_mem_pmm
  *
- * The `pmm_free` function frees a contiguous block of `count` physical pages, returning ownership of them to the PMM,
- * the PMM will determine based of the address if its owned by the bitmap or the stack allocator.
+ * The `pmm_free_pages` function frees a contiguous block of `count` physical pages, returning ownership of them to the PMM.
+ * The PMM will determine based on the address if it's owned by the bitmap or the stack allocator.
  *
  * @param address The higher half physical address of the first page in the region to free.
  * @param count The number of pages to free.

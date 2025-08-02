@@ -1,21 +1,14 @@
 #include "pmm.h"
 
-#include "config.h"
-#include "cpu/smp.h"
-#include "gnu-efi/inc/efidef.h"
 #include "log/log.h"
 #include "log/panic.h"
-#include "sched/thread.h"
 #include "sync/lock.h"
 #include "sys/proc.h"
 #include "utils/bitmap.h"
-#include "utils/utils.h"
-#include "vmm.h"
 
 #include <boot/boot_info.h>
 
 #include <assert.h>
-#include <stddef.h>
 #include <string.h>
 #include <sys/math.h>
 

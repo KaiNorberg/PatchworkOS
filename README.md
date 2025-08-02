@@ -133,9 +133,9 @@ In order to create a local seqpacket socket, you open the `/net/local/seqpacket`
 
 Note that when the handle is closed, the socket is also freed. The ID that the handle returns is the name of a directory that has been created in the "/net/local" directory, in which there are three files, these include:
 
-  - `data` - used to send and retrieve data.
-  - `ctl` - used to send commands.
-  - `accept` - used to accept incoming connections.
+* `data` - used to send and retrieve data.
+* `ctl` - used to send commands.
+* `accept` - used to accept incoming connections.
 
 So, for example, the sockets data file is located at `/net/local/[id]/data`. Note that only the process that created the socket or its children can open these files. Now say we want to make our socket into a server, we would then use the bind and listen commands, for example
 
@@ -204,18 +204,18 @@ If you are still interested in knowing more, then you can check out the Doxygen 
 
 ### Sections
 
-  * **boot**: Minimal UEFI bootloader that collects system info and loads the kernel
-  * **kernel**: The monolithic kernel handling everything from scheduling to IPC
-  * **libstd**: C standard library extension with system call wrappers
-  * **libpatchwork**: Higher-level library for windowing and user space services
-  * **programs**: Shell utilities, services, and desktop applications
+* **boot**: Minimal UEFI bootloader that collects system info and loads the kernel
+* **kernel**: The monolithic kernel handling everything from scheduling to IPC
+* **libstd**: C standard library extension with system call wrappers
+* **libpatchwork**: Higher-level library for windowing and user space services
+* **programs**: Shell utilities, services, and desktop applications
 
 ## Setup
 
 ### Requirements
 
-  * **OS**: Linux (WSL might work, but I make no guarantees)
-  * **Tools**: GCC, make, NASM, mtools, QEMU (optional)
+* **OS**: Linux (WSL might work, but I make no guarantees)
+* **Tools**: GCC, make, NASM, mtools, QEMU (optional)
 
 ### Build and Run
 

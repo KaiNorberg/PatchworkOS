@@ -15,8 +15,8 @@
  * Patchwork implements shared memory via the `/dev/shmem` folder.
  *
  * A new shared memory object can be created by opening the `/dev/shmem/new` file, the opened file will contain the new
- * shared memory object. The new shared memory object can also be accessed via the `/dev/shmem/[id]` file, where the id can be retrieved
- * by reading from the shared memory file.
+ * shared memory object. The new shared memory object can also be accessed via the `/dev/shmem/[id]` file, where the id
+ * can be retrieved by reading from the shared memory file.
  *
  * By default, only the owner of the shared memory object and its children can access the shared memory object, but by
  * writing the `grant [pid]` and `revoke [pid]` commands to the shared memory file its possible to give access to

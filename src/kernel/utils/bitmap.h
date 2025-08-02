@@ -1,7 +1,10 @@
 #pragma once
 
 #include "utils/utils.h"
+
+#include <stdbool.h>
 #include <stdint.h>
+#include <errno.h>
 #include <sys/math.h>
 
 typedef struct
@@ -77,6 +80,7 @@ static inline uint64_t bitmap_find_clear_region_and_set(bitmap_t* map, uint64_t 
             }
         }
     }
+
     return ERR;
 }
 

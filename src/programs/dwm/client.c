@@ -119,7 +119,8 @@ static uint64_t client_action_surface_new(client_t* client, const cmd_header_t* 
 
     const rect_t* rect = &cmd->rect;
     point_t point = {.x = rect->left, .y = rect->top};
-    surface_t* surface = surface_new(client, cmd->owner, cmd->name, &point, RECT_WIDTH(rect), RECT_HEIGHT(rect), cmd->type);
+    surface_t* surface =
+        surface_new(client, cmd->owner, cmd->name, &point, RECT_WIDTH(rect), RECT_HEIGHT(rect), cmd->type);
     if (surface == NULL)
     {
         return ERR;
@@ -405,7 +406,8 @@ uint64_t client_receive_cmds(client_t* client)
         if (amount > client->cmds.amount || ((uint64_t)cmd + cmd->size - (uint64_t)&client->cmds) > readSize ||
             cmd->magic != CMD_MAGIC || cmd->type >= CMD_TYPE_AMOUNT)
         {
-            printf("dwm client: corrupt command detected (amount: %lu, size: %lu, magic: %x, type: %u)\n", amount, cmd->size, cmd->magic, cmd->type);
+            printf("dwm client: corrupt command detected (amount: %lu, size: %lu, magic: %x, type: %u)\n", amount,
+                cmd->size, cmd->magic, cmd->type);
             errno = EPROTO;
             return ERR;
         }

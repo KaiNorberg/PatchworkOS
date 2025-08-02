@@ -2,17 +2,17 @@
 
 #include "client.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/io.h>
-#include <errno.h>
 #include <sys/list.h>
 
 static surface_id_t newId = 0;
 
-surface_t* surface_new(client_t* client, pid_t owner, const char* name, const point_t* point, uint64_t width, uint64_t height,
-    surface_type_t type)
+surface_t* surface_new(client_t* client, pid_t owner, const char* name, const point_t* point, uint64_t width,
+    uint64_t height, surface_type_t type)
 {
     surface_t* surface = malloc(sizeof(surface_t));
     if (surface == NULL)
@@ -42,7 +42,7 @@ surface_t* surface_new(client_t* client, pid_t owner, const char* name, const po
         printf("dwm surface error: failed to grant shmem access\n");
         return NULL;
     }
-    
+
     surface->shmem[read(shmem, surface->shmem, MAX_NAME)] = '\0';
     surface->gfx.buffer = mmap(shmem, NULL, width * height * sizeof(pixel_t), PROT_READ | PROT_WRITE);
     close(shmem);

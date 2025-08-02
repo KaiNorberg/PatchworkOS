@@ -44,8 +44,8 @@ typedef struct surface
     RECT_INIT_DIM(surface->pos.x + surface->gfx.invalidRect.left, surface->pos.y + surface->gfx.invalidRect.top, \
         RECT_WIDTH(&surface->gfx.invalidRect), RECT_HEIGHT(&surface->gfx.invalidRect));
 
-surface_t* surface_new(client_t* client, pid_t owner, const char* name, const point_t* point, uint64_t width, uint64_t height,
-    surface_type_t type);
+surface_t* surface_new(client_t* client, pid_t owner, const char* name, const point_t* point, uint64_t width,
+    uint64_t height, surface_type_t type);
 
 void surface_free(surface_t* surface);
 
