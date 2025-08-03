@@ -272,3 +272,5 @@ Currently untested on Intel hardware. Let me know if you have different hardware
 ## Contributing
 
 If you find any bugs, issues or just have a suggestion for something I could do better, then feel free to open an issue or if you feel like it, you may submit a pull request!
+
+Make sure to check the [guidelines](https://github.com/KaiNorberg/PatchworkOS/blob/main/CONTRIBUTING.md) before contributing.
