@@ -24,10 +24,10 @@ If you submit code, then follow these conventions.
 
 ### Names
 
-- For variables use camelCase.
-- For functions use snake_case.
-- For macros and constants use SCREAMING_SNAKE_CASE.
-- All internal functions, variables, macros or constants in libstd must be prefixed with '_' like `_my_function()`, `_myVariable` or `_MY_CONSTANT` to avoid conflicts.
+- For variables use `camelCase`.
+- For functions use `snake_case`.
+- For macros and constants use `SCREAMING_SNAKE_CASE`.
+- All internal functions, variables, macros or constants in libstd must be prefixed with `_` like `_my_function()`, `_myVariable` or `_MY_CONSTANT` to avoid conflicts.
 
 ### Formatting
 
