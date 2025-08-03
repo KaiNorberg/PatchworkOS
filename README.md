@@ -126,9 +126,9 @@ Patchwork strictly follows the "everything is a file" philosophy in a way simila
 In order to create a local seqpacket socket, you open the `/net/local/seqpacket` file, which will return a file that acts as the handle for your socket. Reading from this file will return the ID of your created socket so, for example, you can do
 
 ```c
-    fd_t handle = open("/net/local/seqpacket");
-    char id[32] = {0};
-    read(handle, id, 32);
+fd_t handle = open("/net/local/seqpacket");
+char id[32] = {0};
+read(handle, id, 32);
 ```
 
 Note that when the handle is closed, the socket is also freed. The ID that the handle returns is the name of a directory that has been created in the "/net/local" directory, in which there are three files, these include:
@@ -140,28 +140,28 @@ Note that when the handle is closed, the socket is also freed. The ID that the h
 So, for example, the sockets data file is located at `/net/local/[id]/data`. Note that only the process that created the socket or its children can open these files. Now say we want to make our socket into a server, we would then use the bind and listen commands, for example
 
 ```c
-    fd_t ctl = openf("/net/local/%s/ctl", id);
-    writef(ctl, "bind myserver");
-    writef(ctl, "listen");
-    close(ctl);
+fd_t ctl = openf("/net/local/%s/ctl", id);
+writef(ctl, "bind myserver");
+writef(ctl, "listen");
+close(ctl);
 ```
 
 Note the use of `openf()` which allows us to open files via a formatted path and that we name our server `myserver`. If we wanted to accept a connection using our newly created server, we just open its accept file, like this
 
 ```c
-    fd_t fd = openf("/net/local/%s/accept", id);
+fd_t fd = openf("/net/local/%s/accept", id);
 ```
 
 The returned file descriptor can be used to send and receive data, just like when calling `accept()` in for example Linux or other POSIX operating systems. This is practically true of the entire socket API, apart from using these weird files everything (should) work as expected. For the sake of completeness, if we wanted to connect to this server, we can do something like this
 
 ```c
-    fd_t handle = open("/net/local/seqpacket");
-    char id[32] = {0};
-    read(handle, id, 32);
+fd_t handle = open("/net/local/seqpacket");
+char id[32] = {0};
+read(handle, id, 32);
 
-    fd_t ctl = openf("/net/local/%s/ctl", id);
-    writef(ctl, "connect myserver");
-    close(ctl);
+fd_t ctl = openf("/net/local/%s/ctl", id);
+writef(ctl, "connect myserver");
+close(ctl);
 ```
 
 ### File Flags?
@@ -169,7 +169,7 @@ The returned file descriptor can be used to send and receive data, just like whe
 You may have noticed that, in the above section, the `open()` function does not take in a flags argument. This is because flags are part of the file path directly so if you wanted to create a non-blocking socket, you would use
 
 ```c
-    fd_t handle = open("/net/local/seqpacket:nonblock");
+fd_t handle = open("/net/local/seqpacket:nonblock");
 ```
 
 Multiple flags are allowed, just separate them with the `:` character, this means flags can be easily appended to a path using the `openf()` function. It is also possible to just specify the first letter of a flag, so instead of `:nonblock` you can use `:n`. Note that duplicate flags are ignored and that there are no read or write flags, all files are both read and write.
