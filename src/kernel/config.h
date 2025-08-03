@@ -138,3 +138,14 @@
  *
  */
 #define CONFIG_SCREEN_MAX_LINES 256
+
+/**
+ * @brief Maximum bitmap allocator address.
+ * @ingroup kernel
+ * @def CONFIG_PMM_BITMAP_MAX_ADDR
+ *
+ * The `CONFIG_PMM_BITMAP_MAX_ADDR` constant defines the maximum address below which pages will be handled by the bitmap
+ * allocator, pages above this value will be handled by the free stack allocator.
+ *
+ */
+#define CONFIG_PMM_BITMAP_MAX_ADDR 0x4000000ULL

@@ -2,15 +2,13 @@
 
 #include <boot/boot_info.h>
 
-#include <sys/proc.h>
-
 /**
  * @brief Physical Memory Manager (PMM).
  * @defgroup kernel_mem_pmm PMM
  * @ingroup kernel_mem
  *
  * The Physical Memory Manager (PMM) is responsible for managing physical memory pages. It uses a free stack for
- * allocating single pages in constant-time, and for more specialized allocations (requiring a specific address range 
+ * allocating single pages in constant-time, and for more specialized allocations (requiring a specific address range
  * or alignment) a bitmap allocator is used. The bitmap allocator should only be used when no other option is available.
  *
  * All physical memory is identity mapped to the beginning of the higher half of the address space. This means that for
@@ -19,59 +17,6 @@
  * The free stack provides some advantages over for instance a free list, mainly due to cache improvements.
  *
  */
-
-/**
- * @brief The maximum physical address managed by the bitmap.
- *
- * Physical addresses below this value are managed by a bitmap, while addresses above it are managed by a stack.
- */
-#define PMM_BITMAP_MAX_ADDR (0x4000000ULL)
-
-/**
- * @brief Structure for a page buffer in the PMM stack.
- * @ingroup kernel_mem_pmm
- * @struct page_buffer
- *
- * The `page_buffer_t` structure is stored in free pages and keeps track of pages that are currently freed.
- */
-typedef struct page_buffer
-{
-    /**
-     * @brief Pointer to the previous page buffer in the stack.
-     */
-    struct page_buffer* prev;
-    /**
-     * @brief Flexible array member to store free physical pages.
-     */
-    void* pages[];
-} page_buffer_t;
-
-/**
- * @brief The maximum number of pages that can be stored in a `page_buffer_t`.
- */
-#define PMM_BUFFER_MAX ((PAGE_SIZE - sizeof(page_buffer_t)) / sizeof(void*))
-
-/**
- * @brief PMM stack structure for managing higher physical memory.
- * @ingroup kernel_mem_pmm
- * @struct pmm_stack_t
- */
-typedef struct
-{
-    /**
-     * @brief Pointer to the last page buffer in the stack.
-     */
-    page_buffer_t* last;
-    /**
-     * @brief Current index within the `pages` array of the `last` page buffer.
-     */
-    uint64_t index;
-} pmm_stack_t;
-
-/**
- * @brief The number of pages that are managed by the PMM bitmap.
- */
-#define PMM_BITMAP_MAX (PMM_BITMAP_MAX_ADDR / PAGE_SIZE)
 
 /**
  * @brief Initializes the Physical Memory Manager.
@@ -94,8 +39,7 @@ void* pmm_alloc(void);
  * @ingroup kernel_mem_pmm
  *
  * The `pmm_alloc_bitmap` function allocates a contiguous block of `count` physical pages from the memory region
- * managed by the bitmap (i.e., below `PMM_BITMAP_MAX_ADDR`). It also enforces a maximum
- * address and alignment for the allocation.
+ * managed by the bitmap. It also enforces a maximum address and alignment for the allocation.
  *
  * @param count The number of contiguous pages to allocate.
  * @param maxAddr The maximum physical address (exclusive) for the allocation.
@@ -109,7 +53,7 @@ void* pmm_alloc_bitmap(uint64_t count, uintptr_t maxAddr, uint64_t alignment);
  * @ingroup kernel_mem_pmm
  *
  * The `pmm_free` function frees a page returning ownership of it to the PMM. The PMM will determine based on the
- * address if it's owned by the bitmap or the stack allocator.
+ * address if it's owned by the bitmap or the free stack.
  *
  * @param address The higher half physical address of the page to free.
  */
@@ -119,8 +63,8 @@ void pmm_free(void* address);
  * @brief Frees a contiguous region of physical pages.
  * @ingroup kernel_mem_pmm
  *
- * The `pmm_free_pages` function frees a contiguous block of `count` physical pages, returning ownership of them to the PMM.
- * The PMM will determine based on the address if it's owned by the bitmap or the stack allocator.
+ * The `pmm_free_pages` function frees a contiguous block of `count` physical pages, returning ownership of them to the
+ * PMM. The PMM will determine based on the address if it's owned by the bitmap or the free stack.
  *
  * @param address The higher half physical address of the first page in the region to free.
  * @param count The number of pages to free.

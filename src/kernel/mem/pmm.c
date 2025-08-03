@@ -1,15 +1,16 @@
 #include "pmm.h"
 
+#include "config.h"
 #include "log/log.h"
 #include "log/panic.h"
+#include "mem/pmm_bitmap.h"
+#include "mem/pmm_stack.h"
 #include "sync/lock.h"
 #include "sys/proc.h"
 #include "utils/bitmap.h"
 
 #include <boot/boot_info.h>
 
-#include <assert.h>
-#include <string.h>
 #include <sys/math.h>
 
 static const char* efiMemTypeToString[] = {
@@ -30,14 +31,15 @@ static const char* efiMemTypeToString[] = {
     "persistent",
 };
 
-// Stores the bitmap data
-static uint64_t mapBuffer[BITMAP_BITS_TO_QWORDS(PMM_BITMAP_MAX)];
+#define PMM_BITMAP_SIZE (CONFIG_PMM_BITMAP_MAX_ADDR / PAGE_SIZE)
 
 static pmm_stack_t stack;
-static bitmap_t bitmap;
+static pmm_bitmap_t bitmap;
+
+// Stores the bitmap data
+static uint64_t mapBuffer[BITMAP_BITS_TO_QWORDS(PMM_BITMAP_SIZE)];
 
 static uint64_t pageAmount = 0;
-static uint64_t freePageAmount = 0;
 
 static lock_t lock = LOCK_CREATE();
 
@@ -61,113 +63,15 @@ static bool pmm_is_efi_mem_available(EFI_MEMORY_TYPE type)
     }
 }
 
-static void pmm_stack_init(void)
-{
-    stack.last = NULL;
-    stack.index = 0;
-}
-
-static void* pmm_stack_alloc(void)
-{
-    if (stack.last == NULL)
-    {
-        return NULL;
-    }
-
-    void* address;
-    if (stack.index == 0)
-    {
-        address = stack.last;
-        stack.last = stack.last->prev;
-        stack.index = PMM_BUFFER_MAX - 1;
-    }
-    else
-    {
-        address = stack.last->pages[--stack.index];
-    }
-
-    freePageAmount--;
-
-    return address;
-}
-
-static void pmm_stack_free(void* address)
-{
-    if (stack.last == NULL)
-    {
-        stack.last = address;
-        stack.last->prev = NULL;
-        stack.index = 0;
-    }
-    else if (stack.index == PMM_BUFFER_MAX)
-    {
-        page_buffer_t* next = address;
-        next->prev = stack.last;
-        stack.last = next;
-        stack.index = 0;
-    }
-    else
-    {
-        stack.last->pages[stack.index++] = address;
-    }
-
-    freePageAmount++;
-}
-
-static void pmm_bitmap_init(void)
-{
-    bitmap_init(&bitmap, mapBuffer, PMM_BITMAP_MAX);
-    memset(mapBuffer, -1, BITMAP_BITS_TO_BYTES(PMM_BITMAP_MAX));
-}
-
-static bool pmm_bitmap_is_reserved(uint64_t index)
-{
-    assert(index < PMM_BITMAP_MAX_ADDR / PAGE_SIZE);
-
-    return bitmap_is_set(&bitmap, index);
-}
-
-static void pmm_bitmap_reserve(uint64_t low, uint64_t high)
-{
-    assert(low <= high);
-    assert(high < PMM_BITMAP_MAX_ADDR / PAGE_SIZE);
-
-    bitmap_set_range(&bitmap, low, high);
-    freePageAmount -= (high - low);
-}
-
-static void* pmm_bitmap_alloc(uint64_t count, uintptr_t maxAddr, uint64_t alignment)
-{
-    alignment = MAX(ROUND_UP(alignment, PAGE_SIZE), PAGE_SIZE);
-    maxAddr = MIN(maxAddr, PMM_BITMAP_MAX_ADDR);
-
-    uint64_t index = bitmap_find_clear_region_and_set(&bitmap, count, maxAddr / PAGE_SIZE, alignment / PAGE_SIZE);
-    if (index == ERR)
-    {
-        return NULL;
-    }
-
-    return (void*)(index * PAGE_SIZE + PML_HIGHER_HALF_START);
-}
-
-static void pmm_bitmap_free(void* address)
-{
-    uint64_t index = (uint64_t)PML_HIGHER_TO_LOWER(address) / PAGE_SIZE;
-    assert(index < PMM_BITMAP_MAX_ADDR / PAGE_SIZE);
-
-    bitmap_clear(&bitmap, index);
-    freePageAmount++;
-}
-
 static void pmm_free_unlocked(void* address)
 {
-    if (address >= PML_LOWER_TO_HIGHER(PMM_BITMAP_MAX_ADDR))
+    if (address >= PML_LOWER_TO_HIGHER(CONFIG_PMM_BITMAP_MAX_ADDR))
     {
-        pmm_stack_free(address);
+        pmm_stack_free(&stack, address);
     }
     else if (address >= PML_LOWER_TO_HIGHER(0))
     {
-        pmm_bitmap_free(address);
+        pmm_bitmap_free(&bitmap, address, 1);
     }
     else
     {
@@ -177,35 +81,31 @@ static void pmm_free_unlocked(void* address)
 
 static void pmm_free_pages_unlocked(void* address, uint64_t count)
 {
+    address = (void*)ROUND_DOWN(address, PAGE_SIZE);
+
     uint64_t physStart = (uint64_t)PML_HIGHER_TO_LOWER(address);
     uint64_t physEnd = physStart + count * PAGE_SIZE;
 
-    if (physEnd <= PMM_BITMAP_MAX_ADDR)
+    if (physEnd <= CONFIG_PMM_BITMAP_MAX_ADDR)
     {
-        uint64_t startIndex = physStart / PAGE_SIZE;
-
-        bitmap_clear_range(&bitmap, startIndex, startIndex + count);
-        freePageAmount += count;
+        pmm_bitmap_free(&bitmap, address, count);
     }
-    else if (physStart < PMM_BITMAP_MAX_ADDR)
+    else if (physStart < CONFIG_PMM_BITMAP_MAX_ADDR)
     {
-        uint64_t bitmapPageCount = (PMM_BITMAP_MAX_ADDR - physStart) / PAGE_SIZE;
-        uint64_t startIndex = physStart / PAGE_SIZE;
+        uint64_t bitmapPageCount = (CONFIG_PMM_BITMAP_MAX_ADDR - physStart) / PAGE_SIZE;
+        pmm_bitmap_free(&bitmap, address, bitmapPageCount);
 
-        bitmap_clear_range(&bitmap, startIndex, startIndex + bitmapPageCount);
-        freePageAmount += bitmapPageCount;
-
-        void* stackAddr = PML_LOWER_TO_HIGHER(PMM_BITMAP_MAX_ADDR);
+        void* stackAddr = PML_LOWER_TO_HIGHER(CONFIG_PMM_BITMAP_MAX_ADDR);
         for (uint64_t i = 0; i < count - bitmapPageCount; i++)
         {
-            pmm_stack_free((void*)((uint64_t)stackAddr + i * PAGE_SIZE));
+            pmm_stack_free(&stack, (void*)((uint64_t)stackAddr + i * PAGE_SIZE));
         }
     }
     else
     {
         for (uint64_t i = 0; i < count; i++)
         {
-            pmm_stack_free((void*)((uint64_t)address + i * PAGE_SIZE));
+            pmm_stack_free(&stack, (void*)((uint64_t)address + i * PAGE_SIZE));
         }
     }
 }
@@ -223,6 +123,8 @@ static void pmm_detect_memory(boot_memory_map_t* map)
             pageAmount += desc->NumberOfPages;
         }
     }
+
+    LOG_INFO("page amount %llu\n", pageAmount);
 }
 
 static void pmm_load_memory(boot_memory_map_t* map)
@@ -244,15 +146,15 @@ static void pmm_load_memory(boot_memory_map_t* map)
     }
 
     LOG_INFO("memory %llu MB (usable %llu MB reserved %llu MB)\n", (pageAmount * PAGE_SIZE) / 1000000,
-        (freePageAmount * PAGE_SIZE) / 1000000, ((pageAmount - freePageAmount) * PAGE_SIZE) / 1000000);
+        (pmm_free_amount() * PAGE_SIZE) / 1000000, ((pageAmount - pmm_free_amount()) * PAGE_SIZE) / 1000000);
 }
 
 void pmm_init(boot_memory_map_t* map)
 {
     pmm_detect_memory(map);
 
-    pmm_stack_init();
-    pmm_bitmap_init();
+    pmm_stack_init(&stack);
+    pmm_bitmap_init(&bitmap, mapBuffer, PMM_BITMAP_SIZE, CONFIG_PMM_BITMAP_MAX_ADDR);
 
     pmm_load_memory(map);
 }
@@ -260,10 +162,10 @@ void pmm_init(boot_memory_map_t* map)
 void* pmm_alloc(void)
 {
     LOCK_SCOPE(&lock);
-    void* address = pmm_stack_alloc();
+    void* address = pmm_stack_alloc(&stack);
     if (address == NULL)
     {
-        LOG_WARN("failed to allocate single page, free=%llu pages\n", freePageAmount);
+        LOG_WARN("failed to allocate single page, free=%llu pages\n", pmm_free_amount());
         errno = ENOMEM;
         return NULL;
     }
@@ -273,11 +175,11 @@ void* pmm_alloc(void)
 void* pmm_alloc_bitmap(uint64_t count, uintptr_t maxAddr, uint64_t alignment)
 {
     LOCK_SCOPE(&lock);
-    void* address = pmm_bitmap_alloc(count, maxAddr, alignment);
+    void* address = pmm_bitmap_alloc(&bitmap, count, maxAddr, alignment);
     if (address == NULL)
     {
-        LOG_WARN("failed to allocate %llu pages from bitmap, free=%llu pages, maxAddr=0x%lx\n", count, freePageAmount,
-            maxAddr);
+        LOG_WARN("failed to allocate %llu pages from bitmap, free=%llu pages, maxAddr=0x%lx\n", count,
+            pmm_free_amount(), maxAddr);
         errno = ENOMEM;
         return NULL;
     }
@@ -286,14 +188,12 @@ void* pmm_alloc_bitmap(uint64_t count, uintptr_t maxAddr, uint64_t alignment)
 
 void pmm_free(void* address)
 {
-    address = (void*)ROUND_DOWN(address, PAGE_SIZE);
     LOCK_SCOPE(&lock);
     pmm_free_unlocked(address);
 }
 
 void pmm_free_pages(void* address, uint64_t count)
 {
-    address = (void*)ROUND_DOWN(address, PAGE_SIZE);
     LOCK_SCOPE(&lock);
     pmm_free_pages_unlocked(address, count);
 }
@@ -307,11 +207,11 @@ uint64_t pmm_total_amount(void)
 uint64_t pmm_free_amount(void)
 {
     LOCK_SCOPE(&lock);
-    return freePageAmount;
+    return stack.free + bitmap.free;
 }
 
 uint64_t pmm_reserved_amount(void)
 {
     LOCK_SCOPE(&lock);
-    return pageAmount - freePageAmount;
+    return pageAmount - (stack.free + bitmap.free);
 }

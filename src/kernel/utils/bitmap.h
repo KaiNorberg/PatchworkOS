@@ -2,9 +2,9 @@
 
 #include "utils/utils.h"
 
+#include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <errno.h>
 #include <sys/math.h>
 
 typedef struct
