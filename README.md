@@ -221,7 +221,7 @@ If you are still interested in knowing more, then you can check out the Doxygen 
 
 ```bash
 # Clone this repository, you can also use the green Code button at the top of the Github.
-git clone --recursive [https://github.com/KaiNorberg/PatchworkOS](https://github.com/KaiNorberg/PatchworkOS)
+git clone https://github.com/KaiNorberg/PatchworkOS
 cd PatchworkOS
 
 # Build (creates PatchworkOS.img in bin/)
