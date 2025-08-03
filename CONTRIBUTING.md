@@ -4,6 +4,12 @@ Thank you for wanting to contribute to PatchworkOS!
 
 Included here are instructions on how to contribute, try to follow them as best you can but don't sweat it if you make mistakes. (These instructions are currently WIP)
 
+## Before You Start
+
+For major changes like feature additions or architectural modifications, please open an issue first to discuss the change.
+
+For bug fixes, documentation improvements, and minor enhancements, feel free to jump straight into a pull request.
+
 ## Commit Messages
 
 Follow the [conventional commit format](https://www.conventionalcommits.org/en/v1.0.0/) used throughout the project:
