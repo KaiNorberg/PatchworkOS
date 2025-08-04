@@ -1,38 +1,61 @@
 #pragma once
 
+#include <common/defs.h>
+
 #include <stdatomic.h>
 
 /**
- * @brief Reference counting.
- * @ingroup kernel
+ * @brief Reference counting
  * @defgroup kernel_utils_ref Reference counting
+ * @ingroup kernel_utils
+ * @{
  */
 
+/**
+ * @brief Magic value used in debug builds to check for corruption or invalid use of the `ref_t` structure.
+ */
 #define REF_MAGIC 0x26CB6E4C
 
 /**
- * @brief Reference counting struct.
- * @ingroup kernel_utils_ref
+ * @brief Reference counting structure
+ * @struct ref_t
  *
- * The `ref_t` structure must be placed as the first element in a struct.
+ * Provides a generic interface for reference counting. Must be placed as the first element in any struct that requires
+ * reference counting.
+ *
  */
 typedef struct ref
 {
 #ifndef NDEBUG
+    /**
+     * @brief Debug magic value to detect corruption
+     */
     uint32_t magic;
 #endif
+    /**
+     * @brief Atomic reference counter
+     */
     atomic_uint32_t count;
+    /**
+     * @brief Cleanup function called when count reaches zero
+     */
     void (*free)(void* self);
 } ref_t;
 
+/**
+ * @brief RAII-style cleanup for scoped references
+ *
+ * Uses GCC's cleanup attribute to automatically call `ref_dec` when going out of scope.
+ */
 #define REF_DEFER(ptr) __attribute__((cleanup(ref_defer_cleanup))) void* CONCAT(p, __COUNTER__) = (ptr)
 
 /**
- * @brief Type safe wrapper for reference counter increment.
- * @ingroup kernel_utils_ref
+ * @brief Increment reference count
  *
- * @param ptr Pointer to the struct containing the `ref_t` type.
- * @return Pointer to the struct.
+ * Atomically increments the reference counter. Used to avoid the need for a typecast. The magic number checking makes sure we cant accidentally misuse this.
+ *
+ * @param ptr Pointer to the struct containing `ref_t` as its first member
+ * @return The `ptr` passed as input
  */
 #define REF(ptr) \
     ({ \
@@ -42,10 +65,11 @@ typedef struct ref
     })
 
 /**
- * @brief Type safe wrapper for reference counter decrement.
- * @ingroup kernel_utils_ref
+ * @brief Decrement reference count
  *
- * @param ptr Pointer to the struct containing the `ref_t` type.
+ * Atomically decrements the reference counter. Used to avoid the need for a typecast. The magic number checking makes sure we cant accidentally misuse this.
+ *
+ * @param ptr Pointer to the struct containing `ref_t` as its first member
  */
 #define DEREF(ptr) \
     ({ \
@@ -53,13 +77,34 @@ typedef struct ref
         ref_dec(ref); \
     })
 
+/**
+ * @brief Initialize a reference counter
+ *
+ * @param ref Pointer to the reference counter structure
+ * @param free Cleanup function to call when count reaches zero
+ */
 void ref_init(ref_t* ref, void* free);
 
+/**
+ * @brief Increment reference count
+ *
+ * @param ptr Pointer to the struct containing `ref_t` as its first member
+ * @return The `ptr` passed as input
+ */
 void* ref_inc(void* ptr);
 
+/**
+ * @brief Decrement reference count
+ *
+ * If count reaches zero it calls the registered cleanup function.
+ *
+ * @param ptr Pointer to the struct containing `ref_t` as its first member
+ */
 void ref_dec(void* ptr);
 
 static inline void ref_defer_cleanup(void** ptr)
 {
     ref_dec(*ptr);
 }
+
+/** @} */

@@ -14,13 +14,13 @@
 
 #define SLAB_MAGIC 0x3996609D
 
-typedef struct cache cache_t;
-typedef struct slab slab_t;
+struct cache;
+struct slab;
 
 typedef struct
 {
     list_entry_t entry;
-    cache_t* cache;
+    struct cache* cache;
     uint32_t magic;
     bool freed;
     uint64_t dataSize;
@@ -31,7 +31,7 @@ typedef struct cache
 {
     list_entry_t entry;
     list_t freeList;
-    slab_t* slab;
+    struct slab* slab;
     uint64_t objectCount;
     uint64_t freeCount;
     uint8_t buffer[];

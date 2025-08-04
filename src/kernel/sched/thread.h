@@ -14,21 +14,20 @@
 #include <sys/proc.h>
 
 /**
- * @brief Thread of execution structure.
+ * @brief Thread of execution.
  * @ingroup kernel_sched
- * @defgroup kernel_sched_thread Thread
- *
+ * @defgroup kernel_sched_thread Threads
+ * @{
  */
 
 /**
  * @brief Magic number to check for kernel stack overflow.
- * @ingroup kernel_sched_thread
  * @def THREAD_CANARY
  *
  * The `THREAD_CANARY` constant is a magic number stored att the bottom of a threads kernel stack, if the kernel stack
- * were to overflow this value would be modified, therefor we check the value of the canary in the every now and then.
+ * were to overflow this value would be modified, therefor we check the value of the canary every now and then.
  *
- * Note that this kind of check is not fool proof, for example if a very large stack overflow were occur we would get
+ * Note that this kind of check is not fool proof, for example if a very large stack overflow were to occur we would get
  * unpredictable behaviour as this would result in other modifications to the `thread_t` structure, however adding the
  * canary makes debugging far easier if a stack overflow were to occur and should catch the majority of overflows. If an
  * overflow in the kernel stack does occur increasing the value of `CONFIG_MAX_KERNEL_STACK` should fix the problem.
@@ -38,7 +37,6 @@
 
 /**
  * @brief Thread state enum.
- * @ingroup kernel_sched_thread
  * @enum thread_state_t
  *
  */
@@ -56,7 +54,6 @@ typedef enum
 
 /**
  * @brief Thread of execution structure.
- * @ingroup kernel_sched_thread
  * @struct thread_t
  *
  * A `thread_t` represents an independent thread of execution within a `process_t`.
@@ -126,7 +123,6 @@ typedef struct thread
 
 /**
  * @brief Retrieves the top of a threads kernel stack.
- * @ingroup kernel_sched_thread
  * @def THREAD_KERNEL_STACK_TOP
  *
  * The `THREAD_KERNEL_STACK_TOP()` macro retrieves the address of the top of a threads kernel stack.
@@ -141,7 +137,6 @@ typedef struct thread
 
 /**
  * @brief Retrieves the bottom of a threads kernel stack.
- * @ingroup kernel_sched_thread
  * @def THREAD_KERNEL_STACK_BOTTOM
  *
  * The `THREAD_KERNEL_STACK_BOTTOM()` macro retrieves the address of the bottom of a threads kernel.
@@ -152,7 +147,6 @@ typedef struct thread
 
 /**
  * @brief Creates a new thread structure.
- * @ingroup kernel_sched_thread
  *
  * Does not push the created thread to the scheduler or similar, merely handling allocation and initialization.
  *
@@ -164,7 +158,6 @@ thread_t* thread_new(process_t* process, void* entry);
 
 /**
  * @brief Frees a thread structure.
- * @ingroup kernel_sched_thread
  *
  * @param thread The thread to be freed.
  */
@@ -172,7 +165,6 @@ void thread_free(thread_t* thread);
 
 /**
  * @brief Signals to a thread that it is dying.
- * @ingroup kernel_sched_thread
  *
  * Does not perform free the thread and the thread will continue executing as a zombie after this function.
  *
@@ -182,7 +174,6 @@ void thread_kill(thread_t* thread);
 
 /**
  * @brief Save state to thread.
- * @ingroup kernel_sched_thread
  *
  * @param thread The destination thread where the state will be saved.
  * @param trapFrame The source trapframe storing register state.
@@ -191,7 +182,6 @@ void thread_save(thread_t* thread, const trap_frame_t* trapFrame);
 
 /**
  * @brief Load state from thread.
- * @ingroup kernel_sched_thread
  *
  * @param thread The source thread to load state from.
  * @param trapFrame The destination trap frame to load register state.
@@ -200,7 +190,6 @@ void thread_load(thread_t* thread, trap_frame_t* trapFrame);
 
 /**
  * @brief Check if a thread has a note pending.
- * @ingroup kernel_sched_thread
  *
  * @param thread The thread to query.
  * @return True if there is a note pending, false otherwise.
@@ -209,7 +198,6 @@ bool thread_is_note_pending(thread_t* thread);
 
 /**
  * @brief Send a note to a thread.
- * @ingroup kernel_sched_thread
  *
  * This function should always be used over the `note_queue_push()` function, as it performs additional checks, like
  * deciding how critical the sent note is and unblocking the thread to notify it of the received note.
@@ -220,3 +208,5 @@ bool thread_is_note_pending(thread_t* thread);
  * @return On success, returns 0. On failure, returns `ERR`.
  */
 uint64_t thread_send_note(thread_t* thread, const void* message, uint64_t length);
+
+/** @} */

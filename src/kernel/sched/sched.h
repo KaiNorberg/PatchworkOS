@@ -13,17 +13,17 @@ typedef struct thread thread_t;
 
 /**
  * @brief The Scheduler.
- * @defgroup kernel_sched sched
- * @ingroup kernel
+ * @defgroup kernel_sched_sched The Scheduler
+ * @ingroup kernel_sched
  *
  * The scheduler used in Patchwork is loosely based of the Linux O(1) scheduler, so knowing how that scheduler works
  * could be useful, here is an article about it https://litux.nl/mirror/kerneldevelopment/0672327201/ch04lev1sec2.html.
  *
+ * @{
  */
 
 /**
  * @brief Scheduling queues structure.
- * @ingroup kernel_sched
  * @struct sched_queues_t
  *
  * The `sched_queues_t` structure represents a set of scheduling queues, with one queue for each priority level and a
@@ -48,7 +48,6 @@ typedef struct
 
 /**
  * @brief Per-thread scheduling context.
- * @ingroup kernel_sched
  * @struct sched_thread_ctx_t
  *
  * The `sched_thread_ctx_t` structure stores scheduling context for each thread.
@@ -88,7 +87,6 @@ typedef struct
 
 /**
  * @brief Per-CPU scheduling context.
- * @ingroup kernel_sched
  * @struct sched_cpu_ctx_t
  *
  * The `sched_cpu_ctx_t` structure holds the scheduling context for a each CPU.
@@ -141,7 +139,6 @@ typedef struct
 
 /**
  * @brief Initializes a thread's scheduling context.
- * @ingroup kernel_sched
  *
  * @param ctx The `sched_thread_ctx_t` structure to initialize.
  */
@@ -149,7 +146,6 @@ void sched_thread_ctx_init(sched_thread_ctx_t* ctx);
 
 /**
  * @brief Initializes a CPU's scheduling context.
- * @ingroup kernel_sched
  *
  * @param ctx The `sched_cpu_ctx_t` structure to initialize.
  * @param cpu The `cpu_t` structure associated with this scheduling context.
@@ -158,7 +154,6 @@ void sched_cpu_ctx_init(sched_cpu_ctx_t* ctx, cpu_t* cpu);
 
 /**
  * @brief The idle loop for a CPU.
- * @ingroup kernel_sched
  *
  * The `sched_idle_loop()` function is the main loop where idle threads execute. The boot thread will eventually end up
  * here to.
@@ -168,7 +163,6 @@ NORETURN extern void sched_idle_loop(void);
 
 /**
  * @brief Wrapper around `sched_schedule()`.
- * @ingroup kernel_sched
  *
  * The `sched_invoke()` function constructs a trap frame using current CPU state and then calls
  * `sched_schedule()`. This is typically used for voluntary context switches, such as when blocking.
@@ -178,7 +172,6 @@ extern void sched_invoke(void);
 
 /**
  * @brief Initializes the scheduler.
- * @ingroup kernel_sched
  *
  * The `sched_init()` function performs global initialization for the scheduler, for example spawning the boot thread.
  *
@@ -187,7 +180,6 @@ void sched_init(void);
 
 /**
  * @brief Specify that the boot thread is no longer needed.
- * @ingroup kernel_sched
  *
  * The `sched_done_with_boot_thread()` function is called to tell the scheduler that the kernel has finished booting and
  * that the boot thread is no longer needed, instead of just discarding it, the boot thread becomes the idle thread of
@@ -198,7 +190,6 @@ NORETURN void sched_done_with_boot_thread(void);
 
 /**
  * @brief Puts the current thread to sleep.
- * @ingroup kernel_sched
  *
  * The `sched_nanosleep()` function causes the currently running thread to block, for a specified length of time.
  *
@@ -209,7 +200,6 @@ wait_result_t sched_nanosleep(clock_t timeout);
 
 /**
  * @brief Checks if the current CPU is idle.
- * @ingroup kernel_sched
  *
  * The `sched_is_idle()` function returns if the current CPU is currently executing its idle thread.
  *
@@ -219,7 +209,6 @@ bool sched_is_idle(void);
 
 /**
  * @brief Retrieves the currently running thread.
- * @ingroup kernel_sched
  *
  * The `sched_thread()` function returns the currently running thread.
  *
@@ -229,7 +218,6 @@ thread_t* sched_thread(void);
 
 /**
  * @brief Retrieves the process of the currently running thread.
- * @ingroup kernel_sched
  *
  * The `sched_process()` function returns the process of the currently running thread.
  *
@@ -239,7 +227,6 @@ process_t* sched_process(void);
 
 /**
  * @brief Exits the current process.
- * @ingroup kernel_sched
  *
  * The `sched_process_exit()` function terminates the currently executing process and all its threads. Note that this
  * does not actually schedule and the thread will only actually die when the scheduler is invoked.
@@ -250,7 +237,6 @@ void sched_process_exit(uint64_t status);
 
 /**
  * @brief Exits the current thread.
- * @ingroup kernel_sched
  *
  * The `sched_thread_exit()` function terminates the currently executing thread. Note that this does not actually
  * schedule and the thread will only actually die when the scheduler is invoked.
@@ -260,7 +246,6 @@ void sched_thread_exit(void);
 
 /**
  * @brief Yields the CPU to another thread.
- * @ingroup kernel_sched
  *
  * The `sched_yield()` function voluntarily relinquishes the currently running threads time slice. Note that this does
  * not actually schedule.
@@ -270,7 +255,6 @@ void sched_yield(void);
 
 /**
  * @brief Pushes a thread onto a scheduling queue.
- * @ingroup kernel_sched
  *
  * @param thread The thread to be pushed.
  * @param target The target cpu that the thread should run on (can be `NULL` to specify the currently running cpu).
@@ -279,7 +263,6 @@ void sched_push(thread_t* thread, cpu_t* target);
 
 /**
  * @brief Pushes a newly created thread onto the scheduling queue.
- * @ingroup kernel_sched
  *
  * @param thread The thread to be pushed.
  * @param parent The parent thread.
@@ -288,10 +271,11 @@ void sched_push_new_thread(thread_t* thread, thread_t* parent);
 
 /**
  * @brief Performs the core scheduling logic.
- * @ingroup kernel_sched
  *
  * @param trapFrame The current trap frame.
  * @param self The currently running cpu
  * @return `true` if a context switch occurred, `false` otherwise.
  */
 bool sched_schedule(trap_frame_t* trapFrame, cpu_t* self);
+
+/** @} */
