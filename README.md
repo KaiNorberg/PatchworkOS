@@ -254,8 +254,8 @@ You should now see a new entry in your GRUB boot menu allowing you to boot into 
 
 ### Troubleshooting
 
-  * **QEMU boot failure**: Check if you are using QEMU version 10.0.0, as that version is known to not work correctly, try using version 9.2.3.
-  * **Any other errors?**: If an error not listed here occurs or is not resolvable, please open an issue in the GitHub.
+* **QEMU boot failure**: Check if you are using QEMU version 10.0.0, as that version previusly had issues, try using version 9.2.3. Additionally, please open an issue to notify that the issue has reoccurred.
+* **Any other errors?**: If an error not listed here occurs or is not resolvable, please open an issue in the GitHub.
 
 ## Testing
 
@@ -263,9 +263,9 @@ This repository uses a bit of a hacky way to do testing, we use a github action,
 
 ### Tested Configurations
 
-  * QEMU emulator version 9.2.3 (qemu-9.2.3-1.fc42)
-  * Lenovo ThinkPad E495
-  * Ryzen 5 3600X | 32GB 3200MHZ Corsair Vengeance
+* QEMU emulator version 9.2.3 (qemu-9.2.3-1.fc42)
+* Lenovo ThinkPad E495
+* Ryzen 5 3600X | 32GB 3200MHZ Corsair Vengeance
 
 Currently untested on Intel hardware. Let me know if you have different hardware, and it runs (or doesn't) for you!
 
