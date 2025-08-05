@@ -254,7 +254,7 @@ You should now see a new entry in your GRUB boot menu allowing you to boot into 
 
 ### Troubleshooting
 
-* **QEMU boot failure**: Check if you are using QEMU version 10.0.0, as that version previusly had issues, try using version 9.2.3. Additionally, please open an issue to notify that the issue has reoccurred.
+* **QEMU boot failure**: Check if you are using QEMU version 10.0.0, as that version previously had issues, try using version 9.2.3. Additionally, please open an issue to notify that the issue has reoccurred.
 * **Any other errors?**: If an error not listed here occurs or is not resolvable, please open an issue in the GitHub.
 
 ## Testing
