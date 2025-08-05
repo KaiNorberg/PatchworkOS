@@ -1,8 +1,5 @@
 #include "ps2.h"
 
-#include "kbd.h"
-#include "mouse.h"
-
 #include "cpu/port.h"
 #include "log/log.h"
 #include "log/panic.h"
@@ -14,20 +11,65 @@ static ps2_device_info_t firstDevice = {0};
 static ps2_device_info_t secondDevice = {0};
 
 static const ps2_device_info_t knownDevices[] = {
-    {.type = PS2_DEVICE_KEYBOARD, .name = "Ancient AT keyboard", .id = {0}, .idLength = 0},
-    {.type = PS2_DEVICE_MOUSE, .name = "Standard PS/2 mouse", .id = {0x00}, .idLength = 1},
-    {.type = PS2_DEVICE_MOUSE, .name = "Mouse with scroll wheel", .id = {0x03}, .idLength = 1},
-    {.type = PS2_DEVICE_MOUSE, .name = "5-button mouse", .id = {0x04}, .idLength = 1},
-    {.type = PS2_DEVICE_KEYBOARD, .name = "MF2 keyboard 0x83", .id = {0xAB, 0x83}, .idLength = 2},
-    {.type = PS2_DEVICE_KEYBOARD, .name = "MF2 keyboard 0xC1", .id = {0xAB, 0xC1}, .idLength = 2},
-    {.type = PS2_DEVICE_KEYBOARD, .name = "Short keyboard", .id = {0xAB, 0x84}, .idLength = 2},
-    {.type = PS2_DEVICE_KEYBOARD, .name = "NCD N-97 keyboard", .id = {0xAB, 0x85}, .idLength = 2},
-    {.type = PS2_DEVICE_KEYBOARD, .name = "122-key keyboards", .id = {0xAB, 0x86}, .idLength = 2},
-    {.type = PS2_DEVICE_KEYBOARD, .name = "Japanese \"G\" keyboards", .id = {0xAB, 0x90}, .idLength = 2},
-    {.type = PS2_DEVICE_KEYBOARD, .name = "Japanese \"P\" keyboards", .id = {0xAB, 0x91}, .idLength = 2},
-    {.type = PS2_DEVICE_KEYBOARD, .name = "Japanese \"A\" keyboards", .id = {0xAB, 0x92}, .idLength = 2},
-    {.type = PS2_DEVICE_KEYBOARD, .name = "NCD Sun layout keyboard", .id = {0xAC, 0xA1}, .idLength = 2},
+    {.type = PS2_DEVICE_TYPE_KEYBOARD, .name = "Ancient AT keyboard", .id = {0}, .idLength = 0},
+    {.type = PS2_DEVICE_TYPE_MOUSE, .name = "Standard PS/2 mouse", .id = {0x00}, .idLength = 1},
+    {.type = PS2_DEVICE_TYPE_MOUSE, .name = "Mouse with scroll wheel", .id = {0x03}, .idLength = 1},
+    {.type = PS2_DEVICE_TYPE_MOUSE, .name = "5-button mouse", .id = {0x04}, .idLength = 1},
+    {.type = PS2_DEVICE_TYPE_KEYBOARD, .name = "MF2 keyboard 0x83", .id = {0xAB, 0x83}, .idLength = 2},
+    {.type = PS2_DEVICE_TYPE_KEYBOARD, .name = "MF2 keyboard 0xC1", .id = {0xAB, 0xC1}, .idLength = 2},
+    {.type = PS2_DEVICE_TYPE_KEYBOARD, .name = "Short keyboard", .id = {0xAB, 0x84}, .idLength = 2},
+    {.type = PS2_DEVICE_TYPE_KEYBOARD, .name = "NCD N-97 keyboard", .id = {0xAB, 0x85}, .idLength = 2},
+    {.type = PS2_DEVICE_TYPE_KEYBOARD, .name = "122-key keyboards", .id = {0xAB, 0x86}, .idLength = 2},
+    {.type = PS2_DEVICE_TYPE_KEYBOARD, .name = "Japanese \"G\" keyboards", .id = {0xAB, 0x90}, .idLength = 2},
+    {.type = PS2_DEVICE_TYPE_KEYBOARD, .name = "Japanese \"P\" keyboards", .id = {0xAB, 0x91}, .idLength = 2},
+    {.type = PS2_DEVICE_TYPE_KEYBOARD, .name = "Japanese \"A\" keyboards", .id = {0xAB, 0x92}, .idLength = 2},
+    {.type = PS2_DEVICE_TYPE_KEYBOARD, .name = "NCD Sun layout keyboard", .id = {0xAC, 0xA1}, .idLength = 2},
 };
+
+static const char* ps2_device_test_response_to_string(ps2_device_test_response_t response)
+{
+    switch (response)
+    {
+    case PS2_DEVICE_TEST_PASS:
+        return "pass";
+    case PS2_DEVICE_TEST_CLOCK_STUCK_LOW:
+        return "clock stuck low";
+    case PS2_DEVICE_TEST_CLOCK_STUCK_HIGH:
+        return "clock stuck high";
+    case PS2_DEVICE_TEST_DATA_STUCK_LOW:
+        return "data stuck low";
+    case PS2_DEVICE_TEST_DATA_STUCK_HIGH:
+        return "data stuck high";
+    default:
+        return "invalid response";
+    }
+}
+
+static const char* ps2_self_test_response_to_string(ps2_self_test_response_t response)
+{
+    switch (response)
+    {
+    case PS2_SELF_TEST_PASS:
+        return "pass";
+    case PS2_SELF_TEST_FAIL:
+        return "fail";
+    default:
+        return "invalid response";
+    }
+}
+
+static const char* ps2_device_to_string(ps2_device_t device)
+{
+    switch (device)
+    {
+    case PS2_DEVICE_FIRST:
+        return "first";
+    case PS2_DEVICE_SECOND:
+        return "second";
+    default:
+        return "invalid device";
+    }
+    }
 
 static void ps2_self_test(void)
 {
@@ -38,7 +80,7 @@ static void ps2_self_test(void)
     ps2_self_test_response_t selfTest = ps2_read();
     if (selfTest != PS2_SELF_TEST_PASS)
     {
-        panic(NULL, "ps2 self test fail 0x%02x", selfTest);
+        panic(NULL, "ps2 self test %s", ps2_self_test_response_to_string(selfTest));
     }
 
     ps2_cmd(PS2_CMD_CFG_WRITE);
@@ -72,16 +114,26 @@ static void ps2_check_if_dual_channel(void)
     }
 }
 
+static uint64_t ps2_device_test(ps2_device_t device)
+{
+    ps2_cmd(device == PS2_DEVICE_FIRST ? PS2_CMD_FIRST_TEST : PS2_CMD_SECOND_TEST);
+    ps2_device_test_response_t deviceTest = ps2_read();
+    if (deviceTest != PS2_DEVICE_TEST_PASS)
+    {
+        LOG_ERR("ps2 %s device test fail (%s)", ps2_device_to_string(device), ps2_device_test_response_to_string(deviceTest));
+        return ERR;
+    }
+
+    return 0;
+}
+
 static void ps2_devices_init(void)
 {
-    ps2_cmd(PS2_CMD_FIRST_TEST);
-    bool firstAvailable = ps2_read();
+
 }
 
 void ps2_init(void)
 {
-    LOG_INFO("Initializing PS/2 controller\n");
-
     ps2_cmd(PS2_CMD_FIRST_DISABLE);
     ps2_cmd(PS2_CMD_SECOND_DISABLE);
 

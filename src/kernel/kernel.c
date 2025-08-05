@@ -2,6 +2,7 @@
 
 #include "acpi/acpi.h"
 #include "acpi/madt.h"
+#include "acpi/fadt.h"
 #include "cpu/gdt.h"
 #include "cpu/idt.h"
 #include "cpu/simd.h"
@@ -73,6 +74,7 @@ void kernel_init(boot_info_t* bootInfo)
     acpi_init(bootInfo->rsdp, &bootInfo->memory.map);
     hpet_init();
     madt_init();
+    fadt_init();
 
     lapic_init();
     lapic_cpu_init();

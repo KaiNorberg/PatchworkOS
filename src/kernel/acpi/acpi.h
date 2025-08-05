@@ -5,6 +5,13 @@
 
 #include <stdint.h>
 
+/**
+ * @brief Advanced Configuration and Power Interface
+ * @defgroup kernel_acpi acpi
+ * @ingroup kernel
+ * @{
+ */
+
 #define ACPI_REVISION_1_0 0
 #define ACPI_REVISION_2_0 2
 
@@ -43,3 +50,5 @@ typedef struct PACKED
 void acpi_init(xsdp_t* xsdp, boot_memory_map_t* map);
 
 sdt_t* acpi_lookup(const char* signature);
+
+/** @} */

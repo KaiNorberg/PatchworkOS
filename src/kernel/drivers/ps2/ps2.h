@@ -8,13 +8,15 @@
  * @defgroup kernel_drivers_ps2 PS/2 Driver
  * @ingroup kernel_drivers
  *
- * Patchwork attempts to implement a fully compliant PS/2 driver, even if certain details would be completely irelevent
+ * Patchwork attempts to implement a comprehensive PS/2 driver, even if certain details would be completely irelevent
  * on modern hardware. For example, most implementations assume that the first PS2 device is always a keyboard and the
  * second a mouse, however this is, as far as im aware, just a very commonly agreed convention and not actually
  * specified anywhere, even if all modern hardware appears to follow this convention, they *technically* dont have to.
  *
  * The reason for this decision is... fun, and because PS/2 appears to be frequently neglected in hobby projects, so i
  * wish to create a publically available and easy to understand "proper" implementation.
+ *
+ * Note that in the future once proper device detection is implemented, this will need to be redone.
  *
  * @{
  */
@@ -90,6 +92,7 @@ typedef enum
 
 typedef enum
 {
+    PS2_DEVICE_NONE = -1,  //!< No device
     PS2_DEVICE_FIRST = 0,  //!< First PS/2 port
     PS2_DEVICE_SECOND = 1, //!< Second PS/2 port
     PS2_DEVICE_COUNT = 2   //!< Total number of ports
@@ -97,9 +100,9 @@ typedef enum
 
 typedef enum
 {
-    PS2_DEVICE_NONE,
-    PS2_DEVICE_KEYBOARD,
-    PS2_DEVICE_MOUSE,
+    PS2_DEVICE_TYPE_NONE,
+    PS2_DEVICE_TYPE_KEYBOARD,
+    PS2_DEVICE_TYPE_MOUSE,
 } ps2_device_type_t;
 
 typedef struct
