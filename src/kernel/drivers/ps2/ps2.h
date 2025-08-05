@@ -1,47 +1,146 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
-#define PS2_BUFFER_LENGTH 32
+/**
+ * @brief PS/2 Driver.
+ * @defgroup kernel_drivers_ps2 PS/2 Driver
+ * @ingroup kernel_drivers
+ *
+ * Patchwork attempts to implement a fully compliant PS/2 driver, even if certain details would be completely irelevent
+ * on modern hardware. For example, most implementations assume that the first PS2 device is always a keyboard and the
+ * second a mouse, however this is, as far as im aware, just a very commonly agreed convention and not actually
+ * specified anywhere, even if all modern hardware appears to follow this convention, they *technically* dont have to.
+ *
+ * The reason for this decision is... fun, and because PS/2 appears to be frequently neglected in hobby projects, so i
+ * wish to create a publically available and easy to understand "proper" implementation.
+ *
+ * @{
+ */
 
-#define PS2_DATA_REPORTING_ENABLE 0xF4
+typedef enum
+{
+    PS2_PORT_DATA = 0x60,
+    PS2_PORT_STATUS = 0x64,
+    PS2_PORT_CMD = 0x64
+} ps2_port_t;
 
-#define PS2_PORT_DATA 0x60
-#define PS2_PORT_CMD 0x64
-#define PS2_PORT_STATUS 0x64
+typedef enum
+{
+    PS2_CMD_CFG_READ = 0x20,
+    PS2_CMD_CFG_WRITE = 0x60,
+    PS2_CMD_SECOND_DISABLE = 0xA7,
+    PS2_CMD_SECOND_ENABLE = 0xA8,
+    PS2_CMD_FIRST_DISABLE = 0xAD,
+    PS2_CMD_FIRST_ENABLE = 0xAE,
+    PS2_CMD_SECOND_TEST = 0xA9,
+    PS2_CMD_SELF_TEST = 0xAA,
+    PS2_CMD_FIRST_TEST = 0xAB,
+    PS2_CMD_SECOND_WRITE = 0xD4,
+    PS2_CMD_OUTPUT_READ = 0xD0,
+    PS2_CMD_OUTPUT_WRITE = 0xD1,
+    PS2_CMD_PULSE_RESET = 0xFE,
+    PS2_CMD_PULSE_BASE = 0xF0
+} ps2_cmd_t;
 
-#define PS2_CMD_CFG_READ 0x20
-#define PS2_CMD_CFG_WRITE 0x60
-#define PS2_CMD_AUX_DISABLE 0xA7
-#define PS2_CMD_AUX_ENABLE 0xA8
-#define PS2_CMD_AUX_TEST 0xA9
-#define PS2_CMD_CONTROLLER_TEST 0xAA
-#define PS2_CMD_KBD_TEST 0xAB
-#define PS2_CMD_KBD_DISABLE 0xAD
-#define PS2_CMD_KBD_ENABLE 0xAE
-#define PS2_CMD_AUX_WRITE 0xD4
-#define PS2_CMD_SCANCODE_SET 0xF0
+typedef enum
+{
+    PS2_STATUS_OUT_FULL = (1 << 0), //!< Output buffer status (0 = empty, 1 = full)
+    PS2_STATUS_IN_FULL = (1 << 1),  //!< Input buffer status (0 = empty, 1 = full)
+    PS2_STATUS_SYSTEM_FLAG = (1 << 2),
+    PS2_STATUS_CMD_DATA = (1 << 3), //!< Command(1) or Data(0)
+    PS2_STATUS_TIMEOUT_ERROR = (1 << 6),
+    PS2_STATUS_PARITY_ERROR = (1 << 7)
+} ps2_status_bits_t;
 
-#define PS2_STATUS_OUT_FULL (1 << 0)
-#define PS2_STATUS_IN_FULL (1 << 1)
-#define PS2_STATUS_TIME_OUT (1 << 6)
+typedef enum
+{
+    PS2_CFG_FIRST_IRQ = (1 << 0),            //!< First PS/2 port interrupt enable
+    PS2_CFG_SECOND_IRQ = (1 << 1),           //!< Second PS/2 port interrupt enable
+    PS2_CFG_SYSTEM_FLAG = (1 << 2),          //!< System flag (POST passed)
+    PS2_CFG_RESERVED_3 = (1 << 3),           //!< Should be zero
+    PS2_CFG_FIRST_CLOCK_DISABLE = (1 << 4),  //!< First PS/2 port clock disable
+    PS2_CFG_SECOND_CLOCK_DISABLE = (1 << 5), //!< Second PS/2 port clock disable
+    PS2_CFG_FIRST_TRANSLATION = (1 << 6),    //!< First PS/2 port translation enable
+    PS2_CFG_RESERVED_7 = (1 << 7)            //!< Should be zero
+} ps2_config_bits_t;
 
-#define PS2_CFG_KBD_IRQ (1 << 0)
-#define PS2_CFG_AUX_IRQ (1 << 1)
+typedef enum
+{
+    PS2_DEV_RESET = 0xFF,
+    PS2_DEV_RESEND = 0xFE,
+    PS2_DEV_SET_DEFAULTS = 0xF6,
+    PS2_DEV_DISABLE_SCANNING = 0xF5,
+    PS2_DEV_ENABLE_SCANNING = 0xF4,
+    PS2_DEV_SET_TYPEMATIC = 0xF3,
+    PS2_DEV_IDENTIFY = 0xF2,
+    PS2_DEV_SET_SCANCODE_SET = 0xF0,
+    PS2_DEV_ECHO = 0xEE,
+    PS2_KBD_SET_LEDS = 0xED,
+    PS2_MOUSE_SET_SAMPLE_RATE = 0xF3,
+    PS2_MOUSE_SET_RESOLUTION = 0xE8,
+    PS2_MOUSE_STATUS_REQUEST = 0xE9,
+    PS2_MOUSE_SET_STREAM_MODE = 0xEA,
+    PS2_MOUSE_READ_DATA = 0xEB,
+    PS2_MOUSE_SET_REMOTE_MODE = 0xF0,
+    PS2_MOUSE_SET_WRAP_MODE = 0xEE,
+    PS2_MOUSE_RESET_WRAP_MODE = 0xEC,
+} ps2_device_cmd_t;
 
-#define PS2_ENABLE_DATA_REPORTING 0xF4
-#define PS2_SET_DEFAULTS 0xF6
+typedef enum
+{
+    PS2_DEVICE_FIRST = 0,  //!< First PS/2 port
+    PS2_DEVICE_SECOND = 1, //!< Second PS/2 port
+    PS2_DEVICE_COUNT = 2   //!< Total number of ports
+} ps2_device_t;
 
-#define PS2_ACK 0xFA
+typedef enum
+{
+    PS2_DEVICE_NONE,
+    PS2_DEVICE_KEYBOARD,
+    PS2_DEVICE_MOUSE,
+} ps2_device_type_t;
 
-#define SCANCODE_RELEASED (1 << 7)
+typedef struct
+{
+    ps2_device_type_t type;
+    const char* name;
+    uint8_t id[2];
+    uint8_t idLength;
+} ps2_device_info_t;
+
+typedef enum
+{
+    PS2_SELF_TEST_PASS = 0x55,
+    PS2_SELF_TEST_FAIL = 0xFC,
+} ps2_self_test_response_t;
+
+typedef enum
+{
+    PS2_DEVICE_TEST_PASS = 0x00,
+    PS2_DEVICE_TEST_CLOCK_STUCK_LOW = 0x01,
+    PS2_DEVICE_TEST_CLOCK_STUCK_HIGH = 0x02,
+    PS2_DEVICE_TEST_DATA_STUCK_LOW = 0x03,
+    PS2_DEVICE_TEST_DATA_STUCK_HIGH = 0x04,
+} ps2_device_test_response_t;
+
+typedef uint32_t ps2_ms_t;
 
 void ps2_init(void);
 
+void ps2_wait(void);
+
 uint8_t ps2_read(void);
+
+uint8_t ps2_read_timeout(ps2_ms_t timeout);
 
 void ps2_write(uint8_t data);
 
-void ps2_wait(void);
+void ps2_cmd(ps2_cmd_t command);
 
-void ps2_cmd(uint8_t command);
+bool ps2_is_dual_channel(void);
+
+bool ps2_device_write(ps2_device_t device, uint8_t data);
+
+/** @} */

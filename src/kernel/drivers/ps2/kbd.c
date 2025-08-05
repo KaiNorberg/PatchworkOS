@@ -42,8 +42,8 @@ static void ps2_kbd_irq(uint8_t irq)
     }
     else
     {
-        kbd_event_type_t type = scancode & SCANCODE_RELEASED ? KBD_RELEASE : KBD_PRESS;
-        keycode_t code = ps2_scancode_to_keycode(isExtended, scancode & ~SCANCODE_RELEASED);
+        kbd_event_type_t type = scancode & PS2_SCANCODE_RELEASED ? KBD_RELEASE : KBD_PRESS;
+        keycode_t code = ps2_scancode_to_keycode(isExtended, scancode & ~PS2_SCANCODE_RELEASED);
         kbd_push(kbd, type, code);
         isExtended = false;
     }

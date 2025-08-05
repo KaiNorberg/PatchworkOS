@@ -52,7 +52,8 @@ typedef struct ref
 /**
  * @brief Increment reference count
  *
- * Atomically increments the reference counter. Used to avoid the need for a typecast. The magic number checking makes sure we cant accidentally misuse this.
+ * Atomically increments the reference counter. Used to avoid the need for a typecast. The magic number checking makes
+ * sure we cant accidentally misuse this.
  *
  * @param ptr Pointer to the struct containing `ref_t` as its first member
  * @return The `ptr` passed as input
@@ -67,7 +68,8 @@ typedef struct ref
 /**
  * @brief Decrement reference count
  *
- * Atomically decrements the reference counter. Used to avoid the need for a typecast. The magic number checking makes sure we cant accidentally misuse this.
+ * Atomically decrements the reference counter. Used to avoid the need for a typecast. The magic number checking makes
+ * sure we cant accidentally misuse this.
  *
  * @param ptr Pointer to the struct containing `ref_t` as its first member
  */
