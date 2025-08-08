@@ -34,7 +34,7 @@ void irq_dispatch(trap_frame_t* trapFrame)
     lapic_eoi();
 }
 
-void irq_install(irq_callback_t callback, irq_t irq)
+void irq_install(irq_t irq, irq_callback_t callback)
 {
     RWLOCK_WRITE_SCOPE(&lock);
 
@@ -54,7 +54,7 @@ void irq_install(irq_callback_t callback, irq_t irq)
     LOG_INFO("installed handler for irq=%d slot=%u\n", irq, handlers[irq].callbackAmount - 1);
 }
 
-void irq_uninstall(irq_callback_t callback, irq_t irq)
+void irq_uninstall(irq_t irq, irq_callback_t callback)
 {
     RWLOCK_WRITE_SCOPE(&lock);
 

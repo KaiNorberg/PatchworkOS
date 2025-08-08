@@ -15,16 +15,11 @@ extern "C"
  * @ingroup libstd
  * @defgroup libstd_sys_kbd Keyboard device
  *
- * The `sys/kbd.h` header defines structs and constants used by keyboard devices for example `/dev/kbd/ps2`. The primary
- * way to use a keyboard device is to open it and then read from it to retrieve `kbd_event_t` structures.
- *
  */
 
 /**
  * @brief Keyboard keycode type.
  * @ingroup libstd_sys_kbd
- *
- * The `keycode_t` enum is used to store keycodes for keyboard keys.
  *
  */
 typedef enum
@@ -285,8 +280,6 @@ typedef enum
  * @brief Keyboard event type.
  * @ingroup libstd_sys_kbd
  *
- * The `kbd_event_type_t` enum is used to store what happened to the a given key to trigger an event.
- *
  */
 typedef enum
 {
@@ -298,11 +291,8 @@ typedef enum
  * @brief Keyboard modifiers type.
  * @ingroup libstd_sys_kbd
  *
- * The `kbd_mods_t` enum is used to store modifiers that should be taken into account when converting processing
- * keycodes. This might be removed in the future forcing userspace to handle modifier keys, probably a far better idea.
- *
  */
-typedef enum // TODO: Replace this with userspace processing (dwm).
+typedef enum
 {
     KBD_MOD_NONE = 0,       //!< No modifier
     KBD_MOD_CAPS = 1 << 0,  //!< Caps Lock modifier
@@ -316,7 +306,7 @@ typedef enum // TODO: Replace this with userspace processing (dwm).
  * @brief Keyboard event structure.
  * @ingroup libstd_sys_kbd
  *
- * The `kbd_event_t` structure can be read from keyboard files, for example `/dev/kbd/ps2`. Keyboard files will block
+ * The `kbd_event_t` structure read from keyboard files, for example `/dev/kbd/ps2`. Keyboard files will block
  * until a key event happens, keyboard files will never return partial events.
  */
 typedef struct

@@ -1,5 +1,6 @@
-#include "scanmap.h"
-#include "sys/kbd.h"
+#include "ps2_scanmap.h"
+
+#include <sys/kbd.h>
 
 const keycode_t scanmap[0xFF] = {
     [0x01] = KBD_ESC,
@@ -122,7 +123,22 @@ const keycode_t extendedScanmap[0xFF] = {
     [0x5C] = KBD_RIGHT_SUPER,
 };
 
-keycode_t ps2_scancode_to_keycode(bool isExtended, uint8_t scancode)
+void ps2_scancode_from_byte(ps2_scancode_t* scancode, uint8_t byte)
 {
-    return isExtended ? extendedScanmap[scancode] : scanmap[scancode];
+    if (byte == PS2_EXTEND_BYTE)
+    {
+        scancode->scancode = 0;
+        scancode->isExtendCode = true;
+        scancode->isReleased = false;
+        return;
+    }
+
+    scancode->scancode = byte & ~PS2_BYTE_RELEASE_FLAG;
+    scancode->isExtendCode = false;
+    scancode->isReleased = byte & PS2_BYTE_RELEASE_FLAG;
+}
+
+keycode_t ps2_scancode_to_keycode(ps2_scancode_t* scancode, bool isExtended)
+{
+    return isExtended ? extendedScanmap[scancode->scancode] : scanmap[scancode->scancode];
 }

@@ -15,26 +15,26 @@
 
 ### Kernel
 
-- **Multithreading** with a [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h), fully preemptive and tickless
-- **Symmetric Multi Processing**
-- **Constant-time memory management** for both physical and virtual memory
-- **File based IPC** including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/note.h)
-- **Synchronization primitives** including mutexes, read-write locks and [futexes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sync/futex.h)
-- **SIMD support**
+- Multithreading with a [constant-time scheduler](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sched/sched.h), fully preemptive and tickless
+- Symmetric Multi Processing
+- Constant-time memory management for both physical and virtual memory
+- File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/note.h)
+- Synchronization primitives including mutexes, read-write locks and [futexes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sync/futex.h)
+- SIMD support
 
 ### File System
 
-- **Linux-style VFS** with dentry+inode caching, negative dentrys, mountpoints, hardlinks, etc.
-- **Strict adherence** to "everything is a file" philosophy
-- **Custom image format** [(.fbmp)](https://github.com/KaiNorberg/fbmp)
-- **Custom font format** [(.grf)](https://github.com/KaiNorberg/grf)
+- Linux-style VFS with dentry+inode caching, negative dentrys, mountpoints, hardlinks, etc.
+- Strict adherence to "everything is a file" philosophy
+- Custom image format [(.fbmp)](https://github.com/KaiNorberg/fbmp)
+- Custom font format [(.grf)](https://github.com/KaiNorberg/grf)
 
 ### User Space
 
-- **Custom C standard library** and system libraries
-- **Shared memory based window manager**
-- **Highly modular desktop environment** - the taskbar, wallpaper and cursor are just windows
-- **Theming** via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg)
+- Custom C standard library and system libraries
+- Shared memory based window manager
+- Highly modular desktop environment - the taskbar, wallpaper and cursor are just windows
+- Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg)
 
 *And much more...*
 
@@ -138,21 +138,23 @@ Patchwork strictly follows the "everything is a file" philosophy in a way simila
 
 ### Sockets
 
-In order to create a local seqpacket socket, you open the `/net/local/seqpacket` file, which will return a file that acts as the handle for your socket. Reading from this file will return the ID of your created socket so, for example, you can do
+In order to create a local seqpacket socket, you open the `/net/local/seqpacket` file. The opened file will act as the handle for your socket. Reading from the handle will return the ID of your created socket so, for example, you can do
 
 ```c
 fd_t handle = open("/net/local/seqpacket");
 char id[32] = {0};
-read(handle, id, 32);
+read(handle, id, 31);
 ```
 
-Note that when the handle is closed, the socket is also freed. The ID that the handle returns is the name of a directory that has been created in the "/net/local" directory, in which there are three files, these include:
+Note that when the handle is closed, the socket is also freed. The ID that the handle returns is also the name of a directory that has been created in the `/net/local` directory, in which are three files, these include:
 
 - `data` - used to send and retrieve data
 - `ctl` - used to send commands
 - `accept` - used to accept incoming connections
 
-So, for example, the sockets data file is located at `/net/local/[id]/data`. Note that only the process that created the socket or its children can open these files. Now say we want to make our socket into a server, we would then use the bind and listen commands, for example
+So, for example, the sockets data file is located at `/net/local/[id]/data`. Note that only the process that created the socket or its children can open these files.
+
+Say we want to make our socket into a server, we would then use the bind and listen commands with the `ctl` file, we can then write
 
 ```c
 fd_t ctl = openf("/net/local/%s/ctl", id);
@@ -161,13 +163,15 @@ writef(ctl, "listen");
 close(ctl);
 ```
 
-Note the use of `openf()` which allows us to open files via a formatted path and that we name our server `myserver`. If we wanted to accept a connection using our newly created server, we just open its accept file, like this
+Note the use of `openf()` which allows us to open files via a formatted path and that we name our server `myserver`. If we wanted to accept a connection using our newly created server, we just open its accept file by writing
 
 ```c
 fd_t fd = openf("/net/local/%s/accept", id);
 ```
 
-The returned file descriptor can be used to send and receive data, just like when calling `accept()` in for example Linux or other POSIX operating systems. This is practically true of the entire socket API, apart from using these weird files everything (should) work as expected. For the sake of completeness, if we wanted to connect to this server, we can do something like this
+The returned file descriptor can be used to send and receive data, just like when calling `accept()` in for example Linux or other POSIX operating systems. The entire socket API attempts to mimic the POSIX socket API, apart from using these weird files everything (should) work as expected.
+
+For the sake of completeness, if we wanted to connect to this server, we can do
 
 ```c
 fd_t handle = open("/net/local/seqpacket");
@@ -181,7 +185,7 @@ close(ctl);
 
 ### File Flags?
 
-You may have noticed that, in the above section, the `open()` function does not take in a flags argument. This is because flags are part of the file path directly so if you wanted to create a non-blocking socket, you would use
+You may have noticed that in the above section, the `open()` function does not take in a flags argument. This is because flags are part of the file path directly so if you wanted to create a non-blocking socket, you can write
 
 ```c
 fd_t handle = open("/net/local/seqpacket:nonblock");
@@ -193,7 +197,7 @@ Multiple flags are allowed, just separate them with the `:` character, this mean
 
 So, finally, I can explain why I've decided to do this. It does seem overly complicated at first glance. There are three reasons in total.
 
-The first is that I want Patchwork to be easy to expand upon. Normally, to just implement a single system call requires large portions of the OS to be modified, but with Patchwork, it's just a matter of adding a new file to the filesystem.
+The first is that I want Patchwork to be easy to expand upon. Normally, to just implement a single system call requires large portions of the OS to be modified and a whole new API to learn, but with Patchwork, it's just a matter of adding a new file.
 
 The second reason is that it makes using the shell far more interesting, there is no need for special functions or any other magic keywords to for instance use sockets, all it takes is opening and reading from files.
 

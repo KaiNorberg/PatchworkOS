@@ -13,7 +13,7 @@ static uint8_t bcd_to_bin(uint8_t bcd)
     return (bcd >> 4) * 10 + (bcd & 0x0F);
 }
 
-static void rtc_irq_handler(uint8_t irq)
+static void rtc_irq(irq_t irq)
 {
     port_outb(CMOS_ADDRESS, 0x0C);
     port_inb(CMOS_DATA);
@@ -21,7 +21,7 @@ static void rtc_irq_handler(uint8_t irq)
 
 void rtc_init(void)
 {
-    irq_install(rtc_irq_handler, IRQ_CMOS);
+    irq_install(IRQ_CMOS, rtc_irq);
     port_outb(CMOS_ADDRESS, 0x8B);
     uint8_t temp = port_inb(CMOS_DATA);
     port_outb(CMOS_ADDRESS, 0x8B);

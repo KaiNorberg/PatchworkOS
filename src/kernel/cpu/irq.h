@@ -27,7 +27,7 @@ typedef enum
 
 #define IRQ_MAX_CALLBACK 16
 
-typedef void (*irq_callback_t)(uint8_t irq);
+typedef void (*irq_callback_t)(irq_t irq);
 
 typedef struct
 {
@@ -38,5 +38,5 @@ typedef struct
 
 void irq_dispatch(trap_frame_t* trapFrame);
 
-void irq_install(irq_callback_t callback, irq_t irq);
-void irq_uninstall(irq_callback_t callback, irq_t irq);
+void irq_install(irq_t irq, irq_callback_t callback);
+void irq_uninstall(irq_t irq, irq_callback_t callback);
