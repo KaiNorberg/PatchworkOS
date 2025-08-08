@@ -36,12 +36,6 @@
 - **Highly modular desktop environment** - the taskbar, wallpaper and cursor are just windows
 - **Theming** via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg)
 
-### Performance
-
-- **Uses ~50-130 MB RAM** with the desktop environment running.
-- **Responsive desktop environment** even at 100% CPU usage, DOOM is fully playable while running stress tests.
-- **CPU usage** around ~0.1% with the desktop environment running.
-
 *And much more...*
 
 ---
