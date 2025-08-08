@@ -22,6 +22,7 @@
 * File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/note.h).
 * Synchronization primitives including, mutexes, read-write locks+mutexes and [futexes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sync/futex.h).
 * SIMD.
+* A comprehensive [PS/2 driver](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/drivers/ps2), avoiding common shortcuts like assuming device type based on port number (a simplification found even in [minix](https://github.com/Stichting-MINIX-Research-Foundation/minix/blob/master/minix/drivers/hid/pckbd/pckbd.c)).
 
 ### File System
 
@@ -61,6 +62,7 @@ And much more...
 
 * Modular kernel.
 * Shared libraries.
+* Proper ACPI Mode + AML Interpreter.
 * Software interrupts for notes (signals).
 * Lua port.
 * Capability based security model (currently has no well-defined security model).
@@ -254,8 +256,8 @@ You should now see a new entry in your GRUB boot menu allowing you to boot into 
 
 ### Troubleshooting
 
-  * **QEMU boot failure**: Check if you are using QEMU version 10.0.0, as that version is known to not work correctly, try using version 9.2.3.
-  * **Any other errors?**: If an error not listed here occurs or is not resolvable, please open an issue in the GitHub.
+* **QEMU boot failure**: Check if you are using QEMU version 10.0.0, as that version is known to not work correctly, try using version 9.2.3.
+* **Any other errors?**: If an error not listed here occurs or is not resolvable, please open an issue in the GitHub.
 
 ## Testing
 
@@ -263,9 +265,9 @@ This repository uses a bit of a hacky way to do testing, we use a github action,
 
 ### Tested Configurations
 
-  * QEMU emulator version 9.2.3 (qemu-9.2.3-1.fc42)
-  * Lenovo ThinkPad E495
-  * Ryzen 5 3600X | 32GB 3200MHZ Corsair Vengeance
+* QEMU emulator version 9.2.3 (qemu-9.2.3-1.fc42)
+* Lenovo ThinkPad E495
+* Ryzen 5 3600X | 32GB 3200MHZ Corsair Vengeance
 
 Currently untested on Intel hardware. Let me know if you have different hardware, and it runs (or doesn't) for you!
 

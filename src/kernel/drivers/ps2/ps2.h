@@ -18,6 +18,9 @@
  *
  * Note that in the future once proper device detection is implemented, this will need to be redone.
  *
+ * Some sources I used while making this:
+ * https://wiki.osdev.org/I8042_PS/2_Controller
+ * https://www-ug.eecg.toronto.edu/msl/nios_devices/datasheets/PS2%20Keyboard%20Protocol.htm
  * @{
  */
 
@@ -107,10 +110,12 @@ typedef enum
 
 typedef struct
 {
+    ps2_device_t device;
     ps2_device_type_t type;
     const char* name;
     uint8_t id[2];
     uint8_t idLength;
+    void* data;
 } ps2_device_info_t;
 
 typedef enum
@@ -128,22 +133,43 @@ typedef enum
     PS2_DEVICE_TEST_DATA_STUCK_HIGH = 0x04,
 } ps2_device_test_response_t;
 
-typedef uint32_t ps2_ms_t;
+typedef enum
+{
+    PS2_DEVICE_RESET_PASS_1 = 0xFA,
+    PS2_DEVICE_RESET_PASS_2 = 0xAA,
+} ps2_device_reset_response_t;
+
+typedef enum
+{
+    PS2_DEVICE_ACK = 0xFA,
+} ps2_device_ack_t;
+
+#define PS2_READ(data) ({ \
+    uint64_t result = ps2_wait_until_set(PS2_STATUS_OUT_FULL); \
+    if (result != ERR) \
+    { \
+        *(data) = port_inb(PS2_PORT_DATA); \
+    } \
+    result; \
+})
+
+#define PS2_WRITE(data) ({ \
+    uint64_t result = ps2_wait_until_clear(PS2_STATUS_IN_FULL); \
+    if (result != ERR) \
+    { \
+        port_outb(PS2_PORT_DATA, data); \
+    } \
+    result; \
+})
 
 void ps2_init(void);
 
-void ps2_wait(void);
+uint64_t ps2_wait_until_set(ps2_status_bits_t status);
 
-uint8_t ps2_read(void);
+uint64_t ps2_wait_until_clear(ps2_status_bits_t status);
 
-uint8_t ps2_read_timeout(ps2_ms_t timeout);
+uint64_t ps2_cmd(ps2_cmd_t command);
 
-void ps2_write(uint8_t data);
-
-void ps2_cmd(ps2_cmd_t command);
-
-bool ps2_is_dual_channel(void);
-
-bool ps2_device_write(ps2_device_t device, uint8_t data);
+uint64_t ps2_device_cmd(ps2_device_t device, ps2_device_cmd_t command);
 
 /** @} */

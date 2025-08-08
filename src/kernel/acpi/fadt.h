@@ -10,6 +10,15 @@
  */
 
 /**
+ * @brief Enum for the `fadt_t::bootArchFlags` field.
+ * 
+ */
+typedef enum
+{
+    FADT_BOOT_ARCH_PS2_EXISTS = (1 << 1)
+} fadt_boot_arch_flags_t;
+
+/**
  * @brief FADT generic Address Structure
  * @struct fadt_gas_t
  *
@@ -66,7 +75,7 @@ typedef struct PACKED
     uint8_t dayAlarm;
     uint8_t monthAlarm;
     uint8_t century;
-    uint16_t bootArchitectureFlags;
+    uint16_t bootArchFlags;
     uint8_t reserved2;
     uint32_t flags;
     fadt_gas_t resetReg;
