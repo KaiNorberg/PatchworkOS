@@ -1,5 +1,7 @@
 #pragma once
 
+#include "cpu/port.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -144,23 +146,25 @@ typedef enum
     PS2_DEVICE_ACK = 0xFA,
 } ps2_device_ack_t;
 
-#define PS2_READ(data) ({ \
-    uint64_t result = ps2_wait_until_set(PS2_STATUS_OUT_FULL); \
-    if (result != ERR) \
-    { \
-        *(data) = port_inb(PS2_PORT_DATA); \
-    } \
-    result; \
-})
+#define PS2_READ(data) \
+    ({ \
+        uint64_t result = ps2_wait_until_set(PS2_STATUS_OUT_FULL); \
+        if (result != ERR) \
+        { \
+            *(data) = port_inb(PS2_PORT_DATA); \
+        } \
+        result; \
+    })
 
-#define PS2_WRITE(data) ({ \
-    uint64_t result = ps2_wait_until_clear(PS2_STATUS_IN_FULL); \
-    if (result != ERR) \
-    { \
-        port_outb(PS2_PORT_DATA, data); \
-    } \
-    result; \
-})
+#define PS2_WRITE(data) \
+    ({ \
+        uint64_t result = ps2_wait_until_clear(PS2_STATUS_IN_FULL); \
+        if (result != ERR) \
+        { \
+            port_outb(PS2_PORT_DATA, data); \
+        } \
+        result; \
+    })
 
 void ps2_init(void);
 

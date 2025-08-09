@@ -11,7 +11,7 @@
 
 /**
  * @brief Enum for the `fadt_t::bootArchFlags` field.
- * 
+ *
  */
 typedef enum
 {

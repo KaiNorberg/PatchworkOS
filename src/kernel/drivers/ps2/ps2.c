@@ -2,11 +2,11 @@
 #include "ps2_kbd.h"
 #include "ps2_mouse.h"
 
+#include "acpi/fadt.h"
 #include "cpu/port.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "sched/timer.h"
-#include "acpi/fadt.h"
 #include <errno.h>
 #include <string.h>
 
@@ -252,8 +252,8 @@ static uint64_t ps2_device_test(ps2_device_t device)
 
     if (response != PS2_DEVICE_TEST_PASS)
     {
-        LOG_ERR("ps2 %s device test failed (%s)\n",
-                ps2_device_to_string(device), ps2_device_test_response_to_string(response));
+        LOG_ERR("ps2 %s device test failed (%s)\n", ps2_device_to_string(device),
+            ps2_device_test_response_to_string(response));
         return ERR;
     }
 
@@ -286,8 +286,8 @@ static uint64_t ps2_device_reset(ps2_device_t device)
 
     if (!gotFa || !gotAa)
     {
-        LOG_ERR("ps2 %s device reset failed, invalid response sequence 0x%02x 0x%02x\n",
-                ps2_device_to_string(device), response[0], response[1]);
+        LOG_ERR("ps2 %s device reset failed, invalid response sequence 0x%02x 0x%02x\n", ps2_device_to_string(device),
+            response[0], response[1]);
         return ERR;
     }
 
@@ -309,11 +309,11 @@ static uint64_t ps2_device_disable_scanning(ps2_device_t device)
         return ERR;
     }
 
-    // TODO: Mice seem to return 0 as a valid response, i havent looked to much into this, but im aware that the data reporting command should probably be used for mice instead. For now this works, but might cause race conditions?
+    // TODO: Mice seem to return 0 as a valid response, i havent looked to much into this, but im aware that the data
+    // reporting command should probably be used for mice instead. For now this works, but might cause race conditions?
     if (ack != PS2_DEVICE_ACK && ack != 0)
     {
-        LOG_ERR("ps2 %s disable scanning failed, unexpected response 0x%02x\n",
-                ps2_device_to_string(device), ack);
+        LOG_ERR("ps2 %s disable scanning failed, unexpected response 0x%02x\n", ps2_device_to_string(device), ack);
         return ERR;
     }
 
@@ -337,8 +337,7 @@ static uint64_t ps2_device_enable_scanning(ps2_device_t device)
 
     if (ack != PS2_DEVICE_ACK)
     {
-        LOG_ERR("ps2 %s device enable scanning failed, expected 0xFA got 0x%02x\n",
-                ps2_device_to_string(device), ack);
+        LOG_ERR("ps2 %s device enable scanning failed, expected 0xFA got 0x%02x\n", ps2_device_to_string(device), ack);
         return ERR;
     }
 
@@ -374,8 +373,7 @@ static uint64_t ps2_device_identify(ps2_device_t device, ps2_device_info_t* info
 
     if (ack != PS2_DEVICE_ACK)
     {
-        LOG_ERR("ps2 %s device identify failed, expected ACK (0xFA) got 0x%02x\n",
-                ps2_device_to_string(device), ack);
+        LOG_ERR("ps2 %s device identify failed, expected ACK (0xFA) got 0x%02x\n", ps2_device_to_string(device), ack);
         return ERR;
     }
 
@@ -386,30 +384,25 @@ static uint64_t ps2_device_identify(ps2_device_t device, ps2_device_info_t* info
     if (PS2_READ(&id[0]) == 0)
     {
         idLength = 1;
-        LOG_DEBUG("ps2 %s device ID byte 0: 0x%02x\n", ps2_device_to_string(device), id[0]);
 
         errno = 0;
         if (PS2_READ(&id[1]) == 0)
         {
             idLength = 2;
-            LOG_DEBUG("ps2 %s device ID byte 1: 0x%02x\n", ps2_device_to_string(device), id[1]);
         }
         else if (errno != ETIMEDOUT)
         {
-            LOG_ERR("ps2 %s device failed to read second ID byte (non-timeout error)\n",
-                    ps2_device_to_string(device));
+            LOG_ERR("ps2 %s device failed to read second ID byte\n", ps2_device_to_string(device));
             return ERR;
         }
     }
     else if (errno == ETIMEDOUT)
     {
         idLength = 0;
-        LOG_DEBUG("ps2 %s device sent no ID bytes (ancient device)\n", ps2_device_to_string(device));
     }
     else
     {
-        LOG_ERR("ps2 %s device failed to read first ID byte (non-timeout error)\n",
-                ps2_device_to_string(device));
+        LOG_ERR("ps2 %s device failed to read first ID byte\n", ps2_device_to_string(device));
         return ERR;
     }
 
@@ -426,21 +419,20 @@ static uint64_t ps2_device_identify(ps2_device_t device, ps2_device_info_t* info
 
     for (uint8_t i = 0; i < PS2_KNOWN_DEVICE_AMOUNT; i++)
     {
-        if (idLength == knownDevices[i].idLength &&
-            memcmp(id, knownDevices[i].id, idLength) == 0)
+        if (idLength == knownDevices[i].idLength && memcmp(id, knownDevices[i].id, idLength) == 0)
         {
             info->type = knownDevices[i].type;
             info->name = knownDevices[i].name;
-            LOG_INFO("ps2 %s device identified as '%s', type %s\n",
-                     ps2_device_to_string(device), info->name, ps2_device_type_to_string(info->type));
+            LOG_INFO("ps2 %s device identified as '%s', type %s\n", ps2_device_to_string(device), info->name,
+                ps2_device_type_to_string(info->type));
             return 0;
         }
     }
 
     ps2_device_type_t assumedType = (device == PS2_DEVICE_FIRST) ? PS2_DEVICE_TYPE_KEYBOARD : PS2_DEVICE_TYPE_MOUSE;
 
-    LOG_WARN("ps2 %s device unknown ID (length=%d), assuming %s by convention\n",
-             ps2_device_to_string(device), idLength, ps2_device_type_to_string(assumedType));
+    LOG_WARN("ps2 %s device unknown ID (length=%d), assuming %s by convention\n", ps2_device_to_string(device),
+        idLength, ps2_device_type_to_string(assumedType));
 
     info->type = assumedType;
     info->name = "unknown";
@@ -460,7 +452,7 @@ static uint64_t ps2_device_identify(ps2_device_t device, ps2_device_info_t* info
     return 0;
 }
 
-static uint64_t ps2_device_init(ps2_device_info_t *info)
+static uint64_t ps2_device_init(ps2_device_info_t* info)
 {
     if (info->type == PS2_DEVICE_TYPE_KEYBOARD)
     {
@@ -559,7 +551,6 @@ static uint64_t ps2_devices_init(void)
         cfg |= PS2_CFG_SECOND_IRQ;
     }
     cfg &= ~PS2_CFG_FIRST_TRANSLATION;
-    LOG_DEBUG("ps2 setting final config byte: 0x%02x\n", cfg);
 
     if (ps2_cmd(PS2_CMD_CFG_WRITE) == ERR)
     {

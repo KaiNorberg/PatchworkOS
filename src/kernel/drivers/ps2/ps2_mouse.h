@@ -21,4 +21,10 @@ typedef struct ps2_mouse_packet
     int16_t deltaY;
 } ps2_mouse_packet_t;
 
+typedef struct ps2_mouse_irq_context
+{
+    uint8_t index;
+    ps2_mouse_packet_t packet;
+} ps2_mouse_irq_context_t;
+
 uint64_t ps2_mouse_init(ps2_device_info_t* info);

@@ -1,8 +1,8 @@
 #include "kernel.h"
 
 #include "acpi/acpi.h"
-#include "acpi/madt.h"
 #include "acpi/fadt.h"
+#include "acpi/madt.h"
 #include "cpu/gdt.h"
 #include "cpu/idt.h"
 #include "cpu/simd.h"

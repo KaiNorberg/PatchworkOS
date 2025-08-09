@@ -31,8 +31,8 @@ void fadt_init(void)
         panic(NULL, "fadt is not valid");
     }
 
-    LOG_INFO("fadt found with preferred power profile %u and sci interrupt %u\n", 
-             fadt->preferredPowerManagementProfile, fadt->sciInterrupt);
+    LOG_INFO("fadt found with preferred power profile %u and sci interrupt %u\n", fadt->preferredPowerManagementProfile,
+        fadt->sciInterrupt);
 }
 
 fadt_t* fadt_get(void)

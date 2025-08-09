@@ -4,6 +4,13 @@
 
 #include <stdbool.h>
 
+/**
+ * @brief Interrupt Request handling
+ * @defgroup kernel_cpu_irq IRQ
+ * @ingroup kernel_cpu
+ * @{
+ */
+
 typedef enum
 {
     IRQ_PIT = 0x0,
@@ -27,7 +34,13 @@ typedef enum
 
 #define IRQ_MAX_CALLBACK 16
 
-typedef void (*irq_callback_t)(irq_t irq);
+typedef void (*irq_callback_func_t)(irq_t irq, void* data);
+
+typedef struct
+{
+    irq_callback_func_t func;
+    void* data;
+} irq_callback_t;
 
 typedef struct
 {
@@ -38,5 +51,7 @@ typedef struct
 
 void irq_dispatch(trap_frame_t* trapFrame);
 
-void irq_install(irq_t irq, irq_callback_t callback);
-void irq_uninstall(irq_t irq, irq_callback_t callback);
+void irq_install(irq_t irq, irq_callback_func_t func, void* data);
+void irq_uninstall(irq_t irq, irq_callback_func_t func);
+
+/** @} */

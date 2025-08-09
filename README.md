@@ -296,4 +296,6 @@ Testing uses a GitHub action that compiles the project then runs it using QEMU. 
 
 Contributions are welcome! Anything from bug reports/fixes, performance improvements, new features, or even just fixing typos or adding documentation!
 
+If you are unsure where to start, try searching for any "TODO" comments in the codebase.
+
 Check out the [**contribution guidelines**](CONTRIBUTING.md) to get started.
