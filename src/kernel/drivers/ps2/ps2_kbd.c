@@ -47,9 +47,8 @@ static void ps2_kbd_irq(irq_t irq, void* data)
 
 uint64_t ps2_kbd_init(ps2_device_info_t* info)
 {
-    ps2_device_ack_t ack;
     if (ps2_device_cmd(info->device, PS2_DEV_SET_SCANCODE_SET) == ERR ||
-        ps2_device_cmd(info->device, PS2_SCAN_CODE_SET) == ERR || PS2_READ(&ack) == ERR || ack != PS2_DEVICE_ACK)
+        ps2_device_cmd(info->device, PS2_SCAN_CODE_SET) == ERR)
     {
         LOG_ERR("failed to set PS/2 keyboard scan code set\n");
         return ERR;

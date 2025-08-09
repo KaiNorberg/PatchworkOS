@@ -2,6 +2,8 @@
 
 #include "ps2.h"
 
+// TODO: Implement scrolling and buttons 4 and 5.
+
 typedef enum
 {
     PS2_PACKET_BUTTON_LEFT = (1 << 0),

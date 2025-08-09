@@ -35,7 +35,7 @@ uint64_t apic_timer_ticks_per_ns(void)
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
     lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, UINT32_MAX);
 
-    hpet_sleep(CLOCKS_PER_SEC / 1000);
+    hpet_wait(CLOCKS_PER_SEC / 1000);
 
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
 

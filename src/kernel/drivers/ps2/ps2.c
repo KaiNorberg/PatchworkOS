@@ -7,6 +7,8 @@
 #include "log/log.h"
 #include "log/panic.h"
 #include "sched/timer.h"
+#include "drivers/time/hpet.h"
+
 #include <errno.h>
 #include <string.h>
 
@@ -291,55 +293,9 @@ static uint64_t ps2_device_reset(ps2_device_t device)
         return ERR;
     }
 
-    return 0;
-}
-
-static uint64_t ps2_device_disable_scanning(ps2_device_t device)
-{
-    if (ps2_device_cmd(device, PS2_DEV_DISABLE_SCANNING) == ERR)
-    {
-        LOG_ERR("ps2 %s device failed to send disable scanning command\n", ps2_device_to_string(device));
-        return ERR;
-    }
-
-    uint8_t ack;
-    if (PS2_READ(&ack) == ERR)
-    {
-        LOG_ERR("ps2 %s device failed to read disable scanning response\n", ps2_device_to_string(device));
-        return ERR;
-    }
-
-    // TODO: Mice seem to return 0 as a valid response, i havent looked to much into this, but im aware that the data
-    // reporting command should probably be used for mice instead. For now this works, but might cause race conditions?
-    if (ack != PS2_DEVICE_ACK && ack != 0)
-    {
-        LOG_ERR("ps2 %s disable scanning failed, unexpected response 0x%02x\n", ps2_device_to_string(device), ack);
-        return ERR;
-    }
-
-    return 0;
-}
-
-static uint64_t ps2_device_enable_scanning(ps2_device_t device)
-{
-    if (ps2_device_cmd(device, PS2_DEV_ENABLE_SCANNING) == ERR)
-    {
-        LOG_ERR("ps2 %s device failed to send enable scanning command\n", ps2_device_to_string(device));
-        return ERR;
-    }
-
-    uint8_t ack;
-    if (PS2_READ(&ack) == ERR)
-    {
-        LOG_ERR("ps2 %s device failed to read enable scanning response\n", ps2_device_to_string(device));
-        return ERR;
-    }
-
-    if (ack != PS2_DEVICE_ACK)
-    {
-        LOG_ERR("ps2 %s device enable scanning failed, expected 0xFA got 0x%02x\n", ps2_device_to_string(device), ack);
-        return ERR;
-    }
+    // For reasons only down to the geniuses that designed PS/2, a mouse will append a byte to the reset response, but a keyboard wont, so we read that to but ignore the result for consistent handling.
+    uint8_t data;
+    PS2_READ(&data);
 
     return 0;
 }
@@ -352,28 +308,15 @@ static uint64_t ps2_device_identify(ps2_device_t device, ps2_device_info_t* info
         return ERR;
     }
 
-    if (ps2_device_disable_scanning(device) == ERR)
+    if (ps2_device_cmd(device, PS2_DEV_DISABLE_SCANNING) == ERR)
     {
-        LOG_ERR("ps2 %s device identify failed to disable scanning\n", ps2_device_to_string(device));
+        LOG_ERR("ps2 %s device failed to send disable scanning command\n", ps2_device_to_string(device));
         return ERR;
     }
 
     if (ps2_device_cmd(device, PS2_DEV_IDENTIFY) == ERR)
     {
         LOG_ERR("ps2 %s device failed to send identify command\n", ps2_device_to_string(device));
-        return ERR;
-    }
-
-    uint8_t ack;
-    if (PS2_READ(&ack) == ERR)
-    {
-        LOG_ERR("ps2 %s device failed to read identify ACK\n", ps2_device_to_string(device));
-        return ERR;
-    }
-
-    if (ack != PS2_DEVICE_ACK)
-    {
-        LOG_ERR("ps2 %s device identify failed, expected ACK (0xFA) got 0x%02x\n", ps2_device_to_string(device), ack);
         return ERR;
     }
 
@@ -406,9 +349,9 @@ static uint64_t ps2_device_identify(ps2_device_t device, ps2_device_info_t* info
         return ERR;
     }
 
-    if (ps2_device_enable_scanning(device) == ERR)
+    if (ps2_device_cmd(device, PS2_DEV_ENABLE_SCANNING) == ERR)
     {
-        LOG_ERR("ps2 %s device identify failed to enable scanning\n", ps2_device_to_string(device));
+        LOG_ERR("ps2 %s device failed to send enable scanning command\n", ps2_device_to_string(device));
         return ERR;
     }
 
@@ -429,27 +372,33 @@ static uint64_t ps2_device_identify(ps2_device_t device, ps2_device_info_t* info
         }
     }
 
+    LOG_WARN("ps2 %s device unknown ID (length=%d)\n", ps2_device_to_string(device),
+        idLength);
+    return ERR;
+}
+
+static void ps2_device_unknown(ps2_device_t device, ps2_device_info_t* info)
+{
     ps2_device_type_t assumedType = (device == PS2_DEVICE_FIRST) ? PS2_DEVICE_TYPE_KEYBOARD : PS2_DEVICE_TYPE_MOUSE;
 
-    LOG_WARN("ps2 %s device unknown ID (length=%d), assuming %s by convention\n", ps2_device_to_string(device),
-        idLength, ps2_device_type_to_string(assumedType));
+    LOG_WARN("ps2 %s device unidentified, assuming %s by convention\n", ps2_device_to_string(device),
+        ps2_device_type_to_string(assumedType));
 
-    info->type = assumedType;
-    info->name = "unknown";
+    info->device = device;
+    memset(info->id, 0, sizeof(info->id));
+    info->idLength = 0;
+    info->data = NULL;
 
-    if (idLength > 0)
+    if (assumedType == PS2_DEVICE_TYPE_KEYBOARD)
     {
-        if (idLength == 1)
-        {
-            LOG_WARN("ps2 unknown device ID: 0x%02x\n", id[0]);
-        }
-        else
-        {
-            LOG_WARN("ps2 unknown device ID: 0x%02x 0x%02x\n", id[0], id[1]);
-        }
+        info->type = PS2_DEVICE_TYPE_KEYBOARD;
+        info->name = "assumed keyboard";
     }
-
-    return 0;
+    else if (assumedType == PS2_DEVICE_TYPE_MOUSE)
+    {
+        info->type = PS2_DEVICE_TYPE_MOUSE;
+        info->name = "assumed mouse";
+    }
 }
 
 static uint64_t ps2_device_init(ps2_device_info_t* info)
@@ -568,16 +517,13 @@ static uint64_t ps2_devices_init(void)
     {
         if (ps2_device_identify(PS2_DEVICE_FIRST, &firstDevice) == ERR)
         {
-            LOG_ERR("ps2 first device identification failed\n");
-            firstAvailable = false;
+            ps2_device_unknown(PS2_DEVICE_FIRST, &firstDevice);
         }
-        else
+
+        if (ps2_device_init(&firstDevice) == ERR)
         {
-            if (ps2_device_init(&firstDevice) == ERR)
-            {
-                LOG_ERR("ps2 first device initialization failed\n");
-                firstAvailable = false;
-            }
+            LOG_ERR("ps2 first device initialization failed\n");
+            firstAvailable = false;
         }
     }
 
@@ -585,16 +531,13 @@ static uint64_t ps2_devices_init(void)
     {
         if (ps2_device_identify(PS2_DEVICE_SECOND, &secondDevice) == ERR)
         {
-            LOG_ERR("ps2 second device identification failed\n");
-            secondAvailable = false;
+            ps2_device_unknown(PS2_DEVICE_SECOND, &secondDevice);
         }
-        else
+
+        if (ps2_device_init(&secondDevice) == ERR)
         {
-            if (ps2_device_init(&secondDevice) == ERR)
-            {
-                LOG_ERR("ps2 second device initialization failed\n");
-                secondAvailable = false;
-            }
+            LOG_ERR("ps2 second device initialization failed\n");
+            secondAvailable = false;
         }
     }
 
@@ -624,7 +567,7 @@ void ps2_init(void)
         panic(NULL, "ps2 second device disable failed");
     }
 
-    port_inb(PS2_PORT_DATA); // Discard
+    ps2_drain();
 
     if (ps2_set_initial_config() == ERR)
     {
@@ -643,7 +586,17 @@ void ps2_init(void)
 
     if (ps2_devices_init() == ERR)
     {
-        panic(NULL, "ps2 device initialization failed - no working devices");
+        panic(NULL, "ps2 device initialization failed");
+    }
+}
+
+void ps2_drain(void)
+{
+    hpet_wait(CLOCKS_PER_SEC / 10);
+    while (port_inb(PS2_PORT_STATUS) & PS2_STATUS_OUT_FULL)
+    {
+        port_inb(PS2_PORT_DATA);
+        hpet_wait(CLOCKS_PER_SEC / 10);
     }
 }
 
@@ -701,21 +654,63 @@ uint64_t ps2_cmd(ps2_cmd_t command)
 
 uint64_t ps2_device_cmd(ps2_device_t device, ps2_device_cmd_t command)
 {
-    if (device == PS2_DEVICE_FIRST)
+    for (int8_t i = 0; i < 3; i++)
     {
-        return PS2_WRITE(command);
-    }
-    else if (device == PS2_DEVICE_SECOND)
-    {
-        if (ps2_cmd(PS2_CMD_SECOND_WRITE) == ERR)
+        if (device == PS2_DEVICE_FIRST)
         {
+            // Do nothing
+        }
+        else if (device == PS2_DEVICE_SECOND)
+        {
+            if (ps2_cmd(PS2_CMD_SECOND_WRITE) == ERR)
+            {
+                LOG_WARN("ps2 %s device command, failed to send device select command\n", ps2_device_to_string(device));
+                return ERR;
+            }
+        }
+        else
+        {
+            panic(NULL, "invalid ps2 device specified");
             return ERR;
         }
-        return PS2_WRITE(command);
+
+        if (PS2_WRITE(command) == ERR)
+        {
+            LOG_WARN("ps2 %s device command, failed to send command\n", ps2_device_to_string(device));
+            return ERR;
+        }
+
+        // Reset does not send a acknowledgement
+        if (command == PS2_DEV_RESET)
+        {
+            return 0;
+        }
+
+        // Setting the scancode set first returns acknowlegment after the sub command.
+        if (command == PS2_DEV_SET_SCANCODE_SET)
+        {
+            return 0;
+        }
+
+        ps2_device_ack_t ack;
+        if (PS2_READ(&ack) == ERR)
+        {
+            LOG_WARN("ps2 %s device command, failed to read ack\n", ps2_device_to_string(device));
+            return ERR;
+        }
+
+        if (ack == PS2_DEVICE_ACK)
+        {
+            return 0;
+        }
+
+        if (ack != PS2_DEVICE_RESEND)
+        {
+            LOG_WARN("ps2 %s device command, invalid ack %d\n", ps2_device_to_string(device), ack);
+            return ERR;
+        }
     }
-    else
-    {
-        panic(NULL, "invalid ps2 device specified");
-        return ERR;
-    }
+
+    LOG_WARN("ps2 %s device command, to many resends\n", ps2_device_to_string(device));
+    return ERR;
 }

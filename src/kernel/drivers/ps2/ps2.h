@@ -78,8 +78,8 @@ typedef enum
     PS2_DEV_RESET = 0xFF,
     PS2_DEV_RESEND = 0xFE,
     PS2_DEV_SET_DEFAULTS = 0xF6,
-    PS2_DEV_DISABLE_SCANNING = 0xF5,
-    PS2_DEV_ENABLE_SCANNING = 0xF4,
+    PS2_DEV_DISABLE_SCANNING = 0xF5, // This is also disable data reporting for the mouse
+    PS2_DEV_ENABLE_SCANNING = 0xF4, // This is also enable data reporting for the mouse
     PS2_DEV_SET_TYPEMATIC = 0xF3,
     PS2_DEV_IDENTIFY = 0xF2,
     PS2_DEV_SET_SCANCODE_SET = 0xF0,
@@ -144,6 +144,7 @@ typedef enum
 typedef enum
 {
     PS2_DEVICE_ACK = 0xFA,
+    PS2_DEVICE_RESEND = 0xFE,
 } ps2_device_ack_t;
 
 #define PS2_READ(data) \
@@ -167,6 +168,8 @@ typedef enum
     })
 
 void ps2_init(void);
+
+void ps2_drain(void);
 
 uint64_t ps2_wait_until_set(ps2_status_bits_t status);
 

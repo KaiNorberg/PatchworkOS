@@ -64,7 +64,7 @@ static uint64_t cpu_start(cpu_t* cpu)
     }
 
     lapic_send_init(cpu->lapicId);
-    hpet_sleep(CLOCKS_PER_SEC / 100);
+    hpet_wait(CLOCKS_PER_SEC / 100);
     lapic_send_sipi(cpu->lapicId, (void*)TRAMPOLINE_BASE_ADDR);
 
     if (trampoline_wait_ready(cpu->id, CLOCKS_PER_SEC) != 0)

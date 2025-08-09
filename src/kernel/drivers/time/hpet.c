@@ -52,7 +52,7 @@ uint64_t hpet_read(uint64_t reg)
     return READ_64(address + reg);
 }
 
-void hpet_sleep(clock_t nanoseconds)
+void hpet_wait(clock_t nanoseconds)
 {
     uint64_t target = hpet_read(HPET_MAIN_COUNTER_VALUE) + (nanoseconds * 1000000) / period;
     while (!(hpet_read(HPET_MAIN_COUNTER_VALUE) >= target))
