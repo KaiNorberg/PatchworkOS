@@ -8,6 +8,8 @@
 
 #define PS2_BYTE_RELEASE_FLAG (1 << 7)
 
+#define PS2_SCAN_CODE_SET 1
+
 typedef struct
 {
     uint8_t scancode;
