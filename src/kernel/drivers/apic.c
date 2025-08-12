@@ -35,7 +35,7 @@ uint64_t apic_timer_ticks_per_ns(void)
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
     lapic_write(LAPIC_REG_TIMER_INITIAL_COUNT, UINT32_MAX);
 
-    hpet_sleep(CLOCKS_PER_SEC / 1000);
+    hpet_wait(CLOCKS_PER_SEC / 1000);
 
     lapic_write(LAPIC_REG_LVT_TIMER, APIC_TIMER_MASKED);
 
@@ -235,5 +235,5 @@ void ioapic_set_redirect(uint8_t vector, uint32_t gsi, ioapic_delivery_mode_t de
     ioapic_write(ioapicId, IOAPIC_REG_REDIRECTION(pin, 0), redirect.raw.low);
     ioapic_write(ioapicId, IOAPIC_REG_REDIRECTION(pin, 1), redirect.raw.high);
 
-    LOG_INFO("ioapic redirect set gsi=%u vector=%u cpu=%u enable=%d\n", gsi, vector, cpu->id, enable);
+    LOG_INFO("ioapic redirect set gsi=%u vector=0x%02x cpu=%u enable=%d\n", gsi, vector, cpu->id, enable);
 }

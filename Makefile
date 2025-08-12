@@ -4,7 +4,7 @@ VERSION_HEADER = include/common/version.h
 
 PROGRAMS = $(basename $(notdir $(wildcard make/programs/*.mk)))
 
-ROOT_PROGRAMS = init wall cursor taskbar startmenu dwm shell delete dir link move open read write
+ROOT_PROGRAMS = init wall cursor taskbar dwm shell delete dir link move open read write
 USER_PROGRAMS = $(filter-out $(ROOT_PROGRAMS),$(PROGRAMS))
 
 QEMU_MEMORY ?= 1G
@@ -82,7 +82,7 @@ deploy: $(PROGRAMS)
 	mcopy -i $(TARGET_IMAGE) -s LICENSE ::/usr/license
 	$(foreach prog,$(ROOT_PROGRAMS),mcopy -i $(TARGET_IMAGE) -s bin/programs/$(prog) ::/bin;)
 	$(foreach prog,$(USER_PROGRAMS),mcopy -i $(TARGET_IMAGE) -s bin/programs/$(prog) ::/usr/bin;)
-	
+
 run: all
 	qemu-system-x86_64 $(QEMU_FLAGS) $(QEMU_ARGS)
 

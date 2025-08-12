@@ -59,7 +59,7 @@ uint64_t trampoline_wait_ready(cpuid_t cpuId, clock_t timeout)
             return 0;
         }
 
-        hpet_sleep(CLOCKS_PER_SEC / 10000);
+        hpet_wait(CLOCKS_PER_SEC / 10000);
         elapsed += CLOCKS_PER_SEC / 10000;
     }
 

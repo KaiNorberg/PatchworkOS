@@ -9,7 +9,7 @@
 
 static hpet_t* hpet;
 static uintptr_t address;
-static uint64_t period;
+static uint64_t period; // Period in femtoseconds
 
 void hpet_init(void)
 {
@@ -27,7 +27,7 @@ void hpet_init(void)
 
 uint64_t hpet_nanoseconds_per_tick(void)
 {
-    return period / 1000000;
+    return period / 1000000ULL;
 }
 
 uint64_t hpet_read_counter(void)
@@ -52,10 +52,16 @@ uint64_t hpet_read(uint64_t reg)
     return READ_64(address + reg);
 }
 
-void hpet_sleep(clock_t nanoseconds)
+void hpet_wait(clock_t nanoseconds)
 {
-    uint64_t target = hpet_read(HPET_MAIN_COUNTER_VALUE) + (nanoseconds * 1000000) / period;
-    while (!(hpet_read(HPET_MAIN_COUNTER_VALUE) >= target))
+    if (nanoseconds == 0)
+    {
+        return;
+    }
+
+    uint64_t ticks = (nanoseconds * 1000000) / period;
+    uint64_t start = hpet_read_counter();
+    while (hpet_read_counter() < start + ticks)
     {
         asm volatile("pause");
     }

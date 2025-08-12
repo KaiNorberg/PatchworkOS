@@ -306,7 +306,7 @@ dentry_t* vfs_get_or_lookup_dentry(const path_t* parent, const char* name)
         parent->dentry->inode->ops->lookup == NULL)
     {
         rwlock_write_release(&dentryCache.lock);
-        errno = ENOSYS;
+        errno = ENOENT;
         return NULL;
     }
 

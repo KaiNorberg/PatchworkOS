@@ -15,13 +15,15 @@ void irq_dispatch(trap_frame_t* trapFrame)
     RWLOCK_READ_SCOPE(&lock);
 
     uint64_t irq = trapFrame->vector - VECTOR_IRQ_BASE;
+    irq_handler_t* handler = &handlers[irq];
 
     bool handled = false;
-    for (uint64_t i = 0; i < handlers[irq].callbackAmount; i++)
+    for (uint64_t i = 0; i < handler->callbackAmount; i++)
     {
-        if (handlers[irq].callbacks[i] != NULL)
+        irq_callback_t* callback = &handler->callbacks[i];
+        if (callback->func != NULL)
         {
-            handlers[irq].callbacks[i](irq);
+            callback->func(irq, callback->data);
             handled = true;
         }
     }
@@ -34,36 +36,43 @@ void irq_dispatch(trap_frame_t* trapFrame)
     lapic_eoi();
 }
 
-void irq_install(irq_callback_t callback, uint8_t irq)
+void irq_install(irq_t irq, irq_callback_func_t func, void* data)
 {
     RWLOCK_WRITE_SCOPE(&lock);
 
-    if (handlers[irq].callbackAmount >= IRQ_MAX_CALLBACK)
+    irq_handler_t* handler = &handlers[irq];
+    if (handler->callbackAmount >= IRQ_MAX_CALLBACK)
     {
         panic(NULL, "IRQ handler limit exceeded for irq=%d\n", irq);
     }
 
-    handlers[irq].callbacks[handlers[irq].callbackAmount] = callback;
-    handlers[irq].callbackAmount++;
-    if (!handlers[irq].redirected)
+    uint64_t slot = handler->callbackAmount;
+    handler->callbacks[slot].func = func;
+    handler->callbacks[slot].data = data;
+    handler->callbackAmount++;
+
+    if (!handler->redirected)
     {
         ioapic_set_redirect(VECTOR_IRQ_BASE + irq, irq, IOAPIC_DELIVERY_NORMAL, IOAPIC_POLARITY_HIGH,
             IOAPIC_TRIGGER_EDGE, smp_self_unsafe(), true);
     }
 
-    LOG_INFO("installed handler for irq=%d slot=%u\n", irq, handlers[irq].callbackAmount - 1);
+    LOG_INFO("installed handler for irq=%d slot=%u\n", irq, slot);
 }
 
-void irq_uninstall(irq_callback_t callback, uint8_t irq)
+void irq_uninstall(irq_t irq, irq_callback_func_t func)
 {
     RWLOCK_WRITE_SCOPE(&lock);
 
+    irq_handler_t* handler = &handlers[irq];
     for (uint32_t i = 0; i < IRQ_MAX_CALLBACK; i++)
     {
-        if (handlers[irq].callbacks[i] == callback)
+        irq_callback_t* callback = &handler->callbacks[i];
+        if (callback->func == func)
         {
-            handlers[irq].callbacks[i] = NULL;
-            handlers[irq].callbackAmount--;
+            callback->func = NULL;
+            callback->data = NULL;
+            handler->callbackAmount--;
             LOG_INFO("uninstalled handler for irq=%d slot=%u\n", irq, i);
         }
     }
