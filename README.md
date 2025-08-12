@@ -31,8 +31,7 @@
 ### User Space
 
 - Custom C standard library and system libraries
-- Shared memory based window manager
-- Highly modular desktop environment - the taskbar, wallpaper and cursor are just windows
+- Highly modular shared memory based desktop environment
 - Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg)
 
 *And much more...*
@@ -41,10 +40,10 @@
 
 ## Notable Differences with Unix
 
-- Replaced `fork(), exec()` with `spawn()`.
-- Single-User.
-- Non POSIX standard library.
-- Custom [shell utilities](#shell-utilities).
+- Replaced `fork(), exec()` with `spawn()`
+- Single-User
+- Non POSIX standard library
+- Custom [shell utilities](#shell-utilities)
 
 ## Limitations
 
@@ -281,7 +280,7 @@ You should now see a new entry in your GRUB boot menu allowing you to boot into 
 
 ## Testing
 
-Testing uses a GitHub action that compiles the project then runs it using QEMU. QEMU is then allowed to run for one minute, the kernel will run some tests and then start as normal. If QEMU crashes or the kernel panicks then the test fails, if it is still running after one-minute we call it a success. Its an simple approach but gets the job done. A lot of the difficulty in performing testing comes from the inherent complexity of testing a OS, which also means that testing is currently very very limited in the kernel.
+Testing uses a GitHub action that compiles the project and runs it for one minute using QEMU, the kernel will run some tests and then start as normal. If QEMU crashes or the kernel panicks then the test fails, if it is still running after one-minute we call it a success. Its an simple approach but gets the job done. Testing in the kernel is still very limited as most systems either work or they dont, and most actual issues arise from hardware specific details which cant be tested for.
 
 ### Tested Configurations
 
