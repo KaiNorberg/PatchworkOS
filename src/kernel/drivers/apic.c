@@ -235,5 +235,5 @@ void ioapic_set_redirect(uint8_t vector, uint32_t gsi, ioapic_delivery_mode_t de
     ioapic_write(ioapicId, IOAPIC_REG_REDIRECTION(pin, 0), redirect.raw.low);
     ioapic_write(ioapicId, IOAPIC_REG_REDIRECTION(pin, 1), redirect.raw.high);
 
-    LOG_INFO("ioapic redirect set gsi=%u vector=%u cpu=%u enable=%d\n", gsi, vector, cpu->id, enable);
+    LOG_INFO("ioapic redirect set gsi=%u vector=0x%02x cpu=%u enable=%d\n", gsi, vector, cpu->id, enable);
 }

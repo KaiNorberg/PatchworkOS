@@ -82,7 +82,7 @@ deploy: $(PROGRAMS)
 	mcopy -i $(TARGET_IMAGE) -s LICENSE ::/usr/license
 	$(foreach prog,$(ROOT_PROGRAMS),mcopy -i $(TARGET_IMAGE) -s bin/programs/$(prog) ::/bin;)
 	$(foreach prog,$(USER_PROGRAMS),mcopy -i $(TARGET_IMAGE) -s bin/programs/$(prog) ::/usr/bin;)
-	
+
 run: all
 	qemu-system-x86_64 $(QEMU_FLAGS) $(QEMU_ARGS)
 

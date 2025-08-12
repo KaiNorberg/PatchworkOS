@@ -1,9 +1,9 @@
 #include "ps2_mouse.h"
 
 #include "cpu/irq.h"
-#include "mem/heap.h"
 #include "drivers/helpers/mouse.h"
 #include "log/log.h"
+#include "mem/heap.h"
 
 static mouse_t* mouse;
 
@@ -29,14 +29,14 @@ static void ps2_mouse_irq(irq_t irq, void* data)
 
     switch (context->index)
     {
-    case 0:
+    case PS2_PACKET_FLAGS:
     {
         context->packet.flags = byte;
 
         if (!(context->packet.flags & PS2_PACKET_ALWAYS_ONE))
         {
             LOG_WARN("mouse packet out of sync flags=0x%02X\n", context->packet.flags);
-            context->index = 0;
+            context->index = PS2_PACKET_FLAGS;
             return;
         }
 
@@ -50,19 +50,19 @@ static void ps2_mouse_irq(irq_t irq, void* data)
             LOG_WARN("mouse packet y overflow flags=0x%02X\n", context->packet.flags);
         }
 
-        context->index++;
+        context->index = PS2_PACKET_DELTA_X;
     }
     break;
-    case 1:
+    case PS2_PACKET_DELTA_X:
     {
         context->packet.deltaX = (int8_t)byte;
-        context->index++;
+        context->index = PS2_PACKET_DELTA_Y;
     }
     break;
-    case 2:
+    case PS2_PACKET_DELTA_Y:
     {
         context->packet.deltaY = (int8_t)byte;
-        context->index = 0;
+        context->index = PS2_PACKET_FLAGS;
 
         if (context->packet.flags & PS2_PACKET_X_SIGN)
         {
@@ -98,6 +98,14 @@ uint64_t ps2_mouse_init(ps2_device_info_t* info)
     }
     context->index = 0;
 
-    irq_install(info->device == PS2_DEVICE_FIRST ? IRQ_PS2_FIRST_DEVICE : IRQ_PS2_SECOND_DEVICE, ps2_mouse_irq, context);
+    if (PS2_DEV_CMD(info->device, PS2_DEV_CMD_SET_DEFAULTS) == ERR)
+    {
+        LOG_ERR("failed to set default PS/2 mouse settings\n");
+        heap_free(context);
+        mouse_free(mouse);
+        return ERR;
+    }
+
+    irq_install(info->device == PS2_DEV_FIRST ? IRQ_PS2_FIRST_DEVICE : IRQ_PS2_SECOND_DEVICE, ps2_mouse_irq, context);
     return 0;
 }
