@@ -52,7 +52,9 @@ uint64_t apic_timer_ticks_per_ns(void)
 
 void lapic_init(void)
 {
-    void* lapicPhysAddr = madt_lapic_address();
+    madt_t* madt = MADT_GET();
+
+    void* lapicPhysAddr = (void*)(uint64_t)madt->lapicAddress;
     if (lapicPhysAddr == NULL)
     {
         panic(NULL, "Unable to find lapic address in MADT, hardware is not compatible");
@@ -161,7 +163,7 @@ void ioapic_all_init(void)
 {
     pic_disable();
 
-    madt_t* madt = madt_get();
+    madt_t* madt = MADT_GET();
     if (madt == NULL)
     {
         LOG_ERR("madt not found, kernel corruption likely\n");
@@ -169,7 +171,7 @@ void ioapic_all_init(void)
     }
 
     madt_ioapic_t* record;
-    MADT_FOR_EACH(madt_get(), record)
+    MADT_FOR_EACH(madt, record)
     {
         if (record->header.type != MADT_IOAPIC)
         {

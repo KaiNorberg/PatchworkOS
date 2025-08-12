@@ -10,12 +10,12 @@
  * @defgroup kernel_drivers_ps2 PS/2 Driver
  * @ingroup kernel_drivers
  *
- * Patchwork attempts to implement a comprehensive PS/2 driver, even if certain details would be completely irelevent
+ * Patchwork attempts to implement a comprehensive PS/2 driver, even if certain details would be completely irrelevant
  * on modern hardware. For example, most implementations assume that the first PS2 device is always a keyboard and the
- * second a mouse, however this is, as far as im aware, just a very commonly agreed convention and not actually
- * specified anywhere, even if all modern hardware appears to follow this convention, they *technically* dont have to.
+ * second a mouse, however this is, as far as I'm aware, just a very commonly agreed convention and not actually
+ * specified anywhere, even if all modern hardware appears to follow this convention, they *technically* don't have to.
  *
- * The reason for this is because PS/2 appears to be frequently neglected in hobby projects, so i
+ * The reason for this is because PS/2 appears to be frequently neglected in hobby projects, so I
  * wish to create a publically available and easy to understand "proper" implementation. Even if its overkill and of
  * course becouse its fun.
  *

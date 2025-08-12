@@ -73,8 +73,6 @@ void kernel_init(boot_info_t* bootInfo)
 
     acpi_init(bootInfo->rsdp, &bootInfo->memory.map);
     hpet_init();
-    madt_init();
-    fadt_init();
 
     lapic_init();
     lapic_cpu_init();

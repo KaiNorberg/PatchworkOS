@@ -322,7 +322,9 @@ static uint64_t ps2_device_init(ps2_device_t device)
 
 void ps2_init(void)
 {
-    if (!(fadt_get()->bootArchFlags & FADT_BOOT_ARCH_PS2_EXISTS))
+    fadt_t* fadt = FADT_GET();
+
+    if (!(fadt->bootArchFlags & FADT_BOOT_ARCH_PS2_EXISTS))
     {
         panic(NULL, "ps2 not supported by hardware (ACPI FADT indicates no PS/2 controller)");
     }

@@ -1,6 +1,13 @@
 #pragma once
 
-#include "acpi.h"
+#include "xsdt.h"
+
+/**
+ * @brief Multiple APIC Description Table
+ * @defgroup kernel_acpi_madt MADT
+ * @ingroup kernel_acpi
+ * @{
+ */
 
 #define MADT_LAPIC 0
 #define MADT_IOAPIC 1
@@ -49,8 +56,11 @@ typedef struct PACKED
     madt_header_t records[];
 } madt_t;
 
-void madt_init(void);
+/**
+ * @brief Less error prone way to get the MADT table
+ *
+ * @return madt_t* The MADT table pointer
+ */
+#define MADT_GET() ((madt_t*)xsdt_lookup("APIC", 0))
 
-madt_t* madt_get(void) PURE_FUNC;
-
-void* madt_lapic_address(void);
+/** @} */

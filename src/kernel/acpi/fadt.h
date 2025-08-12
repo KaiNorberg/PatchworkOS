@@ -1,6 +1,6 @@
 #pragma once
 
-#include "acpi.h"
+#include "xsdt.h"
 
 /**
  * @brief Fixed ACPI Description Table
@@ -11,7 +11,6 @@
 
 /**
  * @brief Enum for the `fadt_t::bootArchFlags` field.
- *
  */
 typedef enum
 {
@@ -93,8 +92,11 @@ typedef struct PACKED
     fadt_gas_t xGpe1Block;
 } fadt_t;
 
-void fadt_init(void);
-
-fadt_t* fadt_get(void) PURE_FUNC;
+/**
+ * @brief Less error prone way to get the FADT table
+ *
+ * @return fadt_t* The FADT table pointer
+ */
+#define FADT_GET() ((fadt_t*)xsdt_lookup("FACP", 0))
 
 /** @} */

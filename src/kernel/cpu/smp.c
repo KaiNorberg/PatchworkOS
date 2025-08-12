@@ -92,8 +92,10 @@ void smp_others_init(void)
     cpus[0]->lapicId = lapic_self_id();
     LOG_INFO("bootstrap cpu %u with lapicid %u, ready\n", (uint64_t)cpus[0]->id, (uint64_t)cpus[0]->lapicId);
 
+    madt_t* madt = MADT_GET();
+
     madt_lapic_t* lapic;
-    MADT_FOR_EACH(madt_get(), lapic)
+    MADT_FOR_EACH(madt, lapic)
     {
         if (lapic->header.type != MADT_LAPIC)
         {

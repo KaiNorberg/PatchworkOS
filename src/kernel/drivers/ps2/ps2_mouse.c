@@ -55,7 +55,7 @@ static void ps2_mouse_irq(irq_t irq, void* data)
     break;
     case PS2_PACKET_DELTA_X:
     {
-        context->packet.deltaX = (int8_t)byte;
+        context->packet.deltaX = byte;
         context->index = PS2_PACKET_DELTA_Y;
     }
     break;
