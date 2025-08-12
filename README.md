@@ -7,9 +7,8 @@
 
 **Patchwork** is a 64-bit monolithic NON-POSIX operating system for the x86_64 architecture that rigorously follows a "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9, DOS and others while simplifying them and sprinkling in some new ideas of its own.
 
-| Desktop | DOOM |
-|:---:|:---:|
-| ![Desktop Screenshot](meta/screenshots/desktop.png) | ![Doom Screenshot](meta/screenshots/doom.png) |
+![Desktop Screenshot](meta/screenshots/desktop.png)
+![Doom Screenshot](meta/screenshots/doom.png)
 
 ## Features
 
@@ -130,7 +129,7 @@ delete file.txt
 delete mydir:recur
 ```
 
-> **Note:** There are other utils available that work as expected, for example `stat` and `link`.
+There are also other utils available that work as expected, for example `stat` and `link`.
 
 ## Everything is a File
 
@@ -290,7 +289,7 @@ Testing uses a GitHub action that compiles the project then runs it using QEMU. 
 - Lenovo ThinkPad E495
 - Ryzen 5 3600X | 32GB 3200MHZ Corsair Vengeance
 
-> **Note:** Currently untested on Intel hardware. Let me know if you have different hardware, and it runs (or doesn't) for you!
+Currently untested on Intel hardware. Let me know if you have different hardware, and it runs (or doesn't) for you!
 
 ## Contributing
 
