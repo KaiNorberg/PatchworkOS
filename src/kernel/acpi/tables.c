@@ -1,21 +1,21 @@
-#include "xsdt.h"
+#include "tables.h"
 
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/heap.h"
 #include "mem/pmm.h"
-#include "xsdt.h"
+#include "acpi.h"
 
 #include <assert.h>
 #include <boot/boot_info.h>
 #include <string.h>
 
 static uint64_t tableAmount = 0;
-static sdt_t** cachedTables = NULL;
+static acpi_header_t** cachedTables = NULL;
 
-static bool xsdt_is_sdt_valid(sdt_t* table)
+static bool acpi_is_table_valid(acpi_header_t* table)
 {
-    if (table->length < sizeof(sdt_t))
+    if (table->length < sizeof(acpi_header_t))
     {
         LOG_ERR("table too small (%u bytes)\n", table->length);
         return false;
@@ -32,9 +32,9 @@ static bool xsdt_is_sdt_valid(sdt_t* table)
     return true;
 }
 
-static bool xsdt_is_valid(xsdt_t* xsdt)
+static bool acpi_is_xsdt_valid(xsdt_t* xsdt)
 {
-    if (!xsdt_is_sdt_valid(&xsdt->header))
+    if (!acpi_is_table_valid(&xsdt->header))
     {
         LOG_ERR("invalid checksum for xsdt\n");
         return false;
@@ -49,20 +49,17 @@ static bool xsdt_is_valid(xsdt_t* xsdt)
     return true;
 }
 
-uint64_t xsdt_load_tables(xsdt_t* xsdt)
+static uint64_t acpi_tables_load_from_xsdt(xsdt_t* xsdt)
 {
-    assert(tableAmount == 0);
-    assert(cachedTables == NULL);
-
-    if (!xsdt_is_valid(xsdt))
+    if (!acpi_is_xsdt_valid(xsdt))
     {
         LOG_ERR("invalid XSDT\n");
         return ERR;
     }
 
-    tableAmount = (xsdt->header.length - sizeof(sdt_t)) / sizeof(sdt_t*);
+    tableAmount = (xsdt->header.length - sizeof(acpi_header_t)) / sizeof(acpi_header_t*);
 
-    cachedTables = heap_alloc(tableAmount * sizeof(sdt_t*), HEAP_NONE);
+    cachedTables = heap_alloc(tableAmount * sizeof(acpi_header_t*), HEAP_NONE);
     if (cachedTables == NULL)
     {
         LOG_ERR("failed to allocate memory for ACPI tables\n");
@@ -71,9 +68,9 @@ uint64_t xsdt_load_tables(xsdt_t* xsdt)
 
     for (uint64_t i = 0; i < tableAmount; i++)
     {
-        sdt_t* table = xsdt->tables[i];
+        acpi_header_t* table = xsdt->tables[i];
 
-        if (!xsdt_is_sdt_valid(table))
+        if (!acpi_is_table_valid(table))
         {
             char sig[5];
             memcpy(sig, table->signature, 4);
@@ -83,7 +80,7 @@ uint64_t xsdt_load_tables(xsdt_t* xsdt)
             continue;
         }
 
-        sdt_t* cachedTable = heap_alloc(table->length, HEAP_NONE);
+        acpi_header_t* cachedTable = heap_alloc(table->length, HEAP_NONE);
         if (cachedTable == NULL)
         {
             LOG_ERR("failed to allocate memory for ACPI table\n");
@@ -92,20 +89,24 @@ uint64_t xsdt_load_tables(xsdt_t* xsdt)
 
         memcpy(cachedTable, table, table->length);
         cachedTables[i] = cachedTable;
-
-        char signature[5] = {0};
-        memcpy(signature, table->signature, 4);
-
-        char oemId[7] = {0};
-        memcpy(oemId, table->oemId, 6);
-
-        LOG_INFO("%s 0x%016lx 0x%06x v%02X %s\n", signature, table, table->length, table->revision, oemId);
     }
 
     return tableAmount;
 }
 
-sdt_t* xsdt_lookup(const char* signature, uint64_t n)
+uint64_t acpi_tables_init(xsdt_t* xsdt)
+{
+    uint64_t tableAmount = acpi_tables_load_from_xsdt(xsdt);
+    if (tableAmount == ERR)
+    {
+        LOG_ERR("failed to load ACPI tables from XSDT\n");
+        return ERR;
+    }
+
+    return tableAmount;
+}
+
+acpi_header_t* acpi_tables_lookup(const char* signature, uint64_t n)
 {
     if (strlen(signature) != 4)
     {

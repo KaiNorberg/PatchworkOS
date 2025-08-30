@@ -2,7 +2,7 @@
 #include "ps2_kbd.h"
 #include "ps2_mouse.h"
 
-#include "acpi/fadt.h"
+#include "acpi/tables.h"
 #include "cpu/port.h"
 #include "drivers/time/hpet.h"
 #include "log/log.h"

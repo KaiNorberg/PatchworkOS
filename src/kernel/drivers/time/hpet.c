@@ -4,6 +4,7 @@
 #include "log/panic.h"
 #include "mem/vmm.h"
 #include "utils/utils.h"
+#include "acpi/tables.h"
 
 #include <assert.h>
 
@@ -13,7 +14,7 @@ static uint64_t period; // Period in femtoseconds
 
 void hpet_init(void)
 {
-    hpet = (hpet_t*)xsdt_lookup("HPET", 0);
+    hpet = (hpet_t*)acpi_tables_lookup("HPET", 0);
     if (hpet == NULL)
     {
         panic(NULL, "Unable to find hpet, hardware is not compatible");

@@ -5,7 +5,8 @@
 #include "log/panic.h"
 #include "mem/heap.h"
 #include "mem/pmm.h"
-#include "xsdt.h"
+#include "tables.h"
+#include "namespace.h"
 
 #include <assert.h>
 #include <boot/boot_info.h>
@@ -68,7 +69,8 @@ void acpi_init(xsdp_t* xsdp, boot_memory_map_t* map)
 
     xsdt_t* xsdt = PML_LOWER_TO_HIGHER(xsdp->xsdtAddress);
 
-    xsdt_load_tables(xsdt);
+    acpi_tables_init(xsdt);
+    acpi_namespace_init();
 
     acpi_reclaim_memory(map);
 }

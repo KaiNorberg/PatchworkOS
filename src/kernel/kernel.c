@@ -1,8 +1,6 @@
 #include "kernel.h"
 
 #include "acpi/acpi.h"
-#include "acpi/fadt.h"
-#include "acpi/madt.h"
 #include "cpu/gdt.h"
 #include "cpu/idt.h"
 #include "cpu/simd.h"
@@ -71,6 +69,10 @@ void kernel_init(boot_info_t* bootInfo)
 
     _std_init();
 
+    vfs_init();
+    ramfs_init(&bootInfo->disk);
+    sysfs_init();
+
     acpi_init(bootInfo->rsdp, &bootInfo->memory.map);
     hpet_init();
 
@@ -86,10 +88,6 @@ void kernel_init(boot_info_t* bootInfo)
     process_kernel_init();
     sched_init();
     wait_init();
-
-    vfs_init();
-    ramfs_init(&bootInfo->disk);
-    sysfs_init();
 
     log_file_expose();
     process_procfs_init();

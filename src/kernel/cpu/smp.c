@@ -1,6 +1,6 @@
 #include "smp.h"
 
-#include "acpi/madt.h"
+#include "acpi/tables.h"
 #include "cpu/vectors.h"
 #include "drivers/apic.h"
 #include "drivers/time/hpet.h"

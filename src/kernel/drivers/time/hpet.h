@@ -2,7 +2,9 @@
 
 #include <sys/proc.h>
 
-#include "acpi/xsdt.h"
+#include "acpi/acpi.h"
+
+// TODO: Integrate the HPET table into the ACPI stuff
 
 #define HPET_COUNTER_CLOCK_OFFSET 0x20
 
@@ -19,7 +21,7 @@
 
 typedef struct PACKED
 {
-    sdt_t header;
+    acpi_header_t header;
     uint8_t hardwareRevId;
     uint8_t info;
     uint16_t pciVendorId;
