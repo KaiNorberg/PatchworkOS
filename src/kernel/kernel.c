@@ -69,6 +69,10 @@ void kernel_init(boot_info_t* bootInfo)
 
     _std_init();
 
+    process_kernel_init();
+    sched_init();
+    wait_init();
+    
     vfs_init();
     ramfs_init(&bootInfo->disk);
     sysfs_init();
@@ -84,10 +88,6 @@ void kernel_init(boot_info_t* bootInfo)
 
     timer_init();
     timer_cpu_init();
-
-    process_kernel_init();
-    sched_init();
-    wait_init();
 
     log_file_expose();
     process_procfs_init();
