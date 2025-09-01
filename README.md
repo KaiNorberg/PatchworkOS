@@ -7,6 +7,8 @@
 
 **Patchwork** is a 64-bit monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows a "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9, DOS and others while simplifying them and sprinkling in some new ideas of its own.
 
+The goal is to eventually have a feature-complete, well-designed and unique operating system skipping easy algorithms while still remaining approachable and educational.
+
 ![Desktop Screenshot](meta/screenshots/desktop.png)
 ![Doom Screenshot](meta/screenshots/doom.png)
 
@@ -58,6 +60,7 @@
 - Software interrupts for notes (signals)
 - Lua port
 - Capability based security model (currently has no well-defined security model)
+- USB support (The holy grail)
 
 ---
 
