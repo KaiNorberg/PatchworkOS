@@ -65,6 +65,7 @@ deploy: $(PROGRAMS)
 	dd if=/dev/zero of=$(TARGET_IMAGE) bs=2M count=64
 	mformat -F -C -t 256 -h 16 -s 63 -v "PATCHWORKOS" -i $(TARGET_IMAGE) ::
 	mlabel -i $(TARGET_IMAGE) ::PatchworkOS
+	mmd -i $(TARGET_IMAGE) ::/acpi
 	mmd -i $(TARGET_IMAGE) ::/boot
 	mmd -i $(TARGET_IMAGE) ::/bin
 	mmd -i $(TARGET_IMAGE) ::/efi

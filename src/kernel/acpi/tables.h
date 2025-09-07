@@ -10,6 +10,13 @@
  */
 
 /**
+ * @brief The maximum number of ACPI tables that are supported.
+ *
+ * As far as I know there should never be even close to this many on any machine.
+ */
+#define ACPI_MAX_TABLES 64
+
+/**
  * @brief Enum for the `fadt_t::bootArchFlags` field.
  */
 typedef enum

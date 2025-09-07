@@ -249,7 +249,8 @@ static uint64_t ps2_device_init(ps2_device_t device)
         return ERR;
     }
 
-    // The device might send its id bytes here, but we use the identify command to get the id for consistency so we just drain the data instead.
+    // The device might send its id bytes here, but we use the identify command to get the id for consistency so we just
+    // drain the data instead.
     ps2_drain();
 
     if (PS2_DEV_CMD(device, PS2_DEV_CMD_DISABLE_SCANNING) == ERR)
@@ -287,7 +288,8 @@ static uint64_t ps2_device_init(ps2_device_t device)
         }
     }
 
-    LOG_INFO("ps2 %s device identified as '%s' with first ID byte 0x%02x\n", ps2_device_to_string(device), info->name, info->firstIdByte);
+    LOG_INFO("ps2 %s device identified as '%s' with first ID byte 0x%02x\n", ps2_device_to_string(device), info->name,
+        info->firstIdByte);
 
     if (info->type == PS2_DEV_TYPE_UNKNOWN)
     {

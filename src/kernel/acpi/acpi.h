@@ -9,9 +9,6 @@
  * @brief Advanced Configuration and Power Interface
  * @defgroup kernel_acpi acpi
  * @ingroup kernel
- *
- *
- *
  * @{
  */
 

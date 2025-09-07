@@ -72,7 +72,7 @@ void kernel_init(boot_info_t* bootInfo)
     process_kernel_init();
     sched_init();
     wait_init();
-    
+
     vfs_init();
     ramfs_init(&bootInfo->disk);
     sysfs_init();

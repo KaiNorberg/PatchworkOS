@@ -1,10 +1,10 @@
 #include "hpet.h"
 
+#include "acpi/tables.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/vmm.h"
 #include "utils/utils.h"
-#include "acpi/tables.h"
 
 #include <assert.h>
 
