@@ -18,14 +18,14 @@
  */
 
 /**
- * @brief Parses an Object structure.
+ * @brief Reads an Object structure from the AML byte stream.
  *
  * An Object is defined as `NameSpaceModifierObj | NamedObj`.
  *
  * @param state The AML state.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_object_parse(aml_state_t* state)
+static inline uint64_t aml_object_read(aml_state_t* state)
 {
     aml_op_t op;
     if (aml_op_read(state, &op, AML_OP_FLAG_NAMESPACE_MODIFIER | AML_OP_FLAG_NAMED) == ERR)
@@ -36,7 +36,7 @@ static inline uint64_t aml_object_parse(aml_state_t* state)
 
     if (op.props->flags & AML_OP_FLAG_NAMESPACE_MODIFIER)
     {
-        return aml_namespace_modifier_obj_parse(state, &op);
+        return aml_namespace_modifier_obj_read(state, &op);
     }
     else if (op.props->flags & AML_OP_FLAG_NAMED)
     {
@@ -47,38 +47,38 @@ static inline uint64_t aml_object_parse(aml_state_t* state)
     }
 
     // This really should not happen as invalid opcodes should be caught in the aml_op_read() == ERR check.
-    LOG_ERR("Parser error in aml_object_parse()\n");
+    LOG_ERR("Parser error in aml_object_read()\n");
     errno = EPROTO;
     return ERR;
 }
 
 /**
- * @brief Parses a TermObj structure.
+ * @brief Reads a TermObj structure from the AML byte stream.
  *
  * A TermObj is defined as `Object | StatementOpcode | ExpressionOpcode`.
  *
  * @param state The AML state.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_termobj_parse(aml_state_t* state)
+static inline uint64_t aml_termobj_read(aml_state_t* state)
 {
     // Attempt to read a statement or expression opcode, if it fails, then its probably an object. Note that an object
     // is technically also defined using opcodes which can be bit confusing.
     aml_op_t op;
     if (aml_op_read(state, &op, AML_OP_FLAG_STATEMENT | AML_OP_FLAG_EXPRESSION) == ERR)
     {
-        return aml_object_parse(state);
+        return aml_object_read(state);
     }
 
     // TODO: This stuff.
     /*if (opcode.props->flags & AML_OPCODE_FLAG_STATEMENT)
     {
-        return aml_statement_opcode_parse(state);
+        return aml_statement_opcode_read(state);
     }
 
     if (opcode.props->flags & AML_OPCODE_FLAG_EXPRESSION)
     {
-        return aml_expression_opcode_parse(state);
+        return aml_expression_opcode_read(state);
     }*/
 
     errno = EILSEQ;
@@ -86,7 +86,7 @@ static inline uint64_t aml_termobj_parse(aml_state_t* state)
 }
 
 /**
- * @brief Parses a TermList structure.
+ * @brief Reads a TermList structure from the AML byte stream.
  *
  * A TermList structure is defined as `Nothing | <termobj termlist>`.
  *
@@ -94,12 +94,12 @@ static inline uint64_t aml_termobj_parse(aml_state_t* state)
  * @param limit The index at which the termlist ends.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_termlist_parse(aml_state_t* state, uint64_t end)
+static inline uint64_t aml_termlist_read(aml_state_t* state, uint64_t end)
 {
     while (end > state->instructionPointer)
     {
         // End of buffer not reached => byte is not nothing => must be a termobj.
-        if (aml_termobj_parse(state) == ERR)
+        if (aml_termobj_read(state) == ERR)
         {
             return ERR;
         }

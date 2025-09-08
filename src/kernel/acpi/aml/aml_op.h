@@ -234,6 +234,7 @@ typedef struct aml_op_props
 typedef struct aml_op
 {
     aml_op_num_t num;
+    uint8_t length;
     const aml_op_props_t* props;
 } aml_op_t;
 

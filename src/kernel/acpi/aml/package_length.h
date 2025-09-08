@@ -17,7 +17,7 @@
 typedef uint64_t aml_pkg_length_t;
 
 /**
- * @brief Parse a PkgLength structure.
+ * @brief Reads a PkgLength structure from the AML byte stream.
  *
  * The PkgLength structure is defined as `PkgLeadByte | <pkgleadbyte bytedata> | <pkgleadbyte bytedata bytedata> |
  * <pkgleadbyte bytedata bytedata bytedata>`, where `PkgLeadByte` is defined as:
@@ -30,9 +30,9 @@ typedef uint64_t aml_pkg_length_t;
  * @param state The AML state.
  * @return On success, the package length. On failure, `ERR` and `errno` is set.
  */
-static inline aml_pkg_length_t aml_pkg_length_parse(aml_state_t* state)
+static inline uint64_t aml_pkg_length_read(aml_state_t* state)
 {
-    uint64_t pkgLeadByte = aml_read_byte(state);
+    uint64_t pkgLeadByte = aml_byte_read(state);
     if (pkgLeadByte == ERR)
     {
         errno = ENODATA;
@@ -58,7 +58,7 @@ static inline aml_pkg_length_t aml_pkg_length_parse(aml_state_t* state)
     aml_pkg_length_t length = (pkgLeadByte & 0b1111);
     for (uint8_t i = 0; i < bytedataCount; i++)
     {
-        uint64_t byte = aml_read_byte(state);
+        uint64_t byte = aml_byte_read(state);
         if (byte == ERR)
         {
             errno = ENODATA;

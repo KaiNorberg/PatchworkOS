@@ -168,7 +168,7 @@ const aml_op_props_t* aml_op_lookup(uint8_t op, uint8_t extension)
 uint64_t aml_op_read(aml_state_t* state, aml_op_t* out, aml_op_flags_t flags)
 {
     uint8_t bytes[2];
-    uint64_t byteAmount = aml_peek_bytes(state, bytes, sizeof(bytes));
+    uint64_t byteAmount = aml_bytes_peek(state, bytes, sizeof(bytes));
 
     if (byteAmount == 2)
     {
@@ -186,6 +186,7 @@ uint64_t aml_op_read(aml_state_t* state, aml_op_t* out, aml_op_flags_t flags)
             }
 
             out->num = AML_OP_EXT92_BASE + bytes[1];
+            out->length = 2;
             out->props = props;
             aml_advance(state, 2);
             return 0;
@@ -204,6 +205,7 @@ uint64_t aml_op_read(aml_state_t* state, aml_op_t* out, aml_op_flags_t flags)
             }
 
             out->num = AML_OP_EXT5B_BASE + bytes[1];
+            out->length = 2;
             out->props = props;
             aml_advance(state, 2);
             return 0;
@@ -222,6 +224,7 @@ uint64_t aml_op_read(aml_state_t* state, aml_op_t* out, aml_op_flags_t flags)
     }
 
     out->num = bytes[0];
+    out->length = 1;
     out->props = props;
     aml_advance(state, 1);
     return 0;

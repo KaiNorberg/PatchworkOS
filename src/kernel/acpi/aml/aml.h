@@ -15,8 +15,8 @@
  *
  * The parser works like a recursive descent parser. For example, according to the specification, the entire AML code
  * block is defined as `AMLCode := DefBlockHeader TermList`, since we have already read the header, we then just call
- * the `aml_termlist_parse()` function. A termlist is defined as `TermList := Nothing | <termobj termlist>` so then we
- * call the `aml_termobj_parse()` function. A termobj is defined as `TermObj := Object | StatementOpcode |
+ * the `aml_termlist_read()` function. A termlist is defined as `TermList := Nothing | <termobj termlist>` so then we
+ * call the `aml_termobj_read()` function. A termobj is defined as `TermObj := Object | StatementOpcode |
  * ExpressionOpcode` we then determine what this specific termobj is and continue down the chain until we finally have
  * something to execute.
  *
