@@ -1,6 +1,6 @@
 #include "acpi.h"
 
-#include "aml.h"
+#include "aml/aml.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/heap.h"
