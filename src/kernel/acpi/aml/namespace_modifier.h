@@ -44,7 +44,6 @@ static inline uint64_t aml_def_name_parse(aml_state_t* state, const aml_op_t* op
 static inline uint64_t aml_def_scope_parse(aml_state_t* state, const aml_op_t* op)
 {
 
-
     LOG_ERR("DefScope not implemented\n");
     errno = ENOTSUP;
     return ERR;
