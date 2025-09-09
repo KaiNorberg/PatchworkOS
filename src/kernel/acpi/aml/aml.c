@@ -49,7 +49,7 @@ uint64_t aml_parse(const void* data, uint64_t size)
 
 aml_node_t* aml_add_node(aml_node_t* parent, const char* name, aml_node_type_t type)
 {
-    if (name == NULL || strnlen_s(name, AML_MAX_NAME + 1) != AML_MAX_NAME || type < AML_NODE_NONE ||
+    if (name == NULL || strnlen_s(name, AML_NAME_LENGTH + 1) != AML_NAME_LENGTH || type < AML_NODE_NONE ||
         type >= AML_NODE_MAX)
     {
         errno = EINVAL;
@@ -68,7 +68,7 @@ aml_node_t* aml_add_node(aml_node_t* parent, const char* name, aml_node_type_t t
     list_entry_init(&node->entry);
     node->type = type;
     list_init(&node->children);
-    memcpy(node->name, name, AML_MAX_NAME);
+    memcpy(node->name, name, AML_NAME_LENGTH);
 
     if (parent != NULL)
     {

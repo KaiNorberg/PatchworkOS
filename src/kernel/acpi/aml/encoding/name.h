@@ -16,8 +16,8 @@
  * @{
  */
 
-#define AML_MAX_NAME_PATH 254
-#define AML_MAX_NAME_SEG 4
+#define AML_NAME_LENGTH_PATH 254
+#define AML_NAME_LENGTH_SEG 4
 
 #define AML_IS_LEAD_NAME_CHAR(c) ((c >= 'A' && c <= 'Z') || c == '_')
 #define AML_IS_DIGIT_CHAR(c) ((c >= '0' && c <= '9'))
@@ -54,7 +54,7 @@ typedef struct
  */
 typedef struct
 {
-    uint8_t name[AML_MAX_NAME_SEG];
+    uint8_t name[AML_NAME_LENGTH_SEG];
 } aml_name_seg_t;
 
 /**
@@ -63,7 +63,7 @@ typedef struct
  */
 typedef struct
 {
-    aml_name_seg_t segments[AML_MAX_NAME_PATH]; //!< Array of segments in the name string.
+    aml_name_seg_t segments[AML_NAME_LENGTH_PATH]; //!< Array of segments in the name string.
     uint8_t segmentCount;                       //!< Number of segments in the name string.
 } aml_name_path_t;
 

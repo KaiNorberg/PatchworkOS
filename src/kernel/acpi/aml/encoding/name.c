@@ -256,7 +256,7 @@ aml_node_t* aml_name_string_walk(const aml_name_string_t* nameString, aml_node_t
         aml_node_t* child = NULL;
         LIST_FOR_EACH(child, &start->children, entry)
         {
-            if (memcmp(child->name, segment->name, AML_MAX_NAME_SEG) == 0)
+            if (memcmp(child->name, segment->name, AML_NAME_LENGTH_SEG) == 0)
             {
                 next = child;
                 break;

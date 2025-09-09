@@ -13,7 +13,7 @@
 /**
  * @brief Maximum length of an ACPI name.
  */
-#define AML_MAX_NAME 4
+#define AML_NAME_LENGTH 4
 
 /**
  * @brief ACPI node type.
@@ -38,7 +38,7 @@ typedef struct aml_node
     aml_node_type_t type;
     list_t children;
     struct aml_node* parent;
-    char name[AML_MAX_NAME];
+    char name[AML_NAME_LENGTH];
 } aml_node_t;
 
 /** @} */

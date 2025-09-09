@@ -5,6 +5,7 @@
 #include "acpi/aml/aml_scope.h"
 #include "log/log.h"
 #include "namespace_modifier.h"
+#include "named.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -25,10 +26,7 @@ uint64_t aml_object_read(aml_state_t* state, aml_scope_t* scope)
     }
     else if (op.props->flags & AML_OP_FLAG_NAMED)
     {
-        // TODO: Implement named object parsing.
-        LOG_ERR("Named object parsing not implemented\n");
-        errno = ENOTSUP;
-        return ERR;
+        return aml_named_obj_read(state, scope, &op);
     }
 
     // This really should not happen as invalid opcodes should be caught in the aml_op_read() == ERR check.

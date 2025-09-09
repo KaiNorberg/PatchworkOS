@@ -60,7 +60,7 @@ uint64_t aml_parse(const void* data, uint64_t size);
  * @brief Add a new node to the ACPI namespace.
  *
  * @param parent Pointer to the parent node, can be `NULL`.
- * @param name Name of the new node, must be `AML_MAX_NAME` chars long.
+ * @param name Name of the new node, must be `AML_NAME_LENGTH` chars long.
  * @param type Type of the new node.
  * @return aml_node_t* On success, a pointer to the new node. On failure, `NULL` and `errno` is set.
  */
