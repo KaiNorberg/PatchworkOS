@@ -1,15 +1,15 @@
 #pragma once
 
-#include "aml_state.h"
+#include "acpi/aml/aml_state.h"
 
-#include <errno.h>
 #include <stdint.h>
-#include <stdlib.h>
 
 /**
  * @brief ACPI AML Name Objects Encoding
  * @defgroup kernel_acpi_aml_name Name Objects
  * @ingroup kernel_acpi_aml
+ *
+ * Not to be confused with "ACPI AML Named Objects Encoding".
  *
  * See section 20.2.2 of the ACPI specification for more details.
  *
@@ -85,23 +85,7 @@ typedef struct
  * @param out Pointer to destination where the RootChar will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out)
-{
-    uint64_t byte = aml_byte_read(state);
-    if (byte == ERR)
-    {
-        return ERR;
-    }
-
-    if (byte != AML_ROOT_CHAR)
-    {
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    out->present = true;
-    return 0;
-}
+uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out);
 
 /**
  * @brief Reads the next data as a NameSeg from the AML bytecode stream.
@@ -112,39 +96,7 @@ static inline uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* o
  * @param out Pointer to destination where the NameSeg will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t* out)
-{
-    uint64_t leadnamechar = aml_byte_read(state);
-    if (leadnamechar == ERR)
-    {
-        return ERR;
-    }
-
-    if (!AML_IS_LEAD_NAME_CHAR(leadnamechar))
-    {
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    for (int i = 0; i < 3; i++)
-    {
-        uint64_t byte = aml_byte_read(state);
-        if (byte == ERR)
-        {
-            return ERR;
-        }
-
-        if (!AML_IS_NAME_CHAR(byte))
-        {
-            errno = EILSEQ;
-            return ERR;
-        }
-
-        out->name[i + 1] = byte;
-    }
-
-    return 0;
-}
+uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t* out);
 
 /**
  * @brief Reads the next data as a DualNamePath structure from the AML bytecode stream.
@@ -156,32 +108,7 @@ static inline uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t* out
  * @param secondOut Pointer to destination where the second segment of the DualNamePath will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t* firstOut, aml_name_seg_t* secondOut)
-{
-    uint64_t firstByte = aml_byte_read(state);
-    if (firstByte == ERR)
-    {
-        return ERR;
-    }
-
-    if (firstByte != AML_DUAL_NAME_PREFIX)
-    {
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    if (aml_name_seg_read(state, firstOut) == ERR)
-    {
-        return ERR;
-    }
-
-    if (aml_name_seg_read(state, secondOut) == ERR)
-    {
-        return ERR;
-    }
-
-    return 0;
-}
+uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t* firstOut, aml_name_seg_t* secondOut);
 
 /**
  * @brief Reads the next data as a MultiNamePath structure from the AML bytecode stream.
@@ -193,37 +120,7 @@ static inline uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_
  * @param outSegCount Pointer to destination where the number of segments will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t* outSegments, uint8_t* outSegCount)
-{
-    uint64_t firstByte = aml_byte_read(state);
-    if (firstByte == ERR)
-    {
-        return ERR;
-    }
-
-    if (firstByte != AML_MULTI_NAME_PREFIX)
-    {
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    uint64_t segCount = aml_byte_read(state);
-    if (segCount == ERR)
-    {
-        return ERR;
-    }
-
-    for (size_t i = 0; i < segCount; i++)
-    {
-        if (aml_name_seg_read(state, &outSegments[i]) == ERR)
-        {
-            return ERR;
-        }
-    }
-
-    *outSegCount = segCount;
-    return 0;
-}
+uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t* outSegments, uint8_t* outSegCount);
 
 /**
  * Reads the next data as a NullName structure from the AML bytecode stream.
@@ -233,22 +130,7 @@ static inline uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg
  * @param state The AML state.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_null_name_read(aml_state_t* state)
-{
-    uint64_t firstByte = aml_byte_read(state);
-    if (firstByte == ERR)
-    {
-        return ERR;
-    }
-
-    if (firstByte != AML_NULL_NAME)
-    {
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    return 0;
-}
+uint64_t aml_null_name_read(aml_state_t* state);
 
 /**
  * @brief Reads the next data as a NamePath structure from the AML bytecode stream.
@@ -259,36 +141,7 @@ static inline uint64_t aml_null_name_read(aml_state_t* state)
  * @param out Pointer to destination where the NamePath will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* out)
-{
-    uint64_t firstByte = aml_byte_peek(state);
-    if (firstByte == ERR)
-    {
-        return ERR;
-    }
-
-    if (AML_IS_LEAD_NAME_CHAR(firstByte))
-    {
-        out->segmentCount = 1;
-        return aml_name_seg_read(state, &out->segments[0]);
-    }
-    else if (firstByte == AML_DUAL_NAME_PREFIX)
-    {
-        out->segmentCount = 2;
-        return aml_dual_name_path_read(state, &out->segments[0], &out->segments[1]);
-    }
-    else if (firstByte == AML_MULTI_NAME_PREFIX)
-    {
-        return aml_multi_name_path_read(state, out->segments, &out->segmentCount);
-    }
-    else if (firstByte == AML_NULL_NAME)
-    {
-        out->segmentCount = 0;
-        return aml_null_name_read(state);
-    }
-
-    return 0;
-}
+uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* out);
 
 /**
  * @brief Reads the next data as a PrefixPath structure from the AML bytecode stream.
@@ -299,25 +152,7 @@ static inline uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* o
  * @param out Pointer to destination where the PrefixPath will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_prefix_path_read(aml_state_t* state, aml_prefix_path_t* out)
-{
-    out->depth = 0;
-    while (true)
-    {
-        uint64_t byte = aml_byte_read(state);
-        if (byte == ERR)
-        {
-            return ERR;
-        }
-
-        if (byte != AML_PARENT_PREFIX_CHAR)
-        {
-            return 0;
-        }
-
-        out->depth++;
-    }
-}
+uint64_t aml_prefix_path_read(aml_state_t* state, aml_prefix_path_t* out);
 
 /**
  * @brief Reads the next data as a NameString structure from the AML bytecode stream.
@@ -328,44 +163,15 @@ static inline uint64_t aml_prefix_path_read(aml_state_t* state, aml_prefix_path_
  * @param out Pointer to destination where the name string will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
-{
-    *out = (aml_name_string_t){0};
+uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out);
 
-    uint64_t firstByte = aml_byte_peek(state);
-    if (firstByte == ERR)
-    {
-        return ERR;
-    }
+/**
+ * @brief Walks the ACPI namespace tree to find the node corresponding to the given NameString.
+ *
+ * @param nameString The NameString to search for.
+ * @param start The node to start the search from, or `NULL` to start from the root.
+ * @return On success, a pointer to the found node. On error, `NULL` and `errno` is set.
+ */
+aml_node_t* aml_name_string_walk(const aml_name_string_t* nameString, aml_node_t* start);
 
-    switch (firstByte)
-    {
-    case AML_ROOT_CHAR:
-        if (aml_root_char_read(state, &out->rootChar) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_PARENT_PREFIX_CHAR:
-        if (aml_prefix_path_read(state, &out->prefixPath) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    default:
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    if (aml_name_path_read(state, &out->namePath) == ERR)
-    {
-        return ERR;
-    }
-
-    return 0;
-}
-
-static inline uint64_t aml_name_string_walk(const aml_name_string_t* nameString, path_t* outPath, const path_t* start)
-{
-
-}
+/** @} */

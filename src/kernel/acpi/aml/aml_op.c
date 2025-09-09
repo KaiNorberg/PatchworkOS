@@ -120,7 +120,7 @@ static const aml_op_props_t opsExt5b[0x100] = {
     [0x31] = {"DebugOp", AML_ENCODING_GROUP_DEBUG, AML_OP_FLAG_NONE},
     [0x32] = {"FatalOp", AML_ENCODING_GROUP_TERM, AML_OP_FLAG_STATEMENT},
     [0x33] = {"TimerOp", AML_ENCODING_GROUP_TERM, AML_OP_FLAG_EXPRESSION},
-    [0x80] = {"OpRegionOp", AML_ENCODING_GROUP_TERM, AML_OP_FLAG_NONE},
+    [0x80] = {"OpRegionOp", AML_ENCODING_GROUP_TERM, AML_OP_FLAG_NAMED},
     [0x81] = {"FieldOp", AML_ENCODING_GROUP_TERM, AML_OP_FLAG_NONE},
     [0x82] = {"DeviceOp", AML_ENCODING_GROUP_TERM, AML_OP_FLAG_NONE},
     [0x84] = {"PowerResOp", AML_ENCODING_GROUP_TERM, AML_OP_FLAG_NONE},
@@ -180,14 +180,15 @@ uint64_t aml_op_read(aml_state_t* state, aml_op_t* out, aml_op_flags_t flags)
                 return ERR;
             }
 
+            out->num = AML_OP_EXT92_BASE + bytes[1];
+            out->length = 2;
+            out->props = props;
+
             if (!(flags & props->flags))
             {
                 return ERR;
             }
 
-            out->num = AML_OP_EXT92_BASE + bytes[1];
-            out->length = 2;
-            out->props = props;
             aml_advance(state, 2);
             return 0;
         }
@@ -199,14 +200,15 @@ uint64_t aml_op_read(aml_state_t* state, aml_op_t* out, aml_op_flags_t flags)
                 return ERR;
             }
 
+            out->num = AML_OP_EXT5B_BASE + bytes[1];
+            out->length = 2;
+            out->props = props;
+
             if (!(flags & props->flags))
             {
                 return ERR;
             }
 
-            out->num = AML_OP_EXT5B_BASE + bytes[1];
-            out->length = 2;
-            out->props = props;
             aml_advance(state, 2);
             return 0;
         }
@@ -218,14 +220,15 @@ uint64_t aml_op_read(aml_state_t* state, aml_op_t* out, aml_op_flags_t flags)
         return ERR;
     }
 
+    out->num = bytes[0];
+    out->length = 1;
+    out->props = props;
+
     if (!(flags & props->flags))
     {
         return ERR;
     }
 
-    out->num = bytes[0];
-    out->length = 1;
-    out->props = props;
     aml_advance(state, 1);
     return 0;
 }
