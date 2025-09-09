@@ -54,9 +54,9 @@ The goal is to eventually have a feature-complete, well-designed and unique oper
 
 ## Notable Future Plans
 
+- From scratch ACPI Mode + AML Interpreter (currently being worked on in the [**aml branch**](https://github.com/KaiNorberg/PatchworkOS/tree/aml))
 - Modular kernel
 - Shared libraries
-- Proper ACPI Mode + AML Interpreter
 - Software interrupts for notes (signals)
 - Lua port
 - Capability based security model (currently has no well-defined security model)
