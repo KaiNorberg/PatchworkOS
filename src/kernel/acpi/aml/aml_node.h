@@ -26,6 +26,7 @@ typedef enum
     AML_NODE_PROCESSOR,
     AML_NODE_THERMAL_ZONE,
     AML_NODE_POWER_RESOURCE,
+    AML_NODE_OPREGION,
     AML_NODE_MAX
 } aml_node_type_t;
 

@@ -87,7 +87,7 @@ static uint64_t acpi_parse_all_aml(void)
 
     if (aml_parse(dsdt->data, dsdt->header.length - sizeof(dsdt_t)) == ERR)
     {
-        LOG_ERR("Failed to parse DSDT\n");
+        LOG_ERR("Failed to parse DSDT (%s)\n", strerror(errno));
         return ERR;
     }
 

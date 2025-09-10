@@ -11,7 +11,7 @@
 
 uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out)
 {
-    uint64_t byte = aml_byte_read(state);
+    uint64_t byte = aml_state_byte_read(state);
     if (byte == ERR)
     {
         return ERR;
@@ -29,7 +29,7 @@ uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out)
 
 uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t* out)
 {
-    uint64_t leadnamechar = aml_byte_read(state);
+    uint64_t leadnamechar = aml_state_byte_read(state);
     if (leadnamechar == ERR)
     {
         return ERR;
@@ -43,7 +43,7 @@ uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t* out)
 
     for (int i = 0; i < 3; i++)
     {
-        uint64_t byte = aml_byte_read(state);
+        uint64_t byte = aml_state_byte_read(state);
         if (byte == ERR)
         {
             return ERR;
@@ -63,7 +63,7 @@ uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t* out)
 
 uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t* firstOut, aml_name_seg_t* secondOut)
 {
-    uint64_t firstByte = aml_byte_read(state);
+    uint64_t firstByte = aml_state_byte_read(state);
     if (firstByte == ERR)
     {
         return ERR;
@@ -90,7 +90,7 @@ uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t* firstOut, a
 
 uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t* outSegments, uint8_t* outSegCount)
 {
-    uint64_t firstByte = aml_byte_read(state);
+    uint64_t firstByte = aml_state_byte_read(state);
     if (firstByte == ERR)
     {
         return ERR;
@@ -102,7 +102,7 @@ uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t* outSegment
         return ERR;
     }
 
-    uint64_t segCount = aml_byte_read(state);
+    uint64_t segCount = aml_state_byte_read(state);
     if (segCount == ERR)
     {
         return ERR;
@@ -122,7 +122,7 @@ uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t* outSegment
 
 uint64_t aml_null_name_read(aml_state_t* state)
 {
-    uint64_t firstByte = aml_byte_read(state);
+    uint64_t firstByte = aml_state_byte_read(state);
     if (firstByte == ERR)
     {
         return ERR;
@@ -139,7 +139,7 @@ uint64_t aml_null_name_read(aml_state_t* state)
 
 uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* out)
 {
-    uint64_t firstByte = aml_byte_peek(state);
+    uint64_t firstByte = aml_state_byte_peek(state);
     if (firstByte == ERR)
     {
         return ERR;
@@ -173,7 +173,7 @@ uint64_t aml_prefix_path_read(aml_state_t* state, aml_prefix_path_t* out)
     out->depth = 0;
     while (true)
     {
-        uint64_t byte = aml_byte_read(state);
+        uint64_t byte = aml_state_byte_read(state);
         if (byte == ERR)
         {
             return ERR;
@@ -192,7 +192,7 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
 {
     *out = (aml_name_string_t){0};
 
-    uint64_t firstByte = aml_byte_peek(state);
+    uint64_t firstByte = aml_state_byte_peek(state);
     if (firstByte == ERR)
     {
         return ERR;
@@ -213,8 +213,8 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
         }
         break;
     default:
-        errno = EILSEQ;
-        return ERR;
+        // Is a empty prefixpath.
+        break;
     }
 
     if (aml_name_path_read(state, &out->namePath) == ERR)

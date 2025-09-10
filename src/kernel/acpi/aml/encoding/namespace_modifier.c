@@ -32,8 +32,8 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope, const aml_op
 {
     uint64_t start = state->instructionPointer;
 
-    aml_pkg_length_t pkgLength = aml_pkg_length_read(state);
-    if (pkgLength == ERR)
+    aml_pkg_length_t pkgLength;
+    if (aml_pkg_length_read(state, &pkgLength) == ERR)
     {
         return ERR;
     }

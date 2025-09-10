@@ -23,8 +23,7 @@ uint64_t aml_def_name_read(aml_state_t* state, aml_scope_t* scope, const aml_op_
 /**
  * @brief Reads a DefScope structure from the AML byte stream.
  *
- * A DefScope structure is defined as `ScopeOp PkgLength NameString TermList`. Note that `ScopeOp` should have already
- * been read and passed by the caller in `op`.
+ * A DefScope structure is defined as `ScopeOp PkgLength NameString TermList`.
  *
  * See section 19.6.122 of the ACPI specification for more details.
  *

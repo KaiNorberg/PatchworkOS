@@ -168,7 +168,7 @@ const aml_op_props_t* aml_op_lookup(uint8_t op, uint8_t extension)
 uint64_t aml_op_read(aml_state_t* state, aml_op_t* out, aml_op_flags_t flags)
 {
     uint8_t bytes[2];
-    uint64_t byteAmount = aml_bytes_peek(state, bytes, sizeof(bytes));
+    uint64_t byteAmount = aml_state_bytes_peek(state, bytes, sizeof(bytes));
 
     if (byteAmount == 2)
     {
@@ -189,7 +189,7 @@ uint64_t aml_op_read(aml_state_t* state, aml_op_t* out, aml_op_flags_t flags)
                 return ERR;
             }
 
-            aml_advance(state, 2);
+            aml_state_advance(state, 2);
             return 0;
         }
         else if (bytes[0] == 0x5B)
@@ -209,7 +209,7 @@ uint64_t aml_op_read(aml_state_t* state, aml_op_t* out, aml_op_flags_t flags)
                 return ERR;
             }
 
-            aml_advance(state, 2);
+            aml_state_advance(state, 2);
             return 0;
         }
     }
@@ -229,6 +229,6 @@ uint64_t aml_op_read(aml_state_t* state, aml_op_t* out, aml_op_flags_t flags)
         return ERR;
     }
 
-    aml_advance(state, 1);
+    aml_state_advance(state, 1);
     return 0;
 }

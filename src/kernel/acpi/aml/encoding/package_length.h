@@ -14,22 +14,46 @@
  * @{
  */
 
+/**
+ * @brief ACPI AML PkgLength structure.
+ */
 typedef uint64_t aml_pkg_length_t;
+
+/**
+ * @brief ACPI AML PkgLeadByte structure.
+ * @struct aml_pkg_lead_byte_t
+ */
+typedef struct
+{
+    uint8_t byteDataCount; //!< Amount of ByteData structures that come after the lead byte.
+    uint8_t smallLengthBits; //!< Stores the total package length if the pkglength <= 63 which is equivalent to byteDataCount == 0 else it must be 0.
+    uint8_t leastSignificantNybble; //!< Least significant nybble of the package length.
+} aml_pkg_lead_byte_t;
+
+/**
+ * @brief Reads a PkgLeadByte structure from the AML byte stream.
+ *
+ * The PkgLeadByte structure is defined as:
+ * - bit 7-6: bytedata count that follows (0-3)
+ * - bit 5-4: only used if pkglength <= 63
+ * - bit 3-0: least significant package length nybble
+ *
+ * @param state The AML state.
+ * @param out The output buffer to store the lead byte.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_pkg_lead_byte_read(aml_state_t* state, aml_pkg_lead_byte_t* out);
 
 /**
  * @brief Reads a PkgLength structure from the AML byte stream.
  *
  * The PkgLength structure is defined as `PkgLeadByte | <pkgleadbyte bytedata> | <pkgleadbyte bytedata bytedata> |
- * <pkgleadbyte bytedata bytedata bytedata>`, where `PkgLeadByte` is defined as:
- * - bit 7-6: bytedata count that follows (0-3)
- * - bit 5-4: only used if pkglength <= 63
- * - bit 3-0: least significant package length nybble
- *
- * For more information, refer to the ACPI specification section 20.2.4.
+ * <pkgleadbyte bytedata bytedata bytedata>`.
  *
  * @param state The AML state.
- * @return On success, the package length. On failure, `ERR` and `errno` is set.
+ * @param out The output buffer to store the package length.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_pkg_length_read(aml_state_t* state);
+uint64_t aml_pkg_length_read(aml_state_t* state, aml_pkg_length_t* out);
 
 /** @} */

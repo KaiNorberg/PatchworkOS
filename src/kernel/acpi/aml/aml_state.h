@@ -47,7 +47,7 @@ static inline void aml_state_deinit(aml_state_t* state)
     state->instructionPointer = 0;
 }
 
-static inline uint64_t aml_byte_read(aml_state_t* state)
+static inline uint64_t aml_state_byte_read(aml_state_t* state)
 {
     if (state->instructionPointer >= state->dataSize)
     {
@@ -58,7 +58,7 @@ static inline uint64_t aml_byte_read(aml_state_t* state)
     return ((uint8_t*)state->data)[state->instructionPointer++];
 }
 
-static inline uint64_t aml_byte_peek(aml_state_t* state)
+static inline uint64_t aml_state_byte_peek(aml_state_t* state)
 {
     if (state->instructionPointer >= state->dataSize)
     {
@@ -69,7 +69,7 @@ static inline uint64_t aml_byte_peek(aml_state_t* state)
     return ((uint8_t*)state->data)[state->instructionPointer];
 }
 
-static inline uint64_t aml_bytes_read(aml_state_t* state, uint8_t* buffer, uint64_t count)
+static inline uint64_t aml_state_bytes_read(aml_state_t* state, uint8_t* buffer, uint64_t count)
 {
     uint64_t bytesAvailable = state->dataSize - state->instructionPointer;
     if (count > bytesAvailable)
@@ -82,7 +82,7 @@ static inline uint64_t aml_bytes_read(aml_state_t* state, uint8_t* buffer, uint6
     return count;
 }
 
-static inline uint64_t aml_bytes_peek(aml_state_t* state, uint8_t* buffer, uint64_t count)
+static inline uint64_t aml_state_bytes_peek(aml_state_t* state, uint8_t* buffer, uint64_t count)
 {
     uint64_t bytesAvailable = state->dataSize - state->instructionPointer;
     if (count > bytesAvailable)
@@ -94,7 +94,7 @@ static inline uint64_t aml_bytes_peek(aml_state_t* state, uint8_t* buffer, uint6
     return count;
 }
 
-static inline uint64_t aml_advance(aml_state_t* state, uint64_t offset)
+static inline uint64_t aml_state_advance(aml_state_t* state, uint64_t offset)
 {
     uint64_t bytesAvailable = state->dataSize - state->instructionPointer;
     if (offset > bytesAvailable)
