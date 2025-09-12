@@ -24,7 +24,7 @@
  * down the chain until we finally have something to execute.
  *
  * This parsing structure makes the parser a more or less 1:1 replica of the specification, hopefully making it easier
- * to understand and maintain.
+ * to understand and maintain. But, it does also result in some overhead and redundant parsing, potentially hurting performance, however i believe the benefits outweigh the costs.
  *
  * Throughout the documentation objects are frequently said to have a definition, a breakdown of how these
  * definitions are read can be found in section 20.1 of the ACPI specification.
