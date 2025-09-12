@@ -56,7 +56,7 @@ typedef struct
  */
 typedef struct
 {
-    uint8_t name[AML_NAME_LENGTH_SEG];
+    char name[AML_NAME_LENGTH_SEG + 1];
 } aml_name_seg_t;
 
 /**
@@ -104,6 +104,7 @@ static inline uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t* out
         return ERR;
     }
 
+    out->name[0] = leadnamechar.num;
     for (int i = 0; i < 3; i++)
     {
         aml_value_t namechar;
@@ -121,6 +122,7 @@ static inline uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t* out
 
         out->name[i + 1] = namechar.num;
     }
+    out->name[4] = '\0';
 
     return 0;
 }
@@ -224,7 +226,6 @@ static inline uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg
     *outSegCount = segCount;
     return 0;
 }
-
 
 /**
  * Reads the next data as a NullName structure from the AML bytecode stream.
@@ -449,6 +450,71 @@ static inline aml_node_t* aml_name_string_walk(const aml_name_string_t* nameStri
     }
 
     return found;
+}
+
+/**
+ * @brief Add a new node at the location and with the name specified by the NameString.
+ *
+ * @param string The Namestring specifying the parent node.
+ * @param start The node to start the search from, or `NULL` to start from the root.
+ * @param type The type of the new node.
+ * @return On success, a pointer to the new node. On error, `NULL` and `errno` is set.
+ */
+static inline aml_node_t* aml_add_node_at_name_string(aml_name_string_t* string, aml_node_t* start,
+    aml_node_type_t type)
+{
+    if (string->namePath.segmentCount == 0)
+    {
+        errno = EILSEQ;
+        return NULL;
+    }
+
+    if (start == NULL || string->rootChar.present)
+    {
+        start = aml_root_get();
+    }
+
+    for (uint64_t i = 0; i < string->prefixPath.depth; i++)
+    {
+        start = start->parent;
+        if (start == NULL)
+        {
+            errno = ENOENT;
+            return NULL;
+        }
+    }
+
+    aml_node_t* parentNode = start;
+    for (uint64_t i = 1; i < string->namePath.segmentCount; i++)
+    {
+        aml_node_t* next = NULL;
+        const aml_name_seg_t* segment = &string->namePath.segments[i - 1];
+        aml_node_t* child = NULL;
+        LIST_FOR_EACH(child, &start->children, entry)
+        {
+            if (memcmp(child->name, segment->name, AML_NAME_LENGTH_SEG) == 0)
+            {
+                next = child;
+                break;
+            }
+        }
+
+        if (next == NULL)
+        {
+            errno = ENOENT;
+            return NULL;
+        }
+        parentNode = next;
+    }
+
+    aml_node_t* newNode =
+        aml_add_node(parentNode, string->namePath.segments[string->namePath.segmentCount - 1].name, type);
+    if (newNode == NULL)
+    {
+        return NULL;
+    }
+
+    return newNode;
 }
 
 /** @} */

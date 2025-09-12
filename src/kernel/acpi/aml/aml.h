@@ -24,7 +24,8 @@
  * down the chain until we finally have something to execute.
  *
  * This parsing structure makes the parser a more or less 1:1 replica of the specification, hopefully making it easier
- * to understand and maintain. But, it does also result in some overhead and redundant parsing, potentially hurting performance, however i believe the benefits outweigh the costs.
+ * to understand and maintain. But, it does also result in some overhead and redundant parsing, potentially hurting
+ * performance, however i believe the benefits outweigh the costs.
  *
  * Throughout the documentation objects are frequently said to have a definition, a breakdown of how these
  * definitions are read can be found in section 20.1 of the ACPI specification.
@@ -85,5 +86,14 @@ aml_node_t* aml_find_node(const char* path, aml_node_t* start);
  * @return aml_node_t* A pointer to the root node.
  */
 aml_node_t* aml_root_get(void);
+
+/**
+ * @brief Print the ACPI namespace tree for debugging purposes.
+ *
+ * @param node Pointer to the node to start printing from.
+ * @param depth Depth of the current node, used to indent the output.
+ * @param isLast Whether the current node is the last child of its parent.
+ */
+void aml_print_tree(aml_node_t* node, uint32_t depth, bool isLast);
 
 /** @} */

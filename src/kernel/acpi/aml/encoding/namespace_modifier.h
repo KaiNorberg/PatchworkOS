@@ -2,9 +2,9 @@
 
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_node.h"
-#include "acpi/aml/aml_value.h"
 #include "acpi/aml/aml_scope.h"
 #include "acpi/aml/aml_state.h"
+#include "acpi/aml/aml_value.h"
 #include "log/log.h"
 #include "name.h"
 #include "package_length.h"
@@ -127,6 +127,5 @@ static inline uint64_t aml_namespace_modifier_obj_read(aml_state_t* state, aml_s
         return ERR;
     }
 }
-
 
 /** @} */

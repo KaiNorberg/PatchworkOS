@@ -1,5 +1,7 @@
 #pragma once
 
+#include "encoding/named_region_space.h"
+
 #include <sys/list.h>
 
 /**
@@ -39,7 +41,23 @@ typedef struct aml_node
     aml_node_type_t type;
     list_t children;
     struct aml_node* parent;
-    char name[AML_NAME_LENGTH];
+    char name[AML_NAME_LENGTH + 1];
+    union {
+        struct
+        {
+            aml_region_space_t space;
+            uint32_t offset;
+            uint32_t len;
+        } opregion;
+    };
 } aml_node_t;
+
+/**
+ * @brief Convert an aml node type to a string.
+ *
+ * @param type ACPI node type.
+ * @return String representation of the ACPI node type or "Unknown" if the type is invalid.
+ */
+const char* aml_node_type_to_string(aml_node_type_t type);
 
 /** @} */

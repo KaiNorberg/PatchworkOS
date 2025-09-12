@@ -1,9 +1,9 @@
 #include "term.h"
 
 #include "acpi/aml/aml_debug.h"
-#include "acpi/aml/aml_value.h"
 #include "acpi/aml/aml_scope.h"
 #include "acpi/aml/aml_state.h"
+#include "acpi/aml/aml_value.h"
 #include "data.h"
 #include "named.h"
 #include "namespace_modifier.h"
@@ -77,7 +77,7 @@ uint64_t aml_termarg_read(aml_state_t* state, aml_scope_t* scope, aml_termarg_t*
     return 0;
 }
 
-uint64_t aml_termarg_integer_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
+uint64_t aml_termarg_read_integer(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
 {
     aml_termarg_t termarg;
     if (aml_termarg_read(state, scope, &termarg, AML_TERMARG_INTEGER) == ERR)

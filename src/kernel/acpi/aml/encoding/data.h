@@ -1,10 +1,10 @@
 #pragma once
 
-#include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_debug.h"
+#include "acpi/aml/aml_state.h"
 
-#include <stdint.h>
 #include <errno.h>
+#include <stdint.h>
 
 /**
  * @brief ACPI AML Data Objects Encoding
@@ -297,7 +297,7 @@ typedef uint64_t aml_const_obj_t;
 static inline uint64_t aml_const_obj_read(aml_state_t* state, aml_const_obj_t* out)
 {
     aml_value_t value;
-    if (aml_value_read(state, &value) == ERR)
+    if (aml_value_read_no_ext(state, &value) == ERR)
     {
         return ERR;
     }
@@ -333,7 +333,7 @@ static inline uint64_t aml_const_obj_read(aml_state_t* state, aml_const_obj_t* o
 static inline uint64_t aml_computational_data_read(aml_state_t* state, aml_computational_data_t* out)
 {
     aml_value_t value;
-    if (aml_value_peek(state, &value) == ERR)
+    if (aml_value_peek_no_ext(state, &value) == ERR)
     {
         return ERR;
     }

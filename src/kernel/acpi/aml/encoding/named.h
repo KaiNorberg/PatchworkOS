@@ -21,26 +21,7 @@
  * @{
  */
 
-/**
- * @brief ACPI AML Region Space Encoding
- * @enum aml_region_space_t
- */
-typedef enum
-{
-    AML_REGION_SYSTEM_MEMORY = 0x00,
-    AML_REGION_SYSTEM_IO = 0x01,
-    AML_REGION_PCI_CONFIG = 0x02,
-    AML_REGION_EMBEDDED_CONTROL = 0x03,
-    AML_REGION_SM_BUS = 0x04,
-    AML_REGION_SYSTEM_CMOS = 0x05,
-    AML_REGION_PCI_BAR_TARGET = 0x06,
-    AML_REGION_IPMI = 0x07,
-    AML_REGION_GENERAL_PURPOSE_IO = 0x08,
-    AML_REGION_GENERIC_SERIAL_BUS = 0x09,
-    AML_REGION_PCC = 0x0A,
-    AML_REGION_OEM_MIN = 0x80,
-    AML_REGION_OEM_MAX = 0xFF,
-} aml_region_space_t;
+#include "named_region_space.h"
 
 /**
  * @brief Reads a RegionSpace structure from the AML byte stream.
@@ -87,7 +68,7 @@ typedef uint64_t aml_region_offset_t;
  */
 static inline uint64_t aml_region_offset_read(aml_state_t* state, aml_scope_t* scope, aml_region_offset_t* out)
 {
-    return aml_termarg_integer_read(state, scope, out);
+    return aml_termarg_read_integer(state, scope, out);
 }
 
 /**
@@ -107,7 +88,7 @@ typedef uint64_t aml_region_len_t;
  */
 static inline uint64_t aml_region_len_read(aml_state_t* state, aml_scope_t* scope, aml_region_len_t* out)
 {
-    return aml_termarg_integer_read(state, scope, out);
+    return aml_termarg_read_integer(state, scope, out);
 }
 
 /**
@@ -146,15 +127,11 @@ static inline uint64_t aml_def_op_region_read(aml_state_t* state, aml_scope_t* s
         return ERR;
     }
 
-    LOG_INFO("RegionSpace: %d\n", regionSpace);
-
     aml_region_offset_t regionOffset;
     if (aml_region_offset_read(state, scope, &regionOffset) == ERR)
     {
         return ERR;
     }
-
-    LOG_INFO("RegionOffset: %d\n", regionOffset);
 
     aml_region_len_t regionLen;
     if (aml_region_len_read(state, scope, &regionLen) == ERR)
@@ -162,7 +139,14 @@ static inline uint64_t aml_def_op_region_read(aml_state_t* state, aml_scope_t* s
         return ERR;
     }
 
-    LOG_INFO("RegionLen: %d\n", regionLen);
+    aml_node_t* node = aml_add_node_at_name_string(&nameString, scope->location, AML_NODE_OPREGION);
+    if (node == NULL)
+    {
+        return ERR;
+    }
+    node->opregion.space = regionSpace;
+    node->opregion.offset = regionOffset;
+    node->opregion.len = regionLen;
 
     AML_DEBUG_UNIMPLEMENTED_VALUE(&opRegionOp);
     errno = ENOSYS;
@@ -198,6 +182,5 @@ static inline uint64_t aml_named_obj_read(aml_state_t* state, aml_scope_t* scope
         return ERR;
     }
 }
-
 
 /** @} */

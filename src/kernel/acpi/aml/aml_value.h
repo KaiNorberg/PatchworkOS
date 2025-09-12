@@ -380,17 +380,21 @@ static inline uint64_t aml_value_peek(aml_state_t* state, aml_value_t* out)
 
     uint8_t extension = 0;
     uint8_t value = buffer[0];
+    uint8_t length = 1;
+
     if (byteAmount == 2)
     {
         if (buffer[0] == AML_EXT_OP_PREFIX)
         {
             extension = AML_EXT_OP_PREFIX;
             value = buffer[1];
+            length = 2;
         }
         else if (buffer[0] == AML_LNOT_OP)
         {
             extension = AML_LNOT_OP;
             value = buffer[1];
+            length = 2;
         }
     }
 
@@ -402,7 +406,7 @@ static inline uint64_t aml_value_peek(aml_state_t* state, aml_value_t* out)
     }
 
     out->num = (extension == AML_EXT_OP_PREFIX) ? AML_EXT_OP_PREFIX_BASE + value : value;
-    out->length = byteAmount;
+    out->length = length;
     out->props = props;
     return 0;
 }

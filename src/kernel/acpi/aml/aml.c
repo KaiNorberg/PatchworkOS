@@ -43,6 +43,10 @@ uint64_t aml_parse(const void* data, uint64_t size)
     // When aml first starts its not in any scope, so we pass NULL as the scope.
     uint64_t result = aml_termlist_read(&state, NULL, size);
 
+    // For debugging
+    LOG_INFO("==ACPI Namespace Tree==\n");
+    aml_print_tree(aml_root_get(), 0, true);
+
     aml_state_deinit(&state);
     return result;
 }
@@ -68,7 +72,7 @@ aml_node_t* aml_add_node(aml_node_t* parent, const char* name, aml_node_type_t t
     list_entry_init(&node->entry);
     node->type = type;
     list_init(&node->children);
-    memcpy(node->name, name, AML_NAME_LENGTH);
+    memcpy(node->name, name, AML_NAME_LENGTH + 1);
 
     if (parent != NULL)
     {
@@ -103,4 +107,27 @@ aml_node_t* aml_root_get(void)
     }
 
     return root;
+}
+
+void aml_print_tree(aml_node_t* node, uint32_t depth, bool isLast)
+{
+    for (uint32_t i = 0; i < depth; i++)
+    {
+        if (i == depth - 1)
+        {
+            LOG_INFO("%s", isLast ? "└── " : "├── ");
+        }
+        else
+        {
+            LOG_INFO("│   ");
+        }
+    }
+
+    LOG_INFO("%s [%s]\n", node->name, aml_node_type_to_string(node->type));
+
+    aml_node_t* child;
+    LIST_FOR_EACH(child, &node->children, entry)
+    {
+        aml_print_tree(child, depth + 1, list_last(&node->children) == &child->entry);
+    }
 }

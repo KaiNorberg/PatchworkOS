@@ -63,7 +63,7 @@ uint64_t aml_termarg_read(aml_state_t* state, aml_scope_t* scope, aml_termarg_t*
  * @param out The output buffer to store the result of the TermArg.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-uint64_t aml_termarg_integer_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out);
+uint64_t aml_termarg_read_integer(aml_state_t* state, aml_scope_t* scope, uint64_t* out);
 
 /**
  * @brief Reads an Object structure from the AML byte stream.
