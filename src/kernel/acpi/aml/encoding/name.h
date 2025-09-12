@@ -4,6 +4,7 @@
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_node.h"
 #include "acpi/aml/aml_state.h"
+#include "data.h"
 
 #include <errno.h>
 #include <stdint.h>
