@@ -279,6 +279,48 @@ static inline uint64_t aml_qword_const_read(aml_state_t* state, aml_qword_data_t
 }
 
 /**
+ * @brief ACPI AML ConstObj structure.
+ */
+typedef uint64_t aml_const_obj_t;
+
+/**
+ * @brief Read a ConstObj structure from the AML stream.
+ *
+ * A ConstObj structure is defined as `ZeroOp | OneOp | OnesOp`.
+ *
+ * See sections 19.6.98, 19.6.99 and 19.6.156 for more details.
+ *
+ * @param state The AML state.
+ * @param out Pointer to the buffer where the ConstObj will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+static inline uint64_t aml_const_obj_read(aml_state_t* state, aml_const_obj_t* out)
+{
+    aml_value_t value;
+    if (aml_value_read(state, &value) == ERR)
+    {
+        return ERR;
+    }
+
+    switch (value.num)
+    {
+    case AML_ZERO_OP:
+        *out = 0;
+        return 0;
+    case AML_ONE_OP:
+        *out = 1;
+        return 0;
+    case AML_ONES_OP:
+        *out = ~0;
+        return 0;
+    default:
+        AML_DEBUG_INVALID_STRUCTURE("ConstObj");
+        errno = EILSEQ;
+        return ERR;
+    }
+}
+
+/**
  * @brief Read a ComputationalData structure from the AML stream.
  *
  * A ComputationalData structure is defined as `ByteConst | WordConst | DWordConst | QWordConst | String | ConstObj |
@@ -310,8 +352,14 @@ static inline uint64_t aml_computational_data_read(aml_state_t* state, aml_compu
     case AML_QWORD_PREFIX:
         out->type = AML_COMPUTATIONAL_QWORD;
         return aml_qword_const_read(state, &out->qword);
+    case AML_ZERO_OP:
+    case AML_ONE_OP:
+    case AML_ONES_OP:
+        // TODO: Add revision handling
+        out->type = AML_COMPUTATIONAL_QWORD;
+        return aml_const_obj_read(state, &out->qword);
     default:
-        AML_DEBUG_UNIMPLEMENTED_STRUCTURE("String | ConstObj | RevisionOp | DefBuffer");
+        AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
         errno = ENOSYS;
         return ERR;
     }

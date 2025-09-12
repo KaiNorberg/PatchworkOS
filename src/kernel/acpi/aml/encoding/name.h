@@ -38,7 +38,7 @@
 typedef struct
 {
     uint16_t depth; //!< Number of parent prefixes ('^') in the prefix, each prefix means go back one level in the
-                    //!< namespace hierarchy.
+                    //! namespace hierarchy.
 } aml_prefix_path_t;
 
 /**

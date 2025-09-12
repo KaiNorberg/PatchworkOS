@@ -118,5 +118,4 @@ static inline uint64_t aml_pkg_length_read(aml_state_t* state, aml_pkg_length_t*
     return 0;
 }
 
-
 /** @} */
