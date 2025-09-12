@@ -72,8 +72,8 @@ static inline uint64_t aml_pkg_lead_byte_read(aml_state_t* state, aml_pkg_lead_b
 /**
  * @brief Reads a PkgLength structure from the AML byte stream.
  *
- * The PkgLength structure is defined as `PkgLength := PkgLeadByte | <pkgleadbyte bytedata> | <pkgleadbyte bytedata bytedata> |
- * <pkgleadbyte bytedata bytedata bytedata>`.
+ * The PkgLength structure is defined as `PkgLength := PkgLeadByte | <pkgleadbyte bytedata> | <pkgleadbyte bytedata
+ * bytedata> | <pkgleadbyte bytedata bytedata bytedata>`.
  *
  * @param state The AML state.
  * @param out The output buffer to store the package length.

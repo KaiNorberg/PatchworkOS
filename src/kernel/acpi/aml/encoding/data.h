@@ -323,8 +323,8 @@ static inline uint64_t aml_const_obj_read(aml_state_t* state, aml_const_obj_t* o
 /**
  * @brief Read a ComputationalData structure from the AML stream.
  *
- * A ComputationalData structure is defined as `ComputationalData := ByteConst | WordConst | DWordConst | QWordConst | String | ConstObj |
- * RevisionOp | DefBuffer`.
+ * A ComputationalData structure is defined as `ComputationalData := ByteConst | WordConst | DWordConst | QWordConst |
+ * String | ConstObj | RevisionOp | DefBuffer`.
  *
  * @param state The AML state.
  * @param out Pointer to the buffer where the ComputationalData will be stored.
