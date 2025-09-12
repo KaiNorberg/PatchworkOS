@@ -25,8 +25,9 @@ typedef uint64_t aml_pkg_length_t;
  */
 typedef struct
 {
-    uint8_t byteDataCount; //!< Amount of ByteData structures that come after the lead byte.
-    uint8_t smallLengthBits; //!< Stores the total package length if the pkglength <= 63 which is equivalent to byteDataCount == 0 else it must be 0.
+    uint8_t byteDataCount;          //!< Amount of ByteData structures that come after the lead byte.
+    uint8_t smallLengthBits;        //!< Stores the total package length if the pkglength <= 63 which is equivalent to
+                                    //!< byteDataCount == 0 else it must be 0.
     uint8_t leastSignificantNybble; //!< Least significant nybble of the package length.
 } aml_pkg_lead_byte_t;
 

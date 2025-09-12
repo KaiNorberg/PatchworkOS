@@ -1,8 +1,7 @@
 #pragma once
 
-#include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_scope.h"
-#include "acpi/aml/aml_op.h"
+#include "acpi/aml/aml_state.h"
 
 #include <stdint.h>
 
@@ -93,21 +92,21 @@ uint64_t aml_region_len_read(aml_state_t* state, aml_scope_t* scope, aml_region_
  *
  * @param state The AML state.
  * @param scope The AML scope.
- * @param op The AML op, should have been read by the caller.
  * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
  */
-uint64_t aml_def_op_region_read(aml_state_t* state, aml_scope_t* scope, const aml_op_t* op);
+uint64_t aml_def_op_region_read(aml_state_t* state, aml_scope_t* scope);
 
- /**
-  * @brief Reads a NamedObj structure from the AML byte stream.
-  *
-  * A NamedObj structure is defined as `DefBankField | DefCreateBitField | DefCreateByteField | DefCreateDWordField | DefCreateField | DefCreateQWordField | DefCreateWordField | DefDataRegion | DefExternal | DefOpRegion | DefPowerRes | DefThermalZone`.
-  *
-  * @param state The AML state.
-  * @param scope The AML scope.
-  * @param op The AML op, should have been read by the caller.
-  * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
-  */
-uint64_t aml_named_obj_read(aml_state_t* state, aml_scope_t* scope, const aml_op_t* op);
+/**
+ * @brief Reads a NamedObj structure from the AML byte stream.
+ *
+ * A NamedObj structure is defined as `DefBankField | DefCreateBitField | DefCreateByteField | DefCreateDWordField |
+ * DefCreateField | DefCreateQWordField | DefCreateWordField | DefDataRegion | DefExternal | DefOpRegion | DefPowerRes |
+ * DefThermalZone`.
+ *
+ * @param state The AML state.
+ * @param scope The AML scope.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
+ */
+uint64_t aml_named_obj_read(aml_state_t* state, aml_scope_t* scope);
 
 /** @} */

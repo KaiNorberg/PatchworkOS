@@ -1,7 +1,8 @@
 #include "namespace_modifier.h"
 
+#include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_node.h"
-#include "acpi/aml/aml_op.h"
+#include "acpi/aml/aml_value.h"
 #include "acpi/aml/aml_scope.h"
 #include "acpi/aml/aml_state.h"
 #include "log/log.h"
@@ -14,23 +15,22 @@
 #include <errno.h>
 #include <stdint.h>
 
-uint64_t aml_def_alias_read(aml_state_t* state, aml_scope_t* scope, const aml_op_t* op)
-{
-    LOG_ERR("DefAlias not implemented\n");
-    errno = ENOTSUP;
-    return ERR;
-}
-
-uint64_t aml_def_name_read(aml_state_t* state, aml_scope_t* scope, const aml_op_t* op)
-{
-    LOG_ERR("DefName not implemented\n");
-    errno = ENOTSUP;
-    return ERR;
-}
-
-uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope, const aml_op_t* op)
+uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope)
 {
     uint64_t start = state->instructionPointer;
+
+    aml_value_t scopeOp;
+    if (aml_value_read_no_ext(state, &scopeOp) == ERR)
+    {
+        return ERR;
+    }
+
+    if (scopeOp.num != AML_SCOPE_OP)
+    {
+        AML_DEBUG_INVALID_STRUCTURE("ScopeOp")
+        errno = EILSEQ;
+        return ERR;
+    }
 
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
@@ -38,13 +38,13 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope, const aml_op
         return ERR;
     }
 
-    uint64_t end = start + pkgLength - op->length;
-
     aml_name_string_t nameString;
     if (aml_name_string_read(state, &nameString) == ERR)
     {
         return ERR;
     }
+
+    uint64_t end = start + pkgLength;
 
     aml_node_t* newLocation = aml_name_string_walk(&nameString, scope != NULL ? scope->location : NULL);
     if (newLocation == NULL)
@@ -56,7 +56,8 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope, const aml_op
         newLocation->type != AML_NODE_PROCESSOR && newLocation->type != AML_NODE_THERMAL_ZONE &&
         newLocation->type != AML_NODE_POWER_RESOURCE)
     {
-        errno = ENOENT;
+        AML_DEBUG_INVALID_STRUCTURE("NameString")
+        errno = EILSEQ;
         return ERR;
     }
 
@@ -69,18 +70,28 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope, const aml_op
     return aml_termlist_read(state, &newScope, end);
 }
 
-uint64_t aml_namespace_modifier_obj_read(aml_state_t* state, aml_scope_t* scope, const aml_op_t* op)
+uint64_t aml_namespace_modifier_obj_read(aml_state_t* state, aml_scope_t* scope)
 {
-    switch (op->num)
+    aml_value_t value;
+    if (aml_value_peek(state, &value) == ERR)
     {
-    case AML_OP_ALIAS:
-        return aml_def_alias_read(state, scope, op);
-    case AML_OP_NAME:
-        return aml_def_name_read(state, scope, op);
-    case AML_OP_SCOPE:
-        return aml_def_scope_read(state, scope, op);
+        return ERR;
+    }
+
+    switch (value.num)
+    {
+    case AML_ALIAS_OP:
+        AML_DEBUG_UNEXPECTED_VALUE(&value);
+        errno = EILSEQ;
+        return ERR;
+    case AML_NAME_OP:
+        AML_DEBUG_UNEXPECTED_VALUE(&value);
+        errno = EILSEQ;
+        return ERR;
+    case AML_SCOPE_OP:
+        return aml_def_scope_read(state, scope);
     default:
-        LOG_ERR("Unexpected opcode in aml_namespace_modifier_obj_read() (%s, 0x%.4x)\n", op->props->name, op->num);
+        AML_DEBUG_UNEXPECTED_VALUE(&value);
         errno = EILSEQ;
         return ERR;
     }

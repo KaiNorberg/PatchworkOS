@@ -1,7 +1,8 @@
 #pragma once
 
-#include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_scope.h"
+#include "acpi/aml/aml_state.h"
+#include "data.h"
 
 #include <stdint.h>
 
@@ -16,27 +17,27 @@
  */
 
 /**
- * @brief ACPI AML TermArg Type
- *
- * The type of the evaluated result of a TermArg.
+ * @brief The type of the result produced by a TermArg.
  */
 typedef enum
 {
     AML_TERMARG_NONE = 0,
     AML_TERMARG_INTEGER,
+    AML_TERMARG_MAX,
 } aml_termarg_type_t;
 
 /**
  * @brief ACPI AML TermArg structure
  * @struct aml_termarg_t
  *
- * A TermArg structure is used to pass certain arguments to opcodes. They dont just store static information, instead they are evaluated at runtime. Think of how in C you can do `myfunc(1, myotherfunc(), 2)`, in this case the `myotherfunc()` argument would be a TermArg in AML.
+ * A TermArg structure is used to pass certain arguments to opcodes. They dont just store static information, instead
+ * they are evaluated at runtime. Think of how in C you can do `myfunc(1, myotherfunc(), 2)`, in this case the
+ * `myotherfunc()` argument would be a TermArg in AML.
  */
 typedef struct
 {
-    aml_termarg_type_t type;
-    union
-    {
+    aml_termarg_type_t type; //!< The type of the parsed result of the termarg.
+    union {
         uint64_t integer;
     };
 } aml_termarg_t;
@@ -49,7 +50,7 @@ typedef struct
  * @param state The AML state.
  * @param scope The AML scope.
  * @param out The output buffer to store the result of the TermArg.
- * @param expectedType The expected type of the TermArg, will error if a different type is encountered.
+ * @param expectedType The expected type of the TermArg result, will error if a different type is encountered.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
 uint64_t aml_termarg_read(aml_state_t* state, aml_scope_t* scope, aml_termarg_t* out, aml_termarg_type_t expectedType);

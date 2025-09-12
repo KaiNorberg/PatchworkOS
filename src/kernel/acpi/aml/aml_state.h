@@ -1,7 +1,6 @@
 #pragma once
 
 #include "aml_node.h"
-#include "aml_state.h"
 
 #include <errno.h>
 #include <stdbool.h>
@@ -47,29 +46,7 @@ static inline void aml_state_deinit(aml_state_t* state)
     state->instructionPointer = 0;
 }
 
-static inline uint64_t aml_state_byte_read(aml_state_t* state)
-{
-    if (state->instructionPointer >= state->dataSize)
-    {
-        errno = ENODATA;
-        return ERR;
-    }
-
-    return ((uint8_t*)state->data)[state->instructionPointer++];
-}
-
-static inline uint64_t aml_state_byte_peek(aml_state_t* state)
-{
-    if (state->instructionPointer >= state->dataSize)
-    {
-        errno = ENODATA;
-        return ERR;
-    }
-
-    return ((uint8_t*)state->data)[state->instructionPointer];
-}
-
-static inline uint64_t aml_state_bytes_read(aml_state_t* state, uint8_t* buffer, uint64_t count)
+static inline uint64_t aml_state_read(aml_state_t* state, uint8_t* buffer, uint64_t count)
 {
     uint64_t bytesAvailable = state->dataSize - state->instructionPointer;
     if (count > bytesAvailable)
@@ -82,7 +59,7 @@ static inline uint64_t aml_state_bytes_read(aml_state_t* state, uint8_t* buffer,
     return count;
 }
 
-static inline uint64_t aml_state_bytes_peek(aml_state_t* state, uint8_t* buffer, uint64_t count)
+static inline uint64_t aml_state_peek(aml_state_t* state, uint8_t* buffer, uint64_t count)
 {
     uint64_t bytesAvailable = state->dataSize - state->instructionPointer;
     if (count > bytesAvailable)

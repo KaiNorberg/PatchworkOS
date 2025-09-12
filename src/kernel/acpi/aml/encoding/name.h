@@ -1,6 +1,7 @@
 #pragma once
 
 #include "acpi/aml/aml_state.h"
+#include "data.h"
 
 #include <stdint.h>
 
@@ -19,15 +20,9 @@
 #define AML_NAME_LENGTH_PATH 254
 #define AML_NAME_LENGTH_SEG 4
 
-#define AML_IS_LEAD_NAME_CHAR(c) ((c >= 'A' && c <= 'Z') || c == '_')
-#define AML_IS_DIGIT_CHAR(c) ((c >= '0' && c <= '9'))
+#define AML_IS_LEAD_NAME_CHAR(c) ((c >= AML_NAME_CHAR_A && c <= AML_NAME_CHAR_Z) || c == AML_NAME_CHAR)
+#define AML_IS_DIGIT_CHAR(c) ((c >= AML_DIGIT_CHAR_0 && c <= AML_DIGIT_CHAR_9))
 #define AML_IS_NAME_CHAR(c) (AML_IS_DIGIT_CHAR(c) || AML_IS_LEAD_NAME_CHAR(c))
-
-#define AML_ROOT_CHAR '\\'
-#define AML_PARENT_PREFIX_CHAR '^'
-#define AML_DUAL_NAME_PREFIX 0x2E
-#define AML_MULTI_NAME_PREFIX 0x2F
-#define AML_NULL_NAME 0x00
 
 /**
  * @brief A PrefixPath structure.
@@ -64,7 +59,7 @@ typedef struct
 typedef struct
 {
     aml_name_seg_t segments[AML_NAME_LENGTH_PATH]; //!< Array of segments in the name string.
-    uint8_t segmentCount;                       //!< Number of segments in the name string.
+    uint8_t segmentCount;                          //!< Number of segments in the name string.
 } aml_name_path_t;
 
 /**
@@ -77,15 +72,6 @@ typedef struct
     aml_prefix_path_t prefixPath;
     aml_name_path_t namePath;
 } aml_name_string_t;
-
-/**
- * @brief Reads the next data as a RootChar from the AML bytecode stream.
- *
- * @param state The AML state.
- * @param out Pointer to destination where the RootChar will be stored.
- * @return On success, 0. On error, `ERR` and `errno` is set.
- */
-uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out);
 
 /**
  * @brief Reads the next data as a NameSeg from the AML bytecode stream.
@@ -109,6 +95,22 @@ uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t* out);
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
 uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t* firstOut, aml_name_seg_t* secondOut);
+
+/**
+ * @brief ACPI AML SegCount structure.
+ */
+typedef aml_byte_data_t aml_seg_count_t;
+
+/**
+ * @brief Reads the next data as a SegCount structure from the AML bytecode stream.
+ *
+ * A SegCount structure is defined as `ByteData`.
+ *
+ * @param state The AML state.
+ * @param out Pointer to destination where the SegCount will be stored.
+ * @return On success, 0. On error, `ERR` and `errno` is set.
+ */
+uint64_t aml_seg_count_read(aml_state_t* state, aml_seg_count_t* out);
 
 /**
  * @brief Reads the next data as a MultiNamePath structure from the AML bytecode stream.
@@ -153,6 +155,15 @@ uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* out);
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
 uint64_t aml_prefix_path_read(aml_state_t* state, aml_prefix_path_t* out);
+
+/**
+ * @brief Reads the next data as a RootChar from the AML bytecode stream.
+ *
+ * @param state The AML state.
+ * @param out Pointer to destination where the RootChar will be stored.
+ * @return On success, 0. On error, `ERR` and `errno` is set.
+ */
+uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out);
 
 /**
  * @brief Reads the next data as a NameString structure from the AML bytecode stream.

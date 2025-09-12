@@ -1,8 +1,8 @@
 #include "aml.h"
 
 #include "aml_state.h"
-#include "mem/heap.h"
 #include "encoding/term.h"
+#include "mem/heap.h"
 
 #include "log/log.h"
 

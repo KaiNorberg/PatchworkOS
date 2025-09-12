@@ -1,7 +1,8 @@
 #include "name.h"
 #include "acpi/aml/aml.h"
-#include "acpi/aml/aml_state.h"
+#include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_node.h"
+#include "acpi/aml/aml_state.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -9,53 +10,37 @@
 #include <string.h>
 #include <sys/list.h>
 
-uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out)
-{
-    uint64_t byte = aml_state_byte_read(state);
-    if (byte == ERR)
-    {
-        return ERR;
-    }
-
-    if (byte != AML_ROOT_CHAR)
-    {
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    out->present = true;
-    return 0;
-}
-
 uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t* out)
 {
-    uint64_t leadnamechar = aml_state_byte_read(state);
-    if (leadnamechar == ERR)
+    aml_value_t leadnamechar;
+    if (aml_value_read_no_ext(state, &leadnamechar) == ERR)
     {
         return ERR;
     }
 
-    if (!AML_IS_LEAD_NAME_CHAR(leadnamechar))
+    if (!AML_IS_LEAD_NAME_CHAR(leadnamechar.num))
     {
+        AML_DEBUG_INVALID_STRUCTURE("LeadNameChar");
         errno = EILSEQ;
         return ERR;
     }
 
     for (int i = 0; i < 3; i++)
     {
-        uint64_t byte = aml_state_byte_read(state);
-        if (byte == ERR)
+        aml_value_t namechar;
+        if (aml_value_read_no_ext(state, &namechar) == ERR)
         {
             return ERR;
         }
 
-        if (!AML_IS_NAME_CHAR(byte))
+        if (!AML_IS_NAME_CHAR(namechar.num))
         {
+            AML_DEBUG_INVALID_STRUCTURE("NameChar");
             errno = EILSEQ;
             return ERR;
         }
 
-        out->name[i + 1] = byte;
+        out->name[i + 1] = namechar.num;
     }
 
     return 0;
@@ -63,14 +48,15 @@ uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t* out)
 
 uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t* firstOut, aml_name_seg_t* secondOut)
 {
-    uint64_t firstByte = aml_state_byte_read(state);
-    if (firstByte == ERR)
+    aml_value_t firstValue;
+    if (aml_value_read_no_ext(state, &firstValue) == ERR)
     {
         return ERR;
     }
 
-    if (firstByte != AML_DUAL_NAME_PREFIX)
+    if (firstValue.num != AML_DUAL_NAME_PREFIX)
     {
+        AML_DEBUG_INVALID_STRUCTURE("DualNamePrefix");
         errno = EILSEQ;
         return ERR;
     }
@@ -88,22 +74,28 @@ uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t* firstOut, a
     return 0;
 }
 
+uint64_t aml_seg_count_read(aml_state_t* state, aml_seg_count_t* out)
+{
+    return aml_byte_data_read(state, out);
+}
+
 uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t* outSegments, uint8_t* outSegCount)
 {
-    uint64_t firstByte = aml_state_byte_read(state);
-    if (firstByte == ERR)
+    aml_value_t firstValue;
+    if (aml_value_read_no_ext(state, &firstValue) == ERR)
     {
         return ERR;
     }
 
-    if (firstByte != AML_MULTI_NAME_PREFIX)
+    if (firstValue.num != AML_MULTI_NAME_PREFIX)
     {
+        AML_DEBUG_INVALID_STRUCTURE("MultiNamePrefix");
         errno = EILSEQ;
         return ERR;
     }
 
-    uint64_t segCount = aml_state_byte_read(state);
-    if (segCount == ERR)
+    aml_seg_count_t segCount;
+    if (aml_seg_count_read(state, &segCount) == ERR)
     {
         return ERR;
     }
@@ -122,14 +114,15 @@ uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t* outSegment
 
 uint64_t aml_null_name_read(aml_state_t* state)
 {
-    uint64_t firstByte = aml_state_byte_read(state);
-    if (firstByte == ERR)
+    aml_value_t firstValue;
+    if (aml_value_read_no_ext(state, &firstValue) == ERR)
     {
         return ERR;
     }
 
-    if (firstByte != AML_NULL_NAME)
+    if (firstValue.num != AML_NULL_NAME)
     {
+        AML_DEBUG_INVALID_STRUCTURE("NullName");
         errno = EILSEQ;
         return ERR;
     }
@@ -139,32 +132,57 @@ uint64_t aml_null_name_read(aml_state_t* state)
 
 uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* out)
 {
-    uint64_t firstByte = aml_state_byte_peek(state);
-    if (firstByte == ERR)
+    aml_value_t firstValue;
+    if (aml_value_peek_no_ext(state, &firstValue) == ERR)
     {
         return ERR;
     }
 
-    if (AML_IS_LEAD_NAME_CHAR(firstByte))
+    if (AML_IS_LEAD_NAME_CHAR(firstValue.num))
     {
         out->segmentCount = 1;
         return aml_name_seg_read(state, &out->segments[0]);
     }
-    else if (firstByte == AML_DUAL_NAME_PREFIX)
+    else if (firstValue.num == AML_DUAL_NAME_PREFIX)
     {
         out->segmentCount = 2;
         return aml_dual_name_path_read(state, &out->segments[0], &out->segments[1]);
     }
-    else if (firstByte == AML_MULTI_NAME_PREFIX)
+    else if (firstValue.num == AML_MULTI_NAME_PREFIX)
     {
         return aml_multi_name_path_read(state, out->segments, &out->segmentCount);
     }
-    else if (firstByte == AML_NULL_NAME)
+    else if (firstValue.num == AML_NULL_NAME)
     {
         out->segmentCount = 0;
         return aml_null_name_read(state);
     }
+    else
+    {
+        AML_DEBUG_INVALID_STRUCTURE("NamePath");
+        errno = EILSEQ;
+        return ERR;
+    }
 
+    return 0;
+}
+
+uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out)
+{
+    aml_value_t rootChar;
+    if (aml_value_read_no_ext(state, &rootChar) == ERR)
+    {
+        return ERR;
+    }
+
+    if (rootChar.num != AML_ROOT_CHAR)
+    {
+        AML_DEBUG_INVALID_STRUCTURE("RootChar");
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    out->present = true;
     return 0;
 }
 
@@ -173,17 +191,18 @@ uint64_t aml_prefix_path_read(aml_state_t* state, aml_prefix_path_t* out)
     out->depth = 0;
     while (true)
     {
-        uint64_t byte = aml_state_byte_read(state);
-        if (byte == ERR)
+        aml_value_t chr;
+        if (aml_value_peek_no_ext(state, &chr) == ERR)
         {
             return ERR;
         }
 
-        if (byte != AML_PARENT_PREFIX_CHAR)
+        if (chr.num != AML_PARENT_PREFIX_CHAR)
         {
             return 0;
         }
 
+        aml_state_advance(state, chr.length);
         out->depth++;
     }
 }
@@ -192,13 +211,14 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
 {
     *out = (aml_name_string_t){0};
 
-    uint64_t firstByte = aml_state_byte_peek(state);
-    if (firstByte == ERR)
+    aml_value_t value;
+    if (aml_value_peek_no_ext(state, &value) == ERR)
     {
         return ERR;
     }
 
-    switch (firstByte)
+    // Starts with either rootchar or prefixpath.
+    switch (value.num)
     {
     case AML_ROOT_CHAR:
         if (aml_root_char_read(state, &out->rootChar) == ERR)
@@ -227,12 +247,6 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
 
 aml_node_t* aml_name_string_walk(const aml_name_string_t* nameString, aml_node_t* start)
 {
-    if (nameString == NULL)
-    {
-        errno = EINVAL;
-        return NULL;
-    }
-
     if (start == NULL || nameString->rootChar.present)
     {
         start = aml_root_get();

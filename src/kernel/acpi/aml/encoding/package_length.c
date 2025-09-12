@@ -1,5 +1,6 @@
 #include "package_length.h"
 
+#include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_state.h"
 #include "data.h"
 
@@ -8,19 +9,21 @@
 
 uint64_t aml_pkg_lead_byte_read(aml_state_t* state, aml_pkg_lead_byte_t* out)
 {
-    uint64_t pkgLeadByte = aml_state_byte_read(state);
-    if (pkgLeadByte == ERR)
+    uint8_t pkgLeadByte;
+    if (aml_state_read(state, &pkgLeadByte, 1) != 1)
     {
+        errno = ENODATA;
         return ERR;
     }
 
-    out->byteDataCount = (pkgLeadByte >> 6) & 0x03; // bits (7-6)
-    out->smallLengthBits = pkgLeadByte & 0x3F;      // bits (5-0)
+    out->byteDataCount = (pkgLeadByte >> 6) & 0x03;   // bits (7-6)
+    out->smallLengthBits = pkgLeadByte & 0x3F;        // bits (5-0)
     out->leastSignificantNybble = pkgLeadByte & 0x0F; // bits (3-0)
 
     // If more bytes follow, then bits 4 and 5 must be zero.
     if (out->byteDataCount != 0 && ((pkgLeadByte >> 4) & 0x03) != 0)
     {
+        AML_DEBUG_INVALID_STRUCTURE("PkgLeadByte");
         errno = EILSEQ;
         return ERR;
     }
@@ -58,6 +61,7 @@ uint64_t aml_pkg_length_read(aml_state_t* state, aml_pkg_length_t* out)
     // Output must not be greater than 2^28.
     if (length > (1ULL << 28))
     {
+        AML_DEBUG_INVALID_STRUCTURE("PkgLength");
         errno = ERANGE;
         return ERR;
     }
