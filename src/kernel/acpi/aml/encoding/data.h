@@ -88,7 +88,7 @@ typedef struct
 /**
  * @brief Read a ByteData structure from the AML stream.
  *
- * A ByteData structure is defined as `0x00 - 0xFF`.
+ * A ByteData structure is defined as `ByteData := 0x00 - 0xFF`.
  *
  * @param state The AML state.
  * @param out Pointer to the buffer where the ByteData will be stored.
@@ -110,7 +110,7 @@ static inline uint64_t aml_byte_data_read(aml_state_t* state, aml_byte_data_t* o
 /**
  * @brief Read a WordData structure from the AML stream.
  *
- * A WordData structure is defined as `ByteData[0:7] ByteData[8:15]`.
+ * A WordData structure is defined as `WordData := ByteData[0:7] ByteData[8:15]`.
  *
  * @param state The AML state.
  * @param out Pointer to the buffer where the WordData will be stored.
@@ -131,7 +131,7 @@ static inline uint64_t aml_word_data_read(aml_state_t* state, aml_word_data_t* o
 /**
  * @brief Read a DWordData structure from the AML stream.
  *
- * A DWordData structure is defined as `WordData[0:15] WordData[16:31]`.
+ * A DWordData structure is defined as `DWordData := WordData[0:15] WordData[16:31]`.
  *
  * @param state The AML state.
  * @param out Pointer to the buffer where the DWordData will be stored.
@@ -152,7 +152,7 @@ static inline uint64_t aml_dword_data_read(aml_state_t* state, aml_dword_data_t*
 /**
  * @brief Read a QWordData structure from the AML stream.
  *
- * A QWordData structure is defined as `DWordData[0:31] DWordData[32:63]`.
+ * A QWordData structure is defined as `QWordData := DWordData[0:31] DWordData[32:63]`.
  *
  * @param state The AML state.
  * @param out Pointer to the buffer where the QWordData will be stored.
@@ -173,7 +173,7 @@ static inline uint64_t aml_qword_data_read(aml_state_t* state, aml_qword_data_t*
 /**
  * @brief Read a ByteConst structure from the AML stream.
  *
- * A ByteConst structure is defined as `BytePrefix ByteData`.
+ * A ByteConst structure is defined as `ByteConst := BytePrefix ByteData`.
  *
  * @param state The AML state.
  * @param out Pointer to the buffer where the ByteData will be stored.
@@ -200,7 +200,7 @@ static inline uint64_t aml_byte_const_read(aml_state_t* state, aml_byte_data_t* 
 /**
  * @brief Read a WordConst structure from the AML stream.
  *
- * A WordConst structure is defined as `WordPrefix WordData`.
+ * A WordConst structure is defined as `WordConst := WordPrefix WordData`.
  *
  * @param state The AML state.
  * @param out Pointer to the buffer where the WordData will be stored.
@@ -227,7 +227,7 @@ static inline uint64_t aml_word_const_read(aml_state_t* state, aml_word_data_t* 
 /**
  * @brief Read a DWordConst structure from the AML stream.
  *
- * A DWordConst structure is defined as `DWordPrefix DWordData`.
+ * A DWordConst structure is defined as `DwordConst := DwordC DWordPrefix DWordData`.
  *
  * @param state The AML state.
  * @param out Pointer to the buffer where the DWordData will be stored.
@@ -254,7 +254,7 @@ static inline uint64_t aml_dword_const_read(aml_state_t* state, aml_dword_data_t
 /**
  * @brief Read a QWordConst structure from the AML stream.
  *
- * A QWordConst structure is defined as `QWordPrefix QWordData`.
+ * A QWordConst structure is defined as `QWordConst := QWordPrefix QWordData`.
  *
  * @param state The AML state.
  * @param out Pointer to the buffer where the QWordData will be stored.
@@ -286,7 +286,7 @@ typedef uint64_t aml_const_obj_t;
 /**
  * @brief Read a ConstObj structure from the AML stream.
  *
- * A ConstObj structure is defined as `ZeroOp | OneOp | OnesOp`.
+ * A ConstObj structure is defined as `ConstObj := ZeroOp | OneOp | OnesOp`.
  *
  * See sections 19.6.98, 19.6.99 and 19.6.156 for more details.
  *
@@ -323,7 +323,7 @@ static inline uint64_t aml_const_obj_read(aml_state_t* state, aml_const_obj_t* o
 /**
  * @brief Read a ComputationalData structure from the AML stream.
  *
- * A ComputationalData structure is defined as `ByteConst | WordConst | DWordConst | QWordConst | String | ConstObj |
+ * A ComputationalData structure is defined as `ComputationalData := ByteConst | WordConst | DWordConst | QWordConst | String | ConstObj |
  * RevisionOp | DefBuffer`.
  *
  * @param state The AML state.
@@ -368,7 +368,7 @@ static inline uint64_t aml_computational_data_read(aml_state_t* state, aml_compu
 /**
  * @brief Read a DataObject structure from the AML stream.
  *
- * A DataObject structure is defined as `ComputationalData | DefPackage | DefVarPackage`.
+ * A DataObject structure is defined as `DataObject := ComputationalData | DefPackage | DefVarPackage`.
  *
  * @param state The AML state.
  * @param out Pointer to the buffer where the DataObject will be stored.

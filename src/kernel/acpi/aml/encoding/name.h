@@ -83,7 +83,7 @@ typedef struct
 /**
  * @brief Reads the next data as a NameSeg from the AML bytecode stream.
  *
- * A NameSeg structure is defined as `<leadnamechar namechar namechar namechar>`.
+ * A NameSeg structure is defined as `NameSeg := <leadnamechar namechar namechar namechar>`.
  *
  * @param state The AML state.
  * @param out Pointer to destination where the NameSeg will be stored.
@@ -130,7 +130,7 @@ static inline uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t* out
 /**
  * @brief Reads the next data as a DualNamePath structure from the AML bytecode stream.
  *
- * A DualNamePath structure is defined as `DualNamePrefix NameSeg NameSeg`.
+ * A DualNamePath structure is defined as `DualNamePath := DualNamePrefix NameSeg NameSeg`.
  *
  * @param state The AML state.
  * @param firstOut Pointer to destination where the first segment of the DualNamePath will be stored.
@@ -173,7 +173,7 @@ typedef aml_byte_data_t aml_seg_count_t;
 /**
  * @brief Reads the next data as a SegCount structure from the AML bytecode stream.
  *
- * A SegCount structure is defined as `ByteData`.
+ * A SegCount structure is defined as `SegCount := ByteData`.
  *
  * @param state The AML state.
  * @param out Pointer to destination where the SegCount will be stored.
@@ -187,7 +187,7 @@ static inline uint64_t aml_seg_count_read(aml_state_t* state, aml_seg_count_t* o
 /**
  * @brief Reads the next data as a MultiNamePath structure from the AML bytecode stream.
  *
- * A MultiNamePath structure is defined as `MultiNamePrefix SegCount NameSeg(SegCount)`.
+ * A MultiNamePath structure is defined as `MultiNamePath := MultiNamePrefix SegCount NameSeg(SegCount)`.
  *
  * @param state The AML state.
  * @param outSegments Pointer to destination where the segments of the MultiNamePath will be stored.
@@ -230,7 +230,7 @@ static inline uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg
 /**
  * Reads the next data as a NullName structure from the AML bytecode stream.
  *
- * A NullName structure is defined as `0x00`.
+ * A NullName structure is defined as `NullName := 0x00`.
  *
  * @param state The AML state.
  * @return On success, 0. On error, `ERR` and `errno` is set.
@@ -256,7 +256,7 @@ static inline uint64_t aml_null_name_read(aml_state_t* state)
 /**
  * @brief Reads the next data as a NamePath structure from the AML bytecode stream.
  *
- * A NamePath structure is defined as `NameSeg | DualNamePath | MultiNamePath | NullName`.
+ * A NamePath structure is defined as `NamePath := NameSeg | DualNamePath | MultiNamePath | NullName`.
  *
  * @param state The AML state.
  * @param out Pointer to destination where the NamePath will be stored.
@@ -302,7 +302,9 @@ static inline uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* o
 /**
  * @brief Reads the next data as a PrefixPath structure from the AML bytecode stream.
  *
- * A PrefixPath structure is defined as `Nothing | <'^' prefixpath>`.
+ * A PrefixPath structure is defined as `PrefixPath := Nothing | <'^' prefixpath>`.
+ *
+ * Note that `^` is just a `AML_PARENT_PREFIX_CHAR`.
  *
  * @param state The AML state.
  * @param out Pointer to destination where the PrefixPath will be stored.
@@ -332,6 +334,8 @@ static inline uint64_t aml_prefix_path_read(aml_state_t* state, aml_prefix_path_
 /**
  * @brief Reads the next data as a RootChar from the AML bytecode stream.
  *
+ * A RootChar is defined as `RootChar := 0x5C`.
+ *
  * @param state The AML state.
  * @param out Pointer to destination where the RootChar will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
@@ -358,7 +362,7 @@ static inline uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* o
 /**
  * @brief Reads the next data as a NameString structure from the AML bytecode stream.
  *
- * A NameString structure is defined as `<rootchar namepath> | <prefixpath namepath>`.
+ * A NameString structure is defined as `NameString := <rootchar namepath> | <prefixpath namepath>`.
  *
  * @param state The AML state.
  * @param out Pointer to destination where the name string will be stored.

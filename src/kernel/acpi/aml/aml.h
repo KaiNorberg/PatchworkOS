@@ -30,9 +30,13 @@
  * Throughout the documentation objects are frequently said to have a definition, a breakdown of how these
  * definitions are read can be found in section 20.1 of the ACPI specification.
  *
- * Primary sources:
+ * Note that we use version 6.6 of the ACPI specification, but it contains minor mistakes that we use version 4.0 to straighten out. If the "ACPI specification" is ever sourced, without mentioning its version, assume version 6.6. Take a look at this [osdev post](https://f.osdev.org/viewtopic.php?t=29070) if you want to understand how annoying the ACPI spec is.
+ *
+ * Primary Source: [ACPI Specification Version 6.6](https://uefi.org/sites/default/files/resources/ACPI_Spec_6.6.pdf)
+ *
+ * Other Sources:
+ * - [ACPI Specification Version 4.0](https://uefi.org/sites/default/files/resources/ACPI_4.pdf)
  * - [lai library](https://github.com/managarm/lai)
- * - [ACPI Specification](https://uefi.org/sites/default/files/resources/ACPI_Spec_6.6.pdf)
  *
  * @{
  */

@@ -45,7 +45,7 @@ typedef struct
 /**
  * @brief Reads an TermArg structure from the AML byte stream.
  *
- * A TermArg is defined as `ExpressionOpcode | DataObject | ArgObj | LocalObj`.
+ * A TermArg is defined as `TermArg := ExpressionOpcode | DataObject | ArgObj | LocalObj`.
  *
  * @param state The AML state.
  * @param scope The AML scope.
@@ -68,7 +68,7 @@ uint64_t aml_termarg_read_integer(aml_state_t* state, aml_scope_t* scope, uint64
 /**
  * @brief Reads an Object structure from the AML byte stream.
  *
- * An Object is defined as `NameSpaceModifierObj | NamedObj`.
+ * An Object is defined as `Object := NameSpaceModifierObj | NamedObj`.
  *
  * @param state The AML state.
  * @param scope The AML scope, can be `NULL`.
@@ -79,7 +79,7 @@ uint64_t aml_object_read(aml_state_t* state, aml_scope_t* scope);
 /**
  * @brief Reads a TermObj structure from the AML byte stream.
  *
- * A TermObj is defined as `Object | StatementOpcode | ExpressionOpcode`.
+ * A TermObj is defined as `TermObj := Object | StatementOpcode | ExpressionOpcode`.
  *
  * @param state The AML state.
  * @param scope The AML scope, can be `NULL`.
@@ -90,7 +90,7 @@ uint64_t aml_termobj_read(aml_state_t* state, aml_scope_t* scope);
 /**
  * @brief Reads a TermList structure from the AML byte stream.
  *
- * A TermList structure is defined as `Nothing | <termobj termlist>`.
+ * A TermList structure is defined as `TermList := Nothing | <termobj termlist>`.
  *
  * @param state The AML state.
  * @param scope The AML scope, can be `NULL`.

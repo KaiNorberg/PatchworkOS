@@ -26,7 +26,7 @@
 /**
  * @brief Reads a RegionSpace structure from the AML byte stream.
  *
- * A RegionSpace structure is defined as `ByteData`.
+ * A RegionSpace structure is defined as `RegionSpace := ByteData`.
  *
  * @param state The AML state.
  * @param out The output buffer to store the region space.
@@ -59,7 +59,7 @@ typedef uint64_t aml_region_offset_t;
 /**
  * @brief Reads a RegionOffset structure from the AML byte stream.
  *
- * A RegionOffset structure is defined as `TermArg => Integer`.
+ * A RegionOffset structure is defined as `RegionOffset := TermArg => Integer`.
  *
  * @param state The AML state.
  * @param scope The AML scope.
@@ -79,7 +79,7 @@ typedef uint64_t aml_region_len_t;
 /**
  * @brief Reads a RegionLen structure from the AML byte stream.
  *
- * A RegionLen structure is defined as `TermArg => Integer`.
+ * A RegionLen structure is defined as `RegionLen := TermArg => Integer`.
  *
  * @param state The AML state.
  * @param scope The AML scope.
@@ -94,7 +94,7 @@ static inline uint64_t aml_region_len_read(aml_state_t* state, aml_scope_t* scop
 /**
  * @brief Reads a DefOpRegion structure from the AML byte stream.
  *
- * A DefOpRegion structure is defined as `OpRegionOp NameString RegionSpace RegionOffset RegionLen`.
+ * A DefOpRegion structure is defined as `DefOpRegion := OpRegionOp NameString RegionSpace RegionOffset RegionLen`.
  *
  * See section 19.6.100 of the ACPI specification for more details.
  *
@@ -154,9 +154,11 @@ static inline uint64_t aml_def_op_region_read(aml_state_t* state, aml_scope_t* s
 /**
  * @brief Reads a NamedObj structure from the AML byte stream.
  *
- * A NamedObj structure is defined as `DefBankField | DefCreateBitField | DefCreateByteField | DefCreateDWordField |
+ * Version 6.6 of the ACPI specification has a minor mistake in the definition of the NamedObj structure, its supposed to contain `DefField` but does not, instead `DefField` is left without any parent definition. If you check version 4.0 section 19.2.5.2 you can confirm that `DefField` is supposed to be part of the NamedObj structure so we add it for our definition.
+ *
+ * The NamedObj structure is defined as `NamedObj := DefBankField | DefCreateBitField | DefCreateByteField | DefCreateDWordField |
  * DefCreateField | DefCreateQWordField | DefCreateWordField | DefDataRegion | DefExternal | DefOpRegion | DefPowerRes |
- * DefThermalZone`.
+ * DefThermalZone | DefField`.
  *
  * @param state The AML state.
  * @param scope The AML scope.
