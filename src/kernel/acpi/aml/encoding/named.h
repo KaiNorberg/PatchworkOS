@@ -362,9 +362,9 @@ static inline uint64_t aml_def_field_read(aml_state_t* state, aml_scope_t* scope
 }
 
 /**
- * @brief Reads a DefField structure from the AML byte stream.
+ * @brief Reads a DefMethod structure from the AML byte stream.
  *
- * The DefField structure is defined as `DefField := FieldOp PkgLength NameString FieldFlags FieldList`.
+ * The DefField structure is defined as `DefMethod := MethodOp PkgLength NameString MethodFlags TermList`.
  *
  * @param state The AML state.
  * @param scope The AML scope.
@@ -372,7 +372,9 @@ static inline uint64_t aml_def_field_read(aml_state_t* state, aml_scope_t* scope
  */
 static inline uint64_t aml_def_method_read(aml_state_t* state, aml_scope_t* scope)
 {
-
+    AML_DEBUG_UNIMPLEMENTED_STRUCTURE("DefMethod");
+    errno = ENOSYS;
+    return ERR;
 }
 
 /**
