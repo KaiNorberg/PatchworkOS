@@ -1,10 +1,6 @@
 #pragma once
 
-#include "aml_node.h"
-
-#include <errno.h>
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -20,6 +16,11 @@
  */
 
 /**
+ * @brief Represents a index in the AML bytecode stream.
+ */
+typedef uint64_t aml_address_t;
+
+/**
  * @brief AML State
  * @struct aml_state_t
  *
@@ -27,9 +28,9 @@
  */
 typedef struct aml_state
 {
-    const void* data;            //!< Pointer to the AML bytecode stream.
-    uint64_t dataSize;           //!< Size of the AML bytecode stream.
-    uint64_t instructionPointer; //!< Index of the current instruction in `data`.
+    const void* data;                 //!< Pointer to the AML bytecode stream.
+    uint64_t dataSize;                //!< Size of the AML bytecode stream.
+    aml_address_t instructionPointer; //!< Index of the current instruction in `data`.
 } aml_state_t;
 
 static inline void aml_state_init(aml_state_t* state, const void* data, uint64_t dataSize)

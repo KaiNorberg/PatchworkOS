@@ -13,6 +13,9 @@
  *
  * See section 20.2.5 of the ACPI specification for more details.
  *
+ * Note that the `term.h` file is the only encoding file that should be included outside of the encoding directory,
+ * except the `*_types.h` files. This is because we frequently use `static inline` for all encoding functions.
+ *
  * @{
  */
 
@@ -94,9 +97,9 @@ uint64_t aml_termobj_read(aml_state_t* state, aml_scope_t* scope);
  *
  * @param state The AML state.
  * @param scope The AML scope, can be `NULL`.
- * @param limit The index at which the termlist ends.
+ * @param end The index at which the termlist ends.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-uint64_t aml_termlist_read(aml_state_t* state, aml_scope_t* scope, uint64_t end);
+uint64_t aml_termlist_read(aml_state_t* state, aml_scope_t* scope, aml_address_t end);
 
 /** @} */

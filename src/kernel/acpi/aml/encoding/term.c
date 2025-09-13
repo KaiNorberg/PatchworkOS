@@ -133,7 +133,7 @@ uint64_t aml_termobj_read(aml_state_t* state, aml_scope_t* scope)
     }
 }
 
-uint64_t aml_termlist_read(aml_state_t* state, aml_scope_t* scope, uint64_t end)
+uint64_t aml_termlist_read(aml_state_t* state, aml_scope_t* scope, aml_address_t end)
 {
     while (end > state->instructionPointer)
     {

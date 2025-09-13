@@ -24,12 +24,40 @@
  * @{
  */
 
-#define AML_NAME_LENGTH_PATH 254
-#define AML_NAME_LENGTH_SEG 4
+/**
+ * @brief Maximum number of segments in a name path.
+ */
+#define AML_MAX_NAME_PATH 254
 
-#define AML_IS_LEAD_NAME_CHAR(c) ((c >= AML_NAME_CHAR_A && c <= AML_NAME_CHAR_Z) || c == AML_NAME_CHAR)
-#define AML_IS_DIGIT_CHAR(c) ((c >= AML_DIGIT_CHAR_0 && c <= AML_DIGIT_CHAR_9))
-#define AML_IS_NAME_CHAR(c) (AML_IS_DIGIT_CHAR(c) || AML_IS_LEAD_NAME_CHAR(c))
+/**
+ * @brief The exact length of a aml name not including a null character.
+ */
+#define AML_NAME_LENGTH 4
+
+/**
+ * @brief Check if a value is a LeadNameChar structure.
+ *
+ * @param value The value to check.
+ * @return true if the value is a LeadNameChar structure, false otherwise.
+ */
+#define AML_IS_LEAD_NAME_CHAR(value) \
+    (((value)->num >= AML_NAME_CHAR_A && (value)->num <= AML_NAME_CHAR_Z) || (value)->num == AML_NAME_CHAR)
+
+/**
+ * @brief Check if a value is a DigitChar structure.
+ *
+ * @param value The value to check.
+ * @return true if the value is a DigitChar structure, false otherwise.
+ */
+#define AML_IS_DIGIT_CHAR(value) (((value)->num >= AML_DIGIT_CHAR_0 && (value)->num <= AML_DIGIT_CHAR_9))
+
+/**
+ * @brief Check if a value is a NameChar structure.
+ *
+ * @param value The value to check.
+ * @return true if the value is a NameChar structure, false otherwise.
+ */
+#define AML_IS_NAME_CHAR(value) (AML_IS_DIGIT_CHAR(value) || AML_IS_LEAD_NAME_CHAR(value))
 
 /**
  * @brief A PrefixPath structure.
@@ -56,7 +84,7 @@ typedef struct
  */
 typedef struct
 {
-    char name[AML_NAME_LENGTH_SEG + 1];
+    char name[AML_NAME_LENGTH + 1];
 } aml_name_seg_t;
 
 /**
@@ -65,8 +93,8 @@ typedef struct
  */
 typedef struct
 {
-    aml_name_seg_t segments[AML_NAME_LENGTH_PATH]; //!< Array of segments in the name string.
-    uint8_t segmentCount;                          //!< Number of segments in the name string.
+    aml_name_seg_t segments[AML_MAX_NAME_PATH]; //!< Array of segments in the name string.
+    uint8_t segmentCount;                       //!< Number of segments in the name string.
 } aml_name_path_t;
 
 /**
@@ -97,7 +125,7 @@ static inline uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t* out
         return ERR;
     }
 
-    if (!AML_IS_LEAD_NAME_CHAR(leadnamechar.num))
+    if (!AML_IS_LEAD_NAME_CHAR(&leadnamechar))
     {
         AML_DEBUG_INVALID_STRUCTURE("LeadNameChar");
         errno = EILSEQ;
@@ -113,7 +141,7 @@ static inline uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t* out
             return ERR;
         }
 
-        if (!AML_IS_NAME_CHAR(namechar.num))
+        if (!AML_IS_NAME_CHAR(&namechar))
         {
             AML_DEBUG_INVALID_STRUCTURE("NameChar");
             errno = EILSEQ;
@@ -270,7 +298,7 @@ static inline uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* o
         return ERR;
     }
 
-    if (AML_IS_LEAD_NAME_CHAR(firstValue.num))
+    if (AML_IS_LEAD_NAME_CHAR(&firstValue))
     {
         out->segmentCount = 1;
         return aml_name_seg_read(state, &out->segments[0]);
@@ -438,7 +466,7 @@ static inline aml_node_t* aml_name_string_walk(const aml_name_string_t* nameStri
         aml_node_t* child = NULL;
         LIST_FOR_EACH(child, &start->children, entry)
         {
-            if (memcmp(child->name, segment->name, AML_NAME_LENGTH_SEG) == 0)
+            if (memcmp(child->name, segment->name, AML_NAME_LENGTH) == 0)
             {
                 next = child;
                 break;
@@ -496,7 +524,7 @@ static inline aml_node_t* aml_add_node_at_name_string(aml_name_string_t* string,
         aml_node_t* child = NULL;
         LIST_FOR_EACH(child, &start->children, entry)
         {
-            if (memcmp(child->name, segment->name, AML_NAME_LENGTH_SEG) == 0)
+            if (memcmp(child->name, segment->name, AML_NAME_LENGTH) == 0)
             {
                 next = child;
                 break;

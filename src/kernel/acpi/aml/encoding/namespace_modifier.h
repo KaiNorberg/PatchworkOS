@@ -38,7 +38,7 @@
  */
 static inline uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope)
 {
-    uint64_t start = state->instructionPointer;
+    aml_address_t start = state->instructionPointer;
 
     aml_value_t scopeOp;
     if (aml_value_read_no_ext(state, &scopeOp) == ERR)
@@ -65,7 +65,7 @@ static inline uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope
         return ERR;
     }
 
-    uint64_t end = start + pkgLength;
+    aml_address_t end = start + pkgLength;
 
     aml_node_t* newLocation = aml_name_string_walk(&nameString, scope != NULL ? scope->location : NULL);
     if (newLocation == NULL)

@@ -140,6 +140,8 @@ const char* aml_value_type_to_string(aml_value_type_t type)
     {
     case AML_VALUE_TYPE_NAMESPACE_MODIFIER:
         return "NamespaceModifier";
+    case AML_VALUE_TYPE_NAME:
+        return "Name";
     case AML_VALUE_TYPE_NAMED:
         return "Named";
     case AML_VALUE_TYPE_STATEMENT:
@@ -150,6 +152,10 @@ const char* aml_value_type_to_string(aml_value_type_t type)
         return "Arg";
     case AML_VALUE_TYPE_LOCAL:
         return "Local";
+    case AML_VALUE_TYPE_COMPUTATIONAL:
+        return "Computational";
+    case AML_VALUE_TYPE_DEBUG:
+        return "Debug";
     default:
         return "UnknownValue";
     }

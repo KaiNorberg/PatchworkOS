@@ -1,6 +1,6 @@
 #pragma once
 
-#include "encoding/named_region_space.h"
+#include "encoding/named_types.h"
 
 #include <sys/list.h>
 
@@ -29,6 +29,7 @@ typedef enum
     AML_NODE_THERMAL_ZONE,
     AML_NODE_POWER_RESOURCE,
     AML_NODE_OPREGION,
+    AML_NODE_FIELD,
     AML_NODE_MAX
 } aml_node_type_t;
 
@@ -46,18 +47,16 @@ typedef struct aml_node
         struct
         {
             aml_region_space_t space;
-            uint32_t offset;
-            uint32_t len;
+            aml_address_t offset;
+            uint32_t length;
         } opregion;
+        struct
+        {
+            aml_field_flags_t flags;
+            aml_address_t offset;
+            uint32_t size;
+        } field;
     };
 } aml_node_t;
-
-/**
- * @brief Convert an aml node type to a string.
- *
- * @param type ACPI node type.
- * @return String representation of the ACPI node type or "Unknown" if the type is invalid.
- */
-const char* aml_node_type_to_string(aml_node_type_t type);
 
 /** @} */

@@ -1,6 +1,7 @@
 #include "aml.h"
 
 #include "aml_state.h"
+#include "aml_to_string.h"
 #include "encoding/term.h"
 #include "mem/heap.h"
 
@@ -117,13 +118,33 @@ void aml_print_tree(aml_node_t* node, uint32_t depth, bool isLast)
         {
             LOG_INFO("%s", isLast ? "└── " : "├── ");
         }
-        else
+        else if (!isLast)
         {
             LOG_INFO("│   ");
         }
+        else
+        {
+            LOG_INFO("    ");
+        }
     }
 
-    LOG_INFO("%s [%s]\n", node->name, aml_node_type_to_string(node->type));
+    LOG_INFO("%s [%s", node->name, aml_node_type_to_string(node->type));
+    switch (node->type)
+    {
+    case AML_NODE_OPREGION:
+        LOG_INFO(": space=%s, offset=0x%x, length=0x%x", aml_region_space_to_string(node->opregion.space),
+            node->opregion.offset, node->opregion.length);
+        break;
+    case AML_NODE_FIELD:
+        LOG_INFO(": accessType=%s, lockRule=%s, updateRule=%s, offset=0x%x, size=%llu",
+            aml_access_type_to_string(node->field.flags.accessType),
+            aml_lock_rule_to_string(node->field.flags.lockRule),
+            aml_update_rule_to_string(node->field.flags.updateRule), node->field.offset, node->field.size);
+        break;
+    default:
+        break;
+    }
+    LOG_INFO("]\n");
 
     aml_node_t* child;
     LIST_FOR_EACH(child, &node->children, entry)

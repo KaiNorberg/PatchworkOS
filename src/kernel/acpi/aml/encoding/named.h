@@ -5,10 +5,8 @@
 #include "acpi/aml/aml_value.h"
 #include "data.h"
 #include "name.h"
-#include "term.h"
 #include "package_length.h"
-
-#include "log/log.h"
+#include "term.h"
 
 /**
  * @brief ACPI AML Named Objects Encoding
@@ -19,10 +17,15 @@
  *
  * See section 20.2.5.2 of the ACPI specification for more details.
  *
+ * Note that version 6.6 of the ACPI specification has a few minor mistakes in the definition of the NamedObj structure,
+ * its supposed several stuctures that it does not. If you check version 4.0 of the specification section 19.2.5.2 you
+ * can confirm that that these structures are supposed to be there but have, somehow, been forgotten. These structures
+ * include DefField and DefMethod (more may be noticed in the future), we add all missing structures to our definition.
+ *
  * @{
  */
 
-#include "named_region_space.h"
+#include "named_types.h"
 
 /**
  * @brief Reads a RegionSpace structure from the AML byte stream.
@@ -53,11 +56,6 @@ static inline uint64_t aml_region_space_read(aml_state_t* state, aml_region_spac
 }
 
 /**
- * @brief ACPI AML RegionOffset structure.
- */
-typedef uint64_t aml_region_offset_t;
-
-/**
  * @brief Reads a RegionOffset structure from the AML byte stream.
  *
  * A RegionOffset structure is defined as `RegionOffset := TermArg => Integer`.
@@ -71,11 +69,6 @@ static inline uint64_t aml_region_offset_read(aml_state_t* state, aml_scope_t* s
 {
     return aml_termarg_read_integer(state, scope, out);
 }
-
-/**
- * @brief ACPI AML RegionLen structure.
- */
-typedef uint64_t aml_region_len_t;
 
 /**
  * @brief Reads a RegionLen structure from the AML byte stream.
@@ -147,52 +140,10 @@ static inline uint64_t aml_def_op_region_read(aml_state_t* state, aml_scope_t* s
     }
     node->opregion.space = regionSpace;
     node->opregion.offset = regionOffset;
-    node->opregion.len = regionLen;
+    node->opregion.length = regionLen;
 
     return 0;
 }
-
-/**
- * @brief Enum for all field access types, bits 0-3 of FieldFlags.
- */
-typedef enum
-{
-    AML_FIELD_ACCESS_ANY = 0,
-    AML_FIELD_ACCESS_BYTE = 1,
-    AML_FIELD_ACCESS_WORD = 2,
-    AML_FIELD_ACCESS_DWORD = 3,
-    AML_FIELD_ACCESS_QWORD = 4,
-    AML_FIELD_ACCESS_BUFFER = 5,
-} aml_field_access_type_t;
-
-/**
- * @brief Enum for all field lock rules, bit 4 of FieldFlags.
- */
-typedef enum
-{
-    AML_FIELD_LOCK_NO_LOCK = 0,
-    AML_FIELD_LOCK_LOCK = 1,
-} aml_field_lock_rule_t;
-
-/**
- * @brief Enum for all field update rules, bits 5-6 of FieldFlags.
- */
-typedef enum
-{
-    AML_FIELD_UPDATE_PRESERVE = 0,
-    AML_FIELD_UPDATE_WRITE_AS_ONES = 1,
-    AML_FIELD_UPDATE_WRITE_AS_ZEROS = 2,
-} aml_field_update_rule_t;
-
-/**
- * @brief ACPI AML FieldFlags structure.
- */
-typedef struct
-{
-    aml_field_access_type_t accessType;
-    aml_field_lock_rule_t lockRule;
-    aml_field_update_rule_t updateRule;
-} aml_field_flags_t;
 
 /**
  * @brief Reads a FieldFlags structure from the AML byte stream.
@@ -240,8 +191,8 @@ static inline uint64_t aml_field_flags_read(aml_state_t* state, aml_field_flags_
         return ERR;
     }
 
-    aml_field_access_type_t accessType = flags & 0xF;
-    if (accessType > AML_FIELD_ACCESS_BUFFER)
+    aml_access_type_t accessType = flags & 0xF;
+    if (accessType > AML_ACCESS_TYPE_BUFFER)
     {
         errno = EINVAL;
         return ERR;
@@ -257,6 +208,100 @@ static inline uint64_t aml_field_flags_read(aml_state_t* state, aml_field_flags_
 }
 
 /**
+ * @brief Reads a NamedField structure from the AML byte stream.
+ *
+ * A NamedField structure is defined as `NamedField := NameSeg PkgLength`
+ *
+ * See section 19.6.48 of the ACPI specification for more details about the Field Operation.
+ *
+ * @param state The AML state.
+ * @param ctx The AML field list context.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
+ */
+static inline uint64_t aml_named_field_read(aml_state_t* state, aml_field_list_ctx_t* ctx)
+{
+    aml_name_seg_t name;
+    if (aml_name_seg_read(state, &name) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_pkg_length_t pkgLength;
+    if (aml_pkg_length_read(state, &pkgLength) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_node_t* newNode = aml_add_node(ctx->opregion, name.name, AML_NODE_FIELD);
+    if (!newNode)
+    {
+        return ERR;
+    }
+    newNode->field.flags = ctx->flags;
+    newNode->field.offset = ctx->currentOffset;
+    newNode->field.size = pkgLength;
+
+    return 0;
+}
+
+/**
+ * @brief Reads a FieldElement structure from the AML byte stream.
+ *
+ * The FieldElement structure is defined as `FieldElement := NamedField | ReservedField | AccessField |
+ * ExtendedAccessField | ConnectField`.
+ *
+ * See section 19.6.48 of the ACPI specification for more details about the Field Operation.
+ *
+ * @param state The AML state.
+ * @param ctx The AML field list context.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
+ */
+static uint64_t aml_field_element_read(aml_state_t* state, aml_field_list_ctx_t* ctx)
+{
+    aml_value_t value;
+    if (aml_value_peek_no_ext(state, &value) == ERR)
+    {
+        return ERR;
+    }
+
+    // Is NameField
+    if (AML_IS_LEAD_NAME_CHAR(&value))
+    {
+        return aml_named_field_read(state, ctx);
+    }
+
+    AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
+    errno = ENOSYS;
+    return ERR;
+}
+
+/**
+ * @brief Reads a FieldList structure from the AML byte stream.
+ *
+ * The FieldList structure is defined as `FieldList := Nothing | <fieldelement fieldlist>`.
+ *
+ * See section 19.6.48 of the ACPI specification for more details about the Field Operation.
+ *
+ * @param state The AML state.
+ * @param ctx The AML field list context.
+ * @param end The index at which the FieldList ends.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
+ */
+static uint64_t aml_field_list_read(aml_state_t* state, aml_field_list_ctx_t* ctx, aml_address_t end)
+{
+    while (end > state->instructionPointer)
+    {
+        // End of buffer not reached => byte is not nothing => must be a FieldElement.
+        if (aml_field_element_read(state, ctx) == ERR)
+        {
+            return ERR;
+        }
+    }
+
+    return 0;
+}
+
+/**
  * @brief Reads a DefField structure from the AML byte stream.
  *
  * The DefField structure is defined as `DefField := FieldOp PkgLength NameString FieldFlags FieldList`.
@@ -267,6 +312,8 @@ static inline uint64_t aml_field_flags_read(aml_state_t* state, aml_field_flags_
  */
 static inline uint64_t aml_def_field_read(aml_state_t* state, aml_scope_t* scope)
 {
+    aml_address_t start = state->instructionPointer;
+
     aml_value_t fieldOp;
     if (aml_value_read(state, &fieldOp) == ERR)
     {
@@ -298,28 +345,42 @@ static inline uint64_t aml_def_field_read(aml_state_t* state, aml_scope_t* scope
         return ERR;
     }
 
-    /*aml_field_list_t fieldList;
-    if (aml_field_list_read(state, &fieldList) == ERR)
+    aml_address_t end = start + pkgLength;
+
+    aml_field_list_ctx_t ctx = {
+        .opregion = aml_name_string_walk(&nameString, scope->location),
+        .flags = fieldFlags,
+        .currentOffset = 0,
+    };
+
+    if (aml_field_list_read(state, &ctx, end) == ERR)
     {
         return ERR;
-    }*/
+    }
 
-    AML_DEBUG_UNIMPLEMENTED_STRUCTURE("FieldList");
-    errno = ENOSYS;
-    return ERR;
+    return 0;
+}
+
+/**
+ * @brief Reads a DefField structure from the AML byte stream.
+ *
+ * The DefField structure is defined as `DefField := FieldOp PkgLength NameString FieldFlags FieldList`.
+ *
+ * @param state The AML state.
+ * @param scope The AML scope.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
+ */
+static inline uint64_t aml_def_method_read(aml_state_t* state, aml_scope_t* scope)
+{
+
 }
 
 /**
  * @brief Reads a NamedObj structure from the AML byte stream.
  *
- * Version 6.6 of the ACPI specification has a minor mistake in the definition of the NamedObj structure, its supposed
- * to contain `DefField` but does not, instead `DefField` is left without any parent definition. If you check
- * version 4.0 section 19.2.5.2 you can confirm that `DefField` is supposed to be part of the NamedObj structure so we
- * add it for our definition.
- *
  * The NamedObj structure is defined as `NamedObj := DefBankField | DefCreateBitField | DefCreateByteField |
  * DefCreateDWordField | DefCreateField | DefCreateQWordField | DefCreateWordField | DefDataRegion | DefExternal |
- * DefOpRegion | DefPowerRes | DefThermalZone | DefField`.
+ * DefOpRegion | DefPowerRes | DefThermalZone | DefField | DefMethod`.
  *
  * @param state The AML state.
  * @param scope The AML scope.
@@ -339,6 +400,8 @@ static inline uint64_t aml_named_obj_read(aml_state_t* state, aml_scope_t* scope
         return aml_def_op_region_read(state, scope);
     case AML_FIELD_OP:
         return aml_def_field_read(state, scope);
+    case AML_METHOD_OP:
+        return aml_def_method_read(state, scope);
     default:
         AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
         errno = ENOSYS;

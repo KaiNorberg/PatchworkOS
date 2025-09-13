@@ -2,6 +2,7 @@
 
 #include "aml_state.h"
 
+#include <errno.h>
 #include <stdint.h>
 
 /**
