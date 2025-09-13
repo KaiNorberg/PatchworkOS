@@ -20,7 +20,8 @@
  * Note that version 6.6 of the ACPI specification has a few minor mistakes in the definition of the NamedObj structure,
  * its supposed several stuctures that it does not. If you check version 4.0 of the specification section 19.2.5.2 you
  * can confirm that that these structures are supposed to be there but have, somehow, been forgotten. These structures
- * include DefField and DefMethod (more may be noticed in the future), we add all missing structures to our definition.
+ * include DefField, DefMethod and DefDevice (more may be noticed in the future), we add all missing structures to our
+ * definition of NamedObj.
  *
  * @{
  */
@@ -61,13 +62,13 @@ static inline uint64_t aml_region_space_read(aml_state_t* state, aml_region_spac
  * A RegionOffset structure is defined as `RegionOffset := TermArg => Integer`.
  *
  * @param state The AML state.
- * @param scope The AML scope.
+ * @param node The current AML node.
  * @param out The output buffer to store the region offset.
  * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
  */
-static inline uint64_t aml_region_offset_read(aml_state_t* state, aml_scope_t* scope, aml_region_offset_t* out)
+static inline uint64_t aml_region_offset_read(aml_state_t* state, aml_node_t* node, aml_region_offset_t* out)
 {
-    return aml_termarg_read_integer(state, scope, out);
+    return aml_termarg_read_integer(state, node, out);
 }
 
 /**
@@ -76,13 +77,13 @@ static inline uint64_t aml_region_offset_read(aml_state_t* state, aml_scope_t* s
  * A RegionLen structure is defined as `RegionLen := TermArg => Integer`.
  *
  * @param state The AML state.
- * @param scope The AML scope.
+ * @param node The current AML node.
  * @param out The output buffer to store the region length.
  * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
  */
-static inline uint64_t aml_region_len_read(aml_state_t* state, aml_scope_t* scope, aml_region_len_t* out)
+static inline uint64_t aml_region_len_read(aml_state_t* state, aml_node_t* node, aml_region_len_t* out)
 {
-    return aml_termarg_read_integer(state, scope, out);
+    return aml_termarg_read_integer(state, node, out);
 }
 
 /**
@@ -93,10 +94,10 @@ static inline uint64_t aml_region_len_read(aml_state_t* state, aml_scope_t* scop
  * See section 19.6.100 of the ACPI specification for more details.
  *
  * @param state The AML state.
- * @param scope The AML scope.
+ * @param node The current AML node.
  * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
  */
-static inline uint64_t aml_def_op_region_read(aml_state_t* state, aml_scope_t* scope)
+static inline uint64_t aml_def_op_region_read(aml_state_t* state, aml_node_t* node)
 {
     aml_value_t opRegionOp;
     if (aml_value_read(state, &opRegionOp) == ERR)
@@ -122,25 +123,25 @@ static inline uint64_t aml_def_op_region_read(aml_state_t* state, aml_scope_t* s
     }
 
     aml_region_offset_t regionOffset;
-    if (aml_region_offset_read(state, scope, &regionOffset) == ERR)
+    if (aml_region_offset_read(state, node, &regionOffset) == ERR)
     {
         return ERR;
     }
 
     aml_region_len_t regionLen;
-    if (aml_region_len_read(state, scope, &regionLen) == ERR)
+    if (aml_region_len_read(state, node, &regionLen) == ERR)
     {
         return ERR;
     }
 
-    aml_node_t* node = aml_add_node_at_name_string(&nameString, scope->location, AML_NODE_OPREGION);
-    if (node == NULL)
+    aml_node_t* newNode = aml_add_node_at_name_string(&nameString, node, AML_NODE_OPREGION);
+    if (newNode == NULL)
     {
         return ERR;
     }
-    node->opregion.space = regionSpace;
-    node->opregion.offset = regionOffset;
-    node->opregion.length = regionLen;
+    newNode->opregion.space = regionSpace;
+    newNode->opregion.offset = regionOffset;
+    newNode->opregion.length = regionLen;
 
     return 0;
 }
@@ -307,10 +308,10 @@ static uint64_t aml_field_list_read(aml_state_t* state, aml_field_list_ctx_t* ct
  * The DefField structure is defined as `DefField := FieldOp PkgLength NameString FieldFlags FieldList`.
  *
  * @param state The AML state.
- * @param scope The AML scope.
+ * @param node The current AML node.
  * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
  */
-static inline uint64_t aml_def_field_read(aml_state_t* state, aml_scope_t* scope)
+static inline uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node)
 {
     aml_address_t start = state->instructionPointer;
 
@@ -348,7 +349,7 @@ static inline uint64_t aml_def_field_read(aml_state_t* state, aml_scope_t* scope
     aml_address_t end = start + pkgLength;
 
     aml_field_list_ctx_t ctx = {
-        .opregion = aml_name_string_walk(&nameString, scope->location),
+        .opregion = aml_name_string_walk(&nameString, node),
         .flags = fieldFlags,
         .currentOffset = 0,
     };
@@ -362,19 +363,153 @@ static inline uint64_t aml_def_field_read(aml_state_t* state, aml_scope_t* scope
 }
 
 /**
+ * @brief Reads a MethodFlags structure from the AML byte stream.
+ *
+ * A MethodFlags structure is defined as `MethodFlags := ByteData`, where
+ * - bit 0-2: ArgCount (0-7)
+ * - bit 3:
+ *  - 0: NotSerialized
+ *  - 1: Serialized
+ * - bit 4-7: SyncLevel (0x00-0x0F)
+ *
+ * @param state The AML state.
+ * @param out The output buffer to store the MethodFlags structure.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
+ */
+static inline uint64_t aml_method_flags_read(aml_state_t* state, aml_method_flags_t* out)
+{
+    aml_byte_data_t flags;
+    if (aml_byte_data_read(state, &flags) == ERR)
+    {
+        return ERR;
+    }
+
+    uint8_t argCount = flags & 0x7;
+    bool isSerialized = (flags >> 3) & 0x1;
+    uint8_t syncLevel = (flags >> 4) & 0xF;
+
+    *out = (aml_method_flags_t){
+        .argCount = argCount,
+        .isSerialized = isSerialized,
+        .syncLevel = syncLevel,
+    };
+
+    return 0;
+}
+
+/**
  * @brief Reads a DefMethod structure from the AML byte stream.
  *
  * The DefField structure is defined as `DefMethod := MethodOp PkgLength NameString MethodFlags TermList`.
  *
+ * See section 19.6.85 of the ACPI specification for more details.
+ *
  * @param state The AML state.
- * @param scope The AML scope.
+ * @param node The current AML node.
  * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
  */
-static inline uint64_t aml_def_method_read(aml_state_t* state, aml_scope_t* scope)
+static inline uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node)
 {
-    AML_DEBUG_UNIMPLEMENTED_STRUCTURE("DefMethod");
-    errno = ENOSYS;
-    return ERR;
+    aml_address_t start = state->instructionPointer;
+
+    aml_value_t methodOp;
+    if (aml_value_read_no_ext(state, &methodOp) == ERR)
+    {
+        return ERR;
+    }
+
+    if (methodOp.num != AML_METHOD_OP)
+    {
+        AML_DEBUG_UNEXPECTED_VALUE(&methodOp);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_pkg_length_t pkgLength;
+    if (aml_pkg_length_read(state, &pkgLength) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_name_string_t nameString;
+    if (aml_name_string_read(state, &nameString) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_method_flags_t methodFlags;
+    if (aml_method_flags_read(state, &methodFlags) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_address_t end = start + pkgLength;
+
+    aml_node_t* newNode = aml_add_node_at_name_string(&nameString, node, AML_NODE_METHOD);
+    if (newNode == NULL)
+    {
+        return ERR;
+    }
+
+    newNode->method.flags = methodFlags;
+    newNode->method.start = state->instructionPointer;
+    newNode->method.end = end;
+
+    // Skip the method body for now.
+    state->instructionPointer = end + 1;
+
+    return 0;
+}
+
+/**
+ * @brief Reads a DefDevice structure from the AML byte stream.
+ *
+ * The DefDevice structure is defined as `DefDevice := DeviceOp PkgLength NameString TermList`.
+ *
+ * See section 19.6.31 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ */
+static inline uint64_t aml_def_device_read(aml_state_t* state, aml_node_t* node)
+{
+    aml_address_t start = state->instructionPointer;
+
+    aml_value_t deviceOp;
+    if (aml_value_read(state, &deviceOp) == ERR)
+    {
+        return ERR;
+    }
+
+    if (deviceOp.num != AML_DEVICE_OP)
+    {
+        AML_DEBUG_UNEXPECTED_VALUE(&deviceOp);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_pkg_length_t pkgLength;
+    if (aml_pkg_length_read(state, &pkgLength) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_name_string_t nameString;
+    if (aml_name_string_read(state, &nameString) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_address_t end = start + pkgLength;
+
+    aml_node_t* newNode = aml_add_node_at_name_string(&nameString, node, AML_NODE_DEVICE);
+    if (newNode == NULL)
+    {
+        return ERR;
+    }
+
+    return aml_termlist_read(state, newNode, end);
 }
 
 /**
@@ -382,13 +517,13 @@ static inline uint64_t aml_def_method_read(aml_state_t* state, aml_scope_t* scop
  *
  * The NamedObj structure is defined as `NamedObj := DefBankField | DefCreateBitField | DefCreateByteField |
  * DefCreateDWordField | DefCreateField | DefCreateQWordField | DefCreateWordField | DefDataRegion | DefExternal |
- * DefOpRegion | DefPowerRes | DefThermalZone | DefField | DefMethod`.
+ * DefOpRegion | DefPowerRes | DefThermalZone | DefField | DefMethod | DefDevice`.
  *
  * @param state The AML state.
- * @param scope The AML scope.
+ * @param node The current AML node.
  * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
  */
-static inline uint64_t aml_named_obj_read(aml_state_t* state, aml_scope_t* scope)
+static inline uint64_t aml_named_obj_read(aml_state_t* state, aml_node_t* node)
 {
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
@@ -399,11 +534,13 @@ static inline uint64_t aml_named_obj_read(aml_state_t* state, aml_scope_t* scope
     switch (value.num)
     {
     case AML_OPREGION_OP:
-        return aml_def_op_region_read(state, scope);
+        return aml_def_op_region_read(state, node);
     case AML_FIELD_OP:
-        return aml_def_field_read(state, scope);
+        return aml_def_field_read(state, node);
     case AML_METHOD_OP:
-        return aml_def_method_read(state, scope);
+        return aml_def_method_read(state, node);
+    case AML_DEVICE_OP:
+        return aml_def_device_read(state, node);
     default:
         AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
         errno = ENOSYS;

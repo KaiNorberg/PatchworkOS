@@ -2,10 +2,9 @@
 
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_node.h"
-#include "acpi/aml/aml_scope.h"
+#include "acpi/aml/aml_node.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_value.h"
-#include "log/log.h"
 #include "name.h"
 #include "package_length.h"
 #include "term.h"
@@ -33,10 +32,10 @@
  * See section 19.6.122 of the ACPI specification for more details.
  *
  * @param state The AML state.
- * @param scope The AML scope, can be `NULL`.
+ * @param node The current AML node, can be `NULL`.
  * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
  */
-static inline uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope)
+static inline uint64_t aml_def_scope_read(aml_state_t* state, aml_node_t* node)
 {
     aml_address_t start = state->instructionPointer;
 
@@ -67,28 +66,24 @@ static inline uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope
 
     aml_address_t end = start + pkgLength;
 
-    aml_node_t* newLocation = aml_name_string_walk(&nameString, scope != NULL ? scope->location : NULL);
-    if (newLocation == NULL)
+    aml_node_t* newNode = aml_name_string_walk(&nameString, node);
+    if (newNode == NULL)
     {
+        AML_DEBUG_INVALID_STRUCTURE("NameString");
+        errno = EILSEQ;
         return ERR;
     }
 
-    if (newLocation->type != AML_NODE_PREDEFINED && newLocation->type != AML_NODE_DEVICE &&
-        newLocation->type != AML_NODE_PROCESSOR && newLocation->type != AML_NODE_THERMAL_ZONE &&
-        newLocation->type != AML_NODE_POWER_RESOURCE)
+    if (newNode->type != AML_NODE_PREDEFINED && newNode->type != AML_NODE_DEVICE &&
+        newNode->type != AML_NODE_PROCESSOR && newNode->type != AML_NODE_THERMAL_ZONE &&
+        newNode->type != AML_NODE_POWER_RESOURCE)
     {
         AML_DEBUG_INVALID_STRUCTURE("NameString")
         errno = EILSEQ;
         return ERR;
     }
 
-    aml_scope_t newScope;
-    if (aml_scope_init(&newScope, newLocation) == ERR)
-    {
-        return ERR;
-    }
-
-    return aml_termlist_read(state, &newScope, end);
+    return aml_termlist_read(state, newNode, end);
 }
 
 /**
@@ -97,11 +92,11 @@ static inline uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope
  * A NameSpaceModifierObj structure is defined as `NameSpaceModifierObj := DefAlias | DefName | DefScope`.
  *
  * @param state The AML state.
- * @param scope The AML scope, can be `NULL`.
+ * @param node The current AML node, can be `NULL`.
  * @param op The AML op, should have been read by the caller.
  * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
  */
-static inline uint64_t aml_namespace_modifier_obj_read(aml_state_t* state, aml_scope_t* scope)
+static inline uint64_t aml_namespace_modifier_obj_read(aml_state_t* state, aml_node_t* node)
 {
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
@@ -120,7 +115,7 @@ static inline uint64_t aml_namespace_modifier_obj_read(aml_state_t* state, aml_s
         errno = EILSEQ;
         return ERR;
     case AML_SCOPE_OP:
-        return aml_def_scope_read(state, scope);
+        return aml_def_scope_read(state, node);
     default:
         AML_DEBUG_UNEXPECTED_VALUE(&value);
         errno = EILSEQ;

@@ -20,6 +20,8 @@ const char* aml_node_type_to_string(aml_node_type_t type)
         return "OpRegion";
     case AML_NODE_FIELD:
         return "Field";
+    case AML_NODE_METHOD:
+        return "Method";
     default:
         return "Unknown";
     }

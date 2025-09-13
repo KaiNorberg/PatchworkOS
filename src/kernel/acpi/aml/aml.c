@@ -24,6 +24,17 @@ uint64_t aml_init(void)
         return ERR;
     }
 
+    if (aml_add_node(root, "_SB_", AML_NODE_PREDEFINED) == NULL ||
+        aml_add_node(root, "_SI_", AML_NODE_PREDEFINED) == NULL ||
+        aml_add_node(root, "_GPE", AML_NODE_PREDEFINED) == NULL ||
+        aml_add_node(root, "_PR_", AML_NODE_PREDEFINED) == NULL ||
+        aml_add_node(root, "_TZ_", AML_NODE_PREDEFINED) == NULL)
+    {
+        return ERR;
+    }
+
+    // TODO: Add os predefined nodes like _OSI, _REV, etc.
+
     return 0;
 }
 
@@ -41,7 +52,7 @@ uint64_t aml_parse(const void* data, uint64_t size)
     aml_state_t state;
     aml_state_init(&state, data, size);
 
-    // When aml first starts its not in any scope, so we pass NULL as the scope.
+    // When aml first starts its not in any node, so we pass NULL as the node.
     uint64_t result = aml_termlist_read(&state, NULL, size);
 
     // For debugging
@@ -118,13 +129,9 @@ void aml_print_tree(aml_node_t* node, uint32_t depth, bool isLast)
         {
             LOG_INFO("%s", isLast ? "└── " : "├── ");
         }
-        else if (!isLast)
-        {
-            LOG_INFO("│   ");
-        }
         else
         {
-            LOG_INFO("    ");
+            LOG_INFO("│   ");
         }
     }
 
@@ -140,6 +147,11 @@ void aml_print_tree(aml_node_t* node, uint32_t depth, bool isLast)
             aml_access_type_to_string(node->field.flags.accessType),
             aml_lock_rule_to_string(node->field.flags.lockRule),
             aml_update_rule_to_string(node->field.flags.updateRule), node->field.offset, node->field.size);
+        break;
+    case AML_NODE_METHOD:
+        LOG_INFO(": argCount=%u, serialized=%s, syncLevel=%d, start=0x%x, end=0x%x",
+            node->method.flags.argCount, node->method.flags.isSerialized ? "true" : "false",
+            node->method.flags.syncLevel, node->method.start, node->method.end);
         break;
     default:
         break;

@@ -30,6 +30,7 @@ typedef enum
     AML_NODE_POWER_RESOURCE,
     AML_NODE_OPREGION,
     AML_NODE_FIELD,
+    AML_NODE_METHOD,
     AML_NODE_MAX
 } aml_node_type_t;
 
@@ -56,6 +57,12 @@ typedef struct aml_node
             aml_address_t offset;
             uint32_t size;
         } field;
+        struct
+        {
+            aml_method_flags_t flags;
+            aml_address_t start;
+            aml_address_t end;
+        } method;
     };
 } aml_node_t;
 

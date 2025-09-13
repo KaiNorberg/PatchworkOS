@@ -1,7 +1,6 @@
 #include "term.h"
 
 #include "acpi/aml/aml_debug.h"
-#include "acpi/aml/aml_scope.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_value.h"
 #include "data.h"
@@ -11,7 +10,7 @@
 #include <errno.h>
 #include <stdint.h>
 
-uint64_t aml_termarg_read(aml_state_t* state, aml_scope_t* scope, aml_termarg_t* out, aml_termarg_type_t expectedType)
+uint64_t aml_termarg_read(aml_state_t* state, aml_node_t* node, aml_termarg_t* out, aml_termarg_type_t expectedType)
 {
     if (expectedType == AML_TERMARG_NONE || expectedType >= AML_TERMARG_MAX)
     {
@@ -77,10 +76,10 @@ uint64_t aml_termarg_read(aml_state_t* state, aml_scope_t* scope, aml_termarg_t*
     return 0;
 }
 
-uint64_t aml_termarg_read_integer(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
+uint64_t aml_termarg_read_integer(aml_state_t* state, aml_node_t* node, uint64_t* out)
 {
     aml_termarg_t termarg;
-    if (aml_termarg_read(state, scope, &termarg, AML_TERMARG_INTEGER) == ERR)
+    if (aml_termarg_read(state, node, &termarg, AML_TERMARG_INTEGER) == ERR)
     {
         return ERR;
     }
@@ -89,7 +88,7 @@ uint64_t aml_termarg_read_integer(aml_state_t* state, aml_scope_t* scope, uint64
     return 0;
 }
 
-uint64_t aml_object_read(aml_state_t* state, aml_scope_t* scope)
+uint64_t aml_object_read(aml_state_t* state, aml_node_t* node)
 {
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
@@ -100,9 +99,9 @@ uint64_t aml_object_read(aml_state_t* state, aml_scope_t* scope)
     switch (value.props->type)
     {
     case AML_VALUE_TYPE_NAMESPACE_MODIFIER:
-        return aml_namespace_modifier_obj_read(state, scope);
+        return aml_namespace_modifier_obj_read(state, node);
     case AML_VALUE_TYPE_NAMED:
-        return aml_named_obj_read(state, scope);
+        return aml_named_obj_read(state, node);
     default:
         AML_DEBUG_UNEXPECTED_VALUE(&value);
         errno = EILSEQ;
@@ -110,7 +109,7 @@ uint64_t aml_object_read(aml_state_t* state, aml_scope_t* scope)
     }
 }
 
-uint64_t aml_termobj_read(aml_state_t* state, aml_scope_t* scope)
+uint64_t aml_termobj_read(aml_state_t* state, aml_node_t* node)
 {
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
@@ -129,16 +128,16 @@ uint64_t aml_termobj_read(aml_state_t* state, aml_scope_t* scope)
         errno = ENOSYS;
         return ERR;
     default:
-        return aml_object_read(state, scope);
+        return aml_object_read(state, node);
     }
 }
 
-uint64_t aml_termlist_read(aml_state_t* state, aml_scope_t* scope, aml_address_t end)
+uint64_t aml_termlist_read(aml_state_t* state, aml_node_t* node, aml_address_t end)
 {
     while (end > state->instructionPointer)
     {
         // End of buffer not reached => byte is not nothing => must be a termobj.
-        if (aml_termobj_read(state, scope) == ERR)
+        if (aml_termobj_read(state, node) == ERR)
         {
             return ERR;
         }
