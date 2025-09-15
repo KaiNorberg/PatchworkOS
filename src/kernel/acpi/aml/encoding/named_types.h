@@ -95,6 +95,8 @@ typedef struct
     aml_address_t currentOffset; //!< The current offset within the opregion.
 } aml_field_list_ctx_t;
 
+typedef uint8_t aml_sync_level_t;
+
 /**
  * @brief ACPI AML MethodFlags structure.
  */
@@ -102,7 +104,7 @@ typedef struct
 {
     uint8_t argCount;  //!< Amount of arguments (0-7)
     bool isSerialized; //!< true if method is serialized, false if not
-    uint8_t syncLevel; //!< Synchronization level (0-15)
+    aml_sync_level_t syncLevel; //!< Synchronization level (0-15)
 } aml_method_flags_t;
 
 /** @} */

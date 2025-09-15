@@ -4,6 +4,8 @@
 #include "encoding/named_types.h"
 #include "encoding/name.h"
 
+#include "sync/mutex.h"
+
 #include <stdint.h>
 
 /**
@@ -66,6 +68,7 @@ typedef enum
     AML_NODE_FIELD,
     AML_NODE_METHOD,
     AML_NODE_NAME,
+    AML_NODE_MUTEX,
     AML_NODE_MAX
 } aml_node_type_t;
 
@@ -102,6 +105,11 @@ typedef struct aml_node
         {
             aml_data_object_t object;
         } name;
+        struct
+        {
+            mutex_t mutex;
+            aml_sync_level_t syncLevel;
+        } mutex;
     } data;
 } aml_node_t;
 

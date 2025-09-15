@@ -26,6 +26,8 @@ const char* aml_node_type_to_string(aml_node_type_t type)
         return "Method";
     case AML_NODE_NAME:
         return "Name";
+    case AML_NODE_MUTEX:
+        return "Mutex";
     default:
         return "Unknown";
     }

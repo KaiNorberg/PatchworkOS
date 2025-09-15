@@ -256,6 +256,10 @@ void aml_print_tree(aml_node_t* node, uint32_t depth, bool isLast)
         break;
     case AML_NODE_NAME:
         LOG_INFO(": object=%s", aml_data_object_to_string(&node->data.name.object));
+        break;
+    case AML_NODE_MUTEX:
+        LOG_INFO(": syncLevel=%d", node->data.mutex.syncLevel);
+        break;
     default:
         break;
     }

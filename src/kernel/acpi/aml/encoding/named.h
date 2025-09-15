@@ -21,8 +21,8 @@
  * Note that version 6.6 of the ACPI specification has a few minor mistakes in the definition of the NamedObj structure,
  * its supposed several stuctures that it does not. If you check version 4.0 of the specification section 19.2.5.2 you
  * can confirm that that these structures are supposed to be there but have, somehow, been forgotten. These structures
- * include DefField, DefMethod and DefDevice (more may be noticed in the future), we add all missing structures to our
- * definition of NamedObj.
+ * include DefField, DefMethod, DefMutex and DefDevice (more may be noticed in the future), we add all missing structures to our
+ * definition of NamedObj. I have no idea how there are this many mistakes in the latest version of the ACPI specification.
  *
  * @{
  */
@@ -530,11 +530,90 @@ static inline uint64_t aml_def_device_read(aml_state_t* state, aml_node_t* node)
 }
 
 /**
+ * @brief Reads a SyncFlags structure from the AML byte stream.
+ *
+ * A SyncFlags structure is defined as `SyncFlags := ByteData`, where
+ * - bit 0-3: SyncLevel (0x00-0x0F)
+ * - bit 4-7: Reserved (must be 0)
+ *
+ * @param state The AML state.
+ * @param out The output buffer to store the SyncFlags structure.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ */
+static inline uint64_t aml_sync_flags_read(aml_state_t* state, aml_sync_level_t* out)
+{
+    aml_byte_data_t flags;
+    if (aml_byte_data_read(state, &flags) == ERR)
+    {
+        return ERR;
+    }
+
+    if (flags & 0xF0)
+    {
+        AML_DEBUG_INVALID_STRUCTURE("SyncFlags");
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    *out = flags & 0x0F;
+    return 0;
+}
+
+/**
+ * @brief Reads a DefMutex structure from the AML byte stream.
+ *
+ * The DefMutex structure is defined as `DefMutex := MutexOp NameString SyncFlags`.
+ *
+ * See section 19.6.89 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ */
+static inline uint64_t aml_def_mutex_read(aml_state_t* state, aml_node_t* node)
+{
+    aml_value_t mutexOp;
+    if (aml_value_read(state, &mutexOp) == ERR)
+    {
+        return ERR;
+    }
+
+    if (mutexOp.num != AML_MUTEX_OP)
+    {
+        AML_DEBUG_UNEXPECTED_VALUE(&mutexOp);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_name_string_t nameString;
+    if (aml_name_string_read(state, &nameString) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_sync_level_t syncFlags;
+    if (aml_sync_flags_read(state, &syncFlags) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_node_t* newNode = aml_add_node_at_name_string(&nameString, node, AML_NODE_MUTEX);
+    if (newNode == NULL)
+    {
+        return ERR;
+    }
+    mutex_init(&newNode->data.mutex.mutex);
+    newNode->data.mutex.level = syncFlags;
+
+    return 0;
+}
+
+/**
  * @brief Reads a NamedObj structure from the AML byte stream.
  *
  * The NamedObj structure is defined as `NamedObj := DefBankField | DefCreateBitField | DefCreateByteField |
  * DefCreateDWordField | DefCreateField | DefCreateQWordField | DefCreateWordField | DefDataRegion | DefExternal |
- * DefOpRegion | DefPowerRes | DefThermalZone | DefField | DefMethod | DefDevice`.
+ * DefOpRegion | DefPowerRes | DefThermalZone | DefField | DefMethod | DefDevice | DefMutex`.
  *
  * @param state The AML state.
  * @param node The current AML node.
@@ -558,6 +637,8 @@ static inline uint64_t aml_named_obj_read(aml_state_t* state, aml_node_t* node)
         return aml_def_method_read(state, node);
     case AML_DEVICE_OP:
         return aml_def_device_read(state, node);
+    case AML_MUTEX_OP:
+        return aml_def_mutex_read(state, node);
     default:
         AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
         errno = ENOSYS;
