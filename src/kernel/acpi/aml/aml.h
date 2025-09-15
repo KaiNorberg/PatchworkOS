@@ -1,8 +1,8 @@
 #pragma once
 
-#include "encoding/data_types.h"
-#include "encoding/named_types.h"
+#include "encoding/data.h"
 #include "encoding/name.h"
+#include "encoding/named.h"
 
 #include "sync/mutex.h"
 
@@ -81,7 +81,7 @@ typedef struct aml_node
     aml_node_type_t type;
     list_t children;
     struct aml_node* parent;
-    char name[AML_NAME_LENGTH + 1];
+    char name[AML_NAME_LENGTH]; //!< Not null terminated
     union {
         struct
         {
@@ -151,8 +151,7 @@ aml_node_t* aml_add_node(aml_node_t* parent, const char* name, aml_node_type_t t
  * @param type The type of the new node.
  * @return On success, a pointer to the new node. On error, `NULL` and `errno` is set.
  */
-aml_node_t* aml_add_node_at_name_string(aml_name_string_t* string, aml_node_t* start,
-    aml_node_type_t type);
+aml_node_t* aml_add_node_at_name_string(aml_name_string_t* string, aml_node_t* start, aml_node_type_t type);
 
 /**
  * @brief Find an ACPI node by its path.

@@ -1,12 +1,12 @@
 #pragma once
 
 #include "aml.h"
-#include "encoding/named_types.h"
+#include "encoding/named.h"
 
 /**
  * @brief ACPI AML String Conversion
  * @defgroup kernel_acpi_aml_string_conversion String Conversion
- * @ingroup kernel_acpi
+ * @ingroup kernel_acpi_aml
  *
  * @{
  */

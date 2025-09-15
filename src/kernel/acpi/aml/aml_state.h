@@ -28,8 +28,8 @@ typedef uint64_t aml_address_t;
  */
 typedef struct aml_state
 {
-    const void* data;                 //!< Pointer to the AML bytecode stream.
-    uint64_t dataSize;                //!< Size of the AML bytecode stream.
+    const void* data;  //!< Pointer to the AML bytecode stream.
+    uint64_t dataSize; //!< Size of the AML bytecode stream.
     aml_address_t pos; //!< Index of the current instruction in `data`.
 } aml_state_t;
 

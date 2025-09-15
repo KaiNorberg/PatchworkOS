@@ -167,6 +167,9 @@ const char* aml_data_object_to_string(aml_data_object_t* dataObject)
             snprintf(buffer + offset, sizeof(buffer) - offset, "] (Length=%llu)", dataObject->buffer.length);
         }
         return buffer;
+    case AML_DATA_PACKAGE:
+        snprintf(buffer, sizeof(buffer), "Package(NumElements=%llu)", dataObject->package.numElements);
+        return buffer;
     default:
         return "Unknown";
     }
@@ -190,7 +193,7 @@ const char* aml_name_string_to_string(aml_name_string_t* nameString)
         {
             offset += snprintf(buffer + offset, sizeof(buffer) - offset, ".");
         }
-        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%s", nameString->namePath.segments[i].name);
+        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%.*s", AML_NAME_LENGTH, nameString->namePath.segments[i].name);
     }
     return buffer;
 }

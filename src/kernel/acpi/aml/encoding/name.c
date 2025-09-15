@@ -10,8 +10,15 @@
 #include <string.h>
 #include <sys/list.h>
 
-uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t* out)
+uint64_t aml_seg_count_read(aml_state_t* state, aml_seg_count_t* out)
 {
+    return aml_byte_data_read(state, out);
+}
+
+uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t** out)
+{
+    aml_address_t start = state->pos;
+
     aml_value_t leadnamechar;
     if (aml_value_read_no_ext(state, &leadnamechar) == ERR)
     {
@@ -25,8 +32,7 @@ uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t* out)
         return ERR;
     }
 
-    out->name[0] = leadnamechar.num;
-    for (int i = 0; i < 3; i++)
+    for (uint8_t i = 0; i < 3; i++)
     {
         aml_value_t namechar;
         if (aml_value_read_no_ext(state, &namechar) == ERR)
@@ -40,15 +46,13 @@ uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t* out)
             errno = EILSEQ;
             return ERR;
         }
-
-        out->name[i + 1] = namechar.num;
     }
-    out->name[4] = '\0';
 
+    *out = (aml_name_seg_t*)((uint64_t)state->data + start);
     return 0;
 }
 
-uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t* firstOut, aml_name_seg_t* secondOut)
+uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t** out)
 {
     aml_value_t firstValue;
     if (aml_value_read_no_ext(state, &firstValue) == ERR)
@@ -63,25 +67,20 @@ uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t* firstOut, a
         return ERR;
     }
 
-    if (aml_name_seg_read(state, firstOut) == ERR)
+    aml_address_t start = state->pos;
+
+    // We just read the two NameSegs to verify they are valid.
+    aml_name_seg_t* temp;
+    if (aml_name_seg_read(state, &temp) == ERR || aml_name_seg_read(state, &temp) == ERR)
     {
         return ERR;
     }
 
-    if (aml_name_seg_read(state, secondOut) == ERR)
-    {
-        return ERR;
-    }
-
+    *out = (aml_name_seg_t*)((uint64_t)state->data + start);
     return 0;
 }
 
-uint64_t aml_seg_count_read(aml_state_t* state, aml_seg_count_t* out)
-{
-    return aml_byte_data_read(state, out);
-}
-
-uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t* outSegments, uint8_t* outSegCount)
+uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t** outSegments, aml_seg_count_t* outSegCount)
 {
     aml_value_t firstValue;
     if (aml_value_read_no_ext(state, &firstValue) == ERR)
@@ -102,14 +101,19 @@ uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t* outSegment
         return ERR;
     }
 
+    aml_address_t start = state->pos;
+
+    // We just read the NameSegs to verify they are valid.
+    aml_name_seg_t* temp;
     for (size_t i = 0; i < segCount; i++)
     {
-        if (aml_name_seg_read(state, &outSegments[i]) == ERR)
+        if (aml_name_seg_read(state, &temp) == ERR)
         {
             return ERR;
         }
     }
 
+    *outSegments = (aml_name_seg_t*)((uint64_t)state->data + start);
     *outSegCount = segCount;
     return 0;
 }
@@ -143,20 +147,21 @@ uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* out)
     if (AML_IS_LEAD_NAME_CHAR(&firstValue))
     {
         out->segmentCount = 1;
-        return aml_name_seg_read(state, &out->segments[0]);
+        return aml_name_seg_read(state, &out->segments);
     }
     else if (firstValue.num == AML_DUAL_NAME_PREFIX)
     {
         out->segmentCount = 2;
-        return aml_dual_name_path_read(state, &out->segments[0], &out->segments[1]);
+        return aml_dual_name_path_read(state, &out->segments);
     }
     else if (firstValue.num == AML_MULTI_NAME_PREFIX)
     {
-        return aml_multi_name_path_read(state, out->segments, &out->segmentCount);
+        return aml_multi_name_path_read(state, &out->segments, &out->segmentCount);
     }
     else if (firstValue.num == AML_NULL_NAME)
     {
         out->segmentCount = 0;
+        out->segments = NULL;
         return aml_null_name_read(state);
     }
     else

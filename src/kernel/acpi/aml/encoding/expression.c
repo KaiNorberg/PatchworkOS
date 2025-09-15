@@ -17,7 +17,7 @@ uint64_t aml_buffer_size_read(aml_state_t* state, aml_buffer_size_t* out)
     return 0;
 }
 
-uint64_t aml_def_buffer_read(aml_state_t* state, uint8_t** out, uint64_t* outLength)
+uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out)
 {
     aml_address_t start = state->pos;
 
@@ -53,19 +53,21 @@ uint64_t aml_def_buffer_read(aml_state_t* state, uint8_t** out, uint64_t* outLen
         return ERR;
     }
 
-    // TODO: Im not sure why we have both pkgLength and bufferSize, but for now we just check they match. In the future if this causes an error we can figure it out from there.
+    // TODO: Im not sure why we have both pkgLength and bufferSize, but for now we just check they match. In the future
+    // if this causes an error we can figure it out from there.
 
     aml_address_t end = start + pkgLength;
     if (end + 1 != state->pos + bufferSize)
     {
-        LOG_ERR("pkgLength: %llu, bufferSize: %llu, calculated end: 0x%llx, actual end: 0x%llx\n", pkgLength, bufferSize, state->pos + bufferSize, end);
+        LOG_ERR("pkgLength: %llu, bufferSize: %llu, calculated end: 0x%llx, actual end: 0x%llx\n", pkgLength,
+            bufferSize, state->pos + bufferSize, end);
         AML_DEBUG_INVALID_STRUCTURE("DefBuffer: Mismatch between PkgLength and BufferSize, unsure if this is valid");
         errno = ENOSYS;
         return ERR;
     }
 
-    *out = (uint8_t*)(state->data + state->pos);
-    *outLength = bufferSize;
+    out->content = (uint8_t*)(state->data + state->pos);
+    out->length = bufferSize;
     aml_state_advance(state, bufferSize);
     return 0;
 }

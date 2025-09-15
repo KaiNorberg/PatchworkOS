@@ -65,7 +65,7 @@ uint64_t aml_parse(const void* data, uint64_t size)
 
 aml_node_t* aml_add_node(aml_node_t* parent, const char* name, aml_node_type_t type)
 {
-    if (name == NULL || strnlen_s(name, AML_NAME_LENGTH + 1) != AML_NAME_LENGTH || type < AML_NODE_NONE ||
+    if (name == NULL || type < AML_NODE_NONE ||
         type >= AML_NODE_MAX)
     {
         errno = EINVAL;
@@ -84,7 +84,7 @@ aml_node_t* aml_add_node(aml_node_t* parent, const char* name, aml_node_type_t t
     list_entry_init(&node->entry);
     node->type = type;
     list_init(&node->children);
-    memcpy(node->name, name, AML_NAME_LENGTH + 1);
+    memcpy(node->name, name, AML_NAME_LENGTH);
 
     if (parent != NULL)
     {
@@ -99,8 +99,7 @@ aml_node_t* aml_add_node(aml_node_t* parent, const char* name, aml_node_type_t t
     return node;
 }
 
-aml_node_t* aml_add_node_at_name_string(aml_name_string_t* string, aml_node_t* start,
-    aml_node_type_t type)
+aml_node_t* aml_add_node_at_name_string(aml_name_string_t* string, aml_node_t* start, aml_node_type_t type)
 {
     if (string->namePath.segmentCount == 0)
     {
@@ -126,24 +125,26 @@ aml_node_t* aml_add_node_at_name_string(aml_name_string_t* string, aml_node_t* s
     aml_node_t* parentNode = start;
     for (uint64_t i = 1; i < string->namePath.segmentCount; i++)
     {
-        aml_node_t* next = NULL;
+        bool found = false;
         const aml_name_seg_t* segment = &string->namePath.segments[i - 1];
         aml_node_t* child = NULL;
-        LIST_FOR_EACH(child, &start->children, entry)
+        LIST_FOR_EACH(child, &parentNode->children, entry)
         {
             if (memcmp(child->name, segment->name, AML_NAME_LENGTH) == 0)
             {
-                next = child;
+                found = true;
                 break;
             }
         }
 
-        if (next == NULL)
+        if (!found)
         {
+            LOG_ERR("unable to find aml node '%.*s' under node '%.*s'\n", AML_NAME_LENGTH,
+                segment->name, AML_NAME_LENGTH, parentNode->name);
             errno = ENOENT;
             return NULL;
         }
-        parentNode = next;
+        parentNode = child;
     }
 
     aml_node_t* newNode =
@@ -235,7 +236,7 @@ void aml_print_tree(aml_node_t* node, uint32_t depth, bool isLast)
         }
     }
 
-    LOG_INFO("%s [%s", node->name, aml_node_type_to_string(node->type));
+    LOG_INFO("%.*s [%s", AML_NAME_LENGTH, node->name, aml_node_type_to_string(node->type));
     switch (node->type)
     {
     case AML_NODE_OPREGION:

@@ -2,7 +2,7 @@
 
 #include "acpi/aml/aml.h"
 #include "acpi/aml/aml_state.h"
-#include "data_types.h"
+#include "data.h"
 
 #include <stdint.h>
 
@@ -12,9 +12,6 @@
  * @ingroup kernel_acpi_aml
  *
  * See section 20.2.5 of the ACPI specification for more details.
- *
- * Note that the `term.h` file is the only encoding file that should be included outside of the encoding directory,
- * except the `*_types.h` files. This is because we frequently use `static inline` for all encoding functions.
  *
  * @{
  */
