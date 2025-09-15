@@ -1,6 +1,8 @@
 #pragma once
 
-#include "aml_node.h"
+#include "encoding/data_types.h"
+#include "encoding/named_types.h"
+#include "encoding/name.h"
 
 #include <stdint.h>
 
@@ -45,6 +47,65 @@
  */
 
 /**
+ * @brief Maximum length of an ACPI name.
+ */
+#define AML_NAME_LENGTH 4
+
+/**
+ * @brief ACPI node type.
+ */
+typedef enum
+{
+    AML_NODE_NONE = 0,
+    AML_NODE_PREDEFINED,
+    AML_NODE_DEVICE,
+    AML_NODE_PROCESSOR,
+    AML_NODE_THERMAL_ZONE,
+    AML_NODE_POWER_RESOURCE,
+    AML_NODE_OPREGION,
+    AML_NODE_FIELD,
+    AML_NODE_METHOD,
+    AML_NODE_NAME,
+    AML_NODE_MAX
+} aml_node_type_t;
+
+/**
+ * @brief ACPI node.
+ */
+typedef struct aml_node
+{
+    list_entry_t entry;
+    aml_node_type_t type;
+    list_t children;
+    struct aml_node* parent;
+    char name[AML_NAME_LENGTH + 1];
+    union {
+        struct
+        {
+            aml_region_space_t space;
+            aml_address_t offset;
+            uint32_t length;
+        } opregion;
+        struct
+        {
+            aml_field_flags_t flags;
+            aml_address_t offset;
+            uint32_t size;
+        } field;
+        struct
+        {
+            aml_method_flags_t flags;
+            aml_address_t start;
+            aml_address_t end;
+        } method;
+        struct
+        {
+            aml_data_object_t object;
+        } name;
+    } data;
+} aml_node_t;
+
+/**
  * @brief Initialize the AML subsystem.
  *
  * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
@@ -75,6 +136,17 @@ uint64_t aml_parse(const void* data, uint64_t size);
 aml_node_t* aml_add_node(aml_node_t* parent, const char* name, aml_node_type_t type);
 
 /**
+ * @brief Add a new node at the location and with the name specified by the NameString.
+ *
+ * @param string The Namestring specifying the parent node.
+ * @param start The node to start the search from, or `NULL` to start from the root.
+ * @param type The type of the new node.
+ * @return On success, a pointer to the new node. On error, `NULL` and `errno` is set.
+ */
+aml_node_t* aml_add_node_at_name_string(aml_name_string_t* string, aml_node_t* start,
+    aml_node_type_t type);
+
+/**
  * @brief Find an ACPI node by its path.
  *
  * The `aml_find_node()` function searches for an ACPI node relative to `start`, if `start` is NULL then always starts
@@ -86,6 +158,15 @@ aml_node_t* aml_add_node(aml_node_t* parent, const char* name, aml_node_type_t t
  * @return aml_node_t* On success, a pointer to the ACPI node. On failure, `NULL` and `errno` is set.
  */
 aml_node_t* aml_find_node(const char* path, aml_node_t* start);
+
+/**
+ * @brief Walks the ACPI namespace tree to find the node corresponding to the given NameString.
+ *
+ * @param nameString The NameString to search for.
+ * @param start The node to start the search from, or `NULL` to start from the root.
+ * @return On success, a pointer to the found node. On error, `NULL` and `errno` is set.
+ */
+aml_node_t* aml_find_node_name_string(const aml_name_string_t* nameString, aml_node_t* start);
 
 /**
  * @brief Get the root node of the ACPI namespace.

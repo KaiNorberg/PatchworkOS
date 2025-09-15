@@ -1,5 +1,7 @@
 #include "aml_to_string.h"
 
+#include <stdio.h>
+
 const char* aml_node_type_to_string(aml_node_type_t type)
 {
     switch (type)
@@ -22,6 +24,8 @@ const char* aml_node_type_to_string(aml_node_type_t type)
         return "Field";
     case AML_NODE_METHOD:
         return "Method";
+    case AML_NODE_NAME:
+        return "Name";
     default:
         return "Unknown";
     }
@@ -109,4 +113,82 @@ const char* aml_update_rule_to_string(aml_update_rule_t updateRule)
     default:
         return "Unknown";
     }
+}
+
+const char* aml_data_object_to_string(aml_data_object_t* dataObject)
+{
+    static char buffer[256];
+    switch (dataObject->type)
+    {
+    case AML_DATA_INTEGER:
+        snprintf(buffer, sizeof(buffer), "0x%llx", dataObject->integer);
+        return buffer;
+    case AML_DATA_STRING:
+        snprintf(buffer, sizeof(buffer), "\"%s\"", dataObject->string.content);
+        return buffer;
+    case AML_DATA_BUFFER:
+        if (dataObject->buffer.length <= 16)
+        {
+            int offset = 0;
+            offset += snprintf(buffer + offset, sizeof(buffer) - offset, "[");
+            for (uint64_t i = 0; i < dataObject->buffer.length; i++)
+            {
+                if (i > 0)
+                {
+                    offset += snprintf(buffer + offset, sizeof(buffer) - offset, " ");
+                }
+                offset += snprintf(buffer + offset, sizeof(buffer) - offset, "0x%02x", dataObject->buffer.content[i]);
+            }
+            snprintf(buffer + offset, sizeof(buffer) - offset, "]");
+        }
+        else
+        {
+            int offset = 0;
+            offset += snprintf(buffer + offset, sizeof(buffer) - offset, "[");
+            for (uint64_t i = 0; i < 8; i++)
+            {
+                if (i > 0)
+                {
+                    offset += snprintf(buffer + offset, sizeof(buffer) - offset, " ");
+                }
+                offset += snprintf(buffer + offset, sizeof(buffer) - offset, "0x%02x", dataObject->buffer.content[i]);
+            }
+            offset += snprintf(buffer + offset, sizeof(buffer) - offset, " ... ");
+            for (uint64_t i = dataObject->buffer.length - 8; i < dataObject->buffer.length; i++)
+            {
+                if (i > dataObject->buffer.length - 8)
+                {
+                    offset += snprintf(buffer + offset, sizeof(buffer) - offset, " ");
+                }
+                offset += snprintf(buffer + offset, sizeof(buffer) - offset, "0x%02x", dataObject->buffer.content[i]);
+            }
+            snprintf(buffer + offset, sizeof(buffer) - offset, "] (Length=%llu)", dataObject->buffer.length);
+        }
+        return buffer;
+    default:
+        return "Unknown";
+    }
+}
+
+const char* aml_name_string_to_string(aml_name_string_t* nameString)
+{
+    static char buffer[256];
+    int offset = 0;
+    if (nameString->rootChar.present)
+    {
+        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "\\");
+    }
+    for (uint64_t i = 0; i < nameString->prefixPath.depth; i++)
+    {
+        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "^");
+    }
+    for (uint64_t i = 0; i < nameString->namePath.segmentCount; i++)
+    {
+        if (i > 0)
+        {
+            offset += snprintf(buffer + offset, sizeof(buffer) - offset, ".");
+        }
+        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%s", nameString->namePath.segments[i].name);
+    }
+    return buffer;
 }

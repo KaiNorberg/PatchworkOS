@@ -1,15 +1,9 @@
 #pragma once
 
-#include "acpi/aml/aml.h"
-#include "acpi/aml/aml_debug.h"
-#include "acpi/aml/aml_node.h"
 #include "acpi/aml/aml_state.h"
-#include "data.h"
+#include "data_types.h"
 
-#include <errno.h>
 #include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/list.h>
 
 /**
@@ -109,6 +103,11 @@ typedef struct
 } aml_name_string_t;
 
 /**
+ * @brief ACPI AML SegCount structure.
+ */
+typedef aml_byte_data_t aml_seg_count_t;
+
+/**
  * @brief Reads the next data as a NameSeg from the AML bytecode stream.
  *
  * A NameSeg structure is defined as `NameSeg := <leadnamechar namechar namechar namechar>`.
@@ -117,43 +116,7 @@ typedef struct
  * @param out Pointer to destination where the NameSeg will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t* out)
-{
-    aml_value_t leadnamechar;
-    if (aml_value_read_no_ext(state, &leadnamechar) == ERR)
-    {
-        return ERR;
-    }
-
-    if (!AML_IS_LEAD_NAME_CHAR(&leadnamechar))
-    {
-        AML_DEBUG_INVALID_STRUCTURE("LeadNameChar");
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    out->name[0] = leadnamechar.num;
-    for (int i = 0; i < 3; i++)
-    {
-        aml_value_t namechar;
-        if (aml_value_read_no_ext(state, &namechar) == ERR)
-        {
-            return ERR;
-        }
-
-        if (!AML_IS_NAME_CHAR(&namechar))
-        {
-            AML_DEBUG_INVALID_STRUCTURE("NameChar");
-            errno = EILSEQ;
-            return ERR;
-        }
-
-        out->name[i + 1] = namechar.num;
-    }
-    out->name[4] = '\0';
-
-    return 0;
-}
+uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t* out);
 
 /**
  * @brief Reads the next data as a DualNamePath structure from the AML bytecode stream.
@@ -165,38 +128,7 @@ static inline uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t* out
  * @param secondOut Pointer to destination where the second segment of the DualNamePath will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t* firstOut, aml_name_seg_t* secondOut)
-{
-    aml_value_t firstValue;
-    if (aml_value_read_no_ext(state, &firstValue) == ERR)
-    {
-        return ERR;
-    }
-
-    if (firstValue.num != AML_DUAL_NAME_PREFIX)
-    {
-        AML_DEBUG_INVALID_STRUCTURE("DualNamePrefix");
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    if (aml_name_seg_read(state, firstOut) == ERR)
-    {
-        return ERR;
-    }
-
-    if (aml_name_seg_read(state, secondOut) == ERR)
-    {
-        return ERR;
-    }
-
-    return 0;
-}
-
-/**
- * @brief ACPI AML SegCount structure.
- */
-typedef aml_byte_data_t aml_seg_count_t;
+uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t* firstOut, aml_name_seg_t* secondOut);
 
 /**
  * @brief Reads the next data as a SegCount structure from the AML bytecode stream.
@@ -207,10 +139,7 @@ typedef aml_byte_data_t aml_seg_count_t;
  * @param out Pointer to destination where the SegCount will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_seg_count_read(aml_state_t* state, aml_seg_count_t* out)
-{
-    return aml_byte_data_read(state, out);
-}
+uint64_t aml_seg_count_read(aml_state_t* state, aml_seg_count_t* out);
 
 /**
  * @brief Reads the next data as a MultiNamePath structure from the AML bytecode stream.
@@ -222,38 +151,7 @@ static inline uint64_t aml_seg_count_read(aml_state_t* state, aml_seg_count_t* o
  * @param outSegCount Pointer to destination where the number of segments will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t* outSegments, uint8_t* outSegCount)
-{
-    aml_value_t firstValue;
-    if (aml_value_read_no_ext(state, &firstValue) == ERR)
-    {
-        return ERR;
-    }
-
-    if (firstValue.num != AML_MULTI_NAME_PREFIX)
-    {
-        AML_DEBUG_INVALID_STRUCTURE("MultiNamePrefix");
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    aml_seg_count_t segCount;
-    if (aml_seg_count_read(state, &segCount) == ERR)
-    {
-        return ERR;
-    }
-
-    for (size_t i = 0; i < segCount; i++)
-    {
-        if (aml_name_seg_read(state, &outSegments[i]) == ERR)
-        {
-            return ERR;
-        }
-    }
-
-    *outSegCount = segCount;
-    return 0;
-}
+uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t* outSegments, uint8_t* outSegCount);
 
 /**
  * Reads the next data as a NullName structure from the AML bytecode stream.
@@ -263,23 +161,7 @@ static inline uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg
  * @param state The AML state.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_null_name_read(aml_state_t* state)
-{
-    aml_value_t firstValue;
-    if (aml_value_read_no_ext(state, &firstValue) == ERR)
-    {
-        return ERR;
-    }
-
-    if (firstValue.num != AML_NULL_NAME)
-    {
-        AML_DEBUG_INVALID_STRUCTURE("NullName");
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    return 0;
-}
+uint64_t aml_null_name_read(aml_state_t* state);
 
 /**
  * @brief Reads the next data as a NamePath structure from the AML bytecode stream.
@@ -290,42 +172,7 @@ static inline uint64_t aml_null_name_read(aml_state_t* state)
  * @param out Pointer to destination where the NamePath will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* out)
-{
-    aml_value_t firstValue;
-    if (aml_value_peek_no_ext(state, &firstValue) == ERR)
-    {
-        return ERR;
-    }
-
-    if (AML_IS_LEAD_NAME_CHAR(&firstValue))
-    {
-        out->segmentCount = 1;
-        return aml_name_seg_read(state, &out->segments[0]);
-    }
-    else if (firstValue.num == AML_DUAL_NAME_PREFIX)
-    {
-        out->segmentCount = 2;
-        return aml_dual_name_path_read(state, &out->segments[0], &out->segments[1]);
-    }
-    else if (firstValue.num == AML_MULTI_NAME_PREFIX)
-    {
-        return aml_multi_name_path_read(state, out->segments, &out->segmentCount);
-    }
-    else if (firstValue.num == AML_NULL_NAME)
-    {
-        out->segmentCount = 0;
-        return aml_null_name_read(state);
-    }
-    else
-    {
-        AML_DEBUG_INVALID_STRUCTURE("NamePath");
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    return 0;
-}
+uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* out);
 
 /**
  * @brief Reads the next data as a PrefixPath structure from the AML bytecode stream.
@@ -338,26 +185,7 @@ static inline uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* o
  * @param out Pointer to destination where the PrefixPath will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_prefix_path_read(aml_state_t* state, aml_prefix_path_t* out)
-{
-    out->depth = 0;
-    while (true)
-    {
-        aml_value_t chr;
-        if (aml_value_peek_no_ext(state, &chr) == ERR)
-        {
-            return ERR;
-        }
-
-        if (chr.num != AML_PARENT_PREFIX_CHAR)
-        {
-            return 0;
-        }
-
-        aml_state_advance(state, chr.length);
-        out->depth++;
-    }
-}
+uint64_t aml_prefix_path_read(aml_state_t* state, aml_prefix_path_t* out);
 
 /**
  * @brief Reads the next data as a RootChar from the AML bytecode stream.
@@ -368,24 +196,7 @@ static inline uint64_t aml_prefix_path_read(aml_state_t* state, aml_prefix_path_
  * @param out Pointer to destination where the RootChar will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out)
-{
-    aml_value_t rootChar;
-    if (aml_value_read_no_ext(state, &rootChar) == ERR)
-    {
-        return ERR;
-    }
-
-    if (rootChar.num != AML_ROOT_CHAR)
-    {
-        AML_DEBUG_INVALID_STRUCTURE("RootChar");
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    out->present = true;
-    return 0;
-}
+uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out);
 
 /**
  * @brief Reads the next data as a NameString structure from the AML bytecode stream.
@@ -396,157 +207,6 @@ static inline uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* o
  * @param out Pointer to destination where the name string will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
-{
-    *out = (aml_name_string_t){0};
-
-    aml_value_t value;
-    if (aml_value_peek_no_ext(state, &value) == ERR)
-    {
-        return ERR;
-    }
-
-    // Starts with either rootchar or prefixpath.
-    switch (value.num)
-    {
-    case AML_ROOT_CHAR:
-        if (aml_root_char_read(state, &out->rootChar) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_PARENT_PREFIX_CHAR:
-        if (aml_prefix_path_read(state, &out->prefixPath) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    default:
-        // Is a empty prefixpath.
-        break;
-    }
-
-    if (aml_name_path_read(state, &out->namePath) == ERR)
-    {
-        return ERR;
-    }
-
-    return 0;
-}
-
-/**
- * @brief Walks the ACPI namespace tree to find the node corresponding to the given NameString.
- *
- * @param nameString The NameString to search for.
- * @param start The node to start the search from, or `NULL` to start from the root.
- * @return On success, a pointer to the found node. On error, `NULL` and `errno` is set.
- */
-static inline aml_node_t* aml_name_string_walk(const aml_name_string_t* nameString, aml_node_t* start)
-{
-    if (start == NULL || nameString->rootChar.present)
-    {
-        start = aml_root_get();
-    }
-
-    for (uint64_t i = 0; i < nameString->prefixPath.depth; i++)
-    {
-        start = start->parent;
-        if (start == NULL)
-        {
-            errno = ENOENT;
-            return NULL;
-        }
-    }
-
-    aml_node_t* found = start;
-    for (uint64_t i = 0; i < nameString->namePath.segmentCount; i++)
-    {
-        aml_node_t* next = NULL;
-        const aml_name_seg_t* segment = &nameString->namePath.segments[i];
-        aml_node_t* child = NULL;
-        LIST_FOR_EACH(child, &start->children, entry)
-        {
-            if (memcmp(child->name, segment->name, AML_NAME_LENGTH) == 0)
-            {
-                next = child;
-                break;
-            }
-        }
-
-        if (next == NULL)
-        {
-            errno = ENOENT;
-            return NULL;
-        }
-        found = next;
-    }
-
-    return found;
-}
-
-/**
- * @brief Add a new node at the location and with the name specified by the NameString.
- *
- * @param string The Namestring specifying the parent node.
- * @param start The node to start the search from, or `NULL` to start from the root.
- * @param type The type of the new node.
- * @return On success, a pointer to the new node. On error, `NULL` and `errno` is set.
- */
-static inline aml_node_t* aml_add_node_at_name_string(aml_name_string_t* string, aml_node_t* start,
-    aml_node_type_t type)
-{
-    if (string->namePath.segmentCount == 0)
-    {
-        errno = EILSEQ;
-        return NULL;
-    }
-
-    if (start == NULL || string->rootChar.present)
-    {
-        start = aml_root_get();
-    }
-
-    for (uint64_t i = 0; i < string->prefixPath.depth; i++)
-    {
-        start = start->parent;
-        if (start == NULL)
-        {
-            errno = ENOENT;
-            return NULL;
-        }
-    }
-
-    aml_node_t* parentNode = start;
-    for (uint64_t i = 1; i < string->namePath.segmentCount; i++)
-    {
-        aml_node_t* next = NULL;
-        const aml_name_seg_t* segment = &string->namePath.segments[i - 1];
-        aml_node_t* child = NULL;
-        LIST_FOR_EACH(child, &start->children, entry)
-        {
-            if (memcmp(child->name, segment->name, AML_NAME_LENGTH) == 0)
-            {
-                next = child;
-                break;
-            }
-        }
-
-        if (next == NULL)
-        {
-            errno = ENOENT;
-            return NULL;
-        }
-        parentNode = next;
-    }
-
-    aml_node_t* newNode =
-        aml_add_node(parentNode, string->namePath.segments[string->namePath.segmentCount - 1].name, type);
-    if (newNode == NULL)
-    {
-        return NULL;
-    }
-
-    return newNode;
-}
+uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out);
 
 /** @} */

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "aml_node.h"
+#include "aml.h"
 #include "encoding/named_types.h"
 
 /**
@@ -50,5 +50,21 @@ const char* aml_lock_rule_to_string(aml_lock_rule_t lockRule);
  * @return String representation of the UpdateRule or "Unknown" if it is invalid.
  */
 const char* aml_update_rule_to_string(aml_update_rule_t updateRule);
+
+/**
+ * @brief Convert an aml DataObject to a string.
+ *
+ * @param dataObject ACPI AML DataObject.
+ * @return String representation of the DataObject or "Unknown" if it is invalid.
+ */
+const char* aml_data_object_to_string(aml_data_object_t* dataObject);
+
+/**
+ * @brief Convert an aml NameString to a string.
+ *
+ * @param nameString ACPI AML NameString.
+ * @return String representation of the NameString or "Unknown" if it is invalid.
+ */
+const char* aml_name_string_to_string(aml_name_string_t* nameString);
 
 /** @} */

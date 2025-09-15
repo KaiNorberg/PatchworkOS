@@ -1,6 +1,7 @@
 #pragma once
 
 #include "aml_state.h"
+#include "log/log.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -402,6 +403,7 @@ static inline uint64_t aml_value_peek(aml_state_t* state, aml_value_t* out)
     const aml_value_props_t* props = aml_value_lookup(value, extension);
     if (props == NULL)
     {
+        LOG_ERR("invalid AML value: 0x%02x%02x\n", extension, value);
         errno = EILSEQ;
         return ERR;
     }

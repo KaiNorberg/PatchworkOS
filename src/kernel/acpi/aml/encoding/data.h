@@ -3,6 +3,8 @@
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_state.h"
 
+#include "expression.h"
+
 #include <errno.h>
 #include <stdint.h>
 
@@ -16,74 +18,7 @@
  * @{
  */
 
-/**
- * @brief ACPI AML ByteData structure.
- */
-typedef uint8_t aml_byte_data_t;
-
-/**
- * @brief ACPI AML WordData structure.
- */
-typedef uint16_t aml_word_data_t;
-
-/**
- * @brief ACPI AML DWordData structure.
- */
-typedef uint32_t aml_dword_data_t;
-
-/**
- * @brief ACPI AML QWordData structure.
- */
-typedef uint64_t aml_qword_data_t;
-
-/**
- * @brief The type of the data in a ComputationalData structure.
- */
-typedef enum
-{
-    AML_COMPUTATIONAL_NONE = 0,
-    AML_COMPUTATIONAL_BYTE,
-    AML_COMPUTATIONAL_WORD,
-    AML_COMPUTATIONAL_DWORD,
-    AML_COMPUTATIONAL_QWORD,
-    AML_COMPUTATIONAL_MAX,
-} aml_computational_type_t;
-
-/**
- * @brief ACPI AML ComputationalData structure.
- */
-typedef struct
-{
-    aml_computational_type_t type;
-    union {
-        aml_byte_data_t byte;
-        aml_word_data_t word;
-        aml_dword_data_t dword;
-        aml_qword_data_t qword;
-    };
-} aml_computational_data_t;
-
-#define AML_COMPUTATIONAL_DATA_IS_INTEGER(data) \
-    ((data).type == AML_COMPUTATIONAL_QWORD || (data).type == AML_COMPUTATIONAL_DWORD || \
-        (data).type == AML_COMPUTATIONAL_WORD || (data).type == AML_COMPUTATIONAL_BYTE)
-
-#define AML_COMPUTATIONAL_DATA_AS_INTEGER(data) \
-    ((data).type == AML_COMPUTATIONAL_QWORD \
-            ? (data).qword \
-            : ((data).type == AML_COMPUTATIONAL_DWORD \
-                      ? (data).dword \
-                      : ((data).type == AML_COMPUTATIONAL_WORD ? (data).word : (data).byte)))
-
-/**
- * @brief ACPI AML Data Object structure.
- */
-typedef struct
-{
-    bool isComputational;
-    union {
-        aml_computational_data_t computational;
-    };
-} aml_data_object_t;
+#include "data_types.h"
 
 /**
  * @brief Read a ByteData structure from the AML stream.
@@ -179,7 +114,7 @@ static inline uint64_t aml_qword_data_read(aml_state_t* state, aml_qword_data_t*
  * @param out Pointer to the buffer where the ByteData will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_byte_const_read(aml_state_t* state, aml_byte_data_t* out)
+static inline uint64_t aml_byte_const_read(aml_state_t* state, aml_byte_const_t* out)
 {
     aml_value_t prefix;
     if (aml_value_read(state, &prefix) == ERR)
@@ -206,7 +141,7 @@ static inline uint64_t aml_byte_const_read(aml_state_t* state, aml_byte_data_t* 
  * @param out Pointer to the buffer where the WordData will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_word_const_read(aml_state_t* state, aml_word_data_t* out)
+static inline uint64_t aml_word_const_read(aml_state_t* state, aml_word_const_t* out)
 {
     aml_value_t prefix;
     if (aml_value_read(state, &prefix) == ERR)
@@ -227,13 +162,13 @@ static inline uint64_t aml_word_const_read(aml_state_t* state, aml_word_data_t* 
 /**
  * @brief Read a DWordConst structure from the AML stream.
  *
- * A DWordConst structure is defined as `DwordConst := DwordC DWordPrefix DWordData`.
+ * A DWordConst structure is defined as `DwordConst := DWordPrefix DWordData`.
  *
  * @param state The AML state.
  * @param out Pointer to the buffer where the DWordData will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_dword_const_read(aml_state_t* state, aml_dword_data_t* out)
+static inline uint64_t aml_dword_const_read(aml_state_t* state, aml_dword_const_t* out)
 {
     aml_value_t prefix;
     if (aml_value_read(state, &prefix) == ERR)
@@ -260,7 +195,7 @@ static inline uint64_t aml_dword_const_read(aml_state_t* state, aml_dword_data_t
  * @param out Pointer to the buffer where the QWordData will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-static inline uint64_t aml_qword_const_read(aml_state_t* state, aml_qword_data_t* out)
+static inline uint64_t aml_qword_const_read(aml_state_t* state, aml_qword_const_t* out)
 {
     aml_value_t prefix;
     if (aml_value_read(state, &prefix) == ERR)
@@ -277,11 +212,6 @@ static inline uint64_t aml_qword_const_read(aml_state_t* state, aml_qword_data_t
 
     return aml_qword_data_read(state, out);
 }
-
-/**
- * @brief ACPI AML ConstObj structure.
- */
-typedef uint64_t aml_const_obj_t;
 
 /**
  * @brief Read a ConstObj structure from the AML stream.
@@ -320,6 +250,67 @@ static inline uint64_t aml_const_obj_read(aml_state_t* state, aml_const_obj_t* o
     }
 }
 
+
+
+/**
+ * @brief Read a String structure from the AML stream.
+ *
+ * A String structure is defined as `String := StringPrefix AsciiCharList NullChar`.
+ *
+ * AsciiCharList is defined as a sequence of ASCII characters in the range 0x01 to 0x7F, and NullChar is defined as 0x00.
+ *
+ * @param state The AML state.
+ * @param out Pointer to the buffer where the string will be stored. This will point to a location within the AML bytestream and should not be freed or modified.
+ * @param outLength Pointer to a variable where the length of the string (excluding the null terminator) will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+static inline uint64_t aml_string_read(aml_state_t* state, char** out, uint64_t* outLength)
+{
+    aml_value_t stringPrefix;
+    if (aml_value_read(state, &stringPrefix) == ERR)
+    {
+        return ERR;
+    }
+
+    if (stringPrefix.num != AML_STRING_PREFIX)
+    {
+        AML_DEBUG_INVALID_STRUCTURE("String");
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    char* str = (char*)((uint64_t)state->data + (uint64_t)state->pos);
+    uint64_t length = 0;
+    while (1)
+    {
+        uint8_t c;
+        if (aml_state_read(state, &c, 1) != 1)
+        {
+            AML_DEBUG_INVALID_STRUCTURE("String: Unexpected end of stream");
+            errno = ENODATA;
+            return ERR;
+        }
+
+        if (c == 0x00)
+        {
+            break;
+        }
+
+        if (c < 0x01 || c > 0x7F)
+        {
+            AML_DEBUG_INVALID_STRUCTURE("String: Non-ASCII character encountered");
+            errno = EILSEQ;
+            return ERR;
+        }
+
+        length++;
+    }
+
+    *out = str;
+    *outLength = length;
+    return 0;
+}
+
 /**
  * @brief Read a ComputationalData structure from the AML stream.
  *
@@ -341,23 +332,74 @@ static inline uint64_t aml_computational_data_read(aml_state_t* state, aml_compu
     switch (value.num)
     {
     case AML_BYTE_PREFIX:
-        out->type = AML_COMPUTATIONAL_BYTE;
-        return aml_byte_const_read(state, &out->byte);
+    {
+        aml_byte_const_t byte;
+        if (aml_byte_const_read(state, &byte) == ERR)
+        {
+            return ERR;
+        }
+        out->type = AML_DATA_INTEGER;
+        out->integer = byte;
+        out->meta.bitWidth = 8;
+        return 0;
+    }
     case AML_WORD_PREFIX:
-        out->type = AML_COMPUTATIONAL_WORD;
-        return aml_word_const_read(state, &out->word);
+    {
+        aml_word_const_t word;
+        if (aml_word_const_read(state, &word) == ERR)
+        {
+            return ERR;
+        }
+        out->type = AML_DATA_INTEGER;
+        out->integer = word;
+        out->meta.bitWidth = 16;
+        return 0;
+    }
     case AML_DWORD_PREFIX:
-        out->type = AML_COMPUTATIONAL_DWORD;
-        return aml_dword_const_read(state, &out->dword);
+    {
+        aml_dword_const_t dword;
+        if (aml_dword_const_read(state, &dword) == ERR)
+        {
+            return ERR;
+        }
+        out->type = AML_DATA_INTEGER;
+        out->integer = dword;
+        out->meta.bitWidth = 32;
+        return 0;
+    }
     case AML_QWORD_PREFIX:
-        out->type = AML_COMPUTATIONAL_QWORD;
-        return aml_qword_const_read(state, &out->qword);
+    {
+        aml_qword_const_t qword;
+        if (aml_qword_const_read(state, &qword) == ERR)
+        {
+            return ERR;
+        }
+        out->type = AML_DATA_INTEGER;
+        out->integer = qword;
+        out->meta.bitWidth = 64;
+        return 0;
+    }
+    case AML_STRING_PREFIX:
+        out->type = AML_DATA_STRING;
+        return aml_string_read(state, &out->string.content, &out->string.length);
     case AML_ZERO_OP:
     case AML_ONE_OP:
     case AML_ONES_OP:
+    {
         // TODO: Add revision handling
-        out->type = AML_COMPUTATIONAL_QWORD;
-        return aml_const_obj_read(state, &out->qword);
+        aml_const_obj_t constObj;
+        if (aml_const_obj_read(state, &constObj) == ERR)
+        {
+            return ERR;
+        }
+        out->type = AML_DATA_INTEGER;
+        out->integer = constObj;
+        out->meta.bitWidth = 64;
+        return 0;
+    }
+    case AML_BUFFER_OP:
+        out->type = AML_DATA_BUFFER;
+        return aml_def_buffer_read(state, &out->buffer.content, &out->buffer.length);
     default:
         AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
         errno = ENOSYS;
@@ -393,9 +435,26 @@ static inline uint64_t aml_data_object_read(aml_state_t* state, aml_data_object_
         errno = ENOSYS;
         return ERR;
     default:
-        out->isComputational = true;
-        return aml_computational_data_read(state, &out->computational);
+        return aml_computational_data_read(state, out);
     }
+}
+
+/**
+ * @brief Read a DataRefObject structure from the AML stream.
+ *
+ * A DataRefObject structure is defined as `DataRefObject := DataObject | ObjectReference`.
+ *
+ * I have no idea what a ObjectReference is, it is not documented in the ACPI spec except for in the definition of
+ * DataRefObject and in the ASL, not AML, section where its defined as an Integer. So for now, we only support
+ * DataObject. Insert shrugging emoji here.
+ *
+ * @param state The AML state.
+ * @param out Pointer to the buffer where the DataRefObject will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+static inline uint64_t aml_data_ref_object_read(aml_state_t* state, aml_data_object_t* out)
+{
+    return aml_data_object_read(state, out);
 }
 
 /** @} */

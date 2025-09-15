@@ -1,5 +1,6 @@
 #pragma once
 
+#include "acpi/aml/aml.h"
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_value.h"
@@ -35,7 +36,7 @@
  *
  * @param state The AML state.
  * @param out The output buffer to store the region space.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
  */
 static inline uint64_t aml_region_space_read(aml_state_t* state, aml_region_space_t* out)
 {
@@ -64,11 +65,17 @@ static inline uint64_t aml_region_space_read(aml_state_t* state, aml_region_spac
  * @param state The AML state.
  * @param node The current AML node.
  * @param out The output buffer to store the region offset.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
  */
 static inline uint64_t aml_region_offset_read(aml_state_t* state, aml_node_t* node, aml_region_offset_t* out)
 {
-    return aml_termarg_read_integer(state, node, out);
+    aml_term_arg_t termArg;
+    if (aml_term_arg_read(state, node, &termArg, AML_DATA_INTEGER) == ERR)
+    {
+        return ERR;
+    }
+    *out = termArg.integer;
+    return 0;
 }
 
 /**
@@ -79,11 +86,17 @@ static inline uint64_t aml_region_offset_read(aml_state_t* state, aml_node_t* no
  * @param state The AML state.
  * @param node The current AML node.
  * @param out The output buffer to store the region length.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
  */
 static inline uint64_t aml_region_len_read(aml_state_t* state, aml_node_t* node, aml_region_len_t* out)
 {
-    return aml_termarg_read_integer(state, node, out);
+    aml_term_arg_t termArg;
+    if (aml_term_arg_read(state, node, &termArg, AML_DATA_INTEGER) == ERR)
+    {
+        return ERR;
+    }
+    *out = termArg.integer;
+    return 0;
 }
 
 /**
@@ -95,7 +108,7 @@ static inline uint64_t aml_region_len_read(aml_state_t* state, aml_node_t* node,
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
  */
 static inline uint64_t aml_def_op_region_read(aml_state_t* state, aml_node_t* node)
 {
@@ -107,6 +120,8 @@ static inline uint64_t aml_def_op_region_read(aml_state_t* state, aml_node_t* no
 
     if (opRegionOp.num != AML_OPREGION_OP)
     {
+        AML_DEBUG_INVALID_STRUCTURE("OpRegionOp");
+        errno = EILSEQ;
         return ERR;
     }
 
@@ -139,9 +154,9 @@ static inline uint64_t aml_def_op_region_read(aml_state_t* state, aml_node_t* no
     {
         return ERR;
     }
-    newNode->opregion.space = regionSpace;
-    newNode->opregion.offset = regionOffset;
-    newNode->opregion.length = regionLen;
+    newNode->data.opregion.space = regionSpace;
+    newNode->data.opregion.offset = regionOffset;
+    newNode->data.opregion.length = regionLen;
 
     return 0;
 }
@@ -176,7 +191,7 @@ static inline uint64_t aml_def_op_region_read(aml_state_t* state, aml_node_t* no
  *
  * @param state The AML state.
  * @param out The buffer to store the FieldFlags structure.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
  */
 static inline uint64_t aml_field_flags_read(aml_state_t* state, aml_field_flags_t* out)
 {
@@ -186,8 +201,9 @@ static inline uint64_t aml_field_flags_read(aml_state_t* state, aml_field_flags_
         return ERR;
     }
 
-    if (flags & 0xC0)
+    if (flags & (1 << 7))
     {
+        AML_DEBUG_INVALID_STRUCTURE("FieldFlags");
         errno = EILSEQ;
         return ERR;
     }
@@ -195,7 +211,8 @@ static inline uint64_t aml_field_flags_read(aml_state_t* state, aml_field_flags_
     aml_access_type_t accessType = flags & 0xF;
     if (accessType > AML_ACCESS_TYPE_BUFFER)
     {
-        errno = EINVAL;
+        AML_DEBUG_INVALID_STRUCTURE("FieldFlags: Invalid AccessType");
+        errno = EILSEQ;
         return ERR;
     }
 
@@ -217,7 +234,7 @@ static inline uint64_t aml_field_flags_read(aml_state_t* state, aml_field_flags_
  *
  * @param state The AML state.
  * @param ctx The AML field list context.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
  */
 static inline uint64_t aml_named_field_read(aml_state_t* state, aml_field_list_ctx_t* ctx)
 {
@@ -238,9 +255,9 @@ static inline uint64_t aml_named_field_read(aml_state_t* state, aml_field_list_c
     {
         return ERR;
     }
-    newNode->field.flags = ctx->flags;
-    newNode->field.offset = ctx->currentOffset;
-    newNode->field.size = pkgLength;
+    newNode->data.field.flags = ctx->flags;
+    newNode->data.field.offset = ctx->currentOffset;
+    newNode->data.field.size = pkgLength;
 
     return 0;
 }
@@ -255,7 +272,7 @@ static inline uint64_t aml_named_field_read(aml_state_t* state, aml_field_list_c
  *
  * @param state The AML state.
  * @param ctx The AML field list context.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
  */
 static uint64_t aml_field_element_read(aml_state_t* state, aml_field_list_ctx_t* ctx)
 {
@@ -286,11 +303,11 @@ static uint64_t aml_field_element_read(aml_state_t* state, aml_field_list_ctx_t*
  * @param state The AML state.
  * @param ctx The AML field list context.
  * @param end The index at which the FieldList ends.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
  */
 static uint64_t aml_field_list_read(aml_state_t* state, aml_field_list_ctx_t* ctx, aml_address_t end)
 {
-    while (end > state->instructionPointer)
+    while (end > state->pos)
     {
         // End of buffer not reached => byte is not nothing => must be a FieldElement.
         if (aml_field_element_read(state, ctx) == ERR)
@@ -309,11 +326,11 @@ static uint64_t aml_field_list_read(aml_state_t* state, aml_field_list_ctx_t* ct
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
  */
 static inline uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node)
 {
-    aml_address_t start = state->instructionPointer;
+    aml_address_t start = state->pos;
 
     aml_value_t fieldOp;
     if (aml_value_read(state, &fieldOp) == ERR)
@@ -349,7 +366,7 @@ static inline uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node)
     aml_address_t end = start + pkgLength;
 
     aml_field_list_ctx_t ctx = {
-        .opregion = aml_name_string_walk(&nameString, node),
+        .opregion = aml_find_node_name_string(&nameString, node),
         .flags = fieldFlags,
         .currentOffset = 0,
     };
@@ -374,7 +391,7 @@ static inline uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node)
  *
  * @param state The AML state.
  * @param out The output buffer to store the MethodFlags structure.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
  */
 static inline uint64_t aml_method_flags_read(aml_state_t* state, aml_method_flags_t* out)
 {
@@ -406,11 +423,11 @@ static inline uint64_t aml_method_flags_read(aml_state_t* state, aml_method_flag
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
  */
 static inline uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node)
 {
-    aml_address_t start = state->instructionPointer;
+    aml_address_t start = state->pos;
 
     aml_value_t methodOp;
     if (aml_value_read_no_ext(state, &methodOp) == ERR)
@@ -451,12 +468,12 @@ static inline uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    newNode->method.flags = methodFlags;
-    newNode->method.start = state->instructionPointer;
-    newNode->method.end = end;
+    newNode->data.method.flags = methodFlags;
+    newNode->data.method.start = state->pos;
+    newNode->data.method.end = end;
 
-    // Skip the method body for now.
-    state->instructionPointer = end + 1;
+    // We are only defining the method, not executing it, so we skip its body, and only parse it when it is called.
+    state->pos = end + 1;
 
     return 0;
 }
@@ -474,7 +491,7 @@ static inline uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node)
  */
 static inline uint64_t aml_def_device_read(aml_state_t* state, aml_node_t* node)
 {
-    aml_address_t start = state->instructionPointer;
+    aml_address_t start = state->pos;
 
     aml_value_t deviceOp;
     if (aml_value_read(state, &deviceOp) == ERR)
@@ -521,7 +538,7 @@ static inline uint64_t aml_def_device_read(aml_state_t* state, aml_node_t* node)
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` set.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
  */
 static inline uint64_t aml_named_obj_read(aml_state_t* state, aml_node_t* node)
 {

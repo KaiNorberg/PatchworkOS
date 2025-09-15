@@ -1,8 +1,8 @@
 #pragma once
 
+#include "acpi/aml/aml.h"
 #include "acpi/aml/aml_state.h"
-#include "acpi/aml/aml_node.h"
-#include "data.h"
+#include "data_types.h"
 
 #include <stdint.h>
 
@@ -20,30 +20,14 @@
  */
 
 /**
- * @brief The type of the result produced by a TermArg.
- */
-typedef enum
-{
-    AML_TERMARG_NONE = 0,
-    AML_TERMARG_INTEGER,
-    AML_TERMARG_MAX,
-} aml_termarg_type_t;
-
-/**
  * @brief ACPI AML TermArg structure
- * @struct aml_termarg_t
+ * @struct aml_term_arg_t
  *
  * A TermArg structure is used to pass certain arguments to opcodes. They dont just store static information, instead
  * they are evaluated at runtime. Think of how in C you can do `myfunc(1, myotherfunc(), 2)`, in this case the
  * `myotherfunc()` argument would be a TermArg in AML.
  */
-typedef struct
-{
-    aml_termarg_type_t type; //!< The type of the parsed result of the termarg.
-    union {
-        uint64_t integer;
-    };
-} aml_termarg_t;
+typedef aml_data_object_t aml_term_arg_t;
 
 /**
  * @brief Reads an TermArg structure from the AML byte stream.
@@ -53,20 +37,11 @@ typedef struct
  * @param state The AML state.
  * @param node The current AML node.
  * @param out The output buffer to store the result of the TermArg.
- * @param expectedType The expected type of the TermArg result, will error if a different type is encountered.
+ * @param expectedType The expected type of the TermArg result, will error if a different type is encountered. If set to
+ * `AML_DATA_NONE`, no type checking is performed.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-uint64_t aml_termarg_read(aml_state_t* state, aml_node_t* node, aml_termarg_t* out, aml_termarg_type_t expectedType);
-
-/**
- * @brief Wrapper for `aml_termarg_read()` with `expectedType` set to `AML_TERMARG_INTEGER`.
- *
- * @param state The AML state.
- * @param node The current AML node.
- * @param out The output buffer to store the result of the TermArg.
- * @return On success, 0. On error, `ERR` and `errno` is set.
- */
-uint64_t aml_termarg_read_integer(aml_state_t* state, aml_node_t* node, uint64_t* out);
+uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_term_arg_t* out, aml_data_type_t expectedType);
 
 /**
  * @brief Reads an Object structure from the AML byte stream.
