@@ -344,6 +344,17 @@ uint64_t aml_sync_flags_read(aml_state_t* state, aml_sync_level_t* out);
 uint64_t aml_def_mutex_read(aml_state_t* state, aml_node_t* node);
 
 /**
+ * @brief Reads a DefProcessor structure from the AML byte stream. Deprecated in ACPI 6.4.
+ *
+ * The DefProcessor structure is defined as `DefProcessor := ProcessorOp PkgLength NameString ProcID PblkAddr PblkLen TermList`.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node);
+
+/**
  * @brief Reads a NamedObj structure from the AML byte stream.
  *
  * The NamedObj structure is defined as `NamedObj := DefBankField | DefCreateBitField | DefCreateByteField |

@@ -19,8 +19,6 @@ uint64_t aml_buffer_size_read(aml_state_t* state, aml_buffer_size_t* out)
 
 uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out)
 {
-    aml_address_t start = state->pos;
-
     aml_value_t bufferOp;
     if (aml_value_read(state, &bufferOp) == ERR)
     {
@@ -33,6 +31,8 @@ uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out)
         errno = EILSEQ;
         return ERR;
     }
+
+    aml_address_t start = state->pos;
 
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
@@ -57,7 +57,7 @@ uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out)
     // if this causes an error we can figure it out from there.
 
     aml_address_t end = start + pkgLength;
-    if (end + 1 != state->pos + bufferSize)
+    if (end != state->pos + bufferSize)
     {
         LOG_ERR("pkgLength: %llu, bufferSize: %llu, calculated end: 0x%llx, actual end: 0x%llx\n", pkgLength,
             bufferSize, state->pos + bufferSize, end);

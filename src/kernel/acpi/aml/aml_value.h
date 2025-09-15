@@ -185,6 +185,7 @@ typedef enum
     AML_OPREGION_OP = AML_EXT_OP_PREFIX_BASE + 0x80,
     AML_FIELD_OP = AML_EXT_OP_PREFIX_BASE + 0x81,
     AML_DEVICE_OP = AML_EXT_OP_PREFIX_BASE + 0x82,
+    AML_DEPRECATED_PROCESSOR_OP = AML_EXT_OP_PREFIX_BASE + 0x83,
     AML_POWER_RES_OP = AML_EXT_OP_PREFIX_BASE + 0x84,
     AML_THERMAL_ZONE_OP = AML_EXT_OP_PREFIX_BASE + 0x85,
     AML_INDEX_FIELD_OP = AML_EXT_OP_PREFIX_BASE + 0x86,
@@ -403,7 +404,7 @@ static inline uint64_t aml_value_peek(aml_state_t* state, aml_value_t* out)
     const aml_value_props_t* props = aml_value_lookup(value, extension);
     if (props == NULL)
     {
-        LOG_ERR("invalid AML value: 0x%02x%02x\n", extension, value);
+        LOG_ERR("invalid AML value 0x%02x%02x found at 0x%x\n", extension, value, state->pos);
         errno = EILSEQ;
         return ERR;
     }

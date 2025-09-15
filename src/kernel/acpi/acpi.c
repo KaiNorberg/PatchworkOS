@@ -93,6 +93,10 @@ static uint64_t acpi_parse_all_aml(void)
 
     // TODO: SSDT
 
+    // For debugging
+    LOG_INFO("==ACPI Namespace Tree==\n");
+    aml_print_tree(aml_root_get(), 0, true);
+
     return 0;
 }
 

@@ -222,8 +222,6 @@ uint64_t aml_field_list_read(aml_state_t* state, aml_field_list_ctx_t* ctx, aml_
 
 uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node)
 {
-    aml_address_t start = state->pos;
-
     aml_value_t fieldOp;
     if (aml_value_read(state, &fieldOp) == ERR)
     {
@@ -236,6 +234,8 @@ uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node)
         errno = EILSEQ;
         return ERR;
     }
+
+    aml_address_t start = state->pos;
 
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
@@ -294,8 +294,6 @@ uint64_t aml_method_flags_read(aml_state_t* state, aml_method_flags_t* out)
 
 uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node)
 {
-    aml_address_t start = state->pos;
-
     aml_value_t methodOp;
     if (aml_value_read_no_ext(state, &methodOp) == ERR)
     {
@@ -308,6 +306,8 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node)
         errno = EILSEQ;
         return ERR;
     }
+
+    aml_address_t start = state->pos;
 
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
@@ -340,15 +340,13 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node)
     newNode->data.method.end = end;
 
     // We are only defining the method, not executing it, so we skip its body, and only parse it when it is called.
-    state->pos = end + 1;
+    state->pos = end;
 
     return 0;
 }
 
 uint64_t aml_def_device_read(aml_state_t* state, aml_node_t* node)
 {
-    aml_address_t start = state->pos;
-
     aml_value_t deviceOp;
     if (aml_value_read(state, &deviceOp) == ERR)
     {
@@ -361,6 +359,8 @@ uint64_t aml_def_device_read(aml_state_t* state, aml_node_t* node)
         errno = EILSEQ;
         return ERR;
     }
+
+    aml_address_t start = state->pos;
 
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
@@ -442,6 +442,36 @@ uint64_t aml_def_mutex_read(aml_state_t* state, aml_node_t* node)
     return 0;
 }
 
+uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node)
+{
+    aml_value_t processorOp;
+    if (aml_value_read(state, &processorOp) == ERR)
+    {
+        return ERR;
+    }
+
+    if (processorOp.num != AML_DEPRECATED_PROCESSOR_OP)
+    {
+        AML_DEBUG_UNEXPECTED_VALUE(&processorOp);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_address_t start = state->pos;
+
+    LOG_WARN("found AML containing 'ProcessorOp' which was deprecated in ACPI version 6.4, skipping\n");
+
+    aml_pkg_length_t pkgLength;
+    if (aml_pkg_length_read(state, &pkgLength) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_address_t offset = start + pkgLength - state->pos;
+    aml_state_advance(state, offset);
+    return 0;
+}
+
 uint64_t aml_named_obj_read(aml_state_t* state, aml_node_t* node)
 {
     aml_value_t value;
@@ -462,6 +492,8 @@ uint64_t aml_named_obj_read(aml_state_t* state, aml_node_t* node)
         return aml_def_device_read(state, node);
     case AML_MUTEX_OP:
         return aml_def_mutex_read(state, node);
+    case AML_DEPRECATED_PROCESSOR_OP:
+        return aml_def_processor_read(state, node);
     default:
         AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
         errno = ENOSYS;

@@ -55,10 +55,6 @@ uint64_t aml_parse(const void* data, uint64_t size)
     // When aml first starts its not in any node, so we pass NULL as the node.
     uint64_t result = aml_termlist_read(&state, NULL, size);
 
-    // For debugging
-    LOG_INFO("==ACPI Namespace Tree==\n");
-    aml_print_tree(aml_root_get(), 0, true);
-
     aml_state_deinit(&state);
     return result;
 }

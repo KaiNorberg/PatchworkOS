@@ -24,7 +24,7 @@ uint64_t aml_def_name_read(aml_state_t* state, aml_node_t* node)
 
     if (nameOp.num != AML_NAME_OP)
     {
-        AML_DEBUG_INVALID_STRUCTURE("NameOp")
+        AML_DEBUG_INVALID_STRUCTURE("NameOp");
         errno = EILSEQ;
         return ERR;
     }
@@ -53,8 +53,6 @@ uint64_t aml_def_name_read(aml_state_t* state, aml_node_t* node)
 
 uint64_t aml_def_scope_read(aml_state_t* state, aml_node_t* node)
 {
-    aml_address_t start = state->pos;
-
     aml_value_t scopeOp;
     if (aml_value_read_no_ext(state, &scopeOp) == ERR)
     {
@@ -63,10 +61,12 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_node_t* node)
 
     if (scopeOp.num != AML_SCOPE_OP)
     {
-        AML_DEBUG_INVALID_STRUCTURE("ScopeOp")
+        AML_DEBUG_INVALID_STRUCTURE("ScopeOp");
         errno = EILSEQ;
         return ERR;
     }
+
+    aml_address_t start = state->pos;
 
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
