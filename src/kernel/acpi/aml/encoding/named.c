@@ -159,6 +159,31 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_field_list_ctx_t* ctx)
     return 0;
 }
 
+uint64_t aml_reserved_field_read(aml_state_t* state, aml_field_list_ctx_t* ctx)
+{
+    aml_value_t value;
+    if (aml_value_read(state, &value) == ERR)
+    {
+        return ERR;
+    }
+
+    if (value.num != 0x00)
+    {
+        AML_DEBUG_INVALID_STRUCTURE("ReservedField: Expected 0x00");
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_pkg_length_t pkgLength;
+    if (aml_pkg_length_read(state, &pkgLength) == ERR)
+    {
+        return ERR;
+    }
+
+    ctx->currentOffset += pkgLength;
+    return 0;
+}
+
 uint64_t aml_field_element_read(aml_state_t* state, aml_field_list_ctx_t* ctx)
 {
     aml_value_t value;
@@ -167,10 +192,13 @@ uint64_t aml_field_element_read(aml_state_t* state, aml_field_list_ctx_t* ctx)
         return ERR;
     }
 
-    // Is NameField
     if (AML_IS_LEAD_NAME_CHAR(&value))
     {
         return aml_named_field_read(state, ctx);
+    }
+    else if (value.num == 0x00)
+    {
+        return aml_reserved_field_read(state, ctx);
     }
 
     AML_DEBUG_UNIMPLEMENTED_VALUE(&value);

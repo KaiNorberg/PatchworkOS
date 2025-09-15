@@ -224,6 +224,19 @@ uint64_t aml_field_flags_read(aml_state_t* state, aml_field_flags_t* out);
 uint64_t aml_named_field_read(aml_state_t* state, aml_field_list_ctx_t* ctx);
 
 /**
+ * @brief Reads a ReservedField structure from the AML byte stream.
+ *
+ * A ReservedField structure is defined as `ReservedField := 0x00 PkgLength`.
+ *
+ * See section 19.6.48 of the ACPI specification for more details about the Field Operation.
+ *
+ * @param state The AML state.
+ * @param ctx The AML field list context.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_reserved_field_read(aml_state_t* state, aml_field_list_ctx_t* ctx);
+
+/**
  * @brief Reads a FieldElement structure from the AML byte stream.
  *
  * The FieldElement structure is defined as `FieldElement := NamedField | ReservedField | AccessField |
