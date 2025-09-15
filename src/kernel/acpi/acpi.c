@@ -80,7 +80,26 @@ static uint64_t acpi_parse_all_aml(void)
         return ERR;
     }
 
-    // TODO: SSDT
+    uint64_t index = 0;
+    ssdt_t* ssdt = NULL;
+    while (true)
+    {
+        ssdt = SSDT_GET(index);
+        if (ssdt == NULL)
+        {
+            break;
+        }
+
+        LOG_INFO("SSDT %llu found containing %llu bytes of AML code\n", index, ssdt->header.length - sizeof(ssdt_t));
+
+        if (aml_parse(ssdt->data, ssdt->header.length - sizeof(ssdt_t)) == ERR)
+        {
+            LOG_ERR("failed to parse SSDT %llu (%s)\n", index, strerror(errno));
+            return ERR;
+        }
+
+        index++;
+    }
 
     // For debugging
     LOG_INFO("==ACPI Namespace Tree==\n");
@@ -107,9 +126,7 @@ void acpi_init(xsdp_t* xsdp, boot_memory_map_t* map)
 
     if (acpi_parse_all_aml() == ERR)
     {
-        // For now we expect this to fail as its not fully implemented yet.
         panic(NULL, "Failed to load ACPI namespaces");
-        // LOG_ERR("Failed to load ACPI namespaces (this is expected as it is not fully implemented yet!)\n");
     }
 
     acpi_reclaim_memory(map);

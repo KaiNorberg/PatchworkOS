@@ -9,6 +9,21 @@
  * @brief Advanced Configuration and Power Interface
  * @defgroup kernel_acpi acpi
  * @ingroup kernel
+ *
+ * We use version 6.6 of the ACPI specification, but it contains minor mistakes or deprecated features that we use other
+ * versions to straighten out. If the "ACPI specification" is ever sourced, without mentioning its version, assume
+ * version 6.6.
+ *
+ * Take a look at this [osdev post](https://f.osdev.org/viewtopic.php?t=29070) if you want to understand how annoying
+ * the ACPI spec is.
+ *
+ * Primary Source: [ACPI Specification Version 6.6](https://uefi.org/sites/default/files/resources/ACPI_Spec_6.6.pdf)
+ *
+ * Other Sources:
+ * - [ACPI Specification Version 6.3](https://uefi.org/sites/default/files/resources/ACPI_Spec_6_3_A_Oct_6_2020.pdf)
+ * - [ACPI Specification Version 4.0](https://uefi.org/sites/default/files/resources/ACPI_4.pdf)
+ * - [lai library](https://github.com/managarm/lai)
+ *
  * @{
  */
 

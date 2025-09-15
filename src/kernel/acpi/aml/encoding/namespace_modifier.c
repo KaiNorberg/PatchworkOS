@@ -101,7 +101,7 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    return aml_termlist_read(state, newNode, end);
+    return aml_term_list_read(state, newNode, end);
 }
 
 uint64_t aml_namespace_modifier_obj_read(aml_state_t* state, aml_node_t* node)

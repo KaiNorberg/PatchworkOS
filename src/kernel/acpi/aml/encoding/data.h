@@ -258,8 +258,7 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_package_element_t* out
  * @param numElements The number of elements to read.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_package_element_list_read(aml_state_t* state, aml_package_element_t** out,
-    aml_num_elements_t numElements);
+uint64_t aml_package_element_list_read(aml_state_t* state, aml_package_element_t** out, aml_num_elements_t numElements);
 
 /**
  * @brief Reads a DefPackage structure from the AML byte stream.

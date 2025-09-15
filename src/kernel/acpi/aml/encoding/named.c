@@ -382,7 +382,7 @@ uint64_t aml_def_device_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    return aml_termlist_read(state, newNode, end);
+    return aml_term_list_read(state, newNode, end);
 }
 
 uint64_t aml_sync_flags_read(aml_state_t* state, aml_sync_level_t* out)
@@ -442,6 +442,21 @@ uint64_t aml_def_mutex_read(aml_state_t* state, aml_node_t* node)
     return 0;
 }
 
+uint64_t aml_proc_id_read(aml_state_t* state, aml_proc_id_t* out)
+{
+    return aml_byte_data_read(state, out);
+}
+
+uint64_t aml_pblk_addr_read(aml_state_t* state, aml_pblk_addr_t* out)
+{
+    return aml_dword_data_read(state, out);
+}
+
+uint64_t aml_pblk_len_read(aml_state_t* state, aml_pblk_len_t* out)
+{
+    return aml_byte_data_read(state, out);
+}
+
 uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node)
 {
     aml_value_t processorOp;
@@ -459,17 +474,49 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node)
 
     aml_address_t start = state->pos;
 
-    LOG_WARN("found AML containing 'ProcessorOp' which was deprecated in ACPI version 6.4, skipping\n");
-
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
     {
         return ERR;
     }
 
-    aml_address_t offset = start + pkgLength - state->pos;
-    aml_state_advance(state, offset);
-    return 0;
+    aml_name_string_t nameString;
+    if (aml_name_string_read(state, &nameString) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_proc_id_t procId;
+    if (aml_proc_id_read(state, &procId) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_pblk_addr_t pblkAddr;
+    if (aml_pblk_addr_read(state, &pblkAddr) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_pblk_len_t pblkLen;
+    if (aml_pblk_len_read(state, &pblkLen) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_address_t end = start + pkgLength;
+
+    aml_node_t* newNode = aml_add_node_at_name_string(&nameString, node, AML_NODE_PROCESSOR);
+    if (newNode == NULL)
+    {
+        return ERR;
+    }
+    newNode->type = AML_NODE_PROCESSOR;
+    newNode->data.processor.procId = procId;
+    newNode->data.processor.pblkAddr = pblkAddr;
+    newNode->data.processor.pblkLen = pblkLen;
+
+    return aml_term_list_read(state, newNode, end);
 }
 
 uint64_t aml_named_obj_read(aml_state_t* state, aml_node_t* node)

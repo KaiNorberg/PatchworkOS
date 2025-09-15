@@ -193,7 +193,8 @@ const char* aml_name_string_to_string(aml_name_string_t* nameString)
         {
             offset += snprintf(buffer + offset, sizeof(buffer) - offset, ".");
         }
-        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%.*s", AML_NAME_LENGTH, nameString->namePath.segments[i].name);
+        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%.*s", AML_NAME_LENGTH,
+            nameString->namePath.segments[i].name);
     }
     return buffer;
 }

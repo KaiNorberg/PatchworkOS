@@ -182,6 +182,24 @@ typedef struct PACKED
 #define DSDT_GET() ((dsdt_t*)acpi_tables_lookup("DSDT", 0))
 
 /**
+ * @brief Secondary System Description Table
+ * @struct ssdt_t
+ */
+typedef struct PACKED
+{
+    acpi_header_t header;
+    uint8_t data[];
+} ssdt_t;
+
+/**
+ * @brief Type safe way to get the n'th SSDT table
+ *
+ * @param n The index of the SSDT table to get (0 indexed).
+ * @return ssdt_t* The SSDT table pointer
+ */
+#define SSDT_GET(n) ((ssdt_t*)acpi_tables_lookup("SSDT", n))
+
+/**
  * @brief Load all ACPI tables
  *
  * @param xsdt The XSDT to load the tables from.

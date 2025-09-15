@@ -1,6 +1,7 @@
 #pragma once
 
 #include "acpi/aml/aml_state.h"
+#include "data_integers.h"
 
 typedef struct aml_node aml_node_t;
 
@@ -13,12 +14,14 @@ typedef struct aml_node aml_node_t;
  *
  * See section 20.2.5.2 of the ACPI specification for more details.
  *
- * Note that version 6.6 of the ACPI specification has a few minor mistakes in the definition of the NamedObj structure,
+ * Version 6.6 of the ACPI specification has a few minor mistakes in the definition of the NamedObj structure,
  * its supposed several stuctures that it does not. If you check version 4.0 of the specification section 19.2.5.2 you
  * can confirm that that these structures are supposed to be there but have, somehow, been forgotten. These structures
  * include DefField, DefMethod, DefMutex and DefDevice (more may be noticed in the future), we add all missing
  * structures to our definition of NamedObj. I have no idea how there are this many mistakes in the latest version of
  * the ACPI specification.
+ *
+ * The DefProcessor structure was deprecated in version 6.4 of the ACPI specification, but we still support it.
  *
  * @{
  */
@@ -127,6 +130,21 @@ typedef struct
     bool isSerialized;          //!< true if method is serialized, false if not
     aml_sync_level_t syncLevel; //!< Synchronization level (0-15)
 } aml_method_flags_t;
+
+/**
+ * @brief ACPI AML ProcID structure, deprecated in version 6.4 of the ACPI specification.
+ */
+typedef aml_byte_data_t aml_proc_id_t;
+
+/**
+ * @brief ACPI AML PblkAddr structure, deprecated in version 6.4 of the ACPI specification.
+ */
+typedef aml_dword_data_t aml_pblk_addr_t;
+
+/**
+ * @brief ACPI AML PblkLen structure, deprecated in version 6.4 of the ACPI specification.
+ */
+typedef aml_byte_data_t aml_pblk_len_t;
 
 /**
  * @brief Reads a RegionSpace structure from the AML byte stream.
@@ -344,9 +362,46 @@ uint64_t aml_sync_flags_read(aml_state_t* state, aml_sync_level_t* out);
 uint64_t aml_def_mutex_read(aml_state_t* state, aml_node_t* node);
 
 /**
- * @brief Reads a DefProcessor structure from the AML byte stream. Deprecated in ACPI 6.4.
+ * @brief Reads a ProcID structure from the AML byte stream. Deprecated in ACPI 6.4 but still supported.
  *
- * The DefProcessor structure is defined as `DefProcessor := ProcessorOp PkgLength NameString ProcID PblkAddr PblkLen TermList`.
+ * A ProcID structure is defined as `ProcID := ByteData`.
+ *
+ * @param state The AML state.
+ * @param out The output buffer to store the processor ID.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_proc_id_read(aml_state_t* state, aml_proc_id_t* out);
+
+/**
+ * @brief Reads a PblkAddr structure from the AML byte stream. Deprecated in ACPI 6.4 but still supported.
+ *
+ * A PblkAddr structure is defined as `PblkAddr := DWordData`.
+ *
+ * @param state The AML state.
+ * @param out The output buffer to store the Pblk address.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_pblk_addr_read(aml_state_t* state, aml_pblk_addr_t* out);
+
+/**
+ * @brief Reads a PblkLen structure from the AML byte stream. Deprecated in ACPI 6.4 but still supported.
+ *
+ * A PblkLen structure is defined as `PblkLen := ByteData`.
+ *
+ * @param state The AML state.
+ * @param out The output buffer to store the Pblk length.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_pblk_len_read(aml_state_t* state, aml_pblk_len_t* out);
+
+/**
+ * @brief Reads a DefProcessor structure from the AML byte stream. Deprecated in ACPI 6.4 but still supported.
+ *
+ * The DefProcessor structure is defined as `DefProcessor := ProcessorOp PkgLength NameString ProcID PblkAddr PblkLen
+ * TermList`.
+ *
+ * See section 20.2.7 of version 6.3 Errata A of the ACPI specification for more details on the grammar and
+ * section 19.6.108 of the same for more details about its behavior.
  *
  * @param state The AML state.
  * @param node The current AML node.

@@ -53,7 +53,7 @@ uint64_t aml_parse(const void* data, uint64_t size)
     aml_state_init(&state, data, size);
 
     // When aml first starts its not in any node, so we pass NULL as the node.
-    uint64_t result = aml_termlist_read(&state, NULL, size);
+    uint64_t result = aml_term_list_read(&state, NULL, size);
 
     aml_state_deinit(&state);
     return result;
@@ -61,8 +61,7 @@ uint64_t aml_parse(const void* data, uint64_t size)
 
 aml_node_t* aml_add_node(aml_node_t* parent, const char* name, aml_node_type_t type)
 {
-    if (name == NULL || type < AML_NODE_NONE ||
-        type >= AML_NODE_MAX)
+    if (name == NULL || type < AML_NODE_NONE || type >= AML_NODE_MAX)
     {
         errno = EINVAL;
         return NULL;
@@ -135,8 +134,8 @@ aml_node_t* aml_add_node_at_name_string(aml_name_string_t* string, aml_node_t* s
 
         if (!found)
         {
-            LOG_ERR("unable to find aml node '%.*s' under node '%.*s'\n", AML_NAME_LENGTH,
-                segment->name, AML_NAME_LENGTH, parentNode->name);
+            LOG_ERR("unable to find aml node '%.*s' under node '%.*s'\n", AML_NAME_LENGTH, segment->name,
+                AML_NAME_LENGTH, parentNode->name);
             errno = ENOENT;
             return NULL;
         }

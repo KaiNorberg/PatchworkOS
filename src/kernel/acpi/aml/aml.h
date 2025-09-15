@@ -21,7 +21,7 @@
  *
  * The parser works like a recursive descent parser. For example, according to the specification, the entire AML code
  * block is defined as `AMLCode := DefBlockHeader TermList`, since we have already read the header, we then just call
- * the `aml_termlist_read()` function. A termlist is defined as `TermList := Nothing | <termobj termlist>`, this is a
+ * the `aml_term_list_read()` function. A termlist is defined as `TermList := Nothing | <termobj termlist>`, this is a
  * recursive definition, which we could flatten to `termobj termobj termobj ... Nothing`. So we now call the
  * `aml_termobj_read()` function on each termobj. A termobj is defined as `TermObj := Object | StatementOpcode |
  * ExpressionOpcode` we then determine if this TermObj is an Object, StatementOpcode, or ExpressionOpcode and continue
@@ -33,17 +33,6 @@
  *
  * Throughout the documentation objects are frequently said to have a definition, a breakdown of how these
  * definitions are read can be found in section 20.1 of the ACPI specification.
- *
- * Note that we use version 6.6 of the ACPI specification, but it contains minor mistakes that we use version 4.0 to
- * straighten out. If the "ACPI specification" is ever sourced, without mentioning its version, assume version 6.6. Take
- * a look at this [osdev post](https://f.osdev.org/viewtopic.php?t=29070) if you want to understand how annoying the
- * ACPI spec is.
- *
- * Primary Source: [ACPI Specification Version 6.6](https://uefi.org/sites/default/files/resources/ACPI_Spec_6.6.pdf)
- *
- * Other Sources:
- * - [ACPI Specification Version 4.0](https://uefi.org/sites/default/files/resources/ACPI_4.pdf)
- * - [lai library](https://github.com/managarm/lai)
  *
  * @{
  */
@@ -110,6 +99,12 @@ typedef struct aml_node
             mutex_t mutex;
             aml_sync_level_t syncLevel;
         } mutex;
+        struct
+        {
+            aml_proc_id_t procId;
+            aml_pblk_addr_t pblkAddr;
+            aml_pblk_len_t pblkLen;
+        } processor;
     } data;
 } aml_node_t;
 

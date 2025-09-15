@@ -51,8 +51,8 @@ uint64_t aml_pkg_lead_byte_read(aml_state_t* state, aml_pkg_lead_byte_t* out);
  * The PkgLength structure is defined as `PkgLength := PkgLeadByte | <pkgleadbyte bytedata> | <pkgleadbyte bytedata
  * bytedata> | <pkgleadbyte bytedata bytedata bytedata>`.
  *
- * If a PkgLength structure is part of a definition of an object, then the length does not include the bytes before the PkgLength
- * structure, usually the opcode, but does include the bytes of the PkgLength structure itself. (Probably.)
+ * If a PkgLength structure is part of a definition of an object, then the length does not include the bytes before the
+ * PkgLength structure, usually the opcode, but does include the bytes of the PkgLength structure itself. (Probably.)
  *
  * @param state The AML state.
  * @param out The output buffer to store the package length.
