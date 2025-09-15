@@ -63,6 +63,7 @@ typedef enum
 
 /**
  * @brief ACPI node.
+ * @struct aml_node_t
  */
 typedef struct aml_node
 {
@@ -144,7 +145,7 @@ aml_node_t* aml_add_node(aml_node_t* parent, const char* name, aml_node_type_t t
  * @param string The Namestring specifying the parent node.
  * @param start The node to start the search from, or `NULL` to start from the root.
  * @param type The type of the new node.
- * @return On success, a pointer to the new node. On error, `NULL` and `errno` is set.
+ * @return aml_node_t* On success, a pointer to the new node. On error, `NULL` and `errno` is set.
  */
 aml_node_t* aml_add_node_at_name_string(aml_name_string_t* string, aml_node_t* start, aml_node_type_t type);
 

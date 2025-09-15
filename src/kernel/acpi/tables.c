@@ -11,11 +11,11 @@
 #include <string.h>
 
 static uint64_t tableAmount = 0;
-static acpi_header_t* cachedTables[ACPI_MAX_TABLES] = {NULL};
+static sdt_header_t* cachedTables[ACPI_MAX_TABLES] = {NULL};
 
-static bool acpi_is_table_valid(acpi_header_t* table)
+static bool acpi_is_table_valid(sdt_header_t* table)
 {
-    if (table->length < sizeof(acpi_header_t))
+    if (table->length < sizeof(sdt_header_t))
     {
         LOG_ERR("table too small (%u bytes)\n", table->length);
         return false;
@@ -49,7 +49,7 @@ static bool acpi_is_xsdt_valid(xsdt_t* xsdt)
     return true;
 }
 
-static uint64_t acpi_tables_push(acpi_header_t* table)
+static uint64_t acpi_tables_push(sdt_header_t* table)
 {
     if (!acpi_is_table_valid(table))
     {
@@ -63,7 +63,7 @@ static uint64_t acpi_tables_push(acpi_header_t* table)
         return ERR;
     }
 
-    acpi_header_t* cachedTable = heap_alloc(table->length, HEAP_NONE);
+    sdt_header_t* cachedTable = heap_alloc(table->length, HEAP_NONE);
     if (cachedTable == NULL)
     {
         LOG_ERR("failed to allocate memory for ACPI table\n");
@@ -84,10 +84,10 @@ static uint64_t acpi_tables_load_from_xsdt(xsdt_t* xsdt)
         return ERR;
     }
 
-    uint64_t amountOfTablesInXsdt = (xsdt->header.length - sizeof(acpi_header_t)) / sizeof(acpi_header_t*);
+    uint64_t amountOfTablesInXsdt = (xsdt->header.length - sizeof(sdt_header_t)) / sizeof(sdt_header_t*);
     for (uint64_t i = 0; i < amountOfTablesInXsdt; i++)
     {
-        acpi_header_t* table = xsdt->tables[i];
+        sdt_header_t* table = xsdt->tables[i];
         if (acpi_tables_push(table) == ERR)
         {
             LOG_ERR("failed to cache table %.4s\n", table->signature);
@@ -132,7 +132,7 @@ uint64_t acpi_tables_init(xsdt_t* xsdt)
 
     for (uint64_t i = 0; i < tableAmount; i++)
     {
-        acpi_header_t* table = cachedTables[i];
+        sdt_header_t* table = cachedTables[i];
         LOG_INFO("%.4s 0x%016lx 0x%06x v%02X %.6s\n", table->signature, table, table->length, table->revision,
             table->oemId);
     }
@@ -140,7 +140,7 @@ uint64_t acpi_tables_init(xsdt_t* xsdt)
     return tableAmount;
 }
 
-acpi_header_t* acpi_tables_lookup(const char* signature, uint64_t n)
+sdt_header_t* acpi_tables_lookup(const char* signature, uint64_t n)
 {
     if (strlen(signature) != 4)
     {

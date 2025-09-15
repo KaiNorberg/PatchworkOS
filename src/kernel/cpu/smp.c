@@ -94,30 +94,35 @@ void smp_others_init(void)
 
     madt_t* madt = MADT_GET();
 
-    madt_lapic_t* lapic;
+    madt_processor_local_apic_t* lapic;
     MADT_FOR_EACH(madt, lapic)
     {
-        if (lapic->header.type != MADT_LAPIC)
+        if (lapic->header.type != MADT_INTERRUPT_CONTROLLER_PROCESSOR_LOCAL_APIC)
         {
             continue;
         }
 
-        if (lapic->flags & MADT_LAPIC_ENABLED && cpus[0]->lapicId != lapic->id)
+        if (cpus[0]->lapicId == lapic->apicId)
         {
-            cpuid_t id = cpuAmount++;
+            continue;
+        }
 
-            cpus[id] = heap_alloc(sizeof(cpu_t), HEAP_NONE);
-            if (cpus[id] == NULL)
+        if (lapic->flags & MADT_PROCESSOR_LOCAL_APIC_ENABLED)
+        {
+            cpuid_t newId = cpuAmount++;
+            cpus[newId] = heap_alloc(sizeof(cpu_t), HEAP_NONE);
+            if (cpus[newId] == NULL)
             {
-                panic(NULL, "Failed to allocate memory for cpu");
+                panic(NULL, "Failed to allocate memory for cpu %d with lapicid %d", (uint64_t)newId,
+                    (uint64_t)lapic->apicId);
             }
 
-            cpu_init(cpus[id], id, lapic->id, false);
+            cpu_init(cpus[newId], newId, lapic->apicId, false);
 
-            if (cpu_start(cpus[id]) == ERR)
+            if (cpu_start(cpus[newId]) == ERR)
             {
-                panic(NULL, "Failed to start cpu %d with lapicid %d", (uint64_t)cpus[id]->id,
-                    (uint64_t)cpus[id]->lapicId);
+                panic(NULL, "Failed to start cpu %d with lapicid %d", (uint64_t)cpus[newId]->id,
+                    (uint64_t)cpus[newId]->lapicId);
             }
         }
     }
@@ -148,13 +153,18 @@ void smp_halt_others(void)
     }
 }
 
-uint8_t smp_cpu_amount(void)
+uint16_t smp_cpu_amount(void)
 {
     return cpuAmount;
 }
 
-cpu_t* smp_cpu(uint8_t id)
+cpu_t* smp_cpu(cpuid_t id)
 {
+    if (id >= cpuAmount)
+    {
+        panic(NULL, "smp_cpu(): invalid cpu id %u\n", (uint64_t)id);
+    }
+
     return cpus[id];
 }
 

@@ -21,7 +21,7 @@
 
 typedef struct PACKED
 {
-    acpi_header_t header;
+    sdt_header_t header;
     uint8_t hardwareRevId;
     uint8_t info;
     uint16_t pciVendorId;

@@ -1,113 +1,107 @@
 /**
  * @brief UEFI bootloader.
- * @defgroup boot boot
+ * @defgroup boot Bootloader
  *
  * The UEFI bootloader of PatchworkOS.
  */
 
 /**
  * @brief OS kernel.
- * @defgroup kernel kernel
+ * @defgroup kernel Kernel
  *
  * The kernel of PatchworkOS.
  */
 
 /**
- * @brief Advanced Configuration and Power Interface.
- * @defgroup kernel_acpi acpi
- * @ingroup kernel
- */
-
-/**
  * @brief CPU and multiprocessing.
- * @defgroup kernel_cpu cpu
+ * @defgroup kernel_cpu CPU
  * @ingroup kernel
  *
  */
 
 /**
  * @brief Device drivers.
- * @defgroup kernel_drivers drivers
+ * @defgroup kernel_drivers Drivers
  * @ingroup kernel
  *
  */
 
 /**
  * @brief Filesystems and Virtual File System.
- * @defgroup kernel_fs fs
+ * @defgroup kernel_fs Filesystems
  * @ingroup kernel
  */
 
 /**
  * @brief Inter-process communication.
- * @defgroup kernel_ipc ipc
+ * @defgroup kernel_ipc IPC
  * @ingroup kernel
  *
  */
 
 /**
  * @brief Kernel logging.
- * @defgroup kernel_log log
+ * @defgroup kernel_log Logging
  * @ingroup kernel
  *
  */
 
 /**
  * @brief Memory management.
- * @defgroup kernel_mem mem
+ * @defgroup kernel_mem Memory
  * @ingroup kernel
  *
  */
 
 /**
  * @brief Networking and Sockets.
- * @defgroup kernel_net net
+ * @defgroup kernel_net Networking
  * @ingroup kernel
  */
 
 /**
  * @brief Processes.
- * @defgroup kernel_proc proc
+ * @defgroup kernel_proc Processes
  * @ingroup kernel
  */
 
 /**
  * @brief Scheduling.
- * @defgroup kernel_sched sched
+ * @defgroup kernel_sched Scheduling
  * @ingroup kernel
  */
 
 /**
  * @brief Kernel startup.
- * @defgroup kernel_start start
+ * @defgroup kernel_start Startup
  * @ingroup kernel
  */
 
 /**
  * @brief Locks and concurrency primitives.
- * @defgroup kernel_sync sync
+ * @defgroup kernel_sync Synchronization
  * @ingroup kernel
  */
 
 /**
  * @brief Kernel utilities.
- * @defgroup kernel_utils utils
+ * @defgroup kernel_utils Utilities
  * @ingroup kernel
  */
 
 /**
  * @brief Standard C library extension.
- * @defgroup libstd libstd
+ * @defgroup libstd Stdlib
  *
  * C standard library using non-POSIX extensions.
  */
 
 /**
  * @brief User space system library.
- * @defgroup libpatchwork libpatchwork
+ * @defgroup libpatchwork Libpatchwork
  */
 
 /**
  * @brief User applications.
- * @defgroup programs programs
+ * @defgroup programs Programs
  */

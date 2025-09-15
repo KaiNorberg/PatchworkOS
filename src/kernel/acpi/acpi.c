@@ -11,31 +11,28 @@
 #include <boot/boot_info.h>
 #include <string.h>
 
-static bool acpi_is_xsdp_valid(xsdp_t* xsdp)
+static bool acpi_is_rsdp_valid(rsdp_t* rsdp)
 {
-    if (memcmp(xsdp->signature, "RSD PTR ", 8) != 0)
+    if (memcmp(rsdp->signature, "RSD PTR ", 8) != 0)
     {
-        LOG_ERR("invalid XSDP signature\n");
+        LOG_ERR("invalid RSDP signature\n");
         return false;
     }
 
-    if (!acpi_is_checksum_valid(xsdp, 20))
+    if (!acpi_is_checksum_valid(rsdp, 20))
     {
-        LOG_ERR("invalid XSDP checksum\n");
+        LOG_ERR("invalid RSDP checksum\n");
         return false;
     }
 
-    if (xsdp->revision >= ACPI_REVISION_2_0)
+    if (rsdp->revision != RSDP_CURRENT_REVISION)
     {
-        if (!acpi_is_checksum_valid(xsdp, xsdp->length))
-        {
-            LOG_ERR("invalid extended XSDP checksum\n");
-            return false;
-        }
+        LOG_ERR("unsupported ACPI revision %u\n", rsdp->revision);
     }
-    else if (xsdp->revision < ACPI_REVISION_2_0)
+
+    if (!acpi_is_checksum_valid(rsdp, rsdp->length))
     {
-        LOG_ERR("unsupported ACPI revision %u\n", xsdp->revision);
+        LOG_ERR("invalid extended RSDP checksum\n");
         return false;
     }
 
@@ -74,7 +71,7 @@ static uint64_t acpi_parse_all_aml(void)
         return ERR;
     }
 
-    if (aml_parse(dsdt->data, dsdt->header.length - sizeof(dsdt_t)) == ERR)
+    if (aml_parse(dsdt->definitionBlock, dsdt->header.length - sizeof(dsdt_t)) == ERR)
     {
         LOG_ERR("failed to parse DSDT (%s)\n", strerror(errno));
         return ERR;
@@ -92,7 +89,7 @@ static uint64_t acpi_parse_all_aml(void)
 
         LOG_INFO("SSDT %llu found containing %llu bytes of AML code\n", index, ssdt->header.length - sizeof(ssdt_t));
 
-        if (aml_parse(ssdt->data, ssdt->header.length - sizeof(ssdt_t)) == ERR)
+        if (aml_parse(ssdt->definitionBlock, ssdt->header.length - sizeof(ssdt_t)) == ERR)
         {
             LOG_ERR("failed to parse SSDT %llu (%s)\n", index, strerror(errno));
             return ERR;
@@ -101,23 +98,23 @@ static uint64_t acpi_parse_all_aml(void)
         index++;
     }
 
-    // For debugging
+    // For debugging, remove later
     LOG_INFO("==ACPI Namespace Tree==\n");
     aml_print_tree(aml_root_get(), 0, true);
 
     return 0;
 }
 
-void acpi_init(xsdp_t* xsdp, boot_memory_map_t* map)
+void acpi_init(rsdp_t* rsdp, boot_memory_map_t* map)
 {
     LOG_INFO("initializing acpi\n");
 
-    if (!acpi_is_xsdp_valid(xsdp))
+    if (!acpi_is_rsdp_valid(rsdp))
     {
-        panic(NULL, "invalid XSDP structure\n");
+        panic(NULL, "invalid RSDP structure\n");
     }
 
-    xsdt_t* xsdt = PML_LOWER_TO_HIGHER(xsdp->xsdtAddress);
+    xsdt_t* xsdt = PML_LOWER_TO_HIGHER(rsdp->xsdtAddress);
 
     if (acpi_tables_init(xsdt) == ERR)
     {

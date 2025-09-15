@@ -47,7 +47,7 @@ uint64_t aml_parse(const void* data, uint64_t size)
     }
 
     // In section 20.2.1, we see the definition AMLCode := DefBlockHeader TermList. The DefBlockHeader is already read
-    // as thats the `acpi_header_t`. So the entire code is a termlist.
+    // as thats the `sdt_header_t`. So the entire code is a termlist.
 
     aml_state_t state;
     aml_state_init(&state, data, size);
