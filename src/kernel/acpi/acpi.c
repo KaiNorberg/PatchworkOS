@@ -11,17 +11,6 @@
 #include <boot/boot_info.h>
 #include <string.h>
 
-static sysfs_group_t acpiGroup = {0};
-
-static sysfs_dir_t sbDir = {0};
-static sysfs_dir_t siDir = {0};
-static sysfs_dir_t gpeDir = {0};
-static sysfs_dir_t prDir = {0};
-static sysfs_dir_t tzDir = {0};
-static sysfs_dir_t osiDir = {0};
-static sysfs_dir_t osDir = {0};
-static sysfs_dir_t revDir = {0};
-
 static bool acpi_is_xsdp_valid(xsdp_t* xsdp)
 {
     if (memcmp(xsdp->signature, "RSD PTR ", 8) != 0)
