@@ -304,6 +304,9 @@ void panic(const trap_frame_t* trapFrame, const char* format, ...)
         LOG_PANIC("thread: cpu=%d pid=%d tid=%d\n", self->id, currentThread->process->id, currentThread->id);
     }
 
+    errno_t lastError = currentThread->error;
+    LOG_PANIC("last errno: %d (%s)\n", lastError, strerror(lastError));
+
     uint64_t freePages = pmm_free_amount();
     uint64_t reservedPages = pmm_reserved_amount();
     uint64_t totalPages = freePages + reservedPages;

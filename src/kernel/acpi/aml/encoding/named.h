@@ -102,7 +102,7 @@ typedef enum
 {
     AML_FIELD_LIST_TYPE_NORMAL, //!< FieldList is part of a DefField.
     AML_FIELD_LIST_TYPE_BANK,   //!< FieldList is part of a BankField.
-    AML_FIELD_LIST_TYPE_INDEX, //!< FieldList is part of an IndexField.
+    AML_FIELD_LIST_TYPE_INDEX,  //!< FieldList is part of an IndexField.
 } aml_field_list_type_t;
 
 /**
@@ -111,11 +111,10 @@ typedef enum
  */
 typedef struct
 {
-    aml_field_list_type_t type; //!< The type of FieldList.
+    aml_field_list_type_t type;  //!< The type of FieldList.
     aml_field_flags_t flags;     //!< The flags of the FieldList.
     aml_address_t currentOffset; //!< The current offset within the opregion.
-    union
-    {
+    union {
         struct
         {
             aml_node_t* opregion;
@@ -313,7 +312,8 @@ uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node);
 /**
  * @brief Reads a DefIndexField structure from the AML byte stream.
  *
- * The DefIndexField structure is defined as `DefIndexField := IndexFieldOp PkgLength NameString NameString FieldFlags FieldList`.
+ * The DefIndexField structure is defined as `DefIndexField := IndexFieldOp PkgLength NameString NameString FieldFlags
+ * FieldList`.
  *
  * See section 19.6.64 of the ACPI specification for more details.
  *

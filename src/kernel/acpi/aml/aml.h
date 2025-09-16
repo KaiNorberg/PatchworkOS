@@ -4,6 +4,7 @@
 #include "encoding/name.h"
 #include "encoding/named.h"
 
+#include "fs/sysfs.h"
 #include "sync/mutex.h"
 
 #include <stdint.h>
@@ -36,6 +37,11 @@
  *
  * @{
  */
+
+/**
+ * @brief Name of the root ACPI node.
+ */
+#define AML_ROOT_NAME "\\___"
 
 /**
  * @brief Maximum length of an ACPI name.
@@ -117,6 +123,10 @@ typedef struct aml_node
             uint32_t size;
         } indexField;
     } data;
+    union {
+        sysfs_group_t group; //!< Sysfs group for the node, valid only for root
+        sysfs_dir_t dir;     //!< Sysfs directory for the node, valid for all non-root nodes
+    } sysfs;
 } aml_node_t;
 
 /**

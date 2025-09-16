@@ -26,12 +26,12 @@ static screen_t screen = {0};
 static lock_t lock;
 
 static const char* levelNames[] = {
-    [LOG_LEVEL_DEBUG] = "DBUG",
-    [LOG_LEVEL_USER] = "USER",
-    [LOG_LEVEL_INFO] = "INFO",
-    [LOG_LEVEL_WARN] = "WARN",
-    [LOG_LEVEL_ERR] = "EROR",
-    [LOG_LEVEL_PANIC] = "PANC",
+    [LOG_LEVEL_DEBUG] = "D",
+    [LOG_LEVEL_USER] = "U",
+    [LOG_LEVEL_INFO] = "I",
+    [LOG_LEVEL_WARN] = "W",
+    [LOG_LEVEL_ERR] = "E",
+    [LOG_LEVEL_PANIC] = "P",
 };
 
 static void log_splash_screen(void)
@@ -183,7 +183,7 @@ static void log_print_header(log_level_t level, const char* prefix)
     cpu_t* self = smp_self_unsafe();
 
     char timestampBuffer[MAX_PATH];
-    int length = sprintf(timestampBuffer, "[%5llu.%03llu-%03d-%s-%-13s] ", seconds, milliseconds, self->id,
+    int length = sprintf(timestampBuffer, "[%4llu.%03llu-%02x-%s-%-8s] ", seconds, milliseconds, self->id,
         levelNames[level], prefix != NULL ? prefix : "unknown");
 
     log_write(timestampBuffer, length);

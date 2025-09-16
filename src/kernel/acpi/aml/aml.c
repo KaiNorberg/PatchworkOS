@@ -18,7 +18,7 @@ uint64_t aml_init(void)
 {
     mutex_init(&mutex);
 
-    root = aml_add_node(NULL, "\\___", AML_NODE_PREDEFINED);
+    root = aml_add_node(NULL, AML_ROOT_NAME, AML_NODE_PREDEFINED);
     if (root == NULL)
     {
         return ERR;
@@ -83,11 +83,33 @@ aml_node_t* aml_add_node(aml_node_t* parent, const char* name, aml_node_type_t t
 
     if (parent != NULL)
     {
+        if (parent->parent == NULL)
+        {
+            assert(root == parent);
+        }
+
+        if (sysfs_dir_init(&node->sysfs.dir, parent->parent == NULL ? &parent->sysfs.group.root : &parent->sysfs.dir,
+                name, NULL, NULL) == ERR)
+        {
+            LOG_ERR("failed to create sysfs directory for aml node '%.*s'\n", AML_NAME_LENGTH, name);
+            heap_free(node);
+            return NULL;
+        }
+
         node->parent = parent;
         list_push(&parent->children, &node->entry);
     }
     else
     {
+        assert(root == NULL);
+        assert(strcmp(name, AML_ROOT_NAME) == 0);
+
+        if (sysfs_group_init(&node->sysfs.group, PATHNAME("/acpi")) == ERR)
+        {
+            LOG_ERR("failed to create sysfs group for aml root node\n");
+            return NULL;
+        }
+
         node->parent = NULL;
     }
 

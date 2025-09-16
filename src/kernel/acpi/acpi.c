@@ -73,7 +73,7 @@ static uint64_t acpi_parse_all_aml(void)
 
     if (aml_parse(dsdt->definitionBlock, dsdt->header.length - sizeof(dsdt_t)) == ERR)
     {
-        LOG_ERR("failed to parse DSDT (%s)\n", strerror(errno));
+        LOG_ERR("failed to parse DSDT\n");
         return ERR;
     }
 
@@ -91,7 +91,7 @@ static uint64_t acpi_parse_all_aml(void)
 
         if (aml_parse(ssdt->definitionBlock, ssdt->header.length - sizeof(ssdt_t)) == ERR)
         {
-            LOG_ERR("failed to parse SSDT %llu (%s)\n", index, strerror(errno));
+            LOG_ERR("failed to parse SSDT %llu\n", index);
             return ERR;
         }
 
