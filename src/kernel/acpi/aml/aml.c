@@ -4,6 +4,7 @@
 #include "aml_to_string.h"
 #include "encoding/term.h"
 #include "mem/heap.h"
+#include "acpi/acpi.h"
 
 #include "log/log.h"
 
@@ -12,19 +13,11 @@
 
 static mutex_t mutex;
 
-static sysfs_group_t acpiGroup;
-
 static aml_node_t* root = NULL;
 
 uint64_t aml_init(void)
 {
     mutex_init(&mutex);
-
-    if (sysfs_group_init(&acpiGroup, PATHNAME("/acpi")) == ERR)
-    {
-        LOG_ERR("failed to create '/acpi' sysfs group\n");
-        return ERR;
-    }
 
     root = aml_add_node(NULL, AML_ROOT_NAME, AML_NODE_PREDEFINED);
     if (root == NULL)
@@ -90,7 +83,7 @@ aml_node_t* aml_add_node(aml_node_t* parent, const char* name, aml_node_type_t t
     memcpy(node->name, name, AML_NAME_LENGTH);
     node->name[AML_NAME_LENGTH] = '\0';
 
-    if (sysfs_dir_init(&node->dir, parent != NULL ? &parent->dir : &acpiGroup.root,
+    if (sysfs_dir_init(&node->dir, parent != NULL ? &parent->dir : acpi_get_sysfs_root(),
             node->name, NULL, NULL) == ERR)
     {
         LOG_ERR("failed to create sysfs directory for aml node '%.*s'\n", AML_NAME_LENGTH, name);

@@ -2,16 +2,45 @@
 
 #include "acpi.h"
 #include "log/log.h"
-#include "log/panic.h"
 #include "mem/heap.h"
-#include "mem/pmm.h"
+#include "fs/file.h"
+#include "fs/vfs.h"
 
-#include <assert.h>
 #include <boot/boot_info.h>
 #include <string.h>
+#include <stdio.h>
 
+static uint64_t ssdtAmount = 0;
 static uint64_t tableAmount = 0;
-static sdt_header_t* cachedTables[ACPI_MAX_TABLES] = {NULL};
+static struct
+{
+    sdt_header_t* table;
+    sysfs_file_t file;
+} cachedTables[ACPI_MAX_TABLES] = {0};
+
+static sysfs_dir_t apicTablesDir;
+
+static uint64_t acpi_table_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
+{
+    if (file == NULL || buffer == NULL || offset == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    sdt_header_t* table = file->inode->private;
+    if (table == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    return BUFFER_READ(buffer, count, offset, table, table->length);
+}
+
+static file_ops_t tableFileOps = {
+    .read = acpi_table_read,
+};
 
 static bool acpi_is_table_valid(sdt_header_t* table)
 {
@@ -71,7 +100,25 @@ static uint64_t acpi_tables_push(sdt_header_t* table)
     }
 
     memcpy(cachedTable, table, table->length);
-    cachedTables[tableAmount++] = cachedTable;
+
+    char name[MAX_PATH];
+    if (memcmp(cachedTable->signature, "SSDT", 4) == 0)
+    {
+        snprintf(name, MAX_PATH, "%.4s%llu", cachedTable->signature, ssdtAmount++);
+    }
+    else
+    {
+        memcpy(name, cachedTable->signature, 4);
+        name[4] = '\0';
+    }
+
+    if (sysfs_file_init(&cachedTables[tableAmount].file, &apicTablesDir, name, NULL, &tableFileOps, cachedTable) == ERR)
+    {
+        LOG_ERR("failed to create sysfs file for ACPI table %.4s\n", cachedTable->signature);
+        heap_free(cachedTable);
+        return ERR;
+    }
+    cachedTables[tableAmount++].table = cachedTable;
 
     return 0;
 }
@@ -118,6 +165,12 @@ static uint64_t acpi_tables_load_from_fadt(void)
 
 uint64_t acpi_tables_init(xsdt_t* xsdt)
 {
+    if (sysfs_dir_init(&apicTablesDir, acpi_get_sysfs_root(), "tables", NULL, NULL) == ERR)
+    {
+        LOG_ERR("failed to create '/acpi/tables' sysfs directory\n");
+        return ERR;
+    }
+
     if (acpi_tables_load_from_xsdt(xsdt) == ERR)
     {
         LOG_ERR("failed to load ACPI tables from XSDT\n");
@@ -132,7 +185,7 @@ uint64_t acpi_tables_init(xsdt_t* xsdt)
 
     for (uint64_t i = 0; i < tableAmount; i++)
     {
-        sdt_header_t* table = cachedTables[i];
+        sdt_header_t* table = cachedTables[i].table;
         LOG_INFO("%.4s 0x%016lx 0x%06x v%02X %.6s\n", table->signature, table, table->length, table->revision,
             table->oemId);
     }
@@ -150,11 +203,11 @@ sdt_header_t* acpi_tables_lookup(const char* signature, uint64_t n)
 
     for (uint64_t i = 0; i < tableAmount; i++)
     {
-        if (memcmp(cachedTables[i]->signature, signature, 4) == 0)
+        if (memcmp(cachedTables[i].table->signature, signature, 4) == 0)
         {
             if (n-- == 0)
             {
-                return cachedTables[i];
+                return cachedTables[i].table;
             }
         }
     }

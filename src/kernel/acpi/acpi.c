@@ -11,6 +11,8 @@
 #include <boot/boot_info.h>
 #include <string.h>
 
+static sysfs_group_t acpiGroup;
+
 static bool acpi_is_rsdp_valid(rsdp_t* rsdp)
 {
     if (memcmp(rsdp->signature, "RSD PTR ", 8) != 0)
@@ -109,6 +111,11 @@ void acpi_init(rsdp_t* rsdp, boot_memory_map_t* map)
 {
     LOG_INFO("initializing acpi\n");
 
+    if (sysfs_group_init(&acpiGroup, PATHNAME("/acpi")) == ERR)
+    {
+        panic(NULL, "failed to create '/acpi' sysfs group\n");
+    }
+
     if (!acpi_is_rsdp_valid(rsdp))
     {
         panic(NULL, "invalid RSDP structure\n");
@@ -138,4 +145,9 @@ bool acpi_is_checksum_valid(void* table, uint64_t length)
     }
 
     return sum == 0;
+}
+
+sysfs_dir_t* acpi_get_sysfs_root(void)
+{
+    return &acpiGroup.root;
 }

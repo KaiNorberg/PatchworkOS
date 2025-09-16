@@ -1,5 +1,7 @@
 #pragma once
 
+#include "fs/sysfs.h"
+
 #include <boot/boot_info.h>
 #include <common/defs.h>
 
@@ -103,5 +105,12 @@ void acpi_init(rsdp_t* rsdp, boot_memory_map_t* map);
  * @return true if the table is valid, false otherwise.
  */
 bool acpi_is_checksum_valid(void* table, uint64_t length);
+
+/**
+ * @brief Retrieve the sysfs root directory for ACPI
+ *
+ * @return sysfs_dir_t* Pointer to the ACPI sysfs root directory.
+ */
+sysfs_dir_t* acpi_get_sysfs_root(void);
 
 /** @} */
