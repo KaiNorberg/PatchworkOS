@@ -58,6 +58,7 @@ typedef enum
     AML_NODE_METHOD,
     AML_NODE_NAME,
     AML_NODE_MUTEX,
+    AML_NODE_INDEX_FIELD,
     AML_NODE_MAX
 } aml_node_type_t;
 
@@ -81,6 +82,7 @@ typedef struct aml_node
         } opregion;
         struct
         {
+            aml_node_t* opregion;
             aml_field_flags_t flags;
             aml_address_t offset;
             uint32_t size;
@@ -106,6 +108,14 @@ typedef struct aml_node
             aml_pblk_addr_t pblkAddr;
             aml_pblk_len_t pblkLen;
         } processor;
+        struct
+        {
+            struct aml_node* indexNode;
+            struct aml_node* dataNode;
+            aml_field_flags_t flags;
+            aml_address_t offset;
+            uint32_t size;
+        } indexField;
     } data;
 } aml_node_t;
 

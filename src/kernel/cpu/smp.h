@@ -14,7 +14,8 @@
  * @ingroup kernel_cpu
  * @defgroup kernel_cpu_smp SMP
  *
- * This module handles symmetric multi processing (SMP) support, storing the cpu_t structures for each CPU and being responsible for identifiying and starting them.
+ * This module handles symmetric multi processing (SMP) support, storing the cpu_t structures for each CPU and being
+ * responsible for identifiying and starting them.
  *
  * @{
  */

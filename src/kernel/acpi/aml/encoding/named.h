@@ -14,15 +14,6 @@ typedef struct aml_node aml_node_t;
  *
  * See section 20.2.5.2 of the ACPI specification for more details.
  *
- * Version 6.6 of the ACPI specification has a few minor mistakes in the definition of the NamedObj structure,
- * its supposed several stuctures that it does not. If you check version 4.0 of the specification section 19.2.5.2 you
- * can confirm that that these structures are supposed to be there but have, somehow, been forgotten. These structures
- * include DefField, DefMethod, DefMutex and DefDevice (more may be noticed in the future), we add all missing
- * structures to our definition of NamedObj. I have no idea how there are this many mistakes in the latest version of
- * the ACPI specification.
- *
- * The DefProcessor structure was deprecated in version 6.4 of the ACPI specification, but we still support it.
- *
  * @{
  */
 
@@ -104,14 +95,37 @@ typedef struct
 } aml_field_flags_t;
 
 /**
+ * @brief Enum for all FieldList types.
+ * @enum aml_field_list_type_t
+ */
+typedef enum
+{
+    AML_FIELD_LIST_TYPE_NORMAL, //!< FieldList is part of a DefField.
+    AML_FIELD_LIST_TYPE_BANK,   //!< FieldList is part of a BankField.
+    AML_FIELD_LIST_TYPE_INDEX, //!< FieldList is part of an IndexField.
+} aml_field_list_type_t;
+
+/**
  * @brief Context passed to lower functions by `aml_field_list_read()`.
  * @struct aml_field_list_ctx_t
  */
 typedef struct
 {
-    aml_node_t* opregion;        //!< The opregion the FieldList is part of, determined by the NameString.
+    aml_field_list_type_t type; //!< The type of FieldList.
     aml_field_flags_t flags;     //!< The flags of the FieldList.
     aml_address_t currentOffset; //!< The current offset within the opregion.
+    union
+    {
+        struct
+        {
+            aml_node_t* opregion;
+        } normal;
+        struct
+        {
+            aml_node_t* indexNode;
+            aml_node_t* dataNode;
+        } index;
+    };
 } aml_field_list_ctx_t;
 
 /**
@@ -236,10 +250,11 @@ uint64_t aml_field_flags_read(aml_state_t* state, aml_field_flags_t* out);
  * See section 19.6.48 of the ACPI specification for more details about the Field Operation.
  *
  * @param state The AML state.
+ * @param node The current AML node.
  * @param ctx The AML field list context.
  * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_named_field_read(aml_state_t* state, aml_field_list_ctx_t* ctx);
+uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_list_ctx_t* ctx);
 
 /**
  * @brief Reads a ReservedField structure from the AML byte stream.
@@ -263,10 +278,11 @@ uint64_t aml_reserved_field_read(aml_state_t* state, aml_field_list_ctx_t* ctx);
  * See section 19.6.48 of the ACPI specification for more details about the Field Operation.
  *
  * @param state The AML state.
+ * @param node The current AML node.
  * @param ctx The AML field list context.
  * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_field_element_read(aml_state_t* state, aml_field_list_ctx_t* ctx);
+uint64_t aml_field_element_read(aml_state_t* state, aml_node_t* node, aml_field_list_ctx_t* ctx);
 
 /**
  * @brief Reads a FieldList structure from the AML byte stream.
@@ -276,11 +292,12 @@ uint64_t aml_field_element_read(aml_state_t* state, aml_field_list_ctx_t* ctx);
  * See section 19.6.48 of the ACPI specification for more details about the Field Operation.
  *
  * @param state The AML state.
+ * @param node The current AML node.
  * @param ctx The AML field list context.
  * @param end The index at which the FieldList ends.
  * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_field_list_read(aml_state_t* state, aml_field_list_ctx_t* ctx, aml_address_t end);
+uint64_t aml_field_list_read(aml_state_t* state, aml_node_t* node, aml_field_list_ctx_t* ctx, aml_address_t end);
 
 /**
  * @brief Reads a DefField structure from the AML byte stream.
@@ -292,6 +309,19 @@ uint64_t aml_field_list_read(aml_state_t* state, aml_field_list_ctx_t* ctx, aml_
  * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node);
+
+/**
+ * @brief Reads a DefIndexField structure from the AML byte stream.
+ *
+ * The DefIndexField structure is defined as `DefIndexField := IndexFieldOp PkgLength NameString NameString FieldFlags FieldList`.
+ *
+ * See section 19.6.64 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_index_field_read(aml_state_t* state, aml_node_t* node);
 
 /**
  * @brief Reads a MethodFlags structure from the AML byte stream.
@@ -412,9 +442,19 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node);
 /**
  * @brief Reads a NamedObj structure from the AML byte stream.
  *
+ * Version 6.6 of the ACPI specification has a few minor mistakes in the definition of the NamedObj structure,
+ * its supposed to contain several stuctures that it does not. If you check version 4.0 of the specification
+ * section 19.2.5.2 you can confirm that that these structures are supposed to be there but have, somehow, been
+ * forgotten. These structures include DefField, DefMethod, DefMutex, DefIndexField and DefDevice (more may be noticed
+ * in the future), we add all missing structures to our definition of NamedObj. I have no idea how there are this many
+ * mistakes in the latest version of the ACPI specification.
+ *
+ * The DefProcessor structure was deprecated in version 6.4 of the ACPI specification, but we still support it.
+ *
  * The NamedObj structure is defined as `NamedObj := DefBankField | DefCreateBitField | DefCreateByteField |
  * DefCreateDWordField | DefCreateField | DefCreateQWordField | DefCreateWordField | DefDataRegion | DefExternal |
- * DefOpRegion | DefPowerRes | DefThermalZone | DefField | DefMethod | DefDevice | DefMutex`.
+ * DefOpRegion | DefPowerRes | DefThermalZone | DefField | DefMethod | DefDevice | DefMutex | DefProcessor |
+ * DefIndexField`.
  *
  * @param state The AML state.
  * @param node The current AML node.

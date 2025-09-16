@@ -133,7 +133,7 @@ uint64_t aml_field_flags_read(aml_state_t* state, aml_field_flags_t* out)
     return 0;
 }
 
-uint64_t aml_named_field_read(aml_state_t* state, aml_field_list_ctx_t* ctx)
+uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_list_ctx_t* ctx)
 {
     aml_name_seg_t* name;
     if (aml_name_seg_read(state, &name) == ERR)
@@ -147,14 +147,61 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_field_list_ctx_t* ctx)
         return ERR;
     }
 
-    aml_node_t* newNode = aml_add_node(ctx->opregion, name->name, AML_NODE_FIELD);
-    if (!newNode)
+    switch (ctx->type)
     {
+    case AML_FIELD_LIST_TYPE_NORMAL:
+    {
+        if (ctx->normal.opregion == NULL)
+        {
+            AML_DEBUG_INVALID_STRUCTURE("NamedField: No OpRegion for FieldList");
+            errno = EILSEQ;
+            return ERR;
+        }
+
+        aml_node_t* newNode = aml_add_node(node, name->name, AML_NODE_FIELD);
+        if (newNode == NULL)
+        {
+            return ERR;
+        }
+        newNode->data.field.opregion = ctx->normal.opregion;
+        newNode->data.field.flags = ctx->flags;
+        newNode->data.field.offset = ctx->currentOffset;
+        newNode->data.field.size = pkgLength;
+    }
+    break;
+    case AML_FIELD_LIST_TYPE_INDEX:
+    {
+        if (ctx->index.indexNode == NULL)
+        {
+            AML_DEBUG_INVALID_STRUCTURE("NamedField: No Index Node for IndexField");
+            errno = EILSEQ;
+            return ERR;
+        }
+
+        if (ctx->index.dataNode == NULL)
+        {
+            AML_DEBUG_INVALID_STRUCTURE("NamedField: No Data Node for IndexField");
+            errno = EILSEQ;
+            return ERR;
+        }
+
+        aml_node_t* newNode = aml_add_node(node, name->name, AML_NODE_INDEX_FIELD);
+        if (newNode == NULL)
+        {
+            return ERR;
+        }
+        newNode->data.indexField.indexNode = ctx->index.indexNode;
+        newNode->data.indexField.dataNode = ctx->index.dataNode;
+        newNode->data.indexField.flags = ctx->flags;
+        newNode->data.indexField.offset = ctx->currentOffset;
+        newNode->data.indexField.size = pkgLength;
+    }
+    break;
+    default:
+        AML_DEBUG_INVALID_STRUCTURE("NamedField: Invalid FieldList type");
+        errno = EILSEQ;
         return ERR;
     }
-    newNode->data.field.flags = ctx->flags;
-    newNode->data.field.offset = ctx->currentOffset;
-    newNode->data.field.size = pkgLength;
 
     return 0;
 }
@@ -184,7 +231,7 @@ uint64_t aml_reserved_field_read(aml_state_t* state, aml_field_list_ctx_t* ctx)
     return 0;
 }
 
-uint64_t aml_field_element_read(aml_state_t* state, aml_field_list_ctx_t* ctx)
+uint64_t aml_field_element_read(aml_state_t* state, aml_node_t* node, aml_field_list_ctx_t* ctx)
 {
     aml_value_t value;
     if (aml_value_peek_no_ext(state, &value) == ERR)
@@ -194,7 +241,7 @@ uint64_t aml_field_element_read(aml_state_t* state, aml_field_list_ctx_t* ctx)
 
     if (AML_IS_LEAD_NAME_CHAR(&value))
     {
-        return aml_named_field_read(state, ctx);
+        return aml_named_field_read(state, node, ctx);
     }
     else if (value.num == 0x00)
     {
@@ -206,12 +253,12 @@ uint64_t aml_field_element_read(aml_state_t* state, aml_field_list_ctx_t* ctx)
     return ERR;
 }
 
-uint64_t aml_field_list_read(aml_state_t* state, aml_field_list_ctx_t* ctx, aml_address_t end)
+uint64_t aml_field_list_read(aml_state_t* state, aml_node_t* node, aml_field_list_ctx_t* ctx, aml_address_t end)
 {
     while (end > state->pos)
     {
         // End of buffer not reached => byte is not nothing => must be a FieldElement.
-        if (aml_field_element_read(state, ctx) == ERR)
+        if (aml_field_element_read(state, node, ctx) == ERR)
         {
             return ERR;
         }
@@ -258,12 +305,72 @@ uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node)
     aml_address_t end = start + pkgLength;
 
     aml_field_list_ctx_t ctx = {
-        .opregion = aml_find_node_name_string(&nameString, node),
+        .type = AML_FIELD_LIST_TYPE_NORMAL,
+        .normal.opregion = aml_find_node_name_string(&nameString, node),
         .flags = fieldFlags,
         .currentOffset = 0,
     };
 
-    if (aml_field_list_read(state, &ctx, end) == ERR)
+    if (aml_field_list_read(state, node, &ctx, end) == ERR)
+    {
+        return ERR;
+    }
+
+    return 0;
+}
+
+uint64_t aml_def_index_field_read(aml_state_t* state, aml_node_t* node)
+{
+    aml_value_t indexFieldOp;
+    if (aml_value_read(state, &indexFieldOp) == ERR)
+    {
+        return ERR;
+    }
+
+    if (indexFieldOp.num != AML_INDEX_FIELD_OP)
+    {
+        AML_DEBUG_UNEXPECTED_VALUE(&indexFieldOp);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_address_t start = state->pos;
+
+    aml_pkg_length_t pkgLength;
+    if (aml_pkg_length_read(state, &pkgLength) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_name_string_t indexNameString;
+    if (aml_name_string_read(state, &indexNameString) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_name_string_t dataNameString;
+    if (aml_name_string_read(state, &dataNameString) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_field_flags_t fieldFlags;
+    if (aml_field_flags_read(state, &fieldFlags) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_address_t end = start + pkgLength;
+
+    aml_field_list_ctx_t ctx = {
+        .type = AML_FIELD_LIST_TYPE_INDEX,
+        .index.indexNode = aml_find_node_name_string(&indexNameString, node),
+        .index.dataNode = aml_find_node_name_string(&dataNameString, node),
+        .flags = fieldFlags,
+        .currentOffset = 0,
+    };
+
+    if (aml_field_list_read(state, node, &ctx, end) == ERR)
     {
         return ERR;
     }
@@ -539,6 +646,8 @@ uint64_t aml_named_obj_read(aml_state_t* state, aml_node_t* node)
         return aml_def_device_read(state, node);
     case AML_MUTEX_OP:
         return aml_def_mutex_read(state, node);
+    case AML_INDEX_FIELD_OP:
+        return aml_def_index_field_read(state, node);
     case AML_DEPRECATED_PROCESSOR_OP:
         return aml_def_processor_read(state, node);
     default:
