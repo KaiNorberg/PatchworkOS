@@ -12,11 +12,19 @@
 
 static mutex_t mutex;
 
+static sysfs_group_t acpiGroup;
+
 static aml_node_t* root = NULL;
 
 uint64_t aml_init(void)
 {
     mutex_init(&mutex);
+
+    if (sysfs_group_init(&acpiGroup, PATHNAME("/acpi")) == ERR)
+    {
+        LOG_ERR("failed to create '/acpi' sysfs group\n");
+        return ERR;
+    }
 
     root = aml_add_node(NULL, AML_ROOT_NAME, AML_NODE_PREDEFINED);
     if (root == NULL)
@@ -80,6 +88,15 @@ aml_node_t* aml_add_node(aml_node_t* parent, const char* name, aml_node_type_t t
     node->type = type;
     list_init(&node->children);
     memcpy(node->name, name, AML_NAME_LENGTH);
+    node->name[AML_NAME_LENGTH] = '\0';
+
+    if (sysfs_dir_init(&node->dir, parent != NULL ? &parent->dir : &acpiGroup.root,
+            node->name, NULL, NULL) == ERR)
+    {
+        LOG_ERR("failed to create sysfs directory for aml node '%.*s'\n", AML_NAME_LENGTH, name);
+        heap_free(node);
+        return NULL;
+    }
 
     if (parent != NULL)
     {
@@ -88,27 +105,13 @@ aml_node_t* aml_add_node(aml_node_t* parent, const char* name, aml_node_type_t t
             assert(root == parent);
         }
 
-        if (sysfs_dir_init(&node->sysfs.dir, parent->parent == NULL ? &parent->sysfs.group.root : &parent->sysfs.dir,
-                name, NULL, NULL) == ERR)
-        {
-            LOG_ERR("failed to create sysfs directory for aml node '%.*s'\n", AML_NAME_LENGTH, name);
-            heap_free(node);
-            return NULL;
-        }
-
         node->parent = parent;
         list_push(&parent->children, &node->entry);
     }
     else
     {
         assert(root == NULL);
-        assert(strcmp(name, AML_ROOT_NAME) == 0);
-
-        if (sysfs_group_init(&node->sysfs.group, PATHNAME("/acpi")) == ERR)
-        {
-            LOG_ERR("failed to create sysfs group for aml root node\n");
-            return NULL;
-        }
+        assert(strcmp(node->name, AML_ROOT_NAME) == 0);
 
         node->parent = NULL;
     }

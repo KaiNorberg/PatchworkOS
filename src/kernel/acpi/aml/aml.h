@@ -41,7 +41,7 @@
 /**
  * @brief Name of the root ACPI node.
  */
-#define AML_ROOT_NAME "\\___"
+#define AML_ROOT_NAME "ROOT"
 
 /**
  * @brief Maximum length of an ACPI name.
@@ -78,7 +78,7 @@ typedef struct aml_node
     aml_node_type_t type;
     list_t children;
     struct aml_node* parent;
-    char name[AML_NAME_LENGTH]; //!< Not null terminated
+    char name[AML_NAME_LENGTH + 1];
     union {
         struct
         {
@@ -123,10 +123,7 @@ typedef struct aml_node
             uint32_t size;
         } indexField;
     } data;
-    union {
-        sysfs_group_t group; //!< Sysfs group for the node, valid only for root
-        sysfs_dir_t dir;     //!< Sysfs directory for the node, valid for all non-root nodes
-    } sysfs;
+    sysfs_dir_t dir;
 } aml_node_t;
 
 /**
