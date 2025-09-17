@@ -20,3 +20,7 @@ void aml_debug_dump(aml_state_t* state);
 #define AML_DEBUG_INVALID_STRUCTURE(structure) \
     LOG_ERR("invalid structure '%s' in '%s'\n", structure, __PRETTY_FUNCTION__); \
     aml_debug_dump(state)
+
+#define AML_DEBUG_UNIMPLEMENTED_NODE(node) \
+    LOG_ERR("unimplemented node type '%s' for node '%.*s' in '%s'\n", aml_node_type_to_string((node)->type), \
+        AML_NAME_LENGTH, (node)->name, __PRETTY_FUNCTION__)

@@ -2,7 +2,9 @@
 
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_state.h"
+#include "acpi/aml/aml_to_string.h"
 #include "acpi/aml/aml_value.h"
+#include "arg.h"
 #include "package_length.h"
 #include "term.h"
 
@@ -70,4 +72,85 @@ uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out)
     out->length = bufferSize;
     aml_state_advance(state, bufferSize);
     return 0;
+}
+
+uint64_t aml_term_arg_list_read(aml_state_t* state, aml_node_t* node, uint8_t argCount, aml_term_arg_list_t* out)
+{
+    if (argCount > AML_MAX_ARGS)
+    {
+        AML_DEBUG_INVALID_STRUCTURE("TermArgList: argCount exceeds AML_MAX_ARGS");
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    out->count = 0;
+    for (uint8_t i = 0; i < argCount; i++)
+    {
+        aml_term_arg_t* arg = &out->args[i];
+        if (aml_term_arg_read(state, node, arg, AML_DATA_ANY) == ERR)
+        {
+            return ERR;
+        }
+        out->count++;
+    }
+
+    return 0;
+}
+
+uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    aml_name_string_t nameString;
+    if (aml_name_string_read(state, &nameString) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_node_t* target = aml_node_find(&nameString, node);
+    if (target == NULL)
+    {
+        AML_DEBUG_INVALID_STRUCTURE("MethodInvocation: Could not find target");
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    uint8_t argAmount = 0;
+    if (target->type == AML_NODE_METHOD)
+    {
+        argAmount = target->data.method.flags.argCount;
+    }
+
+    aml_term_arg_list_t args = {0};
+    if (aml_term_arg_list_read(state, node, argAmount, &args) == ERR)
+    {
+        return ERR;
+    }
+
+    return aml_node_evaluate(target, out, &args);
+}
+
+uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    aml_value_t value;
+    if (aml_value_peek(state, &value) == ERR)
+    {
+        return ERR;
+    }
+
+    switch (value.props->type)
+    {
+    case AML_VALUE_TYPE_EXPRESSION:
+        switch (value.num)
+        {
+        default:
+            AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
+            errno = ENOSYS;
+            return ERR;
+        }
+    case AML_VALUE_TYPE_NAME:
+        return aml_method_invocation_read(state, node, out);
+    default:
+        AML_DEBUG_UNEXPECTED_VALUE(&value);
+        errno = EILSEQ;
+        return ERR;
+    }
 }

@@ -9,7 +9,7 @@ void aml_debug_dump(aml_state_t* state)
     // Dump the region around the current positon
 
     uint64_t start = (state->pos >= 16) ? state->pos - 16 : 0;
-    uint64_t end = (state->pos + 16 < state->dataSize) ? state->pos + 16 : state->dataSize - 1;
+    uint64_t end = (state->pos + 31 < state->dataSize) ? state->pos + 31 : state->dataSize - 1;
 
     LOG_WARN("==AML Dump (pos=0x%lx)==\n", state->pos);
     for (uint64_t i = start; i <= end; i += 16)

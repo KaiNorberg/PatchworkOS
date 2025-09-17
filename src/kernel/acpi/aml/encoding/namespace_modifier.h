@@ -25,7 +25,7 @@
  * See section 19.6.90 of the ACPI specification for more details.
  *
  * @param state The AML state.
- * @param node The current AML node, can be `NULL`.
+ * @param node The current AML node.
  * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_name_read(aml_state_t* state, aml_node_t* node);
@@ -38,7 +38,7 @@ uint64_t aml_def_name_read(aml_state_t* state, aml_node_t* node);
  * See section 19.6.122 of the ACPI specification for more details.
  *
  * @param state The AML state.
- * @param node The current AML node, can be `NULL`.
+ * @param node The current AML node.
  * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_scope_read(aml_state_t* state, aml_node_t* node);
@@ -49,7 +49,7 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_node_t* node);
  * A NameSpaceModifierObj structure is defined as `NameSpaceModifierObj := DefAlias | DefName | DefScope`.
  *
  * @param state The AML state.
- * @param node The current AML node, can be `NULL`.
+ * @param node The current AML node.
  * @param op The AML op, should have been read by the caller.
  * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
  */

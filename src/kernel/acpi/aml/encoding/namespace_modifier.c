@@ -35,7 +35,7 @@ uint64_t aml_def_name_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_node_t* name = aml_add_node_at_name_string(&nameString, node, AML_NODE_NAME);
+    aml_node_t* name = aml_node_add_at_name_string(&nameString, node, AML_NODE_NAME);
     if (name == NULL)
     {
         AML_DEBUG_INVALID_STRUCTURE("NameString");
@@ -82,11 +82,10 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_node_t* node)
 
     aml_address_t end = start + pkgLength;
 
-    aml_node_t* newNode = aml_find_node_name_string(&nameString, node);
+    aml_node_t* newNode = aml_node_find(&nameString, node);
     if (newNode == NULL)
     {
-        LOG_ERR("failed to walk '%s' from '%s'\n", aml_name_string_to_string(&nameString),
-            node != NULL ? node->name : "\\___");
+        LOG_ERR("failed to walk '%s' from '%s'\n", aml_name_string_to_string(&nameString), node->name);
         AML_DEBUG_INVALID_STRUCTURE("NameString: Could not find node");
         errno = EILSEQ;
         return ERR;

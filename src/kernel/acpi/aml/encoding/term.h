@@ -35,7 +35,7 @@ typedef aml_data_object_t aml_term_arg_t;
  * @param node The current AML node.
  * @param out The output buffer to store the result of the TermArg.
  * @param expectedType The expected type of the TermArg result, will error if a different type is encountered. If set to
- * `AML_DATA_NONE`, no type checking is performed.
+ * `AML_DATA_ANY`, no type checking is performed.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
 uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_term_arg_t* out, aml_data_type_t expectedType);
@@ -46,7 +46,7 @@ uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_term_arg_t*
  * An Object is defined as `Object := NameSpaceModifierObj | NamedObj`.
  *
  * @param state The AML state.
- * @param node The current AML node, can be `NULL`.
+ * @param node The current AML node.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
 uint64_t aml_object_read(aml_state_t* state, aml_node_t* node);
@@ -57,7 +57,7 @@ uint64_t aml_object_read(aml_state_t* state, aml_node_t* node);
  * A TermObj is defined as `TermObj := Object | StatementOpcode | ExpressionOpcode`.
  *
  * @param state The AML state.
- * @param node The current AML node, can be `NULL`.
+ * @param node The current AML node.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
 uint64_t aml_termobj_read(aml_state_t* state, aml_node_t* node);
@@ -68,7 +68,7 @@ uint64_t aml_termobj_read(aml_state_t* state, aml_node_t* node);
  * A TermList structure is defined as `TermList := Nothing | <termobj termlist>`.
  *
  * @param state The AML state.
- * @param node The current AML node, can be `NULL`.
+ * @param node The current AML node.
  * @param end The index at which the termlist ends.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */

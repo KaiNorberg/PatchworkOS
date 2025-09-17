@@ -1,14 +1,14 @@
 #include "tables.h"
 
 #include "acpi.h"
-#include "log/log.h"
-#include "mem/heap.h"
 #include "fs/file.h"
 #include "fs/vfs.h"
+#include "log/log.h"
+#include "mem/heap.h"
 
 #include <boot/boot_info.h>
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 
 static uint64_t ssdtAmount = 0;
 static uint64_t tableAmount = 0;

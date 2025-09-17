@@ -4,6 +4,7 @@
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_value.h"
 #include "data.h"
+#include "expression.h"
 #include "named.h"
 #include "namespace_modifier.h"
 
@@ -21,9 +22,8 @@ uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_term_arg_t*
     switch (value.props->type)
     {
     case AML_VALUE_TYPE_EXPRESSION:
-        AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
-        errno = ENOSYS;
-        return ERR;
+    case AML_VALUE_TYPE_NAME: // MethodInvocation is a Name
+        return aml_expression_opcode_read(state, node, out);
     case AML_VALUE_TYPE_ARG:
         AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
         errno = ENOSYS;
@@ -41,7 +41,7 @@ uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_term_arg_t*
         return ERR;
     }
 
-    if (expectedType != AML_DATA_NONE && out->type != expectedType)
+    if (expectedType != AML_DATA_ANY && out->type != expectedType)
     {
         AML_DEBUG_INVALID_STRUCTURE("TermArg: Expected type does not match actual type");
         errno = EILSEQ;

@@ -3,6 +3,7 @@
 #include "acpi/aml/aml.h"
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_state.h"
+#include "acpi/aml/aml_to_string.h"
 #include "acpi/aml/aml_value.h"
 #include "data.h"
 #include "name.h"
@@ -89,7 +90,7 @@ uint64_t aml_def_op_region_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_node_t* newNode = aml_add_node_at_name_string(&nameString, node, AML_NODE_OPREGION);
+    aml_node_t* newNode = aml_node_add_at_name_string(&nameString, node, AML_NODE_OPREGION);
     if (newNode == NULL)
     {
         return ERR;
@@ -158,15 +159,15 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
             return ERR;
         }
 
-        aml_node_t* newNode = aml_add_node(node, name->name, AML_NODE_FIELD);
+        aml_node_t* newNode = aml_node_add(node, name->name, AML_NODE_FIELD);
         if (newNode == NULL)
         {
             return ERR;
         }
         newNode->data.field.opregion = ctx->normal.opregion;
         newNode->data.field.flags = ctx->flags;
-        newNode->data.field.offset = ctx->currentOffset;
-        newNode->data.field.size = pkgLength;
+        newNode->data.field.bitOffset = ctx->currentOffset;
+        newNode->data.field.bitSize = pkgLength;
     }
     break;
     case AML_FIELD_LIST_TYPE_INDEX:
@@ -178,6 +179,13 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
             return ERR;
         }
 
+        if (ctx->index.indexNode->type != AML_NODE_FIELD)
+        {
+            AML_DEBUG_INVALID_STRUCTURE("NamedField: Index Node is not a Field");
+            errno = EILSEQ;
+            return ERR;
+        }
+
         if (ctx->index.dataNode == NULL)
         {
             AML_DEBUG_INVALID_STRUCTURE("NamedField: No Data Node for IndexField");
@@ -185,7 +193,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
             return ERR;
         }
 
-        aml_node_t* newNode = aml_add_node(node, name->name, AML_NODE_INDEX_FIELD);
+        aml_node_t* newNode = aml_node_add(node, name->name, AML_NODE_INDEX_FIELD);
         if (newNode == NULL)
         {
             return ERR;
@@ -193,8 +201,8 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
         newNode->data.indexField.indexNode = ctx->index.indexNode;
         newNode->data.indexField.dataNode = ctx->index.dataNode;
         newNode->data.indexField.flags = ctx->flags;
-        newNode->data.indexField.offset = ctx->currentOffset;
-        newNode->data.indexField.size = pkgLength;
+        newNode->data.indexField.bitOffset = ctx->currentOffset;
+        newNode->data.indexField.bitSize = pkgLength;
     }
     break;
     default:
@@ -203,6 +211,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
         return ERR;
     }
 
+    ctx->currentOffset += pkgLength;
     return 0;
 }
 
@@ -306,10 +315,18 @@ uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node)
 
     aml_field_list_ctx_t ctx = {
         .type = AML_FIELD_LIST_TYPE_NORMAL,
-        .normal.opregion = aml_find_node_name_string(&nameString, node),
+        .normal.opregion = aml_node_find(&nameString, node),
         .flags = fieldFlags,
         .currentOffset = 0,
     };
+
+    if (ctx.normal.opregion == NULL)
+    {
+        LOG_ERR("Field OpRegion '%s' not found\n", aml_name_string_to_string(&nameString));
+        AML_DEBUG_INVALID_STRUCTURE("Field: No OpRegion for FieldList");
+        errno = EILSEQ;
+        return ERR;
+    }
 
     if (aml_field_list_read(state, node, &ctx, end) == ERR)
     {
@@ -364,11 +381,27 @@ uint64_t aml_def_index_field_read(aml_state_t* state, aml_node_t* node)
 
     aml_field_list_ctx_t ctx = {
         .type = AML_FIELD_LIST_TYPE_INDEX,
-        .index.indexNode = aml_find_node_name_string(&indexNameString, node),
-        .index.dataNode = aml_find_node_name_string(&dataNameString, node),
+        .index.indexNode = aml_node_find(&indexNameString, node),
+        .index.dataNode = aml_node_find(&dataNameString, node),
         .flags = fieldFlags,
         .currentOffset = 0,
     };
+
+    if (ctx.index.indexNode == NULL)
+    {
+        LOG_ERR("IndexField IndexNode '%s' not found\n", aml_name_string_to_string(&indexNameString));
+        AML_DEBUG_INVALID_STRUCTURE("IndexField: No IndexNode for FieldList");
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    if (ctx.index.dataNode == NULL)
+    {
+        LOG_ERR("IndexField DataNode '%s' not found\n", aml_name_string_to_string(&dataNameString));
+        AML_DEBUG_INVALID_STRUCTURE("IndexField: No DataNode for FieldList");
+        errno = EILSEQ;
+        return ERR;
+    }
 
     if (aml_field_list_read(state, node, &ctx, end) == ERR)
     {
@@ -436,7 +469,7 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node)
 
     aml_address_t end = start + pkgLength;
 
-    aml_node_t* newNode = aml_add_node_at_name_string(&nameString, node, AML_NODE_METHOD);
+    aml_node_t* newNode = aml_node_add_at_name_string(&nameString, node, AML_NODE_METHOD);
     if (newNode == NULL)
     {
         return ERR;
@@ -483,7 +516,7 @@ uint64_t aml_def_device_read(aml_state_t* state, aml_node_t* node)
 
     aml_address_t end = start + pkgLength;
 
-    aml_node_t* newNode = aml_add_node_at_name_string(&nameString, node, AML_NODE_DEVICE);
+    aml_node_t* newNode = aml_node_add_at_name_string(&nameString, node, AML_NODE_DEVICE);
     if (newNode == NULL)
     {
         return ERR;
@@ -538,7 +571,7 @@ uint64_t aml_def_mutex_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_node_t* newNode = aml_add_node_at_name_string(&nameString, node, AML_NODE_MUTEX);
+    aml_node_t* newNode = aml_node_add_at_name_string(&nameString, node, AML_NODE_MUTEX);
     if (newNode == NULL)
     {
         return ERR;
@@ -613,7 +646,7 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node)
 
     aml_address_t end = start + pkgLength;
 
-    aml_node_t* newNode = aml_add_node_at_name_string(&nameString, node, AML_NODE_PROCESSOR);
+    aml_node_t* newNode = aml_node_add_at_name_string(&nameString, node, AML_NODE_PROCESSOR);
     if (newNode == NULL)
     {
         return ERR;

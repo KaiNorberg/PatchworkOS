@@ -28,6 +28,8 @@ const char* aml_node_type_to_string(aml_node_type_t type)
         return "Name";
     case AML_NODE_MUTEX:
         return "Mutex";
+    case AML_NODE_INDEX_FIELD:
+        return "IndexField";
     default:
         return "Unknown";
     }

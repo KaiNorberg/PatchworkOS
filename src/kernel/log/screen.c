@@ -134,8 +134,8 @@ static void screen_scroll(screen_t* screen)
     screen_line_t* last = screen_buffer_get_line(&screen->buffer, newCursorY);
     for (uint64_t offsetY = 0; offsetY < GLYPH_HEIGHT; offsetY++)
     {
-        memset32(&screen->gop.virtAddr[(offsetY + newCursorY * GLYPH_HEIGHT) * screen->gop.stride],
-            0xFF000000, last->length * GLYPH_WIDTH);
+        memset32(&screen->gop.virtAddr[(offsetY + newCursorY * GLYPH_HEIGHT) * screen->gop.stride], 0xFF000000,
+            last->length * GLYPH_WIDTH);
     }
 
     screen->cursor.y = newCursorY;

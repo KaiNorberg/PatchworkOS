@@ -62,6 +62,7 @@ typedef enum
     AML_DATA_BUFFER,
     AML_DATA_PACKAGE,
     AML_DATA_NAME_STRING,
+    AML_DATA_ANY,
     AML_DATA_MAX,
 } aml_data_type_t;
 
@@ -96,6 +97,19 @@ typedef aml_data_object_t aml_computational_data_t;
  * @brief ACPI AML PackageElement structure.
  */
 typedef aml_data_object_t aml_package_element_t;
+
+/**
+ * @brief Helper macro to create an integer DataObject.
+ */
+#define AML_DATA_OBJECT_INTEGER(value) \
+    ((aml_data_object_t){ \
+        .type = AML_DATA_INTEGER, \
+        .integer = value, \
+        .meta = \
+            { \
+                .bitWidth = 64, \
+            }, \
+    })
 
 /**
  * @brief Read a ByteData structure from the AML stream.

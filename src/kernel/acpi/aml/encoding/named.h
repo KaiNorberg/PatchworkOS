@@ -106,14 +106,19 @@ typedef enum
 } aml_field_list_type_t;
 
 /**
+ * @brief Represents a size in bits within an opregion.
+ */
+typedef uint64_t aml_bit_size_t;
+
+/**
  * @brief Context passed to lower functions by `aml_field_list_read()`.
  * @struct aml_field_list_ctx_t
  */
 typedef struct
 {
-    aml_field_list_type_t type;  //!< The type of FieldList.
-    aml_field_flags_t flags;     //!< The flags of the FieldList.
-    aml_address_t currentOffset; //!< The current offset within the opregion.
+    aml_field_list_type_t type;   //!< The type of FieldList.
+    aml_field_flags_t flags;      //!< The flags of the FieldList.
+    aml_bit_size_t currentOffset; //!< The current offset within the opregion.
     union {
         struct
         {
@@ -316,6 +321,12 @@ uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node);
  * FieldList`.
  *
  * See section 19.6.64 of the ACPI specification for more details.
+ *
+ * IndexFields can be a bit confusing, but the basic idea is that you have two fields, one for the index and one for the
+ * data. The index field in this case can be thought of as a "selector", and the data field is where we find the actual
+ * data we "selected". For example, to perform a read, we first write an index to the index field, and then read the
+ * data from the data field. The index is typically an offset into an array or table, and the data is the value at that
+ * offset.
  *
  * @param state The AML state.
  * @param node The current AML node.
