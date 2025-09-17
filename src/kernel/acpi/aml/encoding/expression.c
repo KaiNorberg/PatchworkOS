@@ -2,8 +2,8 @@
 
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_state.h"
-#include "acpi/aml/aml_to_string.h"
 #include "acpi/aml/aml_value.h"
+#include "acpi/aml/runtime/evaluate.h"
 #include "arg.h"
 #include "package_length.h"
 #include "term.h"
@@ -125,7 +125,7 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_da
         return ERR;
     }
 
-    return aml_node_evaluate(target, out, &args);
+    return aml_evaluate(target, out, &args);
 }
 
 uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)

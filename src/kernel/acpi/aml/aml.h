@@ -149,32 +149,6 @@ uint64_t aml_init(void);
 uint64_t aml_parse(const void* data, uint64_t size);
 
 /**
- * @brief Determine if the global mutex should be acquired when accessing this node.
- *
- * The mutex should be acquired if:
- * - The node is a Field or IndexField and their LockRule is `AML_LOCK_RULE_LOCK` (see section 19.6.48 and 19.6.64),
- * - More to be added later.
- *
- * @param node The node to check.
- * @return true If the global mutex should be acquired.
- * @return false If the global mutex should not be acquired.
- */
-bool aml_should_acquire_global_mutex(aml_node_t* node);
-
-/**
- * @brief Align a bit size down to the nearest access type boundary.
- *
- * For example, aligning 10 bits with an accessType of `AML_ACCESS_TYPE_BYTE` will result in 8 bits, with a remainder of
- * 2 bits.
- *
- * @param bits The bit size to align.
- * @param accessType The access type to align to.
- * @param out Pointer to the buffer where the aligned size will be stored.
- * @param remainder Pointer to the buffer where the remainder will be stored.
- */
-void aml_align_bits(aml_bit_size_t bits, aml_access_type_t accessType, aml_bit_size_t* out, aml_bit_size_t* remainder);
-
-/**
  * @brief Add a new node to the ACPI namespace.
  *
  * @param parent Pointer to the parent node, can be `NULL`.
@@ -202,30 +176,6 @@ aml_node_t* aml_node_add_at_name_string(aml_name_string_t* string, aml_node_t* s
  * @return On success, a pointer to the found node. On error, `NULL` and `errno` is set.
  */
 aml_node_t* aml_node_find(const aml_name_string_t* nameString, aml_node_t* start);
-
-/**
- * @brief Evaluate a node and retrieve the result.
- *
- * This functions behaviour depends on the node type, for example, if the node is a method it will execute the method
- * and retrieve the result, if the node is a field it will retrieve the value stored in the field, etc.
- *
- * Note that argCount should always be zero for non method nodes, and if it is not zero an error will be returned.
- *
- * @param node The node to evaluate.
- * @param out Pointer to the buffer where the result of the evaluation will be stored.
- * @param args Pointer to the argument list, can be `NULL` if no arguments are to be passed.
- * @return On success, 0. On error, `ERR` and `errno` is set.
- */
-uint64_t aml_node_evaluate(aml_node_t* node, aml_data_object_t* out, aml_term_arg_list_t* args);
-
-/**
- * @brief Store a data object in a node.
- *
- * @param node The node to store the data object in.
- * @param object The data object to store.
- * @return On success, 0. On error, `ERR` and `errno` is set.
- */
-uint64_t aml_node_store(aml_node_t* node, aml_data_object_t* object);
 
 /**
  * @brief Get the root node of the ACPI namespace.

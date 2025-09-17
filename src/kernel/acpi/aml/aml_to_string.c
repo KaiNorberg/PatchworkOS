@@ -177,6 +177,29 @@ const char* aml_data_object_to_string(aml_data_object_t* dataObject)
     }
 }
 
+const char* aml_data_type_to_string(aml_data_type_t type)
+{
+    switch (type)
+    {
+    case AML_DATA_NONE:
+        return "None";
+    case AML_DATA_INTEGER:
+        return "Integer";
+    case AML_DATA_STRING:
+        return "String";
+    case AML_DATA_BUFFER:
+        return "Buffer";
+    case AML_DATA_PACKAGE:
+        return "Package";
+    case AML_DATA_NAME_STRING:
+        return "NameString";
+    case AML_DATA_ANY:
+        return "Any";
+    default:
+        return "Unknown";
+    }
+}
+
 const char* aml_name_string_to_string(aml_name_string_t* nameString)
 {
     static char buffer[256];

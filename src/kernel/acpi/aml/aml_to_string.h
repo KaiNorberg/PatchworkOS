@@ -60,6 +60,14 @@ const char* aml_update_rule_to_string(aml_update_rule_t updateRule);
 const char* aml_data_object_to_string(aml_data_object_t* dataObject);
 
 /**
+ * @brief Convert an aml DataType to a string.
+ *
+ * @param type ACPI AML DataType.
+ * @return String representation of the DataType or "Unknown" if it is invalid.
+ */
+const char* aml_data_type_to_string(aml_data_type_t type);
+
+/**
  * @brief Convert an aml NameString to a string.
  *
  * @param nameString ACPI AML NameString.
