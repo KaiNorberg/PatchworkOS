@@ -17,9 +17,4 @@
  */
 #define AML_MAX_ARGS 7
 
-/**
- * @brief ACPI AML Argument Object.
- */
-typedef aml_data_object_t aml_arg_t;
-
 /** @} */

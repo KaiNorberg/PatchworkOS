@@ -31,23 +31,29 @@ uint64_t aml_region_space_read(aml_state_t* state, aml_region_space_t* out)
 
 uint64_t aml_region_offset_read(aml_state_t* state, aml_node_t* node, aml_region_offset_t* out)
 {
-    aml_term_arg_t termArg;
+    aml_data_object_t termArg;
     if (aml_term_arg_read(state, node, &termArg, AML_DATA_INTEGER) == ERR)
     {
         return ERR;
     }
+
     *out = termArg.integer;
+    aml_data_object_deinit(&termArg);
+
     return 0;
 }
 
 uint64_t aml_region_len_read(aml_state_t* state, aml_node_t* node, aml_region_len_t* out)
 {
-    aml_term_arg_t termArg;
+    aml_data_object_t termArg;
     if (aml_term_arg_read(state, node, &termArg, AML_DATA_INTEGER) == ERR)
     {
         return ERR;
     }
+
     *out = termArg.integer;
+    aml_data_object_deinit(&termArg);
+
     return 0;
 }
 

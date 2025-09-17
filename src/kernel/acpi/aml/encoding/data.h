@@ -18,98 +18,7 @@ typedef struct aml_data_object aml_data_object_t;
  */
 
 #include "data_integers.h"
-
-/**
- * @brief ACPI AML String structure.
- */
-typedef struct
-{
-    char* content;
-    uint64_t length;
-} aml_string_t;
-
-/**
- * @brief ACPI AML Buffer structure.
- */
-typedef struct
-{
-    uint8_t* content;
-    uint64_t length;
-} aml_buffer_t;
-
-/**
- * @brief ACPI AML NumElements structure.
- */
-typedef aml_byte_data_t aml_num_elements_t;
-
-/**
- * @brief ACPI AML Package structure.
- */
-typedef struct
-{
-    aml_data_object_t* elements;
-    aml_num_elements_t numElements;
-} aml_package_t;
-
-/**
- * @brief ACPI AML DataObject types.
- */
-typedef enum
-{
-    AML_DATA_NONE = 0,
-    AML_DATA_INTEGER,
-    AML_DATA_STRING,
-    AML_DATA_BUFFER,
-    AML_DATA_PACKAGE,
-    AML_DATA_NAME_STRING,
-    AML_DATA_ANY,
-    AML_DATA_MAX,
-} aml_data_type_t;
-
-/**
- * @brief ACPI AML DataObject structure.
- *
- * Represents the DataObject structure found in the specification, but also used to store any generic
- * data in AML, for example the result of a TermArg evaluation or a PackageElement.
- */
-typedef struct aml_data_object
-{
-    aml_data_type_t type;
-    union {
-        aml_qword_data_t integer;
-        aml_string_t string;
-        aml_buffer_t buffer;
-        aml_package_t package;
-        aml_name_string_t nameString;
-    };
-    struct
-    {
-        uint8_t bitWidth; // The number of bits of the integer (for INTEGER type only)
-    } meta;
-} aml_data_object_t;
-
-/**
- * @brief ACPI AML ComputationalData structure.
- */
-typedef aml_data_object_t aml_computational_data_t;
-
-/**
- * @brief ACPI AML PackageElement structure.
- */
-typedef aml_data_object_t aml_package_element_t;
-
-/**
- * @brief Helper macro to create an integer DataObject.
- */
-#define AML_DATA_OBJECT_INTEGER(value) \
-    ((aml_data_object_t){ \
-        .type = AML_DATA_INTEGER, \
-        .integer = value, \
-        .meta = \
-            { \
-                .bitWidth = 64, \
-            }, \
-    })
+#include "data_object.h"
 
 /**
  * @brief Read a ByteData structure from the AML stream.
@@ -237,7 +146,7 @@ uint64_t aml_string_read(aml_state_t* state, aml_string_t* out);
  * @param out Pointer to the buffer where the ComputationalData will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_computational_data_read(aml_state_t* state, aml_computational_data_t* out);
+uint64_t aml_computational_data_read(aml_state_t* state, aml_data_object_t* out);
 
 /**
  * @brief Read a NumElements structure from the AML stream.
@@ -256,10 +165,10 @@ uint64_t aml_num_elements_read(aml_state_t* state, aml_num_elements_t* out);
  * A PackageElement structure is defined as `PackageElement := DataRefObject | NameString`.
  *
  * @param state The AML state.
- * @param out Pointer to the buffer where the Package element will be stored.
+ * @param out Pointer to the buffer where the PackageElement will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_package_element_read(aml_state_t* state, aml_package_element_t* out);
+uint64_t aml_package_element_read(aml_state_t* state, aml_data_object_t* out);
 
 /**
  * @brief Read a PackageElementList structure from the AML stream.
@@ -267,12 +176,12 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_package_element_t* out
  * A PackageElementList structure is defined as PackageElementList := Nothing | <packageelement packageelementlist>`.
  *
  * @param state The AML state.
- * @param out Pointer to the buffer where the Package elements will be stored. This will be allocated by this
- * function and should be freed with `aml_package_free()`.
+ * @param out Pointer to the buffer where the Package elements will be stored. This will be heap allocated by this
+ * function.
  * @param numElements The number of elements to read.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_package_element_list_read(aml_state_t* state, aml_package_element_t** out, aml_num_elements_t numElements);
+uint64_t aml_package_element_list_read(aml_state_t* state, aml_data_object_t** out, aml_num_elements_t numElements);
 
 /**
  * @brief Reads a DefPackage structure from the AML byte stream.
@@ -308,10 +217,5 @@ uint64_t aml_data_object_read(aml_state_t* state, aml_data_object_t* out);
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_data_ref_object_read(aml_state_t* state, aml_data_object_t* out);
-
-/**
- * @brief Frees the memory allocated for a Package structure.
- */
-void aml_package_free(aml_package_t* package);
 
 /** @} */

@@ -67,6 +67,7 @@ typedef enum
     AML_NODE_NAME,
     AML_NODE_MUTEX,
     AML_NODE_INDEX_FIELD,
+    AML_NODE_BANK_FIELD,
     AML_NODE_MAX
 } aml_node_type_t;
 

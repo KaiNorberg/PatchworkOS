@@ -10,12 +10,15 @@
 
 uint64_t aml_buffer_size_read(aml_state_t* state, aml_buffer_size_t* out)
 {
-    aml_term_arg_t termArg;
+    aml_data_object_t termArg;
     if (aml_term_arg_read(state, NULL, &termArg, AML_DATA_INTEGER) == ERR)
     {
         return ERR;
     }
+
     *out = termArg.integer;
+    aml_data_object_deinit(&termArg);
+
     return 0;
 }
 
@@ -68,8 +71,7 @@ uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out)
         return ERR;
     }
 
-    out->content = (uint8_t*)(state->data + state->pos);
-    out->length = bufferSize;
+    *out = AML_BUFFER_CREATE_IN_PLACE((uint8_t*)(state->data + state->pos), bufferSize);
     aml_state_advance(state, bufferSize);
     return 0;
 }
@@ -86,9 +88,13 @@ uint64_t aml_term_arg_list_read(aml_state_t* state, aml_node_t* node, uint8_t ar
     out->count = 0;
     for (uint8_t i = 0; i < argCount; i++)
     {
-        aml_term_arg_t* arg = &out->args[i];
+        aml_data_object_t* arg = &out->args[i];
         if (aml_term_arg_read(state, node, arg, AML_DATA_ANY) == ERR)
         {
+            for (uint8_t j = 0; j < i; j++)
+            {
+                aml_data_object_deinit(&out->args[j]);
+            }
             return ERR;
         }
         out->count++;
@@ -125,7 +131,12 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_da
         return ERR;
     }
 
-    return aml_evaluate(target, out, &args);
+    uint64_t result = aml_evaluate(target, out, &args);
+    for (uint8_t i = 0; i < args.count; i++)
+    {
+        aml_data_object_deinit(&args.args[i]);
+    }
+    return result;
 }
 
 uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)

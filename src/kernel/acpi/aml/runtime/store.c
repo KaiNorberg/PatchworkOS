@@ -1,8 +1,8 @@
 #include "store.h"
 
+#include "access_type.h"
 #include "acpi/aml/aml_to_string.h"
 #include "lock_rule.h"
-#include "access_type.h"
 #include "log/log.h"
 
 #include <errno.h>

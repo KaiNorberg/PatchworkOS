@@ -17,16 +17,6 @@
  */
 
 /**
- * @brief ACPI AML TermArg structure
- * @struct aml_term_arg_t
- *
- * A TermArg structure is used to pass certain arguments to opcodes. They dont just store static information, instead
- * they are evaluated at runtime. Think of how in C you can do `myfunc(1, myotherfunc(), 2)`, in this case the
- * `myotherfunc()` argument would be a TermArg in AML.
- */
-typedef aml_data_object_t aml_term_arg_t;
-
-/**
  * @brief Reads an TermArg structure from the AML byte stream.
  *
  * A TermArg is defined as `TermArg := ExpressionOpcode | DataObject | ArgObj | LocalObj`.
@@ -38,7 +28,7 @@ typedef aml_data_object_t aml_term_arg_t;
  * `AML_DATA_ANY`, no type checking is performed.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_term_arg_t* out, aml_data_type_t expectedType);
+uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out, aml_data_type_t expectedType);
 
 /**
  * @brief Reads an Object structure from the AML byte stream.

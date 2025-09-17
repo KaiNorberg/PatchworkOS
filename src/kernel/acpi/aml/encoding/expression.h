@@ -53,7 +53,7 @@ uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out);
  */
 typedef struct
 {
-    aml_arg_t args[AML_MAX_ARGS];
+    aml_data_object_t args[AML_MAX_ARGS];
     uint8_t count;
 } aml_term_arg_list_t;
 

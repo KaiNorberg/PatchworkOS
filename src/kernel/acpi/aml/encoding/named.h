@@ -20,12 +20,12 @@ typedef struct aml_node aml_node_t;
 /**
  * @brief ACPI AML RegionOffset structure.
  */
-typedef uint64_t aml_region_offset_t;
+typedef aml_qword_data_t aml_region_offset_t;
 
 /**
  * @brief ACPI AML RegionLen structure.
  */
-typedef uint64_t aml_region_len_t;
+typedef aml_qword_data_t aml_region_len_t;
 
 /**
  * @brief ACPI AML Region Space Encoding

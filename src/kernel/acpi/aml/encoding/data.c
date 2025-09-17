@@ -199,12 +199,11 @@ uint64_t aml_string_read(aml_state_t* state, aml_string_t* out)
         length++;
     }
 
-    out->content = str;
-    out->length = length;
+    *out = AML_STRING_CREATE_IN_PLACE(str, length);
     return 0;
 }
 
-uint64_t aml_computational_data_read(aml_state_t* state, aml_computational_data_t* out)
+uint64_t aml_computational_data_read(aml_state_t* state, aml_data_object_t* out)
 {
     aml_value_t value;
     if (aml_value_peek_no_ext(state, &value) == ERR)
@@ -221,9 +220,10 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_computational_data_
         {
             return ERR;
         }
-        out->type = AML_DATA_INTEGER;
-        out->integer = byte;
-        out->meta.bitWidth = 8;
+        if (aml_data_object_init_integer(out, byte, 8) == ERR)
+        {
+            return ERR;
+        }
         return 0;
     }
     case AML_WORD_PREFIX:
@@ -233,9 +233,10 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_computational_data_
         {
             return ERR;
         }
-        out->type = AML_DATA_INTEGER;
-        out->integer = word;
-        out->meta.bitWidth = 16;
+        if (aml_data_object_init_integer(out, word, 16) == ERR)
+        {
+            return ERR;
+        }
         return 0;
     }
     case AML_DWORD_PREFIX:
@@ -245,9 +246,10 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_computational_data_
         {
             return ERR;
         }
-        out->type = AML_DATA_INTEGER;
-        out->integer = dword;
-        out->meta.bitWidth = 32;
+        if (aml_data_object_init_integer(out, dword, 32) == ERR)
+        {
+            return ERR;
+        }
         return 0;
     }
     case AML_QWORD_PREFIX:
@@ -257,14 +259,26 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_computational_data_
         {
             return ERR;
         }
-        out->type = AML_DATA_INTEGER;
-        out->integer = qword;
-        out->meta.bitWidth = 64;
+        if (aml_data_object_init_integer(out, qword, 64) == ERR)
+        {
+            return ERR;
+        }
         return 0;
     }
     case AML_STRING_PREFIX:
-        out->type = AML_DATA_STRING;
-        return aml_string_read(state, &out->string);
+    {
+        aml_string_t str;
+        if (aml_string_read(state, &str) == ERR)
+        {
+            return ERR;
+        }
+
+        if (aml_data_object_init_string(out, &str) == ERR)
+        {
+            return ERR;
+        }
+        return 0;
+    }
     case AML_ZERO_OP:
     case AML_ONE_OP:
     case AML_ONES_OP:
@@ -275,14 +289,25 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_computational_data_
         {
             return ERR;
         }
-        out->type = AML_DATA_INTEGER;
-        out->integer = constObj;
-        out->meta.bitWidth = 64;
+        if (aml_data_object_init_integer(out, constObj, 64) == ERR)
+        {
+            return ERR;
+        }
         return 0;
     }
     case AML_BUFFER_OP:
-        out->type = AML_DATA_BUFFER;
-        return aml_def_buffer_read(state, &out->buffer);
+    {
+        aml_buffer_t buffer;
+        if (aml_def_buffer_read(state, &buffer) == ERR)
+        {
+            return ERR;
+        }
+        if (aml_data_object_init_buffer(out, &buffer) == ERR)
+        {
+            return ERR;
+        }
+        return 0;
+    }
     default:
         AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
         errno = ENOSYS;
@@ -295,7 +320,7 @@ uint64_t aml_num_elements_read(aml_state_t* state, aml_num_elements_t* out)
     return aml_byte_data_read(state, out);
 }
 
-uint64_t aml_package_element_read(aml_state_t* state, aml_package_element_t* out)
+uint64_t aml_package_element_read(aml_state_t* state, aml_data_object_t* out)
 {
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
@@ -305,8 +330,17 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_package_element_t* out
 
     if (value.props->type == AML_VALUE_TYPE_NAME)
     {
-        out->type = AML_DATA_NAME_STRING;
-        return aml_name_string_read(state, &out->nameString);
+        aml_name_string_t nameString;
+        if (aml_name_string_read(state, &nameString) == ERR)
+        {
+            return ERR;
+        }
+
+        if (aml_data_object_init_name_string(out, &nameString) == ERR)
+        {
+            return ERR;
+        }
+        return 0;
     }
     else
     {
@@ -316,7 +350,7 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_package_element_t* out
 
 uint64_t aml_package_element_list_read(aml_state_t* state, aml_data_object_t** out, aml_num_elements_t numElements)
 {
-    aml_package_element_t* elements = heap_alloc(sizeof(aml_data_object_t) * numElements, HEAP_NONE);
+    aml_data_object_t* elements = heap_alloc(sizeof(aml_data_object_t) * numElements, HEAP_NONE);
     if (elements == NULL)
     {
         return ERR;
@@ -328,10 +362,7 @@ uint64_t aml_package_element_list_read(aml_state_t* state, aml_data_object_t** o
         {
             for (uint64_t j = 0; j < i; j++)
             {
-                if (elements[j].type == AML_DATA_PACKAGE)
-                {
-                    aml_package_free(&elements[j].package);
-                }
+                aml_data_object_deinit(&elements[j]);
             }
             heap_free(elements);
             return ERR;
@@ -364,16 +395,19 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_package_t* out)
         return ERR;
     }
 
-    if (aml_num_elements_read(state, &out->numElements) == ERR)
+    aml_num_elements_t numElements;
+    if (aml_num_elements_read(state, &numElements) == ERR)
     {
         return ERR;
     }
 
-    if (aml_package_element_list_read(state, &out->elements, out->numElements) == ERR)
+    aml_data_object_t* elements;
+    if (aml_package_element_list_read(state, &elements, numElements) == ERR)
     {
         return ERR;
     }
 
+    *out = AML_PACKAGE_CREATE_IN_PLACE(elements, numElements);
     return 0;
 }
 
@@ -388,8 +422,19 @@ uint64_t aml_data_object_read(aml_state_t* state, aml_data_object_t* out)
     switch (value.num)
     {
     case AML_PACKAGE_OP:
-        out->type = AML_DATA_PACKAGE;
-        return aml_def_package_read(state, &out->package);
+    {
+        aml_package_t package;
+        if (aml_def_package_read(state, &package) == ERR)
+        {
+            return ERR;
+        }
+
+        if (aml_data_object_init_package(out, &package) == ERR)
+        {
+            return ERR;
+        }
+        return 0;
+    }
     case AML_VAR_PACKAGE_OP:
         AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
         errno = ENOSYS;
@@ -404,21 +449,4 @@ uint64_t aml_data_ref_object_read(aml_state_t* state, aml_data_object_t* out)
     // TODO: Implement ObjectReference handling
 
     return aml_data_object_read(state, out);
-}
-
-void aml_package_free(aml_package_t* package)
-{
-    if (package->elements != NULL)
-    {
-        for (uint64_t i = 0; i < package->numElements; i++)
-        {
-            if (package->elements[i].type == AML_DATA_PACKAGE)
-            {
-                aml_package_free(&package->elements[i].package);
-            }
-        }
-        heap_free(package->elements);
-        package->elements = NULL;
-        package->numElements = 0;
-    }
 }
