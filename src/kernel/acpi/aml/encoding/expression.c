@@ -1,9 +1,9 @@
 #include "expression.h"
 
+#include "acpi/aml/aml.h"
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_value.h"
-#include "acpi/aml/runtime/evaluate.h"
 #include "arg.h"
 #include "package_length.h"
 #include "term.h"

@@ -84,6 +84,8 @@ uint64_t aml_term_arg_list_read(aml_state_t* state, aml_node_t* node, uint8_t ar
  */
 uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
 
+//uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
 /**
  * @brief Reads an ExpressionOpcode structure from the AML byte stream.
  *

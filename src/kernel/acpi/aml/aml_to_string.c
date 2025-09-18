@@ -10,6 +10,14 @@ const char* aml_node_type_to_string(aml_node_type_t type)
         return "None";
     case AML_NODE_PREDEFINED:
         return "Predefined";
+    case AML_NODE_PREDEFINED_GL:
+        return "Predefined_GL";
+    case AML_NODE_PREDEFINED_OS:
+        return "Predefined_OS";
+    case AML_NODE_PREDEFINED_OSI:
+        return "Predefined_OSI";
+    case AML_NODE_PREDEFINED_REV:
+        return "Predefined_REV";
     case AML_NODE_DEVICE:
         return "Device";
     case AML_NODE_PROCESSOR:

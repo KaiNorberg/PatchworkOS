@@ -1,15 +1,11 @@
 #include "acpi.h"
 
 #include "aml/aml.h"
-#include "aml/runtime/evaluate.h"
-#include "aml/runtime/store.h"
 #include "log/log.h"
 #include "log/panic.h"
-#include "mem/heap.h"
 #include "mem/pmm.h"
 #include "tables.h"
 
-#include <assert.h>
 #include <boot/boot_info.h>
 #include <string.h>
 

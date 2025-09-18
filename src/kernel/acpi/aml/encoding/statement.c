@@ -78,7 +78,8 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    // The end of the If statement, the "Else" part is not included in this length, see section 5.4.19 figure 5.17 of the ACPI spec.
+    // The end of the If statement, the "Else" part is not included in this length, see section 5.4.19 figure 5.17 of
+    // the ACPI spec.
     aml_address_t end = start + pkgLength;
 
     aml_data_object_t predicate;

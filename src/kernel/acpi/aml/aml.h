@@ -57,6 +57,10 @@ typedef enum
 {
     AML_NODE_NONE = 0,
     AML_NODE_PREDEFINED,
+    AML_NODE_PREDEFINED_GL,
+    AML_NODE_PREDEFINED_OS,
+    AML_NODE_PREDEFINED_OSI,
+    AML_NODE_PREDEFINED_REV,
     AML_NODE_DEVICE,
     AML_NODE_PROCESSOR,
     AML_NODE_THERMAL_ZONE,
@@ -150,6 +154,52 @@ uint64_t aml_init(void);
 uint64_t aml_parse(const void* data, uint64_t size);
 
 /**
+ * @brief Evaluate a node and retrieve the result.
+ *
+ * This functions behaviour depends on the node type, for example, if the node is a method it will execute the method
+ * and retrieve the result, if the node is a field it will read the value stored in the field, etc.
+ *
+ * It is also responsible for potentialy acquiring the global lock, depending on the behaviour of the node.
+ *
+ * Note that args->argCount should always be zero for non method nodes, and if it is not zero an error will be returned.
+ *
+ * @param node The node to evaluate.
+ * @param out Pointer to the buffer where the result of the evaluation will be stored.
+ * @param args Pointer to the argument list, can be `NULL` if no arguments are to be passed.
+ * @return On success, 0. On error, `ERR` and `errno` is set.
+ */
+uint64_t aml_evaluate(aml_node_t* node, aml_data_object_t* out, aml_term_arg_list_t* args);
+
+/**
+ * @brief Store a data object in a node.
+ *
+ * @param node The node to store the data object in.
+ * @param object The data object to store.
+ * @return On success, 0. On error, `ERR` and `errno` is set.
+ */
+uint64_t aml_store(aml_node_t* node, aml_data_object_t* object);
+
+/**
+ * @brief Compare two ACPI names for equality.
+ *
+ * Compares two AML names, ignoring trailing '_' characters.
+ *
+ * @param s1 Pointer to the first name.
+ * @param s2 Pointer to the second name.
+ * @return true if the names are equal, false otherwise.
+ */
+bool aml_is_name_equal(const char* s1, const char* s2);
+
+/**
+ * @brief Find a child node with the given name.
+ *
+ * @param parent Pointer to the parent node.
+ * @param name Name of the child node to find, must be `AML_NAME_LENGTH` chars long.
+ * @return On success, a pointer to the found child node. On failure, `NULL` and `errno` is set.
+ */
+aml_node_t* aml_node_find_child(aml_node_t* parent, const char* name);
+
+/**
  * @brief Add a new node to the ACPI namespace.
  *
  * @param parent Pointer to the parent node, can be `NULL`.
@@ -168,15 +218,6 @@ aml_node_t* aml_node_add(aml_node_t* parent, const char* name, aml_node_type_t t
  * @return aml_node_t* On success, a pointer to the new node. On error, `NULL` and `errno` is set.
  */
 aml_node_t* aml_node_add_at_name_string(aml_name_string_t* string, aml_node_t* start, aml_node_type_t type);
-
-/**
- * @brief Find a child node with the given name.
- *
- * @param parent Pointer to the parent node.
- * @param name Name of the child node to find, must be `AML_NAME_LENGTH` chars long.
- * @return On success, a pointer to the found child node. On failure, `NULL` and `errno` is set.
- */
-aml_node_t* aml_node_find_child(aml_node_t* parent, const char* name);
 
 /**
  * @brief Walks the ACPI namespace tree to find the node corresponding to the given NameString.
