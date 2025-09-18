@@ -9,6 +9,11 @@
  */
 
 /**
+ * @brief Represents a size in bits within an opregion.
+ */
+typedef uint64_t aml_bit_size_t;
+
+/**
  * @brief ACPI AML ByteData structure.
  * @typedef aml_byte_data_t
  */

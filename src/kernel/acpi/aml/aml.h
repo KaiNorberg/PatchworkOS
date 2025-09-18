@@ -81,7 +81,7 @@ typedef struct aml_node
     aml_node_type_t type;
     list_t children;
     struct aml_node* parent;
-    char name[AML_NAME_LENGTH + 1];
+    char segment[AML_NAME_LENGTH + 1];
     union {
         struct
         {
@@ -125,7 +125,7 @@ typedef struct aml_node
             aml_bit_size_t bitOffset;
             aml_bit_size_t bitSize;
         } indexField;
-    } data;
+    };
     sysfs_dir_t dir;
 } aml_node_t;
 
@@ -170,6 +170,15 @@ aml_node_t* aml_node_add(aml_node_t* parent, const char* name, aml_node_type_t t
 aml_node_t* aml_node_add_at_name_string(aml_name_string_t* string, aml_node_t* start, aml_node_type_t type);
 
 /**
+ * @brief Find a child node with the given name.
+ *
+ * @param parent Pointer to the parent node.
+ * @param name Name of the child node to find, must be `AML_NAME_LENGTH` chars long.
+ * @return On success, a pointer to the found child node. On failure, `NULL` and `errno` is set.
+ */
+aml_node_t* aml_node_find_child(aml_node_t* parent, const char* name);
+
+/**
  * @brief Walks the ACPI namespace tree to find the node corresponding to the given NameString.
  *
  * @param nameString The NameString to search for.
@@ -177,6 +186,19 @@ aml_node_t* aml_node_add_at_name_string(aml_name_string_t* string, aml_node_t* s
  * @return On success, a pointer to the found node. On error, `NULL` and `errno` is set.
  */
 aml_node_t* aml_node_find(const aml_name_string_t* nameString, aml_node_t* start);
+
+/**
+ * @brief Walks the ACPI namespace tree to find the node corresponding to the given path.
+ *
+ * The path is a null-terminated string with segments separated by dots (e.g., "DEV0.SUB0.METH").
+ * A leading backslash indicates an absolute path from the root (e.g., "\DEV0.SUB0.METH").
+ * A leading caret indicates a relative path from the start node's parent (e.g., "^SUB0.METH").
+ *
+ * @param path The path string to search for.
+ * @param start The node to start the search from, or `NULL` to start from the root.
+ * @return On success, a pointer to the found node. On error, `NULL` and `errno` is set.
+ */
+aml_node_t* aml_node_find_by_path(const char* path, aml_node_t* start);
 
 /**
  * @brief Get the root node of the ACPI namespace.

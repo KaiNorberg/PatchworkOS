@@ -20,7 +20,7 @@ uint64_t aml_evaluate(aml_node_t* node, aml_data_object_t* out, aml_term_arg_lis
     if (node->type != AML_NODE_METHOD && args != NULL && args->count != 0)
     {
         LOG_ERR("attempted to pass %d arguments to non-method node '%.*s' of type '%s'\n",
-            args == NULL ? 0 : args->count, AML_NAME_LENGTH, node->name, aml_node_type_to_string(node->type));
+            args == NULL ? 0 : args->count, AML_NAME_LENGTH, node->segment, aml_node_type_to_string(node->type));
         errno = EILSEQ;
         return ERR;
     }
@@ -28,7 +28,7 @@ uint64_t aml_evaluate(aml_node_t* node, aml_data_object_t* out, aml_term_arg_lis
     bool mutexAcquired = false;
     if (aml_should_acquire_global_mutex(node))
     {
-        mutex_acquire(&node->data.mutex.mutex);
+        mutex_acquire(&node->mutex.mutex);
         mutexAcquired = true;
     }
 
@@ -37,7 +37,7 @@ uint64_t aml_evaluate(aml_node_t* node, aml_data_object_t* out, aml_term_arg_lis
     {
     case AML_NODE_NAME: // Section 19.6.90
     {
-        memcpy(out, &node->data.name.object, sizeof(aml_data_object_t));
+        memcpy(out, &node->name.object, sizeof(aml_data_object_t));
         result = 0;
     }
     break;
@@ -50,7 +50,7 @@ uint64_t aml_evaluate(aml_node_t* node, aml_data_object_t* out, aml_term_arg_lis
     break;
     default:
     {
-        LOG_ERR("unimplemented evaluation of node '%.*s' of type '%s'\n", AML_NAME_LENGTH, node->name,
+        LOG_ERR("unimplemented evaluation of node '%.*s' of type '%s'\n", AML_NAME_LENGTH, node->segment,
             aml_node_type_to_string(node->type));
         errno = ENOSYS;
         result = ERR;
@@ -60,7 +60,7 @@ uint64_t aml_evaluate(aml_node_t* node, aml_data_object_t* out, aml_term_arg_lis
 
     if (mutexAcquired)
     {
-        mutex_release(&node->data.mutex.mutex);
+        mutex_release(&node->mutex.mutex);
     }
     return result;
 }

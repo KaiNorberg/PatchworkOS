@@ -106,11 +106,6 @@ typedef enum
 } aml_field_list_type_t;
 
 /**
- * @brief Represents a size in bits within an opregion.
- */
-typedef uint64_t aml_bit_size_t;
-
-/**
  * @brief Context passed to lower functions by `aml_field_list_read()`.
  * @struct aml_field_list_ctx_t
  */

@@ -20,6 +20,8 @@
  * This functions behaviour depends on the node type, for example, if the node is a method it will execute the method
  * and retrieve the result, if the node is a field it will read the value stored in the field, etc.
  *
+ * It is also responsible for potentialy acquiring the global lock, depending on the behaviour of the node.
+ *
  * Note that argCount should always be zero for non method nodes, and if it is not zero an error will be returned.
  *
  * @param node The node to evaluate.

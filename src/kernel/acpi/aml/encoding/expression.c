@@ -122,7 +122,7 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_da
     uint8_t argAmount = 0;
     if (target->type == AML_NODE_METHOD)
     {
-        argAmount = target->data.method.flags.argCount;
+        argAmount = target->method.flags.argCount;
     }
 
     aml_term_arg_list_t args = {0};

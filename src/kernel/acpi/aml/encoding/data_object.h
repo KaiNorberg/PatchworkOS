@@ -248,4 +248,18 @@ static inline void aml_data_object_deinit(aml_data_object_t* obj)
     obj->type = AML_DATA_NONE;
 }
 
+/**
+ * @brief Puts bits into a DataObject at the specified bit offset and size.
+ *
+ * Only supports Integer and Buffer types.
+ *
+ * @param obj Pointer to the DataObject to modify.
+ * @param value The value to put into the DataObject.
+ * @param bitOffset The bit offset within the DataObject where the value will be placed.
+ * @param bitSize The number of bits to write from the value.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_data_object_put_bits_at(aml_data_object_t* obj, uint64_t value, aml_bit_size_t bitOffset,
+    aml_bit_size_t bitSize);
+
 /** @} */

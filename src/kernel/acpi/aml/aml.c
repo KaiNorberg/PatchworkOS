@@ -80,8 +80,8 @@ aml_node_t* aml_node_add(aml_node_t* parent, const char* name, aml_node_type_t t
     list_entry_init(&node->entry);
     node->type = type;
     list_init(&node->children);
-    memcpy(node->name, name, AML_NAME_LENGTH);
-    node->name[AML_NAME_LENGTH] = '\0';
+    memcpy(node->segment, name, AML_NAME_LENGTH);
+    node->segment[AML_NAME_LENGTH] = '\0';
 
     if (parent != NULL)
     {
@@ -90,7 +90,7 @@ aml_node_t* aml_node_add(aml_node_t* parent, const char* name, aml_node_type_t t
             assert(root == parent);
         }
 
-        if (sysfs_dir_init(&node->dir, &parent->dir, node->name, NULL, NULL) == ERR)
+        if (sysfs_dir_init(&node->dir, &parent->dir, node->segment, NULL, NULL) == ERR)
         {
             LOG_ERR("failed to create sysfs directory for aml node '%.*s'\n", AML_NAME_LENGTH, name);
             heap_free(node);
@@ -103,7 +103,7 @@ aml_node_t* aml_node_add(aml_node_t* parent, const char* name, aml_node_type_t t
     else
     {
         assert(root == NULL);
-        assert(strcmp(node->name, AML_ROOT_NAME) == 0);
+        assert(strcmp(node->segment, AML_ROOT_NAME) == 0);
 
         if (sysfs_dir_init(&node->dir, acpi_get_sysfs_root(), "namespace", NULL, NULL) == ERR)
         {
@@ -149,7 +149,7 @@ aml_node_t* aml_node_add_at_name_string(aml_name_string_t* string, aml_node_t* s
         aml_node_t* child = NULL;
         LIST_FOR_EACH(child, &parentNode->children, entry)
         {
-            if (memcmp(child->name, segment->name, AML_NAME_LENGTH) == 0)
+            if (memcmp(child->segment, segment->name, AML_NAME_LENGTH) == 0)
             {
                 found = true;
                 break;
@@ -176,47 +176,131 @@ aml_node_t* aml_node_add_at_name_string(aml_name_string_t* string, aml_node_t* s
     return newNode;
 }
 
+aml_node_t* aml_node_find_child(aml_node_t* parent, const char* name)
+{
+    if (parent == NULL || name == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    aml_node_t* child = NULL;
+    LIST_FOR_EACH(child, &parent->children, entry)
+    {
+        if (memcmp(child->segment, name, AML_NAME_LENGTH) == 0)
+        {
+            return child;
+        }
+    }
+
+    errno = ENOENT;
+    return NULL;
+}
+
 aml_node_t* aml_node_find(const aml_name_string_t* nameString, aml_node_t* start)
 {
-    if (start == NULL || nameString->rootChar.present)
+    aml_node_t* current = start;
+    if (current == NULL || nameString->rootChar.present)
     {
-        start = aml_root_get();
+        current = aml_root_get();
     }
 
     for (uint64_t i = 0; i < nameString->prefixPath.depth; i++)
     {
-        start = start->parent;
-        if (start == NULL)
+        current = current->parent;
+        if (current == NULL)
         {
             errno = ENOENT;
             return NULL;
         }
     }
 
-    aml_node_t* found = start;
     for (uint64_t i = 0; i < nameString->namePath.segmentCount; i++)
     {
         const aml_name_seg_t* segment = &nameString->namePath.segments[i];
-        bool foundChild = false;
-        aml_node_t* child = NULL;
-        LIST_FOR_EACH(child, &found->children, entry)
+        current = aml_node_find_child(current, segment->name);
+        if (current == NULL)
         {
-            if (memcmp(child->name, segment->name, AML_NAME_LENGTH) == 0)
-            {
-                foundChild = true;
-                break;
-            }
-        }
-
-        if (child == NULL || !foundChild)
-        {
-            errno = ENOENT;
             return NULL;
         }
-        found = child;
     }
 
-    return found;
+    return current;
+}
+
+aml_node_t* aml_node_find_by_path(const char* path, aml_node_t* start)
+{
+    if (path == NULL || path[0] == '\0')
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    const char* ptr = path;
+    switch (*ptr)
+    {
+    case AML_ROOT_CHAR:
+        start = aml_root_get();
+        ptr++;
+        break;
+    case AML_PARENT_PREFIX_CHAR:
+        if (start == NULL)
+        {
+            errno = EINVAL;
+            return NULL;
+        }
+        while (*ptr == AML_PARENT_PREFIX_CHAR)
+        {
+            start = start->parent;
+            if (start == NULL)
+            {
+                errno = ENOENT;
+                return NULL;
+            }
+            ptr++;
+        }
+        break;
+    default:
+        if (start == NULL)
+        {
+            start = aml_root_get();
+        }
+        break;
+    }
+
+    aml_node_t* node = start;
+    while (*ptr != '\0')
+    {
+        const char* segmentStart = ptr;
+        while (*ptr != '.' && *ptr != '\0')
+        {
+            ptr++;
+        }
+        size_t segmentLength = ptr - segmentStart;
+        if (segmentLength != AML_NAME_LENGTH)
+        {
+            errno = EILSEQ;
+            return NULL;
+        }
+
+        char segment[AML_NAME_LENGTH + 1];
+        memcpy(segment, segmentStart, AML_NAME_LENGTH);
+        segment[AML_NAME_LENGTH] = '\0';
+
+        aml_node_t* child = aml_node_find_child(node, segment);
+        if (child == NULL)
+        {
+            return NULL;
+        }
+        node = child;
+
+        if (*ptr == '.')
+        {
+            ptr++;
+        }
+    }
+
+    return node;
 }
 
 aml_node_t* aml_root_get(void)
@@ -246,31 +330,30 @@ void aml_print_tree(aml_node_t* node, uint32_t depth, bool isLast)
         }
     }
 
-    LOG_INFO("%.*s [%s", AML_NAME_LENGTH, node->name, aml_node_type_to_string(node->type));
+    LOG_INFO("%.*s [%s", AML_NAME_LENGTH, node->segment, aml_node_type_to_string(node->type));
     switch (node->type)
     {
     case AML_NODE_OPREGION:
-        LOG_INFO(": space=%s, offset=0x%x, length=0x%x", aml_region_space_to_string(node->data.opregion.space),
-            node->data.opregion.offset, node->data.opregion.length);
+        LOG_INFO(": space=%s, offset=0x%x, length=0x%x", aml_region_space_to_string(node->opregion.space),
+            node->opregion.offset, node->opregion.length);
         break;
     case AML_NODE_FIELD:
         LOG_INFO(": accessType=%s, lockRule=%s, updateRule=%s, offset=0x%x, size=%llu",
-            aml_access_type_to_string(node->data.field.flags.accessType),
-            aml_lock_rule_to_string(node->data.field.flags.lockRule),
-            aml_update_rule_to_string(node->data.field.flags.updateRule), node->data.field.bitOffset,
-            node->data.field.bitSize);
+            aml_access_type_to_string(node->field.flags.accessType),
+            aml_lock_rule_to_string(node->field.flags.lockRule),
+            aml_update_rule_to_string(node->field.flags.updateRule), node->field.bitOffset, node->field.bitSize);
         break;
     case AML_NODE_METHOD:
-        LOG_INFO(": argCount=%u, serialized=%s, syncLevel=%d, start=0x%x, end=0x%x", node->data.method.flags.argCount,
-            node->data.method.flags.isSerialized ? "true" : "false", node->data.method.flags.syncLevel,
-            node->data.method.start, node->data.method.end);
+        LOG_INFO(": argCount=%u, serialized=%s, syncLevel=%d, start=0x%x, end=0x%x", node->method.flags.argCount,
+            node->method.flags.isSerialized ? "true" : "false", node->method.flags.syncLevel, node->method.start,
+            node->method.end);
         break;
     case AML_NODE_NAME:
-        LOG_INFO(": object=%s, dataType=%s", aml_data_object_to_string(&node->data.name.object),
-            aml_data_type_to_string(node->data.name.object.type));
+        LOG_INFO(": object=%s, dataType=%s", aml_data_object_to_string(&node->name.object),
+            aml_data_type_to_string(node->name.object.type));
         break;
     case AML_NODE_MUTEX:
-        LOG_INFO(": syncLevel=%d", node->data.mutex.syncLevel);
+        LOG_INFO(": syncLevel=%d", node->mutex.syncLevel);
         break;
     default:
         break;

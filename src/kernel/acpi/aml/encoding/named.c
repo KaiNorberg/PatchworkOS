@@ -101,9 +101,9 @@ uint64_t aml_def_op_region_read(aml_state_t* state, aml_node_t* node)
     {
         return ERR;
     }
-    newNode->data.opregion.space = regionSpace;
-    newNode->data.opregion.offset = regionOffset;
-    newNode->data.opregion.length = regionLen;
+    newNode->opregion.space = regionSpace;
+    newNode->opregion.offset = regionOffset;
+    newNode->opregion.length = regionLen;
 
     return 0;
 }
@@ -170,10 +170,10 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
         {
             return ERR;
         }
-        newNode->data.field.opregion = ctx->normal.opregion;
-        newNode->data.field.flags = ctx->flags;
-        newNode->data.field.bitOffset = ctx->currentOffset;
-        newNode->data.field.bitSize = pkgLength;
+        newNode->field.opregion = ctx->normal.opregion;
+        newNode->field.flags = ctx->flags;
+        newNode->field.bitOffset = ctx->currentOffset;
+        newNode->field.bitSize = pkgLength;
     }
     break;
     case AML_FIELD_LIST_TYPE_INDEX:
@@ -204,11 +204,11 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
         {
             return ERR;
         }
-        newNode->data.indexField.indexNode = ctx->index.indexNode;
-        newNode->data.indexField.dataNode = ctx->index.dataNode;
-        newNode->data.indexField.flags = ctx->flags;
-        newNode->data.indexField.bitOffset = ctx->currentOffset;
-        newNode->data.indexField.bitSize = pkgLength;
+        newNode->indexField.indexNode = ctx->index.indexNode;
+        newNode->indexField.dataNode = ctx->index.dataNode;
+        newNode->indexField.flags = ctx->flags;
+        newNode->indexField.bitOffset = ctx->currentOffset;
+        newNode->indexField.bitSize = pkgLength;
     }
     break;
     default:
@@ -481,9 +481,9 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    newNode->data.method.flags = methodFlags;
-    newNode->data.method.start = state->pos;
-    newNode->data.method.end = end;
+    newNode->method.flags = methodFlags;
+    newNode->method.start = state->pos;
+    newNode->method.end = end;
 
     // We are only defining the method, not executing it, so we skip its body, and only parse it when it is called.
     state->pos = end;
@@ -582,8 +582,8 @@ uint64_t aml_def_mutex_read(aml_state_t* state, aml_node_t* node)
     {
         return ERR;
     }
-    mutex_init(&newNode->data.mutex.mutex);
-    newNode->data.mutex.syncLevel = syncFlags;
+    mutex_init(&newNode->mutex.mutex);
+    newNode->mutex.syncLevel = syncFlags;
 
     return 0;
 }
@@ -658,9 +658,9 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
     newNode->type = AML_NODE_PROCESSOR;
-    newNode->data.processor.procId = procId;
-    newNode->data.processor.pblkAddr = pblkAddr;
-    newNode->data.processor.pblkLen = pblkLen;
+    newNode->processor.procId = procId;
+    newNode->processor.pblkAddr = pblkAddr;
+    newNode->processor.pblkLen = pblkLen;
 
     return aml_term_list_read(state, newNode, end);
 }

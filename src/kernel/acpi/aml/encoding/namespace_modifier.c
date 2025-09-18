@@ -43,7 +43,7 @@ uint64_t aml_def_name_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    if (aml_data_ref_object_read(state, &name->data.name.object) == ERR)
+    if (aml_data_ref_object_read(state, &name->name.object) == ERR)
     {
         return ERR;
     }
@@ -85,7 +85,7 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_node_t* node)
     aml_node_t* newNode = aml_node_find(&nameString, node);
     if (newNode == NULL)
     {
-        LOG_ERR("failed to walk '%s' from '%s'\n", aml_name_string_to_string(&nameString), node->name);
+        LOG_ERR("failed to walk '%s' from '%s'\n", aml_name_string_to_string(&nameString), node->segment);
         AML_DEBUG_INVALID_STRUCTURE("NameString: Could not find node");
         errno = EILSEQ;
         return ERR;

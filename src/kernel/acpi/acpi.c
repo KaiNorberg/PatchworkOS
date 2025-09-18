@@ -1,6 +1,7 @@
 #include "acpi.h"
 
 #include "aml/aml.h"
+#include "aml/runtime/evaluate.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/heap.h"
@@ -103,6 +104,27 @@ static uint64_t acpi_parse_all_aml(void)
     // For debugging, remove later
     LOG_INFO("==ACPI Namespace Tree==\n");
     aml_print_tree(aml_root_get(), 0, true);
+
+    aml_node_t* test = aml_node_find_by_path("\\_SB_.PCI0.PCIU", NULL);
+    assert(test != NULL);
+    LOG_INFO("Found node by path: %.*s\n", AML_NAME_LENGTH, test->segment);
+
+    aml_data_object_t result;
+    if (aml_evaluate(test, &result, NULL) == ERR)
+    {
+        LOG_ERR("Failed to evaluate node\n");
+        return ERR;
+    }
+
+    if (result.type != AML_DATA_INTEGER)
+    {
+        LOG_ERR("Node did not evaluate to an integer\n");
+        aml_data_object_deinit(&result);
+        return ERR;
+    }
+
+    LOG_INFO("Node evaluated to integer: %llu\n", result.integer);
+    aml_data_object_deinit(&result);
 
     return 0;
 }
