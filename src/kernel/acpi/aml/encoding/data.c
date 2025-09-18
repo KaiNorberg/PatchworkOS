@@ -348,7 +348,8 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_data_object_t* out)
     }
 }
 
-uint64_t aml_package_element_list_read(aml_state_t* state, aml_data_object_t** out, aml_num_elements_t numElements, aml_address_t end)
+uint64_t aml_package_element_list_read(aml_state_t* state, aml_data_object_t** out, aml_num_elements_t numElements,
+    aml_address_t end)
 {
     aml_data_object_t* elements = heap_alloc(sizeof(aml_data_object_t) * numElements, HEAP_NONE);
     if (elements == NULL)

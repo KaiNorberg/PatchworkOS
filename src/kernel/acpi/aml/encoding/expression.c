@@ -55,7 +55,8 @@ uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out)
 
     uint64_t availableBytes = end - state->pos;
 
-    // If the buffer size matches the end of the package then we can create the buffer in place, otherwise we have to allocate it.
+    // If the buffer size matches the end of the package then we can create the buffer in place, otherwise we have to
+    // allocate it.
     if (availableBytes == bufferSize)
     {
         *out = AML_BUFFER_CREATE_IN_PLACE((uint8_t*)(state->data + state->pos), bufferSize);

@@ -232,7 +232,8 @@ static uint64_t aml_extract_field_access_data(aml_node_t* field, aml_field_acces
 }
 
 static uint64_t aml_generic_field_read_at(aml_field_access_data_t* accessData, uint64_t address,
-    aml_bit_size_t accessSize, aml_bit_size_t inAccessOffset, aml_bit_size_t bitsToAccess, uint64_t byteOffset, uint64_t* out)
+    aml_bit_size_t accessSize, aml_bit_size_t inAccessOffset, aml_bit_size_t bitsToAccess, uint64_t byteOffset,
+    uint64_t* out)
 {
     switch (accessData->type)
     {
@@ -279,7 +280,8 @@ static uint64_t aml_generic_field_read_at(aml_field_access_data_t* accessData, u
 }
 
 static uint64_t aml_generic_field_write_at(aml_field_access_data_t* accessData, uint64_t address,
-    aml_bit_size_t accessSize, aml_bit_size_t inAccessOffset, aml_bit_size_t bitsToAccess, uint64_t byteOffset, uint64_t value)
+    aml_bit_size_t accessSize, aml_bit_size_t inAccessOffset, aml_bit_size_t bitsToAccess, uint64_t byteOffset,
+    uint64_t value)
 {
     switch (accessData->type)
     {
@@ -355,8 +357,8 @@ static uint64_t aml_generic_field_access(aml_node_t* field, aml_data_object_t* d
         case AML_ACCESS_READ:
         {
             uint64_t value;
-            if (aml_generic_field_read_at(&accessData, address, accessSize, inAccessOffset, bitsToAccess, byteOffset, &value) ==
-                ERR)
+            if (aml_generic_field_read_at(&accessData, address, accessSize, inAccessOffset, bitsToAccess, byteOffset,
+                    &value) == ERR)
             {
                 return ERR;
             }
@@ -376,7 +378,8 @@ static uint64_t aml_generic_field_access(aml_node_t* field, aml_data_object_t* d
             {
             case AML_UPDATE_RULE_PRESERVE:
             {
-                if (aml_generic_field_read_at(&accessData, address, accessSize, inAccessOffset, accessSize, byteOffset, &value) == ERR)
+                if (aml_generic_field_read_at(&accessData, address, accessSize, inAccessOffset, accessSize, byteOffset,
+                        &value) == ERR)
                 {
                     return ERR;
                 }
@@ -404,8 +407,8 @@ static uint64_t aml_generic_field_access(aml_node_t* field, aml_data_object_t* d
             }
             value |= (newValue << inAccessOffset) & mask;
 
-            if (aml_generic_field_write_at(&accessData, address, accessSize, inAccessOffset, bitsToAccess, byteOffset, value) ==
-                ERR)
+            if (aml_generic_field_write_at(&accessData, address, accessSize, inAccessOffset, bitsToAccess, byteOffset,
+                    value) == ERR)
             {
                 return ERR;
             }

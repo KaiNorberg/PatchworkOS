@@ -27,7 +27,8 @@ void hpet_init(void)
     }
     period = hpet_read(HPET_GENERAL_CAPABILITIES) >> HPET_COUNTER_CLOCK_OFFSET;
 
-    LOG_INFO("hpet at phys=0x%016lx virt=0x%016lx period=%lufs creatorID=%llu\n", hpet->address, address, period / 1000000ULL, hpet->header.creatorID);
+    LOG_INFO("hpet at phys=0x%016lx virt=0x%016lx period=%lufs creatorID=%llu\n", hpet->address, address,
+        period / 1000000ULL, hpet->header.creatorID);
 
     hpet_reset_counter();
 }

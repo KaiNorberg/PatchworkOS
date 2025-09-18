@@ -182,7 +182,8 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_data_object_t* out);
  * @param end The address in the AML stream where the PackageElementList ends.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_package_element_list_read(aml_state_t* state, aml_data_object_t** out, aml_num_elements_t numElements, aml_address_t end);
+uint64_t aml_package_element_list_read(aml_state_t* state, aml_data_object_t** out, aml_num_elements_t numElements,
+    aml_address_t end);
 
 /**
  * @brief Reads a DefPackage structure from the AML byte stream.

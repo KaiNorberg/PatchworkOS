@@ -7,6 +7,7 @@
 #include "expression.h"
 #include "named.h"
 #include "namespace_modifier.h"
+#include "statement.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -84,9 +85,7 @@ uint64_t aml_termobj_read(aml_state_t* state, aml_node_t* node)
     switch (value.props->type)
     {
     case AML_VALUE_TYPE_STATEMENT:
-        AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
-        errno = ENOSYS;
-        return ERR;
+        return aml_statement_opcode_read(state, node);
     case AML_VALUE_TYPE_EXPRESSION:
         AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
         errno = ENOSYS;
