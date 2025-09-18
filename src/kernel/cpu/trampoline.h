@@ -2,6 +2,19 @@
 
 #include "smp.h"
 
+/**
+ * @brief Trampoline for CPU initialization
+ * @defgroup kernel_cpu_trampoline Trampoline
+ * @ingroup kernel_cpu
+ *
+ * The trampoline is a small piece of code used during the initialization of other CPUs in a multiprocessor system.
+ *
+ * The trampoline code must be position-independent and fit within a single memory page, this is why we do all the
+ * weird offset stuff.
+ *
+ * @{
+ */
+
 #define TRAMPOLINE_BASE_ADDR 0x8000
 #define TRAMPOLINE_DATA_OFFSET 0x0F00
 
@@ -26,3 +39,5 @@ uint64_t trampoline_wait_ready(cpuid_t cpuId, clock_t timeout);
 void trampoline_signal_ready(cpuid_t cpuId);
 
 void trampoline_deinit(void);
+
+/** @} */

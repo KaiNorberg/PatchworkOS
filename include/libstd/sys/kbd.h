@@ -15,6 +15,7 @@ extern "C"
  * @ingroup libstd
  * @defgroup libstd_sys_kbd Keyboard device
  *
+ * @{
  */
 
 /**
@@ -322,3 +323,5 @@ typedef struct
 #endif
 
 #endif
+
+/** @} */

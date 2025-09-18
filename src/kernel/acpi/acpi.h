@@ -19,12 +19,10 @@
  * Take a look at this [osdev post](https://f.osdev.org/viewtopic.php?t=29070) if you want to understand how annoying
  * the ACPI spec is.
  *
- * Primary Source: [ACPI Specification Version 6.6](https://uefi.org/sites/default/files/resources/ACPI_Spec_6.6.pdf)
- *
- * Other Sources:
- * - [ACPI Specification Version 6.3](https://uefi.org/sites/default/files/resources/ACPI_Spec_6_3_A_Oct_6_2020.pdf)
- * - [ACPI Specification Version 4.0](https://uefi.org/sites/default/files/resources/ACPI_4.pdf)
- * - [lai library](https://github.com/managarm/lai)
+ * @see [ACPI Specification Version 6.6](https://uefi.org/sites/default/files/resources/ACPI_Spec_6.6.pdf)
+ * @see [ACPI Specification Version 6.3](https://uefi.org/sites/default/files/resources/ACPI_Spec_6_3_A_Oct_6_2020.pdf)
+ * @see [ACPI Specification Version 4.0](https://uefi.org/sites/default/files/resources/ACPI_4.pdf)
+ * @see [LAI Library](https://github.com/managarm/lai)
  *
  * @{
  */
@@ -32,7 +30,7 @@
 /**
  * @brief The expected value of the revision field in the RSDP structure.
  *
- * See section 5.2.5.3 of the ACPI specification for more details.
+ * @see Section 5.2.5.3 of the ACPI specification for more details.
  */
 #define RSDP_CURRENT_REVISION 2
 
@@ -40,7 +38,7 @@
  * @brief System Description Table Header
  * @struct sdt_header_t
  *
- * See section 5.2.6 of the ACPI specification for more details.
+ * @see Section 5.2.6 of the ACPI specification for more details.
  */
 typedef struct PACKED
 {
@@ -59,7 +57,7 @@ typedef struct PACKED
  * @brief Root System Description Pointer
  * @struct rsdp_t
  *
- * See section 5.2.5.3 of the ACPI specification for more details.
+ * @see Section 5.2.5.3 of the ACPI specification for more details.
  */
 typedef struct PACKED
 {
@@ -78,7 +76,7 @@ typedef struct PACKED
  * @brief Extended System Description Table
  * @struct xsdt_t
  *
- * See section 5.2.8 of the ACPI specification for more details.
+ * @see Section 5.2.8 of the ACPI specification for more details.
  */
 typedef struct PACKED
 {

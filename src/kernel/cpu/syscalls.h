@@ -6,6 +6,17 @@
 #include <assert.h>
 #include <kernel/syscalls.h>
 
+/**
+ * @brief System Calls
+ * @defgroup kernel_cpu_syscalls Syscalls
+ * @ingroup kernel_cpu
+ *
+ * System calls provide a controlled interface for user-space applications to request services from the kernel, such as
+ * file operations, process management, and inter-process communication.
+ *
+ * @{
+ */
+
 typedef struct
 {
     uint64_t kernelRsp;
@@ -45,3 +56,5 @@ void syscall_handler(trap_frame_t* trapFrame);
 bool syscall_is_pointer_valid(const void* pointer, uint64_t length);
 bool syscall_is_buffer_valid(space_t* space, const void* pointer, uint64_t length);
 bool syscall_is_string_valid(space_t* space, const char* string);
+
+/** @} */

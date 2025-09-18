@@ -6,7 +6,15 @@
 
 #include <stdint.h>
 
-// Note: The fliped order of user data and user code is needed to the sysret instruction, i have no idea why its
+/**
+ * @brief Global Descriptor Table
+ * @defgroup kernel_cpu_gdt GDT
+ * @ingroup kernel_cpu
+ *
+ * @{
+ */
+
+// Note: The fliped order of user data and user code is needed for the sysret instruction, i have no idea why its
 // designed that way.
 
 #define GDT_NULL 0x00
@@ -49,6 +57,13 @@ typedef struct PACKED
     uint32_t reserved;
 } gdt_long_entry_t;
 
+/**
+ * @brief The actual GDT structure
+ * @struct gdt_t
+ *
+ * Note that we actually only need one TTS descriptor, not one per cpu, as its only used while loading a TTS, after that
+ * its just useless.
+ */
 typedef struct PACKED
 {
     gdt_entry_t null;
@@ -66,3 +81,5 @@ void gdt_cpu_init(void);
 void gdt_load(void);
 
 void gdt_cpu_load_tss(tss_t* tss);
+
+/** @} */

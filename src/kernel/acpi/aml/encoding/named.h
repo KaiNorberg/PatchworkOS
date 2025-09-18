@@ -12,7 +12,7 @@ typedef struct aml_node aml_node_t;
  *
  * Not to be confused with "ACPI AML Name Objects Encoding".
  *
- * See section 20.2.5.2 of the ACPI specification for more details.
+ * @see Section 20.2.5.2 of the ACPI specification for more details.
  *
  * @{
  */
@@ -199,7 +199,7 @@ uint64_t aml_region_len_read(aml_state_t* state, aml_node_t* node, aml_region_le
  *
  * A DefOpRegion structure is defined as `DefOpRegion := OpRegionOp NameString RegionSpace RegionOffset RegionLen`.
  *
- * See section 19.6.100 of the ACPI specification for more details.
+ * @see Section 19.6.100 of the ACPI specification for more details.
  *
  * @param state The AML state.
  * @param node The current AML node.
@@ -246,7 +246,7 @@ uint64_t aml_field_flags_read(aml_state_t* state, aml_field_flags_t* out);
  *
  * A NamedField structure is defined as `NamedField := NameSeg PkgLength`
  *
- * See section 19.6.48 of the ACPI specification for more details about the Field Operation.
+ * @see Section 19.6.48 of the ACPI specification for more details about the Field Operation.
  *
  * @param state The AML state.
  * @param node The current AML node.
@@ -260,7 +260,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
  *
  * A ReservedField structure is defined as `ReservedField := 0x00 PkgLength`.
  *
- * See section 19.6.48 of the ACPI specification for more details about the Field Operation.
+ * @see Section 19.6.48 of the ACPI specification for more details about the Field Operation.
  *
  * @param state The AML state.
  * @param ctx The AML field list context.
@@ -274,7 +274,7 @@ uint64_t aml_reserved_field_read(aml_state_t* state, aml_field_list_ctx_t* ctx);
  * The FieldElement structure is defined as `FieldElement := NamedField | ReservedField | AccessField |
  * ExtendedAccessField | ConnectField`.
  *
- * See section 19.6.48 of the ACPI specification for more details about the Field Operation.
+ * @see Section 19.6.48 of the ACPI specification for more details about the Field Operation.
  *
  * @param state The AML state.
  * @param node The current AML node.
@@ -288,7 +288,7 @@ uint64_t aml_field_element_read(aml_state_t* state, aml_node_t* node, aml_field_
  *
  * The FieldList structure is defined as `FieldList := Nothing | <fieldelement fieldlist>`.
  *
- * See section 19.6.48 of the ACPI specification for more details about the Field Operation.
+ * @see Section 19.6.48 of the ACPI specification for more details about the Field Operation.
  *
  * @param state The AML state.
  * @param node The current AML node.
@@ -315,7 +315,7 @@ uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node);
  * The DefIndexField structure is defined as `DefIndexField := IndexFieldOp PkgLength NameString NameString FieldFlags
  * FieldList`.
  *
- * See section 19.6.64 of the ACPI specification for more details.
+ * @see Section 19.6.64 of the ACPI specification for more details.
  *
  * IndexFields can be a bit confusing, but the basic idea is that you have two fields, one for the index and one for the
  * data. The index field in this case can be thought of as a "selector", and the data field is where we find the actual
@@ -350,7 +350,7 @@ uint64_t aml_method_flags_read(aml_state_t* state, aml_method_flags_t* out);
  *
  * The DefField structure is defined as `DefMethod := MethodOp PkgLength NameString MethodFlags TermList`.
  *
- * See section 19.6.85 of the ACPI specification for more details.
+ * @see Section 19.6.85 of the ACPI specification for more details.
  *
  * @param state The AML state.
  * @param node The current AML node.
@@ -363,7 +363,7 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node);
  *
  * The DefDevice structure is defined as `DefDevice := DeviceOp PkgLength NameString TermList`.
  *
- * See section 19.6.31 of the ACPI specification for more details.
+ * @see Section 19.6.31 of the ACPI specification for more details.
  *
  * @param state The AML state.
  * @param node The current AML node.
@@ -389,7 +389,7 @@ uint64_t aml_sync_flags_read(aml_state_t* state, aml_sync_level_t* out);
  *
  * The DefMutex structure is defined as `DefMutex := MutexOp NameString SyncFlags`.
  *
- * See section 19.6.89 of the ACPI specification for more details.
+ * @see Section 19.6.89 of the ACPI specification for more details.
  *
  * @param state The AML state.
  * @param node The current AML node.
@@ -436,7 +436,7 @@ uint64_t aml_pblk_len_read(aml_state_t* state, aml_pblk_len_t* out);
  * The DefProcessor structure is defined as `DefProcessor := ProcessorOp PkgLength NameString ProcID PblkAddr PblkLen
  * TermList`.
  *
- * See section 20.2.7 of version 6.3 Errata A of the ACPI specification for more details on the grammar and
+ * @see Section 20.2.7 of version 6.3 Errata A of the ACPI specification for more details on the grammar and
  * section 19.6.108 of the same for more details about its behavior.
  *
  * @param state The AML state.

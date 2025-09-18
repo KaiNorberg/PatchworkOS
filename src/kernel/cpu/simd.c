@@ -1,6 +1,5 @@
 #include "simd.h"
 #include "cpu/smp.h"
-#include "cpuid.h"
 #include "log/log.h"
 #include "mem/pmm.h"
 
@@ -8,6 +7,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <sys/cpuid.h>
 
 static uint8_t initCtx[PAGE_SIZE] ALIGNED(64);
 

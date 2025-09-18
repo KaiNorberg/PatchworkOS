@@ -13,7 +13,7 @@
  *
  * Not to be confused with "ACPI AML Named Objects Encoding".
  *
- * See section 20.2.2 of the ACPI specification for more details.
+ * @see Section 20.2.2 of the ACPI specification for more details.
  *
  * @{
  */

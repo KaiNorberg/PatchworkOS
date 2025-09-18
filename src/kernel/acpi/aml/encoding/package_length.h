@@ -9,7 +9,7 @@
  * @defgroup kernel_acpi_aml_package_length Package Length
  * @ingroup kernel_acpi_aml
  *
- * See section 20.2.4 of the ACPI specification.
+ * @see Section 20.2.4 of the ACPI specification.
  *
  * @{
  */

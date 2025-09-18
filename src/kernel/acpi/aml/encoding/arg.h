@@ -4,10 +4,10 @@
 
 /**
  * @brief ACPI AML Arg Objecs Encoding
- * @defgroup kernel_acpi_aml Args
- * @ingroup kernel_acpi
+ * @defgroup kernel_acpi_aml_args Args
+ * @ingroup kernel_acpi_aml
  *
- * See section 20.2.6.1 of the ACPI specification for more details.
+ * @see Section 20.2.6.1 of the ACPI specification.
  *
  * @{
  */

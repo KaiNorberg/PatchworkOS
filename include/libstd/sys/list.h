@@ -21,6 +21,7 @@
  * but it is something used to often that having to implemented it for every single program in the OS is massively
  * redundant.
  *
+ * @{
  */
 
 typedef struct list list_t;
@@ -388,3 +389,5 @@ static inline list_entry_t* list_last(list_t* list)
 }
 
 #endif
+
+/** @} */

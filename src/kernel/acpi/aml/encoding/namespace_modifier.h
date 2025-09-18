@@ -12,7 +12,7 @@
  * @defgroup kernel_acpi_aml_namespace_modifier Namespace Modifier Objects
  * @ingroup kernel_acpi_aml
  *
- * See section 20.2.5.1 of the ACPI specification for more details.
+ * @see Section 20.2.5.1 of the ACPI specification for more details.
  *
  * @{
  */
@@ -22,7 +22,7 @@
  *
  * A DefName structure is defined as `DefName := NameOp NameString DataRefObject`.
  *
- * See section 19.6.90 of the ACPI specification for more details.
+ * @see Section 19.6.90 of the ACPI specification for more details.
  *
  * @param state The AML state.
  * @param node The current AML node.
@@ -35,7 +35,7 @@ uint64_t aml_def_name_read(aml_state_t* state, aml_node_t* node);
  *
  * A DefScope structure is defined as `DefScope := ScopeOp PkgLength NameString TermList`.
  *
- * See section 19.6.122 of the ACPI specification for more details.
+ * @see Section 19.6.122 of the ACPI specification for more details.
  *
  * @param state The AML state.
  * @param node The current AML node.

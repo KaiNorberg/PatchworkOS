@@ -11,7 +11,7 @@ typedef struct aml_node aml_node_t;
  * @defgroup kernel_acpi_aml_expression Expression Opcodes
  * @ingroup kernel_acpi_aml
  *
- * See section 20.2.5.4 of the ACPI specification for more details.
+ * @see Section 20.2.5.4 of the ACPI specification for more details.
  *
  * @{
  */
@@ -26,7 +26,7 @@ typedef aml_qword_data_t aml_buffer_size_t;
  *
  * A BufferSize structure is defined as `BufferSize := TermArg => Integer`.
  *
- * See section 19.6.10 of the ACPI specification for more details.
+ * @see Section 19.6.10 of the ACPI specification for more details.
  *
  * @param state The AML state.
  * @param out Pointer to the buffer where the buffer size will be stored.
@@ -39,7 +39,7 @@ uint64_t aml_buffer_size_read(aml_state_t* state, aml_buffer_size_t* out);
  *
  * The DefBuffer structure is defined as `DefBuffer := BufferOp PkgLength BufferSize ByteList`.
  *
- * See section 19.6.10 of the ACPI specification for more details.
+ * @see Section 19.6.10 of the ACPI specification for more details.
  *
  * @param state The AML state.
  * @param out Pointer to the buffer where the Buffer will be stored. This will point to a location within the AML

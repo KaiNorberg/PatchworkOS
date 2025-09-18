@@ -11,6 +11,7 @@
  * The `sys/elf.h` header defines structs and constants for ELF files used in Patchwork, note that Patchwork only
  * supports ELF files.
  *
+ * @{
  */
 
 typedef uint16_t elf_hdr_type_t;
@@ -70,7 +71,6 @@ typedef uint32_t elf_phdr_flags_t;
 
 /**
  * @brief ELF file header.
- * @ingroup libstd_sys_elf
  *
  * The `elf_hdr_t` structure stored att the begining of elf files.
  *
@@ -95,7 +95,6 @@ typedef struct
 
 /**
  * @brief ELF program header.
- * @ingroup libstd_sys_elf
  *
  * The `elf_phdr_t` structure used in ELF files to store program sections (eg,. text, data, etc).
  *
@@ -114,7 +113,6 @@ typedef struct
 
 /**
  * @brief ELF section header.
- * @ingroup libstd_sys_elf
  *
  * The `elf_shdr_t` structure used in ELF files to store information about a section.
  *
@@ -134,3 +132,5 @@ typedef struct
 } elf_shdr_t;
 
 #endif
+
+/** @} */

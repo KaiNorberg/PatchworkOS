@@ -18,7 +18,7 @@
  * the bottom of the recursive tree), but there are some exceptions, for example a ByteData object is not a value type
  * simply because it can have any value.
  *
- * See section 20.3 of the ACPI specification for more details.
+ * @see Section 20.3 of the ACPI specification for more details.
  *
  * @{
  */

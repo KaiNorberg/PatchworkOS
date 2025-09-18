@@ -42,7 +42,7 @@ typedef struct PACKED
  * @brief Fixed ACPI Description Table
  * @struct fadt_t
  *
- * See section 5.2.9 table 5.9 of the ACPI specification for more details.
+ * @see Section 5.2.9 table 5.9 of the ACPI specification for more details.
  */
 typedef struct PACKED
 {
@@ -110,7 +110,7 @@ typedef struct PACKED
 /**
  * @brief Multiple APIC Description Table flags.
  *
- * See section 5.2.12 table 5.20 of the ACPI specification for more details.
+ * @see Section 5.2.12 table 5.20 of the ACPI specification for more details.
  */
 typedef uint32_t madt_flags_t;
 
@@ -119,7 +119,7 @@ typedef uint32_t madt_flags_t;
 /**
  * @brief MADT Interrupt Controller Types.
  *
- * See section 5.2.12 table 5.21 of the ACPI specification for more details.
+ * @see Section 5.2.12 table 5.21 of the ACPI specification for more details.
  */
 typedef uint8_t madt_interrupt_controller_type_t;
 
@@ -139,7 +139,7 @@ typedef struct PACKED
 /**
  * @brief MADT Processor Local APIC flags
  *
- * See section 5.2.12.2 table 5.23 of the ACPI specification for more details.
+ * @see Section 5.2.12.2 table 5.23 of the ACPI specification for more details.
  */
 typedef uint32_t madt_processor_local_apic_flags_t;
 
@@ -150,7 +150,7 @@ typedef uint32_t madt_processor_local_apic_flags_t;
  * @brief MADT Interrupt Controller: Processor Local APIC
  * @struct madt_processor_local_apic_t
  *
- * See section 5.2.12.2 table 5.22 of the ACPI specification for more details.
+ * @see Section 5.2.12.2 table 5.22 of the ACPI specification for more details.
  */
 typedef struct PACKED
 {
@@ -164,7 +164,7 @@ typedef struct PACKED
  * @brief MADT Interrupt Controller: IO APIC
  * @struct madt_ioapic_t
  *
- * See section 5.2.12.3 table 5.24 of the ACPI specification for more details.
+ * @see Section 5.2.12.3 table 5.24 of the ACPI specification for more details.
  */
 typedef struct PACKED
 {
@@ -179,7 +179,7 @@ typedef struct PACKED
  * @brief Multiple APIC Description Table
  * @struct madt_t
  *
- * See section 5.2.12 table 5.19 of the ACPI specification for more details.
+ * @see Section 5.2.12 table 5.19 of the ACPI specification for more details.
  */
 typedef struct PACKED
 {
@@ -212,7 +212,7 @@ typedef struct PACKED
  * @brief Differentiated System Description Table
  * @struct dsdt_t
  *
- * See section 5.2.11.1 table 5.17 of the ACPI specification for more details.
+ * @see Section 5.2.11.1 table 5.17 of the ACPI specification for more details.
  */
 typedef struct PACKED
 {
@@ -231,7 +231,7 @@ typedef struct PACKED
  * @brief Secondary System Description Table
  * @struct ssdt_t
  *
- * See section 5.2.11.2 table 5.18 of the ACPI specification for more details.
+ * @see Section 5.2.11.2 table 5.18 of the ACPI specification for more details.
  */
 typedef struct PACKED
 {

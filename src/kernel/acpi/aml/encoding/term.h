@@ -11,7 +11,7 @@
  * @defgroup kernel_acpi_aml_term Term Objects
  * @ingroup kernel_acpi_aml
  *
- * See section 20.2.5 of the ACPI specification for more details.
+ * @see Section 20.2.5 of the ACPI specification for more details.
  *
  * @{
  */

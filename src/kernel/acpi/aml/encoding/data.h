@@ -12,7 +12,7 @@ typedef struct aml_data_object aml_data_object_t;
  * @defgroup kernel_acpi_aml_data Data Objects
  * @ingroup kernel_acpi_aml
  *
- * See section 20.2.3 of the ACPI specification for more details.
+ * @see Section 20.2.3 of the ACPI specification for more details.
  *
  * @{
  */
@@ -113,7 +113,7 @@ uint64_t aml_qword_const_read(aml_state_t* state, aml_qword_const_t* out);
  *
  * A ConstObj structure is defined as `ConstObj := ZeroOp | OneOp | OnesOp`.
  *
- * See sections 19.6.98, 19.6.99 and 19.6.156 for more details.
+ * @see Sections 19.6.98, 19.6.99 and 19.6.156 for more details.
  *
  * @param state The AML state.
  * @param out Pointer to the buffer where the ConstObj will be stored.
@@ -188,7 +188,7 @@ uint64_t aml_package_element_list_read(aml_state_t* state, aml_data_object_t** o
  *
  * A DefPackage structure is defined as `DefPackage := PackageOp PkgLength NumElements PackageElementList`.
  *
- * See section 19.6.102 of the ACPI specification for more details.
+ * @see Section 19.6.102 of the ACPI specification for more details.
  *
  * @param state The AML state.
  * @param out Pointer to the buffer where the Package will be stored.
