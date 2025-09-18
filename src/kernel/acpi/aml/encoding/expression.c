@@ -45,12 +45,7 @@ uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out)
         return ERR;
     }
 
-    if (pkgLength < 1)
-    {
-        AML_DEBUG_INVALID_STRUCTURE("DefBuffer: Buffer length must be at least 1");
-        errno = EILSEQ;
-        return ERR;
-    }
+    aml_address_t end = start + pkgLength;
 
     aml_buffer_size_t bufferSize;
     if (aml_buffer_size_read(state, &bufferSize) == ERR)
@@ -58,21 +53,31 @@ uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out)
         return ERR;
     }
 
-    // TODO: Im not sure why we have both pkgLength and bufferSize, but for now we just check they match. In the future
-    // if this causes an error we can figure it out from there.
+    uint64_t availableBytes = end - state->pos;
 
-    aml_address_t end = start + pkgLength;
-    if (end != state->pos + bufferSize)
+    // If the buffer size matches the end of the package then we can create the buffer in place, otherwise we have to allocate it.
+    if (availableBytes == bufferSize)
     {
-        LOG_ERR("pkgLength: %llu, bufferSize: %llu, calculated end: 0x%llx, actual end: 0x%llx\n", pkgLength,
-            bufferSize, state->pos + bufferSize, end);
-        AML_DEBUG_INVALID_STRUCTURE("DefBuffer: Mismatch between PkgLength and BufferSize, unsure if this is valid");
-        errno = ENOSYS;
+        *out = AML_BUFFER_CREATE_IN_PLACE((uint8_t*)(state->data + state->pos), bufferSize);
+        aml_address_t offset = end - state->pos;
+        aml_state_advance(state, offset);
+        return 0;
+    }
+
+    *out = AML_BUFFER_CREATE(bufferSize);
+    if (out->content == NULL)
+    {
         return ERR;
     }
 
-    *out = AML_BUFFER_CREATE_IN_PLACE((uint8_t*)(state->data + state->pos), bufferSize);
-    aml_state_advance(state, bufferSize);
+    uint64_t bytesRead = aml_state_read(state, out->content, availableBytes);
+    if (bytesRead == ERR)
+    {
+        aml_buffer_deinit(out);
+        return ERR;
+    }
+    out->length = bytesRead;
+
     return 0;
 }
 

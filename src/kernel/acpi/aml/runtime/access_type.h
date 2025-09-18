@@ -33,17 +33,4 @@
 uint64_t aml_get_access_size(aml_bit_size_t bitSize, aml_access_type_t accessType, aml_region_space_t regionSpace,
     aml_bit_size_t* out);
 
-/**
- * @brief Align a bit size down to the nearest access type boundary.
- *
- * For example, if the bits is 20 and accessSize is 8, then the aligned size will be 16 and the remainder will be 4.
- *
- * @param bits The bit size to align.
- * @param accessType The access type to align to.
- * @param out Pointer to the buffer where the aligned size will be stored.
- * @param remainder Pointer to the buffer where the remainder will be stored.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t aml_align_bits(aml_bit_size_t bits, aml_bit_size_t accessSize, aml_bit_size_t* out, aml_bit_size_t* remainder);
-
 /** @} */

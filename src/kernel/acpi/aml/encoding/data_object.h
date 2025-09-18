@@ -1,7 +1,7 @@
 #pragma once
 
-#include "acpi/aml/aml_state.h"
 #include "name.h"
+#include "mem/heap.h"
 
 #include <stdint.h>
 
@@ -50,6 +50,18 @@ typedef struct
     uint64_t capacity; // The allocated capacity of the buffer.
     bool allocated;    // Whether the content was allocated (and should be freed) or not.
 } aml_buffer_t;
+
+/**
+ * @brief Macro to create a buffer structure in place, allocating memory for the content.
+ *
+ * @param bufCap Capacity of the buffer.
+ * @return aml_buffer_t The created buffer structure.
+ */
+#define AML_BUFFER_CREATE(bufCap) \
+    (aml_buffer_t) \
+    { \
+        .content = heap_alloc(bufCap, HEAP_NONE), .length = 0, .capacity = bufCap, .allocated = true, \
+    }
 
 /**
  * @brief Macro to create a buffer structure in place, without allocating memory for the content.
@@ -256,10 +268,24 @@ static inline void aml_data_object_deinit(aml_data_object_t* obj)
  * @param obj Pointer to the DataObject to modify.
  * @param value The value to put into the DataObject.
  * @param bitOffset The bit offset within the DataObject where the value will be placed.
- * @param bitSize The number of bits to write from the value.
+ * @param bitSize The number of bits to write from the value, must be <= 64.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_data_object_put_bits_at(aml_data_object_t* obj, uint64_t value, aml_bit_size_t bitOffset,
     aml_bit_size_t bitSize);
+
+/**
+ * @brief Gets bits from a DataObject at the specified bit offset and size.
+ *
+ * Only supports Integer, Buffer and String types.
+ *
+ * @param obj Pointer to the DataObject to read from.
+ * @param bitOffset The bit offset within the DataObject where the value will be read from.
+ * @param bitSize The number of bits to read from the DataObject, must be <= 64.
+ * @param out Pointer to the buffer where the result will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_data_object_get_bits_at(aml_data_object_t* obj, aml_bit_size_t bitOffset, aml_bit_size_t bitSize,
+    uint64_t* out);
 
 /** @} */

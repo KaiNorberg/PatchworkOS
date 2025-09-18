@@ -303,6 +303,11 @@ aml_node_t* aml_node_find_by_path(const char* path, aml_node_t* start)
     return node;
 }
 
+mutex_t* aml_global_mutex_get(void)
+{
+    return &globalMutex;
+}
+
 aml_node_t* aml_root_get(void)
 {
     MUTEX_SCOPE(&globalMutex);

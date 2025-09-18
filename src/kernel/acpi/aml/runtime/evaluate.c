@@ -28,7 +28,7 @@ uint64_t aml_evaluate(aml_node_t* node, aml_data_object_t* out, aml_term_arg_lis
     bool mutexAcquired = false;
     if (aml_should_acquire_global_mutex(node))
     {
-        mutex_acquire(&node->mutex.mutex);
+        mutex_acquire_recursive(aml_global_mutex_get());
         mutexAcquired = true;
     }
 
@@ -41,11 +41,14 @@ uint64_t aml_evaluate(aml_node_t* node, aml_data_object_t* out, aml_term_arg_lis
         result = 0;
     }
     break;
-    case AML_NODE_INDEX_FIELD:
-    case AML_NODE_BANK_FIELD:
     case AML_NODE_FIELD:
     {
         result = aml_field_read(node, out);
+    }
+    break;
+    case AML_NODE_INDEX_FIELD:
+    {
+        result = aml_index_field_read(node, out);
     }
     break;
     default:
@@ -60,7 +63,7 @@ uint64_t aml_evaluate(aml_node_t* node, aml_data_object_t* out, aml_term_arg_lis
 
     if (mutexAcquired)
     {
-        mutex_release(&node->mutex.mutex);
+        mutex_release(aml_global_mutex_get());
     }
     return result;
 }

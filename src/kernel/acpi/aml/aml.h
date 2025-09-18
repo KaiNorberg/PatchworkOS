@@ -208,6 +208,13 @@ aml_node_t* aml_node_find_by_path(const char* path, aml_node_t* start);
 aml_node_t* aml_root_get(void);
 
 /**
+ * @brief Get the global AML mutex.
+ *
+ * @return mutex_t* A pointer to the global AML mutex.
+ */
+mutex_t* aml_global_mutex_get(void);
+
+/**
  * @brief Print the ACPI namespace tree for debugging purposes.
  *
  * @param node Pointer to the node to start printing from.

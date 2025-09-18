@@ -50,6 +50,18 @@ static inline uint16_t port_inw(uint16_t port)
     return ret;
 }
 
+static inline uint32_t port_inl(uint16_t port)
+{
+    uint32_t ret;
+    asm volatile("inl %1, %0" : "=a"(ret) : "Nd"(port) : "memory");
+    return ret;
+}
+
+static inline void port_outl(uint16_t port, uint32_t val)
+{
+    asm volatile("outl %0, %1" : : "a"(val), "Nd"(port) : "memory");
+}
+
 static inline void port_wait(void)
 {
     port_outb(0x80, 0);

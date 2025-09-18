@@ -188,11 +188,11 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t pageAmount, pml_fl
     else
     {
         physAddr = PML_ENSURE_LOWER_HALF(physAddr);
+        bool identityMap = false;
         if (virtAddr == NULL)
         {
+            identityMap = true;
             virtAddr = PML_LOWER_TO_HIGHER(physAddr);
-            LOG_DEBUG("map lower [0x%016lx-0x%016lx] to higher\n", physAddr,
-                (uintptr_t)physAddr + pageAmount * PAGE_SIZE);
         }
 
         if (!page_table_is_unmapped(&kernelPageTable, virtAddr, pageAmount))
@@ -206,6 +206,12 @@ void* vmm_kernel_map(void* virtAddr, void* physAddr, uint64_t pageAmount, pml_fl
         {
             errno = ENOMEM;
             return NULL;
+        }
+
+        if (identityMap)
+        {
+            LOG_DEBUG("map lower [0x%016lx-0x%016lx] to higher\n", physAddr,
+                (uintptr_t)physAddr + pageAmount * PAGE_SIZE);
         }
     }
 

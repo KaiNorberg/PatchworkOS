@@ -196,3 +196,79 @@ uint64_t aml_data_object_put_bits_at(aml_data_object_t* obj, uint64_t value, aml
 
     return 0;
 }
+
+uint64_t aml_data_object_get_bits_at(aml_data_object_t* obj, aml_bit_size_t bitOffset, aml_bit_size_t bitSize,
+    uint64_t* out)
+{
+    if (obj == NULL || out == NULL || bitSize == 0 || bitSize > 64)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    switch (obj->type)
+    {
+    case AML_DATA_INTEGER:
+        if (bitOffset + bitSize > obj->meta.bitWidth)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+
+        uint64_t mask;
+        if (bitSize == 64)
+        {
+            mask = ~UINT64_C(0);
+        }
+        else
+        {
+            mask = (UINT64_C(1) << bitSize) - 1;
+        }
+
+        *out = (obj->integer >> bitOffset) & mask;
+        break;
+    case AML_DATA_BUFFER:
+        if (bitOffset + bitSize > obj->buffer.length * 8)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+        *out = 0;
+        for (aml_bit_size_t i = 0; i < bitSize; i++) // TODO: Optimize
+        {
+            aml_bit_size_t totalBitPos = bitOffset + i;
+            aml_bit_size_t bytePos = totalBitPos / 8;
+            aml_bit_size_t bitPos = totalBitPos % 8;
+
+            if (obj->buffer.content[bytePos] & (1 << bitPos))
+            {
+                *out |= (UINT64_C(1) << i);
+            }
+        }
+        break;
+    case AML_DATA_STRING:
+        if (bitOffset + bitSize > obj->string.length * 8)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+        *out = 0;
+        for (aml_bit_size_t i = 0; i < bitSize; i++) // TODO: Optimize
+        {
+            aml_bit_size_t totalBitPos = bitOffset + i;
+            aml_bit_size_t bytePos = totalBitPos / 8;
+            aml_bit_size_t bitPos = totalBitPos % 8;
+
+            if (obj->string.content[bytePos] & (1 << bitPos))
+            {
+                *out |= (UINT64_C(1) << i);
+            }
+        }
+        break;
+    default:
+        errno = EINVAL;
+        return ERR;
+    }
+
+    return 0;
+}

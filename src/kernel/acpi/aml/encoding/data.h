@@ -178,10 +178,11 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_data_object_t* out);
  * @param state The AML state.
  * @param out Pointer to the buffer where the Package elements will be stored. This will be heap allocated by this
  * function.
- * @param numElements The number of elements to read.
+ * @param numElements The number of elements to allocate space for in the out buffer.
+ * @param end The address in the AML stream where the PackageElementList ends.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_package_element_list_read(aml_state_t* state, aml_data_object_t** out, aml_num_elements_t numElements);
+uint64_t aml_package_element_list_read(aml_state_t* state, aml_data_object_t** out, aml_num_elements_t numElements, aml_address_t end);
 
 /**
  * @brief Reads a DefPackage structure from the AML byte stream.

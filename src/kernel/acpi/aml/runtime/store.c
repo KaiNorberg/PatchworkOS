@@ -1,9 +1,9 @@
 #include "store.h"
 
-#include "access_type.h"
 #include "acpi/aml/aml_to_string.h"
 #include "lock_rule.h"
 #include "log/log.h"
+#include "opregion.h"
 
 #include <errno.h>
 
@@ -18,7 +18,7 @@ uint64_t aml_store(aml_node_t* node, aml_data_object_t* object)
     bool mutexAcquired = false;
     if (aml_should_acquire_global_mutex(node))
     {
-        mutex_acquire(&node->mutex.mutex);
+        mutex_acquire_recursive(aml_global_mutex_get());
         mutexAcquired = true;
     }
 
@@ -31,17 +31,14 @@ uint64_t aml_store(aml_node_t* node, aml_data_object_t* object)
         result = 0;
     }
     break;
-    case AML_NODE_FIELD: // Section 19.6.48
+    case AML_NODE_FIELD:
     {
-        // Genuinely just good luck, field access is a... thing.
-
-        if (object->type != AML_DATA_INTEGER)
-        {
-            LOG_ERR("attempted to store non-integer object to Field '%.*s'\n", AML_NAME_LENGTH, node->segment);
-            errno = EILSEQ;
-            result = ERR;
-            break;
-        }
+        result = aml_field_write(node, object);
+    }
+    break;
+    case AML_NODE_INDEX_FIELD:
+    {
+        result = aml_index_field_write(node, object);
     }
     break;
     default:
@@ -56,7 +53,7 @@ uint64_t aml_store(aml_node_t* node, aml_data_object_t* object)
 
     if (mutexAcquired)
     {
-        mutex_release(&node->mutex.mutex);
+        mutex_release(aml_global_mutex_get());
     }
     return result;
 }

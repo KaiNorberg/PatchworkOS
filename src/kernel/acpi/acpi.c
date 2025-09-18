@@ -2,6 +2,7 @@
 
 #include "aml/aml.h"
 #include "aml/runtime/evaluate.h"
+#include "aml/runtime/store.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/heap.h"
@@ -102,10 +103,10 @@ static uint64_t acpi_parse_all_aml(void)
     }
 
     // For debugging, remove later
-    LOG_INFO("==ACPI Namespace Tree==\n");
-    aml_print_tree(aml_root_get(), 0, true);
+    //LOG_INFO("==ACPI Namespace Tree==\n");
+    //aml_print_tree(aml_root_get(), 0, true);
 
-    aml_node_t* test = aml_node_find_by_path("\\_SB_.PCI0.PCIU", NULL);
+    /*aml_node_t* test = aml_node_find_by_path("\\_SB_.HPET.VEND", NULL);
     assert(test != NULL);
     LOG_INFO("Found node by path: %.*s\n", AML_NAME_LENGTH, test->segment);
 
@@ -123,8 +124,34 @@ static uint64_t acpi_parse_all_aml(void)
         return ERR;
     }
 
-    LOG_INFO("Node evaluated to integer: %llu\n", result.integer);
-    aml_data_object_deinit(&result);
+    LOG_INFO("Node evaluated to integer: %llu, bitwidth: %d\n", result.integer, result.meta.bitWidth);
+
+    result.integer = 42;
+    if (aml_store(test, &result) == ERR)
+    {
+        LOG_ERR("Failed to store to node\n");
+        aml_data_object_deinit(&result);
+        return ERR;
+    }
+    LOG_INFO("Stored integer 42 to node\n");
+
+    if (aml_evaluate(test, &result, NULL) == ERR)
+    {
+        LOG_ERR("Failed to re-evaluate node\n");
+        aml_data_object_deinit(&result);
+        return ERR;
+    }
+
+    if (result.type != AML_DATA_INTEGER)
+    {
+        LOG_ERR("Node did not re-evaluate to an integer\n");
+        aml_data_object_deinit(&result);
+        return ERR;
+    }
+
+    LOG_INFO("Node re-evaluated to integer: %llu, bitwidth: %d\n", result.integer, result.meta.bitWidth);
+
+    aml_data_object_deinit(&result);*/
 
     return 0;
 }

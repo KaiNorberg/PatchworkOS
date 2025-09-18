@@ -348,7 +348,7 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_data_object_t* out)
     }
 }
 
-uint64_t aml_package_element_list_read(aml_state_t* state, aml_data_object_t** out, aml_num_elements_t numElements)
+uint64_t aml_package_element_list_read(aml_state_t* state, aml_data_object_t** out, aml_num_elements_t numElements, aml_address_t end)
 {
     aml_data_object_t* elements = heap_alloc(sizeof(aml_data_object_t) * numElements, HEAP_NONE);
     if (elements == NULL)
@@ -357,6 +357,12 @@ uint64_t aml_package_element_list_read(aml_state_t* state, aml_data_object_t** o
     }
 
     for (uint64_t i = 0; i < numElements; i++)
+    {
+        elements[i].type = AML_DATA_NONE;
+    }
+
+    uint64_t i = 0;
+    while (state->pos < end && i < numElements)
     {
         if (aml_package_element_read(state, &elements[i]) == ERR)
         {
@@ -367,6 +373,7 @@ uint64_t aml_package_element_list_read(aml_state_t* state, aml_data_object_t** o
             heap_free(elements);
             return ERR;
         }
+        i++;
     }
 
     *out = elements;
@@ -388,13 +395,18 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_package_t* out)
         return ERR;
     }
 
-    // Read PkgLength but ignore it, honestly not sure why its even here.
+    aml_address_t start = state->pos;
+
+    // PkgLength specifies how many elements in the package are defined, others are left blank.
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
     {
         return ERR;
     }
 
+    aml_address_t end = start + pkgLength;
+
+    // NumElements specifies the size of the package.
     aml_num_elements_t numElements;
     if (aml_num_elements_read(state, &numElements) == ERR)
     {
@@ -402,7 +414,7 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_package_t* out)
     }
 
     aml_data_object_t* elements;
-    if (aml_package_element_list_read(state, &elements, numElements) == ERR)
+    if (aml_package_element_list_read(state, &elements, numElements, end) == ERR)
     {
         return ERR;
     }
