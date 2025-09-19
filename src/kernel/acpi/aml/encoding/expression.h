@@ -1,10 +1,10 @@
 #pragma once
 
-#include "acpi/aml/aml_state.h"
 #include "arg.h"
 #include "data.h"
 
 typedef struct aml_node aml_node_t;
+typedef struct aml_state aml_state_t;
 
 /**
  * @brief ACPI AML Expression Opcodes Encoding
@@ -77,6 +77,8 @@ uint64_t aml_term_arg_list_read(aml_state_t* state, aml_node_t* node, uint8_t ar
  *
  * A MethodInvocation structure is defined as `MethodInvocation := NameString TermArgList`.
  *
+ * Despite the name, a MethodInvocation can be used to evaluate any node, not just methods. For example, fields.
+ *
  * @param state The AML state.
  * @param node The current AML node.
  * @param out Pointer to the buffer where the result of the method invocation will be stored.
@@ -84,7 +86,19 @@ uint64_t aml_term_arg_list_read(aml_state_t* state, aml_node_t* node, uint8_t ar
  */
 uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
 
-//uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+/**
+ * @brief Reads a DefCondRefOf structure from the AML byte stream.
+ *
+ * A DefCondRefOf structure is defined as `DefCondRefOf := CondRefOfOp SuperName Target`.
+ *
+ * @see Section 19.6.14 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the result of the CondRefOf will be stored.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
 
 /**
  * @brief Reads an ExpressionOpcode structure from the AML byte stream.

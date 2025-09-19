@@ -2,6 +2,7 @@
 
 #include "mem/heap.h"
 #include "name.h"
+#include "object_reference.h"
 
 #include <stdint.h>
 
@@ -117,6 +118,7 @@ typedef enum
     AML_DATA_BUFFER,
     AML_DATA_PACKAGE,
     AML_DATA_NAME_STRING,
+    AML_DATA_OBJECT_REFERENCE,
     AML_DATA_ANY,
     AML_DATA_MAX,
 } aml_data_type_t;
@@ -126,7 +128,7 @@ typedef enum
  * @struct aml_data_object_t
  *
  * Represents the DataObject structure found in the specification, but also used to store any generic
- * data in AML, for example the result of a TermArg evaluation or a PackageElement.
+ * data in the AML parser, for example the result of a TermArg evaluation or a PackageElement.
  */
 typedef struct aml_data_object
 {
@@ -137,6 +139,7 @@ typedef struct aml_data_object
         aml_buffer_t buffer;
         aml_package_t package;
         aml_name_string_t nameString;
+        aml_object_reference_t objectReference;
     };
     struct
     {
@@ -207,6 +210,15 @@ uint64_t aml_data_object_init_package(aml_data_object_t* obj, aml_package_t* pac
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_data_object_init_name_string(aml_data_object_t* obj, aml_name_string_t* nameString);
+
+/**
+ * @brief Initializes a DataObject as an ObjectReference, copying the provided ObjectReference structure but not its content.
+ *
+ * @param obj Pointer to the empty DataObject to initialize.
+ * @param ref Pointer to the ObjectReference to copy.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_data_object_init_object_reference(aml_data_object_t* obj, aml_object_reference_t* ref);
 
 /**
  * @brief Frees the memory allocated for a String structure.

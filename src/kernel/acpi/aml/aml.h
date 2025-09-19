@@ -1,6 +1,5 @@
 #pragma once
 
-#include "encoding/arg.h"
 #include "encoding/data.h"
 #include "encoding/expression.h"
 #include "encoding/name.h"
@@ -68,7 +67,7 @@ typedef enum
     AML_NODE_OPREGION,
     AML_NODE_FIELD,
     AML_NODE_METHOD,
-    AML_NODE_NAME,
+    AML_NODE_NAME, //!< A named data object, this includes Local variables.
     AML_NODE_MUTEX,
     AML_NODE_INDEX_FIELD,
     AML_NODE_BANK_FIELD,

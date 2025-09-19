@@ -1,8 +1,8 @@
 #pragma once
 
-#include "acpi/aml/aml_state.h"
-
 #include <stdint.h>
+
+typedef struct aml_state aml_state_t;
 
 /**
  * @brief ACPI AML Package Length Encoding

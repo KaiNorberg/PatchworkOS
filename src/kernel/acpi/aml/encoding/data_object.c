@@ -99,6 +99,20 @@ uint64_t aml_data_object_init_name_string(aml_data_object_t* obj, aml_name_strin
     return 0;
 }
 
+uint64_t aml_data_object_init_object_reference(aml_data_object_t* obj, aml_object_reference_t* ref)
+{
+    if (obj == NULL || ref == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    obj->type = AML_DATA_OBJECT_REFERENCE;
+    obj->objectReference = *ref;
+
+    return 0;
+}
+
 void aml_string_deinit(aml_string_t* string)
 {
     if (string->allocated && string->content != NULL)

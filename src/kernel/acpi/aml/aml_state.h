@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "encoding/data_integers.h"
+#include "encoding/data_object.h"
+#include "encoding/term.h"
+
 /**
  * @brief ACPI AML State
  * @defgroup kernel_acpi_aml_parse State
@@ -16,28 +20,27 @@
  */
 
 /**
- * @brief Represents a index in the AML bytecode stream.
- */
-typedef uint64_t aml_address_t;
-
-/**
  * @brief AML State
  * @struct aml_state_t
  *
  * Used in the `aml_parse()` function to keep track of the virtual machine's state.
+ *
+ * Note that when a Method is evaluated a new `aml_state_t` is created for the Method's AML bytecode stream.
  */
 typedef struct aml_state
 {
-    const void* data;  //!< Pointer to the AML bytecode stream.
-    uint64_t dataSize; //!< Size of the AML bytecode stream.
-    aml_address_t pos; //!< Index of the current instruction in `data`.
+    const void* data;          //!< Pointer to the AML bytecode stream.
+    uint64_t dataSize;         //!< Size of the AML bytecode stream.
+    aml_address_t pos;         //!< Index of the current instruction in `data`.
+    aml_term_arg_list_t* args; //!< Pointer to the current local arguments, can be NULL.
 } aml_state_t;
 
-static inline void aml_state_init(aml_state_t* state, const void* data, uint64_t dataSize)
+static inline void aml_state_init(aml_state_t* state, const void* data, uint64_t dataSize, aml_term_arg_list_t* args)
 {
     state->data = data;
     state->dataSize = dataSize;
     state->pos = 0;
+    state->args = args;
 }
 
 static inline void aml_state_deinit(aml_state_t* state)

@@ -9,6 +9,11 @@
  */
 
 /**
+ * @brief Represents a index in the AML bytecode stream.
+ */
+typedef uint64_t aml_address_t;
+
+/**
  * @brief Represents a size in bits within an opregion.
  */
 typedef uint64_t aml_bit_size_t;

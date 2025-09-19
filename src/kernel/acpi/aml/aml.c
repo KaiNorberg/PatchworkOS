@@ -66,7 +66,7 @@ uint64_t aml_parse(const void* data, uint64_t size)
     // So the entire code is a termlist.
 
     aml_state_t state;
-    aml_state_init(&state, data, size);
+    aml_state_init(&state, data, size, NULL);
 
     uint64_t result = aml_term_list_read(&state, aml_root_get(), size);
 

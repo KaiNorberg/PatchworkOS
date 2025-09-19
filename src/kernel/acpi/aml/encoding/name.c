@@ -3,6 +3,7 @@
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_state.h"
 #include "data.h"
+#include "object_reference.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -252,4 +253,94 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
     return 0;
 }
 
-/** @} */
+uint64_t aml_simple_name_read(aml_state_t* state, aml_node_t* node, aml_object_reference_t* out)
+{
+    aml_value_t value;
+    if (aml_value_read(state, &value) == ERR)
+    {
+        return ERR;
+    }
+
+    switch (value.props->type)
+    {
+    case AML_VALUE_TYPE_NAME:
+    {
+        aml_name_string_t nameString;
+        if (aml_name_string_read(state, &nameString) == ERR)
+        {
+            return ERR;
+        }
+
+        aml_node_t* target = aml_node_find(&nameString, node);
+        if (target == NULL)
+        {
+            AML_OBJECT_REFERENCE_INIT_EMPTY(out);
+            return 0;
+        }
+
+        AML_OBJECT_REFERENCE_INIT_NODE(out, target);
+        return 0;
+    }
+    break;
+    case AML_VALUE_TYPE_ARG:
+        LOG_ERR("Arg are unimplemented\n");
+        errno = ENOSYS;
+        return ERR;
+    case AML_VALUE_TYPE_LOCAL:
+        LOG_ERR("Local are unimplemented\n");
+        errno = ENOSYS;
+        return ERR;
+    default:
+        AML_DEBUG_UNEXPECTED_VALUE(&value);
+        errno = EILSEQ;
+        return ERR;
+    }
+}
+
+uint64_t aml_super_name_read(aml_state_t* state, aml_node_t* node, aml_object_reference_t* out)
+{
+    aml_value_t value;
+    if (aml_value_peek(state, &value) == ERR)
+    {
+        return ERR;
+    }
+
+    switch (value.props->type)
+    {
+    case AML_VALUE_TYPE_NAME:
+    case AML_VALUE_TYPE_ARG:
+    case AML_VALUE_TYPE_LOCAL:
+        return aml_simple_name_read(state, node, out);
+    case AML_VALUE_TYPE_DEBUG:
+        LOG_ERR("DebugObj is unimplemented\n");
+        errno = ENOSYS;
+        return ERR;
+    case AML_VALUE_TYPE_EXPRESSION:
+        LOG_ERR("ReferenceTypeOpcode is unimplemented\n");
+        errno = ENOSYS;
+        return ERR;
+    default:
+        AML_DEBUG_UNEXPECTED_VALUE(&value);
+        errno = EILSEQ;
+        return ERR;
+    }
+}
+
+uint64_t aml_target_read(aml_state_t* state, aml_node_t* node, aml_object_reference_t* out)
+{
+    aml_value_t value;
+    if (aml_value_peek_no_ext(state, &value) == ERR)
+    {
+        return ERR;
+    }
+
+    if (value.num == AML_NULL_NAME)
+    {
+        AML_OBJECT_REFERENCE_INIT_EMPTY(out);
+        return aml_null_name_read(state);
+    }
+    else
+    {
+        return aml_super_name_read(state, node, out);
+    }
+}

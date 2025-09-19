@@ -1,10 +1,11 @@
 #pragma once
 
 #include "acpi/aml/aml.h"
-#include "acpi/aml/aml_state.h"
 #include "data.h"
 
 #include <stdint.h>
+
+typedef struct aml_state aml_state_t;
 
 /**
  * @brief ACPI AML Statement Opcodes Encoding

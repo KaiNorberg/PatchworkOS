@@ -1,7 +1,5 @@
 #pragma once
 
-#include "data.h"
-
 /**
  * @brief ACPI AML Arg Objecs Encoding
  * @defgroup kernel_acpi_aml_args Args

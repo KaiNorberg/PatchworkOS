@@ -7,6 +7,8 @@
 #include "arg.h"
 #include "package_length.h"
 #include "term.h"
+#include "object_reference.h"
+#include "data_object.h"
 
 uint64_t aml_buffer_size_read(aml_state_t* state, aml_buffer_size_t* out)
 {
@@ -145,6 +147,90 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_da
     return result;
 }
 
+uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    aml_value_t condRefOfOp;
+    if (aml_value_read(state, &condRefOfOp) == ERR)
+    {
+        return ERR;
+    }
+
+    if (condRefOfOp.num != AML_COND_REF_OF_OP)
+    {
+        AML_DEBUG_UNEXPECTED_VALUE(&condRefOfOp);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_object_reference_t superObject;
+    if (aml_super_name_read(state, node, &superObject) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_object_reference_t target;
+    if (aml_target_read(state, node, &target) == ERR)
+    {
+        return ERR;
+    }
+
+
+    if (superObject.type == AML_OBJECT_REFERENCE_EMPTY)
+    {
+        // Return false since the SuperName did not resolve to an object.
+        return aml_data_object_init_integer(out, 0, 64);
+    }
+
+    if (target.type == AML_OBJECT_REFERENCE_EMPTY)
+    {
+        // Return true since SuperName resolved to an object and Target is a NullName.
+        return aml_data_object_init_integer(out, 1, 64);
+    }
+
+    // Store reference to SuperObject in the target and return true.
+
+    switch (target.type)
+    {
+    case AML_OBJECT_REFERENCE_NODE:
+    {
+        aml_node_t* targetNode = target.node;
+        if (targetNode->type != AML_NODE_NAME) // This is probably right... maybe.
+        {
+            LOG_ERR("CondRefOf: Target is not a Name object\n");
+            errno = EILSEQ;
+            return ERR;
+        }
+
+        aml_data_object_deinit(&targetNode->name.object);
+        if (aml_data_object_init_object_reference(out, &superObject) == ERR)
+        {
+            return ERR;
+        }
+    }
+    break;
+    case AML_OBJECT_REFERENCE_DATA_OBJECT:
+    {
+        aml_data_object_t* targetObject = target.dataObject;
+        aml_data_object_deinit(targetObject);
+        if (aml_data_object_init_object_reference(targetObject, &superObject) == ERR)
+        {
+            return ERR;
+        }
+    }
+    break;
+    default:
+        AML_DEBUG_INVALID_STRUCTURE("CondRefOf: Invalid target type");
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    if (aml_data_object_init_integer(out, 1, 64) == ERR)
+    {
+        return ERR;
+    }
+    return 0;
+}
+
 uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
 {
     aml_value_t value;
@@ -158,6 +244,24 @@ uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_da
     case AML_VALUE_TYPE_EXPRESSION:
         switch (value.num)
         {
+        case AML_BUFFER_OP:
+        {
+            aml_buffer_t buffer;
+            if (aml_def_buffer_read(state, &buffer) == ERR)
+            {
+                return ERR;
+            }
+
+            if (aml_data_object_init_buffer(out, &buffer) == ERR)
+            {
+                aml_buffer_deinit(&buffer);
+                return ERR;
+            }
+
+            return 0;
+        }
+        case AML_COND_REF_OF_OP:
+            return aml_def_cond_ref_of_read(state, node, out);
         default:
             AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
             errno = ENOSYS;
