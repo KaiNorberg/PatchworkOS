@@ -82,11 +82,28 @@ uint64_t aml_evaluate(aml_node_t* node, aml_data_object_t* out, aml_term_arg_lis
         return ERR;
     }
 
-    if (node->type != AML_NODE_METHOD && args != NULL && args->count != 0)
+    uint64_t expectedArgCount = aml_node_get_expected_arg_count(node);
+    if (expectedArgCount == ERR)
     {
-        LOG_ERR("attempted to pass %d arguments to non-method node '%.*s' of type '%s'\n",
-            args == NULL ? 0 : args->count, AML_NAME_LENGTH, node->segment, aml_node_type_to_string(node->type));
-        errno = EILSEQ;
+        return ERR;
+    }
+
+    if (args != NULL && args->count != 0)
+    {
+        if (args->count != expectedArgCount)
+        {
+            LOG_ERR("node '%.*s' of type '%s' expects %u arguments, but %u were provided\n",
+                AML_NAME_LENGTH, node->segment, aml_node_type_to_string(node->type), expectedArgCount,
+                args->count);
+            errno = EINVAL;
+            return ERR;
+        }
+    }
+    else if (expectedArgCount != 0)
+    {
+        LOG_ERR("node '%.*s' of type '%s' expects %u arguments, but none were provided\n", AML_NAME_LENGTH,
+            node->segment, aml_node_type_to_string(node->type), expectedArgCount);
+        errno = EINVAL;
         return ERR;
     }
 
@@ -187,6 +204,25 @@ uint64_t aml_store(aml_node_t* node, aml_data_object_t* object)
         mutex_release(aml_global_mutex_get());
     }
     return result;
+}
+
+uint64_t aml_node_get_expected_arg_count(aml_node_t* node)
+{
+    if (node == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    switch (node->type)
+    {
+    case AML_NODE_PREDEFINED_OSI:
+        return 1;
+    case AML_NODE_METHOD:
+        return node->method.flags.argCount;
+    default:
+        return 0;
+    }
 }
 
 bool aml_is_name_equal(const char* s1, const char* s2)

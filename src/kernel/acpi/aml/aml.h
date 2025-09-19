@@ -25,7 +25,7 @@
  * block is defined as `AMLCode := DefBlockHeader TermList`, since we have already read the header, we then just call
  * the `aml_term_list_read()` function. A termlist is defined as `TermList := Nothing | <termobj termlist>`, this is a
  * recursive definition, which we could flatten to `termobj termobj termobj ... Nothing`. So we now call the
- * `aml_termobj_read()` function on each termobj. A termobj is defined as `TermObj := Object | StatementOpcode |
+ * `aml_term_obj_read()` function on each termobj. A termobj is defined as `TermObj := Object | StatementOpcode |
  * ExpressionOpcode` we then determine if this TermObj is an Object, StatementOpcode, or ExpressionOpcode and continue
  * down the chain until we finally have something to execute.
  *
@@ -177,6 +177,16 @@ uint64_t aml_evaluate(aml_node_t* node, aml_data_object_t* out, aml_term_arg_lis
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
 uint64_t aml_store(aml_node_t* node, aml_data_object_t* object);
+
+/**
+ * @brief Get the expected argument count for a method node.
+ *
+ * If the node is not a method or certain predefined objects, 0 is returned.
+ *
+ * @param node The node to get the expected argument count for.
+ * @return On success, the expected argument count. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_node_get_expected_arg_count(aml_node_t* node);
 
 /**
  * @brief Compare two ACPI names for equality.

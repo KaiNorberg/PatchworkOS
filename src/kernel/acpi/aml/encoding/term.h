@@ -51,7 +51,7 @@ uint64_t aml_object_read(aml_state_t* state, aml_node_t* node);
  * @param node The current AML node.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-uint64_t aml_termobj_read(aml_state_t* state, aml_node_t* node);
+uint64_t aml_term_obj_read(aml_state_t* state, aml_node_t* node);
 
 /**
  * @brief Reads a TermList structure from the AML byte stream.

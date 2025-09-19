@@ -74,7 +74,7 @@ uint64_t aml_object_read(aml_state_t* state, aml_node_t* node)
     }
 }
 
-uint64_t aml_termobj_read(aml_state_t* state, aml_node_t* node)
+uint64_t aml_term_obj_read(aml_state_t* state, aml_node_t* node)
 {
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
@@ -87,9 +87,15 @@ uint64_t aml_termobj_read(aml_state_t* state, aml_node_t* node)
     case AML_VALUE_TYPE_STATEMENT:
         return aml_statement_opcode_read(state, node);
     case AML_VALUE_TYPE_EXPRESSION:
-        AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
-        errno = ENOSYS;
-        return ERR;
+    {
+        aml_data_object_t temp;
+        if (aml_expression_opcode_read(state, node, &temp) == ERR)
+        {
+            return ERR;
+        }
+        aml_data_object_deinit(&temp);
+        return 0;
+    }
     default:
         return aml_object_read(state, node);
     }
@@ -100,7 +106,7 @@ uint64_t aml_term_list_read(aml_state_t* state, aml_node_t* node, aml_address_t 
     while (end > state->pos)
     {
         // End of buffer not reached => byte is not nothing => must be a termobj.
-        if (aml_termobj_read(state, node) == ERR)
+        if (aml_term_obj_read(state, node) == ERR)
         {
             return ERR;
         }

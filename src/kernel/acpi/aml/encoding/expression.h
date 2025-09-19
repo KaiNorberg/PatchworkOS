@@ -101,6 +101,20 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_da
 uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
 
 /**
+ * @brief Reads a DefStore structure from the AML byte stream.
+ *
+ * A DefStore structure is defined as `DefStore := StoreOp TermArg SuperName`.
+ *
+ * @see Section 19.6.132 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the value moved by the Store operation will also be stored.
+ * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_store_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
  * @brief Reads an ExpressionOpcode structure from the AML byte stream.
  *
  * An ExpressionOpcode structure is defined as `ExpressionOpcode := DefAcquire | DefAdd | DefAnd | DefBuffer | DefConcat

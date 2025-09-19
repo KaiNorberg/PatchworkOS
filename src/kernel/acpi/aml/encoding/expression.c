@@ -127,17 +127,23 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_da
         return ERR;
     }
 
-    uint8_t argAmount = 0;
-    if (target->type == AML_NODE_METHOD)
+    uint64_t argAmount = aml_node_get_expected_arg_count(target);
+    if (argAmount == ERR)
     {
-        argAmount = target->method.flags.argCount;
+        AML_DEBUG_INVALID_STRUCTURE("MethodInvocation: Failed to get expected arg count");
+        errno = EILSEQ;
+        return ERR;
     }
+
+    LOG_DEBUG("Reading term arg list for %.*s, expecting %u args\n", 4, target->segment, argAmount);
 
     aml_term_arg_list_t args = {0};
     if (aml_term_arg_list_read(state, node, argAmount, &args) == ERR)
     {
         return ERR;
     }
+
+    LOG_DEBUG("Evaluating %.*s with %u args\n", 4, target->segment, args.count);
 
     uint64_t result = aml_evaluate(target, out, &args);
     for (uint8_t i = 0; i < args.count; i++)
@@ -231,6 +237,75 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data
     return 0;
 }
 
+uint64_t aml_def_store_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    aml_value_t storeOp;
+    if (aml_value_read(state, &storeOp) == ERR)
+    {
+        return ERR;
+    }
+
+    if (storeOp.num != AML_STORE_OP)
+    {
+        AML_DEBUG_UNEXPECTED_VALUE(&storeOp);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_data_object_t source;
+    if (aml_term_arg_read(state, node, &source, AML_DATA_ANY) == ERR)
+    {
+        return ERR;
+    }
+
+    aml_object_reference_t target;
+    if (aml_super_name_read(state, node, &target) == ERR)
+    {
+        aml_data_object_deinit(&source);
+        return ERR;
+    }
+
+    if (target.type == AML_OBJECT_REFERENCE_EMPTY)
+    {
+        AML_DEBUG_INVALID_STRUCTURE("Store: Failed to resolve target");
+        aml_data_object_deinit(&source);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    switch (target.type)
+    {
+    case AML_OBJECT_REFERENCE_NODE:
+    {
+        aml_node_t* targetNode = target.node;
+
+        if (aml_store(targetNode, &source) == ERR)
+        {
+            aml_data_object_deinit(&source);
+            return ERR;
+        }
+    }
+    break;
+    case AML_OBJECT_REFERENCE_DATA_OBJECT:
+    {
+        aml_data_object_t* targetObject = target.dataObject;
+
+        aml_data_object_deinit(targetObject);
+        *targetObject = source;
+    }
+    break;
+    default:
+        AML_DEBUG_INVALID_STRUCTURE("Store: Invalid target type");
+        aml_data_object_deinit(&source);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    *out = source;
+    aml_data_object_deinit(&source);
+    return 0;
+}
+
 uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
 {
     aml_value_t value;
@@ -262,6 +337,8 @@ uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_da
         }
         case AML_COND_REF_OF_OP:
             return aml_def_cond_ref_of_read(state, node, out);
+        case AML_STORE_OP:
+            return aml_def_store_read(state, node, out);
         default:
             AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
             errno = ENOSYS;
