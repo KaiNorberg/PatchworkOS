@@ -41,7 +41,7 @@ typedef struct
  *
  * @param state The AML state.
  * @param out The output buffer to store the lead byte.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_pkg_lead_byte_read(aml_state_t* state, aml_pkg_lead_byte_t* out);
 
@@ -58,7 +58,7 @@ uint64_t aml_pkg_lead_byte_read(aml_state_t* state, aml_pkg_lead_byte_t* out);
  *
  * @param state The AML state.
  * @param out The output buffer to store the package length.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_pkg_length_read(aml_state_t* state, aml_pkg_length_t* out);
 

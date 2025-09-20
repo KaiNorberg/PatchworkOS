@@ -243,7 +243,8 @@ uint64_t aml_super_name_read(aml_state_t* state, aml_node_t* node, aml_object_re
  *
  * A Target structure is defined as `Target := SuperName | NullName`.
  *
- * If the Target is a NullName or the SuperName does not resolve to an object, then out->type == AML_OBJECT_REFERENCE_EMPTY.
+ * If the Target is a NullName or the SuperName does not resolve to an object, then out->type ==
+ * AML_OBJECT_REFERENCE_EMPTY.
  *
  * @param state The AML state.
  * @param node The current AML node.

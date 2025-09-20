@@ -33,6 +33,10 @@ typedef struct aml_state
     uint64_t dataSize;         //!< Size of the AML bytecode stream.
     aml_address_t pos;         //!< Index of the current instruction in `data`.
     aml_term_arg_list_t* args; //!< Pointer to the current local arguments, can be NULL.
+    struct
+    {
+        aml_address_t lastErrPos; //!<  The position when the last error occurred.
+    } debug;
 } aml_state_t;
 
 static inline void aml_state_init(aml_state_t* state, const void* data, uint64_t dataSize, aml_term_arg_list_t* args)
@@ -41,6 +45,7 @@ static inline void aml_state_init(aml_state_t* state, const void* data, uint64_t
     state->dataSize = dataSize;
     state->pos = 0;
     state->args = args;
+    state->debug.lastErrPos = UINT64_MAX;
 }
 
 static inline void aml_state_deinit(aml_state_t* state)
@@ -48,6 +53,8 @@ static inline void aml_state_deinit(aml_state_t* state)
     state->data = NULL;
     state->dataSize = 0;
     state->pos = 0;
+    state->args = NULL;
+    state->debug.lastErrPos = UINT64_MAX;
 }
 
 static inline uint64_t aml_state_read(aml_state_t* state, uint8_t* buffer, uint64_t count)

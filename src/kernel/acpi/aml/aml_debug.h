@@ -3,24 +3,6 @@
 #include "aml_value.h"
 #include "log/log.h"
 
-void aml_debug_dump(aml_state_t* state);
+void aml_debug_error_print(aml_state_t* state, const char* function, const char* format, ...);
 
-#define AML_DEBUG_UNEXPECTED_VALUE(value) \
-    LOG_ERR("unexpected value (type: %s, num: 0x%04x, name: %s) in '%s'\n", \
-        aml_value_type_to_string((value)->props->type), (value)->num, (value)->props->name, __PRETTY_FUNCTION__); \
-    aml_debug_dump(state)
-#define AML_DEBUG_UNIMPLEMENTED_VALUE(value) \
-    LOG_ERR("unimplemented value (type: %s, num: 0x%04x, name: %s) in '%s'\n", \
-        aml_value_type_to_string((value)->props->type), (value)->num, (value)->props->name, __PRETTY_FUNCTION__); \
-    aml_debug_dump(state)
-
-#define AML_DEBUG_UNIMPLEMENTED_STRUCTURE(structure) \
-    LOG_ERR("unimplemented structure '%s' in '%s'\n", structure, __PRETTY_FUNCTION__); \
-    aml_debug_dump(state)
-#define AML_DEBUG_INVALID_STRUCTURE(structure) \
-    LOG_ERR("invalid structure '%s' in '%s'\n", structure, __PRETTY_FUNCTION__); \
-    aml_debug_dump(state)
-
-#define AML_DEBUG_UNIMPLEMENTED_NODE(node) \
-    LOG_ERR("unimplemented node type '%s' for node '%.*s' in '%s'\n", aml_node_type_to_string((node)->type), \
-        AML_NAME_LENGTH, (node)->name, __PRETTY_FUNCTION__)
+#define AML_DEBUG_ERROR(state, format, ...) aml_debug_error_print(state, __func__, format, ##__VA_ARGS__)

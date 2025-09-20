@@ -25,7 +25,7 @@ typedef struct aml_state aml_state_t;
  * @param state The AML state to parse from.
  * @param node The current AML node.
  * @param out The output buffer to store the result of the Predicate.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_predicate_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
 
@@ -42,7 +42,7 @@ uint64_t aml_predicate_read(aml_state_t* state, aml_node_t* node, aml_data_objec
  * @param state The AML state to parse from.
  * @param node The current AML node.
  * @param shouldExecute Whether the TermList should be executed or skipped.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_else_read(aml_state_t* state, aml_node_t* node, bool shouldExecute);
 
@@ -61,7 +61,7 @@ uint64_t aml_def_else_read(aml_state_t* state, aml_node_t* node, bool shouldExec
  *
  * @param state The AML state to parse from.
  * @param node The current AML node.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_if_else_read(aml_state_t* state, aml_node_t* node);
 
@@ -73,7 +73,7 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_node_t* node);
  *
  * @param state The AML state to parse from.
  * @param node The current AML node.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_statement_opcode_read(aml_state_t* state, aml_node_t* node);
 

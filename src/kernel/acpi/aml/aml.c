@@ -92,9 +92,8 @@ uint64_t aml_evaluate(aml_node_t* node, aml_data_object_t* out, aml_term_arg_lis
     {
         if (args->count != expectedArgCount)
         {
-            LOG_ERR("node '%.*s' of type '%s' expects %u arguments, but %u were provided\n",
-                AML_NAME_LENGTH, node->segment, aml_node_type_to_string(node->type), expectedArgCount,
-                args->count);
+            LOG_ERR("node '%.*s' of type '%s' expects %u arguments, but %u were provided\n", AML_NAME_LENGTH,
+                node->segment, aml_node_type_to_string(node->type), expectedArgCount, args->count);
             errno = EINVAL;
             return ERR;
         }

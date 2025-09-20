@@ -27,7 +27,7 @@ typedef struct aml_data_object aml_data_object_t;
  */
 typedef enum
 {
-    AML_OBJECT_REFERENCE_EMPTY,        //!< The object reference is not set.
+    AML_OBJECT_REFERENCE_EMPTY,       //!< The object reference is not set.
     AML_OBJECT_REFERENCE_NODE,        //!< The object reference is a Node in the ACPI namespace.
     AML_OBJECT_REFERENCE_DATA_OBJECT, //!< The object reference is a DataObject.
 } aml_object_reference_type_t;
@@ -52,7 +52,8 @@ typedef struct aml_object_reference
  * @param n Pointer to the node in the ACPI namespace.
  */
 #define AML_OBJECT_REFERENCE_INIT_NODE(ref, n) \
-    *ref = (aml_object_reference_t){ \
+    *ref = (aml_object_reference_t) \
+    { \
         .type = AML_OBJECT_REFERENCE_NODE, .node = (n), \
     }
 

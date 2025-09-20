@@ -183,7 +183,7 @@ static void log_print_header(log_level_t level, const char* prefix)
     cpu_t* self = smp_self_unsafe();
 
     char timestampBuffer[MAX_PATH];
-    int length = sprintf(timestampBuffer, "[%4llu.%03llu-%02x-%s-%-8s] ", seconds, milliseconds, self->id,
+    int length = sprintf(timestampBuffer, "[%4llu.%03llu-%02x-%s-%-10s] ", seconds, milliseconds, self->id,
         levelNames[level], prefix != NULL ? prefix : "unknown");
 
     log_write(timestampBuffer, length);

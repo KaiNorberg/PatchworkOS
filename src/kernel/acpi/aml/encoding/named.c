@@ -15,12 +15,13 @@ uint64_t aml_region_space_read(aml_state_t* state, aml_region_space_t* out)
     aml_byte_data_t byteData;
     if (aml_byte_data_read(state, &byteData) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read byte data");
         return ERR;
     }
 
     if (byteData > AML_REGION_PCC && byteData < AML_REGION_OEM_MIN)
     {
-        AML_DEBUG_INVALID_STRUCTURE("ByteData");
+        AML_DEBUG_ERROR(state, "Invalid region space: 0x%x", byteData);
         errno = EILSEQ;
         return ERR;
     }
@@ -34,6 +35,7 @@ uint64_t aml_region_offset_read(aml_state_t* state, aml_node_t* node, aml_region
     aml_data_object_t termArg;
     if (aml_term_arg_read(state, node, &termArg, AML_DATA_INTEGER) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read term arg");
         return ERR;
     }
 
@@ -48,6 +50,7 @@ uint64_t aml_region_len_read(aml_state_t* state, aml_node_t* node, aml_region_le
     aml_data_object_t termArg;
     if (aml_term_arg_read(state, node, &termArg, AML_DATA_INTEGER) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read term arg");
         return ERR;
     }
 
@@ -62,12 +65,13 @@ uint64_t aml_def_op_region_read(aml_state_t* state, aml_node_t* node)
     aml_value_t opRegionOp;
     if (aml_value_read(state, &opRegionOp) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read op region op");
         return ERR;
     }
 
     if (opRegionOp.num != AML_OPREGION_OP)
     {
-        AML_DEBUG_INVALID_STRUCTURE("OpRegionOp");
+        AML_DEBUG_ERROR(state, "Invalid op region op: 0x%x", opRegionOp.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -75,30 +79,35 @@ uint64_t aml_def_op_region_read(aml_state_t* state, aml_node_t* node)
     aml_name_string_t nameString;
     if (aml_name_string_read(state, &nameString) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read name string");
         return ERR;
     }
 
     aml_region_space_t regionSpace;
     if (aml_region_space_read(state, &regionSpace) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read region space");
         return ERR;
     }
 
     aml_region_offset_t regionOffset;
     if (aml_region_offset_read(state, node, &regionOffset) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read region offset");
         return ERR;
     }
 
     aml_region_len_t regionLen;
     if (aml_region_len_read(state, node, &regionLen) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read region len");
         return ERR;
     }
 
     aml_node_t* newNode = aml_node_add_at_name_string(&nameString, node, AML_NODE_OPREGION);
     if (newNode == NULL)
     {
+        AML_DEBUG_ERROR(state, "Failed to add node");
         return ERR;
     }
     newNode->opregion.space = regionSpace;
@@ -113,12 +122,13 @@ uint64_t aml_field_flags_read(aml_state_t* state, aml_field_flags_t* out)
     aml_byte_data_t flags;
     if (aml_byte_data_read(state, &flags) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read byte data");
         return ERR;
     }
 
     if (flags & (1 << 7))
     {
-        AML_DEBUG_INVALID_STRUCTURE("FieldFlags");
+        AML_DEBUG_ERROR(state, "Invalid field flags: 0x%x", flags);
         errno = EILSEQ;
         return ERR;
     }
@@ -126,7 +136,7 @@ uint64_t aml_field_flags_read(aml_state_t* state, aml_field_flags_t* out)
     aml_access_type_t accessType = flags & 0xF;
     if (accessType > AML_ACCESS_TYPE_BUFFER)
     {
-        AML_DEBUG_INVALID_STRUCTURE("FieldFlags: Invalid AccessType");
+        AML_DEBUG_ERROR(state, "Invalid access type: 0x%x", accessType);
         errno = EILSEQ;
         return ERR;
     }
@@ -145,12 +155,14 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
     aml_name_seg_t* name;
     if (aml_name_seg_read(state, &name) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read name seg");
         return ERR;
     }
 
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read pkg length");
         return ERR;
     }
 
@@ -160,7 +172,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
     {
         if (ctx->normal.opregion == NULL)
         {
-            AML_DEBUG_INVALID_STRUCTURE("NamedField: No OpRegion for FieldList");
+            AML_DEBUG_ERROR(state, "opregion is null");
             errno = EILSEQ;
             return ERR;
         }
@@ -168,6 +180,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
         aml_node_t* newNode = aml_node_add(node, name->name, AML_NODE_FIELD);
         if (newNode == NULL)
         {
+            AML_DEBUG_ERROR(state, "Failed to add node");
             return ERR;
         }
         newNode->field.opregion = ctx->normal.opregion;
@@ -180,21 +193,21 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
     {
         if (ctx->index.indexNode == NULL)
         {
-            AML_DEBUG_INVALID_STRUCTURE("NamedField: No Index Node for IndexField");
+            AML_DEBUG_ERROR(state, "indexNode is null");
             errno = EILSEQ;
             return ERR;
         }
 
         if (ctx->index.indexNode->type != AML_NODE_FIELD)
         {
-            AML_DEBUG_INVALID_STRUCTURE("NamedField: Index Node is not a Field");
+            AML_DEBUG_ERROR(state, "indexNode is not a field");
             errno = EILSEQ;
             return ERR;
         }
 
         if (ctx->index.dataNode == NULL)
         {
-            AML_DEBUG_INVALID_STRUCTURE("NamedField: No Data Node for IndexField");
+            AML_DEBUG_ERROR(state, "dataNode is null");
             errno = EILSEQ;
             return ERR;
         }
@@ -202,6 +215,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
         aml_node_t* newNode = aml_node_add(node, name->name, AML_NODE_INDEX_FIELD);
         if (newNode == NULL)
         {
+            AML_DEBUG_ERROR(state, "Failed to add node");
             return ERR;
         }
         newNode->indexField.indexNode = ctx->index.indexNode;
@@ -212,7 +226,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
     }
     break;
     default:
-        AML_DEBUG_INVALID_STRUCTURE("NamedField: Invalid FieldList type");
+        AML_DEBUG_ERROR(state, "Invalid field list type: %d", ctx->type);
         errno = EILSEQ;
         return ERR;
     }
@@ -226,12 +240,13 @@ uint64_t aml_reserved_field_read(aml_state_t* state, aml_field_list_ctx_t* ctx)
     aml_value_t value;
     if (aml_value_read(state, &value) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read value");
         return ERR;
     }
 
     if (value.num != 0x00)
     {
-        AML_DEBUG_INVALID_STRUCTURE("ReservedField: Expected 0x00");
+        AML_DEBUG_ERROR(state, "Invalid reserved field value: 0x%x", value.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -239,6 +254,7 @@ uint64_t aml_reserved_field_read(aml_state_t* state, aml_field_list_ctx_t* ctx)
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read pkg length");
         return ERR;
     }
 
@@ -251,6 +267,7 @@ uint64_t aml_field_element_read(aml_state_t* state, aml_node_t* node, aml_field_
     aml_value_t value;
     if (aml_value_peek_no_ext(state, &value) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to peek value");
         return ERR;
     }
 
@@ -263,7 +280,7 @@ uint64_t aml_field_element_read(aml_state_t* state, aml_node_t* node, aml_field_
         return aml_reserved_field_read(state, ctx);
     }
 
-    AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
+    AML_DEBUG_ERROR(state, "Invalid field element value: 0x%x", value.num);
     errno = ENOSYS;
     return ERR;
 }
@@ -275,6 +292,7 @@ uint64_t aml_field_list_read(aml_state_t* state, aml_node_t* node, aml_field_lis
         // End of buffer not reached => byte is not nothing => must be a FieldElement.
         if (aml_field_element_read(state, node, ctx) == ERR)
         {
+            AML_DEBUG_ERROR(state, "Failed to read field element");
             return ERR;
         }
     }
@@ -287,12 +305,13 @@ uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node)
     aml_value_t fieldOp;
     if (aml_value_read(state, &fieldOp) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read field op");
         return ERR;
     }
 
     if (fieldOp.num != AML_FIELD_OP)
     {
-        AML_DEBUG_UNEXPECTED_VALUE(&fieldOp);
+        AML_DEBUG_ERROR(state, "Invalid field op: 0x%x", fieldOp.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -302,18 +321,21 @@ uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node)
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read pkg length");
         return ERR;
     }
 
     aml_name_string_t nameString;
     if (aml_name_string_read(state, &nameString) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read name string");
         return ERR;
     }
 
     aml_field_flags_t fieldFlags;
     if (aml_field_flags_read(state, &fieldFlags) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read field flags");
         return ERR;
     }
 
@@ -328,14 +350,14 @@ uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node)
 
     if (ctx.normal.opregion == NULL)
     {
-        LOG_ERR("Field OpRegion '%s' not found\n", aml_name_string_to_string(&nameString));
-        AML_DEBUG_INVALID_STRUCTURE("Field: No OpRegion for FieldList");
+        AML_DEBUG_ERROR(state, "Field OpRegion '%s' not found\n", aml_name_string_to_string(&nameString));
         errno = EILSEQ;
         return ERR;
     }
 
     if (aml_field_list_read(state, node, &ctx, end) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read field list");
         return ERR;
     }
 
@@ -347,12 +369,13 @@ uint64_t aml_def_index_field_read(aml_state_t* state, aml_node_t* node)
     aml_value_t indexFieldOp;
     if (aml_value_read(state, &indexFieldOp) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read index field op");
         return ERR;
     }
 
     if (indexFieldOp.num != AML_INDEX_FIELD_OP)
     {
-        AML_DEBUG_UNEXPECTED_VALUE(&indexFieldOp);
+        AML_DEBUG_ERROR(state, "Invalid index field op: 0x%x", indexFieldOp.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -362,24 +385,28 @@ uint64_t aml_def_index_field_read(aml_state_t* state, aml_node_t* node)
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read pkg length");
         return ERR;
     }
 
     aml_name_string_t indexNameString;
     if (aml_name_string_read(state, &indexNameString) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read index name string");
         return ERR;
     }
 
     aml_name_string_t dataNameString;
     if (aml_name_string_read(state, &dataNameString) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read data name string");
         return ERR;
     }
 
     aml_field_flags_t fieldFlags;
     if (aml_field_flags_read(state, &fieldFlags) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read field flags");
         return ERR;
     }
 
@@ -395,22 +422,21 @@ uint64_t aml_def_index_field_read(aml_state_t* state, aml_node_t* node)
 
     if (ctx.index.indexNode == NULL)
     {
-        LOG_ERR("IndexField IndexNode '%s' not found\n", aml_name_string_to_string(&indexNameString));
-        AML_DEBUG_INVALID_STRUCTURE("IndexField: No IndexNode for FieldList");
+        AML_DEBUG_ERROR(state, "IndexField IndexNode '%s' not found\n", aml_name_string_to_string(&indexNameString));
         errno = EILSEQ;
         return ERR;
     }
 
     if (ctx.index.dataNode == NULL)
     {
-        LOG_ERR("IndexField DataNode '%s' not found\n", aml_name_string_to_string(&dataNameString));
-        AML_DEBUG_INVALID_STRUCTURE("IndexField: No DataNode for FieldList");
+        AML_DEBUG_ERROR(state, "IndexField DataNode '%s' not found\n", aml_name_string_to_string(&dataNameString));
         errno = EILSEQ;
         return ERR;
     }
 
     if (aml_field_list_read(state, node, &ctx, end) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read field list");
         return ERR;
     }
 
@@ -422,6 +448,7 @@ uint64_t aml_method_flags_read(aml_state_t* state, aml_method_flags_t* out)
     aml_byte_data_t flags;
     if (aml_byte_data_read(state, &flags) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read byte data");
         return ERR;
     }
 
@@ -443,12 +470,13 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node)
     aml_value_t methodOp;
     if (aml_value_read_no_ext(state, &methodOp) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read method op");
         return ERR;
     }
 
     if (methodOp.num != AML_METHOD_OP)
     {
-        AML_DEBUG_UNEXPECTED_VALUE(&methodOp);
+        AML_DEBUG_ERROR(state, "Invalid method op: 0x%x", methodOp.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -458,18 +486,21 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node)
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read pkg length");
         return ERR;
     }
 
     aml_name_string_t nameString;
     if (aml_name_string_read(state, &nameString) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read name string");
         return ERR;
     }
 
     aml_method_flags_t methodFlags;
     if (aml_method_flags_read(state, &methodFlags) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read method flags");
         return ERR;
     }
 
@@ -478,6 +509,7 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node)
     aml_node_t* newNode = aml_node_add_at_name_string(&nameString, node, AML_NODE_METHOD);
     if (newNode == NULL)
     {
+        AML_DEBUG_ERROR(state, "Failed to add node");
         return ERR;
     }
 
@@ -496,12 +528,13 @@ uint64_t aml_def_device_read(aml_state_t* state, aml_node_t* node)
     aml_value_t deviceOp;
     if (aml_value_read(state, &deviceOp) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read device op");
         return ERR;
     }
 
     if (deviceOp.num != AML_DEVICE_OP)
     {
-        AML_DEBUG_UNEXPECTED_VALUE(&deviceOp);
+        AML_DEBUG_ERROR(state, "Invalid device op: 0x%x", deviceOp.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -511,12 +544,14 @@ uint64_t aml_def_device_read(aml_state_t* state, aml_node_t* node)
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read pkg length");
         return ERR;
     }
 
     aml_name_string_t nameString;
     if (aml_name_string_read(state, &nameString) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read name string");
         return ERR;
     }
 
@@ -525,6 +560,7 @@ uint64_t aml_def_device_read(aml_state_t* state, aml_node_t* node)
     aml_node_t* newNode = aml_node_add_at_name_string(&nameString, node, AML_NODE_DEVICE);
     if (newNode == NULL)
     {
+        AML_DEBUG_ERROR(state, "Failed to add node");
         return ERR;
     }
 
@@ -536,12 +572,13 @@ uint64_t aml_sync_flags_read(aml_state_t* state, aml_sync_level_t* out)
     aml_byte_data_t flags;
     if (aml_byte_data_read(state, &flags) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read byte data");
         return ERR;
     }
 
     if (flags & 0xF0)
     {
-        AML_DEBUG_INVALID_STRUCTURE("SyncFlags");
+        AML_DEBUG_ERROR(state, "Invalid sync flags: 0x%x", flags);
         errno = EILSEQ;
         return ERR;
     }
@@ -555,12 +592,13 @@ uint64_t aml_def_mutex_read(aml_state_t* state, aml_node_t* node)
     aml_value_t mutexOp;
     if (aml_value_read(state, &mutexOp) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read mutex op");
         return ERR;
     }
 
     if (mutexOp.num != AML_MUTEX_OP)
     {
-        AML_DEBUG_UNEXPECTED_VALUE(&mutexOp);
+        AML_DEBUG_ERROR(state, "Invalid mutex op: 0x%x", mutexOp.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -568,18 +606,21 @@ uint64_t aml_def_mutex_read(aml_state_t* state, aml_node_t* node)
     aml_name_string_t nameString;
     if (aml_name_string_read(state, &nameString) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read name string");
         return ERR;
     }
 
     aml_sync_level_t syncFlags;
     if (aml_sync_flags_read(state, &syncFlags) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read sync flags");
         return ERR;
     }
 
     aml_node_t* newNode = aml_node_add_at_name_string(&nameString, node, AML_NODE_MUTEX);
     if (newNode == NULL)
     {
+        AML_DEBUG_ERROR(state, "Failed to add node");
         return ERR;
     }
     mutex_init(&newNode->mutex.mutex);
@@ -608,12 +649,13 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node)
     aml_value_t processorOp;
     if (aml_value_read(state, &processorOp) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read processor op");
         return ERR;
     }
 
     if (processorOp.num != AML_DEPRECATED_PROCESSOR_OP)
     {
-        AML_DEBUG_UNEXPECTED_VALUE(&processorOp);
+        AML_DEBUG_ERROR(state, "Invalid processor op: 0x%x", processorOp.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -623,30 +665,35 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node)
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read pkg length");
         return ERR;
     }
 
     aml_name_string_t nameString;
     if (aml_name_string_read(state, &nameString) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read name string");
         return ERR;
     }
 
     aml_proc_id_t procId;
     if (aml_proc_id_read(state, &procId) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read proc id");
         return ERR;
     }
 
     aml_pblk_addr_t pblkAddr;
     if (aml_pblk_addr_read(state, &pblkAddr) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read pblk addr");
         return ERR;
     }
 
     aml_pblk_len_t pblkLen;
     if (aml_pblk_len_read(state, &pblkLen) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read pblk len");
         return ERR;
     }
 
@@ -655,6 +702,7 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node)
     aml_node_t* newNode = aml_node_add_at_name_string(&nameString, node, AML_NODE_PROCESSOR);
     if (newNode == NULL)
     {
+        AML_DEBUG_ERROR(state, "Failed to add node");
         return ERR;
     }
     newNode->type = AML_NODE_PROCESSOR;
@@ -670,6 +718,7 @@ uint64_t aml_named_obj_read(aml_state_t* state, aml_node_t* node)
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to peek value");
         return ERR;
     }
 
@@ -690,7 +739,7 @@ uint64_t aml_named_obj_read(aml_state_t* state, aml_node_t* node)
     case AML_DEPRECATED_PROCESSOR_OP:
         return aml_def_processor_read(state, node);
     default:
-        AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
+        AML_DEBUG_ERROR(state, "Unknown named obj: 0x%x", value.num);
         errno = ENOSYS;
         return ERR;
     }

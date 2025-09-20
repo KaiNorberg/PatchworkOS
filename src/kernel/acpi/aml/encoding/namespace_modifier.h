@@ -27,7 +27,7 @@ typedef struct aml_state aml_state_t;
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_name_read(aml_state_t* state, aml_node_t* node);
 
@@ -40,7 +40,7 @@ uint64_t aml_def_name_read(aml_state_t* state, aml_node_t* node);
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_scope_read(aml_state_t* state, aml_node_t* node);
 
@@ -52,7 +52,7 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_node_t* node);
  * @param state The AML state.
  * @param node The current AML node.
  * @param op The AML op, should have been read by the caller.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_namespace_modifier_obj_read(aml_state_t* state, aml_node_t* node);
 

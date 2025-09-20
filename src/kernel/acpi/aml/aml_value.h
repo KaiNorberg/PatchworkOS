@@ -316,7 +316,7 @@ static inline const aml_value_props_t* aml_value_lookup(uint8_t value, uint8_t e
  *
  * @param state The AML state to parse from.
  * @param out The destination for the parsed value.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set to `ENODATA` if the stream is empty or `EILSEQ`
+ * @return On success, 0. On failure, `ERR` and `errno` is set to `ENODATA` if the stream is empty or `EILSEQ`
  * if the current data is not a valid value.
  */
 static inline uint64_t aml_value_peek_no_ext(aml_state_t* state, aml_value_t* out)
@@ -349,7 +349,7 @@ static inline uint64_t aml_value_peek_no_ext(aml_state_t* state, aml_value_t* ou
  *
  * @param state The AML state to parse from.
  * @param out The destination for the parsed value.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set to `ENODATA` if the stream is empty or `EILSEQ`
+ * @return On success, 0. On failure, `ERR` and `errno` is set to `ENODATA` if the stream is empty or `EILSEQ`
  * if the current data is not a valid value.
  */
 static inline uint64_t aml_value_read_no_ext(aml_state_t* state, aml_value_t* out)
@@ -368,7 +368,7 @@ static inline uint64_t aml_value_read_no_ext(aml_state_t* state, aml_value_t* ou
  *
  * @param state The AML state to parse from.
  * @param out The destination for the parsed value.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set to `ENODATA` if the stream is empty or `EILSEQ`
+ * @return On success, 0. On failure, `ERR` and `errno` is set to `ENODATA` if the stream is empty or `EILSEQ`
  * if the current data is not a valid value.
  */
 static inline uint64_t aml_value_peek(aml_state_t* state, aml_value_t* out)
@@ -419,7 +419,7 @@ static inline uint64_t aml_value_peek(aml_state_t* state, aml_value_t* out)
  *
  * @param state The AML state to parse from.
  * @param out The destination for the parsed value.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set to `ENODATA` if the stream is empty or `EILSEQ`
+ * @return On success, 0. On failure, `ERR` and `errno` is set to `ENODATA` if the stream is empty or `EILSEQ`
  * if the current data is not a valid value.
  */
 static inline uint64_t aml_value_read(aml_state_t* state, aml_value_t* out)

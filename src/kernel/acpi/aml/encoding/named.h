@@ -168,7 +168,7 @@ typedef aml_byte_data_t aml_pblk_len_t;
  *
  * @param state The AML state.
  * @param out The output buffer to store the region space.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_region_space_read(aml_state_t* state, aml_region_space_t* out);
 
@@ -180,7 +180,7 @@ uint64_t aml_region_space_read(aml_state_t* state, aml_region_space_t* out);
  * @param state The AML state.
  * @param node The current AML node.
  * @param out The output buffer to store the region offset.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_region_offset_read(aml_state_t* state, aml_node_t* node, aml_region_offset_t* out);
 
@@ -192,7 +192,7 @@ uint64_t aml_region_offset_read(aml_state_t* state, aml_node_t* node, aml_region
  * @param state The AML state.
  * @param node The current AML node.
  * @param out The output buffer to store the region length.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_region_len_read(aml_state_t* state, aml_node_t* node, aml_region_len_t* out);
 
@@ -205,7 +205,7 @@ uint64_t aml_region_len_read(aml_state_t* state, aml_node_t* node, aml_region_le
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_op_region_read(aml_state_t* state, aml_node_t* node);
 
@@ -239,7 +239,7 @@ uint64_t aml_def_op_region_read(aml_state_t* state, aml_node_t* node);
  *
  * @param state The AML state.
  * @param out The buffer to store the FieldFlags structure.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_field_flags_read(aml_state_t* state, aml_field_flags_t* out);
 
@@ -253,7 +253,7 @@ uint64_t aml_field_flags_read(aml_state_t* state, aml_field_flags_t* out);
  * @param state The AML state.
  * @param node The current AML node.
  * @param ctx The AML field list context.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_list_ctx_t* ctx);
 
@@ -266,7 +266,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
  *
  * @param state The AML state.
  * @param ctx The AML field list context.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_reserved_field_read(aml_state_t* state, aml_field_list_ctx_t* ctx);
 
@@ -281,7 +281,7 @@ uint64_t aml_reserved_field_read(aml_state_t* state, aml_field_list_ctx_t* ctx);
  * @param state The AML state.
  * @param node The current AML node.
  * @param ctx The AML field list context.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_field_element_read(aml_state_t* state, aml_node_t* node, aml_field_list_ctx_t* ctx);
 
@@ -296,7 +296,7 @@ uint64_t aml_field_element_read(aml_state_t* state, aml_node_t* node, aml_field_
  * @param node The current AML node.
  * @param ctx The AML field list context.
  * @param end The index at which the FieldList ends.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_field_list_read(aml_state_t* state, aml_node_t* node, aml_field_list_ctx_t* ctx, aml_address_t end);
 
@@ -307,7 +307,7 @@ uint64_t aml_field_list_read(aml_state_t* state, aml_node_t* node, aml_field_lis
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node);
 
@@ -327,7 +327,7 @@ uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node);
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_index_field_read(aml_state_t* state, aml_node_t* node);
 
@@ -343,7 +343,7 @@ uint64_t aml_def_index_field_read(aml_state_t* state, aml_node_t* node);
  *
  * @param state The AML state.
  * @param out The output buffer to store the MethodFlags structure.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_method_flags_read(aml_state_t* state, aml_method_flags_t* out);
 
@@ -356,7 +356,7 @@ uint64_t aml_method_flags_read(aml_state_t* state, aml_method_flags_t* out);
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node);
 
@@ -369,7 +369,7 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node);
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_device_read(aml_state_t* state, aml_node_t* node);
 
@@ -382,7 +382,7 @@ uint64_t aml_def_device_read(aml_state_t* state, aml_node_t* node);
  *
  * @param state The AML state.
  * @param out The output buffer to store the SyncFlags structure.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_sync_flags_read(aml_state_t* state, aml_sync_level_t* out);
 
@@ -395,7 +395,7 @@ uint64_t aml_sync_flags_read(aml_state_t* state, aml_sync_level_t* out);
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_mutex_read(aml_state_t* state, aml_node_t* node);
 
@@ -406,7 +406,7 @@ uint64_t aml_def_mutex_read(aml_state_t* state, aml_node_t* node);
  *
  * @param state The AML state.
  * @param out The output buffer to store the processor ID.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_proc_id_read(aml_state_t* state, aml_proc_id_t* out);
 
@@ -417,7 +417,7 @@ uint64_t aml_proc_id_read(aml_state_t* state, aml_proc_id_t* out);
  *
  * @param state The AML state.
  * @param out The output buffer to store the Pblk address.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_pblk_addr_read(aml_state_t* state, aml_pblk_addr_t* out);
 
@@ -428,7 +428,7 @@ uint64_t aml_pblk_addr_read(aml_state_t* state, aml_pblk_addr_t* out);
  *
  * @param state The AML state.
  * @param out The output buffer to store the Pblk length.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_pblk_len_read(aml_state_t* state, aml_pblk_len_t* out);
 
@@ -443,7 +443,7 @@ uint64_t aml_pblk_len_read(aml_state_t* state, aml_pblk_len_t* out);
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node);
 
@@ -466,7 +466,7 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node);
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_named_obj_read(aml_state_t* state, aml_node_t* node);
 

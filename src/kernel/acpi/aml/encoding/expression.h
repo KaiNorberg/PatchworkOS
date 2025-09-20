@@ -30,7 +30,7 @@ typedef aml_qword_data_t aml_buffer_size_t;
  *
  * @param state The AML state.
  * @param out Pointer to the buffer where the buffer size will be stored.
- * @return uint64_t On success, the buffer size. On failure, `ERR` and `errno` is set.
+ * @return On success, the buffer size. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_buffer_size_read(aml_state_t* state, aml_buffer_size_t* out);
 
@@ -44,7 +44,7 @@ uint64_t aml_buffer_size_read(aml_state_t* state, aml_buffer_size_t* out);
  * @param state The AML state.
  * @param out Pointer to the buffer where the Buffer will be stored. This will point to a location within the AML
  * bytestream and should not be freed or modified.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out);
 
@@ -68,9 +68,9 @@ typedef struct
  * @param node The current AML node.
  * @param argCount The number of arguments to read.
  * @param out Pointer to the buffer where the TermArgList will be stored.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_term_arg_list_read(aml_state_t* state, aml_node_t* node, uint8_t argCount, aml_term_arg_list_t* out);
+uint64_t aml_term_arg_list_read(aml_state_t* state, aml_node_t* node, uint64_t argCount, aml_term_arg_list_t* out);
 
 /**
  * @brief Reads a MethodInvocation structure from the AML byte stream.
@@ -82,7 +82,7 @@ uint64_t aml_term_arg_list_read(aml_state_t* state, aml_node_t* node, uint8_t ar
  * @param state The AML state.
  * @param node The current AML node.
  * @param out Pointer to the buffer where the result of the method invocation will be stored.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
 
@@ -96,7 +96,7 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_da
  * @param state The AML state.
  * @param node The current AML node.
  * @param out Pointer to the buffer where the result of the CondRefOf will be stored.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
 
@@ -110,7 +110,7 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data
  * @param state The AML state.
  * @param node The current AML node.
  * @param out Pointer to the buffer where the value moved by the Store operation will also be stored.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_store_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
 
@@ -128,7 +128,7 @@ uint64_t aml_def_store_read(aml_state_t* state, aml_node_t* node, aml_data_objec
  * @param state The AML state.
  * @param node The current AML node.
  * @param out Pointer to the buffer where the result of the expression will be stored.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
 

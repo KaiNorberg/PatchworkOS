@@ -17,40 +17,44 @@ uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_data_object
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to peek value");
         return ERR;
     }
 
+    uint64_t result;
     switch (value.props->type)
     {
     case AML_VALUE_TYPE_EXPRESSION:
     case AML_VALUE_TYPE_NAME: // MethodInvocation is a Name
-        return aml_expression_opcode_read(state, node, out);
-    case AML_VALUE_TYPE_ARG:
-        AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
-        errno = ENOSYS;
-        return ERR;
-    case AML_VALUE_TYPE_LOCAL:
-        AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
-        errno = ENOSYS;
-        return ERR;
-    default:
+        result = aml_expression_opcode_read(state, node, out);
         break;
+    case AML_VALUE_TYPE_ARG:
+        AML_DEBUG_ERROR(state, "Unsupported value type: ARG");
+        errno = ENOSYS;
+        result = ERR;
+    case AML_VALUE_TYPE_LOCAL:
+        AML_DEBUG_ERROR(state, "Unsupported value type: LOCAL");
+        errno = ENOSYS;
+        result = ERR;
+    default:
+        result = aml_data_object_read(state, out);
     }
 
-    if (aml_data_object_read(state, out) == ERR)
+    if (result == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read term arg");
         return ERR;
     }
 
     if (expectedType != AML_DATA_ANY && out->type != expectedType)
     {
         aml_data_object_deinit(out);
-        AML_DEBUG_INVALID_STRUCTURE("TermArg: Expected type does not match actual type");
+        AML_DEBUG_ERROR(state, "Unexpected data type: %d (expected %d)", out->type, expectedType);
         errno = EILSEQ;
         return ERR;
     }
 
-    return 0;
+    return result;
 }
 
 uint64_t aml_object_read(aml_state_t* state, aml_node_t* node)
@@ -58,6 +62,7 @@ uint64_t aml_object_read(aml_state_t* state, aml_node_t* node)
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to peek value");
         return ERR;
     }
 
@@ -68,7 +73,7 @@ uint64_t aml_object_read(aml_state_t* state, aml_node_t* node)
     case AML_VALUE_TYPE_NAMED:
         return aml_named_obj_read(state, node);
     default:
-        AML_DEBUG_UNEXPECTED_VALUE(&value);
+        AML_DEBUG_ERROR(state, "Invalid value type: %d", value.props->type);
         errno = EILSEQ;
         return ERR;
     }
@@ -79,6 +84,7 @@ uint64_t aml_term_obj_read(aml_state_t* state, aml_node_t* node)
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to peek value");
         return ERR;
     }
 
@@ -91,6 +97,7 @@ uint64_t aml_term_obj_read(aml_state_t* state, aml_node_t* node)
         aml_data_object_t temp;
         if (aml_expression_opcode_read(state, node, &temp) == ERR)
         {
+            AML_DEBUG_ERROR(state, "Failed to read expression opcode");
             return ERR;
         }
         aml_data_object_deinit(&temp);
@@ -108,6 +115,7 @@ uint64_t aml_term_list_read(aml_state_t* state, aml_node_t* node, aml_address_t 
         // End of buffer not reached => byte is not nothing => must be a termobj.
         if (aml_term_obj_read(state, node) == ERR)
         {
+            AML_DEBUG_ERROR(state, "Failed to read term obj");
             return ERR;
         }
     }

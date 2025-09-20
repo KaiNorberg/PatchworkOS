@@ -5,16 +5,17 @@
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_value.h"
 #include "arg.h"
+#include "data_object.h"
+#include "object_reference.h"
 #include "package_length.h"
 #include "term.h"
-#include "object_reference.h"
-#include "data_object.h"
 
 uint64_t aml_buffer_size_read(aml_state_t* state, aml_buffer_size_t* out)
 {
     aml_data_object_t termArg;
     if (aml_term_arg_read(state, NULL, &termArg, AML_DATA_INTEGER) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read term arg");
         return ERR;
     }
 
@@ -29,12 +30,13 @@ uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out)
     aml_value_t bufferOp;
     if (aml_value_read(state, &bufferOp) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read value");
         return ERR;
     }
 
     if (bufferOp.num != AML_BUFFER_OP)
     {
-        AML_DEBUG_UNEXPECTED_VALUE(&bufferOp);
+        AML_DEBUG_ERROR(state, "Invalid buffer op: 0x%x", bufferOp.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -44,6 +46,7 @@ uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out)
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read pkg length");
         return ERR;
     }
 
@@ -52,6 +55,7 @@ uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out)
     aml_buffer_size_t bufferSize;
     if (aml_buffer_size_read(state, &bufferSize) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read buffer size");
         return ERR;
     }
 
@@ -70,12 +74,14 @@ uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out)
     *out = AML_BUFFER_CREATE(bufferSize);
     if (out->content == NULL)
     {
+        AML_DEBUG_ERROR(state, "Failed to allocate memory for buffer");
         return ERR;
     }
 
     uint64_t bytesRead = aml_state_read(state, out->content, availableBytes);
     if (bytesRead == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read buffer content");
         aml_buffer_deinit(out);
         return ERR;
     }
@@ -84,22 +90,23 @@ uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out)
     return 0;
 }
 
-uint64_t aml_term_arg_list_read(aml_state_t* state, aml_node_t* node, uint8_t argCount, aml_term_arg_list_t* out)
+uint64_t aml_term_arg_list_read(aml_state_t* state, aml_node_t* node, uint64_t argCount, aml_term_arg_list_t* out)
 {
     if (argCount > AML_MAX_ARGS)
     {
-        AML_DEBUG_INVALID_STRUCTURE("TermArgList: argCount exceeds AML_MAX_ARGS");
+        AML_DEBUG_ERROR(state, "Too many arguments: %lu", argCount);
         errno = EILSEQ;
         return ERR;
     }
 
     out->count = 0;
-    for (uint8_t i = 0; i < argCount; i++)
+    for (uint64_t i = 0; i < argCount; i++)
     {
         aml_data_object_t* arg = &out->args[i];
         if (aml_term_arg_read(state, node, arg, AML_DATA_ANY) == ERR)
         {
-            for (uint8_t j = 0; j < i; j++)
+            AML_DEBUG_ERROR(state, "Failed to read term arg %lu", i);
+            for (uint64_t j = 0; j < i; j++)
             {
                 aml_data_object_deinit(&out->args[j]);
             }
@@ -116,13 +123,14 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_da
     aml_name_string_t nameString;
     if (aml_name_string_read(state, &nameString) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read name string");
         return ERR;
     }
 
     aml_node_t* target = aml_node_find(&nameString, node);
     if (target == NULL)
     {
-        AML_DEBUG_INVALID_STRUCTURE("MethodInvocation: Could not find target");
+        AML_DEBUG_ERROR(state, "Failed to find target node");
         errno = EILSEQ;
         return ERR;
     }
@@ -130,7 +138,7 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_da
     uint64_t argAmount = aml_node_get_expected_arg_count(target);
     if (argAmount == ERR)
     {
-        AML_DEBUG_INVALID_STRUCTURE("MethodInvocation: Failed to get expected arg count");
+        AML_DEBUG_ERROR(state, "Failed to get expected arg count");
         errno = EILSEQ;
         return ERR;
     }
@@ -140,6 +148,7 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_da
     aml_term_arg_list_t args = {0};
     if (aml_term_arg_list_read(state, node, argAmount, &args) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read term arg list");
         return ERR;
     }
 
@@ -158,12 +167,13 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data
     aml_value_t condRefOfOp;
     if (aml_value_read(state, &condRefOfOp) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read value");
         return ERR;
     }
 
     if (condRefOfOp.num != AML_COND_REF_OF_OP)
     {
-        AML_DEBUG_UNEXPECTED_VALUE(&condRefOfOp);
+        AML_DEBUG_ERROR(state, "Invalid cond ref of op: 0x%x", condRefOfOp.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -171,15 +181,16 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data
     aml_object_reference_t superObject;
     if (aml_super_name_read(state, node, &superObject) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read super name");
         return ERR;
     }
 
     aml_object_reference_t target;
     if (aml_target_read(state, node, &target) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read target");
         return ERR;
     }
-
 
     if (superObject.type == AML_OBJECT_REFERENCE_EMPTY)
     {
@@ -202,7 +213,7 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data
         aml_node_t* targetNode = target.node;
         if (targetNode->type != AML_NODE_NAME) // This is probably right... maybe.
         {
-            LOG_ERR("CondRefOf: Target is not a Name object\n");
+            AML_DEBUG_ERROR(state, "Target is not a Name object");
             errno = EILSEQ;
             return ERR;
         }
@@ -210,6 +221,7 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data
         aml_data_object_deinit(&targetNode->name.object);
         if (aml_data_object_init_object_reference(out, &superObject) == ERR)
         {
+            AML_DEBUG_ERROR(state, "Failed to init object reference");
             return ERR;
         }
     }
@@ -220,18 +232,20 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data
         aml_data_object_deinit(targetObject);
         if (aml_data_object_init_object_reference(targetObject, &superObject) == ERR)
         {
+            AML_DEBUG_ERROR(state, "Failed to init object reference");
             return ERR;
         }
     }
     break;
     default:
-        AML_DEBUG_INVALID_STRUCTURE("CondRefOf: Invalid target type");
+        AML_DEBUG_ERROR(state, "Invalid target type: %d", target.type);
         errno = EILSEQ;
         return ERR;
     }
 
     if (aml_data_object_init_integer(out, 1, 64) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to init integer");
         return ERR;
     }
     return 0;
@@ -242,12 +256,13 @@ uint64_t aml_def_store_read(aml_state_t* state, aml_node_t* node, aml_data_objec
     aml_value_t storeOp;
     if (aml_value_read(state, &storeOp) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read value");
         return ERR;
     }
 
     if (storeOp.num != AML_STORE_OP)
     {
-        AML_DEBUG_UNEXPECTED_VALUE(&storeOp);
+        AML_DEBUG_ERROR(state, "Invalid store op: 0x%x", storeOp.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -255,6 +270,7 @@ uint64_t aml_def_store_read(aml_state_t* state, aml_node_t* node, aml_data_objec
     aml_data_object_t source;
     if (aml_term_arg_read(state, node, &source, AML_DATA_ANY) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read term arg");
         return ERR;
     }
 
@@ -262,13 +278,14 @@ uint64_t aml_def_store_read(aml_state_t* state, aml_node_t* node, aml_data_objec
     if (aml_super_name_read(state, node, &target) == ERR)
     {
         aml_data_object_deinit(&source);
+        AML_DEBUG_ERROR(state, "Failed to read super name");
         return ERR;
     }
 
     if (target.type == AML_OBJECT_REFERENCE_EMPTY)
     {
-        AML_DEBUG_INVALID_STRUCTURE("Store: Failed to resolve target");
         aml_data_object_deinit(&source);
+        AML_DEBUG_ERROR(state, "Target is empty");
         errno = EILSEQ;
         return ERR;
     }
@@ -282,6 +299,7 @@ uint64_t aml_def_store_read(aml_state_t* state, aml_node_t* node, aml_data_objec
         if (aml_store(targetNode, &source) == ERR)
         {
             aml_data_object_deinit(&source);
+            AML_DEBUG_ERROR(state, "Failed to store");
             return ERR;
         }
     }
@@ -295,8 +313,8 @@ uint64_t aml_def_store_read(aml_state_t* state, aml_node_t* node, aml_data_objec
     }
     break;
     default:
-        AML_DEBUG_INVALID_STRUCTURE("Store: Invalid target type");
         aml_data_object_deinit(&source);
+        AML_DEBUG_ERROR(state, "Invalid target type: %d", target.type);
         errno = EILSEQ;
         return ERR;
     }
@@ -311,6 +329,7 @@ uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_da
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to peek value");
         return ERR;
     }
 
@@ -324,12 +343,14 @@ uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_da
             aml_buffer_t buffer;
             if (aml_def_buffer_read(state, &buffer) == ERR)
             {
+                AML_DEBUG_ERROR(state, "Failed to read buffer");
                 return ERR;
             }
 
             if (aml_data_object_init_buffer(out, &buffer) == ERR)
             {
                 aml_buffer_deinit(&buffer);
+                AML_DEBUG_ERROR(state, "Failed to init buffer");
                 return ERR;
             }
 
@@ -340,14 +361,14 @@ uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_da
         case AML_STORE_OP:
             return aml_def_store_read(state, node, out);
         default:
-            AML_DEBUG_UNIMPLEMENTED_VALUE(&value);
+            AML_DEBUG_ERROR(state, "Unknown expression opcode: 0x%x", value.num);
             errno = ENOSYS;
             return ERR;
         }
     case AML_VALUE_TYPE_NAME:
         return aml_method_invocation_read(state, node, out);
     default:
-        AML_DEBUG_UNEXPECTED_VALUE(&value);
+        AML_DEBUG_ERROR(state, "Invalid value type: %d", value.props->type);
         errno = EILSEQ;
         return ERR;
     }

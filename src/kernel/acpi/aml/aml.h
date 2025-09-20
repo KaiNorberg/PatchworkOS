@@ -135,7 +135,7 @@ typedef struct aml_node
 /**
  * @brief Initialize the AML subsystem.
  *
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_init(void);
 
@@ -148,7 +148,7 @@ uint64_t aml_init(void);
  *
  * @param data Pointer to the AML bytecode stream.
  * @param size Size of the AML bytecode stream.
- * @return uint64_t On success, 0. On failure, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_parse(const void* data, uint64_t size);
 

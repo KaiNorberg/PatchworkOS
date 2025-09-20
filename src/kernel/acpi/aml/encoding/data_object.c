@@ -1,5 +1,6 @@
 #include "data_object.h"
 
+#include "acpi/aml/aml_debug.h"
 #include "mem/heap.h"
 
 #include <errno.h>

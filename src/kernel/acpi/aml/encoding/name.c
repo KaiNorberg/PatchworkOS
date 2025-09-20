@@ -23,12 +23,13 @@ uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t** out)
     aml_value_t leadnamechar;
     if (aml_value_read_no_ext(state, &leadnamechar) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read lead name char");
         return ERR;
     }
 
     if (!AML_IS_LEAD_NAME_CHAR(&leadnamechar))
     {
-        AML_DEBUG_INVALID_STRUCTURE("LeadNameChar");
+        AML_DEBUG_ERROR(state, "Invalid lead char 0x%04x in NameSeg", leadnamechar.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -38,12 +39,13 @@ uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t** out)
         aml_value_t namechar;
         if (aml_value_read_no_ext(state, &namechar) == ERR)
         {
+            AML_DEBUG_ERROR(state, "Failed to read name char");
             return ERR;
         }
 
         if (!AML_IS_NAME_CHAR(&namechar))
         {
-            AML_DEBUG_INVALID_STRUCTURE("NameChar");
+            AML_DEBUG_ERROR(state, "Invalid char 0x%04x in NameSeg", namechar.num);
             errno = EILSEQ;
             return ERR;
         }
@@ -58,12 +60,13 @@ uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t** out)
     aml_value_t firstValue;
     if (aml_value_read_no_ext(state, &firstValue) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read first value");
         return ERR;
     }
 
     if (firstValue.num != AML_DUAL_NAME_PREFIX)
     {
-        AML_DEBUG_INVALID_STRUCTURE("DualNamePrefix");
+        AML_DEBUG_ERROR(state, "Invalid dual name prefix: 0x%x", firstValue.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -74,6 +77,7 @@ uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t** out)
     aml_name_seg_t* temp;
     if (aml_name_seg_read(state, &temp) == ERR || aml_name_seg_read(state, &temp) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read name seg");
         return ERR;
     }
 
@@ -86,12 +90,13 @@ uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t** outSegmen
     aml_value_t firstValue;
     if (aml_value_read_no_ext(state, &firstValue) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read first value");
         return ERR;
     }
 
     if (firstValue.num != AML_MULTI_NAME_PREFIX)
     {
-        AML_DEBUG_INVALID_STRUCTURE("MultiNamePrefix");
+        AML_DEBUG_ERROR(state, "Invalid multi name prefix: 0x%x", firstValue.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -99,6 +104,7 @@ uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t** outSegmen
     aml_seg_count_t segCount;
     if (aml_seg_count_read(state, &segCount) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read seg count");
         return ERR;
     }
 
@@ -110,6 +116,7 @@ uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t** outSegmen
     {
         if (aml_name_seg_read(state, &temp) == ERR)
         {
+            AML_DEBUG_ERROR(state, "Failed to read name seg");
             return ERR;
         }
     }
@@ -124,12 +131,13 @@ uint64_t aml_null_name_read(aml_state_t* state)
     aml_value_t firstValue;
     if (aml_value_read_no_ext(state, &firstValue) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read first value");
         return ERR;
     }
 
     if (firstValue.num != AML_NULL_NAME)
     {
-        AML_DEBUG_INVALID_STRUCTURE("NullName");
+        AML_DEBUG_ERROR(state, "Invalid null name: 0x%x", firstValue.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -142,6 +150,7 @@ uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* out)
     aml_value_t firstValue;
     if (aml_value_peek_no_ext(state, &firstValue) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to peek value");
         return ERR;
     }
 
@@ -167,7 +176,7 @@ uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* out)
     }
     else
     {
-        AML_DEBUG_INVALID_STRUCTURE("NamePath");
+        AML_DEBUG_ERROR(state, "Invalid name path start: 0x%x", firstValue.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -183,6 +192,7 @@ uint64_t aml_prefix_path_read(aml_state_t* state, aml_prefix_path_t* out)
         aml_value_t chr;
         if (aml_value_peek_no_ext(state, &chr) == ERR)
         {
+            AML_DEBUG_ERROR(state, "Failed to peek value");
             return ERR;
         }
 
@@ -201,12 +211,13 @@ uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out)
     aml_value_t rootChar;
     if (aml_value_read_no_ext(state, &rootChar) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read root char");
         return ERR;
     }
 
     if (rootChar.num != AML_ROOT_CHAR)
     {
-        AML_DEBUG_INVALID_STRUCTURE("RootChar");
+        AML_DEBUG_ERROR(state, "Invalid root char: 0x%x", rootChar.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -222,6 +233,7 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
     aml_value_t value;
     if (aml_value_peek_no_ext(state, &value) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to peek value");
         return ERR;
     }
 
@@ -231,12 +243,14 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
     case AML_ROOT_CHAR:
         if (aml_root_char_read(state, &out->rootChar) == ERR)
         {
+            AML_DEBUG_ERROR(state, "Failed to read root char");
             return ERR;
         }
         break;
     case AML_PARENT_PREFIX_CHAR:
         if (aml_prefix_path_read(state, &out->prefixPath) == ERR)
         {
+            AML_DEBUG_ERROR(state, "Failed to read prefix path");
             return ERR;
         }
         break;
@@ -247,6 +261,7 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
 
     if (aml_name_path_read(state, &out->namePath) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read name path");
         return ERR;
     }
 
@@ -258,6 +273,7 @@ uint64_t aml_simple_name_read(aml_state_t* state, aml_node_t* node, aml_object_r
     aml_value_t value;
     if (aml_value_read(state, &value) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read value");
         return ERR;
     }
 
@@ -268,6 +284,7 @@ uint64_t aml_simple_name_read(aml_state_t* state, aml_node_t* node, aml_object_r
         aml_name_string_t nameString;
         if (aml_name_string_read(state, &nameString) == ERR)
         {
+            AML_DEBUG_ERROR(state, "Failed to read name string");
             return ERR;
         }
 
@@ -283,15 +300,15 @@ uint64_t aml_simple_name_read(aml_state_t* state, aml_node_t* node, aml_object_r
     }
     break;
     case AML_VALUE_TYPE_ARG:
-        LOG_ERR("Arg are unimplemented\n");
+        AML_DEBUG_ERROR(state, "Args are unimplemented");
         errno = ENOSYS;
         return ERR;
     case AML_VALUE_TYPE_LOCAL:
-        LOG_ERR("Local are unimplemented\n");
+        AML_DEBUG_ERROR(state, "Locals are unimplemented");
         errno = ENOSYS;
         return ERR;
     default:
-        AML_DEBUG_UNEXPECTED_VALUE(&value);
+        AML_DEBUG_ERROR(state, "Invalid value type: %d", value.props->type);
         errno = EILSEQ;
         return ERR;
     }
@@ -302,6 +319,7 @@ uint64_t aml_super_name_read(aml_state_t* state, aml_node_t* node, aml_object_re
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to peek value");
         return ERR;
     }
 
@@ -312,15 +330,15 @@ uint64_t aml_super_name_read(aml_state_t* state, aml_node_t* node, aml_object_re
     case AML_VALUE_TYPE_LOCAL:
         return aml_simple_name_read(state, node, out);
     case AML_VALUE_TYPE_DEBUG:
-        LOG_ERR("DebugObj is unimplemented\n");
+        AML_DEBUG_ERROR(state, "DebugObj is unimplemented");
         errno = ENOSYS;
         return ERR;
     case AML_VALUE_TYPE_EXPRESSION:
-        LOG_ERR("ReferenceTypeOpcode is unimplemented\n");
+        AML_DEBUG_ERROR(state, "ReferenceTypeOpcode is unimplemented");
         errno = ENOSYS;
         return ERR;
     default:
-        AML_DEBUG_UNEXPECTED_VALUE(&value);
+        AML_DEBUG_ERROR(state, "Invalid value type: %d", value.props->type);
         errno = EILSEQ;
         return ERR;
     }
@@ -331,6 +349,7 @@ uint64_t aml_target_read(aml_state_t* state, aml_node_t* node, aml_object_refere
     aml_value_t value;
     if (aml_value_peek_no_ext(state, &value) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to peek value");
         return ERR;
     }
 

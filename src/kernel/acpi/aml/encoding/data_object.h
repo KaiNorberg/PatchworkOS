@@ -212,7 +212,8 @@ uint64_t aml_data_object_init_package(aml_data_object_t* obj, aml_package_t* pac
 uint64_t aml_data_object_init_name_string(aml_data_object_t* obj, aml_name_string_t* nameString);
 
 /**
- * @brief Initializes a DataObject as an ObjectReference, copying the provided ObjectReference structure but not its content.
+ * @brief Initializes a DataObject as an ObjectReference, copying the provided ObjectReference structure but not its
+ * content.
  *
  * @param obj Pointer to the empty DataObject to initialize.
  * @param ref Pointer to the ObjectReference to copy.
