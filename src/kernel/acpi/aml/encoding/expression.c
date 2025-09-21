@@ -143,8 +143,6 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_da
         return ERR;
     }
 
-    LOG_DEBUG("Reading term arg list for %.*s, expecting %u args\n", 4, target->segment, argAmount);
-
     aml_term_arg_list_t args = {0};
     if (aml_term_arg_list_read(state, node, argAmount, &args) == ERR)
     {
@@ -152,7 +150,7 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_da
         return ERR;
     }
 
-    LOG_DEBUG("Evaluating %.*s with %u args\n", 4, target->segment, args.count);
+    LOG_DEBUG("evaluating %.*s with %u args\n", 4, target->segment, args.count);
 
     uint64_t result = aml_evaluate(target, out, &args);
     for (uint8_t i = 0; i < args.count; i++)

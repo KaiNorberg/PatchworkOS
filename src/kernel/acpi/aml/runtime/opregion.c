@@ -22,7 +22,7 @@ static void* aml_ensure_mem_is_mapped(uint64_t address, aml_bit_size_t accessSiz
 
     for (uint64_t page = 0; page < (crossesBoundary ? 2 : 1); page++)
     {
-        void* pageAddr = (void*)((uintptr_t)address + page * PAGE_SIZE);
+        void* pageAddr = (void*)ROUND_DOWN((uintptr_t)address + page * PAGE_SIZE, PAGE_SIZE);
         void* virtAddr = vmm_kernel_map(NULL, pageAddr, 1, PML_WRITE);
         if (virtAddr == NULL && errno != EEXIST) // EEXIST means already mapped
         {
