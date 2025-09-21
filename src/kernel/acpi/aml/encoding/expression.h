@@ -22,6 +22,15 @@ typedef struct aml_state aml_state_t;
 typedef aml_qword_data_t aml_buffer_size_t;
 
 /**
+ * @brief ACPI AML TermArgList structure.
+ */
+typedef struct
+{
+    aml_data_object_t args[AML_MAX_ARGS];
+    uint8_t count;
+} aml_term_arg_list_t;
+
+/**
  * @brief Reads a BufferSize structure from the AML byte stream.
  *
  * A BufferSize structure is defined as `BufferSize := TermArg => Integer`.
@@ -47,15 +56,6 @@ uint64_t aml_buffer_size_read(aml_state_t* state, aml_buffer_size_t* out);
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out);
-
-/**
- * @brief ACPI AML TermArgList structure.
- */
-typedef struct
-{
-    aml_data_object_t args[AML_MAX_ARGS];
-    uint8_t count;
-} aml_term_arg_list_t;
 
 /**
  * @brief Reads a TermArgList structure from the AML byte stream.
@@ -243,6 +243,118 @@ uint64_t aml_def_divide_read(aml_state_t* state, aml_node_t* node, aml_data_obje
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_mod_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
+ * @brief Reads a DefAnd structure from the AML byte stream.
+ *
+ * The DefAnd structure is defined as `DefAnd := AndOp Operand Operand Target`.
+ *
+ * @see Section 19.6.5 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the result of the AND operation will be stored, can be `NULL`.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_and_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
+ * @brief Reads a DefNAnd structure from the AML byte stream.
+ *
+ * The DefNAnd structure is defined as `DefNAnd := NandOp Operand Operand Target`.
+ *
+ * @see Section 19.6.69 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the result of the NAND operation will be stored, can be `NULL`.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_nand_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
+ * @brief Reads a DefOr structure from the AML byte stream.
+ *
+ * The DefOr structure is defined as `DefOr := OrOp Operand Operand Target`.
+ *
+ * @see Section 19.6.100 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the result of the OR operation will be stored, can be `NULL`.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_or_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
+ * @brief Reads a DefNOr structure from the AML byte stream.
+ *
+ * The DefNOr structure is defined as `DefNOr := NorOp Operand Operand Target`.
+ *
+ * @see Section 19.6.93 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the result of the NOR operation will be stored, can be `NULL`.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_nor_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
+ * @brief Reads a DefXOr structure from the AML byte stream.
+ *
+ * The DefXOr structure is defined as `DefXOr := XorOp Operand Operand Target`.
+ *
+ * @see Section 19.6.155 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the result of the XOR operation will be stored, can be `NULL`.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_xor_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
+ * @brief Reads a DefNot structure from the AML byte stream.
+ *
+ * The DefNot structure is defined as `DefNot := NotOp Operand Target`.
+ *
+ * @see Section 19.6.94 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the result of the NOT operation will be stored, can be `NULL`.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_not_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
+ * @brief Reads a DefIncrement structure from the AML byte stream.
+ *
+ * The DefIncrement structure is defined as `DefIncrement := IncrementOp SuperName`.
+ *
+ * @see Section 19.6.62 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the result of the increment operation will be stored, can be `NULL`.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_increment_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
+ * @brief Reads a DefDecrement structure from the AML byte stream.
+ *
+ * The DefDecrement structure is defined as `DefDecrement := DecrementOp SuperName`.
+ *
+ * @see Section 19.6.27 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the result of the decrement operation will be stored, can be `NULL`.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_decrement_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
 
 /**
  * @brief Reads an ExpressionOpcode structure from the AML byte stream.

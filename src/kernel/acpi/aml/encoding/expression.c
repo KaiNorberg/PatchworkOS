@@ -11,6 +11,209 @@
 #include "package_length.h"
 #include "term.h"
 
+typedef uint64_t (*aml_unary_op_t)(uint64_t);
+typedef uint64_t (*aml_binary_op_t)(uint64_t, uint64_t);
+
+/**
+ * Helper for reading and executing a structure in the format `OpCode Operand Target`.
+ */
+static inline uint64_t aml_unary_op_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out,
+    aml_value_num_t opCode, const char* opName, aml_unary_op_t op)
+{
+    aml_value_t opValue;
+    if (aml_value_read(state, &opValue) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read value for %s", opName);
+        return ERR;
+    }
+
+    if (opValue.num != opCode)
+    {
+        AML_DEBUG_ERROR(state, "Invalid %s op: 0x%x", opName, opValue.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_data_object_t source;
+    if (aml_operand_read(state, node, &source) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read operand for %s", opName);
+        return ERR;
+    }
+
+    assert(source.type == AML_DATA_INTEGER);
+
+    aml_object_reference_t target;
+    if (aml_target_read(state, node, &target) == ERR)
+    {
+        aml_data_object_deinit(&source);
+        AML_DEBUG_ERROR(state, "Failed to read target for %s", opName);
+        return ERR;
+    }
+
+    aml_data_object_t result;
+    if (aml_data_object_init_integer(&result, op(source.integer), source.meta.bitWidth) == ERR)
+    {
+        aml_data_object_deinit(&source);
+        AML_DEBUG_ERROR(state, "Failed to init result for %s", opName);
+        return ERR;
+    }
+
+    aml_data_object_deinit(&source);
+
+    if (aml_store(aml_object_reference_deref(&target), &result) == ERR)
+    {
+        aml_data_object_deinit(&result);
+        AML_DEBUG_ERROR(state, "Failed to store result for %s", opName);
+        return ERR;
+    }
+
+    if (out != NULL)
+    {
+        *out = result; // Transfer ownership
+        return 0;
+    }
+    aml_data_object_deinit(&result);
+    return 0;
+}
+
+/**
+ * Helper for reading and executing a structure in the format `OpCode Operand Operand Target`.
+ * If `checkDivZero` is true, the function will check for division by zero and return an error if it occurs.
+ */
+static inline uint64_t aml_binary_op_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out,
+    aml_value_num_t opCode, const char* opName, aml_binary_op_t op, bool checkDivZero)
+{
+    aml_value_t opValue;
+    if (aml_value_read(state, &opValue) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read value for %s", opName);
+        return ERR;
+    }
+
+    if (opValue.num != opCode)
+    {
+        AML_DEBUG_ERROR(state, "Invalid %s op: 0x%x", opName, opValue.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_data_object_t source1;
+    if (aml_operand_read(state, node, &source1) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read first operand for %s", opName);
+        return ERR;
+    }
+
+    aml_data_object_t source2;
+    if (aml_operand_read(state, node, &source2) == ERR)
+    {
+        aml_data_object_deinit(&source1);
+        AML_DEBUG_ERROR(state, "Failed to read second operand for %s", opName);
+        return ERR;
+    }
+
+    assert(source1.type == AML_DATA_INTEGER);
+    assert(source2.type == AML_DATA_INTEGER);
+
+    if (checkDivZero && source2.integer == 0)
+    {
+        aml_data_object_deinit(&source1);
+        aml_data_object_deinit(&source2);
+        AML_DEBUG_ERROR(state, "Division by zero in %s", opName);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_object_reference_t target;
+    if (aml_target_read(state, node, &target) == ERR)
+    {
+        aml_data_object_deinit(&source1);
+        aml_data_object_deinit(&source2);
+        AML_DEBUG_ERROR(state, "Failed to read target for %s", opName);
+        return ERR;
+    }
+
+    uint8_t bitWidth = MAX(source1.meta.bitWidth, source2.meta.bitWidth);
+
+    aml_data_object_t result;
+    if (aml_data_object_init_integer(&result, op(source1.integer, source2.integer), bitWidth) == ERR)
+    {
+        aml_data_object_deinit(&source1);
+        aml_data_object_deinit(&source2);
+        AML_DEBUG_ERROR(state, "Failed to init result for %s", opName);
+        return ERR;
+    }
+
+    aml_data_object_deinit(&source1);
+    aml_data_object_deinit(&source2);
+
+    if (aml_store(aml_object_reference_deref(&target), &result) == ERR)
+    {
+        aml_data_object_deinit(&result);
+        AML_DEBUG_ERROR(state, "Failed to store result for %s", opName);
+        return ERR;
+    }
+
+    if (out != NULL)
+    {
+        *out = result; // Transfer ownership
+        return 0;
+    }
+    aml_data_object_deinit(&result);
+    return 0;
+}
+
+static inline uint64_t aml_op_add(uint64_t a, uint64_t b)
+{
+    return a + b;
+}
+
+static inline uint64_t aml_op_sub(uint64_t a, uint64_t b)
+{
+    return a - b;
+}
+
+static inline uint64_t aml_op_mul(uint64_t a, uint64_t b)
+{
+    return a * b;
+}
+
+static inline uint64_t aml_op_mod(uint64_t a, uint64_t b)
+{
+    return a % b;
+}
+
+static inline uint64_t aml_op_and(uint64_t a, uint64_t b)
+{
+    return a & b;
+}
+
+static inline uint64_t aml_op_nand(uint64_t a, uint64_t b)
+{
+    return ~(a & b);
+}
+
+static inline uint64_t aml_op_or(uint64_t a, uint64_t b)
+{
+    return a | b;
+}
+
+static inline uint64_t aml_op_nor(uint64_t a, uint64_t b)
+{
+    return ~(a | b);
+}
+
+static inline uint64_t aml_op_xor(uint64_t a, uint64_t b)
+{
+    return a ^ b;
+}
+
+static inline uint64_t aml_op_not(uint64_t a)
+{
+    return ~a;
+}
+
 uint64_t aml_buffer_size_read(aml_state_t* state, aml_buffer_size_t* out)
 {
     aml_data_object_t termArg;
@@ -338,224 +541,17 @@ uint64_t aml_quotient_read(aml_state_t* state, aml_node_t* node, aml_object_refe
 
 uint64_t aml_def_add_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
 {
-    aml_value_t addOp;
-    if (aml_value_read_no_ext(state, &addOp) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read value");
-        return ERR;
-    }
-
-    if (addOp.num != AML_ADD_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid add op: 0x%x", addOp.num);
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    aml_data_object_t addend1;
-    if (aml_operand_read(state, node, &addend1) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read first addend");
-        return ERR;
-    }
-
-    aml_data_object_t addend2;
-    if (aml_operand_read(state, node, &addend2) == ERR)
-    {
-        aml_data_object_deinit(&addend1);
-        AML_DEBUG_ERROR(state, "Failed to read second addend");
-        return ERR;
-    }
-
-    assert(addend1.type == AML_DATA_INTEGER);
-    assert(addend2.type == AML_DATA_INTEGER);
-
-    aml_object_reference_t target;
-    if (aml_target_read(state, node, &target) == ERR)
-    {
-        aml_data_object_deinit(&addend1);
-        aml_data_object_deinit(&addend2);
-        AML_DEBUG_ERROR(state, "Failed to read target");
-        return ERR;
-    }
-
-    // We dont care about overflow.
-    uint8_t bitWidth = MAX(addend1.meta.bitWidth, addend2.meta.bitWidth);
-
-    aml_data_object_t result;
-    if (aml_data_object_init_integer(&result, addend1.integer + addend2.integer, bitWidth) == ERR)
-    {
-        aml_data_object_deinit(&addend1);
-        aml_data_object_deinit(&addend2);
-        AML_DEBUG_ERROR(state, "Failed to init result");
-        return ERR;
-    }
-
-    aml_data_object_deinit(&addend1);
-    aml_data_object_deinit(&addend2);
-
-    if (aml_store(aml_object_reference_deref(&target), &result) == ERR)
-    {
-        aml_data_object_deinit(&result);
-        AML_DEBUG_ERROR(state, "Failed to store result");
-        return ERR;
-    }
-
-    if (out != NULL)
-    {
-        *out = result; // Transfer ownership
-        return 0;
-    }
-    aml_data_object_deinit(&result);
-    return 0;
+    return aml_binary_op_read(state, node, out, AML_ADD_OP, "add", aml_op_add, false);
 }
 
 uint64_t aml_def_subtract_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
 {
-    aml_value_t subOp;
-    if (aml_value_read_no_ext(state, &subOp) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read value");
-        return ERR;
-    }
-
-    if (subOp.num != AML_SUBTRACT_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid subtract op: 0x%x", subOp.num);
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    aml_data_object_t minuend;
-    if (aml_operand_read(state, node, &minuend) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read minuend");
-        return ERR;
-    }
-
-    aml_data_object_t subtrahend;
-    if (aml_operand_read(state, node, &subtrahend) == ERR)
-    {
-        aml_data_object_deinit(&minuend);
-        AML_DEBUG_ERROR(state, "Failed to read subtrahend");
-        return ERR;
-    }
-
-    assert(minuend.type == AML_DATA_INTEGER);
-    assert(subtrahend.type == AML_DATA_INTEGER);
-
-    aml_object_reference_t target;
-    if (aml_target_read(state, node, &target) == ERR)
-    {
-        aml_data_object_deinit(&minuend);
-        aml_data_object_deinit(&subtrahend);
-        AML_DEBUG_ERROR(state, "Failed to read target");
-        return ERR;
-    }
-
-    // We dont care about underflow.
-    uint8_t bitWidth = MAX(minuend.meta.bitWidth, subtrahend.meta.bitWidth);
-
-    aml_data_object_t result;
-    if (aml_data_object_init_integer(&result, minuend.integer - subtrahend.integer, bitWidth) == ERR)
-    {
-        aml_data_object_deinit(&minuend);
-        aml_data_object_deinit(&subtrahend);
-        AML_DEBUG_ERROR(state, "Failed to init result");
-        return ERR;
-    }
-
-    aml_data_object_deinit(&minuend);
-    aml_data_object_deinit(&subtrahend);
-
-    if (aml_store(aml_object_reference_deref(&target), &result) == ERR)
-    {
-        aml_data_object_deinit(&result);
-        AML_DEBUG_ERROR(state, "Failed to store result");
-        return ERR;
-    }
-
-    if (out != NULL)
-    {
-        *out = result; // Transfer ownership
-        return 0;
-    }
-    aml_data_object_deinit(&result);
-    return 0;
+    return aml_binary_op_read(state, node, out, AML_SUBTRACT_OP, "subtract", aml_op_sub, false);
 }
 
 uint64_t aml_def_multiply_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
 {
-    aml_value_t mulOp;
-    if (aml_value_read_no_ext(state, &mulOp) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read value");
-        return ERR;
-    }
-
-    if (mulOp.num != AML_MULTIPLY_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid multiply op: 0x%x", mulOp.num);
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    aml_data_object_t multiplcand;
-    if (aml_operand_read(state, node, &multiplcand) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read multiplcand");
-        return ERR;
-    }
-
-    aml_data_object_t multiplier;
-    if (aml_operand_read(state, node, &multiplier) == ERR)
-    {
-        aml_data_object_deinit(&multiplcand);
-        AML_DEBUG_ERROR(state, "Failed to read second factor");
-        return ERR;
-    }
-
-    assert(multiplcand.type == AML_DATA_INTEGER);
-    assert(multiplier.type == AML_DATA_INTEGER);
-
-    aml_object_reference_t target;
-    if (aml_target_read(state, node, &target) == ERR)
-    {
-        aml_data_object_deinit(&multiplcand);
-        aml_data_object_deinit(&multiplier);
-        AML_DEBUG_ERROR(state, "Failed to read target");
-        return ERR;
-    }
-
-    // We dont care about overflow.
-    uint8_t bitWidth = MAX(multiplcand.meta.bitWidth, multiplier.meta.bitWidth);
-
-    aml_data_object_t result;
-    if (aml_data_object_init_integer(&result, multiplcand.integer * multiplier.integer, bitWidth) == ERR)
-    {
-        aml_data_object_deinit(&multiplcand);
-        aml_data_object_deinit(&multiplier);
-        AML_DEBUG_ERROR(state, "Failed to init result");
-        return ERR;
-    }
-
-    aml_data_object_deinit(&multiplcand);
-    aml_data_object_deinit(&multiplier);
-
-    if (aml_store(aml_object_reference_deref(&target), &result) == ERR)
-    {
-        aml_data_object_deinit(&result);
-        AML_DEBUG_ERROR(state, "Failed to store result");
-        return ERR;
-    }
-
-    if (out != NULL)
-    {
-        *out = result; // Transfer ownership
-        return 0;
-    }
-    aml_data_object_deinit(&result);
-    return 0;
+    return aml_binary_op_read(state, node, out, AML_MULTIPLY_OP, "multiply", aml_op_mul, false);
 }
 
 uint64_t aml_def_divide_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
@@ -677,83 +673,164 @@ cleanup:
 
 uint64_t aml_def_mod_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
 {
-    aml_value_t modOp;
-    if (aml_value_read_no_ext(state, &modOp) == ERR)
+    return aml_binary_op_read(state, node, out, AML_MOD_OP, "mod", aml_op_mod, true);
+}
+
+uint64_t aml_def_and_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    return aml_binary_op_read(state, node, out, AML_AND_OP, "and", aml_op_and, false);
+}
+
+uint64_t aml_def_nand_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    return aml_binary_op_read(state, node, out, AML_NAND_OP, "nand", aml_op_nand, false);
+}
+
+uint64_t aml_def_or_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    return aml_binary_op_read(state, node, out, AML_OR_OP, "or", aml_op_or, false);
+}
+
+uint64_t aml_def_nor_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    return aml_binary_op_read(state, node, out, AML_NOR_OP, "nor", aml_op_nor, false);
+}
+
+uint64_t aml_def_xor_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    return aml_binary_op_read(state, node, out, AML_XOR_OP, "xor", aml_op_xor, false);
+}
+
+uint64_t aml_def_not_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    return aml_unary_op_read(state, node, out, AML_NOT_OP, "not", aml_op_not);
+}
+
+uint64_t aml_def_increment_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+   aml_value_t incOp;
+   if (aml_value_read(state, &incOp) == ERR)
+   {
+       AML_DEBUG_ERROR(state, "Failed to read value");
+       return ERR;
+   }
+
+    if (incOp.num != AML_INCREMENT_OP)
     {
-        AML_DEBUG_ERROR(state, "Failed to read value");
+         AML_DEBUG_ERROR(state, "Invalid increment op: 0x%x", incOp.num);
+         errno = EILSEQ;
+         return ERR;
+    }
+
+    aml_object_reference_t superName;
+    if (aml_super_name_read(state, node, &superName) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read super name");
         return ERR;
     }
 
-    if (modOp.num != AML_MOD_OP)
+    if (aml_object_reference_is_null(&superName))
     {
-        AML_DEBUG_ERROR(state, "Invalid mod op: 0x%x", modOp.num);
+        AML_DEBUG_ERROR(state, "Super name is a null reference");
         errno = EILSEQ;
         return ERR;
     }
 
-    aml_data_object_t dividend;
-    if (aml_operand_read(state, node, &dividend) == ERR)
+    aml_data_object_t obj;
+    if (aml_evaluate(aml_object_reference_deref(&superName), &obj, NULL) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read dividend");
+        AML_DEBUG_ERROR(state, "Failed to evaluate super name");
         return ERR;
     }
 
-    aml_data_object_t divisor;
-    if (aml_operand_read(state, node, &divisor) == ERR)
+    if (obj.type != AML_DATA_INTEGER)
     {
-        aml_data_object_deinit(&dividend);
-        AML_DEBUG_ERROR(state, "Failed to read divisor");
-        return ERR;
-    }
-
-    assert(dividend.type == AML_DATA_INTEGER);
-    assert(divisor.type == AML_DATA_INTEGER);
-
-    if (divisor.integer == 0)
-    {
-        aml_data_object_deinit(&dividend);
-        aml_data_object_deinit(&divisor);
-        AML_DEBUG_ERROR(state, "Division by zero");
+        aml_data_object_deinit(&obj);
+        AML_DEBUG_ERROR(state, "Super name does not evaluate to an integer");
         errno = EILSEQ;
         return ERR;
     }
 
-    aml_object_reference_t target;
-    if (aml_target_read(state, node, &target) == ERR)
+    obj.integer++;
+
+    if (aml_store(aml_object_reference_deref(&superName), &obj) == ERR)
     {
-        aml_data_object_deinit(&dividend);
-        aml_data_object_deinit(&divisor);
-        AML_DEBUG_ERROR(state, "Failed to read target");
-        return ERR;
-    }
-
-    uint8_t bitWidth = MAX(dividend.meta.bitWidth, divisor.meta.bitWidth);
-
-    aml_data_object_t result;
-    if (aml_data_object_init_integer(&result, dividend.integer % divisor.integer, bitWidth) == ERR)
-    {
-        aml_data_object_deinit(&dividend);
-        aml_data_object_deinit(&divisor);
-        AML_DEBUG_ERROR(state, "Failed to init result");
-        return ERR;
-    }
-
-    aml_data_object_deinit(&dividend);
-    aml_data_object_deinit(&divisor);
-
-    if (aml_store(aml_object_reference_deref(&target), &result) == ERR)
-    {
-        aml_data_object_deinit(&result);
-        AML_DEBUG_ERROR(state, "Failed to store result");
+        aml_data_object_deinit(&obj);
+        AML_DEBUG_ERROR(state, "Failed to store incremented value");
         return ERR;
     }
 
     if (out != NULL)
     {
-        *out = result; // Transfer ownership
+        *out = obj; // Transfer ownership
         return 0;
     }
-    aml_data_object_deinit(&result);
+
+    aml_data_object_deinit(&obj);
+    return 0;
+}
+
+uint64_t aml_def_decrement_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+   aml_value_t decOp;
+   if (aml_value_read(state, &decOp) == ERR)
+   {
+       AML_DEBUG_ERROR(state, "Failed to read value");
+       return ERR;
+   }
+
+    if (decOp.num != AML_DECREMENT_OP)
+    {
+         AML_DEBUG_ERROR(state, "Invalid increment op: 0x%x", decOp.num);
+         errno = EILSEQ;
+         return ERR;
+    }
+
+    aml_object_reference_t superName;
+    if (aml_super_name_read(state, node, &superName) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read super name");
+        return ERR;
+    }
+
+    if (aml_object_reference_is_null(&superName))
+    {
+        AML_DEBUG_ERROR(state, "Super name is a null reference");
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_data_object_t obj;
+    if (aml_evaluate(aml_object_reference_deref(&superName), &obj, NULL) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to evaluate super name");
+        return ERR;
+    }
+
+    if (obj.type != AML_DATA_INTEGER)
+    {
+        aml_data_object_deinit(&obj);
+        AML_DEBUG_ERROR(state, "Super name does not evaluate to an integer");
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    obj.integer--;
+
+    if (aml_store(aml_object_reference_deref(&superName), &obj) == ERR)
+    {
+        aml_data_object_deinit(&obj);
+        AML_DEBUG_ERROR(state, "Failed to store decremented value");
+        return ERR;
+    }
+
+    if (out != NULL)
+    {
+        *out = obj; // Transfer ownership
+        return 0;
+    }
+
+    aml_data_object_deinit(&obj);
     return 0;
 }
 
@@ -805,6 +882,22 @@ uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_da
         return aml_def_divide_read(state, node, out);
     case AML_MOD_OP:
         return aml_def_mod_read(state, node, out);
+    case AML_AND_OP:
+        return aml_def_and_read(state, node, out);
+    case AML_NAND_OP:
+        return aml_def_nand_read(state, node, out);
+    case AML_OR_OP:
+        return aml_def_or_read(state, node, out);
+    case AML_NOR_OP:
+        return aml_def_nor_read(state, node, out);
+    case AML_XOR_OP:
+        return aml_def_xor_read(state, node, out);
+    case AML_NOT_OP:
+        return aml_def_not_read(state, node, out);
+    case AML_INCREMENT_OP:
+        return aml_def_increment_read(state, node, out);
+    case AML_DECREMENT_OP:
+        return aml_def_decrement_read(state, node, out);
     default:
         AML_DEBUG_ERROR(state, "Unknown expression opcode: 0x%x", value.num);
         errno = ENOSYS;
