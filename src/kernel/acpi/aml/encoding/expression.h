@@ -115,6 +115,122 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data
 uint64_t aml_def_store_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
 
 /**
+ * @brief Reads an Operand structure from the AML byte stream.
+ *
+ * An Operand structure is defined as `Operand := TermArg => Integer`.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the result of the operand will be stored, will always be an integer.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_operand_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
+ * @brief Reads a Dividend structure from the AML byte stream.
+ *
+ * A Dividend structure is defined as `Dividend := TermArg => Integer`.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the result of the dividend will be stored, will always be an integer.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_dividend_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
+ * @brief Reads a Divisor structure from the AML byte stream.
+ *
+ * A Divisor structure is defined as `Divisor := TermArg => Integer`.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the result of the divisor will be stored, will always be an integer.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_divisor_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
+ * @brief Reads a Remainder structure from the AML byte stream.
+ *
+ * A Remainder structure is defined as `Remainder := Target`.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the object reference to store the remainder will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_remainder_read(aml_state_t* state, aml_node_t* node, aml_object_reference_t* out);
+
+/**
+ * @brief Reads a Quotient structure from the AML byte stream.
+ *
+ * A Quotient structure is defined as `Quotient := Target`.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the object reference to store the quotient will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_quotient_read(aml_state_t* state, aml_node_t* node, aml_object_reference_t* out);
+
+/**
+ * @brief Reads a DefAdd structure from the AML byte stream.
+ *
+ * The DefAdd structure is defined as `DefAdd := AddOp Operand Operand Target`.
+ *
+ * @see Section 19.6.3 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the result of the addition will be stored, can be `NULL`.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_add_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
+ * @brief Reads a DefSubtract structure from the AML byte stream.
+ *
+ * The DefSubtract structure is defined as `DefSubtract := SubtractOp Operand Operand Target`.
+ *
+ * @see Section 19.6.133 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the result of the subtraction will be stored, can be `NULL`.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_subtract_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
+ * @brief Reads a DefMultiply structure from the AML byte stream.
+ *
+ * The DefMultiply structure is defined as `DefMultiply := MultiplyOp Operand Operand Target`.
+ *
+ * @see Section 19.6.88 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the result of the multiplication will be stored, can be `NULL`.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_multiply_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
+ * @brief Reads a DefDivide structure from the AML byte stream.
+ *
+ * The DefDivide structure is defined as `DefDivide := DivideOp Dividend Divisor Remainder Quotient`.
+ *
+ * @see Section 19.6.32 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the result of the division will be stored, can be `NULL`.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_divide_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
  * @brief Reads an ExpressionOpcode structure from the AML byte stream.
  *
  * An ExpressionOpcode structure is defined as `ExpressionOpcode := DefAcquire | DefAdd | DefAnd | DefBuffer | DefConcat

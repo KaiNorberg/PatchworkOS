@@ -231,6 +231,10 @@ aml_node_t* aml_node_find(const aml_name_string_t* nameString, aml_node_t* start
         current = aml_node_find_child(current, segment->name);
         if (current == NULL)
         {
+            if (start->parent != NULL)
+            {
+                return aml_node_find(nameString, start->parent);
+            }
             return NULL;
         }
     }

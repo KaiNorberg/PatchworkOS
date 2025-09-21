@@ -195,8 +195,8 @@ typedef struct
     aml_bit_size_t bitOffset;
     uintptr_t base;
     aml_field_flags_t flags;
-    aml_node_t* indexNode;      // Only for IndexFields
-    aml_node_t* dataNode;       // Only for IndexFields
+    aml_node_t* indexNode;        // Only for IndexFields
+    aml_node_t* dataNode;         // Only for IndexFields
     aml_data_object_t* bankValue; // Only for BankFields
 } aml_field_access_data_t;
 

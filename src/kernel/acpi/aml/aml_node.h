@@ -170,6 +170,18 @@ aml_node_t* aml_node_add(aml_name_string_t* string, aml_node_t* start, aml_node_
 /**
  * @brief Walks the ACPI namespace tree to find the node corresponding to the given NameString.
  *
+ * A search through the ACPI namespace follows these rules:
+ * - If the NameString starts with a root character (`\`), the search starts from the root node.
+ * - If the NameString starts with one or more parent prefix characters (`^`), the search starts from the parent of the
+ *    `start` node, moving up one level for each `^`.
+ * - If the NameString does not start with a root or parent prefix character, the search starts from the `start` node.
+ *    If `start` is `NULL`, the search starts from the root node.
+ * - Attempt to find a matching name in the current namespace scope (the `start` node and its children).
+ * - If the matching name is not found, move up to the parent node and repeat the search.
+ * - This continues until either a match is found or the node does not have a parent (i.e., the root is reached).
+ *
+ * @see Section 5.3 of the ACPI specification for more details.
+ *
  * @param nameString The NameString to search for.
  * @param start The node to start the search from, or `NULL` to start from the root.
  * @return On success, a pointer to the found node. On error, `NULL` and `errno` is set.
