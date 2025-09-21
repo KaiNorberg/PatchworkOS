@@ -329,6 +329,46 @@ uint64_t aml_def_xor_read(aml_state_t* state, aml_node_t* node, aml_data_object_
 uint64_t aml_def_not_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
 
 /**
+ * @brief Reads a ShiftCount structure from the AML byte stream.
+ *
+ * A ShiftCount structure is defined as `ShiftCount := TermArg => Integer`.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the result of the shift count will be stored, will always be an integer.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_shift_count_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
+ * @brief Reads a DefShiftLeft structure from the AML byte stream.
+ *
+ * The DefShiftLeft structure is defined as `DefShiftLeft := ShiftLeftOp Operand ShiftCount Target`.
+ *
+ * @see Section 19.6.123 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the result of the shift left operation will be stored, can be `NULL`.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_shift_left_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
+ * @brief Reads a DefShiftRight structure from the AML byte stream.
+ *
+ * The DefShiftRight structure is defined as `DefShiftRight := ShiftRightOp Operand ShiftCount Target`.
+ *
+ * @see Section 19.6.124 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the result of the shift right operation will be stored, can be `NULL`.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_shift_right_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
  * @brief Reads a DefIncrement structure from the AML byte stream.
  *
  * The DefIncrement structure is defined as `DefIncrement := IncrementOp SuperName`.

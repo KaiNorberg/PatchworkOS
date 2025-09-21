@@ -61,7 +61,8 @@ static inline uint64_t aml_unary_op_read(aml_state_t* state, aml_node_t* node, a
 
     aml_data_object_deinit(&source);
 
-    if (aml_store(aml_object_reference_deref(&target), &result) == ERR)
+    // Target is allowed to be null
+    if (!aml_object_reference_is_null(&target) && aml_store(aml_object_reference_deref(&target), &result) == ERR)
     {
         aml_data_object_deinit(&result);
         AML_DEBUG_ERROR(state, "Failed to store result for %s", opName);
@@ -148,7 +149,8 @@ static inline uint64_t aml_binary_op_read(aml_state_t* state, aml_node_t* node, 
     aml_data_object_deinit(&source1);
     aml_data_object_deinit(&source2);
 
-    if (aml_store(aml_object_reference_deref(&target), &result) == ERR)
+    // Target is allowed to be null
+    if (!aml_object_reference_is_null(&target) && aml_store(aml_object_reference_deref(&target), &result) == ERR)
     {
         aml_data_object_deinit(&result);
         AML_DEBUG_ERROR(state, "Failed to store result for %s", opName);
@@ -706,6 +708,149 @@ uint64_t aml_def_not_read(aml_state_t* state, aml_node_t* node, aml_data_object_
     return aml_unary_op_read(state, node, out, AML_NOT_OP, "not", aml_op_not);
 }
 
+uint64_t aml_shift_count_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    if (aml_term_arg_read(state, node, out, AML_DATA_INTEGER) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read term arg");
+        return ERR;
+    }
+
+    return 0;
+}
+
+uint64_t aml_def_shift_left_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    aml_value_t shlOp;
+    if (aml_value_read(state, &shlOp) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read value");
+        return ERR;
+    }
+
+    if (shlOp.num != AML_SHIFT_LEFT_OP)
+    {
+        AML_DEBUG_ERROR(state, "Invalid shift left op: 0x%x", shlOp.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_data_object_t source;
+    if (aml_operand_read(state, node, &source) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read operand");
+        return ERR;
+    }
+
+    assert(source.type == AML_DATA_INTEGER);
+
+    aml_data_object_t shiftCount;
+    if (aml_shift_count_read(state, node, &shiftCount) == ERR)
+    {
+        aml_data_object_deinit(&source);
+        AML_DEBUG_ERROR(state, "Failed to read shift count");
+        return ERR;
+    }
+
+    assert(shiftCount.type == AML_DATA_INTEGER);
+
+    aml_object_reference_t target;
+    if (aml_target_read(state, node, &target) == ERR)
+    {
+        aml_data_object_deinit(&source);
+        aml_data_object_deinit(&shiftCount);
+        AML_DEBUG_ERROR(state, "Failed to read target");
+        return ERR;
+    }
+
+    // C will zero the least significant bits
+    source.integer <<= shiftCount.integer;
+
+    aml_data_object_deinit(&shiftCount);
+
+    // Target is allowed to be null
+    if (!aml_object_reference_is_null(&target) && aml_store(aml_object_reference_deref(&target), &source) == ERR)
+    {
+        aml_data_object_deinit(&source);
+        AML_DEBUG_ERROR(state, "Failed to store result");
+        return ERR;
+    }
+
+    if (out != NULL)
+    {
+        *out = source; // Transfer ownership
+        return 0;
+    }
+    aml_data_object_deinit(&source);
+    return 0;
+}
+
+uint64_t aml_def_shift_right_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    aml_value_t shrOp;
+    if (aml_value_read(state, &shrOp) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read value");
+        return ERR;
+    }
+
+    if (shrOp.num != AML_SHIFT_RIGHT_OP)
+    {
+        AML_DEBUG_ERROR(state, "Invalid shift right op: 0x%x", shrOp.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_data_object_t source;
+    if (aml_operand_read(state, node, &source) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read operand");
+        return ERR;
+    }
+
+    assert(source.type == AML_DATA_INTEGER);
+
+    aml_data_object_t shiftCount;
+    if (aml_shift_count_read(state, node, &shiftCount) == ERR)
+    {
+        aml_data_object_deinit(&source);
+        AML_DEBUG_ERROR(state, "Failed to read shift count");
+        return ERR;
+    }
+
+    assert(shiftCount.type == AML_DATA_INTEGER);
+
+    aml_object_reference_t target;
+    if (aml_target_read(state, node, &target) == ERR)
+    {
+        aml_data_object_deinit(&source);
+        aml_data_object_deinit(&shiftCount);
+        AML_DEBUG_ERROR(state, "Failed to read target");
+        return ERR;
+    }
+
+    // C will zero the most significant bits
+    source.integer >>= shiftCount.integer;
+
+    aml_data_object_deinit(&shiftCount);
+
+    // Target is allowed to be null
+    if (!aml_object_reference_is_null(&target) && aml_store(aml_object_reference_deref(&target), &source) == ERR)
+    {
+        aml_data_object_deinit(&source);
+        AML_DEBUG_ERROR(state, "Failed to store result");
+        return ERR;
+    }
+
+    if (out != NULL)
+    {
+        *out = source; // Transfer ownership
+        return 0;
+    }
+    aml_data_object_deinit(&source);
+    return 0;
+}
+
 uint64_t aml_def_increment_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
 {
    aml_value_t incOp;
@@ -894,6 +1039,10 @@ uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_da
         return aml_def_xor_read(state, node, out);
     case AML_NOT_OP:
         return aml_def_not_read(state, node, out);
+    case AML_SHIFT_LEFT_OP:
+        return aml_def_shift_left_read(state, node, out);
+    case AML_SHIFT_RIGHT_OP:
+        return aml_def_shift_right_read(state, node, out);
     case AML_INCREMENT_OP:
         return aml_def_increment_read(state, node, out);
     case AML_DECREMENT_OP:
