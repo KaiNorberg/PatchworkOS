@@ -6,6 +6,7 @@
 
 typedef struct aml_node aml_node_t;
 typedef struct aml_state aml_state_t;
+typedef struct aml_data_object aml_data_object_t;
 
 /**
  * @brief ACPI AML Named Objects Encoding
@@ -446,6 +447,121 @@ uint64_t aml_pblk_len_read(aml_state_t* state, aml_pblk_len_t* out);
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node);
+
+/**
+ * @brief Reads a SourceBuff structure from the AML byte stream.
+ *
+ * A SourceBuff structure is defined as `SourceBuff := TermArg => Buffer`.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out The output buffer to store the SourceBuff data object.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_source_buff_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
+ * @brief Reads a BitIndex structure from the AML byte stream.
+ *
+ * A BitIndex structure is defined as `BitIndex := TermArg => Integer`.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out The output buffer to store the BitIndex data object.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_bit_index_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
+ * @brief Reads a ByteIndex structure from the AML byte stream.
+ *
+ * A ByteIndex structure is defined as `ByteIndex := TermArg => Integer`.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out The output buffer to store the ByteIndex data object.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_byte_index_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
+ * @brief Reads a DefCreateBitField structure from the AML byte stream.
+ *
+ * The DefCreateBitField structure is defined as `DefCreateBitField := CreateBitFieldOp SourceBuff BitIndex NameString`.
+ *
+ * A CreateBitField operation creates a field, with the name stored in the NameString, that accesses the single bit with the index BitIndex within the SourceBuff.
+ *
+ * So if BitIndex is 6 and SourceBuff is a buffer with the value 0b10101010, then reading the created bit field will return 1, and writing 0 to it will change SourceBuff to 0b10101000.
+ *
+ * The other CreateXField operations work similarly, but for different sizes of fields and use byte indices instead of bit indices.
+ *
+ * @see Section 19.6.18 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_create_bit_field_read(aml_state_t* state, aml_node_t* node);
+
+/**
+ * @brief Reads a DefCreateByteField structure from the AML byte stream.
+ *
+ * The DefCreateByteField structure is defined as `DefCreateByteField := CreateByteFieldOp SourceBuff ByteIndex NameString`.
+ *
+ * A CreateByteField operation creates a field, with the name stored in the NameString, that accesses the byte (8 bits) starting at the index ByteIndex within the SourceBuff.
+ *
+ * @see Section 19.6.19 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_create_byte_field_read(aml_state_t* state, aml_node_t* node);
+
+/**
+ * @brief Reads a DefCreateWordField structure from the AML byte stream.
+ *
+ * The DefCreateWordField structure is defined as `DefCreateWordField := CreateWordFieldOp SourceBuff ByteIndex NameString`.
+ *
+ * A CreateWordField operation creates a field, with the name stored in the NameString, that accesses the word (16 bits) starting at the index ByteIndex within the SourceBuff.
+ *
+ * @see Section 19.6.23 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_create_word_field_read(aml_state_t* state, aml_node_t* node);
+
+/**
+ * @brief Reads a DefCreateDWordField structure from the AML byte stream.
+ *
+ * The DefCreateDWordField structure is defined as `DefCreateDWordField := CreateDWordFieldOp SourceBuff ByteIndex NameString`.
+ *
+ * A CreateDWordField operation creates a field, with the name stored in the NameString, that accesses the double word (32 bits) starting at the index ByteIndex within the SourceBuff.
+ *
+ * @see Section 19.6.20 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_create_dword_field_read(aml_state_t* state, aml_node_t* node);
+
+/**
+ * @brief Reads a DefCreateQWordField structure from the AML byte stream.
+ *
+ * The DefCreateQWordField structure is defined as `DefCreateQWordField := CreateQWordFieldOp SourceBuff ByteIndex NameString`.
+ *
+ * A CreateQWordField operation creates a field, with the name stored in the NameString, that accesses the quad word (64 bits) starting at the index ByteIndex within the SourceBuff.
+ *
+ * @see Section 19.6.22 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_create_qword_field_read(aml_state_t* state, aml_node_t* node);
 
 /**
  * @brief Reads a NamedObj structure from the AML byte stream.

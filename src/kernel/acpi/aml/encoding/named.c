@@ -713,6 +713,334 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node)
     return aml_term_list_read(state, newNode, end);
 }
 
+uint64_t aml_source_buff_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    if (aml_term_arg_read(state, node, out, AML_DATA_BUFFER) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read term arg");
+        return ERR;
+    }
+
+    return 0;
+}
+
+uint64_t aml_bit_index_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    if (aml_term_arg_read(state, node, out, AML_DATA_INTEGER) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read term arg");
+        return ERR;
+    }
+
+    return 0;
+}
+
+uint64_t aml_byte_index_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    if (aml_term_arg_read(state, node, out, AML_DATA_INTEGER) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read term arg");
+        return ERR;
+    }
+
+    return 0;
+}
+
+uint64_t aml_def_create_bit_field_read(aml_state_t* state, aml_node_t* node)
+{
+    aml_value_t value;
+    if (aml_value_read(state, &value) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read value");
+        return ERR;
+    }
+
+    if (value.num != AML_CREATE_BIT_FIELD_OP)
+    {
+        AML_DEBUG_ERROR(state, "Invalid create bit field op: 0x%x", value.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_data_object_t sourceBuff;
+    if (aml_source_buff_read(state, node, &sourceBuff) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read source buff");
+        return ERR;
+    }
+
+    aml_data_object_t bitIndex;
+    if (aml_bit_index_read(state, node, &bitIndex) == ERR)
+    {
+        aml_data_object_deinit(&sourceBuff);
+        AML_DEBUG_ERROR(state, "Failed to read bit index");
+        return ERR;
+    }
+
+    aml_name_string_t nameString;
+    if (aml_name_string_read(state, &nameString) == ERR)
+    {
+        aml_data_object_deinit(&sourceBuff);
+        aml_data_object_deinit(&bitIndex);
+        AML_DEBUG_ERROR(state, "Failed to read name string");
+        return ERR;
+    }
+
+    assert(sourceBuff.type == AML_DATA_BUFFER);
+    assert(bitIndex.type == AML_DATA_INTEGER);
+
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_BUFFER_FIELD);
+    if (newNode == NULL)
+    {
+        aml_data_object_deinit(&sourceBuff);
+        aml_data_object_deinit(&bitIndex);
+        AML_DEBUG_ERROR(state, "Failed to add node");
+        return ERR;
+    }
+
+    newNode->bufferField.buffer = &sourceBuff.buffer; // Take ownership of the buffer.
+    newNode->bufferField.bitSize = 1;
+    newNode->bufferField.bitIndex = bitIndex.integer;
+    aml_data_object_deinit(&bitIndex);
+    return 0;
+}
+
+uint64_t aml_def_create_byte_field_read(aml_state_t* state, aml_node_t* node)
+{
+    aml_value_t value;
+    if (aml_value_read(state, &value) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read value");
+        return ERR;
+    }
+
+    if (value.num != AML_CREATE_BYTE_FIELD_OP)
+    {
+        AML_DEBUG_ERROR(state, "Invalid create byte field op: 0x%x", value.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_data_object_t sourceBuff;
+    if (aml_source_buff_read(state, node, &sourceBuff) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read source buff");
+        return ERR;
+    }
+
+    aml_data_object_t byteIndex;
+    if (aml_bit_index_read(state, node, &byteIndex) == ERR)
+    {
+        aml_data_object_deinit(&sourceBuff);
+        AML_DEBUG_ERROR(state, "Failed to read byte index");
+        return ERR;
+    }
+
+    aml_name_string_t nameString;
+    if (aml_name_string_read(state, &nameString) == ERR)
+    {
+        aml_data_object_deinit(&sourceBuff);
+        aml_data_object_deinit(&byteIndex);
+        AML_DEBUG_ERROR(state, "Failed to read name string");
+        return ERR;
+    }
+
+    assert(sourceBuff.type == AML_DATA_BUFFER);
+    assert(byteIndex.type == AML_DATA_INTEGER);
+
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_BUFFER_FIELD);
+    if (newNode == NULL)
+    {
+        aml_data_object_deinit(&sourceBuff);
+        aml_data_object_deinit(&byteIndex);
+        AML_DEBUG_ERROR(state, "Failed to add node");
+        return ERR;
+    }
+
+    newNode->bufferField.buffer = &sourceBuff.buffer; // Take ownership of the buffer.
+    newNode->bufferField.bitSize = 8;
+    newNode->bufferField.bitIndex = byteIndex.integer * 8;
+    aml_data_object_deinit(&byteIndex);
+    return 0;
+}
+
+uint64_t aml_def_create_word_field_read(aml_state_t* state, aml_node_t* node)
+{
+    aml_value_t value;
+    if (aml_value_read(state, &value) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read value");
+        return ERR;
+    }
+
+    if (value.num != AML_CREATE_WORD_FIELD_OP)
+    {
+        AML_DEBUG_ERROR(state, "Invalid create word field op: 0x%x", value.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_data_object_t sourceBuff;
+    if (aml_source_buff_read(state, node, &sourceBuff) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read source buff");
+        return ERR;
+    }
+
+    aml_data_object_t byteIndex;
+    if (aml_bit_index_read(state, node, &byteIndex) == ERR)
+    {
+        aml_data_object_deinit(&sourceBuff);
+        AML_DEBUG_ERROR(state, "Failed to read byte index");
+        return ERR;
+    }
+
+    aml_name_string_t nameString;
+    if (aml_name_string_read(state, &nameString) == ERR)
+    {
+        aml_data_object_deinit(&sourceBuff);
+        aml_data_object_deinit(&byteIndex);
+        AML_DEBUG_ERROR(state, "Failed to read name string");
+        return ERR;
+    }
+
+    assert(sourceBuff.type == AML_DATA_BUFFER);
+    assert(byteIndex.type == AML_DATA_INTEGER);
+
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_BUFFER_FIELD);
+    if (newNode == NULL)
+    {
+        aml_data_object_deinit(&sourceBuff);
+        aml_data_object_deinit(&byteIndex);
+        AML_DEBUG_ERROR(state, "Failed to add node");
+        return ERR;
+    }
+
+    newNode->bufferField.buffer = &sourceBuff.buffer; // Take ownership of the buffer.
+    newNode->bufferField.bitSize = 16;
+    newNode->bufferField.bitIndex = byteIndex.integer * 8;
+    aml_data_object_deinit(&byteIndex);
+    return 0;
+}
+
+uint64_t aml_def_create_dword_field_read(aml_state_t* state, aml_node_t* node)
+{
+    aml_value_t value;
+    if (aml_value_read(state, &value) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read value");
+        return ERR;
+    }
+
+    if (value.num != AML_CREATE_DWORD_FIELD_OP)
+    {
+        AML_DEBUG_ERROR(state, "Invalid create dword field op: 0x%x", value.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_data_object_t sourceBuff;
+    if (aml_source_buff_read(state, node, &sourceBuff) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read source buff");
+        return ERR;
+    }
+
+    aml_data_object_t byteIndex;
+    if (aml_bit_index_read(state, node, &byteIndex) == ERR)
+    {
+        aml_data_object_deinit(&sourceBuff);
+        AML_DEBUG_ERROR(state, "Failed to read byte index");
+        return ERR;
+    }
+
+    aml_name_string_t nameString;
+    if (aml_name_string_read(state, &nameString) == ERR)
+    {
+        aml_data_object_deinit(&sourceBuff);
+        aml_data_object_deinit(&byteIndex);
+        AML_DEBUG_ERROR(state, "Failed to read name string");
+        return ERR;
+    }
+
+    assert(sourceBuff.type == AML_DATA_BUFFER);
+    assert(byteIndex.type == AML_DATA_INTEGER);
+
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_BUFFER_FIELD);
+    if (newNode == NULL)
+    {
+        aml_data_object_deinit(&sourceBuff);
+        aml_data_object_deinit(&byteIndex);
+        AML_DEBUG_ERROR(state, "Failed to add node");
+        return ERR;
+    }
+
+    newNode->bufferField.buffer = &sourceBuff.buffer; // Take ownership of the buffer.
+    newNode->bufferField.bitSize = 32;
+    newNode->bufferField.bitIndex = byteIndex.integer * 8;
+    aml_data_object_deinit(&byteIndex);
+    return 0;
+}
+
+uint64_t aml_def_create_qword_field_read(aml_state_t* state, aml_node_t* node)
+{
+    aml_value_t value;
+    if (aml_value_read(state, &value) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read value");
+        return ERR;
+    }
+
+    if (value.num != AML_CREATE_QWORD_FIELD_OP)
+    {
+        AML_DEBUG_ERROR(state, "Invalid create qword field op: 0x%x", value.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_data_object_t sourceBuff;
+    if (aml_source_buff_read(state, node, &sourceBuff) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read source buff");
+        return ERR;
+    }
+
+    aml_data_object_t byteIndex;
+    if (aml_bit_index_read(state, node, &byteIndex) == ERR)
+    {
+        aml_data_object_deinit(&sourceBuff);
+        AML_DEBUG_ERROR(state, "Failed to read byte index");
+        return ERR;
+    }
+
+    aml_name_string_t nameString;
+    if (aml_name_string_read(state, &nameString) == ERR)
+    {
+        aml_data_object_deinit(&sourceBuff);
+        aml_data_object_deinit(&byteIndex);
+        AML_DEBUG_ERROR(state, "Failed to read name string");
+        return ERR;
+    }
+
+    assert(sourceBuff.type == AML_DATA_BUFFER);
+    assert(byteIndex.type == AML_DATA_INTEGER);
+
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_BUFFER_FIELD);
+    if (newNode == NULL)
+    {
+        aml_data_object_deinit(&sourceBuff);
+        aml_data_object_deinit(&byteIndex);
+        AML_DEBUG_ERROR(state, "Failed to add node");
+        return ERR;
+    }
+
+    newNode->bufferField.buffer = &sourceBuff.buffer; // Take ownership of the buffer.
+    newNode->bufferField.bitSize = 64;
+    newNode->bufferField.bitIndex = byteIndex.integer * 8;
+    aml_data_object_deinit(&byteIndex);
+    return 0;
+}
+
 uint64_t aml_named_obj_read(aml_state_t* state, aml_node_t* node)
 {
     aml_value_t value;
@@ -738,6 +1066,16 @@ uint64_t aml_named_obj_read(aml_state_t* state, aml_node_t* node)
         return aml_def_index_field_read(state, node);
     case AML_DEPRECATED_PROCESSOR_OP:
         return aml_def_processor_read(state, node);
+    case AML_CREATE_BIT_FIELD_OP:
+        return aml_def_create_bit_field_read(state, node);
+    case AML_CREATE_BYTE_FIELD_OP:
+        return aml_def_create_byte_field_read(state, node);
+    case AML_CREATE_WORD_FIELD_OP:
+        return aml_def_create_word_field_read(state, node);
+    case AML_CREATE_DWORD_FIELD_OP:
+        return aml_def_create_dword_field_read(state, node);
+    case AML_CREATE_QWORD_FIELD_OP:
+        return aml_def_create_qword_field_read(state, node);
     default:
         AML_DEBUG_ERROR(state, "Unknown named obj: 0x%x", value.num);
         errno = ENOSYS;
