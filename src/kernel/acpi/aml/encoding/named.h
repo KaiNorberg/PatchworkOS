@@ -127,6 +127,12 @@ typedef struct
             aml_node_t* indexNode;
             aml_node_t* dataNode;
         } index;
+        struct
+        {
+            aml_node_t* region;
+            aml_node_t* bank;
+            aml_data_object_t* bankValue;
+        } bank;
     };
 } aml_field_list_ctx_t;
 
@@ -318,19 +324,40 @@ uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node);
  * The DefIndexField structure is defined as `DefIndexField := IndexFieldOp PkgLength NameString NameString FieldFlags
  * FieldList`.
  *
- * @see Section 19.6.64 of the ACPI specification for more details.
- *
  * IndexFields can be a bit confusing, but the basic idea is that you have two fields, one for the index and one for the
  * data. The index field in this case can be thought of as a "selector", and the data field is where we find the actual
  * data we "selected". For example, to perform a read, we first write an index to the index field, and then read the
  * data from the data field. The index is typically an offset into an array or table, and the data is the value at that
  * offset.
  *
+ * @see Section 19.6.64 of the ACPI specification for more details.
+ *
  * @param state The AML state.
  * @param node The current AML node.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_index_field_read(aml_state_t* state, aml_node_t* node);
+
+/**
+ * @brief Reads a DefBankField structure from the AML byte stream.
+ *
+ * The DefBankField structure is defined as `DefBankField := BankFieldOp PkgLength NameString NameString BankValue
+ * FieldFlags FieldList`.
+ *
+ * BankFields can be even more confusing then IndexFields. A BankField allows for the same opregion to be accessed using
+ * different field configurations, by switching between different banks. Each BankField as an ID, the BankValue, and you
+ * have some object, pointed to by the second NameString, such that when you read from a BankField, the BankValue is
+ * first written to the object to select the bank structure associated with that BankField.
+ *
+ * Basically you can change the structure of an opregion by selecting different banks.
+ *
+ * @see Section 19.6.7 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_bank_field_read(aml_state_t* state, aml_node_t* node);
 
 /**
  * @brief Reads a MethodFlags structure from the AML byte stream.
@@ -489,11 +516,14 @@ uint64_t aml_byte_index_read(aml_state_t* state, aml_node_t* node, aml_data_obje
  *
  * The DefCreateBitField structure is defined as `DefCreateBitField := CreateBitFieldOp SourceBuff BitIndex NameString`.
  *
- * A CreateBitField operation creates a field, with the name stored in the NameString, that accesses the single bit with the index BitIndex within the SourceBuff.
+ * A CreateBitField operation creates a field, with the name stored in the NameString, that accesses the single bit with
+ * the index BitIndex within the SourceBuff.
  *
- * So if BitIndex is 6 and SourceBuff is a buffer with the value 0b10101010, then reading the created bit field will return 1, and writing 0 to it will change SourceBuff to 0b10101000.
+ * So if BitIndex is 6 and SourceBuff is a buffer with the value 0b10101010, then reading the created bit field will
+ * return 1, and writing 0 to it will change SourceBuff to 0b10101000.
  *
- * The other CreateXField operations work similarly, but for different sizes of fields and use byte indices instead of bit indices.
+ * The other CreateXField operations work similarly, but for different sizes of fields and use byte indices instead of
+ * bit indices.
  *
  * @see Section 19.6.18 of the ACPI specification for more details.
  *
@@ -506,9 +536,11 @@ uint64_t aml_def_create_bit_field_read(aml_state_t* state, aml_node_t* node);
 /**
  * @brief Reads a DefCreateByteField structure from the AML byte stream.
  *
- * The DefCreateByteField structure is defined as `DefCreateByteField := CreateByteFieldOp SourceBuff ByteIndex NameString`.
+ * The DefCreateByteField structure is defined as `DefCreateByteField := CreateByteFieldOp SourceBuff ByteIndex
+ * NameString`.
  *
- * A CreateByteField operation creates a field, with the name stored in the NameString, that accesses the byte (8 bits) starting at the index ByteIndex within the SourceBuff.
+ * A CreateByteField operation creates a field, with the name stored in the NameString, that accesses the byte (8 bits)
+ * starting at the index ByteIndex within the SourceBuff.
  *
  * @see Section 19.6.19 of the ACPI specification for more details.
  *
@@ -521,9 +553,11 @@ uint64_t aml_def_create_byte_field_read(aml_state_t* state, aml_node_t* node);
 /**
  * @brief Reads a DefCreateWordField structure from the AML byte stream.
  *
- * The DefCreateWordField structure is defined as `DefCreateWordField := CreateWordFieldOp SourceBuff ByteIndex NameString`.
+ * The DefCreateWordField structure is defined as `DefCreateWordField := CreateWordFieldOp SourceBuff ByteIndex
+ * NameString`.
  *
- * A CreateWordField operation creates a field, with the name stored in the NameString, that accesses the word (16 bits) starting at the index ByteIndex within the SourceBuff.
+ * A CreateWordField operation creates a field, with the name stored in the NameString, that accesses the word (16 bits)
+ * starting at the index ByteIndex within the SourceBuff.
  *
  * @see Section 19.6.23 of the ACPI specification for more details.
  *
@@ -536,9 +570,11 @@ uint64_t aml_def_create_word_field_read(aml_state_t* state, aml_node_t* node);
 /**
  * @brief Reads a DefCreateDWordField structure from the AML byte stream.
  *
- * The DefCreateDWordField structure is defined as `DefCreateDWordField := CreateDWordFieldOp SourceBuff ByteIndex NameString`.
+ * The DefCreateDWordField structure is defined as `DefCreateDWordField := CreateDWordFieldOp SourceBuff ByteIndex
+ * NameString`.
  *
- * A CreateDWordField operation creates a field, with the name stored in the NameString, that accesses the double word (32 bits) starting at the index ByteIndex within the SourceBuff.
+ * A CreateDWordField operation creates a field, with the name stored in the NameString, that accesses the double word
+ * (32 bits) starting at the index ByteIndex within the SourceBuff.
  *
  * @see Section 19.6.20 of the ACPI specification for more details.
  *
@@ -551,9 +587,11 @@ uint64_t aml_def_create_dword_field_read(aml_state_t* state, aml_node_t* node);
 /**
  * @brief Reads a DefCreateQWordField structure from the AML byte stream.
  *
- * The DefCreateQWordField structure is defined as `DefCreateQWordField := CreateQWordFieldOp SourceBuff ByteIndex NameString`.
+ * The DefCreateQWordField structure is defined as `DefCreateQWordField := CreateQWordFieldOp SourceBuff ByteIndex
+ * NameString`.
  *
- * A CreateQWordField operation creates a field, with the name stored in the NameString, that accesses the quad word (64 bits) starting at the index ByteIndex within the SourceBuff.
+ * A CreateQWordField operation creates a field, with the name stored in the NameString, that accesses the quad word (64
+ * bits) starting at the index ByteIndex within the SourceBuff.
  *
  * @see Section 19.6.22 of the ACPI specification for more details.
  *
@@ -562,6 +600,18 @@ uint64_t aml_def_create_dword_field_read(aml_state_t* state, aml_node_t* node);
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_create_qword_field_read(aml_state_t* state, aml_node_t* node);
+
+/**
+ * @brief Reads a BankValue structure from the AML byte stream.
+ *
+ * A BankValue structure is defined as `BankValue := TermArg => Integer`.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out The output buffer to store the BankValue data object.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_bank_value_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
 
 /**
  * @brief Reads a NamedObj structure from the AML byte stream.

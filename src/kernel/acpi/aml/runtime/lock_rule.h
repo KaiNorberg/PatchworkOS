@@ -18,7 +18,8 @@
  * @brief Determine if the global mutex should be acquired when accessing this node.
  *
  * The mutex should be acquired if:
- * - The node is a Field or IndexField and their LockRule is `AML_LOCK_RULE_LOCK` (see section 19.6.48 and 19.6.64),
+ * - The node is a Field, BankField or IndexField and their LockRule is `AML_LOCK_RULE_LOCK` (see section 19.6.48
+ * and 19.6.64),
  * - More to be added later.
  *
  * @param node The node to check.

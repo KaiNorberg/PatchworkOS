@@ -287,3 +287,26 @@ uint64_t aml_data_object_get_bits_at(aml_data_object_t* obj, aml_bit_size_t bitO
 
     return 0;
 }
+
+uint64_t aml_data_object_clone(aml_data_object_t* dest, aml_data_object_t* src)
+{
+    if (dest == NULL || src == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    switch (src->type)
+    {
+    case AML_DATA_INTEGER:
+        dest->type = AML_DATA_INTEGER;
+        dest->integer = src->integer;
+        dest->meta.bitWidth = src->meta.bitWidth;
+        break;
+    default:
+        LOG_ERR("cloning of data object type %d is not implemented\n", src->type);
+        errno = ENOSYS;
+        return ERR;
+    }
+    return 0;
+}

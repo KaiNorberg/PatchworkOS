@@ -64,4 +64,21 @@ uint64_t aml_index_field_read(aml_node_t* indexField, aml_data_object_t* out);
  */
 uint64_t aml_index_field_write(aml_node_t* indexField, aml_data_object_t* in);
 
+/**
+ * @brief Read the value stored in a BankField.
+ *
+ * This function should not be called manually, instead use `aml_evaluate()` which will call this function when needed.
+ *
+ * A BankField works similarly to a field, but it has an additional "bank" node which it writes its "BankValue" to
+ * (which is like the BankFields id), before performing any access. Think of this like reconfiguring the opregion to a
+ * different structure before accessing it.
+ *
+ * @param bankField The BankField to read from.
+ * @param out Pointer to the buffer where the result will be stored.
+ * @return On success, 0. On error, `ERR` and `errno` is set.
+ */
+uint64_t aml_bank_field_read(aml_node_t* bankField, aml_data_object_t* out);
+
+uint64_t aml_bank_field_write(aml_node_t* bankField, aml_data_object_t* in);
+
 /** @} */

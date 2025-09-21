@@ -64,6 +64,7 @@ aml_node_t* aml_node_new(aml_node_t* parent, const char* name, aml_node_type_t t
     uint64_t nameLen = strnlen_s(name, AML_NAME_LENGTH);
     memcpy(node->segment, name, nameLen);
     node->segment[AML_NAME_LENGTH] = '\0';
+    mutex_init(&node->lock);
 
     node->parent = parent;
 

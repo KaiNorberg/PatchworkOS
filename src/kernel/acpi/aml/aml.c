@@ -80,6 +80,7 @@ uint64_t aml_evaluate(aml_node_t* node, aml_data_object_t* out, aml_term_arg_lis
         errno = EINVAL;
         return ERR;
     }
+    MUTEX_SCOPE(&node->lock);
 
     uint64_t expectedArgCount = aml_node_get_expected_arg_count(node);
     if (expectedArgCount == ERR)
@@ -136,6 +137,11 @@ uint64_t aml_evaluate(aml_node_t* node, aml_data_object_t* out, aml_term_arg_lis
         result = aml_index_field_read(node, out);
     }
     break;
+    case AML_NODE_BANK_FIELD:
+    {
+        result = aml_bank_field_read(node, out);
+    }
+    break;
     default:
     {
         LOG_ERR("unimplemented evaluation of node '%.*s' of type '%s'\n", AML_NAME_LENGTH, node->segment,
@@ -160,6 +166,7 @@ uint64_t aml_store(aml_node_t* node, aml_data_object_t* object)
         errno = EINVAL;
         return ERR;
     }
+    MUTEX_SCOPE(&node->lock);
 
     bool mutexAcquired = false;
     if (aml_should_acquire_global_mutex(node))
@@ -185,6 +192,11 @@ uint64_t aml_store(aml_node_t* node, aml_data_object_t* object)
     case AML_NODE_INDEX_FIELD:
     {
         result = aml_index_field_write(node, object);
+    }
+    break;
+    case AML_NODE_BANK_FIELD:
+    {
+        result = aml_bank_field_write(node, object);
     }
     break;
     default:

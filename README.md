@@ -60,6 +60,7 @@ The goal is to eventually have a feature-complete, well-designed and unique oper
 - Software interrupts for notes (signals)
 - Lua port
 - Capability based security model (currently has no well-defined security model)
+- Visual overhaul of the desktop environment (modernize it?)
 - USB support (The holy grail)
 
 ---

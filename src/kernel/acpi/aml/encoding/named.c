@@ -225,6 +225,41 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
         newNode->indexField.bitSize = pkgLength;
     }
     break;
+    case AML_FIELD_LIST_TYPE_BANK:
+    {
+        if (ctx->bank.region == NULL)
+        {
+            AML_DEBUG_ERROR(state, "region is null");
+            errno = EILSEQ;
+            return ERR;
+        }
+
+        if (ctx->bank.bank == NULL)
+        {
+            AML_DEBUG_ERROR(state, "bank is null");
+            errno = EILSEQ;
+            return ERR;
+        }
+
+        aml_node_t* newNode = aml_node_new(node, name->name, AML_NODE_BANK_FIELD);
+        if (newNode == NULL)
+        {
+            AML_DEBUG_ERROR(state, "Failed to add node");
+            return ERR;
+        }
+        if (aml_data_object_clone(&newNode->bankField.bankValue, ctx->bank.bankValue) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to clone bank value");
+            aml_node_free(newNode);
+            return ERR;
+        }
+        newNode->bankField.opregion = ctx->bank.region;
+        newNode->bankField.bank = ctx->bank.bank;
+        newNode->bankField.flags = ctx->flags;
+        newNode->bankField.bitOffset = ctx->currentOffset;
+        newNode->bankField.bitSize = pkgLength;
+    }
+    break;
     default:
         AML_DEBUG_ERROR(state, "Invalid field list type: %d", ctx->type);
         errno = EILSEQ;
@@ -440,6 +475,98 @@ uint64_t aml_def_index_field_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
+    return 0;
+}
+
+uint64_t aml_def_bank_field_read(aml_state_t* state, aml_node_t* node)
+{
+    aml_value_t value;
+    if (aml_value_read(state, &value) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read value");
+        return ERR;
+    }
+
+    if (value.num != AML_BANK_FIELD_OP)
+    {
+        AML_DEBUG_ERROR(state, "Invalid bank field op: 0x%x", value.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_address_t start = state->pos;
+
+    aml_pkg_length_t pkgLength;
+    if (aml_pkg_length_read(state, &pkgLength) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read pkg length");
+        return ERR;
+    }
+
+    aml_address_t end = start + pkgLength;
+
+    aml_name_string_t regionName;
+    if (aml_name_string_read(state, &regionName) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read region name");
+        return ERR;
+    }
+
+    aml_name_string_t bankName;
+    if (aml_name_string_read(state, &bankName) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read bank name");
+        return ERR;
+    }
+
+    aml_data_object_t bankValue;
+    if (aml_bank_value_read(state, node, &bankValue) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read bank value");
+        return ERR;
+    }
+
+    aml_field_flags_t fieldFlags;
+    if (aml_field_flags_read(state, &fieldFlags) == ERR)
+    {
+        aml_data_object_deinit(&bankValue);
+        AML_DEBUG_ERROR(state, "Failed to read field flags");
+        return ERR;
+    }
+
+    aml_field_list_ctx_t ctx = {
+        .type = AML_FIELD_LIST_TYPE_BANK,
+        .bank.region = aml_node_find(&regionName, node),
+        .bank.bank = aml_node_find(&bankName, node),
+        .bank.bankValue = &bankValue,
+        .flags = fieldFlags,
+        .currentOffset = 0,
+    };
+
+    if (ctx.bank.region == NULL)
+    {
+        aml_data_object_deinit(&bankValue);
+        AML_DEBUG_ERROR(state, "BankField OpRegion '%s' not found\n", aml_name_string_to_string(&regionName));
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    if (ctx.bank.bank == NULL)
+    {
+        aml_data_object_deinit(&bankValue);
+        AML_DEBUG_ERROR(state, "BankField Bank '%s' not found\n", aml_name_string_to_string(&bankName));
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    if (aml_field_list_read(state, node, &ctx, end) == ERR)
+    {
+        aml_data_object_deinit(&bankValue);
+        AML_DEBUG_ERROR(state, "Failed to read field list");
+        return ERR;
+    }
+
+    aml_data_object_deinit(&bankValue);
     return 0;
 }
 
@@ -1041,6 +1168,17 @@ uint64_t aml_def_create_qword_field_read(aml_state_t* state, aml_node_t* node)
     return 0;
 }
 
+uint64_t aml_bank_value_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    if (aml_term_arg_read(state, node, out, AML_DATA_INTEGER) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read term arg");
+        return ERR;
+    }
+
+    return 0;
+}
+
 uint64_t aml_named_obj_read(aml_state_t* state, aml_node_t* node)
 {
     aml_value_t value;
@@ -1064,6 +1202,8 @@ uint64_t aml_named_obj_read(aml_state_t* state, aml_node_t* node)
         return aml_def_mutex_read(state, node);
     case AML_INDEX_FIELD_OP:
         return aml_def_index_field_read(state, node);
+    case AML_BANK_FIELD_OP:
+        return aml_def_bank_field_read(state, node);
     case AML_DEPRECATED_PROCESSOR_OP:
         return aml_def_processor_read(state, node);
     case AML_CREATE_BIT_FIELD_OP:

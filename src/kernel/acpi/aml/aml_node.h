@@ -34,27 +34,27 @@
  */
 typedef enum
 {
-    AML_NODE_NONE = 0, //!< Invalid node type.
-    AML_NODE_PREDEFINED, //!< A predefined "Device" node, think of it as a directory.
-    AML_NODE_PREDEFINED_GL, //!< The predefined "Global Lock" object.
-    AML_NODE_PREDEFINED_OS, //!< The predefined "Operating System" object.
+    AML_NODE_NONE = 0,       //!< Invalid node type.
+    AML_NODE_PREDEFINED,     //!< A predefined "Device" node, think of it as a directory.
+    AML_NODE_PREDEFINED_GL,  //!< The predefined "Global Lock" object.
+    AML_NODE_PREDEFINED_OS,  //!< The predefined "Operating System" object.
     AML_NODE_PREDEFINED_OSI, //!< The predefined "Operating System Interfaces" object.
     AML_NODE_PREDEFINED_REV, //!< The predefined "Revision" object.
-    AML_NODE_DEVICE, //!< A device node, can contain other devices, methods, fields, etc.
-    AML_NODE_PROCESSOR, //!< A processor node, deprecated in version 6.4 of the ACPI specification.
-    AML_NODE_THERMAL_ZONE, //!< A thermal zone node.
+    AML_NODE_DEVICE,         //!< A device node, can contain other devices, methods, fields, etc.
+    AML_NODE_PROCESSOR,      //!< A processor node, deprecated in version 6.4 of the ACPI specification.
+    AML_NODE_THERMAL_ZONE,   //!< A thermal zone node.
     AML_NODE_POWER_RESOURCE, //!< A power resource node.
-    AML_NODE_OPREGION, //!< An operation region node.
-    AML_NODE_FIELD, //!< A normal field node, used to access data in an operation region.
-    AML_NODE_METHOD, //!< A method node.
-    AML_NODE_NAME, //!< A named data object, this includes Local variables.
-    AML_NODE_MUTEX, //!< A mutex node.
-    AML_NODE_INDEX_FIELD, //!< An index field node, used to access data in a buffer using an index and data field.
-    AML_NODE_BANK_FIELD, //!< A bank field node.
-    AML_NODE_BUFFER_FIELD, //!< A buffer field node, used to access data in a buffer.
-    AML_NODE_ARG,   //!< A method argument, does not exist in the namespace tree.
-    AML_NODE_LOCAL, //!< A method local variable, does not exist in the namespace tree.
-    AML_NODE_MAX //!< Maximum value for bounds checking.
+    AML_NODE_OPREGION,       //!< An operation region node.
+    AML_NODE_FIELD,          //!< A normal field node, used to access data in an operation region.
+    AML_NODE_METHOD,         //!< A method node.
+    AML_NODE_NAME,           //!< A named data object, this includes Local variables.
+    AML_NODE_MUTEX,          //!< A mutex node.
+    AML_NODE_INDEX_FIELD,    //!< An index field node, used to access data in a buffer using an index and data field.
+    AML_NODE_BANK_FIELD,     //!< A bank field node.
+    AML_NODE_BUFFER_FIELD,   //!< A buffer field node, used to access data in a buffer.
+    AML_NODE_ARG,            //!< A method argument, does not exist in the namespace tree.
+    AML_NODE_LOCAL,          //!< A method local variable, does not exist in the namespace tree.
+    AML_NODE_MAX             //!< Maximum value for bounds checking.
 } aml_node_type_t;
 
 /**
@@ -68,6 +68,7 @@ typedef struct aml_node
     list_t children;
     struct aml_node* parent;
     char segment[AML_NAME_LENGTH + 1];
+    mutex_t lock;
     union {
         struct
         {
@@ -105,8 +106,8 @@ typedef struct aml_node
         } processor;
         struct
         {
-            struct aml_node* indexNode;
-            struct aml_node* dataNode;
+            aml_node_t* indexNode;
+            aml_node_t* dataNode;
             aml_field_flags_t flags;
             aml_bit_size_t bitOffset;
             aml_bit_size_t bitSize;
@@ -117,6 +118,15 @@ typedef struct aml_node
             aml_bit_size_t bitSize;
             aml_bit_size_t bitIndex;
         } bufferField;
+        struct
+        {
+            aml_data_object_t bankValue;
+            aml_node_t* opregion;
+            aml_node_t* bank;
+            aml_field_flags_t flags;
+            aml_bit_size_t bitOffset;
+            aml_bit_size_t bitSize;
+        } bankField;
     };
     sysfs_dir_t dir;
 } aml_node_t;

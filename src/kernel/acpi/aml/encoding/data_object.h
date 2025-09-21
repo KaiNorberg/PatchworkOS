@@ -301,4 +301,16 @@ uint64_t aml_data_object_put_bits_at(aml_data_object_t* obj, uint64_t value, aml
 uint64_t aml_data_object_get_bits_at(aml_data_object_t* obj, aml_bit_size_t bitOffset, aml_bit_size_t bitSize,
     uint64_t* out);
 
+/**
+ * @brief Clones a DataObject, performing a deep copy of its content.
+ *
+ * A deep copy means that all dynamically allocated content (like strings, buffers, and packages) will be duplicated,
+ * and that the dest DataObject will own its own copy of the content.
+ *
+ * @param dest Pointer to the destination DataObject where the clone will be stored.
+ * @param src Pointer to the source DataObject to clone.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_data_object_clone(aml_data_object_t* dest, aml_data_object_t* src);
+
 /** @} */

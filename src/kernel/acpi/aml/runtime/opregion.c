@@ -195,8 +195,9 @@ typedef struct
     aml_bit_size_t bitOffset;
     uintptr_t base;
     aml_field_flags_t flags;
-    aml_node_t* indexNode; // Only for IndexFields
-    aml_node_t* dataNode;  // Only for IndexFields
+    aml_node_t* indexNode;      // Only for IndexFields
+    aml_node_t* dataNode;       // Only for IndexFields
+    aml_data_object_t* bankValue; // Only for BankFields
 } aml_field_access_data_t;
 
 static uint64_t aml_extract_field_access_data(aml_node_t* field, aml_field_access_data_t* out)
@@ -211,8 +212,6 @@ static uint64_t aml_extract_field_access_data(aml_node_t* field, aml_field_acces
         out->bitOffset = field->field.bitOffset;
         out->base = field->field.opregion->opregion.offset;
         out->flags = field->field.flags;
-        out->indexNode = NULL;
-        out->dataNode = NULL;
         return 0;
     case AML_NODE_INDEX_FIELD:
         // The space is the space of the IndexFields data node's opregion.
@@ -221,8 +220,18 @@ static uint64_t aml_extract_field_access_data(aml_node_t* field, aml_field_acces
         out->bitOffset = field->indexField.bitOffset;
         out->base = field->indexField.dataNode->field.opregion->opregion.offset;
         out->flags = field->indexField.flags;
+
         out->indexNode = field->indexField.indexNode;
         out->dataNode = field->indexField.dataNode;
+        return 0;
+    case AML_NODE_BANK_FIELD:
+        out->space = field->bankField.opregion->opregion.space;
+        out->bitSize = field->bankField.bitSize;
+        out->bitOffset = field->bankField.bitOffset;
+        out->base = field->bankField.opregion->opregion.offset;
+        out->flags = field->bankField.flags;
+
+        out->bankValue = &field->bankField.bankValue;
         return 0;
     default:
         LOG_ERR("invalid field node type %s\n", aml_node_type_to_string(field->type));
@@ -238,6 +247,7 @@ static uint64_t aml_generic_field_read_at(aml_field_access_data_t* accessData, u
     switch (accessData->type)
     {
     case AML_NODE_FIELD:
+    case AML_NODE_BANK_FIELD:
         return aml_opregion_read(accessData->space, address, accessSize, out);
     case AML_NODE_INDEX_FIELD:
     {
@@ -286,6 +296,7 @@ static uint64_t aml_generic_field_write_at(aml_field_access_data_t* accessData, 
     switch (accessData->type)
     {
     case AML_NODE_FIELD:
+    case AML_NODE_BANK_FIELD:
         return aml_opregion_write(accessData->space, address, accessSize, value);
     case AML_NODE_INDEX_FIELD:
     {
@@ -329,6 +340,15 @@ static uint64_t aml_generic_field_access(aml_node_t* field, aml_data_object_t* d
     if (aml_extract_field_access_data(field, &accessData) == ERR)
     {
         return ERR;
+    }
+
+    if (field->type == AML_NODE_BANK_FIELD)
+    {
+        // Write the bank value to the bank register.
+        if (aml_field_write(field->bankField.bank, accessData.bankValue) == ERR)
+        {
+            return ERR;
+        }
     }
 
     aml_bit_size_t accessSize;
@@ -511,4 +531,47 @@ uint64_t aml_index_field_write(aml_node_t* indexField, aml_data_object_t* in)
     }
 
     return aml_generic_field_access(indexField, in, AML_ACCESS_WRITE);
+}
+
+uint64_t aml_bank_field_read(aml_node_t* bankField, aml_data_object_t* out)
+{
+    if (bankField == NULL || out == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    uint64_t byteSize = (bankField->bankField.bitSize + 7) / 8;
+    if (byteSize > sizeof(aml_qword_data_t))
+    {
+        if (aml_data_object_init_buffer_empty(out, byteSize) == ERR)
+        {
+            return ERR;
+        }
+    }
+    else
+    {
+        if (aml_data_object_init_integer(out, 0, byteSize * 8) == ERR)
+        {
+            return ERR;
+        }
+    }
+
+    uint64_t result = aml_generic_field_access(bankField, out, AML_ACCESS_READ);
+    if (result == ERR)
+    {
+        aml_data_object_deinit(out);
+    }
+    return result;
+}
+
+uint64_t aml_bank_field_write(aml_node_t* bankField, aml_data_object_t* in)
+{
+    if (bankField == NULL || in == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    return aml_generic_field_access(bankField, in, AML_ACCESS_WRITE);
 }
