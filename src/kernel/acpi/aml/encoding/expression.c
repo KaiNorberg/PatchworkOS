@@ -675,6 +675,88 @@ cleanup:
     return result;
 }
 
+uint64_t aml_def_mod_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    aml_value_t modOp;
+    if (aml_value_read_no_ext(state, &modOp) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read value");
+        return ERR;
+    }
+
+    if (modOp.num != AML_MOD_OP)
+    {
+        AML_DEBUG_ERROR(state, "Invalid mod op: 0x%x", modOp.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_data_object_t dividend;
+    if (aml_operand_read(state, node, &dividend) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read dividend");
+        return ERR;
+    }
+
+    aml_data_object_t divisor;
+    if (aml_operand_read(state, node, &divisor) == ERR)
+    {
+        aml_data_object_deinit(&dividend);
+        AML_DEBUG_ERROR(state, "Failed to read divisor");
+        return ERR;
+    }
+
+    assert(dividend.type == AML_DATA_INTEGER);
+    assert(divisor.type == AML_DATA_INTEGER);
+
+    if (divisor.integer == 0)
+    {
+        aml_data_object_deinit(&dividend);
+        aml_data_object_deinit(&divisor);
+        AML_DEBUG_ERROR(state, "Division by zero");
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_object_reference_t target;
+    if (aml_target_read(state, node, &target) == ERR)
+    {
+        aml_data_object_deinit(&dividend);
+        aml_data_object_deinit(&divisor);
+        AML_DEBUG_ERROR(state, "Failed to read target");
+        return ERR;
+    }
+
+    uint8_t bitWidth = MAX(dividend.meta.bitWidth, divisor.meta.bitWidth);
+
+    aml_data_object_t result;
+    if (aml_data_object_init_integer(&result, dividend.integer % divisor.integer, bitWidth) == ERR)
+    {
+        aml_data_object_deinit(&dividend);
+        aml_data_object_deinit(&divisor);
+        AML_DEBUG_ERROR(state, "Failed to init result");
+        return ERR;
+    }
+
+    aml_data_object_deinit(&dividend);
+    aml_data_object_deinit(&divisor);
+
+    if (aml_store(aml_object_reference_deref(&target), &result) == ERR)
+    {
+        aml_data_object_deinit(&result);
+        AML_DEBUG_ERROR(state, "Failed to store result");
+        return ERR;
+    }
+
+    if (out != NULL)
+    {
+        *out = result; // Transfer ownership
+        return 0;
+    }
+    aml_data_object_deinit(&result);
+    return 0;
+}
+
 uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
 {
     aml_value_t value;
@@ -721,6 +803,8 @@ uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_da
         return aml_def_multiply_read(state, node, out);
     case AML_DIVIDE_OP:
         return aml_def_divide_read(state, node, out);
+    case AML_MOD_OP:
+        return aml_def_mod_read(state, node, out);
     default:
         AML_DEBUG_ERROR(state, "Unknown expression opcode: 0x%x", value.num);
         errno = ENOSYS;

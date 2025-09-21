@@ -231,6 +231,20 @@ uint64_t aml_def_multiply_read(aml_state_t* state, aml_node_t* node, aml_data_ob
 uint64_t aml_def_divide_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
 
 /**
+ * @brief Reads a DefMod structure from the AML byte stream.
+ *
+ * The DefMod structure is defined as `DefMod := ModOp Dividend Divisor Target`.
+ *
+ * @see Section 19.6.87 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the result of the modulus operation will be stored, can be `NULL`.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_mod_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
  * @brief Reads an ExpressionOpcode structure from the AML byte stream.
  *
  * An ExpressionOpcode structure is defined as `ExpressionOpcode := DefAcquire | DefAdd | DefAnd | DefBuffer | DefConcat
