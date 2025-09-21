@@ -288,17 +288,15 @@ uint64_t aml_simple_name_read(aml_state_t* state, aml_node_t* node, aml_object_r
             return ERR;
         }
 
+        // Target might be NULL, which is still valid.
         aml_node_t* target = aml_node_find(&nameString, node);
-        if (target == NULL)
+        if (aml_object_reference_init(out, target) == ERR)
         {
-            AML_OBJECT_REFERENCE_INIT_EMPTY(out);
-            return 0;
+            AML_DEBUG_ERROR(state, "Failed to init object reference");
+            return ERR;
         }
-
-        AML_OBJECT_REFERENCE_INIT_NODE(out, target);
         return 0;
     }
-    break;
     case AML_VALUE_TYPE_ARG:
         AML_DEBUG_ERROR(state, "Args are unimplemented");
         errno = ENOSYS;
@@ -355,7 +353,11 @@ uint64_t aml_target_read(aml_state_t* state, aml_node_t* node, aml_object_refere
 
     if (value.num == AML_NULL_NAME)
     {
-        AML_OBJECT_REFERENCE_INIT_EMPTY(out);
+        if (aml_object_reference_init(out, NULL) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to init null object reference");
+            return ERR;
+        }
         return aml_null_name_read(state);
     }
     else

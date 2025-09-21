@@ -40,6 +40,10 @@ const char* aml_node_type_to_string(aml_node_type_t type)
         return "IndexField";
     case AML_NODE_BANK_FIELD:
         return "BankField";
+    case AML_NODE_ARG:
+        return "Arg";
+    case AML_NODE_LOCAL:
+        return "Local";
     default:
         return "Unknown";
     }

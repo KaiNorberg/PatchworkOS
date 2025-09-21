@@ -14,23 +14,11 @@ typedef struct aml_data_object aml_data_object_t;
  * CondRefOf operators" (section 19.3.5), thanks guys that tells me so much.
  *
  * From what I can gather, it is simply a pointer to any "Object" (a term that's used multiple times and each time it
- * means something else), so we represent it as both a `aml_data_object_t` pointer and a `aml_node_t` pointer that way
- * we can "Reference" both nodes in the namespace and DataObjects. In practice this is almost certainly the correct
+ * means something else), so we represent it as a `aml_node_t` pointer. In practice this is almost certainly the correct
  * interpretation but its quite frustrating that the specification is so vague about it.
  *
  * @{
  */
-
-/**
- * @brief ACPI AML ObjectReference types.
- * @enum aml_object_reference_type_t
- */
-typedef enum
-{
-    AML_OBJECT_REFERENCE_EMPTY,       //!< The object reference is not set.
-    AML_OBJECT_REFERENCE_NODE,        //!< The object reference is a Node in the ACPI namespace.
-    AML_OBJECT_REFERENCE_DATA_OBJECT, //!< The object reference is a DataObject.
-} aml_object_reference_type_t;
 
 /**
  * @brief ACPI AML ObjectReference structure.
@@ -38,46 +26,39 @@ typedef enum
  */
 typedef struct aml_object_reference
 {
-    aml_object_reference_type_t type; //!< The type of the object reference.
-    union {
-        aml_node_t* node;
-        aml_data_object_t* dataObject;
-    };
+    aml_node_t* node; //!< Pointer to the node in the ACPI namespace.
 } aml_object_reference_t;
 
 /**
- * @brief Initializes an ObjectReference to point to a node in the ACPI namespace.
+ * @brief Initialize an ObjectReference structure.
  *
- * @param ref The ObjectReference to initialize.
- * @param n Pointer to the node in the ACPI namespace.
+ * @param ref Pointer to the ObjectReference structure to initialize.
+ * @param node Pointer to the node in the ACPI namespace, can be `NULL`.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-#define AML_OBJECT_REFERENCE_INIT_NODE(ref, n) \
-    *ref = (aml_object_reference_t) \
-    { \
-        .type = AML_OBJECT_REFERENCE_NODE, .node = (n), \
-    }
+uint64_t aml_object_reference_init(aml_object_reference_t* ref, aml_node_t* node);
 
 /**
- * @brief Initializes an ObjectReference to point to a DataObject.
+ * @brief Deinitialize an ObjectReference structure.
  *
- * @param ref The ObjectReference to initialize.
- * @param obj Pointer to the DataObject.
+ * @param ref Pointer to the ObjectReference structure to deinitialize.
  */
-#define AML_OBJECT_REFERENCE_INIT_DATA_OBJECT(ref, obj) \
-    *ref = (aml_object_reference_t) \
-    { \
-        .type = AML_OBJECT_REFERENCE_DATA_OBJECT, .dataObject = (obj), \
-    }
+void aml_object_reference_deinit(aml_object_reference_t* ref);
 
 /**
- * @brief Initializes an ObjectReference to be empty.
+ * @brief Check if an ObjectReference is null.
  *
- * @param ref The ObjectReference to initialize.
+ * @param ref Pointer to the ObjectReference structure to check.
+ * @return true if the ObjectReference is null, false otherwise.
  */
-#define AML_OBJECT_REFERENCE_INIT_EMPTY(ref) \
-    *ref = (aml_object_reference_t) \
-    { \
-        .type = AML_OBJECT_REFERENCE_EMPTY, .node = NULL, \
-    }
+bool aml_object_reference_is_null(aml_object_reference_t* ref);
+
+/**
+ * @brief Dereference an ObjectReference to get the underlying node.
+ *
+ * @param ref Pointer to the ObjectReference structure to dereference.
+ * @return On success, a pointer to the underlying node. If the reference is null, `NULL` is returned.
+ */
+aml_node_t* aml_object_reference_deref(aml_object_reference_t* ref);
 
 /** @} */

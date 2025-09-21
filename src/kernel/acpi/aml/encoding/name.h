@@ -215,7 +215,7 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out);
  *
  * A SimpleName structure is defined as `SimpleName := NameString | ArgObj | LocalObj`.
  *
- * If the SimpleName does not resolve to an object, then out->type == AML_OBJECT_REFERENCE_EMPTY.
+ * If the SimpleName does not resolve to an object, then out will be a null reference but its not considered an error.
  *
  * @param state The AML state.
  * @param node The current AML node.
@@ -229,7 +229,7 @@ uint64_t aml_simple_name_read(aml_state_t* state, aml_node_t* node, aml_object_r
  *
  * A SuperName structure is defined as `SuperName := SimpleName | DebugObj | ReferenceTypeOpcode`.
  *
- * If the SuperName does not resolve to an object, then out->type == AML_OBJECT_REFERENCE_EMPTY.
+ * If the SuperName does not resolve to an object, then out will be a null reference but its not considered an error.
  *
  * @param state The AML state.
  * @param node The current AML node.
@@ -243,8 +243,8 @@ uint64_t aml_super_name_read(aml_state_t* state, aml_node_t* node, aml_object_re
  *
  * A Target structure is defined as `Target := SuperName | NullName`.
  *
- * If the Target is a NullName or the SuperName does not resolve to an object, then out->type ==
- * AML_OBJECT_REFERENCE_EMPTY.
+ * If the Target is a NullName or the SuperName does not resolve to an object, then out will be a null reference but its
+ * not considered an error.
  *
  * @param state The AML state.
  * @param node The current AML node.

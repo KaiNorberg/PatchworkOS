@@ -4,8 +4,11 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "acpi/aml/aml_node.h"
+#include "encoding/arg.h"
 #include "encoding/data_integers.h"
 #include "encoding/data_object.h"
+#include "encoding/local.h"
 #include "encoding/term.h"
 
 /**
@@ -29,23 +32,32 @@
  */
 typedef struct aml_state
 {
-    const void* data;          //!< Pointer to the AML bytecode stream.
-    uint64_t dataSize;         //!< Size of the AML bytecode stream.
-    aml_address_t pos;         //!< Index of the current instruction in `data`.
-    aml_term_arg_list_t* args; //!< Pointer to the current local arguments, can be NULL.
+    const void* data;                   //!< Pointer to the AML bytecode stream.
+    uint64_t dataSize;                  //!< Size of the AML bytecode stream.
+    aml_address_t pos;                  //!< Index of the current instruction in `data`.
+    aml_node_t* args[AML_MAX_ARGS];     //!< Arguments passed to the current method, if any.
+    aml_node_t* locals[AML_MAX_LOCALS]; //!< Local variables for the current method, if any.
     struct
     {
         aml_address_t lastErrPos; //!<  The position when the last error occurred.
     } debug;
 } aml_state_t;
 
-static inline void aml_state_init(aml_state_t* state, const void* data, uint64_t dataSize, aml_term_arg_list_t* args)
+static inline uint64_t aml_state_init(aml_state_t* state, const void* data, uint64_t dataSize)
 {
     state->data = data;
     state->dataSize = dataSize;
     state->pos = 0;
-    state->args = args;
+    for (uint8_t i = 0; i < AML_MAX_ARGS; i++)
+    {
+        state->args[i] = NULL;
+    }
+    for (uint8_t i = 0; i < AML_MAX_LOCALS; i++)
+    {
+        state->locals[i] = NULL;
+    }
     state->debug.lastErrPos = UINT64_MAX;
+    return 0;
 }
 
 static inline void aml_state_deinit(aml_state_t* state)
@@ -53,7 +65,16 @@ static inline void aml_state_deinit(aml_state_t* state)
     state->data = NULL;
     state->dataSize = 0;
     state->pos = 0;
-    state->args = NULL;
+    for (uint8_t i = 0; i < AML_MAX_ARGS; i++)
+    {
+        aml_node_free(state->args[i]);
+        state->args[i] = NULL;
+    }
+    for (uint8_t i = 0; i < AML_MAX_LOCALS; i++)
+    {
+        aml_node_free(state->locals[i]);
+        state->locals[i] = NULL;
+    }
     state->debug.lastErrPos = UINT64_MAX;
 }
 

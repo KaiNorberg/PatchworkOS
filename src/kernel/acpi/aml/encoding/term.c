@@ -32,10 +32,12 @@ uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_data_object
         AML_DEBUG_ERROR(state, "Unsupported value type: ARG");
         errno = ENOSYS;
         result = ERR;
+        break;
     case AML_VALUE_TYPE_LOCAL:
         AML_DEBUG_ERROR(state, "Unsupported value type: LOCAL");
         errno = ENOSYS;
         result = ERR;
+        break;
     default:
         result = aml_data_object_read(state, out);
     }

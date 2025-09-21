@@ -192,13 +192,13 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data
         return ERR;
     }
 
-    if (superObject.type == AML_OBJECT_REFERENCE_EMPTY)
+    if (aml_object_reference_is_null(&superObject))
     {
         // Return false since the SuperName did not resolve to an object.
         return aml_data_object_init_integer(out, 0, 64);
     }
 
-    if (target.type == AML_OBJECT_REFERENCE_EMPTY)
+    if (aml_object_reference_is_null(&target))
     {
         // Return true since SuperName resolved to an object and Target is a NullName.
         return aml_data_object_init_integer(out, 1, 64);
@@ -206,48 +206,28 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data
 
     // Store reference to SuperObject in the target and return true.
 
-    switch (target.type)
+    aml_data_object_t temp;
+    if (aml_data_object_init_object_reference(&temp, &superObject) == ERR)
     {
-    case AML_OBJECT_REFERENCE_NODE:
-    {
-        aml_node_t* targetNode = target.node;
-        if (targetNode->type != AML_NODE_NAME) // This is probably right... maybe.
-        {
-            AML_DEBUG_ERROR(state, "Target is not a Name object");
-            errno = EILSEQ;
-            return ERR;
-        }
-
-        aml_data_object_deinit(&targetNode->name.object);
-        if (aml_data_object_init_object_reference(out, &superObject) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to init object reference");
-            return ERR;
-        }
-    }
-    break;
-    case AML_OBJECT_REFERENCE_DATA_OBJECT:
-    {
-        aml_data_object_t* targetObject = target.dataObject;
-        aml_data_object_deinit(targetObject);
-        if (aml_data_object_init_object_reference(targetObject, &superObject) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to init object reference");
-            return ERR;
-        }
-    }
-    break;
-    default:
-        AML_DEBUG_ERROR(state, "Invalid target type: %d", target.type);
-        errno = EILSEQ;
+        AML_DEBUG_ERROR(state, "Failed to init object reference");
         return ERR;
     }
+
+    if (aml_store(aml_object_reference_deref(&target), &temp) == ERR)
+    {
+        aml_data_object_deinit(&temp);
+        AML_DEBUG_ERROR(state, "Failed to store reference");
+        return ERR;
+    }
+
+    aml_data_object_deinit(&temp);
 
     if (aml_data_object_init_integer(out, 1, 64) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to init integer");
         return ERR;
     }
+
     return 0;
 }
 
@@ -282,45 +262,22 @@ uint64_t aml_def_store_read(aml_state_t* state, aml_node_t* node, aml_data_objec
         return ERR;
     }
 
-    if (target.type == AML_OBJECT_REFERENCE_EMPTY)
+    if (aml_object_reference_is_null(&target))
     {
         aml_data_object_deinit(&source);
-        AML_DEBUG_ERROR(state, "Target is empty");
+        AML_DEBUG_ERROR(state, "Target is a null reference");
         errno = EILSEQ;
         return ERR;
     }
 
-    switch (target.type)
+    if (aml_store(aml_object_reference_deref(&target), &source) == ERR)
     {
-    case AML_OBJECT_REFERENCE_NODE:
-    {
-        aml_node_t* targetNode = target.node;
-
-        if (aml_store(targetNode, &source) == ERR)
-        {
-            aml_data_object_deinit(&source);
-            AML_DEBUG_ERROR(state, "Failed to store");
-            return ERR;
-        }
-    }
-    break;
-    case AML_OBJECT_REFERENCE_DATA_OBJECT:
-    {
-        aml_data_object_t* targetObject = target.dataObject;
-
-        aml_data_object_deinit(targetObject);
-        *targetObject = source;
-    }
-    break;
-    default:
         aml_data_object_deinit(&source);
-        AML_DEBUG_ERROR(state, "Invalid target type: %d", target.type);
-        errno = EILSEQ;
+        AML_DEBUG_ERROR(state, "Failed to store value");
         return ERR;
     }
 
-    *out = source;
-    aml_data_object_deinit(&source);
+    *out = source; // Transfer ownership
     return 0;
 }
 

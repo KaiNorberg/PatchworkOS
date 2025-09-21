@@ -1,5 +1,7 @@
 #include "lock_rule.h"
 
+#include "acpi/aml/aml_node.h"
+
 bool aml_should_acquire_global_mutex(aml_node_t* node)
 {
     if (node == NULL)

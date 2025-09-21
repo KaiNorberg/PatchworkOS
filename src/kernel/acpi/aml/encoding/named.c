@@ -104,7 +104,7 @@ uint64_t aml_def_op_region_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_node_t* newNode = aml_node_add_at_name_string(&nameString, node, AML_NODE_OPREGION);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_OPREGION);
     if (newNode == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node");
@@ -177,7 +177,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
             return ERR;
         }
 
-        aml_node_t* newNode = aml_node_add(node, name->name, AML_NODE_FIELD);
+        aml_node_t* newNode = aml_node_new(node, name->name, AML_NODE_FIELD);
         if (newNode == NULL)
         {
             AML_DEBUG_ERROR(state, "Failed to add node");
@@ -212,7 +212,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
             return ERR;
         }
 
-        aml_node_t* newNode = aml_node_add(node, name->name, AML_NODE_INDEX_FIELD);
+        aml_node_t* newNode = aml_node_new(node, name->name, AML_NODE_INDEX_FIELD);
         if (newNode == NULL)
         {
             AML_DEBUG_ERROR(state, "Failed to add node");
@@ -506,7 +506,7 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node)
 
     aml_address_t end = start + pkgLength;
 
-    aml_node_t* newNode = aml_node_add_at_name_string(&nameString, node, AML_NODE_METHOD);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_METHOD);
     if (newNode == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node");
@@ -557,7 +557,7 @@ uint64_t aml_def_device_read(aml_state_t* state, aml_node_t* node)
 
     aml_address_t end = start + pkgLength;
 
-    aml_node_t* newNode = aml_node_add_at_name_string(&nameString, node, AML_NODE_DEVICE);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_DEVICE);
     if (newNode == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node");
@@ -617,7 +617,7 @@ uint64_t aml_def_mutex_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_node_t* newNode = aml_node_add_at_name_string(&nameString, node, AML_NODE_MUTEX);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_MUTEX);
     if (newNode == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node");
@@ -699,7 +699,7 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node)
 
     aml_address_t end = start + pkgLength;
 
-    aml_node_t* newNode = aml_node_add_at_name_string(&nameString, node, AML_NODE_PROCESSOR);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_PROCESSOR);
     if (newNode == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node");

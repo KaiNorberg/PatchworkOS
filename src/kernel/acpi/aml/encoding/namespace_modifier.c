@@ -37,7 +37,7 @@ uint64_t aml_def_name_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_node_t* name = aml_node_add_at_name_string(&nameString, node, AML_NODE_NAME);
+    aml_node_t* name = aml_node_add(&nameString, node, AML_NODE_NAME);
     if (name == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node");
