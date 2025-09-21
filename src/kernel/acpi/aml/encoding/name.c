@@ -271,7 +271,7 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
 uint64_t aml_simple_name_read(aml_state_t* state, aml_node_t* node, aml_object_reference_t* out)
 {
     aml_value_t value;
-    if (aml_value_read(state, &value) == ERR)
+    if (aml_value_peek(state, &value) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read value");
         return ERR;
@@ -324,9 +324,15 @@ uint64_t aml_super_name_read(aml_state_t* state, aml_node_t* node, aml_object_re
     switch (value.props->type)
     {
     case AML_VALUE_TYPE_NAME:
-    case AML_VALUE_TYPE_ARG:
-    case AML_VALUE_TYPE_LOCAL:
         return aml_simple_name_read(state, node, out);
+    case AML_VALUE_TYPE_ARG:
+        AML_DEBUG_ERROR(state, "Args is unimplemented");
+        errno = ENOSYS;
+        return ERR;
+    case AML_VALUE_TYPE_LOCAL:
+        AML_DEBUG_ERROR(state, "Locals is unimplemented");
+        errno = ENOSYS;
+        return ERR;
     case AML_VALUE_TYPE_DEBUG:
         AML_DEBUG_ERROR(state, "DebugObj is unimplemented");
         errno = ENOSYS;
