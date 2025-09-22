@@ -25,11 +25,11 @@ typedef struct aml_state aml_state_t;
  * @param state The AML state.
  * @param node The current AML node.
  * @param out The output buffer to store the result of the TermArg.
- * @param expectedType The expected type of the TermArg result, will error if a different type is encountered. If set to
- * `AML_DATA_ANY`, no type checking is performed.
+ * @param expectedTypes A bitmask of expected data types. If the read TermArg does not match one of these types, an error is
+ * returned.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out, aml_data_type_t expectedType);
+uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out, aml_data_type_t expectedTypes);
 
 /**
  * @brief Reads an Object structure from the AML byte stream.

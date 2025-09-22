@@ -12,7 +12,7 @@
 #include <errno.h>
 #include <stdint.h>
 
-uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out, aml_data_type_t expectedType)
+uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out, aml_data_type_t expectedTypes)
 {
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
@@ -48,10 +48,10 @@ uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_data_object
         return ERR;
     }
 
-    if (expectedType != AML_DATA_ANY && out->type != expectedType)
+    if (!(out->type & expectedTypes))
     {
         aml_data_object_deinit(out);
-        AML_DEBUG_ERROR(state, "Unexpected data type: %d (expected %d)", out->type, expectedType);
+        AML_DEBUG_ERROR(state, "Unexpected data type: %d (expected %b)", out->type, expectedTypes);
         errno = EILSEQ;
         return ERR;
     }

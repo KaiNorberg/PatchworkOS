@@ -397,6 +397,34 @@ uint64_t aml_def_increment_read(aml_state_t* state, aml_node_t* node, aml_data_o
 uint64_t aml_def_decrement_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
 
 /**
+ * @brief Reads an ObjReference structure from the AML byte stream.
+ *
+ * An ObjReference structure is defined as `ObjReference := TermArg => ObjectReference | String`.
+ *
+ * If a String is read then it is considered a path to an object and will be resolved to an object reference.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the object reference will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_obj_reference_read(aml_state_t* state, aml_node_t* node, aml_object_reference_t* out);
+
+/**
+ * @brief Reads a DefDerefOf structure from the AML byte stream.
+ *
+ * A DefDerefOf structure is defined as `DefDerefOf := DerefOfOp ObjReference`.
+ *
+ * @see Section 19.6.30 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to the buffer where the data that was dereferenced by the DerefOf operation will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_deref_of_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+
+/**
  * @brief Reads an ExpressionOpcode structure from the AML byte stream.
  *
  * An ExpressionOpcode structure is defined as `ExpressionOpcode := DefAcquire | DefAdd | DefAnd | DefBuffer | DefConcat

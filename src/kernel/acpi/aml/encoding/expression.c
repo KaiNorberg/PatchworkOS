@@ -979,6 +979,88 @@ uint64_t aml_def_decrement_read(aml_state_t* state, aml_node_t* node, aml_data_o
     return 0;
 }
 
+uint64_t aml_obj_reference_read(aml_state_t* state, aml_node_t* node, aml_object_reference_t* out)
+{
+    aml_data_object_t termArg;
+    if (aml_term_arg_read(state, node, &termArg, AML_DATA_OBJECT_REFERENCE | AML_DATA_STRING) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read term arg");
+        return ERR;
+    }
+
+    if (termArg.type == AML_DATA_OBJECT_REFERENCE)
+    {
+        *out = termArg.objectReference; // Transfer ownership
+        return 0;
+    }
+    else if (termArg.type == AML_DATA_STRING)
+    {
+        aml_node_t* target = aml_node_find_by_path(termArg.string.content, node);
+        if (target == NULL)
+        {
+            AML_DEBUG_ERROR(state, "Failed to find target node '%s'", termArg.string.content);
+            aml_data_object_deinit(&termArg);
+            errno = EILSEQ;
+            return ERR;
+        }
+        aml_data_object_deinit(&termArg);
+
+        if (aml_object_reference_init(out, target) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to init object reference");
+            return ERR;
+        }
+
+        return 0;
+    }
+    else
+    {
+        aml_data_object_deinit(&termArg);
+        AML_DEBUG_ERROR(state, "Invalid term arg type: %u", termArg.type);
+        errno = EILSEQ;
+        return ERR;
+    }
+}
+
+uint64_t aml_def_deref_of_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    aml_value_t derefOfOp;
+    if (aml_value_read(state, &derefOfOp) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read value");
+        return ERR;
+    }
+
+    if (derefOfOp.num != AML_DEREF_OF_OP)
+    {
+        AML_DEBUG_ERROR(state, "Invalid deref of op: 0x%x", derefOfOp.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_object_reference_t objRef;
+    if (aml_obj_reference_read(state, node, &objRef) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read object reference");
+        return ERR;
+    }
+
+    if (aml_object_reference_is_null(&objRef))
+    {
+        AML_DEBUG_ERROR(state, "Object reference is a null reference");
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    if (aml_evaluate(aml_object_reference_deref(&objRef), out, NULL) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to evaluate object reference");
+        return ERR;
+    }
+
+    return 0;
+}
+
 uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
 {
     aml_value_t value;
@@ -1047,6 +1129,8 @@ uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_da
         return aml_def_increment_read(state, node, out);
     case AML_DECREMENT_OP:
         return aml_def_decrement_read(state, node, out);
+    case AML_DEREF_OF_OP:
+        return aml_def_deref_of_read(state, node, out);
     default:
         AML_DEBUG_ERROR(state, "Unknown expression opcode: 0x%x", value.num);
         errno = ENOSYS;

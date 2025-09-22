@@ -113,14 +113,13 @@ typedef struct
 typedef enum
 {
     AML_DATA_NONE = 0,
-    AML_DATA_INTEGER,
-    AML_DATA_STRING,
-    AML_DATA_BUFFER,
-    AML_DATA_PACKAGE,
-    AML_DATA_NAME_STRING,
-    AML_DATA_OBJECT_REFERENCE,
-    AML_DATA_ANY,
-    AML_DATA_MAX,
+    AML_DATA_INTEGER = 1 << 0,
+    AML_DATA_STRING = 1 << 1,
+    AML_DATA_BUFFER = 1 << 2,
+    AML_DATA_PACKAGE = 1 << 3,
+    AML_DATA_NAME_STRING = 1 << 4,
+    AML_DATA_OBJECT_REFERENCE = 1 << 5,
+    AML_DATA_ANY = 0xFF,
 } aml_data_type_t;
 
 /**
