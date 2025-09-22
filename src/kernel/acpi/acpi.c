@@ -87,11 +87,11 @@ static uint64_t acpi_parse_all_aml(void)
             break;
         }
 
-        LOG_INFO("SSDT %llu found containing %llu bytes of AML code\n", index, ssdt->header.length - sizeof(ssdt_t));
+        LOG_INFO("SSDT%llu found containing %llu bytes of AML code\n", index, ssdt->header.length - sizeof(ssdt_t));
 
         if (aml_parse(ssdt->definitionBlock, ssdt->header.length - sizeof(ssdt_t)) == ERR)
         {
-            LOG_ERR("failed to parse SSDT %llu\n", index);
+            LOG_ERR("failed to parse SSDT%llu\n", index);
             return ERR;
         }
 

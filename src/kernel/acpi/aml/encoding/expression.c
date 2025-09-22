@@ -23,7 +23,7 @@ static inline uint64_t aml_unary_op_read(aml_state_t* state, aml_node_t* node, a
     aml_value_t opValue;
     if (aml_value_read(state, &opValue) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read value for %s", opName);
+        AML_DEBUG_ERROR(state, "Failed to read value for '%s'", opName);
         return ERR;
     }
 
@@ -37,7 +37,7 @@ static inline uint64_t aml_unary_op_read(aml_state_t* state, aml_node_t* node, a
     aml_data_object_t source;
     if (aml_operand_read(state, node, &source) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read operand for %s", opName);
+        AML_DEBUG_ERROR(state, "Failed to read operand for '%s'", opName);
         return ERR;
     }
 
@@ -47,7 +47,7 @@ static inline uint64_t aml_unary_op_read(aml_state_t* state, aml_node_t* node, a
     if (aml_target_read(state, node, &target) == ERR)
     {
         aml_data_object_deinit(&source);
-        AML_DEBUG_ERROR(state, "Failed to read target for %s", opName);
+        AML_DEBUG_ERROR(state, "Failed to read target for '%s'", opName);
         return ERR;
     }
 
@@ -55,7 +55,7 @@ static inline uint64_t aml_unary_op_read(aml_state_t* state, aml_node_t* node, a
     if (aml_data_object_init_integer(&result, op(source.integer), source.meta.bitWidth) == ERR)
     {
         aml_data_object_deinit(&source);
-        AML_DEBUG_ERROR(state, "Failed to init result for %s", opName);
+        AML_DEBUG_ERROR(state, "Failed to init result for '%s'", opName);
         return ERR;
     }
 
@@ -65,7 +65,7 @@ static inline uint64_t aml_unary_op_read(aml_state_t* state, aml_node_t* node, a
     if (!aml_object_reference_is_null(&target) && aml_store(aml_object_reference_deref(&target), &result) == ERR)
     {
         aml_data_object_deinit(&result);
-        AML_DEBUG_ERROR(state, "Failed to store result for %s", opName);
+        AML_DEBUG_ERROR(state, "Failed to store result for '%s'", opName);
         return ERR;
     }
 
@@ -88,7 +88,7 @@ static inline uint64_t aml_binary_op_read(aml_state_t* state, aml_node_t* node, 
     aml_value_t opValue;
     if (aml_value_read(state, &opValue) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read value for %s", opName);
+        AML_DEBUG_ERROR(state, "Failed to read value for '%s'", opName);
         return ERR;
     }
 
@@ -102,7 +102,7 @@ static inline uint64_t aml_binary_op_read(aml_state_t* state, aml_node_t* node, 
     aml_data_object_t source1;
     if (aml_operand_read(state, node, &source1) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read first operand for %s", opName);
+        AML_DEBUG_ERROR(state, "Failed to read first operand for '%s'", opName);
         return ERR;
     }
 
@@ -110,7 +110,7 @@ static inline uint64_t aml_binary_op_read(aml_state_t* state, aml_node_t* node, 
     if (aml_operand_read(state, node, &source2) == ERR)
     {
         aml_data_object_deinit(&source1);
-        AML_DEBUG_ERROR(state, "Failed to read second operand for %s", opName);
+        AML_DEBUG_ERROR(state, "Failed to read second operand for '%s'", opName);
         return ERR;
     }
 
@@ -121,7 +121,7 @@ static inline uint64_t aml_binary_op_read(aml_state_t* state, aml_node_t* node, 
     {
         aml_data_object_deinit(&source1);
         aml_data_object_deinit(&source2);
-        AML_DEBUG_ERROR(state, "Division by zero in %s", opName);
+        AML_DEBUG_ERROR(state, "Division by zero in '%s'", opName);
         errno = EILSEQ;
         return ERR;
     }
@@ -131,7 +131,7 @@ static inline uint64_t aml_binary_op_read(aml_state_t* state, aml_node_t* node, 
     {
         aml_data_object_deinit(&source1);
         aml_data_object_deinit(&source2);
-        AML_DEBUG_ERROR(state, "Failed to read target for %s", opName);
+        AML_DEBUG_ERROR(state, "Failed to read target for '%s'", opName);
         return ERR;
     }
 
@@ -142,7 +142,7 @@ static inline uint64_t aml_binary_op_read(aml_state_t* state, aml_node_t* node, 
     {
         aml_data_object_deinit(&source1);
         aml_data_object_deinit(&source2);
-        AML_DEBUG_ERROR(state, "Failed to init result for %s", opName);
+        AML_DEBUG_ERROR(state, "Failed to init result for '%s'", opName);
         return ERR;
     }
 
@@ -153,7 +153,7 @@ static inline uint64_t aml_binary_op_read(aml_state_t* state, aml_node_t* node, 
     if (!aml_object_reference_is_null(&target) && aml_store(aml_object_reference_deref(&target), &result) == ERR)
     {
         aml_data_object_deinit(&result);
-        AML_DEBUG_ERROR(state, "Failed to store result for %s", opName);
+        AML_DEBUG_ERROR(state, "Failed to store result for '%s'", opName);
         return ERR;
     }
 
@@ -388,48 +388,57 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data
         return ERR;
     }
 
-    aml_object_reference_t superObject;
-    if (aml_super_name_read(state, node, &superObject) == ERR)
+    aml_object_reference_t source;
+    if (aml_super_name_read(state, node, &source) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read super name");
+        AML_DEBUG_ERROR(state, "Failed to read source");
         return ERR;
     }
 
-    aml_object_reference_t target;
-    if (aml_target_read(state, node, &target) == ERR)
+    aml_object_reference_t result;
+    if (aml_target_read(state, node, &result) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read target");
+        AML_DEBUG_ERROR(state, "Failed to read result");
         return ERR;
     }
 
-    if (aml_object_reference_is_null(&superObject))
+    if (aml_object_reference_is_null(&source))
     {
-        // Return false since the SuperName did not resolve to an object.
-        return aml_data_object_init_integer(out, 0, 64);
+        // Return false since the source did not resolve to an object.
+        if (aml_data_object_init_integer(out, 0, 64) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to init false integer");
+            return ERR;
+        }
+        return 0;
     }
 
-    if (aml_object_reference_is_null(&target))
+    if (aml_object_reference_is_null(&result))
     {
-        // Return true since SuperName resolved to an object and Target is a NullName.
-        return aml_data_object_init_integer(out, 1, 64);
+        // Return true since source resolved to an object and result is a NullName so we dont need to store anything.
+        if (aml_data_object_init_integer(out, 1, 64) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to init true integer");
+            return ERR;
+        }
+        return 0;
     }
 
-    // Store reference to SuperObject in the target and return true.
+    // Store reference to source in the result and return true.
 
     aml_data_object_t temp;
-    if (aml_data_object_init_object_reference(&temp, &superObject) == ERR)
+    if (aml_data_object_init_object_reference(&temp, &source) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to init object reference");
         return ERR;
     }
 
-    if (aml_store(aml_object_reference_deref(&target), &temp) == ERR)
+    if (aml_store(aml_object_reference_deref(&result), &temp) == ERR)
     {
         aml_data_object_deinit(&temp);
         AML_DEBUG_ERROR(state, "Failed to store reference");
         return ERR;
     }
-
     aml_data_object_deinit(&temp);
 
     if (aml_data_object_init_integer(out, 1, 64) == ERR)
@@ -437,7 +446,6 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data
         AML_DEBUG_ERROR(state, "Failed to init integer");
         return ERR;
     }
-
     return 0;
 }
 
@@ -464,23 +472,23 @@ uint64_t aml_def_store_read(aml_state_t* state, aml_node_t* node, aml_data_objec
         return ERR;
     }
 
-    aml_object_reference_t target;
-    if (aml_super_name_read(state, node, &target) == ERR)
+    aml_object_reference_t destination;
+    if (aml_super_name_read(state, node, &destination) == ERR)
     {
         aml_data_object_deinit(&source);
         AML_DEBUG_ERROR(state, "Failed to read super name");
         return ERR;
     }
 
-    if (aml_object_reference_is_null(&target))
+    if (aml_object_reference_is_null(&destination))
     {
         aml_data_object_deinit(&source);
-        AML_DEBUG_ERROR(state, "Target is a null reference");
+        AML_DEBUG_ERROR(state, "Destination is a null reference");
         errno = EILSEQ;
         return ERR;
     }
 
-    if (aml_store(aml_object_reference_deref(&target), &source) == ERR)
+    if (aml_store(aml_object_reference_deref(&destination), &source) == ERR)
     {
         aml_data_object_deinit(&source);
         AML_DEBUG_ERROR(state, "Failed to store value");
