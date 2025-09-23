@@ -6,7 +6,6 @@
 
 typedef struct aml_node aml_node_t;
 typedef struct aml_state aml_state_t;
-typedef struct aml_data_object aml_data_object_t;
 
 /**
  * @brief ACPI AML Named Objects Encoding

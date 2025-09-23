@@ -7,8 +7,6 @@
 
 typedef struct aml_state aml_state_t;
 typedef struct aml_node aml_node_t;
-typedef struct aml_data_object aml_data_object_t;
-typedef struct aml_object_reference aml_object_reference_t;
 
 /**
  * @brief ACPI AML Name Objects Encoding
@@ -215,42 +213,42 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out);
  *
  * A SimpleName structure is defined as `SimpleName := NameString | ArgObj | LocalObj`.
  *
- * If the SimpleName does not resolve to an object, then out will be a null reference but its not considered an error.
+ * If the SuperName does not resolve to an object, then out will be set to `NULL` but its not considered an error.
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out Pointer to the buffer where the object reference will be stored.
+ * @param out Pointer to where the pointer to the resolved node will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-uint64_t aml_simple_name_read(aml_state_t* state, aml_node_t* node, aml_object_reference_t* out);
+uint64_t aml_simple_name_read(aml_state_t* state, aml_node_t* node, aml_node_t** out);
 
 /**
  * @brief Reads a SuperName structure from the AML byte stream.
  *
  * A SuperName structure is defined as `SuperName := SimpleName | DebugObj | ReferenceTypeOpcode`.
  *
- * If the SuperName does not resolve to an object, then out will be a null reference but its not considered an error.
+ * If the SuperName does not resolve to an object, then out will be set to `NULL` but its not considered an error.
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out Pointer to the buffer where the object reference will be stored.
+ * @param out Pointer to where the pointer to the resolved node will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-uint64_t aml_super_name_read(aml_state_t* state, aml_node_t* node, aml_object_reference_t* out);
+uint64_t aml_super_name_read(aml_state_t* state, aml_node_t* node, aml_node_t** out);
 
 /**
  * @brief Reads a Target structure from the AML byte stream.
  *
  * A Target structure is defined as `Target := SuperName | NullName`.
  *
- * If the Target is a NullName or the SuperName does not resolve to an object, then out will be a null reference but its
- * not considered an error.
+ * If the Target is a NullName or the SuperName does not resolve to an object, then out will be set to `NULL` but its not
+ * considered an error.
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out Pointer to the buffer where the object reference will be stored.
+ * @param out Pointer to where the pointer to the resolved node will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-uint64_t aml_target_read(aml_state_t* state, aml_node_t* node, aml_object_reference_t* out);
+uint64_t aml_target_read(aml_state_t* state, aml_node_t* node, aml_node_t** out);
 
 /** @} */

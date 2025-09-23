@@ -183,6 +183,8 @@ typedef struct
     lock_t lock;
 } wait_cpu_ctx_t;
 
+#define WAIT_QUEUE_CREATE {.lock = LOCK_CREATE, .entries = LIST_CREATE}
+
 void wait_init(void);
 
 void wait_queue_init(wait_queue_t* waitQueue);

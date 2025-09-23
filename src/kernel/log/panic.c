@@ -233,11 +233,11 @@ static bool panic_is_valid_address(uintptr_t addr)
     }
     if (addr >= PML_HIGHER_HALF_END)
     {
-         return false;
+        return false;
     }
     if (addr > PML_LOWER_HALF_END && addr < PML_LOWER_HALF_START)
     {
-         return false;
+        return false;
     }
     return true;
 }
@@ -420,18 +420,17 @@ void panic(const trap_frame_t* trapFrame, const char* format, ...)
 
     if (trapFrame != NULL)
     {
-        LOG_PANIC("exception: %s (vector: %lld, error code: 0x%llx)\n",
-            panic_get_exception_name(trapFrame->vector), trapFrame->vector, trapFrame->errorCode);
+        LOG_PANIC("exception: %s (vector: %lld, error code: 0x%llx)\n", panic_get_exception_name(trapFrame->vector),
+            trapFrame->vector, trapFrame->errorCode);
 
         if (trapFrame->vector == VECTOR_PAGE_FAULT)
         {
             LOG_PANIC("page fault details: A %s operation to a %s page caused a %s.\n",
-                (trapFrame->errorCode & 2) ? "write" : "read",
-                (trapFrame->errorCode & 4) ? "user-mode" : "kernel-mode",
+                (trapFrame->errorCode & 2) ? "write" : "read", (trapFrame->errorCode & 4) ? "user-mode" : "kernel-mode",
                 (trapFrame->errorCode & 1) ? "protection violation" : "non-present page fault");
             if (trapFrame->errorCode & 8)
             {
-                 LOG_PANIC("                      (Reserved bit violation)\n");
+                LOG_PANIC("                      (Reserved bit violation)\n");
             }
             if (trapFrame->errorCode & 16)
             {

@@ -7,9 +7,9 @@
 #include "acpi/aml/aml_node.h"
 #include "encoding/arg.h"
 #include "encoding/data_integers.h"
-#include "encoding/data_object.h"
 #include "encoding/local.h"
 #include "encoding/term.h"
+#include "log/log.h"
 
 /**
  * @brief ACPI AML State
@@ -32,11 +32,12 @@
  */
 typedef struct aml_state
 {
-    const void* data;                   //!< Pointer to the AML bytecode stream.
-    uint64_t dataSize;                  //!< Size of the AML bytecode stream.
-    aml_address_t pos;                  //!< Index of the current instruction in `data`.
-    aml_node_t* args[AML_MAX_ARGS];     //!< Arguments passed to the current method, if any.
-    aml_node_t* locals[AML_MAX_LOCALS]; //!< Local variables for the current method, if any.
+    const void* data;  //!< Pointer to the AML bytecode stream.
+    uint64_t dataSize; //!< Size of the AML bytecode stream.
+    aml_address_t pos; //!< Index of the current instruction in `data`.
+    aml_node_t*
+        args[AML_MAX_ARGS]; //!< Argument variables, only used if the state is being used to invoke a method, if any.
+    aml_node_t* locals[AML_MAX_LOCALS]; //!< Local variables for the method, if any.
     struct
     {
         aml_address_t lastErrPos; //!<  The position when the last error occurred.
@@ -65,6 +66,7 @@ static inline void aml_state_deinit(aml_state_t* state)
     state->data = NULL;
     state->dataSize = 0;
     state->pos = 0;
+
     for (uint8_t i = 0; i < AML_MAX_ARGS; i++)
     {
         aml_node_free(state->args[i]);

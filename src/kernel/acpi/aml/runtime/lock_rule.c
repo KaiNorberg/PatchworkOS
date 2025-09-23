@@ -11,11 +11,11 @@ bool aml_should_acquire_global_mutex(aml_node_t* node)
 
     switch (node->type)
     {
-    case AML_NODE_FIELD:
+    case AML_DATA_FIELD:
         return node->field.flags.lockRule == AML_LOCK_RULE_LOCK;
-    case AML_NODE_INDEX_FIELD:
+    case AML_DATA_INDEX_FIELD:
         return node->indexField.flags.lockRule == AML_LOCK_RULE_LOCK;
-    case AML_NODE_BANK_FIELD:
+    case AML_DATA_BANK_FIELD:
         return node->bankField.flags.lockRule == AML_LOCK_RULE_LOCK;
     default:
         return false;

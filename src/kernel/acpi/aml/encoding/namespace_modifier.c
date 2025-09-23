@@ -37,7 +37,7 @@ uint64_t aml_def_name_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_node_t* name = aml_node_add(&nameString, node, AML_NODE_NAME);
+    aml_node_t* name = aml_node_add(&nameString, node, AML_DATA_NAME);
     if (name == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node");
@@ -97,9 +97,9 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    if (newNode->type != AML_NODE_PREDEFINED && newNode->type != AML_NODE_DEVICE &&
-        newNode->type != AML_NODE_PROCESSOR && newNode->type != AML_NODE_THERMAL_ZONE &&
-        newNode->type != AML_NODE_POWER_RESOURCE)
+    if (newNode->type != AML_DATA_PREDEFINED && newNode->type != AML_DATA_DEVICE &&
+        newNode->type != AML_DATA_PROCESSOR && newNode->type != AML_DATA_THERMAL_ZONE &&
+        newNode->type != AML_DATA_POWER_RESOURCE)
     {
         AML_DEBUG_ERROR(state, "Invalid node type: %d", newNode->type);
         errno = EILSEQ;

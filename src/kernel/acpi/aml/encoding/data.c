@@ -1,7 +1,9 @@
 #include "data.h"
 
+#include "acpi/aml/aml_convert.h"
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_state.h"
+#include "acpi/aml/aml_to_string.h"
 #include "acpi/aml/aml_value.h"
 #include "expression.h"
 #include "mem/heap.h"
@@ -205,11 +207,13 @@ uint64_t aml_string_read(aml_state_t* state, aml_string_t* out)
         length++;
     }
 
-    *out = AML_STRING_CREATE_IN_PLACE(str, length);
+    out->content = str;
+    out->length = length;
+    out->inPlace = true;
     return 0;
 }
 
-uint64_t aml_computational_data_read(aml_state_t* state, aml_data_object_t* out)
+uint64_t aml_computational_data_read(aml_state_t* state, aml_node_t* out)
 {
     aml_value_t value;
     if (aml_value_peek_no_ext(state, &value) == ERR)
@@ -228,9 +232,9 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_data_object_t* out)
             AML_DEBUG_ERROR(state, "Failed to read byte const");
             return ERR;
         }
-        if (aml_data_object_init_integer(out, byte, 8) == ERR)
+        if (aml_node_init_integer(out, byte, 8) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to init integer");
+            AML_DEBUG_ERROR(state, "Failed to init byte node");
             return ERR;
         }
         return 0;
@@ -243,9 +247,9 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_data_object_t* out)
             AML_DEBUG_ERROR(state, "Failed to read word const");
             return ERR;
         }
-        if (aml_data_object_init_integer(out, word, 16) == ERR)
+        if (aml_node_init_integer(out, word, 16) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to init integer");
+            AML_DEBUG_ERROR(state, "Failed to init word node");
             return ERR;
         }
         return 0;
@@ -258,9 +262,9 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_data_object_t* out)
             AML_DEBUG_ERROR(state, "Failed to read dword const");
             return ERR;
         }
-        if (aml_data_object_init_integer(out, dword, 32) == ERR)
+        if (aml_node_init_integer(out, dword, 32) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to init integer");
+            AML_DEBUG_ERROR(state, "Failed to init dword node");
             return ERR;
         }
         return 0;
@@ -273,9 +277,9 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_data_object_t* out)
             AML_DEBUG_ERROR(state, "Failed to read qword const");
             return ERR;
         }
-        if (aml_data_object_init_integer(out, qword, 64) == ERR)
+        if (aml_node_init_integer(out, qword, 64) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to init integer");
+            AML_DEBUG_ERROR(state, "Failed to init qword node");
             return ERR;
         }
         return 0;
@@ -289,7 +293,7 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_data_object_t* out)
             return ERR;
         }
 
-        if (aml_data_object_init_string(out, &str) == ERR)
+        if (aml_node_init_string(out, str.content, str.inPlace) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to init string");
             return ERR;
@@ -307,9 +311,9 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_data_object_t* out)
             AML_DEBUG_ERROR(state, "Failed to read const obj");
             return ERR;
         }
-        if (aml_data_object_init_integer(out, constObj, 64) == ERR)
+        if (aml_node_init_integer_constant(out, constObj) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to init integer");
+            AML_DEBUG_ERROR(state, "Failed to init const obj");
             return ERR;
         }
         return 0;
@@ -322,7 +326,7 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_data_object_t* out)
             AML_DEBUG_ERROR(state, "Failed to read buffer");
             return ERR;
         }
-        if (aml_data_object_init_buffer(out, &buffer) == ERR)
+        if (aml_node_init_buffer(out, buffer.content, buffer.length, buffer.capacity, buffer.inPlace) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to init buffer");
             return ERR;
@@ -336,12 +340,12 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_data_object_t* out)
     }
 }
 
-uint64_t aml_num_elements_read(aml_state_t* state, aml_num_elements_t* out)
+uint64_t aml_num_elements_read(aml_state_t* state, aml_byte_data_t* out)
 {
     return aml_byte_data_read(state, out);
 }
 
-uint64_t aml_package_element_read(aml_state_t* state, aml_data_object_t* out)
+uint64_t aml_package_element_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
@@ -359,55 +363,77 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_data_object_t* out)
             return ERR;
         }
 
-        if (aml_data_object_init_name_string(out, &nameString) == ERR)
+        aml_node_t* namedReference = aml_node_find(&nameString, node);
+        if (namedReference == NULL)
         {
-            AML_DEBUG_ERROR(state, "Failed to init name string");
+            AML_DEBUG_ERROR(state, "Failed to find named reference '%s'", aml_name_string_to_string(&nameString));
+            errno = ENOENT;
             return ERR;
         }
-        return 0;
+
+        aml_data_type_info_t* info = aml_data_type_get_info(namedReference->type);
+        if (info->flags & AML_DATA_FLAG_DATA_OBJECT) // "... resolved to actual data by the AML interpreter"
+        {
+            if (aml_convert_to_actual_data(namedReference, out) == ERR)
+            {
+                AML_DEBUG_ERROR(state, "Failed to convert named reference '%s' to actual data",
+                    aml_name_string_to_string(&nameString));
+                return ERR;
+            }
+            return 0;
+        }
+        else if (info->flags & AML_DATA_FLAG_NON_DATA_OBJECT) // "... returned in the package as references"
+        {
+            if (aml_node_init_object_reference(out, namedReference) == ERR)
+            {
+                AML_DEBUG_ERROR(state, "Failed to init object reference for named reference '%s'",
+                    aml_name_string_to_string(&nameString));
+                return ERR;
+            }
+            return 0;
+        }
+        else
+        {
+            AML_DEBUG_ERROR(state, "Named reference '%s' is neither a data object nor a non-data object",
+                aml_name_string_to_string(&nameString));
+            errno = EILSEQ;
+            return ERR;
+        }
     }
     else
     {
-        return aml_data_ref_object_read(state, out);
+        return aml_data_ref_object_read(state, node, out);
     }
 }
 
-uint64_t aml_package_element_list_read(aml_state_t* state, aml_data_object_t** out, aml_num_elements_t numElements,
-    aml_address_t end)
+uint64_t aml_package_element_list_read(aml_state_t* state, aml_node_t* node, aml_node_t* package, aml_address_t end)
 {
-    aml_data_object_t* elements = heap_alloc(sizeof(aml_data_object_t) * numElements, HEAP_NONE);
-    if (elements == NULL)
+    if (package == NULL || package->type != AML_DATA_PACKAGE)
     {
-        AML_DEBUG_ERROR(state, "Failed to allocate memory for package elements");
+        AML_DEBUG_ERROR(state, "Invalid package node");
+        errno = EINVAL;
         return ERR;
     }
 
-    for (uint64_t i = 0; i < numElements; i++)
-    {
-        elements[i].type = AML_DATA_NONE;
-    }
-
     uint64_t i = 0;
-    while (state->pos < end && i < numElements)
+    while (state->pos < end && i < package->package.capacity)
     {
-        if (aml_package_element_read(state, &elements[i]) == ERR)
+        if (aml_package_element_read(state, node, package->package.elements[i]) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read package element %lu", i);
             for (uint64_t j = 0; j < i; j++)
             {
-                aml_data_object_deinit(&elements[j]);
+                aml_node_deinit(package->package.elements[j]);
             }
-            heap_free(elements);
+            AML_DEBUG_ERROR(state, "Failed to read package element at index %llu", i);
             return ERR;
         }
         i++;
     }
 
-    *out = elements;
     return 0;
 }
 
-uint64_t aml_def_package_read(aml_state_t* state, aml_package_t* out)
+uint64_t aml_def_package_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     aml_value_t packageOp;
     if (aml_value_read(state, &packageOp) == ERR)
@@ -425,7 +451,7 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_package_t* out)
 
     aml_address_t start = state->pos;
 
-    // PkgLength specifies how many elements in the package are defined, others are left blank.
+    // PkgLength specifies how many elements in the package are defined, others are left uninitialized.
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
     {
@@ -435,26 +461,31 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_package_t* out)
 
     aml_address_t end = start + pkgLength;
 
-    // NumElements specifies the size of the package.
-    aml_num_elements_t numElements;
+    // NumElements specifies the capacity of the package.
+    aml_byte_data_t numElements;
     if (aml_num_elements_read(state, &numElements) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read num elements");
         return ERR;
     }
 
-    aml_data_object_t* elements;
-    if (aml_package_element_list_read(state, &elements, numElements, end) == ERR)
+    if (aml_node_init_package(out, numElements) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to init package node");
+        return ERR;
+    }
+
+    if (aml_package_element_list_read(state, node, out, end) == ERR)
+    {
+        aml_node_deinit(out);
         AML_DEBUG_ERROR(state, "Failed to read package element list");
         return ERR;
     }
 
-    *out = AML_PACKAGE_CREATE_IN_PLACE(elements, numElements);
     return 0;
 }
 
-uint64_t aml_data_object_read(aml_state_t* state, aml_data_object_t* out)
+uint64_t aml_data_object_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
@@ -467,16 +498,9 @@ uint64_t aml_data_object_read(aml_state_t* state, aml_data_object_t* out)
     {
     case AML_PACKAGE_OP:
     {
-        aml_package_t package;
-        if (aml_def_package_read(state, &package) == ERR)
+        if (aml_def_package_read(state, node, out) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read package");
-            return ERR;
-        }
-
-        if (aml_data_object_init_package(out, &package) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to init package");
             return ERR;
         }
         return 0;
@@ -486,13 +510,18 @@ uint64_t aml_data_object_read(aml_state_t* state, aml_data_object_t* out)
         errno = ENOSYS;
         return ERR;
     default:
-        return aml_computational_data_read(state, out);
+        if (aml_computational_data_read(state, out) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read computational data");
+            return ERR;
+        }
+        return 0;
     }
 }
 
-uint64_t aml_data_ref_object_read(aml_state_t* state, aml_data_object_t* out)
+uint64_t aml_data_ref_object_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     // TODO: Implement ObjectReference handling
 
-    return aml_data_object_read(state, out);
+    return aml_data_object_read(state, node, out);
 }

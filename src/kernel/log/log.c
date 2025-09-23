@@ -179,8 +179,8 @@ static void log_print_header(log_level_t level, const char* prefix)
 
     cpu_t* self = smp_self_unsafe();
 
-    int length = sprintf(buffer, "[%4llu.%03llu-%02x-%s-%-10s] ", seconds, milliseconds, self->id,
-        levelNames[level], prefix != NULL ? prefix : "unknown");
+    int length = sprintf(buffer, "[%4llu.%03llu-%02x-%s-%-10s] ", seconds, milliseconds, self->id, levelNames[level],
+        prefix != NULL ? prefix : "unknown");
     log_write(buffer, length);
 }
 

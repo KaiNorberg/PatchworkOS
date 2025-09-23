@@ -16,33 +16,63 @@ static mutex_t globalMutex;
 
 static aml_node_t* root = NULL;
 
+static inline uint64_t aml_create_predefined_node(const char* name, aml_data_type_t type)
+{
+    aml_node_t* node = aml_node_new(root, name, AML_NODE_PREDEFINED);
+    if (node == NULL)
+    {
+        return ERR;
+    }
+
+    switch (type)
+    {
+    case AML_DATA_DEVICE:
+        if (aml_node_init_device(node) == ERR)
+        {
+            aml_node_free(node);
+            return ERR;
+        }
+        break;
+    default:
+        LOG_ERR("unimplemented predefined node type '%s' for node '%s'\n", aml_data_type_to_string(type), name);
+        aml_node_free(node);
+        errno = ENOSYS;
+        return ERR;
+    }
+
+    return 0;
+}
+
 uint64_t aml_init(void)
 {
     mutex_init(&globalMutex);
 
-    root = aml_node_new(NULL, AML_ROOT_NAME, AML_NODE_PREDEFINED);
+    root = aml_node_new(NULL, AML_ROOT_NAME, AML_NODE_ROOT | AML_NODE_PREDEFINED);
     if (root == NULL)
     {
         return ERR;
     }
 
     // Normal predefined root nodes, see section 5.3.1 of the ACPI specification.
-    if (aml_node_new(root, "_GPE", AML_NODE_PREDEFINED) == NULL ||
-        aml_node_new(root, "_PR", AML_NODE_PREDEFINED) == NULL ||
-        aml_node_new(root, "_SB", AML_NODE_PREDEFINED) == NULL ||
-        aml_node_new(root, "_SI", AML_NODE_PREDEFINED) == NULL ||
-        aml_node_new(root, "_TZ", AML_NODE_PREDEFINED) == NULL)
+    if (aml_create_predefined_node("_GPE", AML_DATA_DEVICE) == ERR ||
+        aml_create_predefined_node("_PR", AML_DATA_DEVICE) == ERR ||
+        aml_create_predefined_node("_SB", AML_DATA_DEVICE) == ERR ||
+        aml_create_predefined_node("_SI", AML_DATA_DEVICE) == ERR ||
+        aml_create_predefined_node("_TZ", AML_DATA_DEVICE) == ERR)
     {
+        aml_node_free(root);
+        root = NULL;
         return ERR;
     }
 
     // OS specific predefined nodes, see section 5.7 of the ACPI specification.
-    // We define their behaviour as edge cases in the AML parser.
-    if (aml_node_new(root, "_GL", AML_NODE_PREDEFINED_GL) == NULL ||
-        aml_node_new(root, "_OS", AML_NODE_PREDEFINED_OS) == NULL ||
-        aml_node_new(root, "_OSI", AML_NODE_PREDEFINED_OSI) == NULL ||
-        aml_node_new(root, "_REV", AML_NODE_PREDEFINED_REV) == NULL)
+    if (aml_create_predefined_node("_GL", AML_DATA_MUTEX) == ERR ||
+        aml_create_predefined_node("_OS", AML_DATA_STRING) == ERR ||
+        aml_create_predefined_node("_OSI", AML_DATA_METHOD) == ERR ||
+        aml_create_predefined_node("_REV", AML_DATA_INTEGER) == ERR)
     {
+        aml_node_free(root);
+        root = NULL;
         return ERR;
     }
 
@@ -70,149 +100,6 @@ uint64_t aml_parse(const void* data, uint64_t size)
     uint64_t result = aml_term_list_read(&state, aml_root_get(), size);
 
     aml_state_deinit(&state);
-    return result;
-}
-
-uint64_t aml_evaluate(aml_node_t* node, aml_data_object_t* out, aml_term_arg_list_t* args)
-{
-    if (node == NULL || out == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-    MUTEX_SCOPE(&node->lock);
-
-    uint64_t expectedArgCount = aml_node_get_expected_arg_count(node);
-    if (expectedArgCount == ERR)
-    {
-        return ERR;
-    }
-
-    if (args != NULL && args->count != 0)
-    {
-        if (args->count != expectedArgCount)
-        {
-            LOG_ERR("node '%.*s' of type '%s' expects %u arguments, but %u were provided\n", AML_NAME_LENGTH,
-                node->segment, aml_node_type_to_string(node->type), expectedArgCount, args->count);
-            errno = EINVAL;
-            return ERR;
-        }
-    }
-    else if (expectedArgCount != 0)
-    {
-        LOG_ERR("node '%.*s' of type '%s' expects %u arguments, but none were provided\n", AML_NAME_LENGTH,
-            node->segment, aml_node_type_to_string(node->type), expectedArgCount);
-        errno = EINVAL;
-        return ERR;
-    }
-
-    bool mutexAcquired = false;
-    if (aml_should_acquire_global_mutex(node))
-    {
-        mutex_acquire_recursive(aml_global_mutex_get());
-        mutexAcquired = true;
-    }
-
-    uint64_t result = 0;
-    switch (node->type)
-    {
-    case AML_NODE_PREDEFINED_OSI:
-    {
-        // TODO: Implement _OSI properly, for now we just always return true.
-        return aml_data_object_init_integer(out, 1, 64);
-    }
-    case AML_NODE_NAME: // Section 19.6.90
-    {
-        memcpy(out, &node->name.object, sizeof(aml_data_object_t));
-        result = 0;
-    }
-    break;
-    case AML_NODE_FIELD:
-    {
-        result = aml_field_read(node, out);
-    }
-    break;
-    case AML_NODE_INDEX_FIELD:
-    {
-        result = aml_index_field_read(node, out);
-    }
-    break;
-    case AML_NODE_BANK_FIELD:
-    {
-        result = aml_bank_field_read(node, out);
-    }
-    break;
-    default:
-    {
-        LOG_ERR("unimplemented evaluation of node '%.*s' of type '%s'\n", AML_NAME_LENGTH, node->segment,
-            aml_node_type_to_string(node->type));
-        errno = ENOSYS;
-        result = ERR;
-    }
-    break;
-    }
-
-    if (mutexAcquired)
-    {
-        mutex_release(aml_global_mutex_get());
-    }
-    return result;
-}
-
-uint64_t aml_store(aml_node_t* node, aml_data_object_t* object)
-{
-    if (node == NULL || object == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-    MUTEX_SCOPE(&node->lock);
-
-    bool mutexAcquired = false;
-    if (aml_should_acquire_global_mutex(node))
-    {
-        mutex_acquire_recursive(aml_global_mutex_get());
-        mutexAcquired = true;
-    }
-
-    uint64_t result = 0;
-    switch (node->type)
-    {
-    case AML_NODE_NAME: // Section 19.6.90
-    {
-        memcpy(&node->name.object, object, sizeof(aml_data_object_t));
-        result = 0;
-    }
-    break;
-    case AML_NODE_FIELD:
-    {
-        result = aml_field_write(node, object);
-    }
-    break;
-    case AML_NODE_INDEX_FIELD:
-    {
-        result = aml_index_field_write(node, object);
-    }
-    break;
-    case AML_NODE_BANK_FIELD:
-    {
-        result = aml_bank_field_write(node, object);
-    }
-    break;
-    default:
-    {
-        LOG_ERR("unimplemented store to node '%.*s' of type '%s'\n", AML_NAME_LENGTH, node->segment,
-            aml_node_type_to_string(node->type));
-        errno = ENOSYS;
-        result = ERR;
-    }
-    break;
-    }
-
-    if (mutexAcquired)
-    {
-        mutex_release(aml_global_mutex_get());
-    }
     return result;
 }
 
@@ -249,28 +136,6 @@ void aml_print_tree(aml_node_t* node, uint32_t depth, bool isLast)
     LOG_INFO("%.*s [%s", AML_NAME_LENGTH, node->segment, aml_node_type_to_string(node->type));
     switch (node->type)
     {
-    case AML_NODE_OPREGION:
-        LOG_INFO(": space=%s, offset=0x%x, length=0x%x", aml_region_space_to_string(node->opregion.space),
-            node->opregion.offset, node->opregion.length);
-        break;
-    case AML_NODE_FIELD:
-        LOG_INFO(": accessType=%s, lockRule=%s, updateRule=%s, offset=0x%x, size=%llu",
-            aml_access_type_to_string(node->field.flags.accessType),
-            aml_lock_rule_to_string(node->field.flags.lockRule),
-            aml_update_rule_to_string(node->field.flags.updateRule), node->field.bitOffset, node->field.bitSize);
-        break;
-    case AML_NODE_METHOD:
-        LOG_INFO(": argCount=%u, serialized=%s, syncLevel=%d, start=0x%x, end=0x%x", node->method.flags.argCount,
-            node->method.flags.isSerialized ? "true" : "false", node->method.flags.syncLevel, node->method.start,
-            node->method.end);
-        break;
-    case AML_NODE_NAME:
-        LOG_INFO(": object=%s, dataType=%s", aml_data_object_to_string(&node->name.object),
-            aml_data_type_to_string(node->name.object.type));
-        break;
-    case AML_NODE_MUTEX:
-        LOG_INFO(": syncLevel=%d", node->mutex.syncLevel);
-        break;
     default:
         break;
     }

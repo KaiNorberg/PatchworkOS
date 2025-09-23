@@ -99,8 +99,8 @@ static uint64_t acpi_parse_all_aml(void)
     }
 
     // For debugging, remove later
-    // LOG_INFO("==ACPI Namespace Tree==\n");
-    // aml_print_tree(aml_root_get(), 0, true);
+    LOG_INFO("==ACPI Namespace Tree==\n");
+    aml_print_tree(aml_root_get(), 0, true);
 
     /*aml_node_t* test = aml_node_find_by_path("\\_SB_.HPET.VEND", NULL);
     assert(test != NULL);

@@ -6,44 +6,44 @@ const char* aml_node_type_to_string(aml_node_type_t type)
 {
     switch (type)
     {
-    case AML_NODE_NONE:
-        return "None";
-    case AML_NODE_PREDEFINED:
-        return "Predefined";
-    case AML_NODE_PREDEFINED_GL:
-        return "Predefined_GL";
-    case AML_NODE_PREDEFINED_OS:
-        return "Predefined_OS";
-    case AML_NODE_PREDEFINED_OSI:
-        return "Predefined_OSI";
-    case AML_NODE_PREDEFINED_REV:
-        return "Predefined_REV";
-    case AML_NODE_DEVICE:
+    case AML_DATA_UNINITALIZED:
+        return "Uninitialized";
+    case AML_DATA_BUFFER:
+        return "Buffer";
+    case AML_DATA_BUFFER_FIELD:
+        return "BufferField";
+    case AML_DATA_DEBUG_OBJECT:
+        return "DebugObject";
+    case AML_DATA_DEVICE:
         return "Device";
-    case AML_NODE_PROCESSOR:
-        return "Processor";
-    case AML_NODE_THERMAL_ZONE:
-        return "ThermalZone";
-    case AML_NODE_POWER_RESOURCE:
-        return "PowerResource";
-    case AML_NODE_OPREGION:
-        return "OpRegion";
-    case AML_NODE_FIELD:
-        return "Field";
-    case AML_NODE_METHOD:
+    case AML_DATA_EVENT:
+        return "Event";
+    case AML_DATA_FIELD_UNIT:
+        return "FieldUnit";
+    case AML_DATA_INTEGER:
+        return "Integer";
+    case AML_DATA_INTEGER_CONSTANT:
+        return "IntegerConstant";
+    case AML_DATA_METHOD:
         return "Method";
-    case AML_NODE_NAME:
-        return "Name";
-    case AML_NODE_MUTEX:
+    case AML_DATA_MUTEX:
         return "Mutex";
-    case AML_NODE_INDEX_FIELD:
-        return "IndexField";
-    case AML_NODE_BANK_FIELD:
-        return "BankField";
-    case AML_NODE_ARG:
-        return "Arg";
-    case AML_NODE_LOCAL:
-        return "Local";
+    case AML_DATA_OBJECT_REFERENCE:
+        return "ObjectReference";
+    case AML_DATA_OPERATION_REGION:
+        return "OperationRegion";
+    case AML_DATA_PACKAGE:
+        return "Package";
+    case AML_DATA_POWER_RESOURCE:
+        return "PowerResource";
+    case AML_DATA_PROCESSOR:
+        return "Processor";
+    case AML_DATA_RAW_DATA_BUFFER:
+        return "RawDataBuffer";
+    case AML_DATA_STRING:
+        return "String";
+    case AML_DATA_THERMAL_ZONE:
+        return "ThermalZone";
     default:
         return "Unknown";
     }

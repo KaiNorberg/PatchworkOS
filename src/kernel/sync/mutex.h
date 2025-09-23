@@ -15,6 +15,8 @@ typedef struct thread thread_t;
     __attribute__((cleanup(mutex_cleanup))) mutex_t* CONCAT(m, __COUNTER__) = (mutex); \
     mutex_acquire_recursive((mutex))
 
+#define MUTEX_CREATE {.waitQueue = WAIT_QUEUE_CREATE, .owner = NULL, .depth = 0, .lock = LOCK_CREATE}
+
 typedef struct
 {
     wait_queue_t waitQueue;

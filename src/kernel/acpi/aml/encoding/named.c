@@ -104,7 +104,7 @@ uint64_t aml_def_op_region_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_OPREGION);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_DATA_OPREGION);
     if (newNode == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node");
@@ -177,7 +177,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
             return ERR;
         }
 
-        aml_node_t* newNode = aml_node_new(node, name->name, AML_NODE_FIELD);
+        aml_node_t* newNode = aml_node_new(node, name->name, AML_DATA_FIELD);
         if (newNode == NULL)
         {
             AML_DEBUG_ERROR(state, "Failed to add node");
@@ -198,7 +198,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
             return ERR;
         }
 
-        if (ctx->index.indexNode->type != AML_NODE_FIELD)
+        if (ctx->index.indexNode->type != AML_DATA_FIELD)
         {
             AML_DEBUG_ERROR(state, "indexNode is not a field");
             errno = EILSEQ;
@@ -212,7 +212,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
             return ERR;
         }
 
-        aml_node_t* newNode = aml_node_new(node, name->name, AML_NODE_INDEX_FIELD);
+        aml_node_t* newNode = aml_node_new(node, name->name, AML_DATA_INDEX_FIELD);
         if (newNode == NULL)
         {
             AML_DEBUG_ERROR(state, "Failed to add node");
@@ -241,7 +241,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
             return ERR;
         }
 
-        aml_node_t* newNode = aml_node_new(node, name->name, AML_NODE_BANK_FIELD);
+        aml_node_t* newNode = aml_node_new(node, name->name, AML_DATA_BANK_FIELD);
         if (newNode == NULL)
         {
             AML_DEBUG_ERROR(state, "Failed to add node");
@@ -633,7 +633,7 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node)
 
     aml_address_t end = start + pkgLength;
 
-    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_METHOD);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_DATA_METHOD);
     if (newNode == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node");
@@ -684,7 +684,7 @@ uint64_t aml_def_device_read(aml_state_t* state, aml_node_t* node)
 
     aml_address_t end = start + pkgLength;
 
-    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_DEVICE);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_DATA_DEVICE);
     if (newNode == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node");
@@ -744,7 +744,7 @@ uint64_t aml_def_mutex_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_MUTEX);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_DATA_MUTEX);
     if (newNode == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node");
@@ -826,13 +826,13 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node)
 
     aml_address_t end = start + pkgLength;
 
-    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_PROCESSOR);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_DATA_PROCESSOR);
     if (newNode == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node");
         return ERR;
     }
-    newNode->type = AML_NODE_PROCESSOR;
+    newNode->type = AML_DATA_PROCESSOR;
     newNode->processor.procId = procId;
     newNode->processor.pblkAddr = pblkAddr;
     newNode->processor.pblkLen = pblkLen;
@@ -916,7 +916,7 @@ uint64_t aml_def_create_bit_field_read(aml_state_t* state, aml_node_t* node)
     assert(sourceBuff.type == AML_DATA_BUFFER);
     assert(bitIndex.type == AML_DATA_INTEGER);
 
-    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_BUFFER_FIELD);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_DATA_BUFFER_FIELD);
     if (newNode == NULL)
     {
         aml_data_object_deinit(&sourceBuff);
@@ -975,7 +975,7 @@ uint64_t aml_def_create_byte_field_read(aml_state_t* state, aml_node_t* node)
     assert(sourceBuff.type == AML_DATA_BUFFER);
     assert(byteIndex.type == AML_DATA_INTEGER);
 
-    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_BUFFER_FIELD);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_DATA_BUFFER_FIELD);
     if (newNode == NULL)
     {
         aml_data_object_deinit(&sourceBuff);
@@ -1034,7 +1034,7 @@ uint64_t aml_def_create_word_field_read(aml_state_t* state, aml_node_t* node)
     assert(sourceBuff.type == AML_DATA_BUFFER);
     assert(byteIndex.type == AML_DATA_INTEGER);
 
-    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_BUFFER_FIELD);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_DATA_BUFFER_FIELD);
     if (newNode == NULL)
     {
         aml_data_object_deinit(&sourceBuff);
@@ -1093,7 +1093,7 @@ uint64_t aml_def_create_dword_field_read(aml_state_t* state, aml_node_t* node)
     assert(sourceBuff.type == AML_DATA_BUFFER);
     assert(byteIndex.type == AML_DATA_INTEGER);
 
-    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_BUFFER_FIELD);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_DATA_BUFFER_FIELD);
     if (newNode == NULL)
     {
         aml_data_object_deinit(&sourceBuff);
@@ -1152,7 +1152,7 @@ uint64_t aml_def_create_qword_field_read(aml_state_t* state, aml_node_t* node)
     assert(sourceBuff.type == AML_DATA_BUFFER);
     assert(byteIndex.type == AML_DATA_INTEGER);
 
-    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_BUFFER_FIELD);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_DATA_BUFFER_FIELD);
     if (newNode == NULL)
     {
         aml_data_object_deinit(&sourceBuff);

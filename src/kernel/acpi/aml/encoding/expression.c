@@ -1,13 +1,14 @@
 #include "expression.h"
 
 #include "acpi/aml/aml.h"
+#include "acpi/aml/aml_convert.h"
 #include "acpi/aml/aml_debug.h"
+#include "acpi/aml/aml_node.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_to_string.h"
 #include "acpi/aml/aml_value.h"
 #include "arg.h"
-#include "data_object.h"
-#include "object_reference.h"
+#include "mem/heap.h"
 #include "package_length.h"
 #include "term.h"
 
@@ -17,8 +18,8 @@ typedef uint64_t (*aml_binary_op_t)(uint64_t, uint64_t);
 /**
  * Helper for reading and executing a structure in the format `OpCode Operand Target`.
  */
-static inline uint64_t aml_unary_op_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out,
-    aml_value_num_t opCode, const char* opName, aml_unary_op_t op)
+static inline uint64_t aml_unary_op_read(aml_state_t* state, aml_node_t* node, aml_node_t* out, aml_value_num_t opCode,
+    const char* opName, aml_unary_op_t op)
 {
     aml_value_t opValue;
     if (aml_value_read(state, &opValue) == ERR)
@@ -34,7 +35,7 @@ static inline uint64_t aml_unary_op_read(aml_state_t* state, aml_node_t* node, a
         return ERR;
     }
 
-    aml_data_object_t source;
+    aml_node_t source = AML_NODE_CREATE;
     if (aml_operand_read(state, node, &source) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read operand for '%s'", opName);
@@ -43,38 +44,53 @@ static inline uint64_t aml_unary_op_read(aml_state_t* state, aml_node_t* node, a
 
     assert(source.type == AML_DATA_INTEGER);
 
-    aml_object_reference_t target;
+    aml_node_t target = AML_NODE_CREATE;
     if (aml_target_read(state, node, &target) == ERR)
     {
-        aml_data_object_deinit(&source);
+        aml_node_deinit(&source);
         AML_DEBUG_ERROR(state, "Failed to read target for '%s'", opName);
         return ERR;
     }
 
-    aml_data_object_t result;
-    if (aml_data_object_init_integer(&result, op(source.integer), source.meta.bitWidth) == ERR)
+    assert(target.type == AML_DATA_OBJECT_REFERENCE);
+
+    aml_node_t result = AML_NODE_CREATE;
+    if (aml_node_init_integer(&result, op(source.integer.value), source.integer.bitWidth) == ERR)
     {
-        aml_data_object_deinit(&source);
+        aml_node_deinit(&source);
+        aml_node_deinit(&target);
         AML_DEBUG_ERROR(state, "Failed to init result for '%s'", opName);
         return ERR;
     }
 
-    aml_data_object_deinit(&source);
+    assert(result.type == AML_DATA_INTEGER);
 
-    // Target is allowed to be null
-    if (!aml_object_reference_is_null(&target) && aml_store(aml_object_reference_deref(&target), &result) == ERR)
+    aml_node_deinit(&source);
+
+    // Target is optional
+    if (target.objectReference.target != NULL)
     {
-        aml_data_object_deinit(&result);
-        AML_DEBUG_ERROR(state, "Failed to store result for '%s'", opName);
-        return ERR;
+        if (aml_convert_and_store(&result, target.objectReference.target) == ERR)
+        {
+            aml_node_deinit(&result);
+            aml_node_deinit(&target);
+            AML_DEBUG_ERROR(state, "Failed to store result for '%s'", opName);
+            return ERR;
+        }
     }
+
+    aml_node_deinit(&target);
 
     if (out != NULL)
     {
-        *out = result; // Transfer ownership
-        return 0;
+        if (aml_node_clone(&result, out) == ERR)
+        {
+            aml_node_deinit(&result);
+            AML_DEBUG_ERROR(state, "Failed to clone result to out for '%s'", opName);
+            return ERR;
+        }
     }
-    aml_data_object_deinit(&result);
+    aml_node_deinit(&result);
     return 0;
 }
 
@@ -82,8 +98,8 @@ static inline uint64_t aml_unary_op_read(aml_state_t* state, aml_node_t* node, a
  * Helper for reading and executing a structure in the format `OpCode Operand Operand Target`.
  * If `checkDivZero` is true, the function will check for division by zero and return an error if it occurs.
  */
-static inline uint64_t aml_binary_op_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out,
-    aml_value_num_t opCode, const char* opName, aml_binary_op_t op, bool checkDivZero)
+static inline uint64_t aml_binary_op_read(aml_state_t* state, aml_node_t* node, aml_node_t* out, aml_value_num_t opCode,
+    const char* opName, aml_binary_op_t op, bool checkDivZero)
 {
     aml_value_t opValue;
     if (aml_value_read(state, &opValue) == ERR)
@@ -99,70 +115,84 @@ static inline uint64_t aml_binary_op_read(aml_state_t* state, aml_node_t* node, 
         return ERR;
     }
 
-    aml_data_object_t source1;
+    aml_node_t source1 = AML_NODE_CREATE;
     if (aml_operand_read(state, node, &source1) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read first operand for '%s'", opName);
         return ERR;
     }
 
-    aml_data_object_t source2;
+    assert(source1.type == AML_DATA_INTEGER);
+
+    aml_node_t source2 = AML_NODE_CREATE;
     if (aml_operand_read(state, node, &source2) == ERR)
     {
-        aml_data_object_deinit(&source1);
+        aml_node_deinit(&source1);
         AML_DEBUG_ERROR(state, "Failed to read second operand for '%s'", opName);
         return ERR;
     }
 
-    assert(source1.type == AML_DATA_INTEGER);
     assert(source2.type == AML_DATA_INTEGER);
 
-    if (checkDivZero && source2.integer == 0)
+    if (checkDivZero && source2.integer.value == 0)
     {
-        aml_data_object_deinit(&source1);
-        aml_data_object_deinit(&source2);
+        aml_node_deinit(&source1);
+        aml_node_deinit(&source2);
         AML_DEBUG_ERROR(state, "Division by zero in '%s'", opName);
         errno = EILSEQ;
         return ERR;
     }
 
-    aml_object_reference_t target;
+    aml_node_t target = AML_NODE_CREATE;
     if (aml_target_read(state, node, &target) == ERR)
     {
-        aml_data_object_deinit(&source1);
-        aml_data_object_deinit(&source2);
+        aml_node_deinit(&source1);
+        aml_node_deinit(&source2);
         AML_DEBUG_ERROR(state, "Failed to read target for '%s'", opName);
         return ERR;
     }
 
-    uint8_t bitWidth = MAX(source1.meta.bitWidth, source2.meta.bitWidth);
+    uint8_t bitWidth = MAX(source1.integer.bitWidth, source2.integer.bitWidth);
 
-    aml_data_object_t result;
-    if (aml_data_object_init_integer(&result, op(source1.integer, source2.integer), bitWidth) == ERR)
+    aml_node_t result = AML_NODE_CREATE;
+    if (aml_node_init_integer(&result, op(source1.integer.value, source2.integer.value), bitWidth) == ERR)
     {
-        aml_data_object_deinit(&source1);
-        aml_data_object_deinit(&source2);
+        aml_node_deinit(&source1);
+        aml_node_deinit(&source2);
         AML_DEBUG_ERROR(state, "Failed to init result for '%s'", opName);
         return ERR;
     }
 
-    aml_data_object_deinit(&source1);
-    aml_data_object_deinit(&source2);
+    assert(result.type == AML_DATA_INTEGER);
+
+    aml_node_deinit(&source1);
+    aml_node_deinit(&source2);
 
     // Target is allowed to be null
-    if (!aml_object_reference_is_null(&target) && aml_store(aml_object_reference_deref(&target), &result) == ERR)
+    if (target.objectReference.target != NULL)
     {
-        aml_data_object_deinit(&result);
-        AML_DEBUG_ERROR(state, "Failed to store result for '%s'", opName);
-        return ERR;
+        if (aml_convert_and_store(&result, target.objectReference.target) == ERR)
+        {
+            aml_node_deinit(&result);
+            aml_node_deinit(&target);
+            AML_DEBUG_ERROR(state, "Failed to store result for '%s'", opName);
+            return ERR;
+        }
     }
+
+    aml_node_deinit(&target);
 
     if (out != NULL)
     {
-        *out = result; // Transfer ownership
-        return 0;
+        if (aml_node_clone(&result, out) == ERR)
+        {
+            aml_node_deinit(&result);
+            AML_DEBUG_ERROR(state, "Failed to init out for '%s'", opName);
+            return ERR;
+        }
     }
-    aml_data_object_deinit(&result);
+
+    aml_node_deinit(&result);
     return 0;
 }
 
@@ -216,22 +246,21 @@ static inline uint64_t aml_op_not(uint64_t a)
     return ~a;
 }
 
-uint64_t aml_buffer_size_read(aml_state_t* state, aml_buffer_size_t* out)
+uint64_t aml_buffer_size_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out)
 {
-    aml_data_object_t termArg;
-    if (aml_term_arg_read(state, NULL, &termArg, AML_DATA_INTEGER) == ERR)
+    aml_node_t termArg = AML_NODE_CREATE;
+    if (aml_term_arg_read(state, node, &termArg, AML_DATA_INTEGER) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read term arg");
         return ERR;
     }
 
-    *out = termArg.integer;
-    aml_data_object_deinit(&termArg);
-
+    *out = termArg.integer.value;
+    aml_node_deinit(&termArg);
     return 0;
 }
 
-uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out)
+uint64_t aml_def_buffer_read(aml_state_t* state, aml_node_t* node, aml_buffer_t* out)
 {
     aml_value_t bufferOp;
     if (aml_value_read(state, &bufferOp) == ERR)
@@ -258,8 +287,8 @@ uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out)
 
     aml_address_t end = start + pkgLength;
 
-    aml_buffer_size_t bufferSize;
-    if (aml_buffer_size_read(state, &bufferSize) == ERR)
+    aml_qword_data_t bufferSize;
+    if (aml_buffer_size_read(state, node, &bufferSize) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read buffer size");
         return ERR;
@@ -271,13 +300,16 @@ uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out)
     // allocate it.
     if (availableBytes == bufferSize)
     {
-        *out = AML_BUFFER_CREATE_IN_PLACE((uint8_t*)(state->data + state->pos), bufferSize);
+        out->content = (uint8_t*)((uint64_t)state->data + (uint64_t)state->pos);
+        out->length = bufferSize;
+        out->capacity = bufferSize;
+        out->inPlace = true;
         aml_address_t offset = end - state->pos;
         aml_state_advance(state, offset);
         return 0;
     }
 
-    *out = AML_BUFFER_CREATE(bufferSize);
+    out->content = heap_alloc(bufferSize, HEAP_NONE);
     if (out->content == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to allocate memory for buffer");
@@ -288,11 +320,12 @@ uint64_t aml_def_buffer_read(aml_state_t* state, aml_buffer_t* out)
     if (bytesRead == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read buffer content");
-        aml_buffer_deinit(out);
+        heap_free(out->content);
         return ERR;
     }
     out->length = bytesRead;
-
+    out->capacity = bufferSize;
+    out->inPlace = false;
     return 0;
 }
 
@@ -308,13 +341,13 @@ uint64_t aml_term_arg_list_read(aml_state_t* state, aml_node_t* node, uint64_t a
     out->count = 0;
     for (uint64_t i = 0; i < argCount; i++)
     {
-        aml_data_object_t* arg = &out->args[i];
-        if (aml_term_arg_read(state, node, arg, AML_DATA_ANY) == ERR)
+        out->args[i] = AML_NODE_CREATE;
+        if (aml_term_arg_read(state, node, &out->args[i], AML_DATA_ALL) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read term arg %lu", i);
             for (uint64_t j = 0; j < i; j++)
             {
-                aml_data_object_deinit(&out->args[j]);
+                aml_node_deinit(&out->args[j]);
             }
             return ERR;
         }
@@ -324,7 +357,7 @@ uint64_t aml_term_arg_list_read(aml_state_t* state, aml_node_t* node, uint64_t a
     return 0;
 }
 
-uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     aml_name_string_t nameString;
     if (aml_name_string_read(state, &nameString) == ERR)
@@ -341,38 +374,57 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_da
         return ERR;
     }
 
-    uint64_t argAmount = aml_node_get_expected_arg_count(target);
-    if (argAmount == ERR)
+    aml_data_type_info_t* info = aml_data_type_get_info(target->type);
+    if (info->flags & AML_DATA_FLAG_DATA_OBJECT)
     {
-        AML_DEBUG_ERROR(state, "Failed to get expected arg count");
-        errno = EILSEQ;
-        return ERR;
+        LOG_DEBUG("invoke '%.*s'\n", AML_NAME_LENGTH, target->segment);
+        if (aml_convert_to_actual_data(target, out) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to convert target '%s' to actual data",
+                aml_name_string_to_string(&nameString));
+            return ERR;
+        }
+        return 0;
+    }
+    else if (info->flags & AML_DATA_FLAG_NON_DATA_OBJECT)
+    {
+        if (target->type == AML_DATA_METHOD)
+        {
+            LOG_DEBUG("invoking method '%.*s' with %u args\n", AML_NAME_LENGTH, target->segment,
+                target->method.argCount);
+
+            AML_DEBUG_ERROR(state, "unimplemented method invocation\n");
+            errno = ENOSYS;
+            return ERR;
+
+            /*aml_term_arg_list_t args = {0};
+            if (aml_term_arg_list_read(state, node, argAmount, &args) == ERR)
+            {
+                AML_DEBUG_ERROR(state, "Failed to read term arg list");
+                return ERR;
+            }*/
+        }
+        else
+        {
+            LOG_DEBUG("referencing non-method non-data object '%.*s'\n", AML_NAME_LENGTH, target->segment);
+            // Just return a reference to the non-method non-data object.
+            if (aml_node_init_object_reference(out, target) == ERR)
+            {
+                AML_DEBUG_ERROR(state, "Failed to init object reference for named reference '%s'",
+                    aml_name_string_to_string(&nameString));
+                return ERR;
+            }
+            return 0;
+        }
     }
 
-    aml_term_arg_list_t args = {0};
-    if (aml_term_arg_list_read(state, node, argAmount, &args) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read term arg list");
-        return ERR;
-    }
-
-    LOG_DEBUG("evaluating '%.*s' with %u args\n", AML_NAME_LENGTH, target->segment, args.count);
-
-    uint64_t result = aml_evaluate(target, out, &args);
-    for (uint8_t i = 0; i < args.count; i++)
-    {
-        aml_data_object_deinit(&args.args[i]);
-    }
-
-    if (result == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to evaluate method '%.*s'", AML_NAME_LENGTH, target->segment);
-        return ERR;
-    }
-    return 0;
+    AML_DEBUG_ERROR(state, "Target '%s' is neither a data object nor a non-data object",
+        aml_name_string_to_string(&nameString));
+    errno = EILSEQ;
+    return ERR;
 }
 
-uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     aml_value_t condRefOfOp;
     if (aml_value_read(state, &condRefOfOp) == ERR)
@@ -388,24 +440,24 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data
         return ERR;
     }
 
-    aml_object_reference_t source;
+    aml_node_t* source = NULL;
     if (aml_super_name_read(state, node, &source) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read source");
         return ERR;
     }
 
-    aml_object_reference_t result;
+    aml_node_t* result = NULL;
     if (aml_target_read(state, node, &result) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read result");
         return ERR;
     }
 
-    if (aml_object_reference_is_null(&source))
+    if (source == NULL)
     {
         // Return false since the source did not resolve to an object.
-        if (aml_data_object_init_integer(out, 0, 64) == ERR)
+        if (aml_node_init_integer(out, 0, 64) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to init false integer");
             return ERR;
@@ -413,10 +465,10 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data
         return 0;
     }
 
-    if (aml_object_reference_is_null(&result))
+    if (result == NULL)
     {
-        // Return true since source resolved to an object and result is a NullName so we dont need to store anything.
-        if (aml_data_object_init_integer(out, 1, 64) == ERR)
+        // Return true since source resolved to an object and result dident so we dont need to store anything.
+        if (aml_node_init_integer(out, 1, 64) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to init true integer");
             return ERR;
@@ -424,32 +476,24 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_data
         return 0;
     }
 
-    // Store reference to source in the result and return true.
+    // Store a reference to source in the result and return true.
 
-    aml_data_object_t temp;
-    if (aml_data_object_init_object_reference(&temp, &source) == ERR)
+    if (aml_node_init_object_reference(result, source) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to init object reference");
+        AML_DEBUG_ERROR(state, "Failed to init object reference in result");
         return ERR;
     }
 
-    if (aml_store(aml_object_reference_deref(&result), &temp) == ERR)
+    if (aml_node_init_integer(out, 1, 64) == ERR)
     {
-        aml_data_object_deinit(&temp);
-        AML_DEBUG_ERROR(state, "Failed to store reference");
+        AML_DEBUG_ERROR(state, "Failed to init true integer");
         return ERR;
     }
-    aml_data_object_deinit(&temp);
 
-    if (aml_data_object_init_integer(out, 1, 64) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to init integer");
-        return ERR;
-    }
     return 0;
 }
 
-uint64_t aml_def_store_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+uint64_t aml_def_store_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     aml_value_t storeOp;
     if (aml_value_read(state, &storeOp) == ERR)
@@ -465,41 +509,50 @@ uint64_t aml_def_store_read(aml_state_t* state, aml_node_t* node, aml_data_objec
         return ERR;
     }
 
-    aml_data_object_t source;
-    if (aml_term_arg_read(state, node, &source, AML_DATA_ANY) == ERR)
+    aml_node_t source = AML_NODE_CREATE;
+    if (aml_term_arg_read(state, node, &source, AML_DATA_ALL) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read term arg");
         return ERR;
     }
 
-    aml_object_reference_t destination;
+    aml_node_t* destination = NULL;
     if (aml_super_name_read(state, node, &destination) == ERR)
     {
-        aml_data_object_deinit(&source);
+        aml_node_deinit(&source);
         AML_DEBUG_ERROR(state, "Failed to read super name");
         return ERR;
     }
 
-    if (aml_object_reference_is_null(&destination))
+    if (destination == NULL)
     {
-        aml_data_object_deinit(&source);
+        aml_node_deinit(&source);
         AML_DEBUG_ERROR(state, "Destination is a null reference");
         errno = EILSEQ;
         return ERR;
     }
 
-    if (aml_store(aml_object_reference_deref(&destination), &source) == ERR)
+    if (aml_convert_and_store(&source, destination) == ERR)
     {
-        aml_data_object_deinit(&source);
+        aml_node_deinit(&source);
         AML_DEBUG_ERROR(state, "Failed to store value");
         return ERR;
     }
 
-    *out = source; // Transfer ownership
+    if (out != NULL)
+    {
+        if (aml_node_clone(&source, out) == ERR)
+        {
+            aml_node_deinit(&source);
+            AML_DEBUG_ERROR(state, "Failed to clone source to out");
+            return ERR;
+        }
+    }
+    aml_node_deinit(&source);
     return 0;
 }
 
-uint64_t aml_operand_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+uint64_t aml_operand_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     if (aml_term_arg_read(state, node, out, AML_DATA_INTEGER) == ERR)
     {
@@ -509,7 +562,7 @@ uint64_t aml_operand_read(aml_state_t* state, aml_node_t* node, aml_data_object_
     return 0;
 }
 
-uint64_t aml_dividend_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+uint64_t aml_dividend_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     if (aml_term_arg_read(state, node, out, AML_DATA_INTEGER) == ERR)
     {
@@ -519,7 +572,7 @@ uint64_t aml_dividend_read(aml_state_t* state, aml_node_t* node, aml_data_object
     return 0;
 }
 
-uint64_t aml_divisor_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+uint64_t aml_divisor_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     if (aml_term_arg_read(state, node, out, AML_DATA_INTEGER) == ERR)
     {
@@ -529,7 +582,7 @@ uint64_t aml_divisor_read(aml_state_t* state, aml_node_t* node, aml_data_object_
     return 0;
 }
 
-uint64_t aml_remainder_read(aml_state_t* state, aml_node_t* node, aml_object_reference_t* out)
+uint64_t aml_remainder_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     if (aml_target_read(state, node, out) == ERR)
     {
@@ -539,7 +592,7 @@ uint64_t aml_remainder_read(aml_state_t* state, aml_node_t* node, aml_object_ref
     return 0;
 }
 
-uint64_t aml_quotient_read(aml_state_t* state, aml_node_t* node, aml_object_reference_t* out)
+uint64_t aml_quotient_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     if (aml_target_read(state, node, out) == ERR)
     {
@@ -549,22 +602,22 @@ uint64_t aml_quotient_read(aml_state_t* state, aml_node_t* node, aml_object_refe
     return 0;
 }
 
-uint64_t aml_def_add_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+uint64_t aml_def_add_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     return aml_binary_op_read(state, node, out, AML_ADD_OP, "add", aml_op_add, false);
 }
 
-uint64_t aml_def_subtract_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+uint64_t aml_def_subtract_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     return aml_binary_op_read(state, node, out, AML_SUBTRACT_OP, "subtract", aml_op_sub, false);
 }
 
-uint64_t aml_def_multiply_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+uint64_t aml_def_multiply_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     return aml_binary_op_read(state, node, out, AML_MULTIPLY_OP, "multiply", aml_op_mul, false);
 }
 
-uint64_t aml_def_divide_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+uint64_t aml_def_divide_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     aml_value_t divOp;
     aml_data_object_t dividend = {0};
@@ -861,18 +914,18 @@ uint64_t aml_def_shift_right_read(aml_state_t* state, aml_node_t* node, aml_data
 
 uint64_t aml_def_increment_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
 {
-   aml_value_t incOp;
-   if (aml_value_read(state, &incOp) == ERR)
-   {
-       AML_DEBUG_ERROR(state, "Failed to read value");
-       return ERR;
-   }
+    aml_value_t incOp;
+    if (aml_value_read(state, &incOp) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read value");
+        return ERR;
+    }
 
     if (incOp.num != AML_INCREMENT_OP)
     {
-         AML_DEBUG_ERROR(state, "Invalid increment op: 0x%x", incOp.num);
-         errno = EILSEQ;
-         return ERR;
+        AML_DEBUG_ERROR(state, "Invalid increment op: 0x%x", incOp.num);
+        errno = EILSEQ;
+        return ERR;
     }
 
     aml_object_reference_t superName;
@@ -925,18 +978,18 @@ uint64_t aml_def_increment_read(aml_state_t* state, aml_node_t* node, aml_data_o
 
 uint64_t aml_def_decrement_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
 {
-   aml_value_t decOp;
-   if (aml_value_read(state, &decOp) == ERR)
-   {
-       AML_DEBUG_ERROR(state, "Failed to read value");
-       return ERR;
-   }
+    aml_value_t decOp;
+    if (aml_value_read(state, &decOp) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read value");
+        return ERR;
+    }
 
     if (decOp.num != AML_DECREMENT_OP)
     {
-         AML_DEBUG_ERROR(state, "Invalid increment op: 0x%x", decOp.num);
-         errno = EILSEQ;
-         return ERR;
+        AML_DEBUG_ERROR(state, "Invalid increment op: 0x%x", decOp.num);
+        errno = EILSEQ;
+        return ERR;
     }
 
     aml_object_reference_t superName;
@@ -1067,6 +1120,27 @@ uint64_t aml_def_deref_of_read(aml_state_t* state, aml_node_t* node, aml_data_ob
     }
 
     return 0;
+}
+
+uint64_t aml_buff_pkg_str_obj_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    LOG_ERR("Not implemented");
+    errno = ENOSYS;
+    return ERR;
+}
+
+uint64_t aml_index_value_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    LOG_ERR("Not implemented");
+    errno = ENOSYS;
+    return ERR;
+}
+
+uint64_t aml_def_index_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+{
+    LOG_ERR("Not implemented");
+    errno = ENOSYS;
+    return ERR;
 }
 
 uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)

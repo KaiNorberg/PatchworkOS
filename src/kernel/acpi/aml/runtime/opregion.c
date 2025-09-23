@@ -206,14 +206,14 @@ static uint64_t aml_extract_field_access_data(aml_node_t* field, aml_field_acces
 
     switch (field->type)
     {
-    case AML_NODE_FIELD:
+    case AML_DATA_FIELD:
         out->space = field->field.opregion->opregion.space;
         out->bitSize = field->field.bitSize;
         out->bitOffset = field->field.bitOffset;
         out->base = field->field.opregion->opregion.offset;
         out->flags = field->field.flags;
         return 0;
-    case AML_NODE_INDEX_FIELD:
+    case AML_DATA_INDEX_FIELD:
         // The space is the space of the IndexFields data node's opregion.
         out->space = field->indexField.dataNode->field.opregion->opregion.space;
         out->bitSize = field->indexField.bitSize;
@@ -224,7 +224,7 @@ static uint64_t aml_extract_field_access_data(aml_node_t* field, aml_field_acces
         out->indexNode = field->indexField.indexNode;
         out->dataNode = field->indexField.dataNode;
         return 0;
-    case AML_NODE_BANK_FIELD:
+    case AML_DATA_BANK_FIELD:
         out->space = field->bankField.opregion->opregion.space;
         out->bitSize = field->bankField.bitSize;
         out->bitOffset = field->bankField.bitOffset;
@@ -246,10 +246,10 @@ static uint64_t aml_generic_field_read_at(aml_field_access_data_t* accessData, u
 {
     switch (accessData->type)
     {
-    case AML_NODE_FIELD:
-    case AML_NODE_BANK_FIELD:
+    case AML_DATA_FIELD:
+    case AML_DATA_BANK_FIELD:
         return aml_opregion_read(accessData->space, address, accessSize, out);
-    case AML_NODE_INDEX_FIELD:
+    case AML_DATA_INDEX_FIELD:
     {
         aml_data_object_t temp;
         if (aml_data_object_init_integer(&temp, byteOffset, 64) == ERR)
@@ -295,10 +295,10 @@ static uint64_t aml_generic_field_write_at(aml_field_access_data_t* accessData, 
 {
     switch (accessData->type)
     {
-    case AML_NODE_FIELD:
-    case AML_NODE_BANK_FIELD:
+    case AML_DATA_FIELD:
+    case AML_DATA_BANK_FIELD:
         return aml_opregion_write(accessData->space, address, accessSize, value);
-    case AML_NODE_INDEX_FIELD:
+    case AML_DATA_INDEX_FIELD:
     {
         aml_data_object_t indexObj;
         if (aml_data_object_init_integer(&indexObj, byteOffset, 64) == ERR)
@@ -342,7 +342,7 @@ static uint64_t aml_generic_field_access(aml_node_t* field, aml_data_object_t* d
         return ERR;
     }
 
-    if (field->type == AML_NODE_BANK_FIELD)
+    if (field->type == AML_DATA_BANK_FIELD)
     {
         // Write the bank value to the bank register.
         if (aml_field_write(field->bankField.bank, accessData.bankValue) == ERR)

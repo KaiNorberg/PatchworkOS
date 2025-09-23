@@ -156,6 +156,18 @@ typedef struct list
         (elem) = CONTAINER_OF((elem)->member.prev, typeof(*elem), member))
 
 /**
+ * @brief Creates a new list entry with null pointers.
+ * @ingroup libstd_sys_list
+ */
+#define LIST_ENTRY_CREATE {.next = NULL, .prev = NULL, .list = NULL}
+
+/**
+ * @brief Creates a new list with null pointers.
+ * @ingroup libstd_sys_list
+ */
+#define LIST_CREATE {.head = LIST_ENTRY_CREATE, .length = 0}
+
+/**
  * @brief Initializes a list entry.
  * @ingroup libstd_sys_list
  *

@@ -1,9 +1,10 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
-typedef struct aml_data_object aml_data_object_t;
 typedef struct aml_state aml_state_t;
+typedef struct aml_node aml_node_t;
 
 /**
  * @brief ACPI AML Data Objects Encoding
@@ -16,7 +17,17 @@ typedef struct aml_state aml_state_t;
  */
 
 #include "data_integers.h"
-#include "data_object.h"
+
+/**
+ * @brief ACPI AML String structure.
+ * @struct aml_string_t
+ */
+typedef struct
+{
+    char* content;
+    uint64_t length;
+    bool inPlace;
+} aml_string_t;
 
 /**
  * @brief Read a ByteData structure from the AML stream.
@@ -141,10 +152,10 @@ uint64_t aml_string_read(aml_state_t* state, aml_string_t* out);
  * String | ConstObj | RevisionOp | DefBuffer`.
  *
  * @param state The AML state.
- * @param out Pointer to the buffer where the ComputationalData will be stored.
+ * @param out Pointer to the node where the ComputationalData will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_computational_data_read(aml_state_t* state, aml_data_object_t* out);
+uint64_t aml_computational_data_read(aml_state_t* state, aml_node_t* out);
 
 /**
  * @brief Read a NumElements structure from the AML stream.
@@ -155,18 +166,21 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_data_object_t* out)
  * @param out Pointer to the buffer where the NumElements will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_num_elements_read(aml_state_t* state, aml_num_elements_t* out);
+uint64_t aml_num_elements_read(aml_state_t* state, aml_byte_data_t* out);
 
 /**
  * @brief Read a PackageElement structure from the AML stream.
  *
  * A PackageElement structure is defined as `PackageElement := DataRefObject | NameString`.
  *
+ * @see Section 19.6.102 of the ACPI specification for more details.
+ *
  * @param state The AML state.
- * @param out Pointer to the buffer where the PackageElement will be stored.
+ * @param node The current AML node.
+ * @param out Pointer to the node where the PackageElement will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_package_element_read(aml_state_t* state, aml_data_object_t* out);
+uint64_t aml_package_element_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
 
 /**
  * @brief Read a PackageElementList structure from the AML stream.
@@ -174,14 +188,12 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_data_object_t* out);
  * A PackageElementList structure is defined as PackageElementList := Nothing | <packageelement packageelementlist>`.
  *
  * @param state The AML state.
- * @param out Pointer to the buffer where the Package elements will be stored. This will be heap allocated by this
- * function.
- * @param numElements The number of elements to allocate space for in the out buffer.
+ * @param node The current AML node.
+ * @param package Pointer to the Package node to be filled with the elements.
  * @param end The address in the AML stream where the PackageElementList ends.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_package_element_list_read(aml_state_t* state, aml_data_object_t** out, aml_num_elements_t numElements,
-    aml_address_t end);
+uint64_t aml_package_element_list_read(aml_state_t* state, aml_node_t* node, aml_node_t* package, aml_address_t end);
 
 /**
  * @brief Reads a DefPackage structure from the AML byte stream.
@@ -191,10 +203,11 @@ uint64_t aml_package_element_list_read(aml_state_t* state, aml_data_object_t** o
  * @see Section 19.6.102 of the ACPI specification for more details.
  *
  * @param state The AML state.
- * @param out Pointer to the buffer where the Package will be stored.
+ * @param node The current AML node.
+ * @param out Pointer to the node where the Package will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_package_read(aml_state_t* state, aml_package_t* out);
+uint64_t aml_def_package_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
 
 /**
  * @brief Read a DataObject structure from the AML stream.
@@ -202,10 +215,11 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_package_t* out);
  * A DataObject structure is defined as `DataObject := ComputationalData | DefPackage | DefVarPackage`.
  *
  * @param state The AML state.
- * @param out Pointer to the buffer where the DataObject will be stored.
+ * @param node The current AML node.
+ * @param out Pointer to the node where the DataObject will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_data_object_read(aml_state_t* state, aml_data_object_t* out);
+uint64_t aml_data_object_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
 
 /**
  * @brief Read a DataRefObject structure from the AML stream.
@@ -213,9 +227,10 @@ uint64_t aml_data_object_read(aml_state_t* state, aml_data_object_t* out);
  * A DataRefObject structure is defined as `DataRefObject := DataObject | ObjectReference`.
  *
  * @param state The AML state.
- * @param out Pointer to the buffer where the DataRefObject will be stored.
+ * @param node The current AML node.
+ * @param out Pointer to the node where the DataRefObject will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_data_ref_object_read(aml_state_t* state, aml_data_object_t* out);
+uint64_t aml_data_ref_object_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
 
 /** @} */

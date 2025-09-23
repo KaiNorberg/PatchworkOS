@@ -59,32 +59,6 @@ uint64_t aml_init(void);
 uint64_t aml_parse(const void* data, uint64_t size);
 
 /**
- * @brief Evaluate a node and retrieve the result.
- *
- * This functions behaviour depends on the node type, for example, if the node is a method it will execute the method
- * and retrieve the result, if the node is a field it will read the value stored in the field, etc.
- *
- * It is also responsible for potentialy acquiring the global lock, depending on the behaviour of the node.
- *
- * Note that args->argCount should always be zero for non method nodes, and if it is not zero an error will be returned.
- *
- * @param node The node to evaluate.
- * @param out Pointer to the buffer where the result of the evaluation will be stored.
- * @param args Pointer to the argument list, can be `NULL` if no arguments are to be passed.
- * @return On success, 0. On error, `ERR` and `errno` is set.
- */
-uint64_t aml_evaluate(aml_node_t* node, aml_data_object_t* out, aml_term_arg_list_t* args);
-
-/**
- * @brief Store a data object in a node.
- *
- * @param node The node to store the data object in.
- * @param object The data object to store.
- * @return On success, 0. On error, `ERR` and `errno` is set.
- */
-uint64_t aml_store(aml_node_t* node, aml_data_object_t* object);
-
-/**
  * @brief Get the root node of the ACPI namespace.
  *
  * @return aml_node_t* A pointer to the root node.
