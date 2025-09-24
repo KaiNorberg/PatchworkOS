@@ -19,6 +19,7 @@
 #include "ipc/pipe.h"
 #include "ipc/shmem.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/heap.h"
 #include "mem/pmm.h"
 #include "mem/vmm.h"
@@ -66,6 +67,8 @@ void kernel_init(boot_info_t* bootInfo)
     pmm_init(&bootInfo->memory.map);
     vmm_init(&bootInfo->memory, &bootInfo->gop, &bootInfo->kernel);
     heap_init();
+
+    panic_symbols_init(&bootInfo->kernel);
 
     _std_init();
 

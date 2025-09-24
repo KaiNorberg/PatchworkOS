@@ -206,7 +206,7 @@ void aml_node_free(aml_node_t* node)
 
     if (!node->isAllocated)
     {
-        panic(NULL, "Attempted to free a node that was not allocated\n");
+        panic(NULL, "Attempted to free a node that was not allocated");
     }
 
     mutex_t* globalMutex = aml_global_mutex_get();

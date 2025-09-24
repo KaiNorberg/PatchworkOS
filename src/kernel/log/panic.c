@@ -6,6 +6,7 @@
 #include "log/log.h"
 #include "log/screen.h"
 #include "mem/pmm.h"
+#include "mem/heap.h"
 #include "sched/thread.h"
 #include "sched/timer.h"
 
@@ -23,6 +24,9 @@
 
 extern uint64_t _kernelStart;
 extern uint64_t _kernelEnd;
+
+static list_t symbols;
+static bool symbolsLoaded = false;
 
 static bool panic_is_valid_stack_frame(void* ptr)
 {
@@ -71,8 +75,24 @@ static bool panic_is_valid_return_address(void* ptr)
 
 static const char* panic_resolve_symbol(uintptr_t addr, uintptr_t* offset)
 {
-    // TODO: Implement symbol resolution here after bootloader overhaul.
-    *offset = 0;
+    if (!symbolsLoaded)
+    {
+        return NULL;
+    }
+
+    panic_symbol_t* symbol = NULL;
+    LIST_FOR_EACH(symbol, &symbols, entry)
+    {
+        if (addr >= symbol->start && addr < symbol->end)
+        {
+            if (offset)
+            {
+                *offset = addr - symbol->start;
+            }
+            return symbol->name;
+        }
+    }
+
     return NULL;
 }
 
@@ -116,9 +136,9 @@ static void panic_registers(const trap_frame_t* trapFrame)
 
     uintptr_t offset;
     const char* symbol = panic_resolve_symbol(trapFrame->rip, &offset);
-    if (symbol)
+    if (symbol != NULL)
     {
-        LOG_PANIC("0x%s+0x%llx", symbol, offset);
+        LOG_PANIC("<%s+0x%llx>", symbol, offset);
     }
     LOG_PANIC("\n");
 
@@ -141,13 +161,13 @@ static void panic_stack_trace(const trap_frame_t* trapFrame)
 
     uintptr_t offset;
     const char* symbol = panic_resolve_symbol(trapFrame->rip, &offset);
-    if (symbol)
+    if (symbol != NULL)
     {
-        LOG_PANIC(" [0x%016llx] %s+0x%llx\n", trapFrame->rip, symbol, offset);
+        LOG_PANIC(" [0x%016llx] <%s+0x%llx>\n", trapFrame->rip, symbol, offset);
     }
     else
     {
-        LOG_PANIC(" [0x%016llx]\n", trapFrame->rip);
+        LOG_PANIC(" [0x%016llx] <unknown>\n", trapFrame->rip);
     }
 
     while (rbp != NULL && rbp != prevFrame)
@@ -173,11 +193,11 @@ static void panic_stack_trace(const trap_frame_t* trapFrame)
             symbol = panic_resolve_symbol(returnAddress, &offset);
             if (symbol)
             {
-                LOG_PANIC(" [0x%016llx] %s+0x%llx\n", returnAddress, symbol, offset);
+                LOG_PANIC(" [0x%016llx] <%s+0x%llx>\n", returnAddress, symbol, offset);
             }
             else
             {
-                LOG_PANIC(" [0x%016llx]\n", returnAddress);
+                LOG_PANIC(" [0x%016llx] <unknown>\n", returnAddress);
             }
         }
 
@@ -210,13 +230,13 @@ static void panic_direct_stack_trace(void)
         {
             uintptr_t offset;
             const char* symbol = panic_resolve_symbol((uintptr_t)returnAddress, &offset);
-            if (symbol)
+            if (symbol != NULL)
             {
-                LOG_PANIC(" [0x%016llx] %s+0x%llx\n", (uintptr_t)returnAddress, symbol, offset);
+                LOG_PANIC(" [0x%016llx] <%s+0x%llx>\n", (uintptr_t)returnAddress, symbol, offset);
             }
             else
             {
-                LOG_PANIC(" [0x%016llx]\n", (uintptr_t)returnAddress);
+                LOG_PANIC(" [0x%016llx] <unknown>\n", (uintptr_t)returnAddress);
             }
         }
 
@@ -253,16 +273,16 @@ static void panic_print_stack_dump(const trap_frame_t* trapFrame)
 
     for (int i = 0; i < linesToDump; i++)
     {
-        uint64_t line_addr = startaAddr + (i * bytesPerLine);
+        uint64_t lineAddr = startaAddr + (i * bytesPerLine);
 
-        LOG_PANIC("  0x%016llx: ", line_addr);
+        LOG_PANIC("  0x%016llx: ", lineAddr);
 
         for (int j = 0; j < bytesPerLine; j++)
         {
-            uintptr_t current_addr = line_addr + j;
-            if (panic_is_valid_address(current_addr))
+            uintptr_t currentAddr = lineAddr + j;
+            if (panic_is_valid_address(currentAddr))
             {
-                LOG_PANIC("%02x ", *(uint8_t*)current_addr);
+                LOG_PANIC("%02x ", *(uint8_t*)currentAddr);
             }
             else
             {
@@ -274,10 +294,10 @@ static void panic_print_stack_dump(const trap_frame_t* trapFrame)
 
         for (int j = 0; j < bytesPerLine; j++)
         {
-            uintptr_t current_addr = line_addr + j;
-            if (panic_is_valid_address(current_addr))
+            uintptr_t currentAddr = lineAddr + j;
+            if (panic_is_valid_address(currentAddr))
             {
-                uint8_t c = *(uint8_t*)current_addr;
+                uint8_t c = *(uint8_t*)currentAddr;
                 LOG_PANIC("%c", (c >= 32 && c <= 126) ? c : '.');
             }
             else
@@ -287,18 +307,60 @@ static void panic_print_stack_dump(const trap_frame_t* trapFrame)
         }
         LOG_PANIC("|\n");
 
-        if (rsp >= line_addr && rsp < line_addr + bytesPerLine)
+        if (rsp >= lineAddr && rsp < lineAddr + bytesPerLine)
         {
             LOG_PANIC("                      ");
 
-            uint64_t offset_in_line = rsp - line_addr;
-            for (uint64_t k = 0; k < offset_in_line; k++)
+            uint64_t offsetInLine = rsp - lineAddr;
+            for (uint64_t k = 0; k < offsetInLine; k++)
             {
                 LOG_PANIC("   ");
             }
             LOG_PANIC("^^ RSP\n");
         }
     }
+}
+
+void panic_symbols_init(const boot_kernel_t* kernel)
+{
+    list_init(&symbols);
+
+    for (uint32_t i = 0; i < kernel->symbolCount; i++)
+    {
+        elf_sym_t* sym = &kernel->symbols[i];
+        if (sym->shndx != ELF_SHN_UNDEF && sym->size > 0)
+        {
+            uintptr_t start = sym->value;
+            uintptr_t end = start + (sym->size > 0 ? sym->size : 1);
+
+            panic_symbol_t* symbol = heap_alloc(sizeof(panic_symbol_t), HEAP_NONE);
+            if (symbol == NULL)
+            {
+                // This isent really recoverable, but we can at least continue without the other symbols.
+                symbolsLoaded = true;
+                break;
+            }
+
+            list_entry_init(&symbol->entry);
+            symbol->start = start;
+            symbol->end = end;
+
+            if (sym->name >= kernel->stringTableSize)
+            {
+                strncpy(symbol->name, "invalid", MAX_NAME - 1);
+                symbol->name[MAX_NAME - 1] = '\0';
+                list_push(&symbols, &symbol->entry);
+                continue;
+            }
+
+            const char* name = &kernel->stringTable[sym->name];
+            strncpy(symbol->name, name, MAX_NAME - 1);
+            symbol->name[MAX_NAME - 1] = '\0';
+            list_push(&symbols, &symbol->entry);
+        }
+    }
+
+    symbolsLoaded = true;
 }
 
 void panic(const trap_frame_t* trapFrame, const char* format, ...)
@@ -337,7 +399,7 @@ void panic(const trap_frame_t* trapFrame, const char* format, ...)
     vsnprintf(state->panicBuffer, LOG_MAX_BUFFER, format, args);
     va_end(args);
 
-    LOG_PANIC("!!! KERNEL PANIC %s version %s !!!\n", OS_NAME, OS_VERSION);
+    LOG_PANIC("!!! KERNEL PANIC (%s version %s) !!!\n", OS_NAME, OS_VERSION);
     LOG_PANIC("cause: %s\n", state->panicBuffer);
 
     thread_t* currentThread = self->sched.runThread;
@@ -370,7 +432,7 @@ void panic(const trap_frame_t* trapFrame, const char* format, ...)
     uint64_t cr3 = cr3_read();
     uint64_t cr4 = cr4_read();
 
-    LOG_PANIC("\ncr0=0x%016llx cr2=0x%016llx cr3=0x%016llx cr4=0x%016llx\n", cr0, cr2, cr3, cr4);
+    LOG_PANIC("cr0=0x%016llx cr2=0x%016llx cr3=0x%016llx cr4=0x%016llx\n", cr0, cr2, cr3, cr4);
     LOG_PANIC("cr0 flags:");
     if (cr0 & CR0_PROTECTED_MODE_ENABLE)
     {
@@ -439,15 +501,10 @@ void panic(const trap_frame_t* trapFrame, const char* format, ...)
         }
     }
 
-    LOG_PANIC("\n");
-
     if (trapFrame != NULL)
     {
         panic_registers(trapFrame);
-
-        LOG_PANIC("\n");
         panic_print_stack_dump(trapFrame);
-        LOG_PANIC("\n");
         panic_stack_trace(trapFrame);
     }
     else

@@ -25,6 +25,24 @@ static BOOLEAN is_valid_phdr(const elf_phdr_t* phdr, uint64_t fileSize)
     return TRUE;
 }
 
+static BOOLEAN is_valid_shdr(const elf_shdr_t* shdr, uint64_t fileSize)
+{
+    if (shdr == NULL)
+    {
+        return FALSE;
+    }
+
+    if (shdr->type != ELF_SHDR_TYPE_NOBITS)
+    {
+        if (shdr->offset > fileSize || shdr->size > fileSize || shdr->offset + shdr->size > fileSize)
+        {
+            return FALSE;
+        }
+    }
+
+    return TRUE;
+}
+
 static EFI_STATUS determine_kernel_bounds(const elf_phdr_t* phdrs, const elf_hdr_t* header, uint64_t phdrTableSize,
     uintptr_t* virtStart, uintptr_t* virtEnd)
 {
@@ -57,6 +75,178 @@ static EFI_STATUS determine_kernel_bounds(const elf_phdr_t* phdrs, const elf_hdr
     if (!foundLoadable)
     {
         return EFI_NOT_FOUND;
+    }
+
+    return EFI_SUCCESS;
+}
+
+static EFI_STATUS load_section_headers(EFI_FILE* file, boot_kernel_t* kernel, uint64_t fileSize)
+{
+    if (file == NULL || kernel == NULL)
+    {
+        return EFI_INVALID_PARAMETER;
+    }
+
+    if (kernel->header.shdrAmount == 0 || kernel->header.shdrOffset == 0)
+    {
+        kernel->shdrs = NULL;
+        kernel->shdrCount = 0;
+        return EFI_SUCCESS;
+    }
+
+    uint64_t shdrTableSize = (uint64_t)kernel->header.shdrAmount * kernel->header.shdrSize;
+    if (shdrTableSize > fileSize ||
+        kernel->header.shdrOffset > fileSize ||
+        kernel->header.shdrOffset + shdrTableSize > fileSize)
+    {
+        Print(L"section header table extends beyond file bounds!\n");
+        return EFI_INVALID_PARAMETER;
+    }
+
+    kernel->shdrs = AllocatePool(shdrTableSize);
+    if (kernel->shdrs == NULL)
+    {
+        Print(L"failed to allocate %llu bytes for section headers!\n", shdrTableSize);
+        return EFI_OUT_OF_RESOURCES;
+    }
+
+    EFI_STATUS status = fs_seek(file, kernel->header.shdrOffset);
+    if (EFI_ERROR(status))
+    {
+        Print(L"failed to seek to section header table (0x%x)!\n", status);
+        return status;
+    }
+
+    status = fs_read(file, shdrTableSize, kernel->shdrs);
+    if (EFI_ERROR(status))
+    {
+        Print(L"failed to read section header table (0x%x)!\n", status);
+        return status;
+    }
+
+    kernel->shdrCount = kernel->header.shdrAmount;
+    return EFI_SUCCESS;
+}
+
+static elf_shdr_t* find_section_by_type(boot_kernel_t* kernel, elf_shdr_type_t sectionType)
+{
+    if (kernel == NULL || kernel->shdrs == NULL)
+    {
+        return NULL;
+    }
+
+    for (uint32_t i = 0; i < kernel->shdrCount; i++)
+    {
+        elf_shdr_t* shdr = (elf_shdr_t*)((uint64_t)kernel->shdrs + (i * kernel->header.shdrSize));
+        if (shdr->type == sectionType)
+        {
+            return shdr;
+        }
+    }
+
+    return NULL;
+}
+
+static EFI_STATUS load_symbol_table(EFI_FILE* file, boot_kernel_t* kernel, uint64_t fileSize)
+{
+    if (file == NULL || kernel == NULL)
+    {
+        return EFI_INVALID_PARAMETER;
+    }
+
+    elf_shdr_t* symtabSection = find_section_by_type(kernel, ELF_SHDR_TYPE_SYMTAB);
+    if (symtabSection == NULL)
+    {
+        symtabSection = find_section_by_type(kernel, ELF_SHDR_TYPE_DYNSYM);
+        if (symtabSection == NULL)
+        {
+            kernel->symbols = NULL;
+            kernel->symbolCount = 0;
+            kernel->stringTable = NULL;
+            kernel->stringTableSize = 0;
+            return EFI_SUCCESS;
+        }
+    }
+
+    if (!is_valid_shdr(symtabSection, fileSize))
+    {
+        Print(L"invalid symbol table section!\n");
+        return EFI_INVALID_PARAMETER;
+    }
+
+    if (symtabSection->entrySize == 0 || symtabSection->entrySize < sizeof(elf_sym_t))
+    {
+        Print(L"invalid symbol table entry size (%llu)!\n", symtabSection->entrySize);
+        return EFI_INVALID_PARAMETER;
+    }
+
+    uint32_t symbolCount = symtabSection->size / symtabSection->entrySize;
+    if (symbolCount == 0)
+    {
+        kernel->symbols = NULL;
+        kernel->symbolCount = 0;
+        kernel->stringTable = NULL;
+        kernel->stringTableSize = 0;
+        return EFI_SUCCESS;
+    }
+
+    kernel->symbols = AllocatePool(symtabSection->size);
+    if (kernel->symbols == NULL)
+    {
+        Print(L"failed to allocate %llu bytes for symbol table!\n", symtabSection->size);
+        return EFI_OUT_OF_RESOURCES;
+    }
+
+    EFI_STATUS status = fs_seek(file, symtabSection->offset);
+    if (EFI_ERROR(status))
+    {
+        Print(L"failed to seek to symbol table (0x%x)!\n", status);
+        return status;
+    }
+
+    status = fs_read(file, symtabSection->size, kernel->symbols);
+    if (EFI_ERROR(status))
+    {
+        Print(L"failed to read symbol table (0x%x)!\n", status);
+        return status;
+    }
+
+    kernel->symbolCount = symbolCount;
+
+    if (symtabSection->link < kernel->shdrCount)
+    {
+        elf_shdr_t* strtabSection = (elf_shdr_t*)((uint64_t)kernel->shdrs + (symtabSection->link * kernel->header.shdrSize));
+
+        if (strtabSection->type == ELF_SHDR_TYPE_STRTAB && is_valid_shdr(strtabSection, fileSize))
+        {
+            kernel->stringTable = AllocatePool(strtabSection->size);
+            if (kernel->stringTable == NULL)
+            {
+                Print(L"failed to allocate %llu bytes for string table!\n", strtabSection->size);
+                return EFI_OUT_OF_RESOURCES;
+            }
+
+            status = fs_seek(file, strtabSection->offset);
+            if (EFI_ERROR(status))
+            {
+                Print(L"failed to seek to string table (0x%x)!\n", status);
+                return status;
+            }
+
+            status = fs_read(file, strtabSection->size, kernel->stringTable);
+            if (EFI_ERROR(status))
+            {
+                Print(L"failed to read string table (0x%x)!\n", status);
+                return status;
+            }
+
+            kernel->stringTableSize = strtabSection->size;
+        }
+    }
+
+    if (kernel->stringTable == NULL)
+    {
+        kernel->stringTableSize = 0;
     }
 
     return EFI_SUCCESS;
@@ -125,7 +315,6 @@ EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_HANDLE imageHandle)
     EFI_FILE* root = NULL;
     EFI_FILE* kernelDir = NULL;
     EFI_FILE* file = NULL;
-    elf_phdr_t* phdrs = NULL;
     EFI_STATUS status = EFI_SUCCESS;
     uint64_t kernelPageAmount = 0;
 
@@ -167,68 +356,83 @@ EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_HANDLE imageHandle)
         goto cleanup;
     }
 
-    elf_hdr_t header;
-    status = fs_read(file, sizeof(elf_hdr_t), &header);
+    status = fs_read(file, sizeof(elf_hdr_t), &kernel->header);
     if (EFI_ERROR(status))
     {
         Print(L"failed to read ELF header (0x%x)!\n", status);
         goto cleanup;
     }
 
-    if (!ELF_IS_VALID(&header))
+    if (!ELF_IS_VALID(&kernel->header))
     {
         Print(L"invalid ELF header in kernel file!\n");
         status = EFI_INVALID_PARAMETER;
         goto cleanup;
     }
 
-    if (header.phdrAmount == 0)
+    if (kernel->header.phdrAmount == 0)
     {
         Print(L"no program headers in kernel ELF!\n");
         status = EFI_INVALID_PARAMETER;
         goto cleanup;
     }
 
-    if (header.phdrSize < sizeof(elf_phdr_t))
+    if (kernel->header.phdrSize < sizeof(elf_phdr_t))
     {
-        Print(L"invalid program header size (%u)!\n", header.phdrSize);
+        Print(L"invalid program header size (%u)!\n", kernel->header.phdrSize);
         status = EFI_INVALID_PARAMETER;
         goto cleanup;
     }
 
-    uint64_t phdrTableSize = (uint64_t)header.phdrAmount * header.phdrSize;
-    if (phdrTableSize > fileSize || header.phdrOffset > fileSize || header.phdrOffset + phdrTableSize > fileSize)
+    uint64_t phdrTableSize = (uint64_t)kernel->header.phdrAmount * kernel->header.phdrSize;
+    if (phdrTableSize > fileSize || kernel->header.phdrOffset > fileSize || kernel->header.phdrOffset + phdrTableSize > fileSize)
     {
         Print(L"program header table extends beyond file bounds!\n");
         status = EFI_INVALID_PARAMETER;
         goto cleanup;
     }
 
-    phdrs = AllocatePool(phdrTableSize);
-    if (phdrs == NULL)
+    kernel->phdrs = AllocatePool(phdrTableSize);
+    if (kernel->phdrs == NULL)
     {
         Print(L"failed to allocate %llu bytes for program headers!\n", phdrTableSize);
         status = EFI_OUT_OF_RESOURCES;
         goto cleanup;
     }
 
-    status = fs_seek(file, header.phdrOffset);
+    status = fs_seek(file, kernel->header.phdrOffset);
     if (EFI_ERROR(status))
     {
         Print(L"failed to seek to program header table (0x%x)!\n", status);
         goto cleanup;
     }
 
-    status = fs_read(file, phdrTableSize, phdrs);
+    status = fs_read(file, phdrTableSize, kernel->phdrs);
     if (EFI_ERROR(status))
     {
         Print(L"failed to read program header table (0x%x)!\n", status);
         goto cleanup;
     }
 
+    Print(L"sections... ");
+    status = load_section_headers(file, kernel, fileSize);
+    if (EFI_ERROR(status))
+    {
+        Print(L"failed to load section headers (0x%x)!\n", status);
+        goto cleanup;
+    }
+
+    Print(L"symbols... ");
+    status = load_symbol_table(file, kernel, fileSize);
+    if (EFI_ERROR(status))
+    {
+        Print(L"failed to load symbol table (0x%x)!\n", status);
+        goto cleanup;
+    }
+
     uintptr_t virtStart = 0;
     uintptr_t virtEnd = 0;
-    status = determine_kernel_bounds(phdrs, &header, phdrTableSize, &virtStart, &virtEnd);
+    status = determine_kernel_bounds(kernel->phdrs, &kernel->header, phdrTableSize, &virtStart, &virtEnd);
     if (EFI_ERROR(status))
     {
         Print(L"failed to determine kernel bounds (0x%x)!\n", status);
@@ -249,31 +453,56 @@ EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_HANDLE imageHandle)
 
     kernel->virtStart = virtStart;
     kernel->physStart = physStart;
-    kernel->entry = (void*)header.entry;
+    kernel->entry = (void*)kernel->header.entry;
     kernel->size = kernelPageAmount * EFI_PAGE_SIZE;
 
     Print(L"phys=0x%llx virt=0x%llx size=%llu KB... ", kernel->physStart, kernel->virtStart, kernel->size / 1024);
 
-    status = load_kernel_segments(file, (uintptr_t)kernel->physStart, kernel->virtStart, kernelPageAmount, phdrs,
-        &header, phdrTableSize, fileSize);
+    status = load_kernel_segments(file, (uintptr_t)kernel->physStart, kernel->virtStart, kernelPageAmount, kernel->phdrs,
+        &kernel->header, phdrTableSize, fileSize);
     if (EFI_ERROR(status))
     {
         Print(L"failed to load kernel segments (0x%x)!\n", status);
         goto cleanup;
     }
 
+    if (kernel->symbols != NULL && kernel->symbolCount > 0)
+    {
+        Print(L"loaded %u symbols... ", kernel->symbolCount);
+    }
+
     Print(L"done!\n");
     status = EFI_SUCCESS;
 
 cleanup:
+    if (status != EFI_SUCCESS)
+    {
+        if (kernel->phdrs != NULL)
+        {
+            FreePool(kernel->phdrs);
+            kernel->phdrs = NULL;
+        }
+        if (kernel->shdrs != NULL)
+        {
+            FreePool(kernel->shdrs);
+            kernel->shdrs = NULL;
+        }
+        if (kernel->symbols != NULL)
+        {
+            FreePool(kernel->symbols);
+            kernel->symbols = NULL;
+        }
+        if (kernel->stringTable != NULL)
+        {
+            FreePool(kernel->stringTable);
+            kernel->stringTable = NULL;
+        }
+    }
+
     if (kernel->physStart != 0 && EFI_ERROR(status))
     {
         uefi_call_wrapper(BS->FreePages, 3, kernel->physStart, kernelPageAmount);
         kernel->physStart = 0;
-    }
-    if (phdrs != NULL)
-    {
-        FreePool(phdrs);
     }
     if (file != NULL)
     {

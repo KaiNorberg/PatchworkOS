@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <sys/io.h>
 #include <sys/list.h>
+#include <sys/elf.h>
 
 static bool boot_is_mem_ram(EFI_MEMORY_TYPE type)
 {
@@ -76,6 +77,14 @@ typedef struct boot_info boot_info_t;
 
 typedef struct
 {
+    elf_hdr_t header;
+    elf_phdr_t* phdrs;
+    elf_shdr_t* shdrs;
+    uint32_t shdrCount;
+    elf_sym_t* symbols;
+    uint32_t symbolCount;
+    char* stringTable;
+    uint64_t stringTableSize;
     uintptr_t physStart;
     uintptr_t virtStart;
     void (*entry)(boot_info_t*);
