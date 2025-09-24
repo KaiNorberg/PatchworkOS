@@ -9,6 +9,14 @@
  */
 
 /**
+ * @brief The bit width of an AML integer.
+ *
+ * This is technically decided by the Definition Blocks revision field but we only support revision 2 and up which
+ * means 64 bits.
+ */
+#define AML_INTEGER_BIT_WIDTH 64
+
+/**
  * @brief Represents a index in the AML bytecode stream.
  */
 typedef uint64_t aml_address_t;

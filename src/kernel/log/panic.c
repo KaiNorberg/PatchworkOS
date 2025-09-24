@@ -5,8 +5,8 @@
 #include "cpu/vectors.h"
 #include "log/log.h"
 #include "log/screen.h"
-#include "mem/pmm.h"
 #include "mem/heap.h"
+#include "mem/pmm.h"
 #include "sched/thread.h"
 #include "sched/timer.h"
 

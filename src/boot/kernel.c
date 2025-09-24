@@ -95,8 +95,7 @@ static EFI_STATUS load_section_headers(EFI_FILE* file, boot_kernel_t* kernel, ui
     }
 
     uint64_t shdrTableSize = (uint64_t)kernel->header.shdrAmount * kernel->header.shdrSize;
-    if (shdrTableSize > fileSize ||
-        kernel->header.shdrOffset > fileSize ||
+    if (shdrTableSize > fileSize || kernel->header.shdrOffset > fileSize ||
         kernel->header.shdrOffset + shdrTableSize > fileSize)
     {
         Print(L"section header table extends beyond file bounds!\n");
@@ -215,7 +214,8 @@ static EFI_STATUS load_symbol_table(EFI_FILE* file, boot_kernel_t* kernel, uint6
 
     if (symtabSection->link < kernel->shdrCount)
     {
-        elf_shdr_t* strtabSection = (elf_shdr_t*)((uint64_t)kernel->shdrs + (symtabSection->link * kernel->header.shdrSize));
+        elf_shdr_t* strtabSection =
+            (elf_shdr_t*)((uint64_t)kernel->shdrs + (symtabSection->link * kernel->header.shdrSize));
 
         if (strtabSection->type == ELF_SHDR_TYPE_STRTAB && is_valid_shdr(strtabSection, fileSize))
         {
@@ -385,7 +385,8 @@ EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_HANDLE imageHandle)
     }
 
     uint64_t phdrTableSize = (uint64_t)kernel->header.phdrAmount * kernel->header.phdrSize;
-    if (phdrTableSize > fileSize || kernel->header.phdrOffset > fileSize || kernel->header.phdrOffset + phdrTableSize > fileSize)
+    if (phdrTableSize > fileSize || kernel->header.phdrOffset > fileSize ||
+        kernel->header.phdrOffset + phdrTableSize > fileSize)
     {
         Print(L"program header table extends beyond file bounds!\n");
         status = EFI_INVALID_PARAMETER;
@@ -458,8 +459,8 @@ EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_HANDLE imageHandle)
 
     Print(L"phys=0x%llx virt=0x%llx size=%llu KB... ", kernel->physStart, kernel->virtStart, kernel->size / 1024);
 
-    status = load_kernel_segments(file, (uintptr_t)kernel->physStart, kernel->virtStart, kernelPageAmount, kernel->phdrs,
-        &kernel->header, phdrTableSize, fileSize);
+    status = load_kernel_segments(file, (uintptr_t)kernel->physStart, kernel->virtStart, kernelPageAmount,
+        kernel->phdrs, &kernel->header, phdrTableSize, fileSize);
     if (EFI_ERROR(status))
     {
         Print(L"failed to load kernel segments (0x%x)!\n", status);

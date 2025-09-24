@@ -96,7 +96,13 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    return aml_term_list_read(state, scope, end);
+    if (aml_term_list_read(state, scope, end) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read term list");
+        return ERR;
+    }
+
+    return 0;
 }
 
 uint64_t aml_namespace_modifier_obj_read(aml_state_t* state, aml_node_t* node)
@@ -115,9 +121,19 @@ uint64_t aml_namespace_modifier_obj_read(aml_state_t* state, aml_node_t* node)
         errno = EILSEQ;
         return ERR;
     case AML_NAME_OP:
-        return aml_def_name_read(state, node);
+        if (aml_def_name_read(state, node) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read DefName");
+            return ERR;
+        }
+        return 0;
     case AML_SCOPE_OP:
-        return aml_def_scope_read(state, node);
+        if (aml_def_scope_read(state, node) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read DefScope");
+            return ERR;
+        }
+        return 0;
     default:
         AML_DEBUG_ERROR(state, "Invalid namespace modifier obj: 0x%x", value.num);
         errno = EILSEQ;

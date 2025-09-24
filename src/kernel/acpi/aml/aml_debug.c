@@ -83,17 +83,17 @@ void aml_debug_error_print(aml_state_t* state, const char* function, const char*
 {
     if (state->debug.lastErrPos != state->pos)
     {
-        LOG_ERR("AML ERROR in '%s()' at pos 0x%lx: ", function, state->pos);
+        LOG_ERR("AML ERROR in '%s()' at pos 0x%lx (", function, state->pos);
 
         va_list args;
         va_start(args, format);
         log_vprint(LOG_LEVEL_ERR, FILE_BASENAME, format, args);
         va_end(args);
 
-        LOG_ERR("\n");
+        LOG_ERR(")\n");
 
         aml_debug_dump(state);
-        LOG_ERR("Caused by:\n");
+        LOG_ERR("Backtrace:\n");
     }
     else
     {

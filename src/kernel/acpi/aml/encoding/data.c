@@ -230,7 +230,7 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_node_t* node, aml_n
             AML_DEBUG_ERROR(state, "Failed to read byte const");
             return ERR;
         }
-        if (aml_node_init_integer(out, byte, 8) == ERR)
+        if (aml_node_init_integer(out, byte) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to init byte node");
             return ERR;
@@ -245,7 +245,7 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_node_t* node, aml_n
             AML_DEBUG_ERROR(state, "Failed to read word const");
             return ERR;
         }
-        if (aml_node_init_integer(out, word, 16) == ERR)
+        if (aml_node_init_integer(out, word) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to init word node");
             return ERR;
@@ -260,7 +260,7 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_node_t* node, aml_n
             AML_DEBUG_ERROR(state, "Failed to read dword const");
             return ERR;
         }
-        if (aml_node_init_integer(out, dword, 32) == ERR)
+        if (aml_node_init_integer(out, dword) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to init dword node");
             return ERR;
@@ -275,7 +275,7 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_node_t* node, aml_n
             AML_DEBUG_ERROR(state, "Failed to read qword const");
             return ERR;
         }
-        if (aml_node_init_integer(out, qword, 64) == ERR)
+        if (aml_node_init_integer(out, qword) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to init qword node");
             return ERR;
@@ -348,6 +348,13 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_node_t* node, aml_node
             return ERR;
         }
 
+        if (namedReference == NULL)
+        {
+            AML_DEBUG_ERROR(state, "Named reference is a null reference");
+            errno = EILSEQ;
+            return ERR;
+        }
+
         aml_data_type_info_t* info = aml_data_type_get_info(namedReference->type);
         if (info->flags & AML_DATA_FLAG_DATA_OBJECT) // "... resolved to actual data by the AML interpreter"
         {
@@ -369,14 +376,20 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_node_t* node, aml_node
         }
         else
         {
-            AML_DEBUG_ERROR(state, "Named reference is neither a data object nor a non-data object");
+            AML_DEBUG_ERROR(state, "Named reference is neither a data object nor a non-data object (%d)",
+                namedReference->type);
             errno = EILSEQ;
             return ERR;
         }
     }
     else
     {
-        return aml_data_ref_object_read(state, node, out);
+        if (aml_data_object_read(state, node, out) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read data object");
+            return ERR;
+        }
+        return 0;
     }
 }
 

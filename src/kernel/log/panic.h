@@ -2,9 +2,9 @@
 
 #include "cpu/trap.h"
 
-#include <sys/list.h>
 #include <boot/boot_info.h>
 #include <common/defs.h>
+#include <sys/list.h>
 
 typedef struct panic_symbol
 {

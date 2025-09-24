@@ -110,8 +110,7 @@ typedef enum
 {
     AML_NODE_NONE = 0,
     AML_NODE_ROOT = 1 << 0,
-    AML_NODE_PREDEFINED = 1 << 0,
-    AML_NODE_DISCONNECTED = 1 << 1,
+    AML_NODE_PREDEFINED = 1 << 1,
 } aml_node_flags_t;
 
 /**
@@ -166,21 +165,20 @@ typedef struct aml_node
         } device;
         struct
         {
-            aml_field_unit_type_t type; //!< The type of field unit.
-            aml_node_t* indexNode;      //!< Used for IndexField.
-            aml_node_t* dataNode;       //!< Used for IndexField.
-            aml_node_t* opregion;       //!< Used for Field and BankField.
-            aml_qword_data_t bankValue;         //!< Used for BankField.
-            aml_node_t* bank;           //!< Used for BankField.
-            aml_field_flags_t flags;    //!< Used for Field, IndexField and BankField.
-            aml_bit_size_t bitOffset;   //!< Used for Field, IndexField and BankField.
-            aml_bit_size_t bitSize;     //!< Used for Field, IndexField and BankField.
+            aml_field_unit_type_t type;     //!< The type of field unit.
+            aml_node_t* indexNode;          //!< Used for IndexField.
+            aml_node_t* dataNode;           //!< Used for IndexField.
+            aml_node_t* opregion;           //!< Used for Field and BankField.
+            aml_qword_data_t bankValue;     //!< Used for BankField.
+            aml_node_t* bank;               //!< Used for BankField.
+            aml_field_flags_t flags;        //!< Used for Field, IndexField and BankField.
+            aml_bit_size_t bitOffset;       //!< Used for Field, IndexField and BankField.
+            aml_bit_size_t bitSize;         //!< Used for Field, IndexField and BankField.
             aml_region_space_t regionSpace; //!< Used for Field, IndexField and BankField.
         } fieldUnit;
         struct
         {
             uint64_t value;
-            uint8_t bitWidth;
         } integer;
         struct
         {
@@ -370,10 +368,9 @@ uint64_t aml_node_init_field_unit_bank_field(aml_node_t* node, aml_node_t* opreg
  *
  * @param node Pointer to the node to initialize.
  * @param value The integer value to set.
- * @param bitWidth The bit width of the integer (8, 16, 32, or 64).
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_node_init_integer(aml_node_t* node, uint64_t value, uint8_t bitWidth);
+uint64_t aml_node_init_integer(aml_node_t* node, uint64_t value);
 
 /**
  * @brief Initialize an ACPI node as an integer constant with the given value.
@@ -509,8 +506,7 @@ aml_node_t* aml_node_find(const char* path, aml_node_t* start);
  * @param bitSize The number of bits to store (up to 64 or the node's bit width).
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
- uint64_t aml_node_put_bits_at(aml_node_t* node, uint64_t value, aml_bit_size_t bitOffset,
-     aml_bit_size_t bitSize);
+uint64_t aml_node_put_bits_at(aml_node_t* node, uint64_t value, aml_bit_size_t bitOffset, aml_bit_size_t bitSize);
 
 /**
  * @brief Retrieve bits from a node at the specified bit offset and size.
@@ -526,7 +522,6 @@ aml_node_t* aml_node_find(const char* path, aml_node_t* start);
  * @param out Pointer to a buffer where the extracted bits will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_node_get_bits_at(aml_node_t* node, aml_bit_size_t bitOffset, aml_bit_size_t bitSize,
-    uint64_t* out);
+uint64_t aml_node_get_bits_at(aml_node_t* node, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, uint64_t* out);
 
 /** @} */

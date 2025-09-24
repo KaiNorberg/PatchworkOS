@@ -81,13 +81,11 @@ uint64_t aml_convert_and_store(aml_node_t* src, aml_node_t* dest)
     case AML_DATA_UNINITALIZED:
         errno = EINVAL;
         return ERR;
-        break;
     default:
         LOG_ERR("unimplemented conversion from '%s' to '%s'\n", aml_data_type_to_string(src->type),
             aml_data_type_to_string(dest->type));
         errno = ENOSYS;
         return ERR;
-        break;
     }
 
     return 0;
@@ -109,12 +107,70 @@ uint64_t aml_convert_to_integer(aml_node_t* src, aml_node_t* dest)
 
     switch (src->type)
     {
+    case AML_DATA_INTEGER:
+        return aml_node_clone(src, dest);
+    case AML_DATA_INTEGER_CONSTANT:
+        return aml_node_init_integer(dest, src->integerConstant.value);
+    case AML_DATA_BUFFER:
+    {
+        if (src->buffer.length == 0)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+
+        uint64_t value = 0;
+        for (uint64_t i = 0; i < src->buffer.length && i < sizeof(uint64_t); i++)
+        {
+            value |= ((uint64_t)src->buffer.content[i]) << (i * 8);
+        }
+
+        if (aml_node_init_integer(dest, value) == ERR)
+        {
+            return ERR;
+        }
+        return 0;
+    }
+    case AML_DATA_STRING:
+    {
+        if (src->string.content == NULL)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+
+        uint64_t value = 0;
+        uint64_t len = strlen(src->string.content);
+        for (uint64_t i = 0; i < len && i < sizeof(uint64_t) * 2; i++)
+        {
+            char chr = src->string.content[i];
+            if (chr >= '0' && chr <= '9')
+            {
+                value = value * 16 + (chr - '0');
+            }
+            else if (chr >= 'a' && chr <= 'f')
+            {
+                value = value * 16 + (chr - 'a' + 10);
+            }
+            else if (chr >= 'A' && chr <= 'F')
+            {
+                value = value * 16 + (chr - 'A' + 10);
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        if (aml_node_init_integer(dest, value) == ERR)
+        {
+            return ERR;
+        }
+        return 0;
+    }
     default:
-        LOG_ERR("unimplemented conversion from '%s' to integer\n", aml_data_type_to_string(src->type));
+        LOG_ERR("invalid conversion from '%s' to Integer\n", aml_data_type_to_string(src->type));
         errno = ENOSYS;
         return ERR;
-        break;
     }
-
-    return 0;
 }

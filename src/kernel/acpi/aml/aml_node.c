@@ -89,8 +89,8 @@ aml_node_t* aml_node_new(aml_node_t* parent, const char* name, aml_node_flags_t 
         return NULL;
     }
 
-    uint64_t nameLen = strnlen_s(name, AML_NAME_LENGTH + 1);
-    if (nameLen == 0 || nameLen > AML_NAME_LENGTH)
+    uint64_t nameLen = strnlen_s(name, AML_NAME_LENGTH);
+    if (nameLen == 0)
     {
         errno = EINVAL;
         return NULL;
@@ -115,7 +115,7 @@ aml_node_t* aml_node_new(aml_node_t* parent, const char* name, aml_node_flags_t 
     memcpy(node->segment, name, nameLen);
     node->segment[AML_NAME_LENGTH] = '\0';
 
-    node->isAllocated = false;
+    node->isAllocated = true;
     memset(&node->dir, 0, sizeof(sysfs_dir_t));
 
     sysfs_dir_t* parentDir = NULL;
@@ -123,22 +123,6 @@ aml_node_t* aml_node_new(aml_node_t* parent, const char* name, aml_node_flags_t 
 
     if (parent != NULL)
     {
-        if (flags & AML_NODE_ROOT)
-        {
-            LOG_ERR("Non root node cannot have the AML_NODE_ROOT flag set\n");
-            aml_node_free(node);
-            errno = EINVAL;
-            return NULL;
-        }
-
-        if (flags & AML_NODE_DISCONNECTED)
-        {
-            LOG_ERR("Node cannot have a parent and be disconnected\n");
-            aml_node_free(node);
-            errno = EINVAL;
-            return NULL;
-        }
-
         parentDir = &parent->dir;
 
         // Trim trailing '_' from the name.
@@ -163,13 +147,6 @@ aml_node_t* aml_node_new(aml_node_t* parent, const char* name, aml_node_flags_t 
     }
     else
     {
-        if (!(flags & AML_NODE_DISCONNECTED))
-        {
-            LOG_ERR("Disconnected nodes cant have a parent\n");
-            aml_node_free(node);
-            errno = EINVAL;
-            return NULL;
-        }
         return node;
     }
 
@@ -275,7 +252,10 @@ aml_node_t* aml_node_add(aml_name_string_t* string, aml_node_t* start, aml_node_
         }
     }
 
-    const char* newNodeName = string->namePath.segments[string->namePath.segmentCount - 1].name;
+    char newNodeName[AML_NAME_LENGTH + 1];
+    memcpy(newNodeName, string->namePath.segments[string->namePath.segmentCount - 1].name, AML_NAME_LENGTH);
+    newNodeName[AML_NAME_LENGTH] = '\0';
+
     return aml_node_new(current, newNodeName, flags);
 }
 
@@ -462,9 +442,9 @@ uint64_t aml_node_init_field_unit_bank_field(aml_node_t* node, aml_node_t* opreg
     return 0;
 }
 
-uint64_t aml_node_init_integer(aml_node_t* node, uint64_t value, uint8_t bitWidth)
+uint64_t aml_node_init_integer(aml_node_t* node, uint64_t value)
 {
-    if (node == NULL || (bitWidth != 8 && bitWidth != 16 && bitWidth != 32 && bitWidth != 64))
+    if (node == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -477,7 +457,6 @@ uint64_t aml_node_init_integer(aml_node_t* node, uint64_t value, uint8_t bitWidt
 
     node->type = AML_DATA_INTEGER;
     node->integer.value = value;
-    node->integer.bitWidth = bitWidth;
 
     return 0;
 }
@@ -605,7 +584,7 @@ uint64_t aml_node_init_package(aml_node_t* node, uint64_t capacity)
 
     for (uint64_t i = 0; i < capacity; i++)
     {
-        node->package.elements[i] = aml_node_new(NULL, "____", AML_NODE_DISCONNECTED);
+        node->package.elements[i] = aml_node_new(NULL, "____", AML_NODE_NONE);
         if (node->package.elements[i] == NULL)
         {
             for (uint64_t j = 0; j < i; j++)
@@ -744,19 +723,122 @@ uint64_t aml_node_clone(aml_node_t* src, aml_node_t* dest)
         return 0;
     }
 
-    if (dest->type != AML_DATA_UNINITALIZED)
-    {
-        aml_node_deinit(dest);
-    }
-
-    dest->type = src->type;
-
     switch (src->type)
     {
-    default:
-        panic(NULL, "unimplemented clone of AML node '%.*s' of type '%s'\n", AML_NAME_LENGTH, src->segment,
-            aml_data_type_to_string(src->type));
+    case AML_DATA_UNINITALIZED:
+        errno = EINVAL;
+        return ERR;
+    case AML_DATA_BUFFER:
+        if (aml_node_init_buffer(dest, src->buffer.content, src->buffer.length, src->buffer.capacity, false) == ERR)
+        {
+            return ERR;
+        }
         break;
+    case AML_DATA_DEVICE:
+        if (aml_node_init_device(dest) == ERR)
+        {
+            return ERR;
+        }
+        break;
+    case AML_DATA_FIELD_UNIT:
+        if (src->fieldUnit.type == AML_FIELD_UNIT_FIELD)
+        {
+            if (aml_node_init_field_unit_field(dest, src->fieldUnit.opregion, src->fieldUnit.flags,
+                    src->fieldUnit.bitOffset, src->fieldUnit.bitSize) == ERR)
+            {
+                return ERR;
+            }
+        }
+        else if (src->fieldUnit.type == AML_FIELD_UNIT_INDEX_FIELD)
+        {
+            if (aml_node_init_field_unit_index_field(dest, src->fieldUnit.indexNode, src->fieldUnit.dataNode,
+                    src->fieldUnit.flags, src->fieldUnit.bitOffset, src->fieldUnit.bitSize) == ERR)
+            {
+                return ERR;
+            }
+        }
+        else if (src->fieldUnit.type == AML_FIELD_UNIT_BANK_FIELD)
+        {
+            if (aml_node_init_field_unit_bank_field(dest, src->fieldUnit.opregion, src->fieldUnit.bank,
+                    src->fieldUnit.bankValue, src->fieldUnit.flags, src->fieldUnit.bitOffset,
+                    src->fieldUnit.bitSize) == ERR)
+            {
+                return ERR;
+            }
+        }
+        else
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+        break;
+    case AML_DATA_INTEGER:
+        if (aml_node_init_integer(dest, src->integer.value) == ERR)
+        {
+            return ERR;
+        }
+        break;
+    case AML_DATA_INTEGER_CONSTANT:
+        if (aml_node_init_integer_constant(dest, src->integerConstant.value) == ERR)
+        {
+            return ERR;
+        }
+        break;
+    case AML_DATA_METHOD:
+        if (aml_node_init_method(dest, src->method.flags, src->method.start, src->method.end) == ERR)
+        {
+            return ERR;
+        }
+        break;
+    case AML_DATA_MUTEX:
+        if (aml_node_init_mutex(dest, src->mutex.syncLevel) == ERR)
+        {
+            return ERR;
+        }
+        break;
+    case AML_DATA_OBJECT_REFERENCE:
+        if (aml_node_init_object_reference(dest, src->objectReference.target) == ERR)
+        {
+            return ERR;
+        }
+        break;
+    case AML_DATA_OPERATION_REGION:
+        if (aml_node_init_opregion(dest, src->opregion.space, src->opregion.offset, src->opregion.length) == ERR)
+        {
+            return ERR;
+        }
+        break;
+    case AML_DATA_PACKAGE:
+        if (aml_node_init_package(dest, src->package.capacity) == ERR)
+        {
+            return ERR;
+        }
+        for (uint64_t i = 0; i < src->package.capacity; i++)
+        {
+            if (aml_node_clone(src->package.elements[i], dest->package.elements[i]) == ERR)
+            {
+                aml_node_deinit(dest);
+                return ERR;
+            }
+        }
+        break;
+    case AML_DATA_PROCESSOR:
+        if (aml_node_init_processor(dest, src->processor.procId, src->processor.pblkAddr, src->processor.pblkLen) ==
+            ERR)
+        {
+            return ERR;
+        }
+        break;
+    case AML_DATA_STRING:
+        if (aml_node_init_string(dest, src->string.content, false) == ERR)
+        {
+            return ERR;
+        }
+        break;
+    default:
+        LOG_ERR("unimplemented clone of AML node '%.*s' of type '%s'\n", AML_NAME_LENGTH, src->segment,
+            aml_data_type_to_string(src->type));
+        return ERR;
     }
 
     return 0;
@@ -858,10 +940,9 @@ aml_node_t* aml_node_find(const char* path, aml_node_t* start)
 
     return current;
 }
-uint64_t aml_node_put_bits_at(aml_node_t* node, uint64_t value, aml_bit_size_t bitOffset,
-    aml_bit_size_t bitSize)
+uint64_t aml_node_put_bits_at(aml_node_t* node, uint64_t value, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
 {
-    if (node == NULL || bitSize == 0 || bitSize > 64)
+    if (node == NULL || bitSize == 0 || bitSize > AML_INTEGER_BIT_WIDTH)
     {
         errno = EINVAL;
         return ERR;
@@ -870,7 +951,7 @@ uint64_t aml_node_put_bits_at(aml_node_t* node, uint64_t value, aml_bit_size_t b
     switch (node->type)
     {
     case AML_DATA_INTEGER:
-        if (bitOffset + bitSize > node->integer.bitWidth)
+        if (bitOffset + bitSize > AML_INTEGER_BIT_WIDTH)
         {
             errno = EINVAL;
             return ERR;
@@ -919,8 +1000,7 @@ uint64_t aml_node_put_bits_at(aml_node_t* node, uint64_t value, aml_bit_size_t b
     return 0;
 }
 
-uint64_t aml_node_get_bits_at(aml_node_t* node, aml_bit_size_t bitOffset, aml_bit_size_t bitSize,
-    uint64_t* out)
+uint64_t aml_node_get_bits_at(aml_node_t* node, aml_bit_size_t bitOffset, aml_bit_size_t bitSize, uint64_t* out)
 {
     if (node == NULL || out == NULL || bitSize == 0 || bitSize > 64)
     {
@@ -931,7 +1011,7 @@ uint64_t aml_node_get_bits_at(aml_node_t* node, aml_bit_size_t bitOffset, aml_bi
     switch (node->type)
     {
     case AML_DATA_INTEGER:
-        if (bitOffset + bitSize > node->integer.bitWidth)
+        if (bitOffset + bitSize > AML_INTEGER_BIT_WIDTH)
         {
             errno = EINVAL;
             return ERR;

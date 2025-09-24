@@ -50,7 +50,7 @@ static inline uint64_t aml_unary_op_read(aml_state_t* state, aml_node_t* node, a
     }
 
     aml_node_t result = AML_NODE_CREATE;
-    if (aml_node_init_integer(&result, op(source), 64) == ERR)
+    if (aml_node_init_integer(&result, op(source)) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to init result for '%s'", opName);
         return ERR;
@@ -133,7 +133,7 @@ static inline uint64_t aml_binary_op_read(aml_state_t* state, aml_node_t* node, 
     }
 
     aml_node_t result = AML_NODE_CREATE;
-    if (aml_node_init_integer(&result, op(source1, source2), 64) == ERR)
+    if (aml_node_init_integer(&result, op(source1, source2)) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to init result for '%s'", opName);
         return ERR;
@@ -344,7 +344,7 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_no
         if (target->type == AML_DATA_METHOD)
         {
             LOG_DEBUG("invoking method '%.*s' with %u args\n", AML_NAME_LENGTH, target->segment,
-                target->method.argCount);
+                target->method.flags.argCount);
 
             AML_DEBUG_ERROR(state, "unimplemented method invocation\n");
             errno = ENOSYS;
@@ -408,7 +408,7 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_node
     if (source == NULL)
     {
         // Return false since the source did not resolve to an object.
-        if (aml_node_init_integer(out, 0, 64) == ERR)
+        if (aml_node_init_integer(out, 0) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to init false integer");
             return ERR;
@@ -419,7 +419,7 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_node
     if (result == NULL)
     {
         // Return true since source resolved to an object and result dident so we dont need to store anything.
-        if (aml_node_init_integer(out, 1, 64) == ERR)
+        if (aml_node_init_integer(out, 1) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to init true integer");
             return ERR;
@@ -435,7 +435,7 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_node
         return ERR;
     }
 
-    if (aml_node_init_integer(out, 1, 64) == ERR)
+    if (aml_node_init_integer(out, 1) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to init true integer");
         return ERR;
@@ -622,14 +622,14 @@ uint64_t aml_def_divide_read(aml_state_t* state, aml_node_t* node, aml_node_t* o
     }
 
     aml_node_t remainder = AML_NODE_CREATE;
-    if (aml_node_init_integer(&remainder, dividend % divisor, 64) == ERR)
+    if (aml_node_init_integer(&remainder, dividend % divisor) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to init remainder");
         return ERR;
     }
 
     aml_node_t quotient = AML_NODE_CREATE;
-    if (aml_node_init_integer(&quotient, dividend / divisor, 64) == ERR)
+    if (aml_node_init_integer(&quotient, dividend / divisor) == ERR)
     {
         aml_node_deinit(&remainder);
         AML_DEBUG_ERROR(state, "Failed to init quotient");
@@ -756,7 +756,7 @@ uint64_t aml_def_shift_left_read(aml_state_t* state, aml_node_t* node, aml_node_
     source <<= shiftCount;
 
     aml_node_t temp = AML_NODE_CREATE;
-    if (aml_node_init_integer(&temp, source, 64) == ERR)
+    if (aml_node_init_integer(&temp, source) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to init temp node");
         return ERR;
@@ -828,7 +828,7 @@ uint64_t aml_def_shift_right_read(aml_state_t* state, aml_node_t* node, aml_node
     source >>= shiftCount;
 
     aml_node_t temp = AML_NODE_CREATE;
-    if (aml_node_init_integer(&temp, source, 64) == ERR)
+    if (aml_node_init_integer(&temp, source) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to init temp node");
         return ERR;
@@ -1094,49 +1094,77 @@ uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_no
         return aml_method_invocation_read(state, node, out);
     }
 
+    uint64_t result = 0;
     switch (value.num)
     {
     case AML_BUFFER_OP:
-        return aml_def_buffer_read(state, node, out);
+        result = aml_def_buffer_read(state, node, out);
+        break;
     case AML_COND_REF_OF_OP:
-        return aml_def_cond_ref_of_read(state, node, out);
+        result = aml_def_cond_ref_of_read(state, node, out);
+        break;
     case AML_STORE_OP:
-        return aml_def_store_read(state, node, out);
+        result = aml_def_store_read(state, node, out);
+        break;
     case AML_ADD_OP:
-        return aml_def_add_read(state, node, out);
+        result = aml_def_add_read(state, node, out);
+        break;
     case AML_SUBTRACT_OP:
-        return aml_def_subtract_read(state, node, out);
+        result = aml_def_subtract_read(state, node, out);
+        break;
     case AML_MULTIPLY_OP:
-        return aml_def_multiply_read(state, node, out);
+        result = aml_def_multiply_read(state, node, out);
+        break;
     case AML_DIVIDE_OP:
-        return aml_def_divide_read(state, node, out);
+        result = aml_def_divide_read(state, node, out);
+        break;
     case AML_MOD_OP:
-        return aml_def_mod_read(state, node, out);
+        result = aml_def_mod_read(state, node, out);
+        break;
     case AML_AND_OP:
-        return aml_def_and_read(state, node, out);
+        result = aml_def_and_read(state, node, out);
+        break;
     case AML_NAND_OP:
-        return aml_def_nand_read(state, node, out);
+        result = aml_def_nand_read(state, node, out);
+        break;
     case AML_OR_OP:
-        return aml_def_or_read(state, node, out);
+        result = aml_def_or_read(state, node, out);
+        break;
     case AML_NOR_OP:
-        return aml_def_nor_read(state, node, out);
+        result = aml_def_nor_read(state, node, out);
+        break;
     case AML_XOR_OP:
-        return aml_def_xor_read(state, node, out);
+        result = aml_def_xor_read(state, node, out);
+        break;
     case AML_NOT_OP:
-        return aml_def_not_read(state, node, out);
+        result = aml_def_not_read(state, node, out);
+        break;
     case AML_SHIFT_LEFT_OP:
-        return aml_def_shift_left_read(state, node, out);
+        result = aml_def_shift_left_read(state, node, out);
+        break;
     case AML_SHIFT_RIGHT_OP:
-        return aml_def_shift_right_read(state, node, out);
+        result = aml_def_shift_right_read(state, node, out);
+        break;
     case AML_INCREMENT_OP:
-        return aml_def_increment_read(state, node, out);
+        result = aml_def_increment_read(state, node, out);
+        break;
     case AML_DECREMENT_OP:
-        return aml_def_decrement_read(state, node, out);
+        result = aml_def_decrement_read(state, node, out);
+        break;
     case AML_DEREF_OF_OP:
-        return aml_def_deref_of_read(state, node, out);
+        result = aml_def_deref_of_read(state, node, out);
+        break;
     default:
         AML_DEBUG_ERROR(state, "Unknown expression opcode: 0x%x", value.num);
         errno = ENOSYS;
         return ERR;
     }
+
+    if (result == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read opcode: 0x%x", value.num);
+        return ERR;
+    }
+
+    return 0;
 }

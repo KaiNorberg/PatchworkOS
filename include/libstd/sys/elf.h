@@ -41,8 +41,8 @@
 
 /* ELF Data encoding */
 #define ELF_DATA_NONE 0
-#define ELF_DATA_2LSB 1  /* Little endian */
-#define ELF_DATA_2MSB 2  /* Big endian */
+#define ELF_DATA_2LSB 1 /* Little endian */
+#define ELF_DATA_2MSB 2 /* Big endian */
 
 /* ELF Version */
 #define ELF_VERSION_NONE 0
@@ -372,8 +372,7 @@ typedef struct
 typedef struct
 {
     int64_t tag;
-    union
-    {
+    union {
         uint64_t val;
         uint64_t ptr;
     } un;

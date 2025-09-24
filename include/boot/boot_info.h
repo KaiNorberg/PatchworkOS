@@ -6,9 +6,9 @@
 #include <gnu-efi/inc/efilib.h>
 
 #include <stdint.h>
+#include <sys/elf.h>
 #include <sys/io.h>
 #include <sys/list.h>
-#include <sys/elf.h>
 
 static bool boot_is_mem_ram(EFI_MEMORY_TYPE type)
 {

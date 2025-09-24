@@ -330,7 +330,12 @@ uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_node_t* node, 
     switch (value.props->type)
     {
     case AML_VALUE_TYPE_NAME:
-        return aml_name_string_read_and_resolve(state, node, out);
+        if (aml_name_string_read_and_resolve(state, node, out) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read and resolve name string");
+            return ERR;
+        }
+        return 0;
     case AML_VALUE_TYPE_ARG:
         AML_DEBUG_ERROR(state, "Args are unimplemented");
         errno = ENOSYS;

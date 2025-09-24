@@ -114,7 +114,7 @@ uint64_t aml_def_op_region_read(aml_state_t* state, aml_node_t* node)
     aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_NONE);
     if (newNode == NULL)
     {
-        AML_DEBUG_ERROR(state, "Failed to add node");
+        AML_DEBUG_ERROR(state, "Failed to add node '%s'", aml_name_string_to_string(&nameString));
         return ERR;
     }
 
@@ -191,7 +191,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
         aml_node_t* newNode = aml_node_new(node, name->name, AML_NODE_NONE);
         if (newNode == NULL)
         {
-            AML_DEBUG_ERROR(state, "Failed to create new node");
+            AML_DEBUG_ERROR(state, "Failed to create new Field node");
             return ERR;
         }
 
@@ -199,7 +199,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
             ERR)
         {
             aml_node_free(newNode);
-            AML_DEBUG_ERROR(state, "Failed to init field unit");
+            AML_DEBUG_ERROR(state, "Failed to init Field node");
             return ERR;
         }
     }
@@ -231,7 +231,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
         aml_node_t* newNode = aml_node_new(node, name->name, AML_NODE_NONE);
         if (newNode == NULL)
         {
-            AML_DEBUG_ERROR(state, "Failed to create new node");
+            AML_DEBUG_ERROR(state, "Failed to create new IndexField node");
             return ERR;
         }
 
@@ -239,7 +239,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
                 ctx->currentOffset, pkgLength) == ERR)
         {
             aml_node_free(newNode);
-            AML_DEBUG_ERROR(state, "Failed to init field unit");
+            AML_DEBUG_ERROR(state, "Failed to init IndexField node");
             return ERR;
         }
     }
@@ -263,7 +263,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
         aml_node_t* newNode = aml_node_new(node, name->name, AML_NODE_NONE);
         if (newNode == NULL)
         {
-            AML_DEBUG_ERROR(state, "Failed to add node");
+            AML_DEBUG_ERROR(state, "Failed to create new BankField node");
             return ERR;
         }
 
@@ -271,7 +271,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
                 ctx->flags, ctx->currentOffset, pkgLength) == ERR)
         {
             aml_node_free(newNode);
-            AML_DEBUG_ERROR(state, "Failed to init bank field");
+            AML_DEBUG_ERROR(state, "Failed to init BankField node");
             return ERR;
         }
     }
@@ -324,11 +324,20 @@ uint64_t aml_field_element_read(aml_state_t* state, aml_node_t* node, aml_field_
 
     if (AML_IS_LEAD_NAME_CHAR(&value))
     {
-        return aml_named_field_read(state, node, ctx);
+        if (aml_named_field_read(state, node, ctx) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read named field");
+            return ERR;
+        }
+        return 0;
     }
     else if (value.num == 0x00)
     {
-        return aml_reserved_field_read(state, ctx);
+        if (aml_reserved_field_read(state, ctx) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read reserved field");
+            return ERR;
+        }
     }
 
     AML_DEBUG_ERROR(state, "Invalid field element value: 0x%x", value.num);

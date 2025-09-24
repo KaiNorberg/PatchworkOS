@@ -171,14 +171,13 @@ const char* aml_node_to_string(aml_node_t* node)
             node->fieldUnit.bitOffset, node->fieldUnit.bitSize);
         return buffer;
     case AML_DATA_INTEGER:
-        snprintf(buffer, sizeof(buffer), "Integer(Value=%llu, BitWidth=%d)", node->integer.value,
-            node->integer.bitWidth);
+        snprintf(buffer, sizeof(buffer), "Integer(0x%x)", node->integer.value);
         return buffer;
     case AML_DATA_INTEGER_CONSTANT:
-        snprintf(buffer, sizeof(buffer), "IntegerConstant(Value=%llu)", node->integerConstant.value);
+        snprintf(buffer, sizeof(buffer), "IntegerConstant(0x%x)", node->integerConstant.value);
         return buffer;
     case AML_DATA_METHOD:
-        snprintf(buffer, sizeof(buffer), "Method(Flags=0x%x, Start=0x%llx, End=0x%llx)", node->method.flags,
+        snprintf(buffer, sizeof(buffer), "Method(ArgCount=0x%x, Start=0x%llx, End=0x%llx)", node->method.flags.argCount,
             node->method.start, node->method.end);
         return buffer;
     case AML_DATA_MUTEX:

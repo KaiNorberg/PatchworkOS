@@ -53,6 +53,13 @@ uint64_t aml_init(void)
         return ERR;
     }
 
+    if (aml_node_init_device(root) == ERR)
+    {
+        aml_node_free(root);
+        root = NULL;
+        return ERR;
+    }
+
     // Normal predefined root nodes, see section 5.3.1 of the ACPI specification.
     if (aml_create_predefined_node("_GPE", AML_DATA_DEVICE) == ERR ||
         aml_create_predefined_node("_PR", AML_DATA_DEVICE) == ERR ||
@@ -66,7 +73,7 @@ uint64_t aml_init(void)
     }
 
     // OS specific predefined nodes, see section 5.7 of the ACPI specification.
-    if (aml_create_predefined_node("_GL", AML_DATA_MUTEX) == ERR ||
+    /*if (aml_create_predefined_node("_GL", AML_DATA_MUTEX) == ERR ||
         aml_create_predefined_node("_OS", AML_DATA_STRING) == ERR ||
         aml_create_predefined_node("_OSI", AML_DATA_METHOD) == ERR ||
         aml_create_predefined_node("_REV", AML_DATA_INTEGER) == ERR)
@@ -74,7 +81,7 @@ uint64_t aml_init(void)
         aml_node_free(root);
         root = NULL;
         return ERR;
-    }
+    }*/
 
     return 0;
 }
@@ -133,7 +140,7 @@ void aml_print_tree(aml_node_t* node, uint32_t depth, bool isLast)
         }
     }
 
-    LOG_INFO("%.*s [%s", AML_NAME_LENGTH, node->segment, aml_data_type_to_string(node->type));
+    LOG_INFO("%.*s [%s", AML_NAME_LENGTH, node->segment, aml_node_to_string(node));
     switch (node->type)
     {
     default:

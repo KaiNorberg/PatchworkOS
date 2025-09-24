@@ -74,6 +74,10 @@ static uint64_t acpi_parse_all_aml(void)
     if (aml_parse(dsdt->definitionBlock, dsdt->header.length - sizeof(dsdt_t)) == ERR)
     {
         LOG_ERR("failed to parse DSDT\n");
+
+        LOG_INFO("==ACPI Namespace Tree==\n");
+        aml_print_tree(aml_root_get(), 0, true);
+
         return ERR;
     }
 
