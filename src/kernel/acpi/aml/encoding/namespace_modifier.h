@@ -8,7 +8,7 @@ typedef struct aml_state aml_state_t;
 typedef struct aml_node aml_node_t;
 
 /**
- * @brief ACPI AML Namespace Modifier Objects Encoding
+ * @brief Namespace Modifier Objects Encoding
  * @defgroup kernel_acpi_aml_namespace_modifier Namespace Modifier Objects
  * @ingroup kernel_acpi_aml
  *

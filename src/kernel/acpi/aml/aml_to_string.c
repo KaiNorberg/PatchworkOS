@@ -171,7 +171,8 @@ const char* aml_node_to_string(aml_node_t* node)
             node->fieldUnit.bitOffset, node->fieldUnit.bitSize);
         return buffer;
     case AML_DATA_INTEGER:
-        snprintf(buffer, sizeof(buffer), "Integer(Value=%llu, BitWidth=%d)", node->integer.value, node->integer.bitWidth);
+        snprintf(buffer, sizeof(buffer), "Integer(Value=%llu, BitWidth=%d)", node->integer.value,
+            node->integer.bitWidth);
         return buffer;
     case AML_DATA_INTEGER_CONSTANT:
         snprintf(buffer, sizeof(buffer), "IntegerConstant(Value=%llu)", node->integerConstant.value);

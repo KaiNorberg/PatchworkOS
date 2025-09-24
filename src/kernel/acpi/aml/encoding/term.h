@@ -7,7 +7,7 @@
 typedef struct aml_state aml_state_t;
 
 /**
- * @brief ACPI AML Term Objects Encoding
+ * @brief Term Objects Encoding
  * @defgroup kernel_acpi_aml_term Term Objects
  * @ingroup kernel_acpi_aml
  *

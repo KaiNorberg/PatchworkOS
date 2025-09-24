@@ -7,11 +7,11 @@
 #include <stdint.h>
 
 /**
- * @brief ACPI AML Values
+ * @brief Values
  * @defgroup kernel_acpi_aml_value Values
  * @ingroup kernel_acpi_aml
  *
- * This file handles descriptions of all values that can be found in an AML byte stream, storing them and their
+ * This module handles descriptions of all values that can be found in an AML byte stream, storing them and their
  * properties.
  *
  * The value type ends up, in most cases, being the smallest most fundamental type used in the parser (as in the type at
@@ -24,7 +24,7 @@
  */
 
 /**
- * @brief ACPI AML Values
+ * @brief Values
  *
  * All values stored an an enum, we also encode the extended values (those that make up two bytes) by assigning them
  * certain value ranges.
@@ -211,7 +211,7 @@ typedef enum
 } aml_encoding_group_t;
 
 /**
- * @brief ACPI AML Value Type
+ * @brief Value Type
  * @enum aml_value_type_t
  */
 typedef enum
@@ -229,7 +229,7 @@ typedef enum
 } aml_value_type_t;
 
 /**
- * @brief ACPI AML Value Properties
+ * @brief Value Properties
  * @struct aml_value_props_t
  */
 typedef struct aml_value_props
@@ -240,7 +240,7 @@ typedef struct aml_value_props
 } aml_value_props_t;
 
 /**
- * @brief ACPI AML Value
+ * @brief Value
  * @struct aml_value_t
  */
 typedef struct aml_value
@@ -270,7 +270,7 @@ extern const aml_value_props_t opsExt92[0x100];
  * @brief Convert a value type to a string.
  *
  * @param type The value type to convert.
- * @return const char* On success, the string representation of the value type. On failure, "UnknownValue".
+ * @return On success, the string representation of the value type. On failure, "UnknownValue".
  */
 const char* aml_value_type_to_string(aml_value_type_t type);
 
@@ -279,7 +279,7 @@ const char* aml_value_type_to_string(aml_value_type_t type);
  *
  * @param value The value to fetch properties for.
  * @param extension The prefix byte of the value, use `0` if none.
- * @return const aml_value_props_t* The value properties.
+ * @return The value properties.
  */
 static inline const aml_value_props_t* aml_value_lookup(uint8_t value, uint8_t extension)
 {

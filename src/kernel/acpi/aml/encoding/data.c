@@ -163,7 +163,7 @@ uint64_t aml_const_obj_read(aml_state_t* state, aml_const_obj_t* out)
     }
 }
 
-uint64_t aml_string_read(aml_state_t* state, aml_string_t* out)
+uint64_t aml_string_read(aml_state_t* state, aml_node_t* out)
 {
     aml_value_t stringPrefix;
     if (aml_value_read(state, &stringPrefix) == ERR)
@@ -180,7 +180,6 @@ uint64_t aml_string_read(aml_state_t* state, aml_string_t* out)
     }
 
     char* str = (char*)((uint64_t)state->data + (uint64_t)state->pos);
-    uint64_t length = 0;
     while (1)
     {
         uint8_t c;
@@ -202,13 +201,13 @@ uint64_t aml_string_read(aml_state_t* state, aml_string_t* out)
             errno = EILSEQ;
             return ERR;
         }
-
-        length++;
     }
 
-    out->content = str;
-    out->length = length;
-    out->inPlace = true;
+    if (aml_node_init_string(out, str, true) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to init string node");
+        return ERR;
+    }
     return 0;
 }
 
@@ -285,16 +284,9 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_node_t* node, aml_n
     }
     case AML_STRING_PREFIX:
     {
-        aml_string_t str;
-        if (aml_string_read(state, &str) == ERR)
+        if (aml_string_read(state, out) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read string");
-            return ERR;
-        }
-
-        if (aml_node_init_string(out, str.content, str.inPlace) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to init string");
+            AML_DEBUG_ERROR(state, "Failed to read buffer");
             return ERR;
         }
         return 0;

@@ -187,197 +187,149 @@ typedef enum aml_access_direction
     AML_ACCESS_WRITE
 } aml_access_direction_t;
 
-typedef struct
+static uint64_t aml_generic_field_read_at(aml_node_t* fieldUnit, aml_bit_size_t accessSize,
+    aml_bit_size_t inAccessOffset, aml_bit_size_t bitsToAccess, uint64_t byteOffset, aml_qword_data_t* out)
 {
-    aml_node_type_t type;
-    aml_region_space_t space;
-    aml_bit_size_t bitSize;
-    aml_bit_size_t bitOffset;
-    uintptr_t base;
-    aml_field_flags_t flags;
-    aml_node_t* indexNode;        // Only for IndexFields
-    aml_node_t* dataNode;         // Only for IndexFields
-    aml_data_object_t* bankValue; // Only for BankFields
-} aml_field_access_data_t;
-
-static uint64_t aml_extract_field_access_data(aml_node_t* field, aml_field_access_data_t* out)
-{
-    out->type = field->type;
-
-    switch (field->type)
+    switch (fieldUnit->fieldUnit.type)
     {
-    case AML_DATA_FIELD:
-        out->space = field->field.opregion->opregion.space;
-        out->bitSize = field->field.bitSize;
-        out->bitOffset = field->field.bitOffset;
-        out->base = field->field.opregion->opregion.offset;
-        out->flags = field->field.flags;
-        return 0;
-    case AML_DATA_INDEX_FIELD:
-        // The space is the space of the IndexFields data node's opregion.
-        out->space = field->indexField.dataNode->field.opregion->opregion.space;
-        out->bitSize = field->indexField.bitSize;
-        out->bitOffset = field->indexField.bitOffset;
-        out->base = field->indexField.dataNode->field.opregion->opregion.offset;
-        out->flags = field->indexField.flags;
-
-        out->indexNode = field->indexField.indexNode;
-        out->dataNode = field->indexField.dataNode;
-        return 0;
-    case AML_DATA_BANK_FIELD:
-        out->space = field->bankField.opregion->opregion.space;
-        out->bitSize = field->bankField.bitSize;
-        out->bitOffset = field->bankField.bitOffset;
-        out->base = field->bankField.opregion->opregion.offset;
-        out->flags = field->bankField.flags;
-
-        out->bankValue = &field->bankField.bankValue;
-        return 0;
-    default:
-        LOG_ERR("invalid field node type %s\n", aml_data_type_to_string(field->type));
-        errno = EINVAL;
-        return ERR;
+    case AML_FIELD_UNIT_FIELD:
+    case AML_FIELD_UNIT_BANK_FIELD:
+    {
+        uintptr_t address = fieldUnit->fieldUnit.opregion->opregion.offset + byteOffset;
+        return aml_opregion_read(fieldUnit->fieldUnit.regionSpace, address, accessSize, out);
     }
-}
-
-static uint64_t aml_generic_field_read_at(aml_field_access_data_t* accessData, uint64_t address,
-    aml_bit_size_t accessSize, aml_bit_size_t inAccessOffset, aml_bit_size_t bitsToAccess, uint64_t byteOffset,
-    uint64_t* out)
-{
-    switch (accessData->type)
+    case AML_FIELD_UNIT_INDEX_FIELD:
     {
-    case AML_DATA_FIELD:
-    case AML_DATA_BANK_FIELD:
-        return aml_opregion_read(accessData->space, address, accessSize, out);
-    case AML_DATA_INDEX_FIELD:
-    {
-        aml_data_object_t temp;
-        if (aml_data_object_init_integer(&temp, byteOffset, 64) == ERR)
+        aml_node_t temp = AML_NODE_CREATE;
+        if (aml_node_init_integer(&temp, byteOffset, 64) == ERR)
         {
             return ERR;
         }
 
-        if (aml_field_write(accessData->indexNode, &temp) == ERR)
+        if (aml_field_unit_write(fieldUnit->fieldUnit.indexNode, &temp) == ERR)
         {
-            aml_data_object_deinit(&temp);
+            aml_node_deinit(&temp);
             return ERR;
         }
-        aml_data_object_deinit(&temp);
+        aml_node_deinit(&temp);
 
-        if (aml_field_read(accessData->dataNode, &temp) == ERR)
+        if (aml_field_unit_read(fieldUnit->fieldUnit.dataNode, &temp) == ERR)
         {
             return ERR;
         }
 
+        // A field cant return anything larger then 64 bits so it has to be an integer.
         if (temp.type != AML_DATA_INTEGER)
         {
             LOG_ERR("IndexField data node '%.*s' did not return an integer\n", AML_NAME_LENGTH,
-                accessData->dataNode->segment);
-            aml_data_object_deinit(&temp);
+                fieldUnit->fieldUnit.dataNode->segment);
+            aml_node_deinit(&temp);
             errno = EILSEQ;
             return ERR;
         }
 
-        *out = temp.integer;
-        aml_data_object_deinit(&temp);
+        *out = temp.integer.value;
+        aml_node_deinit(&temp);
         return 0;
     }
     default:
-        LOG_ERR("invalid field node type %s\n", aml_data_type_to_string(accessData->type));
+        LOG_ERR("invalid field node type %d\n", fieldUnit->fieldUnit.type);
         errno = EINVAL;
         return ERR;
     }
 }
 
-static uint64_t aml_generic_field_write_at(aml_field_access_data_t* accessData, uint64_t address,
+static uint64_t aml_generic_field_write_at(aml_node_t* fieldUnit,
     aml_bit_size_t accessSize, aml_bit_size_t inAccessOffset, aml_bit_size_t bitsToAccess, uint64_t byteOffset,
-    uint64_t value)
+    aml_qword_data_t value)
 {
-    switch (accessData->type)
+    switch (fieldUnit->fieldUnit.type)
     {
-    case AML_DATA_FIELD:
-    case AML_DATA_BANK_FIELD:
-        return aml_opregion_write(accessData->space, address, accessSize, value);
-    case AML_DATA_INDEX_FIELD:
+    case AML_FIELD_UNIT_FIELD:
+    case AML_FIELD_UNIT_BANK_FIELD:
     {
-        aml_data_object_t indexObj;
-        if (aml_data_object_init_integer(&indexObj, byteOffset, 64) == ERR)
+        uintptr_t address = fieldUnit->fieldUnit.opregion->opregion.offset + byteOffset;
+        return aml_opregion_write(fieldUnit->fieldUnit.regionSpace, address, accessSize, value);
+    }
+    case AML_FIELD_UNIT_INDEX_FIELD:
+    {
+        aml_node_t index = AML_NODE_CREATE;
+        if (aml_node_init_integer(&index, byteOffset, 64) == ERR)
         {
             return ERR;
         }
 
-        if (aml_field_write(accessData->indexNode, &indexObj) == ERR)
+        if (aml_field_unit_write(fieldUnit->fieldUnit.indexNode, &index) == ERR)
         {
-            aml_data_object_deinit(&indexObj);
+            aml_node_deinit(&index);
             return ERR;
         }
-        aml_data_object_deinit(&indexObj);
+        aml_node_deinit(&index);
 
-        aml_data_object_t dataObj;
-        if (aml_data_object_init_integer(&dataObj, value, 64) == ERR)
+        aml_node_t data = AML_NODE_CREATE;
+        if (aml_node_init_integer(&data, value, 64) == ERR)
         {
             return ERR;
         }
 
-        if (aml_field_write(accessData->dataNode, &dataObj) == ERR)
+        if (aml_field_unit_write(fieldUnit->fieldUnit.dataNode, &data) == ERR)
         {
-            aml_data_object_deinit(&dataObj);
+            aml_node_deinit(&data);
             return ERR;
         }
-        aml_data_object_deinit(&dataObj);
+        aml_node_deinit(&data);
         return 0;
     }
     default:
-        LOG_ERR("invalid field node type %s\n", aml_data_type_to_string(accessData->type));
+        LOG_ERR("invalid field node type %d\n", fieldUnit->fieldUnit.type);
         errno = EINVAL;
         return ERR;
     }
 }
 
-static uint64_t aml_generic_field_access(aml_node_t* field, aml_data_object_t* data, aml_access_direction_t direction)
+static uint64_t aml_field_unit_access(aml_node_t* fieldUnit, aml_node_t* data, aml_access_direction_t direction)
 {
-    aml_field_access_data_t accessData;
-    if (aml_extract_field_access_data(field, &accessData) == ERR)
+    if (fieldUnit->fieldUnit.type == AML_FIELD_UNIT_BANK_FIELD)
     {
-        return ERR;
-    }
-
-    if (field->type == AML_DATA_BANK_FIELD)
-    {
-        // Write the bank value to the bank register.
-        if (aml_field_write(field->bankField.bank, accessData.bankValue) == ERR)
+        aml_node_t bankValue = AML_NODE_CREATE;
+        if (aml_node_init_integer(&bankValue, fieldUnit->fieldUnit.bankValue, 64) == ERR)
         {
             return ERR;
         }
+
+        if (aml_field_unit_write(fieldUnit->fieldUnit.bank, &bankValue) == ERR)
+        {
+            aml_node_deinit(&bankValue);
+            return ERR;
+        }
+        aml_node_deinit(&bankValue);
     }
 
     aml_bit_size_t accessSize;
-    if (aml_get_access_size(accessData.bitSize, accessData.flags.accessType, accessData.space, &accessSize) == ERR)
+    if (aml_get_access_size(fieldUnit->fieldUnit.bitSize, fieldUnit->fieldUnit.flags.accessType, fieldUnit->fieldUnit.regionSpace, &accessSize) == ERR)
     {
         return ERR;
     }
 
     LOG_DEBUG("%s field '%.*s' of size %u bits with access size %u bits from opregion space '%s'\n",
-        direction == AML_ACCESS_READ ? "reading" : "writing to", AML_NAME_LENGTH, field->segment, accessData.bitSize,
-        accessSize, aml_region_space_to_string(accessData.space));
+        direction == AML_ACCESS_READ ? "reading" : "writing to", AML_NAME_LENGTH, field->segment, fieldUnit->fieldUnit.bitSize,
+        accessSize, aml_region_space_to_string(fieldUnit->fieldUnit.regionSpace));
 
-    uint64_t byteOffset = aml_get_aligned_byte_offset(accessData.bitOffset, accessSize);
+    uint64_t byteOffset = aml_get_aligned_byte_offset(fieldUnit->fieldUnit.bitOffset, accessSize);
 
     uint64_t currentPos = 0;
-    while (currentPos < accessData.bitSize)
+    while (currentPos < fieldUnit->fieldUnit.bitSize)
     {
-        aml_bit_size_t inAccessOffset = (accessData.bitOffset + currentPos) & (accessSize - 1);
-        aml_bit_size_t bitsToAccess = MIN(accessData.bitSize - currentPos, accessSize - inAccessOffset);
+        aml_bit_size_t inAccessOffset = (fieldUnit->fieldUnit.bitOffset + currentPos) & (accessSize - 1);
+        aml_bit_size_t bitsToAccess = MIN(fieldUnit->fieldUnit.bitSize - currentPos, accessSize - inAccessOffset);
         uint64_t mask = (UINT64_C(1) << bitsToAccess) - 1;
-
-        uint64_t address = accessData.base + byteOffset;
 
         switch (direction)
         {
         case AML_ACCESS_READ:
         {
             uint64_t value;
-            if (aml_generic_field_read_at(&accessData, address, accessSize, inAccessOffset, bitsToAccess, byteOffset,
+            if (aml_generic_field_read_at(fieldUnit, accessSize, inAccessOffset, bitsToAccess, byteOffset,
                     &value) == ERR)
             {
                 return ERR;
@@ -385,7 +337,7 @@ static uint64_t aml_generic_field_access(aml_node_t* field, aml_data_object_t* d
 
             value = (value >> inAccessOffset) & mask;
 
-            if (aml_data_object_put_bits_at(data, value, currentPos, bitsToAccess) == ERR)
+            if (aml_node_put_bits_at(data, value, currentPos, bitsToAccess) == ERR)
             {
                 return ERR;
             }
@@ -394,11 +346,11 @@ static uint64_t aml_generic_field_access(aml_node_t* field, aml_data_object_t* d
         case AML_ACCESS_WRITE:
         {
             uint64_t value;
-            switch (accessData.flags.updateRule)
+            switch (fieldUnit->fieldUnit.flags.updateRule)
             {
             case AML_UPDATE_RULE_PRESERVE:
             {
-                if (aml_generic_field_read_at(&accessData, address, accessSize, inAccessOffset, accessSize, byteOffset,
+                if (aml_generic_field_read_at(fieldUnit, accessSize, inAccessOffset, accessSize, byteOffset,
                         &value) == ERR)
                 {
                     return ERR;
@@ -412,22 +364,22 @@ static uint64_t aml_generic_field_access(aml_node_t* field, aml_data_object_t* d
                 value = 0;
                 break;
             default:
-                LOG_ERR("invalid field update rule %d\n", accessData.flags.updateRule);
+                LOG_ERR("invalid field update rule %d\n", fieldUnit->fieldUnit.flags.updateRule);
                 errno = EINVAL;
                 return ERR;
             }
 
-            // Clear the bits we are going to write to, then set them to the new value.
+            // Clear the bits we are going to write to, then set them to the new value, the rest remains unchanged.
             value &= ~mask;
 
             uint64_t newValue;
-            if (aml_data_object_get_bits_at(data, currentPos, bitsToAccess, &newValue) == ERR)
+            if (aml_node_get_bits_at(data, currentPos, bitsToAccess, &newValue) == ERR)
             {
                 return ERR;
             }
             value |= (newValue << inAccessOffset) & mask;
 
-            if (aml_generic_field_write_at(&accessData, address, accessSize, inAccessOffset, bitsToAccess, byteOffset,
+            if (aml_generic_field_write_at(fieldUnit, accessSize, inAccessOffset, bitsToAccess, byteOffset,
                     value) == ERR)
             {
                 return ERR;
@@ -447,131 +399,73 @@ static uint64_t aml_generic_field_access(aml_node_t* field, aml_data_object_t* d
     return 0;
 }
 
-uint64_t aml_field_read(aml_node_t* field, aml_data_object_t* out)
+uint64_t aml_field_unit_read(aml_node_t* fieldUnit, aml_node_t* out)
 {
-    if (field == NULL || out == NULL)
+    if (fieldUnit == NULL || out == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    uint64_t byteSize = (field->field.bitSize + 7) / 8;
+    uint64_t byteSize = (fieldUnit->fieldUnit.bitSize + 7) / 8;
     if (byteSize > sizeof(aml_qword_data_t))
     {
-        if (aml_data_object_init_buffer_empty(out, byteSize) == ERR)
+        if (aml_node_init_buffer_empty(out, byteSize) == ERR)
         {
             return ERR;
         }
     }
     else
     {
-        if (aml_data_object_init_integer(out, 0, byteSize * 8) == ERR)
+        if (aml_node_init_integer(out, 0, byteSize * 8) == ERR)
         {
             return ERR;
         }
     }
 
-    uint64_t result = aml_generic_field_access(field, out, AML_ACCESS_READ);
+    mutex_t* globalMutex = NULL;
+    if (fieldUnit->fieldUnit.flags.lockRule == AML_LOCK_RULE_LOCK)
+    {
+        globalMutex = aml_global_mutex_get();
+        mutex_acquire_recursive(globalMutex);
+    }
+
+    uint64_t result = aml_field_unit_access(fieldUnit, out, AML_ACCESS_READ);
+
     if (result == ERR)
     {
-        aml_data_object_deinit(out);
+        aml_node_deinit(out);
     }
+
+    if (globalMutex != NULL)
+    {
+        mutex_release(globalMutex);
+    }
+
     return result;
 }
 
-uint64_t aml_field_write(aml_node_t* field, aml_data_object_t* in)
+uint64_t aml_field_unit_write(aml_node_t* fieldUnit, aml_node_t* in)
 {
-    if (field == NULL || in == NULL)
+    if (fieldUnit == NULL || in == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    return aml_generic_field_access(field, in, AML_ACCESS_WRITE);
-}
-
-uint64_t aml_index_field_read(aml_node_t* indexField, aml_data_object_t* out)
-{
-    if (indexField == NULL || out == NULL)
+    mutex_t* globalMutex = NULL;
+    if (fieldUnit->fieldUnit.flags.lockRule == AML_LOCK_RULE_LOCK)
     {
-        errno = EINVAL;
-        return ERR;
+        globalMutex = aml_global_mutex_get();
+        mutex_acquire_recursive(globalMutex);
     }
 
-    uint64_t byteSize = (indexField->indexField.bitSize + 7) / 8;
-    if (byteSize > sizeof(aml_qword_data_t))
+    uint64_t result = aml_field_unit_access(fieldUnit, in, AML_ACCESS_WRITE);
+
+    if (globalMutex != NULL)
     {
-        if (aml_data_object_init_buffer_empty(out, byteSize) == ERR)
-        {
-            return ERR;
-        }
-    }
-    else
-    {
-        if (aml_data_object_init_integer(out, 0, byteSize * 8) == ERR)
-        {
-            return ERR;
-        }
+        mutex_release(globalMutex);
     }
 
-    uint64_t result = aml_generic_field_access(indexField, out, AML_ACCESS_READ);
-    if (result == ERR)
-    {
-        aml_data_object_deinit(out);
-    }
     return result;
-}
-
-uint64_t aml_index_field_write(aml_node_t* indexField, aml_data_object_t* in)
-{
-    if (indexField == NULL || in == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    return aml_generic_field_access(indexField, in, AML_ACCESS_WRITE);
-}
-
-uint64_t aml_bank_field_read(aml_node_t* bankField, aml_data_object_t* out)
-{
-    if (bankField == NULL || out == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    uint64_t byteSize = (bankField->bankField.bitSize + 7) / 8;
-    if (byteSize > sizeof(aml_qword_data_t))
-    {
-        if (aml_data_object_init_buffer_empty(out, byteSize) == ERR)
-        {
-            return ERR;
-        }
-    }
-    else
-    {
-        if (aml_data_object_init_integer(out, 0, byteSize * 8) == ERR)
-        {
-            return ERR;
-        }
-    }
-
-    uint64_t result = aml_generic_field_access(bankField, out, AML_ACCESS_READ);
-    if (result == ERR)
-    {
-        aml_data_object_deinit(out);
-    }
-    return result;
-}
-
-uint64_t aml_bank_field_write(aml_node_t* bankField, aml_data_object_t* in)
-{
-    if (bankField == NULL || in == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    return aml_generic_field_access(bankField, in, AML_ACCESS_WRITE);
 }

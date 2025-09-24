@@ -12,7 +12,7 @@
 #include "log/log.h"
 
 /**
- * @brief ACPI AML State
+ * @brief State
  * @defgroup kernel_acpi_aml_parse State
  * @ingroup kernel_acpi_aml
  *

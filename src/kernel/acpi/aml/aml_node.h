@@ -11,7 +11,7 @@
 #include <stdint.h>
 
 /**
- * @brief ACPI AML Node
+ * @brief Node
  * @defgroup kernel_acpi_aml_node Node
  * @ingroup kernel_acpi_aml
  *
@@ -115,7 +115,7 @@ typedef enum
 } aml_node_flags_t;
 
 /**
- * @brief ACPI AML Field Unit types.
+ * @brief Field Unit types.
  * @enum aml_field_unit_type_t
  *
  * Since the ACPI spec does not diferenciate between "objects" of type Field, IndexField and BankField, instead just
@@ -145,7 +145,6 @@ typedef struct aml_node
     list_t children;
     struct aml_node* parent;
     char segment[AML_NAME_LENGTH + 1];
-    mutex_t lock;
     bool isAllocated;
     union {
         struct
@@ -171,11 +170,12 @@ typedef struct aml_node
             aml_node_t* indexNode;      //!< Used for IndexField.
             aml_node_t* dataNode;       //!< Used for IndexField.
             aml_node_t* opregion;       //!< Used for Field and BankField.
-            uint64_t bankValue; //!< Used for BankField.
+            aml_qword_data_t bankValue;         //!< Used for BankField.
             aml_node_t* bank;           //!< Used for BankField.
             aml_field_flags_t flags;    //!< Used for Field, IndexField and BankField.
             aml_bit_size_t bitOffset;   //!< Used for Field, IndexField and BankField.
             aml_bit_size_t bitSize;     //!< Used for Field, IndexField and BankField.
+            aml_region_space_t regionSpace; //!< Used for Field, IndexField and BankField.
         } fieldUnit;
         struct
         {
@@ -240,7 +240,7 @@ typedef struct aml_node
     (aml_node_t) \
     { \
         .entry = LIST_ENTRY_CREATE, .type = AML_DATA_UNINITALIZED, .flags = AML_NODE_NONE, .children = LIST_CREATE, \
-        .parent = NULL, .segment = {0}, .lock = MUTEX_CREATE, .isAllocated = false, .dir = {0} \
+        .parent = NULL, .segment = {0}, .isAllocated = false, .dir = {0} \
     }
 
 /**
@@ -258,7 +258,7 @@ aml_data_type_info_t* aml_data_type_get_info(aml_data_type_t type);
  * @param parent Pointer to the parent node, can be `NULL`.
  * @param name Name of the new node, must not be longer then `AML_NAME_LENGTH`.
  * @param flags Flags for the new node.
- * @return aml_node_t* On success, a pointer to the new node. On failure, `NULL` and `errno` is set.
+ * @return On success, a pointer to the new node. On failure, `NULL` and `errno` is set.
  */
 aml_node_t* aml_node_new(aml_node_t* parent, const char* name, aml_node_flags_t flags);
 
@@ -277,7 +277,7 @@ void aml_node_free(aml_node_t* node);
  * @param string The Namestring specifying the location and name of the new node.
  * @param start The node to start the search from, or `NULL` to start from the root.
  * @param flags Flags for the new node.
- * @return aml_node_t* On success, a pointer to the new node. On error, `NULL` and `errno` is set.
+ * @return On success, a pointer to the new node. On error, `NULL` and `errno` is set.
  */
 aml_node_t* aml_node_add(aml_name_string_t* string, aml_node_t* start, aml_node_flags_t flags);
 
@@ -295,6 +295,15 @@ aml_node_t* aml_node_add(aml_name_string_t* string, aml_node_t* start, aml_node_
 uint64_t aml_node_init_buffer(aml_node_t* node, uint8_t* buffer, uint64_t length, uint64_t capacity, bool inPlace);
 
 /**
+ * @brief Initialize an ACPI node as an empty buffer with the given length.
+ *
+ * @param node Pointer to the node to initialize.
+ * @param length Length of the buffer will also be the capacity.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_node_init_buffer_empty(aml_node_t* node, uint64_t length);
+
+/**
  * @brief Initialize an ACPI node as a buffer field with the given buffer, bit offset and bit size.
  *
  * @param node Pointer to the node to initialize.
@@ -303,7 +312,8 @@ uint64_t aml_node_init_buffer(aml_node_t* node, uint8_t* buffer, uint64_t length
  * @param bitSize Size of the field in bits.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_node_init_buffer_field(aml_node_t* node, uint8_t* buffer, aml_bit_size_t bitOffset, aml_bit_size_t bitSize);
+uint64_t aml_node_init_buffer_field(aml_node_t* node, uint8_t* buffer, aml_bit_size_t bitOffset,
+    aml_bit_size_t bitSize);
 
 /**
  * @brief Initialize an ACPI node as a device or bus.
@@ -484,5 +494,39 @@ aml_node_t* aml_node_find_child(aml_node_t* parent, const char* name);
  * @return On success, a pointer to the found node. On error, `NULL` and `errno` is set.
  */
 aml_node_t* aml_node_find(const char* path, aml_node_t* start);
+
+/**
+ * @brief Store bits into a node at the specified bit offset and size.
+ *
+ * This function only works on the following node types:
+ * - Integers
+ * - Buffers
+ * - Strings
+ *
+ * @param node Pointer to the node to store bits into.
+ * @param value The bits to store (only the least significant `bitSize` bits are used).
+ * @param bitOffset The bit offset within the node's data to start storing to.
+ * @param bitSize The number of bits to store (up to 64 or the node's bit width).
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+ uint64_t aml_node_put_bits_at(aml_node_t* node, uint64_t value, aml_bit_size_t bitOffset,
+     aml_bit_size_t bitSize);
+
+/**
+ * @brief Retrieve bits from a node at the specified bit offset and size.
+ *
+ * This function only works on the following node types:
+ * - Integers
+ * - Buffers
+ * - Strings
+ *
+ * @param node Pointer to the node to extract bits from.
+ * @param bitOffset The bit offset within the node's data to start extracting from.
+ * @param bitSize The number of bits to extract (up to 64 or the node's bit width).
+ * @param out Pointer to a buffer where the extracted bits will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_node_get_bits_at(aml_node_t* node, aml_bit_size_t bitOffset, aml_bit_size_t bitSize,
+    uint64_t* out);
 
 /** @} */

@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @brief ACPI AML Arg Objecs Encoding
+ * @brief Arg Objecs Encoding
  * @defgroup kernel_acpi_aml_args Args
  * @ingroup kernel_acpi_aml
  *

@@ -8,7 +8,7 @@ typedef struct aml_node aml_node_t;
 typedef struct aml_state aml_state_t;
 
 /**
- * @brief ACPI AML Named Objects Encoding
+ * @brief Named Objects Encoding
  * @defgroup kernel_acpi_aml_named Named Objects
  * @ingroup kernel_acpi_aml
  *
@@ -20,7 +20,7 @@ typedef struct aml_state aml_state_t;
  */
 
 /**
- * @brief ACPI AML Region Space Encoding
+ * @brief Region Space Encoding
  * @enum aml_region_space_t
  */
 typedef enum
@@ -76,7 +76,7 @@ typedef enum
 } aml_update_rule_t;
 
 /**
- * @brief ACPI AML FieldFlags structure.
+ * @brief FieldFlags structure.
  * @struct aml_field_flags_t
  */
 typedef struct
@@ -126,13 +126,13 @@ typedef struct
 } aml_field_list_ctx_t;
 
 /**
- * @brief ACPI AML SyncLevel Encoding
+ * @brief SyncLevel Encoding
  * @enum aml_sync_level_t
  */
 typedef uint8_t aml_sync_level_t;
 
 /**
- * @brief ACPI AML MethodFlags structure.
+ * @brief MethodFlags structure.
  * @struct aml_method_flags_t
  */
 typedef struct
@@ -143,17 +143,17 @@ typedef struct
 } aml_method_flags_t;
 
 /**
- * @brief ACPI AML ProcID structure, deprecated in version 6.4 of the ACPI specification.
+ * @brief ProcID structure, deprecated in version 6.4 of the ACPI specification.
  */
 typedef aml_byte_data_t aml_proc_id_t;
 
 /**
- * @brief ACPI AML PblkAddr structure, deprecated in version 6.4 of the ACPI specification.
+ * @brief PblkAddr structure, deprecated in version 6.4 of the ACPI specification.
  */
 typedef aml_dword_data_t aml_pblk_addr_t;
 
 /**
- * @brief ACPI AML PblkLen structure, deprecated in version 6.4 of the ACPI specification.
+ * @brief PblkLen structure, deprecated in version 6.4 of the ACPI specification.
  */
 typedef aml_byte_data_t aml_pblk_len_t;
 
@@ -164,10 +164,10 @@ typedef aml_byte_data_t aml_pblk_len_t;
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out The output buffer to store the BankValue data object.
+ * @param out The output buffer to store the bank value.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_bank_value_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+uint64_t aml_bank_value_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out);
 
 /**
  * @brief Reads a RegionSpace structure from the AML byte stream.
@@ -495,10 +495,10 @@ uint64_t aml_source_buff_read(aml_state_t* state, aml_node_t* node, aml_node_t* 
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out The destination node to store the BitIndex.
+ * @param out The destination buffer to store the BitIndex.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_bit_index_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+uint64_t aml_bit_index_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out);
 
 /**
  * @brief Reads a ByteIndex structure from the AML byte stream.
@@ -507,10 +507,10 @@ uint64_t aml_bit_index_read(aml_state_t* state, aml_node_t* node, aml_node_t* ou
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out The destination node to store the ByteIndex.
+ * @param out The destination buffer to store the ByteIndex.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_byte_index_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+uint64_t aml_byte_index_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out);
 
 /**
  * @brief Reads a DefCreateBitField structure from the AML byte stream.

@@ -7,7 +7,7 @@
 typedef struct aml_state aml_state_t;
 
 /**
- * @brief ACPI AML Expression Opcodes Encoding
+ * @brief Expression Opcodes Encoding
  * @defgroup kernel_acpi_aml_expression Expression Opcodes
  * @ingroup kernel_acpi_aml
  *
@@ -17,7 +17,7 @@ typedef struct aml_state aml_state_t;
  */
 
 /**
- * @brief ACPI AML TermArgList structure.
+ * @brief TermArgList structure.
  */
 typedef struct
 {

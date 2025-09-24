@@ -61,7 +61,7 @@ uint64_t aml_parse(const void* data, uint64_t size);
 /**
  * @brief Get the root node of the ACPI namespace.
  *
- * @return aml_node_t* A pointer to the root node.
+ * @return A pointer to the root node.
  */
 aml_node_t* aml_root_get(void);
 

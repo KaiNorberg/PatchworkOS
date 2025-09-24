@@ -1,9 +1,9 @@
 #include "term.h"
 
+#include "acpi/aml/aml_convert.h"
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_value.h"
-#include "acpi/aml/aml_convert.h"
 #include "data.h"
 #include "expression.h"
 #include "named.h"

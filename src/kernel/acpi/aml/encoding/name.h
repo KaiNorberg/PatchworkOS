@@ -9,7 +9,7 @@ typedef struct aml_state aml_state_t;
 typedef struct aml_node aml_node_t;
 
 /**
- * @brief ACPI AML Name Objects Encoding
+ * @brief Name Objects Encoding
  * @defgroup kernel_acpi_aml_name Name Objects
  * @ingroup kernel_acpi_aml
  *
@@ -70,7 +70,7 @@ typedef struct
 } aml_root_char_t;
 
 /**
- * @brief ACPI AML SegCount structure.
+ * @brief SegCount structure.
  */
 typedef aml_byte_data_t aml_seg_count_t;
 

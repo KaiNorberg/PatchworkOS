@@ -7,7 +7,7 @@ typedef struct aml_state aml_state_t;
 typedef struct aml_node aml_node_t;
 
 /**
- * @brief ACPI AML Data Objects Encoding
+ * @brief Data Objects Encoding
  * @defgroup kernel_acpi_aml_data Data Objects
  * @ingroup kernel_acpi_aml
  *
@@ -17,17 +17,6 @@ typedef struct aml_node aml_node_t;
  */
 
 #include "data_integers.h"
-
-/**
- * @brief ACPI AML String structure.
- * @struct aml_string_t
- */
-typedef struct
-{
-    char* content;
-    uint64_t length;
-    bool inPlace;
-} aml_string_t;
 
 /**
  * @brief Read a ByteData structure from the AML stream.
@@ -139,11 +128,10 @@ uint64_t aml_const_obj_read(aml_state_t* state, aml_const_obj_t* out);
  * 0x00.
  *
  * @param state The AML state.
- * @param out Pointer to the buffer where the String will be stored. This will point to a location within the AML
- * bytestream and should not be freed or modified.
+ * @param out Pointer to the node where the String will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_string_read(aml_state_t* state, aml_string_t* out);
+uint64_t aml_string_read(aml_state_t* state, aml_node_t* out);
 
 /**
  * @brief Read a ComputationalData structure from the AML stream.

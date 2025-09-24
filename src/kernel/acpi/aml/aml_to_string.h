@@ -4,7 +4,7 @@
 #include "encoding/named.h"
 
 /**
- * @brief ACPI AML String Conversion
+ * @brief String Conversion
  * @defgroup kernel_acpi_aml_string_conversion String Conversion
  * @ingroup kernel_acpi_aml
  *

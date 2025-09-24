@@ -12,7 +12,7 @@ static uint8_t lookupTable[HEAP_MAX_SLAB_SIZE / HEAP_ALIGN];
 
 static uint64_t usedSlabs = 0;
 
-static lock_t lock = LOCK_CREATE();
+static lock_t lock = LOCK_CREATE;
 
 extern uint64_t _kernelEnd;
 

@@ -1,7 +1,9 @@
 #include "aml_convert.h"
 
+#include "aml.h"
 #include "aml_to_string.h"
 #include "log/log.h"
+#include "runtime/lock_rule.h"
 
 #include <errno.h>
 
@@ -17,9 +19,6 @@ uint64_t aml_convert_to_actual_data(aml_node_t* src, aml_node_t* dest)
     {
         return 0;
     }
-
-    MUTEX_SCOPE(&src->lock);
-    MUTEX_SCOPE(&dest->lock);
 
     aml_data_type_info_t* srcInfo = aml_data_type_get_info(src->type);
     if (srcInfo->flags & AML_DATA_FLAG_NONE)
@@ -47,15 +46,18 @@ uint64_t aml_convert_to_actual_data(aml_node_t* src, aml_node_t* dest)
         errno = ENOSYS;
         return ERR;
     }
+    break;
     case AML_DATA_FIELD_UNIT:
     {
         LOG_ERR("unimplemented conversion of field unit to actual data\n");
         errno = ENOSYS;
         return ERR;
     }
+    break;
     default:
         errno = ENOSYS;
         return ERR;
+        break;
     }
 
     return 0;
@@ -74,19 +76,18 @@ uint64_t aml_convert_and_store(aml_node_t* src, aml_node_t* dest)
         return 0;
     }
 
-    MUTEX_SCOPE(&src->lock);
-    MUTEX_SCOPE(&dest->lock);
-
     switch (src->type)
     {
     case AML_DATA_UNINITALIZED:
         errno = EINVAL;
         return ERR;
+        break;
     default:
         LOG_ERR("unimplemented conversion from '%s' to '%s'\n", aml_data_type_to_string(src->type),
             aml_data_type_to_string(dest->type));
         errno = ENOSYS;
         return ERR;
+        break;
     }
 
     return 0;
@@ -106,15 +107,13 @@ uint64_t aml_convert_to_integer(aml_node_t* src, aml_node_t* dest)
         return ERR;
     }
 
-    MUTEX_SCOPE(&src->lock);
-    MUTEX_SCOPE(&dest->lock);
-
     switch (src->type)
     {
     default:
         LOG_ERR("unimplemented conversion from '%s' to integer\n", aml_data_type_to_string(src->type));
         errno = ENOSYS;
         return ERR;
+        break;
     }
 
     return 0;

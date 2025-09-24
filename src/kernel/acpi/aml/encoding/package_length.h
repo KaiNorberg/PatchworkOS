@@ -5,7 +5,7 @@
 typedef struct aml_state aml_state_t;
 
 /**
- * @brief ACPI AML Package Length Encoding
+ * @brief Package Length Encoding
  * @defgroup kernel_acpi_aml_package_length Package Length
  * @ingroup kernel_acpi_aml
  *
@@ -15,12 +15,12 @@ typedef struct aml_state aml_state_t;
  */
 
 /**
- * @brief ACPI AML PkgLength structure.
+ * @brief PkgLength structure.
  */
 typedef uint64_t aml_pkg_length_t;
 
 /**
- * @brief ACPI AML PkgLeadByte structure.
+ * @brief PkgLeadByte structure.
  * @struct aml_pkg_lead_byte_t
  */
 typedef struct

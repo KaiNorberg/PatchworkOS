@@ -7,7 +7,7 @@
 #include "sync/rwlock.h"
 #include "vectors.h"
 
-static rwlock_t lock = RWLOCK_CREATE();
+static rwlock_t lock = RWLOCK_CREATE;
 static irq_handler_t handlers[IRQ_AMOUNT] = {0};
 
 void irq_dispatch(trap_frame_t* trapFrame)

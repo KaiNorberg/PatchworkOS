@@ -1,6 +1,7 @@
 #include "aml_node.h"
 
 #include "acpi/acpi.h"
+#include "aml.h"
 #include "aml_to_string.h"
 #include "aml_value.h"
 #include "log/log.h"
@@ -114,7 +115,6 @@ aml_node_t* aml_node_new(aml_node_t* parent, const char* name, aml_node_flags_t 
     memcpy(node->segment, name, nameLen);
     node->segment[AML_NAME_LENGTH] = '\0';
 
-    mutex_init(&node->lock);
     node->isAllocated = false;
     memset(&node->dir, 0, sizeof(sysfs_dir_t));
 
@@ -287,8 +287,6 @@ uint64_t aml_node_init_buffer(aml_node_t* node, uint8_t* buffer, uint64_t length
         return ERR;
     }
 
-    mutex_acquire_recursive(&node->lock);
-
     if (node->type != AML_DATA_UNINITALIZED)
     {
         aml_node_deinit(node);
@@ -307,7 +305,6 @@ uint64_t aml_node_init_buffer(aml_node_t* node, uint8_t* buffer, uint64_t length
         node->buffer.content = heap_alloc(capacity, HEAP_NONE);
         if (node->buffer.content == NULL)
         {
-            mutex_release(&node->lock);
             return ERR;
         }
         memcpy(node->buffer.content, buffer, length);
@@ -317,7 +314,33 @@ uint64_t aml_node_init_buffer(aml_node_t* node, uint8_t* buffer, uint64_t length
         node->buffer.inPlace = false;
     }
 
-    mutex_release(&node->lock);
+    return 0;
+}
+
+uint64_t aml_node_init_buffer_empty(aml_node_t* node, uint64_t length)
+{
+    if (node == NULL || length == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (node->type != AML_DATA_UNINITALIZED)
+    {
+        aml_node_deinit(node);
+    }
+
+    node->type = AML_DATA_BUFFER;
+    node->buffer.content = heap_alloc(length, HEAP_NONE);
+    if (node->buffer.content == NULL)
+    {
+        return ERR;
+    }
+    memset(node->buffer.content, 0, length);
+    node->buffer.length = length;
+    node->buffer.capacity = length;
+    node->buffer.inPlace = false;
+
     return 0;
 }
 
@@ -329,8 +352,6 @@ uint64_t aml_node_init_buffer_field(aml_node_t* node, uint8_t* buffer, aml_bit_s
         return ERR;
     }
 
-    mutex_acquire_recursive(&node->lock);
-
     if (node->type != AML_DATA_UNINITALIZED)
     {
         aml_node_deinit(node);
@@ -341,7 +362,6 @@ uint64_t aml_node_init_buffer_field(aml_node_t* node, uint8_t* buffer, aml_bit_s
     node->bufferField.bitOffset = bitOffset;
     node->bufferField.bitSize = bitSize;
 
-    mutex_release(&node->lock);
     return 0;
 }
 
@@ -353,8 +373,6 @@ uint64_t aml_node_init_device(aml_node_t* node)
         return ERR;
     }
 
-    mutex_acquire_recursive(&node->lock);
-
     if (node->type != AML_DATA_UNINITALIZED)
     {
         aml_node_deinit(node);
@@ -363,7 +381,6 @@ uint64_t aml_node_init_device(aml_node_t* node)
     node->type = AML_DATA_DEVICE;
     memset(&node->device, 0, sizeof(node->device));
 
-    mutex_release(&node->lock);
     return 0;
 }
 
@@ -376,8 +393,6 @@ uint64_t aml_node_init_field_unit_field(aml_node_t* node, aml_node_t* opregion, 
         return ERR;
     }
 
-    mutex_acquire_recursive(&node->lock);
-
     if (node->type != AML_DATA_UNINITALIZED)
     {
         aml_node_deinit(node);
@@ -389,8 +404,8 @@ uint64_t aml_node_init_field_unit_field(aml_node_t* node, aml_node_t* opregion, 
     node->fieldUnit.flags = flags;
     node->fieldUnit.bitOffset = bitOffset;
     node->fieldUnit.bitSize = bitSize;
+    node->fieldUnit.regionSpace = opregion->opregion.space;
 
-    mutex_release(&node->lock);
     return 0;
 }
 
@@ -402,8 +417,6 @@ uint64_t aml_node_init_field_unit_index_field(aml_node_t* node, aml_node_t* inde
         errno = EINVAL;
         return ERR;
     }
-
-    mutex_acquire_recursive(&node->lock);
 
     if (node->type != AML_DATA_UNINITALIZED)
     {
@@ -417,8 +430,8 @@ uint64_t aml_node_init_field_unit_index_field(aml_node_t* node, aml_node_t* inde
     node->fieldUnit.flags = flags;
     node->fieldUnit.bitOffset = bitOffset;
     node->fieldUnit.bitSize = bitSize;
+    node->fieldUnit.regionSpace = dataNode->fieldUnit.regionSpace;
 
-    mutex_release(&node->lock);
     return 0;
 }
 
@@ -430,8 +443,6 @@ uint64_t aml_node_init_field_unit_bank_field(aml_node_t* node, aml_node_t* opreg
         errno = EINVAL;
         return ERR;
     }
-
-    mutex_acquire_recursive(&node->lock);
 
     if (node->type != AML_DATA_UNINITALIZED)
     {
@@ -446,8 +457,8 @@ uint64_t aml_node_init_field_unit_bank_field(aml_node_t* node, aml_node_t* opreg
     node->fieldUnit.flags = flags;
     node->fieldUnit.bitOffset = bitOffset;
     node->fieldUnit.bitSize = bitSize;
+    node->fieldUnit.regionSpace = opregion->opregion.space;
 
-    mutex_release(&node->lock);
     return 0;
 }
 
@@ -459,8 +470,6 @@ uint64_t aml_node_init_integer(aml_node_t* node, uint64_t value, uint8_t bitWidt
         return ERR;
     }
 
-    mutex_acquire_recursive(&node->lock);
-
     if (node->type != AML_DATA_UNINITALIZED)
     {
         aml_node_deinit(node);
@@ -470,7 +479,6 @@ uint64_t aml_node_init_integer(aml_node_t* node, uint64_t value, uint8_t bitWidt
     node->integer.value = value;
     node->integer.bitWidth = bitWidth;
 
-    mutex_release(&node->lock);
     return 0;
 }
 
@@ -482,8 +490,6 @@ uint64_t aml_node_init_integer_constant(aml_node_t* node, uint64_t value)
         return ERR;
     }
 
-    mutex_acquire_recursive(&node->lock);
-
     if (node->type != AML_DATA_UNINITALIZED)
     {
         aml_node_deinit(node);
@@ -492,7 +498,6 @@ uint64_t aml_node_init_integer_constant(aml_node_t* node, uint64_t value)
     node->type = AML_DATA_INTEGER_CONSTANT;
     node->integerConstant.value = value;
 
-    mutex_release(&node->lock);
     return 0;
 }
 
@@ -504,8 +509,6 @@ uint64_t aml_node_init_method(aml_node_t* node, aml_method_flags_t flags, aml_ad
         return ERR;
     }
 
-    mutex_acquire_recursive(&node->lock);
-
     if (node->type != AML_DATA_UNINITALIZED)
     {
         aml_node_deinit(node);
@@ -516,7 +519,6 @@ uint64_t aml_node_init_method(aml_node_t* node, aml_method_flags_t flags, aml_ad
     node->method.start = start;
     node->method.end = end;
 
-    mutex_release(&node->lock);
     return 0;
 }
 
@@ -528,8 +530,6 @@ uint64_t aml_node_init_mutex(aml_node_t* node, aml_sync_level_t syncLevel)
         return ERR;
     }
 
-    mutex_acquire_recursive(&node->lock);
-
     if (node->type != AML_DATA_UNINITALIZED)
     {
         aml_node_deinit(node);
@@ -539,7 +539,6 @@ uint64_t aml_node_init_mutex(aml_node_t* node, aml_sync_level_t syncLevel)
     node->mutex.syncLevel = syncLevel;
     mutex_init(&node->mutex.mutex);
 
-    mutex_release(&node->lock);
     return 0;
 }
 
@@ -551,8 +550,6 @@ uint64_t aml_node_init_object_reference(aml_node_t* node, aml_node_t* target)
         return ERR;
     }
 
-    mutex_acquire_recursive(&node->lock);
-
     if (node->type != AML_DATA_UNINITALIZED)
     {
         aml_node_deinit(node);
@@ -561,7 +558,6 @@ uint64_t aml_node_init_object_reference(aml_node_t* node, aml_node_t* target)
     node->type = AML_DATA_OBJECT_REFERENCE;
     node->objectReference.target = target;
 
-    mutex_release(&node->lock);
     return 0;
 }
 
@@ -573,8 +569,6 @@ uint64_t aml_node_init_opregion(aml_node_t* node, aml_region_space_t space, aml_
         return ERR;
     }
 
-    mutex_acquire_recursive(&node->lock);
-
     if (node->type != AML_DATA_UNINITALIZED)
     {
         aml_node_deinit(node);
@@ -585,7 +579,6 @@ uint64_t aml_node_init_opregion(aml_node_t* node, aml_region_space_t space, aml_
     node->opregion.offset = offset;
     node->opregion.length = length;
 
-    mutex_release(&node->lock);
     return 0;
 }
 
@@ -597,8 +590,6 @@ uint64_t aml_node_init_package(aml_node_t* node, uint64_t capacity)
         return ERR;
     }
 
-    mutex_acquire_recursive(&node->lock);
-
     if (node->type != AML_DATA_UNINITALIZED)
     {
         aml_node_deinit(node);
@@ -609,7 +600,6 @@ uint64_t aml_node_init_package(aml_node_t* node, uint64_t capacity)
     node->package.elements = heap_alloc(sizeof(aml_node_t) * capacity, HEAP_NONE);
     if (node->package.elements == NULL)
     {
-        mutex_release(&node->lock);
         return ERR;
     }
 
@@ -624,12 +614,10 @@ uint64_t aml_node_init_package(aml_node_t* node, uint64_t capacity)
             }
             heap_free(node->package.elements);
             node->package.elements = NULL;
-            mutex_release(&node->lock);
             return ERR;
         }
     }
 
-    mutex_release(&node->lock);
     return 0;
 }
 
@@ -642,8 +630,6 @@ uint64_t aml_node_init_processor(aml_node_t* node, aml_proc_id_t procId, aml_pbl
         return ERR;
     }
 
-    mutex_acquire_recursive(&node->lock);
-
     if (node->type != AML_DATA_UNINITALIZED)
     {
         aml_node_deinit(node);
@@ -654,7 +640,6 @@ uint64_t aml_node_init_processor(aml_node_t* node, aml_proc_id_t procId, aml_pbl
     node->processor.pblkAddr = pblkAddr;
     node->processor.pblkLen = pblkLen;
 
-    mutex_release(&node->lock);
     return 0;
 }
 
@@ -665,8 +650,6 @@ uint64_t aml_node_init_string(aml_node_t* node, const char* str, bool inPlace)
         errno = EINVAL;
         return ERR;
     }
-
-    mutex_acquire_recursive(&node->lock);
 
     if (node->type != AML_DATA_UNINITALIZED)
     {
@@ -685,7 +668,6 @@ uint64_t aml_node_init_string(aml_node_t* node, const char* str, bool inPlace)
         node->string.content = heap_alloc(strLen + 1, HEAP_NONE);
         if (node->string.content == NULL)
         {
-            mutex_release(&node->lock);
             return ERR;
         }
         memcpy(node->string.content, str, strLen);
@@ -693,7 +675,6 @@ uint64_t aml_node_init_string(aml_node_t* node, const char* str, bool inPlace)
         node->string.inPlace = false;
     }
 
-    mutex_release(&node->lock);
     return 0;
 }
 
@@ -703,8 +684,6 @@ void aml_node_deinit(aml_node_t* node)
     {
         return;
     }
-
-    mutex_acquire_recursive(&node->lock);
 
     switch (node->type)
     {
@@ -750,8 +729,6 @@ void aml_node_deinit(aml_node_t* node)
     }
 
     node->type = AML_DATA_UNINITALIZED;
-
-    mutex_release(&node->lock);
 }
 
 uint64_t aml_node_clone(aml_node_t* src, aml_node_t* dest)
@@ -766,9 +743,6 @@ uint64_t aml_node_clone(aml_node_t* src, aml_node_t* dest)
     {
         return 0;
     }
-
-    mutex_acquire_recursive(&src->lock);
-    mutex_acquire_recursive(&dest->lock);
 
     if (dest->type != AML_DATA_UNINITALIZED)
     {
@@ -785,8 +759,6 @@ uint64_t aml_node_clone(aml_node_t* src, aml_node_t* dest)
         break;
     }
 
-    mutex_release(&dest->lock);
-    mutex_release(&src->lock);
     return 0;
 }
 
@@ -885,4 +857,140 @@ aml_node_t* aml_node_find(const char* path, aml_node_t* start)
     }
 
     return current;
+}
+uint64_t aml_node_put_bits_at(aml_node_t* node, uint64_t value, aml_bit_size_t bitOffset,
+    aml_bit_size_t bitSize)
+{
+    if (node == NULL || bitSize == 0 || bitSize > 64)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    switch (node->type)
+    {
+    case AML_DATA_INTEGER:
+        if (bitOffset + bitSize > node->integer.bitWidth)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+
+        uint64_t mask;
+        if (bitSize == 64)
+        {
+            mask = ~UINT64_C(0);
+        }
+        else
+        {
+            mask = (UINT64_C(1) << bitSize) - 1;
+        }
+
+        node->integer.value &= ~(mask << bitOffset);
+        node->integer.value |= (value & mask) << bitOffset;
+        break;
+    case AML_DATA_BUFFER:
+        if (bitOffset + bitSize > node->buffer.length * 8)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+        for (aml_bit_size_t i = 0; i < bitSize; i++) // TODO: Optimize
+        {
+            aml_bit_size_t totalBitPos = bitOffset + i;
+            aml_bit_size_t bytePos = totalBitPos / 8;
+            aml_bit_size_t bitPos = totalBitPos % 8;
+
+            if (value & (UINT64_C(1) << i))
+            {
+                node->buffer.content[bytePos] |= (1 << bitPos);
+            }
+            else
+            {
+                node->buffer.content[bytePos] &= ~(1 << bitPos);
+            }
+        }
+        break;
+    default:
+        errno = EINVAL;
+        return ERR;
+    }
+
+    return 0;
+}
+
+uint64_t aml_node_get_bits_at(aml_node_t* node, aml_bit_size_t bitOffset, aml_bit_size_t bitSize,
+    uint64_t* out)
+{
+    if (node == NULL || out == NULL || bitSize == 0 || bitSize > 64)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    switch (node->type)
+    {
+    case AML_DATA_INTEGER:
+        if (bitOffset + bitSize > node->integer.bitWidth)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+
+        uint64_t mask;
+        if (bitSize == 64)
+        {
+            mask = ~UINT64_C(0);
+        }
+        else
+        {
+            mask = (UINT64_C(1) << bitSize) - 1;
+        }
+
+        *out = (node->integer.value >> bitOffset) & mask;
+        break;
+    case AML_DATA_BUFFER:
+        if (bitOffset + bitSize > node->buffer.length * 8)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+        *out = 0;
+        for (aml_bit_size_t i = 0; i < bitSize; i++) // TODO: Optimize
+        {
+            aml_bit_size_t totalBitPos = bitOffset + i;
+            aml_bit_size_t bytePos = totalBitPos / 8;
+            aml_bit_size_t bitPos = totalBitPos % 8;
+
+            if (node->buffer.content[bytePos] & (1 << bitPos))
+            {
+                *out |= (UINT64_C(1) << i);
+            }
+        }
+        break;
+    case AML_DATA_STRING:
+        if (bitOffset + bitSize > strlen(node->string.content) * 8)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+        *out = 0;
+        for (aml_bit_size_t i = 0; i < bitSize; i++) // TODO: Optimize
+        {
+            aml_bit_size_t totalBitPos = bitOffset + i;
+            aml_bit_size_t bytePos = totalBitPos / 8;
+            aml_bit_size_t bitPos = totalBitPos % 8;
+
+            if (node->string.content[bytePos] & (1 << bitPos))
+            {
+                *out |= (UINT64_C(1) << i);
+            }
+        }
+        break;
+    default:
+        errno = EINVAL;
+        return ERR;
+    }
+
+    return 0;
 }

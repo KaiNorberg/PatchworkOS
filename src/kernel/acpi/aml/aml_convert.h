@@ -3,7 +3,7 @@
 #include "aml_node.h"
 
 /**
- * @brief ACPI AML Type Conversion
+ * @brief Type Conversion
  * @defgroup kernel_acpi_aml_convert Convert
  * @ingroup kernel_acpi_aml
  *
