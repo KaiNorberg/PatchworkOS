@@ -1,6 +1,5 @@
 #pragma once
 
-#include "acpi/aml/aml.h"
 #include "data.h"
 
 #include <stdint.h>
@@ -24,12 +23,20 @@ typedef struct aml_state aml_state_t;
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out The output buffer to store the result of the TermArg.
- * @param expectedTypes A bitmask of expected data types. If the read TermArg does not match one of these types, an
- * error is returned.
+ * @param out The destination node to store the result of the TermArg.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out, aml_data_type_t expectedTypes);
+uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+
+/**
+ * @brief Wrapper around `aml_term_arg_read` that converts the result to an integer.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out The output buffer to store the integer value of the TermArg.
+ * @return On success, 0. On error, `ERR` and `errno` is set.
+ */
+uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out);
 
 /**
  * @brief Reads an Object structure from the AML byte stream.

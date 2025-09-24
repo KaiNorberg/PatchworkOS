@@ -4,11 +4,23 @@
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_to_string.h"
+#include "acpi/aml/aml_convert.h"
 #include "acpi/aml/aml_value.h"
 #include "data.h"
 #include "name.h"
 #include "package_length.h"
 #include "term.h"
+
+uint64_t aml_bank_value_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
+{
+    if (aml_term_arg_read(state, node, out, AML_DATA_INTEGER) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read term arg");
+        return ERR;
+    }
+
+    return 0;
+}
 
 uint64_t aml_region_space_read(aml_state_t* state, aml_region_space_t* out)
 {
@@ -30,33 +42,31 @@ uint64_t aml_region_space_read(aml_state_t* state, aml_region_space_t* out)
     return 0;
 }
 
-uint64_t aml_region_offset_read(aml_state_t* state, aml_node_t* node, aml_region_offset_t* out)
+uint64_t aml_region_offset_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out)
 {
-    aml_data_object_t termArg;
+    aml_node_t termArg = AML_NODE_CREATE;
     if (aml_term_arg_read(state, node, &termArg, AML_DATA_INTEGER) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read term arg");
         return ERR;
     }
 
-    *out = termArg.integer;
-    aml_data_object_deinit(&termArg);
-
+    *out = termArg.integer.value;
+    aml_node_deinit(&termArg);
     return 0;
 }
 
-uint64_t aml_region_len_read(aml_state_t* state, aml_node_t* node, aml_region_len_t* out)
+uint64_t aml_region_len_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out)
 {
-    aml_data_object_t termArg;
+    aml_node_t termArg = AML_NODE_CREATE;
     if (aml_term_arg_read(state, node, &termArg, AML_DATA_INTEGER) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read term arg");
         return ERR;
     }
 
-    *out = termArg.integer;
-    aml_data_object_deinit(&termArg);
-
+    *out = termArg.integer.value;
+    aml_node_deinit(&termArg);
     return 0;
 }
 
@@ -90,29 +100,33 @@ uint64_t aml_def_op_region_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_region_offset_t regionOffset;
+    aml_qword_data_t regionOffset;
     if (aml_region_offset_read(state, node, &regionOffset) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read region offset");
         return ERR;
     }
 
-    aml_region_len_t regionLen;
+    aml_qword_data_t regionLen;
     if (aml_region_len_read(state, node, &regionLen) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read region len");
         return ERR;
     }
 
-    aml_node_t* newNode = aml_node_add(&nameString, node, AML_DATA_OPREGION);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_NONE);
     if (newNode == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node");
         return ERR;
     }
-    newNode->opregion.space = regionSpace;
-    newNode->opregion.offset = regionOffset;
-    newNode->opregion.length = regionLen;
+
+    if (aml_node_init_opregion(newNode, regionSpace, regionOffset, regionLen) == ERR)
+    {
+        aml_node_free(newNode);
+        AML_DEBUG_ERROR(state, "Failed to init opregion");
+        return ERR;
+    }
 
     return 0;
 }
@@ -168,28 +182,32 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
 
     switch (ctx->type)
     {
-    case AML_FIELD_LIST_TYPE_NORMAL:
+    case AML_FIELD_LIST_TYPE_FIELD:
     {
-        if (ctx->normal.opregion == NULL)
+        if (ctx->field.opregion == NULL)
         {
             AML_DEBUG_ERROR(state, "opregion is null");
             errno = EILSEQ;
             return ERR;
         }
 
-        aml_node_t* newNode = aml_node_new(node, name->name, AML_DATA_FIELD);
+        aml_node_t* newNode = aml_node_new(node, name->name, AML_NODE_NONE);
         if (newNode == NULL)
         {
-            AML_DEBUG_ERROR(state, "Failed to add node");
+            AML_DEBUG_ERROR(state, "Failed to create new node");
             return ERR;
         }
-        newNode->field.opregion = ctx->normal.opregion;
-        newNode->field.flags = ctx->flags;
-        newNode->field.bitOffset = ctx->currentOffset;
-        newNode->field.bitSize = pkgLength;
+
+        if (aml_node_init_field_unit_field(newNode, ctx->field.opregion, ctx->flags, ctx->currentOffset, pkgLength) ==
+            ERR)
+        {
+            aml_node_free(newNode);
+            AML_DEBUG_ERROR(state, "Failed to init field unit");
+            return ERR;
+        }
     }
     break;
-    case AML_FIELD_LIST_TYPE_INDEX:
+    case AML_FIELD_LIST_TYPE_INDEX_FIELD:
     {
         if (ctx->index.indexNode == NULL)
         {
@@ -198,7 +216,8 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
             return ERR;
         }
 
-        if (ctx->index.indexNode->type != AML_DATA_FIELD)
+        if (ctx->index.indexNode->type != AML_DATA_FIELD_UNIT ||
+            ctx->index.indexNode->fieldUnit.type != AML_FIELD_UNIT_FIELD)
         {
             AML_DEBUG_ERROR(state, "indexNode is not a field");
             errno = EILSEQ;
@@ -212,20 +231,23 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
             return ERR;
         }
 
-        aml_node_t* newNode = aml_node_new(node, name->name, AML_DATA_INDEX_FIELD);
+        aml_node_t* newNode = aml_node_new(node, name->name, AML_NODE_NONE);
         if (newNode == NULL)
         {
-            AML_DEBUG_ERROR(state, "Failed to add node");
+            AML_DEBUG_ERROR(state, "Failed to create new node");
             return ERR;
         }
-        newNode->indexField.indexNode = ctx->index.indexNode;
-        newNode->indexField.dataNode = ctx->index.dataNode;
-        newNode->indexField.flags = ctx->flags;
-        newNode->indexField.bitOffset = ctx->currentOffset;
-        newNode->indexField.bitSize = pkgLength;
+
+        if (aml_node_init_field_unit_index_field(newNode, ctx->index.indexNode, ctx->index.dataNode, ctx->flags,
+                ctx->currentOffset, pkgLength) == ERR)
+        {
+            aml_node_free(newNode);
+            AML_DEBUG_ERROR(state, "Failed to init field unit");
+            return ERR;
+        }
     }
     break;
-    case AML_FIELD_LIST_TYPE_BANK:
+    case AML_FIELD_LIST_TYPE_BANK_FIELD:
     {
         if (ctx->bank.region == NULL)
         {
@@ -241,23 +263,20 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_li
             return ERR;
         }
 
-        aml_node_t* newNode = aml_node_new(node, name->name, AML_DATA_BANK_FIELD);
+        aml_node_t* newNode = aml_node_new(node, name->name, AML_NODE_NONE);
         if (newNode == NULL)
         {
             AML_DEBUG_ERROR(state, "Failed to add node");
             return ERR;
         }
-        if (aml_data_object_clone(&newNode->bankField.bankValue, ctx->bank.bankValue) == ERR)
+
+        if (aml_node_init_field_unit_bank_field(newNode, ctx->bank.opregion, ctx->bank.bank, ctx->bank.bankValue,
+                ctx->flags, ctx->currentOffset, pkgLength) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to clone bank value");
             aml_node_free(newNode);
+            AML_DEBUG_ERROR(state, "Failed to init bank field");
             return ERR;
         }
-        newNode->bankField.opregion = ctx->bank.region;
-        newNode->bankField.bank = ctx->bank.bank;
-        newNode->bankField.flags = ctx->flags;
-        newNode->bankField.bitOffset = ctx->currentOffset;
-        newNode->bankField.bitSize = pkgLength;
     }
     break;
     default:
@@ -360,10 +379,10 @@ uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_name_string_t nameString;
-    if (aml_name_string_read(state, &nameString) == ERR)
+    aml_node_t* opregion = NULL;
+    if (aml_name_string_read_and_resolve(state, node, &opregion) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read name string");
+        AML_DEBUG_ERROR(state, "Failed to read or resolve name string");
         return ERR;
     }
 
@@ -377,18 +396,11 @@ uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node)
     aml_address_t end = start + pkgLength;
 
     aml_field_list_ctx_t ctx = {
-        .type = AML_FIELD_LIST_TYPE_NORMAL,
-        .normal.opregion = aml_node_find(&nameString, node),
+        .type = AML_FIELD_LIST_TYPE_FIELD,
         .flags = fieldFlags,
         .currentOffset = 0,
+        .field.opregion = opregion,
     };
-
-    if (ctx.normal.opregion == NULL)
-    {
-        AML_DEBUG_ERROR(state, "Field OpRegion '%s' not found\n", aml_name_string_to_string(&nameString));
-        errno = EILSEQ;
-        return ERR;
-    }
 
     if (aml_field_list_read(state, node, &ctx, end) == ERR)
     {
@@ -424,17 +436,17 @@ uint64_t aml_def_index_field_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_name_string_t indexNameString;
-    if (aml_name_string_read(state, &indexNameString) == ERR)
+    aml_node_t* indexNode = NULL;
+    if (aml_name_string_read_and_resolve(state, node, &indexNode) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read index name string");
+        AML_DEBUG_ERROR(state, "Failed to read or resolve index name string");
         return ERR;
     }
 
-    aml_name_string_t dataNameString;
-    if (aml_name_string_read(state, &dataNameString) == ERR)
+    aml_node_t* dataNode = NULL;
+    if (aml_name_string_read_and_resolve(state, node, &dataNode) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read data name string");
+        AML_DEBUG_ERROR(state, "Failed to read or resolve data name string");
         return ERR;
     }
 
@@ -448,26 +460,12 @@ uint64_t aml_def_index_field_read(aml_state_t* state, aml_node_t* node)
     aml_address_t end = start + pkgLength;
 
     aml_field_list_ctx_t ctx = {
-        .type = AML_FIELD_LIST_TYPE_INDEX,
-        .index.indexNode = aml_node_find(&indexNameString, node),
-        .index.dataNode = aml_node_find(&dataNameString, node),
+        .type = AML_FIELD_LIST_TYPE_INDEX_FIELD,
         .flags = fieldFlags,
         .currentOffset = 0,
+        .index.indexNode = indexNode,
+        .index.dataNode = dataNode,
     };
-
-    if (ctx.index.indexNode == NULL)
-    {
-        AML_DEBUG_ERROR(state, "IndexField IndexNode '%s' not found\n", aml_name_string_to_string(&indexNameString));
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    if (ctx.index.dataNode == NULL)
-    {
-        AML_DEBUG_ERROR(state, "IndexField DataNode '%s' not found\n", aml_name_string_to_string(&dataNameString));
-        errno = EILSEQ;
-        return ERR;
-    }
 
     if (aml_field_list_read(state, node, &ctx, end) == ERR)
     {
@@ -505,68 +503,54 @@ uint64_t aml_def_bank_field_read(aml_state_t* state, aml_node_t* node)
 
     aml_address_t end = start + pkgLength;
 
-    aml_name_string_t regionName;
-    if (aml_name_string_read(state, &regionName) == ERR)
+    aml_node_t* opregion = NULL;
+    if (aml_name_string_read_and_resolve(state, node, &opregion) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read region name");
+        AML_DEBUG_ERROR(state, "Failed to read or resolve opregion name string");
         return ERR;
     }
 
-    aml_name_string_t bankName;
-    if (aml_name_string_read(state, &bankName) == ERR)
+    aml_node_t* bank = NULL;
+    if (aml_name_string_read_and_resolve(state, node, &bank) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read bank name");
+        AML_DEBUG_ERROR(state, "Failed to read or resolve bank name string");
         return ERR;
     }
 
-    aml_data_object_t bankValue;
-    if (aml_bank_value_read(state, node, &bankValue) == ERR)
+    aml_node_t bankValueNode = AML_NODE_CREATE;
+    if (aml_bank_value_read(state, node, &bankValueNode) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read bank value");
         return ERR;
     }
 
+    assert(bankValueNode.type == AML_DATA_INTEGER);
+
+    uint64_t bankValue = bankValueNode.integer.value;
+    aml_node_deinit(&bankValueNode);
+
     aml_field_flags_t fieldFlags;
     if (aml_field_flags_read(state, &fieldFlags) == ERR)
     {
-        aml_data_object_deinit(&bankValue);
         AML_DEBUG_ERROR(state, "Failed to read field flags");
         return ERR;
     }
 
     aml_field_list_ctx_t ctx = {
-        .type = AML_FIELD_LIST_TYPE_BANK,
-        .bank.region = aml_node_find(&regionName, node),
-        .bank.bank = aml_node_find(&bankName, node),
-        .bank.bankValue = &bankValue,
+        .type = AML_FIELD_LIST_TYPE_BANK_FIELD,
         .flags = fieldFlags,
         .currentOffset = 0,
+        .bank.opregion = opregion,
+        .bank.bank = bank,
+        .bank.bankValue = bankValue,
     };
-
-    if (ctx.bank.region == NULL)
-    {
-        aml_data_object_deinit(&bankValue);
-        AML_DEBUG_ERROR(state, "BankField OpRegion '%s' not found\n", aml_name_string_to_string(&regionName));
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    if (ctx.bank.bank == NULL)
-    {
-        aml_data_object_deinit(&bankValue);
-        AML_DEBUG_ERROR(state, "BankField Bank '%s' not found\n", aml_name_string_to_string(&bankName));
-        errno = EILSEQ;
-        return ERR;
-    }
 
     if (aml_field_list_read(state, node, &ctx, end) == ERR)
     {
-        aml_data_object_deinit(&bankValue);
         AML_DEBUG_ERROR(state, "Failed to read field list");
         return ERR;
     }
 
-    aml_data_object_deinit(&bankValue);
     return 0;
 }
 
@@ -633,19 +617,23 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node)
 
     aml_address_t end = start + pkgLength;
 
-    aml_node_t* newNode = aml_node_add(&nameString, node, AML_DATA_METHOD);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_NONE);
     if (newNode == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node");
         return ERR;
     }
 
-    newNode->method.flags = methodFlags;
-    newNode->method.start = state->pos;
-    newNode->method.end = end;
+    if (aml_node_init_method(newNode, methodFlags, state->pos, end) == ERR)
+    {
+        aml_node_free(newNode);
+        AML_DEBUG_ERROR(state, "Failed to init method");
+        return ERR;
+    }
 
     // We are only defining the method, not executing it, so we skip its body, and only parse it when it is called.
-    state->pos = end;
+    uint64_t offset = end - state->pos;
+    aml_state_advance(state, offset);
 
     return 0;
 }
@@ -684,10 +672,17 @@ uint64_t aml_def_device_read(aml_state_t* state, aml_node_t* node)
 
     aml_address_t end = start + pkgLength;
 
-    aml_node_t* newNode = aml_node_add(&nameString, node, AML_DATA_DEVICE);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_NONE);
     if (newNode == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node");
+        return ERR;
+    }
+
+    if (aml_node_init_device(newNode) == ERR)
+    {
+        aml_node_free(newNode);
+        AML_DEBUG_ERROR(state, "Failed to init device");
         return ERR;
     }
 
@@ -744,14 +739,19 @@ uint64_t aml_def_mutex_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_node_t* newNode = aml_node_add(&nameString, node, AML_DATA_MUTEX);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_NONE);
     if (newNode == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node");
         return ERR;
     }
-    mutex_init(&newNode->mutex.mutex);
-    newNode->mutex.syncLevel = syncFlags;
+
+    if (aml_node_init_mutex(newNode, syncFlags) == ERR)
+    {
+        aml_node_free(newNode);
+        AML_DEBUG_ERROR(state, "Failed to init mutex");
+        return ERR;
+    }
 
     return 0;
 }
@@ -826,21 +826,24 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node)
 
     aml_address_t end = start + pkgLength;
 
-    aml_node_t* newNode = aml_node_add(&nameString, node, AML_DATA_PROCESSOR);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_NONE);
     if (newNode == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node");
         return ERR;
     }
-    newNode->type = AML_DATA_PROCESSOR;
-    newNode->processor.procId = procId;
-    newNode->processor.pblkAddr = pblkAddr;
-    newNode->processor.pblkLen = pblkLen;
+
+    if (aml_node_init_processor(newNode, procId, pblkAddr, pblkLen) == ERR)
+    {
+        aml_node_free(newNode);
+        AML_DEBUG_ERROR(state, "Failed to init processor");
+        return ERR;
+    }
 
     return aml_term_list_read(state, newNode, end);
 }
 
-uint64_t aml_source_buff_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+uint64_t aml_source_buff_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     if (aml_term_arg_read(state, node, out, AML_DATA_BUFFER) == ERR)
     {
@@ -851,7 +854,7 @@ uint64_t aml_source_buff_read(aml_state_t* state, aml_node_t* node, aml_data_obj
     return 0;
 }
 
-uint64_t aml_bit_index_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+uint64_t aml_bit_index_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     if (aml_term_arg_read(state, node, out, AML_DATA_INTEGER) == ERR)
     {
@@ -862,7 +865,7 @@ uint64_t aml_bit_index_read(aml_state_t* state, aml_node_t* node, aml_data_objec
     return 0;
 }
 
-uint64_t aml_byte_index_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+uint64_t aml_byte_index_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     if (aml_term_arg_read(state, node, out, AML_DATA_INTEGER) == ERR)
     {
@@ -876,7 +879,7 @@ uint64_t aml_byte_index_read(aml_state_t* state, aml_node_t* node, aml_data_obje
 uint64_t aml_def_create_bit_field_read(aml_state_t* state, aml_node_t* node)
 {
     aml_value_t value;
-    if (aml_value_read(state, &value) == ERR)
+    if (aml_value_read_no_ext(state, &value) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read value");
         return ERR;
@@ -889,294 +892,138 @@ uint64_t aml_def_create_bit_field_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_data_object_t sourceBuff;
+    aml_node_t sourceBuff = AML_NODE_CREATE;
     if (aml_source_buff_read(state, node, &sourceBuff) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read source buff");
         return ERR;
     }
 
-    aml_data_object_t bitIndex;
+    assert(sourceBuff.type == AML_DATA_BUFFER);
+
+    aml_node_t bitIndex = AML_NODE_CREATE;
     if (aml_bit_index_read(state, node, &bitIndex) == ERR)
     {
-        aml_data_object_deinit(&sourceBuff);
+        aml_node_deinit(&sourceBuff);
         AML_DEBUG_ERROR(state, "Failed to read bit index");
         return ERR;
     }
 
+    assert(bitIndex.type == AML_DATA_INTEGER);
+
     aml_name_string_t nameString;
     if (aml_name_string_read(state, &nameString) == ERR)
     {
-        aml_data_object_deinit(&sourceBuff);
-        aml_data_object_deinit(&bitIndex);
+        aml_node_deinit(&sourceBuff);
+        aml_node_deinit(&bitIndex);
         AML_DEBUG_ERROR(state, "Failed to read name string");
         return ERR;
     }
 
-    assert(sourceBuff.type == AML_DATA_BUFFER);
-    assert(bitIndex.type == AML_DATA_INTEGER);
-
-    aml_node_t* newNode = aml_node_add(&nameString, node, AML_DATA_BUFFER_FIELD);
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_NONE);
     if (newNode == NULL)
     {
-        aml_data_object_deinit(&sourceBuff);
-        aml_data_object_deinit(&bitIndex);
+        aml_node_deinit(&sourceBuff);
+        aml_node_deinit(&bitIndex);
         AML_DEBUG_ERROR(state, "Failed to add node");
         return ERR;
     }
 
-    newNode->bufferField.buffer = &sourceBuff.buffer; // Take ownership of the buffer.
-    newNode->bufferField.bitSize = 1;
-    newNode->bufferField.bitIndex = bitIndex.integer;
-    aml_data_object_deinit(&bitIndex);
+    if (aml_node_init_buffer_field(newNode, sourceBuff.buffer.content, 1, bitIndex.integer.value) == ERR)
+    {
+        aml_node_free(newNode);
+        aml_node_deinit(&sourceBuff);
+        aml_node_deinit(&bitIndex);
+        AML_DEBUG_ERROR(state, "Failed to init buffer field");
+        return ERR;
+    }
+
+    return 0;
+}
+
+static inline uint64_t aml_def_create_field_read_helper(aml_state_t* state, aml_node_t* node, uint8_t fieldWidth, aml_value_num_t expectedOp)
+{
+    aml_value_t value;
+    if (aml_value_read_no_ext(state, &value) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read value");
+        return ERR;
+    }
+
+    if (value.num != expectedOp)
+    {
+        AML_DEBUG_ERROR(state, "Invalid create field op: 0x%x", value.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_node_t sourceBuff = AML_NODE_CREATE;
+    if (aml_source_buff_read(state, node, &sourceBuff) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read source buff");
+        return ERR;
+    }
+
+    assert(sourceBuff.type == AML_DATA_BUFFER);
+
+    aml_node_t byteIndex = AML_NODE_CREATE;
+    if (aml_byte_index_read(state, node, &byteIndex) == ERR)
+    {
+        aml_node_deinit(&sourceBuff);
+        AML_DEBUG_ERROR(state, "Failed to read byte index");
+        return ERR;
+    }
+
+    assert(byteIndex.type == AML_DATA_INTEGER);
+
+    aml_name_string_t nameString;
+    if (aml_name_string_read(state, &nameString) == ERR)
+    {
+        aml_node_deinit(&sourceBuff);
+        aml_node_deinit(&byteIndex);
+        AML_DEBUG_ERROR(state, "Failed to read name string");
+        return ERR;
+    }
+
+    aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_NONE);
+    if (newNode == NULL)
+    {
+        aml_node_deinit(&sourceBuff);
+        aml_node_deinit(&byteIndex);
+        AML_DEBUG_ERROR(state, "Failed to add node");
+        return ERR;
+    }
+
+    if (aml_node_init_buffer_field(newNode, sourceBuff.buffer.content, fieldWidth, byteIndex.integer.value * 8) == ERR)
+    {
+        aml_node_free(newNode);
+        aml_node_deinit(&sourceBuff);
+        aml_node_deinit(&byteIndex);
+        AML_DEBUG_ERROR(state, "Failed to init buffer field");
+        return ERR;
+    }
+
     return 0;
 }
 
 uint64_t aml_def_create_byte_field_read(aml_state_t* state, aml_node_t* node)
 {
-    aml_value_t value;
-    if (aml_value_read(state, &value) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read value");
-        return ERR;
-    }
-
-    if (value.num != AML_CREATE_BYTE_FIELD_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid create byte field op: 0x%x", value.num);
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    aml_data_object_t sourceBuff;
-    if (aml_source_buff_read(state, node, &sourceBuff) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read source buff");
-        return ERR;
-    }
-
-    aml_data_object_t byteIndex;
-    if (aml_bit_index_read(state, node, &byteIndex) == ERR)
-    {
-        aml_data_object_deinit(&sourceBuff);
-        AML_DEBUG_ERROR(state, "Failed to read byte index");
-        return ERR;
-    }
-
-    aml_name_string_t nameString;
-    if (aml_name_string_read(state, &nameString) == ERR)
-    {
-        aml_data_object_deinit(&sourceBuff);
-        aml_data_object_deinit(&byteIndex);
-        AML_DEBUG_ERROR(state, "Failed to read name string");
-        return ERR;
-    }
-
-    assert(sourceBuff.type == AML_DATA_BUFFER);
-    assert(byteIndex.type == AML_DATA_INTEGER);
-
-    aml_node_t* newNode = aml_node_add(&nameString, node, AML_DATA_BUFFER_FIELD);
-    if (newNode == NULL)
-    {
-        aml_data_object_deinit(&sourceBuff);
-        aml_data_object_deinit(&byteIndex);
-        AML_DEBUG_ERROR(state, "Failed to add node");
-        return ERR;
-    }
-
-    newNode->bufferField.buffer = &sourceBuff.buffer; // Take ownership of the buffer.
-    newNode->bufferField.bitSize = 8;
-    newNode->bufferField.bitIndex = byteIndex.integer * 8;
-    aml_data_object_deinit(&byteIndex);
-    return 0;
+    return aml_def_create_field_read_helper(state, node, 8, AML_CREATE_BYTE_FIELD_OP);
 }
 
 uint64_t aml_def_create_word_field_read(aml_state_t* state, aml_node_t* node)
 {
-    aml_value_t value;
-    if (aml_value_read(state, &value) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read value");
-        return ERR;
-    }
-
-    if (value.num != AML_CREATE_WORD_FIELD_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid create word field op: 0x%x", value.num);
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    aml_data_object_t sourceBuff;
-    if (aml_source_buff_read(state, node, &sourceBuff) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read source buff");
-        return ERR;
-    }
-
-    aml_data_object_t byteIndex;
-    if (aml_bit_index_read(state, node, &byteIndex) == ERR)
-    {
-        aml_data_object_deinit(&sourceBuff);
-        AML_DEBUG_ERROR(state, "Failed to read byte index");
-        return ERR;
-    }
-
-    aml_name_string_t nameString;
-    if (aml_name_string_read(state, &nameString) == ERR)
-    {
-        aml_data_object_deinit(&sourceBuff);
-        aml_data_object_deinit(&byteIndex);
-        AML_DEBUG_ERROR(state, "Failed to read name string");
-        return ERR;
-    }
-
-    assert(sourceBuff.type == AML_DATA_BUFFER);
-    assert(byteIndex.type == AML_DATA_INTEGER);
-
-    aml_node_t* newNode = aml_node_add(&nameString, node, AML_DATA_BUFFER_FIELD);
-    if (newNode == NULL)
-    {
-        aml_data_object_deinit(&sourceBuff);
-        aml_data_object_deinit(&byteIndex);
-        AML_DEBUG_ERROR(state, "Failed to add node");
-        return ERR;
-    }
-
-    newNode->bufferField.buffer = &sourceBuff.buffer; // Take ownership of the buffer.
-    newNode->bufferField.bitSize = 16;
-    newNode->bufferField.bitIndex = byteIndex.integer * 8;
-    aml_data_object_deinit(&byteIndex);
-    return 0;
+    return aml_def_create_field_read_helper(state, node, 16, AML_CREATE_WORD_FIELD_OP);
 }
 
 uint64_t aml_def_create_dword_field_read(aml_state_t* state, aml_node_t* node)
 {
-    aml_value_t value;
-    if (aml_value_read(state, &value) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read value");
-        return ERR;
-    }
-
-    if (value.num != AML_CREATE_DWORD_FIELD_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid create dword field op: 0x%x", value.num);
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    aml_data_object_t sourceBuff;
-    if (aml_source_buff_read(state, node, &sourceBuff) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read source buff");
-        return ERR;
-    }
-
-    aml_data_object_t byteIndex;
-    if (aml_bit_index_read(state, node, &byteIndex) == ERR)
-    {
-        aml_data_object_deinit(&sourceBuff);
-        AML_DEBUG_ERROR(state, "Failed to read byte index");
-        return ERR;
-    }
-
-    aml_name_string_t nameString;
-    if (aml_name_string_read(state, &nameString) == ERR)
-    {
-        aml_data_object_deinit(&sourceBuff);
-        aml_data_object_deinit(&byteIndex);
-        AML_DEBUG_ERROR(state, "Failed to read name string");
-        return ERR;
-    }
-
-    assert(sourceBuff.type == AML_DATA_BUFFER);
-    assert(byteIndex.type == AML_DATA_INTEGER);
-
-    aml_node_t* newNode = aml_node_add(&nameString, node, AML_DATA_BUFFER_FIELD);
-    if (newNode == NULL)
-    {
-        aml_data_object_deinit(&sourceBuff);
-        aml_data_object_deinit(&byteIndex);
-        AML_DEBUG_ERROR(state, "Failed to add node");
-        return ERR;
-    }
-
-    newNode->bufferField.buffer = &sourceBuff.buffer; // Take ownership of the buffer.
-    newNode->bufferField.bitSize = 32;
-    newNode->bufferField.bitIndex = byteIndex.integer * 8;
-    aml_data_object_deinit(&byteIndex);
-    return 0;
+    return aml_def_create_field_read_helper(state, node, 32, AML_CREATE_DWORD_FIELD_OP);
 }
 
 uint64_t aml_def_create_qword_field_read(aml_state_t* state, aml_node_t* node)
 {
-    aml_value_t value;
-    if (aml_value_read(state, &value) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read value");
-        return ERR;
-    }
-
-    if (value.num != AML_CREATE_QWORD_FIELD_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid create qword field op: 0x%x", value.num);
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    aml_data_object_t sourceBuff;
-    if (aml_source_buff_read(state, node, &sourceBuff) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read source buff");
-        return ERR;
-    }
-
-    aml_data_object_t byteIndex;
-    if (aml_bit_index_read(state, node, &byteIndex) == ERR)
-    {
-        aml_data_object_deinit(&sourceBuff);
-        AML_DEBUG_ERROR(state, "Failed to read byte index");
-        return ERR;
-    }
-
-    aml_name_string_t nameString;
-    if (aml_name_string_read(state, &nameString) == ERR)
-    {
-        aml_data_object_deinit(&sourceBuff);
-        aml_data_object_deinit(&byteIndex);
-        AML_DEBUG_ERROR(state, "Failed to read name string");
-        return ERR;
-    }
-
-    assert(sourceBuff.type == AML_DATA_BUFFER);
-    assert(byteIndex.type == AML_DATA_INTEGER);
-
-    aml_node_t* newNode = aml_node_add(&nameString, node, AML_DATA_BUFFER_FIELD);
-    if (newNode == NULL)
-    {
-        aml_data_object_deinit(&sourceBuff);
-        aml_data_object_deinit(&byteIndex);
-        AML_DEBUG_ERROR(state, "Failed to add node");
-        return ERR;
-    }
-
-    newNode->bufferField.buffer = &sourceBuff.buffer; // Take ownership of the buffer.
-    newNode->bufferField.bitSize = 64;
-    newNode->bufferField.bitIndex = byteIndex.integer * 8;
-    aml_data_object_deinit(&byteIndex);
-    return 0;
-}
-
-uint64_t aml_bank_value_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
-{
-    if (aml_term_arg_read(state, node, out, AML_DATA_INTEGER) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read term arg");
-        return ERR;
-    }
-
-    return 0;
+    return aml_def_create_field_read_helper(state, node, 64, AML_CREATE_QWORD_FIELD_OP);
 }
 
 uint64_t aml_named_obj_read(aml_state_t* state, aml_node_t* node)

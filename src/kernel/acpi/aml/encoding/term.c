@@ -3,6 +3,7 @@
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_value.h"
+#include "acpi/aml/aml_convert.h"
 #include "data.h"
 #include "expression.h"
 #include "named.h"
@@ -12,7 +13,7 @@
 #include <errno.h>
 #include <stdint.h>
 
-uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out, aml_data_type_t expectedTypes)
+uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
@@ -39,7 +40,7 @@ uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_data_object
         result = ERR;
         break;
     default:
-        result = aml_data_object_read(state, out);
+        result = aml_data_object_read(state, node, out);
     }
 
     if (result == ERR)
@@ -48,15 +49,32 @@ uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_data_object
         return ERR;
     }
 
-    if (!(out->type & expectedTypes))
+    return result;
+}
+
+uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out)
+{
+    aml_node_t temp = AML_NODE_CREATE;
+    if (aml_term_arg_read(state, node, &temp) == ERR)
     {
-        aml_data_object_deinit(out);
-        AML_DEBUG_ERROR(state, "Unexpected data type: %d (expected %b)", out->type, expectedTypes);
-        errno = EILSEQ;
+        AML_DEBUG_ERROR(state, "Failed to read term arg");
         return ERR;
     }
 
-    return result;
+    aml_node_t integer = AML_NODE_CREATE;
+    if (aml_convert_to_integer(&temp, &integer) == ERR)
+    {
+        aml_node_deinit(&temp);
+        AML_DEBUG_ERROR(state, "Failed to convert term arg to integer");
+        return ERR;
+    }
+
+    assert(integer.type == AML_DATA_INTEGER);
+
+    *out = integer.integer.value;
+    aml_node_deinit(&temp);
+    aml_node_deinit(&integer);
+    return 0;
 }
 
 uint64_t aml_object_read(aml_state_t* state, aml_node_t* node)
@@ -93,20 +111,30 @@ uint64_t aml_term_obj_read(aml_state_t* state, aml_node_t* node)
     switch (value.props->type)
     {
     case AML_VALUE_TYPE_STATEMENT:
-        return aml_statement_opcode_read(state, node);
+        if (aml_statement_opcode_read(state, node) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read statement opcode");
+            return ERR;
+        }
+        return 0;
     case AML_VALUE_TYPE_EXPRESSION:
     {
-        aml_data_object_t temp;
+        aml_node_t temp = AML_NODE_CREATE;
         if (aml_expression_opcode_read(state, node, &temp) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read expression opcode");
             return ERR;
         }
-        aml_data_object_deinit(&temp);
+        aml_node_deinit(&temp);
         return 0;
     }
     default:
-        return aml_object_read(state, node);
+        if (aml_object_read(state, node) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read object");
+            return ERR;
+        }
+        return 0;
     }
 }
 

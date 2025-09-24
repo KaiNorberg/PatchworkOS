@@ -152,10 +152,11 @@ uint64_t aml_string_read(aml_state_t* state, aml_string_t* out);
  * String | ConstObj | RevisionOp | DefBuffer`.
  *
  * @param state The AML state.
+ * @param node The current AML node.
  * @param out Pointer to the node where the ComputationalData will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_computational_data_read(aml_state_t* state, aml_node_t* out);
+uint64_t aml_computational_data_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
 
 /**
  * @brief Read a NumElements structure from the AML stream.

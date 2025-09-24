@@ -38,4 +38,13 @@ uint64_t aml_convert_to_actual_data(aml_node_t* src, aml_node_t* dest);
  */
 uint64_t aml_convert_and_store(aml_node_t* src, aml_node_t* dest);
 
+/**
+ * @brief Convert data to an integer and store it in the destination node.
+ *
+ * @param src Pointer to the source node containing the data to convert.
+ * @param dest Pointer to the destination node where the integer value will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_convert_to_integer(aml_node_t* src, aml_node_t* dest);
+
 /** @} */

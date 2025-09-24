@@ -203,13 +203,38 @@ uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out);
  * A NameString structure is defined as `NameString := <rootchar namepath> | <prefixpath namepath>`.
  *
  * @param state The AML state.
- * @param out Pointer to destination where the name string will be stored.
+ * @param out Pointer to destination where the NameString will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
 uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out);
 
 /**
- * @brief Reads a SimpleName structure from the AML byte stream.
+ * @brief Reads the next data as a NameString structure from the AML bytecode stream and resolves it to a node.
+ * *
+ * If the NameString does not resolve to an object, then out will be set to `NULL` but its not considered an error.
+ *
+ * A search through the ACPI namespace follows these rules:
+ * - If the NameString starts with a root character (`\`), the search starts from the root node.
+ * - If the NameString starts with one or more parent prefix characters (`^`), the search starts from the parent of the
+ *    `start` node, moving up one level for each `^`.
+ * - If the NameString does not start with a root or parent prefix character, the search starts from the `start` node.
+ *    If `start` is `NULL`, the search starts from the root node.
+ * - Attempt to find a matching name in the current namespace scope (the `start` node and its children).
+ * - If the matching name is not found, move up to the parent node and repeat the search.
+ * - This continues until either a match is found or the node does not have a parent (i.e., the root is reached).
+ *
+ * @see Section 5.3 of the ACPI specification for more details.
+ * @see aml_name_string_read() for reading the NameString from the AML byte stream.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to where the pointer to the resolved node will be stored.
+ * @return On success, 0. On error, `ERR` and `errno` is set.
+ */
+uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out);
+
+/**
+ * @brief Reads a SimpleName structure from the AML byte stream and resolves it to a node.
  *
  * A SimpleName structure is defined as `SimpleName := NameString | ArgObj | LocalObj`.
  *
@@ -220,10 +245,10 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out);
  * @param out Pointer to where the pointer to the resolved node will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-uint64_t aml_simple_name_read(aml_state_t* state, aml_node_t* node, aml_node_t** out);
+uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out);
 
 /**
- * @brief Reads a SuperName structure from the AML byte stream.
+ * @brief Reads a SuperName structure from the AML byte stream and resolves it to a node.
  *
  * A SuperName structure is defined as `SuperName := SimpleName | DebugObj | ReferenceTypeOpcode`.
  *
@@ -234,21 +259,21 @@ uint64_t aml_simple_name_read(aml_state_t* state, aml_node_t* node, aml_node_t**
  * @param out Pointer to where the pointer to the resolved node will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-uint64_t aml_super_name_read(aml_state_t* state, aml_node_t* node, aml_node_t** out);
+uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out);
 
 /**
- * @brief Reads a Target structure from the AML byte stream.
+ * @brief Reads a Target structure from the AML byte stream and resolves it to a node.
  *
  * A Target structure is defined as `Target := SuperName | NullName`.
  *
- * If the Target is a NullName or the SuperName does not resolve to an object, then out will be set to `NULL` but its not
- * considered an error.
+ * If the Target is a NullName or the SuperName does not resolve to an object, then out will be set to `NULL` but its
+ * not considered an error.
  *
  * @param state The AML state.
  * @param node The current AML node.
  * @param out Pointer to where the pointer to the resolved node will be stored.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-uint64_t aml_target_read(aml_state_t* state, aml_node_t* node, aml_node_t** out);
+uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out);
 
 /** @} */

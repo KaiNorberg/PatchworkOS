@@ -26,18 +26,6 @@ typedef struct
 } aml_term_arg_list_t;
 
 /**
- * @brief ACPI AML Buffer structure.
- * @struct aml_buffer_t
- */
-typedef struct
-{
-    uint8_t* content;
-    uint64_t length;
-    uint64_t capacity;
-    bool inPlace;
-} aml_buffer_t;
-
-/**
  * @brief Reads a BufferSize structure from the AML byte stream.
  *
  * A BufferSize structure is defined as `BufferSize := TermArg => Integer`.
@@ -60,11 +48,10 @@ uint64_t aml_buffer_size_read(aml_state_t* state, aml_node_t* node, aml_qword_da
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out Pointer to the buffer where the Buffer will be stored. This will point to a location within the AML
- * bytestream and should not be freed or modified.
+ * @param out Pointer to the node where the buffer will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_buffer_read(aml_state_t* state, aml_node_t* node, aml_buffer_t* out);
+uint64_t aml_def_buffer_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
 
 /**
  * @brief Reads a TermArgList structure from the AML byte stream.
@@ -131,10 +118,10 @@ uint64_t aml_def_store_read(aml_state_t* state, aml_node_t* node, aml_node_t* ou
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out Pointer to the node where the result of the operand will be stored, will always be an integer.
+ * @param out Pointer to the buffer where the result of the operand will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_operand_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+uint64_t aml_operand_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out);
 
 /**
  * @brief Reads a Dividend structure from the AML byte stream.
@@ -143,10 +130,10 @@ uint64_t aml_operand_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out Pointer to the node where the result of the dividend will be stored, will always be an integer.
+ * @param out Pointer to the buffer where the result of the dividend will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_dividend_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+uint64_t aml_dividend_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out);
 
 /**
  * @brief Reads a Divisor structure from the AML byte stream.
@@ -155,10 +142,10 @@ uint64_t aml_dividend_read(aml_state_t* state, aml_node_t* node, aml_node_t* out
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out Pointer to the node where the result of the divisor will be stored, will always be an integer.
+ * @param out Pointer to the buffer where the result of the divisor will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_divisor_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+uint64_t aml_divisor_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out);
 
 /**
  * @brief Reads a Remainder structure from the AML byte stream.
@@ -167,10 +154,10 @@ uint64_t aml_divisor_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out Pointer to the node where the object reference to store the remainder will be stored.
+ * @param out Pointer to where the pointer to the resolved node will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_remainder_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+uint64_t aml_remainder_read(aml_state_t* state, aml_node_t* node, aml_node_t** out);
 
 /**
  * @brief Reads a Quotient structure from the AML byte stream.
@@ -179,10 +166,10 @@ uint64_t aml_remainder_read(aml_state_t* state, aml_node_t* node, aml_node_t* ou
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out Pointer to the node where the object reference to store the quotient will be stored.
+ * @param out Pointer to where the pointer to the resolved node will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_quotient_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+uint64_t aml_quotient_read(aml_state_t* state, aml_node_t* node, aml_node_t** out);
 
 /**
  * @brief Reads a DefAdd structure from the AML byte stream.
@@ -345,10 +332,10 @@ uint64_t aml_def_not_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out Pointer to the node where the result of the shift count will be stored, will always be an integer.
+ * @param out Pointer to the buffer where the shift count will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_shift_count_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+uint64_t aml_shift_count_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out);
 
 /**
  * @brief Reads a DefShiftLeft structure from the AML byte stream.
@@ -415,10 +402,10 @@ uint64_t aml_def_decrement_read(aml_state_t* state, aml_node_t* node, aml_node_t
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out Pointer to the node where the object reference will be stored.
+ * @param out Pointer to where the pointer to the resolved node will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_obj_reference_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+uint64_t aml_obj_reference_read(aml_state_t* state, aml_node_t* node, aml_node_t** out);
 
 /**
  * @brief Reads a DefDerefOf structure from the AML byte stream.
@@ -429,7 +416,7 @@ uint64_t aml_obj_reference_read(aml_state_t* state, aml_node_t* node, aml_node_t
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out Pointer to the node where the data that was dereferenced by the DerefOf operation will be stored.
+ * @param out Pointer to the node where the data that was dereferenced will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_deref_of_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);

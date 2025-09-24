@@ -234,6 +234,51 @@ void aml_node_free(aml_node_t* node)
     heap_free(node);
 }
 
+aml_node_t* aml_node_add(aml_name_string_t* string, aml_node_t* start, aml_node_flags_t flags)
+{
+    if (string == NULL || (flags & AML_NODE_ROOT))
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    if (string->namePath.segmentCount == 0)
+    {
+        errno = EILSEQ;
+        return NULL;
+    }
+
+    aml_node_t* current = start;
+    if (start == NULL || string->rootChar.present)
+    {
+        current = aml_root_get();
+    }
+
+    for (uint64_t i = 0; i < string->prefixPath.depth; i++)
+    {
+        current = current->parent;
+        if (current == NULL)
+        {
+            errno = ENOENT;
+            return NULL;
+        }
+    }
+
+    for (uint8_t i = 0; i < string->namePath.segmentCount - 1; i++)
+    {
+        const aml_name_seg_t* segment = &string->namePath.segments[i];
+        current = aml_node_find_child(current, segment->name);
+        if (current == NULL)
+        {
+            LOG_ERR("unable to find intermediate AML node '%.*s'\n", AML_NAME_LENGTH, segment->name);
+            return NULL;
+        }
+    }
+
+    const char* newNodeName = string->namePath.segments[string->namePath.segmentCount - 1].name;
+    return aml_node_new(current, newNodeName, flags);
+}
+
 uint64_t aml_node_init_buffer(aml_node_t* node, uint8_t* buffer, uint64_t length, uint64_t capacity, bool inPlace)
 {
     if (node == NULL || buffer == NULL || capacity == 0 || length > capacity)
@@ -276,6 +321,30 @@ uint64_t aml_node_init_buffer(aml_node_t* node, uint8_t* buffer, uint64_t length
     return 0;
 }
 
+uint64_t aml_node_init_buffer_field(aml_node_t* node, uint8_t* buffer, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
+{
+    if (node == NULL || buffer == NULL || bitSize == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    mutex_acquire_recursive(&node->lock);
+
+    if (node->type != AML_DATA_UNINITALIZED)
+    {
+        aml_node_deinit(node);
+    }
+
+    node->type = AML_DATA_BUFFER_FIELD;
+    node->bufferField.buffer = buffer;
+    node->bufferField.bitOffset = bitOffset;
+    node->bufferField.bitSize = bitSize;
+
+    mutex_release(&node->lock);
+    return 0;
+}
+
 uint64_t aml_node_init_device(aml_node_t* node)
 {
     if (node == NULL)
@@ -293,6 +362,90 @@ uint64_t aml_node_init_device(aml_node_t* node)
 
     node->type = AML_DATA_DEVICE;
     memset(&node->device, 0, sizeof(node->device));
+
+    mutex_release(&node->lock);
+    return 0;
+}
+
+uint64_t aml_node_init_field_unit_field(aml_node_t* node, aml_node_t* opregion, aml_field_flags_t flags,
+    aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
+{
+    if (node == NULL || opregion == NULL || bitSize == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    mutex_acquire_recursive(&node->lock);
+
+    if (node->type != AML_DATA_UNINITALIZED)
+    {
+        aml_node_deinit(node);
+    }
+
+    node->type = AML_DATA_FIELD_UNIT;
+    node->fieldUnit.type = AML_FIELD_UNIT_FIELD;
+    node->fieldUnit.opregion = opregion;
+    node->fieldUnit.flags = flags;
+    node->fieldUnit.bitOffset = bitOffset;
+    node->fieldUnit.bitSize = bitSize;
+
+    mutex_release(&node->lock);
+    return 0;
+}
+
+uint64_t aml_node_init_field_unit_index_field(aml_node_t* node, aml_node_t* indexNode, aml_node_t* dataNode,
+    aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
+{
+    if (node == NULL || indexNode == NULL || dataNode == NULL || bitSize == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    mutex_acquire_recursive(&node->lock);
+
+    if (node->type != AML_DATA_UNINITALIZED)
+    {
+        aml_node_deinit(node);
+    }
+
+    node->type = AML_DATA_FIELD_UNIT;
+    node->fieldUnit.type = AML_FIELD_UNIT_INDEX_FIELD;
+    node->fieldUnit.indexNode = indexNode;
+    node->fieldUnit.dataNode = dataNode;
+    node->fieldUnit.flags = flags;
+    node->fieldUnit.bitOffset = bitOffset;
+    node->fieldUnit.bitSize = bitSize;
+
+    mutex_release(&node->lock);
+    return 0;
+}
+
+uint64_t aml_node_init_field_unit_bank_field(aml_node_t* node, aml_node_t* opregion, aml_node_t* bank,
+    aml_qword_data_t bankValue, aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
+{
+    if (node == NULL || opregion == NULL || bank == NULL || bitSize == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    mutex_acquire_recursive(&node->lock);
+
+    if (node->type != AML_DATA_UNINITALIZED)
+    {
+        aml_node_deinit(node);
+    }
+
+    node->type = AML_DATA_FIELD_UNIT;
+    node->fieldUnit.type = AML_FIELD_UNIT_BANK_FIELD;
+    node->fieldUnit.opregion = opregion;
+    node->fieldUnit.bank = bank;
+    node->fieldUnit.bankValue = bankValue;
+    node->fieldUnit.flags = flags;
+    node->fieldUnit.bitOffset = bitOffset;
+    node->fieldUnit.bitSize = bitSize;
 
     mutex_release(&node->lock);
     return 0;
@@ -367,6 +520,29 @@ uint64_t aml_node_init_method(aml_node_t* node, aml_method_flags_t flags, aml_ad
     return 0;
 }
 
+uint64_t aml_node_init_mutex(aml_node_t* node, aml_sync_level_t syncLevel)
+{
+    if (node == NULL || syncLevel > 15)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    mutex_acquire_recursive(&node->lock);
+
+    if (node->type != AML_DATA_UNINITALIZED)
+    {
+        aml_node_deinit(node);
+    }
+
+    node->type = AML_DATA_MUTEX;
+    node->mutex.syncLevel = syncLevel;
+    mutex_init(&node->mutex.mutex);
+
+    mutex_release(&node->lock);
+    return 0;
+}
+
 uint64_t aml_node_init_object_reference(aml_node_t* node, aml_node_t* target)
 {
     if (node == NULL || target == NULL)
@@ -384,6 +560,30 @@ uint64_t aml_node_init_object_reference(aml_node_t* node, aml_node_t* target)
 
     node->type = AML_DATA_OBJECT_REFERENCE;
     node->objectReference.target = target;
+
+    mutex_release(&node->lock);
+    return 0;
+}
+
+uint64_t aml_node_init_opregion(aml_node_t* node, aml_region_space_t space, aml_address_t offset, uint32_t length)
+{
+    if (node == NULL || length == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    mutex_acquire_recursive(&node->lock);
+
+    if (node->type != AML_DATA_UNINITALIZED)
+    {
+        aml_node_deinit(node);
+    }
+
+    node->type = AML_DATA_OPERATION_REGION;
+    node->opregion.space = space;
+    node->opregion.offset = offset;
+    node->opregion.length = length;
 
     mutex_release(&node->lock);
     return 0;
@@ -428,6 +628,31 @@ uint64_t aml_node_init_package(aml_node_t* node, uint64_t capacity)
             return ERR;
         }
     }
+
+    mutex_release(&node->lock);
+    return 0;
+}
+
+uint64_t aml_node_init_processor(aml_node_t* node, aml_proc_id_t procId, aml_pblk_addr_t pblkAddr,
+    aml_pblk_len_t pblkLen)
+{
+    if (node == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    mutex_acquire_recursive(&node->lock);
+
+    if (node->type != AML_DATA_UNINITALIZED)
+    {
+        aml_node_deinit(node);
+    }
+
+    node->type = AML_DATA_PROCESSOR;
+    node->processor.procId = procId;
+    node->processor.pblkAddr = pblkAddr;
+    node->processor.pblkLen = pblkLen;
 
     mutex_release(&node->lock);
     return 0;
@@ -521,7 +746,7 @@ void aml_node_deinit(aml_node_t* node)
         break;
     default:
         panic(NULL, "unimplemented deinit of AML node '%.*s' of type '%s'\n", AML_NAME_LENGTH, node->segment,
-            aml_node_type_to_string(node->type));
+            aml_data_type_to_string(node->type));
     }
 
     node->type = AML_DATA_UNINITALIZED;
@@ -556,7 +781,7 @@ uint64_t aml_node_clone(aml_node_t* src, aml_node_t* dest)
     {
     default:
         panic(NULL, "unimplemented clone of AML node '%.*s' of type '%s'\n", AML_NAME_LENGTH, src->segment,
-            aml_node_type_to_string(src->type));
+            aml_data_type_to_string(src->type));
         break;
     }
 
@@ -586,87 +811,7 @@ aml_node_t* aml_node_find_child(aml_node_t* parent, const char* name)
     return NULL;
 }
 
-aml_node_t* aml_node_add(aml_name_string_t* string, aml_node_t* start, aml_data_type_t type, aml_node_flags_t flags)
-{
-    if (string == NULL || type == 0 || !(type & AML_DATA_ALL) || (flags & AML_NODE_ROOT))
-    {
-        errno = EINVAL;
-        return NULL;
-    }
-
-    if (string->namePath.segmentCount == 0)
-    {
-        errno = EILSEQ;
-        return NULL;
-    }
-
-    aml_node_t* current = start;
-    if (start == NULL || string->rootChar.present)
-    {
-        current = aml_root_get();
-    }
-
-    for (uint64_t i = 0; i < string->prefixPath.depth; i++)
-    {
-        current = current->parent;
-        if (current == NULL)
-        {
-            errno = ENOENT;
-            return NULL;
-        }
-    }
-
-    for (uint8_t i = 0; i < string->namePath.segmentCount - 1; i++)
-    {
-        const aml_name_seg_t* segment = &string->namePath.segments[i];
-        current = aml_node_find_child(current, segment->name);
-        if (current == NULL)
-        {
-            LOG_ERR("unable to find intermediate AML node '%.*s'\n", AML_NAME_LENGTH, segment->name);
-            return NULL;
-        }
-    }
-
-    const char* newNodeName = string->namePath.segments[string->namePath.segmentCount - 1].name;
-    return aml_node_new(current, newNodeName, type, flags);
-}
-
-aml_node_t* aml_node_find(const aml_name_string_t* nameString, aml_node_t* start)
-{
-    aml_node_t* current = start;
-    if (current == NULL || nameString->rootChar.present)
-    {
-        current = aml_root_get();
-    }
-
-    for (uint64_t i = 0; i < nameString->prefixPath.depth; i++)
-    {
-        current = current->parent;
-        if (current == NULL)
-        {
-            errno = ENOENT;
-            return NULL;
-        }
-    }
-
-    for (uint64_t i = 0; i < nameString->namePath.segmentCount; i++)
-    {
-        const aml_name_seg_t* segment = &nameString->namePath.segments[i];
-        current = aml_node_find_child(current, segment->name);
-        if (current == NULL)
-        {
-            if (start->parent != NULL)
-            {
-                return aml_node_find(nameString, start->parent);
-            }
-            return NULL;
-        }
-    }
-
-    return current;
-}
-
-aml_node_t* aml_node_find_by_path(const char* path, aml_node_t* start)
+aml_node_t* aml_node_find(const char* path, aml_node_t* start)
 {
     if (path == NULL || path[0] == '\0')
     {

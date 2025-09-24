@@ -115,6 +115,22 @@ typedef enum
 } aml_node_flags_t;
 
 /**
+ * @brief ACPI AML Field Unit types.
+ * @enum aml_field_unit_type_t
+ *
+ * Since the ACPI spec does not diferenciate between "objects" of type Field, IndexField and BankField, instead just
+ * calling them all FieldUnits, we use this enum to diferenciate between different FieldUnit types, even if it might
+ * be cleaner to use aml_data_type_t for this.
+ */
+typedef enum
+{
+    AML_FIELD_UNIT_NONE,
+    AML_FIELD_UNIT_FIELD,
+    AML_FIELD_UNIT_INDEX_FIELD,
+    AML_FIELD_UNIT_BANK_FIELD,
+} aml_field_unit_type_t;
+
+/**
  * @brief ACPI node.
  * @struct aml_node_t
  *
@@ -141,8 +157,26 @@ typedef struct aml_node
         } buffer;
         struct
         {
+            uint8_t* buffer;
+            aml_bit_size_t bitOffset;
+            aml_bit_size_t bitSize;
+        } bufferField;
+        struct
+        {
             // Nothing.
         } device;
+        struct
+        {
+            aml_field_unit_type_t type; //!< The type of field unit.
+            aml_node_t* indexNode;      //!< Used for IndexField.
+            aml_node_t* dataNode;       //!< Used for IndexField.
+            aml_node_t* opregion;       //!< Used for Field and BankField.
+            uint64_t bankValue; //!< Used for BankField.
+            aml_node_t* bank;           //!< Used for BankField.
+            aml_field_flags_t flags;    //!< Used for Field, IndexField and BankField.
+            aml_bit_size_t bitOffset;   //!< Used for Field, IndexField and BankField.
+            aml_bit_size_t bitSize;     //!< Used for Field, IndexField and BankField.
+        } fieldUnit;
         struct
         {
             uint64_t value;
@@ -160,19 +194,14 @@ typedef struct aml_node
         } method;
         struct
         {
+            mutex_t mutex;
+            aml_sync_level_t syncLevel;
+        } mutex;
+        struct
+        {
             struct aml_node* target;
         } objectReference;
         struct
-        {
-            uint64_t capacity;
-            struct aml_node** elements;
-        } package;
-        struct
-        {
-            char* content;
-            bool inPlace;
-        } string;
-        /*struct
         {
             aml_region_space_t space;
             aml_address_t offset;
@@ -180,26 +209,9 @@ typedef struct aml_node
         } opregion;
         struct
         {
-            aml_node_t* opregion;
-            aml_field_flags_t flags;
-            aml_bit_size_t bitOffset;
-            aml_bit_size_t bitSize;
-        } field;
-        struct
-        {
-            aml_method_flags_t flags;
-            aml_address_t start;
-            aml_address_t end;
-        } method;
-        struct
-        {
-            aml_data_object_t object;
-        } name;
-        struct
-        {
-            mutex_t mutex;
-            aml_sync_level_t syncLevel;
-        } mutex;
+            uint64_t capacity;
+            struct aml_node** elements;
+        } package;
         struct
         {
             aml_proc_id_t procId;
@@ -208,27 +220,9 @@ typedef struct aml_node
         } processor;
         struct
         {
-            aml_node_t* indexNode;
-            aml_node_t* dataNode;
-            aml_field_flags_t flags;
-            aml_bit_size_t bitOffset;
-            aml_bit_size_t bitSize;
-        } indexField;
-        struct
-        {
-            aml_buffer_t* buffer;
-            aml_bit_size_t bitSize;
-            aml_bit_size_t bitIndex;
-        } bufferField;
-        struct
-        {
-            aml_data_object_t bankValue;
-            aml_node_t* opregion;
-            aml_node_t* bank;
-            aml_field_flags_t flags;
-            aml_bit_size_t bitOffset;
-            aml_bit_size_t bitSize;
-        } bankField;*/
+            char* content;
+            bool inPlace;
+        } string;
     };
     sysfs_dir_t dir;
 } aml_node_t;
@@ -278,6 +272,16 @@ aml_node_t* aml_node_new(aml_node_t* parent, const char* name, aml_node_flags_t 
 void aml_node_free(aml_node_t* node);
 
 /**
+ * @brief Add a new node at the location and with the name specified by the NameString.
+ *
+ * @param string The Namestring specifying the location and name of the new node.
+ * @param start The node to start the search from, or `NULL` to start from the root.
+ * @param flags Flags for the new node.
+ * @return aml_node_t* On success, a pointer to the new node. On error, `NULL` and `errno` is set.
+ */
+aml_node_t* aml_node_add(aml_name_string_t* string, aml_node_t* start, aml_node_flags_t flags);
+
+/**
  * @brief Initialize an ACPI node as a buffer with the given content.
  *
  * @param node Pointer to the node to initialize.
@@ -291,12 +295,65 @@ void aml_node_free(aml_node_t* node);
 uint64_t aml_node_init_buffer(aml_node_t* node, uint8_t* buffer, uint64_t length, uint64_t capacity, bool inPlace);
 
 /**
+ * @brief Initialize an ACPI node as a buffer field with the given buffer, bit offset and bit size.
+ *
+ * @param node Pointer to the node to initialize.
+ * @param buffer Pointer to the buffer content.
+ * @param bitOffset Bit offset within the buffer.
+ * @param bitSize Size of the field in bits.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_node_init_buffer_field(aml_node_t* node, uint8_t* buffer, aml_bit_size_t bitOffset, aml_bit_size_t bitSize);
+
+/**
  * @brief Initialize an ACPI node as a device or bus.
  *
  * @param node Pointer to the node to initialize.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_node_init_device(aml_node_t* node);
+
+/**
+ * @brief Initialize an ACPI node as a field unit of type Field.
+ *
+ * @param node Pointer to the node to initialize.
+ * @param opregion Pointer to the operation region node.
+ * @param flags Flags for the field unit.
+ * @param bitOffset Bit offset within the operation region.
+ * @param bitSize Size of the field in bits.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_node_init_field_unit_field(aml_node_t* node, aml_node_t* opregion, aml_field_flags_t flags,
+    aml_bit_size_t bitOffset, aml_bit_size_t bitSize);
+
+/**
+ * @brief Initialize an ACPI node as a field unit of type IndexField.
+ *
+ * @param node Pointer to the node to initialize.
+ * @param indexNode Pointer to the index node.
+ * @param dataNode Pointer to the data node.
+ * @param flags Flags for the field unit.
+ * @param bitOffset Bit offset within the operation region.
+ * @param bitSize Size of the field in bits.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_node_init_field_unit_index_field(aml_node_t* node, aml_node_t* indexNode, aml_node_t* dataNode,
+    aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize);
+
+/**
+ * @brief Initialize an ACPI node as a field unit of type BankField.
+ *
+ * @param node Pointer to the node to initialize.
+ * @param opregion Pointer to the operation region node.
+ * @param bank Pointer to the bank node.
+ * @param bankValue Value to write to the bank node to select the bank structure.
+ * @param flags Flags for the field unit.
+ * @param bitOffset Bit offset within the operation region.
+ * @param bitSize Size of the field in bits.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_node_init_field_unit_bank_field(aml_node_t* node, aml_node_t* opregion, aml_node_t* bank,
+    aml_qword_data_t bankValue, aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize);
 
 /**
  * @brief Initialize an ACPI node as an integer with the given value and bit width.
@@ -329,6 +386,15 @@ uint64_t aml_node_init_integer_constant(aml_node_t* node, uint64_t value);
 uint64_t aml_node_init_method(aml_node_t* node, aml_method_flags_t flags, aml_address_t start, aml_address_t end);
 
 /**
+ * @brief Initialize an ACPI node as a mutex with the given synchronization level.
+ *
+ * @param node Pointer to the node to initialize.
+ * @param syncLevel The synchronization level of the mutex (0-15).
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_node_init_mutex(aml_node_t* node, aml_sync_level_t syncLevel);
+
+/**
  * @brief Initialize an ACPI node as an object reference to the given target node.
  *
  * @param node Pointer to the node to initialize.
@@ -338,6 +404,17 @@ uint64_t aml_node_init_method(aml_node_t* node, aml_method_flags_t flags, aml_ad
 uint64_t aml_node_init_object_reference(aml_node_t* node, aml_node_t* target);
 
 /**
+ * @brief Initialize an ACPI node as an operation region with the given space, offset, and length.
+ *
+ * @param node Pointer to the node to initialize.
+ * @param space The address space of the operation region.
+ * @param offset The offset within the address space.
+ * @param length The length of the operation region.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_node_init_opregion(aml_node_t* node, aml_region_space_t space, aml_address_t offset, uint32_t length);
+
+/**
  * @brief Initialize an ACPI node as a package with the given number of elements.
  *
  * @param node Pointer to the node to initialize.
@@ -345,6 +422,18 @@ uint64_t aml_node_init_object_reference(aml_node_t* node, aml_node_t* target);
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_node_init_package(aml_node_t* node, uint64_t capacity);
+
+/**
+ * @brief Initialize an ACPI node as a processor with the given ProcID, PblkAddr, and PblkLen.
+ *
+ * @param node Pointer to the node to initialize.
+ * @param procId The processor ID.
+ * @param pblkAddr The pblk address.
+ * @param pblkLen The length of the pblk.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_node_init_processor(aml_node_t* node, aml_proc_id_t procId, aml_pblk_addr_t pblkAddr,
+    aml_pblk_len_t pblkLen);
 
 /**
  * @brief Initialize an ACPI node as a string with the given value.
@@ -384,38 +473,6 @@ uint64_t aml_node_clone(aml_node_t* src, aml_node_t* dest);
 aml_node_t* aml_node_find_child(aml_node_t* parent, const char* name);
 
 /**
- * @brief Add a new node at the location and with the name specified by the NameString.
- *
- * @param string The Namestring specifying the parent node.
- * @param start The node to start the search from, or `NULL` to start from the root.
- * @param type The type of the new node.
- * @param flags Flags for the new node.
- * @return aml_node_t* On success, a pointer to the new node. On error, `NULL` and `errno` is set.
- */
-aml_node_t* aml_node_add(aml_name_string_t* string, aml_node_t* start, aml_data_type_t type, aml_node_flags_t flags);
-
-/**
- * @brief Walks the ACPI namespace tree to find the node corresponding to the given NameString.
- *
- * A search through the ACPI namespace follows these rules:
- * - If the NameString starts with a root character (`\`), the search starts from the root node.
- * - If the NameString starts with one or more parent prefix characters (`^`), the search starts from the parent of the
- *    `start` node, moving up one level for each `^`.
- * - If the NameString does not start with a root or parent prefix character, the search starts from the `start` node.
- *    If `start` is `NULL`, the search starts from the root node.
- * - Attempt to find a matching name in the current namespace scope (the `start` node and its children).
- * - If the matching name is not found, move up to the parent node and repeat the search.
- * - This continues until either a match is found or the node does not have a parent (i.e., the root is reached).
- *
- * @see Section 5.3 of the ACPI specification for more details.
- *
- * @param nameString The NameString to search for.
- * @param start The node to start the search from, or `NULL` to start from the root.
- * @return On success, a pointer to the found node. On error, `NULL` and `errno` is set.
- */
-aml_node_t* aml_node_find(const aml_name_string_t* nameString, aml_node_t* start);
-
-/**
  * @brief Walks the ACPI namespace tree to find the node corresponding to the given path.
  *
  * The path is a null-terminated string with segments separated by dots (e.g., "DEV0.SUB0.METH").
@@ -426,6 +483,6 @@ aml_node_t* aml_node_find(const aml_name_string_t* nameString, aml_node_t* start
  * @param start The node to start the search from, or `NULL` to start from the root.
  * @return On success, a pointer to the found node. On error, `NULL` and `errno` is set.
  */
-aml_node_t* aml_node_find_by_path(const char* path, aml_node_t* start);
+aml_node_t* aml_node_find(const char* path, aml_node_t* start);
 
 /** @} */

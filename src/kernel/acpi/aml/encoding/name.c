@@ -1,9 +1,9 @@
 #include "name.h"
 
+#include "acpi/aml/aml.h"
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_state.h"
 #include "data.h"
-#include "object_reference.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -228,8 +228,6 @@ uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out)
 
 uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
 {
-    *out = (aml_name_string_t){0};
-
     aml_value_t value;
     if (aml_value_peek_no_ext(state, &value) == ERR)
     {
@@ -237,18 +235,19 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
         return ERR;
     }
 
+    aml_name_string_t nameString = {0};
     // Starts with either rootchar or prefixpath.
     switch (value.num)
     {
     case AML_ROOT_CHAR:
-        if (aml_root_char_read(state, &out->rootChar) == ERR)
+        if (aml_root_char_read(state, &nameString.rootChar) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read root char");
             return ERR;
         }
         break;
     case AML_PARENT_PREFIX_CHAR:
-        if (aml_prefix_path_read(state, &out->prefixPath) == ERR)
+        if (aml_prefix_path_read(state, &nameString.prefixPath) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read prefix path");
             return ERR;
@@ -259,16 +258,67 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
         break;
     }
 
-    if (aml_name_path_read(state, &out->namePath) == ERR)
+    if (aml_name_path_read(state, &nameString.namePath) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read name path");
         return ERR;
     }
 
+    *out = nameString;
     return 0;
 }
 
-uint64_t aml_simple_name_read(aml_state_t* state, aml_node_t* node, aml_object_reference_t* out)
+static inline aml_node_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_node_t* node)
+{
+    aml_node_t* start = node;
+    if (nameString->rootChar.present)
+    {
+        start = aml_root_get();
+    }
+
+    for (uint64_t i = 0; i < nameString->prefixPath.depth; i++)
+    {
+        start = start->parent;
+        if (start == NULL)
+        {
+            return NULL;
+        }
+    }
+
+    aml_node_t* current = start;
+    for (uint64_t i = 0; i < nameString->namePath.segmentCount; i++)
+    {
+        const aml_name_seg_t* segment = &nameString->namePath.segments[i];
+        current = aml_node_find_child(current, segment->name);
+        if (current == NULL)
+        {
+            errno = 0;
+            if (start->parent != NULL)
+            {
+                return aml_name_string_resolve(nameString, start->parent);
+            }
+            return NULL;
+        }
+    }
+
+    return current;
+}
+
+uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out)
+{
+    aml_name_string_t nameString;
+    if (aml_name_string_read(state, &nameString) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read name string");
+        return ERR;
+    }
+
+    // Out might be NULL if the name does not resolve to an object.
+    *out = aml_name_string_resolve(&nameString, node);
+    return 0;
+}
+
+uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out)
 {
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
@@ -280,23 +330,7 @@ uint64_t aml_simple_name_read(aml_state_t* state, aml_node_t* node, aml_object_r
     switch (value.props->type)
     {
     case AML_VALUE_TYPE_NAME:
-    {
-        aml_name_string_t nameString;
-        if (aml_name_string_read(state, &nameString) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to read name string");
-            return ERR;
-        }
-
-        // Target might be NULL, which is still valid.
-        aml_node_t* target = aml_node_find(&nameString, node);
-        if (aml_object_reference_init(out, target) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to init object reference");
-            return ERR;
-        }
-        return 0;
-    }
+        return aml_name_string_read_and_resolve(state, node, out);
     case AML_VALUE_TYPE_ARG:
         AML_DEBUG_ERROR(state, "Args are unimplemented");
         errno = ENOSYS;
@@ -312,7 +346,7 @@ uint64_t aml_simple_name_read(aml_state_t* state, aml_node_t* node, aml_object_r
     }
 }
 
-uint64_t aml_super_name_read(aml_state_t* state, aml_node_t* node, aml_object_reference_t* out)
+uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out)
 {
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
@@ -324,7 +358,7 @@ uint64_t aml_super_name_read(aml_state_t* state, aml_node_t* node, aml_object_re
     switch (value.props->type)
     {
     case AML_VALUE_TYPE_NAME:
-        return aml_simple_name_read(state, node, out);
+        return aml_simple_name_read_and_resolve(state, node, out);
     case AML_VALUE_TYPE_ARG:
         AML_DEBUG_ERROR(state, "Args is unimplemented");
         errno = ENOSYS;
@@ -348,7 +382,7 @@ uint64_t aml_super_name_read(aml_state_t* state, aml_node_t* node, aml_object_re
     }
 }
 
-uint64_t aml_target_read(aml_state_t* state, aml_node_t* node, aml_object_reference_t* out)
+uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out)
 {
     aml_value_t value;
     if (aml_value_peek_no_ext(state, &value) == ERR)
@@ -359,15 +393,11 @@ uint64_t aml_target_read(aml_state_t* state, aml_node_t* node, aml_object_refere
 
     if (value.num == AML_NULL_NAME)
     {
-        if (aml_object_reference_init(out, NULL) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to init null object reference");
-            return ERR;
-        }
+        *out = NULL;
         return aml_null_name_read(state);
     }
     else
     {
-        return aml_super_name_read(state, node, out);
+        return aml_super_name_read_and_resolve(state, node, out);
     }
 }

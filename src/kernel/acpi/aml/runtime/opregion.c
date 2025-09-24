@@ -234,7 +234,7 @@ static uint64_t aml_extract_field_access_data(aml_node_t* field, aml_field_acces
         out->bankValue = &field->bankField.bankValue;
         return 0;
     default:
-        LOG_ERR("invalid field node type %s\n", aml_node_type_to_string(field->type));
+        LOG_ERR("invalid field node type %s\n", aml_data_type_to_string(field->type));
         errno = EINVAL;
         return ERR;
     }
@@ -283,7 +283,7 @@ static uint64_t aml_generic_field_read_at(aml_field_access_data_t* accessData, u
         return 0;
     }
     default:
-        LOG_ERR("invalid field node type %s\n", aml_node_type_to_string(accessData->type));
+        LOG_ERR("invalid field node type %s\n", aml_data_type_to_string(accessData->type));
         errno = EINVAL;
         return ERR;
     }
@@ -328,7 +328,7 @@ static uint64_t aml_generic_field_write_at(aml_field_access_data_t* accessData, 
         return 0;
     }
     default:
-        LOG_ERR("invalid field node type %s\n", aml_node_type_to_string(accessData->type));
+        LOG_ERR("invalid field node type %s\n", aml_data_type_to_string(accessData->type));
         errno = EINVAL;
         return ERR;
     }

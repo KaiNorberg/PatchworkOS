@@ -83,8 +83,36 @@ uint64_t aml_convert_and_store(aml_node_t* src, aml_node_t* dest)
         errno = EINVAL;
         return ERR;
     default:
-        LOG_ERR("unimplemented conversion from '%s' to '%s'\n", aml_node_type_to_string(src->type),
-            aml_node_type_to_string(dest->type));
+        LOG_ERR("unimplemented conversion from '%s' to '%s'\n", aml_data_type_to_string(src->type),
+            aml_data_type_to_string(dest->type));
+        errno = ENOSYS;
+        return ERR;
+    }
+
+    return 0;
+}
+
+uint64_t aml_convert_to_integer(aml_node_t* src, aml_node_t* dest)
+{
+    if (src == NULL || dest == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (src == dest)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    MUTEX_SCOPE(&src->lock);
+    MUTEX_SCOPE(&dest->lock);
+
+    switch (src->type)
+    {
+    default:
+        LOG_ERR("unimplemented conversion from '%s' to integer\n", aml_data_type_to_string(src->type));
         errno = ENOSYS;
         return ERR;
     }

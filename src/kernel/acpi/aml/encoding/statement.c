@@ -7,9 +7,14 @@
 
 #include <errno.h>
 
-uint64_t aml_predicate_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out)
+uint64_t aml_predicate_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out)
 {
-    return aml_term_arg_read(state, node, out, AML_DATA_INTEGER);
+    if (aml_term_arg_read_integer(state, node, out) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read term arg for predicate");
+        return ERR;
+    }
+    return 0;
 }
 
 uint64_t aml_def_else_read(aml_state_t* state, aml_node_t* node, bool shouldExecute)
@@ -86,20 +91,20 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_node_t* node)
     // The end of the If statement, the "Else" part is not included in this length, see section 5.4.19 figure 5.17 of
     // the ACPI spec.
     aml_address_t end = start + pkgLength;
-    aml_data_object_t predicate;
+
+    aml_qword_data_t predicate;
     if (aml_predicate_read(state, node, &predicate) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read predicate");
         return ERR;
     }
 
-    bool isTrue = predicate.type == AML_DATA_INTEGER && predicate.integer != 0;
-    if (isTrue)
+    bool isTrue = predicate != 0;
+    if (predicate != 0)
     {
         // Execute the TermList
         if (aml_term_list_read(state, node, end) == ERR)
         {
-            aml_data_object_deinit(&predicate);
             AML_DEBUG_ERROR(state, "Failed to read term list");
             return ERR;
         }

@@ -1,12 +1,11 @@
 #pragma once
 
-#include "acpi/aml/aml.h"
-
 #include <sys/list.h>
 
 #include <stdint.h>
 
 typedef struct aml_state aml_state_t;
+typedef struct aml_node aml_node_t;
 
 /**
  * @brief ACPI AML Namespace Modifier Objects Encoding

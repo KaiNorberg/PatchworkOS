@@ -6,7 +6,6 @@
 #include "acpi/aml/aml_to_string.h"
 #include "acpi/aml/aml_value.h"
 #include "expression.h"
-#include "mem/heap.h"
 #include "package_length.h"
 
 #include <errno.h>
@@ -213,7 +212,7 @@ uint64_t aml_string_read(aml_state_t* state, aml_string_t* out)
     return 0;
 }
 
-uint64_t aml_computational_data_read(aml_state_t* state, aml_node_t* out)
+uint64_t aml_computational_data_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     aml_value_t value;
     if (aml_value_peek_no_ext(state, &value) == ERR)
@@ -320,15 +319,9 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_node_t* out)
     }
     case AML_BUFFER_OP:
     {
-        aml_buffer_t buffer;
-        if (aml_def_buffer_read(state, &buffer) == ERR)
+        if (aml_def_buffer_read(state, node, out) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read buffer");
-            return ERR;
-        }
-        if (aml_node_init_buffer(out, buffer.content, buffer.length, buffer.capacity, buffer.inPlace) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to init buffer");
             return ERR;
         }
         return 0;
@@ -356,18 +349,10 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_node_t* node, aml_node
 
     if (value.props->type == AML_VALUE_TYPE_NAME)
     {
-        aml_name_string_t nameString;
-        if (aml_name_string_read(state, &nameString) == ERR)
+        aml_node_t* namedReference = NULL;
+        if (aml_simple_name_read_and_resolve(state, node, &namedReference) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read name string");
-            return ERR;
-        }
-
-        aml_node_t* namedReference = aml_node_find(&nameString, node);
-        if (namedReference == NULL)
-        {
-            AML_DEBUG_ERROR(state, "Failed to find named reference '%s'", aml_name_string_to_string(&nameString));
-            errno = ENOENT;
+            AML_DEBUG_ERROR(state, "Failed to read and resolve named reference");
             return ERR;
         }
 
@@ -376,8 +361,7 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_node_t* node, aml_node
         {
             if (aml_convert_to_actual_data(namedReference, out) == ERR)
             {
-                AML_DEBUG_ERROR(state, "Failed to convert named reference '%s' to actual data",
-                    aml_name_string_to_string(&nameString));
+                AML_DEBUG_ERROR(state, "Failed to convert named reference to actual data");
                 return ERR;
             }
             return 0;
@@ -386,16 +370,14 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_node_t* node, aml_node
         {
             if (aml_node_init_object_reference(out, namedReference) == ERR)
             {
-                AML_DEBUG_ERROR(state, "Failed to init object reference for named reference '%s'",
-                    aml_name_string_to_string(&nameString));
+                AML_DEBUG_ERROR(state, "Failed to init object reference for named reference");
                 return ERR;
             }
             return 0;
         }
         else
         {
-            AML_DEBUG_ERROR(state, "Named reference '%s' is neither a data object nor a non-data object",
-                aml_name_string_to_string(&nameString));
+            AML_DEBUG_ERROR(state, "Named reference is neither a data object nor a non-data object");
             errno = EILSEQ;
             return ERR;
         }
@@ -510,7 +492,7 @@ uint64_t aml_data_object_read(aml_state_t* state, aml_node_t* node, aml_node_t* 
         errno = ENOSYS;
         return ERR;
     default:
-        if (aml_computational_data_read(state, out) == ERR)
+        if (aml_computational_data_read(state, node, out) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read computational data");
             return ERR;

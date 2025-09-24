@@ -12,12 +12,12 @@
  */
 
 /**
- * @brief Convert an aml node type to a string.
+ * @brief Convert an aml data type to a string.
  *
- * @param type ACPI AML node type.
- * @return String representation of the ACPI node type or "Unknown" if it is invalid.
+ * @param type ACPI AML data type.
+ * @return String representation of the ACPI data type or "Unknown" if it is invalid.
  */
-const char* aml_node_type_to_string(aml_node_type_t type);
+const char* aml_data_type_to_string(aml_data_type_t type);
 
 /**
  * @brief Convert an aml RegionSpace to a string.
@@ -52,20 +52,12 @@ const char* aml_lock_rule_to_string(aml_lock_rule_t lockRule);
 const char* aml_update_rule_to_string(aml_update_rule_t updateRule);
 
 /**
- * @brief Convert an aml DataObject to a string.
+ * @brief Convert an aml node to a string.
  *
- * @param dataObject ACPI AML DataObject.
- * @return String representation of the DataObject or "Unknown" if it is invalid.
+ * @param node ACPI AML node.
+ * @return String representation of the node or "Unknown" if it is invalid.
  */
-const char* aml_data_object_to_string(aml_data_object_t* dataObject);
-
-/**
- * @brief Convert an aml DataType to a string.
- *
- * @param type ACPI AML DataType.
- * @return String representation of the DataType or "Unknown" if it is invalid.
- */
-const char* aml_data_type_to_string(aml_data_type_t type);
+const char* aml_node_to_string(aml_node_t* node);
 
 /**
  * @brief Convert an aml NameString to a string.

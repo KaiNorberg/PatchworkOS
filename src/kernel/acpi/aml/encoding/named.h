@@ -20,16 +20,6 @@ typedef struct aml_state aml_state_t;
  */
 
 /**
- * @brief ACPI AML RegionOffset structure.
- */
-typedef aml_qword_data_t aml_region_offset_t;
-
-/**
- * @brief ACPI AML RegionLen structure.
- */
-typedef aml_qword_data_t aml_region_len_t;
-
-/**
  * @brief ACPI AML Region Space Encoding
  * @enum aml_region_space_t
  */
@@ -102,9 +92,9 @@ typedef struct
  */
 typedef enum
 {
-    AML_FIELD_LIST_TYPE_NORMAL, //!< FieldList is part of a DefField.
-    AML_FIELD_LIST_TYPE_BANK,   //!< FieldList is part of a BankField.
-    AML_FIELD_LIST_TYPE_INDEX,  //!< FieldList is part of an IndexField.
+    AML_FIELD_LIST_TYPE_FIELD,       //!< FieldList is part of a DefField.
+    AML_FIELD_LIST_TYPE_INDEX_FIELD, //!< FieldList is part of an IndexField.
+    AML_FIELD_LIST_TYPE_BANK_FIELD,  //!< FieldList is part of a BankField.
 } aml_field_list_type_t;
 
 /**
@@ -120,7 +110,7 @@ typedef struct
         struct
         {
             aml_node_t* opregion;
-        } normal;
+        } field;
         struct
         {
             aml_node_t* indexNode;
@@ -128,9 +118,9 @@ typedef struct
         } index;
         struct
         {
-            aml_node_t* region;
+            aml_node_t* opregion;
             aml_node_t* bank;
-            aml_data_object_t* bankValue;
+            uint64_t bankValue;
         } bank;
     };
 } aml_field_list_ctx_t;
@@ -168,6 +158,18 @@ typedef aml_dword_data_t aml_pblk_addr_t;
 typedef aml_byte_data_t aml_pblk_len_t;
 
 /**
+ * @brief Reads a BankValue structure from the AML byte stream.
+ *
+ * A BankValue structure is defined as `BankValue := TermArg => Integer`.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out The output buffer to store the BankValue data object.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_bank_value_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+
+/**
  * @brief Reads a RegionSpace structure from the AML byte stream.
  *
  * A RegionSpace structure is defined as `RegionSpace := ByteData`.
@@ -188,7 +190,7 @@ uint64_t aml_region_space_read(aml_state_t* state, aml_region_space_t* out);
  * @param out The output buffer to store the region offset.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_region_offset_read(aml_state_t* state, aml_node_t* node, aml_region_offset_t* out);
+uint64_t aml_region_offset_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out);
 
 /**
  * @brief Reads a RegionLen structure from the AML byte stream.
@@ -200,7 +202,7 @@ uint64_t aml_region_offset_read(aml_state_t* state, aml_node_t* node, aml_region
  * @param out The output buffer to store the region length.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_region_len_read(aml_state_t* state, aml_node_t* node, aml_region_len_t* out);
+uint64_t aml_region_len_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out);
 
 /**
  * @brief Reads a DefOpRegion structure from the AML byte stream.
@@ -481,10 +483,10 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node);
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out The output buffer to store the SourceBuff data object.
+ * @param out The destination node to store the SourceBuff.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_source_buff_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+uint64_t aml_source_buff_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
 
 /**
  * @brief Reads a BitIndex structure from the AML byte stream.
@@ -493,10 +495,10 @@ uint64_t aml_source_buff_read(aml_state_t* state, aml_node_t* node, aml_data_obj
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out The output buffer to store the BitIndex data object.
+ * @param out The destination node to store the BitIndex.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_bit_index_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+uint64_t aml_bit_index_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
 
 /**
  * @brief Reads a ByteIndex structure from the AML byte stream.
@@ -505,10 +507,10 @@ uint64_t aml_bit_index_read(aml_state_t* state, aml_node_t* node, aml_data_objec
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out The output buffer to store the ByteIndex data object.
+ * @param out The destination node to store the ByteIndex.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_byte_index_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+uint64_t aml_byte_index_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
 
 /**
  * @brief Reads a DefCreateBitField structure from the AML byte stream.
@@ -599,18 +601,6 @@ uint64_t aml_def_create_dword_field_read(aml_state_t* state, aml_node_t* node);
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_create_qword_field_read(aml_state_t* state, aml_node_t* node);
-
-/**
- * @brief Reads a BankValue structure from the AML byte stream.
- *
- * A BankValue structure is defined as `BankValue := TermArg => Integer`.
- *
- * @param state The AML state.
- * @param node The current AML node.
- * @param out The output buffer to store the BankValue data object.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t aml_bank_value_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
 
 /**
  * @brief Reads a NamedObj structure from the AML byte stream.

@@ -37,7 +37,7 @@ uint64_t aml_def_name_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_node_t* name = aml_node_add(&nameString, node, AML_DATA_NAME);
+    aml_node_t* name = aml_node_add(&nameString, node, AML_NODE_NONE);
     if (name == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node");
@@ -45,7 +45,7 @@ uint64_t aml_def_name_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    if (aml_data_ref_object_read(state, &name->name.object) == ERR)
+    if (aml_data_ref_object_read(state, node, name) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read data ref object");
         return ERR;
@@ -79,34 +79,23 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_name_string_t nameString;
-    if (aml_name_string_read(state, &nameString) == ERR)
+    aml_node_t* scope = NULL;
+    if (aml_name_string_read_and_resolve(state, node, &scope) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read name string");
+        AML_DEBUG_ERROR(state, "Failed to read or resolve scope name string");
         return ERR;
     }
 
     aml_address_t end = start + pkgLength;
 
-    aml_node_t* newNode = aml_node_find(&nameString, node);
-    if (newNode == NULL)
+    if (scope->type != AML_DATA_DEVICE && scope->type != AML_DATA_PROCESSOR && scope->type != AML_DATA_THERMAL_ZONE && scope->type != AML_DATA_POWER_RESOURCE)
     {
-        AML_DEBUG_ERROR(state, "Failed to walk '%s' from '%s'\n", aml_name_string_to_string(&nameString),
-            node->segment);
+        AML_DEBUG_ERROR(state, "Invalid node type '%s'", aml_data_type_to_string(scope->type));
         errno = EILSEQ;
         return ERR;
     }
 
-    if (newNode->type != AML_DATA_PREDEFINED && newNode->type != AML_DATA_DEVICE &&
-        newNode->type != AML_DATA_PROCESSOR && newNode->type != AML_DATA_THERMAL_ZONE &&
-        newNode->type != AML_DATA_POWER_RESOURCE)
-    {
-        AML_DEBUG_ERROR(state, "Invalid node type: %d", newNode->type);
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    return aml_term_list_read(state, newNode, end);
+    return aml_term_list_read(state, scope, end);
 }
 
 uint64_t aml_namespace_modifier_obj_read(aml_state_t* state, aml_node_t* node)

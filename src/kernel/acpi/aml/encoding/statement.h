@@ -1,6 +1,5 @@
 #pragma once
 
-#include "acpi/aml/aml.h"
 #include "data.h"
 
 #include <stdint.h>
@@ -24,10 +23,10 @@ typedef struct aml_state aml_state_t;
  *
  * @param state The AML state to parse from.
  * @param node The current AML node.
- * @param out The output buffer to store the result of the Predicate.
+ * @param out The destination buffer to store the integer value of the Predicate.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_predicate_read(aml_state_t* state, aml_node_t* node, aml_data_object_t* out);
+uint64_t aml_predicate_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out);
 
 /**
  * @brief Reads a DefElse structure from the AML byte stream.

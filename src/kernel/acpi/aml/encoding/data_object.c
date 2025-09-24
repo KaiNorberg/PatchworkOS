@@ -1,4 +1,4 @@
-#include "data_object.h"
+/*#include "data_object.h"
 
 #include "acpi/aml/aml_debug.h"
 #include "mem/heap.h"
@@ -310,3 +310,4 @@ uint64_t aml_data_object_clone(aml_data_object_t* dest, aml_data_object_t* src)
     }
     return 0;
 }
+*/

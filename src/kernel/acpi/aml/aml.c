@@ -133,7 +133,7 @@ void aml_print_tree(aml_node_t* node, uint32_t depth, bool isLast)
         }
     }
 
-    LOG_INFO("%.*s [%s", AML_NAME_LENGTH, node->segment, aml_node_type_to_string(node->type));
+    LOG_INFO("%.*s [%s", AML_NAME_LENGTH, node->segment, aml_data_type_to_string(node->type));
     switch (node->type)
     {
     default:
