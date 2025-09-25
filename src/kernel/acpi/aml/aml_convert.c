@@ -1,9 +1,9 @@
 #include "aml_convert.h"
 
-#include "aml.h"
 #include "aml_to_string.h"
 #include "log/log.h"
-#include "runtime/lock_rule.h"
+#include "runtime/opregion.h"
+#include "runtime/buffer_field.h"
 
 #include <errno.h>
 
@@ -40,27 +40,28 @@ uint64_t aml_convert_to_actual_data(aml_node_t* src, aml_node_t* dest)
 
     switch (src->type)
     {
+    // These are already actual data.
+    case AML_DATA_BUFFER:
+    case AML_DATA_INTEGER:
+    case AML_DATA_INTEGER_CONSTANT:
+    case AML_DATA_PACKAGE:
+    case AML_DATA_STRING:
+        return aml_node_clone(src, dest);
+    break;
     case AML_DATA_BUFFER_FIELD:
     {
-        LOG_ERR("unimplemented conversion of buffer field to actual data\n");
-        errno = ENOSYS;
-        return ERR;
+        return aml_buffer_field_read(src, dest);
     }
     break;
     case AML_DATA_FIELD_UNIT:
     {
-        LOG_ERR("unimplemented conversion of field unit to actual data\n");
-        errno = ENOSYS;
-        return ERR;
+        return aml_field_unit_read(src, dest);
     }
     break;
     default:
         errno = ENOSYS;
         return ERR;
-        break;
     }
-
-    return 0;
 }
 
 uint64_t aml_convert_and_store(aml_node_t* src, aml_node_t* dest)
@@ -76,19 +77,21 @@ uint64_t aml_convert_and_store(aml_node_t* src, aml_node_t* dest)
         return 0;
     }
 
-    switch (src->type)
+    if (src->type == dest->type)
     {
-    case AML_DATA_UNINITALIZED:
-        errno = EINVAL;
-        return ERR;
+        return aml_node_clone(src, dest);
+    }
+
+    switch (dest->type)
+    {
+    case AML_DATA_INTEGER:
+        return aml_convert_to_integer(src, dest);
     default:
         LOG_ERR("unimplemented conversion from '%s' to '%s'\n", aml_data_type_to_string(src->type),
             aml_data_type_to_string(dest->type));
         errno = ENOSYS;
         return ERR;
     }
-
-    return 0;
 }
 
 uint64_t aml_convert_to_integer(aml_node_t* src, aml_node_t* dest)
@@ -107,10 +110,6 @@ uint64_t aml_convert_to_integer(aml_node_t* src, aml_node_t* dest)
 
     switch (src->type)
     {
-    case AML_DATA_INTEGER:
-        return aml_node_clone(src, dest);
-    case AML_DATA_INTEGER_CONSTANT:
-        return aml_node_init_integer(dest, src->integerConstant.value);
     case AML_DATA_BUFFER:
     {
         if (src->buffer.length == 0)
@@ -131,6 +130,28 @@ uint64_t aml_convert_to_integer(aml_node_t* src, aml_node_t* dest)
         }
         return 0;
     }
+    case AML_DATA_BUFFER_FIELD:
+    {
+        if (src->bufferField.bitSize > 64)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+        return aml_buffer_field_read(src, dest);
+    }
+    case AML_DATA_FIELD_UNIT:
+    {
+        if (src->fieldUnit.bitSize > 64)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+        return aml_field_unit_read(src, dest);
+    }
+    case AML_DATA_INTEGER:
+        return aml_node_clone(src, dest);
+    case AML_DATA_INTEGER_CONSTANT:
+        return aml_node_init_integer(dest, src->integerConstant.value);
     case AML_DATA_STRING:
     {
         if (src->string.content == NULL)

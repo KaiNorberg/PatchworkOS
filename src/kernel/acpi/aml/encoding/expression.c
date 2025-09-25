@@ -392,19 +392,21 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_node
     }
 
     aml_node_t* source = NULL;
-    if (aml_super_name_read_and_resolve(state, node, &source, AML_RESOLVE_NONE, NULL) == ERR)
+    if (aml_super_name_read_and_resolve(state, node, &source, AML_RESOLVE_ALLOW_UNRESOLVED, NULL) == ERR)
     {
-        // This is fine, source can be NULL.
-        source = NULL;
-        errno = 0;
+        AML_DEBUG_ERROR(state, "Failed to read or resolve super name");
+        return ERR;
     }
 
     aml_node_t* result = NULL;
-    if (aml_target_read_and_resolve(state, node, &result, AML_RESOLVE_NONE, NULL) == ERR)
+    if (aml_target_read_and_resolve(state, node, &result, AML_RESOLVE_ALLOW_UNRESOLVED, NULL) == ERR)
     {
-        // This is also fine result can be NULL.
-        result = NULL;
-        errno = 0;
+        if (source != NULL)
+        {
+            aml_node_deinit(source);
+        }
+        AML_DEBUG_ERROR(state, "Failed to read or resolve target");
+        return ERR;
     }
 
     if (source == NULL)

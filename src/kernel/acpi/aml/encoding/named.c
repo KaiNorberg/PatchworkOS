@@ -938,7 +938,7 @@ uint64_t aml_def_create_bit_field_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    if (aml_node_init_buffer_field(newNode, sourceBuff.buffer.content, 1, bitIndex) == ERR)
+    if (aml_node_init_buffer_field(newNode, sourceBuff.buffer.content, bitIndex, 1) == ERR)
     {
         aml_node_free(newNode);
         aml_node_deinit(&sourceBuff);
@@ -999,7 +999,7 @@ static inline uint64_t aml_def_create_field_read_helper(aml_state_t* state, aml_
         return ERR;
     }
 
-    if (aml_node_init_buffer_field(newNode, sourceBuff.buffer.content, fieldWidth, byteIndex * 8) == ERR)
+    if (aml_node_init_buffer_field(newNode, sourceBuff.buffer.content, byteIndex * 8, fieldWidth) == ERR)
     {
         aml_node_free(newNode);
         aml_node_deinit(&sourceBuff);
@@ -1007,6 +1007,7 @@ static inline uint64_t aml_def_create_field_read_helper(aml_state_t* state, aml_
         return ERR;
     }
 
+    aml_node_deinit(&sourceBuff);
     return 0;
 }
 

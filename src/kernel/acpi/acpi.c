@@ -76,8 +76,8 @@ static uint64_t acpi_parse_all_aml(void)
     {
         LOG_ERR("failed to parse DSDT\n");
 
-        LOG_INFO("==ACPI Namespace Tree==\n");
-        aml_print_tree(aml_root_get(), 0, true);
+        //LOG_INFO("==ACPI Namespace Tree==\n");
+        //aml_print_tree(aml_root_get(), 0, true);
 
         return ERR;
     }
@@ -103,9 +103,9 @@ static uint64_t acpi_parse_all_aml(void)
         index++;
     }
 
-    LOG_INFO("Parsed 1 DSDT and %llu SSDTs\n", index);
+    LOG_INFO("parsed 1 DSDT and %llu SSDTs\n", index);
 
-    LOG_INFO("Resolving %llu unresolved nodes\n", aml_patch_up_unresolved_count());
+    LOG_INFO("resolving %llu unresolved nodes\n", aml_patch_up_unresolved_count());
     if (aml_patch_up_resolve_all() == ERR)
     {
         LOG_ERR("Failed to resolve unresolved nodes\n");
@@ -119,8 +119,8 @@ static uint64_t acpi_parse_all_aml(void)
     }
 
     // For debugging, remove later
-    LOG_INFO("==ACPI Namespace Tree==\n");
-    aml_print_tree(aml_root_get(), 0, true);
+    //LOG_INFO("==ACPI Namespace Tree==\n");
+    //aml_print_tree(aml_root_get(), 0, true);
 
     /*aml_node_t* test = aml_node_find("\\_SB_.HPET.VEND", NULL);
     assert(test != NULL);
