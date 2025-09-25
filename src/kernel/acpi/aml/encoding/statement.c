@@ -22,13 +22,13 @@ uint64_t aml_def_else_read(aml_state_t* state, aml_node_t* node, bool shouldExec
     aml_value_t elseOp;
     if (aml_value_read_no_ext(state, &elseOp) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read else op");
+        AML_DEBUG_ERROR(state, "Failed to read ElseOp");
         return ERR;
     }
 
     if (elseOp.num != AML_ELSE_OP)
     {
-        AML_DEBUG_ERROR(state, "Invalid else op: 0x%x", elseOp.num);
+        AML_DEBUG_ERROR(state, "Invalid ElseOp '0x%x'", elseOp.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -38,7 +38,7 @@ uint64_t aml_def_else_read(aml_state_t* state, aml_node_t* node, bool shouldExec
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read pkg length");
+        AML_DEBUG_ERROR(state, "Failed to read PkgLength");
         return ERR;
     }
 
@@ -49,7 +49,7 @@ uint64_t aml_def_else_read(aml_state_t* state, aml_node_t* node, bool shouldExec
         // Execute the TermList
         if (aml_term_list_read(state, node, end) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read term list");
+            AML_DEBUG_ERROR(state, "Failed to read TermList");
             return ERR;
         }
     }
@@ -68,13 +68,13 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_node_t* node)
     aml_value_t ifOp;
     if (aml_value_read_no_ext(state, &ifOp) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read if op");
+        AML_DEBUG_ERROR(state, "Failed to read IfOp");
         return ERR;
     }
 
     if (ifOp.num != AML_IF_OP)
     {
-        AML_DEBUG_ERROR(state, "Invalid if op: 0x%x", ifOp.num);
+        AML_DEBUG_ERROR(state, "Invalid IfOp '0x%x'", ifOp.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -84,7 +84,7 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_node_t* node)
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read pkg length");
+        AML_DEBUG_ERROR(state, "Failed to read PkgLength");
         return ERR;
     }
 
@@ -95,7 +95,7 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_node_t* node)
     aml_qword_data_t predicate;
     if (aml_predicate_read(state, node, &predicate) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read predicate");
+        AML_DEBUG_ERROR(state, "Failed to read Predicate");
         return ERR;
     }
 
@@ -105,7 +105,7 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_node_t* node)
         // Execute the TermList
         if (aml_term_list_read(state, node, end) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read term list");
+            AML_DEBUG_ERROR(state, "Failed to read TermList");
             return ERR;
         }
     }
@@ -119,13 +119,32 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_node_t* node)
     aml_value_t elseOp;
     if (aml_value_peek_no_ext(state, &elseOp) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to peek else op");
+        AML_DEBUG_ERROR(state, "Failed to peek ElseOp");
         return ERR;
     }
 
     if (elseOp.num == AML_ELSE_OP) // Optional
     {
         return aml_def_else_read(state, node, !isTrue);
+    }
+
+    return 0;
+}
+
+uint64_t aml_def_noop_read(aml_state_t* state, aml_node_t* node)
+{
+    aml_value_t noopOp;
+    if (aml_value_read_no_ext(state, &noopOp) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read NoopOp");
+        return ERR;
+    }
+
+    if (noopOp.num != AML_NOOP_OP)
+    {
+        AML_DEBUG_ERROR(state, "Invalid NoopOp '0x%x'", noopOp.num);
+        errno = EILSEQ;
+        return ERR;
     }
 
     return 0;
@@ -140,13 +159,26 @@ uint64_t aml_statement_opcode_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
+    uint64_t result = 0;
     switch (op.num)
     {
     case AML_IF_OP:
-        return aml_def_if_else_read(state, node);
+        result = aml_def_if_else_read(state, node);
+    break;
+    case AML_NOOP_OP:
+        result = aml_def_noop_read(state, node);
+    break;
     default:
-        AML_DEBUG_ERROR(state, "Unknown statement opcode: 0x%x", op.num);
+        AML_DEBUG_ERROR(state, "Unknown statement opcode '0x%x'", op.num);
         errno = ENOSYS;
         return ERR;
     }
+
+    if (result == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read opcode '0x%x'", op.num);
+        return ERR;
+    }
+
+    return 0;
 }

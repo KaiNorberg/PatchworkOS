@@ -1034,46 +1034,68 @@ uint64_t aml_def_create_qword_field_read(aml_state_t* state, aml_node_t* node)
 
 uint64_t aml_named_obj_read(aml_state_t* state, aml_node_t* node)
 {
-    aml_value_t value;
-    if (aml_value_peek(state, &value) == ERR)
+    aml_value_t op;
+    if (aml_value_peek(state, &op) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to peek value");
         return ERR;
     }
 
-    switch (value.num)
+    uint64_t result = 0;
+    switch (op.num)
     {
     case AML_OPREGION_OP:
-        return aml_def_op_region_read(state, node);
+        result = aml_def_op_region_read(state, node);
+    break;
     case AML_FIELD_OP:
-        return aml_def_field_read(state, node);
+        result = aml_def_field_read(state, node);
+    break;
     case AML_METHOD_OP:
-        return aml_def_method_read(state, node);
+        result = aml_def_method_read(state, node);
+    break;
     case AML_DEVICE_OP:
-        return aml_def_device_read(state, node);
+        result = aml_def_device_read(state, node);
+    break;
     case AML_MUTEX_OP:
-        return aml_def_mutex_read(state, node);
+        result = aml_def_mutex_read(state, node);
+    break;
     case AML_INDEX_FIELD_OP:
-        return aml_def_index_field_read(state, node);
+        result = aml_def_index_field_read(state, node);
+    break;
     case AML_BANK_FIELD_OP:
-        return aml_def_bank_field_read(state, node);
+        result = aml_def_bank_field_read(state, node);
+    break;
     case AML_DEPRECATED_PROCESSOR_OP:
-        return aml_def_processor_read(state, node);
+        result = aml_def_processor_read(state, node);
+    break;
     case AML_CREATE_BIT_FIELD_OP:
-        return aml_def_create_bit_field_read(state, node);
+        result = aml_def_create_bit_field_read(state, node);
+    break;
     case AML_CREATE_BYTE_FIELD_OP:
-        return aml_def_create_byte_field_read(state, node);
+        result = aml_def_create_byte_field_read(state, node);
+    break;
     case AML_CREATE_WORD_FIELD_OP:
-        return aml_def_create_word_field_read(state, node);
+        result = aml_def_create_word_field_read(state, node);
+    break;
     case AML_CREATE_DWORD_FIELD_OP:
-        return aml_def_create_dword_field_read(state, node);
+        result = aml_def_create_dword_field_read(state, node);
+    break;
     case AML_CREATE_QWORD_FIELD_OP:
-        return aml_def_create_qword_field_read(state, node);
+        result = aml_def_create_qword_field_read(state, node);
+    break;
     default:
-        AML_DEBUG_ERROR(state, "Unknown named obj: 0x%x", value.num);
+        AML_DEBUG_ERROR(state, "Unknown NamedObj '0x%x'", op.num);
         errno = ENOSYS;
         return ERR;
     }
+
+    if (result == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read opcode '0x%x'", op.num);
+        return ERR;
+    }
+
+    return 0;
 }
 
 /** @} */

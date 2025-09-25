@@ -65,6 +65,19 @@ uint64_t aml_def_else_read(aml_state_t* state, aml_node_t* node, bool shouldExec
 uint64_t aml_def_if_else_read(aml_state_t* state, aml_node_t* node);
 
 /**
+ * @brief Reads a DefNoop structure from the AML byte stream.
+ *
+ * A DefNoop structure is defined as `DefNoop := NoopOp`.
+ *
+ * A Noop does nothing.
+ *
+ * @param state The AML state to parse from.
+ * @param node The current AML node.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_noop_read(aml_state_t* state, aml_node_t* node);
+
+/**
  * @brief Reads an StatementOpcode structure from the AML byte stream.
  *
  * A StatementOpcode structure is defined as `StatementOpcode := DefBreak | DefBreakPoint | DefContinue | DefFatal |

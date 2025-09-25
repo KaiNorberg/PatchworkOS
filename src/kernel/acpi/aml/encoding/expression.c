@@ -1168,14 +1168,14 @@ uint64_t aml_def_index_read(aml_state_t* state, aml_node_t* node, aml_node_t* ou
 
 uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
-    aml_value_t value;
-    if (aml_value_peek(state, &value) == ERR)
+    aml_value_t op;
+    if (aml_value_peek(state, &op) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to peek value");
         return ERR;
     }
 
-    if (value.props->type == AML_VALUE_TYPE_NAME)
+    if (op.props->type == AML_VALUE_TYPE_NAME)
     {
         if (aml_method_invocation_read(state, node, out) == ERR)
         {
@@ -1186,7 +1186,7 @@ uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_no
     }
 
     uint64_t result = 0;
-    switch (value.num)
+    switch (op.num)
     {
     case AML_BUFFER_OP:
         result = aml_def_buffer_read(state, node, out);
@@ -1249,14 +1249,14 @@ uint64_t aml_expression_opcode_read(aml_state_t* state, aml_node_t* node, aml_no
         result = aml_def_index_read(state, node, out);
         break;
     default:
-        AML_DEBUG_ERROR(state, "Unknown expression opcode: 0x%x", value.num);
+        AML_DEBUG_ERROR(state, "Unknown expression opcode '0x%x'", op.num);
         errno = ENOSYS;
         return ERR;
     }
 
     if (result == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read opcode: 0x%x", value.num);
+        AML_DEBUG_ERROR(state, "Failed to read opcode '0x%x'", op.num);
         return ERR;
     }
 
