@@ -2,10 +2,9 @@
 
 #include "aml_state.h"
 #include "aml_to_string.h"
+#include "aml_patch_up.h"
 #include "encoding/term.h"
 #include "log/log.h"
-#include "runtime/lock_rule.h"
-#include "runtime/opregion.h"
 
 #include "log/log.h"
 
@@ -82,6 +81,8 @@ uint64_t aml_init(void)
         root = NULL;
         return ERR;
     }*/
+
+    aml_patch_up_init();
 
     return 0;
 }

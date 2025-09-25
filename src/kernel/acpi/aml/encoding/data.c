@@ -2,8 +2,8 @@
 
 #include "acpi/aml/aml_convert.h"
 #include "acpi/aml/aml_debug.h"
+#include "acpi/aml/aml_patch_up.h"
 #include "acpi/aml/aml_state.h"
-#include "acpi/aml/aml_to_string.h"
 #include "acpi/aml/aml_value.h"
 #include "expression.h"
 #include "package_length.h"
@@ -330,6 +330,36 @@ uint64_t aml_num_elements_read(aml_state_t* state, aml_byte_data_t* out)
     return aml_byte_data_read(state, out);
 }
 
+/**
+ * Used to handle package elements that are names but mainly its used as a callback for
+ * the @ref kernel_acpi_aml_patch_up system.
+ */
+static inline uint64_t aml_package_element_handle_name(aml_node_t* in, aml_node_t* out)
+{
+    aml_data_type_info_t* info = aml_data_type_get_info(in->type);
+    if (info->flags & AML_DATA_FLAG_DATA_OBJECT) // "... resolved to actual data by the AML interpreter"
+    {
+        if (aml_convert_to_actual_data(in, out) == ERR)
+        {
+            return ERR;
+        }
+        return 0;
+    }
+    else if (info->flags & AML_DATA_FLAG_NON_DATA_OBJECT) // "... returned in the package as references"
+    {
+        if (aml_node_init_object_reference(out, in) == ERR)
+        {
+            return ERR;
+        }
+        return 0;
+    }
+    else
+    {
+        errno = EILSEQ;
+        return ERR;
+    }
+}
+
 uint64_t aml_package_element_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     aml_value_t value;
@@ -342,45 +372,28 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_node_t* node, aml_node
     if (value.props->type == AML_VALUE_TYPE_NAME)
     {
         aml_node_t* namedReference = NULL;
-        if (aml_simple_name_read_and_resolve(state, node, &namedReference) == ERR)
+        if (aml_simple_name_read_and_resolve(state, node, &namedReference, AML_RESOLVE_ALLOW_UNRESOLVED) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read and resolve named reference");
             return ERR;
         }
 
-        if (namedReference == NULL)
+        if (namedReference->type == AML_DATA_UNRESOLVED)
         {
-            AML_DEBUG_ERROR(state, "Named reference is a null reference");
-            errno = EILSEQ;
-            return ERR;
+            if (aml_patch_up_add_unresolved(namedReference, aml_package_element_handle_name) == ERR)
+            {
+                AML_DEBUG_ERROR(state, "Failed to add to patch-up system");
+                return ERR;
+            }
+            return 0;
         }
 
-        aml_data_type_info_t* info = aml_data_type_get_info(namedReference->type);
-        if (info->flags & AML_DATA_FLAG_DATA_OBJECT) // "... resolved to actual data by the AML interpreter"
+        if (aml_package_element_handle_name(namedReference, out) == ERR)
         {
-            if (aml_convert_to_actual_data(namedReference, out) == ERR)
-            {
-                AML_DEBUG_ERROR(state, "Failed to convert named reference to actual data");
-                return ERR;
-            }
-            return 0;
-        }
-        else if (info->flags & AML_DATA_FLAG_NON_DATA_OBJECT) // "... returned in the package as references"
-        {
-            if (aml_node_init_object_reference(out, namedReference) == ERR)
-            {
-                AML_DEBUG_ERROR(state, "Failed to init object reference for named reference");
-                return ERR;
-            }
-            return 0;
-        }
-        else
-        {
-            AML_DEBUG_ERROR(state, "Named reference is neither a data object nor a non-data object (%d)",
-                namedReference->type);
-            errno = EILSEQ;
+            AML_DEBUG_ERROR(state, "Failed to handle package element name");
             return ERR;
         }
+        return 0;
     }
     else
     {

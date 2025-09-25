@@ -3,6 +3,8 @@
 #include "acpi/aml/aml.h"
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_state.h"
+#include "acpi/aml/aml_to_string.h"
+#include "acpi/aml/aml_value.h"
 #include "data.h"
 
 #include <errno.h>
@@ -268,7 +270,7 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
     return 0;
 }
 
-static inline aml_node_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_node_t* node)
+aml_node_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_node_t* node)
 {
     aml_node_t* start = node;
     if (nameString->rootChar.present)
@@ -304,7 +306,8 @@ static inline aml_node_t* aml_name_string_resolve(aml_name_string_t* nameString,
     return current;
 }
 
-uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out)
+uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out,
+    aml_resolve_flags_t flags)
 {
     aml_name_string_t nameString;
     if (aml_name_string_read(state, &nameString) == ERR)
@@ -313,12 +316,37 @@ uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_node_t* node, 
         return ERR;
     }
 
-    // Out might be NULL if the name does not resolve to an object.
     *out = aml_name_string_resolve(&nameString, node);
+    if (*out == NULL)
+    {
+        if (flags & AML_RESOLVE_ALLOW_UNRESOLVED)
+        {
+            *out = aml_node_new(NULL, "____", AML_NODE_NONE);
+            if (*out == NULL)
+            {
+                AML_DEBUG_ERROR(state, "Failed to create unresolved node");
+                return ERR;
+            }
+
+            if (aml_node_init_unresolved(*out, &nameString, node) == ERR)
+            {
+                AML_DEBUG_ERROR(state, "Failed to init unresolved node for name string '%s'",
+                    aml_name_string_to_string(&nameString));
+                return ERR;
+            }
+            return 0;
+        }
+
+        AML_DEBUG_ERROR(state, "Failed to resolve name string '%s'", aml_name_string_to_string(&nameString));
+        errno = ENOENT;
+        return ERR;
+    }
+
     return 0;
 }
 
-uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out)
+uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out,
+    aml_resolve_flags_t flags)
 {
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
@@ -330,7 +358,7 @@ uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_node_t* node, 
     switch (value.props->type)
     {
     case AML_VALUE_TYPE_NAME:
-        if (aml_name_string_read_and_resolve(state, node, out) == ERR)
+        if (aml_name_string_read_and_resolve(state, node, out, flags) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read and resolve name string");
             return ERR;
@@ -351,7 +379,8 @@ uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_node_t* node, 
     }
 }
 
-uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out)
+uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out,
+    aml_resolve_flags_t flags)
 {
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
@@ -363,7 +392,12 @@ uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_node_t* node, a
     switch (value.props->type)
     {
     case AML_VALUE_TYPE_NAME:
-        return aml_simple_name_read_and_resolve(state, node, out);
+        if (aml_name_string_read_and_resolve(state, node, out, flags) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read and resolve name string");
+            return ERR;
+        }
+        return 0;
     case AML_VALUE_TYPE_ARG:
         AML_DEBUG_ERROR(state, "Args is unimplemented");
         errno = ENOSYS;
@@ -387,7 +421,7 @@ uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_node_t* node, a
     }
 }
 
-uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out)
+uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out, aml_resolve_flags_t flags)
 {
     aml_value_t value;
     if (aml_value_peek_no_ext(state, &value) == ERR)
@@ -399,10 +433,20 @@ uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_n
     if (value.num == AML_NULL_NAME)
     {
         *out = NULL;
-        return aml_null_name_read(state);
+        if (aml_null_name_read(state) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read null name");
+            return ERR;
+        }
     }
     else
     {
-        return aml_super_name_read_and_resolve(state, node, out);
+        if (aml_simple_name_read_and_resolve(state, node, out, flags) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read and resolve simple name");
+            return ERR;
+        }
     }
+
+    return 0;
 }

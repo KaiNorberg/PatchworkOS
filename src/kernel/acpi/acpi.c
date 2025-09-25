@@ -1,6 +1,7 @@
 #include "acpi.h"
 
 #include "aml/aml.h"
+#include "aml/aml_patch_up.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/pmm.h"
@@ -100,6 +101,19 @@ static uint64_t acpi_parse_all_aml(void)
         }
 
         index++;
+    }
+
+    // Resolve all unresolved nodes
+    if (aml_patch_up_resolve_all() == ERR)
+    {
+        LOG_ERR("Failed to resolve unresolved nodes\n");
+        return ERR;
+    }
+
+    if (aml_patch_up_unresolved_count() > 0)
+    {
+        LOG_ERR("There are still %llu unresolved nodes\n", aml_patch_up_unresolved_count());
+        return ERR;
     }
 
     // For debugging, remove later

@@ -657,6 +657,26 @@ uint64_t aml_node_init_string(aml_node_t* node, const char* str, bool inPlace)
     return 0;
 }
 
+uint64_t aml_node_init_unresolved(aml_node_t* node, aml_name_string_t* nameString, aml_node_t* start)
+{
+    if (node == NULL || start == NULL || nameString == NULL || nameString->namePath.segmentCount == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (node->type != AML_DATA_UNINITALIZED)
+    {
+        aml_node_deinit(node);
+    }
+
+    node->type = AML_DATA_UNRESOLVED;
+    node->unresolved.nameString = *nameString;
+    node->unresolved.start = start;
+
+    return 0;
+}
+
 void aml_node_deinit(aml_node_t* node)
 {
     if (node == NULL)

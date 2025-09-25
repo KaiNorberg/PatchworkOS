@@ -21,6 +21,20 @@ typedef struct aml_node aml_node_t;
  */
 
 /**
+ * @brief Resolve flags for name resolution.
+ * @enum aml_resolve_flags_t
+ */
+typedef enum
+{
+    AML_RESOLVE_NONE = 0, //!< None.
+    /**
+     * If the name could not be resolved and this flag is set then create a unresolved node, if its not set, output
+     * `NULL`.
+     */
+    AML_RESOLVE_ALLOW_UNRESOLVED = 1 << 0,
+} aml_resolve_flags_t;
+
+/**
  * @brief The exact length of a aml name not including a null character.
  */
 #define AML_NAME_LENGTH 4
@@ -209,6 +223,16 @@ uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out);
 uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out);
 
 /**
+ * @brief Resolves a NameString structure to an AML node.
+ *
+ * @param nameString The NameString to resolve.
+ * @param node The current AML node.
+ * @return A pointer to the resolved node, or `NULL` if the NameString does not resolve to an object. Does not set
+ * `errno`.
+ */
+aml_node_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_node_t* node);
+
+/**
  * @brief Reads the next data as a NameString structure from the AML bytecode stream and resolves it to a node.
  * *
  * If the NameString does not resolve to an object, then out will be set to `NULL` but its not considered an error.
@@ -229,51 +253,53 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out);
  * @param state The AML state.
  * @param node The current AML node.
  * @param out Pointer to where the pointer to the resolved node will be stored.
+ * @param flags Flags for name resolution.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out);
+uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out,
+    aml_resolve_flags_t flags);
 
 /**
  * @brief Reads a SimpleName structure from the AML byte stream and resolves it to a node.
  *
  * A SimpleName structure is defined as `SimpleName := NameString | ArgObj | LocalObj`.
  *
- * If the SuperName does not resolve to an object, then out will be set to `NULL` but its not considered an error.
- *
  * @param state The AML state.
  * @param node The current AML node.
  * @param out Pointer to where the pointer to the resolved node will be stored.
+ * @param flags Flags for name resolution.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out);
+uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out,
+    aml_resolve_flags_t flags);
 
 /**
  * @brief Reads a SuperName structure from the AML byte stream and resolves it to a node.
  *
  * A SuperName structure is defined as `SuperName := SimpleName | DebugObj | ReferenceTypeOpcode`.
  *
- * If the SuperName does not resolve to an object, then out will be set to `NULL` but its not considered an error.
- *
  * @param state The AML state.
  * @param node The current AML node.
  * @param out Pointer to where the pointer to the resolved node will be stored.
+ * @param flags Flags for name resolution.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out);
+uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out,
+    aml_resolve_flags_t flags);
 
 /**
  * @brief Reads a Target structure from the AML byte stream and resolves it to a node.
  *
  * A Target structure is defined as `Target := SuperName | NullName`.
  *
- * If the Target is a NullName or the SuperName does not resolve to an object, then out will be set to `NULL` but its
- * not considered an error.
+ * If the Target is a NullName, then out will be set to `NULL` but its not considered an error.
  *
  * @param state The AML state.
  * @param node The current AML node.
  * @param out Pointer to where the pointer to the resolved node will be stored.
+ * @param flags Flags for name resolution.
  * @return On success, 0. On error, `ERR` and `errno` is set.
  */
-uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out);
+uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out, aml_resolve_flags_t flags);
 
 /** @} */

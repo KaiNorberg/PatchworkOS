@@ -80,7 +80,7 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_node_t* node)
     }
 
     aml_node_t* scope = NULL;
-    if (aml_name_string_read_and_resolve(state, node, &scope) == ERR)
+    if (aml_name_string_read_and_resolve(state, node, &scope, AML_RESOLVE_NONE) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve scope name string");
         return ERR;

@@ -44,6 +44,8 @@ const char* aml_data_type_to_string(aml_data_type_t type)
         return "String";
     case AML_DATA_THERMAL_ZONE:
         return "ThermalZone";
+    case AML_DATA_UNRESOLVED:
+        return "Unresolved";
     default:
         return "Unknown";
     }
@@ -213,6 +215,9 @@ const char* aml_node_to_string(aml_node_t* node)
         }
         return buffer;
     }
+    case AML_DATA_UNRESOLVED:
+        snprintf(buffer, sizeof(buffer), "Unresolved");
+        return buffer;
     default:
         snprintf(buffer, sizeof(buffer), "Unknown(Type=%d)", node->type);
         return buffer;

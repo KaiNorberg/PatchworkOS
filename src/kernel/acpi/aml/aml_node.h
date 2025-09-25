@@ -56,10 +56,11 @@ typedef enum
     AML_DATA_RAW_DATA_BUFFER = 1 << 15,
     AML_DATA_STRING = 1 << 16,
     AML_DATA_THERMAL_ZONE = 1 << 17,
+    AML_DATA_UNRESOLVED = 1 << 18, //!< Used for forward references, not in the spec.
     AML_DATA_ALL = AML_DATA_BUFFER | AML_DATA_BUFFER_FIELD | AML_DATA_DEBUG_OBJECT | AML_DATA_DEVICE | AML_DATA_EVENT |
         AML_DATA_FIELD_UNIT | AML_DATA_INTEGER | AML_DATA_INTEGER_CONSTANT | AML_DATA_METHOD | AML_DATA_MUTEX |
         AML_DATA_OBJECT_REFERENCE | AML_DATA_OPERATION_REGION | AML_DATA_PACKAGE | AML_DATA_POWER_RESOURCE |
-        AML_DATA_PROCESSOR | AML_DATA_RAW_DATA_BUFFER | AML_DATA_STRING | AML_DATA_THERMAL_ZONE,
+        AML_DATA_PROCESSOR | AML_DATA_RAW_DATA_BUFFER | AML_DATA_STRING | AML_DATA_THERMAL_ZONE | AML_DATA_UNRESOLVED,
 } aml_data_type_t;
 
 /**
@@ -166,11 +167,11 @@ typedef struct aml_node
         struct
         {
             aml_field_unit_type_t type;     //!< The type of field unit.
-            aml_node_t* indexNode;          //!< Used for IndexField.
-            aml_node_t* dataNode;           //!< Used for IndexField.
-            aml_node_t* opregion;           //!< Used for Field and BankField.
+            struct aml_node* indexNode;     //!< Used for IndexField.
+            struct aml_node* dataNode;      //!< Used for IndexField.
+            struct aml_node* opregion;      //!< Used for Field and BankField.
             aml_qword_data_t bankValue;     //!< Used for BankField.
-            aml_node_t* bank;               //!< Used for BankField.
+            struct aml_node* bank;          //!< Used for BankField.
             aml_field_flags_t flags;        //!< Used for Field, IndexField and BankField.
             aml_bit_size_t bitOffset;       //!< Used for Field, IndexField and BankField.
             aml_bit_size_t bitSize;         //!< Used for Field, IndexField and BankField.
@@ -221,6 +222,14 @@ typedef struct aml_node
             char* content;
             bool inPlace;
         } string;
+        /**
+         * @brief Used for forward references.
+         */
+        struct
+        {
+            aml_name_string_t nameString;
+            aml_node_t* start;
+        } unresolved;
     };
     sysfs_dir_t dir;
 } aml_node_t;
@@ -452,6 +461,18 @@ uint64_t aml_node_init_processor(aml_node_t* node, aml_proc_id_t procId, aml_pbl
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_node_init_string(aml_node_t* node, const char* str, bool inPlace);
+
+/**
+ * @brief Initialize an ACPI node as an unresolved reference to be resolved later.
+ *
+ * This is used for forward references, where a NameString refers to a node that has not yet been defined.
+ *
+ * @param node Pointer to the node to initialize.
+ * @param nameString The NameString representing the path to the target node.
+ * @param start The node to start the search from when resolving the reference.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_node_init_unresolved(aml_node_t* node, aml_name_string_t* nameString, aml_node_t* start);
 
 /**
  * @brief Deinitialize an ACPI node, freeing any resources associated with it and setting its type to

@@ -43,7 +43,7 @@ static inline uint64_t aml_unary_op_read(aml_state_t* state, aml_node_t* node, a
     }
 
     aml_node_t* target = NULL;
-    if (aml_target_read_and_resolve(state, node, &target) == ERR)
+    if (aml_target_read_and_resolve(state, node, &target, AML_RESOLVE_NONE) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read target for '%s'", opName);
         return ERR;
@@ -126,7 +126,7 @@ static inline uint64_t aml_binary_op_read(aml_state_t* state, aml_node_t* node, 
     }
 
     aml_node_t* target = NULL;
-    if (aml_target_read_and_resolve(state, node, &target) == ERR)
+    if (aml_target_read_and_resolve(state, node, &target, AML_RESOLVE_NONE) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read target for '%s'", opName);
         return ERR;
@@ -322,7 +322,7 @@ uint64_t aml_term_arg_list_read(aml_state_t* state, aml_node_t* node, uint64_t a
 uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
     aml_node_t* target = NULL;
-    if (aml_name_string_read_and_resolve(state, node, &target) == ERR)
+    if (aml_name_string_read_and_resolve(state, node, &target, AML_RESOLVE_NONE) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read target name string");
         return ERR;
@@ -392,17 +392,19 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_node
     }
 
     aml_node_t* source = NULL;
-    if (aml_super_name_read_and_resolve(state, node, &source) == ERR)
+    if (aml_super_name_read_and_resolve(state, node, &source, AML_RESOLVE_NONE) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read source");
-        return ERR;
+        // This is fine, source can be NULL.
+        source = NULL;
+        errno = 0;
     }
 
     aml_node_t* result = NULL;
-    if (aml_target_read_and_resolve(state, node, &result) == ERR)
+    if (aml_target_read_and_resolve(state, node, &result, AML_RESOLVE_NONE) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read result");
-        return ERR;
+        // This is also fine result can be NULL.
+        result = NULL;
+        errno = 0;
     }
 
     if (source == NULL)
@@ -468,18 +470,10 @@ uint64_t aml_def_store_read(aml_state_t* state, aml_node_t* node, aml_node_t* ou
     }
 
     aml_node_t* destination = NULL;
-    if (aml_super_name_read_and_resolve(state, node, &destination) == ERR)
+    if (aml_super_name_read_and_resolve(state, node, &destination, AML_RESOLVE_NONE) == ERR)
     {
         aml_node_deinit(&source);
         AML_DEBUG_ERROR(state, "Failed to read super name");
-        return ERR;
-    }
-
-    if (destination == NULL)
-    {
-        aml_node_deinit(&source);
-        AML_DEBUG_ERROR(state, "Destination is a null reference");
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -535,7 +529,7 @@ uint64_t aml_divisor_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t
 
 uint64_t aml_remainder_read(aml_state_t* state, aml_node_t* node, aml_node_t** out)
 {
-    if (aml_target_read_and_resolve(state, node, out) == ERR)
+    if (aml_target_read_and_resolve(state, node, out, AML_RESOLVE_NONE) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read target");
         return ERR;
@@ -545,7 +539,7 @@ uint64_t aml_remainder_read(aml_state_t* state, aml_node_t* node, aml_node_t** o
 
 uint64_t aml_quotient_read(aml_state_t* state, aml_node_t* node, aml_node_t** out)
 {
-    if (aml_target_read_and_resolve(state, node, out) == ERR)
+    if (aml_target_read_and_resolve(state, node, out, AML_RESOLVE_NONE) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read target");
         return ERR;
@@ -746,7 +740,7 @@ uint64_t aml_def_shift_left_read(aml_state_t* state, aml_node_t* node, aml_node_
     }
 
     aml_node_t* target = NULL;
-    if (aml_target_read_and_resolve(state, node, &target) == ERR)
+    if (aml_target_read_and_resolve(state, node, &target, AML_RESOLVE_NONE) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read target");
         return ERR;
@@ -818,7 +812,7 @@ uint64_t aml_def_shift_right_read(aml_state_t* state, aml_node_t* node, aml_node
     }
 
     aml_node_t* target = NULL;
-    if (aml_target_read_and_resolve(state, node, &target) == ERR)
+    if (aml_target_read_and_resolve(state, node, &target, AML_RESOLVE_NONE) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read target");
         return ERR;
@@ -876,16 +870,9 @@ uint64_t aml_def_increment_read(aml_state_t* state, aml_node_t* node, aml_node_t
     }
 
     aml_node_t* addend;
-    if (aml_super_name_read_and_resolve(state, node, &addend) == ERR)
+    if (aml_super_name_read_and_resolve(state, node, &addend, AML_RESOLVE_NONE) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read super name");
-        return ERR;
-    }
-
-    if (addend == NULL)
-    {
-        AML_DEBUG_ERROR(state, "Super name is a null reference");
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -938,16 +925,9 @@ uint64_t aml_def_decrement_read(aml_state_t* state, aml_node_t* node, aml_node_t
     }
 
     aml_node_t* subtrahend;
-    if (aml_super_name_read_and_resolve(state, node, &subtrahend) == ERR)
+    if (aml_super_name_read_and_resolve(state, node, &subtrahend, AML_RESOLVE_NONE) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read super name");
-        return ERR;
-    }
-
-    if (subtrahend == NULL)
-    {
-        AML_DEBUG_ERROR(state, "Super name is a null reference");
-        errno = EILSEQ;
         return ERR;
     }
 
