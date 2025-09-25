@@ -143,6 +143,7 @@ const char* aml_node_to_string(aml_node_t* node)
         return "Unknown";
     }
 
+    memset(buffer, 0, sizeof(buffer));
     switch (node->type)
     {
     case AML_DATA_UNINITALIZED:
@@ -227,6 +228,8 @@ const char* aml_node_to_string(aml_node_t* node)
 const char* aml_name_string_to_string(aml_name_string_t* nameString)
 {
     static char buffer[256];
+    memset(buffer, 0, sizeof(buffer));
+
     int offset = 0;
     if (nameString->rootChar.present)
     {

@@ -24,7 +24,7 @@ typedef struct aml_state aml_state_t;
  * @param state The AML state.
  * @param node The current AML node.
  * @param out The destination node to store the result of the TermArg.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
 
@@ -34,7 +34,7 @@ uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_node_t* out
  * @param state The AML state.
  * @param node The current AML node.
  * @param out The output buffer to store the integer value of the TermArg.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out);
 
@@ -45,7 +45,7 @@ uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_node_t* node, aml_qwo
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_object_read(aml_state_t* state, aml_node_t* node);
 
@@ -56,7 +56,7 @@ uint64_t aml_object_read(aml_state_t* state, aml_node_t* node);
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_term_obj_read(aml_state_t* state, aml_node_t* node);
 
@@ -68,7 +68,7 @@ uint64_t aml_term_obj_read(aml_state_t* state, aml_node_t* node);
  * @param state The AML state.
  * @param node The current AML node.
  * @param end The index at which the termlist ends.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_term_list_read(aml_state_t* state, aml_node_t* node, aml_address_t end);
 

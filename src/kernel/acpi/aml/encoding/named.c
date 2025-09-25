@@ -389,7 +389,7 @@ uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node)
     }
 
     aml_node_t* opregion = NULL;
-    if (aml_name_string_read_and_resolve(state, node, &opregion, AML_RESOLVE_NONE) == ERR)
+    if (aml_name_string_read_and_resolve(state, node, &opregion, AML_RESOLVE_NONE, NULL) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve name string");
         return ERR;
@@ -446,14 +446,14 @@ uint64_t aml_def_index_field_read(aml_state_t* state, aml_node_t* node)
     }
 
     aml_node_t* indexNode = NULL;
-    if (aml_name_string_read_and_resolve(state, node, &indexNode, AML_RESOLVE_NONE) == ERR)
+    if (aml_name_string_read_and_resolve(state, node, &indexNode, AML_RESOLVE_NONE, NULL) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve index name string");
         return ERR;
     }
 
     aml_node_t* dataNode = NULL;
-    if (aml_name_string_read_and_resolve(state, node, &dataNode, AML_RESOLVE_NONE) == ERR)
+    if (aml_name_string_read_and_resolve(state, node, &dataNode, AML_RESOLVE_NONE, NULL) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve data name string");
         return ERR;
@@ -513,14 +513,14 @@ uint64_t aml_def_bank_field_read(aml_state_t* state, aml_node_t* node)
     aml_address_t end = start + pkgLength;
 
     aml_node_t* opregion = NULL;
-    if (aml_name_string_read_and_resolve(state, node, &opregion, AML_RESOLVE_NONE) == ERR)
+    if (aml_name_string_read_and_resolve(state, node, &opregion, AML_RESOLVE_NONE, NULL) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve opregion name string");
         return ERR;
     }
 
     aml_node_t* bank = NULL;
-    if (aml_name_string_read_and_resolve(state, node, &bank, AML_RESOLVE_NONE) == ERR)
+    if (aml_name_string_read_and_resolve(state, node, &bank, AML_RESOLVE_NONE, NULL) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve bank name string");
         return ERR;

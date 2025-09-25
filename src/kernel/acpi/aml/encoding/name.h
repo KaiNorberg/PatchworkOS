@@ -1,5 +1,6 @@
 #pragma once
 
+#include "acpi/aml/aml_patch_up.h"
 #include "data_integers.h"
 
 #include <stdint.h>
@@ -28,8 +29,7 @@ typedef enum
 {
     AML_RESOLVE_NONE = 0, //!< None.
     /**
-     * If the name could not be resolved and this flag is set then create a unresolved node, if its not set, output
-     * `NULL`.
+     * If the name could not be resolved and this flag is set then instead of failing, return `NULL`.
      */
     AML_RESOLVE_ALLOW_UNRESOLVED = 1 << 0,
 } aml_resolve_flags_t;
@@ -125,7 +125,7 @@ typedef struct
  *
  * @param state The AML state.
  * @param out Pointer to destination where the SegCount will be stored.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_seg_count_read(aml_state_t* state, aml_seg_count_t* out);
 
@@ -137,7 +137,7 @@ uint64_t aml_seg_count_read(aml_state_t* state, aml_seg_count_t* out);
  * @param state The AML state.
  * @param out Pointer to the destination where the pointer to the NameSeg will be stored. Will be located within the AML
  * bytecode stream.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t** out);
 
@@ -149,7 +149,7 @@ uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t** out);
  * @param state The AML state.
  * @param out Pointer to destination where the pointer to the array of two NameSeg will be stored. Will be located
  * within the AML bytecode stream.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t** out);
 
@@ -162,7 +162,7 @@ uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t** out);
  * @param outSegments Pointer to destination where the pointer to the array of NameSeg will be stored. Will be located
  * within the AML bytecode stream.
  * @param outSegCount Pointer to destination where the number of segments will be stored.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t** outSegments, aml_seg_count_t* outSegCount);
 
@@ -172,7 +172,7 @@ uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t** outSegmen
  * A NullName structure is defined as `NullName := 0x00`.
  *
  * @param state The AML state.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_null_name_read(aml_state_t* state);
 
@@ -183,7 +183,7 @@ uint64_t aml_null_name_read(aml_state_t* state);
  *
  * @param state The AML state.
  * @param out Pointer to destination where the NamePath will be stored.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* out);
 
@@ -196,7 +196,7 @@ uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* out);
  *
  * @param state The AML state.
  * @param out Pointer to destination where the PrefixPath will be stored.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_prefix_path_read(aml_state_t* state, aml_prefix_path_t* out);
 
@@ -207,7 +207,7 @@ uint64_t aml_prefix_path_read(aml_state_t* state, aml_prefix_path_t* out);
  *
  * @param state The AML state.
  * @param out Pointer to destination where the RootChar will be stored.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out);
 
@@ -218,7 +218,7 @@ uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out);
  *
  * @param state The AML state.
  * @param out Pointer to destination where the NameString will be stored.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out);
 
@@ -254,10 +254,11 @@ aml_node_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_node_t* n
  * @param node The current AML node.
  * @param out Pointer to where the pointer to the resolved node will be stored.
  * @param flags Flags for name resolution.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @param nameString If not `NULL`, the read NameString will be stored here.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out,
-    aml_resolve_flags_t flags);
+    aml_resolve_flags_t flags, aml_name_string_t* nameString);
 
 /**
  * @brief Reads a SimpleName structure from the AML byte stream and resolves it to a node.
@@ -268,10 +269,11 @@ uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_node_t* node, 
  * @param node The current AML node.
  * @param out Pointer to where the pointer to the resolved node will be stored.
  * @param flags Flags for name resolution.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @param nameString If not `NULL` and the SuperName evaluates to a NameString, the read NameString will be stored here.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out,
-    aml_resolve_flags_t flags);
+    aml_resolve_flags_t flags, aml_name_string_t* nameString);
 
 /**
  * @brief Reads a SuperName structure from the AML byte stream and resolves it to a node.
@@ -282,10 +284,11 @@ uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_node_t* node, 
  * @param node The current AML node.
  * @param out Pointer to where the pointer to the resolved node will be stored.
  * @param flags Flags for name resolution.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @param nameString If not `NULL` and the SuperName evaluates to a NameString, the read NameString will be stored here.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out,
-    aml_resolve_flags_t flags);
+    aml_resolve_flags_t flags, aml_name_string_t* nameString);
 
 /**
  * @brief Reads a Target structure from the AML byte stream and resolves it to a node.
@@ -298,8 +301,10 @@ uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_node_t* node, a
  * @param node The current AML node.
  * @param out Pointer to where the pointer to the resolved node will be stored.
  * @param flags Flags for name resolution.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @param nameString If not `NULL` and the Target evaluates to a NameString, the read NameString will be stored here.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out, aml_resolve_flags_t flags);
+uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out, aml_resolve_flags_t flags,
+    aml_name_string_t* nameString);
 
 /** @} */

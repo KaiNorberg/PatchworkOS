@@ -1,8 +1,8 @@
 #include "aml.h"
 
+#include "aml_patch_up.h"
 #include "aml_state.h"
 #include "aml_to_string.h"
-#include "aml_patch_up.h"
 #include "encoding/term.h"
 #include "log/log.h"
 

@@ -103,7 +103,9 @@ static uint64_t acpi_parse_all_aml(void)
         index++;
     }
 
-    // Resolve all unresolved nodes
+    LOG_INFO("Parsed 1 DSDT and %llu SSDTs\n", index);
+
+    LOG_INFO("Resolving %llu unresolved nodes\n", aml_patch_up_unresolved_count());
     if (aml_patch_up_resolve_all() == ERR)
     {
         LOG_ERR("Failed to resolve unresolved nodes\n");

@@ -36,7 +36,7 @@
  *
  * @param field The field to read from.
  * @param out Pointer to the buffer where the result will be stored.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_field_unit_read(aml_node_t* fieldUnit, aml_node_t* out);
 
@@ -53,7 +53,7 @@ uint64_t aml_field_unit_read(aml_node_t* fieldUnit, aml_node_t* out);
  *
  * @param field The field to write to.
  * @param in Pointer to the node containing the value to write.
- * @return On success, 0. On error, `ERR` and `errno` is set.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_field_unit_write(aml_node_t* fieldUnit, aml_node_t* in);
 

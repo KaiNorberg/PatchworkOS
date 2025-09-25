@@ -103,7 +103,7 @@ void path_put(path_t* path);
  * @param outPath The output path.
  * @param parent The parent path.
  * @param name The name of the child dentry.
- * @return On success, 0. On error, ERR and errno is set.
+ * @return On success, 0. On failure, ERR and errno is set.
  */
 uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char* name, walk_flags_t flags);
 
@@ -115,7 +115,7 @@ uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char
  * @param pathname The patname to traverse to.
  * @param start The path to start at.
  * @param flags Flags for the path walk.
- * @return On success, 0. On error, ERR and errno is set.
+ * @return On success, 0. On failure, ERR and errno is set.
  */
 uint64_t path_walk(path_t* outPath, const pathname_t* pathname, const path_t* start, walk_flags_t flags);
 uint64_t path_walk_parent(path_t* outPath, const pathname_t* pathname, const path_t* start, char* outLastName,

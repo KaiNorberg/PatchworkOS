@@ -2,8 +2,9 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <sys/list.h>
 
-#include "acpi/aml/aml_node.h"
+typedef struct aml_node aml_node_t;
 
 /**
  * @brief Patch-up system for forward references.
@@ -43,7 +44,7 @@
  * would then resolve to \_SB.BAR. But what if we later defined \_SB.FOO.BAR? Well then we resolved to the wrong node!
  * All becouse of the combination of forward references and the parent scope search behaviour.
  *
- * In that case the solution must just be a two pass system, right? Nope. Then we also have issues since the type and
+ * The solution must just be a two pass system, right? Nope. Then we also have issues since the type and
  * location of objects is not as simple as something like JSON, they are defined dynamically, so the only way to know
  * exactly where everything will be is to parse the entire AML bytecode which we cant do becouse we need the forward
  * references to do that. So we are back to square one. We could ignore the forward refences during the first pass, but
@@ -93,6 +94,13 @@ void aml_patch_up_init(void);
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_patch_up_add_unresolved(aml_node_t* unresolved, aml_patch_up_resolve_callback_t callback);
+
+/**
+ * @brief Removes an unresolved reference from the global list.
+ *
+ * @param unresolved The unresolved node to remove.
+ */
+void aml_patch_up_remove_unresolved(aml_node_t* unresolved);
 
 /**
  * @brief Attempts to resolve all unresolved references.

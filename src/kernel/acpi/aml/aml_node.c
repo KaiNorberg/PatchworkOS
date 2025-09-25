@@ -61,21 +61,16 @@ aml_data_type_info_t* aml_data_type_get_info(aml_data_type_t type)
         {"Raw Data Buffer", AML_DATA_RAW_DATA_BUFFER, AML_DATA_FLAG_NONE},
         {"String", AML_DATA_STRING, AML_DATA_FLAG_DATA_OBJECT | AML_DATA_FLAG_IS_ACTUAL_DATA},
         {"Thermal Zone", AML_DATA_THERMAL_ZONE, AML_DATA_FLAG_NON_DATA_OBJECT},
+        {"Unresolved", AML_DATA_UNRESOLVED, AML_DATA_FLAG_NONE},
     };
     static aml_data_type_info_t unknownType = {"Unknown", AML_DATA_UNINITALIZED, AML_DATA_FLAG_NONE};
 
-    // Exactly one bit must be set, otherwise this does not make any sense.
-    if (type == 0 || (type & (type - 1)) != 0)
+    for (size_t i = 0; i < sizeof(typeInfo) / sizeof(typeInfo[0]); i++)
     {
-        return &unknownType;
-    }
-
-    // Use the set bit position as the index
-    uint64_t index = __builtin_ffs(type) - 1;
-
-    if (index < sizeof(typeInfo) / sizeof(typeInfo[0]) && typeInfo[index].type == type)
-    {
-        return &typeInfo[index];
+        if (typeInfo[i].type == type)
+        {
+            return &typeInfo[i];
+        }
     }
 
     return &unknownType;
@@ -721,6 +716,9 @@ void aml_node_deinit(aml_node_t* node)
         }
         node->package.capacity = 0;
         node->package.elements = NULL;
+        break;
+    case AML_DATA_UNRESOLVED:
+        aml_patch_up_remove_unresolved(node);
         break;
     default:
         panic(NULL, "unimplemented deinit of AML node '%.*s' of type '%s'\n", AML_NAME_LENGTH, node->segment,

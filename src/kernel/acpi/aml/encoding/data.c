@@ -5,6 +5,9 @@
 #include "acpi/aml/aml_patch_up.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_value.h"
+#include "acpi/aml/aml_to_string.h"
+#include "data_integers.h"
+#include "name.h"
 #include "expression.h"
 #include "package_length.h"
 
@@ -341,6 +344,7 @@ static inline uint64_t aml_package_element_handle_name(aml_node_t* in, aml_node_
     {
         if (aml_convert_to_actual_data(in, out) == ERR)
         {
+            LOG_ERR("failed to convert to actual data in aml_package_element_handle_name()\n");
             return ERR;
         }
         return 0;
@@ -349,12 +353,14 @@ static inline uint64_t aml_package_element_handle_name(aml_node_t* in, aml_node_
     {
         if (aml_node_init_object_reference(out, in) == ERR)
         {
+            LOG_ERR("failed to init object reference in aml_package_element_handle_name()\n");
             return ERR;
         }
         return 0;
     }
     else
     {
+        LOG_ERR("invalid data type '%s' in aml_package_element_handle_name()\n", info->name);
         errno = EILSEQ;
         return ERR;
     }
@@ -371,16 +377,25 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_node_t* node, aml_node
 
     if (value.props->type == AML_VALUE_TYPE_NAME)
     {
+        aml_name_string_t nameString;
         aml_node_t* namedReference = NULL;
-        if (aml_simple_name_read_and_resolve(state, node, &namedReference, AML_RESOLVE_ALLOW_UNRESOLVED) == ERR)
+        if (aml_simple_name_read_and_resolve(state, node, &namedReference, AML_RESOLVE_ALLOW_UNRESOLVED, &nameString) ==
+            ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read and resolve named reference");
             return ERR;
         }
 
-        if (namedReference->type == AML_DATA_UNRESOLVED)
+        // Evaulated to a valid namestring but could not be resolved.
+        if (namedReference == NULL)
         {
-            if (aml_patch_up_add_unresolved(namedReference, aml_package_element_handle_name) == ERR)
+            if (aml_node_init_unresolved(out, &nameString, node) == ERR)
+            {
+                AML_DEBUG_ERROR(state, "Failed to init unresolved node");
+                return ERR;
+            }
+
+            if (aml_patch_up_add_unresolved(out, aml_package_element_handle_name) == ERR)
             {
                 AML_DEBUG_ERROR(state, "Failed to add to patch-up system");
                 return ERR;

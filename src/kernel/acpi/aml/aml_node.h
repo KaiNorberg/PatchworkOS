@@ -284,7 +284,7 @@ void aml_node_free(aml_node_t* node);
  * @param string The Namestring specifying the location and name of the new node.
  * @param start The node to start the search from, or `NULL` to start from the root.
  * @param flags Flags for the new node.
- * @return On success, a pointer to the new node. On error, `NULL` and `errno` is set.
+ * @return On success, a pointer to the new node. On failure, `NULL` and `errno` is set.
  */
 aml_node_t* aml_node_add(aml_name_string_t* string, aml_node_t* start, aml_node_flags_t flags);
 
@@ -509,7 +509,7 @@ aml_node_t* aml_node_find_child(aml_node_t* parent, const char* name);
  *
  * @param path The path string to search for.
  * @param start The node to start the search from, or `NULL` to start from the root.
- * @return On success, a pointer to the found node. On error, `NULL` and `errno` is set.
+ * @return On success, a pointer to the found node. On failure, `NULL` and `errno` is set.
  */
 aml_node_t* aml_node_find(const char* path, aml_node_t* start);
 
