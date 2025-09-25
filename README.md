@@ -7,7 +7,7 @@
 
 **Patchwork** is a 64-bit monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows a "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9, DOS and others while simplifying them and sprinkling in some new ideas of its own.
 
-The goal is to eventually have a feature-complete, well-designed and unique operating system skipping easy algorithms while still remaining approachable and educational.
+The goal is to eventually have a feature-complete and unique operating system avoiding easy shortcuts while still remaining approachable and educational.
 
 ![Desktop Screenshot](meta/screenshots/desktop.png)
 ![Doom Screenshot](meta/screenshots/doom.png)
@@ -22,6 +22,13 @@ The goal is to eventually have a feature-complete, well-designed and unique oper
 - File based IPC including [pipes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/pipe.h), [shared memory](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/shmem.h), [sockets](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/net) and Plan9 inspired "signals" called [notes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/ipc/note.h)
 - Synchronization primitives including mutexes, read-write locks and [futexes](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/sync/futex.h)
 - SIMD support
+
+### ACPI
+
+- From scratch and heavily documented [AML parser](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/acpi/aml/aml.h) (WIP)
+- Tested on real hardware, capable of parsing the DSDT and all SSDTs of a Lenovo ThinkPad E495
+- ACPI implementation was made to not just work, but to be easy to understand and useful for educational purposes
+- ACPI Mode (e.g., method invocation, event handling) is currently unimplemented, but it's next on the list
 
 ### File System
 
@@ -60,6 +67,7 @@ The goal is to eventually have a feature-complete, well-designed and unique oper
 - Software interrupts for notes (signals)
 - Lua port
 - Capability based security model (currently has no well-defined security model)
+- Visual overhaul of the desktop environment (modernize it?)
 - USB support (The holy grail)
 
 ---

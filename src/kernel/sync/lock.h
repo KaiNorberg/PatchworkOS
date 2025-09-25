@@ -21,7 +21,7 @@ typedef struct
     __attribute__((cleanup(lock_cleanup))) lock_t* CONCAT(l, __COUNTER__) = (lock); \
     lock_acquire((lock))
 
-#define LOCK_CREATE() \
+#define LOCK_CREATE \
     (lock_t) \
     { \
         .nextTicket = ATOMIC_VAR_INIT(0), .nowServing = ATOMIC_VAR_INIT(0), \

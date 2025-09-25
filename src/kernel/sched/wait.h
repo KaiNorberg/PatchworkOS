@@ -183,6 +183,8 @@ typedef struct
     lock_t lock;
 } wait_cpu_ctx_t;
 
+#define WAIT_QUEUE_CREATE {.lock = LOCK_CREATE, .entries = LIST_CREATE}
+
 void wait_init(void);
 
 void wait_queue_init(wait_queue_t* waitQueue);
@@ -211,7 +213,7 @@ uint64_t wait_unblock(wait_queue_t* waitQueue, uint64_t amount);
  * @param waitQueues Array of wait queues to add the thread to.
  * @param amount Number of wait queues to add the thread to.
  * @param timeout Timeout.
- * @return uint64_t On success, 0. On failure, interrupts are reenabled, returns ERR and errno is set.
+ * @return On success, 0. On failure, interrupts are reenabled, returns ERR and errno is set.
  */
 uint64_t wait_block_setup(wait_queue_t** waitQueues, uint64_t amount, clock_t timeout);
 

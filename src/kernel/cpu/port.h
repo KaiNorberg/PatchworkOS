@@ -2,6 +2,16 @@
 
 #include <stdint.h>
 
+/**
+ * @brief Port I/O operations
+ * @defgroup kernel_cpu_port Port I/O
+ * @ingroup kernel_cpu
+ *
+ * Port I/O allow communication with hardware devices through specific I/O ports.
+ *
+ * @{
+ */
+
 #define ICW1_ICW4 0x01      // Indicates that ICW4 will be present
 #define ICW1_SINGLE 0x02    // Single (cascade) mode
 #define ICW1_INTERVAL4 0x04 // Call address interval 4 (8)
@@ -40,7 +50,21 @@ static inline uint16_t port_inw(uint16_t port)
     return ret;
 }
 
+static inline uint32_t port_inl(uint16_t port)
+{
+    uint32_t ret;
+    asm volatile("inl %1, %0" : "=a"(ret) : "Nd"(port) : "memory");
+    return ret;
+}
+
+static inline void port_outl(uint16_t port, uint32_t val)
+{
+    asm volatile("outl %0, %1" : : "a"(val), "Nd"(port) : "memory");
+}
+
 static inline void port_wait(void)
 {
     port_outb(0x80, 0);
 }
+
+/** @} */

@@ -42,10 +42,11 @@ typedef struct PACKED
  * @brief Fixed ACPI Description Table
  * @struct fadt_t
  *
+ * @see Section 5.2.9 table 5.9 of the ACPI specification for more details.
  */
 typedef struct PACKED
 {
-    acpi_header_t header;
+    sdt_header_t header;
     uint32_t firmwareControl;
     uint32_t dsdt;
     uint8_t reserved;
@@ -106,56 +107,99 @@ typedef struct PACKED
  */
 #define FADT_GET() ((fadt_t*)acpi_tables_lookup("FACP", 0))
 
-#define MADT_LAPIC 0
-#define MADT_IOAPIC 1
-#define MADT_INTERRUPT_OVERRIDE 2
-#define MADT_NMI_SOURCE 3
-#define MADT_LAPIC_NMI 4
-#define MADT_LAPIC_ADDRESS_OVERRIDE 5
+/**
+ * @brief Multiple APIC Description Table flags.
+ *
+ * @see Section 5.2.12 table 5.20 of the ACPI specification for more details.
+ */
+typedef uint32_t madt_flags_t;
 
-#define MADT_LAPIC_ENABLED (1 << 0)
-#define MADT_LAPIC_ONLINE_CAPABLE (1 << 1)
+#define MADT_FLAG_PCAT_COMPAT ((madt_flags_t)(1 << 0))
 
-#define MADT_FOR_EACH(madt, record) \
-    for (record = (typeof(record))madt->records; (uint8_t*)record < (uint8_t*)madt + madt->header.length && \
-        (uint8_t*)record + sizeof(madt_header_t) <= (uint8_t*)madt + madt->header.length && \
-        (uint8_t*)record + record->header.length <= (uint8_t*)madt + madt->header.length; \
-        record = (typeof(record))((uint8_t*)record + record->header.length))
+/**
+ * @brief MADT Interrupt Controller Types.
+ *
+ * @see Section 5.2.12 table 5.21 of the ACPI specification for more details.
+ */
+typedef uint8_t madt_interrupt_controller_type_t;
 
+#define MADT_INTERRUPT_CONTROLLER_PROCESSOR_LOCAL_APIC ((madt_interrupt_controller_type_t)0)
+#define MADT_INTERRUPT_CONTROLLER_IO_APIC ((madt_interrupt_controller_type_t)1)
+
+/**
+ * @brief MADT Interrupt Controller Header
+ * @struct madt_interrupt_controller_header_t
+ */
 typedef struct PACKED
 {
-    uint8_t type;
+    madt_interrupt_controller_type_t type;
     uint8_t length;
-} madt_header_t;
+} madt_interrupt_controller_header_t;
 
+/**
+ * @brief MADT Processor Local APIC flags
+ *
+ * @see Section 5.2.12.2 table 5.23 of the ACPI specification for more details.
+ */
+typedef uint32_t madt_processor_local_apic_flags_t;
+
+#define MADT_PROCESSOR_LOCAL_APIC_ENABLED (1 << 0)
+#define MADT_PROCESSOR_LOCAL_APIC_ONLINE_CAPABLE (1 << 1)
+
+/**
+ * @brief MADT Interrupt Controller: Processor Local APIC
+ * @struct madt_processor_local_apic_t
+ *
+ * @see Section 5.2.12.2 table 5.22 of the ACPI specification for more details.
+ */
 typedef struct PACKED
 {
-    madt_header_t header;
-    uint8_t cpuId;
-    uint8_t id;
+    madt_interrupt_controller_header_t header;
+    uint8_t acpiProcessorUid;
+    uint8_t apicId;
     uint32_t flags;
-} madt_lapic_t;
+} madt_processor_local_apic_t;
 
+/**
+ * @brief MADT Interrupt Controller: IO APIC
+ * @struct madt_ioapic_t
+ *
+ * @see Section 5.2.12.3 table 5.24 of the ACPI specification for more details.
+ */
 typedef struct PACKED
 {
-    madt_header_t header;
-    uint8_t id;
+    madt_interrupt_controller_header_t header;
+    uint8_t ioApicId;
     uint8_t reserved;
-    uint32_t address;
-    uint32_t gsiBase;
+    uint32_t ioApicAddress;
+    uint32_t globalSystemInterruptBase;
 } madt_ioapic_t;
 
 /**
  * @brief Multiple APIC Description Table
  * @struct madt_t
+ *
+ * @see Section 5.2.12 table 5.19 of the ACPI specification for more details.
  */
 typedef struct PACKED
 {
-    acpi_header_t header;
-    uint32_t lapicAddress;
-    uint32_t flags;
-    madt_header_t records[];
+    sdt_header_t header;
+    uint32_t localInterruptControllerAddress;
+    madt_flags_t flags;
+    madt_interrupt_controller_header_t interruptControllers[];
 } madt_t;
+
+/**
+ * @brief Iterate over all MADT interrupt controllers
+ *
+ * @param madt The MADT table to iterate over.
+ * @param ic A pointer to a madt_interrupt_controller_header_t* that will be set to the current interrupt controller.
+ */
+#define MADT_FOR_EACH(madt, ic) \
+    for (ic = (typeof(ic))madt->interruptControllers; (uint8_t*)ic < (uint8_t*)madt + madt->header.length && \
+        (uint8_t*)ic + sizeof(madt_interrupt_controller_header_t) <= (uint8_t*)madt + madt->header.length && \
+        (uint8_t*)ic + ic->header.length <= (uint8_t*)madt + madt->header.length; \
+        ic = (typeof(ic))((uint8_t*)ic + ic->header.length))
 
 /**
  * @brief Type safe way to get the MADT table
@@ -167,11 +211,13 @@ typedef struct PACKED
 /**
  * @brief Differentiated System Description Table
  * @struct dsdt_t
+ *
+ * @see Section 5.2.11.1 table 5.17 of the ACPI specification for more details.
  */
 typedef struct PACKED
 {
-    acpi_header_t header;
-    uint8_t data[];
+    sdt_header_t header;
+    uint8_t definitionBlock[];
 } dsdt_t;
 
 /**
@@ -180,6 +226,26 @@ typedef struct PACKED
  * @return dsdt_t* The DSDT table pointer
  */
 #define DSDT_GET() ((dsdt_t*)acpi_tables_lookup("DSDT", 0))
+
+/**
+ * @brief Secondary System Description Table
+ * @struct ssdt_t
+ *
+ * @see Section 5.2.11.2 table 5.18 of the ACPI specification for more details.
+ */
+typedef struct PACKED
+{
+    sdt_header_t header;
+    uint8_t definitionBlock[];
+} ssdt_t;
+
+/**
+ * @brief Type safe way to get the n'th SSDT table
+ *
+ * @param n The index of the SSDT table to get (0 indexed).
+ * @return ssdt_t* The SSDT table pointer
+ */
+#define SSDT_GET(n) ((ssdt_t*)acpi_tables_lookup("SSDT", n))
 
 /**
  * @brief Load all ACPI tables
@@ -196,6 +262,6 @@ uint64_t acpi_tables_init(xsdt_t* xsdt);
  * @param n The index of the table to look up (0 indexed).
  * @return The table if found, NULL otherwise.
  */
-acpi_header_t* acpi_tables_lookup(const char* signature, uint64_t n);
+sdt_header_t* acpi_tables_lookup(const char* signature, uint64_t n);
 
 /** @} */

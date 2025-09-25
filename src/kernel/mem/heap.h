@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#define HEAP_MAX_SLABS 64
+#define HEAP_MAX_SLABS 128
 #define HEAP_MAX_SLAB_SIZE 0x64000
 
 #define HEAP_ALIGN 64

@@ -21,6 +21,7 @@
  * but it is something used to often that having to implemented it for every single program in the OS is massively
  * redundant.
  *
+ * @{
  */
 
 typedef struct list list_t;
@@ -153,6 +154,18 @@ typedef struct list
     for ((elem) = CONTAINER_OF((list)->head.prev, typeof(*elem), member); \
         &(elem)->member != &((list)->head) && &(elem)->member != (end); \
         (elem) = CONTAINER_OF((elem)->member.prev, typeof(*elem), member))
+
+/**
+ * @brief Creates a new list entry with null pointers.
+ * @ingroup libstd_sys_list
+ */
+#define LIST_ENTRY_CREATE {.next = NULL, .prev = NULL, .list = NULL}
+
+/**
+ * @brief Creates a new list with null pointers.
+ * @ingroup libstd_sys_list
+ */
+#define LIST_CREATE {.head = LIST_ENTRY_CREATE, .length = 0}
 
 /**
  * @brief Initializes a list entry.
@@ -388,3 +401,5 @@ static inline list_entry_t* list_last(list_t* list)
 }
 
 #endif
+
+/** @} */

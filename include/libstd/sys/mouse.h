@@ -18,11 +18,11 @@ extern "C"
  * The `sys/mouse.h` header defines structs and constants used by mouse devices for example `/dev/mouse/ps2`. The
  * primary way to use a mouse device is to open it and then read from it to retrieve `mouse_event_t` structures.
  *
+ * @{
  */
 
 /**
  * @brief Mouse buttons enum.
- * @ingroup libstd_sys_mouse
  *
  * The `mouse_buttons_t` enum is used to store the state of mouse buttons.
  *
@@ -37,7 +37,6 @@ typedef enum
 
 /**
  * @brief Mouse event structure.
- * @ingroup libstd_sys_mouse
  *
  * The `mouse_event_t` structure can be read from mouse files, for example `/dev/mouse/ps2`. Mouse files will block
  * until a mouse event happens, mouse files will never return partial events.
@@ -55,3 +54,5 @@ typedef struct
 #endif
 
 #endif
+
+/** @} */

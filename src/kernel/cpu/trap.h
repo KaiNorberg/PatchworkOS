@@ -4,8 +4,25 @@
 
 #include <stdint.h>
 
+/**
+ * @brief Trap and Interrupt Handling
+ * @defgroup kernel_cpu_trap Trap
+ * @ingroup kernel_cpu
+ *
+ * This module provides structures and functions for handling CPU traps and interrupts.
+ *
+ * @{
+ */
+
 #define PAGE_FAULT_PRESENT (1 << 0)
 
+/**
+ * @brief Trap frame structure
+ * @struct trap_frame_t
+ *
+ * Stores the CPU state at the time of a trap or interrupt, usefull for context switching as we can modify the
+ * registers before returning from the trap/interrupt.
+ */
 typedef struct PACKED
 {
     uint64_t r15;
@@ -50,3 +67,5 @@ void cli_push(void);
 void cli_pop(void);
 
 void trap_handler(trap_frame_t* trapFrame);
+
+/** @} */

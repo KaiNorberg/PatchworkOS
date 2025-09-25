@@ -6,6 +6,14 @@
 
 #include <stdint.h>
 
+/**
+ * @brief Interrupt Descriptor Table
+ * @defgroup kernel_cpu_idt IDT
+ * @ingroup kernel_cpu
+ *
+ * @{
+ */
+
 #define IDT_INTERRUPT_GATE 0b1110
 #define IDT_TRAP_GATE 0b1111
 
@@ -39,3 +47,5 @@ typedef struct PACKED
 void idt_cpu_init(void);
 
 void idt_load(void);
+
+/** @} */

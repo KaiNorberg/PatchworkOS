@@ -28,7 +28,7 @@ static process_t kernelProcess;
 static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
 
 // Should be acquired whenever a process tree is being read or modified.
-static rwlock_t treeLock = RWLOCK_CREATE();
+static rwlock_t treeLock = RWLOCK_CREATE;
 
 static process_dir_t self;
 static sysfs_group_t procGroup;

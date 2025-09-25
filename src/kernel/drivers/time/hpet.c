@@ -21,7 +21,14 @@ void hpet_init(void)
     }
 
     address = (uintptr_t)vmm_kernel_map(NULL, (void*)hpet->address, 1, PML_WRITE);
+    if (address == (uintptr_t)NULL)
+    {
+        panic(NULL, "Unable to map hpet");
+    }
     period = hpet_read(HPET_GENERAL_CAPABILITIES) >> HPET_COUNTER_CLOCK_OFFSET;
+
+    LOG_INFO("hpet at phys=0x%016lx virt=0x%016lx period=%lufs creatorID=%llu\n", hpet->address, address,
+        period / 1000000ULL, hpet->header.creatorID);
 
     hpet_reset_counter();
 }

@@ -90,7 +90,7 @@ static void screen_clear(screen_t* screen)
 
     for (uint64_t y = 0; y < screen->gop.height; y++)
     {
-        memset(&screen->gop.virtAddr[y * screen->gop.stride], 0, screen->gop.width * sizeof(uint32_t));
+        memset32(&screen->gop.virtAddr[y * screen->gop.stride], 0xFF000000, screen->gop.width);
     }
 }
 
@@ -100,7 +100,7 @@ void screen_init(screen_t* screen, const boot_gop_t* gop)
     screen->gop = *gop;
     screen->cursor = (screen_pos_t){0, 0};
 
-    screen->buffer.width = MIN(gop->width / GLYPH_WIDTH, MAX_PATH);
+    screen->buffer.width = MIN(gop->width / GLYPH_WIDTH, SCREEN_LINE_MAX_LENGTH);
     screen->buffer.height = MIN(gop->height / GLYPH_HEIGHT, CONFIG_SCREEN_MAX_LINES);
 
     screen_clear(screen);
@@ -108,33 +108,43 @@ void screen_init(screen_t* screen, const boot_gop_t* gop)
 
 static void screen_scroll(screen_t* screen)
 {
-    screen->cursor.y = screen->cursor.y != 0 ? screen->cursor.y - 1 : 0;
-    screen->buffer.invalidStart = (screen_pos_t){0, 0};
-    screen->buffer.invalidEnd = (screen_pos_t){0, 0};
-    screen->buffer.firstLineIndex = (screen->buffer.firstLineIndex + 1) % screen->buffer.height;
-
-    screen_line_t* current = screen_buffer_get_line(&screen->buffer, screen->cursor.y);
-    for (uint64_t pixelY = 0; pixelY < GLYPH_HEIGHT; pixelY++)
-    {
-        memset(&current->pixels[pixelY * SCREEN_LINE_STRIDE], 0, SCREEN_LINE_STRIDE * sizeof(uint32_t));
-    }
-
-    uint64_t prevLength = current->length;
-    for (uint64_t y = 0; y < screen->buffer.height; y++)
+    uint64_t newCursorY = screen->cursor.y != 0 ? screen->cursor.y - 1 : 0;
+    for (uint64_t y = 0; y < newCursorY; y++)
     {
         screen_line_t* line = screen_buffer_get_line(&screen->buffer, y);
-
-        uint64_t lengthToRedraw = MAX(prevLength, line->length);
+        screen_line_t* newLine = screen_buffer_get_line(&screen->buffer, y + 1);
 
         for (uint64_t offsetY = 0; offsetY < GLYPH_HEIGHT; offsetY++)
         {
             memcpy(&screen->gop.virtAddr[(offsetY + y * GLYPH_HEIGHT) * screen->gop.stride],
-                &line->pixels[offsetY * SCREEN_LINE_STRIDE], lengthToRedraw * GLYPH_WIDTH * sizeof(uint32_t));
+                &newLine->pixels[offsetY * SCREEN_LINE_STRIDE], newLine->length * GLYPH_WIDTH * sizeof(uint32_t));
         }
 
-        prevLength = line->length;
+        if (line->length > newLine->length)
+        {
+            for (uint64_t offsetY = 0; offsetY < GLYPH_HEIGHT; offsetY++)
+            {
+                memset32(&screen->gop.virtAddr[(offsetY + y * GLYPH_HEIGHT) * screen->gop.stride +
+                             newLine->length * GLYPH_WIDTH],
+                    0xFF000000, (line->length - newLine->length) * GLYPH_WIDTH);
+            }
+        }
     }
-    current->length = 0;
+
+    screen_line_t* last = screen_buffer_get_line(&screen->buffer, newCursorY);
+    for (uint64_t offsetY = 0; offsetY < GLYPH_HEIGHT; offsetY++)
+    {
+        memset32(&screen->gop.virtAddr[(offsetY + newCursorY * GLYPH_HEIGHT) * screen->gop.stride], 0xFF000000,
+            last->length * GLYPH_WIDTH);
+    }
+
+    screen->cursor.y = newCursorY;
+    screen->buffer.invalidStart = (screen_pos_t){0, 0};
+    screen->buffer.invalidEnd = (screen_pos_t){0, 0};
+    screen->buffer.firstLineIndex = (screen->buffer.firstLineIndex + 1) % screen->buffer.height;
+
+    screen_line_t* currentLine = screen_buffer_get_line(&screen->buffer, screen->cursor.y);
+    currentLine->length = 0;
 }
 
 static void screen_advance_cursor(screen_t* screen, char chr, bool shouldScroll)
@@ -154,11 +164,20 @@ static void screen_advance_cursor(screen_t* screen, char chr, bool shouldScroll)
     else if (screen->cursor.x >= screen->buffer.width - 1)
     {
         screen->cursor.y++;
-        screen->cursor.x = SCREEN_WRAP_INDENT;
+        screen->cursor.x = 0;
 
         if (screen->cursor.y >= screen->buffer.height && shouldScroll)
         {
             screen_scroll(screen);
+        }
+
+        for (uint64_t i = 0; i < SCREEN_WRAP_INDENT; i++)
+        {
+            if (shouldScroll)
+            {
+                screen_buffer_put(&screen->buffer, &screen->cursor, ' ');
+            }
+            screen->cursor.x++;
         }
     }
     else

@@ -1,0 +1,310 @@
+#pragma once
+
+#include "acpi/aml/aml_patch_up.h"
+#include "data_integers.h"
+
+#include <stdint.h>
+#include <sys/list.h>
+
+typedef struct aml_state aml_state_t;
+typedef struct aml_node aml_node_t;
+
+/**
+ * @brief Name Objects Encoding
+ * @defgroup kernel_acpi_aml_name Name Objects
+ * @ingroup kernel_acpi_aml
+ *
+ * Not to be confused with "ACPI AML Named Objects Encoding".
+ *
+ * @see Section 20.2.2 of the ACPI specification for more details.
+ *
+ * @{
+ */
+
+/**
+ * @brief Resolve flags for name resolution.
+ * @enum aml_resolve_flags_t
+ */
+typedef enum
+{
+    AML_RESOLVE_NONE = 0, //!< None.
+    /**
+     * If the name could not be resolved and this flag is set then instead of failing, return `NULL`.
+     */
+    AML_RESOLVE_ALLOW_UNRESOLVED = 1 << 0,
+} aml_resolve_flags_t;
+
+/**
+ * @brief The exact length of a aml name not including a null character.
+ */
+#define AML_NAME_LENGTH 4
+
+/**
+ * @brief Check if a value is a LeadNameChar structure.
+ *
+ * @param value The value to check.
+ * @return true if the value is a LeadNameChar structure, false otherwise.
+ */
+#define AML_IS_LEAD_NAME_CHAR(value) \
+    (((value)->num >= AML_NAME_CHAR_A && (value)->num <= AML_NAME_CHAR_Z) || (value)->num == AML_NAME_CHAR)
+
+/**
+ * @brief Check if a value is a DigitChar structure.
+ *
+ * @param value The value to check.
+ * @return true if the value is a DigitChar structure, false otherwise.
+ */
+#define AML_IS_DIGIT_CHAR(value) (((value)->num >= AML_DIGIT_CHAR_0 && (value)->num <= AML_DIGIT_CHAR_9))
+
+/**
+ * @brief Check if a value is a NameChar structure.
+ *
+ * @param value The value to check.
+ * @return true if the value is a NameChar structure, false otherwise.
+ */
+#define AML_IS_NAME_CHAR(value) (AML_IS_DIGIT_CHAR(value) || AML_IS_LEAD_NAME_CHAR(value))
+
+/**
+ * @brief A PrefixPath structure.
+ * @struct aml_prefix_path_t
+ */
+typedef struct
+{
+    uint16_t depth; //!< Number of parent prefixes ('^') in the prefix, each prefix means go back one level in the
+                    //! namespace hierarchy.
+} aml_prefix_path_t;
+
+/**
+ * @brief A RootChar structure.
+ * @struct aml_root_char_t
+ */
+typedef struct
+{
+    bool present; //!< If the first character is a root character ('\\'), if yes, the name string is absolute.
+} aml_root_char_t;
+
+/**
+ * @brief SegCount structure.
+ */
+typedef aml_byte_data_t aml_seg_count_t;
+
+/**
+ * @brief A NameSeg strcture.
+ * @struct aml_name_seg_t
+ */
+typedef struct
+{
+    char name[AML_NAME_LENGTH];
+} aml_name_seg_t;
+
+/**
+ * @brief Represents the NamePath, DualNamePath, MultiNamePath and NullPath structures.
+ * @struct aml_name_path_t
+ */
+typedef struct
+{
+    aml_seg_count_t segmentCount; //!< Number of segments in the name path.
+    aml_name_seg_t* segments;     //!< Array of segments in the name path.
+} aml_name_path_t;
+
+/**
+ * @brief A NameString structure.
+ * @struct aml_name_string_t
+ */
+typedef struct
+{
+    aml_root_char_t rootChar;
+    aml_prefix_path_t prefixPath;
+    aml_name_path_t namePath;
+} aml_name_string_t;
+
+/**
+ * @brief Reads the next data as a SegCount structure from the AML bytecode stream.
+ *
+ * A SegCount structure is defined as `SegCount := ByteData`.
+ *
+ * @param state The AML state.
+ * @param out Pointer to destination where the SegCount will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_seg_count_read(aml_state_t* state, aml_seg_count_t* out);
+
+/**
+ * @brief Reads the next data as a NameSeg from the AML bytecode stream.
+ *
+ * A NameSeg structure is defined as `NameSeg := <leadnamechar namechar namechar namechar>`.
+ *
+ * @param state The AML state.
+ * @param out Pointer to the destination where the pointer to the NameSeg will be stored. Will be located within the AML
+ * bytecode stream.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t** out);
+
+/**
+ * @brief Reads the next data as a DualNamePath structure from the AML bytecode stream.
+ *
+ * A DualNamePath structure is defined as `DualNamePath := DualNamePrefix NameSeg NameSeg`.
+ *
+ * @param state The AML state.
+ * @param out Pointer to destination where the pointer to the array of two NameSeg will be stored. Will be located
+ * within the AML bytecode stream.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t** out);
+
+/**
+ * @brief Reads the next data as a MultiNamePath structure from the AML bytecode stream.
+ *
+ * A MultiNamePath structure is defined as `MultiNamePath := MultiNamePrefix SegCount NameSeg(SegCount)`.
+ *
+ * @param state The AML state.
+ * @param outSegments Pointer to destination where the pointer to the array of NameSeg will be stored. Will be located
+ * within the AML bytecode stream.
+ * @param outSegCount Pointer to destination where the number of segments will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t** outSegments, aml_seg_count_t* outSegCount);
+
+/**
+ * Reads the next data as a NullName structure from the AML bytecode stream.
+ *
+ * A NullName structure is defined as `NullName := 0x00`.
+ *
+ * @param state The AML state.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_null_name_read(aml_state_t* state);
+
+/**
+ * @brief Reads the next data as a NamePath structure from the AML bytecode stream.
+ *
+ * A NamePath structure is defined as `NamePath := NameSeg | DualNamePath | MultiNamePath | NullName`.
+ *
+ * @param state The AML state.
+ * @param out Pointer to destination where the NamePath will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* out);
+
+/**
+ * @brief Reads the next data as a PrefixPath structure from the AML bytecode stream.
+ *
+ * A PrefixPath structure is defined as `PrefixPath := Nothing | <'^' prefixpath>`.
+ *
+ * Note that `^` is just a `AML_PARENT_PREFIX_CHAR`.
+ *
+ * @param state The AML state.
+ * @param out Pointer to destination where the PrefixPath will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_prefix_path_read(aml_state_t* state, aml_prefix_path_t* out);
+
+/**
+ * @brief Reads the next data as a RootChar from the AML bytecode stream.
+ *
+ * A RootChar is defined as `RootChar := 0x5C`.
+ *
+ * @param state The AML state.
+ * @param out Pointer to destination where the RootChar will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out);
+
+/**
+ * @brief Reads the next data as a NameString structure from the AML bytecode stream.
+ *
+ * A NameString structure is defined as `NameString := <rootchar namepath> | <prefixpath namepath>`.
+ *
+ * @param state The AML state.
+ * @param out Pointer to destination where the NameString will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out);
+
+/**
+ * @brief Resolves a NameString structure to an AML node.
+ *
+ * @param nameString The NameString to resolve.
+ * @param node The current AML node.
+ * @return A pointer to the resolved node, or `NULL` if the NameString does not resolve to an object. Does not set
+ * `errno`.
+ */
+aml_node_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_node_t* node);
+
+/**
+ * @brief Reads the next data as a NameString structure from the AML bytecode stream and resolves it to a node.
+ * *
+ * If the NameString does not resolve to an object, then out will be set to `NULL` but its not considered an error.
+ *
+ * A search through the ACPI namespace follows these rules:
+ * - If the NameString starts with a root character (`\`), the search starts from the root node.
+ * - If the NameString starts with one or more parent prefix characters (`^`), the search starts from the parent of the
+ *    `start` node, moving up one level for each `^`.
+ * - If the NameString does not start with a root or parent prefix character, the search starts from the `start` node.
+ *    If `start` is `NULL`, the search starts from the root node.
+ * - Attempt to find a matching name in the current namespace scope (the `start` node and its children).
+ * - If the matching name is not found, move up to the parent node and repeat the search.
+ * - This continues until either a match is found or the node does not have a parent (i.e., the root is reached).
+ *
+ * @see Section 5.3 of the ACPI specification for more details.
+ * @see aml_name_string_read() for reading the NameString from the AML byte stream.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to where the pointer to the resolved node will be stored.
+ * @param flags Flags for name resolution.
+ * @param nameString If not `NULL`, the read NameString will be stored here.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out,
+    aml_resolve_flags_t flags, aml_name_string_t* nameString);
+
+/**
+ * @brief Reads a SimpleName structure from the AML byte stream and resolves it to a node.
+ *
+ * A SimpleName structure is defined as `SimpleName := NameString | ArgObj | LocalObj`.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to where the pointer to the resolved node will be stored.
+ * @param flags Flags for name resolution.
+ * @param nameString If not `NULL` and the SuperName evaluates to a NameString, the read NameString will be stored here.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out,
+    aml_resolve_flags_t flags, aml_name_string_t* nameString);
+
+/**
+ * @brief Reads a SuperName structure from the AML byte stream and resolves it to a node.
+ *
+ * A SuperName structure is defined as `SuperName := SimpleName | DebugObj | ReferenceTypeOpcode`.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to where the pointer to the resolved node will be stored.
+ * @param flags Flags for name resolution.
+ * @param nameString If not `NULL` and the SuperName evaluates to a NameString, the read NameString will be stored here.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out,
+    aml_resolve_flags_t flags, aml_name_string_t* nameString);
+
+/**
+ * @brief Reads a Target structure from the AML byte stream and resolves it to a node.
+ *
+ * A Target structure is defined as `Target := SuperName | NullName`.
+ *
+ * If the Target is a NullName, then out will be set to `NULL` but its not considered an error.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @param out Pointer to where the pointer to the resolved node will be stored.
+ * @param flags Flags for name resolution.
+ * @param nameString If not `NULL` and the Target evaluates to a NameString, the read NameString will be stored here.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out, aml_resolve_flags_t flags,
+    aml_name_string_t* nameString);
+
+/** @} */

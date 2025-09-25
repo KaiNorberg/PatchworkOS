@@ -25,11 +25,11 @@ extern "C"
  * The `sys/proc.h` header handles process management, including process creation, managing a processes address space,
  * scheduling, and similar.
  *
+ * @{
  */
 
 /**
  * @brief Priority type.
- * @ingroup libstd_sys_proc
  * @typedef priority_t
  *
  * The `priority_t` type is used to store the scheduling priority of a process, we also define three constants
@@ -45,7 +45,6 @@ typedef uint8_t priority_t;
 
 /**
  * @brief Stucture used to duplicate fds in `spawn()`.
- * @ingroup libstd_sys_proc
  *
  * The `spawn_fd_t` structure is used to inform the kernel of which file descriptors to duplicate when spawning a new
  * process, for more information check the `spawn()` function. The special value `SPAWN_FD_END` is used to terminate
@@ -60,7 +59,6 @@ typedef struct
 
 /**
  * @brief Spawn behaviour flags.
- * @ingroup libstd_sys_proc
  *
  * The `spawn_flags_t` type is used to modify the behaviour when spawning a new process or provide additional
  * information. We use a 64 bit integer to allow more flags to be implemented. For more information check the `spawn()`
@@ -79,7 +77,6 @@ typedef uint64_t spawn_flags_t;
 
 /**
  * @brief Spawn fds termination constant.
- * @ingroup libstd_sys_proc
  *
  */
 #define SPAWN_FD_END \
@@ -101,7 +98,6 @@ static_assert(sizeof(spawn_attr_t) == 128);
 
 /**
  * @brief System call for creating child processes.
- * @ingroup libstd_sys_proc
  *
  * @param argv A NULL-terminated array of strings, where `argv[0]` is the filepath to the desired executable. This array
  * will be pushed to the child stack and the child can find a pointer to this array in its rsi register, along with its
@@ -119,7 +115,6 @@ pid_t spawn(const char** argv, const spawn_fd_t* fds, const char* cwd, spawn_att
 
 /**
  * @brief System call to retrieve the current pid.
- * @ingroup libstd_sys_proc
  *
  * The `getpid()` function retrieves the pid of the currently running process.
  *
@@ -129,7 +124,6 @@ pid_t getpid(void);
 
 /**
  * @brief System call to retrieve the current tid.
- * @ingroup libstd_sys_proc
  *
  * The `gettid()` function retrieves the tid of the currently running thread.
  *
@@ -139,7 +133,6 @@ tid_t gettid(void);
 
 /**
  * @brief Memory page size
- * @ingroup libstd_sys_proc
  *
  * The `PAGE_SIZE` constant stores the size in bytes of one page in memory.
  *
@@ -148,7 +141,6 @@ tid_t gettid(void);
 
 /**
  * @brief Convert bytes to pages.
- * @ingroup libstd_sys_proc
  *
  * The `BYTES_TO_PAGES()` macro takes in a amount of bytes and returns the amount of pages in memory required to store
  * that amount of bytes.
@@ -160,7 +152,6 @@ tid_t gettid(void);
 
 /**
  * @brief Size of an object in pages.
- * @ingroup libstd_sys_proc
  *
  * The `PAGE_SIZE_OF()` macro returns the amount of pages in memory required to store a given object.
  *
@@ -171,7 +162,6 @@ tid_t gettid(void);
 
 /**
  * @brief Memory protection flags.
- * @ingroup libstd_sys_proc
  *
  * The `prot_t` enum is used to store the memory protection flags of a region in memory.
  *
@@ -185,7 +175,6 @@ typedef enum
 
 /**
  * @brief System call to map memory from a file.
- * @ingroup libstd_sys_proc
  *
  * The `mmap()` function maps memory to the currently running processes address space from a file, this is the only way
  * to allocate virtual memory from userspace. An example usage would be to map the `/dev/zero` file which would allocate
@@ -204,7 +193,6 @@ void* mmap(fd_t fd, void* address, uint64_t length, prot_t prot);
 
 /**
  * @brief System call to unmap mapped memory.
- * @ingroup libstd_sys_proc
  *
  * The `munmap()` function unmaps memory from the currently running processes address space.
  *
@@ -216,7 +204,6 @@ uint64_t munmap(void* address, uint64_t length);
 
 /**
  * @brief System call to change the protection flags of memory.
- * @ingroup libstd_sys_proc
  *
  * The `mprotect()` changes the protection flags of a virtual memory area in the currently running processes address
  * space.
@@ -230,7 +217,6 @@ uint64_t mprotect(void* address, uint64_t length, prot_t prot);
 
 /**
  * @brief Futex operation enum.
- * @ingroup libstd_sys_proc
  *
  * The `futex_op_t` enum is used to specify the desired futex operation in the `futex()` function.
  *
@@ -243,7 +229,6 @@ typedef enum
 
 /**
  * @brief Futex wake all constant.
- * @ingroup libstd_sys_proc
  *
  * The `FUTEX_ALL` constant can be used as the `val` argument when using the `FUTEX_WAIT` operating in the `futex()`
  * function to wake upp all waiters.
@@ -253,7 +238,6 @@ typedef enum
 
 /**
  * @brief System call for fast user space mutual exclusion.
- * @ingroup libstd_sys_proc
  *
  * The `futex()` function provides a fast user-space syncronization mechanism. It can be used to implement userspace
  * mutexes, conditional variables, etc.
@@ -269,7 +253,6 @@ uint64_t futex(atomic_uint64_t* addr, uint64_t val, futex_op_t op, clock_t timeo
 
 /**
  * @brief System call for retreving the time since boot.
- * @ingroup libstd_sys_proc
  *
  * The `uptime()` function retrieves the system uptime since boot in clock ticks.
  *
@@ -279,7 +262,6 @@ clock_t uptime(void);
 
 /**
  * @brief System call for sleeping.
- * @ingroup libstd_sys_proc
  *
  * The `nanosleep()` function suspends the execution of the calling thread for a specified duration.
  *
@@ -291,7 +273,6 @@ uint64_t nanosleep(clock_t timeout);
 
 /**
  * @brief Synchronization object.
- * @ingroup libstd_sys_proc
  *
  * The `sync_t` structure is used to implement user space synchronization primitives. Its the object mapped when calling
  * 'mmap()' on a opened sync file. For more information check the `sync.h` header.
@@ -308,3 +289,5 @@ typedef struct
 #endif
 
 #endif
+
+/** @} */

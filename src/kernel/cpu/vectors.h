@@ -1,5 +1,15 @@
 #pragma once
 
+/**
+ * @brief CPU Vectors
+ * @defgroup kernel_cpu_vectors Vectors
+ * @ingroup kernel_cpu
+ *
+ * This module defines the CPU exception and interrupt vectors used in the kernel.
+ *
+ * @{
+ */
+
 // Exception vectors
 #define VECTOR_DIVIDE_ERROR 0x0
 #define VECTOR_DEBUG 0x1
@@ -34,3 +44,5 @@
 #define VECTOR_AMOUNT 256
 
 extern void* vectorTable[VECTOR_AMOUNT];
+
+/** @} */

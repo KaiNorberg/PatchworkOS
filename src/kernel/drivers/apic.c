@@ -54,7 +54,7 @@ void lapic_init(void)
 {
     madt_t* madt = MADT_GET();
 
-    void* lapicPhysAddr = (void*)(uint64_t)madt->lapicAddress;
+    void* lapicPhysAddr = (void*)(uint64_t)madt->localInterruptControllerAddress;
     if (lapicPhysAddr == NULL)
     {
         panic(NULL, "Unable to find lapic address in MADT, hardware is not compatible");
@@ -170,15 +170,15 @@ void ioapic_all_init(void)
         return;
     }
 
-    madt_ioapic_t* record;
-    MADT_FOR_EACH(madt, record)
+    madt_ioapic_t* ioapic;
+    MADT_FOR_EACH(madt, ioapic)
     {
-        if (record->header.type != MADT_IOAPIC)
+        if (ioapic->header.type != MADT_INTERRUPT_CONTROLLER_IO_APIC)
         {
             continue;
         }
 
-        void* physAddr = (void*)(uint64_t)record->address;
+        void* physAddr = (void*)(uint64_t)ioapic->ioApicAddress;
         void* virtAddr = vmm_kernel_map(NULL, physAddr, 1, PML_WRITE);
         if (virtAddr == NULL)
         {
@@ -188,7 +188,7 @@ void ioapic_all_init(void)
         ioapic_id_t id = ioapicCount++;
 
         ioapics[id].base = (uintptr_t)virtAddr;
-        ioapics[id].gsiBase = record->gsiBase;
+        ioapics[id].gsiBase = ioapic->globalSystemInterruptBase;
         ioapics[id].maxRedirs = ioapic_get_version(id).maxRedirs;
 
         // Mask all interrupts.

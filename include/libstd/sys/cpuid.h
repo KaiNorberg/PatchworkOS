@@ -3,6 +3,16 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/**
+ * @brief CPU feature detection
+ * @ingroup libstd
+ * @defgroup libstd_sys_cpuid CPUID
+ *
+ * The `sys/cpuid.h` header provides functions for detecting CPU features using the CPUID instruction.
+ *
+ * @{
+ */
+
 #define CPUID_FEATURE_ID 0x1
 #define CPUID_FEATURE_EXTENDED_ID 0x7
 #define CPUID_EXTENDED_STATE_ENUMERATION 0xD
@@ -41,3 +51,5 @@ static inline bool cpuid_is_avx512_avail(void)
     cpuid(CPUID_FEATURE_EXTENDED_ID, 0, &eax, &ebx, &unused, &unused);
     return (eax != 0) && (ebx & CPUID_EBX_AVX512_AVAIL);
 }
+
+/** @} */

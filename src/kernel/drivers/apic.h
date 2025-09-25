@@ -161,7 +161,7 @@ void apic_timer_one_shot(uint8_t vector, uint32_t ticks);
  * caller cpu. Due to the fact that this amount of ticks is very small, most likely less then 1, we used fixed point
  * arithmetic to store the result, the offset used for this is `APIC_TIMER_TICKS_FIXED_POINT_OFFSET`.
  *
- * @return uint64_t The number of ticks per nanosecond, stored using fixed point arithmetic.
+ * @return The number of ticks per nanosecond, stored using fixed point arithmetic.
  */
 uint64_t apic_timer_ticks_per_ns(void);
 

@@ -23,5 +23,9 @@ void* rsdp_get(EFI_SYSTEM_TABLE* systemTable)
     {
         Print(L"failed to locate rsdp!\n");
     }
+    else
+    {
+        Print(L"found at %p!\n", rsdp);
+    }
     return rsdp;
 }

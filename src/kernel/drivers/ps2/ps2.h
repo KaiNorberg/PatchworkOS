@@ -21,9 +21,8 @@
  *
  * Note that in the future once proper device detection is implemented, this will need to be redone.
  *
- * Some sources I used while making this:
- * https://wiki.osdev.org/I8042_PS/2_Controller
- * https://www-ug.eecg.toronto.edu/msl/nios_devices/datasheets/PS2%20Keyboard%20Protocol.htm
+ * @see https://wiki.osdev.org/I8042_PS/2_Controller
+ * @see https://www-ug.eecg.toronto.edu/msl/nios_devices/datasheets/PS2%20Keyboard%20Protocol.htm
  * @{
  */
 
