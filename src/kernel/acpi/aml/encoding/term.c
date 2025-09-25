@@ -28,28 +28,28 @@ uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_node_t* out
     case AML_VALUE_TYPE_EXPRESSION:
     case AML_VALUE_TYPE_NAME: // MethodInvocation is a Name
         result = aml_expression_opcode_read(state, node, out);
-        break;
+    break;
     case AML_VALUE_TYPE_ARG:
         AML_DEBUG_ERROR(state, "Unsupported value type: ARG");
         errno = ENOSYS;
         result = ERR;
-        break;
+    break;
     case AML_VALUE_TYPE_LOCAL:
         AML_DEBUG_ERROR(state, "Unsupported value type: LOCAL");
         errno = ENOSYS;
         result = ERR;
-        break;
+    break;
     default:
         result = aml_data_object_read(state, node, out);
     }
 
     if (result == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read term arg");
+        AML_DEBUG_ERROR(state, "Failed to read TermArg");
         return ERR;
     }
 
-    return result;
+    return 0;
 }
 
 uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out)
@@ -57,7 +57,7 @@ uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_node_t* node, aml_qwo
     aml_node_t temp = AML_NODE_CREATE;
     if (aml_term_arg_read(state, node, &temp) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read term arg");
+        AML_DEBUG_ERROR(state, "Failed to read TermArg");
         return ERR;
     }
 
@@ -65,7 +65,7 @@ uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_node_t* node, aml_qwo
     if (aml_convert_to_integer(&temp, &integer) == ERR)
     {
         aml_node_deinit(&temp);
-        AML_DEBUG_ERROR(state, "Failed to convert term arg to integer");
+        AML_DEBUG_ERROR(state, "Failed to convert TermArg to Integer");
         return ERR;
     }
 
@@ -113,7 +113,7 @@ uint64_t aml_term_obj_read(aml_state_t* state, aml_node_t* node)
     case AML_VALUE_TYPE_STATEMENT:
         if (aml_statement_opcode_read(state, node) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read statement opcode");
+            AML_DEBUG_ERROR(state, "Failed to read StatementOpcode");
             return ERR;
         }
         return 0;
@@ -122,7 +122,7 @@ uint64_t aml_term_obj_read(aml_state_t* state, aml_node_t* node)
         aml_node_t temp = AML_NODE_CREATE;
         if (aml_expression_opcode_read(state, node, &temp) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read expression opcode");
+            AML_DEBUG_ERROR(state, "Failed to read ExpressionOpcode");
             return ERR;
         }
         aml_node_deinit(&temp);
@@ -131,7 +131,7 @@ uint64_t aml_term_obj_read(aml_state_t* state, aml_node_t* node)
     default:
         if (aml_object_read(state, node) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read object");
+            AML_DEBUG_ERROR(state, "Failed to read Object");
             return ERR;
         }
         return 0;
@@ -145,7 +145,7 @@ uint64_t aml_term_list_read(aml_state_t* state, aml_node_t* node, aml_address_t 
         // End of buffer not reached => byte is not nothing => must be a termobj.
         if (aml_term_obj_read(state, node) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read term obj");
+            AML_DEBUG_ERROR(state, "Failed to read TermObj");
             return ERR;
         }
     }

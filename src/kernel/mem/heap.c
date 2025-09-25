@@ -26,6 +26,8 @@ void* heap_alloc(uint64_t size, heap_flags_t flags)
 {
     LOCK_SCOPE(&lock);
 
+    assert(size > 0);
+
     size = ROUND_UP(size, HEAP_ALIGN);
 
     if (size >= HEAP_MAX_SLAB_SIZE || flags & HEAP_VMM)

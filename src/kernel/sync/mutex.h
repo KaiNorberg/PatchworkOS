@@ -27,6 +27,8 @@ typedef struct
 
 void mutex_init(mutex_t* mtx);
 
+void mutex_deinit(mutex_t* mtx);
+
 void mutex_acquire_recursive(mutex_t* mtx);
 
 void mutex_acquire(mutex_t* mtx);

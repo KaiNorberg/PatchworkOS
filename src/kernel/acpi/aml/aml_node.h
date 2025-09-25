@@ -149,10 +149,13 @@ typedef struct aml_node
     union {
         struct
         {
+            /**
+             * Array of nodes of type AML_DATA_BUFFER_FIELD, one for each byte in the buffer, really only used for
+             * IndexOp since it needs to return a reference to a BufferField.
+             */
+            struct aml_node* byteFields;
             uint8_t* content;
             uint64_t length;
-            uint64_t capacity;
-            bool inPlace;
         } buffer;
         struct
         {
@@ -208,7 +211,7 @@ typedef struct aml_node
         } opregion;
         struct
         {
-            uint64_t capacity;
+            uint64_t length;
             struct aml_node** elements;
         } package;
         struct
@@ -219,8 +222,13 @@ typedef struct aml_node
         } processor;
         struct
         {
+            /**
+             * Array of nodes of type AML_DATA_BUFFER_FIELD, one for each char in the string, really only used for
+             * IndexOp since it needs to return a reference to a BufferField.
+             */
+            struct aml_node* byteFields;
             char* content;
-            bool inPlace;
+            uint64_t length;
         } string;
         /**
          * @brief Used for forward references.
@@ -247,7 +255,7 @@ typedef struct aml_node
     (aml_node_t) \
     { \
         .entry = LIST_ENTRY_CREATE, .type = AML_DATA_UNINITALIZED, .flags = AML_NODE_NONE, .children = LIST_CREATE, \
-        .parent = NULL, .segment = {0}, .isAllocated = false, .dir = {0} \
+        .parent = NULL, .segment = {'_', 'T', '_', 'X', '\0'}, .isAllocated = false, .dir = {0} \
     }
 
 /**
@@ -293,13 +301,11 @@ aml_node_t* aml_node_add(aml_name_string_t* string, aml_node_t* start, aml_node_
  *
  * @param node Pointer to the node to initialize.
  * @param buffer Pointer to the buffer.
- * @param length Length of the buffer.
- * @param capacity Capacity of the buffer.
- * @param inPlace If true, the buffer is used in place and not copied. If false, a new buffer is allocated and the
- * content is copied.
+ * @param bytesToCopy Number of bytes to copy from `buffer` to the node, the rest will be zeroed.
+ * @param length The total length of the buffer.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_node_init_buffer(aml_node_t* node, uint8_t* buffer, uint64_t length, uint64_t capacity, bool inPlace);
+uint64_t aml_node_init_buffer(aml_node_t* node, uint8_t* buffer, uint64_t bytesToCopy, uint64_t length);
 
 /**
  * @brief Initialize an ACPI node as an empty buffer with the given length.
@@ -411,10 +417,10 @@ uint64_t aml_node_init_method(aml_node_t* node, aml_method_flags_t flags, aml_ad
 uint64_t aml_node_init_mutex(aml_node_t* node, aml_sync_level_t syncLevel);
 
 /**
- * @brief Initialize an ACPI node as an object reference to the given target node.
+ * @brief Initialize an ACPI node as an ObjectReference to the given target node.
  *
  * @param node Pointer to the node to initialize.
- * @param target Pointer to the target node the object reference will point to.
+ * @param target Pointer to the target node the ObjectReference will point to.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_node_init_object_reference(aml_node_t* node, aml_node_t* target);
@@ -434,10 +440,10 @@ uint64_t aml_node_init_opregion(aml_node_t* node, aml_region_space_t space, aml_
  * @brief Initialize an ACPI node as a package with the given number of elements.
  *
  * @param node Pointer to the node to initialize.
- * @param capacity Number of elements the package will be able to hold.
+ * @param length Number of elements the package will be able to hold.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_node_init_package(aml_node_t* node, uint64_t capacity);
+uint64_t aml_node_init_package(aml_node_t* node, uint64_t length);
 
 /**
  * @brief Initialize an ACPI node as a processor with the given ProcID, PblkAddr, and PblkLen.
@@ -456,11 +462,9 @@ uint64_t aml_node_init_processor(aml_node_t* node, aml_proc_id_t procId, aml_pbl
  *
  * @param node Pointer to the node to initialize.
  * @param str Pointer to the string.
- * @param inPlace If true, the string is used in place and not copied. If false, a new buffer is allocated and the
- * string is copied.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_node_init_string(aml_node_t* node, const char* str, bool inPlace);
+uint64_t aml_node_init_string(aml_node_t* node, const char* str);
 
 /**
  * @brief Initialize an ACPI node as an unresolved reference to be resolved later.

@@ -187,7 +187,7 @@ uint64_t aml_region_space_read(aml_state_t* state, aml_region_space_t* out);
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out The output buffer to store the region offset.
+ * @param out The output buffer to store the RegionOffset.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_region_offset_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out);
@@ -481,12 +481,14 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node);
  *
  * A SourceBuff structure is defined as `SourceBuff := TermArg => Buffer`.
  *
+ * SourceBuff must evaluate to a ObjectReference that refers to a Buffer object.
+ *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out The destination node to store the SourceBuff.
+ * @param out Pointer to where the pointer to the resolved node will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_source_buff_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+uint64_t aml_source_buff_read(aml_state_t* state, aml_node_t* node, aml_node_t** out);
 
 /**
  * @brief Reads a BitIndex structure from the AML byte stream.

@@ -11,7 +11,7 @@ uint64_t aml_predicate_read(aml_state_t* state, aml_node_t* node, aml_qword_data
 {
     if (aml_term_arg_read_integer(state, node, out) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read term arg for predicate");
+        AML_DEBUG_ERROR(state, "Failed to read TermArg for Predicate");
         return ERR;
     }
     return 0;

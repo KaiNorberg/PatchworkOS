@@ -73,12 +73,16 @@ uint64_t aml_term_arg_list_read(aml_state_t* state, aml_node_t* node, uint64_t a
  *
  * A MethodInvocation structure is defined as `MethodInvocation := NameString TermArgList`.
  *
- * Despite the name, a MethodInvocation can be used to evaluate any node, not just methods. For example, fields. In such
- * cases, the TermArgList is empty.
+ * So this is a bit confusing, but my interpretation is that despite the name, a MethodInvocation can be any node, not
+ * just methods. For example, fields. In such cases, the TermArgList is empty. Its the only thing that makes any sense
+ * when I inspect the aml bytecode as there are clearly named objects referenced in TermArgs, but there is no "child"
+ * definition that contains such a thing, atleast that i can find. But the specification says literally nothing about
+ * this.
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out Pointer to the node where the result of the method invocation will be stored.
+ * @param out Pointer to the node which will be initalized as a ObjectReference to the resolved node or the result of
+ * the method.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
@@ -398,7 +402,7 @@ uint64_t aml_def_decrement_read(aml_state_t* state, aml_node_t* node, aml_node_t
  *
  * An ObjReference structure is defined as `ObjReference := TermArg => ObjectReference | String`.
  *
- * If a String is read then it is considered a path to an object and will be resolved to an object reference.
+ * If a String is read then it is considered a path to an object and will be resolved to an ObjectReference.
  *
  * @param state The AML state.
  * @param node The current AML node.
@@ -426,12 +430,16 @@ uint64_t aml_def_deref_of_read(aml_state_t* state, aml_node_t* node, aml_node_t*
  *
  * A BuffPkgStrObj structure is defined as `BuffPkgStrObj := TermArg => Buffer, Package, or String`.
  *
+ * Note that the TermArg must resolve to an ObjectReference that points to a Buffer, Package, or String.
+ * Becouse taking a reference to an node within a temporary object does not make sense, temporary objects are not
+ * allowed.
+ *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out Pointer to the node where the Buffer, Package, or String will be stored.
+ * @param out Pointer to where the pointer to the resolved Buffer, Package, or String node will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_buff_pkg_str_obj_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+uint64_t aml_buff_pkg_str_obj_read(aml_state_t* state, aml_node_t* node, aml_node_t** out);
 
 /**
  * @brief Reads an IndexValue structure from the AML byte stream.
@@ -440,10 +448,10 @@ uint64_t aml_buff_pkg_str_obj_read(aml_state_t* state, aml_node_t* node, aml_nod
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param out Pointer to the node where the index value will be stored, will always be an integer.
+ * @param out Pointer to the buffer where the index value will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_index_value_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+uint64_t aml_index_value_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out);
 
 /**
  * @brief Reads a DefIndex structure from the AML byte stream.

@@ -7,6 +7,7 @@
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/heap.h"
+#include "sync/mutex.h"
 
 #include <errno.h>
 #include <stddef.h>
@@ -44,21 +45,21 @@ aml_data_type_info_t* aml_data_type_get_info(aml_data_type_t type)
     static aml_data_type_info_t typeInfo[] = {
         {"Uninitialized", AML_DATA_UNINITALIZED, AML_DATA_FLAG_NONE},
         {"Buffer", AML_DATA_BUFFER, AML_DATA_FLAG_DATA_OBJECT | AML_DATA_FLAG_IS_ACTUAL_DATA},
-        {"Buffer Field", AML_DATA_BUFFER_FIELD, AML_DATA_FLAG_DATA_OBJECT},
-        {"Debug Object", AML_DATA_DEBUG_OBJECT, AML_DATA_FLAG_NONE},
+        {"BufferField", AML_DATA_BUFFER_FIELD, AML_DATA_FLAG_DATA_OBJECT},
+        {"DebugObject", AML_DATA_DEBUG_OBJECT, AML_DATA_FLAG_NONE},
         {"Device", AML_DATA_DEVICE, AML_DATA_FLAG_NON_DATA_OBJECT},
         {"Event", AML_DATA_EVENT, AML_DATA_FLAG_NON_DATA_OBJECT},
-        {"Field Unit", AML_DATA_FIELD_UNIT, AML_DATA_FLAG_DATA_OBJECT},
+        {"FieldUnit", AML_DATA_FIELD_UNIT, AML_DATA_FLAG_DATA_OBJECT},
         {"Integer", AML_DATA_INTEGER, AML_DATA_FLAG_DATA_OBJECT | AML_DATA_FLAG_IS_ACTUAL_DATA},
         {"Integer Constant", AML_DATA_INTEGER_CONSTANT, AML_DATA_FLAG_DATA_OBJECT | AML_DATA_FLAG_IS_ACTUAL_DATA},
         {"Method", AML_DATA_METHOD, AML_DATA_FLAG_NON_DATA_OBJECT},
         {"Mutex", AML_DATA_MUTEX, AML_DATA_FLAG_NON_DATA_OBJECT},
-        {"Object Reference", AML_DATA_OBJECT_REFERENCE, AML_DATA_FLAG_NONE},
-        {"Operation Region", AML_DATA_OPERATION_REGION, AML_DATA_FLAG_NON_DATA_OBJECT},
+        {"ObjectReference", AML_DATA_OBJECT_REFERENCE, AML_DATA_FLAG_NONE},
+        {"OperationRegion", AML_DATA_OPERATION_REGION, AML_DATA_FLAG_NON_DATA_OBJECT},
         {"Package", AML_DATA_PACKAGE, AML_DATA_FLAG_DATA_OBJECT | AML_DATA_FLAG_IS_ACTUAL_DATA},
-        {"Power Resource", AML_DATA_POWER_RESOURCE, AML_DATA_FLAG_NON_DATA_OBJECT},
+        {"PowerResource", AML_DATA_POWER_RESOURCE, AML_DATA_FLAG_NON_DATA_OBJECT},
         {"Processor", AML_DATA_PROCESSOR, AML_DATA_FLAG_NON_DATA_OBJECT},
-        {"Raw Data Buffer", AML_DATA_RAW_DATA_BUFFER, AML_DATA_FLAG_NONE},
+        {"RawDataBuffer", AML_DATA_RAW_DATA_BUFFER, AML_DATA_FLAG_NONE},
         {"String", AML_DATA_STRING, AML_DATA_FLAG_DATA_OBJECT | AML_DATA_FLAG_IS_ACTUAL_DATA},
         {"Thermal Zone", AML_DATA_THERMAL_ZONE, AML_DATA_FLAG_NON_DATA_OBJECT},
         {"Unresolved", AML_DATA_UNRESOLVED, AML_DATA_FLAG_NONE},
@@ -254,9 +255,9 @@ aml_node_t* aml_node_add(aml_name_string_t* string, aml_node_t* start, aml_node_
     return aml_node_new(current, newNodeName, flags);
 }
 
-uint64_t aml_node_init_buffer(aml_node_t* node, uint8_t* buffer, uint64_t length, uint64_t capacity, bool inPlace)
+uint64_t aml_node_init_buffer(aml_node_t* node, uint8_t* buffer, uint64_t bytesToCopy, uint64_t length)
 {
-    if (node == NULL || buffer == NULL || capacity == 0 || length > capacity)
+    if (node == NULL || buffer == NULL || length == 0 || bytesToCopy > length)
     {
         errno = EINVAL;
         return ERR;
@@ -268,25 +269,38 @@ uint64_t aml_node_init_buffer(aml_node_t* node, uint8_t* buffer, uint64_t length
     }
 
     node->type = AML_DATA_BUFFER;
-    if (inPlace)
+    node->buffer.content = heap_alloc(length, HEAP_NONE);
+    if (node->buffer.content == NULL)
     {
-        node->buffer.content = buffer;
-        node->buffer.length = length;
-        node->buffer.capacity = capacity;
-        node->buffer.inPlace = true;
+        return ERR;
     }
-    else
+    memset(node->buffer.content, 0, length);
+    memcpy(node->buffer.content, buffer, bytesToCopy);
+    node->buffer.length = length;
+
+    node->buffer.byteFields = heap_alloc(sizeof(aml_node_t) * length, HEAP_NONE);
+    if (node->buffer.byteFields == NULL)
     {
-        node->buffer.content = heap_alloc(capacity, HEAP_NONE);
-        if (node->buffer.content == NULL)
+        heap_free(node->buffer.content);
+        node->buffer.content = NULL;
+        return ERR;
+    }
+
+    for (uint64_t i = 0; i < length; i++)
+    {
+        node->buffer.byteFields[i] = AML_NODE_CREATE;
+        if (aml_node_init_buffer_field(&node->buffer.byteFields[i], node->buffer.content, i * 8, 8) == ERR)
         {
+            for (uint64_t j = 0; j < i; j++)
+            {
+                aml_node_deinit(&node->buffer.byteFields[j]);
+            }
+            heap_free(node->buffer.byteFields);
+            node->buffer.byteFields = NULL;
+            heap_free(node->buffer.content);
+            node->buffer.content = NULL;
             return ERR;
         }
-        memcpy(node->buffer.content, buffer, length);
-        memset(node->buffer.content + length, 0, capacity - length);
-        node->buffer.length = length;
-        node->buffer.capacity = capacity;
-        node->buffer.inPlace = false;
     }
 
     return 0;
@@ -313,8 +327,23 @@ uint64_t aml_node_init_buffer_empty(aml_node_t* node, uint64_t length)
     }
     memset(node->buffer.content, 0, length);
     node->buffer.length = length;
-    node->buffer.capacity = length;
-    node->buffer.inPlace = false;
+
+    for (uint64_t i = 0; i < length; i++)
+    {
+        node->buffer.byteFields[i] = AML_NODE_CREATE;
+        if (aml_node_init_buffer_field(&node->buffer.byteFields[i], node->buffer.content, i * 8, 8) == ERR)
+        {
+            for (uint64_t j = 0; j < i; j++)
+            {
+                aml_node_deinit(&node->buffer.byteFields[j]);
+            }
+            heap_free(node->buffer.byteFields);
+            node->buffer.byteFields = NULL;
+            heap_free(node->buffer.content);
+            node->buffer.content = NULL;
+            return ERR;
+        }
+    }
 
     return 0;
 }
@@ -556,9 +585,9 @@ uint64_t aml_node_init_opregion(aml_node_t* node, aml_region_space_t space, aml_
     return 0;
 }
 
-uint64_t aml_node_init_package(aml_node_t* node, uint64_t capacity)
+uint64_t aml_node_init_package(aml_node_t* node, uint64_t length)
 {
-    if (node == NULL || capacity == 0)
+    if (node == NULL || length == 0)
     {
         errno = EINVAL;
         return ERR;
@@ -570,14 +599,14 @@ uint64_t aml_node_init_package(aml_node_t* node, uint64_t capacity)
     }
 
     node->type = AML_DATA_PACKAGE;
-    node->package.capacity = capacity;
-    node->package.elements = heap_alloc(sizeof(aml_node_t) * capacity, HEAP_NONE);
+    node->package.length = length;
+    node->package.elements = heap_alloc(sizeof(aml_node_t) * length, HEAP_NONE);
     if (node->package.elements == NULL)
     {
         return ERR;
     }
 
-    for (uint64_t i = 0; i < capacity; i++)
+    for (uint64_t i = 0; i < length; i++)
     {
         node->package.elements[i] = aml_node_new(NULL, "____", AML_NODE_NONE);
         if (node->package.elements[i] == NULL)
@@ -617,7 +646,7 @@ uint64_t aml_node_init_processor(aml_node_t* node, aml_proc_id_t procId, aml_pbl
     return 0;
 }
 
-uint64_t aml_node_init_string(aml_node_t* node, const char* str, bool inPlace)
+uint64_t aml_node_init_string(aml_node_t* node, const char* str)
 {
     if (node == NULL || str == NULL)
     {
@@ -631,22 +660,51 @@ uint64_t aml_node_init_string(aml_node_t* node, const char* str, bool inPlace)
     }
 
     node->type = AML_DATA_STRING;
-    if (inPlace)
+    uint64_t strLen = strlen(str);
+
+    if (strLen == 0)
     {
-        node->string.content = (char*)str;
-        node->string.inPlace = true;
-    }
-    else
-    {
-        uint64_t strLen = strlen(str);
-        node->string.content = heap_alloc(strLen + 1, HEAP_NONE);
+        node->string.content = heap_alloc(1, HEAP_NONE);
         if (node->string.content == NULL)
         {
             return ERR;
         }
-        memcpy(node->string.content, str, strLen);
-        node->string.content[strLen] = '\0';
-        node->string.inPlace = false;
+        node->string.content[0] = '\0';
+        node->string.length = 0;
+        node->string.byteFields = NULL;
+        return 0;
+    }
+
+    node->string.content = heap_alloc(strLen + 1, HEAP_NONE);
+    if (node->string.content == NULL)
+    {
+        return ERR;
+    }
+    node->string.length = strLen;
+    memcpy(node->string.content, str, strLen);
+    node->string.content[strLen] = '\0';
+
+    node->string.byteFields = heap_alloc(sizeof(aml_node_t) * strLen, HEAP_NONE);
+    if (node->string.byteFields == NULL)
+    {
+        heap_free(node->string.content);
+        node->string.content = NULL;
+        return ERR;
+    }
+
+    for (uint64_t i = 0; i < strLen; i++)
+    {
+        node->string.byteFields[i] = AML_NODE_CREATE;
+        if (aml_node_init_buffer_field(&node->string.byteFields[i], (uint8_t*)node->string.content, i * 8, 8) == ERR)
+        {
+            for (uint64_t j = 0; j < i; j++)
+            {
+                aml_node_deinit(&node->string.byteFields[j]);
+            }
+            heap_free(node->string.content);
+            node->string.content = NULL;
+            return ERR;
+        }
     }
 
     return 0;
@@ -682,40 +740,62 @@ void aml_node_deinit(aml_node_t* node)
     switch (node->type)
     {
     case AML_DATA_UNINITALIZED:
+    case AML_DATA_BUFFER_FIELD:
+    case AML_DATA_DEVICE:
+    case AML_DATA_INTEGER:
+    case AML_DATA_INTEGER_CONSTANT:
+    case AML_DATA_METHOD:
+    case AML_DATA_OBJECT_REFERENCE:
+    case AML_DATA_OPERATION_REGION:
         // Nothing to do.
         break;
     case AML_DATA_BUFFER:
-        if (!node->buffer.inPlace && node->buffer.content != NULL)
+        if (node->buffer.byteFields != NULL)
+        {
+            for (uint64_t i = 0; i < node->buffer.length; i++)
+            {
+                aml_node_deinit(&node->buffer.byteFields[i]);
+            }
+            heap_free(node->buffer.byteFields);
+        }
+        if (node->buffer.content != NULL)
         {
             heap_free(node->buffer.content);
         }
         node->buffer.length = 0;
-        node->buffer.capacity = 0;
         node->buffer.content = NULL;
+        node->buffer.byteFields = NULL;
         break;
-    case AML_DATA_DEVICE:
-    case AML_DATA_INTEGER:
-    case AML_DATA_INTEGER_CONSTANT:
-        // Nothing to do.
-        break;
-    case AML_DATA_STRING:
-        if (!node->string.inPlace && node->string.content != NULL)
-        {
-            heap_free(node->string.content);
-        }
-        node->string.content = NULL;
+    case AML_DATA_MUTEX:
+        mutex_deinit(&node->mutex.mutex);
         break;
     case AML_DATA_PACKAGE:
         if (node->package.elements != NULL)
         {
-            for (uint64_t i = 0; i < node->package.capacity; i++)
+            for (uint64_t i = 0; i < node->package.length; i++)
             {
                 aml_node_free(node->package.elements[i]);
             }
             heap_free(node->package.elements);
         }
-        node->package.capacity = 0;
+        node->package.length = 0;
         node->package.elements = NULL;
+        break;
+    case AML_DATA_STRING:
+        if (node->string.byteFields != NULL)
+        {
+            for (uint64_t i = 0; i < node->string.length; i++)
+            {
+                aml_node_deinit(&node->string.byteFields[i]);
+            }
+            heap_free(node->string.byteFields);
+        }
+        if (node->string.content != NULL)
+        {
+            heap_free(node->string.content);
+        }
+        node->string.length = 0;
+        node->string.content = NULL;
         break;
     case AML_DATA_UNRESOLVED:
         aml_patch_up_remove_unresolved(node);
@@ -743,11 +823,15 @@ uint64_t aml_node_clone(aml_node_t* src, aml_node_t* dest)
 
     switch (src->type)
     {
-    case AML_DATA_UNINITALIZED:
-        errno = EINVAL;
-        return ERR;
     case AML_DATA_BUFFER:
-        if (aml_node_init_buffer(dest, src->buffer.content, src->buffer.length, src->buffer.capacity, false) == ERR)
+        if (aml_node_init_buffer(dest, src->buffer.content, src->buffer.length, src->buffer.length) == ERR)
+        {
+            return ERR;
+        }
+        break;
+    case AML_DATA_BUFFER_FIELD:
+        if (aml_node_init_buffer_field(dest, src->bufferField.buffer, src->bufferField.bitOffset,
+                src->bufferField.bitSize) == ERR)
         {
             return ERR;
         }
@@ -827,11 +911,11 @@ uint64_t aml_node_clone(aml_node_t* src, aml_node_t* dest)
         }
         break;
     case AML_DATA_PACKAGE:
-        if (aml_node_init_package(dest, src->package.capacity) == ERR)
+        if (aml_node_init_package(dest, src->package.length) == ERR)
         {
             return ERR;
         }
-        for (uint64_t i = 0; i < src->package.capacity; i++)
+        for (uint64_t i = 0; i < src->package.length; i++)
         {
             if (aml_node_clone(src->package.elements[i], dest->package.elements[i]) == ERR)
             {
@@ -848,14 +932,15 @@ uint64_t aml_node_clone(aml_node_t* src, aml_node_t* dest)
         }
         break;
     case AML_DATA_STRING:
-        if (aml_node_init_string(dest, src->string.content, false) == ERR)
+        if (aml_node_init_string(dest, src->string.content) == ERR)
         {
             return ERR;
         }
         break;
     default:
-        LOG_ERR("unimplemented clone of AML node '%.*s' of type '%s'\n", AML_NAME_LENGTH, src->segment,
-            aml_data_type_to_string(src->type));
+        LOG_ERR("unimplemented clone of AML node '%.*s' of type ('%s', %d)\n", AML_NAME_LENGTH, src->segment,
+            aml_data_type_to_string(src->type), src->type);
+        errno = ENOSYS;
         return ERR;
     }
 

@@ -150,8 +150,7 @@ const char* aml_node_to_string(aml_node_t* node)
         snprintf(buffer, sizeof(buffer), "Uninitialized");
         return buffer;
     case AML_DATA_BUFFER:
-        snprintf(buffer, sizeof(buffer), "Buffer(Length=%llu, Capacity=%llu, Content=0x", node->buffer.length,
-            node->buffer.capacity);
+        snprintf(buffer, sizeof(buffer), "Buffer(Length=%llu, Content=0x", node->buffer.length);
         for (uint64_t i = 0; i < node->buffer.length && i < 8; i++)
         {
             snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%02x", node->buffer.content[i]);
@@ -201,7 +200,7 @@ const char* aml_node_to_string(aml_node_t* node)
             aml_region_space_to_string(node->opregion.space), node->opregion.offset, node->opregion.length);
         return buffer;
     case AML_DATA_PACKAGE:
-        snprintf(buffer, sizeof(buffer), "Package(Capacity=%llu)", node->package.capacity);
+        snprintf(buffer, sizeof(buffer), "Package(Length=%llu)", node->package.length);
         return buffer;
     case AML_DATA_STRING:
     {

@@ -4,11 +4,11 @@
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_patch_up.h"
 #include "acpi/aml/aml_state.h"
-#include "acpi/aml/aml_value.h"
 #include "acpi/aml/aml_to_string.h"
+#include "acpi/aml/aml_value.h"
 #include "data_integers.h"
-#include "name.h"
 #include "expression.h"
+#include "name.h"
 #include "package_length.h"
 
 #include <errno.h>
@@ -206,7 +206,7 @@ uint64_t aml_string_read(aml_state_t* state, aml_node_t* out)
         }
     }
 
-    if (aml_node_init_string(out, str, true) == ERR)
+    if (aml_node_init_string(out, str) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to init string node");
         return ERR;
@@ -353,7 +353,7 @@ static inline uint64_t aml_package_element_handle_name(aml_node_t* in, aml_node_
     {
         if (aml_node_init_object_reference(out, in) == ERR)
         {
-            LOG_ERR("failed to init object reference in aml_package_element_handle_name()\n");
+            LOG_ERR("failed to init ObjectReference in aml_package_element_handle_name()\n");
             return ERR;
         }
         return 0;
@@ -431,7 +431,7 @@ uint64_t aml_package_element_list_read(aml_state_t* state, aml_node_t* node, aml
     }
 
     uint64_t i = 0;
-    while (state->pos < end && i < package->package.capacity)
+    while (state->pos < end && i < package->package.length)
     {
         if (aml_package_element_read(state, node, package->package.elements[i]) == ERR)
         {

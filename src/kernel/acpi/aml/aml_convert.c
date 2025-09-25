@@ -2,8 +2,8 @@
 
 #include "aml_to_string.h"
 #include "log/log.h"
-#include "runtime/opregion.h"
 #include "runtime/buffer_field.h"
+#include "runtime/opregion.h"
 
 #include <errno.h>
 
@@ -47,7 +47,7 @@ uint64_t aml_convert_to_actual_data(aml_node_t* src, aml_node_t* dest)
     case AML_DATA_PACKAGE:
     case AML_DATA_STRING:
         return aml_node_clone(src, dest);
-    break;
+        break;
     case AML_DATA_BUFFER_FIELD:
     {
         return aml_buffer_field_read(src, dest);
@@ -161,8 +161,7 @@ uint64_t aml_convert_to_integer(aml_node_t* src, aml_node_t* dest)
         }
 
         uint64_t value = 0;
-        uint64_t len = strlen(src->string.content);
-        for (uint64_t i = 0; i < len && i < sizeof(uint64_t) * 2; i++)
+        for (uint64_t i = 0; i < src->string.length && i < sizeof(uint64_t) * 2; i++)
         {
             char chr = src->string.content[i];
             if (chr >= '0' && chr <= '9')
@@ -188,6 +187,16 @@ uint64_t aml_convert_to_integer(aml_node_t* src, aml_node_t* dest)
             return ERR;
         }
         return 0;
+    }
+    case AML_DATA_OBJECT_REFERENCE:
+    {
+        if (src->objectReference.target == NULL)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+
+        return aml_convert_to_integer(src->objectReference.target, dest);
     }
     default:
         LOG_ERR("invalid conversion from '%s' to Integer\n", aml_data_type_to_string(src->type));

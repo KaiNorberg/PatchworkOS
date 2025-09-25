@@ -92,8 +92,8 @@ uint64_t aml_patch_up_resolve_all()
             return ERR;
         }
 
-        // When the unresolved node is initalized as somethine else, it will be removed from the list in `aml_node_deinit()` and the entry will be freed.
-        // If it hasent been removed then something has gone wrong.
+        // When the unresolved node is initalized as somethine else, it will be removed from the list in
+        // `aml_node_deinit()` and the entry will be freed. If it hasent been removed then something has gone wrong.
 
         if (unresolved->type == AML_DATA_UNRESOLVED)
         {
