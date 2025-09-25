@@ -75,10 +75,6 @@ static uint64_t acpi_parse_all_aml(void)
     if (aml_parse(dsdt->definitionBlock, dsdt->header.length - sizeof(dsdt_t)) == ERR)
     {
         LOG_ERR("failed to parse DSDT\n");
-
-        // LOG_INFO("==ACPI Namespace Tree==\n");
-        // aml_print_tree(aml_root_get(), 0, true);
-
         return ERR;
     }
 
@@ -118,57 +114,6 @@ static uint64_t acpi_parse_all_aml(void)
         return ERR;
     }
 
-    // For debugging, remove later
-    // LOG_INFO("==ACPI Namespace Tree==\n");
-    // aml_print_tree(aml_root_get(), 0, true);
-
-    /*aml_node_t* test = aml_node_find("\\_SB_.HPET.VEND", NULL);
-    assert(test != NULL);
-    LOG_INFO("Found node by path: %.*s\n", AML_NAME_LENGTH, test->segment);
-
-    aml_data_object_t result;
-    if (aml_evaluate(test, &result, NULL) == ERR)
-    {
-        LOG_ERR("Failed to evaluate node\n");
-        return ERR;
-    }
-
-    if (result.type != AML_DATA_INTEGER)
-    {
-        LOG_ERR("Node did not evaluate to an integer\n");
-        aml_data_object_deinit(&result);
-        return ERR;
-    }
-
-    LOG_INFO("Node evaluated to integer: %llu, bitwidth: %d\n", result.integer, result.meta.bitWidth);
-
-    result.integer = 42;
-    if (aml_store(test, &result) == ERR)
-    {
-        LOG_ERR("Failed to store to node\n");
-        aml_data_object_deinit(&result);
-        return ERR;
-    }
-    LOG_INFO("Stored integer 42 to node\n");
-
-    if (aml_evaluate(test, &result, NULL) == ERR)
-    {
-        LOG_ERR("Failed to re-evaluate node\n");
-        aml_data_object_deinit(&result);
-        return ERR;
-    }
-
-    if (result.type != AML_DATA_INTEGER)
-    {
-        LOG_ERR("Node did not re-evaluate to an integer\n");
-        aml_data_object_deinit(&result);
-        return ERR;
-    }
-
-    LOG_INFO("Node re-evaluated to integer: %llu, bitwidth: %d\n", result.integer, result.meta.bitWidth);
-
-    aml_data_object_deinit(&result);*/
-
     return 0;
 }
 
@@ -195,7 +140,7 @@ void acpi_init(rsdp_t* rsdp, boot_memory_map_t* map)
 
     if (acpi_parse_all_aml() == ERR)
     {
-        panic(NULL, "Failed to load ACPI namespaces");
+        LOG_WARN("failed to parse all AML code, since ACPI is still WIP we will continue booting but there may be issues!\n");
     }
 
     acpi_reclaim_memory(map);
