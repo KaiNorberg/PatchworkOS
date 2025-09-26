@@ -18,6 +18,8 @@ static void ps2_mouse_handle_packet(const ps2_mouse_packet_t* packet)
 
 static void ps2_mouse_irq(irq_t irq, void* data)
 {
+    (void)irq; // Unused
+
     ps2_mouse_irq_context_t* context = data;
 
     uint8_t byte;

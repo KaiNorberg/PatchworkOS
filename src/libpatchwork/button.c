@@ -145,7 +145,7 @@ static void button_draw(element_t* elem, button_t* button)
     element_draw_end(elem, &draw);
 }
 
-static void button_send_action(element_t* elem, button_t* button, action_type_t type)
+static void button_send_action(element_t* elem, action_type_t type)
 {
     levent_action_t event = {.source = elem->id, .type = type};
     display_events_push(elem->win->disp, elem->win->surface, LEVENT_ACTION, &event, sizeof(levent_action_t));
@@ -153,6 +153,8 @@ static void button_send_action(element_t* elem, button_t* button, action_type_t 
 
 static uint64_t button_procedure(window_t* win, element_t* elem, const event_t* event)
 {
+    (void)win; // Unused
+
     button_t* button = element_get_private(elem);
 
     switch (event->type)
@@ -194,7 +196,7 @@ static uint64_t button_procedure(window_t* win, element_t* elem, const event_t* 
                     button->isPressed = !button->isPressed;
                     button->isFocused = true;
 
-                    button_send_action(elem, button, button->isPressed ? ACTION_PRESS : ACTION_RELEASE);
+                    button_send_action(elem, button->isPressed ? ACTION_PRESS : ACTION_RELEASE);
                 }
             }
             else
@@ -217,12 +219,12 @@ static uint64_t button_procedure(window_t* win, element_t* elem, const event_t* 
                 {
                     button->isPressed = true;
                     button->isFocused = true;
-                    button_send_action(elem, button, ACTION_PRESS);
+                    button_send_action(elem, ACTION_PRESS);
                 }
                 else if (leftReleased && button->isPressed)
                 {
                     button->isPressed = false;
-                    button_send_action(elem, button, ACTION_RELEASE);
+                    button_send_action(elem, ACTION_RELEASE);
                 }
             }
             else
@@ -232,7 +234,7 @@ static uint64_t button_procedure(window_t* win, element_t* elem, const event_t* 
                 if (button->isPressed)
                 {
                     button->isPressed = false;
-                    button_send_action(elem, button, ACTION_CANCEL);
+                    button_send_action(elem, ACTION_CANCEL);
                 }
 
                 if (leftPressed)

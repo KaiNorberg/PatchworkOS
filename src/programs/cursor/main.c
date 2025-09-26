@@ -6,6 +6,8 @@ static image_t* image;
 
 static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
+    (void)win; // Unused
+
     switch (event->type)
     {
     case LEVENT_REDRAW:

@@ -17,6 +17,8 @@ static boot_gop_t gop;
 
 static void* gop_mmap(fb_t* fb, void* addr, uint64_t length, prot_t prot)
 {
+    (void)fb; // Unused
+
     process_t* process = sched_process();
 
     length = MIN(gop.height * gop.stride * sizeof(uint32_t), length);

@@ -255,7 +255,7 @@ aml_node_t* aml_node_add(aml_name_string_t* string, aml_node_t* start, aml_node_
     return aml_node_new(current, newNodeName, flags);
 }
 
-uint64_t aml_node_init_buffer(aml_node_t* node, uint8_t* buffer, uint64_t bytesToCopy, uint64_t length)
+uint64_t aml_node_init_buffer(aml_node_t* node, const uint8_t* buffer, uint64_t bytesToCopy, uint64_t length)
 {
     if (node == NULL || buffer == NULL || length == 0 || bytesToCopy > length)
     {
@@ -504,9 +504,10 @@ uint64_t aml_node_init_integer_constant(aml_node_t* node, uint64_t value)
     return 0;
 }
 
-uint64_t aml_node_init_method(aml_node_t* node, aml_method_flags_t flags, aml_address_t start, aml_address_t end)
+uint64_t aml_node_init_method(aml_node_t* node, aml_method_flags_t* flags, const uint8_t* start, const uint8_t* end,
+    aml_method_implementation_t implementation)
 {
-    if (node == NULL || start == 0 || end == 0 || start > end)
+    if (node == NULL || ((start == 0 || end == 0 || start > end) && implementation == NULL))
     {
         errno = EINVAL;
         return ERR;
@@ -518,7 +519,8 @@ uint64_t aml_node_init_method(aml_node_t* node, aml_method_flags_t flags, aml_ad
     }
 
     node->type = AML_DATA_METHOD;
-    node->method.flags = flags;
+    node->method.implementation = implementation;
+    node->method.flags = *flags;
     node->method.start = start;
     node->method.end = end;
 
@@ -564,7 +566,7 @@ uint64_t aml_node_init_object_reference(aml_node_t* node, aml_node_t* target)
     return 0;
 }
 
-uint64_t aml_node_init_opregion(aml_node_t* node, aml_region_space_t space, aml_address_t offset, uint32_t length)
+uint64_t aml_node_init_opregion(aml_node_t* node, aml_region_space_t space, uint64_t offset, uint32_t length)
 {
     if (node == NULL || length == 0)
     {
@@ -887,7 +889,8 @@ uint64_t aml_node_clone(aml_node_t* src, aml_node_t* dest)
         }
         break;
     case AML_DATA_METHOD:
-        if (aml_node_init_method(dest, src->method.flags, src->method.start, src->method.end) == ERR)
+        if (aml_node_init_method(dest, &src->method.flags, src->method.start, src->method.end,
+                src->method.implementation) == ERR)
         {
             return ERR;
         }

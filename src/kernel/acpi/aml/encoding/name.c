@@ -20,7 +20,7 @@ uint64_t aml_seg_count_read(aml_state_t* state, aml_seg_count_t* out)
 
 uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t** out)
 {
-    aml_address_t start = state->pos;
+    const uint8_t* start = state->current;
 
     aml_value_t leadnamechar;
     if (aml_value_read_no_ext(state, &leadnamechar) == ERR)
@@ -53,7 +53,7 @@ uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t** out)
         }
     }
 
-    *out = (aml_name_seg_t*)((uint64_t)state->data + start);
+    *out = (aml_name_seg_t*)start;
     return 0;
 }
 
@@ -73,7 +73,7 @@ uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t** out)
         return ERR;
     }
 
-    aml_address_t start = state->pos;
+    const uint8_t* start = state->current;
 
     // We just read the two NameSegs to verify they are valid.
     aml_name_seg_t* temp;
@@ -83,7 +83,7 @@ uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t** out)
         return ERR;
     }
 
-    *out = (aml_name_seg_t*)((uint64_t)state->data + start);
+    *out = (aml_name_seg_t*)start;
     return 0;
 }
 
@@ -110,7 +110,7 @@ uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t** outSegmen
         return ERR;
     }
 
-    aml_address_t start = state->pos;
+    const uint8_t* start = state->current;
 
     // We just read the NameSegs to verify they are valid.
     aml_name_seg_t* temp;
@@ -123,7 +123,7 @@ uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t** outSegmen
         }
     }
 
-    *outSegments = (aml_name_seg_t*)((uint64_t)state->data + start);
+    *outSegments = (aml_name_seg_t*)start;
     *outSegCount = segCount;
     return 0;
 }

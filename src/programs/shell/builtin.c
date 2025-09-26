@@ -26,6 +26,8 @@ static uint64_t builtin_cd(uint64_t argc, const char** argv)
 
 static uint64_t builtin_clear(uint64_t argc, const char** argv)
 {
+    (void)argc;
+    (void)argv;
     return ERR;
 }
 

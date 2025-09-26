@@ -62,6 +62,8 @@ static void wait_block_cleanup(thread_t* thread, wait_result_t result, wait_queu
 
 static void wait_timer_handler(trap_frame_t* trapFrame, cpu_t* self)
 {
+    (void)trapFrame; // Unused
+
     LOCK_SCOPE(&self->wait.lock);
 
     while (1)
@@ -128,6 +130,8 @@ void wait_cpu_ctx_init(wait_cpu_ctx_t* wait)
 
 bool wait_block_finalize(trap_frame_t* trapFrame, cpu_t* self, thread_t* thread)
 {
+    (void)trapFrame; // Unused
+
     wait_cpu_ctx_t* cpuCtx = &self->wait;
     LOCK_SCOPE(&self->wait.lock);
 

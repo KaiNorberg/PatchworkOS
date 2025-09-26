@@ -101,6 +101,9 @@ static file_ops_t fileOps = {
 
 static uint64_t ramfs_lookup(inode_t* dir, dentry_t* target)
 {
+    (void)dir;    // Unused
+    (void)target; // Unused
+
     // All ramfs dentrys should always be in the cache, if lookup is called then the file/dir does not exist.
     return 0;
 }
@@ -136,6 +139,8 @@ static void ramfs_truncate(inode_t* inode)
 
 static uint64_t ramfs_link(dentry_t* old, inode_t* dir, dentry_t* target)
 {
+    (void)dir; // Unused
+
     if (ramfs_dentry_init(target) == ERR)
     {
         return ERR;
@@ -149,6 +154,8 @@ static uint64_t ramfs_link(dentry_t* old, inode_t* dir, dentry_t* target)
 
 static uint64_t ramfs_delete_file(inode_t* parent, dentry_t* target)
 {
+    (void)parent; // Unused
+
     target->inode->linkCount--;
     ramfs_dentry_deinit(target);
     return 0;
@@ -156,6 +163,8 @@ static uint64_t ramfs_delete_file(inode_t* parent, dentry_t* target)
 
 static uint64_t ramfs_delete_directory(inode_t* parent, dentry_t* target)
 {
+    (void)parent; // Unused
+
     ramfs_dentry_deinit(target);
     return 0;
 }
@@ -215,6 +224,8 @@ static dentry_ops_t dentryOps = {
 
 static void ramfs_superblock_cleanup(superblock_t* superblock)
 {
+    (void)superblock; // Unused
+
     panic(NULL, "ramfs unmounted\n");
 }
 
@@ -292,6 +303,8 @@ static dentry_t* ramfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
 
 static dentry_t* ramfs_mount(filesystem_t* fs, superblock_flags_t flags, const char* devName, void* private)
 {
+    (void)devName; // Unused
+
     superblock_t* superblock = superblock_new(fs, VFS_DEVICE_NAME_NONE, &superOps, &dentryOps);
     if (superblock == NULL)
     {

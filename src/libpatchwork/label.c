@@ -5,6 +5,8 @@
 
 static uint64_t label_procedure(window_t* win, element_t* elem, const event_t* event)
 {
+    (void)win; // Unused
+
     int64_t bezelSize = element_get_int(elem, INT_BEZEL_SIZE);
     int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
     pixel_t bezelColor = element_get_color(elem, COLOR_SET_VIEW, COLOR_ROLE_BEZEL);

@@ -59,6 +59,7 @@ static void _scan_unget(int c, _format_ctx_t* ctx)
         --(ctx->buffer);
     }
 #else
+    (void)c;
     if (ctx->buffer != NULL)
     {
         --(ctx->buffer);

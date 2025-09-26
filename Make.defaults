@@ -26,7 +26,6 @@ CFLAGS := \
 	-Wno-unused-function \
 	-Wno-unused-variable \
 	-Wno-ignored-qualifiers \
-	-Wno-unused-parameter \
 	-Wno-unused-but-set-variable \
 	-Wno-implicit-fallthrough \
 	-Wno-deprecated-non-prototype \

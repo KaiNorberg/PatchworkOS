@@ -120,6 +120,8 @@ static file_ops_t dataOps = {
 
 static uint64_t socket_ctl_bind(file_t* file, uint64_t argc, const char** argv)
 {
+    (void)argc; // Unused
+
     socket_t* sock = file->inode->private;
     if (sock == NULL || sock->family == NULL)
     {
@@ -176,6 +178,8 @@ static uint64_t socket_ctl_listen(file_t* file, uint64_t argc, const char** argv
 
 static uint64_t socket_ctl_connect(file_t* file, uint64_t argc, const char** argv)
 {
+    (void)argc; // Unused
+
     socket_t* sock = file->inode->private;
     if (sock == NULL || sock->family == NULL)
     {

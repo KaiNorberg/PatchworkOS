@@ -70,7 +70,7 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_address_t start = state->pos;
+    const uint8_t* start = state->current;
 
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
@@ -86,7 +86,7 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_address_t end = start + pkgLength;
+    const uint8_t* end = start + pkgLength;
 
     if (scope->type != AML_DATA_DEVICE && scope->type != AML_DATA_PROCESSOR && scope->type != AML_DATA_THERMAL_ZONE &&
         scope->type != AML_DATA_POWER_RESOURCE)

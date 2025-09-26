@@ -6,9 +6,10 @@
 
 #include "fs/sysfs.h"
 #include "sync/mutex.h"
-#include "utils/ref.h"
 
 #include <stdint.h>
+
+typedef struct aml_term_arg_list aml_term_arg_list_t;
 
 /**
  * @brief Node
@@ -131,6 +132,12 @@ typedef enum
 } aml_field_unit_type_t;
 
 /**
+ * @brief Method Implementation function type.
+ * @typedef aml_method_implementation_t
+ */
+typedef uint64_t (*aml_method_implementation_t)(aml_node_t* method, aml_term_arg_list_t* args, aml_node_t* out);
+
+/**
  * @brief ACPI node.
  * @struct aml_node_t
  *
@@ -190,9 +197,14 @@ typedef struct aml_node
         } integerConstant;
         struct
         {
+            /**
+             * Pointer to the C function that will execute the method. Really just used to implement predefined the
+             * predefined method _OSI. If `implementation` is `NULL`, the method is just a normal AML method.
+             */
+            aml_method_implementation_t implementation;
             aml_method_flags_t flags;
-            aml_address_t start;
-            aml_address_t end;
+            const uint8_t* start;
+            const uint8_t* end;
         } method;
         struct
         {
@@ -206,7 +218,7 @@ typedef struct aml_node
         struct
         {
             aml_region_space_t space;
-            aml_address_t offset;
+            uint64_t offset;
             uint32_t length;
         } opregion;
         struct
@@ -305,7 +317,7 @@ aml_node_t* aml_node_add(aml_name_string_t* string, aml_node_t* start, aml_node_
  * @param length The total length of the buffer.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_node_init_buffer(aml_node_t* node, uint8_t* buffer, uint64_t bytesToCopy, uint64_t length);
+uint64_t aml_node_init_buffer(aml_node_t* node, const uint8_t* buffer, uint64_t bytesToCopy, uint64_t length);
 
 /**
  * @brief Initialize an ACPI node as an empty buffer with the given length.
@@ -401,11 +413,14 @@ uint64_t aml_node_init_integer_constant(aml_node_t* node, uint64_t value);
  *
  * @param node Pointer to the node to initialize.
  * @param flags Flags for the method.
- * @param start Start address of the method's AML bytecode.
- * @param end End address of the method's AML bytecode.
+ * @param start Pointer to the start of the method's AML bytecode.
+ * @param end Pointer to the end of the method's AML bytecode.
+ * @param implementation Pointer to a C function that will execute the method, or `NULL` if the method is a normal
+ * AML method.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_node_init_method(aml_node_t* node, aml_method_flags_t flags, aml_address_t start, aml_address_t end);
+uint64_t aml_node_init_method(aml_node_t* node, aml_method_flags_t* flags, const uint8_t* start, const uint8_t* end,
+    aml_method_implementation_t implementation);
 
 /**
  * @brief Initialize an ACPI node as a mutex with the given synchronization level.
@@ -434,7 +449,7 @@ uint64_t aml_node_init_object_reference(aml_node_t* node, aml_node_t* target);
  * @param length The length of the operation region.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_node_init_opregion(aml_node_t* node, aml_region_space_t space, aml_address_t offset, uint32_t length);
+uint64_t aml_node_init_opregion(aml_node_t* node, aml_region_space_t space, uint64_t offset, uint32_t length);
 
 /**
  * @brief Initialize an ACPI node as a package with the given number of elements.

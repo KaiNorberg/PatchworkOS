@@ -348,9 +348,9 @@ uint64_t aml_field_element_read(aml_state_t* state, aml_node_t* node, aml_field_
     return 0;
 }
 
-uint64_t aml_field_list_read(aml_state_t* state, aml_node_t* node, aml_field_list_ctx_t* ctx, aml_address_t end)
+uint64_t aml_field_list_read(aml_state_t* state, aml_node_t* node, aml_field_list_ctx_t* ctx, const uint8_t* end)
 {
-    while (end > state->pos)
+    while (end > state->current)
     {
         // End of buffer not reached => byte is not nothing => must be a FieldElement.
         if (aml_field_element_read(state, node, ctx) == ERR)
@@ -379,7 +379,7 @@ uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_address_t start = state->pos;
+    const uint8_t* start = state->current;
 
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
@@ -402,7 +402,7 @@ uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_address_t end = start + pkgLength;
+    const uint8_t* end = start + pkgLength;
 
     aml_field_list_ctx_t ctx = {
         .type = AML_FIELD_LIST_TYPE_FIELD,
@@ -436,7 +436,7 @@ uint64_t aml_def_index_field_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_address_t start = state->pos;
+    const uint8_t* start = state->current;
 
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
@@ -466,7 +466,7 @@ uint64_t aml_def_index_field_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_address_t end = start + pkgLength;
+    const uint8_t* end = start + pkgLength;
 
     aml_field_list_ctx_t ctx = {
         .type = AML_FIELD_LIST_TYPE_INDEX_FIELD,
@@ -501,7 +501,7 @@ uint64_t aml_def_bank_field_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_address_t start = state->pos;
+    const uint8_t* start = state->current;
 
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
@@ -510,7 +510,7 @@ uint64_t aml_def_bank_field_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_address_t end = start + pkgLength;
+    const uint8_t* end = start + pkgLength;
 
     aml_node_t* opregion = NULL;
     if (aml_name_string_read_and_resolve(state, node, &opregion, AML_RESOLVE_NONE, NULL) == ERR)
@@ -596,7 +596,7 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_address_t start = state->pos;
+    const uint8_t* start = state->current;
 
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
@@ -619,7 +619,7 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_address_t end = start + pkgLength;
+    const uint8_t* end = start + pkgLength;
 
     aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_NONE);
     if (newNode == NULL)
@@ -628,7 +628,7 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    if (aml_node_init_method(newNode, methodFlags, state->pos, end) == ERR)
+    if (aml_node_init_method(newNode, &methodFlags, state->current, end, NULL) == ERR)
     {
         aml_node_free(newNode);
         AML_DEBUG_ERROR(state, "Failed to init method");
@@ -636,7 +636,7 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node)
     }
 
     // We are only defining the method, not executing it, so we skip its body, and only parse it when it is called.
-    uint64_t offset = end - state->pos;
+    uint64_t offset = end - state->current;
     aml_state_advance(state, offset);
 
     return 0;
@@ -658,7 +658,7 @@ uint64_t aml_def_device_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_address_t start = state->pos;
+    const uint8_t* start = state->current;
 
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
@@ -674,7 +674,7 @@ uint64_t aml_def_device_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_address_t end = start + pkgLength;
+    const uint8_t* end = start + pkgLength;
 
     aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_NONE);
     if (newNode == NULL)
@@ -791,7 +791,7 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_address_t start = state->pos;
+    const uint8_t* start = state->current;
 
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
@@ -828,7 +828,7 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_address_t end = start + pkgLength;
+    const uint8_t* end = start + pkgLength;
 
     aml_node_t* newNode = aml_node_add(&nameString, node, AML_NODE_NONE);
     if (newNode == NULL)
@@ -1046,43 +1046,43 @@ uint64_t aml_named_obj_read(aml_state_t* state, aml_node_t* node)
     {
     case AML_OPREGION_OP:
         result = aml_def_op_region_read(state, node);
-    break;
+        break;
     case AML_FIELD_OP:
         result = aml_def_field_read(state, node);
-    break;
+        break;
     case AML_METHOD_OP:
         result = aml_def_method_read(state, node);
-    break;
+        break;
     case AML_DEVICE_OP:
         result = aml_def_device_read(state, node);
-    break;
+        break;
     case AML_MUTEX_OP:
         result = aml_def_mutex_read(state, node);
-    break;
+        break;
     case AML_INDEX_FIELD_OP:
         result = aml_def_index_field_read(state, node);
-    break;
+        break;
     case AML_BANK_FIELD_OP:
         result = aml_def_bank_field_read(state, node);
-    break;
+        break;
     case AML_DEPRECATED_PROCESSOR_OP:
         result = aml_def_processor_read(state, node);
-    break;
+        break;
     case AML_CREATE_BIT_FIELD_OP:
         result = aml_def_create_bit_field_read(state, node);
-    break;
+        break;
     case AML_CREATE_BYTE_FIELD_OP:
         result = aml_def_create_byte_field_read(state, node);
-    break;
+        break;
     case AML_CREATE_WORD_FIELD_OP:
         result = aml_def_create_word_field_read(state, node);
-    break;
+        break;
     case AML_CREATE_DWORD_FIELD_OP:
         result = aml_def_create_dword_field_read(state, node);
-    break;
+        break;
     case AML_CREATE_QWORD_FIELD_OP:
         result = aml_def_create_qword_field_read(state, node);
-    break;
+        break;
     default:
         AML_DEBUG_ERROR(state, "Unknown NamedObj '0x%x'", op.num);
         errno = ENOSYS;

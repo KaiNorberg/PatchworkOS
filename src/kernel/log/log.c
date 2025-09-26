@@ -104,6 +104,8 @@ log_state_t* log_get_state(void)
 
 static uint64_t klog_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
+    (void)file; // Unused
+
     LOCK_SCOPE(&lock);
 
     uint64_t result = ring_read_at(&klog.ring, *offset, buffer, count);
@@ -113,6 +115,8 @@ static uint64_t klog_read(file_t* file, void* buffer, uint64_t count, uint64_t* 
 
 static uint64_t klog_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
+    (void)file; // Unused
+
     if (count == 0 || buffer == NULL || offset == NULL)
     {
         return 0;

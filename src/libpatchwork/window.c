@@ -26,6 +26,8 @@ typedef struct
 
 static void window_deco_titlebar_rect(window_t* win, element_t* elem, rect_t* rect)
 {
+    (void)win; // Unused
+
     rect_t contentRect = element_get_content_rect(elem);
 
     int64_t frameWidth = element_get_int(elem, INT_FRAME_SIZE);

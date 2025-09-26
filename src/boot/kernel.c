@@ -253,8 +253,7 @@ static EFI_STATUS load_symbol_table(EFI_FILE* file, boot_kernel_t* kernel, uint6
 }
 
 static EFI_STATUS load_kernel_segments(EFI_FILE* file, uintptr_t physStart, uintptr_t virtStart,
-    uint64_t kernelPageAmount, const elf_phdr_t* phdrs, const elf_hdr_t* header, uint64_t phdrTableSize,
-    uint64_t fileSize)
+    uint64_t kernelPageAmount, const elf_phdr_t* phdrs, const elf_hdr_t* header, uint64_t fileSize)
 {
     if (file == NULL || phdrs == NULL || header == NULL)
     {
@@ -460,7 +459,7 @@ EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_HANDLE imageHandle)
     Print(L"phys=0x%llx virt=0x%llx size=%llu KB... ", kernel->physStart, kernel->virtStart, kernel->size / 1024);
 
     status = load_kernel_segments(file, (uintptr_t)kernel->physStart, kernel->virtStart, kernelPageAmount,
-        kernel->phdrs, &kernel->header, phdrTableSize, fileSize);
+        kernel->phdrs, &kernel->header, fileSize);
     if (EFI_ERROR(status))
     {
         Print(L"failed to load kernel segments (0x%x)!\n", status);

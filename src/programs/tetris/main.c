@@ -213,7 +213,7 @@ static void block_draw(element_t* elem, drawable_t* draw, block_t block, int64_t
     draw_frame(draw, &rect, frameSize, shadowColors[block], highlightColors[block]);
 }
 
-static void side_panel_draw(window_t* win, element_t* elem, drawable_t* draw)
+static void side_panel_draw(element_t* elem, drawable_t* draw)
 {
     rect_t rect = RECT_INIT(SIDE_PANEL_LEFT, SIDE_PANEL_TOP, SIDE_PANEL_RIGHT, SIDE_PANEL_BOTTOM);
 
@@ -677,7 +677,7 @@ static void current_piece_rotate(element_t* elem, drawable_t* draw)
     current_piece_draw(elem, draw);
 }
 
-static void start_tetris_draw(window_t* win, element_t* elem, drawable_t* draw)
+static void start_tetris_draw(drawable_t* draw)
 {
     uint64_t totalWidth = font_width(massiveFont, "TETRIS", 6);
 
@@ -707,7 +707,7 @@ static void start_tetris_draw(window_t* win, element_t* elem, drawable_t* draw)
     draw_text(draw, &rect, massiveFont, ALIGN_CENTER, ALIGN_CENTER, normalColors[BLOCK_BLUE], "S");
 }
 
-static void start_press_space_draw(window_t* win, element_t* elem, drawable_t* draw)
+static void start_press_space_draw(element_t* elem, drawable_t* draw)
 {
     static bool blink = false;
 
@@ -774,7 +774,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
         field_edge_draw(elem, &draw);
         field_draw(elem, &draw);
-        side_panel_draw(win, elem, &draw);
+        side_panel_draw(elem, &draw);
 
         element_draw_end(elem, &draw);
 
@@ -788,8 +788,8 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
         if (!isStarted)
         {
-            start_tetris_draw(win, elem, &draw);
-            start_press_space_draw(win, elem, &draw);
+            start_tetris_draw(&draw);
+            start_press_space_draw(elem, &draw);
             window_set_timer(win, TIMER_NONE, START_SCREEN_TICK_SPEED);
 
             element_draw_end(elem, &draw);

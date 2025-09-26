@@ -79,6 +79,8 @@ static void* shmem_mmap(file_t* file, void* address, uint64_t length, prot_t pro
 
 static uint64_t shmem_ctl_grant(file_t* file, uint64_t argc, const char** argv)
 {
+    (void)argc; // Unused
+
     shmem_object_t* shmem = file->private;
     if (shmem == NULL)
     {
@@ -116,6 +118,8 @@ static uint64_t shmem_ctl_grant(file_t* file, uint64_t argc, const char** argv)
 
 static uint64_t shmem_ctl_revoke(file_t* file, uint64_t argc, const char** argv)
 {
+    (void)argc; // Unused
+
     shmem_object_t* shmem = file->private;
     if (shmem == NULL)
     {

@@ -18,8 +18,9 @@ typedef struct aml_state aml_state_t;
 
 /**
  * @brief TermArgList structure.
+ * @struct aml_term_arg_list_t
  */
-typedef struct
+typedef struct aml_term_arg_list
 {
     aml_node_t args[AML_MAX_ARGS];
     uint8_t count;

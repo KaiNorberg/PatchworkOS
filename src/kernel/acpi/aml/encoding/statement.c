@@ -33,7 +33,7 @@ uint64_t aml_def_else_read(aml_state_t* state, aml_node_t* node, bool shouldExec
         return ERR;
     }
 
-    aml_address_t start = state->pos;
+    const uint8_t* start = state->current;
 
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
@@ -42,7 +42,7 @@ uint64_t aml_def_else_read(aml_state_t* state, aml_node_t* node, bool shouldExec
         return ERR;
     }
 
-    aml_address_t end = start + pkgLength;
+    const uint8_t* end = start + pkgLength;
 
     if (shouldExecute)
     {
@@ -56,7 +56,7 @@ uint64_t aml_def_else_read(aml_state_t* state, aml_node_t* node, bool shouldExec
     else
     {
         // Skip the TermList
-        aml_address_t offset = end - state->pos;
+        uint64_t offset = end - state->current;
         aml_state_advance(state, offset);
     }
 
@@ -79,7 +79,7 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    aml_address_t start = state->pos;
+    const uint8_t* start = state->current;
 
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
@@ -90,7 +90,7 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_node_t* node)
 
     // The end of the If statement, the "Else" part is not included in this length, see section 5.4.19 figure 5.17 of
     // the ACPI spec.
-    aml_address_t end = start + pkgLength;
+    const uint8_t* end = start + pkgLength;
 
     aml_qword_data_t predicate;
     if (aml_predicate_read(state, node, &predicate) == ERR)
@@ -112,7 +112,7 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_node_t* node)
     else
     {
         // Skip the TermList
-        aml_address_t offset = end - state->pos;
+        uint64_t offset = end - state->current;
         aml_state_advance(state, offset);
     }
 
@@ -131,7 +131,7 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_node_t* node)
     return 0;
 }
 
-uint64_t aml_def_noop_read(aml_state_t* state, aml_node_t* node)
+uint64_t aml_def_noop_read(aml_state_t* state)
 {
     aml_value_t noopOp;
     if (aml_value_read_no_ext(state, &noopOp) == ERR)
@@ -164,10 +164,10 @@ uint64_t aml_statement_opcode_read(aml_state_t* state, aml_node_t* node)
     {
     case AML_IF_OP:
         result = aml_def_if_else_read(state, node);
-    break;
+        break;
     case AML_NOOP_OP:
-        result = aml_def_noop_read(state, node);
-    break;
+        result = aml_def_noop_read(state);
+        break;
     default:
         AML_DEBUG_ERROR(state, "Unknown statement opcode '0x%x'", op.num);
         errno = ENOSYS;

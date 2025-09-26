@@ -25,6 +25,8 @@ static element_t* label;
 static void numpad_button_create(window_t* win, element_t* elem, uint64_t column, uint64_t row, const char* label,
     element_id_t id)
 {
+    (void)win; // Unused
+
     rect_t rect = RECT_INIT_DIM(NUMPAD_COLUMN_TO_WINDOW(column), NUMPAD_ROW_TO_WINDOW(row), NUMPAD_BUTTON_WIDTH,
         NUMPAD_BUTTON_WIDTH);
     element_t* button = button_new(elem, id, &rect, label, ELEMENT_NONE);
