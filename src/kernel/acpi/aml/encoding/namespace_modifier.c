@@ -14,6 +14,53 @@
 #include <errno.h>
 #include <stdint.h>
 
+uint64_t aml_def_alias_read(aml_state_t* state, aml_node_t* node)
+{
+    aml_value_t aliasOp;
+    if (aml_value_read_no_ext(state, &aliasOp) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read alias op");
+        return ERR;
+    }
+
+    if (aliasOp.num != AML_ALIAS_OP)
+    {
+        AML_DEBUG_ERROR(state, "Invalid alias op '0x%x'", aliasOp.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_node_t* source = NULL;
+    if (aml_name_string_read_and_resolve(state, node, &source, AML_RESOLVE_NONE, NULL) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read or resolve source name string");
+        return ERR;
+    }
+
+    aml_name_string_t targetNameString;
+    if (aml_name_string_read(state, &targetNameString) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read target name string");
+        return ERR;
+    }
+
+    aml_node_t* target = aml_node_add(&targetNameString, node, AML_NODE_NONE);
+    if (target == NULL)
+    {
+        AML_DEBUG_ERROR(state, "Failed to add node");
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    if (aml_node_init_alias(target, source) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to initialize alias node");
+        return ERR;
+    }
+
+    return 0;
+}
+
 uint64_t aml_def_name_read(aml_state_t* state, aml_node_t* node)
 {
     aml_value_t nameOp;
@@ -25,7 +72,7 @@ uint64_t aml_def_name_read(aml_state_t* state, aml_node_t* node)
 
     if (nameOp.num != AML_NAME_OP)
     {
-        AML_DEBUG_ERROR(state, "Invalid name op: 0x%x", nameOp.num);
+        AML_DEBUG_ERROR(state, "Invalid name op '0x%x'", nameOp.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -65,7 +112,7 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_node_t* node)
 
     if (scopeOp.num != AML_SCOPE_OP)
     {
-        AML_DEBUG_ERROR(state, "Invalid scope op: 0x%x", scopeOp.num);
+        AML_DEBUG_ERROR(state, "Invalid scope op '0x%x'", scopeOp.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -117,9 +164,12 @@ uint64_t aml_namespace_modifier_obj_read(aml_state_t* state, aml_node_t* node)
     switch (value.num)
     {
     case AML_ALIAS_OP:
-        AML_DEBUG_ERROR(state, "Alias op is not implemented");
-        errno = EILSEQ;
-        return ERR;
+        if (aml_def_alias_read(state, node) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read DefAlias");
+            return ERR;
+        }
+        return 0;
     case AML_NAME_OP:
         if (aml_def_name_read(state, node) == ERR)
         {
@@ -135,7 +185,7 @@ uint64_t aml_namespace_modifier_obj_read(aml_state_t* state, aml_node_t* node)
         }
         return 0;
     default:
-        AML_DEBUG_ERROR(state, "Invalid namespace modifier obj: 0x%x", value.num);
+        AML_DEBUG_ERROR(state, "Invalid NamespaceModifierObj '0x%x'", value.num);
         errno = EILSEQ;
         return ERR;
     }

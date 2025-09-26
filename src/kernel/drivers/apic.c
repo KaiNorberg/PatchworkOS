@@ -60,11 +60,11 @@ void lapic_init(void)
         panic(NULL, "Unable to find lapic address in MADT, hardware is not compatible");
     }
 
-    lapicBase = (uintptr_t)vmm_kernel_map(NULL, lapicPhysAddr, 1, PML_WRITE);
-    if ((void*)lapicBase == NULL)
+    if (vmm_kernel_map(NULL, lapicPhysAddr, 1, PML_WRITE) == NULL && errno != EEXIST) // EEXIST means it was already mapped
     {
         panic(NULL, "Unable to map lapic");
     }
+    lapicBase = (uintptr_t)PML_LOWER_TO_HIGHER(lapicPhysAddr);
 
     LOG_INFO("local apic mapped base=0x%016lx phys=0x%016lx\n", lapicBase, lapicPhysAddr);
 }
@@ -132,7 +132,7 @@ static uint32_t ioapic_read(ioapic_id_t id, uint32_t reg)
 {
     if (id >= ioapicCount || ioapics[id].base == 0)
     {
-        panic(NULL, "invalid i/o apic id %u\n", id);
+        panic(NULL, "invalid i/o apic id %u and base 0x%016lx", id, ioapics[id].base);
     }
 
     uintptr_t base = ioapics[id].base;
@@ -144,7 +144,7 @@ static void ioapic_write(ioapic_id_t id, uint32_t reg, uint32_t value)
 {
     if (id >= ioapicCount || ioapics[id].base == 0)
     {
-        panic(NULL, "invalid i/o apic id %u\n", id);
+        panic(NULL, "invalid i/o apic id %u and base 0x%016lx", id, ioapics[id].base);
     }
 
     uintptr_t base = ioapics[id].base;
@@ -179,11 +179,11 @@ void ioapic_all_init(void)
         }
 
         void* physAddr = (void*)(uint64_t)ioapic->ioApicAddress;
-        void* virtAddr = vmm_kernel_map(NULL, physAddr, 1, PML_WRITE);
-        if (virtAddr == NULL)
+        if (vmm_kernel_map(NULL, physAddr, 1, PML_WRITE) == NULL && errno != EEXIST) // EEXIST means it was already mapped
         {
             panic(NULL, "Failed to map ioapic");
         }
+        void* virtAddr = PML_LOWER_TO_HIGHER(physAddr);
 
         ioapic_id_t id = ioapicCount++;
 

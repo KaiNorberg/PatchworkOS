@@ -587,7 +587,7 @@ uint64_t aml_node_init_opregion(aml_node_t* node, aml_region_space_t space, aml_
 
 uint64_t aml_node_init_package(aml_node_t* node, uint64_t length)
 {
-    if (node == NULL || length == 0)
+    if (node == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -599,6 +599,14 @@ uint64_t aml_node_init_package(aml_node_t* node, uint64_t length)
     }
 
     node->type = AML_DATA_PACKAGE;
+
+    if (length == 0)
+    {
+        node->package.length = 0;
+        node->package.elements = NULL;
+        return 0;
+    }
+
     node->package.length = length;
     node->package.elements = heap_alloc(sizeof(aml_node_t) * length, HEAP_NONE);
     if (node->package.elements == NULL)
@@ -726,6 +734,25 @@ uint64_t aml_node_init_unresolved(aml_node_t* node, aml_name_string_t* nameStrin
     node->type = AML_DATA_UNRESOLVED;
     node->unresolved.nameString = *nameString;
     node->unresolved.start = start;
+
+    return 0;
+}
+
+uint64_t aml_node_init_alias(aml_node_t* node, aml_node_t* target)
+{
+    if (node == NULL || target == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (node->type != AML_DATA_UNINITALIZED)
+    {
+        aml_node_deinit(node);
+    }
+
+    node->type = AML_DATA_ALIAS;
+    node->alias.target = target;
 
     return 0;
 }
@@ -947,6 +974,15 @@ uint64_t aml_node_clone(aml_node_t* src, aml_node_t* dest)
     return 0;
 }
 
+aml_node_t* aml_node_traverse_alias(aml_node_t* node)
+{
+    while (node != NULL && node->type == AML_DATA_ALIAS)
+    {
+        node = node->alias.target;
+    }
+    return node;
+}
+
 aml_node_t* aml_node_find_child(aml_node_t* parent, const char* name)
 {
     if (parent == NULL || name == NULL)
@@ -955,11 +991,20 @@ aml_node_t* aml_node_find_child(aml_node_t* parent, const char* name)
         return NULL;
     }
 
+    if (parent->type == AML_DATA_ALIAS)
+    {
+        parent = parent->alias.target;
+    }
+
     aml_node_t* child = NULL;
     LIST_FOR_EACH(child, &parent->children, entry)
     {
         if (aml_is_name_equal(child->segment, name))
         {
+            if (child->type == AML_DATA_ALIAS)
+            {
+                return aml_node_traverse_alias(child);
+            }
             return child;
         }
     }
@@ -974,6 +1019,11 @@ aml_node_t* aml_node_find(const char* path, aml_node_t* start)
     {
         errno = EINVAL;
         return NULL;
+    }
+
+    if (start->type == AML_DATA_ALIAS)
+    {
+        start = aml_node_traverse_alias(start);
     }
 
     const char* ptr = path;

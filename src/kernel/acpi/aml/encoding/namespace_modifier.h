@@ -18,6 +18,19 @@ typedef struct aml_node aml_node_t;
  */
 
 /**
+ * @brief Reads a DefAlias structure from the AML byte stream.
+ *
+ * A DefAlias structure is defined as `DefAlias := AliasOp NameString NameString`.
+ *
+ * @see Section 19.6.4 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param node The current AML node.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_alias_read(aml_state_t* state, aml_node_t* node);
+
+/**
  * @brief Reads a DefName structure from the AML byte stream.
  *
  * A DefName structure is defined as `DefName := NameOp NameString DataRefObject`.

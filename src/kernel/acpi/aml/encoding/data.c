@@ -486,7 +486,7 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_node_t* node, aml_node_t* 
 
     if (aml_node_init_package(out, numElements) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to init package node");
+        AML_DEBUG_ERROR(state, "Failed to init package node with %u elements", numElements);
         return ERR;
     }
 

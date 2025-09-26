@@ -20,11 +20,11 @@ void hpet_init(void)
         panic(NULL, "Unable to find hpet, hardware is not compatible");
     }
 
-    address = (uintptr_t)vmm_kernel_map(NULL, (void*)hpet->address, 1, PML_WRITE);
-    if (address == (uintptr_t)NULL)
+    if (vmm_kernel_map(NULL, (void*)hpet->address, 1, PML_WRITE) == NULL && errno != EEXIST) // EEXIST means it was already mapped
     {
         panic(NULL, "Unable to map hpet");
     }
+    address = (uintptr_t)PML_LOWER_TO_HIGHER(hpet->address);
     period = hpet_read(HPET_GENERAL_CAPABILITIES) >> HPET_COUNTER_CLOCK_OFFSET;
 
     LOG_INFO("hpet at phys=0x%016lx virt=0x%016lx period=%lufs creatorID=%llu\n", hpet->address, address,

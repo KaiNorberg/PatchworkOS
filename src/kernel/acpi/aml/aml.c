@@ -89,7 +89,7 @@ uint64_t aml_init(void)
 
 uint64_t aml_parse(const void* data, uint64_t size)
 {
-    if (data == NULL || size == 0)
+    if (data == NULL)
     {
         errno = EINVAL;
         return ERR;
