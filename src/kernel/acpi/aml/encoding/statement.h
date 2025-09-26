@@ -72,10 +72,9 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_node_t* node);
  * A Noop does nothing.
  *
  * @param state The AML state to parse from.
- * @param node The current AML node.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_noop_read(aml_state_t* state, aml_node_t* node);
+uint64_t aml_def_noop_read(aml_state_t* state);
 
 /**
  * @brief Reads an StatementOpcode structure from the AML byte stream.

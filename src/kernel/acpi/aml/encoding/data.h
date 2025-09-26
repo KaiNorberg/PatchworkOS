@@ -179,10 +179,10 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_node_t* node, aml_node
  * @param state The AML state.
  * @param node The current AML node.
  * @param package Pointer to the Package node to be filled with the elements.
- * @param end The address in the AML stream where the PackageElementList ends.
+ * @param end Pointer to the end of the PackageElementList.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_package_element_list_read(aml_state_t* state, aml_node_t* node, aml_node_t* package, aml_address_t end);
+uint64_t aml_package_element_list_read(aml_state_t* state, aml_node_t* node, aml_node_t* package, const uint8_t* end);
 
 /**
  * @brief Reads a DefPackage structure from the AML byte stream.

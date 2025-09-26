@@ -1,6 +1,7 @@
 #include "aml.h"
 
 #include "aml_patch_up.h"
+#include "aml_predefined.h"
 #include "aml_state.h"
 #include "aml_to_string.h"
 #include "encoding/term.h"
@@ -14,33 +15,6 @@
 static mutex_t globalMutex;
 
 static aml_node_t* root = NULL;
-
-static inline uint64_t aml_create_predefined_node(const char* name, aml_data_type_t type)
-{
-    aml_node_t* node = aml_node_new(root, name, AML_NODE_PREDEFINED);
-    if (node == NULL)
-    {
-        return ERR;
-    }
-
-    switch (type)
-    {
-    case AML_DATA_DEVICE:
-        if (aml_node_init_device(node) == ERR)
-        {
-            aml_node_free(node);
-            return ERR;
-        }
-        break;
-    default:
-        LOG_ERR("unimplemented predefined node type '%s' for node '%s'\n", aml_data_type_to_string(type), name);
-        aml_node_free(node);
-        errno = ENOSYS;
-        return ERR;
-    }
-
-    return 0;
-}
 
 uint64_t aml_init(void)
 {
@@ -59,37 +33,21 @@ uint64_t aml_init(void)
         return ERR;
     }
 
-    // Normal predefined root nodes, see section 5.3.1 of the ACPI specification.
-    if (aml_create_predefined_node("_GPE", AML_DATA_DEVICE) == ERR ||
-        aml_create_predefined_node("_PR", AML_DATA_DEVICE) == ERR ||
-        aml_create_predefined_node("_SB", AML_DATA_DEVICE) == ERR ||
-        aml_create_predefined_node("_SI", AML_DATA_DEVICE) == ERR ||
-        aml_create_predefined_node("_TZ", AML_DATA_DEVICE) == ERR)
+    if (aml_predefined_init() == ERR)
     {
         aml_node_free(root);
         root = NULL;
         return ERR;
     }
 
-    // OS specific predefined nodes, see section 5.7 of the ACPI specification.
-    /*if (aml_create_predefined_node("_GL", AML_DATA_MUTEX) == ERR ||
-        aml_create_predefined_node("_OS", AML_DATA_STRING) == ERR ||
-        aml_create_predefined_node("_OSI", AML_DATA_METHOD) == ERR ||
-        aml_create_predefined_node("_REV", AML_DATA_INTEGER) == ERR)
-    {
-        aml_node_free(root);
-        root = NULL;
-        return ERR;
-    }*/
-
     aml_patch_up_init();
 
     return 0;
 }
 
-uint64_t aml_parse(const void* data, uint64_t size)
+uint64_t aml_parse(const uint8_t* start, const uint8_t* end)
 {
-    if (data == NULL)
+    if (start == NULL || end == NULL || start >= end)
     {
         errno = EINVAL;
         return ERR;
@@ -100,12 +58,12 @@ uint64_t aml_parse(const void* data, uint64_t size)
     // So the entire code is a termlist.
 
     aml_state_t state;
-    if (aml_state_init(&state, data, size) == ERR)
+    if (aml_state_init(&state, start, end) == ERR)
     {
         return ERR;
     }
 
-    uint64_t result = aml_term_list_read(&state, aml_root_get(), size);
+    uint64_t result = aml_term_list_read(&state, aml_root_get(), end);
 
     aml_state_deinit(&state);
     return result;

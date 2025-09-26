@@ -56,6 +56,8 @@ int* _platform_errno_get(void)
 // Ignore message
 void _platform_abort(const char* message)
 {
+    (void)message; // Unused
+
     // raise( SIGABRT ); // TODO: Implement signals
     exit(EXIT_FAILURE);
 }

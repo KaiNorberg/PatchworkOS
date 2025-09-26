@@ -67,6 +67,8 @@ static uint64_t process_prio_read(file_t* file, void* buffer, uint64_t count, ui
 
 static uint64_t process_prio_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
+    (void)offset; // Unused
+
     process_t* process = process_file_get_process(file);
     if (process == NULL)
     {
@@ -158,6 +160,8 @@ static file_ops_t cmdlineOps = {
 
 static uint64_t process_note_write(file_t* file, const void* buffer, uint64_t count, uint64_t* offset)
 {
+    (void)offset; // Unused
+
     if (count == 0)
     {
         return 0;
@@ -404,6 +408,8 @@ void process_kill(process_t* process, uint64_t status)
     {
         return;
     }
+
+    atomic_store(&process->status, status);
 
     uint64_t killCount = 0;
     thread_t* thread;

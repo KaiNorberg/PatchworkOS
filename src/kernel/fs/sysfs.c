@@ -29,6 +29,8 @@ static superblock_ops_t superOps = {
 
 static dentry_t* sysfs_mount(filesystem_t* fs, superblock_flags_t flags, const char* devName, void* private)
 {
+    (void)devName; // Unused
+
     sysfs_group_t* group = private;
 
     superblock_t* superblock = superblock_new(fs, VFS_DEVICE_NAME_NONE, &superOps, &dentryOps);

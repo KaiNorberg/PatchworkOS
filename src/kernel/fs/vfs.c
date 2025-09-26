@@ -569,6 +569,8 @@ uint64_t vfs_mount(const char* deviceName, const pathname_t* mountpoint, const c
 
 uint64_t vfs_unmount(const pathname_t* mountpoint)
 {
+    (void)mountpoint;
+
     errno = ENOSYS;
     return ERR;
 

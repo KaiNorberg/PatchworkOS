@@ -10,6 +10,7 @@ void input_init(input_t* input)
 
 void input_deinit(input_t* input)
 {
+    (void)input; // Nothing to do
 }
 
 void input_insert(input_t* input, char chr)

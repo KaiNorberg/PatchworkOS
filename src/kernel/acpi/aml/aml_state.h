@@ -32,23 +32,29 @@
  */
 typedef struct aml_state
 {
-    const void* data;  //!< Pointer to the AML bytecode stream.
-    uint64_t dataSize; //!< Size of the AML bytecode stream.
-    aml_address_t pos; //!< Index of the current instruction in `data`.
-    aml_node_t*
-        args[AML_MAX_ARGS]; //!< Argument variables, only used if the state is being used to invoke a method, if any.
+    const uint8_t* start;           //!< Pointer to the start of the AML bytecode.
+    const uint8_t* end;             //!< Pointer to the end of the AML bytecode.
+    const uint8_t* current;         //!< Pointer to the current position in the AML bytecode.
+    aml_node_t* args[AML_MAX_ARGS]; //!< Argument variables, only used if the state is being used to evaluate a method.
     aml_node_t* locals[AML_MAX_LOCALS]; //!< Local variables for the method, if any.
     struct
     {
-        aml_address_t lastErrPos; //!<  The position when the last error occurred.
+        const uint8_t* lastErrPos; //!<  The position when the last error occurred.
     } debug;
 } aml_state_t;
 
-static inline uint64_t aml_state_init(aml_state_t* state, const void* data, uint64_t dataSize)
+static inline uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t* end)
 {
-    state->data = data;
-    state->dataSize = dataSize;
-    state->pos = 0;
+    if (start >= end)
+    {
+        LOG_ERR("Invalid AML data start >= end");
+        return ERR;
+    }
+
+    state->start = start;
+    state->end = end;
+    state->current = start;
+
     for (uint8_t i = 0; i < AML_MAX_ARGS; i++)
     {
         state->args[i] = NULL;
@@ -57,15 +63,15 @@ static inline uint64_t aml_state_init(aml_state_t* state, const void* data, uint
     {
         state->locals[i] = NULL;
     }
-    state->debug.lastErrPos = UINT64_MAX;
+    state->debug.lastErrPos = NULL;
     return 0;
 }
 
 static inline void aml_state_deinit(aml_state_t* state)
 {
-    state->data = NULL;
-    state->dataSize = 0;
-    state->pos = 0;
+    state->start = NULL;
+    state->end = NULL;
+    state->current = NULL;
 
     for (uint8_t i = 0; i < AML_MAX_ARGS; i++)
     {
@@ -77,44 +83,44 @@ static inline void aml_state_deinit(aml_state_t* state)
         aml_node_free(state->locals[i]);
         state->locals[i] = NULL;
     }
-    state->debug.lastErrPos = UINT64_MAX;
+    state->debug.lastErrPos = NULL;
 }
 
 static inline uint64_t aml_state_read(aml_state_t* state, uint8_t* buffer, uint64_t count)
 {
-    uint64_t bytesAvailable = state->dataSize - state->pos;
+    uint64_t bytesAvailable = state->end - state->current;
     if (count > bytesAvailable)
     {
         count = bytesAvailable;
     }
 
-    memcpy(buffer, (uint8_t*)state->data + state->pos, count);
-    state->pos += count;
+    memcpy(buffer, state->current, count);
+    state->current += count;
     return count;
 }
 
 static inline uint64_t aml_state_peek(aml_state_t* state, uint8_t* buffer, uint64_t count)
 {
-    uint64_t bytesAvailable = state->dataSize - state->pos;
+    uint64_t bytesAvailable = state->end - state->current;
     if (count > bytesAvailable)
     {
         count = bytesAvailable;
     }
 
-    memcpy(buffer, (uint8_t*)state->data + state->pos, count);
+    memcpy(buffer, state->current, count);
     return count;
 }
 
 static inline uint64_t aml_state_advance(aml_state_t* state, uint64_t offset)
 {
-    uint64_t bytesAvailable = state->dataSize - state->pos;
+    uint64_t bytesAvailable = state->end - state->current;
     if (offset > bytesAvailable)
     {
         offset = bytesAvailable;
     }
 
-    state->pos += offset;
-    return state->pos;
+    state->current += offset;
+    return offset;
 }
 
 /** @} */

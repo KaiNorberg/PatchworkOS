@@ -132,6 +132,8 @@ void smp_others_init(void)
 
 static void smp_halt_ipi(trap_frame_t* trapFrame)
 {
+    (void)trapFrame; // Unused
+
     atomic_fetch_add(&haltedAmount, 1);
 
     while (1)

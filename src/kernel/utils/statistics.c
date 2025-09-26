@@ -30,6 +30,8 @@ void statistics_cpu_ctx_init(statistics_cpu_ctx_t* ctx)
 
 static uint64_t statistics_cpu_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
+    (void)file; // Unused
+
     char* string = heap_alloc(MAX_PATH * (smp_cpu_amount() + 1), HEAP_VMM);
     if (string == NULL)
     {
@@ -59,6 +61,8 @@ static file_ops_t cpuOps = {
 
 static uint64_t statistics_mem_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
+    (void)file; // Unused
+
     char* string = heap_alloc(MAX_PATH, HEAP_VMM);
     if (string == NULL)
     {
@@ -96,6 +100,8 @@ void statistics_init(void)
 
 void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* self)
 {
+    (void)trapFrame; // Unused
+
     statistics_cpu_ctx_t* stat = &self->stat;
     LOCK_SCOPE(&stat->lock);
 
@@ -114,6 +120,8 @@ void statistics_trap_begin(trap_frame_t* trapFrame, cpu_t* self)
 
 void statistics_trap_end(trap_frame_t* trapFrame, cpu_t* self)
 {
+    (void)trapFrame; // Unused
+
     statistics_cpu_ctx_t* stat = &self->stat;
     LOCK_SCOPE(&stat->lock);
 

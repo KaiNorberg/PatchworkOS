@@ -158,11 +158,16 @@ static void compositor_draw_wall(compositor_ctx_t* ctx)
     }
 }
 
-static void compositor_invalidate_windows_above(compositor_ctx_t* ctx, surface_t* window, const rect_t* rect)
+static void compositor_invalidate_others(compositor_ctx_t* ctx, surface_t* window, const rect_t* rect)
 {
     surface_t* other;
     LIST_FOR_EACH_REVERSE(other, ctx->windows, dwmEntry)
     {
+        if (other == window)
+        {
+            continue;
+        }
+
         if (!other->isVisible)
         {
             continue;
@@ -242,7 +247,7 @@ static void compositor_draw_window_panel(compositor_ctx_t* ctx, surface_t* surfa
     if (surface->type == SURFACE_WINDOW)
     {
         screen_transfer(surface, &rect);
-        compositor_invalidate_windows_above(ctx, surface, &rect);
+        compositor_invalidate_others(ctx, surface, &rect);
     }
     else if (surface->type == SURFACE_PANEL)
     {

@@ -10,6 +10,8 @@ static kbd_t* kbd;
 
 static void ps2_kbd_irq(irq_t irq, void* data)
 {
+    (void)irq; // Unused
+
     ps2_kbd_irq_context_t* context = data;
 
     ps2_device_response_t response;

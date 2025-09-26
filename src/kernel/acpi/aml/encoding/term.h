@@ -67,9 +67,9 @@ uint64_t aml_term_obj_read(aml_state_t* state, aml_node_t* node);
  *
  * @param state The AML state.
  * @param node The current AML node.
- * @param end The index at which the termlist ends.
+ * @param end Pointer to the end of the TermList.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_term_list_read(aml_state_t* state, aml_node_t* node, aml_address_t end);
+uint64_t aml_term_list_read(aml_state_t* state, aml_node_t* node, const uint8_t* end);
 
 /** @} */

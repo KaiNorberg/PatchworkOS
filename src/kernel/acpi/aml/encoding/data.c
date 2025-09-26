@@ -182,7 +182,7 @@ uint64_t aml_string_read(aml_state_t* state, aml_node_t* out)
         return ERR;
     }
 
-    char* str = (char*)((uint64_t)state->data + (uint64_t)state->pos);
+    const char* str = (const char*)state->current;
     while (1)
     {
         uint8_t c;
@@ -421,7 +421,7 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_node_t* node, aml_node
     }
 }
 
-uint64_t aml_package_element_list_read(aml_state_t* state, aml_node_t* node, aml_node_t* package, aml_address_t end)
+uint64_t aml_package_element_list_read(aml_state_t* state, aml_node_t* node, aml_node_t* package, const uint8_t* end)
 {
     if (package == NULL || package->type != AML_DATA_PACKAGE)
     {
@@ -431,7 +431,7 @@ uint64_t aml_package_element_list_read(aml_state_t* state, aml_node_t* node, aml
     }
 
     uint64_t i = 0;
-    while (state->pos < end && i < package->package.length)
+    while (state->current < end && i < package->package.length)
     {
         if (aml_package_element_read(state, node, package->package.elements[i]) == ERR)
         {
@@ -464,7 +464,7 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_node_t* node, aml_node_t* 
         return ERR;
     }
 
-    aml_address_t start = state->pos;
+    const uint8_t* start = state->current;
 
     // PkgLength specifies how many elements in the package are defined, others are left uninitialized.
     aml_pkg_length_t pkgLength;
@@ -474,7 +474,7 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_node_t* node, aml_node_t* 
         return ERR;
     }
 
-    aml_address_t end = start + pkgLength;
+    const uint8_t* end = start + pkgLength;
 
     // NumElements specifies the capacity of the package.
     aml_byte_data_t numElements;

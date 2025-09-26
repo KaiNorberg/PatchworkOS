@@ -15,6 +15,9 @@ static uint8_t bcd_to_bin(uint8_t bcd)
 
 static void rtc_irq(irq_t irq, void* context)
 {
+    (void)irq;     // Unused
+    (void)context; // Unused
+
     port_outb(CMOS_ADDRESS, 0x0C);
     port_inb(CMOS_DATA);
 }

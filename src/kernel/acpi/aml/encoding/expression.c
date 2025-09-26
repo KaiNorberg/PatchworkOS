@@ -1,14 +1,13 @@
 #include "expression.h"
 
-#include "acpi/aml/aml.h"
 #include "acpi/aml/aml_convert.h"
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_node.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_to_string.h"
 #include "acpi/aml/aml_value.h"
+#include "acpi/aml/runtime/method.h"
 #include "arg.h"
-#include "mem/heap.h"
 #include "package_length.h"
 #include "term.h"
 
@@ -242,7 +241,7 @@ uint64_t aml_def_buffer_read(aml_state_t* state, aml_node_t* node, aml_node_t* o
         return ERR;
     }
 
-    aml_address_t start = state->pos;
+    const uint8_t* start = state->current;
 
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
@@ -251,7 +250,7 @@ uint64_t aml_def_buffer_read(aml_state_t* state, aml_node_t* node, aml_node_t* o
         return ERR;
     }
 
-    aml_address_t end = start + pkgLength;
+    const uint8_t* end = start + pkgLength;
 
     aml_qword_data_t bufferSize;
     if (aml_buffer_size_read(state, node, &bufferSize) == ERR)
@@ -260,11 +259,9 @@ uint64_t aml_def_buffer_read(aml_state_t* state, aml_node_t* node, aml_node_t* o
         return ERR;
     }
 
-    uint64_t availableBytes = end - state->pos;
+    uint64_t availableBytes = (uint64_t)(end - state->current);
 
-    void* content = (void*)((uint64_t)state->data + (uint64_t)state->pos);
-
-    if (aml_node_init_buffer(out, content, availableBytes, bufferSize) == ERR)
+    if (aml_node_init_buffer(out, state->current, availableBytes, bufferSize) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to init allocated buffer");
         return ERR;
@@ -304,8 +301,9 @@ uint64_t aml_term_arg_list_read(aml_state_t* state, aml_node_t* node, uint64_t a
 
 uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
 {
+    aml_name_string_t nameString;
     aml_node_t* target = NULL;
-    if (aml_name_string_read_and_resolve(state, node, &target, AML_RESOLVE_NONE, NULL) == ERR)
+    if (aml_name_string_read_and_resolve(state, node, &target, AML_RESOLVE_NONE, &nameString) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read target name string");
         return ERR;
@@ -313,9 +311,29 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_node_t* node, aml_no
 
     if (target->type == AML_DATA_METHOD)
     {
-        AML_DEBUG_ERROR(state, "MethodInvocation not implemented");
-        errno = ENOSYS;
-        return ERR;
+        aml_term_arg_list_t args = {0};
+        if (aml_term_arg_list_read(state, node, target->method.flags.argCount, &args) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read method arguments");
+            return ERR;
+        }
+
+        if (aml_method_evaluate(target, &args, out) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to evaluate method");
+            for (uint64_t i = 0; i < args.count; i++)
+            {
+                aml_node_deinit(&args.args[i]);
+            }
+            return ERR;
+        }
+
+        for (uint64_t i = 0; i < args.count; i++)
+        {
+            aml_node_deinit(&args.args[i]);
+        }
+
+        return 0;
     }
 
     if (aml_node_init_object_reference(out, target) == ERR)
@@ -344,14 +362,14 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_node_t* node, aml_node
     }
 
     aml_node_t* source = NULL;
-    if (aml_super_name_read_and_resolve(state, node, &source, AML_RESOLVE_ALLOW_UNRESOLVED, NULL) == ERR)
+    if (aml_super_name_read_and_resolve(state, node, &source, AML_RESOLVE_NONE, NULL) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve super name");
         return ERR;
     }
 
     aml_node_t* result = NULL;
-    if (aml_target_read_and_resolve(state, node, &result, AML_RESOLVE_ALLOW_UNRESOLVED, NULL) == ERR)
+    if (aml_target_read_and_resolve(state, node, &result, AML_RESOLVE_NONE, NULL) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve target");
         return ERR;

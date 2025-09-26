@@ -13,7 +13,7 @@
 
 // The rect_get functions are rather inefficient... but like who cares.
 
-static rect_t taskbar_get_start_rect(taskbar_t* taskbar, element_t* elem)
+static rect_t taskbar_get_start_rect(element_t* elem)
 {
     int64_t panelSize = element_get_int(elem, INT_PANEL_SIZE);
     int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
@@ -23,7 +23,7 @@ static rect_t taskbar_get_start_rect(taskbar_t* taskbar, element_t* elem)
     return RECT_INIT_DIM(bigPadding, frameSize + smallPadding, START_WIDTH, panelSize - frameSize - smallPadding * 2);
 }
 
-static rect_t taskbar_get_clock_rect(taskbar_t* taskbar, element_t* elem)
+static rect_t taskbar_get_clock_rect(element_t* elem)
 {
     int64_t panelSize = element_get_int(elem, INT_PANEL_SIZE);
     int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
@@ -36,9 +36,9 @@ static rect_t taskbar_get_clock_rect(taskbar_t* taskbar, element_t* elem)
         panelSize - frameSize - smallPadding * 2);
 }
 
-static rect_t taskbar_get_left_separator_rect(taskbar_t* taskbar, element_t* elem)
+static rect_t taskbar_get_left_separator_rect(element_t* elem)
 {
-    rect_t startRect = taskbar_get_start_rect(taskbar, elem);
+    rect_t startRect = taskbar_get_start_rect(elem);
 
     int64_t bigPadding = element_get_int(elem, INT_BIG_PADDING);
     int64_t separatorSize = element_get_int(elem, INT_SEPARATOR_SIZE);
@@ -46,9 +46,9 @@ static rect_t taskbar_get_left_separator_rect(taskbar_t* taskbar, element_t* ele
     return RECT_INIT_DIM(startRect.right + bigPadding, startRect.top, separatorSize, RECT_HEIGHT(&startRect));
 }
 
-static rect_t taskbar_get_right_separator_rect(taskbar_t* taskbar, element_t* elem)
+static rect_t taskbar_get_right_separator_rect(element_t* elem)
 {
-    rect_t clockRect = taskbar_get_clock_rect(taskbar, elem);
+    rect_t clockRect = taskbar_get_clock_rect(elem);
 
     int64_t bigPadding = element_get_int(elem, INT_BIG_PADDING);
     int64_t separatorSize = element_get_int(elem, INT_SEPARATOR_SIZE);
@@ -61,8 +61,8 @@ static rect_t taskbar_get_task_button_rect(taskbar_t* taskbar, element_t* elem, 
 {
     int64_t bigPadding = element_get_int(elem, INT_BIG_PADDING);
 
-    rect_t leftSeparator = taskbar_get_left_separator_rect(taskbar, elem);
-    rect_t rightSeparator = taskbar_get_right_separator_rect(taskbar, elem);
+    rect_t leftSeparator = taskbar_get_left_separator_rect(elem);
+    rect_t rightSeparator = taskbar_get_right_separator_rect(elem);
 
     uint64_t firstAvailPos = leftSeparator.right + bigPadding;
     uint64_t lastAvailPos = rightSeparator.left - bigPadding;
@@ -158,10 +158,10 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     {
         rect_t rect = element_get_content_rect(elem);
 
-        rect_t startRect = taskbar_get_start_rect(taskbar, elem);
+        rect_t startRect = taskbar_get_start_rect(elem);
         button_new(elem, START_ID, &startRect, "Start", ELEMENT_TOGGLE | ELEMENT_NO_OUTLINE);
 
-        rect_t clockRect = taskbar_get_clock_rect(taskbar, elem);
+        rect_t clockRect = taskbar_get_clock_rect(elem);
         element_t* clockLabel = label_new(elem, CLOCK_LABEL_ID, &clockRect, "0", ELEMENT_NONE);
 
         window_set_timer(win, TIMER_REPEAT, CLOCKS_PER_SEC * 30);
@@ -192,11 +192,11 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         rect.bottom = rect.top + frameSize;
         draw_rect(&draw, &rect, highlight);
 
-        rect_t startRect = taskbar_get_start_rect(taskbar, elem);
-        rect_t clockRect = taskbar_get_clock_rect(taskbar, elem);
+        rect_t startRect = taskbar_get_start_rect(elem);
+        rect_t clockRect = taskbar_get_clock_rect(elem);
 
-        rect_t leftSeparator = taskbar_get_left_separator_rect(taskbar, elem);
-        rect_t rightSeparator = taskbar_get_right_separator_rect(taskbar, elem);
+        rect_t leftSeparator = taskbar_get_left_separator_rect(elem);
+        rect_t rightSeparator = taskbar_get_right_separator_rect(elem);
 
         draw_separator(&draw, &leftSeparator, highlight, shadow, DIRECTION_HORIZONTAL);
         draw_separator(&draw, &rightSeparator, highlight, shadow, DIRECTION_HORIZONTAL);

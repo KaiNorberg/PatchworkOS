@@ -306,7 +306,7 @@ uint64_t aml_field_element_read(aml_state_t* state, aml_node_t* node, aml_field_
  * @param end The index at which the FieldList ends.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_field_list_read(aml_state_t* state, aml_node_t* node, aml_field_list_ctx_t* ctx, aml_address_t end);
+uint64_t aml_field_list_read(aml_state_t* state, aml_node_t* node, aml_field_list_ctx_t* ctx, const uint8_t* end);
 
 /**
  * @brief Reads a DefField structure from the AML byte stream.

@@ -198,6 +198,8 @@ static void terminal_redraw_input(terminal_t* term, element_t* elem, drawable_t*
 static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t* draw, keycode_t key, char ascii,
     kbd_mods_t mods)
 {
+    (void)mods; // Currently unused
+
     uint64_t prevLength = term->input.length;
 
     switch (key)
