@@ -5,7 +5,7 @@
 
 ![License](https://img.shields.io/badge/License-MIT-green) [![Build and Test](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml/badge.svg)](https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml)
 
-**Patchwork** is a 64-bit monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows a "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9, DOS and others while simplifying them and sprinkling in some new ideas of its own.
+**Patchwork** is a monolithic non-POSIX operating system for the x86_64 architecture that rigorously follows a "everything is a file" philosophy. Built from scratch in C it takes many ideas from Unix, Plan9, DOS and others while simplifying them and sprinkling in some new ideas of its own.
 
 The goal is to eventually have a feature-complete and unique operating system avoiding easy shortcuts while still remaining approachable and educational.
 
@@ -26,7 +26,7 @@ The goal is to eventually have a feature-complete and unique operating system av
 ### ACPI
 
 - From scratch and heavily documented [AML parser](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/acpi/aml/aml.h) (WIP)
-- Tested on real hardware, capable of parsing the DSDT and all SSDTs of a Lenovo ThinkPad E495
+- Tested on real hardware, capable of parsing the DSDT and all SSDTs of all the [Tested Configurations](#tested-configurations)
 - ACPI implementation was made to not just work, but to be easy to understand and useful for educational purposes
 - ACPI Mode (e.g., method invocation, event handling) is currently unimplemented, but it's next on the list
 

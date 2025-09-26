@@ -278,6 +278,11 @@ aml_node_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_node_t* n
         start = aml_root_get();
     }
 
+    if (start->type == AML_DATA_ALIAS)
+    {
+        start = aml_node_traverse_alias(start);
+    }
+
     for (uint64_t i = 0; i < nameString->prefixPath.depth; i++)
     {
         start = start->parent;

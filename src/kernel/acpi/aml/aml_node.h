@@ -58,6 +58,7 @@ typedef enum
     AML_DATA_STRING = 1 << 16,
     AML_DATA_THERMAL_ZONE = 1 << 17,
     AML_DATA_UNRESOLVED = 1 << 18, //!< Used for forward references, not in the spec.
+    AML_DATA_ALIAS = 1 << 19,      //!< Used to implement DefAlias, not in the spec.
     AML_DATA_ALL = AML_DATA_BUFFER | AML_DATA_BUFFER_FIELD | AML_DATA_DEBUG_OBJECT | AML_DATA_DEVICE | AML_DATA_EVENT |
         AML_DATA_FIELD_UNIT | AML_DATA_INTEGER | AML_DATA_INTEGER_CONSTANT | AML_DATA_METHOD | AML_DATA_MUTEX |
         AML_DATA_OBJECT_REFERENCE | AML_DATA_OPERATION_REGION | AML_DATA_PACKAGE | AML_DATA_POWER_RESOURCE |
@@ -250,6 +251,13 @@ typedef struct aml_node
             aml_name_string_t nameString;
             aml_node_t* start;
         } unresolved;
+        /**
+         * @brief Used to implement DefAlias.
+         */
+        struct
+        {
+            struct aml_node* target;
+        } alias;
     };
     sysfs_dir_t dir;
 } aml_node_t;
@@ -494,6 +502,17 @@ uint64_t aml_node_init_string(aml_node_t* node, const char* str);
 uint64_t aml_node_init_unresolved(aml_node_t* node, aml_name_string_t* nameString, aml_node_t* start);
 
 /**
+ * @brief Initialize an ACPI node as an alias to the given target node.
+ *
+ * This is used to implement the DefAlias structure.
+ *
+ * @param node Pointer to the node to initialize.
+ * @param target Pointer to the target node the alias will point to.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_node_init_alias(aml_node_t* node, aml_node_t* target);
+
+/**
  * @brief Deinitialize an ACPI node, freeing any resources associated with it and setting its type to
  * `AML_DATA_UNINITALIZED`.
  *
@@ -509,6 +528,16 @@ void aml_node_deinit(aml_node_t* node);
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_node_clone(aml_node_t* src, aml_node_t* dest);
+
+/**
+ * @brief Traverse alias nodes to find the target node.
+ *
+ * Will follow the alias chain until it reaches a non-alias node or a `NULL` pointer.
+ *
+ * @param node Pointer to the starting node.
+ * @return A pointer to the target node, or `NULL` if the input node is `NULL`.
+ */
+aml_node_t* aml_node_traverse_alias(aml_node_t* node);
 
 /**
  * @brief Find a child node with the given name.
