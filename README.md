@@ -61,7 +61,6 @@ The goal is to eventually have a feature-complete and unique operating system av
 
 ## Notable Future Plans
 
-- From scratch ACPI Mode + AML Interpreter (currently being worked on in the [**aml branch**](https://github.com/KaiNorberg/PatchworkOS/tree/aml))
 - Modular kernel
 - Shared libraries
 - Software interrupts for notes (signals)
