@@ -10,7 +10,6 @@
 #include "drivers/const.h"
 #include "drivers/fb/gop.h"
 #include "drivers/ps2/ps2.h"
-#include "drivers/time/hpet.h"
 #include "drivers/time/rtc.h"
 #include "fs/ramfs.h"
 #include "fs/sysfs.h"
@@ -81,7 +80,6 @@ void kernel_init(boot_info_t* bootInfo)
     sysfs_init();
 
     acpi_init(bootInfo->rsdp, &bootInfo->memory.map);
-    hpet_init();
 
     lapic_init();
     lapic_cpu_init();

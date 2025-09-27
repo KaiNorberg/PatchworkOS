@@ -31,7 +31,8 @@ static uint64_t label_procedure(window_t* win, element_t* elem, const event_t* e
             draw_rect(&draw, &rect, theme->view.backgroundNormal);
         }
 
-        draw_text(&draw, &rect, elem->textProps.font, elem->textProps.xAlign, elem->textProps.yAlign, theme->view.foregroundNormal, elem->text);
+        draw_text(&draw, &rect, elem->textProps.font, elem->textProps.xAlign, elem->textProps.yAlign,
+            theme->view.foregroundNormal, elem->text);
 
         element_draw_end(elem, &draw);
     }

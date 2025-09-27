@@ -10,59 +10,103 @@
 
 static hpet_t* hpet;
 static uintptr_t address;
-static uint64_t period; // Period in femtoseconds
+static uint64_t period; // Main counter tick period in femtoseconds (10^-15 s).
 
-void hpet_init(void)
+static bool isInitialized = false;
+
+static uint64_t hpet_init(sdt_header_t* table)
 {
-    hpet = (hpet_t*)acpi_tables_lookup("HPET", 0);
-    if (hpet == NULL)
+    hpet = (hpet_t*)table;
+
+    if (hpet->addressSpaceId != HPET_ADDRESS_SPACE_MEMORY)
     {
-        panic(NULL, "Unable to find hpet, hardware is not compatible");
+        LOG_ERR("HPET address space is not memory (id=%u) which is not supported\n", hpet->addressSpaceId);
+        return ERR;
     }
 
     if (vmm_kernel_map(NULL, (void*)hpet->address, 1, PML_WRITE) == NULL &&
         errno != EEXIST) // EEXIST means it was already mapped
     {
-        panic(NULL, "Unable to map hpet");
+        LOG_ERR("failed to map HPET memory at 0x%016lx\n", hpet->address);
+        return ERR;
     }
-    address = (uintptr_t)PML_LOWER_TO_HIGHER(hpet->address);
-    period = hpet_read(HPET_GENERAL_CAPABILITIES) >> HPET_COUNTER_CLOCK_OFFSET;
 
-    LOG_INFO("hpet at phys=0x%016lx virt=0x%016lx period=%lufs creatorID=%llu\n", hpet->address, address,
-        period / 1000000ULL, hpet->header.creatorID);
+    isInitialized = true;
+    address = (uintptr_t)PML_LOWER_TO_HIGHER(hpet->address);
+
+    uint64_t capabilities = hpet_read(HPET_REG_GENERAL_CAPABILITIES_ID);
+    period = capabilities >> HPET_CAP_COUNTER_CLK_PERIOD_SHIFT;
+
+    if (period == 0 || period > 100000000)
+    {
+        LOG_ERR("HPET reported an invalid counter period %llu fs\n", period);
+        isInitialized = false;
+        return ERR;
+    }
+
+    LOG_INFO("phys=0x%016lx virt=0x%016lx period=%llufs (%lluns) timers=%u %s-bit\n", hpet->address, address, period,
+        period / 1000000, hpet->comparatorCount + 1, hpet->counterIs64Bit ? "64" : "32");
 
     hpet_reset_counter();
+    return 0;
 }
+
+ACPI_SDT_HANDLER_REGISTER("HPET", hpet_init);
 
 uint64_t hpet_nanoseconds_per_tick(void)
 {
+    if (!isInitialized)
+    {
+        panic(NULL, "HPET not initialized");
+    }
     return period / 1000000ULL;
 }
 
 uint64_t hpet_read_counter(void)
 {
-    return hpet_read(HPET_MAIN_COUNTER_VALUE);
+    if (!isInitialized)
+    {
+        panic(NULL, "HPET not initialized");
+    }
+    return hpet_read(HPET_REG_MAIN_COUNTER_VALUE);
 }
 
 void hpet_reset_counter(void)
 {
-    hpet_write(HPET_GENERAL_CONFIG, HPET_CFG_DISABLE);
-    hpet_write(HPET_MAIN_COUNTER_VALUE, 0);
-    hpet_write(HPET_GENERAL_CONFIG, HPET_CFG_ENABLE);
+    if (!isInitialized)
+    {
+        panic(NULL, "HPET not initialized");
+    }
+    hpet_write(HPET_REG_GENERAL_CONFIG, 0);
+    hpet_write(HPET_REG_MAIN_COUNTER_VALUE, 0);
+    hpet_write(HPET_REG_GENERAL_CONFIG, HPET_CONF_ENABLE_CNF_BIT);
 }
 
 void hpet_write(uint64_t reg, uint64_t value)
 {
+    if (!isInitialized)
+    {
+        panic(NULL, "HPET not initialized");
+    }
     WRITE_64(address + reg, value);
 }
 
 uint64_t hpet_read(uint64_t reg)
 {
+    if (!isInitialized)
+    {
+        panic(NULL, "HPET not initialized");
+    }
     return READ_64(address + reg);
 }
 
 void hpet_wait(clock_t nanoseconds)
 {
+    if (!isInitialized)
+    {
+        panic(NULL, "HPET not initialized");
+    }
+
     if (nanoseconds == 0)
     {
         return;

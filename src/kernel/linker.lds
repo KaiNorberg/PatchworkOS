@@ -48,5 +48,10 @@ SECTIONS
         _testsEnd = .;
     }
 
+    .acpi_sdt_handlers : {
+        _acpiSdtHandlersStart = .;
+        KEEP(*(.acpi_sdt_handlers*))
+        _acpiSdtHandlersEnd = .;
+    }
     _kernelEnd = .;
 }

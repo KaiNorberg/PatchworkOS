@@ -252,7 +252,35 @@ typedef struct PACKED
 #define SSDT_GET(n) ((ssdt_t*)acpi_tables_lookup("SSDT", n))
 
 /**
- * @brief Load all ACPI tables
+ * @brief ACPI System Description Table handler
+ * @struct acpi_sdt_handler_t
+ *
+ * This structure is used to register handlers for specific ACPI tables.
+ */
+typedef struct
+{
+    const char* signature;                 //!< The signature of the table to handle.
+    uint64_t (*init)(sdt_header_t* table); //!< The handler function to call when the table is first loaded.
+} acpi_sdt_handler_t;
+
+/**
+ * @brief Macro to register an ACPI SDT handler
+ *
+ * This macro registers a handler for a specific ACPI table signature using the linker section `.acpi_sdt_handlers`.
+ *
+ * Might be integrated into some bigger device driver registration system in the future.
+ *
+ * @param sig The signature of the table to handle.
+ * @param handler_name The name of the handler function to generate.
+ */
+#define ACPI_SDT_HANDLER_REGISTER(sig, initHandler) \
+    static const acpi_sdt_handler_t _acpiSdtHandler##handler_name __attribute__((section(".acpi_sdt_handlers"))) = { \
+        .signature = sig, \
+        .init = initHandler, \
+    };
+
+/**
+ * @brief Load all ACPI tables and call their handlers.
  *
  * @param xsdt The XSDT to load the tables from.
  * @return On success, the number of tables loaded. On failure, ERR.

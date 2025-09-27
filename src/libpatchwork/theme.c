@@ -14,21 +14,16 @@ static theme_t theme;
 static void theme_colors_load(config_t* config, const char* section, theme_color_set_t* dest)
 {
     dest->backgroundNormal = config_get_int(config, section, "background_normal", THEME_COLOR_INVALID);
-    dest->backgroundSelectedStart =
-        config_get_int(config, section, "background_selected_start", THEME_COLOR_INVALID);
-    dest->backgroundSelectedEnd =
-        config_get_int(config, section, "background_selected_end", THEME_COLOR_INVALID);
+    dest->backgroundSelectedStart = config_get_int(config, section, "background_selected_start", THEME_COLOR_INVALID);
+    dest->backgroundSelectedEnd = config_get_int(config, section, "background_selected_end", THEME_COLOR_INVALID);
     dest->backgroundUnselectedStart =
         config_get_int(config, section, "background_unselected_start", THEME_COLOR_INVALID);
-    dest->backgroundUnselectedEnd =
-        config_get_int(config, section, "background_unselected_end", THEME_COLOR_INVALID);
+    dest->backgroundUnselectedEnd = config_get_int(config, section, "background_unselected_end", THEME_COLOR_INVALID);
 
     dest->foregroundNormal = config_get_int(config, section, "foreground_normal", THEME_COLOR_INVALID);
-    dest->foregroundInactive =
-        config_get_int(config, section, "foreground_inactive", THEME_COLOR_INVALID);
+    dest->foregroundInactive = config_get_int(config, section, "foreground_inactive", THEME_COLOR_INVALID);
     dest->foregroundLink = config_get_int(config, section, "foreground_link", THEME_COLOR_INVALID);
-    dest->foregroundSelected =
-        config_get_int(config, section, "foreground_selected", THEME_COLOR_INVALID);
+    dest->foregroundSelected = config_get_int(config, section, "foreground_selected", THEME_COLOR_INVALID);
 
     dest->bezel = config_get_int(config, section, "bezel", THEME_COLOR_INVALID);
     dest->highlight = config_get_int(config, section, "highlight", THEME_COLOR_INVALID);

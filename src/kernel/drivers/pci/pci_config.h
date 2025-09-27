@@ -9,12 +9,6 @@
  * @defgroup kernel_drivers_pci_config PCI Configuration Space
  * @ingroup kernel_drivers_pci
  *
- * Id like to use the PCI Firmware Specification as a reference for this, but unfortunately, its not freely available.
- * So we use the OSDev Wiki instead.
- *
- * @see [OSDev PCI](https://wiki.osdev.org/PCI)
- * @see [OSDev PCI Express](https://wiki.osdev.org/PCI_Express)
- *
  * @{
  */
 
@@ -39,7 +33,15 @@ typedef struct PACKED
 {
     sdt_header_t header;
     uint64_t reserved;
+    pci_config_bar_t entries[];
 } mcfg_t;
+
+/**
+ * @brief Initialize PCI configuration space access
+ *
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t pci_config_init(void);
 
 /**
  * @brief Read a byte from PCI configuration space
@@ -87,7 +89,8 @@ uint32_t pci_config_read32(uint16_t segmentGroup, uint8_t bus, uint8_t slot, uin
  * @param offset Offset within the configuration space
  * @param value Byte value to write
  */
-void pci_config_write8(uint16_t segmentGroup, uint8_t bus, uint8_t slot, uint8_t function, uint16_t offset, uint8_t value);
+void pci_config_write8(uint16_t segmentGroup, uint8_t bus, uint8_t slot, uint8_t function, uint16_t offset,
+    uint8_t value);
 
 /**
  * @brief Write a word to PCI configuration space
@@ -99,7 +102,8 @@ void pci_config_write8(uint16_t segmentGroup, uint8_t bus, uint8_t slot, uint8_t
  * @param offset Offset within the configuration space
  * @param value Word value to write
  */
-void pci_config_write16(uint16_t segmentGroup, uint8_t bus, uint8_t slot, uint8_t function, uint16_t offset, uint16_t value);
+void pci_config_write16(uint16_t segmentGroup, uint8_t bus, uint8_t slot, uint8_t function, uint16_t offset,
+    uint16_t value);
 
 /**
  * @brief Write a dword to PCI configuration space
@@ -111,6 +115,7 @@ void pci_config_write16(uint16_t segmentGroup, uint8_t bus, uint8_t slot, uint8_
  * @param offset Offset within the configuration space
  * @param value DWord value to write
  */
-void pci_config_write32(uint16_t segmentGroup, uint8_t bus, uint8_t slot, uint8_t function, uint16_t offset, uint32_t value);
+void pci_config_write32(uint16_t segmentGroup, uint8_t bus, uint8_t slot, uint8_t function, uint16_t offset,
+    uint32_t value);
 
 /** @} */

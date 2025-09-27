@@ -42,8 +42,9 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
         for (uint64_t i = 0; i < ENTRY_AMOUNT; i++)
         {
-            rect_t buttonRect = RECT_INIT(theme->frameSize + theme->titlebarSize, theme->frameSize + i * START_BUTTON_HEIGHT,
-                RECT_WIDTH(&rect) - theme->frameSize, (i + 1) * START_BUTTON_HEIGHT);
+            rect_t buttonRect =
+                RECT_INIT(theme->frameSize + theme->titlebarSize, theme->frameSize + i * START_BUTTON_HEIGHT,
+                    RECT_WIDTH(&rect) - theme->frameSize, (i + 1) * START_BUTTON_HEIGHT);
 
             button_new(elem, i, &buttonRect, entries[i].name, ELEMENT_FLAT);
         }
@@ -166,8 +167,9 @@ void start_menu_init(start_menu_t* startMenu, window_t* taskbar, display_t* disp
     rect_t screenRect;
     display_screen_rect(disp, &screenRect, 0);
 
-    rect_t rect = RECT_INIT_DIM(theme->smallPadding, START_MENU_YPOS_START(&screenRect, theme->panelSize, theme->frameSize),
-        START_MENU_WIDTH, START_MENU_HEIGHT(theme->frameSize));
+    rect_t rect =
+        RECT_INIT_DIM(theme->smallPadding, START_MENU_YPOS_START(&screenRect, theme->panelSize, theme->frameSize),
+            START_MENU_WIDTH, START_MENU_HEIGHT(theme->frameSize));
 
     startMenu->taskbar = taskbar;
     startMenu->win = window_new(disp, "StartMenu", &rect, SURFACE_WINDOW, WINDOW_NONE, procedure, startMenu);

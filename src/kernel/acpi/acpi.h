@@ -57,6 +57,11 @@
 #define RSDP_CURRENT_REVISION 2
 
 /**
+ * @brief The length of the signature field in the SDT header structure.
+ */
+#define SDT_SIGNATURE_LENGTH 4
+
+/**
  * @brief System Description Table Header
  * @struct sdt_header_t
  *
@@ -64,7 +69,7 @@
  */
 typedef struct PACKED
 {
-    uint8_t signature[4];
+    uint8_t signature[SDT_SIGNATURE_LENGTH];
     uint32_t length;
     uint8_t revision;
     uint8_t checkSum;

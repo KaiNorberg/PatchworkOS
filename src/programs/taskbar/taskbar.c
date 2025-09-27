@@ -14,7 +14,8 @@
 static rect_t taskbar_get_start_rect(element_t* elem)
 {
     const theme_t* theme = element_get_theme(elem);
-    return RECT_INIT_DIM(theme->bigPadding, theme->frameSize + theme->smallPadding, START_WIDTH, theme->panelSize - theme->frameSize - theme->smallPadding * 2);
+    return RECT_INIT_DIM(theme->bigPadding, theme->frameSize + theme->smallPadding, START_WIDTH,
+        theme->panelSize - theme->frameSize - theme->smallPadding * 2);
 }
 
 static rect_t taskbar_get_clock_rect(element_t* elem)
@@ -22,8 +23,8 @@ static rect_t taskbar_get_clock_rect(element_t* elem)
     const theme_t* theme = element_get_theme(elem);
     rect_t rect = element_get_content_rect(elem);
 
-    return RECT_INIT_DIM(RECT_WIDTH(&rect) - CLOCK_WIDTH - theme->bigPadding, theme->frameSize + theme->smallPadding, CLOCK_WIDTH,
-        theme->panelSize - theme->frameSize - theme->smallPadding * 2);
+    return RECT_INIT_DIM(RECT_WIDTH(&rect) - CLOCK_WIDTH - theme->bigPadding, theme->frameSize + theme->smallPadding,
+        CLOCK_WIDTH, theme->panelSize - theme->frameSize - theme->smallPadding * 2);
 }
 
 static rect_t taskbar_get_left_separator_rect(element_t* elem)
@@ -31,7 +32,8 @@ static rect_t taskbar_get_left_separator_rect(element_t* elem)
     rect_t startRect = taskbar_get_start_rect(elem);
     const theme_t* theme = element_get_theme(elem);
 
-    return RECT_INIT_DIM(startRect.right + theme->bigPadding, startRect.top, theme->separatorSize, RECT_HEIGHT(&startRect));
+    return RECT_INIT_DIM(startRect.right + theme->bigPadding, startRect.top, theme->separatorSize,
+        RECT_HEIGHT(&startRect));
 }
 
 static rect_t taskbar_get_right_separator_rect(element_t* elem)

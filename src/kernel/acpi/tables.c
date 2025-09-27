@@ -20,6 +20,10 @@ static struct
 
 static sysfs_dir_t apicTablesDir;
 
+// Defined in the linker script
+extern const acpi_sdt_handler_t _acpiSdtHandlersStart[];
+extern const acpi_sdt_handler_t _acpiSdtHandlersEnd[];
+
 static uint64_t acpi_table_read(file_t* file, void* buffer, uint64_t count, uint64_t* offset)
 {
     if (file == NULL || buffer == NULL || offset == NULL)
@@ -163,6 +167,23 @@ static uint64_t acpi_tables_load_from_fadt(void)
     return 0;
 }
 
+static uint64_t acpi_tables_init_handlers(sdt_header_t* table)
+{
+    for (const acpi_sdt_handler_t* handler = _acpiSdtHandlersStart; handler < _acpiSdtHandlersEnd; handler++)
+    {
+        if (memcmp(table->signature, handler->signature, SDT_SIGNATURE_LENGTH) == 0)
+        {
+            if (handler->init(table) == ERR)
+            {
+                LOG_ERR("failed to initialize ACPI table %.4s\n", table->signature);
+                return ERR;
+            }
+        }
+    }
+
+    return 0;
+}
+
 uint64_t acpi_tables_init(xsdt_t* xsdt)
 {
     if (sysfs_dir_init(&apicTablesDir, acpi_get_sysfs_root(), "tables", NULL, NULL) == ERR)
@@ -188,6 +209,11 @@ uint64_t acpi_tables_init(xsdt_t* xsdt)
         sdt_header_t* table = cachedTables[i].table;
         LOG_INFO("%.4s 0x%016lx 0x%06x v%02X %.6s\n", table->signature, table, table->length, table->revision,
             table->oemId);
+        if (acpi_tables_init_handlers(table) == ERR)
+        {
+            LOG_ERR("failed to initialize ACPI table %.4s\n", table->signature);
+            return ERR;
+        }
     }
 
     return tableAmount;

@@ -64,7 +64,7 @@ static void button_draw(element_t* elem, button_t* button)
     }
 
     if (elem->image != NULL)
-    {        
+    {
         rect_t imageDestRect;
         int32_t imageWidth = image_width(elem->image);
         int32_t imageHeight = image_height(elem->image);
@@ -125,11 +125,13 @@ static void button_draw(element_t* elem, button_t* button)
 
     if ((elem->flags & ELEMENT_FLAT) && (button->isHovered || button->isPressed))
     {
-        draw_text(&draw, &rect, elem->textProps.font, ALIGN_CENTER, ALIGN_CENTER, theme->button.foregroundSelected, elem->text);
+        draw_text(&draw, &rect, elem->textProps.font, ALIGN_CENTER, ALIGN_CENTER, theme->button.foregroundSelected,
+            elem->text);
     }
     else
     {
-        draw_text(&draw, &rect, elem->textProps.font, ALIGN_CENTER, ALIGN_CENTER, theme->button.foregroundNormal, elem->text);
+        draw_text(&draw, &rect, elem->textProps.font, ALIGN_CENTER, ALIGN_CENTER, theme->button.foregroundNormal,
+            elem->text);
     }
 
     element_draw_end(elem, &draw);
