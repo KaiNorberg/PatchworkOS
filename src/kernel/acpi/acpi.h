@@ -19,6 +19,28 @@
  * Take a look at this [osdev post](https://f.osdev.org/viewtopic.php?t=29070) if you want to understand how annoying
  * the ACPI spec is.
  *
+ * Checklist for ACPI support from section 1.7.2 of the ACPI specification:
+ * - [x] Use System Address Map Interfaces (this is done by the bootloader).
+ * - [x] Find and consume the ACPI System Description Tables (this is done in `acpi_tables_init()`)
+ * - [x] Interpret ACPI machine language (AML). (this is done in `aml_init()`)
+ * - [ ] Enumerate and configure motherboard devices described in the ACPI Namespace. <-- We are here.
+ * - [ ] Interface with the power management timer.
+ * - [ ] Interface with the real-time clock wake alarm.
+ * - [ ] Enter ACPI mode (on legacy hardware systems).
+ * - [ ] Implement device power management policy.
+ * - [ ] Implement power resource management.
+ * - [ ] Implement processor power states in the scheduler idle handlers.
+ * - [ ] Control processor and device performance states.
+ * - [ ] Implement the ACPI thermal model.
+ * - [ ] Support the ACPI Event programming model including handling SCI interrupts, managing fixed events, general-
+ purpose events, embedded controller interrupts, and dynamic device support.
+ * - [ ] Support acquisition and release of the Global Lock.
+ * - [ ] Use the reset register to reset the system.
+ * - [ ] Provide APIs to influence power management policy.
+ * - [ ] Implement driver support for ACPI-defined devices.
+ * - [ ] Implement APIs supporting the system indicators.
+ * - [ ] Support all system states S1-S5.
+ *
  * @see [ACPI Specification Version 6.6](https://uefi.org/sites/default/files/resources/ACPI_Spec_6.6.pdf)
  * @see [ACPI Specification Version 6.3](https://uefi.org/sites/default/files/resources/ACPI_Spec_6_3_A_Oct_6_2020.pdf)
  * @see [ACPI Specification Version 4.0](https://uefi.org/sites/default/files/resources/ACPI_4.pdf)

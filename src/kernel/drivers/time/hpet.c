@@ -20,7 +20,8 @@ void hpet_init(void)
         panic(NULL, "Unable to find hpet, hardware is not compatible");
     }
 
-    if (vmm_kernel_map(NULL, (void*)hpet->address, 1, PML_WRITE) == NULL && errno != EEXIST) // EEXIST means it was already mapped
+    if (vmm_kernel_map(NULL, (void*)hpet->address, 1, PML_WRITE) == NULL &&
+        errno != EEXIST) // EEXIST means it was already mapped
     {
         panic(NULL, "Unable to map hpet");
     }

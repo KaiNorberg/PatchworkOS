@@ -77,6 +77,33 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_node_t* node);
 uint64_t aml_def_noop_read(aml_state_t* state);
 
 /**
+ * @brief Reads an ArgObject structure from the AML byte stream.
+ *
+ * An ArgObject structure is defined as `ArgObject := TermArg => DataRefObject`.
+ *
+ * @see Section 19.6.119 of the ACPI specification for more details.
+ *
+ * @param state The AML state to parse from.
+ * @param node The current AML node.
+ * @param out Pointer to the node to store the result.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_arg_object_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+
+/**
+ * @brief Reads a DefReturn structure from the AML byte stream.
+ *
+ * A DefReturn structure is defined as `DefReturn := ReturnOp ArgObject`.
+ *
+ * @see Section 19.6.120 of the ACPI specification for more details.
+ *
+ * @param state The AML state to parse from.
+ * @param node The current AML node.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_return_read(aml_state_t* state, aml_node_t* node);
+
+/**
  * @brief Reads an StatementOpcode structure from the AML byte stream.
  *
  * A StatementOpcode structure is defined as `StatementOpcode := DefBreak | DefBreakPoint | DefContinue | DefFatal |

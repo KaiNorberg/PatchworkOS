@@ -150,6 +150,56 @@ uint64_t aml_def_noop_read(aml_state_t* state)
     return 0;
 }
 
+uint64_t aml_arg_object_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
+{
+    if (aml_term_arg_read(state, node, out) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read TermArg");
+        return ERR;
+    }
+
+    return 0;
+}
+
+uint64_t aml_def_return_read(aml_state_t* state, aml_node_t* node)
+{
+    state->hasHitReturn = true;
+
+    aml_value_t returnOp;
+    if (aml_value_read_no_ext(state, &returnOp) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read ReturnOp");
+        return ERR;
+    }
+
+    if (returnOp.num != AML_RETURN_OP)
+    {
+        AML_DEBUG_ERROR(state, "Invalid ReturnOp '0x%x'", returnOp.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    if (state->returnValue == NULL)
+    {
+        aml_node_t temp = AML_NODE_CREATE;
+        if (aml_arg_object_read(state, node, &temp) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read ArgObject");
+            return ERR;
+        }
+        aml_node_deinit(&temp);
+        return 0;
+    }
+
+    if (aml_arg_object_read(state, node, state->returnValue) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read ArgObject");
+        return ERR;
+    }
+
+    return 0;
+}
+
 uint64_t aml_statement_opcode_read(aml_state_t* state, aml_node_t* node)
 {
     aml_value_t op;
@@ -164,10 +214,13 @@ uint64_t aml_statement_opcode_read(aml_state_t* state, aml_node_t* node)
     {
     case AML_IF_OP:
         result = aml_def_if_else_read(state, node);
-        break;
+    break;
     case AML_NOOP_OP:
         result = aml_def_noop_read(state);
-        break;
+    break;
+    case AML_RETURN_OP:
+        result = aml_def_return_read(state, node);
+    break;
     default:
         AML_DEBUG_ERROR(state, "Unknown statement opcode '0x%x'", op.num);
         errno = ENOSYS;

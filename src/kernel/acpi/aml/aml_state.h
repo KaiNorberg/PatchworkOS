@@ -5,8 +5,6 @@
 #include <string.h>
 
 #include "acpi/aml/aml_node.h"
-#include "encoding/arg.h"
-#include "encoding/data_integers.h"
 #include "encoding/local.h"
 #include "encoding/term.h"
 #include "log/log.h"
@@ -32,18 +30,22 @@
  */
 typedef struct aml_state
 {
-    const uint8_t* start;           //!< Pointer to the start of the AML bytecode.
-    const uint8_t* end;             //!< Pointer to the end of the AML bytecode.
-    const uint8_t* current;         //!< Pointer to the current position in the AML bytecode.
-    aml_node_t* args[AML_MAX_ARGS]; //!< Argument variables, only used if the state is being used to evaluate a method.
-    aml_node_t* locals[AML_MAX_LOCALS]; //!< Local variables for the method, if any.
+    const uint8_t* start;              //!< Pointer to the start of the AML bytecode.
+    const uint8_t* end;                //!< Pointer to the end of the AML bytecode.
+    const uint8_t* current;            //!< Pointer to the current position in the AML bytecode.
+    bool hasHitReturn;             //!< If true then stop parsing and return from the current method.
+    aml_node_t locals[AML_MAX_LOCALS]; //!< Local variables for the method, if any.
+    aml_term_arg_list_t* args;         //!< Arguments passed to the method, if the state is used for method evaluation.
+    aml_node_t* returnValue; //!< Pointer to where the return value should be stored, if the state is used for method.
+                             //!< evaluation.
     struct
     {
         const uint8_t* lastErrPos; //!<  The position when the last error occurred.
     } debug;
 } aml_state_t;
 
-static inline uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t* end)
+static inline uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t* end,
+    aml_term_arg_list_t* args, aml_node_t* returnValue)
 {
     if (start >= end)
     {
@@ -54,15 +56,15 @@ static inline uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, 
     state->start = start;
     state->end = end;
     state->current = start;
+    state->hasHitReturn = false;
 
-    for (uint8_t i = 0; i < AML_MAX_ARGS; i++)
-    {
-        state->args[i] = NULL;
-    }
     for (uint8_t i = 0; i < AML_MAX_LOCALS; i++)
     {
-        state->locals[i] = NULL;
+        state->locals[i] = AML_NODE_CREATE;
     }
+    state->args = args;
+    state->returnValue = returnValue;
+
     state->debug.lastErrPos = NULL;
     return 0;
 }
@@ -73,16 +75,13 @@ static inline void aml_state_deinit(aml_state_t* state)
     state->end = NULL;
     state->current = NULL;
 
-    for (uint8_t i = 0; i < AML_MAX_ARGS; i++)
-    {
-        aml_node_free(state->args[i]);
-        state->args[i] = NULL;
-    }
     for (uint8_t i = 0; i < AML_MAX_LOCALS; i++)
     {
-        aml_node_free(state->locals[i]);
-        state->locals[i] = NULL;
+        aml_node_deinit(&state->locals[i]);
     }
+    state->args = NULL;
+    state->returnValue = NULL;
+
     state->debug.lastErrPos = NULL;
 }
 

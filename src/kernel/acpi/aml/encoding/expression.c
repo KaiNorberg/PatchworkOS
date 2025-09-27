@@ -1,6 +1,6 @@
 #include "expression.h"
 
-#include "acpi/aml/aml_convert.h"
+#include "acpi/aml/runtime/evaluate.h"
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_node.h"
 #include "acpi/aml/aml_state.h"
@@ -60,7 +60,7 @@ static inline uint64_t aml_unary_op_read(aml_state_t* state, aml_node_t* node, a
     // Target is optional
     if (target != NULL)
     {
-        if (aml_convert_and_store(&result, target) == ERR)
+        if (aml_evaluate_and_store(&result, target) == ERR)
         {
             aml_node_deinit(&result);
             AML_DEBUG_ERROR(state, "Failed to store result for '%s'", opName);
@@ -143,7 +143,7 @@ static inline uint64_t aml_binary_op_read(aml_state_t* state, aml_node_t* node, 
     // Target is allowed to be null
     if (target != NULL)
     {
-        if (aml_convert_and_store(&result, target) == ERR)
+        if (aml_evaluate_and_store(&result, target) == ERR)
         {
             aml_node_deinit(&result);
             AML_DEBUG_ERROR(state, "Failed to store result for '%s'", opName);
@@ -445,7 +445,7 @@ uint64_t aml_def_store_read(aml_state_t* state, aml_node_t* node, aml_node_t* ou
         return ERR;
     }
 
-    if (aml_convert_and_store(&source, destination) == ERR)
+    if (aml_evaluate_and_store(&source, destination) == ERR)
     {
         aml_node_deinit(&source);
         AML_DEBUG_ERROR(state, "Failed to store value");
@@ -598,7 +598,7 @@ uint64_t aml_def_divide_read(aml_state_t* state, aml_node_t* node, aml_node_t* o
         return ERR;
     }
 
-    if (aml_convert_and_store(&quotient, quotientDest) == ERR)
+    if (aml_evaluate_and_store(&quotient, quotientDest) == ERR)
     {
         aml_node_deinit(&remainder);
         aml_node_deinit(&quotient);
@@ -606,7 +606,7 @@ uint64_t aml_def_divide_read(aml_state_t* state, aml_node_t* node, aml_node_t* o
         return ERR;
     }
 
-    if (aml_convert_and_store(&remainder, remainderDest) == ERR)
+    if (aml_evaluate_and_store(&remainder, remainderDest) == ERR)
     {
         aml_node_deinit(&remainder);
         aml_node_deinit(&quotient);
@@ -734,7 +734,7 @@ uint64_t aml_def_shift_left_read(aml_state_t* state, aml_node_t* node, aml_node_
     // Target is allowed to be null
     if (target != NULL)
     {
-        if (aml_convert_and_store(&temp, target) == ERR)
+        if (aml_evaluate_and_store(&temp, target) == ERR)
         {
             aml_node_deinit(&temp);
             AML_DEBUG_ERROR(state, "Failed to store result");
@@ -813,7 +813,7 @@ uint64_t aml_def_shift_right_read(aml_state_t* state, aml_node_t* node, aml_node
     // Target is allowed to be null
     if (target != NULL)
     {
-        if (aml_convert_and_store(&temp, target) == ERR)
+        if (aml_evaluate_and_store(&temp, target) == ERR)
         {
             aml_node_deinit(&temp);
             AML_DEBUG_ERROR(state, "Failed to store result");
@@ -859,7 +859,7 @@ uint64_t aml_def_increment_read(aml_state_t* state, aml_node_t* node, aml_node_t
     }
 
     aml_node_t value = AML_NODE_CREATE;
-    if (aml_convert_to_integer(addend, &value) == ERR)
+    if (aml_evaluate_to_integer(addend, &value) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to convert addend to integer");
         return ERR;
@@ -869,7 +869,7 @@ uint64_t aml_def_increment_read(aml_state_t* state, aml_node_t* node, aml_node_t
 
     value.integer.value++;
 
-    if (aml_convert_and_store(&value, addend) == ERR)
+    if (aml_evaluate_and_store(&value, addend) == ERR)
     {
         aml_node_deinit(&value);
         AML_DEBUG_ERROR(state, "Failed to store incremented value");
@@ -914,7 +914,7 @@ uint64_t aml_def_decrement_read(aml_state_t* state, aml_node_t* node, aml_node_t
     }
 
     aml_node_t value = AML_NODE_CREATE;
-    if (aml_convert_to_integer(subtrahend, &value) == ERR)
+    if (aml_evaluate_to_integer(subtrahend, &value) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to convert subtrahend to integer");
         return ERR;
@@ -924,7 +924,7 @@ uint64_t aml_def_decrement_read(aml_state_t* state, aml_node_t* node, aml_node_t
 
     value.integer.value--;
 
-    if (aml_convert_and_store(&value, subtrahend) == ERR)
+    if (aml_evaluate_and_store(&value, subtrahend) == ERR)
     {
         aml_node_deinit(&value);
         AML_DEBUG_ERROR(state, "Failed to store decremented value");
@@ -1162,7 +1162,7 @@ uint64_t aml_def_index_read(aml_state_t* state, aml_node_t* node, aml_node_t* ou
 
     if (target != NULL)
     {
-        if (aml_convert_and_store(&result, target) == ERR)
+        if (aml_evaluate_and_store(&result, target) == ERR)
         {
             aml_node_deinit(&result);
             AML_DEBUG_ERROR(state, "Failed to store result");

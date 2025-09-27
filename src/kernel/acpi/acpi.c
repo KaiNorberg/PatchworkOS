@@ -1,7 +1,7 @@
 #include "acpi.h"
 
 #include "aml/aml.h"
-#include "aml/aml_patch_up.h"
+#include "devices.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/pmm.h"
@@ -55,77 +55,13 @@ static void acpi_reclaim_memory(boot_memory_map_t* map)
     }
 }
 
-static uint64_t acpi_parse_all_aml(void)
-{
-    dsdt_t* dsdt = DSDT_GET();
-    if (dsdt == NULL)
-    {
-        LOG_ERR("failed to retrieve DSDT\n");
-        return ERR;
-    }
-
-    LOG_INFO("DSDT found containing %llu bytes of AML code\n", dsdt->header.length - sizeof(dsdt_t));
-
-    if (aml_init() == ERR)
-    {
-        LOG_ERR("failed to initialize AML\n");
-        return ERR;
-    }
-
-    const uint8_t* dsdtEnd = (const uint8_t*)dsdt + dsdt->header.length;
-    if (aml_parse(dsdt->definitionBlock, dsdtEnd) == ERR)
-    {
-        LOG_ERR("failed to parse DSDT\n");
-        return ERR;
-    }
-
-    uint64_t index = 0;
-    ssdt_t* ssdt = NULL;
-    while (true)
-    {
-        ssdt = SSDT_GET(index);
-        if (ssdt == NULL)
-        {
-            break;
-        }
-
-        LOG_INFO("SSDT%llu found containing %llu bytes of AML code\n", index, ssdt->header.length - sizeof(ssdt_t));
-
-        const uint8_t* ssdtEnd = (const uint8_t*)ssdt + ssdt->header.length;
-        if (aml_parse(ssdt->definitionBlock, ssdtEnd) == ERR)
-        {
-            LOG_ERR("failed to parse SSDT%llu\n", index);
-            return ERR;
-        }
-
-        index++;
-    }
-
-    LOG_INFO("parsed 1 DSDT and %llu SSDTs\n", index);
-
-    LOG_INFO("resolving %llu unresolved nodes\n", aml_patch_up_unresolved_count());
-    if (aml_patch_up_resolve_all() == ERR)
-    {
-        LOG_ERR("Failed to resolve unresolved nodes\n");
-        return ERR;
-    }
-
-    if (aml_patch_up_unresolved_count() > 0)
-    {
-        LOG_ERR("There are still %llu unresolved nodes\n", aml_patch_up_unresolved_count());
-        return ERR;
-    }
-
-    return 0;
-}
-
 void acpi_init(rsdp_t* rsdp, boot_memory_map_t* map)
 {
     LOG_INFO("initializing acpi\n");
 
     if (sysfs_group_init(&acpiGroup, PATHNAME("/acpi")) == ERR)
     {
-        panic(NULL, "failed to create '/acpi' sysfs group\n");
+        panic(NULL, "failed to create '/acpi' sysfs group");
     }
 
     if (!acpi_is_rsdp_valid(rsdp))
@@ -140,14 +76,14 @@ void acpi_init(rsdp_t* rsdp, boot_memory_map_t* map)
         panic(NULL, "Failed to initialize ACPI tables");
     }
 
-    if (acpi_parse_all_aml() == ERR)
+    if (aml_init() == ERR)
     {
-#ifdef NDEBUG
-        LOG_WARN("failed to parse all AML code, since ACPI is still WIP we will continue booting but there may be "
-                 "issues!\n");
-#else
-        panic(NULL, "failed to parse all AML code\n");
-#endif
+        panic(NULL, "failed to initalize AML");
+    }
+
+    if (acpi_devices_init() == ERR)
+    {
+        panic(NULL, "failed to initialize ACPI devices");
     }
 
     acpi_reclaim_memory(map);

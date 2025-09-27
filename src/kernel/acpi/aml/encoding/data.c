@@ -1,6 +1,6 @@
 #include "data.h"
 
-#include "acpi/aml/aml_convert.h"
+#include "acpi/aml/runtime/evaluate.h"
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_patch_up.h"
 #include "acpi/aml/aml_state.h"
@@ -342,7 +342,7 @@ static inline uint64_t aml_package_element_handle_name(aml_node_t* in, aml_node_
     aml_data_type_info_t* info = aml_data_type_get_info(in->type);
     if (info->flags & AML_DATA_FLAG_DATA_OBJECT) // "... resolved to actual data by the AML interpreter"
     {
-        if (aml_convert_to_actual_data(in, out) == ERR)
+        if (aml_evaluate_to_actual_data(in, out) == ERR)
         {
             LOG_ERR("failed to convert to actual data in aml_package_element_handle_name()\n");
             return ERR;

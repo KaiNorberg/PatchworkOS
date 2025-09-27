@@ -139,9 +139,22 @@ static uint64_t aml_system_io_write(uint64_t address, aml_bit_size_t accessSize,
     return 0;
 }
 
+/*static uint64_t aml_pci_config_read(uint64_t address, aml_bit_size_t accessSize, uint64_t* out)
+{
+    errno = ENOSYS;
+    return ERR;
+}
+
+static uint64_t aml_pci_config_write(uint64_t address, aml_bit_size_t accessSize, uint64_t value)
+{
+    errno = ENOSYS;
+    return ERR;
+}*/
+
 static aml_region_handler_t regionHandlers[] = {
     [AML_REGION_SYSTEM_MEMORY] = {.read = aml_system_mem_read, .write = aml_system_mem_write},
     [AML_REGION_SYSTEM_IO] = {.read = aml_system_io_read, .write = aml_system_io_write},
+    // [AML_REGION_PCI_CONFIG] = {.read = aml_pci_config_read, .write = aml_pci_config_write},
 };
 
 #define AML_REGION_MAX (sizeof(regionHandlers) / sizeof(regionHandlers[0]))
@@ -446,6 +459,13 @@ uint64_t aml_field_unit_write(aml_node_t* fieldUnit, aml_node_t* in)
 {
     if (fieldUnit == NULL || in == NULL)
     {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (in->type != AML_DATA_INTEGER && in->type != AML_DATA_BUFFER && in->type != AML_DATA_INTEGER_CONSTANT)
+    {
+        LOG_ERR("cannot write field '%.*s' with data of type '%s'\n", AML_NAME_LENGTH, fieldUnit->segment, aml_data_type_to_string(in->type));
         errno = EINVAL;
         return ERR;
     }

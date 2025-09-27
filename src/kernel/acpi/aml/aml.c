@@ -1,5 +1,6 @@
 #include "aml.h"
 
+#include "acpi/tables.h"
 #include "aml_patch_up.h"
 #include "aml_predefined.h"
 #include "aml_state.h"
@@ -15,6 +16,51 @@
 static mutex_t globalMutex;
 
 static aml_node_t* root = NULL;
+
+static inline uint64_t aml_init_parse_all(void)
+{
+    dsdt_t* dsdt = DSDT_GET();
+    if (dsdt == NULL)
+    {
+        LOG_ERR("failed to retrieve DSDT\n");
+        return ERR;
+    }
+
+    LOG_INFO("DSDT found containing %llu bytes of AML code\n", dsdt->header.length - sizeof(dsdt_t));
+
+    const uint8_t* dsdtEnd = (const uint8_t*)dsdt + dsdt->header.length;
+    if (aml_parse(dsdt->definitionBlock, dsdtEnd) == ERR)
+    {
+        LOG_ERR("failed to parse DSDT\n");
+        return ERR;
+    }
+
+    uint64_t index = 0;
+    ssdt_t* ssdt = NULL;
+    while (true)
+    {
+        ssdt = SSDT_GET(index);
+        if (ssdt == NULL)
+        {
+            break;
+        }
+
+        LOG_INFO("SSDT%llu found containing %llu bytes of AML code\n", index, ssdt->header.length - sizeof(ssdt_t));
+
+        const uint8_t* ssdtEnd = (const uint8_t*)ssdt + ssdt->header.length;
+        if (aml_parse(ssdt->definitionBlock, ssdtEnd) == ERR)
+        {
+            LOG_ERR("failed to parse SSDT%llu\n", index);
+            return ERR;
+        }
+
+        index++;
+    }
+
+    LOG_INFO("parsed 1 DSDT and %llu SSDTs\n", index);
+
+    return 0;
+}
 
 uint64_t aml_init(void)
 {
@@ -40,7 +86,36 @@ uint64_t aml_init(void)
         return ERR;
     }
 
-    aml_patch_up_init();
+    if (aml_patch_up_init() == ERR)
+    {
+        aml_node_free(root);
+        root = NULL;
+        return ERR;
+    }
+
+    if (aml_init_parse_all() == ERR)
+    {
+        aml_node_free(root);
+        root = NULL;
+        return ERR;
+    }
+
+    LOG_INFO("resolving %llu unresolved nodes\n", aml_patch_up_unresolved_count());
+    if (aml_patch_up_resolve_all() == ERR)
+    {
+        aml_node_free(root);
+        root = NULL;
+        LOG_ERR("failed to resolve unresolved nodes\n");
+        return ERR;
+    }
+
+    if (aml_patch_up_unresolved_count() > 0)
+    {
+        aml_node_free(root);
+        root = NULL;
+        LOG_ERR("there are still %llu unresolved nodes\n", aml_patch_up_unresolved_count());
+        return ERR;
+    }
 
     return 0;
 }
@@ -58,7 +133,7 @@ uint64_t aml_parse(const uint8_t* start, const uint8_t* end)
     // So the entire code is a termlist.
 
     aml_state_t state;
-    if (aml_state_init(&state, start, end) == ERR)
+    if (aml_state_init(&state, start, end, NULL, NULL) == ERR)
     {
         return ERR;
     }

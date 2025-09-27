@@ -1,13 +1,15 @@
-#include "aml_convert.h"
+#include "evaluate.h"
 
-#include "aml_to_string.h"
+#include "acpi/aml/aml_node.h"
+#include "acpi/aml/aml_to_string.h"
+#include "method.h"
 #include "log/log.h"
-#include "runtime/buffer_field.h"
-#include "runtime/opregion.h"
+#include "buffer_field.h"
+#include "opregion.h"
 
 #include <errno.h>
 
-uint64_t aml_convert_to_actual_data(aml_node_t* src, aml_node_t* dest)
+uint64_t aml_evaluate_to_actual_data(aml_node_t* src, aml_node_t* dest)
 {
     if (src == NULL || dest == NULL)
     {
@@ -47,24 +49,29 @@ uint64_t aml_convert_to_actual_data(aml_node_t* src, aml_node_t* dest)
     case AML_DATA_PACKAGE:
     case AML_DATA_STRING:
         return aml_node_clone(src, dest);
-        break;
     case AML_DATA_BUFFER_FIELD:
-    {
         return aml_buffer_field_read(src, dest);
-    }
-    break;
     case AML_DATA_FIELD_UNIT:
-    {
         return aml_field_unit_read(src, dest);
+    case AML_DATA_METHOD:
+    {
+        aml_node_t temp;
+        if (aml_method_evaluate(src, NULL, &temp) == ERR)
+        {
+            return ERR;
+        }
+
+        uint64_t res = aml_evaluate_to_actual_data(&temp, dest);
+        aml_node_deinit(&temp);
+        return res;
     }
-    break;
     default:
         errno = ENOSYS;
         return ERR;
     }
 }
 
-uint64_t aml_convert_and_store(aml_node_t* src, aml_node_t* dest)
+uint64_t aml_evaluate_and_store(aml_node_t* src, aml_node_t* dest)
 {
     if (src == NULL || dest == NULL)
     {
@@ -85,7 +92,11 @@ uint64_t aml_convert_and_store(aml_node_t* src, aml_node_t* dest)
     switch (dest->type)
     {
     case AML_DATA_INTEGER:
-        return aml_convert_to_integer(src, dest);
+        return aml_evaluate_to_integer(src, dest);
+    case AML_DATA_FIELD_UNIT:
+        return aml_field_unit_write(dest, src);
+    case AML_DATA_BUFFER_FIELD:
+        return aml_buffer_field_write(dest, src);
     default:
         LOG_ERR("unimplemented conversion from '%s' to '%s'\n", aml_data_type_to_string(src->type),
             aml_data_type_to_string(dest->type));
@@ -94,7 +105,7 @@ uint64_t aml_convert_and_store(aml_node_t* src, aml_node_t* dest)
     }
 }
 
-uint64_t aml_convert_to_integer(aml_node_t* src, aml_node_t* dest)
+uint64_t aml_evaluate_to_integer(aml_node_t* src, aml_node_t* dest)
 {
     if (src == NULL || dest == NULL)
     {
@@ -196,7 +207,19 @@ uint64_t aml_convert_to_integer(aml_node_t* src, aml_node_t* dest)
             return ERR;
         }
 
-        return aml_convert_to_integer(src->objectReference.target, dest);
+        return aml_evaluate_to_integer(src->objectReference.target, dest);
+    }
+    case AML_DATA_METHOD:
+    {
+        aml_node_t temp;
+        if (aml_method_evaluate(src, NULL, &temp) == ERR)
+        {
+            return ERR;
+        }
+
+        uint64_t res = aml_evaluate_to_integer(&temp, dest);
+        aml_node_deinit(&temp);
+        return res;
     }
     default:
         LOG_ERR("invalid conversion from '%s' to Integer\n", aml_data_type_to_string(src->type));

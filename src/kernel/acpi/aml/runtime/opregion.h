@@ -28,7 +28,7 @@
  *
  * Will acquire the global mutex if the FieldUnits LockRule is set to `AML_LOCK_RULE_LOCK`.
  *
- * @see @ref kernel_acpi_aml_convert
+ * @see @ref kernel_acpi_aml_evaluate
  * @see Section 19.6.48, 19.6.64 and 19.6.7 of the ACPI specification for more details.
  *
  * @param field The field to read from.
@@ -42,7 +42,7 @@ uint64_t aml_field_unit_read(aml_node_t* fieldUnit, aml_node_t* out);
  *
  * Will acquire the global mutex if the FieldUnits LockRule is set to `AML_LOCK_RULE_LOCK`.
  *
- * @see @ref kernel_acpi_aml_convert
+ * @see @ref kernel_acpi_aml_evaluate
  * @see Section 19.6.48, 19.6.64 and 19.6.7 of the ACPI specification for more details.
  *
  * @param field The field to write to.

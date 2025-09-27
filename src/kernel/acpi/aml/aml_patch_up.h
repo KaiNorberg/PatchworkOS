@@ -82,8 +82,10 @@ typedef struct aml_patch_up_entry
 
 /**
  * @brief Initialize the patch-up system.
+ *
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-void aml_patch_up_init(void);
+uint64_t aml_patch_up_init(void);
 
 /**
  * @brief Adds a unresolved reference to the global list.

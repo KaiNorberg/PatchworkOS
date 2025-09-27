@@ -206,6 +206,7 @@ typedef struct aml_node
             aml_method_flags_t flags;
             const uint8_t* start;
             const uint8_t* end;
+            mutex_t mutex;
         } method;
         struct
         {

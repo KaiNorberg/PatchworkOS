@@ -60,7 +60,8 @@ void lapic_init(void)
         panic(NULL, "Unable to find lapic address in MADT, hardware is not compatible");
     }
 
-    if (vmm_kernel_map(NULL, lapicPhysAddr, 1, PML_WRITE) == NULL && errno != EEXIST) // EEXIST means it was already mapped
+    if (vmm_kernel_map(NULL, lapicPhysAddr, 1, PML_WRITE) == NULL &&
+        errno != EEXIST) // EEXIST means it was already mapped
     {
         panic(NULL, "Unable to map lapic");
     }
@@ -179,7 +180,8 @@ void ioapic_all_init(void)
         }
 
         void* physAddr = (void*)(uint64_t)ioapic->ioApicAddress;
-        if (vmm_kernel_map(NULL, physAddr, 1, PML_WRITE) == NULL && errno != EEXIST) // EEXIST means it was already mapped
+        if (vmm_kernel_map(NULL, physAddr, 1, PML_WRITE) == NULL &&
+            errno != EEXIST) // EEXIST means it was already mapped
         {
             panic(NULL, "Failed to map ioapic");
         }

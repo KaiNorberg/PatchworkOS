@@ -10,9 +10,10 @@
 
 static list_t unresolvedNodes;
 
-void aml_patch_up_init(void)
+uint64_t aml_patch_up_init(void)
 {
     list_init(&unresolvedNodes);
+    return 0;
 }
 
 uint64_t aml_patch_up_add_unresolved(aml_node_t* unresolved, aml_patch_up_resolve_callback_t callback)

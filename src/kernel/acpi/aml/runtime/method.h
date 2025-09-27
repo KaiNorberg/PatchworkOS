@@ -18,9 +18,11 @@
  * This function evaluates a method node with the provided arguments and stores the return value in the specified
  * returnValue node.
  *
+ * @see Section 19.6.85 of the ACPI specification for more details.
+ *
  * @param method Pointer to the method node to evaluate.
- * @param args Pointer to the list of arguments to pass to the method.
- * @param out Pointer to the node where the return value will be stored.
+ * @param args Pointer to the list of arguments to pass to the method, can be `NULL`.
+ * @param out Pointer to the node where the return value will be stored, can be `NULL`.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_method_evaluate(aml_node_t* method, aml_term_arg_list_t* args, aml_node_t* out);

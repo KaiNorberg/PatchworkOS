@@ -1,7 +1,5 @@
 #include "named.h"
 
-#include "acpi/aml/aml.h"
-#include "acpi/aml/aml_convert.h"
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_to_string.h"

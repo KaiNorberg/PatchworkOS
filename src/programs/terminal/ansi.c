@@ -1,7 +1,7 @@
 #include "ansi.h"
 
-#include <string.h>
 #include <libpatchwork/patchwork.h>
+#include <string.h>
 
 void ansi_init(ansi_t* ansi)
 {

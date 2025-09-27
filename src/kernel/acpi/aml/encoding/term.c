@@ -1,6 +1,6 @@
 #include "term.h"
 
-#include "acpi/aml/aml_convert.h"
+#include "acpi/aml/runtime/evaluate.h"
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_value.h"
@@ -28,17 +28,15 @@ uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_node_t* out
     case AML_VALUE_TYPE_EXPRESSION:
     case AML_VALUE_TYPE_NAME: // MethodInvocation is a Name
         result = aml_expression_opcode_read(state, node, out);
-        break;
+    break;
     case AML_VALUE_TYPE_ARG:
-        AML_DEBUG_ERROR(state, "Unsupported value type: ARG");
-        errno = ENOSYS;
-        result = ERR;
-        break;
+        result = aml_arg_obj_read(state, out);
+    break;
     case AML_VALUE_TYPE_LOCAL:
         AML_DEBUG_ERROR(state, "Unsupported value type: LOCAL");
         errno = ENOSYS;
         result = ERR;
-        break;
+    break;
     default:
         result = aml_data_object_read(state, node, out);
     }
@@ -62,7 +60,7 @@ uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_node_t* node, aml_qwo
     }
 
     aml_node_t integer = AML_NODE_CREATE;
-    if (aml_convert_to_integer(&temp, &integer) == ERR)
+    if (aml_evaluate_to_integer(&temp, &integer) == ERR)
     {
         aml_node_deinit(&temp);
         AML_DEBUG_ERROR(state, "Failed to convert TermArg to Integer");
@@ -140,7 +138,7 @@ uint64_t aml_term_obj_read(aml_state_t* state, aml_node_t* node)
 
 uint64_t aml_term_list_read(aml_state_t* state, aml_node_t* node, const uint8_t* end)
 {
-    while (end > state->current)
+    while (end > state->current && !state->hasHitReturn)
     {
         // End of buffer not reached => byte is not nothing => must be a termobj.
         if (aml_term_obj_read(state, node) == ERR)
