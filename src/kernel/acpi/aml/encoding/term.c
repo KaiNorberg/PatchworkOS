@@ -1,9 +1,9 @@
 #include "term.h"
 
-#include "acpi/aml/runtime/evaluate.h"
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_value.h"
+#include "acpi/aml/runtime/evaluate.h"
 #include "data.h"
 #include "expression.h"
 #include "named.h"
@@ -28,15 +28,15 @@ uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_node_t* out
     case AML_VALUE_TYPE_EXPRESSION:
     case AML_VALUE_TYPE_NAME: // MethodInvocation is a Name
         result = aml_expression_opcode_read(state, node, out);
-    break;
+        break;
     case AML_VALUE_TYPE_ARG:
         result = aml_arg_obj_read(state, out);
-    break;
+        break;
     case AML_VALUE_TYPE_LOCAL:
         AML_DEBUG_ERROR(state, "Unsupported value type: LOCAL");
         errno = ENOSYS;
         result = ERR;
-    break;
+        break;
     default:
         result = aml_data_object_read(state, node, out);
     }

@@ -1,8 +1,8 @@
 #include "arg.h"
 
+#include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_value.h"
-#include "acpi/aml/aml_debug.h"
 #include "expression.h"
 
 uint64_t aml_arg_obj_read(aml_state_t* state, aml_node_t* out)

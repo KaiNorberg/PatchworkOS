@@ -33,7 +33,7 @@ typedef struct aml_state
     const uint8_t* start;              //!< Pointer to the start of the AML bytecode.
     const uint8_t* end;                //!< Pointer to the end of the AML bytecode.
     const uint8_t* current;            //!< Pointer to the current position in the AML bytecode.
-    bool hasHitReturn;             //!< If true then stop parsing and return from the current method.
+    bool hasHitReturn;                 //!< If true then stop parsing and return from the current method.
     aml_node_t locals[AML_MAX_LOCALS]; //!< Local variables for the method, if any.
     aml_term_arg_list_t* args;         //!< Arguments passed to the method, if the state is used for method evaluation.
     aml_node_t* returnValue; //!< Pointer to where the return value should be stored, if the state is used for method.

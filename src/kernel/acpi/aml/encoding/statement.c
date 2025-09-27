@@ -214,13 +214,13 @@ uint64_t aml_statement_opcode_read(aml_state_t* state, aml_node_t* node)
     {
     case AML_IF_OP:
         result = aml_def_if_else_read(state, node);
-    break;
+        break;
     case AML_NOOP_OP:
         result = aml_def_noop_read(state);
-    break;
+        break;
     case AML_RETURN_OP:
         result = aml_def_return_read(state, node);
-    break;
+        break;
     default:
         AML_DEBUG_ERROR(state, "Unknown statement opcode '0x%x'", op.num);
         errno = ENOSYS;

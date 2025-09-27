@@ -777,7 +777,7 @@ void aml_node_deinit(aml_node_t* node)
     case AML_DATA_OBJECT_REFERENCE:
     case AML_DATA_OPERATION_REGION:
         // Nothing to do.
-    break;
+        break;
     case AML_DATA_BUFFER:
         if (node->buffer.byteFields != NULL)
         {
@@ -797,7 +797,7 @@ void aml_node_deinit(aml_node_t* node)
         break;
     case AML_DATA_MUTEX:
         mutex_deinit(&node->mutex.mutex);
-    break;
+        break;
     case AML_DATA_PACKAGE:
         if (node->package.elements != NULL)
         {
@@ -809,10 +809,10 @@ void aml_node_deinit(aml_node_t* node)
         }
         node->package.length = 0;
         node->package.elements = NULL;
-    break;
+        break;
     case AML_DATA_METHOD:
         mutex_deinit(&node->method.mutex);
-    break;
+        break;
     case AML_DATA_STRING:
         if (node->string.byteFields != NULL)
         {
@@ -828,10 +828,10 @@ void aml_node_deinit(aml_node_t* node)
         }
         node->string.length = 0;
         node->string.content = NULL;
-    break;
+        break;
     case AML_DATA_UNRESOLVED:
         aml_patch_up_remove_unresolved(node);
-    break;
+        break;
     default:
         panic(NULL, "unimplemented deinit of AML node '%.*s' of type '%s'\n", AML_NAME_LENGTH, node->segment,
             aml_data_type_to_string(node->type));
@@ -1128,7 +1128,7 @@ uint64_t aml_node_put_bits_at(aml_node_t* node, uint64_t value, aml_bit_size_t b
 
         node->integer.value &= ~(mask << bitOffset);
         node->integer.value |= (value & mask) << bitOffset;
-    break;
+        break;
     case AML_DATA_BUFFER:
         if (bitOffset + bitSize > node->buffer.length * 8)
         {
@@ -1150,7 +1150,7 @@ uint64_t aml_node_put_bits_at(aml_node_t* node, uint64_t value, aml_bit_size_t b
                 node->buffer.content[bytePos] &= ~(1 << bitPos);
             }
         }
-    break;
+        break;
     default:
         errno = EINVAL;
         return ERR;
@@ -1187,7 +1187,7 @@ uint64_t aml_node_get_bits_at(aml_node_t* node, aml_bit_size_t bitOffset, aml_bi
         }
 
         *out = (node->integer.value >> bitOffset) & mask;
-    break;
+        break;
     case AML_DATA_INTEGER_CONSTANT:
         if (bitOffset + bitSize > AML_INTEGER_BIT_WIDTH)
         {
@@ -1205,7 +1205,7 @@ uint64_t aml_node_get_bits_at(aml_node_t* node, aml_bit_size_t bitOffset, aml_bi
         }
 
         *out = (node->integerConstant.value >> bitOffset) & mask;
-    break;
+        break;
     case AML_DATA_BUFFER:
         if (bitOffset + bitSize > node->buffer.length * 8)
         {
@@ -1224,7 +1224,7 @@ uint64_t aml_node_get_bits_at(aml_node_t* node, aml_bit_size_t bitOffset, aml_bi
                 *out |= (UINT64_C(1) << i);
             }
         }
-    break;
+        break;
     case AML_DATA_STRING:
         if (bitOffset + bitSize > strlen(node->string.content) * 8)
         {
@@ -1243,7 +1243,7 @@ uint64_t aml_node_get_bits_at(aml_node_t* node, aml_bit_size_t bitOffset, aml_bi
                 *out |= (UINT64_C(1) << i);
             }
         }
-    break;
+        break;
     default:
         errno = EINVAL;
         return ERR;

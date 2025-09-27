@@ -1,11 +1,11 @@
 #include "expression.h"
 
-#include "acpi/aml/runtime/evaluate.h"
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_node.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_to_string.h"
 #include "acpi/aml/aml_value.h"
+#include "acpi/aml/runtime/evaluate.h"
 #include "acpi/aml/runtime/method.h"
 #include "arg.h"
 #include "package_length.h"

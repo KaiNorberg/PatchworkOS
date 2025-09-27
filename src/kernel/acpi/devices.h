@@ -18,10 +18,11 @@
  */
 typedef enum
 {
-    ACPI_STA_PRESENT = 1 << 0, //!< Set if the device is present
-    ACPI_STA_ENABLED = 1 << 1, //!< Set if the device is enabled and decoding its resources
+    ACPI_STA_PRESENT = 1 << 0,    //!< Set if the device is present
+    ACPI_STA_ENABLED = 1 << 1,    //!< Set if the device is enabled and decoding its resources
     ACPI_STA_SHOW_IN_UI = 1 << 2, //!< Set if the device should be shown in the UI.
-    ACPI_STA_FUNCTIONAL = 1 << 3, //!< Set if the device is functioning properly (cleared if device failed its diagnostics)
+    ACPI_STA_FUNCTIONAL =
+        1 << 3, //!< Set if the device is functioning properly (cleared if device failed its diagnostics)
     ACPI_STA_BATTERY_PRESENT = 1 << 4, //!< Set if a battery is present
 } acpi_sta_flags_t;
 
@@ -37,8 +38,9 @@ typedef enum
 /**
  * @brief Enumerate and configure ACPI devices.
  *
- * This function always evaluates the \_SB._INI node if it exists, enumerates ACPI devices (found under \_SB), evaulates their _STA object retrieving its
- * present and functional status (if it exists) and then evaluates their _INI object acording to these rules:
+ * This function always evaluates the \_SB._INI node if it exists, enumerates ACPI devices (found under \_SB), evaulates
+ * their _STA object retrieving its present and functional status (if it exists) and then evaluates their _INI object
+ * acording to these rules:
  * - If the _INI object does not exist it is ignored.
  * - If the _STA object does not exist the device is assumed to be present and functional
  * - If the _STA object does exist its status is read.

@@ -465,7 +465,8 @@ uint64_t aml_field_unit_write(aml_node_t* fieldUnit, aml_node_t* in)
 
     if (in->type != AML_DATA_INTEGER && in->type != AML_DATA_BUFFER && in->type != AML_DATA_INTEGER_CONSTANT)
     {
-        LOG_ERR("cannot write field '%.*s' with data of type '%s'\n", AML_NAME_LENGTH, fieldUnit->segment, aml_data_type_to_string(in->type));
+        LOG_ERR("cannot write field '%.*s' with data of type '%s'\n", AML_NAME_LENGTH, fieldUnit->segment,
+            aml_data_type_to_string(in->type));
         errno = EINVAL;
         return ERR;
     }

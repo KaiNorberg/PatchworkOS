@@ -2,9 +2,9 @@
 
 #include "acpi/aml/aml_node.h"
 #include "acpi/aml/aml_to_string.h"
-#include "method.h"
-#include "log/log.h"
 #include "buffer_field.h"
+#include "log/log.h"
+#include "method.h"
 #include "opregion.h"
 
 #include <errno.h>
