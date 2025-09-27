@@ -36,7 +36,7 @@ static element_t* element_new_raw(element_id_t id, const rect_t* rect, const cha
     elem->image = NULL;
     elem->imageProps = ELEMENT_IMAGE_PROPS_DEFAULT;
     elem->textProps = ELEMENT_TEXT_PROPS_DEFAULT;
-    theme_override_init(&elem->theme);
+    elem->theme = *theme_global_get();
     return elem;
 }
 
@@ -99,7 +99,6 @@ void element_free(element_t* elem)
 
     element_free_children(elem);
     free(elem->text);
-    theme_override_deinit(&elem->theme);
     free(elem);
 }
 
@@ -388,32 +387,7 @@ element_image_props_t* element_image_props_get(element_t* elem)
     return &elem->imageProps;
 }
 
-pixel_t element_get_color(element_t* elem, theme_color_set_t set, theme_color_role_t role)
+theme_t* element_get_theme(element_t* elem)
 {
-    return theme_get_color(set, role, &elem->theme);
-}
-
-uint64_t element_set_color(element_t* elem, theme_color_set_t set, theme_color_role_t role, pixel_t color)
-{
-    return theme_override_set_color(&elem->theme, set, role, color);
-}
-
-const char* element_get_string(element_t* elem, theme_string_t name)
-{
-    return theme_get_string(name, &elem->theme);
-}
-
-uint64_t element_set_string(element_t* elem, theme_string_t name, const char* string)
-{
-    return theme_override_set_string(&elem->theme, name, string);
-}
-
-int64_t element_get_int(element_t* elem, theme_int_t name)
-{
-    return theme_get_int(name, &elem->theme);
-}
-
-uint64_t element_set_int(element_t* elem, theme_int_t name, int64_t integer)
-{
-    return theme_override_set_int(&elem->theme, name, integer);
+    return &elem->theme;
 }

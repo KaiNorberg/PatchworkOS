@@ -29,9 +29,10 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
 int main(void)
 {
+    const theme_t* theme = theme_global_get();
     display_t* disp = display_new();
 
-    image = image_new(disp, theme_get_string(STRING_CURSOR_ARROW, NULL));
+    image = image_new(disp, theme->cursorArrow);
     if (image == NULL)
     {
         return EXIT_FAILURE;

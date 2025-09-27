@@ -13,12 +13,14 @@ font_t* font_default(display_t* disp)
 
 font_t* font_new(display_t* disp, const char* family, const char* weight, uint64_t size)
 {
+    const theme_t* theme = theme_global_get();
+
     if (strcmp(family, "default") == 0)
     {
-        family = theme_get_string(STRING_DEFAULT_FONT, NULL);
+        family = theme->defaultFont;
     }
 
-    fd_t file = openf("%s/%s-%s%d.grf", theme_get_string(STRING_FONTS_DIR, NULL), family, weight, size);
+    fd_t file = openf("%s/%s-%s%d.grf", theme->fontsDir, family, weight, size);
     if (file == ERR)
     {
         return NULL;

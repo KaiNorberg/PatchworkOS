@@ -10,6 +10,7 @@ typedef struct
 static uint64_t popup_procedure(window_t* win, element_t* elem, const event_t* event)
 {
     popup_t* popup = element_get_private(elem);
+    const theme_t* theme = element_get_theme(elem);
 
     switch (event->type)
     {
@@ -21,15 +22,13 @@ static uint64_t popup_procedure(window_t* win, element_t* elem, const event_t* e
             RECT_HEIGHT(&rect) - POPUP_BUTTON_AREA_HEIGHT + POPUP_BUTTON_HEIGHT / 2 - 10, POPUP_BUTTON_WIDTH,
             POPUP_BUTTON_HEIGHT);
 
-        int64_t bigPadding = element_get_int(elem, INT_BIG_PADDING);
-
         rect_t leftButtonRect = middleButtonRect;
-        leftButtonRect.left -= POPUP_BUTTON_WIDTH + bigPadding;
-        leftButtonRect.right -= POPUP_BUTTON_WIDTH + bigPadding;
+        leftButtonRect.left -= POPUP_BUTTON_WIDTH + theme->bigPadding;
+        leftButtonRect.right -= POPUP_BUTTON_WIDTH + theme->bigPadding;
 
         rect_t rightButtonRect = middleButtonRect;
-        rightButtonRect.left += POPUP_BUTTON_WIDTH + bigPadding;
-        rightButtonRect.right += POPUP_BUTTON_WIDTH + bigPadding;
+        rightButtonRect.left += POPUP_BUTTON_WIDTH + theme->bigPadding;
+        rightButtonRect.right += POPUP_BUTTON_WIDTH + theme->bigPadding;
 
         switch (popup->type)
         {
@@ -63,10 +62,8 @@ static uint64_t popup_procedure(window_t* win, element_t* elem, const event_t* e
         drawable_t draw;
         element_draw_begin(elem, &draw);
 
-        pixel_t foreground = element_get_color(elem, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL);
-        pixel_t background = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_NORMAL);
-        draw_rect(&draw, &rect, background);
-        draw_text_multiline(&draw, &rect, NULL, ALIGN_MIN, ALIGN_CENTER, foreground, popup->text);
+        draw_rect(&draw, &rect, theme->deco.backgroundNormal);
+        draw_text_multiline(&draw, &rect, NULL, ALIGN_MIN, ALIGN_CENTER, theme->view.foregroundNormal, popup->text);
 
         element_draw_end(elem, &draw);
     }

@@ -109,14 +109,7 @@ void element_set_image(element_t* elem, image_t* image);
 
 element_image_props_t* element_get_image_props(element_t* elem);
 
-pixel_t element_get_color(element_t* elem, theme_color_set_t set, theme_color_role_t role);
-uint64_t element_set_color(element_t* elem, theme_color_set_t set, theme_color_role_t role, pixel_t color);
-
-const char* element_get_string(element_t* elem, theme_string_t name);
-uint64_t element_set_string(element_t* elem, theme_string_t name, const char* string);
-
-int64_t element_get_int(element_t* elem, theme_int_t name);
-uint64_t element_set_int(element_t* elem, theme_int_t name, int64_t integer);
+theme_t* element_get_theme(element_t* elem);
 
 #if defined(__cplusplus)
 }

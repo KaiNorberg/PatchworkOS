@@ -30,22 +30,20 @@ static void window_deco_titlebar_rect(window_t* win, element_t* elem, rect_t* re
 
     rect_t contentRect = element_get_content_rect(elem);
 
-    int64_t frameWidth = element_get_int(elem, INT_FRAME_SIZE);
-    int64_t titlebarHeight = element_get_int(elem, INT_TITLEBAR_SIZE);
-    int64_t smallPadding = element_get_int(elem, INT_SMALL_PADDING);
+    const theme_t* theme = element_get_theme(elem);
 
     *rect = (rect_t){
-        .left = frameWidth + smallPadding,
-        .top = frameWidth + smallPadding,
-        .right = RECT_WIDTH(&contentRect) - frameWidth - smallPadding,
-        .bottom = frameWidth + titlebarHeight,
+        .left = theme->frameSize + theme->smallPadding,
+        .top = theme->frameSize + theme->smallPadding,
+        .right = RECT_WIDTH(&contentRect) - theme->frameSize - theme->smallPadding,
+        .bottom = theme->frameSize + theme->titlebarSize,
     };
 }
 
 static void window_deco_button_rect(window_t* win, element_t* elem, rect_t* rect, uint64_t index)
 {
     window_deco_titlebar_rect(win, elem, rect);
-    RECT_SHRINK(rect, element_get_int(elem, INT_FRAME_SIZE));
+    RECT_SHRINK(rect, element_get_theme(elem)->frameSize);
     uint64_t size = (rect->bottom - rect->top);
     rect->right -= size * index;
     rect->left = rect->right - size;
@@ -58,32 +56,25 @@ static void window_deco_draw_titlebar(window_t* win, element_t* elem, drawable_t
     rect_t titlebar;
     window_deco_titlebar_rect(win, elem, &titlebar);
 
-    int64_t panelSize = element_get_int(elem, INT_BIG_PADDING);
-    int64_t bigPadding = element_get_int(elem, INT_BIG_PADDING);
-    int64_t frameWidth = element_get_int(elem, INT_FRAME_SIZE);
-    pixel_t highlight = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_HIGHLIGHT);
-    pixel_t shadow = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_SHADOW);
-    pixel_t selectedStart = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_SELECTED_START);
-    pixel_t selectedEnd = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_SELECTED_END);
-    pixel_t unselectedStart = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_UNSELECTED_START);
-    pixel_t unselectedEnd = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_UNSELECTED_END);
-    pixel_t foreground = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_FOREGROUND_NORMAL);
+    const theme_t* theme = element_get_theme(elem);
 
-    draw_frame(draw, &titlebar, frameWidth, shadow, highlight);
-    RECT_SHRINK(&titlebar, frameWidth);
+    draw_frame(draw, &titlebar, theme->frameSize, theme->deco.shadow, theme->deco.highlight);
+    RECT_SHRINK(&titlebar, theme->frameSize);
     if (private->isFocused)
     {
-        draw_gradient(draw, &titlebar, selectedStart, selectedEnd, DIRECTION_HORIZONTAL, false);
+        draw_gradient(draw, &titlebar, theme->deco.backgroundSelectedStart, theme->deco.backgroundSelectedEnd,
+            DIRECTION_HORIZONTAL, false);
     }
     else
     {
-        draw_gradient(draw, &titlebar, unselectedStart, unselectedEnd, DIRECTION_HORIZONTAL, false);
+        draw_gradient(draw, &titlebar, theme->deco.backgroundUnselectedStart, theme->deco.backgroundUnselectedEnd,
+            DIRECTION_HORIZONTAL, false);
     }
 
     // Make some space so the text does not touch the buttons or the edge of the titlebar
-    titlebar.left += bigPadding;
-    titlebar.right -= panelSize;
-    draw_text(draw, &titlebar, NULL, ALIGN_MIN, ALIGN_CENTER, foreground, win->name);
+    titlebar.left += theme->bigPadding;
+    titlebar.right -= theme->panelSize;
+    draw_text(draw, &titlebar, NULL, ALIGN_MIN, ALIGN_CENTER, theme->deco.foregroundNormal, win->name);
 }
 
 static void window_deco_handle_dragging(window_t* win, element_t* elem, const event_mouse_t* event)
@@ -120,6 +111,8 @@ static void window_deco_handle_dragging(window_t* win, element_t* elem, const ev
 
 static uint64_t window_deco_procedure(window_t* win, element_t* elem, const event_t* event)
 {
+    const theme_t* theme = element_get_theme(elem);
+
     switch (event->type)
     {
     case LEVENT_INIT:
@@ -162,7 +155,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
             return ERR;
         }
 
-        private->closeIcon = image_new(window_get_display(win), element_get_string(elem, STRING_ICON_CLOSE));
+        private->closeIcon = image_new(window_get_display(win), theme->iconClose);
         if (private->closeIcon == NULL)
         {
             element_free(closeButton);
@@ -171,7 +164,7 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
             return ERR;
         }
 
-        private->minimizeIcon = image_new(window_get_display(win), element_get_string(elem, STRING_ICON_MINIMIZE));
+        private->minimizeIcon = image_new(window_get_display(win), theme->iconMinimize);
         if (private->minimizeIcon == NULL)
         {
             image_free(private->closeIcon);
@@ -211,14 +204,9 @@ static uint64_t window_deco_procedure(window_t* win, element_t* elem, const even
         drawable_t draw;
         element_draw_begin(elem, &draw);
 
-        pixel_t background = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_NORMAL);
-        pixel_t highlight = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_HIGHLIGHT);
-        pixel_t shadow = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_SHADOW);
-        int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
-
-        draw_frame(&draw, &rect, frameSize, highlight, shadow);
-        RECT_SHRINK(&rect, frameSize);
-        draw_rect(&draw, &rect, background);
+        draw_frame(&draw, &rect, theme->frameSize, theme->deco.highlight, theme->deco.shadow);
+        RECT_SHRINK(&rect, theme->frameSize);
+        draw_rect(&draw, &rect, theme->deco.backgroundNormal);
         window_deco_draw_titlebar(win, elem, &draw);
 
         element_draw_end(elem, &draw);
@@ -302,8 +290,9 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
     win->root = NULL;
     win->clientElement = NULL;
 
-    int64_t frameWidth = theme_get_int(INT_FRAME_SIZE, NULL);
-    int64_t titlebarSize = theme_get_int(INT_TITLEBAR_SIZE, NULL);
+    const theme_t* theme = theme_global_get();
+    int64_t frameWidth = theme->frameSize;
+    int64_t titlebarSize = theme->titlebarSize;
 
     if (flags & WINDOW_DECO)
     {

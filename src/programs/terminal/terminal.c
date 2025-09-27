@@ -10,27 +10,22 @@
 
 static uint64_t terminal_width(terminal_t* term)
 {
-    int64_t frameSize = theme_get_int(INT_FRAME_SIZE, NULL);
-    int64_t smallPadding = theme_get_int(INT_SMALL_PADDING, NULL);
-
-    return TERMINAL_COLUMNS * font_width(term->font, "a", 1) + frameSize * 2 + smallPadding * 2;
+    const theme_t* theme = theme_global_get();
+    return TERMINAL_COLUMNS * font_width(term->font, "a", 1) + theme->frameSize * 2 + theme->smallPadding * 2;
 }
 
 static uint64_t terminal_height(terminal_t* term)
 {
-    int64_t frameSize = theme_get_int(INT_FRAME_SIZE, NULL);
-    int64_t smallPadding = theme_get_int(INT_SMALL_PADDING, NULL);
-
-    return TERMINAL_ROWS * font_height(term->font) + frameSize * 2 + smallPadding * 2;
+    const theme_t* theme = theme_global_get();
+    return TERMINAL_ROWS * font_height(term->font) + theme->frameSize * 2 + theme->smallPadding * 2;
 }
 
 static point_t terminal_cursor_pos_to_client_pos(terminal_t* term, element_t* elem, point_t* cursorPos)
 {
-    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
-    int64_t smallPadding = element_get_int(elem, INT_SMALL_PADDING);
+    const theme_t* theme = element_get_theme(elem);
     return (point_t){
-        .x = ((cursorPos)->x * font_width(term->font, "a", 1)) + frameSize + smallPadding,
-        .y = ((cursorPos)->y * font_height(term->font)) + frameSize + smallPadding,
+        .x = ((cursorPos)->x * font_width(term->font, "a", 1)) + theme->frameSize + theme->smallPadding,
+        .y = ((cursorPos)->y * font_height(term->font)) + theme->frameSize + theme->smallPadding,
     };
 }
 
@@ -83,12 +78,10 @@ static void terminal_clear(terminal_t* term, element_t* elem, drawable_t* draw)
 
     rect_t rect = element_get_content_rect(elem);
 
-    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
-    pixel_t highlight = element_get_color(elem, COLOR_SET_ELEMENT, COLOR_ROLE_HIGHLIGHT);
-    pixel_t shadow = element_get_color(elem, COLOR_SET_ELEMENT, COLOR_ROLE_SHADOW);
+    const theme_t* theme = element_get_theme(elem);
 
-    draw_frame(draw, &rect, frameSize, shadow, highlight);
-    RECT_SHRINK(&rect, frameSize);
+    draw_frame(draw, &rect, theme->frameSize, theme->element.shadow, theme->element.highlight);
+    RECT_SHRINK(&rect, theme->frameSize);
     draw_rect(draw, &rect, TERMINAL_BACKGROUND);
 
     term->isCursorVisible = true;
@@ -100,13 +93,12 @@ static void terminal_scroll(terminal_t* term, element_t* elem, drawable_t* draw)
     term->cursorPos.y -= 1;
 
     uint64_t fontHeight = font_height(term->font);
-    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
-    int64_t smallPadding = element_get_int(elem, INT_SMALL_PADDING);
+    const theme_t* theme = element_get_theme(elem);
 
     rect_t destRect = element_get_content_rect(elem);
 
-    RECT_SHRINK(&destRect, frameSize);
-    RECT_SHRINK(&destRect, smallPadding);
+    RECT_SHRINK(&destRect, theme->frameSize);
+    RECT_SHRINK(&destRect, theme->smallPadding);
     destRect.bottom -= fontHeight;
 
     point_t srcPoint = {.x = destRect.left, .y = destRect.top + fontHeight};

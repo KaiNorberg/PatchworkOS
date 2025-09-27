@@ -33,7 +33,7 @@ typedef struct element
     element_text_props_t textProps;
     image_t* image;
     element_image_props_t imageProps;
-    theme_override_t theme;
+    theme_t theme;
 } element_t;
 
 element_t* element_new_root(window_t* win, element_id_t id, const rect_t* rect, const char* text, element_flags_t flags,

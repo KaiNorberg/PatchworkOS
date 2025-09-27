@@ -204,50 +204,46 @@ static void block_draw(element_t* elem, drawable_t* draw, block_t block, int64_t
 
     rect_t rect = RECT_INIT_DIM(FIELD_LEFT + x * BLOCK_SIZE, FIELD_TOP + y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
 
-    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
+    const theme_t* theme = element_get_theme(elem);
 
-    draw_frame(draw, &rect, frameSize, highlightColors[block], shadowColors[block]);
-    RECT_SHRINK(&rect, frameSize);
+    draw_frame(draw, &rect, theme->frameSize, highlightColors[block], shadowColors[block]);
+    RECT_SHRINK(&rect, theme->frameSize);
     draw_rect(draw, &rect, normalColors[block]);
     RECT_SHRINK(&rect, 5);
-    draw_frame(draw, &rect, frameSize, shadowColors[block], highlightColors[block]);
+    draw_frame(draw, &rect, theme->frameSize, shadowColors[block], highlightColors[block]);
 }
 
 static void side_panel_draw(element_t* elem, drawable_t* draw)
 {
     rect_t rect = RECT_INIT(SIDE_PANEL_LEFT, SIDE_PANEL_TOP, SIDE_PANEL_RIGHT, SIDE_PANEL_BOTTOM);
 
-    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
-    pixel_t shadow = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_SHADOW);
-    pixel_t highlight = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_HIGHLIGHT);
+    const theme_t* theme = element_get_theme(elem);
 
-    draw_ridge(draw, &rect, frameSize, highlight, shadow);
-
-    pixel_t foreground = element_get_color(elem, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL);
+    draw_ridge(draw, &rect, theme->frameSize, theme->deco.highlight, theme->deco.shadow);
 
     rect_t textRect = rect;
     textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
-    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, foreground, "Score");
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, theme->view.foregroundNormal, "Score");
 
     textRect.top = textRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
     textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
-    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, foreground, "Lines");
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, theme->view.foregroundNormal, "Lines");
 
     textRect.top = textRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
     textRect.bottom = textRect.top + SIDE_PANEL_TEXT_HEIGHT;
-    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, foreground, "Pieces");
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, theme->view.foregroundNormal, "Pieces");
 
     uint64_t fontHeight = font_height(largeFont);
 
     textRect.top = rect.bottom - fontHeight * 7;
     textRect.bottom = rect.bottom;
-    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, foreground, "  ASD - Move");
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, theme->view.foregroundNormal, "  ASD - Move");
     textRect.top += fontHeight;
     textRect.bottom += fontHeight;
-    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, foreground, "SPACE - Drop");
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, theme->view.foregroundNormal, "SPACE - Drop");
     textRect.top += fontHeight;
     textRect.bottom += fontHeight;
-    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, foreground, "    R - Spin");
+    draw_text(draw, &textRect, largeFont, ALIGN_CENTER, ALIGN_CENTER, theme->view.foregroundNormal, "    R - Spin");
 }
 
 static point_t piece_block_pos_in_field(int64_t pieceX, int64_t pieceY, int64_t blockX, int64_t blockY)
@@ -347,16 +343,13 @@ static void piece_rotate(piece_t* piece)
 
 static void field_edge_draw(element_t* elem, drawable_t* draw)
 {
-    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
-    pixel_t background = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_NORMAL);
-    pixel_t shadow = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_SHADOW);
-    pixel_t highlight = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_HIGHLIGHT);
+    const theme_t* theme = element_get_theme(elem);
 
     rect_t fieldRect = RECT_INIT(FIELD_LEFT, FIELD_TOP, FIELD_RIGHT, FIELD_BOTTOM);
     RECT_EXPAND(&fieldRect, FIELD_PADDING);
-    draw_bezel(draw, &fieldRect, FIELD_PADDING - frameSize, background);
-    RECT_SHRINK(&fieldRect, FIELD_PADDING - frameSize);
-    draw_frame(draw, &fieldRect, frameSize, shadow, highlight);
+    draw_bezel(draw, &fieldRect, FIELD_PADDING - theme->frameSize, theme->deco.backgroundNormal);
+    RECT_SHRINK(&fieldRect, FIELD_PADDING - theme->frameSize);
+    draw_frame(draw, &fieldRect, theme->frameSize, theme->deco.shadow, theme->deco.highlight);
 }
 
 static void field_draw(element_t* elem, drawable_t* draw)
@@ -715,15 +708,16 @@ static void start_press_space_draw(element_t* elem, drawable_t* draw)
     draw_rect(draw, &rect, normalColors[BLOCK_NONE]);
     if (blink)
     {
-        pixel_t foreground = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_FOREGROUND_NORMAL);
-
-        draw_text(draw, &rect, largeFont, ALIGN_CENTER, ALIGN_CENTER, foreground, "PRESS SPACE");
+        const theme_t* theme = element_get_theme(elem);
+        draw_text(draw, &rect, largeFont, ALIGN_CENTER, ALIGN_CENTER, theme->deco.foregroundNormal, "PRESS SPACE");
     }
     blink = !blink;
 }
 
 static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
+    const theme_t* theme = element_get_theme(elem);
+
     switch (event->type)
     {
     case LEVENT_INIT:
@@ -734,30 +728,27 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         completedLines = 0;
         playedBlocks = 0;
 
-        pixel_t background = element_get_color(elem, COLOR_SET_VIEW, COLOR_ROLE_BACKGROUND_NORMAL);
-        pixel_t foreground = element_get_color(elem, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL);
-
         rect_t labelRect = RECT_INIT(SIDE_PANEL_LEFT + SIDE_PANEL_LABEL_PADDING,
             SIDE_PANEL_TOP + SIDE_PANEL_TEXT_HEIGHT, SIDE_PANEL_RIGHT - SIDE_PANEL_LABEL_PADDING,
             SIDE_PANEL_TOP + SIDE_PANEL_TEXT_HEIGHT + SIDE_PANEL_LABEL_HEIGHT);
         currentScoreLabel = label_new(elem, CURRENT_SCORE_LABEL_ID, &labelRect, "000000", ELEMENT_NONE);
         element_get_text_props(currentScoreLabel)->font = largeFont;
-        element_set_color(currentScoreLabel, COLOR_SET_VIEW, COLOR_ROLE_BACKGROUND_NORMAL, foreground);
-        element_set_color(currentScoreLabel, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL, background);
+        element_get_theme(currentScoreLabel)->view.backgroundNormal = theme->view.foregroundNormal;
+        element_get_theme(currentScoreLabel)->view.foregroundNormal = theme->view.backgroundNormal;
 
         labelRect.top = labelRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
         labelRect.bottom = labelRect.top + SIDE_PANEL_TEXT_HEIGHT;
         completeLinesLabel = label_new(elem, COMPLETE_LINES_LABEL_ID, &labelRect, "000000", ELEMENT_NONE);
         element_get_text_props(completeLinesLabel)->font = largeFont;
-        element_set_color(completeLinesLabel, COLOR_SET_VIEW, COLOR_ROLE_BACKGROUND_NORMAL, foreground);
-        element_set_color(completeLinesLabel, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL, background);
+        element_get_theme(completeLinesLabel)->view.backgroundNormal = theme->view.foregroundNormal;
+        element_get_theme(completeLinesLabel)->view.foregroundNormal = theme->view.backgroundNormal;
 
         labelRect.top = labelRect.bottom + SIDE_PANEL_LABEL_HEIGHT;
         labelRect.bottom = labelRect.top + SIDE_PANEL_TEXT_HEIGHT;
         playedBlocksLabel = label_new(elem, PLAYED_BLOCKS_LABEL_ID, &labelRect, "000000", ELEMENT_NONE);
         element_get_text_props(playedBlocksLabel)->font = largeFont;
-        element_set_color(playedBlocksLabel, COLOR_SET_VIEW, COLOR_ROLE_BACKGROUND_NORMAL, foreground);
-        element_set_color(playedBlocksLabel, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL, background);
+        element_get_theme(playedBlocksLabel)->view.backgroundNormal = theme->view.foregroundNormal;
+        element_get_theme(playedBlocksLabel)->view.foregroundNormal = theme->view.backgroundNormal;
 
         pause();
     }

@@ -7,13 +7,7 @@ static uint64_t label_procedure(window_t* win, element_t* elem, const event_t* e
 {
     (void)win; // Unused
 
-    int64_t bezelSize = element_get_int(elem, INT_BEZEL_SIZE);
-    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
-    pixel_t bezelColor = element_get_color(elem, COLOR_SET_VIEW, COLOR_ROLE_BEZEL);
-    pixel_t highlight = element_get_color(elem, COLOR_SET_VIEW, COLOR_ROLE_HIGHLIGHT);
-    pixel_t shadow = element_get_color(elem, COLOR_SET_VIEW, COLOR_ROLE_SHADOW);
-    pixel_t background = element_get_color(elem, COLOR_SET_VIEW, COLOR_ROLE_BACKGROUND_NORMAL);
-    pixel_t foreground = element_get_color(elem, COLOR_SET_VIEW, COLOR_ROLE_FOREGROUND_NORMAL);
+    const theme_t* theme = element_get_theme(elem);
 
     switch (event->type)
     {
@@ -26,19 +20,18 @@ static uint64_t label_procedure(window_t* win, element_t* elem, const event_t* e
 
         if (!(elem->flags & ELEMENT_FLAT))
         {
-            draw_frame(&draw, &rect, frameSize, shadow, highlight);
-            RECT_SHRINK(&rect, frameSize);
-            draw_rect(&draw, &rect, background);
-            RECT_SHRINK(&rect, frameSize);
+            draw_frame(&draw, &rect, theme->frameSize, theme->view.shadow, theme->view.highlight);
+            RECT_SHRINK(&rect, theme->frameSize);
+            draw_rect(&draw, &rect, theme->view.backgroundNormal);
+            RECT_SHRINK(&rect, theme->frameSize);
             // rect.top += frameSize;
         }
         else
         {
-            draw_rect(&draw, &rect, background);
+            draw_rect(&draw, &rect, theme->view.backgroundNormal);
         }
 
-        draw_text(&draw, &rect, elem->textProps.font, elem->textProps.xAlign, elem->textProps.yAlign, foreground,
-            elem->text);
+        draw_text(&draw, &rect, elem->textProps.font, elem->textProps.xAlign, elem->textProps.yAlign, theme->view.foregroundNormal, elem->text);
 
         element_draw_end(elem, &draw);
     }

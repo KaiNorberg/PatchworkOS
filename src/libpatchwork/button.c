@@ -19,62 +19,52 @@ static void button_draw(element_t* elem, button_t* button)
     drawable_t draw;
     element_draw_begin(elem, &draw);
 
-    int64_t bezelSize = element_get_int(elem, INT_BEZEL_SIZE);
-    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
-    pixel_t smallPadding = element_get_int(elem, INT_SMALL_PADDING);
-    pixel_t bezelColor = element_get_color(elem, COLOR_SET_BUTTON, COLOR_ROLE_BEZEL);
-    pixel_t highlight = element_get_color(elem, COLOR_SET_BUTTON, COLOR_ROLE_HIGHLIGHT);
-    pixel_t shadow = element_get_color(elem, COLOR_SET_BUTTON, COLOR_ROLE_SHADOW);
-    pixel_t background = element_get_color(elem, COLOR_SET_BUTTON, COLOR_ROLE_BACKGROUND_NORMAL);
-    pixel_t foreground = element_get_color(elem, COLOR_SET_BUTTON, COLOR_ROLE_FOREGROUND_NORMAL);
-    pixel_t selectedStart = element_get_color(elem, COLOR_SET_BUTTON, COLOR_ROLE_BACKGROUND_SELECTED_START);
-    pixel_t selectedEnd = element_get_color(elem, COLOR_SET_BUTTON, COLOR_ROLE_BACKGROUND_SELECTED_END);
-    pixel_t selectedForeground = element_get_color(elem, COLOR_SET_BUTTON, COLOR_ROLE_FOREGROUND_SELECTED);
+    const theme_t* theme = element_get_theme(elem);
 
     if (elem->flags & ELEMENT_FLAT)
     {
         if (button->isPressed || button->isHovered)
         {
-            draw_rect(&draw, &rect, selectedEnd);
+            draw_rect(&draw, &rect, theme->button.backgroundSelectedEnd);
         }
         else
         {
-            draw_rect(&draw, &rect, background);
+            draw_rect(&draw, &rect, theme->button.backgroundNormal);
         }
     }
     else
     {
         if (!(elem->flags & ELEMENT_NO_BEZEL))
         {
-            draw_bezel(&draw, &rect, bezelSize, bezelColor);
-            RECT_SHRINK(&rect, bezelSize);
+            draw_bezel(&draw, &rect, theme->bezelSize, theme->button.bezel);
+            RECT_SHRINK(&rect, theme->bezelSize);
         }
 
         if (button->isPressed)
         {
-            draw_frame(&draw, &rect, frameSize, shadow, highlight);
+            draw_frame(&draw, &rect, theme->frameSize, theme->button.shadow, theme->button.highlight);
         }
         else
         {
-            draw_frame(&draw, &rect, frameSize, highlight, shadow);
+            draw_frame(&draw, &rect, theme->frameSize, theme->button.highlight, theme->button.shadow);
         }
-        RECT_SHRINK(&rect, frameSize);
+        RECT_SHRINK(&rect, theme->frameSize);
 
-        draw_rect(&draw, &rect, background);
+        draw_rect(&draw, &rect, theme->button.backgroundNormal);
     }
 
     if (!(elem->flags & ELEMENT_NO_OUTLINE))
     {
-        RECT_SHRINK(&rect, smallPadding);
+        RECT_SHRINK(&rect, theme->smallPadding);
         if (button->isFocused)
         {
-            draw_outline(&draw, &rect, bezelColor, 2, 2);
+            draw_outline(&draw, &rect, theme->button.bezel, 2, 2);
         }
         RECT_SHRINK(&rect, 2);
     }
 
     if (elem->image != NULL)
-    {
+    {        
         rect_t imageDestRect;
         int32_t imageWidth = image_width(elem->image);
         int32_t imageHeight = image_height(elem->image);
@@ -135,11 +125,11 @@ static void button_draw(element_t* elem, button_t* button)
 
     if ((elem->flags & ELEMENT_FLAT) && (button->isHovered || button->isPressed))
     {
-        draw_text(&draw, &rect, elem->textProps.font, ALIGN_CENTER, ALIGN_CENTER, selectedForeground, elem->text);
+        draw_text(&draw, &rect, elem->textProps.font, ALIGN_CENTER, ALIGN_CENTER, theme->button.foregroundSelected, elem->text);
     }
     else
     {
-        draw_text(&draw, &rect, elem->textProps.font, ALIGN_CENTER, ALIGN_CENTER, foreground, elem->text);
+        draw_text(&draw, &rect, elem->textProps.font, ALIGN_CENTER, ALIGN_CENTER, theme->button.foregroundNormal, elem->text);
     }
 
     element_draw_end(elem, &draw);

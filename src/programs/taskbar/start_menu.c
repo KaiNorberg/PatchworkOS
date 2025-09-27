@@ -32,9 +32,7 @@ static start_entry_t entries[] = {
 static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
     start_menu_t* startMenu = element_get_private(elem);
-
-    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
-    int64_t titlebarSize = element_get_int(elem, INT_TITLEBAR_SIZE);
+    const theme_t* theme = element_get_theme(elem);
 
     switch (event->type)
     {
@@ -44,8 +42,8 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
         for (uint64_t i = 0; i < ENTRY_AMOUNT; i++)
         {
-            rect_t buttonRect = RECT_INIT(frameSize + titlebarSize, frameSize + i * START_BUTTON_HEIGHT,
-                RECT_WIDTH(&rect) - frameSize, (i + 1) * START_BUTTON_HEIGHT);
+            rect_t buttonRect = RECT_INIT(theme->frameSize + theme->titlebarSize, theme->frameSize + i * START_BUTTON_HEIGHT,
+                RECT_WIDTH(&rect) - theme->frameSize, (i + 1) * START_BUTTON_HEIGHT);
 
             button_new(elem, i, &buttonRect, entries[i].name, ELEMENT_FLAT);
         }
@@ -60,19 +58,13 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         drawable_t draw;
         element_draw_begin(elem, &draw);
 
-        int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
-        pixel_t highlight = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_HIGHLIGHT);
-        pixel_t shadow = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_SHADOW);
-        pixel_t background = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_NORMAL);
-        pixel_t selectedStart = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_SELECTED_START);
-        pixel_t selectedEnd = element_get_color(elem, COLOR_SET_DECO, COLOR_ROLE_BACKGROUND_SELECTED_END);
+        draw_frame(&draw, &rect, theme->frameSize, theme->deco.highlight, theme->deco.shadow);
+        RECT_SHRINK(&rect, theme->frameSize);
+        draw_rect(&draw, &rect, theme->deco.backgroundNormal);
 
-        draw_frame(&draw, &rect, frameSize, highlight, shadow);
-        RECT_SHRINK(&rect, frameSize);
-        draw_rect(&draw, &rect, background);
-
-        rect.right = rect.left + titlebarSize;
-        draw_gradient(&draw, &rect, selectedStart, selectedEnd, DIRECTION_VERTICAL, false);
+        rect.right = rect.left + theme->titlebarSize;
+        draw_gradient(&draw, &rect, theme->deco.backgroundSelectedStart, theme->deco.backgroundSelectedEnd,
+            DIRECTION_VERTICAL, false);
 
         element_draw_end(elem, &draw);
     }
@@ -105,11 +97,8 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         rect_t screenRect;
         display_screen_rect(window_get_display(win), &screenRect, 0);
 
-        int64_t panelSize = element_get_int(elem, INT_PANEL_SIZE);
-        int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
-
-        int32_t startY = START_MENU_YPOS_START(&screenRect, panelSize, frameSize);
-        int32_t endY = START_MENU_YPOS_END(&screenRect, panelSize, frameSize);
+        int32_t startY = START_MENU_YPOS_START(&screenRect, theme->panelSize, theme->frameSize);
+        int32_t endY = START_MENU_YPOS_END(&screenRect, theme->panelSize, theme->frameSize);
 
         clock_t timeElapsed = uptime() - startMenu->animationStartTime;
 
@@ -172,15 +161,13 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
 void start_menu_init(start_menu_t* startMenu, window_t* taskbar, display_t* disp)
 {
-    int64_t panelSize = theme_get_int(INT_PANEL_SIZE, NULL);
-    int64_t frameSize = theme_get_int(INT_FRAME_SIZE, NULL);
-    int64_t smallPadding = theme_get_int(INT_SMALL_PADDING, NULL);
+    const theme_t* theme = theme_global_get();
 
     rect_t screenRect;
     display_screen_rect(disp, &screenRect, 0);
 
-    rect_t rect = RECT_INIT_DIM(smallPadding, START_MENU_YPOS_START(&screenRect, panelSize, frameSize),
-        START_MENU_WIDTH, START_MENU_HEIGHT(frameSize));
+    rect_t rect = RECT_INIT_DIM(theme->smallPadding, START_MENU_YPOS_START(&screenRect, theme->panelSize, theme->frameSize),
+        START_MENU_WIDTH, START_MENU_HEIGHT(theme->frameSize));
 
     startMenu->taskbar = taskbar;
     startMenu->win = window_new(disp, "StartMenu", &rect, SURFACE_WINDOW, WINDOW_NONE, procedure, startMenu);
@@ -202,12 +189,11 @@ void start_menu_open(start_menu_t* startMenu)
     rect_t screenRect;
 
     element_t* elem = window_get_client_element(startMenu->win);
+    const theme_t* theme = element_get_theme(elem);
 
     display_screen_rect(window_get_display(startMenu->win), &screenRect, 0);
-    int64_t panelSize = element_get_int(elem, INT_PANEL_SIZE);
-    int64_t frameSize = element_get_int(elem, INT_FRAME_SIZE);
 
-    int32_t startY = START_MENU_YPOS_START(&screenRect, panelSize, frameSize);
+    int32_t startY = START_MENU_YPOS_START(&screenRect, theme->panelSize, theme->frameSize);
 
     rect_t rect;
     window_get_rect(startMenu->win, &rect);

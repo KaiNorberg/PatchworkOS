@@ -57,7 +57,7 @@ int main(void)
     rect_t rect;
     display_screen_rect(disp, &rect, 0);
 
-    image = image_new(disp, theme_get_string(STRING_WALLPAPER, NULL));
+    image = image_new(disp, theme_global_get()->wallpaper);
     if (image == NULL)
     {
         printf("wall: failed to load image (%s)\n", strerror(errno));
