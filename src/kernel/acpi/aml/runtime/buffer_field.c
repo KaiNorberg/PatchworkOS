@@ -2,7 +2,7 @@
 
 #include <errno.h>
 
-uint64_t aml_buffer_field_read(aml_node_t* bufferField, aml_node_t* out)
+uint64_t aml_buffer_field_load(aml_node_t* bufferField, aml_node_t* out)
 {
     if (bufferField == NULL || out == NULL || bufferField->type != AML_DATA_BUFFER_FIELD)
     {
@@ -11,7 +11,7 @@ uint64_t aml_buffer_field_read(aml_node_t* bufferField, aml_node_t* out)
     }
 
     uint64_t byteSize = (bufferField->bufferField.bitSize + 7) / 8;
-    if (byteSize > sizeof(aml_qword_data_t))
+    if (byteSize > sizeof(uint64_t))
     {
         if (aml_node_init_buffer_empty(out, byteSize) == ERR)
         {
@@ -63,7 +63,7 @@ uint64_t aml_buffer_field_read(aml_node_t* bufferField, aml_node_t* out)
     return 0;
 }
 
-uint64_t aml_buffer_field_write(aml_node_t* bufferField, aml_node_t* in)
+uint64_t aml_buffer_field_store(aml_node_t* bufferField, aml_node_t* in)
 {
     if (bufferField == NULL || in == NULL || bufferField->type != AML_DATA_BUFFER_FIELD)
     {

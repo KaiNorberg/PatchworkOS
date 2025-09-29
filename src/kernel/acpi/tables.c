@@ -211,7 +211,6 @@ uint64_t acpi_tables_init(xsdt_t* xsdt)
             table->oemId);
         if (acpi_tables_init_handlers(table) == ERR)
         {
-            LOG_ERR("failed to initialize ACPI table %.4s\n", table->signature);
             return ERR;
         }
     }

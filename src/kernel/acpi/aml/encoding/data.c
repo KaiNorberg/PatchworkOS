@@ -2,8 +2,9 @@
 
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_patch_up.h"
-#include "acpi/aml/aml_state.h"
+#include "acpi/aml/aml_scope.h"
 #include "acpi/aml/aml_to_string.h"
+#include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_value.h"
 #include "acpi/aml/runtime/evaluate.h"
 #include "data_integers.h"
@@ -14,7 +15,7 @@
 #include <errno.h>
 #include <stdint.h>
 
-uint64_t aml_byte_data_read(aml_state_t* state, aml_byte_data_t* out)
+uint64_t aml_byte_data_read(aml_state_t* state, uint8_t* out)
 {
     uint8_t byte;
     if (aml_state_read(state, &byte, 1) != 1)
@@ -27,43 +28,43 @@ uint64_t aml_byte_data_read(aml_state_t* state, aml_byte_data_t* out)
     return 0;
 }
 
-uint64_t aml_word_data_read(aml_state_t* state, aml_word_data_t* out)
+uint64_t aml_word_data_read(aml_state_t* state, uint16_t* out)
 {
-    aml_byte_data_t byte1, byte2;
+    uint8_t byte1, byte2;
     if (aml_byte_data_read(state, &byte1) == ERR || aml_byte_data_read(state, &byte2) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read word data");
         return ERR;
     }
-    *out = ((aml_word_data_t)byte1) | (((aml_word_data_t)byte2) << 8);
+    *out = ((uint16_t)byte1) | (((uint16_t)byte2) << 8);
     return 0;
 }
 
-uint64_t aml_dword_data_read(aml_state_t* state, aml_dword_data_t* out)
+uint64_t aml_dword_data_read(aml_state_t* state, uint32_t* out)
 {
-    aml_word_data_t word1, word2;
+    uint16_t word1, word2;
     if (aml_word_data_read(state, &word1) == ERR || aml_word_data_read(state, &word2) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read dword data");
         return ERR;
     }
-    *out = ((aml_dword_data_t)word1) | (((aml_dword_data_t)word2) << 16);
+    *out = ((uint32_t)word1) | (((uint32_t)word2) << 16);
     return 0;
 }
 
-uint64_t aml_qword_data_read(aml_state_t* state, aml_qword_data_t* out)
+uint64_t aml_qword_data_read(aml_state_t* state, uint64_t* out)
 {
-    aml_dword_data_t dword1, dword2;
+    uint32_t dword1, dword2;
     if (aml_dword_data_read(state, &dword1) == ERR || aml_dword_data_read(state, &dword2) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read qword data");
         return ERR;
     }
-    *out = ((aml_qword_data_t)dword1) | (((aml_qword_data_t)dword2) << 32);
+    *out = ((uint64_t)dword1) | (((uint64_t)dword2) << 32);
     return 0;
 }
 
-uint64_t aml_byte_const_read(aml_state_t* state, aml_byte_const_t* out)
+uint64_t aml_byte_const_read(aml_state_t* state, uint8_t* out)
 {
     aml_value_t prefix;
     if (aml_value_read(state, &prefix) == ERR)
@@ -82,7 +83,7 @@ uint64_t aml_byte_const_read(aml_state_t* state, aml_byte_const_t* out)
     return aml_byte_data_read(state, out);
 }
 
-uint64_t aml_word_const_read(aml_state_t* state, aml_word_const_t* out)
+uint64_t aml_word_const_read(aml_state_t* state, uint16_t* out)
 {
     aml_value_t prefix;
     if (aml_value_read(state, &prefix) == ERR)
@@ -101,7 +102,7 @@ uint64_t aml_word_const_read(aml_state_t* state, aml_word_const_t* out)
     return aml_word_data_read(state, out);
 }
 
-uint64_t aml_dword_const_read(aml_state_t* state, aml_dword_const_t* out)
+uint64_t aml_dword_const_read(aml_state_t* state, uint32_t* out)
 {
     aml_value_t prefix;
     if (aml_value_read(state, &prefix) == ERR)
@@ -120,7 +121,7 @@ uint64_t aml_dword_const_read(aml_state_t* state, aml_dword_const_t* out)
     return aml_dword_data_read(state, out);
 }
 
-uint64_t aml_qword_const_read(aml_state_t* state, aml_qword_const_t* out)
+uint64_t aml_qword_const_read(aml_state_t* state, uint64_t* out)
 {
     aml_value_t prefix;
     if (aml_value_read(state, &prefix) == ERR)
@@ -139,50 +140,69 @@ uint64_t aml_qword_const_read(aml_state_t* state, aml_qword_const_t* out)
     return aml_qword_data_read(state, out);
 }
 
-uint64_t aml_const_obj_read(aml_state_t* state, aml_const_obj_t* out)
+uint64_t aml_const_obj_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
     aml_value_t value;
     if (aml_value_read_no_ext(state, &value) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read value");
+        AML_DEBUG_ERROR(state, "Failed to read ConstObj");
+        return ERR;
+    }
+
+    if (aml_scope_ensure_node(scope, out) == ERR)
+    {
         return ERR;
     }
 
     switch (value.num)
     {
     case AML_ZERO_OP:
-        *out = 0;
-        return 0;
+        if (aml_node_init_integer_constant(*out, 0) == ERR)
+        {
+            aml_node_deinit(*out);
+            return ERR;
+        }
+        break;
     case AML_ONE_OP:
-        *out = 1;
-        return 0;
+        if (aml_node_init_integer_constant(*out, 1) == ERR)
+        {
+            aml_node_deinit(*out);
+            return ERR;
+        }
+        break;
     case AML_ONES_OP:
-        *out = ~0;
-        return 0;
+        if (aml_node_init_integer_constant(*out, ~0) == ERR)
+        {
+            aml_node_deinit(*out);
+            return ERR;
+        }
+        break;
     default:
-        AML_DEBUG_ERROR(state, "Invalid const obj value: 0x%x", value.num);
+        AML_DEBUG_ERROR(state, "Invalid ConstObj value '0x%x'", value.num);
         errno = EILSEQ;
         return ERR;
     }
+
+    return 0;
 }
 
-uint64_t aml_string_read(aml_state_t* state, aml_node_t* out)
+uint64_t aml_string_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
     aml_value_t stringPrefix;
     if (aml_value_read(state, &stringPrefix) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read value");
+        AML_DEBUG_ERROR(state, "Failed to read StringPrefix");
         return ERR;
     }
 
     if (stringPrefix.num != AML_STRING_PREFIX)
     {
-        AML_DEBUG_ERROR(state, "Invalid prefix for string: 0x%x", stringPrefix.num);
+        AML_DEBUG_ERROR(state, "Invalid StringPrefix '0x%x'", stringPrefix.num);
         errno = EILSEQ;
         return ERR;
     }
 
-    const char* str = (const char*)state->current;
+    const char* start = (const char*)state->current;
     while (1)
     {
         uint8_t c;
@@ -200,137 +220,147 @@ uint64_t aml_string_read(aml_state_t* state, aml_node_t* out)
 
         if (c < 0x01 || c > 0x7F)
         {
-            AML_DEBUG_ERROR(state, "Invalid string character: 0x%x", c);
+            AML_DEBUG_ERROR(state, "Invalid ASCII character '0x%x' in string", c);
             errno = EILSEQ;
             return ERR;
         }
     }
 
-    if (aml_node_init_string(out, str) == ERR)
+    if (aml_scope_ensure_node(scope, out) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to init string node");
         return ERR;
     }
+
+    if (aml_node_init_string(*out, start) == ERR)
+    {
+        aml_node_deinit(*out);
+        return ERR;
+    }
+
     return 0;
 }
 
-uint64_t aml_computational_data_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
+uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
     aml_value_t value;
     if (aml_value_peek_no_ext(state, &value) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to peek value");
+        AML_DEBUG_ERROR(state, "Failed to peek ComputationalData");
         return ERR;
     }
 
+    uint64_t result = 0;
     switch (value.num)
     {
     case AML_BYTE_PREFIX:
     {
-        aml_byte_const_t byte;
-        if (aml_byte_const_read(state, &byte) == ERR)
+        uint8_t byte;
+        result = aml_byte_const_read(state, &byte);
+        if (result != ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read byte const");
-            return ERR;
+            if (aml_scope_ensure_node(scope, out) == ERR)
+            {
+                return ERR;
+            }
+            if (aml_node_init_integer_constant(*out, byte) == ERR)
+            {
+                aml_node_deinit(*out);
+                return ERR;
+            }
         }
-        if (aml_node_init_integer(out, byte) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to init byte node");
-            return ERR;
-        }
-        return 0;
     }
+    break;
     case AML_WORD_PREFIX:
     {
-        aml_word_const_t word;
-        if (aml_word_const_read(state, &word) == ERR)
+        uint16_t word;
+        result = aml_word_const_read(state, &word);
+        if (result != ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read word const");
-            return ERR;
+            if (aml_scope_ensure_node(scope, out) == ERR)
+            {
+                return ERR;
+            }
+            if (aml_node_init_integer_constant(*out, word) == ERR)
+            {
+                aml_node_deinit(*out);
+                return ERR;
+            }
         }
-        if (aml_node_init_integer(out, word) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to init word node");
-            return ERR;
-        }
-        return 0;
     }
+    break;
     case AML_DWORD_PREFIX:
     {
-        aml_dword_const_t dword;
-        if (aml_dword_const_read(state, &dword) == ERR)
+        uint32_t dword;
+        result = aml_dword_const_read(state, &dword);
+        if (result != ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read dword const");
-            return ERR;
+            if (aml_scope_ensure_node(scope, out) == ERR)
+            {
+                return ERR;
+            }
+            if (aml_node_init_integer_constant(*out, dword) == ERR)
+            {
+                aml_node_deinit(*out);
+                return ERR;
+            }
         }
-        if (aml_node_init_integer(out, dword) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to init dword node");
-            return ERR;
-        }
-        return 0;
     }
+    break;
     case AML_QWORD_PREFIX:
     {
-        aml_qword_const_t qword;
-        if (aml_qword_const_read(state, &qword) == ERR)
+        uint64_t qword;
+        result = aml_qword_const_read(state, &qword);
+        if (result != ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read qword const");
-            return ERR;
+            if (aml_scope_ensure_node(scope, out) == ERR)
+            {
+                return ERR;
+            }
+            if (aml_node_init_integer_constant(*out, qword) == ERR)
+            {
+                aml_node_deinit(*out);
+                return ERR;
+            }
         }
-        if (aml_node_init_integer(out, qword) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to init qword node");
-            return ERR;
-        }
-        return 0;
     }
+    break;
     case AML_STRING_PREFIX:
-    {
-        if (aml_string_read(state, out) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to read buffer");
-            return ERR;
-        }
-        return 0;
-    }
+        result = aml_string_read(state, scope, out);
+        break;
     case AML_ZERO_OP:
     case AML_ONE_OP:
     case AML_ONES_OP:
-    {
         // TODO: Add revision handling
-        aml_const_obj_t constObj;
-        if (aml_const_obj_read(state, &constObj) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to read const obj");
-            return ERR;
-        }
-        if (aml_node_init_integer_constant(out, constObj) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to init const obj");
-            return ERR;
-        }
-        return 0;
-    }
+        result = aml_const_obj_read(state, scope, out);
+        break;
     case AML_BUFFER_OP:
-    {
-        if (aml_def_buffer_read(state, node, out) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to read buffer");
-            return ERR;
-        }
-        return 0;
-    }
+        result = aml_def_buffer_read(state, scope, out);
+        break;
     default:
-        AML_DEBUG_ERROR(state, "Invalid computational data value: 0x%x", value.num);
         errno = ENOSYS;
+        AML_DEBUG_ERROR(state, "Invalid computational data value: 0x%x", value.num);
+        return ERR;
+        break;
+    }
+
+    if (result == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read %s", value.props->name);
         return ERR;
     }
+
+    return 0;
 }
 
-uint64_t aml_num_elements_read(aml_state_t* state, aml_byte_data_t* out)
+uint64_t aml_num_elements_read(aml_state_t* state, uint8_t* out)
 {
-    return aml_byte_data_read(state, out);
+    if (aml_byte_data_read(state, out) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read NumElements");
+        return ERR;
+    }
+
+    return 0;
 }
 
 /**
@@ -342,7 +372,7 @@ static inline uint64_t aml_package_element_handle_name(aml_node_t* in, aml_node_
     aml_data_type_info_t* info = aml_data_type_get_info(in->type);
     if (info->flags & AML_DATA_FLAG_DATA_OBJECT) // "... resolved to actual data by the AML interpreter"
     {
-        if (aml_evaluate_to_actual_data(in, out) == ERR)
+        if (aml_evaluate(in, out, AML_DATA_ACTUAL_DATA) == ERR)
         {
             LOG_ERR("failed to convert to actual data in aml_package_element_handle_name()\n");
             return ERR;
@@ -366,12 +396,12 @@ static inline uint64_t aml_package_element_handle_name(aml_node_t* in, aml_node_
     }
 }
 
-uint64_t aml_package_element_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
+uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* out)
 {
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to peek value");
+        AML_DEBUG_ERROR(state, "Failed to peek PackageElement");
         return ERR;
     }
 
@@ -379,25 +409,18 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_node_t* node, aml_node
     {
         aml_name_string_t nameString;
         aml_node_t* namedReference = NULL;
-        if (aml_simple_name_read_and_resolve(state, node, &namedReference, AML_RESOLVE_ALLOW_UNRESOLVED, &nameString) ==
-            ERR)
+        if (aml_simple_name_read_and_resolve(state, scope, &namedReference, AML_RESOLVE_ALLOW_UNRESOLVED,
+                &nameString) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read and resolve named reference");
+            AML_DEBUG_ERROR(state, "Failed to read or resolve SimpleName");
             return ERR;
         }
 
         // Evaulated to a valid namestring but could not be resolved.
         if (namedReference == NULL)
         {
-            if (aml_node_init_unresolved(out, &nameString, node) == ERR)
+            if (aml_node_init_unresolved(out, &nameString, scope->node, aml_package_element_handle_name) == ERR)
             {
-                AML_DEBUG_ERROR(state, "Failed to init unresolved node");
-                return ERR;
-            }
-
-            if (aml_patch_up_add_unresolved(out, aml_package_element_handle_name) == ERR)
-            {
-                AML_DEBUG_ERROR(state, "Failed to add to patch-up system");
                 return ERR;
             }
             return 0;
@@ -405,41 +428,34 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_node_t* node, aml_node
 
         if (aml_package_element_handle_name(namedReference, out) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to handle package element name");
+            AML_DEBUG_ERROR(state, "Failed to handle name in PackageElement");
             return ERR;
         }
         return 0;
     }
     else
     {
-        if (aml_data_object_read(state, node, out) == ERR)
+        if (aml_data_ref_object_read(state, scope, &out) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read data object");
+            AML_DEBUG_ERROR(state, "Failed to read DataRefObject");
             return ERR;
         }
+
         return 0;
     }
 }
 
-uint64_t aml_package_element_list_read(aml_state_t* state, aml_node_t* node, aml_node_t* package, const uint8_t* end)
+uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* package, const uint8_t* end)
 {
-    if (package == NULL || package->type != AML_DATA_PACKAGE)
-    {
-        AML_DEBUG_ERROR(state, "Invalid package node");
-        errno = EINVAL;
-        return ERR;
-    }
-
     uint64_t i = 0;
     while (state->current < end && i < package->package.length)
     {
-        if (aml_package_element_read(state, node, package->package.elements[i]) == ERR)
+        if (aml_package_element_read(state, scope, package->package.elements[i]) == ERR)
         {
             for (uint64_t j = 0; j < i; j++)
             {
                 aml_node_deinit(package->package.elements[j]);
             }
-            AML_DEBUG_ERROR(state, "Failed to read package element at index %llu", i);
             return ERR;
         }
         i++;
@@ -448,18 +464,18 @@ uint64_t aml_package_element_list_read(aml_state_t* state, aml_node_t* node, aml
     return 0;
 }
 
-uint64_t aml_def_package_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
+uint64_t aml_def_package_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
     aml_value_t packageOp;
     if (aml_value_read(state, &packageOp) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read value");
+        AML_DEBUG_ERROR(state, "Failed to read PackageOp");
         return ERR;
     }
 
     if (packageOp.num != AML_PACKAGE_OP)
     {
-        AML_DEBUG_ERROR(state, "Invalid package op: 0x%x", packageOp.num);
+        AML_DEBUG_ERROR(state, "Invalid PackageOp '0x%x'", packageOp.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -470,73 +486,80 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_node_t* node, aml_node_t* 
     aml_pkg_length_t pkgLength;
     if (aml_pkg_length_read(state, &pkgLength) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read pkg length");
+        AML_DEBUG_ERROR(state, "Failed to read PkgLength");
         return ERR;
     }
 
     const uint8_t* end = start + pkgLength;
 
     // NumElements specifies the capacity of the package.
-    aml_byte_data_t numElements;
+    uint8_t numElements;
     if (aml_num_elements_read(state, &numElements) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read num elements");
         return ERR;
     }
 
-    if (aml_node_init_package(out, numElements) == ERR)
+    if (aml_scope_ensure_node(scope, out) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to init package node with %u elements", numElements);
         return ERR;
     }
 
-    if (aml_package_element_list_read(state, node, out, end) == ERR)
+    if (aml_node_init_package(*out, numElements) == ERR)
     {
-        aml_node_deinit(out);
-        AML_DEBUG_ERROR(state, "Failed to read package element list");
+        return ERR;
+    }
+
+    if (aml_package_element_list_read(state, scope, *out, end) == ERR)
+    {
+        aml_node_deinit(*out);
+        AML_DEBUG_ERROR(state, "Failed to read PackageElementList");
         return ERR;
     }
 
     return 0;
 }
 
-uint64_t aml_data_object_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
+uint64_t aml_data_object_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
     aml_value_t value;
     if (aml_value_peek(state, &value) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to peek value");
         return ERR;
     }
 
+    uint64_t result = 0;
     switch (value.num)
     {
     case AML_PACKAGE_OP:
-    {
-        if (aml_def_package_read(state, node, out) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to read package");
-            return ERR;
-        }
-        return 0;
-    }
+        result = aml_def_package_read(state, scope, out);
+        break;
     case AML_VAR_PACKAGE_OP:
-        AML_DEBUG_ERROR(state, "Unsupported var package op");
+        AML_DEBUG_ERROR(state, "Unimplemented DefVarPackage");
         errno = ENOSYS;
         return ERR;
     default:
-        if (aml_computational_data_read(state, node, out) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to read computational data");
-            return ERR;
-        }
-        return 0;
+        result = aml_computational_data_read(state, scope, out);
+        break;
     }
+
+    if (result == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read %s", value.props->name);
+        return ERR;
+    }
+
+    return 0;
 }
 
-uint64_t aml_data_ref_object_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
+uint64_t aml_data_ref_object_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    // TODO: Implement ObjectReference handling
+    // TODO: Implement ObjectReference handling... somehow. I honestly have no clue what the spec wants you to do here.
 
-    return aml_data_object_read(state, node, out);
+    if (aml_data_object_read(state, scope, out) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read DataObject");
+        return ERR;
+    }
+
+    return 0;
 }

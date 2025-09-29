@@ -12,7 +12,7 @@ uint64_t aml_pkg_lead_byte_read(aml_state_t* state, aml_pkg_lead_byte_t* out)
     uint8_t pkgLeadByte;
     if (aml_state_read(state, &pkgLeadByte, 1) != 1)
     {
-        AML_DEBUG_ERROR(state, "Failed to read pkg lead byte");
+        AML_DEBUG_ERROR(state, "Failed to read PkgLeadByte");
         errno = ENODATA;
         return ERR;
     }
@@ -24,7 +24,7 @@ uint64_t aml_pkg_lead_byte_read(aml_state_t* state, aml_pkg_lead_byte_t* out)
     // If more bytes follow, then bits 4 and 5 must be zero.
     if (out->byteDataCount != 0 && ((pkgLeadByte >> 4) & 0x03) != 0)
     {
-        AML_DEBUG_ERROR(state, "Invalid pkg lead byte: 0x%x", pkgLeadByte);
+        AML_DEBUG_ERROR(state, "Invalid PkgLeadByte '0x%x'", pkgLeadByte);
         errno = EILSEQ;
         return ERR;
     }
@@ -37,7 +37,7 @@ uint64_t aml_pkg_length_read(aml_state_t* state, aml_pkg_length_t* out)
     aml_pkg_lead_byte_t pkgLeadByte;
     if (aml_pkg_lead_byte_read(state, &pkgLeadByte) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read pkg lead byte");
+        AML_DEBUG_ERROR(state, "Failed to read PkgLeadByte");
         return ERR;
     }
 
@@ -52,13 +52,13 @@ uint64_t aml_pkg_length_read(aml_state_t* state, aml_pkg_length_t* out)
     aml_pkg_length_t length = pkgLeadByte.leastSignificantNybble;
     for (uint8_t i = 0; i < pkgLeadByte.byteDataCount; i++)
     {
-        aml_byte_data_t byteData;
-        if (aml_byte_data_read(state, &byteData) == ERR)
+        uint8_t byte;
+        if (aml_byte_data_read(state, &byte) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read byte data");
+            AML_DEBUG_ERROR(state, "Failed to read ByteData");
             return ERR;
         }
-        length |= ((uint64_t)byteData) << (4 + i * 8);
+        length |= ((uint64_t)byte) << (4 + i * 8);
     }
 
     // Output must not be greater than 2^28.

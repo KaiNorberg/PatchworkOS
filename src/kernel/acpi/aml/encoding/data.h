@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 typedef struct aml_state aml_state_t;
+typedef struct aml_scope aml_scope_t;
 typedef struct aml_node aml_node_t;
 
 /**
@@ -16,18 +17,16 @@ typedef struct aml_node aml_node_t;
  * @{
  */
 
-#include "data_integers.h"
-
 /**
  * @brief Read a ByteData structure from the AML stream.
  *
  * A ByteData structure is defined as `ByteData := 0x00 - 0xFF`.
  *
  * @param state The AML state.
- * @param out Pointer to the buffer where the ByteData will be stored.
+ * @param out Output pointer where the byte value will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_byte_data_read(aml_state_t* state, aml_byte_data_t* out);
+uint64_t aml_byte_data_read(aml_state_t* state, uint8_t* out);
 
 /**
  * @brief Read a WordData structure from the AML stream.
@@ -35,10 +34,10 @@ uint64_t aml_byte_data_read(aml_state_t* state, aml_byte_data_t* out);
  * A WordData structure is defined as `WordData := ByteData[0:7] ByteData[8:15]`.
  *
  * @param state The AML state.
- * @param out Pointer to the buffer where the WordData will be stored.
+ * @param out Output pointer where the word value will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_word_data_read(aml_state_t* state, aml_word_data_t* out);
+uint64_t aml_word_data_read(aml_state_t* state, uint16_t* out);
 
 /**
  * @brief Read a DWordData structure from the AML stream.
@@ -46,10 +45,10 @@ uint64_t aml_word_data_read(aml_state_t* state, aml_word_data_t* out);
  * A DWordData structure is defined as `DWordData := WordData[0:15] WordData[16:31]`.
  *
  * @param state The AML state.
- * @param out Pointer to the buffer where the DWordData will be stored.
+ * @param out Output pointer where the dword value will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_dword_data_read(aml_state_t* state, aml_dword_data_t* out);
+uint64_t aml_dword_data_read(aml_state_t* state, uint32_t* out);
 
 /**
  * @brief Read a QWordData structure from the AML stream.
@@ -57,10 +56,10 @@ uint64_t aml_dword_data_read(aml_state_t* state, aml_dword_data_t* out);
  * A QWordData structure is defined as `QWordData := DWordData[0:31] DWordData[32:63]`.
  *
  * @param state The AML state.
- * @param out Pointer to the buffer where the QWordData will be stored.
+ * @param out Output pointer to the qword value will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_qword_data_read(aml_state_t* state, aml_qword_data_t* out);
+uint64_t aml_qword_data_read(aml_state_t* state, uint64_t* out);
 
 /**
  * @brief Read a ByteConst structure from the AML stream.
@@ -68,10 +67,10 @@ uint64_t aml_qword_data_read(aml_state_t* state, aml_qword_data_t* out);
  * A ByteConst structure is defined as `ByteConst := BytePrefix ByteData`.
  *
  * @param state The AML state.
- * @param out Pointer to the buffer where the ByteData will be stored.
+ * @param out Output pointer to the byte value will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_byte_const_read(aml_state_t* state, aml_byte_const_t* out);
+uint64_t aml_byte_const_read(aml_state_t* state, uint8_t* out);
 
 /**
  * @brief Read a WordConst structure from the AML stream.
@@ -79,10 +78,10 @@ uint64_t aml_byte_const_read(aml_state_t* state, aml_byte_const_t* out);
  * A WordConst structure is defined as `WordConst := WordPrefix WordData`.
  *
  * @param state The AML state.
- * @param out Pointer to the buffer where the WordData will be stored.
+ * @param out Output pointer to the word value will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_word_const_read(aml_state_t* state, aml_word_const_t* out);
+uint64_t aml_word_const_read(aml_state_t* state, uint16_t* out);
 
 /**
  * @brief Read a DWordConst structure from the AML stream.
@@ -90,10 +89,10 @@ uint64_t aml_word_const_read(aml_state_t* state, aml_word_const_t* out);
  * A DWordConst structure is defined as `DwordConst := DWordPrefix DWordData`.
  *
  * @param state The AML state.
- * @param out Pointer to the buffer where the DWordData will be stored.
+ * @param out Output pointer to the dword value will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_dword_const_read(aml_state_t* state, aml_dword_const_t* out);
+uint64_t aml_dword_const_read(aml_state_t* state, uint32_t* out);
 
 /**
  * @brief Read a QWordConst structure from the AML stream.
@@ -101,10 +100,10 @@ uint64_t aml_dword_const_read(aml_state_t* state, aml_dword_const_t* out);
  * A QWordConst structure is defined as `QWordConst := QWordPrefix QWordData`.
  *
  * @param state The AML state.
- * @param out Pointer to the buffer where the QWordData will be stored.
+ * @param out Output pointer to the qword value will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_qword_const_read(aml_state_t* state, aml_qword_const_t* out);
+uint64_t aml_qword_const_read(aml_state_t* state, uint64_t* out);
 
 /**
  * @brief Read a ConstObj structure from the AML stream.
@@ -114,10 +113,10 @@ uint64_t aml_qword_const_read(aml_state_t* state, aml_qword_const_t* out);
  * @see Sections 19.6.98, 19.6.99 and 19.6.156 for more details.
  *
  * @param state The AML state.
- * @param out Pointer to the buffer where the ConstObj will be stored.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_const_obj_read(aml_state_t* state, aml_const_obj_t* out);
+uint64_t aml_const_obj_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
 
 /**
  * @brief Read a String structure from the AML stream.
@@ -128,10 +127,10 @@ uint64_t aml_const_obj_read(aml_state_t* state, aml_const_obj_t* out);
  * 0x00.
  *
  * @param state The AML state.
- * @param out Pointer to the node where the String will be stored.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_string_read(aml_state_t* state, aml_node_t* out);
+uint64_t aml_string_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
 
 /**
  * @brief Read a ComputationalData structure from the AML stream.
@@ -140,11 +139,11 @@ uint64_t aml_string_read(aml_state_t* state, aml_node_t* out);
  * String | ConstObj | RevisionOp | DefBuffer`.
  *
  * @param state The AML state.
- * @param node The current AML node.
- * @param out Pointer to the node where the ComputationalData will be stored.
+ * @param scope The current AML scope.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_computational_data_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
 
 /**
  * @brief Read a NumElements structure from the AML stream.
@@ -152,10 +151,10 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_node_t* node, aml_n
  * A NumElements structure is defined as `NumElements := ByteData`.
  *
  * @param state The AML state.
- * @param out Pointer to the buffer where the NumElements will be stored.
+ * @param out Output pointer to the integer to be filled with the number of elements.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_num_elements_read(aml_state_t* state, aml_byte_data_t* out);
+uint64_t aml_num_elements_read(aml_state_t* state, uint8_t* out);
 
 /**
  * @brief Read a PackageElement structure from the AML stream.
@@ -165,11 +164,11 @@ uint64_t aml_num_elements_read(aml_state_t* state, aml_byte_data_t* out);
  * @see Section 19.6.102 of the ACPI specification for more details.
  *
  * @param state The AML state.
- * @param node The current AML node.
- * @param out Pointer to the node where the PackageElement will be stored.
+ * @param scope The current AML scope.
+ * @param out Pointer to the node to initialize with the read element.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_package_element_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* out);
 
 /**
  * @brief Read a PackageElementList structure from the AML stream.
@@ -177,12 +176,12 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_node_t* node, aml_node
  * A PackageElementList structure is defined as PackageElementList := Nothing | <packageelement packageelementlist>`.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @param package Pointer to the Package node to be filled with the elements.
  * @param end Pointer to the end of the PackageElementList.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_package_element_list_read(aml_state_t* state, aml_node_t* node, aml_node_t* package, const uint8_t* end);
+uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* package, const uint8_t* end);
 
 /**
  * @brief Reads a DefPackage structure from the AML byte stream.
@@ -192,11 +191,11 @@ uint64_t aml_package_element_list_read(aml_state_t* state, aml_node_t* node, aml
  * @see Section 19.6.102 of the ACPI specification for more details.
  *
  * @param state The AML state.
- * @param node The current AML node.
- * @param out Pointer to the node where the Package will be stored.
+ * @param scope The current AML scope.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_package_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+uint64_t aml_def_package_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
 
 /**
  * @brief Read a DataObject structure from the AML stream.
@@ -204,11 +203,11 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_node_t* node, aml_node_t* 
  * A DataObject structure is defined as `DataObject := ComputationalData | DefPackage | DefVarPackage`.
  *
  * @param state The AML state.
- * @param node The current AML node.
- * @param out Pointer to the node where the DataObject will be stored.
+ * @param scope The current AML scope.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_data_object_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+uint64_t aml_data_object_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
 
 /**
  * @brief Read a DataRefObject structure from the AML stream.
@@ -216,10 +215,10 @@ uint64_t aml_data_object_read(aml_state_t* state, aml_node_t* node, aml_node_t* 
  * A DataRefObject structure is defined as `DataRefObject := DataObject | ObjectReference`.
  *
  * @param state The AML state.
- * @param node The current AML node.
- * @param out Pointer to the node where the DataRefObject will be stored.
+ * @param scope The current AML scope.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_data_ref_object_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+uint64_t aml_data_ref_object_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
 
 /** @} */

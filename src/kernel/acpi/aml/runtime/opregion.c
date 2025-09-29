@@ -3,6 +3,8 @@
 #include "access_type.h"
 #include "acpi/aml/aml_to_string.h"
 #include "cpu/port.h"
+#include "drivers/pci/pci_config.h"
+#include "evaluate.h"
 #include "log/log.h"
 #include "mem/vmm.h"
 
@@ -10,8 +12,8 @@
 
 typedef struct aml_region_handler
 {
-    uint64_t (*read)(uint64_t address, aml_bit_size_t accessSize, uint64_t* out);
-    uint64_t (*write)(uint64_t address, aml_bit_size_t accessSize, uint64_t value);
+    uint64_t (*read)(aml_node_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t* out);
+    uint64_t (*write)(aml_node_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t value);
 } aml_region_handler_t;
 
 static void* aml_ensure_mem_is_mapped(uint64_t address, aml_bit_size_t accessSize)
@@ -35,8 +37,10 @@ static void* aml_ensure_mem_is_mapped(uint64_t address, aml_bit_size_t accessSiz
     return PML_LOWER_TO_HIGHER((void*)address);
 }
 
-static uint64_t aml_system_mem_read(uint64_t address, aml_bit_size_t accessSize, uint64_t* out)
+static uint64_t aml_system_mem_read(aml_node_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t* out)
 {
+    (void)opregion;
+
     void* physAddr = (void*)address;
     void* virtAddr = aml_ensure_mem_is_mapped(address, accessSize);
     if (virtAddr == NULL)
@@ -66,8 +70,10 @@ static uint64_t aml_system_mem_read(uint64_t address, aml_bit_size_t accessSize,
     return 0;
 }
 
-static uint64_t aml_system_mem_write(uint64_t address, aml_bit_size_t accessSize, uint64_t value)
+static uint64_t aml_system_mem_write(aml_node_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t value)
 {
+    (void)opregion;
+
     void* physAddr = (void*)address;
     void* virtAddr = aml_ensure_mem_is_mapped(address, accessSize);
     if (virtAddr == NULL)
@@ -97,8 +103,10 @@ static uint64_t aml_system_mem_write(uint64_t address, aml_bit_size_t accessSize
     return 0;
 }
 
-static uint64_t aml_system_io_read(uint64_t address, aml_bit_size_t accessSize, uint64_t* out)
+static uint64_t aml_system_io_read(aml_node_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t* out)
 {
+    (void)opregion;
+
     switch (accessSize)
     {
     case 8:
@@ -118,8 +126,10 @@ static uint64_t aml_system_io_read(uint64_t address, aml_bit_size_t accessSize, 
     return 0;
 }
 
-static uint64_t aml_system_io_write(uint64_t address, aml_bit_size_t accessSize, uint64_t value)
+static uint64_t aml_system_io_write(aml_node_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t value)
 {
+    (void)opregion;
+
     switch (accessSize)
     {
     case 8:
@@ -139,28 +149,139 @@ static uint64_t aml_system_io_write(uint64_t address, aml_bit_size_t accessSize,
     return 0;
 }
 
-/*static uint64_t aml_pci_config_read(uint64_t address, aml_bit_size_t accessSize, uint64_t* out)
+static uint64_t aml_pci_get_params(aml_node_t* opregion, pci_segment_group_t* segmentGroup, pci_bus_t* bus,
+    pci_slot_t* slot, pci_function_t* function)
 {
-    errno = ENOSYS;
-    return ERR;
+    // Note that the aml_node_find function will recursively search parent scopes.
+
+    // We assume zero for all parameters if the corresponding node is not found.
+    *segmentGroup = 0;
+    *bus = 0;
+    *slot = 0;
+    *function = 0;
+
+    // See section 6.1.1 of the ACPI specification.
+    aml_node_t* adrNode = aml_node_find(opregion, "_ADR");
+    if (adrNode != NULL)
+    {
+        aml_node_t adrValue = AML_NODE_CREATE;
+        if (aml_evaluate(adrNode, &adrValue, AML_DATA_INTEGER) == ERR)
+        {
+            LOG_ERR("failed to evaluate _ADR for opregion '%.*s'\n", AML_NAME_LENGTH, opregion->segment);
+            return ERR;
+        }
+
+        *function = adrValue.integer.value & 0x0000FFFF;    // Low word is function
+        *bus = (adrValue.integer.value >> 16) & 0x0000FFFF; // High word is device/bus
+
+        aml_node_deinit(&adrValue);
+    }
+
+    // Section 6.5.5 of the ACPI specification.
+    aml_node_t* bbnNode = aml_node_find(opregion, "_BBN");
+    if (bbnNode != NULL)
+    {
+        aml_node_t bbnValue = AML_NODE_CREATE;
+        if (aml_evaluate(bbnNode, &bbnValue, AML_DATA_INTEGER) == ERR)
+        {
+            LOG_ERR("failed to evaluate _BBN for opregion '%.*s'\n", AML_NAME_LENGTH, opregion->segment);
+            return ERR;
+        }
+
+        // Lower 8 bits is the bus number.
+        *bus = bbnValue.integer.value & 0xFF;
+        aml_node_deinit(&bbnValue);
+    }
+
+    // Section 6.5.6 of the ACPI specification.
+    aml_node_t* segNode = aml_node_find(opregion, "_SEG");
+    if (segNode != NULL)
+    {
+        aml_node_t segValue = AML_NODE_CREATE;
+        if (aml_evaluate(segNode, &segValue, AML_DATA_INTEGER) == ERR)
+        {
+            LOG_ERR("failed to evaluate _SEG for opregion '%.*s'\n", AML_NAME_LENGTH, opregion->segment);
+            return ERR;
+        }
+
+        // Lower 16 bits is the segment group number.
+        *segmentGroup = segValue.integer.value & 0xFFFF;
+        aml_node_deinit(&segValue);
+    }
+
+    return 0;
 }
 
-static uint64_t aml_pci_config_write(uint64_t address, aml_bit_size_t accessSize, uint64_t value)
+static uint64_t aml_pci_config_read(aml_node_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t* out)
 {
-    errno = ENOSYS;
-    return ERR;
-}*/
+    pci_segment_group_t segmentGroup;
+    pci_bus_t bus;
+    pci_slot_t slot;
+    pci_function_t function;
+    if (aml_pci_get_params(opregion, &segmentGroup, &bus, &slot, &function) == ERR)
+    {
+        return ERR;
+    }
+
+    switch (accessSize)
+    {
+    case 8:
+        *out = pci_config_read8(segmentGroup, bus, slot, function, (uint16_t)address);
+        break;
+    case 16:
+        *out = pci_config_read16(segmentGroup, bus, slot, function, (uint16_t)address);
+        break;
+    case 32:
+        *out = pci_config_read32(segmentGroup, bus, slot, function, (uint16_t)address);
+        break;
+    default:
+        LOG_ERR("unable to read PCI config opregion with access size %u\n", accessSize);
+        errno = ENOSYS;
+        return ERR;
+    }
+    return 0;
+}
+
+static uint64_t aml_pci_config_write(aml_node_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t value)
+{
+    pci_segment_group_t segmentGroup;
+    pci_bus_t bus;
+    pci_slot_t slot;
+    pci_function_t function;
+    if (aml_pci_get_params(opregion, &segmentGroup, &bus, &slot, &function) == ERR)
+    {
+        return ERR;
+    }
+
+    switch (accessSize)
+    {
+    case 8:
+        pci_config_write8(segmentGroup, bus, slot, function, (uint16_t)address, (uint8_t)value);
+        break;
+    case 16:
+        pci_config_write16(segmentGroup, bus, slot, function, (uint16_t)address, (uint16_t)value);
+        break;
+    case 32:
+        pci_config_write32(segmentGroup, bus, slot, function, (uint16_t)address, (uint32_t)value);
+        break;
+    default:
+        LOG_ERR("unable to write PCI config opregion with access size %u\n", accessSize);
+        errno = ENOSYS;
+        return ERR;
+    }
+    return 0;
+}
 
 static aml_region_handler_t regionHandlers[] = {
     [AML_REGION_SYSTEM_MEMORY] = {.read = aml_system_mem_read, .write = aml_system_mem_write},
     [AML_REGION_SYSTEM_IO] = {.read = aml_system_io_read, .write = aml_system_io_write},
-    // [AML_REGION_PCI_CONFIG] = {.read = aml_pci_config_read, .write = aml_pci_config_write},
+    [AML_REGION_PCI_CONFIG] = {.read = aml_pci_config_read, .write = aml_pci_config_write},
 };
 
 #define AML_REGION_MAX (sizeof(regionHandlers) / sizeof(regionHandlers[0]))
 
-static inline uint64_t aml_opregion_read(aml_region_space_t space, uint64_t address, aml_bit_size_t accessSize,
-    uint64_t* out)
+static inline uint64_t aml_opregion_read(aml_node_t* opregion, aml_region_space_t space, uint64_t address,
+    aml_bit_size_t accessSize, uint64_t* out)
 {
     if (out == NULL)
     {
@@ -173,11 +294,11 @@ static inline uint64_t aml_opregion_read(aml_region_space_t space, uint64_t addr
         errno = ENOSYS;
         return ERR;
     }
-    return regionHandlers[space].read(address, accessSize, out);
+    return regionHandlers[space].read(opregion, address, accessSize, out);
 }
 
-static inline uint64_t aml_opregion_write(aml_region_space_t space, uint64_t address, aml_bit_size_t accessSize,
-    uint64_t value)
+static inline uint64_t aml_opregion_write(aml_node_t* opregion, aml_region_space_t space, uint64_t address,
+    aml_bit_size_t accessSize, uint64_t value)
 {
     if (space >= AML_REGION_MAX || regionHandlers[space].write == NULL)
     {
@@ -185,7 +306,7 @@ static inline uint64_t aml_opregion_write(aml_region_space_t space, uint64_t add
         errno = ENOSYS;
         return ERR;
     }
-    return regionHandlers[space].write(address, accessSize, value);
+    return regionHandlers[space].write(opregion, address, accessSize, value);
 }
 
 static inline uint64_t aml_get_aligned_byte_offset(aml_bit_size_t bitOffset, aml_bit_size_t accessSize)
@@ -201,15 +322,16 @@ typedef enum aml_access_direction
 } aml_access_direction_t;
 
 static uint64_t aml_generic_field_read_at(aml_node_t* fieldUnit, aml_bit_size_t accessSize, uint64_t byteOffset,
-    aml_qword_data_t* out)
+    uint64_t* out)
 {
     switch (fieldUnit->fieldUnit.type)
     {
     case AML_FIELD_UNIT_FIELD:
     case AML_FIELD_UNIT_BANK_FIELD:
     {
-        uintptr_t address = fieldUnit->fieldUnit.opregion->opregion.offset + byteOffset;
-        return aml_opregion_read(fieldUnit->fieldUnit.regionSpace, address, accessSize, out);
+        aml_node_t* opregion = fieldUnit->fieldUnit.opregion;
+        uintptr_t address = opregion->opregion.offset + byteOffset;
+        return aml_opregion_read(opregion, fieldUnit->fieldUnit.regionSpace, address, accessSize, out);
     }
     case AML_FIELD_UNIT_INDEX_FIELD:
     {
@@ -219,14 +341,14 @@ static uint64_t aml_generic_field_read_at(aml_node_t* fieldUnit, aml_bit_size_t 
             return ERR;
         }
 
-        if (aml_field_unit_write(fieldUnit->fieldUnit.indexNode, &temp) == ERR)
+        if (aml_field_unit_store(fieldUnit->fieldUnit.indexNode, &temp) == ERR)
         {
             aml_node_deinit(&temp);
             return ERR;
         }
         aml_node_deinit(&temp);
 
-        if (aml_field_unit_read(fieldUnit->fieldUnit.dataNode, &temp) == ERR)
+        if (aml_field_unit_load(fieldUnit->fieldUnit.dataNode, &temp) == ERR)
         {
             return ERR;
         }
@@ -253,15 +375,16 @@ static uint64_t aml_generic_field_read_at(aml_node_t* fieldUnit, aml_bit_size_t 
 }
 
 static uint64_t aml_generic_field_write_at(aml_node_t* fieldUnit, aml_bit_size_t accessSize, uint64_t byteOffset,
-    aml_qword_data_t value)
+    uint64_t value)
 {
     switch (fieldUnit->fieldUnit.type)
     {
     case AML_FIELD_UNIT_FIELD:
     case AML_FIELD_UNIT_BANK_FIELD:
     {
-        uintptr_t address = fieldUnit->fieldUnit.opregion->opregion.offset + byteOffset;
-        return aml_opregion_write(fieldUnit->fieldUnit.regionSpace, address, accessSize, value);
+        aml_node_t* opregion = fieldUnit->fieldUnit.opregion;
+        uintptr_t address = opregion->opregion.offset + byteOffset;
+        return aml_opregion_write(opregion, fieldUnit->fieldUnit.regionSpace, address, accessSize, value);
     }
     case AML_FIELD_UNIT_INDEX_FIELD:
     {
@@ -271,7 +394,7 @@ static uint64_t aml_generic_field_write_at(aml_node_t* fieldUnit, aml_bit_size_t
             return ERR;
         }
 
-        if (aml_field_unit_write(fieldUnit->fieldUnit.indexNode, &index) == ERR)
+        if (aml_field_unit_store(fieldUnit->fieldUnit.indexNode, &index) == ERR)
         {
             aml_node_deinit(&index);
             return ERR;
@@ -284,7 +407,7 @@ static uint64_t aml_generic_field_write_at(aml_node_t* fieldUnit, aml_bit_size_t
             return ERR;
         }
 
-        if (aml_field_unit_write(fieldUnit->fieldUnit.dataNode, &data) == ERR)
+        if (aml_field_unit_store(fieldUnit->fieldUnit.dataNode, &data) == ERR)
         {
             aml_node_deinit(&data);
             return ERR;
@@ -309,7 +432,7 @@ static uint64_t aml_field_unit_access(aml_node_t* fieldUnit, aml_node_t* data, a
             return ERR;
         }
 
-        if (aml_field_unit_write(fieldUnit->fieldUnit.bank, &bankValue) == ERR)
+        if (aml_field_unit_store(fieldUnit->fieldUnit.bank, &bankValue) == ERR)
         {
             aml_node_deinit(&bankValue);
             return ERR;
@@ -409,7 +532,7 @@ static uint64_t aml_field_unit_access(aml_node_t* fieldUnit, aml_node_t* data, a
     return 0;
 }
 
-uint64_t aml_field_unit_read(aml_node_t* fieldUnit, aml_node_t* out)
+uint64_t aml_field_unit_load(aml_node_t* fieldUnit, aml_node_t* out)
 {
     if (fieldUnit == NULL || out == NULL)
     {
@@ -418,7 +541,7 @@ uint64_t aml_field_unit_read(aml_node_t* fieldUnit, aml_node_t* out)
     }
 
     uint64_t byteSize = (fieldUnit->fieldUnit.bitSize + 7) / 8;
-    if (byteSize > sizeof(aml_qword_data_t))
+    if (byteSize > sizeof(uint64_t))
     {
         if (aml_node_init_buffer_empty(out, byteSize) == ERR)
         {
@@ -455,7 +578,7 @@ uint64_t aml_field_unit_read(aml_node_t* fieldUnit, aml_node_t* out)
     return result;
 }
 
-uint64_t aml_field_unit_write(aml_node_t* fieldUnit, aml_node_t* in)
+uint64_t aml_field_unit_store(aml_node_t* fieldUnit, aml_node_t* in)
 {
     if (fieldUnit == NULL || in == NULL)
     {

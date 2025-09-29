@@ -5,7 +5,7 @@
 #include "acpi/aml/aml_value.h"
 #include "expression.h"
 
-uint64_t aml_arg_obj_read(aml_state_t* state, aml_node_t* out)
+uint64_t aml_arg_obj_read(aml_state_t* state, aml_node_t** out)
 {
     aml_value_t argOp;
     if (aml_value_read(state, &argOp) == ERR)
@@ -34,11 +34,6 @@ uint64_t aml_arg_obj_read(aml_state_t* state, aml_node_t* out)
         return ERR;
     }
 
-    if (aml_node_init_object_reference(out, &state->args->args[index]) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to create Arg%dOp reference", index);
-        return ERR;
-    }
-
+    *out = &state->args->args[index];
     return 0;
 }

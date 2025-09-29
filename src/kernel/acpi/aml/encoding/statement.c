@@ -1,23 +1,25 @@
 #include "statement.h"
 
 #include "acpi/aml/aml_debug.h"
+#include "acpi/aml/aml_scope.h"
+#include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_value.h"
 #include "package_length.h"
 #include "term.h"
 
 #include <errno.h>
 
-uint64_t aml_predicate_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out)
+uint64_t aml_predicate_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
 {
-    if (aml_term_arg_read_integer(state, node, out) == ERR)
+    if (aml_term_arg_read_integer(state, scope, out) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read TermArg for Predicate");
+        AML_DEBUG_ERROR(state, "Failed to read TermArg");
         return ERR;
     }
     return 0;
 }
 
-uint64_t aml_def_else_read(aml_state_t* state, aml_node_t* node, bool shouldExecute)
+uint64_t aml_def_else_read(aml_state_t* state, aml_scope_t* scope, bool shouldExecute)
 {
     aml_value_t elseOp;
     if (aml_value_read_no_ext(state, &elseOp) == ERR)
@@ -46,8 +48,8 @@ uint64_t aml_def_else_read(aml_state_t* state, aml_node_t* node, bool shouldExec
 
     if (shouldExecute)
     {
-        // Execute the TermList
-        if (aml_term_list_read(state, node, end) == ERR)
+        // Execute the TermList in the same scope
+        if (aml_term_list_read(state, scope->node, end) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read TermList");
             return ERR;
@@ -63,7 +65,7 @@ uint64_t aml_def_else_read(aml_state_t* state, aml_node_t* node, bool shouldExec
     return 0;
 }
 
-uint64_t aml_def_if_else_read(aml_state_t* state, aml_node_t* node)
+uint64_t aml_def_if_else_read(aml_state_t* state, aml_scope_t* scope)
 {
     aml_value_t ifOp;
     if (aml_value_read_no_ext(state, &ifOp) == ERR)
@@ -92,8 +94,8 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_node_t* node)
     // the ACPI spec.
     const uint8_t* end = start + pkgLength;
 
-    aml_qword_data_t predicate;
-    if (aml_predicate_read(state, node, &predicate) == ERR)
+    uint64_t predicate;
+    if (aml_predicate_read(state, scope, &predicate) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read Predicate");
         return ERR;
@@ -102,8 +104,8 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_node_t* node)
     bool isTrue = predicate != 0;
     if (predicate != 0)
     {
-        // Execute the TermList
-        if (aml_term_list_read(state, node, end) == ERR)
+        // Execute the TermList in the same scope
+        if (aml_term_list_read(state, scope->node, end) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read TermList");
             return ERR;
@@ -125,7 +127,11 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_node_t* node)
 
     if (elseOp.num == AML_ELSE_OP) // Optional
     {
-        return aml_def_else_read(state, node, !isTrue);
+        if (aml_def_else_read(state, scope, !isTrue) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read ElseOp");
+            return ERR;
+        }
     }
 
     return 0;
@@ -150,9 +156,9 @@ uint64_t aml_def_noop_read(aml_state_t* state)
     return 0;
 }
 
-uint64_t aml_arg_object_read(aml_state_t* state, aml_node_t* node, aml_node_t* out)
+uint64_t aml_arg_object_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    if (aml_term_arg_read(state, node, out) == ERR)
+    if (aml_term_arg_read(state, scope, out, AML_DATA_ALL) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read TermArg");
         return ERR;
@@ -161,7 +167,7 @@ uint64_t aml_arg_object_read(aml_state_t* state, aml_node_t* node, aml_node_t* o
     return 0;
 }
 
-uint64_t aml_def_return_read(aml_state_t* state, aml_node_t* node)
+uint64_t aml_def_return_read(aml_state_t* state, aml_scope_t* scope)
 {
     state->hasHitReturn = true;
 
@@ -179,28 +185,26 @@ uint64_t aml_def_return_read(aml_state_t* state, aml_node_t* node)
         return ERR;
     }
 
-    if (state->returnValue == NULL)
-    {
-        aml_node_t temp = AML_NODE_CREATE;
-        if (aml_arg_object_read(state, node, &temp) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to read ArgObject");
-            return ERR;
-        }
-        aml_node_deinit(&temp);
-        return 0;
-    }
-
-    if (aml_arg_object_read(state, node, state->returnValue) == ERR)
+    aml_node_t* argObject = NULL;
+    if (aml_arg_object_read(state, scope, &argObject) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ArgObject");
         return ERR;
     }
 
+    if (state->returnValue != NULL)
+    {
+        if (aml_node_clone(argObject, state->returnValue) == ERR)
+        {
+            aml_node_deinit(argObject);
+            return ERR;
+        }
+    }
+
     return 0;
 }
 
-uint64_t aml_statement_opcode_read(aml_state_t* state, aml_node_t* node)
+uint64_t aml_statement_opcode_read(aml_state_t* state, aml_scope_t* scope)
 {
     aml_value_t op;
     if (aml_value_peek_no_ext(state, &op) == ERR)
@@ -213,16 +217,16 @@ uint64_t aml_statement_opcode_read(aml_state_t* state, aml_node_t* node)
     switch (op.num)
     {
     case AML_IF_OP:
-        result = aml_def_if_else_read(state, node);
+        result = aml_def_if_else_read(state, scope);
         break;
     case AML_NOOP_OP:
         result = aml_def_noop_read(state);
         break;
     case AML_RETURN_OP:
-        result = aml_def_return_read(state, node);
+        result = aml_def_return_read(state, scope);
         break;
     default:
-        AML_DEBUG_ERROR(state, "Unknown statement opcode '0x%x'", op.num);
+        AML_DEBUG_ERROR(state, "Unknown StatementOpcode '0x%x'", op.num);
         errno = ENOSYS;
         return ERR;
     }

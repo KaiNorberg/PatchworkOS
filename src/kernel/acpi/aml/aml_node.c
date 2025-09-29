@@ -141,7 +141,7 @@ aml_node_t* aml_node_new(aml_node_t* parent, const char* name, aml_node_flags_t 
         parentDir = acpi_get_sysfs_root();
         strcpy(sysfsName, "namespace");
     }
-    else
+    else // If not root dont add to sysfs.
     {
         return node;
     }
@@ -440,7 +440,7 @@ uint64_t aml_node_init_field_unit_index_field(aml_node_t* node, aml_node_t* inde
 }
 
 uint64_t aml_node_init_field_unit_bank_field(aml_node_t* node, aml_node_t* opregion, aml_node_t* bank,
-    aml_qword_data_t bankValue, aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
+    uint64_t bankValue, aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
 {
     if (node == NULL || opregion == NULL || bank == NULL || bitSize == 0)
     {
@@ -619,7 +619,7 @@ uint64_t aml_node_init_package(aml_node_t* node, uint64_t length)
 
     for (uint64_t i = 0; i < length; i++)
     {
-        node->package.elements[i] = aml_node_new(NULL, "____", AML_NODE_NONE);
+        node->package.elements[i] = aml_node_new(NULL, "_T_0", AML_NODE_NONE);
         if (node->package.elements[i] == NULL)
         {
             for (uint64_t j = 0; j < i; j++)
@@ -721,7 +721,58 @@ uint64_t aml_node_init_string(aml_node_t* node, const char* str)
     return 0;
 }
 
-uint64_t aml_node_init_unresolved(aml_node_t* node, aml_name_string_t* nameString, aml_node_t* start)
+uint64_t aml_node_init_string_empty(aml_node_t* node, uint64_t length)
+{
+    if (node == NULL || length == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (node->type != AML_DATA_UNINITALIZED)
+    {
+        aml_node_deinit(node);
+    }
+
+    node->type = AML_DATA_STRING;
+
+    node->string.content = heap_alloc(length + 1, HEAP_NONE);
+    if (node->string.content == NULL)
+    {
+        return ERR;
+    }
+    memset(node->string.content, '0', length);
+
+    node->string.length = length;
+
+    node->string.byteFields = heap_alloc(sizeof(aml_node_t) * length, HEAP_NONE);
+    if (node->string.byteFields == NULL)
+    {
+        heap_free(node->string.content);
+        node->string.content = NULL;
+        return ERR;
+    }
+
+    for (uint64_t i = 0; i < length; i++)
+    {
+        node->string.byteFields[i] = AML_NODE_CREATE;
+        if (aml_node_init_buffer_field(&node->string.byteFields[i], (uint8_t*)node->string.content, i * 8, 8) == ERR)
+        {
+            for (uint64_t j = 0; j < i; j++)
+            {
+                aml_node_deinit(&node->string.byteFields[j]);
+            }
+            heap_free(node->string.content);
+            node->string.content = NULL;
+            return ERR;
+        }
+    }
+
+    return 0;
+}
+
+uint64_t aml_node_init_unresolved(aml_node_t* node, aml_name_string_t* nameString, aml_node_t* start,
+    aml_patch_up_resolve_callback_t callback)
 {
     if (node == NULL || start == NULL || nameString == NULL || nameString->namePath.segmentCount == 0)
     {
@@ -737,6 +788,13 @@ uint64_t aml_node_init_unresolved(aml_node_t* node, aml_name_string_t* nameStrin
     node->type = AML_DATA_UNRESOLVED;
     node->unresolved.nameString = *nameString;
     node->unresolved.start = start;
+    node->unresolved.callback = callback;
+
+    if (aml_patch_up_add_unresolved(node, callback) == ERR)
+    {
+        node->type = AML_DATA_UNINITALIZED;
+        return ERR;
+    }
 
     return 0;
 }
@@ -776,6 +834,14 @@ void aml_node_deinit(aml_node_t* node)
     case AML_DATA_INTEGER_CONSTANT:
     case AML_DATA_OBJECT_REFERENCE:
     case AML_DATA_OPERATION_REGION:
+    case AML_DATA_PROCESSOR:
+    case AML_DATA_RAW_DATA_BUFFER:
+    case AML_DATA_DEBUG_OBJECT:
+    case AML_DATA_EVENT:
+    case AML_DATA_POWER_RESOURCE:
+    case AML_DATA_THERMAL_ZONE:
+    case AML_DATA_ALIAS:
+    case AML_DATA_FIELD_UNIT:
         // Nothing to do.
         break;
     case AML_DATA_BUFFER:
@@ -855,6 +921,9 @@ uint64_t aml_node_clone(aml_node_t* src, aml_node_t* dest)
 
     switch (src->type)
     {
+    case AML_DATA_UNINITALIZED:
+        aml_node_deinit(dest);
+        break;
     case AML_DATA_BUFFER:
         if (aml_node_init_buffer(dest, src->buffer.content, src->buffer.length, src->buffer.length) == ERR)
         {
@@ -970,6 +1039,19 @@ uint64_t aml_node_clone(aml_node_t* src, aml_node_t* dest)
             return ERR;
         }
         break;
+    case AML_DATA_UNRESOLVED:
+        if (aml_node_init_unresolved(dest, &src->unresolved.nameString, src->unresolved.start,
+                src->unresolved.callback) == ERR)
+        {
+            return ERR;
+        }
+        break;
+    case AML_DATA_ALIAS:
+        if (aml_node_init_alias(dest, src->alias.target) == ERR)
+        {
+            return ERR;
+        }
+        break;
     default:
         LOG_ERR("unimplemented clone of AML node '%.*s' of type ('%s', %d)\n", AML_NAME_LENGTH, src->segment,
             aml_data_type_to_string(src->type), src->type);
@@ -1019,7 +1101,7 @@ aml_node_t* aml_node_find_child(aml_node_t* parent, const char* name)
     return NULL;
 }
 
-aml_node_t* aml_node_find(const char* path, aml_node_t* start)
+aml_node_t* aml_node_find(aml_node_t* start, const char* path)
 {
     if (path == NULL || path[0] == '\0')
     {

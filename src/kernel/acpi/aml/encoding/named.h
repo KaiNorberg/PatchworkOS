@@ -6,6 +6,7 @@
 
 typedef struct aml_node aml_node_t;
 typedef struct aml_state aml_state_t;
+typedef struct aml_scope aml_scope_t;
 
 /**
  * @brief Named Objects Encoding
@@ -145,17 +146,17 @@ typedef struct
 /**
  * @brief ProcID structure, deprecated in version 6.4 of the ACPI specification.
  */
-typedef aml_byte_data_t aml_proc_id_t;
+typedef uint8_t aml_proc_id_t;
 
 /**
  * @brief PblkAddr structure, deprecated in version 6.4 of the ACPI specification.
  */
-typedef aml_dword_data_t aml_pblk_addr_t;
+typedef uint32_t aml_pblk_addr_t;
 
 /**
  * @brief PblkLen structure, deprecated in version 6.4 of the ACPI specification.
  */
-typedef aml_byte_data_t aml_pblk_len_t;
+typedef uint8_t aml_pblk_len_t;
 
 /**
  * @brief Reads a BankValue structure from the AML byte stream.
@@ -163,11 +164,11 @@ typedef aml_byte_data_t aml_pblk_len_t;
  * A BankValue structure is defined as `BankValue := TermArg => Integer`.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @param out The output buffer to store the bank value.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_bank_value_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out);
+uint64_t aml_bank_value_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out);
 
 /**
  * @brief Reads a RegionSpace structure from the AML byte stream.
@@ -186,11 +187,11 @@ uint64_t aml_region_space_read(aml_state_t* state, aml_region_space_t* out);
  * A RegionOffset structure is defined as `RegionOffset := TermArg => Integer`.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @param out The output buffer to store the RegionOffset.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_region_offset_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out);
+uint64_t aml_region_offset_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out);
 
 /**
  * @brief Reads a RegionLen structure from the AML byte stream.
@@ -198,11 +199,11 @@ uint64_t aml_region_offset_read(aml_state_t* state, aml_node_t* node, aml_qword_
  * A RegionLen structure is defined as `RegionLen := TermArg => Integer`.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @param out The output buffer to store the region length.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_region_len_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out);
+uint64_t aml_region_len_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out);
 
 /**
  * @brief Reads a DefOpRegion structure from the AML byte stream.
@@ -212,10 +213,10 @@ uint64_t aml_region_len_read(aml_state_t* state, aml_node_t* node, aml_qword_dat
  * @see Section 19.6.100 of the ACPI specification for more details.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_op_region_read(aml_state_t* state, aml_node_t* node);
+uint64_t aml_def_op_region_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a FieldFlags structure from the AML byte stream.
@@ -259,11 +260,11 @@ uint64_t aml_field_flags_read(aml_state_t* state, aml_field_flags_t* out);
  * @see Section 19.6.48 of the ACPI specification for more details about the Field Operation.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @param ctx The AML field list context.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_named_field_read(aml_state_t* state, aml_node_t* node, aml_field_list_ctx_t* ctx);
+uint64_t aml_named_field_read(aml_state_t* state, aml_scope_t* scope, aml_field_list_ctx_t* ctx);
 
 /**
  * @brief Reads a ReservedField structure from the AML byte stream.
@@ -287,11 +288,11 @@ uint64_t aml_reserved_field_read(aml_state_t* state, aml_field_list_ctx_t* ctx);
  * @see Section 19.6.48 of the ACPI specification for more details about the Field Operation.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @param ctx The AML field list context.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_field_element_read(aml_state_t* state, aml_node_t* node, aml_field_list_ctx_t* ctx);
+uint64_t aml_field_element_read(aml_state_t* state, aml_scope_t* scope, aml_field_list_ctx_t* ctx);
 
 /**
  * @brief Reads a FieldList structure from the AML byte stream.
@@ -301,12 +302,12 @@ uint64_t aml_field_element_read(aml_state_t* state, aml_node_t* node, aml_field_
  * @see Section 19.6.48 of the ACPI specification for more details about the Field Operation.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @param ctx The AML field list context.
  * @param end The index at which the FieldList ends.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_field_list_read(aml_state_t* state, aml_node_t* node, aml_field_list_ctx_t* ctx, const uint8_t* end);
+uint64_t aml_field_list_read(aml_state_t* state, aml_scope_t* scope, aml_field_list_ctx_t* ctx, const uint8_t* end);
 
 /**
  * @brief Reads a DefField structure from the AML byte stream.
@@ -314,10 +315,10 @@ uint64_t aml_field_list_read(aml_state_t* state, aml_node_t* node, aml_field_lis
  * The DefField structure is defined as `DefField := FieldOp PkgLength NameString FieldFlags FieldList`.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node);
+uint64_t aml_def_field_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefIndexField structure from the AML byte stream.
@@ -334,10 +335,10 @@ uint64_t aml_def_field_read(aml_state_t* state, aml_node_t* node);
  * @see Section 19.6.64 of the ACPI specification for more details.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_index_field_read(aml_state_t* state, aml_node_t* node);
+uint64_t aml_def_index_field_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefBankField structure from the AML byte stream.
@@ -355,10 +356,10 @@ uint64_t aml_def_index_field_read(aml_state_t* state, aml_node_t* node);
  * @see Section 19.6.7 of the ACPI specification for more details.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_bank_field_read(aml_state_t* state, aml_node_t* node);
+uint64_t aml_def_bank_field_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a MethodFlags structure from the AML byte stream.
@@ -384,10 +385,10 @@ uint64_t aml_method_flags_read(aml_state_t* state, aml_method_flags_t* out);
  * @see Section 19.6.85 of the ACPI specification for more details.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node);
+uint64_t aml_def_method_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefDevice structure from the AML byte stream.
@@ -397,10 +398,10 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_node_t* node);
  * @see Section 19.6.31 of the ACPI specification for more details.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_device_read(aml_state_t* state, aml_node_t* node);
+uint64_t aml_def_device_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a SyncFlags structure from the AML byte stream.
@@ -423,10 +424,10 @@ uint64_t aml_sync_flags_read(aml_state_t* state, aml_sync_level_t* out);
  * @see Section 19.6.89 of the ACPI specification for more details.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_mutex_read(aml_state_t* state, aml_node_t* node);
+uint64_t aml_def_mutex_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a ProcID structure from the AML byte stream. Deprecated in ACPI 6.4 but still supported.
@@ -471,10 +472,10 @@ uint64_t aml_pblk_len_read(aml_state_t* state, aml_pblk_len_t* out);
  * section 19.6.108 of the same for more details about its behavior.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node);
+uint64_t aml_def_processor_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a SourceBuff structure from the AML byte stream.
@@ -484,11 +485,11 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_node_t* node);
  * SourceBuff must evaluate to a ObjectReference that refers to a Buffer object.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @param out Pointer to where the pointer to the resolved node will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_source_buff_read(aml_state_t* state, aml_node_t* node, aml_node_t** out);
+uint64_t aml_source_buff_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
 
 /**
  * @brief Reads a BitIndex structure from the AML byte stream.
@@ -496,11 +497,11 @@ uint64_t aml_source_buff_read(aml_state_t* state, aml_node_t* node, aml_node_t**
  * A BitIndex structure is defined as `BitIndex := TermArg => Integer`.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @param out The destination buffer to store the BitIndex.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_bit_index_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out);
+uint64_t aml_bit_index_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out);
 
 /**
  * @brief Reads a ByteIndex structure from the AML byte stream.
@@ -508,11 +509,11 @@ uint64_t aml_bit_index_read(aml_state_t* state, aml_node_t* node, aml_qword_data
  * A ByteIndex structure is defined as `ByteIndex := TermArg => Integer`.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @param out The destination buffer to store the ByteIndex.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_byte_index_read(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out);
+uint64_t aml_byte_index_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out);
 
 /**
  * @brief Reads a DefCreateBitField structure from the AML byte stream.
@@ -531,10 +532,10 @@ uint64_t aml_byte_index_read(aml_state_t* state, aml_node_t* node, aml_qword_dat
  * @see Section 19.6.18 of the ACPI specification for more details.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_create_bit_field_read(aml_state_t* state, aml_node_t* node);
+uint64_t aml_def_create_bit_field_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefCreateByteField structure from the AML byte stream.
@@ -548,10 +549,10 @@ uint64_t aml_def_create_bit_field_read(aml_state_t* state, aml_node_t* node);
  * @see Section 19.6.19 of the ACPI specification for more details.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_create_byte_field_read(aml_state_t* state, aml_node_t* node);
+uint64_t aml_def_create_byte_field_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefCreateWordField structure from the AML byte stream.
@@ -565,10 +566,10 @@ uint64_t aml_def_create_byte_field_read(aml_state_t* state, aml_node_t* node);
  * @see Section 19.6.23 of the ACPI specification for more details.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_create_word_field_read(aml_state_t* state, aml_node_t* node);
+uint64_t aml_def_create_word_field_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefCreateDWordField structure from the AML byte stream.
@@ -582,10 +583,10 @@ uint64_t aml_def_create_word_field_read(aml_state_t* state, aml_node_t* node);
  * @see Section 19.6.20 of the ACPI specification for more details.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_create_dword_field_read(aml_state_t* state, aml_node_t* node);
+uint64_t aml_def_create_dword_field_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a DefCreateQWordField structure from the AML byte stream.
@@ -599,10 +600,10 @@ uint64_t aml_def_create_dword_field_read(aml_state_t* state, aml_node_t* node);
  * @see Section 19.6.22 of the ACPI specification for more details.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_create_qword_field_read(aml_state_t* state, aml_node_t* node);
+uint64_t aml_def_create_qword_field_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a NamedObj structure from the AML byte stream.
@@ -622,9 +623,9 @@ uint64_t aml_def_create_qword_field_read(aml_state_t* state, aml_node_t* node);
  * DefIndexField`.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_named_obj_read(aml_state_t* state, aml_node_t* node);
+uint64_t aml_named_obj_read(aml_state_t* state, aml_scope_t* scope);
 
 /** @} */

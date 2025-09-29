@@ -1,5 +1,10 @@
 #pragma once
 
+#include <stdint.h>
+
+typedef struct aml_state aml_state_t;
+typedef struct aml_node aml_node_t;
+
 /**
  * @brief Local Objecs Encoding
  * @defgroup kernel_acpi_aml_local Locals
@@ -14,5 +19,25 @@
  * @brief Maximum number of local variables that can be used in a method.
  */
 #define AML_MAX_LOCALS 8
+
+/**
+ * @brief Reads a LocalObj structure from the AML byte stream.
+ *
+ * A LocalObj is defined as `LocalObj := Local0Op | Local1Op | Local2Op | Local3Op | Local4Op | Local5Op | Local6Op |
+ * Local7Op` where
+ * - Local0Op := 0x60,
+ * - Local1Op := 0x61,
+ * - Local2Op := 0x62,
+ * - Local3Op := 0x63,
+ * - Local4Op := 0x64,
+ * - Local5Op := 0x65,
+ * - Local6Op := 0x66 and
+ * - Local7Op := 0x67.
+ *
+ * @param state Pointer to the AML state.
+ * @param out Pointer to the pointer to store the resulting Local node.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_local_obj_read(aml_state_t* state, aml_node_t** out);
 
 /** @} */

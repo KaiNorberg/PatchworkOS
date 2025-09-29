@@ -11,7 +11,7 @@
 
 /**
  * @brief State
- * @defgroup kernel_acpi_aml_parse State
+ * @defgroup kernel_acpi_aml_state State
  * @ingroup kernel_acpi_aml
  *
  * The ACPI AML State is used to keep track of the virtual machine's state during the parsing of AML bytecode and

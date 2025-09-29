@@ -1,5 +1,6 @@
 #pragma once
 
+#include "aml_debug.h"
 #include "aml_state.h"
 #include "log/log.h"
 

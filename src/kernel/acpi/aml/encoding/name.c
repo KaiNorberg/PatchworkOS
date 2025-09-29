@@ -2,6 +2,7 @@
 
 #include "acpi/aml/aml.h"
 #include "acpi/aml/aml_debug.h"
+#include "acpi/aml/aml_scope.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_to_string.h"
 #include "acpi/aml/aml_value.h"
@@ -13,9 +14,14 @@
 #include <string.h>
 #include <sys/list.h>
 
-uint64_t aml_seg_count_read(aml_state_t* state, aml_seg_count_t* out)
+uint64_t aml_seg_count_read(aml_state_t* state, uint8_t* out)
 {
-    return aml_byte_data_read(state, out);
+    if (aml_byte_data_read(state, out) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read ByteData");
+        return ERR;
+    }
+    return 0;
 }
 
 uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t** out)
@@ -87,7 +93,7 @@ uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t** out)
     return 0;
 }
 
-uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t** outSegments, aml_seg_count_t* outSegCount)
+uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t** outSegments, uint64_t* outSegCount)
 {
     aml_value_t firstValue;
     if (aml_value_read_no_ext(state, &firstValue) == ERR)
@@ -103,7 +109,7 @@ uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t** outSegmen
         return ERR;
     }
 
-    aml_seg_count_t segCount;
+    uint8_t segCount;
     if (aml_seg_count_read(state, &segCount) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read seg count");
@@ -311,7 +317,7 @@ aml_node_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_node_t* n
     return current;
 }
 
-uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out,
+uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_node_t** out,
     aml_resolve_flags_t flags, aml_name_string_t* nameString)
 {
     aml_name_string_t nameStringLocal;
@@ -321,7 +327,7 @@ uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_node_t* node, 
         return ERR;
     }
 
-    *out = aml_name_string_resolve(&nameStringLocal, node);
+    *out = aml_name_string_resolve(&nameStringLocal, scope->node);
     if (*out == NULL)
     {
         if (!(flags & AML_RESOLVE_ALLOW_UNRESOLVED))
@@ -339,7 +345,7 @@ uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_node_t* node, 
     return 0;
 }
 
-uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out,
+uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_node_t** out,
     aml_resolve_flags_t flags, aml_name_string_t* nameString)
 {
     aml_value_t value;
@@ -352,28 +358,34 @@ uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_node_t* node, 
     switch (value.props->type)
     {
     case AML_VALUE_TYPE_NAME:
-        if (aml_name_string_read_and_resolve(state, node, out, flags, nameString) == ERR)
+        if (aml_name_string_read_and_resolve(state, scope, out, flags, nameString) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read and resolve name string");
             return ERR;
         }
         return 0;
     case AML_VALUE_TYPE_ARG:
-        AML_DEBUG_ERROR(state, "Args are unimplemented");
-        errno = ENOSYS;
-        return ERR;
+        if (aml_arg_obj_read(state, out) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read ArgObj");
+            return ERR;
+        }
+        return 0;
     case AML_VALUE_TYPE_LOCAL:
-        AML_DEBUG_ERROR(state, "Locals are unimplemented");
-        errno = ENOSYS;
-        return ERR;
+        if (aml_local_obj_read(state, out) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read LocalObj");
+            return ERR;
+        }
+        return 0;
     default:
-        AML_DEBUG_ERROR(state, "Invalid value type: %d", value.props->type);
+        AML_DEBUG_ERROR(state, "Invalid value type '%s'", aml_value_type_to_string(value.props->type));
         errno = EILSEQ;
         return ERR;
     }
 }
 
-uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out,
+uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_node_t** out,
     aml_resolve_flags_t flags, aml_name_string_t* nameString)
 {
     aml_value_t value;
@@ -386,20 +398,14 @@ uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_node_t* node, a
     switch (value.props->type)
     {
     case AML_VALUE_TYPE_NAME:
-        if (aml_name_string_read_and_resolve(state, node, out, flags, nameString) == ERR)
+    case AML_VALUE_TYPE_ARG:
+    case AML_VALUE_TYPE_LOCAL:
+        if (aml_simple_name_read_and_resolve(state, scope, out, flags, nameString) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read and resolve name string");
             return ERR;
         }
         return 0;
-    case AML_VALUE_TYPE_ARG:
-        AML_DEBUG_ERROR(state, "Args is unimplemented");
-        errno = ENOSYS;
-        return ERR;
-    case AML_VALUE_TYPE_LOCAL:
-        AML_DEBUG_ERROR(state, "Locals is unimplemented");
-        errno = ENOSYS;
-        return ERR;
     case AML_VALUE_TYPE_DEBUG:
         AML_DEBUG_ERROR(state, "DebugObj is unimplemented");
         errno = ENOSYS;
@@ -415,8 +421,8 @@ uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_node_t* node, a
     }
 }
 
-uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out, aml_resolve_flags_t flags,
-    aml_name_string_t* nameString)
+uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_node_t** out,
+    aml_resolve_flags_t flags, aml_name_string_t* nameString)
 {
     aml_value_t value;
     if (aml_value_peek_no_ext(state, &value) == ERR)
@@ -436,7 +442,7 @@ uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_n
     }
     else
     {
-        if (aml_simple_name_read_and_resolve(state, node, out, flags, nameString) == ERR)
+        if (aml_simple_name_read_and_resolve(state, scope, out, flags, nameString) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read and resolve simple name");
             return ERR;

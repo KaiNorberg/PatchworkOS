@@ -1,13 +1,13 @@
 #pragma once
 
 #include "acpi/aml/aml_patch_up.h"
-#include "data_integers.h"
 
 #include <stdint.h>
 #include <sys/list.h>
 
 typedef struct aml_state aml_state_t;
 typedef struct aml_node aml_node_t;
+typedef struct aml_scope aml_scope_t;
 
 /**
  * @brief Name Objects Encoding
@@ -84,11 +84,6 @@ typedef struct
 } aml_root_char_t;
 
 /**
- * @brief SegCount structure.
- */
-typedef aml_byte_data_t aml_seg_count_t;
-
-/**
  * @brief A NameSeg strcture.
  * @struct aml_name_seg_t
  */
@@ -103,8 +98,8 @@ typedef struct
  */
 typedef struct
 {
-    aml_seg_count_t segmentCount; //!< Number of segments in the name path.
-    aml_name_seg_t* segments;     //!< Array of segments in the name path.
+    uint64_t segmentCount;    //!< Number of segments in the name path.
+    aml_name_seg_t* segments; //!< Array of segments in the name path.
 } aml_name_path_t;
 
 /**
@@ -127,7 +122,7 @@ typedef struct
  * @param out Pointer to destination where the SegCount will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_seg_count_read(aml_state_t* state, aml_seg_count_t* out);
+uint64_t aml_seg_count_read(aml_state_t* state, uint8_t* out);
 
 /**
  * @brief Reads the next data as a NameSeg from the AML bytecode stream.
@@ -164,7 +159,7 @@ uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t** out);
  * @param outSegCount Pointer to destination where the number of segments will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t** outSegments, aml_seg_count_t* outSegCount);
+uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t** outSegments, uint64_t* outSegCount);
 
 /**
  * Reads the next data as a NullName structure from the AML bytecode stream.
@@ -226,7 +221,7 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out);
  * @brief Resolves a NameString structure to an AML node.
  *
  * @param nameString The NameString to resolve.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @return A pointer to the resolved node, or `NULL` if the NameString does not resolve to an object. Does not set
  * `errno`.
  */
@@ -251,13 +246,13 @@ aml_node_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_node_t* n
  * @see aml_name_string_read() for reading the NameString from the AML byte stream.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @param out Pointer to where the pointer to the resolved node will be stored.
  * @param flags Flags for name resolution.
  * @param nameString If not `NULL`, the read NameString will be stored here.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out,
+uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_node_t** out,
     aml_resolve_flags_t flags, aml_name_string_t* nameString);
 
 /**
@@ -266,13 +261,13 @@ uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_node_t* node, 
  * A SimpleName structure is defined as `SimpleName := NameString | ArgObj | LocalObj`.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @param out Pointer to where the pointer to the resolved node will be stored.
  * @param flags Flags for name resolution.
  * @param nameString If not `NULL` and the SuperName evaluates to a NameString, the read NameString will be stored here.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out,
+uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_node_t** out,
     aml_resolve_flags_t flags, aml_name_string_t* nameString);
 
 /**
@@ -281,13 +276,13 @@ uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_node_t* node, 
  * A SuperName structure is defined as `SuperName := SimpleName | DebugObj | ReferenceTypeOpcode`.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @param out Pointer to where the pointer to the resolved node will be stored.
  * @param flags Flags for name resolution.
  * @param nameString If not `NULL` and the SuperName evaluates to a NameString, the read NameString will be stored here.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out,
+uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_node_t** out,
     aml_resolve_flags_t flags, aml_name_string_t* nameString);
 
 /**
@@ -298,13 +293,13 @@ uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_node_t* node, a
  * If the Target is a NullName, then out will be set to `NULL` but its not considered an error.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @param out Pointer to where the pointer to the resolved node will be stored.
  * @param flags Flags for name resolution.
  * @param nameString If not `NULL` and the Target evaluates to a NameString, the read NameString will be stored here.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_node_t* node, aml_node_t** out, aml_resolve_flags_t flags,
-    aml_name_string_t* nameString);
+uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_node_t** out,
+    aml_resolve_flags_t flags, aml_name_string_t* nameString);
 
 /** @} */

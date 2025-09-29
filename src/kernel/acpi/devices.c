@@ -15,7 +15,7 @@ static inline uint64_t acpi_sta_get_flags(aml_node_t* device, acpi_sta_flags_t* 
     }
 
     aml_node_t integer = AML_NODE_CREATE;
-    if (aml_evaluate_to_integer(sta, &integer) == ERR)
+    if (aml_evaluate(sta, &integer, AML_DATA_INTEGER) == ERR)
     {
         LOG_ERR("could not evaluate %s._STA\n", device->segment);
         return ERR;
@@ -68,10 +68,10 @@ static inline uint64_t acpi_devices_init_children(aml_node_t* parent)
 
 uint64_t acpi_devices_init(void)
 {
-    // TODO: This cant be implemented yet as we need PCI support first
+    // Not implemented yet
     return 0;
 
-    /*aml_node_t* sbIni = aml_node_find("\\_SB._INI", NULL);
+    /*aml_node_t* sbIni = aml_node_find(NULL, "\\_SB._INI");
     if (sbIni != NULL)
     {
         LOG_INFO("found \\_SB._INI\n");
@@ -81,7 +81,7 @@ uint64_t acpi_devices_init(void)
         }
     }
 
-    aml_node_t* sb = aml_node_find("\\_SB", NULL);
+    aml_node_t* sb = aml_node_find(NULL, "\\_SB");
     if (sb == NULL) // Should never happen
     {
         LOG_ERR("could not find \\_SB\n");
@@ -91,7 +91,7 @@ uint64_t acpi_devices_init(void)
     if (acpi_devices_init_children(sb) == ERR)
     {
         return ERR;
-    }
+    }*/
 
-    return 0;*/
+    return 0;
 }

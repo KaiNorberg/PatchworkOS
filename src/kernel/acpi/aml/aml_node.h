@@ -45,8 +45,7 @@ typedef enum
     AML_DATA_EVENT = 1 << 4,
     AML_DATA_FIELD_UNIT = 1 << 5,
     AML_DATA_INTEGER = 1 << 6,
-    AML_DATA_INTEGER_CONSTANT =
-        1 << 7, //!< The spec seems inconsistent on this one, its defined but sometimes seem to forget about it?
+    AML_DATA_INTEGER_CONSTANT = 1 << 7,
     AML_DATA_METHOD = 1 << 8,
     AML_DATA_MUTEX = 1 << 9,
     AML_DATA_OBJECT_REFERENCE = 1 << 10,
@@ -59,10 +58,13 @@ typedef enum
     AML_DATA_THERMAL_ZONE = 1 << 17,
     AML_DATA_UNRESOLVED = 1 << 18, //!< Used for forward references, not in the spec.
     AML_DATA_ALIAS = 1 << 19,      //!< Used to implement DefAlias, not in the spec.
+    AML_DATA_ACTUAL_DATA =
+        AML_DATA_INTEGER | AML_DATA_INTEGER_CONSTANT | AML_DATA_STRING | AML_DATA_BUFFER | AML_DATA_PACKAGE,
     AML_DATA_ALL = AML_DATA_BUFFER | AML_DATA_BUFFER_FIELD | AML_DATA_DEBUG_OBJECT | AML_DATA_DEVICE | AML_DATA_EVENT |
-        AML_DATA_FIELD_UNIT | AML_DATA_INTEGER | AML_DATA_INTEGER_CONSTANT | AML_DATA_METHOD | AML_DATA_MUTEX |
-        AML_DATA_OBJECT_REFERENCE | AML_DATA_OPERATION_REGION | AML_DATA_PACKAGE | AML_DATA_POWER_RESOURCE |
-        AML_DATA_PROCESSOR | AML_DATA_RAW_DATA_BUFFER | AML_DATA_STRING | AML_DATA_THERMAL_ZONE | AML_DATA_UNRESOLVED,
+        AML_DATA_FIELD_UNIT | AML_DATA_INTEGER | AML_DATA_METHOD | AML_DATA_MUTEX | AML_DATA_OBJECT_REFERENCE |
+        AML_DATA_OPERATION_REGION | AML_DATA_PACKAGE | AML_DATA_POWER_RESOURCE | AML_DATA_PROCESSOR |
+        AML_DATA_RAW_DATA_BUFFER | AML_DATA_STRING | AML_DATA_THERMAL_ZONE | AML_DATA_UNRESOLVED,
+    AML_DATA_TYPE_AMOUNT = 20,
 } aml_data_type_t;
 
 /**
@@ -143,7 +145,7 @@ typedef uint64_t (*aml_method_implementation_t)(aml_node_t* method, aml_term_arg
  * @struct aml_node_t
  *
  * A node can represent mode then just a node in the ACPI namespace tree, in practice, its everything.
- * It simply represents any readable or writable entity.
+ * It simply represents any readable or writable entity, this includes the result of operations.
  */
 typedef struct aml_node
 {
@@ -181,7 +183,7 @@ typedef struct aml_node
             struct aml_node* indexNode;     //!< Used for IndexField.
             struct aml_node* dataNode;      //!< Used for IndexField.
             struct aml_node* opregion;      //!< Used for Field and BankField.
-            aml_qword_data_t bankValue;     //!< Used for BankField.
+            uint64_t bankValue;             //!< Used for BankField.
             struct aml_node* bank;          //!< Used for BankField.
             aml_field_flags_t flags;        //!< Used for Field, IndexField and BankField.
             aml_bit_size_t bitOffset;       //!< Used for Field, IndexField and BankField.
@@ -251,6 +253,7 @@ typedef struct aml_node
         {
             aml_name_string_t nameString;
             aml_node_t* start;
+            aml_patch_up_resolve_callback_t callback;
         } unresolved;
         /**
          * @brief Used to implement DefAlias.
@@ -300,8 +303,6 @@ aml_node_t* aml_node_new(aml_node_t* parent, const char* name, aml_node_flags_t 
 
 /**
  * @brief Free an ACPI node and all its children.
- *
- * @note The provided node must not be a temporary node.
  *
  * @param node Pointer to the node to free.
  */
@@ -397,7 +398,7 @@ uint64_t aml_node_init_field_unit_index_field(aml_node_t* node, aml_node_t* inde
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_node_init_field_unit_bank_field(aml_node_t* node, aml_node_t* opregion, aml_node_t* bank,
-    aml_qword_data_t bankValue, aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize);
+    uint64_t bankValue, aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize);
 
 /**
  * @brief Initialize an ACPI node as an integer with the given value and bit width.
@@ -491,16 +492,29 @@ uint64_t aml_node_init_processor(aml_node_t* node, aml_proc_id_t procId, aml_pbl
 uint64_t aml_node_init_string(aml_node_t* node, const char* str);
 
 /**
- * @brief Initialize an ACPI node as an unresolved reference to be resolved later.
+ * @brief Initialize an ACPI node as an empty string with the given length.
+ *
+ * The string will be initalized with zero chars fol
+ *
+ * @param node Pointer to the node to initialize.
+ * @param length Length of the string will also be the capacity.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_node_init_string_empty(aml_node_t* node, uint64_t length);
+
+/**
+ * @brief Initialize an ACPI node as an unresolved reference and adds it to the patch-up system.
  *
  * This is used for forward references, where a NameString refers to a node that has not yet been defined.
  *
  * @param node Pointer to the node to initialize.
  * @param nameString The NameString representing the path to the target node.
  * @param start The node to start the search from when resolving the reference.
+ * @param callback Will be called when the reference is resolved.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_node_init_unresolved(aml_node_t* node, aml_name_string_t* nameString, aml_node_t* start);
+uint64_t aml_node_init_unresolved(aml_node_t* node, aml_name_string_t* nameString, aml_node_t* start,
+    aml_patch_up_resolve_callback_t callback);
 
 /**
  * @brief Initialize an ACPI node as an alias to the given target node.
@@ -556,11 +570,11 @@ aml_node_t* aml_node_find_child(aml_node_t* parent, const char* name);
  * A leading backslash indicates an absolute path from the root (e.g., "\DEV0.SUB0.METH").
  * A leading caret indicates a relative path from the start node's parent (e.g., "^SUB0.METH").
  *
- * @param path The path string to search for.
  * @param start The node to start the search from, or `NULL` to start from the root.
+ * @param path The path string to search for.
  * @return On success, a pointer to the found node. On failure, `NULL` and `errno` is set.
  */
-aml_node_t* aml_node_find(const char* path, aml_node_t* start);
+aml_node_t* aml_node_find(aml_node_t* start, const char* path);
 
 /**
  * @brief Store bits into a node at the specified bit offset and size.

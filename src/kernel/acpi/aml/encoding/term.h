@@ -1,10 +1,12 @@
 #pragma once
 
+#include "acpi/aml/aml_node.h"
 #include "data.h"
 
 #include <stdint.h>
 
 typedef struct aml_state aml_state_t;
+typedef struct aml_scope aml_scope_t;
 
 /**
  * @brief Term Objects Encoding
@@ -22,21 +24,22 @@ typedef struct aml_state aml_state_t;
  * A TermArg is defined as `TermArg := ExpressionOpcode | DataObject | ArgObj | LocalObj`.
  *
  * @param state The AML state.
- * @param node The current AML node.
- * @param out The destination node to store the result of the TermArg.
+ * @param scope The current AML scope.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param allowedTypes Bitmask of allowed types for the TermArg, the result will be evaluated to one of these types.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_term_arg_read(aml_state_t* state, aml_node_t* node, aml_node_t* out);
+uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_data_type_t allowedTypes);
 
 /**
  * @brief Wrapper around `aml_term_arg_read` that converts the result to an integer.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @param out The output buffer to store the integer value of the TermArg.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_node_t* node, aml_qword_data_t* out);
+uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_scope_t* scope, uint64_t* out);
 
 /**
  * @brief Reads an Object structure from the AML byte stream.
@@ -44,10 +47,10 @@ uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_node_t* node, aml_qwo
  * An Object is defined as `Object := NameSpaceModifierObj | NamedObj`.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_object_read(aml_state_t* state, aml_node_t* node);
+uint64_t aml_object_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a TermObj structure from the AML byte stream.
@@ -55,21 +58,23 @@ uint64_t aml_object_read(aml_state_t* state, aml_node_t* node);
  * A TermObj is defined as `TermObj := Object | StatementOpcode | ExpressionOpcode`.
  *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_term_obj_read(aml_state_t* state, aml_node_t* node);
+uint64_t aml_term_obj_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a TermList structure from the AML byte stream.
  *
  * A TermList structure is defined as `TermList := Nothing | <termobj termlist>`.
  *
+ * Also creates a new scope for reading the TermList.
+ *
  * @param state The AML state.
- * @param node The current AML node.
+ * @param newLocation The new location of the scope to be created for reading the TermList.
  * @param end Pointer to the end of the TermList.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_term_list_read(aml_state_t* state, aml_node_t* node, const uint8_t* end);
+uint64_t aml_term_list_read(aml_state_t* state, aml_node_t* newLocation, const uint8_t* end);
 
 /** @} */
