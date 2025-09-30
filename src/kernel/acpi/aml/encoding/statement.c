@@ -4,6 +4,7 @@
 #include "acpi/aml/aml_scope.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_value.h"
+#include "acpi/aml/runtime/copy.h"
 #include "package_length.h"
 #include "term.h"
 
@@ -194,7 +195,7 @@ uint64_t aml_def_return_read(aml_state_t* state, aml_scope_t* scope)
 
     if (state->returnValue != NULL)
     {
-        if (aml_node_clone(argObject, state->returnValue) == ERR)
+        if (aml_copy_raw(argObject, state->returnValue) == ERR)
         {
             aml_node_deinit(argObject);
             return ERR;

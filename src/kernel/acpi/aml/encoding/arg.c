@@ -34,6 +34,19 @@ uint64_t aml_arg_obj_read(aml_state_t* state, aml_node_t** out)
         return ERR;
     }
 
-    *out = &state->args->args[index];
+    if (state->args->args[index]->type == AML_DATA_OBJECT_REFERENCE)
+    {
+        aml_node_t* target = state->args->args[index]->objectReference.target;
+        if (target == NULL)
+        {
+            AML_DEBUG_ERROR(state, "Arg%d is an ObjectReference to NULL", index);
+            return ERR;
+        }
+
+        *out = target;
+        return 0;
+    }
+
+    *out = state->args->args[index];
     return 0;
 }

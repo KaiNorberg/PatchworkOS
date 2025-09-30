@@ -113,9 +113,13 @@ typedef struct
  */
 typedef enum
 {
-    AML_NODE_NONE = 0,
-    AML_NODE_ROOT = 1 << 0,
-    AML_NODE_PREDEFINED = 1 << 1,
+    AML_NODE_NONE = 0,            //!< No flags.
+    AML_NODE_ROOT = 1 << 0,       //!< Is the root node.
+    AML_NODE_PREDEFINED = 1 << 1, //!< Is a predefined node.
+    AML_NODE_LOCAL = 1 << 2,      //!< Is a local variable.
+    AML_NODE_ARG = 1 << 3,        //!< Is a method argument.
+    AML_NODE_NAMED =
+        1 << 4, //!< Is a named node, as in it appears in the namespace tree. Will be set in `aml_node_new()`.
 } aml_node_flags_t;
 
 /**
@@ -274,12 +278,15 @@ typedef struct aml_node
  *
  * When the node is no longer needed, it should be deinitialized using `aml_node_deinit()`. But never freed using
  * `aml_node_free()`.
+ *
+ * @param nodeFlags Flags for the new node.
+ * @return The new node.
  */
-#define AML_NODE_CREATE \
+#define AML_NODE_CREATE(nodeFlags) \
     (aml_node_t) \
     { \
-        .entry = LIST_ENTRY_CREATE, .type = AML_DATA_UNINITALIZED, .flags = AML_NODE_NONE, .children = LIST_CREATE, \
-        .parent = NULL, .segment = {'_', 'T', '_', 'X', '\0'}, .isAllocated = false, .dir = {0} \
+        .entry = LIST_ENTRY_CREATE, .type = AML_DATA_UNINITALIZED, .flags = nodeFlags, .children = LIST_CREATE, \
+        .parent = NULL, .segment = {'_', 'T', '_', '_', '\0'}, .isAllocated = false, .dir = {0} \
     }
 
 /**
@@ -311,12 +318,12 @@ void aml_node_free(aml_node_t* node);
 /**
  * @brief Add a new node at the location and with the name specified by the NameString.
  *
- * @param string The Namestring specifying the location and name of the new node.
  * @param start The node to start the search from, or `NULL` to start from the root.
+ * @param string The Namestring specifying the location and name of the new node.
  * @param flags Flags for the new node.
  * @return On success, a pointer to the new node. On failure, `NULL` and `errno` is set.
  */
-aml_node_t* aml_node_add(aml_name_string_t* string, aml_node_t* start, aml_node_flags_t flags);
+aml_node_t* aml_node_add(aml_node_t* start, aml_name_string_t* string, aml_node_flags_t flags);
 
 /**
  * @brief Initialize an ACPI node as a buffer with the given content.
@@ -459,7 +466,7 @@ uint64_t aml_node_init_object_reference(aml_node_t* node, aml_node_t* target);
  * @param length The length of the operation region.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_node_init_opregion(aml_node_t* node, aml_region_space_t space, uint64_t offset, uint32_t length);
+uint64_t aml_node_init_operation_region(aml_node_t* node, aml_region_space_t space, uint64_t offset, uint32_t length);
 
 /**
  * @brief Initialize an ACPI node as a package with the given number of elements.
@@ -534,15 +541,6 @@ uint64_t aml_node_init_alias(aml_node_t* node, aml_node_t* target);
  * @param node Pointer to the node to deinitialize.
  */
 void aml_node_deinit(aml_node_t* node);
-
-/**
- * @brief Clone an ACPI node, initalizing the destination node with a deep copy of the source node.
- *
- * @param src Pointer to the source node to clone.
- * @param dest Pointer to the destination node to initialize as a clone of the source node.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t aml_node_clone(aml_node_t* src, aml_node_t* dest);
 
 /**
  * @brief Traverse alias nodes to find the target node.

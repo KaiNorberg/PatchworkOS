@@ -45,7 +45,7 @@ uint64_t aml_def_alias_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_node_t* target = aml_node_add(&targetNameString, scope->node, AML_NODE_NONE);
+    aml_node_t* target = aml_node_add(scope->node, &targetNameString, AML_NODE_NONE);
     if (target == NULL)
     {
         errno = EILSEQ;
@@ -79,28 +79,20 @@ uint64_t aml_def_name_read(aml_state_t* state, aml_scope_t* scope)
     aml_name_string_t nameString;
     if (aml_name_string_read(state, &nameString) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read name string");
+        AML_DEBUG_ERROR(state, "Failed to read NameString");
         return ERR;
     }
 
-    aml_node_t* name = aml_node_add(&nameString, scope->node, AML_NODE_NONE);
+    aml_node_t* name = aml_node_add(scope->node, &nameString, AML_NODE_NONE);
     if (name == NULL)
     {
-        AML_DEBUG_ERROR(state, "Failed to add node");
         errno = EILSEQ;
         return ERR;
     }
 
-    aml_node_t* dataRefObject = NULL;
-    if (aml_data_ref_object_read(state, scope, &dataRefObject) == ERR)
+    if (aml_data_ref_object_read(state, scope, name) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read DataRefObject");
-        return ERR;
-    }
-
-    if (aml_node_clone(dataRefObject, name) == ERR)
-    {
-        aml_node_deinit(dataRefObject);
         return ERR;
     }
 

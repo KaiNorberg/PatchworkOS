@@ -60,7 +60,7 @@ static inline uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, 
 
     for (uint8_t i = 0; i < AML_MAX_LOCALS; i++)
     {
-        state->locals[i] = AML_NODE_CREATE;
+        state->locals[i] = AML_NODE_CREATE(AML_NODE_LOCAL);
     }
     state->args = args;
     state->returnValue = returnValue;

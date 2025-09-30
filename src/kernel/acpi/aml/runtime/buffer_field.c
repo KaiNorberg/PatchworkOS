@@ -108,17 +108,6 @@ uint64_t aml_buffer_field_store(aml_node_t* bufferField, aml_node_t* in)
                 bitValue = (in->integer.value >> srcBitIndex) & 1;
             }
         }
-        else if (in->type == AML_DATA_INTEGER_CONSTANT)
-        {
-            if (srcBitIndex >= 64)
-            {
-                bitValue = 0;
-            }
-            else
-            {
-                bitValue = (in->integerConstant.value >> srcBitIndex) & 1;
-            }
-        }
         else
         {
             errno = EINVAL;

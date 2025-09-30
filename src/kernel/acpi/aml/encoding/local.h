@@ -34,6 +34,11 @@ typedef struct aml_node aml_node_t;
  * - Local6Op := 0x66 and
  * - Local7Op := 0x67.
  *
+ * Note that if a LocalObj is storing a ObjectRefernce it will be Automatically dereferenced, so in such a situation
+ * `out` will point to the actual object and not an ObjectReference in the LocalObj.
+ *
+ * @see Section 19.3.5.8.2 of the ACPI specification for more details.
+ *
  * @param state Pointer to the AML state.
  * @param out Pointer to the pointer to store the resulting Local node.
  * @return On success, 0. On failure, `ERR` and `errno` is set.

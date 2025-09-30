@@ -108,14 +108,14 @@ uint64_t aml_def_op_region_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_node_t* newNode = aml_node_add(&nameString, scope->node, AML_NODE_NONE);
+    aml_node_t* newNode = aml_node_add(scope->node, &nameString, AML_NODE_NONE);
     if (newNode == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node '%s'", aml_name_string_to_string(&nameString));
         return ERR;
     }
 
-    if (aml_node_init_opregion(newNode, regionSpace, regionOffset, regionLen) == ERR)
+    if (aml_node_init_operation_region(newNode, regionSpace, regionOffset, regionLen) == ERR)
     {
         aml_node_free(newNode);
         AML_DEBUG_ERROR(state, "Failed to init opregion");
@@ -612,7 +612,7 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_scope_t* scope)
 
     const uint8_t* end = start + pkgLength;
 
-    aml_node_t* newNode = aml_node_add(&nameString, scope->node, AML_NODE_NONE);
+    aml_node_t* newNode = aml_node_add(scope->node, &nameString, AML_NODE_NONE);
     if (newNode == NULL)
     {
         return ERR;
@@ -665,7 +665,7 @@ uint64_t aml_def_device_read(aml_state_t* state, aml_scope_t* scope)
 
     const uint8_t* end = start + pkgLength;
 
-    aml_node_t* newNode = aml_node_add(&nameString, scope->node, AML_NODE_NONE);
+    aml_node_t* newNode = aml_node_add(scope->node, &nameString, AML_NODE_NONE);
     if (newNode == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node");
@@ -732,7 +732,7 @@ uint64_t aml_def_mutex_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_node_t* newNode = aml_node_add(&nameString, scope->node, AML_NODE_NONE);
+    aml_node_t* newNode = aml_node_add(scope->node, &nameString, AML_NODE_NONE);
     if (newNode == NULL)
     {
         return ERR;
@@ -832,7 +832,7 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_scope_t* scope)
 
     const uint8_t* end = start + pkgLength;
 
-    aml_node_t* newNode = aml_node_add(&nameString, scope->node, AML_NODE_NONE);
+    aml_node_t* newNode = aml_node_add(scope->node, &nameString, AML_NODE_NONE);
     if (newNode == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add node");
@@ -921,7 +921,7 @@ uint64_t aml_def_create_bit_field_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_node_t* newNode = aml_node_add(&nameString, scope->node, AML_NODE_NONE);
+    aml_node_t* newNode = aml_node_add(scope->node, &nameString, AML_NODE_NONE);
     if (newNode == NULL)
     {
         return ERR;
@@ -976,7 +976,7 @@ static inline uint64_t aml_def_create_field_read_helper(aml_state_t* state, aml_
         return ERR;
     }
 
-    aml_node_t* newNode = aml_node_add(&nameString, scope->node, AML_NODE_NONE);
+    aml_node_t* newNode = aml_node_add(scope->node, &nameString, AML_NODE_NONE);
     if (newNode == NULL)
     {
         return ERR;

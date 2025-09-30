@@ -22,7 +22,7 @@ typedef struct aml_state aml_state_t;
  */
 typedef struct aml_term_arg_list
 {
-    aml_node_t args[AML_MAX_ARGS];
+    aml_node_t* args[AML_MAX_ARGS];
     uint8_t count;
 } aml_term_arg_list_t;
 
@@ -49,10 +49,10 @@ uint64_t aml_buffer_size_read(aml_state_t* state, aml_scope_t* scope, uint64_t* 
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node to store the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_buffer_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_buffer_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* out);
 
 /**
  * @brief Reads a TermArgList structure from the AML byte stream.
@@ -82,7 +82,8 @@ uint64_t aml_term_arg_list_read(aml_state_t* state, aml_scope_t* scope, uint64_t
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer which will store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer which will store the result, if this points to `NULL`, a temp node will
+ * be used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_method_invocation_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -96,7 +97,8 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_scope_t* scope, aml_
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -110,7 +112,8 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_scope_t* scope, aml_no
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_store_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -131,7 +134,8 @@ uint64_t aml_def_store_read(aml_state_t* state, aml_scope_t* scope, aml_node_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @param allowedTypes The allowed types that the TermArg can evaluate to.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
@@ -168,7 +172,8 @@ uint64_t aml_divisor_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_remainder_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -180,7 +185,8 @@ uint64_t aml_remainder_read(aml_state_t* state, aml_scope_t* scope, aml_node_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_quotient_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -194,7 +200,8 @@ uint64_t aml_quotient_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** 
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_add_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -208,7 +215,8 @@ uint64_t aml_def_add_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_subtract_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -222,7 +230,8 @@ uint64_t aml_def_subtract_read(aml_state_t* state, aml_scope_t* scope, aml_node_
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_multiply_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -236,7 +245,8 @@ uint64_t aml_def_multiply_read(aml_state_t* state, aml_scope_t* scope, aml_node_
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_divide_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -250,7 +260,8 @@ uint64_t aml_def_divide_read(aml_state_t* state, aml_scope_t* scope, aml_node_t*
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_mod_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -264,7 +275,8 @@ uint64_t aml_def_mod_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_and_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -278,7 +290,8 @@ uint64_t aml_def_and_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_nand_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -292,7 +305,8 @@ uint64_t aml_def_nand_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** 
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_or_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -306,7 +320,8 @@ uint64_t aml_def_or_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** ou
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_nor_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -320,7 +335,8 @@ uint64_t aml_def_nor_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_xor_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -334,7 +350,8 @@ uint64_t aml_def_xor_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_not_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -360,7 +377,8 @@ uint64_t aml_shift_count_read(aml_state_t* state, aml_scope_t* scope, uint64_t* 
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_shift_left_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -374,7 +392,8 @@ uint64_t aml_def_shift_left_read(aml_state_t* state, aml_scope_t* scope, aml_nod
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_shift_right_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -388,7 +407,8 @@ uint64_t aml_def_shift_right_read(aml_state_t* state, aml_scope_t* scope, aml_no
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_increment_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -402,7 +422,8 @@ uint64_t aml_def_increment_read(aml_state_t* state, aml_scope_t* scope, aml_node
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_decrement_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -416,7 +437,8 @@ uint64_t aml_def_decrement_read(aml_state_t* state, aml_scope_t* scope, aml_node
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_obj_reference_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -430,7 +452,8 @@ uint64_t aml_obj_reference_read(aml_state_t* state, aml_scope_t* scope, aml_node
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_deref_of_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -446,7 +469,8 @@ uint64_t aml_def_deref_of_read(aml_state_t* state, aml_scope_t* scope, aml_node_
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_buff_pkg_str_obj_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -475,7 +499,8 @@ uint64_t aml_index_value_read(aml_state_t* state, aml_scope_t* scope, uint64_t* 
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_index_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -489,7 +514,8 @@ uint64_t aml_def_index_read(aml_state_t* state, aml_scope_t* scope, aml_node_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_l_and_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -503,7 +529,8 @@ uint64_t aml_def_l_and_read(aml_state_t* state, aml_scope_t* scope, aml_node_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_l_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -517,7 +544,8 @@ uint64_t aml_def_l_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_l_greater_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -531,7 +559,8 @@ uint64_t aml_def_l_greater_read(aml_state_t* state, aml_scope_t* scope, aml_node
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_l_greater_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -545,7 +574,8 @@ uint64_t aml_def_l_greater_equal_read(aml_state_t* state, aml_scope_t* scope, am
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_l_less_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -559,7 +589,8 @@ uint64_t aml_def_l_less_read(aml_state_t* state, aml_scope_t* scope, aml_node_t*
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_l_less_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -573,7 +604,8 @@ uint64_t aml_def_l_less_equal_read(aml_state_t* state, aml_scope_t* scope, aml_n
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_l_not_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -587,7 +619,8 @@ uint64_t aml_def_l_not_read(aml_state_t* state, aml_scope_t* scope, aml_node_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_l_not_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -601,7 +634,8 @@ uint64_t aml_def_l_not_equal_read(aml_state_t* state, aml_scope_t* scope, aml_no
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_l_or_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
@@ -619,7 +653,8 @@ uint64_t aml_def_l_or_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** 
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);

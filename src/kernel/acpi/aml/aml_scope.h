@@ -77,13 +77,4 @@ void aml_scope_reset_temps(aml_scope_t* scope);
  */
 aml_node_t* aml_scope_get_temp(aml_scope_t* scope);
 
-/**
- * @brief Ensure that a node exists, if it does not, create it as a temporary node.
- *
- * @param scope The scope from which we might create a temporary node.
- * @param out Pointer to where the pointer to the node will be stored.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-uint64_t aml_scope_ensure_node(aml_scope_t* scope, aml_node_t** out);
-
 /** @} */

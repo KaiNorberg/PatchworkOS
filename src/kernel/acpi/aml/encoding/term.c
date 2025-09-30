@@ -5,7 +5,7 @@
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_value.h"
 
-#include "acpi/aml/runtime/evaluate.h"
+#include "acpi/aml/runtime/convert.h"
 #include "data.h"
 #include "expression.h"
 #include "named.h"
@@ -17,46 +17,68 @@
 
 uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_data_type_t allowedTypes)
 {
-    aml_value_t value;
-    if (aml_value_peek(state, &value) == ERR)
+    aml_value_t op;
+    if (aml_value_peek(state, &op) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to peek value");
         return ERR;
     }
 
-    aml_node_t* temp = NULL;
+    aml_node_t* value = NULL;
 
-    uint64_t result;
-    switch (value.props->type)
+    switch (op.props->type)
     {
     case AML_VALUE_TYPE_EXPRESSION:
     case AML_VALUE_TYPE_NAME: // MethodInvocation is a Name
-        result = aml_expression_opcode_read(state, scope, &temp);
+        if (aml_expression_opcode_read(state, scope, &value) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read ExpressionOpcode");
+            return ERR;
+        }
         break;
     case AML_VALUE_TYPE_ARG:
-        result = aml_arg_obj_read(state, &temp);
+        if (aml_arg_obj_read(state, &value) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read ArgObj");
+            return ERR;
+        }
         break;
     case AML_VALUE_TYPE_LOCAL:
-        result = aml_local_obj_read(state, &temp);
+        if (aml_local_obj_read(state, &value) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read LocalObj");
+            return ERR;
+        }
         break;
     default:
-        result = aml_data_object_read(state, scope, &temp);
-        break;
+    {
+        value = aml_scope_get_temp(scope);
+        if (value == NULL)
+        {
+            return ERR;
+        }
+
+        if (aml_data_object_read(state, scope, value) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read DataObject");
+            return ERR;
+        }
+    }
     }
 
-    if (result == ERR)
+    if (value->type & allowedTypes)
     {
-        AML_DEBUG_ERROR(state, "Failed to read TermArg");
+        *out = value;
+        return 0;
+    }
+
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
+    {
         return ERR;
     }
 
-    if (aml_scope_ensure_node(scope, out) == ERR)
-    {
-        aml_node_deinit(temp);
-        return ERR;
-    }
-
-    if (aml_evaluate(temp, *out, allowedTypes) == ERR)
+    if (aml_convert_source(value, *out, allowedTypes) == ERR)
     {
         return ERR;
     }
@@ -151,6 +173,7 @@ uint64_t aml_term_list_read(aml_state_t* state, aml_node_t* newLocation, const u
         // End of buffer not reached => byte is not nothing => must be a termobj.
         if (aml_term_obj_read(state, &scope) == ERR)
         {
+            aml_scope_deinit(&scope);
             AML_DEBUG_ERROR(state, "Failed to read TermObj");
             return ERR;
         }
@@ -158,5 +181,6 @@ uint64_t aml_term_list_read(aml_state_t* state, aml_node_t* newLocation, const u
         aml_scope_reset_temps(&scope);
     }
 
+    aml_scope_deinit(&scope);
     return 0;
 }

@@ -85,7 +85,8 @@ uint64_t aml_def_noop_read(aml_state_t* state);
  *
  * @param state The AML state to parse from.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be used.
+ * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_arg_object_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);

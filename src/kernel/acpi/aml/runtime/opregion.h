@@ -11,7 +11,7 @@
  *
  * This module provides functionality for accessing Opregions and Fields.
  *
- * Genuinely good luck in understanding this code, especially the alignment stuff. Field access is just spaghetti.
+ * Good luck understanding all the bit shifting and masking, im pretty sure I got it all right but who knows.
  *
  * @{
  */

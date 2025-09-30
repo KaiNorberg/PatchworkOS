@@ -6,11 +6,13 @@
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_to_string.h"
 #include "acpi/aml/aml_value.h"
-#include "acpi/aml/runtime/evaluate.h"
+#include "acpi/aml/runtime/convert.h"
 #include "acpi/aml/runtime/method.h"
 #include "arg.h"
 #include "package_length.h"
 #include "term.h"
+
+// TODO: Write helper functions to reduce code duplication.
 
 uint64_t aml_buffer_size_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
 {
@@ -22,7 +24,7 @@ uint64_t aml_buffer_size_read(aml_state_t* state, aml_scope_t* scope, uint64_t* 
     return 0;
 }
 
-uint64_t aml_def_buffer_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+uint64_t aml_def_buffer_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* out)
 {
     aml_value_t bufferOp;
     if (aml_value_read(state, &bufferOp) == ERR)
@@ -58,14 +60,8 @@ uint64_t aml_def_buffer_read(aml_state_t* state, aml_scope_t* scope, aml_node_t*
 
     uint64_t availableBytes = (uint64_t)(end - state->current);
 
-    if (aml_scope_ensure_node(scope, out) == ERR)
+    if (aml_node_init_buffer(out, state->current, availableBytes, bufferSize) == ERR)
     {
-        return ERR;
-    }
-
-    if (aml_node_init_buffer(*out, state->current, availableBytes, bufferSize) == ERR)
-    {
-        aml_node_deinit(*out);
         return ERR;
     }
 
@@ -84,15 +80,12 @@ uint64_t aml_term_arg_list_read(aml_state_t* state, aml_scope_t* scope, uint64_t
     out->count = 0;
     for (uint64_t i = 0; i < argCount; i++)
     {
-        out->args[i] = AML_NODE_CREATE;
-
-        aml_node_t* termArg = NULL;
-        if (aml_term_arg_read(state, scope, &termArg, AML_DATA_ALL) == ERR ||
-            aml_node_clone(termArg, &out->args[i]) == ERR)
+        out->args[i] = NULL;
+        if (aml_term_arg_read(state, scope, &out->args[i], AML_DATA_ALL) == ERR)
         {
             for (uint64_t j = 0; j < i; j++)
             {
-                aml_node_deinit(&out->args[j]);
+                aml_node_deinit(out->args[i]);
             }
             return ERR;
         }
@@ -105,11 +98,10 @@ uint64_t aml_term_arg_list_read(aml_state_t* state, aml_scope_t* scope, uint64_t
 
 uint64_t aml_method_invocation_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    aml_name_string_t nameString;
     aml_node_t* target = NULL;
-    if (aml_name_string_read_and_resolve(state, scope, &target, AML_RESOLVE_NONE, &nameString) == ERR)
+    if (aml_name_string_read_and_resolve(state, scope, &target, AML_RESOLVE_NONE, NULL) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read or resolve name string");
+        AML_DEBUG_ERROR(state, "Failed to read or resolve NameString");
         return ERR;
     }
 
@@ -122,41 +114,30 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_scope_t* scope, aml_
             return ERR;
         }
 
-        if (aml_scope_ensure_node(scope, out) == ERR)
+        *out = aml_scope_get_temp(scope);
+        if (*out == NULL)
         {
             return ERR;
         }
 
         if (aml_method_evaluate(target, &args, *out) == ERR)
         {
-            aml_node_deinit(*out);
             for (uint64_t i = 0; i < args.count; i++)
             {
-                aml_node_deinit(&args.args[i]);
+                aml_node_deinit(args.args[i]);
             }
             return ERR;
         }
 
         for (uint64_t i = 0; i < args.count; i++)
         {
-            aml_node_deinit(&args.args[i]);
+            aml_node_deinit(args.args[i]);
         }
 
         return 0;
     }
 
-    if (*out == NULL)
-    {
-        *out = target;
-        return 0;
-    }
-
-    if (aml_evaluate(target, *out, AML_DATA_ALL) == ERR)
-    {
-        aml_node_deinit(*out);
-        return ERR;
-    }
-
+    *out = target;
     return 0;
 }
 
@@ -190,7 +171,8 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_scope_t* scope, aml_no
         return ERR;
     }
 
-    if (aml_scope_ensure_node(scope, out) == ERR)
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
     {
         return ERR;
     }
@@ -252,8 +234,8 @@ uint64_t aml_def_store_read(aml_state_t* state, aml_scope_t* scope, aml_node_t**
         return ERR;
     }
 
-    aml_node_t* source = NULL;
-    if (aml_term_arg_read(state, scope, &source, AML_DATA_ALL) == ERR)
+    aml_node_t* result = NULL;
+    if (aml_term_arg_read(state, scope, &result, AML_DATA_ALL) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read TermArg");
         return ERR;
@@ -266,22 +248,14 @@ uint64_t aml_def_store_read(aml_state_t* state, aml_scope_t* scope, aml_node_t**
         return ERR;
     }
 
-    if (aml_evaluate(source, destination, AML_DATA_ALL) == ERR)
+    if (aml_convert_result(result, destination) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to convert result '%.*s' of type '%s' to destination '%.*s' of type '%s'", AML_NAME_LENGTH, result->segment,
+            aml_data_type_to_string(result->type), AML_NAME_LENGTH, destination->segment, aml_data_type_to_string(destination->type));
         return ERR;
     }
 
-    if (aml_scope_ensure_node(scope, out) == ERR)
-    {
-        return ERR;
-    }
-
-    if (aml_evaluate(source, *out, AML_DATA_ALL) == ERR)
-    {
-        aml_node_deinit(*out);
-        return ERR;
-    }
-
+    *out = destination;
     return 0;
 }
 
@@ -373,35 +347,26 @@ uint64_t aml_def_add_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
         return ERR;
     }
 
-    aml_node_t result = AML_NODE_CREATE;
-    if (aml_node_init_integer(&result, operand1->integer.value + operand2->integer.value) == ERR)
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
+    {
+        return ERR;
+    }
+
+    if (aml_node_init_integer(*out, operand1->integer.value + operand2->integer.value) == ERR)
     {
         return ERR;
     }
 
     if (target != NULL)
     {
-        if (aml_evaluate(&result, target, AML_DATA_ALL) == ERR)
+        if (aml_convert_result(*out, target) == ERR)
         {
-            aml_node_deinit(&result);
+            aml_node_deinit(*out);
             return ERR;
         }
     }
 
-    if (aml_scope_ensure_node(scope, out) == ERR)
-    {
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    if (aml_evaluate(&result, *out, AML_DATA_ALL) == ERR)
-    {
-        aml_node_deinit(*out);
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    aml_node_deinit(&result);
     return 0;
 }
 
@@ -442,35 +407,26 @@ uint64_t aml_def_subtract_read(aml_state_t* state, aml_scope_t* scope, aml_node_
         return ERR;
     }
 
-    aml_node_t result = AML_NODE_CREATE;
-    if (aml_node_init_integer(&result, operand1->integer.value - operand2->integer.value) == ERR)
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
+    {
+        return ERR;
+    }
+
+    if (aml_node_init_integer(*out, operand1->integer.value - operand2->integer.value) == ERR)
     {
         return ERR;
     }
 
     if (target != NULL)
     {
-        if (aml_evaluate(&result, target, AML_DATA_ALL) == ERR)
+        if (aml_convert_result(*out, target) == ERR)
         {
-            aml_node_deinit(&result);
+            aml_node_deinit(*out);
             return ERR;
         }
     }
 
-    if (aml_scope_ensure_node(scope, out) == ERR)
-    {
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    if (aml_evaluate(&result, *out, AML_DATA_ALL) == ERR)
-    {
-        aml_node_deinit(*out);
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    aml_node_deinit(&result);
     return 0;
 }
 
@@ -511,35 +467,26 @@ uint64_t aml_def_multiply_read(aml_state_t* state, aml_scope_t* scope, aml_node_
         return ERR;
     }
 
-    aml_node_t result = AML_NODE_CREATE;
-    if (aml_node_init_integer(&result, operand1->integer.value * operand2->integer.value) == ERR)
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
+    {
+        return ERR;
+    }
+
+    if (aml_node_init_integer(*out, operand1->integer.value * operand2->integer.value) == ERR)
     {
         return ERR;
     }
 
     if (target != NULL)
     {
-        if (aml_evaluate(&result, target, AML_DATA_ALL) == ERR)
+        if (aml_convert_result(*out, target) == ERR)
         {
-            aml_node_deinit(&result);
+            aml_node_deinit(*out);
             return ERR;
         }
     }
 
-    if (aml_scope_ensure_node(scope, out) == ERR)
-    {
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    if (aml_evaluate(&result, *out, AML_DATA_ALL) == ERR)
-    {
-        aml_node_deinit(*out);
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    aml_node_deinit(&result);
     return 0;
 }
 
@@ -596,14 +543,14 @@ uint64_t aml_def_divide_read(aml_state_t* state, aml_scope_t* scope, aml_node_t*
         return ERR;
     }
 
-    aml_node_t remainder = AML_NODE_CREATE;
+    aml_node_t remainder = AML_NODE_CREATE(AML_NODE_NONE);
     if (aml_node_init_integer(&remainder, dividend % divisor) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to init remainder");
         return ERR;
     }
 
-    aml_node_t quotient = AML_NODE_CREATE;
+    aml_node_t quotient = AML_NODE_CREATE(AML_NODE_NONE);
     if (aml_node_init_integer(&quotient, dividend / divisor) == ERR)
     {
         aml_node_deinit(&remainder);
@@ -613,7 +560,7 @@ uint64_t aml_def_divide_read(aml_state_t* state, aml_scope_t* scope, aml_node_t*
 
     if (quotientDest == NULL)
     {
-        if (aml_evaluate(&quotient, quotientDest, AML_DATA_ALL) == ERR)
+        if (aml_convert_result(&quotient, quotientDest) == ERR)
         {
             aml_node_deinit(&remainder);
             aml_node_deinit(&quotient);
@@ -623,7 +570,7 @@ uint64_t aml_def_divide_read(aml_state_t* state, aml_scope_t* scope, aml_node_t*
 
     if (remainderDest != NULL)
     {
-        if (aml_evaluate(&remainder, remainderDest, AML_DATA_ALL) == ERR)
+        if (aml_convert_result(&remainder, remainderDest) == ERR)
         {
             aml_node_deinit(&remainder);
             aml_node_deinit(&quotient);
@@ -633,15 +580,15 @@ uint64_t aml_def_divide_read(aml_state_t* state, aml_scope_t* scope, aml_node_t*
 
     aml_node_deinit(&remainder);
 
-    if (aml_scope_ensure_node(scope, out) == ERR)
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
     {
         aml_node_deinit(&quotient);
         return ERR;
     }
 
-    if (aml_evaluate(&quotient, *out, AML_DATA_ALL) == ERR)
+    if (aml_node_init_integer(*out, quotient.integer.value) == ERR)
     {
-        aml_node_deinit(*out);
         aml_node_deinit(&quotient);
         return ERR;
     }
@@ -694,35 +641,26 @@ uint64_t aml_def_mod_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
         return ERR;
     }
 
-    aml_node_t result = AML_NODE_CREATE;
-    if (aml_node_init_integer(&result, dividend % divisor) == ERR)
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
+    {
+        return ERR;
+    }
+
+    if (aml_node_init_integer(*out, dividend % divisor) == ERR)
     {
         return ERR;
     }
 
     if (target != NULL)
     {
-        if (aml_evaluate(&result, target, AML_DATA_ALL) == ERR)
+        if (aml_convert_result(*out, target) == ERR)
         {
-            aml_node_deinit(&result);
+            aml_node_deinit(*out);
             return ERR;
         }
     }
 
-    if (aml_scope_ensure_node(scope, out) == ERR)
-    {
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    if (aml_evaluate(&result, *out, AML_DATA_ALL) == ERR)
-    {
-        aml_node_deinit(*out);
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    aml_node_deinit(&result);
     return 0;
 }
 
@@ -763,35 +701,26 @@ uint64_t aml_def_and_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
         return ERR;
     }
 
-    aml_node_t result = AML_NODE_CREATE;
-    if (aml_node_init_integer(&result, operand1->integer.value & operand2->integer.value) == ERR)
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
+    {
+        return ERR;
+    }
+
+    if (aml_node_init_integer(*out, operand1->integer.value & operand2->integer.value) == ERR)
     {
         return ERR;
     }
 
     if (target != NULL)
     {
-        if (aml_evaluate(&result, target, AML_DATA_ALL) == ERR)
+        if (aml_convert_result(*out, target) == ERR)
         {
-            aml_node_deinit(&result);
+            aml_node_deinit(*out);
             return ERR;
         }
     }
 
-    if (aml_scope_ensure_node(scope, out) == ERR)
-    {
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    if (aml_evaluate(&result, *out, AML_DATA_INTEGER) == ERR)
-    {
-        aml_node_deinit(&result);
-        aml_node_deinit(*out);
-        return ERR;
-    }
-
-    aml_node_deinit(&result);
     return 0;
 }
 
@@ -832,37 +761,26 @@ uint64_t aml_def_nand_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** 
         return ERR;
     }
 
-    aml_node_t result = AML_NODE_CREATE;
-    if (aml_node_init_integer(&result, ~(operand1->integer.value & operand2->integer.value)) == ERR)
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
     {
-        AML_DEBUG_ERROR(state, "Failed to init result integer");
+        return ERR;
+    }
+
+    if (aml_node_init_integer(*out, ~(operand1->integer.value & operand2->integer.value)) == ERR)
+    {
         return ERR;
     }
 
     if (target != NULL)
     {
-        if (aml_evaluate(&result, target, AML_DATA_ALL) == ERR)
+        if (aml_convert_result(*out, target) == ERR)
         {
-            aml_node_deinit(&result);
-            AML_DEBUG_ERROR(state, "Failed to store result in target");
+            aml_node_deinit(*out);
             return ERR;
         }
     }
 
-    if (aml_scope_ensure_node(scope, out) == ERR)
-    {
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    if (aml_evaluate(&result, *out, AML_DATA_ALL) == ERR)
-    {
-        aml_node_deinit(*out);
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    aml_node_deinit(&result);
     return 0;
 }
 
@@ -903,37 +821,26 @@ uint64_t aml_def_or_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** ou
         return ERR;
     }
 
-    aml_node_t result = AML_NODE_CREATE;
-    if (aml_node_init_integer(&result, operand1->integer.value | operand2->integer.value) == ERR)
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
     {
-        AML_DEBUG_ERROR(state, "Failed to init result integer");
+        return ERR;
+    }
+
+    if (aml_node_init_integer(*out, operand1->integer.value | operand2->integer.value) == ERR)
+    {
         return ERR;
     }
 
     if (target != NULL)
     {
-        if (aml_evaluate(&result, target, AML_DATA_ALL) == ERR)
+        if (aml_convert_result(*out, target) == ERR)
         {
-            aml_node_deinit(&result);
-            AML_DEBUG_ERROR(state, "Failed to store result in target");
+            aml_node_deinit(*out);
             return ERR;
         }
     }
 
-    if (aml_scope_ensure_node(scope, out) == ERR)
-    {
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    if (aml_evaluate(&result, *out, AML_DATA_ALL) == ERR)
-    {
-        aml_node_deinit(*out);
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    aml_node_deinit(&result);
     return 0;
 }
 
@@ -974,37 +881,26 @@ uint64_t aml_def_nor_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
         return ERR;
     }
 
-    aml_node_t result = AML_NODE_CREATE;
-    if (aml_node_init_integer(&result, ~(operand1->integer.value | operand2->integer.value)) == ERR)
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
     {
-        AML_DEBUG_ERROR(state, "Failed to init result integer");
+        return ERR;
+    }
+
+    if (aml_node_init_integer(*out, ~(operand1->integer.value | operand2->integer.value)) == ERR)
+    {
         return ERR;
     }
 
     if (target != NULL)
     {
-        if (aml_evaluate(&result, target, AML_DATA_ALL) == ERR)
+        if (aml_convert_result(*out, target) == ERR)
         {
-            aml_node_deinit(&result);
-            AML_DEBUG_ERROR(state, "Failed to store result in target");
+            aml_node_deinit(*out);
             return ERR;
         }
     }
 
-    if (aml_scope_ensure_node(scope, out) == ERR)
-    {
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    if (aml_evaluate(&result, *out, AML_DATA_ALL) == ERR)
-    {
-        aml_node_deinit(*out);
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    aml_node_deinit(&result);
     return 0;
 }
 
@@ -1045,37 +941,26 @@ uint64_t aml_def_xor_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
         return ERR;
     }
 
-    aml_node_t result = AML_NODE_CREATE;
-    if (aml_node_init_integer(&result, operand1->integer.value ^ operand2->integer.value) == ERR)
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
     {
-        AML_DEBUG_ERROR(state, "Failed to init result integer");
+        return ERR;
+    }
+
+    if (aml_node_init_integer(*out, operand1->integer.value ^ operand2->integer.value) == ERR)
+    {
         return ERR;
     }
 
     if (target != NULL)
     {
-        if (aml_evaluate(&result, target, AML_DATA_ALL) == ERR)
+        if (aml_convert_result(*out, target) == ERR)
         {
-            aml_node_deinit(&result);
-            AML_DEBUG_ERROR(state, "Failed to store result in target");
+            aml_node_deinit(*out);
             return ERR;
         }
     }
 
-    if (aml_scope_ensure_node(scope, out) == ERR)
-    {
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    if (aml_evaluate(&result, *out, AML_DATA_ALL) == ERR)
-    {
-        aml_node_deinit(*out);
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    aml_node_deinit(&result);
     return 0;
 }
 
@@ -1109,37 +994,26 @@ uint64_t aml_def_not_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
         return ERR;
     }
 
-    aml_node_t result = AML_NODE_CREATE;
-    if (aml_node_init_integer(&result, ~operand->integer.value) == ERR)
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
     {
-        AML_DEBUG_ERROR(state, "Failed to init result integer");
+        return ERR;
+    }
+
+    if (aml_node_init_integer(*out, ~operand->integer.value) == ERR)
+    {
         return ERR;
     }
 
     if (target != NULL)
     {
-        if (aml_evaluate(&result, target, AML_DATA_ALL) == ERR)
+        if (aml_convert_result(*out, target) == ERR)
         {
-            aml_node_deinit(&result);
-            AML_DEBUG_ERROR(state, "Failed to store result in target");
+            aml_node_deinit(*out);
             return ERR;
         }
     }
 
-    if (aml_scope_ensure_node(scope, out) == ERR)
-    {
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    if (aml_evaluate(&result, *out, AML_DATA_ALL) == ERR)
-    {
-        aml_node_deinit(*out);
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    aml_node_deinit(&result);
     return 0;
 }
 
@@ -1191,48 +1065,37 @@ uint64_t aml_def_shift_left_read(aml_state_t* state, aml_scope_t* scope, aml_nod
         return ERR;
     }
 
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
+    {
+        return ERR;
+    }
+
     // C will discard the most significant bits
-    aml_node_t result = AML_NODE_CREATE;
     if (shiftCount >= sizeof(uint64_t) * 8)
     {
-        if (aml_node_init_integer(&result, 0) == ERR)
+        if (aml_node_init_integer(*out, 0) == ERR)
         {
             return ERR;
         }
     }
     else
     {
-        if (aml_node_init_integer(&result, operand->integer.value << shiftCount) == ERR)
+        if (aml_node_init_integer(*out, operand->integer.value << shiftCount) == ERR)
         {
             return ERR;
         }
     }
 
-    // Target is allowed to be null
     if (target != NULL)
     {
-        if (aml_evaluate(&result, target, AML_DATA_ALL) == ERR)
+        if (aml_convert_result(*out, target) == ERR)
         {
-            aml_node_deinit(&result);
-            AML_DEBUG_ERROR(state, "Failed to store result");
+            aml_node_deinit(*out);
             return ERR;
         }
     }
 
-    if (aml_scope_ensure_node(scope, out) == ERR)
-    {
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    if (aml_evaluate(&result, *out, AML_DATA_ALL) == ERR)
-    {
-        aml_node_deinit(*out);
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    aml_node_deinit(&result);
     return 0;
 }
 
@@ -1273,48 +1136,37 @@ uint64_t aml_def_shift_right_read(aml_state_t* state, aml_scope_t* scope, aml_no
         return ERR;
     }
 
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
+    {
+        return ERR;
+    }
+
     // C will zero the most significant bits
-    aml_node_t result = AML_NODE_CREATE;
     if (shiftCount >= sizeof(uint64_t) * 8)
     {
-        if (aml_node_init_integer(&result, 0) == ERR)
+        if (aml_node_init_integer(*out, 0) == ERR)
         {
             return ERR;
         }
     }
     else
     {
-        if (aml_node_init_integer(&result, operand->integer.value >> shiftCount) == ERR)
+        if (aml_node_init_integer(*out, operand->integer.value >> shiftCount) == ERR)
         {
             return ERR;
         }
     }
 
-    // Target is allowed to be null
     if (target != NULL)
     {
-        if (aml_evaluate(&result, target, AML_DATA_ALL) == ERR)
+        if (aml_convert_result(*out, target) == ERR)
         {
-            aml_node_deinit(&result);
-            AML_DEBUG_ERROR(state, "Failed to store result");
+            aml_node_deinit(*out);
             return ERR;
         }
     }
 
-    if (aml_scope_ensure_node(scope, out) == ERR)
-    {
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    if (aml_evaluate(&result, *out, AML_DATA_ALL) == ERR)
-    {
-        aml_node_deinit(*out);
-        aml_node_deinit(&result);
-        return ERR;
-    }
-
-    aml_node_deinit(&result);
     return 0;
 }
 
@@ -1341,34 +1193,25 @@ uint64_t aml_def_increment_read(aml_state_t* state, aml_scope_t* scope, aml_node
         return ERR;
     }
 
-    aml_node_t value = AML_NODE_CREATE;
-    if (aml_evaluate(addend, &value, AML_DATA_INTEGER) == ERR)
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
     {
         return ERR;
     }
 
-    value.integer.value++;
-
-    if (aml_evaluate(&value, addend, AML_DATA_ALL) == ERR)
+    if (aml_convert_source(addend, *out, AML_DATA_INTEGER) == ERR)
     {
-        aml_node_deinit(&value);
         return ERR;
     }
 
-    if (aml_scope_ensure_node(scope, out) == ERR)
-    {
-        aml_node_deinit(&value);
-        return ERR;
-    }
+    (*out)->integer.value++;
 
-    if (aml_evaluate(&value, *out, AML_DATA_ALL) == ERR)
+    if (aml_convert_result(*out, addend) == ERR)
     {
         aml_node_deinit(*out);
-        aml_node_deinit(&value);
         return ERR;
     }
 
-    aml_node_deinit(&value);
     return 0;
 }
 
@@ -1395,36 +1238,25 @@ uint64_t aml_def_decrement_read(aml_state_t* state, aml_scope_t* scope, aml_node
         return ERR;
     }
 
-    aml_node_t value = AML_NODE_CREATE;
-    if (aml_evaluate(subtrahend, &value, AML_DATA_INTEGER) == ERR)
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
     {
         return ERR;
     }
 
-    assert(value.type == AML_DATA_INTEGER);
-
-    value.integer.value--;
-
-    if (aml_evaluate(&value, subtrahend, AML_DATA_ALL) == ERR)
+    if (aml_convert_source(subtrahend, *out, AML_DATA_INTEGER) == ERR)
     {
-        aml_node_deinit(&value);
         return ERR;
     }
 
-    if (aml_scope_ensure_node(scope, out) == ERR)
-    {
-        aml_node_deinit(&value);
-        return ERR;
-    }
+    (*out)->integer.value++;
 
-    if (aml_evaluate(&value, *out, AML_DATA_ALL) == ERR)
+    if (aml_convert_result(*out, subtrahend) == ERR)
     {
         aml_node_deinit(*out);
-        aml_node_deinit(&value);
         return ERR;
     }
 
-    aml_node_deinit(&value);
     return 0;
 }
 
@@ -1553,7 +1385,8 @@ uint64_t aml_def_index_read(aml_state_t* state, aml_scope_t* scope, aml_node_t**
         return ERR;
     }
 
-    if (aml_scope_ensure_node(scope, out) == ERR)
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
     {
         return ERR;
     }
@@ -1617,10 +1450,9 @@ uint64_t aml_def_index_read(aml_state_t* state, aml_scope_t* scope, aml_node_t**
 
     if (target != NULL)
     {
-        if (aml_node_clone(*out, target) == ERR)
+        if (aml_node_init_object_reference(target, (*out)->objectReference.target) == ERR)
         {
             aml_node_deinit(*out);
-            AML_DEBUG_ERROR(state, "Failed to clone result to target");
             return ERR;
         }
     }
@@ -1732,8 +1564,15 @@ uint64_t aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope, aml_
     switch (op.num)
     {
     case AML_BUFFER_OP:
-        result = aml_def_buffer_read(state, scope, out);
-        break;
+    {
+        *out = aml_scope_get_temp(scope);
+        if (*out == NULL)
+        {
+            return ERR;
+        }
+
+        result = aml_def_buffer_read(state, scope, *out);
+    }
     case AML_COND_REF_OF_OP:
         result = aml_def_cond_ref_of_read(state, scope, out);
         break;

@@ -4,9 +4,9 @@
 #include "acpi/aml/aml_to_string.h"
 #include "cpu/port.h"
 #include "drivers/pci/pci_config.h"
-#include "evaluate.h"
 #include "log/log.h"
 #include "mem/vmm.h"
+#include "method.h"
 
 #include <errno.h>
 
@@ -74,7 +74,6 @@ static uint64_t aml_system_mem_write(aml_node_t* opregion, uint64_t address, aml
 {
     (void)opregion;
 
-    void* physAddr = (void*)address;
     void* virtAddr = aml_ensure_mem_is_mapped(address, accessSize);
     if (virtAddr == NULL)
     {
@@ -164,49 +163,45 @@ static uint64_t aml_pci_get_params(aml_node_t* opregion, pci_segment_group_t* se
     aml_node_t* adrNode = aml_node_find(opregion, "_ADR");
     if (adrNode != NULL)
     {
-        aml_node_t adrValue = AML_NODE_CREATE;
-        if (aml_evaluate(adrNode, &adrValue, AML_DATA_INTEGER) == ERR)
+        uint64_t adrValue = 0;
+        if (aml_method_evaluate_integer(adrNode, &adrValue) == ERR)
         {
             LOG_ERR("failed to evaluate _ADR for opregion '%.*s'\n", AML_NAME_LENGTH, opregion->segment);
             return ERR;
         }
 
-        *function = adrValue.integer.value & 0x0000FFFF;    // Low word is function
-        *bus = (adrValue.integer.value >> 16) & 0x0000FFFF; // High word is device/bus
-
-        aml_node_deinit(&adrValue);
+        *slot = adrValue & 0x0000FFFF;             // Low word is slot
+        *function = (adrValue >> 16) & 0x0000FFFF; // High word is function
     }
 
     // Section 6.5.5 of the ACPI specification.
     aml_node_t* bbnNode = aml_node_find(opregion, "_BBN");
     if (bbnNode != NULL)
     {
-        aml_node_t bbnValue = AML_NODE_CREATE;
-        if (aml_evaluate(bbnNode, &bbnValue, AML_DATA_INTEGER) == ERR)
+        uint64_t bbnValue = 0;
+        if (aml_method_evaluate_integer(bbnNode, &bbnValue) == ERR)
         {
             LOG_ERR("failed to evaluate _BBN for opregion '%.*s'\n", AML_NAME_LENGTH, opregion->segment);
             return ERR;
         }
 
         // Lower 8 bits is the bus number.
-        *bus = bbnValue.integer.value & 0xFF;
-        aml_node_deinit(&bbnValue);
+        *bus = bbnValue & 0xFF;
     }
 
     // Section 6.5.6 of the ACPI specification.
     aml_node_t* segNode = aml_node_find(opregion, "_SEG");
     if (segNode != NULL)
     {
-        aml_node_t segValue = AML_NODE_CREATE;
-        if (aml_evaluate(segNode, &segValue, AML_DATA_INTEGER) == ERR)
+        uint64_t segValue = 0;
+        if (aml_method_evaluate_integer(segNode, &segValue) == ERR)
         {
             LOG_ERR("failed to evaluate _SEG for opregion '%.*s'\n", AML_NAME_LENGTH, opregion->segment);
             return ERR;
         }
 
         // Lower 16 bits is the segment group number.
-        *segmentGroup = segValue.integer.value & 0xFFFF;
-        aml_node_deinit(&segValue);
+        *segmentGroup = segValue & 0xFFFF;
     }
 
     return 0;
@@ -335,7 +330,7 @@ static uint64_t aml_generic_field_read_at(aml_node_t* fieldUnit, aml_bit_size_t 
     }
     case AML_FIELD_UNIT_INDEX_FIELD:
     {
-        aml_node_t temp = AML_NODE_CREATE;
+        aml_node_t temp = AML_NODE_CREATE(AML_NODE_NONE);
         if (aml_node_init_integer(&temp, byteOffset) == ERR)
         {
             return ERR;
@@ -388,7 +383,7 @@ static uint64_t aml_generic_field_write_at(aml_node_t* fieldUnit, aml_bit_size_t
     }
     case AML_FIELD_UNIT_INDEX_FIELD:
     {
-        aml_node_t index = AML_NODE_CREATE;
+        aml_node_t index = AML_NODE_CREATE(AML_NODE_NONE);
         if (aml_node_init_integer(&index, byteOffset) == ERR)
         {
             return ERR;
@@ -401,7 +396,7 @@ static uint64_t aml_generic_field_write_at(aml_node_t* fieldUnit, aml_bit_size_t
         }
         aml_node_deinit(&index);
 
-        aml_node_t data = AML_NODE_CREATE;
+        aml_node_t data = AML_NODE_CREATE(AML_NODE_NONE);
         if (aml_node_init_integer(&data, value) == ERR)
         {
             return ERR;
@@ -426,7 +421,7 @@ static uint64_t aml_field_unit_access(aml_node_t* fieldUnit, aml_node_t* data, a
 {
     if (fieldUnit->fieldUnit.type == AML_FIELD_UNIT_BANK_FIELD)
     {
-        aml_node_t bankValue = AML_NODE_CREATE;
+        aml_node_t bankValue = AML_NODE_CREATE(AML_NODE_NONE);
         if (aml_node_init_integer(&bankValue, fieldUnit->fieldUnit.bankValue) == ERR)
         {
             return ERR;
@@ -458,7 +453,7 @@ static uint64_t aml_field_unit_access(aml_node_t* fieldUnit, aml_node_t* data, a
     {
         aml_bit_size_t inAccessOffset = (fieldUnit->fieldUnit.bitOffset + currentPos) & (accessSize - 1);
         aml_bit_size_t bitsToAccess = MIN(fieldUnit->fieldUnit.bitSize - currentPos, accessSize - inAccessOffset);
-        uint64_t mask = (UINT64_C(1) << bitsToAccess) - 1;
+        uint64_t mask = (bitsToAccess >= 64) ? UINT64_MAX : ((UINT64_C(1) << bitsToAccess) - 1);
 
         switch (direction)
         {
@@ -503,15 +498,14 @@ static uint64_t aml_field_unit_access(aml_node_t* fieldUnit, aml_node_t* data, a
                 return ERR;
             }
 
-            // Clear the bits we are going to write to, then set them to the new value, the rest remains unchanged.
-            value &= ~mask;
+            value &= ~(mask << inAccessOffset);
 
             uint64_t newValue;
             if (aml_node_get_bits_at(data, currentPos, bitsToAccess, &newValue) == ERR)
             {
                 return ERR;
             }
-            value |= (newValue << inAccessOffset) & mask;
+            value |= (newValue & mask) << inAccessOffset;
 
             if (aml_generic_field_write_at(fieldUnit, accessSize, byteOffset, value) == ERR)
             {
@@ -586,7 +580,7 @@ uint64_t aml_field_unit_store(aml_node_t* fieldUnit, aml_node_t* in)
         return ERR;
     }
 
-    if (in->type != AML_DATA_INTEGER && in->type != AML_DATA_BUFFER && in->type != AML_DATA_INTEGER_CONSTANT)
+    if (in->type != AML_DATA_INTEGER && in->type != AML_DATA_BUFFER)
     {
         LOG_ERR("cannot write field '%.*s' with data of type '%s'\n", AML_NAME_LENGTH, fieldUnit->segment,
             aml_data_type_to_string(in->type));

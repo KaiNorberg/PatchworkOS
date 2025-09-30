@@ -7,6 +7,7 @@
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/heap.h"
+#include "runtime/convert.h"
 #include "sync/mutex.h"
 
 #include <errno.h>
@@ -146,6 +147,8 @@ aml_node_t* aml_node_new(aml_node_t* parent, const char* name, aml_node_flags_t 
         return node;
     }
 
+    node->flags |= AML_NODE_NAMED;
+
     if (parent != NULL && aml_node_find_child(parent, node->segment) != NULL)
     {
         LOG_ERR("AML node '%s' already exists under parent '%s'\n", node->segment,
@@ -207,7 +210,7 @@ void aml_node_free(aml_node_t* node)
     heap_free(node);
 }
 
-aml_node_t* aml_node_add(aml_name_string_t* string, aml_node_t* start, aml_node_flags_t flags)
+aml_node_t* aml_node_add(aml_node_t* start, aml_name_string_t* string, aml_node_flags_t flags)
 {
     if (string == NULL || (flags & AML_NODE_ROOT))
     {
@@ -288,7 +291,7 @@ uint64_t aml_node_init_buffer(aml_node_t* node, const uint8_t* buffer, uint64_t 
 
     for (uint64_t i = 0; i < length; i++)
     {
-        node->buffer.byteFields[i] = AML_NODE_CREATE;
+        node->buffer.byteFields[i] = AML_NODE_CREATE(AML_NODE_NONE);
         if (aml_node_init_buffer_field(&node->buffer.byteFields[i], node->buffer.content, i * 8, 8) == ERR)
         {
             for (uint64_t j = 0; j < i; j++)
@@ -328,9 +331,17 @@ uint64_t aml_node_init_buffer_empty(aml_node_t* node, uint64_t length)
     memset(node->buffer.content, 0, length);
     node->buffer.length = length;
 
+    node->buffer.byteFields = heap_alloc(sizeof(aml_node_t) * length, HEAP_NONE);
+    if (node->buffer.byteFields == NULL)
+    {
+        heap_free(node->buffer.content);
+        node->buffer.content = NULL;
+        return ERR;
+    }
+
     for (uint64_t i = 0; i < length; i++)
     {
-        node->buffer.byteFields[i] = AML_NODE_CREATE;
+        node->buffer.byteFields[i] = AML_NODE_CREATE(AML_NODE_NONE);
         if (aml_node_init_buffer_field(&node->buffer.byteFields[i], node->buffer.content, i * 8, 8) == ERR)
         {
             for (uint64_t j = 0; j < i; j++)
@@ -567,7 +578,7 @@ uint64_t aml_node_init_object_reference(aml_node_t* node, aml_node_t* target)
     return 0;
 }
 
-uint64_t aml_node_init_opregion(aml_node_t* node, aml_region_space_t space, uint64_t offset, uint32_t length)
+uint64_t aml_node_init_operation_region(aml_node_t* node, aml_region_space_t space, uint64_t offset, uint32_t length)
 {
     if (node == NULL || length == 0)
     {
@@ -619,7 +630,7 @@ uint64_t aml_node_init_package(aml_node_t* node, uint64_t length)
 
     for (uint64_t i = 0; i < length; i++)
     {
-        node->package.elements[i] = aml_node_new(NULL, "_T_0", AML_NODE_NONE);
+        node->package.elements[i] = aml_node_new(NULL, "____", AML_NODE_NONE);
         if (node->package.elements[i] == NULL)
         {
             for (uint64_t j = 0; j < i; j++)
@@ -705,7 +716,7 @@ uint64_t aml_node_init_string(aml_node_t* node, const char* str)
 
     for (uint64_t i = 0; i < strLen; i++)
     {
-        node->string.byteFields[i] = AML_NODE_CREATE;
+        node->string.byteFields[i] = AML_NODE_CREATE(AML_NODE_NONE);
         if (aml_node_init_buffer_field(&node->string.byteFields[i], (uint8_t*)node->string.content, i * 8, 8) == ERR)
         {
             for (uint64_t j = 0; j < i; j++)
@@ -755,7 +766,7 @@ uint64_t aml_node_init_string_empty(aml_node_t* node, uint64_t length)
 
     for (uint64_t i = 0; i < length; i++)
     {
-        node->string.byteFields[i] = AML_NODE_CREATE;
+        node->string.byteFields[i] = AML_NODE_CREATE(AML_NODE_NONE);
         if (aml_node_init_buffer_field(&node->string.byteFields[i], (uint8_t*)node->string.content, i * 8, 8) == ERR)
         {
             for (uint64_t j = 0; j < i; j++)
@@ -904,162 +915,6 @@ void aml_node_deinit(aml_node_t* node)
     }
 
     node->type = AML_DATA_UNINITALIZED;
-}
-
-uint64_t aml_node_clone(aml_node_t* src, aml_node_t* dest)
-{
-    if (src == NULL || dest == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (src == dest)
-    {
-        return 0;
-    }
-
-    switch (src->type)
-    {
-    case AML_DATA_UNINITALIZED:
-        aml_node_deinit(dest);
-        break;
-    case AML_DATA_BUFFER:
-        if (aml_node_init_buffer(dest, src->buffer.content, src->buffer.length, src->buffer.length) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_DATA_BUFFER_FIELD:
-        if (aml_node_init_buffer_field(dest, src->bufferField.buffer, src->bufferField.bitOffset,
-                src->bufferField.bitSize) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_DATA_DEVICE:
-        if (aml_node_init_device(dest) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_DATA_FIELD_UNIT:
-        if (src->fieldUnit.type == AML_FIELD_UNIT_FIELD)
-        {
-            if (aml_node_init_field_unit_field(dest, src->fieldUnit.opregion, src->fieldUnit.flags,
-                    src->fieldUnit.bitOffset, src->fieldUnit.bitSize) == ERR)
-            {
-                return ERR;
-            }
-        }
-        else if (src->fieldUnit.type == AML_FIELD_UNIT_INDEX_FIELD)
-        {
-            if (aml_node_init_field_unit_index_field(dest, src->fieldUnit.indexNode, src->fieldUnit.dataNode,
-                    src->fieldUnit.flags, src->fieldUnit.bitOffset, src->fieldUnit.bitSize) == ERR)
-            {
-                return ERR;
-            }
-        }
-        else if (src->fieldUnit.type == AML_FIELD_UNIT_BANK_FIELD)
-        {
-            if (aml_node_init_field_unit_bank_field(dest, src->fieldUnit.opregion, src->fieldUnit.bank,
-                    src->fieldUnit.bankValue, src->fieldUnit.flags, src->fieldUnit.bitOffset,
-                    src->fieldUnit.bitSize) == ERR)
-            {
-                return ERR;
-            }
-        }
-        else
-        {
-            errno = EINVAL;
-            return ERR;
-        }
-        break;
-    case AML_DATA_INTEGER:
-        if (aml_node_init_integer(dest, src->integer.value) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_DATA_INTEGER_CONSTANT:
-        if (aml_node_init_integer_constant(dest, src->integerConstant.value) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_DATA_METHOD:
-        if (aml_node_init_method(dest, &src->method.flags, src->method.start, src->method.end,
-                src->method.implementation) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_DATA_MUTEX:
-        if (aml_node_init_mutex(dest, src->mutex.syncLevel) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_DATA_OBJECT_REFERENCE:
-        if (aml_node_init_object_reference(dest, src->objectReference.target) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_DATA_OPERATION_REGION:
-        if (aml_node_init_opregion(dest, src->opregion.space, src->opregion.offset, src->opregion.length) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_DATA_PACKAGE:
-        if (aml_node_init_package(dest, src->package.length) == ERR)
-        {
-            return ERR;
-        }
-        for (uint64_t i = 0; i < src->package.length; i++)
-        {
-            if (aml_node_clone(src->package.elements[i], dest->package.elements[i]) == ERR)
-            {
-                aml_node_deinit(dest);
-                return ERR;
-            }
-        }
-        break;
-    case AML_DATA_PROCESSOR:
-        if (aml_node_init_processor(dest, src->processor.procId, src->processor.pblkAddr, src->processor.pblkLen) ==
-            ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_DATA_STRING:
-        if (aml_node_init_string(dest, src->string.content) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_DATA_UNRESOLVED:
-        if (aml_node_init_unresolved(dest, &src->unresolved.nameString, src->unresolved.start,
-                src->unresolved.callback) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_DATA_ALIAS:
-        if (aml_node_init_alias(dest, src->alias.target) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    default:
-        LOG_ERR("unimplemented clone of AML node '%.*s' of type ('%s', %d)\n", AML_NAME_LENGTH, src->segment,
-            aml_data_type_to_string(src->type), src->type);
-        errno = ENOSYS;
-        return ERR;
-    }
-
-    return 0;
 }
 
 aml_node_t* aml_node_traverse_alias(aml_node_t* node)

@@ -30,6 +30,11 @@
  * - Arg5Op := 0x6D and
  * - Arg6Op := 0x6E.
  *
+ * Note that if an ArgObj is storing a ObjectRefernce it will be Automatically dereferenced, so in such a situation
+ * `out` will point to the actual object and not an ObjectReference in the ArgObj.
+ *
+ * @see Section 19.3.5.8.1 of the ACPI specification for more details.
+ *
  * @param state Pointer to the AML state.
  * @param out Pointer to the pointer to store the resulting Arg node.
  * @return On success, 0. On failure, `ERR` and `errno` is set.

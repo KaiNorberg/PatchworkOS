@@ -1,7 +1,7 @@
 #include "devices.h"
 
 #include "aml/aml_node.h"
-#include "aml/runtime/evaluate.h"
+#include "aml/runtime/convert.h"
 #include "aml/runtime/method.h"
 #include "log/log.h"
 
@@ -14,15 +14,14 @@ static inline uint64_t acpi_sta_get_flags(aml_node_t* device, acpi_sta_flags_t* 
         return 0;
     }
 
-    aml_node_t integer = AML_NODE_CREATE;
-    if (aml_evaluate(sta, &integer, AML_DATA_INTEGER) == ERR)
+    uint64_t value;
+    if (aml_method_evaluate_integer(sta, &value) == ERR)
     {
         LOG_ERR("could not evaluate %s._STA\n", device->segment);
         return ERR;
     }
 
-    *out = (acpi_sta_flags_t)integer.integer.value;
-    aml_node_deinit(&integer);
+    *out = (acpi_sta_flags_t)value;
     return 0;
 }
 
@@ -68,7 +67,7 @@ static inline uint64_t acpi_devices_init_children(aml_node_t* parent)
 
 uint64_t acpi_devices_init(void)
 {
-    // Not implemented yet
+    // TODO: Implement this stuff.
     return 0;
 
     /*aml_node_t* sbIni = aml_node_find(NULL, "\\_SB._INI");
@@ -91,7 +90,7 @@ uint64_t acpi_devices_init(void)
     if (acpi_devices_init_children(sb) == ERR)
     {
         return ERR;
-    }*/
+    }
 
-    return 0;
+    return 0;*/
 }

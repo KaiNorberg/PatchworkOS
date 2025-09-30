@@ -7,19 +7,21 @@
 
 #include <errno.h>
 
-static uint64_t aml_predefined_osi_implementation(aml_node_t* method, aml_term_arg_list_t* args, aml_node_t* out)
+static uint64_t aml_predefined_osi_implementation(aml_node_t* method, aml_term_arg_list_t* args, aml_node_t* returnValue)
 {
     // See section 5.7.2 of the ACPI specification.
     (void)method; // Unused
 
-    if (args->count != 1 || args->args[0].type != AML_DATA_STRING)
+    if (args->count != 1 || args->args[0]->type != AML_DATA_STRING)
     {
         errno = EINVAL;
         return ERR;
     }
 
+    LOG_DEBUG("_OSI called with argument: '%.*s'\n", (int)args->args[0]->string.length, args->args[0]->string.content);
+
     // TODO: Implement this properly. For now we just return true for everything.
-    if (aml_node_init_integer(out, UINT64_MAX) == ERR)
+    if (aml_node_init_integer(returnValue, UINT64_MAX) == ERR)
     {
         return ERR;
     }

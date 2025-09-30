@@ -1,5 +1,8 @@
 #include "aml_scope.h"
 
+#include "acpi/aml/aml_node.h"
+#include "acpi/aml/runtime/convert.h"
+
 #include "log/panic.h"
 
 uint64_t aml_scope_init(aml_scope_t* scope, aml_node_t* node)
@@ -63,32 +66,4 @@ aml_node_t* aml_scope_get_temp(aml_scope_t* scope)
     LOG_ERR("Out of temporary nodes\n");
     errno = ENOMEM;
     return NULL;
-}
-
-uint64_t aml_scope_ensure_node(aml_scope_t* scope, aml_node_t** out)
-{
-    if (out == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (*out != NULL)
-    {
-        if (!((*out)->type & AML_DATA_ALL) && (*out)->type != AML_DATA_UNINITALIZED)
-        {
-            panic(NULL, "Node is not a data type, probably garbage pointer");
-        }
-
-        return 0;
-    }
-
-    aml_node_t* temp = aml_scope_get_temp(scope);
-    if (temp == NULL)
-    {
-        return ERR;
-    }
-
-    *out = temp;
-    return 0;
 }
