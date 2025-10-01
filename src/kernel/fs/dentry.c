@@ -70,7 +70,7 @@ void dentry_free(dentry_t* dentry)
     {
         if (!(dentry->flags & DENTRY_NEGATIVE))
         {
-            mutex_acquire_recursive(&dentry->parent->mutex);
+            mutex_acquire(&dentry->parent->mutex);
             list_remove(&dentry->parent->children, &dentry->siblingEntry);
             mutex_release(&dentry->parent->mutex);
         }
@@ -89,7 +89,7 @@ void dentry_make_positive(dentry_t* dentry, inode_t* inode)
         return;
     }
 
-    MUTEX_RECURSIVE_SCOPE(&dentry->mutex);
+    MUTEX_SCOPE(&dentry->mutex);
 
     // Sanity checks.
     assert(dentry->flags & DENTRY_NEGATIVE);
@@ -100,7 +100,7 @@ void dentry_make_positive(dentry_t* dentry, inode_t* inode)
 
     if (!DENTRY_IS_ROOT(dentry))
     {
-        MUTEX_RECURSIVE_SCOPE(&dentry->parent->mutex);
+        MUTEX_SCOPE(&dentry->parent->mutex);
         list_push(&dentry->parent->children, &dentry->siblingEntry);
     }
 }

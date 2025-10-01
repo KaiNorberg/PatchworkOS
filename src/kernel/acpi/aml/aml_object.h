@@ -184,11 +184,11 @@ typedef struct aml_object
         struct
         {
             aml_field_unit_type_t type;     //!< The type of field unit.
-            struct aml_object* indexObject;     //!< Used for IndexField.
-            struct aml_object* dataObject;      //!< Used for IndexField.
-            struct aml_object* opregion;      //!< Used for Field and BankField.
+            struct aml_object* indexObject; //!< Used for IndexField.
+            struct aml_object* dataObject;  //!< Used for IndexField.
+            struct aml_object* opregion;    //!< Used for Field and BankField.
             uint64_t bankValue;             //!< Used for BankField.
-            struct aml_object* bank;          //!< Used for BankField.
+            struct aml_object* bank;        //!< Used for BankField.
             aml_field_flags_t flags;        //!< Used for Field, IndexField and BankField.
             aml_bit_size_t bitOffset;       //!< Used for Field, IndexField and BankField.
             aml_bit_size_t bitSize;         //!< Used for Field, IndexField and BankField.
@@ -389,8 +389,8 @@ uint64_t aml_object_init_field_unit_field(aml_object_t* object, aml_object_t* op
  * @param bitSize Size of the field in bits.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_object_init_field_unit_index_field(aml_object_t* object, aml_object_t* indexObject, aml_object_t* dataObject,
-    aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize);
+uint64_t aml_object_init_field_unit_index_field(aml_object_t* object, aml_object_t* indexObject,
+    aml_object_t* dataObject, aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize);
 
 /**
  * @brief Initialize an ACPI object as a field unit of type BankField.
@@ -436,8 +436,8 @@ uint64_t aml_object_init_integer_constant(aml_object_t* object, uint64_t value);
  * AML method.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_object_init_method(aml_object_t* object, aml_method_flags_t* flags, const uint8_t* start, const uint8_t* end,
-    aml_method_implementation_t implementation);
+uint64_t aml_object_init_method(aml_object_t* object, aml_method_flags_t* flags, const uint8_t* start,
+    const uint8_t* end, aml_method_implementation_t implementation);
 
 /**
  * @brief Initialize an ACPI object as a mutex with the given synchronization level.
@@ -466,7 +466,8 @@ uint64_t aml_object_init_object_reference(aml_object_t* object, aml_object_t* ta
  * @param length The length of the operation region.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_object_init_operation_region(aml_object_t* object, aml_region_space_t space, uint64_t offset, uint32_t length);
+uint64_t aml_object_init_operation_region(aml_object_t* object, aml_region_space_t space, uint64_t offset,
+    uint32_t length);
 
 /**
  * @brief Initialize an ACPI object as a package with the given number of elements.

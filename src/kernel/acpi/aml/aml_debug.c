@@ -84,7 +84,7 @@ static void aml_debug_dump(aml_state_t* state)
 
 void aml_debug_error_print(aml_state_t* state, const char* function, const char* format, ...)
 {
-    if (state->debug.lastErrPos != state->current)
+    if (state->lastErrPos != state->current)
     {
         LOG_ERR("AML ERROR in '%s()' at pos 0x%lx (", function, state->current - state->start);
 
@@ -109,5 +109,5 @@ void aml_debug_error_print(aml_state_t* state, const char* function, const char*
 
         LOG_ERR("\n");
     }
-    state->debug.lastErrPos = state->current;
+    state->lastErrPos = state->current;
 }

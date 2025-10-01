@@ -1,8 +1,8 @@
 #include "copy.h"
 
+#include "acpi/aml/aml_to_string.h"
 #include "convert.h"
 #include "log/log.h"
-#include "acpi/aml/aml_to_string.h"
 
 #include <errno.h>
 
@@ -23,7 +23,8 @@ uint64_t aml_copy_raw(aml_object_t* src, aml_object_t* dest)
         }
         break;
     case AML_DATA_BUFFER_FIELD:
-        if (aml_object_init_buffer_field(dest, src->bufferField.buffer, src->bufferField.bitOffset, src->bufferField.bitSize) == ERR)
+        if (aml_object_init_buffer_field(dest, src->bufferField.buffer, src->bufferField.bitOffset,
+                src->bufferField.bitSize) == ERR)
         {
             return ERR;
         }
@@ -53,7 +54,8 @@ uint64_t aml_copy_raw(aml_object_t* src, aml_object_t* dest)
             break;
         case AML_FIELD_UNIT_BANK_FIELD:
             if (aml_object_init_field_unit_bank_field(dest, src->fieldUnit.opregion, src->fieldUnit.bank,
-                    src->fieldUnit.bankValue, src->fieldUnit.flags, src->fieldUnit.bitOffset, src->fieldUnit.bitSize) == ERR)
+                    src->fieldUnit.bankValue, src->fieldUnit.flags, src->fieldUnit.bitOffset,
+                    src->fieldUnit.bitSize) == ERR)
             {
                 return ERR;
             }
@@ -76,7 +78,8 @@ uint64_t aml_copy_raw(aml_object_t* src, aml_object_t* dest)
         }
         break;
     case AML_DATA_METHOD:
-        if (aml_object_init_method(dest, &src->method.flags, src->method.start, src->method.end, src->method.implementation) == ERR)
+        if (aml_object_init_method(dest, &src->method.flags, src->method.start, src->method.end,
+                src->method.implementation) == ERR)
         {
             return ERR;
         }
@@ -94,7 +97,8 @@ uint64_t aml_copy_raw(aml_object_t* src, aml_object_t* dest)
         }
         break;
     case AML_DATA_OPERATION_REGION:
-        if (aml_object_init_operation_region(dest, src->opregion.space, src->opregion.offset, src->opregion.length) == ERR)
+        if (aml_object_init_operation_region(dest, src->opregion.space, src->opregion.offset, src->opregion.length) ==
+            ERR)
         {
             return ERR;
         }
@@ -119,7 +123,8 @@ uint64_t aml_copy_raw(aml_object_t* src, aml_object_t* dest)
         }
         break;
     case AML_DATA_PROCESSOR:
-        if (aml_object_init_processor(dest, src->processor.procId, src->processor.pblkAddr, src->processor.pblkLen) == ERR)
+        if (aml_object_init_processor(dest, src->processor.procId, src->processor.pblkAddr, src->processor.pblkLen) ==
+            ERR)
         {
             return ERR;
         }
@@ -245,7 +250,8 @@ uint64_t aml_copy(aml_object_t* src, aml_object_t* dest)
         return 0;
     }
 
-    LOG_ERR("illegal copy operation from type '%s' to type '%s'\n", aml_data_type_to_string(src->type), aml_data_type_to_string(dest->type));
+    LOG_ERR("illegal copy operation from type '%s' to type '%s'\n", aml_data_type_to_string(src->type),
+        aml_data_type_to_string(dest->type));
     errno = ENOSYS;
     return ERR;
 }

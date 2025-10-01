@@ -70,7 +70,8 @@ static uint64_t aml_system_mem_read(aml_object_t* opregion, uint64_t address, am
     return 0;
 }
 
-static uint64_t aml_system_mem_write(aml_object_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t value)
+static uint64_t aml_system_mem_write(aml_object_t* opregion, uint64_t address, aml_bit_size_t accessSize,
+    uint64_t value)
 {
     (void)opregion;
 
@@ -237,7 +238,8 @@ static uint64_t aml_pci_config_read(aml_object_t* opregion, uint64_t address, am
     return 0;
 }
 
-static uint64_t aml_pci_config_write(aml_object_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t value)
+static uint64_t aml_pci_config_write(aml_object_t* opregion, uint64_t address, aml_bit_size_t accessSize,
+    uint64_t value)
 {
     pci_segment_group_t segmentGroup;
     pci_bus_t bus;
@@ -554,7 +556,7 @@ uint64_t aml_field_unit_load(aml_object_t* fieldUnit, aml_object_t* out)
     if (fieldUnit->fieldUnit.flags.lockRule == AML_LOCK_RULE_LOCK)
     {
         globalMutex = aml_global_mutex_get();
-        mutex_acquire_recursive(globalMutex);
+        mutex_acquire(globalMutex);
     }
 
     uint64_t result = aml_field_unit_access(fieldUnit, out, AML_ACCESS_READ);
@@ -592,7 +594,7 @@ uint64_t aml_field_unit_store(aml_object_t* fieldUnit, aml_object_t* in)
     if (fieldUnit->fieldUnit.flags.lockRule == AML_LOCK_RULE_LOCK)
     {
         globalMutex = aml_global_mutex_get();
-        mutex_acquire_recursive(globalMutex);
+        mutex_acquire(globalMutex);
     }
 
     uint64_t result = aml_field_unit_access(fieldUnit, in, AML_ACCESS_WRITE);

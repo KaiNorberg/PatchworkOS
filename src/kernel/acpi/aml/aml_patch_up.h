@@ -26,19 +26,19 @@ typedef struct aml_object aml_object_t;
  * - And so much more... When you go over everything you will arive at the conclusion that no matter what solution
  * you choose there will always be situations where there will be, at best, undefined behavior.
  *
- * Anyway, the way ive choosen to do this is to use a "Patch-up" system. When we attempt to retrieve a object that is not
- * yet defined we will get a object of type `AML_DATA_UNRESOLVED` (this behaviour can be disabled when needed) this object
- * stores information like where the retrival started from in the namespace tree and the NameString that we attempted to
- * resolve. We can then add this object to a global list of unresolved objects along with a callback that will be
- * called when a matching object is found. The callback can then patch the unresolved object in whatever way it wants, for
- * example converting its type before storing it.
+ * Anyway, the way ive choosen to do this is to use a "Patch-up" system. When we attempt to retrieve a object that is
+ * not yet defined we will get a object of type `AML_DATA_UNRESOLVED` (this behaviour can be disabled when needed) this
+ * object stores information like where the retrival started from in the namespace tree and the NameString that we
+ * attempted to resolve. We can then add this object to a global list of unresolved objects along with a callback that
+ * will be called when a matching object is found. The callback can then patch the unresolved object in whatever way it
+ * wants, for example converting its type before storing it.
  *
- * Now we can just wait until we find a matching object, call the callback and patch it, right? Well... consider this, how
- * do we know that we are resolving to the right object? Say we are in \_SB.FOO and want to resolve BAR but its not
+ * Now we can just wait until we find a matching object, call the callback and patch it, right? Well... consider this,
+ * how do we know that we are resolving to the right object? Say we are in \_SB.FOO and want to resolve BAR but its not
  * defined. Due to the NameString parent behaviour discussed perviously, BAR could be either att \_SB.FOO.BAR, \_SB.BAR
- * or \BAR. Now say we later define \_SB.BAR, we would then try to patch all the relavent objects that can reach \_SB.BAR,
- * but what if we later defined \_SB.FOO.BAR? Well that would mean we resolved to the wrong object. This also leads to the
- * realization that its actually impossible to resolve any object ever!
+ * or \BAR. Now say we later define \_SB.BAR, we would then try to patch all the relavent objects that can reach
+ * \_SB.BAR, but what if we later defined \_SB.FOO.BAR? Well that would mean we resolved to the wrong object. This also
+ * leads to the realization that its actually impossible to resolve any object ever!
  *
  * Lets go back and say that a \_SB.BAR was defined when we originally tried to resolve BAR when we were in \_SB.FOO, we
  * would then resolve to \_SB.BAR. But what if we later defined \_SB.FOO.BAR? Well then we resolved to the wrong object!
@@ -76,7 +76,7 @@ typedef uint64_t (*aml_patch_up_resolve_callback_t)(aml_object_t* match, aml_obj
 typedef struct aml_patch_up_entry
 {
     list_entry_t entry;                       //!< List entry for the global list of unresolved references.
-    aml_object_t* unresolved;                   //!< The unresolved object.
+    aml_object_t* unresolved;                 //!< The unresolved object.
     aml_patch_up_resolve_callback_t callback; //!< The callback to call when a matching object is found.
 } aml_patch_up_entry_t;
 

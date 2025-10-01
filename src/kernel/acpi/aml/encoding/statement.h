@@ -85,8 +85,7 @@ uint64_t aml_def_noop_read(aml_state_t* state);
  *
  * @param state The AML state to parse from.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_arg_object_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -103,6 +102,19 @@ uint64_t aml_arg_object_read(aml_state_t* state, aml_scope_t* scope, aml_object_
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_return_read(aml_state_t* state, aml_scope_t* scope);
+
+/**
+ * @brief Reads a DefRelease structure from the AML byte stream.
+ *
+ * A DefRelease structure is defined as `DefRelease := ReleaseOp MutexObject`.
+ *
+ * @see Section 19.6.117 of the ACPI specification for more details.
+ *
+ * @param state The AML state to parse from.
+ * @param scope The current AML scope.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_release_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads an StatementOpcode structure from the AML byte stream.

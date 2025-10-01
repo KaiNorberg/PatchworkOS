@@ -25,8 +25,7 @@ typedef struct aml_scope aml_scope_t;
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @param allowedTypes Bitmask of allowed types for the TermArg, the result will be evaluated to one of these types.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */

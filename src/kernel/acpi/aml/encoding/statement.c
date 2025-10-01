@@ -5,6 +5,7 @@
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_token.h"
 #include "acpi/aml/runtime/copy.h"
+#include "expression.h"
 #include "package_length.h"
 #include "term.h"
 
@@ -205,6 +206,40 @@ uint64_t aml_def_return_read(aml_state_t* state, aml_scope_t* scope)
     return 0;
 }
 
+uint64_t aml_def_release_read(aml_state_t* state, aml_scope_t* scope)
+{
+    aml_token_t releaseOp;
+    if (aml_token_read_no_ext(state, &releaseOp) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read ReleaseOp");
+        return ERR;
+    }
+
+    if (releaseOp.num != AML_RELEASE_OP)
+    {
+        AML_DEBUG_ERROR(state, "Invalid ReleaseOp '0x%x'", releaseOp.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_object_t* mutexObject = NULL;
+    if (aml_mutex_object_read(state, scope, &mutexObject) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read MutexObject");
+        return ERR;
+    }
+
+    assert(mutexObject->type == AML_DATA_MUTEX);
+
+    if (aml_mutex_stack_release(&state->mutexStack, mutexObject) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to release mutex");
+        return ERR;
+    }
+
+    return 0;
+}
+
 uint64_t aml_statement_opcode_read(aml_state_t* state, aml_scope_t* scope)
 {
     aml_token_t op;
@@ -225,6 +260,9 @@ uint64_t aml_statement_opcode_read(aml_state_t* state, aml_scope_t* scope)
         break;
     case AML_RETURN_OP:
         result = aml_def_return_read(state, scope);
+        break;
+    case AML_RELEASE_OP:
+        result = aml_def_release_read(state, scope);
         break;
     default:
         AML_DEBUG_ERROR(state, "Unknown StatementOpcode '0x%x'", op.num);

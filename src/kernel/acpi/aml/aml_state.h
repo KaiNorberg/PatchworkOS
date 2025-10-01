@@ -7,7 +7,7 @@
 #include "acpi/aml/aml_object.h"
 #include "encoding/local.h"
 #include "encoding/term.h"
-#include "log/log.h"
+#include "runtime/mutex.h"
 
 /**
  * @brief State
@@ -30,60 +30,36 @@
  */
 typedef struct aml_state
 {
-    const uint8_t* start;              //!< Pointer to the start of the AML bytecode.
-    const uint8_t* end;                //!< Pointer to the end of the AML bytecode.
-    const uint8_t* current;            //!< Pointer to the current position in the AML bytecode.
-    bool hasHitReturn;                 //!< If true then stop parsing and return from the current method.
+    const uint8_t* start;                //!< Pointer to the start of the AML bytecode.
+    const uint8_t* end;                  //!< Pointer to the end of the AML bytecode.
+    const uint8_t* current;              //!< Pointer to the current position in the AML bytecode.
+    bool hasHitReturn;                   //!< If true then stop parsing and return from the current method.
     aml_object_t locals[AML_MAX_LOCALS]; //!< Local variables for the method, if any.
-    aml_term_arg_list_t* args;         //!< Arguments passed to the method, if the state is used for method evaluation.
-    aml_object_t* returnValue; //!< Pointer to where the return value should be stored, if the state is used for method.
-                             //!< evaluation.
-    struct
-    {
-        const uint8_t* lastErrPos; //!<  The position when the last error occurred.
-    } debug;
+    aml_term_arg_list_t* args; //!< Arguments passed to the method, if the state is used for method evaluation.
+    aml_object_t* returnValue; //!< Pointer to where the return value should be stored, if the state is for a method.
+    const uint8_t* lastErrPos; //!<  The position when the last error occurred.
+    aml_mutex_stack_t mutexStack; //!< Handles acquiring and releasing mutexes.
 } aml_state_t;
 
-static inline uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t* end,
-    aml_term_arg_list_t* args, aml_object_t* returnValue)
-{
-    if (start > end)
-    {
-        LOG_ERR("Invalid AML data start > end\n");
-        return ERR;
-    }
+/**
+ * @brief Initialize an AML state.
+ *
+ * @param state Pointer to the state to initialize.
+ * @param start Pointer to the start of the AML bytecode.
+ * @param end Pointer to the end of the AML bytecode.
+ * @param args Pointer to the arguments passed to the method, or `NULL` if not a method or no arguments.
+ * @param returnValue Pointer to where the return value should be stored, or `NULL` if not a method or no return value.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t* end,
+    aml_term_arg_list_t* args, aml_object_t* returnValue);
 
-    state->start = start;
-    state->end = end;
-    state->current = start;
-    state->hasHitReturn = false;
-
-    for (uint8_t i = 0; i < AML_MAX_LOCALS; i++)
-    {
-        state->locals[i] = AML_OBJECT_CREATE(AML_OBJECT_LOCAL);
-    }
-    state->args = args;
-    state->returnValue = returnValue;
-
-    state->debug.lastErrPos = NULL;
-    return 0;
-}
-
-static inline void aml_state_deinit(aml_state_t* state)
-{
-    state->start = NULL;
-    state->end = NULL;
-    state->current = NULL;
-
-    for (uint8_t i = 0; i < AML_MAX_LOCALS; i++)
-    {
-        aml_object_deinit(&state->locals[i]);
-    }
-    state->args = NULL;
-    state->returnValue = NULL;
-
-    state->debug.lastErrPos = NULL;
-}
+/**
+ * @brief Deinitialize an AML state.
+ *
+ * @param state Pointer to the state to deinitialize.
+ */
+void aml_state_deinit(aml_state_t* state);
 
 static inline uint64_t aml_state_read(aml_state_t* state, uint8_t* buffer, uint64_t count)
 {

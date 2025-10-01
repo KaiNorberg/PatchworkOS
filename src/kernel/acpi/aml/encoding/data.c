@@ -421,7 +421,8 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_ob
     }
 }
 
-uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* package, const uint8_t* end)
+uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* package,
+    const uint8_t* end)
 {
     uint64_t i = 0;
     while (state->current < end && i < package->package.length)

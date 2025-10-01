@@ -179,8 +179,8 @@ const char* aml_object_to_string(aml_object_t* object)
         snprintf(buffer, sizeof(buffer), "IntegerConstant(0x%x)", object->integerConstant.value);
         return buffer;
     case AML_DATA_METHOD:
-        snprintf(buffer, sizeof(buffer), "Method(ArgCount=0x%x, Start=0x%llx, End=0x%llx)", object->method.flags.argCount,
-            object->method.start, object->method.end);
+        snprintf(buffer, sizeof(buffer), "Method(ArgCount=0x%x, Start=0x%llx, End=0x%llx)",
+            object->method.flags.argCount, object->method.start, object->method.end);
         return buffer;
     case AML_DATA_MUTEX:
         snprintf(buffer, sizeof(buffer), "Mutex(SyncLevel=%d)", object->mutex.syncLevel);

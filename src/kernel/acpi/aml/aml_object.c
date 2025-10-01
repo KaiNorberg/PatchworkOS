@@ -189,7 +189,7 @@ void aml_object_free(aml_object_t* object)
 
     if (object->parent != NULL)
     {
-        mutex_acquire_recursive(globalMutex);
+        mutex_acquire(globalMutex);
         list_remove(&object->parent->children, &object->entry);
         mutex_release(globalMutex);
     }
@@ -200,7 +200,7 @@ void aml_object_free(aml_object_t* object)
     aml_object_t* temp = NULL;
     LIST_FOR_EACH_SAFE(child, temp, &object->children, entry)
     {
-        mutex_acquire_recursive(globalMutex);
+        mutex_acquire(globalMutex);
         list_remove(&object->children, &child->entry);
         mutex_release(globalMutex);
 
@@ -359,7 +359,8 @@ uint64_t aml_object_init_buffer_empty(aml_object_t* object, uint64_t length)
     return 0;
 }
 
-uint64_t aml_object_init_buffer_field(aml_object_t* object, uint8_t* buffer, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
+uint64_t aml_object_init_buffer_field(aml_object_t* object, uint8_t* buffer, aml_bit_size_t bitOffset,
+    aml_bit_size_t bitSize)
 {
     if (object == NULL || buffer == NULL || bitSize == 0)
     {
@@ -424,8 +425,8 @@ uint64_t aml_object_init_field_unit_field(aml_object_t* object, aml_object_t* op
     return 0;
 }
 
-uint64_t aml_object_init_field_unit_index_field(aml_object_t* object, aml_object_t* indexObject, aml_object_t* dataObject,
-    aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
+uint64_t aml_object_init_field_unit_index_field(aml_object_t* object, aml_object_t* indexObject,
+    aml_object_t* dataObject, aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
 {
     if (object == NULL || indexObject == NULL || dataObject == NULL || bitSize == 0)
     {
@@ -515,8 +516,8 @@ uint64_t aml_object_init_integer_constant(aml_object_t* object, uint64_t value)
     return 0;
 }
 
-uint64_t aml_object_init_method(aml_object_t* object, aml_method_flags_t* flags, const uint8_t* start, const uint8_t* end,
-    aml_method_implementation_t implementation)
+uint64_t aml_object_init_method(aml_object_t* object, aml_method_flags_t* flags, const uint8_t* start,
+    const uint8_t* end, aml_method_implementation_t implementation)
 {
     if (object == NULL || ((start == 0 || end == 0 || start > end) && implementation == NULL))
     {
@@ -578,7 +579,8 @@ uint64_t aml_object_init_object_reference(aml_object_t* object, aml_object_t* ta
     return 0;
 }
 
-uint64_t aml_object_init_operation_region(aml_object_t* object, aml_region_space_t space, uint64_t offset, uint32_t length)
+uint64_t aml_object_init_operation_region(aml_object_t* object, aml_region_space_t space, uint64_t offset,
+    uint32_t length)
 {
     if (object == NULL || length == 0)
     {
@@ -717,7 +719,8 @@ uint64_t aml_object_init_string(aml_object_t* object, const char* str)
     for (uint64_t i = 0; i < strLen; i++)
     {
         object->string.byteFields[i] = AML_OBJECT_CREATE(AML_OBJECT_NONE);
-        if (aml_object_init_buffer_field(&object->string.byteFields[i], (uint8_t*)object->string.content, i * 8, 8) == ERR)
+        if (aml_object_init_buffer_field(&object->string.byteFields[i], (uint8_t*)object->string.content, i * 8, 8) ==
+            ERR)
         {
             for (uint64_t j = 0; j < i; j++)
             {
@@ -767,7 +770,8 @@ uint64_t aml_object_init_string_empty(aml_object_t* object, uint64_t length)
     for (uint64_t i = 0; i < length; i++)
     {
         object->string.byteFields[i] = AML_OBJECT_CREATE(AML_OBJECT_NONE);
-        if (aml_object_init_buffer_field(&object->string.byteFields[i], (uint8_t*)object->string.content, i * 8, 8) == ERR)
+        if (aml_object_init_buffer_field(&object->string.byteFields[i], (uint8_t*)object->string.content, i * 8, 8) ==
+            ERR)
         {
             for (uint64_t j = 0; j < i; j++)
             {

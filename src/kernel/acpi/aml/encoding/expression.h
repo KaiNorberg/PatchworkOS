@@ -82,8 +82,8 @@ uint64_t aml_term_arg_list_read(aml_state_t* state, aml_scope_t* scope, uint64_t
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer which will store the result, if this points to `NULL`, a temp object will
- * be used.
+ * @param out Output pointer to the object pointer which will store the result, if this points to `NULL`, a temp object
+ * will be used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_method_invocation_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -97,8 +97,7 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_scope_t* scope, aml_
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -112,8 +111,7 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_scope_t* scope, aml_ob
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_store_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -134,8 +132,7 @@ uint64_t aml_def_store_read(aml_state_t* state, aml_scope_t* scope, aml_object_t
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @param allowedTypes The allowed types that the TermArg can evaluate to.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
@@ -172,8 +169,7 @@ uint64_t aml_divisor_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_remainder_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -185,8 +181,7 @@ uint64_t aml_remainder_read(aml_state_t* state, aml_scope_t* scope, aml_object_t
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_quotient_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -200,8 +195,7 @@ uint64_t aml_quotient_read(aml_state_t* state, aml_scope_t* scope, aml_object_t*
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_add_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -215,8 +209,7 @@ uint64_t aml_def_add_read(aml_state_t* state, aml_scope_t* scope, aml_object_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_subtract_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -230,8 +223,7 @@ uint64_t aml_def_subtract_read(aml_state_t* state, aml_scope_t* scope, aml_objec
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_multiply_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -245,8 +237,7 @@ uint64_t aml_def_multiply_read(aml_state_t* state, aml_scope_t* scope, aml_objec
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_divide_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -260,8 +251,7 @@ uint64_t aml_def_divide_read(aml_state_t* state, aml_scope_t* scope, aml_object_
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_mod_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -275,8 +265,7 @@ uint64_t aml_def_mod_read(aml_state_t* state, aml_scope_t* scope, aml_object_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_and_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -290,8 +279,7 @@ uint64_t aml_def_and_read(aml_state_t* state, aml_scope_t* scope, aml_object_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_nand_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -305,8 +293,7 @@ uint64_t aml_def_nand_read(aml_state_t* state, aml_scope_t* scope, aml_object_t*
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_or_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -320,8 +307,7 @@ uint64_t aml_def_or_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** 
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_nor_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -335,8 +321,7 @@ uint64_t aml_def_nor_read(aml_state_t* state, aml_scope_t* scope, aml_object_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_xor_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -350,8 +335,7 @@ uint64_t aml_def_xor_read(aml_state_t* state, aml_scope_t* scope, aml_object_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_not_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -377,8 +361,7 @@ uint64_t aml_shift_count_read(aml_state_t* state, aml_scope_t* scope, uint64_t* 
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_shift_left_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -392,8 +375,7 @@ uint64_t aml_def_shift_left_read(aml_state_t* state, aml_scope_t* scope, aml_obj
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_shift_right_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -407,8 +389,7 @@ uint64_t aml_def_shift_right_read(aml_state_t* state, aml_scope_t* scope, aml_ob
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_increment_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -422,8 +403,7 @@ uint64_t aml_def_increment_read(aml_state_t* state, aml_scope_t* scope, aml_obje
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_decrement_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -437,8 +417,7 @@ uint64_t aml_def_decrement_read(aml_state_t* state, aml_scope_t* scope, aml_obje
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_obj_reference_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -452,8 +431,7 @@ uint64_t aml_obj_reference_read(aml_state_t* state, aml_scope_t* scope, aml_obje
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_deref_of_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -469,8 +447,7 @@ uint64_t aml_def_deref_of_read(aml_state_t* state, aml_scope_t* scope, aml_objec
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_buff_pkg_str_obj_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -499,8 +476,7 @@ uint64_t aml_index_value_read(aml_state_t* state, aml_scope_t* scope, uint64_t* 
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_index_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -514,8 +490,7 @@ uint64_t aml_def_index_read(aml_state_t* state, aml_scope_t* scope, aml_object_t
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_land_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -529,8 +504,7 @@ uint64_t aml_def_land_read(aml_state_t* state, aml_scope_t* scope, aml_object_t*
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_lequal_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -544,8 +518,7 @@ uint64_t aml_def_lequal_read(aml_state_t* state, aml_scope_t* scope, aml_object_
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_lgreater_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -559,8 +532,7 @@ uint64_t aml_def_lgreater_read(aml_state_t* state, aml_scope_t* scope, aml_objec
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_lgreater_equal_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -574,8 +546,7 @@ uint64_t aml_def_lgreater_equal_read(aml_state_t* state, aml_scope_t* scope, aml
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_lless_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -589,8 +560,7 @@ uint64_t aml_def_lless_read(aml_state_t* state, aml_scope_t* scope, aml_object_t
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_lless_equal_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -604,8 +574,7 @@ uint64_t aml_def_lless_equal_read(aml_state_t* state, aml_scope_t* scope, aml_ob
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_lnot_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -619,8 +588,7 @@ uint64_t aml_def_lnot_read(aml_state_t* state, aml_scope_t* scope, aml_object_t*
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_lnot_equal_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
@@ -634,11 +602,49 @@ uint64_t aml_def_lnot_equal_read(aml_state_t* state, aml_scope_t* scope, aml_obj
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_lor_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+
+/**
+ * @brief Reads a MutexObject structure from the AML byte stream.
+ *
+ * A MutexObject structure is defined as `MutexObject := SuperName`.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @param out Output pointer to be filled with the object pointer storing the result.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_mutex_object_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+
+/**
+ * @brief Reads a Timeout structure from the AML byte stream.
+ *
+ * A Timeout structure is defined as `Timeout := WordData`.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @param out Output pointer where the integer result will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_timeout_read(aml_state_t* state, uint16_t* out);
+
+/**
+ * @brief Reads a DefAcquire structure from the AML byte stream.
+ *
+ * A DefAcquire structure is defined as `DefAcquire := AcquireOp MutexObject Timeout`.
+ *
+ * @see Section 19.6.2 of the ACPI specification for more details.
+ * @see Section 19.6.89 of the ACPI specification for details about SyncLevel handling.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @param out Output pointer to be filled with the object pointer storing the result.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_acquire_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads an ExpressionOpcode structure from the AML byte stream.
@@ -653,8 +659,7 @@ uint64_t aml_def_lor_read(aml_state_t* state, aml_scope_t* scope, aml_object_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
- * used.
+ * @param out Output pointer to be filled with the object pointer storing the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);

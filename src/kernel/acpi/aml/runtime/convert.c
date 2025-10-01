@@ -446,8 +446,8 @@ uint64_t aml_convert_source(aml_object_t* source, aml_object_t* out, aml_data_ty
     {
         if (aml_copy_raw(source, out) == ERR)
         {
-            LOG_ERR("failed to copy content of source object '%.*s' of type '%s' to output object '%.*s'\n", AML_NAME_LENGTH,
-                source->segment, aml_data_type_to_string(source->type), AML_NAME_LENGTH, out->segment);
+            LOG_ERR("failed to copy content of source object '%.*s' of type '%s' to output object '%.*s'\n",
+                AML_NAME_LENGTH, source->segment, aml_data_type_to_string(source->type), AML_NAME_LENGTH, out->segment);
             return ERR;
         }
 
@@ -504,8 +504,8 @@ uint64_t aml_convert_result(aml_object_t* result, aml_object_t* target)
     {
         if (aml_copy_raw(result, target) == ERR)
         {
-            LOG_ERR("failed to copy the content of result object '%.*s' to target local/arg object '%.*s'\n", AML_NAME_LENGTH,
-                result->segment, AML_NAME_LENGTH, target->segment);
+            LOG_ERR("failed to copy the content of result object '%.*s' to target local/arg object '%.*s'\n",
+                AML_NAME_LENGTH, result->segment, AML_NAME_LENGTH, target->segment);
             return ERR;
         }
         return 0;
@@ -524,8 +524,8 @@ uint64_t aml_convert_result(aml_object_t* result, aml_object_t* target)
     {
         // "If conversion is impossible, abort the running control method and issue a fatal error."
         LOG_ERR("failed to convert result object '%.*s' of type '%s' to target object '%.*s' of type '%s'\n",
-            AML_NAME_LENGTH, result->segment, aml_data_type_to_string(result->type), AML_NAME_LENGTH,
-            target->segment, aml_data_type_to_string(target->type));
+            AML_NAME_LENGTH, result->segment, aml_data_type_to_string(result->type), AML_NAME_LENGTH, target->segment,
+            aml_data_type_to_string(target->type));
         return ERR;
     }
 

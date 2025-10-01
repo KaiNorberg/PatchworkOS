@@ -2,6 +2,9 @@
 
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_to_string.h"
+#include "log/log.h"
+
+#include <errno.h>
 
 uint64_t aml_method_evaluate(aml_object_t* method, aml_term_arg_list_t* args, aml_object_t* returnValue)
 {

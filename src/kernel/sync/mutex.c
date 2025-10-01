@@ -3,6 +3,7 @@
 #include "config.h"
 #include "sched/sched.h"
 #include "sched/thread.h"
+#include "sched/timer.h"
 #include "sched/wait.h"
 #include "sync/lock.h"
 
@@ -22,61 +23,84 @@ void mutex_deinit(mutex_t* mtx)
     wait_queue_deinit(&mtx->waitQueue);
 }
 
-void mutex_acquire_recursive(mutex_t* mtx)
+void mutex_acquire(mutex_t* mtx)
+{
+    bool isAcquired = mutex_acquire_timeout(mtx, CLOCKS_NEVER);
+    assert(isAcquired);
+    (void)isAcquired;
+}
+
+bool mutex_acquire_timeout(mutex_t* mtx, clock_t timeout)
 {
     assert(mtx != NULL);
     thread_t* self = sched_thread();
     assert(self != NULL);
 
-    lock_acquire(&mtx->lock);
     if (mtx->owner == self)
     {
         mtx->depth++;
-        lock_release(&mtx->lock);
-        return;
+        return true;
     }
-    lock_release(&mtx->lock);
-
-    mutex_acquire(mtx);
-}
-
-void mutex_acquire(mutex_t* mtx)
-{
-    assert(mtx != NULL);
-    thread_t* self = sched_thread();
-    assert(self != NULL);
-    assert(mtx->owner != self);
 
     uint64_t spin = 0;
-    while (true)
+    while (spin < CONFIG_MUTEX_MAX_SLOW_SPIN)
     {
         lock_acquire(&mtx->lock);
-
         if (mtx->owner == NULL)
         {
             mtx->owner = self;
             mtx->depth = 1;
             lock_release(&mtx->lock);
-            return;
+            return true;
         }
-
-        if (spin >= CONFIG_MUTEX_MAX_SLOW_SPIN)
-        {
-            break;
-        }
-
         lock_release(&mtx->lock);
         spin++;
     }
 
-    while (WAIT_BLOCK_LOCK(&mtx->waitQueue, &mtx->lock, mtx->owner == NULL) != WAIT_NORM)
+    if (timeout == 0)
     {
-        // Do nothing.
+        return false;
     }
 
-    mtx->owner = self;
-    mtx->depth = 1;
-    lock_release(&mtx->lock);
+    if (timeout == CLOCKS_NEVER)
+    {
+        lock_acquire(&mtx->lock);
+        while (WAIT_BLOCK_LOCK(&mtx->waitQueue, &mtx->lock, mtx->owner == NULL) != WAIT_NORM)
+        {
+        }
+
+        mtx->owner = self;
+        mtx->depth = 1;
+        lock_release(&mtx->lock);
+        return true;
+    }
+
+    lock_acquire(&mtx->lock);
+    clock_t end = timer_uptime() + timeout;
+    while (true)
+    {
+        clock_t now = timer_uptime();
+        if (now >= end)
+        {
+            lock_release(&mtx->lock);
+            return false;
+        }
+
+        clock_t waitTime = end - now;
+        int waitResult = WAIT_BLOCK_LOCK_TIMEOUT(&mtx->waitQueue, &mtx->lock, mtx->owner == NULL, waitTime);
+        if (waitResult == WAIT_NORM)
+        {
+            mtx->owner = self;
+            mtx->depth = 1;
+            lock_release(&mtx->lock);
+            return true;
+        }
+        else if (waitResult == WAIT_TIMEOUT)
+        {
+            lock_release(&mtx->lock);
+            return false;
+        }
+    }
 }
 
 void mutex_release(mutex_t* mtx)
@@ -85,7 +109,6 @@ void mutex_release(mutex_t* mtx)
     LOCK_SCOPE(&mtx->lock);
 
     assert(mtx->owner == sched_thread());
-    assert(mtx->depth > 0);
 
     mtx->depth--;
     if (mtx->depth == 0)

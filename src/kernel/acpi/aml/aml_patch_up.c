@@ -35,10 +35,8 @@ uint64_t aml_patch_up_add_unresolved(aml_object_t* unresolved, aml_patch_up_reso
     entry->callback = callback;
 
     mutex_t* globalMutex = aml_global_mutex_get();
-    mutex_acquire_recursive(globalMutex);
+    MUTEX_SCOPE(globalMutex);
     list_push(&unresolvedObjects, &entry->entry);
-    mutex_release(globalMutex);
-
     return 0;
 }
 
@@ -50,7 +48,7 @@ void aml_patch_up_remove_unresolved(aml_object_t* unresolved)
     }
 
     mutex_t* globalMutex = aml_global_mutex_get();
-    mutex_acquire_recursive(globalMutex);
+    MUTEX_SCOPE(globalMutex);
 
     aml_patch_up_entry_t* entry = NULL;
     LIST_FOR_EACH(entry, &unresolvedObjects, entry)
@@ -62,14 +60,12 @@ void aml_patch_up_remove_unresolved(aml_object_t* unresolved)
             break;
         }
     }
-
-    mutex_release(globalMutex);
 }
 
 uint64_t aml_patch_up_resolve_all()
 {
     mutex_t* globalMutex = aml_global_mutex_get();
-    mutex_acquire_recursive(globalMutex);
+    MUTEX_SCOPE(globalMutex);
 
     aml_patch_up_entry_t* entry = NULL;
     aml_patch_up_entry_t* temp = NULL;
@@ -89,7 +85,6 @@ uint64_t aml_patch_up_resolve_all()
         if (entry->callback(match, unresolved) == ERR)
         {
             LOG_ERR("Failed to patch up unresolved object\n");
-            mutex_release(globalMutex);
             return ERR;
         }
 
@@ -99,20 +94,16 @@ uint64_t aml_patch_up_resolve_all()
         if (unresolved->type == AML_DATA_UNRESOLVED)
         {
             LOG_ERR("Patch up callback did not initalize the unresolved object\n");
-            mutex_release(globalMutex);
             return ERR;
         }
     }
 
-    mutex_release(globalMutex);
     return 0;
 }
 
 uint64_t aml_patch_up_unresolved_count(void)
 {
     mutex_t* globalMutex = aml_global_mutex_get();
-    mutex_acquire_recursive(globalMutex);
-    uint64_t count = list_length(&unresolvedObjects);
-    mutex_release(globalMutex);
-    return count;
+    MUTEX_SCOPE(globalMutex);
+    return list_length(&unresolvedObjects);
 }

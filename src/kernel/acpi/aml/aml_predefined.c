@@ -7,7 +7,8 @@
 
 #include <errno.h>
 
-static uint64_t aml_predefined_osi_implementation(aml_object_t* method, aml_term_arg_list_t* args, aml_object_t* returnValue)
+static uint64_t aml_predefined_osi_implementation(aml_object_t* method, aml_term_arg_list_t* args,
+    aml_object_t* returnValue)
 {
     // See section 5.7.2 of the ACPI specification.
     (void)method; // Unused

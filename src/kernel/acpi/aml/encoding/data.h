@@ -181,7 +181,8 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_ob
  * @param end Pointer to the end of the PackageElementList.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* package, const uint8_t* end);
+uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* package,
+    const uint8_t* end);
 
 /**
  * @brief Reads a DefPackage structure from the AML byte stream.

@@ -191,8 +191,8 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_scope_t* scope, aml_field_
             return ERR;
         }
 
-        if (aml_object_init_field_unit_field(newObject, ctx->field.opregion, ctx->flags, ctx->currentOffset, pkgLength) ==
-            ERR)
+        if (aml_object_init_field_unit_field(newObject, ctx->field.opregion, ctx->flags, ctx->currentOffset,
+                pkgLength) == ERR)
         {
             aml_object_free(newObject);
             return ERR;

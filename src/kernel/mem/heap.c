@@ -134,6 +134,11 @@ void* heap_calloc(uint64_t num, uint64_t size, heap_flags_t flags)
 
 void heap_free(void* ptr)
 {
+    if (ptr == NULL)
+    {
+        return;
+    }
+
     assert(ptr > (void*)&_kernelEnd);
 
     LOCK_SCOPE(&lock);
