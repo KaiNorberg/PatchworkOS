@@ -47,9 +47,9 @@ typedef struct aml_state
 static inline uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t* end,
     aml_term_arg_list_t* args, aml_object_t* returnValue)
 {
-    if (start >= end)
+    if (start > end)
     {
-        LOG_ERR("Invalid AML data start >= end");
+        LOG_ERR("Invalid AML data start > end\n");
         return ERR;
     }
 

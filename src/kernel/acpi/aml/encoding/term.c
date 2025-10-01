@@ -139,6 +139,7 @@ uint64_t aml_term_obj_read(aml_state_t* state, aml_scope_t* scope)
             return ERR;
         }
         return 0;
+    case AML_TOKEN_TYPE_NAME: // MethodInvocation is a Name
     case AML_TOKEN_TYPE_EXPRESSION:
     {
         aml_object_t* temp = NULL;
