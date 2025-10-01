@@ -67,10 +67,7 @@ static inline uint64_t acpi_devices_init_children(aml_node_t* parent)
 
 uint64_t acpi_devices_init(void)
 {
-    // TODO: Implement this stuff.
-    return 0;
-
-    /*aml_node_t* sbIni = aml_node_find(NULL, "\\_SB._INI");
+    aml_node_t* sbIni = aml_node_find(NULL, "\\_SB._INI");
     if (sbIni != NULL)
     {
         LOG_INFO("found \\_SB._INI\n");
@@ -92,5 +89,5 @@ uint64_t acpi_devices_init(void)
         return ERR;
     }
 
-    return 0;*/
+    return 0;
 }

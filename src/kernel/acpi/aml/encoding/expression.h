@@ -518,7 +518,7 @@ uint64_t aml_def_index_read(aml_state_t* state, aml_scope_t* scope, aml_node_t**
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_l_and_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_land_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
 
 /**
  * @brief Reads a DefLEqual structure from the AML byte stream.
@@ -533,7 +533,7 @@ uint64_t aml_def_l_and_read(aml_state_t* state, aml_scope_t* scope, aml_node_t**
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_l_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_lequal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
 
 /**
  * @brief Reads a DefLGreater structure from the AML byte stream.
@@ -548,7 +548,7 @@ uint64_t aml_def_l_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_l_greater_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_lgreater_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
 
 /**
  * @brief Reads a DefLGreaterEqual structure from the AML byte stream.
@@ -563,7 +563,7 @@ uint64_t aml_def_l_greater_read(aml_state_t* state, aml_scope_t* scope, aml_node
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_l_greater_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_lgreater_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
 
 /**
  * @brief Reads a DefLLess structure from the AML byte stream.
@@ -578,7 +578,7 @@ uint64_t aml_def_l_greater_equal_read(aml_state_t* state, aml_scope_t* scope, am
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_l_less_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_lless_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
 
 /**
  * @brief Reads a DefLLessEqual structure from the AML byte stream.
@@ -593,7 +593,7 @@ uint64_t aml_def_l_less_read(aml_state_t* state, aml_scope_t* scope, aml_node_t*
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_l_less_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_lless_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
 
 /**
  * @brief Reads a DefLNot structure from the AML byte stream.
@@ -608,7 +608,7 @@ uint64_t aml_def_l_less_equal_read(aml_state_t* state, aml_scope_t* scope, aml_n
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_l_not_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_lnot_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
 
 /**
  * @brief Reads a DefLNotEqual structure from the AML byte stream.
@@ -623,7 +623,7 @@ uint64_t aml_def_l_not_read(aml_state_t* state, aml_scope_t* scope, aml_node_t**
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_l_not_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_lnot_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
 
 /**
  * @brief Reads a DefLOr structure from the AML byte stream.
@@ -638,7 +638,7 @@ uint64_t aml_def_l_not_equal_read(aml_state_t* state, aml_scope_t* scope, aml_no
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_l_or_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_lor_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
 
 /**
  * @brief Reads an ExpressionOpcode structure from the AML byte stream.

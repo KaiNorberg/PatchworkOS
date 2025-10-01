@@ -198,6 +198,7 @@ typedef enum
     AML_LNOT_EQUAL_OP = AML_LNOT_OP_BASE + 0x93,
     AML_LLESS_EQUAL_OP = AML_LNOT_OP_BASE + 0x94,
     AML_LGREATER_EQUAL_OP = AML_LNOT_OP_BASE + 0x95,
+    AML_MAX_VALUE = AML_LNOT_OP_BASE + 0xFF,
 } aml_value_num_t;
 
 typedef enum
@@ -253,19 +254,9 @@ typedef struct aml_value
 } aml_value_t;
 
 /**
- * @brief Normal values without prefix.
+ * @brief Value properties array indexed by `aml_value_num_t`.
  */
-extern const aml_value_props_t opsNormal[0x100];
-
-/**
- * @brief Extended values prefixed with 0x5B.
- */
-extern const aml_value_props_t opsExt5b[0x100];
-
-/**
- * @brief Extended values prefixed with 0x92.
- */
-extern const aml_value_props_t opsExt92[0x100];
+extern const aml_value_props_t amlValueProps[AML_MAX_VALUE];
 
 /**
  * @brief Convert a value type to a string.
@@ -278,28 +269,15 @@ const char* aml_value_type_to_string(aml_value_type_t type);
 /**
  * @brief Lookup value properties.
  *
- * @param value The value to fetch properties for.
- * @param extension The prefix byte of the value, use `0` if none.
- * @return The value properties.
+ * @param num The value number to lookup.
+ * @return On success, a pointer to the value properties. On failure, `NULL`.
  */
-static inline const aml_value_props_t* aml_value_lookup(uint8_t value, uint8_t extension)
+static inline const aml_value_props_t* aml_value_lookup(aml_value_num_t num)
 {
     const aml_value_props_t* props = NULL;
-    if (extension == 0)
+    if (num <= AML_MAX_VALUE)
     {
-        props = &opsNormal[value];
-    }
-    else if (extension == AML_EXT_OP_PREFIX)
-    {
-        props = &opsExt5b[value];
-    }
-    else if (extension == AML_LNOT_OP)
-    {
-        props = &opsExt92[value];
-    }
-    else
-    {
-        return NULL;
+        props = &amlValueProps[num];
     }
 
     if (props->name == NULL)
@@ -330,7 +308,7 @@ static inline uint64_t aml_value_peek_no_ext(aml_state_t* state, aml_value_t* ou
         return ERR;
     }
 
-    const aml_value_props_t* props = aml_value_lookup(value, 0);
+    const aml_value_props_t* props = aml_value_lookup(value);
     if (props == NULL)
     {
         errno = EILSEQ;
@@ -382,35 +360,32 @@ static inline uint64_t aml_value_peek(aml_state_t* state, aml_value_t* out)
         return ERR;
     }
 
-    uint8_t extension = 0;
-    uint8_t value = buffer[0];
+    aml_value_num_t num = buffer[0];
     uint8_t length = 1;
 
     if (byteAmount == 2)
     {
         if (buffer[0] == AML_EXT_OP_PREFIX)
         {
-            extension = AML_EXT_OP_PREFIX;
-            value = buffer[1];
+            num = AML_EXT_OP_PREFIX_BASE + buffer[1];
             length = 2;
         }
         else if (buffer[0] == AML_LNOT_OP)
         {
-            extension = AML_LNOT_OP;
-            value = buffer[1];
+            num = AML_LNOT_OP_BASE + buffer[1];
             length = 2;
         }
     }
 
-    const aml_value_props_t* props = aml_value_lookup(value, extension);
+    const aml_value_props_t* props = aml_value_lookup(num);
     if (props == NULL)
     {
-        LOG_ERR("invalid AML value 0x%02x%02x found at 0x%x\n", extension, value, state->current - state->start);
+        LOG_ERR("invalid AML value 0x%03x found at 0x%x\n", num, state->current - state->start);
         errno = EILSEQ;
         return ERR;
     }
 
-    out->num = (extension == AML_EXT_OP_PREFIX) ? AML_EXT_OP_PREFIX_BASE + value : value;
+    out->num = num;
     out->length = length;
     out->props = props;
     return 0;

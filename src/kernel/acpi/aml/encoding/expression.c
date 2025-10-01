@@ -8,6 +8,7 @@
 #include "acpi/aml/aml_value.h"
 #include "acpi/aml/runtime/convert.h"
 #include "acpi/aml/runtime/method.h"
+#include "acpi/aml/runtime/compare.h"
 #include "arg.h"
 #include "package_length.h"
 #include "term.h"
@@ -310,31 +311,32 @@ uint64_t aml_quotient_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** 
     return 0;
 }
 
-uint64_t aml_def_add_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+static inline uint64_t aml_helper_op_operand_operand_target_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_value_num_t expectedOp, aml_data_type_t allowedTypes, uint64_t(*callback)(aml_state_t*, aml_scope_t*, aml_node_t**, aml_node_t*, aml_node_t*))
 {
-    aml_value_t addOp;
-    if (aml_value_read(state, &addOp) == ERR)
+    aml_value_t op;
+    if (aml_value_read(state, &op) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read AddOp");
+        AML_DEBUG_ERROR(state, "Failed to read %s", aml_value_lookup(expectedOp)->name);
         return ERR;
     }
 
-    if (addOp.num != AML_ADD_OP)
+    if (op.num != expectedOp)
     {
-        AML_DEBUG_ERROR(state, "Invalid AddOp '0x%x'", addOp.num);
+        AML_DEBUG_ERROR(state, "Invalid %s '0x%x'", aml_value_lookup(expectedOp)->name, op.num);
         errno = EILSEQ;
         return ERR;
     }
 
     aml_node_t* operand1 = NULL;
-    if (aml_operand_read(state, scope, &operand1, AML_DATA_INTEGER) == ERR)
+    if (aml_operand_read(state, scope, &operand1, allowedTypes) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read operand1");
         return ERR;
     }
 
+    // Operand2 must be the same type as operand1.
     aml_node_t* operand2 = NULL;
-    if (aml_operand_read(state, scope, &operand2, AML_DATA_INTEGER) == ERR)
+    if (aml_operand_read(state, scope, &operand2, operand1->type) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read operand2");
         return ERR;
@@ -353,8 +355,9 @@ uint64_t aml_def_add_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
         return ERR;
     }
 
-    if (aml_node_init_integer(*out, operand1->integer.value + operand2->integer.value) == ERR)
+    if (callback(state, scope, out, operand1, operand2) == ERR)
     {
+        aml_node_deinit(*out);
         return ERR;
     }
 
@@ -367,127 +370,57 @@ uint64_t aml_def_add_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
         }
     }
 
+    return 0;
+}
+
+static inline uint64_t aml_def_add_callback(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_node_t* operand1, aml_node_t* operand2)
+{
+    (void)state;
+    (void)scope;
+    if (aml_node_init_integer(*out, operand1->integer.value + operand2->integer.value) == ERR)
+    {
+        return ERR;
+    }
+    return 0;
+}
+
+uint64_t aml_def_add_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+{
+    return aml_helper_op_operand_operand_target_read(state, scope, out, AML_ADD_OP, AML_DATA_INTEGER, aml_def_add_callback);
+}
+
+static inline uint64_t aml_def_subtract_callback(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_node_t* operand1, aml_node_t* operand2)
+{
+    (void)state;
+    (void)scope;
+    if (aml_node_init_integer(*out, operand1->integer.value - operand2->integer.value) == ERR)
+    {
+        return ERR;
+    }
     return 0;
 }
 
 uint64_t aml_def_subtract_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    aml_value_t subtractOp;
-    if (aml_value_read(state, &subtractOp) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read SubtractOp");
-        return ERR;
-    }
+    return aml_helper_op_operand_operand_target_read(state, scope, out, AML_SUBTRACT_OP, AML_DATA_INTEGER, aml_def_subtract_callback);
+}
 
-    if (subtractOp.num != AML_SUBTRACT_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid SubtractOp '0x%x'", subtractOp.num);
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    aml_node_t* operand1 = NULL;
-    if (aml_operand_read(state, scope, &operand1, AML_DATA_INTEGER) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read operand1");
-        return ERR;
-    }
-
-    aml_node_t* operand2 = NULL;
-    if (aml_operand_read(state, scope, &operand2, AML_DATA_INTEGER) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read operand2");
-        return ERR;
-    }
-
-    aml_node_t* target = NULL;
-    if (aml_target_read_and_resolve(state, scope, &target, AML_RESOLVE_NONE, NULL) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read or resolve Target");
-        return ERR;
-    }
-
-    *out = aml_scope_get_temp(scope);
-    if (*out == NULL)
+static inline uint64_t aml_def_multiply_callback(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_node_t* operand1, aml_node_t* operand2)
+{
+    (void)state;
+    (void)scope;
+    if (aml_node_init_integer(*out, operand1->integer.value * operand2->integer.value) == ERR)
     {
         return ERR;
     }
-
-    if (aml_node_init_integer(*out, operand1->integer.value - operand2->integer.value) == ERR)
-    {
-        return ERR;
-    }
-
-    if (target != NULL)
-    {
-        if (aml_convert_result(*out, target) == ERR)
-        {
-            aml_node_deinit(*out);
-            return ERR;
-        }
-    }
-
     return 0;
 }
 
 uint64_t aml_def_multiply_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    aml_value_t multiplyOp;
-    if (aml_value_read(state, &multiplyOp) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read MultiplyOp");
-        return ERR;
-    }
-
-    if (multiplyOp.num != AML_MULTIPLY_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid MultiplyOp '0x%x'", multiplyOp.num);
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    aml_node_t* operand1 = NULL;
-    if (aml_operand_read(state, scope, &operand1, AML_DATA_INTEGER) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read operand1");
-        return ERR;
-    }
-
-    aml_node_t* operand2 = NULL;
-    if (aml_operand_read(state, scope, &operand2, AML_DATA_INTEGER) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read operand2");
-        return ERR;
-    }
-
-    aml_node_t* target = NULL;
-    if (aml_target_read_and_resolve(state, scope, &target, AML_RESOLVE_NONE, NULL) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read or resolve Target");
-        return ERR;
-    }
-
-    *out = aml_scope_get_temp(scope);
-    if (*out == NULL)
-    {
-        return ERR;
-    }
-
-    if (aml_node_init_integer(*out, operand1->integer.value * operand2->integer.value) == ERR)
-    {
-        return ERR;
-    }
-
-    if (target != NULL)
-    {
-        if (aml_convert_result(*out, target) == ERR)
-        {
-            aml_node_deinit(*out);
-            return ERR;
-        }
-    }
-
-    return 0;
+    (void)state;
+    (void)scope;
+    return aml_helper_op_operand_operand_target_read(state, scope, out, AML_MULTIPLY_OP, AML_DATA_INTEGER, aml_def_multiply_callback);
 }
 
 uint64_t aml_def_divide_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
@@ -664,304 +597,84 @@ uint64_t aml_def_mod_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
     return 0;
 }
 
-uint64_t aml_def_and_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+static inline uint64_t aml_def_and_callback(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_node_t* operand1, aml_node_t* operand2)
 {
-    aml_value_t andOp;
-    if (aml_value_read(state, &andOp) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read AndOp");
-        return ERR;
-    }
-
-    if (andOp.num != AML_AND_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid AndOp '0x%x'", andOp.num);
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    aml_node_t* operand1 = NULL;
-    if (aml_operand_read(state, scope, &operand1, AML_DATA_INTEGER) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read operand1");
-        return ERR;
-    }
-
-    aml_node_t* operand2 = NULL;
-    if (aml_operand_read(state, scope, &operand2, AML_DATA_INTEGER) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read operand2");
-        return ERR;
-    }
-
-    aml_node_t* target = NULL;
-    if (aml_target_read_and_resolve(state, scope, &target, AML_RESOLVE_NONE, NULL) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read or resolve Target");
-        return ERR;
-    }
-
-    *out = aml_scope_get_temp(scope);
-    if (*out == NULL)
-    {
-        return ERR;
-    }
-
+    (void)state;
+    (void)scope;
     if (aml_node_init_integer(*out, operand1->integer.value & operand2->integer.value) == ERR)
     {
         return ERR;
     }
+    return 0;
+}
 
-    if (target != NULL)
+uint64_t aml_def_and_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+{
+    return aml_helper_op_operand_operand_target_read(state, scope, out, AML_AND_OP, AML_DATA_INTEGER, aml_def_and_callback);
+}
+
+static inline uint64_t aml_def_nand_callback(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_node_t* operand1, aml_node_t* operand2)
+{
+    (void)state;
+    (void)scope;
+    if (aml_node_init_integer(*out, ~(operand1->integer.value & operand2->integer.value)) == ERR)
     {
-        if (aml_convert_result(*out, target) == ERR)
-        {
-            aml_node_deinit(*out);
-            return ERR;
-        }
+        return ERR;
     }
-
     return 0;
 }
 
 uint64_t aml_def_nand_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    aml_value_t nandOp;
-    if (aml_value_read(state, &nandOp) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read value");
-        return ERR;
-    }
+    return aml_helper_op_operand_operand_target_read(state, scope, out, AML_NAND_OP, AML_DATA_INTEGER, aml_def_nand_callback);
+}
 
-    if (nandOp.num != AML_NAND_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid nand op: 0x%x", nandOp.num);
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    aml_node_t* operand1 = NULL;
-    if (aml_operand_read(state, scope, &operand1, AML_DATA_INTEGER) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read operand1");
-        return ERR;
-    }
-
-    aml_node_t* operand2 = NULL;
-    if (aml_operand_read(state, scope, &operand2, AML_DATA_INTEGER) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read operand2");
-        return ERR;
-    }
-
-    aml_node_t* target = NULL;
-    if (aml_target_read_and_resolve(state, scope, &target, AML_RESOLVE_NONE, NULL) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read target");
-        return ERR;
-    }
-
-    *out = aml_scope_get_temp(scope);
-    if (*out == NULL)
+static inline uint64_t aml_def_or_callback(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_node_t* operand1, aml_node_t* operand2)
+{
+    (void)state;
+    (void)scope;
+    if (aml_node_init_integer(*out, operand1->integer.value | operand2->integer.value) == ERR)
     {
         return ERR;
     }
-
-    if (aml_node_init_integer(*out, ~(operand1->integer.value & operand2->integer.value)) == ERR)
-    {
-        return ERR;
-    }
-
-    if (target != NULL)
-    {
-        if (aml_convert_result(*out, target) == ERR)
-        {
-            aml_node_deinit(*out);
-            return ERR;
-        }
-    }
-
     return 0;
 }
 
 uint64_t aml_def_or_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    aml_value_t orOp;
-    if (aml_value_read(state, &orOp) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read value");
-        return ERR;
-    }
+    return aml_helper_op_operand_operand_target_read(state, scope, out, AML_OR_OP, AML_DATA_INTEGER, aml_def_or_callback);
+}
 
-    if (orOp.num != AML_OR_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid or op: 0x%x", orOp.num);
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    aml_node_t* operand1 = NULL;
-    if (aml_operand_read(state, scope, &operand1, AML_DATA_INTEGER) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read operand1");
-        return ERR;
-    }
-
-    aml_node_t* operand2 = NULL;
-    if (aml_operand_read(state, scope, &operand2, AML_DATA_INTEGER) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read operand2");
-        return ERR;
-    }
-
-    aml_node_t* target = NULL;
-    if (aml_target_read_and_resolve(state, scope, &target, AML_RESOLVE_NONE, NULL) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read target");
-        return ERR;
-    }
-
-    *out = aml_scope_get_temp(scope);
-    if (*out == NULL)
+static inline uint64_t aml_def_nor_callback(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_node_t* operand1, aml_node_t* operand2)
+{
+    (void)state;
+    (void)scope;
+    if (aml_node_init_integer(*out, ~(operand1->integer.value | operand2->integer.value)) == ERR)
     {
         return ERR;
     }
-
-    if (aml_node_init_integer(*out, operand1->integer.value | operand2->integer.value) == ERR)
-    {
-        return ERR;
-    }
-
-    if (target != NULL)
-    {
-        if (aml_convert_result(*out, target) == ERR)
-        {
-            aml_node_deinit(*out);
-            return ERR;
-        }
-    }
-
     return 0;
 }
 
 uint64_t aml_def_nor_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    aml_value_t norOp;
-    if (aml_value_read(state, &norOp) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read value");
-        return ERR;
-    }
+    return aml_helper_op_operand_operand_target_read(state, scope, out, AML_NOR_OP, AML_DATA_INTEGER, aml_def_nor_callback);
+}
 
-    if (norOp.num != AML_NOR_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid nor op: 0x%x", norOp.num);
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    aml_node_t* operand1 = NULL;
-    if (aml_operand_read(state, scope, &operand1, AML_DATA_INTEGER) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read operand1");
-        return ERR;
-    }
-
-    aml_node_t* operand2 = NULL;
-    if (aml_operand_read(state, scope, &operand2, AML_DATA_INTEGER) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read operand2");
-        return ERR;
-    }
-
-    aml_node_t* target = NULL;
-    if (aml_target_read_and_resolve(state, scope, &target, AML_RESOLVE_NONE, NULL) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read target");
-        return ERR;
-    }
-
-    *out = aml_scope_get_temp(scope);
-    if (*out == NULL)
+static inline uint64_t aml_def_xor_callback(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_node_t* operand1, aml_node_t* operand2)
+{
+    (void)state;
+    (void)scope;
+    if (aml_node_init_integer(*out, operand1->integer.value ^ operand2->integer.value) == ERR)
     {
         return ERR;
     }
-
-    if (aml_node_init_integer(*out, ~(operand1->integer.value | operand2->integer.value)) == ERR)
-    {
-        return ERR;
-    }
-
-    if (target != NULL)
-    {
-        if (aml_convert_result(*out, target) == ERR)
-        {
-            aml_node_deinit(*out);
-            return ERR;
-        }
-    }
-
     return 0;
 }
 
 uint64_t aml_def_xor_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    aml_value_t xorOp;
-    if (aml_value_read(state, &xorOp) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read value");
-        return ERR;
-    }
-
-    if (xorOp.num != AML_XOR_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid xor op: 0x%x", xorOp.num);
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    aml_node_t* operand1 = NULL;
-    if (aml_operand_read(state, scope, &operand1, AML_DATA_INTEGER) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read operand1");
-        return ERR;
-    }
-
-    aml_node_t* operand2 = NULL;
-    if (aml_operand_read(state, scope, &operand2, AML_DATA_INTEGER) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read operand2");
-        return ERR;
-    }
-
-    aml_node_t* target = NULL;
-    if (aml_target_read_and_resolve(state, scope, &target, AML_RESOLVE_NONE, NULL) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read target");
-        return ERR;
-    }
-
-    *out = aml_scope_get_temp(scope);
-    if (*out == NULL)
-    {
-        return ERR;
-    }
-
-    if (aml_node_init_integer(*out, operand1->integer.value ^ operand2->integer.value) == ERR)
-    {
-        return ERR;
-    }
-
-    if (target != NULL)
-    {
-        if (aml_convert_result(*out, target) == ERR)
-        {
-            aml_node_deinit(*out);
-            return ERR;
-        }
-    }
-
-    return 0;
+    return aml_helper_op_operand_operand_target_read(state, scope, out, AML_XOR_OP, AML_DATA_INTEGER, aml_def_xor_callback);
 }
 
 uint64_t aml_def_not_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
@@ -969,13 +682,13 @@ uint64_t aml_def_not_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
     aml_value_t notOp;
     if (aml_value_read(state, &notOp) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read value");
+        AML_DEBUG_ERROR(state, "Failed to read NotOp");
         return ERR;
     }
 
     if (notOp.num != AML_NOT_OP)
     {
-        AML_DEBUG_ERROR(state, "Invalid not op: 0x%x", notOp.num);
+        AML_DEBUG_ERROR(state, "Invalid NotOp '0x%x'", notOp.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -983,14 +696,14 @@ uint64_t aml_def_not_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
     aml_node_t* operand = NULL;
     if (aml_operand_read(state, scope, &operand, AML_DATA_INTEGER) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read operand");
+        AML_DEBUG_ERROR(state, "Failed to read Operand");
         return ERR;
     }
 
     aml_node_t* target = NULL;
     if (aml_target_read_and_resolve(state, scope, &target, AML_RESOLVE_NONE, NULL) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read target");
+        AML_DEBUG_ERROR(state, "Failed to read or resolve Target");
         return ERR;
     }
 
@@ -1170,24 +883,27 @@ uint64_t aml_def_shift_right_read(aml_state_t* state, aml_scope_t* scope, aml_no
     return 0;
 }
 
-uint64_t aml_def_increment_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+/**
+ * Helper that reads a structure like `Op SuperName`.
+ */
+static inline uint64_t aml_helper_op_supername_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_value_num_t expectedOp, aml_data_type_t allowedTypes, uint64_t(*callback)(aml_state_t*, aml_scope_t*, aml_node_t**))
 {
-    aml_value_t incOp;
-    if (aml_value_read(state, &incOp) == ERR)
+    aml_value_t op;
+    if (aml_value_read(state, &op) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read IncrementOp");
+        AML_DEBUG_ERROR(state, "Failed to read %s", aml_value_lookup(expectedOp)->name);
         return ERR;
     }
 
-    if (incOp.num != AML_INCREMENT_OP)
+    if (op.num != expectedOp)
     {
-        AML_DEBUG_ERROR(state, "Invalid IncrementOp '0x%x'", incOp.num);
+        AML_DEBUG_ERROR(state, "Invalid %s '0x%x'", aml_value_lookup(expectedOp)->name, op.num);
         errno = EILSEQ;
         return ERR;
     }
 
-    aml_node_t* addend;
-    if (aml_super_name_read_and_resolve(state, scope, &addend, AML_RESOLVE_NONE, NULL) == ERR)
+    aml_node_t* superName;
+    if (aml_super_name_read_and_resolve(state, scope, &superName, AML_RESOLVE_NONE, NULL) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve SuperName");
         return ERR;
@@ -1199,14 +915,18 @@ uint64_t aml_def_increment_read(aml_state_t* state, aml_scope_t* scope, aml_node
         return ERR;
     }
 
-    if (aml_convert_source(addend, *out, AML_DATA_INTEGER) == ERR)
+    if (aml_convert_source(superName, *out, allowedTypes) == ERR)
     {
         return ERR;
     }
 
-    (*out)->integer.value++;
+    if (callback(state, scope, out) == ERR)
+    {
+        aml_node_deinit(*out);
+        return ERR;
+    }
 
-    if (aml_convert_result(*out, addend) == ERR)
+    if (aml_convert_result(*out, superName) == ERR)
     {
         aml_node_deinit(*out);
         return ERR;
@@ -1215,49 +935,30 @@ uint64_t aml_def_increment_read(aml_state_t* state, aml_scope_t* scope, aml_node
     return 0;
 }
 
+static uint64_t aml_increment_callback(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+{
+    (void)state;
+    (void)scope;
+    (*out)->integer.value--;
+    return 0;
+}
+
+uint64_t aml_def_increment_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+{
+    return aml_helper_op_supername_read(state, scope, out, AML_INCREMENT_OP, AML_DATA_INTEGER, NULL);
+}
+
+static uint64_t aml_decrement_callback(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+{
+    (void)state;
+    (void)scope;
+    (*out)->integer.value++;
+    return 0;
+}
+
 uint64_t aml_def_decrement_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    aml_value_t decOp;
-    if (aml_value_read(state, &decOp) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read DecrementOp");
-        return ERR;
-    }
-
-    if (decOp.num != AML_DECREMENT_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid DecrementOp '0x%x'", decOp.num);
-        errno = EILSEQ;
-        return ERR;
-    }
-
-    aml_node_t* subtrahend;
-    if (aml_super_name_read_and_resolve(state, scope, &subtrahend, AML_RESOLVE_NONE, NULL) == ERR)
-    {
-        AML_DEBUG_ERROR(state, "Failed to read or resolve SuperName");
-        return ERR;
-    }
-
-    *out = aml_scope_get_temp(scope);
-    if (*out == NULL)
-    {
-        return ERR;
-    }
-
-    if (aml_convert_source(subtrahend, *out, AML_DATA_INTEGER) == ERR)
-    {
-        return ERR;
-    }
-
-    (*out)->integer.value++;
-
-    if (aml_convert_result(*out, subtrahend) == ERR)
-    {
-        aml_node_deinit(*out);
-        return ERR;
-    }
-
-    return 0;
+    return aml_helper_op_supername_read(state, scope, out, AML_DECREMENT_OP, AML_DATA_INTEGER, NULL);
 }
 
 uint64_t aml_obj_reference_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
@@ -1460,85 +1161,232 @@ uint64_t aml_def_index_read(aml_state_t* state, aml_scope_t* scope, aml_node_t**
     return 0;
 }
 
-uint64_t aml_def_l_and_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+static inline uint64_t aml_helper_operand_operand_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_value_num_t expectedOp, aml_data_type_t allowedTypes, uint64_t(*callback)(aml_state_t*, aml_scope_t*, aml_node_t**, aml_node_t*, aml_node_t*))
 {
-    (void)state;
-    (void)scope;
-    (void)out;
-    errno = ENOSYS;
-    return ERR;
+    aml_value_t op;
+    if (aml_value_read(state, &op) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read %s", aml_value_lookup(expectedOp)->name);
+        return ERR;
+    }
+
+    if (op.num != expectedOp)
+    {
+        AML_DEBUG_ERROR(state, "Invalid %s '0x%x'", aml_value_lookup(expectedOp)->name, op.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_node_t* operand1 = NULL;
+    if (aml_operand_read(state, scope, &operand1, allowedTypes) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read operand1");
+        return ERR;
+    }
+
+    // Operand2 must be the same type as operand1.
+    aml_node_t* operand2 = NULL;
+    if (aml_operand_read(state, scope, &operand2, operand1->type) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read operand2");
+        return ERR;
+    }
+
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
+    {
+        return ERR;
+    }
+
+    if (callback(state, scope, out, operand1, operand2) == ERR)
+    {
+        aml_node_deinit(*out);
+        return ERR;
+    }
+
+    return 0;
 }
 
-uint64_t aml_def_l_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+static inline uint64_t aml_helper_op_operand_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_value_num_t expectedOp, aml_data_type_t allowedTypes, uint64_t(*callback)(aml_state_t*, aml_scope_t*, aml_node_t**, aml_node_t*))
 {
-    (void)state;
-    (void)scope;
-    (void)out;
-    errno = ENOSYS;
-    return ERR;
+    aml_value_t op;
+    if (aml_value_read(state, &op) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read %s", aml_value_lookup(expectedOp)->name);
+        return ERR;
+    }
+
+    if (op.num != expectedOp)
+    {
+        AML_DEBUG_ERROR(state, "Invalid %s '0x%x'", aml_value_lookup(expectedOp)->name, op.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_node_t* operand = NULL;
+    if (aml_operand_read(state, scope, &operand, allowedTypes) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read operand");
+        return ERR;
+    }
+
+    *out = aml_scope_get_temp(scope);
+    if (*out == NULL)
+    {
+        return ERR;
+    }
+
+    if (callback(state, scope, out, operand) == ERR)
+    {
+        aml_node_deinit(*out);
+        return ERR;
+    }
+
+    return 0;
 }
 
-uint64_t aml_def_l_greater_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+static inline uint64_t aml_def_land_callback(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_node_t* operand1, aml_node_t* operand2)
 {
     (void)state;
     (void)scope;
-    (void)out;
-    errno = ENOSYS;
-    return ERR;
+    if (aml_node_init_integer(*out, aml_compare(operand1, operand2, AML_COMPARE_AND)) == ERR)
+    {
+        return ERR;
+    }
+    return 0;
 }
 
-uint64_t aml_def_l_greater_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+uint64_t aml_def_land_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    (void)state;
-    (void)scope;
-    (void)out;
-    errno = ENOSYS;
-    return ERR;
+    return aml_helper_operand_operand_read(state, scope, out, AML_LAND_OP, AML_DATA_INTEGER, aml_def_land_callback);
 }
 
-uint64_t aml_def_l_less_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+static inline uint64_t aml_def_lequal_callback(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_node_t* operand1, aml_node_t* operand2)
 {
     (void)state;
     (void)scope;
-    (void)out;
-    errno = ENOSYS;
-    return ERR;
+    if (aml_node_init_integer(*out, aml_compare(operand1, operand2, AML_COMPARE_EQUAL)) == ERR)
+    {
+        return ERR;
+    }
+    return 0;
 }
 
-uint64_t aml_def_l_less_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+uint64_t aml_def_lequal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    (void)state;
-    (void)scope;
-    (void)out;
-    errno = ENOSYS;
-    return ERR;
+    return aml_helper_operand_operand_read(state, scope, out, AML_LEQUAL_OP, AML_DATA_INTEGER | AML_DATA_STRING | AML_DATA_BUFFER, aml_def_lequal_callback);
 }
 
-uint64_t aml_def_l_not_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+static inline uint64_t aml_def_lgreater_callback(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_node_t* operand1, aml_node_t* operand2)
 {
     (void)state;
     (void)scope;
-    (void)out;
-    errno = ENOSYS;
-    return ERR;
+    if (aml_node_init_integer(*out, aml_compare(operand1, operand2, AML_COMPARE_GREATER)) == ERR)
+    {
+        return ERR;
+    }
+    return 0;
 }
 
-uint64_t aml_def_l_not_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+uint64_t aml_def_lgreater_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    (void)state;
-    (void)scope;
-    (void)out;
-    errno = ENOSYS;
-    return ERR;
+    return aml_helper_operand_operand_read(state, scope, out, AML_LGREATER_OP, AML_DATA_INTEGER | AML_DATA_STRING | AML_DATA_BUFFER, aml_def_lgreater_callback);
 }
 
-uint64_t aml_def_l_or_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+static inline uint64_t aml_def_lgreater_equal_callback(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_node_t* operand1, aml_node_t* operand2)
 {
     (void)state;
     (void)scope;
-    (void)out;
-    errno = ENOSYS;
-    return ERR;
+    if (aml_node_init_integer(*out, aml_compare(operand1, operand2, AML_COMPARE_GREATER_EQUAL)) == ERR)
+    {
+        return ERR;
+    }
+    return 0;
+}
+
+uint64_t aml_def_lgreater_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+{
+    return aml_helper_operand_operand_read(state, scope, out, AML_LGREATER_EQUAL_OP, AML_DATA_INTEGER | AML_DATA_STRING | AML_DATA_BUFFER, aml_def_lgreater_equal_callback);
+}
+
+static inline uint64_t aml_def_lless_callback(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_node_t* operand1, aml_node_t* operand2)
+{
+    (void)state;
+    (void)scope;
+    if (aml_node_init_integer(*out, aml_compare(operand1, operand2, AML_COMPARE_LESS)) == ERR)
+    {
+        return ERR;
+    }
+    return 0;
+}
+
+uint64_t aml_def_lless_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+{
+    return aml_helper_operand_operand_read(state, scope, out, AML_LLESS_OP, AML_DATA_INTEGER | AML_DATA_STRING | AML_DATA_BUFFER, aml_def_lless_callback);
+}
+
+static inline uint64_t aml_def_lless_equal_callback(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_node_t* operand1, aml_node_t* operand2)
+{
+    (void)state;
+    (void)scope;
+    if (aml_node_init_integer(*out, aml_compare(operand1, operand2, AML_COMPARE_LESS_EQUAL)) == ERR)
+    {
+        return ERR;
+    }
+    return 0;
+}
+
+uint64_t aml_def_lless_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+{
+    return aml_helper_operand_operand_read(state, scope, out, AML_LLESS_EQUAL_OP, AML_DATA_INTEGER | AML_DATA_STRING | AML_DATA_BUFFER, aml_def_lless_equal_callback);
+}
+
+static inline uint64_t aml_def_lnot_callback(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_node_t* operand)
+{
+    (void)state;
+    (void)scope;
+    if (aml_node_init_integer(*out, aml_compare(operand, NULL, AML_COMPARE_NOT)) == ERR)
+    {
+        return ERR;
+    }
+    return 0;
+}
+
+uint64_t aml_def_lnot_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+{
+    return aml_helper_op_operand_read(state, scope, out, AML_LNOT_OP, AML_DATA_INTEGER | AML_DATA_STRING | AML_DATA_BUFFER, aml_def_lnot_callback);
+}
+
+static inline uint64_t aml_def_lnot_equal_callback(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_node_t* operand1, aml_node_t* operand2)
+{
+    (void)state;
+    (void)scope;
+    if (aml_node_init_integer(*out, aml_compare(operand1, operand2, AML_COMPARE_NOT_EQUAL)) == ERR)
+    {
+        return ERR;
+    }
+    return 0;
+}
+
+uint64_t aml_def_lnot_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+{
+    return aml_helper_operand_operand_read(state, scope, out, AML_LNOT_EQUAL_OP, AML_DATA_INTEGER | AML_DATA_STRING | AML_DATA_BUFFER, aml_def_lnot_equal_callback);
+}
+
+static inline uint64_t aml_def_lor_callback(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_node_t* operand1, aml_node_t* operand2)
+{
+    (void)state;
+    (void)scope;
+    if (aml_node_init_integer(*out, aml_compare(operand1, operand2, AML_COMPARE_OR)) == ERR)
+    {
+        return ERR;
+    }
+    return 0;
+}
+
+uint64_t aml_def_lor_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+{
+    return aml_helper_operand_operand_read(state, scope, out, AML_LOR_OP, AML_DATA_INTEGER, aml_def_lor_callback);
 }
 
 uint64_t aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
@@ -1629,6 +1477,33 @@ uint64_t aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope, aml_
         break;
     case AML_INDEX_OP:
         result = aml_def_index_read(state, scope, out);
+        break;
+    case AML_LAND_OP:
+        result = aml_def_land_read(state, scope, out);
+        break;
+    case AML_LEQUAL_OP:
+        result = aml_def_lequal_read(state, scope, out);
+        break;
+    case AML_LGREATER_OP:
+        result = aml_def_lgreater_read(state, scope, out);
+        break;
+    case AML_LGREATER_EQUAL_OP:
+        result = aml_def_lgreater_equal_read(state, scope, out);
+        break;
+    case AML_LLESS_OP:
+        result = aml_def_lless_read(state, scope, out);
+        break;
+    case AML_LLESS_EQUAL_OP:
+        result = aml_def_lless_equal_read(state, scope, out);
+        break;
+    case AML_LNOT_OP:
+        result = aml_def_lnot_read(state, scope, out);
+        break;
+    case AML_LNOT_EQUAL_OP:
+        result = aml_def_lnot_equal_read(state, scope, out);
+        break;
+    case AML_LOR_OP:
+        result = aml_def_lor_read(state, scope, out);
         break;
     default:
         AML_DEBUG_ERROR(state, "Unknown expression opcode '0x%x'", op.num);
