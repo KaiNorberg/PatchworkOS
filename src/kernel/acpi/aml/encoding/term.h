@@ -1,12 +1,12 @@
 #pragma once
 
 #include "acpi/aml/aml_object.h"
+#include "acpi/aml/aml_scope.h"
 #include "data.h"
 
 #include <stdint.h>
 
 typedef struct aml_state aml_state_t;
-typedef struct aml_scope aml_scope_t;
 
 /**
  * @brief Term Objects Encoding

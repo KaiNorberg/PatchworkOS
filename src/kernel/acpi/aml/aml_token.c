@@ -132,6 +132,8 @@ const aml_token_props_t amlTokenProps[AML_MAX_TOKEN] = {
     [AML_LNOT_EQUAL_OP] = {"LNotEqualOp", AML_ENCODING_GROUP_TERM, AML_TOKEN_TYPE_EXPRESSION},
     [AML_LLESS_EQUAL_OP] = {"LLessEqualOp", AML_ENCODING_GROUP_TERM, AML_TOKEN_TYPE_EXPRESSION},
     [AML_LGREATER_EQUAL_OP] = {"LGreaterEqualOp", AML_ENCODING_GROUP_TERM, AML_TOKEN_TYPE_EXPRESSION},
+
+    [AML_UNKNOWN_TOKEN] = {"UnknownToken", AML_ENCODING_GROUP_NONE, AML_TOKEN_TYPE_NONE},
 };
 
 const char* aml_token_type_to_string(aml_token_type_t type)

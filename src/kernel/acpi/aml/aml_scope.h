@@ -1,8 +1,6 @@
 #pragma once
 
 #include "acpi/aml/aml_object.h"
-#include "log/log.h"
-#include "mem/heap.h"
 
 #include <stdint.h>
 
@@ -38,7 +36,7 @@
  */
 typedef struct aml_scope
 {
-    aml_object_t* object;
+    aml_object_t* location;
     aml_object_t* temps[AML_MAX_TEMPS];
 } aml_scope_t;
 
@@ -46,10 +44,10 @@ typedef struct aml_scope
  * @brief Initialize the scope.
  *
  * @param scope The scope to initialize.
- * @param object The object to set as the current location in the namespace.
+ * @param location The object to set as the current location in the namespace.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_scope_init(aml_scope_t* scope, aml_object_t* object);
+uint64_t aml_scope_init(aml_scope_t* scope, aml_object_t* location);
 
 /**
  * @brief Deinitialize the scope and free all temporary objects.

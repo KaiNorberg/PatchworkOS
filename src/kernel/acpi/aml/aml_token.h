@@ -17,7 +17,7 @@
  *
  * The token type ends up, in most cases, being the smallest most fundamental type used in the parser (as in the type at
  * the bottom of the recursive tree), but there are some exceptions, for example a ByteData object is not a token type
- * simply because it can have any token.
+ * simply because it can have any value (0x00 to 0xFF).
  *
  * @see Section 20.3 of the ACPI specification for more details.
  *
@@ -198,7 +198,10 @@ typedef enum
     AML_LNOT_EQUAL_OP = AML_LNOT_OP_BASE + 0x93,
     AML_LLESS_EQUAL_OP = AML_LNOT_OP_BASE + 0x94,
     AML_LGREATER_EQUAL_OP = AML_LNOT_OP_BASE + 0x95,
-    AML_MAX_TOKEN = AML_LNOT_OP_BASE + 0xFF,
+
+    // Special values
+    AML_UNKNOWN_TOKEN = 0x2FE,
+    AML_MAX_TOKEN = 0x2FF,
 } aml_token_num_t;
 
 typedef enum
@@ -270,7 +273,7 @@ const char* aml_token_type_to_string(aml_token_type_t type);
  * @brief Lookup token properties.
  *
  * @param num The token number to lookup.
- * @return On success, a pointer to the token properties. On failure, `NULL`.
+ * @return On success, a pointer to the token properties. On failure, the properties of `AML_UNKNOWN_TOKEN`.
  */
 static inline const aml_token_props_t* aml_token_lookup(aml_token_num_t num)
 {
@@ -282,7 +285,7 @@ static inline const aml_token_props_t* aml_token_lookup(aml_token_num_t num)
 
     if (props->name == NULL)
     {
-        return NULL;
+        return &amlTokenProps[AML_UNKNOWN_TOKEN];
     }
 
     return props;
@@ -293,31 +296,32 @@ static inline const aml_token_props_t* aml_token_lookup(aml_token_num_t num)
  *
  * Intended to be used when the token is known to be a single byte for performance reasons.
  *
+ * If the stream is empty, the token will be set to `AML_UNKNOWN_TOKEN` and length 0.
+ *
  * @param state The AML state to parse from.
  * @param out The destination for the parsed token.
- * @return On success, 0. On failure, `ERR` and `errno` is set to `ENODATA` if the stream is empty or `EILSEQ`
- * if the current data is not a valid token.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 static inline uint64_t aml_token_peek_no_ext(aml_state_t* state, aml_token_t* out)
 {
     uint8_t num;
     uint64_t byteAmount = aml_state_peek(state, &num, 1);
-    if (byteAmount == ERR || byteAmount == 0)
+    if (byteAmount == 0)
     {
-        errno = ENODATA;
-        return ERR;
+        out->num = AML_UNKNOWN_TOKEN;
+        out->length = 0;
+        out->props = &amlTokenProps[AML_UNKNOWN_TOKEN];
+        return 0;
     }
 
-    const aml_token_props_t* props = aml_token_lookup(num);
-    if (props == NULL)
+    if (byteAmount == ERR)
     {
-        errno = EILSEQ;
         return ERR;
     }
 
     out->num = num;
     out->length = 1;
-    out->props = props;
+    out->props = &amlTokenProps[num];
     return 0;
 }
 
@@ -345,18 +349,26 @@ static inline uint64_t aml_token_read_no_ext(aml_state_t* state, aml_token_t* ou
 /**
  * @brief Attempt to read a token from the AML stream, without advancing the instruction pointer.
  *
+ * If the stream is empty, the token will be set to `AML_UNKNOWN_TOKEN` and length 0.
+ *
  * @param state The AML state to parse from.
  * @param out The destination for the parsed token.
- * @return On success, 0. On failure, `ERR` and `errno` is set to `ENODATA` if the stream is empty or `EILSEQ`
- * if the current data is not a valid token.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 static inline uint64_t aml_token_peek(aml_state_t* state, aml_token_t* out)
 {
     uint8_t buffer[2];
     uint64_t byteAmount = aml_state_peek(state, buffer, sizeof(buffer));
-    if (byteAmount == 0 || byteAmount == ERR)
+    if (byteAmount == 0)
     {
-        errno = ENODATA;
+        out->num = AML_UNKNOWN_TOKEN;
+        out->length = 0;
+        out->props = &amlTokenProps[AML_UNKNOWN_TOKEN];
+        return 0;
+    }
+
+    if (byteAmount == ERR)
+    {
         return ERR;
     }
 
@@ -377,17 +389,9 @@ static inline uint64_t aml_token_peek(aml_state_t* state, aml_token_t* out)
         }
     }
 
-    const aml_token_props_t* props = aml_token_lookup(num);
-    if (props == NULL)
-    {
-        LOG_ERR("invalid AML token 0x%03x found at 0x%x\n", num, state->current - state->start);
-        errno = EILSEQ;
-        return ERR;
-    }
-
     out->num = num;
     out->length = length;
-    out->props = props;
+    out->props = &amlTokenProps[num];
     return 0;
 }
 /**

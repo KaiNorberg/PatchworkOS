@@ -68,9 +68,8 @@ static inline uint64_t acpi_devices_init_children(aml_object_t* parent)
 uint64_t acpi_devices_init(void)
 {
     // TODO: Implement all opcodes needed for _INI and device initalization
-    return 0;
 
-    /*aml_object_t* sbIni = aml_object_find(NULL, "\\_SB._INI");
+    aml_object_t* sbIni = aml_object_find(NULL, "\\_SB._INI");
     if (sbIni != NULL)
     {
         LOG_INFO("found \\_SB._INI\n");
@@ -92,5 +91,5 @@ uint64_t acpi_devices_init(void)
         return ERR;
     }
 
-    return 0;*/
+    return 0;
 }

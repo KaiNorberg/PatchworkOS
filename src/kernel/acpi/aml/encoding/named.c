@@ -108,7 +108,7 @@ uint64_t aml_def_op_region_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_object_t* newObject = aml_object_add(scope->object, &nameString, AML_OBJECT_NONE);
+    aml_object_t* newObject = aml_object_add(scope->location, &nameString, AML_OBJECT_NONE);
     if (newObject == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
@@ -185,7 +185,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_scope_t* scope, aml_field_
             return ERR;
         }
 
-        aml_object_t* newObject = aml_object_new(scope->object, name->name, AML_OBJECT_NONE);
+        aml_object_t* newObject = aml_object_new(scope->location, name->name, AML_OBJECT_NONE);
         if (newObject == NULL)
         {
             return ERR;
@@ -223,7 +223,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_scope_t* scope, aml_field_
             return ERR;
         }
 
-        aml_object_t* newObject = aml_object_new(scope->object, name->name, AML_OBJECT_NONE);
+        aml_object_t* newObject = aml_object_new(scope->location, name->name, AML_OBJECT_NONE);
         if (newObject == NULL)
         {
             return ERR;
@@ -253,7 +253,7 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_scope_t* scope, aml_field_
             return ERR;
         }
 
-        aml_object_t* newObject = aml_object_new(scope->object, name->name, AML_OBJECT_NONE);
+        aml_object_t* newObject = aml_object_new(scope->location, name->name, AML_OBJECT_NONE);
         if (newObject == NULL)
         {
             return ERR;
@@ -612,7 +612,7 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_scope_t* scope)
 
     const uint8_t* end = start + pkgLength;
 
-    aml_object_t* newObject = aml_object_add(scope->object, &nameString, AML_OBJECT_NONE);
+    aml_object_t* newObject = aml_object_add(scope->location, &nameString, AML_OBJECT_NONE);
     if (newObject == NULL)
     {
         return ERR;
@@ -665,7 +665,7 @@ uint64_t aml_def_device_read(aml_state_t* state, aml_scope_t* scope)
 
     const uint8_t* end = start + pkgLength;
 
-    aml_object_t* newObject = aml_object_add(scope->object, &nameString, AML_OBJECT_NONE);
+    aml_object_t* newObject = aml_object_add(scope->location, &nameString, AML_OBJECT_NONE);
     if (newObject == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add object");
@@ -732,7 +732,7 @@ uint64_t aml_def_mutex_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_object_t* newObject = aml_object_add(scope->object, &nameString, AML_OBJECT_NONE);
+    aml_object_t* newObject = aml_object_add(scope->location, &nameString, AML_OBJECT_NONE);
     if (newObject == NULL)
     {
         return ERR;
@@ -832,7 +832,7 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_scope_t* scope)
 
     const uint8_t* end = start + pkgLength;
 
-    aml_object_t* newObject = aml_object_add(scope->object, &nameString, AML_OBJECT_NONE);
+    aml_object_t* newObject = aml_object_add(scope->location, &nameString, AML_OBJECT_NONE);
     if (newObject == NULL)
     {
         AML_DEBUG_ERROR(state, "Failed to add object");
@@ -921,7 +921,7 @@ uint64_t aml_def_create_bit_field_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_object_t* newObject = aml_object_add(scope->object, &nameString, AML_OBJECT_NONE);
+    aml_object_t* newObject = aml_object_add(scope->location, &nameString, AML_OBJECT_NONE);
     if (newObject == NULL)
     {
         return ERR;
@@ -976,7 +976,7 @@ static inline uint64_t aml_def_create_field_read_helper(aml_state_t* state, aml_
         return ERR;
     }
 
-    aml_object_t* newObject = aml_object_add(scope->object, &nameString, AML_OBJECT_NONE);
+    aml_object_t* newObject = aml_object_add(scope->location, &nameString, AML_OBJECT_NONE);
     if (newObject == NULL)
     {
         return ERR;

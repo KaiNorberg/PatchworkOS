@@ -395,7 +395,7 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_ob
         // Evaulated to a valid namestring but could not be resolved.
         if (namedReference == NULL)
         {
-            if (aml_object_init_unresolved(out, &nameString, scope->object, aml_package_element_handle_name) == ERR)
+            if (aml_object_init_unresolved(out, &nameString, scope->location, aml_package_element_handle_name) == ERR)
             {
                 return ERR;
             }

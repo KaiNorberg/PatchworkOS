@@ -327,7 +327,7 @@ uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_scope_t* scope
         return ERR;
     }
 
-    *out = aml_name_string_resolve(&nameStringLocal, scope->object);
+    *out = aml_name_string_resolve(&nameStringLocal, scope->location);
     if (*out == NULL)
     {
         if (!(flags & AML_RESOLVE_ALLOW_UNRESOLVED))

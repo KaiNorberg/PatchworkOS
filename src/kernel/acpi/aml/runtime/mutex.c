@@ -1,7 +1,7 @@
 #include "mutex.h"
 
-#include "mem/heap.h"
 #include "log/log.h"
+#include "mem/heap.h"
 
 #include <errno.h>
 
@@ -45,8 +45,8 @@ static inline uint64_t aml_mutex_stack_push_mutex(aml_mutex_stack_t* mutexStack,
     if (mutexStack->acquiredMutexCount >= mutexStack->acquiredMutexCapacity)
     {
         uint64_t newCapacity = mutexStack->acquiredMutexCapacity == 0 ? 4 : mutexStack->acquiredMutexCapacity * 2;
-        aml_mutex_stack_entry_t* newStack = heap_realloc(mutexStack->acquiredMutexes,
-            sizeof(aml_mutex_stack_entry_t) * newCapacity, HEAP_NONE);
+        aml_mutex_stack_entry_t* newStack =
+            heap_realloc(mutexStack->acquiredMutexes, sizeof(aml_mutex_stack_entry_t) * newCapacity, HEAP_NONE);
         if (newStack == NULL)
         {
             return ERR;
@@ -78,7 +78,8 @@ static inline void aml_mutex_stack_pop_mutex(aml_mutex_stack_t* mutexStack)
     }
     else
     {
-        mutexStack->currentSyncLevel = mutexStack->acquiredMutexes[mutexStack->acquiredMutexCount - 1].mutex->mutex.syncLevel;
+        mutexStack->currentSyncLevel =
+            mutexStack->acquiredMutexes[mutexStack->acquiredMutexCount - 1].mutex->mutex.syncLevel;
         aml_mutex_stack_entry_t* newStack = heap_realloc(mutexStack->acquiredMutexes,
             sizeof(aml_mutex_stack_entry_t) * mutexStack->acquiredMutexCount, HEAP_NONE);
         if (newStack != NULL)
@@ -88,7 +89,8 @@ static inline void aml_mutex_stack_pop_mutex(aml_mutex_stack_t* mutexStack)
     }
 }
 
-static inline aml_mutex_stack_entry_t* aml_mutex_stack_find_acquired_mutex(aml_mutex_stack_t* mutexStack, aml_object_t* mutex)
+static inline aml_mutex_stack_entry_t* aml_mutex_stack_find_acquired_mutex(aml_mutex_stack_t* mutexStack,
+    aml_object_t* mutex)
 {
     for (uint64_t i = 0; i < mutexStack->acquiredMutexCount; i++)
     {
@@ -111,8 +113,8 @@ uint64_t aml_mutex_stack_acquire(aml_mutex_stack_t* mutexStack, aml_object_t* mu
 
     if (mutex->mutex.syncLevel < mutexStack->currentSyncLevel)
     {
-        LOG_ERR("Cannot acquire mutex with lower sync level than current level (%u < %u)\n",
-            mutex->mutex.syncLevel, mutexStack->currentSyncLevel);
+        LOG_ERR("Cannot acquire mutex with lower sync level than current level (%u < %u)\n", mutex->mutex.syncLevel,
+            mutexStack->currentSyncLevel);
         errno = EDEADLK;
         return ERR;
     }
@@ -169,7 +171,8 @@ uint64_t aml_mutex_stack_release(aml_mutex_stack_t* mutexStack, aml_object_t* mu
     }
     else
     {
-        mutexStack->currentSyncLevel = mutexStack->acquiredMutexes[mutexStack->acquiredMutexCount - 1].mutex->mutex.syncLevel;
+        mutexStack->currentSyncLevel =
+            mutexStack->acquiredMutexes[mutexStack->acquiredMutexCount - 1].mutex->mutex.syncLevel;
     }
 
     return 0;

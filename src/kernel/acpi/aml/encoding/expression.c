@@ -1000,7 +1000,7 @@ uint64_t aml_obj_reference_read(aml_state_t* state, aml_scope_t* scope, aml_obje
     }
     else if (termArg->type == AML_DATA_STRING)
     {
-        aml_object_t* target = aml_object_find(scope->object, termArg->string.content);
+        aml_object_t* target = aml_object_find(scope->location, termArg->string.content);
         if (target == NULL)
         {
             AML_DEBUG_ERROR(state, "Failed to find target scope '%s'", termArg->string.content);
@@ -1635,7 +1635,7 @@ uint64_t aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope, aml_
         result = aml_def_acquire_read(state, scope, out);
         break;
     default:
-        AML_DEBUG_ERROR(state, "Unknown expression opcode '0x%x'", op.num);
+        AML_DEBUG_ERROR(state, "Unknown expression opcode '%s' (0x%04x)", op.props->name, op.num);
         errno = ENOSYS;
         return ERR;
     }

@@ -104,6 +104,30 @@ uint64_t aml_arg_object_read(aml_state_t* state, aml_scope_t* scope, aml_object_
 uint64_t aml_def_return_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
+ * @brief Reads a DefBreak structure from the AML byte stream.
+ *
+ * A DefBreak structure is defined as `DefBreak := BreakOp`.
+ *
+ * @see Section 19.6.8 of the ACPI specification for more details.
+ *
+ * @param state The AML state to parse from.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_break_read(aml_state_t* state);
+
+/**
+ * @brief Reads a DefContinue structure from the AML byte stream.
+ *
+ * A DefContinue structure is defined as `DefContinue := ContinueOp`.
+ *
+ * @see Section 19.6.16 of the ACPI specification for more details.
+ *
+ * @param state The AML state to parse from.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_continue_read(aml_state_t* state);
+
+/**
  * @brief Reads a DefRelease structure from the AML byte stream.
  *
  * A DefRelease structure is defined as `DefRelease := ReleaseOp MutexObject`.
@@ -115,6 +139,22 @@ uint64_t aml_def_return_read(aml_state_t* state, aml_scope_t* scope);
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_def_release_read(aml_state_t* state, aml_scope_t* scope);
+
+/**
+ * @brief Reads a DefWhile structure from the AML byte stream.
+ *
+ * A DefWhile structure is defined as `DefWhile := WhileOp PkgLength Predicate TermList`.
+ *
+ * The While statement works by evaluating the Predicate, if it is a non-zero integer, the TermList following the
+ * Predicate is executed, then the Predicate is evaluated again, this continues until the Predicate evaluates to zero.
+ *
+ * @see Section 19.6.158 of the ACPI specification for more details.
+ *
+ * @param state The AML state to parse from.
+ * @param scope The current AML scope.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_while_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads an StatementOpcode structure from the AML byte stream.

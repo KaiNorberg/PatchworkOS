@@ -169,7 +169,7 @@ uint64_t aml_term_list_read(aml_state_t* state, aml_object_t* newLocation, const
         return ERR;
     }
 
-    while (end > state->current && !state->hasHitReturn)
+    while (end > state->current && state->flowControl == AML_FLOW_CONTROL_EXECUTE)
     {
         // End of buffer not reached => byte is not nothing => must be a termobj.
         if (aml_term_obj_read(state, &scope) == ERR)

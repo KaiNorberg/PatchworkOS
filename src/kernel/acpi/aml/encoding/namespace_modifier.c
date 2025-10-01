@@ -45,7 +45,7 @@ uint64_t aml_def_alias_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_object_t* target = aml_object_add(scope->object, &targetNameString, AML_OBJECT_NONE);
+    aml_object_t* target = aml_object_add(scope->location, &targetNameString, AML_OBJECT_NONE);
     if (target == NULL)
     {
         errno = EILSEQ;
@@ -83,7 +83,7 @@ uint64_t aml_def_name_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_object_t* name = aml_object_add(scope->object, &nameString, AML_OBJECT_NONE);
+    aml_object_t* name = aml_object_add(scope->location, &nameString, AML_OBJECT_NONE);
     if (name == NULL)
     {
         errno = EILSEQ;

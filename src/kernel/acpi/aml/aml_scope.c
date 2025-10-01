@@ -1,13 +1,12 @@
 #include "aml_scope.h"
 
 #include "acpi/aml/aml_object.h"
-#include "acpi/aml/runtime/convert.h"
+#include "log/log.h"
+#include "mem/heap.h"
 
-#include "log/panic.h"
-
-uint64_t aml_scope_init(aml_scope_t* scope, aml_object_t* object)
+uint64_t aml_scope_init(aml_scope_t* scope, aml_object_t* location)
 {
-    scope->object = object;
+    scope->location = location;
     for (uint8_t i = 0; i < AML_MAX_TEMPS; i++)
     {
         scope->temps[i] = NULL;

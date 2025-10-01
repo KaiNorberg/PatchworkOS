@@ -38,7 +38,11 @@ uint64_t aml_method_evaluate(aml_object_t* method, aml_term_arg_list_t* args, am
         mutex_release(&method->method.mutex);
     }
 
-    aml_state_deinit(&state);
+    if (aml_state_deinit(&state) == ERR)
+    {
+        LOG_ERR("failed to deinitialize AML state\n");
+        return ERR;
+    }
     return result;
 }
 

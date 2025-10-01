@@ -51,7 +51,7 @@ uint64_t aml_def_else_read(aml_state_t* state, aml_scope_t* scope, bool shouldEx
     if (shouldExecute)
     {
         // Execute the TermList in the same scope
-        if (aml_term_list_read(state, scope->object, end) == ERR)
+        if (aml_term_list_read(state, scope->location, end) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read TermList");
             return ERR;
@@ -107,7 +107,7 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_scope_t* scope)
     if (predicate != 0)
     {
         // Execute the TermList in the same scope
-        if (aml_term_list_read(state, scope->object, end) == ERR)
+        if (aml_term_list_read(state, scope->location, end) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read TermList");
             return ERR;
@@ -171,8 +171,6 @@ uint64_t aml_arg_object_read(aml_state_t* state, aml_scope_t* scope, aml_object_
 
 uint64_t aml_def_return_read(aml_state_t* state, aml_scope_t* scope)
 {
-    state->hasHitReturn = true;
-
     aml_token_t returnOp;
     if (aml_token_read_no_ext(state, &returnOp) == ERR)
     {
@@ -186,6 +184,8 @@ uint64_t aml_def_return_read(aml_state_t* state, aml_scope_t* scope)
         errno = EILSEQ;
         return ERR;
     }
+
+    state->flowControl = AML_FLOW_CONTROL_RETURN;
 
     aml_object_t* argObject = NULL;
     if (aml_arg_object_read(state, scope, &argObject) == ERR)
@@ -209,7 +209,7 @@ uint64_t aml_def_return_read(aml_state_t* state, aml_scope_t* scope)
 uint64_t aml_def_release_read(aml_state_t* state, aml_scope_t* scope)
 {
     aml_token_t releaseOp;
-    if (aml_token_read_no_ext(state, &releaseOp) == ERR)
+    if (aml_token_read(state, &releaseOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ReleaseOp");
         return ERR;
@@ -240,10 +240,127 @@ uint64_t aml_def_release_read(aml_state_t* state, aml_scope_t* scope)
     return 0;
 }
 
+uint64_t aml_def_break_read(aml_state_t* state)
+{
+    aml_token_t breakOp;
+    if (aml_token_read_no_ext(state, &breakOp) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read BreakOp");
+        return ERR;
+    }
+
+    if (breakOp.num != AML_BREAK_OP)
+    {
+        AML_DEBUG_ERROR(state, "Invalid BreakOp '0x%x'", breakOp.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    state->flowControl = AML_FLOW_CONTROL_BREAK;
+    return 0;
+}
+
+uint64_t aml_def_continue_read(aml_state_t* state)
+{
+    aml_token_t continueOp;
+    if (aml_token_read_no_ext(state, &continueOp) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read ContinueOp");
+        return ERR;
+    }
+
+    if (continueOp.num != AML_CONTINUE_OP)
+    {
+        AML_DEBUG_ERROR(state, "Invalid ContinueOp '0x%x'", continueOp.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    state->flowControl = AML_FLOW_CONTROL_CONTINUE;
+    return 0;
+}
+
+uint64_t aml_def_while_read(aml_state_t* state, aml_scope_t* scope)
+{
+    aml_token_t whileOp;
+    if (aml_token_read_no_ext(state, &whileOp) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read WhileOp");
+        return ERR;
+    }
+
+    if (whileOp.num != AML_WHILE_OP)
+    {
+        AML_DEBUG_ERROR(state, "Invalid WhileOp '0x%x'", whileOp.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    const uint8_t* start = state->current;
+
+    aml_pkg_length_t pkgLength;
+    if (aml_pkg_length_read(state, &pkgLength) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read PkgLength");
+        return ERR;
+    }
+
+    const uint8_t* end = start + pkgLength;
+
+    const uint8_t* loopStart = state->current;
+    while (true)
+    {
+        uint64_t predicate;
+        if (aml_predicate_read(state, scope, &predicate) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read Predicate");
+            return ERR;
+        }
+
+        if (predicate == 0)
+        {
+            // Advance the state to the end of the while loop
+            uint64_t offset = end - state->current;
+            aml_state_advance(state, offset);
+            return 0;
+        }
+
+        // Execute the TermList in the same scope, might change flow control
+        if (aml_term_list_read(state, scope->location, end) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read TermList");
+            return ERR;
+        }
+
+        if (state->flowControl == AML_FLOW_CONTROL_BREAK || state->flowControl == AML_FLOW_CONTROL_RETURN)
+        {
+            // Advance the state to the end of the while loop
+            uint64_t offset = end - state->current;
+            aml_state_advance(state, offset);
+            state->flowControl = AML_FLOW_CONTROL_EXECUTE;
+            return 0;
+        }
+        else if (state->flowControl == AML_FLOW_CONTROL_CONTINUE)
+        {
+            state->flowControl = AML_FLOW_CONTROL_EXECUTE;
+            // Continue to the next iteration of the while loop
+        }
+        else if (state->flowControl != AML_FLOW_CONTROL_EXECUTE)
+        {
+            AML_DEBUG_ERROR(state, "Invalid flow control state in while loop");
+            errno = EILSEQ;
+            return ERR;
+        }
+
+        // Reset the state to the start of the while loop for the next iteration
+        state->current = loopStart;
+    }
+}
+
 uint64_t aml_statement_opcode_read(aml_state_t* state, aml_scope_t* scope)
 {
     aml_token_t op;
-    if (aml_token_peek_no_ext(state, &op) == ERR)
+    if (aml_token_peek(state, &op) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to peek op");
         return ERR;
@@ -264,8 +381,17 @@ uint64_t aml_statement_opcode_read(aml_state_t* state, aml_scope_t* scope)
     case AML_RELEASE_OP:
         result = aml_def_release_read(state, scope);
         break;
+    case AML_WHILE_OP:
+        result = aml_def_while_read(state, scope);
+        break;
+    case AML_BREAK_OP:
+        result = aml_def_break_read(state);
+        break;
+    case AML_CONTINUE_OP:
+        result = aml_def_continue_read(state);
+        break;
     default:
-        AML_DEBUG_ERROR(state, "Unknown StatementOpcode '0x%x'", op.num);
+        AML_DEBUG_ERROR(state, "Unknown StatementOpcode '%s' (0x%x)", op.props->name, op.num);
         errno = ENOSYS;
         return ERR;
     }

@@ -140,7 +140,11 @@ uint64_t aml_parse(const uint8_t* start, const uint8_t* end)
 
     uint64_t result = aml_term_list_read(&state, aml_root_get(), end);
 
-    aml_state_deinit(&state);
+    if (aml_state_deinit(&state) == ERR)
+    {
+        LOG_ERR("failed to deinitialize AML state\n");
+        return ERR;
+    }
     return result;
 }
 
