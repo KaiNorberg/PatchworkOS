@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 typedef struct aml_state aml_state_t;
-typedef struct aml_node aml_node_t;
+typedef struct aml_object aml_object_t;
 typedef struct aml_scope aml_scope_t;
 
 /**

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "acpi/aml/aml_node.h"
+#include "acpi/aml/aml_object.h"
 #include "data.h"
 
 #include <stdint.h>
@@ -25,12 +25,12 @@ typedef struct aml_scope aml_scope_t;
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @param allowedTypes Bitmask of allowed types for the TermArg, the result will be evaluated to one of these types.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_data_type_t allowedTypes);
+uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out, aml_data_type_t allowedTypes);
 
 /**
  * @brief Wrapper around `aml_term_arg_read` that converts the result to an integer.
@@ -76,6 +76,6 @@ uint64_t aml_term_obj_read(aml_state_t* state, aml_scope_t* scope);
  * @param end Pointer to the end of the TermList.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_term_list_read(aml_state_t* state, aml_node_t* newLocation, const uint8_t* end);
+uint64_t aml_term_list_read(aml_state_t* state, aml_object_t* newLocation, const uint8_t* end);
 
 /** @} */

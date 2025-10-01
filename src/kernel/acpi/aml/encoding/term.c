@@ -15,7 +15,7 @@
 #include <errno.h>
 #include <stdint.h>
 
-uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_data_type_t allowedTypes)
+uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out, aml_data_type_t allowedTypes)
 {
     aml_token_t op;
     if (aml_token_peek(state, &op) == ERR)
@@ -24,7 +24,7 @@ uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** 
         return ERR;
     }
 
-    aml_node_t* value = NULL;
+    aml_object_t* value = NULL;
 
     switch (op.props->type)
     {
@@ -88,7 +88,7 @@ uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** 
 
 uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
 {
-    aml_node_t* temp = NULL;
+    aml_object_t* temp = NULL;
     if (aml_term_arg_read(state, scope, &temp, AML_DATA_INTEGER) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read TermArg");
@@ -141,7 +141,7 @@ uint64_t aml_term_obj_read(aml_state_t* state, aml_scope_t* scope)
         return 0;
     case AML_TOKEN_TYPE_EXPRESSION:
     {
-        aml_node_t* temp = NULL;
+        aml_object_t* temp = NULL;
         if (aml_expression_opcode_read(state, scope, &temp) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read ExpressionOpcode");
@@ -159,7 +159,7 @@ uint64_t aml_term_obj_read(aml_state_t* state, aml_scope_t* scope)
     }
 }
 
-uint64_t aml_term_list_read(aml_state_t* state, aml_node_t* newLocation, const uint8_t* end)
+uint64_t aml_term_list_read(aml_state_t* state, aml_object_t* newLocation, const uint8_t* end)
 {
     aml_scope_t scope;
     if (aml_scope_init(&scope, newLocation) == ERR)

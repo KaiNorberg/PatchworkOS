@@ -15,17 +15,17 @@
  */
 
 /**
- * @brief Determine if the global mutex should be acquired when accessing this node.
+ * @brief Determine if the global mutex should be acquired when accessing this object.
  *
  * The mutex should be acquired if:
- * - The node is a FieldUnit and its LockRule is `AML_LOCK_RULE_LOCK` (see section 19.6.48
+ * - The object is a FieldUnit and its LockRule is `AML_LOCK_RULE_LOCK` (see section 19.6.48
  * and 19.6.64),
  * - More to be added later.
  *
- * @param node The node to check.
+ * @param object The object to check.
  * @return true If the global mutex should be acquired.
  * @return false If the global mutex should not be acquired.
  */
-bool aml_should_acquire_global_mutex(aml_node_t* node);
+bool aml_should_acquire_global_mutex(aml_object_t* object);
 
 /** @} */

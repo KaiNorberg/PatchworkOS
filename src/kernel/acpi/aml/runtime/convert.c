@@ -1,6 +1,6 @@
 #include "convert.h"
 
-#include "acpi/aml/aml_node.h"
+#include "acpi/aml/aml_object.h"
 #include "acpi/aml/aml_to_string.h"
 #include "buffer_field.h"
 #include "copy.h"
@@ -11,7 +11,7 @@
 
 #define AML_CONVERT_TRY_NEXT_CONVERTER 1
 
-typedef uint64_t (*aml_convert_func_t)(aml_node_t* src, aml_node_t* dest);
+typedef uint64_t (*aml_convert_func_t)(aml_object_t* src, aml_object_t* dest);
 
 typedef struct
 {
@@ -23,7 +23,7 @@ typedef struct
 // We create the arrays of converters here. The order of the list defines the priority of the converters. First ==
 // Highest Priority. Last == Lowest Priority. See section 19.3.5.7 table 19.6 for the conversion priority order.
 
-static uint64_t aml_buffer_to_integer(aml_node_t* buffer, aml_node_t* dest)
+static uint64_t aml_buffer_to_integer(aml_object_t* buffer, aml_object_t* dest)
 {
     uint64_t value = 0;
     for (uint64_t i = 0; i < buffer->buffer.length && i < sizeof(uint64_t); i++)
@@ -31,7 +31,7 @@ static uint64_t aml_buffer_to_integer(aml_node_t* buffer, aml_node_t* dest)
         value |= ((uint64_t)buffer->buffer.content[i]) << (i * 8);
     }
 
-    if (aml_node_init_integer(dest, value) == ERR)
+    if (aml_object_init_integer(dest, value) == ERR)
     {
         return ERR;
     }
@@ -39,13 +39,13 @@ static uint64_t aml_buffer_to_integer(aml_node_t* buffer, aml_node_t* dest)
     return 0;
 }
 
-static uint64_t aml_buffer_to_string(aml_node_t* buffer, aml_node_t* dest)
+static uint64_t aml_buffer_to_string(aml_object_t* buffer, aml_object_t* dest)
 {
     // Each byte in the buffer becomes two hex chars with a space in between.
     uint64_t length = buffer->buffer.length * 2 + (buffer->buffer.length > 0 ? buffer->buffer.length - 1 : 0);
 
     // Will add the null terminator on its own.
-    if (aml_node_init_string_empty(dest, length) == ERR)
+    if (aml_object_init_string_empty(dest, length) == ERR)
     {
         return ERR;
     }
@@ -65,7 +65,7 @@ static uint64_t aml_buffer_to_string(aml_node_t* buffer, aml_node_t* dest)
     return 0;
 }
 
-static uint64_t aml_buffer_to_debug_object(aml_node_t* buffer, aml_node_t* dest)
+static uint64_t aml_buffer_to_debug_object(aml_object_t* buffer, aml_object_t* dest)
 {
     (void)buffer;
     (void)dest;
@@ -81,7 +81,7 @@ static aml_convert_entry_t bufferConverters[AML_DATA_TYPE_AMOUNT] = {
     {AML_DATA_BUFFER, AML_DATA_DEBUG_OBJECT, aml_buffer_to_debug_object},
 };
 
-static uint64_t aml_integer_to_buffer(aml_node_t* integer, aml_node_t* dest)
+static uint64_t aml_integer_to_buffer(aml_object_t* integer, aml_object_t* dest)
 {
     if (dest->type == AML_DATA_BUFFER)
     {
@@ -95,7 +95,7 @@ static uint64_t aml_integer_to_buffer(aml_node_t* integer, aml_node_t* dest)
         }
     }
 
-    if (aml_node_init_buffer(dest, (uint8_t*)&integer->integer.value, sizeof(uint64_t), sizeof(uint64_t)) == ERR)
+    if (aml_object_init_buffer(dest, (uint8_t*)&integer->integer.value, sizeof(uint64_t), sizeof(uint64_t)) == ERR)
     {
         return ERR;
     }
@@ -103,7 +103,7 @@ static uint64_t aml_integer_to_buffer(aml_node_t* integer, aml_node_t* dest)
     return 0;
 }
 
-static uint64_t aml_integer_to_field_unit(aml_node_t* integer, aml_node_t* dest)
+static uint64_t aml_integer_to_field_unit(aml_object_t* integer, aml_object_t* dest)
 {
     if (dest->type != AML_DATA_FIELD_UNIT)
     {
@@ -118,7 +118,7 @@ static uint64_t aml_integer_to_field_unit(aml_node_t* integer, aml_node_t* dest)
     return 0;
 }
 
-static uint64_t aml_integer_to_buffer_field(aml_node_t* integer, aml_node_t* dest)
+static uint64_t aml_integer_to_buffer_field(aml_object_t* integer, aml_object_t* dest)
 {
     if (dest->type != AML_DATA_BUFFER_FIELD)
     {
@@ -133,11 +133,11 @@ static uint64_t aml_integer_to_buffer_field(aml_node_t* integer, aml_node_t* des
     return 0;
 }
 
-static uint64_t aml_integer_to_string(aml_node_t* integer, aml_node_t* dest)
+static uint64_t aml_integer_to_string(aml_object_t* integer, aml_object_t* dest)
 {
     uint64_t stringLength = sizeof(uint64_t) * 2; // Each byte becomes two hex chars.
 
-    if (aml_node_init_string_empty(dest, stringLength) == ERR)
+    if (aml_object_init_string_empty(dest, stringLength) == ERR)
     {
         return ERR;
     }
@@ -152,7 +152,7 @@ static uint64_t aml_integer_to_string(aml_node_t* integer, aml_node_t* dest)
     return 0;
 }
 
-static uint64_t aml_integer_to_debug_object(aml_node_t* integer, aml_node_t* dest)
+static uint64_t aml_integer_to_debug_object(aml_object_t* integer, aml_object_t* dest)
 {
     (void)integer;
     (void)dest;
@@ -170,9 +170,9 @@ static aml_convert_entry_t integerConverters[AML_DATA_TYPE_AMOUNT] = {
     {AML_DATA_INTEGER, AML_DATA_DEBUG_OBJECT, aml_integer_to_debug_object},
 };
 
-static uint64_t aml_integer_constant_to_integer(aml_node_t* integerConstant, aml_node_t* dest)
+static uint64_t aml_integer_constant_to_integer(aml_object_t* integerConstant, aml_object_t* dest)
 {
-    if (aml_node_init_integer(dest, integerConstant->integerConstant.value) == ERR)
+    if (aml_object_init_integer(dest, integerConstant->integerConstant.value) == ERR)
     {
         return ERR;
     }
@@ -180,7 +180,7 @@ static uint64_t aml_integer_constant_to_integer(aml_node_t* integerConstant, aml
     return 0;
 }
 
-static uint64_t aml_integer_constant_to_debug_object(aml_node_t* integerConstant, aml_node_t* dest)
+static uint64_t aml_integer_constant_to_debug_object(aml_object_t* integerConstant, aml_object_t* dest)
 {
     (void)integerConstant;
     (void)dest;
@@ -195,7 +195,7 @@ static aml_convert_entry_t integerConstantConverters[AML_DATA_TYPE_AMOUNT] = {
     {AML_DATA_INTEGER_CONSTANT, AML_DATA_DEBUG_OBJECT, aml_integer_constant_to_debug_object},
 };
 
-static uint64_t aml_package_to_debug_object(aml_node_t* package, aml_node_t* dest)
+static uint64_t aml_package_to_debug_object(aml_object_t* package, aml_object_t* dest)
 {
     (void)package;
     (void)dest;
@@ -209,7 +209,7 @@ static aml_convert_entry_t packageConverters[AML_DATA_TYPE_AMOUNT] = {
     {AML_DATA_PACKAGE, AML_DATA_DEBUG_OBJECT, aml_package_to_debug_object},
 };
 
-static uint64_t aml_string_to_integer(aml_node_t* string, aml_node_t* dest)
+static uint64_t aml_string_to_integer(aml_object_t* string, aml_object_t* dest)
 {
     if (string->string.content == NULL)
     {
@@ -245,7 +245,7 @@ static uint64_t aml_string_to_integer(aml_node_t* string, aml_node_t* dest)
         }
     }
 
-    if (aml_node_init_integer(dest, value) == ERR)
+    if (aml_object_init_integer(dest, value) == ERR)
     {
         return ERR;
     }
@@ -253,9 +253,9 @@ static uint64_t aml_string_to_integer(aml_node_t* string, aml_node_t* dest)
     return 0;
 }
 
-static uint64_t aml_string_to_buffer(aml_node_t* string, aml_node_t* dest)
+static uint64_t aml_string_to_buffer(aml_object_t* string, aml_object_t* dest)
 {
-    if (aml_node_init_buffer_empty(dest, string->string.length + 1) == ERR)
+    if (aml_object_init_buffer_empty(dest, string->string.length + 1) == ERR)
     {
         return ERR;
     }
@@ -269,7 +269,7 @@ static uint64_t aml_string_to_buffer(aml_node_t* string, aml_node_t* dest)
     return 0;
 }
 
-static uint64_t aml_string_to_debug_object(aml_node_t* string, aml_node_t* dest)
+static uint64_t aml_string_to_debug_object(aml_object_t* string, aml_object_t* dest)
 {
     (void)string;
     (void)dest;
@@ -285,18 +285,18 @@ static aml_convert_entry_t stringConverters[AML_DATA_TYPE_AMOUNT] = {
     {AML_DATA_STRING, AML_DATA_DEBUG_OBJECT, aml_string_to_debug_object},
 };
 
-uint64_t aml_convert_and_store(aml_node_t* src, aml_node_t* dest, aml_data_type_t allowedTypes)
+uint64_t aml_convert_and_store(aml_object_t* src, aml_object_t* dest, aml_data_type_t allowedTypes)
 {
     if (dest == NULL || src == NULL)
     {
-        LOG_ERR("source or destination node is NULL\n");
+        LOG_ERR("source or destination object is NULL\n");
         errno = EINVAL;
         return ERR;
     }
 
     if (src->type == AML_DATA_UNINITALIZED)
     {
-        LOG_ERR("source node is uninitialized\n");
+        LOG_ERR("source object is uninitialized\n");
         errno = EINVAL;
         return ERR;
     }
@@ -305,7 +305,7 @@ uint64_t aml_convert_and_store(aml_node_t* src, aml_node_t* dest, aml_data_type_
     if (src->type == AML_DATA_FIELD_UNIT || src->type == AML_DATA_BUFFER_FIELD)
     {
         // Depending on the size temp becomes either a Buffer or an Integer.
-        aml_node_t temp = AML_NODE_CREATE(AML_NODE_NONE);
+        aml_object_t temp = AML_OBJECT_CREATE(AML_OBJECT_NONE);
         if (src->type == AML_DATA_FIELD_UNIT)
         {
             if (aml_field_unit_load(src, &temp) == ERR)
@@ -328,16 +328,16 @@ uint64_t aml_convert_and_store(aml_node_t* src, aml_node_t* dest, aml_data_type_
             if (aml_copy_raw(&temp, dest) == ERR)
             {
                 LOG_ERR("failed to clone loaded FieldUnit to destination\n");
-                aml_node_deinit(&temp);
+                aml_object_deinit(&temp);
                 return ERR;
             }
 
-            aml_node_deinit(&temp);
+            aml_object_deinit(&temp);
             return 0;
         }
 
         uint64_t result = aml_convert_and_store(&temp, dest, allowedTypes);
-        aml_node_deinit(&temp);
+        aml_object_deinit(&temp);
         return result;
     }
 
@@ -345,7 +345,7 @@ uint64_t aml_convert_and_store(aml_node_t* src, aml_node_t* dest, aml_data_type_
     {
         if (aml_copy_raw(src, dest) == ERR)
         {
-            LOG_ERR("failed to copy content of source node of type '%s' to destination node '%.*s'\n",
+            LOG_ERR("failed to copy content of source object of type '%s' to destination object '%.*s'\n",
                 aml_data_type_to_string(src->type), AML_NAME_LENGTH, dest->segment);
             return ERR;
         }
@@ -425,18 +425,18 @@ uint64_t aml_convert_and_store(aml_node_t* src, aml_node_t* dest, aml_data_type_
     return ERR;
 }
 
-uint64_t aml_convert_source(aml_node_t* source, aml_node_t* out, aml_data_type_t allowedTypes)
+uint64_t aml_convert_source(aml_object_t* source, aml_object_t* out, aml_data_type_t allowedTypes)
 {
     if (source == NULL || out == NULL)
     {
-        LOG_ERR("source or output node is NULL\n");
+        LOG_ERR("source or output object is NULL\n");
         errno = EINVAL;
         return ERR;
     }
 
     if (source->type == AML_DATA_UNINITALIZED)
     {
-        LOG_ERR("source node '%.*s' is uninitialized\n", AML_NAME_LENGTH, source->segment);
+        LOG_ERR("source object '%.*s' is uninitialized\n", AML_NAME_LENGTH, source->segment);
         errno = EINVAL;
         return ERR;
     }
@@ -446,7 +446,7 @@ uint64_t aml_convert_source(aml_node_t* source, aml_node_t* out, aml_data_type_t
     {
         if (aml_copy_raw(source, out) == ERR)
         {
-            LOG_ERR("failed to copy content of source node '%.*s' of type '%s' to output node '%.*s'\n", AML_NAME_LENGTH,
+            LOG_ERR("failed to copy content of source object '%.*s' of type '%s' to output object '%.*s'\n", AML_NAME_LENGTH,
                 source->segment, aml_data_type_to_string(source->type), AML_NAME_LENGTH, out->segment);
             return ERR;
         }
@@ -458,7 +458,7 @@ uint64_t aml_convert_source(aml_node_t* source, aml_node_t* out, aml_data_type_t
     if (aml_convert_and_store(source, out, allowedTypes) == ERR)
     {
         // "If conversion is impossible, abort the running control method and issue a fatal error."
-        LOG_ERR("failed to convert source node '%.*s' of type '%s' to any of the allowed types\n", AML_NAME_LENGTH,
+        LOG_ERR("failed to convert source object '%.*s' of type '%s' to any of the allowed types\n", AML_NAME_LENGTH,
             source->segment, aml_data_type_to_string(source->type));
         return ERR;
     }
@@ -472,18 +472,18 @@ uint64_t aml_convert_source(aml_node_t* source, aml_node_t* out, aml_data_type_t
     return 0;
 }
 
-uint64_t aml_convert_result(aml_node_t* result, aml_node_t* target)
+uint64_t aml_convert_result(aml_object_t* result, aml_object_t* target)
 {
     if (result == NULL)
     {
-        LOG_ERR("result node is NULL\n");
+        LOG_ERR("result object is NULL\n");
         errno = EINVAL;
         return ERR;
     }
 
     if (result->type == AML_DATA_UNINITALIZED)
     {
-        LOG_ERR("result node '%.*s' is uninitialized\n", AML_NAME_LENGTH, result->segment);
+        LOG_ERR("result object '%.*s' is uninitialized\n", AML_NAME_LENGTH, result->segment);
         errno = EINVAL;
         return ERR;
     }
@@ -500,11 +500,11 @@ uint64_t aml_convert_result(aml_node_t* result, aml_node_t* target)
 
     // "If the target is a method local or argument (LocalX or ArgX), no conversion is performed and the result is
     // stored directly to the target."
-    if (target->flags & (AML_NODE_LOCAL | AML_NODE_ARG))
+    if (target->flags & (AML_OBJECT_LOCAL | AML_OBJECT_ARG))
     {
         if (aml_copy_raw(result, target) == ERR)
         {
-            LOG_ERR("failed to copy the content of result node '%.*s' to target local/arg node '%.*s'\n", AML_NAME_LENGTH,
+            LOG_ERR("failed to copy the content of result object '%.*s' to target local/arg object '%.*s'\n", AML_NAME_LENGTH,
                 result->segment, AML_NAME_LENGTH, target->segment);
             return ERR;
         }
@@ -513,7 +513,7 @@ uint64_t aml_convert_result(aml_node_t* result, aml_node_t* target)
 
     if (target->type == AML_DATA_UNINITALIZED)
     {
-        LOG_ERR("target node '%.*s' is uninitialized\n", AML_NAME_LENGTH, target->segment);
+        LOG_ERR("target object '%.*s' is uninitialized\n", AML_NAME_LENGTH, target->segment);
         errno = EINVAL;
         return ERR;
     }
@@ -523,7 +523,7 @@ uint64_t aml_convert_result(aml_node_t* result, aml_node_t* target)
     if (aml_convert_and_store(result, target, target->type) == ERR)
     {
         // "If conversion is impossible, abort the running control method and issue a fatal error."
-        LOG_ERR("failed to convert result node '%.*s' of type '%s' to target node '%.*s' of type '%s'\n",
+        LOG_ERR("failed to convert result object '%.*s' of type '%s' to target object '%.*s' of type '%s'\n",
             AML_NAME_LENGTH, result->segment, aml_data_type_to_string(result->type), AML_NAME_LENGTH,
             target->segment, aml_data_type_to_string(target->type));
         return ERR;

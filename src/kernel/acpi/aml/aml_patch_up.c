@@ -8,15 +8,15 @@
 #include <errno.h>
 #include <sys/list.h>
 
-static list_t unresolvedNodes;
+static list_t unresolvedObjects;
 
 uint64_t aml_patch_up_init(void)
 {
-    list_init(&unresolvedNodes);
+    list_init(&unresolvedObjects);
     return 0;
 }
 
-uint64_t aml_patch_up_add_unresolved(aml_node_t* unresolved, aml_patch_up_resolve_callback_t callback)
+uint64_t aml_patch_up_add_unresolved(aml_object_t* unresolved, aml_patch_up_resolve_callback_t callback)
 {
     if (unresolved == NULL || unresolved->type != AML_DATA_UNRESOLVED || !unresolved->isAllocated)
     {
@@ -36,13 +36,13 @@ uint64_t aml_patch_up_add_unresolved(aml_node_t* unresolved, aml_patch_up_resolv
 
     mutex_t* globalMutex = aml_global_mutex_get();
     mutex_acquire_recursive(globalMutex);
-    list_push(&unresolvedNodes, &entry->entry);
+    list_push(&unresolvedObjects, &entry->entry);
     mutex_release(globalMutex);
 
     return 0;
 }
 
-void aml_patch_up_remove_unresolved(aml_node_t* unresolved)
+void aml_patch_up_remove_unresolved(aml_object_t* unresolved)
 {
     if (unresolved == NULL || unresolved->type != AML_DATA_UNRESOLVED || !unresolved->isAllocated)
     {
@@ -53,11 +53,11 @@ void aml_patch_up_remove_unresolved(aml_node_t* unresolved)
     mutex_acquire_recursive(globalMutex);
 
     aml_patch_up_entry_t* entry = NULL;
-    LIST_FOR_EACH(entry, &unresolvedNodes, entry)
+    LIST_FOR_EACH(entry, &unresolvedObjects, entry)
     {
         if (entry->unresolved == unresolved)
         {
-            list_remove(&unresolvedNodes, &entry->entry);
+            list_remove(&unresolvedObjects, &entry->entry);
             heap_free(entry);
             break;
         }
@@ -73,9 +73,9 @@ uint64_t aml_patch_up_resolve_all()
 
     aml_patch_up_entry_t* entry = NULL;
     aml_patch_up_entry_t* temp = NULL;
-    LIST_FOR_EACH_SAFE(entry, temp, &unresolvedNodes, entry)
+    LIST_FOR_EACH_SAFE(entry, temp, &unresolvedObjects, entry)
     {
-        aml_node_t* match =
+        aml_object_t* match =
             aml_name_string_resolve(&entry->unresolved->unresolved.nameString, entry->unresolved->unresolved.start);
         if (match == NULL)
         {
@@ -85,20 +85,20 @@ uint64_t aml_patch_up_resolve_all()
             continue;
         }
 
-        aml_node_t* unresolved = entry->unresolved;
+        aml_object_t* unresolved = entry->unresolved;
         if (entry->callback(match, unresolved) == ERR)
         {
-            LOG_ERR("Failed to patch up unresolved node\n");
+            LOG_ERR("Failed to patch up unresolved object\n");
             mutex_release(globalMutex);
             return ERR;
         }
 
-        // When the unresolved node is initalized as somethine else, it will be removed from the list in
-        // `aml_node_deinit()` and the entry will be freed. If it hasent been removed then something has gone wrong.
+        // When the unresolved object is initalized as somethine else, it will be removed from the list in
+        // `aml_object_deinit()` and the entry will be freed. If it hasent been removed then something has gone wrong.
 
         if (unresolved->type == AML_DATA_UNRESOLVED)
         {
-            LOG_ERR("Patch up callback did not initalize the unresolved node\n");
+            LOG_ERR("Patch up callback did not initalize the unresolved object\n");
             mutex_release(globalMutex);
             return ERR;
         }
@@ -112,7 +112,7 @@ uint64_t aml_patch_up_unresolved_count(void)
 {
     mutex_t* globalMutex = aml_global_mutex_get();
     mutex_acquire_recursive(globalMutex);
-    uint64_t count = list_length(&unresolvedNodes);
+    uint64_t count = list_length(&unresolvedObjects);
     mutex_release(globalMutex);
     return count;
 }

@@ -140,7 +140,7 @@ uint64_t aml_qword_const_read(aml_state_t* state, uint64_t* out)
     return aml_qword_data_read(state, out);
 }
 
-uint64_t aml_const_obj_read(aml_state_t* state, aml_node_t* out)
+uint64_t aml_const_obj_read(aml_state_t* state, aml_object_t* out)
 {
     aml_token_t token;
     if (aml_token_read_no_ext(state, &token) == ERR)
@@ -152,19 +152,19 @@ uint64_t aml_const_obj_read(aml_state_t* state, aml_node_t* out)
     switch (token.num)
     {
     case AML_ZERO_OP:
-        if (aml_node_init_integer(out, 0) == ERR)
+        if (aml_object_init_integer(out, 0) == ERR)
         {
             return ERR;
         }
         break;
     case AML_ONE_OP:
-        if (aml_node_init_integer(out, 1) == ERR)
+        if (aml_object_init_integer(out, 1) == ERR)
         {
             return ERR;
         }
         break;
     case AML_ONES_OP:
-        if (aml_node_init_integer(out, ~0) == ERR)
+        if (aml_object_init_integer(out, ~0) == ERR)
         {
             return ERR;
         }
@@ -178,7 +178,7 @@ uint64_t aml_const_obj_read(aml_state_t* state, aml_node_t* out)
     return 0;
 }
 
-uint64_t aml_string_read(aml_state_t* state, aml_node_t* out)
+uint64_t aml_string_read(aml_state_t* state, aml_object_t* out)
 {
     aml_token_t stringPrefix;
     if (aml_token_read(state, &stringPrefix) == ERR)
@@ -218,7 +218,7 @@ uint64_t aml_string_read(aml_state_t* state, aml_node_t* out)
         }
     }
 
-    if (aml_node_init_string(out, start) == ERR)
+    if (aml_object_init_string(out, start) == ERR)
     {
         return ERR;
     }
@@ -226,7 +226,7 @@ uint64_t aml_string_read(aml_state_t* state, aml_node_t* out)
     return 0;
 }
 
-uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* out)
+uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* out)
 {
     aml_token_t token;
     if (aml_token_peek_no_ext(state, &token) == ERR)
@@ -247,7 +247,7 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml
             return ERR;
         }
 
-        if (aml_node_init_integer(out, byte) == ERR)
+        if (aml_object_init_integer(out, byte) == ERR)
         {
             return ERR;
         }
@@ -262,7 +262,7 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml
             return ERR;
         }
 
-        if (aml_node_init_integer(out, word) == ERR)
+        if (aml_object_init_integer(out, word) == ERR)
         {
             return ERR;
         }
@@ -277,7 +277,7 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml
             return ERR;
         }
 
-        if (aml_node_init_integer(out, dword) == ERR)
+        if (aml_object_init_integer(out, dword) == ERR)
         {
             return ERR;
         }
@@ -292,7 +292,7 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml
             return ERR;
         }
 
-        if (aml_node_init_integer(out, qword) == ERR)
+        if (aml_object_init_integer(out, qword) == ERR)
         {
             return ERR;
         }
@@ -343,7 +343,7 @@ uint64_t aml_num_elements_read(aml_state_t* state, uint8_t* out)
  * Used to handle package elements that are names but mainly its used as a callback for
  * the @ref kernel_acpi_aml_patch_up system.
  */
-static inline uint64_t aml_package_element_handle_name(aml_node_t* in, aml_node_t* out)
+static inline uint64_t aml_package_element_handle_name(aml_object_t* in, aml_object_t* out)
 {
     aml_data_type_info_t* info = aml_data_type_get_info(in->type);
     if (info->flags & AML_DATA_FLAG_DATA_OBJECT) // "... resolved to actual data by the AML interpreter"
@@ -357,7 +357,7 @@ static inline uint64_t aml_package_element_handle_name(aml_node_t* in, aml_node_
     }
     else if (info->flags & AML_DATA_FLAG_NON_DATA_OBJECT) // "... returned in the package as references"
     {
-        if (aml_node_init_object_reference(out, in) == ERR)
+        if (aml_object_init_object_reference(out, in) == ERR)
         {
             LOG_ERR("failed to init ObjectReference in aml_package_element_handle_name()\n");
             return ERR;
@@ -372,7 +372,7 @@ static inline uint64_t aml_package_element_handle_name(aml_node_t* in, aml_node_
     }
 }
 
-uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* out)
+uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* out)
 {
     aml_token_t token;
     if (aml_token_peek(state, &token) == ERR)
@@ -384,7 +384,7 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_no
     if (token.props->type == AML_TOKEN_TYPE_NAME)
     {
         aml_name_string_t nameString;
-        aml_node_t* namedReference = NULL;
+        aml_object_t* namedReference = NULL;
         if (aml_simple_name_read_and_resolve(state, scope, &namedReference, AML_RESOLVE_ALLOW_UNRESOLVED,
                 &nameString) == ERR)
         {
@@ -395,7 +395,7 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_no
         // Evaulated to a valid namestring but could not be resolved.
         if (namedReference == NULL)
         {
-            if (aml_node_init_unresolved(out, &nameString, scope->node, aml_package_element_handle_name) == ERR)
+            if (aml_object_init_unresolved(out, &nameString, scope->object, aml_package_element_handle_name) == ERR)
             {
                 return ERR;
             }
@@ -421,7 +421,7 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_no
     }
 }
 
-uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* package, const uint8_t* end)
+uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* package, const uint8_t* end)
 {
     uint64_t i = 0;
     while (state->current < end && i < package->package.length)
@@ -430,7 +430,7 @@ uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, a
         {
             for (uint64_t j = 0; j < i; j++)
             {
-                aml_node_deinit(package->package.elements[j]);
+                aml_object_deinit(package->package.elements[j]);
             }
             return ERR;
         }
@@ -440,7 +440,7 @@ uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, a
     return 0;
 }
 
-uint64_t aml_def_package_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* out)
+uint64_t aml_def_package_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* out)
 {
     aml_token_t packageOp;
     if (aml_token_read(state, &packageOp) == ERR)
@@ -475,14 +475,14 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_scope_t* scope, aml_node_t
         return ERR;
     }
 
-    if (aml_node_init_package(out, numElements) == ERR)
+    if (aml_object_init_package(out, numElements) == ERR)
     {
         return ERR;
     }
 
     if (aml_package_element_list_read(state, scope, out, end) == ERR)
     {
-        aml_node_deinit(out);
+        aml_object_deinit(out);
         AML_DEBUG_ERROR(state, "Failed to read PackageElementList");
         return ERR;
     }
@@ -490,7 +490,7 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_scope_t* scope, aml_node_t
     return 0;
 }
 
-uint64_t aml_data_object_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* out)
+uint64_t aml_data_object_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* out)
 {
     aml_token_t token;
     if (aml_token_peek(state, &token) == ERR)
@@ -522,7 +522,7 @@ uint64_t aml_data_object_read(aml_state_t* state, aml_scope_t* scope, aml_node_t
     return 0;
 }
 
-uint64_t aml_data_ref_object_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* out)
+uint64_t aml_data_ref_object_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* out)
 {
     // TODO: Implement ObjectReference handling... somehow. I honestly have no clue what the spec wants you to do here.
 

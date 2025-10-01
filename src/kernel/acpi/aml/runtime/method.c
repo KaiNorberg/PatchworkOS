@@ -3,7 +3,7 @@
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_to_string.h"
 
-uint64_t aml_method_evaluate(aml_node_t* method, aml_term_arg_list_t* args, aml_node_t* returnValue)
+uint64_t aml_method_evaluate(aml_object_t* method, aml_term_arg_list_t* args, aml_object_t* returnValue)
 {
     if (method == NULL || method->type != AML_DATA_METHOD)
     {
@@ -39,29 +39,29 @@ uint64_t aml_method_evaluate(aml_node_t* method, aml_term_arg_list_t* args, aml_
     return result;
 }
 
-uint64_t aml_method_evaluate_integer(aml_node_t* node, uint64_t* out)
+uint64_t aml_method_evaluate_integer(aml_object_t* object, uint64_t* out)
 {
-    if (node == NULL || out == NULL)
+    if (object == NULL || out == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    if (node->type == AML_DATA_INTEGER)
+    if (object->type == AML_DATA_INTEGER)
     {
-        *out = node->integer.value;
+        *out = object->integer.value;
         return 0;
     }
 
-    if (node->type != AML_DATA_METHOD)
+    if (object->type != AML_DATA_METHOD)
     {
-        LOG_ERR("node is a '%s', not a method or integer\n", aml_data_type_to_string(node->type));
+        LOG_ERR("object is a '%s', not a method or integer\n", aml_data_type_to_string(object->type));
         errno = EINVAL;
         return ERR;
     }
 
-    aml_node_t returnValue = AML_NODE_CREATE(AML_NODE_NONE);
-    if (aml_method_evaluate(node, NULL, &returnValue) == ERR)
+    aml_object_t returnValue = AML_OBJECT_CREATE(AML_OBJECT_NONE);
+    if (aml_method_evaluate(object, NULL, &returnValue) == ERR)
     {
         return ERR;
     }
@@ -73,6 +73,6 @@ uint64_t aml_method_evaluate_integer(aml_node_t* node, uint64_t* out)
     }
 
     *out = returnValue.integer.value;
-    aml_node_deinit(&returnValue);
+    aml_object_deinit(&returnValue);
     return 0;
 }

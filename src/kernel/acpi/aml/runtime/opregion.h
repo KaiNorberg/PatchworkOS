@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include "acpi/aml/aml_node.h"
+#include "acpi/aml/aml_object.h"
 
 /**
  * @brief Opregion and Field Access
@@ -22,7 +22,7 @@
  * A IndexField works by having two fields, an index field and a data field. The index field is written to with the
  * "selector" or "index" of the data to read, and then the data field is read to get the actual data.
  *
- * A BankField works similarly to a field, but it has an additional "bank" node which it writes its "BankValue" to
+ * A BankField works similarly to a field, but it has an additional "bank" object which it writes its "BankValue" to
  * (which is like the BankFields id), before performing any access. Think of this like reconfiguring the opregion to a
  * different structure before accessing it.
  *
@@ -35,7 +35,7 @@
  * @param out Pointer to the buffer where the result will be stored, will be an integer or a buffer.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_field_unit_load(aml_node_t* fieldUnit, aml_node_t* out);
+uint64_t aml_field_unit_load(aml_object_t* fieldUnit, aml_object_t* out);
 
 /**
  * @brief Write a value to a FieldUnit. FieldUnits include Fields, IndexFields and BankFields.
@@ -46,9 +46,9 @@ uint64_t aml_field_unit_load(aml_node_t* fieldUnit, aml_node_t* out);
  * @see Section 19.6.48, 19.6.64 and 19.6.7 of the ACPI specification for more details.
  *
  * @param field The field to write to.
- * @param in Pointer to the node containing the value to write, must be an integer or a buffer.
+ * @param in Pointer to the object containing the value to write, must be an integer or a buffer.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_field_unit_store(aml_node_t* fieldUnit, aml_node_t* in);
+uint64_t aml_field_unit_store(aml_object_t* fieldUnit, aml_object_t* in);
 
 /** @} */

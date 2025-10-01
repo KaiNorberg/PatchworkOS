@@ -1,6 +1,6 @@
 #pragma once
 
-#include "acpi/aml/aml_node.h"
+#include "acpi/aml/aml_object.h"
 #include "arg.h"
 #include "data.h"
 
@@ -22,7 +22,7 @@ typedef struct aml_state aml_state_t;
  */
 typedef struct aml_term_arg_list
 {
-    aml_node_t* args[AML_MAX_ARGS];
+    aml_object_t* args[AML_MAX_ARGS];
     uint8_t count;
 } aml_term_arg_list_t;
 
@@ -49,17 +49,17 @@ uint64_t aml_buffer_size_read(aml_state_t* state, aml_scope_t* scope, uint64_t* 
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node to store the result.
+ * @param out Output pointer to the object to store the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_buffer_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* out);
+uint64_t aml_def_buffer_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* out);
 
 /**
  * @brief Reads a TermArgList structure from the AML byte stream.
  *
  * A TermArgList structure is defined as `TermArgList := Nothing | <termarg termarglist>`.
  *
- * The number of arguments to read is determined by knowing ahead of time what node the arguments will be passed to.
+ * The number of arguments to read is determined by knowing ahead of time what object the arguments will be passed to.
  *
  * @param state The AML state.
  * @param scope The current AML scope.
@@ -74,7 +74,7 @@ uint64_t aml_term_arg_list_read(aml_state_t* state, aml_scope_t* scope, uint64_t
  *
  * A MethodInvocation structure is defined as `MethodInvocation := NameString TermArgList`.
  *
- * So this is a bit confusing, but my interpretation is that despite the name, a MethodInvocation can be any node, not
+ * So this is a bit confusing, but my interpretation is that despite the name, a MethodInvocation can be any object, not
  * just methods. For example, fields. In such cases, the TermArgList is empty. Its the only thing that makes any sense
  * when I inspect the aml bytecode as there are clearly named objects referenced in TermArgs, but there is no "child"
  * definition that contains such a thing, atleast that i can find. But the specification says literally nothing about
@@ -82,11 +82,11 @@ uint64_t aml_term_arg_list_read(aml_state_t* state, aml_scope_t* scope, uint64_t
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer which will store the result, if this points to `NULL`, a temp node will
+ * @param out Output pointer to the object pointer which will store the result, if this points to `NULL`, a temp object will
  * be used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_method_invocation_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_method_invocation_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefCondRefOf structure from the AML byte stream.
@@ -97,11 +97,11 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_scope_t* scope, aml_
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefStore structure from the AML byte stream.
@@ -112,11 +112,11 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_scope_t* scope, aml_no
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_store_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_store_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads an Operand structure from the AML byte stream.
@@ -134,12 +134,12 @@ uint64_t aml_def_store_read(aml_state_t* state, aml_scope_t* scope, aml_node_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @param allowedTypes The allowed types that the TermArg can evaluate to.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_operand_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_data_type_t allowedTypes);
+uint64_t aml_operand_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out, aml_data_type_t allowedTypes);
 
 /**
  * @brief Reads a Dividend structure from the AML byte stream.
@@ -172,11 +172,11 @@ uint64_t aml_divisor_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_remainder_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_remainder_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a Quotient structure from the AML byte stream.
@@ -185,11 +185,11 @@ uint64_t aml_remainder_read(aml_state_t* state, aml_scope_t* scope, aml_node_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_quotient_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_quotient_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefAdd structure from the AML byte stream.
@@ -200,11 +200,11 @@ uint64_t aml_quotient_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** 
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_add_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_add_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefSubtract structure from the AML byte stream.
@@ -215,11 +215,11 @@ uint64_t aml_def_add_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_subtract_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_subtract_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefMultiply structure from the AML byte stream.
@@ -230,11 +230,11 @@ uint64_t aml_def_subtract_read(aml_state_t* state, aml_scope_t* scope, aml_node_
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_multiply_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_multiply_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefDivide structure from the AML byte stream.
@@ -245,11 +245,11 @@ uint64_t aml_def_multiply_read(aml_state_t* state, aml_scope_t* scope, aml_node_
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_divide_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_divide_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefMod structure from the AML byte stream.
@@ -260,11 +260,11 @@ uint64_t aml_def_divide_read(aml_state_t* state, aml_scope_t* scope, aml_node_t*
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_mod_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_mod_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefAnd structure from the AML byte stream.
@@ -275,11 +275,11 @@ uint64_t aml_def_mod_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_and_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_and_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefNAnd structure from the AML byte stream.
@@ -290,11 +290,11 @@ uint64_t aml_def_and_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_nand_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_nand_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefOr structure from the AML byte stream.
@@ -305,11 +305,11 @@ uint64_t aml_def_nand_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** 
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_or_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_or_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefNOr structure from the AML byte stream.
@@ -320,11 +320,11 @@ uint64_t aml_def_or_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** ou
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_nor_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_nor_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefXOr structure from the AML byte stream.
@@ -335,11 +335,11 @@ uint64_t aml_def_nor_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_xor_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_xor_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefNot structure from the AML byte stream.
@@ -350,11 +350,11 @@ uint64_t aml_def_xor_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_not_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_not_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a ShiftCount structure from the AML byte stream.
@@ -377,11 +377,11 @@ uint64_t aml_shift_count_read(aml_state_t* state, aml_scope_t* scope, uint64_t* 
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_shift_left_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_shift_left_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefShiftRight structure from the AML byte stream.
@@ -392,11 +392,11 @@ uint64_t aml_def_shift_left_read(aml_state_t* state, aml_scope_t* scope, aml_nod
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_shift_right_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_shift_right_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefIncrement structure from the AML byte stream.
@@ -407,11 +407,11 @@ uint64_t aml_def_shift_right_read(aml_state_t* state, aml_scope_t* scope, aml_no
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_increment_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_increment_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefDecrement structure from the AML byte stream.
@@ -422,11 +422,11 @@ uint64_t aml_def_increment_read(aml_state_t* state, aml_scope_t* scope, aml_node
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_decrement_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_decrement_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads an ObjReference structure from the AML byte stream.
@@ -437,11 +437,11 @@ uint64_t aml_def_decrement_read(aml_state_t* state, aml_scope_t* scope, aml_node
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_obj_reference_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_obj_reference_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefDerefOf structure from the AML byte stream.
@@ -452,11 +452,11 @@ uint64_t aml_obj_reference_read(aml_state_t* state, aml_scope_t* scope, aml_node
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_deref_of_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_deref_of_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a BuffPkgStrObj structure from the AML byte stream.
@@ -464,16 +464,16 @@ uint64_t aml_def_deref_of_read(aml_state_t* state, aml_scope_t* scope, aml_node_
  * A BuffPkgStrObj structure is defined as `BuffPkgStrObj := TermArg => Buffer, Package, or String`.
  *
  * Note that the TermArg must resolve to an ObjectReference that points to a Buffer, Package, or String.
- * Becouse taking a reference to an node within a temporary object does not make sense, temporary objects are not
+ * Becouse taking a reference to an object within a temporary object does not make sense, temporary objects are not
  * allowed.
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_buff_pkg_str_obj_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_buff_pkg_str_obj_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads an IndexValue structure from the AML byte stream.
@@ -499,11 +499,11 @@ uint64_t aml_index_value_read(aml_state_t* state, aml_scope_t* scope, uint64_t* 
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_index_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_index_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefLAnd structure from the AML byte stream.
@@ -514,11 +514,11 @@ uint64_t aml_def_index_read(aml_state_t* state, aml_scope_t* scope, aml_node_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_land_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_land_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefLEqual structure from the AML byte stream.
@@ -529,11 +529,11 @@ uint64_t aml_def_land_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** 
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_lequal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_lequal_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefLGreater structure from the AML byte stream.
@@ -544,11 +544,11 @@ uint64_t aml_def_lequal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t*
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_lgreater_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_lgreater_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefLGreaterEqual structure from the AML byte stream.
@@ -559,11 +559,11 @@ uint64_t aml_def_lgreater_read(aml_state_t* state, aml_scope_t* scope, aml_node_
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_lgreater_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_lgreater_equal_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefLLess structure from the AML byte stream.
@@ -574,11 +574,11 @@ uint64_t aml_def_lgreater_equal_read(aml_state_t* state, aml_scope_t* scope, aml
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_lless_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_lless_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefLLessEqual structure from the AML byte stream.
@@ -589,11 +589,11 @@ uint64_t aml_def_lless_read(aml_state_t* state, aml_scope_t* scope, aml_node_t**
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_lless_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_lless_equal_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefLNot structure from the AML byte stream.
@@ -604,11 +604,11 @@ uint64_t aml_def_lless_equal_read(aml_state_t* state, aml_scope_t* scope, aml_no
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_lnot_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_lnot_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefLNotEqual structure from the AML byte stream.
@@ -619,11 +619,11 @@ uint64_t aml_def_lnot_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** 
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_lnot_equal_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_lnot_equal_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a DefLOr structure from the AML byte stream.
@@ -634,11 +634,11 @@ uint64_t aml_def_lnot_equal_read(aml_state_t* state, aml_scope_t* scope, aml_nod
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_lor_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_def_lor_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads an ExpressionOpcode structure from the AML byte stream.
@@ -653,10 +653,10 @@ uint64_t aml_def_lor_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node pointer to store the result, if this points to `NULL`, a temp node will be
+ * @param out Output pointer to the object pointer to store the result, if this points to `NULL`, a temp object will be
  * used.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /** @} */

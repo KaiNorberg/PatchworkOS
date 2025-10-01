@@ -15,7 +15,7 @@
 
 static mutex_t globalMutex;
 
-static aml_node_t* root = NULL;
+static aml_object_t* root = NULL;
 
 static inline uint64_t aml_init_parse_all(void)
 {
@@ -66,54 +66,54 @@ uint64_t aml_init(void)
 {
     mutex_init(&globalMutex);
 
-    root = aml_node_new(NULL, AML_ROOT_NAME, AML_NODE_ROOT | AML_NODE_PREDEFINED);
+    root = aml_object_new(NULL, AML_ROOT_NAME, AML_OBJECT_ROOT | AML_OBJECT_PREDEFINED);
     if (root == NULL)
     {
         return ERR;
     }
 
-    if (aml_node_init_device(root) == ERR)
+    if (aml_object_init_device(root) == ERR)
     {
-        aml_node_free(root);
+        aml_object_free(root);
         root = NULL;
         return ERR;
     }
 
     if (aml_predefined_init() == ERR)
     {
-        aml_node_free(root);
+        aml_object_free(root);
         root = NULL;
         return ERR;
     }
 
     if (aml_patch_up_init() == ERR)
     {
-        aml_node_free(root);
+        aml_object_free(root);
         root = NULL;
         return ERR;
     }
 
     if (aml_init_parse_all() == ERR)
     {
-        aml_node_free(root);
+        aml_object_free(root);
         root = NULL;
         return ERR;
     }
 
-    LOG_INFO("resolving %llu unresolved nodes\n", aml_patch_up_unresolved_count());
+    LOG_INFO("resolving %llu unresolved objectbjects\n", aml_patch_up_unresolved_count());
     if (aml_patch_up_resolve_all() == ERR)
     {
-        aml_node_free(root);
+        aml_object_free(root);
         root = NULL;
-        LOG_ERR("failed to resolve unresolved nodes\n");
+        LOG_ERR("failed to resolve unresolved object\n");
         return ERR;
     }
 
     if (aml_patch_up_unresolved_count() > 0)
     {
-        aml_node_free(root);
+        aml_object_free(root);
         root = NULL;
-        LOG_ERR("there are still %llu unresolved nodes\n", aml_patch_up_unresolved_count());
+        LOG_ERR("there are still %llu unresolved object\n", aml_patch_up_unresolved_count());
         return ERR;
     }
 
@@ -149,7 +149,7 @@ mutex_t* aml_global_mutex_get(void)
     return &globalMutex;
 }
 
-aml_node_t* aml_root_get(void)
+aml_object_t* aml_root_get(void)
 {
     if (root == NULL)
     {
@@ -160,7 +160,7 @@ aml_node_t* aml_root_get(void)
     return root;
 }
 
-void aml_print_tree(aml_node_t* node, uint32_t depth, bool isLast)
+void aml_print_tree(aml_object_t* object, uint32_t depth, bool isLast)
 {
     for (uint32_t i = 0; i < depth; i++)
     {
@@ -174,17 +174,17 @@ void aml_print_tree(aml_node_t* node, uint32_t depth, bool isLast)
         }
     }
 
-    LOG_INFO("%.*s [%s", AML_NAME_LENGTH, node->segment, aml_node_to_string(node));
-    switch (node->type)
+    LOG_INFO("%.*s [%s", AML_NAME_LENGTH, object->segment, aml_object_to_string(object));
+    switch (object->type)
     {
     default:
         break;
     }
     LOG_INFO("]\n");
 
-    aml_node_t* child;
-    LIST_FOR_EACH(child, &node->children, entry)
+    aml_object_t* child;
+    LIST_FOR_EACH(child, &object->children, entry)
     {
-        aml_print_tree(child, depth + 1, list_last(&node->children) == &child->entry);
+        aml_print_tree(child, depth + 1, list_last(&object->children) == &child->entry);
     }
 }

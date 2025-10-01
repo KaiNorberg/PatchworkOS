@@ -21,7 +21,7 @@ static inline bool aml_compare_integers(uint64_t a, uint64_t b, aml_compare_oper
     }
 }
 
-bool aml_compare(aml_node_t* a, aml_node_t* b, aml_compare_operation_t operation)
+bool aml_compare(aml_object_t* a, aml_object_t* b, aml_compare_operation_t operation)
 {
     if (a == NULL || b == NULL)
     {

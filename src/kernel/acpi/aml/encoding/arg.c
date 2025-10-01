@@ -5,7 +5,7 @@
 #include "acpi/aml/aml_token.h"
 #include "expression.h"
 
-uint64_t aml_arg_obj_read(aml_state_t* state, aml_node_t** out)
+uint64_t aml_arg_obj_read(aml_state_t* state, aml_object_t** out)
 {
     aml_token_t argOp;
     if (aml_token_read(state, &argOp) == ERR)
@@ -36,7 +36,7 @@ uint64_t aml_arg_obj_read(aml_state_t* state, aml_node_t** out)
 
     if (state->args->args[index]->type == AML_DATA_OBJECT_REFERENCE)
     {
-        aml_node_t* target = state->args->args[index]->objectReference.target;
+        aml_object_t* target = state->args->args[index]->objectReference.target;
         if (target == NULL)
         {
             AML_DEBUG_ERROR(state, "Arg%d is an ObjectReference to NULL", index);

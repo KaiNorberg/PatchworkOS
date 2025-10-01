@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 typedef struct aml_state aml_state_t;
-typedef struct aml_node aml_node_t;
+typedef struct aml_object aml_object_t;
 
 /**
  * @brief Local Objecs Encoding
@@ -40,9 +40,9 @@ typedef struct aml_node aml_node_t;
  * @see Section 19.3.5.8.2 of the ACPI specification for more details.
  *
  * @param state Pointer to the AML state.
- * @param out Pointer to the pointer to store the resulting Local node.
+ * @param out Pointer to the pointer to store the resulting Local object.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_local_obj_read(aml_state_t* state, aml_node_t** out);
+uint64_t aml_local_obj_read(aml_state_t* state, aml_object_t** out);
 
 /** @} */

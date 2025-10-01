@@ -135,60 +135,60 @@ const char* aml_update_rule_to_string(aml_update_rule_t updateRule)
     }
 }
 
-const char* aml_node_to_string(aml_node_t* node)
+const char* aml_object_to_string(aml_object_t* object)
 {
     static char buffer[256];
-    if (node == NULL)
+    if (object == NULL)
     {
         return "Unknown";
     }
 
     memset(buffer, 0, sizeof(buffer));
-    switch (node->type)
+    switch (object->type)
     {
     case AML_DATA_UNINITALIZED:
         snprintf(buffer, sizeof(buffer), "Uninitialized");
         return buffer;
     case AML_DATA_BUFFER:
-        snprintf(buffer, sizeof(buffer), "Buffer(Length=%llu, Content=0x", node->buffer.length);
-        for (uint64_t i = 0; i < node->buffer.length && i < 8; i++)
+        snprintf(buffer, sizeof(buffer), "Buffer(Length=%llu, Content=0x", object->buffer.length);
+        for (uint64_t i = 0; i < object->buffer.length && i < 8; i++)
         {
-            snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%02x", node->buffer.content[i]);
+            snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%02x", object->buffer.content[i]);
         }
-        if (node->buffer.length > 8)
+        if (object->buffer.length > 8)
         {
             snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "...");
         }
         snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), ")");
         return buffer;
     case AML_DATA_BUFFER_FIELD:
-        snprintf(buffer, sizeof(buffer), "BufferField(BitOffset=%llu, BitSize=%llu)", node->bufferField.bitOffset,
-            node->bufferField.bitSize);
+        snprintf(buffer, sizeof(buffer), "BufferField(BitOffset=%llu, BitSize=%llu)", object->bufferField.bitOffset,
+            object->bufferField.bitSize);
         return buffer;
     case AML_DATA_DEVICE:
         snprintf(buffer, sizeof(buffer), "Device");
         return buffer;
     case AML_DATA_FIELD_UNIT:
-        snprintf(buffer, sizeof(buffer), "FieldUnit(Type=%d, BitOffset=%llu, BitSize=%llu)", node->fieldUnit.type,
-            node->fieldUnit.bitOffset, node->fieldUnit.bitSize);
+        snprintf(buffer, sizeof(buffer), "FieldUnit(Type=%d, BitOffset=%llu, BitSize=%llu)", object->fieldUnit.type,
+            object->fieldUnit.bitOffset, object->fieldUnit.bitSize);
         return buffer;
     case AML_DATA_INTEGER:
-        snprintf(buffer, sizeof(buffer), "Integer(0x%x)", node->integer.value);
+        snprintf(buffer, sizeof(buffer), "Integer(0x%x)", object->integer.value);
         return buffer;
     case AML_DATA_INTEGER_CONSTANT:
-        snprintf(buffer, sizeof(buffer), "IntegerConstant(0x%x)", node->integerConstant.value);
+        snprintf(buffer, sizeof(buffer), "IntegerConstant(0x%x)", object->integerConstant.value);
         return buffer;
     case AML_DATA_METHOD:
-        snprintf(buffer, sizeof(buffer), "Method(ArgCount=0x%x, Start=0x%llx, End=0x%llx)", node->method.flags.argCount,
-            node->method.start, node->method.end);
+        snprintf(buffer, sizeof(buffer), "Method(ArgCount=0x%x, Start=0x%llx, End=0x%llx)", object->method.flags.argCount,
+            object->method.start, object->method.end);
         return buffer;
     case AML_DATA_MUTEX:
-        snprintf(buffer, sizeof(buffer), "Mutex(SyncLevel=%d)", node->mutex.syncLevel);
+        snprintf(buffer, sizeof(buffer), "Mutex(SyncLevel=%d)", object->mutex.syncLevel);
         return buffer;
     case AML_DATA_OBJECT_REFERENCE:
-        if (node->objectReference.target != NULL)
+        if (object->objectReference.target != NULL)
         {
-            snprintf(buffer, sizeof(buffer), "ObjectReference(Target='%s')", node->objectReference.target->segment);
+            snprintf(buffer, sizeof(buffer), "ObjectReference(Target='%s')", object->objectReference.target->segment);
         }
         else
         {
@@ -197,21 +197,21 @@ const char* aml_node_to_string(aml_node_t* node)
         return buffer;
     case AML_DATA_OPERATION_REGION:
         snprintf(buffer, sizeof(buffer), "OperationRegion(Space=%s, Offset=0x%llx, Length=%u)",
-            aml_region_space_to_string(node->opregion.space), node->opregion.offset, node->opregion.length);
+            aml_region_space_to_string(object->opregion.space), object->opregion.offset, object->opregion.length);
         return buffer;
     case AML_DATA_PACKAGE:
-        snprintf(buffer, sizeof(buffer), "Package(Length=%llu)", node->package.length);
+        snprintf(buffer, sizeof(buffer), "Package(Length=%llu)", object->package.length);
         return buffer;
     case AML_DATA_STRING:
     {
-        uint64_t len = strlen(node->string.content);
+        uint64_t len = strlen(object->string.content);
         if (len <= 32)
         {
-            snprintf(buffer, sizeof(buffer), "String(\"%.*s\")", len, node->string.content);
+            snprintf(buffer, sizeof(buffer), "String(\"%.*s\")", len, object->string.content);
         }
         else
         {
-            snprintf(buffer, sizeof(buffer), "String(\"%.*s...\")", 29, len, node->string.content);
+            snprintf(buffer, sizeof(buffer), "String(\"%.*s...\")", 29, len, object->string.content);
         }
         return buffer;
     }
@@ -219,7 +219,7 @@ const char* aml_node_to_string(aml_node_t* node)
         snprintf(buffer, sizeof(buffer), "Unresolved");
         return buffer;
     default:
-        snprintf(buffer, sizeof(buffer), "Unknown(Type=%d)", node->type);
+        snprintf(buffer, sizeof(buffer), "Unknown(Type=%d)", object->type);
         return buffer;
     }
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "aml_node.h"
+#include "aml_object.h"
 #include "encoding/named.h"
 
 /**
@@ -52,12 +52,12 @@ const char* aml_lock_rule_to_string(aml_lock_rule_t lockRule);
 const char* aml_update_rule_to_string(aml_update_rule_t updateRule);
 
 /**
- * @brief Convert an aml node to a string.
+ * @brief Convert an aml object to a string.
  *
- * @param node ACPI AML node.
- * @return String representation of the node or "Unknown" if it is invalid.
+ * @param object ACPI AML object.
+ * @return String representation of the object or "Unknown" if it is invalid.
  */
-const char* aml_node_to_string(aml_node_t* node);
+const char* aml_object_to_string(aml_object_t* object);
 
 /**
  * @brief Convert an aml NameString to a string.

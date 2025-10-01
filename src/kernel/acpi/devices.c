@@ -1,13 +1,13 @@
 #include "devices.h"
 
-#include "aml/aml_node.h"
+#include "aml/aml_object.h"
 #include "aml/runtime/convert.h"
 #include "aml/runtime/method.h"
 #include "log/log.h"
 
-static inline uint64_t acpi_sta_get_flags(aml_node_t* device, acpi_sta_flags_t* out)
+static inline uint64_t acpi_sta_get_flags(aml_object_t* device, acpi_sta_flags_t* out)
 {
-    aml_node_t* sta = aml_node_find_child(device, "_STA");
+    aml_object_t* sta = aml_object_find_child(device, "_STA");
     if (sta == NULL)
     {
         *out = ACPI_STA_FLAGS_DEFAULT;
@@ -25,9 +25,9 @@ static inline uint64_t acpi_sta_get_flags(aml_node_t* device, acpi_sta_flags_t* 
     return 0;
 }
 
-static inline uint64_t acpi_devices_init_children(aml_node_t* parent)
+static inline uint64_t acpi_devices_init_children(aml_object_t* parent)
 {
-    aml_node_t* child;
+    aml_object_t* child;
     LIST_FOR_EACH(child, &parent->children, entry)
     {
         if (child->type == AML_DATA_DEVICE)
@@ -40,7 +40,7 @@ static inline uint64_t acpi_devices_init_children(aml_node_t* parent)
 
             if (sta & ACPI_STA_PRESENT)
             {
-                aml_node_t* ini = aml_node_find_child(child, "_INI");
+                aml_object_t* ini = aml_object_find_child(child, "_INI");
                 if (ini != NULL)
                 {
                     LOG_INFO("initalizing '%.*s'\n", AML_NAME_LENGTH, child->segment);
@@ -67,7 +67,7 @@ static inline uint64_t acpi_devices_init_children(aml_node_t* parent)
 
 uint64_t acpi_devices_init(void)
 {
-    aml_node_t* sbIni = aml_node_find(NULL, "\\_SB._INI");
+    aml_object_t* sbIni = aml_object_find(NULL, "\\_SB._INI");
     if (sbIni != NULL)
     {
         LOG_INFO("found \\_SB._INI\n");
@@ -77,7 +77,7 @@ uint64_t acpi_devices_init(void)
         }
     }
 
-    aml_node_t* sb = aml_node_find(NULL, "\\_SB");
+    aml_object_t* sb = aml_object_find(NULL, "\\_SB");
     if (sb == NULL) // Should never happen
     {
         LOG_ERR("could not find \\_SB\n");

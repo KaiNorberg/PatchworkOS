@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include "acpi/aml/aml_node.h"
+#include "acpi/aml/aml_object.h"
 
 /**
  * @brief Buffer Field
@@ -13,7 +13,7 @@
  */
 
 /**
- * @brief Read the value stored in a BufferField and store it in the out node.
+ * @brief Read the value stored in a BufferField and store it in the out object.
  *
  * A BufferField is a view into a buffer, it has a bit offset and a bit size, and can be used to read or write parts of
  * the buffer.
@@ -24,7 +24,7 @@
  * @param out Pointer to the buffer where the result will be stored, will be an integer or a buffer.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_buffer_field_load(aml_node_t* bufferField, aml_node_t* out);
+uint64_t aml_buffer_field_load(aml_object_t* bufferField, aml_object_t* out);
 
 /**
  * @brief Write a value to a BufferField.
@@ -35,9 +35,9 @@ uint64_t aml_buffer_field_load(aml_node_t* bufferField, aml_node_t* out);
  * @see @ref kernel_acpi_aml_evaluate
  *
  * @param bufferField The buffer field to write to.
- * @param in Pointer to the node containing the value to write, must be an integer or a buffer.
+ * @param in Pointer to the object containing the value to write, must be an integer or a buffer.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_buffer_field_store(aml_node_t* bufferField, aml_node_t* in);
+uint64_t aml_buffer_field_store(aml_object_t* bufferField, aml_object_t* in);
 
 /** @} */

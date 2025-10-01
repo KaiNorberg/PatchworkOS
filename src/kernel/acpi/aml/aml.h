@@ -18,7 +18,7 @@
  * system. A hardware manufacturer creates the bytecode to describe their hardware, and we, as the kernel, parse it. The
  * bytecode contains instructions that create namespaces and provide device information, but it does not output this
  * data, it's not like JSON or similar, instead AML itself expects a series of functions (e.g., for creating device
- * nodes, namespaces, etc.) that it can call to directly create these structures.
+ * objects, namespaces, etc.) that it can call to directly create these structures.
  *
  * The parser works like a recursive descent parser. For example, according to the specification, the entire AML code
  * block is defined as `AMLCode := DefBlockHeader TermList`, since we have already read the header, we then just call
@@ -48,7 +48,7 @@ uint64_t aml_init(void);
 /**
  * @brief Parse an AML bytecode stream
  *
- * The `aml_parse()` function parses and executes a AML bytestream, which creates the ACPI node tree.
+ * The `aml_parse()` function parses and executes a AML bytestream, which creates the ACPI object tree.
  *
  * @param start Pointer to the start of the AML bytecode.
  * @param end Pointer to the end of the AML bytecode.
@@ -57,11 +57,11 @@ uint64_t aml_init(void);
 uint64_t aml_parse(const uint8_t* start, const uint8_t* end);
 
 /**
- * @brief Get the root node of the ACPI namespace.
+ * @brief Get the root object of the ACPI namespace.
  *
- * @return A pointer to the root node.
+ * @return A pointer to the root object.
  */
-aml_node_t* aml_root_get(void);
+aml_object_t* aml_root_get(void);
 
 /**
  * @brief Get the global AML mutex.
@@ -73,10 +73,10 @@ mutex_t* aml_global_mutex_get(void);
 /**
  * @brief Print the ACPI namespace tree for debugging purposes.
  *
- * @param node Pointer to the node to start printing from.
- * @param depth Depth of the current node, used to indent the output.
- * @param isLast Whether the current node is the last child of its parent.
+ * @param object Pointer to the object to start printing from.
+ * @param depth Depth of the current object, used to indent the output.
+ * @param isLast Whether the current object is the last child of its parent.
  */
-void aml_print_tree(aml_node_t* node, uint32_t depth, bool isLast);
+void aml_print_tree(aml_object_t* object, uint32_t depth, bool isLast);
 
 /** @} */

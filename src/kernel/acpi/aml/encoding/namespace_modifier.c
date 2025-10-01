@@ -31,7 +31,7 @@ uint64_t aml_def_alias_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_node_t* source = NULL;
+    aml_object_t* source = NULL;
     if (aml_name_string_read_and_resolve(state, scope, &source, AML_RESOLVE_NONE, NULL) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve source NameString");
@@ -45,14 +45,14 @@ uint64_t aml_def_alias_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_node_t* target = aml_node_add(scope->node, &targetNameString, AML_NODE_NONE);
+    aml_object_t* target = aml_object_add(scope->object, &targetNameString, AML_OBJECT_NONE);
     if (target == NULL)
     {
         errno = EILSEQ;
         return ERR;
     }
 
-    if (aml_node_init_alias(target, source) == ERR)
+    if (aml_object_init_alias(target, source) == ERR)
     {
         return ERR;
     }
@@ -83,7 +83,7 @@ uint64_t aml_def_name_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_node_t* name = aml_node_add(scope->node, &nameString, AML_NODE_NONE);
+    aml_object_t* name = aml_object_add(scope->object, &nameString, AML_OBJECT_NONE);
     if (name == NULL)
     {
         errno = EILSEQ;
@@ -124,7 +124,7 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_node_t* newLocation = NULL;
+    aml_object_t* newLocation = NULL;
     if (aml_name_string_read_and_resolve(state, scope, &newLocation, AML_RESOLVE_NONE, NULL) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve NameString");
@@ -136,7 +136,7 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope)
     if (newLocation->type != AML_DATA_DEVICE && newLocation->type != AML_DATA_PROCESSOR &&
         newLocation->type != AML_DATA_THERMAL_ZONE && newLocation->type != AML_DATA_POWER_RESOURCE)
     {
-        AML_DEBUG_ERROR(state, "Invalid node type '%s'", aml_data_type_to_string(newLocation->type));
+        AML_DEBUG_ERROR(state, "Invalid object type '%s'", aml_data_type_to_string(newLocation->type));
         errno = EILSEQ;
         return ERR;
     }

@@ -12,8 +12,8 @@
 
 typedef struct aml_region_handler
 {
-    uint64_t (*read)(aml_node_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t* out);
-    uint64_t (*write)(aml_node_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t value);
+    uint64_t (*read)(aml_object_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t* out);
+    uint64_t (*write)(aml_object_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t value);
 } aml_region_handler_t;
 
 static void* aml_ensure_mem_is_mapped(uint64_t address, aml_bit_size_t accessSize)
@@ -37,7 +37,7 @@ static void* aml_ensure_mem_is_mapped(uint64_t address, aml_bit_size_t accessSiz
     return PML_LOWER_TO_HIGHER((void*)address);
 }
 
-static uint64_t aml_system_mem_read(aml_node_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t* out)
+static uint64_t aml_system_mem_read(aml_object_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t* out)
 {
     (void)opregion;
 
@@ -70,7 +70,7 @@ static uint64_t aml_system_mem_read(aml_node_t* opregion, uint64_t address, aml_
     return 0;
 }
 
-static uint64_t aml_system_mem_write(aml_node_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t value)
+static uint64_t aml_system_mem_write(aml_object_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t value)
 {
     (void)opregion;
 
@@ -102,7 +102,7 @@ static uint64_t aml_system_mem_write(aml_node_t* opregion, uint64_t address, aml
     return 0;
 }
 
-static uint64_t aml_system_io_read(aml_node_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t* out)
+static uint64_t aml_system_io_read(aml_object_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t* out)
 {
     (void)opregion;
 
@@ -125,7 +125,7 @@ static uint64_t aml_system_io_read(aml_node_t* opregion, uint64_t address, aml_b
     return 0;
 }
 
-static uint64_t aml_system_io_write(aml_node_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t value)
+static uint64_t aml_system_io_write(aml_object_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t value)
 {
     (void)opregion;
 
@@ -148,23 +148,23 @@ static uint64_t aml_system_io_write(aml_node_t* opregion, uint64_t address, aml_
     return 0;
 }
 
-static uint64_t aml_pci_get_params(aml_node_t* opregion, pci_segment_group_t* segmentGroup, pci_bus_t* bus,
+static uint64_t aml_pci_get_params(aml_object_t* opregion, pci_segment_group_t* segmentGroup, pci_bus_t* bus,
     pci_slot_t* slot, pci_function_t* function)
 {
-    // Note that the aml_node_find function will recursively search parent scopes.
+    // Note that the aml_object_find function will recursively search parent scopes.
 
-    // We assume zero for all parameters if the corresponding node is not found.
+    // We assume zero for all parameters if the corresponding object is not found.
     *segmentGroup = 0;
     *bus = 0;
     *slot = 0;
     *function = 0;
 
     // See section 6.1.1 of the ACPI specification.
-    aml_node_t* adrNode = aml_node_find(opregion, "_ADR");
-    if (adrNode != NULL)
+    aml_object_t* adrObject = aml_object_find(opregion, "_ADR");
+    if (adrObject != NULL)
     {
         uint64_t adrValue = 0;
-        if (aml_method_evaluate_integer(adrNode, &adrValue) == ERR)
+        if (aml_method_evaluate_integer(adrObject, &adrValue) == ERR)
         {
             LOG_ERR("failed to evaluate _ADR for opregion '%.*s'\n", AML_NAME_LENGTH, opregion->segment);
             return ERR;
@@ -175,11 +175,11 @@ static uint64_t aml_pci_get_params(aml_node_t* opregion, pci_segment_group_t* se
     }
 
     // Section 6.5.5 of the ACPI specification.
-    aml_node_t* bbnNode = aml_node_find(opregion, "_BBN");
-    if (bbnNode != NULL)
+    aml_object_t* bbnObject = aml_object_find(opregion, "_BBN");
+    if (bbnObject != NULL)
     {
         uint64_t bbnValue = 0;
-        if (aml_method_evaluate_integer(bbnNode, &bbnValue) == ERR)
+        if (aml_method_evaluate_integer(bbnObject, &bbnValue) == ERR)
         {
             LOG_ERR("failed to evaluate _BBN for opregion '%.*s'\n", AML_NAME_LENGTH, opregion->segment);
             return ERR;
@@ -190,11 +190,11 @@ static uint64_t aml_pci_get_params(aml_node_t* opregion, pci_segment_group_t* se
     }
 
     // Section 6.5.6 of the ACPI specification.
-    aml_node_t* segNode = aml_node_find(opregion, "_SEG");
-    if (segNode != NULL)
+    aml_object_t* segObject = aml_object_find(opregion, "_SEG");
+    if (segObject != NULL)
     {
         uint64_t segValue = 0;
-        if (aml_method_evaluate_integer(segNode, &segValue) == ERR)
+        if (aml_method_evaluate_integer(segObject, &segValue) == ERR)
         {
             LOG_ERR("failed to evaluate _SEG for opregion '%.*s'\n", AML_NAME_LENGTH, opregion->segment);
             return ERR;
@@ -207,7 +207,7 @@ static uint64_t aml_pci_get_params(aml_node_t* opregion, pci_segment_group_t* se
     return 0;
 }
 
-static uint64_t aml_pci_config_read(aml_node_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t* out)
+static uint64_t aml_pci_config_read(aml_object_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t* out)
 {
     pci_segment_group_t segmentGroup;
     pci_bus_t bus;
@@ -237,7 +237,7 @@ static uint64_t aml_pci_config_read(aml_node_t* opregion, uint64_t address, aml_
     return 0;
 }
 
-static uint64_t aml_pci_config_write(aml_node_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t value)
+static uint64_t aml_pci_config_write(aml_object_t* opregion, uint64_t address, aml_bit_size_t accessSize, uint64_t value)
 {
     pci_segment_group_t segmentGroup;
     pci_bus_t bus;
@@ -275,7 +275,7 @@ static aml_region_handler_t regionHandlers[] = {
 
 #define AML_REGION_MAX (sizeof(regionHandlers) / sizeof(regionHandlers[0]))
 
-static inline uint64_t aml_opregion_read(aml_node_t* opregion, aml_region_space_t space, uint64_t address,
+static inline uint64_t aml_opregion_read(aml_object_t* opregion, aml_region_space_t space, uint64_t address,
     aml_bit_size_t accessSize, uint64_t* out)
 {
     if (out == NULL)
@@ -292,7 +292,7 @@ static inline uint64_t aml_opregion_read(aml_node_t* opregion, aml_region_space_
     return regionHandlers[space].read(opregion, address, accessSize, out);
 }
 
-static inline uint64_t aml_opregion_write(aml_node_t* opregion, aml_region_space_t space, uint64_t address,
+static inline uint64_t aml_opregion_write(aml_object_t* opregion, aml_region_space_t space, uint64_t address,
     aml_bit_size_t accessSize, uint64_t value)
 {
     if (space >= AML_REGION_MAX || regionHandlers[space].write == NULL)
@@ -316,7 +316,7 @@ typedef enum aml_access_direction
     AML_ACCESS_WRITE
 } aml_access_direction_t;
 
-static uint64_t aml_generic_field_read_at(aml_node_t* fieldUnit, aml_bit_size_t accessSize, uint64_t byteOffset,
+static uint64_t aml_generic_field_read_at(aml_object_t* fieldUnit, aml_bit_size_t accessSize, uint64_t byteOffset,
     uint64_t* out)
 {
     switch (fieldUnit->fieldUnit.type)
@@ -324,26 +324,26 @@ static uint64_t aml_generic_field_read_at(aml_node_t* fieldUnit, aml_bit_size_t 
     case AML_FIELD_UNIT_FIELD:
     case AML_FIELD_UNIT_BANK_FIELD:
     {
-        aml_node_t* opregion = fieldUnit->fieldUnit.opregion;
+        aml_object_t* opregion = fieldUnit->fieldUnit.opregion;
         uintptr_t address = opregion->opregion.offset + byteOffset;
         return aml_opregion_read(opregion, fieldUnit->fieldUnit.regionSpace, address, accessSize, out);
     }
     case AML_FIELD_UNIT_INDEX_FIELD:
     {
-        aml_node_t temp = AML_NODE_CREATE(AML_NODE_NONE);
-        if (aml_node_init_integer(&temp, byteOffset) == ERR)
+        aml_object_t temp = AML_OBJECT_CREATE(AML_OBJECT_NONE);
+        if (aml_object_init_integer(&temp, byteOffset) == ERR)
         {
             return ERR;
         }
 
-        if (aml_field_unit_store(fieldUnit->fieldUnit.indexNode, &temp) == ERR)
+        if (aml_field_unit_store(fieldUnit->fieldUnit.indexObject, &temp) == ERR)
         {
-            aml_node_deinit(&temp);
+            aml_object_deinit(&temp);
             return ERR;
         }
-        aml_node_deinit(&temp);
+        aml_object_deinit(&temp);
 
-        if (aml_field_unit_load(fieldUnit->fieldUnit.dataNode, &temp) == ERR)
+        if (aml_field_unit_load(fieldUnit->fieldUnit.dataObject, &temp) == ERR)
         {
             return ERR;
         }
@@ -351,25 +351,25 @@ static uint64_t aml_generic_field_read_at(aml_node_t* fieldUnit, aml_bit_size_t 
         // A field cant return anything larger then 64 bits so it has to be an integer.
         if (temp.type != AML_DATA_INTEGER)
         {
-            LOG_ERR("IndexField data node '%.*s' did not return an integer\n", AML_NAME_LENGTH,
-                fieldUnit->fieldUnit.dataNode->segment);
-            aml_node_deinit(&temp);
+            LOG_ERR("IndexField data object '%.*s' did not return an integer\n", AML_NAME_LENGTH,
+                fieldUnit->fieldUnit.dataObject->segment);
+            aml_object_deinit(&temp);
             errno = EILSEQ;
             return ERR;
         }
 
         *out = temp.integer.value;
-        aml_node_deinit(&temp);
+        aml_object_deinit(&temp);
         return 0;
     }
     default:
-        LOG_ERR("invalid field node type %d\n", fieldUnit->fieldUnit.type);
+        LOG_ERR("invalid field object type %d\n", fieldUnit->fieldUnit.type);
         errno = EINVAL;
         return ERR;
     }
 }
 
-static uint64_t aml_generic_field_write_at(aml_node_t* fieldUnit, aml_bit_size_t accessSize, uint64_t byteOffset,
+static uint64_t aml_generic_field_write_at(aml_object_t* fieldUnit, aml_bit_size_t accessSize, uint64_t byteOffset,
     uint64_t value)
 {
     switch (fieldUnit->fieldUnit.type)
@@ -377,62 +377,62 @@ static uint64_t aml_generic_field_write_at(aml_node_t* fieldUnit, aml_bit_size_t
     case AML_FIELD_UNIT_FIELD:
     case AML_FIELD_UNIT_BANK_FIELD:
     {
-        aml_node_t* opregion = fieldUnit->fieldUnit.opregion;
+        aml_object_t* opregion = fieldUnit->fieldUnit.opregion;
         uintptr_t address = opregion->opregion.offset + byteOffset;
         return aml_opregion_write(opregion, fieldUnit->fieldUnit.regionSpace, address, accessSize, value);
     }
     case AML_FIELD_UNIT_INDEX_FIELD:
     {
-        aml_node_t index = AML_NODE_CREATE(AML_NODE_NONE);
-        if (aml_node_init_integer(&index, byteOffset) == ERR)
+        aml_object_t index = AML_OBJECT_CREATE(AML_OBJECT_NONE);
+        if (aml_object_init_integer(&index, byteOffset) == ERR)
         {
             return ERR;
         }
 
-        if (aml_field_unit_store(fieldUnit->fieldUnit.indexNode, &index) == ERR)
+        if (aml_field_unit_store(fieldUnit->fieldUnit.indexObject, &index) == ERR)
         {
-            aml_node_deinit(&index);
+            aml_object_deinit(&index);
             return ERR;
         }
-        aml_node_deinit(&index);
+        aml_object_deinit(&index);
 
-        aml_node_t data = AML_NODE_CREATE(AML_NODE_NONE);
-        if (aml_node_init_integer(&data, value) == ERR)
+        aml_object_t data = AML_OBJECT_CREATE(AML_OBJECT_NONE);
+        if (aml_object_init_integer(&data, value) == ERR)
         {
             return ERR;
         }
 
-        if (aml_field_unit_store(fieldUnit->fieldUnit.dataNode, &data) == ERR)
+        if (aml_field_unit_store(fieldUnit->fieldUnit.dataObject, &data) == ERR)
         {
-            aml_node_deinit(&data);
+            aml_object_deinit(&data);
             return ERR;
         }
-        aml_node_deinit(&data);
+        aml_object_deinit(&data);
         return 0;
     }
     default:
-        LOG_ERR("invalid field node type %d\n", fieldUnit->fieldUnit.type);
+        LOG_ERR("invalid field object type %d\n", fieldUnit->fieldUnit.type);
         errno = EINVAL;
         return ERR;
     }
 }
 
-static uint64_t aml_field_unit_access(aml_node_t* fieldUnit, aml_node_t* data, aml_access_direction_t direction)
+static uint64_t aml_field_unit_access(aml_object_t* fieldUnit, aml_object_t* data, aml_access_direction_t direction)
 {
     if (fieldUnit->fieldUnit.type == AML_FIELD_UNIT_BANK_FIELD)
     {
-        aml_node_t bankValue = AML_NODE_CREATE(AML_NODE_NONE);
-        if (aml_node_init_integer(&bankValue, fieldUnit->fieldUnit.bankValue) == ERR)
+        aml_object_t bankValue = AML_OBJECT_CREATE(AML_OBJECT_NONE);
+        if (aml_object_init_integer(&bankValue, fieldUnit->fieldUnit.bankValue) == ERR)
         {
             return ERR;
         }
 
         if (aml_field_unit_store(fieldUnit->fieldUnit.bank, &bankValue) == ERR)
         {
-            aml_node_deinit(&bankValue);
+            aml_object_deinit(&bankValue);
             return ERR;
         }
-        aml_node_deinit(&bankValue);
+        aml_object_deinit(&bankValue);
     }
 
     aml_bit_size_t accessSize;
@@ -467,7 +467,7 @@ static uint64_t aml_field_unit_access(aml_node_t* fieldUnit, aml_node_t* data, a
 
             value = (value >> inAccessOffset) & mask;
 
-            if (aml_node_put_bits_at(data, value, currentPos, bitsToAccess) == ERR)
+            if (aml_object_put_bits_at(data, value, currentPos, bitsToAccess) == ERR)
             {
                 return ERR;
             }
@@ -501,7 +501,7 @@ static uint64_t aml_field_unit_access(aml_node_t* fieldUnit, aml_node_t* data, a
             value &= ~(mask << inAccessOffset);
 
             uint64_t newValue;
-            if (aml_node_get_bits_at(data, currentPos, bitsToAccess, &newValue) == ERR)
+            if (aml_object_get_bits_at(data, currentPos, bitsToAccess, &newValue) == ERR)
             {
                 return ERR;
             }
@@ -526,7 +526,7 @@ static uint64_t aml_field_unit_access(aml_node_t* fieldUnit, aml_node_t* data, a
     return 0;
 }
 
-uint64_t aml_field_unit_load(aml_node_t* fieldUnit, aml_node_t* out)
+uint64_t aml_field_unit_load(aml_object_t* fieldUnit, aml_object_t* out)
 {
     if (fieldUnit == NULL || out == NULL)
     {
@@ -537,14 +537,14 @@ uint64_t aml_field_unit_load(aml_node_t* fieldUnit, aml_node_t* out)
     uint64_t byteSize = (fieldUnit->fieldUnit.bitSize + 7) / 8;
     if (byteSize > sizeof(uint64_t))
     {
-        if (aml_node_init_buffer_empty(out, byteSize) == ERR)
+        if (aml_object_init_buffer_empty(out, byteSize) == ERR)
         {
             return ERR;
         }
     }
     else
     {
-        if (aml_node_init_integer(out, 0) == ERR)
+        if (aml_object_init_integer(out, 0) == ERR)
         {
             return ERR;
         }
@@ -561,7 +561,7 @@ uint64_t aml_field_unit_load(aml_node_t* fieldUnit, aml_node_t* out)
 
     if (result == ERR)
     {
-        aml_node_deinit(out);
+        aml_object_deinit(out);
     }
 
     if (globalMutex != NULL)
@@ -572,7 +572,7 @@ uint64_t aml_field_unit_load(aml_node_t* fieldUnit, aml_node_t* out)
     return result;
 }
 
-uint64_t aml_field_unit_store(aml_node_t* fieldUnit, aml_node_t* in)
+uint64_t aml_field_unit_store(aml_object_t* fieldUnit, aml_object_t* in)
 {
     if (fieldUnit == NULL || in == NULL)
     {

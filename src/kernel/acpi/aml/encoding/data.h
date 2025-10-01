@@ -5,7 +5,7 @@
 
 typedef struct aml_state aml_state_t;
 typedef struct aml_scope aml_scope_t;
-typedef struct aml_node aml_node_t;
+typedef struct aml_object aml_object_t;
 
 /**
  * @brief Data Objects Encoding
@@ -113,10 +113,10 @@ uint64_t aml_qword_const_read(aml_state_t* state, uint64_t* out);
  * @see Sections 19.6.98, 19.6.99 and 19.6.156 for more details.
  *
  * @param state The AML state.
- * @param out Output pointer to the node to store the result.
+ * @param out Output pointer to the object to store the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_const_obj_read(aml_state_t* state, aml_node_t* out);
+uint64_t aml_const_obj_read(aml_state_t* state, aml_object_t* out);
 
 /**
  * @brief Read a String structure from the AML stream.
@@ -127,10 +127,10 @@ uint64_t aml_const_obj_read(aml_state_t* state, aml_node_t* out);
  * 0x00.
  *
  * @param state The AML state.
- * @param out Output pointer to the node to store the result.
+ * @param out Output pointer to the object to store the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_string_read(aml_state_t* state, aml_node_t* out);
+uint64_t aml_string_read(aml_state_t* state, aml_object_t* out);
 
 /**
  * @brief Read a ComputationalData structure from the AML stream.
@@ -140,10 +140,10 @@ uint64_t aml_string_read(aml_state_t* state, aml_node_t* out);
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node to store the result.
+ * @param out Output pointer to the object to store the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* out);
+uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* out);
 
 /**
  * @brief Read a NumElements structure from the AML stream.
@@ -165,10 +165,10 @@ uint64_t aml_num_elements_read(aml_state_t* state, uint8_t* out);
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Pointer to the node to initialize with the read element.
+ * @param out Pointer to the object to initialize with the read element.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* out);
+uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* out);
 
 /**
  * @brief Read a PackageElementList structure from the AML stream.
@@ -177,11 +177,11 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_no
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param package Pointer to the Package node to be filled with the elements.
+ * @param package Pointer to the Package object to be filled with the elements.
  * @param end Pointer to the end of the PackageElementList.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* package, const uint8_t* end);
+uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* package, const uint8_t* end);
 
 /**
  * @brief Reads a DefPackage structure from the AML byte stream.
@@ -192,10 +192,10 @@ uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, a
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node to store the result.
+ * @param out Output pointer to the object to store the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_package_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* out);
+uint64_t aml_def_package_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* out);
 
 /**
  * @brief Read a DataObject structure from the AML stream.
@@ -204,10 +204,10 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_scope_t* scope, aml_node_t
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node to store the result.
+ * @param out Output pointer to the object to store the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_data_object_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* out);
+uint64_t aml_data_object_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* out);
 
 /**
  * @brief Read a DataRefObject structure from the AML stream.
@@ -216,9 +216,9 @@ uint64_t aml_data_object_read(aml_state_t* state, aml_scope_t* scope, aml_node_t
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Output pointer to the node to store the result.
+ * @param out Output pointer to the object to store the result.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_data_ref_object_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* out);
+uint64_t aml_data_ref_object_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* out);
 
 /** @} */

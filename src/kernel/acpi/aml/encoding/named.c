@@ -1,7 +1,7 @@
 #include "named.h"
 
 #include "acpi/aml/aml_debug.h"
-#include "acpi/aml/aml_node.h"
+#include "acpi/aml/aml_object.h"
 #include "acpi/aml/aml_scope.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_to_string.h"
@@ -108,16 +108,16 @@ uint64_t aml_def_op_region_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_node_t* newNode = aml_node_add(scope->node, &nameString, AML_NODE_NONE);
-    if (newNode == NULL)
+    aml_object_t* newObject = aml_object_add(scope->object, &nameString, AML_OBJECT_NONE);
+    if (newObject == NULL)
     {
-        AML_DEBUG_ERROR(state, "Failed to add node '%s'", aml_name_string_to_string(&nameString));
+        AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
     }
 
-    if (aml_node_init_operation_region(newNode, regionSpace, regionOffset, regionLen) == ERR)
+    if (aml_object_init_operation_region(newObject, regionSpace, regionOffset, regionLen) == ERR)
     {
-        aml_node_free(newNode);
+        aml_object_free(newObject);
         AML_DEBUG_ERROR(state, "Failed to init opregion");
         return ERR;
     }
@@ -185,54 +185,54 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_scope_t* scope, aml_field_
             return ERR;
         }
 
-        aml_node_t* newNode = aml_node_new(scope->node, name->name, AML_NODE_NONE);
-        if (newNode == NULL)
+        aml_object_t* newObject = aml_object_new(scope->object, name->name, AML_OBJECT_NONE);
+        if (newObject == NULL)
         {
             return ERR;
         }
 
-        if (aml_node_init_field_unit_field(newNode, ctx->field.opregion, ctx->flags, ctx->currentOffset, pkgLength) ==
+        if (aml_object_init_field_unit_field(newObject, ctx->field.opregion, ctx->flags, ctx->currentOffset, pkgLength) ==
             ERR)
         {
-            aml_node_free(newNode);
+            aml_object_free(newObject);
             return ERR;
         }
     }
     break;
     case AML_FIELD_LIST_TYPE_INDEX_FIELD:
     {
-        if (ctx->index.indexNode == NULL)
+        if (ctx->index.indexObject == NULL)
         {
-            AML_DEBUG_ERROR(state, "indexNode is null");
+            AML_DEBUG_ERROR(state, "indexObject is null");
             errno = EILSEQ;
             return ERR;
         }
 
-        if (ctx->index.indexNode->type != AML_DATA_FIELD_UNIT ||
-            ctx->index.indexNode->fieldUnit.type != AML_FIELD_UNIT_FIELD)
+        if (ctx->index.indexObject->type != AML_DATA_FIELD_UNIT ||
+            ctx->index.indexObject->fieldUnit.type != AML_FIELD_UNIT_FIELD)
         {
-            AML_DEBUG_ERROR(state, "indexNode is not a field");
+            AML_DEBUG_ERROR(state, "indexObject is not a field");
             errno = EILSEQ;
             return ERR;
         }
 
-        if (ctx->index.dataNode == NULL)
+        if (ctx->index.dataObject == NULL)
         {
-            AML_DEBUG_ERROR(state, "dataNode is null");
+            AML_DEBUG_ERROR(state, "dataObject is null");
             errno = EILSEQ;
             return ERR;
         }
 
-        aml_node_t* newNode = aml_node_new(scope->node, name->name, AML_NODE_NONE);
-        if (newNode == NULL)
+        aml_object_t* newObject = aml_object_new(scope->object, name->name, AML_OBJECT_NONE);
+        if (newObject == NULL)
         {
             return ERR;
         }
 
-        if (aml_node_init_field_unit_index_field(newNode, ctx->index.indexNode, ctx->index.dataNode, ctx->flags,
+        if (aml_object_init_field_unit_index_field(newObject, ctx->index.indexObject, ctx->index.dataObject, ctx->flags,
                 ctx->currentOffset, pkgLength) == ERR)
         {
-            aml_node_free(newNode);
+            aml_object_free(newObject);
             return ERR;
         }
     }
@@ -253,16 +253,16 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_scope_t* scope, aml_field_
             return ERR;
         }
 
-        aml_node_t* newNode = aml_node_new(scope->node, name->name, AML_NODE_NONE);
-        if (newNode == NULL)
+        aml_object_t* newObject = aml_object_new(scope->object, name->name, AML_OBJECT_NONE);
+        if (newObject == NULL)
         {
             return ERR;
         }
 
-        if (aml_node_init_field_unit_bank_field(newNode, ctx->bank.opregion, ctx->bank.bank, ctx->bank.bankValue,
+        if (aml_object_init_field_unit_bank_field(newObject, ctx->bank.opregion, ctx->bank.bank, ctx->bank.bankValue,
                 ctx->flags, ctx->currentOffset, pkgLength) == ERR)
         {
-            aml_node_free(newNode);
+            aml_object_free(newObject);
             return ERR;
         }
     }
@@ -379,7 +379,7 @@ uint64_t aml_def_field_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_node_t* opregion = NULL;
+    aml_object_t* opregion = NULL;
     if (aml_name_string_read_and_resolve(state, scope, &opregion, AML_RESOLVE_NONE, NULL) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve name string");
@@ -436,15 +436,15 @@ uint64_t aml_def_index_field_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_node_t* indexNode = NULL;
-    if (aml_name_string_read_and_resolve(state, scope, &indexNode, AML_RESOLVE_NONE, NULL) == ERR)
+    aml_object_t* indexObject = NULL;
+    if (aml_name_string_read_and_resolve(state, scope, &indexObject, AML_RESOLVE_NONE, NULL) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve index name string");
         return ERR;
     }
 
-    aml_node_t* dataNode = NULL;
-    if (aml_name_string_read_and_resolve(state, scope, &dataNode, AML_RESOLVE_NONE, NULL) == ERR)
+    aml_object_t* dataObject = NULL;
+    if (aml_name_string_read_and_resolve(state, scope, &dataObject, AML_RESOLVE_NONE, NULL) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve data name string");
         return ERR;
@@ -463,8 +463,8 @@ uint64_t aml_def_index_field_read(aml_state_t* state, aml_scope_t* scope)
         .type = AML_FIELD_LIST_TYPE_INDEX_FIELD,
         .flags = fieldFlags,
         .currentOffset = 0,
-        .index.indexNode = indexNode,
-        .index.dataNode = dataNode,
+        .index.indexObject = indexObject,
+        .index.dataObject = dataObject,
     };
 
     if (aml_field_list_read(state, scope, &ctx, end) == ERR)
@@ -503,14 +503,14 @@ uint64_t aml_def_bank_field_read(aml_state_t* state, aml_scope_t* scope)
 
     const uint8_t* end = start + pkgLength;
 
-    aml_node_t* opregion = NULL;
+    aml_object_t* opregion = NULL;
     if (aml_name_string_read_and_resolve(state, scope, &opregion, AML_RESOLVE_NONE, NULL) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve opregion NameString");
         return ERR;
     }
 
-    aml_node_t* bank = NULL;
+    aml_object_t* bank = NULL;
     if (aml_name_string_read_and_resolve(state, scope, &bank, AML_RESOLVE_NONE, NULL) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve bank NameString");
@@ -612,15 +612,15 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_scope_t* scope)
 
     const uint8_t* end = start + pkgLength;
 
-    aml_node_t* newNode = aml_node_add(scope->node, &nameString, AML_NODE_NONE);
-    if (newNode == NULL)
+    aml_object_t* newObject = aml_object_add(scope->object, &nameString, AML_OBJECT_NONE);
+    if (newObject == NULL)
     {
         return ERR;
     }
 
-    if (aml_node_init_method(newNode, &methodFlags, state->current, end, NULL) == ERR)
+    if (aml_object_init_method(newObject, &methodFlags, state->current, end, NULL) == ERR)
     {
-        aml_node_free(newNode);
+        aml_object_free(newObject);
         return ERR;
     }
 
@@ -665,21 +665,21 @@ uint64_t aml_def_device_read(aml_state_t* state, aml_scope_t* scope)
 
     const uint8_t* end = start + pkgLength;
 
-    aml_node_t* newNode = aml_node_add(scope->node, &nameString, AML_NODE_NONE);
-    if (newNode == NULL)
+    aml_object_t* newObject = aml_object_add(scope->object, &nameString, AML_OBJECT_NONE);
+    if (newObject == NULL)
     {
-        AML_DEBUG_ERROR(state, "Failed to add node");
+        AML_DEBUG_ERROR(state, "Failed to add object");
         return ERR;
     }
 
-    if (aml_node_init_device(newNode) == ERR)
+    if (aml_object_init_device(newObject) == ERR)
     {
-        aml_node_free(newNode);
+        aml_object_free(newObject);
         AML_DEBUG_ERROR(state, "Failed to init device");
         return ERR;
     }
 
-    return aml_term_list_read(state, newNode, end);
+    return aml_term_list_read(state, newObject, end);
 }
 
 uint64_t aml_sync_flags_read(aml_state_t* state, aml_sync_level_t* out)
@@ -732,15 +732,15 @@ uint64_t aml_def_mutex_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_node_t* newNode = aml_node_add(scope->node, &nameString, AML_NODE_NONE);
-    if (newNode == NULL)
+    aml_object_t* newObject = aml_object_add(scope->object, &nameString, AML_OBJECT_NONE);
+    if (newObject == NULL)
     {
         return ERR;
     }
 
-    if (aml_node_init_mutex(newNode, syncFlags) == ERR)
+    if (aml_object_init_mutex(newObject, syncFlags) == ERR)
     {
-        aml_node_free(newNode);
+        aml_object_free(newObject);
         return ERR;
     }
 
@@ -832,24 +832,24 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_scope_t* scope)
 
     const uint8_t* end = start + pkgLength;
 
-    aml_node_t* newNode = aml_node_add(scope->node, &nameString, AML_NODE_NONE);
-    if (newNode == NULL)
+    aml_object_t* newObject = aml_object_add(scope->object, &nameString, AML_OBJECT_NONE);
+    if (newObject == NULL)
     {
-        AML_DEBUG_ERROR(state, "Failed to add node");
+        AML_DEBUG_ERROR(state, "Failed to add object");
         return ERR;
     }
 
-    if (aml_node_init_processor(newNode, procId, pblkAddr, pblkLen) == ERR)
+    if (aml_object_init_processor(newObject, procId, pblkAddr, pblkLen) == ERR)
     {
-        aml_node_free(newNode);
+        aml_object_free(newObject);
         AML_DEBUG_ERROR(state, "Failed to init processor");
         return ERR;
     }
 
-    return aml_term_list_read(state, newNode, end);
+    return aml_term_list_read(state, newObject, end);
 }
 
-uint64_t aml_source_buff_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+uint64_t aml_source_buff_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
 {
     if (aml_term_arg_read(state, scope, out, AML_DATA_BUFFER) == ERR)
     {
@@ -898,7 +898,7 @@ uint64_t aml_def_create_bit_field_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_node_t* sourceBuff = NULL;
+    aml_object_t* sourceBuff = NULL;
     if (aml_source_buff_read(state, scope, &sourceBuff) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read SourceBuff");
@@ -921,15 +921,15 @@ uint64_t aml_def_create_bit_field_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_node_t* newNode = aml_node_add(scope->node, &nameString, AML_NODE_NONE);
-    if (newNode == NULL)
+    aml_object_t* newObject = aml_object_add(scope->object, &nameString, AML_OBJECT_NONE);
+    if (newObject == NULL)
     {
         return ERR;
     }
 
-    if (aml_node_init_buffer_field(newNode, sourceBuff->buffer.content, bitIndex, 1) == ERR)
+    if (aml_object_init_buffer_field(newObject, sourceBuff->buffer.content, bitIndex, 1) == ERR)
     {
-        aml_node_free(newNode);
+        aml_object_free(newObject);
         return ERR;
     }
 
@@ -953,7 +953,7 @@ static inline uint64_t aml_def_create_field_read_helper(aml_state_t* state, aml_
         return ERR;
     }
 
-    aml_node_t* sourceBuff = NULL;
+    aml_object_t* sourceBuff = NULL;
     if (aml_source_buff_read(state, scope, &sourceBuff) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read SourceBuff");
@@ -976,15 +976,15 @@ static inline uint64_t aml_def_create_field_read_helper(aml_state_t* state, aml_
         return ERR;
     }
 
-    aml_node_t* newNode = aml_node_add(scope->node, &nameString, AML_NODE_NONE);
-    if (newNode == NULL)
+    aml_object_t* newObject = aml_object_add(scope->object, &nameString, AML_OBJECT_NONE);
+    if (newObject == NULL)
     {
         return ERR;
     }
 
-    if (aml_node_init_buffer_field(newNode, sourceBuff->buffer.content, byteIndex * 8, fieldWidth) == ERR)
+    if (aml_object_init_buffer_field(newObject, sourceBuff->buffer.content, byteIndex * 8, fieldWidth) == ERR)
     {
-        aml_node_free(newNode);
+        aml_object_free(newObject);
         return ERR;
     }
 

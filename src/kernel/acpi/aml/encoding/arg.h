@@ -1,6 +1,6 @@
 #pragma once
 
-#include "acpi/aml/aml_node.h"
+#include "acpi/aml/aml_object.h"
 #include "acpi/aml/aml_state.h"
 
 /**
@@ -36,9 +36,9 @@
  * @see Section 19.3.5.8.1 of the ACPI specification for more details.
  *
  * @param state Pointer to the AML state.
- * @param out Pointer to the pointer to store the resulting Arg node.
+ * @param out Pointer to the pointer to store the resulting Arg object.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_arg_obj_read(aml_state_t* state, aml_node_t** out);
+uint64_t aml_arg_obj_read(aml_state_t* state, aml_object_t** out);
 
 /** @} */

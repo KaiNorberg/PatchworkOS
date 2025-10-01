@@ -50,7 +50,7 @@ uint64_t aml_def_else_read(aml_state_t* state, aml_scope_t* scope, bool shouldEx
     if (shouldExecute)
     {
         // Execute the TermList in the same scope
-        if (aml_term_list_read(state, scope->node, end) == ERR)
+        if (aml_term_list_read(state, scope->object, end) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read TermList");
             return ERR;
@@ -106,7 +106,7 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_scope_t* scope)
     if (predicate != 0)
     {
         // Execute the TermList in the same scope
-        if (aml_term_list_read(state, scope->node, end) == ERR)
+        if (aml_term_list_read(state, scope->object, end) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read TermList");
             return ERR;
@@ -157,7 +157,7 @@ uint64_t aml_def_noop_read(aml_state_t* state)
     return 0;
 }
 
-uint64_t aml_arg_object_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
+uint64_t aml_arg_object_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
 {
     if (aml_term_arg_read(state, scope, out, AML_DATA_ALL) == ERR)
     {
@@ -186,7 +186,7 @@ uint64_t aml_def_return_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_node_t* argObject = NULL;
+    aml_object_t* argObject = NULL;
     if (aml_arg_object_read(state, scope, &argObject) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ArgObject");
@@ -197,7 +197,7 @@ uint64_t aml_def_return_read(aml_state_t* state, aml_scope_t* scope)
     {
         if (aml_copy_raw(argObject, state->returnValue) == ERR)
         {
-            aml_node_deinit(argObject);
+            aml_object_deinit(argObject);
             return ERR;
         }
     }

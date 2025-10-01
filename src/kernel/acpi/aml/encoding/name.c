@@ -276,9 +276,9 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
     return 0;
 }
 
-aml_node_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_node_t* node)
+aml_object_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_object_t* object)
 {
-    aml_node_t* start = node;
+    aml_object_t* start = object;
     if (nameString->rootChar.present)
     {
         start = aml_root_get();
@@ -286,7 +286,7 @@ aml_node_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_node_t* n
 
     if (start->type == AML_DATA_ALIAS)
     {
-        start = aml_node_traverse_alias(start);
+        start = aml_object_traverse_alias(start);
     }
 
     for (uint64_t i = 0; i < nameString->prefixPath.depth; i++)
@@ -298,11 +298,11 @@ aml_node_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_node_t* n
         }
     }
 
-    aml_node_t* current = start;
+    aml_object_t* current = start;
     for (uint64_t i = 0; i < nameString->namePath.segmentCount; i++)
     {
         const aml_name_seg_t* segment = &nameString->namePath.segments[i];
-        current = aml_node_find_child(current, segment->name);
+        current = aml_object_find_child(current, segment->name);
         if (current == NULL)
         {
             errno = 0;
@@ -317,7 +317,7 @@ aml_node_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_node_t* n
     return current;
 }
 
-uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_node_t** out,
+uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out,
     aml_resolve_flags_t flags, aml_name_string_t* nameString)
 {
     aml_name_string_t nameStringLocal;
@@ -327,7 +327,7 @@ uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_scope_t* scope
         return ERR;
     }
 
-    *out = aml_name_string_resolve(&nameStringLocal, scope->node);
+    *out = aml_name_string_resolve(&nameStringLocal, scope->object);
     if (*out == NULL)
     {
         if (!(flags & AML_RESOLVE_ALLOW_UNRESOLVED))
@@ -345,7 +345,7 @@ uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_scope_t* scope
     return 0;
 }
 
-uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_node_t** out,
+uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out,
     aml_resolve_flags_t flags, aml_name_string_t* nameString)
 {
     aml_token_t token;
@@ -385,7 +385,7 @@ uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope
     }
 }
 
-uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_node_t** out,
+uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out,
     aml_resolve_flags_t flags, aml_name_string_t* nameString)
 {
     aml_token_t token;
@@ -421,7 +421,7 @@ uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope,
     }
 }
 
-uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_node_t** out,
+uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out,
     aml_resolve_flags_t flags, aml_name_string_t* nameString)
 {
     aml_token_t token;

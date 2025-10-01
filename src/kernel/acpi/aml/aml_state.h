@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "acpi/aml/aml_node.h"
+#include "acpi/aml/aml_object.h"
 #include "encoding/local.h"
 #include "encoding/term.h"
 #include "log/log.h"
@@ -34,9 +34,9 @@ typedef struct aml_state
     const uint8_t* end;                //!< Pointer to the end of the AML bytecode.
     const uint8_t* current;            //!< Pointer to the current position in the AML bytecode.
     bool hasHitReturn;                 //!< If true then stop parsing and return from the current method.
-    aml_node_t locals[AML_MAX_LOCALS]; //!< Local variables for the method, if any.
+    aml_object_t locals[AML_MAX_LOCALS]; //!< Local variables for the method, if any.
     aml_term_arg_list_t* args;         //!< Arguments passed to the method, if the state is used for method evaluation.
-    aml_node_t* returnValue; //!< Pointer to where the return value should be stored, if the state is used for method.
+    aml_object_t* returnValue; //!< Pointer to where the return value should be stored, if the state is used for method.
                              //!< evaluation.
     struct
     {
@@ -45,7 +45,7 @@ typedef struct aml_state
 } aml_state_t;
 
 static inline uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t* end,
-    aml_term_arg_list_t* args, aml_node_t* returnValue)
+    aml_term_arg_list_t* args, aml_object_t* returnValue)
 {
     if (start >= end)
     {
@@ -60,7 +60,7 @@ static inline uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, 
 
     for (uint8_t i = 0; i < AML_MAX_LOCALS; i++)
     {
-        state->locals[i] = AML_NODE_CREATE(AML_NODE_LOCAL);
+        state->locals[i] = AML_OBJECT_CREATE(AML_OBJECT_LOCAL);
     }
     state->args = args;
     state->returnValue = returnValue;
@@ -77,7 +77,7 @@ static inline void aml_state_deinit(aml_state_t* state)
 
     for (uint8_t i = 0; i < AML_MAX_LOCALS; i++)
     {
-        aml_node_deinit(&state->locals[i]);
+        aml_object_deinit(&state->locals[i]);
     }
     state->args = NULL;
     state->returnValue = NULL;

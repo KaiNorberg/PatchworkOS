@@ -4,7 +4,7 @@
 
 #include <stdbool.h>
 
-typedef struct aml_node aml_node_t;
+typedef struct aml_object aml_object_t;
 typedef struct aml_state aml_state_t;
 typedef struct aml_scope aml_scope_t;
 
@@ -110,17 +110,17 @@ typedef struct
     union {
         struct
         {
-            aml_node_t* opregion;
+            aml_object_t* opregion;
         } field;
         struct
         {
-            aml_node_t* indexNode;
-            aml_node_t* dataNode;
+            aml_object_t* indexObject;
+            aml_object_t* dataObject;
         } index;
         struct
         {
-            aml_node_t* opregion;
-            aml_node_t* bank;
+            aml_object_t* opregion;
+            aml_object_t* bank;
             uint64_t bankValue;
         } bank;
     };
@@ -486,10 +486,10 @@ uint64_t aml_def_processor_read(aml_state_t* state, aml_scope_t* scope);
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Pointer to where the pointer to the resolved node will be stored.
+ * @param out Pointer to where the pointer to the resolved object will be stored.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_source_buff_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out);
+uint64_t aml_source_buff_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a BitIndex structure from the AML byte stream.
