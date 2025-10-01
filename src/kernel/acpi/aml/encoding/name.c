@@ -5,7 +5,7 @@
 #include "acpi/aml/aml_scope.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_to_string.h"
-#include "acpi/aml/aml_value.h"
+#include "acpi/aml/aml_token.h"
 #include "data.h"
 
 #include <errno.h>
@@ -28,8 +28,8 @@ uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t** out)
 {
     const uint8_t* start = state->current;
 
-    aml_value_t leadnamechar;
-    if (aml_value_read_no_ext(state, &leadnamechar) == ERR)
+    aml_token_t leadnamechar;
+    if (aml_token_read_no_ext(state, &leadnamechar) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read lead name char");
         return ERR;
@@ -44,8 +44,8 @@ uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t** out)
 
     for (uint8_t i = 0; i < 3; i++)
     {
-        aml_value_t namechar;
-        if (aml_value_read_no_ext(state, &namechar) == ERR)
+        aml_token_t namechar;
+        if (aml_token_read_no_ext(state, &namechar) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read name char");
             return ERR;
@@ -65,16 +65,16 @@ uint64_t aml_name_seg_read(aml_state_t* state, aml_name_seg_t** out)
 
 uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t** out)
 {
-    aml_value_t firstValue;
-    if (aml_value_read_no_ext(state, &firstValue) == ERR)
+    aml_token_t firstToken;
+    if (aml_token_read_no_ext(state, &firstToken) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read first value");
+        AML_DEBUG_ERROR(state, "Failed to read first token");
         return ERR;
     }
 
-    if (firstValue.num != AML_DUAL_NAME_PREFIX)
+    if (firstToken.num != AML_DUAL_NAME_PREFIX)
     {
-        AML_DEBUG_ERROR(state, "Invalid dual name prefix: 0x%x", firstValue.num);
+        AML_DEBUG_ERROR(state, "Invalid dual name prefix: 0x%x", firstToken.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -95,16 +95,16 @@ uint64_t aml_dual_name_path_read(aml_state_t* state, aml_name_seg_t** out)
 
 uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t** outSegments, uint64_t* outSegCount)
 {
-    aml_value_t firstValue;
-    if (aml_value_read_no_ext(state, &firstValue) == ERR)
+    aml_token_t firstToken;
+    if (aml_token_read_no_ext(state, &firstToken) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read first value");
+        AML_DEBUG_ERROR(state, "Failed to read first token");
         return ERR;
     }
 
-    if (firstValue.num != AML_MULTI_NAME_PREFIX)
+    if (firstToken.num != AML_MULTI_NAME_PREFIX)
     {
-        AML_DEBUG_ERROR(state, "Invalid multi name prefix: 0x%x", firstValue.num);
+        AML_DEBUG_ERROR(state, "Invalid multi name prefix: 0x%x", firstToken.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -136,16 +136,16 @@ uint64_t aml_multi_name_path_read(aml_state_t* state, aml_name_seg_t** outSegmen
 
 uint64_t aml_null_name_read(aml_state_t* state)
 {
-    aml_value_t firstValue;
-    if (aml_value_read_no_ext(state, &firstValue) == ERR)
+    aml_token_t firstToken;
+    if (aml_token_read_no_ext(state, &firstToken) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read first value");
+        AML_DEBUG_ERROR(state, "Failed to read first token");
         return ERR;
     }
 
-    if (firstValue.num != AML_NULL_NAME)
+    if (firstToken.num != AML_NULL_NAME)
     {
-        AML_DEBUG_ERROR(state, "Invalid null name: 0x%x", firstValue.num);
+        AML_DEBUG_ERROR(state, "Invalid null name: 0x%x", firstToken.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -155,28 +155,28 @@ uint64_t aml_null_name_read(aml_state_t* state)
 
 uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* out)
 {
-    aml_value_t firstValue;
-    if (aml_value_peek_no_ext(state, &firstValue) == ERR)
+    aml_token_t firstToken;
+    if (aml_token_peek_no_ext(state, &firstToken) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to peek value");
+        AML_DEBUG_ERROR(state, "Failed to peek token");
         return ERR;
     }
 
-    if (AML_IS_LEAD_NAME_CHAR(&firstValue))
+    if (AML_IS_LEAD_NAME_CHAR(&firstToken))
     {
         out->segmentCount = 1;
         return aml_name_seg_read(state, &out->segments);
     }
-    else if (firstValue.num == AML_DUAL_NAME_PREFIX)
+    else if (firstToken.num == AML_DUAL_NAME_PREFIX)
     {
         out->segmentCount = 2;
         return aml_dual_name_path_read(state, &out->segments);
     }
-    else if (firstValue.num == AML_MULTI_NAME_PREFIX)
+    else if (firstToken.num == AML_MULTI_NAME_PREFIX)
     {
         return aml_multi_name_path_read(state, &out->segments, &out->segmentCount);
     }
-    else if (firstValue.num == AML_NULL_NAME)
+    else if (firstToken.num == AML_NULL_NAME)
     {
         out->segmentCount = 0;
         out->segments = NULL;
@@ -184,7 +184,7 @@ uint64_t aml_name_path_read(aml_state_t* state, aml_name_path_t* out)
     }
     else
     {
-        AML_DEBUG_ERROR(state, "Invalid name path start: 0x%x", firstValue.num);
+        AML_DEBUG_ERROR(state, "Invalid name path start: 0x%x", firstToken.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -197,8 +197,8 @@ uint64_t aml_prefix_path_read(aml_state_t* state, aml_prefix_path_t* out)
     out->depth = 0;
     while (true)
     {
-        aml_value_t chr;
-        if (aml_value_peek_no_ext(state, &chr) == ERR)
+        aml_token_t chr;
+        if (aml_token_peek_no_ext(state, &chr) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to peek value");
             return ERR;
@@ -216,8 +216,8 @@ uint64_t aml_prefix_path_read(aml_state_t* state, aml_prefix_path_t* out)
 
 uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out)
 {
-    aml_value_t rootChar;
-    if (aml_value_read_no_ext(state, &rootChar) == ERR)
+    aml_token_t rootChar;
+    if (aml_token_read_no_ext(state, &rootChar) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read root char");
         return ERR;
@@ -236,16 +236,16 @@ uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out)
 
 uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
 {
-    aml_value_t value;
-    if (aml_value_peek_no_ext(state, &value) == ERR)
+    aml_token_t token;
+    if (aml_token_peek_no_ext(state, &token) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to peek value");
+        AML_DEBUG_ERROR(state, "Failed to peek token");
         return ERR;
     }
 
     aml_name_string_t nameString = {0};
     // Starts with either rootchar or prefixpath.
-    switch (value.num)
+    switch (token.num)
     {
     case AML_ROOT_CHAR:
         if (aml_root_char_read(state, &nameString.rootChar) == ERR)
@@ -348,30 +348,30 @@ uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_scope_t* scope
 uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_node_t** out,
     aml_resolve_flags_t flags, aml_name_string_t* nameString)
 {
-    aml_value_t value;
-    if (aml_value_peek(state, &value) == ERR)
+    aml_token_t token;
+    if (aml_token_peek(state, &token) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read value");
+        AML_DEBUG_ERROR(state, "Failed to read token");
         return ERR;
     }
 
-    switch (value.props->type)
+    switch (token.props->type)
     {
-    case AML_VALUE_TYPE_NAME:
+    case AML_TOKEN_TYPE_NAME:
         if (aml_name_string_read_and_resolve(state, scope, out, flags, nameString) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read and resolve name string");
             return ERR;
         }
         return 0;
-    case AML_VALUE_TYPE_ARG:
+    case AML_TOKEN_TYPE_ARG:
         if (aml_arg_obj_read(state, out) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read ArgObj");
             return ERR;
         }
         return 0;
-    case AML_VALUE_TYPE_LOCAL:
+    case AML_TOKEN_TYPE_LOCAL:
         if (aml_local_obj_read(state, out) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read LocalObj");
@@ -379,7 +379,7 @@ uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope
         }
         return 0;
     default:
-        AML_DEBUG_ERROR(state, "Invalid value type '%s'", aml_value_type_to_string(value.props->type));
+        AML_DEBUG_ERROR(state, "Invalid token type '%s'", aml_token_type_to_string(token.props->type));
         errno = EILSEQ;
         return ERR;
     }
@@ -388,34 +388,34 @@ uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope
 uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_node_t** out,
     aml_resolve_flags_t flags, aml_name_string_t* nameString)
 {
-    aml_value_t value;
-    if (aml_value_peek(state, &value) == ERR)
+    aml_token_t token;
+    if (aml_token_peek(state, &token) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to peek value");
+        AML_DEBUG_ERROR(state, "Failed to peek token");
         return ERR;
     }
 
-    switch (value.props->type)
+    switch (token.props->type)
     {
-    case AML_VALUE_TYPE_NAME:
-    case AML_VALUE_TYPE_ARG:
-    case AML_VALUE_TYPE_LOCAL:
+    case AML_TOKEN_TYPE_NAME:
+    case AML_TOKEN_TYPE_ARG:
+    case AML_TOKEN_TYPE_LOCAL:
         if (aml_simple_name_read_and_resolve(state, scope, out, flags, nameString) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read and resolve name string");
             return ERR;
         }
         return 0;
-    case AML_VALUE_TYPE_DEBUG:
+    case AML_TOKEN_TYPE_DEBUG:
         AML_DEBUG_ERROR(state, "DebugObj is unimplemented");
         errno = ENOSYS;
         return ERR;
-    case AML_VALUE_TYPE_EXPRESSION:
+    case AML_TOKEN_TYPE_EXPRESSION:
         AML_DEBUG_ERROR(state, "ReferenceTypeOpcode is unimplemented");
         errno = ENOSYS;
         return ERR;
     default:
-        AML_DEBUG_ERROR(state, "Invalid value type: %d", value.props->type);
+        AML_DEBUG_ERROR(state, "Invalid token type: %d", token.props->type);
         errno = EILSEQ;
         return ERR;
     }
@@ -424,14 +424,14 @@ uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope,
 uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_node_t** out,
     aml_resolve_flags_t flags, aml_name_string_t* nameString)
 {
-    aml_value_t value;
-    if (aml_value_peek_no_ext(state, &value) == ERR)
+    aml_token_t token;
+    if (aml_token_peek_no_ext(state, &token) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to peek value");
+        AML_DEBUG_ERROR(state, "Failed to peek token");
         return ERR;
     }
 
-    if (value.num == AML_NULL_NAME)
+    if (token.num == AML_NULL_NAME)
     {
         *out = NULL;
         if (aml_null_name_read(state) == ERR)

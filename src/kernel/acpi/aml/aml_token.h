@@ -8,16 +8,16 @@
 #include <stdint.h>
 
 /**
- * @brief Values
- * @defgroup kernel_acpi_aml_value Values
+ * @brief Tokens
+ * @defgroup kernel_acpi_aml_token Tokens
  * @ingroup kernel_acpi_aml
  *
- * This module handles descriptions of all values that can be found in an AML byte stream, storing them and their
+ * This module handles descriptions of all tokens that can be found in an AML byte stream, storing them and their
  * properties.
  *
- * The value type ends up, in most cases, being the smallest most fundamental type used in the parser (as in the type at
- * the bottom of the recursive tree), but there are some exceptions, for example a ByteData object is not a value type
- * simply because it can have any value.
+ * The token type ends up, in most cases, being the smallest most fundamental type used in the parser (as in the type at
+ * the bottom of the recursive tree), but there are some exceptions, for example a ByteData object is not a token type
+ * simply because it can have any token.
  *
  * @see Section 20.3 of the ACPI specification for more details.
  *
@@ -25,10 +25,10 @@
  */
 
 /**
- * @brief Values
+ * @brief Token numbers
  *
- * All values stored an an enum, we also encode the extended values (those that make up two bytes) by assigning them
- * certain value ranges.
+ * All tokens stored an an enum, we also encode the extended tokens (those that make up two bytes) by assigning them
+ * certain token ranges.
  */
 typedef enum
 {
@@ -161,7 +161,7 @@ typedef enum
     AML_BREAK_POINT_OP = 0xCC,
     AML_ONES_OP = 0xFF,
 
-    // Extended values prefixed with 0x5B (0x100-0x1FF range)
+    // Extended tokens prefixed with 0x5B (0x100-0x1FF range)
     AML_EXT_OP_PREFIX_BASE = 0x100,
     AML_MUTEX_OP = AML_EXT_OP_PREFIX_BASE + 0x01,
     AML_EVENT_OP = AML_EXT_OP_PREFIX_BASE + 0x02,
@@ -193,13 +193,13 @@ typedef enum
     AML_BANK_FIELD_OP = AML_EXT_OP_PREFIX_BASE + 0x87,
     AML_DATA_REGION_OP = AML_EXT_OP_PREFIX_BASE + 0x88,
 
-    // Extended values prefixed with 0x92 (0x200-0x2FF range)
+    // Extended tokens prefixed with 0x92 (0x200-0x2FF range)
     AML_LNOT_OP_BASE = 0x200,
     AML_LNOT_EQUAL_OP = AML_LNOT_OP_BASE + 0x93,
     AML_LLESS_EQUAL_OP = AML_LNOT_OP_BASE + 0x94,
     AML_LGREATER_EQUAL_OP = AML_LNOT_OP_BASE + 0x95,
-    AML_MAX_VALUE = AML_LNOT_OP_BASE + 0xFF,
-} aml_value_num_t;
+    AML_MAX_TOKEN = AML_LNOT_OP_BASE + 0xFF,
+} aml_token_num_t;
 
 typedef enum
 {
@@ -213,71 +213,71 @@ typedef enum
 } aml_encoding_group_t;
 
 /**
- * @brief Value Type
- * @enum aml_value_type_t
+ * @brief Token Type
+ * @enum aml_token_type_t
  */
 typedef enum
 {
-    AML_VALUE_TYPE_NONE = 0,
-    AML_VALUE_TYPE_NAME,               //!< Is a Name Object (section 20.2.2).
-    AML_VALUE_TYPE_NAMESPACE_MODIFIER, //!< Is a Namespace Modifier Object (section 20.2.5.1).
-    AML_VALUE_TYPE_NAMED,              //!< Is a NamedObj (section 20.2.5.2).
-    AML_VALUE_TYPE_STATEMENT,          //!< Is a Statement Opcode (section 20.2.5.3).
-    AML_VALUE_TYPE_EXPRESSION,         //!< Is an Expression Opcode (section 20.2.5.4).
-    AML_VALUE_TYPE_ARG,                //!< Is an Arg Object (section 20.2.6.1).
-    AML_VALUE_TYPE_LOCAL,              //!< Is a Local Object (section 20.2.6.2).
-    AML_VALUE_TYPE_COMPUTATIONAL,      //!< Is part of a ComputationalData Object (section 20.2.3).
-    AML_VALUE_TYPE_DEBUG,              //!< Is a Debug Object (section 20.2.6.3).
-} aml_value_type_t;
+    AML_TOKEN_TYPE_NONE = 0,
+    AML_TOKEN_TYPE_NAME,               //!< Is a Name Object (section 20.2.2).
+    AML_TOKEN_TYPE_NAMESPACE_MODIFIER, //!< Is a Namespace Modifier Object (section 20.2.5.1).
+    AML_TOKEN_TYPE_NAMED,              //!< Is a NamedObj (section 20.2.5.2).
+    AML_TOKEN_TYPE_STATEMENT,          //!< Is a Statement Opcode (section 20.2.5.3).
+    AML_TOKEN_TYPE_EXPRESSION,         //!< Is an Expression Opcode (section 20.2.5.4).
+    AML_TOKEN_TYPE_ARG,                //!< Is an Arg Object (section 20.2.6.1).
+    AML_TOKEN_TYPE_LOCAL,              //!< Is a Local Object (section 20.2.6.2).
+    AML_TOKEN_TYPE_COMPUTATIONAL,      //!< Is part of a ComputationalData Object (section 20.2.3).
+    AML_TOKEN_TYPE_DEBUG,              //!< Is a Debug Object (section 20.2.6.3).
+} aml_token_type_t;
 
 /**
- * @brief Value Properties
- * @struct aml_value_props_t
+ * @brief Token Properties
+ * @struct aml_token_props_t
  */
-typedef struct aml_value_props
+typedef struct aml_token_props
 {
     const char* name;
     aml_encoding_group_t group;
-    aml_value_type_t type;
-} aml_value_props_t;
+    aml_token_type_t type;
+} aml_token_props_t;
 
 /**
- * @brief Value
- * @struct aml_value_t
+ * @brief Token
+ * @struct aml_token_t
  */
-typedef struct aml_value
+typedef struct aml_token
 {
-    uint64_t index; //!< The index of the first byte of the value in the AML byte stream.
-    aml_value_num_t num;
+    uint64_t index; //!< The index of the first byte of the token in the AML byte stream.
+    aml_token_num_t num;
     uint8_t length;
-    const aml_value_props_t* props;
-} aml_value_t;
+    const aml_token_props_t* props;
+} aml_token_t;
 
 /**
- * @brief Value properties array indexed by `aml_value_num_t`.
+ * @brief Token properties array indexed by `aml_token_num_t`.
  */
-extern const aml_value_props_t amlValueProps[AML_MAX_VALUE];
+extern const aml_token_props_t amlTokenProps[AML_MAX_TOKEN];
 
 /**
- * @brief Convert a value type to a string.
+ * @brief Convert a token type to a string.
  *
- * @param type The value type to convert.
- * @return On success, the string representation of the value type. On failure, "UnknownValue".
+ * @param type The token type to convert.
+ * @return On success, the string representation of the token type. On failure, "UnknownToken".
  */
-const char* aml_value_type_to_string(aml_value_type_t type);
+const char* aml_token_type_to_string(aml_token_type_t type);
 
 /**
- * @brief Lookup value properties.
+ * @brief Lookup token properties.
  *
- * @param num The value number to lookup.
- * @return On success, a pointer to the value properties. On failure, `NULL`.
+ * @param num The token number to lookup.
+ * @return On success, a pointer to the token properties. On failure, `NULL`.
  */
-static inline const aml_value_props_t* aml_value_lookup(aml_value_num_t num)
+static inline const aml_token_props_t* aml_token_lookup(aml_token_num_t num)
 {
-    const aml_value_props_t* props = NULL;
-    if (num <= AML_MAX_VALUE)
+    const aml_token_props_t* props = NULL;
+    if (num <= AML_MAX_TOKEN)
     {
-        props = &amlValueProps[num];
+        props = &amlTokenProps[num];
     }
 
     if (props->name == NULL)
@@ -289,51 +289,51 @@ static inline const aml_value_props_t* aml_value_lookup(aml_value_num_t num)
 }
 
 /**
- * @brief Attempt to read a single byte value from the AML stream, without advancing the instruction pointer.
+ * @brief Attempt to read a single byte token from the AML stream, without advancing the instruction pointer.
  *
- * Intended to be used when the value is known to be a single byte for performance reasons.
+ * Intended to be used when the token is known to be a single byte for performance reasons.
  *
  * @param state The AML state to parse from.
- * @param out The destination for the parsed value.
+ * @param out The destination for the parsed token.
  * @return On success, 0. On failure, `ERR` and `errno` is set to `ENODATA` if the stream is empty or `EILSEQ`
- * if the current data is not a valid value.
+ * if the current data is not a valid token.
  */
-static inline uint64_t aml_value_peek_no_ext(aml_state_t* state, aml_value_t* out)
+static inline uint64_t aml_token_peek_no_ext(aml_state_t* state, aml_token_t* out)
 {
-    uint8_t value;
-    uint64_t byteAmount = aml_state_peek(state, &value, 1);
+    uint8_t num;
+    uint64_t byteAmount = aml_state_peek(state, &num, 1);
     if (byteAmount == ERR || byteAmount == 0)
     {
         errno = ENODATA;
         return ERR;
     }
 
-    const aml_value_props_t* props = aml_value_lookup(value);
+    const aml_token_props_t* props = aml_token_lookup(num);
     if (props == NULL)
     {
         errno = EILSEQ;
         return ERR;
     }
 
-    out->num = value;
+    out->num = num;
     out->length = 1;
     out->props = props;
     return 0;
 }
 
 /**
- * @brief Attempt to read a single byte value from the AML stream.
+ * @brief Attempt to read a single byte token from the AML stream.
  *
- * Intended to be used when the value is known to be a single byte for performance reasons.
+ * Intended to be used when the token is known to be a single byte for performance reasons.
  *
  * @param state The AML state to parse from.
- * @param out The destination for the parsed value.
+ * @param out The destination for the parsed token.
  * @return On success, 0. On failure, `ERR` and `errno` is set to `ENODATA` if the stream is empty or `EILSEQ`
- * if the current data is not a valid value.
+ * if the current data is not a valid token.
  */
-static inline uint64_t aml_value_read_no_ext(aml_state_t* state, aml_value_t* out)
+static inline uint64_t aml_token_read_no_ext(aml_state_t* state, aml_token_t* out)
 {
-    if (aml_value_peek_no_ext(state, out) == ERR)
+    if (aml_token_peek_no_ext(state, out) == ERR)
     {
         return ERR;
     }
@@ -343,14 +343,14 @@ static inline uint64_t aml_value_read_no_ext(aml_state_t* state, aml_value_t* ou
 }
 
 /**
- * @brief Attempt to read a value from the AML stream, without advancing the instruction pointer.
+ * @brief Attempt to read a token from the AML stream, without advancing the instruction pointer.
  *
  * @param state The AML state to parse from.
- * @param out The destination for the parsed value.
+ * @param out The destination for the parsed token.
  * @return On success, 0. On failure, `ERR` and `errno` is set to `ENODATA` if the stream is empty or `EILSEQ`
- * if the current data is not a valid value.
+ * if the current data is not a valid token.
  */
-static inline uint64_t aml_value_peek(aml_state_t* state, aml_value_t* out)
+static inline uint64_t aml_token_peek(aml_state_t* state, aml_token_t* out)
 {
     uint8_t buffer[2];
     uint64_t byteAmount = aml_state_peek(state, buffer, sizeof(buffer));
@@ -360,7 +360,7 @@ static inline uint64_t aml_value_peek(aml_state_t* state, aml_value_t* out)
         return ERR;
     }
 
-    aml_value_num_t num = buffer[0];
+    aml_token_num_t num = buffer[0];
     uint8_t length = 1;
 
     if (byteAmount == 2)
@@ -377,10 +377,10 @@ static inline uint64_t aml_value_peek(aml_state_t* state, aml_value_t* out)
         }
     }
 
-    const aml_value_props_t* props = aml_value_lookup(num);
+    const aml_token_props_t* props = aml_token_lookup(num);
     if (props == NULL)
     {
-        LOG_ERR("invalid AML value 0x%03x found at 0x%x\n", num, state->current - state->start);
+        LOG_ERR("invalid AML token 0x%03x found at 0x%x\n", num, state->current - state->start);
         errno = EILSEQ;
         return ERR;
     }
@@ -391,16 +391,16 @@ static inline uint64_t aml_value_peek(aml_state_t* state, aml_value_t* out)
     return 0;
 }
 /**
- * @brief Attempt to read a value from the AML stream.
+ * @brief Attempt to read a token from the AML stream.
  *
  * @param state The AML state to parse from.
- * @param out The destination for the parsed value.
+ * @param out The destination for the parsed token.
  * @return On success, 0. On failure, `ERR` and `errno` is set to `ENODATA` if the stream is empty or `EILSEQ`
- * if the current data is not a valid value.
+ * if the current data is not a valid token.
  */
-static inline uint64_t aml_value_read(aml_state_t* state, aml_value_t* out)
+static inline uint64_t aml_token_read(aml_state_t* state, aml_token_t* out)
 {
-    if (aml_value_peek(state, out) == ERR)
+    if (aml_token_peek(state, out) == ERR)
     {
         return ERR;
     }

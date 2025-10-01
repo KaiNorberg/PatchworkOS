@@ -3,7 +3,7 @@
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_scope.h"
 #include "acpi/aml/aml_state.h"
-#include "acpi/aml/aml_value.h"
+#include "acpi/aml/aml_token.h"
 
 #include "acpi/aml/runtime/convert.h"
 #include "data.h"
@@ -17,8 +17,8 @@
 
 uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_data_type_t allowedTypes)
 {
-    aml_value_t op;
-    if (aml_value_peek(state, &op) == ERR)
+    aml_token_t op;
+    if (aml_token_peek(state, &op) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to peek value");
         return ERR;
@@ -28,22 +28,22 @@ uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** 
 
     switch (op.props->type)
     {
-    case AML_VALUE_TYPE_EXPRESSION:
-    case AML_VALUE_TYPE_NAME: // MethodInvocation is a Name
+    case AML_TOKEN_TYPE_EXPRESSION:
+    case AML_TOKEN_TYPE_NAME: // MethodInvocation is a Name
         if (aml_expression_opcode_read(state, scope, &value) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read ExpressionOpcode");
             return ERR;
         }
         break;
-    case AML_VALUE_TYPE_ARG:
+    case AML_TOKEN_TYPE_ARG:
         if (aml_arg_obj_read(state, &value) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read ArgObj");
             return ERR;
         }
         break;
-    case AML_VALUE_TYPE_LOCAL:
+    case AML_TOKEN_TYPE_LOCAL:
         if (aml_local_obj_read(state, &value) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read LocalObj");
@@ -101,21 +101,21 @@ uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_scope_t* scope, uint6
 
 uint64_t aml_object_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_value_t value;
-    if (aml_value_peek(state, &value) == ERR)
+    aml_token_t token;
+    if (aml_token_peek(state, &token) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to peek value");
+        AML_DEBUG_ERROR(state, "Failed to peek token");
         return ERR;
     }
 
-    switch (value.props->type)
+    switch (token.props->type)
     {
-    case AML_VALUE_TYPE_NAMESPACE_MODIFIER:
+    case AML_TOKEN_TYPE_NAMESPACE_MODIFIER:
         return aml_namespace_modifier_obj_read(state, scope);
-    case AML_VALUE_TYPE_NAMED:
+    case AML_TOKEN_TYPE_NAMED:
         return aml_named_obj_read(state, scope);
     default:
-        AML_DEBUG_ERROR(state, "Invalid value type: %d", value.props->type);
+        AML_DEBUG_ERROR(state, "Invalid token type: %d", token.props->type);
         errno = EILSEQ;
         return ERR;
     }
@@ -123,23 +123,23 @@ uint64_t aml_object_read(aml_state_t* state, aml_scope_t* scope)
 
 uint64_t aml_term_obj_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_value_t value;
-    if (aml_value_peek(state, &value) == ERR)
+    aml_token_t token;
+    if (aml_token_peek(state, &token) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to peek value");
+        AML_DEBUG_ERROR(state, "Failed to peek token");
         return ERR;
     }
 
-    switch (value.props->type)
+    switch (token.props->type)
     {
-    case AML_VALUE_TYPE_STATEMENT:
+    case AML_TOKEN_TYPE_STATEMENT:
         if (aml_statement_opcode_read(state, scope) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read StatementOpcode");
             return ERR;
         }
         return 0;
-    case AML_VALUE_TYPE_EXPRESSION:
+    case AML_TOKEN_TYPE_EXPRESSION:
     {
         aml_node_t* temp = NULL;
         if (aml_expression_opcode_read(state, scope, &temp) == ERR)

@@ -5,7 +5,7 @@
 #include "acpi/aml/aml_scope.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_to_string.h"
-#include "acpi/aml/aml_value.h"
+#include "acpi/aml/aml_token.h"
 #include "data.h"
 #include "name.h"
 #include "package_length.h"
@@ -66,8 +66,8 @@ uint64_t aml_region_len_read(aml_state_t* state, aml_scope_t* scope, uint64_t* o
 
 uint64_t aml_def_op_region_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_value_t opRegionOp;
-    if (aml_value_read(state, &opRegionOp) == ERR)
+    aml_token_t opRegionOp;
+    if (aml_token_read(state, &opRegionOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read OpRegionOp");
         return ERR;
@@ -279,16 +279,16 @@ uint64_t aml_named_field_read(aml_state_t* state, aml_scope_t* scope, aml_field_
 
 uint64_t aml_reserved_field_read(aml_state_t* state, aml_field_list_ctx_t* ctx)
 {
-    aml_value_t value;
-    if (aml_value_read(state, &value) == ERR)
+    aml_token_t token;
+    if (aml_token_read(state, &token) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ReservedField");
         return ERR;
     }
 
-    if (value.num != 0x00)
+    if (token.num != 0x00)
     {
-        AML_DEBUG_ERROR(state, "Invalid ReservedField value '0x%x'", value.num);
+        AML_DEBUG_ERROR(state, "Invalid ReservedField value '0x%x'", token.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -306,14 +306,14 @@ uint64_t aml_reserved_field_read(aml_state_t* state, aml_field_list_ctx_t* ctx)
 
 uint64_t aml_field_element_read(aml_state_t* state, aml_scope_t* scope, aml_field_list_ctx_t* ctx)
 {
-    aml_value_t value;
-    if (aml_value_peek_no_ext(state, &value) == ERR)
+    aml_token_t token;
+    if (aml_token_peek_no_ext(state, &token) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to peek value");
+        AML_DEBUG_ERROR(state, "Failed to peek token");
         return ERR;
     }
 
-    if (AML_IS_LEAD_NAME_CHAR(&value))
+    if (AML_IS_LEAD_NAME_CHAR(&token))
     {
         if (aml_named_field_read(state, scope, ctx) == ERR)
         {
@@ -321,7 +321,7 @@ uint64_t aml_field_element_read(aml_state_t* state, aml_scope_t* scope, aml_fiel
             return ERR;
         }
     }
-    else if (value.num == 0x00)
+    else if (token.num == 0x00)
     {
         if (aml_reserved_field_read(state, ctx) == ERR)
         {
@@ -331,7 +331,7 @@ uint64_t aml_field_element_read(aml_state_t* state, aml_scope_t* scope, aml_fiel
     }
     else
     {
-        AML_DEBUG_ERROR(state, "Invalid field element value '0x%x'", value.num);
+        AML_DEBUG_ERROR(state, "Invalid field element token '0x%x'", token.num);
         errno = ENOSYS;
         return ERR;
     }
@@ -356,8 +356,8 @@ uint64_t aml_field_list_read(aml_state_t* state, aml_scope_t* scope, aml_field_l
 
 uint64_t aml_def_field_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_value_t fieldOp;
-    if (aml_value_read(state, &fieldOp) == ERR)
+    aml_token_t fieldOp;
+    if (aml_token_read(state, &fieldOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read field op");
         return ERR;
@@ -413,8 +413,8 @@ uint64_t aml_def_field_read(aml_state_t* state, aml_scope_t* scope)
 
 uint64_t aml_def_index_field_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_value_t indexFieldOp;
-    if (aml_value_read(state, &indexFieldOp) == ERR)
+    aml_token_t indexFieldOp;
+    if (aml_token_read(state, &indexFieldOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read index field op");
         return ERR;
@@ -478,16 +478,16 @@ uint64_t aml_def_index_field_read(aml_state_t* state, aml_scope_t* scope)
 
 uint64_t aml_def_bank_field_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_value_t value;
-    if (aml_value_read(state, &value) == ERR)
+    aml_token_t token;
+    if (aml_token_read(state, &token) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read BankFieldOp");
         return ERR;
     }
 
-    if (value.num != AML_BANK_FIELD_OP)
+    if (token.num != AML_BANK_FIELD_OP)
     {
-        AML_DEBUG_ERROR(state, "Invalid BankFieldOp '0x%x'", value.num);
+        AML_DEBUG_ERROR(state, "Invalid BankFieldOp '0x%x'", token.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -573,8 +573,8 @@ uint64_t aml_method_flags_read(aml_state_t* state, aml_method_flags_t* out)
 
 uint64_t aml_def_method_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_value_t methodOp;
-    if (aml_value_read_no_ext(state, &methodOp) == ERR)
+    aml_token_t methodOp;
+    if (aml_token_read_no_ext(state, &methodOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read MethodOp");
         return ERR;
@@ -633,8 +633,8 @@ uint64_t aml_def_method_read(aml_state_t* state, aml_scope_t* scope)
 
 uint64_t aml_def_device_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_value_t deviceOp;
-    if (aml_value_read(state, &deviceOp) == ERR)
+    aml_token_t deviceOp;
+    if (aml_token_read(state, &deviceOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read device op");
         return ERR;
@@ -704,8 +704,8 @@ uint64_t aml_sync_flags_read(aml_state_t* state, aml_sync_level_t* out)
 
 uint64_t aml_def_mutex_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_value_t mutexOp;
-    if (aml_value_read(state, &mutexOp) == ERR)
+    aml_token_t mutexOp;
+    if (aml_token_read(state, &mutexOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read MutexOp");
         return ERR;
@@ -779,8 +779,8 @@ uint64_t aml_pblk_len_read(aml_state_t* state, aml_pblk_len_t* out)
 
 uint64_t aml_def_processor_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_value_t processorOp;
-    if (aml_value_read(state, &processorOp) == ERR)
+    aml_token_t processorOp;
+    if (aml_token_read(state, &processorOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read processor op");
         return ERR;
@@ -884,16 +884,16 @@ uint64_t aml_byte_index_read(aml_state_t* state, aml_scope_t* scope, uint64_t* o
 
 uint64_t aml_def_create_bit_field_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_value_t value;
-    if (aml_value_read_no_ext(state, &value) == ERR)
+    aml_token_t token;
+    if (aml_token_read_no_ext(state, &token) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read value");
+        AML_DEBUG_ERROR(state, "Failed to read token");
         return ERR;
     }
 
-    if (value.num != AML_CREATE_BIT_FIELD_OP)
+    if (token.num != AML_CREATE_BIT_FIELD_OP)
     {
-        AML_DEBUG_ERROR(state, "Invalid create bit field op: 0x%x", value.num);
+        AML_DEBUG_ERROR(state, "Invalid create bit field op: 0x%x", token.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -937,18 +937,18 @@ uint64_t aml_def_create_bit_field_read(aml_state_t* state, aml_scope_t* scope)
 }
 
 static inline uint64_t aml_def_create_field_read_helper(aml_state_t* state, aml_scope_t* scope, uint8_t fieldWidth,
-    aml_value_num_t expectedOp)
+    aml_token_num_t expectedOp)
 {
-    aml_value_t value;
-    if (aml_value_read_no_ext(state, &value) == ERR)
+    aml_token_t token;
+    if (aml_token_read_no_ext(state, &token) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read value");
+        AML_DEBUG_ERROR(state, "Failed to read token");
         return ERR;
     }
 
-    if (value.num != expectedOp)
+    if (token.num != expectedOp)
     {
-        AML_DEBUG_ERROR(state, "Invalid create field op '0x%x'", value.num);
+        AML_DEBUG_ERROR(state, "Invalid create field op '0x%x'", token.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -1013,10 +1013,10 @@ uint64_t aml_def_create_qword_field_read(aml_state_t* state, aml_scope_t* scope)
 
 uint64_t aml_named_obj_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_value_t op;
-    if (aml_value_peek(state, &op) == ERR)
+    aml_token_t op;
+    if (aml_token_peek(state, &op) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to peek value");
+        AML_DEBUG_ERROR(state, "Failed to peek token");
         return ERR;
     }
 

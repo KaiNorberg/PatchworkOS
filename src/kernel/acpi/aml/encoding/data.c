@@ -5,7 +5,7 @@
 #include "acpi/aml/aml_scope.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_to_string.h"
-#include "acpi/aml/aml_value.h"
+#include "acpi/aml/aml_token.h"
 #include "acpi/aml/runtime/convert.h"
 #include "data_integers.h"
 #include "expression.h"
@@ -66,10 +66,10 @@ uint64_t aml_qword_data_read(aml_state_t* state, uint64_t* out)
 
 uint64_t aml_byte_const_read(aml_state_t* state, uint8_t* out)
 {
-    aml_value_t prefix;
-    if (aml_value_read(state, &prefix) == ERR)
+    aml_token_t prefix;
+    if (aml_token_read(state, &prefix) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read value");
+        AML_DEBUG_ERROR(state, "Failed to read token");
         return ERR;
     }
 
@@ -85,10 +85,10 @@ uint64_t aml_byte_const_read(aml_state_t* state, uint8_t* out)
 
 uint64_t aml_word_const_read(aml_state_t* state, uint16_t* out)
 {
-    aml_value_t prefix;
-    if (aml_value_read(state, &prefix) == ERR)
+    aml_token_t prefix;
+    if (aml_token_read(state, &prefix) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read value");
+        AML_DEBUG_ERROR(state, "Failed to read token");
         return ERR;
     }
 
@@ -104,10 +104,10 @@ uint64_t aml_word_const_read(aml_state_t* state, uint16_t* out)
 
 uint64_t aml_dword_const_read(aml_state_t* state, uint32_t* out)
 {
-    aml_value_t prefix;
-    if (aml_value_read(state, &prefix) == ERR)
+    aml_token_t prefix;
+    if (aml_token_read(state, &prefix) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read value");
+        AML_DEBUG_ERROR(state, "Failed to read token");
         return ERR;
     }
 
@@ -123,10 +123,10 @@ uint64_t aml_dword_const_read(aml_state_t* state, uint32_t* out)
 
 uint64_t aml_qword_const_read(aml_state_t* state, uint64_t* out)
 {
-    aml_value_t prefix;
-    if (aml_value_read(state, &prefix) == ERR)
+    aml_token_t prefix;
+    if (aml_token_read(state, &prefix) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read value");
+        AML_DEBUG_ERROR(state, "Failed to read token");
         return ERR;
     }
 
@@ -142,14 +142,14 @@ uint64_t aml_qword_const_read(aml_state_t* state, uint64_t* out)
 
 uint64_t aml_const_obj_read(aml_state_t* state, aml_node_t* out)
 {
-    aml_value_t value;
-    if (aml_value_read_no_ext(state, &value) == ERR)
+    aml_token_t token;
+    if (aml_token_read_no_ext(state, &token) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ConstObj");
         return ERR;
     }
 
-    switch (value.num)
+    switch (token.num)
     {
     case AML_ZERO_OP:
         if (aml_node_init_integer(out, 0) == ERR)
@@ -170,7 +170,7 @@ uint64_t aml_const_obj_read(aml_state_t* state, aml_node_t* out)
         }
         break;
     default:
-        AML_DEBUG_ERROR(state, "Invalid ConstObj value '0x%x'", value.num);
+        AML_DEBUG_ERROR(state, "Invalid ConstObj token '0x%x'", token.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -180,8 +180,8 @@ uint64_t aml_const_obj_read(aml_state_t* state, aml_node_t* out)
 
 uint64_t aml_string_read(aml_state_t* state, aml_node_t* out)
 {
-    aml_value_t stringPrefix;
-    if (aml_value_read(state, &stringPrefix) == ERR)
+    aml_token_t stringPrefix;
+    if (aml_token_read(state, &stringPrefix) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read StringPrefix");
         return ERR;
@@ -228,15 +228,15 @@ uint64_t aml_string_read(aml_state_t* state, aml_node_t* out)
 
 uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* out)
 {
-    aml_value_t value;
-    if (aml_value_peek_no_ext(state, &value) == ERR)
+    aml_token_t token;
+    if (aml_token_peek_no_ext(state, &token) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to peek ComputationalData");
         return ERR;
     }
 
     uint64_t result = 0;
-    switch (value.num)
+    switch (token.num)
     {
     case AML_BYTE_PREFIX:
     {
@@ -322,7 +322,7 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml
         }
         return 0;
     default:
-        AML_DEBUG_ERROR(state, "Invalid computational data value: 0x%x", value.num);
+        AML_DEBUG_ERROR(state, "Invalid computational data token: 0x%x", token.num);
         errno = ENOSYS;
         return ERR;
     }
@@ -374,14 +374,14 @@ static inline uint64_t aml_package_element_handle_name(aml_node_t* in, aml_node_
 
 uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* out)
 {
-    aml_value_t value;
-    if (aml_value_peek(state, &value) == ERR)
+    aml_token_t token;
+    if (aml_token_peek(state, &token) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to peek PackageElement");
         return ERR;
     }
 
-    if (value.props->type == AML_VALUE_TYPE_NAME)
+    if (token.props->type == AML_TOKEN_TYPE_NAME)
     {
         aml_name_string_t nameString;
         aml_node_t* namedReference = NULL;
@@ -442,8 +442,8 @@ uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, a
 
 uint64_t aml_def_package_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* out)
 {
-    aml_value_t packageOp;
-    if (aml_value_read(state, &packageOp) == ERR)
+    aml_token_t packageOp;
+    if (aml_token_read(state, &packageOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read PackageOp");
         return ERR;
@@ -492,14 +492,14 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_scope_t* scope, aml_node_t
 
 uint64_t aml_data_object_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* out)
 {
-    aml_value_t value;
-    if (aml_value_peek(state, &value) == ERR)
+    aml_token_t token;
+    if (aml_token_peek(state, &token) == ERR)
     {
         return ERR;
     }
 
     uint64_t result = 0;
-    switch (value.num)
+    switch (token.num)
     {
     case AML_PACKAGE_OP:
         result = aml_def_package_read(state, scope, out);
@@ -515,7 +515,7 @@ uint64_t aml_data_object_read(aml_state_t* state, aml_scope_t* scope, aml_node_t
 
     if (result == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read %s", value.props->name);
+        AML_DEBUG_ERROR(state, "Failed to read %s", token.props->name);
         return ERR;
     }
 

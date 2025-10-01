@@ -40,29 +40,29 @@ typedef enum
 #define AML_NAME_LENGTH 4
 
 /**
- * @brief Check if a value is a LeadNameChar structure.
+ * @brief Check if a token is a LeadNameChar structure.
  *
- * @param value The value to check.
- * @return true if the value is a LeadNameChar structure, false otherwise.
+ * @param token The token to check.
+ * @return true if the token is a LeadNameChar structure, false otherwise.
  */
-#define AML_IS_LEAD_NAME_CHAR(value) \
-    (((value)->num >= AML_NAME_CHAR_A && (value)->num <= AML_NAME_CHAR_Z) || (value)->num == AML_NAME_CHAR)
+#define AML_IS_LEAD_NAME_CHAR(token) \
+    (((token)->num >= AML_NAME_CHAR_A && (token)->num <= AML_NAME_CHAR_Z) || (token)->num == AML_NAME_CHAR)
 
 /**
- * @brief Check if a value is a DigitChar structure.
+ * @brief Check if a token is a DigitChar structure.
  *
- * @param value The value to check.
- * @return true if the value is a DigitChar structure, false otherwise.
+ * @param token The token to check.
+ * @return true if the token is a DigitChar structure, false otherwise.
  */
-#define AML_IS_DIGIT_CHAR(value) (((value)->num >= AML_DIGIT_CHAR_0 && (value)->num <= AML_DIGIT_CHAR_9))
+#define AML_IS_DIGIT_CHAR(token) (((token)->num >= AML_DIGIT_CHAR_0 && (token)->num <= AML_DIGIT_CHAR_9))
 
 /**
- * @brief Check if a value is a NameChar structure.
+ * @brief Check if a token is a NameChar structure.
  *
- * @param value The value to check.
- * @return true if the value is a NameChar structure, false otherwise.
+ * @param token The token to check.
+ * @return true if the token is a NameChar structure, false otherwise.
  */
-#define AML_IS_NAME_CHAR(value) (AML_IS_DIGIT_CHAR(value) || AML_IS_LEAD_NAME_CHAR(value))
+#define AML_IS_NAME_CHAR(token) (AML_IS_DIGIT_CHAR(token) || AML_IS_LEAD_NAME_CHAR(token))
 
 /**
  * @brief A PrefixPath structure.

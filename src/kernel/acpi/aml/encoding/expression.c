@@ -5,7 +5,7 @@
 #include "acpi/aml/aml_scope.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_to_string.h"
-#include "acpi/aml/aml_value.h"
+#include "acpi/aml/aml_token.h"
 #include "acpi/aml/runtime/convert.h"
 #include "acpi/aml/runtime/method.h"
 #include "acpi/aml/runtime/compare.h"
@@ -27,8 +27,8 @@ uint64_t aml_buffer_size_read(aml_state_t* state, aml_scope_t* scope, uint64_t* 
 
 uint64_t aml_def_buffer_read(aml_state_t* state, aml_scope_t* scope, aml_node_t* out)
 {
-    aml_value_t bufferOp;
-    if (aml_value_read(state, &bufferOp) == ERR)
+    aml_token_t bufferOp;
+    if (aml_token_read(state, &bufferOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read BufferOp");
         return ERR;
@@ -144,8 +144,8 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_scope_t* scope, aml_
 
 uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    aml_value_t condRefOfOp;
-    if (aml_value_read(state, &condRefOfOp) == ERR)
+    aml_token_t condRefOfOp;
+    if (aml_token_read(state, &condRefOfOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read CondRefOfOp");
         return ERR;
@@ -221,8 +221,8 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_scope_t* scope, aml_no
 
 uint64_t aml_def_store_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    aml_value_t storeOp;
-    if (aml_value_read(state, &storeOp) == ERR)
+    aml_token_t storeOp;
+    if (aml_token_read(state, &storeOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read StoreOp");
         return ERR;
@@ -311,18 +311,18 @@ uint64_t aml_quotient_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** 
     return 0;
 }
 
-static inline uint64_t aml_helper_op_operand_operand_target_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_value_num_t expectedOp, aml_data_type_t allowedTypes, uint64_t(*callback)(aml_state_t*, aml_scope_t*, aml_node_t**, aml_node_t*, aml_node_t*))
+static inline uint64_t aml_helper_op_operand_operand_target_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_token_num_t expectedOp, aml_data_type_t allowedTypes, uint64_t(*callback)(aml_state_t*, aml_scope_t*, aml_node_t**, aml_node_t*, aml_node_t*))
 {
-    aml_value_t op;
-    if (aml_value_read(state, &op) == ERR)
+    aml_token_t op;
+    if (aml_token_read(state, &op) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read %s", aml_value_lookup(expectedOp)->name);
+        AML_DEBUG_ERROR(state, "Failed to read %s", aml_token_lookup(expectedOp)->name);
         return ERR;
     }
 
     if (op.num != expectedOp)
     {
-        AML_DEBUG_ERROR(state, "Invalid %s '0x%x'", aml_value_lookup(expectedOp)->name, op.num);
+        AML_DEBUG_ERROR(state, "Invalid %s '0x%x'", aml_token_lookup(expectedOp)->name, op.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -425,8 +425,8 @@ uint64_t aml_def_multiply_read(aml_state_t* state, aml_scope_t* scope, aml_node_
 
 uint64_t aml_def_divide_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    aml_value_t divOp;
-    if (aml_value_read_no_ext(state, &divOp) == ERR)
+    aml_token_t divOp;
+    if (aml_token_read_no_ext(state, &divOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read DivideOp");
         return ERR;
@@ -532,8 +532,8 @@ uint64_t aml_def_divide_read(aml_state_t* state, aml_scope_t* scope, aml_node_t*
 
 uint64_t aml_def_mod_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    aml_value_t modOp;
-    if (aml_value_read(state, &modOp) == ERR)
+    aml_token_t modOp;
+    if (aml_token_read(state, &modOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ModOp");
         return ERR;
@@ -679,8 +679,8 @@ uint64_t aml_def_xor_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
 
 uint64_t aml_def_not_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    aml_value_t notOp;
-    if (aml_value_read(state, &notOp) == ERR)
+    aml_token_t notOp;
+    if (aml_token_read(state, &notOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read NotOp");
         return ERR;
@@ -743,8 +743,8 @@ uint64_t aml_shift_count_read(aml_state_t* state, aml_scope_t* scope, uint64_t* 
 
 uint64_t aml_def_shift_left_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    aml_value_t shlOp;
-    if (aml_value_read(state, &shlOp) == ERR)
+    aml_token_t shlOp;
+    if (aml_token_read(state, &shlOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ShiftLeftOp");
         return ERR;
@@ -814,8 +814,8 @@ uint64_t aml_def_shift_left_read(aml_state_t* state, aml_scope_t* scope, aml_nod
 
 uint64_t aml_def_shift_right_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    aml_value_t shrOp;
-    if (aml_value_read(state, &shrOp) == ERR)
+    aml_token_t shrOp;
+    if (aml_token_read(state, &shrOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ShiftRightOp");
         return ERR;
@@ -886,18 +886,18 @@ uint64_t aml_def_shift_right_read(aml_state_t* state, aml_scope_t* scope, aml_no
 /**
  * Helper that reads a structure like `Op SuperName`.
  */
-static inline uint64_t aml_helper_op_supername_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_value_num_t expectedOp, aml_data_type_t allowedTypes, uint64_t(*callback)(aml_state_t*, aml_scope_t*, aml_node_t**))
+static inline uint64_t aml_helper_op_supername_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_token_num_t expectedOp, aml_data_type_t allowedTypes, uint64_t(*callback)(aml_state_t*, aml_scope_t*, aml_node_t**))
 {
-    aml_value_t op;
-    if (aml_value_read(state, &op) == ERR)
+    aml_token_t op;
+    if (aml_token_read(state, &op) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read %s", aml_value_lookup(expectedOp)->name);
+        AML_DEBUG_ERROR(state, "Failed to read %s", aml_token_lookup(expectedOp)->name);
         return ERR;
     }
 
     if (op.num != expectedOp)
     {
-        AML_DEBUG_ERROR(state, "Invalid %s '0x%x'", aml_value_lookup(expectedOp)->name, op.num);
+        AML_DEBUG_ERROR(state, "Invalid %s '0x%x'", aml_token_lookup(expectedOp)->name, op.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -996,8 +996,8 @@ uint64_t aml_obj_reference_read(aml_state_t* state, aml_scope_t* scope, aml_node
 
 uint64_t aml_def_deref_of_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    aml_value_t derefOfOp;
-    if (aml_value_read(state, &derefOfOp) == ERR)
+    aml_token_t derefOfOp;
+    if (aml_token_read(state, &derefOfOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read DerefOfOp");
         return ERR;
@@ -1051,8 +1051,8 @@ uint64_t aml_index_value_read(aml_state_t* state, aml_scope_t* scope, uint64_t* 
 
 uint64_t aml_def_index_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    aml_value_t indexOp;
-    if (aml_value_read(state, &indexOp) == ERR)
+    aml_token_t indexOp;
+    if (aml_token_read(state, &indexOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read IndexOp");
         return ERR;
@@ -1161,18 +1161,18 @@ uint64_t aml_def_index_read(aml_state_t* state, aml_scope_t* scope, aml_node_t**
     return 0;
 }
 
-static inline uint64_t aml_helper_operand_operand_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_value_num_t expectedOp, aml_data_type_t allowedTypes, uint64_t(*callback)(aml_state_t*, aml_scope_t*, aml_node_t**, aml_node_t*, aml_node_t*))
+static inline uint64_t aml_helper_operand_operand_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_token_num_t expectedOp, aml_data_type_t allowedTypes, uint64_t(*callback)(aml_state_t*, aml_scope_t*, aml_node_t**, aml_node_t*, aml_node_t*))
 {
-    aml_value_t op;
-    if (aml_value_read(state, &op) == ERR)
+    aml_token_t op;
+    if (aml_token_read(state, &op) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read %s", aml_value_lookup(expectedOp)->name);
+        AML_DEBUG_ERROR(state, "Failed to read %s", aml_token_lookup(expectedOp)->name);
         return ERR;
     }
 
     if (op.num != expectedOp)
     {
-        AML_DEBUG_ERROR(state, "Invalid %s '0x%x'", aml_value_lookup(expectedOp)->name, op.num);
+        AML_DEBUG_ERROR(state, "Invalid %s '0x%x'", aml_token_lookup(expectedOp)->name, op.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -1207,18 +1207,18 @@ static inline uint64_t aml_helper_operand_operand_read(aml_state_t* state, aml_s
     return 0;
 }
 
-static inline uint64_t aml_helper_op_operand_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_value_num_t expectedOp, aml_data_type_t allowedTypes, uint64_t(*callback)(aml_state_t*, aml_scope_t*, aml_node_t**, aml_node_t*))
+static inline uint64_t aml_helper_op_operand_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out, aml_token_num_t expectedOp, aml_data_type_t allowedTypes, uint64_t(*callback)(aml_state_t*, aml_scope_t*, aml_node_t**, aml_node_t*))
 {
-    aml_value_t op;
-    if (aml_value_read(state, &op) == ERR)
+    aml_token_t op;
+    if (aml_token_read(state, &op) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read %s", aml_value_lookup(expectedOp)->name);
+        AML_DEBUG_ERROR(state, "Failed to read %s", aml_token_lookup(expectedOp)->name);
         return ERR;
     }
 
     if (op.num != expectedOp)
     {
-        AML_DEBUG_ERROR(state, "Invalid %s '0x%x'", aml_value_lookup(expectedOp)->name, op.num);
+        AML_DEBUG_ERROR(state, "Invalid %s '0x%x'", aml_token_lookup(expectedOp)->name, op.num);
         errno = EILSEQ;
         return ERR;
     }
@@ -1391,14 +1391,14 @@ uint64_t aml_def_lor_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** o
 
 uint64_t aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope, aml_node_t** out)
 {
-    aml_value_t op;
-    if (aml_value_peek(state, &op) == ERR)
+    aml_token_t op;
+    if (aml_token_peek(state, &op) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to peek value");
+        AML_DEBUG_ERROR(state, "Failed to peek op");
         return ERR;
     }
 
-    if (op.props->type == AML_VALUE_TYPE_NAME)
+    if (op.props->type == AML_TOKEN_TYPE_NAME)
     {
         if (aml_method_invocation_read(state, scope, out) == ERR)
         {

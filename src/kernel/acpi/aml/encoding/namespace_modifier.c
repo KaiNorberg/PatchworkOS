@@ -5,7 +5,7 @@
 #include "acpi/aml/aml_scope.h"
 #include "acpi/aml/aml_state.h"
 #include "acpi/aml/aml_to_string.h"
-#include "acpi/aml/aml_value.h"
+#include "acpi/aml/aml_token.h"
 #include "name.h"
 #include "package_length.h"
 #include "term.h"
@@ -17,8 +17,8 @@
 
 uint64_t aml_def_alias_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_value_t aliasOp;
-    if (aml_value_read_no_ext(state, &aliasOp) == ERR)
+    aml_token_t aliasOp;
+    if (aml_token_read_no_ext(state, &aliasOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read AliasOp");
         return ERR;
@@ -62,8 +62,8 @@ uint64_t aml_def_alias_read(aml_state_t* state, aml_scope_t* scope)
 
 uint64_t aml_def_name_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_value_t nameOp;
-    if (aml_value_read_no_ext(state, &nameOp) == ERR)
+    aml_token_t nameOp;
+    if (aml_token_read_no_ext(state, &nameOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read NameOp");
         return ERR;
@@ -101,8 +101,8 @@ uint64_t aml_def_name_read(aml_state_t* state, aml_scope_t* scope)
 
 uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_value_t scopeOp;
-    if (aml_value_read_no_ext(state, &scopeOp) == ERR)
+    aml_token_t scopeOp;
+    if (aml_token_read_no_ext(state, &scopeOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ScopeOp");
         return ERR;
@@ -152,14 +152,14 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope)
 
 uint64_t aml_namespace_modifier_obj_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_value_t value;
-    if (aml_value_peek(state, &value) == ERR)
+    aml_token_t token;
+    if (aml_token_peek(state, &token) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to peek value");
+        AML_DEBUG_ERROR(state, "Failed to peek token");
         return ERR;
     }
 
-    switch (value.num)
+    switch (token.num)
     {
     case AML_ALIAS_OP:
         if (aml_def_alias_read(state, scope) == ERR)
@@ -183,7 +183,7 @@ uint64_t aml_namespace_modifier_obj_read(aml_state_t* state, aml_scope_t* scope)
         }
         return 0;
     default:
-        AML_DEBUG_ERROR(state, "Invalid NamespaceModifierObj '0x%x'", value.num);
+        AML_DEBUG_ERROR(state, "Invalid NamespaceModifierObj '0x%x'", token.num);
         errno = EILSEQ;
         return ERR;
     }

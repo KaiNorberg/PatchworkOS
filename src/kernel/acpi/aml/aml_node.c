@@ -3,7 +3,7 @@
 #include "acpi/acpi.h"
 #include "aml.h"
 #include "aml_to_string.h"
-#include "aml_value.h"
+#include "aml_token.h"
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/heap.h"

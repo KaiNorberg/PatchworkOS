@@ -3,7 +3,7 @@
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_scope.h"
 #include "acpi/aml/aml_state.h"
-#include "acpi/aml/aml_value.h"
+#include "acpi/aml/aml_token.h"
 #include "acpi/aml/runtime/copy.h"
 #include "package_length.h"
 #include "term.h"
@@ -22,8 +22,8 @@ uint64_t aml_predicate_read(aml_state_t* state, aml_scope_t* scope, uint64_t* ou
 
 uint64_t aml_def_else_read(aml_state_t* state, aml_scope_t* scope, bool shouldExecute)
 {
-    aml_value_t elseOp;
-    if (aml_value_read_no_ext(state, &elseOp) == ERR)
+    aml_token_t elseOp;
+    if (aml_token_read_no_ext(state, &elseOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ElseOp");
         return ERR;
@@ -68,8 +68,8 @@ uint64_t aml_def_else_read(aml_state_t* state, aml_scope_t* scope, bool shouldEx
 
 uint64_t aml_def_if_else_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_value_t ifOp;
-    if (aml_value_read_no_ext(state, &ifOp) == ERR)
+    aml_token_t ifOp;
+    if (aml_token_read_no_ext(state, &ifOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read IfOp");
         return ERR;
@@ -119,8 +119,8 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_scope_t* scope)
         aml_state_advance(state, offset);
     }
 
-    aml_value_t elseOp;
-    if (aml_value_peek_no_ext(state, &elseOp) == ERR)
+    aml_token_t elseOp;
+    if (aml_token_peek_no_ext(state, &elseOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to peek ElseOp");
         return ERR;
@@ -140,8 +140,8 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_scope_t* scope)
 
 uint64_t aml_def_noop_read(aml_state_t* state)
 {
-    aml_value_t noopOp;
-    if (aml_value_read_no_ext(state, &noopOp) == ERR)
+    aml_token_t noopOp;
+    if (aml_token_read_no_ext(state, &noopOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read NoopOp");
         return ERR;
@@ -172,8 +172,8 @@ uint64_t aml_def_return_read(aml_state_t* state, aml_scope_t* scope)
 {
     state->hasHitReturn = true;
 
-    aml_value_t returnOp;
-    if (aml_value_read_no_ext(state, &returnOp) == ERR)
+    aml_token_t returnOp;
+    if (aml_token_read_no_ext(state, &returnOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ReturnOp");
         return ERR;
@@ -207,8 +207,8 @@ uint64_t aml_def_return_read(aml_state_t* state, aml_scope_t* scope)
 
 uint64_t aml_statement_opcode_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_value_t op;
-    if (aml_value_peek_no_ext(state, &op) == ERR)
+    aml_token_t op;
+    if (aml_token_peek_no_ext(state, &op) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to peek op");
         return ERR;
