@@ -492,6 +492,65 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_scope_t* scope, aml_object
     return 0;
 }
 
+uint64_t aml_def_var_num_elements_read(aml_state_t* state, uint64_t* out)
+{
+    if (aml_term_arg_read_integer(state, NULL, out) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read TermArg for VarNumElements");
+        return ERR;
+    }
+
+    return 0;
+}
+
+uint64_t aml_def_var_package_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* out)
+{
+    aml_token_t varPackageOp;
+    if (aml_token_read(state, &varPackageOp) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read VarPackageOp");
+        return ERR;
+    }
+
+    if (varPackageOp.num != AML_VAR_PACKAGE_OP)
+    {
+        AML_DEBUG_ERROR(state, "Invalid VarPackageOp '0x%x'", varPackageOp.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    const uint8_t* start = state->current;
+
+    aml_pkg_length_t pkgLength;
+    if (aml_pkg_length_read(state, &pkgLength) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read PkgLength");
+        return ERR;
+    }
+
+    const uint8_t* end = start + pkgLength;
+
+    uint64_t numElements;
+    if (aml_def_var_num_elements_read(state, &numElements) == ERR)
+    {
+        return ERR;
+    }
+
+    if (aml_object_init_package(out, numElements) == ERR)
+    {
+        return ERR;
+    }
+
+    if (aml_package_element_list_read(state, scope, out, end) == ERR)
+    {
+        aml_object_deinit(out);
+        AML_DEBUG_ERROR(state, "Failed to read PackageElementList");
+        return ERR;
+    }
+
+    return 0;
+}
+
 uint64_t aml_data_object_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* out)
 {
     aml_token_t token;
@@ -507,9 +566,8 @@ uint64_t aml_data_object_read(aml_state_t* state, aml_scope_t* scope, aml_object
         result = aml_def_package_read(state, scope, out);
         break;
     case AML_VAR_PACKAGE_OP:
-        AML_DEBUG_ERROR(state, "Unimplemented DefVarPackage");
-        errno = ENOSYS;
-        return ERR;
+        result = aml_def_var_package_read(state, scope, out);
+        break;
     default:
         result = aml_computational_data_read(state, scope, out);
         break;

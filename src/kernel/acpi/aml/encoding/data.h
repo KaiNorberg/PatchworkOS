@@ -199,6 +199,31 @@ uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, a
 uint64_t aml_def_package_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* out);
 
 /**
+ * @brief Read a VarNumElements structure from the AML stream.
+ *
+ * A VarNumElements structure is defined as `VarNumElements := TermArg => Integer`.
+ *
+ * @param state The AML state.
+ * @param out Output pointer to the integer to be filled with the number of elements.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_var_num_elements_read(aml_state_t* state, uint64_t* out);
+
+/**
+ * @brief Reads a DefVarPackage structure from the AML byte stream.
+ *
+ * A DefVarPackage structure is defined as `DefVarPackage := VarPackageOp PkgLength VarNumElements PackageElementList`.
+ *
+ * @see Section 19.6.103 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @param out Output pointer to the object to store the result.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_var_package_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* out);
+
+/**
  * @brief Read a DataObject structure from the AML stream.
  *
  * A DataObject structure is defined as `DataObject := ComputationalData | DefPackage | DefVarPackage`.

@@ -1702,6 +1702,28 @@ uint64_t aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope, aml_
         result = aml_def_buffer_read(state, scope, *out);
     }
     break;
+    case AML_PACKAGE_OP:
+    {
+        *out = aml_scope_get_temp(scope);
+        if (*out == NULL)
+        {
+            return ERR;
+        }
+
+        result = aml_def_package_read(state, scope, *out);
+    }
+    break;
+    case AML_VAR_PACKAGE_OP:
+    {
+        *out = aml_scope_get_temp(scope);
+        if (*out == NULL)
+        {
+            return ERR;
+        }
+
+        result = aml_def_var_package_read(state, scope, *out);
+    }
+    break;
     case AML_COND_REF_OF_OP:
         result = aml_def_cond_ref_of_read(state, scope, out);
         break;
