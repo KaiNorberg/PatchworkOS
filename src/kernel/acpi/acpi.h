@@ -41,6 +41,7 @@
  * - [ ] Implement APIs supporting the system indicators.
  * - [ ] Support all system states S1-S5.
  *
+ * @see [Easier to read version of the ACPI Specification](https://uefi.org/specs/ACPI/6.6/index.html)
  * @see [ACPI Specification Version 6.6](https://uefi.org/sites/default/files/resources/ACPI_Spec_6.6.pdf)
  * @see [ACPI Specification Version 6.3](https://uefi.org/sites/default/files/resources/ACPI_Spec_6_3_A_Oct_6_2020.pdf)
  * @see [ACPI Specification Version 4.0](https://uefi.org/sites/default/files/resources/ACPI_4.pdf)

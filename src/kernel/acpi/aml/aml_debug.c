@@ -86,6 +86,7 @@ void aml_debug_error_print(aml_state_t* state, const char* function, const char*
 {
     if (state->lastErrPos != state->current)
     {
+        state->errorDepth = 0;
         LOG_ERR("AML ERROR in '%s()' at pos 0x%lx (", function, state->current - state->start);
 
         va_list args;
@@ -100,6 +101,16 @@ void aml_debug_error_print(aml_state_t* state, const char* function, const char*
     }
     else
     {
+        state->errorDepth++;
+        if (state->errorDepth == 10)
+        {
+            LOG_ERR("  ...\n");
+            return;
+        }
+        else if (state->errorDepth > 10)
+        {
+            return;
+        }
         LOG_ERR("  %s() -> ", function);
 
         va_list args;

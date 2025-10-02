@@ -8,6 +8,7 @@
 #include "opregion.h"
 
 #include <errno.h>
+#include <stdio.h>
 
 #define AML_CONVERT_TRY_NEXT_CONVERTER 1
 
@@ -530,4 +531,326 @@ uint64_t aml_convert_result(aml_object_t* result, aml_object_t* target)
     }
 
     return 0;
+}
+
+uint64_t aml_convert_integer_to_bcd(uint64_t value, uint64_t* out)
+{
+    if (out == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    uint64_t bcd = 0;
+    for (uint64_t i = 0; i < sizeof(uint64_t) * 2; i++) // 2 nibbles per byte
+    {
+        uint8_t digit = value % 10;
+
+        bcd |= ((uint64_t)digit) << (i * 4);
+        value /= 10;
+        if (value == 0)
+        {
+            break;
+        }
+    }
+
+    *out = bcd;
+    return 0;
+}
+
+uint64_t aml_convert_to_buffer(aml_object_t* src, aml_object_t* dest)
+{
+    if (src == NULL || dest == NULL)
+    {
+        LOG_ERR("source or destination object is NULL\n");
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (src->type == AML_DATA_UNINITALIZED)
+    {
+        LOG_ERR("source object is uninitialized\n");
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (src->type == AML_DATA_BUFFER)
+    {
+        if (aml_copy_raw(src, dest) == ERR)
+        {
+            LOG_ERR("failed to copy content of source Buffer to destination Buffer '%.*s'\n", AML_NAME_LENGTH,
+                dest->segment);
+            return ERR;
+        }
+        return 0;
+    }
+    else if (src->type == AML_DATA_INTEGER)
+    {
+        return aml_integer_to_buffer(src, dest);
+    }
+    else if (src->type == AML_DATA_STRING)
+    {
+        return aml_string_to_buffer(src, dest);
+    }
+
+    LOG_ERR("cannot convert source object of type '%s' to Buffer\n", aml_data_type_to_string(src->type));
+    errno = EILSEQ;
+    return ERR;
+}
+
+uint64_t aml_convert_to_decimal_string(aml_object_t* src, aml_object_t* dest)
+{
+    if (src == NULL || dest == NULL)
+    {
+        LOG_ERR("source or destination object is NULL\n");
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (src->type == AML_DATA_UNINITALIZED)
+    {
+        LOG_ERR("source object is uninitialized\n");
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (src->type == AML_DATA_STRING)
+    {
+        if (aml_copy_raw(src, dest) == ERR)
+        {
+            LOG_ERR("failed to copy content of source String to destination String '%.*s'\n", AML_NAME_LENGTH,
+                dest->segment);
+            return ERR;
+        }
+        return 0;
+    }
+    else if (src->type == AML_DATA_INTEGER)
+    {
+        // Max uint64_t is 20 digits + null terminator.
+        if (aml_object_init_string_empty(dest, 21) == ERR)
+        {
+            return ERR;
+        }
+
+        int written = snprintf(dest->string.content, 21, "%llu", (unsigned long long)src->integer.value);
+        if (written < 0)
+        {
+            aml_object_deinit(dest);
+            return ERR;
+        }
+        return 0;
+    }
+    else if (src->type == AML_DATA_BUFFER)
+    {
+        uint64_t maxLen = src->buffer.length * 4;
+        if (aml_object_init_string_empty(dest, maxLen) == ERR)
+        {
+            return ERR;
+        }
+
+        char* p = dest->string.content;
+        char* end = p + maxLen;
+        for (uint64_t i = 0; i < src->buffer.length; i++)
+        {
+            int written = snprintf(p, end - p, "%u", src->buffer.content[i]);
+            if (written < 0)
+            {
+                aml_object_deinit(dest);
+                return ERR;
+            }
+            p += written;
+
+            if (i < src->buffer.length - 1)
+            {
+                if (p < end - 1)
+                {
+                    *p++ = ',';
+                }
+                else
+                {
+                    // Should never happen.
+                    aml_object_deinit(dest);
+                    return ERR;
+                }
+            }
+        }
+        *p = '\0';
+        return 0;
+    }
+
+    LOG_ERR("cannot convert source object of type '%s' to String\n", aml_data_type_to_string(src->type));
+    errno = EILSEQ;
+    return ERR;
+}
+
+uint64_t aml_convert_to_hex_string(aml_object_t* src, aml_object_t* dest)
+{
+    if (src == NULL || dest == NULL)
+    {
+        LOG_ERR("source or destination object is NULL\n");
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (src->type == AML_DATA_UNINITALIZED)
+    {
+        LOG_ERR("source object is uninitialized\n");
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (src->type == AML_DATA_STRING)
+    {
+        if (aml_copy_raw(src, dest) == ERR)
+        {
+            LOG_ERR("failed to copy content of source String to destination String '%.*s'\n", AML_NAME_LENGTH,
+                dest->segment);
+            return ERR;
+        }
+        return 0;
+    }
+    else if (src->type == AML_DATA_INTEGER)
+    {
+        if (aml_object_init_string_empty(dest, 19) == ERR)
+        {
+            return ERR;
+        }
+
+        int written = snprintf(dest->string.content, 19, "%llX", (unsigned long long)src->integer.value);
+        if (written < 0)
+        {
+            aml_object_deinit(dest);
+            return ERR;
+        }
+        return 0;
+    }
+    else if (src->type == AML_DATA_BUFFER)
+    {
+        if (src->buffer.length == 0)
+        {
+            return aml_object_init_string_empty(dest, 0);
+        }
+
+        uint64_t length = src->buffer.length * 3 - 1;
+        if (aml_object_init_string_empty(dest, length) == ERR)
+        {
+            return ERR;
+        }
+
+        for (uint64_t i = 0; i < src->buffer.length; i++)
+        {
+            uint8_t byte = src->buffer.content[i];
+            dest->string.content[i * 3 + 0] = "0123456789ABCDEF"[byte >> 4];
+            dest->string.content[i * 3 + 1] = "0123456789ABCDEF"[byte & 0x0F];
+            if (i < src->buffer.length - 1)
+            {
+                dest->string.content[i * 3 + 2] = ',';
+            }
+        }
+        dest->string.content[length] = '\0';
+        return 0;
+    }
+
+    LOG_ERR("cannot convert source object of type '%s' to String\n", aml_data_type_to_string(src->type));
+    errno = EILSEQ;
+    return ERR;
+}
+
+uint64_t aml_convert_to_integer(aml_object_t* src, aml_object_t* dest)
+{
+    if (src == NULL || dest == NULL)
+    {
+        LOG_ERR("source or destination object is NULL\n");
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (src->type == AML_DATA_UNINITALIZED)
+    {
+        LOG_ERR("source object is uninitialized\n");
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (src->type == AML_DATA_INTEGER)
+    {
+        if (aml_copy_raw(src, dest) == ERR)
+        {
+            LOG_ERR("failed to copy content of source Integer to destination Integer '%.*s'\n", AML_NAME_LENGTH,
+                dest->segment);
+            return ERR;
+        }
+        return 0;
+    }
+    else if (src->type == AML_DATA_STRING)
+    {
+        if (src->string.length == 0 || src->string.content == NULL)
+        {
+            errno = EILSEQ;
+            return ERR;
+        }
+
+        // Can be either decimal or hex string.
+        bool isHex = false;
+        uint64_t i = 0;
+        if (src->string.length > 2 && src->string.content[0] == '0' &&
+            (src->string.content[1] == 'x' || src->string.content[1] == 'X'))
+        {
+            isHex = true;
+            i = 2;
+        }
+
+        // " If the value is exceeding the maximum, the result of the conversion is unpredictable."
+        // So we can just ignore that case.
+
+        uint64_t value = 0;
+        for (; i < src->string.length; i++)
+        {
+            char chr = src->string.content[i];
+            if (isHex)
+            {
+                if (chr >= '0' && chr <= '9')
+                {
+                    value = value * 16 + (chr - '0');
+                }
+                else if (chr >= 'a' && chr <= 'f')
+                {
+                    value = value * 16 + (chr - 'a' + 10);
+                }
+                else if (chr >= 'A' && chr <= 'F')
+                {
+                    value = value * 16 + (chr - 'A' + 10);
+                }
+                else
+                {
+                    break;
+                }
+            }
+            else
+            {
+                if (chr >= '0' && chr <= '9')
+                {
+                    value = value * 10 + (chr - '0');
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+
+        if (aml_object_init_integer(dest, value) == ERR)
+        {
+            return ERR;
+        }
+        return 0;
+    }
+    else if (src->type == AML_DATA_BUFFER)
+    {
+        return aml_buffer_to_integer(src, dest);
+    }
+
+    LOG_ERR("cannot convert source object of type '%s' to Integer\n", aml_data_type_to_string(src->type));
+    errno = EILSEQ;
+    return ERR;
 }

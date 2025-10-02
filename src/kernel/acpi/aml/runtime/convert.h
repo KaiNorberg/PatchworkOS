@@ -51,4 +51,78 @@ uint64_t aml_convert_source(aml_object_t* source, aml_object_t* out, aml_data_ty
  */
 uint64_t aml_convert_result(aml_object_t* result, aml_object_t* target);
 
+/**
+ * @brief Converts an integer to its Binary-Coded Decimal (BCD) representation.
+ *
+ * Binary-Coded decimal (BCD) is a format where instead of each bit representing a power of two, the Integer is split
+ * into its individual decimal digits, and each digit is represented by a fixed number of bits. For example, the integer
+ * `45` would be represented in BCD as `0x45` or in binary `0100 0101`.
+ *
+ * The number of bits per digit varies and the ACPI specification does not seem to specify how many should be
+ * used, nor really anything at all about BCD. However, the most common representation seems to be 4 bits per digit,
+ * which is what this function uses. The spec also does not specify what to do if the integer is too large to fit
+ * in the BCD representation, so we just ignore it. I love ACPI.
+ *
+ * @param value The integer value to convert.
+ * @param out Pointer to the output buffer where the BCD representation will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_convert_integer_to_bcd(uint64_t value, uint64_t* out);
+
+/**
+ * @brief Converts a Integer, String or Buffer source object to a Buffer destination object.
+ *
+ * Note that this behaviour is different from the implicit source operand conversion and implicit result object
+ * conversion rules.
+ *
+ * @see Section 19.6.138 of the ACPI specification for more details.
+ *
+ * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
+ * @param dest Pointer to the destination object where the converted Buffer will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_convert_to_buffer(aml_object_t* src, aml_object_t* dest);
+
+/**
+ * @brief Converts a Integer, String or Buffer source object to a String destination object in decimal format.
+ *
+ * Note that this behaviour is different from the implicit source operand conversion and implicit result object
+ * conversion rules.
+ *
+ * @see Section 19.6.139 of the ACPI specification for more details.
+ *
+ * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
+ * @param dest Pointer to the destination object where the converted Decimal String will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_convert_to_decimal_string(aml_object_t* src, aml_object_t* dest);
+
+/**
+ * @brief Converts a Integer, String or Buffer source object to a String destination object in hexadecimal format.
+ *
+ * Note that this behaviour is different from the implicit source operand conversion and implicit result object
+ * conversion rules.
+ *
+ * @see Section 19.6.140 of the ACPI specification for more details.
+ *
+ * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
+ * @param dest Pointer to the destination object where the converted Hex String will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_convert_to_hex_string(aml_object_t* src, aml_object_t* dest);
+
+/**
+ * @brief Converts a Integer, String or Buffer source object to an Integer destination object.
+ *
+ * Note that this behaviour is different from the implicit source operand conversion and implicit result object
+ * conversion rules.
+ *
+ * @see Section 19.6.141 of the ACPI specification for more details.
+ *
+ * @param src Pointer to the source object to convert. Must be of type Integer, String or Buffer.
+ * @param dest Pointer to the destination object where the converted Integer will be stored.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_convert_to_integer(aml_object_t* src, aml_object_t* dest);
+
 /** @} */

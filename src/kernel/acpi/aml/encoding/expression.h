@@ -647,6 +647,90 @@ uint64_t aml_timeout_read(aml_state_t* state, uint16_t* out);
 uint64_t aml_def_acquire_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
+ * @brief Reads a DefToBcd structure from the AML byte stream.
+ *
+ * A DefToBcd structure is defined as `DefToBCD := ToBCDOp Operand Target`.
+ *
+ * @see Section 19.6.137 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @param out Output pointer to be filled with the object pointer storing the result.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_to_bcd_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+
+/**
+ * @brief Reads a DefToBuffer structure from the AML byte stream.
+ *
+ * A DefToBuffer structure is defined as `DefToBuffer := ToBufferOp Operand Target`.
+ *
+ * @see Section 19.6.138 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @param out Output pointer to be filled with the object pointer storing the result.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_to_buffer_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+
+/**
+ * @brief Reads a DefToDecimalString structure from the AML byte stream.
+ *
+ * A DefToDecimalString structure is defined as `DefToDecimalString := ToDecimalStringOp Operand Target`.
+ *
+ * @see Section 19.6.139 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @param out Output pointer to be filled with the object pointer storing the result.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_to_decimal_string_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+
+/**
+ * @brief Reads a DefToHexString structure from the AML byte stream.
+ *
+ * A DefToHexString structure is defined as `DefToHexString := ToHexStringOp Operand Target`.
+ *
+ * @see Section 19.6.140 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @param out Output pointer to be filled with the object pointer storing the result.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_to_hex_string_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+
+/**
+ * @brief Reads a DefToInteger structure from the AML byte stream.
+ *
+ * A DefToInteger structure is defined as `DefToInteger := ToIntegerOp Operand Target`.
+ *
+ * @see Section 19.6.141 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @param out Output pointer to be filled with the object pointer storing the result.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_to_integer_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+
+/**
+ * @brief Reads a DefToString structure from the AML byte stream.
+ *
+ * A DefToString structure is defined as
+ *
+ * @see Section 19.6.143 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @param out Output pointer to be filled with the object pointer storing the result.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_to_string_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
+
+/**
  * @brief Reads an ExpressionOpcode structure from the AML byte stream.
  *
  * An ExpressionOpcode structure is defined as `ExpressionOpcode := DefAcquire | DefAdd | DefAnd | DefBuffer | DefConcat

@@ -51,7 +51,6 @@ uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_object_t*
         }
         break;
     default:
-    {
         value = aml_scope_get_temp(scope);
         if (value == NULL)
         {
@@ -63,7 +62,6 @@ uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_object_t*
             AML_DEBUG_ERROR(state, "Failed to read DataObject");
             return ERR;
         }
-    }
     }
 
     if (value->type & allowedTypes)
@@ -94,6 +92,8 @@ uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_scope_t* scope, uint6
         AML_DEBUG_ERROR(state, "Failed to read TermArg");
         return ERR;
     }
+
+    assert(temp->type == AML_DATA_INTEGER);
 
     *out = temp->integer.value;
     return 0;

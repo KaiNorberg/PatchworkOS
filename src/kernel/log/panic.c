@@ -170,8 +170,15 @@ static void panic_stack_trace(const trap_frame_t* trapFrame)
         LOG_PANIC(" [0x%016llx] <unknown>\n", trapFrame->rip);
     }
 
+    uint64_t depth = 0;
     while (rbp != NULL && rbp != prevFrame)
     {
+        if (depth >= 10)
+        {
+            LOG_PANIC(" ...\n");
+            break;
+        }
+
         if (!panic_is_valid_stack_frame(rbp))
         {
             break;
@@ -193,16 +200,17 @@ static void panic_stack_trace(const trap_frame_t* trapFrame)
             symbol = panic_resolve_symbol(returnAddress, &offset);
             if (symbol)
             {
-                LOG_PANIC(" [0x%016llx] <%s+0x%llx>\n", returnAddress, symbol, offset);
+                LOG_PANIC("  [0x%016llx] <%s+0x%llx>\n", returnAddress, symbol, offset);
             }
             else
             {
-                LOG_PANIC(" [0x%016llx] <unknown>\n", returnAddress);
+                LOG_PANIC("  [0x%016llx] <unknown>\n", returnAddress);
             }
         }
 
         prevFrame = rbp;
         rbp = (uint64_t*)rbp[0];
+        depth++;
     }
 }
 
@@ -213,8 +221,15 @@ static void panic_direct_stack_trace(void)
     void* currentFrame = __builtin_frame_address(0);
     void* prevFrame = NULL;
 
+    uint64_t depth = 0;
     while (currentFrame != NULL && currentFrame != prevFrame)
     {
+        if (depth >= 10)
+        {
+            LOG_PANIC("  ...\n");
+            break;
+        }
+
         if (!panic_is_valid_stack_frame(currentFrame))
         {
             break;
@@ -232,16 +247,17 @@ static void panic_direct_stack_trace(void)
             const char* symbol = panic_resolve_symbol((uintptr_t)returnAddress, &offset);
             if (symbol != NULL)
             {
-                LOG_PANIC(" [0x%016llx] <%s+0x%llx>\n", (uintptr_t)returnAddress, symbol, offset);
+                LOG_PANIC("  [0x%016llx] <%s+0x%llx>\n", (uintptr_t)returnAddress, symbol, offset);
             }
             else
             {
-                LOG_PANIC(" [0x%016llx] <unknown>\n", (uintptr_t)returnAddress);
+                LOG_PANIC("  [0x%016llx] <unknown>\n", (uintptr_t)returnAddress);
             }
         }
 
         prevFrame = currentFrame;
         currentFrame = *((void**)currentFrame);
+        depth++;
     }
 }
 

@@ -1,6 +1,7 @@
 #include "aml_state.h"
 
 #include "log/log.h"
+#include "log/panic.h"
 
 uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t* end, aml_term_arg_list_t* args,
     aml_object_t* returnValue)
@@ -21,6 +22,7 @@ uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t*
     state->args = args;
     state->returnValue = returnValue;
     state->lastErrPos = NULL;
+    state->errorDepth = 0;
     state->flowControl = AML_FLOW_CONTROL_EXECUTE;
     if (aml_mutex_stack_init(&state->mutexStack) == ERR)
     {
@@ -55,7 +57,9 @@ uint64_t aml_state_deinit(aml_state_t* state)
 
     if (state->flowControl != AML_FLOW_CONTROL_EXECUTE && state->flowControl != AML_FLOW_CONTROL_RETURN)
     {
-        LOG_ERR("AML state deinitalized with invalid flow control state %d, possibly tried to Break or Continue outside of While loop\n", state->flowControl);
+        LOG_ERR("AML state deinitalized with invalid flow control state %d, possibly tried to Break or Continue "
+                "outside of While loop\n",
+            state->flowControl);
         errno = EBUSY;
         return ERR;
     }

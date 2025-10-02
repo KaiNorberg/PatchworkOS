@@ -737,7 +737,7 @@ uint64_t aml_object_init_string(aml_object_t* object, const char* str)
 
 uint64_t aml_object_init_string_empty(aml_object_t* object, uint64_t length)
 {
-    if (object == NULL || length == 0)
+    if (object == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -749,6 +749,19 @@ uint64_t aml_object_init_string_empty(aml_object_t* object, uint64_t length)
     }
 
     object->type = AML_DATA_STRING;
+
+    if (length == 0)
+    {
+        object->string.content = heap_alloc(1, HEAP_NONE);
+        if (object->string.content == NULL)
+        {
+            return ERR;
+        }
+        object->string.content[0] = '\0';
+        object->string.length = 0;
+        object->string.byteFields = NULL;
+        return 0;
+    }
 
     object->string.content = heap_alloc(length + 1, HEAP_NONE);
     if (object->string.content == NULL)

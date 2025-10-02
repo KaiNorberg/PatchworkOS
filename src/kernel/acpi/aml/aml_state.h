@@ -49,6 +49,7 @@ typedef struct aml_state
     aml_term_arg_list_t* args; //!< Arguments passed to the method, if the state is used for method evaluation.
     aml_object_t* returnValue; //!< Pointer to where the return value should be stored, if the state is for a method.
     const uint8_t* lastErrPos; //!<  The position when the last error occurred.
+    uint64_t errorDepth; //!< The length of the error traceback.
     aml_flow_control_t flowControl; //!< Used by `aml_term_list_read` to handle flow control statements
     aml_mutex_stack_t mutexStack;   //!< Handles acquiring and releasing mutexes.
 } aml_state_t;
