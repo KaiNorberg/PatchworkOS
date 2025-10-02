@@ -8,6 +8,7 @@
 #include "acpi/aml/aml_token.h"
 #include "acpi/aml/runtime/convert.h"
 #include "data_integers.h"
+#include "acpi/acpi.h"
 #include "expression.h"
 #include "name.h"
 #include "package_length.h"
@@ -226,6 +227,30 @@ uint64_t aml_string_read(aml_state_t* state, aml_object_t* out)
     return 0;
 }
 
+uint64_t aml_revision_op_read(aml_state_t* state, aml_object_t* out)
+{
+    aml_token_t revOp;
+    if (aml_token_read_no_ext(state, &revOp) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read RevisionOp");
+        return ERR;
+    }
+
+    if (revOp.num != AML_REVISION_OP)
+    {
+        AML_DEBUG_ERROR(state, "Invalid RevisionOp '0x%x'", revOp.num);
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    if (aml_object_init_integer(out, RSDP_CURRENT_REVISION) == ERR)
+    {
+        return ERR;
+    }
+
+    return 0;
+}
+
 uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* out)
 {
     aml_token_t token;
@@ -318,6 +343,13 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml
         if (aml_def_buffer_read(state, scope, out) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to read Buffer");
+            return ERR;
+        }
+        return 0;
+    case AML_REVISION_OP:
+        if (aml_revision_op_read(state, out) == ERR)
+        {
+            AML_DEBUG_ERROR(state, "Failed to read RevisionOp");
             return ERR;
         }
         return 0;

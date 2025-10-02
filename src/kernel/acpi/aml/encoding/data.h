@@ -133,6 +133,19 @@ uint64_t aml_const_obj_read(aml_state_t* state, aml_object_t* out);
 uint64_t aml_string_read(aml_state_t* state, aml_object_t* out);
 
 /**
+ * @brief Read a RevisionOp structure from the AML stream.
+ *
+ * A RevisionOp structure is defined as `RevisionOp := RevisionOp`.
+ *
+ * @see Section 19.6.121 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param out Output pointer to the object to store the result.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_revision_op_read(aml_state_t* state, aml_object_t* out);
+
+/**
  * @brief Read a ComputationalData structure from the AML stream.
  *
  * A ComputationalData structure is defined as `ComputationalData := ByteConst | WordConst | DWordConst | QWordConst |

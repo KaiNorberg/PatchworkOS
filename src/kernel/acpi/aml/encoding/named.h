@@ -622,6 +622,13 @@ uint64_t aml_def_create_qword_field_read(aml_state_t* state, aml_scope_t* scope)
  * DefOpRegion | DefPowerRes | DefThermalZone | DefField | DefMethod | DefDevice | DefMutex | DefProcessor |
  * DefIndexField`.
  *
+ * Currently unimplemented Opcodes are:
+ * - `DefCreateField`
+ * - `DefDataRegion`
+ * - `DefExternal`
+ * - `DefPowerRes`
+ * - `DefThermalZone`
+ *
  * @param state The AML state.
  * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.

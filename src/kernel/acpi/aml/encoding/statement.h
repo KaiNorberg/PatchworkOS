@@ -162,6 +162,15 @@ uint64_t aml_def_while_read(aml_state_t* state, aml_scope_t* scope);
  * A StatementOpcode structure is defined as `StatementOpcode := DefBreak | DefBreakPoint | DefContinue | DefFatal |
  * DefIfElse | DefNoop | DefNotify | DefRelease | DefReset | DefReturn | DefSignal | DefSleep | DefStall | DefWhile`.
  *
+ * Currently unimplemented Opcodes are:
+ * - `DefBreakPoint`
+ * - `DefFatal`
+ * - `DefNotify`
+ * - `DefReset`
+ * - `DefSignal`
+ * - `DefSleep`
+ * - `DefStall`
+ *
  * @param state The AML state to parse from.
  * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.

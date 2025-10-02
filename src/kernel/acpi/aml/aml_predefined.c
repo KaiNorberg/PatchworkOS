@@ -81,13 +81,7 @@ uint64_t aml_predefined_init(void)
         return ERR;
     }
 
-    return 0;
+    // TODO: Implement _OS, _GL and _REV.
 
-    /*if (aml_create_predefined_object("_GL", AML_DATA_MUTEX) == ERR ||
-        aml_create_predefined_object("_OS", AML_DATA_STRING) == ERR ||
-        aml_create_predefined_object("_OSI", AML_DATA_METHOD) == ERR ||
-        aml_create_predefined_object("_REV", AML_DATA_INTEGER) == ERR)
-    {
-        return ERR;
-    }*/
+    return 0;
 }
