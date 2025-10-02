@@ -25,10 +25,10 @@ The goal is to eventually have a feature-complete and unique operating system av
 
 ### ACPI
 
-- From scratch and heavily documented [AML parser](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/acpi/aml/aml.h) (WIP)
-- Tested on real hardware, capable of parsing the DSDT and all SSDTs of all the [Tested Configurations](#tested-configurations)
-- ACPI implementation was made to not just work, but to be easy to understand and useful for educational purposes
-- ACPI Mode (e.g., method invocation, event handling) is currently unimplemented, but it's next on the list
+- From scratch and heavily documented [AML parser](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/acpi/aml/aml.h)
+- Tested on real hardware, see [Tested Configurations](#tested-configurations)
+- ACPI implementation was made to be easy to understand and useful for educational purposes
+- ACPI support is still work in progress check [acpi.h](https://github.com/KaiNorberg/PatchworkOS/blob/main/src/kernel/acpi/acpi.h) for a checklist
 
 ### File System
 
