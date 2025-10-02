@@ -122,10 +122,16 @@ uint64_t aml_init(void)
 
 uint64_t aml_parse(const uint8_t* start, const uint8_t* end)
 {
-    if (start == NULL || end == NULL || start >= end)
+    if (start == NULL || end == NULL || start > end)
     {
         errno = EINVAL;
         return ERR;
+    }
+
+    if (start == end)
+    {
+        // Im not sure why but some firmwares have empty SSDTs.
+        return 0;
     }
 
     // In section 20.2.1, we see the definition AMLCode := DefBlockHeader TermList.
