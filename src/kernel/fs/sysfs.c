@@ -126,6 +126,7 @@ uint64_t sysfs_dir_init(sysfs_dir_t* dir, sysfs_dir_t* parent, const char* name,
 {
     if (dir == NULL || parent == NULL || name == NULL)
     {
+        LOG_ERR("dir, parent or name is null\n");
         errno = EINVAL;
         return ERR;
     }
@@ -133,6 +134,7 @@ uint64_t sysfs_dir_init(sysfs_dir_t* dir, sysfs_dir_t* parent, const char* name,
     dentry_t* dentry = dentry_new(parent->dentry->superblock, parent->dentry, name);
     if (dentry == NULL)
     {
+        LOG_ERR("failed to create dentry for sysfs dir '%s'\n", name);
         return ERR;
     }
     REF_DEFER(dentry);
@@ -142,6 +144,7 @@ uint64_t sysfs_dir_init(sysfs_dir_t* dir, sysfs_dir_t* parent, const char* name,
         inode_new(parent->dentry->superblock, atomic_fetch_add(&newNumber, 1), INODE_DIR, inodeOps, &dirOps);
     if (inode == NULL)
     {
+        LOG_ERR("failed to create inode for sysfs dir '%s'\n", name);
         return ERR;
     }
     REF_DEFER(inode);
@@ -149,6 +152,7 @@ uint64_t sysfs_dir_init(sysfs_dir_t* dir, sysfs_dir_t* parent, const char* name,
 
     if (vfs_add_dentry(dentry) == ERR)
     {
+        LOG_ERR("failed to add dentry for sysfs dir '%s'\n", name);
         return ERR;
     }
     dentry_make_positive(dentry, inode);
@@ -173,6 +177,7 @@ uint64_t sysfs_file_init(sysfs_file_t* file, sysfs_dir_t* parent, const char* na
 {
     if (file == NULL || parent == NULL || name == NULL)
     {
+        LOG_ERR("file, parent or name is null\n");
         errno = EINVAL;
         return ERR;
     }
@@ -180,6 +185,7 @@ uint64_t sysfs_file_init(sysfs_file_t* file, sysfs_dir_t* parent, const char* na
     dentry_t* dentry = dentry_new(parent->dentry->superblock, parent->dentry, name);
     if (dentry == NULL)
     {
+        LOG_ERR("failed to create dentry for sysfs file '%s'\n", name);
         return ERR;
     }
     REF_DEFER(dentry);
@@ -189,6 +195,7 @@ uint64_t sysfs_file_init(sysfs_file_t* file, sysfs_dir_t* parent, const char* na
         inode_new(parent->dentry->superblock, atomic_fetch_add(&newNumber, 1), INODE_FILE, inodeOps, fileOps);
     if (inode == NULL)
     {
+        LOG_ERR("failed to create inode for sysfs file '%s'\n", name);
         return ERR;
     }
     REF_DEFER(inode);
@@ -196,6 +203,7 @@ uint64_t sysfs_file_init(sysfs_file_t* file, sysfs_dir_t* parent, const char* na
 
     if (vfs_add_dentry(dentry) == ERR)
     {
+        LOG_ERR("failed to add dentry for sysfs file '%s'\n", name);
         return ERR;
     }
     dentry_make_positive(dentry, inode);

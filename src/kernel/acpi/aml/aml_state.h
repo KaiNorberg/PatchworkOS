@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "acpi/aml/aml_object.h"
+#include "encoding/arg.h"
 #include "encoding/local.h"
 #include "encoding/term.h"
 #include "runtime/mutex.h"
@@ -46,10 +47,10 @@ typedef struct aml_state
     const uint8_t* end;                  //!< Pointer to the end of the AML bytecode.
     const uint8_t* current;              //!< Pointer to the current position in the AML bytecode.
     aml_object_t locals[AML_MAX_LOCALS]; //!< Local variables for the method, if any.
-    aml_term_arg_list_t* args; //!< Arguments passed to the method, if the state is used for method evaluation.
+    aml_object_t args[AML_MAX_ARGS];     //!< Argument variables for the method, if any.
     aml_object_t* returnValue; //!< Pointer to where the return value should be stored, if the state is for a method.
     const uint8_t* lastErrPos; //!<  The position when the last error occurred.
-    uint64_t errorDepth; //!< The length of the error traceback.
+    uint64_t errorDepth;       //!< The length of the error traceback.
     aml_flow_control_t flowControl; //!< Used by `aml_term_list_read` to handle flow control statements
     aml_mutex_stack_t mutexStack;   //!< Handles acquiring and releasing mutexes.
 } aml_state_t;
@@ -60,12 +61,13 @@ typedef struct aml_state
  * @param state Pointer to the state to initialize.
  * @param start Pointer to the start of the AML bytecode.
  * @param end Pointer to the end of the AML bytecode.
- * @param args Pointer to the arguments passed to the method, or `NULL` if not a method or no arguments.
+ * @param argCount Number of arguments, or 0 if not a method.
+ * @param args Array of pointers to the objects to pass as arguments, or `NULL` if not a method or no arguments.
  * @param returnValue Pointer to where the return value should be stored, or `NULL` if not a method or no return value.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t* end, aml_term_arg_list_t* args,
-    aml_object_t* returnValue);
+uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t* end, uint64_t argCount,
+    aml_object_t** args, aml_object_t* returnValue);
 
 /**
  * @brief Deinitialize an AML state.

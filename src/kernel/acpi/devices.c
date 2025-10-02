@@ -44,7 +44,7 @@ static inline uint64_t acpi_devices_init_children(aml_object_t* parent)
                 if (ini != NULL)
                 {
                     LOG_INFO("initalizing '%.*s'\n", AML_NAME_LENGTH, child->segment);
-                    if (aml_method_evaluate(ini, NULL, NULL) == ERR)
+                    if (aml_method_evaluate(ini, 0, NULL, NULL) == ERR)
                     {
                         LOG_ERR("could not evaluate %s._INI\n", child->segment);
                         return ERR;
@@ -73,7 +73,7 @@ uint64_t acpi_devices_init(void)
     if (sbIni != NULL)
     {
         LOG_INFO("found \\_SB._INI\n");
-        if (aml_method_evaluate(sbIni, NULL, NULL) == ERR)
+        if (aml_method_evaluate(sbIni, 0, NULL, NULL) == ERR)
         {
             return ERR;
         }

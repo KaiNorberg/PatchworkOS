@@ -23,8 +23,8 @@
  * - [x] Use System Address Map Interfaces (this is done by the bootloader).
  * - [x] Find and consume the ACPI System Description Tables (this is done in `acpi_tables_init()`)
  * - [x] Interpret ACPI machine language (AML). (this is done in `aml_init()`)
- * - [ ] Enumerate and configure motherboard devices described in the ACPI Namespace. <-- We are here.
- * - [ ] Interface with the power management timer.
+ * - [X] Enumerate and configure motherboard devices described in the ACPI Namespace. (this is done in `acpi_devices_init()`)
+ * - [ ] Interface with the power management timer. <-- We are here.
  * - [ ] Interface with the real-time clock wake alarm.
  * - [ ] Enter ACPI mode (on legacy hardware systems).
  * - [ ] Implement device power management policy.

@@ -433,6 +433,7 @@ uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, a
             {
                 aml_object_deinit(package->package.elements[j]);
             }
+            AML_DEBUG_ERROR(state, "Failed to read PackageElement %llu", i);
             return ERR;
         }
         i++;

@@ -86,10 +86,6 @@ uint64_t aml_term_arg_list_read(aml_state_t* state, aml_scope_t* scope, uint64_t
         out->args[i] = NULL;
         if (aml_term_arg_read(state, scope, &out->args[i], AML_DATA_ALL) == ERR)
         {
-            for (uint64_t j = 0; j < i; j++)
-            {
-                aml_object_deinit(out->args[i]);
-            }
             return ERR;
         }
 
@@ -117,24 +113,18 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_scope_t* scope, aml_
             return ERR;
         }
 
+        // Note that the arg objects are either temporary objects or objects in the namespace, we therefore dont deinit
+        // them.
+
         *out = aml_scope_get_temp(scope);
         if (*out == NULL)
         {
             return ERR;
         }
 
-        if (aml_method_evaluate(target, &args, *out) == ERR)
+        if (aml_method_evaluate(target, args.count, args.args, *out) == ERR)
         {
-            for (uint64_t i = 0; i < args.count; i++)
-            {
-                aml_object_deinit(args.args[i]);
-            }
             return ERR;
-        }
-
-        for (uint64_t i = 0; i < args.count; i++)
-        {
-            aml_object_deinit(args.args[i]);
         }
 
         return 0;
@@ -1619,8 +1609,7 @@ static inline uint64_t aml_def_to_buffer_callback(aml_state_t* state, aml_scope_
 uint64_t aml_def_to_buffer_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
 {
     return aml_helper_op_operand_target_read(state, scope, out, AML_TO_BUFFER_OP,
-        AML_DATA_INTEGER | AML_DATA_STRING | AML_DATA_BUFFER,
-        aml_def_to_buffer_callback);
+        AML_DATA_INTEGER | AML_DATA_STRING | AML_DATA_BUFFER, aml_def_to_buffer_callback);
 }
 
 static inline uint64_t aml_def_to_decimal_string_callback(aml_state_t* state, aml_scope_t* scope, aml_object_t** out,
@@ -1677,8 +1666,7 @@ static inline uint64_t aml_def_to_integer_callback(aml_state_t* state, aml_scope
 uint64_t aml_def_to_integer_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
 {
     return aml_helper_op_operand_target_read(state, scope, out, AML_TO_INTEGER_OP,
-        AML_DATA_INTEGER | AML_DATA_STRING | AML_DATA_BUFFER,
-        aml_def_to_integer_callback);
+        AML_DATA_INTEGER | AML_DATA_STRING | AML_DATA_BUFFER, aml_def_to_integer_callback);
 }
 
 uint64_t aml_expression_opcode_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)

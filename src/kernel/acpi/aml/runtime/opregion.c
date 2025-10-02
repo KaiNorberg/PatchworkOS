@@ -444,10 +444,6 @@ static uint64_t aml_field_unit_access(aml_object_t* fieldUnit, aml_object_t* dat
         return ERR;
     }
 
-    LOG_DEBUG("%s field '%.*s' of size %u bits with access size %u bits from opregion space '%s'\n",
-        direction == AML_ACCESS_READ ? "reading" : "writing to", AML_NAME_LENGTH, fieldUnit->segment,
-        fieldUnit->fieldUnit.bitSize, accessSize, aml_region_space_to_string(fieldUnit->fieldUnit.regionSpace));
-
     uint64_t byteOffset = aml_get_aligned_byte_offset(fieldUnit->fieldUnit.bitOffset, accessSize);
 
     uint64_t currentPos = 0;

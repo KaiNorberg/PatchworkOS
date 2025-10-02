@@ -7,19 +7,19 @@
 
 #include <errno.h>
 
-static uint64_t aml_predefined_osi_implementation(aml_object_t* method, aml_term_arg_list_t* args,
+static uint64_t aml_predefined_osi_implementation(aml_object_t* method, uint64_t argCount, aml_object_t** args,
     aml_object_t* returnValue)
 {
     // See section 5.7.2 of the ACPI specification.
     (void)method; // Unused
 
-    if (args->count != 1 || args->args[0]->type != AML_DATA_STRING)
+    if (argCount != 1 || args[0]->type != AML_DATA_STRING)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    LOG_DEBUG("_OSI called with argument: '%.*s'\n", (int)args->args[0]->string.length, args->args[0]->string.content);
+    LOG_DEBUG("_OSI called with argument: '%.*s'\n", (int)args[0]->string.length, args[0]->string.content);
 
     // TODO: Implement this properly. For now we just return true for everything.
     if (aml_object_init_integer(returnValue, UINT64_MAX) == ERR)
@@ -75,7 +75,7 @@ uint64_t aml_predefined_init(void)
         .isSerialized = true,
         .syncLevel = 15,
     };
-    if (aml_object_init_method(osi, &osiFlags, 0, 0, aml_predefined_osi_implementation) == ERR)
+    if (aml_object_init_method(osi, &osiFlags, NULL, NULL, aml_predefined_osi_implementation) == ERR)
     {
         aml_object_free(osi);
         return ERR;

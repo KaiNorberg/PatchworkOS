@@ -2,6 +2,7 @@
 
 #include "aml.h"
 #include "aml_to_string.h"
+#include "log/panic.h"
 #include "log/log.h"
 #include "mem/heap.h"
 
@@ -18,7 +19,7 @@ uint64_t aml_patch_up_init(void)
 
 uint64_t aml_patch_up_add_unresolved(aml_object_t* unresolved, aml_patch_up_resolve_callback_t callback)
 {
-    if (unresolved == NULL || unresolved->type != AML_DATA_UNRESOLVED || !unresolved->isAllocated)
+    if (unresolved == NULL || unresolved->type != AML_DATA_UNRESOLVED || unresolved->flags & AML_OBJECT_NAMED)
     {
         errno = EINVAL;
         return ERR;
@@ -42,7 +43,7 @@ uint64_t aml_patch_up_add_unresolved(aml_object_t* unresolved, aml_patch_up_reso
 
 void aml_patch_up_remove_unresolved(aml_object_t* unresolved)
 {
-    if (unresolved == NULL || unresolved->type != AML_DATA_UNRESOLVED || !unresolved->isAllocated)
+    if (unresolved == NULL || unresolved->type != AML_DATA_UNRESOLVED || unresolved->flags & AML_OBJECT_NAMED)
     {
         return;
     }
@@ -57,9 +58,11 @@ void aml_patch_up_remove_unresolved(aml_object_t* unresolved)
         {
             list_remove(&unresolvedObjects, &entry->entry);
             heap_free(entry);
-            break;
+            return;
         }
     }
+
+    panic(NULL, "Unresolved object not found in patch up list\n");
 }
 
 uint64_t aml_patch_up_resolve_all()

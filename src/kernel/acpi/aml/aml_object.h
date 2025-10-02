@@ -120,6 +120,7 @@ typedef enum
     AML_OBJECT_ARG = 1 << 3,        //!< Is a method argument.
     AML_OBJECT_NAMED =
         1 << 4, //!< Is a named object, as in it appears in the namespace tree. Will be set in `aml_object_new()`.
+    AML_OBJECT_ALLOCATED = 1 << 5, //!< Is allocated on the heap. Will be set in `aml_object_new()`.
 } aml_object_flags_t;
 
 /**
@@ -142,7 +143,8 @@ typedef enum
  * @brief Method Implementation function type.
  * @typedef aml_method_implementation_t
  */
-typedef uint64_t (*aml_method_implementation_t)(aml_object_t* method, aml_term_arg_list_t* args, aml_object_t* out);
+typedef uint64_t (
+    *aml_method_implementation_t)(aml_object_t* method, uint64_t argCount, aml_object_t** args, aml_object_t* out);
 
 /**
  * @brief ACPI object.
@@ -159,7 +161,6 @@ typedef struct aml_object
     list_t children;
     struct aml_object* parent;
     char segment[AML_NAME_LENGTH + 1];
-    bool isAllocated;
     union {
         struct
         {
@@ -286,7 +287,7 @@ typedef struct aml_object
     (aml_object_t) \
     { \
         .entry = LIST_ENTRY_CREATE, .type = AML_DATA_UNINITALIZED, .flags = objectFlags, .children = LIST_CREATE, \
-        .parent = NULL, .segment = {'_', 'T', '_', '_', '\0'}, .isAllocated = false, .dir = {0} \
+        .parent = NULL, .segment = {'_', 'T', '_', '_', '\0'}, .dir = {0} \
     }
 
 /**

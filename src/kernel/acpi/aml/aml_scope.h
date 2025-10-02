@@ -16,19 +16,9 @@
  */
 
 /**
- * @brief Maximum number of temporary objects.
+ * @brief Number of temporary objects to allocate when more are needed.
  */
-#define AML_MAX_TEMPS (('X' - 'A' + 1) + ('9' - '0' + 1))
-
-/**
- * @brief Convert an index to a character for naming temporary objects.
- *
- * Temporary objects are named _T_A, _T_B, ..., _T_X, _T_0, _T_1, ..., _T_9.
- *
- * @param i The index to convert.
- * @return The corresponding character.
- */
-#define AML_TEMP_INDEX_TO_CHAR(i) ((i) < ('X' - 'A' + 1) ? 'A' + (i) : '0' + (i) - ('X' - 'A' + 1))
+#define AML_SCOPE_TEMP_STEP 16
 
 /**
  * @brief Scope structure.
@@ -37,7 +27,8 @@
 typedef struct aml_scope
 {
     aml_object_t* location;
-    aml_object_t* temps[AML_MAX_TEMPS];
+    aml_object_t* temps;
+    uint64_t tempCount;
 } aml_scope_t;
 
 /**
@@ -66,7 +57,7 @@ void aml_scope_reset_temps(aml_scope_t* scope);
 /**
  * @brief Get a temporary object from the scope.
  *
- * Temporary objects are named _T_A, _T_B, ..., _T_X. It is not needed to deinit the object after its been used as this
+ * Temporary objects are named _T_T. It is not needed to deinit the object after its been used as this
  * will be done when the scope is deinitialized or reset but sometimes its good to do it anyway to avoid running out of
  * temporary objects.
  *

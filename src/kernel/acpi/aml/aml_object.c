@@ -103,7 +103,7 @@ aml_object_t* aml_object_new(aml_object_t* parent, const char* name, aml_object_
 
     list_entry_init(&object->entry);
     object->type = AML_DATA_UNINITALIZED;
-    object->flags = flags;
+    object->flags = flags | AML_OBJECT_ALLOCATED;
     list_init(&object->children);
     object->parent = parent;
 
@@ -111,9 +111,6 @@ aml_object_t* aml_object_new(aml_object_t* parent, const char* name, aml_object_
     memset(object->segment, '_', AML_NAME_LENGTH);
     memcpy(object->segment, name, nameLen);
     object->segment[AML_NAME_LENGTH] = '\0';
-
-    object->isAllocated = true;
-    memset(&object->dir, 0, sizeof(sysfs_dir_t));
 
     sysfs_dir_t* parentDir = NULL;
     char sysfsName[MAX_NAME];
@@ -160,7 +157,8 @@ aml_object_t* aml_object_new(aml_object_t* parent, const char* name, aml_object_
 
     if (sysfs_dir_init(&object->dir, parentDir, sysfsName, NULL, NULL) == ERR)
     {
-        LOG_ERR("failed to create sysfs directory for AML object '%s'\n", sysfsName);
+        LOG_ERR("failed to create sysfs directory for AML object '%s' with parent '%s'\n", sysfsName,
+            parentDir != NULL ? parentDir->dentry->name : "NULL");
         aml_object_free(object);
         return NULL;
     }
@@ -180,32 +178,47 @@ void aml_object_free(aml_object_t* object)
         return;
     }
 
-    if (!object->isAllocated)
+    if (!(object->flags & AML_OBJECT_ALLOCATED))
     {
         panic(NULL, "Attempted to free a object that was not allocated");
     }
 
     mutex_t* globalMutex = aml_global_mutex_get();
 
-    if (object->parent != NULL)
+    if (object->flags & AML_OBJECT_NAMED)
     {
-        mutex_acquire(globalMutex);
-        list_remove(&object->parent->children, &object->entry);
-        mutex_release(globalMutex);
+        if (object->parent != NULL)
+        {
+            mutex_acquire(globalMutex);
+            list_remove(&object->parent->children, &object->entry);
+            mutex_release(globalMutex);
+
+            sysfs_dir_deinit(&object->dir);
+        }
+        else
+        {
+            assert(object->flags & AML_OBJECT_ROOT);
+            assert(aml_root_get() == object && "Root object mismatch");
+        }
+
+        aml_object_t* child = NULL;
+        aml_object_t* temp = NULL;
+        LIST_FOR_EACH_SAFE(child, temp, &object->children, entry)
+        {
+            mutex_acquire(globalMutex);
+            list_remove(&object->children, &child->entry);
+            mutex_release(globalMutex);
+
+            aml_object_free(child);
+        }
+    }
+    else
+    {
+        assert(object->parent == NULL);
+        assert(list_is_empty(&object->children) && "Unnamed object has children");
     }
 
     aml_object_deinit(object);
-
-    aml_object_t* child = NULL;
-    aml_object_t* temp = NULL;
-    LIST_FOR_EACH_SAFE(child, temp, &object->children, entry)
-    {
-        mutex_acquire(globalMutex);
-        list_remove(&object->children, &child->entry);
-        mutex_release(globalMutex);
-
-        aml_object_free(child);
-    }
 
     heap_free(object);
 }

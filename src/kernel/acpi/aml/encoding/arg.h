@@ -1,7 +1,8 @@
 #pragma once
 
 #include "acpi/aml/aml_object.h"
-#include "acpi/aml/aml_state.h"
+
+typedef struct aml_state aml_state_t;
 
 /**
  * @brief Arg Objecs Encoding

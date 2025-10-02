@@ -133,7 +133,7 @@ uint64_t aml_parse(const uint8_t* start, const uint8_t* end)
     // So the entire code is a termlist.
 
     aml_state_t state;
-    if (aml_state_init(&state, start, end, NULL, NULL) == ERR)
+    if (aml_state_init(&state, start, end, 0, NULL, NULL) == ERR)
     {
         return ERR;
     }

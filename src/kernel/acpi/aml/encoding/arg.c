@@ -22,21 +22,9 @@ uint64_t aml_arg_obj_read(aml_state_t* state, aml_object_t** out)
 
     uint64_t index = argOp.num - AML_ARG0_OP;
 
-    if (state->args == NULL)
+    if (state->args[index].type == AML_DATA_OBJECT_REFERENCE)
     {
-        AML_DEBUG_ERROR(state, "No arguments provided, but Arg%dOp requested", index);
-        return ERR;
-    }
-
-    if (index >= state->args->count)
-    {
-        AML_DEBUG_ERROR(state, "Argument index %d out of bounds %d", index, state->args->count);
-        return ERR;
-    }
-
-    if (state->args->args[index]->type == AML_DATA_OBJECT_REFERENCE)
-    {
-        aml_object_t* target = state->args->args[index]->objectReference.target;
+        aml_object_t* target = state->args[index].objectReference.target;
         if (target == NULL)
         {
             AML_DEBUG_ERROR(state, "Arg%d is an ObjectReference to NULL", index);
@@ -47,6 +35,6 @@ uint64_t aml_arg_obj_read(aml_state_t* state, aml_object_t** out)
         return 0;
     }
 
-    *out = state->args->args[index];
+    *out = &state->args[index];
     return 0;
 }
