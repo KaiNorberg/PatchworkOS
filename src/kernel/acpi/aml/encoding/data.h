@@ -218,10 +218,11 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_scope_t* scope, aml_object
  * A VarNumElements structure is defined as `VarNumElements := TermArg => Integer`.
  *
  * @param state The AML state.
+ * @param scope The current AML scope.
  * @param out Output pointer to the integer to be filled with the number of elements.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_var_num_elements_read(aml_state_t* state, uint64_t* out);
+uint64_t aml_def_var_num_elements_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out);
 
 /**
  * @brief Reads a DefVarPackage structure from the AML byte stream.

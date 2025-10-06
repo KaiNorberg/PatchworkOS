@@ -9,6 +9,10 @@
 #include "log/log.h"
 #include "sched/timer.h"
 
+#ifndef NDEBUG
+#include "aml_tests.h"
+#endif
+
 #include "log/log.h"
 
 #include <errno.h>
@@ -97,6 +101,15 @@ uint64_t aml_init(void)
         return ERR;
     }
 
+#ifndef NDEBUG
+    if (aml_tests_post_init() == ERR)
+    {
+        DEREF(root);
+        root = NULL;
+        return ERR;
+    }
+#endif
+
     if (aml_init_parse_all() == ERR)
     {
         DEREF(root);
@@ -122,13 +135,8 @@ uint64_t aml_init(void)
     }
 
 #ifndef NDEBUG
-    uint64_t totalObjects = aml_object_get_total_count();
-    uint64_t rootChildren = aml_object_count_children(root);
-    LOG_INFO("total objects after parsing %llu\n", totalObjects);
-    if (totalObjects != rootChildren + 1)
+    if (aml_tests_post_parse_all() == ERR)
     {
-        LOG_ERR("memory leak detected, total objects %llu, but root has %llu children\n",
-            totalObjects, rootChildren);
         DEREF(root);
         root = NULL;
         return ERR;

@@ -528,9 +528,9 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_scope_t* scope, aml_object
     return 0;
 }
 
-uint64_t aml_def_var_num_elements_read(aml_state_t* state, uint64_t* out)
+uint64_t aml_def_var_num_elements_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
 {
-    if (aml_term_arg_read_integer(state, NULL, out) == ERR)
+    if (aml_term_arg_read_integer(state, scope, out) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read TermArg for VarNumElements");
         return ERR;
@@ -567,8 +567,9 @@ uint64_t aml_def_var_package_read(aml_state_t* state, aml_scope_t* scope, aml_ob
     const uint8_t* end = start + pkgLength;
 
     uint64_t numElements;
-    if (aml_def_var_num_elements_read(state, &numElements) == ERR)
+    if (aml_def_var_num_elements_read(state, scope, &numElements) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to read VarNumElements");
         return ERR;
     }
 

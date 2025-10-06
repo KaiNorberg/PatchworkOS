@@ -65,3 +65,4 @@ lib/lua*
 meta/docs
 meta/doxy/doxygen-awesome-css
 include/common/version.h
+src/kernel/acpi/aml/_aml_full_test.h

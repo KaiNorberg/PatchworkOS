@@ -102,12 +102,12 @@ void aml_debug_error_print(aml_state_t* state, const char* function, const char*
     else
     {
         state->errorDepth++;
-        if (state->errorDepth == 5)
+        if (state->errorDepth == 10)
         {
             LOG_ERR("  ...\n");
             return;
         }
-        else if (state->errorDepth > 5)
+        else if (state->errorDepth > 10)
         {
             return;
         }

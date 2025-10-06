@@ -23,7 +23,22 @@ ASFLAGS += -D__KERNEL__ -Isrc/libstd
 
 LDFLAGS += -T$(SRCDIR)/linker.lds -z max-page-size=0x1000 -z norelro
 
+ifeq ($(DEBUG),1)
+all: generate_aml_test $(TARGET)
+else
 all: $(TARGET)
+endif
+
+generate_aml_test:
+	if [ ! -f src/kernel/acpi/aml/_aml_full_test.h ]; then \
+        echo "Generating _aml_full_test.h from full.aml"; \
+        xxd -i lib/aslts/full.aml > src/kernel/acpi/aml/_aml_full_test.h; \
+    else \
+        echo "_aml_full_test.h already exists, skipping generation"; \
+    fi
+
+delete_aml_test:
+	rm -f src/kernel/acpi/aml/aml_test.h
 
 .PHONY: all
 

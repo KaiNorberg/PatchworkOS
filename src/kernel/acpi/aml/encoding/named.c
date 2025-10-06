@@ -1103,14 +1103,14 @@ uint64_t aml_name_obj_read(aml_state_t* state, aml_scope_t* scope)
         result = aml_def_create_qword_field_read(state, scope);
         break;
     default:
-        AML_DEBUG_ERROR(state, "Unknown NamedObj '0x%x'", op.num);
+        AML_DEBUG_ERROR(state, "Unknown NamedObj '%s' (0x%x)", op.props->name, op.num);
         errno = ENOSYS;
         return ERR;
     }
 
     if (result == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read opcode '0x%x'", op.num);
+        AML_DEBUG_ERROR(state, "Failed to read NamedObj '%s' (0x%x)", op.props->name, op.num);
         return ERR;
     }
 
