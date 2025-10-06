@@ -35,7 +35,7 @@ extern syscall_descriptor_t _syscallTableEnd[];
 
 #define SYSCALL_DEFINE(num, returnType, ...) \
     returnType syscall_handler_##num(__VA_ARGS__); \
-    const syscall_descriptor_t __syscall_##num __attribute__((section(".syscall_table"))) = { \
+    const syscall_descriptor_t __syscall_##num __attribute__((used, section(".syscall_table"))) = { \
         .number = (num), \
         .handler = (void*)syscall_handler_##num, \
     }; \

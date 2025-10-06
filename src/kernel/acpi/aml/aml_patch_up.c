@@ -1,9 +1,9 @@
 #include "aml_patch_up.h"
 
-#include "aml.h"
+#include "aml_object.h"
 #include "aml_to_string.h"
-#include "log/panic.h"
 #include "log/log.h"
+#include "log/panic.h"
 #include "mem/heap.h"
 
 #include <errno.h>
@@ -17,9 +17,9 @@ uint64_t aml_patch_up_init(void)
     return 0;
 }
 
-uint64_t aml_patch_up_add_unresolved(aml_object_t* unresolved, aml_patch_up_resolve_callback_t callback)
+uint64_t aml_patch_up_add_unresolved(aml_unresolved_t* unresolved)
 {
-    if (unresolved == NULL || unresolved->type != AML_DATA_UNRESOLVED || unresolved->flags & AML_OBJECT_NAMED)
+    if (unresolved == NULL)
     {
         errno = EINVAL;
         return ERR;
@@ -33,23 +33,16 @@ uint64_t aml_patch_up_add_unresolved(aml_object_t* unresolved, aml_patch_up_reso
 
     list_entry_init(&entry->entry);
     entry->unresolved = unresolved;
-    entry->callback = callback;
-
-    mutex_t* globalMutex = aml_global_mutex_get();
-    MUTEX_SCOPE(globalMutex);
     list_push(&unresolvedObjects, &entry->entry);
     return 0;
 }
 
-void aml_patch_up_remove_unresolved(aml_object_t* unresolved)
+void aml_patch_up_remove_unresolved(aml_unresolved_t* unresolved)
 {
-    if (unresolved == NULL || unresolved->type != AML_DATA_UNRESOLVED || unresolved->flags & AML_OBJECT_NAMED)
+    if (unresolved == NULL)
     {
         return;
     }
-
-    mutex_t* globalMutex = aml_global_mutex_get();
-    MUTEX_SCOPE(globalMutex);
 
     aml_patch_up_entry_t* entry = NULL;
     LIST_FOR_EACH(entry, &unresolvedObjects, entry)
@@ -61,42 +54,35 @@ void aml_patch_up_remove_unresolved(aml_object_t* unresolved)
             return;
         }
     }
-
-    panic(NULL, "Unresolved object not found in patch up list\n");
 }
 
-uint64_t aml_patch_up_resolve_all()
+uint64_t aml_patch_up_resolve_all(void)
 {
-    mutex_t* globalMutex = aml_global_mutex_get();
-    MUTEX_SCOPE(globalMutex);
-
     aml_patch_up_entry_t* entry = NULL;
     aml_patch_up_entry_t* temp = NULL;
     LIST_FOR_EACH_SAFE(entry, temp, &unresolvedObjects, entry)
     {
-        aml_object_t* match =
-            aml_name_string_resolve(&entry->unresolved->unresolved.nameString, entry->unresolved->unresolved.start);
+        aml_object_t* match = aml_name_string_resolve(&entry->unresolved->nameString, entry->unresolved->from);
         if (match == NULL)
         {
-            LOG_DEBUG("Still could not resolve '%s'\n",
-                aml_name_string_to_string(&entry->unresolved->unresolved.nameString));
+            LOG_DEBUG("Still could not resolve '%s'\n", aml_name_string_to_string(&entry->unresolved->nameString));
             errno = 0;
             continue;
         }
 
-        aml_object_t* unresolved = entry->unresolved;
-        if (entry->callback(match, unresolved) == ERR)
+        aml_unresolved_t* unresolved = entry->unresolved;
+        aml_object_t* obj = CONTAINER_OF(unresolved, aml_object_t, unresolved);
+        if (unresolved->callback(match, obj) == ERR)
         {
             LOG_ERR("Failed to patch up unresolved object\n");
             return ERR;
         }
 
-        // When the unresolved object is initalized as somethine else, it will be removed from the list in
-        // `aml_object_deinit()` and the entry will be freed. If it hasent been removed then something has gone wrong.
-
-        if (unresolved->type == AML_DATA_UNRESOLVED)
+        // When a unresolved object changes type it will call aml_patch_up_remove_unresolved itself.
+        if (obj->type == AML_UNRESOLVED)
         {
-            LOG_ERR("Patch up callback did not initalize the unresolved object\n");
+            LOG_ERR("Unresolved object did not change type\n");
+            errno = EILSEQ;
             return ERR;
         }
     }
@@ -106,7 +92,5 @@ uint64_t aml_patch_up_resolve_all()
 
 uint64_t aml_patch_up_unresolved_count(void)
 {
-    mutex_t* globalMutex = aml_global_mutex_get();
-    MUTEX_SCOPE(globalMutex);
     return list_length(&unresolvedObjects);
 }

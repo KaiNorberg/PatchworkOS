@@ -47,5 +47,8 @@ void ref_dec(void* ptr)
         return;
     }
 
+#ifndef NDEBUG
+    ref->magic = 0;
+#endif
     ref->free(ptr);
 }

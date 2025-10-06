@@ -354,7 +354,7 @@ uint64_t path_walk_single_step(path_t* outPath, const path_t* parent, const char
     {
         return ERR;
     }
-    REF_DEFER(next);
+    DEREF_DEFER(next);
 
     mutex_acquire(&next->mutex);
     if (next->flags & DENTRY_NEGATIVE)

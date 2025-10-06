@@ -6,6 +6,7 @@
 typedef struct aml_state aml_state_t;
 typedef struct aml_scope aml_scope_t;
 typedef struct aml_object aml_object_t;
+typedef struct aml_package aml_package_t;
 
 /**
  * @brief Data Objects Encoding
@@ -190,11 +191,11 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_ob
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param package Pointer to the Package object to be filled with the elements.
+ * @param package Pointer to the package to fill with the read elements.
  * @param end Pointer to the end of the PackageElementList.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* package,
+uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, aml_package_t* package,
     const uint8_t* end);
 
 /**

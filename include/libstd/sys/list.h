@@ -36,9 +36,9 @@ typedef struct list list_t;
  */
 typedef struct list_entry
 {
-    struct list_entry* prev; //!< The previous entry in the list
-    struct list_entry* next; //!< The next entry in the list
-    list_t* list;            //!< The list this entry belongs to.
+    struct list_entry* prev; ///< The previous entry in the list
+    struct list_entry* next; ///< The next entry in the list
+    list_t* list;            ///< The list this entry belongs to.
 } list_entry_t;
 
 /**
@@ -49,9 +49,9 @@ typedef struct list_entry
  */
 typedef struct list
 {
-    list_entry_t head; //!< The head of the list, where head::prev is the last entry of the list and head::next is the
-                       //!< first entry of the list.
-    uint64_t length;   //!< The number of elements in the list (excluding the head).
+    list_entry_t head; ///< The head of the list, where head::prev is the last entry of the list and head::next is the
+                       ///< first entry of the list.
+    uint64_t length;   ///< The number of elements in the list (excluding the head).
 } list_t;
 
 /**
@@ -154,18 +154,6 @@ typedef struct list
     for ((elem) = CONTAINER_OF((list)->head.prev, typeof(*elem), member); \
         &(elem)->member != &((list)->head) && &(elem)->member != (end); \
         (elem) = CONTAINER_OF((elem)->member.prev, typeof(*elem), member))
-
-/**
- * @brief Creates a new list entry with null pointers.
- * @ingroup libstd_sys_list
- */
-#define LIST_ENTRY_CREATE {.next = NULL, .prev = NULL, .list = NULL}
-
-/**
- * @brief Creates a new list with null pointers.
- * @ingroup libstd_sys_list
- */
-#define LIST_CREATE {.head = LIST_ENTRY_CREATE, .length = 0}
 
 /**
  * @brief Initializes a list entry.

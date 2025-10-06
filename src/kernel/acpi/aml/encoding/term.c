@@ -15,7 +15,7 @@
 #include <errno.h>
 #include <stdint.h>
 
-uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out, aml_data_type_t allowedTypes)
+uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out, aml_type_t allowedTypes)
 {
     aml_token_t op;
     if (aml_token_peek(state, &op) == ERR)
@@ -64,7 +64,8 @@ uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_object_t*
         }
     }
 
-    if (value->type & allowedTypes)
+    aml_type_t valueType = value->type;
+    if (valueType & allowedTypes)
     {
         *out = value;
         return 0;
@@ -87,13 +88,13 @@ uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_object_t*
 uint64_t aml_term_arg_read_integer(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
 {
     aml_object_t* temp = NULL;
-    if (aml_term_arg_read(state, scope, &temp, AML_DATA_INTEGER) == ERR)
+    if (aml_term_arg_read(state, scope, &temp, AML_INTEGER) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read TermArg");
         return ERR;
     }
 
-    assert(temp->type == AML_DATA_INTEGER);
+    assert(temp->type == AML_INTEGER);
 
     *out = temp->integer.value;
     return 0;
@@ -113,7 +114,7 @@ uint64_t aml_object_read(aml_state_t* state, aml_scope_t* scope)
     case AML_TOKEN_TYPE_NAMESPACE_MODIFIER:
         return aml_namespace_modifier_obj_read(state, scope);
     case AML_TOKEN_TYPE_NAMED:
-        return aml_named_obj_read(state, scope);
+        return aml_name_obj_read(state, scope);
     default:
         AML_DEBUG_ERROR(state, "Invalid token type: %d", token.props->type);
         errno = EILSEQ;

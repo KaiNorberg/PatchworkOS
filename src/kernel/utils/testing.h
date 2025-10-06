@@ -19,7 +19,7 @@ extern test_t _testsEnd[];
 
 #define TESTING_REGISTER_TEST(function) \
     uint64_t function(void); \
-    __attribute__((section(".tests"))) test_t tests_##function = {.func = function, .name = #function}; \
+    __attribute__((used, section(".tests"))) test_t tests_##function = {.func = function, .name = #function}; \
     uint64_t function(void)
 
 void testing_run_tests(void);

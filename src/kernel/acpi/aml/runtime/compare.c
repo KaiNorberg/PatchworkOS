@@ -33,12 +33,15 @@ bool aml_compare(aml_object_t* a, aml_object_t* b, aml_compare_operation_t opera
         return !aml_compare(a, b, operation - AML_COMPARE_INVERT_BASE);
     }
 
-    if (a->type != b->type)
+    aml_type_t aType = a->type;
+    aml_type_t bType = b->type;
+
+    if (aType != bType)
     {
         return false;
     }
 
-    if (a->type == AML_DATA_INTEGER)
+    if (aType == AML_INTEGER)
     {
         return aml_compare_integers(a->integer.value, b->integer.value, operation);
     }
@@ -47,21 +50,24 @@ bool aml_compare(aml_object_t* a, aml_object_t* b, aml_compare_operation_t opera
     uint64_t lenB = 0;
     const uint8_t* dataA = NULL;
     const uint8_t* dataB = NULL;
-
-    switch (a->type)
+    switch (aType)
     {
-    case AML_DATA_STRING:
+    case AML_STRING:
+    {
         lenA = a->string.length;
-        dataA = (const uint8_t*)a->string.content;
         lenB = b->string.length;
+        dataA = (const uint8_t*)a->string.content;
         dataB = (const uint8_t*)b->string.content;
-        break;
-    case AML_DATA_BUFFER:
+    }
+    break;
+    case AML_BUFFER:
+    {
         lenA = a->buffer.length;
-        dataA = (const uint8_t*)a->buffer.content;
         lenB = b->buffer.length;
-        dataB = (const uint8_t*)b->buffer.content;
-        break;
+        dataA = a->buffer.content;
+        dataB = b->buffer.content;
+    }
+    break;
     default:
         return false;
     }

@@ -17,7 +17,7 @@
  * @param type ACPI AML data type.
  * @return String representation of the ACPI data type or "Unknown" if it is invalid.
  */
-const char* aml_data_type_to_string(aml_data_type_t type);
+const char* aml_type_to_string(aml_type_t type);
 
 /**
  * @brief Convert an aml RegionSpace to a string.
@@ -65,6 +65,6 @@ const char* aml_object_to_string(aml_object_t* object);
  * @param nameString ACPI AML NameString.
  * @return String representation of the NameString or "Unknown" if it is invalid.
  */
-const char* aml_name_string_to_string(aml_name_string_t* nameString);
+const char* aml_name_string_to_string(const aml_name_string_t* nameString);
 
 /** @} */

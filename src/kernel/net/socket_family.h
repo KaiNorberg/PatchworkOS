@@ -32,9 +32,9 @@ typedef struct socket_family
     uint64_t (*recv)(socket_t* sock, void* buffer, uint64_t count, uint64_t* offset);
     wait_queue_t* (*poll)(socket_t* sock, poll_events_t* revents);
     uint64_t (*shutdown)(socket_t* socket, uint32_t how); // TODO: This is not used nor implemented, implement it.
-    atomic_uint64_t newId;                                //!< Internal.
-    sysfs_dir_t dir;                                      //!< Internal.
-    list_t factories;                                     //!< Internal.
+    atomic_uint64_t newId;                                ///< Internal.
+    sysfs_dir_t dir;                                      ///< Internal.
+    list_t factories;                                     ///< Internal.
 } socket_family_t;
 
 uint64_t socket_family_register(socket_family_t* family);

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "acpi/aml/aml_patch_up.h"
-
 #include <stdint.h>
 #include <sys/list.h>
 
@@ -27,7 +25,7 @@ typedef struct aml_scope aml_scope_t;
  */
 typedef enum
 {
-    AML_RESOLVE_NONE = 0, //!< None.
+    AML_RESOLVE_NONE = 0, ///< None.
     /**
      * If the name could not be resolved and this flag is set then instead of failing, return `NULL`.
      */
@@ -70,8 +68,8 @@ typedef enum
  */
 typedef struct
 {
-    uint16_t depth; //!< Number of parent prefixes ('^') in the prefix, each prefix means go back one level in the
-                    //! namespace hierarchy.
+    uint16_t depth; ///< Number of parent prefixes ('^') in the prefix, each prefix means go back one level in the
+                    /// namespace hierarchy.
 } aml_prefix_path_t;
 
 /**
@@ -80,7 +78,7 @@ typedef struct
  */
 typedef struct
 {
-    bool present; //!< If the first character is a root character ('\\'), if yes, the name string is absolute.
+    bool present; ///< If the first character is a root character ('\\'), if yes, the name string is absolute.
 } aml_root_char_t;
 
 /**
@@ -98,8 +96,8 @@ typedef struct
  */
 typedef struct
 {
-    uint64_t segmentCount;    //!< Number of segments in the name path.
-    aml_name_seg_t* segments; //!< Array of segments in the name path.
+    uint64_t segmentCount;    ///< Number of segments in the name path.
+    aml_name_seg_t* segments; ///< Array of segments in the name path.
 } aml_name_path_t;
 
 /**
@@ -218,19 +216,7 @@ uint64_t aml_root_char_read(aml_state_t* state, aml_root_char_t* out);
 uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out);
 
 /**
- * @brief Resolves a NameString structure to an AML object.
- *
- * @param nameString The NameString to resolve.
- * @param scope The current AML scope.
- * @return A pointer to the resolved object, or `NULL` if the NameString does not resolve to an object. Does not set
- * `errno`.
- */
-aml_object_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_object_t* object);
-
-/**
- * @brief Reads the next data as a NameString structure from the AML bytecode stream and resolves it to a object.
- * *
- * If the NameString does not resolve to an object, then out will be set to `NULL` but its not considered an error.
+ * @brief Resolves a NameString structure to an AML object in the namespace.
  *
  * A search through the ACPI namespace follows these rules:
  * - If the NameString starts with a root character (`\`), the search starts from the root object.
@@ -241,6 +227,16 @@ aml_object_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_object_
  * - Attempt to find a matching name in the current namespace scope (the `start` object and its children).
  * - If the matching name is not found, move up to the parent object and repeat the search.
  * - This continues until either a match is found or the object does not have a parent (i.e., the root is reached).
+ *
+ * @param nameString The NameString to resolve.
+ * @param from The object to start the search from, or `NULL` to start from the root.
+ * @return A pointer to the resolved object, or `NULL` if the NameString does not resolve to an object. Does not set
+ * `errno`.
+ */
+aml_object_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_object_t* from);
+
+/**
+ * @brief Reads the next data as a NameString structure from the AML bytecode stream and resolves it to a object.
  *
  * @see Section 5.3 of the ACPI specification for more details.
  * @see aml_name_string_read() for reading the NameString from the AML byte stream.
@@ -290,7 +286,7 @@ uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope,
  *
  * A Target structure is defined as `Target := SuperName | NullName`.
  *
- * If the Target is a NullName, then out will be set to `NULL` but its not considered an error.
+ * If the Target is a NullName, then out will be set to point to `NULL` but its not considered an error.
  *
  * @param state The AML state.
  * @param scope The current AML scope.

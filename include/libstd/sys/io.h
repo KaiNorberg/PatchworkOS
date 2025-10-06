@@ -190,12 +190,12 @@ uint64_t chdir(const char* path);
  */
 typedef enum
 {
-    POLLNONE = 0,        //!< None
-    POLLIN = (1 << 0),   //!< File descriptor is ready to read.
-    POLLOUT = (1 << 1),  //!< File descriptor is ready to write.
-    POLLERR = (1 << 2),  //!< File descriptor caused an error.
-    POLLHUP = (1 << 3),  //!< Stream socket peer closed connection, or shut down writing of connection.
-    POLLNVAL = (1 << 4), //!< Invalid file descriptor.
+    POLLNONE = 0,        ///< None
+    POLLIN = (1 << 0),   ///< File descriptor is ready to read.
+    POLLOUT = (1 << 1),  ///< File descriptor is ready to write.
+    POLLERR = (1 << 2),  ///< File descriptor caused an error.
+    POLLHUP = (1 << 3),  ///< Stream socket peer closed connection, or shut down writing of connection.
+    POLLNVAL = (1 << 4), ///< Invalid file descriptor.
 } poll_events_t;
 
 /**
@@ -209,9 +209,9 @@ typedef enum
  */
 typedef struct pollfd
 {
-    fd_t fd;               //!< The file descriptor to poll.
-    poll_events_t events;  //!< The events to wait for.
-    poll_events_t revents; //!< The events that occurred.
+    fd_t fd;               ///< The file descriptor to poll.
+    poll_events_t events;  ///< The events to wait for.
+    poll_events_t revents; ///< The events that occurred.
 } pollfd_t;
 
 /**
@@ -246,8 +246,8 @@ poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout);
  */
 typedef enum
 {
-    INODE_FILE, //!< Is a file.
-    INODE_DIR,  //!< Is a directory.
+    INODE_FILE, ///< Is a file.
+    INODE_DIR,  ///< Is a directory.
 } inode_type_t;
 
 /**
@@ -262,17 +262,17 @@ typedef uint64_t inode_number_t;
  */
 typedef struct
 {
-    inode_number_t number; //!< The number of the entries inode.
-    inode_type_t type;     //!< The type of the entries inode.
-    uint64_t size;         //!< The size of the file that is visible outside the filesystem.
-    uint64_t blocks;       //!< The amount of blocks used on disk to store the file.
-    uint64_t linkAmount;   //!< The amount of times the inode appears in dentries.
-    time_t accessTime;     //!< Unix time stamp for the last inode access.
-    time_t modifyTime;     //!< Unix time stamp for last file content alteration.
-    time_t changeTime;     //!< Unix time stamp for the last file metadata alteration.
-    time_t createTime;     //!< Unix time stamp for the creation of the inode.
-    char name[MAX_NAME];   //!< The name of the entry, not the full filepath.
-    uint8_t padding[64];   //!< Padding to leave space for future expansion.
+    inode_number_t number; ///< The number of the entries inode.
+    inode_type_t type;     ///< The type of the entries inode.
+    uint64_t size;         ///< The size of the file that is visible outside the filesystem.
+    uint64_t blocks;       ///< The amount of blocks used on disk to store the file.
+    uint64_t linkAmount;   ///< The amount of times the inode appears in dentries.
+    time_t accessTime;     ///< Unix time stamp for the last inode access.
+    time_t modifyTime;     ///< Unix time stamp for last file content alteration.
+    time_t changeTime;     ///< Unix time stamp for the last file metadata alteration.
+    time_t createTime;     ///< Unix time stamp for the creation of the inode.
+    char name[MAX_NAME];   ///< The name of the entry, not the full filepath.
+    uint8_t padding[64];   ///< Padding to leave space for future expansion.
 } stat_t;
 
 #ifdef static_assert
@@ -326,9 +326,9 @@ fd_t dup2(fd_t oldFd, fd_t newFd);
  */
 typedef struct
 {
-    inode_number_t number; //!< The number of the entries inode.
-    inode_type_t type;     //!< The type of the entries inode.
-    char name[MAX_PATH];   //!< The relative name of the directory.
+    inode_number_t number; ///< The number of the entries inode.
+    inode_type_t type;     ///< The type of the entries inode.
+    char name[MAX_PATH];   ///< The relative name of the directory.
 } dirent_t;
 
 /**

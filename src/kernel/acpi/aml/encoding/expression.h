@@ -78,7 +78,8 @@ uint64_t aml_term_arg_list_read(aml_state_t* state, aml_scope_t* scope, uint64_t
  * just methods. For example, fields. In such cases, the TermArgList is empty. Its the only thing that makes any sense
  * when I inspect the aml bytecode as there are clearly named objects referenced in TermArgs, but there is no "child"
  * definition that contains such a thing, atleast that i can find. But the specification says literally nothing about
- * this.
+ * this. I guess you could say that any object is being "invoked" when it is being read, it just happens to not take any
+ * arguments.
  *
  * @param state The AML state.
  * @param scope The current AML scope.
@@ -136,7 +137,7 @@ uint64_t aml_def_store_read(aml_state_t* state, aml_scope_t* scope, aml_object_t
  * @param allowedTypes The allowed types that the TermArg can evaluate to.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_operand_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out, aml_data_type_t allowedTypes);
+uint64_t aml_operand_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out, aml_type_t allowedTypes);
 
 /**
  * @brief Reads a Dividend structure from the AML byte stream.

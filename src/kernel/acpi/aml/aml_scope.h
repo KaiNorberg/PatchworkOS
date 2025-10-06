@@ -27,7 +27,7 @@
 typedef struct aml_scope
 {
     aml_object_t* location;
-    aml_object_t* temps;
+    aml_object_t** temps;
     uint64_t tempCount;
 } aml_scope_t;
 

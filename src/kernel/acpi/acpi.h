@@ -23,7 +23,8 @@
  * - [x] Use System Address Map Interfaces (this is done by the bootloader).
  * - [x] Find and consume the ACPI System Description Tables (this is done in `acpi_tables_init()`)
  * - [x] Interpret ACPI machine language (AML). (this is done in `aml_init()`)
- * - [X] Enumerate and configure motherboard devices described in the ACPI Namespace. (this is done in `acpi_devices_init()`)
+ * - [X] Enumerate and configure motherboard devices described in the ACPI Namespace. (this is done in
+ `acpi_devices_init()`)
  * - [ ] Interface with the power management timer. <-- We are here.
  * - [ ] Interface with the real-time clock wake alarm.
  * - [ ] Enter ACPI mode (on legacy hardware systems).
@@ -56,6 +57,11 @@
  * @see Section 5.2.5.3 of the ACPI specification for more details.
  */
 #define RSDP_CURRENT_REVISION 2
+
+/**
+ * @brief The revision of the ACPI specification we support.
+ */
+#define ACPI_REVISION 6
 
 /**
  * @brief The length of the signature field in the SDT header structure.
@@ -113,7 +119,7 @@ typedef struct PACKED
 } xsdt_t;
 
 /**
- * @brief Initialize the entire ACPI subsystem
+ * @brief Initialize the entire ACPI subsystem.
  *
  * Will also initalize all ACPI subsystems, for example namespaces and tables.
  *
@@ -123,7 +129,7 @@ typedef struct PACKED
 void acpi_init(rsdp_t* rsdp, boot_memory_map_t* map);
 
 /**
- * @brief Check if the sum of all bytes in a table is 0
+ * @brief Check if the sum of all bytes in a table is 0.
  *
  * Used to validate the checksum of ACPI tables.
  *
@@ -133,7 +139,7 @@ void acpi_init(rsdp_t* rsdp, boot_memory_map_t* map);
 bool acpi_is_checksum_valid(void* table, uint64_t length);
 
 /**
- * @brief Retrieve the sysfs root directory for ACPI
+ * @brief Retrieve the sysfs root directory for ACPI.
  *
  * @return sysfs_dir_t* Pointer to the ACPI sysfs root directory.
  */

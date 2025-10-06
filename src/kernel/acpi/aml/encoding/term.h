@@ -29,7 +29,7 @@ typedef struct aml_state aml_state_t;
  * @param allowedTypes Bitmask of allowed types for the TermArg, the result will be evaluated to one of these types.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out, aml_data_type_t allowedTypes);
+uint64_t aml_term_arg_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out, aml_type_t allowedTypes);
 
 /**
  * @brief Wrapper around `aml_term_arg_read` that converts the result to an integer.

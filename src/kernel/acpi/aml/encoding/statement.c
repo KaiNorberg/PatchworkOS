@@ -160,7 +160,7 @@ uint64_t aml_def_noop_read(aml_state_t* state)
 
 uint64_t aml_arg_object_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
 {
-    if (aml_term_arg_read(state, scope, out, AML_DATA_ALL) == ERR)
+    if (aml_term_arg_read(state, scope, out, AML_DATA_REF_OBJECTS) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read TermArg");
         return ERR;
@@ -196,9 +196,9 @@ uint64_t aml_def_return_read(aml_state_t* state, aml_scope_t* scope)
 
     if (state->returnValue != NULL)
     {
-        if (aml_copy_raw(argObject, state->returnValue) == ERR)
+        if (aml_copy_data_and_type(argObject, state->returnValue) == ERR)
         {
-            aml_object_deinit(argObject);
+            AML_DEBUG_ERROR(state, "Failed to copy return value");
             return ERR;
         }
     }
@@ -229,9 +229,9 @@ uint64_t aml_def_release_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    assert(mutexObject->type == AML_DATA_MUTEX);
+    assert(mutexObject->type == AML_MUTEX);
 
-    if (aml_mutex_stack_release(&state->mutexStack, mutexObject) == ERR)
+    if (aml_mutex_release(&mutexObject->mutex.mutex) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to release mutex");
         return ERR;
@@ -398,7 +398,7 @@ uint64_t aml_statement_opcode_read(aml_state_t* state, aml_scope_t* scope)
 
     if (result == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read opcode '0x%x'", op.num);
+        AML_DEBUG_ERROR(state, "Failed to read StatementOpcode '%s' (0x%x)", op.props->name, op.num);
         return ERR;
     }
 

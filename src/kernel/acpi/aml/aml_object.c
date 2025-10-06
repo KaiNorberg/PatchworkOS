@@ -7,856 +7,68 @@
 #include "log/log.h"
 #include "log/panic.h"
 #include "mem/heap.h"
-#include "runtime/convert.h"
-#include "sync/mutex.h"
 
 #include <errno.h>
 #include <stddef.h>
 #include <sys/math.h>
 
-static bool aml_is_name_equal(const char* s1, const char* s2)
+// Used to check for memory leaks
+static uint64_t totalObjects = 0;
+
+static bool aml_name_is_equal(const char* name1, const char* name2)
 {
-    const char* end1 = s1 + strnlen_s(s1, AML_NAME_LENGTH);
-    while (end1 > s1 && *(end1 - 1) == '_')
-    {
-        end1--;
-    }
-
-    const char* end2 = s2 + strnlen_s(s2, AML_NAME_LENGTH);
-    while (end2 > s2 && *(end2 - 1) == '_')
-    {
-        end2--;
-    }
-
-    size_t len1 = end1 - s1;
-    size_t len2 = end2 - s2;
-    size_t minLen = (len1 < len2) ? len1 : len2;
-
-    int cmp = memcmp(s1, s2, minLen);
-    if (cmp != 0)
+    if (name1 == NULL || name2 == NULL)
     {
         return false;
     }
 
-    return len1 == len2;
+    return memcmp(name1, name2, AML_NAME_LENGTH) == 0;
 }
 
-aml_data_type_info_t* aml_data_type_get_info(aml_data_type_t type)
+uint64_t aml_object_get_total_count(void)
 {
-    static aml_data_type_info_t typeInfo[] = {
-        {"Uninitialized", AML_DATA_UNINITALIZED, AML_DATA_FLAG_NONE},
-        {"Buffer", AML_DATA_BUFFER, AML_DATA_FLAG_DATA_OBJECT | AML_DATA_FLAG_IS_ACTUAL_DATA},
-        {"BufferField", AML_DATA_BUFFER_FIELD, AML_DATA_FLAG_DATA_OBJECT},
-        {"DebugObject", AML_DATA_DEBUG_OBJECT, AML_DATA_FLAG_NONE},
-        {"Device", AML_DATA_DEVICE, AML_DATA_FLAG_NON_DATA_OBJECT},
-        {"Event", AML_DATA_EVENT, AML_DATA_FLAG_NON_DATA_OBJECT},
-        {"FieldUnit", AML_DATA_FIELD_UNIT, AML_DATA_FLAG_DATA_OBJECT},
-        {"Integer", AML_DATA_INTEGER, AML_DATA_FLAG_DATA_OBJECT | AML_DATA_FLAG_IS_ACTUAL_DATA},
-        {"Integer Constant", AML_DATA_INTEGER_CONSTANT, AML_DATA_FLAG_DATA_OBJECT | AML_DATA_FLAG_IS_ACTUAL_DATA},
-        {"Method", AML_DATA_METHOD, AML_DATA_FLAG_NON_DATA_OBJECT},
-        {"Mutex", AML_DATA_MUTEX, AML_DATA_FLAG_NON_DATA_OBJECT},
-        {"ObjectReference", AML_DATA_OBJECT_REFERENCE, AML_DATA_FLAG_NONE},
-        {"OperationRegion", AML_DATA_OPERATION_REGION, AML_DATA_FLAG_NON_DATA_OBJECT},
-        {"Package", AML_DATA_PACKAGE, AML_DATA_FLAG_DATA_OBJECT | AML_DATA_FLAG_IS_ACTUAL_DATA},
-        {"PowerResource", AML_DATA_POWER_RESOURCE, AML_DATA_FLAG_NON_DATA_OBJECT},
-        {"Processor", AML_DATA_PROCESSOR, AML_DATA_FLAG_NON_DATA_OBJECT},
-        {"RawDataBuffer", AML_DATA_RAW_DATA_BUFFER, AML_DATA_FLAG_NONE},
-        {"String", AML_DATA_STRING, AML_DATA_FLAG_DATA_OBJECT | AML_DATA_FLAG_IS_ACTUAL_DATA},
-        {"Thermal Zone", AML_DATA_THERMAL_ZONE, AML_DATA_FLAG_NON_DATA_OBJECT},
-        {"Unresolved", AML_DATA_UNRESOLVED, AML_DATA_FLAG_NONE},
-    };
-    static aml_data_type_info_t unknownType = {"Unknown", AML_DATA_UNINITALIZED, AML_DATA_FLAG_NONE};
-
-    for (size_t i = 0; i < sizeof(typeInfo) / sizeof(typeInfo[0]); i++)
-    {
-        if (typeInfo[i].type == type)
-        {
-            return &typeInfo[i];
-        }
-    }
-
-    return &unknownType;
+    return totalObjects;
 }
 
-aml_object_t* aml_object_new(aml_object_t* parent, const char* name, aml_object_flags_t flags)
-{
-    if (name == NULL)
-    {
-        errno = EINVAL;
-        return NULL;
-    }
-
-    uint64_t nameLen = strnlen_s(name, AML_NAME_LENGTH);
-    if (nameLen == 0)
-    {
-        errno = EINVAL;
-        return NULL;
-    }
-
-    MUTEX_SCOPE(aml_global_mutex_get());
-
-    aml_object_t* object = heap_alloc(sizeof(aml_object_t), HEAP_NONE);
-    if (object == NULL)
-    {
-        return NULL;
-    }
-
-    list_entry_init(&object->entry);
-    object->type = AML_DATA_UNINITALIZED;
-    object->flags = flags | AML_OBJECT_ALLOCATED;
-    list_init(&object->children);
-    object->parent = parent;
-
-    // Pad with '_' characters.
-    memset(object->segment, '_', AML_NAME_LENGTH);
-    memcpy(object->segment, name, nameLen);
-    object->segment[AML_NAME_LENGTH] = '\0';
-
-    sysfs_dir_t* parentDir = NULL;
-    char sysfsName[MAX_NAME];
-
-    if (parent != NULL)
-    {
-        parentDir = &parent->dir;
-
-        // Trim trailing '_' from the name.
-        memset(sysfsName, 0, MAX_NAME);
-        strncpy(sysfsName, name, AML_NAME_LENGTH);
-        for (int64_t i = AML_NAME_LENGTH - 1; i >= 0; i--)
-        {
-            if (sysfsName[i] != '\0' && sysfsName[i] != '_')
-            {
-                break;
-            }
-
-            sysfsName[i] = '\0';
-        }
-    }
-    else if (flags & AML_OBJECT_ROOT)
-    {
-        assert(aml_root_get() == NULL && "Root object already exists");
-        assert(strcmp(object->segment, AML_ROOT_NAME) == 0 && "Non root object has no parent");
-        parentDir = acpi_get_sysfs_root();
-        strcpy(sysfsName, "namespace");
-    }
-    else // If not root dont add to sysfs.
-    {
-        return object;
-    }
-
-    object->flags |= AML_OBJECT_NAMED;
-
-    if (parent != NULL && aml_object_find_child(parent, object->segment) != NULL)
-    {
-        LOG_ERR("AML object '%s' already exists under parent '%s'\n", object->segment,
-            parent != NULL ? parent->segment : "NULL");
-        aml_object_free(object);
-        errno = EEXIST;
-        return NULL;
-    }
-
-    if (sysfs_dir_init(&object->dir, parentDir, sysfsName, NULL, NULL) == ERR)
-    {
-        LOG_ERR("failed to create sysfs directory for AML object '%s' with parent '%s'\n", sysfsName,
-            parentDir != NULL ? parentDir->dentry->name : "NULL");
-        aml_object_free(object);
-        return NULL;
-    }
-
-    if (parent != NULL)
-    {
-        list_push(&parent->children, &object->entry);
-    }
-
-    return object;
-}
-
-void aml_object_free(aml_object_t* object)
+static void aml_object_free(aml_object_t* object)
 {
     if (object == NULL)
     {
         return;
     }
 
-    if (!(object->flags & AML_OBJECT_ALLOCATED))
-    {
-        panic(NULL, "Attempted to free a object that was not allocated");
-    }
-
-    mutex_t* globalMutex = aml_global_mutex_get();
-
     if (object->flags & AML_OBJECT_NAMED)
     {
-        if (object->parent != NULL)
-        {
-            mutex_acquire(globalMutex);
-            list_remove(&object->parent->children, &object->entry);
-            mutex_release(globalMutex);
-
-            sysfs_dir_deinit(&object->dir);
-        }
-        else
-        {
-            assert(object->flags & AML_OBJECT_ROOT);
-            assert(aml_root_get() == object && "Root object mismatch");
-        }
-
-        aml_object_t* child = NULL;
-        aml_object_t* temp = NULL;
-        LIST_FOR_EACH_SAFE(child, temp, &object->children, entry)
-        {
-            mutex_acquire(globalMutex);
-            list_remove(&object->children, &child->entry);
-            mutex_release(globalMutex);
-
-            aml_object_free(child);
-        }
-    }
-    else
-    {
-        assert(object->parent == NULL);
-        assert(list_is_empty(&object->children) && "Unnamed object has children");
+        object->name.parent = NULL;
+        sysfs_dir_deinit(&object->name.dir);
     }
 
     aml_object_deinit(object);
 
     heap_free(object);
+    totalObjects--;
 }
 
-aml_object_t* aml_object_add(aml_object_t* start, aml_name_string_t* string, aml_object_flags_t flags)
+aml_object_t* aml_object_new(aml_state_t* state, aml_object_flags_t flags)
 {
-    if (string == NULL || (flags & AML_OBJECT_ROOT))
+    aml_object_t* object = heap_alloc(sizeof(aml_object_t), HEAP_NONE);
+    if (object == NULL)
     {
-        errno = EINVAL;
         return NULL;
     }
+    memset(object, 0, sizeof(aml_object_t));
 
-    if (string->namePath.segmentCount == 0)
+    ref_init(&object->ref, aml_object_free);
+    list_entry_init(&object->stateEntry);
+    object->flags = flags;
+    object->type = AML_UNINITIALIZED;
+
+    if (state != NULL)
     {
-        errno = EILSEQ;
-        return NULL;
+        list_push(&state->createdObjects, &REF(object)->stateEntry);
     }
-
-    aml_object_t* current = start;
-    if (start == NULL || string->rootChar.present)
-    {
-        current = aml_root_get();
-    }
-
-    for (uint64_t i = 0; i < string->prefixPath.depth; i++)
-    {
-        current = current->parent;
-        if (current == NULL)
-        {
-            errno = ENOENT;
-            return NULL;
-        }
-    }
-
-    for (uint8_t i = 0; i < string->namePath.segmentCount - 1; i++)
-    {
-        const aml_name_seg_t* segment = &string->namePath.segments[i];
-        current = aml_object_find_child(current, segment->name);
-        if (current == NULL)
-        {
-            LOG_ERR("unable to find intermediate AML object '%.*s'\n", AML_NAME_LENGTH, segment->name);
-            return NULL;
-        }
-    }
-
-    char newObjectName[AML_NAME_LENGTH + 1];
-    memcpy(newObjectName, string->namePath.segments[string->namePath.segmentCount - 1].name, AML_NAME_LENGTH);
-    newObjectName[AML_NAME_LENGTH] = '\0';
-
-    return aml_object_new(current, newObjectName, flags);
-}
-
-uint64_t aml_object_init_buffer(aml_object_t* object, const uint8_t* buffer, uint64_t bytesToCopy, uint64_t length)
-{
-    if (object == NULL || buffer == NULL || length == 0 || bytesToCopy > length)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (object->type != AML_DATA_UNINITALIZED)
-    {
-        aml_object_deinit(object);
-    }
-
-    object->type = AML_DATA_BUFFER;
-    object->buffer.content = heap_alloc(length, HEAP_NONE);
-    if (object->buffer.content == NULL)
-    {
-        return ERR;
-    }
-    memset(object->buffer.content, 0, length);
-    memcpy(object->buffer.content, buffer, bytesToCopy);
-    object->buffer.length = length;
-
-    object->buffer.byteFields = heap_alloc(sizeof(aml_object_t) * length, HEAP_NONE);
-    if (object->buffer.byteFields == NULL)
-    {
-        heap_free(object->buffer.content);
-        object->buffer.content = NULL;
-        return ERR;
-    }
-
-    for (uint64_t i = 0; i < length; i++)
-    {
-        object->buffer.byteFields[i] = AML_OBJECT_CREATE(AML_OBJECT_NONE);
-        if (aml_object_init_buffer_field(&object->buffer.byteFields[i], object->buffer.content, i * 8, 8) == ERR)
-        {
-            for (uint64_t j = 0; j < i; j++)
-            {
-                aml_object_deinit(&object->buffer.byteFields[j]);
-            }
-            heap_free(object->buffer.byteFields);
-            object->buffer.byteFields = NULL;
-            heap_free(object->buffer.content);
-            object->buffer.content = NULL;
-            return ERR;
-        }
-    }
-
-    return 0;
-}
-
-uint64_t aml_object_init_buffer_empty(aml_object_t* object, uint64_t length)
-{
-    if (object == NULL || length == 0)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (object->type != AML_DATA_UNINITALIZED)
-    {
-        aml_object_deinit(object);
-    }
-
-    object->type = AML_DATA_BUFFER;
-    object->buffer.content = heap_alloc(length, HEAP_NONE);
-    if (object->buffer.content == NULL)
-    {
-        return ERR;
-    }
-    memset(object->buffer.content, 0, length);
-    object->buffer.length = length;
-
-    object->buffer.byteFields = heap_alloc(sizeof(aml_object_t) * length, HEAP_NONE);
-    if (object->buffer.byteFields == NULL)
-    {
-        heap_free(object->buffer.content);
-        object->buffer.content = NULL;
-        return ERR;
-    }
-
-    for (uint64_t i = 0; i < length; i++)
-    {
-        object->buffer.byteFields[i] = AML_OBJECT_CREATE(AML_OBJECT_NONE);
-        if (aml_object_init_buffer_field(&object->buffer.byteFields[i], object->buffer.content, i * 8, 8) == ERR)
-        {
-            for (uint64_t j = 0; j < i; j++)
-            {
-                aml_object_deinit(&object->buffer.byteFields[j]);
-            }
-            heap_free(object->buffer.byteFields);
-            object->buffer.byteFields = NULL;
-            heap_free(object->buffer.content);
-            object->buffer.content = NULL;
-            return ERR;
-        }
-    }
-
-    return 0;
-}
-
-uint64_t aml_object_init_buffer_field(aml_object_t* object, uint8_t* buffer, aml_bit_size_t bitOffset,
-    aml_bit_size_t bitSize)
-{
-    if (object == NULL || buffer == NULL || bitSize == 0)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (object->type != AML_DATA_UNINITALIZED)
-    {
-        aml_object_deinit(object);
-    }
-
-    object->type = AML_DATA_BUFFER_FIELD;
-    object->bufferField.buffer = buffer;
-    object->bufferField.bitOffset = bitOffset;
-    object->bufferField.bitSize = bitSize;
-
-    return 0;
-}
-
-uint64_t aml_object_init_device(aml_object_t* object)
-{
-    if (object == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (object->type != AML_DATA_UNINITALIZED)
-    {
-        aml_object_deinit(object);
-    }
-
-    object->type = AML_DATA_DEVICE;
-    memset(&object->device, 0, sizeof(object->device));
-
-    return 0;
-}
-
-uint64_t aml_object_init_field_unit_field(aml_object_t* object, aml_object_t* opregion, aml_field_flags_t flags,
-    aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
-{
-    if (object == NULL || opregion == NULL || bitSize == 0)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (object->type != AML_DATA_UNINITALIZED)
-    {
-        aml_object_deinit(object);
-    }
-
-    object->type = AML_DATA_FIELD_UNIT;
-    object->fieldUnit.type = AML_FIELD_UNIT_FIELD;
-    object->fieldUnit.opregion = opregion;
-    object->fieldUnit.flags = flags;
-    object->fieldUnit.bitOffset = bitOffset;
-    object->fieldUnit.bitSize = bitSize;
-    object->fieldUnit.regionSpace = opregion->opregion.space;
-
-    return 0;
-}
-
-uint64_t aml_object_init_field_unit_index_field(aml_object_t* object, aml_object_t* indexObject,
-    aml_object_t* dataObject, aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
-{
-    if (object == NULL || indexObject == NULL || dataObject == NULL || bitSize == 0)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (object->type != AML_DATA_UNINITALIZED)
-    {
-        aml_object_deinit(object);
-    }
-
-    object->type = AML_DATA_FIELD_UNIT;
-    object->fieldUnit.type = AML_FIELD_UNIT_INDEX_FIELD;
-    object->fieldUnit.indexObject = indexObject;
-    object->fieldUnit.dataObject = dataObject;
-    object->fieldUnit.flags = flags;
-    object->fieldUnit.bitOffset = bitOffset;
-    object->fieldUnit.bitSize = bitSize;
-    object->fieldUnit.regionSpace = dataObject->fieldUnit.regionSpace;
-
-    return 0;
-}
-
-uint64_t aml_object_init_field_unit_bank_field(aml_object_t* object, aml_object_t* opregion, aml_object_t* bank,
-    uint64_t bankValue, aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
-{
-    if (object == NULL || opregion == NULL || bank == NULL || bitSize == 0)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (object->type != AML_DATA_UNINITALIZED)
-    {
-        aml_object_deinit(object);
-    }
-
-    object->type = AML_DATA_FIELD_UNIT;
-    object->fieldUnit.type = AML_FIELD_UNIT_BANK_FIELD;
-    object->fieldUnit.opregion = opregion;
-    object->fieldUnit.bank = bank;
-    object->fieldUnit.bankValue = bankValue;
-    object->fieldUnit.flags = flags;
-    object->fieldUnit.bitOffset = bitOffset;
-    object->fieldUnit.bitSize = bitSize;
-    object->fieldUnit.regionSpace = opregion->opregion.space;
-
-    return 0;
-}
-
-uint64_t aml_object_init_integer(aml_object_t* object, uint64_t value)
-{
-    if (object == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (object->type != AML_DATA_UNINITALIZED)
-    {
-        aml_object_deinit(object);
-    }
-
-    object->type = AML_DATA_INTEGER;
-    object->integer.value = value;
-
-    return 0;
-}
-
-uint64_t aml_object_init_integer_constant(aml_object_t* object, uint64_t value)
-{
-    if (object == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (object->type != AML_DATA_UNINITALIZED)
-    {
-        aml_object_deinit(object);
-    }
-
-    object->type = AML_DATA_INTEGER_CONSTANT;
-    object->integerConstant.value = value;
-
-    return 0;
-}
-
-uint64_t aml_object_init_method(aml_object_t* object, aml_method_flags_t* flags, const uint8_t* start,
-    const uint8_t* end, aml_method_implementation_t implementation)
-{
-    if (object == NULL || ((start == 0 || end == 0 || start > end) && implementation == NULL))
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (object->type != AML_DATA_UNINITALIZED)
-    {
-        aml_object_deinit(object);
-    }
-
-    object->type = AML_DATA_METHOD;
-    object->method.implementation = implementation;
-    object->method.flags = *flags;
-    object->method.start = start;
-    object->method.end = end;
-    mutex_init(&object->method.mutex);
-
-    return 0;
-}
-
-uint64_t aml_object_init_mutex(aml_object_t* object, aml_sync_level_t syncLevel)
-{
-    if (object == NULL || syncLevel > 15)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (object->type != AML_DATA_UNINITALIZED)
-    {
-        aml_object_deinit(object);
-    }
-
-    object->type = AML_DATA_MUTEX;
-    object->mutex.syncLevel = syncLevel;
-    mutex_init(&object->mutex.mutex);
-
-    return 0;
-}
-
-uint64_t aml_object_init_object_reference(aml_object_t* object, aml_object_t* target)
-{
-    if (object == NULL || target == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (object->type != AML_DATA_UNINITALIZED)
-    {
-        aml_object_deinit(object);
-    }
-
-    object->type = AML_DATA_OBJECT_REFERENCE;
-    object->objectReference.target = target;
-
-    return 0;
-}
-
-uint64_t aml_object_init_operation_region(aml_object_t* object, aml_region_space_t space, uint64_t offset,
-    uint32_t length)
-{
-    if (object == NULL || length == 0)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (object->type != AML_DATA_UNINITALIZED)
-    {
-        aml_object_deinit(object);
-    }
-
-    object->type = AML_DATA_OPERATION_REGION;
-    object->opregion.space = space;
-    object->opregion.offset = offset;
-    object->opregion.length = length;
-
-    return 0;
-}
-
-uint64_t aml_object_init_package(aml_object_t* object, uint64_t length)
-{
-    if (object == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (object->type != AML_DATA_UNINITALIZED)
-    {
-        aml_object_deinit(object);
-    }
-
-    object->type = AML_DATA_PACKAGE;
-
-    if (length == 0)
-    {
-        object->package.length = 0;
-        object->package.elements = NULL;
-        return 0;
-    }
-
-    object->package.length = length;
-    object->package.elements = heap_alloc(sizeof(aml_object_t) * length, HEAP_NONE);
-    if (object->package.elements == NULL)
-    {
-        return ERR;
-    }
-
-    for (uint64_t i = 0; i < length; i++)
-    {
-        object->package.elements[i] = aml_object_new(NULL, "____", AML_OBJECT_NONE);
-        if (object->package.elements[i] == NULL)
-        {
-            for (uint64_t j = 0; j < i; j++)
-            {
-                aml_object_free(object->package.elements[j]);
-            }
-            heap_free(object->package.elements);
-            object->package.elements = NULL;
-            return ERR;
-        }
-    }
-
-    return 0;
-}
-
-uint64_t aml_object_init_processor(aml_object_t* object, aml_proc_id_t procId, aml_pblk_addr_t pblkAddr,
-    aml_pblk_len_t pblkLen)
-{
-    if (object == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (object->type != AML_DATA_UNINITALIZED)
-    {
-        aml_object_deinit(object);
-    }
-
-    object->type = AML_DATA_PROCESSOR;
-    object->processor.procId = procId;
-    object->processor.pblkAddr = pblkAddr;
-    object->processor.pblkLen = pblkLen;
-
-    return 0;
-}
-
-uint64_t aml_object_init_string(aml_object_t* object, const char* str)
-{
-    if (object == NULL || str == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (object->type != AML_DATA_UNINITALIZED)
-    {
-        aml_object_deinit(object);
-    }
-
-    object->type = AML_DATA_STRING;
-    uint64_t strLen = strlen(str);
-
-    if (strLen == 0)
-    {
-        object->string.content = heap_alloc(1, HEAP_NONE);
-        if (object->string.content == NULL)
-        {
-            return ERR;
-        }
-        object->string.content[0] = '\0';
-        object->string.length = 0;
-        object->string.byteFields = NULL;
-        return 0;
-    }
-
-    object->string.content = heap_alloc(strLen + 1, HEAP_NONE);
-    if (object->string.content == NULL)
-    {
-        return ERR;
-    }
-    object->string.length = strLen;
-    memcpy(object->string.content, str, strLen);
-    object->string.content[strLen] = '\0';
-
-    object->string.byteFields = heap_alloc(sizeof(aml_object_t) * strLen, HEAP_NONE);
-    if (object->string.byteFields == NULL)
-    {
-        heap_free(object->string.content);
-        object->string.content = NULL;
-        return ERR;
-    }
-
-    for (uint64_t i = 0; i < strLen; i++)
-    {
-        object->string.byteFields[i] = AML_OBJECT_CREATE(AML_OBJECT_NONE);
-        if (aml_object_init_buffer_field(&object->string.byteFields[i], (uint8_t*)object->string.content, i * 8, 8) ==
-            ERR)
-        {
-            for (uint64_t j = 0; j < i; j++)
-            {
-                aml_object_deinit(&object->string.byteFields[j]);
-            }
-            heap_free(object->string.content);
-            object->string.content = NULL;
-            return ERR;
-        }
-    }
-
-    return 0;
-}
-
-uint64_t aml_object_init_string_empty(aml_object_t* object, uint64_t length)
-{
-    if (object == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (object->type != AML_DATA_UNINITALIZED)
-    {
-        aml_object_deinit(object);
-    }
-
-    object->type = AML_DATA_STRING;
-
-    if (length == 0)
-    {
-        object->string.content = heap_alloc(1, HEAP_NONE);
-        if (object->string.content == NULL)
-        {
-            return ERR;
-        }
-        object->string.content[0] = '\0';
-        object->string.length = 0;
-        object->string.byteFields = NULL;
-        return 0;
-    }
-
-    object->string.content = heap_alloc(length + 1, HEAP_NONE);
-    if (object->string.content == NULL)
-    {
-        return ERR;
-    }
-    memset(object->string.content, '0', length);
-
-    object->string.length = length;
-
-    object->string.byteFields = heap_alloc(sizeof(aml_object_t) * length, HEAP_NONE);
-    if (object->string.byteFields == NULL)
-    {
-        heap_free(object->string.content);
-        object->string.content = NULL;
-        return ERR;
-    }
-
-    for (uint64_t i = 0; i < length; i++)
-    {
-        object->string.byteFields[i] = AML_OBJECT_CREATE(AML_OBJECT_NONE);
-        if (aml_object_init_buffer_field(&object->string.byteFields[i], (uint8_t*)object->string.content, i * 8, 8) ==
-            ERR)
-        {
-            for (uint64_t j = 0; j < i; j++)
-            {
-                aml_object_deinit(&object->string.byteFields[j]);
-            }
-            heap_free(object->string.content);
-            object->string.content = NULL;
-            return ERR;
-        }
-    }
-
-    return 0;
-}
-
-uint64_t aml_object_init_unresolved(aml_object_t* object, aml_name_string_t* nameString, aml_object_t* start,
-    aml_patch_up_resolve_callback_t callback)
-{
-    if (object == NULL || start == NULL || nameString == NULL || nameString->namePath.segmentCount == 0)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (object->type != AML_DATA_UNINITALIZED)
-    {
-        aml_object_deinit(object);
-    }
-
-    object->type = AML_DATA_UNRESOLVED;
-    object->unresolved.nameString = *nameString;
-    object->unresolved.start = start;
-    object->unresolved.callback = callback;
-
-    if (aml_patch_up_add_unresolved(object, callback) == ERR)
-    {
-        object->type = AML_DATA_UNINITALIZED;
-        return ERR;
-    }
-
-    return 0;
-}
-
-uint64_t aml_object_init_alias(aml_object_t* object, aml_object_t* target)
-{
-    if (object == NULL || target == NULL)
-    {
-        errno = EINVAL;
-        return ERR;
-    }
-
-    if (object->type != AML_DATA_UNINITALIZED)
-    {
-        aml_object_deinit(object);
-    }
-
-    object->type = AML_DATA_ALIAS;
-    object->alias.target = target;
-
-    return 0;
+    totalObjects++;
+    return object;
 }
 
 void aml_object_deinit(aml_object_t* object)
@@ -866,94 +78,495 @@ void aml_object_deinit(aml_object_t* object)
         return;
     }
 
+    if (object->type == AML_UNINITIALIZED)
+    {
+        return;
+    }
+
     switch (object->type)
     {
-    case AML_DATA_UNINITALIZED:
-    case AML_DATA_BUFFER_FIELD:
-    case AML_DATA_DEVICE:
-    case AML_DATA_INTEGER:
-    case AML_DATA_INTEGER_CONSTANT:
-    case AML_DATA_OBJECT_REFERENCE:
-    case AML_DATA_OPERATION_REGION:
-    case AML_DATA_PROCESSOR:
-    case AML_DATA_RAW_DATA_BUFFER:
-    case AML_DATA_DEBUG_OBJECT:
-    case AML_DATA_EVENT:
-    case AML_DATA_POWER_RESOURCE:
-    case AML_DATA_THERMAL_ZONE:
-    case AML_DATA_ALIAS:
-    case AML_DATA_FIELD_UNIT:
-        // Nothing to do.
-        break;
-    case AML_DATA_BUFFER:
-        if (object->buffer.byteFields != NULL)
-        {
-            for (uint64_t i = 0; i < object->buffer.length; i++)
-            {
-                aml_object_deinit(&object->buffer.byteFields[i]);
-            }
-            heap_free(object->buffer.byteFields);
-        }
+    case AML_BUFFER:
         if (object->buffer.content != NULL)
         {
             heap_free(object->buffer.content);
         }
-        object->buffer.length = 0;
+        if (object->buffer.byteFields != NULL)
+        {
+            for (uint64_t i = 0; i < object->buffer.length; i++)
+            {
+                if (object->buffer.byteFields[i] != NULL)
+                {
+                    DEREF(object->buffer.byteFields[i]);
+                }
+            }
+            heap_free(object->buffer.byteFields);
+        }
         object->buffer.content = NULL;
+        object->buffer.length = 0;
         object->buffer.byteFields = NULL;
         break;
-    case AML_DATA_MUTEX:
-        mutex_deinit(&object->mutex.mutex);
+    case AML_BUFFER_FIELD:
+        if (object->bufferField.buffer != NULL)
+        {
+            assert(!object->bufferField.isString);
+            DEREF(object->bufferField.buffer);
+        }
+        if (object->bufferField.string != NULL)
+        {
+            assert(object->bufferField.isString);
+            DEREF(object->bufferField.string);
+        }
+        object->bufferField.isString = false;
+        object->bufferField.buffer = NULL;
+        object->bufferField.string = NULL;
+        object->bufferField.bitOffset = 0;
+        object->bufferField.bitSize = 0;
         break;
-    case AML_DATA_PACKAGE:
+    case AML_DEVICE:
+        while (!list_is_empty(&object->device.namedObjects))
+        {
+            aml_object_t* child = CONTAINER_OF(list_pop(&object->device.namedObjects), aml_object_t, name.entry);
+            DEREF(child);
+        }
+        break;
+    case AML_FIELD_UNIT:
+        switch (object->fieldUnit.fieldType)
+        {
+        case AML_FIELD_UNIT_INDEX_FIELD:
+            DEREF(object->fieldUnit.index);
+            object->fieldUnit.index = NULL;
+            DEREF(object->fieldUnit.data);
+            object->fieldUnit.data = NULL;
+            break;
+        case AML_FIELD_UNIT_BANK_FIELD:
+            DEREF(object->fieldUnit.bank);
+            object->fieldUnit.bank = NULL;
+            DEREF(object->fieldUnit.bankValue);
+            object->fieldUnit.bankValue = NULL;
+            DEREF(object->fieldUnit.opregion);
+            object->fieldUnit.opregion = NULL;
+            break;
+        case AML_FIELD_UNIT_FIELD:
+            DEREF(object->fieldUnit.opregion);
+            object->fieldUnit.opregion = NULL;
+            break;
+        default:
+            break;
+        }
+        object->fieldUnit.fieldType = 0;
+        object->fieldUnit.bitOffset = 0;
+        object->fieldUnit.bitSize = 0;
+        break;
+    case AML_INTEGER:
+        object->integer.value = 0;
+        break;
+    case AML_INTEGER_CONSTANT:
+        object->integerConstant.value = 0;
+        break;
+    case AML_METHOD:
+        object->method.implementation = NULL;
+        object->method.methodFlags = (aml_method_flags_t){0};
+        object->method.start = NULL;
+        object->method.end = NULL;
+        while (!list_is_empty(&object->method.namedObjects))
+        {
+            aml_object_t* child = CONTAINER_OF(list_pop(&object->method.namedObjects), aml_object_t, name.entry);
+            DEREF(child);
+        }
+        aml_mutex_id_deinit(&object->method.mutex);
+        break;
+    case AML_MUTEX:
+        object->mutex.syncLevel = 0;
+        aml_mutex_id_deinit(&object->mutex.mutex);
+        break;
+    case AML_OBJECT_REFERENCE:
+        if (object->objectReference.target != NULL)
+        {
+            DEREF(object->objectReference.target);
+        }
+        object->objectReference.target = NULL;
+        break;
+    case AML_OPERATION_REGION:
+        object->opregion.space = 0;
+        object->opregion.offset = 0;
+        object->opregion.length = 0;
+        break;
+    case AML_PACKAGE:
         if (object->package.elements != NULL)
         {
             for (uint64_t i = 0; i < object->package.length; i++)
             {
-                aml_object_free(object->package.elements[i]);
+                DEREF(object->package.elements[i]);
             }
             heap_free(object->package.elements);
         }
-        object->package.length = 0;
         object->package.elements = NULL;
+        object->package.length = 0;
         break;
-    case AML_DATA_METHOD:
-        mutex_deinit(&object->method.mutex);
-        break;
-    case AML_DATA_STRING:
-        if (object->string.byteFields != NULL)
+    case AML_PROCESSOR:
+        object->processor.procId = 0;
+        object->processor.pblkAddr = 0;
+        object->processor.pblkLen = 0;
+        while (!list_is_empty(&object->processor.namedObjects))
         {
-            for (uint64_t i = 0; i < object->string.length; i++)
-            {
-                aml_object_deinit(&object->string.byteFields[i]);
-            }
-            heap_free(object->string.byteFields);
+            aml_object_t* child = CONTAINER_OF(list_pop(&object->processor.namedObjects), aml_object_t, name.entry);
+            DEREF(child);
         }
+        break;
+    case AML_STRING:
         if (object->string.content != NULL)
         {
             heap_free(object->string.content);
         }
-        object->string.length = 0;
+        if (object->string.byteFields != NULL)
+        {
+            for (uint64_t i = 0; i < object->string.length; i++)
+            {
+                DEREF(object->string.byteFields[i]);
+            }
+            heap_free(object->string.byteFields);
+        }
         object->string.content = NULL;
+        object->string.length = 0;
+        object->string.byteFields = NULL;
         break;
-    case AML_DATA_UNRESOLVED:
-        aml_patch_up_remove_unresolved(object);
+    case AML_ALIAS:
+        if (object->alias.target != NULL)
+        {
+            DEREF(object->alias.target);
+        }
+        object->alias.target = NULL;
+        break;
+    case AML_UNRESOLVED:
+        aml_patch_up_remove_unresolved(&object->unresolved);
+        if (object->unresolved.from != NULL)
+        {
+            DEREF(object->unresolved.from);
+        }
+        object->unresolved.from = NULL;
+        object->unresolved.nameString = (aml_name_string_t){0};
+        object->unresolved.callback = NULL;
         break;
     default:
-        panic(NULL, "unimplemented deinit of AML object '%.*s' of type '%s'\n", AML_NAME_LENGTH, object->segment,
-            aml_data_type_to_string(object->type));
+        panic(NULL, "Unknown AML data type %u", object->type);
+        break;
     }
 
-    object->type = AML_DATA_UNINITALIZED;
+    object->type = AML_UNINITIALIZED;
 }
 
-aml_object_t* aml_object_traverse_alias(aml_object_t* object)
+uint64_t aml_object_count_children(aml_object_t *parent)
 {
-    while (object != NULL && object->type == AML_DATA_ALIAS)
+    if (parent == NULL)
     {
-        object = object->alias.target;
+        return 0;
     }
-    return object;
+
+    uint64_t count = 0;
+    switch (parent->type)
+    {
+    case AML_DEVICE:
+    {
+        aml_object_t* child = NULL;
+        LIST_FOR_EACH(child, &parent->device.namedObjects, name.entry)
+        {
+            count++;
+            count += aml_object_count_children(child);
+        }
+    }
+    break;
+    case AML_METHOD:
+    {
+        aml_object_t* child = NULL;
+        LIST_FOR_EACH(child, &parent->method.namedObjects, name.entry)
+        {
+            count++;
+            count += aml_object_count_children(child);
+        }
+    }
+    break;
+    case AML_PROCESSOR:
+    {
+        aml_object_t* child = NULL;
+        LIST_FOR_EACH(child, &parent->processor.namedObjects, name.entry)
+        {
+            count++;
+            count += aml_object_count_children(child);
+        }
+    }
+    break;
+    case AML_PACKAGE:
+        for (uint64_t i = 0; i < parent->package.length; i++)
+        {
+            aml_object_t* element = parent->package.elements[i];
+            if (element != NULL)
+            {
+                count++;
+                count += aml_object_count_children(element);
+            }
+        }
+        break;
+    case AML_BUFFER:
+        if (parent->buffer.byteFields != NULL)
+        {
+            for (uint64_t i = 0; i < parent->buffer.length; i++)
+            {
+                aml_object_t* byteField = parent->buffer.byteFields[i];
+                if (byteField != NULL)
+                {
+                    count++;
+                    count += aml_object_count_children(byteField);
+                }
+            }
+        }
+        break;
+    case AML_STRING:
+        if (parent->string.byteFields != NULL)
+        {
+            for (uint64_t i = 0; i < parent->string.length; i++)
+            {
+                aml_object_t* byteField = parent->string.byteFields[i];
+                if (byteField != NULL)
+                {
+                    count++;
+                    count += aml_object_count_children(byteField);
+                }
+            }
+        }
+        break;
+    case AML_FIELD_UNIT:
+        if (parent->fieldUnit.bankValue != NULL)
+        {
+            count++;
+        }
+        break;
+    default:
+        break;
+    }
+
+    return count;
+}
+
+static inline uint64_t aml_object_get_container_list(aml_object_t* object, list_t** outList)
+{
+    if (object == NULL || outList == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    *outList = NULL;
+    switch (object->type)
+    {
+    case AML_DEVICE:
+    {
+        *outList = &object->device.namedObjects;
+    }
+    break;
+    case AML_PROCESSOR:
+    {
+        *outList = &object->processor.namedObjects;
+    }
+    break;
+    case AML_METHOD:
+    {
+        *outList = &object->method.namedObjects;
+    }
+    break;
+    default:
+        LOG_ERR("Object '%s' is of type '%s' which is not a container\n", AML_OBJECT_GET_NAME(object),
+            aml_type_to_string(object->type));
+        errno = EINVAL;
+        return ERR;
+    }
+
+    return 0;
+}
+
+uint64_t aml_object_add_child(aml_object_t* parent, aml_object_t* child, const char* name)
+{
+    if (parent == NULL || child == NULL || name == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (!(parent->flags & AML_OBJECT_NAMED))
+    {
+        LOG_ERR("Parent object is not named\n");
+        errno = EINVAL;
+        return ERR;
+    }
+
+    uint64_t nameLen = strnlen_s(name, AML_NAME_LENGTH);
+    if (nameLen < AML_NAME_LENGTH)
+    {
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    list_entry_init(&child->name.entry);
+    child->name.parent = parent;
+    memcpy(child->name.segment, name, AML_NAME_LENGTH);
+    child->name.segment[AML_NAME_LENGTH] = '\0';
+
+    if (sysfs_dir_init(&child->name.dir, &parent->name.dir, child->name.segment, NULL, NULL) == ERR)
+    {
+        return ERR;
+    }
+
+    list_t* parentList = NULL;
+    if (aml_object_get_container_list(parent, &parentList) == ERR)
+    {
+        sysfs_dir_deinit(&child->name.dir);
+        return ERR;
+    }
+
+    aml_object_t* existing = NULL;
+    LIST_FOR_EACH(existing, parentList, name.entry)
+    {
+        if (aml_name_is_equal(existing->name.segment, child->name.segment))
+        {
+            LOG_ERR("An object named '%.*s' already exists in parent '%s'\n", AML_OBJECT_GET_NAME(parent),
+                AML_NAME_LENGTH, parent->name.segment);
+            sysfs_dir_deinit(&child->name.dir);
+            errno = EEXIST;
+            return ERR;
+        }
+    }
+
+    list_push(parentList, &REF(child)->name.entry);
+    child->flags |= AML_OBJECT_NAMED;
+    return 0;
+}
+
+uint64_t aml_object_add(aml_object_t* object, aml_object_t* from, const aml_name_string_t* nameString)
+{
+    if (object == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (object->flags & AML_OBJECT_NAMED)
+    {
+        LOG_ERR("Object is already named as '%s'\n", AML_OBJECT_GET_NAME(object));
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (object->flags & AML_OBJECT_ROOT)
+    {
+        if (from != NULL || nameString != NULL)
+        {
+            errno = EINVAL;
+            return ERR;
+        }
+
+        aml_object_t* root = aml_root_get();
+        if (root != NULL && root != object)
+        {
+            LOG_ERR("Root object already exists\n");
+            errno = EEXIST;
+            return ERR;
+        }
+
+        list_entry_init(&object->name.entry);
+        object->name.segment[0] = '\\';
+        object->name.segment[1] = '_';
+        object->name.segment[2] = '_';
+        object->name.segment[3] = '_';
+        object->name.segment[4] = '\0';
+        object->name.parent = NULL;
+        if (sysfs_dir_init(&object->name.dir, acpi_get_sysfs_root(), "namespace", NULL, NULL) == ERR)
+        {
+            return ERR;
+        }
+        object->flags |= AML_OBJECT_NAMED;
+        return 0;
+    }
+
+    if (nameString == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (nameString->namePath.segmentCount == 0)
+    {
+        errno = EILSEQ;
+        return ERR;
+    }
+
+    aml_object_t* current = from;
+    if (from == NULL || nameString->rootChar.present)
+    {
+        current = aml_root_get();
+    }
+
+    for (uint64_t i = 0; i < nameString->prefixPath.depth; i++)
+    {
+        current = current->name.parent;
+        if (current == NULL)
+        {
+            errno = ENOENT;
+            return ERR;
+        }
+    }
+
+    for (uint8_t i = 0; i < nameString->namePath.segmentCount - 1; i++)
+    {
+        const aml_name_seg_t* segment = &nameString->namePath.segments[i];
+        current = aml_object_find_child(current, segment->name);
+        if (current == NULL)
+        {
+            LOG_ERR("unable to find intermediate AML object '%s' in path '%s'\n",
+                segment->name, aml_name_string_to_string(nameString));
+            return ERR;
+        }
+    }
+    aml_object_t* parent = current;
+
+    char segmentName[AML_NAME_LENGTH + 1];
+    aml_name_seg_t* segment = &nameString->namePath.segments[nameString->namePath.segmentCount - 1];
+    memcpy(segmentName, segment->name, AML_NAME_LENGTH);
+    segmentName[AML_NAME_LENGTH] = '\0';
+
+    return aml_object_add_child(parent, object, segmentName);
+}
+
+uint64_t aml_object_remove(aml_object_t* object)
+{
+    if (object == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (!(object->flags & AML_OBJECT_NAMED))
+    {
+        return 0;
+    }
+
+    if (object->name.parent == NULL)
+    {
+        LOG_ERR("Cannot remove root object\n");
+        errno = EINVAL;
+        return ERR;
+    }
+
+    list_t* parentList = NULL;
+    if (aml_object_get_container_list(object->name.parent, &parentList) == ERR)
+    {
+        return ERR;
+    }
+
+    list_remove(parentList, &object->name.entry);
+    object->name.parent = NULL;
+    sysfs_dir_deinit(&object->name.dir);
+    object->flags &= ~AML_OBJECT_NAMED;
+    DEREF(object);
+    return 0;
 }
 
 aml_object_t* aml_object_find_child(aml_object_t* parent, const char* name)
@@ -964,20 +577,37 @@ aml_object_t* aml_object_find_child(aml_object_t* parent, const char* name)
         return NULL;
     }
 
-    if (parent->type == AML_DATA_ALIAS)
+    list_t* parentList = NULL;
+    if (aml_object_get_container_list(parent, &parentList) == ERR)
     {
-        parent = parent->alias.target;
+        return NULL;
     }
 
     aml_object_t* child = NULL;
-    LIST_FOR_EACH(child, &parent->children, entry)
+    LIST_FOR_EACH(child, parentList, name.entry)
     {
-        if (aml_is_name_equal(child->segment, name))
+        if (aml_name_is_equal(child->name.segment, name))
         {
-            if (child->type == AML_DATA_ALIAS)
+            if (child->type == AML_ALIAS)
             {
-                return aml_object_traverse_alias(child);
+                aml_alias_t* alias = &child->alias;
+                if (alias->target == NULL)
+                {
+                    LOG_ERR("Alias object '%s' has no target\n", AML_OBJECT_GET_NAME(child));
+                    errno = ENOENT;
+                    return NULL;
+                }
+
+                aml_object_t* target = aml_alias_traverse(alias);
+                if (target == NULL)
+                {
+                    LOG_ERR("Failed to traverse alias object '%s'\n", AML_OBJECT_GET_NAME(child));
+                    return NULL;
+                }
+
+                return target;
             }
+
             return child;
         }
     }
@@ -994,53 +624,52 @@ aml_object_t* aml_object_find(aml_object_t* start, const char* path)
         return NULL;
     }
 
-    if (start->type == AML_DATA_ALIAS)
+    if (start != NULL && !(start->flags & AML_OBJECT_NAMED))
     {
-        start = aml_object_traverse_alias(start);
+        errno = EINVAL;
+        return NULL;
     }
 
-    const char* ptr = path;
-    aml_object_t* current = start;
-
-    switch (*ptr)
+    const char* p = path;
+    if (p[0] == '\\')
     {
-    case AML_ROOT_CHAR:
-        current = aml_root_get();
-        ptr++;
-        break;
-    case AML_PARENT_PREFIX_CHAR:
-        if (current == NULL)
+        start = aml_root_get();
+        p++;
+    }
+    else if (p[0] == '^')
+    {
+        if (start == NULL)
         {
             errno = EINVAL;
             return NULL;
         }
-        while (*ptr == AML_PARENT_PREFIX_CHAR)
+
+        while (p[0] == '^')
         {
-            current = current->parent;
-            if (current == NULL)
+            start = start->name.parent;
+            if (start == NULL)
             {
                 errno = ENOENT;
                 return NULL;
             }
-            ptr++;
+            p++;
         }
-        break;
-    default:
-        if (current == NULL)
-        {
-            current = aml_root_get();
-        }
-        break;
+    }
+    else if (start == NULL)
+    {
+        errno = EINVAL;
+        return NULL;
     }
 
-    while (*ptr != '\0')
+    aml_object_t* current = start;
+    while (*p != '\0')
     {
-        const char* segmentStart = ptr;
-        while (*ptr != '.' && *ptr != '\0')
+        const char* segmentStart = p;
+        while (*p != '.' && *p != '\0')
         {
-            ptr++;
+            p++;
         }
-        size_t segmentLength = ptr - segmentStart;
+        uint64_t segmentLength = p - segmentStart;
 
         if (segmentLength > AML_NAME_LENGTH)
         {
@@ -1052,20 +681,35 @@ aml_object_t* aml_object_find(aml_object_t* start, const char* path)
         memcpy(segment, segmentStart, segmentLength);
         segment[segmentLength] = '\0';
 
-        current = aml_object_find_child(current, segment);
-        if (current == NULL)
+        if (*p == '.')
         {
+            p++;
+        }
+
+        if (!(current->type & AML_CONTAINERS))
+        {
+            if (start->name.parent != NULL)
+            {
+                return aml_object_find(start->name.parent, path);
+            }
+            errno = ENOENT;
             return NULL;
         }
 
-        if (*ptr == '.')
+        current = aml_object_find_child(current, segment);
+        if (current == NULL)
         {
-            ptr++;
+            if (start->name.parent != NULL)
+            {
+                return aml_object_find(start->name.parent, path);
+            }
+            return NULL;
         }
     }
 
     return current;
 }
+
 uint64_t aml_object_put_bits_at(aml_object_t* object, uint64_t value, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
 {
     if (object == NULL || bitSize == 0 || bitSize > AML_INTEGER_BIT_WIDTH)
@@ -1076,7 +720,8 @@ uint64_t aml_object_put_bits_at(aml_object_t* object, uint64_t value, aml_bit_si
 
     switch (object->type)
     {
-    case AML_DATA_INTEGER:
+    case AML_INTEGER:
+    {
         if (bitOffset + bitSize > AML_INTEGER_BIT_WIDTH)
         {
             errno = EINVAL;
@@ -1095,13 +740,16 @@ uint64_t aml_object_put_bits_at(aml_object_t* object, uint64_t value, aml_bit_si
 
         object->integer.value &= ~(mask << bitOffset);
         object->integer.value |= (value & mask) << bitOffset;
-        break;
-    case AML_DATA_BUFFER:
+    }
+    break;
+    case AML_BUFFER:
+    {
         if (bitOffset + bitSize > object->buffer.length * 8)
         {
             errno = EINVAL;
             return ERR;
         }
+
         for (aml_bit_size_t i = 0; i < bitSize; i++) // TODO: Optimize
         {
             aml_bit_size_t totalBitPos = bitOffset + i;
@@ -1117,7 +765,8 @@ uint64_t aml_object_put_bits_at(aml_object_t* object, uint64_t value, aml_bit_si
                 object->buffer.content[bytePos] &= ~(1 << bitPos);
             }
         }
-        break;
+    }
+    break;
     default:
         errno = EINVAL;
         return ERR;
@@ -1136,11 +785,12 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
 
     switch (object->type)
     {
-    case AML_DATA_INTEGER:
+    case AML_INTEGER:
+    {
         if (bitOffset + bitSize > AML_INTEGER_BIT_WIDTH)
         {
-            errno = EINVAL;
-            return ERR;
+            *out = 0;
+            return 0;
         }
 
         uint64_t mask;
@@ -1154,14 +804,17 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
         }
 
         *out = (object->integer.value >> bitOffset) & mask;
-        break;
-    case AML_DATA_INTEGER_CONSTANT:
+    }
+    break;
+    case AML_INTEGER_CONSTANT:
+    {
         if (bitOffset + bitSize > AML_INTEGER_BIT_WIDTH)
         {
-            errno = EINVAL;
-            return ERR;
+            *out = 0;
+            return 0;
         }
 
+        uint64_t mask;
         if (bitSize == 64)
         {
             mask = ~UINT64_C(0);
@@ -1172,13 +825,16 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
         }
 
         *out = (object->integerConstant.value >> bitOffset) & mask;
-        break;
-    case AML_DATA_BUFFER:
+    }
+    break;
+    case AML_BUFFER:
+    {
         if (bitOffset + bitSize > object->buffer.length * 8)
         {
-            errno = EINVAL;
-            return ERR;
+            *out = 0;
+            return 0;
         }
+
         *out = 0;
         for (aml_bit_size_t i = 0; i < bitSize; i++) // TODO: Optimize
         {
@@ -1191,30 +847,509 @@ uint64_t aml_object_get_bits_at(aml_object_t* object, aml_bit_size_t bitOffset, 
                 *out |= (UINT64_C(1) << i);
             }
         }
-        break;
-    case AML_DATA_STRING:
-        if (bitOffset + bitSize > strlen(object->string.content) * 8)
-        {
-            errno = EINVAL;
-            return ERR;
-        }
-        *out = 0;
-        for (aml_bit_size_t i = 0; i < bitSize; i++) // TODO: Optimize
-        {
-            aml_bit_size_t totalBitPos = bitOffset + i;
-            aml_bit_size_t bytePos = totalBitPos / 8;
-            aml_bit_size_t bitPos = totalBitPos % 8;
-
-            if (object->string.content[bytePos] & (1 << bitPos))
-            {
-                *out |= (UINT64_C(1) << i);
-            }
-        }
-        break;
+    }
+    break;
     default:
         errno = EINVAL;
         return ERR;
     }
 
+    return 0;
+}
+
+static inline uint64_t aml_object_check_deinit(aml_object_t* object)
+{
+    if (object == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (object->type != AML_UNINITIALIZED)
+    {
+        aml_object_deinit(object);
+    }
+
+    return 0;
+}
+
+uint64_t aml_buffer_init_empty(aml_object_t* object, uint64_t length)
+{
+    if (object == NULL || length == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    object->buffer.content = heap_alloc(length, HEAP_NONE);
+    if (object->buffer.content == NULL)
+    {
+        return ERR;
+    }
+    memset(object->buffer.content, 0, length);
+    object->buffer.length = length;
+    object->buffer.byteFields = NULL;
+    object->type = AML_BUFFER;
+    return 0;
+}
+
+uint64_t aml_buffer_init(aml_object_t* object, const uint8_t* buffer, uint64_t bytesToCopy, uint64_t length)
+{
+    if (object == NULL || buffer == NULL || length == 0 || bytesToCopy > length)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_buffer_init_empty(object, length) == ERR)
+    {
+        return ERR;
+    }
+
+    memcpy(object->buffer.content, buffer, bytesToCopy);
+    return 0;
+}
+
+uint64_t aml_buffer_field_init_buffer(aml_object_t* object, aml_buffer_t* buffer, aml_bit_size_t bitOffset,
+    aml_bit_size_t bitSize)
+{
+    if (object == NULL || buffer == NULL || bitSize == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    object->bufferField.isString = false;
+    object->bufferField.buffer = REF(buffer);
+    object->bufferField.string = NULL;
+    object->bufferField.bitOffset = bitOffset;
+    object->bufferField.bitSize = bitSize;
+    object->type = AML_BUFFER_FIELD;
+    return 0;
+}
+
+uint64_t aml_buffer_field_init_string(aml_object_t* object, aml_string_t* string, aml_bit_size_t bitOffset,
+    aml_bit_size_t bitSize)
+{
+    if (object == NULL || string == NULL || bitSize == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    object->bufferField.isString = true;
+    object->bufferField.buffer = NULL;
+    object->bufferField.string = REF(string);
+    object->bufferField.bitOffset = bitOffset;
+    object->bufferField.bitSize = bitSize;
+    object->type = AML_BUFFER_FIELD;
+    return 0;
+}
+
+uint64_t aml_device_init(aml_object_t* object)
+{
+    if (object == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    list_init(&object->device.namedObjects);
+    object->type = AML_DEVICE;
+    return 0;
+}
+
+uint64_t aml_field_unit_field_init(aml_object_t* object, aml_opregion_t* opregion, aml_field_flags_t flags,
+    aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
+{
+    if (object == NULL || opregion == NULL || bitSize == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    object->fieldUnit.fieldType = AML_FIELD_UNIT_FIELD;
+    object->fieldUnit.index = NULL;
+    object->fieldUnit.data = NULL;
+    object->fieldUnit.bankValue = NULL;
+    object->fieldUnit.bank = NULL;
+    object->fieldUnit.opregion = REF(opregion);
+    object->fieldUnit.fieldFlags = flags;
+    object->fieldUnit.bitOffset = bitOffset;
+    object->fieldUnit.bitSize = bitSize;
+    object->type = AML_FIELD_UNIT;
+    return 0;
+}
+
+uint64_t aml_field_unit_index_field_init(aml_object_t* object, aml_field_unit_t* index, aml_field_unit_t* data,
+    aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
+{
+    if (object == NULL || index == NULL || data == NULL || bitSize == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    object->fieldUnit.fieldType = AML_FIELD_UNIT_INDEX_FIELD;
+    object->fieldUnit.index = REF(index);
+    object->fieldUnit.data = REF(data);
+    object->fieldUnit.bankValue = NULL;
+    object->fieldUnit.bank = NULL;
+    object->fieldUnit.opregion = NULL;
+    object->fieldUnit.fieldFlags = flags;
+    object->fieldUnit.bitOffset = bitOffset;
+    object->fieldUnit.bitSize = bitSize;
+    object->type = AML_FIELD_UNIT;
+    return 0;
+}
+
+uint64_t aml_field_unit_bank_field_init(aml_object_t* object, aml_opregion_t* opregion, aml_field_unit_t* bank,
+    uint64_t bankValue, aml_field_flags_t flags, aml_bit_size_t bitOffset, aml_bit_size_t bitSize)
+{
+    if (object == NULL || opregion == NULL || bank == NULL || bitSize == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    object->fieldUnit.fieldType = AML_FIELD_UNIT_BANK_FIELD;
+    object->fieldUnit.index = NULL;
+    object->fieldUnit.data = NULL;
+
+    aml_object_t* bankValueObj = aml_object_new(NULL, AML_OBJECT_NONE);
+    if (bankValueObj == NULL)
+    {
+        return ERR;
+    }
+    if (aml_integer_init(bankValueObj, bankValue) == ERR)
+    {
+        DEREF(bankValueObj);
+        return ERR;
+    }
+    object->fieldUnit.bankValue = bankValueObj;
+
+    object->fieldUnit.bank = REF(bank);
+    object->fieldUnit.opregion = REF(opregion);
+    object->fieldUnit.fieldFlags = flags;
+    object->fieldUnit.bitOffset = bitOffset;
+    object->fieldUnit.bitSize = bitSize;
+    object->type = AML_FIELD_UNIT;
+    return 0;
+}
+
+uint64_t aml_integer_init(aml_object_t* object, uint64_t value)
+{
+    if (object == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    object->integer.value = value;
+    object->type = AML_INTEGER;
+    return 0;
+}
+
+uint64_t aml_integer_constant_init(aml_object_t* object, uint64_t value)
+{
+    if (object == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    object->integerConstant.value = value;
+    object->type = AML_INTEGER_CONSTANT;
+    return 0;
+}
+
+uint64_t aml_method_init(aml_object_t* object, aml_method_flags_t flags, const uint8_t* start, const uint8_t* end,
+    aml_method_implementation_t implementation)
+{
+    if (object == NULL || ((start == 0 || end == 0 || start > end) && implementation == NULL))
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    object->method.implementation = implementation;
+    object->method.methodFlags = flags;
+    object->method.start = start;
+    object->method.end = end;
+    list_init(&object->method.namedObjects);
+    aml_mutex_id_init(&object->method.mutex);
+    object->type = AML_METHOD;
+    return 0;
+}
+
+uint64_t aml_mutex_init(aml_object_t* object, aml_sync_level_t syncLevel)
+{
+    if (object == NULL || syncLevel > 15)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    object->mutex.syncLevel = syncLevel;
+    aml_mutex_id_init(&object->mutex.mutex);
+    object->type = AML_MUTEX;
+    return 0;
+}
+
+uint64_t aml_object_reference_init(aml_object_t* object, aml_object_t* target)
+{
+    if (object == NULL || target == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    object->objectReference.target = REF(target);
+    object->type = AML_OBJECT_REFERENCE;
+    return 0;
+}
+
+uint64_t aml_operation_region_init(aml_object_t* object, aml_region_space_t space, uint64_t offset, uint32_t length)
+{
+    if (object == NULL || length == 0)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    object->opregion.space = space;
+    object->opregion.offset = offset;
+    object->opregion.length = length;
+    object->type = AML_OPERATION_REGION;
+    return 0;
+}
+
+uint64_t aml_package_init(aml_object_t* object, uint64_t length)
+{
+    if (object == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    object->package.elements = heap_alloc(sizeof(aml_object_t*) * length, HEAP_NONE);
+    if (object->package.elements == NULL)
+    {
+        return ERR;
+    }
+    for (uint64_t i = 0; i < length; i++)
+    {
+        object->package.elements[i] = aml_object_new(NULL, AML_OBJECT_ELEMENT);
+        if (object->package.elements[i] == NULL)
+        {
+            for (uint64_t j = 0; j < i; j++)
+            {
+                DEREF(object->package.elements[j]);
+            }
+            heap_free(object->package.elements);
+            object->package.elements = NULL;
+            return ERR;
+        }
+    }
+    object->package.length = length;
+    object->type = AML_PACKAGE;
+    return 0;
+}
+
+uint64_t aml_processor_init(aml_object_t* object, aml_proc_id_t procId, aml_pblk_addr_t pblkAddr,
+    aml_pblk_len_t pblkLen)
+{
+    if (object == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    object->processor.procId = procId;
+    object->processor.pblkAddr = pblkAddr;
+    object->processor.pblkLen = pblkLen;
+    list_init(&object->processor.namedObjects);
+    object->type = AML_PROCESSOR;
+    return 0;
+}
+
+uint64_t aml_string_init_empty(aml_object_t* object, uint64_t length)
+{
+    if (object == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    object->string.content = heap_alloc(length + 1, HEAP_NONE);
+    if (object->string.content == NULL)
+    {
+        return ERR;
+    }
+    memset(object->string.content, 0, length + 1);
+    object->string.length = length;
+    object->string.byteFields = NULL;
+    object->type = AML_STRING;
+    return 0;
+}
+
+uint64_t aml_string_init(aml_object_t* object, const char* str)
+{
+    if (object == NULL || str == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    size_t length = strlen(str);
+    if (aml_string_init_empty(object, length) == ERR)
+    {
+        return ERR;
+    }
+    memcpy(object->string.content, str, length);
+    return 0;
+}
+
+uint64_t aml_alias_init(aml_object_t* object, aml_object_t* target)
+{
+    if (object == NULL || target == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    object->alias.target = REF(target);
+    object->type = AML_ALIAS;
+    return 0;
+}
+
+aml_object_t* aml_alias_traverse(aml_alias_t* alias)
+{
+    if (alias == NULL)
+    {
+        return NULL;
+    }
+
+    aml_object_t* current = CONTAINER_OF(alias, aml_object_t, alias);
+    while (current != NULL && current->type == AML_ALIAS)
+    {
+        if (current->alias.target == NULL)
+        {
+            return NULL;
+        }
+        current = current->alias.target;
+    }
+    return current;
+}
+
+uint64_t aml_unresolved_init(aml_object_t* object, const aml_name_string_t* nameString, aml_object_t* from,
+    aml_patch_up_resolve_callback_t callback)
+{
+    if (object == NULL || nameString == NULL || callback == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    object->unresolved.nameString = *nameString;
+    object->unresolved.from = REF(from);
+    object->unresolved.callback = callback;
+    object->type = AML_UNRESOLVED;
+
+    if (aml_patch_up_add_unresolved(&object->unresolved) == ERR)
+    {
+        object->type = AML_UNINITIALIZED;
+        return ERR;
+    }
     return 0;
 }

@@ -259,8 +259,8 @@ typedef struct PACKED
  */
 typedef struct
 {
-    const char* signature;                 //!< The signature of the table to handle.
-    uint64_t (*init)(sdt_header_t* table); //!< The handler function to call when the table is first loaded.
+    const char* signature;                 ///< The signature of the table to handle.
+    uint64_t (*init)(sdt_header_t* table); ///< The handler function to call when the table is first loaded.
 } acpi_sdt_handler_t;
 
 /**
@@ -274,9 +274,10 @@ typedef struct
  * @param handler_name The name of the handler function to generate.
  */
 #define ACPI_SDT_HANDLER_REGISTER(sig, initHandler) \
-    static const acpi_sdt_handler_t _acpiSdtHandler##handler_name __attribute__((section(".acpi_sdt_handlers"))) = { \
-        .signature = sig, \
-        .init = initHandler, \
+    static const acpi_sdt_handler_t _acpiSdtHandler##handler_name \
+        __attribute__((used, section(".acpi_sdt_handlers"))) = { \
+            .signature = sig, \
+            .init = initHandler, \
     };
 
 /**

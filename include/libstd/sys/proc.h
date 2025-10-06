@@ -53,8 +53,8 @@ typedef uint8_t priority_t;
  */
 typedef struct
 {
-    fd_t child;  //!< The destination file descriptor in the child
-    fd_t parent; //!< The source file descriptor in the parent
+    fd_t child;  ///< The destination file descriptor in the child
+    fd_t parent; ///< The source file descriptor in the parent
 } spawn_fd_t;
 
 /**
@@ -168,9 +168,9 @@ tid_t gettid(void);
  */
 typedef enum
 {
-    PROT_NONE = 0,        //!< None
-    PROT_READ = (1 << 0), //!< Memory can be read from
-    PROT_WRITE = (1 << 1) //!< Memory can be written to
+    PROT_NONE = 0,        ///< None
+    PROT_READ = (1 << 0), ///< Memory can be read from
+    PROT_WRITE = (1 << 1) ///< Memory can be written to
 } prot_t;
 
 /**
@@ -223,8 +223,8 @@ uint64_t mprotect(void* address, uint64_t length, prot_t prot);
  */
 typedef enum
 {
-    FUTEX_WAIT, //!< The futex operating for waiting until the value pointed to by `addr` is not equal to `val`.
-    FUTEX_WAKE, //!< The futex operation for waking up a amount of threads specified by the `val` argument.
+    FUTEX_WAIT, ///< The futex operating for waiting until the value pointed to by `addr` is not equal to `val`.
+    FUTEX_WAKE, ///< The futex operation for waking up a amount of threads specified by the `val` argument.
 } futex_op_t;
 
 /**
@@ -281,7 +281,7 @@ uint64_t nanosleep(clock_t timeout);
  */
 typedef struct
 {
-    atomic_uint64_t value; //!< The value of the sync object.
+    atomic_uint64_t value; ///< The value of the sync object.
 } sync_t;
 
 #if defined(__cplusplus)

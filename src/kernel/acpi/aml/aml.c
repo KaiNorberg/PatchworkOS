@@ -7,13 +7,14 @@
 #include "aml_to_string.h"
 #include "encoding/term.h"
 #include "log/log.h"
+#include "sched/timer.h"
 
 #include "log/log.h"
 
 #include <errno.h>
 #include <sys/math.h>
 
-static mutex_t globalMutex;
+static mutex_t bigMutex;
 
 static aml_object_t* root = NULL;
 
@@ -64,46 +65,49 @@ static inline uint64_t aml_init_parse_all(void)
 
 uint64_t aml_init(void)
 {
-    mutex_init(&globalMutex);
+    LOG_INFO("AML revision %d, init and parse all\n", ACPI_REVISION);
 
-    root = aml_object_new(NULL, AML_ROOT_NAME, AML_OBJECT_ROOT | AML_OBJECT_PREDEFINED);
+    mutex_init(&bigMutex);
+    MUTEX_SCOPE(&bigMutex);
+
+    root = aml_object_new(NULL, AML_OBJECT_ROOT | AML_OBJECT_PREDEFINED);
     if (root == NULL)
     {
         return ERR;
     }
 
-    if (aml_object_init_device(root) == ERR)
+    if (aml_device_init(root) == ERR || aml_object_add(root, NULL, NULL) == ERR)
     {
-        aml_object_free(root);
+        DEREF(root);
         root = NULL;
         return ERR;
     }
 
     if (aml_predefined_init() == ERR)
     {
-        aml_object_free(root);
+        DEREF(root);
         root = NULL;
         return ERR;
     }
 
     if (aml_patch_up_init() == ERR)
     {
-        aml_object_free(root);
+        DEREF(root);
         root = NULL;
         return ERR;
     }
 
     if (aml_init_parse_all() == ERR)
     {
-        aml_object_free(root);
+        DEREF(root);
         root = NULL;
         return ERR;
     }
 
-    LOG_INFO("resolving %llu unresolved objectbjects\n", aml_patch_up_unresolved_count());
+    LOG_INFO("resolving %llu unresolved objects\n", aml_patch_up_unresolved_count());
     if (aml_patch_up_resolve_all() == ERR)
     {
-        aml_object_free(root);
+        DEREF(root);
         root = NULL;
         LOG_ERR("failed to resolve unresolved object\n");
         return ERR;
@@ -111,11 +115,25 @@ uint64_t aml_init(void)
 
     if (aml_patch_up_unresolved_count() > 0)
     {
-        aml_object_free(root);
+        DEREF(root);
         root = NULL;
         LOG_ERR("there are still %llu unresolved object\n", aml_patch_up_unresolved_count());
         return ERR;
     }
+
+#ifndef NDEBUG
+    uint64_t totalObjects = aml_object_get_total_count();
+    uint64_t rootChildren = aml_object_count_children(root);
+    LOG_INFO("total objects after parsing %llu\n", totalObjects);
+    if (totalObjects != rootChildren + 1)
+    {
+        LOG_ERR("memory leak detected, total objects %llu, but root has %llu children\n",
+            totalObjects, rootChildren);
+        DEREF(root);
+        root = NULL;
+        return ERR;
+    }
+#endif
 
     return 0;
 }
@@ -154,11 +172,6 @@ uint64_t aml_parse(const uint8_t* start, const uint8_t* end)
     return result;
 }
 
-mutex_t* aml_global_mutex_get(void)
-{
-    return &globalMutex;
-}
-
 aml_object_t* aml_root_get(void)
 {
     if (root == NULL)
@@ -170,31 +183,7 @@ aml_object_t* aml_root_get(void)
     return root;
 }
 
-void aml_print_tree(aml_object_t* object, uint32_t depth, bool isLast)
+mutex_t* aml_big_mutex_get(void)
 {
-    for (uint32_t i = 0; i < depth; i++)
-    {
-        if (i == depth - 1)
-        {
-            LOG_INFO("%s", isLast ? "└── " : "├── ");
-        }
-        else
-        {
-            LOG_INFO("│   ");
-        }
-    }
-
-    LOG_INFO("%.*s [%s", AML_NAME_LENGTH, object->segment, aml_object_to_string(object));
-    switch (object->type)
-    {
-    default:
-        break;
-    }
-    LOG_INFO("]\n");
-
-    aml_object_t* child;
-    LIST_FOR_EACH(child, &object->children, entry)
-    {
-        aml_print_tree(child, depth + 1, list_last(&object->children) == &child->entry);
-    }
+    return &bigMutex;
 }

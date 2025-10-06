@@ -115,7 +115,7 @@ static uint64_t ramfs_create(inode_t* dir, dentry_t* target, path_flags_t flags)
     {
         return ERR;
     }
-    REF_DEFER(newInode);
+    DEREF_DEFER(newInode);
 
     if (ramfs_dentry_init(target) == ERR)
     {
@@ -240,7 +240,7 @@ static dentry_t* ramfs_load_file(superblock_t* superblock, dentry_t* parent, con
     {
         panic(NULL, "Failed to create ramfs file dentry");
     }
-    REF_DEFER(dentry);
+    DEREF_DEFER(dentry);
 
     if (ramfs_dentry_init(dentry) == ERR)
     {
@@ -252,7 +252,7 @@ static dentry_t* ramfs_load_file(superblock_t* superblock, dentry_t* parent, con
     {
         panic(NULL, "Failed to create ramfs file inode");
     }
-    REF_DEFER(inode);
+    DEREF_DEFER(inode);
 
     dentry_make_positive(dentry, inode);
     vfs_add_dentry(dentry);
@@ -269,7 +269,7 @@ static dentry_t* ramfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
     {
         panic(NULL, "Failed to create ramfs dentry");
     }
-    REF_DEFER(dentry);
+    DEREF_DEFER(dentry);
 
     if (ramfs_dentry_init(dentry) == ERR)
     {
@@ -281,7 +281,7 @@ static dentry_t* ramfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
     {
         panic(NULL, "Failed to create ramfs inode");
     }
-    REF_DEFER(inode);
+    DEREF_DEFER(inode);
 
     dentry_make_positive(dentry, inode);
     vfs_add_dentry(dentry);
@@ -310,7 +310,7 @@ static dentry_t* ramfs_mount(filesystem_t* fs, superblock_flags_t flags, const c
     {
         return NULL;
     }
-    REF_DEFER(superblock);
+    DEREF_DEFER(superblock);
 
     superblock->blockSize = 0;
     superblock->maxFileSize = UINT64_MAX;
@@ -343,7 +343,7 @@ static inode_t* ramfs_inode_new(superblock_t* superblock, inode_type_t type, voi
     {
         return NULL;
     }
-    REF_DEFER(inode);
+    DEREF_DEFER(inode);
 
     inode->blocks = 0;
     inode->size = size;

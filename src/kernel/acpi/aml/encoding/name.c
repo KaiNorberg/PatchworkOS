@@ -276,39 +276,43 @@ uint64_t aml_name_string_read(aml_state_t* state, aml_name_string_t* out)
     return 0;
 }
 
-aml_object_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_object_t* object)
+aml_object_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_object_t* from)
 {
-    aml_object_t* start = object;
+    aml_object_t* start = from;
     if (nameString->rootChar.present)
     {
         start = aml_root_get();
     }
 
-    if (start->type == AML_DATA_ALIAS)
+    if (start == NULL)
     {
-        start = aml_object_traverse_alias(start);
+        return NULL;
     }
 
+    if (!(start->flags & AML_OBJECT_NAMED))
+    {
+        return NULL;
+    }
+
+    aml_object_t* current = start;
     for (uint64_t i = 0; i < nameString->prefixPath.depth; i++)
     {
-        start = start->parent;
+        current = current->name.parent;
         if (start == NULL)
         {
             return NULL;
         }
     }
 
-    aml_object_t* current = start;
     for (uint64_t i = 0; i < nameString->namePath.segmentCount; i++)
     {
         const aml_name_seg_t* segment = &nameString->namePath.segments[i];
         current = aml_object_find_child(current, segment->name);
         if (current == NULL)
         {
-            errno = 0;
-            if (start->parent != NULL)
+            if (start->name.parent != NULL)
             {
-                return aml_name_string_resolve(nameString, start->parent);
+                return aml_name_string_resolve(nameString, start->name.parent);
             }
             return NULL;
         }
@@ -336,6 +340,7 @@ uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_scope_t* scope
             errno = ENOENT;
             return ERR;
         }
+        errno = 0;
     }
 
     if (nameString != NULL)

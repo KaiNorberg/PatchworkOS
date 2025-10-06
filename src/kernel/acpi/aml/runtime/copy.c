@@ -3,10 +3,12 @@
 #include "acpi/aml/aml_to_string.h"
 #include "convert.h"
 #include "log/log.h"
+#include "field_unit.h"
+#include "buffer_field.h"
 
 #include <errno.h>
 
-uint64_t aml_copy_raw(aml_object_t* src, aml_object_t* dest)
+uint64_t aml_copy_data_and_type(aml_object_t* src, aml_object_t* dest)
 {
     if (src == NULL || dest == NULL)
     {
@@ -14,128 +16,56 @@ uint64_t aml_copy_raw(aml_object_t* src, aml_object_t* dest)
         return ERR;
     }
 
+    if (!(src->type & AML_DATA_REF_OBJECTS))
+    {
+        LOG_ERR("cannot copy object of type '%s'\n", aml_type_to_string(src->type));
+        errno = EINVAL;
+        return ERR;
+    }
+
     switch (src->type)
     {
-    case AML_DATA_BUFFER:
-        if (aml_object_init_buffer(dest, src->buffer.content, src->buffer.length, src->buffer.length) == ERR)
+    case AML_INTEGER:
+        if (aml_integer_init(dest, src->integer.value) == ERR)
         {
             return ERR;
         }
         break;
-    case AML_DATA_BUFFER_FIELD:
-        if (aml_object_init_buffer_field(dest, src->bufferField.buffer, src->bufferField.bitOffset,
-                src->bufferField.bitSize) == ERR)
+    case AML_STRING:
+        if (aml_string_init(dest, src->string.content) == ERR)
         {
             return ERR;
         }
         break;
-    case AML_DATA_DEVICE:
-        if (aml_object_init_device(dest) == ERR)
+    case AML_BUFFER:
+        if (aml_buffer_init(dest, src->buffer.content, src->buffer.length, src->buffer.length) == ERR)
         {
             return ERR;
         }
         break;
-    case AML_DATA_FIELD_UNIT:
-        switch (src->fieldUnit.type)
-        {
-        case AML_FIELD_UNIT_FIELD:
-            if (aml_object_init_field_unit_field(dest, src->fieldUnit.opregion, src->fieldUnit.flags,
-                    src->fieldUnit.bitOffset, src->fieldUnit.bitSize) == ERR)
-            {
-                return ERR;
-            }
-            break;
-        case AML_FIELD_UNIT_INDEX_FIELD:
-            if (aml_object_init_field_unit_index_field(dest, src->fieldUnit.indexObject, src->fieldUnit.dataObject,
-                    src->fieldUnit.flags, src->fieldUnit.bitOffset, src->fieldUnit.bitSize) == ERR)
-            {
-                return ERR;
-            }
-            break;
-        case AML_FIELD_UNIT_BANK_FIELD:
-            if (aml_object_init_field_unit_bank_field(dest, src->fieldUnit.opregion, src->fieldUnit.bank,
-                    src->fieldUnit.bankValue, src->fieldUnit.flags, src->fieldUnit.bitOffset,
-                    src->fieldUnit.bitSize) == ERR)
-            {
-                return ERR;
-            }
-            break;
-        default:
-            errno = EINVAL;
-            return ERR;
-        }
-        break;
-    case AML_DATA_INTEGER:
-        if (aml_object_init_integer(dest, src->integer.value) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_DATA_INTEGER_CONSTANT:
-        if (aml_object_init_integer_constant(dest, src->integerConstant.value) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_DATA_METHOD:
-        if (aml_object_init_method(dest, &src->method.flags, src->method.start, src->method.end,
-                src->method.implementation) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_DATA_MUTEX:
-        if (aml_object_init_mutex(dest, src->mutex.syncLevel) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_DATA_OBJECT_REFERENCE:
-        if (aml_object_init_object_reference(dest, src->objectReference.target) == ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_DATA_OPERATION_REGION:
-        if (aml_object_init_operation_region(dest, src->opregion.space, src->opregion.offset, src->opregion.length) ==
-            ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_DATA_PACKAGE:
-        if (aml_object_init_package(dest, src->package.length) == ERR)
+    case AML_PACKAGE:
+        if (aml_package_init(dest, src->package.length) == ERR)
         {
             return ERR;
         }
 
         for (uint64_t i = 0; i < src->package.length; i++)
         {
-            if (aml_copy_raw(src->package.elements[i], dest->package.elements[i]) == ERR)
+            if (aml_copy_data_and_type(src->package.elements[i], dest->package.elements[i]) == ERR)
             {
-                for (uint64_t j = 0; j < i; j++)
-                {
-                    aml_object_deinit(dest->package.elements[j]);
-                }
                 aml_object_deinit(dest);
                 return ERR;
             }
         }
-        break;
-    case AML_DATA_PROCESSOR:
-        if (aml_object_init_processor(dest, src->processor.procId, src->processor.pblkAddr, src->processor.pblkLen) ==
-            ERR)
-        {
-            return ERR;
-        }
-        break;
-    case AML_DATA_STRING:
-        if (aml_object_init_string(dest, src->string.content) == ERR)
+    break;
+    case AML_OBJECT_REFERENCE:
+        if (aml_object_reference_init(dest, src->objectReference.target) == ERR)
         {
             return ERR;
         }
         break;
     default:
+        LOG_ERR("cannot copy object of type '%s'\n", aml_type_to_string(src->type));
         errno = EINVAL;
         return ERR;
     }
@@ -143,7 +73,7 @@ uint64_t aml_copy_raw(aml_object_t* src, aml_object_t* dest)
     return 0;
 }
 
-uint64_t aml_copy(aml_object_t* src, aml_object_t* dest)
+uint64_t aml_copy_object(aml_object_t* src, aml_object_t* dest)
 {
     if (src == NULL || dest == NULL)
     {
@@ -151,7 +81,7 @@ uint64_t aml_copy(aml_object_t* src, aml_object_t* dest)
         return ERR;
     }
 
-    if (src->type == AML_DATA_UNINITALIZED)
+    if (src->type == AML_UNINITIALIZED)
     {
         errno = EINVAL;
         return ERR;
@@ -162,19 +92,9 @@ uint64_t aml_copy(aml_object_t* src, aml_object_t* dest)
         return 0;
     }
 
-    // If of type
-    // "Method ArgX variable"
-    // then
-    // "The object is copied to the destination
-    // with no conversion applied, with one ex-
-    // ception. If the ArgX contains an Object
-    // Reference, an automatic de-reference
-    // occurs and the object is copied to the
-    // target of the Object Reference instead of
-    // overwriting the contents of ArgX."
     if (dest->flags & AML_OBJECT_ARG)
     {
-        if (dest->type == AML_DATA_OBJECT_REFERENCE)
+        if (dest->type == AML_OBJECT_REFERENCE)
         {
             aml_object_t* target = dest->objectReference.target;
             if (target == NULL)
@@ -183,14 +103,14 @@ uint64_t aml_copy(aml_object_t* src, aml_object_t* dest)
                 return ERR;
             }
 
-            if (aml_copy_raw(src, target) == ERR)
+            if (aml_copy_data_and_type(src, target) == ERR)
             {
                 return ERR;
             }
         }
         else
         {
-            if (aml_copy_raw(src, dest) == ERR)
+            if (aml_copy_data_and_type(src, dest) == ERR)
             {
                 return ERR;
             }
@@ -199,16 +119,9 @@ uint64_t aml_copy(aml_object_t* src, aml_object_t* dest)
         return 0;
     }
 
-    // If of type
-    // "Method LocalX variable"
-    // then
-    // "The object is copied to the destination
-    // with no conversion applied. Even if Lo-
-    // calX contains an Object Reference, it is
-    // overwritten."
     if (dest->flags & AML_OBJECT_LOCAL)
     {
-        if (aml_copy_raw(src, dest) == ERR)
+        if (aml_copy_data_and_type(src, dest) == ERR)
         {
             return ERR;
         }
@@ -216,16 +129,18 @@ uint64_t aml_copy(aml_object_t* src, aml_object_t* dest)
         return 0;
     }
 
-    // If of type
-    // "Field Unit or BufferField"
-    // then
-    // "overwritten.
-    // The object is copied to the destination
-    // after implicit result conversion is ap-
-    // plied."
-    if (dest->type == AML_DATA_FIELD_UNIT || dest->type == AML_DATA_BUFFER_FIELD)
+    if (dest->type == AML_FIELD_UNIT)
     {
-        if (aml_convert_result(src, dest) == ERR)
+        if (aml_field_unit_store(&dest->fieldUnit, src) == ERR)
+        {
+            return ERR;
+        }
+
+        return 0;
+    }
+    else if (dest->type == AML_BUFFER_FIELD)
+    {
+        if (aml_buffer_field_store(&dest->bufferField, src) == ERR)
         {
             return ERR;
         }
@@ -233,13 +148,6 @@ uint64_t aml_copy(aml_object_t* src, aml_object_t* dest)
         return 0;
     }
 
-    // If of type
-    // "Named data object"
-    // then
-    // "The object is copied to the destination
-    // after implicit result conversion is ap-
-    // plied to match the existing type of the
-    // named location."
     if (dest->flags & AML_OBJECT_NAMED)
     {
         if (aml_convert_result(src, dest) == ERR)
@@ -250,8 +158,18 @@ uint64_t aml_copy(aml_object_t* src, aml_object_t* dest)
         return 0;
     }
 
-    LOG_ERR("illegal copy operation from type '%s' to type '%s'\n", aml_data_type_to_string(src->type),
-        aml_data_type_to_string(dest->type));
+    // Technically not in the spec but this shouldent effect anything and will just make things easier.
+    /*if (dest->type == AML_UNINITIALIZED)
+    {
+        if (aml_copy_data_and_type(src, dest) == ERR)
+        {
+            return ERR;
+        }
+        return 0;
+    }*/
+
+    LOG_ERR("illegal copy operation from type '%s' to type '%s'\n", aml_type_to_string(src->type),
+        aml_type_to_string(dest->type));
     errno = ENOSYS;
     return ERR;
 }

@@ -37,7 +37,7 @@ typedef struct
 {
     wait_queue_t waitQueue;
     thread_t* owner;
-    uint64_t depth;
+    uint32_t depth;
     lock_t lock;
 } mutex_t;
 

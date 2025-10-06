@@ -22,9 +22,9 @@ uint64_t aml_local_obj_read(aml_state_t* state, aml_object_t** out)
 
     uint64_t index = localOp.num - AML_LOCAL0_OP;
 
-    if (state->locals[index].type == AML_DATA_OBJECT_REFERENCE)
+    if (state->locals[index]->type == AML_OBJECT_REFERENCE)
     {
-        aml_object_t* target = state->locals[index].objectReference.target;
+        aml_object_t* target = state->locals[index]->objectReference.target;
         if (target == NULL)
         {
             AML_DEBUG_ERROR(state, "Local%d is an ObjectReference to NULL", index);
@@ -35,6 +35,6 @@ uint64_t aml_local_obj_read(aml_state_t* state, aml_object_t** out)
         return 0;
     }
 
-    *out = &state->locals[index];
+    *out = state->locals[index];
     return 0;
 }

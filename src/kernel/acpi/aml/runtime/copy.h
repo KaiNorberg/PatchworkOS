@@ -5,33 +5,35 @@
 #include <stdint.h>
 
 /**
- * @brief Storing and Copying Objects
+ * @brief Copy
  * @defgroup kernel_acpi_aml_copy Copy
  * @ingroup kernel_acpi_aml
- *
- * @see Section 19.3.5.8.3 of the ACPI specification for more details.
  *
  * @{
  */
 
 /**
- * @brief Creates a deep copy of the content of the source object into the destination object.
+ * @brief Copies the data and type from the source object to the destination object, completly overwriting it.
  *
  * @param src Pointer to the source object to copy from.
- * @param dest Pointer to the destination object to copy to, will be overwritten.
+ * @param dest Pointer to the destination object to copy to, can be of type `AML_DEINITIALIZED`.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_copy_raw(aml_object_t* src, aml_object_t* dest);
+uint64_t aml_copy_data_and_type(aml_object_t* src, aml_object_t* dest);
 
 /**
  * @brief Copies the data from the source object to the destination object.
  *
- * This follows the rules in section 19.3.5.8.3 of the ACPI specification.
+ * Follows the rules in table 19.8 section 19.3.5.8 for the "CopyObject" operator are applied.
+ *
+ * Additionally if none of the rules apply and dest is uninitialized we use `aml_copy_data_and_type()` to perform the copy.
+ *
+ * @see Sections 19.3.5.8 of the ACPI specification for more details.
  *
  * @param src Pointer to the source object to copy from.
- * @param dest Pointer to the destination object to copy to.
+ * @param dest Pointer to the destination object to copy to, can be of type `AML_DEINITIALIZED`.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_copy(aml_object_t* src, aml_object_t* dest);
+uint64_t aml_copy_object(aml_object_t* src, aml_object_t* dest);
 
 /** @} */

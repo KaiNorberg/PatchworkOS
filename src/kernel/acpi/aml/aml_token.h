@@ -191,7 +191,7 @@ typedef enum
     AML_THERMAL_ZONE_OP = AML_EXT_OP_PREFIX_BASE + 0x85,
     AML_INDEX_FIELD_OP = AML_EXT_OP_PREFIX_BASE + 0x86,
     AML_BANK_FIELD_OP = AML_EXT_OP_PREFIX_BASE + 0x87,
-    AML_DATA_REGION_OP = AML_EXT_OP_PREFIX_BASE + 0x88,
+    AML_REGION_OP = AML_EXT_OP_PREFIX_BASE + 0x88,
 
     // Extended tokens prefixed with 0x92 (0x200-0x2FF range)
     AML_LNOT_OP_BASE = 0x200,
@@ -222,15 +222,15 @@ typedef enum
 typedef enum
 {
     AML_TOKEN_TYPE_NONE = 0,
-    AML_TOKEN_TYPE_NAME,               //!< Is a Name Object (section 20.2.2).
-    AML_TOKEN_TYPE_NAMESPACE_MODIFIER, //!< Is a Namespace Modifier Object (section 20.2.5.1).
-    AML_TOKEN_TYPE_NAMED,              //!< Is a NamedObj (section 20.2.5.2).
-    AML_TOKEN_TYPE_STATEMENT,          //!< Is a Statement Opcode (section 20.2.5.3).
-    AML_TOKEN_TYPE_EXPRESSION,         //!< Is an Expression Opcode (section 20.2.5.4).
-    AML_TOKEN_TYPE_ARG,                //!< Is an Arg Object (section 20.2.6.1).
-    AML_TOKEN_TYPE_LOCAL,              //!< Is a Local Object (section 20.2.6.2).
-    AML_TOKEN_TYPE_COMPUTATIONAL,      //!< Is part of a ComputationalData Object (section 20.2.3).
-    AML_TOKEN_TYPE_DEBUG,              //!< Is a Debug Object (section 20.2.6.3).
+    AML_TOKEN_TYPE_NAME,               ///< Is a Name Object (section 20.2.2).
+    AML_TOKEN_TYPE_NAMESPACE_MODIFIER, ///< Is a Namespace Modifier Object (section 20.2.5.1).
+    AML_TOKEN_TYPE_NAMED,              ///< Is a NamedObj (section 20.2.5.2).
+    AML_TOKEN_TYPE_STATEMENT,          ///< Is a Statement Opcode (section 20.2.5.3).
+    AML_TOKEN_TYPE_EXPRESSION,         ///< Is an Expression Opcode (section 20.2.5.4).
+    AML_TOKEN_TYPE_ARG,                ///< Is an Arg Object (section 20.2.6.1).
+    AML_TOKEN_TYPE_LOCAL,              ///< Is a Local Object (section 20.2.6.2).
+    AML_TOKEN_TYPE_COMPUTATIONAL,      ///< Is part of a ComputationalData Object (section 20.2.3).
+    AML_TOKEN_TYPE_DEBUG,              ///< Is a Debug Object (section 20.2.6.3).
 } aml_token_type_t;
 
 /**
@@ -250,7 +250,7 @@ typedef struct aml_token_props
  */
 typedef struct aml_token
 {
-    uint64_t index; //!< The index of the first byte of the token in the AML byte stream.
+    uint64_t index; ///< The index of the first byte of the token in the AML byte stream.
     aml_token_num_t num;
     uint8_t length;
     const aml_token_props_t* props;
@@ -342,7 +342,7 @@ static inline uint64_t aml_token_read_no_ext(aml_state_t* state, aml_token_t* ou
         return ERR;
     }
 
-    aml_state_advance(state, out->length);
+    state->current += out->length;
     return 0;
 }
 
@@ -409,7 +409,7 @@ static inline uint64_t aml_token_read(aml_state_t* state, aml_token_t* out)
         return ERR;
     }
 
-    aml_state_advance(state, out->length);
+    state->current += out->length;
     return 0;
 }
 

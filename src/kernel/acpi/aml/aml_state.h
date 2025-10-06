@@ -8,7 +8,6 @@
 #include "encoding/arg.h"
 #include "encoding/local.h"
 #include "encoding/term.h"
-#include "runtime/mutex.h"
 
 /**
  * @brief State
@@ -27,10 +26,10 @@
  */
 typedef enum
 {
-    AML_FLOW_CONTROL_EXECUTE, //!< Normal execution
-    AML_FLOW_CONTROL_RETURN,  //!< A Return statement was hit
-    AML_FLOW_CONTROL_BREAK,   //!< A Break statement was hit
-    AML_FLOW_CONTROL_CONTINUE //!< A Continue statement was hit
+    AML_FLOW_CONTROL_EXECUTE, ///< Normal execution
+    AML_FLOW_CONTROL_RETURN,  ///< A Return statement was hit
+    AML_FLOW_CONTROL_BREAK,   ///< A Break statement was hit
+    AML_FLOW_CONTROL_CONTINUE ///< A Continue statement was hit
 } aml_flow_control_t;
 
 /**
@@ -43,16 +42,24 @@ typedef enum
  */
 typedef struct aml_state
 {
-    const uint8_t* start;                //!< Pointer to the start of the AML bytecode.
-    const uint8_t* end;                  //!< Pointer to the end of the AML bytecode.
-    const uint8_t* current;              //!< Pointer to the current position in the AML bytecode.
-    aml_object_t locals[AML_MAX_LOCALS]; //!< Local variables for the method, if any.
-    aml_object_t args[AML_MAX_ARGS];     //!< Argument variables for the method, if any.
-    aml_object_t* returnValue; //!< Pointer to where the return value should be stored, if the state is for a method.
-    const uint8_t* lastErrPos; //!<  The position when the last error occurred.
-    uint64_t errorDepth;       //!< The length of the error traceback.
-    aml_flow_control_t flowControl; //!< Used by `aml_term_list_read` to handle flow control statements
-    aml_mutex_stack_t mutexStack;   //!< Handles acquiring and releasing mutexes.
+    const uint8_t* start;                 ///< Pointer to the start of the AML bytecode.
+    const uint8_t* end;                   ///< Pointer to the end of the AML bytecode.
+    const uint8_t* current;               ///< Pointer to the current position in the AML bytecode.
+    aml_object_t* locals[AML_MAX_LOCALS]; ///< Local variables for the method, if any.
+    aml_object_t* args[AML_MAX_ARGS];     ///< Argument variables for the method, if any.
+    aml_object_t* returnValue; ///< Pointer to where the return value should be stored, if the state is for a method.
+    const uint8_t* lastErrPos; ///<  The position when the last error occurred.
+    uint64_t errorDepth;       ///< The length of the error traceback.
+    aml_flow_control_t flowControl; ///< Used by `aml_term_list_read` to handle flow control statements.
+    /**
+     * List of objects created as the state was executing. These objects should be freed if the state was
+     * used to execute a method, via the `aml_state_garbage_collect()` function.
+     *
+     * If the state was not used to execute a method, instead it was used to parse a DSDT or SSDT table,
+     * then the states created objects should not be freed, as they are now part a permanent part of the ACPI
+     * namespace.
+     */
+    list_t createdObjects;
 } aml_state_t;
 
 /**
@@ -77,10 +84,20 @@ uint64_t aml_state_init(aml_state_t* state, const uint8_t* start, const uint8_t*
  *
  * Even if an error occurs all resources will still be freed.
  *
+ * Will not free any objects created by the state as that is not always wanted, for example when the state was used to
+ * parse a DSDT or SSDT table. Use `aml_state_garbage_collect()` to free all objects created by the state.
+ *
  * @param state Pointer to the state to deinitialize.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_state_deinit(aml_state_t* state);
+
+/**
+ * @brief Free all objects created by the state.
+ *
+ * @param state Pointer to the state to garbage collect.
+ */
+void aml_state_garbage_collect(aml_state_t* state);
 
 static inline uint64_t aml_state_read(aml_state_t* state, uint8_t* buffer, uint64_t count)
 {

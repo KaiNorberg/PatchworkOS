@@ -2,50 +2,48 @@
 
 #include <stdio.h>
 
-const char* aml_data_type_to_string(aml_data_type_t type)
+const char* aml_type_to_string(aml_type_t type)
 {
     switch (type)
     {
-    case AML_DATA_UNINITALIZED:
+    case AML_UNINITIALIZED:
         return "Uninitialized";
-    case AML_DATA_BUFFER:
+    case AML_BUFFER:
         return "Buffer";
-    case AML_DATA_BUFFER_FIELD:
+    case AML_BUFFER_FIELD:
         return "BufferField";
-    case AML_DATA_DEBUG_OBJECT:
+    case AML_DEBUG_OBJECT:
         return "DebugObject";
-    case AML_DATA_DEVICE:
+    case AML_DEVICE:
         return "Device";
-    case AML_DATA_EVENT:
+    case AML_EVENT:
         return "Event";
-    case AML_DATA_FIELD_UNIT:
+    case AML_FIELD_UNIT:
         return "FieldUnit";
-    case AML_DATA_INTEGER:
+    case AML_INTEGER:
         return "Integer";
-    case AML_DATA_INTEGER_CONSTANT:
+    case AML_INTEGER_CONSTANT:
         return "IntegerConstant";
-    case AML_DATA_METHOD:
+    case AML_METHOD:
         return "Method";
-    case AML_DATA_MUTEX:
+    case AML_MUTEX:
         return "Mutex";
-    case AML_DATA_OBJECT_REFERENCE:
+    case AML_OBJECT_REFERENCE:
         return "ObjectReference";
-    case AML_DATA_OPERATION_REGION:
+    case AML_OPERATION_REGION:
         return "OperationRegion";
-    case AML_DATA_PACKAGE:
+    case AML_PACKAGE:
         return "Package";
-    case AML_DATA_POWER_RESOURCE:
+    case AML_POWER_RESOURCE:
         return "PowerResource";
-    case AML_DATA_PROCESSOR:
+    case AML_PROCESSOR:
         return "Processor";
-    case AML_DATA_RAW_DATA_BUFFER:
+    case AML_RAW_DATA_BUFFER:
         return "RawDataBuffer";
-    case AML_DATA_STRING:
+    case AML_STRING:
         return "String";
-    case AML_DATA_THERMAL_ZONE:
+    case AML_THERMAL_ZONE:
         return "ThermalZone";
-    case AML_DATA_UNRESOLVED:
-        return "Unresolved";
     default:
         return "Unknown";
     }
@@ -146,10 +144,10 @@ const char* aml_object_to_string(aml_object_t* object)
     memset(buffer, 0, sizeof(buffer));
     switch (object->type)
     {
-    case AML_DATA_UNINITALIZED:
+    case AML_UNINITIALIZED:
         snprintf(buffer, sizeof(buffer), "Uninitialized");
         return buffer;
-    case AML_DATA_BUFFER:
+    case AML_BUFFER:
         snprintf(buffer, sizeof(buffer), "Buffer(Length=%llu, Content=0x", object->buffer.length);
         for (uint64_t i = 0; i < object->buffer.length && i < 8; i++)
         {
@@ -161,48 +159,49 @@ const char* aml_object_to_string(aml_object_t* object)
         }
         snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), ")");
         return buffer;
-    case AML_DATA_BUFFER_FIELD:
+    case AML_BUFFER_FIELD:
         snprintf(buffer, sizeof(buffer), "BufferField(BitOffset=%llu, BitSize=%llu)", object->bufferField.bitOffset,
             object->bufferField.bitSize);
         return buffer;
-    case AML_DATA_DEVICE:
+    case AML_DEVICE:
         snprintf(buffer, sizeof(buffer), "Device");
         return buffer;
-    case AML_DATA_FIELD_UNIT:
+    case AML_FIELD_UNIT:
         snprintf(buffer, sizeof(buffer), "FieldUnit(Type=%d, BitOffset=%llu, BitSize=%llu)", object->fieldUnit.type,
             object->fieldUnit.bitOffset, object->fieldUnit.bitSize);
         return buffer;
-    case AML_DATA_INTEGER:
+    case AML_INTEGER:
         snprintf(buffer, sizeof(buffer), "Integer(0x%x)", object->integer.value);
         return buffer;
-    case AML_DATA_INTEGER_CONSTANT:
+    case AML_INTEGER_CONSTANT:
         snprintf(buffer, sizeof(buffer), "IntegerConstant(0x%x)", object->integerConstant.value);
         return buffer;
-    case AML_DATA_METHOD:
+    case AML_METHOD:
         snprintf(buffer, sizeof(buffer), "Method(ArgCount=0x%x, Start=0x%llx, End=0x%llx)",
-            object->method.flags.argCount, object->method.start, object->method.end);
+            object->method.methodFlags.argCount, object->method.start, object->method.end);
         return buffer;
-    case AML_DATA_MUTEX:
+    case AML_MUTEX:
         snprintf(buffer, sizeof(buffer), "Mutex(SyncLevel=%d)", object->mutex.syncLevel);
         return buffer;
-    case AML_DATA_OBJECT_REFERENCE:
+    case AML_OBJECT_REFERENCE:
         if (object->objectReference.target != NULL)
         {
-            snprintf(buffer, sizeof(buffer), "ObjectReference(Target='%s')", object->objectReference.target->segment);
+            snprintf(buffer, sizeof(buffer), "ObjectReference(Target='%s')",
+                AML_OBJECT_GET_NAME(object->objectReference.target));
         }
         else
         {
             snprintf(buffer, sizeof(buffer), "ObjectReference(Target=NULL)");
         }
         return buffer;
-    case AML_DATA_OPERATION_REGION:
+    case AML_OPERATION_REGION:
         snprintf(buffer, sizeof(buffer), "OperationRegion(Space=%s, Offset=0x%llx, Length=%u)",
             aml_region_space_to_string(object->opregion.space), object->opregion.offset, object->opregion.length);
         return buffer;
-    case AML_DATA_PACKAGE:
+    case AML_PACKAGE:
         snprintf(buffer, sizeof(buffer), "Package(Length=%llu)", object->package.length);
         return buffer;
-    case AML_DATA_STRING:
+    case AML_STRING:
     {
         uint64_t len = strlen(object->string.content);
         if (len <= 32)
@@ -215,16 +214,13 @@ const char* aml_object_to_string(aml_object_t* object)
         }
         return buffer;
     }
-    case AML_DATA_UNRESOLVED:
-        snprintf(buffer, sizeof(buffer), "Unresolved");
-        return buffer;
     default:
         snprintf(buffer, sizeof(buffer), "Unknown(Type=%d)", object->type);
         return buffer;
     }
 }
 
-const char* aml_name_string_to_string(aml_name_string_t* nameString)
+const char* aml_name_string_to_string(const aml_name_string_t* nameString)
 {
     static char buffer[256];
     memset(buffer, 0, sizeof(buffer));

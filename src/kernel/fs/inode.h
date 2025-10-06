@@ -22,28 +22,28 @@ typedef struct dentry dentry_t;
 
 typedef enum
 {
-    INODE_NONE = 0, //!< None
+    INODE_NONE = 0, ///< None
 } inode_flags_t;
 
 typedef struct inode
 {
     ref_t ref;
-    inode_number_t number; //!< Constant after creation.
-    inode_type_t type;     //!< Constant after creation.
+    inode_number_t number; ///< Constant after creation.
+    inode_type_t type;     ///< Constant after creation.
     inode_flags_t flags;
     uint64_t linkCount;
     uint64_t size;
     uint64_t blocks;
-    time_t accessTime; //!< Unix time stamp for the last inode access.
-    time_t modifyTime; //!< Unix time stamp for last file content alteration.
-    time_t changeTime; //!< Unix time stamp for the last file metadata alteration.
-    time_t createTime; //!< Unix time stamp for the inode creation.
+    time_t accessTime; ///< Unix time stamp for the last inode access.
+    time_t modifyTime; ///< Unix time stamp for last file content alteration.
+    time_t changeTime; ///< Unix time stamp for the last file metadata alteration.
+    time_t createTime; ///< Unix time stamp for the inode creation.
     void* private;
-    superblock_t* superblock;  //!< Constant after creation.
-    const inode_ops_t* ops;    //!< Constant after creation.
-    const file_ops_t* fileOps; //!< Constant after creation.
+    superblock_t* superblock;  ///< Constant after creation.
+    const inode_ops_t* ops;    ///< Constant after creation.
+    const file_ops_t* fileOps; ///< Constant after creation.
     mutex_t mutex;
-    map_entry_t mapEntry; //!< Protected by the inodeCache lock.
+    map_entry_t mapEntry; ///< Protected by the inodeCache lock.
 } inode_t;
 
 /**

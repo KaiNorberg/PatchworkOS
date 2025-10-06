@@ -1,5 +1,6 @@
 #include "data.h"
 
+#include "acpi/acpi.h"
 #include "acpi/aml/aml_debug.h"
 #include "acpi/aml/aml_patch_up.h"
 #include "acpi/aml/aml_scope.h"
@@ -7,8 +8,6 @@
 #include "acpi/aml/aml_to_string.h"
 #include "acpi/aml/aml_token.h"
 #include "acpi/aml/runtime/convert.h"
-#include "data_integers.h"
-#include "acpi/acpi.h"
 #include "expression.h"
 #include "name.h"
 #include "package_length.h"
@@ -153,19 +152,19 @@ uint64_t aml_const_obj_read(aml_state_t* state, aml_object_t* out)
     switch (token.num)
     {
     case AML_ZERO_OP:
-        if (aml_object_init_integer(out, 0) == ERR)
+        if (aml_integer_init(out, 0) == ERR)
         {
             return ERR;
         }
         break;
     case AML_ONE_OP:
-        if (aml_object_init_integer(out, 1) == ERR)
+        if (aml_integer_init(out, 1) == ERR)
         {
             return ERR;
         }
         break;
     case AML_ONES_OP:
-        if (aml_object_init_integer(out, ~0) == ERR)
+        if (aml_integer_init(out, UINT64_MAX) == ERR)
         {
             return ERR;
         }
@@ -219,7 +218,7 @@ uint64_t aml_string_read(aml_state_t* state, aml_object_t* out)
         }
     }
 
-    if (aml_object_init_string(out, start) == ERR)
+    if (aml_string_init(out, start) == ERR)
     {
         return ERR;
     }
@@ -243,7 +242,7 @@ uint64_t aml_revision_op_read(aml_state_t* state, aml_object_t* out)
         return ERR;
     }
 
-    if (aml_object_init_integer(out, RSDP_CURRENT_REVISION) == ERR)
+    if (aml_integer_init(out, RSDP_CURRENT_REVISION) == ERR)
     {
         return ERR;
     }
@@ -272,7 +271,7 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml
             return ERR;
         }
 
-        if (aml_object_init_integer(out, byte) == ERR)
+        if (aml_integer_init(out, byte) == ERR)
         {
             return ERR;
         }
@@ -287,7 +286,7 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml
             return ERR;
         }
 
-        if (aml_object_init_integer(out, word) == ERR)
+        if (aml_integer_init(out, word) == ERR)
         {
             return ERR;
         }
@@ -302,7 +301,7 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml
             return ERR;
         }
 
-        if (aml_object_init_integer(out, dword) == ERR)
+        if (aml_integer_init(out, dword) == ERR)
         {
             return ERR;
         }
@@ -317,7 +316,7 @@ uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml
             return ERR;
         }
 
-        if (aml_object_init_integer(out, qword) == ERR)
+        if (aml_integer_init(out, qword) == ERR)
         {
             return ERR;
         }
@@ -377,19 +376,24 @@ uint64_t aml_num_elements_read(aml_state_t* state, uint8_t* out)
  */
 static inline uint64_t aml_package_element_handle_name(aml_object_t* in, aml_object_t* out)
 {
-    aml_data_type_info_t* info = aml_data_type_get_info(in->type);
-    if (info->flags & AML_DATA_FLAG_DATA_OBJECT) // "... resolved to actual data by the AML interpreter"
+    if (in->type &
+        (AML_INTEGER | AML_STRING | AML_BUFFER | AML_BUFFER_FIELD |
+            AML_FIELD_UNIT)) // "... resolved to actual data by the AML interpreter"
     {
-        if (aml_convert_source(in, out, AML_DATA_ACTUAL_DATA) == ERR)
+        // Unsure what the spec means by "actual data" but converting to DataObject seems to be the most sensible
+        // interpretation.
+        if (aml_convert_source(in, out, AML_DATA_OBJECTS) == ERR)
         {
-            LOG_ERR("failed to convert to actual data in aml_package_element_handle_name()\n");
+            LOG_ERR("failed to convert to data object in aml_package_element_handle_name()\n");
             return ERR;
         }
         return 0;
     }
-    else if (info->flags & AML_DATA_FLAG_NON_DATA_OBJECT) // "... returned in the package as references"
+    else if (in->type &
+        (AML_DEVICE | AML_EVENT | AML_METHOD | AML_MUTEX | AML_OPERATION_REGION | AML_POWER_RESOURCE | AML_PROCESSOR |
+            AML_THERMAL_ZONE)) // "... returned in the package as references"
     {
-        if (aml_object_init_object_reference(out, in) == ERR)
+        if (aml_object_reference_init(out, in) == ERR)
         {
             LOG_ERR("failed to init ObjectReference in aml_package_element_handle_name()\n");
             return ERR;
@@ -398,7 +402,7 @@ static inline uint64_t aml_package_element_handle_name(aml_object_t* in, aml_obj
     }
     else
     {
-        LOG_ERR("invalid data type '%s' in aml_package_element_handle_name()\n", info->name);
+        LOG_ERR("invalid data type '%s' in aml_package_element_handle_name()\n", aml_type_to_string(in->type));
         errno = EILSEQ;
         return ERR;
     }
@@ -420,14 +424,14 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_ob
         if (aml_simple_name_read_and_resolve(state, scope, &namedReference, AML_RESOLVE_ALLOW_UNRESOLVED,
                 &nameString) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read or resolve SimpleName");
+            AML_DEBUG_ERROR(state, "Failed to read SimpleName");
             return ERR;
         }
 
         // Evaulated to a valid namestring but could not be resolved.
         if (namedReference == NULL)
         {
-            if (aml_object_init_unresolved(out, &nameString, scope->location, aml_package_element_handle_name) == ERR)
+            if (aml_unresolved_init(out, &nameString, scope->location, aml_package_element_handle_name) == ERR)
             {
                 return ERR;
             }
@@ -453,17 +457,17 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_ob
     }
 }
 
-uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* package,
+uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, aml_package_t* package,
     const uint8_t* end)
 {
     uint64_t i = 0;
-    while (state->current < end && i < package->package.length)
+    while (state->current < end && i < package->length)
     {
-        if (aml_package_element_read(state, scope, package->package.elements[i]) == ERR)
+        if (aml_package_element_read(state, scope, package->elements[i]) == ERR)
         {
             for (uint64_t j = 0; j < i; j++)
             {
-                aml_object_deinit(package->package.elements[j]);
+                aml_object_deinit(package->elements[j]);
             }
             AML_DEBUG_ERROR(state, "Failed to read PackageElement %llu", i);
             return ERR;
@@ -509,12 +513,12 @@ uint64_t aml_def_package_read(aml_state_t* state, aml_scope_t* scope, aml_object
         return ERR;
     }
 
-    if (aml_object_init_package(out, numElements) == ERR)
+    if (aml_package_init(out, numElements) == ERR)
     {
         return ERR;
     }
 
-    if (aml_package_element_list_read(state, scope, out, end) == ERR)
+    if (aml_package_element_list_read(state, scope, &out->package, end) == ERR)
     {
         aml_object_deinit(out);
         AML_DEBUG_ERROR(state, "Failed to read PackageElementList");
@@ -568,12 +572,12 @@ uint64_t aml_def_var_package_read(aml_state_t* state, aml_scope_t* scope, aml_ob
         return ERR;
     }
 
-    if (aml_object_init_package(out, numElements) == ERR)
+    if (aml_package_init(out, numElements) == ERR)
     {
         return ERR;
     }
 
-    if (aml_package_element_list_read(state, scope, out, end) == ERR)
+    if (aml_package_element_list_read(state, scope, &out->package, end) == ERR)
     {
         aml_object_deinit(out);
         AML_DEBUG_ERROR(state, "Failed to read PackageElementList");

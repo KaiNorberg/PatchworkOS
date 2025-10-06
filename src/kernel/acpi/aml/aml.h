@@ -46,7 +46,7 @@
 uint64_t aml_init(void);
 
 /**
- * @brief Parse an AML bytecode stream
+ * @brief Parse an AML bytecode stream.
  *
  * The `aml_parse()` function parses and executes a AML bytestream, which creates the ACPI object tree.
  *
@@ -64,19 +64,12 @@ uint64_t aml_parse(const uint8_t* start, const uint8_t* end);
 aml_object_t* aml_root_get(void);
 
 /**
- * @brief Get the global AML mutex.
+ * @brief Get the mutex for the entire AML subsystem.
  *
- * @return mutex_t* A pointer to the global AML mutex.
- */
-mutex_t* aml_global_mutex_get(void);
-
-/**
- * @brief Print the ACPI namespace tree for debugging purposes.
+ * Must be held when interacting with any AML data structures.
  *
- * @param object Pointer to the object to start printing from.
- * @param depth Depth of the current object, used to indent the output.
- * @param isLast Whether the current object is the last child of its parent.
+ * @return mutex_t* A pointer to the mutex.
  */
-void aml_print_tree(aml_object_t* object, uint32_t depth, bool isLast);
+mutex_t* aml_big_mutex_get(void);
 
 /** @} */

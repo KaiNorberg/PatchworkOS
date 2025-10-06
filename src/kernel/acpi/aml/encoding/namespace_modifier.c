@@ -45,15 +45,17 @@ uint64_t aml_def_alias_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_object_t* target = aml_object_add(scope->location, &targetNameString, AML_OBJECT_NONE);
+    aml_object_t* target = aml_object_new(state, AML_OBJECT_NONE);
     if (target == NULL)
     {
         errno = EILSEQ;
         return ERR;
     }
+    DEREF_DEFER(target);
 
-    if (aml_object_init_alias(target, source) == ERR)
+    if (aml_alias_init(target, source) == ERR || aml_object_add(target, scope->location, &targetNameString) == ERR)
     {
+        AML_DEBUG_ERROR(state, "Failed to add alias object '%s'", aml_name_string_to_string(&targetNameString));
         return ERR;
     }
 
@@ -83,16 +85,18 @@ uint64_t aml_def_name_read(aml_state_t* state, aml_scope_t* scope)
         return ERR;
     }
 
-    aml_object_t* name = aml_object_add(scope->location, &nameString, AML_OBJECT_NONE);
-    if (name == NULL)
+    aml_object_t* newObject = aml_object_new(state, AML_OBJECT_NONE);
+    if (newObject == NULL)
     {
         errno = EILSEQ;
         return ERR;
     }
+    DEREF_DEFER(newObject);
 
-    if (aml_data_ref_object_read(state, scope, name) == ERR)
+    if (aml_data_ref_object_read(state, scope, newObject) == ERR ||
+        aml_object_add(newObject, scope->location, &nameString) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read DataRefObject");
+        AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
         return ERR;
     }
 
@@ -133,10 +137,10 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope)
 
     const uint8_t* end = start + pkgLength;
 
-    if (newLocation->type != AML_DATA_DEVICE && newLocation->type != AML_DATA_PROCESSOR &&
-        newLocation->type != AML_DATA_THERMAL_ZONE && newLocation->type != AML_DATA_POWER_RESOURCE)
+    aml_type_t type = newLocation->type;
+    if (type != AML_DEVICE && type != AML_PROCESSOR && type != AML_THERMAL_ZONE && type != AML_POWER_RESOURCE)
     {
-        AML_DEBUG_ERROR(state, "Invalid object type '%s'", aml_data_type_to_string(newLocation->type));
+        AML_DEBUG_ERROR(state, "Invalid object type '%s'", aml_type_to_string(type));
         errno = EILSEQ;
         return ERR;
     }

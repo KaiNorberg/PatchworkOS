@@ -18,12 +18,12 @@
  */
 typedef enum
 {
-    ACPI_STA_PRESENT = 1 << 0,    //!< Set if the device is present
-    ACPI_STA_ENABLED = 1 << 1,    //!< Set if the device is enabled and decoding its resources
-    ACPI_STA_SHOW_IN_UI = 1 << 2, //!< Set if the device should be shown in the UI.
+    ACPI_STA_PRESENT = 1 << 0,    ///< Set if the device is present
+    ACPI_STA_ENABLED = 1 << 1,    ///< Set if the device is enabled and decoding its resources
+    ACPI_STA_SHOW_IN_UI = 1 << 2, ///< Set if the device should be shown in the UI.
     ACPI_STA_FUNCTIONAL =
-        1 << 3, //!< Set if the device is functioning properly (cleared if device failed its diagnostics)
-    ACPI_STA_BATTERY_PRESENT = 1 << 4, //!< Set if a battery is present
+        1 << 3, ///< Set if the device is functioning properly (cleared if device failed its diagnostics)
+    ACPI_STA_BATTERY_PRESENT = 1 << 4, ///< Set if a battery is present
 } acpi_sta_flags_t;
 
 /**

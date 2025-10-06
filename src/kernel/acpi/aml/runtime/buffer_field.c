@@ -2,33 +2,48 @@
 
 #include <errno.h>
 
-uint64_t aml_buffer_field_load(aml_object_t* bufferField, aml_object_t* out)
+uint64_t aml_buffer_field_load(aml_buffer_field_t* bufferField, aml_object_t* out)
 {
-    if (bufferField == NULL || out == NULL || bufferField->type != AML_DATA_BUFFER_FIELD)
+    if (bufferField == NULL || out == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    uint64_t byteSize = (bufferField->bufferField.bitSize + 7) / 8;
+    uint8_t* buffer;
+    if (bufferField->isString)
+    {
+        buffer = (uint8_t*)bufferField->string->content;
+    }
+    else
+    {
+        buffer = bufferField->buffer->content;
+    }
+    aml_bit_size_t bitOffset = bufferField->bitOffset;
+    aml_bit_size_t bitSize = bufferField->bitSize;
+
+    uint64_t byteSize = (bitSize + 7) / 8;
     if (byteSize > sizeof(uint64_t))
     {
-        if (aml_object_init_buffer_empty(out, byteSize) == ERR)
+        if (aml_buffer_init_empty(out, byteSize) == ERR)
         {
             return ERR;
         }
     }
     else
     {
-        if (aml_object_init_integer(out, 0) == ERR)
+        if (aml_integer_init(out, 0) == ERR)
         {
             return ERR;
         }
     }
 
-    uint8_t* buffer = bufferField->bufferField.buffer;
-    aml_bit_size_t bitOffset = bufferField->bufferField.bitOffset;
-    aml_bit_size_t bitSize = bufferField->bufferField.bitSize;
+    if (bitOffset + bitSize >
+        (bufferField->isString ? bufferField->string->length * 8 : bufferField->buffer->length * 8))
+    {
+        errno = EINVAL;
+        return ERR;
+    }
 
     for (aml_bit_size_t i = 0; i < bitSize; i++)
     {
@@ -42,38 +57,54 @@ uint64_t aml_buffer_field_load(aml_object_t* bufferField, aml_object_t* out)
 
         uint8_t bitValue = (buffer[srcByteIndex] >> srcBitInByte) & 1;
 
-        if (out->type == AML_DATA_BUFFER)
+        if (byteSize > sizeof(uint64_t))
         {
             out->buffer.content[destByteIndex] &= ~(1 << destBitInByte);
             out->buffer.content[destByteIndex] |= (bitValue << destBitInByte);
         }
-        else if (out->type == AML_DATA_INTEGER)
+        else
         {
             out->integer.value &= ~((uint64_t)1 << destBitIndex);
             out->integer.value |= ((uint64_t)bitValue << destBitIndex);
-        }
-        else
-        {
-            aml_object_deinit(out);
-            errno = EINVAL;
-            return ERR;
         }
     }
 
     return 0;
 }
 
-uint64_t aml_buffer_field_store(aml_object_t* bufferField, aml_object_t* in)
+uint64_t aml_buffer_field_store(aml_buffer_field_t* bufferField, aml_object_t* in)
 {
-    if (bufferField == NULL || in == NULL || bufferField->type != AML_DATA_BUFFER_FIELD)
+    if (bufferField == NULL || in == NULL)
     {
         errno = EINVAL;
         return ERR;
     }
 
-    uint8_t* buffer = bufferField->bufferField.buffer;
-    aml_bit_size_t bitOffset = bufferField->bufferField.bitOffset;
-    aml_bit_size_t bitSize = bufferField->bufferField.bitSize;
+    uint8_t* buffer;
+    if (bufferField->isString)
+    {
+        buffer = (uint8_t*)bufferField->string->content;
+    }
+    else
+    {
+        buffer = bufferField->buffer->content;
+    }
+    aml_bit_size_t bitOffset = bufferField->bitOffset;
+    aml_bit_size_t bitSize = bufferField->bitSize;
+
+    aml_type_t inType = in->type;
+    if (inType != AML_BUFFER && inType != AML_INTEGER)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (bitOffset + bitSize >
+        (bufferField->isString ? bufferField->string->length * 8 : bufferField->buffer->length * 8))
+    {
+        errno = EINVAL;
+        return ERR;
+    }
 
     for (aml_bit_size_t i = 0; i < bitSize; i++)
     {
@@ -86,7 +117,7 @@ uint64_t aml_buffer_field_store(aml_object_t* bufferField, aml_object_t* in)
         aml_bit_size_t srcBitInByte = srcBitIndex % 8;
 
         uint8_t bitValue;
-        if (in->type == AML_DATA_BUFFER)
+        if (inType == AML_BUFFER)
         {
             if (srcByteIndex >= in->buffer.length)
             {
@@ -97,7 +128,7 @@ uint64_t aml_buffer_field_store(aml_object_t* bufferField, aml_object_t* in)
                 bitValue = (in->buffer.content[srcByteIndex] >> srcBitInByte) & 1;
             }
         }
-        else if (in->type == AML_DATA_INTEGER)
+        else if (inType == AML_INTEGER)
         {
             if (srcBitIndex >= 64)
             {

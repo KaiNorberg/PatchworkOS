@@ -47,7 +47,7 @@ typedef struct ref
  *
  * Uses GCC's cleanup attribute to automatically call `ref_dec` when going out of scope.
  */
-#define REF_DEFER(ptr) __attribute__((cleanup(ref_defer_cleanup))) void* CONCAT(p, __COUNTER__) = (ptr)
+#define DEREF_DEFER(ptr) __attribute__((cleanup(ref_defer_cleanup))) void* CONCAT(p, __COUNTER__) = (ptr)
 
 /**
  * @brief Increment reference count

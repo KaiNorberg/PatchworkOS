@@ -38,7 +38,7 @@ static dentry_t* sysfs_mount(filesystem_t* fs, superblock_flags_t flags, const c
     {
         return NULL;
     }
-    REF_DEFER(superblock);
+    DEREF_DEFER(superblock);
 
     superblock->blockSize = 0;
     superblock->maxFileSize = UINT64_MAX;
@@ -49,14 +49,14 @@ static dentry_t* sysfs_mount(filesystem_t* fs, superblock_flags_t flags, const c
     {
         return NULL;
     }
-    REF_DEFER(inode);
+    DEREF_DEFER(inode);
 
     dentry_t* dentry = dentry_new(superblock, NULL, VFS_ROOT_ENTRY_NAME);
     if (dentry == NULL)
     {
         return NULL;
     }
-    REF_DEFER(dentry);
+    DEREF_DEFER(dentry);
 
     dentry->private = &group->root;
     dentry_make_positive(dentry, inode);
@@ -137,7 +137,7 @@ uint64_t sysfs_dir_init(sysfs_dir_t* dir, sysfs_dir_t* parent, const char* name,
         LOG_ERR("failed to create dentry for sysfs dir '%s'\n", name);
         return ERR;
     }
-    REF_DEFER(dentry);
+    DEREF_DEFER(dentry);
     dentry->private = dir;
 
     inode_t* inode =
@@ -147,7 +147,7 @@ uint64_t sysfs_dir_init(sysfs_dir_t* dir, sysfs_dir_t* parent, const char* name,
         LOG_ERR("failed to create inode for sysfs dir '%s'\n", name);
         return ERR;
     }
-    REF_DEFER(inode);
+    DEREF_DEFER(inode);
     inode->private = private;
 
     if (vfs_add_dentry(dentry) == ERR)
@@ -188,7 +188,7 @@ uint64_t sysfs_file_init(sysfs_file_t* file, sysfs_dir_t* parent, const char* na
         LOG_ERR("failed to create dentry for sysfs file '%s'\n", name);
         return ERR;
     }
-    REF_DEFER(dentry);
+    DEREF_DEFER(dentry);
     dentry->private = file;
 
     inode_t* inode =
@@ -198,7 +198,7 @@ uint64_t sysfs_file_init(sysfs_file_t* file, sysfs_dir_t* parent, const char* na
         LOG_ERR("failed to create inode for sysfs file '%s'\n", name);
         return ERR;
     }
-    REF_DEFER(inode);
+    DEREF_DEFER(inode);
     inode->private = private;
 
     if (vfs_add_dentry(dentry) == ERR)

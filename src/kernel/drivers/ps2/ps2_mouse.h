@@ -34,9 +34,9 @@ typedef enum
  */
 typedef struct ps2_mouse_packet
 {
-    ps2_mouse_packet_flags_t flags; //!< Packet flags
-    int16_t deltaX;                 //!< X-axis movement
-    int16_t deltaY;                 //!< Y-axis movement
+    ps2_mouse_packet_flags_t flags; ///< Packet flags
+    int16_t deltaX;                 ///< X-axis movement
+    int16_t deltaY;                 ///< Y-axis movement
 } ps2_mouse_packet_t;
 
 /**
@@ -58,8 +58,8 @@ typedef enum
  */
 typedef struct ps2_mouse_irq_context
 {
-    ps2_mouse_packet_index_t index; //!< Current packet byte index.
-    ps2_mouse_packet_t packet;      //!< Current packet being assembled
+    ps2_mouse_packet_index_t index; ///< Current packet byte index.
+    ps2_mouse_packet_t packet;      ///< Current packet being assembled
 } ps2_mouse_irq_context_t;
 
 /**

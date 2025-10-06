@@ -162,10 +162,10 @@ typedef struct wait_entry
 
 typedef enum
 {
-    WAIT_NORM = 0,    //!< Normal wait result
-    WAIT_TIMEOUT = 1, //!< Wait timed out
-    WAIT_NOTE = 2,    //!< Wait was interrupted by a note
-    WAIT_ERROR = 3    //!< Wait encountered an error
+    WAIT_NORM = 0,    ///< Normal wait result
+    WAIT_TIMEOUT = 1, ///< Wait timed out
+    WAIT_NOTE = 2,    ///< Wait was interrupted by a note
+    WAIT_ERROR = 3    ///< Wait encountered an error
 } wait_result_t;
 
 typedef struct

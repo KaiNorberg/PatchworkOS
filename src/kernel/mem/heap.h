@@ -26,8 +26,8 @@
  */
 typedef enum
 {
-    HEAP_NONE = 0,     //!< No flags.
-    HEAP_VMM = 1 << 0, //!< Dont use the slab allocator, instead allocate whole pages using the VMM.
+    HEAP_NONE = 0,     ///< No flags.
+    HEAP_VMM = 1 << 0, ///< Dont use the slab allocator, instead allocate whole pages using the VMM.
 } heap_flags_t;
 
 void heap_init(void);

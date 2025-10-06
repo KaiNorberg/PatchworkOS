@@ -316,7 +316,7 @@ dentry_t* vfs_get_or_lookup_dentry(const path_t* parent, const char* name)
         rwlock_write_release(&dentryCache.lock);
         return NULL;
     }
-    REF_DEFER(dentry);
+    DEREF_DEFER(dentry);
 
     if (map_insert(&dentryCache.map, &key, &dentry->mapEntry) == ERR)
     {
@@ -508,7 +508,7 @@ uint64_t vfs_mount(const char* deviceName, const pathname_t* mountpoint, const c
     {
         return ERR;
     }
-    REF_DEFER(root);
+    DEREF_DEFER(root);
 
     MUTEX_SCOPE(&root->mutex);
 
@@ -616,7 +616,7 @@ uint64_t vfs_unmount(const pathname_t* mountpoint)
         return ERR;
     }
     mount = REF(mount);
-    REF_DEFER(mount);
+    DEREF_DEFER(mount);
 
     if (mount == globalRoot.mount)
     {
@@ -794,7 +794,7 @@ file_t* vfs_open(const pathname_t* pathname)
     {
         return NULL;
     }
-    REF_DEFER(file);
+    DEREF_DEFER(file);
 
     if (pathname->flags & PATH_TRUNCATE && path.dentry->inode->type == INODE_FILE)
     {
@@ -838,7 +838,7 @@ SYSCALL_DEFINE(SYS_OPEN, fd_t, const char* pathString)
     {
         return ERR;
     }
-    REF_DEFER(file);
+    DEREF_DEFER(file);
 
     return vfs_ctx_open(&process->vfsCtx, file);
 }
@@ -863,14 +863,14 @@ uint64_t vfs_open2(const pathname_t* pathname, file_t* files[2])
     {
         return ERR;
     }
-    REF_DEFER(files[0]);
+    DEREF_DEFER(files[0]);
 
     files[1] = file_new(path.dentry->inode, &path, pathname->flags);
     if (files[1] == NULL)
     {
         return ERR;
     }
-    REF_DEFER(files[1]);
+    DEREF_DEFER(files[1]);
 
     if (pathname->flags & PATH_TRUNCATE && path.dentry->inode->type == INODE_FILE)
     {
@@ -925,8 +925,8 @@ SYSCALL_DEFINE(SYS_OPEN2, uint64_t, const char* pathString, fd_t fds[2])
     {
         return ERR;
     }
-    REF_DEFER(files[0]);
-    REF_DEFER(files[1]);
+    DEREF_DEFER(files[0]);
+    DEREF_DEFER(files[1]);
 
     fds[0] = vfs_ctx_open(&process->vfsCtx, files[0]);
     if (fds[0] == ERR)
@@ -993,7 +993,7 @@ SYSCALL_DEFINE(SYS_READ, uint64_t, fd_t fd, void* buffer, uint64_t count)
     {
         return ERR;
     }
-    REF_DEFER(file);
+    DEREF_DEFER(file);
 
     return vfs_read(file, buffer, count);
 }
@@ -1053,7 +1053,7 @@ SYSCALL_DEFINE(SYS_WRITE, uint64_t, fd_t fd, const void* buffer, uint64_t count)
     {
         return ERR;
     }
-    REF_DEFER(file);
+    DEREF_DEFER(file);
 
     return vfs_write(file, buffer, count);
 }
@@ -1085,7 +1085,7 @@ SYSCALL_DEFINE(SYS_SEEK, uint64_t, fd_t fd, int64_t offset, seek_origin_t origin
     {
         return ERR;
     }
-    REF_DEFER(file);
+    DEREF_DEFER(file);
 
     return vfs_seek(file, offset, origin);
 }
@@ -1142,7 +1142,7 @@ SYSCALL_DEFINE(SYS_IOCTL, uint64_t, fd_t fd, uint64_t request, void* argp, uint6
     {
         return ERR;
     }
-    REF_DEFER(file);
+    DEREF_DEFER(file);
 
     return vfs_ioctl(file, request, argp, size);
 }
@@ -1184,7 +1184,7 @@ SYSCALL_DEFINE(SYS_MMAP, void*, fd_t fd, void* address, uint64_t length, prot_t 
     {
         return NULL;
     }
-    REF_DEFER(file);
+    DEREF_DEFER(file);
 
     return vfs_mmap(file, address, length, prot);
 }
@@ -1466,7 +1466,7 @@ SYSCALL_DEFINE(SYS_GETDENTS, uint64_t, fd_t fd, dirent_t* buffer, uint64_t count
     {
         return ERR;
     }
-    REF_DEFER(file);
+    DEREF_DEFER(file);
 
     return vfs_getdents(file, buffer, count);
 }

@@ -4,59 +4,17 @@
 #include <stdint.h>
 #include <sys/list.h>
 
+#include "acpi/aml/encoding/name.h"
+#include "acpi/aml/encoding/named.h"
+
+typedef struct aml_unresolved aml_unresolved_t;
 typedef struct aml_object aml_object_t;
+typedef struct aml_data aml_data_t;
 
 /**
  * @brief Patch-up system for forward references.
  * @defgroup kernel_acpi_aml_patch_up Patch-up
  * @ingroup kernel_acpi_aml
- *
- * This module is the reason everyone hates ACPI. We need to support forward references, such that any object referenced
- * might not yet be defined or declared. Why couldent they just add forward declarations like C? No clue, but hey, they
- * are highly educated Intel engineers so what do I know.
- *
- * There are many ways of handling this, all of them equally problematic. Here are a few of the issues that make forward
- * references so bad:
- * - If a attempt to resolve a NameString fails the interpreter will then try to find the object in the parent scope,
- * this means that if a object is not yet defined (its a forward reference) we have no way to know where exactly this
- * object will end up. It could be in the current scope, in the parent scope, or in any ancestor scope.
- * - Its possible for two objects to have the same name, so we cant use that to identify a forward reference.
- * - The object might never be defined, in which case we need to error out at some point.
- * - Dont get me started on RefOf and CondRefOf.
- * - And so much more... When you go over everything you will arive at the conclusion that no matter what solution
- * you choose there will always be situations where there will be, at best, undefined behavior.
- *
- * Anyway, the way ive choosen to do this is to use a "Patch-up" system. When we attempt to retrieve a object that is
- * not yet defined we will get a object of type `AML_DATA_UNRESOLVED` (this behaviour can be disabled when needed) this
- * object stores information like where the retrival started from in the namespace tree and the NameString that we
- * attempted to resolve. We can then add this object to a global list of unresolved objects along with a callback that
- * will be called when a matching object is found. The callback can then patch the unresolved object in whatever way it
- * wants, for example converting its type before storing it.
- *
- * Now we can just wait until we find a matching object, call the callback and patch it, right? Well... consider this,
- * how do we know that we are resolving to the right object? Say we are in \_SB.FOO and want to resolve BAR but its not
- * defined. Due to the NameString parent behaviour discussed perviously, BAR could be either att \_SB.FOO.BAR, \_SB.BAR
- * or \BAR. Now say we later define \_SB.BAR, we would then try to patch all the relavent objects that can reach
- * \_SB.BAR, but what if we later defined \_SB.FOO.BAR? Well that would mean we resolved to the wrong object. This also
- * leads to the realization that its actually impossible to resolve any object ever!
- *
- * Lets go back and say that a \_SB.BAR was defined when we originally tried to resolve BAR when we were in \_SB.FOO, we
- * would then resolve to \_SB.BAR. But what if we later defined \_SB.FOO.BAR? Well then we resolved to the wrong object!
- * All becouse of the combination of forward references and the parent scope search behaviour.
- *
- * The solution must just be a two pass system, right? Nope. Then we also have issues since the type and
- * location of objects is not as simple as something like JSON, they are defined dynamically, so the only way to know
- * exactly where everything will be is to parse the entire AML bytecode which we cant do becouse we need the forward
- * references to do that. So we are back to square one. We could ignore the forward refences during the first pass, but
- * then we would have lots of undefined behaviour evaluating certain objects that depend on other objects.
- *
- * One more idea is lazy evaluation, where we only resolve the forward references when they are actually used. This
- * would then lead to unpredictable behaviour as the resolved object would depend on the time of evaluation, which would
- * just be confusing even if the first resolution was cached.
- *
- * So... essay (rant) over. The point is that the "Patch-up" system described here isent perfect, but its probably the
- * best we can do. All behaviour is "defined" in the sense that it will always do the same thing, but its not
- * guaranteed to be the "right" thing as thats impossible. In practice it seems to work well enough.
  *
  * @{
  */
@@ -75,9 +33,8 @@ typedef uint64_t (*aml_patch_up_resolve_callback_t)(aml_object_t* match, aml_obj
  */
 typedef struct aml_patch_up_entry
 {
-    list_entry_t entry;                       //!< List entry for the global list of unresolved references.
-    aml_object_t* unresolved;                 //!< The unresolved object.
-    aml_patch_up_resolve_callback_t callback; //!< The callback to call when a matching object is found.
+    list_entry_t entry;                       ///< List entry for the global list of unresolved references.
+    aml_unresolved_t* unresolved;                 ///< The unresolved object.
 } aml_patch_up_entry_t;
 
 /**
@@ -90,19 +47,20 @@ uint64_t aml_patch_up_init(void);
 /**
  * @brief Adds a unresolved reference to the global list.
  *
- * @param unresolved The unresolved object to add, must be of type `AML_DATA_UNRESOLVED` and allocated (as in created
- * using `aml_object_new()`).
- * @param callback The callback to call when a matching object is found.
+ * Does not take a reference to `unresolved`, unresolved objects will remove themselves from the list when they are
+ * freed.
+ *
+ * @param unresolved The unresolved object to add, must be of type `AML_UNRESOLVED`.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_patch_up_add_unresolved(aml_object_t* unresolved, aml_patch_up_resolve_callback_t callback);
+uint64_t aml_patch_up_add_unresolved(aml_unresolved_t* unresolved);
 
 /**
  * @brief Removes an unresolved reference from the global list.
  *
  * @param unresolved The unresolved object to remove.
  */
-void aml_patch_up_remove_unresolved(aml_object_t* unresolved);
+void aml_patch_up_remove_unresolved(aml_unresolved_t* unresolved);
 
 /**
  * @brief Attempts to resolve all unresolved references.

@@ -45,8 +45,8 @@ typedef struct
  */
 typedef struct
 {
-    uint64_t length; //!< The distance from the start of the line to the end of the furthest away char, in chars.
-    uint32_t pixels[GLYPH_HEIGHT * SCREEN_LINE_STRIDE]; //!< The pixel data for the line.
+    uint64_t length; ///< The distance from the start of the line to the end of the furthest away char, in chars.
+    uint32_t pixels[GLYPH_HEIGHT * SCREEN_LINE_STRIDE]; ///< The pixel data for the line.
 } screen_line_t;
 
 /**
@@ -54,12 +54,12 @@ typedef struct
  */
 typedef struct
 {
-    uint64_t width;            //!< The width of the buffer in chars.
-    uint64_t height;           //!< The height of the buffer in chars.
-    uint64_t firstLineIndex;   //!< The index of the first line in the buffer.
-    screen_pos_t invalidStart; //!< The start of the invalid region in the buffer, forms a rectangle with invalidEnd.
-    screen_pos_t invalidEnd;   //!< The end of the invalid region in the buffer, forms a rectangle with invalidStart.
-    screen_line_t lines[CONFIG_SCREEN_MAX_LINES]; //!< The lines in the buffer, acts as a circular buffer.
+    uint64_t width;            ///< The width of the buffer in chars.
+    uint64_t height;           ///< The height of the buffer in chars.
+    uint64_t firstLineIndex;   ///< The index of the first line in the buffer.
+    screen_pos_t invalidStart; ///< The start of the invalid region in the buffer, forms a rectangle with invalidEnd.
+    screen_pos_t invalidEnd;   ///< The end of the invalid region in the buffer, forms a rectangle with invalidStart.
+    screen_line_t lines[CONFIG_SCREEN_MAX_LINES]; ///< The lines in the buffer, acts as a circular buffer.
 } screen_buffer_t;
 
 /**
@@ -67,10 +67,10 @@ typedef struct
  */
 typedef struct
 {
-    bool initialized;       //!< Whether the screen has been initialized.
-    boot_gop_t gop;         //!< The GOP information.
-    screen_pos_t cursor;    //!< The current cursor position in character coordinates.
-    screen_buffer_t buffer; //!< The screen buffer.
+    bool initialized;       ///< Whether the screen has been initialized.
+    boot_gop_t gop;         ///< The GOP information.
+    screen_pos_t cursor;    ///< The current cursor position in character coordinates.
+    screen_buffer_t buffer; ///< The screen buffer.
 } screen_t;
 
 /**

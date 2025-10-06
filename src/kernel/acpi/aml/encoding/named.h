@@ -5,12 +5,14 @@
 #include <stdbool.h>
 
 typedef struct aml_object aml_object_t;
+typedef struct aml_opregion aml_opregion_t;
+typedef struct aml_field_unit aml_field_unit_t;
 typedef struct aml_state aml_state_t;
 typedef struct aml_scope aml_scope_t;
 
 /**
  * @brief Named Objects Encoding
- * @defgroup kernel_acpi_aml_named Named Objects
+ * @defgroup kernel_acpi_aml_name Named Objects
  * @ingroup kernel_acpi_aml
  *
  * Not to be confused with "ACPI AML Name Objects Encoding".
@@ -93,9 +95,9 @@ typedef struct
  */
 typedef enum
 {
-    AML_FIELD_LIST_TYPE_FIELD,       //!< FieldList is part of a DefField.
-    AML_FIELD_LIST_TYPE_INDEX_FIELD, //!< FieldList is part of an IndexField.
-    AML_FIELD_LIST_TYPE_BANK_FIELD,  //!< FieldList is part of a BankField.
+    AML_FIELD_LIST_TYPE_FIELD,       ///< FieldList is part of a DefField.
+    AML_FIELD_LIST_TYPE_INDEX_FIELD, ///< FieldList is part of an IndexField.
+    AML_FIELD_LIST_TYPE_BANK_FIELD,  ///< FieldList is part of a BankField.
 } aml_field_list_type_t;
 
 /**
@@ -104,23 +106,23 @@ typedef enum
  */
 typedef struct
 {
-    aml_field_list_type_t type;   //!< The type of FieldList.
-    aml_field_flags_t flags;      //!< The flags of the FieldList.
-    aml_bit_size_t currentOffset; //!< The current offset within the opregion.
+    aml_field_list_type_t type;   ///< The type of FieldList.
+    aml_field_flags_t flags;      ///< The flags of the FieldList.
+    aml_bit_size_t currentOffset; ///< The current offset within the opregion.
     union {
         struct
         {
-            aml_object_t* opregion;
+            aml_opregion_t* opregion;
         } field;
         struct
         {
-            aml_object_t* indexObject;
-            aml_object_t* dataObject;
+            aml_field_unit_t* index;
+            aml_field_unit_t* data;
         } index;
         struct
         {
-            aml_object_t* opregion;
-            aml_object_t* bank;
+            aml_opregion_t* opregion;
+            aml_field_unit_t* bank;
             uint64_t bankValue;
         } bank;
     };
@@ -138,9 +140,9 @@ typedef uint8_t aml_sync_level_t;
  */
 typedef struct
 {
-    uint8_t argCount;           //!< Amount of arguments (0-7)
-    bool isSerialized;          //!< true if method is serialized, false if not
-    aml_sync_level_t syncLevel; //!< Synchronization level (0-15)
+    uint8_t argCount;           ///< Amount of arguments (0-7)
+    bool isSerialized;          ///< true if method is serialized, false if not
+    aml_sync_level_t syncLevel; ///< Synchronization level (0-15)
 } aml_method_flags_t;
 
 /**
@@ -264,7 +266,7 @@ uint64_t aml_field_flags_read(aml_state_t* state, aml_field_flags_t* out);
  * @param ctx The AML field list context.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_named_field_read(aml_state_t* state, aml_scope_t* scope, aml_field_list_ctx_t* ctx);
+uint64_t aml_name_field_read(aml_state_t* state, aml_scope_t* scope, aml_field_list_ctx_t* ctx);
 
 /**
  * @brief Reads a ReservedField structure from the AML byte stream.
@@ -633,6 +635,6 @@ uint64_t aml_def_create_qword_field_read(aml_state_t* state, aml_scope_t* scope)
  * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_named_obj_read(aml_state_t* state, aml_scope_t* scope);
+uint64_t aml_name_obj_read(aml_state_t* state, aml_scope_t* scope);
 
 /** @} */

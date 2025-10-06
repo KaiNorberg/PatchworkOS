@@ -1,6 +1,8 @@
 #include "devices.h"
 
+#include "aml/aml.h"
 #include "aml/aml_object.h"
+#include "aml/aml_to_string.h"
 #include "aml/runtime/convert.h"
 #include "aml/runtime/method.h"
 #include "log/log.h"
@@ -17,7 +19,15 @@ static inline uint64_t acpi_sta_get_flags(aml_object_t* device, acpi_sta_flags_t
     uint64_t value;
     if (aml_method_evaluate_integer(sta, &value) == ERR)
     {
-        LOG_ERR("could not evaluate %s._STA\n", device->segment);
+        LOG_ERR("could not evaluate %s._STA\n", AML_OBJECT_GET_NAME(device));
+        return ERR;
+    }
+
+    if (value &
+        ~(ACPI_STA_PRESENT | ACPI_STA_ENABLED | ACPI_STA_SHOW_IN_UI | ACPI_STA_FUNCTIONAL | ACPI_STA_BATTERY_PRESENT))
+    {
+        LOG_ERR("%s._STA returned invalid value 0x%llx\n", AML_OBJECT_GET_NAME(device), value);
+        errno = EILSEQ;
         return ERR;
     }
 
@@ -27,37 +37,51 @@ static inline uint64_t acpi_sta_get_flags(aml_object_t* device, acpi_sta_flags_t
 
 static inline uint64_t acpi_devices_init_children(aml_object_t* parent)
 {
-    aml_object_t* child;
-    LIST_FOR_EACH(child, &parent->children, entry)
+    if (parent->type != AML_DEVICE)
     {
-        if (child->type == AML_DATA_DEVICE)
+        return 0; // Nothing to do
+    }
+
+    aml_object_t* child;
+    LIST_FOR_EACH(child, &parent->device.namedObjects, name.entry)
+    {
+        if (child->type != AML_DEVICE)
         {
-            acpi_sta_flags_t sta;
-            if (acpi_sta_get_flags(child, &sta) == ERR)
-            {
-                return ERR;
-            }
+            continue; // Only devices can have _STA and _INI
+        }
 
-            if (sta & ACPI_STA_PRESENT)
-            {
-                aml_object_t* ini = aml_object_find_child(child, "_INI");
-                if (ini != NULL)
-                {
-                    LOG_INFO("initalizing '%.*s'\n", AML_NAME_LENGTH, child->segment);
-                    if (aml_method_evaluate(ini, 0, NULL, NULL) == ERR)
-                    {
-                        LOG_ERR("could not evaluate %s._INI\n", child->segment);
-                        return ERR;
-                    }
-                }
-            }
+        acpi_sta_flags_t sta;
+        if (acpi_sta_get_flags(child, &sta) == ERR)
+        {
+            return ERR;
+        }
 
-            if (sta & (ACPI_STA_PRESENT | ACPI_STA_FUNCTIONAL))
+        if (sta & ACPI_STA_PRESENT)
+        {
+            aml_object_t* ini = aml_object_find_child(child, "_INI");
+            if (ini != NULL)
             {
-                if (acpi_devices_init_children(child) == ERR)
+                if (ini->type != AML_METHOD)
                 {
+                    LOG_ERR("%s._INI is a '%s', not a method\n", AML_OBJECT_GET_NAME(child),
+                        aml_type_to_string(ini->type));
                     return ERR;
                 }
+
+                LOG_INFO("ACPI device '%s._INI'\n", AML_OBJECT_GET_NAME(child));
+                if (aml_method_evaluate(&ini->method, 0, NULL, NULL) == ERR)
+                {
+                    LOG_ERR("could not evaluate %s._INI\n", AML_OBJECT_GET_NAME(child));
+                    return ERR;
+                }
+            }
+        }
+
+        if (sta & (ACPI_STA_PRESENT | ACPI_STA_FUNCTIONAL))
+        {
+            if (acpi_devices_init_children(child) == ERR)
+            {
+                return ERR;
             }
         }
     }
@@ -68,21 +92,28 @@ static inline uint64_t acpi_devices_init_children(aml_object_t* parent)
 uint64_t acpi_devices_init(void)
 {
     // TODO: Implement all opcodes needed for _INI and device initalization
+    MUTEX_SCOPE(aml_big_mutex_get());
 
-    aml_object_t* sbIni = aml_object_find(NULL, "\\_SB._INI");
+    aml_object_t* sbIni = aml_object_find(NULL, "\\_SB_._INI");
     if (sbIni != NULL)
     {
-        LOG_INFO("found \\_SB._INI\n");
-        if (aml_method_evaluate(sbIni, 0, NULL, NULL) == ERR)
+        if (sbIni->type != AML_METHOD)
+        {
+            LOG_ERR("\\_SB_._INI is a '%s', not a method\n", aml_type_to_string(sbIni->type));
+            return ERR;
+        }
+
+        LOG_INFO("found \\_SB_._INI\n");
+        if (aml_method_evaluate(&sbIni->method, 0, NULL, NULL) == ERR)
         {
             return ERR;
         }
     }
 
-    aml_object_t* sb = aml_object_find(NULL, "\\_SB");
+    aml_object_t* sb = aml_object_find(NULL, "\\_SB_");
     if (sb == NULL) // Should never happen
     {
-        LOG_ERR("could not find \\_SB\n");
+        LOG_ERR("could not find \\_SB_\n");
         return ERR;
     }
 

@@ -79,10 +79,10 @@ typedef enum
  */
 typedef enum
 {
-    PS2_STATUS_OUT_FULL = (1 << 0), //!< Output buffer status (0 = empty, 1 = full)
-    PS2_STATUS_IN_FULL = (1 << 1),  //!< Input buffer status (0 = empty, 1 = full)
+    PS2_STATUS_OUT_FULL = (1 << 0), ///< Output buffer status (0 = empty, 1 = full)
+    PS2_STATUS_IN_FULL = (1 << 1),  ///< Input buffer status (0 = empty, 1 = full)
     PS2_STATUS_SYSTEM_FLAG = (1 << 2),
-    PS2_STATUS_CMD_DATA = (1 << 3), //!< Command(1) or Data(0)
+    PS2_STATUS_CMD_DATA = (1 << 3), ///< Command(1) or Data(0)
     PS2_STATUS_TIMEOUT_ERROR = (1 << 6),
     PS2_STATUS_PARITY_ERROR = (1 << 7)
 } ps2_status_bits_t;
@@ -92,14 +92,14 @@ typedef enum
  */
 typedef enum
 {
-    PS2_CFG_FIRST_IRQ = (1 << 0),            //!< First PS/2 port interrupt enable
-    PS2_CFG_SECOND_IRQ = (1 << 1),           //!< Second PS/2 port interrupt enable
-    PS2_CFG_SYSTEM_FLAG = (1 << 2),          //!< System flag (POST passed)
-    PS2_CFG_RESERVED_3 = (1 << 3),           //!< Should be zero
-    PS2_CFG_FIRST_CLOCK_DISABLE = (1 << 4),  //!< First PS/2 port clock disable
-    PS2_CFG_SECOND_CLOCK_DISABLE = (1 << 5), //!< Second PS/2 port clock disable
-    PS2_CFG_FIRST_TRANSLATION = (1 << 6),    //!< First PS/2 port translation enable
-    PS2_CFG_RESERVED_7 = (1 << 7)            //!< Should be zero
+    PS2_CFG_FIRST_IRQ = (1 << 0),            ///< First PS/2 port interrupt enable
+    PS2_CFG_SECOND_IRQ = (1 << 1),           ///< Second PS/2 port interrupt enable
+    PS2_CFG_SYSTEM_FLAG = (1 << 2),          ///< System flag (POST passed)
+    PS2_CFG_RESERVED_3 = (1 << 3),           ///< Should be zero
+    PS2_CFG_FIRST_CLOCK_DISABLE = (1 << 4),  ///< First PS/2 port clock disable
+    PS2_CFG_SECOND_CLOCK_DISABLE = (1 << 5), ///< Second PS/2 port clock disable
+    PS2_CFG_FIRST_TRANSLATION = (1 << 6),    ///< First PS/2 port translation enable
+    PS2_CFG_RESERVED_7 = (1 << 7)            ///< Should be zero
 } ps2_config_bits_t;
 
 /**
@@ -124,10 +124,10 @@ typedef enum
  */
 typedef enum
 {
-    PS2_DEV_NONE = -1,  //!< No device
-    PS2_DEV_FIRST = 0,  //!< First PS/2 port
-    PS2_DEV_SECOND = 1, //!< Second PS/2 port
-    PS2_DEV_COUNT = 2   //!< Total number of ports
+    PS2_DEV_NONE = -1,  ///< No device
+    PS2_DEV_FIRST = 0,  ///< First PS/2 port
+    PS2_DEV_SECOND = 1, ///< Second PS/2 port
+    PS2_DEV_COUNT = 2   ///< Total number of ports
 } ps2_device_t;
 
 /**
@@ -183,8 +183,8 @@ typedef enum
     PS2_DEV_RESPONSE_ACK = 0xFA,
     PS2_DEV_RESPONSE_RESEND = 0xFE,
     PS2_DEV_RESPONSE_BAT_OK = 0xAA,
-    PS2_DEV_RESPONSE_KBD_EXTENDED = 0xE0, //!< Indicates that the following byte is an extended scancode.
-    PS2_DEV_RESPONSE_KBD_RELEASE = 0xF0,  //!< Indicates that the following byte is a key release code.
+    PS2_DEV_RESPONSE_KBD_EXTENDED = 0xE0, ///< Indicates that the following byte is an extended scancode.
+    PS2_DEV_RESPONSE_KBD_RELEASE = 0xF0,  ///< Indicates that the following byte is a key release code.
 } ps2_device_response_t;
 
 /**

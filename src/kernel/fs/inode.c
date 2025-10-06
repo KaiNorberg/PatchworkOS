@@ -10,6 +10,7 @@ inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t
 {
     if (superblock == NULL)
     {
+        errno = EINVAL;
         return NULL;
     }
 
@@ -21,6 +22,11 @@ inode_t* inode_new(superblock_t* superblock, inode_number_t number, inode_type_t
     else
     {
         inode = heap_alloc(sizeof(inode_t), HEAP_NONE);
+    }
+
+    if (inode == NULL)
+    {
+        return NULL;
     }
 
     ref_init(&inode->ref, inode_free);
