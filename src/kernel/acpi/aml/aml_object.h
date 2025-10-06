@@ -738,7 +738,7 @@ aml_object_t* aml_alias_traverse(aml_alias_t* alias);
  * @param object Pointer to the object to initialize.
  * @param nameString Pointer to the namestring representing the path to the target object.
  * @param from Pointer to the object to start the search from, can be `NULL` to start from the root.
- * @param callback Pointer to a callback function that will be called when a matching object is found, can be `NULL`.
+ * @param callback Pointer to a callback function that will be called when a matching object is found
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_unresolved_init(aml_object_t* object, const aml_name_string_t* nameString, aml_object_t* from,
