@@ -347,7 +347,7 @@ static uint64_t process_init(process_t* process, process_t* parent, const char**
         process->parent = NULL;
     }
 
-    LOG_INFO("new pid=%d parent=%d priority=%d\n", process->id, parent ? parent->id : 0, priority);
+    LOG_DEBUG("new pid=%d parent=%d priority=%d\n", process->id, parent ? parent->id : 0, priority);
     return 0;
 }
 
@@ -378,7 +378,7 @@ process_t* process_new(process_t* parent, const char** argv, const path_t* cwd, 
 
 void process_free(process_t* process)
 {
-    LOG_INFO("freeing process pid=%d\n", process->id);
+    LOG_DEBUG("freeing process pid=%d\n", process->id);
     assert(list_is_empty(&process->threads.aliveThreads));
     assert(list_is_empty(&process->threads.zombieThreads));
 

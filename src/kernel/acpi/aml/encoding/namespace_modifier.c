@@ -17,22 +17,14 @@
 
 uint64_t aml_def_alias_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_token_t aliasOp;
-    if (aml_token_read_no_ext(state, &aliasOp) == ERR)
+    if (aml_token_expect(state, AML_ALIAS_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read AliasOp");
         return ERR;
     }
 
-    if (aliasOp.num != AML_ALIAS_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid AliasOp '0x%x'", aliasOp.num);
-        errno = EILSEQ;
-        return ERR;
-    }
-
     aml_object_t* source = NULL;
-    if (aml_name_string_read_and_resolve(state, scope, &source, AML_RESOLVE_NONE, NULL) == ERR)
+    if (aml_name_string_read_and_resolve(state, scope, &source) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve source NameString");
         return ERR;
@@ -64,17 +56,9 @@ uint64_t aml_def_alias_read(aml_state_t* state, aml_scope_t* scope)
 
 uint64_t aml_def_name_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_token_t nameOp;
-    if (aml_token_read_no_ext(state, &nameOp) == ERR)
+    if (aml_token_expect(state, AML_NAME_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read NameOp");
-        return ERR;
-    }
-
-    if (nameOp.num != AML_NAME_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid NameOp '0x%x'", nameOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -105,17 +89,9 @@ uint64_t aml_def_name_read(aml_state_t* state, aml_scope_t* scope)
 
 uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_token_t scopeOp;
-    if (aml_token_read_no_ext(state, &scopeOp) == ERR)
+    if (aml_token_expect(state, AML_SCOPE_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ScopeOp");
-        return ERR;
-    }
-
-    if (scopeOp.num != AML_SCOPE_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid ScopeOp '0x%x'", scopeOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -129,7 +105,7 @@ uint64_t aml_def_scope_read(aml_state_t* state, aml_scope_t* scope)
     }
 
     aml_object_t* newLocation = NULL;
-    if (aml_name_string_read_and_resolve(state, scope, &newLocation, AML_RESOLVE_NONE, NULL) == ERR)
+    if (aml_name_string_read_and_resolve(state, scope, &newLocation) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve NameString");
         return ERR;

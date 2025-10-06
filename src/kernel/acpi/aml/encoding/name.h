@@ -20,19 +20,6 @@ typedef struct aml_scope aml_scope_t;
  */
 
 /**
- * @brief Resolve flags for name resolution.
- * @enum aml_resolve_flags_t
- */
-typedef enum
-{
-    AML_RESOLVE_NONE = 0, ///< None.
-    /**
-     * If the name could not be resolved and this flag is set then instead of failing, return `NULL`.
-     */
-    AML_RESOLVE_ALLOW_UNRESOLVED = 1 << 0,
-} aml_resolve_flags_t;
-
-/**
  * @brief The exact length of a aml name not including a null character.
  */
 #define AML_NAME_LENGTH 4
@@ -238,33 +225,31 @@ aml_object_t* aml_name_string_resolve(aml_name_string_t* nameString, aml_object_
 /**
  * @brief Reads the next data as a NameString structure from the AML bytecode stream and resolves it to a object.
  *
+ * Note that `errno` will only be set to `ENOENT` if the NameString is read correctly but fails to resolve, other values for `errno` might be set in other cases.
+ *
  * @see Section 5.3 of the ACPI specification for more details.
  * @see aml_name_string_read() for reading the NameString from the AML byte stream.
  *
  * @param state The AML state.
  * @param scope The current AML scope.
  * @param out Pointer to where the pointer to the resolved object will be stored.
- * @param flags Flags for name resolution.
- * @param nameString If not `NULL`, the read NameString will be stored here.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out,
-    aml_resolve_flags_t flags, aml_name_string_t* nameString);
+uint64_t aml_name_string_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a SimpleName structure from the AML byte stream and resolves it to a object.
  *
  * A SimpleName structure is defined as `SimpleName := NameString | ArgObj | LocalObj`.
  *
+ * Note that `errno` will only be set to `ENOENT` if it is a NameString that fails to resolve, other values for `errno` might be set in other cases.
+ *
  * @param state The AML state.
  * @param scope The current AML scope.
  * @param out Pointer to where the pointer to the resolved object will be stored.
- * @param flags Flags for name resolution.
- * @param nameString If not `NULL` and the SuperName evaluates to a NameString, the read NameString will be stored here.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out,
-    aml_resolve_flags_t flags, aml_name_string_t* nameString);
+uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a SuperName structure from the AML byte stream and resolves it to a object.
@@ -274,12 +259,9 @@ uint64_t aml_simple_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope
  * @param state The AML state.
  * @param scope The current AML scope.
  * @param out Pointer to where the pointer to the resolved object will be stored.
- * @param flags Flags for name resolution.
- * @param nameString If not `NULL` and the SuperName evaluates to a NameString, the read NameString will be stored here.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out,
-    aml_resolve_flags_t flags, aml_name_string_t* nameString);
+uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /**
  * @brief Reads a Target structure from the AML byte stream and resolves it to a object.
@@ -290,12 +272,9 @@ uint64_t aml_super_name_read_and_resolve(aml_state_t* state, aml_scope_t* scope,
  *
  * @param state The AML state.
  * @param scope The current AML scope.
- * @param out Pointer to where the pointer to the resolved object will be stored.
- * @param flags Flags for name resolution.
- * @param nameString If not `NULL` and the Target evaluates to a NameString, the read NameString will be stored here.
+ * @param out Pointer to where the pointer to the resolved object will be stored, might be set to point to `NULL`.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out,
-    aml_resolve_flags_t flags, aml_name_string_t* nameString);
+uint64_t aml_target_read_and_resolve(aml_state_t* state, aml_scope_t* scope, aml_object_t** out);
 
 /** @} */

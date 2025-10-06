@@ -2,10 +2,10 @@
 
 #ifndef NDEBUG
 
+#include "_aml_full_test.h"
 #include "aml.h"
 #include "aml_object.h"
 #include "aml_state.h"
-#include "_aml_full_test.h"
 
 #include "acpi/tables.h"
 #include "log/log.h"
@@ -17,8 +17,7 @@ static uint64_t aml_tests_check_object_leak(void)
     LOG_INFO("total objects after parsing %llu\n", totalObjects);
     if (totalObjects != rootChildren + 1)
     {
-        LOG_ERR("memory leak detected, total objects %llu, but root has %llu children\n",
-            totalObjects, rootChildren);
+        LOG_ERR("memory leak detected, total objects %llu, but root has %llu children\n", totalObjects, rootChildren);
         return ERR;
     }
     return 0;
@@ -62,8 +61,8 @@ uint64_t aml_tests_post_init(void)
 
     if (startingObjects != aml_object_get_total_count())
     {
-        LOG_ERR("memory leak detected, total objects before test %llu, after test %llu\n",
-            startingObjects, aml_object_get_total_count());
+        LOG_ERR("memory leak detected, total objects before test %llu, after test %llu\n", startingObjects,
+            aml_object_get_total_count());
         return ERR;
     }
 

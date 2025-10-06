@@ -33,8 +33,8 @@ typedef uint64_t (*aml_patch_up_resolve_callback_t)(aml_object_t* match, aml_obj
  */
 typedef struct aml_patch_up_entry
 {
-    list_entry_t entry;                       ///< List entry for the global list of unresolved references.
-    aml_unresolved_t* unresolved;                 ///< The unresolved object.
+    list_entry_t entry;           ///< List entry for the global list of unresolved references.
+    aml_unresolved_t* unresolved; ///< The unresolved object.
 } aml_patch_up_entry_t;
 
 /**

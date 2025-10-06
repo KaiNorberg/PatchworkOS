@@ -218,7 +218,7 @@ uint64_t aml_region_len_read(aml_state_t* state, aml_scope_t* scope, uint64_t* o
  * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_def_op_region_read(aml_state_t* state, aml_scope_t* scope);
+uint64_t aml_def_opregion_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
  * @brief Reads a FieldFlags structure from the AML byte stream.
@@ -608,13 +608,36 @@ uint64_t aml_def_create_dword_field_read(aml_state_t* state, aml_scope_t* scope)
 uint64_t aml_def_create_qword_field_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
+ * @brief Reads a DefEvent structure from the AML byte stream.
+ *
+ * The DefEvent structure is defined as `DefEvent := EventOp NameString`.
+ *
+ * @see Section 19.6.42 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_event_read(aml_state_t* state, aml_scope_t* scope);
+
+/**
  * @brief Reads a NamedObj structure from the AML byte stream.
  *
- * Version 6.6 of the ACPI specification has a few minor mistakes in the definition of the NamedObj structure,
+ * Version 6.6 of the ACPI specification has a few mistakes in the definition of the NamedObj structure,
  * its supposed to contain several stuctures that it does not. If you check version 4.0 of the specification
  * section 19.2.5.2 you can confirm that that these structures are supposed to be there but have, somehow, been
- * forgotten. These structures include DefField, DefMethod, DefMutex, DefIndexField and DefDevice (more may be noticed
- * in the future), we add all missing structures to our definition of NamedObj. I have no idea how there are this many
+ * forgotten.
+ *
+ * The forgotten structures are:
+ * - `DefField`
+ * - `DefMethod`
+ * - `DefMutex`
+ * - `DefIndexField`
+ * - `DefDevice`
+ * - `DefEvent`
+ * - `Maybe even more?`
+ *
+ * We add all missing structures to our definition of NamedObj. I have no idea how there are this many
  * mistakes in the latest version of the ACPI specification.
  *
  * The DefProcessor structure was deprecated in version 6.4 of the ACPI specification, but we still support it.
@@ -622,7 +645,7 @@ uint64_t aml_def_create_qword_field_read(aml_state_t* state, aml_scope_t* scope)
  * The NamedObj structure is defined as `NamedObj := DefBankField | DefCreateBitField | DefCreateByteField |
  * DefCreateDWordField | DefCreateField | DefCreateQWordField | DefCreateWordField | DefDataRegion | DefExternal |
  * DefOpRegion | DefPowerRes | DefThermalZone | DefField | DefMethod | DefDevice | DefMutex | DefProcessor |
- * DefIndexField`.
+ * DefIndexField | DefEvent`.
  *
  * Currently unimplemented Opcodes are:
  * - `DefCreateField`
@@ -635,6 +658,6 @@ uint64_t aml_def_create_qword_field_read(aml_state_t* state, aml_scope_t* scope)
  * @param scope The current AML scope.
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
-uint64_t aml_name_obj_read(aml_state_t* state, aml_scope_t* scope);
+uint64_t aml_named_obj_read(aml_state_t* state, aml_scope_t* scope);
 
 /** @} */

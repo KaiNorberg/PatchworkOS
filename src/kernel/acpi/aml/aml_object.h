@@ -60,7 +60,7 @@ typedef enum
     AML_RAW_DATA_BUFFER = 1 << 15,
     AML_STRING = 1 << 16,
     AML_THERMAL_ZONE = 1 << 17,
-    AML_ALIAS = 1 << 18, ///< Not in the spec, used internally to represent Aliases.
+    AML_ALIAS = 1 << 18,      ///< Not in the spec, used internally to represent Aliases.
     AML_UNRESOLVED = 1 << 19, ///< Not in the spec, used internally to represent unresolved references.
     /**
      * All data types that can be retrieved from a DataObject (section 20.2.3).
@@ -180,6 +180,15 @@ typedef struct aml_device
     AML_OBJECT_COMMON_HEADER;
     list_t namedObjects;
 } aml_device_t;
+
+/**
+ * @brief Data for an event object.
+ * @struct aml_event_t
+ */
+typedef struct aml_event
+{
+    AML_OBJECT_COMMON_HEADER;
+} aml_event_t;
 
 /**
  * @brief Data for a field unit object.

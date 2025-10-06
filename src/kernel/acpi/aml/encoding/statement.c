@@ -23,17 +23,9 @@ uint64_t aml_predicate_read(aml_state_t* state, aml_scope_t* scope, uint64_t* ou
 
 uint64_t aml_def_else_read(aml_state_t* state, aml_scope_t* scope, bool shouldExecute)
 {
-    aml_token_t elseOp;
-    if (aml_token_read_no_ext(state, &elseOp) == ERR)
+    if (aml_token_expect(state, AML_ELSE_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ElseOp");
-        return ERR;
-    }
-
-    if (elseOp.num != AML_ELSE_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid ElseOp '0x%x'", elseOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -69,17 +61,9 @@ uint64_t aml_def_else_read(aml_state_t* state, aml_scope_t* scope, bool shouldEx
 
 uint64_t aml_def_if_else_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_token_t ifOp;
-    if (aml_token_read_no_ext(state, &ifOp) == ERR)
+    if (aml_token_expect(state, AML_IF_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read IfOp");
-        return ERR;
-    }
-
-    if (ifOp.num != AML_IF_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid IfOp '0x%x'", ifOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -121,7 +105,7 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_scope_t* scope)
     }
 
     aml_token_t elseOp;
-    if (aml_token_peek_no_ext(state, &elseOp) == ERR)
+    if (aml_token_peek(state, &elseOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to peek ElseOp");
         return ERR;
@@ -141,17 +125,9 @@ uint64_t aml_def_if_else_read(aml_state_t* state, aml_scope_t* scope)
 
 uint64_t aml_def_noop_read(aml_state_t* state)
 {
-    aml_token_t noopOp;
-    if (aml_token_read_no_ext(state, &noopOp) == ERR)
+    if (aml_token_expect(state, AML_NOOP_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read NoopOp");
-        return ERR;
-    }
-
-    if (noopOp.num != AML_NOOP_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid NoopOp '0x%x'", noopOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -171,17 +147,9 @@ uint64_t aml_arg_object_read(aml_state_t* state, aml_scope_t* scope, aml_object_
 
 uint64_t aml_def_return_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_token_t returnOp;
-    if (aml_token_read_no_ext(state, &returnOp) == ERR)
+    if (aml_token_expect(state, AML_RETURN_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ReturnOp");
-        return ERR;
-    }
-
-    if (returnOp.num != AML_RETURN_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid ReturnOp '0x%x'", returnOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -208,17 +176,9 @@ uint64_t aml_def_return_read(aml_state_t* state, aml_scope_t* scope)
 
 uint64_t aml_def_release_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_token_t releaseOp;
-    if (aml_token_read(state, &releaseOp) == ERR)
+    if (aml_token_expect(state, AML_RELEASE_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ReleaseOp");
-        return ERR;
-    }
-
-    if (releaseOp.num != AML_RELEASE_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid ReleaseOp '0x%x'", releaseOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -242,17 +202,9 @@ uint64_t aml_def_release_read(aml_state_t* state, aml_scope_t* scope)
 
 uint64_t aml_def_break_read(aml_state_t* state)
 {
-    aml_token_t breakOp;
-    if (aml_token_read_no_ext(state, &breakOp) == ERR)
+    if (aml_token_expect(state, AML_BREAK_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read BreakOp");
-        return ERR;
-    }
-
-    if (breakOp.num != AML_BREAK_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid BreakOp '0x%x'", breakOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -262,17 +214,9 @@ uint64_t aml_def_break_read(aml_state_t* state)
 
 uint64_t aml_def_continue_read(aml_state_t* state)
 {
-    aml_token_t continueOp;
-    if (aml_token_read_no_ext(state, &continueOp) == ERR)
+    if (aml_token_expect(state, AML_CONTINUE_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ContinueOp");
-        return ERR;
-    }
-
-    if (continueOp.num != AML_CONTINUE_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid ContinueOp '0x%x'", continueOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -282,17 +226,9 @@ uint64_t aml_def_continue_read(aml_state_t* state)
 
 uint64_t aml_def_while_read(aml_state_t* state, aml_scope_t* scope)
 {
-    aml_token_t whileOp;
-    if (aml_token_read_no_ext(state, &whileOp) == ERR)
+    if (aml_token_expect(state, AML_WHILE_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read WhileOp");
-        return ERR;
-    }
-
-    if (whileOp.num != AML_WHILE_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid WhileOp '0x%x'", whileOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 

@@ -1,10 +1,10 @@
 #include "copy.h"
 
 #include "acpi/aml/aml_to_string.h"
-#include "convert.h"
-#include "log/log.h"
-#include "field_unit.h"
 #include "buffer_field.h"
+#include "convert.h"
+#include "field_unit.h"
+#include "log/log.h"
 
 #include <errno.h>
 
@@ -57,7 +57,7 @@ uint64_t aml_copy_data_and_type(aml_object_t* src, aml_object_t* dest)
                 return ERR;
             }
         }
-    break;
+        break;
     case AML_OBJECT_REFERENCE:
         if (aml_object_reference_init(dest, src->objectReference.target) == ERR)
         {

@@ -4,9 +4,9 @@
 #include "acpi/aml/aml_to_string.h"
 #include "buffer_field.h"
 #include "copy.h"
+#include "field_unit.h"
 #include "log/log.h"
 #include "mem/heap.h"
-#include "field_unit.h"
 #include "store.h"
 
 #include <errno.h>

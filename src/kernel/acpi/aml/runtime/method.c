@@ -17,8 +17,8 @@ uint64_t aml_method_evaluate(aml_method_t* method, uint64_t argCount, aml_object
 
     if (argCount > AML_MAX_ARGS || argCount != method->methodFlags.argCount)
     {
-        LOG_ERR("method '%s' expects %u arguments, got %u\n", AML_OBJECT_GET_NAME(method),
-            method->methodFlags.argCount, argCount);
+        LOG_ERR("method '%s' expects %u arguments, got %u\n", AML_OBJECT_GET_NAME(method), method->methodFlags.argCount,
+            argCount);
         errno = EINVAL;
         return ERR;
     }

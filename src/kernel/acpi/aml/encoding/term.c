@@ -114,7 +114,7 @@ uint64_t aml_object_read(aml_state_t* state, aml_scope_t* scope)
     case AML_TOKEN_TYPE_NAMESPACE_MODIFIER:
         return aml_namespace_modifier_obj_read(state, scope);
     case AML_TOKEN_TYPE_NAMED:
-        return aml_name_obj_read(state, scope);
+        return aml_named_obj_read(state, scope);
     default:
         AML_DEBUG_ERROR(state, "Invalid token type: %d", token.props->type);
         errno = EILSEQ;

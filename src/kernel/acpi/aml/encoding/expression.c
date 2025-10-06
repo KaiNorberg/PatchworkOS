@@ -8,9 +8,9 @@
 #include "acpi/aml/aml_token.h"
 #include "acpi/aml/runtime/compare.h"
 #include "acpi/aml/runtime/convert.h"
+#include "acpi/aml/runtime/copy.h"
 #include "acpi/aml/runtime/method.h"
 #include "acpi/aml/runtime/store.h"
-#include "acpi/aml/runtime/copy.h"
 #include "arg.h"
 #include "mem/heap.h"
 #include "package_length.h"
@@ -32,17 +32,9 @@ uint64_t aml_buffer_size_read(aml_state_t* state, aml_scope_t* scope, uint64_t* 
 
 uint64_t aml_def_buffer_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* out)
 {
-    aml_token_t bufferOp;
-    if (aml_token_read(state, &bufferOp) == ERR)
+    if (aml_token_expect(state, AML_BUFFER_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read BufferOp");
-        return ERR;
-    }
-
-    if (bufferOp.num != AML_BUFFER_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid BufferOp '0x%x'", bufferOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -101,7 +93,7 @@ uint64_t aml_term_arg_list_read(aml_state_t* state, aml_scope_t* scope, uint64_t
 uint64_t aml_method_invocation_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
 {
     aml_object_t* target = NULL;
-    if (aml_name_string_read_and_resolve(state, scope, &target, AML_RESOLVE_NONE, NULL) == ERR)
+    if (aml_name_string_read_and_resolve(state, scope, &target) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve NameString");
         return ERR;
@@ -141,29 +133,21 @@ uint64_t aml_method_invocation_read(aml_state_t* state, aml_scope_t* scope, aml_
 
 uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
 {
-    aml_token_t condRefOfOp;
-    if (aml_token_read(state, &condRefOfOp) == ERR)
+    if (aml_token_expect(state, AML_COND_REF_OF_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read CondRefOfOp");
         return ERR;
     }
 
-    if (condRefOfOp.num != AML_COND_REF_OF_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid CondRefOfOp '0x%x'", condRefOfOp.num);
-        errno = EILSEQ;
-        return ERR;
-    }
-
     aml_object_t* source = NULL;
-    if (aml_super_name_read_and_resolve(state, scope, &source, AML_RESOLVE_NONE, NULL) == ERR)
+    if (aml_super_name_read_and_resolve(state, scope, &source) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve SuperName");
         return ERR;
     }
 
     aml_object_t* result = NULL;
-    if (aml_target_read_and_resolve(state, scope, &result, AML_RESOLVE_NONE, NULL) == ERR)
+    if (aml_target_read_and_resolve(state, scope, &result) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve Target");
         return ERR;
@@ -218,17 +202,9 @@ uint64_t aml_def_cond_ref_of_read(aml_state_t* state, aml_scope_t* scope, aml_ob
 
 uint64_t aml_def_store_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
 {
-    aml_token_t storeOp;
-    if (aml_token_read(state, &storeOp) == ERR)
+    if (aml_token_expect(state, AML_STORE_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read StoreOp");
-        return ERR;
-    }
-
-    if (storeOp.num != AML_STORE_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid StoreOp '0x%x'", storeOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -242,7 +218,7 @@ uint64_t aml_def_store_read(aml_state_t* state, aml_scope_t* scope, aml_object_t
     assert(source != NULL);
 
     aml_object_t* destination = NULL;
-    if (aml_super_name_read_and_resolve(state, scope, &destination, AML_RESOLVE_NONE, NULL) == ERR)
+    if (aml_super_name_read_and_resolve(state, scope, &destination) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve SuperName");
         return ERR;
@@ -294,7 +270,7 @@ uint64_t aml_divisor_read(aml_state_t* state, aml_scope_t* scope, uint64_t* out)
 
 uint64_t aml_remainder_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
 {
-    if (aml_target_read_and_resolve(state, scope, out, AML_RESOLVE_NONE, NULL) == ERR)
+    if (aml_target_read_and_resolve(state, scope, out) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve Target");
         return ERR;
@@ -304,7 +280,7 @@ uint64_t aml_remainder_read(aml_state_t* state, aml_scope_t* scope, aml_object_t
 
 uint64_t aml_quotient_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
 {
-    if (aml_target_read_and_resolve(state, scope, out, AML_RESOLVE_NONE, NULL) == ERR)
+    if (aml_target_read_and_resolve(state, scope, out) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve Target");
         return ERR;
@@ -316,17 +292,9 @@ static inline uint64_t aml_helper_op_operand_operand_target_read(aml_state_t* st
     aml_object_t** out, aml_token_num_t expectedOp, aml_type_t allowedTypes,
     uint64_t (*callback)(aml_state_t*, aml_scope_t*, aml_object_t**, aml_object_t*, aml_object_t*))
 {
-    aml_token_t op;
-    if (aml_token_read(state, &op) == ERR)
+    if (aml_token_expect(state, expectedOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read %s", aml_token_lookup(expectedOp)->name);
-        return ERR;
-    }
-
-    if (op.num != expectedOp)
-    {
-        AML_DEBUG_ERROR(state, "Invalid %s '0x%x'", aml_token_lookup(expectedOp)->name, op.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -346,7 +314,7 @@ static inline uint64_t aml_helper_op_operand_operand_target_read(aml_state_t* st
     }
 
     aml_object_t* target = NULL;
-    if (aml_target_read_and_resolve(state, scope, &target, AML_RESOLVE_NONE, NULL) == ERR)
+    if (aml_target_read_and_resolve(state, scope, &target) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve Target");
         return ERR;
@@ -434,17 +402,9 @@ uint64_t aml_def_multiply_read(aml_state_t* state, aml_scope_t* scope, aml_objec
 
 uint64_t aml_def_divide_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
 {
-    aml_token_t divOp;
-    if (aml_token_read_no_ext(state, &divOp) == ERR)
+    if (aml_token_expect(state, AML_DIVIDE_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read DivideOp");
-        return ERR;
-    }
-
-    if (divOp.num != AML_DIVIDE_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid DivideOp '0x%x'", divOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -529,17 +489,9 @@ uint64_t aml_def_divide_read(aml_state_t* state, aml_scope_t* scope, aml_object_
 
 uint64_t aml_def_mod_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
 {
-    aml_token_t modOp;
-    if (aml_token_read(state, &modOp) == ERR)
+    if (aml_token_expect(state, AML_MOD_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ModOp");
-        return ERR;
-    }
-
-    if (modOp.num != AML_MOD_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid ModOp '0x%x'", modOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -558,7 +510,7 @@ uint64_t aml_def_mod_read(aml_state_t* state, aml_scope_t* scope, aml_object_t**
     }
 
     aml_object_t* target = NULL;
-    if (aml_target_read_and_resolve(state, scope, &target, AML_RESOLVE_NONE, NULL) == ERR)
+    if (aml_target_read_and_resolve(state, scope, &target) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve Target");
         return ERR;
@@ -687,17 +639,9 @@ uint64_t aml_def_xor_read(aml_state_t* state, aml_scope_t* scope, aml_object_t**
 
 uint64_t aml_def_not_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
 {
-    aml_token_t notOp;
-    if (aml_token_read(state, &notOp) == ERR)
+    if (aml_token_expect(state, AML_NOT_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read NotOp");
-        return ERR;
-    }
-
-    if (notOp.num != AML_NOT_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid NotOp '0x%x'", notOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -709,7 +653,7 @@ uint64_t aml_def_not_read(aml_state_t* state, aml_scope_t* scope, aml_object_t**
     }
 
     aml_object_t* target = NULL;
-    if (aml_target_read_and_resolve(state, scope, &target, AML_RESOLVE_NONE, NULL) == ERR)
+    if (aml_target_read_and_resolve(state, scope, &target) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve Target");
         return ERR;
@@ -752,17 +696,9 @@ uint64_t aml_shift_count_read(aml_state_t* state, aml_scope_t* scope, uint64_t* 
 
 uint64_t aml_def_shift_left_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
 {
-    aml_token_t shlOp;
-    if (aml_token_read(state, &shlOp) == ERR)
+    if (aml_token_expect(state, AML_SHIFT_LEFT_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ShiftLeftOp");
-        return ERR;
-    }
-
-    if (shlOp.num != AML_SHIFT_LEFT_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid ShiftLeftOp '0x%x'", shlOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -781,7 +717,7 @@ uint64_t aml_def_shift_left_read(aml_state_t* state, aml_scope_t* scope, aml_obj
     }
 
     aml_object_t* target = NULL;
-    if (aml_target_read_and_resolve(state, scope, &target, AML_RESOLVE_NONE, NULL) == ERR)
+    if (aml_target_read_and_resolve(state, scope, &target) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve Target");
         return ERR;
@@ -824,17 +760,9 @@ uint64_t aml_def_shift_left_read(aml_state_t* state, aml_scope_t* scope, aml_obj
 
 uint64_t aml_def_shift_right_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
 {
-    aml_token_t shrOp;
-    if (aml_token_read(state, &shrOp) == ERR)
+    if (aml_token_expect(state, AML_SHIFT_RIGHT_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ShiftRightOp");
-        return ERR;
-    }
-
-    if (shrOp.num != AML_SHIFT_RIGHT_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid ShiftRightOp '0x%x'", shrOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -853,7 +781,7 @@ uint64_t aml_def_shift_right_read(aml_state_t* state, aml_scope_t* scope, aml_ob
     }
 
     aml_object_t* target = NULL;
-    if (aml_target_read_and_resolve(state, scope, &target, AML_RESOLVE_NONE, NULL) == ERR)
+    if (aml_target_read_and_resolve(state, scope, &target) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve Target");
         return ERR;
@@ -901,22 +829,14 @@ static inline uint64_t aml_helper_op_supername_read(aml_state_t* state, aml_scop
     aml_token_num_t expectedOp, aml_type_t allowedTypes,
     uint64_t (*callback)(aml_state_t*, aml_scope_t*, aml_object_t**))
 {
-    aml_token_t op;
-    if (aml_token_read(state, &op) == ERR)
+    if (aml_token_expect(state, expectedOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read %s", aml_token_lookup(expectedOp)->name);
         return ERR;
     }
 
-    if (op.num != expectedOp)
-    {
-        AML_DEBUG_ERROR(state, "Invalid %s '0x%x'", aml_token_lookup(expectedOp)->name, op.num);
-        errno = EILSEQ;
-        return ERR;
-    }
-
     aml_object_t* superName;
-    if (aml_super_name_read_and_resolve(state, scope, &superName, AML_RESOLVE_NONE, NULL) == ERR)
+    if (aml_super_name_read_and_resolve(state, scope, &superName) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve SuperName");
         return ERR;
@@ -1009,17 +929,9 @@ uint64_t aml_obj_reference_read(aml_state_t* state, aml_scope_t* scope, aml_obje
 
 uint64_t aml_def_deref_of_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
 {
-    aml_token_t derefOfOp;
-    if (aml_token_read(state, &derefOfOp) == ERR)
+    if (aml_token_expect(state, AML_DEREF_OF_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read DerefOfOp");
-        return ERR;
-    }
-
-    if (derefOfOp.num != AML_DEREF_OF_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid DerefOfOp '0x%x'", derefOfOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -1063,17 +975,9 @@ uint64_t aml_index_value_read(aml_state_t* state, aml_scope_t* scope, uint64_t* 
 
 uint64_t aml_def_index_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
 {
-    aml_token_t indexOp;
-    if (aml_token_read(state, &indexOp) == ERR)
+    if (aml_token_expect(state, AML_INDEX_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read IndexOp");
-        return ERR;
-    }
-
-    if (indexOp.num != AML_INDEX_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid IndexOp '0x%x'", indexOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -1092,7 +996,7 @@ uint64_t aml_def_index_read(aml_state_t* state, aml_scope_t* scope, aml_object_t
     }
 
     aml_object_t* target = NULL;
-    if (aml_target_read_and_resolve(state, scope, &target, AML_RESOLVE_NONE, NULL) == ERR)
+    if (aml_target_read_and_resolve(state, scope, &target) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve Target");
         return ERR;
@@ -1255,17 +1159,9 @@ static inline uint64_t aml_helper_operand_operand_read(aml_state_t* state, aml_s
     aml_token_num_t expectedOp, aml_type_t allowedTypes,
     uint64_t (*callback)(aml_state_t*, aml_scope_t*, aml_object_t**, aml_object_t*, aml_object_t*))
 {
-    aml_token_t op;
-    if (aml_token_read(state, &op) == ERR)
+    if (aml_token_expect(state, expectedOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read %s", aml_token_lookup(expectedOp)->name);
-        return ERR;
-    }
-
-    if (op.num != expectedOp)
-    {
-        AML_DEBUG_ERROR(state, "Invalid %s '0x%x'", aml_token_lookup(expectedOp)->name, op.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -1303,17 +1199,9 @@ static inline uint64_t aml_helper_op_operand_read(aml_state_t* state, aml_scope_
     aml_token_num_t expectedOp, aml_type_t allowedTypes,
     uint64_t (*callback)(aml_state_t*, aml_scope_t*, aml_object_t**, aml_object_t*))
 {
-    aml_token_t op;
-    if (aml_token_read(state, &op) == ERR)
+    if (aml_token_expect(state, expectedOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read %s", aml_token_lookup(expectedOp)->name);
-        return ERR;
-    }
-
-    if (op.num != expectedOp)
-    {
-        AML_DEBUG_ERROR(state, "Invalid %s '0x%x'", aml_token_lookup(expectedOp)->name, op.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -1501,7 +1389,7 @@ uint64_t aml_def_lor_read(aml_state_t* state, aml_scope_t* scope, aml_object_t**
 
 uint64_t aml_mutex_object_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
 {
-    if (aml_super_name_read_and_resolve(state, scope, out, AML_RESOLVE_NONE, NULL) == ERR)
+    if (aml_super_name_read_and_resolve(state, scope, out) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve SuperName");
         return ERR;
@@ -1530,17 +1418,9 @@ uint64_t aml_timeout_read(aml_state_t* state, uint16_t* out)
 
 uint64_t aml_def_acquire_read(aml_state_t* state, aml_scope_t* scope, aml_object_t** out)
 {
-    aml_token_t acquireOp;
-    if (aml_token_read(state, &acquireOp) == ERR)
+    if (aml_token_expect(state, AML_ACQUIRE_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read AcquireOp");
-        return ERR;
-    }
-
-    if (acquireOp.num != AML_ACQUIRE_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid AcquireOp '0x%x'", acquireOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -1590,17 +1470,9 @@ static inline uint64_t aml_helper_op_operand_target_read(aml_state_t* state, aml
     aml_token_num_t expectedOp, aml_type_t allowedTypes,
     uint64_t (*callback)(aml_state_t*, aml_scope_t*, aml_object_t**, aml_object_t*))
 {
-    aml_token_t op;
-    if (aml_token_read(state, &op) == ERR)
+    if (aml_token_expect(state, expectedOp) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read %s", aml_token_lookup(expectedOp)->name);
-        return ERR;
-    }
-
-    if (op.num != expectedOp)
-    {
-        AML_DEBUG_ERROR(state, "Invalid %s '0x%x'", aml_token_lookup(expectedOp)->name, op.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -1612,7 +1484,7 @@ static inline uint64_t aml_helper_op_operand_target_read(aml_state_t* state, aml
     }
 
     aml_object_t* target = NULL;
-    if (aml_target_read_and_resolve(state, scope, &target, AML_RESOLVE_NONE, NULL) == ERR)
+    if (aml_target_read_and_resolve(state, scope, &target) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read or resolve Target");
         return ERR;

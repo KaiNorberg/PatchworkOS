@@ -66,17 +66,9 @@ uint64_t aml_qword_data_read(aml_state_t* state, uint64_t* out)
 
 uint64_t aml_byte_const_read(aml_state_t* state, uint8_t* out)
 {
-    aml_token_t prefix;
-    if (aml_token_read(state, &prefix) == ERR)
+    if (aml_token_expect(state, AML_BYTE_PREFIX) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read token");
-        return ERR;
-    }
-
-    if (prefix.num != AML_BYTE_PREFIX)
-    {
-        AML_DEBUG_ERROR(state, "Invalid prefix for byte const: 0x%x", prefix.num);
-        errno = EILSEQ;
+        AML_DEBUG_ERROR(state, "Failed to read byte prefix");
         return ERR;
     }
 
@@ -85,17 +77,9 @@ uint64_t aml_byte_const_read(aml_state_t* state, uint8_t* out)
 
 uint64_t aml_word_const_read(aml_state_t* state, uint16_t* out)
 {
-    aml_token_t prefix;
-    if (aml_token_read(state, &prefix) == ERR)
+    if (aml_token_expect(state, AML_WORD_PREFIX) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read token");
-        return ERR;
-    }
-
-    if (prefix.num != AML_WORD_PREFIX)
-    {
-        AML_DEBUG_ERROR(state, "Invalid prefix for word const: 0x%x", prefix.num);
-        errno = EILSEQ;
+        AML_DEBUG_ERROR(state, "Failed to read word prefix");
         return ERR;
     }
 
@@ -104,17 +88,9 @@ uint64_t aml_word_const_read(aml_state_t* state, uint16_t* out)
 
 uint64_t aml_dword_const_read(aml_state_t* state, uint32_t* out)
 {
-    aml_token_t prefix;
-    if (aml_token_read(state, &prefix) == ERR)
+    if (aml_token_expect(state, AML_DWORD_PREFIX) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read token");
-        return ERR;
-    }
-
-    if (prefix.num != AML_DWORD_PREFIX)
-    {
-        AML_DEBUG_ERROR(state, "Invalid prefix for dword const: 0x%x", prefix.num);
-        errno = EILSEQ;
+        AML_DEBUG_ERROR(state, "Failed to read dword prefix");
         return ERR;
     }
 
@@ -123,17 +99,9 @@ uint64_t aml_dword_const_read(aml_state_t* state, uint32_t* out)
 
 uint64_t aml_qword_const_read(aml_state_t* state, uint64_t* out)
 {
-    aml_token_t prefix;
-    if (aml_token_read(state, &prefix) == ERR)
+    if (aml_token_expect(state, AML_QWORD_PREFIX) == ERR)
     {
-        AML_DEBUG_ERROR(state, "Failed to read token");
-        return ERR;
-    }
-
-    if (prefix.num != AML_QWORD_PREFIX)
-    {
-        AML_DEBUG_ERROR(state, "Invalid prefix for qword const: 0x%x", prefix.num);
-        errno = EILSEQ;
+        AML_DEBUG_ERROR(state, "Failed to read qword prefix");
         return ERR;
     }
 
@@ -143,7 +111,7 @@ uint64_t aml_qword_const_read(aml_state_t* state, uint64_t* out)
 uint64_t aml_const_obj_read(aml_state_t* state, aml_object_t* out)
 {
     aml_token_t token;
-    if (aml_token_read_no_ext(state, &token) == ERR)
+    if (aml_token_read(state, &token) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read ConstObj");
         return ERR;
@@ -180,17 +148,9 @@ uint64_t aml_const_obj_read(aml_state_t* state, aml_object_t* out)
 
 uint64_t aml_string_read(aml_state_t* state, aml_object_t* out)
 {
-    aml_token_t stringPrefix;
-    if (aml_token_read(state, &stringPrefix) == ERR)
+    if (aml_token_expect(state, AML_STRING_PREFIX) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read StringPrefix");
-        return ERR;
-    }
-
-    if (stringPrefix.num != AML_STRING_PREFIX)
-    {
-        AML_DEBUG_ERROR(state, "Invalid StringPrefix '0x%x'", stringPrefix.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -228,17 +188,9 @@ uint64_t aml_string_read(aml_state_t* state, aml_object_t* out)
 
 uint64_t aml_revision_op_read(aml_state_t* state, aml_object_t* out)
 {
-    aml_token_t revOp;
-    if (aml_token_read_no_ext(state, &revOp) == ERR)
+    if (aml_token_expect(state, AML_REVISION_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read RevisionOp");
-        return ERR;
-    }
-
-    if (revOp.num != AML_REVISION_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid RevisionOp '0x%x'", revOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -253,7 +205,7 @@ uint64_t aml_revision_op_read(aml_state_t* state, aml_object_t* out)
 uint64_t aml_computational_data_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* out)
 {
     aml_token_t token;
-    if (aml_token_peek_no_ext(state, &token) == ERR)
+    if (aml_token_peek(state, &token) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to peek ComputationalData");
         return ERR;
@@ -420,16 +372,14 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_ob
     if (token.props->type == AML_TOKEN_TYPE_NAME)
     {
         aml_name_string_t nameString;
-        aml_object_t* namedReference = NULL;
-        if (aml_simple_name_read_and_resolve(state, scope, &namedReference, AML_RESOLVE_ALLOW_UNRESOLVED,
-                &nameString) == ERR)
+        if (aml_name_string_read(state, &nameString) == ERR)
         {
-            AML_DEBUG_ERROR(state, "Failed to read SimpleName");
+            AML_DEBUG_ERROR(state, "Failed to read NameString");
             return ERR;
         }
 
-        // Evaulated to a valid namestring but could not be resolved.
-        if (namedReference == NULL)
+        aml_object_t* object = aml_name_string_resolve(&nameString, scope->location);
+        if (object == NULL)
         {
             if (aml_unresolved_init(out, &nameString, scope->location, aml_package_element_handle_name) == ERR)
             {
@@ -438,23 +388,22 @@ uint64_t aml_package_element_read(aml_state_t* state, aml_scope_t* scope, aml_ob
             return 0;
         }
 
-        if (aml_package_element_handle_name(namedReference, out) == ERR)
+        if (aml_package_element_handle_name(object, out) == ERR)
         {
             AML_DEBUG_ERROR(state, "Failed to handle name in PackageElement");
-            return ERR;
-        }
-        return 0;
-    }
-    else
-    {
-        if (aml_data_ref_object_read(state, scope, out) == ERR)
-        {
-            AML_DEBUG_ERROR(state, "Failed to read DataRefObject");
             return ERR;
         }
 
         return 0;
     }
+
+    if (aml_data_ref_object_read(state, scope, out) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read DataRefObject");
+        return ERR;
+    }
+
+    return 0;
 }
 
 uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, aml_package_t* package,
@@ -480,17 +429,9 @@ uint64_t aml_package_element_list_read(aml_state_t* state, aml_scope_t* scope, a
 
 uint64_t aml_def_package_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* out)
 {
-    aml_token_t packageOp;
-    if (aml_token_read(state, &packageOp) == ERR)
+    if (aml_token_expect(state, AML_PACKAGE_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read PackageOp");
-        return ERR;
-    }
-
-    if (packageOp.num != AML_PACKAGE_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid PackageOp '0x%x'", packageOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 
@@ -541,17 +482,9 @@ uint64_t aml_def_var_num_elements_read(aml_state_t* state, aml_scope_t* scope, u
 
 uint64_t aml_def_var_package_read(aml_state_t* state, aml_scope_t* scope, aml_object_t* out)
 {
-    aml_token_t varPackageOp;
-    if (aml_token_read(state, &varPackageOp) == ERR)
+    if (aml_token_expect(state, AML_VAR_PACKAGE_OP) == ERR)
     {
         AML_DEBUG_ERROR(state, "Failed to read VarPackageOp");
-        return ERR;
-    }
-
-    if (varPackageOp.num != AML_VAR_PACKAGE_OP)
-    {
-        AML_DEBUG_ERROR(state, "Invalid VarPackageOp '0x%x'", varPackageOp.num);
-        errno = EILSEQ;
         return ERR;
     }
 

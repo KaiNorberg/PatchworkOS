@@ -2,9 +2,9 @@
 
 #include <errno.h>
 
-#include "copy.h"
-#include "convert.h"
 #include "acpi/aml/aml_to_string.h"
+#include "convert.h"
+#include "copy.h"
 #include "log/log.h"
 
 uint64_t aml_store(aml_object_t* src, aml_object_t* dest)
@@ -72,8 +72,7 @@ uint64_t aml_store(aml_object_t* src, aml_object_t* dest)
         return 0;
     }
 
-    LOG_ERR("Invalid destination object type '%s' or flags '0x%x'\n",
-        aml_type_to_string(dest->type), dest->flags);
+    LOG_ERR("Invalid destination object type '%s' or flags '0x%x'\n", aml_type_to_string(dest->type), dest->flags);
     errno = EINVAL;
     return ERR;
 }

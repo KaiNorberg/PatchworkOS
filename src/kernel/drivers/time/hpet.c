@@ -44,8 +44,8 @@ static uint64_t hpet_init(sdt_header_t* table)
         return ERR;
     }
 
-    LOG_INFO("started HPET timer phys=0x%016lx virt=0x%016lx period=%lluns timers=%u %s-bit\n", hpet->address,
-        address, period / 1000000, hpet->comparatorCount + 1, hpet->counterIs64Bit ? "64" : "32");
+    LOG_INFO("started HPET timer phys=0x%016lx virt=0x%016lx period=%lluns timers=%u %s-bit\n", hpet->address, address,
+        period / 1000000, hpet->comparatorCount + 1, hpet->counterIs64Bit ? "64" : "32");
 
     hpet_reset_counter();
     return 0;

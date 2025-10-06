@@ -255,7 +255,7 @@ void aml_object_deinit(aml_object_t* object)
     object->type = AML_UNINITIALIZED;
 }
 
-uint64_t aml_object_count_children(aml_object_t *parent)
+uint64_t aml_object_count_children(aml_object_t* parent)
 {
     if (parent == NULL)
     {
@@ -520,8 +520,8 @@ uint64_t aml_object_add(aml_object_t* object, aml_object_t* from, const aml_name
         current = aml_object_find_child(current, segment->name);
         if (current == NULL)
         {
-            LOG_ERR("unable to find intermediate AML object '%s' in path '%s'\n",
-                segment->name, aml_name_string_to_string(nameString));
+            LOG_ERR("unable to find intermediate AML object '%s' in path '%s'\n", segment->name,
+                aml_name_string_to_string(nameString));
             return ERR;
         }
     }

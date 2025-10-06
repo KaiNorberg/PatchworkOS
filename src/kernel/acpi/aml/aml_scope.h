@@ -23,6 +23,11 @@
 /**
  * @brief Scope structure.
  * @struct aml_scope_t
+ *
+ * Temporary objects are usefull since we cant know if, for example, a TermArg will resolve to a currently existing
+ * object like a Named Object or if it will resolve to a static value like an Integer or String, so to avoid the reader
+ * having the check which the TermArg is we either return the named object or a temporary object containing the static
+ * value.
  */
 typedef struct aml_scope
 {
@@ -57,9 +62,8 @@ void aml_scope_reset_temps(aml_scope_t* scope);
 /**
  * @brief Get a temporary object from the scope.
  *
- * Temporary objects are named _T_T. It is not needed to deinit the object after its been used as this
- * will be done when the scope is deinitialized or reset but sometimes its good to do it anyway to avoid running out of
- * temporary objects.
+ * It is not needed to deinit the object after its been used as this will be done when the scope is deinitialized or
+ * reset.
  *
  * @param scope The scope to get the temporary object from.
  * @return Pointer to the temporary object, or NULL on failure.

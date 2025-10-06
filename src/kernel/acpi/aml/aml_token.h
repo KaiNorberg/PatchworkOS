@@ -292,61 +292,6 @@ static inline const aml_token_props_t* aml_token_lookup(aml_token_num_t num)
 }
 
 /**
- * @brief Attempt to read a single byte token from the AML stream, without advancing the instruction pointer.
- *
- * Intended to be used when the token is known to be a single byte for performance reasons.
- *
- * If the stream is empty, the token will be set to `AML_UNKNOWN_TOKEN` and length 0.
- *
- * @param state The AML state to parse from.
- * @param out The destination for the parsed token.
- * @return On success, 0. On failure, `ERR` and `errno` is set.
- */
-static inline uint64_t aml_token_peek_no_ext(aml_state_t* state, aml_token_t* out)
-{
-    uint8_t num;
-    uint64_t byteAmount = aml_state_peek(state, &num, 1);
-    if (byteAmount == 0)
-    {
-        out->num = AML_UNKNOWN_TOKEN;
-        out->length = 0;
-        out->props = &amlTokenProps[AML_UNKNOWN_TOKEN];
-        return 0;
-    }
-
-    if (byteAmount == ERR)
-    {
-        return ERR;
-    }
-
-    out->num = num;
-    out->length = 1;
-    out->props = &amlTokenProps[num];
-    return 0;
-}
-
-/**
- * @brief Attempt to read a single byte token from the AML stream.
- *
- * Intended to be used when the token is known to be a single byte for performance reasons.
- *
- * @param state The AML state to parse from.
- * @param out The destination for the parsed token.
- * @return On success, 0. On failure, `ERR` and `errno` is set to `ENODATA` if the stream is empty or `EILSEQ`
- * if the current data is not a valid token.
- */
-static inline uint64_t aml_token_read_no_ext(aml_state_t* state, aml_token_t* out)
-{
-    if (aml_token_peek_no_ext(state, out) == ERR)
-    {
-        return ERR;
-    }
-
-    state->current += out->length;
-    return 0;
-}
-
-/**
  * @brief Attempt to read a token from the AML stream, without advancing the instruction pointer.
  *
  * If the stream is empty, the token will be set to `AML_UNKNOWN_TOKEN` and length 0.
@@ -410,6 +355,30 @@ static inline uint64_t aml_token_read(aml_state_t* state, aml_token_t* out)
     }
 
     state->current += out->length;
+    return 0;
+}
+
+/**
+ * @brief Reads a token from the AML stream and verifies it matches the expected token.
+ *
+ * @param state The AML state to parse from.
+ * @param expected The expected token number.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+static inline uint64_t aml_token_expect(aml_state_t* state, aml_token_num_t expected)
+{
+    aml_token_t token;
+    if (aml_token_read(state, &token) == ERR)
+    {
+        return ERR;
+    }
+
+    if (token.num != expected)
+    {
+        errno = EILSEQ;
+        return ERR;
+    }
+
     return 0;
 }
 
