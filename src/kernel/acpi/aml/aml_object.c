@@ -56,6 +56,11 @@ static uint64_t aml_object_container_get_list(aml_object_t* object, list_t** out
         *outList = &object->thermalZone.namedObjects;
     }
     break;
+    case AML_POWER_RESOURCE:
+    {
+        *outList = &object->powerResource.namedObjects;
+    }
+    break;
     default:
         errno = EINVAL;
         return ERR;
@@ -269,6 +274,11 @@ void aml_object_deinit(aml_object_t* object)
         }
         object->package.elements = NULL;
         object->package.length = 0;
+        break;
+    case AML_POWER_RESOURCE:
+        object->powerResource.systemLevel = 0;
+        object->powerResource.resourceOrder = 0;
+        aml_object_container_free_children(object);
         break;
     case AML_PROCESSOR:
         object->processor.procId = 0;
@@ -1262,6 +1272,26 @@ uint64_t aml_package_init(aml_object_t* object, uint64_t length)
     }
     object->package.length = length;
     object->type = AML_PACKAGE;
+    return 0;
+}
+
+uint64_t aml_power_resource_init(aml_object_t* object, aml_system_level_t systemLevel, aml_resource_order_t resourceOrder)
+{
+    if (object == NULL)
+    {
+        errno = EINVAL;
+        return ERR;
+    }
+
+    if (aml_object_check_deinit(object) == ERR)
+    {
+        return ERR;
+    }
+
+    object->powerResource.systemLevel = systemLevel;
+    object->powerResource.resourceOrder = resourceOrder;
+    list_init(&object->powerResource.namedObjects);
+    object->type = AML_POWER_RESOURCE;
     return 0;
 }
 

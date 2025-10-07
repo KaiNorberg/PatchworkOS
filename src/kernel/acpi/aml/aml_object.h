@@ -75,7 +75,7 @@ typedef enum
     /**
      * All data types that can contain named objects, packages contain unnamed objects only and are excluded.
      */
-    AML_CONTAINERS = AML_DEVICE | AML_PROCESSOR | AML_METHOD | AML_THERMAL_ZONE,
+    AML_CONTAINERS = AML_DEVICE | AML_PROCESSOR | AML_METHOD | AML_THERMAL_ZONE | AML_POWER_RESOURCE,
     /**
      * All data types.
      */
@@ -293,6 +293,14 @@ typedef struct aml_package
     uint64_t length;
 } aml_package_t;
 
+typedef struct aml_power_resource
+{
+    AML_OBJECT_COMMON_HEADER;
+    aml_system_level_t systemLevel;
+    aml_resource_order_t resourceOrder;
+    list_t namedObjects;
+} aml_power_resource_t;
+
 /**
  * @brief Data for a processor object.
  * @struct aml_processor_t
@@ -379,6 +387,7 @@ typedef struct aml_object
         aml_object_reference_t objectReference;
         aml_opregion_t opregion;
         aml_package_t package;
+        aml_power_resource_t powerResource;
         aml_processor_t processor;
         aml_string_t string;
         aml_thermal_zone_t thermalZone;
@@ -698,6 +707,16 @@ uint64_t aml_operation_region_init(aml_object_t* object, aml_region_space_t spac
  * @return On success, 0. On failure, `ERR` and `errno` is set.
  */
 uint64_t aml_package_init(aml_object_t* object, uint64_t length);
+
+/**
+ * @brief Initialize a object as a power resource with the given system level and resource order.
+ *
+ * @param object Pointer to the object to initialize.
+ * @param systemLevel The system level of the power resource.
+ * @param resourceOrder The resource order of the power resource.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_power_resource_init(aml_object_t* object, aml_system_level_t systemLevel, aml_resource_order_t resourceOrder);
 
 /**
  * @brief Initialize a object as a processor with the given ProcID, PblkAddr, and PblkLen.

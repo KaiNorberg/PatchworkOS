@@ -161,6 +161,16 @@ typedef uint32_t aml_pblk_addr_t;
 typedef uint8_t aml_pblk_len_t;
 
 /**
+ * @brief SystemLevel structure.
+ */
+typedef uint8_t aml_system_level_t;
+
+/**
+ * @brief ResourceOrder structure.
+ */
+typedef uint16_t aml_resource_order_t;
+
+/**
  * @brief Reads a BankValue structure from the AML byte stream.
  *
  * A BankValue structure is defined as `BankValue := TermArg => Integer`.
@@ -634,6 +644,41 @@ uint64_t aml_def_event_read(aml_state_t* state, aml_scope_t* scope);
 uint64_t aml_def_thermal_zone_read(aml_state_t* state, aml_scope_t* scope);
 
 /**
+ * @brief Reads a SystemLevel structure from the AML byte stream.
+ *
+ * A SystemLevel structure is defined as `SystemLevel := ByteData`.
+ *
+ * @param state The AML state.
+ * @param out The output buffer to store the system level.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_system_level_read(aml_state_t* state, aml_system_level_t* out);
+
+/**
+ * @brief Reads a ResourceOrder structure from the AML byte stream.
+ *
+ * A ResourceOrder structure is defined as `ResourceOrder := WordData`.
+ *
+ * @param state The AML state.
+ * @param out The output buffer to store the resource order.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_resource_order_read(aml_state_t* state, aml_resource_order_t* out);
+
+/**
+ * @brief Reads a DefPowerRes structure from the AML byte stream.
+ *
+ * The DefPowerRes structure is defined as `DefPowerRes := PowerResOp PkgLength NameString SystemLevel ResourceOrder TermList`.
+ *
+ * @see Section 19.6.108 of the ACPI specification for more details.
+ *
+ * @param state The AML state.
+ * @param scope The current AML scope.
+ * @return On success, 0. On failure, `ERR` and `errno` is set.
+ */
+uint64_t aml_def_power_res_read(aml_state_t* state, aml_scope_t* scope);
+
+/**
  * @brief Reads a NamedObj structure from the AML byte stream.
  *
  * Version 6.6 of the ACPI specification has a few mistakes in the definition of the NamedObj structure,
@@ -664,7 +709,6 @@ uint64_t aml_def_thermal_zone_read(aml_state_t* state, aml_scope_t* scope);
  * - `DefCreateField`
  * - `DefDataRegion`
  * - `DefExternal`
- * - `DefPowerRes`
  *
  * @param state The AML state.
  * @param scope The current AML scope.

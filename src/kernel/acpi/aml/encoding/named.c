@@ -1005,6 +1005,83 @@ uint64_t aml_def_thermal_zone_read(aml_state_t* state, aml_scope_t* scope)
     return aml_term_list_read(state, newObject, end);
 }
 
+uint64_t aml_system_level_read(aml_state_t* state, aml_system_level_t* out)
+{
+    if (aml_byte_data_read(state, (uint8_t*)out) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read ByteData");
+        return ERR;
+    }
+    return 0;
+}
+
+uint64_t aml_resource_order_read(aml_state_t* state, aml_resource_order_t* out)
+{
+    if (aml_word_data_read(state, (uint16_t*)out) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read WordData");
+        return ERR;
+    }
+    return 0;
+}
+
+uint64_t aml_def_power_res_read(aml_state_t* state, aml_scope_t* scope)
+{
+    if (aml_token_expect(state, AML_POWER_RES_OP) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read PowerResOp");
+        return ERR;
+    }
+
+    const uint8_t* start = state->current;
+
+    aml_pkg_length_t pkgLength;
+    if (aml_pkg_length_read(state, &pkgLength) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read PkgLength");
+        return ERR;
+    }
+
+    aml_name_string_t nameString;
+    if (aml_name_string_read(state, &nameString) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read NameString");
+        return ERR;
+    }
+
+    aml_system_level_t systemLevel;
+    if (aml_system_level_read(state, &systemLevel) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read SystemLevel");
+        return ERR;
+    }
+
+    aml_resource_order_t resourceOrder;
+    if (aml_resource_order_read(state, &resourceOrder) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to read ResourceOrder");
+        return ERR;
+    }
+
+    const uint8_t* end = start + pkgLength;
+
+    aml_object_t* newObject = aml_object_new(state, AML_OBJECT_NONE);
+    if (newObject == NULL)
+    {
+        return ERR;
+    }
+    DEREF_DEFER(newObject);
+
+    if (aml_power_resource_init(newObject, systemLevel, resourceOrder) == ERR ||
+        aml_object_add(newObject, scope->location, &nameString) == ERR)
+    {
+        AML_DEBUG_ERROR(state, "Failed to add object '%s'", aml_name_string_to_string(&nameString));
+        return ERR;
+    }
+
+    return aml_term_list_read(state, newObject, end);
+}
+
 uint64_t aml_named_obj_read(aml_state_t* state, aml_scope_t* scope)
 {
     aml_token_t op;
@@ -1061,6 +1138,9 @@ uint64_t aml_named_obj_read(aml_state_t* state, aml_scope_t* scope)
         break;
     case AML_THERMAL_ZONE_OP:
         result = aml_def_thermal_zone_read(state, scope);
+        break;
+    case AML_POWER_RES_OP:
+        result = aml_def_power_res_read(state, scope);
         break;
     default:
         AML_DEBUG_ERROR(state, "Unknown NamedObj '%s' (0x%x)", op.props->name, op.num);
