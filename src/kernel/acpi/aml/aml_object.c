@@ -1261,6 +1261,14 @@ uint64_t aml_package_init(aml_object_t* object, uint64_t length)
         return ERR;
     }
 
+    if (length == 0)
+    {
+        object->package.elements = NULL;
+        object->package.length = 0;
+        object->type = AML_PACKAGE;
+        return 0;
+    }
+
     object->package.elements = heap_alloc(sizeof(aml_object_t*) * length, HEAP_NONE);
     if (object->package.elements == NULL)
     {
